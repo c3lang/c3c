@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include "project_creation.h"
 #include "build_options.h"
 #include "../utils/string_utils.h"

@@ -7,6 +7,21 @@
 #define MAX_LIB_DIRS 1024
 #define MAX_FILES 2048
 
+typedef enum
+{
+	COMMAND_MISSING = 0,
+	COMMAND_COMPILE,
+	COMMAND_INIT,
+	COMMAND_BUILD,
+	COMMAND_COMPILE_RUN,
+	COMMAND_RUN,
+	COMMAND_CLEAN_RUN,
+	COMMAND_CLEAN,
+	COMMAND_DIST,
+	COMMAND_DOCS,
+	COMMAND_BENCH,
+} CompilerCommand;
+
 typedef struct
 {
 	const char* lib_dir[MAX_LIB_DIRS];
@@ -14,8 +29,11 @@ typedef struct
 	const char* files[MAX_FILES];
 	int file_count;
 	const char* project_name;
+	const char* target;
 	const char* path;
-	const char* original_path;
+	CompilerCommand command;
 } BuildOptions;
 
 extern BuildOptions build_options;
+
+void parse_arguments(int argc, const char *argv[]);
