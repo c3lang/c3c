@@ -8,30 +8,12 @@
 #include <string.h>
 #include "../utils/errors.h"
 
-typedef struct
-{
-	const char *begin;
-	const char *start;
-	const char *current;
-	uint16_t source_file;
-/*	LexerState lexer_state;
-	File *current_file;
-	Token saved_tok;
-	Token saved_prev_tok;
-	SourceLoc last_in_range;*/
-} Lexer;
-
-
-Lexer lexer;
 
 
 #define MATCH_KEYWORD_LEN(_keyword, _type) \
   ((sizeof(_keyword) != len + 1) ? TOKEN_VAR_IDENT : check_keyword(start, len, _keyword, _type))
 
 #define MATCH_KEYWORD(_keyword, _type) check_keyword(start, len, _keyword, _type)
-
-// Yes this is an ugly hand written keyword identifier. It should be benchmarked against
-// an table based state machine.
 
 static inline TokenType check_keyword(const char * restrict start, size_t len, const char * restrict keyword, TokenType type)
 {
@@ -43,7 +25,7 @@ static inline TokenType check_keyword(const char * restrict start, size_t len, c
 }
 
 
-
+// C idents should be rare, so just treat them uniformly.
 static inline TokenType c_ident(const char *restrict start, const int len)
 {
 	switch (start[3])
@@ -68,6 +50,10 @@ static inline TokenType c_ident(const char *restrict start, const int len)
 			return TOKEN_VAR_IDENT;
 	}
 }
+
+// A simple switch based keyword identifier.
+// Some simple benchmarking reveals it's pretty fast compared to
+// Perfect hashing approaches.
 static inline TokenType ident_type(const char *restrict start, const int len)
 {
 	char current_value = start[0];
@@ -242,6 +228,8 @@ static inline TokenType ident_type(const char *restrict start, const int len)
 #define FNV1(a, seed) ((uint32_t)((((unsigned int)(a)) ^ (seed)) * PRIME))
 #define HASH(a, b, c) (FNV1(c, FNV1((a), FNV1(b, SEED))) & 0x1FFu)
 
+// This method uses a light variant on FNV1, keeping 9 bits.
+// When keywords are added, make sure there are no collisions.
 TokenType ident_type_fnv1(const char *restrict start, int len)
 {
 	char current_value = start[0];
