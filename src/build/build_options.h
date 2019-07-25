@@ -20,6 +20,7 @@ typedef enum
 	COMMAND_DIST,
 	COMMAND_DOCS,
 	COMMAND_BENCH,
+	COMMAND_UNIT_TEST,
 } CompilerCommand;
 
 typedef struct

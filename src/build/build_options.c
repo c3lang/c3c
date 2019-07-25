@@ -128,6 +128,11 @@ static void parse_command(void)
 		build_options.project_name = next_arg();
 		return;
 	}
+	if (arg_match("utest"))
+	{
+		build_options.command = COMMAND_UNIT_TEST;
+		return;
+	}
 	if (arg_match("compile"))
 	{
 		build_options.command = COMMAND_COMPILE;

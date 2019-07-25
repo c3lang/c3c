@@ -2,7 +2,7 @@
 #include "build/build_options.h"
 #include "build/project_creation.h"
 #include "utils/errors.h"
-
+#include "compiler_tests/tests.h"
 
 int main(int argc, const char *argv[])
 {
@@ -12,6 +12,8 @@ int main(int argc, const char *argv[])
 		case COMMAND_INIT:
 			create_project();
 			break;
+		case COMMAND_UNIT_TEST:
+			compiler_tests();
 		case COMMAND_COMPILE:
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_MISSING:
