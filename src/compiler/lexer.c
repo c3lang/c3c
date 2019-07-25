@@ -48,25 +48,17 @@ static inline TokenType c_ident(const char *restrict start, const int len)
 {
 	switch (start[3])
 	{
-		case 'n':
-			return MATCH_KEYWORD_LEN("c_int", TOKEN_C_INT);
-		case 'i':
-			return MATCH_KEYWORD_LEN("c_uint", TOKEN_C_UINT);
-		case 's':
-			return MATCH_KEYWORD_LEN("c_ushort", TOKEN_C_USHORT);
-		case 'h':
-			return MATCH_KEYWORD_LEN("c_short", TOKEN_C_SHORT);
+		case 'n': return MATCH_KEYWORD_LEN("c_int", TOKEN_C_INT);
+		case 'i': return MATCH_KEYWORD_LEN("c_uint", TOKEN_C_UINT);
+		case 's': return MATCH_KEYWORD_LEN("c_ushort", TOKEN_C_USHORT);
+		case 'h': return MATCH_KEYWORD_LEN("c_short", TOKEN_C_SHORT);
 		case 'o':
 			switch (len)
 			{
-				case 10:
-					return MATCH_KEYWORD("c_longlong", TOKEN_C_LONGLONG);
-				case 6:
-					return MATCH_KEYWORD("c_long", TOKEN_C_LONG);
-				case 12:
-					return MATCH_KEYWORD("c_longdouble", TOKEN_C_LONGDOUBLE);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 6: return MATCH_KEYWORD("c_long", TOKEN_C_LONG);
+				case 10: return MATCH_KEYWORD("c_longlong", TOKEN_C_LONGLONG);
+				case 12: return MATCH_KEYWORD("c_longdouble", TOKEN_C_LONGDOUBLE);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 'l':
 			return len == 11
@@ -88,187 +80,127 @@ static inline TokenType ident_type(const char *restrict start, const int len)
 			if (len == 2) return MATCH_KEYWORD("as", TOKEN_AS);
 			switch (start[1])
 			{
-				case 's':
-					return MATCH_KEYWORD_LEN("asm", TOKEN_ASM);
-				case 'l':
-					return MATCH_KEYWORD_LEN("alias", TOKEN_ALIAS);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 's': return MATCH_KEYWORD_LEN("asm", TOKEN_ASM);
+				case 'l': return MATCH_KEYWORD_LEN("alias", TOKEN_ALIAS);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 'b':
 			switch (start[1])
 			{
-				case 'o':
-					return MATCH_KEYWORD_LEN("bool", TOKEN_BOOL);
-				case 'y':
-					return MATCH_KEYWORD_LEN("byte", TOKEN_BYTE);
-				case 'r':
-					return MATCH_KEYWORD_LEN("break", TOKEN_BREAK);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 'o': return MATCH_KEYWORD_LEN("bool", TOKEN_BOOL);
+				case 'y': return MATCH_KEYWORD_LEN("byte", TOKEN_BYTE);
+				case 'r': return MATCH_KEYWORD_LEN("break", TOKEN_BREAK);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 'c':
 			if (len < 4) return TOKEN_VAR_IDENT;
 			if (len == 8) return MATCH_KEYWORD_LEN("continue", TOKEN_CONTINUE);
 			switch (start[3])
 			{
-				case 't':
-					return MATCH_KEYWORD_LEN("cast", TOKEN_CAST);
-				case 'e':
-					return MATCH_KEYWORD_LEN("case", TOKEN_CASE);
-				case 'r':
-					return MATCH_KEYWORD_LEN("char", TOKEN_CHAR);
-				case 's':
-					return MATCH_KEYWORD_LEN("const", TOKEN_CONST);
-				case 'c':
-					return MATCH_KEYWORD_LEN("catch", TOKEN_CATCH);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 't': return MATCH_KEYWORD_LEN("cast", TOKEN_CAST);
+				case 'e': return MATCH_KEYWORD_LEN("case", TOKEN_CASE);
+				case 'r': return MATCH_KEYWORD_LEN("char", TOKEN_CHAR);
+				case 's': return MATCH_KEYWORD_LEN("const", TOKEN_CONST);
+				case 'c': return MATCH_KEYWORD_LEN("catch", TOKEN_CATCH);
+				default: return TOKEN_VAR_IDENT;
 
 			}
 		case 'd':
 			if (len < 5) return MATCH_KEYWORD_LEN("do", TOKEN_DO);
 			switch (start[3])
 			{
-				case 'e':
-					return MATCH_KEYWORD_LEN("defer", TOKEN_DEFER);
-				case 'a':
-					return MATCH_KEYWORD_LEN("default", TOKEN_DEFAULT);
-				case 'b':
-					return MATCH_KEYWORD_LEN("double", TOKEN_DOUBLE);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 'e': return MATCH_KEYWORD_LEN("defer", TOKEN_DEFER);
+				case 'a': return MATCH_KEYWORD_LEN("default", TOKEN_DEFAULT);
+				case 'b': return MATCH_KEYWORD_LEN("double", TOKEN_DOUBLE);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 'e':
 			switch (start[1])
 			{
-				case 'l':
-					return MATCH_KEYWORD_LEN("else", TOKEN_ELSE);
-				case 'n':
-					return MATCH_KEYWORD_LEN("enum", TOKEN_ENUM);
-				case 'r':
-					return MATCH_KEYWORD_LEN("error", TOKEN_ERROR);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 'l': return MATCH_KEYWORD_LEN("else", TOKEN_ELSE);
+				case 'n': return MATCH_KEYWORD_LEN("enum", TOKEN_ENUM);
+				case 'r': return MATCH_KEYWORD_LEN("error", TOKEN_ERROR);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 'f':
 			switch (start[2])
 			{
-				case '6':
-					return MATCH_KEYWORD_LEN("f16", TOKEN_F16);
 				case '2':
-					if (len == 4) return MATCH_KEYWORD_LEN("f128", TOKEN_F128);
+					if (len == 4) return MATCH_KEYWORD("f128", TOKEN_F128);
 					return MATCH_KEYWORD_LEN("f32", TOKEN_F32);
-				case '4':
-					return MATCH_KEYWORD_LEN("f64", TOKEN_F64);
-				case '5':
-					return MATCH_KEYWORD_LEN("f256", TOKEN_F256);
-				case 'r':
-					return MATCH_KEYWORD_LEN("for", TOKEN_FOR);
-				case 'l':
-					return MATCH_KEYWORD_LEN("false", TOKEN_FALSE);
-				case 'o':
-					return MATCH_KEYWORD_LEN("float", TOKEN_FLOAT);
-				case 'n':
-					return MATCH_KEYWORD_LEN("func", TOKEN_FUNC);
-
-				default:
-					return TOKEN_VAR_IDENT;
+				case '6': return MATCH_KEYWORD_LEN("f16", TOKEN_F16);
+				case '4': return MATCH_KEYWORD_LEN("f64", TOKEN_F64);
+				case '5': return MATCH_KEYWORD_LEN("f256", TOKEN_F256);
+				case 'r': return MATCH_KEYWORD_LEN("for", TOKEN_FOR);
+				case 'l': return MATCH_KEYWORD_LEN("false", TOKEN_FALSE);
+				case 'o': return MATCH_KEYWORD_LEN("float", TOKEN_FLOAT);
+				case 'n': return MATCH_KEYWORD_LEN("func", TOKEN_FUNC);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 'g':
 			switch (start[1])
 			{
-				case 'o':
-					return MATCH_KEYWORD_LEN("goto", TOKEN_GOTO);
-				case 'e':
-					return MATCH_KEYWORD_LEN("generic", TOKEN_GENERIC);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 'o': return MATCH_KEYWORD_LEN("goto", TOKEN_GOTO);
+				case 'e': return MATCH_KEYWORD_LEN("generic", TOKEN_GENERIC);
+				default: return TOKEN_VAR_IDENT;
 			}
-		case 'h':
-			return MATCH_KEYWORD_LEN("half", TOKEN_HALF);
+		case 'h': return MATCH_KEYWORD_LEN("half", TOKEN_HALF);
 		case 'i':
 			switch (start[1])
 			{
-				case 'f':
-					return MATCH_KEYWORD_LEN("if", TOKEN_IF);
-				case '8':
-					return MATCH_KEYWORD_LEN("i8", TOKEN_I8);
-				case '6':
-					return MATCH_KEYWORD_LEN("i64", TOKEN_I64);
-				case '2':
-					return MATCH_KEYWORD_LEN("i256", TOKEN_I256);
-				case '3':
-					return MATCH_KEYWORD_LEN("i32", TOKEN_I32);
 				case '1':
-					if (len == 4) return MATCH_KEYWORD_LEN("i128", TOKEN_I128);
+					if (len == 4) return MATCH_KEYWORD("i128", TOKEN_I128);
 					return MATCH_KEYWORD_LEN("i16", TOKEN_I16);
-				case 'n':
-					return MATCH_KEYWORD_LEN("int", TOKEN_INT);
-				case 'm':
-					return MATCH_KEYWORD_LEN("import", TOKEN_IMPORT);
-				case 's':
-					return MATCH_KEYWORD_LEN("isize", TOKEN_ISIZE);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 'f': return MATCH_KEYWORD_LEN("if", TOKEN_IF);
+				case '8': return MATCH_KEYWORD_LEN("i8", TOKEN_I8);
+				case '6': return MATCH_KEYWORD_LEN("i64", TOKEN_I64);
+				case '2': return MATCH_KEYWORD_LEN("i256", TOKEN_I256);
+				case '3': return MATCH_KEYWORD_LEN("i32", TOKEN_I32);
+				case 'n': return MATCH_KEYWORD_LEN("int", TOKEN_INT);
+				case 'm': return MATCH_KEYWORD_LEN("import", TOKEN_IMPORT);
+				case 's': return MATCH_KEYWORD_LEN("isize", TOKEN_ISIZE);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 'l':
 			if (len < 4) return TOKEN_VAR_IDENT;
 			switch (start[2])
 			{
-				case 'n':
-					return MATCH_KEYWORD_LEN("long", TOKEN_LONG);
-				case 'c':
-					return MATCH_KEYWORD_LEN("local", TOKEN_LOCAL);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 'n': return MATCH_KEYWORD_LEN("long", TOKEN_LONG);
+				case 'c': return MATCH_KEYWORD_LEN("local", TOKEN_LOCAL);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 'm':
 			switch (start[1])
 			{
-				case 'a':
-					return MATCH_KEYWORD_LEN("macro", TOKEN_MACRO);
-				case 'o':
-					return MATCH_KEYWORD_LEN("module", TOKEN_MODULE);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 'a': return MATCH_KEYWORD_LEN("macro", TOKEN_MACRO);
+				case 'o': return MATCH_KEYWORD_LEN("module", TOKEN_MODULE);
+				default: return TOKEN_VAR_IDENT;
 			}
-		case 'n':
-			return MATCH_KEYWORD_LEN("nil", TOKEN_NIL);
-		case 'p':
-			return MATCH_KEYWORD_LEN("public", TOKEN_PUBLIC);
-		case 'q':
-			return MATCH_KEYWORD_LEN("quad", TOKEN_QUAD);
-		case 'r':
-			return MATCH_KEYWORD_LEN("return", TOKEN_RETURN);
+		case 'n': return MATCH_KEYWORD_LEN("nil", TOKEN_NIL);
+		case 'p': return MATCH_KEYWORD_LEN("public", TOKEN_PUBLIC);
+		case 'q': return MATCH_KEYWORD_LEN("quad", TOKEN_QUAD);
+		case 'r': return MATCH_KEYWORD_LEN("return", TOKEN_RETURN);
 		case 's':
 			switch (start[1])
 			{
-				case 'h':
-					return MATCH_KEYWORD_LEN("short", TOKEN_SHORT);
-				case 't':
-					return MATCH_KEYWORD_LEN("struct", TOKEN_STRUCT);
-				case 'w':
-					return MATCH_KEYWORD_LEN("switch", TOKEN_SWITCH);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 'h': return MATCH_KEYWORD_LEN("short", TOKEN_SHORT);
+				case 't': return MATCH_KEYWORD_LEN("struct", TOKEN_STRUCT);
+				case 'w': return MATCH_KEYWORD_LEN("switch", TOKEN_SWITCH);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 't':
 			if (len < 3) return TOKEN_VAR_IDENT;
 			switch (start[2])
 			{
 				case 'p':
-					if (len == 7) return MATCH_KEYWORD_LEN("typedef", TOKEN_TYPEDEF);
+					if (len == 7) return MATCH_KEYWORD("typedef", TOKEN_TYPEDEF);
 					return MATCH_KEYWORD_LEN("type", TOKEN_TYPE);
-				case 'u':
-					return MATCH_KEYWORD_LEN("true", TOKEN_TRUE);
-				case 'y':
-					return MATCH_KEYWORD_LEN("try", TOKEN_TRY);
 				case 'r':
-					if (len == 6) return MATCH_KEYWORD_LEN("throws", TOKEN_THROWS);
+					if (len == 6) return MATCH_KEYWORD("throws", TOKEN_THROWS);
 					return MATCH_KEYWORD_LEN("throw", TOKEN_THROW);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 'u': return MATCH_KEYWORD_LEN("true", TOKEN_TRUE);
+				case 'y': return MATCH_KEYWORD_LEN("try", TOKEN_TRY);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 'u':
 			if (len < 3) return MATCH_KEYWORD_LEN("u8", TOKEN_U8);
@@ -277,42 +209,30 @@ static inline TokenType ident_type(const char *restrict start, const int len)
 				case '1':
 					if (len == 4) return MATCH_KEYWORD("u128", TOKEN_U128);
 					return MATCH_KEYWORD_LEN("u16", TOKEN_U16);
-				case '2':
-					return MATCH_KEYWORD_LEN("u256", TOKEN_U256);
-				case '3':
-					return MATCH_KEYWORD_LEN("u32", TOKEN_U32);
-				case '6':
-					return MATCH_KEYWORD_LEN("u64", TOKEN_U64);
-				case 'i':
-					return MATCH_KEYWORD_LEN("uint", TOKEN_UINT);
 				case 'n':
 					if (start[2] == 't') return MATCH_KEYWORD_LEN("until", TOKEN_UNTIL);
 					return MATCH_KEYWORD_LEN("union", TOKEN_UNION);
-				case 'l':
-					return MATCH_KEYWORD_LEN("ulong", TOKEN_ULONG);
 				case 's':
 					if (len == 5) return MATCH_KEYWORD("usize", TOKEN_USIZE);
 					return MATCH_KEYWORD_LEN("ushort", TOKEN_USHORT);
-				default:
-					return TOKEN_VAR_IDENT;
+				case '2': return MATCH_KEYWORD_LEN("u256", TOKEN_U256);
+				case '3': return MATCH_KEYWORD_LEN("u32", TOKEN_U32);
+				case '6': return MATCH_KEYWORD_LEN("u64", TOKEN_U64);
+				case 'i': return MATCH_KEYWORD_LEN("uint", TOKEN_UINT);
+				case 'l': return MATCH_KEYWORD_LEN("ulong", TOKEN_ULONG);
+				default: return TOKEN_VAR_IDENT;
 			}
 		case 'v':
 			if (len < 3) return TOKEN_VAR_IDENT;
 			switch (start[2])
 			{
-				case 'r':
-					return MATCH_KEYWORD_LEN("var", TOKEN_VAR);
-				case 'i':
-					return MATCH_KEYWORD_LEN("void", TOKEN_VOID);
-				case 'l':
-					return MATCH_KEYWORD_LEN("volatile", TOKEN_VOLATILE);
-				default:
-					return TOKEN_VAR_IDENT;
+				case 'r': return MATCH_KEYWORD_LEN("var", TOKEN_VAR);
+				case 'i': return MATCH_KEYWORD_LEN("void", TOKEN_VOID);
+				case 'l': return MATCH_KEYWORD_LEN("volatile", TOKEN_VOLATILE);
+				default: return TOKEN_VAR_IDENT;
 			}
-		case 'w':
-			return MATCH_KEYWORD_LEN("while", TOKEN_WHILE);
-		default:
-			return TOKEN_VAR_IDENT;
+		case 'w': return MATCH_KEYWORD_LEN("while", TOKEN_WHILE);
+		default: return TOKEN_VAR_IDENT;
 	}
 }
 
@@ -331,174 +251,89 @@ TokenType ident_type_fnv1(const char *restrict start, int len)
 	if (len > 8 || !is_lower(current_value)) return TOKEN_VAR_IDENT;
 	switch (HASH(len, current_value, second))
 	{
-		case HASH(2, 'a', 's'):
-			return MATCH_KEYWORD_LEN("as", TOKEN_AS);
-		case HASH(3, 'a', 's'):
-			return MATCH_KEYWORD_LEN("asm", TOKEN_ASM);
-		case HASH(5, 'a', 'l'):
-			return MATCH_KEYWORD_LEN("alias", TOKEN_ALIAS);
-		case HASH(4, 'b', 'o'):
-			return MATCH_KEYWORD_LEN("bool", TOKEN_BOOL);
-		case HASH(4, 'b', 'y'):
-			return MATCH_KEYWORD_LEN("byte", TOKEN_BYTE);
-		case HASH(5, 'b', 'r'):
-			return MATCH_KEYWORD_LEN("break", TOKEN_BREAK);
-		case HASH(8, 'c', 'o'):
-			return MATCH_KEYWORD_LEN("continue", TOKEN_CONTINUE);
+		case HASH(2, 'a', 's'): return MATCH_KEYWORD_LEN("as", TOKEN_AS);
+		case HASH(3, 'a', 's'): return MATCH_KEYWORD_LEN("asm", TOKEN_ASM);
+		case HASH(5, 'a', 'l'): return MATCH_KEYWORD_LEN("alias", TOKEN_ALIAS);
+		case HASH(4, 'b', 'o'): return MATCH_KEYWORD_LEN("bool", TOKEN_BOOL);
+		case HASH(4, 'b', 'y'): return MATCH_KEYWORD_LEN("byte", TOKEN_BYTE);
+		case HASH(5, 'b', 'r'): return MATCH_KEYWORD_LEN("break", TOKEN_BREAK);
+		case HASH(8, 'c', 'o'): return MATCH_KEYWORD_LEN("continue", TOKEN_CONTINUE);
 		case HASH(4, 'c', 'a'):
 			return len > 3 && start[3] == 't' ? MATCH_KEYWORD_LEN("cast", TOKEN_CAST) : MATCH_KEYWORD_LEN("case", TOKEN_CASE);
-		case HASH(5, 'c', '_'):
-			return MATCH_KEYWORD_LEN("c_int", TOKEN_C_INT);
-		case HASH(6, 'c', '_'):
-			return len > 3 && start[2] == 'u' ? MATCH_KEYWORD_LEN("c_uint", TOKEN_C_UINT) : MATCH_KEYWORD_LEN("c_long", TOKEN_C_LONG);
-		case HASH(7, 'c', '_'):
-			return MATCH_KEYWORD_LEN("c_short", TOKEN_C_SHORT);
-		case HASH(8, 'c', '_'):
-			return MATCH_KEYWORD_LEN("c_ushort", TOKEN_C_USHORT);
-		case HASH(4, 'c', 'h'):
-			return MATCH_KEYWORD_LEN("char", TOKEN_CHAR);
-		case HASH(5, 'c', 'o'):
-			return MATCH_KEYWORD_LEN("const", TOKEN_CONST);
-		case HASH(5, 'c', 'a'):
-			return MATCH_KEYWORD_LEN("catch", TOKEN_CATCH);
-		case HASH(2, 'd', 'o'):
-			return MATCH_KEYWORD_LEN("do", TOKEN_DO);
-		case HASH(5, 'd', 'e'):
-			return MATCH_KEYWORD_LEN("defer", TOKEN_DEFER);
-		case HASH(7, 'd', 'e'):
-			return MATCH_KEYWORD_LEN("default", TOKEN_DEFAULT);
-		case HASH(6, 'd', 'o'):
-			return MATCH_KEYWORD_LEN("double", TOKEN_DOUBLE);
-		case HASH(4, 'e', 'l'):
-			return MATCH_KEYWORD_LEN("else", TOKEN_ELSE);
-		case HASH(4, 'e', 'n'):
-			return MATCH_KEYWORD_LEN("enum", TOKEN_ENUM);
-		case HASH(5, 'e', 'r'):
-			return MATCH_KEYWORD_LEN("error", TOKEN_ERROR);
-		case HASH(3, 'f', '1'):
-			return MATCH_KEYWORD_LEN("f16", TOKEN_F16);
-		case HASH(4, 'f', '1'):
-			return MATCH_KEYWORD_LEN("f128", TOKEN_F128);
-		case HASH(3, 'f', '3'):
-			return MATCH_KEYWORD_LEN("f32", TOKEN_F32);
-		case HASH(3, 'f', '6'):
-			return MATCH_KEYWORD_LEN("f64", TOKEN_F64);
-		case HASH(4, 'f', '2'):
-			return MATCH_KEYWORD_LEN("f256", TOKEN_F256);
-		case HASH(3, 'f', 'o'):
-			return MATCH_KEYWORD_LEN("for", TOKEN_FOR);
-		case HASH(5, 'f', 'a'):
-			return MATCH_KEYWORD_LEN("false", TOKEN_FALSE);
-		case HASH(5, 'f', 'l'):
-			return MATCH_KEYWORD_LEN("float", TOKEN_FLOAT);
-		case HASH(4, 'f', 'u'):
-			return MATCH_KEYWORD_LEN("func", TOKEN_FUNC);
-		case HASH(4, 'g', 'o'):
-			return MATCH_KEYWORD_LEN("goto", TOKEN_GOTO);
-		case HASH(7, 'g', 'e'):
-			return MATCH_KEYWORD_LEN("generic", TOKEN_GENERIC);
-		case HASH(4, 'h', 'a'):
-			return MATCH_KEYWORD_LEN("half", TOKEN_HALF);
-		case HASH(2, 'i', 'f'):
-			return MATCH_KEYWORD_LEN("if", TOKEN_IF);
-		case HASH(2, 'i', '8'):
-			return MATCH_KEYWORD_LEN("i8", TOKEN_I8);
-		case HASH(3, 'i', '6'):
-			return MATCH_KEYWORD_LEN("i64", TOKEN_I64);
-		case HASH(4, 'i', '2'):
-			return MATCH_KEYWORD_LEN("i256", TOKEN_I256);
-		case HASH(3, 'i', '3'):
-			return MATCH_KEYWORD_LEN("i32", TOKEN_I32);
-		case HASH(4, 'i', '1'):
-			return MATCH_KEYWORD_LEN("i128", TOKEN_I128);
-		case HASH(3, 'i', '1'):
-			return MATCH_KEYWORD_LEN("i16", TOKEN_I16);
-		case HASH(3, 'i', 'n'):
-			return MATCH_KEYWORD_LEN("int", TOKEN_INT);
-		case HASH(6, 'i', 'm'):
-			return MATCH_KEYWORD_LEN("import", TOKEN_IMPORT);
-		case HASH(5, 'i', 's'):
-			return MATCH_KEYWORD_LEN("isize", TOKEN_ISIZE);
-		case HASH(4, 'l', 'o'):
-			return MATCH_KEYWORD_LEN("long", TOKEN_LONG);
-		case HASH(5, 'l', 'o'):
-			return MATCH_KEYWORD_LEN("local", TOKEN_LOCAL);
-		case HASH(5, 'm', 'a'):
-			return MATCH_KEYWORD_LEN("macro", TOKEN_MACRO);
-		case HASH(6, 'm', 'o'):
-			return MATCH_KEYWORD_LEN("module", TOKEN_MODULE);
-		case HASH(3, 'n', 'i'):
-			return MATCH_KEYWORD_LEN("nil", TOKEN_NIL);
-		case HASH(6, 'p', 'u'):
-			return MATCH_KEYWORD_LEN("public", TOKEN_PUBLIC);
-		case HASH(4, 'q', 'u'):
-			return MATCH_KEYWORD_LEN("quad", TOKEN_QUAD);
-		case HASH(6, 'r', 'e'):
-			return MATCH_KEYWORD_LEN("return", TOKEN_RETURN);
-		case HASH(5, 's', 'h'):
-			return MATCH_KEYWORD_LEN("short", TOKEN_SHORT);
-		case HASH(6, 's', 't'):
-			return MATCH_KEYWORD_LEN("struct", TOKEN_STRUCT);
-		case HASH(6, 's', 'w'):
-			return MATCH_KEYWORD_LEN("switch", TOKEN_SWITCH);
-		case HASH(7, 't', 'y'):
-			return MATCH_KEYWORD_LEN("typedef", TOKEN_TYPEDEF);
-		case HASH(4, 't', 'y'):
-			return MATCH_KEYWORD_LEN("type", TOKEN_TYPE);
-		case HASH(4, 't', 'r'):
-			return MATCH_KEYWORD_LEN("true", TOKEN_TRUE);
-		case HASH(3, 't', 'r'):
-			return MATCH_KEYWORD_LEN("try", TOKEN_TRY);
-		case HASH(6, 't', 'h'):
-			return MATCH_KEYWORD_LEN("throws", TOKEN_THROWS);
-		case HASH(5, 't', 'h'):
-			return MATCH_KEYWORD_LEN("throw", TOKEN_THROW);
-		case HASH(2, 'u', '8'):
-			return MATCH_KEYWORD_LEN("u8", TOKEN_U8);
-		case HASH(4, 'u', '1'):
-			return MATCH_KEYWORD_LEN("u128", TOKEN_U128);
-		case HASH(3, 'u', '1'):
-			return MATCH_KEYWORD_LEN("u16", TOKEN_U16);
-		case HASH(4, 'u', '2'):
-			return MATCH_KEYWORD_LEN("u256", TOKEN_U256);
-		case HASH(3, 'u', '3'):
-			return MATCH_KEYWORD_LEN("u32", TOKEN_U32);
-		case HASH(3, 'u', '6'):
-			return MATCH_KEYWORD_LEN("u64", TOKEN_U64);
-		case HASH(4, 'u', 'i'):
-			return MATCH_KEYWORD_LEN("uint", TOKEN_UINT);
+		case HASH(4, 'c', 'h'): return MATCH_KEYWORD_LEN("char", TOKEN_CHAR);
+		case HASH(5, 'c', 'o'): return MATCH_KEYWORD_LEN("const", TOKEN_CONST);
+		case HASH(5, 'c', 'a'): return MATCH_KEYWORD_LEN("catch", TOKEN_CATCH);
+		case HASH(2, 'd', 'o'): return MATCH_KEYWORD_LEN("do", TOKEN_DO);
+		case HASH(5, 'd', 'e'): return MATCH_KEYWORD_LEN("defer", TOKEN_DEFER);
+		case HASH(7, 'd', 'e'): return MATCH_KEYWORD_LEN("default", TOKEN_DEFAULT);
+		case HASH(6, 'd', 'o'): return MATCH_KEYWORD_LEN("double", TOKEN_DOUBLE);
+		case HASH(4, 'e', 'l'): return MATCH_KEYWORD_LEN("else", TOKEN_ELSE);
+		case HASH(4, 'e', 'n'): return MATCH_KEYWORD_LEN("enum", TOKEN_ENUM);
+		case HASH(5, 'e', 'r'): return MATCH_KEYWORD_LEN("error", TOKEN_ERROR);
+		case HASH(3, 'f', '1'): return MATCH_KEYWORD_LEN("f16", TOKEN_F16);
+		case HASH(4, 'f', '1'): return MATCH_KEYWORD_LEN("f128", TOKEN_F128);
+		case HASH(3, 'f', '3'): return MATCH_KEYWORD_LEN("f32", TOKEN_F32);
+		case HASH(3, 'f', '6'): return MATCH_KEYWORD_LEN("f64", TOKEN_F64);
+		case HASH(4, 'f', '2'): return MATCH_KEYWORD_LEN("f256", TOKEN_F256);
+		case HASH(3, 'f', 'o'): return MATCH_KEYWORD_LEN("for", TOKEN_FOR);
+		case HASH(5, 'f', 'a'): return MATCH_KEYWORD_LEN("false", TOKEN_FALSE);
+		case HASH(5, 'f', 'l'): return MATCH_KEYWORD_LEN("float", TOKEN_FLOAT);
+		case HASH(4, 'f', 'u'): return MATCH_KEYWORD_LEN("func", TOKEN_FUNC);
+		case HASH(4, 'g', 'o'): return MATCH_KEYWORD_LEN("goto", TOKEN_GOTO);
+		case HASH(7, 'g', 'e'): return MATCH_KEYWORD_LEN("generic", TOKEN_GENERIC);
+		case HASH(4, 'h', 'a'): return MATCH_KEYWORD_LEN("half", TOKEN_HALF);
+		case HASH(2, 'i', 'f'): return MATCH_KEYWORD_LEN("if", TOKEN_IF);
+		case HASH(2, 'i', '8'): return MATCH_KEYWORD_LEN("i8", TOKEN_I8);
+		case HASH(3, 'i', '6'): return MATCH_KEYWORD_LEN("i64", TOKEN_I64);
+		case HASH(4, 'i', '2'): return MATCH_KEYWORD_LEN("i256", TOKEN_I256);
+		case HASH(3, 'i', '3'): return MATCH_KEYWORD_LEN("i32", TOKEN_I32);
+		case HASH(4, 'i', '1'): return MATCH_KEYWORD_LEN("i128", TOKEN_I128);
+		case HASH(3, 'i', '1'): return MATCH_KEYWORD_LEN("i16", TOKEN_I16);
+		case HASH(3, 'i', 'n'): return MATCH_KEYWORD_LEN("int", TOKEN_INT);
+		case HASH(6, 'i', 'm'): return MATCH_KEYWORD_LEN("import", TOKEN_IMPORT);
+		case HASH(5, 'i', 's'): return MATCH_KEYWORD_LEN("isize", TOKEN_ISIZE);
+		case HASH(4, 'l', 'o'): return MATCH_KEYWORD_LEN("long", TOKEN_LONG);
+		case HASH(5, 'l', 'o'): return MATCH_KEYWORD_LEN("local", TOKEN_LOCAL);
+		case HASH(5, 'm', 'a'): return MATCH_KEYWORD_LEN("macro", TOKEN_MACRO);
+		case HASH(6, 'm', 'o'): return MATCH_KEYWORD_LEN("module", TOKEN_MODULE);
+		case HASH(3, 'n', 'i'): return MATCH_KEYWORD_LEN("nil", TOKEN_NIL);
+		case HASH(6, 'p', 'u'): return MATCH_KEYWORD_LEN("public", TOKEN_PUBLIC);
+		case HASH(4, 'q', 'u'): return MATCH_KEYWORD_LEN("quad", TOKEN_QUAD);
+		case HASH(6, 'r', 'e'): return MATCH_KEYWORD_LEN("return", TOKEN_RETURN);
+		case HASH(5, 's', 'h'): return MATCH_KEYWORD_LEN("short", TOKEN_SHORT);
+		case HASH(6, 's', 't'): return MATCH_KEYWORD_LEN("struct", TOKEN_STRUCT);
+		case HASH(6, 's', 'w'): return MATCH_KEYWORD_LEN("switch", TOKEN_SWITCH);
+		case HASH(7, 't', 'y'): return MATCH_KEYWORD_LEN("typedef", TOKEN_TYPEDEF);
+		case HASH(4, 't', 'y'): return MATCH_KEYWORD_LEN("type", TOKEN_TYPE);
+		case HASH(4, 't', 'r'): return MATCH_KEYWORD_LEN("true", TOKEN_TRUE);
+		case HASH(3, 't', 'r'): return MATCH_KEYWORD_LEN("try", TOKEN_TRY);
+		case HASH(5, 't', 'h'): return MATCH_KEYWORD_LEN("throw", TOKEN_THROW);
+		case HASH(6, 't', 'h'): return MATCH_KEYWORD_LEN("throws", TOKEN_THROWS);
+		case HASH(2, 'u', '8'): return MATCH_KEYWORD_LEN("u8", TOKEN_U8);
+		case HASH(4, 'u', '1'): return MATCH_KEYWORD_LEN("u128", TOKEN_U128);
+		case HASH(3, 'u', '1'): return MATCH_KEYWORD_LEN("u16", TOKEN_U16);
+		case HASH(4, 'u', '2'): return MATCH_KEYWORD_LEN("u256", TOKEN_U256);
+		case HASH(3, 'u', '3'): return MATCH_KEYWORD_LEN("u32", TOKEN_U32);
+		case HASH(3, 'u', '6'): return MATCH_KEYWORD_LEN("u64", TOKEN_U64);
+		case HASH(4, 'u', 'i'): return MATCH_KEYWORD_LEN("uint", TOKEN_UINT);
 		case HASH(5, 'u', 'n'):
 			if (start[2] == 't') return MATCH_KEYWORD_LEN("until", TOKEN_UNTIL);
 			return MATCH_KEYWORD_LEN("union", TOKEN_UNION);
-		case HASH(5, 'u', 'l'):
-			return MATCH_KEYWORD_LEN("ulong", TOKEN_ULONG);
-		case HASH(5, 'u', 's'):
-			return MATCH_KEYWORD_LEN("usize", TOKEN_USIZE);
-		case HASH(6, 'u', 's'):
-			return MATCH_KEYWORD_LEN("ushort", TOKEN_USHORT);
-		case HASH(3, 'v', 'a'):
-			return MATCH_KEYWORD_LEN("var", TOKEN_VAR);
-		case HASH(4, 'v', 'o'):
-			return MATCH_KEYWORD_LEN("void", TOKEN_VOID);
-		case HASH(8, 'v', 'o'):
-			return MATCH_KEYWORD_LEN("volatile", TOKEN_VOLATILE);
-		case HASH(5, 'w', 'h'):
-			return MATCH_KEYWORD_LEN("while", TOKEN_WHILE);
-		default:
-			return TOKEN_VAR_IDENT;
+		case HASH(5, 'u', 'l'): return MATCH_KEYWORD_LEN("ulong", TOKEN_ULONG);
+		case HASH(5, 'u', 's'): return MATCH_KEYWORD_LEN("usize", TOKEN_USIZE);
+		case HASH(6, 'u', 's'): return MATCH_KEYWORD_LEN("ushort", TOKEN_USHORT);
+		case HASH(3, 'v', 'a'): return MATCH_KEYWORD_LEN("var", TOKEN_VAR);
+		case HASH(4, 'v', 'o'): return MATCH_KEYWORD_LEN("void", TOKEN_VOID);
+		case HASH(8, 'v', 'o'): return MATCH_KEYWORD_LEN("volatile", TOKEN_VOLATILE);
+		case HASH(5, 'w', 'h'): return MATCH_KEYWORD_LEN("while", TOKEN_WHILE);
+		default: return TOKEN_VAR_IDENT;
 	}
 }
 
 
-#undef HASH4V
-#undef HASH4
-#undef HASH3V
-#undef HASH3
-#undef HASH2V
-#undef HASH2
 #undef HASH
-
 #undef MATCH_KEYWORD
+#undef MATCH_KEYWORD_LEN
 
 TokenType identifier_type(const char* restrict start, int len)
 {
