@@ -13,6 +13,8 @@
 #include "../utils/errors.h"
 
 static const char* DEFAULT_TARGET = "default";
+static const int DEFAULT_SYMTAB_SIZE = 64 * 1024;
+static const int MAX_SYMTAB_SIZE = 1024 * 1024;
 
 BuildOptions build_options;
 static int arg_index;
@@ -46,6 +48,7 @@ static void usage(void)
 	OUTPUT("  --path <dir>          - Use this as the base directory for the current command.");
 	OUTPUT("  --template <template> - Use a different template: \"lib\", \"staticlib\" or a path.");
 	OUTPUT("  --about               - Prints a short description of C3.");
+	OUTPUT("  --symtab <value>      - Sets the preferred symtab size.");
 }
 
 
@@ -213,6 +216,17 @@ static void parse_option()
 				build_options.path = check_dir(next_arg());
 				return;
 			}
+			if (match_longopt("symtab"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --symtab needs a number.");
+				const char *number = next_arg();
+				int size = atoi(number);
+				if (size < 1024) error_exit("error: --symtab valid size > 1024.");
+				if (size > MAX_SYMTAB_SIZE) error_exit("error: --symptab size cannot exceed %d", MAX_SYMTAB_SIZE);
+				build_options.symtab_size = size;
+				return;
+
+			}
 			if (match_longopt("help"))
 			{
 				break;
@@ -236,7 +250,7 @@ void parse_arguments(int argc, const char *argv[])
 
 	build_options.path = ".";
 	build_options.command = COMMAND_MISSING;
-
+	build_options.symtab_size = DEFAULT_SYMTAB_SIZE;
 	arg_count = argc;
 	args = argv;
 	for (arg_index = 1; arg_index < arg_count; arg_index++)

@@ -4,6 +4,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+#include <stdint.h>
+
 #define MAX_LIB_DIRS 1024
 #define MAX_FILES 2048
 
@@ -33,6 +35,7 @@ typedef struct
 	const char* target;
 	const char* path;
 	CompilerCommand command;
+	uint32_t symtab_size;
 } BuildOptions;
 
 extern BuildOptions build_options;

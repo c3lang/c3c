@@ -7,76 +7,103 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <compiler/compiler.h>
+#include <utils/lib.h>
+#include <utils/errors.h>
 #include "benchmark.h"
+#include "../compiler/symtab.h"
 
-#define TEST_ASSERT(cond, text, ...) do { if (!(cond)) { printf("\nTEST FAILED: " text "\n", ##__VA_ARGS__); exit(-1); } } while (0)
 static void test_lexer(void)
 {
 #ifdef __OPTIMIZE__
 	printf("--- RUNNING OPTIMIZED ---\n");
 #endif
 	printf("Begin lexer testing.\n");
-	printf("1. Check number of keywords...");
+	printf("-- Check number of keywords...\n");
 	int tokens_found = 0;
-	const int EXPECTED_TOKENS = 81;
-	const char* tokens[INVALID_TOKEN];
-	int len[INVALID_TOKEN];
-	for (int i = 0; i < INVALID_TOKEN; i++)
+	const int EXPECTED_TOKENS = 91;
+	const char* tokens[TOKEN_EOF];
+	int len[TOKEN_EOF];
+	compiler_init();
+	for (int i = 1; i < TOKEN_EOF; i++)
 	{
 		const char* token = token_type_to_string((TokenType)i);
 		tokens[i] = token;
 		len[i] = strlen(token);
-		TokenType type = identifier_type(token, len[i]);
-		TokenType type2 = ident_type_fnv1(token, len[i]);
-
-		if (type != TOKEN_VAR_IDENT)
+		TokenType lookup = TOKEN_VAR_IDENT;
+		const char* interned = symtab_add(token, len[i], fnv1a(token, len[i]), &lookup);
+		if (lookup != TOKEN_VAR_IDENT)
 		{
+			Token scanned = scan_ident_test(token);
+			TEST_ASSERT(scanned.type == i, "Mismatch scanning: was '%s', expected '%s' - lookup: %s - interned: %s.",
+					token_type_to_string(scanned.type),
+					token_type_to_string(i),
+					token_type_to_string(lookup),
+					interned);
 			tokens_found++;
-			TEST_ASSERT(type == i, "Mismatch on token %s", token);
-			if (type2 != type)
-			{
-				printf("\n(fnv1) Test mismatch on token %s, generated %s\n", token, token_type_to_string(type2));
-			}
 		}
-		tokens[i] = "byte";
-		len[i] = 4;
+		else
+		{
+			tokens[i] = "casi";
+			len[i] = 4;
+		}
 	}
-	printf(" %d found.\n", tokens_found);
-	TEST_ASSERT(ident_type_fnv1("alias ", 6) == TOKEN_VAR_IDENT, "Error in fnv1 ident");
-	TEST_ASSERT(identifier_type("alias ", 6) == TOKEN_VAR_IDENT, "Error in switch ident");
-	TEST_ASSERT(ident_type_fnv1("alias ", 5) != TOKEN_VAR_IDENT, "Error in fnv1 ident2");
-	TEST_ASSERT(identifier_type("alias ", 5) != TOKEN_VAR_IDENT, "Error in switch ident2");
-	TEST_ASSERT(tokens_found == EXPECTED_TOKENS, "Unexpected number of identifiers! Expected %d.", EXPECTED_TOKENS);
+	printf("-> %d keywords found.\n", tokens_found);
+	EXPECT("Keywords", tokens_found, EXPECTED_TOKENS);
 
-	const int BENCH_REPEATS = 10000000;
+	const int BENCH_REPEATS = 100000;
 
-	printf("2. Test keyword lexing speed (switch)... ");
+	printf("-- Test keyword lexing speed...\n");
 	bench_begin();
 	for (int b = 0; b < BENCH_REPEATS; b++)
 	{
-		for (int i = 0; i < INVALID_TOKEN; i++)
+		for (int i = 1; i < TOKEN_EOF; i++)
 		{
-			identifier_type(tokens[i], len[i]);
+			volatile TokenType t = scan_ident_test(tokens[i]).type;
 		}
 	}
-	printf("complete in %fs\n", bench_mark());
 
-	printf("3. Test keyword lexing speed (fnv1)... ");
+	printf("-> Test complete in %fs, %.0f kkeywords/s\n", bench_mark(), (BENCH_REPEATS * (TOKEN_EOF - 1)) / (1000 * bench_mark()));
+
+#include "shorttest.c"
+
+	printf("-- Test token lexing speed...\n");
+	const char *pointer = test_parse;
+	int loc = 0;
+	while (*pointer != '\0')
+	{
+		if (*(pointer++) == '\n') loc++;
+	}
+
 	bench_begin();
+	int tokens_parsed = 0;
 	for (int b = 0; b < BENCH_REPEATS; b++)
 	{
-		for (int i = 0; i < INVALID_TOKEN; i++)
+		lexer_test_setup(test_parse);
+		Token token;
+		while (1)
 		{
-			ident_type_fnv1(tokens[i], len[i]);
+			token = scan_token();
+			if (token.type == TOKEN_EOF) break;
+			TEST_ASSERT(token.type != INVALID_TOKEN, "Got invalid token");
+			tokens_parsed++;
 		}
 	}
-	printf("complete in %fs\n", bench_mark());
 
+	printf("-> Test complete in %fs, %.0f kloc/s, %.0f ktokens/s\n", bench_mark(),
+			loc * BENCH_REPEATS / (1000 * bench_mark()), tokens_parsed / (1000 * bench_mark()));
 
-	exit(0);
+}
+
+void test_compiler(void)
+{
+	compiler_init();
 }
 
 void compiler_tests(void)
 {
 	test_lexer();
+	test_compiler();
+
+	exit(0);
 }

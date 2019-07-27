@@ -3,9 +3,10 @@
 #include "build/project_creation.h"
 #include "utils/errors.h"
 #include "compiler_tests/tests.h"
-
+#include "compiler/malloc.h"
 int main(int argc, const char *argv[])
 {
+	init_arena();
 	parse_arguments(argc, argv);
 	switch (build_options.command)
 	{
@@ -26,7 +27,7 @@ int main(int argc, const char *argv[])
 		case COMMAND_BENCH:
 			printf("TODO\n");
 	}
-
+	free_arena();
 	return 0;
 }
 

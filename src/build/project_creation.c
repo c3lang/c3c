@@ -10,7 +10,7 @@
 #include <string.h>
 #include "project_creation.h"
 #include "build_options.h"
-#include "../utils/string_utils.h"
+#include "../utils/lib.h"
 
 const char* TOML =
 	"[[executable]]\n"
