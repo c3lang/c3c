@@ -18,6 +18,6 @@ As of now, very little code towards the compiler will be added here.
 
 There is a "work-in-progress" C2 compiler in C called Titanos, which an eventual compiler might be based on.
 
-A design draft can be found here: https://lerno.github.io/c3docs/
+A design draft can be found here: https://c3lang.github.io/c3docs/
 
 Discuss the language on the r/ProgrammingLanguages Discord server: https://discord.gg/cfu4wdk
