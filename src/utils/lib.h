@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "malloc.h"
 
 static inline bool is_power_of_two(uint64_t x)
 {
@@ -181,3 +182,53 @@ static inline uint32_t fnv1a(const char *key, uint32_t len)
 	}
 	return hash;
 }
+
+typedef struct
+{
+	unsigned size;
+	unsigned capacity;
+} _VHeader;
+
+static inline _VHeader* _vec_new(size_t element_size, size_t capacity)
+{
+	_VHeader *header = malloc_arena(element_size * capacity + sizeof(_VHeader));
+	header->size = 0;
+	header->capacity = capacity;
+	return header;
+}
+
+static inline unsigned vec_size(const void*vec)
+{
+	return vec ? (((_VHeader *)vec) - 1)->size : 0;
+}
+
+
+static inline void* _expand(void *vec, size_t element_size)
+{
+	if (vec == NULL)
+	{
+		vec = _vec_new(element_size, 16) + 1;
+	}
+	_VHeader *header = ((_VHeader *)vec) - 1;
+	header->size++;
+	if (header->size == header->capacity)
+	{
+		_VHeader *new_array = _vec_new(element_size, header->capacity >> 1u);
+		memcpy(new_array, header, element_size * header->capacity + sizeof(_VHeader));
+		header = new_array;
+		vec = header + 1;
+	}
+	return vec;
+}
+
+#define VECEACH(_vec, _index) \
+	unsigned __vecsize = vec_size(_vec); \
+	for (unsigned _index = 0; _index < __vecsize; _index++)
+
+#define VECNEW(_type, _capacity) ((_type *)(_vec_new(sizeof(_type), _capacity) + 1))
+#define VECADD(_vec, _value) \
+	({ \
+		typeof(_vec) __temp = (typeof(_vec))_expand((_vec), sizeof((_vec)[0])); \
+		__temp[vec_size(__temp) - 1] = _value; \
+		__temp; })
+#define VECLAST(_vec) ( (_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)

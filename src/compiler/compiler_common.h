@@ -4,9 +4,11 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include <stdint.h>
+#include "tokens.h"
+#include "utils/common.h"
 
 typedef uint32_t SourceLoc;
+#define INVALID_LOC UINT32_MAX
 
 typedef struct
 {
@@ -30,9 +32,10 @@ typedef struct
 {
 	const char *contents;
 	const char *name;
-	SourceLoc start;
-	SourceLoc end;
+	const char *full_path;
+	SourceLoc start_id;
+	SourceLoc end_id;
 } File;
 
 #define TOKEN_MAX_LENGTH 0xFFFF
-#define MAX_IDENTIFIER_LENGTH 31
+

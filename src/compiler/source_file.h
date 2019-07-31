@@ -5,5 +5,7 @@
 // license that can be found in the LICENSE file.
 
 
-void compiler_init();
-void compile_file();
+#include "compiler_common.h"
+
+File *source_file_load(const char *filename, bool *already_loaded);
+File *source_file_from_position(SourceLoc loc);

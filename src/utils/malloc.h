@@ -4,7 +4,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-
+#include "common.h"
 
 void init_arena(void);
 void *malloc_arena(unsigned long mem);

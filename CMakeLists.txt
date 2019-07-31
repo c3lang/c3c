@@ -17,5 +17,6 @@ add_executable(c3c
         src/compiler/lexer.c
         src/compiler/tokens.c
         src/compiler/symtab.c
+        src/compiler/parser.c
         src/compiler_tests/tests.c
-        src/compiler_tests/benchmark.c src/compiler/malloc.c src/compiler/malloc.h src/compiler/compiler.c src/compiler/compiler.h)
+        src/compiler_tests/benchmark.c src/utils/malloc.c src/utils/malloc.h src/compiler/compiler.c src/compiler/compiler.h src/compiler/semantic_analyser.c src/compiler/semantic_analyser.h src/utils/common.h src/compiler/source_file.c src/compiler/source_file.h src/compiler/diagnostics.c src/compiler/diagnostics.h)

@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
+#include <utils/lib.h>
 
 #include "../utils/errors.h"
 
@@ -97,12 +98,12 @@ static inline bool match_shortopt(const char* name)
 
 void append_file()
 {
-	if (build_options.file_count == MAX_FILES)
+	if (vec_size(build_options.files) == MAX_FILES)
 	{
 		fprintf(stderr, "Max %d files may be specified\n", MAX_FILES);
 		exit(EXIT_FAILURE);
 	}
-	build_options.files[build_options.file_count++] = current_arg;
+	build_options.files = VECADD(build_options.files, current_arg);
 }
 
 static bool arg_match(const char *candidate)
@@ -196,6 +197,20 @@ static void parse_option()
 	{
 		case 'h':
 			break;
+		case 'E':
+			if (build_options.compile_option != COMPILE_NORMAL)
+			{
+				FAIL_WITH_ERR("Illegal combination of compile options.");
+			}
+			build_options.compile_option = COMPILE_LEX_ONLY;
+			return;
+		case 'P':
+			if (build_options.compile_option != COMPILE_NORMAL)
+			{
+				FAIL_WITH_ERR("Illegal combination of compile options.");
+			}
+			build_options.compile_option = COMPILE_LEX_PARSE_ONLY;
+			return;
 		case '-':
 			if (match_longopt("about"))
 			{
@@ -220,12 +235,11 @@ static void parse_option()
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --symtab needs a number.");
 				const char *number = next_arg();
-				int size = atoi(number);
+				int size = atoi(number); // NOLINT(cert-err34-c)
 				if (size < 1024) error_exit("error: --symtab valid size > 1024.");
 				if (size > MAX_SYMTAB_SIZE) error_exit("error: --symptab size cannot exceed %d", MAX_SYMTAB_SIZE);
 				build_options.symtab_size = size;
 				return;
-
 			}
 			if (match_longopt("help"))
 			{
@@ -251,6 +265,20 @@ void parse_arguments(int argc, const char *argv[])
 	build_options.path = ".";
 	build_options.command = COMMAND_MISSING;
 	build_options.symtab_size = DEFAULT_SYMTAB_SIZE;
+	build_options.files = VECNEW(const char *, MAX_FILES);
+	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)
+	{
+		build_options.severity[i] = DIAG_IGNORE;
+	}
+	for (int i = DIAG_WARNING_TYPE; i < DIAG_ERROR_TYPE; i++)
+	{
+		build_options.severity[i] = DIAG_WARN;
+	}
+	for (int i = DIAG_ERROR_TYPE; i < DIAG_END_SENTINEL; i++)
+	{
+		build_options.severity[i] = DIAG_ERROR;
+	}
+
 	arg_count = argc;
 	args = argv;
 	for (arg_index = 1; arg_index < arg_count; arg_index++)

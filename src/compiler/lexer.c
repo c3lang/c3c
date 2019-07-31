@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include <stdint.h>
 #include "lexer.h"
-#include <string.h>
-#include <assert.h>
+#include <build/build_options.h>
 #include "../utils/errors.h"
 #include "../utils/lib.h"
 #include "symtab.h"
-
-
+#include "source_file.h"
+#include "diagnostics.h"
+#include <stdarg.h>
 
 typedef enum
 {
@@ -22,6 +21,7 @@ typedef enum
 
 typedef struct
 {
+	bool lexer_init_complete;
 	const char *begin;
 	const char *start;
 	const char *current;
@@ -78,14 +78,17 @@ static inline bool reached_end(void)
 	return *lexer.current == '\0';
 }
 
-static Token error_token(const char *message)
+static Token error_token(const char *message, ...)
 {
 	Token token;
-	token.type = TOKEN_ERROR;
+	token.type = INVALID_TOKEN;
 	token.start = lexer.start;
 	token.span.length = 1;
-	token.span.loc = lexer.current_file->start + (lexer.begin - lexer.start);
-	// TODO error_at(token.span, message);
+	token.span.loc = lexer.current_file->start_id + (lexer.begin - lexer.start);
+	va_list list;
+	va_start(list, message);
+	diag_verror_at(token.span, message, list);
+	va_end(list);
 	return token;
 }
 
@@ -97,7 +100,7 @@ static Token make_token(TokenType type)
 			{
 					.type = type,
 					.start = lexer.start,
-					.span = { .loc = lexer.current_file->start + (lexer.start - lexer.begin), .length = token_size }
+					.span = { .loc = lexer.current_file->start_id + (lexer.start - lexer.begin), .length = token_size }
 			};
 }
 
@@ -109,7 +112,7 @@ static Token make_string_token(TokenType type, const char* string)
 			{
 					.type = type,
 					.start = lexer.start,
-					.span = { .loc = lexer.current_file->start + (lexer.start - lexer.begin), .length = token_size },
+					.span = { .loc = lexer.current_file->start_id + (lexer.start - lexer.begin), .length = token_size },
 					.string = string,
 			};
 }
@@ -293,6 +296,7 @@ static inline Token scan_ident(void)
 		hash = FNV1a(next(), hash);
 	}
 	EXIT:;
+	if (type == INVALID_TOKEN) error_token("An identifier may not only consist of '_'");
 	uint32_t len = lexer.current - lexer.start;
 	const char* interned_string = symtab_add(lexer.start, len, hash, &type);
 	return make_string_token(type, interned_string);
@@ -303,8 +307,8 @@ static inline Token scan_ident(void)
 
 static Token scan_oct(void)
 {
-	next(); // Skip the o
-	if (!is_oct(next())) return error_token("Invalid octal sequence");
+	char o = next(); // Skip the o
+	if (!is_oct(next())) return error_token("An expression starting with '0%c' would expect to be followed by octal numbers (0-7).", o);
 	while (is_oct_or_(peek())) next();
 	return make_token(TOKEN_INTEGER);
 }
@@ -312,41 +316,49 @@ static Token scan_oct(void)
 
 Token scan_binary(void)
 {
-	next(); // Skip the b
-	if (!is_binary(next())) return error_token("Invalid binary sequence");
+	char b = next(); // Skip the b
+	if (!is_binary(next()))
+	{
+		return error_token("An expression starting with '0%c' would expect a sequence of zeroes and ones, "
+		                   "did you try to write a hex value but forgot the '0x'?", b);
+	}
 	while (is_binary_or_(peek())) next();
 	return make_token(TOKEN_INTEGER);
 }
 
 #define PARSE_SPECIAL_NUMBER(is_num, is_num_with_underscore, exp, EXP) \
-	while (is_num_with_underscore(peek())) next();  \
-	bool is_float = false;  \
-	if (peek() == '.')  \
-	{ \
-		is_float = true; \
-		next(); \
-		char c = peek(); \
-		if (c == '_') return error_token("Underscore may only appear between digits."); \
-		if (is_num(c)) next(); \
-		while (is_num_with_underscore(peek())) next(); \
-	} \
+while (is_num_with_underscore(peek())) next();  \
+bool is_float = false;  \
+if (peek() == '.')  \
+{ \
+	is_float = true; \
+	next(); \
 	char c = peek(); \
-	if (c == (exp) || c == (EXP)) \
-	{ \
-		is_float = true; \
-		next(); \
-		char c2 = next(); \
-		if (c2 == '+' || c2 == '-') c2 = next(); \
-		if (!is_num(c2)) return error_token("Invalid exponential expression"); \
-		while (is_num(peek())) next(); \
-	} \
-	if (prev() == '_') return error_token("Underscore may only appear between digits."); \
-	return make_token(is_float ? TOKEN_FLOAT : TOKEN_INTEGER)
+	if (c == '_') return error_token("Can't parse this as a floating point value due to the '_' directly after decimal point."); \
+	if (is_num(c)) next(); \
+	while (is_num_with_underscore(peek())) next(); \
+} \
+char c = peek(); \
+if (c == (exp) || c == (EXP)) \
+{ \
+	is_float = true; \
+	next(); \
+	char c2 = next(); \
+	if (c2 == '+' || c2 == '-') c2 = next(); \
+	if (!is_num(c2)) return error_token("Parsing the floating point exponent failed, because '%c' is not a number.", c2); \
+	while (is_num(peek())) next(); \
+} \
+if (prev() == '_') return error_token("The number ended with '_', but that character needs to be between, not after, digits."); \
+return make_token(is_float ? TOKEN_FLOAT : TOKEN_INTEGER)
 
 static inline Token scan_hex(void)
 {
-	next(); // skip the x
-	if (!is_hex(next())) return error_token("Invalid hex sequence");
+	char x = next(); // skip the x
+	if (!is_hex(next()))
+	{
+		return error_token("'0%c' starts a hexadecimal number, "
+					 "but it was followed by '%c' which is not part of a hexadecimal number.", x, prev());
+	}
 	PARSE_SPECIAL_NUMBER(is_hex, is_hex_or_, 'p', 'P');
 }
 
@@ -363,7 +375,6 @@ static inline Token scan_digit(void)
 	{
 		switch (peek_next())
 		{
-			// case 'X': Let's not support this? REVISIT
 			case 'x':
 			case 'X':
 				advance(2);
@@ -397,11 +408,17 @@ static inline Token scan_char()
 		{
 			for (int i = 0; i < 2; i++)
 			{
-				if (!is_hex(next())) return error_token("Invalid escape sequence");
+				if (!is_hex(next()))
+				{
+					return error_token(
+							"An escape sequence starting with "
+							"'\\x' needs to be followed by "
+							"a two digit hexadecimal number.");
+				}
 			}
 		}
 	}
-	if (next() != '\'') return error_token("Invalid character value");
+	if (next() != '\'') return error_token("The character only consist of a single character, did you want to use \"\" instead?");
 	return make_token(TOKEN_INTEGER);
 }
 
@@ -417,7 +434,7 @@ static inline Token scan_string()
 		}
 		if (reached_end())
 		{
-			return error_token("Unterminated string.");
+			return error_token("Reached the end looking for '\"'. Did you forget it?");
 		}
 	}
 	return make_token(TOKEN_STRING);
@@ -513,15 +530,15 @@ static inline Token scan_docs(void)
 				next();
 				return make_token(TOKEN_DOCS_LINE);
 			case '\0':
-				return error_token("Docs reached end of the file");
+				return error_token("The document ended without finding the end of the doc comment. "
+					   "Did you forget a '*/' somewhere?");
 			default:
 				break;
 		}
 	}
 }
 
-
-Token scan_token(void)
+Token lexer_scan_token(void)
 {
 	// First we handle our "in docs" state.
 	if (lexer.lexer_state == LEXER_STATE_DOCS_PARSE)
@@ -544,7 +561,7 @@ Token scan_token(void)
 			lexer.lexer_state = LEXER_STATE_DOCS_PARSE;
 			return make_token(TOKEN_DOCS_START);
 		case WHITESPACE_COMMENT_REACHED_EOF:
-			return error_token("Comment was not terminated");
+			return error_token("Reached the end looking for '*/'. Did you forget it somewhere?");
 		case WHITESPACE_FOUND_EOF:
 			return make_token(TOKEN_EOF);
 		case WHITESPACE_FOUND_DOCS_EOL:
@@ -637,25 +654,52 @@ Token scan_token(void)
 				backtrack();
 				return is_digit(c) ? scan_digit() : scan_ident();
 			}
-			return error_token("Unexpected character.");
+			return error_token("'%c' may not be placed outside of a string or comment, did you perhaps forget a \" somewhere?", c);
 	}
 }
 
-void lexer_test_setup(const char* text)
+File* lexer_current_file(void)
 {
+	return lexer.current_file;
+}
+
+void lexer_check_init(void)
+{
+	if (lexer.lexer_init_complete) return;
+	lexer.lexer_init_complete = true;
+	symtab_init(build_options.symtab_size);
+}
+
+void lexer_add_file_for_lexing(File *file)
+{
+	LOG_FUNC
+	lexer_check_init();
+	lexer.current_file = file;
+	lexer.last_in_range = 0;
+	lexer.begin = lexer.current_file->contents;
+	lexer.start = lexer.begin;
+	lexer.current = lexer.start;
+	lexer.lexer_state = LEXER_STATE_NORMAL;
+}
+
+void lexer_test_setup(const char *text, size_t len)
+{
+	lexer_check_init();
 	static File helper;
 	lexer.lexer_state = LEXER_STATE_NORMAL;
 	lexer.start = text;
 	lexer.current = text;
 	lexer.begin = text;
 	lexer.current_file = &helper;
-	lexer.current_file->start = 0;
+	lexer.current_file->start_id = 0;
 	lexer.current_file->contents = text;
-	lexer.current_file->end = 100000;
-	lexer.current_file->name = "Foo";
+	lexer.current_file->end_id = len;
+	lexer.current_file->name = "Test";
 }
 
-Token scan_ident_test(const char* scan)
+
+
+Token lexer_scan_ident_test(const char *scan)
 {
 	static File helper;
 	lexer.lexer_state = LEXER_STATE_NORMAL;
@@ -663,9 +707,9 @@ Token scan_ident_test(const char* scan)
 	lexer.current = scan;
 	lexer.begin = scan;
 	lexer.current_file = &helper;
-	lexer.current_file->start = 0;
+	lexer.current_file->start_id = 0;
 	lexer.current_file->contents = scan;
-	lexer.current_file->end = 1000;
+	lexer.current_file->end_id = 1000;
 	lexer.current_file->name = "Foo";
 
 	if (scan[0] == '@' && is_letter(scan[1]))
@@ -674,5 +718,5 @@ Token scan_ident_test(const char* scan)
 		return scan_docs();
 	}
 
-	return scan_token();
+	return lexer_scan_token();
 }

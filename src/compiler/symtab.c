@@ -8,7 +8,7 @@
 #include "../utils/errors.h"
 #include <assert.h>
 #include "../utils/lib.h"
-#include "malloc.h"
+#include "utils/malloc.h"
 #include "tokens.h"
 
 #define TABLE_MAX_LOAD 0.75

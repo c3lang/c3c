@@ -3,7 +3,7 @@
 #include "build/project_creation.h"
 #include "utils/errors.h"
 #include "compiler_tests/tests.h"
-#include "compiler/malloc.h"
+#include "utils/malloc.h"
 int main(int argc, const char *argv[])
 {
 	init_arena();
@@ -16,6 +16,8 @@ int main(int argc, const char *argv[])
 		case COMMAND_UNIT_TEST:
 			compiler_tests();
 		case COMMAND_COMPILE:
+			compile_file();
+			break;
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_MISSING:
 		case COMMAND_BUILD:

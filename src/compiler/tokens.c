@@ -112,15 +112,15 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_BIT_XOR_ASSIGN:
 			return "^=";
 		case TOKEN_VAR_IDENT:
-			return "<varIdent>";
+			return "VAR_IDENT";
 		case TOKEN_TYPE_IDENT:
-			return "<TypeIdent>";
+			return "TYPE_IDENT";
 		case TOKEN_STRING:
-			return "<string>";
+			return "STRING";
 		case TOKEN_INTEGER:
-			return "<int>";
+			return "INTEGER";
 		case TOKEN_REAL:
-			return "<float>";
+			return "FLOAT";
 		case TOKEN_QUESTION:
 			return "?";
 		case TOKEN_ELVIS:
@@ -192,9 +192,9 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_AT:
 			return "@";
 		case TOKEN_ERROR:
-			return "<error>";
+			return "error";
 		case TOKEN_EOF:
-			return "<eof>";
+			return "EOF";
 		case TOKEN_CAST:
 			return "cast";
 		case TOKEN_C_LONGDOUBLE:
@@ -208,7 +208,7 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_C_ULONGLONG:
 			return "c_ulonglong";
 		case TOKEN_C_SHORT:
-			return "c_ishort";
+			return "c_short";
 		case TOKEN_C_INT:
 			return "c_int";
 		case TOKEN_C_LONG:
@@ -251,6 +251,8 @@ const char *token_type_to_string(TokenType type)
 			return "i8";
 		case TOKEN_U8:
 			return "u8";
+		case TOKEN_U1:
+			return "u1";
 		case TOKEN_BOOL:
 			return "bool";
 		case TOKEN_QUAD:
@@ -294,25 +296,25 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_HALF:
 			return "half";
 		case TOKEN_CAPS_IDENT:
-			return "<CAPS_IDENT>";
+			return "CAPS_IDENT";
 		case TOKEN_AT_IDENT:
-			return "<@ident>";
+			return "AT_IDENT";
 		case TOKEN_HASH_IDENT:
-			return "<#ident>";
+			return "HASH_IDENT";
 		case TOKEN_DOLLAR_IDENT:
-			return "<$ident>";
+			return "DOLLAR_IDENT";
 		case TOKEN_CATCH:
 			return "catch";
 		case INVALID_TOKEN:
-			return "<\?\?\?>";
+			return "INVALID_TOKEN";
 		case TOKEN_DOCS_EOL:
-			return "<EOL>";
+			return "EOL";
 		case TOKEN_DOCS_START:
 			return "/**";
 		case TOKEN_DOCS_END:
 			return "*/";
 		case TOKEN_DOCS_LINE:
-			return "<docs line>";
+			return "DOCS_LINE";
 		case TOKEN_AT_REQUIRE:
 			return "@require";
 		case TOKEN_AT_ENSURE:
@@ -334,3 +336,4 @@ const char *token_type_to_string(TokenType type)
 	}
 	UNREACHABLE
 }
+

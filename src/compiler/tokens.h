@@ -90,6 +90,7 @@ typedef enum _TokenType
 	TOKEN_U16,              // u16
 	TOKEN_I8,               // i8
 	TOKEN_U8,               // u8
+	TOKEN_U1,               // u1
 
 	// Basic types names
 	TOKEN_BYTE,

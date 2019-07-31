@@ -4,14 +4,11 @@
 
 #include "malloc.h"
 
-#include <stdlib.h>
-#include <assert.h>
-#include "../utils/errors.h"
-
-#define KB 1024L
+static const size_t KB = 1024ul;
 // Use 1MB at a time.
-#define BUCKET_SIZE (1024 * KB)
-#define ARENA_BUCKET_START_SIZE 16
+static const size_t MB = KB * 1024ul;
+static const size_t BUCKET_SIZE = MB;
+static const size_t  STARTING_ARENA_BUCKETS = 16;
 
 static uint8_t **arena_buckets;
 static int arena_buckets_used;
@@ -21,10 +18,9 @@ static void *current_arena;
 static int allocations_done;
 void init_arena(void)
 {
-	printf("---- ARENA ALLOCATED ----\n");
-	arena_buckets = malloc(ARENA_BUCKET_START_SIZE * sizeof(void *));
+	arena_buckets = malloc(STARTING_ARENA_BUCKETS * sizeof(void *));
 	arena_buckets_used = 1;
-	arena_buckets_array_size = ARENA_BUCKET_START_SIZE;
+	arena_buckets_array_size = STARTING_ARENA_BUCKETS;
 	arena_buckets[0] = malloc(BUCKET_SIZE);
 	allocations_done = 0;
 	current_use = 0;
@@ -34,13 +30,15 @@ void init_arena(void)
 // Simple bump allocator with buckets.
 void *malloc_arena(size_t mem)
 {
-	if (mem == 0) return NULL;
+	assert(mem > 0);
 	// Round to multiple of 16
 	size_t oldmem = mem;
 	mem = (mem + 15u) & ~15ull;
 	assert(mem >= oldmem);
 	if (mem >= BUCKET_SIZE / 4)
 	{
+		void *ret = malloc(mem);
+		ASSERT(ret, "Out of memory.");
 		return malloc(mem);
 	}
 	if (current_use + mem > BUCKET_SIZE)
@@ -61,20 +59,22 @@ void *malloc_arena(size_t mem)
 	allocations_done++;
 	if (mem > 4096)
 	{
-		printf("Allocated large chunk %llu\n", (unsigned long long)mem);
+		// printf("Allocated large chunk %llu\n", (unsigned long long)mem);
 	}
 	return (void *)ptr;
 
 }
 
-
-void free_arena(void)
+void print_arena_status(void)
 {
-	printf("-- FREEING ARENA -- \n");
+	printf("-- ARENA INFO -- \n");
 	printf(" * Memory used:  %ld Kb\n", ((arena_buckets_used - 1) * BUCKET_SIZE + current_use) / 1024);
 	printf(" * Buckets used: %d\n", arena_buckets_used);
 	printf(" * Allocations: %d\n", allocations_done);
+}
 
+void free_arena(void)
+{
 	for (int i = 0; i < arena_buckets_used; i++)
 	{
 		free(arena_buckets[i]);
@@ -84,23 +84,43 @@ void free_arena(void)
 	arena_buckets = NULL;
 	arena_buckets_array_size = 0;
 	current_use = 0;
-	printf("-- FREE DONE -- \n");
 }
 
 
 void run_arena_allocator_tests(void)
 {
-	init_arena();
+	printf("Begin arena allocator testing.\n");
+	bool was_init = arena_buckets != NULL;
+	if (!was_init) init_arena();
 	free_arena();
 	init_arena();
 	ASSERT(malloc_arena(10) != malloc_arena(10), "Expected different values...");
-	ASSERT(current_use == 32, "Expected allocations rounded to next 8 bytes");
+	printf("-- Tested basic allocation - OK.\n");
+	ASSERT(current_use == 32, "Expected allocations rounded to next 16 bytes");
+	malloc_arena(1);
+	ASSERT(current_use == 48, "Expected allocations rounded to next 16 bytes");
+	printf("-- Tested allocation alignment - OK.\n");
 	EXPECT("buckets in use", arena_buckets_used, 1);
-	ASSERT(malloc_arena(BUCKET_SIZE), "Should be possible to allocate this");
+	for (int i = 0; i < 8; i++)
+	{
+		ASSERT(malloc_arena(BUCKET_SIZE / 8), "Should be possible to allocate this");
+	}
 	EXPECT("buckets in use", arena_buckets_used, 2);
-	ASSERT(malloc_arena(1), "Expected alloc to pass");
+	for (int i = 0; i < 7; i++)
+	{
+		ASSERT(malloc_arena(BUCKET_SIZE / 8), "Should be possible to allocate this");
+	}
+	EXPECT("buckets in use", arena_buckets_used, 2);
+	ASSERT(malloc_arena(BUCKET_SIZE / 8), "Expected alloc to pass");
 	EXPECT("buckets in use", arena_buckets_used, 3);
+	for (int i = 0; i < 8 * STARTING_ARENA_BUCKETS; i++)
+	{
+		ASSERT(malloc_arena(BUCKET_SIZE / 8), "Should be possible to allocate this");
+	}
+	EXPECT("buckets in use", arena_buckets_used, STARTING_ARENA_BUCKETS + 3);
+	printf("-- Test switching buckets - OK.\n");
 	free_arena();
 	ASSERT(arena_buckets_array_size == 0, "Arena not freed?");
-	printf("Passed all arena tests\n");
+	printf("-- Test freeing arena - OK.\n");
+	if (was_init) init_arena();
 }

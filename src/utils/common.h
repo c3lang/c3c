@@ -5,5 +5,10 @@
 // license that can be found in the LICENSE file.
 
 
-void compiler_init();
-void compile_file();
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <assert.h>
+#include "errors.h"
+
+#define MAX_IDENTIFIER_LENGTH 31
