@@ -1,6 +1,8 @@
 # C3 Language
 
-This is a prototype language heavily inspired by C2. It goes further than C2 in several regards, while still embracing the goals of C2.
+C3 is a C-like language trying to be "an incremental improvement over C" rather than a whole new language. C3 is based on the ideas of the [C2 language](c2lang.org): to iterate on top of C without trying to be a whole new language.
+
+C3 tries to be an alternative in the the C/C++ niche: fast and close to the metal.
 
 ### Design Principles
 - Procedural "get things done"-type of language.
@@ -14,10 +16,6 @@ This is a prototype language heavily inspired by C2. It goes further than C2 in 
 
 ### Current status
 
-As of now, very little code towards the compiler will be added here.
+Most work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue](https://github.com/c3lang/c3c/issues) or discuss C3 on the r/ProgrammingLanguages Discord server: https://discord.gg/cfu4wdk
 
-There is a "work-in-progress" C2 compiler in C called Titanos, which an eventual compiler might be based on.
-
-A design draft can be found here: https://c3lang.github.io/c3docs/
-
-Discuss the language on the r/ProgrammingLanguages Discord server: https://discord.gg/cfu4wdk
+There are some small work being done, in particular lifting some code from an earlier "work-in-progress" C2 compiler called [Titanos](https://github.com/lerno/titanos).
