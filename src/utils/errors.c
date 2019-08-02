@@ -22,3 +22,4 @@ void error_exit(const char *format, ...)
 	va_end(arglist);
 	exit(EXIT_FAILURE);
 }
+

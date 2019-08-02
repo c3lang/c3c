@@ -23,7 +23,7 @@ static void test_lexer(void)
 	printf("Begin lexer testing.\n");
 	printf("-- Check number of keywords...\n");
 	int tokens_found = 0;
-	const int EXPECTED_TOKENS = 12 + 72 + 9;
+	const int EXPECTED_TOKENS = 12 + 73 + 9;
 	const char* tokens[TOKEN_EOF];
 	int len[TOKEN_EOF];
 	lexer_check_init();

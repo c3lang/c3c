@@ -10,66 +10,63 @@ typedef enum _TokenType
 	INVALID_TOKEN = 0,
 
 	// Single-character tokens.
+	TOKEN_AMP,              // &
 	TOKEN_AT,               // @
+	TOKEN_BIT_NOT,          // ~
+	TOKEN_BIT_OR,           // =
+	TOKEN_BIT_XOR,          // ^
+	TOKEN_COLON,            // :
 	TOKEN_COMMA,            // ,
 	TOKEN_EOS,              // ;
+	TOKEN_EQ,               // =
+	TOKEN_GREATER,          // >
+	TOKEN_DIV,              // /
 	TOKEN_DOLLAR,           // $
 	TOKEN_DOT,              // .
 	TOKEN_HASH,             // #
+	TOKEN_LESS,             // <
 	TOKEN_LBRACE,           // {
 	TOKEN_LBRACKET,         // [
 	TOKEN_LPAREN,           // (
+	TOKEN_MINUS,            // -
+	TOKEN_MOD,              // %
+	TOKEN_NOT,              // !
+	TOKEN_OR,               // |
+	TOKEN_PLUS,             // +
+	TOKEN_QUESTION,         // ?
 	TOKEN_RBRACE,           // }
 	TOKEN_RBRACKET,         // ]
 	TOKEN_RPAREN,           // )
-
-	// One or two character tokens.
-	TOKEN_BIT_NOT,          // ~
-	TOKEN_COLON,            // :
-	TOKEN_COLCOLON,         // :: Not used but reserved
-	TOKEN_DIV,              // /
-	TOKEN_DIV_ASSIGN,       // /=
-	TOKEN_DOCS_START,       // /** (will consume an arbitrary number of `*` after this.
-	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
-	TOKEN_DOCS_EOL,         // "\n" only seen in docs.
-	TOKEN_DOTDOT,           // ..
-	TOKEN_EQ,               // =
-	TOKEN_EQEQ,             // ==
-	TOKEN_NOT,              // !
-	TOKEN_NOT_EQUAL,        // !=
-	TOKEN_MINUS,            // -
-	TOKEN_MINUSMINUS,       // --
-	TOKEN_MINUS_ASSIGN,     // -=
-	TOKEN_MOD,              // %
-	TOKEN_MOD_ASSIGN,       // %=
-	TOKEN_MULT_ASSIGN,      // *=
-	TOKEN_PLUS,             // +
-	TOKEN_PLUSPLUS,         // ++
-	TOKEN_PLUS_ASSIGN,      // +=
-	TOKEN_QUESTION,         // ?
 	TOKEN_STAR,             // *
 
-	// Three or more
-	TOKEN_BIT_AND_ASSIGN,   // &=
-	TOKEN_BIT_OR,           // =
-	TOKEN_BIT_OR_ASSIGN,    // |=
-	TOKEN_BIT_XOR,          // ^
-	TOKEN_BIT_XOR_ASSIGN,   // ^=
-	TOKEN_AMP,              // &
+	// two character tokens.
 	TOKEN_AND,              // &&
-	TOKEN_AND_ASSIGN,       // &&=
 	TOKEN_ARROW,            // -> // Not used but reserved
-	TOKEN_ELIPSIS,          // ...
+	TOKEN_BIT_OR_ASSIGN,    // |=
+	TOKEN_BIT_XOR_ASSIGN,   // ^=
+	TOKEN_COLCOLON,         // :: Not used but reserved
+	TOKEN_DIV_ASSIGN,       // /=
+	TOKEN_DOTDOT,           // ..
 	TOKEN_ELVIS,            // ?:
-	TOKEN_GREATER,          // >
-	TOKEN_GREATER_EQ,       // >=
-	TOKEN_OR,               // |
-	TOKEN_OR_ASSIGN,        // ||=
-	TOKEN_SHR,              // >>
-	TOKEN_SHR_ASSIGN,       // >>=
-	TOKEN_LESS,             // <
+	TOKEN_EQEQ,             // ==
 	TOKEN_LESS_EQ,          // <=
+	TOKEN_NOT_EQUAL,        // !=
+	TOKEN_MINUS_ASSIGN,     // -=
+	TOKEN_MINUSMINUS,       // --
+	TOKEN_GREATER_EQ,       // >=
+	TOKEN_MOD_ASSIGN,       // %=
+	TOKEN_MULT_ASSIGN,      // *=
+	TOKEN_PLUS_ASSIGN,      // +=
+	TOKEN_PLUSPLUS,         // ++
+	TOKEN_BIT_AND_ASSIGN,   // &=
+	TOKEN_SHR,              // >>
 	TOKEN_SHL,              // >>
+
+	// Three or more
+	TOKEN_AND_ASSIGN,       // &&=
+	TOKEN_ELIPSIS,          // ...
+	TOKEN_OR_ASSIGN,        // ||=
+	TOKEN_SHR_ASSIGN,       // >>=
 	TOKEN_SHL_ASSIGN,       // >>=
 
 	// Basic types bit
@@ -93,6 +90,7 @@ typedef enum _TokenType
 	TOKEN_U1,               // u1
 
 	// Basic types names
+	TOKEN_VOID,
 	TOKEN_BYTE,
 	TOKEN_BOOL,
 	TOKEN_CHAR,
@@ -138,7 +136,6 @@ typedef enum _TokenType
 	TOKEN_STRING,           // "Teststring"
 	TOKEN_INTEGER,          // 123 0x23 0b10010 0o327
 	TOKEN_REAL,             // 0x23.2p-2a 43.23e23
-	TOKEN_DOCS_LINE,        // Any line within /** **/
 
 	// Keywords
 	TOKEN_ALIAS,            // Reserved
@@ -150,6 +147,7 @@ typedef enum _TokenType
 	TOKEN_CATCH,
 	TOKEN_CONST,
 	TOKEN_CONTINUE,
+	TOKEN_DECORATOR,
 	TOKEN_DEFAULT,
 	TOKEN_DEFER,
 	TOKEN_DO,
@@ -180,7 +178,6 @@ typedef enum _TokenType
 	TOKEN_UNION,
 	TOKEN_UNTIL,
 	TOKEN_VAR,              // Reserved
-	TOKEN_VOID,
 	TOKEN_VOLATILE,
 	TOKEN_WHILE,
 
@@ -193,6 +190,11 @@ typedef enum _TokenType
 	TOKEN_AT_CONST,         // @const
 	TOKEN_AT_REQPARSE,      // @reqparse
 	TOKEN_AT_DEPRECATED,    // @deprecated
+
+	TOKEN_DOCS_START,       // /** (will consume an arbitrary number of `*` after this.
+	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
+	TOKEN_DOCS_EOL,         // "\n" only seen in docs.
+	TOKEN_DOCS_LINE,        // Any line within /** **/
 
 	TOKEN_EOF,              // \n - SHOULD ALWAYS BE THE LAST TOKEN.
 
