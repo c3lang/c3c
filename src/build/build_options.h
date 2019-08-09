@@ -81,6 +81,7 @@ typedef struct
 	uint32_t symtab_size;
 	CompileOption compile_option;
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
+	int pointer_size;
 } BuildOptions;
 
 

@@ -50,6 +50,8 @@ static void usage(void)
 	OUTPUT("  --template <template> - Use a different template: \"lib\", \"staticlib\" or a path.");
 	OUTPUT("  --about               - Prints a short description of C3.");
 	OUTPUT("  --symtab <value>      - Sets the preferred symtab size.");
+	OUTPUT("  -E                    - Lex only.");
+	OUTPUT("  -P                    - Only parse and output the AST as S-expressions.");
 }
 
 
@@ -262,6 +264,7 @@ void parse_arguments(int argc, const char *argv[])
 		exit(EXIT_SUCCESS);
 	}
 
+	build_options.pointer_size = sizeof(void *);
 	build_options.path = ".";
 	build_options.command = COMMAND_MISSING;
 	build_options.symtab_size = DEFAULT_SYMTAB_SIZE;

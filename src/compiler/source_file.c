@@ -52,7 +52,7 @@ File *source_file_load(const char *filename, bool *already_loaded)
 	file->start_id = vec_size(source_files.files) ? VECLAST(source_files.files)->end_id : 0;
 	file->contents = source_text;
 	ASSERT(file->start_id + size < UINT32_MAX, "Total files loaded exceeded %d bytes", UINT32_MAX);
-	file->end_id = file->start_id + size;
+	file->end_id = (SourceLoc) (file->start_id + size);
 	file->name = filename;
 	source_files.files = VECADD(source_files.files, file);
 	return file;
@@ -87,3 +87,5 @@ File *source_file_from_position(SourceLoc loc)
 		return file;
 	}
 }
+
+

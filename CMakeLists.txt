@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 project(c3c C)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-
 set(CMAKE_C_STANDARD 11)
 
 include_directories(
@@ -19,4 +18,14 @@ add_executable(c3c
         src/compiler/symtab.c
         src/compiler/parser.c
         src/compiler_tests/tests.c
-        src/compiler_tests/benchmark.c src/utils/malloc.c src/utils/malloc.h src/compiler/compiler.c src/compiler/compiler.h src/compiler/semantic_analyser.c src/compiler/semantic_analyser.h src/utils/common.h src/compiler/source_file.c src/compiler/source_file.h src/compiler/diagnostics.c src/compiler/diagnostics.h)
+        src/compiler_tests/benchmark.c
+        src/utils/malloc.c
+        src/compiler/compiler.c
+        src/compiler/semantic_analyser.c
+        src/compiler/source_file.c
+        src/compiler/diagnostics.c
+        src/compiler/ast.c
+        src/compiler/module.c
+        src/compiler/value.c src/compiler/value.h src/compiler/bigint.c src/compiler/bigint.h src/compiler/context.c)
+
+target_compile_options(c3c PRIVATE -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)

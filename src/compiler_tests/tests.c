@@ -32,9 +32,9 @@ static void test_lexer(void)
 		const char* token = token_type_to_string((TokenType)i);
 		tokens[i] = token;
 		len[i] = strlen(token);
-		TokenType lookup = TOKEN_VAR_IDENT;
+		TokenType lookup = TOKEN_IDENT;
 		const char* interned = symtab_add(token, len[i], fnv1a(token, len[i]), &lookup);
-		if (lookup != TOKEN_VAR_IDENT)
+		if (lookup != TOKEN_IDENT)
 		{
 			Token scanned = lexer_scan_ident_test(token);
 			TEST_ASSERT(scanned.type == i, "Mismatch scanning: was '%s', expected '%s' - lookup: %s - interned: %s.",
@@ -88,7 +88,8 @@ static void test_lexer(void)
 		{
 			token = lexer_scan_token();
 			if (token.type == TOKEN_EOF) break;
-			TEST_ASSERT(token.type != INVALID_TOKEN, "Got invalid token");
+			TEST_ASSERT(token.type != TOKEN_INVALID_TOKEN, "Got invalid token");
+
 			tokens_parsed++;
 		}
 	}

@@ -24,7 +24,7 @@ const char* expand_path(const char* path)
 
 int filename_to_module(const char *path, char buffer[MAX_IDENTIFIER_LENGTH + 1])
 {
-	size_t len = strlen(path);
+	int len = (int)strlen(path);
 	int last_slash = 0;
 	int last_dot = -1;
 	for (int i = 0; i < len; i++)
@@ -40,7 +40,7 @@ int filename_to_module(const char *path, char buffer[MAX_IDENTIFIER_LENGTH + 1])
 		char c = path[i];
 		if (is_letter(c))
 		{
-			c = is_upper(c) ? c + 'a' - 'A' : c;
+			c = (char)(is_upper(c) ? c + 'a' - 'A' : c);
 		}
 		else
 		{

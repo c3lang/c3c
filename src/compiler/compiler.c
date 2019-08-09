@@ -12,6 +12,7 @@
 #include "source_file.h"
 #include "parser.h"
 #include "diagnostics.h"
+#include "semantic_analyser.h"
 
 void compiler_init(void)
 {
@@ -39,6 +40,7 @@ static void compiler_lex()
 
 void compiler_parse()
 {
+	type_setup(build_options.pointer_size);
 	VECEACH(build_options.files, i)
 	{
 		bool loaded = false;
@@ -46,7 +48,22 @@ void compiler_parse()
 		if (loaded) continue;
 		diag_reset();
 		parse_file(file);
-		printf("\n");
+		context_print_ast(current_context, stdout);
+	}
+	exit(EXIT_SUCCESS);
+}
+
+void compiler_compile()
+{
+	type_setup(build_options.pointer_size);
+	VECEACH(build_options.files, i)
+	{
+		bool loaded = false;
+		File *file = source_file_load(build_options.files[i], &loaded);
+		if (loaded) continue;
+		diag_reset();
+		parse_file(file);
+		sema_analysis(current_context);
 	}
 	exit(EXIT_SUCCESS);
 }
@@ -63,7 +80,10 @@ void compile_file()
 			compiler_parse();
 			break;
 		default:
+			compiler_compile();
 			break;
 	}
 	TODO
 }
+
+

@@ -11,7 +11,7 @@ static const size_t BUCKET_SIZE = MB;
 static const size_t  STARTING_ARENA_BUCKETS = 16;
 
 static uint8_t **arena_buckets;
-static int arena_buckets_used;
+static size_t arena_buckets_used;
 static size_t arena_buckets_array_size;
 static size_t current_use;
 static void *current_arena;
@@ -69,13 +69,13 @@ void print_arena_status(void)
 {
 	printf("-- ARENA INFO -- \n");
 	printf(" * Memory used:  %ld Kb\n", ((arena_buckets_used - 1) * BUCKET_SIZE + current_use) / 1024);
-	printf(" * Buckets used: %d\n", arena_buckets_used);
+	printf(" * Buckets used: %d\n", (int)arena_buckets_used);
 	printf(" * Allocations: %d\n", allocations_done);
 }
 
 void free_arena(void)
 {
-	for (int i = 0; i < arena_buckets_used; i++)
+	for (uint32_t i = 0; i < arena_buckets_used; i++)
 	{
 		free(arena_buckets[i]);
 	}
@@ -113,7 +113,7 @@ void run_arena_allocator_tests(void)
 	EXPECT("buckets in use", arena_buckets_used, 2);
 	ASSERT(malloc_arena(BUCKET_SIZE / 8), "Expected alloc to pass");
 	EXPECT("buckets in use", arena_buckets_used, 3);
-	for (int i = 0; i < 8 * STARTING_ARENA_BUCKETS; i++)
+	for (size_t i = 0; i < 8 * STARTING_ARENA_BUCKETS; i++)
 	{
 		ASSERT(malloc_arena(BUCKET_SIZE / 8), "Should be possible to allocate this");
 	}

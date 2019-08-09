@@ -5,6 +5,11 @@
 #include "errors.h"
 #include <stdarg.h>
 
+void evprintf(const char *format, va_list list)
+{
+	vfprintf(stderr, format, list);
+}
+
 void eprintf(const char *format, ...)
 {
 	va_list arglist;
@@ -13,7 +18,7 @@ void eprintf(const char *format, ...)
 	va_end(arglist);
 }
 
-void error_exit(const char *format, ...)
+void __attribute__((noreturn)) error_exit(const char *format, ...)
 {
 	va_list arglist;
 	va_start(arglist, format);

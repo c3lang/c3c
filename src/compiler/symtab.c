@@ -61,13 +61,13 @@ void symtab_init(uint32_t capacity)
 		// Skip non-keywords
 		if (!is_lower(name[0]))
 		{
-			if (name[0] != '@' || !is_lower(name[1])) continue;
+			if ((name[0] != '@' && name[0] != '$') || !is_lower(name[1])) continue;
 		}
-		int len = strlen(name);
+		uint32_t len = (uint32_t)strlen(name);
 		TokenType type = (TokenType)i;
-		const char* interned = symtab_add(name, strlen(name), fnv1a(name, len), &type);
+		const char* interned = symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type);
 		assert(type == i);
-		assert(symtab_add(name, strlen(name), fnv1a(name, len), &type) == interned);
+		assert(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 
 	}
 }

@@ -10,7 +10,7 @@ const char *token_type_to_string(TokenType type)
 
 	switch (type)
 	{
-		case INVALID_TOKEN:
+		case TOKEN_INVALID_TOKEN:
 			return "INVALID_TOKEN";
 
 		// One character tokens
@@ -80,8 +80,6 @@ const char *token_type_to_string(TokenType type)
 			return "|=";
 		case TOKEN_BIT_XOR_ASSIGN:
 			return "^=";
-		case TOKEN_COLCOLON:
-			return "::";
 		case TOKEN_DIV_ASSIGN:
 			return "/=";
 		case TOKEN_DOTDOT:
@@ -110,6 +108,8 @@ const char *token_type_to_string(TokenType type)
 			return "+=";
 		case TOKEN_PLUSPLUS:
 			return "++";
+		case TOKEN_SCOPE:
+			return "::";
 		case TOKEN_SHL:
 			return "<<";
 		case TOKEN_SHR:
@@ -128,18 +128,18 @@ const char *token_type_to_string(TokenType type)
 			return "||=";
 
 		// Identifiers
-		case TOKEN_VAR_IDENT:
-			return "VAR_IDENT";
-		case TOKEN_TYPE_IDENT:
-			return "TYPE_IDENT";
-		case TOKEN_CAPS_IDENT:
-			return "CAPS_IDENT";
+		case TOKEN_IDENT:
+			return "IDENT";
 		case TOKEN_AT_IDENT:
 			return "AT_IDENT";
 		case TOKEN_HASH_IDENT:
 			return "HASH_IDENT";
-		case TOKEN_DOLLAR_IDENT:
-			return "DOLLAR_IDENT";
+		case TOKEN_CT_IDENT:
+			return "CT_IDENT";
+		case TOKEN_CONST_IDENT:
+			return "CONST_IDENT";
+		case TOKEN_TYPE_IDENT:
+			return "TYPE_IDENT";
 
 		// Values
 		case TOKEN_STRING:
@@ -156,6 +156,8 @@ const char *token_type_to_string(TokenType type)
 			return "as";
 		case TOKEN_ASM:
 			return "asm";
+		case TOKEN_ATTRIBUTE:
+			return "attribute";
 		case TOKEN_BREAK:
 			return "break";
 		case TOKEN_CASE:
@@ -168,8 +170,6 @@ const char *token_type_to_string(TokenType type)
 			return "const";
 		case TOKEN_CONTINUE:
 			return "continue";
-		case TOKEN_DECORATOR:
-			return "decorator";
 		case TOKEN_DEFAULT:
 			return "default";
 		case TOKEN_DEFER:
@@ -180,7 +180,7 @@ const char *token_type_to_string(TokenType type)
 			return "else";
 		case TOKEN_ENUM:
 			return "enum";
-		case TOKEN_ERROR:
+		case TOKEN_ERROR_TYPE:
 			return "error";
 		case TOKEN_FALSE:
 			return "false";
@@ -202,6 +202,8 @@ const char *token_type_to_string(TokenType type)
 			return "macro";
 		case TOKEN_MODULE:
 			return "module";
+		case TOKEN_NEXT:
+			return "next";
 		case TOKEN_NIL:
 			return "nil";
 		case TOKEN_PUBLIC:
@@ -234,64 +236,6 @@ const char *token_type_to_string(TokenType type)
 			return "var";
 		case TOKEN_VOLATILE:
 			return "volatile";
-
-
-		case TOKEN_C_LONGDOUBLE:
-			return "c_longdouble";
-		case TOKEN_C_USHORT:
-			return "c_ushort";
-		case TOKEN_C_UINT:
-			return "c_uint";
-		case TOKEN_C_ULONG:
-			return "c_ulong";
-		case TOKEN_C_ULONGLONG:
-			return "c_ulonglong";
-		case TOKEN_C_SHORT:
-			return "c_short";
-		case TOKEN_C_INT:
-			return "c_int";
-		case TOKEN_C_LONG:
-			return "c_long";
-		case TOKEN_C_LONGLONG:
-			return "c_longlong";
-
-		// Bit types
-		case TOKEN_F256:
-			return "f256";
-		case TOKEN_I256:
-			return "i256";
-		case TOKEN_U256:
-			return "u256";
-		case TOKEN_F128:
-			return "f128";
-		case TOKEN_I128:
-			return "i128";
-		case TOKEN_U128:
-			return "u128";
-		case TOKEN_F64:
-			return "f64";
-		case TOKEN_I64:
-			return "i64";
-		case TOKEN_U64:
-			return "u64";
-		case TOKEN_F32:
-			return "f32";
-		case TOKEN_I32:
-			return "i32";
-		case TOKEN_U32:
-			return "u32";
-		case TOKEN_F16:
-			return "f16";
-		case TOKEN_I16:
-			return "i16";
-		case TOKEN_U16:
-			return "u16";
-		case TOKEN_I8:
-			return "i8";
-		case TOKEN_U8:
-			return "u8";
-		case TOKEN_U1:
-			return "u1";
 
 		// Named types
 		case TOKEN_VOID:
@@ -356,10 +300,48 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_AT_REQPARSE:
 			return "@reqparse";
 
+		case TOKEN_CT_CASE:
+			return "$case";
+		case TOKEN_CT_DEFAULT:
+			return "$default";
+		case TOKEN_CT_EACH:
+			return "$each";
+		case TOKEN_CT_ELSE:
+			return "$else";
+		case TOKEN_CT_ELIF:
+			return "$elif";
+		case TOKEN_CT_IF:
+			return "$if";
+		case TOKEN_CT_SWITCH:
+			return "$switch";
 		case TOKEN_EOF:
 			return "EOF";
 
 	}
 	UNREACHABLE
+}
+
+bool token_is_type(TokenType type)
+{
+	switch (type)
+	{
+		case TOKEN_VOID:
+		case TOKEN_BYTE:
+		case TOKEN_BOOL:
+		case TOKEN_CHAR:
+		case TOKEN_DOUBLE:
+		case TOKEN_FLOAT:
+		case TOKEN_INT:
+		case TOKEN_ISIZE:
+		case TOKEN_LONG:
+		case TOKEN_SHORT:
+		case TOKEN_UINT:
+		case TOKEN_ULONG:
+		case TOKEN_USHORT:
+		case TOKEN_USIZE:
+			return true;
+		default:
+			return false;
+	}
 }
 

@@ -7,8 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void evprintf(const char *format, va_list list);
 void eprintf(const char *format, ...);
-void error_exit(const char *format, ...);
+void error_exit(const char *format, ...) __attribute__((noreturn));
 
 #define FATAL_ERROR(_string, ...) do { error_exit("FATAL ERROR at %s:%d: " _string, __func__, __LINE__, ##__VA_ARGS__); } while(0)
 
@@ -30,5 +31,5 @@ void error_exit(const char *format, ...);
 #else
 #define DEBUG_LOG(_string, ...)
 #endif
-#define LOG_FUNC DEBUG_LOG("%s entered", __func__);
+#define LOG_FUNC DEBUG_LOG("ENTER %s.", __func__);
 

@@ -5,9 +5,11 @@
 // license that can be found in the LICENSE file.
 
 
+#include <stdbool.h>
+
 typedef enum _TokenType
 {
-	INVALID_TOKEN = 0,
+	TOKEN_INVALID_TOKEN = 0,
 
 	// Single-character tokens.
 	TOKEN_AMP,              // &
@@ -42,23 +44,23 @@ typedef enum _TokenType
 	// two character tokens.
 	TOKEN_AND,              // &&
 	TOKEN_ARROW,            // -> // Not used but reserved
+	TOKEN_BIT_AND_ASSIGN,   // &=
 	TOKEN_BIT_OR_ASSIGN,    // |=
 	TOKEN_BIT_XOR_ASSIGN,   // ^=
-	TOKEN_COLCOLON,         // :: Not used but reserved
 	TOKEN_DIV_ASSIGN,       // /=
 	TOKEN_DOTDOT,           // ..
 	TOKEN_ELVIS,            // ?:
 	TOKEN_EQEQ,             // ==
+	TOKEN_GREATER_EQ,       // >=
 	TOKEN_LESS_EQ,          // <=
-	TOKEN_NOT_EQUAL,        // !=
 	TOKEN_MINUS_ASSIGN,     // -=
 	TOKEN_MINUSMINUS,       // --
-	TOKEN_GREATER_EQ,       // >=
 	TOKEN_MOD_ASSIGN,       // %=
 	TOKEN_MULT_ASSIGN,      // *=
+	TOKEN_NOT_EQUAL,        // !=
 	TOKEN_PLUS_ASSIGN,      // +=
 	TOKEN_PLUSPLUS,         // ++
-	TOKEN_BIT_AND_ASSIGN,   // &=
+	TOKEN_SCOPE,            // ::
 	TOKEN_SHR,              // >>
 	TOKEN_SHL,              // >>
 
@@ -69,25 +71,6 @@ typedef enum _TokenType
 	TOKEN_SHR_ASSIGN,       // >>=
 	TOKEN_SHL_ASSIGN,       // >>=
 
-	// Basic types bit
-	TOKEN_F256,             // f256
-	TOKEN_I256,             // i256
-	TOKEN_U256,             // u256
-	TOKEN_F128,             // f128
-	TOKEN_I128,             // i128
-	TOKEN_U128,             // u128
-	TOKEN_F64,              // f64
-	TOKEN_I64,              // i64
-	TOKEN_U64,              // u64
-	TOKEN_F32,              // f32
-	TOKEN_I32,              // i32
-	TOKEN_U32,              // u32
-	TOKEN_F16,              // f16
-	TOKEN_I16,              // i16
-	TOKEN_U16,              // u16
-	TOKEN_I8,               // i8
-	TOKEN_U8,               // u8
-	TOKEN_U1,               // u1
 
 	// Basic types names
 	TOKEN_VOID,
@@ -107,31 +90,18 @@ typedef enum _TokenType
 	TOKEN_USIZE,
 	TOKEN_QUAD,
 
-	// C compatibility types
-	TOKEN_C_USHORT,
-	TOKEN_C_SHORT,
-	TOKEN_C_INT,
-	TOKEN_C_UINT,
-	TOKEN_C_LONG,
-	TOKEN_C_ULONG,
-	TOKEN_C_LONGLONG,
-	TOKEN_C_ULONGLONG,
-	TOKEN_C_LONGDOUBLE,
-
 	// Literals.
 
-	// In order to make the grammar
-	// non ambiguous, we split tokens at the
-	// lexer level
-	TOKEN_TYPE_IDENT,       // FooBarBaz
-	TOKEN_CAPS_IDENT,       // FOO_BAR_BAZ
-	TOKEN_VAR_IDENT,        // fooBarBaz
+
+	TOKEN_IDENT,            // Any normal ident.
+	TOKEN_CONST_IDENT,      // Any purely upper case ident,
+	TOKEN_TYPE_IDENT,       // Any ident on the format FooBar or __FooBar
 
 	// We want to parse @foo / #foo / $foo separately.
 	// Otherwise we allow things like "@ foo" which would be pretty bad.
 	TOKEN_AT_IDENT,         // @foobar
 	TOKEN_HASH_IDENT,       // #foobar
-	TOKEN_DOLLAR_IDENT,     // $foobar
+	TOKEN_CT_IDENT,     // $foobar
 
 	TOKEN_STRING,           // "Teststring"
 	TOKEN_INTEGER,          // 123 0x23 0b10010 0o327
@@ -141,19 +111,19 @@ typedef enum _TokenType
 	TOKEN_ALIAS,            // Reserved
 	TOKEN_AS,
 	TOKEN_ASM,
+	TOKEN_ATTRIBUTE,
 	TOKEN_BREAK,
 	TOKEN_CASE,
 	TOKEN_CAST,
 	TOKEN_CATCH,
 	TOKEN_CONST,
 	TOKEN_CONTINUE,
-	TOKEN_DECORATOR,
 	TOKEN_DEFAULT,
 	TOKEN_DEFER,
 	TOKEN_DO,
 	TOKEN_ELSE,
 	TOKEN_ENUM,
-	TOKEN_ERROR,
+	TOKEN_ERROR_TYPE,
 	TOKEN_FALSE,
 	TOKEN_FOR,
 	TOKEN_FUNC,
@@ -164,6 +134,7 @@ typedef enum _TokenType
 	TOKEN_LOCAL,
 	TOKEN_MACRO,
 	TOKEN_MODULE,
+	TOKEN_NEXT,
 	TOKEN_NIL,
 	TOKEN_PUBLIC,
 	TOKEN_RETURN,
@@ -191,7 +162,15 @@ typedef enum _TokenType
 	TOKEN_AT_REQPARSE,      // @reqparse
 	TOKEN_AT_DEPRECATED,    // @deprecated
 
-	TOKEN_DOCS_START,       // /** (will consume an arbitrary number of `*` after this.
+	TOKEN_CT_CASE,          // $case
+	TOKEN_CT_DEFAULT,       // $default
+	TOKEN_CT_EACH,          // $each
+	TOKEN_CT_ELIF,          // $elif
+	TOKEN_CT_ELSE,          // $else
+	TOKEN_CT_IF,            // $if
+	TOKEN_CT_SWITCH,        // $switch
+
+	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
 	TOKEN_DOCS_EOL,         // "\n" only seen in docs.
 	TOKEN_DOCS_LINE,        // Any line within /** **/
@@ -200,4 +179,10 @@ typedef enum _TokenType
 
 } TokenType;
 
+bool token_is_type(TokenType type);
+
 const char *token_type_to_string(TokenType type);
+static inline const char* struct_union_name_from_token(TokenType type)
+{
+	return type == TOKEN_STRUCT ? "struct" : "union";
+}

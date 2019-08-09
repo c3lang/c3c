@@ -11,19 +11,11 @@
 #include "diagnostics.h"
 #include <stdarg.h>
 
-typedef enum
-{
-	LEXER_STATE_NORMAL,
-	LEXER_STATE_DEFERED_PARSING,
-	LEXER_STATE_DOCS_PARSE,
-	LEXER_STATE_DOCS_PARSE_DIRECTIVE,
-} LexerState;
-
 typedef struct
 {
 	bool lexer_init_complete;
-	const char *begin;
-	const char *start;
+	const char *file_begin;
+	const char *lexing_start;
 	const char *current;
 	uint16_t source_file;
 	LexerState lexer_state;
@@ -31,10 +23,18 @@ typedef struct
 	//Token saved_tok;  Will be used later if doing deferred parsing.
 	//Token saved_prev_tok; Will be used later is doing deferred parsing.
 	SourceLoc last_in_range;
+	struct
+	{
+		const char *start;
+		const char *current;
+		Token tok;
+		Token prev_tok;
+	} stored;
 } Lexer;
 
 Lexer lexer;
-
+Token next_tok;
+Token tok;
 
 // --- Lexing general methods.
 
@@ -53,14 +53,31 @@ static inline void backtrack()
 	lexer.current--;
 }
 
-static inline char lookahead(int steps)
+void lexer_store_state(void)
 {
-	return lexer.current[steps];
+	lexer.stored.current = lexer.current;
+	lexer.stored.start = lexer.lexing_start;
+	lexer.stored.tok = next_tok;
+	lexer.stored.prev_tok = tok;
 }
+
+void lexer_restore_state(void)
+{
+	lexer.current = lexer.stored.current;
+	lexer.lexing_start = lexer.stored.start;
+	next_tok = lexer.stored.tok;
+	tok = lexer.stored.prev_tok;
+}
+
 
 static inline char peek_next()
 {
-	return lookahead(1);
+	return lexer.current[1];
+}
+
+static inline char peek_next_next()
+{
+	return lexer.current[2];
 }
 
 static inline char next()
@@ -68,7 +85,7 @@ static inline char next()
 	return *(lexer.current++);
 }
 
-static inline void advance(int steps)
+static inline void skip(int steps)
 {
 	lexer.current += steps;
 }
@@ -80,39 +97,38 @@ static inline bool reached_end(void)
 
 static Token error_token(const char *message, ...)
 {
-	Token token;
-	token.type = INVALID_TOKEN;
-	token.start = lexer.start;
-	token.span.length = 1;
-	token.span.loc = lexer.current_file->start_id + (lexer.begin - lexer.start);
+	Token token = {
+			.type = TOKEN_INVALID_TOKEN,
+			.span = { (SourceLoc) (lexer.current_file->start_id + (lexer.lexing_start - lexer.file_begin)), 1 },
+			.start = lexer.lexing_start
+	};
 	va_list list;
 	va_start(list, message);
-	diag_verror_at(token.span, message, list);
+	diag_verror_range(token.span, message, list);
 	va_end(list);
 	return token;
 }
 
 static Token make_token(TokenType type)
 {
-	size_t token_size = lexer.current - lexer.start;
+	size_t token_size = lexer.current - lexer.lexing_start;
 	if (token_size > TOKEN_MAX_LENGTH) return error_token("Token exceeding max length");
 	return (Token)
 			{
 					.type = type,
-					.start = lexer.start,
-					.span = { .loc = lexer.current_file->start_id + (lexer.start - lexer.begin), .length = token_size }
+					.span = { .loc = (SourceLoc) (lexer.current_file->start_id + (lexer.lexing_start - lexer.file_begin)), .length = token_size },
+					.start = lexer.lexing_start
 			};
 }
 
 static Token make_string_token(TokenType type, const char* string)
 {
-	size_t token_size = lexer.current - lexer.start;
+	size_t token_size = lexer.current - lexer.lexing_start;
 	if (token_size > TOKEN_MAX_LENGTH) return error_token("Token exceeding max length");
 	return (Token)
 			{
 					.type = type,
-					.start = lexer.start,
-					.span = { .loc = lexer.current_file->start_id + (lexer.start - lexer.begin), .length = token_size },
+					.span = { .loc = (SourceLoc) (lexer.current_file->start_id + (lexer.lexing_start - lexer.file_begin)), .length = token_size },
 					.string = string,
 			};
 }
@@ -175,7 +191,7 @@ SkipWhitespaceResult skip_whitespace()
 				if (peek_next() == '*')
 				{
 					// Enter docs parsing on /**
-					if (lookahead(2) == '*' && lexer.lexer_state == LEXER_STATE_NORMAL)
+					if (peek_next_next() == '*' && lexer.lexer_state == LEXER_STATE_NORMAL)
 					{
 						return WHITESPACE_FOUND_DOCS_START;
 					}
@@ -222,16 +238,20 @@ SkipWhitespaceResult skip_whitespace()
 
 // --- Normal scanning methods start here
 
-static inline Token scan_prefixed_ident(TokenType type, TokenType no_ident_type)
+static inline Token scan_prefixed_ident(TokenType type, TokenType no_ident_type, bool ends_with_bang)
 {
 	uint32_t hash = FNV1a(prev(), FNV1_SEED);
 	while (is_alphanum_(peek()))
 	{
 		hash = FNV1a(next(), hash);
 	}
-	int len = lexer.current - lexer.start;
+	if (ends_with_bang && peek() == '!')
+	{
+		hash = FNV1a(next(), hash);
+	}
+	uint32_t len = (uint32_t)(lexer.current - lexer.lexing_start);
 	if (len == 1) return make_token(no_ident_type);
-	const char* interned = symtab_add(lexer.start, len, hash, &type);
+	const char* interned = symtab_add(lexer.lexing_start, len, hash, &type);
 	return make_string_token(type, interned);
 }
 
@@ -241,15 +261,16 @@ static inline void scan_skipped_ident()
 }
 
 
+
 // Parses identifiers. Note that this is a bit complicated here since
-// we split identifiers into 3 types + find keywords.
+// we split identifiers into 2 types + find keywords.
 static inline Token scan_ident(void)
 {
 	// If we're in ignore keywords state, simply skip stuff.
 	if (lexer.lexer_state == LEXER_STATE_DEFERED_PARSING)
 	{
 		scan_skipped_ident();
-		return make_token(TOKEN_VAR_IDENT);
+		return make_token(TOKEN_IDENT);
 	}
 
 	TokenType type = 0;
@@ -270,9 +291,9 @@ static inline Token scan_ident(void)
 			case 'z':
 				if (!type)
 				{
-					type = TOKEN_VAR_IDENT;
+					type = TOKEN_IDENT;
 				}
-				else if (type == TOKEN_CAPS_IDENT)
+				else if (type == TOKEN_CONST_IDENT)
 				{
 					type = TOKEN_TYPE_IDENT;
 				}
@@ -283,7 +304,7 @@ static inline Token scan_ident(void)
 			case 'P': case 'Q': case 'R': case 'S': case 'T':
 			case 'U': case 'V': case 'W': case 'X': case 'Y':
 			case 'Z':
-				if (!type) type = TOKEN_CAPS_IDENT;
+				if (!type) type = TOKEN_CONST_IDENT;
 				break;
 			case '0': case '1': case '2': case '3': case '4':
 			case '5': case '6': case '7': case '8': case '9':
@@ -296,9 +317,8 @@ static inline Token scan_ident(void)
 		hash = FNV1a(next(), hash);
 	}
 	EXIT:;
-	if (type == INVALID_TOKEN) error_token("An identifier may not only consist of '_'");
-	uint32_t len = lexer.current - lexer.start;
-	const char* interned_string = symtab_add(lexer.start, len, hash, &type);
+	uint32_t len = lexer.current - lexer.lexing_start;
+	const char* interned_string = symtab_add(lexer.lexing_start, len, hash, &type);
 	return make_string_token(type, interned_string);
 }
 
@@ -377,15 +397,15 @@ static inline Token scan_digit(void)
 		{
 			case 'x':
 			case 'X':
-				advance(2);
+				skip(2);
 				return scan_hex();
 			case 'o':
 			case 'O':
-				advance(2);
+				skip(2);
 				return scan_oct();
 			case 'b':
 			case 'B':
-				advance(2);
+				skip(2);
 				return scan_binary();
 			default:
 				break;
@@ -462,7 +482,7 @@ static inline void skip_docs_whitespace()
 static inline Token scan_docs_directive(void)
 {
 	match_assert('@');
-	Token token = scan_prefixed_ident(TOKEN_AT_IDENT, TOKEN_AT);
+	Token token = scan_prefixed_ident(TOKEN_AT_IDENT, TOKEN_AT, false);
 	assert(token.type != TOKEN_AT);
 	lexer.lexer_state = LEXER_STATE_DOCS_PARSE_DIRECTIVE;
 	return token;
@@ -482,10 +502,10 @@ static inline Token scan_docs(void)
 		if (peek_next() == '/')
 		{
 			// Reset start
-			lexer.start = lexer.current;
+			lexer.lexing_start = lexer.current;
 
 			// Consume the '*/'
-			advance(2);
+			skip(2);
 
 			// Return end
 			lexer.lexer_state = LEXER_STATE_NORMAL;
@@ -500,7 +520,7 @@ static inline Token scan_docs(void)
 	skip_docs_whitespace();
 
 	// Reset start
-	lexer.start = lexer.current;
+	lexer.lexing_start = lexer.current;
 
 	// Now we passed through all of the whitespace. Here we might possibly see a "@",
 	// if so, we found a directive:
@@ -550,14 +570,14 @@ Token lexer_scan_token(void)
 	SkipWhitespaceResult result = skip_whitespace();
 
 	// Point start to the first non-whitespace character.
-	lexer.start = lexer.current;
+	lexer.lexing_start = lexer.current;
 
 	switch (result)
 	{
 		case WHITESPACE_FOUND_DOCS_START:
 			// Here we found '/**', so we skip past that
 			// and switch state.
-			advance(3);
+			skip(3);
 			lexer.lexer_state = LEXER_STATE_DOCS_PARSE;
 			return make_token(TOKEN_DOCS_START);
 		case WHITESPACE_COMMENT_REACHED_EOF:
@@ -565,7 +585,7 @@ Token lexer_scan_token(void)
 		case WHITESPACE_FOUND_EOF:
 			return make_token(TOKEN_EOF);
 		case WHITESPACE_FOUND_DOCS_EOL:
-			advance(1);
+			skip(1);
 			lexer.lexer_state = LEXER_STATE_DOCS_PARSE;
 			return make_token(TOKEN_DOCS_EOL);
 		case WHITESPACE_SKIPPED_OK:
@@ -576,15 +596,15 @@ Token lexer_scan_token(void)
 	switch (c)
 	{
 		case '@':
-			return scan_prefixed_ident(TOKEN_AT_IDENT, TOKEN_AT);
+			return scan_prefixed_ident(TOKEN_AT_IDENT, TOKEN_AT, true);
 		case '\'':
 			return scan_char();
 		case '"':
 			return scan_string();
 		case '#':
-			return scan_prefixed_ident(TOKEN_HASH_IDENT, TOKEN_HASH);
+			return scan_prefixed_ident(TOKEN_HASH_IDENT, TOKEN_HASH, false);
 		case '$':
-			return scan_prefixed_ident(TOKEN_DOLLAR_IDENT, TOKEN_DOLLAR);
+			return scan_prefixed_ident(TOKEN_CT_IDENT, TOKEN_DOLLAR, false);
 		case ',':
 			return make_token(TOKEN_COMMA);
 		case ';':
@@ -607,7 +627,7 @@ Token lexer_scan_token(void)
 		case '~':
 			return make_token(TOKEN_BIT_NOT);
 		case ':':
-			return make_token(match(':') ? TOKEN_COLCOLON : TOKEN_COLON);
+			return make_token(match(':') ? TOKEN_SCOPE : TOKEN_COLON);
 		case '!':
 			return make_token(match('=') ? TOKEN_NOT_EQUAL : TOKEN_NOT);
 		case '/':
@@ -645,7 +665,7 @@ Token lexer_scan_token(void)
 			return make_token(TOKEN_PLUS);
 		case '-':
 			if (match('>')) return make_token(TOKEN_ARROW);
-			if (match('-')) make_token(TOKEN_MINUSMINUS);
+			if (match('-')) return make_token(TOKEN_MINUSMINUS);
 			if (match('=')) return make_token(TOKEN_MINUS_ASSIGN);
 			return make_token(TOKEN_MINUS);
 		default:
@@ -675,10 +695,9 @@ void lexer_add_file_for_lexing(File *file)
 	LOG_FUNC
 	lexer_check_init();
 	lexer.current_file = file;
-	lexer.last_in_range = 0;
-	lexer.begin = lexer.current_file->contents;
-	lexer.start = lexer.begin;
-	lexer.current = lexer.start;
+	lexer.file_begin = lexer.current_file->contents;
+	lexer.lexing_start = lexer.file_begin;
+	lexer.current = lexer.lexing_start;
 	lexer.lexer_state = LEXER_STATE_NORMAL;
 }
 
@@ -687,9 +706,9 @@ void lexer_test_setup(const char *text, size_t len)
 	lexer_check_init();
 	static File helper;
 	lexer.lexer_state = LEXER_STATE_NORMAL;
-	lexer.start = text;
+	lexer.lexing_start = text;
 	lexer.current = text;
-	lexer.begin = text;
+	lexer.file_begin = text;
 	lexer.current_file = &helper;
 	lexer.current_file->start_id = 0;
 	lexer.current_file->contents = text;
@@ -703,9 +722,9 @@ Token lexer_scan_ident_test(const char *scan)
 {
 	static File helper;
 	lexer.lexer_state = LEXER_STATE_NORMAL;
-	lexer.start = scan;
+	lexer.lexing_start = scan;
 	lexer.current = scan;
-	lexer.begin = scan;
+	lexer.file_begin = scan;
 	lexer.current_file = &helper;
 	lexer.current_file->start_id = 0;
 	lexer.current_file->contents = scan;
@@ -717,6 +736,5 @@ Token lexer_scan_ident_test(const char *scan)
 		lexer.lexer_state = LEXER_STATE_DOCS_PARSE;
 		return scan_docs();
 	}
-
-	return lexer_scan_token();
+	return scan_ident();
 }

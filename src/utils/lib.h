@@ -176,7 +176,7 @@ static inline bool is_letter(char c)
 static inline uint32_t fnv1a(const char *key, uint32_t len)
 {
 	uint32_t hash = FNV1_SEED;
-	for (int i = 0; i < len; i++)
+	for (uint32_t i = 0; i < len; i++)
 	{
 		hash = FNV1a(key[i], hash);
 	}
@@ -213,17 +213,17 @@ static inline void* _expand(void *vec, size_t element_size)
 	header->size++;
 	if (header->size == header->capacity)
 	{
-		_VHeader *new_array = _vec_new(element_size, header->capacity >> 1u);
+		_VHeader *new_array = _vec_new(element_size, header->capacity << 1u);
 		memcpy(new_array, header, element_size * header->capacity + sizeof(_VHeader));
 		header = new_array;
+		new_array->capacity = header->capacity << 1u;
 		vec = header + 1;
 	}
 	return vec;
 }
 
 #define VECEACH(_vec, _index) \
-	unsigned __vecsize = vec_size(_vec); \
-	for (unsigned _index = 0; _index < __vecsize; _index++)
+	for (unsigned _index = 0, __vecsize = vec_size(_vec); _index < __vecsize; _index++)
 
 #define VECNEW(_type, _capacity) ((_type *)(_vec_new(sizeof(_type), _capacity) + 1))
 #define VECADD(_vec, _value) \
@@ -232,3 +232,23 @@ static inline void* _expand(void *vec, size_t element_size)
 		__temp[vec_size(__temp) - 1] = _value; \
 		__temp; })
 #define VECLAST(_vec) ( (_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)
+
+static inline bool is_all_upper(const char* string)
+{
+	char c;
+	while ((c = *(string++)) != '\0')
+	{
+		if (is_lower(c)) return false;
+	}
+	return true;
+}
+
+static inline bool is_all_lower(const char* string)
+{
+	char c;
+	while ((c = *(string++)) != '\0')
+	{
+		if (is_upper(c)) return false;
+	}
+	return true;
+}

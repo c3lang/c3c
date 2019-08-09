@@ -4,6 +4,7 @@
 
 #include "diagnostics.h"
 #include "source_file.h"
+#include "lexer.h"
 #include <math.h>
 #include <stdarg.h>
 
@@ -12,7 +13,6 @@ typedef struct _Diagnostics
 	bool panic_mode;
 	unsigned errors;
 	unsigned warnings;
-	bool use_color;
 } Diagnostics;
 
 Diagnostics diagnostics;
@@ -38,7 +38,7 @@ typedef enum
 
 static void print_error(SourceRange source_range, const char *message, PrintType print_type)
 {
-	File *file =  source_file_from_position(source_range.loc);
+	File *file = source_file_from_position(source_range.loc);
 
 	const char *content = file->contents;
 	const char *error_start = file->contents + source_range.loc - file->start_id;
@@ -78,25 +78,37 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 		}
 	}
 
-	int max_line_length = (int)round(log10(line)) + 1;
+	unsigned max_line_length = (int)round(log10(line)) + 1;
 
 	char number_buffer[20];
 	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);
 
 	for (unsigned i = 3; i > 0; i--)
 	{
-		int line_number = line - i;
+		int line_number = (int)line - i;
 		const char *start = linestarts[i];
 		if (start == NULL) continue;
 		const char *line_end = linestarts[i - 1];
 		eprintf(number_buffer, line_number, line_end - start - 1, start);
 	}
 	eprintf(number_buffer, line, end - linestarts[0], linestarts[0]);
-	for (unsigned i = 0; i < max_line_length + 2 + error_start - linestarts[0]; i++)
+	eprintf("  ");
+	for (unsigned i = 0; i < max_line_length; i++)
 	{
 		eprintf(" ");
 	}
-	for (int i = 0; i < source_range.length; i++)
+	for (unsigned i = 0; i < error_start - linestarts[0]; i++)
+	{
+		if (linestarts[0][i] == '\t')
+		{
+			eprintf("\t");
+		}
+		else
+		{
+			eprintf(" ");
+		}
+	}
+	for (uint32_t i = 0; i < source_range.length; i++)
 	{
 		eprintf("^");
 	}
@@ -127,7 +139,7 @@ static void vprint_error(SourceRange span, const char *message, va_list args)
 	print_error(span, buffer, PRINT_TYPE_ERROR);
 }
 
-void diag_error_at(SourceRange span, const char *message, ...)
+void diag_error_range(SourceRange span, const char *message, ...)
 {
 	if (diagnostics.panic_mode) return;
 	diagnostics.panic_mode = true;
@@ -138,12 +150,71 @@ void diag_error_at(SourceRange span, const char *message, ...)
 	diagnostics.errors++;
 }
 
-void diag_verror_at(SourceRange span, const char *message, va_list args)
+void diag_verror_range(SourceRange span, const char *message, va_list args)
 {
 	if (diagnostics.panic_mode) return;
 	diagnostics.panic_mode = true;
 	vprint_error(span, message, args);
 	diagnostics.errors++;
+}
+
+void sema_error_at(SourceLoc loc, const char *message, ...)
+{
+	va_list list;
+	va_start(list, message);
+	sema_verror_at(loc, message, list);
+	va_end(list);
+}
+
+void sema_error_range(SourceRange range, const char *message, ...)
+{
+	va_list list;
+	va_start(list, message);
+	sema_verror_range(range, message, list);
+	va_end(list);
+}
+
+void sema_verror_at(SourceLoc loc, const char *message, va_list args)
+{
+	vprint_error((SourceRange) { loc, 1 }, message, args);
+	diagnostics.errors++;
+}
+
+void sema_verror_range(SourceRange range, const char *message, va_list args)
+{
+	vprint_error(range, message, args);
+	diagnostics.errors++;
+}
+
+void sema_error(const char *message, ...)
+{
+	File *file = lexer_current_file();
+	va_list list;
+	va_start(list, message);
+	eprintf("(%s:0) Error: ", file->name);
+	evprintf(message, list);
+	eprintf("\n");
+	va_end(list);
+}
+
+void sema_prev_at_range(SourceRange span, const char *message, ...)
+{
+	va_list args;
+	va_start(args, message);
+	char buffer[256];
+	vsnprintf(buffer, 256, message, args);
+	print_error(span, buffer, PRINT_TYPE_PREV);
+	va_end(args);
+}
+
+void sema_prev_at(SourceLoc loc, const char *message, ...)
+{
+	va_list args;
+	va_start(args, message);
+	char buffer[256];
+	vsnprintf(buffer, 256, message, args);
+	print_error((SourceRange){ loc, 1 }, buffer, PRINT_TYPE_PREV);
+	va_end(args);
 }
 
 /*

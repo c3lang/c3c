@@ -18,4 +18,6 @@ C3 tries to be an alternative in the the C/C++ niche: fast and close to the meta
 
 Most work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue](https://github.com/c3lang/c3c/issues) or discuss C3 on the r/ProgrammingLanguages Discord server: https://discord.gg/cfu4wdk
 
-There are some small work being done, in particular lifting some code from an earlier "work-in-progress" C2 compiler called [Titanos](https://github.com/lerno/titanos).
+There are some small work being done on the parser here, but most of the structure is still missing.
+
+If you wish to contribute with ideas, please file issues on the c3docs: https://github.com/c3lang/c3docs instead of the compiler.

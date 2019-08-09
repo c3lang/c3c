@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <compiler/compiler.h>
 #include "build/build_options.h"
 #include "build/project_creation.h"
 #include "utils/errors.h"
@@ -15,6 +16,7 @@ int main(int argc, const char *argv[])
 			break;
 		case COMMAND_UNIT_TEST:
 			compiler_tests();
+			break;
 		case COMMAND_COMPILE:
 			compile_file();
 			break;
