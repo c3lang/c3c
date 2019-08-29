@@ -2,10 +2,7 @@
 // Created by Christoffer Lerno on 2019-08-24.
 //
 
-#include <utils/file_utils.h>
-#include <utils/lib.h>
-#include "context.h"
-#include "diagnostics.h"
+#include "compiler_internal.h"
 
 Context *current_context;
 
@@ -85,6 +82,7 @@ bool context_set_module(Context *context, Token module_name, Token *generic_para
 
 void context_register_global_decl(Context *context, Decl *decl)
 {
+	decl->module = context->module;
 	if (decl->decl_kind == DECL_CT_IF)
 	{
 		context->ct_ifs = VECADD(context->ct_ifs, decl);
@@ -105,7 +103,7 @@ bool context_add_import(Context *context, Token module_name, Token alias, Import
         sema_error_range(module_name.span, "A module is not expected to have any upper case characters, please change it.");
         return false;
     }
-    Decl *decl = decl_new_in_module(context->module, DECL_IMPORT, module_name, VISIBLE_LOCAL);
+    Decl *decl = decl_new(DECL_IMPORT, module_name, VISIBLE_LOCAL);
     decl->import.type = import_type;
     decl->import.generic_parameters = generic_parameters;
     if (import_type == IMPORT_TYPE_ALIAS_LOCAL || import_type == IMPORT_TYPE_ALIAS)

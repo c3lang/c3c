@@ -2,17 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include <utils/errors.h>
-#include <utils/file_utils.h>
-#include "compiler.h"
-#include "symtab.h"
+#include "compiler_internal.h"
 #include "../build/build_options.h"
-#include "../utils/lib.h"
-#include "lexer.h"
-#include "source_file.h"
-#include "parser.h"
-#include "diagnostics.h"
-#include "semantic_analyser.h"
 
 void compiler_init(void)
 {
@@ -40,7 +31,7 @@ static void compiler_lex()
 
 void compiler_parse()
 {
-	type_setup(build_options.pointer_size);
+	builtin_setup();
 	VECEACH(build_options.files, i)
 	{
 		bool loaded = false;
@@ -55,7 +46,7 @@ void compiler_parse()
 
 void compiler_compile()
 {
-	type_setup(build_options.pointer_size);
+	builtin_setup();
 	VECEACH(build_options.files, i)
 	{
 		bool loaded = false;
@@ -64,6 +55,8 @@ void compiler_compile()
 		diag_reset();
 		parse_file(file);
 		sema_analysis(current_context);
+		current_context->codegen_output = stdout;
+		codegen(current_context);
 	}
 	exit(EXIT_SUCCESS);
 }

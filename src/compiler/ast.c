@@ -2,12 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include <utils/malloc.h>
-#include <build/build_options.h>
-#include <utils/lib.h>
-#include "ast.h"
+#include "compiler_internal.h"
 
-Decl *decl_new_in_module(Module *module, DeclKind decl_kind, Token name, Visibility visibility)
+Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility)
 {
 	assert(name.string);
 	Decl *decl = malloc_arena(sizeof(Decl));
@@ -15,72 +12,31 @@ Decl *decl_new_in_module(Module *module, DeclKind decl_kind, Token name, Visibil
 	decl->decl_kind = decl_kind;
 	decl->name = name;
 	decl->visibility = visibility;
-	decl->module = module;
 	return decl;
 }
 
-Type poisoned_type = { .type_kind = TYPE_POISONED };
+Type poisoned_type = { .type_kind = TYPE_POISONED, .resolve_status = RESOLVE_DONE };
 
-char *type_to_string(Type *type)
-{
-	switch (type->type_kind)
-	{
-		case TYPE_VOID:
-			return "void";
-		case TYPE_UNRESOLVED:
-			TODO
-		case TYPE_STRING:
-			return "string";
-		case TYPE_UNRESOLVED_EXPR:
-			TODO
-		case TYPE_NIL:
-			return "nil";
-		case TYPE_BUILTIN:
-			return "TODO";
-		default:
-			TODO
-	}
-}
 
-Type *type_poisoned()
-{
-	static Type poison = { .type_kind = TYPE_POISONED };
-	return &poison;
-}
-Type *type_new(TypeKind type_kind)
-{
-	Type *type = malloc_arena(sizeof(Type));
-	memset(type, 0, sizeof(Type));
-	type->type_kind = type_kind;
-	return type;
-}
 
-Decl *decl_new_self_type(struct _Module *module, Token name, DeclKind decl_type, TypeKind type_kind, Visibility visibility)
+Decl *decl_new_user_defined_type(Token name, DeclKind decl_type, Visibility visibility)
 {
-	Decl *decl = decl_new_in_module(module, decl_type, name, visibility);
-	Type *type = type_new(type_kind);
-	type->canonical_type = type;
+	Decl *decl = decl_new(decl_type, name, visibility);
+	Type *type = type_new(TYPE_USER_DEFINED);
+	type->resolve_status = RESOLVE_DONE;
+	type->canonical = type;
 	type->decl = decl;
-	decl->type = type;
+	decl->self_type = type;
 	return decl;
 }
 
 Decl poisoned_decl = { .decl_kind = DECL_POISONED, .resolve_status = RESOLVE_DONE };
 
-Decl *decl_new_var(struct _Module *module, Token name, Type *type, VarDeclKind kind, Visibility visibility)
+Decl *decl_new_var(Token name, Type *type, VarDeclKind kind, Visibility visibility)
 {
-	Decl *decl = decl_new_in_module(module, DECL_VAR, name, visibility);
+	Decl *decl = decl_new(DECL_VAR, name, visibility);
 	decl->var.kind = kind;
 	decl->var.type = type;
-	return decl;
-}
-
-Decl *decl_new_enum_const(Decl *parent, Token name, DeclKind kind)
-{
-	Decl *decl = decl_new_in_module(parent->module, DECL_VAR, name, parent->visibility);
-	decl->decl_kind = kind;
-	assert(parent->type);
-	decl->type = parent->type;
 	return decl;
 }
 
@@ -110,81 +66,23 @@ Expr *expr_new(ExprKind kind, Token start)
 	return expr;
 }
 
-Expr poisoned_expr = { .expr_kind = EXPR_POISONED };
+Expr poisoned_expr = { .expr_kind = EXPR_POISONED, .resolve_status = RESOLVE_DONE };
 
-Type type_bool;
-Type type_void, type_nil, type_string;
 
-Type type_half, type_float, type_double, type_quad;
-Type type_char, type_short, type_int, type_long, type_isize;
-Type type_byte, type_ushort, type_uint, type_ulong, type_usize;
-Type type_compint, type_compfloat;
-
-void type_setup(int pointer_size)
-{
-	type_void = (Type) { .type_kind = TYPE_VOID, .canonical_type = &type_void };
-	type_nil = (Type) { .type_kind = TYPE_NIL, .canonical_type = &type_nil };
-	type_string = (Type) { .type_kind = TYPE_STRING, .canonical_type = &type_string };
-
-#define DEF_TYPE(name, bits, _bytes, type) name = (Type) { .type_kind = TYPE_BUILTIN, .bitsize = bits, .bytes = _bytes, .num_type = type, .canonical_type = &name }
-
-	DEF_TYPE(type_compint, 0, 0, NUMBER_TYPE_SIGNED_INT);
-	DEF_TYPE(type_compfloat, 0, 0, NUMBER_TYPE_FLOAT);
-
-	DEF_TYPE(type_bool, 1, 8, NUMBER_TYPE_BOOL);
-
-	DEF_TYPE(type_half, 2, 16, NUMBER_TYPE_FLOAT);
-	DEF_TYPE(type_float, 4, 32, NUMBER_TYPE_FLOAT);
-	DEF_TYPE(type_double, 8, 64, NUMBER_TYPE_FLOAT);
-	DEF_TYPE(type_quad, 16, 128, NUMBER_TYPE_FLOAT);
-
-	DEF_TYPE(type_char, 1, 8, NUMBER_TYPE_SIGNED_INT);
-	DEF_TYPE(type_short, 2, 16, NUMBER_TYPE_SIGNED_INT);
-	DEF_TYPE(type_int, 4, 32, NUMBER_TYPE_SIGNED_INT);
-	DEF_TYPE(type_long, 8, 64, NUMBER_TYPE_SIGNED_INT);
-	DEF_TYPE(type_isize, pointer_size / 8, pointer_size, NUMBER_TYPE_SIGNED_INT);
-
-	DEF_TYPE(type_byte, 1, 8, NUMBER_TYPE_UNSIGNED_INT);
-	DEF_TYPE(type_ushort, 2, 16, NUMBER_TYPE_UNSIGNED_INT);
-	DEF_TYPE(type_uint, 4, 32, NUMBER_TYPE_UNSIGNED_INT);
-	DEF_TYPE(type_ulong, 8, 64, NUMBER_TYPE_UNSIGNED_INT);
-	DEF_TYPE(type_usize, pointer_size / 8, pointer_size, NUMBER_TYPE_UNSIGNED_INT);
-
-#undef DEF_TYPE
-
-}
 
 Type* type_int_max_type(bool is_signed)
 {
 	return is_signed ? &type_long : &type_ulong;
 }
 
-Type *type_get_signed(Type *type)
-{
-	assert(type->type_kind == TYPE_BUILTIN);
-	if (type->num_type == NUMBER_TYPE_SIGNED_INT) return type;
-	assert(type->num_type == NUMBER_TYPE_UNSIGNED_INT);
-	switch (type->bytes)
-	{
-		case 8:
-			return &type_long;
-		case 4:
-			return &type_int;
-		case 2:
-			return &type_short;
-		case 1:
-			return &type_char;
-		default:
-			UNREACHABLE
-	}
-}
-
+/*
 Type* type_get_unsigned(Type *type)
 {
 	assert(type->type_kind == TYPE_BUILTIN);
-	if (type->num_type == NUMBER_TYPE_UNSIGNED_INT) return type;
-	assert(type->num_type == NUMBER_TYPE_SIGNED_INT);
-	switch (type->bytes)
+	Decl *decl = type->decl;
+	if (decl->builtin.num_type == NUMBER_TYPE_UNSIGNED_INT) return type;
+	assert(decl->builtin.num_type == NUMBER_TYPE_SIGNED_INT);
+	switch (decl->builtin.bytes)
 	{
 		case 8:
 			return &type_ulong;
@@ -199,7 +97,7 @@ Type* type_get_unsigned(Type *type)
 	}
 }
 
-
+*/
 
 BinOp bin_op[256] = {
 		[TOKEN_EQ] = BINOP_ASSIGN,
@@ -307,6 +205,8 @@ void fprint_endparen(FILE *file, int indent)
 	fprintf(file, ")\n");
 }
 
+void fprint_decl_recursive(FILE *file, Decl *decl, int indent);
+
 void fprint_type_recursive(FILE *file, Type *type, int indent)
 {
 	fprint_indent(file, indent);
@@ -320,73 +220,78 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 		case TYPE_POISONED:
 			fprintf(file, "(POISON)\n");
 			return;
-		case TYPE_UNRESOLVED:
-			if (type->unresolved.module.string)
+		case TYPE_USER_DEFINED:
+			if (type->resolve_status == RESOLVE_DONE)
 			{
-				fprintf(file, "(unresolved %s::%s)\n", type->unresolved.module.string, type->unresolved.name.string);
+				if (type->decl != type->canonical->decl)
+				{
+					fprintf(file, "(user-defined %s::%s\n", type->decl->module->name, type->decl->name.string);
+					fprint_type_recursive(file, type->canonical, indent + 1);
+					break;
+				}
+				fprintf(file, "(user-defined %s::%s)\n", type->decl->module->name, type->decl->name.string);
+				return;
 			}
 			else
 			{
-				fprintf(file, "(unresolved %s)\n", type->unresolved.name.string);
+				fprintf(file, "(unresolved %s::%s)\n", type->unresolved.module.string, type->name_loc.string);
+				return;
 			}
-			return;
-		case TYPE_UNRESOLVED_EXPR:
-			fprintf(file, "(unresolved\n");
-			fprint_expr_recursive(file, type->unresolved_type_expr, indent + 1);
-			fprint_endparen(file, indent);
-			return;
-		case TYPE_VOID:
-			fprintf(file, "(void)\n");
-			return;
-		case TYPE_OPAQUE:
-			break;
-		case TYPE_BUILTIN:
-			fprintf(file, "(builtin)\n");
-			return;
-		case TYPE_NIL:
-			fprintf(file, "(nil)\n");
-			return;
 		case TYPE_POINTER:
 			fprintf(file, "(pointer\n");
 			fprint_type_recursive(file, type->base, indent + 1);
-			fprint_endparen(file, indent);
+			break;
+		case TYPE_VARARRAY:
+			fprintf(file, "(vararray\n");
+			fprint_type_recursive(file, type->base, indent + 1);
+			break;
+		case TYPE_EXPRESSION:
+			fprintf(file, "(typexpr\n");
+			fprint_expr_recursive(file, type->unresolved_type_expr, indent + 1);
+			break;
+		case TYPE_ARRAY:
+			if (type->resolve_status == RESOLVE_DONE)
+			{
+				fprintf(file, "(array [%zu]\n", type->len);
+				fprint_type_recursive(file, type->base, indent + 1);
+			}
+			else
+			{
+				fprintf(file, "(unresolved-array\n");
+				fprint_type_recursive(file, type->base, indent + 1);
+				fprint_expr_recursive(file, type->unresolved_len, indent + 1);
+			}
+			break;
+		case TYPE_INC_ARRAY:
+			fprintf(file, "(TYPETODO)\n");
+			return;
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+		case TYPE_F32:
+		case TYPE_F64:
+			fprintf(file, "(%s)\n", type->name_loc.string);
+			return;
+		case TYPE_IXX:
+			fprintf(file, "(comp time int)\n");
+			return;
+		case TYPE_UXX:
+			fprintf(file, "(comp time uint)\n");
+			return;
+		case TYPE_FXX:
+			fprintf(file, "(comp time float)\n");
 			return;
 		case TYPE_STRING:
-			fprintf(file, "(string)\n");
-			return;
-		case TYPE_ARRAY:
-			fprintf(file, "(array [%zu]\n", type->len);
-			fprint_type_recursive(file, type->base, indent + 1);
-			fprint_endparen(file, indent);
-			return;
-		case TYPE_INC_ARRAY:
-			break;
-		case TYPE_UNRESOLVED_ARRAY:
-			fprintf(file, "(array\n");
-			fprint_type_recursive(file, type->base, indent + 1);
-			fprint_expr_recursive(file, type->unresolved_len, indent + 1);
-			fprint_endparen(file, indent);
-			return;
-		case TYPE_TYPEDEF:
-			break;
-		case TYPE_MACRO:
-			break;
-		case TYPE_FUNC_TYPE:
-			break;
-		case TYPE_ENUM:
-			break;
-		case TYPE_ERROR:
-			break;
-		case TYPE_FUNC:
-			break;
-		case TYPE_STRUCT:
-			break;
-		case TYPE_UNION:
-			break;
-		case TYPE_GENERIC:
-			break;
+			TODO
 	}
-	fprintf(file, "(TYPETODO)\n");
+	fprint_endparen(file, indent);
 }
 void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 {
@@ -398,8 +303,31 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			return;
 		case EXPR_CONST:
 			fprintf(file, "(const ");
-			value_fprint(file, expr->const_expr);
-			fprintf(file, ")\n");
+			switch (expr->const_expr.type)
+			{
+				case CONST_NIL:
+					fprintf(file, "nil)\n");
+					break;
+				case CONST_BOOL:
+					fprintf(file, expr->const_expr.b ? "true" : "false");
+					break;
+				case CONST_INT:
+					if (expr->type->type_kind >= TYPE_U8 && expr->type->type_kind <= TYPE_UXX)
+					{
+						fprintf(file, "%llu)\n", expr->const_expr.i);
+					}
+					else
+					{
+						fprintf(file, "%lld)\n", (int64_t)expr->const_expr.i);
+					}
+					break;
+				case CONST_FLOAT:
+					fprintf(file, "%Lf)\n", expr->const_expr.f);
+					break;
+				case CONST_STRING:
+					fprintf(file, "%s)\n", expr->const_expr.string.chars);
+					break;
+			}
 			return;
 		case EXPR_BINARY:
 			fprintf(file, "(binary %s\n", token_type_to_string(binop_to_token(expr->binary_expr.operator)));
@@ -630,12 +558,6 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 		case DECL_POISONED:
 			fprintf(file, "(poisoned-decl)\n");
 			return;
-		case DECL_BUILTIN:
-			fprintf(file, "(builtin %s)\n", decl->name.string);
-			break;
-		case DECL_FUNC_TYPE:
-			TODO
-			break;
 		case DECL_ARRAY_VALUE:
 			TODO
 			break;
@@ -853,4 +775,5 @@ void fprint_decl(FILE *file, Decl *dec)
 {
 	fprint_decl_recursive(file, dec, 0);
 }
-Module module_poisoned = { .name = "INVALID" };
+Module poisoned_module = { .name = "INVALID" };
+

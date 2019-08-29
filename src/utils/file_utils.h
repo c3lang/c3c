@@ -6,8 +6,4 @@
 
 #include "common.h"
 
-const char* expand_path(const char* path);
 
-char *read_file(const char *path, size_t *return_size);
-
-int filename_to_module(const char *path, char buffer[MAX_IDENTIFIER_LENGTH + 1]);

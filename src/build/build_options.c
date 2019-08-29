@@ -264,6 +264,10 @@ void parse_arguments(int argc, const char *argv[])
 		exit(EXIT_SUCCESS);
 	}
 
+	build_options.cshort_size = sizeof(short);
+	build_options.cint_size = sizeof(int);
+	build_options.clong_size = sizeof(long);
+	build_options.clonglong_size = sizeof(long long);
 	build_options.pointer_size = sizeof(void *);
 	build_options.path = ".";
 	build_options.command = COMMAND_MISSING;

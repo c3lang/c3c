@@ -6,11 +6,3 @@
 
 #include "common.h"
 
-void init_arena(void);
-void *malloc_arena(unsigned long mem);
-void free_arena(void);
-
-void run_arena_allocator_tests(void);
-
-#define MALLOC(mem) malloc_arena(mem)
-#define MALLOCS(type) malloc_arena(sizeof(type))

@@ -2,14 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include "symtab.h"
-#include <string.h>
-#include <stdlib.h>
-#include "../utils/errors.h"
-#include <assert.h>
-#include "../utils/lib.h"
-#include "utils/malloc.h"
-#include "tokens.h"
+#include "compiler_internal.h"
 
 #define TABLE_MAX_LOAD 0.75
 #define MAX_HASH_SIZE (1024 * 1024)

@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include "file_utils.h"
 #include "errors.h"
 #include "malloc.h"
 #include "lib.h"

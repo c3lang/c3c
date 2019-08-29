@@ -2,15 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include <stdbool.h>
-#include <stdarg.h>
-#include "../utils/lib.h"
-#include "parser.h"
-#include "semantic_analyser.h"
-#include "lexer.h"
-#include "ast.h"
-#include "diagnostics.h"
-#include "context.h"
+#include "compiler_internal.h"
 
 const int MAX_DOCS_ROWS = 1024;
 
@@ -200,7 +192,7 @@ static Ast* parse_compound_stmt()
 {
 	LOG_FUNC
 	CONSUME_OR(TOKEN_LBRACE, &poisoned_ast);
-	Ast *ast = NEW_AST(AST_COMPOUND_STMT, tok);
+	Ast *ast = AST_NEW(AST_COMPOUND_STMT, tok);
 	while (!try_consume(TOKEN_RBRACE))
 	{
 		Ast *stmt = TRY_AST(parse_stmt());
@@ -238,10 +230,10 @@ static inline Type *parse_base_type(void)
 
 	if (tok.type == TOKEN_IDENT && next_tok.type == TOKEN_SCOPE)
 	{
-		Type *type = type_new(TYPE_UNRESOLVED);
+		Type *type = type_new(TYPE_USER_DEFINED);
 		type->unresolved.module = tok;
 		advance(); advance();
-		type->unresolved.name = tok;
+		type->name_loc = tok;
 		if (!consume_type_name("types")) return &poisoned_type;
 		return type;
 	}
@@ -250,14 +242,13 @@ static inline Type *parse_base_type(void)
 	switch (tok.type)
 	{
 		case TOKEN_TYPE_IDENT:
-			type = type_new(TYPE_UNRESOLVED);
-			type->unresolved.name = tok;
+			type = TYPE_UNRESOLVED(tok);
             break;
 		case TOKEN_TYPE:
 		    advance_and_verify(TOKEN_TYPE);
 		    CONSUME_OR(TOKEN_LPAREN, &poisoned_type);
 			{
-				type = type_new(TYPE_UNRESOLVED_EXPR);
+				type = type_new(TYPE_EXPRESSION);
 				type->unresolved_type_expr = TRY_EXPR_OR(parse_expr(), &poisoned_type);
 			}
 			EXPECT_OR(TOKEN_RPAREN, &poisoned_type);
@@ -304,6 +295,31 @@ static inline Type *parse_base_type(void)
 		case TOKEN_USIZE:
             type = &type_usize;
             break;
+		case TOKEN_C_SHORT:
+			type = &type_c_short;
+			break;
+		case TOKEN_C_INT:
+			type = &type_c_int;
+			break;
+		case TOKEN_C_LONG:
+			type = &type_c_long;
+			break;
+		case TOKEN_C_LONGLONG:
+			type = &type_c_longlong;
+			break;
+		case TOKEN_C_USHORT:
+			type = &type_c_ushort;
+			break;
+		case TOKEN_C_UINT:
+			type = &type_c_uint;
+			break;
+		case TOKEN_C_ULONG:
+			type = &type_c_ulong;
+			break;
+		case TOKEN_C_ULONGLONG:
+			type = &type_c_ulonglong;
+			break;
+
 		default:
 			SEMA_ERROR(tok, "A type name was expected here.");
 			type = &poisoned_type;
@@ -335,16 +351,17 @@ static inline Type *parse_array_type_index(Type *type)
 		CONSUME_OR(TOKEN_RBRACKET, &poisoned_type);
         Type *incr_array = type_new(TYPE_INC_ARRAY);
         incr_array->base = type;
+		incr_array->resolve_status = incr_array->base->resolve_status;
         return incr_array;
 	}
 	if (try_consume(TOKEN_RBRACKET))
 	{
-        Type *array = type_new(TYPE_ARRAY);
+        Type *array = type_new(TYPE_VARARRAY);
         array->base = type;
         array->len = 0;
         return array;
 	}
-    Type *array = type_new(TYPE_UNRESOLVED_ARRAY);
+    Type *array = type_new(TYPE_ARRAY);
     array->base = type;
     array->unresolved_len = TRY_EXPR_OR(parse_expr(), &poisoned_type);
     CONSUME_OR(TOKEN_RBRACKET, &poisoned_type);
@@ -377,9 +394,10 @@ static Type *parse_type_expression(void)
 				advance();
                 {
                     Type *ptr_type = type_new(TYPE_POINTER);
-                    type->base = type;
-                    type->nullable = true;
-                    type = ptr_type;
+                    assert(type);
+	                ptr_type->base = type;
+	                ptr_type->nullable = true;
+	                type = ptr_type;
                 }
                 break;
 			case TOKEN_AMP:
@@ -387,7 +405,8 @@ static Type *parse_type_expression(void)
                 {
                     Type *ptr_type = type_new(TYPE_POINTER);
                     type->base = type;
-                    type->nullable = false;
+	                assert(type);
+	                type->nullable = false;
                     type = ptr_type;
                 }
                 break;
@@ -411,7 +430,7 @@ static inline Decl *parse_decl_after_type(bool local, Type *type)
 	advance();
 
 	Visibility visibility = local ? VISIBLE_LOCAL : VISIBLE_MODULE;
-	Decl *decl = decl_new_var(current_context->module, name, type, VARDECL_LOCAL, visibility);
+	Decl *decl = decl_new_var(name, type, VARDECL_LOCAL, visibility);
 	Decl *main_decl = decl;
 
 	while (1)
@@ -454,7 +473,7 @@ static inline Decl *parse_decl_after_type(bool local, Type *type)
 
 		if (tok.type == TOKEN_IDENT)
 		{
-			Decl *new_decl = decl_new_var(current_context->module, tok, type, VARDECL_LOCAL, visibility);
+			Decl *new_decl = decl_new_var(tok, type, VARDECL_LOCAL, visibility);
 			advance();
 			if (main_decl->decl_kind == DECL_MULTI_DECL)
 			{
@@ -462,7 +481,7 @@ static inline Decl *parse_decl_after_type(bool local, Type *type)
 				decl = new_decl;
 				continue;
 			}
-			Decl *multi = decl_new_in_module(current_context->module, DECL_MULTI_DECL, main_decl->name, visibility);
+			Decl *multi = decl_new(DECL_MULTI_DECL, main_decl->name, visibility);
 			multi->multi_decl = VECADD(multi->multi_decl, main_decl);
 			multi->multi_decl = VECADD(multi->multi_decl, new_decl);
 			main_decl = multi;
@@ -499,7 +518,7 @@ static Decl *parse_decl(void)
  */
 static Ast *parse_declaration_stmt(void)
 {
-	Ast *decl_stmt = NEW_AST(AST_DECLARE_STMT, tok);
+	Ast *decl_stmt = AST_NEW(AST_DECLARE_STMT, tok);
 	decl_stmt->declare_stmt = TRY_DECL_OR(parse_decl(), &poisoned_ast);
 	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
 	return decl_stmt;
@@ -521,7 +540,7 @@ typedef enum
  */
 static Ast *parse_expr_stmt(void)
 {
-	Ast *stmt = NEW_AST(AST_EXPR_STMT, tok);
+	Ast *stmt = AST_NEW(AST_EXPR_STMT, tok);
 	stmt->expr_stmt = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
 	TRY_CONSUME_EOS();
 	return stmt;
@@ -561,7 +580,7 @@ static inline Ast* parse_decl_expr_list(void)
 	Expr *expr = NULL;
 	Type *type = NULL;
 
-	Ast *decl_expr_list = NEW_AST(AST_DECL_EXPR_LIST, tok);
+	Ast *decl_expr_list = AST_NEW(AST_DECL_EXPR_LIST, tok);
 
 	if (!parse_type_or_expr(&expr, &type)) return &poisoned_ast;
 
@@ -637,7 +656,7 @@ static inline Ast *parse_control_expression()
 static inline Ast* parse_if_stmt(void)
 {
 	LOG_FUNC
-	Ast *if_ast = NEW_AST(AST_IF_STMT, tok);
+	Ast *if_ast = AST_NEW(AST_IF_STMT, tok);
 	advance_and_verify(TOKEN_IF);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
 	Ast *cond = TRY_AST(parse_control_expression());
@@ -665,7 +684,7 @@ static inline Ast* parse_if_stmt(void)
 
 static inline Ast* parse_while_stmt(void)
 {
-	Ast *while_ast = NEW_AST(AST_WHILE_STMT, tok);
+	Ast *while_ast = AST_NEW(AST_WHILE_STMT, tok);
 
 	advance_and_verify(TOKEN_WHILE);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
@@ -684,7 +703,7 @@ static inline Ast* parse_while_stmt(void)
  */
 static inline Ast* parse_defer_stmt(void)
 {
-	Ast *defer_stmt = NEW_AST(AST_DEFER_STMT, tok);
+	Ast *defer_stmt = AST_NEW(AST_DEFER_STMT, tok);
 	advance_and_verify(TOKEN_DEFER);
 	defer_stmt->defer_stmt.body = TRY_AST(parse_stmt());
 	return defer_stmt;
@@ -700,7 +719,7 @@ static inline Ast* parse_defer_stmt(void)
  */
 static inline Ast* parse_catch_stmt(void)
 {
-	Ast *catch_stmt = NEW_AST(AST_CATCH_STMT, tok);
+	Ast *catch_stmt = AST_NEW(AST_CATCH_STMT, tok);
 	advance_and_verify(TOKEN_CATCH);
 
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
@@ -711,7 +730,7 @@ static inline Ast* parse_catch_stmt(void)
 		type = TRY_TYPE_OR(parse_type_expression(), &poisoned_ast);
 	}
 	EXPECT_IDENT_FOR_OR("error parameter", &poisoned_ast);
-	Decl *decl = decl_new_var(current_context->module, tok, type, VARDECL_PARAM, VISIBLE_LOCAL);
+	Decl *decl = decl_new_var(tok, type, VARDECL_PARAM, VISIBLE_LOCAL);
 	catch_stmt->catch_stmt.error_param = decl;
 
 	CONSUME_OR(TOKEN_RPAREN, &poisoned_ast);
@@ -730,7 +749,7 @@ static inline Ast* parse_asm_stmt(void)
  */
 static inline Ast* parse_do_stmt(void)
 {
-	Ast *do_ast = NEW_AST(AST_DO_STMT, tok);
+	Ast *do_ast = AST_NEW(AST_DO_STMT, tok);
 
 	advance_and_verify(TOKEN_DO);
 
@@ -755,7 +774,7 @@ static inline Ast* parse_do_stmt(void)
  */
 static inline Ast* parse_switch_stmt(void)
 {
-	Ast *switch_ast = NEW_AST(AST_SWITCH_STMT, tok);
+	Ast *switch_ast = AST_NEW(AST_SWITCH_STMT, tok);
 	advance_and_verify(TOKEN_SWITCH);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
 	switch_ast->switch_stmt.cond = TRY_AST(parse_control_expression());
@@ -779,7 +798,7 @@ static inline Ast* parse_switch_stmt(void)
  */
 static inline Ast* parse_for_stmt(void)
 {
-	Ast *ast = NEW_AST(AST_FOR_STMT, tok);
+	Ast *ast = AST_NEW(AST_FOR_STMT, tok);
 	advance_and_verify(TOKEN_FOR);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
 
@@ -812,7 +831,7 @@ static inline Expr* parse_constant_expr(void)
  */
 static inline Ast* parse_case_stmt(void)
 {
-	Ast *ast = NEW_AST(AST_CASE_STMT, tok);
+	Ast *ast = AST_NEW(AST_CASE_STMT, tok);
 	advance();
 	Expr *expr = TRY_EXPR_OR(parse_constant_expr(), &poisoned_ast);
 	ast->case_stmt.expr = expr;
@@ -823,7 +842,7 @@ static inline Ast* parse_case_stmt(void)
 static inline Ast* parse_goto_stmt(void)
 {
 	advance_and_verify(TOKEN_GOTO);
-	Ast *ast = NEW_AST(AST_GOTO_STMT, tok);
+	Ast *ast = AST_NEW(AST_GOTO_STMT, tok);
 	if (!consume_const_name("label")) return &poisoned_ast;
 	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
 	return ast;
@@ -831,7 +850,7 @@ static inline Ast* parse_goto_stmt(void)
 
 static inline Ast* parse_continue_stmt(void)
 {
-	Ast *ast = NEW_AST(AST_CONTINUE_STMT, tok);
+	Ast *ast = AST_NEW(AST_CONTINUE_STMT, tok);
 	advance_and_verify(TOKEN_CONTINUE);
 	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
 	return ast;
@@ -839,7 +858,7 @@ static inline Ast* parse_continue_stmt(void)
 
 static inline Ast* parse_next_stmt(void)
 {
-    Ast *ast = NEW_AST(AST_NEXT_STMT, tok);
+    Ast *ast = AST_NEW(AST_NEXT_STMT, tok);
     advance_and_verify(TOKEN_NEXT);
     CONSUME_OR(TOKEN_EOS, &poisoned_ast);
     return ast;
@@ -847,7 +866,7 @@ static inline Ast* parse_next_stmt(void)
 
 static inline Ast* parse_break_stmt(void)
 {
-	Ast *ast = NEW_AST(AST_BREAK_STMT, tok);
+	Ast *ast = AST_NEW(AST_BREAK_STMT, tok);
 	advance_and_verify(TOKEN_BREAK);
 	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
 	return ast;
@@ -862,7 +881,7 @@ static inline Ast* parse_ct_switch_stmt(void)
 static inline Ast* parse_ct_else_stmt(void)
 {
 	LOG_FUNC
-	Ast *ast = NEW_AST(AST_CT_ELSE_STMT, tok);
+	Ast *ast = AST_NEW(AST_CT_ELSE_STMT, tok);
 	advance_and_verify(TOKEN_CT_ELSE);
 	ast->ct_elif_stmt.then = TRY_AST(parse_compound_stmt());
 	return ast;
@@ -876,7 +895,7 @@ static inline Ast* parse_ct_else_stmt(void)
 static inline Ast *parse_ct_elif_stmt(void)
 {
 	LOG_FUNC
-	Ast *ast = NEW_AST(AST_CT_ELIF_STMT, tok);
+	Ast *ast = AST_NEW(AST_CT_ELIF_STMT, tok);
 	advance_and_verify(TOKEN_CT_ELIF);
 
 	ast->ct_elif_stmt.expr = TRY_EXPR_OR(parse_paren_expr(), &poisoned_ast);
@@ -906,7 +925,7 @@ static inline Ast *parse_ct_elif_stmt(void)
 static inline Ast* parse_ct_if_stmt(void)
 {
 	LOG_FUNC
-	Ast *ast = NEW_AST(AST_CT_IF_STMT, tok);
+	Ast *ast = AST_NEW(AST_CT_IF_STMT, tok);
 	advance_and_verify(TOKEN_CT_IF);
 	ast->ct_if_stmt.expr = TRY_EXPR_OR(parse_paren_expr(), &poisoned_ast);
 	ast->ct_if_stmt.then = TRY_AST(parse_compound_stmt());
@@ -943,7 +962,7 @@ static Ast *parse_return_stmt(void)
 	LOG_FUNC
 
 	advance_and_verify(TOKEN_RETURN);
-	Ast *ast = NEW_AST(AST_RETURN_STMT, tok);
+	Ast *ast = AST_NEW(AST_RETURN_STMT, tok);
 	ast->exit = EXIT_RETURN;
 	ast->return_stmt.defer = 0;
 	if (try_consume(TOKEN_EOS))
@@ -958,7 +977,7 @@ static Ast *parse_return_stmt(void)
 
 static Ast *parse_throw_stmt(void)
 {
-	Ast *ast = NEW_AST(AST_THROW_STMT, tok);
+	Ast *ast = AST_NEW(AST_THROW_STMT, tok);
 	advance_and_verify(TOKEN_THROW);
 	ast->throw_stmt = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
 	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
@@ -967,14 +986,14 @@ static Ast *parse_throw_stmt(void)
 
 static Ast *parse_volatile_stmt(void)
 {
-	Ast *ast = NEW_AST(AST_VOLATILE_STMT, tok);
+	Ast *ast = AST_NEW(AST_VOLATILE_STMT, tok);
 	ast->volatile_stmt = TRY_AST_OR(parse_compound_stmt(), &poisoned_ast);
 	return ast;
 }
 
 static Ast *parse_default_stmt(void)
 {
-	Ast *ast = NEW_AST(AST_DEFAULT_STMT, tok);
+	Ast *ast = AST_NEW(AST_DEFAULT_STMT, tok);
 	advance_and_verify(TOKEN_DEFAULT);
 	TRY_CONSUME_OR(TOKEN_COLON, "Expected ':' after 'default'.", &poisoned_ast);
 	return ast;
@@ -1000,7 +1019,7 @@ bool is_valid_try_statement(TokenType type)
 static inline Ast *parse_label_stmt(void)
 {
 	LOG_FUNC
-	Ast *ast = NEW_AST(AST_LABEL, tok);
+	Ast *ast = AST_NEW(AST_LABEL, tok);
 	advance_and_verify(TOKEN_CONST_IDENT);
 	advance_and_verify(TOKEN_COLON);
 	return ast;
@@ -1030,6 +1049,14 @@ static bool parse_type_or_expr(Expr **exprPtr, Type **typePtr)
 		case TOKEN_USHORT:
 		case TOKEN_USIZE:
 		case TOKEN_QUAD:
+		case TOKEN_C_SHORT:
+		case TOKEN_C_INT:
+		case TOKEN_C_LONG:
+		case TOKEN_C_LONGLONG:
+		case TOKEN_C_USHORT:
+		case TOKEN_C_UINT:
+		case TOKEN_C_ULONG:
+		case TOKEN_C_ULONGLONG:
 		case TOKEN_TYPE_IDENT:
 			if (next_tok.type == TOKEN_DOT || next_tok.type == TOKEN_LPAREN) break;
 			*typePtr = parse_type_expression();
@@ -1061,7 +1088,7 @@ static bool parse_type_or_expr(Expr **exprPtr, Type **typePtr)
 			CONSUME_OR(TOKEN_RPAREN, false);
 			if (inner_expr)
 			{
-				*typePtr = type_new(TYPE_UNRESOLVED_EXPR);
+				*typePtr = type_new(TYPE_EXPRESSION);
 				(**typePtr).unresolved_type_expr = inner_expr;
 				return true;
 			}
@@ -1096,7 +1123,7 @@ static inline Ast *parse_decl_or_expr_stmt(void)
 	else
 	{
 		Decl *decl = TRY_DECL_OR(parse_decl_after_type(false, type), &poisoned_ast);
-		Ast *ast = NEW_AST(AST_DECLARE_STMT, decl->name);
+		Ast *ast = AST_NEW(AST_DECLARE_STMT, decl->name);
 		ast->declare_stmt = decl;
 		CONSUME_OR(TOKEN_EOS, &poisoned_ast);
 		return ast;
@@ -1129,6 +1156,14 @@ static Ast *parse_stmt(void)
 		case TOKEN_ULONG:
 		case TOKEN_USHORT:
 		case TOKEN_USIZE:
+		case TOKEN_C_SHORT:
+		case TOKEN_C_INT:
+		case TOKEN_C_LONG:
+		case TOKEN_C_LONGLONG:
+		case TOKEN_C_USHORT:
+		case TOKEN_C_UINT:
+		case TOKEN_C_ULONG:
+		case TOKEN_C_ULONGLONG:
 		case TOKEN_TYPE_IDENT:
 			if (next_tok.type == TOKEN_DOT || next_tok.type == TOKEN_LBRACE)
 			{
@@ -1176,7 +1211,7 @@ static Ast *parse_stmt(void)
 				Token try_token = tok;
 				advance();
 				Ast *stmt = TRY_AST(parse_stmt());
-				Ast *try_ast = NEW_AST(AST_TRY_STMT, try_token);
+				Ast *try_ast = AST_NEW(AST_TRY_STMT, try_token);
 				try_ast->try_stmt = stmt;
 				return try_ast;
 			}
@@ -1313,7 +1348,7 @@ static Ast *parse_stmt(void)
 			return &poisoned_ast;
 		case TOKEN_EOS:
 			advance();
-			return NEW_AST(AST_NOP_STMT, tok);
+			return AST_NEW(AST_NOP_STMT, tok);
 		case TOKEN_EOF:
 			sema_error_at(tok.span.loc - 1, "Reached the end of the file when expecting a statement.");
 			return &poisoned_ast;
@@ -1646,7 +1681,7 @@ static inline Decl *parse_const_declaration(Visibility visibility)
 
 	advance_and_verify(TOKEN_CONST);
 
-	Decl *decl = decl_new_var(current_context->module, tok, NULL, VARDECL_CONST, visibility);
+	Decl *decl = decl_new_var(tok, NULL, VARDECL_CONST, visibility);
 	// Parse the compile time constant.
 	if (tok.type == TOKEN_CT_IDENT)
 	{
@@ -1685,7 +1720,7 @@ static inline Decl *parse_global_declaration(Visibility visibility)
 
 	Type *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 
-	Decl *decl = decl_new_var(current_context->module, tok, type, VARDECL_GLOBAL, visibility);
+	Decl *decl = decl_new_var(tok, type, VARDECL_GLOBAL, visibility);
 
 	if (!consume_ident("global variable")) return &poisoned_decl;
 
@@ -1787,19 +1822,18 @@ bool parse_struct_body(Decl *parent, Decl *visible_parent)
 		if (token_type == TOKEN_STRUCT || token_type == TOKEN_UNION)
 		{
 			DeclKind decl_kind = decl_from_token(token_type);
-			TypeKind type_kind = DECL_STRUCT == decl_kind ? TYPE_STRUCT : TYPE_UNION;
 			Decl *member;
 			if (next_tok.type != TOKEN_IDENT)
 			{
 			    Token name_replacement = tok;
                 name_replacement.string = NULL;
-                member = decl_new_self_type(parent->module, name_replacement, decl_kind, type_kind, parent->visibility);
+                member = decl_new_user_defined_type(name_replacement, decl_kind, parent->visibility);
                 advance();
             }
 			else
             {
 			    advance();
-				member = decl_new_self_type(parent->module, tok, decl_kind, type_kind, parent->visibility);
+				member = decl_new_user_defined_type(tok, decl_kind, parent->visibility);
 				Decl *other = struct_find_name(visible_parent, tok.string);
 				if (other)
 				{
@@ -1825,7 +1859,7 @@ bool parse_struct_body(Decl *parent, Decl *visible_parent)
 		while (1)
         {
             EXPECT_OR(TOKEN_IDENT, false);
-            Decl *member = decl_new_var(parent->module, tok, type, VARDECL_MEMBER, parent->visibility);
+            Decl *member = decl_new_var(tok, type, VARDECL_MEMBER, parent->visibility);
             Decl *other = struct_find_name(visible_parent, member->name.string);
             if (other)
             {
@@ -1865,10 +1899,8 @@ static inline Decl *parse_struct_declaration(Visibility visibility)
     Token name = tok;
 
     if (!consume_type_name(type_name)) return &poisoned_decl;
-    Decl *decl = decl_new_self_type(current_context->module, name,
-                                    decl_from_token(type),
-                                    type == TOKEN_STRUCT ? TYPE_STRUCT : TYPE_UNION,
-                                    visibility);
+    Decl *decl = decl_new_user_defined_type(name, decl_from_token(type), visibility);
+
     decl->strukt.method_functions = NULL;
 
 	if (!parse_attributes(decl))
@@ -1889,7 +1921,7 @@ static inline Decl *parse_struct_declaration(Visibility visibility)
  */
 static inline Ast *parse_generics_statements(void)
 {
-	Ast *ast = NEW_AST(AST_COMPOUND_STMT, tok);
+	Ast *ast = AST_NEW(AST_COMPOUND_STMT, tok);
 	while (tok.type != TOKEN_RBRACE && tok.type != TOKEN_CASE && tok.type != TOKEN_DEFAULT)
 	{
 		Ast *stmt = TRY_AST_OR(parse_stmt(), &poisoned_ast);
@@ -1918,7 +1950,7 @@ static inline Decl *parse_generics_declaration(Visibility visibility)
 	{
 		rtype = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 	}
-	Decl *decl = decl_new_self_type(current_context->module, tok, DECL_GENERIC, TYPE_GENERIC, visibility);
+	Decl *decl = decl_new_user_defined_type(tok, DECL_GENERIC, visibility);
 	if (!consume_ident("generic function name")) return &poisoned_decl;
 	decl->generic_decl.rtype = rtype;
 	Token *parameters = NULL;
@@ -1940,7 +1972,7 @@ static inline Decl *parse_generics_declaration(Visibility visibility)
 	{
 		if (tok.type == TOKEN_CASE)
 		{
-			Ast *generic_case = NEW_AST(AST_GENERIC_CASE_STMT, tok);
+			Ast *generic_case = AST_NEW(AST_GENERIC_CASE_STMT, tok);
 			advance_and_verify(TOKEN_CASE);
 			Type **types = NULL;
 			while (!try_consume(TOKEN_COLON))
@@ -1960,7 +1992,7 @@ static inline Decl *parse_generics_declaration(Visibility visibility)
 		}
 		if (tok.type == TOKEN_DEFAULT)
 		{
-			Ast *generic_case = NEW_AST(AST_GENERIC_DEFAULT_STMT, tok);
+			Ast *generic_case = AST_NEW(AST_GENERIC_DEFAULT_STMT, tok);
 			advance_and_verify(TOKEN_DEFAULT);
 			CONSUME_OR(TOKEN_COLON, &poisoned_decl);
 			generic_case->generic_default_stmt = TRY_AST_OR(parse_generics_statements(), &poisoned_decl);
@@ -1988,7 +2020,7 @@ static inline bool parse_param_decl(Decl *parent, Decl*** parameters, bool type_
     LOG_FUNC
 
     Type *type = TRY_TYPE_OR(parse_type_expression(), false);
-    Decl *param = decl_new_var(parent->module, tok, type, VARDECL_PARAM, parent->visibility);
+    Decl *param = decl_new_var(tok, type, VARDECL_PARAM, parent->visibility);
 
     if (!try_consume(TOKEN_IDENT))
     {
@@ -2141,7 +2173,7 @@ static inline bool parse_func_typedef(Decl *decl, Visibility visibility)
 static inline Decl *parse_typedef_declaration(Visibility visibility)
 {
 	LOG_FUNC
-    Decl *decl = decl_new_in_module(current_context->module, DECL_TYPEDEF, tok, visibility);
+    Decl *decl = decl_new(DECL_TYPEDEF, tok, visibility);
     advance_and_verify(TOKEN_TYPEDEF);
     if (tok.type == TOKEN_FUNC)
     {
@@ -2171,7 +2203,7 @@ static inline Decl *parse_macro_declaration(Visibility visibility)
         rtype = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
     }
 
-    Decl *decl = decl_new_in_module(current_context->module, DECL_MACRO, tok, visibility);
+    Decl *decl = decl_new(DECL_MACRO, tok, visibility);
     decl->macro_decl.rtype = rtype;
     TRY_CONSUME_OR(TOKEN_AT_IDENT, "Expected a macro name starting with '@'", &poisoned_decl);
 
@@ -2197,7 +2229,7 @@ static inline Decl *parse_macro_declaration(Visibility visibility)
                 parm_type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
                 goto TEST_TYPE;
         }
-        Decl *param = decl_new_var(current_context->module, tok, parm_type, VARDECL_PARAM, visibility);
+        Decl *param = decl_new_var(tok, parm_type, VARDECL_PARAM, visibility);
         advance();
         params = VECADD(params, param);
         COMMA_RPAREN_OR(&poisoned_decl);
@@ -2238,7 +2270,7 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
 
 	Type *return_type = TRY_TYPE_OR(parse_type_expression(), false);
 
-	Decl *func = decl_new_self_type(current_context->module, tok, DECL_FUNC, TYPE_FUNC, visibility);
+	Decl *func = decl_new_user_defined_type(tok, DECL_FUNC, visibility);
 	func->func.function_signature.rtype = return_type;
 
 	if (try_consume(TOKEN_IDENT))
@@ -2247,9 +2279,9 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
 		if (try_consume(TOKEN_SCOPE))
 		{
 			TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "A type was expected after '::'.", false);
-			Type *type = type_new(TYPE_UNRESOLVED);
+			Type *type = type_new(TYPE_USER_DEFINED);
 			type->unresolved.module = func->name;
-			type->unresolved.name = tok;
+			type->name_loc = tok;
 			func->func.struct_parent = type;
 			advance_and_verify(TOKEN_TYPE_IDENT);
 
@@ -2263,10 +2295,7 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
 	else
 	{
 		TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "Expected a function name.", false);
-		Type *type = type_new(TYPE_UNRESOLVED);
-		type->unresolved.module = func->name;
-		type->unresolved.name = tok;
-		func->func.struct_parent = type;
+		func->func.struct_parent = TYPE_MODULE_UNRESOLVED(func->name, tok);;
 		advance();
 		EXPECT_OR(TOKEN_DOT, false);
 		EXPECT_IDENT_FOR_OR("function name", false);
@@ -2308,7 +2337,7 @@ static inline Decl *parse_error_declaration(Visibility visibility)
 
 	advance_and_verify(TOKEN_ERROR_TYPE);
 
-    Decl *error_decl = decl_new_self_type(current_context->module, tok, DECL_ERROR, TYPE_ERROR, visibility);
+    Decl *error_decl = decl_new_user_defined_type(tok, DECL_ERROR, visibility);
 
     if (!consume_type_name("error type")) return &poisoned_decl;
 
@@ -2316,7 +2345,9 @@ static inline Decl *parse_error_declaration(Visibility visibility)
 
 	while (tok.type == TOKEN_CONST_IDENT)
 	{
-        Decl *err_constant = decl_new_enum_const(error_decl, tok, DECL_ERROR_CONSTANT);
+		Decl *err_constant = decl_new(DECL_ERROR_CONSTANT, tok, error_decl->visibility);
+
+		err_constant->error_constant.parent = error_decl;
 		VECEACH(error_decl->error.error_constants, i)
 		{
 			Decl *other_constant = error_decl->error.error_constants[i];
@@ -2357,7 +2388,7 @@ static inline Decl *parse_enum_declaration(Visibility visibility)
 
 	advance_and_verify(TOKEN_ENUM);
 
-    Decl *decl = decl_new_self_type(current_context->module, tok, DECL_ENUM, TYPE_ENUM, visibility);
+    Decl *decl = decl_new_user_defined_type(tok, DECL_ENUM, visibility);
 
 	if (!consume_type_name("enum")) return &poisoned_decl;
 
@@ -2367,14 +2398,13 @@ static inline Decl *parse_enum_declaration(Visibility visibility)
 		type = TRY_TYPE_OR(parse_base_type(), &poisoned_decl);
 	}
 
-    decl->enums.type = type;
-
 	CONSUME_OR(TOKEN_LBRACE, false);
 
 	decl->enums.type = type ? type : &type_int;
 	while (!try_consume(TOKEN_RBRACE))
 	{
-        Decl *enum_const = decl_new_enum_const(decl, tok, DECL_ENUM_CONSTANT);
+		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, tok, decl->visibility);
+		enum_const->enum_constant.parent = decl;
 		VECEACH(decl->enums.values, i)
 		{
 			Decl *other_constant = decl->enums.values[i];
@@ -2392,7 +2422,7 @@ static inline Decl *parse_enum_declaration(Visibility visibility)
         }
         if (try_consume(TOKEN_EQ))
 		{
-		    decl->enum_constant.expr = TRY_EXPR_OR(parse_expr(), &poisoned_decl);
+		    enum_const->enum_constant.expr = TRY_EXPR_OR(parse_expr(), &poisoned_decl);
 		}
 		decl->enums.values = VECADD(decl->enums.values, enum_const);
 		// Allow trailing ','
@@ -2443,7 +2473,7 @@ static inline bool parse_conditional_top_level(Decl ***decls)
 static inline Decl *parse_ct_if_top_level(void)
 {
 	LOG_FUNC
-	Decl *ct = decl_new_in_module(NULL, DECL_CT_IF, tok, VISIBLE_LOCAL);
+	Decl *ct = decl_new(DECL_CT_IF, tok, VISIBLE_LOCAL);
 	advance_and_verify(TOKEN_CT_IF);
 	ct->ct_if_decl.expr = TRY_EXPR_OR(parse_paren_expr(), &poisoned_decl);
 
@@ -2453,7 +2483,7 @@ static inline Decl *parse_ct_if_top_level(void)
 	while (tok.type == TOKEN_CT_ELIF)
 	{
 		advance_and_verify(TOKEN_CT_ELIF);
-		Decl *ct_elif = decl_new_in_module(NULL, DECL_CT_ELIF, tok, VISIBLE_LOCAL);
+		Decl *ct_elif = decl_new(DECL_CT_ELIF, tok, VISIBLE_LOCAL);
 		ct_elif->ct_elif_decl.expr = TRY_EXPR_OR(parse_paren_expr(), &poisoned_decl);
 		if (!parse_conditional_top_level(&ct_elif->ct_elif_decl.then)) return &poisoned_decl;
 		ct_if_decl->elif = ct_elif;
@@ -2462,7 +2492,7 @@ static inline Decl *parse_ct_if_top_level(void)
 	if (tok.type == TOKEN_CT_ELSE)
 	{
 		advance_and_verify(TOKEN_CT_ELSE);
-		Decl *ct_else = decl_new_in_module(NULL, DECL_CT_ELSE, tok, VISIBLE_LOCAL);
+		Decl *ct_else = decl_new(DECL_CT_ELSE, tok, VISIBLE_LOCAL);
 		ct_if_decl->elif = ct_else;
 		if (!parse_conditional_top_level(&ct_else->ct_else_decl)) return &poisoned_decl;
 	}
@@ -2728,6 +2758,8 @@ static Expr *parse_string_literal(Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST, tok);
+	expr_string->resolve_status = RESOLVE_DONE;
+	expr_string->type = &type_string;
 	advance_and_verify(TOKEN_STRING);
 
 	char *str = malloc_arena(tok.span.length + 1);
@@ -2747,18 +2779,101 @@ static Expr *parse_string_literal(Expr *left)
 		advance();
 	}
 	str[len] = '\0';
-	expr_string->const_expr = value_new_string(str, (uint32_t)len);
+	expr_string->const_expr.string.chars = str;
+	expr_string->const_expr.string.len = len;
 	expr_string->type = &type_string;
+	expr_string->const_expr.type = CONST_STRING;
 	return expr_string;
 }
+
+
 
 static Expr *parse_integer(Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, tok);
-	expr_int->const_expr = parse_int(tok.start, tok.span.length);
+	const char *string = tok.start;
+	const char *end = string + tok.span.length;
+	uint64_t i = 0;
+	switch (tok.span.length > 2 ? string[1] : '0')
+	{
+		case 'x':
+			string += 2;
+			while (string < end)
+			{
+				char c = *(string++);
+				if (c == '_') continue;
+				if (i > (UINT64_MAX >> 4u))
+				{
+					SEMA_ERROR(tok, "Number is larger than an unsigned 64 bit number.");
+					return &poisoned_expr;
+				}
+				i <<= 4u;
+				if (c < 'A')
+				{
+					i += c - '0';
+				}
+				else if (c < 'a')
+				{
+					i += c - 'A' + 10;
+				}
+				else
+				{
+					i += c - 'a' + 10;
+				}
+			}
+			break;
+		case 'o':
+			string += 2;
+			while (string < end)
+			{
+				char c = *(string++);
+				if (c == '_') continue;
+				if (i > (UINT64_MAX >> 3u))
+				{
+					SEMA_ERROR(tok, "Number is larger than an unsigned 64 bit number.");
+					return &poisoned_expr;
+				}
+				i <<= (unsigned) 3;
+				i += c - '0';
+			}
+			break;
+		case 'b':
+			string += 2;
+			while (string < end)
+			{
+				char c = *(string++);
+				if (c == '_') continue;
+				if (i > (UINT64_MAX >> 1u))
+				{
+					SEMA_ERROR(tok, "Number is larger than an unsigned 64 bit number.");
+					return &poisoned_expr;
+				}
+				i <<= (unsigned) 1;
+				i += c - '0';
+			}
+			break;
+		default:
+			while (string < end)
+			{
+				char c = *(string++);
+				if (c == '_') continue;
+				if (i > (UINT64_MAX / 10))
+				{
+					SEMA_ERROR(tok, "Number is larger than an unsigned 64 bit number.");
+					return &poisoned_expr;
+				}
+				i *= 10;
+				i += c - '0';
+			}
+			break;
+
+	}
+	expr_int->const_expr.i = i;
+	expr_int->const_expr.type = CONST_INT;
+	expr_int->type = i > INT64_MAX ? &type_compuint : &type_compint;
+	expr_int->resolve_status = RESOLVE_DONE;
 	advance();
-	if (expr_int->const_expr.type == VALUE_TYPE_ERROR) return &poisoned_expr;
 	return expr_int;
 }
 
@@ -2776,7 +2891,10 @@ static Expr *parse_double(Expr *left)
 		return &poisoned_expr;
 	}
 	advance();
-	number->const_expr = value_new_float(fval);
+	number->const_expr.f = fval;
+	number->type = &type_compfloat;
+	number->const_expr.type = CONST_FLOAT;
+	number->resolve_status = RESOLVE_DONE;
 	return number;
 }
 
@@ -2784,7 +2902,9 @@ static Expr *parse_bool(Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, tok);
-	number->const_expr = (Value) { .b = tok.type == TOKEN_TRUE, .type = VALUE_TYPE_BOOL };
+	number->const_expr = (ExprConst) { .b = tok.type == TOKEN_TRUE, .type = CONST_BOOL };
+	number->type = &type_bool;
+	number->resolve_status = RESOLVE_DONE;
 	advance();
 	return number;
 }
@@ -2793,7 +2913,9 @@ static Expr *parse_nil(Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, tok);
-	number->const_expr = (Value) { .type = VALUE_TYPE_NIL };
+	number->const_expr.type = CONST_NIL;
+	number->type = type_get_canonical_ptr(&type_void);
+	number->resolve_status = RESOLVE_DONE;
 	advance();
 	return number;
 }
@@ -2876,9 +2998,7 @@ static Expr *parse_identifier(Expr *left)
 		advance_and_verify(TOKEN_SCOPE);
 		if (try_consume(TOKEN_TYPE_IDENT))
 		{
-			Type *type = type_new(TYPE_UNRESOLVED);
-			type->unresolved.module = mod;
-			type->unresolved.name = tok;
+			Type *type = TYPE_MODULE_UNRESOLVED(mod, tok);
 			if (tok.type == TOKEN_LBRACE)
 			{
 				Expr *expr = EXPR_NEW_TOKEN(EXPR_STRUCT_VALUE, mod);
@@ -2924,8 +3044,7 @@ static Expr *parse_identifier(Expr *left)
 static Expr *parse_type_identifier(Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Type *type = type_new(TYPE_UNRESOLVED);
-	type->unresolved.name = tok;
+	Type *type = TYPE_UNRESOLVED(tok);
 	advance_and_verify(TOKEN_TYPE_IDENT);
 	if (tok.type == TOKEN_LBRACE)
 	{
@@ -2949,6 +3068,19 @@ static Expr *parse_type_expr(Expr *left)
 	return expr;
 }
 
+static Expr *parse_cast_expr(Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CAST, tok);
+	advance_and_verify(TOKEN_CAST);
+	CONSUME_OR(TOKEN_LPAREN, &poisoned_expr);
+	expr->type = TRY_TYPE_OR(parse_type_expression(), &poisoned_expr);
+	CONSUME_OR(TOKEN_COMMA, &poisoned_expr);
+	expr->expr_cast.expr = TRY_EXPR_OR(parse_expr(), &poisoned_expr);
+	CONSUME_OR(TOKEN_RPAREN, &poisoned_expr);
+	return expr;
+}
+
 ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_QUESTION] = { NULL, parse_conditional_expr, PREC_CONDITIONAL },
         [TOKEN_ELVIS] = { NULL, parse_conditional_expr, PREC_CONDITIONAL },
@@ -2956,6 +3088,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },
 		[TOKEN_TYPE] = { parse_type_expr, NULL, PREC_NONE },
+		[TOKEN_CAST] = { parse_cast_expr, NULL, PREC_NONE },
 		//[TOKEN_SIZEOF] = { parse_sizeof, NULL, PREC_NONE },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },

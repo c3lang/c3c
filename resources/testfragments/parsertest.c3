@@ -8,7 +8,6 @@ macro void @foo(int i, $e)
     $e = 1;
     printf("Helo");
 }
-
 macro @goo(i, $e)
 {
 
@@ -33,6 +32,7 @@ struct Hej
 enum FEok : int {
 	IFEJ
 }
+
 
 enum Test
 {
@@ -84,7 +84,7 @@ generic boor2(i)
     case int:
         return "Helo";
     default:
-        return 1000;
+        return 10001;
 }
 
 $if ($e > 0)

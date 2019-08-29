@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 #include "bigint.h"
-#include "../utils/malloc.h"
+#include "../utils/lib.h"
 #include <inttypes.h>
 
 static inline uint32_t u32_min(uint32_t a, uint32_t b)

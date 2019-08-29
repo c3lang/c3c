@@ -1,10 +1,10 @@
 #include <stdio.h>
-#include <compiler/compiler.h>
+#include "compiler/compiler.h"
 #include "build/build_options.h"
 #include "build/project_creation.h"
-#include "utils/errors.h"
 #include "compiler_tests/tests.h"
-#include "utils/malloc.h"
+#include "utils/lib.h"
+
 int main(int argc, const char *argv[])
 {
 	init_arena();

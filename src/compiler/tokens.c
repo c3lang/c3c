@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include "tokens.h"
-#include "../utils/errors.h"
+#include "compiler_internal.h"
 
 const char *token_type_to_string(TokenType type)
 {
@@ -271,6 +270,24 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_HALF:
 			return "half";
 
+		case TOKEN_C_SHORT:
+			return "c_short";
+		case TOKEN_C_INT:
+			return "c_int";
+		case TOKEN_C_LONG:
+			return "c_long";
+		case TOKEN_C_LONGLONG:
+			return "c_longlong";
+		case TOKEN_C_USHORT:
+			return "c_ushort";
+		case TOKEN_C_UINT:
+			return "c_uint";
+		case TOKEN_C_ULONG:
+			return "c_ulong";
+		case TOKEN_C_ULONGLONG:
+			return "c_ulonglong";
+
+
 		case TOKEN_DOCS_EOL:
 			return "EOL";
 		case TOKEN_DOCS_START:
@@ -323,25 +340,6 @@ const char *token_type_to_string(TokenType type)
 
 bool token_is_type(TokenType type)
 {
-	switch (type)
-	{
-		case TOKEN_VOID:
-		case TOKEN_BYTE:
-		case TOKEN_BOOL:
-		case TOKEN_CHAR:
-		case TOKEN_DOUBLE:
-		case TOKEN_FLOAT:
-		case TOKEN_INT:
-		case TOKEN_ISIZE:
-		case TOKEN_LONG:
-		case TOKEN_SHORT:
-		case TOKEN_UINT:
-		case TOKEN_ULONG:
-		case TOKEN_USHORT:
-		case TOKEN_USIZE:
-			return true;
-		default:
-			return false;
-	}
+	return type >= TOKEN_VOID && type <= TOKEN_C_ULONGLONG;
 }
 

@@ -2,17 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include <compiler/lexer.h>
 #include "tests.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <compiler/compiler.h>
-#include <utils/lib.h>
-#include <utils/errors.h>
-#include <utils/malloc.h>
+#include "compiler/compiler_internal.h"
 #include "benchmark.h"
-#include "../compiler/symtab.h"
 
 static void test_lexer(void)
 {

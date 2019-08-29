@@ -2,14 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include "lexer.h"
-#include <build/build_options.h>
-#include "../utils/errors.h"
-#include "../utils/lib.h"
-#include "symtab.h"
-#include "source_file.h"
-#include "diagnostics.h"
-#include <stdarg.h>
+#include "compiler_internal.h"
+
 
 typedef struct
 {

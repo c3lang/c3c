@@ -8,7 +8,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdarg.h>
 #include <assert.h>
 #include "errors.h"
+#include <stdbool.h>
 
 #define MAX_IDENTIFIER_LENGTH 31

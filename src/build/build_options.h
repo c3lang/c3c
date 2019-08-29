@@ -82,6 +82,11 @@ typedef struct
 	CompileOption compile_option;
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
 	int pointer_size;
+	int cshort_size;
+	int cint_size;
+	int clong_size;
+	int clonglong_size;
+	int clongdouble_size;
 } BuildOptions;
 
 

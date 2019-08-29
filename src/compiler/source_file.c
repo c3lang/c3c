@@ -4,11 +4,8 @@
 
 #include <sys/stat.h>
 #include <limits.h>
+#include "compiler_internal.h"
 #include "../build/build_options.h"
-#include "source_file.h"
-#include "../utils/lib.h"
-#include "../utils/file_utils.h"
-#include "lexer.h"
 
 static const size_t LEXER_FILES_START_CAPACITY = 128;
 
