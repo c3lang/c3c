@@ -72,7 +72,7 @@ Expr poisoned_expr = { .expr_kind = EXPR_POISONED, .resolve_status = RESOLVE_DON
 
 Type* type_int_max_type(bool is_signed)
 {
-	return is_signed ? &type_long : &type_ulong;
+	return is_signed ? type_long : type_ulong;
 }
 
 /*
@@ -99,28 +99,6 @@ Type* type_get_unsigned(Type *type)
 
 */
 
-BinOp bin_op[256] = {
-		[TOKEN_EQ] = BINOP_ASSIGN,
-		[TOKEN_STAR] = BINOP_MULT,
-		[TOKEN_PLUS] = BINOP_ADD,
-		[TOKEN_MINUS] = BINOP_SUB,
-		[TOKEN_DIV] = BINOP_DIV,
-		[TOKEN_MOD] = BINOP_MOD,
-		[TOKEN_NOT_EQUAL] = BINOP_NE,
-		[TOKEN_AND] = BINOP_AND,
-		[TOKEN_OR] = BINOP_OR,
-		[TOKEN_AMP] = BINOP_BIT_AND,
-		[TOKEN_BIT_OR] = BINOP_BIT_OR,
-		[TOKEN_BIT_XOR] = BINOP_BIT_XOR,
-		[TOKEN_EQEQ] = BINOP_EQ,
-		[TOKEN_GREATER] = BINOP_GT,
-		[TOKEN_GREATER_EQ] = BINOP_GE,
-		[TOKEN_LESS] = BINOP_LT,
-		[TOKEN_LESS_EQ] = BINOP_LE,
-		[TOKEN_SHR] = BINOP_SHR,
-		[TOKEN_SHL] = BINOP_SHL,
-		[TOKEN_ELVIS] = BINOP_ELVIS
-};
 
 AssignOp assign_op[256] = {
 		[TOKEN_EQ] = ASSIGNOP_ASSIGN,
@@ -149,10 +127,6 @@ UnaryOp unary_op[256] = {
 };
 
 
-BinOp binop_from_token(TokenType type)
-{
-	return bin_op[type];
-}
 
 AssignOp assignop_from_token(TokenType type)
 {
@@ -167,16 +141,6 @@ TokenType assignop_to_token(AssignOp type)
 	}
 	return TOKEN_INVALID_TOKEN;
 }
-
-TokenType binop_to_token(BinOp type)
-{
-	for (unsigned i = 0; i < 256; i++)
-	{
-		if (bin_op[i] == type) return (TokenType)i;
-	}
-	return TOKEN_INVALID_TOKEN;
-}
-
 
 UnaryOp unaryop_from_token(TokenType type)
 {
@@ -330,16 +294,16 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			}
 			return;
 		case EXPR_BINARY:
-			fprintf(file, "(binary %s\n", token_type_to_string(binop_to_token(expr->binary_expr.operator)));
+			fprintf(file, "(binary %s\n", token_type_to_string(expr->binary_expr.operator));
 			fprint_expr_recursive(file, expr->binary_expr.left, indent + 1);
 			fprint_expr_recursive(file, expr->binary_expr.right, indent + 1);
 			break;
 		case EXPR_UNARY:
-			fprintf(file, "(unary %s\n", token_type_to_string(unaryop_to_token(expr->unary_expr.operator)));
+			fprintf(file, "(unary %s\n", token_type_to_string(expr->unary_expr.operator));
 			fprint_expr_recursive(file, expr->unary_expr.expr, indent + 1);
 			break;
 		case EXPR_POST_UNARY:
-			fprintf(file, "(postunary %s\n", token_type_to_string(unaryop_to_token(expr->post_expr.operator)));
+			fprintf(file, "(postunary %s\n", token_type_to_string(expr->post_expr.operator));
 			fprint_expr_recursive(file, expr->post_expr.expr, indent + 1);
 			break;
 		case EXPR_METHOD_REF:
@@ -363,9 +327,9 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			fprintf(file, "(call\n");
 			fprint_expr_recursive(file, expr->call_expr.function, indent + 1);
 			{
-				VECEACH(expr->call_expr.parameters, i)
+				VECEACH(expr->call_expr.arguments, i)
 				{
-					fprint_expr_recursive(file, expr->call_expr.parameters[i], indent + 1);
+					fprint_expr_recursive(file, expr->call_expr.arguments[i], indent + 1);
 				}
 			}
 			break;
@@ -396,15 +360,6 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			fprintf(file, "(subscript\n");
 			fprint_expr_recursive(file, expr->subscript_expr.expr, indent + 1);
 			fprint_expr_recursive(file, expr->subscript_expr.index, indent + 1);
-			break;
-		case EXPR_EXPRESSION_LIST:
-			fprintf(file, "(expressionlist\n");
-			{
-				VECEACH(expr->expression_list, i)
-				{
-					fprint_expr_recursive(file, expr->expression_list[i], indent + 1);
-				}
-			}
 			break;
 		case EXPR_TRY:
 			if (!expr->try_expr.else_expr)
@@ -577,6 +532,14 @@ static void fprint_decl_list(FILE *file, Decl **decls, int indent)
 	}
 }
 
+static void fprint_asts_recursive(FILE *file, Ast **asts, int indent)
+{
+	VECEACH(asts, i)
+	{
+		fprint_ast_recursive(file, asts[i], indent);
+	}
+}
+
 static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 {
 	fprint_indent(file, indent);
@@ -590,10 +553,7 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			}
 			fprintf(file, "(compound\n");
 			{
-				VECEACH(ast->compound_stmt.stmts, i)
-				{
-					fprint_ast_recursive(file, ast->compound_stmt.stmts[i], indent + 1);
-				}
+				fprint_asts_recursive(file, ast->compound_stmt.stmts, indent + 1);
 			}
 			break;
 		case AST_DECLARE_STMT:
@@ -613,6 +573,10 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			fprintf(file, "(do\n");
 			fprint_ast_recursive(file, ast->do_stmt.body, indent + 1);
 			fprint_expr_recursive(file, ast->do_stmt.expr, indent + 1);
+			break;
+		case AST_STMT_LIST:
+			fprintf(file, "(stmtlist\n");
+			fprint_asts_recursive(file, ast->stmt_list, indent + 1);
 			break;
 		case AST_RETURN_STMT:
 			if (ast->return_stmt.expr)
@@ -638,29 +602,25 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 		case AST_DEFAULT_STMT:
 			fprintf(file, "(default)\n");
 			return;
+		case AST_COND_STMT:
+			fprintf(file, "(cond\n");
+			if (ast->cond_stmt.expr)
+			{
+				fprint_expr_recursive(file, ast->cond_stmt.expr, indent + 1);
+			}
+			else
+			{
+				fprint_indent(file, indent);
+				fprintf(file, "(noexpr)");
+			}
+			fprint_asts_recursive(file, ast->cond_stmt.stmts, indent + 1);
+			break;
 		case AST_FOR_STMT:
 			fprintf(file, "(for\n");
-			if (ast->for_stmt.init)
-			{
-				fprint_ast_recursive(file, ast->for_stmt.init, indent + 1);
-			}
-			else
-			{
-				fprint_indent(file, indent + 1);
-				fprintf(file, "(noinit)\n");
-			}
-			if (ast->for_stmt.cond)
-			{
-				fprint_expr_recursive(file, ast->for_stmt.cond, indent + 1);
-			}
-			else
-			{
-				fprint_indent(file, indent + 1);
-				fprintf(file, "(nocond)\n");
-			}
+			fprint_ast_recursive(file, ast->for_stmt.cond, indent + 1);
 			if (ast->for_stmt.incr)
 			{
-				fprint_expr_recursive(file, ast->for_stmt.incr, indent + 1);
+				fprint_ast_recursive(file, ast->for_stmt.incr, indent + 1);
 			}
 			else
 			{
@@ -678,24 +638,8 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 				fprint_ast_recursive(file, ast->if_stmt.else_body, indent + 1);
 			}
 			break;
-		case AST_DECL_EXPR_LIST:
-			fprintf(file, "(declexprlist\n");
-			if (ast->decl_expr_list.list_type == DECLEXPR_EXPR)
-			{
-				fprint_expr_recursive(file, ast->decl_expr_list.expr, indent + 1);
-			}
-			else
-			{
-				fprint_decl_recursive(file, ast->decl_expr_list.decl, indent + 1);
-			}
-			break;
-		case AST_COND_STMT:
-			fprintf(file, "(condstmt\n");
-			fprint_decl_recursive(file, ast->cond_stmt.decl, indent + 1);
-			fprint_ast_recursive(file, ast->cond_stmt.decl_expr, indent + 1);
-			break;
 	    case AST_SWITCH_STMT:
-            fprintf(file, "(condstmt\n");
+            fprintf(file, "(switchstmt\n");
             fprint_ast_recursive(file, ast->switch_stmt.cond, indent + 1);
             fprint_ast_recursive(file, ast->switch_stmt.body, indent + 1);
             break;

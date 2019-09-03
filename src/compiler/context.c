@@ -41,8 +41,6 @@ static inline bool create_module_or_check_name(Context *context, Token module_na
 
 bool context_set_module_from_filename(Context *context)
 {
-    LOG_FUNC
-
     char buffer[MAX_IDENTIFIER_LENGTH + 1];
     int len = filename_to_module(context->file->full_path, buffer);
     if (!len)
@@ -64,7 +62,6 @@ bool context_set_module_from_filename(Context *context)
 
 bool context_set_module(Context *context, Token module_name, Token *generic_parameters)
 {
-    LOG_FUNC
     DEBUG_LOG("CONTEXT: Setting module to '%s'.", module_name.string);
     // Note that we allow the illegal name for now, to be able to parse further.
     context->module_name = module_name;
@@ -96,7 +93,6 @@ void context_register_global_decl(Context *context, Decl *decl)
 
 bool context_add_import(Context *context, Token module_name, Token alias, ImportType import_type, Expr** generic_parameters)
 {
-    LOG_FUNC
     DEBUG_LOG("SEMA: Add import of '%s'.", module_name.string);
     if (!is_all_lower(module_name.string))
     {

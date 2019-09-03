@@ -25,6 +25,6 @@ add_executable(c3c
         src/compiler/source_file.c
         src/compiler/diagnostics.c
         src/compiler/ast.c
-        src/compiler/bigint.c src/compiler/bigint.h src/compiler/context.c src/compiler/builtins.c src/compiler/codegen.c src/compiler/const_folding.c src/compiler/enums.h src/compiler/casts.c src/compiler/compiler.h src/compiler/types.c)
+        src/compiler/bigint.c src/compiler/bigint.h src/compiler/context.c src/compiler/codegen.c src/compiler/expr_analysis.c src/compiler/enums.h src/compiler/casts.c src/compiler/compiler.h src/compiler/types.c)
 
 target_compile_options(c3c PRIVATE -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)

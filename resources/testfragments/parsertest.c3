@@ -60,6 +60,18 @@ error Errors
 
 func Foom test(int a)
 {
+	while (int x = 0, int y = 3; int y = foo())
+	{
+		a++;
+	}
+	while (int x = 0)
+	{
+		a++;
+	}
+	while (int x, y = 3; x > 0 && b < 0)
+	{
+		a++;
+	}
 	return 1 + 2;
 }
 

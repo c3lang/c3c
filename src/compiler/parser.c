@@ -124,7 +124,6 @@ static bool consume_const_name(const char* type)
  */
 static void recover_top_level(void)
 {
-    LOG_FUNC
     advance();
 	while (tok.type != TOKEN_EOF)
 	{
@@ -190,7 +189,6 @@ SEMA_ERROR(tok, "Expected ',' or ')'"); return _res; } } while(0)
 
 static Ast* parse_compound_stmt()
 {
-	LOG_FUNC
 	CONSUME_OR(TOKEN_LBRACE, &poisoned_ast);
 	Ast *ast = AST_NEW(AST_COMPOUND_STMT, tok);
 	while (!try_consume(TOKEN_RBRACE))
@@ -226,8 +224,6 @@ static Ast* parse_compound_stmt()
  */
 static inline Type *parse_base_type(void)
 {
-	LOG_FUNC
-
 	if (tok.type == TOKEN_IDENT && next_tok.type == TOKEN_SCOPE)
 	{
 		Type *type = type_new(TYPE_USER_DEFINED);
@@ -254,70 +250,70 @@ static inline Type *parse_base_type(void)
 			EXPECT_OR(TOKEN_RPAREN, &poisoned_type);
 			break;
 		case TOKEN_VOID:
-			type = &type_void;
+			type = type_void;
             break;
 		case TOKEN_BOOL:
-			type = &type_bool;
+			type = type_bool;
             break;
 		case TOKEN_BYTE:
-			type = &type_byte;
+			type = type_byte;
             break;
 		case TOKEN_CHAR:
-            type = &type_char;
+            type = type_char;
             break;
 		case TOKEN_DOUBLE:
-            type = &type_double;
+            type = type_double;
             break;
 		case TOKEN_FLOAT:
-            type = &type_float;
+            type = type_float;
             break;
 		case TOKEN_INT:
-            type = &type_int;
+            type = type_int;
             break;
 		case TOKEN_ISIZE:
-            type = &type_isize;
+            type = type_isize;
             break;
 		case TOKEN_LONG:
-            type = &type_long;
+            type = type_long;
             break;
 		case TOKEN_SHORT:
-            type = &type_short;
+            type = type_short;
             break;
 		case TOKEN_UINT:
-            type = &type_uint;
+            type = type_uint;
             break;
 		case TOKEN_ULONG:
-            type = &type_ulong;
+            type = type_ulong;
             break;
 		case TOKEN_USHORT:
-            type = &type_ushort;
+            type = type_ushort;
             break;
 		case TOKEN_USIZE:
-            type = &type_usize;
+            type = type_usize;
             break;
 		case TOKEN_C_SHORT:
-			type = &type_c_short;
+			type = type_c_short;
 			break;
 		case TOKEN_C_INT:
-			type = &type_c_int;
+			type = type_c_int;
 			break;
 		case TOKEN_C_LONG:
-			type = &type_c_long;
+			type = type_c_long;
 			break;
 		case TOKEN_C_LONGLONG:
-			type = &type_c_longlong;
+			type = type_c_longlong;
 			break;
 		case TOKEN_C_USHORT:
-			type = &type_c_ushort;
+			type = type_c_ushort;
 			break;
 		case TOKEN_C_UINT:
-			type = &type_c_uint;
+			type = type_c_uint;
 			break;
 		case TOKEN_C_ULONG:
-			type = &type_c_ulong;
+			type = type_c_ulong;
 			break;
 		case TOKEN_C_ULONGLONG:
-			type = &type_c_ulonglong;
+			type = type_c_ulonglong;
 			break;
 
 		default:
@@ -341,7 +337,6 @@ static inline Type *parse_base_type(void)
  */
 static inline Type *parse_array_type_index(Type *type)
 {
-	LOG_FUNC
 
 	assert(type_ok(type));
 
@@ -380,7 +375,6 @@ static inline Type *parse_array_type_index(Type *type)
  */
 static Type *parse_type_expression(void)
 {
-	LOG_FUNC
 
 	Type *type = parse_base_type();
 	while (type->type_kind != TYPE_POISONED)
@@ -552,19 +546,21 @@ static Ast *parse_expr_stmt(void)
  *	: expression
  *	| expression_list ',' expression
  *	;
- * @return Expr *
+ * @return Ast *
  */
-static inline Expr *parse_expression_list(void)
+static inline Ast *parse_expression_list(void)
 {
-	Expr *exp_list = EXPR_NEW_TOKEN(EXPR_EXPRESSION_LIST, tok);
-	Expr **expressions = NULL;
+	Ast *statement_list = new_ast(AST_STMT_LIST, tok);
+	Ast **stmts = NULL;
 	do
 	{
-		Expr *expr = TRY_EXPR_OR(parse_expr(), &poisoned_expr);
-		expressions = VECADD(expressions, expr);
+		Expr *expr = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
+		Ast *ast = new_ast(AST_EXPR_STMT, expr->loc);
+		ast->expr_stmt = expr;
+		stmts = VECADD(stmts, ast);
 	} while (try_consume(TOKEN_COMMA));
-	exp_list->expression_list = expressions;
-	return exp_list;
+	statement_list->stmt_list = stmts;
+	return statement_list;
 }
 
 /**
@@ -573,42 +569,35 @@ static inline Expr *parse_expression_list(void)
  *	| declaration_list
  *	;
  *
- * @return Ast*
+ * @return bool
  */
-static inline Ast* parse_decl_expr_list(void)
+static inline bool parse_decl_expr_list(Ast ***stmt_list)
 {
 	Expr *expr = NULL;
 	Type *type = NULL;
 
-	Ast *decl_expr_list = AST_NEW(AST_DECL_EXPR_LIST, tok);
+	if (!parse_type_or_expr(&expr, &type)) return false;
 
-	if (!parse_type_or_expr(&expr, &type)) return &poisoned_ast;
 
 	if (expr)
 	{
-		if (try_consume(TOKEN_COMMA))
+		while (1)
 		{
-			Expr **expressions = NULL;
-			expressions = VECADD(expressions, expr);
-			do
-			{
-				expr = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
-				expressions = VECADD(expressions, expr);
-			} while (try_consume(TOKEN_COMMA));
-			Expr *exp_list = EXPR_NEW_EXPR(EXPR_EXPRESSION_LIST, expr);
-			exp_list->expression_list = expressions;
-			expr = exp_list;
+			Ast *stmt = new_ast(AST_EXPR_STMT, expr->loc);
+			stmt->expr_stmt = expr;
+			*stmt_list = VECADD(*stmt_list, stmt);
+			if (!try_consume(TOKEN_COMMA)) break;
+			expr = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
 		}
-
-		decl_expr_list->decl_expr_list.expr = expr;
-		decl_expr_list->decl_expr_list.list_type = DECLEXPR_EXPR;
-		return decl_expr_list;
 	}
-
-	decl_expr_list->decl_expr_list.list_type = DECLEXPR_DECL;
-	decl_expr_list->decl_expr_list.decl = TRY_DECL_OR(parse_decl_after_type(false, type), &poisoned_ast);
-	return decl_expr_list;
-
+	else
+	{
+		Decl *decl = TRY_DECL_OR(parse_decl_after_type(false, type), &poisoned_ast);
+		Ast *stmt = new_ast(AST_DECLARE_STMT, decl->name);
+		stmt->declare_stmt = decl;
+		*stmt_list = VECADD(*stmt_list, stmt);
+	}
+	return true;
 }
 
 /**
@@ -621,28 +610,30 @@ static inline Ast* parse_decl_expr_list(void)
  */
 static inline Ast *parse_control_expression()
 {
-	Ast *cond = TRY_AST(parse_decl_expr_list());
+	Ast *stmt_list = AST_NEW(AST_STMT_LIST, tok);
 
-	if (cond->decl_expr_list.list_type == DECLEXPR_EXPR)
+	Ast ***stmt_ref = &stmt_list->stmt_list;
+
+	if (!parse_decl_expr_list(stmt_ref)) return &poisoned_ast;
+
+	assert(*stmt_ref != NULL);
+	if (VECLAST(*stmt_ref)->ast_kind == AST_EXPR_STMT)
 	{
 		if (tok.type == TOKEN_EOS)
 		{
 			SEMA_ERROR(tok, "Unexpected ';'.");
 			return &poisoned_ast;
 		}
-		return cond;
+		return stmt_list;
 	}
 
 	if (!try_consume(TOKEN_EOS))
 	{
-		return cond;
+		return stmt_list;
 	}
 
-	Decl *decls = cond->decl_expr_list.decl;
-	cond->ast_kind = AST_COND_STMT;
-	cond->cond_stmt.decl = decls;
-	cond->cond_stmt.decl_expr = TRY_AST(parse_decl_expr_list());
-	return cond;
+	if (!parse_decl_expr_list(stmt_ref)) return &poisoned_ast;
+	return stmt_list;
 }
 
 /**
@@ -655,7 +646,6 @@ static inline Ast *parse_control_expression()
  */
 static inline Ast* parse_if_stmt(void)
 {
-	LOG_FUNC
 	Ast *if_ast = AST_NEW(AST_IF_STMT, tok);
 	advance_and_verify(TOKEN_IF);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
@@ -802,12 +792,17 @@ static inline Ast* parse_for_stmt(void)
 	advance_and_verify(TOKEN_FOR);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
 
-	ast->for_stmt.init = TRY_AST(parse_decl_expr_list());
+	Ast *cond = new_ast(AST_COND_STMT, tok);
+
+	if (!parse_decl_expr_list(&cond->cond_stmt.stmts)) return &poisoned_ast;
+
 	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
 	if (tok.type != TOKEN_EOS)
 	{
-		ast->for_stmt.cond = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
+		cond->cond_stmt.expr = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
 	}
+
+	ast->for_stmt.cond = cond;
 	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
 
 	if (!try_consume(TOKEN_RPAREN))
@@ -880,7 +875,6 @@ static inline Ast* parse_ct_switch_stmt(void)
 
 static inline Ast* parse_ct_else_stmt(void)
 {
-	LOG_FUNC
 	Ast *ast = AST_NEW(AST_CT_ELSE_STMT, tok);
 	advance_and_verify(TOKEN_CT_ELSE);
 	ast->ct_elif_stmt.then = TRY_AST(parse_compound_stmt());
@@ -894,7 +888,6 @@ static inline Ast* parse_ct_else_stmt(void)
  */
 static inline Ast *parse_ct_elif_stmt(void)
 {
-	LOG_FUNC
 	Ast *ast = AST_NEW(AST_CT_ELIF_STMT, tok);
 	advance_and_verify(TOKEN_CT_ELIF);
 
@@ -924,7 +917,6 @@ static inline Ast *parse_ct_elif_stmt(void)
  */
 static inline Ast* parse_ct_if_stmt(void)
 {
-	LOG_FUNC
 	Ast *ast = AST_NEW(AST_CT_IF_STMT, tok);
 	advance_and_verify(TOKEN_CT_IF);
 	ast->ct_if_stmt.expr = TRY_EXPR_OR(parse_paren_expr(), &poisoned_ast);
@@ -959,7 +951,6 @@ static inline Ast* parse_ct_each_stmt(void)
  */
 static Ast *parse_return_stmt(void)
 {
-	LOG_FUNC
 
 	advance_and_verify(TOKEN_RETURN);
 	Ast *ast = AST_NEW(AST_RETURN_STMT, tok);
@@ -1018,7 +1009,6 @@ bool is_valid_try_statement(TokenType type)
 
 static inline Ast *parse_label_stmt(void)
 {
-	LOG_FUNC
 	Ast *ast = AST_NEW(AST_LABEL, tok);
 	advance_and_verify(TOKEN_CONST_IDENT);
 	advance_and_verify(TOKEN_COLON);
@@ -1132,7 +1122,6 @@ static inline Ast *parse_decl_or_expr_stmt(void)
 
 static Ast *parse_stmt(void)
 {
-	LOG_FUNC
 	switch (tok.type)
 	{
 		case TOKEN_LBRACE:
@@ -1370,7 +1359,6 @@ static Ast *parse_stmt(void)
  */
 static inline bool parse_optional_module_params(Token **tokens)
 {
-	LOG_FUNC
 
     *tokens = NULL;
 
@@ -1418,7 +1406,6 @@ static inline bool parse_optional_module_params(Token **tokens)
  */
 static inline void parse_module(void)
 {
-	LOG_FUNC
 
 	if (!try_consume(TOKEN_MODULE))
 	{
@@ -1448,81 +1435,7 @@ static inline void parse_module(void)
 	TRY_CONSUME_EOS_OR();
 }
 
-/**
- * Parse any deferred expression, correctly handling nesting.
- *
- * @return A non null expression. Poisoned if this fails.
- */
-static inline Expr* parse_deferred_expression(void)
-{
-	LOG_FUNC
 
-	Expr *expr = expr_new(EXPR_DEFERRED_TOKENS, next_tok);
-	int paren = 0;
-	int brace = 0;
-	int bracket = 0;
-	expr->deferred_tokens = NULL;
-	while (1)
-	{
-		switch (next_tok.type)
-		{
-			case TOKEN_LPAREN:
-				paren++;
-				break;
-			case TOKEN_LBRACE:
-				brace++;
-				break;
-			case TOKEN_LBRACKET:
-				bracket++;
-				break;
-			case TOKEN_RPAREN:
-				if (--paren < 0)
-				{
-					if (brace > 0 || bracket > 0)
-					{
-						sema_error_range(next_tok.span, "I found a mismatched ')' here, did you add one too many?");
-						expr->expr_kind = EXPR_POISONED;
-					}
-					return expr;
-				}
-				break;
-			case TOKEN_RBRACE:
-				if (--brace < 0)
-				{
-					if (paren > 0 || bracket > 0)
-					{
-						sema_error_range(next_tok.span, "I found a mismatched '}' here, did you add one too many?");
-						expr->expr_kind = EXPR_POISONED;
-					}
-					return expr;
-				}
-				break;
-			case TOKEN_RBRACKET:
-				if (--bracket < 0)
-				{
-					if (paren > 0 || brace > 0)
-					{
-						sema_error_range(next_tok.span, "I found a mismatched ']' here, did you add one too many?");
-						expr->expr_kind = EXPR_POISONED;
-					}
-					return expr;
-				}
-				break;
-			case TOKEN_COMMA:
-				if (bracket == 0 && brace == 0 && paren == 0) return expr;
-				break;
-			case TOKEN_EOF:
-			case TOKEN_INVALID_TOKEN:
-				expr->expr_kind = EXPR_POISONED;
-				return expr;
-			default:
-				break;
-
-		}
-		expr->deferred_tokens = VECADD(expr->deferred_tokens, next_tok);
-		advance();
-	}
-}
 /**
  * Only call this if the first '(' has been detected.
  *
@@ -1535,7 +1448,6 @@ static inline Expr* parse_deferred_expression(void)
  */
 static inline bool parse_macro_parameter_list(Expr*** result)
 {
-	LOG_FUNC
     TODO
 	advance_and_verify(TOKEN_LPAREN);
 	*result = NULL;
@@ -1567,7 +1479,6 @@ static inline bool parse_macro_parameter_list(Expr*** result)
  */
 static inline bool parse_import()
 {
-	LOG_FUNC
 
 	advance_and_verify(TOKEN_IMPORT);
 
@@ -1620,7 +1531,6 @@ static Expr *parse_precedence(Precedence precedence)
 
 static inline Expr* parse_expr(void)
 {
-	LOG_FUNC
 
 	Token start = tok;
 	bool found_try = try_consume(TOKEN_TRY);
@@ -1654,7 +1564,6 @@ static inline Expr *parse_paren_expr(void)
  */
 static inline void parse_imports(void)
 {
-	LOG_FUNC
 
 	while (tok.type == TOKEN_IMPORT)
 	{
@@ -1677,8 +1586,6 @@ static inline Decl *parse_attribute_declaration(Visibility visibility)
  */
 static inline Decl *parse_const_declaration(Visibility visibility)
 {
-	LOG_FUNC
-
 	advance_and_verify(TOKEN_CONST);
 
 	Decl *decl = decl_new_var(tok, NULL, VARDECL_CONST, visibility);
@@ -1716,7 +1623,6 @@ static inline Decl *parse_const_declaration(Visibility visibility)
  */
 static inline Decl *parse_global_declaration(Visibility visibility)
 {
-	LOG_FUNC
 
 	Type *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 
@@ -1749,7 +1655,6 @@ static inline Decl *parse_global_declaration(Visibility visibility)
  */
 static inline bool parse_attributes(Decl *parent_decl)
 {
-	LOG_FUNC
 	parent_decl->attributes = NULL;
 	while (tok.type == TOKEN_AT_IDENT || (tok.type == TOKEN_IDENT && next_tok.type == TOKEN_SCOPE))
 	{
@@ -1812,7 +1717,6 @@ static inline bool parse_attributes(Decl *parent_decl)
  */
 bool parse_struct_body(Decl *parent, Decl *visible_parent)
 {
-	LOG_FUNC
 
 	CONSUME_OR(TOKEN_LBRACE, false);
 
@@ -2333,8 +2237,6 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
  */
 static inline Decl *parse_error_declaration(Visibility visibility)
 {
-	LOG_FUNC
-
 	advance_and_verify(TOKEN_ERROR_TYPE);
 
     Decl *error_decl = decl_new_user_defined_type(tok, DECL_ERROR, visibility);
@@ -2384,8 +2286,6 @@ static inline Decl *parse_error_declaration(Visibility visibility)
  */
 static inline Decl *parse_enum_declaration(Visibility visibility)
 {
-	LOG_FUNC
-
 	advance_and_verify(TOKEN_ENUM);
 
     Decl *decl = decl_new_user_defined_type(tok, DECL_ENUM, visibility);
@@ -2400,7 +2300,7 @@ static inline Decl *parse_enum_declaration(Visibility visibility)
 
 	CONSUME_OR(TOKEN_LBRACE, false);
 
-	decl->enums.type = type ? type : &type_int;
+	decl->enums.type = type ? type : type_int;
 	while (!try_consume(TOKEN_RBRACE))
 	{
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, tok, decl->visibility);
@@ -2435,20 +2335,6 @@ static inline Decl *parse_enum_declaration(Visibility visibility)
 }
 
 
-/**
- *
- */
-static inline void parse_macro_var(void)
-{
-	LOG_FUNC
-
-	advance_and_verify(TOKEN_CT_IDENT);
-	Token var_name = tok;
-
-	// TODO use the result
-	parse_deferred_expression();
-
-}
 
 
 static inline bool parse_conditional_top_level(Decl ***decls)
@@ -2472,7 +2358,6 @@ static inline bool parse_conditional_top_level(Decl ***decls)
 
 static inline Decl *parse_ct_if_top_level(void)
 {
-	LOG_FUNC
 	Decl *ct = decl_new(DECL_CT_IF, tok, VISIBLE_LOCAL);
 	advance_and_verify(TOKEN_CT_IF);
 	ct->ct_if_decl.expr = TRY_EXPR_OR(parse_paren_expr(), &poisoned_decl);
@@ -2519,8 +2404,6 @@ static inline Decl *parse_ct_if_top_level(void)
  */
 static inline Decl *parse_top_level(void)
 {
-	LOG_FUNC
-
 	Visibility visibility = VISIBLE_MODULE;
 	switch (tok.type)
 	{
@@ -2585,12 +2468,10 @@ static inline Decl *parse_top_level(void)
 
 void parse_current(void)
 {
-	LOG_FUNC
 	// Prime everything
 	advance(); advance();
 	parse_module();
 	parse_imports();
-	LOG_FUNC
 	while (tok.type != TOKEN_EOF)
 	{
 		Decl *decl = parse_top_level();
@@ -2607,7 +2488,6 @@ void parse_current(void)
 
 void parse_file(File *file)
 {
-	LOG_FUNC
 	lexer_add_file_for_lexing(file);
 	Context *context = context_create(file);
 	context_push(context);
@@ -2647,7 +2527,7 @@ static Expr *parse_unary_expr(Expr *left)
 	TokenType operator_type = tok.type;
 
 	Expr *unary = EXPR_NEW_TOKEN(EXPR_UNARY, tok);
-	unary->unary_expr.operator = unaryop_from_token(operator_type);
+	unary->unary_expr.operator = operator_type;
 	Precedence rule_precedence = rules[operator_type].precedence;
 	advance();
 	Expr *right_side = parse_precedence(rule_precedence);
@@ -2661,9 +2541,9 @@ static Expr *parse_unary_expr(Expr *left)
 static Expr *parse_post_unary(Expr *left)
 {
 	assert(expr_ok(left));
-	Expr *unary = EXPR_NEW_EXPR(EXPR_POST_UNARY, left);
+	Expr *unary = EXPR_NEW_TOKEN(EXPR_POST_UNARY, tok);
 	unary->post_expr.expr = left;
-	unary->post_expr.operator = unaryop_from_token(tok.type);
+	unary->post_expr.operator = tok.type;
 	advance();
 	return unary;
 }
@@ -2702,7 +2582,7 @@ static Expr *parse_binary(Expr *left_side)
 	}
 
 	Expr *expr = EXPR_NEW_EXPR(EXPR_BINARY, left_side);
-	expr->binary_expr.operator = binop_from_token(operator_type);
+	expr->binary_expr.operator = operator_type;
 	expr->binary_expr.left = left_side;
 	expr->binary_expr.right = right_side;
 	return expr;
@@ -2723,7 +2603,7 @@ static Expr *parse_call_expr(Expr *left)
 	}
 	Expr *call = EXPR_NEW_EXPR(EXPR_CALL, left);
 	call->call_expr.function = left;
-	call->call_expr.parameters = params;
+	call->call_expr.arguments = params;
 	return call;
 }
 
@@ -2759,7 +2639,7 @@ static Expr *parse_string_literal(Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST, tok);
 	expr_string->resolve_status = RESOLVE_DONE;
-	expr_string->type = &type_string;
+	expr_string->type = type_string;
 	advance_and_verify(TOKEN_STRING);
 
 	char *str = malloc_arena(tok.span.length + 1);
@@ -2781,7 +2661,7 @@ static Expr *parse_string_literal(Expr *left)
 	str[len] = '\0';
 	expr_string->const_expr.string.chars = str;
 	expr_string->const_expr.string.len = len;
-	expr_string->type = &type_string;
+	expr_string->type = type_string;
 	expr_string->const_expr.type = CONST_STRING;
 	return expr_string;
 }
@@ -2871,7 +2751,7 @@ static Expr *parse_integer(Expr *left)
 	}
 	expr_int->const_expr.i = i;
 	expr_int->const_expr.type = CONST_INT;
-	expr_int->type = i > INT64_MAX ? &type_compuint : &type_compint;
+	expr_int->type = i > INT64_MAX ? type_compuint : type_compint;
 	expr_int->resolve_status = RESOLVE_DONE;
 	advance();
 	return expr_int;
@@ -2892,7 +2772,7 @@ static Expr *parse_double(Expr *left)
 	}
 	advance();
 	number->const_expr.f = fval;
-	number->type = &type_compfloat;
+	number->type = type_compfloat;
 	number->const_expr.type = CONST_FLOAT;
 	number->resolve_status = RESOLVE_DONE;
 	return number;
@@ -2903,7 +2783,7 @@ static Expr *parse_bool(Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, tok);
 	number->const_expr = (ExprConst) { .b = tok.type == TOKEN_TRUE, .type = CONST_BOOL };
-	number->type = &type_bool;
+	number->type = type_bool;
 	number->resolve_status = RESOLVE_DONE;
 	advance();
 	return number;
@@ -2914,7 +2794,7 @@ static Expr *parse_nil(Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, tok);
 	number->const_expr.type = CONST_NIL;
-	number->type = type_get_canonical_ptr(&type_void);
+	number->type = type_get_canonical_ptr(type_void);
 	number->resolve_status = RESOLVE_DONE;
 	advance();
 	return number;

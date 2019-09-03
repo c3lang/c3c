@@ -18,6 +18,7 @@ void run_arena_allocator_tests(void);
 
 #define MALLOC(mem) malloc_arena(mem)
 #define MALLOCS(type) malloc_arena(sizeof(type))
+#define CALLOCS(type) ({ void *__x = malloc_arena(sizeof(type)); memset(__x, 0, sizeof(type)); __x; })
 
 static inline bool is_power_of_two(uint64_t x)
 {
@@ -213,7 +214,12 @@ static inline unsigned vec_size(const void*vec)
 	return vec ? (((_VHeader *)vec) - 1)->size : 0;
 }
 
-
+static inline void vec_pop(const void *vec)
+{
+	assert(vec);
+	assert(vec_size(vec) > 0);
+	(((_VHeader *)vec) - 1)->size--;
+}
 static inline void* _expand(void *vec, size_t element_size)
 {
 	if (vec == NULL)

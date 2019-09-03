@@ -17,7 +17,6 @@ typedef uint32_t SourceLoc;
 #define MAX_LOCALS 0xFFFF
 #define MAX_SCOPE_DEPTH 0xFF
 
-
 typedef struct _Ast Ast;
 typedef struct _Decl Decl;
 typedef struct _Type Type;
@@ -140,6 +139,7 @@ typedef struct
 
 typedef struct _VarDecl
 {
+	unsigned id : 16;
 	VarDeclKind kind : 3;
 	Type *type;
 	Expr *init_expr;
@@ -183,10 +183,16 @@ typedef struct
 
 typedef struct
 {
+	Decl **vars;
+} FuncAnnotations;
+
+typedef struct
+{
 	const char *full_name;
 	Type *struct_parent;
 	FunctionSignature function_signature;
-	struct _Ast *body;
+	Ast *body;
+	FuncAnnotations *annotations;
 } FuncDecl;
 
 typedef struct
@@ -283,7 +289,7 @@ typedef struct
 {
 	Expr *left;
 	Expr *right;
-	BinOp operator;
+	TokenType operator;
 } ExprBinary;
 
 typedef struct
@@ -296,7 +302,7 @@ typedef struct
 typedef struct
 {
 	Expr* expr;
-	UnaryOp operator;
+	TokenType operator;
 } ExprUnary;
 
 
@@ -320,7 +326,7 @@ typedef struct
 {
 	bool is_struct_function;
 	Expr *function;
-	Expr **parameters;
+	Expr **arguments;
 } ExprCall;
 
 typedef struct
@@ -448,17 +454,16 @@ typedef struct
 
 typedef struct
 {
-	Ast *init;
-	Expr *cond;
-	Expr *incr;
+	Ast *cond;
+	Ast *incr;
 	Ast *body;
 } AstForStmt;
 
 
 typedef struct
 {
-	Decl *decl;
-	Ast *decl_expr;
+	Ast **stmts;
+	Expr *expr;
 } AstCondStmt;
 
 
@@ -544,6 +549,7 @@ typedef struct _Ast
 		AstDeclExprList decl_expr_list;
 		AstGenericCaseStmt generic_case_stmt;
 		struct _Ast* generic_default_stmt;
+		Ast** stmt_list;
 	};
 } Ast;
 
@@ -565,15 +571,18 @@ typedef struct _Module
 	STable public_symbols;
 } Module;
 
+
 typedef struct _DynamicScope
 {
-	int flags;
-	int flags_created;
+	ScopeFlags flags;
+	ScopeFlags flags_created;
 	unsigned errors;
 	Decl **local_decl_start;
 	Ast *defer_stack_start;
 	Ast *active_defer;
+	ExitType exit;
 } DynamicScope;
+
 
 typedef struct _Context
 {
@@ -591,6 +600,10 @@ typedef struct _Context
 	Decl **last_local;
 	DynamicScope scopes[MAX_SCOPE_DEPTH];
 	DynamicScope *current_scope;
+	int unique_index;
+	Decl *evaluating_macro;
+	Type *rtype;
+	int in_volatile_section;
 } Context;
 
 extern Context *current_context;
@@ -604,18 +617,25 @@ extern Module poisoned_module;
 extern Token next_tok;
 extern Token tok;
 
-extern Type type_bool, type_void, type_string;
-extern Type type_half, type_float, type_double, type_quad;
-extern Type type_char, type_short, type_int, type_long, type_isize;
-extern Type type_byte, type_ushort, type_uint, type_ulong, type_usize;
-extern Type type_compint, type_compuint, type_compfloat;
-extern Type type_c_short, type_c_int, type_c_long, type_c_longlong;
-extern Type type_c_ushort, type_c_uint, type_c_ulong, type_c_ulonglong;
+extern Type *type_bool, *type_void, *type_string;
+extern Type *type_float, *type_double;
+extern Type *type_char, *type_short, *type_int, *type_long, *type_isize;
+extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
+extern Type *type_compint, *type_compuint, *type_compfloat;
+extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
+extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
+
+extern Type t_i8, t_i16, t_i32, t_i64, t_isz, t_ixx;
+extern Type t_u1, t_u8, t_u16, t_u32, t_u64, t_usz, t_uxx;
+extern Type t_f32, t_f64, t_fxx;
+extern Type t_u0, t_str;
+extern Type t_cus, t_cui, t_cul, t_cull;
+extern Type t_cs, t_ci, t_cl, t_cll;
 
 #define AST_NEW(_kind, _token) new_ast(_kind, _token)
 
 static inline bool ast_ok(Ast *ast) { return ast == NULL || ast->ast_kind != AST_POISONED; }
-static inline void ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; }
+static inline bool ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; return false; }
 static inline Ast *new_ast(AstKind kind, Token token)
 {
 	Ast *ast = malloc_arena(sizeof(Ast));
@@ -677,13 +697,13 @@ static inline ConstType sign_from_type(Type *type)
 }
 
 bool cast(Expr *expr, Type *to_type, CastType cast_type);
+bool cast_arithmetic(Expr *expr, Expr *other, const char *action);
+bool cast_to_runtime(Expr *expr);
 
 
 void codegen(Context *context);
 
-
-
-
+bool sema_expr_analysis(Context *context, Expr *expr);
 
 Context *context_create(File *file);
 void context_push(Context *context);
@@ -692,6 +712,7 @@ bool context_add_import(Context *context, Token module_name, Token alias, Import
 bool context_set_module_from_filename(Context *context);
 bool context_set_module(Context *context, Token module_name, Token *generic_parameters);
 void context_print_ast(Context *context, FILE *file);
+Decl *context_find_ident(Context *context, const char *symbol);
 
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility);
 Decl *decl_new_user_defined_type(Token name, DeclKind decl_type, Visibility visibility);
@@ -709,12 +730,17 @@ void diag_reset(void);
 void diag_error_range(SourceRange span, const char *message, ...);
 void diag_verror_range(SourceRange span, const char *message, va_list args);
 
-
 #define EXPR_NEW_EXPR(_kind, _expr) expr_new(_kind, _expr->loc)
 #define EXPR_NEW_TOKEN(_kind, _tok) expr_new(_kind, _tok)
 Expr *expr_new(ExprKind kind, Token start);
 static inline bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
-static inline void expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; }
+static inline bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
+static inline void expr_replace(Expr *expr, Expr *replacement)
+{
+	Token loc = expr->loc;
+	*expr = *replacement;
+	expr->loc = loc;
+}
 
 void fprint_ast(FILE *file, Ast *ast);
 void fprint_decl(FILE *file, Decl *dec);
@@ -748,12 +774,16 @@ static inline void advance_and_verify(TokenType token_type)
 	advance();
 }
 
+Decl *module_find_symbol(Module *module, const char *symbol);
+
 void parse_file(File *file);
 
 #define SEMA_ERROR(_tok, ...) sema_error_range(_tok.span, __VA_ARGS__)
 void sema_init(File *file);
 void sema_analysis(Context *context);
-bool sema_const_fold_binary(Context *context, Expr *expr);
+
+bool sema_analyse_statement(Context *context, Ast *statement);
+bool sema_resolve_type(Context *context, Type *type);
 void sema_error_at(SourceLoc loc, const char *message, ...);
 void sema_error_range(SourceRange range, const char *message, ...);
 void sema_verror_at(SourceLoc loc, const char *message, va_list args);
@@ -761,7 +791,6 @@ void sema_verror_range(SourceRange range, const char *message, va_list args);
 void sema_error(const char *message, ...);
 void sema_prev_at_range(SourceRange span, const char *message, ...);
 void sema_prev_at(SourceLoc loc, const char *message, ...);
-
 
 File *source_file_load(const char *filename, bool *already_loaded);
 File *source_file_from_position(SourceLoc loc);
@@ -797,14 +826,23 @@ static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I
 static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_UXX; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline void type_poison(Type *type) { type->type_kind = TYPE_POISONED; type->resolve_status = RESOLVE_DONE; }
+static inline bool type_is_integer(Type *type)
+{
+	assert(type == type->canonical);
+	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_UXX;
+}
+
+static inline bool type_is_number(Type *type)
+{
+	assert(type == type->canonical);
+	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_FXX;
+}
 
 #define TYPE_MODULE_UNRESOLVED(_module, _name) ({ Type *__type = type_new(TYPE_USER_DEFINED); \
  __type->name_loc = _name; __type->unresolved.module = _module; __type; })
 #define TYPE_UNRESOLVED(_name) ({ Type *__type = type_new(TYPE_USER_DEFINED); __type->name_loc = _name; __type; })
 
 AssignOp assignop_from_token(TokenType type);
-BinOp binop_from_token(TokenType type);
-TokenType binop_to_token(BinOp type);
 UnaryOp unaryop_from_token(TokenType type);
 Decl *struct_find_name(Decl *decl, const char* name);
 

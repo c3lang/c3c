@@ -4,24 +4,31 @@
 
 #include "compiler_internal.h"
 
-Type type_bool;
-Type type_void, type_string;
+Type *type_bool, *type_void, *type_string;
+Type *type_float, *type_double;
+Type *type_char, *type_short, *type_int, *type_long, *type_isize;
+Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
+Type *type_compint, *type_compuint, *type_compfloat;
+Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
+Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
 
-Type type_half, type_float, type_double, type_quad;
-Type type_char, type_short, type_int, type_long, type_isize;
-Type type_byte, type_ushort, type_uint, type_ulong, type_usize;
-Type type_compint, type_compuint, type_compfloat;
-Type type_c_short, type_c_int, type_c_long, type_c_longlong;
-Type type_c_ushort, type_c_uint, type_c_ulong, type_c_ulonglong;
+Type t_u0, t_str;
+Type t_u1, t_i8, t_i16, t_i32, t_i64, t_ixx;
+Type t_u8, t_u16, t_u32, t_u64, t_uxx;
+Type t_f32, t_f64, t_fxx;
+Type t_usz, t_isz;
+Type t_cus, t_cui, t_cul, t_cull;
+Type t_cs, t_ci, t_cl, t_cll;
+
 
 Type *type_signed_int_by_size(int bitsize)
 {
 	switch (bitsize)
 	{
-		case 1: return &type_char;
-		case 2: return &type_short;
-		case 4: return &type_int;
-		case 8: return &type_long;
+		case 1: return type_char;
+		case 2: return type_short;
+		case 4: return type_int;
+		case 8: return type_long;
 		default: FATAL_ERROR("Illegal bitsize %d", bitsize);
 	}
 }
@@ -29,10 +36,10 @@ Type *type_unsigned_int_by_size(int bitsize)
 {
 	switch (bitsize)
 	{
-		case 1: return &type_byte;
-		case 2: return &type_ushort;
-		case 4: return &type_uint;
-		case 8: return &type_ulong;
+		case 1: return type_byte;
+		case 2: return type_ushort;
+		case 4: return type_uint;
+		case 8: return type_ulong;
 		default: FATAL_ERROR("Illegal bitsize %d", bitsize);
 	}
 }
@@ -77,7 +84,7 @@ size_t type_size(Type *canonical)
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
 		case TYPE_STRING:
-			return type_isize.canonical->builtin.bytesize;
+			return t_usz.canonical->builtin.bytesize;
 		case TYPE_ARRAY:
 			return type_size(canonical->base) * canonical->len;
 	}
@@ -156,69 +163,71 @@ Type *type_get_canonical_array(Type *arr_type)
 	return canonical;
 }
 
-static void create_type(const char *name, Type *location, TypeKind kind, unsigned bytesize, unsigned bitsize)
+static void create_type(const char *name, Type *location, Type **ptr, TypeKind kind, unsigned bytesize, unsigned bitsize)
 {
 	*location = (Type) { .type_kind = kind, .resolve_status = RESOLVE_DONE, .builtin.bytesize = bytesize, .builtin.bitsize = bitsize };
 	location->name_loc.string = name;
 	location->name_loc.span.length = strlen(name);
 	location->canonical = location;
+	*ptr = location;
 }
 
-static void type_create_alias(const char *name, Type *location, Type *canonical)
+static void type_create_alias(const char *name, Type *location, Type **ptr, Type *canonical)
 {
 	*location = (Type) { .type_kind = TYPE_USER_DEFINED, .resolve_status = RESOLVE_DONE };
 	location->name_loc.string = name;
 	location->name_loc.span.length = strlen(name);
 	location->canonical = canonical;
+	*ptr = location;
 }
 
 
 void builtin_setup()
 {
-	create_type("void", &type_void, TYPE_VOID, 1, 8);
+	create_type("void", &t_u0, &type_void, TYPE_VOID, 1, 8);
+	create_type("string", &t_str, &type_string, TYPE_STRING, build_options.pointer_size, build_options.pointer_size * 8);
 
 	/*TODO
  * decl_string = (Decl) { .decl_kind = DECL_BUILTIN, .name.string = "string" };
 	create_type(&decl_string, &type_string);
 	type_string.type_kind = TYPE_STRING;
 */
-#define DEF_TYPE(_name, _type, _bits) \
-create_type(#_name, &type_ ## _name, _type, (_bits + 7) / 8, _bits);
+#define DEF_TYPE(_name, _shortname, _type, _bits) \
+create_type(#_name, &_shortname, &type_ ## _name, _type, (_bits + 7) / 8, _bits);
 
-	DEF_TYPE(compint, TYPE_IXX, 64);
-	DEF_TYPE(compuint, TYPE_UXX, 64);
-	DEF_TYPE(compfloat, TYPE_FXX, 64);
-	DEF_TYPE(bool, TYPE_BOOL, 1);
+	DEF_TYPE(compint, t_ixx, TYPE_IXX, 64);
+	DEF_TYPE(compuint, t_uxx, TYPE_UXX, 64);
+	DEF_TYPE(compfloat, t_fxx, TYPE_FXX, 64);
+	DEF_TYPE(bool, t_u1, TYPE_BOOL, 1);
 
-//	DEF_TYPE(half, 2, 16, NUMBER_TYPE_FLOAT, "half", T_F16);
-	DEF_TYPE(float, TYPE_F32, 32);
-	DEF_TYPE(double, TYPE_F64, 64);
-//  DEF_TYPE(quad, 16, 128, NUMBER_TYPE_FLOAT, "long double", T_F128);
+	DEF_TYPE(float, t_f32, TYPE_F32, 32);
+	DEF_TYPE(double, t_f64, TYPE_F64, 64);
 
-	DEF_TYPE(char, TYPE_I8, 8);
-	DEF_TYPE(short, TYPE_I16, 16);
-	DEF_TYPE(int, TYPE_I32, 32);
-	DEF_TYPE(long, TYPE_I64, 64);
+	DEF_TYPE(char, t_i8, TYPE_I8, 8);
+	DEF_TYPE(short, t_i16, TYPE_I16, 16);
+	DEF_TYPE(int, t_i32, TYPE_I32, 32);
+	DEF_TYPE(long, t_i64, TYPE_I64, 64);
 
-	DEF_TYPE(byte, TYPE_U8, 8);
-	DEF_TYPE(ushort, TYPE_U16, 16);
-	DEF_TYPE(uint, TYPE_U32, 32);
-	DEF_TYPE(ulong, TYPE_U64, 64);
+	DEF_TYPE(byte, t_u8, TYPE_U8, 8);
+	DEF_TYPE(ushort, t_u16, TYPE_U16, 16);
+	DEF_TYPE(uint, t_u32, TYPE_U32, 32);
+	DEF_TYPE(ulong, t_u64, TYPE_U64, 64);
 
-	type_create_alias("usize", &type_usize, type_unsigned_int_by_size(build_options.pointer_size));
-	type_create_alias("isize", &type_isize, type_signed_int_by_size(build_options.pointer_size));
+	type_create_alias("usize", &t_usz, &type_usize, type_unsigned_int_by_size(build_options.pointer_size));
+	type_create_alias("isize", &t_isz, &type_isize, type_signed_int_by_size(build_options.pointer_size));
 
-	type_create_alias("c_ushort", &type_c_ushort, type_unsigned_int_by_size(build_options.cshort_size));
-	type_create_alias("c_uint", &type_c_uint, type_unsigned_int_by_size(build_options.cint_size));
-	type_create_alias("c_ulong", &type_c_ulong, type_unsigned_int_by_size(build_options.clong_size));
-	type_create_alias("c_ulonglong", &type_c_ulonglong, type_unsigned_int_by_size(build_options.clonglong_size));
+	type_create_alias("c_ushort", &t_cus, &type_c_ushort, type_unsigned_int_by_size(build_options.cshort_size));
+	type_create_alias("c_uint", &t_cui, &type_c_uint, type_unsigned_int_by_size(build_options.cint_size));
+	type_create_alias("c_ulong", &t_cul, &type_c_ulong, type_unsigned_int_by_size(build_options.clong_size));
+	type_create_alias("c_ulonglong", &t_cull, &type_c_ulonglong, type_unsigned_int_by_size(build_options.clonglong_size));
 
-	type_create_alias("c_short", &type_c_short, type_signed_int_by_size(build_options.cshort_size));
-	type_create_alias("c_int", &type_c_int, type_signed_int_by_size(build_options.cint_size));
-	type_create_alias("c_long", &type_c_long, type_signed_int_by_size(build_options.clong_size));
-	type_create_alias("c_longlong", &type_c_longlong, type_signed_int_by_size(build_options.clonglong_size));
+	type_create_alias("c_short", &t_cs, &type_c_short, type_signed_int_by_size(build_options.cshort_size));
+	type_create_alias("c_int", &t_ci, &type_c_int, type_signed_int_by_size(build_options.cint_size));
+	type_create_alias("c_long", &t_cl, &type_c_long, type_signed_int_by_size(build_options.clong_size));
+	type_create_alias("c_longlong", &t_cll, &type_c_longlong, type_signed_int_by_size(build_options.clonglong_size));
 
 
 #undef DEF_TYPE
 
 }
+

@@ -13,6 +13,7 @@ static inline void insert_cast(Expr *expr, CastKind kind, Type *type)
 	*inner = *expr;
 	expr->expr_kind = EXPR_CAST;
 	expr->expr_cast.kind = kind;
+	expr->expr_cast.expr = inner;
 	expr->type = type;
 }
 
@@ -33,7 +34,7 @@ static bool sema_type_mismatch(Expr *expr, Type *type, CastType cast_type)
 			break;
 
 	}
-	SEMA_ERROR(expr->loc, "Cannot %s '%s' to '%s'", action, type->name_loc.string, expr->type->name_loc.string);
+	SEMA_ERROR(expr->loc, "Cannot %s '%s' to '%s'", action, expr->type->name_loc.string, type->name_loc.string);
 	return false;
 }
 
@@ -80,7 +81,7 @@ static inline bool may_implicitly_cast_ptr_to_ptr(Type *current_type, Type *targ
 
 	// Neither is void* or have matching bases:
 	// TODO recursively check for ?* or?
-	if (target_type->base != &type_void && current_type->base != &type_void && target_type->base != current_type->base) return false;
+	if (target_type->base != type_void && current_type->base != type_void && target_type->base != current_type->base) return false;
 
 	// Current is not null, or target is nullable? Ok!
 	return target_type->nullable || !current_type->nullable;
@@ -240,7 +241,7 @@ static int64_t int_type_min[4] = { INT8_MIN, INT16_MIN, INT32_MIN, INT64_MIN };
 bool sisi(Expr* left, Type *canonical, Type *type, CastType cast_type)
 {
 	Type *left_canonical = left->type->canonical;
-	bool is_narrowing = left->type->builtin.bytesize < canonical->builtin.bytesize && left_canonical->type_kind != TYPE_IXX;
+	bool is_narrowing = left_canonical->builtin.bytesize > canonical->builtin.bytesize && left_canonical->type_kind != TYPE_IXX;
 
 	if (is_narrowing && (cast_type != CAST_TYPE_IMPLICIT_ASSIGN_ADD && cast_type != CAST_TYPE_EXPLICIT)) EXIT_T_MISMATCH();
 	if (left->expr_kind == EXPR_CONST)
@@ -313,7 +314,7 @@ bool sifp(Expr* left, Type *canonical, Type *type, CastType cast_type)
 	if (left->expr_kind == EXPR_CONST)
 	{
 		assert(left->const_expr.type == CONST_INT);
-		assert(canonical->type_kind >= TYPE_F32 && canonical->type_kind <= TYPE_F64);
+		assert(canonical->type_kind >= TYPE_F32 && canonical->type_kind <= TYPE_FXX);
 		if (left->const_expr.i > (uint64_t)INT64_MAX)
 		{
 			left->const_expr.f = -((long double)(~left->const_expr.i));
@@ -322,6 +323,7 @@ bool sifp(Expr* left, Type *canonical, Type *type, CastType cast_type)
 		{
 			left->const_expr.f = left->const_expr.i;
 		}
+		left->const_expr.type = CONST_FLOAT;
 		left->type = type;
 		return true;
 	}
@@ -460,15 +462,15 @@ CastFunc BUILTIN_CONVERSION[19][19] = {
 	{ &xibo, &sisi, &erro, &sisi, &sisi, &erro, &siui, &siui, &siui, &siui, &erro, &sifp, &sifp, &erro, &sius, &erro, &erro, &erro, &erro }, // short
 	{ &xibo, &sisi, &sisi, &erro, &sisi, &erro, &siui, &siui, &siui, &siui, &erro, &sifp, &sifp, &erro, &sius, &xipt, &erro, &erro, &erro }, // int
 	{ &xibo, &sisi, &sisi, &sisi, &erro, &erro, &siui, &siui, &siui, &siui, &erro, &sifp, &sifp, &erro, &sius, &xipt, &erro, &erro, &erro }, // long
-	{ &xibo, &sisi, &sisi, &sisi, &sisi, &erro, &siui, &siui, &siui, &siui, &erro, &sifp, &sifp, &erro, &sius, &xipt, &erro, &erro, &erro }, // cint
+	{ &xibo, &sisi, &sisi, &sisi, &sisi, &erro, &siui, &siui, &siui, &siui, &erro, &sifp, &sifp, &sifp, &sius, &xipt, &erro, &erro, &erro }, // ixx
 	{ &xibo, &uisi, &uisi, &uisi, &uisi, &erro, &erro, &uiui, &uiui, &uiui, &erro, &uifp, &uifp, &erro, &uius, &xipt, &erro, &erro, &erro }, // byte
 	{ &xibo, &uisi, &uisi, &uisi, &uisi, &erro, &uiui, &erro, &uiui, &uiui, &erro, &uifp, &uifp, &erro, &uius, &xipt, &erro, &erro, &erro }, // ushort
 	{ &xibo, &uisi, &uisi, &uisi, &uisi, &erro, &uiui, &uiui, &erro, &uiui, &erro, &uifp, &uifp, &erro, &uius, &xipt, &erro, &erro, &erro }, // uint
 	{ &xibo, &uisi, &uisi, &uisi, &uisi, &erro, &uiui, &uiui, &uiui, &erro, &erro, &uifp, &uifp, &erro, &uius, &xipt, &erro, &erro, &erro }, // ulong
-	{ &xibo, &uisi, &uisi, &uisi, &uisi, &erro, &uiui, &uiui, &uiui, &uiui, &erro, &uifp, &uifp, &erro, &uius, &xipt, &erro, &erro, &erro }, // cuint
+	{ &xibo, &uisi, &uisi, &uisi, &uisi, &erro, &uiui, &uiui, &uiui, &uiui, &erro, &uifp, &uifp, &uifp, &uius, &xipt, &erro, &erro, &erro }, // uxx
 	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &erro, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro }, // float
 	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro, &erro }, // double
-	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro }, // cfloat
+	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro }, // fxx
 	{ &usbo, &ussi, &ussi, &ussi, &ussi, &erro, &usui, &usui, &usui, &usui, &erro, &erro, &erro, &erro, &usus, &erro, &erro, &erro, &erro }, // user
 	{ &ptbo, &ptxi, &ptxi, &ptxi, &ptxi, &erro, &ptxi, &ptxi, &ptxi, &ptxi, &erro, &erro, &erro, &erro, &erro, &ptpt, &ptst, &erro, &ptva }, // ptr
 	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro, &erro }, // str
@@ -476,31 +478,80 @@ CastFunc BUILTIN_CONVERSION[19][19] = {
 	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro, &erro }, // varr
 };
 
+Type t_cpy = { .name_loc.string = "cpy" };
+Type t_err = { .name_loc.string = "err" };
+
+Type *ARITHMETIC_PROMOTION[19][19] = {
+//other   bool,   char,   short,  int,    long,   ctint,  byte,   ushort,    int,  ulong, ctuint, float,  double, ctreal, user,   ptr,    str,  arr,      varr    // from:
+		{ &t_u1,  &t_i8,  &t_i16, &t_i32, &t_i64, &t_u1,  &t_u8,  &t_u16, &t_u32, &t_u64, &t_u1,  &t_f32, &t_f64, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err }, // bool
+		{ &t_i8,  &t_i8,  &t_i16, &t_i32, &t_i64, &t_i8,  &t_i8,  &t_i16, &t_i32, &t_i64, &t_i8,  &t_f32, &t_f64, &t_err, &t_err, &t_isz, &t_err, &t_err, &t_err }, // char
+		{ &t_i16, &t_i16, &t_i16, &t_i32, &t_i64, &t_i16, &t_i16, &t_i16, &t_i32, &t_i64, &t_i16, &t_f32, &t_f64, &t_err, &t_err, &t_isz, &t_err, &t_err, &t_err }, // short
+		{ &t_i32, &t_i32, &t_i32, &t_i32, &t_i64, &t_i32, &t_i32, &t_i32, &t_i32, &t_i64, &t_i32, &t_f32, &t_f64, &t_err, &t_err, &t_isz, &t_err, &t_err, &t_err }, // int
+		{ &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_f32, &t_f64, &t_err, &t_err, &t_isz, &t_err, &t_err, &t_err }, // long
+		{ &t_u1,  &t_i8,  &t_i16, &t_i32, &t_i64, &t_ixx, &t_i8,  &t_i16, &t_i32, &t_i64, &t_ixx, &t_f32, &t_f64, &t_fxx, &t_err, &t_isz, &t_err, &t_err, &t_err }, // ixx
+		{ &t_u8,  &t_i8,  &t_i16, &t_i32, &t_i64, &t_uxx, &t_u8,  &t_u16, &t_u32, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // byte
+		{ &t_u16, &t_i16, &t_i16, &t_i32, &t_i64, &t_uxx, &t_u16, &t_u16, &t_u32, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // ushort
+		{ &t_u32, &t_i32, &t_i32, &t_i32, &t_i64, &t_uxx, &t_u32, &t_u32, &t_u32, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // uint
+		{ &t_u64, &t_i64, &t_i64, &t_i64, &t_i64, &t_uxx, &t_u64, &t_u64, &t_u64, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // ulong
+		{ &t_u1,  &t_i8,  &t_i16, &t_i32, &t_i64, &t_uxx, &t_u8,  &t_u16, &t_u32, &t_u64, &t_uxx, &t_f32, &t_f64, &t_fxx, &t_err, &t_usz, &t_err, &t_err, &t_err }, // uxx
+		{ &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f64, &t_f32, &t_err, &t_err, &t_err, &t_err, &t_err }, // float
+		{ &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_err, &t_err, &t_err, &t_err, &t_err }, // double
+		{ &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_f32, &t_f64, &t_fxx, &t_err, &t_err, &t_err, &t_err, &t_err }, // fxx
+		{ &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err }, // user
+		{ &t_err, &t_cpy, &t_cpy, &t_cpy, &t_cpy, &t_cpy, &t_cpy, &t_cpy, &t_cpy, &t_cpy, &t_cpy, &t_cpy, &t_err, &t_err, &t_err, &t_cpy, &t_err, &t_err, &t_err }, // ptr
+		{ &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err }, // str
+		{ &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err }, // arr
+		{ &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err, &t_err }, // varr
+};
+
 static inline bool cannot_convert(TypeKind type_kind)
 {
 	return type_kind <= TYPE_VOID || type_kind >= TYPE_INC_ARRAY;
+}
+
+bool cast_arithmetic(Expr *expr, Expr *other, const char *action)
+{
+	Type *canonical = expr->type->canonical;
+	Type *canonical_to = other->type->canonical;
+	if (cannot_convert(canonical->type_kind) || cannot_convert(canonical_to->type_kind)) goto ERR;
+	Type *preferred_type = ARITHMETIC_PROMOTION[canonical->type_kind - TYPE_BOOL][canonical_to->type_kind - TYPE_BOOL];
+	if (preferred_type == &t_err) goto ERR;
+	if (preferred_type == &t_cpy || preferred_type == canonical) return true;
+	return cast(expr, preferred_type, CAST_TYPE_IMPLICIT);
+
+	ERR:
+	SEMA_ERROR(expr->loc, "Cannot upcast to resolve '%s' %s '%s'", expr->type->name_loc.string, action, other->type->name_loc.string);
+	return false;
+
+}
+
+bool cast_to_runtime(Expr *expr)
+{
+	Type *canonical = expr->type->canonical;
+	switch (canonical->type_kind)
+	{
+		case TYPE_IXX:
+			return cast(expr, type_long, CAST_TYPE_IMPLICIT);
+		case TYPE_UXX:
+			return cast(expr, type_ulong, CAST_TYPE_IMPLICIT);
+		case TYPE_FXX:
+			return cast(expr, type_double, CAST_TYPE_IMPLICIT);
+		default:
+			return true;
+	}
 }
 
 bool cast(Expr *expr, Type *to_type, CastType cast_type)
 {
 	Type *from_type = expr->type->canonical;
 	Type *canonical = to_type->canonical;
+	if (from_type == canonical) return true;
 	TypeKind from_kind = from_type->type_kind;
 	TypeKind to_kind = canonical->type_kind;
 
 	if (cannot_convert(from_kind) || cannot_convert(to_kind))
 	{
-		switch (cast_type)
-		{
-			case CAST_TYPE_EXPLICIT:
-			case CAST_TYPE_IMPLICIT:
-				SEMA_ERROR(expr->loc, "Cannot convert '%s' to '%s'", expr->type->name_loc.start, to_type->name_loc.start);
-				break;
-			case CAST_TYPE_IMPLICIT_ASSIGN:
-			case CAST_TYPE_IMPLICIT_ASSIGN_ADD:
-				SEMA_ERROR(expr->loc, "Cannot assign '%s' to '%s'", expr->type->name_loc.start, to_type->name_loc.start);
-				break;
-		}
+		sema_type_mismatch(expr, to_type, cast_type);
 		return false;
 	}
 	CastFunc func = BUILTIN_CONVERSION[from_type->type_kind - TYPE_BOOL][to_type->type_kind - TYPE_BOOL];
