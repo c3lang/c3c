@@ -64,7 +64,12 @@ typedef enum
 	ATTR_UNRESOLVED,
 } AttrKind;
 
-
+typedef enum
+{
+	CASE_VALUE_INT,
+	CASE_VALUE_UINT,
+	CASE_VALUE_DEFAULT
+} CaseValueType;
 
 typedef enum
 {
@@ -134,11 +139,6 @@ typedef enum
 	CONST_STRING,
 } ConstType;
 
-typedef enum
-{
-	DECLEXPR_DECL,
-	DECLEXPR_EXPR,
-} DeclExprType;
 
 typedef enum
 {
@@ -248,6 +248,7 @@ typedef enum
 	SCOPE_BREAK = 1 << 0,
 	SCOPE_CONTINUE = 1 << 1,
 	SCOPE_CONTROL = 1 << 2,
+	SCOPE_NEXT = 1 << 3,
 } ScopeFlags;
 
 typedef enum

@@ -44,6 +44,57 @@ Type *type_unsigned_int_by_size(int bitsize)
 	}
 }
 
+const char *type_to_error_string(Type *type)
+{
+	char *buffer = NULL;
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+			return "poisoned";
+		case TYPE_USER_DEFINED:
+			return type->name_loc.string;
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+		case TYPE_IXX:
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+		case TYPE_UXX:
+		case TYPE_F32:
+		case TYPE_F64:
+		case TYPE_FXX:
+			return type->name_loc.string;
+		case TYPE_POINTER:
+			asprintf(&buffer, "%s%s", type_to_error_string(type->base), type->nullable ? "*" : "?");
+			return buffer;
+		case TYPE_STRING:
+			return "string";
+		case TYPE_ARRAY:
+			if (type->resolve_status == RESOLVE_DONE)
+			{
+				asprintf(&buffer, "%s[%zu]", type_to_error_string(type->base), type->len);
+			}
+			else
+			{
+				asprintf(&buffer, "%s[]", type_to_error_string(type->base));
+			}
+			return buffer;
+		case TYPE_VARARRAY:
+			asprintf(&buffer, "%s[]", type_to_error_string(type->base));
+			return buffer;
+		case TYPE_INC_ARRAY:
+			asprintf(&buffer, "%s[+]", type_to_error_string(type->base));
+			return buffer;
+		case TYPE_EXPRESSION:
+			return "type(...)";
+	}
+}
+
 Type *type_new(TypeKind type_kind)
 {
 	Type *type = malloc_arena(sizeof(Type));
@@ -116,6 +167,8 @@ Type *type_get_canonical_ptr(Type *ptr_type)
 		canonical_ptr = malloc_arena(sizeof(Type));
 		*canonical_ptr = *ptr_type;
 		canonical_ptr->base = canonical_base;
+		canonical_ptr->canonical = canonical_ptr;
+		canonical_ptr->resolve_status = RESOLVE_DONE;
 		canonical_base->ptr_like_canonical[(int)ptr_type->nullable] = canonical_ptr;
 		canonical_base->resolve_status = RESOLVE_DONE;
 	}
@@ -230,4 +283,28 @@ create_type(#_name, &_shortname, &type_ ## _name, _type, (_bits + 7) / 8, _bits)
 #undef DEF_TYPE
 
 }
+
+/**
+ * Check if a type is contained in another type.
+ *
+ * @param type canonical type
+ * @param possible_subtype canonical type
+ * @return true if it is a subtype
+ */
+bool type_is_subtype(Type *type, Type *possible_subtype)
+{
+	assert(type == type->canonical && possible_subtype == possible_subtype->canonical);
+	if (type == possible_subtype) return true;
+	if (type->type_kind != possible_subtype->type_kind) return false;
+	if (type->type_kind != TYPE_USER_DEFINED || type->decl->decl_kind != DECL_STRUCT) return false;
+
+	if (!possible_subtype->decl->strukt.members) return false;
+
+	Decl *first_element = possible_subtype->decl->strukt.members[0];
+
+	if (first_element->decl_kind != DECL_VAR) return false;
+
+	return type_is_subtype(type, first_element->var.type->canonical);
+}
+
 

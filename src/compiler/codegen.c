@@ -68,7 +68,7 @@ static void print_typename(FILE *file, Type *type)
 			fprintf(file, "uint16_t");
 			break;
 		case TYPE_U32:
-			fprintf(file, "int32_t");
+			fprintf(file, "uint32_t");
 			break;
 		case TYPE_U64:
 			fprintf(file, "uint64_t");
@@ -119,19 +119,14 @@ static inline void codegen_compound_stmt(Context *context, Ast *ast, int indent)
 	PRINTF("}\n");
 }
 
-static inline void codegen_emit_cast(Context *context, Type *canonical)
-{
-	assert(canonical == canonical->canonical);
-	PRINTF("(");
-	TODO
-}
 
 static inline int codegen_emit_call_expr(Context *context, Expr *expr, int indent)
 {
 	// TODO properly
 	INDENT();
 	PRINTTYPE(expr->type);
-	PRINTF(" _%d = %s();\n", ++context->unique_index, expr->call_expr.function->identifier_expr.decl->name.string);
+	Decl *func = expr->call_expr.function->identifier_expr.decl;
+	PRINTF(" _%d = %s__%s();\n", ++context->unique_index, func->module->name, func->name.string);
 	return context->unique_index;
 }
 
@@ -243,7 +238,7 @@ static int codegen_emit_assign_expr(Context *context, Expr *expr, int indent)
 	if (expr->binary_expr.left->expr_kind == EXPR_IDENTIFIER)
 	{
 		INDENT();
-		PRINTF("%s = _%d;\n", left->identifier_expr.identifier.string, index);
+		PRINTF("_%d_%s = _%d;\n", left->identifier_expr.decl->var.id, left->identifier_expr.identifier.string, index);
 		return index;
 	}
 	else
@@ -294,6 +289,93 @@ static int codegen_emit_binary_expr(Context *context, Expr *expr, int indent)
 			UNREACHABLE
 	}
 }
+
+static int codegen_emit_post_unary_expr(Context *context, Expr *expr, int indent)
+{
+	int index = ++context->unique_index;
+	int index2;
+	Expr *inner = expr->post_expr.expr;
+	switch (expr->post_expr.operator)
+	{
+		case TOKEN_PLUSPLUS:
+		case TOKEN_MINUSMINUS:
+			INDENT();
+			PRINTTYPE(expr->type);
+			if (inner->expr_kind == EXPR_IDENTIFIER)
+			{
+
+				PRINTF(" _%d = _%d_%s%s;\n", index, inner->identifier_expr.decl->var.id, inner->identifier_expr.decl->name.string, token_type_to_string(expr->post_expr.operator));
+				return index;
+			}
+			else
+			{
+				assert(inner->expr_kind == EXPR_UNARY && inner->unary_expr.operator == TOKEN_STAR);
+				index2 = codegen_emit_expr(context, inner->unary_expr.expr, indent);
+				PRINTF(" _%d = (*_%d)%s;\n", index, index2, token_type_to_string(expr->post_expr.operator));
+				return index;
+			}
+		default:
+			UNREACHABLE
+	}
+}
+
+static void codegen_print_ltype(Context *context, Expr *expr, int indent)
+{
+
+}
+static int codegen_emit_unary_expr(Context *context, Expr *expr, int indent)
+{
+	int index = ++context->unique_index;
+	int index2;
+	Expr *inner = expr->unary_expr.expr;
+	switch (expr->unary_expr.operator)
+	{
+		case TOKEN_MINUS:
+		case TOKEN_NOT:
+			index2 = codegen_emit_expr(context, inner, indent);
+			INDENT();
+			PRINTTYPE(expr->type);
+			PRINTF(" _%d = %s_%d;\n", index, token_type_to_string(expr->unary_expr.operator), index2);
+			return index;
+		case TOKEN_BIT_NOT:
+			index2 = codegen_emit_expr(context, inner, indent);
+			INDENT();
+			PRINTTYPE(expr->type);
+			PRINTF(" _%d = (", index);
+			PRINTTYPE(expr->type);
+			PRINTF(")~((");
+			PRINTTYPE(type_unsigned_int_by_size(inner->type->canonical->builtin.bytesize));
+			PRINTF(")_%d);\n", index2);
+			return index;
+		case TOKEN_PLUSPLUS:
+		case TOKEN_MINUSMINUS:
+		case TOKEN_STAR:
+			if (inner->expr_kind == EXPR_IDENTIFIER)
+			{
+				INDENT();
+				PRINTTYPE(expr->type);
+				PRINTF(" _%d = %s_%d_%s;\n", index, token_type_to_string(expr->post_expr.operator), inner->identifier_expr.decl->var.id, inner->identifier_expr.decl->name.string);
+				return index;
+			}
+			else
+			{
+				index2 = codegen_emit_expr(context, inner->unary_expr.expr, indent);
+				INDENT();
+				PRINTTYPE(expr->type);
+				PRINTF(" _%d = %s_%d;\n", index, token_type_to_string(expr->post_expr.operator), index2);
+				return index;
+			}
+		case TOKEN_AMP:
+			INDENT();
+			PRINTTYPE(expr->type);
+			assert(inner->expr_kind == EXPR_IDENTIFIER);
+			PRINTF(" _%d = &_%d_%s;\n", index, inner->identifier_expr.decl->var.id, inner->identifier_expr.decl->name.string);
+			return index;
+		default:
+			UNREACHABLE
+	}
+}
+
 static int codegen_emit_expr(Context *context, Expr *expr, int indent)
 {
 	switch (expr->expr_kind)
@@ -308,6 +390,10 @@ static int codegen_emit_expr(Context *context, Expr *expr, int indent)
 			return codegen_emit_cast_expr(context, expr, indent);
 		case EXPR_BINARY:
 			return codegen_emit_binary_expr(context, expr, indent);
+		case EXPR_POST_UNARY:
+			return codegen_emit_post_unary_expr(context, expr, indent);
+		case EXPR_UNARY:
+			return codegen_emit_unary_expr(context, expr, indent);
 		default:
 			TODO
 	}
@@ -340,7 +426,18 @@ static inline void codegen_declare_stmt(Context *context, Ast *ast, int indent)
 	}
 }
 
-static inline void codegen_emit_for_smt(Context *context, Ast *ast, int indent)
+static inline void codegen_emit_goto_stmt(Context *context, Ast *ast, int indent)
+{
+	INDENT();
+	PRINTF("goto _L_%s;\n", ast->token.string);
+}
+
+static inline void codegen_emit_label_smt(Context *context, Ast *ast, int indent)
+{
+	PRINTF("_L_%s:;\n", ast->token.string);
+}
+
+static inline void codegen_emit_for_stmt(Context *context, Ast *ast, int indent)
 {
 	INDENT();
 	int loop = ++context->unique_index;
@@ -358,7 +455,7 @@ static inline void codegen_emit_for_smt(Context *context, Ast *ast, int indent)
 	INDENT();
 	PRINTF("// --- Loop condition ---\n");
 	INDENT();
-	PRINTF("_FOR_%d:\n", loop);
+	PRINTF("_FOR_%d:;\n", loop);
 	if (ast->for_stmt.cond->cond_stmt.expr)
 	{
 		int res = codegen_emit_expr(context, ast->for_stmt.cond->cond_stmt.expr, indent);
@@ -378,20 +475,21 @@ static inline void codegen_emit_for_smt(Context *context, Ast *ast, int indent)
 	PRINTF("// --- End for id:%d --- \n", loop);
 }
 
-static inline void codegen_emit_do_smt(Context *context, Ast *ast, int indent)
+
+static inline void codegen_emit_do_stmt(Context *context, Ast *ast, int indent)
 {
 	INDENT();
 	int loop = ++context->unique_index;
 	PRINTF("// --- Begin do id:%d ---\n", loop);
 	INDENT();
-	PRINTF("_DO_%d_BEGIN:\n", loop);
+	PRINTF("_DO_%d_BEGIN:;\n", loop);
 	INDENT();
 	PRINTF("// --- Body ---\n");
 	codegen_ast(context, ast->do_stmt.body, indent);
 	INDENT();
 	PRINTF("// --- End ---\n");
 	INDENT();
-	PRINTF("_DO_%d_CONTINUE:\n", loop);
+	PRINTF("_DO_%d_CONTINUE:;\n", loop);
 	INDENT();
 	PRINTF("// --- Loop condition ---\n");
 	int res = codegen_emit_expr(context, ast->do_stmt.expr, indent);
@@ -403,12 +501,117 @@ static inline void codegen_emit_do_smt(Context *context, Ast *ast, int indent)
 	PRINTF("// --- End do id:%d --- \n", loop);
 }
 
+static inline void codegen_emit_if_stmt(Context *context, Ast *ast, int indent)
+{
+	INDENT();
+	PRINTF("// --- Begin if ---\n");
+	Ast **stmts = ast->if_stmt.cond->cond_stmt.stmts;
+	if (stmts)
+	{
+		INDENT();
+		PRINTF("// --- Prelude ---\n");
+		VECEACH(stmts, i)
+		{
+			codegen_ast(context, stmts[i], indent);
+		}
+	}
+	int res = codegen_emit_expr(context, ast->if_stmt.cond->cond_stmt.expr, indent);
+	INDENT();
+	PRINTF("if (!_%i)\n", res);
+	if (ast->if_stmt.then_body->ast_kind == AST_COMPOUND_STMT)
+	{
+		codegen_ast(context, ast->if_stmt.then_body, indent + 0);
+	}
+	else
+	{
+		INDENT();
+		PRINTF("{\n");
+		codegen_ast(context, ast->if_stmt.then_body, indent + 1);
+		INDENT();
+		PRINTF("}\n");
+	}
+	if (ast->if_stmt.else_body)
+	{
+		INDENT();
+		PRINTF("else\n");
+		codegen_ast(context, ast->if_stmt.else_body, indent);
+	}
+	INDENT();
+	PRINTF("// --- End for if --- \n");
+}
+
 static inline void codegen_emit_stmt_list(Context *context, Ast *ast, int indent)
 {
 	VECEACH(ast->stmt_list, i)
 	{
 		codegen_ast(context, ast->stmt_list[i], indent);
 	}
+}
+
+static void codegen_emit_switch_stmt(Context *context, Ast *ast, int indent)
+{
+	Ast *cond = ast->switch_stmt.cond;
+	VECEACH(cond->cond_stmt.stmts, i)
+	{
+		codegen_ast(context, cond->cond_stmt.stmts[i], indent);
+	}
+	int expr = codegen_emit_expr(context, cond->cond_stmt.expr, indent);
+	INDENT();
+	PRINTF("switch(_%d)\n", expr);
+	INDENT();
+	PRINTF("{\n");
+	indent++;
+	VECEACH(ast->switch_stmt.cases, i)
+	{
+		Ast *the_case = ast->switch_stmt.cases[i];
+		assert(the_case->ast_kind == AST_CASE_STMT);
+		INDENT();
+		switch (the_case->case_stmt.value_type)
+		{
+			case CASE_VALUE_INT:
+				PRINTF("case %lld:;\n", (int64_t) the_case->case_stmt.val);
+				break;
+			case CASE_VALUE_UINT:
+				PRINTF("case %llu:;\n", (int64_t) the_case->case_stmt.val);
+				break;
+			case CASE_VALUE_DEFAULT:
+				PRINTF("default:;\n");
+				break;
+		}
+		indent++;
+		bool ends_with_next = false;
+		Ast *block = the_case->case_stmt.block;
+		if (block)
+		{
+			if (VECLAST(block->compound_stmt.stmts)->ast_kind == AST_NEXT_STMT)
+			{
+				ends_with_next = true;
+				vec_pop(block->compound_stmt.stmts);
+			}
+			codegen_ast(context, block, indent);
+		}
+		if (!ends_with_next)
+		{
+			INDENT();
+			PRINTF("break;\n");
+			if (the_case->case_stmt.has_next)
+			{
+				INDENT();
+				PRINTF("_EXIT_%zx:;\n", (size_t)the_case);
+			}
+		}
+		indent--;
+	}
+	indent--;
+	INDENT();
+	PRINTF("}\n");
+}
+
+
+static void codegen_emit_break_stmt(Context *context, Ast *ast, int indent)
+{
+	INDENT();
+	PRINTF("break;\n");
 }
 
 static void codegen_ast(Context *context, Ast *ast, int indent)
@@ -422,10 +625,11 @@ static void codegen_ast(Context *context, Ast *ast, int indent)
 		case AST_ATTRIBUTE:
 			break;
 		case AST_BREAK_STMT:
-			break;
+			codegen_emit_break_stmt(context, ast, indent);
+			return;
 		case AST_CASE_STMT:
-			break;
 		case AST_CATCH_STMT:
+		case AST_DEFAULT_STMT:
 			UNREACHABLE
 		case AST_COMPOUND_STMT:
 			codegen_compound_stmt(context, ast, indent);
@@ -443,27 +647,33 @@ static void codegen_ast(Context *context, Ast *ast, int indent)
 		case AST_DECLARE_STMT:
 			codegen_declare_stmt(context, ast, indent);
 			return;
-		case AST_DEFAULT_STMT:
-			break;
 		case AST_DEFER_STMT:
 			break;
 		case AST_DO_STMT:
-			codegen_emit_do_smt(context, ast, indent);
+			codegen_emit_do_stmt(context, ast, indent);
+			return;
+		case AST_IF_STMT:
+			codegen_emit_if_stmt(context, ast, indent);
 			return;
 		case AST_EXPR_STMT:
 			codegen_emit_expr(context, ast->expr_stmt, indent);
 			return;
 		case AST_FOR_STMT:
-			codegen_emit_for_smt(context, ast, indent);
+			codegen_emit_for_stmt(context, ast, indent);
 			return;
 		case AST_GOTO_STMT:
-			break;
-		case AST_IF_STMT:
-			break;
+			codegen_emit_goto_stmt(context, ast, indent);
+			return;
 		case AST_LABEL:
-			break;
+			codegen_emit_label_smt(context, ast, indent);
+			return;
 		case AST_NOP_STMT:
-			break;
+			INDENT();
+			PRINTF("// NOP");
+			return;
+		case AST_SWITCH_STMT:
+			codegen_emit_switch_stmt(context, ast, indent);
+			return;
 		case AST_RETURN_STMT:
 			if (ast->return_stmt.expr)
 			{
@@ -478,14 +688,14 @@ static void codegen_ast(Context *context, Ast *ast, int indent)
 				PRINTF("return;\n");
 			}
 			return;
-		case AST_SWITCH_STMT:
-			break;
 		case AST_THROW_STMT:
 			break;
 		case AST_TRY_STMT:
 			break;
 		case AST_NEXT_STMT:
-			break;
+			INDENT();
+			PRINTF("goto _EXIT_%zx;\n", (size_t)ast->next_stmt);
+			return;
 		case AST_VOLATILE_STMT:
 			break;
 		case AST_WHILE_STMT:
@@ -503,12 +713,25 @@ static void codegen_ast(Context *context, Ast *ast, int indent)
 
 static inline void codegen_func_decl(Context *context, Decl *decl)
 {
+	if (strcmp("main", decl->name.string) == 0)
+	{
+		// TODO
+		PRINTF("int main()");
+		return;
+	}
 	if (decl->visibility != VISIBLE_PUBLIC)
 	{
 		PRINTF("static ");
 	}
 	print_typename(context->codegen_output, decl->func.function_signature.rtype);
-	PRINTF(" %s__%s()", decl->module->name, decl->name.string);
+	if (strcmp("main", decl->name.string) == 0)
+	{
+		PRINTF(" %s()", decl->name.string);
+	}
+	else
+	{
+		PRINTF(" %s__%s()", decl->module->name, decl->name.string);
+	}
 }
 
 static inline void codegen_func(Context *context, Decl *decl)
@@ -685,13 +908,19 @@ static inline void codegen_top_level_decl(Context *context, Decl *decl)
 }
 void codegen(Context *context)
 {
-	VECEACH(context->declarations, i)
+	VECEACH(context->header_declarations, i)
 	{
-		codegen_top_level_decl_header(context, context->declarations[i]);
+		codegen_top_level_decl_header(context, context->header_declarations[i]);
 	}
-	VECEACH(context->declarations, i)
+	VECEACH(context->header_declarations, i)
 	{
-		codegen_top_level_decl(context, context->declarations[i]);
+		codegen_top_level_decl(context, context->header_declarations[i]);
 	}
+	VECEACH(context->vars, i)
+	{
+		codegen_top_level_decl(context, context->vars[i]);
+	}
+
+
 
 }

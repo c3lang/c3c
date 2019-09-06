@@ -443,13 +443,24 @@ typedef struct
 
 typedef struct
 {
-	Expr *expr;
+	union
+	{
+		Expr *expr;
+		struct
+		{
+			uint64_t val;
+			CaseValueType value_type : 3;
+			bool has_next;
+		};
+	};
+	Ast *block;
 } AstCaseStmt;
 
 typedef struct
 {
 	Ast *cond;
 	Ast *body;
+	Ast **cases;
 } AstSwitchStmt;
 
 typedef struct
@@ -469,18 +480,8 @@ typedef struct
 
 typedef struct
 {
-	DeclExprType list_type : 2;
-	union
-	{
-		Decl *decl;
-		Expr *expr;
-	};
-} AstDeclExprList;
-
-
-typedef struct
-{
 	GotoType type : 2;
+	Ast *label;
 	struct _Ast *defer;
 	union
 	{
@@ -539,16 +540,16 @@ typedef struct _Ast
 		AstDeferStmt defer_stmt;
 		AstSwitchStmt switch_stmt;
 		AstCaseStmt case_stmt;
+		Ast* next_stmt;
 		AstCatchStmt catch_stmt;
 		AstGotoStmt goto_stmt;
 		AstForStmt for_stmt;
 		AstCondStmt cond_stmt;
 		AstCtIfStmt ct_if_stmt;
 		AstCtIfStmt ct_elif_stmt;
-		struct _Ast* ct_else_stmt;
-		AstDeclExprList decl_expr_list;
+		Ast *ct_else_stmt;
 		AstGenericCaseStmt generic_case_stmt;
-		struct _Ast* generic_default_stmt;
+		Ast *generic_default_stmt;
 		Ast** stmt_list;
 	};
 } Ast;
@@ -592,18 +593,24 @@ typedef struct _Context
 	Decl** imports;
 	Module *module;
 	STable local_symbols;
-	Decl **declarations;
+	Decl **header_declarations;
+	Decl **enums;
+	Decl **types;
+	Decl **functions;
+	Decl **vars;
 	Decl **ct_ifs;
 	Decl *active_function_for_analysis;
 	FILE *codegen_output;
-	Decl *locals[MAX_LOCALS];
 	Decl **last_local;
-	DynamicScope scopes[MAX_SCOPE_DEPTH];
+	Ast **labels;
+	Ast **gotos;
 	DynamicScope *current_scope;
 	int unique_index;
 	Decl *evaluating_macro;
 	Type *rtype;
 	int in_volatile_section;
+	Decl *locals[MAX_LOCALS];
+	DynamicScope scopes[MAX_SCOPE_DEPTH];
 } Context;
 
 extern Context *current_context;
@@ -703,7 +710,7 @@ bool cast_to_runtime(Expr *expr);
 
 void codegen(Context *context);
 
-bool sema_expr_analysis(Context *context, Expr *expr);
+bool sema_analyse_expr(Context *context, Expr *expr);
 
 Context *context_create(File *file);
 void context_push(Context *context);
@@ -713,12 +720,13 @@ bool context_set_module_from_filename(Context *context);
 bool context_set_module(Context *context, Token module_name, Token *generic_parameters);
 void context_print_ast(Context *context, FILE *file);
 Decl *context_find_ident(Context *context, const char *symbol);
+void context_add_header_decl(Context *context, Decl *decl);
 
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility);
 Decl *decl_new_user_defined_type(Token name, DeclKind decl_type, Visibility visibility);
 Decl *decl_new_var(Token name, Type *type, VarDeclKind kind, Visibility visibility);
 static inline bool decl_ok(Decl *decl) { return decl->decl_kind != DECL_POISONED; }
-static inline Decl *decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; return decl; }
+static inline Decl *decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return decl; }
 static inline DeclKind decl_from_token(TokenType type)
 {
 	if (type == TOKEN_STRUCT) return DECL_STRUCT;
@@ -784,6 +792,7 @@ void sema_analysis(Context *context);
 
 bool sema_analyse_statement(Context *context, Ast *statement);
 bool sema_resolve_type(Context *context, Type *type);
+bool sema_resolve_type_shallow(Context *context, Type *type);
 void sema_error_at(SourceLoc loc, const char *message, ...);
 void sema_error_range(SourceRange range, const char *message, ...);
 void sema_verror_at(SourceLoc loc, const char *message, va_list args);
@@ -791,6 +800,7 @@ void sema_verror_range(SourceRange range, const char *message, va_list args);
 void sema_error(const char *message, ...);
 void sema_prev_at_range(SourceRange span, const char *message, ...);
 void sema_prev_at(SourceLoc loc, const char *message, ...);
+void sema_shadow_error(Decl *decl, Decl *old);
 
 File *source_file_load(const char *filename, bool *already_loaded);
 File *source_file_from_position(SourceLoc loc);
@@ -819,7 +829,8 @@ Type *type_get_canonical_ptr(Type *ptr_type);
 Type *type_get_canonical_array(Type *arr_type);
 Type *type_signed_int_by_size(int bitsize);
 Type *type_unsigned_int_by_size(int bitsize);
-
+bool type_is_subtype(Type *type, Type *possible_subtype);
+const char *type_to_error_string(Type *type);
 size_t type_size(Type *canonical);
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_FXX; }
 static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX; }

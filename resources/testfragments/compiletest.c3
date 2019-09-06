@@ -12,9 +12,70 @@ struct Bar
 	Foo* fooPtr;
 }
 
+$if (1)
+{
+	struct Ogg
+	{
+		Zed *bob;
+	}
+	struct DOgg
+	{
+		Zed bob;
+	}
+	struct Zed
+	{
+		Foo b;
+	}
+
+}
 
 func int boo()
 {
+	Zed zfe;
+	int eok = 0;
+	{
+		eok = 2;
+	}
+	switch (eok)
+	{
+		case 1:
+			eok++;
+			next;
+		case 3:
+			eok++;
+			next;
+			eok--;
+		case 2:
+			eok--;
+		default:
+			eok--;
+			break;
+	}
+
+
+		if (eok > 0)
+	{
+		eok++;
+	}
+	else
+	{
+		eok--;
+	}
+	int xfeef = -eok;
+	/*
+	bool xoek = !eok;
+	int oekfefo = ~eok;
+	int *booe = &eok;
+	int **de = &booe;
+	int &xfok = &eok;
+	int &&bo = &xfok;
+	int e12 = **bo;
+	int fe = *(&eok);
+	int x2 = *xfok;*/
+	int x1 = 2;
+	FOO:
+	x1 = x1 + 1;
+	goto FOO;
 	bool z = 123 > 3.0;
 	{
 		int x = 0;
@@ -34,8 +95,10 @@ func void while_test()
 {
 
 	int a = 10;
-	while (int b = 37; a > 0)
+
+	while (int b = 37; a < 0)
 	{
+		a++;
 		int xy = 1;
 	}
 }
@@ -59,3 +122,7 @@ func void test()
 	return;
 }
 
+func void main()
+{
+
+}

@@ -12,9 +12,22 @@ static ExprBinopAnalysis BINOP_ANALYSIS[TOKEN_EOF];
 static ExprUnaryAnalysis UNARYOP_ANALYSIS[TOKEN_EOF + 1];
 static ExprUnaryAnalysis POSTUNARYOP_ANALYSIS[TOKEN_EOF + 1];
 
+static bool expr_is_ltype(Expr *expr)
+{
+	switch (expr->expr_kind)
+	{
+		case EXPR_IDENTIFIER:
+			return expr->identifier_expr.decl->decl_kind == DECL_VAR && (expr->identifier_expr.decl->var.kind == VARDECL_LOCAL || expr->identifier_expr.decl->var.kind == VARDECL_GLOBAL);
+		case EXPR_UNARY:
+			return expr->unary_expr.operator == TOKEN_STAR;
+		default:
+			return false;
+	}
+}
+
 static inline bool sema_type_error_on_binop(const char *op, Expr *expr)
 {
-	SEMA_ERROR(expr->loc, "Cannot perform '%s' %s '%s'.", expr->binary_expr.left->type->name_loc.string, op, expr->binary_expr.right->type->name_loc.string);
+	SEMA_ERROR(expr->loc, "Cannot perform '%s' %s '%s'.", type_to_error_string(expr->binary_expr.left->type), op, type_to_error_string(expr->binary_expr.right->type));
 	return false;
 }
 
@@ -73,7 +86,7 @@ static inline bool sema_expr_analyse_func_call(Context *context, Expr *expr, Dec
 	for (unsigned i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
-		if (!sema_expr_analysis(context, arg)) return false;
+		if (!sema_analyse_expr(context, arg)) return false;
 		if (!cast(arg, func_params[i]->var.type, CAST_TYPE_IMPLICIT_ASSIGN)) return false;
 	}
 	expr->type = decl->func.function_signature.rtype;
@@ -83,7 +96,7 @@ static inline bool sema_expr_analyse_func_call(Context *context, Expr *expr, Dec
 static inline bool sema_expr_analyse_call(Context *context, Expr *expr)
 {
 	Expr *func_expr = expr->call_expr.function;
-	if (!sema_expr_analysis(context, func_expr)) return false;
+	if (!sema_analyse_expr(context, func_expr)) return false;
 	if (func_expr->expr_kind != EXPR_IDENTIFIER)
 	{
 		TODO
@@ -146,7 +159,7 @@ static inline bool sema_expr_analyse_cast(Context *context, Expr *expr)
 {
 	Expr *inner = expr->expr_cast.expr;
 	if (!sema_resolve_type(context, expr->type)) return false;
-	if (!sema_expr_analysis(context, inner)) return false;
+	if (!sema_analyse_expr(context, inner)) return false;
 
 	if (!cast(inner, expr->type, CAST_TYPE_EXPLICIT)) return false;
 
@@ -295,50 +308,79 @@ static bool sema_expr_analyse_and_assign(Context *context, Expr *expr, Expr *lef
 static bool sema_expr_analyse_or(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 static bool sema_expr_analyse_or_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 
-static bool sema_expr_analyse_eq(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_ne(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_ge(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_gt(Context *context, Expr *expr, Expr *left, Expr *right)
-{
-	if (!cast_arithmetic(left, right, ">")) return false;
-	if (!cast_arithmetic(right, left, ">")) return false;
-	if (both_const(left, right))
-	{
-		switch (left->const_expr.type)
-		{
-			case CONST_FLOAT:
-				expr->const_expr.b = left->const_expr.f > right->const_expr.f;
-				break;
-			case CONST_BOOL:
-				expr->const_expr.b = left->const_expr.b > right->const_expr.b;
-				break;
-			case CONST_INT:
-				expr->const_expr.b = left->const_expr.i > right->const_expr.i;
-				break;
-			default:
-				UNREACHABLE
-		}
-		expr->const_expr.type = CONST_BOOL;
-		expr->expr_kind = EXPR_CONST;
-	}
-	if (!cast_to_runtime(left) || !cast_to_runtime(right)) return false;
-	expr->type = type_bool;
-	return true;
-}
-static bool sema_expr_analyse_le(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_lt(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
+#define SEMA_ANALYSE_CMP(op) { \
+if (!cast_arithmetic(left, right, #op)) return false;\
+if (!cast_arithmetic(right, left, #op)) return false;\
+if (both_const(left, right)) { \
+switch (left->const_expr.type) { \
+case CONST_FLOAT: expr->const_expr.b = left->const_expr.f op right->const_expr.f; break; \
+case CONST_BOOL: expr->const_expr.b = left->const_expr.b op right->const_expr.b; break; \
+case CONST_INT: expr->const_expr.b = left->const_expr.i op right->const_expr.i; break; \
+default: UNREACHABLE }\
+expr->const_expr.type = CONST_BOOL;\
+expr->expr_kind = EXPR_CONST;\
+}\
+if (!cast_to_runtime(left) || !cast_to_runtime(right)) return false;\
+expr->type = type_bool;\
+return true; }
+
+static bool sema_expr_analyse_eq(Context *context, Expr *expr, Expr *left, Expr *right) SEMA_ANALYSE_CMP(==)
+static bool sema_expr_analyse_ne(Context *context, Expr *expr, Expr *left, Expr *right) SEMA_ANALYSE_CMP(!=)
+static bool sema_expr_analyse_ge(Context *context, Expr *expr, Expr *left, Expr *right) SEMA_ANALYSE_CMP(>=)
+static bool sema_expr_analyse_gt(Context *context, Expr *expr, Expr *left, Expr *right) SEMA_ANALYSE_CMP(>)
+static bool sema_expr_analyse_le(Context *context, Expr *expr, Expr *left, Expr *right) SEMA_ANALYSE_CMP(<=)
+static bool sema_expr_analyse_lt(Context *context, Expr *expr, Expr *left, Expr *right) SEMA_ANALYSE_CMP(<)
+
 static bool sema_expr_analyse_elvis(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 
+static bool sema_expr_analyse_deref(Context *context, Expr *expr, Expr *inner)
+{
+	Type *canonical = inner->type->canonical;
+	if (canonical->type_kind != TYPE_POINTER)
+	{
+		SEMA_ERROR(inner->loc, "Cannot take the dereference of a value of type '%s'", type_to_error_string(inner->type));
+		return false;
+	}
+	if (inner->expr_kind == EXPR_CONST)
+	{
+		SEMA_ERROR(inner->loc, "Dereferencing nil is not allowed.");
+		return false;
+	}
+	if (canonical->nullable)
+	{
+		SEMA_ERROR(inner->loc, "Dereferencing a nullable pointer is not allowed.");
+		return false;
+	}
+	Type *deref_type = inner->type->type_kind != TYPE_POINTER ? inner->type : canonical;
+	expr->type = deref_type->base;
+	return true;
+}
 
-static bool sema_expr_analyse_deref(Context *context, Expr *expr, Expr *inner) { TODO }
-static bool sema_expr_analyse_addr(Context *context, Expr *expr, Expr *inner) { TODO }
+static bool sema_expr_analyse_addr(Context *context, Expr *expr, Expr *inner)
+{
+	if (!expr_is_ltype(inner))
+	{
+		SEMA_ERROR(inner->loc, "Cannot take the address of a value of type '%s'", type_to_error_string(inner->type));
+		return false;
+	}
+	Type *type = type_new(TYPE_POINTER);
+	type->name_loc = inner->type->name_loc;
+	type->base = inner->type;
+	type->nullable = false;
+	type->resolve_status = RESOLVE_DONE;
+	type->canonical = type_get_canonical_ptr(type);
+	assert(type->resolve_status == RESOLVE_DONE);
+	assert(type->canonical->resolve_status == RESOLVE_DONE);
+	expr->type = type;
+	return true;
+}
 
 static bool sema_expr_analyse_neg(Context *context, Expr *expr, Expr *inner)
 {
 	Type *canonical = inner->type->canonical;
 	if (!builtin_may_negate(canonical))
 	{
-		SEMA_ERROR(expr->loc, "Cannot negate %s.", inner->type->name_loc.string);
+		SEMA_ERROR(expr->loc, "Cannot negate %s.", type_to_error_string(inner->type));
 		return false;
 	}
 	if (inner->expr_kind != EXPR_CONST)
@@ -366,7 +408,7 @@ static bool sema_expr_analyse_bit_not(Context *context, Expr *expr, Expr *inner)
 	Type *canonical = inner->type->canonical;
 	if (!type_is_integer(canonical) && canonical != type_bool)
 	{
-		SEMA_ERROR(expr->loc, "Cannot bit negate %s.", inner->type->name_loc.string);
+		SEMA_ERROR(expr->loc, "Cannot bit negate %s.", type_to_error_string(inner->type));
 	}
 	if (inner->expr_kind != EXPR_CONST)
 	{
@@ -390,6 +432,7 @@ static bool sema_expr_analyse_bit_not(Context *context, Expr *expr, Expr *inner)
 }
 static bool sema_expr_analyse_not(Context *context, Expr *expr, Expr *inner)
 {
+	expr->type = type_bool;
 	if (inner->expr_kind == EXPR_CONST)
 	{
 		switch (expr->const_expr.type)
@@ -411,7 +454,6 @@ static bool sema_expr_analyse_not(Context *context, Expr *expr, Expr *inner)
 				break;
 		}
 		expr->const_expr.type = CONST_BOOL;
-		expr->type = type_bool;
 		expr->expr_kind = EXPR_CONST;
 		return true;
 	}
@@ -443,17 +485,30 @@ static bool sema_expr_analyse_not(Context *context, Expr *expr, Expr *inner)
 		case TYPE_USER_DEFINED:
 		case TYPE_VOID:
 		case TYPE_STRING:
-			SEMA_ERROR(expr->loc, "Cannot use 'not' on %s", inner->type->name_loc.string);
+			SEMA_ERROR(expr->loc, "Cannot use 'not' on %s", type_to_error_string(inner->type));
 			return false;
 	}
 	UNREACHABLE
 }
 
-static bool sema_expr_analyse_preinc(Context *context, Expr *expr, Expr *inner) { TODO }
-static bool sema_expr_analyse_predec(Context *context, Expr *expr, Expr *inner) { TODO }
 
-static bool sema_expr_analyse_postinc(Context *context, Expr *expr, Expr *inner) { TODO }
-static bool sema_expr_analyse_postdec(Context *context, Expr *expr, Expr *inner) { TODO }
+
+static inline bool sema_expr_analyse_incdec(Context *context, Expr *expr, Expr *inner)
+{
+	if (!expr_is_ltype(inner))
+	{
+		SEMA_ERROR(inner->loc, "Expression cannot be assigned to");
+		return false;
+	}
+	if (!type_is_integer(inner->type->canonical) && inner->type->canonical->type_kind == TYPE_POINTER)
+	{
+		SEMA_ERROR(inner->loc, "Expression must be an integer or pointer");
+		return false;
+	}
+	expr->type = inner->type;
+	return true;
+}
+
 
 static inline bool sema_expr_analyse_binary(Context *context, Expr *expr)
 {
@@ -461,8 +516,8 @@ static inline bool sema_expr_analyse_binary(Context *context, Expr *expr)
 	Expr *left = expr->binary_expr.left;
 	Expr *right = expr->binary_expr.right;
 
-	if (!sema_expr_analysis(context, left)) return false;
-	if (!sema_expr_analysis(context, right)) return false;
+	if (!sema_analyse_expr(context, left)) return false;
+	if (!sema_analyse_expr(context, right)) return false;
 
 	return BINOP_ANALYSIS[expr->binary_expr.operator](context, expr, left, right);
 }
@@ -472,7 +527,7 @@ static inline bool sema_expr_analyse_unary(Context *context, Expr *expr)
 	assert(expr->resolve_status == RESOLVE_RUNNING);
 	Expr *inner = expr->unary_expr.expr;
 
-	if (!sema_expr_analysis(context, inner)) return false;
+	if (!sema_analyse_expr(context, inner)) return false;
 
 	return UNARYOP_ANALYSIS[expr->unary_expr.operator](context, expr, inner);
 }
@@ -482,18 +537,19 @@ static inline bool sema_expr_analyse_postunary(Context *context, Expr *expr)
 	assert(expr->resolve_status == RESOLVE_RUNNING);
 	Expr *inner = expr->post_expr.expr;
 
-	if (!sema_expr_analysis(context, inner)) return false;
+	if (!sema_analyse_expr(context, inner)) return false;
 
-	return POSTUNARYOP_ANALYSIS[expr->post_expr.operator](context, expr, inner);
+	assert(expr->post_expr.operator == TOKEN_PLUSPLUS || expr->post_expr.operator == TOKEN_MINUSMINUS);
+	return sema_expr_analyse_incdec(context, expr, inner);
 }
 
 static inline bool sema_expr_analyse_try(Context *context, Expr *expr)
 {
-	if (!sema_expr_analysis(context, expr->try_expr.expr)) return false;
+	if (!sema_analyse_expr(context, expr->try_expr.expr)) return false;
 	expr->type = expr->try_expr.expr->type;
 	if (expr->try_expr.else_expr)
 	{
-		if (!sema_expr_analysis(context, expr->try_expr.else_expr)) return false;
+		if (!sema_analyse_expr(context, expr->try_expr.else_expr)) return false;
 		if (!cast(expr->try_expr.else_expr, expr->type, CAST_TYPE_IMPLICIT)) return false;
 	}
 	// Check errors!
@@ -550,15 +606,9 @@ static ExprUnaryAnalysis UNARYOP_ANALYSIS[TOKEN_EOF + 1] = {
 		[TOKEN_MINUS] = &sema_expr_analyse_neg,
 		[TOKEN_BIT_NOT] = &sema_expr_analyse_bit_not,
 		[TOKEN_NOT] = &sema_expr_analyse_not,
-		[TOKEN_PLUSPLUS] = &sema_expr_analyse_preinc,
-		[TOKEN_MINUSMINUS] = &sema_expr_analyse_predec,
+		[TOKEN_PLUSPLUS] = &sema_expr_analyse_incdec,
+		[TOKEN_MINUSMINUS] = &sema_expr_analyse_incdec,
 };
-
-static ExprUnaryAnalysis POSTUNARYOP_ANALYSIS[TOKEN_EOF + 1] = {
-		[TOKEN_PLUSPLUS] = &sema_expr_analyse_postinc,
-		[TOKEN_MINUSMINUS] = &sema_expr_analyse_postdec,
-};
-
 
 static ExprAnalysis EXPR_ANALYSIS[EXPR_CAST + 1] = {
 		[EXPR_TRY] = &sema_expr_analyse_try,
@@ -580,7 +630,7 @@ static ExprAnalysis EXPR_ANALYSIS[EXPR_CAST + 1] = {
 		[EXPR_CAST] = &sema_expr_analyse_cast,
 };
 
-bool sema_expr_analysis(Context *context, Expr *expr)
+bool sema_analyse_expr(Context *context, Expr *expr)
 {
 	switch (expr->resolve_status)
 	{

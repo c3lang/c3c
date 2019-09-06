@@ -7,14 +7,18 @@
 #define EXIT_T_MISMATCH() return sema_type_mismatch(left, canonical, cast_type)
 
 
-static inline void insert_cast(Expr *expr, CastKind kind, Type *type)
+static inline void insert_cast(Expr *expr, CastKind kind, Type *canonical)
 {
 	Expr *inner = malloc_arena(sizeof(Expr));
+	assert(expr->resolve_status == RESOLVE_DONE);
+	assert(expr->type->canonical);
+	assert(canonical->resolve_status == RESOLVE_DONE);
+	assert(canonical->canonical == canonical);
 	*inner = *expr;
 	expr->expr_kind = EXPR_CAST;
 	expr->expr_cast.kind = kind;
 	expr->expr_cast.expr = inner;
-	expr->type = type;
+	expr->type = canonical;
 }
 
 static bool sema_type_mismatch(Expr *expr, Type *type, CastType cast_type)
@@ -34,7 +38,7 @@ static bool sema_type_mismatch(Expr *expr, Type *type, CastType cast_type)
 			break;
 
 	}
-	SEMA_ERROR(expr->loc, "Cannot %s '%s' to '%s'", action, expr->type->name_loc.string, type->name_loc.string);
+	SEMA_ERROR(expr->loc, "Cannot %s '%s' to '%s'", action, type_to_error_string(expr->type), type_to_error_string(type));
 	return false;
 }
 
@@ -343,7 +347,7 @@ bool uisi(Expr* left, Type *canonical, Type *type, CastType cast_type)
 		{
 			if (left->const_expr.i > (uint64_t)int_type_max[index])
 			{
-				SEMA_ERROR(left->loc, "Cannot implicitly convert value '%llu' into %s - it will not fit.", left->const_expr.i, type->name_loc.string);
+				SEMA_ERROR(left->loc, "Cannot implicitly convert value '%llu' into %s - it will not fit.", left->const_expr.i, type_to_error_string(type));
 				return false;
 			}
 		}
@@ -373,7 +377,7 @@ bool uiui(Expr* left, Type *canonical, Type *type, CastType cast_type)
 		{
 			if (left->const_expr.i > uint_type_max[index])
 			{
-				SEMA_ERROR(left->loc, "Cannot implicitly convert value '%llu' into %s - it will not fit.", type->name_loc.string);
+				SEMA_ERROR(left->loc, "Cannot implicitly convert value '%llu' into %s - it will not fit.", type_to_error_string(type));
 				return false;
 			}
 		}
@@ -437,7 +441,26 @@ bool xipt(Expr* left, Type *canonical, Type *type, CastType cast_type)
 
 bool usus(Expr* left, Type *canonical, Type *type, CastType cast_type)
 {
-	TODO
+	Type *left_canonical = left->type->canonical;
+	assert(canonical->canonical == canonical);
+	assert(canonical->type_kind == TYPE_POINTER);
+	assert(left_canonical->type_kind == TYPE_POINTER);
+
+	if (cast_type != CAST_TYPE_EXPLICIT)
+	{
+		if (type_is_subtype(left_canonical->base, canonical->base))
+		{
+			if (!left_canonical->base->nullable || canonical->base->nullable)
+			{
+				insert_cast(left, CAST_PTRPTR, canonical);
+				return true;
+			}
+		}
+		sema_type_mismatch(left, type, cast_type);
+		return false;
+	}
+	insert_cast(left, CAST_PTRPTR, canonical);
+	return true;
 }
 
 bool usui(Expr* left, Type *canonical, Type *type, CastType cast_type)
@@ -520,7 +543,7 @@ bool cast_arithmetic(Expr *expr, Expr *other, const char *action)
 	return cast(expr, preferred_type, CAST_TYPE_IMPLICIT);
 
 	ERR:
-	SEMA_ERROR(expr->loc, "Cannot upcast to resolve '%s' %s '%s'", expr->type->name_loc.string, action, other->type->name_loc.string);
+	SEMA_ERROR(expr->loc, "Cannot upcast to resolve '%s' %s '%s'", type_to_error_string(expr->type), action, type_to_error_string(other->type));
 	return false;
 
 }
@@ -555,5 +578,5 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 		return false;
 	}
 	CastFunc func = BUILTIN_CONVERSION[from_type->type_kind - TYPE_BOOL][to_type->type_kind - TYPE_BOOL];
-	return func(expr, to_type, canonical, cast_type);
+	return func(expr, canonical, to_type, cast_type);
 }

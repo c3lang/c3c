@@ -55,8 +55,13 @@ void compiler_compile()
 		diag_reset();
 		parse_file(file);
 		sema_analysis(current_context);
-		current_context->codegen_output = stdout;
+		FILE *f = fopen("test.c","w");
+		fprintf(f, "#include <stdbool.h>\n#include <stdint.h>\n");
+		current_context->codegen_output = f;
 		codegen(current_context);
+		fclose(f);
+		system("cc test.c && ./a.out");
+
 	}
 	exit(EXIT_SUCCESS);
 }

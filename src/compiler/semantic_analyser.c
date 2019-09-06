@@ -13,31 +13,9 @@ void sema_init(File *file)
 	LOG_FUNC
 }
 
-/**
- * Check if a type is contained in another type.
- *
- * @param type
- * @param possible_subtype
- * @return true if it is a subtype
- */
-static bool canonical_type_is_subtype(Type *type, Type *possible_subtype)
-{
-	assert(type == type->canonical && possible_subtype == possible_subtype->canonical);
-	if (type == possible_subtype) return true;
-	if (type->type_kind != possible_subtype->type_kind) return false;
-	if (type->type_kind != TYPE_USER_DEFINED || type->decl->decl_kind != DECL_STRUCT) return false;
-
-	if (!possible_subtype->decl->strukt.members) return false;
-
-	Decl *first_element = possible_subtype->decl->strukt.members[0];
-
-	if (first_element->decl_kind != DECL_VAR) return false;
-
-	return canonical_type_is_subtype(type, first_element->var.type->canonical);
-}
 
 
-static void show_shadow_error(Decl *decl, Decl *old)
+void sema_shadow_error(Decl *decl, Decl *old)
 {
 	sema_error_range(decl->name.span, "The '%s' would shadow a previous declaration.", decl->name.string);
 	sema_prev_at_range(old->name.span, "The previous use of '%s' was here.", decl->name.string);
@@ -100,7 +78,7 @@ static inline void context_pop_scope(Context *context)
 
 static bool sema_resolve_ptr_type(Context *context, Type *type)
 {
-	if (!sema_resolve_type(context, type->base))
+	if (!sema_resolve_type_shallow(context, type->base))
 	{
 		type_poison(type);
 		return false;
@@ -121,100 +99,8 @@ static bool sema_resolve_array_type(Context *context, Type *type)
 	type->resolve_status = RESOLVE_DONE;
 	return true;
 }
-
-bool sema_resolve_type(Context *context, Type *type)
-{
-    LOG_FUNC
-
-	if (type->resolve_status == RESOLVE_DONE) return type_ok(type);
-
-	if (type->resolve_status == RESOLVE_RUNNING)
-	{
-		SEMA_ERROR(type->name_loc, "Circular dependency resolving type '%s'.", type->name_loc);
-		type_poison(type);
-		return false;
-	}
-
-	type->resolve_status = RESOLVE_RUNNING;
-
-	switch (type->type_kind)
-	{
-		case TYPE_POISONED:
-		case TYPE_INC_ARRAY:
-			UNREACHABLE
-		case TYPE_USER_DEFINED:
-			break;
-		case TYPE_POINTER:
-			return sema_resolve_ptr_type(context, type);
-		case TYPE_ARRAY:
-			return sema_resolve_array_type(context, type);
-		default:
-			TODO
-	}
-
-	Decl *decl = stable_get(&context->local_symbols, type->name_loc.string);
-	if (!decl)
-	{
-		decl = module_find_symbol(context->module, type->name_loc.string);
-	}
-
-	if (!decl)
-	{
-		SEMA_ERROR(type->name_loc, "Unknown type '%s'.", type->name_loc.string);
-		type_poison(type);
-		return false;
-	}
-
-	switch (decl->decl_kind)
-	{
-		case DECL_STRUCT:
-		case DECL_UNION:
-		case DECL_ERROR:
-		case DECL_ENUM:
-			type->decl = decl;
-			type->canonical = decl->self_type;
-			type->resolve_status = RESOLVE_DONE;
-			DEBUG_LOG("Resolved %s.", type->name_loc.string);
-			return true;
-		case DECL_TYPEDEF:
-			// TODO func
-			if (!sema_resolve_type(context, decl->typedef_decl.type))
-			{
-				decl_poison(decl);
-				type_poison(type);
-				return false;
-			}
-			type->decl = decl;
-			type->canonical = decl->typedef_decl.type->canonical;
-			type->resolve_status = RESOLVE_DONE;
-			DEBUG_LOG("Resolved %s.", type->name_loc.string);
-			return true;
-		case DECL_POISONED:
-			type_poison(type);
-			return false;
-		case DECL_FUNC:
-		case DECL_VAR:
-		case DECL_ENUM_CONSTANT:
-		case DECL_ERROR_CONSTANT:
-		case DECL_ARRAY_VALUE:
-		case DECL_IMPORT:
-		case DECL_MACRO:
-		case DECL_GENERIC:
-			SEMA_ERROR(type->name_loc, "This is not a type.");
-			type_poison(type);
-			return false;
-		case DECL_MULTI_DECL:
-		case DECL_CT_ELSE:
-		case DECL_CT_IF:
-		case DECL_CT_ELIF:
-			UNREACHABLE
-	}
-	UNREACHABLE
-}
-
 static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 {
-	LOG_FUNC
 	assert(decl->decl_kind == DECL_VAR);
 	assert(decl->var.kind == VARDECL_MEMBER);
 	assert(!decl->var.init_expr);
@@ -226,9 +112,8 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 	assert(decl->var.type->canonical);
 	return true;
 }
-static inline void sema_analyse_struct(Context *context, Decl *decl)
+static inline bool sema_analyse_struct(Context *context, Decl *decl)
 {
-	LOG_FUNC
 	DEBUG_LOG("Beginning analysis of %s.", decl->name.string);
 	assert(decl->decl_kind == DECL_STRUCT);
 	VECEACH(decl->strukt.members, i)
@@ -249,32 +134,9 @@ static inline void sema_analyse_struct(Context *context, Decl *decl)
 			decl_poison(decl);
 		}
 	}
-	DEBUG_LOG("Analysing complete.");
+	DEBUG_LOG("Analysis complete.");
+	return decl_ok(decl);
 }
-
-
-/*
-static inline void add_integers(ExprConst *result, uint64_t l, bool l_is_negative, uint64_t r, bool r_is_negative)
-{
-	if (l_is_negative == r_is_negative)
-	{
-		result->type = l_is_negative ? CONST_NEGATIVE_INT : CONST_POSITIVE_INT;
-		result->integer.i = l + r;
-		return;
-	}
-	if (l > r)
-	{
-		result->integer.i = l - r;
-		result->type = l_is_negative ? CONST_NEGATIVE_INT : CONST_POSITIVE_INT;
-	}
-	else
-	{
-		result->integer.i = r - l;
-		result->type = l_is_negative ? CONST_POSITIVE_INT : CONST_NEGATIVE_INT;
-	}
-}
-*/
-
 
 
 
@@ -295,7 +157,7 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 	if (param->var.init_expr)
 	{
 		Expr *expr = param->var.init_expr;
-		if (!sema_expr_analysis(context, expr)) return false;
+		if (!sema_analyse_expr(context, expr)) return false;
 		if (expr->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(expr->loc, "Only constant expressions may be used as default values.");
@@ -329,7 +191,6 @@ static inline bool sema_analyse_function_signature(Context *context, FunctionSig
 
 static inline bool sema_analyse_compound_statement_no_scope(Context *context, Ast *compound_statement)
 {
-	LOG_FUNC
 	bool all_ok = ast_ok(compound_statement);
 	VECEACH(compound_statement->compound_stmt.stmts, i)
 	{
@@ -349,7 +210,6 @@ static inline bool sema_analyse_compound_statement_no_scope(Context *context, As
 
 static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 {
-	LOG_FUNC
 	context->current_scope->exit = EXIT_RETURN;
 	Type *expected_rtype = context->rtype;
 	Expr *return_expr = statement->return_stmt.expr;
@@ -363,12 +223,12 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 		}
 		if (expected_rtype->canonical != type_void)
 		{
-			SEMA_ERROR(statement->token, "Expected to return a result of type %s.", expected_rtype->name_loc.string);
+			SEMA_ERROR(statement->token, "Expected to return a result of type %s.", type_to_error_string(expected_rtype));
 			return false;
 		}
 		return true;
 	}
-	if (!sema_expr_analysis(context, return_expr)) return false;
+	if (!sema_analyse_expr(context, return_expr)) return false;
 	if (!expected_rtype)
 	{
 		assert(context->evaluating_macro);
@@ -392,7 +252,7 @@ static inline bool sema_analyse_var_decl(Context *context, Decl *decl)
 	Decl *other = context_find_ident(context, decl->name.string);
 	if (other)
 	{
-		show_shadow_error(decl, other);
+		sema_shadow_error(decl, other);
 		decl_poison(decl);
 		decl_poison(other);
 		return false;
@@ -408,8 +268,8 @@ static inline bool sema_analyse_var_decl(Context *context, Decl *decl)
 	*vars = VECADD(*vars, decl);
 	if (decl->var.init_expr)
 	{
-		if (!sema_expr_analysis(context, decl->var.init_expr) ||
-			!cast(decl->var.init_expr, decl->var.type, CAST_TYPE_IMPLICIT_ASSIGN))
+		if (!sema_analyse_expr(context, decl->var.init_expr) ||
+		    !cast(decl->var.init_expr, decl->var.type, CAST_TYPE_IMPLICIT_ASSIGN))
 		{
 			decl_poison(decl);
 			return false;
@@ -420,24 +280,7 @@ static inline bool sema_analyse_var_decl(Context *context, Decl *decl)
 	return true;
 }
 
-static inline bool sema_analyse_decl_expr_list(Context *context, Ast *statement)
-{
-	switch (statement->decl_expr_list.list_type)
-	{
-		case DECLEXPR_DECL:
-			return sema_analyse_var_decl(context, statement->decl_expr_list.decl);
-		case DECLEXPR_EXPR:
-			return sema_expr_analysis(context, statement->decl_expr_list.expr);
-	}
-	UNREACHABLE
-}
 
-
-static inline bool sema_insert_decl_expr_list_in_compound_stmt(Context *context, Ast *compound_statement, Ast *decl_expr_list)
-{
-	compound_statement->compound_stmt.stmts = VECADD(compound_statement->compound_stmt.stmts, decl_expr_list);
-	return true;
-}
 
 static inline Ast *convert_expr_to_ast(Expr *expr)
 {
@@ -566,7 +409,7 @@ static inline bool decl_or_expr_to_expr_stmt(Context *context, Ast *stmt)
 	return true;
 }
 
-static inline bool sema_flatten_cond(Context *context, Ast *stmt)
+static inline bool sema_flatten_cond(Context *context, Ast *stmt, bool cast_to_bool)
 {
 	assert(stmt->ast_kind == AST_STMT_LIST);
 	assert(vec_size(stmt->stmt_list) > 0);
@@ -575,7 +418,7 @@ static inline bool sema_flatten_cond(Context *context, Ast *stmt)
 	if (vec_size(stmt->stmt_list) == 1 && stmt->stmt_list[0]->ast_kind == AST_EXPR_STMT)
 	{
 		Expr *expr = stmt->stmt_list[0]->expr_stmt;
-		if (!cast(expr, type_bool, CAST_TYPE_IMPLICIT)) return false;
+		if (cast_to_bool && !cast(expr, type_bool, CAST_TYPE_IMPLICIT)) return false;
 		stmt->ast_kind = AST_COND_STMT;
 		stmt->cond_stmt.expr = expr;
 		stmt->cond_stmt.stmts = NULL;
@@ -589,7 +432,7 @@ static inline bool sema_flatten_cond(Context *context, Ast *stmt)
 	{
 		if (!convert_stmt_for_cond(context, stmt->stmt_list[i], &new_list, &last, last_index == i)) return false;
 	}
-	if (!cast(last, type_bool, CAST_TYPE_IMPLICIT)) return false;
+	if (cast_to_bool && !cast(last, type_bool, CAST_TYPE_IMPLICIT)) return false;
 	stmt->ast_kind = AST_COND_STMT;
 	stmt->cond_stmt.expr = last;
 	stmt->cond_stmt.stmts = new_list;
@@ -598,13 +441,12 @@ static inline bool sema_flatten_cond(Context *context, Ast *stmt)
 
 static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 {
-	LOG_FUNC
 	Ast *cond = statement->while_stmt.cond;
 	Ast *body = statement->while_stmt.body;
 	assert(cond && cond->ast_kind == AST_STMT_LIST);
 	context_push_scope_with_flags(context, SCOPE_CONTROL);
 	bool success = sema_analyse_statement(context, cond);
-	sema_flatten_cond(context, cond);
+	success = success && sema_flatten_cond(context, cond, true);
 	context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_CONTINUE); // NOLINT(hicpp-signed-bitwise)
 	success = success && sema_analyse_statement(context, body);
 	context_pop_scope(context);
@@ -619,7 +461,6 @@ static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 
 static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 {
-	LOG_FUNC
 	Expr *expr = statement->do_stmt.expr;
 	Ast *body = statement->do_stmt.body;
 	bool success;
@@ -628,7 +469,7 @@ static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 	context_pop_scope(context);
 	if (!success) return false;
 	context_push_scope_with_flags(context, SCOPE_CONTROL);
-	success = sema_expr_analysis(context, expr);
+	success = sema_analyse_expr(context, expr);
 	success = success && cast(expr, type_bool, CAST_TYPE_IMPLICIT);
 	context_pop_scope(context);
 	return success;
@@ -661,7 +502,7 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 
 static inline bool sema_analyse_expr_stmt(Context *context, Ast *statement)
 {
-	return sema_expr_analysis(context, statement->expr_stmt);
+	return sema_analyse_expr(context, statement->expr_stmt);
 }
 
 static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
@@ -671,7 +512,8 @@ static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
 
 static inline bool sema_analyse_default_stmt(Context *context, Ast *statement)
 {
-	TODO
+	SEMA_ERROR(statement->token, "Unexpected 'default' outside of switch");
+	return false;
 }
 
 bool sema_analyse_stmt_list(Context *context, Ast *statement)
@@ -699,22 +541,73 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 
 static inline bool sema_analyse_goto_stmt(Context *context, Ast *statement)
 {
-	TODO
+	VECEACH(context->labels, i)
+	{
+		Ast *label = context->labels[i];
+		if (statement->token.string == label->token.string)
+		{
+			statement->goto_stmt.type = GOTO_JUMP_BACK;
+			label->label_stmt.is_used = true;
+			statement->goto_stmt.label = label;
+		}
+	}
+	vec_add(context->gotos, statement);
+	return true;
 }
 
 static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 {
-	TODO
+	context_push_scope(context);
+	Ast *cond = statement->if_stmt.cond;
+	context_push_scope_with_flags(context, SCOPE_CONTROL);
+	bool success = sema_analyse_statement(context, cond);
+	success = success && sema_flatten_cond(context, cond, true);
+	context_push_scope(context);
+	success = success && sema_analyse_statement(context, statement->if_stmt.then_body);
+	context_pop_scope(context);
+	// TODO null flowcheck
+	if (statement->if_stmt.else_body)
+	{
+		context_push_scope(context);
+		success = success && sema_analyse_statement(context, statement->if_stmt.else_body);
+		context_pop_scope(context);
+	}
+	context_pop_scope(context);
+	return success;
 }
 
 static inline bool sema_analyse_label(Context *context, Ast *statement)
 {
-	TODO
+	VECEACH(context->labels, i)
+	{
+		Ast *label = context->labels[i];
+		if (label->token.string == statement->token.string)
+		{
+			SEMA_ERROR(tok, "This duplicate label '%s'.", statement->token.string);
+			sema_prev_at_range(label->token.span, "The previous declaration was here.");
+			ast_poison(label);
+			ast_poison(statement);
+			return false;
+		}
+	}
+	vec_add(context->labels, statement);
+	VECEACH(context->gotos, i)
+	{
+		Ast *the_goto = context->gotos[i];
+		if (the_goto->token.string == statement->token.string)
+		{
+			the_goto->goto_stmt.type = GOTO_JUMP_FORWARD;
+			the_goto->goto_stmt.label = statement;
+			statement->label_stmt.is_used = true;
+			break;
+		}
+	}
+	return true;
 }
 
 static inline bool sema_analyse_nop_stmt(Context *context, Ast *statement)
 {
-	TODO
+	return true;
 }
 
 
@@ -735,27 +628,183 @@ static bool sema_analyse_attribute(Context *context, Ast *statement)
 
 static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 {
-	TODO
+	if (!(context->current_scope->flags | SCOPE_BREAK))  // NOLINT(hicpp-signed-bitwise)
+	{
+		SEMA_ERROR(statement->token, "'break' is not allowed here.");
+		return false;
+	}
+	return true;
 }
 
 static bool sema_analyse_case_stmt(Context *context, Ast *statement)
 {
-	TODO
+	SEMA_ERROR(statement->token, "Unexpected 'case' outside of switch");
+	return false;
 }
 
 static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
 {
-	TODO
+	if (!(context->current_scope->flags | SCOPE_CONTINUE))  // NOLINT(hicpp-signed-bitwise)
+	{
+		SEMA_ERROR(statement->token, "'continue' is not allowed here.");
+		return false;
+	}
+	return true;
+}
+
+static inline bool sema_analyse_then_overwrite(Context *context, Ast *statement, Ast *replacement)
+{
+	if (!sema_analyse_statement(context, replacement)) return false;
+	// Overwrite
+	*statement = *replacement;
+	return true;
+}
+
+static int sema_check_comp_time_bool(Context *context, Expr *expr)
+{
+	if (!sema_analyse_expr(context, expr)) return -1;
+	if (expr->expr_kind != EXPR_CONST)
+	{
+		SEMA_ERROR(expr->loc, "$if requires a compile time constant value.");
+		return -1;
+	}
+	if (!cast(expr, type_bool, CAST_TYPE_IMPLICIT)) return -1;
+	return expr->const_expr.b;
 }
 
 static bool sema_analyse_ct_if_stmt(Context *context, Ast *statement)
 {
-	TODO
+	int res = sema_check_comp_time_bool(context, statement->ct_if_stmt.expr);
+	if (res == -1) return false;
+	if (res)
+	{
+		return sema_analyse_then_overwrite(context, statement, statement->ct_if_stmt.then);
+	}
+
+	Ast *elif = statement->ct_if_stmt.elif;
+	while (1)
+	{
+		if (!elif)
+		{
+			// Turn into NOP!
+			statement->ast_kind = AST_NOP_STMT;
+			return true;
+		}
+		// We found else, then just replace with that.
+		if (elif->ast_kind == AST_CT_ELSE_STMT)
+		{
+			return sema_analyse_then_overwrite(context, statement, elif->ct_else_stmt);
+		}
+		assert(elif->ast_kind == AST_CT_ELIF_STMT);
+
+		res = sema_check_comp_time_bool(context, elif->ct_elif_stmt.expr);
+		if (res == -1) return false;
+		if (res)
+		{
+			return sema_analyse_then_overwrite(context, statement, elif->ct_elif_stmt.then);
+		}
+		elif = elif->ct_elif_stmt.elif;
+	}
+}
+
+static bool sema_analyse_switch_case(Context *context, Ast*** prev_cases, Ast *case_stmt, Type *switch_type, Ast **prev_case)
+{
+	if (case_stmt->ast_kind == AST_CASE_STMT)
+	{
+		if (*prev_case)
+		{
+			context_pop_scope(context);
+			*prev_case = NULL;
+		}
+		Expr *case_expr = case_stmt->case_stmt.expr;
+		if (!sema_analyse_expr(context, case_expr)) return false;
+		if (!cast(case_expr, switch_type, CAST_TYPE_IMPLICIT)) return false;
+		if (case_expr->expr_kind != EXPR_CONST)
+		{
+			SEMA_ERROR(case_expr->loc, "This must be a constant expression.");
+			return false;
+		}
+		assert(case_expr->const_expr.type == CONST_INT);
+		case_stmt->case_stmt.value_type = type_is_signed(case_expr->type->canonical) ? CASE_VALUE_INT : CASE_VALUE_UINT;
+		uint64_t val = case_expr->const_expr.i;
+		case_stmt->case_stmt.val = val;
+		context_push_scope(context);
+		*prev_case = case_stmt;
+		VECEACH(*prev_cases, i)
+		{
+			if ((*prev_cases)[i]->case_stmt.val == val)
+			{
+				SEMA_ERROR(case_stmt->token, "Duplicate case value.");
+				sema_prev_at_range((*prev_cases)[i]->token.span, "Previous use was here.");
+				return false;
+			}
+		}
+		vec_add(*prev_cases, case_stmt);
+		return true;
+	}
+	if (case_stmt->ast_kind == AST_DEFAULT_STMT)
+	{
+		case_stmt->ast_kind = AST_CASE_STMT;
+		case_stmt->case_stmt.value_type = CASE_VALUE_DEFAULT;
+		case_stmt->case_stmt.block = NULL;
+		if (*prev_case)
+		{
+			context_pop_scope(context);
+		}
+		context_push_scope(context);
+		*prev_case = case_stmt;
+		vec_add(*prev_cases, case_stmt);
+		return true;
+	}
+	if (!*prev_case)
+	{
+		SEMA_ERROR(case_stmt->token, "Expected a 'case' or 'default' statement.");
+		return false;
+	}
+	if (case_stmt->ast_kind == AST_NEXT_STMT)
+	{
+		case_stmt->next_stmt = *prev_case;
+		(*prev_case)->case_stmt.has_next = true;
+	}
+	else
+	{
+		if (!sema_analyse_statement(context, case_stmt)) return false;
+	}
+	if (!(*prev_case)->case_stmt.block)
+	{
+		(*prev_case)->case_stmt.block = new_ast(AST_COMPOUND_STMT, (*prev_case)->token);
+	}
+	vec_add((*prev_case)->case_stmt.block->compound_stmt.stmts, case_stmt);
+	return true;
 }
 
 static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 {
-	TODO
+	Ast *cond = statement->switch_stmt.cond;
+	context_push_scope_with_flags(context, SCOPE_CONTROL);
+	bool success = sema_analyse_statement(context, cond);
+	success = success && sema_flatten_cond(context, cond, false);
+	context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_NEXT); // NOLINT(hicpp-signed-bitwise)
+	Ast *body = statement->switch_stmt.body;
+	assert(body->ast_kind == AST_COMPOUND_STMT);
+	Type *switch_type = cond->cond_stmt.expr->type;
+	if (!type_is_integer(switch_type))
+	{
+		SEMA_ERROR(cond->token, "Expected an integer or enum type, was '%s'.", type_to_error_string(switch_type));
+		return false;
+	}
+	Ast *in_case = NULL;
+	VECEACH(body->compound_stmt.stmts, i)
+	{
+		success = success && sema_analyse_switch_case(context, &statement->switch_stmt.cases, body->compound_stmt.stmts[i], switch_type, &in_case);
+	}
+	if (in_case)
+	{
+		context_pop_scope(context);
+	}
+	context_pop_scope(context);
+	context_pop_scope(context);
+	return success;
 }
 
 static bool sema_analyse_try_stmt(Context *context, Ast *statement)
@@ -768,10 +817,6 @@ static bool sema_analyse_throw_stmt(Context *context, Ast *statement)
 	TODO
 }
 
-static bool sema_analyse_next_stmt(Context *context, Ast *statement)
-{
-	TODO
-}
 
 static bool sema_analyse_volatile_stmt(Context *context, Ast *statement)
 {
@@ -813,7 +858,7 @@ static AstAnalysis AST_ANALYSIS[AST_WHILE_STMT + 1] =
 	[AST_SWITCH_STMT] = &sema_analyse_switch_stmt,
 	[AST_TRY_STMT] = &sema_analyse_try_stmt,
 	[AST_THROW_STMT] = &sema_analyse_throw_stmt,
-	[AST_NEXT_STMT] = &sema_analyse_next_stmt,
+	[AST_NEXT_STMT] = NULL, // Never reached
 	[AST_VOLATILE_STMT] = &sema_analyse_volatile_stmt,
 	[AST_WHILE_STMT] = &sema_analyse_while_stmt,
 	[AST_STMT_LIST] = &sema_analyse_stmt_list
@@ -821,7 +866,6 @@ static AstAnalysis AST_ANALYSIS[AST_WHILE_STMT + 1] =
 
 bool sema_analyse_statement(Context *context, Ast *statement)
 {
-	LOG_FUNC
 	if (AST_ANALYSIS[statement->ast_kind](context, statement)) return true;
 	return ast_poison(statement);
 }
@@ -832,6 +876,8 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 	context->rtype = func->func.function_signature.rtype;
 	context->current_scope = &context->scopes[0];
 	context->current_scope->local_decl_start = 0;
+	context->labels = NULL;
+	context->gotos = NULL;
 	context->last_local = &context->locals[0];
 	context->unique_index = 0;
 	context->in_volatile_section = 0;
@@ -848,6 +894,7 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 }
 static inline bool sema_analyse_func(Context *context, Decl *decl)
 {
+	DEBUG_LOG("Analysing function %s", decl->name.string);
 	bool all_ok = sema_analyse_function_signature(context, &decl->func.function_signature, true);
 	if (decl->func.struct_parent)
 	{
@@ -855,6 +902,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 	}
 	all_ok = all_ok && sema_analyse_function_body(context, decl);
 	if (!all_ok) decl_poison(decl);
+	DEBUG_LOG("Function analysis done.")
 	return all_ok;
 }
 
@@ -872,65 +920,85 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 	return true;
 }
 
-static inline void sema_analyse_decl(Context *context, Decl *decl)
+static inline bool sema_analyse_decl(Context *context, Decl *decl)
 {
-	LOG_FUNC
+	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
+
 	DEBUG_LOG("Analyse %s", decl->name.string);
+	if (decl->resolve_status == RESOLVE_RUNNING)
+	{
+		SEMA_ERROR(decl->name, "Recursive dependency on %s.", decl->name.string);
+		decl_poison(decl);
+		return false;
+	}
+
+	decl->resolve_status = RESOLVE_RUNNING;
+
 	switch (decl->decl_kind)
 	{
 		case DECL_IMPORT:
-			// TODO
-			break;
+			TODO
 		case DECL_STRUCT:
-			sema_analyse_struct(context, decl);
-			break;
+			if (!sema_analyse_struct(context, decl)) return false;
+			decl->resolve_status = RESOLVE_DONE;
+			context_add_header_decl(context, decl);
+			return true;
 		case DECL_FUNC:
-			sema_analyse_func(context, decl);
-			break;
+			if (!sema_analyse_func(context, decl)) return false;
+			decl->resolve_status = RESOLVE_DONE;
+			context_add_header_decl(context, decl);
+			return true;
 		case DECL_MACRO:
-			sema_analyse_macro(context, decl);
-			break;
+			if (!sema_analyse_macro(context, decl)) return false;
+			decl->resolve_status = RESOLVE_DONE;
+			return true;
 		default:
 			TODO
 	}
 }
 
 
-bool context_register_global(Context *context, Decl *decl)
+
+static void append_decls(Context *context, Decl **decls)
 {
-	Decl *old = stable_set(&context->local_symbols, decl->name.string, decl);
-	if (!old && decl->visibility != VISIBLE_LOCAL)
+	VECEACH(decls, i)
 	{
-		old = stable_set(&context->module->symbols, decl->name.string, decl);
+		context_register_global_decl(context, decls[i]);
 	}
-	if (!old && decl->visibility == VISIBLE_PUBLIC)
+}
+static inline bool sema_analyse_top_level_if(Context *context, Decl *ct_if)
+{
+	int res = sema_check_comp_time_bool(context, ct_if->ct_if_decl.expr);
+	if (res == -1) return false;
+	if (res)
 	{
-		old = stable_set(&context->module->public_symbols, decl->name.string, decl);
+		append_decls(context, ct_if->ct_if_decl.then);
+		return true;
 	}
-	if (old != NULL)
+	Decl *ct_elif = ct_if->ct_if_decl.elif;
+	while (ct_elif)
 	{
-		show_shadow_error(decl, old);
-		decl_poison(decl);
-		return false;
+		if (ct_elif->decl_kind == DECL_CT_ELIF)
+		{
+			res = sema_check_comp_time_bool(context, ct_elif->ct_elif_decl.expr);
+			if (res == -1) return false;
+			if (res)
+			{
+				append_decls(context, ct_elif->ct_elif_decl.then);
+				return true;
+			}
+			ct_elif = ct_elif->ct_elif_decl.elif;
+		}
+		else
+		{
+			assert(ct_elif->decl_kind == DECL_CT_ELSE);
+			append_decls(context, ct_elif->ct_elif_decl.then);
+			return true;
+		}
 	}
 	return true;
 }
 
-static inline void sema_register_declarations(Context *context)
-{
-	VECEACH(context->declarations, i)
-	{
-		context_register_global(context, context->declarations[i]);
-	}
-}
-
-static inline void sema_analyse_declarations(Context *context)
-{
-	VECEACH(context->declarations, i)
-	{
-		sema_analyse_decl(context, context->declarations[i]);
-	}
-}
 
 static inline void sema_process_imports(Context *context)
 {
@@ -939,8 +1007,125 @@ static inline void sema_process_imports(Context *context)
 void sema_analysis(Context *context)
 {
 	sema_process_imports(context);
-	sema_register_declarations(context);
-	// Skip the ct_if for now -> assume they passed.
-	sema_analyse_declarations(context);
+	VECEACH(context->ct_ifs, i)
+	{
+		sema_analyse_top_level_if(context, context->ct_ifs[i]);
+	}
+	VECEACH(context->enums, i)
+	{
+		sema_analyse_decl(context, context->enums[i]);
+	}
+	VECEACH(context->types, i)
+	{
+		sema_analyse_decl(context, context->types[i]);
+	}
+	VECEACH(context->vars, i)
+	{
+		sema_analyse_decl(context, context->vars[i]);
+	}
+	VECEACH(context->functions, i)
+	{
+		sema_analyse_decl(context, context->functions[i]);
+	}
 }
 
+
+
+bool sema_resolve_type_shallow(Context *context, Type *type)
+{
+
+	if (type->resolve_status == RESOLVE_DONE) return type_ok(type);
+
+	if (type->resolve_status == RESOLVE_RUNNING)
+	{
+		SEMA_ERROR(type->name_loc, "Circular dependency resolving type '%s'.", type->name_loc);
+		type_poison(type);
+		return false;
+	}
+
+	type->resolve_status = RESOLVE_RUNNING;
+
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_INC_ARRAY:
+			UNREACHABLE
+		case TYPE_USER_DEFINED:
+			break;
+		case TYPE_POINTER:
+			return sema_resolve_ptr_type(context, type);
+		case TYPE_ARRAY:
+			return sema_resolve_array_type(context, type);
+		default:
+			TODO
+	}
+
+	Decl *decl = stable_get(&context->local_symbols, type->name_loc.string);
+	if (!decl)
+	{
+		decl = module_find_symbol(context->module, type->name_loc.string);
+	}
+
+	if (!decl)
+	{
+		SEMA_ERROR(type->name_loc, "Unknown type '%s'.", type->name_loc.string);
+		type_poison(type);
+		return false;
+	}
+
+	switch (decl->decl_kind)
+	{
+		case DECL_STRUCT:
+		case DECL_UNION:
+		case DECL_ERROR:
+		case DECL_ENUM:
+			type->decl = decl;
+			type->canonical = decl->self_type;
+			type->resolve_status = RESOLVE_DONE;
+			DEBUG_LOG("Resolved %s.", type->name_loc.string);
+			return true;
+		case DECL_TYPEDEF:
+			// TODO func
+			if (!sema_resolve_type(context, decl->typedef_decl.type))
+			{
+				decl_poison(decl);
+				type_poison(type);
+				return false;
+			}
+			type->decl = decl;
+			type->canonical = decl->typedef_decl.type->canonical;
+			type->resolve_status = RESOLVE_DONE;
+			DEBUG_LOG("Resolved %s.", type->name_loc.string);
+			return true;
+		case DECL_POISONED:
+			type_poison(type);
+			return false;
+		case DECL_FUNC:
+		case DECL_VAR:
+		case DECL_ENUM_CONSTANT:
+		case DECL_ERROR_CONSTANT:
+		case DECL_ARRAY_VALUE:
+		case DECL_IMPORT:
+		case DECL_MACRO:
+		case DECL_GENERIC:
+			SEMA_ERROR(type->name_loc, "This is not a type.");
+			type_poison(type);
+			return false;
+		case DECL_MULTI_DECL:
+		case DECL_CT_ELSE:
+		case DECL_CT_IF:
+		case DECL_CT_ELIF:
+			UNREACHABLE
+	}
+	UNREACHABLE
+}
+
+bool sema_resolve_type(Context *context, Type *type)
+{
+	if (!sema_resolve_type_shallow(context, type)) return false;
+	if (type->type_kind == TYPE_USER_DEFINED)
+	{
+		if (!sema_analyse_decl(context, type->decl)) return false;
+	}
+	return true;
+}

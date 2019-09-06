@@ -394,13 +394,27 @@ static Type *parse_type_expression(void)
 	                type = ptr_type;
                 }
                 break;
+			case TOKEN_AND:
+				advance();
+				{
+					Type *ptr_type = type_new(TYPE_POINTER);
+					assert(type);
+					ptr_type->base = type;
+					ptr_type->nullable = false;
+					type = ptr_type;
+					ptr_type = type_new(TYPE_POINTER);
+					ptr_type->base = type;
+					ptr_type->nullable = false;
+					type = ptr_type;
+					break;
+				}
 			case TOKEN_AMP:
 				advance();
                 {
                     Type *ptr_type = type_new(TYPE_POINTER);
-                    type->base = type;
 	                assert(type);
-	                type->nullable = false;
+	                ptr_type->base = type;
+	                ptr_type->nullable = false;
                     type = ptr_type;
                 }
                 break;
@@ -654,7 +668,7 @@ static inline Ast* parse_if_stmt(void)
 	Ast *stmt = TRY_AST(parse_stmt());
 	if_ast->if_stmt.cond = cond;
 	if_ast->if_stmt.then_body = stmt;
-	if (stmt->ast_kind != AST_COMPOUND_STMT || next_tok.type != TOKEN_ELSE)
+	if (stmt->ast_kind != AST_COMPOUND_STMT || tok.type != TOKEN_ELSE)
 	{
 		if (stmt->ast_kind != AST_COMPOUND_STMT)
 		{
@@ -1793,8 +1807,6 @@ bool parse_struct_body(Decl *parent, Decl *visible_parent)
  */
 static inline Decl *parse_struct_declaration(Visibility visibility)
 {
-	LOG_FUNC
-
 	TokenType type = tok.type;
 
 	advance();
@@ -2345,7 +2357,7 @@ static inline bool parse_conditional_top_level(Decl ***decls)
 		Decl *decl = parse_top_level();
 		if (decl_ok(decl))
 		{
-			*decls = VECADD(*decls, decl);
+			vec_add(*decls, decl);
 		}
 		else
 		{

@@ -20,6 +20,12 @@ void context_push(Context *context)
     current_context = context;
 }
 
+void context_add_header_decl(Context *context, Decl *decl)
+{
+	DEBUG_LOG("Adding %s to header", decl->name.string);
+	vec_add(context->header_declarations, decl);
+}
+
 static inline bool create_module_or_check_name(Context *context, Token module_name)
 {
     context->module_name = module_name;
@@ -80,14 +86,60 @@ bool context_set_module(Context *context, Token module_name, Token *generic_para
 void context_register_global_decl(Context *context, Decl *decl)
 {
 	decl->module = context->module;
-	if (decl->decl_kind == DECL_CT_IF)
+	switch (decl->decl_kind)
 	{
-		context->ct_ifs = VECADD(context->ct_ifs, decl);
+		case DECL_POISONED:
+		case DECL_MACRO:
+		case DECL_GENERIC:
+			break;
+		case DECL_FUNC:
+			vec_add(context->functions, decl);
+			break;
+		case DECL_VAR:
+			vec_add(context->vars, decl);
+			break;
+		case DECL_STRUCT:
+		case DECL_UNION:
+		case DECL_TYPEDEF:
+			vec_add(context->types, decl);
+			break;
+		case DECL_ENUM:
+			vec_add(context->enums, decl);
+			break;
+		case DECL_ERROR:
+			TODO
+			break;
+			break;
+		case DECL_ENUM_CONSTANT:
+		case DECL_ERROR_CONSTANT:
+		case DECL_ARRAY_VALUE:
+		case DECL_IMPORT:
+		case DECL_MULTI_DECL:
+		case DECL_CT_ELSE:
+		case DECL_CT_ELIF:
+			UNREACHABLE
+			break;
+
+		case DECL_CT_IF:
+			vec_add(context->ct_ifs, decl);
+			return;
 	}
-	else
+	DEBUG_LOG("Registering symbol  %s.", decl->name.string);
+
+	Decl *old = stable_set(&context->local_symbols, decl->name.string, decl);
+	if (!old && decl->visibility != VISIBLE_LOCAL)
 	{
-		DEBUG_LOG("Registering %s.", decl->name.string);
-		context->declarations = VECADD(context->declarations, decl);
+		old = stable_set(&context->module->symbols, decl->name.string, decl);
+	}
+	if (!old && decl->visibility == VISIBLE_PUBLIC)
+	{
+		old = stable_set(&context->module->public_symbols, decl->name.string, decl);
+	}
+	if (old != NULL)
+	{
+		sema_shadow_error(decl, old);
+		decl_poison(decl);
+		decl_poison(old);
 	}
 }
 
@@ -161,16 +213,24 @@ bool context_add_import(Context *context, Token module_name, Token alias, Import
 
 void context_print_ast(Context *context, FILE *file)
 {
+	VECEACH(context->enums, i)
 	{
-		VECEACH(context->declarations, i)
-		{
-			fprint_decl(file, context->declarations[i]);
-		}
+		fprint_decl(file, context->enums[i]);
 	}
+	VECEACH(context->vars, i)
 	{
-		VECEACH(context->ct_ifs, i)
-		{
-			fprint_decl(file, context->ct_ifs[i]);
-		}
+		fprint_decl(file, context->vars[i]);
+	}
+	VECEACH(context->types, i)
+	{
+		fprint_decl(file, context->types[i]);
+	}
+	VECEACH(context->functions, i)
+	{
+		fprint_decl(file, context->functions[i]);
+	}
+	VECEACH(context->ct_ifs, i)
+	{
+		fprint_decl(file, context->ct_ifs[i]);
 	}
 }
