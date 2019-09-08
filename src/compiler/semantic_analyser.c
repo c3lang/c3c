@@ -10,9 +10,7 @@ bool sema_analyse_stmt_list(Context *context, Ast *statement);
 
 void sema_init(File *file)
 {
-	LOG_FUNC
 }
-
 
 
 void sema_shadow_error(Decl *decl, Decl *old)
@@ -101,6 +99,30 @@ static bool sema_resolve_array_type(Context *context, Type *type)
 }
 static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 {
+	if (decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION)
+	{
+		DEBUG_LOG("Beginning analysis of inner struct/union");
+		VECEACH(decl->strukt.members, i)
+		{
+			Decl *member = decl->strukt.members[i];
+			if (!decl_ok(member))
+			{
+				decl_poison(decl);
+				continue;
+			}
+			if (!sema_analyse_struct_member(context, decl->strukt.members[i]))
+			{
+				if (decl_ok(decl))
+				{
+					decl_poison(decl);
+					continue;
+				}
+				decl_poison(decl);
+			}
+		}
+		DEBUG_LOG("Analysis complete.");
+		return decl_ok(decl);
+	}
 	assert(decl->decl_kind == DECL_VAR);
 	assert(decl->var.kind == VARDECL_MEMBER);
 	assert(!decl->var.init_expr);
@@ -112,10 +134,11 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 	assert(decl->var.type->canonical);
 	return true;
 }
-static inline bool sema_analyse_struct(Context *context, Decl *decl)
+
+static inline bool sema_analyse_struct_union(Context *context, Decl *decl)
 {
 	DEBUG_LOG("Beginning analysis of %s.", decl->name.string);
-	assert(decl->decl_kind == DECL_STRUCT);
+	assert(decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION);
 	VECEACH(decl->strukt.members, i)
 	{
 		Decl *member = decl->strukt.members[i];
@@ -135,6 +158,7 @@ static inline bool sema_analyse_struct(Context *context, Decl *decl)
 		}
 	}
 	DEBUG_LOG("Analysis complete.");
+	// Todo, resolve alignment, size etc.
 	return decl_ok(decl);
 }
 
@@ -268,8 +292,11 @@ static inline bool sema_analyse_var_decl(Context *context, Decl *decl)
 	*vars = VECADD(*vars, decl);
 	if (decl->var.init_expr)
 	{
-		if (!sema_analyse_expr(context, decl->var.init_expr) ||
-		    !cast(decl->var.init_expr, decl->var.type, CAST_TYPE_IMPLICIT_ASSIGN))
+		Type *prev_type = context->left_type_in_assignment;
+		context->left_type_in_assignment = decl->var.type;
+		bool success = sema_analyse_expr(context, decl->var.init_expr) && cast(decl->var.init_expr, decl->var.type, CAST_TYPE_IMPLICIT_ASSIGN);
+		context->left_type_in_assignment = prev_type;
+		if (!success)
 		{
 			decl_poison(decl);
 			return false;
@@ -621,10 +648,6 @@ static bool sema_analyse_asm_stmt(Context *context, Ast *statement)
 	TODO
 }
 
-static bool sema_analyse_attribute(Context *context, Ast *statement)
-{
-	TODO
-}
 
 static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 {
@@ -837,7 +860,7 @@ static bool sema_analyse_compound_stmt(Context *context, Ast *statement)
 static AstAnalysis AST_ANALYSIS[AST_WHILE_STMT + 1] =
 {
 	[AST_ASM_STMT] = &sema_analyse_asm_stmt,
-	[AST_ATTRIBUTE] = &sema_analyse_attribute,
+	[AST_ATTRIBUTE] = NULL,
 	[AST_BREAK_STMT] = &sema_analyse_break_stmt,
 	[AST_CASE_STMT] = &sema_analyse_case_stmt,
 	[AST_CATCH_STMT] = &sema_analyse_catch_stmt,
@@ -920,6 +943,58 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 	return true;
 }
 
+static inline bool sema_analyse_global(Context *context, Decl *decl)
+{
+	if (!sema_resolve_type(context, decl->var.type)) return false;
+	if (decl->var.init_expr)
+	{
+		if (!sema_analyse_expr(context, decl->var.init_expr)) return false;
+		if (!cast(decl->var.init_expr, decl->var.type, CAST_TYPE_IMPLICIT_ASSIGN)) return false;
+		if (decl->var.init_expr->expr_kind != EXPR_CONST)
+		{
+			SEMA_ERROR(decl->var.init_expr->loc, "The expression must be a constant value.");
+			return false;
+		}
+	}
+	switch (decl->var.kind)
+	{
+		case VARDECL_CONST:
+			assert(decl->var.init_expr);
+			return true;
+		case VARDECL_GLOBAL:
+			return true;
+		default:
+			UNREACHABLE
+			break;
+	}
+}
+
+static inline bool sema_analyse_typedef(Context *context, Decl *decl)
+{
+	if (!sema_resolve_type(context, decl->typedef_decl.type)) return false;
+	// Do we need anything else?
+	return true;
+}
+
+static inline bool sema_analyse_generic(Context *context, Decl *decl)
+{
+	TODO
+	return true;
+}
+
+static inline bool sema_analyse_enum(Context *context, Decl *decl)
+{
+	if (!sema_resolve_type(context, decl->typedef_decl.type)) return false;
+	// TODO assign numbers to constants
+	return true;
+}
+
+static inline bool sema_analyse_error(Context *context, Decl *decl)
+{
+	// TODO assign numbers to constants
+	return true;
+}
+
 static inline bool sema_analyse_decl(Context *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
@@ -933,28 +1008,51 @@ static inline bool sema_analyse_decl(Context *context, Decl *decl)
 	}
 
 	decl->resolve_status = RESOLVE_RUNNING;
-
 	switch (decl->decl_kind)
 	{
-		case DECL_IMPORT:
-			TODO
 		case DECL_STRUCT:
-			if (!sema_analyse_struct(context, decl)) return false;
-			decl->resolve_status = RESOLVE_DONE;
+		case DECL_UNION:
+			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
 			context_add_header_decl(context, decl);
-			return true;
+			break;
 		case DECL_FUNC:
-			if (!sema_analyse_func(context, decl)) return false;
-			decl->resolve_status = RESOLVE_DONE;
+			if (!sema_analyse_func(context, decl)) return decl_poison(decl);
 			context_add_header_decl(context, decl);
-			return true;
+			break;
 		case DECL_MACRO:
-			if (!sema_analyse_macro(context, decl)) return false;
-			decl->resolve_status = RESOLVE_DONE;
-			return true;
-		default:
-			TODO
+			if (!sema_analyse_macro(context, decl)) return decl_poison(decl);
+			break;
+		case DECL_VAR:
+			if (!sema_analyse_global(context, decl)) return decl_poison(decl);
+			context_add_header_decl(context, decl);
+			break;
+		case DECL_TYPEDEF:
+			if (!sema_analyse_typedef(context, decl)) return decl_poison(decl);
+			break;
+		case DECL_ENUM:
+			if (!sema_analyse_enum(context, decl)) return decl_poison(decl);
+			break;
+		case DECL_ERROR:
+			if (!sema_analyse_error(context, decl)) return decl_poison(decl);
+			break;
+		case DECL_GENERIC:
+			if (!sema_analyse_generic(context, decl)) return decl_poison(decl);
+			break;
+		case DECL_POISONED:
+		case DECL_IMPORT:
+		case DECL_ENUM_CONSTANT:
+		case DECL_ERROR_CONSTANT:
+		case DECL_ARRAY_VALUE:
+		case DECL_MULTI_DECL:
+		case DECL_CT_ELSE:
+		case DECL_CT_ELIF:
+			UNREACHABLE
+		case DECL_CT_IF:
+			// Handled elsewhere
+			UNREACHABLE
 	}
+	decl->resolve_status = RESOLVE_DONE;
+	return true;
 }
 
 

@@ -55,6 +55,7 @@ void compiler_compile()
 		diag_reset();
 		parse_file(file);
 		sema_analysis(current_context);
+		if (diagnostics.errors > 0) exit(EXIT_FAILURE);
 		FILE *f = fopen("test.c","w");
 		fprintf(f, "#include <stdbool.h>\n#include <stdint.h>\n");
 		current_context->codegen_output = f;

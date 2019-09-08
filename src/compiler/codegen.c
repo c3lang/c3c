@@ -140,12 +140,10 @@ static inline int codegen_emit_identifier_expr(Context *context, Expr *expr, int
 	return context->unique_index;
 }
 
-
-static inline int codegen_emit_const_expr(Context *context, Expr *expr, int indent)
+static inline void codegen_emit_const_expr_raw(Context *context, Expr *expr)
 {
 	assert(expr->expr_kind == EXPR_CONST);
 	Type *canonical = expr->type->canonical;
-	INDENT();
 	switch (canonical->type_kind)
 	{
 		case TYPE_POISONED:
@@ -155,50 +153,44 @@ static inline int codegen_emit_const_expr(Context *context, Expr *expr, int inde
 			break;
 		case TYPE_BOOL:
 			assert(expr->const_expr.type == CONST_BOOL);
-			PRINTTYPE(expr->type);
-			PRINTF(" _%d = %s;\n", ++context->unique_index, expr->const_expr.b ? "true" : "false");
-			return context->unique_index;
+			PRINTF(expr->const_expr.b ? "true" : "false");
+			return;
 		case TYPE_I8:
 		case TYPE_I16:
 		case TYPE_I32:
 		case TYPE_I64:
 		case TYPE_IXX:
 			assert(expr->const_expr.type == CONST_INT);
-			PRINTTYPE(expr->type);
-			PRINTF(" _%d = (", ++context->unique_index);
+			PRINTF("(");
 			PRINTTYPE(canonical);
 			PRINTF(")");
-			PRINTF("%lld;\n", (long long)expr->const_expr.i);
-			return context->unique_index;
+			PRINTF("%lld", (long long)expr->const_expr.i);
+			return;
 		case TYPE_U8:
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
 		case TYPE_UXX:
 			assert(expr->const_expr.type == CONST_INT);
-			PRINTTYPE(expr->type);
-			PRINTF(" _%d = (", ++context->unique_index);
+			PRINTF("(");
 			PRINTTYPE(canonical);
 			PRINTF(")");
-			PRINTF("%llu;\n", expr->const_expr.i);
-			return context->unique_index;
+			PRINTF("%llu", (long long)expr->const_expr.i);
+			return;
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:
-			assert(expr->const_expr.type == CONST_FLOAT);
-			PRINTTYPE(expr->type);
-			PRINTF(" _%d = (", ++context->unique_index);
+			assert(expr->const_expr.type == CONST_INT);
+			PRINTF("(");
 			PRINTTYPE(canonical);
 			PRINTF(")");
-			PRINTF("%Lf;\n", expr->const_expr.f);
-			return context->unique_index;
+			PRINTF("%Lf", expr->const_expr.f);
+			return;
 		case TYPE_POINTER:
-			assert(expr->const_expr.type == CONST_NIL);
-			PRINTTYPE(expr->type);
-			PRINTF(" _%d = ((", ++context->unique_index);
+			PRINTF("((");
 			PRINTTYPE(canonical);
-			PRINTF("0);\n");
-			return context->unique_index;
+			PRINTF("0)");
+			return;
 		case TYPE_STRING:
 			TODO
 		case TYPE_ARRAY:
@@ -207,6 +199,17 @@ static inline int codegen_emit_const_expr(Context *context, Expr *expr, int inde
 		case TYPE_EXPRESSION:
 			UNREACHABLE
 	}
+}
+
+static inline int codegen_emit_const_expr(Context *context, Expr *expr, int indent)
+{
+	assert(expr->expr_kind == EXPR_CONST);
+	INDENT();
+	PRINTTYPE(expr->type);
+	PRINTF(" _%d = ", ++context->unique_index);
+	codegen_emit_const_expr_raw(context, expr);
+	PRINTF(";\n");
+	return context->unique_index;
 }
 
 static inline int codegen_emit_cast_expr(Context *context, Expr *expr, int indent)
@@ -263,14 +266,15 @@ static int codegen_emit_binary_expr(Context *context, Expr *expr, int indent)
 		case TOKEN_NOT_EQUAL:
 		case TOKEN_MOD:
 		case TOKEN_DIV:
+		case TOKEN_AND:
+		case TOKEN_OR:
 		case TOKEN_STAR:
-			return codegen_emit_simple_binary_expr(context, expr, indent);
 		case TOKEN_BIT_OR:
 		case TOKEN_AMP:
 		case TOKEN_BIT_XOR:
 		case TOKEN_SHL:
 		case TOKEN_SHR:
-			TODO
+			return codegen_emit_simple_binary_expr(context, expr, indent);
 		case TOKEN_MULT_ASSIGN:
 		case TOKEN_DIV_ASSIGN:
 		case TOKEN_MINUS_ASSIGN:
@@ -830,7 +834,16 @@ static inline void codegen_top_level_decl_header(Context *context, Decl *decl)
 			codegen_top_level_func(context, decl);
 			return;
 		case DECL_VAR:
-			break;
+			if (decl->visibility != VISIBLE_PUBLIC) PRINTF("static ");
+			PRINTTYPE(decl->var.type);
+			PRINTF(" %s", decl->name.string);
+			if (decl->var.init_expr)
+			{
+				PRINTF(" = ");
+				codegen_emit_const_expr_raw(context, decl->var.init_expr);
+			}
+			PRINTF(";\n");
+			return;
 		case DECL_TYPEDEF:
 			TODO
 		case DECL_STRUCT:
@@ -873,7 +886,7 @@ static inline void codegen_top_level_decl(Context *context, Decl *decl)
 			codegen_func(context, decl);
 			return;
 		case DECL_VAR:
-			break;
+			return;
 		case DECL_ENUM_CONSTANT:
 			break;
 		case DECL_TYPEDEF:

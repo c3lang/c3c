@@ -1,5 +1,8 @@
 module foo;
 
+int oefk = 1;
+int bob = 'HELO';
+
 struct Foo
 {
 	int i;
@@ -10,7 +13,18 @@ struct Bar
 {
 	Foo foo;
 	Foo* fooPtr;
+	struct bar
+	{
+		int a;
+	}
 }
+
+union Xyz
+{
+	int x;
+	int y;
+}
+
 
 $if (1)
 {
@@ -29,12 +43,30 @@ $if (1)
 
 }
 
+
 func int boo()
 {
 	Zed zfe;
+	//zfe = { 1, 2 };
+	//Zed zfed = { 1 };
 	int eok = 0;
 	{
 		eok = 2;
+	}
+	eok = eok * 2 + 1 * 2;
+	eok = eok / 2 + 32 / 2;
+	eok = eok % 2 - 32 % 45;
+
+	int de = eok;
+	de++;
+	de = de << 1;
+	de = de >> 1;
+	de = de ^ cast(byte, 1);
+	de = de & 1;
+	de = de | 1;
+	if (de > 100 || de < 10 || de <= 1000 || de >= 1921 || de == 100 || de != 2)
+	{
+		return boo();
 	}
 	switch (eok)
 	{

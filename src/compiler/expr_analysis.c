@@ -144,16 +144,36 @@ static inline bool sema_expr_analyse_method_ref(Context *context, Expr *expr)
 	TODO
 }
 
-
-static inline bool sema_expr_analyse_initializer_list(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_struct_initializer_list(Context *context, Expr *expr)
 {
 	TODO
+}
+static inline bool sema_expr_analyse_initializer_list(Context *context, Expr *expr)
+{
+	assert(context->left_type_in_assignment);
+	Type *assigned = context->left_type_in_assignment->canonical;
+	assert(assigned);
+	switch (assigned->type_kind)
+	{
+		case TYPE_USER_DEFINED:
+			if (decl_is_struct_type(assigned->decl)) return sema_expr_analyse_struct_initializer_list(context, expr);
+			break;
+		case TYPE_ARRAY:
+			TODO
+		case TYPE_VARARRAY:
+			TODO
+		default:
+			break;
+	}
+	SEMA_ERROR(expr->loc, "Cannot assign expression to '%s'.", type_to_error_string(context->left_type_in_assignment));
+	return false;
 }
 
 static inline bool sema_expr_analyse_sizeof(Context *context, Expr *expr)
 {
 	TODO
 }
+
 
 static inline bool sema_expr_analyse_cast(Context *context, Expr *expr)
 {
@@ -174,8 +194,25 @@ static inline bool sema_expr_analyse_cast(Context *context, Expr *expr)
 
 static bool sema_expr_analyse_assign(Context *context, Expr *expr, Expr *left, Expr *right)
 {
+	if (!sema_analyse_expr(context, left)) return false;
+
+	if (!expr_is_ltype(left))
+	{
+		SEMA_ERROR(left->loc, "Expression is not assignable.");
+		return false;
+	}
+
+	Type *prev_type = context->left_type_in_assignment;
+	context->left_type_in_assignment = left->type;
+
+	bool success = sema_analyse_expr(context, right);
+
+	context->left_type_in_assignment = prev_type;
+
+	if (!success) return false;
+
 	if (!cast(right, left->type, CAST_TYPE_IMPLICIT_ASSIGN)) return false;
-	// Check assignable
+
 	return true;
 }
 
@@ -183,6 +220,14 @@ static inline bool both_const(Expr *left, Expr *right)
 {
 	return left->expr_kind == EXPR_CONST && right->expr_kind == EXPR_CONST;
 }
+
+static bool sema_expr_analyse_bit_and_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
+static bool sema_expr_analyse_bit_or_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
+static bool sema_expr_analyse_bit_xor_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
+static bool sema_expr_analyse_div_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
+static bool sema_expr_analyse_add_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
+static bool sema_expr_analyse_sub_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
+static bool sema_expr_analyse_mult_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 
 static bool sema_expr_analyse_add(Context *context, Expr *expr, Expr *left, Expr *right)
 {
@@ -228,14 +273,115 @@ static bool sema_expr_analyse_add(Context *context, Expr *expr, Expr *left, Expr
 	expr->type = left->type;
 	return true;
 }
-static bool sema_expr_analyse_add_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_sub(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_sub_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 
-static bool sema_expr_analyse_mult(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_mult_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
+static bool sema_expr_analyse_sub(Context *context, Expr *expr, Expr *left, Expr *right)
+{
+	Type *left_type = left->type->canonical;
+	Type *right_type = right->type->canonical;
+	if (left_type->type_kind == TYPE_POINTER)
+	{
+		if (right_type->type_kind == TYPE_POINTER)
+		{
+			if (!cast(right, left_type, CAST_TYPE_IMPLICIT)) return false;
+			expr->type = type_isize;
+			return true;
+		}
+		if (!cast_arithmetic(right, left, "-")) return false;
+		expr->type = left->type;
+		return true;
+	}
+	if (!cast_arithmetic(left, right, "-")) return false;
+	if (!cast_arithmetic(right, left, "-")) return false;
+
+	Type *canonical = left->type->canonical;
+	if (!type_is_number(canonical))
+	{
+		SEMA_ERROR(expr->loc, "- is not allowed");
+		return false;
+	}
+	if (both_const(left, right))
+	{
+		switch (left->const_expr.type)
+		{
+			case CONST_INT:
+				expr->const_expr.i = left->const_expr.i - right->const_expr.i;
+				break;
+			case CONST_FLOAT:
+				expr->const_expr.f = left->const_expr.f - right->const_expr.f;
+				break;
+			default:
+				UNREACHABLE
+		}
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.type = left->const_expr.type;
+	}
+	expr->type = left->type;
+	return true;
+}
+
+static bool sema_expr_analyse_mult(Context *context, Expr *expr, Expr *left, Expr *right)
+{
+	if (!cast_arithmetic(left, right, "*")) return false;
+	if (!cast_arithmetic(right, left, "*")) return false;
+
+	Type *canonical = left->type->canonical;
+	if (!type_is_number(canonical))
+	{
+		SEMA_ERROR(expr->loc, "* is not allowed");
+		return false;
+	}
+	if (both_const(left, right))
+	{
+		switch (left->const_expr.type)
+		{
+			case CONST_INT:
+				expr->const_expr.i = left->const_expr.i * right->const_expr.i;
+				break;
+			case CONST_FLOAT:
+				expr->const_expr.f = left->const_expr.f * right->const_expr.f;
+				break;
+			default:
+				UNREACHABLE
+		}
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.type = left->const_expr.type;
+	}
+	expr->type = left->type;
+	return true;
+}
+
 static bool sema_expr_analyse_div(Context *context, Expr *expr, Expr *left, Expr *right)
 {
+	if (!cast_arithmetic(left, right, "/")) return false;
+	if (!cast_arithmetic(right, left, "/")) return false;
+
+	Type *canonical = left->type->canonical;
+	if (!type_is_number(canonical))
+	{
+		SEMA_ERROR(expr->loc, "/ is not allowed");
+		return false;
+	}
+	if (both_const(left, right))
+	{
+		switch (left->const_expr.type)
+		{
+			case CONST_INT:
+				expr->const_expr.i = left->const_expr.i / right->const_expr.i;
+				break;
+			case CONST_FLOAT:
+				expr->const_expr.f = left->const_expr.f / right->const_expr.f;
+				break;
+			default:
+				UNREACHABLE
+		}
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.type = left->const_expr.type;
+	}
+	expr->type = left->type;
+	return true;
+}
+
+
 	/*
 	switch (left->type)
 	{
@@ -261,51 +407,136 @@ static bool sema_expr_analyse_div(Context *context, Expr *expr, Expr *left, Expr
 			expr->const_expr.type = CONST_FLOAT;
 			break;
 	}*/
-	return false;
-}
 
-static bool sema_expr_analyse_div_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 static bool sema_expr_analyse_mod(Context *context, Expr *expr, Expr *left, Expr *right)
 {
-	if (!cast_arithmetic(left, right, "%")) return false;
+	if (!cast_arithmetic(left, right, "%") || !cast_arithmetic(right, left, "%")) return false;
 	if (!type_is_integer(right->type->canonical) || !type_is_integer(left->type->canonical)) return sema_type_error_on_binop("%", expr);
 
-	if (right->expr_kind == EXPR_CONST)
+	if (right->expr_kind == EXPR_CONST && right->const_expr.i == 0)
 	{
-		if (right->const_expr.i == 0)
-		{
-			SEMA_ERROR(expr->binary_expr.right->loc, "Cannot perform mod by zero.");
-			return false;
-		}
-		if (left->expr_kind == EXPR_CONST)
-		{
-			// TODO negative
-			expr->const_expr.i = left->const_expr.i / right->const_expr.i;
-			expr->type = right->type;
-			expr->expr_kind = EXPR_CONST;
-			expr->const_expr.type = CONST_INT;
-		}
+		SEMA_ERROR(expr->binary_expr.right->loc, "Cannot perform mod by zero.");
+		return false;
 	}
+	if (left->expr_kind == EXPR_CONST && right->expr_kind == EXPR_CONST)
+	{
+		// TODO negative
+		expr_replace(expr, left);
+		expr->const_expr.i %= right->const_expr.i;
+		return true;
+	}
+
+	expr->type = left->type;
 	return true;
 }
 
 static bool sema_expr_analyse_mod_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 
-static bool sema_expr_analyse_bit_and(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_bit_and_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_bit_or(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_bit_or_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_bit_xor(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_bit_xor_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
+#define SEMA_ANALYSE_BIT(op) \
+{ if (!cast_arithmetic(left, right, #op) || !cast_arithmetic(right, left, #op)) return false; \
+if (left->type->canonical->type_kind != TYPE_BOOL && !type_is_integer(left->type)) sema_type_error_on_binop(#op, expr); \
+if (left->expr_kind == EXPR_CONST && right->expr_kind == EXPR_CONST)\
+{ expr_replace(expr, left); \
+if (left->const_expr.type == CONST_BOOL) \
+{ expr->const_expr.b |= right->const_expr.b; } \
+else { expr->const_expr.i |= expr->const_expr.i; } \
+return true; } \
+expr->type = left->type; \
+return true; }
+
+static bool sema_expr_analyse_bit_or(Context *context, Expr *expr, Expr *left, Expr *right) SEMA_ANALYSE_BIT(|)
+static bool sema_expr_analyse_bit_xor(Context *context, Expr *expr, Expr *left, Expr *right) SEMA_ANALYSE_BIT(^)
+static bool sema_expr_analyse_bit_and(Context *context, Expr *expr, Expr *left, Expr *right) SEMA_ANALYSE_BIT(&)
+
 static bool sema_expr_analyse_shr(Context *context, Expr *expr, Expr *left, Expr *right)
-{ TODO }
+{
+	// Todo: proper handling of signed / unsigned. Proper reduction of constants.
+	if (!type_is_integer(left->type) || !type_is_integer(right->type)) return sema_type_error_on_binop(">>", expr);
+	if (type_is_signed(right->type->canonical))
+	{
+		cast(right, type_long, CAST_TYPE_IMPLICIT);
+	}
+	else
+	{
+		cast(left, type_ulong, CAST_TYPE_IMPLICIT);
+	}
+	if (right->expr_kind == EXPR_CONST)
+	{
+		if (right->const_expr.i > left->type->canonical->builtin.bitsize)
+		{
+			SEMA_ERROR(right->loc, "Rightshift exceeds bitsize of '%s'", type_to_error_string(left->type));
+			return false;
+		}
+		if (left->expr_kind == EXPR_CONST)
+		{
+			expr_replace(expr, left);
+			expr->const_expr.i >>= right->const_expr.i;
+			return true;
+		}
+	}
+	expr->type = left->type;
+	return true;
+}
+
+static bool sema_expr_analyse_shl(Context *context, Expr *expr, Expr *left, Expr *right)
+{
+	// Todo: proper handling of signed / unsigned. Proper reduction of constants.
+	if (!type_is_integer(left->type) || !type_is_integer(right->type)) return sema_type_error_on_binop("<<", expr);
+	if (type_is_signed(right->type->canonical))
+	{
+		cast(right, type_long, CAST_TYPE_IMPLICIT);
+	}
+	else
+	{
+		cast(left, type_ulong, CAST_TYPE_IMPLICIT);
+	}
+	if (right->expr_kind == EXPR_CONST)
+	{
+		if (right->const_expr.i > left->type->canonical->builtin.bitsize)
+		{
+			SEMA_ERROR(right->loc, "Leftshift exceeds bitsize of '%s'", type_to_error_string(left->type));
+			return false;
+		}
+		if (left->expr_kind == EXPR_CONST)
+		{
+			expr_replace(expr, left);
+			expr->const_expr.i <<= right->const_expr.i;
+			return true;
+		}
+	}
+	expr->type = left->type;
+	return true;
+}
+
 static bool sema_expr_analyse_shr_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_shl(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 static bool sema_expr_analyse_shl_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 
-static bool sema_expr_analyse_and(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
+static bool sema_expr_analyse_and(Context *context, Expr *expr, Expr *left, Expr *right)
+{
+	if (!cast(left, type_bool, CAST_TYPE_IMPLICIT)) return false;
+	if (!cast(right, type_bool, CAST_TYPE_IMPLICIT)) return false;
+	if (both_const(left, right))
+	{
+		expr_replace(expr, left);
+		expr->const_expr.b &= right->const_expr.b;
+	}
+	return true;
+}
+
+static bool sema_expr_analyse_or(Context *context, Expr *expr, Expr *left, Expr *right)
+{
+	if (!cast(left, type_bool, CAST_TYPE_IMPLICIT)) return false;
+	if (!cast(right, type_bool, CAST_TYPE_IMPLICIT)) return false;
+	if (both_const(left, right))
+	{
+		expr_replace(expr, left);
+		expr->const_expr.b |= right->const_expr.b;
+	}
+	expr->type = type_bool;
+	return true;
+}
+
 static bool sema_expr_analyse_and_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_or(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 static bool sema_expr_analyse_or_assign(Context *context, Expr *expr, Expr *left, Expr *right) { TODO }
 
 #define SEMA_ANALYSE_CMP(op) { \
@@ -516,9 +747,17 @@ static inline bool sema_expr_analyse_binary(Context *context, Expr *expr)
 	Expr *left = expr->binary_expr.left;
 	Expr *right = expr->binary_expr.right;
 
+	// Special handling due to initalizer lists
+	if (expr->binary_expr.operator == TOKEN_EQ)
+	{
+		return sema_expr_analyse_assign(context, expr, left, right);
+	}
+
 	if (!sema_analyse_expr(context, left)) return false;
 	if (!sema_analyse_expr(context, right)) return false;
 
+	assert(left->type);
+	assert(right->type);
 	return BINOP_ANALYSIS[expr->binary_expr.operator](context, expr, left, right);
 }
 
@@ -565,7 +804,7 @@ static inline bool sema_expr_analyse_type(Context *context, Expr *expr)
 
 
 static ExprBinopAnalysis BINOP_ANALYSIS[TOKEN_EOF] = {
-		[TOKEN_EQ] = &sema_expr_analyse_assign,
+		[TOKEN_EQ] = NULL, // Explicitly dispatched
 		[TOKEN_STAR] = &sema_expr_analyse_mult,
 		[TOKEN_MULT_ASSIGN] = &sema_expr_analyse_mult_assign,
 		[TOKEN_PLUS] = &sema_expr_analyse_add,
@@ -578,7 +817,7 @@ static ExprBinopAnalysis BINOP_ANALYSIS[TOKEN_EOF] = {
 		[TOKEN_MOD_ASSIGN] = &sema_expr_analyse_mod_assign,
 		[TOKEN_AND] = &sema_expr_analyse_and,
 		[TOKEN_AND_ASSIGN] = &sema_expr_analyse_and_assign,
-		[TOKEN_OR] = &sema_expr_analyse_bit_or,
+		[TOKEN_OR] = &sema_expr_analyse_or,
 		[TOKEN_OR_ASSIGN] = &sema_expr_analyse_or_assign,
 		[TOKEN_AMP] = &sema_expr_analyse_bit_and,
 		[TOKEN_BIT_AND_ASSIGN] = &sema_expr_analyse_bit_and_assign,

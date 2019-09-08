@@ -12,6 +12,7 @@ static Expr *parse_expr(void);
 static Expr *parse_paren_expr(void);
 static Expr *parse_precedence(Precedence precedence);
 static Expr *parse_initializer_list(void);
+static Expr *parse_initializer(void);
 static bool parse_type_or_expr(Expr **exprPtr, Type **typePtr);
 static Decl *parse_top_level(void);
 
@@ -245,7 +246,7 @@ static inline Type *parse_base_type(void)
 		    CONSUME_OR(TOKEN_LPAREN, &poisoned_type);
 			{
 				type = type_new(TYPE_EXPRESSION);
-				type->unresolved_type_expr = TRY_EXPR_OR(parse_expr(), &poisoned_type);
+				type->unresolved_type_expr = TRY_EXPR_OR(parse_initializer(), &poisoned_type);
 			}
 			EXPECT_OR(TOKEN_RPAREN, &poisoned_type);
 			break;
@@ -461,7 +462,7 @@ static inline Decl *parse_decl_after_type(bool local, Type *type)
 				return &poisoned_decl;
 			}
 			advance_and_verify(TOKEN_EQ);
-			decl->var.init_expr = TRY_EXPR_OR(parse_expr(), &poisoned_decl);
+			decl->var.init_expr = TRY_EXPR_OR(parse_initializer(), &poisoned_decl);
 			decl = NULL;
 			if (try_consume(TOKEN_COMMA)) continue;
 			return main_decl;
@@ -949,7 +950,6 @@ static inline Ast* parse_ct_if_stmt(void)
 
 static inline Ast* parse_ct_each_stmt(void)
 {
-	LOG_FUNC
 
 	TODO
 }
@@ -1620,7 +1620,7 @@ static inline Decl *parse_const_declaration(Visibility visibility)
 
     CONSUME_OR(TOKEN_EQ, &poisoned_decl);
 
-	decl->var.init_expr = TRY_EXPR_OR(parse_expr(), &poisoned_decl);
+	decl->var.init_expr = TRY_EXPR_OR(parse_initializer(), &poisoned_decl);
 
 	CONSUME_OR(TOKEN_EOS, &poisoned_decl);
 	return decl;
@@ -1637,7 +1637,6 @@ static inline Decl *parse_const_declaration(Visibility visibility)
  */
 static inline Decl *parse_global_declaration(Visibility visibility)
 {
-
 	Type *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 
 	Decl *decl = decl_new_var(tok, type, VARDECL_GLOBAL, visibility);
@@ -1646,8 +1645,9 @@ static inline Decl *parse_global_declaration(Visibility visibility)
 
 	if (try_consume(TOKEN_EQ))
 	{
-		decl->var.init_expr = TRY_EXPR_OR(parse_expr(), &poisoned_decl);
+		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(), &poisoned_decl);
 	}
+	TRY_CONSUME_EOS_OR(&poisoned_decl);
 	return decl;
 }
 
@@ -1859,7 +1859,6 @@ static inline Ast *parse_generics_statements(void)
  */
 static inline Decl *parse_generics_declaration(Visibility visibility)
 {
-	LOG_FUNC
 	advance_and_verify(TOKEN_GENERIC);
 	Type *rtype = NULL;
 	if (tok.type != TOKEN_IDENT)
@@ -1933,8 +1932,6 @@ static inline Decl *parse_generics_declaration(Visibility visibility)
  */
 static inline bool parse_param_decl(Decl *parent, Decl*** parameters, bool type_only)
 {
-    LOG_FUNC
-
     Type *type = TRY_TYPE_OR(parse_type_expression(), false);
     Decl *param = decl_new_var(tok, type, VARDECL_PARAM, parent->visibility);
 
@@ -1952,7 +1949,7 @@ static inline bool parse_param_decl(Decl *parent, Decl*** parameters, bool type_
     }
     if (name && try_consume(TOKEN_EQ))
     {
-        param->var.init_expr = TRY_EXPR_OR(parse_expr(), false);
+        param->var.init_expr = TRY_EXPR_OR(parse_initializer(), false);
     }
     if (param->name.string)
     {
@@ -2073,7 +2070,6 @@ static inline bool parse_opt_parameter_type_list(Decl *decl, FunctionSignature *
  */
 static inline bool parse_func_typedef(Decl *decl, Visibility visibility)
 {
-    LOG_FUNC
     decl->typedef_decl.is_func = true;
     advance_and_verify(TOKEN_FUNC);
     Type *type = TRY_TYPE_OR(parse_type_expression(), false);
@@ -2088,7 +2084,6 @@ static inline bool parse_func_typedef(Decl *decl, Visibility visibility)
 
 static inline Decl *parse_typedef_declaration(Visibility visibility)
 {
-	LOG_FUNC
     Decl *decl = decl_new(DECL_TYPEDEF, tok, visibility);
     advance_and_verify(TOKEN_TYPEDEF);
     if (tok.type == TOKEN_FUNC)
@@ -2109,8 +2104,6 @@ static inline Decl *parse_typedef_declaration(Visibility visibility)
 
 static inline Decl *parse_macro_declaration(Visibility visibility)
 {
-    LOG_FUNC
-
     advance_and_verify(TOKEN_MACRO);
 
     Type *rtype = NULL;
@@ -2180,8 +2173,6 @@ static inline Decl *parse_macro_declaration(Visibility visibility)
  */
 static inline Decl *parse_func_definition(Visibility visibility, bool is_interface)
 {
-	LOG_FUNC
-
 	advance_and_verify(TOKEN_FUNC);
 
 	Type *return_type = TRY_TYPE_OR(parse_type_expression(), false);
@@ -2355,6 +2346,7 @@ static inline bool parse_conditional_top_level(Decl ***decls)
 	while (tok.type != TOKEN_RBRACE && tok.type != TOKEN_EOF)
 	{
 		Decl *decl = parse_top_level();
+		if (decl == NULL) continue;
 		if (decl_ok(decl))
 		{
 			vec_add(*decls, decl);
@@ -2394,6 +2386,30 @@ static inline Decl *parse_ct_if_top_level(void)
 		if (!parse_conditional_top_level(&ct_else->ct_else_decl)) return &poisoned_decl;
 	}
 	return ct;
+}
+
+static inline Decl *parse_incremental_array(void)
+{
+	Token name = tok;
+	advance_and_verify(TOKEN_IDENT);
+
+	CONSUME_OR(TOKEN_PLUS_ASSIGN, &poisoned_decl);
+	TODO
+}
+
+static inline bool check_no_visibility_before(Visibility visibility)
+{
+	switch (visibility)
+	{
+		case VISIBLE_PUBLIC:
+			SEMA_ERROR(tok, "Unexpected 'public' before '%.*s'.", tok.span.length, tok.start);
+			return false;
+		case VISIBLE_LOCAL:
+			SEMA_ERROR(tok, "Unexpected 'local' before '%.*s'.", tok.span.length, tok.start);
+			return false;
+		default:
+			return true;
+	}
 }
 
 
@@ -2438,10 +2454,7 @@ static inline Decl *parse_top_level(void)
 		case TOKEN_FUNC:
 			return parse_func_definition(visibility, false);
 		case TOKEN_CT_IF:
-			if (visibility != VISIBLE_MODULE)
-			{
-				SEMA_ERROR(tok, "Unexpected '%.*s' before '$if'.", TOK2VARSTR(tok));
-			}
+			if (!check_no_visibility_before(visibility)) return false;
 			return parse_ct_if_top_level();
 		case TOKEN_CONST:
 			return parse_const_declaration(visibility);
@@ -2458,18 +2471,20 @@ static inline Decl *parse_top_level(void)
 			return parse_error_declaration(visibility);
 		case TOKEN_TYPEDEF:
 			return parse_typedef_declaration(visibility);
-		case TOKEN_IDENT:
 		case TOKEN_TYPE:
 		case TOKEN_TYPE_IDENT:
 			// All of these start type
 			return parse_global_declaration(visibility);
+		case TOKEN_IDENT:
+			if (!check_no_visibility_before(visibility)) return false;
+			return parse_incremental_array();
 		case TOKEN_EOF:
 			assert(visibility != VISIBLE_MODULE);
-			sema_error_at(next_tok.span.loc - 1, "Expected a top level declaration after '%.*s'.", TOK2VARSTR(tok));
+			sema_error_at(tok.span.loc - 1, "Expected a top level declaration'.");
 			return &poisoned_decl;
 		default:
 			// We could have included all fundamental types above, but do it here instead.
-			if (token_is_type(next_tok.type))
+			if (token_is_type(tok.type))
 			{
 				return parse_global_declaration(visibility);
 			}
@@ -2687,6 +2702,68 @@ static Expr *parse_integer(Expr *left)
 	const char *string = tok.start;
 	const char *end = string + tok.span.length;
 	uint64_t i = 0;
+	if (string[0] == '\'')
+	{
+		union
+		{
+			uint8_t u8;
+			uint16_t u16;
+			uint32_t u32;
+			uint64_t u64;
+			uint8_t b[8];
+		} bytes;
+		int pos = 0;
+		while (++string < end - 1)
+		{
+			if (*string == '\\')
+			{
+				if (*(++string) == 'x')
+				{
+					int hex = 0;
+					for (int j = 0; j < 2; j++)
+					{
+						hex <<= 4;
+						char c = *(++string);
+						if (c < 'A')
+						{
+							hex += c - '0';
+						}
+						else if (c < 'a')
+						{
+							hex += c - 'A' + 10;
+						}
+						else
+						{
+							hex += c - 'a' + 10;
+						}
+					}
+					bytes.b[pos++] = hex;
+					continue;
+				}
+			}
+			bytes.b[pos++] = (unsigned)*string;
+		}
+		switch (pos)
+		{
+			case 1:
+				expr_int->const_expr.i = bytes.u8;
+				break;
+			case 2:
+				expr_int->const_expr.i = bytes.u16;
+				break;
+			case 4:
+				expr_int->const_expr.i = bytes.u32;
+				break;
+			case 8:
+				expr_int->const_expr.i = bytes.u64;
+				break;
+		}
+		expr_int->const_expr.type = CONST_INT;
+		expr_int->type = i > INT64_MAX ? type_compuint : type_compint;
+		expr_int->resolve_status = RESOLVE_DONE;
+		advance();
+		return expr_int;
+	}
 	switch (tok.span.length > 2 ? string[1] : '0')
 	{
 		case 'x':
@@ -2813,7 +2890,6 @@ static Expr *parse_nil(Expr *left)
 }
 
 
-static Expr *parse_initializer(void);
 
 /**
  * initializer_list

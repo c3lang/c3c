@@ -600,6 +600,7 @@ typedef struct _Context
 	Decl **vars;
 	Decl **ct_ifs;
 	Decl *active_function_for_analysis;
+	Type *left_type_in_assignment;
 	FILE *codegen_output;
 	Decl **last_local;
 	Ast **labels;
@@ -620,6 +621,7 @@ extern Decl poisoned_decl;
 extern Expr poisoned_expr;
 extern Type poisoned_type;
 extern Module poisoned_module;
+extern Diagnostics diagnostics;
 
 extern Token next_tok;
 extern Token tok;
@@ -726,7 +728,8 @@ Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility);
 Decl *decl_new_user_defined_type(Token name, DeclKind decl_type, Visibility visibility);
 Decl *decl_new_var(Token name, Type *type, VarDeclKind kind, Visibility visibility);
 static inline bool decl_ok(Decl *decl) { return decl->decl_kind != DECL_POISONED; }
-static inline Decl *decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return decl; }
+static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
+static inline bool decl_is_struct_type(Decl *decl) { return decl->decl_kind == DECL_UNION || decl->decl_kind == DECL_STRUCT; }
 static inline DeclKind decl_from_token(TokenType type)
 {
 	if (type == TOKEN_STRUCT) return DECL_STRUCT;
