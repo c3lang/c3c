@@ -144,9 +144,56 @@ static inline bool sema_expr_analyse_method_ref(Context *context, Expr *expr)
 	TODO
 }
 
-static inline bool sema_expr_analyse_struct_initializer_list(Context *context, Expr *expr)
+static inline Decl *decl_find_by_name(Decl** decls, const char *name)
 {
-	TODO
+	VECEACH(decls, i)
+	{
+		if (decls[i]->name.string == name) return decls[i];
+	}
+	return NULL;
+}
+static inline bool expr_may_be_struct_field_decl(Expr *maybe_binary)
+{
+	if (maybe_binary->expr_kind != EXPR_BINARY) return false;
+	if (maybe_binary->binary_expr.operator != TOKEN_EQ) return false;
+	Expr *expr = maybe_binary->binary_expr.left;
+	while (1)
+	{
+		if (expr->expr_kind == EXPR_IDENTIFIER) return true;
+		if (expr->expr_kind != EXPR_ACCESS) return false;
+		expr = expr->access_expr.parent;
+	}
+}
+
+static inline bool sema_expr_analyse_struct_initializer_list(Context *context, Type *assigned, Expr *expr)
+{
+	Decl **members = assigned->decl->strukt.members;
+	unsigned size = vec_size(members);
+	VECEACH(expr->initializer_expr, i)
+	{
+		Expr *field = expr->initializer_expr[i];
+		Decl *decl;
+		if (expr_may_be_struct_field_decl(field))
+		{
+			if (field->expr_kind == EXPR_IDENTIFIER)
+			{
+				decl = decl_find_by_name(members, field->identifier_expr.identifier.string);
+			}
+			TODO
+		}
+		else
+		{
+			if (i >= size)
+			{
+				SEMA_ERROR(field->loc, "Too many elements in initializer");
+				return false;
+			}
+			decl = members[i];
+		}
+		if (!cast(field, decl->var.type, CAST_TYPE_IMPLICIT_ASSIGN)) return false;
+	}
+	expr->type = assigned;
+	return true;
 }
 static inline bool sema_expr_analyse_initializer_list(Context *context, Expr *expr)
 {
@@ -156,7 +203,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Expr *ex
 	switch (assigned->type_kind)
 	{
 		case TYPE_USER_DEFINED:
-			if (decl_is_struct_type(assigned->decl)) return sema_expr_analyse_struct_initializer_list(context, expr);
+			if (decl_is_struct_type(assigned->decl)) return sema_expr_analyse_struct_initializer_list(context, assigned, expr);
 			break;
 		case TYPE_ARRAY:
 			TODO

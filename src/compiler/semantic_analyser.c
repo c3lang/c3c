@@ -273,23 +273,6 @@ static inline bool sema_analyse_var_decl(Context *context, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_VAR);
 	if (!sema_resolve_type(context, decl->var.type)) return false;
-	Decl *other = context_find_ident(context, decl->name.string);
-	if (other)
-	{
-		sema_shadow_error(decl, other);
-		decl_poison(decl);
-		decl_poison(other);
-		return false;
-	}
-	Decl *** vars = &context->active_function_for_analysis->func.annotations->vars;
-	unsigned num_vars = vec_size(*vars);
-	if (num_vars == MAX_LOCALS - 1 || context->last_local == &context->locals[MAX_LOCALS - 1])
-	{
-		SEMA_ERROR(decl->name, "Reached the maximum number of locals.");
-		return false;
-	}
-	decl->var.id = num_vars;
-	*vars = VECADD(*vars, decl);
 	if (decl->var.init_expr)
 	{
 		Type *prev_type = context->left_type_in_assignment;
@@ -302,8 +285,7 @@ static inline bool sema_analyse_var_decl(Context *context, Decl *decl)
 			return false;
 		}
 	}
-	context->last_local[0] = decl;
-	context->last_local++;
+	if (!context_add_local(context, decl)) return false;
 	return true;
 }
 
@@ -906,6 +888,11 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 	context->in_volatile_section = 0;
 	func->func.annotations = CALLOCS(*func->func.annotations);
 	context_push_scope(context);
+	Decl **params = func->func.function_signature.params;
+	VECEACH(params, i)
+	{
+		if (!context_add_local(context, params[i])) return false;
+	}
 	if (!sema_analyse_compound_statement_no_scope(context, func->func.body)) return false;
 	if (context->current_scope->exit != EXIT_RETURN && func->func.function_signature.rtype->canonical != type_void)
 	{
@@ -1104,6 +1091,19 @@ static inline void sema_process_imports(Context *context)
 }
 void sema_analysis(Context *context)
 {
+	const char *printf = "printf";
+	TokenType t_type = TOKEN_IDENT;
+	const char *interned = symtab_add(printf, (uint32_t) 6, fnv1a(printf, (uint32_t)6), &t_type);
+	Decl *decl = decl_new(DECL_FUNC, wrap(interned), VISIBLE_PUBLIC);
+	Type *type = type_new(TYPE_POINTER);
+	type->base = type_char;
+	sema_resolve_type(context, type);
+	Decl *param = decl_new_var(wrap("str"), type, VARDECL_PARAM, VISIBLE_LOCAL);
+
+	vec_add(decl->func.function_signature.params, param);
+	decl->func.function_signature.rtype = type_void;
+	decl->resolve_status = RESOLVE_DONE;
+	context_register_global_decl(context, decl);
 	sema_process_imports(context);
 	VECEACH(context->ct_ifs, i)
 	{

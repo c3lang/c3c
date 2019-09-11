@@ -2667,14 +2667,15 @@ static Expr *parse_string_literal(Expr *left)
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST, tok);
 	expr_string->resolve_status = RESOLVE_DONE;
 	expr_string->type = type_string;
-	advance_and_verify(TOKEN_STRING);
 
 	char *str = malloc_arena(tok.span.length + 1);
 	size_t len = tok.span.length;
 
-	memcpy(str, tok.start + tok.span.loc, tok.span.length);
+	memcpy(str, tok.start, tok.span.length);
 
 	// Just keep chaining if there are multiple parts.
+
+	advance_and_verify(TOKEN_STRING);
 
 	while (tok.type == TOKEN_STRING)
 	{

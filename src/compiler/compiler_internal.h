@@ -723,6 +723,7 @@ bool context_set_module(Context *context, Token module_name, Token *generic_para
 void context_print_ast(Context *context, FILE *file);
 Decl *context_find_ident(Context *context, const char *symbol);
 void context_add_header_decl(Context *context, Decl *decl);
+bool context_add_local(Context *context, Decl *decl);
 
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility);
 Decl *decl_new_user_defined_type(Token name, DeclKind decl_type, Visibility visibility);

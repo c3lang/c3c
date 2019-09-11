@@ -123,10 +123,38 @@ static inline void codegen_compound_stmt(Context *context, Ast *ast, int indent)
 static inline int codegen_emit_call_expr(Context *context, Expr *expr, int indent)
 {
 	// TODO properly
+	int *params = NULL;
+	VECEACH(expr->call_expr.arguments, i)
+	{
+		vec_add(params, codegen_emit_expr(context, expr->call_expr.arguments[i], indent));
+	}
 	INDENT();
-	PRINTTYPE(expr->type);
-	Decl *func = expr->call_expr.function->identifier_expr.decl;
-	PRINTF(" _%d = %s__%s();\n", ++context->unique_index, func->module->name, func->name.string);
+	bool has_return = expr->type->type_kind != TYPE_VOID;
+	if (has_return) PRINTTYPE(expr->type);
+	if (expr->call_expr.function->expr_kind == EXPR_IDENTIFIER)
+	{
+		Decl *func = expr->call_expr.function->identifier_expr.decl;
+		if (has_return) PRINTF(" _%d = ", ++context->unique_index);
+		if (strcmp(func->name.string, "printf") == 0)
+		{
+			PRINTF("%s", func->name.string);
+		}
+		else
+		{
+			PRINTF("%s__%s", func->module->name, func->name.string);
+		}
+	}
+	else
+	{
+		TODO
+	}
+	PRINTF("(");
+	VECEACH(params, i)
+	{
+		if (i != 0) PRINTF(", ");
+		PRINTF("_%d", params[i]);
+	}
+	PRINTF(");\n");
 	return context->unique_index;
 }
 
@@ -180,16 +208,27 @@ static inline void codegen_emit_const_expr_raw(Context *context, Expr *expr)
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:
-			assert(expr->const_expr.type == CONST_INT);
+			assert(expr->const_expr.type == CONST_FLOAT);
 			PRINTF("(");
 			PRINTTYPE(canonical);
 			PRINTF(")");
 			PRINTF("%Lf", expr->const_expr.f);
 			return;
 		case TYPE_POINTER:
-			PRINTF("((");
-			PRINTTYPE(canonical);
-			PRINTF("0)");
+			if (expr->const_expr.type == CONST_NIL)
+			{
+				PRINTF("((");
+				PRINTTYPE(canonical);
+				PRINTF(")0)");
+			}
+			else
+			{
+				assert(expr->const_expr.type == CONST_STRING);
+				PRINTF("((");
+				PRINTTYPE(canonical);
+
+				PRINTF(")%.*s)", expr->const_expr.string.len, expr->const_expr.string.chars);
+			}
 			return;
 		case TYPE_STRING:
 			TODO
@@ -323,10 +362,23 @@ static int codegen_emit_post_unary_expr(Context *context, Expr *expr, int indent
 	}
 }
 
-static void codegen_print_ltype(Context *context, Expr *expr, int indent)
+static int codegen_emit_initializer_list(Context *context, Expr *expr, int indent)
 {
-
+	int index = ++context->unique_index;
+	INDENT();
+	PRINTTYPE(expr->type);
+	PRINTF(" _%d;\n", index);
+	Decl *decl = expr->type->canonical->decl;
+	// Todo, fully clear.
+	VECEACH(expr->initializer_expr, i)
+	{
+		int index2 = codegen_emit_expr(context, expr->initializer_expr[i], indent);
+		INDENT();
+		PRINTF("_%d.%s = _%d;\n", index, decl->strukt.members[i]->name.string, index2);
+	}
+	return index;
 }
+
 static int codegen_emit_unary_expr(Context *context, Expr *expr, int indent)
 {
 	int index = ++context->unique_index;
@@ -398,6 +450,8 @@ static int codegen_emit_expr(Context *context, Expr *expr, int indent)
 			return codegen_emit_post_unary_expr(context, expr, indent);
 		case EXPR_UNARY:
 			return codegen_emit_unary_expr(context, expr, indent);
+		case EXPR_INITIALIZER_LIST:
+			return codegen_emit_initializer_list(context, expr, indent);
 		default:
 			TODO
 	}
@@ -730,12 +784,21 @@ static inline void codegen_func_decl(Context *context, Decl *decl)
 	print_typename(context->codegen_output, decl->func.function_signature.rtype);
 	if (strcmp("main", decl->name.string) == 0)
 	{
-		PRINTF(" %s()", decl->name.string);
+		PRINTF(" %s(", decl->name.string);
 	}
 	else
 	{
-		PRINTF(" %s__%s()", decl->module->name, decl->name.string);
+		PRINTF(" %s__%s(", decl->module->name, decl->name.string);
 	}
+	Decl **params = decl->func.function_signature.params;
+	VECEACH(params, i)
+	{
+		if (i != 0) PRINTF(", ");
+		Decl *param = params[i];
+		PRINTTYPE(param->var.type);
+		PRINTF(" _%d_%s", param->var.id, param->name.string);
+	}
+	PRINTF(")");
 }
 
 static inline void codegen_func(Context *context, Decl *decl)
@@ -750,6 +813,7 @@ static inline void codegen_func(Context *context, Decl *decl)
 	{
 		Decl *var = vars[i];
 		assert(var->decl_kind == DECL_VAR);
+		if (var->var.kind == VARDECL_PARAM) continue;
 		Type *current = var->var.type->canonical;
 		if (type == current)
 		{

@@ -97,7 +97,7 @@ bool ptpt(Expr* left, Type *canonical, Type *type, CastType cast_type)
 
 	if (cast_type != CAST_TYPE_EXPLICIT && !may_implicitly_cast_ptr_to_ptr(to_cast_type, canonical))
 	{
-		sema_type_mismatch(left, type, cast_type);
+		return sema_type_mismatch(left, type, cast_type);
 	}
 	if (left->expr_kind == EXPR_CONST)
 	{
@@ -109,20 +109,16 @@ bool ptpt(Expr* left, Type *canonical, Type *type, CastType cast_type)
 	return true;
 }
 
-bool ptst(Expr* left, Type *canonical, Type *type, CastType cast_type)
+bool stpt(Expr* left, Type *canonical, Type *type, CastType cast_type)
 {
-	TODO
-	if (left->expr_kind == EXPR_CONST)
+	if (canonical->base != type_char && canonical->base != type_byte)
 	{
-		assert(left->const_expr.type == CONST_INT && type_is_unsigned(left->type->canonical));
-		assert(canonical->type_kind >= TYPE_F32 && canonical->type_kind <= TYPE_F64);
-		left->const_expr.f = left->const_expr.i;
-		left->type = type;
-		return true;
+		return sema_type_mismatch(left, type, cast_type);
 	}
-	insert_cast(left, CAST_UIFP, canonical);
+	left->type = canonical;
 	return true;
 }
+
 
 bool boxi(Expr* left, Type *canonical, Type *type, CastType cast_type)
 {
@@ -479,7 +475,7 @@ bool usbo(Expr* left, Type *canonical, Type *type, CastType cast_type)
 }
 
 CastFunc BUILTIN_CONVERSION[19][19] = {
-//to   bool,  char, short,   int,  long, ctint, byte, ushort,   int, ulong,ctuint, float,double,ctreal,  user,   ptr,   str,   arr,  varr    // from:
+//to   bool,  char, short,   int,  long, ctint, byte, ushort,  uint, ulong,ctuint, float,double,ctreal,  user,   ptr,   str,   arr,  varr    // from:
 	{ &erro, &boxi, &boxi, &boxi, &boxi, &erro, &boxi, &boxi, &boxi, &boxi, &erro, &bofp, &bofp, &erro, &erro, &erro, &erro, &erro, &erro }, // bool
 	{ &xibo, &erro, &sisi, &sisi, &sisi, &erro, &siui, &siui, &siui, &siui, &erro, &sifp, &sifp, &erro, &sius, &erro, &erro, &erro, &erro }, // char
 	{ &xibo, &sisi, &erro, &sisi, &sisi, &erro, &siui, &siui, &siui, &siui, &erro, &sifp, &sifp, &erro, &sius, &erro, &erro, &erro, &erro }, // short
@@ -495,8 +491,8 @@ CastFunc BUILTIN_CONVERSION[19][19] = {
 	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro, &erro }, // double
 	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro }, // fxx
 	{ &usbo, &ussi, &ussi, &ussi, &ussi, &erro, &usui, &usui, &usui, &usui, &erro, &erro, &erro, &erro, &usus, &erro, &erro, &erro, &erro }, // user
-	{ &ptbo, &ptxi, &ptxi, &ptxi, &ptxi, &erro, &ptxi, &ptxi, &ptxi, &ptxi, &erro, &erro, &erro, &erro, &erro, &ptpt, &ptst, &erro, &ptva }, // ptr
-	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro, &erro }, // str
+	{ &ptbo, &ptxi, &ptxi, &ptxi, &ptxi, &erro, &ptxi, &ptxi, &ptxi, &ptxi, &erro, &erro, &erro, &erro, &erro, &ptpt, &erro, &erro, &ptva }, // ptr
+	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &erro, &erro, &erro, &stpt, &erro, &erro, &erro }, // str
 	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro }, // arr
 	{ &fpbo, &fpsi, &fpsi, &fpsi, &fpsi, &erro, &fpui, &fpui, &fpui, &fpui, &erro, &fpfp, &erro, &erro, &erro, &erro, &erro, &erro, &erro }, // varr
 };

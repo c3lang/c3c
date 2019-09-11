@@ -3,6 +3,8 @@ module foo;
 int oefk = 1;
 int bob = 'HELO';
 
+typedef Foo* as Bob;
+
 struct Foo
 {
 	int i;
@@ -13,6 +15,7 @@ struct Bar
 {
 	Foo foo;
 	Foo* fooPtr;
+	Bob helo;
 	struct bar
 	{
 		int a;
@@ -44,10 +47,17 @@ $if (1)
 }
 
 
+struct Simple
+{
+	int i;
+	double j;
+}
 func int boo()
 {
 	Zed zfe;
-	//zfe = { 1, 2 };
+	Simple s = { 1 };
+	s = { 2 };
+	//Simple x = { j = 1 };
 	//Zed zfed = { 1 };
 	int eok = 0;
 	{
@@ -123,6 +133,10 @@ func int boo()
 	return 1;
 }
 
+func int helo(int i)
+{
+	return i + 1;
+}
 func void while_test()
 {
 
@@ -156,5 +170,6 @@ func void test()
 
 func void main()
 {
-
+	helo(2);
+	printf("Helo\n");
 }

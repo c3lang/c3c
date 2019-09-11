@@ -26,6 +26,30 @@ void context_add_header_decl(Context *context, Decl *decl)
 	vec_add(context->header_declarations, decl);
 }
 
+bool context_add_local(Context *context, Decl *decl)
+{
+	Decl *other = context_find_ident(context, decl->name.string);
+	if (other)
+	{
+		sema_shadow_error(decl, other);
+		decl_poison(decl);
+		decl_poison(other);
+		return false;
+	}
+	Decl *** vars = &context->active_function_for_analysis->func.annotations->vars;
+	unsigned num_vars = vec_size(*vars);
+	if (num_vars == MAX_LOCALS - 1 || context->last_local == &context->locals[MAX_LOCALS - 1])
+	{
+		SEMA_ERROR(decl->name, "Reached the maximum number of locals.");
+		return false;
+	}
+	decl->var.id = num_vars;
+	*vars = VECADD(*vars, decl);
+	context->last_local[0] = decl;
+	context->last_local++;
+	return true;
+}
+
 static inline bool create_module_or_check_name(Context *context, Token module_name)
 {
     context->module_name = module_name;

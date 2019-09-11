@@ -4,7 +4,6 @@
 
 #include "compiler_internal.h"
 
-
 typedef struct
 {
 	bool lexer_init_complete;
@@ -413,26 +412,40 @@ static inline Token scan_digit(void)
 
 static inline Token scan_char()
 {
-	next(); // Consume "'"
-	// Handle escaped char, also handle hex code.
-	if (next() == '\\')
+	int width = 0;
+	char c;
+	while ((c = next()) != '\'')
 	{
-		// Escape seq? We don't support octal.
-		if (next() == 'x')
+		if (c == '\0' || c == '\n') return error_token("Character literal did not terminate.");
+		width++;
+		// Was this an escape?
+		if (c == '\\')
 		{
-			for (int i = 0; i < 2; i++)
+			// Yes, so check if it's hex:
+			if (next() == 'x')
 			{
-				if (!is_hex(next()))
+				// Walk through the two characters.
+				for (int i = 0; i < 2; i++)
 				{
-					return error_token(
-							"An escape sequence starting with "
-							"'\\x' needs to be followed by "
-							"a two digit hexadecimal number.");
+					if (!is_hex(next()))
+					{
+						return error_token(
+								"An escape sequence starting with "
+								"'\\x' needs to be followed by "
+								"a two digit hexadecimal number.");
+					}
 				}
 			}
 		}
 	}
-	if (next() != '\'') return error_token("The character only consist of a single character, did you want to use \"\" instead?");
+	if (width == 0)
+	{
+		return error_token("The character literal was empty.");
+	}
+	if (width > 2 && width != 4 && width != 8)
+	{
+		error_token("Character literals may only be 1, 2 or 8 characters wide.");
+	}
 	return make_token(TOKEN_INTEGER);
 }
 
@@ -668,7 +681,12 @@ Token lexer_scan_token(void)
 				backtrack();
 				return is_digit(c) ? scan_digit() : scan_ident();
 			}
+			if (c < 0)
+			{
+				return error_token("The 0%x character may not be placed outside of a string or comment, did you perhaps forget a \" somewhere?", (uint8_t)c);
+			}
 			return error_token("'%c' may not be placed outside of a string or comment, did you perhaps forget a \" somewhere?", c);
+
 	}
 }
 
@@ -686,7 +704,6 @@ void lexer_check_init(void)
 
 void lexer_add_file_for_lexing(File *file)
 {
-	LOG_FUNC
 	lexer_check_init();
 	lexer.current_file = file;
 	lexer.file_begin = lexer.current_file->contents;
