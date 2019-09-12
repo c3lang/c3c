@@ -680,8 +680,6 @@ static void codegen_ast(Context *context, Ast *ast, int indent)
 			UNREACHABLE
 		case AST_ASM_STMT:
 			break;
-		case AST_ATTRIBUTE:
-			break;
 		case AST_BREAK_STMT:
 			codegen_emit_break_stmt(context, ast, indent);
 			return;
@@ -695,12 +693,6 @@ static void codegen_ast(Context *context, Ast *ast, int indent)
 		case AST_COND_STMT:
 			break;
 		case AST_CONTINUE_STMT:
-			break;
-		case AST_CT_IF_STMT:
-			break;
-		case AST_CT_ELIF_STMT:
-			break;
-		case AST_CT_ELSE_STMT:
 			break;
 		case AST_DECLARE_STMT:
 			codegen_declare_stmt(context, ast, indent);
@@ -756,21 +748,21 @@ static void codegen_ast(Context *context, Ast *ast, int indent)
 			return;
 		case AST_VOLATILE_STMT:
 			break;
-		case AST_WHILE_STMT:
-			UNREACHABLE
-		case AST_GENERIC_CASE_STMT:
-			break;
-		case AST_GENERIC_DEFAULT_STMT:
-			break;
 		case AST_STMT_LIST:
 			codegen_emit_stmt_list(context, ast, indent);
 			return;
 		case AST_CT_SWITCH_STMT:
-			break;
 		case AST_CT_DEFAULT_STMT:
-			break;
+		case AST_CT_IF_STMT:
+		case AST_CT_ELIF_STMT:
+		case AST_CT_ELSE_STMT:
 		case AST_CT_CASE_STMT:
-			break;
+		case AST_ATTRIBUTE:
+		case AST_CT_FOR_STMT:
+		case AST_GENERIC_CASE_STMT:
+		case AST_GENERIC_DEFAULT_STMT:
+		case AST_WHILE_STMT:
+			UNREACHABLE
 	}
 	TODO
 }

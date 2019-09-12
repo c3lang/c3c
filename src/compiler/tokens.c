@@ -191,10 +191,12 @@ const char *token_type_to_string(TokenType type)
 			return "generic";
 		case TOKEN_GOTO:
 			return "goto";
-		case TOKEN_IMPORT:
-			return "import";
 		case TOKEN_IF:
 			return "if";
+		case TOKEN_IMPORT:
+			return "import";
+		case TOKEN_IN:
+			return "in";
 		case TOKEN_LOCAL:
 			return "local";
 		case TOKEN_MACRO:
@@ -321,8 +323,8 @@ const char *token_type_to_string(TokenType type)
 			return "$case";
 		case TOKEN_CT_DEFAULT:
 			return "$default";
-		case TOKEN_CT_EACH:
-			return "$each";
+		case TOKEN_CT_FOR:
+			return "$for";
 		case TOKEN_CT_ELSE:
 			return "$else";
 		case TOKEN_CT_ELIF:

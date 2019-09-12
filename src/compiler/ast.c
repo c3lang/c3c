@@ -583,6 +583,18 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			fprint_ast_recursive(file, ast->while_stmt.cond, indent + 1);
 			fprint_ast_recursive(file, ast->while_stmt.body, indent + 1);
 			break;
+		case AST_CT_FOR_STMT:
+			if (ast->ct_for_stmt.index.string)
+			{
+				fprintf(file, "($for %s, %s\n", ast->ct_for_stmt.index.string, ast->ct_for_stmt.value.string);
+			}
+			else
+			{
+				fprintf(file, "($for  %s\n", ast->ct_for_stmt.value.string);
+			}
+			fprint_expr_recursive(file, ast->ct_for_stmt.expr, indent + 1);
+			fprint_ast_recursive(file, ast->ct_for_stmt.body, indent + 1);
+			break;
 		case AST_DO_STMT:
 			fprintf(file, "(do\n");
 			fprint_ast_recursive(file, ast->do_stmt.body, indent + 1);

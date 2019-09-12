@@ -62,7 +62,15 @@ void comment(void);
 "throws"        { count(); return(THROWS); }
 "func"          { count(); return(FUNC); }
 "nil"           { count(); return(NIL); }
-"next"          { count(); return(NEXT);
+"next"          { count(); return(NEXT); }
+"in"            { count(); return(IN); }
+"$for"          { count(); return(CTFOR); }
+"$case"         { count(); return(CTCASE); }
+"$switch"       { count(); return(CTSWITCH); }
+"$default"      { count(); return(CTDEFAULT); }
+"$if"           { count(); return(CTIF); }
+"$elif"         { count(); return(CTELIF); }
+"$else"         { count(); return(CTELSE); }
 
 [_]*[A-Z]{UA}*   { count(); return(CONST_IDENT); }
 [_]*[A-Z]{UA}*[a-z]{AN}* { count(); return(TYPE_IDENT); }

@@ -36,6 +36,7 @@ typedef enum
 	AST_CT_IF_STMT,
 	AST_CT_ELIF_STMT,
 	AST_CT_ELSE_STMT,
+	AST_CT_FOR_STMT,
 	AST_CT_SWITCH_STMT,
 	AST_CT_DEFAULT_STMT,
 	AST_CT_CASE_STMT,
@@ -395,6 +396,7 @@ typedef enum
 	TOKEN_GOTO,
 	TOKEN_IF,
 	TOKEN_IMPORT,
+	TOKEN_IN,
 	TOKEN_LOCAL,
 	TOKEN_MACRO,
 	TOKEN_MODULE,
@@ -428,7 +430,7 @@ typedef enum
 
 	TOKEN_CT_CASE,          // $case
 	TOKEN_CT_DEFAULT,       // $default
-	TOKEN_CT_EACH,          // $each
+	TOKEN_CT_FOR,           // $for
 	TOKEN_CT_ELIF,          // $elif
 	TOKEN_CT_ELSE,          // $else
 	TOKEN_CT_IF,            // $if

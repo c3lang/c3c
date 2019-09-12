@@ -23,9 +23,7 @@ There are some small work being done on the parser here, but most of the structu
 #### What's missing in the parser
 
 - `asm` sections.
-- `$each` compile time statement.
 - Macro parameter lists to imports.
-- extending `generics` declaration.
 - auxiliary data for enums.
 
 #### What's missing in the semantic analyser
@@ -37,7 +35,7 @@ There are some small work being done on the parser here, but most of the structu
 - `catch`, `throws` and `try` statements.
 - `generic` not analysed.
 - `attribute` not analysed.
-- `$switch` and `$each` not handled.
+- `$switch` and `$for` not handled.
 - Enums not correctly handled.
 - Errors not correctly handles. 
 - Type resolution not complete for all types.

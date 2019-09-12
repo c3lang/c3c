@@ -1025,10 +1025,32 @@ static inline Ast* parse_ct_if_stmt(void)
 }
 
 
-static inline Ast* parse_ct_each_stmt(void)
+/**
+ * ct_for_stmt
+ * 		: CTFOR '(' CT_IDENT IN expression ')' statement
+ * 		| CTFOR '(' CT_IDENT, CT_IDENT IN expression ')' statement
+ * 		;
+ *
+ * @return
+ */
+static inline Ast* parse_ct_for_stmt(void)
 {
-
-	TODO
+	Ast *ast = AST_NEW(AST_CT_FOR_STMT, tok);
+	advance_and_verify(TOKEN_CT_FOR);
+	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
+	if (next_tok.type == TOKEN_COMMA)
+	{
+		ast->ct_for_stmt.index = tok;
+		TRY_CONSUME_OR(TOKEN_CT_IDENT, "Expected a compile time index variable", &poisoned_ast);
+		advance_and_verify(TOKEN_COMMA);
+	}
+	ast->ct_for_stmt.value = tok;
+	TRY_CONSUME_OR(TOKEN_CT_IDENT, "Expected a compile time variable", &poisoned_ast);
+	TRY_CONSUME_OR(TOKEN_IN, "Expected 'in'.", &poisoned_ast);
+	ast->ct_for_stmt.expr = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
+	CONSUME_OR(TOKEN_RPAREN, &poisoned_ast);
+	ast->ct_for_stmt.body = TRY_AST(parse_stmt());
+	return ast;
 }
 
 
@@ -1312,8 +1334,8 @@ static Ast *parse_stmt(void)
 			return parse_ct_if_stmt();
 		case TOKEN_CT_SWITCH:
 			return parse_ct_switch_stmt();
-		case TOKEN_CT_EACH:
-			return parse_ct_each_stmt();
+		case TOKEN_CT_FOR:
+			return parse_ct_for_stmt();
 		case TOKEN_THROW:
 			return parse_throw_stmt();
 		case TOKEN_VOLATILE:
@@ -1416,6 +1438,7 @@ static Ast *parse_stmt(void)
 		case TOKEN_CT_ELIF:
 		case TOKEN_CT_ELSE:
 		case TOKEN_CT_DEFAULT:
+		case TOKEN_IN:
 			SEMA_ERROR(tok, "Unexpected '%s' found when expecting a statement.", token_type_to_string(tok.type));
 			advance();
 			return &poisoned_ast;
@@ -1913,10 +1936,14 @@ static inline Ast *parse_generics_statements(void)
 
 
 /**
- * // TODO module?
  * generics_declaration
- *	: GENERIC IDENT '(' macro_argument_list ')' '{' generics_body '}'
- *	| GENERIC type_expression IDENT '(' macro_argument_list ')' '{' generics_body '}'
+ *	: GENERIC opt_path IDENT '(' macro_argument_list ')' '{' generics_body '}'
+ *	| GENERIC type_expression opt_path IDENT '(' macro_argument_list ')' '{' generics_body '}'
+ *	;
+ *
+ * opt_path
+ *	:
+ *	| path
  *	;
  *
  * @param visibility
@@ -1930,7 +1957,9 @@ static inline Decl *parse_generics_declaration(Visibility visibility)
 	{
 		rtype = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 	}
+	Path *path = parse_path();
 	Decl *decl = decl_new_user_defined_type(tok, DECL_GENERIC, visibility);
+	decl->generic_decl.path = path;
 	if (!consume_ident("generic function name")) return &poisoned_decl;
 	decl->generic_decl.rtype = rtype;
 	Token *parameters = NULL;

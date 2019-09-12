@@ -21,8 +21,8 @@ void yyerror(char *s);
 %token STRUCT UNION ENUM ELLIPSIS AS LOCAL
 
 %token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
-%token TYPE FUNC ERROR MACRO GENERIC CTIF CTELIF CTENDIF CTELSE CTSWITCH CTCASE CTDEFAULT CTEACH
-%token THROWS THROW TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE
+%token TYPE FUNC ERROR MACRO GENERIC CTIF CTELIF CTENDIF CTELSE CTSWITCH CTCASE CTDEFAULT CTFOR
+%token THROWS THROW TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE IN
 
 %start translation_unit
 %%
@@ -31,6 +31,7 @@ path
     : IDENT SCOPE
     | path IDENT SCOPE
     ;
+
 
 ident_expression
 	: CONST_IDENT
@@ -298,11 +299,16 @@ ct_switch_body
     | ct_switch_body ct_case_statement
     ;
 
+ct_for_stmt
+    : CTFOR '(' CT_IDENT IN expression ')' statement
+    | CTFOR '(' CT_IDENT ',' CT_IDENT IN expression ')' statement
+    ;
+
 ct_statement
     : ct_if compound_statement
     | ct_if compound_statement ct_else_body
     | ct_switch '{' ct_switch_body '}'
-    | CTEACH '(' expression AS CT_IDENT ')' statement
+    | ct_for_stmt
     ;
 
 throw_statement

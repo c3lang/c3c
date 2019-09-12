@@ -229,6 +229,7 @@ typedef struct
 	struct _Ast **cases;
 	Token *parameters;
 	Type *rtype; // May be null!
+	Path *path; // For redefinition
 } GenericDecl;
 
 
@@ -543,6 +544,14 @@ typedef struct
 	Ast *body;
 } AstCtCaseStmt;
 
+typedef struct
+{
+	Token index;
+	Token value;
+	Expr *expr;
+	Ast *body;
+} AstCtForStmt;
+
 typedef struct _Ast
 {
 	AstKind ast_kind : 8;
@@ -577,6 +586,7 @@ typedef struct _Ast
 		AstCtIfStmt ct_if_stmt;
 		AstCtIfStmt ct_elif_stmt;
 		Ast *ct_else_stmt;
+		AstCtForStmt ct_for_stmt;
 		AstGenericCaseStmt generic_case_stmt;
 		Ast *generic_default_stmt;
 		Ast** stmt_list;
