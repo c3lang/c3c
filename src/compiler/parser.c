@@ -200,6 +200,25 @@ static Ast* parse_compound_stmt()
 	return ast;
 }
 
+static Path *parse_path(void)
+{
+	if (tok.type != TOKEN_IDENT || next_tok.type != TOKEN_SCOPE) return NULL;
+
+	Path *path = malloc_arena(sizeof(Path));
+	memset(path, 0, sizeof(Path));
+
+	path->package = tok;
+
+	if (tok.type == TOKEN_IDENT && next_tok.type == TOKEN_SCOPE)
+	{
+		advance();
+		advance();
+		path->module = tok;
+		path->package = tok;
+	}
+
+	return path;
+}
 
 /**
  * base_type
@@ -225,11 +244,11 @@ static Ast* parse_compound_stmt()
  */
 static inline Type *parse_base_type(void)
 {
-	if (tok.type == TOKEN_IDENT && next_tok.type == TOKEN_SCOPE)
+	Path *path = parse_path();
+	if (path)
 	{
 		Type *type = type_new(TYPE_USER_DEFINED);
-		type->unresolved.module = tok;
-		advance(); advance();
+		type->unresolved.path = path;
 		type->name_loc = tok;
 		if (!consume_type_name("types")) return &poisoned_type;
 		return type;
@@ -376,7 +395,6 @@ static inline Type *parse_array_type_index(Type *type)
  */
 static Type *parse_type_expression(void)
 {
-
 	Type *type = parse_base_type();
 	while (type->type_kind != TYPE_POISONED)
 	{
@@ -503,19 +521,23 @@ static inline Decl *parse_decl_after_type(bool local, Type *type)
 }
 
 /**
- * // TODO const
- * declaration ::= 'local'? type variable ('=' expr)?
+ * declaration ::= ('local' | 'const')? type variable ('=' expr)?
  *
  * @return Decl* (poisoned on error)
  */
 static Decl *parse_decl(void)
 {
 	bool local = tok.type == TOKEN_LOCAL;
-	if (local) advance();
+	bool constant = tok.type == TOKEN_CONST;
+	if (local || constant) advance();
 
 	Type *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 
-	return parse_decl_after_type(local, type);
+	Decl *decl = TRY_DECL_OR(parse_decl_after_type(local, type), &poisoned_decl);
+
+	if (constant) decl->var.kind = VARDECL_CONST;
+
+	return decl;
 }
 
 /**
@@ -882,10 +904,65 @@ static inline Ast* parse_break_stmt(void)
 	return ast;
 }
 
+
+/**
+ * CTSWITCH '(' expression ')' '{' ct_switch_body '}'
+ *
+ * ct_switch_body
+ *  	: ct_case_statement
+ *		| ct_switch_body ct_case_statement
+ *		;
+ *
+ * ct_case_statement
+ * 		: CTCASE type_list ':' statement
+ * 		| CTDEFAULT ':' statement
+ * 		;
+ *
+ * @return
+ */
 static inline Ast* parse_ct_switch_stmt(void)
 {
-
-	TODO
+	Ast *ast = AST_NEW(AST_CT_SWITCH_STMT, tok);
+	advance_and_verify(TOKEN_CT_SWITCH);
+	ast->ct_switch_stmt.cond = TRY_EXPR_OR(parse_paren_expr(), &poisoned_ast);
+	CONSUME_OR(TOKEN_LBRACE, &poisoned_ast);
+	Ast **switch_statements = NULL;
+	Ast *stmt = &poisoned_ast;
+	while (stmt)
+	{
+		switch (tok.type)
+		{
+			case TOKEN_CT_CASE:
+				stmt = AST_NEW(AST_CT_CASE_STMT, tok);
+				advance();
+				while (1)
+				{
+					Type *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_ast);
+					vec_add(stmt->ct_case_stmt.types, type);
+					if (!try_consume(TOKEN_COMMA)) break;
+				}
+				CONSUME_OR(TOKEN_COLON, &poisoned_ast);
+				stmt->ct_case_stmt.body = TRY_AST_OR(parse_stmt(), &poisoned_ast);
+				vec_add(switch_statements, stmt);
+				break;
+			case TOKEN_DEFAULT:
+				stmt = AST_NEW(AST_CT_CASE_STMT, tok);
+				advance();
+				CONSUME_OR(TOKEN_COLON, &poisoned_ast);
+				stmt->ct_default_stmt = TRY_AST_OR(parse_stmt(), &poisoned_ast);
+				vec_add(switch_statements, stmt);
+				break;
+			case TOKEN_RBRACE:
+				stmt = NULL;
+				break;
+			default:
+				SEMA_ERROR(tok, "Expected $case or $default.");
+				return &poisoned_ast;
+		}
+	}
+	CONSUME_OR(TOKEN_RBRACE, &poisoned_ast);
+	ast->ct_switch_stmt.body = switch_statements;
+	return ast;
 }
 
 static inline Ast* parse_ct_else_stmt(void)
@@ -1586,11 +1663,6 @@ static inline void parse_imports(void)
 }
 
 
-static inline Decl *parse_attribute_declaration(Visibility visibility)
-{
-	TODO
-
-}
 
 /**
  * const_decl
@@ -1660,9 +1732,9 @@ static inline Decl *parse_global_declaration(Visibility visibility)
  *
  * attribute
  *  : AT_IDENT
- *  | IDENT SCOPE AT_IDENT
+ *  | path AT_IDENT
  *  | AT_IDENT '(' constant_expression ')'
- *  | IDENT SCOPE AT_IDENT '(' constant_expression ')'
+ *  | path AT_IDENT '(' constant_expression ')'
  *  ;
  *
  * @return true if parsing succeeded, false if recovery is needed
@@ -1670,24 +1742,17 @@ static inline Decl *parse_global_declaration(Visibility visibility)
 static inline bool parse_attributes(Decl *parent_decl)
 {
 	parent_decl->attributes = NULL;
+
 	while (tok.type == TOKEN_AT_IDENT || (tok.type == TOKEN_IDENT && next_tok.type == TOKEN_SCOPE))
 	{
-        Attr *attr = malloc_arena(sizeof(Attr));
-        if (tok.type == TOKEN_IDENT)
-        {
-            attr->module = tok;
-	        advance();
-	        if (next_tok.type != TOKEN_AT_IDENT)
-            {
-	            SEMA_ERROR(next_tok, "Expected an attribute");
-                return false;
-            }
-	        advance_and_verify(TOKEN_SCOPE);
-        }
+		Path *path = parse_path();
+
+		Attr *attr = malloc_arena(sizeof(Attr));
 
         attr->name = tok;
+        attr->path = path;
 
-        advance_and_verify(TOKEN_AT_IDENT);
+		TRY_CONSUME_OR(TOKEN_AT_IDENT, "Expected an attribute", false);
 
 		if (tok.type == TOKEN_LPAREN)
 		{
@@ -1930,10 +1995,10 @@ static inline Decl *parse_generics_declaration(Visibility visibility)
  *  | type_expression IDENT '=' initializer
  *  ;
  */
-static inline bool parse_param_decl(Decl *parent, Decl*** parameters, bool type_only)
+static inline bool parse_param_decl(Visibility parent_visibility, Decl*** parameters, bool type_only)
 {
     Type *type = TRY_TYPE_OR(parse_type_expression(), false);
-    Decl *param = decl_new_var(tok, type, VARDECL_PARAM, parent->visibility);
+    Decl *param = decl_new_var(tok, type, VARDECL_PARAM, parent_visibility);
 
     if (!try_consume(TOKEN_IDENT))
     {
@@ -2033,7 +2098,7 @@ static inline bool parse_opt_throw_declaration(FunctionSignature *signature)
  *  ;
  *
  */
-static inline bool parse_opt_parameter_type_list(Decl *decl, FunctionSignature *signature, bool is_interface)
+static inline bool parse_opt_parameter_type_list(Visibility parent_visibility, FunctionSignature *signature, bool is_interface)
 {
     CONSUME_OR(TOKEN_LPAREN, false);
     while (!try_consume(TOKEN_RPAREN))
@@ -2044,7 +2109,7 @@ static inline bool parse_opt_parameter_type_list(Decl *decl, FunctionSignature *
         }
         else
         {
-            if (!parse_param_decl(decl, &(signature->params), is_interface)) return false;
+            if (!parse_param_decl(parent_visibility, &(signature->params), is_interface)) return false;
         }
         if (!try_consume(TOKEN_COMMA))
         {
@@ -2057,6 +2122,72 @@ static inline bool parse_opt_parameter_type_list(Decl *decl, FunctionSignature *
         }
     }
     return true;
+}
+
+static AttributeDomains TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
+		[TOKEN_FUNC] = ATTR_FUNC,
+		[TOKEN_VAR] = ATTR_VAR,
+		[TOKEN_ENUM] = ATTR_ENUM,
+		[TOKEN_STRUCT] = ATTR_STRUCT,
+		[TOKEN_UNION] = ATTR_UNION,
+		[TOKEN_CONST] = ATTR_CONST,
+		[TOKEN_TYPEDEF] = ATTR_TYPEDEF,
+		[TOKEN_ERROR_TYPE] = ATTR_ERROR,
+};
+
+/**
+ * attribute_declaration
+ * 		: ATTRIBUTE attribute_domains AT_IDENT ';'
+ * 		| ATTRIBUTE attribute_domains AT_IDENT '(' parameter_type_list ')' ';'
+ * 		;
+ *
+ * attribute_domains
+ * 		: attribute_domain
+ * 		| attribute_domains ',' attribute_domain
+ * 		;
+ *
+ * attribute_domain
+ * 		: FUNC
+ * 		| VAR
+ * 		| ENUM
+ * 		| STRUCT
+ * 		| UNION
+ * 		| TYPEDEF
+ * 		| CONST
+ * 		| ERROR
+ * 		;
+ *
+ * @param visibility
+ * @return Decl*
+ */
+static inline Decl *parse_attribute_declaration(Visibility visibility)
+{
+	advance_and_verify(TOKEN_ATTRIBUTE);
+	AttributeDomains domains = 0;
+	AttributeDomains last_domain;
+	last_domain = TOKEN_TO_ATTR[tok.type];
+	while (last_domain)
+	{
+		advance();
+		if ((domains & last_domain) != 0)
+		{
+			SEMA_ERROR(tok, "'%s' appeared more than once.", tok.string);
+			continue;
+		}
+		domains |= last_domain;
+		if (!try_consume(TOKEN_COMMA)) break;
+		last_domain = TOKEN_TO_ATTR[tok.type];
+	}
+	TRY_CONSUME_OR(TOKEN_AT_IDENT, "Expected an attribute name.", &poisoned_decl);
+	Decl *decl = decl_new(DECL_ATTRIBUTE, tok, visibility);
+	if (last_domain == 0)
+	{
+		SEMA_ERROR(tok, "Expected at least one domain for attribute '%s'.", decl->name.string);
+		return false;
+	}
+	if (!parse_opt_parameter_type_list(visibility, &decl->attr.attr_signature, false)) return &poisoned_decl;
+	TRY_CONSUME_EOS_OR(&poisoned_decl);
+	return decl;
 }
 
 /**
@@ -2074,7 +2205,7 @@ static inline bool parse_func_typedef(Decl *decl, Visibility visibility)
     advance_and_verify(TOKEN_FUNC);
     Type *type = TRY_TYPE_OR(parse_type_expression(), false);
     decl->typedef_decl.function_signature.rtype = type;
-    if (!parse_opt_parameter_type_list(decl, &(decl->typedef_decl.function_signature), true))
+    if (!parse_opt_parameter_type_list(visibility, &(decl->typedef_decl.function_signature), true))
     {
         return false;
     }
@@ -2153,7 +2284,7 @@ static inline Decl *parse_macro_declaration(Visibility visibility)
  * Starts after 'func'
  *
  * func_name
- *		: IDENT SCOPE TYPE_IDENT '.' IDENT
+ *		: path TYPE_IDENT '.' IDENT
  *		| TYPE_IDENT '.' IDENT
  *		| IDENT
  *		;
@@ -2180,37 +2311,25 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
 	Decl *func = decl_new_user_defined_type(tok, DECL_FUNC, visibility);
 	func->func.function_signature.rtype = return_type;
 
-	if (try_consume(TOKEN_IDENT))
+	Path *path = parse_path();
+	if (path || tok.type == TOKEN_TYPE_IDENT)
 	{
 		// Special case, actually an extension
-		if (try_consume(TOKEN_SCOPE))
-		{
-			TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "A type was expected after '::'.", false);
-			Type *type = type_new(TYPE_USER_DEFINED);
-			type->unresolved.module = func->name;
-			type->name_loc = tok;
-			func->func.struct_parent = type;
-			advance_and_verify(TOKEN_TYPE_IDENT);
+		TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "A type was expected after '::'.", false);
+		Type *type = type_new(TYPE_USER_DEFINED);
+		type->unresolved.path = path;
+		type->name_loc = tok;
+		func->func.struct_parent = type;
+		advance_and_verify(TOKEN_TYPE_IDENT);
 
-			TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method function.", false);
-			EXPECT_IDENT_FOR_OR("function name", false);
-
-			func->name = tok;
-			advance_and_verify(TOKEN_IDENT);
-		}
-	}
-	else
-	{
-		TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "Expected a function name.", false);
-		func->func.struct_parent = TYPE_MODULE_UNRESOLVED(func->name, tok);;
-		advance();
-		EXPECT_OR(TOKEN_DOT, false);
-		EXPECT_IDENT_FOR_OR("function name", false);
-		func->name = tok;
-		advance_and_verify(TOKEN_IDENT);
+		TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method function.", false);
 	}
 
-    if (!parse_opt_parameter_type_list(func, &(func->func.function_signature), is_interface)) return false;
+	EXPECT_IDENT_FOR_OR("function name", false);
+	func->name = tok;
+	advance_and_verify(TOKEN_IDENT);
+
+    if (!parse_opt_parameter_type_list(visibility, &(func->func.function_signature), is_interface)) return false;
 
     if (!parse_opt_throw_declaration(&(func->func.function_signature))) return false;
 	if (is_interface)
@@ -2394,7 +2513,9 @@ static inline Decl *parse_incremental_array(void)
 	advance_and_verify(TOKEN_IDENT);
 
 	CONSUME_OR(TOKEN_PLUS_ASSIGN, &poisoned_decl);
-	TODO
+	Decl *decl = decl_new(DECL_ARRAY_VALUE, name, VISIBLE_LOCAL);
+	decl->incr_array_decl = TRY_EXPR_OR(parse_initializer(), &poisoned_decl);
+	return decl;
 }
 
 static inline bool check_no_visibility_before(Visibility visibility)
@@ -2957,49 +3078,22 @@ static Expr *parse_method_ref(Type *type)
 	return expr;
 }
 
-static Expr *parse_identifier(Expr *left)
+
+static Expr *parse_identifier_with_path(Path *path)
 {
-	assert(!left && "Unexpected left hand side");
-	if (next_tok.type == TOKEN_SCOPE)
-	{
-		Token mod = tok;
-		advance_and_verify(TOKEN_IDENT);
-		advance_and_verify(TOKEN_SCOPE);
-		if (try_consume(TOKEN_TYPE_IDENT))
-		{
-			Type *type = TYPE_MODULE_UNRESOLVED(mod, tok);
-			if (tok.type == TOKEN_LBRACE)
-			{
-				Expr *expr = EXPR_NEW_TOKEN(EXPR_STRUCT_VALUE, mod);
-				expr->struct_value_expr.type = type;
-				expr->struct_value_expr.init_expr = TRY_EXPR_OR(parse_initializer_list(), &poisoned_expr);
-				return expr;
-			}
-            TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after type", &poisoned_expr);
-			return parse_method_ref(type);
-		}
-		switch (tok.type)
-		{
-			case TOKEN_AT_IDENT:
-			case TOKEN_CT_IDENT:
-			case TOKEN_IDENT:
-			case TOKEN_CONST_IDENT:
-				break;
-			default:
-				SEMA_ERROR(tok, "Expected an identifier");
-				return &poisoned_expr;
-		}
-		Expr *expr = EXPR_NEW_TOKEN(EXPR_IDENTIFIER, tok);
-		expr->identifier_expr.identifier = tok;
-		expr->identifier_expr.module = mod;
-        advance();
-        return expr;
-	}
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_IDENTIFIER, tok);
 	expr->identifier_expr.identifier = tok;
+	expr->identifier_expr.path = path;
 	advance();
 	return expr;
 }
+
+static Expr *parse_identifier(Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	return parse_identifier_with_path(NULL);
+}
+
 
 /**
  * type_identifier
@@ -3010,10 +3104,10 @@ static Expr *parse_identifier(Expr *left)
  * @param left must be null.
  * @return Expr*
  */
-static Expr *parse_type_identifier(Expr *left)
+static Expr *parse_type_identifier_with_path(Path *path)
 {
-	assert(!left && "Unexpected left hand side");
 	Type *type = TYPE_UNRESOLVED(tok);
+	type->unresolved.path = path;
 	advance_and_verify(TOKEN_TYPE_IDENT);
 	if (tok.type == TOKEN_LBRACE)
 	{
@@ -3025,6 +3119,37 @@ static Expr *parse_type_identifier(Expr *left)
 	EXPECT_OR(TOKEN_DOT, &poisoned_expr);
 	return parse_method_ref(type);
 }
+
+/**
+ * @param left must be null.
+ * @return Expr*
+ */
+static Expr *parse_type_identifier(Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	return parse_type_identifier_with_path(NULL);
+}
+
+static Expr *parse_maybe_scope(Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Path *path = parse_path();
+	switch (tok.type)
+	{
+		case TOKEN_IDENT:
+		case TOKEN_CT_IDENT:
+		case TOKEN_AT_IDENT:
+		case TOKEN_CONST_IDENT:
+			return parse_identifier_with_path(path);
+		case TOKEN_TYPE_IDENT:
+			return parse_type_identifier_with_path(path);
+		default:
+			SEMA_ERROR(tok, "Expected a type, function or constant.");
+			return &poisoned_expr;
+	}
+}
+
+
 static Expr *parse_type_expr(Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -3083,7 +3208,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_FALSE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_NIL] = { parse_nil, NULL, PREC_NONE },
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
-		[TOKEN_IDENT] = { parse_identifier, NULL, PREC_NONE },
+		[TOKEN_IDENT] = { parse_maybe_scope, NULL, PREC_NONE },
 		[TOKEN_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_CT_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_AT_IDENT] = { parse_identifier, NULL, PREC_NONE },

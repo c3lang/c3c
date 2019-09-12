@@ -765,6 +765,12 @@ static void codegen_ast(Context *context, Ast *ast, int indent)
 		case AST_STMT_LIST:
 			codegen_emit_stmt_list(context, ast, indent);
 			return;
+		case AST_CT_SWITCH_STMT:
+			break;
+		case AST_CT_DEFAULT_STMT:
+			break;
+		case AST_CT_CASE_STMT:
+			break;
 	}
 	TODO
 }
@@ -933,6 +939,7 @@ static inline void codegen_top_level_decl_header(Context *context, Decl *decl)
 			UNREACHABLE
 		case DECL_MACRO:
 		case DECL_GENERIC:
+		case DECL_ATTRIBUTE:
 			break;
 	}
 	TODO
@@ -972,13 +979,13 @@ static inline void codegen_top_level_decl(Context *context, Decl *decl)
 			return;
 		case DECL_MULTI_DECL:
 			break;
-			break;
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 			UNREACHABLE
 		case DECL_MACRO:
 		case DECL_GENERIC:
+		case DECL_ATTRIBUTE:
 			break;
 	}
 	TODO

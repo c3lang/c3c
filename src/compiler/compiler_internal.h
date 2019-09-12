@@ -74,6 +74,12 @@ typedef struct
 } File;
 
 
+typedef struct _Path
+{
+	Token package;
+	Token module;
+} Path;
+
 struct _Type
 {
 	TypeKind type_kind : 6;
@@ -91,7 +97,7 @@ struct _Type
 		} builtin;
 		struct
 		{
-			Token module;
+			Path *path;
 		} unresolved;
 		Expr *unresolved_type_expr;
 		struct
@@ -109,7 +115,7 @@ struct _Type
 
 typedef struct
 {
-	Token module;
+	Path *path;
 	Token name;
 	union
 	{
@@ -197,6 +203,12 @@ typedef struct
 
 typedef struct
 {
+	AttributeDomains domains;
+	FunctionSignature attr_signature;
+} AttrDecl;
+
+typedef struct
+{
 	bool is_func : 1;
 	union
 	{
@@ -250,6 +262,7 @@ typedef struct _Decl
 		EnumDecl enums;
 		EnumConstantDecl enum_constant;
 		FuncDecl func;
+		AttrDecl attr;
 		TypedefDecl typedef_decl;
 		Decl** multi_decl;
 		MacroDecl macro_decl;
@@ -257,6 +270,7 @@ typedef struct _Decl
 		CtIfDecl ct_if_decl;
 		CtIfDecl ct_elif_decl;
 		Decl** ct_else_decl;
+		Expr *incr_array_decl;
 	};
 } Decl;
 
@@ -343,7 +357,7 @@ typedef struct
 
 typedef struct
 {
-	Token module;
+	Path *path;
 	Token identifier;
 	bool is_ref;
 	Decl *decl;
@@ -517,6 +531,18 @@ typedef struct _AstGenericCaseStmt
 	struct _Ast *body;
 } AstGenericCaseStmt;
 
+typedef struct
+{
+	Expr *cond;
+	Ast **body;
+} AstCtSwitchStmt;
+
+typedef struct
+{
+	Type **types;
+	Ast *body;
+} AstCtCaseStmt;
+
 typedef struct _Ast
 {
 	AstKind ast_kind : 8;
@@ -540,6 +566,9 @@ typedef struct _Ast
 		AstDeferStmt defer_stmt;
 		AstSwitchStmt switch_stmt;
 		AstCaseStmt case_stmt;
+		AstCtSwitchStmt ct_switch_stmt;
+		AstCtCaseStmt ct_case_stmt;
+		Ast* ct_default_stmt;
 		Ast* next_stmt;
 		AstCatchStmt catch_stmt;
 		AstGotoStmt goto_stmt;

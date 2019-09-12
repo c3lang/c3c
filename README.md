@@ -22,15 +22,11 @@ There are some small work being done on the parser here, but most of the structu
 
 #### What's missing in the parser
 
-- Const declarations inside of functions.
 - `asm` sections.
-- `$switch` compile time statement.
 - `$each` compile time statement.
 - Macro parameter lists to imports.
-- `attribute` declarations.
 - extending `generics` declaration.
 - auxiliary data for enums.
-- incremental arrays
 
 #### What's missing in the semantic analyser
 

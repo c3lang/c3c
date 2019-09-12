@@ -36,6 +36,9 @@ typedef enum
 	AST_CT_IF_STMT,
 	AST_CT_ELIF_STMT,
 	AST_CT_ELSE_STMT,
+	AST_CT_SWITCH_STMT,
+	AST_CT_DEFAULT_STMT,
+	AST_CT_CASE_STMT,
 	AST_DECLARE_STMT,
 	AST_DEFAULT_STMT,
 	AST_DEFER_STMT,
@@ -160,6 +163,7 @@ typedef enum
 	DECL_CT_IF,
 	DECL_CT_ELSE,
 	DECL_CT_ELIF,
+	DECL_ATTRIBUTE,
 } DeclKind;
 
 // Ordering here is in priority if two branches should have the same exit.
@@ -495,3 +499,15 @@ typedef enum
 	VISIBLE_PUBLIC,
 } Visibility;
 
+
+typedef enum
+{
+	ATTR_FUNC = 1 << 0,
+	ATTR_VAR = 1 << 1,
+	ATTR_ENUM = 1 << 2,
+	ATTR_STRUCT = 1 << 3,
+	ATTR_UNION = 1 << 4,
+	ATTR_CONST = 1 << 5,
+	ATTR_ERROR = 1 << 6,
+	ATTR_TYPEDEF = 1 << 7
+} AttributeDomains;

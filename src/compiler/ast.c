@@ -198,7 +198,19 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 			}
 			else
 			{
-				fprintf(file, "(unresolved %s::%s)\n", type->unresolved.module.string, type->name_loc.string);
+				if (type->unresolved.path)
+				{
+					if (type->unresolved.path->module.string)
+					{
+						fprintf(file, "(unresolved %s::%s::%s)\n", type->unresolved.path->module.string, type->unresolved.path->module.string, type->name_loc.string);
+					}
+					else
+					{
+						fprintf(file, "(unresolved %s::%s)\n", type->unresolved.path->module.string, type->name_loc.string);
+					}
+					return;
+				}
+				fprintf(file, "(unresolved %s)\n", type->name_loc.string);
 				return;
 			}
 		case TYPE_POINTER:
@@ -520,6 +532,8 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			fprintf(file, "(import %s", decl->name.string);
 			TODO
 			break;
+		case DECL_ATTRIBUTE:
+			TODO
 	}
 	fprint_endparen(file, indent);
 }
@@ -687,6 +701,15 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			TODO
 			break;
 		case AST_CT_ELSE_STMT:
+			TODO
+			break;
+		case AST_CT_SWITCH_STMT:
+			TODO
+			break;
+		case AST_CT_CASE_STMT:
+			TODO
+			break;
+		case AST_CT_DEFAULT_STMT:
 			TODO
 			break;
 		case AST_GOTO_STMT:

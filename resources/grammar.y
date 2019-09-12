@@ -27,8 +27,9 @@ void yyerror(char *s);
 %start translation_unit
 %%
 
-ident_scope
+path
     : IDENT SCOPE
+    | path IDENT SCOPE
     ;
 
 ident_expression
@@ -42,7 +43,7 @@ primary_expression
 	: STRING_LITERAL
 	| CONSTANT
 	| NIL
-	| ident_scope ident_expression
+	| path ident_expression
 	| ident_expression
 	| base_type initializer_list
 	| base_type '.' IDENT
@@ -248,7 +249,7 @@ base_type
     | FLOAT
     | DOUBLE
     | TYPE_IDENT
-    | ident_scope TYPE_IDENT
+    | path TYPE_IDENT
     | TYPE '(' constant_expression ')'
     ;
 
@@ -423,9 +424,9 @@ jump_statement
 
 attribute
     : AT_IDENT
-    | IDENT SCOPE AT_IDENT
+    | path AT_IDENT
     | AT_IDENT '(' constant_expression ')'
-    | IDENT SCOPE AT_IDENT '(' constant_expression ')'
+    | path AT_IDENT '(' constant_expression ')'
     ;
 
 attribute_list
@@ -439,7 +440,7 @@ opt_attributes
     ;
 
 error_type
-    : IDENT SCOPE TYPE_IDENT
+    : path TYPE_IDENT
     | TYPE_IDENT
     | ERROR '(' expression ')'
     ;
@@ -460,7 +461,7 @@ opt_throw_declaration
     ;
 
 func_name
-    : IDENT SCOPE TYPE_IDENT '.' IDENT
+    : path TYPE_IDENT '.' IDENT
     | TYPE_IDENT '.' IDENT
     | IDENT
     ;
@@ -562,6 +563,7 @@ attribute_domain
     | UNION
     | TYPEDEF
     | CONST
+    | ERROR
     ;
 
 attribute_domains
@@ -570,8 +572,8 @@ attribute_domains
     ;
 
 attribute_declaration
-    : ATTRIBUTE AT_IDENT attribute_domains
-    | ATTRIBUTE AT_IDENT attribute_domains '(' parameter_type_list ')'
+    : ATTRIBUTE attribute_domains AT_IDENT ';'
+    | ATTRIBUTE attribute_domains AT_IDENT '(' parameter_type_list ')' ';'
     ;
 
 global_declaration

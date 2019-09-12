@@ -40,7 +40,7 @@ static inline bool sema_expr_analyse_conditional(Context *context, Expr *expr)
 static inline bool sema_expr_analyse_identifier(Context *context, Expr *expr)
 {
 	// TODO what about struct functions
-	if (expr->identifier_expr.module.string)
+	if (expr->identifier_expr.path)
 	{
 		TODO
 	}

@@ -1025,6 +1025,8 @@ static inline bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_GENERIC:
 			if (!sema_analyse_generic(context, decl)) return decl_poison(decl);
 			break;
+		case DECL_ATTRIBUTE:
+			TODO
 		case DECL_POISONED:
 		case DECL_IMPORT:
 		case DECL_ENUM_CONSTANT:
@@ -1213,6 +1215,7 @@ bool sema_resolve_type_shallow(Context *context, Type *type)
 		case DECL_CT_ELSE:
 		case DECL_CT_IF:
 		case DECL_CT_ELIF:
+		case DECL_ATTRIBUTE:
 			UNREACHABLE
 	}
 	UNREACHABLE

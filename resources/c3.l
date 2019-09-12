@@ -175,5 +175,3 @@ void count(void)
 
 	ECHO;
 }
-
-

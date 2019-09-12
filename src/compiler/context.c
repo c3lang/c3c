@@ -133,7 +133,6 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_ERROR:
 			TODO
 			break;
-			break;
 		case DECL_ENUM_CONSTANT:
 		case DECL_ERROR_CONSTANT:
 		case DECL_ARRAY_VALUE:
@@ -141,6 +140,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_MULTI_DECL:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
+		case DECL_ATTRIBUTE:
 			UNREACHABLE
 			break;
 
