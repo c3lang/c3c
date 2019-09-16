@@ -254,6 +254,7 @@ typedef enum
 	SCOPE_CONTINUE = 1 << 1,
 	SCOPE_CONTROL = 1 << 2,
 	SCOPE_NEXT = 1 << 3,
+	SCOPE_DEFER = 1 << 4,
 } ScopeFlags;
 
 typedef enum

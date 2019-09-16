@@ -55,11 +55,8 @@ static inline bool create_module_or_check_name(Context *context, Token module_na
     context->module_name = module_name;
     if (context->module == NULL)
     {
-        context->module = malloc_arena(sizeof(Module));
-        memset(context->module, 0, sizeof(Module));
-        context->module->name = module_name.string;
-        stable_init(&(context->module)->symbols, 0x10000);
-        return true;
+    	context->module = compiler_find_or_create_module(module_name.string);
+	    return true;
     }
     else if (context->module->name != module_name.string)
     {

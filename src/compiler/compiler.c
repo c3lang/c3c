@@ -5,8 +5,12 @@
 #include "compiler_internal.h"
 #include "../build/build_options.h"
 
+Compiler compiler;
+
 void compiler_init(void)
 {
+	stable_init(&compiler.modules, 64);
+	compiler.module_list = NULL;
 }
 
 static void compiler_lex()
@@ -38,8 +42,9 @@ void compiler_parse()
 		File *file = source_file_load(build_options.files[i], &loaded);
 		if (loaded) continue;
 		diag_reset();
-		parse_file(file);
-		context_print_ast(current_context, stdout);
+		Context *context = context_create(file);
+		parse_file(context);
+		context_print_ast(context, stdout);
 	}
 	exit(EXIT_SUCCESS);
 }
@@ -47,22 +52,32 @@ void compiler_parse()
 void compiler_compile()
 {
 	builtin_setup();
+	Context **contexts = NULL;
 	VECEACH(build_options.files, i)
 	{
 		bool loaded = false;
 		File *file = source_file_load(build_options.files[i], &loaded);
 		if (loaded) continue;
 		diag_reset();
-		parse_file(file);
-		sema_analysis(current_context);
+		Context *context = context_create(file);
+		vec_add(contexts, context);
+		parse_file(context);
+	}
+	VECEACH(contexts, i)
+	{
+		Context *context = contexts[i];
+		sema_analysis(context);
 		if (diagnostics.errors > 0) exit(EXIT_FAILURE);
-		FILE *f = fopen("test.c","w");
+		char buffer[255];
+		sprintf(buffer, "%s_test.c", context->module_name.string);
+		printf("%s\n", buffer);
+		FILE *f = fopen(buffer,"w");
 		fprintf(f, "#include <stdbool.h>\n#include <stdint.h>\n");
-		current_context->codegen_output = f;
-		codegen(current_context);
+		context->codegen_output = f;
+		codegen(context);
 		fclose(f);
-		system("cc test.c && ./a.out");
-
+		sprintf(buffer, "cc %s_test.c && ./a.out", context->module_name.string);
+		system(buffer);
 	}
 	exit(EXIT_SUCCESS);
 }
@@ -86,3 +101,34 @@ void compile_file()
 }
 
 
+Decl *compiler_find_symbol(Token token)
+{
+	Decl *candidate = NULL;
+	VECEACH(compiler.module_list, i)
+	{
+		Module *module = compiler.module_list[i];
+		Decl *decl = module_find_symbol(module, token.string);
+		if (decl && candidate)
+		{
+			const char *previous = candidate->module->name;
+			const char *current = decl->module->name;
+			SEMA_ERROR(token, "Ambiguous use of '%s', matches both %s::%s and %s::%s.", token.string,
+					previous, token.string, current, token.string);
+			return &poisoned_decl;
+		}
+		candidate = decl;
+	}
+	return candidate;
+}
+
+Module *compiler_find_or_create_module(const char *module_name)
+{
+	Module *module = stable_get(&compiler.modules, module_name);
+	if (module) return module;
+	module = CALLOCS(Module);
+	module->name = module_name;
+	stable_init(&module->symbols, 0x10000);
+	stable_set(&compiler.modules, module_name, module);
+	vec_add(compiler.module_list, module);
+	return module;
+}

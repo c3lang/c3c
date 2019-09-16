@@ -47,9 +47,16 @@ static inline bool sema_expr_analyse_identifier(Context *context, Expr *expr)
 	Decl *decl = context_find_ident(context, expr->identifier_expr.identifier.string);
 	if (decl == NULL)
 	{
+		decl = compiler_find_symbol(expr->identifier_expr.identifier);
+		if (decl && !decl_ok(decl)) return false;
+	}
+	if (decl == NULL)
+	{
 		SEMA_ERROR(expr->loc, "Unknown identifier %s.", expr->identifier_expr.identifier.string);
 		return false;
 	}
+	if (!decl_ok(decl)) return expr_poison(expr);
+
 	expr->identifier_expr.decl = decl;
 	expr->type = decl->var.type;
 	return true;

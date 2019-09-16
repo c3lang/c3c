@@ -5,6 +5,21 @@ int bob = 'HELO';
 
 typedef Foo* as Bob;
 
+func void testdefer(int x)
+{
+    defer printf("A");
+    defer
+    {
+        int x = 2;
+        printf("B");
+        x = x + 1;
+    }
+    //defer catch printf("B")
+    //defer catch (error e) printf("%s", @name(e));
+    //if (x = 1) return throw Error.FOO;
+    printf("!");
+}
+
 struct Foo
 {
 	int i;

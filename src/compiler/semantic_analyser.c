@@ -19,11 +19,6 @@ void sema_shadow_error(Decl *decl, Decl *old)
 	sema_prev_at_range(old->name.span, "The previous use of '%s' was here.", decl->name.string);
 }
 
-Decl *module_find_symbol(Module *module, const char *symbol)
-{
-	return stable_get(&module->symbols, symbol);
-}
-
 
 Decl *context_find_ident(Context *context, const char *symbol)
 {
@@ -36,7 +31,6 @@ Decl *context_find_ident(Context *context, const char *symbol)
 	}
 	Decl *found = module_find_symbol(context->module, symbol);
 	if (found) return found;
-	// TODO check imports
 	return NULL;
 }
 
@@ -50,6 +44,7 @@ static inline void context_push_scope(Context *context)
 	context->current_scope++;
 	context->current_scope->exit = EXIT_NONE;
 	context->current_scope->local_decl_start = context->last_local;
+	context->current_scope->defer_start = vec_size(context->defers);
 }
 
 static inline void context_push_scope_with_flags(Context *context, ScopeFlags flags)
@@ -64,7 +59,10 @@ static inline void context_pop_scope(Context *context)
 {
 	assert(context->current_scope != &context->scopes[0]);
 	context->last_local = context->current_scope->local_decl_start;
+	assert(vec_size(context->defers) == context->current_scope->defer_start);
+
 	ExitType exit_type = context->current_scope->exit;
+	vec_resize(context->defers, context->current_scope->defer_start);
 	context->current_scope--;
 	if (context->current_scope->exit < exit_type)
 	{
@@ -84,6 +82,27 @@ static bool sema_resolve_ptr_type(Context *context, Type *type)
 	type->canonical = type_get_canonical_ptr(type);
 	type->resolve_status = RESOLVE_DONE;
 	return true;
+}
+
+static void sema_build_defer_chain(Context *context, Ast ***statement_list)
+{
+	unsigned size = vec_size(context->defers);
+	unsigned start = context->current_scope->defer_start;
+	for (unsigned i = size; i > start; i--)
+	{
+		vec_add(*statement_list, context->defers[i - 1]);
+	}
+}
+
+static void sema_release_defer_chain(Context *context, Ast ***statement_list)
+{
+	unsigned size = vec_size(context->defers);
+	unsigned start = context->current_scope->defer_start;
+	for (unsigned i = size; i > start; i--)
+	{
+		vec_add(*statement_list, context->defers[i - 1]->defer_stmt.body);
+	}
+	vec_resize(context->defers, start);
 }
 
 static bool sema_resolve_array_type(Context *context, Type *type)
@@ -516,7 +535,19 @@ static inline bool sema_analyse_expr_stmt(Context *context, Ast *statement)
 
 static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
 {
-	TODO
+	context_push_scope_with_flags(context, SCOPE_DEFER | SCOPE_CONTINUE); // NOLINT(hicpp-signed-bitwise)
+	// Only ones allowed.
+	context->current_scope->flags &= SCOPE_DEFER | SCOPE_CONTINUE; // NOLINT(hicpp-signed-bitwise)
+
+	bool success = sema_analyse_statement(context, statement->defer_stmt.body);
+
+	context_pop_scope(context);
+
+	if (!success) return false;
+
+	vec_add(context->defers, statement);
+
+	return true;
 }
 
 static inline bool sema_analyse_default_stmt(Context *context, Ast *statement)
@@ -633,7 +664,7 @@ static bool sema_analyse_asm_stmt(Context *context, Ast *statement)
 
 static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 {
-	if (!(context->current_scope->flags | SCOPE_BREAK))  // NOLINT(hicpp-signed-bitwise)
+	if (!(context->current_scope->flags & SCOPE_BREAK))  // NOLINT(hicpp-signed-bitwise)
 	{
 		SEMA_ERROR(statement->token, "'break' is not allowed here.");
 		return false;
@@ -649,11 +680,12 @@ static bool sema_analyse_case_stmt(Context *context, Ast *statement)
 
 static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
 {
-	if (!(context->current_scope->flags | SCOPE_CONTINUE))  // NOLINT(hicpp-signed-bitwise)
+	if (!(context->current_scope->flags & SCOPE_CONTINUE))  // NOLINT(hicpp-signed-bitwise)
 	{
 		SEMA_ERROR(statement->token, "'continue' is not allowed here.");
 		return false;
 	}
+	sema_build_defer_chain(context, &statement->continue_stmt.defers);
 	return true;
 }
 
@@ -718,6 +750,7 @@ static bool sema_analyse_switch_case(Context *context, Ast*** prev_cases, Ast *c
 	{
 		if (*prev_case)
 		{
+			// sema_build_defer_chain(context, prev_cases);
 			context_pop_scope(context);
 			*prev_case = NULL;
 		}
@@ -733,7 +766,6 @@ static bool sema_analyse_switch_case(Context *context, Ast*** prev_cases, Ast *c
 		case_stmt->case_stmt.value_type = type_is_signed(case_expr->type->canonical) ? CASE_VALUE_INT : CASE_VALUE_UINT;
 		uint64_t val = case_expr->const_expr.i;
 		case_stmt->case_stmt.val = val;
-		context_push_scope(context);
 		*prev_case = case_stmt;
 		VECEACH(*prev_cases, i)
 		{
@@ -744,6 +776,7 @@ static bool sema_analyse_switch_case(Context *context, Ast*** prev_cases, Ast *c
 				return false;
 			}
 		}
+		context_push_scope_with_flags(context, SCOPE_BREAK);
 		vec_add(*prev_cases, case_stmt);
 		return true;
 	}
@@ -894,10 +927,14 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 		if (!context_add_local(context, params[i])) return false;
 	}
 	if (!sema_analyse_compound_statement_no_scope(context, func->func.body)) return false;
-	if (context->current_scope->exit != EXIT_RETURN && func->func.function_signature.rtype->canonical != type_void)
+	if (context->current_scope->exit != EXIT_RETURN)
 	{
-		SEMA_ERROR(func->name, "Missing return statement at the end of the function.");
-		return false;
+		if (func->func.function_signature.rtype->canonical != type_void)
+		{
+			SEMA_ERROR(func->name, "Missing return statement at the end of the function.");
+			return false;
+		}
+		sema_release_defer_chain(context, &func->func.body->compound_stmt.stmts);
 	}
 	context_pop_scope(context);
 	return true;

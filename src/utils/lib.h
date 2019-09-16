@@ -214,6 +214,14 @@ static inline unsigned vec_size(const void*vec)
 	return vec ? (((_VHeader *)vec) - 1)->size : 0;
 }
 
+static inline void vec_resize(const void *vec, unsigned new_size)
+{
+	if (vec)
+	{
+		(((_VHeader *)vec) - 1)->size = new_size;
+	}
+}
+
 static inline void vec_pop(const void *vec)
 {
 	assert(vec);
@@ -248,7 +256,7 @@ static inline void* _expand(void *vec, size_t element_size)
 		typeof(_vec) __temp = (typeof(_vec))_expand((_vec), sizeof((_vec)[0])); \
 		__temp[vec_size(__temp) - 1] = _value; \
 		_vec = __temp; })
-#define vec_add(_vec, _value) do { _vec = VECADD(_vec, _value); } while (0)
+#define vec_add(_vec, _value) do { (_vec) = VECADD((_vec), _value); } while (0)
 
 #define VECLAST(_vec) ( (_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)
 

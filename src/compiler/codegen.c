@@ -698,7 +698,7 @@ static void codegen_ast(Context *context, Ast *ast, int indent)
 			codegen_declare_stmt(context, ast, indent);
 			return;
 		case AST_DEFER_STMT:
-			break;
+			return;
 		case AST_DO_STMT:
 			codegen_emit_do_stmt(context, ast, indent);
 			return;

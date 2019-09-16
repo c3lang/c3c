@@ -693,10 +693,6 @@ static inline Ast* parse_if_stmt(void)
 	if_ast->if_stmt.then_body = stmt;
 	if (stmt->ast_kind != AST_COMPOUND_STMT || tok.type != TOKEN_ELSE)
 	{
-		if (stmt->ast_kind != AST_COMPOUND_STMT)
-		{
-			CONSUME_OR(TOKEN_EOS, &poisoned_ast);
-		}
 		return if_ast;
 	}
 	advance_and_verify(TOKEN_ELSE);
@@ -2663,10 +2659,9 @@ void parse_current(void)
 	}
 }
 
-void parse_file(File *file)
+void parse_file(Context *context)
 {
-	lexer_add_file_for_lexing(file);
-	Context *context = context_create(file);
+	lexer_add_file_for_lexing(context->file);
 	context_push(context);
 	parse_current();
 }

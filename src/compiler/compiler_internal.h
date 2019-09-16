@@ -74,7 +74,7 @@ typedef struct
 } File;
 
 
-typedef struct _Path
+typedef struct
 {
 	Token package;
 	Token module;
@@ -133,7 +133,7 @@ typedef struct
 	ImportType type : 3;
 	Token alias;
 	Expr** generic_parameters;
-	struct _Module *module;
+	Module *module;
 } ImportDecl;
 
 typedef struct
@@ -552,6 +552,11 @@ typedef struct
 	Ast *body;
 } AstCtForStmt;
 
+typedef struct
+{
+	Ast **defers;
+} AstContinueStmt;
+
 typedef struct _Ast
 {
 	AstKind ast_kind : 8;
@@ -577,6 +582,7 @@ typedef struct _Ast
 		AstCaseStmt case_stmt;
 		AstCtSwitchStmt ct_switch_stmt;
 		AstCtCaseStmt ct_case_stmt;
+		AstContinueStmt continue_stmt;
 		Ast* ct_default_stmt;
 		Ast* next_stmt;
 		AstCatchStmt catch_stmt;
@@ -594,9 +600,14 @@ typedef struct _Ast
 } Ast;
 
 
+typedef struct _Package
+{
+	const char *name;
+} Package;
 
 typedef struct _Module
 {
+	Package *package;
 	const char *name;
 
 	bool is_external;
@@ -618,8 +629,7 @@ typedef struct _DynamicScope
 	ScopeFlags flags_created;
 	unsigned errors;
 	Decl **local_decl_start;
-	Ast *defer_stack_start;
-	Ast *active_defer;
+	unsigned defer_start;
 	ExitType exit;
 } DynamicScope;
 
@@ -638,6 +648,7 @@ typedef struct _Context
 	Decl **functions;
 	Decl **vars;
 	Decl **ct_ifs;
+	Ast **defers;
 	Decl *active_function_for_analysis;
 	Type *left_type_in_assignment;
 	FILE *codegen_output;
@@ -653,8 +664,14 @@ typedef struct _Context
 	DynamicScope scopes[MAX_SCOPE_DEPTH];
 } Context;
 
-extern Context *current_context;
+typedef struct
+{
+	STable modules;
+	Module **module_list;
+} Compiler;
 
+extern Context *current_context;
+extern Compiler compiler;
 extern Ast poisoned_ast;
 extern Decl poisoned_decl;
 extern Expr poisoned_expr;
@@ -753,6 +770,9 @@ void codegen(Context *context);
 
 bool sema_analyse_expr(Context *context, Expr *expr);
 
+Decl *compiler_find_symbol(Token token);
+Module *compiler_find_or_create_module(const char *module_name);
+
 Context *context_create(File *file);
 void context_push(Context *context);
 void context_register_global_decl(Context *context, Decl *decl);
@@ -827,7 +847,7 @@ static inline void advance_and_verify(TokenType token_type)
 
 Decl *module_find_symbol(Module *module, const char *symbol);
 
-void parse_file(File *file);
+void parse_file(Context *context);
 
 #define SEMA_ERROR(_tok, ...) sema_error_range(_tok.span, __VA_ARGS__)
 void sema_init(File *file);
