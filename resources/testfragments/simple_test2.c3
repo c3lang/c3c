@@ -8,6 +8,6 @@ func void test()
 
 func void main()
 {
-    gronk();
+    gonk();
 	printf("Helo\n");
 }

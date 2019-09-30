@@ -84,11 +84,9 @@ static inline bool may_implicitly_cast_ptr_to_ptr(Type *current_type, Type *targ
 	assert(target_type->canonical == target_type);
 
 	// Neither is void* or have matching bases:
-	// TODO recursively check for ?* or?
 	if (target_type->base != type_void && current_type->base != type_void && target_type->base != current_type->base) return false;
 
-	// Current is not null, or target is nullable? Ok!
-	return target_type->nullable || !current_type->nullable;
+	return true;
 }
 
 bool ptpt(Expr* left, Type *canonical, Type *type, CastType cast_type)
@@ -446,11 +444,8 @@ bool usus(Expr* left, Type *canonical, Type *type, CastType cast_type)
 	{
 		if (type_is_subtype(left_canonical->base, canonical->base))
 		{
-			if (!left_canonical->base->nullable || canonical->base->nullable)
-			{
-				insert_cast(left, CAST_PTRPTR, canonical);
-				return true;
-			}
+			insert_cast(left, CAST_PTRPTR, canonical);
+			return true;
 		}
 		sema_type_mismatch(left, type, cast_type);
 		return false;

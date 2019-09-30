@@ -114,7 +114,15 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_GENERIC:
 			break;
 		case DECL_FUNC:
-			vec_add(context->functions, decl);
+			if (decl->func.type_parent)
+			{
+				vec_add(context->struct_functions, decl);
+				return;
+			}
+			else
+			{
+				vec_add(context->functions, decl);
+			}
 			break;
 		case DECL_VAR:
 			vec_add(context->vars, decl);
@@ -123,6 +131,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_UNION:
 		case DECL_TYPEDEF:
 			vec_add(context->types, decl);
+
 			break;
 		case DECL_ENUM:
 			vec_add(context->enums, decl);
@@ -140,7 +149,6 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_ATTRIBUTE:
 			UNREACHABLE
 			break;
-
 		case DECL_CT_IF:
 			vec_add(context->ct_ifs, decl);
 			return;
@@ -154,6 +162,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 	}
 	if (!old && decl->visibility == VISIBLE_PUBLIC)
 	{
+		compiler_register_public_symbol(decl);
 		old = stable_set(&context->module->public_symbols, decl->name.string, decl);
 	}
 	if (old != NULL)

@@ -257,7 +257,6 @@ base_type
 type_expression
     : base_type
     | type_expression '*'
-    | type_expression '&'
     | type_expression '[' constant_expression ']'
     | type_expression '[' ']'
     | type_expression '[' '+' ']'

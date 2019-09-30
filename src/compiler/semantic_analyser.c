@@ -20,6 +20,7 @@ void sema_shadow_error(Decl *decl, Decl *old)
 }
 
 
+
 Decl *context_find_ident(Context *context, const char *symbol)
 {
 	Decl **first = &context->locals[0];
@@ -185,7 +186,6 @@ static inline bool sema_analyse_struct_union(Context *context, Decl *decl)
 
 static inline bool sema_analyse_function_param(Context *context, Decl *param, bool is_function)
 {
-	if (!decl_ok(param)) return false;
 	assert(param->decl_kind == DECL_VAR);
 	assert(param->var.kind == VARDECL_PARAM);
 	if (!sema_resolve_type(context, param->var.type))
@@ -218,11 +218,16 @@ static inline bool sema_analyse_function_signature(Context *context, FunctionSig
 	// TODO check parameter name appearing more than once.
 	VECEACH(signature->params, i)
 	{
-		if (!sema_analyse_function_param(context, signature->params[i], is_function))
+		Decl *param = signature->params[i];
+		assert(param->resolve_status == RESOLVE_NOT_DONE);
+		param->resolve_status = RESOLVE_RUNNING;
+		if (!sema_analyse_function_param(context, param, is_function))
 		{
-			decl_poison(signature->params[i]);
+			decl_poison(param);
 			all_ok = false;
+			continue;
 		}
+		param->resolve_status = RESOLVE_DONE;
 	}
 	VECEACH(signature->throws, i)
 	{
@@ -939,13 +944,40 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 	context_pop_scope(context);
 	return true;
 }
+
+
+static inline bool sema_analyse_method_function(Context *context, Decl *decl)
+{
+	Type *parent_type = decl->func.type_parent;
+	if (!sema_resolve_type(context, parent_type)) return false;
+	if (!type_may_have_method_functions(parent_type))
+	{
+		SEMA_ERROR(decl->name, "Method functions can not be associated with '%s'", type_to_error_string(decl->func.type_parent));
+		return false;
+	}
+	Decl *parent = parent_type->decl;
+	VECEACH(parent->method_functions, i)
+	{
+		Decl *function = parent->method_functions[i];
+		if (function->name.string == decl->name.string)
+		{
+			SEMA_ERROR(decl->name, "Duplicate name '%s' for method function.", function->name);
+			sema_prev_at_range(function->name.span, "Previous definition here.");
+			return false;
+		}
+	}
+	DEBUG_LOG("Method function '%s.%s' analysed.", parent->name.string, decl->name.string);
+	vec_add(parent->method_functions, decl);
+	return true;
+}
+
 static inline bool sema_analyse_func(Context *context, Decl *decl)
 {
 	DEBUG_LOG("Analysing function %s", decl->name.string);
 	bool all_ok = sema_analyse_function_signature(context, &decl->func.function_signature, true);
-	if (decl->func.struct_parent)
+	if (decl->func.type_parent)
 	{
-		all_ok = sema_resolve_type(context, decl->func.struct_parent) && all_ok;
+		all_ok = all_ok && sema_analyse_method_function(context, decl);
 	}
 	all_ok = all_ok && sema_analyse_function_body(context, decl);
 	if (!all_ok) decl_poison(decl);
@@ -1128,26 +1160,19 @@ static inline void sema_process_imports(Context *context)
 {
 	// TODO
 }
-void sema_analysis(Context *context)
-{
-	const char *printf = "printf";
-	TokenType t_type = TOKEN_IDENT;
-	const char *interned = symtab_add(printf, (uint32_t) 6, fnv1a(printf, (uint32_t)6), &t_type);
-	Decl *decl = decl_new(DECL_FUNC, wrap(interned), VISIBLE_PUBLIC);
-	Type *type = type_new(TYPE_POINTER);
-	type->base = type_char;
-	sema_resolve_type(context, type);
-	Decl *param = decl_new_var(wrap("str"), type, VARDECL_PARAM, VISIBLE_LOCAL);
 
-	vec_add(decl->func.function_signature.params, param);
-	decl->func.function_signature.rtype = type_void;
-	decl->resolve_status = RESOLVE_DONE;
-	context_register_global_decl(context, decl);
-	sema_process_imports(context);
+void sema_analysis_pass_conditional_compilation(Context *context)
+{
+	DEBUG_LOG("Pass 1 - analyse: %s", context->file->name);
 	VECEACH(context->ct_ifs, i)
 	{
 		sema_analyse_top_level_if(context, context->ct_ifs[i]);
 	}
+}
+
+void sema_analysis_pass_decls(Context *context)
+{
+	DEBUG_LOG("Pass 2 - analyse: %s", context->file->name);
 	VECEACH(context->enums, i)
 	{
 		sema_analyse_decl(context, context->enums[i]);
@@ -1155,6 +1180,10 @@ void sema_analysis(Context *context)
 	VECEACH(context->types, i)
 	{
 		sema_analyse_decl(context, context->types[i]);
+	}
+	VECEACH(context->struct_functions, i)
+	{
+		sema_analyse_decl(context, context->struct_functions[i]);
 	}
 	VECEACH(context->vars, i)
 	{
@@ -1175,7 +1204,7 @@ bool sema_resolve_type_shallow(Context *context, Type *type)
 
 	if (type->resolve_status == RESOLVE_RUNNING)
 	{
-		SEMA_ERROR(type->name_loc, "Circular dependency resolving type '%s'.", type->name_loc);
+		SEMA_ERROR(type->name_loc, "Circular dependency resolving type '%s'.", type->name_loc.string);
 		type_poison(type);
 		return false;
 	}

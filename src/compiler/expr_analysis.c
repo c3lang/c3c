@@ -65,7 +65,7 @@ static inline bool sema_expr_analyse_identifier(Context *context, Expr *expr)
 static inline bool sema_expr_analyse_var_call(Context *context, Expr *expr) { TODO }
 static inline bool sema_expr_analyse_macro_call(Context *context, Expr *expr, Decl *macro)
 {
-	Ast macro_parent;
+	Ast *macro_parent;
 	// TODO handle loops
 	Decl *stored_macro = context->evaluating_macro;
 	Type *stored_rtype = context->rtype;
@@ -104,11 +104,18 @@ static inline bool sema_expr_analyse_call(Context *context, Expr *expr)
 {
 	Expr *func_expr = expr->call_expr.function;
 	if (!sema_analyse_expr(context, func_expr)) return false;
-	if (func_expr->expr_kind != EXPR_IDENTIFIER)
+	Decl *decl;
+	switch (func_expr->expr_kind)
 	{
-		TODO
+		case EXPR_TYPE_ACCESS:
+			decl = func_expr->type_access.method;
+			break;
+		case EXPR_IDENTIFIER:
+			decl = func_expr->identifier_expr.decl;
+			break;
+		default:
+			TODO
 	}
-	Decl *decl = func_expr->identifier_expr.decl;
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
@@ -141,14 +148,166 @@ static inline bool sema_expr_analyse_subscript(Context *context, Expr *expr)
 	TODO
 }
 
-static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_method_function(Context *context, Expr *expr, Decl *decl, bool is_pointer)
 {
-	TODO
+	const char *name = expr->access_expr.sub_element.string;
+	VECEACH(decl->method_functions, i)
+	{
+		Decl *function = decl->method_functions[i];
+		if (function->name.string == name)
+		{
+			// TODO
+			return true;
+		}
+	}
+	SEMA_ERROR(expr->loc, "Cannot find method function '%s.%s'", decl->name.string, name);
+	return false;
 }
 
-static inline bool sema_expr_analyse_method_ref(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_enum_constant(Context *context, Expr *expr, Decl *decl)
 {
-	TODO
+	const char *name = expr->type_access.name.string;
+	VECEACH(decl->enums.values, i)
+	{
+		Decl *enum_constant = decl->enums.values[i];
+		if (enum_constant->name.string == name)
+		{
+			assert(enum_constant->resolve_status == RESOLVE_DONE);
+			expr_replace(expr, decl->enum_constant.expr);
+			return true;
+		}
+	}
+	SEMA_ERROR(expr->loc, "'%s' has no enumeration value '%s'.", decl->name.string, name);
+	return false;
+}
+
+static inline bool sema_expr_analyse_error_constant(Context *context, Expr *expr, Decl *decl)
+{
+	const char *name = expr->type_access.name.string;
+	VECEACH(decl->error.error_constants, i)
+	{
+		Decl *error_constant = decl->error.error_constants[i];
+		if (error_constant->name.string == name)
+		{
+			assert(error_constant->resolve_status == RESOLVE_DONE);
+			expr->type = decl->self_type;
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.type = CONST_INT;
+			expr->const_expr.i = decl->error_constant.value;
+			return true;
+		}
+	}
+	SEMA_ERROR(expr->loc, "'%s' has no error type '%s'.", decl->name.string, name);
+	return false;
+}
+
+static Decl *strukt_recursive_search_member(Decl *strukt, const char *name)
+{
+	VECEACH(strukt->strukt.members, i)
+	{
+		Decl *member = strukt->strukt.members[i];
+		if (member->name.string == name) return member;
+		if (!member->name.string && decl_is_struct_type(member))
+		{
+			Decl *result = strukt_recursive_search_member(member, name);
+			if (result) return result;
+		}
+	}
+	return NULL;
+}
+
+static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
+{
+	if (!sema_analyse_expr(context, expr->access_expr.parent)) return false;
+	Type *parent_type = expr->access_expr.parent->type;
+
+	Type *type = parent_type->canonical;
+	bool is_pointer = type->type_kind == TYPE_POINTER;
+	if (is_pointer)
+	{
+		type = type->base;
+	}
+	if (!type_may_have_method_functions(type))
+	{
+		SEMA_ERROR(expr->loc, "Cannot access '%s' on '%s'", expr->access_expr.sub_element.string, type_to_error_string(parent_type));
+		return false;
+	}
+	Decl *decl = type->decl;
+	switch (decl->decl_kind)
+	{
+		case DECL_ENUM:
+		case DECL_ERROR:
+			return sema_expr_analyse_method_function(context, expr, decl, is_pointer);
+		case DECL_STRUCT:
+		case DECL_UNION:
+			break;
+		default:
+			UNREACHABLE
+	}
+	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string);
+	if (!member)
+	{
+		SEMA_ERROR(expr->access_expr.sub_element, "There is no element '%s.%s'.", decl->name.string, expr->access_expr.sub_element.string);
+		return false;
+	}
+	if (is_pointer)
+	{
+		Expr *deref = expr_new(EXPR_UNARY, expr->loc);
+		deref->unary_expr.operator = TOKEN_STAR;
+		deref->unary_expr.expr = expr->access_expr.parent;
+		deref->resolve_status = RESOLVE_DONE;
+		deref->type = type;
+		expr->access_expr.parent = deref;
+	}
+	if (member->decl_kind == DECL_VAR)
+	{
+		expr->type = member->var.type;
+	}
+	else
+	{
+		expr->type = member->self_type;
+	}
+	return true;
+}
+
+static inline bool sema_expr_analyse_type_access(Context *context, Expr *expr)
+{
+	Type *type = expr->type_access.type;
+	if (!sema_resolve_type(context, type)) return false;
+	if (!type_may_have_method_functions(type))
+	{
+		SEMA_ERROR(expr->loc, "'%s' does not have method functions.", type_to_error_string(type));
+		return false;
+	}
+	Decl *decl = type->decl;
+	// TODO add more constants that can be inspected?
+	// e.g. SomeEnum.values, MyUnion.x.offset etc?
+	switch (decl->decl_kind)
+	{
+		case DECL_ENUM:
+			if (expr->type_access.name.type == TOKEN_CONST_IDENT) return sema_expr_analyse_enum_constant(context, expr, decl);
+			break;
+		case DECL_ERROR:
+			if (expr->type_access.name.type == TOKEN_CONST_IDENT) return sema_expr_analyse_error_constant(context, expr, decl);
+			break;
+		case DECL_UNION:
+		case DECL_STRUCT:
+			break;
+		default:
+			UNREACHABLE
+	}
+	VECEACH(type->decl->method_functions, i)
+	{
+		Decl *function = type->decl->method_functions[i];
+		if (expr->type_access.name.string == function->name.string)
+		{
+			expr->type_access.method = function;
+			expr->type = function->func.function_signature.rtype;
+			return true;
+		}
+	}
+	SEMA_ERROR(expr->loc, "No function '%s.%s' found.", type_to_error_string(type), expr->type_access.name.string);
+	return false;
 }
 
 static inline Decl *decl_find_by_name(Decl** decls, const char *name)
@@ -631,11 +790,6 @@ static bool sema_expr_analyse_deref(Context *context, Expr *expr, Expr *inner)
 		SEMA_ERROR(inner->loc, "Dereferencing nil is not allowed.");
 		return false;
 	}
-	if (canonical->nullable)
-	{
-		SEMA_ERROR(inner->loc, "Dereferencing a nullable pointer is not allowed.");
-		return false;
-	}
 	Type *deref_type = inner->type->type_kind != TYPE_POINTER ? inner->type : canonical;
 	expr->type = deref_type->base;
 	return true;
@@ -651,7 +805,6 @@ static bool sema_expr_analyse_addr(Context *context, Expr *expr, Expr *inner)
 	Type *type = type_new(TYPE_POINTER);
 	type->name_loc = inner->type->name_loc;
 	type->base = inner->type;
-	type->nullable = false;
 	type->resolve_status = RESOLVE_DONE;
 	type->canonical = type_get_canonical_ptr(type);
 	assert(type->resolve_status == RESOLVE_DONE);
@@ -912,7 +1065,7 @@ static ExprAnalysis EXPR_ANALYSIS[EXPR_CAST + 1] = {
 		[EXPR_POST_UNARY] = &sema_expr_analyse_postunary,
 		[EXPR_TYPE] = &sema_expr_analyse_type,
 		[EXPR_IDENTIFIER] = &sema_expr_analyse_identifier,
-		[EXPR_METHOD_REF] = &sema_expr_analyse_method_ref,
+		[EXPR_TYPE_ACCESS] = &sema_expr_analyse_type_access,
 		[EXPR_CALL] = &sema_expr_analyse_call,
 		[EXPR_SIZEOF] = &sema_expr_analyse_sizeof,
 		[EXPR_SUBSCRIPT] = &sema_expr_analyse_subscript,

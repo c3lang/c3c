@@ -7,8 +7,7 @@
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility)
 {
 	assert(name.string);
-	Decl *decl = malloc_arena(sizeof(Decl));
-	memset(decl, 0, sizeof(Decl));
+	Decl *decl = CALLOCS(Decl);
 	decl->decl_kind = decl_kind;
 	decl->name = name;
 	decl->visibility = visibility;
@@ -318,9 +317,9 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			fprintf(file, "(postunary %s\n", token_type_to_string(expr->post_expr.operator));
 			fprint_expr_recursive(file, expr->post_expr.expr, indent + 1);
 			break;
-		case EXPR_METHOD_REF:
-			fprintf(file, "(methodref .%s\n", expr->method_ref_expr.method.string);
-			fprint_type_recursive(file, expr->method_ref_expr.type, indent + 1);
+		case EXPR_TYPE_ACCESS:
+			fprintf(file, "(typeaccess .%s\n", expr->type_access.name.string);
+			fprint_type_recursive(file, expr->type_access.type, indent + 1);
 			break;
 		case EXPR_STRUCT_VALUE:
 			fprintf(file, "(structvalue\n");
@@ -434,7 +433,7 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			break;
 		case DECL_FUNC:
 			fprintf(file, "(func %s\n", decl->name.string);
-			fprint_type_recursive(file, decl->func.struct_parent, indent + 1);
+			fprint_type_recursive(file, decl->func.type_parent, indent + 1);
 			fprint_func_signature(file, &decl->func.function_signature, indent + 1);
 			fprint_ast_recursive(file, decl->func.body, indent + 1);
 			break;

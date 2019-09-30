@@ -207,14 +207,14 @@ static Path *parse_path(void)
 	Path *path = malloc_arena(sizeof(Path));
 	memset(path, 0, sizeof(Path));
 
-	path->package = tok;
+	path->sub_module = tok;
 
 	if (tok.type == TOKEN_IDENT && next_tok.type == TOKEN_SCOPE)
 	{
 		advance();
 		advance();
-		path->module = tok;
-		path->package = tok;
+		path->module = path->sub_module;
+		path->sub_module = tok;
 	}
 
 	return path;
@@ -409,32 +409,7 @@ static Type *parse_type_expression(void)
                     Type *ptr_type = type_new(TYPE_POINTER);
                     assert(type);
 	                ptr_type->base = type;
-	                ptr_type->nullable = true;
 	                type = ptr_type;
-                }
-                break;
-			case TOKEN_AND:
-				advance();
-				{
-					Type *ptr_type = type_new(TYPE_POINTER);
-					assert(type);
-					ptr_type->base = type;
-					ptr_type->nullable = false;
-					type = ptr_type;
-					ptr_type = type_new(TYPE_POINTER);
-					ptr_type->base = type;
-					ptr_type->nullable = false;
-					type = ptr_type;
-					break;
-				}
-			case TOKEN_AMP:
-				advance();
-                {
-                    Type *ptr_type = type_new(TYPE_POINTER);
-	                assert(type);
-	                ptr_type->base = type;
-	                ptr_type->nullable = false;
-                    type = ptr_type;
                 }
                 break;
 			default:
@@ -1901,8 +1876,6 @@ static inline Decl *parse_struct_declaration(Visibility visibility)
     if (!consume_type_name(type_name)) return &poisoned_decl;
     Decl *decl = decl_new_user_defined_type(name, decl_from_token(type), visibility);
 
-    decl->strukt.method_functions = NULL;
-
 	if (!parse_attributes(decl))
 	{
 		return &poisoned_decl;
@@ -2344,7 +2317,7 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
 		Type *type = type_new(TYPE_USER_DEFINED);
 		type->unresolved.path = path;
 		type->name_loc = tok;
-		func->func.struct_parent = type;
+		func->func.type_parent = type;
 		advance_and_verify(TOKEN_TYPE_IDENT);
 
 		TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method function.", false);
@@ -3029,7 +3002,7 @@ static Expr *parse_nil(Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, tok);
 	number->const_expr.type = CONST_NIL;
-	number->type = type_get_canonical_ptr(type_void);
+	number->type = type_voidptr;
 	number->resolve_status = RESOLVE_DONE;
 	advance();
 	return number;
@@ -3089,13 +3062,13 @@ static Expr *parse_initializer(void)
  * @param type
  * @return Expr
  */
-static Expr *parse_method_ref(Type *type)
+static Expr *parse_type_access(Type *type)
 {
-    Expr *expr = EXPR_NEW_TOKEN(EXPR_METHOD_REF, tok);
-    expr->method_ref_expr.type = type;
+    Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPE_ACCESS, tok);
+    expr->type_access.type = type;
 
     advance_and_verify(TOKEN_DOT);
-    expr->method_ref_expr.method = tok;
+    expr->type_access.name = tok;
 
     TRY_CONSUME_OR(TOKEN_IDENT, "Expected a function name or value", &poisoned_expr);
 
@@ -3141,7 +3114,7 @@ static Expr *parse_type_identifier_with_path(Path *path)
 		return expr;
 	}
 	EXPECT_OR(TOKEN_DOT, &poisoned_expr);
-	return parse_method_ref(type);
+	return parse_type_access(type);
 }
 
 /**

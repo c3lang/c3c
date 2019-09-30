@@ -379,6 +379,16 @@ static int codegen_emit_initializer_list(Context *context, Expr *expr, int inden
 	return index;
 }
 
+static int codegen_emit_access(Context *context, Expr *expr, int indent)
+{
+	int left = codegen_emit_expr(context, expr->access_expr.parent, indent);
+	int index = ++context->unique_index;
+	INDENT();
+	PRINTTYPE(expr->type);
+	PRINTF(" _%d = _%d.%s;\n", index, left, expr->access_expr.sub_element.string);
+	return index;
+}
+
 static int codegen_emit_unary_expr(Context *context, Expr *expr, int indent)
 {
 	int index = ++context->unique_index;
@@ -452,6 +462,8 @@ static int codegen_emit_expr(Context *context, Expr *expr, int indent)
 			return codegen_emit_unary_expr(context, expr, indent);
 		case EXPR_INITIALIZER_LIST:
 			return codegen_emit_initializer_list(context, expr, indent);
+		case EXPR_ACCESS:
+			return codegen_emit_access(context, expr, indent);
 		default:
 			TODO
 	}

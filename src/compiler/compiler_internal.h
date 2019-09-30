@@ -76,8 +76,8 @@ typedef struct
 
 typedef struct
 {
-	Token package;
 	Token module;
+	Token sub_module;
 } Path;
 
 struct _Type
@@ -107,7 +107,6 @@ struct _Type
 			{
 				Expr *unresolved_len;
 				size_t len;
-				bool nullable;
 			};
 		};
 	};
@@ -139,7 +138,6 @@ typedef struct
 typedef struct
 {
 	Decl **members;
-	Decl **method_functions;
 } StructDecl;
 
 
@@ -195,7 +193,7 @@ typedef struct
 typedef struct
 {
 	const char *full_name;
-	Type *struct_parent;
+	Type *type_parent;
 	FunctionSignature function_signature;
 	Ast *body;
 	FuncAnnotations *annotations;
@@ -251,16 +249,23 @@ typedef struct _Decl
 	};
 	uint32_t size;*/
 	Type *self_type;
-	struct _Module *module;
+	Module *module;
 	Attr** attributes;
 	union
 	{
-		ErrorDecl error;
+		struct
+		{
+			Decl** method_functions;
+			union
+			{
+				ErrorDecl error;
+				StructDecl strukt;
+				EnumDecl enums;
+			};
+		};
 		ErrorConstantDecl error_constant;
 		ImportDecl import;
-		StructDecl strukt;
 		VarDecl var;
-		EnumDecl enums;
 		EnumConstantDecl enum_constant;
 		FuncDecl func;
 		AttrDecl attr;
@@ -284,8 +289,12 @@ typedef struct
 typedef struct
 {
 	Type *type;
-	Token method;
-} ExprMethodRef;
+	union
+	{
+		Token name;
+		Decl *method;
+	};
+} ExprTypeRef;
 
 typedef struct
 {
@@ -353,7 +362,11 @@ typedef struct
 typedef struct
 {
 	Expr *parent;
-	Token sub_element;
+	union
+	{
+		Token sub_element;
+		Decl *ref;
+	};
 } ExprAccess;
 
 typedef struct
@@ -393,7 +406,7 @@ struct _Expr
 		ExprCast expr_cast;
 		ExprConst const_expr;
 		ExprStructValue struct_value_expr;
-		ExprMethodRef method_ref_expr;
+		ExprTypeRef type_access;
 		ExprTry try_expr;
 		ExprBinary binary_expr;
 		ExprAssign assign_expr;
@@ -600,14 +613,8 @@ typedef struct _Ast
 } Ast;
 
 
-typedef struct _Package
-{
-	const char *name;
-} Package;
-
 typedef struct _Module
 {
-	Package *package;
 	const char *name;
 
 	bool is_external;
@@ -646,6 +653,7 @@ typedef struct _Context
 	Decl **enums;
 	Decl **types;
 	Decl **functions;
+	Decl **struct_functions;
 	Decl **vars;
 	Decl **ct_ifs;
 	Ast **defers;
@@ -667,7 +675,8 @@ typedef struct _Context
 typedef struct
 {
 	STable modules;
-	Module **module_list;
+	STable global_symbols;
+	STable qualified_symbols;
 } Compiler;
 
 extern Context *current_context;
@@ -682,7 +691,7 @@ extern Diagnostics diagnostics;
 extern Token next_tok;
 extern Token tok;
 
-extern Type *type_bool, *type_void, *type_string;
+extern Type *type_bool, *type_void, *type_string, *type_voidptr, *type_voidref;
 extern Type *type_float, *type_double;
 extern Type *type_char, *type_short, *type_int, *type_long, *type_isize;
 extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
@@ -696,6 +705,7 @@ extern Type t_f32, t_f64, t_fxx;
 extern Type t_u0, t_str;
 extern Type t_cus, t_cui, t_cul, t_cull;
 extern Type t_cs, t_ci, t_cl, t_cll;
+extern Type t_voidstar;
 
 #define AST_NEW(_kind, _token) new_ast(_kind, _token)
 
@@ -772,6 +782,7 @@ bool sema_analyse_expr(Context *context, Expr *expr);
 
 Decl *compiler_find_symbol(Token token);
 Module *compiler_find_or_create_module(const char *module_name);
+void compiler_register_public_symbol(Decl *decl);
 
 Context *context_create(File *file);
 void context_push(Context *context);
@@ -851,7 +862,9 @@ void parse_file(Context *context);
 
 #define SEMA_ERROR(_tok, ...) sema_error_range(_tok.span, __VA_ARGS__)
 void sema_init(File *file);
-void sema_analysis(Context *context);
+void sema_analysis_pass_conditional_compilation(Context *context);
+void sema_analysis_pass_decls(Context *context);
+void sema_analysis_pass_3(Context *context);
 
 bool sema_analyse_statement(Context *context, Ast *statement);
 bool sema_resolve_type(Context *context, Type *type);
@@ -900,6 +913,7 @@ static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I
 static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_UXX; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline void type_poison(Type *type) { type->type_kind = TYPE_POISONED; type->resolve_status = RESOLVE_DONE; }
+bool type_may_have_method_functions(Type *type);
 static inline bool type_is_integer(Type *type)
 {
 	assert(type == type->canonical);

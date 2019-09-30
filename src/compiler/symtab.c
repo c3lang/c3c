@@ -59,7 +59,7 @@ void symtab_init(uint32_t capacity)
 		uint32_t len = (uint32_t)strlen(name);
 		TokenType type = (TokenType)i;
 		const char* interned = symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type);
-		assert(type == i);
+		assert(type == (TokenType)i);
 		assert(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 
 	}

@@ -4,7 +4,7 @@
 
 #include "compiler_internal.h"
 
-Type *type_bool, *type_void, *type_string;
+Type *type_bool, *type_void, *type_string, *type_voidptr;
 Type *type_float, *type_double;
 Type *type_char, *type_short, *type_int, *type_long, *type_isize;
 Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
@@ -19,7 +19,7 @@ Type t_f32, t_f64, t_fxx;
 Type t_usz, t_isz;
 Type t_cus, t_cui, t_cul, t_cull;
 Type t_cs, t_ci, t_cl, t_cll;
-
+Type t_voidstar;
 
 Type *type_signed_int_by_size(int bitsize)
 {
@@ -70,7 +70,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_FXX:
 			return type->name_loc.string;
 		case TYPE_POINTER:
-			asprintf(&buffer, "%s%s", type_to_error_string(type->base), type->nullable ? "*" : "?");
+			asprintf(&buffer, "%s*", type_to_error_string(type->base));
 			return buffer;
 		case TYPE_STRING:
 			return "string";
@@ -147,7 +147,6 @@ static inline void create_ptr_live_canonical(Type *canonical_type)
 	assert(canonical_type->canonical == canonical_type);
 	canonical_type->ptr_like_canonical = VECADD(canonical_type->ptr_like_canonical, NULL);
 	canonical_type->ptr_like_canonical = VECADD(canonical_type->ptr_like_canonical, NULL);
-	canonical_type->ptr_like_canonical = VECADD(canonical_type->ptr_like_canonical, NULL);
 }
 
 Type *type_get_canonical_ptr(Type *ptr_type)
@@ -161,7 +160,7 @@ Type *type_get_canonical_ptr(Type *ptr_type)
 		create_ptr_live_canonical(canonical_base);
 	}
 
-	Type *canonical_ptr = canonical_base->ptr_like_canonical[(int)ptr_type->nullable];
+	Type *canonical_ptr = canonical_base->ptr_like_canonical[0];
 	if (canonical_ptr == NULL)
 	{
 		canonical_ptr = malloc_arena(sizeof(Type));
@@ -169,7 +168,7 @@ Type *type_get_canonical_ptr(Type *ptr_type)
 		canonical_ptr->base = canonical_base;
 		canonical_ptr->canonical = canonical_ptr;
 		canonical_ptr->resolve_status = RESOLVE_DONE;
-		canonical_base->ptr_like_canonical[(int)ptr_type->nullable] = canonical_ptr;
+		canonical_base->ptr_like_canonical[0] = canonical_ptr;
 		canonical_base->resolve_status = RESOLVE_DONE;
 	}
 
@@ -187,20 +186,20 @@ Type *type_get_canonical_array(Type *arr_type)
 	// Dynamic array
 	if (arr_type->len == 0)
 	{
-		Type *canonical = canonical_base->ptr_like_canonical[2];
+		Type *canonical = canonical_base->ptr_like_canonical[1];
 		if (canonical == NULL)
 		{
 			canonical = malloc_arena(sizeof(Type));
 			*canonical = *arr_type;
 			canonical->canonical = canonical_base;
-			canonical_base->ptr_like_canonical[2] = canonical;
+			canonical_base->ptr_like_canonical[1] = canonical;
 			canonical->resolve_status = RESOLVE_DONE;
 		}
 		return canonical;
 	}
 
 	int entries = (int)vec_size(canonical_base->ptr_like_canonical);
-	for (int i = 3; i < entries; i++)
+	for (int i = 1; i < entries; i++)
 	{
 		Type *ptr = canonical_base->ptr_like_canonical[i];
 		if (ptr->len == arr_type->len)
@@ -239,6 +238,10 @@ void builtin_setup()
 {
 	create_type("void", &t_u0, &type_void, TYPE_VOID, 1, 8);
 	create_type("string", &t_str, &type_string, TYPE_STRING, build_options.pointer_size, build_options.pointer_size * 8);
+	create_ptr_live_canonical(type_void);
+	type_void->ptr_like_canonical[0] = &t_voidstar;
+	create_type("void*", &t_voidstar, &type_voidptr, TYPE_POINTER, 0, 0);
+	t_voidstar.base = type_void;
 
 	/*TODO
  * decl_string = (Decl) { .decl_kind = DECL_BUILTIN, .name.string = "string" };
@@ -308,3 +311,19 @@ bool type_is_subtype(Type *type, Type *possible_subtype)
 }
 
 
+bool type_may_have_method_functions(Type *type)
+{
+	// An alias is not ok.
+	if (type->type_kind != TYPE_USER_DEFINED) return false;
+	Decl *decl = type->decl;
+	switch (decl->decl_kind)
+	{
+		case DECL_UNION:
+		case DECL_STRUCT:
+		case DECL_ERROR:
+		case DECL_ENUM:
+			return true;
+		default:
+			return false;
+	}
+}
