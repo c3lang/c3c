@@ -1,6 +1,8 @@
 # C3 Language
 
-C3 is a C-like language trying to be "an incremental improvement over C" rather than a whole new language. C3 is based on the ideas of the [C2 language](c2lang.org): to iterate on top of C without trying to be a whole new language.
+C3 is a C-like language trying to be "an incremental improvement over C" rather than a whole new language. 
+C3 owes a lot to the ideas of the [C2 language](c2lang.org): to iterate on top of C without trying to be a 
+whole new language.
 
 C3 tries to be an alternative in the the C/C++ niche: fast and close to the metal.
 
@@ -10,7 +12,7 @@ C3 tries to be an alternative in the the C/C++ niche: fast and close to the meta
 - Flawless C integration.
 - Learning C3 should be easy for a C programmer.
 - Dare violating the "close to metal" principle if the value is great.
-- Not an object oriented language.
+- Data is inert.
 - Avoid "big ideas".
 - Avoid the kitchen sink language trap.
 
