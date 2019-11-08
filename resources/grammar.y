@@ -24,6 +24,8 @@ void yyerror(char *s);
 %token TYPE FUNC ERROR MACRO GENERIC CTIF CTELIF CTENDIF CTELSE CTSWITCH CTCASE CTDEFAULT CTFOR
 %token THROWS THROW TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE IN
 
+%token FN_BLOCK_START FN_BLOCK_END
+
 %start translation_unit
 %%
 
@@ -50,6 +52,7 @@ primary_expression
 	| base_type '.' IDENT
 	| TYPE '(' type_expression ')'
 	| '(' expression ')'
+	| FN_BLOCK_START statement_list FN_BLOCK_END
 	;
 
 postfix_expression

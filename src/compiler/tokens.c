@@ -113,6 +113,10 @@ const char *token_type_to_string(TokenType type)
 			return "<<";
 		case TOKEN_SHR:
 			return ">>";
+		case TOKEN_LPARBRA:
+			return "({";
+		case TOKEN_RPARBRA:
+			return "})";
 
 		// Three character tokens
 		case TOKEN_AND_ASSIGN:

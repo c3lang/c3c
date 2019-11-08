@@ -310,6 +310,7 @@ typedef enum
 	TOKEN_EQEQ,             // ==
 	TOKEN_GREATER_EQ,       // >=
 	TOKEN_LESS_EQ,          // <=
+	TOKEN_LPARBRA,          // ({
 	TOKEN_MINUS_ASSIGN,     // -=
 	TOKEN_MINUSMINUS,       // --
 	TOKEN_MOD_ASSIGN,       // %=
@@ -317,6 +318,7 @@ typedef enum
 	TOKEN_NOT_EQUAL,        // !=
 	TOKEN_PLUS_ASSIGN,      // +=
 	TOKEN_PLUSPLUS,         // ++
+	TOKEN_RPARBRA,          // })
 	TOKEN_SCOPE,            // ::
 	TOKEN_SHR,              // >>
 	TOKEN_SHL,              // >>

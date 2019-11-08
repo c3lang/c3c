@@ -200,6 +200,19 @@ static Ast* parse_compound_stmt()
 	return ast;
 }
 
+static Ast* parse_function_block()
+{
+	TODO;
+	CONSUME_OR(TOKEN_LPARBRA, &poisoned_ast);
+	Ast *ast = AST_NEW(AST_COMPOUND_STMT, tok);
+	while (!try_consume(TOKEN_RPARBRA))
+	{
+		Ast *stmt = TRY_AST(parse_stmt());
+		ast->compound_stmt.stmts = VECADD(ast->compound_stmt.stmts, stmt);
+	}
+	return ast;
+}
+
 static Path *parse_path(void)
 {
 	if (tok.type != TOKEN_IDENT || next_tok.type != TOKEN_SCOPE) return NULL;
@@ -1210,6 +1223,8 @@ static Ast *parse_stmt(void)
 	{
 		case TOKEN_LBRACE:
 			return parse_compound_stmt();
+		case TOKEN_LPARBRA:
+			return parse_function_block();
 		case TOKEN_HALF:
 		case TOKEN_QUAD:
 			SEMA_ERROR(next_tok, "Type is unsupported by platform.");
@@ -1409,6 +1424,7 @@ static Ast *parse_stmt(void)
 		case TOKEN_CT_ELIF:
 		case TOKEN_CT_ELSE:
 		case TOKEN_CT_DEFAULT:
+		case TOKEN_RPARBRA:
 		case TOKEN_IN:
 			SEMA_ERROR(tok, "Unexpected '%s' found when expecting a statement.", token_type_to_string(tok.type));
 			advance();

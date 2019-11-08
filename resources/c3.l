@@ -136,7 +136,8 @@ L?\"(\\.|[^\\"])*\"	{ count(); return(STRING_LITERAL); }
 "^"			{ count(); return('^'); }
 "|"			{ count(); return('|'); }
 "?"			{ count(); return('?'); }
-
+"({"        { count(); return(FN_BLOCK_BEGIN); }
+"{)"        { count(); return(FN_BLOCK_END); }
 [ \t\v\n\f]		{ count(); }
 .			{ /* ignore bad characters */ }
 

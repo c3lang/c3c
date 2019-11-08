@@ -619,9 +619,9 @@ Token lexer_scan_token(void)
 		case '{':
 			return make_token(TOKEN_LBRACE);
 		case '}':
-			return make_token(TOKEN_RBRACE);
+			return make_token(match(')') ? TOKEN_RPARBRA : TOKEN_RBRACE);
 		case '(':
-			return make_token(TOKEN_LPAREN);
+			return make_token(match('{') ? TOKEN_LPARBRA : TOKEN_LPAREN);
 		case ')':
 			return make_token(TOKEN_RPAREN);
 		case '[':
