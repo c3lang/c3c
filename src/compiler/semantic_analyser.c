@@ -36,24 +36,25 @@ Decl *context_find_ident(Context *context, const char *symbol)
 }
 
 
-static inline void context_push_scope(Context *context)
+
+static inline void context_push_scope_with_flags(Context *context, ScopeFlags flags)
 {
 	if (context->current_scope == &context->scopes[MAX_SCOPE_DEPTH - 1])
 	{
 		FATAL_ERROR("Too deeply nested scopes.");
 	}
+	ScopeFlags previous_flags = context->current_scope->flags;
 	context->current_scope++;
 	context->current_scope->exit = EXIT_NONE;
 	context->current_scope->local_decl_start = context->last_local;
 	context->current_scope->defer_start = vec_size(context->defers);
-}
-
-static inline void context_push_scope_with_flags(Context *context, ScopeFlags flags)
-{
-	ScopeFlags previous_flags = context->current_scope->flags;
-	context_push_scope(context);
 	context->current_scope->flags = previous_flags | flags;
 	context->current_scope->flags_created = flags;
+}
+
+static inline void context_push_scope(Context *context)
+{
+	context_push_scope_with_flags(context, SCOPE_NONE);
 }
 
 static inline void context_pop_scope(Context *context)
@@ -211,10 +212,17 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 	return true;
 }
 
-static inline bool sema_analyse_function_signature(Context *context, FunctionSignature *signature, bool is_function)
+static inline Type *sema_analyse_function_signature(Context *context, FunctionSignature *signature, bool is_function)
 {
+	char buffer[2048];
+	size_t buffer_write_offset = 0;
 	bool all_ok = true;
 	all_ok = sema_resolve_type(context, signature->rtype) && all_ok;
+	if (all_ok)
+	{
+		type_append_signature_name(signature->rtype, buffer, &buffer_write_offset);
+		buffer[buffer_write_offset++] = '(';
+	}
 	// TODO check parameter name appearing more than once.
 	VECEACH(signature->params, i)
 	{
@@ -228,12 +236,42 @@ static inline bool sema_analyse_function_signature(Context *context, FunctionSig
 			continue;
 		}
 		param->resolve_status = RESOLVE_DONE;
+		if (i > 0 && all_ok)
+		{
+			buffer[buffer_write_offset++] = ',';
+		}
+		type_append_signature_name(param->var.type, buffer, &buffer_write_offset);
 	}
-	VECEACH(signature->throws, i)
+	// TODO variadic
+	buffer[buffer_write_offset++] = ')';
+	if (vec_size(signature->throws))
 	{
-		TODO
+		VECEACH(signature->throws, i)
+		{
+			TODO
+			if (i > 0 && all_ok)
+			{
+				buffer[buffer_write_offset++] = ',';
+			}
+//			type_append_signature_name(signature->tparam->var.type, buffer, &buffer_write_offset);
+		}
 	}
-	return all_ok;
+
+	if (!all_ok) return NULL;
+	TokenType type = TOKEN_INVALID_TOKEN;
+	signature->mangled_signature = symtab_add(buffer, buffer_write_offset, fnv1a(buffer, buffer_write_offset), &type);
+	Type *func_type = stable_get(&context->local_symbols, signature->mangled_signature);
+	if (!func_type)
+	{
+		func_type = type_new(TYPE_FUNC);
+		func_type->name_loc = (Token) { .string = signature->mangled_signature, .span.length = buffer_write_offset };
+		func_type->resolve_status = RESOLVE_DONE;
+		func_type->canonical = func_type;
+		func_type->func.signature = signature;
+		stable_set(&context->local_symbols, signature->mangled_signature, func_type);
+	}
+	return func_type;
+
 }
 
 
@@ -602,6 +640,11 @@ static inline bool sema_analyse_goto_stmt(Context *context, Ast *statement)
 
 static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 {
+	// IMPROVE
+	// convert
+	// if (!x) A(); else B();
+	// into
+	// if (x) B(); else A();
 	context_push_scope(context);
 	Ast *cond = statement->if_stmt.cond;
 	context_push_scope_with_flags(context, SCOPE_CONTROL);
@@ -635,7 +678,7 @@ static inline bool sema_analyse_label(Context *context, Ast *statement)
 			return false;
 		}
 	}
-	vec_add(context->labels, statement);
+	VECADD(context->labels, statement);
 	VECEACH(context->gotos, i)
 	{
 		Ast *the_goto = context->gotos[i];
@@ -941,6 +984,7 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 		}
 		sema_release_defer_chain(context, &func->func.body->compound_stmt.stmts);
 	}
+	func->func.labels = context->labels;
 	context_pop_scope(context);
 	return true;
 }
@@ -974,15 +1018,16 @@ static inline bool sema_analyse_method_function(Context *context, Decl *decl)
 static inline bool sema_analyse_func(Context *context, Decl *decl)
 {
 	DEBUG_LOG("Analysing function %s", decl->name.string);
-	bool all_ok = sema_analyse_function_signature(context, &decl->func.function_signature, true);
+	Type *func_type = sema_analyse_function_signature(context, &decl->func.function_signature, true);
+	decl->self_type = func_type;
+	if (!func_type) return decl_poison(decl);
 	if (decl->func.type_parent)
 	{
-		all_ok = all_ok && sema_analyse_method_function(context, decl);
+		if (!sema_analyse_method_function(context, decl)) return decl_poison(decl);
 	}
-	all_ok = all_ok && sema_analyse_function_body(context, decl);
-	if (!all_ok) decl_poison(decl);
+	if (!sema_analyse_function_body(context, decl)) return decl_poison(decl);
 	DEBUG_LOG("Function analysis done.")
-	return all_ok;
+	return true;
 }
 
 static inline bool sema_analyse_macro(Context *context, Decl *decl)
@@ -1027,7 +1072,15 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 
 static inline bool sema_analyse_typedef(Context *context, Decl *decl)
 {
+	if (decl->typedef_decl.is_func)
+	{
+		Type *func_type = sema_analyse_function_signature(context, &decl->typedef_decl.function_signature, false);
+		if (!func_type) return false;
+		decl->self_type->canonical = func_type;
+		return true;
+	}
 	if (!sema_resolve_type(context, decl->typedef_decl.type)) return false;
+	decl->self_type->canonical = decl->typedef_decl.type;
 	// Do we need anything else?
 	return true;
 }
@@ -1164,7 +1217,7 @@ static inline void sema_process_imports(Context *context)
 void sema_analysis_pass_conditional_compilation(Context *context)
 {
 	DEBUG_LOG("Pass 1 - analyse: %s", context->file->name);
-	VECEACH(context->ct_ifs, i)
+	for (unsigned i = 0; i < vec_size(context->ct_ifs); i++)
 	{
 		sema_analyse_top_level_if(context, context->ct_ifs[i]);
 	}

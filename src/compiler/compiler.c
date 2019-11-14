@@ -51,7 +51,6 @@ void compiler_parse()
 
 void compiler_compile()
 {
-	builtin_setup();
 	Context **contexts = NULL;
 	VECEACH(build_options.files, i)
 	{
@@ -63,6 +62,7 @@ void compiler_compile()
 		vec_add(contexts, context);
 		parse_file(context);
 	}
+	/*
 	const char *printf = "printf";
 	TokenType t_type = TOKEN_IDENT;
 	const char *interned = symtab_add(printf, (uint32_t) 6, fnv1a(printf, (uint32_t)6), &t_type);
@@ -75,7 +75,7 @@ void compiler_compile()
 	decl->func.function_signature.rtype = type_void;
 	decl->resolve_status = RESOLVE_DONE;
 	context_register_global_decl(contexts[0], decl);
-
+*/
 	VECEACH(contexts, i)
 	{
 		sema_analysis_pass_conditional_compilation(contexts[i]);
@@ -88,21 +88,16 @@ void compiler_compile()
 	VECEACH(contexts, i)
 	{
 		Context *context = contexts[i];
-		char buffer[255];
-		sprintf(buffer, "%s_test.c", context->module_name.string);
-		FILE *f = fopen(buffer,"w");
-		fprintf(f, "#include <stdbool.h>\n#include <stdint.h>\n");
-		context->codegen_output = f;
-		codegen(context);
-		fclose(f);
-		sprintf(buffer, "cc %s_test.c && ./a.out", context->module_name.string);
-		system(buffer);
+		llvm_codegen(context);
 	}
 	exit(EXIT_SUCCESS);
 }
 
 void compile_file()
 {
+	target_setup();
+	builtin_setup();
+
 	if (!vec_size(build_options.files)) error_exit("No files to compile.");
 	switch (build_options.compile_option)
 	{

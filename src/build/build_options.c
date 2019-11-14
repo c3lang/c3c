@@ -13,7 +13,6 @@
 
 #include "../utils/errors.h"
 
-static const char* DEFAULT_TARGET = "default";
 static const int DEFAULT_SYMTAB_SIZE = 64 * 1024;
 static const int MAX_SYMTAB_SIZE = 1024 * 1024;
 
@@ -52,6 +51,11 @@ static void usage(void)
 	OUTPUT("  --symtab <value>      - Sets the preferred symtab size.");
 	OUTPUT("  -E                    - Lex only.");
 	OUTPUT("  -P                    - Only parse and output the AST as S-expressions.");
+	OUTPUT("  -O0                   - Optimizations off.");
+	OUTPUT("  -O1                   - Simple optimizations only.");
+	OUTPUT("  -O2                   - Default optimization level.");
+	OUTPUT("  -Os                   - Optimize for size.");
+	OUTPUT("  -O3                   - Aggressive optimization.");
 }
 
 
@@ -117,7 +121,7 @@ static void parse_optional_target()
 {
 	if (at_end() || next_is_opt())
 	{
-		build_options.target = DEFAULT_TARGET;
+		build_options.target = NULL;
 	}
 	else
 	{
@@ -199,6 +203,32 @@ static void parse_option()
 	{
 		case 'h':
 			break;
+		case 'O':
+			if (build_options.optimization_level != OPTIMIZATION_NOT_SET)
+			{
+				FAIL_WITH_ERR("Multiple optimization levels were set.");
+			}
+			if (match_shortopt("O0"))
+			{
+				build_options.optimization_level = OPTIMIZATION_NONE;
+			}
+			else if (match_shortopt("O1"))
+			{
+				build_options.optimization_level = OPTIMIZATION_LESS;
+			}
+			else if (match_shortopt("O2") || match_shortopt("Os"))
+			{
+				build_options.optimization_level = OPTIMIZATION_DEFAULT;
+			}
+			else if (match_shortopt("O3"))
+			{
+				build_options.optimization_level = OPTIMIZATION_AGGRESSIVE;
+			}
+			else
+			{
+				FAIL_WITH_ERR("Invalid optimization level.");
+			}
+			return;
 		case 'E':
 			if (build_options.compile_option != COMPILE_NORMAL)
 			{
@@ -270,6 +300,8 @@ void parse_arguments(int argc, const char *argv[])
 	build_options.clonglong_size = sizeof(long long);
 	build_options.pointer_size = sizeof(void *);
 	build_options.path = ".";
+	build_options.optimization_level = OPTIMIZATION_NOT_SET;
+	build_options.debug_info = true;
 	build_options.command = COMMAND_MISSING;
 	build_options.symtab_size = DEFAULT_SYMTAB_SIZE;
 	build_options.files = VECNEW(const char *, MAX_FILES);
@@ -311,5 +343,9 @@ void parse_arguments(int argc, const char *argv[])
 	if (build_options.command == COMMAND_MISSING)
 	{
 		FAIL_WITH_ERR("No command found.");
+	}
+	if (build_options.optimization_level == OPTIMIZATION_NOT_SET)
+	{
+		build_options.optimization_level = OPTIMIZATION_DEFAULT;
 	}
 }

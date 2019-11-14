@@ -2229,7 +2229,7 @@ static inline bool parse_func_typedef(Decl *decl, Visibility visibility)
 
 static inline Decl *parse_typedef_declaration(Visibility visibility)
 {
-    Decl *decl = decl_new(DECL_TYPEDEF, tok, visibility);
+    Decl *decl = decl_new_user_defined_type(tok, DECL_TYPEDEF, visibility);
     advance_and_verify(TOKEN_TYPEDEF);
     if (tok.type == TOKEN_FUNC)
     {
@@ -2329,29 +2329,29 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
 	if (path || tok.type == TOKEN_TYPE_IDENT)
 	{
 		// Special case, actually an extension
-		TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "A type was expected after '::'.", false);
+		TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "A type was expected after '::'.", &poisoned_decl);
 		Type *type = type_new(TYPE_USER_DEFINED);
 		type->unresolved.path = path;
 		type->name_loc = tok;
 		func->func.type_parent = type;
 		advance_and_verify(TOKEN_TYPE_IDENT);
 
-		TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method function.", false);
+		TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method function.", &poisoned_decl);
 	}
 
-	EXPECT_IDENT_FOR_OR("function name", false);
+	EXPECT_IDENT_FOR_OR("function name", &poisoned_decl);
 	func->name = tok;
 	advance_and_verify(TOKEN_IDENT);
 
-    if (!parse_opt_parameter_type_list(visibility, &(func->func.function_signature), is_interface)) return false;
+    if (!parse_opt_parameter_type_list(visibility, &(func->func.function_signature), is_interface)) return &poisoned_decl;
 
-    if (!parse_opt_throw_declaration(&(func->func.function_signature))) return false;
+    if (!parse_opt_throw_declaration(&(func->func.function_signature))) return &poisoned_decl;
 	if (is_interface)
 	{
 		if (tok.type == TOKEN_LBRACE)
 		{
 			SEMA_ERROR(next_tok, "Functions bodies are not allowed in interface files.");
-			return false;
+			return &poisoned_decl;
 		}
 		TRY_CONSUME_OR(TOKEN_EOS, "Expected ';' after function declaration.", &poisoned_decl);
 		return func;

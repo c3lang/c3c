@@ -68,6 +68,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:
+		case TYPE_FUNC:
 			return type->name_loc.string;
 		case TYPE_POINTER:
 			asprintf(&buffer, "%s*", type_to_error_string(type->base));
@@ -95,6 +96,101 @@ const char *type_to_error_string(Type *type)
 	}
 }
 
+static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_t *offset)
+{
+	switch (decl->decl_kind)
+	{
+		case DECL_FUNC:
+		{
+			assert(decl->func.function_signature.mangled_signature);
+			int len = sprintf(dst + *offset, "func %s", decl->func.function_signature.mangled_signature);
+			*offset += len;
+			return;
+		}
+		case DECL_POISONED:
+		case DECL_VAR:
+		case DECL_ENUM_CONSTANT:
+		case DECL_TYPEDEF:
+		case DECL_ERROR_CONSTANT:
+		case DECL_ARRAY_VALUE:
+		case DECL_IMPORT:
+		case DECL_MACRO:
+		case DECL_MULTI_DECL:
+		case DECL_GENERIC:
+		case DECL_CT_IF:
+		case DECL_CT_ELSE:
+		case DECL_CT_ELIF:
+		case DECL_ATTRIBUTE:
+			UNREACHABLE
+		case DECL_STRUCT:
+		case DECL_UNION:
+		case DECL_ENUM:
+		case DECL_ERROR:
+			memcpy(dst + *offset, decl->name.string, decl->name.span.length);
+			*offset += decl->name.span.length;
+			return;
+	}
+	UNREACHABLE
+}
+void type_append_signature_name(Type *type, char *dst, size_t *offset)
+{
+	assert(*offset < 2000);
+	assert(type->resolve_status == RESOLVE_DONE && type->canonical && type_ok(type));
+	Type *canonical_type = type->canonical;
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+			UNREACHABLE
+		case TYPE_USER_DEFINED:
+			type_append_signature_name_user_defined(canonical_type->decl, dst, offset);
+			return;
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+		case TYPE_IXX:
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+		case TYPE_UXX:
+		case TYPE_F32:
+		case TYPE_F64:
+		case TYPE_FXX:
+		case TYPE_FUNC:
+			memcpy(dst + *offset, type->name_loc.string, type->name_loc.span.length);
+			*offset += type->name_loc.span.length;
+			return;
+		case TYPE_POINTER:
+			type_append_signature_name(type->base, dst, offset);
+			return;
+		case TYPE_STRING:
+			TODO
+			return;
+		case TYPE_ARRAY:
+			type_append_signature_name(type->base, dst, offset);
+			{
+				int len = sprintf(dst + *offset, "[%zu]", type->len);
+				*offset += len;
+			}
+			return;
+		case TYPE_VARARRAY:
+			type_append_signature_name(type->base, dst, offset);
+			dst[*offset++] = '[';
+			dst[*offset] = ']';
+			*offset += 1;
+			return;
+		case TYPE_INC_ARRAY:
+			TODO
+			return;
+		case TYPE_EXPRESSION:
+			UNREACHABLE
+	}
+}
+
+
 Type *type_new(TypeKind type_kind)
 {
 	Type *type = malloc_arena(sizeof(Type));
@@ -102,6 +198,7 @@ Type *type_new(TypeKind type_kind)
 	type->type_kind = type_kind;
 	return type;
 }
+
 
 size_t type_size(Type *canonical)
 {
@@ -132,6 +229,7 @@ size_t type_size(Type *canonical)
 		case TYPE_UXX:
 		case TYPE_FXX:
 			return 8;
+		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
 		case TYPE_STRING:
@@ -215,7 +313,7 @@ Type *type_get_canonical_array(Type *arr_type)
 	return canonical;
 }
 
-static void create_type(const char *name, Type *location, Type **ptr, TypeKind kind, unsigned bytesize, unsigned bitsize)
+static void type_create(const char *name, Type *location, Type **ptr, TypeKind kind, unsigned bytesize, unsigned bitsize)
 {
 	*location = (Type) { .type_kind = kind, .resolve_status = RESOLVE_DONE, .builtin.bytesize = bytesize, .builtin.bitsize = bitsize };
 	location->name_loc.string = name;
@@ -236,11 +334,11 @@ static void type_create_alias(const char *name, Type *location, Type **ptr, Type
 
 void builtin_setup()
 {
-	create_type("void", &t_u0, &type_void, TYPE_VOID, 1, 8);
-	create_type("string", &t_str, &type_string, TYPE_STRING, build_options.pointer_size, build_options.pointer_size * 8);
+	type_create("void", &t_u0, &type_void, TYPE_VOID, 1, 8);
+	type_create("string", &t_str, &type_string, TYPE_STRING, build_options.pointer_size, build_options.pointer_size * 8);
 	create_ptr_live_canonical(type_void);
 	type_void->ptr_like_canonical[0] = &t_voidstar;
-	create_type("void*", &t_voidstar, &type_voidptr, TYPE_POINTER, 0, 0);
+	type_create("void*", &t_voidstar, &type_voidptr, TYPE_POINTER, 0, 0);
 	t_voidstar.base = type_void;
 
 	/*TODO
@@ -249,7 +347,7 @@ void builtin_setup()
 	type_string.type_kind = TYPE_STRING;
 */
 #define DEF_TYPE(_name, _shortname, _type, _bits) \
-create_type(#_name, &_shortname, &type_ ## _name, _type, (_bits + 7) / 8, _bits);
+type_create(#_name, &_shortname, &type_ ## _name, _type, (_bits + 7) / 8, _bits);
 
 	DEF_TYPE(compint, t_ixx, TYPE_IXX, 64);
 	DEF_TYPE(compuint, t_uxx, TYPE_UXX, 64);

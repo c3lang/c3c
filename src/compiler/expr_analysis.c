@@ -726,6 +726,7 @@ static bool sema_expr_analyse_shl_assign(Context *context, Expr *expr, Expr *lef
 
 static bool sema_expr_analyse_and(Context *context, Expr *expr, Expr *left, Expr *right)
 {
+	expr->type = type_bool;
 	if (!cast(left, type_bool, CAST_TYPE_IMPLICIT)) return false;
 	if (!cast(right, type_bool, CAST_TYPE_IMPLICIT)) return false;
 	if (both_const(left, right))
@@ -905,6 +906,7 @@ static bool sema_expr_analyse_not(Context *context, Expr *expr, Expr *inner)
 		case TYPE_INC_ARRAY:
 		case TYPE_EXPRESSION:
 			UNREACHABLE
+		case TYPE_FUNC:
 		case TYPE_ARRAY:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:

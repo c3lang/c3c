@@ -94,6 +94,9 @@ static void print_typename(FILE *file, Type *type)
 			print_typename(file, type->base);
 			fprintf(file, "[%zu]", type->len);
 			break;
+		case TYPE_FUNC:
+			fprintf(file, "%s", type->name_loc.string);
+			break;
 		case TYPE_EXPRESSION:
 			UNREACHABLE
 	}
@@ -178,6 +181,9 @@ static inline void codegen_emit_const_expr_raw(Context *context, Expr *expr)
 		case TYPE_USER_DEFINED:
 		case TYPE_VOID:
 			UNREACHABLE
+			break;
+		case TYPE_FUNC:
+			TODO
 			break;
 		case TYPE_BOOL:
 			assert(expr->const_expr.type == CONST_BOOL);

@@ -67,18 +67,56 @@ typedef struct
 typedef struct
 {
 	const char *contents;
-	const char *name;
+	char *name;
+	char *dir_path;
 	const char *full_path;
 	SourceLoc start_id;
 	SourceLoc end_id;
+	SourceLoc *line_start;
+	SourceLoc current_line_start;
+	int last_line_found;
 } File;
 
+typedef struct
+{
+	File *file;
+	uint32_t line;
+	uint32_t col;
+	SourceLoc loc;
+	const char *start;
+} SourcePosition;
 
 typedef struct
 {
 	Token module;
 	Token sub_module;
 } Path;
+
+typedef struct
+{
+	unsigned bitsize : 16;
+	unsigned char bytesize;
+}  TypeBuiltin;
+
+typedef struct
+{
+	Path *path;
+} TypeUnresolved;
+
+typedef struct
+{
+	Type *base;
+	union
+	{
+		Expr *unresolved_len;
+		size_t len;
+	};
+} TypeArray;
+
+typedef struct
+{
+	struct _FunctionSignature *signature;
+} TypeFunc;
 
 struct _Type
 {
@@ -87,21 +125,15 @@ struct _Type
 	Type *canonical;
 	Token name_loc;
 	Type **ptr_like_canonical;
+	void *backend_type;
+	void *backend_debug_type;
 	union
 	{
 		Decl *decl;
-		struct
-		{
-			unsigned bitsize : 16;
-			unsigned char bytesize;
-		} builtin;
-		struct
-		{
-			Path *path;
-		} unresolved;
+		TypeBuiltin builtin;
+		TypeUnresolved unresolved;
 		Expr *unresolved_type_expr;
-		struct
-		{
+		struct {
 			Type *base;
 			union
 			{
@@ -109,6 +141,7 @@ struct _Type
 				size_t len;
 			};
 		};
+		TypeFunc func;
 	};
 };
 
@@ -147,6 +180,8 @@ typedef struct _VarDecl
 	VarDeclKind kind : 3;
 	Type *type;
 	Expr *init_expr;
+	void *backend_ref;
+	void *backend_debug_ref;
 } VarDecl;
 
 
@@ -177,12 +212,13 @@ typedef struct
 } EnumDecl;
 
 
-typedef struct
+typedef struct _FunctionSignature
 {
 	bool variadic : 1;
 	Type *rtype;
 	Decl** params;
 	Token *throws;
+	const char *mangled_signature;
 } FunctionSignature;
 
 typedef struct
@@ -197,6 +233,9 @@ typedef struct
 	FunctionSignature function_signature;
 	Ast *body;
 	FuncAnnotations *annotations;
+	Decl **locals;
+	Ast **labels;
+	void *backend_value;
 } FuncDecl;
 
 typedef struct
@@ -237,6 +276,7 @@ typedef struct _Decl
 	DeclKind decl_kind : 6;
 	Visibility visibility : 2;
 	ResolveStatus resolve_status : 2;
+	bool is_packed : 1;
 /*	bool is_exported : 1;
 	bool is_used : 1;
 	bool is_used_public : 1;
@@ -441,6 +481,7 @@ typedef struct
 	bool is_used : 1;
 	struct _Ast *defer;
 	struct _Ast *in_defer;
+	void *backend_value;
 } AstLabelStmt;
 
 typedef struct
@@ -482,6 +523,7 @@ typedef struct
 		};
 	};
 	Ast *block;
+	void *backend_value;
 } AstCaseStmt;
 
 typedef struct
@@ -493,6 +535,7 @@ typedef struct
 
 typedef struct
 {
+	Ast **init;
 	Ast *cond;
 	Ast *incr;
 	Ast *body;
@@ -645,7 +688,7 @@ typedef struct _Context
 {
 	Token module_name;
 	Token* module_parameters;
-	File * file;
+	File* file;
 	Decl** imports;
 	Module *module;
 	STable local_symbols;
@@ -691,7 +734,7 @@ extern Diagnostics diagnostics;
 extern Token next_tok;
 extern Token tok;
 
-extern Type *type_bool, *type_void, *type_string, *type_voidptr, *type_voidref;
+extern Type *type_bool, *type_void, *type_string, *type_voidptr;
 extern Type *type_float, *type_double;
 extern Type *type_char, *type_short, *type_int, *type_long, *type_isize;
 extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
@@ -775,7 +818,7 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type);
 bool cast_arithmetic(Expr *expr, Expr *other, const char *action);
 bool cast_to_runtime(Expr *expr);
 
-
+void llvm_codegen(Context *context);
 void codegen(Context *context);
 
 bool sema_analyse_expr(Context *context, Expr *expr);
@@ -798,6 +841,7 @@ bool context_add_local(Context *context, Decl *decl);
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility);
 Decl *decl_new_user_defined_type(Token name, DeclKind decl_type, Visibility visibility);
 Decl *decl_new_var(Token name, Type *type, VarDeclKind kind, Visibility visibility);
+
 static inline bool decl_ok(Decl *decl) { return decl->decl_kind != DECL_POISONED; }
 static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
 static inline bool decl_is_struct_type(Decl *decl) { return decl->decl_kind == DECL_UNION || decl->decl_kind == DECL_STRUCT; }
@@ -880,7 +924,9 @@ void sema_shadow_error(Decl *decl, Decl *old);
 
 File *source_file_load(const char *filename, bool *already_loaded);
 File *source_file_from_position(SourceLoc loc);
-
+void source_file_append_line_end(File *file, SourceLoc loc);
+SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc);
+SourcePosition source_file_find_position(SourceLoc loc);
 
 void stable_init(STable *table, uint32_t initial_size);
 void *stable_set(STable *table, const char *key, void *value);
@@ -890,6 +936,10 @@ void stable_clear(STable *table);
 
 void symtab_init(uint32_t max_size);
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
+
+void target_setup();
+int target_alloca_addr_space();
+void *target_data_layout();
 
 #define TOKEN_MAX_LENGTH 0xFFFF
 #define TOK2VARSTR(_token) _token.span.length, _token.start
@@ -908,6 +958,8 @@ Type *type_unsigned_int_by_size(int bitsize);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 const char *type_to_error_string(Type *type);
 size_t type_size(Type *canonical);
+void type_append_signature_name(Type *type, char *dst, size_t *offset);
+
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_FXX; }
 static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX; }
 static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_UXX; }
@@ -918,6 +970,19 @@ static inline bool type_is_integer(Type *type)
 {
 	assert(type == type->canonical);
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_UXX;
+}
+
+static inline bool type_is_float(Type *type)
+{
+	assert(type == type->canonical);
+	return type->type_kind >= TYPE_F32 && type->type_kind <= TYPE_FXX;
+}
+
+static inline bool type_convert_will_trunc(Type *destination, Type *source)
+{
+	assert(type_is_builtin(destination->canonical->type_kind));
+	assert(type_is_builtin(source->canonical->type_kind));
+	return (unsigned)destination->canonical->builtin.bitsize < (unsigned)source->canonical->builtin.bitsize;
 }
 
 static inline bool type_is_number(Type *type)
@@ -932,6 +997,10 @@ static inline bool type_is_number(Type *type)
 
 AssignOp assignop_from_token(TokenType type);
 UnaryOp unaryop_from_token(TokenType type);
+BinaryOp binaryop_from_token(TokenType type);
+BinaryOp binaryop_assign_base_op(BinaryOp assign_binary_op);
+
+
 Decl *struct_find_name(Decl *decl, const char* name);
 
 

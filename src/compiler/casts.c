@@ -59,7 +59,7 @@ bool ptxi(Expr* left, Type *canonical, Type *type, CastType cast_type)
 		left->type = type;
 		return true;
 	}
-	insert_cast(left, CAST_PTRINT, canonical);
+	insert_cast(left, CAST_PTRXI, canonical);
 	return true;
 }
 
@@ -503,10 +503,10 @@ Type *ARITHMETIC_PROMOTION[19][19] = {
 		{ &t_i32, &t_i32, &t_i32, &t_i32, &t_i64, &t_i32, &t_i32, &t_i32, &t_i32, &t_i64, &t_i32, &t_f32, &t_f64, &t_err, &t_err, &t_isz, &t_err, &t_err, &t_err }, // int
 		{ &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_i64, &t_f32, &t_f64, &t_err, &t_err, &t_isz, &t_err, &t_err, &t_err }, // long
 		{ &t_u1,  &t_i8,  &t_i16, &t_i32, &t_i64, &t_ixx, &t_i8,  &t_i16, &t_i32, &t_i64, &t_ixx, &t_f32, &t_f64, &t_fxx, &t_err, &t_isz, &t_err, &t_err, &t_err }, // ixx
-		{ &t_u8,  &t_i8,  &t_i16, &t_i32, &t_i64, &t_uxx, &t_u8,  &t_u16, &t_u32, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // byte
-		{ &t_u16, &t_i16, &t_i16, &t_i32, &t_i64, &t_uxx, &t_u16, &t_u16, &t_u32, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // ushort
-		{ &t_u32, &t_i32, &t_i32, &t_i32, &t_i64, &t_uxx, &t_u32, &t_u32, &t_u32, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // uint
-		{ &t_u64, &t_i64, &t_i64, &t_i64, &t_i64, &t_uxx, &t_u64, &t_u64, &t_u64, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // ulong
+		{ &t_u8,  &t_i8,  &t_i16, &t_i32, &t_i64, &t_u8, &t_u8,  &t_u16, &t_u32, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // byte
+		{ &t_u16, &t_i16, &t_i16, &t_i32, &t_i64, &t_u16, &t_u16, &t_u16, &t_u32, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // ushort
+		{ &t_u32, &t_i32, &t_i32, &t_i32, &t_i64, &t_u32, &t_u32, &t_u32, &t_u32, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // uint
+		{ &t_u64, &t_i64, &t_i64, &t_i64, &t_i64, &t_u64, &t_u64, &t_u64, &t_u64, &t_i64, &t_uxx, &t_f32, &t_f64, &t_err, &t_err, &t_usz, &t_err, &t_err, &t_err }, // ulong
 		{ &t_u1,  &t_i8,  &t_i16, &t_i32, &t_i64, &t_uxx, &t_u8,  &t_u16, &t_u32, &t_u64, &t_uxx, &t_f32, &t_f64, &t_fxx, &t_err, &t_usz, &t_err, &t_err, &t_err }, // uxx
 		{ &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f32, &t_f64, &t_f32, &t_err, &t_err, &t_err, &t_err, &t_err }, // float
 		{ &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_f64, &t_err, &t_err, &t_err, &t_err, &t_err }, // double

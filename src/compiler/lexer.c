@@ -46,6 +46,11 @@ static inline void backtrack()
 	lexer.current--;
 }
 
+void lexer_store_line_end(void)
+{
+	source_file_append_line_end(lexer.current_file, lexer.current_file->start_id + lexer.current - lexer.file_begin);
+}
+
 void lexer_store_state(void)
 {
 	lexer.stored.current = lexer.current;
@@ -102,7 +107,7 @@ static Token error_token(const char *message, ...)
 	return token;
 }
 
-static Token make_token(TokenType type)
+static Token make_token(TokenType type, const char *string)
 {
 	size_t token_size = lexer.current - lexer.lexing_start;
 	if (token_size > TOKEN_MAX_LENGTH) return error_token("Token exceeding max length");
@@ -110,7 +115,7 @@ static Token make_token(TokenType type)
 			{
 					.type = type,
 					.span = { .loc = (SourceLoc) (lexer.current_file->start_id + (lexer.lexing_start - lexer.file_begin)), .length = token_size },
-					.start = lexer.lexing_start
+					.start = string
 			};
 }
 
@@ -167,6 +172,7 @@ SkipWhitespaceResult skip_whitespace()
 			case '\0':
 				return WHITESPACE_FOUND_EOF;
 			case '\n':
+				lexer_store_line_end();
 				// If we are currently parsing docs, then end of line is considered meaningful.
 				if (lexer.lexer_state == LEXER_STATE_DOCS_PARSE_DIRECTIVE) return WHITESPACE_FOUND_DOCS_EOL;
 			case ' ':
@@ -231,7 +237,7 @@ SkipWhitespaceResult skip_whitespace()
 
 // --- Normal scanning methods start here
 
-static inline Token scan_prefixed_ident(TokenType type, TokenType no_ident_type, bool ends_with_bang)
+static inline Token scan_prefixed_ident(TokenType type, TokenType no_ident_type, bool ends_with_bang, const char *start)
 {
 	uint32_t hash = FNV1a(prev(), FNV1_SEED);
 	while (is_alphanum_(peek()))
@@ -243,7 +249,7 @@ static inline Token scan_prefixed_ident(TokenType type, TokenType no_ident_type,
 		hash = FNV1a(next(), hash);
 	}
 	uint32_t len = (uint32_t)(lexer.current - lexer.lexing_start);
-	if (len == 1) return make_token(no_ident_type);
+	if (len == 1) return make_token(no_ident_type, start);
 	const char* interned = symtab_add(lexer.lexing_start, len, hash, &type);
 	return make_string_token(type, interned);
 }
@@ -259,12 +265,6 @@ static inline void scan_skipped_ident()
 // we split identifiers into 2 types + find keywords.
 static inline Token scan_ident(void)
 {
-	// If we're in ignore keywords state, simply skip stuff.
-	if (lexer.lexer_state == LEXER_STATE_DEFERED_PARSING)
-	{
-		scan_skipped_ident();
-		return make_token(TOKEN_IDENT);
-	}
 
 	TokenType type = 0;
 	uint32_t hash = FNV1_SEED;
@@ -323,7 +323,7 @@ static Token scan_oct(void)
 	char o = next(); // Skip the o
 	if (!is_oct(next())) return error_token("An expression starting with '0%c' would expect to be followed by octal numbers (0-7).", o);
 	while (is_oct_or_(peek())) next();
-	return make_token(TOKEN_INTEGER);
+	return make_token(TOKEN_INTEGER, lexer.lexing_start);
 }
 
 
@@ -336,7 +336,7 @@ Token scan_binary(void)
 		                   "did you try to write a hex value but forgot the '0x'?", b);
 	}
 	while (is_binary_or_(peek())) next();
-	return make_token(TOKEN_INTEGER);
+	return make_token(TOKEN_INTEGER, lexer.lexing_start);
 }
 
 #define PARSE_SPECIAL_NUMBER(is_num, is_num_with_underscore, exp, EXP) \
@@ -362,7 +362,7 @@ if (c == (exp) || c == (EXP)) \
 	while (is_num(peek())) next(); \
 } \
 if (prev() == '_') return error_token("The number ended with '_', but that character needs to be between, not after, digits."); \
-return make_token(is_float ? TOKEN_FLOAT : TOKEN_INTEGER)
+return make_token(is_float ? TOKEN_FLOAT : TOKEN_INTEGER, lexer.lexing_start)
 
 static inline Token scan_hex(void)
 {
@@ -446,7 +446,7 @@ static inline Token scan_char()
 	{
 		error_token("Character literals may only be 1, 2 or 8 characters wide.");
 	}
-	return make_token(TOKEN_INTEGER);
+	return make_token(TOKEN_INTEGER, lexer.lexing_start);
 }
 
 static inline Token scan_string()
@@ -464,7 +464,7 @@ static inline Token scan_string()
 			return error_token("Reached the end looking for '\"'. Did you forget it?");
 		}
 	}
-	return make_token(TOKEN_STRING);
+	return make_token(TOKEN_STRING, lexer.lexing_start);
 }
 
 static inline void skip_docs_whitespace()
@@ -489,7 +489,7 @@ static inline void skip_docs_whitespace()
 static inline Token scan_docs_directive(void)
 {
 	match_assert('@');
-	Token token = scan_prefixed_ident(TOKEN_AT_IDENT, TOKEN_AT, false);
+	Token token = scan_prefixed_ident(TOKEN_AT_IDENT, TOKEN_AT, false, "@");
 	assert(token.type != TOKEN_AT);
 	lexer.lexer_state = LEXER_STATE_DOCS_PARSE_DIRECTIVE;
 	return token;
@@ -516,7 +516,7 @@ static inline Token scan_docs(void)
 
 			// Return end
 			lexer.lexer_state = LEXER_STATE_NORMAL;
-			return make_token(TOKEN_DOCS_END);
+			return make_token(TOKEN_DOCS_END, "*/");
 		}
 
 		// Otherwise continue consuming
@@ -548,14 +548,15 @@ static inline Token scan_docs(void)
 
 				// We found the end, so just make a token out of the rest.
 				// Note that this line will not get a linebreak at the end.
-				if (peek_next() == '/') return make_token(TOKEN_DOCS_LINE);
+				if (peek_next() == '/') return make_token(TOKEN_DOCS_LINE, "*");
 				// Otherwise it's just something in the text, so continue.
 				next();
 				break;
 			case '\n':
 				// Normal line of text.
+				lexer_store_line_end();
 				next();
-				return make_token(TOKEN_DOCS_LINE);
+				return make_token(TOKEN_DOCS_LINE, "\n");
 			case '\0':
 				return error_token("The document ended without finding the end of the doc comment. "
 					   "Did you forget a '*/' somewhere?");
@@ -586,15 +587,15 @@ Token lexer_scan_token(void)
 			// and switch state.
 			skip(3);
 			lexer.lexer_state = LEXER_STATE_DOCS_PARSE;
-			return make_token(TOKEN_DOCS_START);
+			return make_token(TOKEN_DOCS_START, "/**");
 		case WHITESPACE_COMMENT_REACHED_EOF:
 			return error_token("Reached the end looking for '*/'. Did you forget it somewhere?");
 		case WHITESPACE_FOUND_EOF:
-			return make_token(TOKEN_EOF);
+			return make_token(TOKEN_EOF, "\n");
 		case WHITESPACE_FOUND_DOCS_EOL:
 			skip(1);
 			lexer.lexer_state = LEXER_STATE_DOCS_PARSE;
-			return make_token(TOKEN_DOCS_EOL);
+			return make_token(TOKEN_DOCS_EOL, "\n");
 		case WHITESPACE_SKIPPED_OK:
 			break;
 	}
@@ -603,78 +604,78 @@ Token lexer_scan_token(void)
 	switch (c)
 	{
 		case '@':
-			return scan_prefixed_ident(TOKEN_AT_IDENT, TOKEN_AT, true);
+			return scan_prefixed_ident(TOKEN_AT_IDENT, TOKEN_AT, true, "@");
 		case '\'':
 			return scan_char();
 		case '"':
 			return scan_string();
 		case '#':
-			return scan_prefixed_ident(TOKEN_HASH_IDENT, TOKEN_HASH, false);
+			return scan_prefixed_ident(TOKEN_HASH_IDENT, TOKEN_HASH, false, "#");
 		case '$':
-			return scan_prefixed_ident(TOKEN_CT_IDENT, TOKEN_DOLLAR, false);
+			return scan_prefixed_ident(TOKEN_CT_IDENT, TOKEN_DOLLAR, false, "$");
 		case ',':
-			return make_token(TOKEN_COMMA);
+			return make_token(TOKEN_COMMA, ",");
 		case ';':
-			return make_token(TOKEN_EOS);
+			return make_token(TOKEN_EOS, ";");
 		case '{':
-			return make_token(TOKEN_LBRACE);
+			return make_token(TOKEN_LBRACE, "{");
 		case '}':
-			return make_token(match(')') ? TOKEN_RPARBRA : TOKEN_RBRACE);
+			return match(')') ? make_token(TOKEN_RPARBRA, "})") : make_token(TOKEN_RBRACE, "})");
 		case '(':
-			return make_token(match('{') ? TOKEN_LPARBRA : TOKEN_LPAREN);
+			return match('{') ? make_token(TOKEN_LPARBRA, "({") : make_token(TOKEN_LPAREN, ")");
 		case ')':
-			return make_token(TOKEN_RPAREN);
+			return make_token(TOKEN_RPAREN, ")");
 		case '[':
-			return make_token(TOKEN_LBRACKET);
+			return make_token(TOKEN_LBRACKET, "[");
 		case ']':
-			return make_token(TOKEN_RBRACKET);
+			return make_token(TOKEN_RBRACKET, "]");
 		case '.':
-			if (match('.')) return make_token(match('.') ? TOKEN_ELIPSIS : TOKEN_DOTDOT);
-			return make_token(TOKEN_DOT);
+			if (match('.')) return match('.') ? make_token(TOKEN_ELIPSIS, "...") : make_token(TOKEN_DOTDOT, "..");
+			return make_token(TOKEN_DOT, ".");
 		case '~':
-			return make_token(TOKEN_BIT_NOT);
+			return make_token(TOKEN_BIT_NOT, "~");
 		case ':':
-			return make_token(match(':') ? TOKEN_SCOPE : TOKEN_COLON);
+			return match(':') ? make_token(TOKEN_SCOPE, "::") : make_token(TOKEN_COLON, ":");
 		case '!':
-			return make_token(match('=') ? TOKEN_NOT_EQUAL : TOKEN_NOT);
+			return match('=') ? make_token(TOKEN_NOT_EQUAL, "!=") : make_token(TOKEN_NOT, "!");
 		case '/':
-			return make_token(match('=') ? TOKEN_DIV_ASSIGN : TOKEN_DIV);
+			return match('=') ? make_token(TOKEN_DIV_ASSIGN, "/=") : make_token(TOKEN_DIV, "/");
 		case '*':
 			if (lexer.lexer_state == LEXER_STATE_DOCS_PARSE_DIRECTIVE && match('/'))
 			{
 				lexer.lexer_state = LEXER_STATE_NORMAL;
-				return make_token(TOKEN_DOCS_END);
+				return make_token(TOKEN_DOCS_END, "*/");
 			}
-			return make_token(match('=') ? TOKEN_MULT_ASSIGN : TOKEN_STAR);
+			return match('=') ? make_token(TOKEN_MULT_ASSIGN, "*=") : make_token(TOKEN_STAR, "*");
 		case '=':
-			return make_token(match('=') ? TOKEN_EQEQ : TOKEN_EQ);
+			return match('=') ? make_token(TOKEN_EQEQ, "==") : make_token(TOKEN_EQ, "=");
 		case '^':
-			return make_token(match('=') ? TOKEN_BIT_XOR_ASSIGN : TOKEN_BIT_XOR);
+			return match('=') ? make_token(TOKEN_BIT_XOR_ASSIGN, "^=") : make_token(TOKEN_BIT_XOR, "^");
 		case '?':
-			return make_token(match(':') ? TOKEN_ELVIS : TOKEN_QUESTION);
+			return match(':') ? make_token(TOKEN_EQEQ, "?:") : make_token(TOKEN_EQ, "?");
 		case '<':
-			if (match('<')) return make_token(match('=') ? TOKEN_SHL_ASSIGN : TOKEN_SHL);
-			return make_token(match('=') ? TOKEN_LESS_EQ : TOKEN_LESS);
+			if (match('<')) return match('=') ? make_token(TOKEN_SHL_ASSIGN, "<<=") : make_token(TOKEN_SHL, "<<");
+			return match('=') ? make_token(TOKEN_LESS_EQ, "<=") : make_token(TOKEN_LESS, "<");
 		case '>':
-			if (match('>')) return make_token(match('=') ? TOKEN_SHR_ASSIGN : TOKEN_SHR);
-			return make_token(match('=') ? TOKEN_GREATER_EQ : TOKEN_GREATER);
+			if (match('>')) return match('=') ? make_token(TOKEN_SHR_ASSIGN, ">>=") : make_token(TOKEN_SHR, ">>");
+			return match('=') ? make_token(TOKEN_GREATER_EQ, ">=") : make_token(TOKEN_GREATER, ">");
 		case '%':
-			return make_token(match('=') ? TOKEN_MOD_ASSIGN : TOKEN_MOD);
+			return match('=') ? make_token(TOKEN_MOD_ASSIGN, "%=") : make_token(TOKEN_MOD, "%");
 		case '&':
-			if (match('&')) return make_token(match('=') ? TOKEN_AND_ASSIGN : TOKEN_AND);
-			return make_token(match('=') ? TOKEN_BIT_AND_ASSIGN : TOKEN_AMP);
+			if (match('&')) return match('=') ? make_token(TOKEN_AND_ASSIGN, "&&=") : make_token(TOKEN_AND, "&&");
+			return match('=') ? make_token(TOKEN_BIT_AND_ASSIGN, "&=") : make_token(TOKEN_AMP, "&");
 		case '|':
-			if (match('|')) return make_token(match('=') ? TOKEN_OR_ASSIGN : TOKEN_OR);
-			return make_token(match('=') ? TOKEN_BIT_OR_ASSIGN : TOKEN_BIT_OR);
+			if (match('|')) return match('=') ? make_token(TOKEN_OR_ASSIGN, "||=") : make_token(TOKEN_OR, "||");
+			return match('=') ? make_token(TOKEN_BIT_OR_ASSIGN, "|=") : make_token(TOKEN_BIT_OR, "|");
 		case '+':
-			if (match('+')) return make_token(TOKEN_PLUSPLUS);
-			if (match('=')) return make_token(TOKEN_PLUS_ASSIGN);
-			return make_token(TOKEN_PLUS);
+			if (match('+')) return make_token(TOKEN_PLUSPLUS, "++");
+			if (match('=')) return make_token(TOKEN_PLUS_ASSIGN, "+=");
+			return make_token(TOKEN_PLUS, "+");
 		case '-':
-			if (match('>')) return make_token(TOKEN_ARROW);
-			if (match('-')) return make_token(TOKEN_MINUSMINUS);
-			if (match('=')) return make_token(TOKEN_MINUS_ASSIGN);
-			return make_token(TOKEN_MINUS);
+			if (match('>')) return make_token(TOKEN_ARROW, "->");
+			if (match('-')) return make_token(TOKEN_MINUSMINUS, "--");
+			if (match('=')) return make_token(TOKEN_MINUS_ASSIGN, "-=");
+			return make_token(TOKEN_MINUS, "-");
 		default:
 			if (is_alphanum_(c))
 			{

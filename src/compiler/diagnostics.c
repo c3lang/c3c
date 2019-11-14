@@ -28,68 +28,44 @@ typedef enum
 
 static void print_error(SourceRange source_range, const char *message, PrintType print_type)
 {
-	File *file = source_file_from_position(source_range.loc);
-
-	const char *content = file->contents;
-	const char *error_start = file->contents + source_range.loc - file->start_id;
+	SourcePosition position = source_file_find_position(source_range.loc);
 
 	const static int LINES_SHOWN = 4;
 
-	const char *linestarts[LINES_SHOWN];
-	for (int i = 0; i < LINES_SHOWN; i++) linestarts[i] = NULL;
-	const char *current = content;
-	linestarts[0] = content;
-	unsigned line = 1;
-	while (current < error_start)
-	{
-		if (current[0] == '\n')
-		{
-			line++;
-			linestarts[3] = linestarts[2];
-			linestarts[2] = linestarts[1];
-			linestarts[1] = linestarts[0];
-			linestarts[0] = current + 1;
-		}
-		current++;
-	}
-
-	const char *end = NULL;
-	while (!end)
-	{
-		switch (current[0])
-		{
-			case '\n':
-			case '\0':
-				end = current;
-				break;
-			default:
-				current++;
-				break;
-		}
-	}
-
-	unsigned max_line_length = (int)round(log10(line)) + 1;
+	unsigned max_line_length = (int)round(log10(position.line)) + 1;
 
 	char number_buffer[20];
 	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);
 
-	for (unsigned i = 3; i > 0; i--)
+	// Insert end in case it's not yet there.
+	for (SourceLoc s = position.loc; s < position.file->end_id; s++)
 	{
-		int line_number = (int)line - i;
-		const char *start = linestarts[i];
-		if (start == NULL) continue;
-		const char *line_end = linestarts[i - 1];
-		eprintf(number_buffer, line_number, line_end - start - 1, start);
+		if ((position.file->contents + s - position.file->start_id)[0] == '\n')
+		{
+			source_file_append_line_end(position.file, s);
+			break;
+		}
 	}
-	eprintf(number_buffer, line, end - linestarts[0], linestarts[0]);
+	size_t lines_in_file = vec_size(position.file->line_start);
+	for (unsigned i = LINES_SHOWN; i > 0; i--)
+	{
+		if (position.line < i) continue;
+		uint32_t line_number = position.line + 1 - i;
+		SourceLoc line_start = position.file->line_start[line_number - 1];
+
+		SourceLoc line_end = line_number == lines_in_file ? position.file->end_id :
+				position.file->line_start[line_number];
+		uint32_t line_len = line_end - line_start - 1;
+ 		eprintf(number_buffer, line_number, line_len, position.file->contents + line_start - position.file->start_id);
+	}
 	eprintf("  ");
 	for (unsigned i = 0; i < max_line_length; i++)
 	{
 		eprintf(" ");
 	}
-	for (unsigned i = 0; i < error_start - linestarts[0]; i++)
+	for (unsigned i = 0; i < position.col - 1; i++)
 	{
-		if (linestarts[0][i] == '\t')
+		if (position.start[i] == '\t')
 		{
 			eprintf("\t");
 		}
@@ -107,13 +83,13 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 	switch (print_type)
 	{
 		case PRINT_TYPE_ERROR:
-			eprintf("(%s:%d) Error: %s\n", file->name, line, message);
+			eprintf("(%s:%d) Error: %s\n", position.file->name, position.line, message);
 			break;
 		case PRINT_TYPE_PREV:
-			eprintf("(%s:%d) %s\n", file->name, line, message);
+			eprintf("(%s:%d) %s\n", position.file->name, position.line, message);
 			break;
 		case PRINT_TYPE_WARN:
-			eprintf("(%s:%d) Warning: %s\n", file->name, line, message);
+			eprintf("(%s:%d) Warning: %s\n", position.file->name, position.line, message);
 			break;
 		default:
 			UNREACHABLE

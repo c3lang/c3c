@@ -69,6 +69,15 @@ typedef enum
 	COMPILE_OUTPUT_AST,
 } CompileOption;
 
+typedef enum
+{
+	OPTIMIZATION_NOT_SET,
+	OPTIMIZATION_NONE,
+	OPTIMIZATION_LESS,
+	OPTIMIZATION_DEFAULT,
+	OPTIMIZATION_AGGRESSIVE
+} OptimizationLevel;
+
 typedef struct
 {
 	const char* lib_dir[MAX_LIB_DIRS];
@@ -77,6 +86,7 @@ typedef struct
 	const char* project_name;
 	const char* target;
 	const char* path;
+	const char* cpu;
 	CompilerCommand command;
 	uint32_t symtab_size;
 	CompileOption compile_option;
@@ -87,6 +97,8 @@ typedef struct
 	int clong_size;
 	int clonglong_size;
 	int clongdouble_size;
+	OptimizationLevel optimization_level;
+	bool debug_info;
 } BuildOptions;
 
 
