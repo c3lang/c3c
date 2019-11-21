@@ -108,25 +108,7 @@ set(LLVM_LINK_COMPONENTS
         XCoreDisassembler
         XCoreCodeGen
         )
-# XRay WindowsManifest Symbolize JITLink MCA LTO Passes ObjCARCOpts
-#LineEditor LibDriver Interpreter FuzzMutate MCJIT ExecutionEngine
-#RuntimeDyld DlltoolDriver Option DebugInfoGSYM Coverage Coroutines
-#
-#
-#
-#     NVPTXDesc
-#
-#
-#    H
-#BPFDesc      ARMUtils
-#AMDGPUDisassembler  MIRParser ipo Instrumentation
-#Vectorize Linker IRReader AsmParser  AMDGPUDesc AMDGPUUtils
-#  MCDisassembler  GlobalISel SelectionDAG
-# DebugInfoDWARF CodeGen Target ScalarOpts InstCombine
-#AggressiveInstCombine TransformUtils BitWriter Analysis ProfileData Object
-#TextAPI BitReader Core Remarks BitstreamReader AArch64AsmParser MCParser
-# MC DebugInfoCodeView DebugInfoMSF BinaryFormat AArch64Utils
-# Support Demangle
+
 llvm_map_components_to_libnames(llvm_libs support core irreader ${LLVM_LINK_COMPONENTS})
 
 include_directories(
@@ -154,7 +136,6 @@ add_executable(c3c
         src/compiler/bigint.c
         src/compiler/bigint.h
         src/compiler/context.c
-        src/compiler/codegen.c
         src/compiler/expr_analysis.c
         src/compiler/enums.h
         src/compiler/casts.c
@@ -162,7 +143,16 @@ add_executable(c3c
         src/compiler/compiler.h
         src/compiler/types.c
         src/compiler/module.c
-        src/compiler/llvm_codegen.c src/utils/stringutils.c src/compiler/dwarf.h src/compiler/llvm_codegen_stmt.c src/compiler/llvm_codegen_internal.h src/compiler/llvm_codegen_expr.c src/compiler/llvm_codegen_debug_info.c src/compiler/llvm_codegen_module.c src/compiler/llvm_codegen_type.c src/compiler/llvm_codegen_function.c)
+        src/compiler/llvm_codegen.c
+        src/utils/stringutils.c
+        src/compiler/dwarf.h
+        src/compiler/llvm_codegen_stmt.c
+        src/compiler/llvm_codegen_internal.h
+        src/compiler/llvm_codegen_expr.c
+        src/compiler/llvm_codegen_debug_info.c
+        src/compiler/llvm_codegen_module.c
+        src/compiler/llvm_codegen_type.c
+        src/compiler/llvm_codegen_function.c)
 
 target_compile_options(c3c PRIVATE -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 

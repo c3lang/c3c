@@ -71,12 +71,20 @@ typedef enum
 
 typedef enum
 {
-	OPTIMIZATION_NOT_SET,
-	OPTIMIZATION_NONE,
-	OPTIMIZATION_LESS,
-	OPTIMIZATION_DEFAULT,
-	OPTIMIZATION_AGGRESSIVE
+	OPTIMIZATION_NOT_SET = -1,
+	OPTIMIZATION_NONE = 0,          // -O0
+	OPTIMIZATION_LESS = 1,          // -O1
+	OPTIMIZATION_DEFAULT = 2,       // -O2
+	OPTIMIZATION_AGGRESSIVE = 3,    // -O3
 } OptimizationLevel;
+
+typedef enum
+{
+	SIZE_OPTIMIZATION_NOT_SET = -1,
+	SIZE_OPTIMIZATION_NONE = 0,     // None
+	SIZE_OPTIMIZATION_SMALL = 1,    // -Os
+	SIZE_OPTIMIZATION_TINY = 2,     // -Oz
+} SizeOptimizationLevel;
 
 typedef struct
 {
@@ -98,7 +106,10 @@ typedef struct
 	int clonglong_size;
 	int clongdouble_size;
 	OptimizationLevel optimization_level;
+	SizeOptimizationLevel size_optimization_level;
 	bool debug_info;
+	bool emit_llvm;
+	bool emit_bitcode;
 } BuildOptions;
 
 

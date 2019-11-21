@@ -38,10 +38,6 @@ static inline LLVMTypeRef gencontext_create_basic_llvm_type(GenContext *context,
 static inline void gencontext_init_basic_llvm_type(GenContext *context, Type *type)
 {
 	type->backend_type = gencontext_create_basic_llvm_type(context, type);
-	if (context->debug.builder)
-	{
-		type->backend_debug_type = gencontext_create_builtin_debug_type(context, type);
-	}
 }
 void gencontext_begin_module(GenContext *context)
 {
@@ -93,6 +89,10 @@ void gencontext_begin_module(GenContext *context)
 	context->block_global_unique_count = 0;
 	context->ast_alloca_addr_space = target_alloca_addr_space();
 
+	VECEACH(compiler.type, i)
+	{
+		compiler.type[i]->backend_type = NULL;
+	}
 /*
 	SizeSizeInBytes =
 			C.toCharUnitsFromBits(C.getTargetInfo().getMaxPointerWidth()).getQuantity();

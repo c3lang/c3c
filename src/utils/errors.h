@@ -11,7 +11,7 @@ void evprintf(const char *format, va_list list);
 void eprintf(const char *format, ...);
 void error_exit(const char *format, ...) __attribute__((noreturn));
 
-#define FATAL_ERROR(_string, ...) do { error_exit("FATAL ERROR at %s:%d: " _string, __func__, __LINE__, ##__VA_ARGS__); } while(0)
+#define FATAL_ERROR(_string, ...) do { error_exit("FATAL ERROR at %s:%d in %s: " _string, __func__, __LINE__, __FILE__, ##__VA_ARGS__); } while(0)
 
 #define ASSERT(_condition, _string, ...) while (!(_condition)) { FATAL_ERROR(_string, ##__VA_ARGS__); }
 

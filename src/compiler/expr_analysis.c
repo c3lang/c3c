@@ -20,6 +20,8 @@ static bool expr_is_ltype(Expr *expr)
 			return expr->identifier_expr.decl->decl_kind == DECL_VAR && (expr->identifier_expr.decl->var.kind == VARDECL_LOCAL || expr->identifier_expr.decl->var.kind == VARDECL_GLOBAL);
 		case EXPR_UNARY:
 			return expr->unary_expr.operator == TOKEN_STAR;
+		case EXPR_ACCESS:
+			return expr_is_ltype(expr->access_expr.parent);
 		default:
 			return false;
 	}
@@ -55,10 +57,10 @@ static inline bool sema_expr_analyse_identifier(Context *context, Expr *expr)
 		SEMA_ERROR(expr->loc, "Unknown identifier %s.", expr->identifier_expr.identifier.string);
 		return false;
 	}
-	if (!decl_ok(decl)) return expr_poison(expr);
 
+	assert(decl->type);
 	expr->identifier_expr.decl = decl;
-	expr->type = decl->var.type;
+	expr->type = decl->type;
 	return true;
 }
 
@@ -70,7 +72,7 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Expr *expr, De
 	Decl *stored_macro = context->evaluating_macro;
 	Type *stored_rtype = context->rtype;
 	context->evaluating_macro = macro;
-	context->rtype = macro->macro_decl.rtype;
+	context->rtype = macro->macro_decl.rtype->type;
 	// Handle escaping macro
 	bool success = sema_analyse_statement(context, macro->macro_decl.body);
 	context->evaluating_macro = stored_macro;
@@ -94,9 +96,9 @@ static inline bool sema_expr_analyse_func_call(Context *context, Expr *expr, Dec
 	{
 		Expr *arg = args[i];
 		if (!sema_analyse_expr(context, arg)) return false;
-		if (!cast(arg, func_params[i]->var.type, CAST_TYPE_IMPLICIT_ASSIGN)) return false;
+		if (!cast(arg, func_params[i]->type, CAST_TYPE_IMPLICIT_ASSIGN)) return false;
 	}
-	expr->type = decl->func.function_signature.rtype;
+	expr->type = decl->func.function_signature.rtype->type;
 	return true;
 }
 
@@ -190,7 +192,7 @@ static inline bool sema_expr_analyse_error_constant(Context *context, Expr *expr
 		if (error_constant->name.string == name)
 		{
 			assert(error_constant->resolve_status == RESOLVE_DONE);
-			expr->type = decl->self_type;
+			expr->type = decl->type;
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.type = CONST_INT;
 			expr->const_expr.i = decl->error_constant.value;
@@ -201,15 +203,16 @@ static inline bool sema_expr_analyse_error_constant(Context *context, Expr *expr
 	return false;
 }
 
-static Decl *strukt_recursive_search_member(Decl *strukt, const char *name)
+static Decl *strukt_recursive_search_member(Decl *strukt, const char *name, int *index)
 {
 	VECEACH(strukt->strukt.members, i)
 	{
+		(*index)++;
 		Decl *member = strukt->strukt.members[i];
 		if (member->name.string == name) return member;
 		if (!member->name.string && decl_is_struct_type(member))
 		{
-			Decl *result = strukt_recursive_search_member(member, name);
+			Decl *result = strukt_recursive_search_member(member, name, index);
 			if (result) return result;
 		}
 	}
@@ -225,7 +228,7 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	bool is_pointer = type->type_kind == TYPE_POINTER;
 	if (is_pointer)
 	{
-		type = type->base;
+		type = type->pointer;
 	}
 	if (!type_may_have_method_functions(type))
 	{
@@ -244,7 +247,8 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 		default:
 			UNREACHABLE
 	}
-	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string);
+	int index = -1;
+	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string, &index);
 	if (!member)
 	{
 		SEMA_ERROR(expr->access_expr.sub_element, "There is no element '%s.%s'.", decl->name.string, expr->access_expr.sub_element.string);
@@ -259,27 +263,21 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 		deref->type = type;
 		expr->access_expr.parent = deref;
 	}
-	if (member->decl_kind == DECL_VAR)
-	{
-		expr->type = member->var.type;
-	}
-	else
-	{
-		expr->type = member->self_type;
-	}
+	expr->type = member->type;
+	expr->access_expr.index = index;
 	return true;
 }
 
 static inline bool sema_expr_analyse_type_access(Context *context, Expr *expr)
 {
-	Type *type = expr->type_access.type;
-	if (!sema_resolve_type(context, type)) return false;
-	if (!type_may_have_method_functions(type))
+	TypeInfo *type_info = expr->type_access.type;
+	if (!sema_resolve_type_info(context, type_info)) return false;
+	if (!type_may_have_method_functions(type_info->type))
 	{
-		SEMA_ERROR(expr->loc, "'%s' does not have method functions.", type_to_error_string(type));
+		SEMA_ERROR(expr->loc, "'%s' does not have method functions.", type_to_error_string(type_info->type));
 		return false;
 	}
-	Decl *decl = type->decl;
+	Decl *decl = type_info->type->decl;
 	// TODO add more constants that can be inspected?
 	// e.g. SomeEnum.values, MyUnion.x.offset etc?
 	switch (decl->decl_kind)
@@ -296,17 +294,17 @@ static inline bool sema_expr_analyse_type_access(Context *context, Expr *expr)
 		default:
 			UNREACHABLE
 	}
-	VECEACH(type->decl->method_functions, i)
+	VECEACH(type_info->type->decl->method_functions, i)
 	{
-		Decl *function = type->decl->method_functions[i];
+		Decl *function = type_info->type->decl->method_functions[i];
 		if (expr->type_access.name.string == function->name.string)
 		{
 			expr->type_access.method = function;
-			expr->type = function->func.function_signature.rtype;
+			expr->type = function->func.function_signature.rtype->type;
 			return true;
 		}
 	}
-	SEMA_ERROR(expr->loc, "No function '%s.%s' found.", type_to_error_string(type), expr->type_access.name.string);
+	SEMA_ERROR(expr->loc, "No function '%s.%s' found.", type_to_error_string(type_info->type), expr->type_access.name.string);
 	return false;
 }
 
@@ -356,7 +354,7 @@ static inline bool sema_expr_analyse_struct_initializer_list(Context *context, T
 			}
 			decl = members[i];
 		}
-		if (!cast(field, decl->var.type, CAST_TYPE_IMPLICIT_ASSIGN)) return false;
+		if (!cast(field, decl->type, CAST_TYPE_IMPLICIT_ASSIGN)) return false;
 	}
 	expr->type = assigned;
 	return true;
@@ -368,7 +366,8 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Expr *ex
 	assert(assigned);
 	switch (assigned->type_kind)
 	{
-		case TYPE_USER_DEFINED:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
 			if (decl_is_struct_type(assigned->decl)) return sema_expr_analyse_struct_initializer_list(context, assigned, expr);
 			break;
 		case TYPE_ARRAY:
@@ -391,11 +390,12 @@ static inline bool sema_expr_analyse_sizeof(Context *context, Expr *expr)
 static inline bool sema_expr_analyse_cast(Context *context, Expr *expr)
 {
 	Expr *inner = expr->expr_cast.expr;
-	if (!sema_resolve_type(context, expr->type)) return false;
+	if (!sema_resolve_type_info(context, expr->expr_cast.type_info)) return false;
 	if (!sema_analyse_expr(context, inner)) return false;
 
-	if (!cast(inner, expr->type, CAST_TYPE_EXPLICIT)) return false;
+	if (!cast(inner, expr->expr_cast.type_info->type, CAST_TYPE_EXPLICIT)) return false;
 
+	// TODO above is probably not right, cast type not set.
 	// Overwrite cast.
 	Token loc = expr->loc;
 	*expr = *inner;
@@ -792,7 +792,7 @@ static bool sema_expr_analyse_deref(Context *context, Expr *expr, Expr *inner)
 		return false;
 	}
 	Type *deref_type = inner->type->type_kind != TYPE_POINTER ? inner->type : canonical;
-	expr->type = deref_type->base;
+	expr->type = deref_type->pointer;
 	return true;
 }
 
@@ -803,14 +803,7 @@ static bool sema_expr_analyse_addr(Context *context, Expr *expr, Expr *inner)
 		SEMA_ERROR(inner->loc, "Cannot take the address of a value of type '%s'", type_to_error_string(inner->type));
 		return false;
 	}
-	Type *type = type_new(TYPE_POINTER);
-	type->name_loc = inner->type->name_loc;
-	type->base = inner->type;
-	type->resolve_status = RESOLVE_DONE;
-	type->canonical = type_get_canonical_ptr(type);
-	assert(type->resolve_status == RESOLVE_DONE);
-	assert(type->canonical->resolve_status == RESOLVE_DONE);
-	expr->type = type;
+	expr->type = type_get_ptr(inner->type);
 	return true;
 }
 
@@ -903,13 +896,13 @@ static bool sema_expr_analyse_not(Context *context, Expr *expr, Expr *inner)
 		case TYPE_IXX:
 		case TYPE_UXX:
 		case TYPE_FXX:
-		case TYPE_INC_ARRAY:
-		case TYPE_EXPRESSION:
+		case TYPE_TYPEDEF:
 			UNREACHABLE
 		case TYPE_FUNC:
 		case TYPE_ARRAY:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
+		case TYPE_SUBARRAY:
 		case TYPE_BOOL:
 		case TYPE_I8:
 		case TYPE_I16:
@@ -922,9 +915,12 @@ static bool sema_expr_analyse_not(Context *context, Expr *expr, Expr *inner)
 		case TYPE_F32:
 		case TYPE_F64:
 			return true;
-		case TYPE_USER_DEFINED:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
 		case TYPE_VOID:
 		case TYPE_STRING:
+		case TYPE_ENUM:
+		case TYPE_ERROR:
 			SEMA_ERROR(expr->loc, "Cannot use 'not' on %s", type_to_error_string(inner->type));
 			return false;
 	}

@@ -56,6 +56,7 @@ static void usage(void)
 	OUTPUT("  -O2                   - Default optimization level.");
 	OUTPUT("  -Os                   - Optimize for size.");
 	OUTPUT("  -O3                   - Aggressive optimization.");
+	OUTPUT("  --emit-llvm           - Emit LLVM IR as a .ll file per module.");
 }
 
 
@@ -216,9 +217,19 @@ static void parse_option()
 			{
 				build_options.optimization_level = OPTIMIZATION_LESS;
 			}
-			else if (match_shortopt("O2") || match_shortopt("Os"))
+			else if (match_shortopt("O2"))
 			{
 				build_options.optimization_level = OPTIMIZATION_DEFAULT;
+			}
+			else if (match_shortopt("Os"))
+			{
+				build_options.optimization_level = OPTIMIZATION_DEFAULT;
+				build_options.size_optimization_level = SIZE_OPTIMIZATION_SMALL;
+			}
+			else if (match_shortopt("Oz"))
+			{
+				build_options.optimization_level = OPTIMIZATION_DEFAULT;
+				build_options.size_optimization_level = SIZE_OPTIMIZATION_TINY;
 			}
 			else if (match_shortopt("O3"))
 			{
@@ -249,6 +260,11 @@ static void parse_option()
 				OUTPUT("The C3 Compiler");
 				OUTPUT("C3 is low level programming language based on C.");
 				exit(EXIT_SUCCESS);
+			}
+			if (match_longopt("emit-llvm"))
+			{
+				build_options.emit_llvm = true;
+				return;
 			}
 			if (match_longopt("lib"))
 			{
@@ -300,8 +316,11 @@ void parse_arguments(int argc, const char *argv[])
 	build_options.clonglong_size = sizeof(long long);
 	build_options.pointer_size = sizeof(void *);
 	build_options.path = ".";
+	build_options.emit_llvm = false;
+	build_options.emit_bitcode = true;
 	build_options.optimization_level = OPTIMIZATION_NOT_SET;
-	build_options.debug_info = true;
+	build_options.size_optimization_level = SIZE_OPTIMIZATION_NOT_SET;
+	build_options.debug_info = false;
 	build_options.command = COMMAND_MISSING;
 	build_options.symtab_size = DEFAULT_SYMTAB_SIZE;
 	build_options.files = VECNEW(const char *, MAX_FILES);
@@ -348,4 +367,9 @@ void parse_arguments(int argc, const char *argv[])
 	{
 		build_options.optimization_level = OPTIMIZATION_DEFAULT;
 	}
+	if (build_options.size_optimization_level == SIZE_OPTIMIZATION_NOT_SET)
+	{
+		build_options.size_optimization_level = SIZE_OPTIMIZATION_NONE;
+	}
+
 }

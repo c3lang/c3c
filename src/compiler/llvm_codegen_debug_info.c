@@ -4,6 +4,53 @@
 
 #include "llvm_codegen_internal.h"
 
+static inline LLVMMetadataRef gencontext_create_debug_type_from_decl(GenContext *context, Decl *decl)
+{
+	static LLVMMetadataRef debug_params[512];
+	switch (decl->decl_kind)
+	{
+		case DECL_ATTRIBUTE:
+		case DECL_ENUM_CONSTANT:
+		case DECL_POISONED:
+		case DECL_GENERIC:
+		case DECL_MULTI_DECL:
+		case DECL_MACRO:
+		case DECL_CT_IF:
+		case DECL_CT_ELSE:
+		case DECL_CT_ELIF:
+		case DECL_VAR:
+		case DECL_ERROR_CONSTANT:
+		case DECL_ARRAY_VALUE:
+		case DECL_IMPORT:
+			UNREACHABLE;
+		case DECL_FUNC:
+		{
+			VECEACH(decl->func.function_signature.params, i)
+			{
+				Type *param_type = decl->func.function_signature.params[i]->type;
+				debug_params[i + 1] = gencontext_get_debug_type(context, param_type);
+			}
+			unsigned param_size = vec_size(decl->func.function_signature.params);
+			debug_params[0] = decl->func.function_signature.rtype->type->backend_debug_type;
+			return LLVMDIBuilderCreateSubroutineType(context->debug.builder,
+			                                                                  context->debug.file,
+			                                                                  debug_params, param_size + 1,
+					/** TODO **/ 0);
+		}
+		case DECL_TYPEDEF:
+			TODO
+		case DECL_STRUCT:
+			TODO
+		case DECL_UNION:
+			TODO
+		case DECL_ENUM:
+			TODO
+		case DECL_ERROR:
+			TODO
+	}
+	UNREACHABLE
+}
+
 void gencontext_set_debug_location(GenContext *context, SourceRange source_range)
 {
 	if (source_range.loc == INVALID_LOC) return;
@@ -44,40 +91,80 @@ void gencontext_emit_debug_location(GenContext *context, SourceRange location)
 
 static LLVMMetadataRef gencontext_simple_debug_type(GenContext *context, Type *type, int dwarf_code)
 {
-	return LLVMDIBuilderCreateBasicType(context->debug.builder,
-	                                    type->name_loc.string,
-	                                    type->name_loc.span.length,
-	                                    type->builtin.bitsize,
-	                                    dwarf_code, 0);
+	return type->backend_debug_type = LLVMDIBuilderCreateBasicType(context->debug.builder,
+	                                                               type->name,
+	                                                               strlen(type->name),
+	                                                               type->builtin.bitsize,
+	                                                               dwarf_code, 0);
 
 }
 
-LLVMMetadataRef gencontext_create_builtin_debug_type(GenContext *context, Type *builtin_type)
+LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 {
-	assert(builtin_type->canonical == builtin_type);
+	if (type->backend_debug_type) return type->backend_debug_type;
 	// Consider special handling of UTF8 arrays.
-	switch (builtin_type->type_kind)
+	switch (type->type_kind)
 	{
+		case TYPE_POISONED:
+		case TYPE_IXX:
+		case TYPE_UXX:
+		case TYPE_FXX:
+			UNREACHABLE
 		case TYPE_BOOL:
-			return gencontext_simple_debug_type(context, builtin_type, DW_ATE_boolean);
+			return gencontext_simple_debug_type(context, type, DW_ATE_boolean);
 		case TYPE_I8:
-			return gencontext_simple_debug_type(context, builtin_type, DW_ATE_signed_char); // DW_ATE_UTF?
+			return gencontext_simple_debug_type(context, type, DW_ATE_signed_char); // DW_ATE_UTF?
 		case TYPE_U8:
-			return gencontext_simple_debug_type(context, builtin_type, DW_ATE_unsigned_char);
+			return gencontext_simple_debug_type(context, type, DW_ATE_unsigned_char);
 		case TYPE_I16:
 		case TYPE_I32:
 		case TYPE_I64:
-			return gencontext_simple_debug_type(context, builtin_type, DW_ATE_signed);
+			return gencontext_simple_debug_type(context, type, DW_ATE_signed);
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
-			return gencontext_simple_debug_type(context, builtin_type, DW_ATE_unsigned);
+			return gencontext_simple_debug_type(context, type, DW_ATE_unsigned);
 		case TYPE_F32:
 		case TYPE_F64:
-			return gencontext_simple_debug_type(context, builtin_type, DW_ATE_float);
+			return gencontext_simple_debug_type(context, type, DW_ATE_float);
 		case TYPE_VOID:
 			return NULL;
-		default:
-			UNREACHABLE
+		case TYPE_POINTER:
+			return type->backend_debug_type = LLVMDIBuilderCreatePointerType(context->debug.builder, type->pointer->backend_debug_type, type_size(type->canonical->pointer), 0, 0, type->name, strlen(type->name));
+		case TYPE_ENUM:
+			break;
+		case TYPE_ERROR:
+			break;
+		case TYPE_FUNC:
+			break;
+		case TYPE_STRUCT:
+			break;
+		case TYPE_UNION:
+			break;
+		case TYPE_TYPEDEF:
+			break;
+		case TYPE_STRING:
+			break;
+		case TYPE_ARRAY:
+			{
+				LLVMMetadataRef *ranges = NULL;
+				Type *current_type = type;
+				while (current_type->canonical->type_kind == TYPE_ARRAY)
+				{
+					VECADD(ranges, LLVMDIBuilderGetOrCreateSubrange(context->debug.builder, 0, current_type->canonical->array.len));
+					current_type = current_type->canonical->array.base;
+				}
+				return type->backend_debug_type = LLVMDIBuilderCreateArrayType(
+						context->debug.builder,
+						type->array.len,
+						0 /* ALIGN */,
+						type->array.base->backend_debug_type,
+						ranges, vec_size(ranges));
+			}
+		case TYPE_VARARRAY:
+			break;
+		case TYPE_SUBARRAY:
+			break;
 	}
+	TODO
 }

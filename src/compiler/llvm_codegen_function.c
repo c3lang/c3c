@@ -8,7 +8,7 @@
 
 static char *mangle_name(char *buffer, Decl *decl)
 {
-	sprintf(buffer, "mangled_name_%*s", decl->name.span.length, decl->name.start);
+	sprintf(buffer, "%*s", decl->name.span.length, decl->name.start);
 	return buffer;
 }
 
@@ -114,7 +114,7 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	// Insert a return if needed.
 	if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(context->builder)))
 	{
-		assert(decl->func.function_signature.rtype->type_kind == TYPE_VOID);
+		assert(decl->func.function_signature.rtype->type->type_kind == TYPE_VOID);
 		LLVMBuildRetVoid(context->builder);
 	}
 
@@ -138,7 +138,7 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 	char *external_name = mangle_name(workbuf, decl);
 	// Resolve function backend type for function.
 	decl->func.backend_value = LLVMAddFunction(context->module, external_name,
-	                                           gencontext_get_llvm_type(context, decl->self_type));
+	                                           BACKEND_TYPE(decl->type));
 
 	// Specify appropriate storage class, visibility and call convention
 	// extern functions (linkedited in separately):
@@ -175,7 +175,7 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 		                                                      decl->name.string, decl->name.span.length,
 		                                                      context->debug.file,
 		                                                      decl_position.line,
-		                                                      decl->self_type->backend_debug_type,
+		                                                      decl->type->backend_debug_type,
 		                                                      decl->visibility == VISIBLE_LOCAL,
 		                                                      1,
 		                                                      decl_position.line,
@@ -183,5 +183,5 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 		                                                      0);
 		LLVMSetSubprogram(decl->func.backend_value, context->debug.function);
 	}
-	gencontext_emit_function_body(context, decl);
+	if (decl->func.body) gencontext_emit_function_body(context, decl);
 }

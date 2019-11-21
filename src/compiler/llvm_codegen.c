@@ -38,7 +38,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 	{
 		// Tentative definition, initialized to zero, but only
 		// emitted at the end of the translation unit.
-		init = gencontext_emit_null_constant(context, decl->var.type);
+		init = gencontext_emit_null_constant(context, decl->type);
 	}
 	else
 	{
@@ -46,7 +46,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 	}
 
 	// TODO fix name
-	decl->var.backend_ref = LLVMAddGlobal(context->module, gencontext_get_llvm_type(context, decl->var.type), decl->name.string);
+	decl->var.backend_ref = LLVMAddGlobal(context->module, decl->type->backend_type, decl->name.string);
 
 	// If read only: LLVMSetGlobalConstant(decl->var.backend_ref, 1);
 
@@ -75,7 +75,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 		                                                                          2,
 		                                                                          context->debug.file,
 		                                                                          12 /* lineno */,
-		                                                                          decl->var.type->backend_debug_type,
+		                                                                          decl->type->backend_debug_type,
 		                                                                          decl->visibility ==
 		                                                                          VISIBLE_LOCAL, /* expr */
 		                                                                          NULL, /** declaration **/
@@ -97,10 +97,27 @@ static void gencontext_verify_ir(GenContext *context)
 		error_exit("Could not verify module IR.");
 	}
 }
+
+void gencontext_emit_object_file(GenContext *context)
+{
+	char *err = "";
+	LLVMSetTarget(context->module, build_options.target);
+	char *layout = LLVMCopyStringRepOfTargetData(target_data_layout());
+	LLVMSetDataLayout(context->module, layout);
+	LLVMDisposeMessage(layout);
+
+	// Generate .o or .obj file
+	char *filename = strformat("%.*s.o", (int)strlen(context->ast_context->file->name) - 3, context->ast_context->file->name);
+	if (LLVMTargetMachineEmitToFile(target_machine(), context->module, filename, LLVMObjectFile, &err) != 0)
+	{
+		error_exit("Could not emit object file: %s", err);
+	}
+}
+
 void gencontext_print_llvm_ir(GenContext *context)
 {
 	char *err = NULL;
-	char *filename = strformat("xx.llvmir" /*, context->module_name*/);
+	char *filename = strformat("%.*s.ll", (int)strlen(context->ast_context->file->name) - 3, context->ast_context->file->name);
 	if (LLVMPrintModuleToFile(context->module, filename, &err) != 0)
 	{
 		error_exit("Could not emit ir to file: %s", err);
@@ -113,11 +130,31 @@ LLVMValueRef gencontext_emit_alloca(GenContext *context, Decl *decl)
 {
 	LLVMBasicBlockRef current_block = LLVMGetInsertBlock(context->builder);
 	LLVMPositionBuilderBefore(context->builder, context->alloca_point);
-	LLVMValueRef alloca = LLVMBuildAlloca(context->builder, gencontext_get_llvm_type(context, decl->var.type->canonical), decl->name.string);
+	LLVMValueRef alloca = LLVMBuildAlloca(context->builder, BACKEND_TYPE(decl->type), decl->name.string);
 	LLVMPositionBuilderAtEnd(context->builder, current_block);
 	return alloca;
 }
 
+/**
+ * Values here taken from LLVM.
+ * @return return the inlining threshold given the build options.
+ */
+static int get_inlining_threshold(void)
+{
+	if (build_options.optimization_level == OPTIMIZATION_AGGRESSIVE)
+	{
+		return 250;
+	}
+	switch (build_options.size_optimization_level)
+	{
+		case SIZE_OPTIMIZATION_TINY:
+			return 5;
+		case SIZE_OPTIMIZATION_SMALL:
+			return 50;
+		default:
+			return 250;
+	}
+}
 void llvm_codegen(Context *context)
 {
 	GenContext gen_context;
@@ -128,9 +165,46 @@ void llvm_codegen(Context *context)
 	{
 		gencontext_emit_function_decl(&gen_context, context->functions[i]);
 	}
-	LLVMDumpModule(gen_context.module);
-	gencontext_print_llvm_ir(&gen_context);
-	LLVMDumpModule(gen_context.module);
+
+	// Starting from here we could potentially thread this:
+	LLVMPassManagerBuilderRef pass_manager_builder = LLVMPassManagerBuilderCreate();
+	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, build_options.optimization_level);
+	LLVMPassManagerBuilderSetSizeLevel(pass_manager_builder, build_options.size_optimization_level);
+	LLVMPassManagerBuilderSetDisableUnrollLoops(pass_manager_builder, build_options.optimization_level == OPTIMIZATION_NONE);
+	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, get_inlining_threshold());
+	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
+	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(gen_context.module);
+	LLVMAddAnalysisPasses(target_machine(), pass_manager);
+	LLVMAddAnalysisPasses(target_machine(), function_pass_manager);
+	LLVMPassManagerBuilderPopulateModulePassManager(pass_manager_builder, pass_manager);
+	LLVMPassManagerBuilderPopulateFunctionPassManager(pass_manager_builder, function_pass_manager);
+
+	// IMPROVE
+	// In LLVM Opt, LoopVectorize and SLPVectorize settings are part of the PassManagerBuilder
+	// Anything else we need to manually add?
+
+	LLVMPassManagerBuilderDispose(pass_manager_builder);
+
+	// Run function passes
+	LLVMInitializeFunctionPassManager(function_pass_manager);
+	LLVMValueRef current_function = LLVMGetFirstFunction(gen_context.module);
+	while (current_function)
+	{
+		LLVMRunFunctionPassManager(function_pass_manager, current_function);
+		current_function = LLVMGetNextFunction(current_function);
+	}
+	LLVMFinalizeFunctionPassManager(function_pass_manager);
+	LLVMDisposePassManager(function_pass_manager);
+
+	// Run module pass
+	LLVMRunPassManager(pass_manager, gen_context.module);
+	LLVMDisposePassManager(pass_manager);
+
+	// Serialize the LLVM IR, if requested
+	if (build_options.emit_llvm) gencontext_print_llvm_ir(&gen_context);
+
+	if (build_options.emit_bitcode) gencontext_emit_object_file(&gen_context);
+
 	gencontext_end_module(&gen_context);
 	gencontext_destroy(&gen_context);
 }

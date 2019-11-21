@@ -100,6 +100,19 @@ static inline bool is_digit(char c)
 	return c >= '0' && c <= '9';
 }
 
+/**
+ * Convert hex character to nibble
+ * @param c
+ * @return value or -1 if invalid.
+ */
+static inline int char_to_nibble(char c)
+{
+	if (c >= '0' && c <= '9') return c - '0';
+	if (c <= 'F') return c - 'A';
+	if (c <= 'f') return c - 'f';
+	return -1;
+}
+
 static inline bool is_hex_or_(char c)
 {
 	switch (c)

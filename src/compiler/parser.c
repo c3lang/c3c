@@ -13,7 +13,7 @@ static Expr *parse_paren_expr(void);
 static Expr *parse_precedence(Precedence precedence);
 static Expr *parse_initializer_list(void);
 static Expr *parse_initializer(void);
-static bool parse_type_or_expr(Expr **exprPtr, Type **typePtr);
+static bool parse_type_or_expr(Expr **exprPtr, TypeInfo **typePtr);
 static Decl *parse_top_level(void);
 
 typedef Expr *(*ParseFn)(Expr *);
@@ -180,7 +180,7 @@ void error_at_current(const char* message, ...)
 #define TRY_AST_OR(_ast_stmt, _res) ({ Ast* _ast = (_ast_stmt); if (!ast_ok(_ast)) return _res; _ast; })
 #define TRY_AST(_ast_stmt) TRY_AST_OR(_ast_stmt, &poisoned_ast)
 #define TRY_EXPR_OR(_expr_stmt, _res) ({ Expr* _expr = (_expr_stmt); if (!expr_ok(_expr)) return _res; _expr; })
-#define TRY_TYPE_OR(_type_stmt, _res) ({ Type* _type = (_type_stmt); if (!type_ok(_type)) return _res; _type; })
+#define TRY_TYPE_OR(_type_stmt, _res) ({ TypeInfo* _type = (_type_stmt); if (!type_info_ok(_type)) return _res; _type; })
 #define TRY_DECL_OR(_decl_stmt, _res) ({ Decl* _decl = (_decl_stmt); if (!decl_ok(_decl)) return _res; _decl; })
 
 #define COMMA_RPAREN_OR(_res) \
@@ -255,107 +255,113 @@ static Path *parse_path(void)
  * Assume prev_token is the type.
  * @return Type (poisoned if fails)
  */
-static inline Type *parse_base_type(void)
+static inline TypeInfo *parse_base_type(void)
 {
 	Path *path = parse_path();
 	if (path)
 	{
-		Type *type = type_new(TYPE_USER_DEFINED);
-		type->unresolved.path = path;
-		type->name_loc = tok;
-		if (!consume_type_name("types")) return &poisoned_type;
-		return type;
+		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER);
+		type_info->unresolved.path = path;
+		type_info->unresolved.name_loc = tok;
+		if (!consume_type_name("types")) return &poisoned_type_info;
+		return type_info;
 	}
 
-    Type *type;
+	TypeInfo *type_info = NULL;
+	Type *type_found = NULL;
 	switch (tok.type)
 	{
 		case TOKEN_TYPE_IDENT:
-			type = TYPE_UNRESOLVED(tok);
-            break;
+			type_info = type_info_new(TYPE_INFO_IDENTIFIER);
+			type_info->unresolved.name_loc = tok;
+			break;
 		case TOKEN_TYPE:
+			type_info = type_info_new(TYPE_INFO_IDENTIFIER);
 		    advance_and_verify(TOKEN_TYPE);
-		    CONSUME_OR(TOKEN_LPAREN, &poisoned_type);
-			{
-				type = type_new(TYPE_EXPRESSION);
-				type->unresolved_type_expr = TRY_EXPR_OR(parse_initializer(), &poisoned_type);
-			}
-			EXPECT_OR(TOKEN_RPAREN, &poisoned_type);
+		    CONSUME_OR(TOKEN_LPAREN, &poisoned_type_info);
+			type_info->resolve_status = RESOLVE_NOT_DONE;
+			type_info->unresolved_type_expr = TRY_EXPR_OR(parse_initializer(), &poisoned_type_info);
+			EXPECT_OR(TOKEN_RPAREN, &poisoned_type_info);
 			break;
 		case TOKEN_VOID:
-			type = type_void;
+			type_found = type_void;
             break;
 		case TOKEN_BOOL:
-			type = type_bool;
+			type_found = type_bool;
             break;
 		case TOKEN_BYTE:
-			type = type_byte;
+			type_found = type_byte;
             break;
 		case TOKEN_CHAR:
-            type = type_char;
+            type_found = type_char;
             break;
 		case TOKEN_DOUBLE:
-            type = type_double;
+            type_found = type_double;
             break;
 		case TOKEN_FLOAT:
-            type = type_float;
+            type_found = type_float;
             break;
 		case TOKEN_INT:
-            type = type_int;
+            type_found = type_int;
             break;
 		case TOKEN_ISIZE:
-            type = type_isize;
+            type_found = type_isize;
             break;
 		case TOKEN_LONG:
-            type = type_long;
+            type_found = type_long;
             break;
 		case TOKEN_SHORT:
-            type = type_short;
+            type_found = type_short;
             break;
 		case TOKEN_UINT:
-            type = type_uint;
+			type_found = type_uint;
             break;
 		case TOKEN_ULONG:
-            type = type_ulong;
+			type_found = type_ulong;
             break;
 		case TOKEN_USHORT:
-            type = type_ushort;
+			type_found = type_ushort;
             break;
 		case TOKEN_USIZE:
-            type = type_usize;
+			type_found = type_usize;
             break;
 		case TOKEN_C_SHORT:
-			type = type_c_short;
+			type_found = type_c_short;
 			break;
 		case TOKEN_C_INT:
-			type = type_c_int;
+			type_found = type_c_int;
 			break;
 		case TOKEN_C_LONG:
-			type = type_c_long;
+			type_found = type_c_long;
 			break;
 		case TOKEN_C_LONGLONG:
-			type = type_c_longlong;
+			type_found = type_c_longlong;
 			break;
 		case TOKEN_C_USHORT:
-			type = type_c_ushort;
+			type_found = type_c_ushort;
 			break;
 		case TOKEN_C_UINT:
-			type = type_c_uint;
+			type_found = type_c_uint;
 			break;
 		case TOKEN_C_ULONG:
-			type = type_c_ulong;
+			type_found = type_c_ulong;
 			break;
 		case TOKEN_C_ULONGLONG:
-			type = type_c_ulonglong;
+			type_found = type_c_ulonglong;
 			break;
-
 		default:
 			SEMA_ERROR(tok, "A type name was expected here.");
-			type = &poisoned_type;
-            break;
+			return &poisoned_type_info;
 	}
     advance();
-    return type;
+	if (type_found)
+	{
+		assert(!type_info);
+		type_info = type_info_new(TYPE_INFO_IDENTIFIER);
+		type_info->resolve_status = RESOLVE_DONE;
+		type_info->type = type_found;
+	}
+    return type_info;
 }
 
 /**
@@ -368,31 +374,29 @@ static inline Type *parse_base_type(void)
  * @param type the type to wrap, may not be poisoned.
  * @return type (poisoned if fails)
  */
-static inline Type *parse_array_type_index(Type *type)
+static inline TypeInfo *parse_array_type_index(TypeInfo *type)
 {
-
-	assert(type_ok(type));
+	assert(type_info_ok(type));
 
 	advance_and_verify(TOKEN_LBRACKET);
 	if (try_consume(TOKEN_PLUS))
 	{
-		CONSUME_OR(TOKEN_RBRACKET, &poisoned_type);
-        Type *incr_array = type_new(TYPE_INC_ARRAY);
-        incr_array->base = type;
-		incr_array->resolve_status = incr_array->base->resolve_status;
+		CONSUME_OR(TOKEN_RBRACKET, &poisoned_type_info);
+        TypeInfo *incr_array = type_info_new(TYPE_INFO_INC_ARRAY);
+        incr_array->array.base = type;
         return incr_array;
 	}
 	if (try_consume(TOKEN_RBRACKET))
 	{
-        Type *array = type_new(TYPE_VARARRAY);
-        array->base = type;
-        array->len = 0;
+        TypeInfo *array = type_info_new(TYPE_INFO_ARRAY);
+        array->array.base = type;
+        array->array.len = NULL;
         return array;
 	}
-    Type *array = type_new(TYPE_ARRAY);
-    array->base = type;
-    array->unresolved_len = TRY_EXPR_OR(parse_expr(), &poisoned_type);
-    CONSUME_OR(TOKEN_RBRACKET, &poisoned_type);
+    TypeInfo *array = type_info_new(TYPE_INFO_ARRAY);
+    array->array.base = type;
+    array->array.len = TRY_EXPR_OR(parse_expr(), &poisoned_type_info);
+    CONSUME_OR(TOKEN_RBRACKET, &poisoned_type_info);
     return array;
 }
 
@@ -406,33 +410,33 @@ static inline Type *parse_array_type_index(Type *type)
  * Assume already stepped into.
  * @return Type, poisoned if parsing is invalid.
  */
-static Type *parse_type_expression(void)
+static TypeInfo *parse_type_expression(void)
 {
-	Type *type = parse_base_type();
-	while (type->type_kind != TYPE_POISONED)
+	TypeInfo *type_info = parse_base_type();
+	while (type_info_ok(type_info))
 	{
 		switch (tok.type)
 		{
 			case TOKEN_LBRACKET:
-				type = parse_array_type_index(type);
+				type_info = parse_array_type_index(type_info);
 				break;
 			case TOKEN_STAR:
 				advance();
                 {
-                    Type *ptr_type = type_new(TYPE_POINTER);
-                    assert(type);
-	                ptr_type->base = type;
-	                type = ptr_type;
+                    TypeInfo *ptr_type = type_info_new(TYPE_INFO_POINTER);
+                    assert(type_info);
+	                ptr_type->pointer = type_info;
+	                type_info = ptr_type;
                 }
                 break;
 			default:
-				return type;
+				return type_info;
 		}
 	}
-	return type;
+	return type_info;
 }
 
-static inline Decl *parse_decl_after_type(bool local, Type *type)
+static inline Decl *parse_decl_after_type(bool local, TypeInfo *type)
 {
 	if (tok.type == TOKEN_LPAREN)
 	{
@@ -519,7 +523,8 @@ static Decl *parse_decl(void)
 	bool constant = tok.type == TOKEN_CONST;
 	if (local || constant) advance();
 
-	Type *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
+	TypeInfo *type_info = parse_type_expression();
+	TypeInfo *type = TRY_TYPE_OR(type_info, &poisoned_decl);
 
 	Decl *decl = TRY_DECL_OR(parse_decl_after_type(local, type), &poisoned_decl);
 
@@ -599,7 +604,7 @@ static inline Ast *parse_expression_list(void)
 static inline bool parse_decl_expr_list(Ast ***stmt_list)
 {
 	Expr *expr = NULL;
-	Type *type = NULL;
+	TypeInfo *type = NULL;
 
 	if (!parse_type_or_expr(&expr, &type)) return false;
 
@@ -735,7 +740,7 @@ static inline Ast* parse_catch_stmt(void)
 
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
 
-	Type *type = NULL;
+	TypeInfo *type = NULL;
 	if (!try_consume(TOKEN_ERROR_TYPE))
 	{
 		type = TRY_TYPE_OR(parse_type_expression(), &poisoned_ast);
@@ -921,7 +926,7 @@ static inline Ast* parse_ct_switch_stmt(void)
 				advance();
 				while (1)
 				{
-					Type *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_ast);
+					TypeInfo *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_ast);
 					vec_add(stmt->ct_case_stmt.types, type);
 					if (!try_consume(TOKEN_COMMA)) break;
 				}
@@ -1117,7 +1122,7 @@ static inline bool is_expr_after_type_ident(void)
 	return next_tok.type == TOKEN_DOT || next_tok.type == TOKEN_LPAREN;
 }
 
-static bool parse_type_or_expr(Expr **exprPtr, Type **typePtr)
+static bool parse_type_or_expr(Expr **exprPtr, TypeInfo **typePtr)
 {
 	switch (tok.type)
 	{
@@ -1147,7 +1152,7 @@ static bool parse_type_or_expr(Expr **exprPtr, Type **typePtr)
 		case TOKEN_TYPE_IDENT:
 			if (next_tok.type == TOKEN_DOT || next_tok.type == TOKEN_LPAREN) break;
 			*typePtr = parse_type_expression();
-			return type_ok(*typePtr);
+			return type_info_ok(*typePtr);
 		case TOKEN_IDENT:
 			if (next_tok.type == TOKEN_SCOPE)
 			{
@@ -1159,7 +1164,7 @@ static bool parse_type_or_expr(Expr **exprPtr, Type **typePtr)
 				{
 					lexer_restore_state();
 					*typePtr = parse_type_expression();
-					return type_ok(*typePtr);
+					return type_info_ok(*typePtr);
 				}
 				lexer_restore_state();
 			}
@@ -1170,12 +1175,12 @@ static bool parse_type_or_expr(Expr **exprPtr, Type **typePtr)
 			advance_and_verify(TOKEN_TYPE);
 			CONSUME_OR(TOKEN_LPAREN, false);
 			Expr* inner_expr = NULL;
-			Type* inner_type = NULL;
+			TypeInfo* inner_type = NULL;
 			if (!parse_type_or_expr(&inner_expr, &inner_type)) return false;
 			CONSUME_OR(TOKEN_RPAREN, false);
 			if (inner_expr)
 			{
-				*typePtr = type_new(TYPE_EXPRESSION);
+				*typePtr = type_info_new(TYPE_INFO_EXPRESSION);
 				(**typePtr).unresolved_type_expr = inner_expr;
 				return true;
 			}
@@ -1196,7 +1201,7 @@ static bool parse_type_or_expr(Expr **exprPtr, Type **typePtr)
 static inline Ast *parse_decl_or_expr_stmt(void)
 {
 	Expr *expr = NULL;
-	Type *type = NULL;
+	TypeInfo *type = NULL;
 
 	if (!parse_type_or_expr(&expr, &type)) return &poisoned_ast;
 
@@ -1697,7 +1702,7 @@ static inline Decl *parse_const_declaration(Visibility visibility)
 	else
 	{
 		if (!consume_const_name("constant")) return &poisoned_decl;
-		decl->var.type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
+		decl->var.type_info = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 	}
 
     CONSUME_OR(TOKEN_EQ, &poisoned_decl);
@@ -1719,7 +1724,7 @@ static inline Decl *parse_const_declaration(Visibility visibility)
  */
 static inline Decl *parse_global_declaration(Visibility visibility)
 {
-	Type *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
+	TypeInfo *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 
 	Decl *decl = decl_new_var(tok, type, VARDECL_GLOBAL, visibility);
 
@@ -1820,13 +1825,13 @@ bool parse_struct_body(Decl *parent, Decl *visible_parent)
 			{
 			    Token name_replacement = tok;
                 name_replacement.string = NULL;
-                member = decl_new_user_defined_type(name_replacement, decl_kind, parent->visibility);
+                member = decl_new_with_type(name_replacement, decl_kind, parent->visibility);
                 advance();
             }
 			else
             {
 			    advance();
-				member = decl_new_user_defined_type(tok, decl_kind, parent->visibility);
+				member = decl_new_with_type(tok, decl_kind, parent->visibility);
 				Decl *other = struct_find_name(visible_parent, tok.string);
 				if (other)
 				{
@@ -1847,7 +1852,7 @@ bool parse_struct_body(Decl *parent, Decl *visible_parent)
 			}
 			continue;
 		}
-		Type *type = TRY_TYPE_OR(parse_type_expression(), false);
+		TypeInfo *type = TRY_TYPE_OR(parse_type_expression(), false);
 
 		while (1)
         {
@@ -1890,7 +1895,7 @@ static inline Decl *parse_struct_declaration(Visibility visibility)
     Token name = tok;
 
     if (!consume_type_name(type_name)) return &poisoned_decl;
-    Decl *decl = decl_new_user_defined_type(name, decl_from_token(type), visibility);
+    Decl *decl = decl_new_with_type(name, decl_from_token(type), visibility);
 
 	if (!parse_attributes(decl))
 	{
@@ -1937,13 +1942,13 @@ static inline Ast *parse_generics_statements(void)
 static inline Decl *parse_generics_declaration(Visibility visibility)
 {
 	advance_and_verify(TOKEN_GENERIC);
-	Type *rtype = NULL;
+	TypeInfo *rtype = NULL;
 	if (tok.type != TOKEN_IDENT)
 	{
 		rtype = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 	}
 	Path *path = parse_path();
-	Decl *decl = decl_new_user_defined_type(tok, DECL_GENERIC, visibility);
+	Decl *decl = decl_new_with_type(tok, DECL_GENERIC, visibility);
 	decl->generic_decl.path = path;
 	if (!consume_ident("generic function name")) return &poisoned_decl;
 	decl->generic_decl.rtype = rtype;
@@ -1968,10 +1973,10 @@ static inline Decl *parse_generics_declaration(Visibility visibility)
 		{
 			Ast *generic_case = AST_NEW(AST_GENERIC_CASE_STMT, tok);
 			advance_and_verify(TOKEN_CASE);
-			Type **types = NULL;
+			TypeInfo **types = NULL;
 			while (!try_consume(TOKEN_COLON))
 			{
-				Type *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
+				TypeInfo *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 				types = VECADD(types, type);
 				if (!try_consume(TOKEN_COMMA) && tok.type != TOKEN_COLON)
 				{
@@ -2011,7 +2016,7 @@ static inline Decl *parse_generics_declaration(Visibility visibility)
  */
 static inline bool parse_param_decl(Visibility parent_visibility, Decl*** parameters, bool type_only)
 {
-    Type *type = TRY_TYPE_OR(parse_type_expression(), false);
+    TypeInfo *type = TRY_TYPE_OR(parse_type_expression(), false);
     Decl *param = decl_new_var(tok, type, VARDECL_PARAM, parent_visibility);
 
     if (!try_consume(TOKEN_IDENT))
@@ -2217,8 +2222,8 @@ static inline bool parse_func_typedef(Decl *decl, Visibility visibility)
 {
     decl->typedef_decl.is_func = true;
     advance_and_verify(TOKEN_FUNC);
-    Type *type = TRY_TYPE_OR(parse_type_expression(), false);
-    decl->typedef_decl.function_signature.rtype = type;
+    TypeInfo *type_info = TRY_TYPE_OR(parse_type_expression(), false);
+    decl->typedef_decl.function_signature.rtype = type_info;
     if (!parse_opt_parameter_type_list(visibility, &(decl->typedef_decl.function_signature), true))
     {
         return false;
@@ -2229,19 +2234,20 @@ static inline bool parse_func_typedef(Decl *decl, Visibility visibility)
 
 static inline Decl *parse_typedef_declaration(Visibility visibility)
 {
-    Decl *decl = decl_new_user_defined_type(tok, DECL_TYPEDEF, visibility);
     advance_and_verify(TOKEN_TYPEDEF);
+	Decl *decl = decl_new_with_type(tok, DECL_TYPEDEF, visibility);
     if (tok.type == TOKEN_FUNC)
     {
         if (!parse_func_typedef(decl, visibility)) return &poisoned_decl;
     }
     else
     {
-        decl->typedef_decl.type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
+        decl->typedef_decl.type_info = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
         decl->typedef_decl.is_func = false;
     }
     CONSUME_OR(TOKEN_AS, &poisoned_decl);
     decl->name = tok;
+    decl->type->name = tok.string;
 	if (!consume_type_name("typedef")) return &poisoned_decl;
 	CONSUME_OR(TOKEN_EOS, &poisoned_decl);
 	return decl;
@@ -2251,7 +2257,7 @@ static inline Decl *parse_macro_declaration(Visibility visibility)
 {
     advance_and_verify(TOKEN_MACRO);
 
-    Type *rtype = NULL;
+    TypeInfo *rtype = NULL;
     if (tok.type != TOKEN_AT_IDENT)
     {
         rtype = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
@@ -2265,7 +2271,7 @@ static inline Decl *parse_macro_declaration(Visibility visibility)
     Decl **params = NULL;
     while (!try_consume(TOKEN_RPAREN))
     {
-        Type *parm_type = NULL;
+        TypeInfo *parm_type = NULL;
         TEST_TYPE:
         switch (tok.type)
         {
@@ -2320,9 +2326,9 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
 {
 	advance_and_verify(TOKEN_FUNC);
 
-	Type *return_type = TRY_TYPE_OR(parse_type_expression(), false);
+	TypeInfo *return_type = TRY_TYPE_OR(parse_type_expression(), false);
 
-	Decl *func = decl_new_user_defined_type(tok, DECL_FUNC, visibility);
+	Decl *func = decl_new(DECL_FUNC, tok, visibility);
 	func->func.function_signature.rtype = return_type;
 
 	Path *path = parse_path();
@@ -2330,9 +2336,9 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
 	{
 		// Special case, actually an extension
 		TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "A type was expected after '::'.", &poisoned_decl);
-		Type *type = type_new(TYPE_USER_DEFINED);
+		TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER);
 		type->unresolved.path = path;
-		type->name_loc = tok;
+		type->unresolved.name_loc = tok;
 		func->func.type_parent = type;
 		advance_and_verify(TOKEN_TYPE_IDENT);
 
@@ -2346,6 +2352,10 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
     if (!parse_opt_parameter_type_list(visibility, &(func->func.function_signature), is_interface)) return &poisoned_decl;
 
     if (!parse_opt_throw_declaration(&(func->func.function_signature))) return &poisoned_decl;
+
+    // TODO remove
+    is_interface = tok.type == TOKEN_EOS;
+
 	if (is_interface)
 	{
 		if (tok.type == TOKEN_LBRACE)
@@ -2375,7 +2385,7 @@ static inline Decl *parse_error_declaration(Visibility visibility)
 {
 	advance_and_verify(TOKEN_ERROR_TYPE);
 
-    Decl *error_decl = decl_new_user_defined_type(tok, DECL_ERROR, visibility);
+    Decl *error_decl = decl_new_with_type(tok, DECL_ERROR, visibility);
 
     if (!consume_type_name("error type")) return &poisoned_decl;
 
@@ -2424,11 +2434,11 @@ static inline Decl *parse_enum_declaration(Visibility visibility)
 {
 	advance_and_verify(TOKEN_ENUM);
 
-    Decl *decl = decl_new_user_defined_type(tok, DECL_ENUM, visibility);
+    Decl *decl = decl_new_with_type(tok, DECL_ENUM, visibility);
 
-	if (!consume_type_name("enum")) return &poisoned_decl;
+    if (!consume_type_name("enum")) return &poisoned_decl;
 
-	Type *type = NULL;
+	TypeInfo *type = NULL;
 	if (try_consume(TOKEN_COLON))
 	{
 		type = TRY_TYPE_OR(parse_base_type(), &poisoned_decl);
@@ -2436,7 +2446,7 @@ static inline Decl *parse_enum_declaration(Visibility visibility)
 
 	CONSUME_OR(TOKEN_LBRACE, false);
 
-	decl->enums.type = type ? type : type_int;
+	decl->enums.type_info = type ? type : type_info_new_base(type_int);
 	while (!try_consume(TOKEN_RBRACE))
 	{
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, tok, decl->visibility);
@@ -2794,6 +2804,97 @@ static Expr *parse_access_expr(Expr *left)
 	return access_expr;
 }
 
+static int append_esc_string_token(char *restrict dest, const char *restrict src, size_t *pos)
+{
+	int scanned = 0;
+	uint64_t unicode_char = 0;
+	switch (src[0])
+	{
+		case 'a':
+			dest[(*pos)++] = '\a';
+			return 1;
+		case 'b':
+			dest[(*pos)++] = '\b';
+			return 1;
+		case 'e':
+			dest[(*pos)++] = 0x1b;
+			return 1;
+		case 'f':
+			dest[(*pos)++] = '\f';
+			return 1;
+		case 'n':
+			dest[(*pos)++] = '\n';
+			return 1;
+		case 'r':
+			dest[(*pos)++] = '\r';
+			return 1;
+		case 't':
+			dest[(*pos)++] = '\t';
+			return 1;
+		case 'x':
+		{
+			int h = char_to_nibble(src[1]);
+			int l = char_to_nibble(src[2]);
+			if (h < 0 || l < 0) return -1;
+			unicode_char = ((unsigned) h << 4U) + l;
+			scanned = 3;
+			break;
+		}
+		case 'u':
+		{
+			int x1 = char_to_nibble(src[1]);
+			int x2 = char_to_nibble(src[2]);
+			int x3 = char_to_nibble(src[3]);
+			int x4 = char_to_nibble(src[4]);
+			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0) return -1;
+			unicode_char = ((unsigned) x1 << 12U) + ((unsigned) x2 << 8U) + ((unsigned) x3 << 4U) + x4;
+			scanned = 5;
+			break;
+		}
+		case 'U':
+		{
+			int x1 = char_to_nibble(src[1]);
+			int x2 = char_to_nibble(src[2]);
+			int x3 = char_to_nibble(src[3]);
+			int x4 = char_to_nibble(src[4]);
+			int x5 = char_to_nibble(src[5]);
+			int x6 = char_to_nibble(src[6]);
+			int x7 = char_to_nibble(src[7]);
+			int x8 = char_to_nibble(src[8]);
+			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0 || x5 < 0 || x6 < 0 || x7 < 0 || x8 < 0) return -1;
+			unicode_char = ((unsigned) x1 << 28U) + ((unsigned) x2 << 24U) + ((unsigned) x3 << 20U) + ((unsigned) x4 << 16U) +
+							((unsigned) x5 << 12U) + ((unsigned) x6 << 8U) + ((unsigned) x7 << 4U) + x8;
+			scanned = 9;
+			break;
+		}
+		default:
+			dest[(*pos)++] = src[0];
+			return 1;
+	}
+	if (unicode_char < 0x80U)
+	{
+		dest[(*pos)++] = (char)unicode_char;
+	}
+	else if (unicode_char < 0x800U)
+	{
+		dest[(*pos)++] = (char)(0xC0U | (unicode_char >> 6U));
+		dest[(*pos)++] = (char)(0x80U | (unicode_char & 0x3FU));
+	}
+	else if (unicode_char < 0x10000U)
+	{
+		dest[(*pos)++] = (char)(0xE0U | (unicode_char >> 12U));
+		dest[(*pos)++] = (char)(0x80U | ((unicode_char >> 6U) & 0x3FU));
+		dest[(*pos)++] = (char)(0x80U | (unicode_char & 0x3FU));
+	}
+	else
+	{
+		dest[(*pos)++] = (char)(0xF0U | (unicode_char >> 18U));
+		dest[(*pos)++] = (char)(0x80U | ((unicode_char >> 12U) & 0x3FU));
+		dest[(*pos)++] = (char)(0x80U | ((unicode_char >> 6U) & 0x3FU));
+		dest[(*pos)++] = (char)(0x80U | (unicode_char & 0x3FU));
+	}
+	return scanned;
+}
 
 static Expr *parse_string_literal(Expr *left)
 {
@@ -2802,24 +2903,28 @@ static Expr *parse_string_literal(Expr *left)
 	expr_string->resolve_status = RESOLVE_DONE;
 	expr_string->type = type_string;
 
-	char *str = malloc_arena(tok.span.length + 1);
-	size_t len = tok.span.length;
-
-	memcpy(str, tok.start, tok.span.length);
-
-	// Just keep chaining if there are multiple parts.
-
-	advance_and_verify(TOKEN_STRING);
+	char *str = NULL;
+	size_t len = 0;
 
 	while (tok.type == TOKEN_STRING)
 	{
-		char *new_string = malloc_arena(len + tok.span.length + 1);
-		memcpy(new_string, str, len);
-		memcpy(new_string + len, tok.start, tok.span.length);
+		char *new_string = malloc_arena(len + tok.span.length);
+		if (str) memcpy(new_string, str, len);
 		str = new_string;
-		len += tok.span.length;
-		advance();
+		for (unsigned i = 1; i < tok.span.length - 1; i++)
+		{
+			if (tok.string[i] == '\\')
+			{
+				i++;
+				i += append_esc_string_token(str, tok.string + i, &len) - 1;
+				continue;
+			}
+			str[len++] = tok.string[i];
+		}
+		advance_and_verify(TOKEN_STRING);
 	}
+
+	assert(str);
 	str[len] = '\0';
 	expr_string->const_expr.string.chars = str;
 	expr_string->const_expr.string.len = len;
@@ -2857,7 +2962,7 @@ static Expr *parse_integer(Expr *left)
 					int hex = 0;
 					for (int j = 0; j < 2; j++)
 					{
-						hex <<= 4;
+						hex <<= 4U;
 						char c = *(++string);
 						if (c < 'A')
 						{
@@ -2933,7 +3038,7 @@ static Expr *parse_integer(Expr *left)
 			{
 				char c = *(string++);
 				if (c == '_') continue;
-				if (i > (UINT64_MAX >> 3u))
+				if (i > (UINT64_MAX >> 3U))
 				{
 					SEMA_ERROR(tok, "Number is larger than an unsigned 64 bit number.");
 					return &poisoned_expr;
@@ -2948,7 +3053,7 @@ static Expr *parse_integer(Expr *left)
 			{
 				char c = *(string++);
 				if (c == '_') continue;
-				if (i > (UINT64_MAX >> 1u))
+				if (i > (UINT64_MAX >> 1U))
 				{
 					SEMA_ERROR(tok, "Number is larger than an unsigned 64 bit number.");
 					return &poisoned_expr;
@@ -3078,7 +3183,7 @@ static Expr *parse_initializer(void)
  * @param type
  * @return Expr
  */
-static Expr *parse_type_access(Type *type)
+static Expr *parse_type_access(TypeInfo *type)
 {
     Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPE_ACCESS, tok);
     expr->type_access.type = type;
@@ -3119,8 +3224,9 @@ static Expr *parse_identifier(Expr *left)
  */
 static Expr *parse_type_identifier_with_path(Path *path)
 {
-	Type *type = TYPE_UNRESOLVED(tok);
+	TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER);
 	type->unresolved.path = path;
+	type->unresolved.name_loc = tok;
 	advance_and_verify(TOKEN_TYPE_IDENT);
 	if (tok.type == TOKEN_LBRACE)
 	{
@@ -3169,7 +3275,7 @@ static Expr *parse_type_expr(Expr *left)
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPE, tok);
 	advance_and_verify(TOKEN_TYPE);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_expr);
-	Type *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_expr);
+	TypeInfo *type = TRY_TYPE_OR(parse_type_expression(), &poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, &poisoned_expr);
 	expr->type_expr.type = type;
 	return expr;
@@ -3181,7 +3287,7 @@ static Expr *parse_cast_expr(Expr *left)
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CAST, tok);
 	advance_and_verify(TOKEN_CAST);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_expr);
-	expr->type = TRY_TYPE_OR(parse_type_expression(), &poisoned_expr);
+	expr->expr_cast.type_info = TRY_TYPE_OR(parse_type_expression(), &poisoned_expr);
 	CONSUME_OR(TOKEN_COMMA, &poisoned_expr);
 	expr->expr_cast.expr = TRY_EXPR_OR(parse_expr(), &poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, &poisoned_expr);

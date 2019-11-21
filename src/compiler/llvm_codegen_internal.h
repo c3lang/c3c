@@ -11,10 +11,13 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
+#include <llvm-c/DebugInfo.h>
+#include <llvm-c/Transforms/PassManagerBuilder.h>
+#include <llvm-c/Transforms/InstCombine.h>
+#include <llvm-c/Transforms/Vectorize.h>
 #include <llvm-c/Transforms/Scalar.h>
 #include <llvm-c/Transforms/IPO.h>
 #include <llvm-c/Transforms/Utils.h>
-#include <llvm-c/DebugInfo.h>
 #include "dwarf.h"
 
 typedef struct
@@ -39,8 +42,6 @@ typedef struct
 
 typedef struct
 {
-	const char *filename;
-	const char *dirname;
 	LLVMModuleRef module;
 	LLVMContextRef context;
 	LLVMValueRef function;
@@ -51,7 +52,7 @@ typedef struct
 	Decl *cur_code_decl;
 	Decl *cur_func_decl;
 	bool did_call_stack_save;
-	Type *current_return_type;
+	TypeInfo *current_return_type;
 	int block_global_unique_count;
 	int ast_alloca_addr_space;
 	BreakContinue return_block;
@@ -63,7 +64,7 @@ typedef struct
 	Context *ast_context;
 	BreakContinue break_continue_stack[BREAK_STACK_MAX];
 	size_t break_continue_stack_index;
-
+	LLVMTypeRef error_type;
 } GenContext;
 
 
@@ -71,6 +72,7 @@ void gencontext_begin_module(GenContext *context);
 void gencontext_end_module(GenContext *context);
 void gencontext_emit_stmt(GenContext *context, Ast *ast);
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr);
+LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type);
 void gencontext_emit_debug_location(GenContext *context, SourceRange location);
 LLVMMetadataRef gencontext_create_builtin_debug_type(GenContext *context, Type *builtin_type);
 LLVMValueRef gencontext_emit_alloca(GenContext *context, Decl *decl);
@@ -85,12 +87,12 @@ static inline LLVMBasicBlockRef gencontext_create_free_block(GenContext *context
 
 void gencontext_emit_function_decl(GenContext *context, Decl *decl);
 LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr);
-#define LLVMTYPE(type) gencontext_get_llvm_type(context, type->canonical)
+#define LLVMTYPE(type) type->backend_type
 
 LLVMTypeRef gencontext_get_llvm_type(GenContext *context, Type *type);
 
 static inline bool gencontext_use_debug(GenContext *context)
 {
-	return context->debug.builder != NULL;
+	return context && context->debug.builder != NULL;
 }
 

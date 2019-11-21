@@ -19,11 +19,12 @@ typedef uint32_t SourceLoc;
 
 typedef struct _Ast Ast;
 typedef struct _Decl Decl;
-typedef struct _Type Type;
+typedef struct _TypeInfo TypeInfo;
 typedef struct _Expr Expr;
 typedef struct _Module Module;
+typedef struct _Type Type;
 
-typedef bool(*CastFunc)(Expr*, Type*, Type*, CastType cast_type);
+typedef bool(*CastFunc)(Expr *, Type *, Type *, Type *, CastType cast_type);
 
 typedef struct
 {
@@ -100,17 +101,14 @@ typedef struct
 
 typedef struct
 {
+	Token name_loc;
 	Path *path;
 } TypeUnresolved;
 
 typedef struct
 {
 	Type *base;
-	union
-	{
-		Expr *unresolved_len;
-		size_t len;
-	};
+	size_t len;
 } TypeArray;
 
 typedef struct
@@ -120,28 +118,37 @@ typedef struct
 
 struct _Type
 {
-	TypeKind type_kind : 6;
-	ResolveStatus resolve_status : 2;
-	Type *canonical;
-	Token name_loc;
-	Type **ptr_like_canonical;
+	TypeKind type_kind : 8;
+	struct _Type *canonical;
+	const char *name;
+	struct _Type **ptr_cache;
 	void *backend_type;
 	void *backend_debug_type;
 	union
 	{
 		Decl *decl;
 		TypeBuiltin builtin;
+		TypeArray array;
+		TypeFunc func;
+		Type *pointer;
+	};
+};
+
+struct _TypeInfo
+{
+	ResolveStatus resolve_status : 2;
+	Type *type;
+	TypeInfoKind kind;
+	union
+	{
 		TypeUnresolved unresolved;
 		Expr *unresolved_type_expr;
-		struct {
-			Type *base;
-			union
-			{
-				Expr *unresolved_len;
-				size_t len;
-			};
-		};
-		TypeFunc func;
+		union
+		{
+			TypeInfo *base;
+			Expr *len;
+		} array;
+		TypeInfo *pointer;
 	};
 };
 
@@ -178,7 +185,7 @@ typedef struct _VarDecl
 {
 	unsigned id : 16;
 	VarDeclKind kind : 3;
-	Type *type;
+	TypeInfo *type_info;
 	Expr *init_expr;
 	void *backend_ref;
 	void *backend_debug_ref;
@@ -208,14 +215,14 @@ typedef struct
 typedef struct
 {
 	Decl** values;
-	Type *type;
+	TypeInfo *type_info;
 } EnumDecl;
 
 
 typedef struct _FunctionSignature
 {
 	bool variadic : 1;
-	Type *rtype;
+	TypeInfo *rtype;
 	Decl** params;
 	Token *throws;
 	const char *mangled_signature;
@@ -229,7 +236,7 @@ typedef struct
 typedef struct
 {
 	const char *full_name;
-	Type *type_parent;
+	TypeInfo *type_parent;
 	FunctionSignature function_signature;
 	Ast *body;
 	FuncAnnotations *annotations;
@@ -250,6 +257,7 @@ typedef struct
 	union
 	{
 		FunctionSignature function_signature;
+		TypeInfo *type_info;
 		Type *type;
 	};
 } TypedefDecl;
@@ -257,7 +265,7 @@ typedef struct
 typedef struct
 {
 	Decl **parameters;
-	Type *rtype; // May be null!
+	TypeInfo *rtype; // May be null!
 	struct _Ast *body;
 } MacroDecl;
 
@@ -265,7 +273,7 @@ typedef struct
 {
 	struct _Ast **cases;
 	Token *parameters;
-	Type *rtype; // May be null!
+	TypeInfo *rtype; // May be null!
 	Path *path; // For redefinition
 } GenericDecl;
 
@@ -288,9 +296,9 @@ typedef struct _Decl
 		uint32_t counter;
 	};
 	uint32_t size;*/
-	Type *self_type;
 	Module *module;
 	Attr** attributes;
+	Type *type;
 	union
 	{
 		struct
@@ -328,7 +336,7 @@ typedef struct
 
 typedef struct
 {
-	Type *type;
+	TypeInfo *type;
 	union
 	{
 		Token name;
@@ -338,7 +346,7 @@ typedef struct
 
 typedef struct
 {
-	Type *type;
+	TypeInfo *type;
 	Expr *init_expr;
 } ExprStructValue;
 
@@ -407,6 +415,8 @@ typedef struct
 		Token sub_element;
 		Decl *ref;
 	};
+	// TODO cleanup
+	int index;
 } ExprAccess;
 
 typedef struct
@@ -419,7 +429,7 @@ typedef struct
 
 typedef struct
 {
-	Type *type;
+	TypeInfo *type;
 } ExprType;
 
 
@@ -427,6 +437,7 @@ typedef struct
 {
 	CastKind kind;
 	Expr *expr;
+	TypeInfo *type_info;
 	union
 	{
 		size_t truncated_size;
@@ -439,10 +450,7 @@ struct _Expr
 	ResolveStatus resolve_status : 3;
 	Token loc;
 	Type *type;
-
 	union {
-		Token* deferred_tokens;
-		Token deferred_token;
 		ExprCast expr_cast;
 		ExprConst const_expr;
 		ExprStructValue struct_value_expr;
@@ -584,7 +592,7 @@ typedef struct _AstCtIfStmt
 
 typedef struct _AstGenericCaseStmt
 {
-	Type **types;
+	TypeInfo **types;
 	struct _Ast *body;
 } AstGenericCaseStmt;
 
@@ -596,7 +604,7 @@ typedef struct
 
 typedef struct
 {
-	Type **types;
+	TypeInfo **types;
 	Ast *body;
 } AstCtCaseStmt;
 
@@ -702,12 +710,10 @@ typedef struct _Context
 	Ast **defers;
 	Decl *active_function_for_analysis;
 	Type *left_type_in_assignment;
-	FILE *codegen_output;
 	Decl **last_local;
 	Ast **labels;
 	Ast **gotos;
 	DynamicScope *current_scope;
-	int unique_index;
 	Decl *evaluating_macro;
 	Type *rtype;
 	int in_volatile_section;
@@ -720,6 +726,7 @@ typedef struct
 	STable modules;
 	STable global_symbols;
 	STable qualified_symbols;
+	Type **type;
 } Compiler;
 
 extern Context *current_context;
@@ -728,6 +735,7 @@ extern Ast poisoned_ast;
 extern Decl poisoned_decl;
 extern Expr poisoned_expr;
 extern Type poisoned_type;
+extern TypeInfo poisoned_type_info;
 extern Module poisoned_module;
 extern Diagnostics diagnostics;
 
@@ -811,7 +819,7 @@ static inline bool builtin_may_bit_negate(Type *canonical)
 static inline ConstType sign_from_type(Type *type)
 {
 	assert(type->canonical == type);
-	TODO //	return (type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX) ? CONST_INT : CONST_UINT;
+	return (type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX) ? CONST_INT : CONST_INT;
 }
 
 bool cast(Expr *expr, Type *to_type, CastType cast_type);
@@ -822,7 +830,9 @@ void llvm_codegen(Context *context);
 void codegen(Context *context);
 
 bool sema_analyse_expr(Context *context, Expr *expr);
+bool sema_analyse_decl(Context *context, Decl *decl);
 
+void compiler_add_type(Type *type);
 Decl *compiler_find_symbol(Token token);
 Module *compiler_find_or_create_module(const char *module_name);
 void compiler_register_public_symbol(Decl *decl);
@@ -839,8 +849,9 @@ void context_add_header_decl(Context *context, Decl *decl);
 bool context_add_local(Context *context, Decl *decl);
 
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility);
-Decl *decl_new_user_defined_type(Token name, DeclKind decl_type, Visibility visibility);
-Decl *decl_new_var(Token name, Type *type, VarDeclKind kind, Visibility visibility);
+Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility);
+Decl *decl_new_var(Token name, TypeInfo *type, VarDeclKind kind, Visibility visibility);
+const char *decl_var_to_string(VarDeclKind kind);
 
 static inline bool decl_ok(Decl *decl) { return decl->decl_kind != DECL_POISONED; }
 static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
@@ -870,7 +881,7 @@ static inline void expr_replace(Expr *expr, Expr *replacement)
 
 void fprint_ast(FILE *file, Ast *ast);
 void fprint_decl(FILE *file, Decl *dec);
-void fprint_type_recursive(FILE *file, Type *type, int indent);
+void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent);
 void fprint_expr_recursive(FILE *file, Expr *expr, int indent);
 
 
@@ -904,6 +915,8 @@ Decl *module_find_symbol(Module *module, const char *symbol);
 
 void parse_file(Context *context);
 
+const char *resolve_status_to_string(ResolveStatus status);
+
 #define SEMA_ERROR(_tok, ...) sema_error_range(_tok.span, __VA_ARGS__)
 void sema_init(File *file);
 void sema_analysis_pass_conditional_compilation(Context *context);
@@ -911,8 +924,8 @@ void sema_analysis_pass_decls(Context *context);
 void sema_analysis_pass_3(Context *context);
 
 bool sema_analyse_statement(Context *context, Ast *statement);
-bool sema_resolve_type(Context *context, Type *type);
-bool sema_resolve_type_shallow(Context *context, Type *type);
+bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
+bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info);
 void sema_error_at(SourceLoc loc, const char *message, ...);
 void sema_error_range(SourceRange range, const char *message, ...);
 void sema_verror_at(SourceLoc loc, const char *message, va_list args);
@@ -940,6 +953,7 @@ const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, Toke
 void target_setup();
 int target_alloca_addr_space();
 void *target_data_layout();
+void *target_machine();
 
 #define TOKEN_MAX_LENGTH 0xFFFF
 #define TOK2VARSTR(_token) _token.span.length, _token.start
@@ -950,9 +964,8 @@ static inline Token wrap(const char *string)
 	return (Token) { .span = INVALID_RANGE, .type = TOKEN_IDENT, .string = string };
 }
 
-Type *type_new(TypeKind type_kind);
-Type *type_get_canonical_ptr(Type *ptr_type);
-Type *type_get_canonical_array(Type *arr_type);
+Type *type_get_ptr(Type *ptr_type);
+Type *type_get_array(Type *arr_type, uint64_t len);
 Type *type_signed_int_by_size(int bitsize);
 Type *type_unsigned_int_by_size(int bitsize);
 bool type_is_subtype(Type *type, Type *possible_subtype);
@@ -964,7 +977,7 @@ static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && 
 static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX; }
 static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_UXX; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
-static inline void type_poison(Type *type) { type->type_kind = TYPE_POISONED; type->resolve_status = RESOLVE_DONE; }
+static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
 bool type_may_have_method_functions(Type *type);
 static inline bool type_is_integer(Type *type)
 {
@@ -972,11 +985,60 @@ static inline bool type_is_integer(Type *type)
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_UXX;
 }
 
+static inline bool type_is_signed_integer(Type *type)
+{
+	assert(type == type->canonical);
+	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX;
+}
+
+static inline bool type_is_unsigned_integer(Type *type)
+{
+	assert(type == type->canonical);
+	return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_UXX;
+}
+
+static inline bool type_info_poison(TypeInfo *type)
+{
+	type->type = &poisoned_type;
+	type->resolve_status = RESOLVE_DONE;
+	return false;
+}
+
 static inline bool type_is_float(Type *type)
 {
 	assert(type == type->canonical);
 	return type->type_kind >= TYPE_F32 && type->type_kind <= TYPE_FXX;
 }
+
+static inline TypeInfo *type_info_new(TypeInfoKind kind)
+{
+	TypeInfo *type_info = malloc_arena(sizeof(TypeInfo));
+	memset(type_info, 0, sizeof(TypeInfo));
+	type_info->kind = kind;
+	type_info->resolve_status = RESOLVE_NOT_DONE;
+	return type_info;
+}
+
+static inline TypeInfo *type_info_new_base(Type *type)
+{
+	TypeInfo *type_info = malloc_arena(sizeof(TypeInfo));
+	memset(type_info, 0, sizeof(TypeInfo));
+	type_info->kind = TYPE_INFO_IDENTIFIER;
+	type_info->resolve_status = RESOLVE_DONE;
+	type_info->type = type;
+	return type_info;
+}
+
+static inline Type *type_new(TypeKind kind, const char *name)
+{
+	Type *type = malloc_arena(sizeof(Type));
+	memset(type, 0, sizeof(Type));
+	type->type_kind = kind;
+	type->name = name;
+	compiler_add_type(type);
+	return type;
+}
+
 
 static inline bool type_convert_will_trunc(Type *destination, Type *source)
 {
@@ -993,7 +1055,7 @@ static inline bool type_is_number(Type *type)
 
 #define TYPE_MODULE_UNRESOLVED(_module, _name) ({ Type *__type = type_new(TYPE_USER_DEFINED); \
  __type->name_loc = _name; __type->unresolved.module = _module; __type; })
-#define TYPE_UNRESOLVED(_name) ({ Type *__type = type_new(TYPE_USER_DEFINED); __type->name_loc = _name; __type; })
+#define TYPE_UNRESOLVED(_name) ({ TypeInfo *__type = type_new(TYPE_USER_DEFINED); __type->name_loc = _name; __type; })
 
 AssignOp assignop_from_token(TokenType type);
 UnaryOp unaryop_from_token(TokenType type);
@@ -1009,7 +1071,8 @@ static inline const char* struct_union_name_from_token(TokenType type)
 	return type == TOKEN_STRUCT ? "struct" : "union";
 }
 
-
-
+#define BACKEND_TYPE(type) gencontext_get_llvm_type(context, type)
+#define BACKEND_TYPE_GLOBAL(type) gencontext_get_llvm_type(NULL, type)
+#define DEBUG_TYPE(type) gencontext_get_debug_type(context, type)
 
 

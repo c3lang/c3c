@@ -94,6 +94,10 @@ void target_destroy()
 	LLVMDisposeTargetMachine(target.machine);
 }
 
+void *target_machine()
+{
+	return target.machine;
+}
 void *target_data_layout()
 {
 	return target.data_layout;

@@ -153,7 +153,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 			vec_add(context->ct_ifs, decl);
 			return;
 	}
-	DEBUG_LOG("Registering symbol  %s.", decl->name.string);
+	DEBUG_LOG("Registering symbol '%s'.", decl->name.string);
 
 	Decl *old = stable_set(&context->local_symbols, decl->name.string, decl);
 	if (!old && decl->visibility != VISIBLE_LOCAL)

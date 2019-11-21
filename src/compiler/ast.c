@@ -14,28 +14,82 @@ Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility)
 	return decl;
 }
 
-Type poisoned_type = { .type_kind = TYPE_POISONED, .resolve_status = RESOLVE_DONE };
+Type poisoned_type = { .type_kind = TYPE_POISONED };
+
+TypeInfo poisoned_type_info = { .kind = TYPE_INFO_POISON };
 
 
-
-Decl *decl_new_user_defined_type(Token name, DeclKind decl_type, Visibility visibility)
+Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility)
 {
 	Decl *decl = decl_new(decl_type, name, visibility);
-	Type *type = type_new(TYPE_USER_DEFINED);
-	type->resolve_status = RESOLVE_DONE;
+	TypeKind kind = TYPE_POISONED;
+	switch (decl_type)
+	{
+		case DECL_FUNC:
+			kind = TYPE_FUNC;
+			break;
+		case DECL_UNION:
+			kind = TYPE_UNION;
+			break;
+		case DECL_STRUCT:
+			kind = TYPE_STRUCT;
+			break;
+		case DECL_ERROR:
+			kind = TYPE_ERROR;
+			break;
+		case DECL_ENUM:
+			kind = TYPE_ENUM;
+			break;
+		case DECL_TYPEDEF:
+			kind = TYPE_TYPEDEF;
+			break;
+		case DECL_POISONED:
+		case DECL_VAR:
+		case DECL_ENUM_CONSTANT:
+		case DECL_ERROR_CONSTANT:
+		case DECL_ARRAY_VALUE:
+		case DECL_IMPORT:
+		case DECL_MACRO:
+		case DECL_MULTI_DECL:
+		case DECL_GENERIC:
+		case DECL_CT_IF:
+		case DECL_CT_ELSE:
+		case DECL_CT_ELIF:
+		case DECL_ATTRIBUTE:
+			UNREACHABLE
+	}
+	Type *type = type_new(kind, name.string);
 	type->canonical = type;
 	type->decl = decl;
-	decl->self_type = type;
+	decl->type = type;
 	return decl;
+}
+
+const char *decl_var_to_string(VarDeclKind kind)
+{
+	switch (kind)
+	{
+		case VARDECL_CONST:
+			return "const";
+		case VARDECL_GLOBAL:
+			return "global";
+		case VARDECL_LOCAL:
+			return "local";
+		case VARDECL_PARAM:
+			return "param";
+		case VARDECL_MEMBER:
+			return "member";
+	}
+	UNREACHABLE
 }
 
 Decl poisoned_decl = { .decl_kind = DECL_POISONED, .resolve_status = RESOLVE_DONE };
 
-Decl *decl_new_var(Token name, Type *type, VarDeclKind kind, Visibility visibility)
+Decl *decl_new_var(Token name, TypeInfo *type, VarDeclKind kind, Visibility visibility)
 {
 	Decl *decl = decl_new(DECL_VAR, name, visibility);
 	decl->var.kind = kind;
-	decl->var.type = type;
+	decl->var.type_info = type;
 	return decl;
 }
 
@@ -218,6 +272,15 @@ void fprint_indent(FILE *file, int indent)
 	for (int i = 0; i < indent * 2; i++) fprintf(file, " ");
 }
 
+static void fprintf_indented(FILE *file, int indent, const char *string, ...)
+{
+	fprint_indent(file, indent);
+	va_list list;
+	va_start(list, string);
+	vfprintf(file, string, list);
+	va_end(list);
+}
+
 void fprint_endparen(FILE *file, int indent)
 {
 	fprint_indent(file, indent);
@@ -228,77 +291,60 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent);
 
 void fprint_type_recursive(FILE *file, Type *type, int indent)
 {
-	fprint_indent(file, indent);
 	if (!type)
 	{
-		fprintf(file, "(none)\n");
+		fprintf_indented(file, indent, "(none)\n");
 		return;
 	}
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
-			fprintf(file, "(POISON)\n");
+			fprintf_indented(file, indent, "(type poison)\n");
 			return;
 		case TYPE_FUNC:
-			fprintf(file, "(FUNC %s)\n", type->func.signature->mangled_signature);
+			fprintf_indented(file, indent, "(type-func %s)\n", type->func.signature->mangled_signature);
+			return;
+		case TYPE_STRUCT:
+			fprintf_indented(file, indent, "(struct %s::%s)\n", type->decl->module->name, type->decl->name.string);
+			return;
+		case TYPE_UNION:
+			fprintf_indented(file, indent, "(union %s::%s)\n", type->decl->module->name, type->decl->name.string);
+			return;
+		case TYPE_ENUM:
+			fprintf_indented(file, indent, "(enum %s::%s)\n", type->decl->module->name, type->decl->name.string);
+			return;
+		case TYPE_ERROR:
+			fprintf_indented(file, indent, "(error %s::%s)\n", type->decl->module->name, type->decl->name.string);
+			return;
+		case TYPE_TYPEDEF:
+			if (type->canonical != type)
+			{
+				fprintf_indented(file, indent, "(user-defined %s::%s\n", type->decl->module->name, type->decl->name.string);
+				fprint_type_recursive(file, type->canonical, indent + 1);
+				fprint_endparen(file, indent);
+				break;
+			}
 			break;
-		case TYPE_USER_DEFINED:
-			if (type->resolve_status == RESOLVE_DONE)
-			{
-				if (type->decl != type->canonical->decl)
-				{
-					fprintf(file, "(user-defined %s::%s\n", type->decl->module->name, type->decl->name.string);
-					fprint_type_recursive(file, type->canonical, indent + 1);
-					break;
-				}
-				fprintf(file, "(user-defined %s::%s)\n", type->decl->module->name, type->decl->name.string);
-				return;
-			}
-			else
-			{
-				if (type->unresolved.path)
-				{
-					if (type->unresolved.path->module.string)
-					{
-						fprintf(file, "(unresolved %s::%s::%s)\n", type->unresolved.path->module.string, type->unresolved.path->module.string, type->name_loc.string);
-					}
-					else
-					{
-						fprintf(file, "(unresolved %s::%s)\n", type->unresolved.path->module.string, type->name_loc.string);
-					}
-					return;
-				}
-				fprintf(file, "(unresolved %s)\n", type->name_loc.string);
-				return;
-			}
 		case TYPE_POINTER:
-			fprintf(file, "(pointer\n");
-			fprint_type_recursive(file, type->base, indent + 1);
+			fprintf_indented(file, indent, "(pointer\n");
+			fprint_type_recursive(file, type->pointer, indent + 1);
+			fprint_endparen(file, indent);
+			break;
+		case TYPE_SUBARRAY:
+			fprintf_indented(file, indent, "(subarray\n");
+			fprint_type_recursive(file, type->array.base, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case TYPE_VARARRAY:
-			fprintf(file, "(vararray\n");
-			fprint_type_recursive(file, type->base, indent + 1);
-			break;
-		case TYPE_EXPRESSION:
-			fprintf(file, "(typexpr\n");
-			fprint_expr_recursive(file, type->unresolved_type_expr, indent + 1);
+			fprintf_indented(file, indent, "(vararray\n");
+			fprint_type_recursive(file, type->array.base, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case TYPE_ARRAY:
-			if (type->resolve_status == RESOLVE_DONE)
-			{
-				fprintf(file, "(array [%zu]\n", type->len);
-				fprint_type_recursive(file, type->base, indent + 1);
-			}
-			else
-			{
-				fprintf(file, "(unresolved-array\n");
-				fprint_type_recursive(file, type->base, indent + 1);
-				fprint_expr_recursive(file, type->unresolved_len, indent + 1);
-			}
+			fprintf_indented(file, indent, "(array [%zu]\n", type->array.len);
+			fprint_type_recursive(file, type->array.base, indent + 1);
+			fprint_endparen(file, indent);
 			break;
-		case TYPE_INC_ARRAY:
-			fprintf(file, "(TYPETODO)\n");
-			return;
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case TYPE_I8:
@@ -311,19 +357,92 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 		case TYPE_U64:
 		case TYPE_F32:
 		case TYPE_F64:
-			fprintf(file, "(%s)\n", type->name_loc.string);
-			return;
+			fprintf_indented(file, indent, "(type %s)\n", type->name);
+			break;
 		case TYPE_IXX:
-			fprintf(file, "(comp time int)\n");
-			return;
+			fprintf_indented(file, indent, "(comp time int)\n");
+			break;
 		case TYPE_UXX:
-			fprintf(file, "(comp time uint)\n");
-			return;
+			fprintf_indented(file, indent, "(comp time uint)\n");
+			break;
 		case TYPE_FXX:
-			fprintf(file, "(comp time float)\n");
-			return;
+			fprintf_indented(file, indent, "(comp time float)\n");
+			break;
 		case TYPE_STRING:
 			TODO
+	}
+}
+
+const char *resolve_status_to_string(ResolveStatus status)
+{
+	switch (status)
+	{
+		case RESOLVE_NOT_DONE:
+			return "not_done";
+		case RESOLVE_DONE:
+			return "done";
+		case RESOLVE_RUNNING:
+			return "running";
+		default:
+			UNREACHABLE
+	}
+}
+
+void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent)
+{
+	fprint_indent(file, indent);
+	if (!type_info)
+	{
+		fprintf(file, "(type_info missing)\n");
+		return;
+	}
+	fprintf(file, "(type_info\n");
+	fprint_indent(file, indent + 1);
+	fprintf(file, "(resolve_status %s)\n", resolve_status_to_string(type_info->resolve_status));
+	if (type_info->resolve_status == RESOLVE_DONE)
+	{
+		fprint_type_recursive(file, type_info->type, indent + 1);
+		fprint_indent(file, indent);
+		fprintf(file, ")\n");
+		return;
+	}
+	switch (type_info->kind)
+	{
+		case TYPE_INFO_POISON:
+			fprintf(file, "(POISON)\n");
+			return;
+		case TYPE_INFO_IDENTIFIER:
+			if (type_info->unresolved.path)
+			{
+				if (type_info->unresolved.path->module.string)
+				{
+					fprintf(file, "(unresolved %s::%s::%s)\n", type_info->unresolved.path->module.string, type_info->unresolved.path->module.string, type_info->unresolved.name_loc.string);
+				}
+				else
+				{
+					fprintf(file, "(unresolved %s::%s)\n", type_info->unresolved.path->module.string, type_info->unresolved.name_loc.string);
+				}
+				return;
+			}
+			fprintf(file, "(unresolved %s)\n", type_info->unresolved.name_loc.string);
+			break;
+		case TYPE_INFO_ARRAY:
+			fprintf(file, "(unresolved-array\n");
+			fprint_type_info_recursive(file, type_info->array.base, indent + 1);
+			fprint_expr_recursive(file, type_info->array.len, indent + 1);
+			break;
+		case TYPE_INFO_POINTER:
+			fprintf(file, "(pointer\n");
+			fprint_type_info_recursive(file, type_info->pointer, indent + 1);
+			break;
+		case TYPE_INFO_INC_ARRAY:
+			fprintf(file, "(incarray\n");
+			fprint_type_info_recursive(file, type_info->array.base, indent + 1);
+			break;
+		case TYPE_INFO_EXPRESSION:
+			fprintf(file, "(typexpr\n");
+			fprint_expr_recursive(file, type_info->unresolved_type_expr, indent + 1);
+			break;
 	}
 	fprint_endparen(file, indent);
 }
@@ -378,11 +497,11 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			break;
 		case EXPR_TYPE_ACCESS:
 			fprintf(file, "(typeaccess .%s\n", expr->type_access.name.string);
-			fprint_type_recursive(file, expr->type_access.type, indent + 1);
+			fprint_type_info_recursive(file, expr->type_access.type, indent + 1);
 			break;
 		case EXPR_STRUCT_VALUE:
 			fprintf(file, "(structvalue\n");
-			fprint_type_recursive(file, expr->struct_value_expr.type, indent + 1);
+			fprint_type_info_recursive(file, expr->struct_value_expr.type, indent + 1);
 			fprint_expr_recursive(file, expr->struct_value_expr.init_expr, indent + 1);
 			break;
 		case EXPR_ACCESS:
@@ -391,7 +510,7 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			break;
 		case EXPR_TYPE:
 			fprintf(file, "(type\n");
-			fprint_type_recursive(file, expr->type_expr.type, indent + 1);
+			fprint_type_info_recursive(file, expr->type_expr.type, indent + 1);
 			break;
 		case EXPR_CALL:
 			fprintf(file, "(call\n");
@@ -456,9 +575,13 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent);
 
 void fprint_func_signature(FILE *file, FunctionSignature *signature, int indent)
 {
-	fprint_type_recursive(file, signature->rtype, indent);
-	fprint_indent(file, indent);
-	fprintf(file, "(params\n");
+	fprint_type_info_recursive(file, signature->rtype, indent);
+	if (!vec_size(signature->params))
+	{
+		fprintf_indented(file, indent, "(params none)\n");
+		return;
+	}
+	fprintf_indented(file, indent, "(params\n");
 	fprint_decl_list(file, signature->params, indent + 1);
 	fprint_endparen(file, indent);
 	// TODO throws, variable
@@ -469,64 +592,80 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 	switch (decl->decl_kind)
 	{
 		case DECL_MULTI_DECL:
-			fprintf(file, "(multi-decl\n");
+			fprintf_indented(file, indent, "(multi-decl\n");
 			fprint_decl_list(file, decl->multi_decl, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_VAR:
-			if (!decl->var.init_expr)
+			fprintf(file, "(var-%s %s\n", decl_var_to_string(decl->var.kind), decl->name.string ?: "");
+			fprint_type_info_recursive(file, decl->var.type_info, indent + 1);
+			if (decl->var.init_expr)
 			{
-				fprintf(file, "(var %s)\n", decl->name.string);
-				return;
+				fprint_expr_recursive(file, decl->var.init_expr, indent + 1);
 			}
-			fprintf(file, "(var %s\n", decl->name.string);
-			fprint_expr_recursive(file, decl->var.init_expr, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_MACRO:
-			fprintf(file, "(macro %s\n", decl->name.string);
-			fprint_type_recursive(file, decl->macro_decl.rtype, indent + 1);
+			fprintf_indented(file, indent, "(macro %s\n", decl->name.string);
+			fprint_type_info_recursive(file, decl->macro_decl.rtype, indent + 1);
 			fprint_indent(file, indent + 1);
 			fprintf(file, "(params\n");
 			fprint_decl_list(file, decl->macro_decl.parameters, indent + 2);
 			fprint_endparen(file, indent + 1);
 			fprint_ast_recursive(file, decl->macro_decl.body, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_FUNC:
-			fprintf(file, "(func %s\n", decl->name.string);
-			fprint_type_recursive(file, decl->func.type_parent, indent + 1);
+			fprintf_indented(file, indent, "(func %s\n", decl->name.string);
+			if (decl->func.type_parent)
+			{
+				fprint_indent(file, indent + 1);
+				fprintf(file, "(parent_type\n");
+				fprint_type_info_recursive(file, decl->func.type_parent, indent + 2);
+				fprint_indent(file, indent + 1);
+				fprintf(file, ")\n");
+			}
 			fprint_func_signature(file, &decl->func.function_signature, indent + 1);
 			fprint_ast_recursive(file, decl->func.body, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_STRUCT:
-			fprintf(file, "(struct %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(struct %s\n", decl->name.string);
 			fprint_decl_list(file, decl->strukt.members, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_UNION:
-			fprintf(file, "(union %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(union %s\n", decl->name.string);
 			fprint_decl_list(file, decl->strukt.members, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_ENUM:
-			fprintf(file, "(enum %s\n", decl->name.string);
-			fprint_type_recursive(file, decl->enums.type, indent + 1);
+			fprintf_indented(file, indent, "(enum %s\n", decl->name.string);
+			fprint_type_info_recursive(file, decl->enums.type_info, indent + 1);
 			fprint_decl_list(file, decl->enums.values, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_ERROR:
-			fprintf(file, "(error %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(error %s\n", decl->name.string);
 			fprint_decl_list(file, decl->error.error_constants, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_ENUM_CONSTANT:
 			if (!decl->enum_constant.expr)
 			{
-				fprintf(file, "(enum-constant %s)\n", decl->name.string);
+				fprintf_indented(file, indent, "(enum-constant %s)\n", decl->name.string);
 				return;
 			}
-			fprintf(file, "(enum-constant %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(enum-constant %s\n", decl->name.string);
 			fprint_expr_recursive(file, decl->enum_constant.expr, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_ERROR_CONSTANT:
-			fprintf(file, "(error-constant %s)\n", decl->name.string);
+			fprintf_indented(file, indent, "(error-constant %s)\n", decl->name.string);
+			fprint_endparen(file, indent);
 			return;
 		case DECL_GENERIC:
-			fprintf(file, "(generic %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(generic %s\n", decl->name.string);
 			fprint_indent(file, indent + 1);
 			fprintf(file, "(params\n");
 			{
@@ -546,54 +685,59 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 				}
 			}
 			fprint_endparen(file, indent + 2);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_TYPEDEF:
-			fprintf(file, "(typedef %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(typedef %s\n", decl->name.string);
 			if (decl->typedef_decl.is_func)
 			{
 				fprint_func_signature(file, &decl->typedef_decl.function_signature, indent + 1);
 			}
 			else
 			{
-				fprint_type_recursive(file, decl->typedef_decl.type, indent + 1);
+				fprint_type_info_recursive(file, decl->typedef_decl.type_info, indent + 1);
 			}
+			fprint_endparen(file, indent);
 			break;
 		case DECL_CT_IF:
-			fprintf(file, "(ct-if\n");
+			fprintf_indented(file, indent, "(ct-if\n");
 			fprint_expr_recursive(file, decl->ct_if_decl.expr, indent + 1);
 			fprint_decl_list(file, decl->ct_if_decl.then, indent + 1);
 			if (decl->ct_if_decl.elif)
 			{
 				fprint_decl_recursive(file, decl->ct_if_decl.elif, indent + 1);
 			}
+			fprint_endparen(file, indent);
 			break;
 		case DECL_CT_ELIF:
-			fprintf(file, "(ct-elif\n");
+			fprintf_indented(file, indent, "(ct-elif\n");
 			fprint_expr_recursive(file, decl->ct_elif_decl.expr, indent + 1);
 			fprint_decl_list(file, decl->ct_elif_decl.then, indent + 1);
 			if (decl->ct_elif_decl.elif)
 			{
 				fprint_decl_recursive(file, decl->ct_elif_decl.elif, indent + 1);
 			}
+			fprint_endparen(file, indent);
 			break;
 		case DECL_CT_ELSE:
-			fprintf(file, "(ct-else\n");
+			fprintf_indented(file, indent, "(ct-else\n");
 			fprint_decl_list(file, decl->ct_else_decl, indent + 1);
+			fprint_endparen(file, indent);
 			break;
 		case DECL_POISONED:
-			fprintf(file, "(poisoned-decl)\n");
+			fprintf_indented(file, indent, "(poisoned-decl)\n");
 			return;
 		case DECL_ARRAY_VALUE:
 			TODO
 			break;
 		case DECL_IMPORT:
-			fprintf(file, "(import %s", decl->name.string);
+			fprintf_indented(file, indent, "(import %s", decl->name.string);
 			TODO
+			fprint_endparen(file, indent);
 			break;
 		case DECL_ATTRIBUTE:
 			TODO
 	}
-	fprint_endparen(file, indent);
 }
 
 static void fprint_decl_list(FILE *file, Decl **decls, int indent)
@@ -742,7 +886,7 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			{
 				VECEACH(ast->generic_case_stmt.types, i)
 				{
-					fprint_type_recursive(file, ast->generic_case_stmt.types[i], indent + 2);
+					fprint_type_info_recursive(file, ast->generic_case_stmt.types[i], indent + 2);
 				}
 			}
 			fprint_endparen(file, indent + 1);

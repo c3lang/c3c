@@ -120,6 +120,12 @@ Decl *compiler_find_symbol(Token token)
 	return stable_get(&compiler.global_symbols, token.string);
 }
 
+void compiler_add_type(Type *type)
+{
+	DEBUG_LOG("Created type %s.", type->name);
+	assert(type_ok(type));
+	VECADD(compiler.type, type);
+}
 Module *compiler_find_or_create_module(const char *module_name)
 {
 	Module *module = stable_get(&compiler.modules, module_name);
