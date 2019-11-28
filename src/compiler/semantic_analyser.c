@@ -253,6 +253,7 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 	buffer[buffer_write_offset++] = ')';
 	if (vec_size(signature->throws))
 	{
+		buffer[buffer_write_offset++] = '!';
 		VECEACH(signature->throws, i)
 		{
 			TODO
@@ -1125,6 +1126,8 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 	decl->resolve_status = RESOLVE_RUNNING;
 	switch (decl->decl_kind)
 	{
+		case DECL_THROWS:
+			TODO
 		case DECL_STRUCT:
 		case DECL_UNION:
 			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
@@ -1240,6 +1243,10 @@ void sema_analysis_pass_decls(Context *context)
 	{
 		sema_analyse_decl(context, context->types[i]);
 	}
+	VECEACH(context->error_types, i)
+	{
+		sema_analyse_decl(context, context->error_types[i]);
+	}
 	VECEACH(context->struct_functions, i)
 	{
 		sema_analyse_decl(context, context->struct_functions[i]);
@@ -1273,6 +1280,8 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 
 	switch (decl->decl_kind)
 	{
+		case DECL_THROWS:
+			TODO
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ERROR:

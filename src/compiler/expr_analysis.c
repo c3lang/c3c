@@ -897,6 +897,7 @@ static bool sema_expr_analyse_not(Context *context, Expr *expr, Expr *inner)
 		case TYPE_UXX:
 		case TYPE_FXX:
 		case TYPE_TYPEDEF:
+		case TYPE_ERROR_UNION:
 			UNREACHABLE
 		case TYPE_FUNC:
 		case TYPE_ARRAY:

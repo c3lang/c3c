@@ -158,7 +158,7 @@ func void hello() throws Errors
 	type(foo::y) z;
 	type(int) * 2;
 	$error = type(int);
-	int[4] a;
+	double[4] a;
 	foo[1 + 2] * b;
 	type((i > 0) ? type(int) : type(double)) doek;
 	$e = type(type(type(Bar)));

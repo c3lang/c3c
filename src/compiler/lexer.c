@@ -652,7 +652,7 @@ Token lexer_scan_token(void)
 		case '^':
 			return match('=') ? make_token(TOKEN_BIT_XOR_ASSIGN, "^=") : make_token(TOKEN_BIT_XOR, "^");
 		case '?':
-			return match(':') ? make_token(TOKEN_EQEQ, "?:") : make_token(TOKEN_EQ, "?");
+			return match(':') ? make_token(TOKEN_ELVIS, "?:") : make_token(TOKEN_QUESTION, "?");
 		case '<':
 			if (match('<')) return match('=') ? make_token(TOKEN_SHL_ASSIGN, "<<=") : make_token(TOKEN_SHL, "<<");
 			return match('=') ? make_token(TOKEN_LESS_EQ, "<=") : make_token(TOKEN_LESS, "<");

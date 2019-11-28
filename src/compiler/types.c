@@ -87,6 +87,8 @@ const char *type_to_error_string(Type *type)
 		case TYPE_SUBARRAY:
 			asprintf(&buffer, "%s[:]", type_to_error_string(type->array.base));
 			return buffer;
+		case TYPE_ERROR_UNION:
+			TODO
 
 	}
 }
@@ -102,6 +104,7 @@ static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_
 			*offset += len;
 			return;
 		}
+		case DECL_THROWS:
 		case DECL_POISONED:
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
@@ -175,6 +178,8 @@ size_t type_size(Type *canonical)
 		case TYPE_ARRAY:
 			return type_size(canonical->array.base) * canonical->array.len;
 		case TYPE_SUBARRAY:
+			TODO
+		case TYPE_ERROR_UNION:
 			TODO
 	}
 	TODO

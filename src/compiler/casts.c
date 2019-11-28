@@ -550,6 +550,8 @@ CastFunc conversion(TypeKind from, Type *to)
 			if (type_is_integer(to)) return &boxi;
 			if (type_is_float(to)) return &bofp;
 			return &erro;
+		case TYPE_ERROR_UNION:
+			TODO
 		case TYPE_I8:
 		case TYPE_I16:
 		case TYPE_I32:

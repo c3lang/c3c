@@ -69,10 +69,25 @@ typedef func void(int) as Foo;
 
 func void printf(char *hello);
 
+macro @hello()
+{
+    printf("Hello world!\n");
+}
+
 func int main(int x)
 {
+int i = 0;
+JUMP:
+    i = i + 1;
+    //@hello();
     printf("Hello worldABC" "D" "E\u2701\n");
+    if (i < 10) goto JUMP;
+    goto EX;
+    YEF:
     return 4 * test3();
+    EX:
+    printf("EX\n");
+    goto YEF;
 }
 
 func void test2(int* x, int y, int z)

@@ -131,13 +131,12 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_UNION:
 		case DECL_TYPEDEF:
 			vec_add(context->types, decl);
-
 			break;
 		case DECL_ENUM:
 			vec_add(context->enums, decl);
 			break;
 		case DECL_ERROR:
-			TODO
+			vec_add(context->error_types, decl);
 			break;
 		case DECL_ENUM_CONSTANT:
 		case DECL_ERROR_CONSTANT:
@@ -147,6 +146,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
+		case DECL_THROWS:
 			UNREACHABLE
 			break;
 		case DECL_CT_IF:
@@ -254,6 +254,10 @@ void context_print_ast(Context *context, FILE *file)
 	VECEACH(context->types, i)
 	{
 		fprint_decl(file, context->types[i]);
+	}
+	VECEACH(context->error_types, i)
+	{
+		fprint_decl(file, context->error_types[i]);
 	}
 	VECEACH(context->functions, i)
 	{

@@ -39,7 +39,7 @@ There are some small work being done on the parser here, but most of the structu
 - `attribute` not analysed.
 - `$switch` and `$for` not handled.
 - Enums not correctly handled.
-- Errors not correctly handles. 
+- Errors not correctly handled. 
 - Type resolution not complete for all types.
 - `type` not handled.
 - `?:` not handled.
@@ -62,9 +62,7 @@ under discussion.
 
 #### What's working?
 
-- The compiler can compile simple programs, but integration with C is mostly 
-missing, which means that little can be *displayed* outwards.
 - Lexing and parsing works (except for the exceptions noted above).
-
+- Simple "hello world"
 
 If you wish to contribute with ideas, please file issues on the c3docs: https://github.com/c3lang/c3docs instead of the compiler.

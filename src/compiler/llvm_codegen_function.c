@@ -12,7 +12,7 @@ static char *mangle_name(char *buffer, Decl *decl)
 	return buffer;
 }
 
-void gencontext_emit_br(GenContext *context, LLVMBasicBlockRef next_block)
+bool gencontext_check_block_branch_emit(GenContext *context)
 {
 	assert(context->current_block);
 	// If it's not used, we can delete the previous block and skip the branch.
@@ -40,12 +40,18 @@ void gencontext_emit_br(GenContext *context, LLVMBasicBlockRef next_block)
 	// Consequently we will delete those and realize that
 	// we then have no need for emitting a br.
 	if (!context->current_block_is_target
-		&& !LLVMGetFirstUse(LLVMBasicBlockAsValue(context->current_block)))
+	    && !LLVMGetFirstUse(LLVMBasicBlockAsValue(context->current_block)))
 	{
 		LLVMDeleteBasicBlock(context->current_block);
 		context->current_block = NULL;
-		return;
+		return false;
 	}
+	return true;
+};
+
+void gencontext_emit_br(GenContext *context, LLVMBasicBlockRef next_block)
+{
+	if (!gencontext_check_block_branch_emit(context)) return;
 	context->current_block = NULL;
 	LLVMBuildBr(context->builder, next_block);
 }
@@ -111,8 +117,15 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 
 	gencontext_emit_compound_stmt(context, decl->func.body);
 
+	if (!LLVMGetFirstInstruction(context->current_block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(context->current_block)))
+	{
+		LLVMBasicBlockRef prev_block = LLVMGetPreviousBasicBlock(context->current_block);
+		LLVMDeleteBasicBlock(context->current_block);
+		context->current_block = prev_block;
+		LLVMPositionBuilderAtEnd(context->builder, context->current_block);
+	}
 	// Insert a return if needed.
-	if (!LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(context->builder)))
+	if (!LLVMGetBasicBlockTerminator(context->current_block))
 	{
 		assert(decl->func.function_signature.rtype->type->type_kind == TYPE_VOID);
 		LLVMBuildRetVoid(context->builder);

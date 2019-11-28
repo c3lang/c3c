@@ -1948,7 +1948,7 @@ static inline Decl *parse_generics_declaration(Visibility visibility)
 		rtype = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 	}
 	Path *path = parse_path();
-	Decl *decl = decl_new_with_type(tok, DECL_GENERIC, visibility);
+	Decl *decl = decl_new(DECL_GENERIC, tok, visibility);
 	decl->generic_decl.path = path;
 	if (!consume_ident("generic function name")) return &poisoned_decl;
 	decl->generic_decl.rtype = rtype;
@@ -2066,7 +2066,7 @@ static inline bool parse_param_decl(Visibility parent_visibility, Decl*** parame
  *  ;
  *
  */
-static inline bool parse_opt_throw_declaration(FunctionSignature *signature)
+static inline bool parse_opt_throw_declaration(Visibility visibility, FunctionSignature *signature)
 {
     if (tok.type == TOKEN_THROW)
     {
@@ -2075,11 +2075,17 @@ static inline bool parse_opt_throw_declaration(FunctionSignature *signature)
     }
 
     if (!try_consume(TOKEN_THROWS)) return true;
-    Token *throws = NULL;
+	if (tok.type != TOKEN_TYPE_IDENT)
+    {
+		VECADD(signature->throws, &all_error);
+	    return true;
+    }
+	Decl **throws = NULL;
     while (tok.type == TOKEN_TYPE_IDENT)
     {
-        throws = VECADD(throws, tok);
-        advance();
+    	Decl *error = decl_new(DECL_ERROR, tok, visibility);
+    	advance();
+        VECADD(throws, error);
         if (!try_consume(TOKEN_COMMA)) break;
     }
     switch (tok.type)
@@ -2228,7 +2234,7 @@ static inline bool parse_func_typedef(Decl *decl, Visibility visibility)
     {
         return false;
     }
-    return parse_opt_throw_declaration(&(decl->typedef_decl.function_signature));
+    return parse_opt_throw_declaration(VISIBLE_PUBLIC, &(decl->typedef_decl.function_signature));
 
 }
 
@@ -2351,7 +2357,7 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
 
     if (!parse_opt_parameter_type_list(visibility, &(func->func.function_signature), is_interface)) return &poisoned_decl;
 
-    if (!parse_opt_throw_declaration(&(func->func.function_signature))) return &poisoned_decl;
+    if (!parse_opt_throw_declaration(visibility, &(func->func.function_signature))) return &poisoned_decl;
 
     // TODO remove
     is_interface = tok.type == TOKEN_EOS;

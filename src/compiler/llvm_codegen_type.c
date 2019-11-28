@@ -83,6 +83,8 @@ static inline LLVMTypeRef gencontext_create_llvm_type_from_decl(GenContext *cont
 				context->error_type = error_type;
 			}
 			return context->error_type;
+		case DECL_THROWS:
+			UNREACHABLE
 	}
 	UNREACHABLE
 }
@@ -142,6 +144,7 @@ LLVMTypeRef gencontext_get_llvm_type(GenContext *context, Type *type)
 		case TYPE_UNION:
 		case TYPE_ENUM:
 		case TYPE_ERROR:
+		case TYPE_ERROR_UNION:
 			return type->backend_type = gencontext_create_llvm_type_from_decl(context, type->decl);
 		case TYPE_FUNC:
 			return type->backend_type = gencontext_create_llvm_func_type(context, type);

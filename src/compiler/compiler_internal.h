@@ -143,7 +143,7 @@ struct _TypeInfo
 	{
 		TypeUnresolved unresolved;
 		Expr *unresolved_type_expr;
-		union
+		struct
 		{
 			TypeInfo *base;
 			Expr *len;
@@ -224,7 +224,7 @@ typedef struct _FunctionSignature
 	bool variadic : 1;
 	TypeInfo *rtype;
 	Decl** params;
-	Token *throws;
+	Decl** throws;
 	const char *mangled_signature;
 } FunctionSignature;
 
@@ -702,6 +702,7 @@ typedef struct _Context
 	STable local_symbols;
 	Decl **header_declarations;
 	Decl **enums;
+	Decl **error_types;
 	Decl **types;
 	Decl **functions;
 	Decl **struct_functions;
@@ -741,6 +742,7 @@ extern Diagnostics diagnostics;
 
 extern Token next_tok;
 extern Token tok;
+extern Decl all_error;
 
 extern Type *type_bool, *type_void, *type_string, *type_voidptr;
 extern Type *type_float, *type_double;

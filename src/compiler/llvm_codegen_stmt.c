@@ -29,6 +29,8 @@ static inline void gencontext_emit_stmt_list(GenContext *context, Ast *ast)
 
 static inline void gencontext_emit_return(GenContext *context, Ast *ast)
 {
+	// Ensure we are on a branch that is non empty.
+	if (!gencontext_check_block_branch_emit(context)) return;
 	if (!ast->return_stmt.expr)
 	{
 		LLVMBuildRetVoid(context->builder);
@@ -36,6 +38,10 @@ static inline void gencontext_emit_return(GenContext *context, Ast *ast)
 	}
 	LLVMValueRef returnValue = gencontext_emit_expr(context, ast->return_stmt.expr);
 	LLVMBuildRet(context->builder, returnValue);
+	context->current_block = NULL;
+	LLVMBasicBlockRef post_ret_block = gencontext_create_free_block(context, "ret");
+	gencontext_emit_block(context, post_ret_block);
+
 }
 
 static inline LLVMValueRef gencontext_emit_cond(GenContext *context, Ast *ast)

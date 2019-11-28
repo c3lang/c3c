@@ -79,6 +79,7 @@ LLVMValueRef gencontext_emit_alloca(GenContext *context, Decl *decl);
 void gencontext_emit_compound_stmt(GenContext *context, Ast *ast);
 void gencontext_emit_block(GenContext *context, LLVMBasicBlockRef next_block);
 void gencontext_emit_br(GenContext *context, LLVMBasicBlockRef next_block);
+bool gencontext_check_block_branch_emit(GenContext *context);
 void gencontext_emit_cond_br(GenContext *context, LLVMValueRef value, LLVMBasicBlockRef thenBlock, LLVMBasicBlockRef elseBlock);
 static inline LLVMBasicBlockRef gencontext_create_free_block(GenContext *context, const char *name)
 {
