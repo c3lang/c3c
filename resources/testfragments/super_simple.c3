@@ -23,6 +23,9 @@ union Test3
 
 func int boba(int y, int j)
 {
+    Test2 bar;
+    bar.b = 1;
+    //int w = y ? y : j;
     int x = y * 2;
     int z = j;
     while (j > 10)
@@ -64,9 +67,10 @@ func int test3()
     if (test() < 0) return -1;
     return 5;
 }
+
+
 typedef func void(int) as Foo;
 //typedef int as Foo;
-
 func void printf(char *hello);
 
 macro @hello()
@@ -74,17 +78,37 @@ macro @hello()
     printf("Hello world!\n");
 }
 
+func void bob()
+{
+    byte a = 2;
+    short b = 3;
+    int c = 4;
+    bool eok = true;
+    long deee = (eok ? a : b) + c;
+}
+
 func int main(int x)
 {
+    Test2 efe;
+    efe.t.a = 3;
+    if (efe.t.a > 2) printf("Works!\n");
+/*
+    byte a = 2;
+    short b = 3;
+    int c = 4;
+    bool eok = true;
+    long deee = (eok ? a : b) + (eok ? b : c);*/
 int i = 0;
 JUMP:
     i = i + 1;
     //@hello();
     printf("Hello worldABC" "D" "E\u2701\n");
-    if (i < 10) goto JUMP;
+    float f = 10.0;
+    float* pf = &f;
+    if (*pf > i) goto JUMP;
     goto EX;
     YEF:
-    return 4 * test3();
+    return 4;
     EX:
     printf("EX\n");
     goto YEF;
@@ -92,6 +116,34 @@ JUMP:
 
 func void test2(int* x, int y, int z)
 {
+    z = 0;
+    z ? y : z;
+    x += 1;
+    y += z;
+    x -= 1;
+    y -= z;
+    y *= 2;
+    y /= 2;
+    y /= *x;
+    y |= 2;
+    y ^= 2;
+    y &= 2;
+    z ^ y;
+    z | y;
+    int g = z & y;
+    g <<= 2;
+    g <<= z;
+    g >>= 2;
+    g >>= z;
+    int fz = 100;
+    y && z;
+    y || z;
+    y >> z;
+    z << y;
+    ~z;
+    !z;
+    -z;
+
     int i = 3;
     uint ui = 2;
     int j = 129;
@@ -108,5 +160,6 @@ func void test2(int* x, int y, int z)
     ui = ui + 1;
     i = i - 1;
     ui = ui - 1;
+    x + 1;
     // TODO x + 1;
 }

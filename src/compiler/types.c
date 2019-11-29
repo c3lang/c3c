@@ -21,26 +21,26 @@ Type t_cus, t_cui, t_cul, t_cull;
 Type t_cs, t_ci, t_cl, t_cll;
 Type t_voidstar;
 
-Type *type_signed_int_by_size(int bitsize)
+Type *type_signed_int_by_size(int bytesize)
 {
-	switch (bitsize)
+	switch (bytesize)
 	{
 		case 1: return type_char;
 		case 2: return type_short;
 		case 4: return type_int;
 		case 8: return type_long;
-		default: FATAL_ERROR("Illegal bitsize %d", bitsize);
+		default: FATAL_ERROR("Illegal bytesize %d", bytesize);
 	}
 }
-Type *type_unsigned_int_by_size(int bitsize)
+Type *type_unsigned_int_by_size(int bytesize)
 {
-	switch (bitsize)
+	switch (bytesize)
 	{
 		case 1: return type_byte;
 		case 2: return type_ushort;
 		case 4: return type_uint;
 		case 8: return type_ulong;
-		default: FATAL_ERROR("Illegal bitsize %d", bitsize);
+		default: FATAL_ERROR("Illegal bytesize %d", bytesize);
 	}
 }
 
@@ -395,5 +395,242 @@ bool type_may_have_method_functions(Type *type)
 			return true;
 		default:
 			return false;
+	}
+}
+
+typedef enum
+{
+	L,
+	LS,
+	R,
+	RS,
+	FL,
+} MaxType;
+
+Type *type_find_max_num_type(Type *num_type, Type *other_num)
+{
+	if (other_num->type_kind < TYPE_BOOL || other_num->type_kind > TYPE_FXX) return NULL;
+	assert(num_type->type_kind >= TYPE_BOOL && num_type->type_kind <= TYPE_FXX);
+	static MaxType max_conv[TYPE_FXX - TYPE_BOOL + 1][TYPE_FXX - TYPE_BOOL + 1] = {
+		//Bool  I8 I16 I32 I64 IXX U8 U16 U32 U64 UXX  F32  F64 FXX
+		{   L,  R,  R,  R,  R,  L,  R,  R,  R,  R,  L,  R,  R, FL }, // Bool
+		{   L,  L,  R,  R,  R,  L,  L, RS, RS, RS,  L,  R,  R, FL }, // I8
+		{   L,  L,  L,  R,  R,  L,  L,  L, RS, RS,  L,  R,  R, FL }, // I16
+		{   L,  L,  L,  L,  R,  L,  L,  L,  L, RS,  L,  R,  R, FL }, // I32
+		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  R,  R, FL }, // I64
+		{   R,  R,  R,  R,  R,  L, RS, RS, RS, RS,  L,  R,  R,  R }, // IXX
+		{   L,  R,  R,  R,  R, LS,  L,  R,  R,  R,  L,  R,  R, FL }, // U8
+		{   L, LS,  R,  R,  R, LS,  L,  L,  R,  R,  L,  R,  R, FL }, // U16
+		{   L, LS, LS,  R,  R,  L,  L,  L,  L,  R,  L,  R,  R, FL }, // U32
+		{   L, LS, LS, LS,  R,  L,  L,  L,  L,  L,  L,  R,  R, FL }, // U64
+		{   R,  R,  R,  R,  R,  R,  R,  R,  R,  R,  L,  R,  R,  R }, // UXX
+		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  R,  L }, // F32
+		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L }, // F32
+		{  FL, FL, FL, FL, FL, FL, FL, FL, FL, FL,  L,  R,  R,  L }, // FXX
+	};
+	MaxType conversion = max_conv[num_type->type_kind - TYPE_BOOL][other_num->type_kind - TYPE_BOOL];
+	switch (conversion)
+	{
+		case L:
+			assert (num_type->type_kind != TYPE_FXX);
+			return num_type;
+		case R:
+			assert (other_num->type_kind != TYPE_FXX);
+			return other_num;
+		case LS:
+			return type_signed_int_by_size(num_type->builtin.bytesize);
+		case RS:
+			return type_signed_int_by_size(other_num->builtin.bytesize);
+		case FL:
+			return type_double;
+		default:
+			UNREACHABLE
+	}
+}
+
+/**
+ * max(Foo[:], Bar*)  -> max(Foo*, Bar*)
+ * max(Foo[], Bar*)   -> max(Foo*, Bar*)
+ * max(Foo[n]*, Bar*) -> max(Foo*, Bar*)
+ * max(void*, Foo*)   -> void*
+ * max(Foo*, Bar*)    -> max(Foo, Bar)*
+ * max(other, Foo*)   -> NULL
+ *
+ * @param type
+ * @param other
+ * @return the max pointer type or NULL if none can be found.
+ */
+static inline Type *type_find_max_ptr_type(Type *type, Type *other)
+{
+	// Subarray and vararray can implicitly convert to a pointer.
+	if (other->type_kind == TYPE_SUBARRAY || other->type_kind == TYPE_VARARRAY)
+	{
+		Type *max_type = type_find_max_type(type->pointer, other->pointer);
+		if (!max_type) return NULL;
+		return type_get_ptr(max_type);
+	}
+
+	// Neither subarray, vararray or pointer? Then no max
+	if (other->type_kind != TYPE_POINTER) return NULL;
+
+	Type* other_pointer_type = other->pointer;
+	Type* pointer_type = type->pointer;
+
+	// Reorder if needed
+	if (other_pointer_type->type_kind < pointer_type->type_kind)
+	{
+		pointer_type = other_pointer_type;
+		other_pointer_type = type->pointer;
+	}
+
+	// void * is always max.
+	if (pointer_type->type_kind == TYPE_VOID) return type_voidptr;
+
+	if (pointer_type->type_kind == TYPE_POINTER && other_pointer_type->type_kind == TYPE_ARRAY)
+	{
+		// Decay foo[n]* to foo*
+		other_pointer_type = type_get_ptr(other_pointer_type->array.base);
+	}
+
+	Type *max_type = type_find_max_type(pointer_type, other_pointer_type);
+	if (!max_type) return NULL;
+	return type_get_ptr(max_type);
+}
+
+/**
+ * Find the maximum vararray type. Due to ordering the other type fullfils
+ * other->type_kind >= TYPE_VARARRAY
+ *
+ * @param type
+ * @param other
+ * @return maximum type or NULL if none is found.
+ */
+static inline Type *type_find_max_vararray_type(Type *type, Type *other)
+{
+	assert(other->canonical != type->canonical && "Expected different types");
+	assert(other->type_kind >= type->type_kind && "Expected sorted types");
+	switch (other->type_kind)
+	{
+		case TYPE_VARARRAY:
+			// Because of the stride being different, it's not safe to implictly
+			// convert one vararray to another. However, it is fine if they are both pointers
+			// since the stride is the same.
+			if (type->array.base->type_kind == TYPE_POINTER && other->array.base->type_kind == TYPE_POINTER)
+			{
+				// Jolly nice. Let's create the max from these:
+				Type *max_type = type_find_max_ptr_type(type->array.base, other->array.base);
+				if (max_type == NULL) return NULL;
+				return type_get_array(max_type, 0);
+			}
+			// If it's not a pointer then there's no real way of converting them.
+			return NULL;
+		case TYPE_SUBARRAY:
+			TODO; // Will return the subarray
+		default:
+			UNREACHABLE
+	}
+}
+
+Type *type_find_max_type(Type *type, Type *other)
+{
+	assert(type->canonical == type);
+	assert(other->canonical == other);
+	if (type == other) return type;
+
+	// Sort types
+	if (type->type_kind > other->type_kind)
+	{
+		Type *temp = type;
+		type = other;
+		other = temp;
+	}
+
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_VOID:
+			return NULL;
+		case TYPE_BOOL:
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+		case TYPE_IXX:
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+		case TYPE_UXX:
+		case TYPE_F32:
+		case TYPE_F64:
+		case TYPE_FXX:
+			return type_find_max_num_type(type, other);
+		case TYPE_POINTER:
+			return type_find_max_ptr_type(type, other);
+		case TYPE_ENUM:
+			// IMPROVE: should there be implicit conversion between one enum and the other in
+			// some way?
+			return NULL;
+		case TYPE_ERROR:
+			TODO
+		case TYPE_FUNC:
+		case TYPE_UNION:
+		case TYPE_ERROR_UNION:
+			return NULL;
+		case TYPE_STRUCT:
+			TODO
+		case TYPE_TYPEDEF:
+			UNREACHABLE
+		case TYPE_STRING:
+			TODO
+		case TYPE_ARRAY:
+			return NULL;
+		case TYPE_VARARRAY:
+			return type_find_max_vararray_type(type, other);
+		case TYPE_SUBARRAY:
+			TODO
+	}
+}
+
+Type *type_find_common_ancestor(Type *left, Type *right)
+{
+	if (left == right) return left;
+	left = left->canonical;
+	right = right->canonical;
+	if (left == right) return left;
+	if (left->type_kind != right->type_kind) return NULL;
+	if (left->type_kind == TYPE_POINTER)
+	{
+		Type *common = type_find_common_ancestor(left->pointer, right->pointer);
+		return common ? type_generate_ptr(common, true) : NULL;
+	}
+	if (left->type_kind != TYPE_STRUCT) return NULL;
+
+	static const int MAX_SEARCH_DEPTH = 512;
+	static Type *left_types[MAX_SEARCH_DEPTH];
+	int depth = 0;
+	while (depth < MAX_SEARCH_DEPTH)
+	{
+		if (!left->decl->strukt.members) break;
+		Decl *first_element = left->decl->strukt.members[0];
+		if (first_element->decl_kind != DECL_VAR) break;
+		if (first_element->type->canonical == right) return right;
+		left = first_element->type->canonical;
+		left_types[depth++] = left;
+	}
+	if (depth == MAX_SEARCH_DEPTH)
+	{
+		error_exit("Struct type depth %d exceeded.", MAX_SEARCH_DEPTH);
+	}
+	while (true)
+	{
+		if (!right->decl->strukt.members) return NULL;
+		Decl *first_element = right->decl->strukt.members[0];
+		if (first_element->decl_kind != DECL_VAR) return NULL;
+		right = first_element->type->canonical;
+		for (int i = 0; i < depth; i++)
+		{
+			if (right == left_types[i]) return right;
+		}
 	}
 }

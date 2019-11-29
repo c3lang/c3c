@@ -117,6 +117,7 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 
 	gencontext_emit_compound_stmt(context, decl->func.body);
 
+
 	if (!LLVMGetFirstInstruction(context->current_block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(context->current_block)))
 	{
 		LLVMBasicBlockRef prev_block = LLVMGetPreviousBasicBlock(context->current_block);

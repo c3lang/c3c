@@ -3087,7 +3087,6 @@ static Expr *parse_integer(Expr *left)
 	expr_int->const_expr.i = i;
 	expr_int->const_expr.type = CONST_INT;
 	expr_int->type = i > INT64_MAX ? type_compuint : type_compint;
-	expr_int->resolve_status = RESOLVE_DONE;
 	advance();
 	return expr_int;
 }
@@ -3109,7 +3108,6 @@ static Expr *parse_double(Expr *left)
 	number->const_expr.f = fval;
 	number->type = type_compfloat;
 	number->const_expr.type = CONST_FLOAT;
-	number->resolve_status = RESOLVE_DONE;
 	return number;
 }
 
@@ -3130,7 +3128,6 @@ static Expr *parse_nil(Expr *left)
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, tok);
 	number->const_expr.type = CONST_NIL;
 	number->type = type_voidptr;
-	number->resolve_status = RESOLVE_DONE;
 	advance();
 	return number;
 }
@@ -3293,9 +3290,9 @@ static Expr *parse_cast_expr(Expr *left)
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CAST, tok);
 	advance_and_verify(TOKEN_CAST);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_expr);
-	expr->expr_cast.type_info = TRY_TYPE_OR(parse_type_expression(), &poisoned_expr);
+	expr->cast_expr.type_info = TRY_TYPE_OR(parse_type_expression(), &poisoned_expr);
 	CONSUME_OR(TOKEN_COMMA, &poisoned_expr);
-	expr->expr_cast.expr = TRY_EXPR_OR(parse_expr(), &poisoned_expr);
+	expr->cast_expr.expr = TRY_EXPR_OR(parse_expr(), &poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, &poisoned_expr);
 	return expr;
 }

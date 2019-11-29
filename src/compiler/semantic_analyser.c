@@ -114,9 +114,12 @@ static bool sema_resolve_array_type(Context *context, TypeInfo *type)
 	}
 	if (type->array.len)
 	{
-		if (!sema_analyse_expr(context, type->array.len)) return type_info_poison(type);
-		// Sema error on non const non positive integer.
-		TODO
+		if (!sema_analyse_expr(context, type_usize, type->array.len)) return type_info_poison(type);
+		if (type->array.len->expr_kind != EXPR_CONST)
+		{
+			SEMA_ERROR(type->array.len->loc, "Expected a constant value as array size.");
+			return type_info_poison(type);
+		}
 	}
 	assert(!type->array.len || type->array.len->expr_kind == EXPR_CONST);
 	type->type = type_get_array(type->array.base->type, type->array.len ? type->array.len->const_expr.i : 0);
@@ -208,13 +211,12 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 	if (param->var.init_expr)
 	{
 		Expr *expr = param->var.init_expr;
-		if (!sema_analyse_expr(context, expr)) return false;
+		if (!sema_analyse_expr(context, param->type, expr)) return false;
 		if (expr->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(expr->loc, "Only constant expressions may be used as default values.");
 			return false;
 		}
-		if (!cast(expr, param->type, CAST_TYPE_IMPLICIT_ASSIGN)) return false;
 	}
 	return true;
 }
@@ -320,7 +322,7 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 		}
 		return true;
 	}
-	if (!sema_analyse_expr(context, return_expr)) return false;
+	if (!sema_analyse_expr(context, expected_rtype, return_expr)) return false;
 	if (!expected_rtype)
 	{
 		assert(context->evaluating_macro);
@@ -340,25 +342,15 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 static inline bool sema_analyse_var_decl(Context *context, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_VAR);
-	if (!sema_resolve_type_info(context, decl->var.type_info)) return false;
+	if (!sema_resolve_type_info(context, decl->var.type_info)) return decl_poison(decl);
 	decl->type = decl->var.type_info->type;
 	if (decl->var.init_expr)
 	{
-		Type *prev_type = context->left_type_in_assignment;
-		context->left_type_in_assignment = decl->var.type_info->type;
-		bool success = sema_analyse_expr(context, decl->var.init_expr) && cast(decl->var.init_expr, decl->var.type_info->type, CAST_TYPE_IMPLICIT_ASSIGN);
-		context->left_type_in_assignment = prev_type;
-		if (!success)
-		{
-			decl_poison(decl);
-			return false;
-		}
+		if (!sema_analyse_expr(context, decl->type, decl->var.init_expr)) return decl_poison(decl);
 	}
-	if (!context_add_local(context, decl)) return false;
+	if (!context_add_local(context, decl)) return decl_poison(decl);
 	return true;
 }
-
-
 
 static inline Ast *convert_expr_to_ast(Expr *expr)
 {
@@ -548,8 +540,7 @@ static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 	context_pop_scope(context);
 	if (!success) return false;
 	context_push_scope_with_flags(context, SCOPE_CONTROL);
-	success = sema_analyse_expr(context, expr);
-	success = success && cast(expr, type_bool, CAST_TYPE_IMPLICIT);
+	success = sema_analyse_expr(context, type_bool, expr);
 	context_pop_scope(context);
 	return success;
 }
@@ -581,7 +572,8 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 
 static inline bool sema_analyse_expr_stmt(Context *context, Ast *statement)
 {
-	return sema_analyse_expr(context, statement->expr_stmt);
+	if (!sema_analyse_expr(context, NULL, statement->expr_stmt)) return false;
+	return true;
 }
 
 static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
@@ -686,7 +678,7 @@ static inline bool sema_analyse_label(Context *context, Ast *statement)
 			return false;
 		}
 	}
-	VECADD(context->labels, statement);
+	vec_add(context->labels, statement);
 	VECEACH(context->gotos, i)
 	{
 		Ast *the_goto = context->gotos[i];
@@ -755,13 +747,12 @@ static inline bool sema_analyse_then_overwrite(Context *context, Ast *statement,
 
 static int sema_check_comp_time_bool(Context *context, Expr *expr)
 {
-	if (!sema_analyse_expr(context, expr)) return -1;
+	if (!sema_analyse_expr(context, type_bool, expr)) return -1;
 	if (expr->expr_kind != EXPR_CONST)
 	{
 		SEMA_ERROR(expr->loc, "$if requires a compile time constant value.");
 		return -1;
 	}
-	if (!cast(expr, type_bool, CAST_TYPE_IMPLICIT)) return -1;
 	return expr->const_expr.b;
 }
 
@@ -811,8 +802,7 @@ static bool sema_analyse_switch_case(Context *context, Ast*** prev_cases, Ast *c
 			*prev_case = NULL;
 		}
 		Expr *case_expr = case_stmt->case_stmt.expr;
-		if (!sema_analyse_expr(context, case_expr)) return false;
-		if (!cast(case_expr, switch_type, CAST_TYPE_IMPLICIT)) return false;
+		if (!sema_analyse_expr(context, switch_type, case_expr)) return false;
 		if (case_expr->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(case_expr->loc, "This must be a constant expression.");
@@ -1056,8 +1046,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 	if (!sema_resolve_type_info(context, decl->var.type_info)) return false;
 	if (decl->var.init_expr)
 	{
-		if (!sema_analyse_expr(context, decl->var.init_expr)) return false;
-		if (!cast(decl->var.init_expr, decl->var.type_info->type, CAST_TYPE_IMPLICIT_ASSIGN)) return false;
+		if (!sema_analyse_expr(context, decl->type, decl->var.init_expr)) return false;
 		if (decl->var.init_expr->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(decl->var.init_expr->loc, "The expression must be a constant value.");
@@ -1344,7 +1333,7 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 		case TYPE_INFO_IDENTIFIER:
 			return sema_resolve_type_identifier(context, type_info);
 		case TYPE_INFO_EXPRESSION:
-			if (!sema_analyse_expr(context, type_info->unresolved_type_expr))
+			if (!sema_analyse_expr(context, NULL, type_info->unresolved_type_expr))
 			{
 				return type_info_poison(type_info);
 			}

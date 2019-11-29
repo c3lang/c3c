@@ -451,7 +451,7 @@ struct _Expr
 	Token loc;
 	Type *type;
 	union {
-		ExprCast expr_cast;
+		ExprCast cast_expr;
 		ExprConst const_expr;
 		ExprStructValue struct_value_expr;
 		ExprTypeRef type_access;
@@ -710,7 +710,6 @@ typedef struct _Context
 	Decl **ct_ifs;
 	Ast **defers;
 	Decl *active_function_for_analysis;
-	Type *left_type_in_assignment;
 	Decl **last_local;
 	Ast **labels;
 	Ast **gotos;
@@ -824,14 +823,16 @@ static inline ConstType sign_from_type(Type *type)
 	return (type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX) ? CONST_INT : CONST_INT;
 }
 
+bool cast_implicit(Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type, CastType cast_type);
-bool cast_arithmetic(Expr *expr, Expr *other, const char *action);
+bool cast_binary_arithmetic(Expr *left, Expr *right, const char *action);
+
 bool cast_to_runtime(Expr *expr);
 
 void llvm_codegen(Context *context);
 void codegen(Context *context);
 
-bool sema_analyse_expr(Context *context, Expr *expr);
+bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
 
 void compiler_add_type(Type *type);
@@ -968,12 +969,14 @@ static inline Token wrap(const char *string)
 
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_array(Type *arr_type, uint64_t len);
-Type *type_signed_int_by_size(int bitsize);
-Type *type_unsigned_int_by_size(int bitsize);
+Type *type_signed_int_by_size(int bytesize);
+Type *type_unsigned_int_by_size(int bytesize);
 bool type_is_subtype(Type *type, Type *possible_subtype);
+Type *type_find_common_ancestor(Type *left, Type *right);
 const char *type_to_error_string(Type *type);
 size_t type_size(Type *canonical);
 void type_append_signature_name(Type *type, char *dst, size_t *offset);
+Type *type_find_max_type(Type *type, Type *other);
 
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_FXX; }
 static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX; }

@@ -15,9 +15,9 @@ static inline void insert_cast(Expr *expr, CastKind kind, Type *canonical)
 	assert(canonical->canonical == canonical);
 	*inner = *expr;
 	expr->expr_kind = EXPR_CAST;
-	expr->expr_cast.kind = kind;
-	expr->expr_cast.expr = inner;
-	expr->expr_cast.type_info = NULL;
+	expr->cast_expr.kind = kind;
+	expr->cast_expr.expr = inner;
+	expr->cast_expr.type_info = NULL;
 	expr->type = canonical;
 }
 
@@ -560,6 +560,7 @@ CastFunc conversion(TypeKind from, Type *to)
 			if (type_is_unsigned_integer(to)) return &siui;
 			if (type_is_signed_integer(to)) return &sisi;
 			if (type_is_float(to)) return &sifp;
+			if (to == type_bool) return &xibo;
 			if (to->type_kind == TYPE_POINTER) return &ptxi;
 			return &erro;
 		case TYPE_U8:
@@ -570,6 +571,7 @@ CastFunc conversion(TypeKind from, Type *to)
 			if (type_is_unsigned_integer(to)) return &uiui;
 			if (type_is_signed_integer(to)) return &uisi;
 			if (type_is_float(to)) return &uifp;
+			if (to == type_bool) return &xibo;
 			if (to->type_kind == TYPE_POINTER) return &ptxi;
 			return &erro;
 		case TYPE_F32:
@@ -577,6 +579,7 @@ CastFunc conversion(TypeKind from, Type *to)
 		case TYPE_FXX:
 			if (type_is_unsigned_integer(to)) return &fpui;
 			if (type_is_signed_integer(to)) return &fpsi;
+			if (to == type_bool) return &fpbo;
 			if (type_is_float(to)) return &fpfp;
 			return &erro;
 		case TYPE_POINTER:
@@ -655,21 +658,6 @@ static inline bool cannot_convert(TypeKind type_kind)
 	return type_kind <= TYPE_VOID || type_kind > TYPE_ARRAY;
 }
 
-bool cast_arithmetic(Expr *expr, Expr *other, const char *action)
-{
-	Type *canonical = expr->type->canonical;
-	Type *canonical_to = other->type->canonical;
-	if (cannot_convert(canonical->type_kind) || cannot_convert(canonical_to->type_kind)) goto ERR;
-	Type *preferred_type = ARITHMETIC_PROMOTION[canonical->type_kind - TYPE_BOOL][canonical_to->type_kind - TYPE_BOOL];
-	if (preferred_type == &t_err) goto ERR;
-	if (preferred_type == &t_cpy || preferred_type == canonical) return true;
-	return cast(expr, preferred_type, CAST_TYPE_IMPLICIT);
-
-	ERR:
-	SEMA_ERROR(expr->loc, "Cannot upcast to resolve '%s' %s '%s'", type_to_error_string(expr->type), action, type_to_error_string(other->type));
-	return false;
-
-}
 
 bool cast_to_runtime(Expr *expr)
 {
@@ -687,19 +675,99 @@ bool cast_to_runtime(Expr *expr)
 	}
 }
 
+bool cast_implicit(Expr *expr, Type *to_type)
+{
+	if (!to_type) return true;
+	return cast(expr, to_type, CAST_TYPE_IMPLICIT);
+}
+
 bool cast(Expr *expr, Type *to_type, CastType cast_type)
 {
 	Type *from_type = expr->type->canonical;
 	Type *canonical = to_type->canonical;
 	if (from_type == canonical) return true;
-	TypeKind from_kind = from_type->type_kind;
-	TypeKind to_kind = canonical->type_kind;
-
-	if (cannot_convert(from_kind) || cannot_convert(to_kind))
+	switch (from_type->type_kind)
 	{
-		sema_type_mismatch(expr, to_type, cast_type);
-		return false;
+		case TYPE_POISONED:
+		case TYPE_VOID:
+			break;
+		case TYPE_BOOL:
+			if (type_is_integer(canonical)) return boxi(expr, from_type, canonical, to_type, cast_type);
+			if (type_is_float(canonical)) return bofp(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_ERROR_UNION:
+			TODO
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+		case TYPE_IXX:
+			if (type_is_unsigned_integer(canonical)) return siui(expr, from_type, canonical, to_type, cast_type);
+			if (type_is_signed_integer(canonical)) return sisi(expr, from_type, canonical, to_type, cast_type);
+			if (type_is_float(canonical)) return sifp(expr, from_type, canonical, to_type, cast_type);
+			if (canonical == type_bool) return xibo(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_POINTER) return ptxi(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+		case TYPE_UXX:
+			if (type_is_unsigned_integer(canonical)) return uiui(expr, from_type, canonical, to_type, cast_type);
+			if (type_is_signed_integer(canonical)) return uisi(expr, from_type, canonical, to_type, cast_type);
+			if (type_is_float(canonical)) return uifp(expr, from_type, canonical, to_type, cast_type);
+			if (canonical == type_bool) return xibo(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_POINTER) return ptxi(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_F32:
+		case TYPE_F64:
+		case TYPE_FXX:
+			if (type_is_unsigned_integer(canonical)) return fpui(expr, from_type, canonical, to_type, cast_type);
+			if (type_is_signed_integer(canonical)) return fpsi(expr, from_type, canonical, to_type, cast_type);
+			if (canonical == type_bool) return fpbo(expr, from_type, canonical, to_type, cast_type);
+			if (type_is_float(canonical)) return fpfp(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_POINTER:
+			if (type_is_integer(canonical)) return ptxi(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_BOOL) return ptbo(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_POINTER) return ptpt(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_FUNC) return ptfu(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_VARARRAY) return ptva(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_ENUM:
+			if (type_is_integer(canonical)) return enxi(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_ERROR:
+			if (type_is_integer(canonical)) return erxi(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_FUNC:
+			if (type_is_integer(canonical)) return ptxi(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_POINTER) return fupt(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_STRUCT:
+			if (canonical->type_kind == TYPE_STRUCT) return stst(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_UNION) return stun(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_UNION:
+			if (canonical->type_kind == TYPE_STRUCT) return unst(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_UNION) return unun(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_TYPEDEF:
+			UNREACHABLE
+		case TYPE_STRING:
+			if (canonical->type_kind == TYPE_POINTER) return strpt(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_ARRAY:
+			// There is no valid cast from array to anything else.
+			break;
+		case TYPE_VARARRAY:
+			if (canonical->type_kind == TYPE_SUBARRAY) return vasa(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_VARARRAY) return vava(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_POINTER) return vapt(expr, from_type, canonical, to_type, cast_type);
+			break;
+		case TYPE_SUBARRAY:
+			if (canonical->type_kind == TYPE_POINTER) return sapt(expr, from_type, canonical, to_type, cast_type);
+			break;
 	}
-	CastFunc func = conversion(from_type->type_kind, canonical);
-	return func(expr, from_type, canonical, to_type, cast_type);
+	return sema_type_mismatch(expr, canonical, cast_type);
 }

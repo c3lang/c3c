@@ -266,7 +266,7 @@ static inline void* _expand(void *vec, size_t element_size)
 #define VECNEW(_type, _capacity) ((_type *)(_vec_new(sizeof(_type), _capacity) + 1))
 #define VECADD(_vec, _value) \
 	({ \
-		typeof(_vec) __temp = (typeof(_vec))_expand((_vec), sizeof((_vec)[0])); \
+		typeof(_vec) __temp = (typeof(_vec))_expand((_vec), sizeof(typeof(*(_vec)))); \
 		__temp[vec_size(__temp) - 1] = _value; \
 		_vec = __temp; })
 #define vec_add(_vec, _value) do { (_vec) = VECADD((_vec), _value); } while (0)

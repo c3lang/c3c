@@ -496,6 +496,10 @@ typedef enum
 } TokenType;
 
 
+// Note that ordering matters here. If ordering is changed,
+// So must type_find_max_type and friends.
+// The reason is that for binary expressions we can simplify
+// by knowing the type_kind of left <= type kind of right
 typedef enum
 {
 	TYPE_POISONED,
@@ -527,6 +531,8 @@ typedef enum
 	TYPE_VARARRAY,
 	TYPE_SUBARRAY,
 } TypeKind;
+
+#define TYPE_KINDS (TYPE_SUBARRAY + 1)
 
 typedef enum
 {
