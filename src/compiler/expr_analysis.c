@@ -27,6 +27,8 @@ static bool expr_is_ltype(Expr *expr)
 			return expr->unary_expr.operator == TOKEN_STAR;
 		case EXPR_ACCESS:
 			return expr_is_ltype(expr->access_expr.parent);
+		case EXPR_SUBSCRIPT:
+			return true;
 		default:
 			return false;
 	}
@@ -163,7 +165,6 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 		default:
 			SEMA_ERROR(expr->loc, "The expression cannot be called.");
 			return false;
-			break;
 	}
 }
 
@@ -179,7 +180,33 @@ static inline bool sema_expr_analyse_struct_init_values(Context *context, Type *
 
 static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr *expr)
 {
-	TODO
+	if (!sema_analyse_expr(context, NULL, expr->subscript_expr.expr)) return false;
+
+	Type *type = expr->subscript_expr.expr->type->canonical;
+	Type *inner_type;
+	switch (type->type_kind)
+	{
+		case TYPE_POINTER:
+			inner_type = type->pointer;
+			break;
+		case TYPE_VARARRAY:
+		case TYPE_ARRAY:
+			inner_type = type->array.base;
+			break;
+		case TYPE_SUBARRAY:
+			TODO
+		case TYPE_STRING:
+			inner_type = type_char;
+			break;
+		default:
+			SEMA_ERROR(expr->subscript_expr.expr->loc, "Cannot index '%s'.", type_to_error_string(type));
+			return false;
+	}
+
+	if (!sema_analyse_expr(context, type_isize, expr->subscript_expr.index)) return false;
+
+	expr->type = inner_type;
+	return true;
 }
 
 static inline bool sema_expr_analyse_method_function(Context *context, Expr *expr, Decl *decl, bool is_pointer)
@@ -1445,6 +1472,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 	}
 	UNREACHABLE
 }
+
+
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr)
 {
 	switch (expr->resolve_status)

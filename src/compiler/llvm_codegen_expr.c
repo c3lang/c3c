@@ -5,54 +5,63 @@
 #include "llvm_codegen_internal.h"
 #include "compiler_internal.h"
 
+static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, Expr *expr)
+{
+	LLVMValueRef index = gencontext_emit_expr(context, expr->subscript_expr.index);
+	switch (expr->subscript_expr.expr->type->canonical->type_kind)
+	{
+		case TYPE_ARRAY:
+			TODO
+		case TYPE_POINTER:
+			return LLVMBuildGEP(context->builder,
+			                    gencontext_emit_expr(context, expr->subscript_expr.expr),
+			                    &index, 1, "[]");
+		case TYPE_VARARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_STRING:
+			TODO
+		default:
+			UNREACHABLE
+	}
+}
+
+static inline LLVMValueRef gencontext_emit_access_addr(GenContext *context, Expr *expr)
+{
+	LLVMValueRef value = gencontext_emit_address(context, expr->access_expr.parent);
+	return LLVMBuildStructGEP(context->builder, value, (unsigned)expr->access_expr.index, "");
+}
+
 LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
 		case EXPR_IDENTIFIER:
 			return expr->identifier_expr.decl->var.backend_ref;
+		case EXPR_UNARY:
+			assert(unaryop_from_token(expr->unary_expr.operator) == UNARYOP_DEREF);
+			return gencontext_emit_expr(context, expr->unary_expr.expr);
+		case EXPR_ACCESS:
+			return gencontext_emit_access_addr(context, expr);
+		case EXPR_SUBSCRIPT:
+			return gencontext_emit_subscript_addr(context, expr);
 		case EXPR_CONST:
 		case EXPR_TYPE:
-			UNREACHABLE
-		case EXPR_UNARY:
-		{
-			UnaryOp op = unaryop_from_token(expr->unary_expr.operator);
-			assert(op == UNARYOP_DEREF);
-			return gencontext_emit_expr(context, expr->unary_expr.expr);
-		}
-		case EXPR_ACCESS:
-		{
-			LLVMValueRef value = gencontext_emit_address(context, expr->access_expr.parent);
-			return LLVMBuildStructGEP(context->builder, value, (unsigned)expr->access_expr.index, "");
-		}
 		case EXPR_POISONED:
 		case EXPR_TRY:
 		case EXPR_SIZEOF:
-			UNREACHABLE
 		case EXPR_BINARY:
-			TODO;
 		case EXPR_CONDITIONAL:
-			TODO;
 		case EXPR_POST_UNARY:
-			TODO;
 		case EXPR_TYPE_ACCESS:
-			TODO
 		case EXPR_CALL:
-			TODO
-		case EXPR_SUBSCRIPT:
-			TODO
 		case EXPR_STRUCT_VALUE:
-			TODO
 		case EXPR_STRUCT_INIT_VALUES:
-			TODO
 		case EXPR_INITIALIZER_LIST:
-			TODO
 		case EXPR_EXPRESSION_LIST:
-			TODO
 		case EXPR_CAST:
-			TODO
+			UNREACHABLE
 	}
-	return NULL;
+	UNREACHABLE
 }
 
 static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *expr)
@@ -98,7 +107,6 @@ static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *
 			return type_convert_will_trunc(expr->type, expr->cast_expr.expr->type)
 			       ? LLVMBuildTrunc(context->builder, rhs, BACKEND_TYPE(expr->type), "siuitrunc")
 			       : LLVMBuildZExt(context->builder, rhs, BACKEND_TYPE(expr->type), "siuiext");
-			break;
 		case CAST_SIFP:
 			return LLVMBuildSIToFP(context->builder, rhs, BACKEND_TYPE(expr->type), "sifp");
 		case CAST_XIPTR:
@@ -421,7 +429,7 @@ LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 			LLVMSetInitializer(global_name, LLVMConstStringInContext(context->context,
 			                                                         expr->const_expr.string.chars,
 			                                                         expr->const_expr.string.len,
-			                                                         1));
+			                                                         0));
 			return global_name;
 		}
 	}
@@ -444,6 +452,48 @@ LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 		LLVMSetInstructionCallConv(fncallret, LLVMX86StdcallCallConv);
 	}*/
 }
+
+
+
+
+static inline LLVMValueRef gencontext_emit_access_expr(GenContext *context, Expr *expr)
+{
+	// Improve, add string description to the access?
+	LLVMValueRef value = gencontext_emit_address(context, expr->access_expr.parent);
+	LLVMValueRef val =  LLVMBuildStructGEP(context->builder, value, (unsigned)expr->access_expr.index, "");
+	return LLVMBuildLoad2(context->builder, gencontext_get_llvm_type(context, expr->type), val, "");
+}
+
+static inline LLVMValueRef gencontext_emit_expression_list_expr(GenContext *context, Expr *expr)
+{
+	LLVMValueRef value = NULL;
+	VECEACH(expr->expression_list, i)
+	{
+		value = gencontext_emit_expr(context, expr->expression_list[i]);
+	}
+	return value;
+}
+
+static inline LLVMValueRef gencontext_emit_struct_value_expr(GenContext *context, Expr *expr)
+{
+	TODO
+}
+
+static inline LLVMValueRef gencontext_emit_initializer_list_expr(GenContext *context, Expr *expr)
+{
+	TODO
+}
+
+static inline LLVMValueRef gencontext_emit_struct_init_values_expr(GenContext *context, Expr *expr)
+{
+	TODO
+}
+
+static inline LLVMValueRef gencontext_load_expr(GenContext *context, LLVMValueRef value)
+{
+	return LLVMBuildLoad(context->builder, value, "");
+}
+
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 {
 	switch (expr->expr_kind)
@@ -452,8 +502,6 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 			UNREACHABLE
 		case EXPR_UNARY:
 			return gencontext_emit_unary_expr(context, expr);
-		case EXPR_TRY:
-			break;
 		case EXPR_CONST:
 			return gencontext_emit_const_expr(context, expr);
 		case EXPR_BINARY:
@@ -463,33 +511,28 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 		case EXPR_POST_UNARY:
 			return gencontext_emit_post_unary_expr(context, expr);
 		case EXPR_TYPE:
-			break;
-		case EXPR_IDENTIFIER:
-			return gencontext_emit_identifier_expr(context, expr);
+		case EXPR_SIZEOF:
 		case EXPR_TYPE_ACCESS:
-			break;
+		case EXPR_TRY:
+			// These are folded in the semantic analysis step.
+			UNREACHABLE
+		case EXPR_IDENTIFIER:
+		case EXPR_SUBSCRIPT:
+			return gencontext_load_expr(context, gencontext_emit_address(context, expr));
 		case EXPR_CALL:
 			return gencontext_emit_call_expr(context, expr);
-		case EXPR_SIZEOF:
-			break;
-		case EXPR_SUBSCRIPT:
-			break;
 		case EXPR_ACCESS:
-		{
-			LLVMValueRef value = gencontext_emit_address(context, expr->access_expr.parent);
-			LLVMValueRef val =  LLVMBuildStructGEP(context->builder, value, (unsigned)expr->access_expr.index, "");
-			return LLVMBuildLoad2(context->builder, gencontext_get_llvm_type(context, expr->type), val, "");
-		}
+			return gencontext_emit_access_expr(context, expr);
 		case EXPR_STRUCT_VALUE:
-			break;
+			return gencontext_emit_struct_value_expr(context, expr);
 		case EXPR_STRUCT_INIT_VALUES:
-			break;
+			return gencontext_emit_struct_init_values_expr(context, expr);
 		case EXPR_INITIALIZER_LIST:
-			break;
+			return gencontext_emit_initializer_list_expr(context, expr);
 		case EXPR_EXPRESSION_LIST:
-			break;
+			return gencontext_emit_expression_list_expr(context, expr);
 		case EXPR_CAST:
 			return gencontext_emit_cast_expr(context, expr);
 	}
-	TODO
+	UNREACHABLE
 }

@@ -13,5 +13,5 @@ void bench_begin(void)
 }
 double bench_mark(void)
 {
-	return (clock() - begin) / (double)CLOCKS_PER_SEC;
+	return (double)(clock() - begin) / (double)CLOCKS_PER_SEC;
 }

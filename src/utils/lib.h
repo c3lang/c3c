@@ -28,11 +28,11 @@ static inline bool is_power_of_two(uint64_t x)
 static inline uint32_t nextHighestPowerOf2(uint32_t v)
 {
 	v--;
-	v |= v >> 1u;
-	v |= v >> 2u;
-	v |= v >> 4u;
-	v |= v >> 8u;
-	v |= v >> 16u;
+	v |= v >> 1U;
+	v |= v >> 2U;
+	v |= v >> 4U;
+	v |= v >> 8U;
+	v |= v >> 16U;
 	v++;
 	return v;
 }
@@ -66,12 +66,12 @@ static inline bool is_oct_or_(char c)
 	}
 }
 
-static inline bool is_binary(c)
+static inline bool is_binary(char c)
 {
 	return c  == '0' || c == '1';
 }
 
-static inline bool is_binary_or_(c)
+static inline bool is_binary_or_(char c)
 {
 	switch (c)
 	{
@@ -251,10 +251,10 @@ static inline void* _expand(void *vec, size_t element_size)
 	header->size++;
 	if (header->size == header->capacity)
 	{
-		_VHeader *new_array = _vec_new(element_size, header->capacity << 1u);
+		_VHeader *new_array = _vec_new(element_size, header->capacity << 1U);
 		memcpy(new_array, header, element_size * header->capacity + sizeof(_VHeader));
 		header = new_array;
-		new_array->capacity = header->capacity << 1u;
+		new_array->capacity = header->capacity << 1U;
 		vec = header + 1;
 	}
 	return vec;

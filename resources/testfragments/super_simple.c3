@@ -92,6 +92,17 @@ func int main(int x)
     Test2 efe;
     efe.t.a = 3;
     if (efe.t.a > 2) printf("Works!\n");
+    int ef = 3;
+    int *eff = &ef;
+    eff[0] = 4;
+    byte *ex = cast(byte *, eff);
+    ex[0] = 5;
+    if (eff[0] == 5) printf("Works-5!\n");
+    ex[1] = 5;
+    if (eff[0] == 5 + 5 * 256) printf("Works-5*256!\n");
+    if (ef == 4) printf("Works5!\n");
+    if (ef == 4) printf("Works1!\n");
+        ef = 0;
 /*
     byte a = 2;
     short b = 3;
@@ -103,8 +114,21 @@ JUMP:
     i = i + 1;
     //@hello();
     printf("Hello worldABC" "D" "E\u2701\n");
-    float f = 10.0;
+    float f = 3.0;
     float* pf = &f;
+    switch (i)
+    {
+        case 0:
+            printf("c0\n");
+        case 1:
+            printf("c1\n");
+        case 2:
+            printf("c2\n");
+        case 3:
+            printf("c3\n");
+        default:
+            printf("default\n");
+    }
     if (*pf > i) goto JUMP;
     goto EX;
     YEF:
@@ -161,5 +185,6 @@ func void test2(int* x, int y, int z)
     i = i - 1;
     ui = ui - 1;
     x + 1;
-    // TODO x + 1;
+    int j1 = x[0];
+    j1 = *x;
 }

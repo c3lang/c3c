@@ -59,7 +59,6 @@ char *read_file(const char *path, size_t *return_size)
 	if (file == NULL)
 	{
 		error_exit("Could not open file \"%s\".\n", path);
-		exit(74);
 	}
 
 	fseek(file, 0L, SEEK_END);

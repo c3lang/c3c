@@ -27,7 +27,7 @@ static inline const uint64_t *bigint_ptr(const BigInt *big_int)
 }
 
 
-#define alloc_digits(_digits) (_digits ? malloc_arena(sizeof(uint64_t) * _digits) : NULL)
+#define alloc_digits(_digits) ((_digits) ? malloc_arena(sizeof(uint64_t) * (_digits)) : NULL)
 
 static void normalize(BigInt *big_int)
 {
@@ -76,7 +76,7 @@ static bool bit_at_index(const BigInt *big_int, size_t index)
 	size_t digit_bit_index = index % 64;
 	const uint64_t *digits = bigint_ptr(big_int);
 	uint64_t digit = digits[digit_index];
-	return ((digit >> digit_bit_index) & 0x1) == 0x1;
+	return ((digit >> digit_bit_index) & 0x1U) == 0x1U;
 }
 
 uint32_t bigint_hash(BigInt x)
@@ -392,7 +392,7 @@ void bigint_write_twos_complement(const BigInt *big_int, uint8_t *buf, size_t bi
 
 			for (size_t byte_index = 7;;)
 			{
-				uint8_t byte = (uint8_t) (x & 0xff);
+				uint8_t byte = (uint8_t) (x & 0xffU);
 				if (digit_index == last_digit_index)
 				{
 					buf[buf_index + byte_index - unwritten_byte_count] = byte;
@@ -405,7 +405,7 @@ void bigint_write_twos_complement(const BigInt *big_int, uint8_t *buf, size_t bi
 
 				if (byte_index == 0) break;
 				byte_index -= 1;
-				x >>= 8;
+				x >>= 8U;
 			}
 
 			if (digit_index == 0) break;
@@ -432,10 +432,10 @@ void bigint_write_twos_complement(const BigInt *big_int, uint8_t *buf, size_t bi
 			     byte_index < 8 && (digit_index + 1 < digit_count || byte_index < bytes_in_last_digit);
 			     byte_index += 1)
 			{
-				uint8_t byte = (uint8_t) (x & 0xff);
+				uint8_t byte = (uint8_t) (x & 0xffU);
 				buf[buf_index] = byte;
 				buf_index += 1;
-				x >>= 8;
+				x >>= 8U;
 			}
 		}
 	}
@@ -492,7 +492,7 @@ void bigint_read_twos_complement(BigInt *dest, const uint8_t *buf, size_t bit_co
 		{
 			uint8_t byte = buf[buf_index];
 			buf_index += 1;
-			digit <<= 8;
+			digit <<= 8U;
 			digit |= byte;
 		}
 		digits[dest->digit_count - 1] = digit;
@@ -937,7 +937,7 @@ static void KnuthDiv(uint32_t *u, uint32_t *v, uint32_t *q, uint32_t *r, unsigne
 	u[m + n] = u_carry;
 
 	// D2. [Initialize j.]  Set j to m. This is the loop counter over the places.
-	int j = m;
+	int j = (int)m;
 	do
 	{
 		// D3. [Calculate q'.].
@@ -1016,7 +1016,7 @@ static void KnuthDiv(uint32_t *u, uint32_t *v, uint32_t *q, uint32_t *r, unsigne
 		if (shift)
 		{
 			uint32_t carry = 0;
-			for (int i = n - 1; i >= 0; i--)
+			for (int i = (int)n - 1; i >= 0; i--)
 			{
 				r[i] = (u[i] >> shift) | carry;
 				carry = u[i] << (32 - shift);
@@ -1024,7 +1024,7 @@ static void KnuthDiv(uint32_t *u, uint32_t *v, uint32_t *q, uint32_t *r, unsigne
 		}
 		else
 		{
-			for (int i = n - 1; i >= 0; i--)
+			for (int i = (int)n - 1; i >= 0; i--)
 			{
 				r[i] = u[i];
 			}
@@ -1151,7 +1151,7 @@ static void bigint_unsigned_division(const BigInt *op1, const BigInt *op2, BigIn
 	{
 		uint32_t divisor = V[0];
 		uint32_t rem = 0;
-		for (int i = m; i >= 0; i--)
+		for (int i = (int)m; i >= 0; i--)
 		{
 			uint64_t partial_dividend = make_64(rem, U[i]);
 			if (partial_dividend == 0)
@@ -2076,7 +2076,7 @@ long double bigint_as_float(const BigInt *bigint)
 		return bigint->is_negative ? bigint_as_signed(bigint) : bigint_as_unsigned(bigint);
 	}
 	BigInt div;
-	uint64_t mult = 0x100000000000ull;
+	uint64_t mult = 0x100000000000ULL;
 	long double mul = 1;
 	bigint_init_unsigned(&div, mult);
 	BigInt current;

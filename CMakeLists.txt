@@ -154,6 +154,6 @@ add_executable(c3c
         src/compiler/llvm_codegen_type.c
         src/compiler/llvm_codegen_function.c)
 
-target_compile_options(c3c PRIVATE -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
+target_compile_options(c3c PRIVATE -Wimplicit-int -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 
-target_link_libraries(c3c ${llvm_libs})
+target_link_libraries(c3c m ${llvm_libs})
