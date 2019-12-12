@@ -646,6 +646,7 @@ Token lexer_scan_token(void)
 				lexer.lexer_state = LEXER_STATE_NORMAL;
 				return make_token(TOKEN_DOCS_END, "*/");
 			}
+			if (match('%')) return match('=') ? make_token(TOKEN_MINUS_MOD_ASSIGN, "*%=") : make_token(TOKEN_MULT_MOD, "*%");
 			return match('=') ? make_token(TOKEN_MULT_ASSIGN, "*=") : make_token(TOKEN_STAR, "*");
 		case '=':
 			return match('=') ? make_token(TOKEN_EQEQ, "==") : make_token(TOKEN_EQ, "=");
@@ -662,17 +663,19 @@ Token lexer_scan_token(void)
 		case '%':
 			return match('=') ? make_token(TOKEN_MOD_ASSIGN, "%=") : make_token(TOKEN_MOD, "%");
 		case '&':
-			if (match('&')) return match('=') ? make_token(TOKEN_AND_ASSIGN, "&&=") : make_token(TOKEN_AND, "&&");
+			if (match('&')) return make_token(TOKEN_AND, "&&");
 			return match('=') ? make_token(TOKEN_BIT_AND_ASSIGN, "&=") : make_token(TOKEN_AMP, "&");
 		case '|':
-			if (match('|')) return match('=') ? make_token(TOKEN_OR_ASSIGN, "||=") : make_token(TOKEN_OR, "||");
+			if (match('|')) return make_token(TOKEN_OR, "||");
 			return match('=') ? make_token(TOKEN_BIT_OR_ASSIGN, "|=") : make_token(TOKEN_BIT_OR, "|");
 		case '+':
+			if (match('%')) return match('=') ? make_token(TOKEN_PLUS_MOD_ASSIGN, "+%=") : make_token(TOKEN_PLUS_MOD, "+%");
 			if (match('+')) return make_token(TOKEN_PLUSPLUS, "++");
 			if (match('=')) return make_token(TOKEN_PLUS_ASSIGN, "+=");
 			return make_token(TOKEN_PLUS, "+");
 		case '-':
 			if (match('>')) return make_token(TOKEN_ARROW, "->");
+			if (match('%')) return match('=') ? make_token(TOKEN_MINUS_MOD_ASSIGN, "-%=") : make_token(TOKEN_MINUS_MOD, "-%");
 			if (match('-')) return make_token(TOKEN_MINUSMINUS, "--");
 			if (match('=')) return make_token(TOKEN_MINUS_ASSIGN, "-=");
 			return make_token(TOKEN_MINUS, "-");

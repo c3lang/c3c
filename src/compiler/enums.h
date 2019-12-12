@@ -26,8 +26,11 @@ typedef enum
 {
 	BINARYOP_ERROR,
 	BINARYOP_MULT,
+	BINARYOP_MULT_MOD,
 	BINARYOP_SUB,
+	BINARYOP_SUB_MOD,
 	BINARYOP_ADD,
+	BINARYOP_ADD_MOD,
 	BINARYOP_DIV,
 	BINARYOP_MOD,
 	BINARYOP_SHR,
@@ -46,8 +49,11 @@ typedef enum
 	// Only "assign" BINOPS after this point
 	BINARYOP_ASSIGN,
 	BINARYOP_MULT_ASSIGN,
+	BINARYOP_MULT_MOD_ASSIGN,
 	BINARYOP_ADD_ASSIGN,
+	BINARYOP_ADD_MOD_ASSIGN,
 	BINARYOP_SUB_ASSIGN,
+	BINARYOP_SUB_MOD_ASSIGN,
 	BINARYOP_DIV_ASSIGN,
 	BINARYOP_MOD_ASSIGN,
 	BINARYOP_AND_ASSIGN,
@@ -359,11 +365,14 @@ typedef enum
 	TOKEN_LESS_EQ,          // <=
 	TOKEN_LPARBRA,          // ({
 	TOKEN_MINUS_ASSIGN,     // -=
+	TOKEN_MINUS_MOD,        // -%
 	TOKEN_MINUSMINUS,       // --
 	TOKEN_MOD_ASSIGN,       // %=
 	TOKEN_MULT_ASSIGN,      // *=
+	TOKEN_MULT_MOD,         // *%
 	TOKEN_NOT_EQUAL,        // !=
 	TOKEN_PLUS_ASSIGN,      // +=
+	TOKEN_PLUS_MOD,         // +%
 	TOKEN_PLUSPLUS,         // ++
 	TOKEN_RPARBRA,          // })
 	TOKEN_SCOPE,            // ::
@@ -371,9 +380,10 @@ typedef enum
 	TOKEN_SHL,              // >>
 
 	// Three or more
-	TOKEN_AND_ASSIGN,       // &&=
 	TOKEN_ELIPSIS,          // ...
-	TOKEN_OR_ASSIGN,        // ||=
+	TOKEN_MINUS_MOD_ASSIGN, // -%=
+	TOKEN_MULT_MOD_ASSIGN,  // *%=
+	TOKEN_PLUS_MOD_ASSIGN,  // +%=
 	TOKEN_SHR_ASSIGN,       // >>=
 	TOKEN_SHL_ASSIGN,       // >>=
 

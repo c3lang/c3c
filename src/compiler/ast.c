@@ -156,9 +156,12 @@ Type* type_get_unsigned(Type *type)
 
 BinaryOp binary_op[256] = {
 		[TOKEN_STAR] = BINARYOP_MULT,
+		[TOKEN_MULT_MOD] = BINARYOP_MULT_MOD,
 		[TOKEN_DIV] = BINARYOP_DIV,
 		[TOKEN_PLUS] = BINARYOP_ADD,
+		[TOKEN_PLUS_MOD] = BINARYOP_ADD_MOD,
 		[TOKEN_MINUS] = BINARYOP_SUB,
+		[TOKEN_MINUS_MOD] = BINARYOP_SUB_MOD,
 		[TOKEN_MOD] = BINARYOP_MOD,
 		[TOKEN_SHL] = BINARYOP_SHL,
 		[TOKEN_SHR] = BINARYOP_SHR,
@@ -175,12 +178,13 @@ BinaryOp binary_op[256] = {
 		[TOKEN_GREATER_EQ] = BINARYOP_GE,
 		[TOKEN_EQ] = BINARYOP_ASSIGN,
 		[TOKEN_MULT_ASSIGN] = BINARYOP_MULT_ASSIGN,
+		[TOKEN_MULT_MOD_ASSIGN] = BINARYOP_MULT_MOD_ASSIGN,
 		[TOKEN_PLUS_ASSIGN] = BINARYOP_ADD_ASSIGN,
+		[TOKEN_PLUS_MOD_ASSIGN] = BINARYOP_ADD_MOD_ASSIGN,
 		[TOKEN_MINUS_ASSIGN] = BINARYOP_SUB_ASSIGN,
+		[TOKEN_MINUS_MOD_ASSIGN] = BINARYOP_SUB_MOD_ASSIGN,
 		[TOKEN_DIV_ASSIGN] = BINARYOP_DIV_ASSIGN,
 		[TOKEN_MOD_ASSIGN] = BINARYOP_MOD_ASSIGN,
-		[TOKEN_AND_ASSIGN] = BINARYOP_AND_ASSIGN,
-		[TOKEN_OR_ASSIGN] = BINARYOP_OR_ASSIGN,
 		[TOKEN_BIT_AND_ASSIGN] = BINARYOP_BIT_AND_ASSIGN,
 		[TOKEN_BIT_OR_ASSIGN] = BINARYOP_BIT_OR_ASSIGN,
 		[TOKEN_BIT_XOR_ASSIGN] = BINARYOP_BIT_XOR_ASSIGN,
@@ -191,8 +195,11 @@ BinaryOp binary_op[256] = {
 
 static BinaryOp assign_binop[256] = {
 		[BINARYOP_MULT_ASSIGN] = BINARYOP_MULT,
+		[BINARYOP_MULT_MOD_ASSIGN] = BINARYOP_MULT_MOD,
 		[BINARYOP_ADD_ASSIGN] = BINARYOP_ADD,
+		[BINARYOP_ADD_MOD_ASSIGN] = BINARYOP_ADD_MOD,
 		[BINARYOP_SUB_ASSIGN] = BINARYOP_SUB,
+		[BINARYOP_SUB_MOD_ASSIGN] = BINARYOP_SUB_MOD,
 		[BINARYOP_DIV_ASSIGN] = BINARYOP_DIV,
 		[BINARYOP_MOD_ASSIGN] = BINARYOP_MOD,
 		[BINARYOP_AND_ASSIGN] = BINARYOP_AND,
@@ -506,7 +513,7 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			fprint_expr_common(file, expr, indent + 1);
 			break;
 		case EXPR_BINARY:
-			fprintf_indented(file, indent, "(binary %s\n", token_type_to_string(expr->binary_expr.operator));
+			fprintf_indented(file, indent, "(binary %s\n", token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
 			fprint_expr_common(file, expr, indent + 1);
 			fprint_expr_recursive(file, expr->binary_expr.left, indent + 1);
 			fprint_expr_recursive(file, expr->binary_expr.right, indent + 1);

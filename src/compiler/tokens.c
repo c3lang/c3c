@@ -6,7 +6,6 @@
 
 const char *token_type_to_string(TokenType type)
 {
-
 	switch (type)
 	{
 		case TOKEN_INVALID_TOKEN:
@@ -93,10 +92,14 @@ const char *token_type_to_string(TokenType type)
 			return "<=";
 		case TOKEN_MINUS_ASSIGN:
 			return "-=";
+		case TOKEN_MINUS_MOD:
+			return "-%";
 		case TOKEN_MINUSMINUS:
 			return "--";
 		case TOKEN_MULT_ASSIGN:
 			return "*=";
+		case TOKEN_MULT_MOD:
+			return "*%";
 		case TOKEN_MOD_ASSIGN:
 			return "%=";
 		case TOKEN_NOT_EQUAL:
@@ -105,6 +108,8 @@ const char *token_type_to_string(TokenType type)
 			return "||";
 		case TOKEN_PLUS_ASSIGN:
 			return "+=";
+		case TOKEN_PLUS_MOD:
+			return "+%";
 		case TOKEN_PLUSPLUS:
 			return "++";
 		case TOKEN_SCOPE:
@@ -119,16 +124,18 @@ const char *token_type_to_string(TokenType type)
 			return "})";
 
 		// Three character tokens
-		case TOKEN_AND_ASSIGN:
-			return "&&=";
 		case TOKEN_ELIPSIS:
 			return "...";
+		case TOKEN_MULT_MOD_ASSIGN:
+			return "*%=";
+		case TOKEN_PLUS_MOD_ASSIGN:
+			return "+%=";
 		case TOKEN_SHL_ASSIGN:
 			return "<<=";
 		case TOKEN_SHR_ASSIGN:
 			return ">>=";
-		case TOKEN_OR_ASSIGN:
-			return "||=";
+		case TOKEN_MINUS_MOD_ASSIGN:
+			return "-%=";
 
 		// Identifiers
 		case TOKEN_IDENT:

@@ -34,10 +34,11 @@ static bool expr_is_ltype(Expr *expr)
 	}
 }
 
-static inline bool sema_type_error_on_binop(const char *op, Expr *expr)
+static inline bool sema_type_error_on_binop(Expr *expr)
 {
+	const char *c = token_type_to_string(binaryop_to_token(expr->binary_expr.operator));
 	SEMA_ERROR(expr->loc, "Cannot perform '%s' %s '%s'.",
-			type_to_error_string(expr->binary_expr.left->type), op, type_to_error_string(expr->binary_expr.right->type));
+			type_to_error_string(expr->binary_expr.left->type), c, type_to_error_string(expr->binary_expr.right->type));
 	return false;
 }
 
@@ -830,7 +831,7 @@ static bool sema_expr_analyse_mod(Context *context, Type *to, Expr *expr, Expr *
 {
 	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
 
-	if (!type_is_integer(right->type->canonical) || !type_is_integer(left->type->canonical)) return sema_type_error_on_binop("%", expr);
+	if (!type_is_integer(right->type->canonical) || !type_is_integer(left->type->canonical)) return sema_type_error_on_binop(expr);
 
 	if (right->expr_kind == EXPR_CONST && right->const_expr.i == 0)
 	{
@@ -896,7 +897,7 @@ static bool sema_expr_analyse_bit(Context *context, Type *to, Expr *expr, Expr *
 	return true;
 
 	ERR:
-	return sema_type_error_on_binop(token_type_to_string(expr->binary_expr.operator), expr);
+	return sema_type_error_on_binop(expr);
 
 }
 
@@ -933,7 +934,7 @@ static bool sema_expr_analyse_shr(Context *context, Type *to, Expr *expr, Expr *
 	return true;
 
 	ERR:
-	return sema_type_error_on_binop(">>", expr);
+	return sema_type_error_on_binop(expr);
 }
 
 static bool sema_expr_analyse_shr_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
@@ -994,7 +995,7 @@ static bool sema_expr_analyse_shl(Context *context, Type *to, Expr *expr, Expr *
 	return true;
 
 	ERR:
-	return sema_type_error_on_binop("<<", expr);
+	return sema_type_error_on_binop(expr);
 }
 
 static bool sema_expr_analyse_shl_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
@@ -1008,7 +1009,7 @@ static bool sema_expr_analyse_shl_assign(Context *context, Type *to, Expr *expr,
 	}
 
 	// Check that right side is integer and cast to a runtime type if needed.
-	if (!type_is_integer(right->type->canonical)) return sema_type_error_on_binop("<<=", expr);
+	if (!type_is_integer(right->type->canonical)) return sema_type_error_on_binop(expr);
 
 	if (!cast_to_runtime(right)) return false;
 
@@ -1067,7 +1068,7 @@ static bool sema_expr_analyse_comp(Context *context, Type *to, Expr *expr, Expr 
 	bool success = max && cast_implicit(left, max) && cast_implicit(right, max);
 	if (!success)
 	{
-		SEMA_ERROR(expr->loc, "Cannot implicitly convert types to evaluate '%s' %s '%s'", type_to_error_string(left_type), token_type_to_string(expr->binary_expr.operator), type_to_error_string(right_type));
+		SEMA_ERROR(expr->loc, "Cannot implicitly convert types to evaluate '%s' %s '%s'", type_to_error_string(left_type), token_type_to_string(binaryop_to_token(expr->binary_expr.operator)), type_to_error_string(right_type));
 		return false;
 	}
 	if (both_const(left, right))
@@ -1080,18 +1081,18 @@ case CONST_INT: expr->const_expr.b = left->const_expr.i _op_ right->const_expr.i
 default: UNREACHABLE } break;
 		switch (expr->binary_expr.operator)
 		{
-			case TOKEN_GREATER:
+			case BINARYOP_GT:
 				COMP(>)
-			case TOKEN_GREATER_EQ:
+			case BINARYOP_GE:
 				COMP(>=)
-			case TOKEN_LESS:
+			case BINARYOP_LT:
 				COMP(<)
-			case TOKEN_LESS_EQ:
+			case BINARYOP_LE:
 				COMP(<=)
-			case TOKEN_EQEQ:
+			case BINARYOP_EQ:
 				// TODO elsewhere
 				COMP(==)
-			case TOKEN_NOT_EQUAL:
+			case BINARYOP_NE:
 				// TODO elsewhere
 				COMP(!=)
 			default:
@@ -1297,67 +1298,73 @@ static inline bool sema_expr_analyse_binary(Context *context, Type *to, Expr *ex
 	Expr *right = expr->binary_expr.right;
 	switch (expr->binary_expr.operator)
 	{
-		case TOKEN_EQ:
+		case BINARYOP_ASSIGN:
 			return sema_expr_analyse_assign(context, to, expr, left, right);
-		case TOKEN_STAR:
+		case BINARYOP_MULT:
+		case BINARYOP_MULT_MOD:
+			// Todo treat mod differently
 			return sema_expr_analyse_mult(context, to, expr, left, right);
-		case TOKEN_MULT_ASSIGN:
+		case BINARYOP_MULT_ASSIGN:
+		case BINARYOP_MULT_MOD_ASSIGN:
 			return sema_expr_analyse_mult_assign(context, to, expr, left, right);
-		case TOKEN_PLUS:
+		case BINARYOP_ADD:
+		case BINARYOP_ADD_MOD:
+			// TODO tread mod differently
 			return sema_expr_analyse_add(context, to, expr, left, right);
-		case TOKEN_PLUS_ASSIGN:
+		case BINARYOP_ADD_MOD_ASSIGN:
+		case BINARYOP_ADD_ASSIGN:
 			return sema_expr_analyse_add_assign(context, to, expr, left, right);
-		case TOKEN_MINUS:
+		case BINARYOP_SUB:
+		case BINARYOP_SUB_MOD:
 			return sema_expr_analyse_sub(context, to, expr, left, right);
-		case TOKEN_MINUS_ASSIGN:
+		case BINARYOP_SUB_ASSIGN:
+		case BINARYOP_SUB_MOD_ASSIGN:
 			return sema_expr_analyse_sub_assign(context, to, expr, left, right);
-		case TOKEN_DIV:
+		case BINARYOP_DIV:
 			return sema_expr_analyse_div(context, to, expr, left, right);
-		case TOKEN_DIV_ASSIGN:
+		case BINARYOP_DIV_ASSIGN:
 			return sema_expr_analyse_div_assign(context, to, expr, left, right);
-		case TOKEN_MOD:
+		case BINARYOP_MOD:
 			return sema_expr_analyse_mod(context, to, expr, left, right);
-		case TOKEN_MOD_ASSIGN:
+		case BINARYOP_MOD_ASSIGN:
 			return sema_expr_analyse_mod_assign(context, to, expr, left, right);
-		case TOKEN_AND:
+		case BINARYOP_AND:
 			return sema_expr_analyse_and(context, to, expr, left, right);
-		case TOKEN_AND_ASSIGN:
+		case BINARYOP_AND_ASSIGN:
 			return sema_expr_analyse_and_assign(context, to, expr, left, right);
-		case TOKEN_OR:
+		case BINARYOP_OR:
 			return sema_expr_analyse_or(context, to, expr, left, right);
-		case TOKEN_OR_ASSIGN:
+		case BINARYOP_OR_ASSIGN:
 			return sema_expr_analyse_or_assign(context, to, expr, left, right);
-		case TOKEN_BIT_AND_ASSIGN:
+		case BINARYOP_BIT_AND_ASSIGN:
 			return sema_expr_analyse_bit_and_assign(context, to, expr, left, right);
-		case TOKEN_BIT_OR:
-		case TOKEN_BIT_XOR:
-		case TOKEN_AMP:
+		case BINARYOP_BIT_OR:
+		case BINARYOP_BIT_XOR:
+		case BINARYOP_BIT_AND:
 			return sema_expr_analyse_bit(context, to, expr, left, right);
-		case TOKEN_BIT_OR_ASSIGN:
+		case BINARYOP_BIT_OR_ASSIGN:
 			return sema_expr_analyse_bit_or_assign(context, to, expr, left, right);
-		case TOKEN_BIT_XOR_ASSIGN:
+		case BINARYOP_BIT_XOR_ASSIGN:
 			return sema_expr_analyse_bit_xor_assign(context, to, expr, left, right);
-		case TOKEN_NOT_EQUAL:
+		case BINARYOP_NE:
 			// TODO special handling
 			return sema_expr_analyse_comp(context, to, expr, left, right);
-		case TOKEN_EQEQ:
+		case BINARYOP_EQ:
 			// TODO special handling
 			return sema_expr_analyse_comp(context, to, expr, left, right);
-		case TOKEN_GREATER_EQ:
-		case TOKEN_GREATER:
-		case TOKEN_LESS_EQ:
-		case TOKEN_LESS:
+		case BINARYOP_GT:
+		case BINARYOP_GE:
+		case BINARYOP_LT:
+		case BINARYOP_LE:
 			return sema_expr_analyse_comp(context, to, expr, left, right);
-		case TOKEN_SHR:
+		case BINARYOP_SHR:
 			return sema_expr_analyse_shr(context, to, expr, left, right);
-		case TOKEN_SHR_ASSIGN:
+		case BINARYOP_SHR_ASSIGN:
 			return sema_expr_analyse_shr_assign(context, to, expr, left, right);
-		case TOKEN_SHL:
+		case BINARYOP_SHL:
 			return sema_expr_analyse_shl(context, to, expr, left, right);
-		case TOKEN_SHL_ASSIGN:
+		case BINARYOP_SHL_ASSIGN:
 			return sema_expr_analyse_shl_assign(context, to, expr, left, right);
-		case TOKEN_ELVIS:
-			return sema_expr_analyse_elvis(context, to, expr, left, right);
 		default:
 			UNREACHABLE
 	}

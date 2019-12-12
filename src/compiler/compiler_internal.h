@@ -361,7 +361,7 @@ typedef struct
 {
 	Expr *left;
 	Expr *right;
-	TokenType operator;
+	BinaryOp operator;
 } ExprBinary;
 
 typedef struct
@@ -1066,6 +1066,7 @@ AssignOp assignop_from_token(TokenType type);
 UnaryOp unaryop_from_token(TokenType type);
 BinaryOp binaryop_from_token(TokenType type);
 BinaryOp binaryop_assign_base_op(BinaryOp assign_binary_op);
+TokenType binaryop_to_token(BinaryOp type);
 
 
 Decl *struct_find_name(Decl *decl, const char* name);

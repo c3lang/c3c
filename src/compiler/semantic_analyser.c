@@ -371,7 +371,7 @@ static inline Expr *convert_decl_to_expr(Context *context, Decl *decl)
 	identifier->identifier_expr.decl = decl;
 	assign_expr->binary_expr.left = identifier;
 	assign_expr->binary_expr.right = decl->var.init_expr;
-	assign_expr->binary_expr.operator = TOKEN_EQ;
+	assign_expr->binary_expr.operator = BINARYOP_ASSIGN;
 	// Possibly not right v TODO
 	identifier->type = decl->var.type_info->type;
 	assign_expr->type = decl->var.init_expr->type;
@@ -456,7 +456,7 @@ static inline bool decl_or_expr_to_expr_stmt(Context *context, Ast *stmt)
 			}
 			Expr *assign_expr = expr_new(EXPR_BINARY, stmt->token);
 			assign_expr->resolve_status = RESOLVE_DONE;
-			assign_expr->binary_expr.operator = TOKEN_EQ;
+			assign_expr->binary_expr.operator = BINARYOP_ASSIGN;
 			Expr *identifier = expr_new(EXPR_IDENTIFIER, var->name);
 			identifier->resolve_status = RESOLVE_DONE;
 			identifier->identifier_expr.decl = var;

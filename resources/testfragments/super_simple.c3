@@ -37,6 +37,10 @@ func int boba(int y, int j)
 }
 func int test(int x)
 {
+    x = x + 1;
+    x = x +% 1;
+    x += 1;
+    x +%= 1;
     Test3 foekf;
     Test oef;
     Test2 foek;

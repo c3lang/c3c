@@ -1375,6 +1375,9 @@ static Ast *parse_stmt(void)
 		case TOKEN_BIT_AND_ASSIGN:
 		case TOKEN_BIT_OR_ASSIGN:
 		case TOKEN_BIT_XOR_ASSIGN:
+		case TOKEN_PLUS_MOD:
+		case TOKEN_MINUS_MOD:
+		case TOKEN_MULT_MOD:
 		case TOKEN_DIV_ASSIGN:
 		case TOKEN_DOTDOT:
 		case TOKEN_ELVIS:
@@ -1390,8 +1393,9 @@ static Ast *parse_stmt(void)
 		case TOKEN_SCOPE:
 		case TOKEN_SHR:
 		case TOKEN_SHL:
-		case TOKEN_AND_ASSIGN:
-		case TOKEN_OR_ASSIGN:
+		case TOKEN_MULT_MOD_ASSIGN:
+		case TOKEN_PLUS_MOD_ASSIGN:
+		case TOKEN_MINUS_MOD_ASSIGN:
 		case TOKEN_SHR_ASSIGN:
 		case TOKEN_SHL_ASSIGN:
 		case TOKEN_ALIAS:
@@ -2759,7 +2763,7 @@ static Expr *parse_binary(Expr *left_side)
 	}
 
 	Expr *expr = EXPR_NEW_EXPR(EXPR_BINARY, left_side);
-	expr->binary_expr.operator = operator_type;
+	expr->binary_expr.operator = binaryop_from_token(operator_type);
 	expr->binary_expr.left = left_side;
 	expr->binary_expr.right = right_side;
 	return expr;
@@ -3308,10 +3312,13 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		//[TOKEN_SIZEOF] = { parse_sizeof, NULL, PREC_NONE },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
+		[TOKEN_MINUS_MOD] = { NULL, parse_binary, PREC_ADDITIVE },
 		[TOKEN_PLUS] = { NULL, parse_binary, PREC_ADDITIVE },
+		[TOKEN_PLUS_MOD] = { NULL, parse_binary, PREC_ADDITIVE },
 		[TOKEN_DIV] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_MOD] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_STAR] = { parse_unary_expr, parse_binary, PREC_MULTIPLICATIVE },
+		[TOKEN_MULT_MOD] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_DOT] = { NULL, parse_access_expr, PREC_CALL },
 		[TOKEN_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
 		[TOKEN_BIT_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
@@ -3341,12 +3348,13 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_AND] = { NULL, parse_binary, PREC_LOGICAL },
 		[TOKEN_EQ] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_PLUS_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
+		[TOKEN_PLUS_MOD_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_MINUS_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
+		[TOKEN_MINUS_MOD_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_MULT_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
+		[TOKEN_MULT_MOD_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_MOD_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_DIV_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
-		[TOKEN_AND_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
-		[TOKEN_OR_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_BIT_XOR_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_BIT_AND_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_BIT_OR_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },

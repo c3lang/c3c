@@ -232,7 +232,18 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, bool
 		case BINARYOP_ERROR:
 			UNREACHABLE
 		case BINARYOP_MULT:
-			return is_float ? LLVMBuildFMul(context->builder, lhs_value, rhs_value, "fmul") : LLVMBuildMul(context->builder, lhs_value, rhs_value, "mul");
+			if (is_float) return LLVMBuildFMul(context->builder, lhs_value, rhs_value, "fmul");
+			// TODO insert trap
+			if (type_is_unsigned_integer(lhs->type->canonical))
+			{
+				return LLVMBuildNUWMul(context->builder, lhs_value, rhs_value, "umul");
+			}
+			else
+			{
+				return LLVMBuildNSWMul(context->builder, lhs_value, rhs_value, "mul");
+			}
+		case BINARYOP_MULT_MOD:
+			return LLVMBuildMul(context->builder, lhs_value, rhs_value, "mul");
 		case BINARYOP_SUB:
 			if (lhs->type->canonical->type_kind == TYPE_POINTER)
 			{
@@ -241,8 +252,17 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, bool
 				return LLVMBuildGEP2(context->builder, BACKEND_TYPE(lhs->type), lhs_value, &rhs_value, 1, "ptrsub");
 			}
 			if (is_float) return LLVMBuildFSub(context->builder, lhs_value, rhs_value, "fsub");
-			// Consider UB version instead.
-			return LLVMBuildSub(context->builder, lhs_value, rhs_value, "sub");
+			// TODO insert trap
+			if (type_is_unsigned_integer(lhs->type->canonical))
+			{
+				return LLVMBuildNUWSub(context->builder, lhs_value, rhs_value, "usub");
+			}
+			else
+			{
+				return LLVMBuildNSWSub(context->builder, lhs_value, rhs_value, "sub");
+			}
+		case BINARYOP_SUB_MOD:
+			return LLVMBuildSub(context->builder, lhs_value, rhs_value, "submod");
 		case BINARYOP_ADD:
 			if (lhs->type->canonical->type_kind == TYPE_POINTER)
 			{
@@ -250,8 +270,17 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, bool
 				return LLVMBuildGEP2(context->builder, BACKEND_TYPE(lhs->type), lhs_value, &rhs_value, 1, "ptradd");
 			}
 			if (is_float) return LLVMBuildFAdd(context->builder, lhs_value, rhs_value, "fadd");
-			// Consider UB version instead.
-			return LLVMBuildAdd(context->builder, lhs_value, rhs_value, "add");
+			// TODO insert trap
+			if (type_is_unsigned_integer(lhs->type->canonical))
+			{
+				return LLVMBuildNUWAdd(context->builder, lhs_value, rhs_value, "uadd");
+			}
+			else
+			{
+				return LLVMBuildNSWAdd(context->builder, lhs_value, rhs_value, "sadd");
+			}
+		case BINARYOP_ADD_MOD:
+			return LLVMBuildAdd(context->builder, lhs_value, rhs_value, "addmod");
 		case BINARYOP_DIV:
 			if (is_float) return LLVMBuildFDiv(context->builder, lhs_value, rhs_value, "fdiv");
 			return type_is_unsigned(type)
@@ -306,8 +335,11 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, bool
 			UNREACHABLE
 		case BINARYOP_ASSIGN:
 		case BINARYOP_MULT_ASSIGN:
+		case BINARYOP_MULT_MOD_ASSIGN:
 		case BINARYOP_ADD_ASSIGN:
+		case BINARYOP_ADD_MOD_ASSIGN:
 		case BINARYOP_SUB_ASSIGN:
+		case BINARYOP_SUB_MOD_ASSIGN:
 		case BINARYOP_DIV_ASSIGN:
 		case BINARYOP_MOD_ASSIGN:
 		case BINARYOP_AND_ASSIGN:
@@ -353,7 +385,7 @@ LLVMValueRef gencontext_emit_post_unary_expr(GenContext *context, Expr *expr)
 
 static LLVMValueRef gencontext_emit_binary_expr(GenContext *context, Expr *expr)
 {
-	BinaryOp binary_op = binaryop_from_token(expr->binary_expr.operator);
+	BinaryOp binary_op = expr->binary_expr.operator;
 	if (binary_op > BINARYOP_ASSIGN)
 	{
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
