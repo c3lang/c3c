@@ -444,6 +444,7 @@ typedef struct
 	};
 } ExprCast;
 
+
 struct _Expr
 {
 	ExprKind expr_kind : 8;
@@ -458,7 +459,7 @@ struct _Expr
 		ExprTry try_expr;
 		ExprBinary binary_expr;
 		ExprAssign assign_expr;
-		ExprTernary conditional_expr;
+		ExprTernary ternary_expr;
 		ExprUnary unary_expr;
 		ExprUnary post_expr;
 		ExprCall call_expr;
@@ -500,6 +501,7 @@ typedef struct
 
 typedef struct
 {
+	Ast *decl;
 	Ast *cond;
 	Ast *body;
 } AstWhileStmt;
@@ -512,6 +514,7 @@ typedef struct
 
 typedef struct
 {
+	Ast *decl;
 	Ast *cond;
 	Ast *then_body;
 	Ast *else_body;
@@ -536,6 +539,7 @@ typedef struct
 
 typedef struct
 {
+	Ast *decl;
 	Ast *cond;
 	Ast *body;
 	Ast **cases;
@@ -543,18 +547,12 @@ typedef struct
 
 typedef struct
 {
-	Ast **init;
-	Ast *cond;
-	Ast *incr;
+	Ast *init;
+	Expr *cond;
+	Expr *incr;
 	Ast *body;
 } AstForStmt;
 
-
-typedef struct
-{
-	Ast **stmts;
-	Expr *expr;
-} AstCondStmt;
 
 
 typedef struct
@@ -652,14 +650,13 @@ typedef struct _Ast
 		AstCatchStmt catch_stmt;
 		AstGotoStmt goto_stmt;
 		AstForStmt for_stmt;
-		AstCondStmt cond_stmt;
 		AstCtIfStmt ct_if_stmt;
 		AstCtIfStmt ct_elif_stmt;
 		Ast *ct_else_stmt;
 		AstCtForStmt ct_for_stmt;
 		AstGenericCaseStmt generic_case_stmt;
 		Ast *generic_default_stmt;
-		Ast** stmt_list;
+		Ast** decl_expr_stmt;
 	};
 } Ast;
 
@@ -826,7 +823,7 @@ static inline ConstType sign_from_type(Type *type)
 bool cast_implicit(Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type, CastType cast_type);
 bool cast_binary_arithmetic(Expr *left, Expr *right, const char *action);
-
+CastKind cast_to_bool_kind(Type *type);
 bool cast_to_runtime(Expr *expr);
 
 void llvm_codegen(Context *context);

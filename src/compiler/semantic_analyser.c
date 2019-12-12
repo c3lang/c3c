@@ -6,7 +6,20 @@
 
 typedef bool(*AstAnalysis)(Context *, Ast*);
 
-bool sema_analyse_stmt_list(Context *context, Ast *statement);
+static inline Type *ast_cond_type(Ast *ast)
+{
+	assert(ast->ast_kind == AST_DECL_EXPR_LIST);
+	Ast *last = VECLAST(ast->decl_expr_stmt);
+	switch (last->ast_kind)
+	{
+		case AST_EXPR_STMT:
+			return last->expr_stmt->type;
+		case AST_DECLARE_STMT:
+			return last->declare_stmt->var.type_info->type;
+		default:
+			UNREACHABLE
+	}
+}
 
 void sema_init(File *file)
 {
@@ -440,35 +453,6 @@ static inline bool decl_or_expr_to_expr_stmt(Context *context, Ast *stmt)
 	assert(stmt->ast_kind == AST_DECLARE_STMT);
 	stmt->ast_kind = AST_EXPR_STMT;
 	Decl *decl = stmt->declare_stmt;
-	if (decl->decl_kind == DECL_MULTI_DECL)
-	{
-		Expr *list = expr_new(EXPR_EXPRESSION_LIST, stmt->token);
-		Expr **exprs = NULL;
-		VECEACH(decl->multi_decl, i)
-		{
-			Decl *var = decl->multi_decl[i];
-			assert(var->decl_kind == DECL_VAR);
-			assert(var->decl_kind == VARDECL_LOCAL);
-			if (var->var.init_expr == NULL)
-			{
-				SEMA_ERROR(var->name, "'%s' needs to be assigned.", var->name.string);
-				return false;
-			}
-			Expr *assign_expr = expr_new(EXPR_BINARY, stmt->token);
-			assign_expr->resolve_status = RESOLVE_DONE;
-			assign_expr->binary_expr.operator = BINARYOP_ASSIGN;
-			Expr *identifier = expr_new(EXPR_IDENTIFIER, var->name);
-			identifier->resolve_status = RESOLVE_DONE;
-			identifier->identifier_expr.decl = var;
-			identifier->type = var->var.type_info->type;
-			assign_expr->binary_expr.left = identifier;
-			assign_expr->binary_expr.right = var->var.init_expr;
-			exprs = VECADD(exprs, assign_expr);
-		}
-		list->expression_list = exprs;
-		stmt->expr_stmt = list;
-		return true;
-	}
 	assert(decl->decl_kind == DECL_VAR);
 	assert(decl->decl_kind == VARDECL_LOCAL);
 	if (decl->var.init_expr == NULL)
@@ -480,53 +464,75 @@ static inline bool decl_or_expr_to_expr_stmt(Context *context, Ast *stmt)
 	return true;
 }
 
-static inline bool sema_flatten_cond(Context *context, Ast *stmt, bool cast_to_bool)
+static inline bool sema_analyse_decl_expr_list(Context *context, Ast *stmt)
 {
-	assert(stmt->ast_kind == AST_STMT_LIST);
-	assert(vec_size(stmt->stmt_list) > 0);
+	assert(stmt->ast_kind == AST_DECL_EXPR_LIST);
 
-	// The common case:
-	if (vec_size(stmt->stmt_list) == 1 && stmt->stmt_list[0]->ast_kind == AST_EXPR_STMT)
+	VECEACH(stmt->decl_expr_stmt, i)
 	{
-		Expr *expr = stmt->stmt_list[0]->expr_stmt;
-		if (cast_to_bool && !cast(expr, type_bool, CAST_TYPE_IMPLICIT)) return false;
-		stmt->ast_kind = AST_COND_STMT;
-		stmt->cond_stmt.expr = expr;
-		stmt->cond_stmt.stmts = NULL;
-		return true;
+		if (!sema_analyse_statement(context, stmt->decl_expr_stmt[i])) return false;
 	}
-	Ast **new_list = NULL;
-	Expr *last = NULL;
 
-	unsigned last_index = vec_size(stmt->stmt_list) - 1;
-	VECEACH(stmt->stmt_list, i)
-	{
-		if (!convert_stmt_for_cond(context, stmt->stmt_list[i], &new_list, &last, last_index == i)) return false;
-	}
-	if (cast_to_bool && !cast(last, type_bool, CAST_TYPE_IMPLICIT)) return false;
-	stmt->ast_kind = AST_COND_STMT;
-	stmt->cond_stmt.expr = last;
-	stmt->cond_stmt.stmts = new_list;
 	return true;
+}
+
+static inline bool sema_analyse_cond(Context *context, Ast *stmt, bool cast_to_bool)
+{
+	assert(stmt->ast_kind == AST_DECL_EXPR_LIST);
+
+	size_t size = vec_size(stmt->decl_expr_stmt);
+	if (!size)
+	{
+		SEMA_ERROR(stmt->token, "Expected a boolean expression");
+		return false;
+	}
+
+	if (!sema_analyse_decl_expr_list(context, stmt)) return false;
+
+	Ast *last = stmt->decl_expr_stmt[size - 1];
+	switch (last->ast_kind)
+	{
+		case AST_EXPR_STMT:
+			if (cast_to_bool)
+			{
+				if (!cast_implicit(last->expr_stmt, type_bool)) return false;
+			}
+			return true;
+		case AST_DECLARE_STMT:
+		{
+			Expr *init = last->declare_stmt->var.init_expr;
+			if (!init)
+			{
+				SEMA_ERROR(last->token, "Expected a declaration with initializer.");
+				return false;
+			}
+			if (cast_to_bool && init->type->type_kind != TYPE_BOOL &&
+				cast_to_bool_kind(last->declare_stmt->var.type_info->type) == CAST_ERROR)
+			{
+				SEMA_ERROR(last->declare_stmt->var.init_expr->loc, "The expression needs to be convertible to a boolean.");
+				return false;
+			}
+			return true;
+		}
+		default:
+			UNREACHABLE
+	}
 }
 
 static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 {
+	Ast *decl = statement->while_stmt.decl;
 	Ast *cond = statement->while_stmt.cond;
 	Ast *body = statement->while_stmt.body;
-	assert(cond && cond->ast_kind == AST_STMT_LIST);
 	context_push_scope_with_flags(context, SCOPE_CONTROL);
-	bool success = sema_analyse_statement(context, cond);
-	success = success && sema_flatten_cond(context, cond, true);
+	bool success = !decl || sema_analyse_statement(context, decl);
+	success = success && sema_analyse_cond(context, cond, true);
+
 	context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_CONTINUE); // NOLINT(hicpp-signed-bitwise)
 	success = success && sema_analyse_statement(context, body);
 	context_pop_scope(context);
 	context_pop_scope(context);
 	if (!success) return false;
-	statement->ast_kind = AST_FOR_STMT;
-	statement->for_stmt.cond = cond;
-	statement->for_stmt.incr = NULL;
-	statement->for_stmt.body = body;
 	return success;
 }
 
@@ -563,10 +569,6 @@ static inline bool sema_analyse_multi_decl(Context *context, Ast *statement)
 static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 {
 	Decl *decl = statement->declare_stmt;
-	if (decl->decl_kind == DECL_MULTI_DECL)
-	{
-		return sema_analyse_multi_decl(context, statement);
-	}
 	return sema_analyse_var_decl(context, decl);
 }
 
@@ -599,21 +601,14 @@ static inline bool sema_analyse_default_stmt(Context *context, Ast *statement)
 	return false;
 }
 
-bool sema_analyse_stmt_list(Context *context, Ast *statement)
-{
-	VECEACH(statement->stmt_list, i)
-	{
-		if (!sema_analyse_statement(context, statement->stmt_list[i])) return false;
-	}
-	return true;
-}
-
 static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 {
 	context_push_scope_with_flags(context, SCOPE_CONTROL);
 
-	bool success = sema_analyse_statement(context, statement->for_stmt.cond);
-	success = success && (!statement->for_stmt.incr || sema_analyse_statement(context, statement->for_stmt.incr));
+	bool success = !statement->for_stmt.init || sema_analyse_statement(context, statement->for_stmt.init);
+
+	success = success && (!statement->for_stmt.cond || sema_analyse_expr(context, type_bool, statement->for_stmt.cond));
+	success = success && (!statement->for_stmt.incr || sema_analyse_expr(context, NULL, statement->for_stmt.incr));
 	context_pop_scope(context);
 	if (!success) return false;
 	context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_CONTINUE); // NOLINT(hicpp-signed-bitwise)
@@ -648,8 +643,7 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 	context_push_scope(context);
 	Ast *cond = statement->if_stmt.cond;
 	context_push_scope_with_flags(context, SCOPE_CONTROL);
-	bool success = sema_analyse_statement(context, cond);
-	success = success && sema_flatten_cond(context, cond, true);
+	bool success = sema_analyse_cond(context, cond, true);
 	context_push_scope(context);
 	success = success && sema_analyse_statement(context, statement->if_stmt.then_body);
 	context_pop_scope(context);
@@ -864,14 +858,14 @@ static bool sema_analyse_switch_case(Context *context, Ast*** prev_cases, Ast *c
 
 static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 {
-	Ast *cond = statement->switch_stmt.cond;
 	context_push_scope_with_flags(context, SCOPE_CONTROL);
-	bool success = sema_analyse_statement(context, cond);
-	success = success && sema_flatten_cond(context, cond, false);
+	bool success = sema_analyse_statement(context, statement->switch_stmt.cond);
+	Ast *cond = statement->switch_stmt.cond;
+	success = success && sema_analyse_cond(context, cond, false);
 	context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_NEXT); // NOLINT(hicpp-signed-bitwise)
 	Ast *body = statement->switch_stmt.body;
 	assert(body->ast_kind == AST_COMPOUND_STMT);
-	Type *switch_type = cond->cond_stmt.expr->type->canonical;
+	Type *switch_type = ast_cond_type(cond)->canonical;
 	if (!type_is_integer(switch_type))
 	{
 		SEMA_ERROR(cond->token, "Expected an integer or enum type, was '%s'.", type_to_error_string(switch_type));
@@ -945,7 +939,7 @@ static AstAnalysis AST_ANALYSIS[AST_WHILE_STMT + 1] =
 	[AST_NEXT_STMT] = NULL, // Never reached
 	[AST_VOLATILE_STMT] = &sema_analyse_volatile_stmt,
 	[AST_WHILE_STMT] = &sema_analyse_while_stmt,
-	[AST_STMT_LIST] = &sema_analyse_stmt_list
+	[AST_DECL_EXPR_LIST] = &sema_analyse_decl_expr_list,
 };
 
 bool sema_analyse_statement(Context *context, Ast *statement)

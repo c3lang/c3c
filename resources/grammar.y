@@ -197,24 +197,9 @@ macro_argument_list
     | macro_argument_list ',' macro_argument
     ;
 
-implicit_decl
-    : IDENT
-    | IDENT '=' initializer
-    ;
-
-explicit_decl
+declaration
     : type_expression IDENT '=' initializer
     | type_expression IDENT
-    ;
-
-declaration
-    : explicit_decl
-    | explicit_decl ',' implicit_decl
-    | explicit_decl ',' explicit_decl
-    ;
-
-declaration_list
-    : declaration
     ;
 
 param_declaration
@@ -391,8 +376,8 @@ expression_statement
 
 
 control_expression
-    : decl_or_expr_list
-    | declaration_list ';' decl_or_expr_list
+    : decl_expr_list
+    | decl_expr_list ';' decl_expr_list
     ;
 
 selection_statement
@@ -406,14 +391,16 @@ expression_list
     | expression_list ',' expression
     ;
 
-decl_or_expr_list
-    : expression_list
-    | declaration_list
+decl_expr_list
+    : expression
+    | declaration
+    | decl_expr_list ',' expression
+    | decl_expr_list ',' declaration
     ;
 
 for_statement
-    : FOR '(' decl_or_expr_list ';' expression_statement ')' statement
-    | FOR '(' decl_or_expr_list ';' expression_statement expression_list ')' statement
+    : FOR '(' decl_expr_list ';' expression_statement ')' statement
+    | FOR '(' decl_expr_list ';' expression_statement expression_list ')' statement
     ;
 
 iteration_statement

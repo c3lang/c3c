@@ -42,7 +42,6 @@ There are some small work being done on the parser here, but most of the structu
 - Errors not correctly handled. 
 - Type resolution not complete for all types.
 - `type` not handled.
-- `?:` not handled.
 - Identifier analysis incomplete. 
 - Macro call not handled completely.
 - Function calls not handled completely.

@@ -89,9 +89,12 @@ static inline LLVMBasicBlockRef gencontext_create_free_block(GenContext *context
 void gencontext_emit_function_decl(GenContext *context, Decl *decl);
 LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr);
 #define LLVMTYPE(type) type->backend_type
-
+static inline LLVMValueRef gencontext_load_expr(GenContext *context, LLVMValueRef value)
+{
+	return LLVMBuildLoad(context->builder, value, "");
+}
 LLVMTypeRef gencontext_get_llvm_type(GenContext *context, Type *type);
-
+LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMValueRef value, Type *type, Type *target_type);
 static inline bool gencontext_use_debug(GenContext *context)
 {
 	return context && context->debug.builder != NULL;

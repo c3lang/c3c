@@ -23,6 +23,20 @@ union Test3
 
 func int boba(int y, int j)
 {
+    for (int i = 0; i < 10; i++)
+    {
+
+    }
+    for (int i = 0, int foo = 0; i < 10; i++)
+    {
+
+    }
+
+    for (int i = 0, j = 1; i < 10; i++, j++)
+    {
+
+    }
+
     Test2 bar;
     bar.b = 1;
     //int w = y ? y : j;
@@ -66,6 +80,11 @@ func int test(int x)
     return y;
 }
 
+func int* elvis(int *x, int *y)
+{
+    return x ?: y;
+}
+
 func int test3()
 {
     if (test() < 0) return -1;
@@ -93,6 +112,26 @@ func void bob()
 
 func int main(int x)
 {
+    for (int ok = 0; ok < 10; ok++)
+    {
+        printf("ok");
+    }
+    printf("\n");
+    for (int ok = 0, int ko = 0, ok = 2; ok + ko < 10; ok++, ko++)
+    {
+        printf(":okko");
+    }
+    printf("\n");
+    while (int ok = 0; int j = ok++, ok < 10)
+    {
+        printf("foo");
+    }
+    printf("\n");
+    x = 3;
+    if (int odk = x, x > 0)
+    {
+        printf("helo\n");
+    }
     Test2 efe;
     efe.t.a = 3;
     if (efe.t.a > 2) printf("Works!\n");

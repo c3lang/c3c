@@ -43,12 +43,30 @@ static inline bool sema_type_error_on_binop(Expr *expr)
 }
 
 
-static inline bool sema_expr_analyse_conditional(Context *context, Type *to, Expr *expr)
+static inline bool sema_expr_analyse_ternary(Context *context, Type *to, Expr *expr)
 {
-	if (!sema_analyse_expr(context, type_bool, expr->conditional_expr.cond)) return expr_poison(expr);
-	Expr *left = expr->conditional_expr.then_expr;
-	Expr *right = expr->conditional_expr.else_expr;
-	if (!sema_analyse_expr(context, to, left)) return expr_poison(expr);
+	Expr *left = expr->ternary_expr.then_expr;
+	Expr *cond = expr->ternary_expr.cond;
+	// Normal
+	if (left)
+	{
+		if (!sema_analyse_expr(context, type_bool, cond)) return expr_poison(expr);
+		if (!sema_analyse_expr(context, to, left)) return expr_poison(expr);
+	}
+	else
+	{
+		// Elvis
+		if (!sema_analyse_expr(context, to, cond)) return expr_poison(expr);
+		Type *type = cond->type->canonical;
+		if (type->type_kind != TYPE_BOOL && cast_to_bool_kind(type) == CAST_ERROR)
+		{
+			SEMA_ERROR(cond->loc, "Cannot convert expression to boolean.");
+			return false;
+		}
+		left = cond;
+	}
+
+	Expr *right = expr->ternary_expr.else_expr;
 	if (!sema_analyse_expr(context, to, right)) return expr_poison(expr);
 
 	Type *left_canonical = left->type->canonical;
@@ -452,7 +470,7 @@ static inline bool sema_expr_analyse_expr_list(Context *context, Type *to, Expr 
 	size_t last = vec_size(expr->expression_list) - 1;
 	VECEACH(expr->expression_list, i)
 	{
-		success &= sema_analyse_expr(context, i == last ? to : NULL, expr);
+		success &= sema_analyse_expr(context, i == last ? to : NULL, expr->expression_list[i]);
 	}
 	return success;
 }
@@ -1291,6 +1309,8 @@ static inline bool sema_expr_analyse_incdec(Context *context, Type *to, Expr *ex
 	return true;
 }
 
+
+
 static inline bool sema_expr_analyse_binary(Context *context, Type *to, Expr *expr)
 {
 	assert(expr->resolve_status == RESOLVE_RUNNING);
@@ -1446,8 +1466,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return true;
 		case EXPR_BINARY:
 			return sema_expr_analyse_binary(context, to, expr);
-		case EXPR_CONDITIONAL:
-			return sema_expr_analyse_conditional(context, to, expr);
+		case EXPR_TERNARY:
+			return sema_expr_analyse_ternary(context, to, expr);
 		case EXPR_UNARY:
 			return sema_expr_analyse_unary(context, to, expr);
 		case EXPR_POST_UNARY:

@@ -562,6 +562,49 @@ bool cast_implicit(Expr *expr, Type *to_type)
 	return cast(expr, to_type, CAST_TYPE_IMPLICIT);
 }
 
+CastKind cast_to_bool_kind(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_TYPEDEF:
+			return cast_to_bool_kind(type->canonical);
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_ERROR_UNION:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_STRING:
+		case TYPE_ERROR:
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+		case TYPE_ARRAY:
+		case TYPE_VARARRAY:
+		case TYPE_SUBARRAY:
+			// Improve consider vararray / subarray conversion to boolean.
+			return CAST_ERROR;
+		case TYPE_BOOL:
+			UNREACHABLE
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+		case TYPE_IXX:
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+		case TYPE_UXX:
+			return CAST_INTBOOL;
+		case TYPE_F32:
+		case TYPE_F64:
+		case TYPE_FXX:
+			return CAST_FPBOOL;
+		case TYPE_POINTER:
+			return CAST_PTRBOOL;
+	}
+	UNREACHABLE
+}
+
 bool cast(Expr *expr, Type *to_type, CastType cast_type)
 {
 	Type *from_type = expr->type->canonical;

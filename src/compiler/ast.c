@@ -560,21 +560,21 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 				}
 			}
 			break;
-		case EXPR_CONDITIONAL:
-			if (!expr->conditional_expr.then_expr)
+		case EXPR_TERNARY:
+			if (!expr->ternary_expr.then_expr)
 			{
 				fprintf_indented(file, indent, "(elvis\n");
 				fprint_expr_common(file, expr, indent + 1);
-				fprint_expr_recursive(file, expr->conditional_expr.cond, indent + 1);
+				fprint_expr_recursive(file, expr->ternary_expr.cond, indent + 1);
 			}
 			else
 			{
 				fprintf_indented(file, indent, "(cond\n");
 				fprint_expr_common(file, expr, indent + 1);
-				fprint_expr_recursive(file, expr->conditional_expr.cond, indent + 1);
-				fprint_expr_recursive(file, expr->conditional_expr.then_expr, indent + 1);
+				fprint_expr_recursive(file, expr->ternary_expr.cond, indent + 1);
+				fprint_expr_recursive(file, expr->ternary_expr.then_expr, indent + 1);
 			}
-			fprint_expr_recursive(file, expr->conditional_expr.else_expr, indent + 1);
+			fprint_expr_recursive(file, expr->ternary_expr.else_expr, indent + 1);
 			break;
 		case EXPR_INITIALIZER_LIST:
 			fprintf_indented(file, indent, "(initializerlist\n");
@@ -612,6 +612,15 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			fprint_expr_common(file, expr, indent + 1);
 			fprint_type_info_recursive(file, expr->cast_expr.type_info, indent + 1);
 			fprint_expr_recursive(file, expr->cast_expr.expr, indent + 1);
+			break;
+		case EXPR_EXPRESSION_LIST:
+			fprintf_indented(file, indent, "(expression-list\n");
+			fprint_expr_common(file, expr, indent + 1);
+			fprint_type_info_recursive(file, expr->struct_value_expr.type, indent + 1);
+			VECEACH(expr->expression_list, i)
+			{
+				fprint_expr_recursive(file, expr->expression_list[i], indent + 1);
+			}
 			break;
 		default:
 			fprintf_indented(file, indent, "(TODOEXPR)\n");
@@ -826,6 +835,12 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 				fprint_asts_recursive(file, ast->compound_stmt.stmts, indent + 1);
 			}
 			break;
+		case AST_DECL_EXPR_LIST:
+			fprintf(file, "(declexprlist\n");
+			{
+				fprint_asts_recursive(file, ast->decl_expr_stmt, indent + 1);
+			}
+			break;
 		case AST_DECLARE_STMT:
 			fprintf(file, "(declare\n");
 			fprint_decl_recursive(file, ast->declare_stmt, indent + 1);
@@ -856,10 +871,6 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			fprint_ast_recursive(file, ast->do_stmt.body, indent + 1);
 			fprint_expr_recursive(file, ast->do_stmt.expr, indent + 1);
 			break;
-		case AST_STMT_LIST:
-			fprintf(file, "(stmtlist\n");
-			fprint_asts_recursive(file, ast->stmt_list, indent + 1);
-			break;
 		case AST_RETURN_STMT:
 			if (ast->return_stmt.expr)
 			{
@@ -884,25 +895,19 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 		case AST_DEFAULT_STMT:
 			fprintf(file, "(default)\n");
 			return;
-		case AST_COND_STMT:
-			fprintf(file, "(cond\n");
-			if (ast->cond_stmt.expr)
-			{
-				fprint_expr_recursive(file, ast->cond_stmt.expr, indent + 1);
-			}
-			else
-			{
-				fprint_indent(file, indent);
-				fprintf(file, "(noexpr)");
-			}
-			fprint_asts_recursive(file, ast->cond_stmt.stmts, indent + 1);
-			break;
 		case AST_FOR_STMT:
 			fprintf(file, "(for\n");
-			fprint_ast_recursive(file, ast->for_stmt.cond, indent + 1);
+			if (ast->for_stmt.init)
+			{
+				fprint_ast_recursive(file, ast->for_stmt.init, indent + 1);
+			}
+			if (ast->for_stmt.cond)
+			{
+				fprint_expr_recursive(file, ast->for_stmt.cond, indent + 1);
+			}
 			if (ast->for_stmt.incr)
 			{
-				fprint_ast_recursive(file, ast->for_stmt.incr, indent + 1);
+				fprint_expr_recursive(file, ast->for_stmt.incr, indent + 1);
 			}
 			else
 			{
@@ -1012,3 +1017,4 @@ void fprint_decl(FILE *file, Decl *dec)
 }
 Module poisoned_module = { .name = "INVALID" };
 Decl all_error = { .decl_kind = DECL_ERROR, .name = { .type = TOKEN_INVALID_TOKEN, .string = NULL } };
+

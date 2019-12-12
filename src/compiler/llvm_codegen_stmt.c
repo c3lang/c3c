@@ -5,8 +5,7 @@
 #include "llvm_codegen_internal.h"
 
 static void gencontext_pop_break_continue(GenContext *context);
-static void
-gencontext_push_break_continue(GenContext *context, LLVMBasicBlockRef break_block, LLVMBasicBlockRef continue_block,
+static void gencontext_push_break_continue(GenContext *context, LLVMBasicBlockRef break_block, LLVMBasicBlockRef continue_block,
                                LLVMBasicBlockRef next_block);
 
 void gencontext_emit_compound_stmt(GenContext *context, Ast *ast)
@@ -18,41 +17,6 @@ void gencontext_emit_compound_stmt(GenContext *context, Ast *ast)
 	}
 }
 
-static inline void gencontext_emit_stmt_list(GenContext *context, Ast *ast)
-{
-	assert(ast->ast_kind == AST_STMT_LIST);
-	VECEACH(ast->stmt_list, i)
-	{
-		gencontext_emit_stmt(context, ast->stmt_list[i]);
-	}
-}
-
-static inline void gencontext_emit_return(GenContext *context, Ast *ast)
-{
-	// Ensure we are on a branch that is non empty.
-	if (!gencontext_check_block_branch_emit(context)) return;
-	if (!ast->return_stmt.expr)
-	{
-		LLVMBuildRetVoid(context->builder);
-		return;
-	}
-	LLVMValueRef returnValue = gencontext_emit_expr(context, ast->return_stmt.expr);
-	LLVMBuildRet(context->builder, returnValue);
-	context->current_block = NULL;
-	LLVMBasicBlockRef post_ret_block = gencontext_create_free_block(context, "ret");
-	gencontext_emit_block(context, post_ret_block);
-
-}
-
-static inline LLVMValueRef gencontext_emit_cond(GenContext *context, Ast *ast)
-{
-	assert(ast->ast_kind == AST_COND_STMT);
-	VECEACH(ast->cond_stmt.stmts, i)
-	{
-		gencontext_emit_stmt(context, ast->cond_stmt.stmts[i]);
-	}
-	return gencontext_emit_expr(context, ast->cond_stmt.expr);
-}
 
 static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 {
@@ -84,17 +48,75 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 	return decl->var.backend_ref;
 }
 
+void gencontext_emit_decl_expr_list_ignore_result(GenContext *context, Ast *ast)
+{
+	assert(ast->ast_kind == AST_DECL_EXPR_LIST);
+	VECEACH(ast->decl_expr_stmt, i)
+	{
+		gencontext_emit_stmt(context, ast->decl_expr_stmt[i]);
+	}
+}
+
+LLVMValueRef gencontext_emit_decl_expr_list(GenContext *context, Ast *ast, bool bool_cast)
+{
+	assert(ast->ast_kind == AST_DECL_EXPR_LIST);
+	size_t size = vec_size(ast->decl_expr_stmt);
+	size_t last_index = size - 1;
+	for (size_t i = 0; i < last_index; i++)
+	{
+		gencontext_emit_stmt(context, ast->decl_expr_stmt[i]);
+	}
+	Ast *last = ast->decl_expr_stmt[last_index];
+	LLVMValueRef result;
+	Type *type;
+	switch (last->ast_kind)
+	{
+		case AST_EXPR_STMT:
+			type = last->expr_stmt->type;
+			result = gencontext_emit_expr(context, last->expr_stmt);
+			break;
+		case AST_DECLARE_STMT:
+			type = last->declare_stmt->var.type_info->type;
+			result = gencontext_load_expr(context, gencontext_emit_decl(context, last));
+			break;
+		default:
+			UNREACHABLE
+	}
+	if (bool_cast)
+	{
+		type = type->canonical;
+		if (type->type_kind != TYPE_BOOL)
+		{
+			CastKind cast = cast_to_bool_kind(type);
+			result = gencontext_emit_cast(context, cast, result, type, type_bool);
+		}
+	}
+	return result;
+}
+
+
+static inline void gencontext_emit_return(GenContext *context, Ast *ast)
+{
+	// Ensure we are on a branch that is non empty.
+	if (!gencontext_check_block_branch_emit(context)) return;
+	if (!ast->return_stmt.expr)
+	{
+		LLVMBuildRetVoid(context->builder);
+		return;
+	}
+	LLVMValueRef returnValue = gencontext_emit_expr(context, ast->return_stmt.expr);
+	LLVMBuildRet(context->builder, returnValue);
+	context->current_block = NULL;
+	LLVMBasicBlockRef post_ret_block = gencontext_create_free_block(context, "ret");
+	gencontext_emit_block(context, post_ret_block);
+
+}
+
+
 
 void gencontext_emit_if(GenContext *context, Ast *ast)
 {
-	// In the case of something like if (foo = 1, int bar = 2; b > 0) { ... }
-	// Let's first emit foo = 1, int bar = 2
-	// IMPROVE Consider whether these should be lowered or not.
-	Ast **stmts = ast->if_stmt.cond->cond_stmt.stmts;
-	VECEACH(stmts, i)
-	{
-		gencontext_emit_stmt(context, stmts[i]);
-	}
+	if (ast->if_stmt.decl) gencontext_emit_decl_expr_list_ignore_result(context, ast->if_stmt.decl);
 
 	// We need at least the exit block and the "then" block.
 	LLVMBasicBlockRef exit_block = LLVMCreateBasicBlockInContext(context->context, "if.exit");
@@ -107,10 +129,8 @@ void gencontext_emit_if(GenContext *context, Ast *ast)
 		else_block = LLVMCreateBasicBlockInContext(context->context, "if.else");
 	}
 
-	assert(ast->if_stmt.cond->cond_stmt.expr->type->type_kind == TYPE_BOOL);
-
 	// Output boolean value and switch.
-	LLVMValueRef value = gencontext_emit_expr(context, ast->if_stmt.cond->cond_stmt.expr);
+	LLVMValueRef value = gencontext_emit_decl_expr_list(context, ast->if_stmt.cond, true);
 	gencontext_emit_cond_br(context, value, then_block, else_block ? else_block : exit_block);
 
 	// Emit the 'then' code.
@@ -169,12 +189,7 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 {
 	// First, emit all inits.
 
-	Ast **init_stmts = ast->for_stmt.init;
-
-	VECEACH(init_stmts, i)
-	{
-		gencontext_emit_stmt(context, init_stmts[i]);
-	}
+	if (ast->for_stmt.init) gencontext_emit_decl_expr_list_ignore_result(context, ast->for_stmt.init);
 
 	// We have 3 optional parts, which makes this code bit complicated.
 	LLVMBasicBlockRef exit_block = gencontext_create_free_block(context, "for.exit");
@@ -203,7 +218,7 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 		// Emit cond
 		gencontext_emit_br(context, cond_block);
 		gencontext_emit_block(context, cond_block);
-		value = gencontext_emit_expr(context, ast->for_stmt.cond->cond_stmt.expr);
+		value = gencontext_emit_expr(context, ast->for_stmt.cond);
 		// If we have a body, conditionally jump to it.
 		if (body_block)
 		{
@@ -236,11 +251,53 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 	{
 		// Emit the block
 		gencontext_emit_block(context, inc_block);
-		gencontext_emit_stmt(context, ast->for_stmt.incr);
+		gencontext_emit_expr(context, ast->for_stmt.incr);
 	}
 
 	// Loop back.
 	gencontext_emit_br(context, cond_block ? cond_block : (body_block ? body_block : inc_block));
+
+	// And insert exit block
+	gencontext_emit_block(context, exit_block);
+	gencontext_pop_break_continue(context);
+}
+
+void gencontext_emit_while_stmt(GenContext *context, Ast *ast)
+{
+	// First, emit all inits.
+
+	if (ast->while_stmt.decl) gencontext_emit_decl_expr_list_ignore_result(context, ast->while_stmt.decl);
+
+
+	LLVMBasicBlockRef exit_block = gencontext_create_free_block(context, "while.exit");
+	LLVMBasicBlockRef begin_block = gencontext_create_free_block(context, "while.begin");
+	LLVMBasicBlockRef body_block = ast->while_stmt.body->compound_stmt.stmts ? gencontext_create_free_block(context, "while.body") : NULL;
+
+	gencontext_push_break_continue(context, exit_block, begin_block, NULL);
+
+	// Emit cond
+	gencontext_emit_br(context, begin_block);
+	gencontext_emit_block(context, begin_block);
+	LLVMValueRef value = gencontext_emit_decl_expr_list(context, ast->while_stmt.cond, true);
+	// If we have a body, conditionally jump to it.
+	if (body_block)
+	{
+		gencontext_emit_cond_br(context, value, body_block, exit_block);
+	}
+	else
+	{
+		// Otherwise jump to inc or cond depending on what's available.
+		gencontext_emit_cond_br(context, value, begin_block, exit_block);
+	}
+
+	if (body_block)
+	{
+		gencontext_emit_block(context, body_block);
+		gencontext_emit_stmt(context, ast->while_stmt.body);
+	}
+
+	// Loop back.
+	gencontext_emit_br(context, begin_block);
 
 	// And insert exit block
 	gencontext_emit_block(context, exit_block);
@@ -305,7 +362,8 @@ void gencontext_emit_label(GenContext *context, Ast *ast)
 
 void gencontext_emit_switch(GenContext *context, Ast *ast)
 {
-	LLVMValueRef switch_value = gencontext_emit_cond(context, ast->switch_stmt.cond);
+	if (ast->switch_stmt.decl) gencontext_emit_decl_expr_list_ignore_result(context, ast->switch_stmt.decl);
+	LLVMValueRef switch_value = gencontext_emit_decl_expr_list(context, ast->switch_stmt.cond, false);
 
 	size_t cases = vec_size(ast->switch_stmt.cases);
 	if (!cases)
@@ -426,6 +484,9 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 		case AST_FOR_STMT:
 			gencontext_emit_for_stmt(context, ast);
 			break;
+		case AST_WHILE_STMT:
+			gencontext_emit_while_stmt(context, ast);
+			break;
 		case AST_DO_STMT:
 			gencontext_emit_do_stmt(context, ast);
 			break;
@@ -435,7 +496,6 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			break;
 		case AST_NOP_STMT:
 			break;
-		case AST_WHILE_STMT:
 		case AST_CATCH_STMT:
 		case AST_DEFER_STMT:
 		case AST_TRY_STMT:
@@ -445,7 +505,6 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 		case AST_ASM_STMT:
 			TODO
 		case AST_ATTRIBUTE:
-		case AST_COND_STMT:
 		case AST_CT_IF_STMT:
 		case AST_CT_ELIF_STMT:
 		case AST_CT_ELSE_STMT:
@@ -455,15 +514,13 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 		case AST_CT_CASE_STMT:
 		case AST_GENERIC_CASE_STMT:
 		case AST_GENERIC_DEFAULT_STMT:
+		case AST_DECL_EXPR_LIST:
 			UNREACHABLE
 		case AST_LABEL:
 			gencontext_emit_label(context, ast);
 			break;
 		case AST_GOTO_STMT:
 			gencontext_emit_jmp(context, ast->goto_stmt.label->label_stmt.backend_value);
-			break;
-		case AST_STMT_LIST:
-			gencontext_emit_stmt_list(context, ast);
 			break;
 		case AST_SWITCH_STMT:
 			gencontext_emit_switch(context, ast);

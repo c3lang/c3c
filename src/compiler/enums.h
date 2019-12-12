@@ -74,7 +74,6 @@ typedef enum
 	AST_CASE_STMT,
 	AST_CATCH_STMT,
 	AST_COMPOUND_STMT,
-	AST_COND_STMT,
 	AST_CONTINUE_STMT,
 	AST_CT_IF_STMT,
 	AST_CT_ELIF_STMT,
@@ -96,7 +95,7 @@ typedef enum
 	AST_LABEL,
 	AST_NOP_STMT,
 	AST_RETURN_STMT,
-	AST_STMT_LIST,
+	AST_DECL_EXPR_LIST,
 	AST_SWITCH_STMT,
 	AST_THROW_STMT,
 	AST_TRY_STMT,
@@ -227,7 +226,7 @@ typedef enum
 	EXPR_TRY,
 	EXPR_CONST,
 	EXPR_BINARY,
-	EXPR_CONDITIONAL,
+	EXPR_TERNARY,
 	EXPR_UNARY,
 	EXPR_POST_UNARY,
 	EXPR_TYPE,
@@ -279,7 +278,7 @@ typedef enum
 {
 	PREC_NONE,
 	PREC_ASSIGNMENT,        // =, *=, /=, %=, ...
-	PREC_CONDITIONAL,       // ?:
+	PREC_TERNARY,       // ?:
 	PREC_LOGICAL,           // && ||
 	PREC_RELATIONAL,        // < > <= >= == !=
 	PREC_ADDITIVE,          // + -

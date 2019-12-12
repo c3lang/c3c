@@ -436,6 +436,12 @@ static TypeInfo *parse_type_expression(void)
 	return type_info;
 }
 
+/**
+ * Parse ident ('=' expr)?
+ * @param local
+ * @param type
+ * @return
+ */
 static inline Decl *parse_decl_after_type(bool local, TypeInfo *type)
 {
 	if (tok.type == TOKEN_LPAREN)
@@ -450,66 +456,19 @@ static inline Decl *parse_decl_after_type(bool local, TypeInfo *type)
 
 	Visibility visibility = local ? VISIBLE_LOCAL : VISIBLE_MODULE;
 	Decl *decl = decl_new_var(name, type, VARDECL_LOCAL, visibility);
-	Decl *main_decl = decl;
 
-	while (1)
+	if (tok.type == TOKEN_EQ)
 	{
-		if (tok.type == TOKEN_RPAREN || tok.type == TOKEN_EOS)
+		if (!decl)
 		{
-			if (!decl)
-			{
-				SEMA_ERROR(tok, "Expected an identifier before '%s'.", token_type_to_string(tok.type));
-				return &poisoned_decl;
-			}
-			return main_decl;
+			SEMA_ERROR(tok, "Expected an identifier before '='.");
+			return &poisoned_decl;
 		}
-
-		if (tok.type == TOKEN_EQ)
-		{
-			if (!decl)
-			{
-				SEMA_ERROR(tok, "Expected an identifier before '='.");
-				return &poisoned_decl;
-			}
-			advance_and_verify(TOKEN_EQ);
-			decl->var.init_expr = TRY_EXPR_OR(parse_initializer(), &poisoned_decl);
-			decl = NULL;
-			if (try_consume(TOKEN_COMMA)) continue;
-			return main_decl;
-		}
-
-		if (tok.type == TOKEN_COMMA)
-		{
-			if (!decl)
-			{
-				SEMA_ERROR(tok, "Expected identifier.");
-				return &poisoned_decl;
-			}
-			advance();
-			decl = NULL;
-			continue;
-		}
-
-		if (tok.type == TOKEN_IDENT)
-		{
-			Decl *new_decl = decl_new_var(tok, type, VARDECL_LOCAL, visibility);
-			advance();
-			if (main_decl->decl_kind == DECL_MULTI_DECL)
-			{
-				main_decl->multi_decl = VECADD(main_decl->multi_decl, new_decl);
-				decl = new_decl;
-				continue;
-			}
-			Decl *multi = decl_new(DECL_MULTI_DECL, main_decl->name, visibility);
-			multi->multi_decl = VECADD(multi->multi_decl, main_decl);
-			multi->multi_decl = VECADD(multi->multi_decl, new_decl);
-			main_decl = multi;
-			decl = new_decl;
-			continue;
-		}
-
-		type = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
+		advance_and_verify(TOKEN_EQ);
+		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(), &poisoned_decl);
 	}
+
+	return decl;
 }
 
 /**
@@ -578,56 +537,52 @@ static Ast *parse_expr_stmt(void)
  *	;
  * @return Ast *
  */
-static inline Ast *parse_expression_list(void)
+static inline Expr *parse_expression_list(void)
 {
-	Ast *statement_list = new_ast(AST_STMT_LIST, tok);
-	Ast **stmts = NULL;
+	Expr *expr_list = expr_new(EXPR_EXPRESSION_LIST, tok);
 	do
 	{
-		Expr *expr = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
-		Ast *ast = new_ast(AST_EXPR_STMT, expr->loc);
-		ast->expr_stmt = expr;
-		stmts = VECADD(stmts, ast);
+		Expr *expr = TRY_EXPR_OR(parse_expr(), &poisoned_expr);
+		vec_add(expr_list->expression_list, expr);
 	} while (try_consume(TOKEN_COMMA));
-	statement_list->stmt_list = stmts;
-	return statement_list;
+	return expr_list;
 }
 
 /**
- * decl_or_expr_list
- *	: expression_list
- *	| declaration_list
- *	;
+ * decl_expr_list
+ *  : expression
+ *  | declaration
+ *  | decl_expr_list ',' expression
+ *  | decl_expr_list ',' declaration
+ *  ;
  *
  * @return bool
  */
-static inline bool parse_decl_expr_list(Ast ***stmt_list)
+static inline Ast *parse_decl_expr_list(void)
 {
-	Expr *expr = NULL;
-	TypeInfo *type = NULL;
-
-	if (!parse_type_or_expr(&expr, &type)) return false;
-
-
-	if (expr)
+	Ast *decl_expr = new_ast(AST_DECL_EXPR_LIST, tok);
+	decl_expr->decl_expr_stmt = NULL;
+	while (1)
 	{
-		while (1)
+		Expr *expr = NULL;
+		TypeInfo *type = NULL;
+		if (!parse_type_or_expr(&expr, &type)) return false;
+		if (expr)
 		{
 			Ast *stmt = new_ast(AST_EXPR_STMT, expr->loc);
 			stmt->expr_stmt = expr;
-			*stmt_list = VECADD(*stmt_list, stmt);
-			if (!try_consume(TOKEN_COMMA)) break;
-			expr = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
+			vec_add(decl_expr->decl_expr_stmt, stmt);
 		}
+		else
+		{
+			Decl *decl = TRY_DECL_OR(parse_decl_after_type(false, type), &poisoned_ast);
+			Ast *stmt = new_ast(AST_DECLARE_STMT, decl->name);
+			stmt->declare_stmt = decl;
+			vec_add(decl_expr->decl_expr_stmt, stmt);
+		}
+		if (!try_consume(TOKEN_COMMA)) break;
 	}
-	else
-	{
-		Decl *decl = TRY_DECL_OR(parse_decl_after_type(false, type), &poisoned_ast);
-		Ast *stmt = new_ast(AST_DECLARE_STMT, decl->name);
-		stmt->declare_stmt = decl;
-		*stmt_list = VECADD(*stmt_list, stmt);
-	}
-	return true;
+	return decl_expr;
 }
 
 /**
@@ -636,34 +591,23 @@ static inline bool parse_decl_expr_list(Ast ***stmt_list)
  *	| declaration_list ';' decl_or_expr_list
  *	;
  *
- * @return Ast*
+ * @return true if it succeeds
  */
-static inline Ast *parse_control_expression()
+static inline bool parse_control_expression(Ast **decls, Ast **exprs)
 {
-	Ast *stmt_list = AST_NEW(AST_STMT_LIST, tok);
-
-	Ast ***stmt_ref = &stmt_list->stmt_list;
-
-	if (!parse_decl_expr_list(stmt_ref)) return &poisoned_ast;
-
-	assert(*stmt_ref != NULL);
-	if (VECLAST(*stmt_ref)->ast_kind == AST_EXPR_STMT)
-	{
-		if (tok.type == TOKEN_EOS)
-		{
-			SEMA_ERROR(tok, "Unexpected ';'.");
-			return &poisoned_ast;
-		}
-		return stmt_list;
-	}
+	*exprs = TRY_AST_OR(parse_decl_expr_list(), false);
 
 	if (!try_consume(TOKEN_EOS))
 	{
-		return stmt_list;
+		*decls = NULL;
+		return true;
 	}
 
-	if (!parse_decl_expr_list(stmt_ref)) return &poisoned_ast;
-	return stmt_list;
+	*decls = *exprs;
+
+	*exprs = TRY_AST_OR(parse_decl_expr_list(), false);
+
+	return true;
 }
 
 /**
@@ -679,10 +623,9 @@ static inline Ast* parse_if_stmt(void)
 	Ast *if_ast = AST_NEW(AST_IF_STMT, tok);
 	advance_and_verify(TOKEN_IF);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
-	Ast *cond = TRY_AST(parse_control_expression());
+	if (!parse_control_expression(&if_ast->if_stmt.decl, &if_ast->if_stmt.cond)) return &poisoned_ast;
 	CONSUME_OR(TOKEN_RPAREN, &poisoned_ast);
 	Ast *stmt = TRY_AST(parse_stmt());
-	if_ast->if_stmt.cond = cond;
 	if_ast->if_stmt.then_body = stmt;
 	if (stmt->ast_kind != AST_COMPOUND_STMT || tok.type != TOKEN_ELSE)
 	{
@@ -704,7 +647,7 @@ static inline Ast* parse_while_stmt(void)
 
 	advance_and_verify(TOKEN_WHILE);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
-	while_ast->while_stmt.cond = TRY_AST(parse_control_expression());
+	if (!parse_control_expression(&while_ast->while_stmt.decl, &while_ast->while_stmt.cond)) return &poisoned_ast;
 	CONSUME_OR(TOKEN_RPAREN, &poisoned_ast);
 	while_ast->while_stmt.body = TRY_AST(parse_stmt());
 	return while_ast;
@@ -793,7 +736,7 @@ static inline Ast* parse_switch_stmt(void)
 	Ast *switch_ast = AST_NEW(AST_SWITCH_STMT, tok);
 	advance_and_verify(TOKEN_SWITCH);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
-	switch_ast->switch_stmt.cond = TRY_AST(parse_control_expression());
+	if (!parse_control_expression(&switch_ast->switch_stmt.decl, &switch_ast->switch_stmt.cond)) return &poisoned_ast;
     CONSUME_OR(TOKEN_RPAREN, &poisoned_ast);
 	switch_ast->switch_stmt.body = TRY_AST(parse_compound_stmt());
 	return switch_ast;
@@ -801,13 +744,12 @@ static inline Ast* parse_switch_stmt(void)
 
 /**
  * for_statement
- * 	: FOR '(' decl_or_expr_list ';' expression_statement ')' statement
- *	| FOR '(' decl_or_expr_list ';' expression_statement expression_list ')' statement
- *	;
- *
- * decl_or_expr_list
- *	: expression_list
- *	| declaration_list
+ * 	: FOR '(' decl_expr_list ';' expression ';' ')' statement
+ *	| FOR '(' decl_expr_list ';' ';' expression_list ')' statement
+ *	| FOR '(' decl_expr_list ';' expression ';' expression_list ')' statement
+ * 	| FOR '(' ';' expression ';' ')' statement
+ *	| FOR '(' ';' ';' expression_list ')' statement
+ *	| FOR '(' ';' expression ';' expression_list ')' statement
  *	;
  *
  * @return Ast*
@@ -818,31 +760,32 @@ static inline Ast* parse_for_stmt(void)
 	advance_and_verify(TOKEN_FOR);
 	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
 
-	Ast *cond = new_ast(AST_COND_STMT, tok);
-
-	if (!parse_decl_expr_list(&cond->cond_stmt.stmts)) return &poisoned_ast;
-
-	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
 	if (tok.type != TOKEN_EOS)
 	{
-		cond->cond_stmt.expr = TRY_EXPR_OR(parse_expr(), &poisoned_ast);
+		ast->for_stmt.init = TRY_AST(parse_decl_expr_list());
+	}
+	else
+	{
+		ast->for_stmt.init = NULL;
 	}
 
-	ast->for_stmt.cond = cond;
 	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
 
-	if (!try_consume(TOKEN_RPAREN))
-	{
-		ast->for_stmt.incr = parse_expression_list();
-		CONSUME_OR(TOKEN_RPAREN, &poisoned_ast);
-	}
+	ast->for_stmt.cond = tok.type == TOKEN_EOS ? NULL : TRY_EXPR_OR(parse_expr(), &poisoned_ast);
+
+	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
+
+	ast->for_stmt.incr = tok.type == TOKEN_RPAREN ? NULL : TRY_EXPR_OR(parse_expression_list(), &poisoned_ast);
+
+	CONSUME_OR(TOKEN_RPAREN, &poisoned_ast);
+
 	ast->for_stmt.body = TRY_AST(parse_stmt());
 	return ast;
 }
 
 static inline Expr* parse_constant_expr(void)
 {
-	return parse_precedence(PREC_CONDITIONAL);
+	return parse_precedence(PREC_TERNARY);
 }
 /**
  * case_stmt
@@ -2677,27 +2620,27 @@ void parse_file(Context *context)
 
 #define CHECK_EXPR(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
-static Expr *parse_conditional_expr(Expr *left_side)
+static Expr *parse_ternary_expr(Expr *left_side)
 {
 	assert(expr_ok(left_side));
-	Expr *expr_ternary = EXPR_NEW_EXPR(EXPR_CONDITIONAL, left_side);
-	expr_ternary->conditional_expr.cond = left_side;
+	Expr *expr_ternary = EXPR_NEW_EXPR(EXPR_TERNARY, left_side);
+	expr_ternary->ternary_expr.cond = left_side;
 
 	// Check for elvis
 	if (try_consume(TOKEN_ELVIS))
 	{
-		expr_ternary->conditional_expr.then_expr = NULL;
+		expr_ternary->ternary_expr.then_expr = NULL;
 	}
 	else
 	{
 	    advance_and_verify(TOKEN_QUESTION);
-		Expr *true_expr = TRY_EXPR_OR(parse_precedence(PREC_CONDITIONAL + 1), &poisoned_expr);
-		expr_ternary->conditional_expr.then_expr = true_expr;
+		Expr *true_expr = TRY_EXPR_OR(parse_precedence(PREC_TERNARY + 1), &poisoned_expr);
+		expr_ternary->ternary_expr.then_expr = true_expr;
 		CONSUME_OR(TOKEN_COLON, &poisoned_expr);
 	}
 
-	Expr *false_expr = TRY_EXPR_OR(parse_precedence(PREC_CONDITIONAL + 1), &poisoned_expr);
-	expr_ternary->conditional_expr.else_expr = false_expr;
+	Expr *false_expr = TRY_EXPR_OR(parse_precedence(PREC_TERNARY + 1), &poisoned_expr);
+	expr_ternary->ternary_expr.else_expr = false_expr;
 	return expr_ternary;
 }
 
@@ -3302,8 +3245,8 @@ static Expr *parse_cast_expr(Expr *left)
 }
 
 ParseRule rules[TOKEN_EOF + 1] = {
-		[TOKEN_QUESTION] = { NULL, parse_conditional_expr, PREC_CONDITIONAL },
-        [TOKEN_ELVIS] = { NULL, parse_conditional_expr, PREC_CONDITIONAL },
+		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
+        [TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },
