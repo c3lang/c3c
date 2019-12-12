@@ -27,6 +27,7 @@ There are some small work being done on the parser here, but most of the structu
 - `asm` sections.
 - Macro parameter lists to imports.
 - auxiliary data for enums.
+- Docs not correctly linked to statements/functions/declarations.
 
 #### What's missing in the semantic analyser
 
@@ -46,9 +47,6 @@ There are some small work being done on the parser here, but most of the structu
 - Macro call not handled completely.
 - Function calls not handled completely.
 - Struct initializers not complete.
-- No analysis of `[]` nor `.someMember`.
-- Missing analysis of assign expressions.
-- Not all casts implemented.
 - Varargs.
 
 #### What's missing overall
