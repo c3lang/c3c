@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
 
@@ -32,8 +32,6 @@ void sema_shadow_error(Decl *decl, Decl *old)
 	sema_prev_at_range(old->name.span, "The previous use of '%s' was here.", decl->name.string);
 }
 
-
-
 Decl *context_find_ident(Context *context, const char *symbol)
 {
 	Decl **first = &context->locals[0];
@@ -43,11 +41,28 @@ Decl *context_find_ident(Context *context, const char *symbol)
 		if (current[0]->name.string == symbol) return current[0];
 		current--;
 	}
-	Decl *found = module_find_symbol(context->module, symbol);
+	Decl *found = module_find_symbol(context->module, symbol, MODULE_SYMBOL_SEARCH_THIS);
 	if (found) return found;
-	return NULL;
-}
+	Decl *symbol_found = NULL;
 
+	VECEACH(context->imports, i)
+	{
+		Decl *import = context->imports[i];
+		// Partial imports
+		if (import->import.symbol.string && import->import.symbol.string != symbol) continue;
+
+		Decl *decl = module_find_symbol(import->module, symbol, MODULE_SYMBOL_SEARCH_EXTERNAL);
+
+		if (!decl) continue;
+		if (symbol_found)
+		{
+			symbol_found = NULL;
+			continue;
+		}
+		symbol_found = decl;
+	}
+	return symbol_found;
+}
 
 
 static inline void context_push_scope_with_flags(Context *context, ScopeFlags flags)
@@ -361,7 +376,7 @@ static inline bool sema_analyse_var_decl(Context *context, Decl *decl)
 	{
 		if (!sema_analyse_expr(context, decl->type, decl->var.init_expr)) return decl_poison(decl);
 	}
-	if (!context_add_local(context, decl)) return decl_poison(decl);
+	if (!sema_add_local(context, decl)) return decl_poison(decl);
 	return true;
 }
 
@@ -963,7 +978,7 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 	Decl **params = func->func.function_signature.params;
 	VECEACH(params, i)
 	{
-		if (!context_add_local(context, params[i])) return false;
+		if (!sema_add_local(context, params[i])) return false;
 	}
 	if (!sema_analyse_compound_statement_no_scope(context, func->func.body)) return false;
 	if (context->current_scope->exit != EXIT_RETURN)
@@ -977,6 +992,7 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 	}
 	func->func.labels = context->labels;
 	context_pop_scope(context);
+	context->current_scope = NULL;
 	return true;
 }
 
@@ -1017,6 +1033,15 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 		if (!sema_analyse_method_function(context, decl)) return decl_poison(decl);
 	}
 	if (decl->func.body && !sema_analyse_function_body(context, decl)) return decl_poison(decl);
+	if (decl->name.string == main_name)
+	{
+		if (decl->visibility == VISIBLE_LOCAL)
+		{
+			SEMA_ERROR(decl->name, "'main' cannot have local visibility.");
+			return false;
+		}
+		decl->visibility = VISIBLE_EXTERN;
+	}
 	DEBUG_LOG("Function analysis done.")
 	return true;
 }
@@ -1083,9 +1108,43 @@ static inline bool sema_analyse_generic(Context *context, Decl *decl)
 
 static inline bool sema_analyse_enum(Context *context, Decl *decl)
 {
-	if (!sema_resolve_type_info(context, decl->typedef_decl.type_info)) return false;
-	// TODO assign numbers to constants
-	return true;
+	if (!sema_resolve_type_info(context, decl->enums.type_info)) return false;
+	uint64_t value = 0;
+	Type *type = decl->enums.type_info->type;
+	bool success = true;
+	VECEACH(decl->enums.values, i)
+	{
+		Decl *enum_value = decl->enums.values[i];
+		enum_value->enum_constant.ordinal = i;
+		assert(enum_value->resolve_status == RESOLVE_NOT_DONE);
+		assert(enum_value->decl_kind == DECL_ENUM_CONSTANT);
+		enum_value->resolve_status = RESOLVE_RUNNING;
+		Expr *expr = enum_value->enum_constant.expr;
+		if (!expr)
+		{
+			expr = expr_new(EXPR_CONST, EMPTY_TOKEN);
+			expr->type = type;
+			expr->resolve_status = RESOLVE_DONE;
+			expr->const_expr.type = CONST_INT;
+			expr->const_expr.i = value;
+			enum_value->enum_constant.expr = expr;
+		}
+		if (!sema_analyse_expr(context, type, expr))
+		{
+			success = false;
+			enum_value->resolve_status = RESOLVE_DONE;
+			continue;
+		}
+		assert(type_is_integer(expr->type->canonical));
+		if (expr->expr_kind != EXPR_CONST)
+		{
+			SEMA_ERROR(expr->loc, "Expected a constant expression for enum");
+			success = false;
+		}
+		enum_value->resolve_status = RESOLVE_DONE;
+		enum_value->type = decl->type;
+	}
+	return success;
 }
 
 static inline bool sema_analyse_error(Context *context, Decl *decl)
@@ -1107,6 +1166,7 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 	}
 
 	decl->resolve_status = RESOLVE_RUNNING;
+	decl->module = context->module;
 	switch (decl->decl_kind)
 	{
 		case DECL_THROWS:
@@ -1114,27 +1174,29 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_STRUCT:
 		case DECL_UNION:
 			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
-			context_add_header_decl(context, decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_FUNC:
 			if (!sema_analyse_func(context, decl)) return decl_poison(decl);
-			context_add_header_decl(context, decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_MACRO:
 			if (!sema_analyse_macro(context, decl)) return decl_poison(decl);
 			break;
 		case DECL_VAR:
 			if (!sema_analyse_global(context, decl)) return decl_poison(decl);
-			context_add_header_decl(context, decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_TYPEDEF:
 			if (!sema_analyse_typedef(context, decl)) return decl_poison(decl);
 			break;
 		case DECL_ENUM:
 			if (!sema_analyse_enum(context, decl)) return decl_poison(decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_ERROR:
 			if (!sema_analyse_error(context, decl)) return decl_poison(decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_GENERIC:
 			if (!sema_analyse_generic(context, decl)) return decl_poison(decl);
@@ -1200,10 +1262,23 @@ static inline bool sema_analyse_top_level_if(Context *context, Decl *ct_if)
 	return true;
 }
 
-
-static inline void sema_process_imports(Context *context)
+void sema_analysis_pass_process_imports(Context *context)
 {
-	// TODO
+	VECEACH(context->imports, i)
+	{
+		Decl *import = context->imports[i];
+		import->resolve_status = RESOLVE_RUNNING;
+		// IMPROVE error on importing twice.
+		Path *path = import->import.path;
+		Module *module = stable_get(&compiler.modules, path->module);
+		if (!module)
+		{
+			SEMA_ERROR(import->name, "No module named '%s' could be found.", path->module);
+			decl_poison(import);
+			continue;
+		}
+		import->module = module;
+	}
 }
 
 void sema_analysis_pass_conditional_compilation(Context *context)
@@ -1245,15 +1320,16 @@ void sema_analysis_pass_decls(Context *context)
 }
 
 
+bool sema_resolve_type_info(Context *context, TypeInfo *type_info)
+{
+	if (!sema_resolve_type_shallow(context, type_info)) return false;
+	return true;
+}
+
 static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 {
-	assert(!type_info->unresolved.path && "TODO");
-
-	Decl *decl = stable_get(&context->local_symbols, type_info->unresolved.name_loc.string);
-	if (!decl)
-	{
-		decl = module_find_symbol(context->module, type_info->unresolved.name_loc.string);
-	}
+	Decl *ambiguous_decl;
+	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name_loc.string, type_info->unresolved.path, &ambiguous_decl);
 
 	if (!decl)
 	{
@@ -1261,6 +1337,12 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		return type_info_poison(type_info);
 	}
 
+	if (ambiguous_decl)
+	{
+		SEMA_ERROR(type_info->unresolved.name_loc, "Ambiguous type '%s' – both defined in %s and %s, please add the module name to resolve the ambiguity", type_info->unresolved.name_loc.string,
+		           decl->module->name->module, ambiguous_decl->module->name->module);
+		return type_info_poison(type_info);
+	}
 	switch (decl->decl_kind)
 	{
 		case DECL_THROWS:
@@ -1306,6 +1388,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 	UNREACHABLE
 
 }
+
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 {
 	if (type_info->resolve_status == RESOLVE_DONE) return type_info_ok(type_info);
@@ -1338,10 +1421,4 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 			return sema_resolve_ptr_type(context, type_info);
 	}
 
-}
-
-bool sema_resolve_type_info(Context *context, TypeInfo *type_info)
-{
-	if (!sema_resolve_type_shallow(context, type_info)) return false;
-	return true;
 }

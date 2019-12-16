@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "llvm_codegen_internal.h"
 
@@ -48,7 +48,7 @@ static inline LLVMTypeRef gencontext_create_llvm_type_from_decl(GenContext *cont
 				VECADD(types, BACKEND_TYPE(decl->strukt.members[i]->type));
 			}
 			// TODO fix name.
-			LLVMTypeRef type = LLVMStructCreateNamed(LLVMCONTEXT(context), decl->name.string);
+			LLVMTypeRef type = LLVMStructCreateNamed(LLVMCONTEXT(context), decl->external_name);
 			LLVMStructSetBody(type, types, vec_size(types), decl->is_packed);
 			return type;
 		}
@@ -66,7 +66,7 @@ static inline LLVMTypeRef gencontext_create_llvm_type_from_decl(GenContext *cont
 					max_type = type;
 				}
 			}
-			LLVMTypeRef type = LLVMStructCreateNamed(LLVMCONTEXT(context), decl->name.string);
+			LLVMTypeRef type = LLVMStructCreateNamed(LLVMCONTEXT(context), decl->external_name);
 			LLVMStructSetBody(type, &max_type, 1, false);
 			return type;
 		}
@@ -91,6 +91,7 @@ static inline LLVMTypeRef gencontext_create_llvm_type_from_decl(GenContext *cont
 static inline LLVMTypeRef gencontext_create_llvm_type_from_ptr(GenContext *context, Type *type)
 {
 	LLVMTypeRef base_llvm_type = BACKEND_TYPE(type->pointer);
+	vec_add(context->generated_types, type);
 
 	if (type->canonical != type)
 	{
@@ -104,6 +105,7 @@ static inline LLVMTypeRef gencontext_create_llvm_type_from_array(GenContext *con
 {
 	LLVMTypeRef base_llvm_type = BACKEND_TYPE(type->array.base);
 
+	vec_add(context->generated_types, type);
 
 	if (type->canonical != type)
 	{
@@ -134,7 +136,13 @@ LLVMTypeRef gencontext_create_llvm_func_type(GenContext *context, Type *type)
 
 LLVMTypeRef gencontext_get_llvm_type(GenContext *context, Type *type)
 {
-	if (type->backend_type) return type->backend_type;
+	if (type->backend_type)
+	{
+		assert(LLVMGetTypeContext(type->backend_type) == context->context);
+		return type->backend_type;
+	}
+	vec_add(context->generated_types, type);
+
 	DEBUG_LOG("Generating type %s", type->name);
 	switch (type->type_kind)
 	{

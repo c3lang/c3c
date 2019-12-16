@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
 
@@ -18,6 +18,19 @@ Type poisoned_type = { .type_kind = TYPE_POISONED };
 
 TypeInfo poisoned_type_info = { .kind = TYPE_INFO_POISON };
 
+void decl_set_external_name(Decl *decl)
+{
+	if (decl->visibility == VISIBLE_EXTERN)
+	{
+		decl->external_name = decl->name.string;
+		return;
+	}
+	char buffer[1024];
+	uint32_t len = sprintf(buffer, "%s::%s", decl->module->name->module, decl->name.string);
+	assert(len);
+	TokenType type = TOKEN_INVALID_TOKEN;
+	decl->external_name = symtab_add(buffer, len, fnv1a(buffer, len), &type);
+}
 
 Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility)
 {
@@ -229,6 +242,10 @@ UnaryOp unary_op[256] = {
 		[TOKEN_MINUSMINUS] = UNARYOP_DEC,
 };
 
+PostUnaryOp post_unary_op[256] = {
+		[TOKEN_PLUSPLUS] = POSTUNARYOP_INC,
+		[TOKEN_MINUSMINUS] = POSTUNARYOP_DEC,
+};
 
 
 AssignOp assignop_from_token(TokenType type)
@@ -269,6 +286,20 @@ TokenType unaryop_to_token(UnaryOp type)
 	for (unsigned i = 0; i < 256; i++)
 	{
 		if (unary_op[i] == type) return (TokenType)i;
+	}
+	return TOKEN_INVALID_TOKEN;
+}
+
+PostUnaryOp post_unaryop_from_token(TokenType type)
+{
+	return post_unary_op[type];
+}
+
+TokenType postunaryop_to_token(PostUnaryOp type)
+{
+	for (unsigned i = 0; i < 256; i++)
+	{
+		if (post_unary_op[i] == type) return (TokenType)i;
 	}
 	return TOKEN_INVALID_TOKEN;
 }
@@ -422,14 +453,7 @@ void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent)
 		case TYPE_INFO_IDENTIFIER:
 			if (type_info->unresolved.path)
 			{
-				if (type_info->unresolved.path->module.string)
-				{
-					fprintf_indented(file, indent + 1, "(unresolved %s::%s::%s)\n", type_info->unresolved.path->module.string, type_info->unresolved.path->module.string, type_info->unresolved.name_loc.string);
-				}
-				else
-				{
-					fprintf_indented(file, indent + 1, "(unresolved %s::%s)\n", type_info->unresolved.path->module.string, type_info->unresolved.name_loc.string);
-				}
+				fprintf_indented(file, indent + 1, "(unresolved %s::%s)\n", type_info->unresolved.path->module, type_info->unresolved.name_loc.string);
 				return;
 			}
 			fprintf_indented(file, indent + 1, "(unresolved %s)\n", type_info->unresolved.name_loc.string);
@@ -519,12 +543,12 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			fprint_expr_recursive(file, expr->binary_expr.right, indent + 1);
 			break;
 		case EXPR_UNARY:
-			fprintf_indented(file, indent, "(unary %s\n", token_type_to_string(expr->unary_expr.operator));
+			fprintf_indented(file, indent, "(unary %s\n", token_type_to_string(unaryop_to_token(expr->unary_expr.operator)));
 			fprint_expr_common(file, expr, indent + 1);
 			fprint_expr_recursive(file, expr->unary_expr.expr, indent + 1);
 			break;
 		case EXPR_POST_UNARY:
-			fprintf_indented(file, indent, "(postunary %s\n", token_type_to_string(expr->post_expr.operator));
+			fprintf_indented(file, indent, "(postunary %s\n", token_type_to_string(postunaryop_to_token(expr->post_expr.operator)));
 			fprint_expr_common(file, expr, indent + 1);
 			fprint_expr_recursive(file, expr->post_expr.expr, indent + 1);
 			break;
@@ -1015,6 +1039,6 @@ void fprint_decl(FILE *file, Decl *dec)
 {
 	fprint_decl_recursive(file, dec, 0);
 }
-Module poisoned_module = { .name = "INVALID" };
+Module poisoned_module = { .name = NULL };
 Decl all_error = { .decl_kind = DECL_ERROR, .name = { .type = TOKEN_INVALID_TOKEN, .string = NULL } };
 

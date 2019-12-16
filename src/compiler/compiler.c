@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
 #include "../build/build_options.h"
@@ -13,12 +13,12 @@ void compiler_init(void)
 	stable_init(&compiler.global_symbols, 0x1000);
 }
 
-static void compiler_lex()
+static void compiler_lex(BuildTarget *target)
 {
-	VECEACH(build_options.files, i)
+	VECEACH(target->sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(build_options.files[i], &loaded);
+		File *file = source_file_load(target->sources[i], &loaded);
 		if (loaded) continue;
 		lexer_add_file_for_lexing(file);
 		printf("# %s\n", file->full_path);
@@ -33,32 +33,32 @@ static void compiler_lex()
 	exit(EXIT_SUCCESS);
 }
 
-void compiler_parse()
+void compiler_parse(BuildTarget *target)
 {
 	builtin_setup();
-	VECEACH(build_options.files, i)
+	VECEACH(target->sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(build_options.files[i], &loaded);
+		File *file = source_file_load(target->sources[i], &loaded);
 		if (loaded) continue;
 		diag_reset();
-		Context *context = context_create(file);
+		Context *context = context_create(file, target);
 		parse_file(context);
 		context_print_ast(context, stdout);
 	}
 	exit(EXIT_SUCCESS);
 }
 
-void compiler_compile()
+void compiler_compile(BuildTarget *target)
 {
 	Context **contexts = NULL;
-	VECEACH(build_options.files, i)
+	VECEACH(target->sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(build_options.files[i], &loaded);
+		File *file = source_file_load(target->sources[i], &loaded);
 		if (loaded) continue;
 		diag_reset();
-		Context *context = context_create(file);
+		Context *context = context_create(file, target);
 		vec_add(contexts, context);
 		parse_file(context);
 	}
@@ -76,6 +76,11 @@ void compiler_compile()
 	decl->resolve_status = RESOLVE_DONE;
 	context_register_global_decl(contexts[0], decl);
 */
+	assert(contexts);
+	VECEACH(contexts, i)
+	{
+		sema_analysis_pass_process_imports(contexts[i]);
+	}
 	VECEACH(contexts, i)
 	{
 		sema_analysis_pass_conditional_compilation(contexts[i]);
@@ -93,22 +98,69 @@ void compiler_compile()
 	exit(EXIT_SUCCESS);
 }
 
-void compile_file()
+static void target_expand_source_names(BuildTarget *target)
 {
+	const char **files = NULL;
+	VECEACH(target->sources, i)
+	{
+		const char *name = target->sources[i];
+		size_t name_len = strlen(name);
+		if (name_len < 1) goto INVALID_NAME;
+		if (name[name_len - 1] == '*')
+		{
+			if (name_len == 1 || name[name_len - 2] == '/')
+			{
+				char *path = strdup(name);
+				path[name_len - 1] = '\0';
+				file_add_wildcard_files(&files, path, false);
+				free(path);
+				continue;
+			}
+			if (name[name_len - 2] != '*') goto INVALID_NAME;
+			if (name_len == 2 || name[name_len - 3] == '/')
+			{
+				char *path = strdup(name);
+				path[name_len - 2] = '\0';
+				file_add_wildcard_files(&files, path, true);
+				free(path);
+				continue;
+			}
+			goto INVALID_NAME;
+		}
+		if (name_len < 4) goto INVALID_NAME;
+		if (strcmp(&name[name_len - 3], ".c3") != 0) goto INVALID_NAME;
+		vec_add(files, name);
+		continue;
+		INVALID_NAME:
+		error_exit("File names must end with .c3 or they cannot be compiled: '%s' is invalid.", name);
+	}
+	target->sources = files;
+}
+
+void compile_files(BuildTarget *target)
+{
+	if (!target)
+	{
+		target = CALLOCS(BuildTarget);
+		target->type = TARGET_TYPE_EXECUTABLE;
+		target->sources = build_options.files;
+		target->name = "a.out";
+	}
+	target_expand_source_names(target);
 	target_setup();
 	builtin_setup();
 
-	if (!vec_size(build_options.files)) error_exit("No files to compile.");
+	if (!vec_size(target->sources)) error_exit("No files to compile.");
 	switch (build_options.compile_option)
 	{
 		case COMPILE_LEX_ONLY:
-			compiler_lex();
+			compiler_lex(target);
 			break;
 		case COMPILE_LEX_PARSE_ONLY:
-			compiler_parse();
+			compiler_parse(target);
 			break;
 		default:
-			compiler_compile();
+			compiler_compile(target);
 			break;
 	}
 	TODO
@@ -126,14 +178,35 @@ void compiler_add_type(Type *type)
 	assert(type_ok(type));
 	VECADD(compiler.type, type);
 }
-Module *compiler_find_or_create_module(const char *module_name)
+Module *compiler_find_or_create_module(Path *module_name)
 {
-	Module *module = stable_get(&compiler.modules, module_name);
-	if (module) return module;
+	Module *module = stable_get(&compiler.modules, module_name->module);
+
+	if (module)
+	{
+		// We might have gotten an auto-generated module, if so
+		// update the path here.
+		if (module->name->span.loc == INVALID_LOC && module_name->span.loc != INVALID_LOC)
+		{
+			module->name = module_name;
+		}
+		return module;
+	}
+
+	DEBUG_LOG("Creating module %s.", module_name->module);
+	// Set up the module.
 	module = CALLOCS(Module);
 	module->name = module_name;
 	stable_init(&module->symbols, 0x10000);
-	stable_set(&compiler.modules, module_name, module);
+	stable_set(&compiler.modules, module_name->module, module);
+	// Now find the possible parent array:
+	Path *parent_path = path_find_parent_path(module_name);
+	if (parent_path)
+	{
+		// Get the parent
+		Module *parent_module = compiler_find_or_create_module(parent_path);
+		vec_add(parent_module->sub_modules, module);
+	}
 	return module;
 }
 
@@ -142,12 +215,12 @@ void compiler_register_public_symbol(Decl *decl)
 	Decl *prev = stable_get(&compiler.global_symbols, decl->name.string);
 	// If the previous symbol was already declared globally, remove it.
 	stable_set(&compiler.global_symbols, decl->name.string, prev ? &poisoned_decl : decl);
-	STable *sub_module_space = stable_get(&compiler.qualified_symbols, decl->module->name);
+	STable *sub_module_space = stable_get(&compiler.qualified_symbols, decl->module->name->module);
 	if (!sub_module_space)
 	{
 		sub_module_space = malloc_arena(sizeof(*sub_module_space));
 		stable_init(sub_module_space, 0x100);
-		stable_set(&compiler.qualified_symbols, decl->module->name, sub_module_space);
+		stable_set(&compiler.qualified_symbols, decl->module->name->module, sub_module_space);
 	}
 	prev = stable_get(sub_module_space, decl->name.string);
 	stable_set(sub_module_space, decl->name.string, prev ? &poisoned_decl : decl);

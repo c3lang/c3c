@@ -1,8 +1,8 @@
 #pragma once
 
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "common.h"
 
@@ -10,6 +10,9 @@ const char* expand_path(const char* path);
 char *read_file(const char *path, size_t *return_size);
 int filename_to_module(const char *path, char buffer[MAX_IDENTIFIER_LENGTH + 1]);
 void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
+void file_find_top_dir();
+void file_add_wildcard_files(const char ***files, const char *path, bool recursive);
+
 void init_arena(void);
 void *malloc_arena(unsigned long mem);
 void free_arena(void);
@@ -292,6 +295,10 @@ static inline bool is_all_lower(const char* string)
 	}
 	return true;
 }
+
+#ifndef __printflike
+#define __printflike(x, y)
+#endif
 
 char *strformat(const char *var, ...) __printflike(1, 2);
 

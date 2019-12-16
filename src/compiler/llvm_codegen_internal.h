@@ -1,8 +1,8 @@
 #pragma once
 
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
 #include <llvm-c/Core.h>
@@ -65,6 +65,7 @@ typedef struct
 	BreakContinue break_continue_stack[BREAK_STACK_MAX];
 	size_t break_continue_stack_index;
 	LLVMTypeRef error_type;
+	Type **generated_types;
 } GenContext;
 
 
@@ -75,7 +76,7 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr);
 LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type);
 void gencontext_emit_debug_location(GenContext *context, SourceRange location);
 LLVMMetadataRef gencontext_create_builtin_debug_type(GenContext *context, Type *builtin_type);
-LLVMValueRef gencontext_emit_alloca(GenContext *context, Decl *decl);
+LLVMValueRef gencontext_emit_alloca(GenContext *context, LLVMTypeRef type, const char *name);
 void gencontext_emit_compound_stmt(GenContext *context, Ast *ast);
 void gencontext_emit_block(GenContext *context, LLVMBasicBlockRef next_block);
 void gencontext_emit_br(GenContext *context, LLVMBasicBlockRef next_block);
@@ -87,6 +88,7 @@ static inline LLVMBasicBlockRef gencontext_create_free_block(GenContext *context
 }
 
 void gencontext_emit_function_decl(GenContext *context, Decl *decl);
+void gencontext_emit_extern_decl(GenContext *context, Decl *decl);
 LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr);
 #define LLVMTYPE(type) type->backend_type
 static inline LLVMValueRef gencontext_load_expr(GenContext *context, LLVMValueRef value)

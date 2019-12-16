@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
 
@@ -34,6 +34,8 @@ typedef struct _Entry
 
 static SymTab symtab;
 
+const char *main_name;
+
 void symtab_init(uint32_t capacity)
 {
 	assert (is_power_of_two(capacity) && "Must be a power of two");
@@ -41,7 +43,7 @@ void symtab_init(uint32_t capacity)
 	{
 		free(symtab.entries);
 	}
-	size_t size = capacity * sizeof(SymEntry);
+	size_t size = capacity *sizeof(SymEntry);
 	symtab.entries = MALLOC(size);
 	memset(symtab.entries, 0, size);
 	symtab.count = 0;
@@ -61,8 +63,10 @@ void symtab_init(uint32_t capacity)
 		const char* interned = symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type);
 		assert(type == (TokenType)i);
 		assert(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
-
 	}
+	// Init some constant idents
+	TokenType type = TOKEN_IDENT;
+	main_name = symtab_add("main", 4, fnv1a("main", 4), &type);
 }
 
 static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t hash)

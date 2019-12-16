@@ -94,7 +94,7 @@ func int test3()
 
 typedef func void(int) as Foo;
 //typedef int as Foo;
-func void printf(char *hello);
+extern func void printf(char *hello);
 
 macro @hello()
 {
@@ -110,8 +110,13 @@ func void bob()
     long deee = (eok ? a : b) + c;
 }
 
+
+
 func int main(int x)
 {
+    int aa = x++;
+    int bb = x--;
+    int cc = ++x;
     for (int ok = 0; ok < 10; ok++)
     {
         printf("ok");
@@ -132,6 +137,7 @@ func int main(int x)
     {
         printf("helo\n");
     }
+    Test baok = { 1 };
     Test2 efe;
     efe.t.a = 3;
     if (efe.t.a > 2) printf("Works!\n");
@@ -183,6 +189,7 @@ JUMP:
 
 func void test2(int* x, int y, int z)
 {
+    x++;
     z = 0;
     z ? y : z;
     x += 1;

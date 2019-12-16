@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "build_options.h"
 #include <stdio.h>
@@ -323,7 +323,7 @@ void parse_arguments(int argc, const char *argv[])
 	build_options.debug_info = false;
 	build_options.command = COMMAND_MISSING;
 	build_options.symtab_size = DEFAULT_SYMTAB_SIZE;
-	build_options.files = VECNEW(const char *, MAX_FILES);
+	build_options.files = NULL;
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)
 	{
 		build_options.severity[i] = DIAG_IGNORE;

@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include <sys/stat.h>
 #include <limits.h>
@@ -65,6 +65,14 @@ void source_file_append_line_end(File *file, SourceLoc loc)
 	if (file->current_line_start > loc) return;
 	file->current_line_start = loc + 1;
 	VECADD(file->line_start, file->current_line_start);
+}
+
+SourceRange source_range_from_ranges(SourceRange first, SourceRange last)
+{
+	return (SourceRange) {
+		.loc = first.loc,
+		.length = last.loc - first.loc + last.length
+	};
 }
 
 SourcePosition source_file_find_position(SourceLoc loc)

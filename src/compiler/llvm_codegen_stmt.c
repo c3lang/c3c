@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "llvm_codegen_internal.h"
 
@@ -22,7 +22,7 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 {
 	Decl *decl = ast->declare_stmt;
 
-	decl->var.backend_ref = gencontext_emit_alloca(context, decl);
+	decl->var.backend_ref = gencontext_emit_alloca(context, BACKEND_TYPE(decl->type), decl->name.string);
 	// TODO NRVO
 	// TODO debug info
 	/*

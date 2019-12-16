@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
 
@@ -91,19 +91,26 @@ static inline bool sema_expr_analyse_ternary(Context *context, Type *to, Expr *e
 static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr *expr)
 {
 	// TODO what about struct functions
-	if (expr->identifier_expr.path)
+	Decl *ambiguous_decl;
+	Decl *decl = sema_resolve_symbol(context, expr->identifier_expr.identifier.string, expr->identifier_expr.path, &ambiguous_decl);
+
+	if (!decl)
 	{
-		TODO
+		SEMA_ERROR(expr->identifier_expr.identifier, "Unknown symbol '%s'.", expr->identifier_expr.identifier.string);
+		return false;
 	}
-	Decl *decl = context_find_ident(context, expr->identifier_expr.identifier.string);
-	if (decl == NULL)
+
+	if (ambiguous_decl)
 	{
-		decl = compiler_find_symbol(expr->identifier_expr.identifier);
-		if (decl && !decl_ok(decl)) return false;
+		SEMA_ERROR(expr->identifier_expr.identifier, "Ambiguous symbol '%s' – both defined in %s and %s, please add the module name to resolve the ambiguity",
+		           expr->identifier_expr.identifier.string,
+		           decl->module->name->module, ambiguous_decl->module->name->module);
+		return false;
 	}
-	if (decl == NULL)
+
+	if (decl->decl_kind == DECL_FUNC && !expr->identifier_expr.path && decl->module != context->module)
 	{
-		SEMA_ERROR(expr->loc, "Unknown identifier %s.", expr->identifier_expr.identifier.string);
+		SEMA_ERROR(expr->identifier_expr.identifier, "Functions from other modules, must be prefixed with the module name");
 		return false;
 	}
 
@@ -181,6 +188,8 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			return sema_expr_analyse_macro_call(context, to, expr, decl);
 		case DECL_GENERIC:
 			return sema_expr_analyse_generic_call(context, to, expr);
+		case DECL_POISONED:
+			return false;
 		default:
 			SEMA_ERROR(expr->loc, "The expression cannot be called.");
 			return false;
@@ -253,7 +262,7 @@ static inline bool sema_expr_analyse_enum_constant(Context *context, Expr *expr,
 		if (enum_constant->name.string == name)
 		{
 			assert(enum_constant->resolve_status == RESOLVE_DONE);
-			expr_replace(expr, decl->enum_constant.expr);
+			expr_replace(expr, enum_constant->enum_constant.expr);
 			return true;
 		}
 	}
@@ -335,7 +344,7 @@ static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *ex
 	if (is_pointer)
 	{
 		Expr *deref = expr_new(EXPR_UNARY, expr->loc);
-		deref->unary_expr.operator = TOKEN_STAR;
+		deref->unary_expr.operator = UNARYOP_DEREF;
 		deref->unary_expr.expr = expr->access_expr.parent;
 		deref->resolve_status = RESOLVE_DONE;
 		deref->type = type;
@@ -1300,9 +1309,9 @@ static inline bool sema_expr_analyse_incdec(Context *context, Type *to, Expr *ex
 		SEMA_ERROR(inner->loc, "Expression cannot be assigned to");
 		return false;
 	}
-	if (!type_is_integer(inner->type->canonical) && inner->type->canonical->type_kind == TYPE_POINTER)
+	if (!type_is_number(inner->type->canonical) && inner->type->canonical->type_kind != TYPE_POINTER)
 	{
-		SEMA_ERROR(inner->loc, "Expression must be an integer or pointer");
+		SEMA_ERROR(inner->loc, "Expression must be a number or a pointer");
 		return false;
 	}
 	expr->type = inner->type;
@@ -1399,18 +1408,18 @@ static inline bool sema_expr_analyse_unary(Context *context, Type *to, Expr *exp
 
 	switch (expr->unary_expr.operator)
 	{
-		case TOKEN_STAR:
+		case UNARYOP_DEREF:
 			return sema_expr_analyse_deref(context, to, expr, inner);
-		case TOKEN_AMP:
+		case UNARYOP_ADDR:
 			return sema_expr_analyse_addr(context, to, expr, inner);
-		case TOKEN_MINUS:
+		case UNARYOP_NEG:
 			return sema_expr_analyse_neg(context, to, expr, inner);
-		case TOKEN_BIT_NOT:
+		case UNARYOP_BITNEG:
 			return sema_expr_analyse_bit_not(context, to, expr, inner);
-		case TOKEN_NOT:
+		case UNARYOP_NOT:
 			return sema_expr_analyse_not(context, to, expr, inner);
-		case TOKEN_PLUSPLUS:
-		case TOKEN_MINUSMINUS:
+		case UNARYOP_DEC:
+		case UNARYOP_INC:
 			return sema_expr_analyse_incdec(context, to, expr, inner);
 		default:
 			UNREACHABLE
@@ -1424,8 +1433,6 @@ static inline bool sema_expr_analyse_post_unary(Context *context, Type *to, Expr
 
 	if (!sema_analyse_expr(context, NULL, inner)) return false;
 
-	assert(expr->post_expr.operator == TOKEN_PLUSPLUS || expr->post_expr.operator == TOKEN_MINUSMINUS);
-	
 	return sema_expr_analyse_incdec(context, to, expr, inner);
 }
 

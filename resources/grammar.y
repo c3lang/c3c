@@ -25,6 +25,7 @@ void yyerror(char *s);
 %token THROWS THROW TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE IN
 
 %token FN_BLOCK_START FN_BLOCK_END
+%token MULTW ADDW SUBW
 
 %start translation_unit
 %%
@@ -34,6 +35,10 @@ path
     | path IDENT SCOPE
     ;
 
+import_path
+    : IDENT
+    | import_path SCOPE IDENT
+    ;
 
 ident_expression
 	: CONST_IDENT
@@ -83,6 +88,7 @@ unary_operator
 	| '*'
 	| '+'
 	| '-'
+	| SUBW
 	| '~'
 	| '!'
 	;
@@ -91,6 +97,7 @@ unary_operator
 multiplicative_expression
 	: unary_expression
 	| multiplicative_expression '*' unary_expression
+	| multiplicative_expression MULTW unary_expression
 	| multiplicative_expression '/' unary_expression
 	| multiplicative_expression '%' unary_expression
 	;
@@ -111,7 +118,9 @@ bit_expression
 additive_expression
 	: bit_expression
 	| additive_expression '+' bit_expression
+	| additive_expression ADDW bit_expression
 	| additive_expression '-' bit_expression
+	| additive_expression SUBW bit_expression
 	;
 
 relational_expression
@@ -631,15 +640,29 @@ module_params
     ;
 
 module
-    : MODULE IDENT ';'
-    | MODULE IDENT '(' module_params ')' ';'
+    : MODULE import_path ';'
+    | MODULE import_path '(' module_params ')' ';'
+    ;
+
+specified_import
+    : IDENT AS IDENT
+    | IDENT
+    | TYPE
+    | CONST
+    | MACRO
+    | TYPE AS TYPE
+    | CONST AS CONST
+    | MACRO AS MACRO
+    ;
+
+specified_import_list
+    : specified_import
+    | specified_import_list ',' specified_import
     ;
 
 import_decl
-    : IMPORT IDENT ';'
-    | IMPORT IDENT AS IDENT ';'
-    | IMPORT IDENT AS IDENT LOCAL ';'
-    | IMPORT IDENT LOCAL ';'
+    : IMPORT import_path ';'
+    | IMPORT import_path ':' specified_import_list ';'
     ;
 
 imports

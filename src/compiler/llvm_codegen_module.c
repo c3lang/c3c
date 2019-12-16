@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "llvm_codegen_internal.h"
 
@@ -37,13 +37,14 @@ static inline LLVMTypeRef gencontext_create_basic_llvm_type(GenContext *context,
 
 static inline void gencontext_init_basic_llvm_type(GenContext *context, Type *type)
 {
+	vec_add(context->generated_types, type);
 	type->backend_type = gencontext_create_basic_llvm_type(context, type);
 }
 void gencontext_begin_module(GenContext *context)
 {
 	assert(!context->module && "Expected no module");
 	const char *full_path = context->ast_context->file->full_path;
-	char *mangled_module_name = strformat("module:%s", context->ast_context->module->name);
+	char *mangled_module_name = strformat("%s-%s", context->ast_context->module->name->module, context->ast_context->file->name);
 	context->module = LLVMModuleCreateWithNameInContext(mangled_module_name, context->context);
 	LLVMSetModuleDataLayout(context->module, target_data_layout());
 	LLVMSetSourceFileName(context->module, full_path, strlen(context->ast_context->file->full_path));

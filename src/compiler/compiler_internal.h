@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "../utils/common.h"
 #include "../utils/errors.h"
@@ -16,6 +16,7 @@ typedef uint32_t SourceLoc;
 #define EMPTY_TOKEN ((Token) { .string = NULL })
 #define MAX_LOCALS 0xFFFF
 #define MAX_SCOPE_DEPTH 0xFF
+#define MAX_PATH 1024
 
 typedef struct _Ast Ast;
 typedef struct _Decl Decl;
@@ -87,10 +88,11 @@ typedef struct
 	const char *start;
 } SourcePosition;
 
-typedef struct
+typedef struct _Path
 {
-	Token module;
-	Token sub_module;
+	SourceRange span;
+	const char *module;
+	uint32_t len;
 } Path;
 
 typedef struct
@@ -169,10 +171,9 @@ typedef struct
 
 typedef struct
 {
-	ImportType type : 3;
-	Token alias;
-	Expr** generic_parameters;
-	Module *module;
+	Path *path;
+	Token symbol;
+	bool aliased;
 } ImportDecl;
 
 typedef struct
@@ -204,6 +205,7 @@ typedef struct
 {
 	Decl *parent;
 	Expr *expr;
+	uint64_t ordinal;
 } EnumConstantDecl;
 
 typedef struct
@@ -221,6 +223,7 @@ typedef struct
 
 typedef struct _FunctionSignature
 {
+	CallConvention convention : 4;
 	bool variadic : 1;
 	TypeInfo *rtype;
 	Decl** params;
@@ -235,7 +238,6 @@ typedef struct
 
 typedef struct
 {
-	const char *full_name;
 	TypeInfo *type_parent;
 	FunctionSignature function_signature;
 	Ast *body;
@@ -250,6 +252,11 @@ typedef struct
 	AttributeDomains domains;
 	FunctionSignature attr_signature;
 } AttrDecl;
+
+typedef struct
+{
+	Decl *import;
+} AliasDecl;
 
 typedef struct
 {
@@ -281,6 +288,7 @@ typedef struct
 typedef struct _Decl
 {
 	Token name;
+	const char *external_name;
 	DeclKind decl_kind : 6;
 	Visibility visibility : 2;
 	ResolveStatus resolve_status : 2;
@@ -366,17 +374,15 @@ typedef struct
 
 typedef struct
 {
-	Expr *left;
-	Expr *right;
-	AssignOp operator;
-} ExprAssign;
+	Expr* expr;
+	UnaryOp operator;
+} ExprUnary;
 
 typedef struct
 {
 	Expr* expr;
-	TokenType operator;
-} ExprUnary;
-
+	PostUnaryOp operator;
+} ExprPostUnary;
 
 typedef struct
 {
@@ -396,7 +402,7 @@ typedef struct
 
 typedef struct
 {
-	bool is_struct_function;
+	bool is_struct_function : 1;
 	Expr *function;
 	Expr **arguments;
 } ExprCall;
@@ -458,10 +464,9 @@ struct _Expr
 		ExprTypeRef type_access;
 		ExprTry try_expr;
 		ExprBinary binary_expr;
-		ExprAssign assign_expr;
 		ExprTernary ternary_expr;
 		ExprUnary unary_expr;
-		ExprUnary post_expr;
+		ExprPostUnary post_expr;
 		ExprCall call_expr;
 		ExprSubscript subscript_expr;
 		ExprAccess access_expr;
@@ -663,7 +668,7 @@ typedef struct _Ast
 
 typedef struct _Module
 {
-	const char *name;
+	Path *name;
 
 	bool is_external;
 	bool is_c_library;
@@ -675,6 +680,7 @@ typedef struct _Module
 	STable struct_functions;
 	STable symbols;
 	STable public_symbols;
+	Module **sub_modules;
 } Module;
 
 
@@ -691,10 +697,12 @@ typedef struct _DynamicScope
 
 typedef struct _Context
 {
-	Token module_name;
+	BuildTarget *target;
+	Path *module_name;
 	Token* module_parameters;
 	File* file;
 	Decl** imports;
+	Decl *specified_imports;
 	Module *module;
 	STable local_symbols;
 	Decl **header_declarations;
@@ -716,6 +724,11 @@ typedef struct _Context
 	int in_volatile_section;
 	Decl *locals[MAX_LOCALS];
 	DynamicScope scopes[MAX_SCOPE_DEPTH];
+	char path_scratch[MAX_PATH];
+	struct {
+		STable external_symbols;
+		Decl **external_symbol_list;
+	};
 } Context;
 
 typedef struct
@@ -755,6 +768,8 @@ extern Type t_u0, t_str;
 extern Type t_cus, t_cui, t_cul, t_cull;
 extern Type t_cs, t_ci, t_cl, t_cll;
 extern Type t_voidstar;
+
+extern const char *main_name;
 
 #define AST_NEW(_kind, _token) new_ast(_kind, _token)
 
@@ -827,22 +842,22 @@ CastKind cast_to_bool_kind(Type *type);
 bool cast_to_runtime(Expr *expr);
 
 void llvm_codegen(Context *context);
-void codegen(Context *context);
 
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
 
 void compiler_add_type(Type *type);
 Decl *compiler_find_symbol(Token token);
-Module *compiler_find_or_create_module(const char *module_name);
+Module *compiler_find_or_create_module(Path *module_name);
 void compiler_register_public_symbol(Decl *decl);
 
-Context *context_create(File *file);
+Context *context_create(File *file, BuildTarget *target);
 void context_push(Context *context);
 void context_register_global_decl(Context *context, Decl *decl);
-bool context_add_import(Context *context, Token module_name, Token alias, ImportType import_type, Expr** generic_parameters);
+void context_register_external_symbol(Context *context, Decl *decl);
+bool context_add_import(Context *context, Path *path, Token symbol, Token alias);
 bool context_set_module_from_filename(Context *context);
-bool context_set_module(Context *context, Token module_name, Token *generic_parameters);
+bool context_set_module(Context *context, Path *path, Token *generic_parameters);
 void context_print_ast(Context *context, FILE *file);
 Decl *context_find_ident(Context *context, const char *symbol);
 void context_add_header_decl(Context *context, Decl *decl);
@@ -851,6 +866,7 @@ bool context_add_local(Context *context, Decl *decl);
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility);
 Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility);
 Decl *decl_new_var(Token name, TypeInfo *type, VarDeclKind kind, Visibility visibility);
+void decl_set_external_name(Decl *decl);
 const char *decl_var_to_string(VarDeclKind kind);
 
 static inline bool decl_ok(Decl *decl) { return decl->decl_kind != DECL_POISONED; }
@@ -911,19 +927,31 @@ static inline void advance_and_verify(TokenType token_type)
 	advance();
 }
 
-Decl *module_find_symbol(Module *module, const char *symbol);
+typedef enum
+{
+	MODULE_SYMBOL_SEARCH_EXTERNAL,
+	MODULE_SYMBOL_SEARCH_PARENT,
+	MODULE_SYMBOL_SEARCH_THIS
+} ModuleSymbolSearch;
+
+Decl *module_find_symbol(Module *module, const char *symbol, ModuleSymbolSearch search);
 
 void parse_file(Context *context);
+Path *path_create_from_string(const char *string, size_t len, SourceRange span);
+Path *path_find_parent_path(Path *path);
 
 const char *resolve_status_to_string(ResolveStatus status);
 
 #define SEMA_ERROR(_tok, ...) sema_error_range(_tok.span, __VA_ARGS__)
 void sema_init(File *file);
+void sema_analysis_pass_process_imports(Context *context);
 void sema_analysis_pass_conditional_compilation(Context *context);
 void sema_analysis_pass_decls(Context *context);
 void sema_analysis_pass_3(Context *context);
 
+bool sema_add_local(Context *context, Decl *decl);
 bool sema_analyse_statement(Context *context, Ast *statement);
+Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info);
 void sema_error_at(SourceLoc loc, const char *message, ...);
@@ -940,6 +968,8 @@ File *source_file_from_position(SourceLoc loc);
 void source_file_append_line_end(File *file, SourceLoc loc);
 SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc);
 SourcePosition source_file_find_position(SourceLoc loc);
+SourceRange source_range_from_ranges(SourceRange first, SourceRange last);
+
 
 void stable_init(STable *table, uint32_t initial_size);
 void *stable_set(STable *table, const char *key, void *value);
@@ -958,6 +988,7 @@ void *target_machine();
 #define TOKEN_MAX_LENGTH 0xFFFF
 #define TOK2VARSTR(_token) _token.span.length, _token.start
 bool token_is_type(TokenType type);
+bool token_is_symbol(TokenType type);
 const char *token_type_to_string(TokenType type);
 static inline Token wrap(const char *string)
 {
@@ -1061,6 +1092,9 @@ static inline bool type_is_number(Type *type)
 
 AssignOp assignop_from_token(TokenType type);
 UnaryOp unaryop_from_token(TokenType type);
+TokenType unaryop_to_token(UnaryOp type);
+PostUnaryOp post_unaryop_from_token(TokenType type);
+TokenType postunaryop_to_token(PostUnaryOp type);
 BinaryOp binaryop_from_token(TokenType type);
 BinaryOp binaryop_assign_base_op(BinaryOp assign_binary_op);
 TokenType binaryop_to_token(BinaryOp type);

@@ -6,12 +6,14 @@
 
 Context *current_context;
 
-Context *context_create(File *file)
+Context *context_create(File *file, BuildTarget *target)
 {
     Context *context = malloc_arena(sizeof(Context));
     memset(context, 0, sizeof(Context));
     context->file = file;
+    context->target = target;
     stable_init(&context->local_symbols, 256);
+	stable_init(&context->external_symbols, 256);
     return context;
 }
 
@@ -50,17 +52,17 @@ bool context_add_local(Context *context, Decl *decl)
 	return true;
 }
 
-static inline bool create_module_or_check_name(Context *context, Token module_name)
+static inline bool create_module_or_check_name(Context *context, Path *module_name)
 {
     context->module_name = module_name;
     if (context->module == NULL)
     {
-    	context->module = compiler_find_or_create_module(module_name.string);
+    	context->module = compiler_find_or_create_module(module_name);
 	    return true;
     }
-    else if (context->module->name != module_name.string)
+    else if (context->module->name->module != module_name->module)
     {
-        SEMA_ERROR(module_name, "Module name here '%s' did not match actual module '%s'.", module_name.string, context->module->name);
+        sema_error_range(module_name->span, "Module name here '%s' did not match actual module '%s'.", module_name->module, context->module->name->module);
         return false;
     }
     return true;
@@ -84,25 +86,37 @@ bool context_set_module_from_filename(Context *context)
                    "try using an explicit module name.");
         return false;
     }
-    return create_module_or_check_name(context, wrap(module_name));
+    Path *path = CALLOCS(Path);
+    path->span = INVALID_RANGE;
+    path->module = module_name;
+    path->len = len;
+    return create_module_or_check_name(context, path);
 }
 
-bool context_set_module(Context *context, Token module_name, Token *generic_parameters)
+bool context_set_module(Context *context, Path *path, Token *generic_parameters)
 {
-    DEBUG_LOG("CONTEXT: Setting module to '%s'.", module_name.string);
+    DEBUG_LOG("CONTEXT: Setting module to '%s'.", path->module);
     // Note that we allow the illegal name for now, to be able to parse further.
-    context->module_name = module_name;
-    if (!is_all_lower(module_name.string))
+    context->module_name = path;
+    if (!is_all_lower(path->module))
     {
-        sema_error_range(module_name.span, "A module name may not have any upper case characters.");
+        sema_error_range(path->span, "A module name may not have any upper case characters.");
         return false;
     }
     context->module_parameters = generic_parameters;
 
-    return create_module_or_check_name(context, module_name);
+    return create_module_or_check_name(context, path);
 }
 
 
+void context_register_external_symbol(Context *context, Decl *decl)
+{
+	assert(decl->external_name && "Missing external name");
+	Decl *prev = stable_get(&context->external_symbols, decl->external_name);
+	if (prev) return;
+	stable_set(&context->external_symbols, decl->external_name, decl);
+	vec_add(context->external_symbol_list, decl);
+}
 
 void context_register_global_decl(Context *context, Decl *decl)
 {
@@ -117,26 +131,32 @@ void context_register_global_decl(Context *context, Decl *decl)
 			if (decl->func.type_parent)
 			{
 				vec_add(context->struct_functions, decl);
+				// TODO set name
 				return;
 			}
 			else
 			{
 				vec_add(context->functions, decl);
+				decl_set_external_name(decl);
 			}
 			break;
 		case DECL_VAR:
 			vec_add(context->vars, decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_TYPEDEF:
 			vec_add(context->types, decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_ENUM:
 			vec_add(context->enums, decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_ERROR:
 			vec_add(context->error_types, decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_ENUM_CONSTANT:
 		case DECL_ERROR_CONSTANT:
@@ -173,71 +193,40 @@ void context_register_global_decl(Context *context, Decl *decl)
 	}
 }
 
-bool context_add_import(Context *context, Token module_name, Token alias, ImportType import_type, Expr** generic_parameters)
+bool context_add_import(Context *context, Path *path, Token token, Token alias)
 {
-    DEBUG_LOG("SEMA: Add import of '%s'.", module_name.string);
-    if (!is_all_lower(module_name.string))
+    DEBUG_LOG("SEMA: Add import of '%s'.", path->module);
+
+	if (!is_all_lower(path->module))
+	{
+		sema_error_range(path->span, "A module is not expected to have any upper case characters, please change it.");
+		return false;
+	}
+
+	Decl *import = CALLOCS(Decl);
+	import->decl_kind = DECL_IMPORT;
+	import->visibility = VISIBLE_LOCAL;
+	import->import.path = path;
+	import->import.symbol = token;
+	if (alias.type != TOKEN_INVALID_TOKEN)
     {
-        sema_error_range(module_name.span, "A module is not expected to have any upper case characters, please change it.");
-        return false;
-    }
-    Decl *decl = decl_new(DECL_IMPORT, module_name, VISIBLE_LOCAL);
-    decl->import.type = import_type;
-    decl->import.generic_parameters = generic_parameters;
-    if (import_type == IMPORT_TYPE_ALIAS_LOCAL || import_type == IMPORT_TYPE_ALIAS)
-    {
-        decl->import.alias = alias;
-        if (!is_all_lower(alias.string))
-        {
-            sema_error_range(alias.span, "A module alias is not expected to have any upper case characters, please change it.");
-            return false;
-        }
-        if (alias.string == module_name.string)
-        {
-            sema_error_range(alias.span, "If a module alias would be the same as the alias, it wouldn't have any effect.");
-            return false;
-        }
-        if (alias.string == context->module_name.string)
-        {
-            sema_error_range(alias.span, "An alias should not be the same as the name of the current module.");
-            return false;
-        }
-    }
-    else
-    {
-        decl->import.alias.string = NULL;
+	    if (alias.string == token.string)
+	    {
+		    sema_error_range(alias.span, "If an alias would be the same as the symbol aliased, it wouldn't have any effect.");
+		    return false;
+	    }
+	    if (alias.string == context->module_name->module)
+	    {
+		    sema_error_range(alias.span, "An alias cannot have not have the same as the name of the current module.");
+		    return false;
+	    }
+	    import->import.aliased = true;
+		TODO
     }
 
-    VECEACH(context->imports, i)
-    {
-        Decl *other_import = context->imports[i];
-        if (other_import->name.string == module_name.string
-            && !other_import->import.generic_parameters
-            && !generic_parameters)
-        {
-            sema_error_range(module_name.span, "This module was imported earlier in the file.");
-        }
-        if (other_import->import.alias.string == module_name.string)
-        {
-            sema_error_range(other_import->import.alias.span,
-                             "An alias should not be the same as the name of another imported module.");
-            return false;
-        }
-        if (decl->import.alias.string == other_import->name.string)
-        {
-            sema_error_range(decl->import.alias.span,
-                             "An alias should not be the same as the name of another imported module.");
-            return false;
-        }
-        if (decl->import.alias.string && decl->import.alias.string == other_import->import.alias.string)
-        {
-            sema_error_range(decl->import.alias.span,
-                             "This alias has already been used by an earlier import statement.");
-            return false;
-        }
-    }
+    vec_add(context->imports, import);
+    printf("Added import %s\n", path->module);
 
-    context->imports = VECADD(context->imports, decl);
     return true;
 }
 

@@ -1,8 +1,8 @@
 #pragma once
 
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "../utils/common.h"
 
@@ -95,6 +95,7 @@ typedef struct
 	const char* target;
 	const char* path;
 	const char* cpu;
+	const char* target_triple;
 	CompilerCommand command;
 	uint32_t symtab_size;
 	CompileOption compile_option;
@@ -114,6 +115,23 @@ typedef struct
 
 
 
+typedef enum
+{
+	TARGET_TYPE_EXECUTABLE,
+	TARGET_TYPE_STATIC_LIB,
+	TARGET_TYPE_DYNAMIC_LIB,
+} TargetType;
+
+typedef struct
+{
+	TargetType type;
+	const char *name;
+	const char *version;
+	const char *langrev;
+	const char **sources;
+	const char **libraries;
+	const char *target_triple;
+} BuildTarget;
 
 extern BuildOptions build_options;
 

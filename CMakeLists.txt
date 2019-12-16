@@ -152,7 +152,9 @@ add_executable(c3c
         src/compiler/llvm_codegen_debug_info.c
         src/compiler/llvm_codegen_module.c
         src/compiler/llvm_codegen_type.c
-        src/compiler/llvm_codegen_function.c)
+        src/compiler/llvm_codegen_function.c
+        src/build/builder.c
+        src/utils/toml.c src/build/project.c src/build/build_internal.h src/compiler/sema_name_resolution.c)
 
 target_compile_options(c3c PRIVATE -Wimplicit-int -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 

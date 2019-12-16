@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 // Only include this from compiler_common.h
 
@@ -250,14 +250,6 @@ typedef enum
 	GOTO_JUMP_BACK
 } GotoType;
 
-typedef enum
-{
-	IMPORT_TYPE_FULL,
-	IMPORT_TYPE_ALIAS,
-	IMPORT_TYPE_ALIAS_LOCAL,
-	IMPORT_TYPE_LOCAL
-} ImportType;
-
 
 typedef enum
 {
@@ -448,6 +440,7 @@ typedef enum
 	TOKEN_ELSE,
 	TOKEN_ENUM,
 	TOKEN_ERROR_TYPE,
+	TOKEN_EXTERN,
 	TOKEN_FALSE,
 	TOKEN_FOR,
 	TOKEN_FUNC,
@@ -557,6 +550,12 @@ typedef enum
 
 typedef enum
 {
+	POSTUNARYOP_INC,
+	POSTUNARYOP_DEC,
+} PostUnaryOp;
+
+typedef enum
+{
 	VARDECL_CONST = 0,
 	VARDECL_GLOBAL = 1,
 	VARDECL_LOCAL = 2,
@@ -569,6 +568,7 @@ typedef enum
 	VISIBLE_MODULE,
 	VISIBLE_LOCAL,
 	VISIBLE_PUBLIC,
+	VISIBLE_EXTERN,
 } Visibility;
 
 
@@ -583,3 +583,8 @@ typedef enum
 	ATTR_ERROR = 1 << 6,
 	ATTR_TYPEDEF = 1 << 7
 } AttributeDomains;
+
+typedef enum
+{
+	CALL_CONVENTION_NORMAL = 0,
+} CallConvention;

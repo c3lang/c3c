@@ -136,6 +136,9 @@ L?\"(\\.|[^\\"])*\"	{ count(); return(STRING_LITERAL); }
 "^"			{ count(); return('^'); }
 "|"			{ count(); return('|'); }
 "?"			{ count(); return('?'); }
+"+%"        { count(); return(ADDW); }
+"*%"        { count(); return(MULTW); }
+"-%"        { count(); return(SUBW); }
 "({"        { count(); return(FN_BLOCK_BEGIN); }
 "{)"        { count(); return(FN_BLOCK_END); }
 [ \t\v\n\f]		{ count(); }

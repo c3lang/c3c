@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
 
@@ -190,6 +190,8 @@ const char *token_type_to_string(TokenType type)
 			return "else";
 		case TOKEN_ENUM:
 			return "enum";
+		case TOKEN_EXTERN:
+			return "extern";
 		case TOKEN_ERROR_TYPE:
 			return "error";
 		case TOKEN_FALSE:
@@ -349,6 +351,20 @@ const char *token_type_to_string(TokenType type)
 
 	}
 	UNREACHABLE
+}
+
+bool token_is_symbol(TokenType type)
+{
+	switch (type)
+	{
+		case TOKEN_MACRO:
+		case TOKEN_CONST:
+		case TOKEN_IDENT:
+		case TOKEN_TYPE_IDENT:
+			return true;
+		default:
+			return false;
+	}
 }
 
 bool token_is_type(TokenType type)

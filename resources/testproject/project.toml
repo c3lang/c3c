@@ -1,0 +1,10 @@
+[[executable]]
+name = "hello_world"
+version = "0.1.0"
+authors = ["John Doe <john.doe@example.com>"]
+langrev = "1"
+warnings = ["no-unused"]
+# sources compiled
+sources = ["./**"]
+# libraries to use
+libs = []

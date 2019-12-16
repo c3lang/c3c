@@ -1,16 +1,13 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
+
 
 #include "llvm_codegen_internal.h"
 
 
 
-static char *mangle_name(char *buffer, Decl *decl)
-{
-	sprintf(buffer, "%*s", decl->name.span.length, decl->name.start);
-	return buffer;
-}
+
 
 bool gencontext_check_block_branch_emit(GenContext *context)
 {
@@ -81,7 +78,7 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	// Allocate room on stack and copy.
-	decl->var.backend_ref = gencontext_emit_alloca(context, decl);
+	decl->var.backend_ref = gencontext_emit_alloca(context, BACKEND_TYPE(decl->type), decl->name.string);
 	LLVMBuildStore(context->builder, LLVMGetParam(context->function, index), decl->var.backend_ref);
 }
 
@@ -148,10 +145,8 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_FUNC);
-	char workbuf[2048] = { '\0' };
-	char *external_name = mangle_name(workbuf, decl);
 	// Resolve function backend type for function.
-	decl->func.backend_value = LLVMAddFunction(context->module, external_name,
+	decl->func.backend_value = LLVMAddFunction(context->module, decl->external_name,
 	                                           BACKEND_TYPE(decl->type));
 
 	// Specify appropriate storage class, visibility and call convention
@@ -173,6 +168,7 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 		switch (decl->visibility)
 		{
 			case VISIBLE_LOCAL:
+			case VISIBLE_EXTERN:
 				flags |= LLVMDIFlagPrivate;
 				break;
 			case VISIBLE_MODULE:
@@ -199,3 +195,47 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 	}
 	if (decl->func.body) gencontext_emit_function_body(context, decl);
 }
+
+void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
+{
+	switch (decl->decl_kind)
+	{
+		case DECL_POISONED:
+			UNREACHABLE;
+		case DECL_FUNC:
+			decl->func.backend_value = LLVMAddFunction(context->module, decl->external_name,
+			                                           BACKEND_TYPE(decl->type));
+			LLVMSetVisibility(decl->func.backend_value, LLVMDefaultVisibility);
+			break;
+		case DECL_VAR:
+			decl->var.backend_ref = LLVMAddGlobal(context->module, BACKEND_TYPE(decl->type), decl->external_name);
+			LLVMSetVisibility(decl->var.backend_ref, LLVMDefaultVisibility);
+			break;
+		case DECL_TYPEDEF:
+			UNREACHABLE
+		case DECL_ENUM_CONSTANT:
+			TODO
+		case DECL_STRUCT:
+		case DECL_UNION:
+			BACKEND_TYPE(decl->type);
+			break;
+		case DECL_ENUM:
+			TODO
+		case DECL_ERROR:
+			TODO
+		case DECL_ERROR_CONSTANT:
+			TODO
+		case DECL_ARRAY_VALUE:
+		case DECL_IMPORT:
+		case DECL_MACRO:
+		case DECL_MULTI_DECL:
+		case DECL_GENERIC:
+		case DECL_CT_IF:
+		case DECL_CT_ELSE:
+		case DECL_CT_ELIF:
+		case DECL_ATTRIBUTE:
+		case DECL_THROWS:
+			UNREACHABLE
+	}
+}
+

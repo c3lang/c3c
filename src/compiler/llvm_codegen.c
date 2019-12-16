@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "llvm_codegen_internal.h"
 
@@ -58,6 +58,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 		case VISIBLE_PUBLIC:
 			LLVMSetVisibility(decl->var.backend_ref, LLVMDefaultVisibility);
 			break;
+		case VISIBLE_EXTERN:
 		case VISIBLE_LOCAL:
 			LLVMSetVisibility(decl->var.backend_ref, LLVMHiddenVisibility);
 			break;
@@ -125,12 +126,11 @@ void gencontext_print_llvm_ir(GenContext *context)
 }
 
 
-
-LLVMValueRef gencontext_emit_alloca(GenContext *context, Decl *decl)
+LLVMValueRef gencontext_emit_alloca(GenContext *context, LLVMTypeRef type, const char *name)
 {
 	LLVMBasicBlockRef current_block = LLVMGetInsertBlock(context->builder);
 	LLVMPositionBuilderBefore(context->builder, context->alloca_point);
-	LLVMValueRef alloca = LLVMBuildAlloca(context->builder, BACKEND_TYPE(decl->type), decl->name.string);
+	LLVMValueRef alloca = LLVMBuildAlloca(context->builder, type, name);
 	LLVMPositionBuilderAtEnd(context->builder, current_block);
 	return alloca;
 }
@@ -161,10 +161,23 @@ void llvm_codegen(Context *context)
 	gencontext_init(&gen_context, context);
 	gencontext_begin_module(&gen_context);
 	// EmitDeferred()
+	VECEACH(context->external_symbol_list, i)
+	{
+		gencontext_emit_extern_decl(&gen_context, context->external_symbol_list[i]);
+	}
 	VECEACH(context->functions, i)
 	{
 		gencontext_emit_function_decl(&gen_context, context->functions[i]);
 	}
+
+	VECEACH(gen_context.generated_types, i)
+	{
+		Type *type = gen_context.generated_types[i];
+		type->backend_debug_type = NULL;
+		type->backend_type = NULL;
+	}
+
+	gencontext_print_llvm_ir(&gen_context);
 
 	// Starting from here we could potentially thread this:
 	LLVMPassManagerBuilderRef pass_manager_builder = LLVMPassManagerBuilderCreate();

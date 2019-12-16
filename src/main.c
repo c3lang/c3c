@@ -18,11 +18,13 @@ int main(int argc, const char *argv[])
 			compiler_tests();
 			break;
 		case COMMAND_COMPILE:
-			compile_file();
+			compile_files(NULL);
+			break;
+		case COMMAND_BUILD:
+			build();
 			break;
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_MISSING:
-		case COMMAND_BUILD:
 		case COMMAND_RUN:
 		case COMMAND_CLEAN_RUN:
 		case COMMAND_CLEAN:

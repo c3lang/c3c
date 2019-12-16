@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
 
@@ -140,6 +140,7 @@ static void recover_top_level(void)
 			case TOKEN_UNION:
 			case TOKEN_ENUM:
 			case TOKEN_MACRO:
+			case TOKEN_EXTERN:
 				return;
 			default:
 				advance();
@@ -188,6 +189,38 @@ do { if (!try_consume(TOKEN_COMMA) && tok.type != TOKEN_RPAREN) { \
 SEMA_ERROR(tok, "Expected ',' or ')'"); return _res; } } while(0)
 
 
+static inline Path *parse_module_path()
+{
+	assert(tok.type == TOKEN_IDENT);
+	char *scratch_ptr = current_context->path_scratch;
+	size_t offset = 0;
+	SourceRange span = tok.span;
+	memcpy(scratch_ptr, tok.start, tok.span.length);
+	offset += tok.span.length;
+	SourceRange last_range;
+	while (1)
+	{
+		last_range = tok.span;
+		if (!try_consume(TOKEN_IDENT))
+		{
+			SEMA_ERROR(tok, "Each '::' must be followed by a regular lower case sub module name.");
+			return NULL;
+		}
+		if (!try_consume(TOKEN_SCOPE))
+		{
+			span = source_range_from_ranges(span, last_range);
+			break;
+		}
+		scratch_ptr[offset++] = ':';
+		scratch_ptr[offset++] = ':';
+		memcpy(scratch_ptr + offset, tok.start, tok.span.length);
+		offset += tok.span.length;
+	}
+	scratch_ptr[offset] = '\0';
+	return path_create_from_string(scratch_ptr, offset, span);
+}
+
+
 static Ast* parse_compound_stmt()
 {
 	CONSUME_OR(TOKEN_LBRACE, &poisoned_ast);
@@ -213,22 +246,43 @@ static Ast* parse_function_block()
 	return ast;
 }
 
-static Path *parse_path(void)
+
+
+static Path *parse_path_prefix()
 {
 	if (tok.type != TOKEN_IDENT || next_tok.type != TOKEN_SCOPE) return NULL;
 
-	Path *path = malloc_arena(sizeof(Path));
-	memset(path, 0, sizeof(Path));
+	char *scratch_ptr = current_context->path_scratch;
+	size_t offset = 0;
 
-	path->sub_module = tok;
-
-	if (tok.type == TOKEN_IDENT && next_tok.type == TOKEN_SCOPE)
+	Path *path = CALLOCS(Path);
+	path->span = tok.span;
+	memcpy(scratch_ptr, tok.start, tok.span.length);
+	offset += tok.span.length;
+	SourceRange last_range = tok.span;
+	advance();
+	advance();
+	while (tok.type == TOKEN_IDENT && next_tok.type == TOKEN_SCOPE)
 	{
+		last_range = tok.span;
 		advance();
 		advance();
-		path->module = path->sub_module;
-		path->sub_module = tok;
+		scratch_ptr[offset++] = ':';
+		scratch_ptr[offset++] = ':';
+		memcpy(scratch_ptr + offset, tok.start, tok.span.length);
+		offset += tok.span.length;
 	}
+
+	TokenType type = TOKEN_IDENT;
+	path->span = source_range_from_ranges(path->span, last_range);
+	path->module = symtab_add(scratch_ptr, offset, fnv1a(scratch_ptr, offset), &type);
+	if (type != TOKEN_IDENT)
+	{
+		sema_error_range(path->span, "A module name was expected here.");
+		return NULL;
+
+	}
+	path->len = offset;
 
 	return path;
 }
@@ -257,7 +311,7 @@ static Path *parse_path(void)
  */
 static inline TypeInfo *parse_base_type(void)
 {
-	Path *path = parse_path();
+	Path *path = parse_path_prefix();
 	if (path)
 	{
 		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER);
@@ -1352,6 +1406,7 @@ static Ast *parse_stmt(void)
 		case TOKEN_MACRO:
 		case TOKEN_MODULE:
 		case TOKEN_PUBLIC:
+		case TOKEN_EXTERN:
 		case TOKEN_STRUCT:
 		case TOKEN_THROWS:
 		case TOKEN_TYPEDEF:
@@ -1454,8 +1509,8 @@ static inline bool parse_optional_module_params(Token **tokens)
 
 /**
  * module
- * 		: MODULE IDENT ';'
- * 		| MODULE IDENT '(' module_params ')' ';'
+ * 		: MODULE path ';'
+ * 		| MODULE path '(' module_params ')' ';'
  */
 static inline void parse_module(void)
 {
@@ -1466,12 +1521,16 @@ static inline void parse_module(void)
 		return;
 	}
 
-    Token name = tok;
+	Path *path = parse_module_path();
 
     // Expect the module name
-	if (!consume(TOKEN_IDENT, "After 'module' the name of the module should be placed."))
+	if (!path)
 	{
-		context_set_module(current_context, (Token) {.type = TOKEN_INVALID_TOKEN}, NULL);
+		path = CALLOCS(Path);
+		path->len = strlen("INVALID");
+		path->module = "INVALID";
+		path->span = INVALID_RANGE;
+		context_set_module(current_context, path, NULL);
 		recover_top_level();
 		return;
 	}
@@ -1480,11 +1539,11 @@ static inline void parse_module(void)
 	Token *generic_parameters = NULL;
     if (!parse_optional_module_params(&generic_parameters))
     {
-		context_set_module(current_context, name, generic_parameters);
+		context_set_module(current_context, path, generic_parameters);
         recover_top_level();
         return;
     }
-	context_set_module(current_context, name, generic_parameters);
+	context_set_module(current_context, path, generic_parameters);
 	TRY_CONSUME_EOS_OR();
 }
 
@@ -1519,47 +1578,88 @@ static inline bool parse_macro_parameter_list(Expr*** result)
 }
 
 /**
+ * import_selective
+ * 		: import_spec
+ * 		| import_spec AS import_spec
+ * 		;
+ *
+ * import_spec
+ * 		: IDENT
+ * 		| TYPE
+ * 		| MACRO
+ * 		| CONST
+ * 		;
+ *
+ * @return true if import succeeded
+ */
+static inline bool parse_import_selective(Path *path)
+{
+	if (!token_is_symbol(tok.type))
+	{
+		SEMA_ERROR(tok, "Expected a symbol name here, the syntax is 'import <module> : <symbol>'.");
+		return false;
+	}
+	Token symbol = tok;
+	advance();
+	// Alias?
+	if (!try_consume(TOKEN_AS))
+	{
+		return context_add_import(current_context, path, symbol, EMPTY_TOKEN);
+	}
+	if (tok.type != symbol.type)
+	{
+		if (!token_is_symbol(tok.type))
+		{
+			SEMA_ERROR(tok, "Expected a symbol name here, the syntax is 'import <module> : <symbol> AS <alias>'.");
+			return false;
+		}
+		SEMA_ERROR(tok, "Expected the alias be the same type of name as the symbol aliased.");
+		return false;
+	}
+	Token alias = tok;
+	advance();
+	return context_add_import(current_context, path, symbol, alias);
+
+}
+
+/**
  *
  * import
- * 		: IMPORT IDENT ';'
- * 		| IMPORT IDENT AS IDENT ';'
+ * 		: IMPORT PATH ';'
+ * 		| IMPORT PATH ':' import_selective ';'
  * 		| IMPORT IDENT AS IDENT LOCAL ';'
  * 		| IMPORT IDENT LOCAL ';'
  *
- * // TODO macro parameters (after grammar is updated)
+ * import_list
+ * 		: import_selective
+ * 		| import_list ',' import_selective
+ * 		;
  *
  * @return true if import succeeded
  */
 static inline bool parse_import()
 {
-
 	advance_and_verify(TOKEN_IMPORT);
 
-    Token module_name = tok;
-
-    TRY_CONSUME_OR(TOKEN_IDENT, "Import statement should be followed by the name of the module to import.", false);
-
-	Expr **generic_parameters = NULL;
-
-	/* MACRO params here
-	if (tok.type == TOKEN_LPAREN)
+	if (tok.type != TOKEN_IDENT)
 	{
-		if (!parse_macro_parameter_list(&generic_parameters)) return false;
-	}*/
-
-	Token alias = {};
-	ImportType import_type = IMPORT_TYPE_FULL;
-	if (try_consume(TOKEN_AS))
-	{
-        alias = tok;
-		if (!consume_ident("alias")) return false;
-		import_type = IMPORT_TYPE_ALIAS;
+		SEMA_ERROR(tok, "Import statement should be followed by the name of the module to import.");
+		return false;
 	}
-	if (try_consume(TOKEN_LOCAL))
+
+	Path *path = parse_module_path();
+	if (tok.type == TOKEN_COLON)
 	{
-		import_type = import_type == IMPORT_TYPE_ALIAS ? IMPORT_TYPE_ALIAS_LOCAL : IMPORT_TYPE_LOCAL;
+		while (1)
+		{
+			if (!parse_import_selective(path)) return false;
+			if (!try_consume(TOKEN_COMMA)) break;
+		}
 	}
-	context_add_import(current_context, module_name, alias, import_type, generic_parameters);
+	else
+	{
+		context_add_import(current_context, path, EMPTY_TOKEN, EMPTY_TOKEN);
+	}
 	TRY_CONSUME_EOS_OR(false);
 	return true;
 }
@@ -1707,7 +1807,7 @@ static inline bool parse_attributes(Decl *parent_decl)
 
 	while (tok.type == TOKEN_AT_IDENT || (tok.type == TOKEN_IDENT && next_tok.type == TOKEN_SCOPE))
 	{
-		Path *path = parse_path();
+		Path *path = parse_path_prefix();
 
 		Attr *attr = malloc_arena(sizeof(Attr));
 
@@ -1894,7 +1994,7 @@ static inline Decl *parse_generics_declaration(Visibility visibility)
 	{
 		rtype = TRY_TYPE_OR(parse_type_expression(), &poisoned_decl);
 	}
-	Path *path = parse_path();
+	Path *path = parse_path_prefix();
 	Decl *decl = decl_new(DECL_GENERIC, tok, visibility);
 	decl->generic_decl.path = path;
 	if (!consume_ident("generic function name")) return &poisoned_decl;
@@ -2284,7 +2384,7 @@ static inline Decl *parse_func_definition(Visibility visibility, bool is_interfa
 	Decl *func = decl_new(DECL_FUNC, tok, visibility);
 	func->func.function_signature.rtype = return_type;
 
-	Path *path = parse_path();
+	Path *path = parse_path_prefix();
 	if (path || tok.type == TOKEN_TYPE_IDENT)
 	{
 		// Special case, actually an extension
@@ -2433,9 +2533,6 @@ static inline Decl *parse_enum_declaration(Visibility visibility)
 	return decl;
 }
 
-
-
-
 static inline bool parse_conditional_top_level(Decl ***decls)
 {
 	CONSUME_OR(TOKEN_LBRACE, false);
@@ -2505,6 +2602,9 @@ static inline bool check_no_visibility_before(Visibility visibility)
 		case VISIBLE_LOCAL:
 			SEMA_ERROR(tok, "Unexpected 'local' before '%.*s'.", tok.span.length, tok.start);
 			return false;
+		case VISIBLE_EXTERN:
+			SEMA_ERROR(tok, "Unexpected 'extern' before '%.*s'.", tok.span.length, tok.start);
+			return false;
 		default:
 			return true;
 	}
@@ -2541,6 +2641,9 @@ static inline Decl *parse_top_level(void)
 			visibility = VISIBLE_LOCAL;
 			advance();
 			break;
+		case TOKEN_EXTERN:
+			visibility = VISIBLE_EXTERN;
+			advance();
 		default:
 			break;
 	}
@@ -2651,7 +2754,7 @@ static Expr *parse_unary_expr(Expr *left)
 	TokenType operator_type = tok.type;
 
 	Expr *unary = EXPR_NEW_TOKEN(EXPR_UNARY, tok);
-	unary->unary_expr.operator = operator_type;
+	unary->unary_expr.operator = unaryop_from_token(operator_type);
 	Precedence rule_precedence = rules[operator_type].precedence;
 	advance();
 	Expr *right_side = parse_precedence(rule_precedence);
@@ -2667,7 +2770,7 @@ static Expr *parse_post_unary(Expr *left)
 	assert(expr_ok(left));
 	Expr *unary = EXPR_NEW_TOKEN(EXPR_POST_UNARY, tok);
 	unary->post_expr.expr = left;
-	unary->post_expr.operator = tok.type;
+	unary->post_expr.operator = post_unaryop_from_token(tok.type);
 	advance();
 	return unary;
 }
@@ -3141,9 +3244,17 @@ static Expr *parse_type_access(TypeInfo *type)
     advance_and_verify(TOKEN_DOT);
     expr->type_access.name = tok;
 
-    TRY_CONSUME_OR(TOKEN_IDENT, "Expected a function name or value", &poisoned_expr);
-
-	return expr;
+    switch (tok.type)
+    {
+    	case TOKEN_MACRO:
+    	case TOKEN_IDENT:
+    	case TOKEN_CONST_IDENT:
+    		advance();
+		    return expr;
+	    default:
+	    	SEMA_ERROR(tok, "Expected a function name, macro, or constant.");
+	    	return &poisoned_expr;
+    }
 }
 
 
@@ -3202,7 +3313,7 @@ static Expr *parse_type_identifier(Expr *left)
 static Expr *parse_maybe_scope(Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Path *path = parse_path();
+	Path *path = parse_path_prefix();
 	switch (tok.type)
 	{
 		case TOKEN_IDENT:

@@ -1,13 +1,16 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
 
+#include "common.h"
 #include "errors.h"
-#include "malloc.h"
 #include "lib.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <libgen.h>
+#include <dirent.h>
+#include <limits.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/errno.h>
 
 const char* expand_path(const char* path)
 {
@@ -101,4 +104,70 @@ void path_get_dir_and_filename_from_full(const char *full_path, char **filename,
 	size_t dir_len = strlen(dir);
 	*dir_path = malloc(dir_len + 1);
 	strncpy(*dir_path, dir, dir_len + 1);
+}
+
+
+
+
+void file_find_top_dir()
+{
+	while (1)
+	{
+		struct stat info;
+		int err = stat(PROJECT_TOML, &info);
+
+		// Error and the it's not a "missing file"?
+		if (err && errno != ENOENT)
+		{
+			error_exit("Can't open %s: %s.", PROJECT_TOML, strerror(errno));
+		}
+
+		// Everything worked and it's a regular file? We're done!
+		if (!err && S_ISREG(info.st_mode)) return; // NOLINT(hicpp-signed-bitwise)
+
+		// Otherwise just continue upwards.
+		// Note that symbolically linked files are ignored.
+		char start_path[PATH_MAX + 1];
+		getcwd(start_path, PATH_MAX);
+		if (chdir(".."))
+		{
+			error_exit("Can't change directory to search for %s: %s.", PROJECT_TOML, strerror(errno));
+		}
+		char new_path[PATH_MAX + 1];
+		getcwd(new_path, PATH_MAX);
+		if (strcmp(new_path, start_path) != 0) continue;
+		error_exit("The root build directory containing %s could not be found. Did you use the correct directory?", PROJECT_TOML);
+	}
+}
+
+void file_add_wildcard_files(const char ***files, const char *path, bool recursive)
+{
+	DIR *dir = opendir(path);
+	if (!dir)
+	{
+		error_exit("Can't open the directory '%s'. Please check the paths. %s", path, strerror(errno));
+	}
+	struct dirent *ent;
+	while ((ent = readdir(dir)))
+	{
+		if (ent->d_namlen < 4) continue;
+
+		// Doesn't end with .c3
+		if (strncmp(&ent->d_name[ent->d_namlen - 3], ".c3", 3) != 0)
+		{
+			if (ent->d_type == DT_DIR && ent->d_name[0] != '.' && recursive)
+			{
+				char *new_path = strndup(ent->d_name, ent->d_namlen);
+				file_add_wildcard_files(files, new_path, recursive);
+				free(new_path);
+			}
+			continue;
+		}
+
+		char *name = malloc_arena(ent->d_namlen + 1);
+		memcpy(name, ent->d_name, ent->d_namlen);
+		name[ent->d_namlen] = '\0';
+		vec_add(*files, name);
+	}
+	closedir(dir);
 }
