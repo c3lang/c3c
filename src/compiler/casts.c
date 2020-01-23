@@ -38,7 +38,7 @@ static bool sema_type_mismatch(Expr *expr, Type *type, CastType cast_type)
 			break;
 
 	}
-	SEMA_ERROR(expr->loc, "Cannot %s '%s' to '%s'", action, type_to_error_string(expr->type), type_to_error_string(type));
+	SEMA_ERROR(expr, "Cannot %s '%s' to '%s'", action, type_to_error_string(expr->type), type_to_error_string(type));
 	return false;
 }
 
@@ -294,7 +294,7 @@ bool sisi(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
 		{
 			if ((i > int_type_max[index]) || (i < int_type_min[index]))
 			{
-				SEMA_ERROR(left->loc, "'%lld' does not fit into '%s'", i, canonical->name);
+				SEMA_ERROR(left, "'%lld' does not fit into '%s'", i, canonical->name);
 				return false;
 			}
 		}
@@ -383,7 +383,7 @@ bool uisi(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
 		{
 			if (left->const_expr.i > (uint64_t)int_type_max[index])
 			{
-				SEMA_ERROR(left->loc, "Cannot implicitly convert value '%llu' into %s - it will not fit.", left->const_expr.i, type_to_error_string(type));
+				SEMA_ERROR(left, "Cannot implicitly convert value '%llu' into %s - it will not fit.", left->const_expr.i, type_to_error_string(type));
 				return false;
 			}
 		}
@@ -413,7 +413,7 @@ bool uiui(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
 		{
 			if (left->const_expr.i > uint_type_max[index])
 			{
-				SEMA_ERROR(left->loc, "Cannot implicitly convert value '%llu' into %s - it will not fit.", type_to_error_string(type));
+				SEMA_ERROR(left, "Cannot implicitly convert value '%llu' into %s - it will not fit.", type_to_error_string(type));
 				return false;
 			}
 		}

@@ -1,8 +1,8 @@
 import curl;
 
-int main(void)
+func int main(void)
 {
-    try Curl curl = Curl.new();
+    try Curl curl = curl::newCurl();
 
     catch (error e)
     {

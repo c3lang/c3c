@@ -9,7 +9,9 @@ Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility)
 	assert(name.string);
 	Decl *decl = CALLOCS(Decl);
 	decl->decl_kind = decl_kind;
-	decl->name = name;
+	decl->name_span = name.span;
+	decl->span = name.span;
+	decl->name = name.string;
 	decl->visibility = visibility;
 	return decl;
 }
@@ -22,11 +24,11 @@ void decl_set_external_name(Decl *decl)
 {
 	if (decl->visibility == VISIBLE_EXTERN)
 	{
-		decl->external_name = decl->name.string;
+		decl->external_name = decl->name;
 		return;
 	}
 	char buffer[1024];
-	uint32_t len = sprintf(buffer, "%s::%s", decl->module->name->module, decl->name.string);
+	uint32_t len = sprintf(buffer, "%s::%s", decl->module->name->module, decl->name);
 	assert(len);
 	TokenType type = TOKEN_INVALID_TOKEN;
 	decl->external_name = symtab_add(buffer, len, fnv1a(buffer, len), &type);
@@ -64,7 +66,6 @@ Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility)
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
-		case DECL_MULTI_DECL:
 		case DECL_GENERIC:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:
@@ -113,22 +114,29 @@ Decl *struct_find_name(Decl *decl, const char* name)
     VECEACH(compare_members, i)
     {
         Decl *member = compare_members[i];
-        if (member->name.type == TOKEN_INVALID_TOKEN)
+        if (!member->name)
         {
             Decl *found = struct_find_name(member, name);
             if (found) return found;
         }
-        else if (member->name.string == name) return member;
+        else if (member->name == name) return member;
     }
     return NULL;
 }
 
+Ast *ast_from_expr(Expr *expr)
+{
+	if (!expr_ok(expr)) return &poisoned_ast;
+	Ast *ast = AST_NEW(AST_EXPR_STMT, expr->span);
+	ast->expr_stmt = expr;
+	return ast;
+}
 
-Expr *expr_new(ExprKind kind, Token start)
+Expr *expr_new(ExprKind kind, SourceRange start)
 {
 	Expr *expr = malloc_arena(sizeof(Expr));
 	expr->expr_kind = kind;
-	expr->loc = start;
+	expr->span = start;
 	expr->type = NULL;
 	return expr;
 }
@@ -344,21 +352,21 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 			fprintf_indented(file, indent, "(type-func %s)\n", type->func.signature->mangled_signature);
 			return;
 		case TYPE_STRUCT:
-			fprintf_indented(file, indent, "(struct %s::%s)\n", type->decl->module->name, type->decl->name.string);
+			fprintf_indented(file, indent, "(struct %s::%s)\n", type->decl->module->name, type->decl->name);
 			return;
 		case TYPE_UNION:
-			fprintf_indented(file, indent, "(union %s::%s)\n", type->decl->module->name, type->decl->name.string);
+			fprintf_indented(file, indent, "(union %s::%s)\n", type->decl->module->name, type->decl->name);
 			return;
 		case TYPE_ENUM:
-			fprintf_indented(file, indent, "(enum %s::%s)\n", type->decl->module->name, type->decl->name.string);
+			fprintf_indented(file, indent, "(enum %s::%s)\n", type->decl->module->name, type->decl->name);
 			return;
 		case TYPE_ERROR:
-			fprintf_indented(file, indent, "(error %s::%s)\n", type->decl->module->name, type->decl->name.string);
+			fprintf_indented(file, indent, "(error %s::%s)\n", type->decl->module->name, type->decl->name);
 			return;
 		case TYPE_TYPEDEF:
 			if (type->canonical != type)
 			{
-				fprintf_indented(file, indent, "(user-defined %s::%s\n", type->decl->module->name, type->decl->name.string);
+				fprintf_indented(file, indent, "(user-defined %s::%s\n", type->decl->module->name, type->decl->name);
 				fprint_type_recursive(file, type->canonical, indent + 1);
 				fprint_endparen(file, indent);
 				break;
@@ -504,7 +512,7 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 	switch (expr->expr_kind)
 	{
 		case EXPR_IDENTIFIER:
-			fprintf_indented(file, indent, "(ident %s\n", expr->identifier_expr.identifier.string);
+			fprintf_indented(file, indent, "(ident %s\n", expr->identifier_expr.identifier);
 			fprint_expr_common(file, expr, indent + 1);
 			break;
 		case EXPR_CONST:
@@ -675,13 +683,8 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 {
 	switch (decl->decl_kind)
 	{
-		case DECL_MULTI_DECL:
-			fprintf_indented(file, indent, "(multi-decl\n");
-			fprint_decl_list(file, decl->multi_decl, indent + 1);
-			fprint_endparen(file, indent);
-			break;
 		case DECL_VAR:
-			fprintf_indented(file, indent, "(var-%s %s\n", decl_var_to_string(decl->var.kind), decl->name.string ?: "");
+			fprintf_indented(file, indent, "(var-%s %s\n", decl_var_to_string(decl->var.kind), decl->name ?: "");
 			fprint_type_info_recursive(file, decl->var.type_info, indent + 1);
 			if (decl->var.init_expr)
 			{
@@ -690,7 +693,7 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			fprint_endparen(file, indent);
 			break;
 		case DECL_MACRO:
-			fprintf_indented(file, indent, "(macro %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(macro %s\n", decl->name);
 			fprint_type_info_recursive(file, decl->macro_decl.rtype, indent + 1);
 			fprint_indent(file, indent + 1);
 			fprintf(file, "(params\n");
@@ -700,7 +703,7 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			fprint_endparen(file, indent);
 			break;
 		case DECL_FUNC:
-			fprintf_indented(file, indent, "(func %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(func %s\n", decl->name);
 			if (decl->func.type_parent)
 			{
 				fprint_indent(file, indent + 1);
@@ -714,41 +717,41 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			fprint_endparen(file, indent);
 			break;
 		case DECL_STRUCT:
-			fprintf_indented(file, indent, "(struct %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(struct %s\n", decl->name);
 			fprint_decl_list(file, decl->strukt.members, indent + 1);
 			fprint_endparen(file, indent);
 			break;
 		case DECL_UNION:
-			fprintf_indented(file, indent, "(union %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(union %s\n", decl->name);
 			fprint_decl_list(file, decl->strukt.members, indent + 1);
 			fprint_endparen(file, indent);
 			break;
 		case DECL_ENUM:
-			fprintf_indented(file, indent, "(enum %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(enum %s\n", decl->name);
 			fprint_type_info_recursive(file, decl->enums.type_info, indent + 1);
 			fprint_decl_list(file, decl->enums.values, indent + 1);
 			fprint_endparen(file, indent);
 			break;
 		case DECL_ERROR:
-			fprintf_indented(file, indent, "(error %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(error %s\n", decl->name);
 			fprint_decl_list(file, decl->error.error_constants, indent + 1);
 			fprint_endparen(file, indent);
 			break;
 		case DECL_ENUM_CONSTANT:
 			if (!decl->enum_constant.expr)
 			{
-				fprintf_indented(file, indent, "(enum-constant %s)\n", decl->name.string);
+				fprintf_indented(file, indent, "(enum-constant %s)\n", decl->name);
 				return;
 			}
-			fprintf_indented(file, indent, "(enum-constant %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(enum-constant %s\n", decl->name);
 			fprint_expr_recursive(file, decl->enum_constant.expr, indent + 1);
 			fprint_endparen(file, indent);
 			break;
 		case DECL_ERROR_CONSTANT:
-			fprintf_indented(file, indent, "(error-constant %s)\n", decl->name.string);
+			fprintf_indented(file, indent, "(error-constant %s)\n", decl->name);
 			break;
 		case DECL_GENERIC:
-			fprintf_indented(file, indent, "(generic %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(generic %s\n", decl->name);
 			fprint_indent(file, indent + 1);
 			fprintf(file, "(params\n");
 			{
@@ -771,7 +774,7 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			fprint_endparen(file, indent);
 			break;
 		case DECL_TYPEDEF:
-			fprintf_indented(file, indent, "(typedef %s\n", decl->name.string);
+			fprintf_indented(file, indent, "(typedef %s\n", decl->name);
 			if (decl->typedef_decl.is_func)
 			{
 				fprint_func_signature(file, &decl->typedef_decl.function_signature, indent + 1);
@@ -816,7 +819,7 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			fprint_endparen(file, indent);
 			return;
 		case DECL_IMPORT:
-			fprintf_indented(file, indent, "(import %s", decl->name.string);
+			fprintf_indented(file, indent, "(import %s", decl->name);
 			TODO
 			fprint_endparen(file, indent);
 			break;
@@ -848,6 +851,18 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 	fprint_indent(file, indent);
 	switch (ast->ast_kind)
 	{
+		case AST_FUNCTION_BLOCK_STMT:
+			if (!ast->compound_stmt.stmts)
+			{
+				fprintf(file, "(function_block)\n");
+				return;
+			}
+			fprintf(file, "(function_block\n");
+			{
+				fprint_asts_recursive(file, ast->compound_stmt.stmts, indent + 1);
+			}
+			break;
+
 		case AST_COMPOUND_STMT:
 			if (!ast->compound_stmt.stmts)
 			{
@@ -931,7 +946,7 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			}
 			if (ast->for_stmt.incr)
 			{
-				fprint_expr_recursive(file, ast->for_stmt.incr, indent + 1);
+				fprint_ast_recursive(file, ast->for_stmt.incr, indent + 1);
 			}
 			else
 			{
@@ -1010,10 +1025,10 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			TODO
 			break;
 		case AST_GOTO_STMT:
-			fprintf(file, "(goto %s)\n", ast->token.string);
+			fprintf(file, "(goto %s)\n", ast->goto_stmt.label_name);
 			return;
 		case AST_LABEL:
-			fprintf(file, "(label %s)\n", ast->token.string);
+			fprintf(file, "(label %s)\n", ast->label_stmt.name);
 			return;
 		case AST_NOP_STMT:
 			TODO
@@ -1040,5 +1055,5 @@ void fprint_decl(FILE *file, Decl *dec)
 	fprint_decl_recursive(file, dec, 0);
 }
 Module poisoned_module = { .name = NULL };
-Decl all_error = { .decl_kind = DECL_ERROR, .name = { .type = TOKEN_INVALID_TOKEN, .string = NULL } };
+Decl all_error = { .decl_kind = DECL_ERROR, .name = NULL };
 

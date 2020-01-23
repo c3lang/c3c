@@ -67,7 +67,7 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 		Decl **current = context->last_local - 1;
 		while (current >= first)
 		{
-			if (current[0]->name.string == symbol) return current[0];
+			if (current[0]->name == symbol) return current[0];
 			current--;
 		}
 	}
@@ -108,7 +108,7 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 bool sema_add_local(Context *context, Decl *decl)
 {
 	Decl *dummy;
-	Decl *other = sema_resolve_symbol(context, decl->name.string, NULL, &dummy);
+	Decl *other = sema_resolve_symbol(context, decl->name, NULL, &dummy);
 	if (other)
 	{
 		sema_shadow_error(decl, other);
@@ -120,7 +120,7 @@ bool sema_add_local(Context *context, Decl *decl)
 	unsigned num_vars = vec_size(*vars);
 	if (num_vars == MAX_LOCALS - 1 || context->last_local == &context->locals[MAX_LOCALS - 1])
 	{
-		SEMA_ERROR(decl->name, "Reached the maximum number of locals.");
+		SEMA_ERROR(decl, "Reached the maximum number of locals.");
 		return false;
 	}
 	decl->var.id = num_vars;

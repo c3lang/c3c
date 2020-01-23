@@ -46,7 +46,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 	}
 
 	// TODO fix name
-	decl->var.backend_ref = LLVMAddGlobal(context->module, decl->type->backend_type, decl->name.string);
+	decl->var.backend_ref = LLVMAddGlobal(context->module, decl->type->backend_type, decl->name);
 
 	// If read only: LLVMSetGlobalConstant(decl->var.backend_ref, 1);
 
@@ -70,8 +70,8 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 	{
 		decl->var.backend_debug_ref = LLVMDIBuilderCreateGlobalVariableExpression(context->debug.builder,
 		                                                                          NULL /*scope*/,
-		                                                                          decl->name.string,
-		                                                                          decl->name.span.length,
+		                                                                          decl->name,
+		                                                                          source_range_len(decl->name_span),
 		                                                                          "linkagename",
 		                                                                          2,
 		                                                                          context->debug.file,

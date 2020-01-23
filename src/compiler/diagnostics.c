@@ -46,15 +46,15 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 			break;
 		}
 	}
-	size_t lines_in_file = vec_size(position.file->line_start);
+	size_t lines_in_file = vec_size(position.file->lines);
 	for (unsigned i = LINES_SHOWN; i > 0; i--)
 	{
 		if (position.line < i) continue;
 		uint32_t line_number = position.line + 1 - i;
-		SourceLoc line_start = position.file->line_start[line_number - 1];
+		SourceLoc line_start = position.file->lines[line_number - 1];
 
 		SourceLoc line_end = line_number == lines_in_file ? position.file->end_id :
-				position.file->line_start[line_number];
+				position.file->lines[line_number];
 		uint32_t line_len = line_end - line_start - 1;
  		eprintf(number_buffer, line_number, line_len, position.file->contents + line_start - position.file->start_id);
 	}
@@ -74,7 +74,7 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 			eprintf(" ");
 		}
 	}
-	for (uint32_t i = 0; i < source_range.length; i++)
+	for (uint32_t i = 0; i < source_range_len(source_range); i++)
 	{
 		eprintf("^");
 	}
@@ -142,7 +142,7 @@ void sema_error_range(SourceRange range, const char *message, ...)
 
 void sema_verror_at(SourceLoc loc, const char *message, va_list args)
 {
-	vprint_error((SourceRange) { loc, 1 }, message, args);
+	vprint_error((SourceRange) { loc, loc + 1 }, message, args);
 	diagnostics.errors++;
 }
 
@@ -152,9 +152,9 @@ void sema_verror_range(SourceRange range, const char *message, va_list args)
 	diagnostics.errors++;
 }
 
-void sema_error(const char *message, ...)
+void sema_error(Context *context, const char *message, ...)
 {
-	File *file = lexer_current_file();
+	File *file = lexer_current_file(&context->lexer);
 	va_list list;
 	va_start(list, message);
 	eprintf("(%s:0) Error: ", file->name);
@@ -179,7 +179,7 @@ void sema_prev_at(SourceLoc loc, const char *message, ...)
 	va_start(args, message);
 	char buffer[256];
 	vsnprintf(buffer, 256, message, args);
-	print_error((SourceRange){ loc, 1 }, buffer, PRINT_TYPE_PREV);
+	print_error((SourceRange){ loc, loc + 1 }, buffer, PRINT_TYPE_PREV);
 	va_end(args);
 }
 

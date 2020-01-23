@@ -274,7 +274,8 @@ static inline void* _expand(void *vec, size_t element_size)
 		_vec = __temp; })
 #define vec_add(_vec, _value) do { (_vec) = VECADD((_vec), _value); } while (0)
 
-#define VECLAST(_vec) ( (_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)
+#define VECLAST(_vec) ({ unsigned _size = vec_size(_vec); _size ? (_vec)[_size - 1] : NULL; })
+
 
 static inline bool is_all_upper(const char* string)
 {

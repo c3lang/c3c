@@ -14,7 +14,6 @@ static inline LLVMMetadataRef gencontext_create_debug_type_from_decl(GenContext 
 		case DECL_ENUM_CONSTANT:
 		case DECL_POISONED:
 		case DECL_GENERIC:
-		case DECL_MULTI_DECL:
 		case DECL_MACRO:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:

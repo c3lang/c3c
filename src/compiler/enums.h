@@ -88,6 +88,7 @@ typedef enum
 	AST_DO_STMT,
 	AST_EXPR_STMT,
 	AST_FOR_STMT,
+	AST_FUNCTION_BLOCK_STMT,
 	AST_GENERIC_CASE_STMT,
 	AST_GENERIC_DEFAULT_STMT,
 	AST_GOTO_STMT,
@@ -201,7 +202,6 @@ typedef enum
 	DECL_ARRAY_VALUE,
 	DECL_IMPORT,
 	DECL_MACRO,
-	DECL_MULTI_DECL,
 	DECL_GENERIC,
 	DECL_CT_IF,
 	DECL_CT_ELSE,
@@ -253,13 +253,6 @@ typedef enum
 
 typedef enum
 {
-	LEXER_STATE_NORMAL,
-	LEXER_STATE_DOCS_PARSE,
-	LEXER_STATE_DOCS_PARSE_DIRECTIVE,
-} LexerState;
-
-typedef enum
-{
 	NUMBER_TYPE_BOOL,
 	NUMBER_TYPE_FLOAT,
 	NUMBER_TYPE_SIGNED_INT,
@@ -286,9 +279,8 @@ typedef enum
 	SCOPE_NONE = 0,
 	SCOPE_BREAK = 1 << 0,
 	SCOPE_CONTINUE = 1 << 1,
-	SCOPE_CONTROL = 1 << 2,
-	SCOPE_NEXT = 1 << 3,
-	SCOPE_DEFER = 1 << 4,
+	SCOPE_NEXT = 1 << 2,
+	SCOPE_DEFER = 1 << 3,
 } ScopeFlags;
 
 typedef enum
@@ -417,11 +409,14 @@ typedef enum
 	// Otherwise we allow things like "@ foo" which would be pretty bad.
 	TOKEN_AT_IDENT,         // @foobar
 	TOKEN_HASH_IDENT,       // #foobar
-	TOKEN_CT_IDENT,     // $foobar
+	TOKEN_CT_IDENT,         // $foobar
 
 	TOKEN_STRING,           // "Teststring"
 	TOKEN_INTEGER,          // 123 0x23 0b10010 0o327
 	TOKEN_REAL,             // 0x23.2p-2a 43.23e23
+
+	TOKEN_COMMENT,          // Comment
+	TOKEN_DOC_COMMENT,      // Doc Comment
 
 	// Keywords
 	TOKEN_ALIAS,            // Reserved

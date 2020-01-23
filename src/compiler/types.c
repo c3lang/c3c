@@ -113,7 +113,6 @@ static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
-		case DECL_MULTI_DECL:
 		case DECL_GENERIC:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:
@@ -124,9 +123,13 @@ static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_
 		case DECL_UNION:
 		case DECL_ENUM:
 		case DECL_ERROR:
-			memcpy(dst + *offset, decl->name.string, decl->name.span.length);
-			*offset += decl->name.span.length;
+		{
+			unsigned len = source_range_len(decl->name_span);
+			memcpy(dst + *offset, decl->name, len);
+			*offset += len;
 			return;
+
+		}
 	}
 	UNREACHABLE
 }

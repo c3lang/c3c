@@ -37,8 +37,11 @@ static bool expr_is_ltype(Expr *expr)
 static inline bool sema_type_error_on_binop(Expr *expr)
 {
 	const char *c = token_type_to_string(binaryop_to_token(expr->binary_expr.operator));
-	SEMA_ERROR(expr->loc, "Cannot perform '%s' %s '%s'.",
-			type_to_error_string(expr->binary_expr.left->type), c, type_to_error_string(expr->binary_expr.right->type));
+	SEMA_ERROR(expr,
+	           "Cannot perform '%s' %s '%s'.",
+	           type_to_error_string(expr->binary_expr.left->type),
+	           c,
+	           type_to_error_string(expr->binary_expr.right->type));
 	return false;
 }
 
@@ -60,7 +63,7 @@ static inline bool sema_expr_analyse_ternary(Context *context, Type *to, Expr *e
 		Type *type = cond->type->canonical;
 		if (type->type_kind != TYPE_BOOL && cast_to_bool_kind(type) == CAST_ERROR)
 		{
-			SEMA_ERROR(cond->loc, "Cannot convert expression to boolean.");
+			SEMA_ERROR(cond, "Cannot convert expression to boolean.");
 			return false;
 		}
 		left = cond;
@@ -76,8 +79,8 @@ static inline bool sema_expr_analyse_ternary(Context *context, Type *to, Expr *e
 		Type *max = type_find_max_type(left_canonical, right_canonical);
 		if (!max)
 		{
-			SEMA_ERROR(expr->loc, "Cannot find a common parent type of '%s' and '%s'",
-					type_to_error_string(left_canonical), type_to_error_string(right_canonical));
+			SEMA_ERROR(expr, "Cannot find a common parent type of '%s' and '%s'",
+			           type_to_error_string(left_canonical), type_to_error_string(right_canonical));
 			return false;
 		}
 		if (!cast_implicit(left, max) || !cast_implicit(right, max)) return false;
@@ -92,25 +95,27 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 {
 	// TODO what about struct functions
 	Decl *ambiguous_decl;
-	Decl *decl = sema_resolve_symbol(context, expr->identifier_expr.identifier.string, expr->identifier_expr.path, &ambiguous_decl);
+	Decl *decl = sema_resolve_symbol(context, expr->identifier_expr.identifier, expr->identifier_expr.path, &ambiguous_decl);
 
 	if (!decl)
 	{
-		SEMA_ERROR(expr->identifier_expr.identifier, "Unknown symbol '%s'.", expr->identifier_expr.identifier.string);
+		SEMA_ERROR(expr, "Unknown symbol '%s'.", expr->identifier_expr.identifier);
 		return false;
 	}
 
 	if (ambiguous_decl)
 	{
-		SEMA_ERROR(expr->identifier_expr.identifier, "Ambiguous symbol '%s' – both defined in %s and %s, please add the module name to resolve the ambiguity",
-		           expr->identifier_expr.identifier.string,
-		           decl->module->name->module, ambiguous_decl->module->name->module);
+		SEMA_ERROR(expr,
+		           "Ambiguous symbol '%s' – both defined in %s and %s, please add the module name to resolve the ambiguity",
+		           expr->identifier_expr.identifier,
+		           decl->module->name->module,
+		           ambiguous_decl->module->name->module);
 		return false;
 	}
 
 	if (decl->decl_kind == DECL_FUNC && !expr->identifier_expr.path && decl->module != context->module)
 	{
-		SEMA_ERROR(expr->identifier_expr.identifier, "Functions from other modules, must be prefixed with the module name");
+		SEMA_ERROR(expr, "Functions from other modules, must be prefixed with the module name");
 		return false;
 	}
 
@@ -191,7 +196,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 		case DECL_POISONED:
 			return false;
 		default:
-			SEMA_ERROR(expr->loc, "The expression cannot be called.");
+			SEMA_ERROR(expr, "The expression cannot be called.");
 			return false;
 	}
 }
@@ -227,7 +232,7 @@ static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr 
 			inner_type = type_char;
 			break;
 		default:
-			SEMA_ERROR(expr->subscript_expr.expr->loc, "Cannot index '%s'.", type_to_error_string(type));
+			SEMA_ERROR(expr->subscript_expr.expr, "Cannot index '%s'.", type_to_error_string(type));
 			return false;
 	}
 
@@ -243,13 +248,13 @@ static inline bool sema_expr_analyse_method_function(Context *context, Expr *exp
 	VECEACH(decl->method_functions, i)
 	{
 		Decl *function = decl->method_functions[i];
-		if (function->name.string == name)
+		if (function->name == name)
 		{
 			// TODO
 			return true;
 		}
 	}
-	SEMA_ERROR(expr->loc, "Cannot find method function '%s.%s'", decl->name.string, name);
+	SEMA_ERROR(expr, "Cannot find method function '%s.%s'", decl->name, name);
 	return false;
 }
 
@@ -259,14 +264,14 @@ static inline bool sema_expr_analyse_enum_constant(Context *context, Expr *expr,
 	VECEACH(decl->enums.values, i)
 	{
 		Decl *enum_constant = decl->enums.values[i];
-		if (enum_constant->name.string == name)
+		if (enum_constant->name == name)
 		{
 			assert(enum_constant->resolve_status == RESOLVE_DONE);
 			expr_replace(expr, enum_constant->enum_constant.expr);
 			return true;
 		}
 	}
-	SEMA_ERROR(expr->loc, "'%s' has no enumeration value '%s'.", decl->name.string, name);
+	SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
 	return false;
 }
 
@@ -276,7 +281,7 @@ static inline bool sema_expr_analyse_error_constant(Context *context, Expr *expr
 	VECEACH(decl->error.error_constants, i)
 	{
 		Decl *error_constant = decl->error.error_constants[i];
-		if (error_constant->name.string == name)
+		if (error_constant->name == name)
 		{
 			assert(error_constant->resolve_status == RESOLVE_DONE);
 			expr->type = decl->type;
@@ -286,7 +291,7 @@ static inline bool sema_expr_analyse_error_constant(Context *context, Expr *expr
 			return true;
 		}
 	}
-	SEMA_ERROR(expr->loc, "'%s' has no error type '%s'.", decl->name.string, name);
+	SEMA_ERROR(expr, "'%s' has no error type '%s'.", decl->name, name);
 	return false;
 }
 
@@ -296,8 +301,8 @@ static Decl *strukt_recursive_search_member(Decl *strukt, const char *name, int 
 	{
 		(*index)++;
 		Decl *member = strukt->strukt.members[i];
-		if (member->name.string == name) return member;
-		if (!member->name.string && decl_is_struct_type(member))
+		if (member->name == name) return member;
+		if (!member->name && decl_is_struct_type(member))
 		{
 			Decl *result = strukt_recursive_search_member(member, name, index);
 			if (result) return result;
@@ -319,7 +324,7 @@ static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *ex
 	}
 	if (!type_may_have_method_functions(type))
 	{
-		SEMA_ERROR(expr->loc, "Cannot access '%s' on '%s'", expr->access_expr.sub_element.string, type_to_error_string(parent_type));
+		SEMA_ERROR(expr, "Cannot access '%s' on '%s'", expr->access_expr.sub_element.string, type_to_error_string(parent_type));
 		return false;
 	}
 	Decl *decl = type->decl;
@@ -338,12 +343,12 @@ static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *ex
 	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string, &index);
 	if (!member)
 	{
-		SEMA_ERROR(expr->access_expr.sub_element, "There is no element '%s.%s'.", decl->name.string, expr->access_expr.sub_element.string);
+		SEMA_TOKEN_ERROR(expr->access_expr.sub_element, "There is no element '%s.%s'.", decl->name, expr->access_expr.sub_element.string);
 		return false;
 	}
 	if (is_pointer)
 	{
-		Expr *deref = expr_new(EXPR_UNARY, expr->loc);
+		Expr *deref = expr_new(EXPR_UNARY, expr->span);
 		deref->unary_expr.operator = UNARYOP_DEREF;
 		deref->unary_expr.expr = expr->access_expr.parent;
 		deref->resolve_status = RESOLVE_DONE;
@@ -361,7 +366,7 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 	if (!sema_resolve_type_info(context, type_info)) return false;
 	if (!type_may_have_method_functions(type_info->type))
 	{
-		SEMA_ERROR(expr->loc, "'%s' does not have method functions.", type_to_error_string(type_info->type));
+		SEMA_ERROR(expr, "'%s' does not have method functions.", type_to_error_string(type_info->type));
 		return false;
 	}
 	Decl *decl = type_info->type->decl;
@@ -384,14 +389,14 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 	VECEACH(type_info->type->decl->method_functions, i)
 	{
 		Decl *function = type_info->type->decl->method_functions[i];
-		if (expr->type_access.name.string == function->name.string)
+		if (expr->type_access.name.string == function->name)
 		{
 			expr->type_access.method = function;
 			expr->type = function->func.function_signature.rtype->type;
 			return true;
 		}
 	}
-	SEMA_ERROR(expr->loc, "No function '%s.%s' found.", type_to_error_string(type_info->type), expr->type_access.name.string);
+	SEMA_ERROR(expr, "No function '%s.%s' found.", type_to_error_string(type_info->type), expr->type_access.name.string);
 	return false;
 }
 
@@ -399,7 +404,7 @@ static inline Decl *decl_find_by_name(Decl** decls, const char *name)
 {
 	VECEACH(decls, i)
 	{
-		if (decls[i]->name.string == name) return decls[i];
+		if (decls[i]->name == name) return decls[i];
 	}
 	return NULL;
 }
@@ -428,7 +433,7 @@ static inline bool sema_expr_analyse_struct_initializer_list(Context *context, T
 		{
 			if (field->expr_kind == EXPR_IDENTIFIER)
 			{
-				decl = decl_find_by_name(members, field->identifier_expr.identifier.string);
+				decl = decl_find_by_name(members, field->identifier_expr.identifier);
 			}
 			TODO
 		}
@@ -436,7 +441,7 @@ static inline bool sema_expr_analyse_struct_initializer_list(Context *context, T
 		{
 			if (i >= size)
 			{
-				SEMA_ERROR(field->loc, "Too many elements in initializer");
+				SEMA_ERROR(field, "Too many elements in initializer");
 				return false;
 			}
 			decl = members[i];
@@ -464,7 +469,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 		default:
 			break;
 	}
-	SEMA_ERROR(expr->loc, "Cannot assign expression to '%s'.", type_to_error_string(to));
+	SEMA_ERROR(expr, "Cannot assign expression to '%s'.", type_to_error_string(to));
 	return false;
 }
 
@@ -494,9 +499,9 @@ static inline bool sema_expr_analyse_cast(Context *context, Type *to, Expr *expr
 
 	// TODO above is probably not right, cast type not set.
 	// Overwrite cast.
-	Token loc = expr->loc;
+	SourceRange loc = expr->span;
 	*expr = *inner;
-	expr->loc = loc;
+	expr->span = loc;
 
 	return true;
 }
@@ -508,7 +513,7 @@ static bool sema_expr_analyse_assign(Context *context, Type *to, Expr *expr, Exp
 
 	if (!expr_is_ltype(left))
 	{
-		SEMA_ERROR(left->loc, "Expression is not assignable.");
+		SEMA_ERROR(left, "Expression is not assignable.");
 		return false;
 	}
 	if (!sema_analyse_expr(context, left->type, right)) return false;
@@ -527,7 +532,7 @@ static bool sema_expr_analyse_bit_and_assign(Context *context, Type *to, Expr *e
 
 	if (!type_is_number(left->type))
 	{
-		SEMA_ERROR(left->loc, "Expected a numeric type here.");
+		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -535,7 +540,7 @@ static bool sema_expr_analyse_bit_and_assign(Context *context, Type *to, Expr *e
 
 	if (!type_is_number(right->type))
 	{
-		SEMA_ERROR(right->loc, "Expected a numeric type here.");
+		SEMA_ERROR(right, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -549,7 +554,7 @@ static bool sema_expr_analyse_bit_or_assign(Context *context, Type *to, Expr *ex
 
 	if (!type_is_number(left->type))
 	{
-		SEMA_ERROR(left->loc, "Expected a numeric type here.");
+		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -557,7 +562,7 @@ static bool sema_expr_analyse_bit_or_assign(Context *context, Type *to, Expr *ex
 
 	if (!type_is_number(right->type))
 	{
-		SEMA_ERROR(right->loc, "Expected a numeric type here.");
+		SEMA_ERROR(right, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -571,7 +576,7 @@ static bool sema_expr_analyse_bit_xor_assign(Context *context, Type *to, Expr *e
 
 	if (!type_is_number(left->type))
 	{
-		SEMA_ERROR(left->loc, "Expected a numeric type here.");
+		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -579,7 +584,7 @@ static bool sema_expr_analyse_bit_xor_assign(Context *context, Type *to, Expr *e
 
 	if (!type_is_number(right->type))
 	{
-		SEMA_ERROR(right->loc, "Expected a numeric type here.");
+		SEMA_ERROR(right, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -594,7 +599,7 @@ static bool sema_expr_analyse_div_assign(Context *context, Type *to, Expr *expr,
 
 	if (!type_is_number(left->type))
 	{
-		SEMA_ERROR(left->loc, "Expected a numeric type here.");
+		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -602,7 +607,7 @@ static bool sema_expr_analyse_div_assign(Context *context, Type *to, Expr *expr,
 
 	if (!type_is_number(right->type))
 	{
-		SEMA_ERROR(right->loc, "Expected a numeric type here.");
+		SEMA_ERROR(right, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -616,7 +621,7 @@ static bool sema_expr_analyse_mult_assign(Context *context, Type *to, Expr *expr
 
 	if (!type_is_number(left->type))
 	{
-		SEMA_ERROR(left->loc, "Expected a numeric type here.");
+		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -624,7 +629,7 @@ static bool sema_expr_analyse_mult_assign(Context *context, Type *to, Expr *expr
 
 	if (!type_is_number(right->type))
 	{
-		SEMA_ERROR(right->loc, "Expected a numeric type here.");
+		SEMA_ERROR(right, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -647,7 +652,7 @@ static bool sema_expr_analyse_sub_assign(Context *context, Type *to, Expr *expr,
 		Type *right_type = right->type->canonical;
 		if (!type_is_integer(right_type))
 		{
-			SEMA_ERROR(right->loc, "Expected an integer type instead.");
+			SEMA_ERROR(right, "Expected an integer type instead.");
 			return false;
 		}
 		expr->type = left->type;
@@ -658,13 +663,13 @@ static bool sema_expr_analyse_sub_assign(Context *context, Type *to, Expr *expr,
 
 	if (!type_is_number(left->type))
 	{
-		SEMA_ERROR(left->loc, "Expected a numeric type here.");
+		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
 	}
 
 	if (!type_is_number(right->type))
 	{
-		SEMA_ERROR(right->loc, "Expected a numeric type here.");
+		SEMA_ERROR(right, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -687,7 +692,7 @@ static bool sema_expr_analyse_add_assign(Context *context, Type *to, Expr *expr,
 		Type *right_type = right->type->canonical;
 		if (!type_is_integer(right_type))
 		{
-			SEMA_ERROR(right->loc, "Expected an integer type instead.");
+			SEMA_ERROR(right, "Expected an integer type instead.");
 			return false;
 		}
 		expr->type = left->type;
@@ -698,13 +703,13 @@ static bool sema_expr_analyse_add_assign(Context *context, Type *to, Expr *expr,
 
 	if (!type_is_number(left->type))
 	{
-		SEMA_ERROR(left->loc, "Expected a numeric type here.");
+		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
 	}
 
 	if (!type_is_number(right->type))
 	{
-		SEMA_ERROR(right->loc, "Expected a numeric type here.");
+		SEMA_ERROR(right, "Expected a numeric type here.");
 		return false;
 	}
 
@@ -750,7 +755,7 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 	return true;
 
 	ERR:
-	SEMA_ERROR(expr->loc, "Cannot subtract '%s' from '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
+	SEMA_ERROR(expr, "Cannot subtract '%s' from '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
 	return false;
 }
 
@@ -787,7 +792,7 @@ static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *
 	return true;
 
 	ERR:
-	SEMA_ERROR(expr->loc, "Cannot add '%s' to '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
+	SEMA_ERROR(expr, "Cannot add '%s' to '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
 	return false;
 }
 
@@ -806,7 +811,7 @@ static bool sema_expr_analyse_mult(Context *context, Type *to, Expr *expr, Expr 
 	return true;
 
 	ERR:
-	SEMA_ERROR(expr->loc, "Cannot multiply '%s' and '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
+	SEMA_ERROR(expr, "Cannot multiply '%s' and '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
 	return false;
 }
 
@@ -827,14 +832,14 @@ static bool sema_expr_analyse_div(Context *context, Type *to, Expr *expr, Expr *
 			case CONST_INT:
 				if (right->const_expr.i == 0)
 				{
-					SEMA_ERROR(right->loc, "Division by zero not allowed.");
+					SEMA_ERROR(right, "Division by zero not allowed.");
 					return false;
 				}
 				break;
 			case CONST_FLOAT:
 				if (right->const_expr.f == 0)
 				{
-					SEMA_ERROR(right->loc, "Division by zero not allowed.");
+					SEMA_ERROR(right, "Division by zero not allowed.");
 					return false;
 				}
 				break;
@@ -849,7 +854,7 @@ static bool sema_expr_analyse_div(Context *context, Type *to, Expr *expr, Expr *
 	return true;
 
 	ERR:
-	SEMA_ERROR(expr->loc, "Cannot divide '%s' by '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
+	SEMA_ERROR(expr, "Cannot divide '%s' by '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
 	return false;
 
 }
@@ -862,7 +867,7 @@ static bool sema_expr_analyse_mod(Context *context, Type *to, Expr *expr, Expr *
 
 	if (right->expr_kind == EXPR_CONST && right->const_expr.i == 0)
 	{
-		SEMA_ERROR(expr->binary_expr.right->loc, "Cannot perform mod by zero.");
+		SEMA_ERROR(expr->binary_expr.right, "Cannot perform mod by zero.");
 		return false;
 	}
 	// TODO Insert trap on negative right.
@@ -946,7 +951,7 @@ static bool sema_expr_analyse_shr(Context *context, Type *to, Expr *expr, Expr *
 	{
 		if (right->const_expr.i > left->type->canonical->builtin.bitsize)
 		{
-			SEMA_ERROR(right->loc, "Rightshift exceeds bitsize of '%s'", type_to_error_string(left->type));
+			SEMA_ERROR(right, "Rightshift exceeds bitsize of '%s'", type_to_error_string(left->type));
 			return false;
 		}
 		if (left->expr_kind == EXPR_CONST)
@@ -970,7 +975,7 @@ static bool sema_expr_analyse_shr_assign(Context *context, Type *to, Expr *expr,
 
 	if (!expr_is_ltype(left))
 	{
-		SEMA_ERROR(left->loc, "Expression is not assignable.");
+		SEMA_ERROR(left, "Expression is not assignable.");
 		return false;
 	}
 
@@ -981,7 +986,7 @@ static bool sema_expr_analyse_shr_assign(Context *context, Type *to, Expr *expr,
 	{
 		if (right->const_expr.i > left->type->canonical->builtin.bitsize)
 		{
-			SEMA_ERROR(right->loc, "Rightshift exceeds bitsize of '%s'", type_to_error_string(left->type));
+			SEMA_ERROR(right, "Rightshift exceeds bitsize of '%s'", type_to_error_string(left->type));
 			return false;
 		}
 	}
@@ -1007,7 +1012,7 @@ static bool sema_expr_analyse_shl(Context *context, Type *to, Expr *expr, Expr *
 	{
 		if (right->const_expr.i > left->type->canonical->builtin.bitsize)
 		{
-			SEMA_ERROR(right->loc, "Leftshift exceeds bitsize of '%s'", type_to_error_string(left->type));
+			SEMA_ERROR(right, "Leftshift exceeds bitsize of '%s'", type_to_error_string(left->type));
 			return false;
 		}
 		if (left->expr_kind == EXPR_CONST)
@@ -1031,7 +1036,7 @@ static bool sema_expr_analyse_shl_assign(Context *context, Type *to, Expr *expr,
 
 	if (!expr_is_ltype(left))
 	{
-		SEMA_ERROR(left->loc, "Expression is not assignable.");
+		SEMA_ERROR(left, "Expression is not assignable.");
 		return false;
 	}
 
@@ -1044,7 +1049,7 @@ static bool sema_expr_analyse_shl_assign(Context *context, Type *to, Expr *expr,
 	{
 		if (right->const_expr.i > left->type->canonical->builtin.bitsize)
 		{
-			SEMA_ERROR(right->loc, "Leftshift exceeds bitsize of '%s'", type_to_error_string(left->type));
+			SEMA_ERROR(right, "Leftshift exceeds bitsize of '%s'", type_to_error_string(left->type));
 			return false;
 		}
 	}
@@ -1095,7 +1100,7 @@ static bool sema_expr_analyse_comp(Context *context, Type *to, Expr *expr, Expr 
 	bool success = max && cast_implicit(left, max) && cast_implicit(right, max);
 	if (!success)
 	{
-		SEMA_ERROR(expr->loc, "Cannot implicitly convert types to evaluate '%s' %s '%s'", type_to_error_string(left_type), token_type_to_string(binaryop_to_token(expr->binary_expr.operator)), type_to_error_string(right_type));
+		SEMA_ERROR(expr, "Cannot implicitly convert types to evaluate '%s' %s '%s'", type_to_error_string(left_type), token_type_to_string(binaryop_to_token(expr->binary_expr.operator)), type_to_error_string(right_type));
 		return false;
 	}
 	if (both_const(left, right))
@@ -1157,12 +1162,12 @@ static bool sema_expr_analyse_deref(Context *context, Type *to, Expr *expr, Expr
 	Type *canonical = inner->type->canonical;
 	if (canonical->type_kind != TYPE_POINTER)
 	{
-		SEMA_ERROR(inner->loc, "Cannot take the dereference of a value of type '%s'", type_to_error_string(inner->type));
+		SEMA_ERROR(inner, "Cannot take the dereference of a value of type '%s'", type_to_error_string(inner->type));
 		return false;
 	}
 	if (inner->expr_kind == EXPR_CONST)
 	{
-		SEMA_ERROR(inner->loc, "Dereferencing nil is not allowed.");
+		SEMA_ERROR(inner, "Dereferencing nil is not allowed.");
 		return false;
 	}
 	Type *deref_type = inner->type->type_kind != TYPE_POINTER ? inner->type : canonical;
@@ -1174,7 +1179,7 @@ static bool sema_expr_analyse_addr(Context *context, Type *to, Expr *expr, Expr 
 {
 	if (!expr_is_ltype(inner))
 	{
-		SEMA_ERROR(inner->loc, "Cannot take the address of a value of type '%s'", type_to_error_string(inner->type));
+		SEMA_ERROR(inner, "Cannot take the address of a value of type '%s'", type_to_error_string(inner->type));
 		return false;
 	}
 	expr->type = type_get_ptr(inner->type);
@@ -1186,7 +1191,7 @@ static bool sema_expr_analyse_neg(Context *context, Type *to, Expr *expr, Expr *
 	Type *canonical = inner->type->canonical;
 	if (!builtin_may_negate(canonical))
 	{
-		SEMA_ERROR(expr->loc, "Cannot negate %s.", type_to_error_string(inner->type));
+		SEMA_ERROR(expr, "Cannot negate %s.", type_to_error_string(inner->type));
 		return false;
 	}
 	if (inner->expr_kind != EXPR_CONST)
@@ -1214,7 +1219,7 @@ static bool sema_expr_analyse_bit_not(Context *context, Type *to, Expr *expr, Ex
 	Type *canonical = inner->type->canonical;
 	if (!type_is_integer(canonical) && canonical != type_bool)
 	{
-		SEMA_ERROR(expr->loc, "Cannot bit negate %s.", type_to_error_string(inner->type));
+		SEMA_ERROR(expr, "Cannot bit negate %s.", type_to_error_string(inner->type));
 	}
 	if (inner->expr_kind != EXPR_CONST)
 	{
@@ -1296,7 +1301,7 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 		case TYPE_STRING:
 		case TYPE_ENUM:
 		case TYPE_ERROR:
-			SEMA_ERROR(expr->loc, "Cannot use 'not' on %s", type_to_error_string(inner->type));
+			SEMA_ERROR(expr, "Cannot use 'not' on %s", type_to_error_string(inner->type));
 			return false;
 	}
 	UNREACHABLE
@@ -1306,12 +1311,12 @@ static inline bool sema_expr_analyse_incdec(Context *context, Type *to, Expr *ex
 {
 	if (!expr_is_ltype(inner))
 	{
-		SEMA_ERROR(inner->loc, "Expression cannot be assigned to");
+		SEMA_ERROR(inner, "Expression cannot be assigned to");
 		return false;
 	}
 	if (!type_is_number(inner->type->canonical) && inner->type->canonical->type_kind != TYPE_POINTER)
 	{
-		SEMA_ERROR(inner->loc, "Expression must be a number or a pointer");
+		SEMA_ERROR(inner, "Expression must be a number or a pointer");
 		return false;
 	}
 	expr->type = inner->type;
@@ -1516,7 +1521,7 @@ bool sema_analyse_expr(Context *context, Type *to, Expr *expr)
 			expr->resolve_status = RESOLVE_RUNNING;
 			break;
 		case RESOLVE_RUNNING:
-			SEMA_ERROR(expr->loc, "Recursive resolution of expression");
+			SEMA_ERROR(expr, "Recursive resolution of expression");
 			return expr_poison(expr);
 		case RESOLVE_DONE:
 			return expr_ok(expr);

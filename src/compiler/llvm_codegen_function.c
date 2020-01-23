@@ -78,7 +78,7 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	// Allocate room on stack and copy.
-	decl->var.backend_ref = gencontext_emit_alloca(context, BACKEND_TYPE(decl->type), decl->name.string);
+	decl->var.backend_ref = gencontext_emit_alloca(context, BACKEND_TYPE(decl->type), decl->name);
 	LLVMBuildStore(context->builder, LLVMGetParam(context->function, index), decl->var.backend_ref);
 }
 
@@ -109,7 +109,7 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	VECEACH(decl->func.labels, i)
 	{
 		Ast *label = decl->func.labels[i];
-		label->label_stmt.backend_value = gencontext_create_free_block(context, label->token.string);
+		label->label_stmt.backend_value = gencontext_create_free_block(context, label->label_stmt.name);
 	}
 
 	gencontext_emit_compound_stmt(context, decl->func.body);
@@ -178,11 +178,11 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 				flags |= LLVMDIFlagPublic;
 				break;
 		}
-		SourcePosition decl_position = source_file_find_position(decl->name.span.loc);
+		SourcePosition decl_position = source_file_find_position(decl->name_span.loc);
 		context->debug.function = LLVMDIBuilderCreateFunction(context->debug.builder,
 		                                                      context->debug.compile_unit,
-		                                                      decl->name.string, decl->name.span.length,
-		                                                      decl->name.string, decl->name.span.length,
+		                                                      decl->name, source_range_len(decl->name_span),
+		                                                      decl->name, source_range_len(decl->name_span),
 		                                                      context->debug.file,
 		                                                      decl_position.line,
 		                                                      decl->type->backend_debug_type,
@@ -228,7 +228,6 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
-		case DECL_MULTI_DECL:
 		case DECL_GENERIC:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:

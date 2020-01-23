@@ -3,6 +3,7 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
+#include <histedit.h>
 #include "../utils/common.h"
 #include "../utils/errors.h"
 #include "../utils/lib.h"
@@ -17,6 +18,7 @@ typedef uint32_t SourceLoc;
 #define MAX_LOCALS 0xFFFF
 #define MAX_SCOPE_DEPTH 0xFF
 #define MAX_PATH 1024
+#define MAX_DEFERS 0xFFFF
 
 typedef struct _Ast Ast;
 typedef struct _Decl Decl;
@@ -24,15 +26,21 @@ typedef struct _TypeInfo TypeInfo;
 typedef struct _Expr Expr;
 typedef struct _Module Module;
 typedef struct _Type Type;
+typedef uint16_t DeferId;
 
 typedef bool(*CastFunc)(Expr *, Type *, Type *, Type *, CastType cast_type);
 
 typedef struct
 {
 	SourceLoc loc;
-	uint32_t length;
+	SourceLoc end_loc;
 } SourceRange;
 
+typedef struct
+{
+	DeferId start;
+	DeferId end;
+} DeferList;
 
 typedef struct
 {
@@ -74,9 +82,8 @@ typedef struct
 	const char *full_path;
 	SourceLoc start_id;
 	SourceLoc end_id;
-	SourceLoc *line_start;
+	SourceLoc *lines;
 	SourceLoc current_line_start;
-	int last_line_found;
 } File;
 
 typedef struct
@@ -287,7 +294,9 @@ typedef struct
 
 typedef struct _Decl
 {
-	Token name;
+	const char *name;
+	SourceRange name_span;
+	SourceRange span;
 	const char *external_name;
 	DeclKind decl_kind : 6;
 	Visibility visibility : 2;
@@ -326,7 +335,6 @@ typedef struct _Decl
 		FuncDecl func;
 		AttrDecl attr;
 		TypedefDecl typedef_decl;
-		Decl** multi_decl;
 		MacroDecl macro_decl;
 		GenericDecl generic_decl;
 		CtIfDecl ct_if_decl;
@@ -428,7 +436,7 @@ typedef struct
 typedef struct
 {
 	Path *path;
-	Token identifier;
+	const char *identifier;
 	bool is_ref;
 	Decl *decl;
 } ExprIdentifier;
@@ -455,7 +463,7 @@ struct _Expr
 {
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 3;
-	Token loc;
+	SourceRange span;
 	Type *type;
 	union {
 		ExprCast cast_expr;
@@ -486,14 +494,15 @@ typedef struct
 typedef struct
 {
 	struct _Ast **stmts;
-//	DeferList defer_list; TODO
+	DeferList defer_list;
 } AstCompoundStmt;
 
 typedef struct
 {
+	const char *name;
 	uint16_t last_goto;
 	bool is_used : 1;
-	struct _Ast *defer;
+	Ast *defer;
 	struct _Ast *in_defer;
 	void *backend_value;
 } AstLabelStmt;
@@ -501,7 +510,7 @@ typedef struct
 typedef struct
 {
 	Expr *expr; // May be NULL
-	struct _Ast *defer;
+	Ast *defer;
 } AstReturnStmt;
 
 typedef struct
@@ -515,6 +524,8 @@ typedef struct
 {
 	Expr *expr;
 	Ast *body;
+	DeferList expr_defer;
+	DeferList body_defer;
 } AstDoStmt;
 
 typedef struct
@@ -554,8 +565,9 @@ typedef struct
 {
 	Ast *init;
 	Expr *cond;
-	Expr *incr;
+	Ast *incr;
 	Ast *body;
+	DeferList cond_defer;
 } AstForStmt;
 
 
@@ -563,8 +575,9 @@ typedef struct
 typedef struct
 {
 	GotoType type : 2;
+	const char *label_name;
 	Ast *label;
-	struct _Ast *defer;
+	Ast *defer;
 	union
 	{
 		struct _Ast *in_defer;
@@ -577,6 +590,7 @@ typedef struct _AstDeferStmt
 	bool emit_boolean : 1;
 	struct _Ast *body; // Compound statement
 	struct _Ast *prev_defer;
+	DeferId id;
 } AstDeferStmt;
 
 typedef struct _AstCatchStmt
@@ -626,14 +640,14 @@ typedef struct
 
 typedef struct _Ast
 {
+	SourceRange span;
 	AstKind ast_kind : 8;
 	ExitType exit : 3;
-	Token token;
-
 	union
 	{
 		AstAttribute attribute;
 		AstCompoundStmt compound_stmt;
+		AstCompoundStmt function_block_stmt;
 		Decl *declare_stmt;
 		Expr *expr_stmt;
 		Expr *throw_stmt;
@@ -690,10 +704,23 @@ typedef struct _DynamicScope
 	ScopeFlags flags_created;
 	unsigned errors;
 	Decl **local_decl_start;
-	unsigned defer_start;
+	DeferId defer_top;
+	DeferId defer_last;
 	ExitType exit;
 } DynamicScope;
 
+
+typedef struct
+{
+	const char *file_begin;
+	const char *lexing_start;
+	const char *current;
+	uint16_t source_file;
+	File *current_file;
+	SourceLoc last_in_range;
+	Token tok;
+	Token next_tok;
+} Lexer;
 
 typedef struct _Context
 {
@@ -705,7 +732,6 @@ typedef struct _Context
 	Decl *specified_imports;
 	Module *module;
 	STable local_symbols;
-	Decl **header_declarations;
 	Decl **enums;
 	Decl **error_types;
 	Decl **types;
@@ -718,6 +744,10 @@ typedef struct _Context
 	Decl **last_local;
 	Ast **labels;
 	Ast **gotos;
+	Token *comments;
+	Token *lead_comment;
+	Token *trailing_comment;
+	Token *next_lead_comment;
 	DynamicScope *current_scope;
 	Decl *evaluating_macro;
 	Type *rtype;
@@ -729,6 +759,18 @@ typedef struct _Context
 		STable external_symbols;
 		Decl **external_symbol_list;
 	};
+	STable scratch_table;
+	Lexer lexer;
+	SourceLoc prev_tok_end;
+	Token tok;
+	Token next_tok;
+	struct
+	{
+		const char *current;
+		const char *start;
+		Token tok;
+		Token next_tok;
+	} stored;
 } Context;
 
 typedef struct
@@ -739,7 +781,6 @@ typedef struct
 	Type **type;
 } Compiler;
 
-extern Context *current_context;
 extern Compiler compiler;
 extern Ast poisoned_ast;
 extern Decl poisoned_decl;
@@ -749,8 +790,6 @@ extern TypeInfo poisoned_type_info;
 extern Module poisoned_module;
 extern Diagnostics diagnostics;
 
-extern Token next_tok;
-extern Token tok;
 extern Decl all_error;
 
 extern Type *type_bool, *type_void, *type_string, *type_voidptr;
@@ -771,17 +810,32 @@ extern Type t_voidstar;
 
 extern const char *main_name;
 
-#define AST_NEW(_kind, _token) new_ast(_kind, _token)
+#define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, _token.span)
+#define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
 
 static inline bool ast_ok(Ast *ast) { return ast == NULL || ast->ast_kind != AST_POISONED; }
 static inline bool ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; return false; }
-static inline Ast *new_ast(AstKind kind, Token token)
+Ast *ast_from_expr(Expr *expr);
+
+static inline Ast *new_ast(AstKind kind, SourceRange range)
 {
 	Ast *ast = malloc_arena(sizeof(Ast));
 	memset(ast, 0, sizeof(Ast));
-	ast->token = token;
+	ast->span = range;
 	ast->ast_kind = kind;
 	ast->exit = EXIT_NONE;
+	return ast;
+}
+
+static inline Ast *extend_ast(Ast *ast, Token token)
+{
+	ast->span.end_loc = token.span.end_loc;
+	return ast;
+}
+
+static inline Ast *extend_ast_with_prev_token(Context *context, Ast *ast)
+{
+	ast->span.end_loc = context->prev_tok_end;
 	return ast;
 }
 
@@ -852,16 +906,12 @@ Module *compiler_find_or_create_module(Path *module_name);
 void compiler_register_public_symbol(Decl *decl);
 
 Context *context_create(File *file, BuildTarget *target);
-void context_push(Context *context);
 void context_register_global_decl(Context *context, Decl *decl);
 void context_register_external_symbol(Context *context, Decl *decl);
 bool context_add_import(Context *context, Path *path, Token symbol, Token alias);
 bool context_set_module_from_filename(Context *context);
 bool context_set_module(Context *context, Path *path, Token *generic_parameters);
 void context_print_ast(Context *context, FILE *file);
-Decl *context_find_ident(Context *context, const char *symbol);
-void context_add_header_decl(Context *context, Decl *decl);
-bool context_add_local(Context *context, Decl *decl);
 
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility);
 Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility);
@@ -883,16 +933,16 @@ void diag_reset(void);
 void diag_error_range(SourceRange span, const char *message, ...);
 void diag_verror_range(SourceRange span, const char *message, va_list args);
 
-#define EXPR_NEW_EXPR(_kind, _expr) expr_new(_kind, _expr->loc)
-#define EXPR_NEW_TOKEN(_kind, _tok) expr_new(_kind, _tok)
-Expr *expr_new(ExprKind kind, Token start);
+#define EXPR_NEW_EXPR(_kind, _expr) expr_new(_kind, _expr->span)
+#define EXPR_NEW_TOKEN(_kind, _tok) expr_new(_kind, _tok.span)
+Expr *expr_new(ExprKind kind, SourceRange start);
 static inline bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
 static inline bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
 static inline void expr_replace(Expr *expr, Expr *replacement)
 {
-	Token loc = expr->loc;
+	SourceRange loc = expr->span;
 	*expr = *replacement;
-	expr->loc = loc;
+	expr->span = loc;
 }
 
 void fprint_ast(FILE *file, Ast *ast);
@@ -901,31 +951,13 @@ void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent);
 void fprint_expr_recursive(FILE *file, Expr *expr, int indent);
 
 
-Token lexer_scan_token(void);
-Token lexer_scan_ident_test(const char *scan);
-void lexer_test_setup(const char *text, size_t len);
-void lexer_add_file_for_lexing(File *file);
-File* lexer_current_file(void);
+Token lexer_scan_token(Lexer *lexer);
+Token lexer_scan_ident_test(Lexer *lexer, const char *scan);
+void lexer_test_setup(Lexer *lexer, const char *text, size_t len);
+void lexer_add_file_for_lexing(Lexer *lexer, File *file);
+File* lexer_current_file(Lexer *lexer);
 void lexer_check_init(void);
-void lexer_store_state(void);
-void lexer_restore_state(void);
 
-static inline void advance(void)
-{
-	tok = next_tok;
-	while (1)
-	{
-		next_tok = lexer_scan_token();
-		// printf(">>> %.*s => %s\n", tok.length, tok.start, token_type_to_string(tok.type));
-		if (next_tok.type != TOKEN_INVALID_TOKEN) break;
-	}
-}
-
-static inline void advance_and_verify(TokenType token_type)
-{
-	assert(tok.type == token_type);
-	advance();
-}
 
 typedef enum
 {
@@ -942,12 +974,12 @@ Path *path_find_parent_path(Path *path);
 
 const char *resolve_status_to_string(ResolveStatus status);
 
-#define SEMA_ERROR(_tok, ...) sema_error_range(_tok.span, __VA_ARGS__)
-void sema_init(File *file);
+#define SEMA_TOKEN_ERROR(_tok, ...) sema_error_range(_tok.span, __VA_ARGS__)
+#define SEMA_ERROR(_node, ...) sema_error_range(_node->span, __VA_ARGS__)
+#define SEMA_PREV(_node, ...) sema_prev_at_range(_node->span, __VA_ARGS__)
 void sema_analysis_pass_process_imports(Context *context);
 void sema_analysis_pass_conditional_compilation(Context *context);
 void sema_analysis_pass_decls(Context *context);
-void sema_analysis_pass_3(Context *context);
 
 bool sema_add_local(Context *context, Decl *decl);
 bool sema_analyse_statement(Context *context, Ast *statement);
@@ -958,7 +990,7 @@ void sema_error_at(SourceLoc loc, const char *message, ...);
 void sema_error_range(SourceRange range, const char *message, ...);
 void sema_verror_at(SourceLoc loc, const char *message, va_list args);
 void sema_verror_range(SourceRange range, const char *message, va_list args);
-void sema_error(const char *message, ...);
+void sema_error(Context *context, const char *message, ...);
 void sema_prev_at_range(SourceRange span, const char *message, ...);
 void sema_prev_at(SourceLoc loc, const char *message, ...);
 void sema_shadow_error(Decl *decl, Decl *old);
@@ -969,7 +1001,7 @@ void source_file_append_line_end(File *file, SourceLoc loc);
 SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc);
 SourcePosition source_file_find_position(SourceLoc loc);
 SourceRange source_range_from_ranges(SourceRange first, SourceRange last);
-
+static inline unsigned source_range_len(SourceRange range) { return range.end_loc - range.loc; }
 
 void stable_init(STable *table, uint32_t initial_size);
 void *stable_set(STable *table, const char *key, void *value);
@@ -1112,4 +1144,5 @@ static inline const char* struct_union_name_from_token(TokenType type)
 #define BACKEND_TYPE_GLOBAL(type) gencontext_get_llvm_type(NULL, type)
 #define DEBUG_TYPE(type) gencontext_get_debug_type(context, type)
 
-
+void advance(Context *context);
+void advance_and_verify(Context *context, TokenType token_type);

@@ -4,7 +4,6 @@
 
 #include "compiler_internal.h"
 
-Context *current_context;
 
 Context *context_create(File *file, BuildTarget *target)
 {
@@ -14,43 +13,10 @@ Context *context_create(File *file, BuildTarget *target)
     context->target = target;
     stable_init(&context->local_symbols, 256);
 	stable_init(&context->external_symbols, 256);
+	stable_init(&context->scratch_table, 32);
     return context;
 }
 
-void context_push(Context *context)
-{
-    current_context = context;
-}
-
-void context_add_header_decl(Context *context, Decl *decl)
-{
-	DEBUG_LOG("Adding %s to header", decl->name.string);
-	vec_add(context->header_declarations, decl);
-}
-
-bool context_add_local(Context *context, Decl *decl)
-{
-	Decl *other = context_find_ident(context, decl->name.string);
-	if (other)
-	{
-		sema_shadow_error(decl, other);
-		decl_poison(decl);
-		decl_poison(other);
-		return false;
-	}
-	Decl *** vars = &context->active_function_for_analysis->func.annotations->vars;
-	unsigned num_vars = vec_size(*vars);
-	if (num_vars == MAX_LOCALS - 1 || context->last_local == &context->locals[MAX_LOCALS - 1])
-	{
-		SEMA_ERROR(decl->name, "Reached the maximum number of locals.");
-		return false;
-	}
-	decl->var.id = num_vars;
-	*vars = VECADD(*vars, decl);
-	context->last_local[0] = decl;
-	context->last_local++;
-	return true;
-}
 
 static inline bool create_module_or_check_name(Context *context, Path *module_name)
 {
@@ -74,7 +40,7 @@ bool context_set_module_from_filename(Context *context)
     int len = filename_to_module(context->file->full_path, buffer);
     if (!len)
     {
-        sema_error("The filename '%s' could not be converted to a valid module name, try using an explicit module name.");
+        sema_error(context, "The filename '%s' could not be converted to a valid module name, try using an explicit module name.");
         return false;
     }
 
@@ -82,7 +48,7 @@ bool context_set_module_from_filename(Context *context)
     const char *module_name = symtab_add(buffer, (uint32_t) len, fnv1a(buffer, (uint32_t) len), &type);
     if (type != TOKEN_IDENT)
     {
-        sema_error("Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
+        sema_error(context, "Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
                    "try using an explicit module name.");
         return false;
     }
@@ -162,7 +128,6 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_ERROR_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
-		case DECL_MULTI_DECL:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
@@ -173,17 +138,17 @@ void context_register_global_decl(Context *context, Decl *decl)
 			vec_add(context->ct_ifs, decl);
 			return;
 	}
-	DEBUG_LOG("Registering symbol '%s'.", decl->name.string);
+	DEBUG_LOG("Registering symbol '%s'.", decl->name);
 
-	Decl *old = stable_set(&context->local_symbols, decl->name.string, decl);
+	Decl *old = stable_set(&context->local_symbols, decl->name, decl);
 	if (!old && decl->visibility != VISIBLE_LOCAL)
 	{
-		old = stable_set(&context->module->symbols, decl->name.string, decl);
+		old = stable_set(&context->module->symbols, decl->name, decl);
 	}
 	if (!old && decl->visibility == VISIBLE_PUBLIC)
 	{
 		compiler_register_public_symbol(decl);
-		old = stable_set(&context->module->public_symbols, decl->name.string, decl);
+		old = stable_set(&context->module->public_symbols, decl->name, decl);
 	}
 	if (old != NULL)
 	{

@@ -34,14 +34,16 @@ static inline LLVMValueRef gencontext_emit_sub_int(GenContext *context, Type *ty
 static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, Expr *expr)
 {
 	LLVMValueRef index = gencontext_emit_expr(context, expr->subscript_expr.index);
-	switch (expr->subscript_expr.expr->type->canonical->type_kind)
+	Type *type = expr->subscript_expr.expr->type->canonical;
+	switch (type->type_kind)
 	{
 		case TYPE_ARRAY:
 			TODO
 		case TYPE_POINTER:
-			return LLVMBuildGEP(context->builder,
-			                    gencontext_emit_expr(context, expr->subscript_expr.expr),
-			                    &index, 1, "[]");
+			return LLVMBuildGEP2(context->builder,
+			                     BACKEND_TYPE(type->pointer),
+			                     gencontext_emit_expr(context, expr->subscript_expr.expr),
+			                     &index, 1, "[]");
 		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_STRING:
@@ -54,7 +56,7 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 static inline LLVMValueRef gencontext_emit_access_addr(GenContext *context, Expr *expr)
 {
 	LLVMValueRef value = gencontext_emit_address(context, expr->access_expr.parent);
-	return LLVMBuildStructGEP(context->builder, value, (unsigned)expr->access_expr.index, "");
+	return LLVMBuildStructGEP2(context->builder, BACKEND_TYPE(expr->access_expr.parent->type), value, (unsigned)expr->access_expr.index, "");
 }
 
 LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
@@ -216,7 +218,7 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 		case UNARYOP_ADDR:
 			return gencontext_emit_address(context, expr->unary_expr.expr);
 		case UNARYOP_DEREF:
-			return LLVMBuildLoad(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "deref");
+			return LLVMBuildLoad2(context->builder, BACKEND_TYPE(expr->unary_expr.expr->type), gencontext_emit_expr(context, expr->unary_expr.expr), "deref");
 		case UNARYOP_INC:
 			return gencontext_emit_pre_inc_dec(context, expr->unary_expr.expr, 1, false);
 		case UNARYOP_DEC:
@@ -514,7 +516,7 @@ LLVMValueRef gencontext_emit_ternary_expr(GenContext *context, Expr *expr)
 static LLVMValueRef gencontext_emit_identifier_expr(GenContext *context, Expr *expr)
 {
 	return LLVMBuildLoad2(context->builder, expr->identifier_expr.decl->type->canonical->backend_type,
-			expr->identifier_expr.decl->var.backend_ref, expr->identifier_expr.decl->name.string);
+			expr->identifier_expr.decl->var.backend_ref, expr->identifier_expr.decl->name);
 }
 
 LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
@@ -575,7 +577,7 @@ static inline LLVMValueRef gencontext_emit_access_expr(GenContext *context, Expr
 {
 	// Improve, add string description to the access?
 	LLVMValueRef value = gencontext_emit_address(context, expr->access_expr.parent);
-	LLVMValueRef val =  LLVMBuildStructGEP(context->builder, value, (unsigned)expr->access_expr.index, "");
+	LLVMValueRef val =  LLVMBuildStructGEP2(context->builder, BACKEND_TYPE(expr->access_expr.parent->type), value, (unsigned)expr->access_expr.index, "");
 	return LLVMBuildLoad2(context->builder, gencontext_get_llvm_type(context, expr->type), val, "");
 }
 
@@ -612,6 +614,13 @@ static inline LLVMValueRef gencontext_emit_struct_init_values_expr(GenContext *c
 	TODO
 }
 
+LLVMValueRef gencontext_emit_ast_expr(GenContext *context, Ast *expr)
+{
+	assert(expr->ast_kind == AST_EXPR_STMT);
+	LLVMValueRef value = gencontext_emit_expr(context, expr->expr_stmt);
+//	gencontext_emit_defer(context, expr);
+	return value;
+}
 
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 {

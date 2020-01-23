@@ -22,7 +22,7 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 {
 	Decl *decl = ast->declare_stmt;
 
-	decl->var.backend_ref = gencontext_emit_alloca(context, BACKEND_TYPE(decl->type), decl->name.string);
+	decl->var.backend_ref = gencontext_emit_alloca(context, BACKEND_TYPE(decl->type), decl->name);
 	// TODO NRVO
 	// TODO debug info
 	/*
@@ -99,6 +99,13 @@ static inline void gencontext_emit_return(GenContext *context, Ast *ast)
 {
 	// Ensure we are on a branch that is non empty.
 	if (!gencontext_check_block_branch_emit(context)) return;
+	Ast *defer = ast->return_stmt.defer;
+	while (defer)
+	{
+		gencontext_emit_stmt(context, defer->defer_stmt.body);
+		// TODO boolean
+		defer = defer->defer_stmt.prev_defer;
+	}
 	if (!ast->return_stmt.expr)
 	{
 		LLVMBuildRetVoid(context->builder);
@@ -109,7 +116,6 @@ static inline void gencontext_emit_return(GenContext *context, Ast *ast)
 	context->current_block = NULL;
 	LLVMBasicBlockRef post_ret_block = gencontext_create_free_block(context, "ret");
 	gencontext_emit_block(context, post_ret_block);
-
 }
 
 
@@ -219,6 +225,7 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 		gencontext_emit_br(context, cond_block);
 		gencontext_emit_block(context, cond_block);
 		value = gencontext_emit_expr(context, ast->for_stmt.cond);
+		gencontext_emit_defer(context, ast->for_stmt.cond_defer);
 		// If we have a body, conditionally jump to it.
 		if (body_block)
 		{
@@ -251,7 +258,7 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 	{
 		// Emit the block
 		gencontext_emit_block(context, inc_block);
-		gencontext_emit_expr(context, ast->for_stmt.incr);
+		gencontext_emit_expr(context, ast->for_stmt.incr->expr_stmt);
 	}
 
 	// Loop back.
@@ -451,11 +458,23 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 	gencontext_emit_block(context, exit_block);
 }
 
+void gencontext_emit_defer(GenContext *context, DeferList  defer_list)
+{
+	if (defer_list.start == defer_list.end) return;
+	Ast *defer = context->ast_context->defers[defer_list.start - 1];
+	while (defer && defer->defer_stmt.id != defer_list.end)
+	{
+		gencontext_emit_stmt(context, defer->defer_stmt.body);
+		// TODO boolean
+	}
+}
 
 void gencontext_emit_stmt(GenContext *context, Ast *ast)
 {
 	switch (ast->ast_kind)
 	{
+		case AST_FUNCTION_BLOCK_STMT:
+			TODO
 		case AST_POISONED:
 			UNREACHABLE
 		case AST_EXPR_STMT:
@@ -495,9 +514,9 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			gencontext_emit_jmp(context, context->break_continue_stack[context->break_continue_stack_index - 1].next_block);
 			break;
 		case AST_NOP_STMT:
+		case AST_DEFER_STMT:
 			break;
 		case AST_CATCH_STMT:
-		case AST_DEFER_STMT:
 		case AST_TRY_STMT:
 		case AST_THROW_STMT:
 			// Should have been lowered.

@@ -44,7 +44,7 @@ File *source_file_load(const char *filename, bool *already_loaded)
 
 	size_t size;
 	const char* source_text = read_file(filename, &size);
-	File *file = malloc(sizeof(File));
+	File *file = CALLOCS(File);
 
 	file->full_path = full_path;
 	file->start_id = vec_size(source_files.files) ? VECLAST(source_files.files)->end_id : 0;
@@ -53,10 +53,10 @@ File *source_file_load(const char *filename, bool *already_loaded)
 	ASSERT(file->start_id + size < UINT32_MAX, "Total files loaded exceeded %d bytes", UINT32_MAX);
 	file->end_id = (SourceLoc) (file->start_id + size);
 	size_t pre_allocated_lines = size / 40;
-	file->line_start = VECNEW(SourceLoc, pre_allocated_lines < 16 ? 16 : pre_allocated_lines);
-	VECADD(file->line_start, file->start_id);
+	file->lines = VECNEW(SourceLoc, pre_allocated_lines < 16 ? 16 : pre_allocated_lines);
+	vec_add(file->lines, file->start_id);
 	path_get_dir_and_filename_from_full(file->full_path, &file->name, &file->dir_path);
-	VECADD(source_files.files, file);
+	vec_add(source_files.files, file);
 	return file;
 }
 
@@ -64,14 +64,14 @@ void source_file_append_line_end(File *file, SourceLoc loc)
 {
 	if (file->current_line_start > loc) return;
 	file->current_line_start = loc + 1;
-	VECADD(file->line_start, file->current_line_start);
+	vec_add(file->lines, file->current_line_start);
 }
 
 SourceRange source_range_from_ranges(SourceRange first, SourceRange last)
 {
 	return (SourceRange) {
 		.loc = first.loc,
-		.length = last.loc - first.loc + last.length
+		.end_loc = last.end_loc
 	};
 }
 
@@ -85,7 +85,7 @@ SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc)
 {
 	assert(file->start_id <= loc);
 
-	size_t lines = vec_size(file->line_start);
+	size_t lines = vec_size(file->lines);
 	unsigned low = 0;
 	unsigned high = lines;
 	while (1)
@@ -95,13 +95,13 @@ SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc)
 		uint32_t mid = (high + low) / 2;
 
 		// Mid is before the location.
-		SourceLoc line_start = file->line_start[mid];
+		SourceLoc line_start = file->lines[mid];
 		if (line_start > loc)
 		{
 			high = mid;
 			continue;
 		}
-		if (mid + 1 != lines && file->line_start[mid + 1] < loc)
+		if (mid + 1 != lines && file->lines[mid + 1] <= loc)
 		{
 			low = mid;
 			continue;

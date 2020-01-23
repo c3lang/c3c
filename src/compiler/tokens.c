@@ -159,6 +159,12 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_REAL:
 			return "FLOAT";
 
+		// Comments
+		case TOKEN_COMMENT:
+			return "COMMENT";
+		case TOKEN_DOC_COMMENT:
+			return "DOC_COMMENT";
+
 		// Keywords
 		case TOKEN_ALIAS:
 			return "alias";

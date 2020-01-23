@@ -20,11 +20,12 @@ static void compiler_lex(BuildTarget *target)
 		bool loaded = false;
 		File *file = source_file_load(target->sources[i], &loaded);
 		if (loaded) continue;
-		lexer_add_file_for_lexing(file);
+		Lexer lexer;
+		lexer_add_file_for_lexing(&lexer, file);
 		printf("# %s\n", file->full_path);
 		while (1)
 		{
-			Token token = lexer_scan_token();
+			Token token = lexer_scan_token(&lexer);
 			printf("%s ", token_type_to_string(token.type));
 			if (token.type == TOKEN_EOF) break;
 		}
@@ -212,9 +213,9 @@ Module *compiler_find_or_create_module(Path *module_name)
 
 void compiler_register_public_symbol(Decl *decl)
 {
-	Decl *prev = stable_get(&compiler.global_symbols, decl->name.string);
+	Decl *prev = stable_get(&compiler.global_symbols, decl->name);
 	// If the previous symbol was already declared globally, remove it.
-	stable_set(&compiler.global_symbols, decl->name.string, prev ? &poisoned_decl : decl);
+	stable_set(&compiler.global_symbols, decl->name, prev ? &poisoned_decl : decl);
 	STable *sub_module_space = stable_get(&compiler.qualified_symbols, decl->module->name->module);
 	if (!sub_module_space)
 	{
@@ -222,6 +223,6 @@ void compiler_register_public_symbol(Decl *decl)
 		stable_init(sub_module_space, 0x100);
 		stable_set(&compiler.qualified_symbols, decl->module->name->module, sub_module_space);
 	}
-	prev = stable_get(sub_module_space, decl->name.string);
-	stable_set(sub_module_space, decl->name.string, prev ? &poisoned_decl : decl);
+	prev = stable_get(sub_module_space, decl->name);
+	stable_set(sub_module_space, decl->name, prev ? &poisoned_decl : decl);
 }

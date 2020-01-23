@@ -2,6 +2,15 @@ module bar;
 
 typedef int as Bob;
 
+/* hello *//* there */
+/+ why /+ you /* lucky +/ +/
+// Whut
+// Here
+//
+//---
+/*
+ Hello
+ */
 
 struct Test
 {
@@ -91,6 +100,7 @@ func int test3()
     return 5;
 }
 
+typedef func void() as FEok;
 
 typedef func void(int) as Foo;
 //typedef int as Foo;
@@ -111,6 +121,16 @@ func void bob()
 }
 
 
+func int xxxx(int x)
+{
+    {
+        defer printf("Defer says hello!\n");
+        LABEL:
+        x--;
+    }
+    if (x > 0) goto LABEL;
+    return 1;
+}
 
 func int main(int x)
 {
@@ -189,6 +209,9 @@ JUMP:
 
 func void test2(int* x, int y, int z)
 {
+    *(&(&x)[0]);
+    float cheat = cast(int, x);
+
     x++;
     z = 0;
     z ? y : z;

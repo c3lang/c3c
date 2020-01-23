@@ -4,101 +4,77 @@
 
 #include "compiler_internal.h"
 
-typedef struct
-{
-	bool lexer_init_complete;
-	const char *file_begin;
-	const char *lexing_start;
-	const char *current;
-	uint16_t source_file;
-	LexerState lexer_state;
-	File *current_file;
-	//Token saved_tok;  Will be used later if doing deferred parsing.
-	//Token saved_prev_tok; Will be used later is doing deferred parsing.
-	SourceLoc last_in_range;
-	struct
-	{
-		const char *start;
-		const char *current;
-		Token tok;
-		Token prev_tok;
-	} stored;
-} Lexer;
 
-Lexer lexer;
 Token next_tok;
 Token tok;
 
 // --- Lexing general methods.
 
-static inline char peek()
+static inline char peek(Lexer *lexer)
 {
-	return *lexer.current;
+	return *lexer->current;
 }
 
-static inline char prev()
+static inline char prev(Lexer *lexer)
 {
-	return lexer.current[-1];
+	return lexer->current[-1];
 }
 
-static inline void backtrack()
+static inline void backtrack(Lexer *lexer)
 {
-	lexer.current--;
+	lexer->current--;
 }
 
-void lexer_store_line_end(void)
+void lexer_store_line_end(Lexer *lexer)
 {
-	source_file_append_line_end(lexer.current_file, lexer.current_file->start_id + lexer.current - lexer.file_begin);
-}
-
-void lexer_store_state(void)
-{
-	lexer.stored.current = lexer.current;
-	lexer.stored.start = lexer.lexing_start;
-	lexer.stored.tok = next_tok;
-	lexer.stored.prev_tok = tok;
-}
-
-void lexer_restore_state(void)
-{
-	lexer.current = lexer.stored.current;
-	lexer.lexing_start = lexer.stored.start;
-	next_tok = lexer.stored.tok;
-	tok = lexer.stored.prev_tok;
+	source_file_append_line_end(lexer->current_file, lexer->current_file->start_id + lexer->current - lexer->file_begin);
 }
 
 
-static inline char peek_next()
+static inline char peek_next(Lexer *lexer)
 {
-	return lexer.current[1];
+	return lexer->current[1];
 }
 
-static inline char peek_next_next()
+static inline char peek_next_next(Lexer *lexer)
 {
-	return lexer.current[2];
+	return lexer->current[2];
 }
 
-static inline char next()
+static inline char next(Lexer *lexer)
 {
-	return *(lexer.current++);
+	return *(lexer->current++);
 }
 
-static inline void skip(int steps)
+static inline void skip(Lexer *lexer, int steps)
 {
-	lexer.current += steps;
+	lexer->current += steps;
 }
 
-static inline bool reached_end(void)
+static inline bool reached_end(Lexer *lexer)
 {
-	return *lexer.current == '\0';
+	return *lexer->current == '\0';
 }
 
-static Token error_token(const char *message, ...)
+static inline SourceLoc loc_from_ptr(Lexer *lexer, const char *start)
+{
+	return (SourceLoc) (lexer->current_file->start_id + (start - lexer->file_begin));
+}
+
+static inline SourceRange range_from_ptr(Lexer *lexer, const char *start, const char *end)
+{
+	return (SourceRange) {
+			(lexer->current_file->start_id + (start - lexer->file_begin)),
+			(lexer->current_file->start_id + (end - lexer->file_begin)),
+	};
+}
+
+static Token error_token(Lexer *lexer, const char *message, ...)
 {
 	Token token = {
 			.type = TOKEN_INVALID_TOKEN,
-			.span = { (SourceLoc) (lexer.current_file->start_id + (lexer.lexing_start - lexer.file_begin)), 1 },
-			.start = lexer.lexing_start
+			.span = range_from_ptr(lexer, lexer->lexing_start, lexer->current),
+			.start = lexer->lexing_start
 	};
 	va_list list;
 	va_start(list, message);
@@ -107,129 +83,152 @@ static Token error_token(const char *message, ...)
 	return token;
 }
 
-static Token make_token(TokenType type, const char *string)
+static Token make_token(Lexer *lexer, TokenType type, const char *string)
 {
-	size_t token_size = lexer.current - lexer.lexing_start;
-	if (token_size > TOKEN_MAX_LENGTH) return error_token("Token exceeding max length");
+	size_t token_size = lexer->current - lexer->lexing_start;
+	if (token_size > TOKEN_MAX_LENGTH) return error_token(lexer, "Token exceeding max length");
 	return (Token)
 			{
 					.type = type,
-					.span = { .loc = (SourceLoc) (lexer.current_file->start_id + (lexer.lexing_start - lexer.file_begin)), .length = token_size },
+					.span = range_from_ptr(lexer, lexer->lexing_start, lexer->current),
 					.start = string
 			};
 }
 
-static Token make_string_token(TokenType type, const char* string)
+
+static Token make_string_token(Lexer *lexer, TokenType type, const char* string)
 {
-	size_t token_size = lexer.current - lexer.lexing_start;
-	if (token_size > TOKEN_MAX_LENGTH) return error_token("Token exceeding max length");
+	size_t token_size = lexer->current - lexer->lexing_start;
+	if (token_size > TOKEN_MAX_LENGTH) return error_token(lexer, "Token exceeding max length");
 	return (Token)
 			{
 					.type = type,
-					.span = { .loc = (SourceLoc) (lexer.current_file->start_id + (lexer.lexing_start - lexer.file_begin)), .length = token_size },
+					.span = range_from_ptr(lexer, lexer->lexing_start, lexer->current),
 					.string = string,
 			};
 }
 
-static inline bool match(char expected)
+static inline bool match(Lexer *lexer, char expected)
 {
-	if (reached_end()) return false;
-	if (*lexer.current != expected) return false;
-	lexer.current++;
+	if (reached_end(lexer)) return false;
+	if (*lexer->current != expected) return false;
+	lexer->current++;
 	return true;
 }
 
-static inline void match_assert(char expected)
+static inline void match_assert(Lexer *lexer, char expected)
 {
-	assert(!reached_end());
-	assert(lexer.current[0] == expected);
-	lexer.current++;
+	assert(!reached_end(lexer));
+	assert(lexer->current[0] == expected);
+	lexer->current++;
 }
 
-// --- Whitespace handling.
 
-typedef enum
+static inline Token parse_line_comment(Lexer *lexer)
 {
-	WHITESPACE_SKIPPED_OK,
-	WHITESPACE_FOUND_DOCS_START,
-	WHITESPACE_COMMENT_REACHED_EOF,
-	WHITESPACE_FOUND_EOF,
-	WHITESPACE_FOUND_DOCS_EOL,
-} SkipWhitespaceResult;
+	// // style comment
+	// Skip forward to the end.
+	TokenType comment_type = match(lexer, '/') ? TOKEN_DOC_COMMENT : TOKEN_COMMENT;
+	while (!reached_end(lexer) && peek(lexer) != '\n')
+	{
+		next(lexer);
+	}
 
+	Token token = make_token(lexer, comment_type, lexer->lexing_start);
+
+	// If we found EOL, then walk past '\n'
+	if (!reached_end(lexer))
+	{
+		lexer_store_line_end(lexer);
+		next(lexer);
+	}
+
+	return token;
+}
+
+static inline Token parse_nested_comment(Lexer *lexer)
+{
+	next(lexer);
+	int nesting = 0;
+	// /+ style comment
+	nesting = 1;
+	while (!reached_end(lexer) && nesting > 0)
+	{
+		switch (peek(lexer))
+		{
+			case '/':
+				if (peek_next(lexer) == '+')
+				{
+					skip(lexer, 2);
+					nesting++;
+					continue;
+				}
+				break;
+			case '+':
+				if (peek_next(lexer) == '/')
+				{
+					skip(lexer, 2);
+					nesting--;
+					continue;
+				}
+				break;
+			default:
+				break;
+		}
+		next(lexer);
+	}
+	if (reached_end(lexer))
+	{
+		return error_token(lexer, "Missing '+/' to end the nested comment.");
+	}
+	return make_token(lexer, TOKEN_COMMENT, lexer->lexing_start);
+}
+
+static inline Token parse_multiline_comment(Lexer *lexer)
+{
+	TokenType type = peek(lexer) == '*' && peek_next(lexer) != '/' ? TOKEN_DOC_COMMENT : TOKEN_COMMENT;
+	while (1)
+	{
+		switch (peek(lexer))
+		{
+			case '*':
+				if (peek_next(lexer) == '/')
+				{
+					skip(lexer, 2);
+					return make_token(lexer, type, lexer->lexing_start);
+				}
+				break;
+			case '\n':
+				lexer_store_line_end(lexer);
+				break;
+			case '\0':
+				return error_token(lexer, "Missing '*/' to end the multiline comment.");
+		}
+		next(lexer);
+	}
+}
 /**
  * Skip regular comments.
  *
  * @return the result of the skip (did we enter docs? did we have any errors?)
  */
-SkipWhitespaceResult skip_whitespace()
+void skip_whitespace(Lexer *lexer)
 {
 	while (1)
 	{
-		char c = peek();
+		char c = peek(lexer);
 		switch (c)
 		{
-			case '\0':
-				return WHITESPACE_FOUND_EOF;
 			case '\n':
-				lexer_store_line_end();
-				// If we are currently parsing docs, then end of line is considered meaningful.
-				if (lexer.lexer_state == LEXER_STATE_DOCS_PARSE_DIRECTIVE) return WHITESPACE_FOUND_DOCS_EOL;
+				lexer_store_line_end(lexer);
 			case ' ':
 			case '\t':
 			case '\r':
 			case '\f':
-				next();
+				next(lexer);
 				break;
-			case '/':
-				if (peek_next() == '/')
-				{
-					while (!reached_end() && peek() != '\n') next();
-					break;
-				}
-				if (peek_next() == '*')
-				{
-					// Enter docs parsing on /**
-					if (peek_next_next() == '*' && lexer.lexer_state == LEXER_STATE_NORMAL)
-					{
-						return WHITESPACE_FOUND_DOCS_START;
-					}
-					while (1)
-					{
-						next();
-						if (reached_end()) return WHITESPACE_COMMENT_REACHED_EOF;
-						if (peek() == '*' && peek_next() == '/')
-						{
-							lexer.current += 2;
-							break;
-						}
-					}
-					break;
-				}
-				if (peek_next() == '+')
-				{
-					int nesting_depth = 1;
-					while (1)
-					{
-						next();
-						if (reached_end()) return WHITESPACE_COMMENT_REACHED_EOF;
-						if (peek() == '/' && peek_next() == '+')
-						{
-							lexer.current += 2;
-							nesting_depth++;
-							continue;
-						}
-						if (peek() == '+' && peek_next() == '/')
-						{
-							lexer.current += 2;
-							if (--nesting_depth == 0) break;
-						}
-					}
-					break;
-				}
-				return WHITESPACE_SKIPPED_OK;
 			default:
-				return WHITESPACE_SKIPPED_OK;
+				return;
 		}
 	}
 }
@@ -237,44 +236,44 @@ SkipWhitespaceResult skip_whitespace()
 
 // --- Normal scanning methods start here
 
-static inline Token scan_prefixed_ident(TokenType type, TokenType no_ident_type, bool ends_with_bang, const char *start)
+static inline Token scan_prefixed_ident(Lexer *lexer, TokenType type, TokenType no_ident_type, bool ends_with_bang, const char *start)
 {
-	uint32_t hash = FNV1a(prev(), FNV1_SEED);
-	while (is_alphanum_(peek()))
+	uint32_t hash = FNV1a(prev(lexer), FNV1_SEED);
+	while (is_alphanum_(peek(lexer)))
 	{
-		hash = FNV1a(next(), hash);
+		hash = FNV1a(next(lexer), hash);
 	}
-	if (ends_with_bang && peek() == '!')
+	if (ends_with_bang && peek(lexer) == '!')
 	{
-		hash = FNV1a(next(), hash);
+		hash = FNV1a(next(lexer), hash);
 	}
-	uint32_t len = (uint32_t)(lexer.current - lexer.lexing_start);
-	if (len == 1) return make_token(no_ident_type, start);
-	const char* interned = symtab_add(lexer.lexing_start, len, hash, &type);
-	return make_string_token(type, interned);
+	uint32_t len = (uint32_t)(lexer->current - lexer->lexing_start);
+	if (len == 1) return make_token(lexer, no_ident_type, start);
+	const char* interned = symtab_add(lexer->lexing_start, len, hash, &type);
+	return make_string_token(lexer, type, interned);
 }
 
-static inline void scan_skipped_ident()
+static inline void scan_skipped_ident(Lexer *lexer)
 {
-	while (is_alphanum_(peek())) next();
+	while (is_alphanum_(peek(lexer))) next(lexer);
 }
 
 
 
 // Parses identifiers. Note that this is a bit complicated here since
 // we split identifiers into 2 types + find keywords.
-static inline Token scan_ident(void)
+static inline Token scan_ident(Lexer *lexer)
 {
 
 	TokenType type = 0;
 	uint32_t hash = FNV1_SEED;
-	while (peek() == '_')
+	while (peek(lexer) == '_')
 	{
-		hash = FNV1a(next(), hash);
+		hash = FNV1a(next(lexer), hash);
 	}
 	while (1)
 	{
-		switch (peek())
+		switch (peek(lexer))
 		{
 			case 'a': case 'b': case 'c': case 'd': case 'e':
 			case 'f': case 'g': case 'h': case 'i': case 'j':
@@ -301,135 +300,135 @@ static inline Token scan_ident(void)
 				break;
 			case '0': case '1': case '2': case '3': case '4':
 			case '5': case '6': case '7': case '8': case '9':
-				if (!type) return error_token("A letter must preceed any digit");
+				if (!type) return error_token(lexer, "A letter must preceed any digit");
 			case '_':
 				break;
 			default:
 				goto EXIT;
 		}
-		hash = FNV1a(next(), hash);
+		hash = FNV1a(next(lexer), hash);
 	}
 	EXIT:;
-	uint32_t len = lexer.current - lexer.lexing_start;
-	const char* interned_string = symtab_add(lexer.lexing_start, len, hash, &type);
-	return make_string_token(type, interned_string);
+	uint32_t len = lexer->current - lexer->lexing_start;
+	const char* interned_string = symtab_add(lexer->lexing_start, len, hash, &type);
+	return make_string_token(lexer, type, interned_string);
 }
 
 
 #pragma mark ----- Number scanning
 
-static Token scan_oct(void)
+static Token scan_oct(Lexer *lexer)
 {
-	char o = next(); // Skip the o
-	if (!is_oct(next())) return error_token("An expression starting with '0%c' would expect to be followed by octal numbers (0-7).", o);
-	while (is_oct_or_(peek())) next();
-	return make_token(TOKEN_INTEGER, lexer.lexing_start);
+	char o = next(lexer); // Skip the o
+	if (!is_oct(next(lexer))) return error_token(lexer, "An expression starting with '0%c' would expect to be followed by octal numbers (0-7).", o);
+	while (is_oct_or_(peek(lexer))) next(lexer);
+	return make_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
 }
 
 
-Token scan_binary(void)
+Token scan_binary(Lexer *lexer)
 {
-	char b = next(); // Skip the b
-	if (!is_binary(next()))
+	char b = next(lexer); // Skip the b
+	if (!is_binary(next(lexer)))
 	{
-		return error_token("An expression starting with '0%c' would expect a sequence of zeroes and ones, "
+		return error_token(lexer, "An expression starting with '0%c' would expect a sequence of zeroes and ones, "
 		                   "did you try to write a hex value but forgot the '0x'?", b);
 	}
-	while (is_binary_or_(peek())) next();
-	return make_token(TOKEN_INTEGER, lexer.lexing_start);
+	while (is_binary_or_(peek(lexer))) next(lexer);
+	return make_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
 }
 
 #define PARSE_SPECIAL_NUMBER(is_num, is_num_with_underscore, exp, EXP) \
-while (is_num_with_underscore(peek())) next();  \
+while (is_num_with_underscore(peek(lexer))) next(lexer);  \
 bool is_float = false;  \
-if (peek() == '.')  \
+if (peek(lexer) == '.')  \
 { \
 	is_float = true; \
-	next(); \
-	char c = peek(); \
-	if (c == '_') return error_token("Can't parse this as a floating point value due to the '_' directly after decimal point."); \
-	if (is_num(c)) next(); \
-	while (is_num_with_underscore(peek())) next(); \
+	next(lexer); \
+	char c = peek(lexer); \
+	if (c == '_') return error_token(lexer, "Can't parse this as a floating point value due to the '_' directly after decimal point."); \
+	if (is_num(c)) next(lexer); \
+	while (is_num_with_underscore(peek(lexer))) next(lexer); \
 } \
-char c = peek(); \
+char c = peek(lexer); \
 if (c == (exp) || c == (EXP)) \
 { \
 	is_float = true; \
-	next(); \
-	char c2 = next(); \
-	if (c2 == '+' || c2 == '-') c2 = next(); \
-	if (!is_num(c2)) return error_token("Parsing the floating point exponent failed, because '%c' is not a number.", c2); \
-	while (is_num(peek())) next(); \
+	next(lexer); \
+	char c2 = next(lexer); \
+	if (c2 == '+' || c2 == '-') c2 = next(lexer); \
+	if (!is_num(c2)) return error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c2); \
+	while (is_num(peek(lexer))) next(lexer); \
 } \
-if (prev() == '_') return error_token("The number ended with '_', but that character needs to be between, not after, digits."); \
-return make_token(is_float ? TOKEN_FLOAT : TOKEN_INTEGER, lexer.lexing_start)
+if (prev(lexer) == '_') return error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits."); \
+return make_token(lexer, is_float ? TOKEN_FLOAT : TOKEN_INTEGER, lexer->lexing_start)
 
-static inline Token scan_hex(void)
+static inline Token scan_hex(Lexer *lexer)
 {
-	char x = next(); // skip the x
-	if (!is_hex(next()))
+	char x = next(lexer); // skip the x
+	if (!is_hex(next(lexer)))
 	{
-		return error_token("'0%c' starts a hexadecimal number, "
-					 "but it was followed by '%c' which is not part of a hexadecimal number.", x, prev());
+		return error_token(lexer, "'0%c' starts a hexadecimal number, "
+					 "but it was followed by '%c' which is not part of a hexadecimal number.", x, prev(lexer));
 	}
 	PARSE_SPECIAL_NUMBER(is_hex, is_hex_or_, 'p', 'P');
 }
 
-static inline Token scan_dec(void)
+static inline Token scan_dec(Lexer *lexer)
 {
 	PARSE_SPECIAL_NUMBER(is_digit, is_digit_or_, 'e', 'E');
 }
 
 #undef PARSE_SPECIAL_NUMBER
 
-static inline Token scan_digit(void)
+static inline Token scan_digit(Lexer *lexer)
 {
-	if (peek() == '0')
+	if (peek(lexer) == '0')
 	{
-		switch (peek_next())
+		switch (peek_next(lexer))
 		{
 			case 'x':
 			case 'X':
-				skip(2);
-				return scan_hex();
+				skip(lexer, 2);
+				return scan_hex(lexer);
 			case 'o':
 			case 'O':
-				skip(2);
-				return scan_oct();
+				skip(lexer, 2);
+				return scan_oct(lexer);
 			case 'b':
 			case 'B':
-				skip(2);
-				return scan_binary();
+				skip(lexer, 2);
+				return scan_binary(lexer);
 			default:
 				break;
 		}
 	}
-	return scan_dec();
+	return scan_dec(lexer);
 }
 
 #pragma mark -----
 
 
-static inline Token scan_char()
+static inline Token scan_char(Lexer *lexer)
 {
 	int width = 0;
 	char c;
-	while ((c = next()) != '\'')
+	while ((c = next(lexer)) != '\'')
 	{
-		if (c == '\0' || c == '\n') return error_token("Character literal did not terminate.");
+		if (c == '\0' || c == '\n') return error_token(lexer, "Character literal did not terminate.");
 		width++;
 		// Was this an escape?
 		if (c == '\\')
 		{
 			// Yes, so check if it's hex:
-			if (next() == 'x')
+			if (next(lexer) == 'x')
 			{
 				// Walk through the two characters.
 				for (int i = 0; i < 2; i++)
 				{
-					if (!is_hex(next()))
+					if (!is_hex(next(lexer)))
 					{
-						return error_token(
+						return error_token(lexer,
 								"An escape sequence starting with "
 								"'\\x' needs to be followed by "
 								"a two digit hexadecimal number.");
@@ -440,45 +439,45 @@ static inline Token scan_char()
 	}
 	if (width == 0)
 	{
-		return error_token("The character literal was empty.");
+		return error_token(lexer, "The character literal was empty.");
 	}
 	if (width > 2 && width != 4 && width != 8)
 	{
-		error_token("Character literals may only be 1, 2 or 8 characters wide.");
+		error_token(lexer, "Character literals may only be 1, 2 or 8 characters wide.");
 	}
-	return make_token(TOKEN_INTEGER, lexer.lexing_start);
+	return make_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
 }
 
-static inline Token scan_string()
+static inline Token scan_string(Lexer *lexer)
 {
 	char c;
-	while ((c = next()) != '"')
+	while ((c = next(lexer)) != '"')
 	{
-		if (c == '\\' && peek() == '"')
+		if (c == '\\' && peek(lexer) == '"')
 		{
-			next();
+			next(lexer);
 			continue;
 		}
-		if (reached_end())
+		if (reached_end(lexer))
 		{
-			return error_token("Reached the end looking for '\"'. Did you forget it?");
+			return error_token(lexer, "Reached the end looking for '\"'. Did you forget it?");
 		}
 	}
-	return make_token(TOKEN_STRING, lexer.lexing_start);
+	return make_token(lexer, TOKEN_STRING, lexer->lexing_start);
 }
 
-static inline void skip_docs_whitespace()
+static inline void skip_docs_whitespace(Lexer *lexer)
 {
 	while (1)
 	{
-		char c = peek();
+		char c = peek(lexer);
 		switch (c)
 		{
 			case ' ':
 			case '\t':
 			case '\r':
 			case '\f':
-				next();
+				next(lexer);
 				break;
 			default:
 				return;
@@ -486,270 +485,162 @@ static inline void skip_docs_whitespace()
 	}
 }
 
-static inline Token scan_docs_directive(void)
+
+Token lexer_scan_token(Lexer *lexer)
 {
-	match_assert('@');
-	Token token = scan_prefixed_ident(TOKEN_AT_IDENT, TOKEN_AT, false, "@");
-	assert(token.type != TOKEN_AT);
-	lexer.lexer_state = LEXER_STATE_DOCS_PARSE_DIRECTIVE;
-	return token;
-}
-
-static inline Token scan_docs(void)
-{
-	assert(lexer.lexer_state == LEXER_STATE_DOCS_PARSE);
-	// We assume we stand at the start of a docs comment or after a new line.
-	// First, skip any whitespace:
-	skip_docs_whitespace();
-
-	// At this point we might encounter any number of '*', consume those, unless followed by '/'
-	while (peek() == '*')
-	{
-		// We found the docs end
-		if (peek_next() == '/')
-		{
-			// Reset start
-			lexer.lexing_start = lexer.current;
-
-			// Consume the '*/'
-			skip(2);
-
-			// Return end
-			lexer.lexer_state = LEXER_STATE_NORMAL;
-			return make_token(TOKEN_DOCS_END, "*/");
-		}
-
-		// Otherwise continue consuming
-		next();
-	}
-
-	// This might be followed again by whitespace, such whitespace is skipped.
-	skip_docs_whitespace();
-
-	// Reset start
-	lexer.lexing_start = lexer.current;
-
-	// Now we passed through all of the whitespace. Here we might possibly see a "@",
-	// if so, we found a directive:
-	if (peek() == '@' && is_letter(peek_next()))
-	{
-		return scan_docs_directive();
-	}
-
-	// Otherwise this is just plain row, and we scan to the end of line *or* to a '*/'
-
-	while (1)
-	{
-		switch (peek())
-		{
-			case '*':
-				// Eat all * at the beginning.
-				while (peek_next() == '*') next();
-
-				// We found the end, so just make a token out of the rest.
-				// Note that this line will not get a linebreak at the end.
-				if (peek_next() == '/') return make_token(TOKEN_DOCS_LINE, "*");
-				// Otherwise it's just something in the text, so continue.
-				next();
-				break;
-			case '\n':
-				// Normal line of text.
-				lexer_store_line_end();
-				next();
-				return make_token(TOKEN_DOCS_LINE, "\n");
-			case '\0':
-				return error_token("The document ended without finding the end of the doc comment. "
-					   "Did you forget a '*/' somewhere?");
-			default:
-				break;
-		}
-	}
-}
-
-Token lexer_scan_token(void)
-{
-	// First we handle our "in docs" state.
-	if (lexer.lexer_state == LEXER_STATE_DOCS_PARSE)
-	{
-		return scan_docs();
-	}
-
 	// Now skip the whitespace.
-	SkipWhitespaceResult result = skip_whitespace();
+	skip_whitespace(lexer);
 
 	// Point start to the first non-whitespace character.
-	lexer.lexing_start = lexer.current;
+	lexer->lexing_start = lexer->current;
 
-	switch (result)
+	if (reached_end(lexer))
 	{
-		case WHITESPACE_FOUND_DOCS_START:
-			// Here we found '/**', so we skip past that
-			// and switch state.
-			skip(3);
-			lexer.lexer_state = LEXER_STATE_DOCS_PARSE;
-			return make_token(TOKEN_DOCS_START, "/**");
-		case WHITESPACE_COMMENT_REACHED_EOF:
-			return error_token("Reached the end looking for '*/'. Did you forget it somewhere?");
-		case WHITESPACE_FOUND_EOF:
-			return make_token(TOKEN_EOF, "\n");
-		case WHITESPACE_FOUND_DOCS_EOL:
-			skip(1);
-			lexer.lexer_state = LEXER_STATE_DOCS_PARSE;
-			return make_token(TOKEN_DOCS_EOL, "\n");
-		case WHITESPACE_SKIPPED_OK:
-			break;
+		return make_token(lexer, TOKEN_EOF, "\n");
 	}
 
-	char c = next();
+	char c = next(lexer);
 	switch (c)
 	{
 		case '@':
-			return scan_prefixed_ident(TOKEN_AT_IDENT, TOKEN_AT, true, "@");
+			return scan_prefixed_ident(lexer, TOKEN_AT_IDENT, TOKEN_AT, true, "@");
 		case '\'':
-			return scan_char();
+			return scan_char(lexer);
 		case '"':
-			return scan_string();
+			return scan_string(lexer);
 		case '#':
-			return scan_prefixed_ident(TOKEN_HASH_IDENT, TOKEN_HASH, false, "#");
+			return scan_prefixed_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH, false, "#");
 		case '$':
-			return scan_prefixed_ident(TOKEN_CT_IDENT, TOKEN_DOLLAR, false, "$");
+			return scan_prefixed_ident(lexer, TOKEN_CT_IDENT, TOKEN_DOLLAR, false, "$");
 		case ',':
-			return make_token(TOKEN_COMMA, ",");
+			return make_token(lexer, TOKEN_COMMA, ",");
 		case ';':
-			return make_token(TOKEN_EOS, ";");
+			return make_token(lexer, TOKEN_EOS, ";");
 		case '{':
-			return make_token(TOKEN_LBRACE, "{");
+			return make_token(lexer, TOKEN_LBRACE, "{");
 		case '}':
-			return match(')') ? make_token(TOKEN_RPARBRA, "})") : make_token(TOKEN_RBRACE, "})");
+			return match(lexer, ')') ? make_token(lexer, TOKEN_RPARBRA, "})") : make_token(lexer, TOKEN_RBRACE, "})");
 		case '(':
-			return match('{') ? make_token(TOKEN_LPARBRA, "({") : make_token(TOKEN_LPAREN, ")");
+			return match(lexer, '{') ? make_token(lexer, TOKEN_LPARBRA, "({") : make_token(lexer, TOKEN_LPAREN, ")");
 		case ')':
-			return make_token(TOKEN_RPAREN, ")");
+			return make_token(lexer, TOKEN_RPAREN, ")");
 		case '[':
-			return make_token(TOKEN_LBRACKET, "[");
+			return make_token(lexer, TOKEN_LBRACKET, "[");
 		case ']':
-			return make_token(TOKEN_RBRACKET, "]");
+			return make_token(lexer, TOKEN_RBRACKET, "]");
 		case '.':
-			if (match('.')) return match('.') ? make_token(TOKEN_ELIPSIS, "...") : make_token(TOKEN_DOTDOT, "..");
-			return make_token(TOKEN_DOT, ".");
+			if (match(lexer, '.')) return match(lexer, '.') ? make_token(lexer, TOKEN_ELIPSIS, "...") : make_token(lexer, TOKEN_DOTDOT, "..");
+			return make_token(lexer, TOKEN_DOT, ".");
 		case '~':
-			return make_token(TOKEN_BIT_NOT, "~");
+			return make_token(lexer, TOKEN_BIT_NOT, "~");
 		case ':':
-			return match(':') ? make_token(TOKEN_SCOPE, "::") : make_token(TOKEN_COLON, ":");
+			return match(lexer, ':') ? make_token(lexer, TOKEN_SCOPE, "::") : make_token(lexer, TOKEN_COLON, ":");
 		case '!':
-			return match('=') ? make_token(TOKEN_NOT_EQUAL, "!=") : make_token(TOKEN_NOT, "!");
+			return match(lexer, '=') ? make_token(lexer, TOKEN_NOT_EQUAL, "!=") : make_token(lexer, TOKEN_NOT, "!");
 		case '/':
-			return match('=') ? make_token(TOKEN_DIV_ASSIGN, "/=") : make_token(TOKEN_DIV, "/");
+			if (match(lexer, '/')) return parse_line_comment(lexer);
+			if (match(lexer, '*')) return parse_multiline_comment(lexer);
+			if (match(lexer, '+')) return parse_nested_comment(lexer);
+			return match(lexer, '=') ? make_token(lexer, TOKEN_DIV_ASSIGN, "/=") : make_token(lexer, TOKEN_DIV, "/");
 		case '*':
-			if (lexer.lexer_state == LEXER_STATE_DOCS_PARSE_DIRECTIVE && match('/'))
-			{
-				lexer.lexer_state = LEXER_STATE_NORMAL;
-				return make_token(TOKEN_DOCS_END, "*/");
-			}
-			if (match('%')) return match('=') ? make_token(TOKEN_MINUS_MOD_ASSIGN, "*%=") : make_token(TOKEN_MULT_MOD, "*%");
-			return match('=') ? make_token(TOKEN_MULT_ASSIGN, "*=") : make_token(TOKEN_STAR, "*");
+			if (match(lexer, '%')) return match(lexer, '=') ? make_token(lexer, TOKEN_MINUS_MOD_ASSIGN, "*%=") : make_token(lexer, TOKEN_MULT_MOD, "*%");
+			return match(lexer, '=') ? make_token(lexer, TOKEN_MULT_ASSIGN, "*=") : make_token(lexer, TOKEN_STAR, "*");
 		case '=':
-			return match('=') ? make_token(TOKEN_EQEQ, "==") : make_token(TOKEN_EQ, "=");
+			return match(lexer, '=') ? make_token(lexer, TOKEN_EQEQ, "==") : make_token(lexer, TOKEN_EQ, "=");
 		case '^':
-			return match('=') ? make_token(TOKEN_BIT_XOR_ASSIGN, "^=") : make_token(TOKEN_BIT_XOR, "^");
+			return match(lexer, '=') ? make_token(lexer, TOKEN_BIT_XOR_ASSIGN, "^=") : make_token(lexer, TOKEN_BIT_XOR, "^");
 		case '?':
-			return match(':') ? make_token(TOKEN_ELVIS, "?:") : make_token(TOKEN_QUESTION, "?");
+			return match(lexer, ':') ? make_token(lexer, TOKEN_ELVIS, "?:") : make_token(lexer, TOKEN_QUESTION, "?");
 		case '<':
-			if (match('<')) return match('=') ? make_token(TOKEN_SHL_ASSIGN, "<<=") : make_token(TOKEN_SHL, "<<");
-			return match('=') ? make_token(TOKEN_LESS_EQ, "<=") : make_token(TOKEN_LESS, "<");
+			if (match(lexer, '<')) return match(lexer, '=') ? make_token(lexer, TOKEN_SHL_ASSIGN, "<<=") : make_token(lexer, TOKEN_SHL, "<<");
+			return match(lexer, '=') ? make_token(lexer, TOKEN_LESS_EQ, "<=") : make_token(lexer, TOKEN_LESS, "<");
 		case '>':
-			if (match('>')) return match('=') ? make_token(TOKEN_SHR_ASSIGN, ">>=") : make_token(TOKEN_SHR, ">>");
-			return match('=') ? make_token(TOKEN_GREATER_EQ, ">=") : make_token(TOKEN_GREATER, ">");
+			if (match(lexer, '>')) return match(lexer, '=') ? make_token(lexer, TOKEN_SHR_ASSIGN, ">>=") : make_token(lexer, TOKEN_SHR, ">>");
+			return match(lexer, '=') ? make_token(lexer, TOKEN_GREATER_EQ, ">=") : make_token(lexer, TOKEN_GREATER, ">");
 		case '%':
-			return match('=') ? make_token(TOKEN_MOD_ASSIGN, "%=") : make_token(TOKEN_MOD, "%");
+			return match(lexer, '=') ? make_token(lexer, TOKEN_MOD_ASSIGN, "%=") : make_token(lexer, TOKEN_MOD, "%");
 		case '&':
-			if (match('&')) return make_token(TOKEN_AND, "&&");
-			return match('=') ? make_token(TOKEN_BIT_AND_ASSIGN, "&=") : make_token(TOKEN_AMP, "&");
+			if (match(lexer, '&')) return make_token(lexer, TOKEN_AND, "&&");
+			return match(lexer, '=') ? make_token(lexer, TOKEN_BIT_AND_ASSIGN, "&=") : make_token(lexer, TOKEN_AMP, "&");
 		case '|':
-			if (match('|')) return make_token(TOKEN_OR, "||");
-			return match('=') ? make_token(TOKEN_BIT_OR_ASSIGN, "|=") : make_token(TOKEN_BIT_OR, "|");
+			if (match(lexer, '|')) return make_token(lexer, TOKEN_OR, "||");
+			return match(lexer, '=') ? make_token(lexer, TOKEN_BIT_OR_ASSIGN, "|=") : make_token(lexer, TOKEN_BIT_OR, "|");
 		case '+':
-			if (match('%')) return match('=') ? make_token(TOKEN_PLUS_MOD_ASSIGN, "+%=") : make_token(TOKEN_PLUS_MOD, "+%");
-			if (match('+')) return make_token(TOKEN_PLUSPLUS, "++");
-			if (match('=')) return make_token(TOKEN_PLUS_ASSIGN, "+=");
-			return make_token(TOKEN_PLUS, "+");
+			if (match(lexer, '%')) return match(lexer, '=') ? make_token(lexer, TOKEN_PLUS_MOD_ASSIGN, "+%=") : make_token(lexer, TOKEN_PLUS_MOD, "+%");
+			if (match(lexer, '+')) return make_token(lexer, TOKEN_PLUSPLUS, "++");
+			if (match(lexer, '=')) return make_token(lexer, TOKEN_PLUS_ASSIGN, "+=");
+			return make_token(lexer, TOKEN_PLUS, "+");
 		case '-':
-			if (match('>')) return make_token(TOKEN_ARROW, "->");
-			if (match('%')) return match('=') ? make_token(TOKEN_MINUS_MOD_ASSIGN, "-%=") : make_token(TOKEN_MINUS_MOD, "-%");
-			if (match('-')) return make_token(TOKEN_MINUSMINUS, "--");
-			if (match('=')) return make_token(TOKEN_MINUS_ASSIGN, "-=");
-			return make_token(TOKEN_MINUS, "-");
+			if (match(lexer, '>')) return make_token(lexer, TOKEN_ARROW, "->");
+			if (match(lexer, '%')) return match(lexer, '=') ? make_token(lexer, TOKEN_MINUS_MOD_ASSIGN, "-%=") : make_token(lexer, TOKEN_MINUS_MOD, "-%");
+			if (match(lexer, '-')) return make_token(lexer, TOKEN_MINUSMINUS, "--");
+			if (match(lexer, '=')) return make_token(lexer, TOKEN_MINUS_ASSIGN, "-=");
+			return make_token(lexer, TOKEN_MINUS, "-");
 		default:
 			if (is_alphanum_(c))
 			{
-				backtrack();
-				return is_digit(c) ? scan_digit() : scan_ident();
+				backtrack(lexer);
+				return is_digit(c) ? scan_digit(lexer) : scan_ident(lexer);
 			}
 			if (c < 0)
 			{
-				return error_token("The 0%x character may not be placed outside of a string or comment, did you perhaps forget a \" somewhere?", (uint8_t)c);
+				return error_token(lexer, "The 0%x character may not be placed outside of a string or comment, did you perhaps forget a \" somewhere?", (uint8_t)c);
 			}
-			return error_token("'%c' may not be placed outside of a string or comment, did you perhaps forget a \" somewhere?", c);
+			return error_token(lexer, "'%c' may not be placed outside of a string or comment, did you perhaps forget a \" somewhere?", c);
 
 	}
 }
 
-File* lexer_current_file(void)
+File* lexer_current_file(Lexer *lexer)
 {
-	return lexer.current_file;
+	return lexer->current_file;
 }
 
-void lexer_check_init(void)
+void lexer_check_init()
 {
-	if (lexer.lexer_init_complete) return;
-	lexer.lexer_init_complete = true;
+	static bool symtab_has_init = false;
+	if (symtab_has_init) return;
+	symtab_has_init = true;
 	symtab_init(build_options.symtab_size);
 }
 
-void lexer_add_file_for_lexing(File *file)
+
+void lexer_add_file_for_lexing(Lexer *lexer, File *file)
 {
 	lexer_check_init();
-	lexer.current_file = file;
-	lexer.file_begin = lexer.current_file->contents;
-	lexer.lexing_start = lexer.file_begin;
-	lexer.current = lexer.lexing_start;
-	lexer.lexer_state = LEXER_STATE_NORMAL;
+	lexer->current_file = file;
+	lexer->file_begin = lexer->current_file->contents;
+	lexer->lexing_start = lexer->file_begin;
+	lexer->current = lexer->lexing_start;
 }
 
-void lexer_test_setup(const char *text, size_t len)
+void lexer_test_setup(Lexer *lexer, const char *text, size_t len)
 {
 	lexer_check_init();
 	static File helper;
-	lexer.lexer_state = LEXER_STATE_NORMAL;
-	lexer.lexing_start = text;
-	lexer.current = text;
-	lexer.file_begin = text;
-	lexer.current_file = &helper;
-	lexer.current_file->start_id = 0;
-	lexer.current_file->contents = text;
-	lexer.current_file->end_id = len;
-	lexer.current_file->name = "Test";
+	lexer->lexing_start = text;
+	lexer->current = text;
+	lexer->file_begin = text;
+	lexer->current_file = &helper;
+	lexer->current_file->start_id = 0;
+	lexer->current_file->contents = text;
+	lexer->current_file->end_id = len;
+	lexer->current_file->name = "Test";
 }
 
 
 
-Token lexer_scan_ident_test(const char *scan)
+Token lexer_scan_ident_test(Lexer *lexer, const char *scan)
 {
 	static File helper;
-	lexer.lexer_state = LEXER_STATE_NORMAL;
-	lexer.lexing_start = scan;
-	lexer.current = scan;
-	lexer.file_begin = scan;
-	lexer.current_file = &helper;
-	lexer.current_file->start_id = 0;
-	lexer.current_file->contents = scan;
-	lexer.current_file->end_id = 1000;
-	lexer.current_file->name = "Foo";
+	lexer->lexing_start = scan;
+	lexer->current = scan;
+	lexer->file_begin = scan;
+	lexer->current_file = &helper;
+	lexer->current_file->start_id = 0;
+	lexer->current_file->contents = scan;
+	lexer->current_file->end_id = 1000;
+	lexer->current_file->name = "Foo";
 
-	if (scan[0] == '@' && is_letter(scan[1]))
-	{
-		lexer.lexer_state = LEXER_STATE_DOCS_PARSE;
-		return scan_docs();
-	}
-	return scan_ident();
+	return scan_ident(lexer);
 }

@@ -21,6 +21,7 @@ static void test_lexer(void)
 	const int EXPECTED_TOKENS = 12 + 73 + 9;
 	const char* tokens[TOKEN_EOF];
 	int len[TOKEN_EOF];
+	Lexer lexer;
 	lexer_check_init();
 	for (int i = 1; i < TOKEN_EOF; i++)
 	{
@@ -31,7 +32,7 @@ static void test_lexer(void)
 		const char* interned = symtab_add(token, len[i], fnv1a(token, len[i]), &lookup);
 		if (lookup != TOKEN_IDENT)
 		{
-			Token scanned = lexer_scan_ident_test(token);
+			Token scanned = lexer_scan_ident_test(&lexer, token);
 			TEST_ASSERT(scanned.type == i, "Mismatch scanning: was '%s', expected '%s' - lookup: %s - interned: %s.",
 					token_type_to_string(scanned.type),
 					token_type_to_string(i),
@@ -56,7 +57,7 @@ static void test_lexer(void)
 	{
 		for (int i = 1; i < TOKEN_EOF; i++)
 		{
-			volatile TokenType t = lexer_scan_ident_test(tokens[i]).type;
+			volatile TokenType t = lexer_scan_ident_test(&lexer, tokens[i]).type;
 		}
 	}
 
@@ -77,11 +78,11 @@ static void test_lexer(void)
 	size_t test_len = strlen(test_parse);
 	for (int b = 0; b < BENCH_REPEATS; b++)
 	{
-		lexer_test_setup(test_parse, test_len);
+		lexer_test_setup(&lexer, test_parse, test_len);
 		Token token;
 		while (1)
 		{
-			token = lexer_scan_token();
+			token = lexer_scan_token(&lexer);
 			if (token.type == TOKEN_EOF) break;
 			TEST_ASSERT(token.type != TOKEN_INVALID_TOKEN, "Got invalid token");
 
@@ -103,7 +104,7 @@ void test_file(void)
 	File file;
 	memset(&file, 0, sizeof(file));
 	file.start_id = 3;
-	VECADD(file.line_start, file.start_id);
+	VECADD(file.lines, file.start_id);
 	TEST_ASSERT(source_file_find_position_in_file(&file, 3).line == 1, "Expected first line");
 	TEST_ASSERT(source_file_find_position_in_file(&file, 10).line == 1, "Expected first line");
 	source_file_append_line_end(&file, 9);

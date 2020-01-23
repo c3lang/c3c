@@ -15,7 +15,6 @@ static inline LLVMTypeRef gencontext_create_llvm_type_from_decl(GenContext *cont
 		case DECL_ENUM_CONSTANT:
 		case DECL_POISONED:
 		case DECL_GENERIC:
-		case DECL_MULTI_DECL:
 		case DECL_MACRO:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:
