@@ -16,3 +16,6 @@
 
 #define MAX_IDENTIFIER_LENGTH 31
 #define PROJECT_TOML "project.toml"
+#ifndef __unused
+#define __unused
+#endif

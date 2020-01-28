@@ -4,14 +4,6 @@
 
 #include "compiler_internal.h"
 
-typedef bool(*AstAnalysis)(Context *, Ast*);
-
-static inline DeferId defer_id_from_ast(Ast *ast)
-{
-	if (!ast) return 0;
-	assert(ast->ast_kind == AST_DEFER_STMT);
-	return ast->defer_stmt.id;
-}
 static inline Type *ast_cond_type(Ast *ast)
 {
 	assert(ast->ast_kind == AST_DECL_EXPR_LIST);
@@ -42,12 +34,12 @@ static inline void context_push_scope_with_flags(Context *context, ScopeFlags fl
 		FATAL_ERROR("Too deeply nested scopes.");
 	}
 	ScopeFlags previous_flags = context->current_scope->flags;
-	DeferId parent_defer = context->current_scope->defer_last;
+	Ast *parent_defer = context->current_scope->defers.start;
 	context->current_scope++;
 	context->current_scope->exit = EXIT_NONE;
 	context->current_scope->local_decl_start = context->last_local;
-	context->current_scope->defer_top = parent_defer;
-	context->current_scope->defer_last = parent_defer;
+	context->current_scope->defers.start = parent_defer;
+	context->current_scope->defers.end = parent_defer;
 	context->current_scope->flags = previous_flags | flags;
 	context->current_scope->flags_created = flags;
 }
@@ -57,15 +49,23 @@ static inline void context_push_scope(Context *context)
 	context_push_scope_with_flags(context, SCOPE_NONE);
 }
 
-static inline void context_pop_scope(Context *context, Ast **ast, Expr **expr)
+static inline void context_pop_defers(Context *context)
+{
+	context->current_scope->defers.start = context->current_scope->defers.end;
+}
+
+static inline void context_pop_defers_to(Context *context, DeferList *list)
+{
+	*list = context->current_scope->defers;
+	context_pop_defers(context);
+}
+
+static inline void context_pop_scope(Context *context)
 {
 	assert(context->current_scope != &context->scopes[0]);
 	context->last_local = context->current_scope->local_decl_start;
 	ExitType exit_type = context->current_scope->exit;
-	if (context->current_scope->defer_top != context->current_scope->defer_last)
-	{
-		TODO;
-	}
+	assert (context->current_scope->defers.end == context->current_scope->defers.start);
 	context->current_scope--;
 	if (context->current_scope->exit < exit_type)
 	{
@@ -73,6 +73,37 @@ static inline void context_pop_scope(Context *context, Ast **ast, Expr **expr)
 	}
 }
 
+static Expr *context_pop_defers_and_wrap_expr(Context *context, Expr *expr)
+{
+	DeferList defers = { NULL, NULL };
+	context_pop_defers_to(context, &defers);
+	if (defers.end == defers.start) return expr;
+	Expr *wrap = expr_new(EXPR_SCOPED_EXPR, expr->span);
+	wrap->type = expr->type;
+	wrap->resolve_status = RESOLVE_DONE;
+	wrap->expr_scope.expr = expr;
+	wrap->expr_scope.defers = defers;
+	return expr;
+}
+
+static void context_pop_defers_and_replace_ast(Context *context, Ast *ast)
+{
+	DeferList defers = { NULL, NULL };
+	context_pop_defers_to(context, &defers);
+	if (defers.end == defers.start) return;
+	if (ast->ast_kind == AST_DEFER_STMT)
+	{
+		assert(defers.start == ast);
+		*ast = *ast->defer_stmt.body;
+		return;
+	}
+	assert(ast->ast_kind != AST_COMPOUND_STMT);
+	Ast *replacement = malloc_arena(sizeof(Ast));
+	*replacement = *ast;
+	ast->ast_kind = AST_SCOPED_STMT;
+	ast->scoped_stmt.stmt = replacement;
+	ast->scoped_stmt.defers = defers;
+}
 
 
 static bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
@@ -107,6 +138,7 @@ static bool sema_resolve_array_type(Context *context, TypeInfo *type)
 	type->resolve_status = RESOLVE_DONE;
 	return true;
 }
+
 static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 {
 	if (decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION)
@@ -172,7 +204,6 @@ static inline bool sema_analyse_struct_union(Context *context, Decl *decl)
 	// Todo, resolve alignment, size etc.
 	return decl_ok(decl);
 }
-
 
 
 static inline bool sema_analyse_function_param(Context *context, Decl *param, bool is_function)
@@ -294,6 +325,8 @@ static inline bool sema_analyse_compound_statement_no_scope(Context *context, As
 			all_ok = false;
 		}
 	}
+	context_pop_defers_to(context, &compound_statement->compound_stmt.defer_list);
+
 	/*
 	if (parent->exit < compound_statement->exit)
 	{
@@ -307,7 +340,7 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 	context->current_scope->exit = EXIT_RETURN;
 	Type *expected_rtype = context->rtype;
 	Expr *return_expr = statement->return_stmt.expr;
-	statement->return_stmt.defer = VECLAST(context->defers);
+	statement->return_stmt.defer = context->current_scope->defers.start;
 	if (return_expr == NULL)
 	{
 		if (!expected_rtype)
@@ -359,50 +392,6 @@ static inline Ast *convert_expr_to_ast(Expr *expr)
 	ast->expr_stmt = expr;
 	return ast;
 }
-static inline Expr *convert_decl_to_expr(Context *context, Decl *decl)
-{
-	assert(decl->decl_kind == DECL_VAR);
-	assert(decl->decl_kind == VARDECL_LOCAL);
-	if (!decl->var.init_expr) return NULL;
-	Expr *assign_expr = expr_new(EXPR_BINARY, decl->span);
-	assign_expr->resolve_status = RESOLVE_DONE;
-	Expr *identifier = expr_new(EXPR_IDENTIFIER, decl->span);
-	identifier->resolve_status = RESOLVE_DONE;
-	identifier->identifier_expr.identifier = decl->name;
-	identifier->identifier_expr.decl = decl;
-	assign_expr->binary_expr.left = identifier;
-	assign_expr->binary_expr.right = decl->var.init_expr;
-	assign_expr->binary_expr.operator = BINARYOP_ASSIGN;
-	// Possibly not right v TODO
-	identifier->type = decl->var.type_info->type;
-	assign_expr->type = decl->var.init_expr->type;
-	return assign_expr;
-}
-
-static inline bool convert_decl_for_cond(Context *context, Decl *decl, Ast*** stmt_list, Expr** last, bool is_last)
-{
-	Expr *expr = convert_decl_to_expr(context, decl);
-	if (!expr)
-	{
-		if (is_last)
-		{
-			SEMA_ERROR(decl, "Expected an initializer for '%s'.", decl->name);
-			return false;
-		}
-		// Simply skip declarations if they don't have an initializer, since they're already registered anyway.
-		return true;
-	}
-	if (is_last)
-	{
-		*last = expr;
-	}
-	else
-	{
-		Ast *stmt = convert_expr_to_ast(expr);
-		*stmt_list = VECADD(*stmt_list, stmt);
-	}
-	return true;
-}
 
 
 static inline bool sema_analyse_function_block_stmt(Context *context, Ast *stmt)
@@ -453,7 +442,7 @@ static inline bool sema_analyse_cond(Context *context, Ast *stmt, bool cast_to_b
 				return false;
 			}
 			if (cast_to_bool && init->type->type_kind != TYPE_BOOL &&
-				cast_to_bool_kind(last->declare_stmt->var.type_info->type) == CAST_ERROR)
+			    cast_to_bool_kind(last->declare_stmt->var.type_info->type) == CAST_ERROR)
 			{
 				SEMA_ERROR(last->declare_stmt->var.init_expr, "The expression needs to be convertible to a boolean.");
 				return false;
@@ -473,12 +462,16 @@ static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 	context_push_scope(context);
 	bool success = !decl || sema_analyse_statement(context, decl);
 	context_push_scope(context);
+
 	success = success && sema_analyse_cond(context, cond, true);
 	context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_CONTINUE); // NOLINT(hicpp-signed-bitwise)
 	success = success && sema_analyse_statement(context, body);
-	context_pop_scope(context, &body, NULL);
-	context_pop_scope(context, &cond, NULL);
-	context_pop_scope(context, &decl, NULL);
+	context_pop_defers_and_replace_ast(context, body);
+	context_pop_scope(context);
+	context_pop_defers_and_replace_ast(context, cond);
+	context_pop_scope(context);
+	context_pop_defers_and_replace_ast(context, statement);
+	context_pop_scope(context);
 	if (!success) return false;
 	return success;
 }
@@ -490,14 +483,15 @@ static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 	bool success;
 	context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_CONTINUE); // NOLINT(hicpp-signed-bitwise)
 	success = sema_analyse_statement(context, body);
-	context_pop_scope(context, &body, NULL);
+	context_pop_defers_and_replace_ast(context, body);
+	context_pop_scope(context);
 	if (!success) return false;
 	context_push_scope(context);
 	success = sema_analyse_expr(context, type_bool, expr);
-	context_pop_scope(context, NULL, &expr);
+	statement->do_stmt.expr = context_pop_defers_and_wrap_expr(context, expr);
+	context_pop_scope(context);
 	return success;
 }
-
 
 
 static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
@@ -520,17 +514,16 @@ static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
 
 	bool success = sema_analyse_statement(context, statement->defer_stmt.body);
 
-	context_pop_scope(context, &statement->defer_stmt.body, NULL);
+	context_pop_scope(context);
 
 	if (!success) return false;
 
-	statement->defer_stmt.prev_defer = VECLAST(context->defers);
-	vec_add(context->defers, statement);
-	statement->defer_stmt.id = vec_size(context->defers);
+	statement->defer_stmt.prev_defer = context->current_scope->defers.start;
+	context->current_scope->defers.start = statement;
 	return true;
 }
 
-static inline bool sema_analyse_default_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_default_stmt(Context *context __unused, Ast *statement)
 {
 	SEMA_ERROR(statement, "Unexpected 'default' outside of switch");
 	return false;
@@ -550,17 +543,21 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 	{
 		// Conditional scope start
 		context_push_scope(context);
-		success = sema_analyse_expr(context, type_bool, statement->for_stmt.cond);
+		Expr *cond = statement->for_stmt.cond;
+		success = sema_analyse_expr(context, type_bool, cond);
+		statement->for_stmt.cond = context_pop_defers_and_wrap_expr(context, cond);
 		// Conditional scope end
-		context_pop_scope(context, NULL, &statement->for_stmt.cond);
+		context_pop_scope(context);
 	}
 	if (success && statement->for_stmt.incr)
 	{
 		// Incr scope start
 		context_push_scope(context);
-		success = sema_analyse_statement(context, statement->for_stmt.incr);
+		Expr *incr = statement->for_stmt.incr;
+		success = sema_analyse_expr(context, NULL, incr);
+		statement->for_stmt.incr = context_pop_defers_and_wrap_expr(context, incr);
 		// Incr scope end
-		context_pop_scope(context, &statement->for_stmt.incr, NULL);
+		context_pop_scope(context);
 	}
 	if (!success) return false;
 
@@ -568,20 +565,23 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 	context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_CONTINUE); // NOLINT(hicpp-signed-bitwise)
 	success = sema_analyse_statement(context, statement->for_stmt.body);
 	// End for body scope
-	context_pop_scope(context, &statement->for_stmt.body, NULL);
+	context_pop_defers_and_replace_ast(context, statement->for_stmt.body);
+	context_pop_scope(context);
+	context_pop_defers_and_replace_ast(context, statement);
 	// End for scope
-	context_pop_scope(context, &statement, NULL);
+	context_pop_scope(context);
 	return success;
 }
 
 static inline bool sema_analyse_goto_stmt(Context *context, Ast *statement)
 {
+
+	statement->goto_stmt.defer = context->current_scope->defers;
 	VECEACH(context->labels, i)
 	{
 		Ast *label = context->labels[i];
 		if (statement->goto_stmt.label_name == label->label_stmt.name)
 		{
-			statement->goto_stmt.type = GOTO_JUMP_BACK;
 			label->label_stmt.is_used = true;
 			statement->goto_stmt.label = label;
 		}
@@ -604,7 +604,8 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 	{
 		if (statement->if_stmt.then_body->ast_kind != AST_COMPOUND_STMT)
 		{
-			SEMA_ERROR(statement->if_stmt.then_body, "if-statements with an 'else' must use '{ }' even around a single statement.");
+			SEMA_ERROR(statement->if_stmt.then_body,
+			           "if-statements with an 'else' must use '{ }' even around a single statement.");
 			success = false;
 		}
 		if (success && statement->if_stmt.else_body->ast_kind != AST_COMPOUND_STMT)
@@ -614,22 +615,19 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 			success = false;
 		}
 	}
-	context_push_scope(context);
 	success = success && sema_analyse_statement(context, statement->if_stmt.then_body);
-	context_pop_scope(context, &statement->if_stmt.then_body, NULL);
-	// TODO null flowcheck
 	if (statement->if_stmt.else_body)
 	{
-		context_push_scope(context);
 		success = success && sema_analyse_statement(context, statement->if_stmt.else_body);
-		context_pop_scope(context, &statement->if_stmt.else_body, NULL);
 	}
-	context_pop_scope(context, &statement, NULL);
+	context_pop_defers_and_replace_ast(context, statement);
+	context_pop_scope(context);
 	return success;
 }
 
 static inline bool sema_analyse_label(Context *context, Ast *statement)
 {
+	statement->label_stmt.defer = context->current_scope->defers.start;
 	VECEACH(context->labels, i)
 	{
 		Ast *label = context->labels[i];
@@ -648,7 +646,6 @@ static inline bool sema_analyse_label(Context *context, Ast *statement)
 		Ast *the_goto = context->gotos[i];
 		if (the_goto->goto_stmt.label_name == statement->label_stmt.name)
 		{
-			the_goto->goto_stmt.type = GOTO_JUMP_FORWARD;
 			the_goto->goto_stmt.label = statement;
 			statement->label_stmt.is_used = true;
 			break;
@@ -657,18 +654,13 @@ static inline bool sema_analyse_label(Context *context, Ast *statement)
 	return true;
 }
 
-static inline bool sema_analyse_nop_stmt(Context *context, Ast *statement)
-{
-	return true;
-}
 
-
-static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
+static bool sema_analyse_catch_stmt(Context *context __unused, Ast *statement __unused)
 {
 	TODO
 }
 
-static bool sema_analyse_asm_stmt(Context *context, Ast *statement)
+static bool sema_analyse_asm_stmt(Context *context __unused, Ast *statement __unused)
 {
 	TODO
 }
@@ -681,6 +673,30 @@ static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 		SEMA_ERROR(statement, "'break' is not allowed here.");
 		return false;
 	}
+	DynamicScope *scope = context->current_scope;
+	statement->break_stmt.defers.start = scope->defers.start;
+	while (!(scope->flags_created & SCOPE_BREAK)) // NOLINT(hicpp-signed-bitwise)
+	{
+		scope--;
+	}
+	statement->break_stmt.defers.end = scope->defers.end;
+	return true;
+}
+
+static bool sema_analyse_next_stmt(Context *context, Ast *statement)
+{
+	if (!(context->current_scope->flags & SCOPE_NEXT))  // NOLINT(hicpp-signed-bitwise)
+	{
+		SEMA_ERROR(statement, "'next' is not allowed here.");
+		return false;
+	}
+	DynamicScope *scope = context->current_scope;
+	statement->next_stmt.defers.start = scope->defers.start;
+	while (!(scope->flags_created & SCOPE_NEXT)) // NOLINT(hicpp-signed-bitwise)
+	{
+		scope--;
+	}
+	statement->next_stmt.defers.end = scope->defers.end;
 	return true;
 }
 
@@ -697,6 +713,13 @@ static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
 		SEMA_ERROR(statement, "'continue' is not allowed here.");
 		return false;
 	}
+	DynamicScope *scope = context->current_scope;
+	statement->continue_stmt.defers.start = scope->defers.start;
+	while (!(scope->flags_created & SCOPE_CONTINUE)) // NOLINT(hicpp-signed-bitwise)
+	{
+		scope--;
+	}
+	statement->continue_stmt.defers.end = scope->defers.end;
 	return true;
 }
 
@@ -754,112 +777,99 @@ static bool sema_analyse_ct_if_stmt(Context *context, Ast *statement)
 	}
 }
 
-static bool sema_analyse_switch_case(Context *context, Ast*** prev_cases, Ast *case_stmt, Type *switch_type, Ast **prev_case)
+
+static bool sema_analyse_case_expr(Context *context, Ast *case_stmt)
 {
-	if (case_stmt->ast_kind == AST_CASE_STMT)
+	Expr *case_expr = case_stmt->case_stmt.expr;
+	// TODO handle enums
+	if (!sema_analyse_expr(context, NULL, case_expr)) return false;
+	if (case_expr->expr_kind != EXPR_CONST)
 	{
-		if (*prev_case)
-		{
-			// sema_build_defer_chain(context, prev_cases);
-			context_pop_scope(context, prev_case, NULL);
-			*prev_case = NULL;
-		}
-		Expr *case_expr = case_stmt->case_stmt.expr;
-		if (!sema_analyse_expr(context, switch_type, case_expr)) return false;
-		if (case_expr->expr_kind != EXPR_CONST)
-		{
-			SEMA_ERROR(case_expr, "This must be a constant expression.");
-			return false;
-		}
-		assert(case_expr->const_expr.type == CONST_INT);
-		case_stmt->case_stmt.value_type = type_is_signed(case_expr->type->canonical) ? CASE_VALUE_INT : CASE_VALUE_UINT;
-		uint64_t val = case_expr->const_expr.i;
-		case_stmt->case_stmt.val = val;
-		*prev_case = case_stmt;
-		VECEACH(*prev_cases, i)
-		{
-			if ((*prev_cases)[i]->case_stmt.val == val)
-			{
-				SEMA_ERROR(case_stmt, "Duplicate case value.");
-				sema_prev_at_range((*prev_cases)[i]->span, "Previous use was here.");
-				return false;
-			}
-		}
-		context_push_scope_with_flags(context, SCOPE_BREAK);
-		vec_add(*prev_cases, case_stmt);
-		return true;
-	}
-	if (case_stmt->ast_kind == AST_DEFAULT_STMT)
-	{
-		case_stmt->ast_kind = AST_CASE_STMT;
-		case_stmt->case_stmt.value_type = CASE_VALUE_DEFAULT;
-		case_stmt->case_stmt.block = NULL;
-		if (*prev_case)
-		{
-			context_pop_scope(context, prev_case, NULL);
-		}
-		context_push_scope(context);
-		*prev_case = case_stmt;
-		vec_add(*prev_cases, case_stmt);
-		return true;
-	}
-	if (!*prev_case)
-	{
-		SEMA_ERROR(case_stmt, "Expected a 'case' or 'default' statement.");
+		SEMA_ERROR(case_expr, "This must be a constant expression.");
 		return false;
 	}
-	if (case_stmt->ast_kind == AST_NEXT_STMT)
+	if (case_expr->const_expr.type != CONST_INT)
 	{
-		case_stmt->next_stmt = *prev_case;
-		(*prev_case)->case_stmt.has_next = true;
+		SEMA_ERROR(case_expr, "The 'case' value must be an integer constant.");
+		return false;
 	}
-	else
-	{
-		if (!sema_analyse_statement(context, case_stmt)) return false;
-	}
-	if (!(*prev_case)->case_stmt.block)
-	{
-		(*prev_case)->case_stmt.block = AST_NEW(AST_COMPOUND_STMT, (*prev_case)->span);
-	}
-	vec_add((*prev_case)->case_stmt.block->compound_stmt.stmts, case_stmt);
+	assert(case_expr->const_expr.type == CONST_INT);
+	case_stmt->case_stmt.value_type = type_is_signed(case_expr->type->canonical) ? CASE_VALUE_INT : CASE_VALUE_UINT;
+	uint64_t val = case_expr->const_expr.i;
+	case_stmt->case_stmt.val = val;
 	return true;
 }
 
 static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 {
 	context_push_scope(context);
-	bool success = sema_analyse_statement(context, statement->switch_stmt.cond);
 	Ast *cond = statement->switch_stmt.cond;
-	success = success && sema_analyse_cond(context, cond, false);
-	context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_NEXT); // NOLINT(hicpp-signed-bitwise)
-	Ast *body = statement->switch_stmt.body;
-	assert(body->ast_kind == AST_COMPOUND_STMT);
+	bool success = sema_analyse_cond(context, cond, false);
+
 	Type *switch_type = ast_cond_type(cond)->canonical;
 	if (!type_is_integer(switch_type))
 	{
 		SEMA_ERROR(cond, "Expected an integer or enum type, was '%s'.", type_to_error_string(switch_type));
 		return false;
 	}
-	Ast *in_case = NULL;
-	VECEACH(body->compound_stmt.stmts, i)
+	Ast *default_case = NULL;
+	assert(context->current_scope->defers.start == context->current_scope->defers.end);
+	VECEACH(statement->switch_stmt.cases, i)
 	{
-		success = success && sema_analyse_switch_case(context, &statement->switch_stmt.cases, body->compound_stmt.stmts[i], switch_type, &in_case);
+		Ast *stmt = statement->switch_stmt.cases[i];
+		switch (stmt->ast_kind)
+		{
+			case AST_CASE_STMT:
+				if (!sema_analyse_case_expr(context, stmt))
+				{
+					success = false;
+					break;
+				}
+				for (unsigned j = 0; j < i; j++)
+				{
+					Ast *other = statement->switch_stmt.cases[j];
+					if (other->ast_kind == AST_CASE_STMT && other->case_stmt.val == stmt->case_stmt.val)
+					{
+						SEMA_ERROR(stmt, "The same case value appears more than once.");
+						SEMA_PREV(other, "Here is the previous use of that value.");
+						success = false;
+					}
+				}
+				break;
+			case AST_DEFAULT_STMT:
+				if (default_case)
+				{
+					SEMA_ERROR(stmt, "'default' may only appear once in a single 'switch', please remove one.");
+					SEMA_PREV(default_case, "Here is the previous use.");
+					success = false;
+				}
+				default_case = stmt;
+				break;
+			default:
+				UNREACHABLE;
+		}
+		context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_NEXT);
+		success = success && sema_analyse_compound_statement_no_scope(context, stmt->case_stmt.body);
+		context_pop_scope(context);
 	}
-	if (in_case)
+	context_pop_defers_and_replace_ast(context, statement);
+	context_pop_scope(context);
+	if (!success) return false;
+	// Is this a typeless switch value?
+	if (switch_type->type_kind == TYPE_UXX || switch_type->type_kind == TYPE_IXX)
 	{
-		context_pop_scope(context, &in_case, NULL);
+
+		TODO
 	}
-	context_pop_scope(context, &cond, NULL);
-	context_pop_scope(context, &statement, NULL);
 	return success;
 }
 
-static bool sema_analyse_try_stmt(Context *context, Ast *statement)
+static bool sema_analyse_try_stmt(Context *context __unused, Ast *statement __unused)
 {
 	TODO
 }
 
-static bool sema_analyse_throw_stmt(Context *context, Ast *statement)
+static bool sema_analyse_throw_stmt(Context *context __unused, Ast *statement __unused)
 {
 	TODO
 }
@@ -877,7 +887,7 @@ static bool sema_analyse_compound_stmt(Context *context, Ast *statement)
 {
 	context_push_scope(context);
 	bool success = sema_analyse_compound_statement_no_scope(context, statement);
-	context_pop_scope(context, &statement, NULL);
+	context_pop_scope(context);
 	return success;
 }
 
@@ -888,6 +898,7 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_POISONED:
 			return false;
 		case AST_ATTRIBUTE:
+		case AST_SCOPED_STMT:
 			UNREACHABLE
 		case AST_ASM_STMT:
 			return sema_analyse_asm_stmt(context, statement);
@@ -922,7 +933,7 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_LABEL:
 			return sema_analyse_label(context, statement);
 		case AST_NOP_STMT:
-			return sema_analyse_nop_stmt(context, statement);
+			return true;
 		case AST_RETURN_STMT:
 			return sema_analyse_return_stmt(context, statement);
 		case AST_SWITCH_STMT:
@@ -932,7 +943,7 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_TRY_STMT:
 			return sema_analyse_try_stmt(context, statement);
 		case AST_NEXT_STMT:
-			UNREACHABLE
+			return sema_analyse_next_stmt(context, statement);
 		case AST_VOLATILE_STMT:
 			return sema_analyse_volatile_stmt(context, statement);
 		case AST_WHILE_STMT:
@@ -1007,6 +1018,7 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 			return false;
 		}
 	}
+
 	VECEACH(context->gotos, i)
 	{
 		Ast *goto_stmt = context->gotos[i];
@@ -1018,14 +1030,15 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 		}
 
 		// If there are no defers, then that's fine.
-		if (!goto_stmt->goto_stmt.defer && !label_target->label_stmt.defer) continue;
-
-		// First we need to search for the common depth.
-		int label_depth = defer_depth(label_target->label_stmt.defer);
-		int goto_depth = defer_depth(goto_stmt->goto_stmt.defer);
+		if (!goto_stmt->goto_stmt.defer.start && !label_target->label_stmt.defer) continue;
 
 		Ast *common_depth_label = label_target->label_stmt.defer;
-		Ast *common_depth_goto = goto_stmt->goto_stmt.defer;
+		Ast *common_depth_goto = goto_stmt->goto_stmt.defer.start;
+
+		// First we need to search for the common depth.
+		int label_depth = defer_depth(common_depth_label);
+		int goto_depth = defer_depth(common_depth_goto);
+
 
 		// Now walk up to the common depth.
 		defer_list_walk_to_common_depth(&common_depth_label, label_depth, goto_depth);
@@ -1040,17 +1053,18 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 		}
 
 		// We now know the top defer (which we won't actually generate)
-		goto_stmt->goto_stmt.defer_end = common_depth_goto;
+		goto_stmt->goto_stmt.defer.end = common_depth_goto;
 
 		// Mark all defers that occur on the way "up" to the common depth conditional.
 		Ast *current = label_target->label_stmt.defer;
 		while (current != common_depth_goto)
 		{
 			current->defer_stmt.emit_boolean = true;
+			current = current->defer_stmt.prev_defer;
 		}
 	}
 	func->func.labels = context->labels;
-	context_pop_scope(context, &func->func.body, NULL);
+	context_pop_scope(context);
 	context->current_scope = NULL;
 	return true;
 }
@@ -1062,7 +1076,9 @@ static inline bool sema_analyse_method_function(Context *context, Decl *decl)
 	if (!sema_resolve_type_info(context, parent_type)) return false;
 	if (!type_may_have_method_functions(parent_type->type))
 	{
-		SEMA_ERROR(decl, "Method functions can not be associated with '%s'", type_to_error_string(decl->func.type_parent->type));
+		SEMA_ERROR(decl,
+		           "Method functions can not be associated with '%s'",
+		           type_to_error_string(decl->func.type_parent->type));
 		return false;
 	}
 	Decl *parent = parent_type->type->decl;
@@ -1101,7 +1117,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 		}
 		decl->visibility = VISIBLE_EXTERN;
 	}
-	DEBUG_LOG("Function analysis done.")
+	DEBUG_LOG("Function analysis done.");
 	return true;
 }
 
@@ -1279,7 +1295,6 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 }
 
 
-
 static void append_decls(Context *context, Decl **decls)
 {
 	VECEACH(decls, i)
@@ -1287,6 +1302,7 @@ static void append_decls(Context *context, Decl **decls)
 		context_register_global_decl(context, decls[i]);
 	}
 }
+
 static inline bool sema_analyse_top_level_if(Context *context, Decl *ct_if)
 {
 	int res = sema_check_comp_time_bool(context, ct_if->ct_if_decl.expr);
@@ -1387,7 +1403,16 @@ bool sema_resolve_type_info(Context *context, TypeInfo *type_info)
 static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 {
 	Decl *ambiguous_decl;
-	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name_loc.string, type_info->unresolved.path, &ambiguous_decl);
+	Decl *decl = sema_resolve_symbol(context,
+	                                 type_info->unresolved.name_loc.string,
+	                                 type_info->unresolved.path,
+	                                 &ambiguous_decl);
+
+	// Already handled
+	if (!decl_ok(decl))
+	{
+		return type_info_poison(type_info);
+	}
 
 	if (!decl)
 	{
@@ -1397,8 +1422,11 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 
 	if (ambiguous_decl)
 	{
-		SEMA_TOKEN_ERROR(type_info->unresolved.name_loc, "Ambiguous type '%s' – both defined in %s and %s, please add the module name to resolve the ambiguity", type_info->unresolved.name_loc.string,
-		                 decl->module->name->module, ambiguous_decl->module->name->module);
+		SEMA_TOKEN_ERROR(type_info->unresolved.name_loc,
+		                 "Ambiguous type '%s' – both defined in %s and %s, please add the module name to resolve the ambiguity",
+		                 type_info->unresolved.name_loc.string,
+		                 decl->module->name->module,
+		                 ambiguous_decl->module->name->module);
 		return type_info_poison(type_info);
 	}
 	switch (decl->decl_kind)
@@ -1453,7 +1481,9 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 	if (type_info->resolve_status == RESOLVE_RUNNING)
 	{
 		// TODO this is incorrect for unresolved expressions
-		SEMA_TOKEN_ERROR(type_info->unresolved.name_loc, "Circular dependency resolving type '%s'.", type_info->unresolved.name_loc.string);
+		SEMA_TOKEN_ERROR(type_info->unresolved.name_loc,
+		                 "Circular dependency resolving type '%s'.",
+		                 type_info->unresolved.name_loc.string);
 		return type_info_poison(type_info);
 	}
 

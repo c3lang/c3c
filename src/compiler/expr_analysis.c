@@ -87,7 +87,6 @@ static inline bool sema_expr_analyse_ternary(Context *context, Type *to, Expr *e
 	}
 
 	expr->type = left->type;
-
 	return true;
 }
 
@@ -102,6 +101,9 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 		SEMA_ERROR(expr, "Unknown symbol '%s'.", expr->identifier_expr.identifier);
 		return false;
 	}
+
+	// Already handled
+	if (!decl_ok(decl)) return false;
 
 	if (ambiguous_decl)
 	{
@@ -1472,6 +1474,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 	{
 		case EXPR_POISONED:
 			return false;
+		case EXPR_SCOPED_EXPR:
+			UNREACHABLE
 		case EXPR_TRY:
 			return sema_expr_analyse_try(context, to, expr);
 		case EXPR_CONST:

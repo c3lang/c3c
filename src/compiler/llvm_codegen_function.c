@@ -112,8 +112,10 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 		label->label_stmt.backend_value = gencontext_create_free_block(context, label->label_stmt.name);
 	}
 
-	gencontext_emit_compound_stmt(context, decl->func.body);
-
+	VECEACH(decl->func.body->compound_stmt.stmts, i)
+	{
+		gencontext_emit_stmt(context, decl->func.body->compound_stmt.stmts[i]);
+	}
 
 	if (!LLVMGetFirstInstruction(context->current_block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(context->current_block)))
 	{
@@ -122,10 +124,12 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 		context->current_block = prev_block;
 		LLVMPositionBuilderAtEnd(context->builder, context->current_block);
 	}
-	// Insert a return if needed.
+	// Insert a return (and defer) if needed.
 	if (!LLVMGetBasicBlockTerminator(context->current_block))
 	{
 		assert(decl->func.function_signature.rtype->type->type_kind == TYPE_VOID);
+		assert(decl->func.body->compound_stmt.defer_list.end == NULL);
+		gencontext_emit_defer(context, decl->func.body->compound_stmt.defer_list.start, NULL);
 		LLVMBuildRetVoid(context->builder);
 	}
 

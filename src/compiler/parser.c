@@ -13,7 +13,7 @@ static Expr *parse_paren_expr(Context *context);
 static Expr *parse_precedence(Context *context, Precedence precedence);
 static Expr *parse_initializer_list(Context *context);
 static Expr *parse_initializer(Context *context);
-static bool parse_type_or_expr(Context *context, Expr **exprPtr, TypeInfo **typePtr);
+static bool parse_type_or_expr(Context *context, Expr **expr_ptr, TypeInfo **type_ptr);
 static Decl *parse_top_level(Context *context);
 
 typedef Expr *(*ParseFn)(Context *context, Expr *);
@@ -29,18 +29,31 @@ extern ParseRule rules[TOKEN_EOF + 1];
 
 void context_store_lexer_state(Context *context)
 {
+	assert(!context->stored.has_stored && "Nested lexer store is forbidden");
+	context->stored.has_stored = true;
 	context->stored.current = context->lexer.current;
 	context->stored.start = context->lexer.lexing_start;
 	context->stored.tok = context->tok;
 	context->stored.next_tok = context->next_tok;
+	context->stored.lead_comment = context->lead_comment;
+	context->stored.trailing_comment = context->trailing_comment;
+	context->stored.next_lead_comment = context->next_lead_comment;
+	context->stored.comments = vec_size(context->comments);
 }
 
 void context_restore_lexer_state(Context *context)
 {
+	assert(context->stored.has_stored && "Tried to restore missing stored state.");
+	context->stored.has_stored = false;
 	context->lexer.current = context->stored.current;
 	context->lexer.lexing_start = context->stored.start;
 	context->tok = context->stored.tok;
 	context->next_tok = context->stored.next_tok;
+	context->lead_comment = context->stored.lead_comment;
+	context->next_lead_comment = context->stored.next_lead_comment;
+	context->trailing_comment = context->stored.trailing_comment;
+	context->prev_tok_end = context->tok.span.end_loc;
+	vec_resize(context->comments, context->stored.comments);
 }
 
 inline void advance(Context *context)
@@ -347,13 +360,12 @@ static Path *parse_path_prefix(Context *context)
 	while (context->tok.type == TOKEN_IDENT && context->next_tok.type == TOKEN_SCOPE)
 	{
 		last_range = context->tok.span;
-		advance(context);
-		advance(context);
 		scratch_ptr[offset++] = ':';
 		scratch_ptr[offset++] = ':';
 		len = context->tok.span.end_loc - context->tok.span.loc;
 		memcpy(scratch_ptr + offset, context->tok.start, len);
 		offset += len;
+		advance(context); advance(context);
 	}
 
 	TokenType type = TOKEN_IDENT;
@@ -768,7 +780,6 @@ static inline Ast* parse_if_stmt(Context *context)
 	{
 		return if_ast;
 	}
-	advance_and_verify(context, TOKEN_ELSE);
 	if_ast->if_stmt.else_body = TRY_AST(parse_stmt(context));
 	return if_ast;
 }
@@ -857,22 +868,7 @@ static inline Ast* parse_do_stmt(Context *context)
 	return do_ast;
 }
 
-/**
- * switch
- *  : SWITCH '(' control_expression ')' compound_statement
- *
- * @return
- */
-static inline Ast* parse_switch_stmt(Context *context)
-{
-	Ast *switch_ast = AST_NEW_TOKEN(AST_SWITCH_STMT, context->tok);
-	advance_and_verify(context, TOKEN_SWITCH);
-	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
-	if (!parse_control_expression(context, &switch_ast->switch_stmt.decl, &switch_ast->switch_stmt.cond)) return &poisoned_ast;
-    CONSUME_OR(TOKEN_RPAREN, &poisoned_ast);
-	switch_ast->switch_stmt.body = TRY_AST(parse_compound_stmt(context));
-	return switch_ast;
-}
+
 
 /**
  * for_statement
@@ -912,7 +908,7 @@ static inline Ast* parse_for_stmt(Context *context)
 
 	if (context->tok.type != TOKEN_RPAREN)
 	{
-		ast->for_stmt.incr = TRY_AST(ast_from_expr(parse_expression_list(context)));
+		ast->for_stmt.incr = parse_expression_list(context);
 	}
 
 	CONSUME_OR(TOKEN_RPAREN, &poisoned_ast);
@@ -925,21 +921,6 @@ static inline Ast* parse_for_stmt(Context *context)
 static inline Expr* parse_constant_expr(Context *context)
 {
 	return parse_precedence(context, PREC_TERNARY);
-}
-/**
- * case_stmt
- * 	: CASE constant_expression ':'
- *
- * @return Ast*
- */
-static inline Ast* parse_case_stmt(Context *context)
-{
-	Ast *ast = AST_NEW_TOKEN(AST_CASE_STMT, context->tok);
-	advance(context);
-	Expr *expr = TRY_EXPR_OR(parse_constant_expr(context), &poisoned_ast);
-	ast->case_stmt.expr = expr;
-	TRY_CONSUME(TOKEN_COLON, "Missing ':' after case");
-	return extend_ast_with_prev_token(context, ast);
 }
 
 static inline Ast* parse_goto_stmt(Context *context)
@@ -1136,7 +1117,7 @@ static Ast *parse_return_stmt(Context *context)
 	advance_and_verify(context, TOKEN_RETURN);
 	Ast *ast = AST_NEW_TOKEN(AST_RETURN_STMT, context->tok);
 	ast->exit = EXIT_RETURN;
-	ast->return_stmt.defer = 0;
+	ast->return_stmt.defer = NULL;
 	if (try_consume(context, TOKEN_EOS))
 	{
 		ast->return_stmt.expr = NULL;
@@ -1161,13 +1142,6 @@ static Ast *parse_volatile_stmt(Context *context)
 	return ast;
 }
 
-static Ast *parse_default_stmt(Context *context)
-{
-	Ast *ast = AST_NEW_TOKEN(AST_DEFAULT_STMT, context->tok);
-	advance_and_verify(context, TOKEN_DEFAULT);
-	TRY_CONSUME_OR(TOKEN_COLON, "Expected ':' after 'default'.", &poisoned_ast);
-	return ast;
-}
 
 
 bool is_valid_try_statement(TokenType type)
@@ -1236,7 +1210,10 @@ static bool parse_type_or_expr(Context *context, Expr **exprPtr, TypeInfo **type
 			{
 				// We need a little lookahead to see if this is type or expression.
 				context_store_lexer_state(context);
-				advance(context); advance(context);
+				do
+				{
+					advance(context); advance(context);
+				} while (context->tok.type == TOKEN_IDENT && context->next_tok.type == TOKEN_SCOPE);
 				if (context->tok.type == TOKEN_TYPE_IDENT && !is_expr_after_type_ident(context))
 				{
 					context_restore_lexer_state(context);
@@ -1282,21 +1259,106 @@ static inline Ast *parse_decl_or_expr_stmt(Context *context)
 
 	if (!parse_type_or_expr(context, &expr, &type)) return &poisoned_ast;
 
+	Ast *ast;
 	if (expr)
 	{
-		CONSUME_OR(TOKEN_EOS, &poisoned_ast);
-		Ast *ast = AST_NEW(AST_EXPR_STMT, expr->span);
+		ast = AST_NEW(AST_EXPR_STMT, expr->span);
 		ast->expr_stmt = expr;
-		return ast;
 	}
 	else
 	{
 		Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, false, type), &poisoned_ast);
-		Ast *ast = AST_NEW(AST_DECLARE_STMT, decl->span);
+		ast = AST_NEW(AST_DECLARE_STMT, decl->span);
 		ast->declare_stmt = decl;
-		CONSUME_OR(TOKEN_EOS, &poisoned_ast);
-		return ast;
 	}
+	CONSUME_OR(TOKEN_EOS, &poisoned_ast);
+	return ast;
+}
+
+static inline bool token_type_ends_case(TokenType type)
+{
+	return type == TOKEN_CASE || type == TOKEN_DEFAULT || type == TOKEN_RBRACE;
+}
+
+static inline Ast *parse_case_stmts(Context *context)
+{
+	Ast *compound = AST_NEW_TOKEN(AST_COMPOUND_STMT, context->tok);
+	while (!token_type_ends_case(context->tok.type))
+	{
+		Ast *stmt = TRY_AST(parse_stmt(context));
+		vec_add(compound->compound_stmt.stmts, stmt);
+	}
+	return compound;
+}
+
+/**
+ * case_stmt
+ * 	: CASE constant_expression ':'
+ *
+ * @return Ast*
+ */
+static inline Ast* parse_case_stmt(Context *context)
+{
+	Ast *ast = AST_NEW_TOKEN(AST_CASE_STMT, context->tok);
+	advance(context);
+	Expr *expr = TRY_EXPR_OR(parse_constant_expr(context), &poisoned_ast);
+	ast->case_stmt.expr = expr;
+	TRY_CONSUME(TOKEN_COLON, "Missing ':' after case");
+	extend_ast_with_prev_token(context, ast);
+	ast->case_stmt.body = TRY_AST(parse_case_stmts(context));
+	return ast;
+}
+
+static Ast *parse_default_stmt(Context *context)
+{
+	Ast *ast = AST_NEW_TOKEN(AST_DEFAULT_STMT, context->tok);
+	advance_and_verify(context, TOKEN_DEFAULT);
+	TRY_CONSUME_OR(TOKEN_COLON, "Expected ':' after 'default'.", &poisoned_ast);
+	extend_ast_with_prev_token(context, ast);
+	ast->case_stmt.body = TRY_AST(parse_case_stmts(context));
+	ast->case_stmt.value_type = CASE_VALUE_DEFAULT;
+	return ast;
+}
+
+static inline bool parse_switch_body(Context *context, Ast *switch_ast)
+{
+	Ast *result;
+	switch (context->tok.type)
+	{
+		case TOKEN_CASE:
+			result = TRY_AST_OR(parse_case_stmt(context), false);
+			break;
+		case TOKEN_DEFAULT:
+			result = TRY_AST_OR(parse_default_stmt(context), false);
+			break;
+		default:
+			SEMA_TOKEN_ERROR(context->tok, "A 'case' or 'default' would be needed here, '%.*s' is not allowed.", source_range_len(context->tok.span), context->tok.start);
+			return false;
+	}
+	vec_add(switch_ast->switch_stmt.cases, result);
+	return true;
+}
+
+
+/**
+ * switch
+ *  : SWITCH '(' control_expression ')' compound_statement
+ *
+ * @return
+ */
+static inline Ast* parse_switch_stmt(Context *context)
+{
+	Ast *switch_ast = AST_NEW_TOKEN(AST_SWITCH_STMT, context->tok);
+	advance_and_verify(context, TOKEN_SWITCH);
+	CONSUME_OR(TOKEN_LPAREN, &poisoned_ast);
+	if (!parse_control_expression(context, &switch_ast->switch_stmt.decl, &switch_ast->switch_stmt.cond)) return &poisoned_ast;
+	CONSUME_OR(TOKEN_RPAREN, &poisoned_ast);
+	CONSUME_OR(TOKEN_LBRACE, &poisoned_ast);
+	while (!try_consume(context, TOKEN_RBRACE))
+	{
+		if (!parse_switch_body(context, switch_ast)) return &poisoned_ast;
+	}
+	return switch_ast;
 }
 
 static Ast *parse_stmt(Context *context)
@@ -1389,7 +1451,9 @@ static Ast *parse_stmt(Context *context)
 		case TOKEN_CONTINUE:
 			return parse_continue_stmt(context);
 		case TOKEN_CASE:
-			return parse_case_stmt(context);
+			SEMA_TOKEN_ERROR(context->tok, "'case' was found outside of 'switch', did you mismatch a '{ }' pair?");
+			advance(context);
+			return &poisoned_ast;
 		case TOKEN_BREAK:
 			return parse_break_stmt(context);
 	    case TOKEN_NEXT:
@@ -1397,7 +1461,9 @@ static Ast *parse_stmt(Context *context)
 		case TOKEN_ASM:
 			return parse_asm_stmt(context);
 		case TOKEN_DEFAULT:
-			return parse_default_stmt(context);
+			SEMA_TOKEN_ERROR(context->tok, "'default' was found outside of 'switch', did you mismatch a '{ }' pair?");
+			advance(context);
+			return &poisoned_ast;
 		case TOKEN_CT_IF:
 			return parse_ct_if_stmt(context);
 		case TOKEN_CT_SWITCH:

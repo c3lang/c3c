@@ -26,7 +26,6 @@ typedef struct _TypeInfo TypeInfo;
 typedef struct _Expr Expr;
 typedef struct _Module Module;
 typedef struct _Type Type;
-typedef uint16_t DeferId;
 
 typedef bool(*CastFunc)(Expr *, Type *, Type *, Type *, CastType cast_type);
 
@@ -38,8 +37,8 @@ typedef struct
 
 typedef struct
 {
-	DeferId start;
-	DeferId end;
+	Ast *start;
+	Ast *end;
 } DeferList;
 
 typedef struct
@@ -458,6 +457,11 @@ typedef struct
 	};
 } ExprCast;
 
+typedef struct
+{
+	Expr *expr;
+	DeferList defers;
+} ExprScope;
 
 struct _Expr
 {
@@ -482,6 +486,7 @@ struct _Expr
 		ExprType type_expr;
 		Expr** initializer_expr;
 		Expr** expression_list;
+		ExprScope expr_scope;
 	};
 };
 
@@ -549,15 +554,15 @@ typedef struct
 			bool has_next;
 		};
 	};
-	Ast *block;
+	Ast *body;
 	void *backend_value;
 } AstCaseStmt;
+
 
 typedef struct
 {
 	Ast *decl;
 	Ast *cond;
-	Ast *body;
 	Ast **cases;
 } AstSwitchStmt;
 
@@ -565,32 +570,29 @@ typedef struct
 {
 	Ast *init;
 	Expr *cond;
-	Ast *incr;
+	Expr *incr;
 	Ast *body;
-	DeferList cond_defer;
 } AstForStmt;
 
 
 
 typedef struct
 {
-	GotoType type : 2;
 	const char *label_name;
 	Ast *label;
-	Ast *defer;
+	DeferList defer;
 	union
 	{
 		struct _Ast *in_defer;
-		struct _Ast *defer_end;
 	};
 } AstGotoStmt;
 
 typedef struct _AstDeferStmt
 {
 	bool emit_boolean : 1;
-	struct _Ast *body; // Compound statement
-	struct _Ast *prev_defer;
-	DeferId id;
+	Ast *body; // Compound statement
+	Ast *prev_defer;
+	void *bool_var;
 } AstDeferStmt;
 
 typedef struct _AstCatchStmt
@@ -615,6 +617,12 @@ typedef struct _AstGenericCaseStmt
 
 typedef struct
 {
+	Ast *stmt;
+	DeferList defers;
+} AstScopedStmt;
+
+typedef struct
+{
 	Expr *cond;
 	Ast **body;
 } AstCtSwitchStmt;
@@ -635,8 +643,14 @@ typedef struct
 
 typedef struct
 {
-	Ast **defers;
-} AstContinueStmt;
+	DeferList defers;
+} AstContinueBreakStmt;
+
+typedef struct
+{
+	Ast *prev;
+	DeferList defers;
+} AstNextStmt;
 
 typedef struct _Ast
 {
@@ -663,9 +677,10 @@ typedef struct _Ast
 		AstCaseStmt case_stmt;
 		AstCtSwitchStmt ct_switch_stmt;
 		AstCtCaseStmt ct_case_stmt;
-		AstContinueStmt continue_stmt;
+		AstContinueBreakStmt continue_stmt;
+		AstContinueBreakStmt break_stmt;
 		Ast* ct_default_stmt;
-		Ast* next_stmt;
+		AstNextStmt next_stmt;
 		AstCatchStmt catch_stmt;
 		AstGotoStmt goto_stmt;
 		AstForStmt for_stmt;
@@ -676,6 +691,7 @@ typedef struct _Ast
 		AstGenericCaseStmt generic_case_stmt;
 		Ast *generic_default_stmt;
 		Ast** decl_expr_stmt;
+		AstScopedStmt scoped_stmt;
 	};
 } Ast;
 
@@ -704,8 +720,7 @@ typedef struct _DynamicScope
 	ScopeFlags flags_created;
 	unsigned errors;
 	Decl **local_decl_start;
-	DeferId defer_top;
-	DeferId defer_last;
+	DeferList defers;
 	ExitType exit;
 } DynamicScope;
 
@@ -766,10 +781,15 @@ typedef struct _Context
 	Token next_tok;
 	struct
 	{
+		bool has_stored;
 		const char *current;
 		const char *start;
 		Token tok;
 		Token next_tok;
+		Token *lead_comment;
+		Token *trailing_comment;
+		Token *next_lead_comment;
+		unsigned comments;
 	} stored;
 } Context;
 

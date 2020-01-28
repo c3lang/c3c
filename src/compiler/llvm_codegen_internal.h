@@ -72,7 +72,7 @@ typedef struct
 void gencontext_begin_module(GenContext *context);
 void gencontext_end_module(GenContext *context);
 void gencontext_emit_stmt(GenContext *context, Ast *ast);
-void gencontext_emit_defer(GenContext *context, DeferList defer_list);
+void gencontext_emit_defer(GenContext *context, Ast *defer_start, Ast *defer_end);
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr);
 LLVMValueRef gencontext_emit_ast_expr(GenContext *context, Ast *expr);
 LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type);
