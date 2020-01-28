@@ -27,11 +27,12 @@ There are some small work being done on the parser here, but most of the structu
 - `asm` sections.
 - Macro parameter lists to imports.
 - auxiliary data for enums.
-- Docs not correctly linked to statements/functions/declarations.
+- Docs not linked to statements/functions/declarations.
 
 #### What's missing in the semantic analyser
 
-- No handling imports.
+- Incomplete handling of imports.
+- `next` not correct
 - Function signatures incomplete.
 - Function typedef not done.
 - `asm` not done.
@@ -51,10 +52,6 @@ There are some small work being done on the parser here, but most of the structu
 
 #### What's missing overall
 
-- Exactly how the module system should work together with the import is still 
-under discussion.
-- Exactly how the library imports should work is not 100% decided.
-- The compiler currently only works in single file mode.
 - Integration with C.
 
 #### What's working?

@@ -120,20 +120,113 @@ func void bob()
     long deee = (eok ? a : b) + c;
 }
 
+func int if_test(int x)
+{
+    switch (x)
+    {
+        case 1:
+            x += 1;
+            if (x < 10)
+            {
+                defer x += 5;
+                if (x < 7)
+                {
+                    defer x += 100;
+                    next;
+                }
+                x += 99;
+            }
+            next;
+        default:
+            x += 2;
+            break;
+    }
+    return 1;
+}
+func int yyyy(int x)
+{
+    defer printf("A");
+    if (x > 0) return 2;
+    defer printf("B");
+    printf("C");
+    return 1;
+}
 
+func void zzzz()
+{
+    int x = 0;
+    defer
+    {
+        x += 1;
+        printf("A");
+    }
+    defer
+    {
+        x += 2;
+        printf("B");
+    }
+    printf("C");
+    x += 3;
+}
+
+func int jumpback(int x)
+{
+    {
+        defer x += 1;
+        {
+            defer x += 2;
+            LABELX:
+            x += 3;
+        }
+    }
+    if (x < 100) goto LABELX;
+    return x + 1;
+}
 func int xxxx(int x)
 {
     {
+        x += 10;
+        defer printf("XXX");
+        if (x < 100) goto LABELD;
+        defer printf("EODfe");
+    }
+    {
         defer printf("Defer says hello!\n");
-        LABEL:
+        LABELD:
         x--;
     }
-    if (x > 0) goto LABEL;
+    if (x > 0) goto LABELD;
     return 1;
 }
 
 func int main(int x)
 {
+    int efd = 9;
+    int okfe = 1;
+    switch (int bobe = okfe > 0 ? 1 : 0)
+    {
+        case 0:
+            defer printf("case0-\n");
+        case 1:
+            printf("case 1\n");
+            defer printf("case1-\n");
+            if (efd < 10)
+            {
+                {
+                defer printf("ef < 10\n");
+                if (efd < 7)
+                {
+                    defer printf("ef < 7\n");
+                    next;
+                }
+                }
+            }
+            next;
+        default:
+            printf("default\n");
+            break;
+    }
+    return 1;
     int aa = x++;
     int bb = x--;
     int cc = ++x;

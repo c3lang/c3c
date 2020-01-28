@@ -893,6 +893,10 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			fprint_ast_recursive(file, ast->while_stmt.cond, indent + 1);
 			fprint_ast_recursive(file, ast->while_stmt.body, indent + 1);
 			break;
+		case AST_SCOPED_STMT:
+			fprintf(file, "(scoped\n");
+			fprint_ast_recursive(file, ast->scoped_stmt.stmt, indent + 1);
+			break;
 		case AST_CT_FOR_STMT:
 			if (ast->ct_for_stmt.index.string)
 			{
@@ -946,7 +950,7 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			}
 			if (ast->for_stmt.incr)
 			{
-				fprint_ast_recursive(file, ast->for_stmt.incr, indent + 1);
+				fprint_expr_recursive(file, ast->for_stmt.incr, indent + 1);
 			}
 			else
 			{
@@ -967,7 +971,7 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 	    case AST_SWITCH_STMT:
             fprintf(file, "(switchstmt\n");
             fprint_ast_recursive(file, ast->switch_stmt.cond, indent + 1);
-            fprint_ast_recursive(file, ast->switch_stmt.body, indent + 1);
+            fprint_asts_recursive(file, ast->switch_stmt.cases, indent + 1);
             break;
 		case AST_CASE_STMT:
 			fprintf(file, "(case\n");

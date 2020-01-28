@@ -15,6 +15,7 @@ void gencontext_emit_compound_stmt(GenContext *context, Ast *ast)
 	{
 		gencontext_emit_stmt(context, ast->compound_stmt.stmts[i]);
 	}
+	gencontext_emit_defer(context, ast->compound_stmt.defer_list.start, ast->compound_stmt.defer_list.end);
 }
 
 
@@ -43,7 +44,7 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 	{
 		LLVMValueRef value = gencontext_emit_expr(context, decl->var.init_expr);
 		LLVMBuildStore(context->builder, value, decl->var.backend_ref);
-		return value;
+		return decl->var.backend_ref;
 	}
 	return decl->var.backend_ref;
 }
@@ -99,20 +100,14 @@ static inline void gencontext_emit_return(GenContext *context, Ast *ast)
 {
 	// Ensure we are on a branch that is non empty.
 	if (!gencontext_check_block_branch_emit(context)) return;
-	Ast *defer = ast->return_stmt.defer;
-	while (defer)
-	{
-		gencontext_emit_stmt(context, defer->defer_stmt.body);
-		// TODO boolean
-		defer = defer->defer_stmt.prev_defer;
-	}
-	if (!ast->return_stmt.expr)
+	LLVMValueRef ret_value = ast->return_stmt.expr ? gencontext_emit_expr(context, ast->return_stmt.expr) : NULL;
+	gencontext_emit_defer(context, ast->return_stmt.defer, NULL);
+	if (!ret_value)
 	{
 		LLVMBuildRetVoid(context->builder);
 		return;
 	}
-	LLVMValueRef returnValue = gencontext_emit_expr(context, ast->return_stmt.expr);
-	LLVMBuildRet(context->builder, returnValue);
+	LLVMBuildRet(context->builder, ret_value);
 	context->current_block = NULL;
 	LLVMBasicBlockRef post_ret_block = gencontext_create_free_block(context, "ret");
 	gencontext_emit_block(context, post_ret_block);
@@ -225,7 +220,6 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 		gencontext_emit_br(context, cond_block);
 		gencontext_emit_block(context, cond_block);
 		value = gencontext_emit_expr(context, ast->for_stmt.cond);
-		gencontext_emit_defer(context, ast->for_stmt.cond_defer);
 		// If we have a body, conditionally jump to it.
 		if (body_block)
 		{
@@ -258,7 +252,7 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 	{
 		// Emit the block
 		gencontext_emit_block(context, inc_block);
-		gencontext_emit_expr(context, ast->for_stmt.incr->expr_stmt);
+		gencontext_emit_expr(context, ast->for_stmt.incr);
 	}
 
 	// Loop back.
@@ -285,7 +279,14 @@ void gencontext_emit_while_stmt(GenContext *context, Ast *ast)
 	// Emit cond
 	gencontext_emit_br(context, begin_block);
 	gencontext_emit_block(context, begin_block);
-	LLVMValueRef value = gencontext_emit_decl_expr_list(context, ast->while_stmt.cond, true);
+	DeferList defers = { NULL, NULL };
+	Ast *cond = ast->while_stmt.cond;
+	if (cond->ast_kind == AST_SCOPED_STMT)
+	{
+		defers = cond->scoped_stmt.defers;
+		cond = cond->scoped_stmt.stmt;
+	}
+	LLVMValueRef value = gencontext_emit_decl_expr_list(context, cond, true);
 	// If we have a body, conditionally jump to it.
 	if (body_block)
 	{
@@ -293,6 +294,9 @@ void gencontext_emit_while_stmt(GenContext *context, Ast *ast)
 	}
 	else
 	{
+		// Emit defers
+		gencontext_emit_defer(context, defers.start, defers.end);
+
 		// Otherwise jump to inc or cond depending on what's available.
 		gencontext_emit_cond_br(context, value, begin_block, exit_block);
 	}
@@ -301,6 +305,9 @@ void gencontext_emit_while_stmt(GenContext *context, Ast *ast)
 	{
 		gencontext_emit_block(context, body_block);
 		gencontext_emit_stmt(context, ast->while_stmt.body);
+
+		// Emit defers
+		gencontext_emit_defer(context, defers.start, defers.end);
 	}
 
 	// Loop back.
@@ -308,6 +315,9 @@ void gencontext_emit_while_stmt(GenContext *context, Ast *ast)
 
 	// And insert exit block
 	gencontext_emit_block(context, exit_block);
+
+	// Emit defers
+	gencontext_emit_defer(context, defers.start, defers.end);
 	gencontext_pop_break_continue(context);
 }
 
@@ -369,6 +379,7 @@ void gencontext_emit_label(GenContext *context, Ast *ast)
 
 void gencontext_emit_switch(GenContext *context, Ast *ast)
 {
+	// TODO check defer correctness
 	if (ast->switch_stmt.decl) gencontext_emit_decl_expr_list_ignore_result(context, ast->switch_stmt.decl);
 	LLVMValueRef switch_value = gencontext_emit_decl_expr_list(context, ast->switch_stmt.cond, false);
 
@@ -385,13 +396,13 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 		Ast *case_stmt = ast->switch_stmt.cases[i];
 		if (case_stmt->case_stmt.value_type == CASE_VALUE_DEFAULT)
 		{
-			if (case_stmt->case_stmt.block)
+			if (case_stmt->case_stmt.body)
 			{
 				case_stmt->case_stmt.backend_value = gencontext_create_free_block(context, "switch.default");
 			}
 			default_case = case_stmt;
 		}
-		else if (case_stmt->case_stmt.block)
+		else if (case_stmt->case_stmt.body)
 		{
 			case_stmt->case_stmt.backend_value = gencontext_create_free_block(context, "switch.case");
 		}
@@ -444,13 +455,13 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 		}
 
 		// Skip fallthroughs.
-		if (!case_stmt->case_stmt.block) continue;
+		if (!case_stmt->case_stmt.body) continue;
 
 		gencontext_emit_block(context, block);
 		// IMPORTANT!
 		context->current_block_is_target = true;
 		gencontext_push_break_continue(context, NULL, NULL, i < cases - 1 ? ast->switch_stmt.cases[i + 1]->case_stmt.backend_value : exit_block);
-		gencontext_emit_stmt(context, case_stmt->case_stmt.block);
+		gencontext_emit_stmt(context, case_stmt->case_stmt.body);
 		gencontext_pop_break_continue(context);
 		gencontext_emit_br(context, exit_block);
 	}
@@ -458,15 +469,92 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 	gencontext_emit_block(context, exit_block);
 }
 
-void gencontext_emit_defer(GenContext *context, DeferList  defer_list)
+LLVMValueRef gencontext_get_defer_bool(GenContext *context, Ast *defer)
 {
-	if (defer_list.start == defer_list.end) return;
-	Ast *defer = context->ast_context->defers[defer_list.start - 1];
-	while (defer && defer->defer_stmt.id != defer_list.end)
+	assert(defer->ast_kind == AST_DEFER_STMT && defer->defer_stmt.emit_boolean);
+	if (!defer->defer_stmt.bool_var)
 	{
-		gencontext_emit_stmt(context, defer->defer_stmt.body);
-		// TODO boolean
+		defer->defer_stmt.bool_var = gencontext_emit_alloca(context, BACKEND_TYPE(type_bool), "defer");
 	}
+	return defer->defer_stmt.bool_var;
+}
+
+void gencontext_emit_defer(GenContext *context, Ast *defer_start, Ast *defer_end)
+{
+	if (defer_start == defer_end) return;
+	Ast *defer = defer_start;
+	while (defer && defer != defer_end)
+	{
+		if (defer->defer_stmt.emit_boolean)
+		{
+
+			// We need at least the exit block and the "then" block.
+			LLVMBasicBlockRef exit_block = LLVMCreateBasicBlockInContext(context->context, "skip.defer");
+			LLVMBasicBlockRef defer_block = LLVMCreateBasicBlockInContext(context->context, "do.defer");
+
+			LLVMValueRef value = LLVMBuildLoad2(context->builder, BACKEND_TYPE(type_bool), gencontext_get_defer_bool(context, defer), "will.defer");
+
+			gencontext_emit_cond_br(context, value, defer_block, exit_block);
+
+			// Emit the defer.
+			gencontext_emit_block(context, defer_block);
+			gencontext_emit_stmt(context, defer->defer_stmt.body);
+
+			// Jump to exit.
+			gencontext_emit_br(context, exit_block);
+
+			// And now we just emit the exit block.
+			gencontext_emit_block(context, exit_block);
+		}
+		else
+		{
+			gencontext_emit_stmt(context, defer->defer_stmt.body);
+		}
+		defer = defer->defer_stmt.prev_defer;
+	}
+}
+
+void gencontext_emit_goto(GenContext *context, Ast *ast)
+{
+	gencontext_emit_defer(context, ast->goto_stmt.defer.start, ast->goto_stmt.defer.end);
+	Ast *defer = ast->goto_stmt.label->label_stmt.defer;
+	while (defer != ast->goto_stmt.defer.end)
+	{
+		LLVMBuildStore(context->builder, LLVMConstInt(BACKEND_TYPE(type_bool), 0, false),
+		               gencontext_get_defer_bool(context, defer));
+		defer = defer->defer_stmt.prev_defer;
+	}
+	gencontext_emit_jmp(context, ast->goto_stmt.label->label_stmt.backend_value);
+}
+
+void gencontext_emit_break(GenContext *context, Ast *ast)
+{
+	gencontext_emit_defer(context, ast->break_stmt.defers.start, ast->break_stmt.defers.end);
+
+	assert(context->break_continue_stack_index);
+	gencontext_emit_jmp(context, context->break_continue_stack[context->break_continue_stack_index - 1].break_block);
+}
+
+void gencontext_emit_continue(GenContext *context, Ast *ast)
+{
+	gencontext_emit_defer(context, ast->continue_stmt.defers.start, ast->continue_stmt.defers.end);
+
+	assert(context->break_continue_stack_index);
+	gencontext_emit_jmp(context, context->break_continue_stack[context->break_continue_stack_index - 1].continue_block);
+}
+
+void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
+{
+	gencontext_emit_defer(context, ast->next_stmt.defers.start, ast->next_stmt.defers.end);
+
+	assert(context->break_continue_stack_index);
+	gencontext_emit_jmp(context, context->break_continue_stack[context->break_continue_stack_index - 1].next_block);
+}
+
+void gencontext_emit_scoped_stmt(GenContext *context, Ast *ast)
+{
+	gencontext_emit_stmt(context, ast->scoped_stmt.stmt);
+	gencontext_emit_defer(context, ast->scoped_stmt.defers.start, ast->scoped_stmt.defers.end);
 }
 
 void gencontext_emit_stmt(GenContext *context, Ast *ast)
@@ -477,6 +565,9 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			TODO
 		case AST_POISONED:
 			UNREACHABLE
+		case AST_SCOPED_STMT:
+			gencontext_emit_scoped_stmt(context, ast);
+			break;
 		case AST_EXPR_STMT:
 			gencontext_emit_expr(context, ast->expr_stmt);
 			break;
@@ -484,12 +575,10 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			gencontext_emit_decl(context, ast);
 			break;
 		case AST_BREAK_STMT:
-			assert(context->break_continue_stack_index);
-			gencontext_emit_jmp(context, context->break_continue_stack[context->break_continue_stack_index - 1].break_block);
+			gencontext_emit_break(context, ast);
 			break;
 		case AST_CONTINUE_STMT:
-			assert(context->break_continue_stack_index);
-			gencontext_emit_jmp(context, context->break_continue_stack[context->break_continue_stack_index - 1].continue_block);
+			gencontext_emit_continue(context, ast);
 			break;
 		case AST_IF_STMT:
 			gencontext_emit_if(context, ast);
@@ -510,11 +599,16 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			gencontext_emit_do_stmt(context, ast);
 			break;
 		case AST_NEXT_STMT:
-			assert(context->break_continue_stack_index);
-			gencontext_emit_jmp(context, context->break_continue_stack[context->break_continue_stack_index - 1].next_block);
+			gencontext_emit_next_stmt(context, ast);
+			break;
+		case AST_DEFER_STMT:
+			if (ast->defer_stmt.emit_boolean)
+			{
+				LLVMBuildStore(context->builder, LLVMConstInt(BACKEND_TYPE(type_bool), 1, false),
+				               gencontext_get_defer_bool(context, ast));
+			}
 			break;
 		case AST_NOP_STMT:
-		case AST_DEFER_STMT:
 			break;
 		case AST_CATCH_STMT:
 		case AST_TRY_STMT:
@@ -539,7 +633,7 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			gencontext_emit_label(context, ast);
 			break;
 		case AST_GOTO_STMT:
-			gencontext_emit_jmp(context, ast->goto_stmt.label->label_stmt.backend_value);
+			gencontext_emit_goto(context, ast);
 			break;
 		case AST_SWITCH_STMT:
 			gencontext_emit_switch(context, ast);

@@ -59,6 +59,20 @@ static inline LLVMValueRef gencontext_emit_access_addr(GenContext *context, Expr
 	return LLVMBuildStructGEP2(context->builder, BACKEND_TYPE(expr->access_expr.parent->type), value, (unsigned)expr->access_expr.index, "");
 }
 
+LLVMValueRef gencontext_emit_scoped_expr(GenContext *context, Expr *expr)
+{
+	LLVMValueRef value = gencontext_emit_expr(context, expr->expr_scope.expr);
+	gencontext_emit_defer(context, expr->expr_scope.defers.start, expr->expr_scope.defers.end);
+	return value;
+}
+
+LLVMValueRef gencontext_emit_scoped_expr_address(GenContext *context, Expr *expr)
+{
+	LLVMValueRef value = gencontext_emit_address(context, expr->expr_scope.expr);
+	gencontext_emit_defer(context, expr->expr_scope.defers.start, expr->expr_scope.defers.end);
+	return value;
+}
+
 LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 {
 	switch (expr->expr_kind)
@@ -72,6 +86,8 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 			return gencontext_emit_access_addr(context, expr);
 		case EXPR_SUBSCRIPT:
 			return gencontext_emit_subscript_addr(context, expr);
+		case EXPR_SCOPED_EXPR:
+			return gencontext_emit_scoped_expr_address(context, expr);
 		case EXPR_CONST:
 		case EXPR_TYPE:
 		case EXPR_POISONED:
@@ -614,20 +630,14 @@ static inline LLVMValueRef gencontext_emit_struct_init_values_expr(GenContext *c
 	TODO
 }
 
-LLVMValueRef gencontext_emit_ast_expr(GenContext *context, Ast *expr)
-{
-	assert(expr->ast_kind == AST_EXPR_STMT);
-	LLVMValueRef value = gencontext_emit_expr(context, expr->expr_stmt);
-//	gencontext_emit_defer(context, expr);
-	return value;
-}
-
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
 		case EXPR_POISONED:
 			UNREACHABLE
+		case EXPR_SCOPED_EXPR:
+			return gencontext_emit_scoped_expr(context, expr);
 		case EXPR_UNARY:
 			return gencontext_emit_unary_expr(context, expr);
 		case EXPR_CONST:

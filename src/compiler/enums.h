@@ -103,6 +103,7 @@ typedef enum
 	AST_NEXT_STMT,
 	AST_VOLATILE_STMT,
 	AST_WHILE_STMT,
+	AST_SCOPED_STMT,
 } AstKind;
 
 typedef enum
@@ -241,14 +242,9 @@ typedef enum
 	EXPR_INITIALIZER_LIST,
 	EXPR_EXPRESSION_LIST,
 	EXPR_CAST,
+	EXPR_SCOPED_EXPR,
 } ExprKind;
 
-typedef enum
-{
-	GOTO_NOT_ANALYSED,
-	GOTO_JUMP_FORWARD,
-	GOTO_JUMP_BACK
-} GotoType;
 
 
 typedef enum
@@ -263,7 +259,7 @@ typedef enum
 {
 	PREC_NONE,
 	PREC_ASSIGNMENT,        // =, *=, /=, %=, ...
-	PREC_TERNARY,       // ?:
+	PREC_TERNARY,           // ?:
 	PREC_LOGICAL,           // && ||
 	PREC_RELATIONAL,        // < > <= >= == !=
 	PREC_ADDITIVE,          // + -

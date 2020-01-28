@@ -31,6 +31,7 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 	assert(path && "Expected path.");
 	*ambiguous_other_decl = NULL;
 	Decl *decl = NULL;
+	bool path_found = false;
 	VECEACH(context->imports, i)
 	{
 		Decl *import = context->imports[i];
@@ -39,6 +40,7 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 		// Full import, first match the subpath.
 		if (path->len > import->import.path->len) continue;
 		if (!matches_subpath(import->import.path, path)) continue;
+		path_found = true;
 		Decl *found = module_find_symbol(import->module, symbol, MODULE_SYMBOL_SEARCH_EXTERNAL);
 		if (!found) continue;
 		if (decl)
@@ -47,6 +49,15 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 			continue;
 		}
 		decl = found;
+	}
+	if (!decl)
+	{
+		if (!path_found)
+		{
+			SEMA_ERROR(path, "Unknown module %.*s.", path->len, path->module);
+			return &poisoned_decl;
+		}
+		return NULL;
 	}
 	context_register_external_symbol(context, decl);
 	return decl;
