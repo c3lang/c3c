@@ -16,7 +16,7 @@ const uint MaxDepth = 8;
 
 //#define DEBUG_NODES
 
-$if (DEBUG_NODES)
+$if (DEBUG_NODES):
 
 func void Blocks.dump(const Blocks* b)
 {
@@ -77,7 +77,7 @@ func void Blocks.dump(const Blocks* b)
     }
 }
 
-$endif
+$endif;
 
 /**
  * @ensure const(a), const(b)
@@ -142,11 +142,11 @@ func void Parser.parseTopLevel(Parser* p) throws ParseError
     {
         switch (p.tok.kind)
         {
-            case TokenKind.WORD:
+            case WORD:
                 p.parseKeyValue();
-            case TokenKind.LBRACE:
+            case LBRACE:
                 p.parseTable();
-            case TokenKind.Lbrace2:
+            case LBRACE2:
                 p.parseTableArray();
             default:
                 sprintf(p.errorMsg, "syntax error %s", p.tok.loc.str());
@@ -162,7 +162,7 @@ func uint getRawValue(uint raw) @(inline)
 
 func ValueType getRawType(uint raw) @(inline)
 {
-    return cast(ValueType, (raw >> ValueTypeOffset) & 0x3);
+    return cast((raw >> ValueTypeOffset) & 0x3, ValueType);
 }
 
 func uint addType(uint raw, ValueType t) @(inline)

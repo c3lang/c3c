@@ -30,8 +30,56 @@ union Test3
     int b;
 }
 
+struct Teob
+{
+    int x;
+    double y;
+    int xy;
+    int oekfeo;
+}
+
+error Error
+{
+    BLURB,
+    NO_SUCH_FILE,
+
+}
+error OtherError
+{
+    FOO_BAR
+}
+
+func int jumptest()
+{
+    if (1) goto LABELX;
+    return 1;
+    LABELX:
+    return 2;
+}
+func int borok() throws
+{
+    return 1;
+}
+
+func int barok() throws Error, OtherError
+{
+    if (true)
+    {
+        throw Error.NO_SUCH_FILE;
+    }
+    return 100;
+}
+
 func int boba(int y, int j)
 {
+//    hello();
+    //$e = type(Teob);
+    //Teob xbd = type(Teob);
+    //Teob xb = { 1, 1.0, 100, 1000 };
+    //Test2 tee = { { 3 }, 4 };
+    //Test3 xc = { eo = 1, t.a = 1 };
+   // throw Error.NO_SUCH_FILE;
+
     for (int i = 0; i < 10; i++)
     {
 
@@ -106,13 +154,14 @@ typedef func void(int) as Foo;
 //typedef int as Foo;
 extern func void printf(char *hello);
 
-macro @hello()
+macro hello()
 {
     printf("Hello world!\n");
 }
 
 func void bob()
 {
+
     byte a = 2;
     short b = 3;
     int c = 4;

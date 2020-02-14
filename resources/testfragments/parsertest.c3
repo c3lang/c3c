@@ -13,6 +13,16 @@ macro @goo(i, $e)
 
 }
 
+struct Foo
+{
+    $if ($use_bar > 0)
+    {
+        int bar;
+    }
+    int baz;
+}
+
+
 macro @soom!(i, $e)
 {}
 
@@ -125,6 +135,12 @@ $else
     generic test(i) { }
 }
 
+#if $b > 0
+
+#else
+
+#endif
+
 generic boofer2(i, g, eok)
 {
     case int, char[], type($eoo):
@@ -132,6 +148,8 @@ generic boofer2(i, g, eok)
     default:
         return 1000;
 }
+
+
 
 func void hello() throws Errors
 {

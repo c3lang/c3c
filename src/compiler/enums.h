@@ -63,6 +63,7 @@ typedef enum
 	BINARYOP_BIT_XOR_ASSIGN,
 	BINARYOP_SHR_ASSIGN,
 	BINARYOP_SHL_ASSIGN,
+	BINARYOP_LAST = BINARYOP_SHL_ASSIGN
 } BinaryOp;
 
 typedef enum
@@ -218,6 +219,7 @@ typedef enum
 	EXIT_BREAK,
 	EXIT_GOTO,
 	EXIT_CONTINUE,
+	EXIT_THROW,
 	EXIT_RETURN,
 } ExitType;
 
@@ -243,6 +245,7 @@ typedef enum
 	EXPR_EXPRESSION_LIST,
 	EXPR_CAST,
 	EXPR_SCOPED_EXPR,
+	EXPR_MACRO_EXPR,
 } ExprKind;
 
 
@@ -259,6 +262,7 @@ typedef enum
 {
 	PREC_NONE,
 	PREC_ASSIGNMENT,        // =, *=, /=, %=, ...
+	PREC_TRY,               // try
 	PREC_TERNARY,           // ?:
 	PREC_LOGICAL,           // && ||
 	PREC_RELATIONAL,        // < > <= >= == !=
@@ -266,7 +270,7 @@ typedef enum
 	PREC_BIT,               // ^ | &
 	PREC_SHIFT,             // << >> >>>
 	PREC_MULTIPLICATIVE,    // * / %
-	PREC_UNARY,             // ! - + ~ * & prefix ++/--
+	PREC_UNARY,             // @ ! - + ~ * & prefix ++/--
 	PREC_CALL,              // . () [] postfix ++/--
 } Precedence;
 
@@ -401,9 +405,8 @@ typedef enum
 	TOKEN_CONST_IDENT,      // Any purely upper case ident,
 	TOKEN_TYPE_IDENT,       // Any ident on the format FooBar or __FooBar
 
-	// We want to parse @foo / #foo / $foo separately.
-	// Otherwise we allow things like "@ foo" which would be pretty bad.
-	TOKEN_AT_IDENT,         // @foobar
+	// We want to parse #foo / $foo separately.
+	// Otherwise we allow things like "# foo" which would be pretty bad.
 	TOKEN_HASH_IDENT,       // #foobar
 	TOKEN_CT_IDENT,         // $foobar
 
@@ -486,6 +489,7 @@ typedef enum
 
 	TOKEN_EOF,              // \n - SHOULD ALWAYS BE THE LAST TOKEN.
 
+	TOKEN_LAST = TOKEN_EOF,
 } TokenType;
 
 
@@ -523,9 +527,11 @@ typedef enum
 	TYPE_ARRAY,
 	TYPE_VARARRAY,
 	TYPE_SUBARRAY,
+	TYPE_META_TYPE,
+	TYPE_LAST = TYPE_META_TYPE
 } TypeKind;
 
-#define TYPE_KINDS (TYPE_SUBARRAY + 1)
+#define TYPE_KINDS (TYPE_LAST + 1)
 
 typedef enum
 {
@@ -537,6 +543,7 @@ typedef enum
 	UNARYOP_NOT,
 	UNARYOP_INC,
 	UNARYOP_DEC,
+	UNARYOP_LAST = UNARYOP_DEC
 } UnaryOp;
 
 typedef enum

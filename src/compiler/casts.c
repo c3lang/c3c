@@ -38,7 +38,7 @@ static bool sema_type_mismatch(Expr *expr, Type *type, CastType cast_type)
 			break;
 
 	}
-	SEMA_ERROR(expr, "Cannot %s '%s' to '%s'", action, type_to_error_string(expr->type), type_to_error_string(type));
+	SEMA_ERROR(expr, "Cannot %s '%s' to '%s'.", action, type_to_error_string(expr->type), type_to_error_string(type));
 	return false;
 }
 
@@ -580,6 +580,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_ARRAY:
 		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
+		case TYPE_META_TYPE:
 			// Improve consider vararray / subarray conversion to boolean.
 			return CAST_ERROR;
 		case TYPE_BOOL:
@@ -614,6 +615,7 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 	{
 		case TYPE_POISONED:
 		case TYPE_VOID:
+		case TYPE_META_TYPE:
 			break;
 		case TYPE_BOOL:
 			if (type_is_integer(canonical)) return boxi(expr, from_type, canonical, to_type, cast_type);

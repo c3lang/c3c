@@ -4,11 +4,11 @@
 
 #include "llvm_codegen_internal.h"
 
-#define LLVMCONTEXT(gen_context) (gen_context ? gen_context->context : LLVMGetGlobalContext())
+LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type);
 
-static inline LLVMTypeRef gencontext_create_llvm_type_from_decl(GenContext *context, Decl *decl)
+static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl)
 {
-	static LLVMTypeRef params[512];
+	static LLVMTypeRef params[MAX_PARAMS];
 	switch (decl->decl_kind)
 	{
 		case DECL_ATTRIBUTE:
@@ -28,26 +28,25 @@ static inline LLVMTypeRef gencontext_create_llvm_type_from_decl(GenContext *cont
 		{
 			VECEACH(decl->func.function_signature.params, i)
 			{
-				params[i] = BACKEND_TYPE(decl->func.function_signature.params[i]->type);
+				params[i] = llvm_get_type(context, decl->func.function_signature.params[i]->type);
 			}
 			unsigned param_size = vec_size(decl->func.function_signature.params);
-			return LLVMFunctionType(BACKEND_TYPE(decl->func.function_signature.rtype->type),
+			return LLVMFunctionType(llvm_get_type(context, decl->func.function_signature.rtype->type),
 			                        params,
 			                        param_size,
 			                        decl->func.function_signature.variadic);
 
 		}
 		case DECL_TYPEDEF:
-			return BACKEND_TYPE(decl->typedef_decl.type);
+			return llvm_get_type(context, decl->typedef_decl.type);
 		case DECL_STRUCT:
 		{
 			LLVMTypeRef *types = NULL;
 			VECEACH(decl->strukt.members, i)
 			{
-				VECADD(types, BACKEND_TYPE(decl->strukt.members[i]->type));
+				vec_add(types, llvm_get_type(context, decl->strukt.members[i]->type));
 			}
-			// TODO fix name.
-			LLVMTypeRef type = LLVMStructCreateNamed(LLVMCONTEXT(context), decl->external_name);
+			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->external_name);
 			LLVMStructSetBody(type, types, vec_size(types), decl->is_packed);
 			return type;
 		}
@@ -57,7 +56,7 @@ static inline LLVMTypeRef gencontext_create_llvm_type_from_decl(GenContext *cont
 			unsigned long long max_size = 0;
 			VECEACH(decl->strukt.members, i)
 			{
-				LLVMTypeRef type = BACKEND_TYPE(decl->strukt.members[i]->type);
+				LLVMTypeRef type = llvm_get_type(context, decl->strukt.members[i]->type);
 				unsigned long long size = LLVMStoreSizeOfType(target_data_layout(), type);
 				if (size > max_size || !max_type)
 				{
@@ -65,13 +64,15 @@ static inline LLVMTypeRef gencontext_create_llvm_type_from_decl(GenContext *cont
 					max_type = type;
 				}
 			}
-			LLVMTypeRef type = LLVMStructCreateNamed(LLVMCONTEXT(context), decl->external_name);
+			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->external_name);
 			LLVMStructSetBody(type, &max_type, 1, false);
 			return type;
 		}
 		case DECL_ENUM:
-			return BACKEND_TYPE(decl->type);
+			return llvm_get_type(context, decl->type);
 		case DECL_ERROR:
+			TODO
+			/*
 			if (!context->error_type)
 			{
 				LLVMTypeRef domain_type = LLVMInt64TypeInContext(LLVMCONTEXT(context));
@@ -81,117 +82,144 @@ static inline LLVMTypeRef gencontext_create_llvm_type_from_decl(GenContext *cont
 				LLVMStructSetBody(error_type, types, 2, false);
 				context->error_type = error_type;
 			}
-			return context->error_type;
+			return context->error_type;*/
 		case DECL_THROWS:
 			UNREACHABLE
 	}
 	UNREACHABLE
 }
-static inline LLVMTypeRef gencontext_create_llvm_type_from_ptr(GenContext *context, Type *type)
+static inline LLVMTypeRef llvm_type_from_ptr(LLVMContextRef context, Type *type)
 {
-	LLVMTypeRef base_llvm_type = BACKEND_TYPE(type->pointer);
-	vec_add(context->generated_types, type);
+	LLVMTypeRef base_llvm_type = llvm_get_type(context, type->pointer);
 
 	if (type->canonical != type)
 	{
-		return type->backend_type = BACKEND_TYPE(type->canonical);
+		return type->backend_type = llvm_get_type(context, type->canonical);
 	}
 
 	return type->backend_type = LLVMPointerType(base_llvm_type, /** TODO **/0);
 }
 
-static inline LLVMTypeRef gencontext_create_llvm_type_from_array(GenContext *context, Type *type)
+static inline LLVMTypeRef llvm_type_from_array(LLVMContextRef context, Type *type)
 {
-	LLVMTypeRef base_llvm_type = BACKEND_TYPE(type->array.base);
-
-	vec_add(context->generated_types, type);
+	LLVMTypeRef base_llvm_type = llvm_get_type(context, type->array.base);
 
 	if (type->canonical != type)
 	{
-		return type->backend_type = BACKEND_TYPE(type->canonical);
+		return type->backend_type = llvm_get_type(context, type->canonical);
 	}
 
 	return type->backend_type = LLVMPointerType(base_llvm_type, /** TODO **/0);
 }
 
-LLVMTypeRef gencontext_create_llvm_func_type(GenContext *context, Type *type)
+LLVMTypeRef llvm_func_type(LLVMContextRef context, Type *type)
 {
 	LLVMTypeRef *params = NULL;
 	FunctionSignature *signature = type->func.signature;
-	// TODO throws
-	if (vec_size(signature->params))
+	bool return_parameter = func_return_value_as_out(signature);
+	bool return_error = func_has_error_return(signature);
+	unsigned parameters = vec_size(signature->params) + return_parameter;
+	if (parameters)
 	{
-		params = malloc_arena(sizeof(LLVMTypeRef) * vec_size(signature->params));
+		params = malloc_arena(sizeof(LLVMTypeRef) * parameters);
+		if (return_parameter)
+		{
+			params[0] = llvm_get_type(context, signature->rtype->type);
+		}
 		VECEACH(signature->params, i)
 		{
-			params[i] = BACKEND_TYPE(signature->params[i]->type->canonical);
+			params[i + return_parameter] = llvm_get_type(context, signature->params[i]->type->canonical);
 		}
 	}
-	return LLVMFunctionType(
-			BACKEND_TYPE(type->func.signature->rtype->type),
-			params, vec_size(signature->params), signature->variadic);
+	LLVMTypeRef ret_type;
+	if (return_error)
+	{
+		ret_type = llvm_get_type(context, type_ulong);
+	}
+	else
+	{
+		ret_type = return_parameter ? llvm_get_type(context, type_void) : llvm_get_type(context, type->func.signature->rtype->type);
+	}
+	return LLVMFunctionType( ret_type, params, parameters, signature->variadic);
 }
 
 
-LLVMTypeRef gencontext_get_llvm_type(GenContext *context, Type *type)
+LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 {
-	if (type->backend_type)
+	if (type->backend_type && LLVMGetTypeContext(type->backend_type) == context)
 	{
-		assert(LLVMGetTypeContext(type->backend_type) == context->context);
 		return type->backend_type;
 	}
-	vec_add(context->generated_types, type);
-
 	DEBUG_LOG("Generating type %s", type->name);
 	switch (type->type_kind)
 	{
+		case TYPE_POISONED:
+		case TYPE_IXX:
+		case TYPE_UXX:
+		case TYPE_FXX:
+		case TYPE_META_TYPE:
+			UNREACHABLE;
 		case TYPE_TYPEDEF:
-			return type->backend_type = BACKEND_TYPE(type->canonical);
+			return type->backend_type = llvm_get_type(context, type->canonical);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ENUM:
 		case TYPE_ERROR:
 		case TYPE_ERROR_UNION:
-			return type->backend_type = gencontext_create_llvm_type_from_decl(context, type->decl);
+			return type->backend_type = llvm_type_from_decl(context, type->decl);
 		case TYPE_FUNC:
-			return type->backend_type = gencontext_create_llvm_func_type(context, type);
+			return type->backend_type = llvm_func_type(context, type);
 		case TYPE_VOID:
+			return type->backend_type = LLVMVoidTypeInContext(context);
 		case TYPE_F64:
+			return type->backend_type = LLVMDoubleTypeInContext(context);
 		case TYPE_F32:
+			return type->backend_type = LLVMFloatTypeInContext(context);
 		case TYPE_U64:
-		case TYPE_POISONED:
-		case TYPE_BOOL:
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
 		case TYPE_I64:
-		case TYPE_IXX:
-		case TYPE_U8:
-		case TYPE_U16:
+			return type->backend_type = LLVMIntTypeInContext(context, 64U);
 		case TYPE_U32:
-		case TYPE_UXX:
-		case TYPE_FXX:
-			UNREACHABLE;
+		case TYPE_I32:
+			return type->backend_type = LLVMIntTypeInContext(context, 32U);
+		case TYPE_U16:
+		case TYPE_I16:
+			return type->backend_type = LLVMIntTypeInContext(context, 16U);
+		case TYPE_U8:
+		case TYPE_I8:
+			return type->backend_type = LLVMIntTypeInContext(context, 8U);
+		case TYPE_BOOL:
+			return type->backend_type = LLVMIntTypeInContext(context, 1U);
 		case TYPE_POINTER:
-			return type->backend_type = gencontext_create_llvm_type_from_ptr(context, type);
+			return type->backend_type = llvm_type_from_ptr(context, type);
 		case TYPE_STRING:
 			// TODO
 			return type->backend_type = LLVMPointerType(LLVMTYPE(type_char), 0);
 		case TYPE_ARRAY:
-			return type->backend_type = gencontext_create_llvm_type_from_array(context, type);
+			return type->backend_type = llvm_type_from_array(context, type);
 		case TYPE_SUBARRAY:
 		{
-			LLVMTypeRef base_type = BACKEND_TYPE(type->array.base);
-			LLVMTypeRef size_type = BACKEND_TYPE(type_usize);
+			LLVMTypeRef base_type = llvm_get_type(context, type->array.base);
+			LLVMTypeRef size_type = llvm_get_type(context, type_usize);
 			assert(type->array.base->canonical->type_kind == TYPE_POINTER);
-			LLVMTypeRef array_type = LLVMStructCreateNamed(LLVMCONTEXT(context), type->name);
+			LLVMTypeRef array_type = LLVMStructCreateNamed(context, type->name);
 			LLVMTypeRef types[2] = { base_type, size_type };
 			LLVMStructSetBody(array_type, types, 2, false);
 			return type->backend_type = array_type;
 		}
 		case TYPE_VARARRAY:
-			return type->backend_type = LLVMPointerType(BACKEND_TYPE(type->array.base), 0);
+			return type->backend_type = LLVMPointerType(llvm_get_type(context, type->array.base), 0);
 	}
 	UNREACHABLE;
 }
 
+LLVMTypeRef gencontext_get_llvm_type(GenContext *context, Type *type)
+{
+	return llvm_get_type(context->context, type);
+}
+
+void llvm_set_struct_size_alignment(Decl *decl)
+{
+	LLVMTypeRef type = llvm_get_type(LLVMGetGlobalContext(), decl->type);
+	decl->strukt.size = LLVMStoreSizeOfType(target_data_layout(), type);
+	decl->strukt.alignment = LLVMPreferredAlignmentOfType(target_data_layout(), type);
+}

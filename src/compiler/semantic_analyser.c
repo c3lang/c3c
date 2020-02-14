@@ -60,6 +60,14 @@ static inline void context_pop_defers_to(Context *context, DeferList *list)
 	context_pop_defers(context);
 }
 
+static inline void context_add_exit(Context *context, ExitType exit)
+{
+	if (context->current_scope->exit < exit)
+	{
+		context->current_scope->exit = exit;
+	}
+}
+
 static inline void context_pop_scope(Context *context)
 {
 	assert(context->current_scope != &context->scopes[0]);
@@ -201,7 +209,6 @@ static inline bool sema_analyse_struct_union(Context *context, Decl *decl)
 		}
 	}
 	DEBUG_LOG("Analysis complete.");
-	// Todo, resolve alignment, size etc.
 	return decl_ok(decl);
 }
 
@@ -235,7 +242,7 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 
 static inline Type *sema_analyse_function_signature(Context *context, FunctionSignature *signature, bool is_function)
 {
-	char buffer[2048];
+	char buffer[MAX_FUNCTION_SIGNATURE_SIZE + 200];
 	size_t buffer_write_offset = 0;
 	bool all_ok = true;
 	all_ok = sema_resolve_type_info(context, signature->rtype) && all_ok;
@@ -244,8 +251,14 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 		type_append_signature_name(signature->rtype->type, buffer, &buffer_write_offset);
 		buffer[buffer_write_offset++] = '(';
 	}
+	if (vec_size(signature->params) > MAX_PARAMS)
+	{
+		SEMA_ERROR(signature->params[MAX_PARAMS], "Number of params exceeds %d which is unsupported.", MAX_PARAMS);
+		return false;
+	}
 	STable *names = &context->scratch_table;
 	stable_clear(names);
+
 	VECEACH(signature->params, i)
 	{
 		Decl *param = signature->params[i];
@@ -284,20 +297,28 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 		buffer[buffer_write_offset++] = '.';
 	}
 	buffer[buffer_write_offset++] = ')';
+	if (signature->throw_any)
+	{
+		assert(!signature->throws);
+		buffer[buffer_write_offset++] = '!';
+	}
 	if (vec_size(signature->throws))
 	{
 		buffer[buffer_write_offset++] = '!';
 		VECEACH(signature->throws, i)
 		{
-			TODO
+			Decl *err_decl = signature->throws[i];
+			if (!sema_analyse_decl(context, err_decl))
+			{
+				continue;
+			}
 			if (i > 0 && all_ok)
 			{
-				buffer[buffer_write_offset++] = ',';
+				buffer[buffer_write_offset++] = '|';
 			}
-//			type_append_signature_name(signature->tparam->var.type, buffer, &buffer_write_offset);
+			type_append_signature_name(err_decl->type, buffer, &buffer_write_offset);
 		}
 	}
-
 	if (!all_ok) return NULL;
 	TokenType type = TOKEN_INVALID_TOKEN;
 	signature->mangled_signature = symtab_add(buffer, buffer_write_offset, fnv1a(buffer, buffer_write_offset), &type);
@@ -587,6 +608,7 @@ static inline bool sema_analyse_goto_stmt(Context *context, Ast *statement)
 		}
 	}
 	vec_add(context->gotos, statement);
+	context_add_exit(context, EXIT_GOTO);
 	return true;
 }
 
@@ -864,14 +886,47 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 	return success;
 }
 
-static bool sema_analyse_try_stmt(Context *context __unused, Ast *statement __unused)
+static bool sema_analyse_try_stmt(Context *context, Ast *statement)
 {
-	TODO
+	context->try_nesting++;
+	unsigned errors = vec_size(context->errors);
+	if (!sema_analyse_statement(context, statement->try_stmt))
+	{
+		context->try_nesting--;
+		return false;
+	}
+	unsigned new_errors = vec_size(context->errors);
+	if (new_errors == errors)
+	{
+		SEMA_ERROR(statement, "No error to 'try' in the statement that follows, please remove the 'try'.");
+		return false;
+	}
+	for (unsigned i = errors; i < new_errors; i++)
+	{
+		// At least one uncaught error found!
+		if (context->errors[i]) return true;
+	}
+	SEMA_ERROR(statement, "All errors in the following statement was caught, please remove the 'try'.");
+	return false;
 }
 
-static bool sema_analyse_throw_stmt(Context *context __unused, Ast *statement __unused)
+static bool sema_analyse_throw_stmt(Context *context, Ast *statement)
 {
-	TODO
+	Expr *throw_value = statement->throw_stmt.throw_value;
+	if (!sema_analyse_expr(context, NULL, throw_value)) return false;
+	Type *type = throw_value->type->canonical;
+	if (type->type_kind != TYPE_ERROR)
+	{
+		SEMA_ERROR(throw_value, "Only 'error' types can be thrown, this is a '%s'.", type->name);
+		return false;
+	}
+	if (!context->try_nesting && !func_has_error_return(&context->active_function_for_analysis->func.function_signature))
+	{
+		SEMA_ERROR(statement, "This 'throw' is not handled, please add a 'throws %s' clause to the function signature or use try-catch.", type->name);
+		return false;
+	}
+	VECADD(context->errors, type->decl);
+	return true;
 }
 
 
@@ -998,6 +1053,12 @@ static inline bool sema_analyse_function_body(Context *context, Decl *func)
 	context->current_scope = &context->scopes[0];
 	// Clean out the current scope.
 	memset(context->current_scope, 0, sizeof(*context->current_scope));
+
+	// Clear try handling
+	vec_resize(context->errors, 0);
+	context->try_nesting = 0;
+
+
 	context->labels = NULL;
 	context->gotos = NULL;
 	context->last_local = &context->locals[0];
@@ -1222,10 +1283,42 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 	return success;
 }
 
+static inline bool sema_analyse_throws(Context *context, Decl *decl)
+{
+	if (!sema_resolve_type_info(context, decl->throws)) return false;
+	decl->type = decl->throws->type;
+	return true;
+}
+
 static inline bool sema_analyse_error(Context *context, Decl *decl)
 {
-	// TODO assign numbers to constants
-	return true;
+	Decl **constants = decl->error.error_constants;
+	unsigned size = vec_size(constants);
+	if (size > MAX_ERRORS)
+	{
+		SEMA_ERROR(decl, "More than %d errors declared in a single error type.", MAX_ERRORS);
+		return false;
+	}
+	bool success = true;
+	for (unsigned i = 0; i < size; i++)
+	{
+		Decl *constant = constants[i];
+		for (unsigned j = 0; j < i; j++)
+		{
+			if (constant->name == constants[j]->name)
+			{
+				SEMA_ERROR(constant, "Duplicate error names, please remove one of them.");
+				SEMA_PREV(constants[j], "The previous declaration was here.");
+				decl_poison(constant);
+				decl_poison(constants[j]);
+				success = false;
+				break;
+			}
+		}
+		constant->error_constant.value = i;
+		constant->resolve_status = RESOLVE_DONE;
+	}
+	return success;
 }
 
 bool sema_analyse_decl(Context *context, Decl *decl)
@@ -1245,10 +1338,12 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_THROWS:
-			TODO
+			if (!sema_analyse_throws(context, decl)) return decl_poison(decl);
+			break;
 		case DECL_STRUCT:
 		case DECL_UNION:
 			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
+			llvm_set_struct_size_alignment(decl);
 			decl_set_external_name(decl);
 			break;
 		case DECL_FUNC:
@@ -1408,17 +1503,18 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 	                                 type_info->unresolved.path,
 	                                 &ambiguous_decl);
 
+	if (!decl)
+	{
+		SEMA_TOKEN_ERROR(type_info->unresolved.name_loc, "Unknown type '%s'.", type_info->unresolved.name_loc.string);
+		return type_info_poison(type_info);
+	}
+
 	// Already handled
 	if (!decl_ok(decl))
 	{
 		return type_info_poison(type_info);
 	}
 
-	if (!decl)
-	{
-		SEMA_TOKEN_ERROR(type_info->unresolved.name_loc, "Unknown type '%s'.", type_info->unresolved.name_loc.string);
-		return type_info_poison(type_info);
-	}
 
 	if (ambiguous_decl)
 	{

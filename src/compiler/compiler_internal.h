@@ -9,6 +9,7 @@
 #include "../build/build_options.h"
 #include "compiler.h"
 #include "enums.h"
+#include "target.h"
 
 typedef uint32_t SourceLoc;
 #define INVALID_LOC UINT32_MAX
@@ -18,6 +19,9 @@ typedef uint32_t SourceLoc;
 #define MAX_SCOPE_DEPTH 0xFF
 #define MAX_PATH 1024
 #define MAX_DEFERS 0xFFFF
+#define MAX_FUNCTION_SIGNATURE_SIZE 2048
+#define MAX_PARAMS 512
+#define MAX_ERRORS 0xFFFF
 
 typedef struct _Ast Ast;
 typedef struct _Decl Decl;
@@ -102,8 +106,10 @@ typedef struct _Path
 
 typedef struct
 {
-	unsigned bitsize : 16;
+	unsigned char bitsize;
 	unsigned char bytesize;
+	unsigned char min_alignment;
+	unsigned char pref_alignment;
 }  TypeBuiltin;
 
 typedef struct
@@ -128,7 +134,7 @@ struct _Type
 	TypeKind type_kind : 8;
 	struct _Type *canonical;
 	const char *name;
-	struct _Type **ptr_cache;
+	struct _Type **type_cache;
 	void *backend_type;
 	void *backend_debug_type;
 	union
@@ -138,6 +144,7 @@ struct _Type
 		TypeArray array;
 		TypeFunc func;
 		Type *pointer;
+		Type *child;
 	};
 };
 
@@ -183,6 +190,8 @@ typedef struct
 
 typedef struct
 {
+	uint32_t alignment;
+	uint64_t size;
 	Decl **members;
 } StructDecl;
 
@@ -230,6 +239,7 @@ typedef struct _FunctionSignature
 {
 	CallConvention convention : 4;
 	bool variadic : 1;
+	bool throw_any : 1;
 	TypeInfo *rtype;
 	Decl** params;
 	Decl** throws;
@@ -339,6 +349,7 @@ typedef struct _Decl
 		CtIfDecl ct_elif_decl;
 		Decl** ct_else_decl;
 		Expr *incr_array_decl;
+		TypeInfo *throws;
 	};
 } Decl;
 
@@ -474,6 +485,7 @@ struct _Expr
 		ExprStructValue struct_value_expr;
 		ExprTypeRef type_access;
 		ExprTry try_expr;
+		Expr* macro_expr;
 		ExprBinary binary_expr;
 		ExprTernary ternary_expr;
 		ExprUnary unary_expr;
@@ -651,6 +663,12 @@ typedef struct
 	DeferList defers;
 } AstNextStmt;
 
+typedef struct
+{
+	Expr *throw_value;
+	DeferList defers;
+} AstThrowStmt;
+
 typedef struct _Ast
 {
 	SourceRange span;
@@ -663,9 +681,9 @@ typedef struct _Ast
 		AstCompoundStmt function_block_stmt;
 		Decl *declare_stmt;
 		Expr *expr_stmt;
-		Expr *throw_stmt;
-		struct _Ast *volatile_stmt;
-		struct _Ast *try_stmt;
+		AstThrowStmt throw_stmt;
+		Ast *volatile_stmt;
+		Ast *try_stmt;
 		AstLabelStmt label_stmt;
 		AstReturnStmt return_stmt;
 		AstWhileStmt while_stmt;
@@ -764,6 +782,12 @@ typedef struct _Context
 	Token *next_lead_comment;
 	DynamicScope *current_scope;
 	Decl *evaluating_macro;
+	// Error handling
+	struct
+	{
+		Decl **errors;
+		int try_nesting;
+	};
 	Type *rtype;
 	int in_volatile_section;
 	Decl *locals[MAX_LOCALS];
@@ -780,7 +804,7 @@ typedef struct _Context
 	Token next_tok;
 	struct
 	{
-		bool has_stored;
+		bool in_lookahead;
 		const char *current;
 		const char *start;
 		Token tok;
@@ -788,7 +812,6 @@ typedef struct _Context
 		Token *lead_comment;
 		Token *trailing_comment;
 		Token *next_lead_comment;
-		unsigned comments;
 	} stored;
 } Context;
 
@@ -859,7 +882,7 @@ static inline Ast *extend_ast_with_prev_token(Context *context, Ast *ast)
 }
 
 
-void builtin_setup();
+void builtin_setup(Target *target);
 
 static inline bool builtin_may_negate(Type *canonical)
 {
@@ -915,6 +938,8 @@ CastKind cast_to_bool_kind(Type *type);
 bool cast_to_runtime(Expr *expr);
 
 void llvm_codegen(Context *context);
+void llvm_set_struct_size_alignment(Decl *decl);
+
 
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
@@ -968,6 +993,12 @@ void fprint_ast(FILE *file, Ast *ast);
 void fprint_decl(FILE *file, Decl *dec);
 void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent);
 void fprint_expr_recursive(FILE *file, Expr *expr, int indent);
+
+bool func_return_value_as_out(FunctionSignature *func_sig);
+static inline bool func_has_error_return(FunctionSignature *func_sig)
+{
+	return func_sig->throws || func_sig->throw_any;
+}
 
 
 Token lexer_scan_token(Lexer *lexer);
@@ -1035,6 +1066,7 @@ void target_setup();
 int target_alloca_addr_space();
 void *target_data_layout();
 void *target_machine();
+void *target_target();
 
 #define TOKEN_MAX_LENGTH 0xFFFF
 #define TOK2VARSTR(_token) _token.span.length, _token.start
@@ -1047,9 +1079,10 @@ static inline Token wrap(const char *string)
 }
 
 Type *type_get_ptr(Type *ptr_type);
+Type *type_get_meta(Type *meta_type);
 Type *type_get_array(Type *arr_type, uint64_t len);
-Type *type_signed_int_by_size(int bytesize);
-Type *type_unsigned_int_by_size(int bytesize);
+Type *type_signed_int_by_bitsize(unsigned bytesize);
+Type *type_unsigned_int_by_bitsize(unsigned bytesize);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 Type *type_find_common_ancestor(Type *left, Type *right);
 const char *type_to_error_string(Type *type);
@@ -1141,7 +1174,6 @@ static inline bool type_is_number(Type *type)
  __type->name_loc = _name; __type->unresolved.module = _module; __type; })
 #define TYPE_UNRESOLVED(_name) ({ TypeInfo *__type = type_new(TYPE_USER_DEFINED); __type->name_loc = _name; __type; })
 
-AssignOp assignop_from_token(TokenType type);
 UnaryOp unaryop_from_token(TokenType type);
 TokenType unaryop_to_token(UnaryOp type);
 PostUnaryOp post_unaryop_from_token(TokenType type);
@@ -1159,8 +1191,7 @@ static inline const char* struct_union_name_from_token(TokenType type)
 	return type == TOKEN_STRUCT ? "struct" : "union";
 }
 
-#define BACKEND_TYPE(type) gencontext_get_llvm_type(context, type)
-#define BACKEND_TYPE_GLOBAL(type) gencontext_get_llvm_type(NULL, type)
+#define llvm_type(type) gencontext_get_llvm_type(context, type)
 #define DEBUG_TYPE(type) gencontext_get_debug_type(context, type)
 
 void advance(Context *context);

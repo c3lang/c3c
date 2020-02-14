@@ -504,7 +504,7 @@ Token lexer_scan_token(Lexer *lexer)
 	switch (c)
 	{
 		case '@':
-			return scan_prefixed_ident(lexer, TOKEN_AT_IDENT, TOKEN_AT, true, "@");
+			return make_token(lexer, TOKEN_AT, "@");
 		case '\'':
 			return scan_char(lexer);
 		case '"':

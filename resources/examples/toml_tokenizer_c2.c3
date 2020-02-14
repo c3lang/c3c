@@ -139,17 +139,17 @@ func void Tokenizer.lex(Tokenizer* t, Token* result)
                 t.loc.column = 1;
             case '=':
                 result.loc = t.loc;
-                result.kind = TokenKind.EQUALS;
+                result.kind = EQUALS;
                 t.advance(1);
                 return;
             case '.':
                 result.loc = t.loc;
-                result.kind = TokenKind.DOT;
+                result.kind = DOT;
                 t.advance(1);
                 return;
             case ',':
                 result.loc = t.loc;
-                result.kind = TokenKind.COMMA;
+                result.kind = COMMA;
                 t.advance(1);
                 return;
             case '[':
@@ -157,12 +157,12 @@ func void Tokenizer.lex(Tokenizer* t, Token* result)
                 if (t.current[1] == '[')
                 {
                     t.advance(2);
-                    result.kind = TokenKind.LBRACE2;
+                    result.kind = LBRACE2;
                 }
                 else
                 {
                     t.advance(1);
-                    result.kind = TokenKind.LBRACE;
+                    result.kind = LBRACE;
                 }
                 return;
             case ']':
@@ -170,12 +170,12 @@ func void Tokenizer.lex(Tokenizer* t, Token* result)
                 if (t.current[1] == ']')
                 {
                     t.advance(2);
-                    result.kind = TokenKind.RBRACE2;
+                    result.kind = RBRACE2;
                 }
                 else
                 {
                     t.advance(1);
-                    result.kind = TokenKind.RBRACE;
+                    result.kind = RBRACE;
                 }
                 return;
             case '"':
@@ -199,13 +199,13 @@ func void Tokenizer.lex(Tokenizer* t, Token* result)
                 if (t.current[0] == 'f' && strncmp("false", t.current, 5) == 0) {
                     t.advance(5);
                     result.number = 0;
-                    result.kind = TokenKind.Kw_false;
+                    result.kind = KW_FALSE;
                     return;
                 }
                 if (t.current[0] == 't' && strncmp("true", t.current, 4) == 0) {
                     t.advance(4);
                     result.number = 1;
-                    result.kind = TokenKind.Kw_true;
+                    result.kind = KW_TRUE;
                     return;
                 }
                 if (isalpha(t.current[0]))
@@ -214,7 +214,7 @@ func void Tokenizer.lex(Tokenizer* t, Token* result)
                     return;
                 }
                 sprintf(t.text, "unexpected char '%c' at %s", t.current[0], t.loc.str());
-                result.kind = TokenKind.Error;
+                result.kind = ERROR;
                 result.text = t.text;
                 return;
         }
@@ -267,7 +267,7 @@ func void Tokenizer.parseText(Tokenizer* t, Token* result)
     const char* start = t.current;
     while (t.current[0] && t.current[0] != '"') t.current++;
 
-    uint len = cast(uint, t.current - start);
+    uint len = cast(t.current - start, uint);
     // assert(len < MaxText);
     memcpy(t.text, start, len);
     t.text[len] = 0;
@@ -325,7 +325,7 @@ func void Tokenizer.parseNumber(Tokenizer* t, Token* result)
     // handle hexadecimal/ocal/binary number
     // handle '_', like 1_000_000
 
-    u32 number = cast<u32>(atoi(t.current));
+    uint number = cast(atoi(t.current), uint);
     result.kind = TokenKind.Number;
     result.number = number;
     while (t.current[0] && isdigit(t.current[0]))
@@ -347,9 +347,9 @@ func bool isKeyChar(u8 c)
 func void Tokenizer.parseKey(Tokenizer* t, Token* result)
 {
     char* start = t.current;
-    while (t.current[0] && isKeyChar(cast<u8>(t.current[0]))) t.current++;
+    while (t.current[0] && isKeyChar(cast(t.current[0], byte))) t.current++;
 
-    uint len = cast(uint, t.current - start);
+    uint len = cast(t.current - start, uint);
     // assert(len < MaxText);
     memcpy(t.text, start, len);
     t.text[len] = 0;

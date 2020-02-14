@@ -4,8 +4,6 @@
 
 #include "compiler_internal.h"
 
-const int MAX_DOCS_ROWS = 1024;
-
 Token module = { .type = TOKEN_INVALID_TOKEN };
 static Ast *parse_stmt(Context *context);
 static Expr *parse_expr(Context *context);
@@ -29,8 +27,8 @@ extern ParseRule rules[TOKEN_EOF + 1];
 
 void context_store_lexer_state(Context *context)
 {
-	assert(!context->stored.has_stored && "Nested lexer store is forbidden");
-	context->stored.has_stored = true;
+	assert(!context->stored.in_lookahead && "Nested lexer store is forbidden");
+	context->stored.in_lookahead = true;
 	context->stored.current = context->lexer.current;
 	context->stored.start = context->lexer.lexing_start;
 	context->stored.tok = context->tok;
@@ -38,13 +36,12 @@ void context_store_lexer_state(Context *context)
 	context->stored.lead_comment = context->lead_comment;
 	context->stored.trailing_comment = context->trailing_comment;
 	context->stored.next_lead_comment = context->next_lead_comment;
-	context->stored.comments = vec_size(context->comments);
 }
 
 void context_restore_lexer_state(Context *context)
 {
-	assert(context->stored.has_stored && "Tried to restore missing stored state.");
-	context->stored.has_stored = false;
+	assert(context->stored.in_lookahead && "Tried to restore missing stored state.");
+	context->stored.in_lookahead = false;
 	context->lexer.current = context->stored.current;
 	context->lexer.lexing_start = context->stored.start;
 	context->tok = context->stored.tok;
@@ -53,7 +50,6 @@ void context_restore_lexer_state(Context *context)
 	context->next_lead_comment = context->stored.next_lead_comment;
 	context->trailing_comment = context->stored.trailing_comment;
 	context->prev_tok_end = context->tok.span.end_loc;
-	vec_resize(context->comments, context->stored.comments);
 }
 
 inline void advance(Context *context)
@@ -69,6 +65,12 @@ inline void advance(Context *context)
 		context->next_tok = lexer_scan_token(&context->lexer);
 
 		if (context->next_tok.type == TOKEN_INVALID_TOKEN) continue;
+
+		if (context->stored.in_lookahead && (context->next_tok.type == TOKEN_COMMENT
+			|| context->next_tok.type == TOKEN_DOC_COMMENT))
+		{
+			continue;
+		}
 
 		// Walk through any regular comments
 		if (context->next_tok.type == TOKEN_COMMENT)
@@ -340,8 +342,6 @@ static Ast* parse_function_block(Context *context)
 	return ast;
 }
 
-
-
 static Path *parse_path_prefix(Context *context)
 {
 	if (context->tok.type != TOKEN_IDENT || context->next_tok.type != TOKEN_SCOPE) return NULL;
@@ -402,7 +402,7 @@ static Path *parse_path_prefix(Context *context)
  *		;
  *
  * Assume prev_token is the type.
- * @return Type (poisoned if fails)
+ * @return TypeInfo (poisoned if fails)
  */
 static inline TypeInfo *parse_base_type(Context *context)
 {
@@ -657,15 +657,6 @@ static Ast *parse_declaration_stmt(Context *context)
 }
 
 
-typedef enum
-{
-	NEXT_WAS_ERROR,
-	NEXT_WAS_EXPR,
-	NEXT_WAS_LABEL,
-	NEXT_WAS_DECL
-} ExprCheck;
-
-
 /**
  * expr_stmt ::= expression EOS
  * @return Ast* poisoned if expression fails to parse.
@@ -784,6 +775,14 @@ static inline Ast* parse_if_stmt(Context *context)
 	return if_ast;
 }
 
+/**
+ * while_stmt
+ *  : WHILE '(' control_expression ')' statement
+ *  ;
+ *
+ * @param context
+ * @return the while AST
+ */
 static inline Ast* parse_while_stmt(Context *context)
 {
 	Ast *while_ast = AST_NEW_TOKEN(AST_WHILE_STMT, context->tok);
@@ -801,12 +800,13 @@ static inline Ast* parse_while_stmt(Context *context)
  * 	: DEFER statement
  * 	| DEFER catch statement
  * 	;
- * @return
+ * @return the defer AST
  */
 static inline Ast* parse_defer_stmt(Context *context)
 {
 	Ast *defer_stmt = AST_NEW_TOKEN(AST_DEFER_STMT, context->tok);
 	advance_and_verify(context, TOKEN_DEFER);
+	// TODO catch
 	defer_stmt->defer_stmt.body = TRY_AST(parse_stmt(context));
 	return defer_stmt;
 }
@@ -840,7 +840,8 @@ static inline Ast* parse_catch_stmt(Context *context)
 	return catch_stmt;
 }
 
-static inline Ast* parse_asm_stmt(Context *context)
+
+static inline Ast* parse_asm_stmt(Context *context __unused)
 {
 	TODO
 }
@@ -994,7 +995,7 @@ static inline Ast* parse_ct_switch_stmt(Context *context)
 				stmt->ct_case_stmt.body = TRY_AST_OR(parse_stmt(context), &poisoned_ast);
 				vec_add(switch_statements, stmt);
 				break;
-			case TOKEN_DEFAULT:
+			case TOKEN_CT_DEFAULT:
 				stmt = AST_NEW_TOKEN(AST_CT_CASE_STMT, context->tok);
 				advance(context);
 				CONSUME_OR(TOKEN_COLON, &poisoned_ast);
@@ -1131,7 +1132,7 @@ static Ast *parse_throw_stmt(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_THROW_STMT, context->tok);
 	advance_and_verify(context, TOKEN_THROW);
-	ast->throw_stmt = TRY_EXPR_OR(parse_expr(context), &poisoned_ast);
+	ast->throw_stmt.throw_value = TRY_EXPR_OR(parse_expr(context), &poisoned_ast);
 	RETURN_AFTER_EOS(ast);
 }
 
@@ -1174,7 +1175,7 @@ static inline bool is_expr_after_type_ident(Context *context)
 	return context->next_tok.type == TOKEN_DOT || context->next_tok.type == TOKEN_LPAREN;
 }
 
-static bool parse_type_or_expr(Context *context, Expr **exprPtr, TypeInfo **typePtr)
+static bool parse_type_or_expr(Context *context, Expr **expr_ptr, TypeInfo **type_ptr)
 {
 	switch (context->tok.type)
 	{
@@ -1203,8 +1204,8 @@ static bool parse_type_or_expr(Context *context, Expr **exprPtr, TypeInfo **type
 		case TOKEN_C_ULONGLONG:
 		case TOKEN_TYPE_IDENT:
 			if (context->next_tok.type == TOKEN_DOT || context->next_tok.type == TOKEN_LPAREN) break;
-			*typePtr = parse_type_expression(context);
-			return type_info_ok(*typePtr);
+			*type_ptr = parse_type_expression(context);
+			return type_info_ok(*type_ptr);
 		case TOKEN_IDENT:
 			if (context->next_tok.type == TOKEN_SCOPE)
 			{
@@ -1217,8 +1218,8 @@ static bool parse_type_or_expr(Context *context, Expr **exprPtr, TypeInfo **type
 				if (context->tok.type == TOKEN_TYPE_IDENT && !is_expr_after_type_ident(context))
 				{
 					context_restore_lexer_state(context);
-					*typePtr = parse_type_expression(context);
-					return type_info_ok(*typePtr);
+					*type_ptr = parse_type_expression(context);
+					return type_info_ok(*type_ptr);
 				}
 				context_restore_lexer_state(context);
 			}
@@ -1234,20 +1235,20 @@ static bool parse_type_or_expr(Context *context, Expr **exprPtr, TypeInfo **type
 			CONSUME_OR(TOKEN_RPAREN, false);
 			if (inner_expr)
 			{
-				*typePtr = type_info_new(TYPE_INFO_EXPRESSION);
-				(**typePtr).unresolved_type_expr = inner_expr;
+				*type_ptr = type_info_new(TYPE_INFO_EXPRESSION);
+				(**type_ptr).unresolved_type_expr = inner_expr;
 				return true;
 			}
 			Expr *type_expr = expr_new(EXPR_TYPE, start);
 			type_expr->type_expr.type = inner_type;
-			*exprPtr = parse_precedence_with_left_side(context, type_expr, PREC_ASSIGNMENT);
-			return expr_ok(*exprPtr);
+			*expr_ptr = parse_precedence_with_left_side(context, type_expr, PREC_ASSIGNMENT);
+			return expr_ok(*expr_ptr);
 		}
 		default:
 			break;
 	}
-	*exprPtr = parse_expr(context);
-	return expr_ok(*exprPtr);
+	*expr_ptr = parse_expr(context);
+	return expr_ok(*expr_ptr);
 
 }
 
@@ -1361,6 +1362,7 @@ static inline Ast* parse_switch_stmt(Context *context)
 	return switch_ast;
 }
 
+
 static Ast *parse_stmt(Context *context)
 {
 	switch (context->tok.type)
@@ -1412,6 +1414,8 @@ static Ast *parse_stmt(Context *context)
 			{
 				return parse_label_stmt(context);
 			}
+			return parse_expr_stmt(context);
+		case TOKEN_AT:
 			return parse_expr_stmt(context);
 		case TOKEN_IDENT:
 			if (context->next_tok.type == TOKEN_SCOPE)
@@ -1487,7 +1491,6 @@ static Ast *parse_stmt(Context *context)
 		case TOKEN_PLUS:
 		case TOKEN_MINUSMINUS:
 		case TOKEN_PLUSPLUS:
-		case TOKEN_AT_IDENT:
 		case TOKEN_HASH_IDENT:
 		case TOKEN_CT_IDENT:
 		case TOKEN_STRING:
@@ -1500,7 +1503,6 @@ static Ast *parse_stmt(Context *context)
 		case TOKEN_INVALID_TOKEN:
 			advance(context);
 			return &poisoned_ast;
-		case TOKEN_AT:
 		case TOKEN_COLON:
 		case TOKEN_COMMA:
 		case TOKEN_EQ:
@@ -1638,7 +1640,6 @@ static inline bool parse_optional_module_params(Context *context, Token **tokens
 			case TOKEN_COMMA:
 				sema_error_range(context->next_tok.span, "Unexpected ','");
 				return false;
-			case TOKEN_AT_IDENT:
 			case TOKEN_CT_IDENT:
 			case TOKEN_HASH_IDENT:
 			case TOKEN_TYPE_IDENT:
@@ -1830,24 +1831,14 @@ static Expr *parse_precedence(Context *context, Precedence precedence)
 	return parse_precedence_with_left_side(context, left_side, precedence);
 }
 
+static inline Expr* parse_non_assign_expr(Context *context)
+{
+	return parse_precedence(context, PREC_ASSIGNMENT + 1);
+}
 
 static inline Expr* parse_expr(Context *context)
 {
-
-	SourceRange start = context->tok.span;
-	bool found_try = try_consume(context, TOKEN_TRY);
-	Expr *expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), &poisoned_expr);
-	if (found_try)
-	{
-		Expr *try_expr = expr_new(EXPR_TRY, start);
-		try_expr->try_expr.expr = expr;
-		if (try_consume(context, TOKEN_ELSE))
-		{
-			try_expr->try_expr.else_expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), &poisoned_expr);
-		}
-		return try_expr;
-	}
-	return expr;
+	return parse_precedence(context, PREC_ASSIGNMENT);
 }
 
 static inline Expr *parse_paren_expr(Context *context)
@@ -1942,10 +1933,10 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
  *  ;
  *
  * attribute
- *  : AT_IDENT
- *  | path AT_IDENT
- *  | AT_IDENT '(' constant_expression ')'
- *  | path AT_IDENT '(' constant_expression ')'
+ *  : AT IDENT
+ *  | AT path IDENT
+ *  | AT IDENT '(' constant_expression ')'
+ *  | AT path IDENT '(' constant_expression ')'
  *  ;
  *
  * @return true if parsing succeeded, false if recovery is needed
@@ -1954,7 +1945,7 @@ static inline bool parse_attributes(Context *context, Decl *parent_decl)
 {
 	parent_decl->attributes = NULL;
 
-	while (context->tok.type == TOKEN_AT_IDENT || (context->tok.type == TOKEN_IDENT && context->next_tok.type == TOKEN_SCOPE))
+	while (try_consume(context, TOKEN_AT))
 	{
 		Path *path = parse_path_prefix(context);
 
@@ -1963,7 +1954,7 @@ static inline bool parse_attributes(Context *context, Decl *parent_decl)
         attr->name = context->tok;
         attr->path = path;
 
-		TRY_CONSUME_OR(TOKEN_AT_IDENT, "Expected an attribute", false);
+		TRY_CONSUME_OR(TOKEN_IDENT, "Expected an attribute", false);
 
 		if (context->tok.type == TOKEN_LPAREN)
 		{
@@ -2259,19 +2250,21 @@ static inline bool parse_opt_throw_declaration(Context *context, Visibility visi
     }
 
     if (!try_consume(context, TOKEN_THROWS)) return true;
-	if (context->tok.type != TOKEN_TYPE_IDENT)
+	if (context->tok.type != TOKEN_TYPE_IDENT && context->tok.type != TOKEN_IDENT)
     {
-		VECADD(signature->throws, &all_error);
+		signature->throw_any = true;
 	    return true;
     }
 	Decl **throws = NULL;
-    while (context->tok.type == TOKEN_TYPE_IDENT)
-    {
-    	Decl *error = decl_new(DECL_ERROR, context->tok, visibility);
-    	advance(context);
-        VECADD(throws, error);
-        if (!try_consume(context, TOKEN_COMMA)) break;
-    }
+	while (1)
+	{
+	 	TypeInfo *type_info = parse_base_type(context);
+		if (!type_info_ok(type_info)) return false;
+		Decl *throw = decl_new(DECL_THROWS, context->tok, visibility);
+		throw->throws = type_info;
+		VECADD(throws, throw);
+		if (!try_consume(context, TOKEN_COMMA)) break;
+	}
     switch (context->tok.type)
     {
         case TOKEN_TYPE_IDENT:
@@ -2346,8 +2339,8 @@ static AttributeDomains TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
 
 /**
  * attribute_declaration
- * 		: ATTRIBUTE attribute_domains AT_IDENT ';'
- * 		| ATTRIBUTE attribute_domains AT_IDENT '(' parameter_type_list ')' ';'
+ * 		: ATTRIBUTE attribute_domains IDENT ';'
+ * 		| ATTRIBUTE attribute_domains IDENT '(' parameter_type_list ')' ';'
  * 		;
  *
  * attribute_domains
@@ -2387,8 +2380,8 @@ static inline Decl *parse_attribute_declaration(Context *context, Visibility vis
 		if (!try_consume(context, TOKEN_COMMA)) break;
 		last_domain = TOKEN_TO_ATTR[context->tok.type];
 	}
-	TRY_CONSUME_OR(TOKEN_AT_IDENT, "Expected an attribute name.", &poisoned_decl);
 	Decl *decl = decl_new(DECL_ATTRIBUTE, context->tok, visibility);
+	TRY_CONSUME_OR(TOKEN_IDENT, "Expected an attribute name.", &poisoned_decl);
 	if (last_domain == 0)
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Expected at least one domain for attribute '%s'.", decl->name);
@@ -2449,14 +2442,14 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
     advance_and_verify(context, TOKEN_MACRO);
 
     TypeInfo *rtype = NULL;
-    if (context->tok.type != TOKEN_AT_IDENT)
+    if (context->tok.type != TOKEN_IDENT)
     {
         rtype = TRY_TYPE_OR(parse_type_expression(context), &poisoned_decl);
     }
 
     Decl *decl = decl_new(DECL_MACRO, context->tok, visibility);
     decl->macro_decl.rtype = rtype;
-    TRY_CONSUME_OR(TOKEN_AT_IDENT, "Expected a macro name starting with '@'", &poisoned_decl);
+    TRY_CONSUME_OR(TOKEN_IDENT, "Expected a macro name here", &poisoned_decl);
 
     CONSUME_OR(TOKEN_LPAREN, &poisoned_decl);
     Decl **params = NULL;
@@ -2467,7 +2460,6 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
         switch (context->tok.type)
         {
             case TOKEN_IDENT:
-            case TOKEN_AT_IDENT:
             case TOKEN_CT_IDENT:
             case TOKEN_HASH_IDENT:
                 break;
@@ -3456,7 +3448,6 @@ static Expr *parse_maybe_scope(Context *context, Expr *left)
 	{
 		case TOKEN_IDENT:
 		case TOKEN_CT_IDENT:
-		case TOKEN_AT_IDENT:
 		case TOKEN_CONST_IDENT:
 			return parse_identifier_with_path(context, path);
 		case TOKEN_TYPE_IDENT:
@@ -3480,6 +3471,28 @@ static Expr *parse_type_expr(Context *context, Expr *left)
 	return expr;
 }
 
+static Expr *parse_try_expr(Context *context, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *try_expr = EXPR_NEW_TOKEN(EXPR_TRY, context->tok);
+	advance_and_verify(context, TOKEN_TRY);
+	try_expr->try_expr.expr = TRY_EXPR_OR(parse_precedence(context, PREC_TRY + 1), &poisoned_expr);
+	if (try_consume(context, TOKEN_ELSE))
+	{
+		try_expr->try_expr.else_expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), &poisoned_expr);
+	}
+	return try_expr;
+}
+
+static Expr *parse_macro_expr(Context *context, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *macro_expr = EXPR_NEW_TOKEN(EXPR_MACRO_EXPR, context->tok);
+	advance_and_verify(context, TOKEN_AT);
+	macro_expr->macro_expr = TRY_EXPR_OR(parse_precedence(context, PREC_UNARY + 1), &poisoned_expr);
+	return macro_expr;
+}
+
 static Expr *parse_cast_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -3501,6 +3514,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },
 		[TOKEN_TYPE] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CAST] = { parse_cast_expr, NULL, PREC_NONE },
+		[TOKEN_TRY] = { parse_try_expr, NULL, PREC_TRY },
 		//[TOKEN_SIZEOF] = { parse_sizeof, NULL, PREC_NONE },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
@@ -3532,7 +3546,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_IDENT] = { parse_maybe_scope, NULL, PREC_NONE },
 		[TOKEN_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_CT_IDENT] = { parse_identifier, NULL, PREC_NONE },
-		[TOKEN_AT_IDENT] = { parse_identifier, NULL, PREC_NONE },
+		[TOKEN_AT] = { parse_macro_expr, NULL, PREC_UNARY },
 		[TOKEN_CONST_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_STRING] = { parse_string_literal, NULL, PREC_NONE },
 		[TOKEN_FLOAT] = { parse_double, NULL, PREC_NONE },

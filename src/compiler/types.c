@@ -21,26 +21,31 @@ Type t_cus, t_cui, t_cul, t_cull;
 Type t_cs, t_ci, t_cl, t_cll;
 Type t_voidstar;
 
-Type *type_signed_int_by_size(int bytesize)
+#define META_OFFSET 0
+#define PTR_OFFSET 1
+#define VAR_ARRAY_OFFSET 2
+#define ARRAY_OFFSET 3
+
+Type *type_signed_int_by_bitsize(unsigned bytesize)
 {
 	switch (bytesize)
 	{
-		case 1: return type_char;
-		case 2: return type_short;
-		case 4: return type_int;
-		case 8: return type_long;
-		default: FATAL_ERROR("Illegal bytesize %d", bytesize);
+		case 8: return type_char;
+		case 16: return type_short;
+		case 32: return type_int;
+		case 64: return type_long;
+		default: FATAL_ERROR("Illegal bitsize %d", bytesize);
 	}
 }
-Type *type_unsigned_int_by_size(int bytesize)
+Type *type_unsigned_int_by_bitsize(unsigned bytesize)
 {
 	switch (bytesize)
 	{
-		case 1: return type_byte;
-		case 2: return type_ushort;
-		case 4: return type_uint;
-		case 8: return type_ulong;
-		default: FATAL_ERROR("Illegal bytesize %d", bytesize);
+		case 8: return type_byte;
+		case 16: return type_ushort;
+		case 32: return type_uint;
+		case 64: return type_ulong;
+		default: FATAL_ERROR("Illegal bitsize %d", bytesize);
 	}
 }
 
@@ -73,6 +78,9 @@ const char *type_to_error_string(Type *type)
 		case TYPE_UNION:
 		case TYPE_ERROR:
 			return type->name;
+		case TYPE_META_TYPE:
+			asprintf(&buffer, "type %s", type_to_error_string(type->child));
+			return buffer;
 		case TYPE_POINTER:
 			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
@@ -135,9 +143,25 @@ static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_
 }
 void type_append_signature_name(Type *type, char *dst, size_t *offset)
 {
-	assert(*offset < 2000);
-	memcpy(dst + *offset, type->name, strlen(type->name));
-	*offset += strlen(type->name);
+	assert(*offset < MAX_FUNCTION_SIGNATURE_SIZE);
+	const char *name;
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_TYPEDEF:
+			UNREACHABLE;
+		case TYPE_ERROR:
+		case TYPE_ENUM:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+			name = type->decl->external_name;
+			break;
+		default:
+			name = type->name;
+			break;
+	}
+	memcpy(dst + *offset, name, strlen(name));
+	*offset += strlen(name);
 }
 
 
@@ -149,6 +173,8 @@ size_t type_size(Type *canonical)
 	{
 		case TYPE_POISONED:
 			UNREACHABLE;
+		case TYPE_META_TYPE:
+			return 0;
 		case TYPE_ENUM:
 		case TYPE_TYPEDEF:
 		case TYPE_STRUCT:
@@ -188,27 +214,29 @@ size_t type_size(Type *canonical)
 	TODO
 }
 
-static inline void create_ptr_cache(Type *canonical_type)
+static inline void create_type_cache(Type *canonical_type)
 {
 	assert(canonical_type->canonical == canonical_type);
-	canonical_type->ptr_cache = VECADD(canonical_type->ptr_cache, NULL);
-	canonical_type->ptr_cache = VECADD(canonical_type->ptr_cache, NULL);
+	for (int i = 0; i < ARRAY_OFFSET; i++)
+	{
+		vec_add(canonical_type->type_cache, NULL);
+	}
 }
 
 static Type *type_generate_ptr(Type *ptr_type, bool canonical)
 {
 	if (canonical) ptr_type = ptr_type->canonical;
-	if (!ptr_type->ptr_cache)
+	if (!ptr_type->type_cache)
 	{
-		create_ptr_cache(ptr_type);
+		create_type_cache(ptr_type);
 	}
 
-	Type *ptr = ptr_type->ptr_cache[0];
+	Type *ptr = ptr_type->type_cache[PTR_OFFSET];
 	if (ptr == NULL)
 	{
 		ptr = type_new(TYPE_POINTER, strformat("%s*", ptr_type->name));
 		ptr->pointer = ptr_type;
-		ptr_type->ptr_cache[0] = ptr;
+		ptr_type->type_cache[PTR_OFFSET] = ptr;
 		if (ptr_type == ptr_type->canonical)
 		{
 			ptr->canonical = ptr;
@@ -221,24 +249,56 @@ static Type *type_generate_ptr(Type *ptr_type, bool canonical)
 	return ptr;
 }
 
+static Type *type_generate_meta(Type *type, bool canonical)
+{
+	if (canonical) type = type->canonical;
+	if (!type->type_cache)
+	{
+		create_type_cache(type);
+	}
+
+	Type *meta = type->type_cache[META_OFFSET];
+	if (meta == NULL)
+	{
+		meta = type_new(TYPE_META_TYPE, strformat("type %s", type->name));
+		meta->child = type;
+		type->type_cache[META_OFFSET] = meta;
+		if (type == type->canonical)
+		{
+			meta->canonical = meta;
+		}
+		else
+		{
+			meta->canonical = type_generate_meta(type->canonical, true);
+		}
+	}
+	return meta;
+}
+
+
 Type *type_get_ptr(Type *ptr_type)
 {
 	return type_generate_ptr(ptr_type, false);
+}
+
+Type *type_get_meta(Type *meta_type)
+{
+	return type_generate_meta(meta_type, false);
 }
 
 
 Type *type_create_array(Type *arr_type, uint64_t len, bool canonical)
 {
 	if (canonical) arr_type = arr_type->canonical;
-	if (!arr_type->ptr_cache)
+	if (!arr_type->type_cache)
 	{
-		create_ptr_cache(arr_type);
+		create_type_cache(arr_type);
 	}
 
 	// Dynamic array
 	if (len == 0)
 	{
-		Type *array = arr_type->ptr_cache[1];
+		Type *array = arr_type->type_cache[VAR_ARRAY_OFFSET];
 		if (array == NULL)
 		{
 			array = type_new(TYPE_VARARRAY, strformat("%s[]", arr_type->name));
@@ -252,15 +312,15 @@ Type *type_create_array(Type *arr_type, uint64_t len, bool canonical)
 			{
 				array->canonical = type_create_array(arr_type, len, true);
 			}
-			arr_type->ptr_cache[1] = array;
+			arr_type->type_cache[VAR_ARRAY_OFFSET] = array;
 		}
 		return array;
 	}
 
-	int entries = (int)vec_size(arr_type->ptr_cache);
-	for (int i = 1; i < entries; i++)
+	int entries = (int)vec_size(arr_type->type_cache);
+	for (int i = ARRAY_OFFSET; i < entries; i++)
 	{
-		Type *ptr = arr_type->ptr_cache[i];
+		Type *ptr = arr_type->type_cache[i];
 		if (ptr->array.len == arr_type->array.len)
 		{
 			return ptr;
@@ -277,7 +337,7 @@ Type *type_create_array(Type *arr_type, uint64_t len, bool canonical)
 	{
 		array->canonical = type_create_array(arr_type, len, true);
 	}
-	VECADD(arr_type->ptr_cache, array);
+	VECADD(arr_type->type_cache, array);
 	return array;
 }
 
@@ -286,14 +346,17 @@ Type *type_get_array(Type *arr_type, uint64_t len)
 	return type_create_array(arr_type, len, false);
 }
 
-static void type_create(const char *name, Type *location, Type **ptr, TypeKind kind, unsigned bytesize, unsigned bitsize)
+static void type_create(const char *name, Type *location, Type **ptr, TypeKind kind, unsigned bitsize,
+                        unsigned align, unsigned pref_align)
 {
 	*location = (Type) {
 		.type_kind = kind,
-		.builtin.bytesize = bytesize,
+		.builtin.bytesize = (bitsize + 7) / 8,
 		.builtin.bitsize = bitsize,
+		.builtin.min_alignment = align,
+		.builtin.pref_alignment = pref_align,
 		.name = name,
-		.canonical = location
+		.canonical = location,
 	};
 	location->name = name;
 	location->canonical = location;
@@ -311,55 +374,57 @@ static void type_create_alias(const char *name, Type *location, Type **ptr, Type
 }
 
 
-void builtin_setup()
+void builtin_setup(Target *target)
 {
-	type_create("void", &t_u0, &type_void, TYPE_VOID, 1, 8);
-	type_create("string", &t_str, &type_string, TYPE_STRING, build_options.pointer_size, build_options.pointer_size * 8);
-	create_ptr_cache(type_void);
-	type_void->ptr_cache[0] = &t_voidstar;
-	type_create("void*", &t_voidstar, &type_voidptr, TYPE_POINTER, 0, 0);
-	t_voidstar.pointer = type_void;
 
 	/*TODO
  * decl_string = (Decl) { .decl_kind = DECL_BUILTIN, .name.string = "string" };
 	create_type(&decl_string, &type_string);
 	type_string.type_kind = TYPE_STRING;
 */
-#define DEF_TYPE(_name, _shortname, _type, _bits) \
-type_create(#_name, &_shortname, &type_ ## _name, _type, (_bits + 7) / 8, _bits);
+#define DEF_TYPE(_name, _shortname, _type, _bits, _align) \
+type_create(#_name, &_shortname, &type_ ## _name, _type, _bits, target->align_min_ ## _align, target->align_ ## _align)
 
-	DEF_TYPE(compint, t_ixx, TYPE_IXX, 64);
-	DEF_TYPE(compuint, t_uxx, TYPE_UXX, 64);
-	DEF_TYPE(compfloat, t_fxx, TYPE_FXX, 64);
-	DEF_TYPE(bool, t_u1, TYPE_BOOL, 1);
+	DEF_TYPE(bool, t_u1, TYPE_BOOL, 1, byte);
+	DEF_TYPE(float, t_f32, TYPE_F32, 32, float);
+	DEF_TYPE(double, t_f64, TYPE_F64, 64, double);
 
-	DEF_TYPE(float, t_f32, TYPE_F32, 32);
-	DEF_TYPE(double, t_f64, TYPE_F64, 64);
+	DEF_TYPE(char, t_i8, TYPE_I8, 8, byte);
+	DEF_TYPE(short, t_i16, TYPE_I16, 16, short);
+	DEF_TYPE(int, t_i32, TYPE_I32, 32, int);
+	DEF_TYPE(long, t_i64, TYPE_I64, 64, long);
 
-	DEF_TYPE(char, t_i8, TYPE_I8, 8);
-	DEF_TYPE(short, t_i16, TYPE_I16, 16);
-	DEF_TYPE(int, t_i32, TYPE_I32, 32);
-	DEF_TYPE(long, t_i64, TYPE_I64, 64);
+	DEF_TYPE(byte, t_u8, TYPE_U8, 8, byte);
+	DEF_TYPE(ushort, t_u16, TYPE_U16, 16, short);
+	DEF_TYPE(uint, t_u32, TYPE_U32, 32, int);
+	DEF_TYPE(ulong, t_u64, TYPE_U64, 64, long);
 
-	DEF_TYPE(byte, t_u8, TYPE_U8, 8);
-	DEF_TYPE(ushort, t_u16, TYPE_U16, 16);
-	DEF_TYPE(uint, t_u32, TYPE_U32, 32);
-	DEF_TYPE(ulong, t_u64, TYPE_U64, 64);
-
-	type_create_alias("usize", &t_usz, &type_usize, type_unsigned_int_by_size(build_options.pointer_size));
-	type_create_alias("isize", &t_isz, &type_isize, type_signed_int_by_size(build_options.pointer_size));
-
-	type_create_alias("c_ushort", &t_cus, &type_c_ushort, type_unsigned_int_by_size(build_options.cshort_size));
-	type_create_alias("c_uint", &t_cui, &type_c_uint, type_unsigned_int_by_size(build_options.cint_size));
-	type_create_alias("c_ulong", &t_cul, &type_c_ulong, type_unsigned_int_by_size(build_options.clong_size));
-	type_create_alias("c_ulonglong", &t_cull, &type_c_ulonglong, type_unsigned_int_by_size(build_options.clonglong_size));
-
-	type_create_alias("c_short", &t_cs, &type_c_short, type_signed_int_by_size(build_options.cshort_size));
-	type_create_alias("c_int", &t_ci, &type_c_int, type_signed_int_by_size(build_options.cint_size));
-	type_create_alias("c_long", &t_cl, &type_c_long, type_signed_int_by_size(build_options.clong_size));
-	type_create_alias("c_longlong", &t_cll, &type_c_longlong, type_signed_int_by_size(build_options.clonglong_size));
+	DEF_TYPE(void, t_u0, TYPE_VOID, 8, byte);
+	DEF_TYPE(string, t_str, TYPE_STRING, target->width_pointer, pointer);
 
 #undef DEF_TYPE
+
+	type_create("void*", &t_voidstar, &type_voidptr, TYPE_POINTER, target->width_pointer, target->align_min_pointer, target->align_pointer);
+	create_type_cache(type_void);
+	type_void->type_cache[0] = &t_voidstar;
+	t_voidstar.pointer = type_void;
+	type_create("compint", &t_ixx, &type_compint, TYPE_IXX, 64, 0, 0);
+	type_create("compuint", &t_uxx, &type_compuint, TYPE_UXX, 64, 0, 0);
+	type_create("compfloat", &t_fxx, &type_compfloat, TYPE_FXX, 64, 0, 0);
+
+	type_create_alias("usize", &t_usz, &type_usize, type_unsigned_int_by_bitsize(target->width_pointer));
+	type_create_alias("isize", &t_isz, &type_isize, type_signed_int_by_bitsize(target->width_pointer));
+
+	type_create_alias("c_ushort", &t_cus, &type_c_ushort, type_unsigned_int_by_bitsize(target->width_c_short));
+	type_create_alias("c_uint", &t_cui, &type_c_uint, type_unsigned_int_by_bitsize(target->width_c_int));
+	type_create_alias("c_ulong", &t_cul, &type_c_ulong, type_unsigned_int_by_bitsize(target->width_c_long));
+	type_create_alias("c_ulonglong", &t_cull, &type_c_ulonglong, type_unsigned_int_by_bitsize(target->width_c_long_long));
+
+	type_create_alias("c_short", &t_cs, &type_c_short, type_signed_int_by_bitsize(target->width_c_short));
+	type_create_alias("c_int", &t_ci, &type_c_int, type_signed_int_by_bitsize(target->width_c_int));
+	type_create_alias("c_long", &t_cl, &type_c_long, type_signed_int_by_bitsize(target->width_c_long));
+	type_create_alias("c_longlong", &t_cll, &type_c_longlong, type_signed_int_by_bitsize(target->width_c_long_long));
+
 
 }
 
@@ -395,6 +460,7 @@ bool type_may_have_method_functions(Type *type)
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
+		case TYPE_ERROR:
 			return true;
 		default:
 			return false;
@@ -441,9 +507,9 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 			assert (other_num->type_kind != TYPE_FXX);
 			return other_num;
 		case LS:
-			return type_signed_int_by_size(num_type->builtin.bytesize);
+			return type_signed_int_by_bitsize(num_type->builtin.bytesize * 8);
 		case RS:
-			return type_signed_int_by_size(other_num->builtin.bytesize);
+			return type_signed_int_by_bitsize(other_num->builtin.bytesize * 8);
 		case FL:
 			return type_double;
 		default:
@@ -579,6 +645,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_FUNC:
 		case TYPE_UNION:
 		case TYPE_ERROR_UNION:
+		case TYPE_META_TYPE:
 			return NULL;
 		case TYPE_STRUCT:
 			TODO

@@ -15,17 +15,18 @@ public struct Map
     uint mod;
 }
 
-public func Map@ Map.new()
+public func Map* Map.init(Map *map)
 {
-    return @calloc(Map);
+    *map = { };
+    return map;
 }
 
-public func Type *Map.valueForKey(Map *map, Key key)
+public func Type* Map.valueForKey(Map *map, Key key)
 {
     if (!map.map) return nil;
     usize hash = key.hash();
     usize pos = hash & map.mod;
-    Entry *entry = &map.map[pop];
+    Entry* entry = &map.map[pop];
     if () return nil;
     while (entry)
     {
@@ -80,7 +81,7 @@ public func void Map.removeLast(Vector *vector)
     vector.array.pop();
 }
 
-public macro Vector.@foreach(Vector *vector : @body(Type value))
+public macro Vector.foreach(Vector *vector, macro void(Type value) body)
 {
     for (usize i = 0, i < vector.array.size; i++)
     {
@@ -98,7 +99,7 @@ test
     {
         printDigit(i);
     }
-    vector.@foreach(int i)
+    @vector.foreach(int i)
     {
         printDigit(i);
     }

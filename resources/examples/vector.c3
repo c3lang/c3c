@@ -45,7 +45,7 @@ public func bool Vector.empty(Vector *vector)
     return !vector.array.size;
 }
 
-public macro Vector.@foreach(Vector *vector : @body(Type value))
+public macro Vector.foreach(Vector *vector, macro void(Type value) body)
 {
     for (usize i = 0, i < vector.array.size; i++)
     {
@@ -59,11 +59,11 @@ test
     IntVector *vector = @calloc(IntVector);
     vector.add(1);
     vector.add(2);
-    foreach (int i : vector)
+    for (int i : vector)
     {
         printDigit(i);
     }
-    vector.@foreach(int i)
+    @vector.foreach(int i)
     {
         printDigit(i);
     }

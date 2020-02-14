@@ -16,6 +16,7 @@ Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility)
 	return decl;
 }
 
+
 Type poisoned_type = { .type_kind = TYPE_POISONED };
 
 TypeInfo poisoned_type_info = { .kind = TYPE_INFO_POISON };
@@ -174,8 +175,18 @@ Type* type_get_unsigned(Type *type)
 
 */
 
+bool func_return_value_as_out(FunctionSignature *func_sig)
+{
+	Type *return_type = func_sig->rtype->type->canonical;
+	if (return_type->type_kind == TYPE_VOID) return false;
+	if (func_has_error_return(func_sig)) return true;
+	// TODO improve
+	return type_size(return_type) > 8 * 4;
+}
 
-BinaryOp binary_op[256] = {
+
+
+BinaryOp binary_op[TOKEN_LAST + 1] = {
 		[TOKEN_STAR] = BINARYOP_MULT,
 		[TOKEN_MULT_MOD] = BINARYOP_MULT_MOD,
 		[TOKEN_DIV] = BINARYOP_DIV,
@@ -214,7 +225,7 @@ BinaryOp binary_op[256] = {
 };
 
 
-static BinaryOp assign_binop[256] = {
+static BinaryOp assign_binop[BINARYOP_LAST + 1] = {
 		[BINARYOP_MULT_ASSIGN] = BINARYOP_MULT,
 		[BINARYOP_MULT_MOD_ASSIGN] = BINARYOP_MULT_MOD,
 		[BINARYOP_ADD_ASSIGN] = BINARYOP_ADD,
@@ -237,10 +248,7 @@ BinaryOp binaryop_assign_base_op(BinaryOp assign_binary_op)
 	return assign_binop[(int)assign_binary_op];
 }
 
-AssignOp assign_op[256] = {
-};
-
-UnaryOp unary_op[256] = {
+UnaryOp unary_op[TOKEN_LAST + 1] = {
 		[TOKEN_STAR] = UNARYOP_DEREF,
 		[TOKEN_AMP] = UNARYOP_ADDR,
 		[TOKEN_BIT_NOT] = UNARYOP_BITNEG,
@@ -250,25 +258,13 @@ UnaryOp unary_op[256] = {
 		[TOKEN_MINUSMINUS] = UNARYOP_DEC,
 };
 
-PostUnaryOp post_unary_op[256] = {
+
+PostUnaryOp post_unary_op[TOKEN_LAST + 1] = {
 		[TOKEN_PLUSPLUS] = POSTUNARYOP_INC,
 		[TOKEN_MINUSMINUS] = POSTUNARYOP_DEC,
 };
 
 
-AssignOp assignop_from_token(TokenType type)
-{
-	return assign_op[type];
-}
-
-TokenType assignop_to_token(AssignOp type)
-{
-	for (unsigned i = 0; i < 256; i++)
-	{
-		if (assign_op[i] == type) return (TokenType)i;
-	}
-	return TOKEN_INVALID_TOKEN;
-}
 
 BinaryOp binaryop_from_token(TokenType type)
 {
@@ -277,7 +273,7 @@ BinaryOp binaryop_from_token(TokenType type)
 
 TokenType binaryop_to_token(BinaryOp type)
 {
-	for (unsigned i = 0; i < 256; i++)
+	for (unsigned i = 0; i <= TOKEN_LAST; i++)
 	{
 		if (binary_op[i] == type) return (TokenType)i;
 	}
@@ -291,7 +287,7 @@ UnaryOp unaryop_from_token(TokenType type)
 
 TokenType unaryop_to_token(UnaryOp type)
 {
-	for (unsigned i = 0; i < 256; i++)
+	for (unsigned i = 0; i <= TOKEN_LAST; i++)
 	{
 		if (unary_op[i] == type) return (TokenType)i;
 	}
@@ -305,7 +301,7 @@ PostUnaryOp post_unaryop_from_token(TokenType type)
 
 TokenType postunaryop_to_token(PostUnaryOp type)
 {
-	for (unsigned i = 0; i < 256; i++)
+	for (unsigned i = 0; i <= TOKEN_LAST; i++)
 	{
 		if (post_unary_op[i] == type) return (TokenType)i;
 	}
@@ -348,6 +344,10 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 		case TYPE_POISONED:
 			fprintf_indented(file, indent, "(type poison)\n");
 			return;
+		case TYPE_META_TYPE:
+			fprintf_indented(file, indent, "(meta-type");
+			fprint_type_recursive(file, type->child, indent + 1);
+			fprint_endparen(file, indent);
 		case TYPE_FUNC:
 			fprintf_indented(file, indent, "(type-func %s)\n", type->func.signature->mangled_signature);
 			return;
@@ -675,9 +675,16 @@ void fprint_func_signature(FILE *file, FunctionSignature *signature, int indent)
 	fprintf_indented(file, indent, "(params\n");
 	fprint_decl_list(file, signature->params, indent + 1);
 	fprint_endparen(file, indent);
-	fprintf_indented(file, indent, "(throws\n");
-	fprint_decl_list(file, signature->throws, indent + 1);
-	fprint_endparen(file, indent);
+	if (signature->throw_any)
+	{
+		fprintf_indented(file, indent, "(throws any)\n");
+	}
+	else
+	{
+		fprintf_indented(file, indent, "(throws\n");
+		fprint_decl_list(file, signature->throws, indent + 1);
+		fprint_endparen(file, indent);
+	}
 }
 void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 {
@@ -1039,7 +1046,7 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			break;
 		case AST_THROW_STMT:
 			fprintf(file, "(throw\n");
-			fprint_expr_recursive(file, ast->throw_stmt, indent + 1);
+			fprint_expr_recursive(file, ast->throw_stmt.throw_value, indent + 1);
 			break;
 		case AST_TRY_STMT:
 			TODO

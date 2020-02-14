@@ -9,11 +9,12 @@ int yylex(void);
 void yyerror(char *s);
 %}
 
-%token IDENT AT_IDENT CT_IDENT CONSTANT CONST_IDENT TYPE_IDENT STRING_LITERAL SIZEOF
+%token IDENT CT_IDENT CONSTANT CONST_IDENT TYPE_IDENT STRING_LITERAL SIZEOF
 %token INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
 %token XOR_ASSIGN OR_ASSIGN VAR NIL ELVIS HASH_IDENT NEXT
+%token AT
 
 %token TYPEDEF MODULE IMPORT
 %token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOLATILE VOID
@@ -26,6 +27,7 @@ void yyerror(char *s);
 
 %token FN_BLOCK_START FN_BLOCK_END
 %token MULTW ADDW SUBW
+%token AUTO
 
 %start translation_unit
 %%
@@ -44,7 +46,6 @@ ident_expression
 	: CONST_IDENT
 	| IDENT
     | CT_IDENT
-	| AT_IDENT
 	;
 
 primary_expression
@@ -91,6 +92,7 @@ unary_operator
 	| SUBW
 	| '~'
 	| '!'
+	| '@'
 	;
 
 
@@ -199,6 +201,8 @@ identifier_list
 macro_argument
     : CT_IDENT
     | IDENT
+    | type_expression IDENT
+    | type_expression CT_IDENT
     ;
 
 macro_argument_list
@@ -235,6 +239,7 @@ parameter_list
 
 base_type
     : VOID
+    | AUTO
     | BOOL
     | CHAR
     | BYTE
@@ -426,11 +431,14 @@ jump_statement
 	| RETURN expression ';'
 	;
 
+path_ident
+    : IDENT
+    | path IDENT
+    ;
+
 attribute
-    : AT_IDENT
-    | path AT_IDENT
-    | AT_IDENT '(' constant_expression ')'
-    | path AT_IDENT '(' constant_expression ')'
+    : AT path_ident
+    | AT path_ident '(' constant_expression ')'
     ;
 
 attribute_list
@@ -480,7 +488,8 @@ func_definition
     ;
 
 macro_declaration
-    : MACRO AT_IDENT '(' macro_argument_list ')' compound_statement
+    : MACRO type_expression IDENT '(' macro_argument_list ')' compound_statement
+    : MACRO IDENT '(' macro_argument_list ')' compound_statement
     ;
 
 
@@ -576,8 +585,8 @@ attribute_domains
     ;
 
 attribute_declaration
-    : ATTRIBUTE attribute_domains AT_IDENT ';'
-    | ATTRIBUTE attribute_domains AT_IDENT '(' parameter_type_list ')' ';'
+    : ATTRIBUTE attribute_domains IDENT ';'
+    | ATTRIBUTE attribute_domains IDENT '(' parameter_type_list ')' ';'
     ;
 
 global_declaration
@@ -631,7 +640,7 @@ module_param
     : CT_IDENT
     | HASH_IDENT
     | TYPE_IDENT
-    | AT_IDENT
+    | IDENT
     ;
 
 module_params

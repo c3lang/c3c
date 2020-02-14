@@ -64,8 +64,7 @@ typedef struct
 	Context *ast_context;
 	BreakContinue break_continue_stack[BREAK_STACK_MAX];
 	size_t break_continue_stack_index;
-	LLVMTypeRef error_type;
-	Type **generated_types;
+	LLVMValueRef return_out;
 } GenContext;
 
 
@@ -89,6 +88,7 @@ static inline LLVMBasicBlockRef gencontext_create_free_block(GenContext *context
 	return LLVMCreateBasicBlockInContext(context->context, name);
 }
 
+void gencontext_emit_implicit_return(GenContext *context);
 void gencontext_emit_function_decl(GenContext *context, Decl *decl);
 void gencontext_emit_extern_decl(GenContext *context, Decl *decl);
 LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr);

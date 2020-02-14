@@ -75,7 +75,6 @@ void comment(void);
 [_]*[A-Z]{UA}*   { count(); return(CONST_IDENT); }
 [_]*[A-Z]{UA}*[a-z]{AN}* { count(); return(TYPE_IDENT); }
 [_]*[a-z]{AN}*    { count(); return(IDENT); }
-@{L}+[!]?            { count(); return(AT_IDENT); }
 ${L}+             { count(); return(CT_IDENT); }
 #{L}+           { count(); return(HASH_IDENT); }
 0[xX]{H}+{IS}?	{ count(); return(CONSTANT); }
@@ -119,6 +118,7 @@ L?\"(\\.|[^\\"])*\"	{ count(); return(STRING_LITERAL); }
 ":"			{ count(); return(':'); }
 "="			{ count(); return('='); }
 "("			{ count(); return('('); }
+"@"         { count(); return(AT);  }
 ")"			{ count(); return(')'); }
 ("[")		{ count(); return('['); }
 ("]")		{ count(); return(']'); }

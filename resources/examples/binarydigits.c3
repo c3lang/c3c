@@ -10,7 +10,7 @@ func int main()
 
 func string@ bin(int x)
 {
-    int bits = (x == 0) ? 1 : log10(cast(double, x)) / log10(2);
+    int bits = (x == 0) ? 1 : log10(cast(x, double)) / log10(2);
     string@ ret = string.make_repeat('0', bits);
     for (int i = 0; i < bits; i++)
     {

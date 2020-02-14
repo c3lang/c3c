@@ -35,11 +35,6 @@ static inline LLVMTypeRef gencontext_create_basic_llvm_type(GenContext *context,
 	}
 }
 
-static inline void gencontext_init_basic_llvm_type(GenContext *context, Type *type)
-{
-	vec_add(context->generated_types, type);
-	type->backend_type = gencontext_create_basic_llvm_type(context, type);
-}
 void gencontext_begin_module(GenContext *context)
 {
 	assert(!context->module && "Expected no module");
@@ -72,18 +67,6 @@ void gencontext_begin_module(GenContext *context)
 	// Setup all types. Not thread-safe, but at this point in time we can assume a single context.
 	// We need to remove the context from the cache after this.
 	// This would seem to indicate that we should change Type / actual type.
-	gencontext_init_basic_llvm_type(context, type_char);
-	gencontext_init_basic_llvm_type(context, type_byte);
-	gencontext_init_basic_llvm_type(context, type_short);
-	gencontext_init_basic_llvm_type(context, type_ushort);
-	gencontext_init_basic_llvm_type(context, type_int);
-	gencontext_init_basic_llvm_type(context, type_uint);
-	gencontext_init_basic_llvm_type(context, type_long);
-	gencontext_init_basic_llvm_type(context, type_ulong);
-	gencontext_init_basic_llvm_type(context, type_float);
-	gencontext_init_basic_llvm_type(context, type_double);
-	gencontext_init_basic_llvm_type(context, type_void);
-	gencontext_init_basic_llvm_type(context, type_bool);
 
 	context->pointer_alignment = LLVMPointerSizeForAS(target_data_layout(), 0);
 

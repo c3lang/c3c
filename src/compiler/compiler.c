@@ -36,7 +36,6 @@ static void compiler_lex(BuildTarget *target)
 
 void compiler_parse(BuildTarget *target)
 {
-	builtin_setup();
 	VECEACH(target->sources, i)
 	{
 		bool loaded = false;
@@ -149,7 +148,6 @@ void compile_files(BuildTarget *target)
 	}
 	target_expand_source_names(target);
 	target_setup();
-	builtin_setup();
 
 	if (!vec_size(target->sources)) error_exit("No files to compile.");
 	switch (build_options.compile_option)

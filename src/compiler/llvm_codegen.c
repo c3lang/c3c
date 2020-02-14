@@ -170,12 +170,6 @@ void llvm_codegen(Context *context)
 		gencontext_emit_function_decl(&gen_context, context->functions[i]);
 	}
 
-	VECEACH(gen_context.generated_types, i)
-	{
-		Type *type = gen_context.generated_types[i];
-		type->backend_debug_type = NULL;
-		type->backend_type = NULL;
-	}
 
 	gencontext_print_llvm_ir(&gen_context);
 

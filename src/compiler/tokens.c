@@ -140,8 +140,6 @@ const char *token_type_to_string(TokenType type)
 		// Identifiers
 		case TOKEN_IDENT:
 			return "IDENT";
-		case TOKEN_AT_IDENT:
-			return "AT_IDENT";
 		case TOKEN_HASH_IDENT:
 			return "HASH_IDENT";
 		case TOKEN_CT_IDENT:

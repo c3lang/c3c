@@ -78,8 +78,20 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	// Allocate room on stack and copy.
-	decl->var.backend_ref = gencontext_emit_alloca(context, BACKEND_TYPE(decl->type), decl->name);
+	decl->var.backend_ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
 	LLVMBuildStore(context->builder, LLVMGetParam(context->function, index), decl->var.backend_ref);
+}
+
+void gencontext_emit_implicit_return(GenContext *context)
+{
+	if (func_has_error_return(&context->cur_func_decl->func.function_signature))
+	{
+		LLVMBuildRet(context->builder, LLVMConstInt(llvm_type(type_ulong), 0, false));
+	}
+	else
+	{
+		LLVMBuildRetVoid(context->builder);
+	}
 }
 
 void gencontext_emit_function_body(GenContext *context, Decl *decl)
@@ -90,6 +102,7 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	LLVMBuilderRef prev_builder = context->builder;
 
 	context->function = decl->func.backend_value;
+	context->cur_func_decl = decl;
 
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context->context, context->function, "entry");
 	context->current_block = entry;
@@ -100,10 +113,22 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	LLVMValueRef alloca_point = LLVMBuildAlloca(context->builder, LLVMInt32TypeInContext(context->context), "alloca_point");
 	context->alloca_point = alloca_point;
 
+	unsigned return_parameter = func_return_value_as_out(&decl->func.function_signature) ? 1 : 0;
+
+	if (return_parameter)
+	{
+		context->return_out = gencontext_emit_alloca(context, llvm_type(decl->func.function_signature.rtype->type), "retval");
+		LLVMBuildStore(context->builder, LLVMGetParam(context->function, 0), context->return_out);
+	}
+	else
+	{
+		context->return_out = NULL;
+	}
+
 	// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
 	VECEACH(decl->func.function_signature.params, i)
 	{
-		gencontext_emit_parameter(context, decl->func.function_signature.params[i], i);
+		gencontext_emit_parameter(context, decl->func.function_signature.params[i], i + return_parameter);
 	}
 
 	VECEACH(decl->func.labels, i)
@@ -130,7 +155,7 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 		assert(decl->func.function_signature.rtype->type->type_kind == TYPE_VOID);
 		assert(decl->func.body->compound_stmt.defer_list.end == NULL);
 		gencontext_emit_defer(context, decl->func.body->compound_stmt.defer_list.start, NULL);
-		LLVMBuildRetVoid(context->builder);
+		gencontext_emit_implicit_return(context);
 	}
 
 	// erase alloca point
@@ -151,7 +176,7 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 	assert(decl->decl_kind == DECL_FUNC);
 	// Resolve function backend type for function.
 	decl->func.backend_value = LLVMAddFunction(context->module, decl->external_name,
-	                                           BACKEND_TYPE(decl->type));
+	                                           llvm_type(decl->type));
 
 	// Specify appropriate storage class, visibility and call convention
 	// extern functions (linkedited in separately):
@@ -208,11 +233,11 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 			UNREACHABLE;
 		case DECL_FUNC:
 			decl->func.backend_value = LLVMAddFunction(context->module, decl->external_name,
-			                                           BACKEND_TYPE(decl->type));
+			                                           llvm_type(decl->type));
 			LLVMSetVisibility(decl->func.backend_value, LLVMDefaultVisibility);
 			break;
 		case DECL_VAR:
-			decl->var.backend_ref = LLVMAddGlobal(context->module, BACKEND_TYPE(decl->type), decl->external_name);
+			decl->var.backend_ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->external_name);
 			LLVMSetVisibility(decl->var.backend_ref, LLVMDefaultVisibility);
 			break;
 		case DECL_TYPEDEF:
@@ -221,7 +246,7 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 			TODO
 		case DECL_STRUCT:
 		case DECL_UNION:
-			BACKEND_TYPE(decl->type);
+			llvm_type(decl->type);
 			break;
 		case DECL_ENUM:
 			TODO

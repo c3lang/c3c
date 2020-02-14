@@ -23,7 +23,7 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 {
 	Decl *decl = ast->declare_stmt;
 
-	decl->var.backend_ref = gencontext_emit_alloca(context, BACKEND_TYPE(decl->type), decl->name);
+	decl->var.backend_ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
 	// TODO NRVO
 	// TODO debug info
 	/*
@@ -42,6 +42,16 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 	*/
 	if (decl->var.init_expr)
 	{
+		Expr *expr = decl->var.init_expr;
+		// Quick path for empty initializer list
+		if (expr->expr_kind == EXPR_INITIALIZER_LIST && vec_size(expr->initializer_expr) == 0)
+		{
+			LLVMBuildMemSet(context->builder, decl->var.backend_ref, LLVMConstInt(llvm_type(type_byte), 0, false),
+					LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false),
+					expr->type->decl->strukt.alignment);
+			return decl->var.backend_ref;
+		}
+
 		LLVMValueRef value = gencontext_emit_expr(context, decl->var.init_expr);
 		LLVMBuildStore(context->builder, value, decl->var.backend_ref);
 		return decl->var.backend_ref;
@@ -100,14 +110,37 @@ static inline void gencontext_emit_return(GenContext *context, Ast *ast)
 {
 	// Ensure we are on a branch that is non empty.
 	if (!gencontext_check_block_branch_emit(context)) return;
+
 	LLVMValueRef ret_value = ast->return_stmt.expr ? gencontext_emit_expr(context, ast->return_stmt.expr) : NULL;
 	gencontext_emit_defer(context, ast->return_stmt.defer, NULL);
 	if (!ret_value)
 	{
-		LLVMBuildRetVoid(context->builder);
+		gencontext_emit_implicit_return(context);
 		return;
 	}
-	LLVMBuildRet(context->builder, ret_value);
+	if (context->return_out)
+	{
+		LLVMBuildStore(context->builder, ret_value, context->return_out);
+		gencontext_emit_implicit_return(context);
+	}
+	else
+	{
+		LLVMBuildRet(context->builder, ret_value);
+	}
+	context->current_block = NULL;
+	LLVMBasicBlockRef post_ret_block = gencontext_create_free_block(context, "ret");
+	gencontext_emit_block(context, post_ret_block);
+}
+
+static inline void gencontext_emit_throw(GenContext *context, Ast *ast)
+{
+	// Ensure we are on a branch that is non empty.
+	if (!gencontext_check_block_branch_emit(context)) return;
+
+	gencontext_emit_defer(context, ast->throw_stmt.defers.start, ast->throw_stmt.defers.end);
+	// TODO handle throw if simply a jump
+	LLVMBuildRet(context->builder, LLVMConstInt(llvm_type(type_ulong), 10 + ast->throw_stmt.throw_value->identifier_expr.decl->error_constant.value, false));
+
 	context->current_block = NULL;
 	LLVMBasicBlockRef post_ret_block = gencontext_create_free_block(context, "ret");
 	gencontext_emit_block(context, post_ret_block);
@@ -154,10 +187,7 @@ void gencontext_emit_if(GenContext *context, Ast *ast)
 }
 
 
-static void gencontext_push_next(GenContext *context, LLVMBasicBlockRef nextBlock)
-{
-	// TODO
-}
+
 static void
 gencontext_push_break_continue(GenContext *context, LLVMBasicBlockRef break_block, LLVMBasicBlockRef continue_block,
                                LLVMBasicBlockRef next_block)
@@ -474,7 +504,7 @@ LLVMValueRef gencontext_get_defer_bool(GenContext *context, Ast *defer)
 	assert(defer->ast_kind == AST_DEFER_STMT && defer->defer_stmt.emit_boolean);
 	if (!defer->defer_stmt.bool_var)
 	{
-		defer->defer_stmt.bool_var = gencontext_emit_alloca(context, BACKEND_TYPE(type_bool), "defer");
+		defer->defer_stmt.bool_var = gencontext_emit_alloca(context, llvm_type(type_bool), "defer");
 	}
 	return defer->defer_stmt.bool_var;
 }
@@ -492,7 +522,7 @@ void gencontext_emit_defer(GenContext *context, Ast *defer_start, Ast *defer_end
 			LLVMBasicBlockRef exit_block = LLVMCreateBasicBlockInContext(context->context, "skip.defer");
 			LLVMBasicBlockRef defer_block = LLVMCreateBasicBlockInContext(context->context, "do.defer");
 
-			LLVMValueRef value = LLVMBuildLoad2(context->builder, BACKEND_TYPE(type_bool), gencontext_get_defer_bool(context, defer), "will.defer");
+			LLVMValueRef value = LLVMBuildLoad2(context->builder, llvm_type(type_bool), gencontext_get_defer_bool(context, defer), "will.defer");
 
 			gencontext_emit_cond_br(context, value, defer_block, exit_block);
 
@@ -520,7 +550,7 @@ void gencontext_emit_goto(GenContext *context, Ast *ast)
 	Ast *defer = ast->goto_stmt.label->label_stmt.defer;
 	while (defer != ast->goto_stmt.defer.end)
 	{
-		LLVMBuildStore(context->builder, LLVMConstInt(BACKEND_TYPE(type_bool), 0, false),
+		LLVMBuildStore(context->builder, LLVMConstInt(llvm_type(type_bool), 0, false),
 		               gencontext_get_defer_bool(context, defer));
 		defer = defer->defer_stmt.prev_defer;
 	}
@@ -604,7 +634,7 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 		case AST_DEFER_STMT:
 			if (ast->defer_stmt.emit_boolean)
 			{
-				LLVMBuildStore(context->builder, LLVMConstInt(BACKEND_TYPE(type_bool), 1, false),
+				LLVMBuildStore(context->builder, LLVMConstInt(llvm_type(type_bool), 1, false),
 				               gencontext_get_defer_bool(context, ast));
 			}
 			break;
@@ -612,9 +642,11 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			break;
 		case AST_CATCH_STMT:
 		case AST_TRY_STMT:
-		case AST_THROW_STMT:
 			// Should have been lowered.
 			UNREACHABLE
+		case AST_THROW_STMT:
+			gencontext_emit_throw(context, ast);
+			break;
 		case AST_ASM_STMT:
 			TODO
 		case AST_ATTRIBUTE:

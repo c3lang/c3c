@@ -100,12 +100,6 @@ typedef struct
 	uint32_t symtab_size;
 	CompileOption compile_option;
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
-	int pointer_size;
-	int cshort_size;
-	int cint_size;
-	int clong_size;
-	int clonglong_size;
-	int clongdouble_size;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
 	bool debug_info;

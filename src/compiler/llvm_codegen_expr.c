@@ -41,7 +41,7 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 			TODO
 		case TYPE_POINTER:
 			return LLVMBuildGEP2(context->builder,
-			                     BACKEND_TYPE(type->pointer),
+			                     llvm_type(type->pointer),
 			                     gencontext_emit_expr(context, expr->subscript_expr.expr),
 			                     &index, 1, "[]");
 		case TYPE_VARARRAY:
@@ -56,7 +56,7 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 static inline LLVMValueRef gencontext_emit_access_addr(GenContext *context, Expr *expr)
 {
 	LLVMValueRef value = gencontext_emit_address(context, expr->access_expr.parent);
-	return LLVMBuildStructGEP2(context->builder, BACKEND_TYPE(expr->access_expr.parent->type), value, (unsigned)expr->access_expr.index, "");
+	return LLVMBuildStructGEP2(context->builder, llvm_type(expr->access_expr.parent->type), value, (unsigned)expr->access_expr.index, "");
 }
 
 LLVMValueRef gencontext_emit_scoped_expr(GenContext *context, Expr *expr)
@@ -103,6 +103,7 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_CAST:
+		case EXPR_MACRO_EXPR:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -115,9 +116,9 @@ LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMV
 		case CAST_ERROR:
 			UNREACHABLE
 		case CAST_PTRPTR:
-			return LLVMBuildPointerCast(context->builder, value, BACKEND_TYPE(type), "ptrptr");
+			return LLVMBuildPointerCast(context->builder, value, llvm_type(type), "ptrptr");
 		case CAST_PTRXI:
-			return LLVMBuildPtrToInt(context->builder, value, BACKEND_TYPE(type), "ptrxi");
+			return LLVMBuildPtrToInt(context->builder, value, llvm_type(type), "ptrxi");
 		case CAST_VARRPTR:
 			TODO
 		case CAST_ARRPTR:
@@ -125,45 +126,45 @@ LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMV
 		case CAST_STRPTR:
 			TODO
 		case CAST_PTRBOOL:
-			return LLVMBuildICmp(context->builder, LLVMIntNE, value, LLVMConstPointerNull(BACKEND_TYPE(type->canonical->pointer)), "ptrbool");
+			return LLVMBuildICmp(context->builder, LLVMIntNE, value, LLVMConstPointerNull(llvm_type(type->canonical->pointer)), "ptrbool");
 		case CAST_BOOLINT:
-			return LLVMBuildTrunc(context->builder, value, BACKEND_TYPE(type), "boolsi");
+			return LLVMBuildTrunc(context->builder, value, llvm_type(type), "boolsi");
 		case CAST_FPBOOL:
 			return LLVMBuildFCmp(context->builder, LLVMRealUNE, value, LLVMConstNull(LLVMTypeOf(value)), "fpbool");
 		case CAST_BOOLFP:
-			return LLVMBuildSIToFP(context->builder, value, BACKEND_TYPE(type), "boolfp");
+			return LLVMBuildSIToFP(context->builder, value, llvm_type(type), "boolfp");
 		case CAST_INTBOOL:
 			return LLVMBuildICmp(context->builder, LLVMIntNE, value, LLVMConstNull(LLVMTypeOf(value)), "intbool");
 		case CAST_FPFP:
 			return type_convert_will_trunc(type, target_type)
-			       ? LLVMBuildFPTrunc(context->builder, value, BACKEND_TYPE(type), "fpfptrunc")
-			       : LLVMBuildFPExt(context->builder, value, BACKEND_TYPE(type), "fpfpext");
+			       ? LLVMBuildFPTrunc(context->builder, value, llvm_type(type), "fpfptrunc")
+			       : LLVMBuildFPExt(context->builder, value, llvm_type(type), "fpfpext");
 		case CAST_FPSI:
-			return LLVMBuildFPToSI(context->builder, value, BACKEND_TYPE(type), "fpsi");
+			return LLVMBuildFPToSI(context->builder, value, llvm_type(type), "fpsi");
 		case CAST_FPUI:
-			return LLVMBuildFPToUI(context->builder, value, BACKEND_TYPE(type), "fpui");
+			return LLVMBuildFPToUI(context->builder, value, llvm_type(type), "fpui");
 		case CAST_SISI:
 			return type_convert_will_trunc(type, target_type)
-			       ? LLVMBuildTrunc(context->builder, value, BACKEND_TYPE(type), "sisitrunc")
-			       : LLVMBuildSExt(context->builder, value, BACKEND_TYPE(type), "sisiext");
+			       ? LLVMBuildTrunc(context->builder, value, llvm_type(type), "sisitrunc")
+			       : LLVMBuildSExt(context->builder, value, llvm_type(type), "sisiext");
 		case CAST_SIUI:
 			return type_convert_will_trunc(type, target_type)
-			       ? LLVMBuildTrunc(context->builder, value, BACKEND_TYPE(type), "siuitrunc")
-			       : LLVMBuildZExt(context->builder, value, BACKEND_TYPE(type), "siuiext");
+			       ? LLVMBuildTrunc(context->builder, value, llvm_type(type), "siuitrunc")
+			       : LLVMBuildZExt(context->builder, value, llvm_type(type), "siuiext");
 		case CAST_SIFP:
-			return LLVMBuildSIToFP(context->builder, value, BACKEND_TYPE(type), "sifp");
+			return LLVMBuildSIToFP(context->builder, value, llvm_type(type), "sifp");
 		case CAST_XIPTR:
-			return LLVMBuildIntToPtr(context->builder, value, BACKEND_TYPE(type), "xiptr");
+			return LLVMBuildIntToPtr(context->builder, value, llvm_type(type), "xiptr");
 		case CAST_UISI:
 			return type_convert_will_trunc(type, target_type)
-			       ? LLVMBuildTrunc(context->builder, value, BACKEND_TYPE(type), "uisitrunc")
-			       : LLVMBuildZExt(context->builder, value, BACKEND_TYPE(type), "uisiext");
+			       ? LLVMBuildTrunc(context->builder, value, llvm_type(type), "uisitrunc")
+			       : LLVMBuildZExt(context->builder, value, llvm_type(type), "uisiext");
 		case CAST_UIUI:
 			return type_convert_will_trunc(type, target_type)
-			       ? LLVMBuildTrunc(context->builder, value, BACKEND_TYPE(type), "uiuitrunc")
-			       : LLVMBuildZExt(context->builder, value, BACKEND_TYPE(type), "uiuiext");
+			       ? LLVMBuildTrunc(context->builder, value, llvm_type(type), "uiuitrunc")
+			       : LLVMBuildZExt(context->builder, value, llvm_type(type), "uiuiext");
 		case CAST_UIFP:
-			return LLVMBuildUIToFP(context->builder, value, BACKEND_TYPE(type), "uifp");
+			return LLVMBuildUIToFP(context->builder, value, llvm_type(type), "uifp");
 		case CAST_ENUMSI:
 			TODO
 	}
@@ -177,11 +178,11 @@ static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *
 static inline LLVMValueRef gencontext_emit_inc_dec_change(GenContext *context, bool use_mod, LLVMValueRef current_value, Expr *expr, int diff)
 {
 	Type *type = expr->type->canonical;
-	LLVMTypeRef llvm_type = BACKEND_TYPE(type);
+	LLVMTypeRef llvm_type = llvm_type(type);
 
 	if (type->type_kind == TYPE_POINTER)
 	{
-		LLVMValueRef add = LLVMConstInt(diff < 0 ? BACKEND_TYPE(type_isize) : BACKEND_TYPE(type_usize), diff, diff < 0);
+		LLVMValueRef add = LLVMConstInt(diff < 0 ? llvm_type(type_isize) : llvm_type(type_usize), diff, diff < 0);
 		return LLVMBuildGEP2(context->builder, llvm_type, current_value, &add, 1, "ptrincdec");
 	}
 
@@ -200,7 +201,7 @@ static inline LLVMValueRef gencontext_emit_inc_dec_change(GenContext *context, b
 static inline LLVMValueRef gencontext_emit_pre_inc_dec(GenContext *context, Expr *expr, int diff, bool use_mod)
 {
 	LLVMValueRef addr = gencontext_emit_address(context, expr);
-	LLVMValueRef value = LLVMBuildLoad2(context->builder, BACKEND_TYPE(expr->type), addr, "");
+	LLVMValueRef value = LLVMBuildLoad2(context->builder, llvm_type(expr->type), addr, "");
 	LLVMValueRef result = gencontext_emit_inc_dec_change(context, use_mod, value, expr, diff);
 	LLVMBuildStore(context->builder, result, addr);
 	return result;
@@ -209,7 +210,7 @@ static inline LLVMValueRef gencontext_emit_pre_inc_dec(GenContext *context, Expr
 static inline LLVMValueRef gencontext_emit_post_inc_dec(GenContext *context, Expr *expr, int diff, bool use_mod)
 {
 	LLVMValueRef addr = gencontext_emit_address(context, expr);
-	LLVMValueRef value = LLVMBuildLoad2(context->builder, BACKEND_TYPE(expr->type), addr, "");
+	LLVMValueRef value = LLVMBuildLoad2(context->builder, llvm_type(expr->type), addr, "");
 	LLVMValueRef result = gencontext_emit_inc_dec_change(context, use_mod, value, expr, diff);
 	LLVMBuildStore(context->builder, result, addr);
 	return value;
@@ -234,7 +235,7 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 		case UNARYOP_ADDR:
 			return gencontext_emit_address(context, expr->unary_expr.expr);
 		case UNARYOP_DEREF:
-			return LLVMBuildLoad2(context->builder, BACKEND_TYPE(expr->unary_expr.expr->type), gencontext_emit_expr(context, expr->unary_expr.expr), "deref");
+			return LLVMBuildLoad2(context->builder, llvm_type(expr->unary_expr.expr->type), gencontext_emit_expr(context, expr->unary_expr.expr), "deref");
 		case UNARYOP_INC:
 			return gencontext_emit_pre_inc_dec(context, expr->unary_expr.expr, 1, false);
 		case UNARYOP_DEC:
@@ -277,9 +278,9 @@ static LLVMValueRef gencontext_emit_logical_and_or(GenContext *context, Expr *ex
 
 	// Simplify for LLVM by entering the constants we already know of.
 	LLVMValueRef result_on_skip = LLVMConstInt(LLVMInt1TypeInContext(context->context), op == BINARYOP_AND ? 0 : 1, false);
-	LLVMValueRef logicValues[2] = { result_on_skip, rhs };
+	LLVMValueRef logic_values[2] = { result_on_skip, rhs };
 	LLVMBasicBlockRef blocks[2] = { start_block, rhs_block };
-	LLVMAddIncoming(phi, logicValues, blocks, 2);
+	LLVMAddIncoming(phi, logic_values, blocks, 2);
 
 	return phi;
 }
@@ -293,7 +294,7 @@ static inline LLVMValueRef gencontext_emit_initialization_from_expr(GenContext *
 
 static inline LLVMValueRef gencontext_emit_struct_value_expr(GenContext *context, Expr *expr)
 {
-	LLVMValueRef temp_alloc = gencontext_emit_alloca(context, BACKEND_TYPE(expr->type), "temp");
+	LLVMValueRef temp_alloc = gencontext_emit_alloca(context, llvm_type(expr->type), "temp");
 	return gencontext_emit_initialization_from_expr(context, temp_alloc, expr->struct_value_expr.init_expr);
 }
 
@@ -314,7 +315,7 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 	LLVMValueRef rhs_value;
 	if (lhs_addr)
 	{
-		lhs_value = LLVMBuildLoad2(context->builder, BACKEND_TYPE(lhs->type), lhs_addr, "");
+		lhs_value = LLVMBuildLoad2(context->builder, llvm_type(lhs->type), lhs_addr, "");
 	}
 	else
 	{
@@ -348,7 +349,7 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 			{
 				if (lhs->type->canonical == rhs->type->canonical) return LLVMBuildPtrDiff(context->builder, lhs_value, rhs_value, "ptrdiff");
 				rhs_value = LLVMBuildNeg(context->builder, rhs_value, "");
-				return LLVMBuildGEP2(context->builder, BACKEND_TYPE(lhs->type), lhs_value, &rhs_value, 1, "ptrsub");
+				return LLVMBuildGEP2(context->builder, llvm_type(lhs->type), lhs_value, &rhs_value, 1, "ptrsub");
 			}
 			if (is_float) return LLVMBuildFSub(context->builder, lhs_value, rhs_value, "fsub");
 			return gencontext_emit_sub_int(context, lhs->type->canonical, binary_op == BINARYOP_SUB_MOD, lhs_value, rhs_value);
@@ -357,7 +358,7 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 			if (lhs->type->canonical->type_kind == TYPE_POINTER)
 			{
 				assert(type_is_integer(rhs->type->canonical));
-				return LLVMBuildGEP2(context->builder, BACKEND_TYPE(lhs->type), lhs_value, &rhs_value, 1, "ptradd");
+				return LLVMBuildGEP2(context->builder, llvm_type(lhs->type), lhs_value, &rhs_value, 1, "ptradd");
 			}
 			if (is_float) return LLVMBuildFAdd(context->builder, lhs_value, rhs_value, "fadd");
 			return gencontext_emit_add_int(context, lhs->type->canonical, binary_op == BINARYOP_ADD_MOD, lhs_value, rhs_value);
@@ -491,9 +492,9 @@ LLVMValueRef gencontext_emit_elvis_expr(GenContext *context, Expr *expr)
 	gencontext_emit_block(context, phi_block);
 	LLVMValueRef phi = LLVMBuildPhi(context->builder, expr->type->backend_type, "val");
 
-	LLVMValueRef logicValues[2] = { lhs, rhs };
+	LLVMValueRef logic_values[2] = { lhs, rhs };
 	LLVMBasicBlockRef blocks[2] = { current_block, rhs_block };
-	LLVMAddIncoming(phi, logicValues, blocks, 2);
+	LLVMAddIncoming(phi, logic_values, blocks, 2);
 
 	return phi;
 }
@@ -539,7 +540,7 @@ static LLVMValueRef gencontext_emit_identifier_expr(GenContext *context, Expr *e
 
 LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 {
-	LLVMTypeRef type = BACKEND_TYPE(expr->type);
+	LLVMTypeRef type = llvm_type(expr->type);
 	switch (expr->const_expr.type)
 	{
 		case CONST_INT:
@@ -578,7 +579,8 @@ LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 	Decl *function = expr->call_expr.function->identifier_expr.decl;
 
 	LLVMValueRef func = function->func.backend_value;
-	LLVMTypeRef func_type = BACKEND_TYPE(function->type);
+	LLVMTypeRef func_type = llvm_type(function->type);
+	// TODO fix throws and return optimization
 	LLVMValueRef call = LLVMBuildCall2(context->builder, func_type, func, values, args, "call");
 	/*
 	if (function->func.function_signature.convention)
@@ -595,7 +597,7 @@ static inline LLVMValueRef gencontext_emit_access_expr(GenContext *context, Expr
 {
 	// Improve, add string description to the access?
 	LLVMValueRef value = gencontext_emit_address(context, expr->access_expr.parent);
-	LLVMValueRef val =  LLVMBuildStructGEP2(context->builder, BACKEND_TYPE(expr->access_expr.parent->type), value, (unsigned)expr->access_expr.index, "");
+	LLVMValueRef val =  LLVMBuildStructGEP2(context->builder, llvm_type(expr->access_expr.parent->type), value, (unsigned)expr->access_expr.index, "");
 	return LLVMBuildLoad2(context->builder, gencontext_get_llvm_type(context, expr->type), val, "");
 }
 
@@ -611,19 +613,22 @@ static inline LLVMValueRef gencontext_emit_expression_list_expr(GenContext *cont
 
 static inline LLVMValueRef gencontext_emit_initializer_list_expr(GenContext *context, Expr *expr)
 {
-	LLVMValueRef value = LLVMGetUndef(LLVMTYPE(expr->type));
+	LLVMTypeRef type = llvm_type(expr->type);
+	LLVMValueRef value = LLVMGetUndef(type);
 
-	/*
-	for (expr->initializer_expr)
-	expr->type.
-	else if (littype->tag == StructTag) {
-		LLVMValueRef strval = LLVMGetUndef(genlType(gen, littype));
-		unsigned int pos = 0;
-		for (nodesFor(lit->args, cnt, nodesp))
-			strval = LLVMBuildInsertValue(gen->builder, strval, genlExpr(gen, *nodesp), pos++, "literal");
-		return strval;
+	if (!vec_size(expr->initializer_expr))
+	{
+		LLVMValueRef ref = gencontext_emit_alloca(context, type, "temp");
+		value = LLVMBuildMemSet(context->builder, ref, LLVMConstInt(llvm_type(type_byte), 0, false),
+		                        LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false), expr->type->decl->strukt.alignment);
+		return ref;
 	}
-	TODO*/
+
+	VECEACH(expr->initializer_expr, i)
+	{
+		LLVMValueRef init_value = gencontext_emit_expr(context, expr->initializer_expr[i]);
+		value = LLVMBuildInsertValue(context->builder, value, init_value, i, "literal");
+	}
 	return value;
 }
 
@@ -654,6 +659,7 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 		case EXPR_SIZEOF:
 		case EXPR_TYPE_ACCESS:
 		case EXPR_TRY:
+		case EXPR_MACRO_EXPR:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE
 		case EXPR_IDENTIFIER:
