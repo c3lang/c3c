@@ -22,7 +22,6 @@ static void test_lexer(void)
 	const char* tokens[TOKEN_EOF];
 	int len[TOKEN_EOF];
 	Lexer lexer;
-	lexer_check_init();
 	for (int i = 1; i < TOKEN_EOF; i++)
 	{
 		const char* token = token_type_to_string((TokenType)i);
@@ -78,7 +77,7 @@ static void test_lexer(void)
 	size_t test_len = strlen(test_parse);
 	for (int b = 0; b < BENCH_REPEATS; b++)
 	{
-		lexer_test_setup(&lexer, test_parse, test_len);
+		lexer_init_for_test(&lexer, test_parse, test_len);
 		Token token;
 		while (1)
 		{

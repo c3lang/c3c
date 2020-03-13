@@ -4,11 +4,7 @@
 
 #include "compiler_internal.h"
 
-
-Token next_tok;
-Token tok;
-
-// --- Lexing general methods.
+#pragma mark --- Lexing general methods.
 
 static inline char peek(Lexer *lexer)
 {
@@ -30,15 +26,9 @@ void lexer_store_line_end(Lexer *lexer)
 	source_file_append_line_end(lexer->current_file, lexer->current_file->start_id + lexer->current - lexer->file_begin);
 }
 
-
 static inline char peek_next(Lexer *lexer)
 {
 	return lexer->current[1];
-}
-
-static inline char peek_next_next(Lexer *lexer)
-{
-	return lexer->current[2];
 }
 
 static inline char next(Lexer *lexer)
@@ -56,9 +46,12 @@ static inline bool reached_end(Lexer *lexer)
 	return *lexer->current == '\0';
 }
 
-static inline SourceLoc loc_from_ptr(Lexer *lexer, const char *start)
+static inline bool match(Lexer *lexer, char expected)
 {
-	return (SourceLoc) (lexer->current_file->start_id + (start - lexer->file_begin));
+	if (reached_end(lexer)) return false;
+	if (*lexer->current != expected) return false;
+	lexer->current++;
+	return true;
 }
 
 static inline SourceRange range_from_ptr(Lexer *lexer, const char *start, const char *end)
@@ -68,6 +61,8 @@ static inline SourceRange range_from_ptr(Lexer *lexer, const char *start, const 
 			(lexer->current_file->start_id + (end - lexer->file_begin)),
 	};
 }
+
+#pragma mark --- Token creation
 
 static Token error_token(Lexer *lexer, const char *message, ...)
 {
@@ -108,27 +103,16 @@ static Token make_string_token(Lexer *lexer, TokenType type, const char* string)
 			};
 }
 
-static inline bool match(Lexer *lexer, char expected)
-{
-	if (reached_end(lexer)) return false;
-	if (*lexer->current != expected) return false;
-	lexer->current++;
-	return true;
-}
-
-static inline void match_assert(Lexer *lexer, char expected)
-{
-	assert(!reached_end(lexer));
-	assert(lexer->current[0] == expected);
-	lexer->current++;
-}
-
+#pragma mark --- Comment parsing
 
 static inline Token parse_line_comment(Lexer *lexer)
 {
 	// // style comment
 	// Skip forward to the end.
+
+	/// is a doc line comment.
 	TokenType comment_type = match(lexer, '/') ? TOKEN_DOC_COMMENT : TOKEN_COMMENT;
+
 	while (!reached_end(lexer) && peek(lexer) != '\n')
 	{
 		next(lexer);
@@ -207,12 +191,11 @@ static inline Token parse_multiline_comment(Lexer *lexer)
 		next(lexer);
 	}
 }
+
 /**
- * Skip regular comments.
- *
- * @return the result of the skip (did we enter docs? did we have any errors?)
+ * Skip regular whitespace.
  */
-void skip_whitespace(Lexer *lexer)
+static void skip_whitespace(Lexer *lexer)
 {
 	while (1)
 	{
@@ -235,7 +218,7 @@ void skip_whitespace(Lexer *lexer)
 }
 
 
-// --- Normal scanning methods start here
+#pragma mark --- Identifier scanning
 
 static inline Token scan_prefixed_ident(Lexer *lexer, TokenType type, TokenType no_ident_type, bool ends_with_bang, const char *start)
 {
@@ -253,12 +236,6 @@ static inline Token scan_prefixed_ident(Lexer *lexer, TokenType type, TokenType 
 	const char* interned = symtab_add(lexer->lexing_start, len, hash, &type);
 	return make_string_token(lexer, type, interned);
 }
-
-static inline void scan_skipped_ident(Lexer *lexer)
-{
-	while (is_alphanum_(peek(lexer))) next(lexer);
-}
-
 
 
 // Parses identifiers. Note that this is a bit complicated here since
@@ -315,8 +292,7 @@ static inline Token scan_ident(Lexer *lexer)
 	return make_string_token(lexer, type, interned_string);
 }
 
-
-#pragma mark ----- Number scanning
+#pragma mark --- Number scanning
 
 static Token scan_oct(Lexer *lexer)
 {
@@ -327,42 +303,18 @@ static Token scan_oct(Lexer *lexer)
 }
 
 
-Token scan_binary(Lexer *lexer)
+static Token scan_binary(Lexer *lexer)
 {
-	char b = next(lexer); // Skip the b
+	next(lexer); // Skip the b
 	if (!is_binary(next(lexer)))
 	{
-		return error_token(lexer, "An expression starting with '0%c' would expect a sequence of zeroes and ones, "
-		                   "did you try to write a hex value but forgot the '0x'?", b);
+		return error_token(lexer, "An expression starting with '0b' would expect a sequence of zeroes and ones, "
+		                   "did you try to write a hex value but forgot the '0x'?");
 	}
 	while (is_binary_or_(peek(lexer))) next(lexer);
 	return make_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
 }
 
-#define PARSE_SPECIAL_NUMBER(is_num, is_num_with_underscore, exp, EXP) \
-while (is_num_with_underscore(peek(lexer))) next(lexer);  \
-bool is_float = false;  \
-if (peek(lexer) == '.')  \
-{ \
-	is_float = true; \
-	next(lexer); \
-	char c = peek(lexer); \
-	if (c == '_') return error_token(lexer, "Can't parse this as a floating point value due to the '_' directly after decimal point."); \
-	if (is_num(c)) next(lexer); \
-	while (is_num_with_underscore(peek(lexer))) next(lexer); \
-} \
-char c = peek(lexer); \
-if (c == (exp) || c == (EXP)) \
-{ \
-	is_float = true; \
-	next(lexer); \
-	char c2 = next(lexer); \
-	if (c2 == '+' || c2 == '-') c2 = next(lexer); \
-	if (!is_num(c2)) return error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c2); \
-	while (is_num(peek(lexer))) next(lexer); \
-} \
-if (prev(lexer) == '_') return error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits."); \
-return make_token(lexer, is_float ? TOKEN_FLOAT : TOKEN_INTEGER, lexer->lexing_start)
 
 static inline Token scan_hex(Lexer *lexer)
 {
@@ -372,15 +324,58 @@ static inline Token scan_hex(Lexer *lexer)
 		return error_token(lexer, "'0%c' starts a hexadecimal number, "
 					 "but it was followed by '%c' which is not part of a hexadecimal number.", x, prev(lexer));
 	}
-	PARSE_SPECIAL_NUMBER(is_hex, is_hex_or_, 'p', 'P');
+	while (is_hex_or_(peek(lexer))) next(lexer);
+	bool is_float = false;
+	if (peek(lexer) == '.')
+	{
+		is_float = true;
+		next(lexer);
+		char c = peek(lexer);
+		if (c == '_') return error_token(lexer, "Can't parse this as a floating point value due to the '_' directly after decimal point.");
+		if (is_hex(c)) next(lexer);
+		while (is_hex_or_(peek(lexer))) next(lexer);
+	}
+	char c = peek(lexer);
+	if (c == 'p' || c == 'P')
+	{
+		is_float = true;
+		next(lexer);
+		char c2 = next(lexer);
+		if (c2 == '+' || c2 == '-') c2 = next(lexer);
+		if (!is_hex(c2)) return error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c2);
+		while (is_hex(peek(lexer))) next(lexer);
+	}
+	if (prev(lexer) == '_') return error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
+	return make_token(lexer, is_float ? TOKEN_FLOAT : TOKEN_INTEGER, lexer->lexing_start);
 }
 
 static inline Token scan_dec(Lexer *lexer)
 {
-	PARSE_SPECIAL_NUMBER(is_digit, is_digit_or_, 'e', 'E');
+	while (is_digit_or_(peek(lexer))) next(lexer);
+	bool is_float = false;
+	if (peek(lexer) == '.')
+	{
+		is_float = true;
+		next(lexer);
+		char c = peek(lexer);
+		if (c == '_') return error_token(lexer, "Can't parse this as a floating point value due to the '_' directly after decimal point.");
+		if (is_digit(c)) next(lexer);
+		while (is_digit_or_(peek(lexer))) next(lexer);
+	}
+	char c = peek(lexer);
+	if (c == 'e' || c == 'E')
+	{
+		is_float = true;
+		next(lexer);
+		char c2 = next(lexer);
+		if (c2 == '+' || c2 == '-') c2 = next(lexer);
+		if (!is_digit(c2)) return error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c2);
+		while (is_digit(peek(lexer))) next(lexer);
+	}
+	if (prev(lexer) == '_') return error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
+	return make_token(lexer, is_float ? TOKEN_FLOAT : TOKEN_INTEGER, lexer->lexing_start);
 }
 
-#undef PARSE_SPECIAL_NUMBER
 
 static inline Token scan_digit(Lexer *lexer)
 {
@@ -407,8 +402,7 @@ static inline Token scan_digit(Lexer *lexer)
 	return scan_dec(lexer);
 }
 
-#pragma mark -----
-
+#pragma mark --- Character & string scan
 
 static inline Token scan_char(Lexer *lexer)
 {
@@ -467,25 +461,7 @@ static inline Token scan_string(Lexer *lexer)
 	return make_token(lexer, TOKEN_STRING, lexer->lexing_start);
 }
 
-static inline void skip_docs_whitespace(Lexer *lexer)
-{
-	while (1)
-	{
-		char c = peek(lexer);
-		switch (c)
-		{
-			case ' ':
-			case '\t':
-			case '\r':
-			case '\f':
-				next(lexer);
-				break;
-			default:
-				return;
-		}
-	}
-}
-
+#pragma mark --- Lexer public functions
 
 Token lexer_scan_token(Lexer *lexer)
 {
@@ -597,27 +573,18 @@ File* lexer_current_file(Lexer *lexer)
 	return lexer->current_file;
 }
 
-void lexer_check_init()
+void lexer_init_with_file(Lexer *lexer, File *file)
 {
-	static bool symtab_has_init = false;
-	if (symtab_has_init) return;
-	symtab_has_init = true;
-	symtab_init(build_options.symtab_size);
-}
-
-
-void lexer_add_file_for_lexing(Lexer *lexer, File *file)
-{
-	lexer_check_init();
 	lexer->current_file = file;
 	lexer->file_begin = lexer->current_file->contents;
 	lexer->lexing_start = lexer->file_begin;
 	lexer->current = lexer->lexing_start;
 }
 
-void lexer_test_setup(Lexer *lexer, const char *text, size_t len)
+#pragma mark --- Test methods
+
+void lexer_init_for_test(Lexer *lexer, const char *text, size_t len)
 {
-	lexer_check_init();
 	static File helper;
 	lexer->lexing_start = text;
 	lexer->current = text;
@@ -628,8 +595,6 @@ void lexer_test_setup(Lexer *lexer, const char *text, size_t len)
 	lexer->current_file->end_id = len;
 	lexer->current_file->name = "Test";
 }
-
-
 
 Token lexer_scan_ident_test(Lexer *lexer, const char *scan)
 {

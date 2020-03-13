@@ -1003,10 +1003,9 @@ static inline bool func_has_error_return(FunctionSignature *func_sig)
 
 Token lexer_scan_token(Lexer *lexer);
 Token lexer_scan_ident_test(Lexer *lexer, const char *scan);
-void lexer_test_setup(Lexer *lexer, const char *text, size_t len);
-void lexer_add_file_for_lexing(Lexer *lexer, File *file);
+void lexer_init_for_test(Lexer *lexer, const char *text, size_t len);
+void lexer_init_with_file(Lexer *lexer, File *file);
 File* lexer_current_file(Lexer *lexer);
-void lexer_check_init(void);
 
 
 typedef enum
@@ -1059,7 +1058,6 @@ void *stable_get(STable *table, const char *key);
 void *stable_delete(STable *table, const char *key);
 void stable_clear(STable *table);
 
-void symtab_init(uint32_t max_size);
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 
 void target_setup();

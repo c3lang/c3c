@@ -16,7 +16,7 @@ static size_t arena_buckets_array_size;
 static size_t current_use;
 static void *current_arena;
 static int allocations_done;
-void init_arena(void)
+void memory_init(void)
 {
 	arena_buckets = malloc(STARTING_ARENA_BUCKETS * sizeof(void *));
 	arena_buckets_used = 1;
@@ -91,9 +91,9 @@ void run_arena_allocator_tests(void)
 {
 	printf("Begin arena allocator testing.\n");
 	bool was_init = arena_buckets != NULL;
-	if (!was_init) init_arena();
+	if (!was_init) memory_init();
 	free_arena();
-	init_arena();
+	memory_init();
 	ASSERT(malloc_arena(10) != malloc_arena(10), "Expected different values...");
 	printf("-- Tested basic allocation - OK.\n");
 	ASSERT(current_use == 32, "Expected allocations rounded to next 16 bytes");
@@ -122,5 +122,5 @@ void run_arena_allocator_tests(void)
 	free_arena();
 	ASSERT(arena_buckets_array_size == 0, "Arena not freed?");
 	printf("-- Test freeing arena - OK.\n");
-	if (was_init) init_arena();
+	if (was_init) memory_init();
 }

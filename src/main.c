@@ -7,8 +7,15 @@
 
 int main(int argc, const char *argv[])
 {
-	init_arena();
+	// First setup memory
+	memory_init();
+
+	// Parse arguments.
 	parse_arguments(argc, argv);
+
+	// Now we set up the symtab.
+	symtab_init(build_options.symtab_size);
+
 	switch (build_options.command)
 	{
 		case COMMAND_INIT:

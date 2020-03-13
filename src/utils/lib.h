@@ -13,7 +13,7 @@ void path_get_dir_and_filename_from_full(const char *full_path, char **filename,
 void file_find_top_dir();
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive);
 
-void init_arena(void);
+void memory_init(void);
 void *malloc_arena(unsigned long mem);
 void free_arena(void);
 
@@ -73,6 +73,7 @@ static inline bool is_binary(char c)
 {
 	return c  == '0' || c == '1';
 }
+
 
 static inline bool is_binary_or_(char c)
 {

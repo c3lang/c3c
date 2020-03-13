@@ -2847,7 +2847,7 @@ void parse_current(Context *context)
 
 void parse_file(Context *context)
 {
-	lexer_add_file_for_lexing(&context->lexer, context->file);
+	lexer_init_with_file(&context->lexer, context->file);
 	parse_current(context);
 }
 

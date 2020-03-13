@@ -9,4 +9,5 @@
 void compiler_init();
 void compile_files(BuildTarget *target);
 void build();
+void symtab_init(uint32_t max_size);
 

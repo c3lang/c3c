@@ -21,7 +21,7 @@ static void compiler_lex(BuildTarget *target)
 		File *file = source_file_load(target->sources[i], &loaded);
 		if (loaded) continue;
 		Lexer lexer;
-		lexer_add_file_for_lexing(&lexer, file);
+		lexer_init_with_file(&lexer, file);
 		printf("# %s\n", file->full_path);
 		while (1)
 		{
