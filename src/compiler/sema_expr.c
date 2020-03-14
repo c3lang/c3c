@@ -2,8 +2,14 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "compiler_internal.h"
+#include "sema_internal.h"
 
+/*
+ * TODOs
+ * - Check all returns correctly
+ * - Disallow jumping in and out of an expression block.
+ * - Handle IXX FXX and UXX in a sane way.
+ */
 
 #define CONST_PROCESS(_op) \
 if (both_const(left, right)) { \
@@ -13,6 +19,17 @@ case CONST_FLOAT: expr->const_expr.f = left->const_expr.f _op right->const_expr.
 default: UNREACHABLE } \
 expr->expr_kind = EXPR_CONST; \
 expr->const_expr.type = left->const_expr.type; \
+}
+
+int sema_check_comp_time_bool(Context *context, Expr *expr)
+{
+	if (!sema_analyse_expr(context, type_bool, expr)) return -1;
+	if (expr->expr_kind != EXPR_CONST)
+	{
+		SEMA_ERROR(expr, "$if requires a compile time constant value.");
+		return -1;
+	}
+	return expr->const_expr.b;
 }
 
 static bool expr_is_ltype(Expr *expr)
@@ -33,6 +50,7 @@ static bool expr_is_ltype(Expr *expr)
 			return false;
 	}
 }
+
 
 static inline bool sema_type_error_on_binop(Expr *expr)
 {
@@ -1590,6 +1608,17 @@ static TypeInfo *type_info_copy_from_macro(Context *context, Expr *macro, TypeIn
 }
 
 
+static void ast_copy_list_from_macro(Context *context, Expr *macro, Ast ***to_convert)
+{
+	Ast **result = NULL;
+	Ast **list = *to_convert;
+	VECEACH(list, i)
+	{
+		vec_add(result, ast_copy_from_macro(context, macro, list[i]));
+	}
+	*to_convert = result;
+}
+
 
 static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_expr)
 {
@@ -1598,6 +1627,9 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 	Expr *expr = expr_shallow_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_EXPR_BLOCK:
+			ast_copy_list_from_macro(context, macro, &expr->expr_block.stmts);
+			return expr;
 		case EXPR_POISONED:
 			return source_expr;
 		case EXPR_TRY:
@@ -1681,16 +1713,6 @@ static Expr **expr_copy_expr_list_from_macro(Context *context, Expr *macro, Expr
 	return result;
 }
 
-static void ast_copy_list_from_macro(Context *context, Expr *macro, Ast ***to_convert)
-{
-	Ast **result = NULL;
-	Ast **list = *to_convert;
-	VECEACH(list, i)
-	{
-		vec_add(result, ast_copy_from_macro(context, macro, list[i]));
-	}
-	*to_convert = result;
-}
 
 static void type_info_copy_list_from_macro(Context *context, Expr *macro, TypeInfo ***to_convert)
 {
@@ -1781,9 +1803,6 @@ static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 			EXPR_COPY(ast->for_stmt.incr);
 			AST_COPY(ast->for_stmt.body);
 			AST_COPY(ast->for_stmt.init);
-			return ast;
-		case AST_FUNCTION_BLOCK_STMT:
-			ast_copy_list_from_macro(context, macro, &ast->function_block_stmt.stmts);
 			return ast;
 		case AST_GENERIC_CASE_STMT:
 			AST_COPY(ast->generic_case_stmt.body);
@@ -1934,8 +1953,130 @@ static inline bool sema_expr_analyse_type(Context *context, Type *to, Expr *expr
 
 
 
+static inline Ast **context_push_returns(Context *context)
+{
+	Ast** old_returns = context->returns;
+	if (context->returns_cache)
+	{
+		context->returns = context->returns_cache;
+		context->returns_cache = NULL;
+		vec_resize(context->returns, 0);
+	}
+	else
+	{
+		context->returns = NULL;
+	}
+	return old_returns;
+}
+
+static inline void context_pop_returns(Context *context, Ast **restore)
+{
+	if (!context->returns_cache && context->returns)
+	{
+		context->returns_cache = context->returns;
+	}
+	context->returns = restore;
+}
 
 
+static inline bool sema_expr_analyse_expr_block(Context *context, Type *to, Expr *expr)
+{
+	bool success = true;
+	expr->type = type_void;
+	Type *prev_expected_block_type = context->expected_block_type;
+	Ast **saved_returns = context_push_returns(context);
+	context->expected_block_type = to;
+	context_push_scope_with_flags(context, SCOPE_EXPR_BLOCK);
+
+	VECEACH(expr->expr_block.stmts, i)
+	{
+		if (!sema_analyse_statement(context, expr->expr_block.stmts[i]))
+		{
+			success = false;
+			goto EXIT;
+		}
+	}
+
+	if (!vec_size(context->returns))
+	{
+		if (to)
+		{
+			SEMA_ERROR(expr, "Expected at least one return out of expression block to return a value of type %s.", type_to_error_string(to));
+			success = false;
+		}
+		goto EXIT;
+	}
+
+	Expr *first_return_expr = context->returns[0]->return_stmt.expr;
+	Type *left_canonical = first_return_expr ? first_return_expr->type->canonical : type_void;
+	bool all_returns_needs_casts = false;
+	// Let's unify the return statements.
+	VECEACH(context->returns, i)
+	{
+		Ast *return_stmt = context->returns[i];
+		Expr *ret_expr = return_stmt->return_stmt.expr;
+		bool last_expr_was_void = left_canonical == type_void;
+		Type *right_canonical = ret_expr ? ret_expr->type->canonical : type_void;
+		bool current_expr_was_void = right_canonical == type_void;
+		if (i > 0 && last_expr_was_void != current_expr_was_void)
+		{
+			SEMA_ERROR(return_stmt, "You can't combine empty returns with value returns.");
+			SEMA_PREV(context->returns[i - 1], "Previous return was here.");
+			success = false;
+			goto EXIT;
+		}
+		if (to)
+		{
+			if (current_expr_was_void)
+			{
+				SEMA_ERROR(return_stmt, "The return must be a value of type '%s'.", type_to_error_string(to));
+				success = false;
+				goto EXIT;
+			}
+			if (!cast_implicit(ret_expr, to))
+			{
+				success = false;
+				goto EXIT;
+			}
+			continue;
+		}
+
+		// The simple case.
+		if (left_canonical == right_canonical) continue;
+
+		// Try to find a common type:
+		Type *max = type_find_max_type(left_canonical, right_canonical);
+		if (!max)
+		{
+			SEMA_ERROR(return_stmt, "Cannot find a common parent type of '%s' and '%s'",
+			           type_to_error_string(left_canonical), type_to_error_string(right_canonical));
+			SEMA_PREV(context->returns[i - 1], "The previous return was here.");
+			success = false;
+			goto EXIT;
+		}
+		left_canonical = max;
+		all_returns_needs_casts = true;
+	}
+	if (all_returns_needs_casts)
+	{
+		VECEACH(context->returns, i)
+		{
+			Ast *return_stmt = context->returns[i];
+			Expr *ret_expr = return_stmt->return_stmt.expr;
+			if (!cast_implicit(ret_expr, left_canonical))
+			{
+				success = false;
+				goto EXIT;
+			}
+		}
+	}
+	expr->type = left_canonical;
+EXIT:
+	context_pop_scope(context);
+	context_pop_returns(context, saved_returns);
+	context->expected_block_type = prev_expected_block_type;
+	return success;
+}
 
 static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *expr)
 {
@@ -1945,6 +2086,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return false;
 		case EXPR_SCOPED_EXPR:
 			UNREACHABLE
+		case EXPR_EXPR_BLOCK:
+			return sema_expr_analyse_expr_block(context, to, expr);
 		case EXPR_MACRO_EXPR:
 			return sema_expr_analyse_macro_expr(context, to, expr);
 		case EXPR_TRY:

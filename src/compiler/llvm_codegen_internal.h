@@ -48,10 +48,8 @@ typedef struct
 	LLVMValueRef alloca_point;
 	LLVMBuilderRef builder;
 	LLVMBasicBlockRef current_block;
-	bool current_block_is_target;
 	Decl *cur_code_decl;
 	Decl *cur_func_decl;
-	bool did_call_stack_save;
 	TypeInfo *current_return_type;
 	int block_global_unique_count;
 	int ast_alloca_addr_space;
@@ -65,6 +63,9 @@ typedef struct
 	BreakContinue break_continue_stack[BREAK_STACK_MAX];
 	size_t break_continue_stack_index;
 	LLVMValueRef return_out;
+	LLVMBasicBlockRef expr_block_exit;
+	bool current_block_is_target : 1;
+	bool did_call_stack_save : 1;
 } GenContext;
 
 

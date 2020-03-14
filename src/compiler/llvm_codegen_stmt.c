@@ -105,6 +105,12 @@ LLVMValueRef gencontext_emit_decl_expr_list(GenContext *context, Ast *ast, bool 
 	return result;
 }
 
+void gencontext_emit_jmp(GenContext *context, LLVMBasicBlockRef block)
+{
+	gencontext_emit_br(context, block);
+	LLVMBasicBlockRef post_jump_block = gencontext_create_free_block(context, "jmp");
+	gencontext_emit_block(context, post_jump_block);
+}
 
 static inline void gencontext_emit_return(GenContext *context, Ast *ast)
 {
@@ -113,6 +119,18 @@ static inline void gencontext_emit_return(GenContext *context, Ast *ast)
 
 	LLVMValueRef ret_value = ast->return_stmt.expr ? gencontext_emit_expr(context, ast->return_stmt.expr) : NULL;
 	gencontext_emit_defer(context, ast->return_stmt.defer, NULL);
+
+	// Are we in an expression block?
+	if (context->expr_block_exit)
+	{
+		if (context->return_out)
+		{
+			LLVMBuildStore(context->builder, ret_value, context->return_out);
+		}
+		gencontext_emit_jmp(context, context->expr_block_exit);
+		return;
+	}
+
 	if (!ret_value)
 	{
 		gencontext_emit_implicit_return(context);
@@ -393,12 +411,6 @@ void gencontext_emit_do_stmt(GenContext *context, Ast *ast)
 	gencontext_pop_break_continue(context);
 }
 
-void gencontext_emit_jmp(GenContext *context, LLVMBasicBlockRef block)
-{
-	gencontext_emit_br(context, block);
-	LLVMBasicBlockRef post_jump_block = gencontext_create_free_block(context, "jmp");
-	gencontext_emit_block(context, post_jump_block);
-}
 
 void gencontext_emit_label(GenContext *context, Ast *ast)
 {
@@ -591,8 +603,6 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 {
 	switch (ast->ast_kind)
 	{
-		case AST_FUNCTION_BLOCK_STMT:
-			TODO
 		case AST_POISONED:
 			UNREACHABLE
 		case AST_SCOPED_STMT:

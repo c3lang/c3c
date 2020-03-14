@@ -4,6 +4,8 @@
 
 #include "compiler_internal.h"
 
+static void fprint_asts_recursive(FILE *file, Ast **asts, int indent);
+
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility)
 {
 	assert(name.string);
@@ -515,6 +517,17 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			fprintf_indented(file, indent, "(ident %s\n", expr->identifier_expr.identifier);
 			fprint_expr_common(file, expr, indent + 1);
 			break;
+		case EXPR_EXPR_BLOCK:
+			if (!expr->expr_block.stmts)
+			{
+				fprintf(file, "(expr_block)\n");
+				return;
+			}
+			fprintf(file, "(expr_block\n");
+			{
+				fprint_asts_recursive(file, expr->expr_block.stmts, indent + 1);
+			}
+			break;
 		case EXPR_CONST:
 			fprintf_indented(file, indent, "(const ");
 			switch (expr->const_expr.type)
@@ -858,17 +871,6 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 	fprint_indent(file, indent);
 	switch (ast->ast_kind)
 	{
-		case AST_FUNCTION_BLOCK_STMT:
-			if (!ast->compound_stmt.stmts)
-			{
-				fprintf(file, "(function_block)\n");
-				return;
-			}
-			fprintf(file, "(function_block\n");
-			{
-				fprint_asts_recursive(file, ast->compound_stmt.stmts, indent + 1);
-			}
-			break;
 
 		case AST_COMPOUND_STMT:
 			if (!ast->compound_stmt.stmts)

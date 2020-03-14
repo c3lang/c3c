@@ -89,7 +89,6 @@ typedef enum
 	AST_DO_STMT,
 	AST_EXPR_STMT,
 	AST_FOR_STMT,
-	AST_FUNCTION_BLOCK_STMT,
 	AST_GENERIC_CASE_STMT,
 	AST_GENERIC_DEFAULT_STMT,
 	AST_GOTO_STMT,
@@ -246,6 +245,7 @@ typedef enum
 	EXPR_CAST,
 	EXPR_SCOPED_EXPR,
 	EXPR_MACRO_EXPR,
+	EXPR_EXPR_BLOCK,
 } ExprKind;
 
 
@@ -281,6 +281,7 @@ typedef enum
 	SCOPE_CONTINUE = 1 << 1,
 	SCOPE_NEXT = 1 << 2,
 	SCOPE_DEFER = 1 << 3,
+	SCOPE_EXPR_BLOCK = 1 << 4,
 } ScopeFlags;
 
 typedef enum

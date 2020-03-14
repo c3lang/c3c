@@ -4,7 +4,7 @@ import regex, stdio;
 func void main()
 {
     println("Enter a story template, terminated by an empty line:");
-    string@ story = "";
+    string story = "";
     while (1)
     {
         try string line = stdin.readln().strip();
@@ -12,7 +12,10 @@ func void main()
         story += line + "\n";
     }
 
-    Regex* r = try regex::regexWithOptions("<.+?>", RegexOpt.GLOBAL) catch @unreachable;
+    Regex r;
+
+    r.initWithOptions("<.+?>", RegexOpt.GLOBAL) else @unreachable;
+    defer r.destroy();
 
     foreach (RegexMatch* match : r.match(story))
     {

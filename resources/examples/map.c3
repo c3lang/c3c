@@ -3,9 +3,9 @@ module map(Key, Type);
 public struct Entry
 {
     Key key;
-    Type *value;
+    Type* value;
     usize hash;
-    Entry *next;
+    Entry* next;
 }
 
 public struct Map
@@ -92,10 +92,10 @@ public macro Vector.foreach(Vector *vector, macro void(Type value) body)
 test
 {
     define IntVector = Vector(int);
-    IntVector *vector = @calloc(IntVector);
+    IntVector vector = vector.init();
     vector.add(1);
     vector.add(2);
-    foreach (int i : vector)
+    for (int i : vector)
     {
         printDigit(i);
     }
@@ -103,4 +103,5 @@ test
     {
         printDigit(i);
     }
+    vector.destroy();
 }

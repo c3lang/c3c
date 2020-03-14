@@ -90,7 +90,8 @@ func int CompInfo.findClosureVar(CompInfo *comp, Value varnm)
 }
 
 /** If variable not declared already, declare it */
-void declareLocal(CompInfo *comp, Value varnm) {
+void CompInfo.declareLocal(CompInfo *comp, Value varnm)
+{
 	Value th = comp->th;
 	// If explicit 'local' declaration, declare if not found in block list
 	if (comp->forcelocal) {
@@ -103,7 +104,7 @@ void declareLocal(CompInfo *comp, Value varnm) {
 		if (comp->prevcomp!=aNull && findLocalVar((CompInfo*)comp->prevcomp, varnm)!=-1) {
 			arrAdd(th, comp->clovarseg, varnm);
 			// Add initialization logic
-			astAddSeg2(th, comp->newcloseg, vmlit(SymLocal), varnm); // Add its initialization to new closure segment
+			astAddSeg2(th, comp->newcloseg, vmlit(SYM_LOCAL), varnm); // Add its initialization to new closure segment
 		}
 		else
 			arrAdd(th, comp->locvarseg, varnm);
@@ -115,15 +116,15 @@ func Value parseNewClo(CompInfo* comp, Value astseg)
 {
 	Value th = comp->th;
 	// ('Closure', clovars, ('callprop', Closure, New, getmethod, setmethod))
-	Value closeg = ast::addSeg(th, astseg, vmlit(SymClosure), 3);
+	Value closeg = ast::addSeg(th, astseg, vmlit(SYM_CLOSURE), 3);
 	comp->clovarseg = pushArray(th, aNull, 4);
 	arr::add(th, closeg, comp->clovarseg);
 	th.popValue();
-	Value newcloseg = ast::addSeg(th, closeg, vmlit(SymCallProp), 8);
-	ast::addSeg2(th, newcloseg, vmlit(SymGlobal), vmlit(SymClosure));
-	ast::addSeg2(th, newcloseg, vmlit(SymLit), vmlit(SymNew));
-	ast::addSeg2(th, newcloseg, vmlit(SymLit), vmlit(SymNull));
-	ast::addSeg2(th, newcloseg, vmlit(SymLit), vmlit(SymNull));
+	Value newcloseg = ast::addSeg(th, closeg, vmlit(SYM_CALL_PROP), 8);
+	ast::addSeg2(th, newcloseg, vmlit(SYM_GLOBAL), vmlit(SYM_CLOSURE));
+	ast::addSeg2(th, newcloseg, vmlit(SYM_LIT), vmlit(SYM_NEW));
+	ast::addSeg2(th, newcloseg, vmlit(SYM_LIT), vmlit(SYM_NULL));
+	ast::addSeg2(th, newcloseg, vmlit(SYM_LIT), vmlit(SYM_NULL));
 	return newcloseg;
 }
 
@@ -134,12 +135,12 @@ void parseValue(CompInfo* comp, Value astseg)
 	// Literal token (number, symbol, string, true, false, null)
 	if (comp->lex->toktype == Lit_Token)
 	{
-		ast::addSeg2(th, astseg, vmlit(SymLit), comp.lex.token);
+		ast::addSeg2(th, astseg, vmlit(SYM_LIT), comp.lex.token);
 		lexGetNextToken(comp->lex);
 	}
 	// Static unquoted @url
 	else if (comp->lex->toktype == Url_Token) {
-		astAddSeg2(th, astseg, vmlit(SymExt), anInt(genAddUrlLit(comp, comp->lex->token)));
+		astAddSeg2(th, astseg, vmlit(SYM_EXT), anInt(genAddUrlLit(comp, comp->lex->token)));
 		lexGetNextToken(comp->lex);
 	}
 	// Local or global variable / name token
@@ -151,33 +152,36 @@ void parseValue(CompInfo* comp, Value astseg)
 		if (lexMatch(comp->lex, ":") || lexMatch(comp->lex, ":="))
 			astAddSeg2(th, astseg, vmlit(SymLit), symnm);
 		else if (first=='$' || (first>='A' && first<='Z'))
-			astAddSeg2(th, astseg, vmlit(SymGlobal), symnm);
-		else {
-			declareLocal(comp, symnm); // declare local if not already declared
+		{
+			astAddSeg2(th, astseg, vmlit(SYM_GLOBAL), symnm);
+		}
+		else
+		{
+			comp.declareLocal(symnm); // declare local if not already declared
 			// We do not resolve locals to index until gen because of control clauses (declaration after use)
-			astAddSeg2(th, astseg, vmlit(SymLocal), symnm);
+			astAddSeg2(th, astseg, vmlit(SYM_LOCAL), symnm);
 		}
 		popValue(th);
 	}
 	// 'baseurl' pseudo-variable
 	else if (lexMatchNext(comp->lex, "baseurl")) {
-		astAddValue(th, astseg, vmlit(SymBaseurl));
+		astAddValue(th, astseg, vmlit(SYM_BASEURL));
 	}
 	// 'this' pseudo-variable
 	else if (lexMatchNext(comp->lex, "this")) {
-		astAddValue(th, astseg, vmlit(SymThis));
+		astAddValue(th, astseg, vmlit(SYM_THIS));
 	}
 	// 'self' pseudo-variable
 	else if (lexMatchNext(comp->lex, "self")) {
-		astAddValue(th, astseg, vmlit(SymSelf));
+		astAddValue(th, astseg, vmlit(SYM_SELF));
 	}
 	// 'selfmethod' pseudo-variable
 	else if (lexMatchNext(comp->lex, "selfmethod")) {
-		astAddValue(th, astseg, vmlit(SymSelfMeth));
+		astAddValue(th, astseg, vmlit(SYM_SELF_METH));
 	}
 	// 'context' pseudo-variable
 	else if (lexMatchNext(comp->lex, "context")) {
-		astAddValue(th, astseg, vmlit(SymContext));
+		astAddValue(th, astseg, vmlit(SYM_CONTEXT));
 	}
 	// '...' splat
 	else if (lexMatchNext(comp->lex, "...")) {
@@ -285,7 +289,8 @@ void parseValue(CompInfo* comp, Value astseg)
 }
 
 /** Add a list of parameters to a AST propseg */
-void parseParams(CompInfo* comp, Value propseg, const char *closeparen) {
+func void CompInfo.parseParams(CompInfo* comp, Value propseg, const char *closeparen)
+{
 	bool saveforcelocal = comp->forcelocal;
 	comp->forcelocal = false;
 
@@ -330,7 +335,7 @@ void parseTerm(CompInfo* comp, Value astseg) {
 		else if (lexMatchNext(comp->lex, "[")) {
 			astSetValue(th, propseg, 0, vmlit(SymCallProp)); // adjust because of parms
 			astAddSeg2(th, propseg, vmlit(SymLit), vmlit(SymBrackets));
-			parseParams(comp, propseg, "]");
+			comp.parseParams(propseg, "]");
 			getparms = false;
 		}
 		// Handle '.', '.:', and '::'
@@ -367,7 +372,7 @@ void parseTerm(CompInfo* comp, Value astseg) {
 		if (getparms) {
 			if (lexMatchNext(comp->lex, "(")) {
 				astSetValue(th, propseg, 0, vmlit(SymCallProp)); // adjust because of parms
-				parseParams(comp, propseg, ")");
+				comp.parseParams(propseg, ")");
 			}
 			// Treat Text or Symbol literal as a single parameter to pass
 			else if (comp->lex->toktype == Lit_Token && (isStr(comp->lex->token) || isSym(comp->lex->token))) {
@@ -394,7 +399,7 @@ void parsePrefixExp(CompInfo* comp, Value astseg) {
 		else { // Not a literal number? Do the property call
 			astseg = astInsSeg(th, astseg, vmlit(SymCallProp), 3);
 			Value litseg = astAddSeg(th, astseg, vmlit(SymLit), 2);
-			astAddValue(th, litseg, vmlit(SymNeg));
+			astAddValue(th, litseg, vmlit(SYM_NEG));
 		}
 	}
 	// '@' + symbol, text or '('exp')'

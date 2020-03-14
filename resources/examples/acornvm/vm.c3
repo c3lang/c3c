@@ -96,100 +96,100 @@ const N_STD_SYM = 256;
 	/** C index values for all VM literal values used throughout the code
 	    for common symbols and core types. They are forever immune from garbage collection
 		by being anchored to the VM. */
-enum VmLiterals
+enum VmLiteral : int (string name = nil)
 {
 	// Compiler symbols
-	SYM_NULL,	//!< 'null'
-	SYM_FALSE,	//!< 'false'
-	SYM_TRUE,	//!< 'true'
-	SYM_AND,	//!< 'and'
-		SymAsync,		//!< 'async'
-		SymBaseurl,		//!< 'baseurl'
-		SymBreak,		//!< 'break'
-		SymContext,		//!< 'context'
-		SymContinue,	//!< 'continue'
-		SymDo,			//!< 'do'
-		SymEach,		//!< 'each'
-		SymElse,		//!< 'else'
-		SymElif,		//!< 'elif'
-		SymIf,			//!< 'if'
-		SymIn,			//!< 'in'
-		SymInto,		//!< 'into'
-		SymMatch,		//!< 'match'
-		SymNot,			//!< 'not'
-		SymOr,			//!< 'or'
-		SymReturn,		//!< 'return'
-		SymSelf,		//!< 'self'
-		SymSelfMeth,	//!< 'selfmethod'
-		SymThis,		//!< 'this'
-		SymUsing,		//!< 'using'
+	SYM_NULL("null"),
+	SYM_FALSE("false"),
+	SYM_TRUE("true"),
+	SYM_AND("and"),
+	SYM_ASYNC("async"),
+	SYM_BASE_URL("baseurl"),
+	SYM_BREAK("break"),
+	SYM_CONTEXT("context"),
+	SYM_CONTINUE("continue"),
+	SYM_DO("do"),
+	SYM_EACH("each"),
+	SYM_ELSE("else"),
+	SYM_ELIF("elif"),
+	SYM_IF("if"),
+	SYM_IN("in",
+	SYM_INTO("into"),
+    SYM_MATCH("match"),
+    SYM_NOT("not"),
+    SYM_OR("or"),
+    SYM_RETURN("return"),
+    SYM_SELF("self",
+    SYM_SELF_METH("selfmethod"),
+	SYM_THIS("this"),
+	SYM_USING("using"),
 		SymVar,			//!< 'var'
-		SymWait,		//!< 'wait'
-		SymWhile,		//!< 'while'
-		SymWith,		//!< 'with'
-		SymYield,		//!< 'yield'
-		SymLBrace,		//!< '{'
-		SymRBrace,		//!< '}'
-		SymSemicolon,	//!< ';'
-		SymComma,		//!< ','
-		SymQuestion,	//!< '?'
-		SymAt,			//!< '@'
-		SymSplat,		//!< '...'
-		SymDot,			//!< '.'
-		SymColons,		//!< '::'
-		SymDotColon,	//!< '.:'
+	SYM_WAIT("wait"),
+	SYM_WHILE("while"),
+	SYM_WITH("with"),
+	SYM_YIELD("yield",
 
-		// Compiler symbols that are also methods
-		SymAppend,	//!< '<<'
-		SymPrepend, //!< '>>'
-		SymPlus,	//!< '+'
-		SymMinus,	//!< '-'
-		SymMult,	//!< '*'
-		SymDiv,		//!< '/'
-		SymRocket,	//!< '<=>'
-		SymEquiv,	//!< '==='
-		SymMatchOp,	//!< '~~'
-		SymLt,		//!< '<'
-		SymLe,		//!< '<='
-		SymGt,		//!< '>'
-		SymGe,		//!< '>='
-		SymEq,		//!< '=='
-		SymNe,		//!< '!='
+	SYM_LBRACE("{"),
+	SYM_RBRACE("}"),
+	SYM_SEMICOLON(";"),
+	SYM_COMMA(","),
+	SYM_QUESTION("?"),
+	SYM_AT("@"),
+	SYM_SPLAT("..."),
+	SYM_DOT("."),
+	SYM_COLONS("::"),
+	SYM_DOT_COLON(".:"),
 
-		// Methods that are not compiler symbols
-		// Byte-code (and parser) standard methods
-		SYM_NEW,		//!< 'New'
-		SYM_INIT,	//!< 'Init'
-		SYM_LOAD,	//!< 'Load'
-		SymGet,		//!< 'Get'
-		SymParas,	//!< '()'
-		SymBrackets, //!< '[]'
-		SymNeg,		//!< '-@'
-		SymValue,	//!< 'value'
-		SymEachMeth, //!< 'Each'
-		SymBegin,	//!< 'Begin'
-		SymEnd,		//!< 'End'
+	// Compiler symbols that are also methods
+	SYM_APPEND("<<"),
+	SYM_PREPENT(">>"),
+	SYM_PLUS("+"),
+	SYM_MINUS("-"),
+	SYM_MULT("*"),
+	SYM_DIV("/"),
+	SYM_ROCKET("<=>"),
+	SYM_EQUIV("==="),
+	SYM_MATCHOP("~~"),
+	SYM_LT("<"),
+	SYM_LE("<="),
+	SYM_GT(">"),
+	SYM_GE(">="),
+	SYM_EQ("=="),
+	SYM_NE("!="),
 
-		SymFinalizer, //!< '_finalizer' method for CData
-		SymName,	//!< '_type' symbol
+	// Methods that are not compiler symbols
+    // Byte-code (and parser) standard methods
+    SYM_NEW("New"),
+    SYM_INIT("Init"),
+    SYM_LOAD("Load"),
+    SYM_GET("Get"),
+    SYM_PARAS("()"),
+    SYM_BRACKETS("[]"),
+    SYM_NEG("-@"),
+    SYM_VALUE("value"),
+    SYM_EACH_METH("Each"),
+    SYM_BEGIN("Begin"),
+    SYM_END("End"),
 
-		// AST symbols
-		SymMethod,	//!< 'method'
-		SymAssgn,	//!< '='
-		SymOrAssgn, //!< '||='
-		SymColon,	//!< ':'
-		SymThisBlock, //!< 'thisblock'
-		SymCallProp, //!< 'callprop'
-		SymActProp, //!< 'activeprop'
-		SymRawProp, //!< 'rawprop'
-		SymGlobal,  //!< 'global'
-		SymLocal,	//!< 'local'
-		SymLit,		//!< 'lit'
-		SymExt,		//!< 'ext'
-		SymRange,	//!< 'Range'
-		SymClosure, //!< 'Closure'
-		SymYielder, //!< 'Yielder'
-		SymResource, //!< 'Resource'
+    SYM_FINALIZER("_finalizer") // method for CData
+    SYM_NAME('_type')           // symbol
+
+	// AST symbols
+	SYM_METHOD("method"),
+	SYM_ASSGN("="),
+	SYM_OR_ASSGN("||="),
+	SYM_COLON(":"),
+	SYM_THIS_BLOCK("thisblock"),
+	SYM_CALL_PROP("callprop"),
+	SYM_ACT_PROP("activeprop"),
+	SYM_RAW_PROP("rawprop"),
+	SYM_LOCAL("local"),
+	SYM_LIT("lit"),
+	SYM_EXT("ext"),
+	SYM_RANGE("Range"),
+	SYM_CLOSURE("Closure"),
+	SYM_YIELDER("Yielder"),
+	SYM_RESOURCE("Resource"),
 
 		// Core type type
 		TypeObject,	//!< Type
@@ -229,11 +229,15 @@ enum VmLiterals
 		nVmLits
 }
 
-macro @vmlit!(lit) { return arr_inf(vm(th)->literals)->arr[list]; }
+macro vmlit!(VmLiteral lit)
+{
+    return arr_inf(vm(th)->literals)->arr[list];
+}
+
 
 
 /** Used by vm_init to build random seed */
-macro @memcpy_Auint(i, val)
+macro memcpy_Auint(i, val)
 {
     Auint anint = @cast(val, Auint);
 	memcpy(seedstr + i * sizeof(Auint), &anint, sizeof(Auint));
@@ -397,95 +401,8 @@ struct vmLitSymEntry
 /** Constant array that identifies and maps all VM literal symbols */
 vmLitSymEntry[+] vmLitSymTable = {
 	// Compiler reserved names
-	{SymNull, "null"},
-	{SymFalse, "false"},
-	{SymTrue, "true"},
-	{SymAnd, "and"},
-	{SymAsync, "async"},
-	{SymBaseurl, "baseurl"},
-	{SymBreak, "break"},
-	{SymContext, "context"},
-	{SymContinue, "continue"},
-	{SymDo, "do"},
-	{SymEach, "each"},
-	{SymElse, "else"},
-	{SymElif, "elif"},
-	{SymIf, "if"},
-	{SymIn, "in"},
-	{SymInto, "into"},
-	{SymLocal, "local"},
-	{SymMatch, "match"},
-	{SymNot, "not"},
-	{SymOr, "or"},
-	{SymReturn, "return"},
-	{SymSelf, "self"},
-	{SymSelfMeth, "selfmethod"},
-	{SymThis, "this"},
-	{SymUsing, "using"},
-	{SymWait, "wait"},
-	{SymWhile, "while"},
-	{SymWith, "with"},
-	{SymYield, "yield"},
-	{SymLBrace, "{"},
-	{SymRBrace, "}"},
-	{SymSemicolon, ";"},
-	{SymComma, ","},
-	{SymQuestion, "?"},
-	{SymAt, "@"},
-	{SymSplat, "..."},
-	{SymDot, "."},
-	{SymColons, "::"},
-	{SymDotColon, ".:"},
 
-	// Compiler symbols that are also methods
-	{SymAppend, "<<"},
-	{SymPrepend, ">>"},
-	{SymPlus, "+"},
-	{SymMinus, "-"},
-	{SymMult, "*"},
-	{SymDiv, "/"},
-	{SymRocket, "<=>"},
-	{SymEquiv, "==="},
-	{SymMatchOp, "~~"},
-	{SymLt, "<"},
-	{SymLe, "<="},
-	{SymGt, ">"},
-	{SymGe, ">="},
-	{SymEq, "=="},
-	{SymNe, "!="},
 
-	// Methods that are not compiler symbols
-	{SymNew, "New"},
-	{SymInit, "Init"},
-	{SymLoad, "Load"},
-	{SymGet, "Get"},
-	{SymParas, "()"},
-	{SymBrackets, "[]"},
-	{SymNeg, "-@"},
-	{SymValue, "value"},
-	{SymEachMeth, "Each"},
-	{SymBegin, "Begin"},
-	{SymEnd, "End"},
-
-	{SymFinalizer, "_finalizer"},
-	{SymName, "_name"},
-
-	// AST symbols
-	{SymMethod, "method"},
-	{SymAssgn, "="},
-	{SymOrAssgn, "||="},
-	{SymColon, ":"},
-	{SymThisBlock, "thisblock"},
-	{SymCallProp, "callprop"},
-	{SymActProp, "activeprop"},
-	{SymRawProp, "rawprop"},
-	{SymGlobal, "global"},
-	{SymLit, "lit"},
-	{SymExt, "ext"},
-	{SymRange, "Range"},
-	{SymClosure, "Closure"},
-	{SymYielder, "Yielder"},
-	{SymResource, "Resource"},
 
 	// End of literal table
 	{0, NULL}
@@ -504,23 +421,23 @@ void vm_litinit(Value th) {
 
 	// Load up literal symbols from table
 	const struct vmLitSymEntry *vmlittblp = &vmLitSymTable[0];
-	while (vmlittblp->symnm) {
-		newSym(th, &vmlits[vmlittblp->litindex], vmlittblp->symnm, strlen(vmlittblp->symnm));
-		vmlittblp++;
+	for (VmLiteral i = 0; i <= SYM_RESOUCE; i++)
+	{
+	    newSym(th, &vmlits[i], i.name);
 	}
 }
 
 /** Map byte-code's standard symbols to VM's literals (max. number at 256) */
 const int stdTblMap[] = {
 	// Commonly-called methods
-	SymNew,		// 'new'
-	SymParas,	// '()'
-	SymAppend,	// '<<'
-	SymPlus,	// '+'
-	SymMinus,	// '-'
-	SymMult,	// '*'
-	SymDiv,		// '/'
-	SymNeg,		// '-@'
+	SYM_NEW,		// 'new'
+	SYM_PARAS,	    // '()'
+	SYM_APPEND,	    // '<<'
+	SYM_PLUS,	    // '+'
+	SYM_MINUS,	    // '-'
+	SYM_MULT,	    // '*'
+	SYM_DIV,		// '/'
+	SYM_NET,		// '-@'
 	-1
 };
 

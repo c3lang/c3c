@@ -5,9 +5,9 @@ public struct Vector
     Type[*] array;
 }
 
-public func Vector@ newVector()
+public func void Vector.init()
 {
-    return @calloc(Vector);
+    array = nil;
 }
 
 public func void Vector.add(Vector *vector, Type type)

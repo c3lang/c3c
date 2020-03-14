@@ -172,11 +172,12 @@ size_t type_size(Type *canonical)
 	switch (canonical->type_kind)
 	{
 		case TYPE_POISONED:
+		case TYPE_TYPEDEF:
 			UNREACHABLE;
 		case TYPE_META_TYPE:
 			return 0;
 		case TYPE_ENUM:
-		case TYPE_TYPEDEF:
+			return type_size(canonical->decl->enums.type_info->type->canonical);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ERROR:

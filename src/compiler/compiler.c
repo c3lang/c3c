@@ -81,15 +81,20 @@ void compiler_compile(BuildTarget *target)
 	{
 		sema_analysis_pass_process_imports(contexts[i]);
 	}
+	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
 	VECEACH(contexts, i)
 	{
 		sema_analysis_pass_conditional_compilation(contexts[i]);
 	}
+	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
 	VECEACH(contexts, i)
 	{
 		sema_analysis_pass_decls(contexts[i]);
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
 	VECEACH(contexts, i)
 	{
 		Context *context = contexts[i];

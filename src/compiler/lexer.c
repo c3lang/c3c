@@ -496,9 +496,9 @@ Token lexer_scan_token(Lexer *lexer)
 		case '{':
 			return make_token(lexer, TOKEN_LBRACE, "{");
 		case '}':
-			return match(lexer, ')') ? make_token(lexer, TOKEN_RPARBRA, "})") : make_token(lexer, TOKEN_RBRACE, "})");
+			return match(lexer, ')') ? make_token(lexer, TOKEN_RPARBRA, "})") : make_token(lexer, TOKEN_RBRACE, "}");
 		case '(':
-			return match(lexer, '{') ? make_token(lexer, TOKEN_LPARBRA, "({") : make_token(lexer, TOKEN_LPAREN, ")");
+			return match(lexer, '{') ? make_token(lexer, TOKEN_LPARBRA, "({") : make_token(lexer, TOKEN_LPAREN, "(");
 		case ')':
 			return make_token(lexer, TOKEN_RPAREN, ")");
 		case '[':

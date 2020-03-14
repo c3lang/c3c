@@ -219,6 +219,7 @@ typedef struct
 {
 	Decl *parent;
 	Expr *expr;
+	Expr **args;
 	uint64_t ordinal;
 } EnumConstantDecl;
 
@@ -231,6 +232,7 @@ typedef struct
 typedef struct
 {
 	Decl** values;
+	Decl** parameters;
 	TypeInfo *type_info;
 } EnumDecl;
 
@@ -473,6 +475,11 @@ typedef struct
 	DeferList defers;
 } ExprScope;
 
+typedef struct
+{
+	Ast **stmts;
+} ExprFuncBlock;
+
 struct _Expr
 {
 	ExprKind expr_kind : 8;
@@ -498,6 +505,7 @@ struct _Expr
 		Expr** initializer_expr;
 		Expr** expression_list;
 		ExprScope expr_scope;
+		ExprFuncBlock expr_block;
 	};
 };
 
@@ -669,6 +677,25 @@ typedef struct
 	DeferList defers;
 } AstThrowStmt;
 
+typedef struct
+{
+	Token name;
+	Token constraints;
+	Token token;
+} AsmOperand;
+
+typedef struct
+{
+	bool is_volatile : 1;
+	bool is_inline : 1;
+	bool is_goto : 1;
+	Expr *asm_template;
+	AsmOperand** output_operands;
+	AsmOperand** input_operands;
+	AsmOperand** clobbers;
+	Token* labels;
+} AstAsmStmt;
+
 typedef struct _Ast
 {
 	SourceRange span;
@@ -677,8 +704,8 @@ typedef struct _Ast
 	union
 	{
 		AstAttribute attribute;
+		AstAsmStmt asm_stmt;
 		AstCompoundStmt compound_stmt;
-		AstCompoundStmt function_block_stmt;
 		Decl *declare_stmt;
 		Expr *expr_stmt;
 		AstThrowStmt throw_stmt;
@@ -781,6 +808,13 @@ typedef struct _Context
 	Token *trailing_comment;
 	Token *next_lead_comment;
 	DynamicScope *current_scope;
+	struct
+	{
+		Type *expected_block_type;
+		Ast **returns;
+		// Reusable returns cache.
+		Ast **returns_cache;
+	};
 	Decl *evaluating_macro;
 	// Error handling
 	struct
@@ -882,6 +916,7 @@ static inline Ast *extend_ast_with_prev_token(Context *context, Ast *ast)
 }
 
 
+
 void builtin_setup(Target *target);
 
 static inline bool builtin_may_negate(Type *canonical)
@@ -957,6 +992,8 @@ bool context_set_module_from_filename(Context *context);
 bool context_set_module(Context *context, Path *path, Token *generic_parameters);
 void context_print_ast(Context *context, FILE *file);
 
+#pragma mark --- Decl functions
+
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility);
 Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility);
 Decl *decl_new_var(Token name, TypeInfo *type, VarDeclKind kind, Visibility visibility);
@@ -972,6 +1009,8 @@ static inline DeclKind decl_from_token(TokenType type)
 	if (type == TOKEN_UNION) return DECL_UNION;
 	UNREACHABLE
 }
+
+#pragma mark --- Diag functions
 
 void diag_reset(void);
 void diag_error_range(SourceRange span, const char *message, ...);
@@ -1000,6 +1039,7 @@ static inline bool func_has_error_return(FunctionSignature *func_sig)
 	return func_sig->throws || func_sig->throw_any;
 }
 
+#pragma mark --- Lexer functions
 
 Token lexer_scan_token(Lexer *lexer);
 Token lexer_scan_ident_test(Lexer *lexer, const char *scan);
@@ -1050,6 +1090,8 @@ void source_file_append_line_end(File *file, SourceLoc loc);
 SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc);
 SourcePosition source_file_find_position(SourceLoc loc);
 SourceRange source_range_from_ranges(SourceRange first, SourceRange last);
+#define RANGE_EXTEND_PREV(x) (x)->span.end_loc = context->prev_tok_end
+
 static inline unsigned source_range_len(SourceRange range) { return range.end_loc - range.loc; }
 
 void stable_init(STable *table, uint32_t initial_size);
@@ -1193,4 +1235,10 @@ static inline const char* struct_union_name_from_token(TokenType type)
 #define DEBUG_TYPE(type) gencontext_get_debug_type(context, type)
 
 void advance(Context *context);
-void advance_and_verify(Context *context, TokenType token_type);
+
+// Useful sanity check function.
+static inline void advance_and_verify(Context *context, TokenType token_type)
+{
+	assert(context->tok.type == token_type);
+	advance(context);
+}

@@ -3,7 +3,7 @@ module acornvm::value;
 
 /** A convenience macro for assert(), establishing the conditions expected to be true,
  * before returning expression e */
-macro @assert_exp($c, auto $e)
+macro assert_exp($c, $e)
 {
     assert($c);
     return $e;
@@ -54,7 +54,7 @@ typedef func int(Value) as AcMethodp;
  * Great for null, false, true, integers and symbols.
  * Less suitable for floats (no epsilon) and comparing contents of containers (e.g., strings).
  * Is fast because it avoids using type-specific methods. */
-macro @isSame(a, b) { return (a == b); }
+macro isSame(a, b) { return (a == b); }
 
 /** What type of data is encoded within the value, as established by the last 2 bits.
  * Because of 32/64-bit allocation alignment, pointers always have 0 in last 2 bits.
@@ -84,9 +84,9 @@ bool Value.isStr(Value *str)
 	return str.isEnc(StrEnc) && !(str_info(str)->flags1 & StrCData);
 }
 
-macro @isType(v, ValBits e)
+macro isType(v, ValBits e)
 {
-    return @cast(v, Auint) & VAL_MASK == e;
+    return cast(v, Auint) & VAL_MASK == e;
 }
 
 // Integer value functions
@@ -101,16 +101,16 @@ func bool Value.isInt(Value *v)
 /** Cast c-integer n into an Integer value
  * This loses top two-bits of integer precision.
  * If integer is too large, this could result in an unexpected value and change of sign. */
-macro @anInt(n)
+macro anInt(n)
 {
-    return @cast(@cast(n, Aint) << VAL_SHIFT + ValInt, Value);
+    return cast(cast(n, Aint) << VAL_SHIFT + ValInt, Value);
 }
 
 /** Cast an Integer value into a c-integer
  * Note: It assumes (and won't verify) that v is an Integer */
-macro @toAint(v)
+macro toAint(v)
 {
-    return @cast(v, Aint) >> VAL_SHIFT;
+    return cast(v, Aint) >> VAL_SHIFT;
 }
 
 // Float value functions
@@ -135,19 +135,19 @@ AVM_API Afloat toAfloat(Value v);
    **************************************************** */
 
 /** The null value */
-macro @aNull()
+macro aNull()
 {
     return @cast(0 << VAL_SHIFT, ValCons, Value);
 }
 
 /** The false value */
-macro @aFalse()
+macro aFalse()
 {
     return @cast(1 << VAL_SHIFT + ValCons, Value);
 }
 
 /** The true value */
-macro @aTrue()
+macro aTrue()
 {
     return @cast(2 << VAL_SHIFT + ValCons, Value);
 }

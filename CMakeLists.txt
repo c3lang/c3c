@@ -66,7 +66,7 @@ add_executable(c3c
         src/compiler/bigint.c
         src/compiler/bigint.h
         src/compiler/context.c
-        src/compiler/expr_analysis.c
+        src/compiler/sema_expr.c
         src/compiler/enums.h
         src/compiler/casts.c
         src/compiler/target.c
@@ -84,7 +84,7 @@ add_executable(c3c
         src/compiler/llvm_codegen_type.c
         src/compiler/llvm_codegen_function.c
         src/build/builder.c
-        src/utils/toml.c src/build/project.c src/build/build_internal.h src/compiler/sema_name_resolution.c src/target_info/target_info.c)
+        src/utils/toml.c src/build/project.c src/build/build_internal.h src/compiler/sema_name_resolution.c src/target_info/target_info.c src/compiler/parse_expr.c src/compiler/parser_internal.h src/compiler/parse_stmt.c src/compiler/sema_passes.c src/compiler/sema_internal.h src/compiler/sema_decls.c src/compiler/sema_types.c src/compiler/sema_stmts.c)
 
 target_compile_options(c3c PRIVATE -Wimplicit-int -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 

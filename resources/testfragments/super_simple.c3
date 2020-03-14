@@ -228,11 +228,40 @@ func int jumpback(int x)
             x += 3;
         }
     }
+
     if (x < 100) goto LABELX;
     return x + 1;
 }
+
+func void test_expr_block(int x)
+{
+    int a = ({
+        if (x > 0) return x * 2;
+        if (x == 0) return 100;
+        return -x;
+    });
+    //printf("The result was %d\n", a);
+}
+
+func int expr_block()
+{
+    int fok = ({ return ({ return 10; }); });
+    int y = 2;
+    int x = ({
+        if (y < 10) return 10;
+        return 2;
+    });
+
+  /*  ({
+        return 3;
+    });*/
+    return x;
+
+}
 func int xxxx(int x)
 {
+
+
     {
         x += 10;
         defer printf("XXX");
@@ -306,7 +335,7 @@ func int main(int x)
     int ef = 3;
     int *eff = &ef;
     eff[0] = 4;
-    byte *ex = cast(byte *, eff);
+    byte *ex = cast(eff, byte*);
     ex[0] = 5;
     if (eff[0] == 5) printf("Works-5!\n");
     ex[1] = 5;
@@ -321,7 +350,8 @@ func int main(int x)
     bool eok = true;
     long deee = (eok ? a : b) + (eok ? b : c);*/
 int i = 0;
-JUMP:
+
+    JUMP:
     i = i + 1;
     //@hello();
     printf("Hello worldABC" "D" "E\u2701\n");
@@ -352,7 +382,7 @@ JUMP:
 func void test2(int* x, int y, int z)
 {
     *(&(&x)[0]);
-    float cheat = cast(int, x);
+    float cheat = cast(x, int);
 
     x++;
     z = 0;

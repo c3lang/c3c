@@ -77,6 +77,8 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
+		case EXPR_EXPR_BLOCK:
+			TODO
 		case EXPR_IDENTIFIER:
 			return expr->identifier_expr.decl->var.backend_ref;
 		case EXPR_UNARY:
@@ -637,12 +639,45 @@ static inline LLVMValueRef gencontext_emit_struct_init_values_expr(GenContext *c
 	TODO
 }
 
+static inline LLVMValueRef gencontext_emit_expr_block(GenContext *context, Expr *expr)
+{
+	LLVMValueRef old_ret_out = context->return_out;
+	LLVMBasicBlockRef saved_expr_block = context->expr_block_exit;
+
+	LLVMBasicBlockRef expr_block = gencontext_create_free_block(context, "expr_block.exit");
+	context->expr_block_exit = expr_block;
+
+	LLVMValueRef return_out = NULL;
+	if (expr->type != type_void)
+	{
+		return_out = gencontext_emit_alloca(context, llvm_type(expr->type), "blockret");
+	}
+	context->return_out = return_out;
+
+	Ast **stmts = expr->expr_block.stmts;
+	VECEACH(stmts, i)
+	{
+		gencontext_emit_stmt(context, stmts[i]);
+	}
+	gencontext_emit_br(context, expr_block);
+
+	// Emit the exit block.
+	gencontext_emit_block(context, expr_block);
+
+	context->return_out = old_ret_out;
+	context->expr_block_exit = saved_expr_block;
+
+	return return_out;
+}
+
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
 		case EXPR_POISONED:
 			UNREACHABLE
+		case EXPR_EXPR_BLOCK:
+			return gencontext_emit_expr_block(context, expr);
 		case EXPR_SCOPED_EXPR:
 			return gencontext_emit_scoped_expr(context, expr);
 		case EXPR_UNARY:

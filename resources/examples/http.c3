@@ -2,7 +2,9 @@ import curl;
 
 func int main(void)
 {
-    try Curl curl = curl::newCurl();
+    Curl curl;
+
+    try curl.init();
 
     catch (error e)
     {
