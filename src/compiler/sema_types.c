@@ -3,6 +3,8 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
+#include "compiler_internal.h"
+#include "bigint.h"
 
 
 static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
@@ -23,6 +25,7 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 	{
 		return type_info_poison(type);
 	}
+	uint64_t len = 0;
 	if (type->array.len)
 	{
 		if (!sema_analyse_expr(context, type_usize, type->array.len)) return type_info_poison(type);
@@ -31,9 +34,10 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 			SEMA_ERROR(type->array.len, "Expected a constant value as array size.");
 			return type_info_poison(type);
 		}
+		len = bigint_as_unsigned(&type->array.len->const_expr.i);
 	}
 	assert(!type->array.len || type->array.len->expr_kind == EXPR_CONST);
-	type->type = type_get_array(type->array.base->type, type->array.len ? type->array.len->const_expr.i : 0);
+	type->type = type_get_array(type->array.base->type, len);
 	type->resolve_status = RESOLVE_DONE;
 	return true;
 }

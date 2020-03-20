@@ -256,6 +256,7 @@ UnaryOp unary_op[TOKEN_LAST + 1] = {
 		[TOKEN_BIT_NOT] = UNARYOP_BITNEG,
 		[TOKEN_NOT] = UNARYOP_NOT,
 		[TOKEN_MINUS] = UNARYOP_NEG,
+		[TOKEN_MINUS_MOD] = UNARYOP_NEGMOD,
 		[TOKEN_PLUSPLUS] = UNARYOP_INC,
 		[TOKEN_MINUSMINUS] = UNARYOP_DEC,
 };
@@ -411,9 +412,6 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 		case TYPE_IXX:
 			fprintf_indented(file, indent, "(comp time int)\n");
 			break;
-		case TYPE_UXX:
-			fprintf_indented(file, indent, "(comp time uint)\n");
-			break;
 		case TYPE_FXX:
 			fprintf_indented(file, indent, "(comp time float)\n");
 			break;
@@ -530,31 +528,8 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			break;
 		case EXPR_CONST:
 			fprintf_indented(file, indent, "(const ");
-			switch (expr->const_expr.type)
-			{
-				case CONST_NIL:
-					fprintf(file, "nil\n");
-					break;
-				case CONST_BOOL:
-					fprintf(file, expr->const_expr.b ? "true\n" : "false\n");
-					break;
-				case CONST_INT:
-					if (expr->type->type_kind >= TYPE_U8 && expr->type->type_kind <= TYPE_UXX)
-					{
-						fprintf(file, "%llu\n", (unsigned long long)expr->const_expr.i);
-					}
-					else
-					{
-						fprintf(file, "%lld\n", (long long)expr->const_expr.i);
-					}
-					break;
-				case CONST_FLOAT:
-					fprintf(file, "%Lf\n", expr->const_expr.f);
-					break;
-				case CONST_STRING:
-					fprintf(file, "%s\n", expr->const_expr.string.chars);
-					break;
-			}
+			expr_const_fprint(file, &expr->const_expr);
+			fprintf(file, "\n");
 			fprint_expr_common(file, expr, indent + 1);
 			break;
 		case EXPR_BINARY:

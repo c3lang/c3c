@@ -70,7 +70,6 @@ const char *type_to_error_string(Type *type)
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
-		case TYPE_UXX:
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:
@@ -197,7 +196,7 @@ size_t type_size(Type *canonical)
 		case TYPE_F64:
 			return canonical->builtin.bytesize;
 		case TYPE_IXX:
-		case TYPE_UXX:
+			return 4;
 		case TYPE_FXX:
 			return 8;
 		case TYPE_FUNC:
@@ -409,8 +408,7 @@ type_create(#_name, &_shortname, &type_ ## _name, _type, _bits, target->align_mi
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t_voidstar;
 	t_voidstar.pointer = type_void;
-	type_create("compint", &t_ixx, &type_compint, TYPE_IXX, 64, 0, 0);
-	type_create("compuint", &t_uxx, &type_compuint, TYPE_UXX, 64, 0, 0);
+	type_create("compint", &t_ixx, &type_compint, TYPE_IXX, 32, 0, 0);
 	type_create("compfloat", &t_fxx, &type_compfloat, TYPE_FXX, 64, 0, 0);
 
 	type_create_alias("usize", &t_usz, &type_usize, type_unsigned_int_by_bitsize(target->width_pointer));
@@ -471,46 +469,39 @@ bool type_may_have_method_functions(Type *type)
 typedef enum
 {
 	L,
-	LS,
 	R,
-	RS,
 	FL,
+	X,
 } MaxType;
 
 Type *type_find_max_num_type(Type *num_type, Type *other_num)
 {
-	if (other_num->type_kind < TYPE_BOOL || other_num->type_kind > TYPE_FXX) return NULL;
-	assert(num_type->type_kind >= TYPE_BOOL && num_type->type_kind <= TYPE_FXX);
-	static MaxType max_conv[TYPE_FXX - TYPE_BOOL + 1][TYPE_FXX - TYPE_BOOL + 1] = {
-		//Bool  I8 I16 I32 I64 IXX U8 U16 U32 U64 UXX  F32  F64 FXX
-		{   L,  R,  R,  R,  R,  L,  R,  R,  R,  R,  L,  R,  R, FL }, // Bool
-		{   L,  L,  R,  R,  R,  L,  L, RS, RS, RS,  L,  R,  R, FL }, // I8
-		{   L,  L,  L,  R,  R,  L,  L,  L, RS, RS,  L,  R,  R, FL }, // I16
-		{   L,  L,  L,  L,  R,  L,  L,  L,  L, RS,  L,  R,  R, FL }, // I32
-		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  R,  R, FL }, // I64
-		{   R,  R,  R,  R,  R,  L, RS, RS, RS, RS,  L,  R,  R,  R }, // IXX
-		{   L,  R,  R,  R,  R, LS,  L,  R,  R,  R,  L,  R,  R, FL }, // U8
-		{   L, LS,  R,  R,  R, LS,  L,  L,  R,  R,  L,  R,  R, FL }, // U16
-		{   L, LS, LS,  R,  R,  L,  L,  L,  L,  R,  L,  R,  R, FL }, // U32
-		{   L, LS, LS, LS,  R,  L,  L,  L,  L,  L,  L,  R,  R, FL }, // U64
-		{   R,  R,  R,  R,  R,  R,  R,  R,  R,  R,  L,  R,  R,  R }, // UXX
-		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  R,  L }, // F32
-		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L }, // F32
-		{  FL, FL, FL, FL, FL, FL, FL, FL, FL, FL,  L,  R,  R,  L }, // FXX
+	if (other_num->type_kind < TYPE_I8 || other_num->type_kind > TYPE_FXX) return NULL;
+	assert(num_type->type_kind >= TYPE_I8 && num_type->type_kind <= TYPE_FXX);
+	static MaxType max_conv[TYPE_FXX - TYPE_I8 + 1][TYPE_FXX - TYPE_BOOL + 1] = {
+		// I8 I16 I32 I64  U8 U16 U32 U64 IXX F32 F64 FXX
+		{   L,  R,  R,  R,  X,  X,  X,  X,  L,  R,  R,  FL }, // I8
+		{   L,  L,  R,  R,  L,  X,  X,  X,  L,  R,  R,  FL }, // I16
+		{   L,  L,  L,  R,  L,  L,  X,  X,  L,  R,  R,  FL }, // I32
+		{   L,  L,  L,  L,  L,  L,  L,  X,  L,  R,  R,  FL }, // I64
+		{   X,  R,  R,  R,  L,  R,  R,  R,  L,  R,  R,  FL }, // U8
+		{   X,  X,  R,  R,  L,  L,  R,  R,  L,  R,  R,  FL }, // U16
+		{   X,  X,  X,  R,  L,  L,  L,  R,  L,  R,  R,  FL }, // U32
+		{   X,  X,  X,  X,  L,  L,  L,  L,  L,  R,  R,  FL }, // U64
+		{   R,  R,  R,  R,  R,  R,  R,  R,  L,  R,  R,  R  }, // IXX
+		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  R,  L  }, // F32
+		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L  }, // F64
+		{  FL, FL, FL, FL, FL, FL, FL, FL, FL,  R,  R,  L  }, // FXX
 	};
-	MaxType conversion = max_conv[num_type->type_kind - TYPE_BOOL][other_num->type_kind - TYPE_BOOL];
+	MaxType conversion = max_conv[num_type->type_kind - TYPE_I8][other_num->type_kind - TYPE_I8];
 	switch (conversion)
 	{
+		case X:
+			return NULL;
 		case L:
-			assert (num_type->type_kind != TYPE_FXX);
 			return num_type;
 		case R:
-			assert (other_num->type_kind != TYPE_FXX);
 			return other_num;
-		case LS:
-			return type_signed_int_by_bitsize(num_type->builtin.bytesize * 8);
-		case RS:
-			return type_signed_int_by_bitsize(other_num->builtin.bytesize * 8);
 		case FL:
 			return type_double;
 		default:
@@ -619,8 +610,8 @@ Type *type_find_max_type(Type *type, Type *other)
 	{
 		case TYPE_POISONED:
 		case TYPE_VOID:
-			return NULL;
 		case TYPE_BOOL:
+			return NULL;
 		case TYPE_I8:
 		case TYPE_I16:
 		case TYPE_I32:
@@ -630,7 +621,6 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
-		case TYPE_UXX:
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:

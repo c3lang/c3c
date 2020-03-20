@@ -6,16 +6,6 @@
 
 #include "compiler_internal.h"
 
-typedef struct _BigInt
-{
-	unsigned digit_count;
-	bool is_negative;
-	union {
-		uint64_t digit;
-		uint64_t *digits;
-	};
-} BigInt;
-
 typedef enum _CmpRes
 {
 	CMP_LT,
@@ -54,6 +44,7 @@ bool bigint_eql(BigInt a, BigInt b);
 CmpRes bigint_cmp(const BigInt *op1, const BigInt *op2);
 CmpRes bigint_cmp_zero(const BigInt *op);
 uint32_t bigint_hash(BigInt x);
+const char *bigint_to_error_string(const BigInt *bigint, uint64_t base);
 void bigint_print(BigInt *bigint, uint64_t base);
 void bigint_fprint(FILE *file, BigInt *bigint, uint64_t base);
 uint64_t bigint_as_unsigned(const BigInt *bigint);

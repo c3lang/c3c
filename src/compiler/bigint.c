@@ -129,7 +129,7 @@ void bigint_init_bigint(BigInt *dest, const BigInt *src)
 	{
 		return bigint_init_unsigned(dest, 0);
 	}
-	else if (src->digit_count == 1)
+	if (src->digit_count == 1)
 	{
 		dest->digit_count = 1;
 		dest->digit = src->digit;
@@ -1876,6 +1876,65 @@ void bigint_print(BigInt *bigint, uint64_t base)
 	{
 		printf("%c", *ptr);
 	}
+}
+
+const char *bigint_to_error_string(const BigInt *bigint, uint64_t base)
+{
+	if (bigint->digit_count == 0)
+	{
+		return "0";
+	}
+	if (bigint->digit_count == 1 && base == 10)
+	{
+		char *res = NULL;
+		asprintf(&res, "%" PRIu64, bigint->digit);
+		return res;
+	}
+	size_t len = bigint->digit_count * 64;
+	char *start = malloc_arena(len);
+	char *buf = start;
+
+	BigInt digit_bi = { 0 };
+	BigInt a1 = { 0 };
+	BigInt a2 = { 0 };
+
+	BigInt *a = &a1;
+	BigInt *other_a = &a2;
+	bigint_init_bigint(a, bigint);
+
+	BigInt base_bi = { 0 };
+	bigint_init_unsigned(&base_bi, 10);
+
+	for (;;)
+	{
+		bigint_rem(&digit_bi, a, &base_bi);
+		uint8_t digit = (uint8_t)bigint_as_unsigned(&digit_bi);
+		*(buf++) = digit_to_char(digit, false);
+		bigint_div_trunc(other_a, a, &base_bi);
+		{
+			BigInt *tmp = a;
+			a = other_a;
+			other_a = tmp;
+		}
+		if (bigint_cmp_zero(a) == CMP_EQ)
+		{
+			break;
+		}
+	}
+
+	// reverse
+	char *out = malloc_arena(buf - start + 2);
+	char *current = out;
+	if (bigint->is_negative)
+	{
+		*(current++) = '-';
+	}
+	for (char *ptr = buf - 1; ptr >= start; ptr--)
+	{
+		*(current++) = *ptr;
+	}
+	*(current++) = '\0';
+	return current;
 }
 
 void bigint_fprint(FILE *file, BigInt *bigint, uint64_t base)

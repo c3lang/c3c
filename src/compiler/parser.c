@@ -312,13 +312,15 @@ Path *parse_path_prefix(Context *context)
  */
 static inline TypeInfo *parse_base_type(Context *context)
 {
+	SourceRange range = context->tok.span;
 	Path *path = parse_path_prefix(context);
 	if (path)
 	{
-		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER);
+		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER, range);
 		type_info->unresolved.path = path;
 		type_info->unresolved.name_loc = context->tok;
 		if (!consume_type_name(context, "types")) return &poisoned_type_info;
+		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
 
@@ -327,16 +329,17 @@ static inline TypeInfo *parse_base_type(Context *context)
 	switch (context->tok.type)
 	{
 		case TOKEN_TYPE_IDENT:
-			type_info = type_info_new(TYPE_INFO_IDENTIFIER);
+			type_info = type_info_new(TYPE_INFO_IDENTIFIER, context->tok.span);
 			type_info->unresolved.name_loc = context->tok;
 			break;
 		case TOKEN_TYPE:
-			type_info = type_info_new(TYPE_INFO_IDENTIFIER);
+			type_info = type_info_new(TYPE_INFO_IDENTIFIER, context->tok.span);
 		    advance_and_verify(context, TOKEN_TYPE);
 		    CONSUME_OR(TOKEN_LPAREN, &poisoned_type_info);
 			type_info->resolve_status = RESOLVE_NOT_DONE;
 			type_info->unresolved_type_expr = TRY_EXPR_OR(parse_initializer(context), &poisoned_type_info);
 			EXPECT_OR(TOKEN_RPAREN, &poisoned_type_info);
+			RANGE_EXTEND_PREV(type_info);
 			break;
 		case TOKEN_VOID:
 			type_found = type_void;
@@ -408,14 +411,15 @@ static inline TypeInfo *parse_base_type(Context *context)
 			SEMA_TOKEN_ERROR(context->tok, "A type name was expected here.");
 			return &poisoned_type_info;
 	}
-    advance(context);
 	if (type_found)
 	{
 		assert(!type_info);
-		type_info = type_info_new(TYPE_INFO_IDENTIFIER);
+		type_info = type_info_new(TYPE_INFO_IDENTIFIER, context->tok.span);
 		type_info->resolve_status = RESOLVE_DONE;
 		type_info->type = type_found;
 	}
+    advance(context);
+	RANGE_EXTEND_PREV(type_info);
     return type_info;
 }
 
@@ -437,21 +441,24 @@ static inline TypeInfo *parse_array_type_index(Context *context, TypeInfo *type)
 	if (try_consume(context, TOKEN_PLUS))
 	{
 		CONSUME_OR(TOKEN_RBRACKET, &poisoned_type_info);
-        TypeInfo *incr_array = type_info_new(TYPE_INFO_INC_ARRAY);
+        TypeInfo *incr_array = type_info_new(TYPE_INFO_INC_ARRAY, type->span);
         incr_array->array.base = type;
+        RANGE_EXTEND_PREV(incr_array);
         return incr_array;
 	}
 	if (try_consume(context, TOKEN_RBRACKET))
 	{
-        TypeInfo *array = type_info_new(TYPE_INFO_ARRAY);
+        TypeInfo *array = type_info_new(TYPE_INFO_ARRAY, type->span);
         array->array.base = type;
         array->array.len = NULL;
+        RANGE_EXTEND_PREV(array);
         return array;
 	}
-    TypeInfo *array = type_info_new(TYPE_INFO_ARRAY);
+    TypeInfo *array = type_info_new(TYPE_INFO_ARRAY, type->span);
     array->array.base = type;
     array->array.len = TRY_EXPR_OR(parse_expr(context), &poisoned_type_info);
     CONSUME_OR(TOKEN_RBRACKET, &poisoned_type_info);
+    RANGE_EXTEND_PREV(array);
     return array;
 }
 
@@ -478,10 +485,11 @@ TypeInfo *parse_type_expression(Context *context)
 			case TOKEN_STAR:
 				advance(context);
                 {
-                    TypeInfo *ptr_type = type_info_new(TYPE_INFO_POINTER);
+                    TypeInfo *ptr_type = type_info_new(TYPE_INFO_POINTER, type_info->span);
                     assert(type_info);
 	                ptr_type->pointer = type_info;
 	                type_info = ptr_type;
+	                RANGE_EXTEND_PREV(type_info);
                 }
                 break;
 			default:
@@ -725,7 +733,7 @@ bool parse_type_or_expr(Context *context, Expr **expr_ptr, TypeInfo **type_ptr)
 			CONSUME_OR(TOKEN_RPAREN, false);
 			if (inner_expr)
 			{
-				*type_ptr = type_info_new(TYPE_INFO_EXPRESSION);
+				*type_ptr = type_info_new(TYPE_INFO_EXPRESSION, inner_expr->span);
 				(**type_ptr).unresolved_type_expr = inner_expr;
 				return true;
 			}
@@ -863,7 +871,7 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 {
 	TypeInfo *type = TRY_TYPE_OR(parse_type_expression(context), false);
 	Decl *param = decl_new_var(context->tok, type, VARDECL_PARAM, parent_visibility);
-
+	param->span = type->span;
 	if (!try_consume(context, TOKEN_IDENT))
 	{
 		param->name = NULL;
@@ -873,7 +881,12 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 
 	if (!name && !type_only)
 	{
-		SEMA_TOKEN_ERROR(context->tok, "The function parameter must be named.");
+		if (context->tok.type != TOKEN_COMMA && context->tok.type != TOKEN_RPAREN)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "Unexpected end of the parameter list, did you forget an ')'?");
+			return false;
+		}
+		SEMA_ERROR(type, "The function parameter must be named.");
 		return false;
 	}
 	if (name && try_consume(context, TOKEN_EQ))
@@ -882,6 +895,7 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 	}
 
 	*parameters = VECADD(*parameters, param);
+	RANGE_EXTEND_PREV(param);
 	return true;
 }
 
@@ -1365,7 +1379,6 @@ static inline bool parse_enum_spec(Context *context, TypeInfo **type_ref, Decl**
 {
 	*type_ref = TRY_TYPE_OR(parse_base_type(context), false);
 	if (!try_consume(context, TOKEN_LPAREN)) return true;
-	CONSUME_OR(TOKEN_LPAREN, false);
 	while (!try_consume(context, TOKEN_RPAREN))
 	{
 		if (!parse_param_decl(context, parent_visibility, parameters_ref, false)) return false;
@@ -1415,11 +1428,10 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 
 	CONSUME_OR(TOKEN_LBRACE, false);
 
-	decl->enums.type_info = type ? type : type_info_new_base(type_int);
+	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, context->tok, decl->visibility);
-		enum_const->enum_constant.parent = decl;
 		VECEACH(decl->enums.values, i)
 		{
 			Decl *other_constant = decl->enums.values[i];
@@ -1491,12 +1503,14 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	Decl *func = decl_new(DECL_FUNC, context->tok, visibility);
 	func->func.function_signature.rtype = return_type;
 
+	SourceRange start = context->tok.span;
 	Path *path = parse_path_prefix(context);
 	if (path || context->tok.type == TOKEN_TYPE_IDENT)
 	{
 		// Special case, actually an extension
 		TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "A type was expected after '::'.", &poisoned_decl);
-		TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER);
+		// TODO span is incorrect
+		TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER, start);
 		type->unresolved.path = path;
 		type->unresolved.name_loc = context->tok;
 		func->func.type_parent = type;
@@ -1963,15 +1977,17 @@ static Expr *parse_type_access(Context *context, TypeInfo *type)
  */
 Expr *parse_type_identifier_with_path(Context *context, Path *path)
 {
-	TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER);
+	TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER, path ? path->span : context->tok.span );
 	type->unresolved.path = path;
 	type->unresolved.name_loc = context->tok;
 	advance_and_verify(context, TOKEN_TYPE_IDENT);
+	RANGE_EXTEND_PREV(type);
 	if (context->tok.type == TOKEN_LBRACE)
 	{
 		Expr *expr = EXPR_NEW_TOKEN(EXPR_STRUCT_VALUE, context->tok);
 		expr->struct_value_expr.type = type;
 		expr->struct_value_expr.init_expr = TRY_EXPR_OR(parse_initializer_list(context), &poisoned_expr);
+
 		return expr;
 	}
 	EXPECT_OR(TOKEN_DOT, &poisoned_expr);

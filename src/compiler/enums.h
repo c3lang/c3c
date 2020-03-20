@@ -40,6 +40,7 @@ typedef enum
 	BINARYOP_BIT_AND,
 	BINARYOP_AND,
 	BINARYOP_OR,
+	// Don't change the ordering for GT to EQ or things will break
 	BINARYOP_GT,
 	BINARYOP_GE,
 	BINARYOP_LT,
@@ -178,14 +179,6 @@ typedef enum _CastType
 	CAST_TYPE_IMPLICIT_ASSIGN_ADD,
 } CastType;
 
-typedef enum
-{
-	CONST_NIL,
-	CONST_BOOL,
-	CONST_INT,
-	CONST_FLOAT,
-	CONST_STRING,
-} ConstType;
 
 
 typedef enum
@@ -214,8 +207,9 @@ typedef enum
 // Ordering here is in priority if two branches should have the same exit.
 typedef enum
 {
-	EXIT_NONE,
+	EXIT_NONE = 0,
 	EXIT_BREAK,
+	EXIT_NEXT,
 	EXIT_GOTO,
 	EXIT_CONTINUE,
 	EXIT_THROW,
@@ -507,12 +501,11 @@ typedef enum
 	TYPE_I16,
 	TYPE_I32,
 	TYPE_I64,
-	TYPE_IXX,
 	TYPE_U8,
 	TYPE_U16,
 	TYPE_U32,
 	TYPE_U64,
-	TYPE_UXX,
+	TYPE_IXX,
 	TYPE_F32,
 	TYPE_F64,
 	TYPE_FXX,
@@ -532,6 +525,12 @@ typedef enum
 	TYPE_LAST = TYPE_META_TYPE
 } TypeKind;
 
+#define ALL_INTS TYPE_I8: case TYPE_I16: case TYPE_I32: case TYPE_I64: \
+case TYPE_U8: case TYPE_U16: case TYPE_U32: case TYPE_U64: case TYPE_IXX
+#define ALL_SIGNED_INTS TYPE_I8: case TYPE_I16: case TYPE_I32: case TYPE_I64
+#define ALL_UNSIGNED_INTS TYPE_U8: case TYPE_U16: case TYPE_U32: case TYPE_U64
+#define ALL_FLOATS TYPE_F32: case TYPE_F64: case TYPE_FXX
+
 #define TYPE_KINDS (TYPE_LAST + 1)
 
 typedef enum
@@ -540,6 +539,7 @@ typedef enum
 	UNARYOP_DEREF,
 	UNARYOP_ADDR,
 	UNARYOP_NEG,
+	UNARYOP_NEGMOD,
 	UNARYOP_BITNEG,
 	UNARYOP_NOT,
 	UNARYOP_INC,

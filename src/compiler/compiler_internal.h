@@ -32,6 +32,33 @@ typedef struct _Type Type;
 
 typedef bool(*CastFunc)(Expr *, Type *, Type *, Type *, CastType cast_type);
 
+typedef struct _BigInt
+{
+	unsigned digit_count;
+	bool is_negative;
+	union {
+		uint64_t digit;
+		uint64_t *digits;
+	};
+} BigInt;
+
+
+typedef struct
+{
+	union
+	{
+		long double f;
+		BigInt i;
+		bool b;
+		struct
+		{
+			char* chars;
+			int len;
+		} string;
+	};
+	TypeKind kind;
+} ExprConst;
+
 typedef struct
 {
 	SourceLoc loc;
@@ -132,18 +159,24 @@ typedef struct
 struct _Type
 {
 	TypeKind type_kind : 8;
-	struct _Type *canonical;
+	Type *canonical;
 	const char *name;
-	struct _Type **type_cache;
+	Type **type_cache;
 	void *backend_type;
 	void *backend_debug_type;
 	union
 	{
+		// Error, Struct, Union, Typedef
 		Decl *decl;
+		// int, float, bool
 		TypeBuiltin builtin;
+		// Type[], Type[*], Type[123]
 		TypeArray array;
+		// func Type1(Type2, Type3, ...) throws Err1, Err2, ...
 		TypeFunc func;
+		// Type*
 		Type *pointer;
+		// Type.type
 		Type *child;
 	};
 };
@@ -153,6 +186,7 @@ struct _TypeInfo
 	ResolveStatus resolve_status : 2;
 	Type *type;
 	TypeInfoKind kind;
+	SourceRange span;
 	union
 	{
 		TypeUnresolved unresolved;
@@ -217,7 +251,6 @@ typedef struct
 
 typedef struct
 {
-	Decl *parent;
 	Expr *expr;
 	Expr **args;
 	uint64_t ordinal;
@@ -403,21 +436,7 @@ typedef struct
 	PostUnaryOp operator;
 } ExprPostUnary;
 
-typedef struct
-{
-	union
-	{
-		long double f;
-		uint64_t i;
-		bool b;
-		struct
-		{
-			char* chars;
-			int len;
-		} string;
-	};
-	ConstType type : 3;
-} ExprConst;
+
 
 typedef struct
 {
@@ -700,7 +719,6 @@ typedef struct _Ast
 {
 	SourceRange span;
 	AstKind ast_kind : 8;
-	ExitType exit : 3;
 	union
 	{
 		AstAttribute attribute;
@@ -872,7 +890,7 @@ extern Type *type_bool, *type_void, *type_string, *type_voidptr;
 extern Type *type_float, *type_double;
 extern Type *type_char, *type_short, *type_int, *type_long, *type_isize;
 extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
-extern Type *type_compint, *type_compuint, *type_compfloat;
+extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
 
@@ -899,7 +917,6 @@ static inline Ast *new_ast(AstKind kind, SourceRange range)
 	memset(ast, 0, sizeof(Ast));
 	ast->span = range;
 	ast->ast_kind = kind;
-	ast->exit = EXIT_NONE;
 	return ast;
 }
 
@@ -953,24 +970,22 @@ static inline bool builtin_may_bit_negate(Type *canonical)
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
-		case TYPE_UXX:
 			return true;
 		default:
 			return false;
 	}
 }
 
-static inline ConstType sign_from_type(Type *type)
-{
-	assert(type->canonical == type);
-	return (type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX) ? CONST_INT : CONST_INT;
-}
 
 bool cast_implicit(Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type, CastType cast_type);
 bool cast_binary_arithmetic(Expr *left, Expr *right, const char *action);
 CastKind cast_to_bool_kind(Type *type);
 bool cast_to_runtime(Expr *expr);
+static inline bool cast_is_implicit(CastType cast_type)
+{
+	return cast_type == CAST_TYPE_IMPLICIT_ASSIGN_ADD || cast_type == CAST_TYPE_IMPLICIT || cast_type == CAST_TYPE_IMPLICIT_ASSIGN;
+}
 
 void llvm_codegen(Context *context);
 void llvm_set_struct_size_alignment(Decl *decl);
@@ -1027,6 +1042,14 @@ static inline void expr_replace(Expr *expr, Expr *replacement)
 	*expr = *replacement;
 	expr->span = loc;
 }
+void expr_const_set_int(ExprConst *expr, uint64_t v, TypeKind kind);
+void expr_const_set_float(ExprConst *expr, long double d, TypeKind kind);
+void expr_const_set_bool(ExprConst *expr, bool b);
+void expr_const_set_nil(ExprConst *expr);
+void expr_const_fprint(FILE *__restrict file, ExprConst *expr);
+bool expr_const_int_overflowed(const ExprConst *expr);
+bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
+const char *expr_const_to_error_string(const ExprConst *expr);
 
 void fprint_ast(FILE *file, Ast *ast);
 void fprint_decl(FILE *file, Decl *dec);
@@ -1131,27 +1154,35 @@ void type_append_signature_name(Type *type, char *dst, size_t *offset);
 Type *type_find_max_type(Type *type, Type *other);
 
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_FXX; }
-static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX; }
-static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_UXX; }
+static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_I64; }
+static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind <= TYPE_U64; }
+static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I64; }
+static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
 bool type_may_have_method_functions(Type *type);
 static inline bool type_is_integer(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_UXX;
+	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_U64;
 }
 
-static inline bool type_is_signed_integer(Type *type)
+static inline bool type_is_any_integer(Type *type)
 {
 	assert(type == type->canonical);
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX;
 }
 
+static inline bool type_is_signed_integer(Type *type)
+{
+	assert(type == type->canonical);
+	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I64;
+}
+
 static inline bool type_is_unsigned_integer(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_UXX;
+	return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64;
 }
 
 static inline bool type_info_poison(TypeInfo *type)
@@ -1167,22 +1198,24 @@ static inline bool type_is_float(Type *type)
 	return type->type_kind >= TYPE_F32 && type->type_kind <= TYPE_FXX;
 }
 
-static inline TypeInfo *type_info_new(TypeInfoKind kind)
+static inline TypeInfo *type_info_new(TypeInfoKind kind, SourceRange range)
 {
 	TypeInfo *type_info = malloc_arena(sizeof(TypeInfo));
 	memset(type_info, 0, sizeof(TypeInfo));
 	type_info->kind = kind;
+	type_info->span = range;
 	type_info->resolve_status = RESOLVE_NOT_DONE;
 	return type_info;
 }
 
-static inline TypeInfo *type_info_new_base(Type *type)
+static inline TypeInfo *type_info_new_base(Type *type, SourceRange range)
 {
 	TypeInfo *type_info = malloc_arena(sizeof(TypeInfo));
 	memset(type_info, 0, sizeof(TypeInfo));
 	type_info->kind = TYPE_INFO_IDENTIFIER;
 	type_info->resolve_status = RESOLVE_DONE;
 	type_info->type = type;
+	type_info->span = range;
 	return type_info;
 }
 
@@ -1209,6 +1242,7 @@ static inline bool type_is_number(Type *type)
 	assert(type == type->canonical);
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_FXX;
 }
+
 
 #define TYPE_MODULE_UNRESOLVED(_module, _name) ({ Type *__type = type_new(TYPE_USER_DEFINED); \
  __type->name_loc = _name; __type->unresolved.module = _module; __type; })

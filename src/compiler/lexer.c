@@ -318,11 +318,10 @@ static Token scan_binary(Lexer *lexer)
 
 static inline Token scan_hex(Lexer *lexer)
 {
-	char x = next(lexer); // skip the x
 	if (!is_hex(next(lexer)))
 	{
-		return error_token(lexer, "'0%c' starts a hexadecimal number, "
-					 "but it was followed by '%c' which is not part of a hexadecimal number.", x, prev(lexer));
+		return error_token(lexer, "'0x' starts a hexadecimal number, "
+					 "but it was followed by '%c' which is not part of a hexadecimal number.", prev(lexer));
 	}
 	while (is_hex_or_(peek(lexer))) next(lexer);
 	bool is_float = false;

@@ -134,16 +134,18 @@ static inline void gencontext_emit_return(GenContext *context, Ast *ast)
 	if (!ret_value)
 	{
 		gencontext_emit_implicit_return(context);
-		return;
-	}
-	if (context->return_out)
-	{
-		LLVMBuildStore(context->builder, ret_value, context->return_out);
-		gencontext_emit_implicit_return(context);
 	}
 	else
 	{
-		LLVMBuildRet(context->builder, ret_value);
+		if (context->return_out)
+		{
+			LLVMBuildStore(context->builder, ret_value, context->return_out);
+			gencontext_emit_implicit_return(context);
+		}
+		else
+		{
+			LLVMBuildRet(context->builder, ret_value);
+		}
 	}
 	context->current_block = NULL;
 	LLVMBasicBlockRef post_ret_block = gencontext_create_free_block(context, "ret");

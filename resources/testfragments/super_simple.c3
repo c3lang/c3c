@@ -38,6 +38,87 @@ struct Teob
     int oekfeo;
 }
 
+enum EnumTest : long
+{
+    VALUE1 = 4,
+    VALUE2
+}
+
+enum EnumTestDefault
+{
+    VALUE,
+    VALUE2
+}
+
+enum EnumTestNoOverflowAfterLong : long
+{
+    VALUE = 0x7FFF_FFFF_FFFF_FFFE,
+    VALUE_NO_EXCEED
+}
+
+enum EnumTestSmall : ushort
+{
+    VALUE = 0xFF,
+    VALUE2 = 0xFFFF
+}
+
+enum EnumWithData : ushort (int a, char[] x, long b = 4)
+{
+    // Currently the args are ignored TODO!
+    TEST1(42, "hello", 328) = 3,
+    TEST2(12, "world")
+}
+
+
+/* ERRORS
+
+enum EnumWithErrorData : int (int
+{
+    TEST
+}
+
+enum EnumWithErrorWithMissingName : int (int)
+{
+    TEST
+}
+
+enum EnumTestNoOverflowAfterULong : ulong
+{
+    VALUE = 0xFFFF_FFFF_FFFF_FFFE,
+    VALUE_NO_EXCEED
+}
+
+enum EnumTestOverflow
+{
+    VALUE = 0x80000000,
+}
+
+
+enum EnumTestOverflowAfter
+{
+    VALUE = 0x80000000 - 1,
+    VALUE_EXCEED
+}
+
+enum EnumTestOverflowAfterLong : long
+{
+    VALUE = 0x7FFF_FFFF_FFFF_FFFF,
+    VALUE_EXCEED
+}
+
+enum EnumTestOverflowAfterULong : ulong
+{
+    VALUE = 0xFFFF_FFFF_FFFF_FFFF,
+    VALUE_EXCEED
+}
+
+enum EnumTestErrorType : float
+{
+    VALUE_BOOM
+}
+
+*/
+
 error Error
 {
     BLURB,
@@ -59,6 +140,71 @@ func int jumptest()
 func int borok() throws
 {
     return 1;
+}
+func void testNoReturn()
+{
+    int i = 0;
+}
+
+func int testReturn()
+{
+    int i = 0;
+    return i;
+}
+
+func int testReturnWithOtherAtEnd()
+{
+    int i = 0;
+    return i;
+    if (i == 10) i++;
+    i = i + 2;
+}
+
+func int testReturnWithError() throws Error
+{
+    int i = 0;
+    throw Error.NO_SUCH_FILE;
+    i = i + 1;
+}
+
+func int testReturnWithConditional()
+{
+    int i = 0;
+    if (i > 0)
+    {
+        return 1;
+    }
+    else
+    {
+        return 2;
+    }
+}
+
+func int testReturnWithCondThrow() throws Error
+{
+    int i = 0;
+    if (i > 0)
+    {
+        throw Error.NO_SUCH_FILE;
+    }
+    else
+    {
+        throw Error.NO_SUCH_FILE;
+    }
+}
+
+func int testReturnSwitch()
+{
+    int i = 0;
+    switch (i)
+    {
+        case 1:
+            return 2;
+        case 2:
+            return 3;
+        default:
+            return 4;
+    }
 }
 
 func int barok() throws Error, OtherError
@@ -281,6 +427,7 @@ func int main(int x)
 {
     int efd = 9;
     int okfe = 1;
+    return 1;
     switch (int bobe = okfe > 0 ? 1 : 0)
     {
         case 0:
@@ -304,7 +451,6 @@ func int main(int x)
             printf("default\n");
             break;
     }
-    return 1;
     int aa = x++;
     int bb = x--;
     int cc = ++x;
@@ -377,6 +523,7 @@ int i = 0;
     EX:
     printf("EX\n");
     goto YEF;
+    return 1;
 }
 
 func void test2(int* x, int y, int z)

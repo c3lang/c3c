@@ -96,6 +96,7 @@ void gencontext_emit_implicit_return(GenContext *context)
 
 void gencontext_emit_function_body(GenContext *context, Decl *decl)
 {
+	DEBUG_LOG("Generating function %s.", decl->external_name);
 	assert(decl->func.backend_value);
 
 	LLVMValueRef prev_function = context->function;
@@ -143,7 +144,7 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 		gencontext_emit_stmt(context, decl->func.body->compound_stmt.stmts[i]);
 	}
 
-	if (!LLVMGetFirstInstruction(context->current_block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(context->current_block)))
+	if (context->current_block && !LLVMGetFirstInstruction(context->current_block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(context->current_block)))
 	{
 		LLVMBasicBlockRef prev_block = LLVMGetPreviousBasicBlock(context->current_block);
 		LLVMDeleteBasicBlock(context->current_block);
@@ -151,9 +152,8 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 		LLVMPositionBuilderAtEnd(context->builder, context->current_block);
 	}
 	// Insert a return (and defer) if needed.
-	if (!LLVMGetBasicBlockTerminator(context->current_block))
+	if (context->current_block && !LLVMGetBasicBlockTerminator(context->current_block))
 	{
-		assert(decl->func.function_signature.rtype->type->type_kind == TYPE_VOID);
 		assert(decl->func.body->compound_stmt.defer_list.end == NULL);
 		gencontext_emit_defer(context, decl->func.body->compound_stmt.defer_list.start, NULL);
 		gencontext_emit_implicit_return(context);

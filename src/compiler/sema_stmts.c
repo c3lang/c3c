@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
+#include "bigint.h"
 
 #pragma mark --- Context help functions
 
@@ -48,10 +49,7 @@ static inline void context_pop_defers_to(Context *context, DeferList *list)
 
 static inline void context_add_exit(Context *context, ExitType exit)
 {
-	if (context->current_scope->exit < exit)
-	{
-		context->current_scope->exit = exit;
-	}
+	if (!context->current_scope->exit) context->current_scope->exit = exit;
 }
 
 void context_pop_scope(Context *context)
@@ -61,7 +59,7 @@ void context_pop_scope(Context *context)
 	ExitType exit_type = context->current_scope->exit;
 	assert (context->current_scope->defers.end == context->current_scope->defers.start);
 	context->current_scope--;
-	if (context->current_scope->exit < exit_type)
+	if (!context->current_scope->exit && exit_type)
 	{
 		context->current_scope->exit = exit_type;
 	}
@@ -125,7 +123,6 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 	}
 
 	UPDATE_EXIT(EXIT_RETURN);
-	context->current_scope->exit = EXIT_RETURN;
 
 	Type *expected_rtype = context->rtype;
 	Expr *return_expr = statement->return_stmt.expr;
@@ -144,6 +141,11 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 			return false;
 		}
 		return true;
+	}
+	if (expected_rtype == type_void)
+	{
+		SEMA_ERROR(statement, "You can't return a value from a void function, you need to add a return type.");
+		return false;
 	}
 	if (!sema_analyse_expr(context, expected_rtype, return_expr)) return false;
 	if (!expected_rtype)
@@ -170,14 +172,6 @@ static inline bool sema_analyse_var_decl(Context *context, Decl *decl)
 	if (!sema_add_local(context, decl)) return decl_poison(decl);
 	return true;
 }
-
-static inline Ast *convert_expr_to_ast(Expr *expr)
-{
-	Ast *ast = AST_NEW(AST_EXPR_STMT, expr->span);
-	ast->expr_stmt = expr;
-	return ast;
-}
-
 
 
 static inline bool sema_analyse_decl_expr_list(Context *context, Ast *stmt)
@@ -305,11 +299,6 @@ static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
 	return true;
 }
 
-static inline bool sema_analyse_default_stmt(Context *context __unused, Ast *statement)
-{
-	SEMA_ERROR(statement, "Unexpected 'default' outside of switch");
-	return false;
-}
 
 static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 {
@@ -398,11 +387,17 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 			success = false;
 		}
 	}
+	ExitType prev_exit = context->current_scope->exit;
 	success = success && sema_analyse_statement(context, statement->if_stmt.then_body);
+	ExitType if_exit = context->current_scope->exit;
+	ExitType else_exit = prev_exit;
 	if (statement->if_stmt.else_body)
 	{
+		context->current_scope->exit = prev_exit;
 		success = success && sema_analyse_statement(context, statement->if_stmt.else_body);
+		else_exit = context->current_scope->exit;
 	}
+	context->current_scope->exit = else_exit < if_exit ? else_exit : if_exit;
 	context_pop_defers_and_replace_ast(context, statement);
 	context_pop_scope(context);
 	return success;
@@ -423,6 +418,7 @@ static inline bool sema_analyse_label(Context *context, Ast *statement)
 			return false;
 		}
 	}
+	context->current_scope->exit = EXIT_NONE;
 	vec_add(context->labels, statement);
 	VECEACH(context->gotos, i)
 	{
@@ -456,6 +452,7 @@ static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 		SEMA_ERROR(statement, "'break' is not allowed here.");
 		return false;
 	}
+	UPDATE_EXIT(EXIT_BREAK);
 	DynamicScope *scope = context->current_scope;
 	statement->break_stmt.defers.start = scope->defers.start;
 	while (!(scope->flags_created & SCOPE_BREAK)) // NOLINT(hicpp-signed-bitwise)
@@ -473,6 +470,7 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 		SEMA_ERROR(statement, "'next' is not allowed here.");
 		return false;
 	}
+	UPDATE_EXIT(EXIT_NEXT);
 	DynamicScope *scope = context->current_scope;
 	statement->next_stmt.defers.start = scope->defers.start;
 	while (!(scope->flags_created & SCOPE_NEXT)) // NOLINT(hicpp-signed-bitwise)
@@ -483,11 +481,6 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 	return true;
 }
 
-static bool sema_analyse_case_stmt(Context *context, Ast *statement)
-{
-	SEMA_ERROR(statement, "Unexpected 'case' outside of switch");
-	return false;
-}
 
 static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
 {
@@ -496,6 +489,7 @@ static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
 		SEMA_ERROR(statement, "'continue' is not allowed here.");
 		return false;
 	}
+	UPDATE_EXIT(EXIT_CONTINUE);
 	DynamicScope *scope = context->current_scope;
 	statement->continue_stmt.defers.start = scope->defers.start;
 	while (!(scope->flags_created & SCOPE_CONTINUE)) // NOLINT(hicpp-signed-bitwise)
@@ -551,24 +545,39 @@ static bool sema_analyse_ct_if_stmt(Context *context, Ast *statement)
 }
 
 
-static bool sema_analyse_case_expr(Context *context, Ast *case_stmt)
+static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_stmt)
 {
 	Expr *case_expr = case_stmt->case_stmt.expr;
 	// TODO handle enums
-	if (!sema_analyse_expr(context, NULL, case_expr)) return false;
+	// TODO string expr
+	if (!sema_analyse_expr(context, to_type, case_expr)) return false;
 	if (case_expr->expr_kind != EXPR_CONST)
 	{
 		SEMA_ERROR(case_expr, "This must be a constant expression.");
 		return false;
 	}
-	if (case_expr->const_expr.type != CONST_INT)
+
+	// As a special case, we handle bools, converting them to 0 / 1
+	if (case_expr->const_expr.kind == TYPE_BOOL)
 	{
-		SEMA_ERROR(case_expr, "The 'case' value must be an integer constant.");
-		return false;
+		case_stmt->case_stmt.value_type = CASE_VALUE_UINT;
+		case_stmt->case_stmt.val = case_expr->const_expr.b ? 1 : 0;
+		return true;
 	}
-	assert(case_expr->const_expr.type == CONST_INT);
+
+	// TODO check for int
+	/*
+	if (case_expr->const_expr.kind < TYPE__!= CONST_INT && case_expr->const_expr.type != CONST_BOOL)
+	{
+		SEMA_ERROR(case_expr, "The 'case' value must be a boolean or integer constant.");
+		return false;
+	}*/
+
 	case_stmt->case_stmt.value_type = type_is_signed(case_expr->type->canonical) ? CASE_VALUE_INT : CASE_VALUE_UINT;
-	uint64_t val = case_expr->const_expr.i;
+	assert(case_expr->type->canonical->type_kind != TYPE_IXX);
+	// TODO this is incorrect
+	TODO
+	uint64_t val = (uint64_t)bigint_as_signed(&case_expr->const_expr.i);
 	case_stmt->case_stmt.val = val;
 	return true;
 }
@@ -586,12 +595,6 @@ static inline bool sema_analyse_compound_statement_no_scope(Context *context, As
 		}
 	}
 	context_pop_defers_to(context, &compound_statement->compound_stmt.defer_list);
-
-	/*
-	if (parent->exit < compound_statement->exit)
-	{
-		parent->exit = compound_statement->exit;
-	}*/
 	return all_ok;
 }
 
@@ -610,6 +613,7 @@ static inline Type *ast_cond_type(Ast *ast)
 	}
 }
 
+
 static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 {
 	context_push_scope(context);
@@ -617,20 +621,27 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 	bool success = sema_analyse_cond(context, cond, false);
 
 	Type *switch_type = ast_cond_type(cond)->canonical;
-	if (!type_is_integer(switch_type))
+	if (switch_type == type_bool || !type_is_integer(switch_type))
 	{
 		SEMA_ERROR(cond, "Expected an integer or enum type, was '%s'.", type_to_error_string(switch_type));
 		return false;
 	}
 	Ast *default_case = NULL;
 	assert(context->current_scope->defers.start == context->current_scope->defers.end);
-	VECEACH(statement->switch_stmt.cases, i)
+
+	// TODO enum, exhaustive cases.
+	ExitType prev_exit = context->current_scope->exit;
+	bool exhaustive = false;
+	ExitType lowest_exit = EXIT_NONE;
+	unsigned cases = vec_size(statement->switch_stmt.cases);
+	for (unsigned i = 0; i < cases; i++)
 	{
+		context->current_scope->exit = prev_exit;
 		Ast *stmt = statement->switch_stmt.cases[i];
 		switch (stmt->ast_kind)
 		{
 			case AST_CASE_STMT:
-				if (!sema_analyse_case_expr(context, stmt))
+				if (!sema_analyse_case_expr(context, switch_type, stmt))
 				{
 					success = false;
 					break;
@@ -647,6 +658,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 				}
 				break;
 			case AST_DEFAULT_STMT:
+				exhaustive = true;
 				if (default_case)
 				{
 					SEMA_ERROR(stmt, "'default' may only appear once in a single 'switch', please remove one.");
@@ -658,15 +670,41 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 			default:
 				UNREACHABLE;
 		}
-		context_push_scope_with_flags(context, SCOPE_BREAK | SCOPE_NEXT);
+		if (i == cases - 1)
+		{
+			context_push_scope_with_flags(context, SCOPE_BREAK);
+		}
+		else
+		{
+			context_push_scope_with_flags(context, SCOPE_NEXT | SCOPE_BREAK);
+		}
 		success = success && sema_analyse_compound_statement_no_scope(context, stmt->case_stmt.body);
+		ExitType case_exit = context->current_scope->exit;
+		if (case_exit != lowest_exit)
+		{
+			switch (case_exit)
+			{
+				case EXIT_NONE:
+				case EXIT_BREAK:
+					lowest_exit = EXIT_BREAK;
+					break;
+				case EXIT_NEXT:
+					// We ignore this completely
+					break;
+				default:
+					if (!lowest_exit || lowest_exit > case_exit) lowest_exit = case_exit;
+					break;
+			}
+		}
 		context_pop_scope(context);
 	}
 	context_pop_defers_and_replace_ast(context, statement);
+	if (lowest_exit <= EXIT_BREAK) lowest_exit = prev_exit;
+	context->current_scope->exit = exhaustive ? lowest_exit : EXIT_NONE;
 	context_pop_scope(context);
 	if (!success) return false;
 	// Is this a typeless switch value?
-	if (switch_type->type_kind == TYPE_UXX || switch_type->type_kind == TYPE_IXX)
+	if (switch_type->type_kind == TYPE_IXX)
 	{
 
 		TODO
@@ -701,6 +739,7 @@ static bool sema_analyse_try_stmt(Context *context, Ast *statement)
 static bool sema_analyse_throw_stmt(Context *context, Ast *statement)
 {
 	Expr *throw_value = statement->throw_stmt.throw_value;
+	UPDATE_EXIT(EXIT_THROW);
 	if (!sema_analyse_expr(context, NULL, throw_value)) return false;
 	Type *type = throw_value->type->canonical;
 	if (type->type_kind != TYPE_ERROR)
@@ -713,7 +752,7 @@ static bool sema_analyse_throw_stmt(Context *context, Ast *statement)
 		SEMA_ERROR(statement, "This 'throw' is not handled, please add a 'throws %s' clause to the function signature or use try-catch.", type->name);
 		return false;
 	}
-	VECADD(context->errors, type->decl);
+	vec_add(context->errors, type->decl);
 	return true;
 }
 
@@ -749,7 +788,8 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_BREAK_STMT:
 			return sema_analyse_break_stmt(context, statement);
 		case AST_CASE_STMT:
-			return sema_analyse_case_stmt(context, statement);
+			SEMA_ERROR(statement, "Unexpected 'case' outside of switch");
+			return false;
 		case AST_CATCH_STMT:
 			return sema_analyse_catch_stmt(context, statement);
 		case AST_COMPOUND_STMT:
@@ -761,7 +801,8 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_DECLARE_STMT:
 			return sema_analyse_declare_stmt(context, statement);
 		case AST_DEFAULT_STMT:
-			return sema_analyse_default_stmt(context, statement);
+			SEMA_ERROR(statement, "Unexpected 'default' outside of switch");
+			return false;
 		case AST_DEFER_STMT:
 			return sema_analyse_defer_stmt(context, statement);
 		case AST_DO_STMT:
@@ -855,15 +896,18 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	func->func.annotations = CALLOCS(*func->func.annotations);
 	context_push_scope(context);
 	Decl **params = func->func.function_signature.params;
+	assert(context->current_scope == &context->scopes[1]);
 	VECEACH(params, i)
 	{
 		if (!sema_add_local(context, params[i])) return false;
 	}
 	if (!sema_analyse_compound_statement_no_scope(context, func->func.body)) return false;
-	if (context->current_scope->exit != EXIT_RETURN)
+	assert(context->current_scope == &context->scopes[1]);
+	if (context->current_scope->exit != EXIT_RETURN && context->current_scope->exit != EXIT_THROW && context->current_scope->exit != EXIT_GOTO)
 	{
 		if (func->func.function_signature.rtype->type->canonical != type_void)
 		{
+			// IMPROVE better pointer to end.
 			SEMA_ERROR(func, "Missing return statement at the end of the function.");
 			return false;
 		}

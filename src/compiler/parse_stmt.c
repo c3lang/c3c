@@ -436,7 +436,6 @@ static inline Ast *parse_return_stmt(Context *context)
 {
 	advance_and_verify(context, TOKEN_RETURN);
 	Ast *ast = AST_NEW_TOKEN(AST_RETURN_STMT, context->tok);
-	ast->exit = EXIT_RETURN;
 	ast->return_stmt.defer = NULL;
 	if (try_consume(context, TOKEN_EOS))
 	{

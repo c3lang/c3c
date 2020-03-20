@@ -107,7 +107,6 @@ LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 	{
 		case TYPE_POISONED:
 		case TYPE_IXX:
-		case TYPE_UXX:
 		case TYPE_FXX:
 		case TYPE_META_TYPE:
 			UNREACHABLE

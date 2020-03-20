@@ -4,6 +4,7 @@
 
 #include "compiler_internal.h"
 #include "parser_internal.h"
+#include "bigint.h"
 
 
 typedef Expr *(*ParseFn)(Context *context, Expr *);
@@ -276,6 +277,7 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	expr->binary_expr.operator = binaryop_from_token(operator_type);
 	expr->binary_expr.left = left_side;
 	expr->binary_expr.right = right_side;
+	expr->span.end_loc = right_side->span.end_loc;
 	return expr;
 }
 
@@ -389,7 +391,6 @@ static Expr *parse_integer(Context *context, Expr *left)
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	const char *string = context->tok.start;
 	const char *end = string + source_range_len(context->tok.span);
-	uint64_t i = 0;
 	if (string[0] == '\'')
 	{
 		union
@@ -431,27 +432,39 @@ static Expr *parse_integer(Context *context, Expr *left)
 			}
 			bytes.b[pos++] = (unsigned)*string;
 		}
+
 		switch (pos)
 		{
 			case 1:
-				expr_int->const_expr.i = bytes.u8;
+				expr_const_set_int(&expr_int->const_expr, bytes.u8, TYPE_U8);
+				expr_int->type = type_byte;
 				break;
 			case 2:
-				expr_int->const_expr.i = bytes.u16;
+				expr_const_set_int(&expr_int->const_expr, bytes.u8, TYPE_U16);
+				expr_int->type = type_ushort;
 				break;
 			case 4:
-				expr_int->const_expr.i = bytes.u32;
+				expr_const_set_int(&expr_int->const_expr, bytes.u8, TYPE_U32);
+				expr_int->type = type_uint;
 				break;
 			case 8:
-				expr_int->const_expr.i = bytes.u64;
+				expr_const_set_int(&expr_int->const_expr, bytes.u8, TYPE_U64);
+				expr_int->type = type_ulong;
 				break;
+			default:
+				UNREACHABLE
 		}
-		expr_int->const_expr.type = CONST_INT;
-		expr_int->type = i > INT64_MAX ? type_compuint : type_compint;
 		expr_int->resolve_status = RESOLVE_DONE;
 		advance(context);
 		return expr_int;
 	}
+	BigInt *i = &expr_int->const_expr.i;
+	bigint_init_unsigned(i, 0);
+	BigInt diff;
+	bigint_init_unsigned(&diff, 0);
+	BigInt ten;
+	bigint_init_unsigned(&ten, 10);
+	BigInt res;
 	switch (source_range_len(context->tok.span) > 2 ? string[1] : '0')
 	{
 		case 'x':
@@ -460,24 +473,20 @@ static Expr *parse_integer(Context *context, Expr *left)
 			{
 				char c = *(string++);
 				if (c == '_') continue;
-				if (i > (UINT64_MAX >> 4U))
-				{
-					SEMA_TOKEN_ERROR(context->tok, "Number is larger than an unsigned 64 bit number.");
-					return &poisoned_expr;
-				}
-				i <<= 4U;
+				bigint_shl_int(&res, i, 4);
 				if (c < 'A')
 				{
-					i += c - '0';
+					bigint_init_unsigned(&diff, c - '0');
 				}
 				else if (c < 'a')
 				{
-					i += c - 'A' + 10;
+					bigint_init_unsigned(&diff, c - 'A' + 10);
 				}
 				else
 				{
-					i += c - 'a' + 10;
+					bigint_init_unsigned(&diff, c - 'a' + 10);
 				}
+				bigint_add(i, &res, &diff);
 			}
 			break;
 		case 'o':
@@ -486,13 +495,9 @@ static Expr *parse_integer(Context *context, Expr *left)
 			{
 				char c = *(string++);
 				if (c == '_') continue;
-				if (i > (UINT64_MAX >> 3U))
-				{
-					SEMA_TOKEN_ERROR(context->tok, "Number is larger than an unsigned 64 bit number.");
-					return &poisoned_expr;
-				}
-				i <<= (unsigned) 3;
-				i += c - '0';
+				bigint_shl_int(&res, i, 4);
+				bigint_init_unsigned(&diff, c - '0');
+				bigint_add(i, &res, &diff);
 			}
 			break;
 		case 'b':
@@ -501,13 +506,9 @@ static Expr *parse_integer(Context *context, Expr *left)
 			{
 				char c = *(string++);
 				if (c == '_') continue;
-				if (i > (UINT64_MAX >> 1U))
-				{
-					SEMA_TOKEN_ERROR(context->tok, "Number is larger than an unsigned 64 bit number.");
-					return &poisoned_expr;
-				}
-				i <<= (unsigned) 1;
-				i += c - '0';
+				bigint_shl_int(&res, i, 1);
+				bigint_init_unsigned(&diff, c - '0');
+				bigint_add(i, &res, &diff);
 			}
 			break;
 		default:
@@ -515,20 +516,14 @@ static Expr *parse_integer(Context *context, Expr *left)
 			{
 				char c = *(string++);
 				if (c == '_') continue;
-				if (i > (UINT64_MAX / 10))
-				{
-					SEMA_TOKEN_ERROR(context->tok, "Number is larger than an unsigned 64 bit number.");
-					return &poisoned_expr;
-				}
-				i *= 10;
-				i += c - '0';
+				bigint_mul(&res, i, &ten);
+				bigint_init_unsigned(&diff, c - '0');
+				bigint_add(i, &res, &diff);
 			}
 			break;
-
 	}
-	expr_int->const_expr.i = i;
-	expr_int->const_expr.type = CONST_INT;
-	expr_int->type = i > INT64_MAX ? type_compuint : type_compint;
+	expr_int->const_expr.kind = TYPE_IXX;
+	expr_int->type = type_compint;
 	advance(context);
 	return expr_int;
 }
@@ -549,7 +544,7 @@ static Expr *parse_double(Context *context, Expr *left)
 	advance(context);
 	number->const_expr.f = fval;
 	number->type = type_compfloat;
-	number->const_expr.type = CONST_FLOAT;
+	number->const_expr.kind = TYPE_FXX;
 	return number;
 }
 
@@ -678,7 +673,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 	expr_string->const_expr.string.chars = str;
 	expr_string->const_expr.string.len = len;
 	expr_string->type = type_string;
-	expr_string->const_expr.type = CONST_STRING;
+	expr_string->const_expr.kind = TYPE_STRING;
 	return expr_string;
 }
 
@@ -686,7 +681,7 @@ static Expr *parse_bool(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	number->const_expr = (ExprConst) { .b = context->tok.type == TOKEN_TRUE, .type = CONST_BOOL };
+	number->const_expr = (ExprConst) { .b = context->tok.type == TOKEN_TRUE, .kind = TYPE_BOOL };
 	number->type = type_bool;
 	number->resolve_status = RESOLVE_DONE;
 	advance(context);
@@ -697,7 +692,7 @@ static Expr *parse_nil(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	number->const_expr.type = CONST_NIL;
+	number->const_expr.kind = TYPE_POINTER;
 	number->type = type_voidptr;
 	advance(context);
 	return number;
@@ -734,7 +729,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		//[TOKEN_SIZEOF] = { parse_sizeof, NULL, PREC_NONE },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
-		[TOKEN_MINUS_MOD] = { NULL, parse_binary, PREC_ADDITIVE },
+		[TOKEN_MINUS_MOD] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
 		[TOKEN_PLUS] = { NULL, parse_binary, PREC_ADDITIVE },
 		[TOKEN_PLUS_MOD] = { NULL, parse_binary, PREC_ADDITIVE },
 		[TOKEN_DIV] = { NULL, parse_binary, PREC_MULTIPLICATIVE },

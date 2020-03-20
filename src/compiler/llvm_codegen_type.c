@@ -154,9 +154,6 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
-		case TYPE_IXX:
-		case TYPE_UXX:
-		case TYPE_FXX:
 		case TYPE_META_TYPE:
 			UNREACHABLE;
 		case TYPE_TYPEDEF:
@@ -172,6 +169,7 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 		case TYPE_VOID:
 			return type->backend_type = LLVMVoidTypeInContext(context);
 		case TYPE_F64:
+		case TYPE_FXX:
 			return type->backend_type = LLVMDoubleTypeInContext(context);
 		case TYPE_F32:
 			return type->backend_type = LLVMFloatTypeInContext(context);
@@ -180,6 +178,7 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 			return type->backend_type = LLVMIntTypeInContext(context, 64U);
 		case TYPE_U32:
 		case TYPE_I32:
+		case TYPE_IXX:
 			return type->backend_type = LLVMIntTypeInContext(context, 32U);
 		case TYPE_U16:
 		case TYPE_I16:

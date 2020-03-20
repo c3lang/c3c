@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
+#include "bigint.h"
 
 
 static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
@@ -241,41 +242,81 @@ static inline bool sema_analyse_typedef(Context *context, Decl *decl)
 
 static inline bool sema_analyse_enum(Context *context, Decl *decl)
 {
+	// Resolve the type of the enum.
 	if (!sema_resolve_type_info(context, decl->enums.type_info)) return false;
-	uint64_t value = 0;
+
 	Type *type = decl->enums.type_info->type;
+	Type *canonical = decl->enums.type_info->type;
+
+	// Require an integer type
+	if (!type_is_integer(canonical))
+	{
+		SEMA_ERROR(decl->enums.type_info, "The enum type must be an integer type not '%s'.", type_to_error_string(type));
+		return false;
+	}
+
+	DEBUG_LOG("* Enum type resolved to %s.", type->name);
 	bool success = true;
-	VECEACH(decl->enums.values, i)
+	unsigned enums = vec_size(decl->enums.values);
+	BigInt value;
+	BigInt add;
+	bigint_init_unsigned(&add, 1);
+	bigint_init_unsigned(&value, 0);
+
+	for (unsigned i = 0; i < enums; i++)
 	{
 		Decl *enum_value = decl->enums.values[i];
+		enum_value->type = decl->type;
+		DEBUG_LOG("* Checking enum constant %s.", enum_value->name);
 		enum_value->enum_constant.ordinal = i;
+		DEBUG_LOG("* Ordinal: %d", i);
 		assert(enum_value->resolve_status == RESOLVE_NOT_DONE);
 		assert(enum_value->decl_kind == DECL_ENUM_CONSTANT);
+
+		// Start evaluating the constant
 		enum_value->resolve_status = RESOLVE_RUNNING;
 		Expr *expr = enum_value->enum_constant.expr;
+
+		// Create a "fake" expression.
+		// This will be evaluated later to catch the case
 		if (!expr)
 		{
-			expr = expr_new(EXPR_CONST, INVALID_RANGE);
+			expr = expr_new(EXPR_CONST, enum_value->name_span);
 			expr->type = type;
-			expr->resolve_status = RESOLVE_DONE;
-			expr->const_expr.type = CONST_INT;
-			expr->const_expr.i = value;
+			expr->resolve_status = RESOLVE_NOT_DONE;
+			bigint_init_bigint(&expr->const_expr.i, &value);
+			expr->const_expr.kind = TYPE_IXX;
+			expr->type = type_compint;
 			enum_value->enum_constant.expr = expr;
 		}
+
+		// We try to convert to the desired type.
 		if (!sema_analyse_expr(context, type, expr))
 		{
 			success = false;
 			enum_value->resolve_status = RESOLVE_DONE;
+			decl_poison(enum_value);
+			// Reset!
+			bigint_init_unsigned(&value, 0);
 			continue;
 		}
+
 		assert(type_is_integer(expr->type->canonical));
+
+		// Here we might have a non-constant value,
 		if (expr->expr_kind != EXPR_CONST)
 		{
-			SEMA_ERROR(expr, "Expected a constant expression for enum");
+			SEMA_ERROR(expr, "Expected a constant expression for enum.");
+			decl_poison(enum_value);
 			success = false;
+			// Skip one value.
+			continue;
 		}
+
+		// Update the value
+		bigint_add(&value, &expr->const_expr.i, &add);
+		DEBUG_LOG("* Value: %s", expr_const_to_error_string(&expr->const_expr));
 		enum_value->resolve_status = RESOLVE_DONE;
-		enum_value->type = decl->type;
 	}
 	return success;
 }
@@ -393,7 +434,7 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
 
-	DEBUG_LOG("Analyse %s", decl->name);
+	DEBUG_LOG(">>> Analysing %s.", decl->name);
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{
 		SEMA_ERROR(decl, "Recursive dependency on %s.", decl->name);
@@ -454,5 +495,6 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 			UNREACHABLE
 	}
 	decl->resolve_status = RESOLVE_DONE;
+	DEBUG_LOG("<<< Analysis of %s successful.", decl->name);
 	return true;
 }

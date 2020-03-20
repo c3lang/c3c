@@ -4,6 +4,7 @@
 
 #include "llvm_codegen_internal.h"
 #include "compiler_internal.h"
+#include "bigint.h"
 
 static inline LLVMValueRef gencontext_emit_add_int(GenContext *context, Type *type, bool use_mod, LLVMValueRef left, LLVMValueRef right)
 {
@@ -228,12 +229,20 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 			return LLVMBuildXor(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), LLVMConstInt(type_bool->backend_type, 1, 0), "not");
 		case UNARYOP_BITNEG:
 			return LLVMBuildNot(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "bnot");
+		case UNARYOP_NEGMOD:
+			return LLVMBuildNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "negmod");
 		case UNARYOP_NEG:
+			// TODO improve how unsigned numbers are negated.
 			if (type_is_float(expr->unary_expr.expr->type->canonical))
 			{
 				return LLVMBuildFNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "fneg");
 			}
-			return LLVMBuildNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "neg");
+			if (type_is_unsigned(expr->unary_expr.expr->type->canonical))
+			{
+				return LLVMBuildNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "neg");
+			}
+			// TODO insert trap
+			return LLVMBuildNSWNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "neg");
 		case UNARYOP_ADDR:
 			return gencontext_emit_address(context, expr->unary_expr.expr);
 		case UNARYOP_DEREF:
@@ -301,6 +310,128 @@ static inline LLVMValueRef gencontext_emit_struct_value_expr(GenContext *context
 }
 
 
+static LLVMValueRef gencontext_emit_int_comparison(GenContext *context, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op)
+{
+	bool lhs_signed = type_is_signed(lhs_type);
+	bool rhs_signed = type_is_signed(rhs_type);
+	if (lhs_signed != rhs_signed)
+	{
+		// Swap sides if needed.
+		if (!lhs_signed)
+		{
+			Type *temp = lhs_type;
+			lhs_type = rhs_type;
+			rhs_type = temp;
+			LLVMValueRef temp_val = lhs_value;
+			lhs_value = rhs_value;
+			rhs_value = temp_val;
+			switch (binary_op)
+			{
+				case BINARYOP_GE:
+					binary_op = BINARYOP_LE;
+					break;
+				case BINARYOP_GT:
+					binary_op = BINARYOP_LT;
+					break;
+				case BINARYOP_LE:
+					binary_op = BINARYOP_GE;
+					break;
+				case BINARYOP_LT:
+					binary_op = BINARYOP_GT;
+					break;
+				default:
+					break;
+			}
+			lhs_signed = true;
+			rhs_signed = false;
+		}
+	}
+	if (!lhs_signed)
+	{
+		assert(lhs_signed == rhs_signed);
+		// Right and left side are both unsigned.
+		switch (binary_op)
+		{
+			case BINARYOP_EQ:
+				return LLVMBuildICmp(context->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
+			case BINARYOP_NE:
+				return LLVMBuildICmp(context->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
+			case BINARYOP_GE:
+				return LLVMBuildICmp(context->builder, LLVMIntUGE, lhs_value, rhs_value, "ge");
+			case BINARYOP_GT:
+				return LLVMBuildICmp(context->builder, LLVMIntUGT, lhs_value, rhs_value, "gt");
+			case BINARYOP_LE:
+				return LLVMBuildICmp(context->builder, LLVMIntULE, lhs_value, rhs_value, "le");
+			case BINARYOP_LT:
+				return LLVMBuildICmp(context->builder, LLVMIntULT, lhs_value, rhs_value, "lt");
+			default:
+				UNREACHABLE
+		}
+	}
+
+	// Left side is signed.
+	LLVMValueRef comp_value;
+	LLVMValueRef check_value;
+	switch (binary_op)
+	{
+		case BINARYOP_EQ:
+			comp_value = LLVMBuildICmp(context->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
+			break;
+		case BINARYOP_NE:
+			comp_value = LLVMBuildICmp(context->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
+			break;
+		case BINARYOP_GE:
+			comp_value = LLVMBuildICmp(context->builder, LLVMIntSGE, lhs_value, rhs_value, "ge");
+			break;
+		case BINARYOP_GT:
+			comp_value = LLVMBuildICmp(context->builder, LLVMIntSGT, lhs_value, rhs_value, "gt");
+			break;
+		case BINARYOP_LE:
+			comp_value = LLVMBuildICmp(context->builder, LLVMIntSLE, lhs_value, rhs_value, "le");
+			break;
+		case BINARYOP_LT:
+			comp_value = LLVMBuildICmp(context->builder, LLVMIntSLT, lhs_value, rhs_value, "lt");
+			break;
+		default:
+			UNREACHABLE
+	}
+
+	// If right side is also signed then this is fine.
+	if (rhs_signed) return comp_value;
+
+	// Otherwise, special handling for left side signed, right side unsigned.
+	LLVMValueRef zero = LLVMConstInt(llvm_type(lhs_type), 0, true);
+	switch (binary_op)
+	{
+		case BINARYOP_EQ:
+			// Only true if lhs >= 0
+			check_value = LLVMBuildICmp(context->builder, LLVMIntSGE, lhs_value, zero, "check");
+			return LLVMBuildAnd(context->builder, check_value, comp_value, "siui-eq");
+		case BINARYOP_NE:
+			// Always true if lhs < 0
+			check_value = LLVMBuildICmp(context->builder, LLVMIntSLT, lhs_value, zero, "check");
+			return LLVMBuildOr(context->builder, check_value, comp_value, "siui-ne");
+		case BINARYOP_GE:
+			// Only true if rhs >= 0 when regarded as a signed integer
+			check_value = LLVMBuildICmp(context->builder, LLVMIntSGE, rhs_value, zero, "check");
+			return LLVMBuildAnd(context->builder, check_value, comp_value, "siui-ge");
+		case BINARYOP_GT:
+			// Only true if rhs >= 0 when regarded as a signed integer
+			check_value = LLVMBuildICmp(context->builder, LLVMIntSGE, rhs_value, zero, "check");
+			return LLVMBuildAnd(context->builder, check_value, comp_value, "siui-gt");
+		case BINARYOP_LE:
+			// Always true if rhs < 0 when regarded as a signed integer
+			check_value = LLVMBuildICmp(context->builder, LLVMIntSLT, rhs_value, zero, "check");
+			return LLVMBuildOr(context->builder, check_value, comp_value, "siui-le");
+		case BINARYOP_LT:
+			// Always true if rhs < 0 when regarded as a signed integer
+			check_value = LLVMBuildICmp(context->builder, LLVMIntSLT, rhs_value, zero, "check");
+			return LLVMBuildOr(context->builder, check_value, comp_value, "siui-lt");
+		default:
+			UNREACHABLE
+	}
+
+}
 
 static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVMValueRef lhs_addr, BinaryOp binary_op)
 {
@@ -325,9 +456,12 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 	}
 
 	rhs_value = gencontext_emit_expr(context, rhs);
-
-	bool is_float = type_is_float(type);
-
+	Type *lhs_type = expr->binary_expr.left->type->canonical;
+	if (type_is_integer(lhs_type) && binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
+	{
+		return gencontext_emit_int_comparison(context, lhs_type, rhs->type->canonical, lhs_value, rhs_value, binary_op);
+	}
+	bool is_float = type_is_float(lhs_type);
 	switch (binary_op)
 	{
 		case BINARYOP_ERROR:
@@ -335,7 +469,7 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 		case BINARYOP_MULT:
 			if (is_float) return LLVMBuildFMul(context->builder, lhs_value, rhs_value, "fmul");
 			// TODO insert trap
-			if (type_is_unsigned_integer(lhs->type->canonical))
+			if (type_is_unsigned_integer(lhs_type))
 			{
 				return LLVMBuildNUWMul(context->builder, lhs_value, rhs_value, "umul");
 			}
@@ -347,7 +481,7 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 			return LLVMBuildMul(context->builder, lhs_value, rhs_value, "mul");
 		case BINARYOP_SUB:
 		case BINARYOP_SUB_MOD:
-			if (lhs->type->canonical->type_kind == TYPE_POINTER)
+			if (lhs_type->type_kind == TYPE_POINTER)
 			{
 				if (lhs->type->canonical == rhs->type->canonical) return LLVMBuildPtrDiff(context->builder, lhs_value, rhs_value, "ptrdiff");
 				rhs_value = LLVMBuildNeg(context->builder, rhs_value, "");
@@ -357,24 +491,24 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 			return gencontext_emit_sub_int(context, lhs->type->canonical, binary_op == BINARYOP_SUB_MOD, lhs_value, rhs_value);
 		case BINARYOP_ADD:
 		case BINARYOP_ADD_MOD:
-			if (lhs->type->canonical->type_kind == TYPE_POINTER)
+			if (lhs_type->type_kind == TYPE_POINTER)
 			{
 				assert(type_is_integer(rhs->type->canonical));
-				return LLVMBuildGEP2(context->builder, llvm_type(lhs->type), lhs_value, &rhs_value, 1, "ptradd");
+				return LLVMBuildGEP2(context->builder, llvm_type(lhs_type), lhs_value, &rhs_value, 1, "ptradd");
 			}
 			if (is_float) return LLVMBuildFAdd(context->builder, lhs_value, rhs_value, "fadd");
-			return gencontext_emit_add_int(context, lhs->type->canonical, binary_op == BINARYOP_ADD_MOD, lhs_value, rhs_value);
+			return gencontext_emit_add_int(context, lhs_type, binary_op == BINARYOP_ADD_MOD, lhs_value, rhs_value);
 		case BINARYOP_DIV:
 			if (is_float) return LLVMBuildFDiv(context->builder, lhs_value, rhs_value, "fdiv");
-			return type_is_unsigned(type)
+			return type_is_unsigned(lhs_type)
 				? LLVMBuildUDiv(context->builder, lhs_value, rhs_value, "udiv")
 				: LLVMBuildSDiv(context->builder, lhs_value, rhs_value, "sdiv");
 		case BINARYOP_MOD:
-			return type_is_unsigned(type)
+			return type_is_unsigned(lhs_type)
 				? LLVMBuildURem(context->builder, lhs_value, rhs_value, "umod")
 				: LLVMBuildSRem(context->builder, lhs_value, rhs_value, "smod");
 		case BINARYOP_SHR:
-			return type_is_unsigned(type)
+			return type_is_unsigned(lhs_type)
 				? LLVMBuildLShr(context->builder, lhs_value, rhs_value, "lshr")
 				: LLVMBuildAShr(context->builder, lhs_value, rhs_value, "ashr");
 		case BINARYOP_SHL:
@@ -386,33 +520,25 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 		case BINARYOP_BIT_XOR:
 			return LLVMBuildXor(context->builder, lhs_value, rhs_value, "xor");
 		case BINARYOP_EQ:
+			assert(!type_is_integer(lhs_type));
 			// Unordered?
-			if (type_is_float(type)) LLVMBuildFCmp(context->builder, LLVMRealUEQ, lhs_value, rhs_value, "eq");
-			return LLVMBuildICmp(context->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
+			return LLVMBuildFCmp(context->builder, LLVMRealUEQ, lhs_value, rhs_value, "eq");
 		case BINARYOP_NE:
+			assert(!type_is_integer(lhs_type));
 			// Unordered?
-			if (type_is_float(type)) LLVMBuildFCmp(context->builder, LLVMRealUNE, lhs_value, rhs_value, "neq");
-			return LLVMBuildICmp(context->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
+			return LLVMBuildFCmp(context->builder, LLVMRealUNE, lhs_value, rhs_value, "neq");
 		case BINARYOP_GE:
-			if (type_is_float(type)) LLVMBuildFCmp(context->builder, LLVMRealUGE, lhs_value, rhs_value, "ge");
-			return type_is_unsigned(type)
-				? LLVMBuildICmp(context->builder, LLVMIntUGE, lhs_value, rhs_value, "ge")
-				: LLVMBuildICmp(context->builder, LLVMIntSGE, lhs_value, rhs_value, "ge");
+			assert(!type_is_integer(lhs_type));
+			return LLVMBuildFCmp(context->builder, LLVMRealUGE, lhs_value, rhs_value, "ge");
 		case BINARYOP_GT:
-			if (type_is_float(type)) LLVMBuildFCmp(context->builder, LLVMRealUGT, lhs_value, rhs_value, "gt");
-			return type_is_unsigned(type)
-			       ? LLVMBuildICmp(context->builder, LLVMIntUGT, lhs_value, rhs_value, "gt")
-			       : LLVMBuildICmp(context->builder, LLVMIntSGT, lhs_value, rhs_value, "gt");
+			assert(!type_is_integer(lhs_type));
+			return LLVMBuildFCmp(context->builder, LLVMRealUGT, lhs_value, rhs_value, "gt");
 		case BINARYOP_LE:
-			if (type_is_float(type)) LLVMBuildFCmp(context->builder, LLVMRealULE, lhs_value, rhs_value, "le");
-			return type_is_unsigned(type)
-			       ? LLVMBuildICmp(context->builder, LLVMIntULE, lhs_value, rhs_value, "le")
-			       : LLVMBuildICmp(context->builder, LLVMIntSLE, lhs_value, rhs_value, "le");
+			assert(!type_is_integer(lhs_type));
+			return LLVMBuildFCmp(context->builder, LLVMRealULE, lhs_value, rhs_value, "le");
 		case BINARYOP_LT:
-			if (type_is_float(type)) LLVMBuildFCmp(context->builder, LLVMRealULE, lhs_value, rhs_value, "lt");
-			return type_is_unsigned(type)
-			       ? LLVMBuildICmp(context->builder, LLVMIntULT, lhs_value, rhs_value, "lt")
-			       : LLVMBuildICmp(context->builder, LLVMIntSLT, lhs_value, rhs_value, "lt");
+			assert(!type_is_integer(lhs_type));
+			return LLVMBuildFCmp(context->builder, LLVMRealULE, lhs_value, rhs_value, "lt");
 		case BINARYOP_AND:
 		case BINARYOP_OR:
 			UNREACHABLE
@@ -543,17 +669,24 @@ static LLVMValueRef gencontext_emit_identifier_expr(GenContext *context, Expr *e
 LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 {
 	LLVMTypeRef type = llvm_type(expr->type);
-	switch (expr->const_expr.type)
+	switch (expr->const_expr.kind)
 	{
-		case CONST_INT:
-			return LLVMConstInt(type, expr->const_expr.i, type_is_unsigned(expr->type->canonical) ? false : true);
-		case CONST_FLOAT:
+		case ALL_INTS:
+			if (type_is_unsigned(expr->type->canonical))
+			{
+				return LLVMConstInt(type, bigint_as_unsigned(&expr->const_expr.i), false);
+			}
+			else
+			{
+				return LLVMConstInt(type, (uint64_t)bigint_as_signed(&expr->const_expr.i), false);
+			}
+		case ALL_FLOATS:
 			return LLVMConstReal(type, (double) expr->const_expr.f);
-		case CONST_NIL:
+		case TYPE_POINTER:
 			return LLVMConstNull(type);
-		case CONST_BOOL:
+		case TYPE_BOOL:
 			return LLVMConstInt(type, expr->const_expr.b ? 1 : 0, false);
-		case CONST_STRING:
+		case TYPE_STRING:
 		{
 			LLVMValueRef global_name = LLVMAddGlobal(context->module, type, "string");
 			LLVMSetLinkage(global_name, LLVMInternalLinkage);
@@ -564,8 +697,9 @@ LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 			                                                         0));
 			return global_name;
 		}
+		default:
+			UNREACHABLE
 	}
-	UNREACHABLE
 }
 
 LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)

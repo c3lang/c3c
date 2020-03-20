@@ -1,6 +1,6 @@
 module helloworld;
 
-func void printf(char *str);
+extern func void printf(char *str);
 
 func void main()
 {
