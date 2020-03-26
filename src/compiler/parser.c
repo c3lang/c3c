@@ -1598,6 +1598,7 @@ static Ast *parse_stmt(Context *context)
 			sema_error_at(context->tok.span.loc - 1, "Reached the end of the file when expecting a statement.");
 			return &poisoned_ast;
 	}
+	UNREACHABLE
 }
 
 

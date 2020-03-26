@@ -24,7 +24,7 @@ static bool expr_is_ltype(Expr *expr)
 				|| expr->identifier_expr.decl->var.kind == VARDECL_GLOBAL
 				|| expr->identifier_expr.decl->var.kind == VARDECL_PARAM);
 		case EXPR_UNARY:
-			return expr->unary_expr.operator == TOKEN_STAR;
+			return expr->unary_expr.operator == UNARYOP_DEREF;
 		case EXPR_ACCESS:
 			return expr_is_ltype(expr->access_expr.parent);
 		case EXPR_SUBSCRIPT:
@@ -413,7 +413,7 @@ static inline Decl *decl_find_by_name(Decl** decls, const char *name)
 static inline bool expr_may_be_struct_field_decl(Expr *maybe_binary)
 {
 	if (maybe_binary->expr_kind != EXPR_BINARY) return false;
-	if (maybe_binary->binary_expr.operator != TOKEN_EQ) return false;
+	if (maybe_binary->binary_expr.operator != BINARYOP_EQ) return false;
 	Expr *expr = maybe_binary->binary_expr.left;
 	while (1)
 	{

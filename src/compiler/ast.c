@@ -528,11 +528,11 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 				case CONST_INT:
 					if (expr->type->type_kind >= TYPE_U8 && expr->type->type_kind <= TYPE_UXX)
 					{
-						fprintf(file, "%llu\n", expr->const_expr.i);
+						fprintf(file, "%llu\n", (unsigned long long)expr->const_expr.i);
 					}
 					else
 					{
-						fprintf(file, "%lld\n", (int64_t)expr->const_expr.i);
+						fprintf(file, "%lld\n", (long long)expr->const_expr.i);
 					}
 					break;
 				case CONST_FLOAT:

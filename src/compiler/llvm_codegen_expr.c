@@ -240,6 +240,7 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 		case UNARYOP_DEC:
 			return gencontext_emit_pre_inc_dec(context, expr->unary_expr.expr, -1, false);
 	}
+	UNREACHABLE
 }
 
 
@@ -430,6 +431,7 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 		case BINARYOP_SHL_ASSIGN:
 			UNREACHABLE
 	}
+	UNREACHABLE
 }
 
 LLVMValueRef gencontext_emit_post_unary_expr(GenContext *context, Expr *expr)

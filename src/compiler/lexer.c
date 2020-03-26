@@ -221,6 +221,7 @@ void skip_whitespace(Lexer *lexer)
 		{
 			case '\n':
 				lexer_store_line_end(lexer);
+				// fallthrough
 			case ' ':
 			case '\t':
 			case '\r':

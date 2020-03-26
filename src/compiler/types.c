@@ -89,8 +89,8 @@ const char *type_to_error_string(Type *type)
 			return buffer;
 		case TYPE_ERROR_UNION:
 			TODO
-
 	}
+	UNREACHABLE
 }
 
 static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_t *offset)
@@ -593,7 +593,10 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_SUBARRAY:
 			TODO
 	}
+	UNREACHABLE
 }
+
+#define MAX_SEARCH_DEPTH 512
 
 Type *type_find_common_ancestor(Type *left, Type *right)
 {
@@ -609,7 +612,6 @@ Type *type_find_common_ancestor(Type *left, Type *right)
 	}
 	if (left->type_kind != TYPE_STRUCT) return NULL;
 
-	static const int MAX_SEARCH_DEPTH = 512;
 	static Type *left_types[MAX_SEARCH_DEPTH];
 	int depth = 0;
 	while (depth < MAX_SEARCH_DEPTH)

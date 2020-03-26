@@ -30,7 +30,7 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 {
 	SourcePosition position = source_file_find_position(source_range.loc);
 
-	const static int LINES_SHOWN = 4;
+	static const int LINES_SHOWN = 4;
 
 	unsigned max_line_length = (int)round(log10(position.line)) + 1;
 

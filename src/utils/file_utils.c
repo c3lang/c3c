@@ -150,23 +150,24 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 	struct dirent *ent;
 	while ((ent = readdir(dir)))
 	{
-		if (ent->d_namlen < 4) continue;
+		size_t namelen = strlen(ent->d_name);
+		if (namelen < 4) continue;
 
 		// Doesn't end with .c3
-		if (strncmp(&ent->d_name[ent->d_namlen - 3], ".c3", 3) != 0)
+		if (strncmp(&ent->d_name[namelen - 3], ".c3", 3) != 0)
 		{
 			if (ent->d_type == DT_DIR && ent->d_name[0] != '.' && recursive)
 			{
-				char *new_path = strndup(ent->d_name, ent->d_namlen);
+				char *new_path = strndup(ent->d_name, namelen);
 				file_add_wildcard_files(files, new_path, recursive);
 				free(new_path);
 			}
 			continue;
 		}
 
-		char *name = malloc_arena(ent->d_namlen + 1);
-		memcpy(name, ent->d_name, ent->d_namlen);
-		name[ent->d_namlen] = '\0';
+		char *name = malloc_arena(namelen + 1);
+		memcpy(name, ent->d_name, namelen);
+		name[namelen] = '\0';
 		vec_add(*files, name);
 	}
 	closedir(dir);

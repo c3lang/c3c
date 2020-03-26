@@ -201,7 +201,7 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 	// A loop must either have a body or an inc.
 	// This type of for loop is forbidden:
 	// for (;;);
-	assert(cond_block || inc_block || body_block && "For has no body, no inc and no cond.");
+	assert((cond_block || inc_block || body_block) && "For has no body, no inc and no cond.");
 
 	// Break is simple it always jumps out.
 	// For continue:

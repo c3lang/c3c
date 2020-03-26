@@ -38,11 +38,9 @@ char *toml_strndup(TOML_CONST char *str, size_t n)
 
 int toml_vasprintf(char **str, TOML_CONST char *format, va_list args)
 {
-    int size = 0;
-
     va_list args_copy;
     va_copy(args_copy, args);
-    size = vsnprintf(NULL, size, format, args_copy);
+	int size = vsnprintf(NULL, 0, format, args_copy);
     va_end(args_copy);
 
     if (size < 0)
