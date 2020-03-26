@@ -3,7 +3,6 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include <histedit.h>
 #include "../utils/common.h"
 #include "../utils/errors.h"
 #include "../utils/lib.h"
