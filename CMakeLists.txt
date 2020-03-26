@@ -45,6 +45,10 @@ set(LLVM_LINK_COMPONENTS
         AMDGPUInfo
         AMDGPUAsmParser
         AMDGPUCodeGen
+        AVRAsmParser
+        AVRInfo
+        AVRDesc
+        AVRCodeGen
         BPFInfo
         BPFAsmParser
         BPFDisassembler
