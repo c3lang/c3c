@@ -13,6 +13,11 @@ add_definitions(${LLVM_DEFINITIONS})
 set(CMAKE_C_STANDARD 11)
 
 set(LLVM_LINK_COMPONENTS
+        AllTargetsAsmParsers
+        AllTargetsDescs
+        AllTargetsDisassemblers
+        AllTargetsInfos
+        AllTargetsCodeGens
         Analysis
         BitReader
         Core
@@ -32,85 +37,6 @@ set(LLVM_LINK_COMPONENTS
         native
         nativecodegen
         AsmPrinter
-        AArch64Info
-        AArch64Desc
-        AArch64AsmParser
-        AArch64Disassembler
-        AArch64CodeGen
-        ARMInfo
-        ARMDesc
-        ARMAsmParser
-        ARMDisassembler
-        ARMCodeGen
-        AMDGPUInfo
-        AMDGPUAsmParser
-        AMDGPUCodeGen
-        AVRAsmParser
-        AVRInfo
-        AVRDesc
-        AVRCodeGen
-        BPFInfo
-        BPFAsmParser
-        BPFDisassembler
-        BPFCodeGen
-        HexagonInfo
-        HexagonDesc
-        HexagonAsmParser
-        HexagonDisassembler
-        HexagonCodeGen
-        LanaiInfo
-        LanaiDesc
-        LanaiAsmParser
-        LanaiDisassembler
-        LanaiCodeGen
-        MSP430Info
-        MSP430Desc
-        MSP430AsmParser
-        MSP430Disassembler
-        MSP430CodeGen
-        MipsInfo
-        MipsDesc
-        MipsAsmParser
-        MipsDisassembler
-        MipsCodeGen
-        NVPTXInfo
-        NVPTXCodeGen
-        PowerPCInfo
-        PowerPCDesc
-        PowerPCAsmParser
-        PowerPCDisassembler
-        PowerPCCodeGen
-        RISCVInfo
-        RISCVDesc
-        RISCVAsmParser
-        RISCVDisassembler
-        RISCVCodeGen
-        RISCVUtils
-        SparcInfo
-        SparcDesc
-        SparcAsmParser
-        SparcDisassembler
-        SparcCodeGen
-        SystemZInfo
-        SystemZDesc
-        SystemZAsmParser
-        SystemZDisassembler
-        SystemZCodeGen
-        WebAssemblyInfo
-        WebAssemblyDesc
-        WebAssemblyAsmParser
-        WebAssemblyDisassembler
-        WebAssemblyCodeGen
-        X86Info
-        X86Desc
-        X86AsmParser
-        X86Disassembler
-        X86CodeGen
-        X86Utils
-        XCoreInfo
-        XCoreDesc
-        XCoreDisassembler
-        XCoreCodeGen
         )
 
 llvm_map_components_to_libnames(llvm_libs support core irreader ${LLVM_LINK_COMPONENTS})
