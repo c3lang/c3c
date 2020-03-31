@@ -109,7 +109,13 @@ static inline bool sema_analyse_block_return_stmt(Context *context, Ast *stateme
 {
 	assert(context->current_scope->flags & SCOPE_EXPR_BLOCK);
 	UPDATE_EXIT(EXIT_RETURN);
-	if (statement->return_stmt.expr && !sema_analyse_expr(context, context->expected_block_type, statement->return_stmt.expr)) return false;
+	if (statement->return_stmt.expr
+	    && !sema_analyse_expr_of_required_type(context,
+	                                           context->expected_block_type,
+	                                           statement->return_stmt.expr))
+	{
+		return false;
+	}
 	vec_add(context->returns, statement);
 	return true;
 }
@@ -147,7 +153,7 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 		SEMA_ERROR(statement, "You can't return a value from a void function, you need to add a return type.");
 		return false;
 	}
-	if (!sema_analyse_expr(context, expected_rtype, return_expr)) return false;
+	if (!sema_analyse_expr_of_required_type(context, expected_rtype, return_expr)) return false;
 	if (!expected_rtype)
 	{
 		assert(context->evaluating_macro);
@@ -167,7 +173,7 @@ static inline bool sema_analyse_var_decl(Context *context, Decl *decl)
 	decl->type = decl->var.type_info->type;
 	if (decl->var.init_expr)
 	{
-		if (!sema_analyse_expr(context, decl->type, decl->var.init_expr)) return decl_poison(decl);
+		if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr)) return decl_poison(decl);
 	}
 	if (!sema_add_local(context, decl)) return decl_poison(decl);
 	return true;
@@ -262,7 +268,7 @@ static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 	context_pop_scope(context);
 	if (!success) return false;
 	context_push_scope(context);
-	success = sema_analyse_expr(context, type_bool, expr);
+	success = sema_analyse_expr_of_required_type(context, type_bool, expr);
 	statement->do_stmt.expr = context_pop_defers_and_wrap_expr(context, expr);
 	context_pop_scope(context);
 	return success;
@@ -315,7 +321,7 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 		// Conditional scope start
 		context_push_scope(context);
 		Expr *cond = statement->for_stmt.cond;
-		success = sema_analyse_expr(context, type_bool, cond);
+		success = sema_analyse_expr_of_required_type(context, type_bool, cond);
 		statement->for_stmt.cond = context_pop_defers_and_wrap_expr(context, cond);
 		// Conditional scope end
 		context_pop_scope(context);
@@ -550,35 +556,22 @@ static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_st
 	Expr *case_expr = case_stmt->case_stmt.expr;
 	// TODO handle enums
 	// TODO string expr
-	if (!sema_analyse_expr(context, to_type, case_expr)) return false;
+	if (!sema_analyse_expr_of_required_type(context, to_type, case_expr)) return false;
 	if (case_expr->expr_kind != EXPR_CONST)
 	{
 		SEMA_ERROR(case_expr, "This must be a constant expression.");
 		return false;
 	}
 
-	// As a special case, we handle bools, converting them to 0 / 1
-	if (case_expr->const_expr.kind == TYPE_BOOL)
-	{
-		case_stmt->case_stmt.value_type = CASE_VALUE_UINT;
-		case_stmt->case_stmt.val = case_expr->const_expr.b ? 1 : 0;
-		return true;
-	}
+	if (!cast_to_runtime(case_expr)) return false;
 
-	// TODO check for int
-	/*
-	if (case_expr->const_expr.kind < TYPE__!= CONST_INT && case_expr->const_expr.type != CONST_BOOL)
+	if (case_expr->const_expr.kind == TYPE_BOOL) return true;
+
+	if (!type_is_integer(case_expr->type))
 	{
 		SEMA_ERROR(case_expr, "The 'case' value must be a boolean or integer constant.");
 		return false;
-	}*/
-
-	case_stmt->case_stmt.value_type = type_is_signed(case_expr->type->canonical) ? CASE_VALUE_INT : CASE_VALUE_UINT;
-	assert(case_expr->type->canonical->type_kind != TYPE_IXX);
-	// TODO this is incorrect
-	TODO
-	uint64_t val = (uint64_t)bigint_as_signed(&case_expr->const_expr.i);
-	case_stmt->case_stmt.val = val;
+	}
 	return true;
 }
 
@@ -649,7 +642,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 				for (unsigned j = 0; j < i; j++)
 				{
 					Ast *other = statement->switch_stmt.cases[j];
-					if (other->ast_kind == AST_CASE_STMT && other->case_stmt.val == stmt->case_stmt.val)
+					if (other->ast_kind == AST_CASE_STMT && expr_const_compare(&other->case_stmt.expr->const_expr, &stmt->case_stmt.expr->const_expr, BINARYOP_EQ))
 					{
 						SEMA_ERROR(stmt, "The same case value appears more than once.");
 						SEMA_PREV(other, "Here is the previous use of that value.");

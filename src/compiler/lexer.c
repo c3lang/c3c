@@ -519,7 +519,7 @@ Token lexer_scan_token(Lexer *lexer)
 			if (match(lexer, '+')) return parse_nested_comment(lexer);
 			return match(lexer, '=') ? make_token(lexer, TOKEN_DIV_ASSIGN, "/=") : make_token(lexer, TOKEN_DIV, "/");
 		case '*':
-			if (match(lexer, '%')) return match(lexer, '=') ? make_token(lexer, TOKEN_MINUS_MOD_ASSIGN, "*%=") : make_token(lexer, TOKEN_MULT_MOD, "*%");
+			if (match(lexer, '%')) return match(lexer, '=') ? make_token(lexer, TOKEN_MULT_MOD_ASSIGN, "*%=") : make_token(lexer, TOKEN_MULT_MOD, "*%");
 			return match(lexer, '=') ? make_token(lexer, TOKEN_MULT_ASSIGN, "*=") : make_token(lexer, TOKEN_STAR, "*");
 		case '=':
 			return match(lexer, '=') ? make_token(lexer, TOKEN_EQEQ, "==") : make_token(lexer, TOKEN_EQ, "=");
@@ -607,5 +607,15 @@ Token lexer_scan_ident_test(Lexer *lexer, const char *scan)
 	lexer->current_file->end_id = 1000;
 	lexer->current_file->name = "Foo";
 
+	if (scan[0] == '$')
+	{
+		next(lexer);
+		return scan_prefixed_ident(lexer, TOKEN_CT_IDENT, TOKEN_DOLLAR, false, "$");
+	}
+	if (scan[0] == '#')
+	{
+		next(lexer);
+		return scan_prefixed_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH, false, "#");
+	}
 	return scan_ident(lexer);
 }

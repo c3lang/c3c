@@ -514,6 +514,7 @@ Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type)
 		SEMA_TOKEN_ERROR(context->tok, "Expected '{'.");
 		return &poisoned_decl;
 	}
+
 	EXPECT_IDENT_FOR_OR("variable_name", &poisoned_decl);
 
 	Token name = context->tok;
@@ -606,6 +607,13 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
 	TypeInfo *type = TRY_TYPE_OR(parse_type_expression(context), &poisoned_decl);
 
 	Decl *decl = decl_new_var(context->tok, type, VARDECL_GLOBAL, visibility);
+
+	if (context->tok.type == TOKEN_FUNC)
+	{
+		SEMA_TOKEN_ERROR(context->tok, "'func' can't appear here, maybe you intended to put 'func' the type?");
+		advance(context);
+		return false;
+	}
 
 	if (!consume_ident(context, "global variable")) return &poisoned_decl;
 

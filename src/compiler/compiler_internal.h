@@ -582,16 +582,7 @@ typedef struct
 
 typedef struct
 {
-	union
-	{
-		Expr *expr;
-		struct
-		{
-			uint64_t val;
-			CaseValueType value_type : 3;
-			bool has_next;
-		};
-	};
+	Expr *expr; // NULL == DEFAULT
 	Ast *body;
 	void *backend_value;
 } AstCaseStmt;
@@ -982,15 +973,13 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type);
 bool cast_binary_arithmetic(Expr *left, Expr *right, const char *action);
 CastKind cast_to_bool_kind(Type *type);
 bool cast_to_runtime(Expr *expr);
-static inline bool cast_is_implicit(CastType cast_type)
-{
-	return cast_type == CAST_TYPE_IMPLICIT_ASSIGN_ADD || cast_type == CAST_TYPE_IMPLICIT || cast_type == CAST_TYPE_IMPLICIT_ASSIGN;
-}
+void cast_to_smallest_runtime(Expr *expr);
 
 void llvm_codegen(Context *context);
 void llvm_set_struct_size_alignment(Decl *decl);
 
 
+bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr);
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
 
@@ -1237,7 +1226,7 @@ static inline bool type_convert_will_trunc(Type *destination, Type *source)
 	return (unsigned)destination->canonical->builtin.bitsize < (unsigned)source->canonical->builtin.bitsize;
 }
 
-static inline bool type_is_number(Type *type)
+static inline bool type_is_numeric(Type *type)
 {
 	assert(type == type->canonical);
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_FXX;

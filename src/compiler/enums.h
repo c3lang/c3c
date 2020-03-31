@@ -57,8 +57,6 @@ typedef enum
 	BINARYOP_SUB_MOD_ASSIGN,
 	BINARYOP_DIV_ASSIGN,
 	BINARYOP_MOD_ASSIGN,
-	BINARYOP_AND_ASSIGN,
-	BINARYOP_OR_ASSIGN,
 	BINARYOP_BIT_AND_ASSIGN,
 	BINARYOP_BIT_OR_ASSIGN,
 	BINARYOP_BIT_XOR_ASSIGN,
@@ -113,12 +111,6 @@ typedef enum
 	ATTR_UNRESOLVED,
 } AttrKind;
 
-typedef enum
-{
-	CASE_VALUE_INT,
-	CASE_VALUE_UINT,
-	CASE_VALUE_DEFAULT
-} CaseValueType;
 
 typedef enum
 {
@@ -175,8 +167,7 @@ typedef enum _CastType
 {
 	CAST_TYPE_EXPLICIT,
 	CAST_TYPE_IMPLICIT,
-	CAST_TYPE_IMPLICIT_ASSIGN,
-	CAST_TYPE_IMPLICIT_ASSIGN_ADD,
+	CAST_TYPE_OPTIONAL_IMPLICIT,
 } CastType;
 
 
@@ -355,7 +346,7 @@ typedef enum
 	TOKEN_RPARBRA,          // })
 	TOKEN_SCOPE,            // ::
 	TOKEN_SHR,              // >>
-	TOKEN_SHL,              // >>
+	TOKEN_SHL,              // <<
 
 	// Three or more
 	TOKEN_ELIPSIS,          // ...
@@ -458,16 +449,6 @@ typedef enum
 	TOKEN_VAR,              // Reserved
 	TOKEN_VOLATILE,
 	TOKEN_WHILE,
-
-	TOKEN_AT_PARAM,         // @param
-	TOKEN_AT_THROWS,        // @throws
-	TOKEN_AT_RETURN,        // @return
-	TOKEN_AT_ENSURE,        // @ensure
-	TOKEN_AT_REQUIRE,       // @require
-	TOKEN_AT_PURE,          // @pure
-	TOKEN_AT_CONST,         // @const
-	TOKEN_AT_REQPARSE,      // @reqparse
-	TOKEN_AT_DEPRECATED,    // @deprecated
 
 	TOKEN_CT_CASE,          // $case
 	TOKEN_CT_DEFAULT,       // $default

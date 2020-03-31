@@ -551,8 +551,6 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 		case BINARYOP_SUB_MOD_ASSIGN:
 		case BINARYOP_DIV_ASSIGN:
 		case BINARYOP_MOD_ASSIGN:
-		case BINARYOP_AND_ASSIGN:
-		case BINARYOP_OR_ASSIGN:
 		case BINARYOP_BIT_AND_ASSIGN:
 		case BINARYOP_BIT_OR_ASSIGN:
 		case BINARYOP_BIT_XOR_ASSIGN:

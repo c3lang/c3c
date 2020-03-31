@@ -18,7 +18,7 @@ static void test_lexer(void)
 	printf("Begin lexer testing.\n");
 	printf("-- Check number of keywords...\n");
 	int tokens_found = 0;
-	const int EXPECTED_TOKENS = 12 + 73 + 9;
+	const int EXPECTED_TOKENS = TOKEN_CT_SWITCH - TOKEN_ALIAS + 1 + TOKEN_C_ULONGLONG - TOKEN_VOID + 1;
 	const char* tokens[TOKEN_EOF];
 	int len[TOKEN_EOF];
 	Lexer lexer;
@@ -26,7 +26,7 @@ static void test_lexer(void)
 	{
 		const char* token = token_type_to_string((TokenType)i);
 		tokens[i] = token;
-		len[i] = strlen(token);
+		len[i] = (int)strlen(token);
 		TokenType lookup = TOKEN_IDENT;
 		const char* interned = symtab_add(token, len[i], fnv1a(token, len[i]), &lookup);
 		if (lookup != TOKEN_IDENT)
@@ -48,7 +48,7 @@ static void test_lexer(void)
 	printf("-> %d keywords found.\n", tokens_found);
 	EXPECT("Keywords", tokens_found, EXPECTED_TOKENS);
 
-	const int BENCH_REPEATS = 100000;
+	const int BENCH_REPEATS = 10000;
 
 	printf("-- Test keyword lexing speed...\n");
 	bench_begin();
@@ -56,7 +56,10 @@ static void test_lexer(void)
 	{
 		for (int i = 1; i < TOKEN_EOF; i++)
 		{
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
 			volatile TokenType t = lexer_scan_ident_test(&lexer, tokens[i]).type;
+#pragma clang diagnostic pop
 		}
 	}
 
@@ -95,7 +98,27 @@ static void test_lexer(void)
 
 void test_compiler(void)
 {
-	compiler_init();
+	const char **files = NULL;
+	file_add_wildcard_files(&files, "tests", true);
+	if (!vec_size(files))
+	{
+		error_exit("No test files could be found.");
+	}
+
+	const char **single_file = VECNEW(const char *, 1);
+	vec_add(single_file, files[0]);
+
+	VECEACH(files, i)
+	{
+		printf("Running %s...\n", files[i]);
+		char *res = NULL;
+		asprintf(&res, "tests/%s", files[i]);
+		single_file[0] = res;
+		BuildTarget target = { .type = TARGET_TYPE_EXECUTABLE, .sources = single_file, .name = "a.out" };
+		compile_files(&target);
+		free(res);
+	}
+
 }
 
 void test_file(void)

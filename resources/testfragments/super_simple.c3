@@ -423,6 +423,21 @@ func int xxxx(int x)
     return 1;
 }
 
+func int testPointers(int x)
+{
+    1 ? 1 : 2;
+    int y = 0;
+    int* z = &y;
+    int d = *(z + y);
+    isize e = z - &y;
+    int* eff = &y + 1;
+    short x1 = 2;
+    float f = x1 +% x1 + 1.0;
+    float f2 = x1 -% x1 + 1.0;
+    usize ef = z - &y > 0 ? 1 : z - &y;
+    z - &y > 0 ? 1 : z - &y;
+    return 1;
+}
 func int main(int x)
 {
     int efd = 9;
@@ -447,9 +462,12 @@ func int main(int x)
                 }
             }
             next;
+        case 1000 >> 2:
+            printf("case 1000 >> 2\n");
+        case (1 << 200) >> 197:
+            printf("case 1 << 3\n");
         default:
             printf("default\n");
-            break;
     }
     int aa = x++;
     int bb = x--;
@@ -489,12 +507,12 @@ func int main(int x)
     if (ef == 4) printf("Works5!\n");
     if (ef == 4) printf("Works1!\n");
         ef = 0;
-/*
+
     byte a = 2;
     short b = 3;
     int c = 4;
     bool eok = true;
-    long deee = (eok ? a : b) + (eok ? b : c);*/
+    long deee = (eok ? a : b) + (eok ? b : c);
 int i = 0;
 
     JUMP:

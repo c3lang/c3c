@@ -121,7 +121,7 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 	if (param->var.init_expr)
 	{
 		Expr *expr = param->var.init_expr;
-		if (!sema_analyse_expr(context, param->type, expr)) return false;
+		if (!sema_analyse_expr_of_required_type(context, param->type, expr)) return false;
 		if (expr->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(expr, "Only constant expressions may be used as default values.");
@@ -291,7 +291,7 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 		}
 
 		// We try to convert to the desired type.
-		if (!sema_analyse_expr(context, type, expr))
+		if (!sema_analyse_expr_of_required_type(context, type, expr))
 		{
 			success = false;
 			enum_value->resolve_status = RESOLVE_DONE;
@@ -404,7 +404,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 	if (!sema_resolve_type_info(context, decl->var.type_info)) return false;
 	if (decl->var.init_expr)
 	{
-		if (!sema_analyse_expr(context, decl->type, decl->var.init_expr)) return false;
+		if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr)) return false;
 		if (decl->var.init_expr->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(decl->var.init_expr, "The expression must be a constant value.");
