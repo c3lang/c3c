@@ -197,7 +197,7 @@ static inline Ast *parse_default_stmt(Context *context)
 	TRY_CONSUME_OR(TOKEN_COLON, "Expected ':' after 'default'.", &poisoned_ast);
 	extend_ast_with_prev_token(context, ast);
 	ast->case_stmt.body = TRY_AST(parse_case_stmts(context));
-	ast->case_stmt.value_type = CASE_VALUE_DEFAULT;
+	ast->case_stmt.expr = NULL;
 	return ast;
 }
 
@@ -796,15 +796,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_UNTIL:
 		case TOKEN_ATTRIBUTE:
 		case TOKEN_VAR:
-		case TOKEN_AT_PARAM:
-		case TOKEN_AT_THROWS:
-		case TOKEN_AT_RETURN:
-		case TOKEN_AT_ENSURE:
-		case TOKEN_AT_REQUIRE:
-		case TOKEN_AT_PURE:
-		case TOKEN_AT_CONST:
-		case TOKEN_AT_REQPARSE:
-		case TOKEN_AT_DEPRECATED:
 		case TOKEN_DOCS_START:
 		case TOKEN_DOCS_END:
 		case TOKEN_DOCS_EOL:

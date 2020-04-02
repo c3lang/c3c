@@ -316,26 +316,6 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_DOCS_LINE:
 			return "DOCS_LINE";
 
-
-		case TOKEN_AT_CONST:
-			return "@const";
-		case TOKEN_AT_DEPRECATED:
-			return "@deprecated";
-		case TOKEN_AT_ENSURE:
-			return "@ensure";
-		case TOKEN_AT_PARAM:
-			return "@param";
-		case TOKEN_AT_PURE:
-			return "@pure";
-		case TOKEN_AT_RETURN:
-			return "@return";
-		case TOKEN_AT_REQUIRE:
-			return "@require";
-		case TOKEN_AT_THROWS:
-			return "@throws";
-		case TOKEN_AT_REQPARSE:
-			return "@reqparse";
-
 		case TOKEN_CT_CASE:
 			return "$case";
 		case TOKEN_CT_DEFAULT:

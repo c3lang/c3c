@@ -426,7 +426,6 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 	// TODO check defer correctness
 	if (ast->switch_stmt.decl) gencontext_emit_decl_expr_list_ignore_result(context, ast->switch_stmt.decl);
 	LLVMValueRef switch_value = gencontext_emit_decl_expr_list(context, ast->switch_stmt.cond, false);
-
 	size_t cases = vec_size(ast->switch_stmt.cases);
 	if (!cases)
 	{
@@ -438,7 +437,7 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 	VECEACH(ast->switch_stmt.cases, i)
 	{
 		Ast *case_stmt = ast->switch_stmt.cases[i];
-		if (case_stmt->case_stmt.value_type == CASE_VALUE_DEFAULT)
+		if (!case_stmt->case_stmt.expr)
 		{
 			if (case_stmt->case_stmt.body)
 			{
@@ -494,7 +493,7 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_value;
 		if (case_stmt != default_case)
 		{
-			LLVMValueRef case_value = LLVMConstInt(LLVMTypeOf(switch_value), case_stmt->case_stmt.val, case_stmt->case_stmt.value_type == CASE_VALUE_INT);
+			LLVMValueRef case_value = gencontext_emit_expr(context, case_stmt->case_stmt.expr);
 			LLVMAddCase(switch_stmt, case_value, block);
 		}
 

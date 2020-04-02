@@ -8,7 +8,7 @@ Type *type_bool, *type_void, *type_string, *type_voidptr;
 Type *type_float, *type_double;
 Type *type_char, *type_short, *type_int, *type_long, *type_isize;
 Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
-Type *type_compint, *type_compuint, *type_compfloat;
+Type *type_compint, *type_compfloat;
 Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
 
@@ -196,7 +196,7 @@ size_t type_size(Type *canonical)
 		case TYPE_F64:
 			return canonical->builtin.bytesize;
 		case TYPE_IXX:
-			return 4;
+			return 8;
 		case TYPE_FXX:
 			return 8;
 		case TYPE_FUNC:

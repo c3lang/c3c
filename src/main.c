@@ -10,6 +10,9 @@ int main(int argc, const char *argv[])
 	// First setup memory
 	memory_init();
 
+	// Init the compiler
+	compiler_init();
+
 	// Parse arguments.
 	parse_arguments(argc, argv);
 

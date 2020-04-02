@@ -61,7 +61,7 @@ static char digit_to_char(uint8_t digit, bool upper)
 	}
 	if (digit <= 35)
 	{
-		return (char) (digit + (upper ? 'A' : 'a'));
+		return (char) (digit + (upper ? 'A' : 'a') - 10);
 	}
 	FATAL_ERROR("Can't reach");
 }
@@ -1579,12 +1579,15 @@ void bigint_shl_int(BigInt *dest, const BigInt *op1, uint64_t shift)
 		bigint_init_bigint(dest, op1);
 		return;
 	}
+
 	if (op1->digit_count == 0)
 	{
 		bigint_init_unsigned(dest, 0);
 		return;
 	}
+
 	const uint64_t *op1_digits = bigint_ptr(op1);
+
 	if (op1->digit_count == 1 && shift < 64)
 	{
 		dest->digit = op1_digits[0] << shift;
@@ -1596,18 +1599,17 @@ void bigint_shl_int(BigInt *dest, const BigInt *op1, uint64_t shift)
 		}
 	}
 
-	unsigned digit_shift_count = (unsigned int) (shift / 64);
-	unsigned leftover_shift_count = (unsigned int) (shift % 64);
+	uint64_t digit_shift_count = shift / 64;
+	uint64_t leftover_shift_count = shift % 64;
 
 	dest->digits = alloc_digits(op1->digit_count + digit_shift_count + 1);
 	dest->digit_count = digit_shift_count;
 	uint64_t carry = 0;
 	for (size_t i = 0; i < op1->digit_count; i += 1)
 	{
-		uint64_t
-				digit = op1_digits[i];
+		uint64_t digit = op1_digits[i];
 		dest->digits[dest->digit_count] = carry | (digit << leftover_shift_count);
-		dest->digit_count += 1;
+		dest->digit_count++;
 		if (leftover_shift_count > 0)
 		{
 			carry = digit >> (64 - leftover_shift_count);
@@ -1654,15 +1656,15 @@ void bigint_shr(BigInt *dest, const BigInt *op1, const BigInt *op2)
 
 	if (op1->digit_count == 1)
 	{
-		dest->digit = op1_digits[0] >> shift_amt;
+		dest->digit = shift_amt < 64 ? op1_digits[0] >> shift_amt : 0;
 		dest->digit_count = 1;
 		dest->is_negative = op1->is_negative;
 		normalize(dest);
 		return;
 	}
 
-	unsigned digit_shift_count = (unsigned int) (shift_amt / 64);
-	unsigned leftover_shift_count = (unsigned int) (shift_amt % 64);
+	uint64_t digit_shift_count = shift_amt / 64;
+	uint64_t leftover_shift_count = shift_amt % 64;
 
 	if (digit_shift_count >= op1->digit_count)
 	{
@@ -1670,19 +1672,26 @@ void bigint_shr(BigInt *dest, const BigInt *op1, const BigInt *op2)
 	}
 
 	dest->digit_count = op1->digit_count - digit_shift_count;
-	dest->digits = alloc_digits(dest->digit_count);
-	uint64_t
-			carry = 0;
+	uint64_t *digits;
+	if (dest->digit_count == 1)
+	{
+		digits = &dest->digit;
+	}
+	else
+	{
+		digits = alloc_digits(dest->digit_count);
+		dest->digits = digits;
+	}
+
+	uint64_t carry = 0;
 	for (size_t op_digit_index = op1->digit_count - 1;;)
 	{
-		uint64_t
-				digit = op1_digits[op_digit_index];
+		uint64_t digit = op1_digits[op_digit_index];
 		size_t dest_digit_index = op_digit_index - digit_shift_count;
-		dest->digits[dest_digit_index] = carry | (digit >> leftover_shift_count);
+		digits[dest_digit_index] = carry | (digit >> leftover_shift_count);
 		carry = digit << (64 - leftover_shift_count);
 
-		if (dest_digit_index == 0)
-		{ break; }
+		if (dest_digit_index == 0) break;
 		op_digit_index -= 1;
 	}
 	dest->is_negative = op1->is_negative;
@@ -1851,7 +1860,7 @@ void bigint_print(BigInt *bigint, uint64_t base)
 	bigint_init_bigint(a, bigint);
 
 	BigInt base_bi = { 0 };
-	bigint_init_unsigned(&base_bi, 10);
+	bigint_init_unsigned(&base_bi, base);
 
 	for (;;)
 	{
@@ -1903,7 +1912,7 @@ const char *bigint_to_error_string(const BigInt *bigint, uint64_t base)
 	bigint_init_bigint(a, bigint);
 
 	BigInt base_bi = { 0 };
-	bigint_init_unsigned(&base_bi, 10);
+	bigint_init_unsigned(&base_bi, base);
 
 	for (;;)
 	{
@@ -1934,7 +1943,7 @@ const char *bigint_to_error_string(const BigInt *bigint, uint64_t base)
 		*(current++) = *ptr;
 	}
 	*(current++) = '\0';
-	return current;
+	return out;
 }
 
 void bigint_fprint(FILE *file, BigInt *bigint, uint64_t base)
@@ -1966,7 +1975,7 @@ void bigint_fprint(FILE *file, BigInt *bigint, uint64_t base)
 	bigint_init_bigint(a, bigint);
 
 	BigInt base_bi = { 0 };
-	bigint_init_unsigned(&base_bi, 10);
+	bigint_init_unsigned(&base_bi, base);
 
 	for (;;)
 	{

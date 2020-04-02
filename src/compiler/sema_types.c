@@ -28,7 +28,7 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 	uint64_t len = 0;
 	if (type->array.len)
 	{
-		if (!sema_analyse_expr(context, type_usize, type->array.len)) return type_info_poison(type);
+		if (!sema_analyse_expr_of_required_type(context, type_usize, type->array.len)) return type_info_poison(type);
 		if (type->array.len->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(type->array.len, "Expected a constant value as array size.");

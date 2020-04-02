@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 project(c3c)
+
+#set(CMAKE_BUILD_TYPE Release)
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 find_package(LLVM REQUIRED CONFIG)

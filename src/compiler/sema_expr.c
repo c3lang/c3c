@@ -9,22 +9,26 @@
  * TODOs
  * - Check all returns correctly
  * - Disallow jumping in and out of an expression block.
- * - Handle IXX FXX and UXX in a sane way.
  */
 
-#define CONST_PROCESS(_op) \
-if (both_const(left, right)) { \
-switch (left->const_expr.type) { \
-case CONST_INT: int_##_op(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i); break; \
-case CONST_FLOAT: float_##_op(&expr->const_expr.f, &left->const_expr.f, &right->const_expr.f); break; \
-default: UNREACHABLE } \
-expr->expr_kind = EXPR_CONST; \
-expr->const_expr.type = left->const_expr.type; \
+static inline bool is_const(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST;
+}
+
+static inline bool both_const(Expr *left, Expr *right)
+{
+	return left->expr_kind == EXPR_CONST && right->expr_kind == EXPR_CONST;
+}
+
+static inline bool both_any_integer(Expr *left, Expr *right)
+{
+	return type_is_any_integer(left->type->canonical) && type_is_any_integer(right->type->canonical);
 }
 
 int sema_check_comp_time_bool(Context *context, Expr *expr)
 {
-	if (!sema_analyse_expr(context, type_bool, expr)) return -1;
+	if (!sema_analyse_expr_of_required_type(context, type_bool, expr)) return -1;
 	if (expr->expr_kind != EXPR_CONST)
 	{
 		SEMA_ERROR(expr, "$if requires a compile time constant value.");
@@ -57,7 +61,8 @@ static inline bool sema_type_error_on_binop(Expr *expr)
 {
 	const char *c = token_type_to_string(binaryop_to_token(expr->binary_expr.operator));
 	SEMA_ERROR(expr,
-	           "Cannot perform '%s' %s '%s'.",
+	           "%s is not defined in the expression '%s' %s '%s'.",
+	           c,
 	           type_to_error_string(expr->binary_expr.left->type),
 	           c,
 	           type_to_error_string(expr->binary_expr.right->type));
@@ -150,9 +155,9 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 	return true;
 }
 
-static inline bool sema_expr_analyse_binary_sub_expr(Context *context, Expr *left, Expr *right)
+static inline bool sema_expr_analyse_binary_sub_expr(Context *context, Type *to, Expr *left, Expr *right)
 {
-	return sema_analyse_expr(context, NULL, left) & sema_analyse_expr(context, NULL, right);
+	return sema_analyse_expr(context, to, left) & sema_analyse_expr(context, to, right);
 }
 
 static inline bool sema_expr_analyse_var_call(Context *context, Type *to, Expr *expr) { TODO }
@@ -173,7 +178,7 @@ static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr 
 	for (unsigned i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
-		if (!sema_analyse_expr(context, func_params[i]->type, arg)) return false;
+		if (!sema_analyse_expr_of_required_type(context, func_params[i]->type, arg)) return false;
 	}
 	expr->type = decl->func.function_signature.rtype->type;
 	return true;
@@ -183,6 +188,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 {
 	// TODO
 	Expr *func_expr = expr->call_expr.function;
+	// TODO check
 	if (!sema_analyse_expr(context, to, func_expr)) return false;
 	Decl *decl;
 	switch (func_expr->expr_kind)
@@ -250,8 +256,14 @@ static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr 
 			return false;
 	}
 
+
 	if (!sema_analyse_expr(context, type_isize, expr->subscript_expr.index)) return false;
 
+	// Unless we already have type_usize, cast to type_isize;
+	if (expr->subscript_expr.index->type->canonical->type_kind != type_usize->canonical->type_kind)
+	{
+		if (!cast_implicit(expr->subscript_expr.index, type_isize)) return false;
+	}
 	expr->type = inner_type;
 	return true;
 }
@@ -515,7 +527,7 @@ static InitSemaResult sema_expr_analyse_struct_named_initializer_list(Context *c
 			}
 			return INIT_SEMA_NOT_FOUND;
 		}
-		if (!sema_analyse_expr(context, result->type, value)) return INIT_SEMA_ERROR;
+		if (!sema_analyse_expr_of_required_type(context, result->type, value)) return INIT_SEMA_ERROR;
 	}
 	return INIT_SEMA_OK;
 }
@@ -545,7 +557,7 @@ static inline bool sema_expr_analyse_struct_initializer_list(Context *context, T
 	}
 	VECEACH(expr->initializer_expr, i)
 	{
-		if (!sema_analyse_expr(context, members[i]->type, expr->initializer_expr[i])) return false;
+		if (!sema_analyse_expr_of_required_type(context, members[i]->type, expr->initializer_expr[i])) return false;
 	}
 	expr->type = assigned;
 	return true;
@@ -584,7 +596,7 @@ static inline bool sema_expr_analyse_expr_list(Context *context, Type *to, Expr 
 	size_t last = vec_size(expr->expression_list) - 1;
 	VECEACH(expr->expression_list, i)
 	{
-		success &= sema_analyse_expr(context, i == last ? to : NULL, expr->expression_list[i]);
+		success &= sema_analyse_expr_of_required_type(context, i == last ? to : NULL, expr->expression_list[i]);
 	}
 	return success;
 }
@@ -593,7 +605,7 @@ static inline bool sema_expr_analyse_cast(Context *context, Type *to, Expr *expr
 {
 	Expr *inner = expr->cast_expr.expr;
 	if (!sema_resolve_type_info(context, expr->cast_expr.type_info)) return false;
-	if (!sema_analyse_expr(context, NULL, inner)) return false;
+	if (!sema_analyse_expr_of_required_type(context, NULL, inner)) return false;
 
 	if (!cast(inner, expr->cast_expr.type_info->type, CAST_TYPE_EXPLICIT)) return false;
 
@@ -606,222 +618,211 @@ static inline bool sema_expr_analyse_cast(Context *context, Type *to, Expr *expr
 	return true;
 }
 
-
-static bool sema_expr_analyse_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
+/**
+ * Analyse a = b
+ * @return true if analysis works
+ */
+static bool sema_expr_analyse_assign(Context *context, Expr *expr, Expr *left, Expr *right)
 {
+	// 1. Evaluate left side
 	if (!sema_analyse_expr(context, NULL, left)) return false;
 
+	// 2. Check assignability
 	if (!expr_is_ltype(left))
 	{
 		SEMA_ERROR(left, "Expression is not assignable.");
 		return false;
 	}
-	if (!sema_analyse_expr(context, left->type, right)) return false;
+
+	// 3. Evaluate right side to required type.
+	if (!sema_analyse_expr_of_required_type(context, left->type, right)) return false;
+
+	// 4. Set the result to the type on the right side.
 	expr->type = right->type;
+
 	return true;
 }
 
-static inline bool both_const(Expr *left, Expr *right)
-{
-	return left->expr_kind == EXPR_CONST && right->expr_kind == EXPR_CONST;
-}
 
-static bool sema_expr_analyse_bit_and_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
+/**
+ * Analyse *%= *= /= %= ^= |= &=
+ *
+ * @return true if analysis worked.
+ */
+static bool sema_expr_analyse_common_assign(Context *context, Expr *expr, Expr *left, Expr *right, bool int_only)
 {
+	// 1. Analyse left side.
 	if (!sema_analyse_expr(context, NULL, left)) return false;
 
-	if (!type_is_number(left->type))
+	// 2. Verify that the left side is assignable.
+	if (!expr_is_ltype(left))
+	{
+		SEMA_ERROR(left, "Expression is not assignable.");
+		return false;
+	}
+
+	// 3. If this is only defined for ints (*%, ^= |= &= %=) verify that this is an int.
+	if (int_only && !type_is_any_integer(left->type))
+	{
+		SEMA_ERROR(left, "Expected an integer here.");
+		return false;
+	}
+
+	// 4. In any case, these ops are only defined on numbers.
+	if (!type_is_numeric(left->type))
 	{
 		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
 	}
 
-	if (!sema_analyse_expr(context, left->type->canonical, right)) return false;
+	// 5. Cast the right hand side to the one on the left
+	if (!sema_analyse_expr_of_required_type(context, left->type->canonical, right)) return false;
 
-	if (!type_is_number(right->type))
+	// 6. Check for zero in case of div or mod.
+	if (right->expr_kind == EXPR_CONST)
 	{
-		SEMA_ERROR(right, "Expected a numeric type here.");
-		return false;
+		if (expr->binary_expr.operator == BINARYOP_DIV_ASSIGN)
+		{
+			switch (right->const_expr.kind)
+			{
+				case ALL_INTS:
+					if (bigint_cmp_zero(&right->const_expr.i) == CMP_EQ)
+					{
+						SEMA_ERROR(right, "Division by zero not allowed.");
+						return false;
+					}
+					break;
+				case ALL_FLOATS:
+					if (right->const_expr.f == 0)
+					{
+						SEMA_ERROR(right, "Division by zero not allowed.");
+						return false;
+					}
+					break;
+				default:
+					UNREACHABLE
+			}
+		}
+		else if (expr->binary_expr.operator == BINARYOP_MOD_ASSIGN)
+		{
+			switch (right->const_expr.kind)
+			{
+				case ALL_INTS:
+					if (bigint_cmp_zero(&right->const_expr.i) == CMP_EQ)
+					{
+						SEMA_ERROR(right, "% by zero not allowed.");
+						return false;
+					}
+					break;
+				default:
+					UNREACHABLE
+			}
+		}
 	}
 
+	// 7. Assign type
 	expr->type = left->type;
-	return cast(right, left->type, CAST_TYPE_IMPLICIT_ASSIGN_ADD);
-}
-
-static bool sema_expr_analyse_bit_or_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
-{
-	if (!sema_analyse_expr(context, NULL, left)) return false;
-
-	if (!type_is_number(left->type))
-	{
-		SEMA_ERROR(left, "Expected a numeric type here.");
-		return false;
-	}
-
-	if (!sema_analyse_expr(context, left->type->canonical, right)) return false;
-
-	if (!type_is_number(right->type))
-	{
-		SEMA_ERROR(right, "Expected a numeric type here.");
-		return false;
-	}
-
-	expr->type = left->type;
-	return cast(right, left->type, CAST_TYPE_IMPLICIT_ASSIGN_ADD);
-}
-
-static bool sema_expr_analyse_bit_xor_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
-{
-	if (!sema_analyse_expr(context, NULL, left)) return false;
-
-	if (!type_is_number(left->type))
-	{
-		SEMA_ERROR(left, "Expected a numeric type here.");
-		return false;
-	}
-
-	if (!sema_analyse_expr(context, left->type->canonical, right)) return false;
-
-	if (!type_is_number(right->type))
-	{
-		SEMA_ERROR(right, "Expected a numeric type here.");
-		return false;
-	}
-
-	expr->type = left->type;
-	return cast(right, left->type, CAST_TYPE_IMPLICIT_ASSIGN_ADD);
-
-}
-
-static bool sema_expr_analyse_div_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
-{
-	if (!sema_analyse_expr(context, NULL, left)) return false;
-
-	if (!type_is_number(left->type))
-	{
-		SEMA_ERROR(left, "Expected a numeric type here.");
-		return false;
-	}
-
-	if (!sema_analyse_expr(context, left->type->canonical, right)) return false;
-
-	if (!type_is_number(right->type))
-	{
-		SEMA_ERROR(right, "Expected a numeric type here.");
-		return false;
-	}
-
-	expr->type = left->type;
-	return cast(right, left->type, CAST_TYPE_IMPLICIT_ASSIGN_ADD);
-}
-
-static bool sema_expr_analyse_mult_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
-{
-	if (!sema_analyse_expr(context, NULL, left)) return false;
-
-	if (!type_is_number(left->type))
-	{
-		SEMA_ERROR(left, "Expected a numeric type here.");
-		return false;
-	}
-
-	if (!sema_analyse_expr(context, left->type->canonical, right)) return false;
-
-	if (!type_is_number(right->type))
-	{
-		SEMA_ERROR(right, "Expected a numeric type here.");
-		return false;
-	}
-
-	expr->type = left->type;
-	return cast(right, left->type, CAST_TYPE_IMPLICIT_ASSIGN_ADD);
+	return true;
 }
 
 
-static bool sema_expr_analyse_sub_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
+static BinaryOp binary_mod_op_to_non_mod(BinaryOp op)
 {
+	switch (op)
+	{
+		case BINARYOP_MULT_MOD:
+			return BINARYOP_MULT;
+		case BINARYOP_MULT_MOD_ASSIGN:
+			return BINARYOP_MULT_ASSIGN;
+		case BINARYOP_SUB_MOD:
+			return BINARYOP_SUB;
+		case BINARYOP_SUB_MOD_ASSIGN:
+			return BINARYOP_SUB_ASSIGN;
+		case BINARYOP_ADD_MOD:
+			return BINARYOP_ADD;
+		case BINARYOP_ADD_MOD_ASSIGN:
+			return BINARYOP_ADD_ASSIGN;
+		default:
+			return op;
+	}
+}
+/**
+ * Handle a += b, a +%= b, a -= b, a -%= b
+ * @return true if analysis succeeded.
+ */
+static bool sema_expr_analyse_add_sub_assign(Context *context, Expr *expr, Expr *left, Expr *right)
+{
+	bool is_mod = expr->binary_expr.operator == BINARYOP_ADD_MOD_ASSIGN
+	              || expr->binary_expr.operator == BINARYOP_SUB_MOD_ASSIGN;
+
+	// 1. Analyse the left hand side
 	if (!sema_analyse_expr(context, NULL, left)) return false;
+
+	// 2. Ensure the left hand side is assignable
+	if (!expr_is_ltype(left))
+	{
+		SEMA_ERROR(left, "Expression is not assignable.");
+		return false;
+	}
 
 	Type *left_type_canonical = left->type->canonical;
+	expr->type = left->type;
 
+	// 3. Attempt to analyse and cast this side to the same type if possible.
+	if (!sema_analyse_expr(context, left->type, right)) return false;
+
+	// 4. In the pointer case we have to treat this differently.
 	if (left_type_canonical->type_kind == TYPE_POINTER)
 	{
-		if (!sema_analyse_expr(context, NULL, right)) return false;
-		// Improve check if this should be usize.
-		if (!cast_to_runtime(right)) return false;
-		Type *right_type = right->type->canonical;
-		if (!type_is_integer(right_type))
+		// 5. Prevent +%= and -%=
+		if (is_mod)
 		{
-			SEMA_ERROR(right, "Expected an integer type instead.");
+			SEMA_ERROR(expr, "Cannot use %s with pointer arithmetics, use %s instead.",
+					token_type_to_string(binaryop_to_token(expr->binary_expr.operator)),
+					token_type_to_string(binaryop_to_token(binary_mod_op_to_non_mod(expr->binary_expr.operator))));
 			return false;
 		}
-		expr->type = left->type;
+
+		// 5. Convert any compile time values to runtime
+		cast_to_smallest_runtime(right);
+
+		// 6. Finally, check that the right side is indeed an integer.
+		if (!type_is_integer(right->type->canonical))
+		{
+			SEMA_ERROR(right, "The right side was '%s' but only integers are valid on the right side of %s when the left side is a pointer.",
+			           type_to_error_string(right->type),
+			           token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
+			return false;
+		}
 		return true;
 	}
 
-	if (!sema_analyse_expr(context, left->type->canonical, right)) return false;
+	// 5. Otherwise we cast rhs to lhs
+	if (!cast_implicit(right, left->type)) return false;
 
-	if (!type_is_number(left->type))
+	// 6. We expect a numeric type on both left and right
+	if (!type_is_numeric(left->type))
 	{
 		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
 	}
 
-	if (!type_is_number(right->type))
+	// 7. Prevent +%= and -%= on non integers
+	if (is_mod && !type_is_integer(left->type->canonical))
 	{
-		SEMA_ERROR(right, "Expected a numeric type here.");
+		SEMA_ERROR(expr, "%s can only be used for integer arithmetics, for other cases use %s instead.",
+		           token_type_to_string(binaryop_to_token(expr->binary_expr.operator)),
+		           token_type_to_string(binaryop_to_token(binary_mod_op_to_non_mod(expr->binary_expr.operator))));
 		return false;
 	}
 
-	expr->type = left->type;
-
-	return cast(right, left->type, CAST_TYPE_IMPLICIT_ASSIGN_ADD);
-}
-
-static bool sema_expr_analyse_add_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
-{
-	if (!sema_analyse_expr(context, NULL, left)) return false;
-
-	Type *left_type_canonical = left->type->canonical;
-
-	if (left_type_canonical->type_kind == TYPE_POINTER)
-	{
-		if (!sema_analyse_expr(context, NULL, right)) return false;
-		// Improve check if this should be usize.
-		if (!cast_to_runtime(right)) return false;
-		Type *right_type = right->type->canonical;
-		if (!type_is_integer(right_type))
-		{
-			SEMA_ERROR(right, "Expected an integer type instead.");
-			return false;
-		}
-		expr->type = left->type;
-		return true;
-	}
-
-	if (!sema_analyse_expr(context, left->type->canonical, right)) return false;
-
-	if (!type_is_number(left->type))
-	{
-		SEMA_ERROR(left, "Expected a numeric type here.");
-		return false;
-	}
-
-	if (!type_is_number(right->type))
-	{
-		SEMA_ERROR(right, "Expected a numeric type here.");
-		return false;
-	}
-
-	expr->type = left->type;
-
-	return cast(right, left->type, CAST_TYPE_IMPLICIT_ASSIGN_ADD);
+	return true;
 }
 
 static bool binary_arithmetic_promotion(Expr *left, Expr *right, Type *left_type, Type *right_type)
 {
 	Type *max = type_find_max_type(left_type, right_type);
-	return max && type_is_number(max) && cast_implicit(left, max) && cast_implicit(right, max);
+	return max && type_is_numeric(max) && cast_implicit(left, max) && cast_implicit(right, max);
 }
 
 /**
@@ -830,29 +831,65 @@ static bool binary_arithmetic_promotion(Expr *left, Expr *right, Type *left_type
  */
 static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
+	bool is_mod = expr->binary_expr.operator == BINARYOP_SUB_MOD;
+
+	// 1. Analyse a and b. Do not push down if this is a -%
+	if (!sema_expr_analyse_binary_sub_expr(context, is_mod ? NULL : to, left, right)) return false;
 
 	Type *left_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
 
+	// 2. Handle the ptr - x and ptr - other_pointer
 	if (left_type->type_kind == TYPE_POINTER)
 	{
+		// 3. Is this -%? That's not ok for pointer maths.
+		if (is_mod)
+		{
+			SEMA_ERROR(expr, "'-%%' is not valid for pointer maths, use '-' instead.");
+			return false;
+		}
+
+		// 4. ptr - other pointer
 		if (right_type->type_kind == TYPE_POINTER)
 		{
-			Type *max = type_find_max_type(left_type, right_type);
-			bool success = max && cast_implicit(left, max) && cast_implicit(right, max);
-			if (!success) goto ERR;
+			// 5. Require that both types are the same.
+			if (left_type != right_type)
+			{
+				SEMA_ERROR(expr, "'%s' - '%s' is not allowed. Subtracting pointers of different types from each other is not possible.", type_to_error_string(left_type), type_to_error_string(right_type));
+				return false;
+			}
+			// 5. usize only if that is the recipient
+			if (to && to->canonical->type_kind == type_usize->canonical->type_kind)
+			{
+				expr->type = to;
+				return true;
+			}
 			expr->type = type_isize;
 			return true;
 		}
-		// No need to cast this, we just ensure it is an integer.
-		if (!type_is_integer(right_type) || !cast_to_runtime(right)) goto ERR;
+
+		// 5. Cast any compile time int into smallest runtime version if we have a compile time constant.
+		cast_to_smallest_runtime(right);
+
+		// 6. No need for further casts, just it is an integer.
+		if (!type_is_integer(right_type))
+		{
+			SEMA_ERROR(expr, "Cannot subtract '%s' from '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
+			return false;
+		}
+
 		expr->type = left->type;
 		return true;
 	}
 
-	if (!binary_arithmetic_promotion(left, right, left_type, right_type)) goto ERR;
+	// 7. Attempt arithmetic promotion, to promote both to a common type.
+	if (!binary_arithmetic_promotion(left, right, left_type, right_type))
+	{
+		SEMA_ERROR(expr, "Cannot subtract '%s' from '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
+		return false;
+	}
 
+	// 8. Handle constant folding.
 	if (both_const(left, right))
 	{
 		switch (left->const_expr.kind)
@@ -871,22 +908,35 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 		expr->const_expr.kind = left->const_expr.kind;
 	}
 
+	// 9. Is this -%? That's not ok unless we are adding integers.
+	if (is_mod && !type_is_any_integer(left->type->canonical))
+	{
+		SEMA_ERROR(expr, "'-%%' is only valid for integer subtraction, use '-' instead.");
+		return false;
+	}
+
 	expr->type = left->type;
 	return true;
 
-	ERR:
-	SEMA_ERROR(expr, "Cannot subtract '%s' from '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
-	return false;
 }
 
+/**
+ * Analyse a + b / a +% b
+ * @return true if it succeeds.
+ */
 static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
+	bool is_mod = expr->binary_expr.operator == BINARYOP_ADD_MOD;
+
+	// 1. Promote everything to the recipient type – if possible
+	//    this is safe in the pointer case actually.
+	if (!sema_expr_analyse_binary_sub_expr(context, is_mod ? NULL : to, left, right)) return false;
 
 	Type *left_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
 
-	// Reorder if needed
+
+	// 2. To detect pointer additions, reorder if needed
 	if (right_type->type_kind == TYPE_POINTER && left_type->type_kind != TYPE_POINTER)
 	{
 		Expr *temp = right;
@@ -896,16 +946,46 @@ static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *
 		left_type = left->type->canonical;
 	}
 
+	// 4. The "left" will now always be the pointer.
+	//    so check if we want to do the normal pointer add special handling.
 	if (left_type->type_kind == TYPE_POINTER)
 	{
-		// No need to cast this, we just ensure it is an integer.
-		if (!type_is_integer(right_type) || !cast_to_runtime(right)) goto ERR;
+		// 4a. Check that the other side is an integer of some sort.
+		if (!type_is_any_integer(right_type))
+		{
+			SEMA_ERROR(right, "A value of type '%s' cannot be added to '%s', an integer was expected here.",
+			           type_to_error_string(right->type),
+			           type_to_error_string(left->type));
+			return false;
+		}
+
+		// 4b. Cast it to usize or isize depending on underlying type.
+		//     Either is fine, but it looks a bit nicer if we actually do this and keep the sign.
+		bool success = cast_implicit(right, type_is_unsigned(right_type) ? type_usize : type_isize);
+		// No need to check the cast we just ensured it was an integer.
+		assert(success && "This should always work");
+
+		// 4c. Set the type.
 		expr->type = left->type;
+
+		// 4d. Is this +%? That's not ok for pointers!
+		if (is_mod)
+		{
+			SEMA_ERROR(expr, "You cannot use '+%%' with pointer addition, use '+' instead.");
+			return false;
+		}
 		return true;
 	}
 
-	if (!binary_arithmetic_promotion(left, right, left_type, right_type)) goto ERR;
+	// 5. Do the binary arithmetic promotion (finding a common super type)
+	//    If none can be find, send an error.
+	if (!binary_arithmetic_promotion(left, right, left_type, right_type))
+	{
+		SEMA_ERROR(expr, "Cannot add '%s' to '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
+		return false;
+	}
 
+	// 6. Handle the "both const" case. We should only see ints and floats at this point.
 	if (both_const(left, right))
 	{
 		switch (left->const_expr.kind)
@@ -923,90 +1003,128 @@ static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *
 		expr->const_expr.kind = left->const_expr.kind;
 	}
 
+	// 7. Is this +%? That's not ok unless we are adding integers.
+	if (is_mod && !type_is_any_integer(left->type->canonical))
+	{
+		SEMA_ERROR(expr, "'+%%' is only valid for integer addition, use '+' instead.");
+		return false;
+	}
+
+	// 7. Set the type
 	expr->type = left->type;
 	return true;
 
-	ERR:
-	SEMA_ERROR(expr, "Cannot add '%s' to '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
-	return false;
 }
 
+/**
+ * Analyse a * b and a *% b
+ *
+ * Will analyse a and b and convert them to the "to" type if possible.
+ * It will then try to promote both to a common type,
+ * check that *% is only used on an integer and then perform constant folding.
+ *
+ * @return true if analysis worked.
+ */
 static bool sema_expr_analyse_mult(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
+	bool is_mod = expr->binary_expr.operator == BINARYOP_MULT_MOD;
+
+	// 1. Analyse the sub expressions.
+	if (!sema_expr_analyse_binary_sub_expr(context, to, left, right)) return false;
 
 	Type *left_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
 
-	if (!binary_arithmetic_promotion(left, right, left_type, right_type)) goto ERR;
+	// 2. Perform promotion to a common type.
+	if (!binary_arithmetic_promotion(left, right, left_type, right_type))
+	{
+		SEMA_ERROR(expr, "Cannot multiply '%s' with '%s'", type_to_error_string(left->type), type_to_error_string(right->type));
+		return false;
+	}
 
-	bool is_mod = expr->binary_expr.operator == BINARYOP_MULT_MOD;
+	// 3. Set the type.
 	expr->type = left->type;
 
 	// Might have changed
 	left_type = left->type->canonical;
 
+	// 4. Prevent *% use on non-integers.
 	if (is_mod && !type_is_any_integer(left_type))
 	{
-		SEMA_ERROR(expr, "You can only use *% with integer types.");
+		SEMA_ERROR(expr, "*% can only be used with integer types, try * instead.");
 		return false;
 	}
 
-	if (!both_const(left, right)) return true;
-
-	expr->expr_kind = EXPR_CONST;
-	expr->const_expr.kind = left->const_expr.kind;
-
-	switch (left->const_expr.kind)
+	// 5. Handle constant folding.
+	if (both_const(left, right))
 	{
-		case ALL_SIGNED_INTS:
-			// Do mod mult
-			if (is_mod && left_type != type_compint)
-			{
-				bigint_mul_wrap(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i, is_mod, left_type->builtin.bitsize);
-				return true;
-			}
-			bigint_mul(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
-			return true;
-		case ALL_FLOATS:
-			expr->const_expr.f = left->const_expr.f * right->const_expr.f;
-			return true;
-		default:
-			UNREACHABLE
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.kind = left->const_expr.kind;
+
+		switch (left->const_expr.kind)
+		{
+			case ALL_INTS:
+				// 5a. Do mod mult if applicable.
+				if (is_mod && left_type != type_compint)
+				{
+					bigint_mul_wrap(&expr->const_expr.i,
+					                &left->const_expr.i,
+					                &right->const_expr.i,
+					                is_mod,
+					                left_type->builtin.bitsize);
+					return true;
+				}
+				bigint_mul(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
+				break;
+			case ALL_FLOATS:
+				expr->const_expr.f = left->const_expr.f * right->const_expr.f;
+				break;
+			default:
+				UNREACHABLE
+		}
 	}
 
-	ERR:
-	SEMA_ERROR(expr, "Cannot multiply '%s' and '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
-	return false;
+	// 6. All done.
+	return true;
 }
 
+/**
+ * Analyse a / b
+ * @return true if analysis completed ok.
+ */
 static bool sema_expr_analyse_div(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
+	// 1. Analyse sub expressions.
+	if (!sema_expr_analyse_binary_sub_expr(context, to, left, right)) return false;
 
 	Type *left_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
 
-	if (!binary_arithmetic_promotion(left, right, left_type, right_type)) goto ERR;
+	// 2. Perform promotion to a common type.
+	if (!binary_arithmetic_promotion(left, right, left_type, right_type))
+	{
+		SEMA_ERROR(expr, "Cannot divide '%s' by '%s'.", type_to_error_string(left_type), type_to_error_string(right_type));
+		return false;
+	}
 
 	expr->type = left->type;
 
-	// Check null
-	if (right->expr_kind == EXPR_CONST)
+	// 3. Check for a constant 0 on the right hand side.
+	if (is_const(right))
 	{
 		switch (right->const_expr.kind)
 		{
 			case ALL_INTS:
 				if (bigint_cmp_zero(&right->const_expr.i) == CMP_EQ)
 				{
-					SEMA_ERROR(right, "Division by zero not allowed.");
+					SEMA_ERROR(right, "This expression evaluates to zero and division by zero is not allowed.");
 					return false;
 				}
 				break;
 			case ALL_FLOATS:
 				if (right->const_expr.f == 0)
 				{
-					SEMA_ERROR(right, "Division by zero not allowed.");
+					SEMA_ERROR(right, "This expression evaluates to zero and division by zero is not allowed.");
 					return false;
 				}
 				break;
@@ -1015,252 +1133,240 @@ static bool sema_expr_analyse_div(Context *context, Type *to, Expr *expr, Expr *
 		}
 	}
 
-
-	if (!both_const(left, right)) return true;
-
-	switch (left->const_expr.kind)
+	// 4. Perform constant folding.
+	if (both_const(left, right))
 	{
-		case ALL_INTS:
-			bigint_div_floor(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
-			return true;
-		case ALL_FLOATS:
-			expr->const_expr.f = left->const_expr.f / right->const_expr.f;
-			return true;
-		default:
-			UNREACHABLE
+		switch (left->const_expr.kind)
+		{
+			case ALL_INTS:
+				bigint_div_floor(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
+				break;
+			case ALL_FLOATS:
+				expr->const_expr.f = left->const_expr.f / right->const_expr.f;
+				break;
+			default:
+				UNREACHABLE
+		}
 	}
 
-
-	ERR:
-	SEMA_ERROR(expr, "Cannot divide '%s' by '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
-	return false;
+	// 5. Done.
+	return true;
 
 }
 
+/**
+ * Analyse a % b
+ * @return true if analysis succeeds.
+ */
 static bool sema_expr_analyse_mod(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
+	// 1. Analyse both sides.
+	if (!sema_expr_analyse_binary_sub_expr(context, to, left, right)) return false;
 
-	if (!type_is_integer(right->type->canonical) || !type_is_integer(left->type->canonical)) return sema_type_error_on_binop(expr);
-
-	if (right->expr_kind == EXPR_CONST && bigint_cmp_zero(&right->const_expr.i) == CMP_EQ)
+	// 2. Make sure we have some sort of integer on both sides.
+	if (!type_is_any_integer(right->type->canonical) || !type_is_any_integer(left->type->canonical))
 	{
-		SEMA_ERROR(expr->binary_expr.right, "Cannot perform mod by zero.");
+		return sema_type_error_on_binop(expr);
+	}
+
+	// 3. a % 0 is not valid, so detect it.
+	if (is_const(right) && bigint_cmp_zero(&right->const_expr.i) == CMP_EQ)
+	{
+		SEMA_ERROR(expr->binary_expr.right, "Cannot perform % with a constant zero.");
 		return false;
 	}
-	// TODO Insert trap on negative right.
-	if (left->expr_kind == EXPR_CONST && right->expr_kind == EXPR_CONST)
+
+	// 4. Constant fold
+	if (both_const(left, right))
 	{
-		// TODO negative
 		expr_replace(expr, left);
-		bigint_mod(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
-		return expr;
+		// 4a. Remember this is remainder.
+		bigint_rem(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
 	}
-
-	if (!cast_implicit(left, to)) return false;
-
-	if (!cast_to_runtime(left) || !cast_to_runtime(right)) return false;
 
 	expr->type = left->type;
 
 	return true;
 }
 
-static bool sema_expr_analyse_mod_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
-{
-
-	TODO
-}
-
-
+/**
+ * Analyse a ^ b, a | b, a & b
+ * @return true if the analysis succeeded.
+ */
 static bool sema_expr_analyse_bit(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
+	// 1. Convert to top down type if possible.
+	if (!sema_expr_analyse_binary_sub_expr(context, to, left, right)) return false;
 
-	if (!type_is_integer(right->type->canonical) || !type_is_integer(left->type->canonical)) goto ERR;
+	// 2. Check that both are integers.
+	if (!both_any_integer(left, right))
+	{
+		return sema_type_error_on_binop(expr);
+	}
+
+	// 3. Promote to the same type.
 
 	Type *left_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
 
-	if (!binary_arithmetic_promotion(left, right, left_type, right_type)) goto ERR;
+	if (!binary_arithmetic_promotion(left, right, left_type, right_type))
+	{
+		return sema_type_error_on_binop(expr);
+	}
 
-	if (left->expr_kind == EXPR_CONST && right->expr_kind == EXPR_CONST)
+	// 4. Do constant folding if both sides are constant.
+	if (both_const(left, right))
 	{
 		expr_replace(expr, left);
 		switch (expr->binary_expr.operator)
 		{
-			case TOKEN_AMP:
+			case BINARYOP_BIT_AND:
 				bigint_and(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
 				break;
-			case TOKEN_BIT_XOR:
+			case BINARYOP_BIT_XOR:
 				bigint_xor(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
 				break;
-			case TOKEN_BIT_OR:
+			case BINARYOP_BIT_OR:
 				bigint_or(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
 				break;
 			default:
 				UNREACHABLE;
 		}
-		return expr;
 	}
 
-	expr->type = left->type;
-	return true;
-
-	ERR:
-	return sema_type_error_on_binop(expr);
-
-}
-
-
-static bool sema_expr_analyse_shr(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
-{
-
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
-
-	if (!type_is_integer(right->type->canonical) || !type_is_integer(left->type->canonical)) goto ERR;
-
-	// First, try to do assign type promotion.
-	if (!cast_implicit(left, to)) goto ERR;
-
-	// Next, cast to runtime types, this might be needed for runtime constants, e.g. x >> 2
-	if (!cast_to_runtime(left) || !cast_to_runtime(right)) goto ERR;
-
-	if (right->expr_kind == EXPR_CONST)
-	{
-		TODO
-		//if (int_exceeds(&right->const_expr.i, left->type->canonical->builtin.bitsize))
-		{
-			SEMA_ERROR(right, "Rightshift exceeds bitsize of '%s'", type_to_error_string(left->type));
-			return false;
-		}
-		if (left->expr_kind == EXPR_CONST)
-		{
-			expr_replace(expr, left);
-			bigint_shr(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
-			return true;
-		}
-	}
-
-	expr->type = left->type;
-	return true;
-
-	ERR:
-	return sema_type_error_on_binop(expr);
-}
-
-static bool sema_expr_analyse_shr_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
-{
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
-
-	if (!expr_is_ltype(left))
-	{
-		SEMA_ERROR(left, "Expression is not assignable.");
-		return false;
-	}
-
-	// Check that right side is integer and cast to a runtime type if needed.
-	if (!type_is_integer(right->type->canonical) || !cast_to_runtime(right)) return false;
-
-	if (right->expr_kind == EXPR_CONST)
-	{
-		TODO
-		//if (int_exceeds(&right->const_expr.i, left->type->canonical->builtin.bitsize))
-		{
-			SEMA_ERROR(right, "Rightshift exceeds bitsize of '%s'", type_to_error_string(left->type));
-			return false;
-		}
-	}
-
+	// 5. Assign the type
 	expr->type = left->type;
 	return true;
 }
 
-static bool sema_expr_analyse_shl(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
+/**
+ * Analyse >> and << operations.
+ * @return true if the analysis succeeded.
+ */
+static bool sema_expr_analyse_shift(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
+	// 1. Analyze the two sub lhs & rhs *without coercion*
+	if (!sema_expr_analyse_binary_sub_expr(context, NULL, left, right)) return false;
 
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
-
-	if (!type_is_integer(right->type->canonical) || !type_is_integer(left->type->canonical)) goto ERR;
-
-	// First, try to do assign type promotion.
-	if (!cast_implicit(left, to)) goto ERR;
-
-	// Next, cast to runtime types, this might be needed for runtime constants, e.g. x << 2
-	if (!cast_to_runtime(left) || !cast_to_runtime(right)) return false;
-
-	expr->type = left->type;
-	if (right->expr_kind == EXPR_CONST)
+	// 2. Only integers may be shifted.
+	if (!both_any_integer(left, right))
 	{
-		TODO
-		//if (int_int_exceeds(&right->const_expr.i, left->type->canonical->builtin.bitsize))
+		return sema_type_error_on_binop(expr);
+	}
+
+	// 3. For a constant right hand side we will make a series of checks.
+	if (is_const(right))
+	{
+		// 3a. Make sure the value does not exceed the bitsize of
+		//     the left hand side. We ignore this check for lhs being a constant.
+		if (left->type->canonical->type_kind != TYPE_IXX)
 		{
-			SEMA_ERROR(right, "Leftshift exceeds bitsize of '%s'", type_to_error_string(left->type));
+			BigInt bitsize;
+			bigint_init_unsigned(&bitsize, left->type->canonical->builtin.bitsize);
+			if (bigint_cmp(&right->const_expr.i, &bitsize) == CMP_GT)
+			{
+				SEMA_ERROR(right, "The shift exceeds bitsize of '%s'.", type_to_error_string(left->type));
+				return false;
+			}
+		}
+		// 3b. Make sure that the right hand side is positive.
+		if (bigint_cmp_zero(&right->const_expr.i) == CMP_LT)
+		{
+			SEMA_ERROR(right, "A shift must be a positive number.");
 			return false;
 		}
-		if (left->expr_kind == EXPR_CONST)
+
+		// 2c. Cast the value to the smallest runtime type.
+		cast_to_smallest_runtime(right);
+
+		// 4. Fold constant expressions.
+		if (is_const(left))
 		{
+			// 4a. For >> this is always an arithmetic shift.
+			if (expr->binary_expr.operator == BINARYOP_SHR)
+			{
+				expr_replace(expr, left);
+				bigint_shr(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
+				return true;
+			}
+			// 4b. The << case needs to behave differently for bigints and fixed bit integers.
 			expr_replace(expr, left);
 			if (left->const_expr.kind == TYPE_IXX)
 			{
-				bigint_shl(&expr->const_expr.i, &expr->const_expr.i, &right->const_expr.i);
+				bigint_shl(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
 			}
 			else
 			{
 				int bit_count = left->type->canonical->builtin.bitsize;
 				bool is_signed = !type_kind_is_unsigned(left->const_expr.kind);
-				bigint_shl_trunc(&expr->const_expr.i, &expr->const_expr.i, &right->const_expr.i, bit_count, is_signed);
+				bigint_shl_trunc(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i, bit_count, is_signed);
 			}
 			return true;
 		}
 	}
 
-	return true;
+	// 5. We might have the case 2 << x. In that case we will to cast the left hand side to the receiving type.
+	if (!cast_implicit(left, to)) return false;
 
-	ERR:
-	return sema_type_error_on_binop(expr);
+	// 6. As a last out, we make sure that a comptime int has a real type. We pick i64 for this.
+	if (!cast_to_runtime(left)) return false;
+
+	expr->type = left->type;
+	return true;
 }
 
-static bool sema_expr_analyse_shl_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
+/**
+ * Analyse a <<= b a >>= b
+ * @return true is the analysis succeeds, false otherwise.
+ */
+static bool sema_expr_analyse_shift_assign(Context *context, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
+	// 1. Analyze the two sub lhs & rhs *without coercion*
+	if (!sema_expr_analyse_binary_sub_expr(context, NULL, left, right)) return false;
 
+	// 2. Ensure the left hand side is assignable
 	if (!expr_is_ltype(left))
 	{
 		SEMA_ERROR(left, "Expression is not assignable.");
 		return false;
 	}
 
-	expr->type = left->type;
+	// 2. Only integers may be shifted.
+	if (!both_any_integer(left, right)) return sema_type_error_on_binop(expr);
 
-	// Check that right side is integer and cast to a runtime type if needed.
-	if (!type_is_integer(right->type->canonical)) return sema_type_error_on_binop(expr);
-
-	if (!cast_to_runtime(right)) return false;
-
-	if (right->expr_kind == EXPR_CONST)
+	// 3. For a constant right hand side we will make a series of checks.
+	if (is_const(right))
 	{
-		if (right->const_expr.i.is_negative)
+		// 3a. Make sure the value does not exceed the bitsize of
+		//     the left hand side.
+		BigInt bitsize;
+		bigint_init_unsigned(&bitsize, left->type->canonical->builtin.bitsize);
+		if (bigint_cmp(&right->const_expr.i, &bitsize) == CMP_GT)
 		{
-			SEMA_ERROR(right, "Leftshift constant was negative (%s). It must be zero or more.", expr_const_to_error_string(&right->const_expr));
+			SEMA_ERROR(right, "The shift exceeds bitsize of '%s'.", type_to_error_string(left->type));
 			return false;
 		}
-		BigInt max;
-		bigint_init_unsigned(&max, left->type->canonical->builtin.bitsize);
-		if (bigint_cmp(&right->const_expr.i, &max) == CMP_GT)
+
+		// 3b. Make sure that the right hand side is positive.
+		if (bigint_cmp_zero(&right->const_expr.i) == CMP_LT)
 		{
-			// IMPROVE suppress in macro?
-			SEMA_ERROR(right, "Leftshift exceeds bitsize of '%s', it cannot be higher.", type_to_error_string(left->type));
-			return expr_poison(right);
+			SEMA_ERROR(right, "A shift must be a positive number.");
+			return false;
 		}
+
+		// 3c. Cast the rhs to the smallest runtime type.
+		cast_to_smallest_runtime(right);
 	}
+
+	// 4. Set the type
+	expr->type = left->type;
 	return true;
 }
 
 
-static bool sema_expr_analyse_and(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_and(Context *context, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
+	if (!sema_expr_analyse_binary_sub_expr(context, NULL, left, right)) return false;
 	if (!cast_implicit(left, type_bool) || !cast_implicit(right, type_bool)) return false;
 
 	expr->type = type_bool;
@@ -1272,9 +1378,9 @@ static bool sema_expr_analyse_and(Context *context, Type *to, Expr *expr, Expr *
 	return true;
 }
 
-static bool sema_expr_analyse_or(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_or(Context *context, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
+	if (!sema_expr_analyse_binary_sub_expr(context, NULL, left, right)) return false;
 	if (!cast_implicit(left, type_bool) || !cast_implicit(right, type_bool)) return false;
 
 	if (both_const(left, right))
@@ -1286,8 +1392,6 @@ static bool sema_expr_analyse_or(Context *context, Type *to, Expr *expr, Expr *l
 	return true;
 }
 
-static bool sema_expr_analyse_and_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right) { TODO }
-static bool sema_expr_analyse_or_assign(Context *context, Type *to, Expr *expr, Expr *left, Expr *right) { TODO }
 
 
 static void cast_to_max_bit_size(Expr *left, Expr *right, Type *left_type, Type *right_type)
@@ -1312,30 +1416,84 @@ static void cast_to_max_bit_size(Expr *left, Expr *right, Type *left_type, Type 
 	assert(success);
 }
 
-static bool sema_expr_analyse_comp(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
+/**
+ * Analyze a == b, a != b, a > b, a < b, a >= b, a <= b
+ * @return
+ */
+static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_expr_analyse_binary_sub_expr(context, left, right)) return false;
+	// 1. Analyse left and right side without any conversions.
+	if (!sema_expr_analyse_binary_sub_expr(context, NULL, left, right)) return false;
+
+	bool is_equality_type_op = expr->binary_expr.operator == BINARYOP_NE || expr->binary_expr.operator == BINARYOP_EQ;
+
 	Type *left_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
 
-	// Handle the case of signed comparisons.
+	// 2. Handle the case of signed comparisons.
+	//    This happens when either side has a definite integer type
+	//    and those are either signed or unsigned.
+	//    If either side is compint, then this does not happen.
 	if ((type_is_unsigned(left_type) && type_is_signed(right_type))
 		|| (type_is_signed(left_type) && type_is_unsigned(right_type)))
 	{
+		// 2a. Resize so that both sides have the same bit width. This will always work.
 		cast_to_max_bit_size(left, right, left_type, right_type);
 	}
 	else
 	{
-		// Alternatively, find and promote to max
+		// 3. In the normal case, treat this as a binary op, finding the max type.
 		Type *max = type_find_max_type(left_type, right_type);
-		bool success = max && cast_implicit(left, max) && cast_implicit(right, max);
-		if (!success)
+
+		// 4. If no common type, then that's an error:
+		if (!max) goto ERR;
+
+		// 5. Most types can do equality, but not all can do comparison,
+		//    so we need to check that as well.
+		if (is_equality_type_op)
 		{
-			SEMA_ERROR(expr, "Cannot implicitly convert types to evaluate '%s' %s '%s'", type_to_error_string(left_type), token_type_to_string(binaryop_to_token(expr->binary_expr.operator)), type_to_error_string(right_type));
-			return false;
+			switch (max->type_kind)
+			{
+				case TYPE_POISONED:
+					return false;
+				case TYPE_VOID:
+				case TYPE_TYPEDEF:
+					UNREACHABLE
+				case TYPE_BOOL:
+				case TYPE_ENUM:
+				case TYPE_ERROR:
+				case TYPE_FUNC:
+				case TYPE_STRUCT:
+				case TYPE_UNION:
+				case TYPE_ERROR_UNION:
+				case TYPE_STRING:
+				case TYPE_ARRAY:
+				case TYPE_VARARRAY:
+				case TYPE_SUBARRAY:
+				case TYPE_META_TYPE:
+					// Only != and == allowed.
+					goto ERR;
+				case ALL_INTS:
+				case ALL_FLOATS:
+					// All comparisons allowed
+					break;
+				case TYPE_POINTER:
+					// Only comparisons between the same type is allowed. Subtypes not allowed.
+					if (left_type != right_type)
+					{
+						SEMA_ERROR(expr, "Cannot compare pointers of different types.");
+						return false;
+					}
+					break;
+			}
 		}
+
+		// 6. Do the implicit cast.
+		if (!cast_implicit(left, max)) goto ERR;
+		if (!cast_implicit(right, max)) goto ERR;
 	}
 
+	// 7. Do constant folding.
 	if (both_const(left, right))
 	{
 		switch (left->const_expr.kind)
@@ -1356,38 +1514,58 @@ static bool sema_expr_analyse_comp(Context *context, Type *to, Expr *expr, Expr 
 		expr->const_expr.kind = TYPE_BOOL;
 		expr->expr_kind = EXPR_CONST;
 	}
+
+	// 8. Set the type to bool
 	expr->type = type_bool;
 	return true;
+
+	ERR:
+	SEMA_ERROR(expr, "Cannot evaluate '%s' %s '%s'", type_to_error_string(left_type), token_type_to_string(binaryop_to_token(expr->binary_expr.operator)), type_to_error_string(right_type));
+	return false;
 }
 
-
-static bool sema_expr_analyse_elvis(Context *context, Type *to, Expr *expr, Expr *left, Expr *right) { TODO }
-
-static bool sema_expr_analyse_deref(Context *context, Type *to, Expr *expr, Expr *inner)
+/**
+ * Analyse *a
+ * @return true if analysis succeeds.
+ */
+static bool sema_expr_analyse_deref(Context *context, Expr *expr, Expr *inner)
 {
 	Type *canonical = inner->type->canonical;
+	// 1. Check that we have a pointer, or dereference is not allowed.
 	if (canonical->type_kind != TYPE_POINTER)
 	{
-		SEMA_ERROR(inner, "Cannot take the dereference of a value of type '%s'", type_to_error_string(inner->type));
+		SEMA_ERROR(inner, "Cannot dereference a value of type '%s'", type_to_error_string(inner->type));
 		return false;
 	}
+	// 2. This could be a constant, in which case it is a nil which is an error.
 	if (inner->expr_kind == EXPR_CONST)
 	{
 		SEMA_ERROR(inner, "Dereferencing nil is not allowed.");
 		return false;
 	}
+	// 3. Now the type might not be a pointer because of a typedef,
+	//    otherwise we need to use the the canonical representation.
 	Type *deref_type = inner->type->type_kind != TYPE_POINTER ? inner->type : canonical;
+
+	// 4. And... set the type.
 	expr->type = deref_type->pointer;
 	return true;
 }
 
-static bool sema_expr_analyse_addr(Context *context, Type *to, Expr *expr, Expr *inner)
+/**
+ * Analyse &a
+ * @return true if analysis succeeds.
+ */
+static bool sema_expr_analyse_addr(Context *context, Expr *expr, Expr *inner)
 {
+	// 1. Check that it is an lvalue.
 	if (!expr_is_ltype(inner))
 	{
-		SEMA_ERROR(inner, "Cannot take the address of a value of type '%s'", type_to_error_string(inner->type));
+		SEMA_ERROR(inner, "It is not possible to take the address of values, only of variables and memory locations.", type_to_error_string(inner->type));
 		return false;
 	}
+
+	// 2. Get the pointer of the underlying type.
 	expr->type = type_get_ptr(inner->type);
 	return true;
 }
@@ -1553,7 +1731,7 @@ static inline bool sema_expr_analyse_incdec(Context *context, Type *to, Expr *ex
 		SEMA_ERROR(inner, "Expression cannot be assigned to.");
 		return false;
 	}
-	if (!type_is_number(inner->type->canonical) && inner->type->canonical->type_kind != TYPE_POINTER)
+	if (!type_is_numeric(inner->type->canonical) && inner->type->canonical->type_kind != TYPE_POINTER)
 	{
 		SEMA_ERROR(inner, "Expression must be a number or a pointer.");
 		return false;
@@ -1572,74 +1750,59 @@ static inline bool sema_expr_analyse_binary(Context *context, Type *to, Expr *ex
 	switch (expr->binary_expr.operator)
 	{
 		case BINARYOP_ASSIGN:
-			return sema_expr_analyse_assign(context, to, expr, left, right);
+			return sema_expr_analyse_assign(context, expr, left, right);
 		case BINARYOP_MULT:
 		case BINARYOP_MULT_MOD:
 			return sema_expr_analyse_mult(context, to, expr, left, right);
-		case BINARYOP_MULT_ASSIGN:
-		case BINARYOP_MULT_MOD_ASSIGN:
-			return sema_expr_analyse_mult_assign(context, to, expr, left, right);
 		case BINARYOP_ADD:
 		case BINARYOP_ADD_MOD:
-			// TODO tread mod differently
 			return sema_expr_analyse_add(context, to, expr, left, right);
-		case BINARYOP_ADD_MOD_ASSIGN:
 		case BINARYOP_ADD_ASSIGN:
-			return sema_expr_analyse_add_assign(context, to, expr, left, right);
+		case BINARYOP_ADD_MOD_ASSIGN:
+		case BINARYOP_SUB_ASSIGN:
+		case BINARYOP_SUB_MOD_ASSIGN:
+			return sema_expr_analyse_add_sub_assign(context, expr, left, right);
 		case BINARYOP_SUB:
 		case BINARYOP_SUB_MOD:
 			return sema_expr_analyse_sub(context, to, expr, left, right);
-		case BINARYOP_SUB_ASSIGN:
-		case BINARYOP_SUB_MOD_ASSIGN:
-			return sema_expr_analyse_sub_assign(context, to, expr, left, right);
 		case BINARYOP_DIV:
 			return sema_expr_analyse_div(context, to, expr, left, right);
+		case BINARYOP_MULT_ASSIGN:
 		case BINARYOP_DIV_ASSIGN:
-			return sema_expr_analyse_div_assign(context, to, expr, left, right);
+			return sema_expr_analyse_common_assign(context, expr, left, right, false);
+		case BINARYOP_MULT_MOD_ASSIGN:
+		case BINARYOP_BIT_AND_ASSIGN:
+		case BINARYOP_BIT_OR_ASSIGN:
+		case BINARYOP_BIT_XOR_ASSIGN:
+		case BINARYOP_MOD_ASSIGN:
+			return sema_expr_analyse_common_assign(context, expr, left, right, true);
 		case BINARYOP_MOD:
 			return sema_expr_analyse_mod(context, to, expr, left, right);
-		case BINARYOP_MOD_ASSIGN:
-			return sema_expr_analyse_mod_assign(context, to, expr, left, right);
 		case BINARYOP_AND:
-			return sema_expr_analyse_and(context, to, expr, left, right);
-		case BINARYOP_AND_ASSIGN:
-			return sema_expr_analyse_and_assign(context, to, expr, left, right);
+			return sema_expr_analyse_and(context, expr, left, right);
 		case BINARYOP_OR:
-			return sema_expr_analyse_or(context, to, expr, left, right);
-		case BINARYOP_OR_ASSIGN:
-			return sema_expr_analyse_or_assign(context, to, expr, left, right);
-		case BINARYOP_BIT_AND_ASSIGN:
-			return sema_expr_analyse_bit_and_assign(context, to, expr, left, right);
+			return sema_expr_analyse_or(context, expr, left, right);
 		case BINARYOP_BIT_OR:
 		case BINARYOP_BIT_XOR:
 		case BINARYOP_BIT_AND:
 			return sema_expr_analyse_bit(context, to, expr, left, right);
-		case BINARYOP_BIT_OR_ASSIGN:
-			return sema_expr_analyse_bit_or_assign(context, to, expr, left, right);
-		case BINARYOP_BIT_XOR_ASSIGN:
-			return sema_expr_analyse_bit_xor_assign(context, to, expr, left, right);
 		case BINARYOP_NE:
-			// TODO special handling
-			return sema_expr_analyse_comp(context, to, expr, left, right);
 		case BINARYOP_EQ:
-			// TODO special handling
-			return sema_expr_analyse_comp(context, to, expr, left, right);
 		case BINARYOP_GT:
 		case BINARYOP_GE:
 		case BINARYOP_LT:
 		case BINARYOP_LE:
-			return sema_expr_analyse_comp(context, to, expr, left, right);
+			return sema_expr_analyse_comp(context, expr, left, right);
 		case BINARYOP_SHR:
-			return sema_expr_analyse_shr(context, to, expr, left, right);
-		case BINARYOP_SHR_ASSIGN:
-			return sema_expr_analyse_shr_assign(context, to, expr, left, right);
 		case BINARYOP_SHL:
-			return sema_expr_analyse_shl(context, to, expr, left, right);
+			return sema_expr_analyse_shift(context, to, expr, left, right);
+		case BINARYOP_SHR_ASSIGN:
 		case BINARYOP_SHL_ASSIGN:
-			return sema_expr_analyse_shl_assign(context, to, expr, left, right);
-		default:
-			UNREACHABLE
+			return sema_expr_analyse_shift_assign(context, expr, left, right);
+		case BINARYOP_ERROR:
+			break;
 	}
+	UNREACHABLE
 }
 
 static inline bool sema_expr_analyse_unary(Context *context, Type *to, Expr *expr)
@@ -1652,9 +1815,9 @@ static inline bool sema_expr_analyse_unary(Context *context, Type *to, Expr *exp
 	switch (expr->unary_expr.operator)
 	{
 		case UNARYOP_DEREF:
-			return sema_expr_analyse_deref(context, to, expr, inner);
+			return sema_expr_analyse_deref(context, expr, inner);
 		case UNARYOP_ADDR:
-			return sema_expr_analyse_addr(context, to, expr, inner);
+			return sema_expr_analyse_addr(context, expr, inner);
 		case UNARYOP_NEG:
 		case UNARYOP_NEGMOD:
 			return sema_expr_analyse_neg(context, to, expr, inner);
@@ -2270,6 +2433,12 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 }
 
 
+bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr)
+{
+	if (!sema_analyse_expr(context, to, expr)) return false;
+	return cast_implicit(expr, to);
+}
+
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr)
 {
 	switch (expr->resolve_status)
@@ -2285,5 +2454,5 @@ bool sema_analyse_expr(Context *context, Type *to, Expr *expr)
 	}
 	if (!sema_analyse_expr_dispatch(context, to, expr)) return expr_poison(expr);
 	expr->resolve_status = RESOLVE_DONE;
-	return cast_implicit(expr, to);
+	return to ? cast(expr, to, CAST_TYPE_OPTIONAL_IMPLICIT) : true;
 }

@@ -14,11 +14,6 @@ void diag_reset(void)
 	diagnostics.warnings = 0;
 }
 
-void reset_panic_mode(void)
-{
-	diagnostics.panic_mode = false;
-}
-
 typedef enum
 {
 	PRINT_TYPE_ERROR,

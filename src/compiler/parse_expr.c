@@ -162,6 +162,7 @@ static Expr *parse_unary_expr(Context *context, Expr *left)
 	CHECK_EXPR(right_side);
 
 	unary->unary_expr.expr = right_side;
+	unary->span.end_loc = right_side->span.end_loc;
 	return unary;
 }
 
