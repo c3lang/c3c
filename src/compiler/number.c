@@ -34,19 +34,6 @@ static int type_bits[TYPE_U64 + 1] = {
 		[TYPE_I64] = 64,
 };
 
-static int64_t int_type_max[TYPE_I64 + 1] = {
-		[TYPE_I8] = 0x7F,
-		[TYPE_I16] = 0x7FFF,
-		[TYPE_I32] = 0x7FFFFFFFLL,
-		[TYPE_I64] = 0x7FFFFFFFFFFFFFFFLL,
-		};
-
-static int64_t int_type_min[TYPE_I64 + 1] = {
-		[TYPE_I8] = -0x80,
-		[TYPE_I16] = -0x8000L,
-		[TYPE_I32] = -0x80000000L,
-		[TYPE_I64] = -0x8000000000000000LL,
-};
 
 void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
 {
@@ -73,6 +60,12 @@ void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
 		case TYPE_F64:
 		case TYPE_FXX:
 			fprintf(file, "%Lf", expr->f);
+			break;
+		case TYPE_ENUM:
+			fprintf(file, "%s", expr->enum_constant->name);
+			break;
+		case TYPE_ERROR:
+			fprintf(file, "%s", expr->error_constant->name);
 			break;
 		default:
 			UNREACHABLE
@@ -172,6 +165,7 @@ static inline bool compare_fps(long double left, long double right, BinaryOp op)
 
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op)
 {
+	bool is_eq;
 	switch (left->kind)
 	{
 		case TYPE_BOOL:
@@ -183,10 +177,30 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		case TYPE_POINTER:
 			return true;
 		case TYPE_STRING:
-			TODO
+			if (left->string.len != right->string.len)
+			{
+				is_eq = false;
+				break;
+			}
+			if (right->string.chars == left->string.chars)
+			{
+				is_eq = true;
+				break;
+			}
+			is_eq = strncmp(left->string.chars, right->string.chars, left->string.len);
+			break;
+		case TYPE_ERROR:
+			assert(left->error_constant->type == right->error_constant->type);
+			is_eq = left->error_constant == right->error_constant;
+			break;
+		case TYPE_ENUM:
+			assert(left->enum_constant->type == right->enum_constant->type);
+			return expr_const_compare(&left->enum_constant->enum_constant.expr->const_expr, &right->enum_constant->enum_constant.expr->const_expr, op);
 		default:
 			UNREACHABLE
 	}
+	assert(op == BINARYOP_EQ || op == BINARYOP_NE);
+	return op == BINARYOP_EQ == is_eq;
 }
 
 bool expr_const_int_overflowed(const ExprConst *expr)
@@ -238,6 +252,15 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case TYPE_F64:
 		case TYPE_FXX:
 			asprintf(&buff, "%Lf", expr->f);
+			return buff;
+		case TYPE_ENUM:
+			asprintf(&buff, "%s.%s", expr->enum_constant->type->name, expr->enum_constant->name);
+			return buff;
+		case TYPE_ERROR:
+			asprintf(&buff, "%s.%s", expr->error_constant->type->name, expr->error_constant->name);
+			return buff;
+		case TYPE_STRING:
+			asprintf(&buff, "\"%*.s\"", expr->string.len, expr->string.chars);
 			return buff;
 		default:
 			UNREACHABLE

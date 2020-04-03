@@ -130,6 +130,33 @@ error OtherError
     FOO_BAR
 }
 
+enum Inf
+{
+    A,
+    B,
+    C = 10000
+}
+
+enum Inf2 : byte
+{
+    A,
+    B,
+    C = 129,
+}
+
+typedef Inf as BooInf;
+
+func void enumInferenceTest()
+{
+    Inf x = Inf.A;
+    x = BooInf.B;
+    x = A;
+    int x1 = 0;
+    bool y = x1 == x1;
+    Inf2 z = C;
+    if (z == Inf2.A) return;
+}
+
 func int jumptest()
 {
     if (1) goto LABELX;

@@ -726,5 +726,6 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 			if (canonical->type_kind == TYPE_POINTER) return sapt(expr, from_type, canonical, to_type, cast_type);
 			break;
 	}
+	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
 	return sema_type_mismatch(expr, canonical, cast_type);
 }

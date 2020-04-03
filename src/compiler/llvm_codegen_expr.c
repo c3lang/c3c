@@ -180,7 +180,7 @@ static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *
 
 static inline LLVMValueRef gencontext_emit_inc_dec_change(GenContext *context, bool use_mod, LLVMValueRef current_value, Expr *expr, int diff)
 {
-	Type *type = expr->type->canonical;
+	Type *type = type_reduced_from_expr(expr);
 	LLVMTypeRef llvm_type = llvm_type(type);
 
 	if (type->type_kind == TYPE_POINTER)
@@ -221,6 +221,7 @@ static inline LLVMValueRef gencontext_emit_post_inc_dec(GenContext *context, Exp
 
 LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 {
+	Type *type = type_reduced_from_expr(expr->unary_expr.expr);
 	switch (expr->unary_expr.operator)
 	{
 		case UNARYOP_ERROR:
@@ -233,11 +234,11 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 			return LLVMBuildNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "negmod");
 		case UNARYOP_NEG:
 			// TODO improve how unsigned numbers are negated.
-			if (type_is_float(expr->unary_expr.expr->type->canonical))
+			if (type_is_float(type))
 			{
 				return LLVMBuildFNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "fneg");
 			}
-			if (type_is_unsigned(expr->unary_expr.expr->type->canonical))
+			if (type_is_unsigned(type))
 			{
 				return LLVMBuildNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "neg");
 			}
@@ -246,7 +247,7 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 		case UNARYOP_ADDR:
 			return gencontext_emit_address(context, expr->unary_expr.expr);
 		case UNARYOP_DEREF:
-			return LLVMBuildLoad2(context->builder, llvm_type(expr->unary_expr.expr->type), gencontext_emit_expr(context, expr->unary_expr.expr), "deref");
+			return LLVMBuildLoad2(context->builder, llvm_type(type), gencontext_emit_expr(context, expr->unary_expr.expr), "deref");
 		case UNARYOP_INC:
 			return gencontext_emit_pre_inc_dec(context, expr->unary_expr.expr, 1, false);
 		case UNARYOP_DEC:
@@ -440,7 +441,6 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 	{
 		return gencontext_emit_logical_and_or(context, expr, binary_op);
 	}
-	Type *type = expr->type->canonical;
 	Expr *lhs = expr->binary_expr.left;
 	Expr *rhs = expr->binary_expr.right;
 
@@ -456,10 +456,10 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 	}
 
 	rhs_value = gencontext_emit_expr(context, rhs);
-	Type *lhs_type = expr->binary_expr.left->type->canonical;
+	Type *lhs_type = type_reduced_from_expr(lhs);
 	if (type_is_integer(lhs_type) && binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
 	{
-		return gencontext_emit_int_comparison(context, lhs_type, rhs->type->canonical, lhs_value, rhs_value, binary_op);
+		return gencontext_emit_int_comparison(context, lhs_type, type_reduced_from_expr(rhs), lhs_value, rhs_value, binary_op);
 	}
 	bool is_float = type_is_float(lhs_type);
 	switch (binary_op)
@@ -520,24 +520,24 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 		case BINARYOP_BIT_XOR:
 			return LLVMBuildXor(context->builder, lhs_value, rhs_value, "xor");
 		case BINARYOP_EQ:
-			assert(!type_is_integer(lhs_type));
 			// Unordered?
+			assert(type_is_float(lhs_type));
 			return LLVMBuildFCmp(context->builder, LLVMRealUEQ, lhs_value, rhs_value, "eq");
 		case BINARYOP_NE:
-			assert(!type_is_integer(lhs_type));
 			// Unordered?
+			assert(type_is_float(lhs_type));
 			return LLVMBuildFCmp(context->builder, LLVMRealUNE, lhs_value, rhs_value, "neq");
 		case BINARYOP_GE:
-			assert(!type_is_integer(lhs_type));
+			assert(type_is_float(lhs_type));
 			return LLVMBuildFCmp(context->builder, LLVMRealUGE, lhs_value, rhs_value, "ge");
 		case BINARYOP_GT:
-			assert(!type_is_integer(lhs_type));
+			assert(type_is_float(lhs_type));
 			return LLVMBuildFCmp(context->builder, LLVMRealUGT, lhs_value, rhs_value, "gt");
 		case BINARYOP_LE:
-			assert(!type_is_integer(lhs_type));
+			assert(type_is_float(lhs_type));
 			return LLVMBuildFCmp(context->builder, LLVMRealULE, lhs_value, rhs_value, "le");
 		case BINARYOP_LT:
-			assert(!type_is_integer(lhs_type));
+			assert(type_is_float(lhs_type));
 			return LLVMBuildFCmp(context->builder, LLVMRealULE, lhs_value, rhs_value, "lt");
 		case BINARYOP_AND:
 		case BINARYOP_OR:
@@ -666,7 +666,7 @@ static LLVMValueRef gencontext_emit_identifier_expr(GenContext *context, Expr *e
 
 LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 {
-	LLVMTypeRef type = llvm_type(expr->type);
+	LLVMTypeRef type = llvm_type(type_reduced_from_expr(expr));
 	switch (expr->const_expr.kind)
 	{
 		case ALL_INTS:
@@ -695,6 +695,11 @@ LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 			                                                         0));
 			return global_name;
 		}
+		case TYPE_ERROR:
+			// TODO emit as u128? u64?
+			TODO
+		case TYPE_ENUM:
+			return gencontext_emit_expr(context, expr->const_expr.enum_constant->enum_constant.expr);
 		default:
 			UNREACHABLE
 	}

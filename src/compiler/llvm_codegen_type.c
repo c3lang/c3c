@@ -160,10 +160,13 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 			return type->backend_type = llvm_get_type(context, type->canonical);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ENUM:
-		case TYPE_ERROR:
 		case TYPE_ERROR_UNION:
 			return type->backend_type = llvm_type_from_decl(context, type->decl);
+		case TYPE_ENUM:
+			return type->backend_type = llvm_get_type(context, type->decl->enums.type_info->type);
+		case TYPE_ERROR:
+			// TODO: u128? u64?
+			TODO
 		case TYPE_FUNC:
 			return type->backend_type = llvm_func_type(context, type);
 		case TYPE_VOID:

@@ -114,15 +114,75 @@ static inline bool sema_expr_analyse_ternary(Context *context, Type *to, Expr *e
 	return true;
 }
 
+
+static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name, Decl *decl)
+{
+	VECEACH(decl->enums.values, i)
+	{
+		Decl *enum_constant = decl->enums.values[i];
+		if (enum_constant->name == name)
+		{
+			assert(enum_constant->resolve_status == RESOLVE_DONE);
+			expr->type = enum_constant->type;
+			expr->const_expr.kind = TYPE_ENUM;
+			expr->const_expr.enum_constant = enum_constant;
+			expr->expr_kind = EXPR_CONST;
+			return true;
+		}
+	}
+	return false;
+}
+
+static inline bool sema_expr_analyse_error_constant(Expr *expr, const char *name, Decl *decl)
+{
+	VECEACH(decl->error.error_constants, i)
+	{
+		Decl *error_constant = decl->error.error_constants[i];
+		if (error_constant->name == name)
+		{
+			assert(error_constant->resolve_status == RESOLVE_DONE);
+			expr->type = decl->type;
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.kind = TYPE_ERROR;
+			expr->const_expr.error_constant = decl;
+			return true;
+		}
+	}
+	return false;
+}
+
+static inline bool find_possible_inferred_identifier(Type *to, Expr *expr)
+{
+	if (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_ERROR) return false;
+	Decl *parent_decl = to->canonical->decl;
+	switch (parent_decl->decl_kind)
+	{
+		case DECL_ENUM:
+			return sema_expr_analyse_enum_constant(expr, expr->identifier_expr.identifier, parent_decl);
+		case DECL_ERROR:
+			return sema_expr_analyse_error_constant(expr, expr->identifier_expr.identifier, parent_decl);
+		case DECL_UNION:
+		case DECL_STRUCT:
+			return false;
+		default:
+			UNREACHABLE
+	}
+
+}
 static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr *expr)
 {
-	// TODO what about struct functions
 	Decl *ambiguous_decl;
 	Decl *decl = sema_resolve_symbol(context, expr->identifier_expr.identifier, expr->identifier_expr.path, &ambiguous_decl);
 
+
+	if (!decl && !expr->identifier_expr.path && to)
+	{
+		if (find_possible_inferred_identifier(to, expr)) return true;
+	}
+
 	if (!decl)
 	{
-		SEMA_ERROR(expr, "Unknown symbol '%s'.", expr->identifier_expr.identifier);
+		SEMA_ERROR(expr, "The symbol '%s' could not be found.", expr->identifier_expr.identifier);
 		return false;
 	}
 
@@ -162,6 +222,7 @@ static inline bool sema_expr_analyse_binary_sub_expr(Context *context, Type *to,
 
 static inline bool sema_expr_analyse_var_call(Context *context, Type *to, Expr *expr) { TODO }
 static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Expr *expr) { TODO };
+
 
 static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr *expr, Decl *decl)
 {
@@ -284,41 +345,6 @@ static inline bool sema_expr_analyse_method_function(Context *context, Expr *exp
 	return false;
 }
 
-static inline bool sema_expr_analyse_enum_constant(Context *context, Expr *expr, Decl *decl)
-{
-	const char *name = expr->type_access.name.string;
-	VECEACH(decl->enums.values, i)
-	{
-		Decl *enum_constant = decl->enums.values[i];
-		if (enum_constant->name == name)
-		{
-			assert(enum_constant->resolve_status == RESOLVE_DONE);
-			expr_replace(expr, enum_constant->enum_constant.expr);
-			return true;
-		}
-	}
-	SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
-	return false;
-}
-
-static inline bool sema_expr_analyse_error_constant(Context *context, Expr *expr, Decl *decl)
-{
-	const char *name = expr->type_access.name.string;
-	VECEACH(decl->error.error_constants, i)
-	{
-		Decl *error_constant = decl->error.error_constants[i];
-		if (error_constant->name == name)
-		{
-			assert(error_constant->resolve_status == RESOLVE_DONE);
-			expr->type = decl->type;
-			expr->expr_kind = EXPR_CONST;
-			expr_const_set_int(&expr->const_expr, decl->error_constant.value, TYPE_U32);
-			return true;
-		}
-	}
-	SEMA_ERROR(expr, "'%s' has no error type '%s'.", decl->name, name);
-	return false;
-}
 
 static Decl *strukt_recursive_search_member(Decl *strukt, const char *name, int *index)
 {
@@ -335,6 +361,7 @@ static Decl *strukt_recursive_search_member(Decl *strukt, const char *name, int 
 	}
 	return NULL;
 }
+
 
 static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *expr)
 {
@@ -389,21 +416,38 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 {
 	TypeInfo *type_info = expr->type_access.type;
 	if (!sema_resolve_type_info(context, type_info)) return false;
-	if (!type_may_have_method_functions(type_info->type))
+	Type *canonical = type_info->type->canonical;
+	if (!type_may_have_method_functions(canonical))
 	{
 		SEMA_ERROR(expr, "'%s' does not have method functions.", type_to_error_string(type_info->type));
 		return false;
 	}
-	Decl *decl = type_info->type->decl;
+	Decl *decl = canonical->decl;
 	// TODO add more constants that can be inspected?
 	// e.g. SomeEnum.values, MyUnion.x.offset etc?
 	switch (decl->decl_kind)
 	{
 		case DECL_ENUM:
-			if (expr->type_access.name.type == TOKEN_CONST_IDENT) return sema_expr_analyse_enum_constant(context, expr, decl);
+			if (expr->type_access.name.type == TOKEN_CONST_IDENT)
+			{
+				if (!sema_expr_analyse_enum_constant(expr, expr->type_access.name.string, decl))
+				{
+					SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, expr->type_access.name.string);
+					return false;
+				}
+				return true;
+			}
 			break;
 		case DECL_ERROR:
-			if (expr->type_access.name.type == TOKEN_CONST_IDENT) return sema_expr_analyse_error_constant(context, expr, decl);
+			if (expr->type_access.name.type == TOKEN_CONST_IDENT)
+			{
+				if (!sema_expr_analyse_error_constant(expr, expr->type_access.name.string, decl))
+				{
+					SEMA_ERROR(expr, "'%s' has no error type '%s'.", decl->name, expr->type_access.name.string);
+					return false;
+				}
+				return true;
+			}
 			break;
 		case DECL_UNION:
 		case DECL_STRUCT:
@@ -831,6 +875,8 @@ static bool binary_arithmetic_promotion(Expr *left, Expr *right, Type *left_type
  */
 static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
+	// TODO enums
+
 	bool is_mod = expr->binary_expr.operator == BINARYOP_SUB_MOD;
 
 	// 1. Analyse a and b. Do not push down if this is a -%
@@ -926,6 +972,8 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
  */
 static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
+	// TODO enums
+
 	bool is_mod = expr->binary_expr.operator == BINARYOP_ADD_MOD;
 
 	// 1. Promote everything to the recipient type – if possible
@@ -1446,11 +1494,15 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 		Type *max = type_find_max_type(left_type, right_type);
 
 		// 4. If no common type, then that's an error:
-		if (!max) goto ERR;
+		if (!max)
+		{
+			SEMA_ERROR(expr, "'%s' and '%s' are different types and cannot be compared.",
+					type_to_error_string(left->type), type_to_error_string(right->type));
+		};
 
 		// 5. Most types can do equality, but not all can do comparison,
 		//    so we need to check that as well.
-		if (is_equality_type_op)
+		if (!is_equality_type_op)
 		{
 			switch (max->type_kind)
 			{
@@ -1496,21 +1548,7 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 	// 7. Do constant folding.
 	if (both_const(left, right))
 	{
-		switch (left->const_expr.kind)
-		{
-			case TYPE_BOOL:
-				SEMA_ERROR(expr, "Cannot compare booleans, convert them into integers first.");
-				return false;
-			case ALL_FLOATS:
-			case ALL_INTS:
-				expr->const_expr.b = expr_const_compare(&left->const_expr, &right->const_expr, expr->binary_expr.operator);
-				return true;
-			case TYPE_STRING:
-				SEMA_ERROR(expr, "Cannot compare strings.");
-				return false;
-			default:
-				UNREACHABLE
-		}
+		expr->const_expr.b = expr_const_compare(&left->const_expr, &right->const_expr, expr->binary_expr.operator);
 		expr->const_expr.kind = TYPE_BOOL;
 		expr->expr_kind = EXPR_CONST;
 	}
@@ -1678,6 +1716,9 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 			case TYPE_STRING:
 				expr->const_expr.b = !inner->const_expr.string.len;
 				break;
+			case TYPE_ERROR:
+			case TYPE_ENUM:
+				TODO
 			default:
 				UNREACHABLE
 		}

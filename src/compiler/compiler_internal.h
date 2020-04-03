@@ -55,7 +55,11 @@ typedef struct
 			char* chars;
 			int len;
 		} string;
+		Decl *enum_constant;
+		Decl *error_constant;
 	};
+	// Valid type kinds:
+	// bool, ints, floats, enum, error, string
 	TypeKind kind;
 } ExprConst;
 
@@ -1150,6 +1154,21 @@ static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
 bool type_may_have_method_functions(Type *type);
+
+static inline Type *type_reduced(Type *type)
+{
+	Type *canonical = type->canonical;
+	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
+	if (canonical->type_kind == TYPE_ERROR) TODO;
+	return canonical;
+}
+
+static inline Type *type_reduced_from_expr(Expr *expr)
+{
+	return type_reduced(expr->type);
+}
+
+
 static inline bool type_is_integer(Type *type)
 {
 	assert(type == type->canonical);
