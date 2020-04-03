@@ -23,7 +23,7 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 {
 	Decl *decl = ast->declare_stmt;
 
-	decl->var.backend_ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
+	decl->var.backend_ref = gencontext_emit_alloca(context, llvm_type(type_reduced(decl->type)), decl->name);
 	// TODO NRVO
 	// TODO debug info
 	/*

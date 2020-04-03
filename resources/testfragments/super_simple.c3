@@ -148,6 +148,7 @@ typedef Inf as BooInf;
 
 func void enumInferenceTest()
 {
+    OtherError e = OtherError.FOO_BAR;
     Inf x = Inf.A;
     x = BooInf.B;
     x = A;

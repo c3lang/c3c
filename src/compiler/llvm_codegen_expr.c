@@ -227,7 +227,7 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 		case UNARYOP_ERROR:
 			FATAL_ERROR("Illegal unary op %s", expr->unary_expr.operator);
 		case UNARYOP_NOT:
-			return LLVMBuildXor(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), LLVMConstInt(type_bool->backend_type, 1, 0), "not");
+			return LLVMBuildXor(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), LLVMConstInt(llvm_type(type_bool), 1, 0), "not");
 		case UNARYOP_BITNEG:
 			return LLVMBuildNot(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "bnot");
 		case UNARYOP_NEGMOD:
@@ -286,7 +286,7 @@ static LLVMValueRef gencontext_emit_logical_and_or(GenContext *context, Expr *ex
 
 			// Generate phi
 	gencontext_emit_block(context, phi_block);
-	LLVMValueRef phi = LLVMBuildPhi(context->builder, type_bool->backend_type, "val");
+	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(type_bool), "val");
 
 	// Simplify for LLVM by entering the constants we already know of.
 	LLVMValueRef result_on_skip = LLVMConstInt(LLVMInt1TypeInContext(context->context), op == BINARYOP_AND ? 0 : 1, false);
@@ -616,7 +616,7 @@ LLVMValueRef gencontext_emit_elvis_expr(GenContext *context, Expr *expr)
 
 	// Generate phi
 	gencontext_emit_block(context, phi_block);
-	LLVMValueRef phi = LLVMBuildPhi(context->builder, expr->type->backend_type, "val");
+	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(expr->type), "val");
 
 	LLVMValueRef logic_values[2] = { lhs, rhs };
 	LLVMBasicBlockRef blocks[2] = { current_block, rhs_block };
@@ -649,20 +649,15 @@ LLVMValueRef gencontext_emit_ternary_expr(GenContext *context, Expr *expr)
 
 	// Generate phi
 	gencontext_emit_block(context, phi_block);
-	LLVMValueRef phi = LLVMBuildPhi(context->builder, expr->type->backend_type, "val");
+	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(expr->type), "val");
 
-	LLVMValueRef logicValues[2] = { lhs, rhs };
+	LLVMValueRef logic_values[2] = { lhs, rhs };
 	LLVMBasicBlockRef blocks[2] = { lhs_block, rhs_block };
-	LLVMAddIncoming(phi, logicValues, blocks, 2);
+	LLVMAddIncoming(phi, logic_values, blocks, 2);
 
 	return phi;
 }
 
-static LLVMValueRef gencontext_emit_identifier_expr(GenContext *context, Expr *expr)
-{
-	return LLVMBuildLoad2(context->builder, expr->identifier_expr.decl->type->canonical->backend_type,
-			expr->identifier_expr.decl->var.backend_ref, expr->identifier_expr.decl->name);
-}
 
 LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 {
@@ -696,8 +691,7 @@ LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 			return global_name;
 		}
 		case TYPE_ERROR:
-			// TODO emit as u128? u64?
-			TODO
+			return LLVMConstInt(llvm_type(type_error), expr->const_expr.error_constant->error_constant.value, false);
 		case TYPE_ENUM:
 			return gencontext_emit_expr(context, expr->const_expr.enum_constant->enum_constant.expr);
 		default:

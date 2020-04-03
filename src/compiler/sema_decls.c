@@ -31,7 +31,7 @@ static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
 				break;
 			}
 		}
-		constant->error_constant.value = i;
+		constant->error_constant.value = i + 1;
 		constant->resolve_status = RESOLVE_DONE;
 	}
 	return success;

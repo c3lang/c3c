@@ -46,7 +46,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 	}
 
 	// TODO fix name
-	decl->var.backend_ref = LLVMAddGlobal(context->module, decl->type->backend_type, decl->name);
+	decl->var.backend_ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->name);
 
 	// If read only: LLVMSetGlobalConstant(decl->var.backend_ref, 1);
 

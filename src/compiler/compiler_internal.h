@@ -30,8 +30,6 @@ typedef struct _Expr Expr;
 typedef struct _Module Module;
 typedef struct _Type Type;
 
-typedef bool(*CastFunc)(Expr *, Type *, Type *, Type *, CastType cast_type);
-
 typedef struct _BigInt
 {
 	unsigned digit_count;
@@ -888,14 +886,7 @@ extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
-
-extern Type t_i8, t_i16, t_i32, t_i64, t_isz, t_ixx;
-extern Type t_u1, t_u8, t_u16, t_u32, t_u64, t_usz, t_uxx;
-extern Type t_f32, t_f64, t_fxx;
-extern Type t_u0, t_str;
-extern Type t_cus, t_cui, t_cul, t_cull;
-extern Type t_cs, t_ci, t_cl, t_cll;
-extern Type t_voidstar;
+extern Type *type_typeid, *type_error;
 
 extern const char *main_name;
 
@@ -1159,7 +1150,7 @@ static inline Type *type_reduced(Type *type)
 {
 	Type *canonical = type->canonical;
 	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
-	if (canonical->type_kind == TYPE_ERROR) TODO;
+	if (canonical->type_kind == TYPE_ERROR) return type_error->canonical;
 	return canonical;
 }
 

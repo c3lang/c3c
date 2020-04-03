@@ -155,18 +155,21 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 	{
 		case TYPE_POISONED:
 		case TYPE_META_TYPE:
+		case TYPE_ENUM:
+		case TYPE_ERROR:
 			UNREACHABLE;
 		case TYPE_TYPEDEF:
 			return type->backend_type = llvm_get_type(context, type->canonical);
+		case TYPE_ERROR_UNION:
+		{
+			LLVMTypeRef types[2];
+			types[0] = llvm_get_type(context, type_typeid->canonical);
+			types[1] = llvm_get_type(context, type_error->canonical);
+			return type->backend_type = LLVMStructType(types, 2, false);
+		}
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ERROR_UNION:
 			return type->backend_type = llvm_type_from_decl(context, type->decl);
-		case TYPE_ENUM:
-			return type->backend_type = llvm_get_type(context, type->decl->enums.type_info->type);
-		case TYPE_ERROR:
-			// TODO: u128? u64?
-			TODO
 		case TYPE_FUNC:
 			return type->backend_type = llvm_func_type(context, type);
 		case TYPE_VOID:

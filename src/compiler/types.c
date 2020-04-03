@@ -4,22 +4,29 @@
 
 #include "compiler_internal.h"
 
-Type *type_bool, *type_void, *type_string, *type_voidptr;
-Type *type_float, *type_double;
+static Type t_u0, t_str, t_u1, t_i8, t_i16, t_i32, t_i64, t_ixx;
+static Type t_u8, t_u16, t_u32, t_u64;
+static Type t_f32, t_f64, t_fxx;
+static Type t_usz, t_isz;
+static Type t_cus, t_cui, t_cul, t_cull;
+static Type t_cs, t_ci, t_cl, t_cll;
+static Type t_voidstar, t_typeid;
+static Type t_err;
+
+Type *type_bool = &t_u1;
+Type *type_void = &t_u0;
+Type *type_string = &t_str;
+Type *type_voidptr = &t_voidstar;
+Type *type_float = &t_f32;
+Type *type_double = &t_f64;
+Type *type_error = &t_err;
+Type *type_typeid = &t_typeid;
 Type *type_char, *type_short, *type_int, *type_long, *type_isize;
 Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
 Type *type_compint, *type_compfloat;
 Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
 
-Type t_u0, t_str;
-Type t_u1, t_i8, t_i16, t_i32, t_i64, t_ixx;
-Type t_u8, t_u16, t_u32, t_u64, t_uxx;
-Type t_f32, t_f64, t_fxx;
-Type t_usz, t_isz;
-Type t_cus, t_cui, t_cul, t_cull;
-Type t_cs, t_ci, t_cl, t_cll;
-Type t_voidstar;
 
 #define META_OFFSET 0
 #define PTR_OFFSET 1
@@ -421,6 +428,9 @@ type_create(#_name, &_shortname, &type_ ## _name, _type, _bits, target->align_mi
 
 	type_create_alias("c_short", &t_cs, &type_c_short, type_signed_int_by_bitsize(target->width_c_short));
 	type_create_alias("c_int", &t_ci, &type_c_int, type_signed_int_by_bitsize(target->width_c_int));
+	// TODO fix error size
+	type_create_alias("error", &t_err, &type_error, type_signed_int_by_bitsize(target->width_c_int));
+	type_create_alias("typeid", &t_typeid, &type_typeid, type_signed_int_by_bitsize(target->width_pointer));
 	type_create_alias("c_long", &t_cl, &type_c_long, type_signed_int_by_bitsize(target->width_c_long));
 	type_create_alias("c_longlong", &t_cll, &type_c_longlong, type_signed_int_by_bitsize(target->width_c_long_long));
 

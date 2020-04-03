@@ -144,7 +144,7 @@ static inline bool sema_expr_analyse_error_constant(Expr *expr, const char *name
 			expr->type = decl->type;
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.kind = TYPE_ERROR;
-			expr->const_expr.error_constant = decl;
+			expr->const_expr.error_constant = error_constant;
 			return true;
 		}
 	}
