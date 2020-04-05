@@ -38,7 +38,7 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 
 		}
 		case DECL_TYPEDEF:
-			return llvm_get_type(context, decl->typedef_decl.type);
+			return llvm_get_type(context, decl->typedef_decl.type_info->type);
 		case DECL_STRUCT:
 		{
 			LLVMTypeRef *types = NULL;

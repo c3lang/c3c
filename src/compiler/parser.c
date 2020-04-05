@@ -891,7 +891,7 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 	{
 		if (context->tok.type != TOKEN_COMMA && context->tok.type != TOKEN_RPAREN)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Unexpected end of the parameter list, did you forget an ')'?");
+			sema_error_at(context->prev_tok_end, "Unexpected end of the parameter list, did you forget an ')'?");
 			return false;
 		}
 		SEMA_ERROR(type, "The function parameter must be named.");
@@ -1955,6 +1955,7 @@ void parse_file(Context *context)
 static Expr *parse_type_access(Context *context, TypeInfo *type)
 {
     Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPE_ACCESS, context->tok);
+    expr->span = type->span;
     expr->type_access.type = type;
 
     advance_and_verify(context, TOKEN_DOT);
@@ -1966,6 +1967,7 @@ static Expr *parse_type_access(Context *context, TypeInfo *type)
     	case TOKEN_IDENT:
     	case TOKEN_CONST_IDENT:
     		advance(context);
+		    RANGE_EXTEND_PREV(expr);
 		    return expr;
 	    default:
 	    	SEMA_TOKEN_ERROR(context->tok, "Expected a function name, macro, or constant.");

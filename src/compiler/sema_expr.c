@@ -124,8 +124,7 @@ static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name,
 		{
 			assert(enum_constant->resolve_status == RESOLVE_DONE);
 			expr->type = enum_constant->type;
-			expr->const_expr.kind = TYPE_ENUM;
-			expr->const_expr.enum_constant = enum_constant;
+			expr->const_expr = enum_constant->enum_constant.expr->const_expr;
 			expr->expr_kind = EXPR_CONST;
 			return true;
 		}
@@ -143,8 +142,7 @@ static inline bool sema_expr_analyse_error_constant(Expr *expr, const char *name
 			assert(error_constant->resolve_status == RESOLVE_DONE);
 			expr->type = decl->type;
 			expr->expr_kind = EXPR_CONST;
-			expr->const_expr.kind = TYPE_ERROR;
-			expr->const_expr.error_constant = error_constant;
+			expr_const_set_int(&expr->const_expr, error_constant->error_constant.value, type_error->canonical->type_kind);
 			return true;
 		}
 	}

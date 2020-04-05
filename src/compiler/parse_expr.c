@@ -324,6 +324,8 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 	access_expr->access_expr.parent = left;
 	access_expr->access_expr.sub_element = context->tok;
 	TRY_CONSUME_OR(TOKEN_IDENT, "Expected identifier", &poisoned_expr);
+	access_expr->span = left->span;
+	access_expr->span.end_loc = access_expr->access_expr.sub_element.span.end_loc;
 	return access_expr;
 }
 

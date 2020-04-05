@@ -57,7 +57,7 @@ typedef struct
 		Decl *error_constant;
 	};
 	// Valid type kinds:
-	// bool, ints, floats, enum, error, string
+	// bool, ints, floats, string
 	TypeKind kind;
 } ExprConst;
 
@@ -317,7 +317,6 @@ typedef struct
 	{
 		FunctionSignature function_signature;
 		TypeInfo *type_info;
-		Type *type;
 	};
 } TypedefDecl;
 
@@ -1140,6 +1139,7 @@ Type *type_find_max_type(Type *type, Type *other);
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_FXX; }
 static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_I64; }
 static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind <= TYPE_U64; }
+static inline bool type_kind_is_any_integer(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_IXX; }
 static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I64; }
 static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }

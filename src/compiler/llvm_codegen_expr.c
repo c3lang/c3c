@@ -690,10 +690,6 @@ LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 			                                                         0));
 			return global_name;
 		}
-		case TYPE_ERROR:
-			return LLVMConstInt(llvm_type(type_error), expr->const_expr.error_constant->error_constant.value, false);
-		case TYPE_ENUM:
-			return gencontext_emit_expr(context, expr->const_expr.enum_constant->enum_constant.expr);
 		default:
 			UNREACHABLE
 	}

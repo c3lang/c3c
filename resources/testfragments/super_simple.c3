@@ -38,7 +38,9 @@ struct Teob
     int oekfeo;
 }
 
-enum EnumTest : long
+typedef long as Frob;
+
+enum EnumTestAlias : Frob
 {
     VALUE1 = 4,
     VALUE2
@@ -69,36 +71,14 @@ enum EnumWithData : ushort (int a, char[] x, long b = 4)
     TEST2(12, "world")
 }
 
-
-/* ERRORS
-
-enum EnumWithErrorData : int (int
-{
-    TEST
-}
-
-enum EnumWithErrorWithMissingName : int (int)
-{
-    TEST
-}
-
+/*
 enum EnumTestNoOverflowAfterULong : ulong
 {
     VALUE = 0xFFFF_FFFF_FFFF_FFFE,
     VALUE_NO_EXCEED
 }
 
-enum EnumTestOverflow
-{
-    VALUE = 0x80000000,
-}
 
-
-enum EnumTestOverflowAfter
-{
-    VALUE = 0x80000000 - 1,
-    VALUE_EXCEED
-}
 
 enum EnumTestOverflowAfterLong : long
 {
@@ -112,12 +92,14 @@ enum EnumTestOverflowAfterULong : ulong
     VALUE_EXCEED
 }
 
-enum EnumTestErrorType : float
+enum EnumTestOverflowAfter
 {
-    VALUE_BOOM
-}
+    VALUE = 0x80000000 - 1,
+    VALUE_EXCEED
+}*/
 
-*/
+
+
 
 error Error
 {
@@ -156,6 +138,21 @@ func void enumInferenceTest()
     bool y = x1 == x1;
     Inf2 z = C;
     if (z == Inf2.A) return;
+    if (z == 1) return;
+    z = 2;
+    switch (z)
+    {
+        case Inf2.A:
+            x1++;
+            return;
+        case B:
+            return;
+        case 111:
+            x1 += 1;
+            return;
+        default:
+            return;
+    }
 }
 
 func int jumptest()

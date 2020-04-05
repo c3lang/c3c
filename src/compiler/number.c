@@ -189,13 +189,6 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			}
 			is_eq = strncmp(left->string.chars, right->string.chars, left->string.len);
 			break;
-		case TYPE_ERROR:
-			assert(left->error_constant->type == right->error_constant->type);
-			is_eq = left->error_constant == right->error_constant;
-			break;
-		case TYPE_ENUM:
-			assert(left->enum_constant->type == right->enum_constant->type);
-			return expr_const_compare(&left->enum_constant->enum_constant.expr->const_expr, &right->enum_constant->enum_constant.expr->const_expr, op);
 		default:
 			UNREACHABLE
 	}

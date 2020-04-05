@@ -303,12 +303,23 @@ bool ixxxi(Expr *left, Type *canonical, Type *type, CastType cast_type)
 }
 
 /**
+ * Convert from compile time int to any signed or unsigned int
+ * @return true unless the conversion was lossy.
+ */
+bool ixxen(Expr *left, Type *canonical, Type *type, CastType cast_type)
+{
+	assert(canonical->type_kind == TYPE_ENUM);
+	canonical = canonical->decl->enums.type_info->type->canonical;
+	return ixxxi(left, canonical, type, cast_type);
+}
+
+/**
  * Cast signed int -> signed int
  * @return true if this is a widening, an explicit cast or if it is an implicit assign add
  */
-bool sisi(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+bool sisi(Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
 {
-	bool is_narrowing = from->builtin.bytesize > canonical->builtin.bytesize;
+	bool is_narrowing = from_canonical->builtin.bytesize > canonical->builtin.bytesize;
 
 	if (is_narrowing && cast_type != CAST_TYPE_EXPLICIT)
 	{
@@ -330,9 +341,9 @@ bool sisi(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
  * Cast unsigned int -> unsigned int
  * @return true if this was not a narrowing implicit assign or narrowing implicit assign add
  */
-bool uiui(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+bool uiui(Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
 {
-	bool is_narrowing = from->builtin.bytesize > canonical->builtin.bytesize;
+	bool is_narrowing = from_canonical->builtin.bytesize > canonical->builtin.bytesize;
 
 	if (is_narrowing && cast_type != CAST_TYPE_EXPLICIT)
 	{
@@ -355,9 +366,9 @@ bool uiui(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
  * Cast unsigned int -> signed int
  * @return true if this is an explicit cast or if it is an implicit assign add or if it is a widening cast.
  */
-bool uisi(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+bool uisi(Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
 {
-	bool is_widening = from->builtin.bytesize < canonical->builtin.bytesize;
+	bool is_widening = from_canonical->builtin.bytesize < canonical->builtin.bytesize;
 
 	if (!is_widening && cast_type != CAST_TYPE_EXPLICIT)
 	{
@@ -505,9 +516,45 @@ bool usus(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
 	return true;
 }
 
+bool xixi(Expr *left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
+{
+	assert(from_canonical->canonical == from_canonical);
+	switch (from_canonical->type_kind)
+	{
+		case TYPE_IXX:
+			return ixxxi(left, canonical, type, cast_type);
+		case ALL_SIGNED_INTS:
+			if (type_is_unsigned(canonical)) return siui(left, canonical, type, cast_type);
+			return sisi(left, from_canonical, canonical, type, cast_type);
+		case ALL_UNSIGNED_INTS:
+			if (type_is_unsigned(canonical)) return uiui(left, from_canonical, canonical, type, cast_type);
+			return uisi(left, from_canonical, canonical, type, cast_type);
+		default:
+			UNREACHABLE
+	}
+}
+
 bool enxi(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
 {
-	TODO
+	Type *enum_type = from->decl->enums.type_info->type;
+	Type *enum_type_canonical = enum_type->canonical;
+	// 1. If the underlying type is the same, this is just setting the type.
+	if (canonical == enum_type_canonical)
+	{
+		left->type = type;
+		return true;
+	}
+	// 2. See if we can convert to the target type.
+	if (cast_type != CAST_TYPE_EXPLICIT && type_find_max_type(enum_type_canonical, canonical) != canonical)
+	{
+		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
+		SEMA_ERROR(left, "Cannot implictly convert '%s' with underlying type of '%s' to '%s',"
+		                 " use an explicit cast if this is what you want.", type_to_error_string(from),
+		           type_to_error_string(enum_type_canonical), type_to_error_string(canonical));
+		return false;
+	}
+	// 3. Dispatch to the right cast:
+	return xixi(left, enum_type_canonical, canonical, type, cast_type);
 }
 bool erxi(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
 {
@@ -632,6 +679,7 @@ CastKind cast_to_bool_kind(Type *type)
 	UNREACHABLE
 }
 
+
 bool cast(Expr *expr, Type *to_type, CastType cast_type)
 {
 	Type *from_type = expr->type->canonical;
@@ -656,6 +704,7 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 			if (type_is_float(canonical)) return ixxfp(expr, canonical, to_type, cast_type);
 			if (canonical == type_bool) return ixxbo(expr, to_type);
 			if (canonical->type_kind == TYPE_POINTER) return xipt(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_ENUM) return ixxen(expr, canonical, to_type, cast_type);
 			break;
 		case TYPE_I8:
 		case TYPE_I16:

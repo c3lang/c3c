@@ -235,7 +235,7 @@ static inline bool sema_analyse_typedef(Context *context, Decl *decl)
 		return true;
 	}
 	if (!sema_resolve_type_info(context, decl->typedef_decl.type_info)) return false;
-	decl->type->canonical = decl->typedef_decl.type_info->type;
+	decl->type->canonical = decl->typedef_decl.type_info->type->canonical;
 	// Do we need anything else?
 	return true;
 }
@@ -246,7 +246,7 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 	if (!sema_resolve_type_info(context, decl->enums.type_info)) return false;
 
 	Type *type = decl->enums.type_info->type;
-	Type *canonical = decl->enums.type_info->type;
+	Type *canonical = type->canonical;
 
 	// Require an integer type
 	if (!type_is_integer(canonical))
