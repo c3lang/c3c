@@ -249,8 +249,9 @@ Expr *parse_initializer(Context *context)
 Expr *parse_initializer_list(Context *context)
 {
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST, context->tok);
+	initializer_list->expr_initializer.init_type = INITIALIZER_UNKNOWN;
 	CONSUME_OR(TOKEN_LBRACE, &poisoned_expr);
-	if (!parse_param_list(context, &initializer_list->initializer_expr, false)) return &poisoned_expr;
+	if (!parse_param_list(context, &initializer_list->expr_initializer.initializer_expr, false)) return &poisoned_expr;
 	CONSUME_OR(TOKEN_RBRACE, &poisoned_expr);
 	return initializer_list;
 }

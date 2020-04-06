@@ -280,15 +280,6 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	}
 }
 
-static inline bool sema_expr_analyse_struct_value(Context *context, Type *to, Expr *expr)
-{
-	TODO
-}
-
-static inline bool sema_expr_analyse_struct_init_values(Context *context, Type *to, Expr *expr)
-{
-	TODO
-}
 
 static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr *expr)
 {
@@ -492,6 +483,7 @@ static Decl *sema_analyse_init_identifier(Context *context, Decl *strukt, Expr *
 	expr->resolve_status = RESOLVE_RUNNING;
 	expr->identifier_expr.decl = sema_analyse_init_identifier_string(context, strukt, expr->identifier_expr.identifier);
 	expr->resolve_status = RESOLVE_DONE;
+	expr->type = expr->identifier_expr.decl->type;
 	return expr->identifier_expr.decl;
 }
 
@@ -507,6 +499,7 @@ static Decl *sema_analyse_init_access(Context *context, Decl *strukt, Expr *acce
 	}
 	decl = access_expr->access_expr.ref = sema_analyse_init_identifier_string(context, decl->type->decl, access_expr->access_expr.sub_element.string);
 	access_expr->resolve_status = RESOLVE_DONE;
+	access_expr->type = decl->type;
 	return decl;
 }
 
@@ -534,74 +527,189 @@ static Decl *sema_analyse_init_path(Context *context, Decl *strukt, Expr *expr)
 	}
 }
 
+static bool sema_expr_analyse_designated_init(Context *context, DesignatedInitPath *path, Decl *top, Expr *path_expr);
 
-typedef enum
+static bool sema_expr_analyse_designated_init_ident(Context *context, DesignatedInitPath *path, Decl *top, const char *name)
 {
-	INIT_SEMA_ERROR,
-	INIT_SEMA_NOT_FOUND,
-	INIT_SEMA_OK
-} InitSemaResult;
-
-static InitSemaResult sema_expr_analyse_struct_named_initializer_list(Context *context, Decl *assigned, Expr *expr_list)
-{
-	VECEACH(expr_list->initializer_expr, i)
+	// 3. Loop through the members.
+	Decl **members = top->strukt.members;
+	VECEACH(members, i)
 	{
-		Expr *expr = expr_list->initializer_expr[i];
+		Decl *member = members[i];
+		if (member->name == name)
+		{
+			// 4. If found, set this to the current path.
+			(*path) = (DesignatedInitPath) { .decl = member, .sub_path = NULL };
+
+			// 5. And we're done!
+			return true;
+		}
+		// 6. We might encounter anonymous members. Treat this as a possible "match"
+		if (!member->name)
+		{
+			DesignatedInitPath anon_path;
+			bool found = sema_expr_analyse_designated_init_ident(context, &anon_path, member, name);
+			if (found)
+			{
+				// 7. If found, create a copy path.
+				DesignatedInitPath *path_copy = malloc_arena(sizeof(DesignatedInitPath));
+				*path_copy = anon_path;
+				(*path) = (DesignatedInitPath) { .decl = member, .sub_path = path_copy };
+				return true;
+			}
+		}
+	}
+	return false;
+
+}
+static bool sema_expr_analyse_designated_init(Context *context, DesignatedInitPath *path, Decl *top, Expr *path_expr)
+{
+	// Our expression will look like this for a.b[3].c = ...
+	// access(subscript(access(identifier))), now we need to reverse that.
+	switch (path_expr->expr_kind)
+	{
+		case EXPR_IDENTIFIER:
+
+			// Resolving for an identifier:
+			// 1. Can't be a path attached.
+			if (path_expr->identifier_expr.path) return false;
+
+			// 2. Ensure it's a union or struct
+			if (!decl_is_struct_type(top)) return false;
+
+			return sema_expr_analyse_designated_init_ident(context, path, top, path_expr->identifier_expr.identifier);
+
+		case EXPR_ACCESS:
+
+			// Resolve for access:
+
+			// 1. Resolve the parent path:
+			if (!sema_expr_analyse_designated_init(context, path, top, path_expr->access_expr.parent)) return false;
+
+			// 2. Our new top is now lowest init path.
+			while (path->sub_path)
+			{
+				path = path->sub_path;
+			}
+			top = path->decl;
+
+			// 3. Do an analysis with the identifier:
+			path->sub_path = malloc_arena(sizeof(DesignatedInitPath));
+			return sema_expr_analyse_designated_init_ident(context,
+			                                               path->sub_path,
+			                                               top->type->decl,
+			                                               path_expr->access_expr.sub_element.string);
+		case EXPR_SUBSCRIPT:
+
+			// Resolve for subscript:
+
+			// 1. Resolve the parent path:
+			if (!sema_expr_analyse_designated_init(context, path, top, path_expr->subscript_expr.expr)) return false;
+
+			// 2. Our new top is now lowest init path.
+			while (path->sub_path)
+			{
+				path = path->sub_path;
+			}
+			top = path->decl;
+
+			TODO // Analyse index etc.
+		default:
+			return false;
+	}
+}
+
+static bool sema_expr_analyse_struct_designated_initializer_list(Context *context, Decl *assigned, Expr *expr_list)
+{
+	assert(expr_list->expr_initializer.init_type == INITIALIZER_UNKNOWN);
+	VECEACH(expr_list->expr_initializer.initializer_expr, i)
+	{
+		Expr *expr = expr_list->expr_initializer.initializer_expr[i];
 		if (expr->expr_kind != EXPR_BINARY && expr->binary_expr.operator != BINARYOP_ASSIGN)
 		{
 			if (i != 0)
 			{
 				SEMA_ERROR(expr, "Named and non-named initializers are not allowed together, please choose one or the other.");
-				return INIT_SEMA_ERROR;
+				return false;
 			}
 			// If there is an unexpected expression and no previous element then this is a normal initializer list.
-			return INIT_SEMA_NOT_FOUND;
+			expr_list->expr_initializer.init_type = INITIALIZER_NORMAL;
+			return true;
 		}
-		Expr *path = expr->binary_expr.left;
+		Expr *path_expr = expr->binary_expr.left;
 		Expr *value = expr->binary_expr.right;
-		Decl *result = sema_analyse_init_path(context, assigned, path);
-		if (!result)
+		DesignatedInitPath path;
+		if (!sema_expr_analyse_designated_init(context, &path, assigned, path_expr))
 		{
 			if (i != 0)
 			{
-				SEMA_ERROR(path, "Unexpected element when initializing '%s', did you get the name right?", assigned->name);
-				return INIT_SEMA_ERROR;
+				SEMA_ERROR(path_expr, "Unexpected element when initializing '%s', did you get the name right?", assigned->name);
+				return false;
 			}
-			return INIT_SEMA_NOT_FOUND;
+			expr_list->expr_initializer.init_type = INITIALIZER_NORMAL;
+			return true;
 		}
-		if (!sema_analyse_expr_of_required_type(context, result->type, value)) return INIT_SEMA_ERROR;
+		// Walk down to the last decl.
+		DesignatedInitPath *init_path = &path;
+		while (init_path->sub_path) init_path = init_path->sub_path;
+
+		if (!sema_analyse_expr_of_required_type(context, init_path->decl->type, value)) return false;
+
+		// Destruct the expression and replace.
+		expr->designated_init_expr.value = value; // Do this first!
+		expr->resolve_status = RESOLVE_DONE;
+		expr->designated_init_expr.path = path;
+		expr->expr_kind = EXPR_DESIGNATED_INIT;
+		expr->type = init_path->decl->type;
 	}
-	return INIT_SEMA_OK;
+	expr_list->expr_initializer.init_type = INITIALIZER_DESIGNATED;
+	return true;
 }
 
 static inline bool sema_expr_analyse_struct_initializer_list(Context *context, Type *assigned, Expr *expr)
 {
+	expr->type = assigned;
+
 	Decl **members = assigned->decl->strukt.members;
 	unsigned size = vec_size(members);
-	// Zero size init will initialize to empty.
-	if (size == 0) return true;
 
-	InitSemaResult result = sema_expr_analyse_struct_named_initializer_list(context, assigned->decl, expr);
-	if (result == INIT_SEMA_ERROR) return false;
-	if (result == INIT_SEMA_OK)
+	// Zero size init will initialize to empty.
+	if (size == 0)
 	{
-		TODO
+		expr->expr_initializer.init_type = INITIALIZER_ZERO;
+		return true;
 	}
+
+	if (!sema_expr_analyse_struct_designated_initializer_list(context, assigned->decl, expr)) return false;
+
+	// If we already parsed this.
+	if (expr->expr_initializer.init_type == INITIALIZER_DESIGNATED) return true;
+
+	Expr **elements = expr->expr_initializer.initializer_expr;
+
+	assert(expr->expr_initializer.init_type == INITIALIZER_NORMAL);
+
 	if (assigned->type_kind == TYPE_UNION)
 	{
-		SEMA_ERROR(expr->initializer_expr[0], "Initializer list for unions must use named initializers, e.g. { a = 4 }");
+		SEMA_ERROR(elements[0], "Initializer list for unions must use named initializers, e.g. { a = 4 }");
 		return false;
 	}
-	if (size < vec_size(expr->initializer_expr))
+
+	VECEACH(elements, i)
 	{
-		SEMA_ERROR(expr->initializer_expr[size], "Too many elements in initializer, expected only %d.", size);
+		if (i >= size)
+		{
+			SEMA_ERROR(elements[size], "Too many elements in initializer, expected only %d.", size);
+			return false;
+		}
+		if (!sema_analyse_expr_of_required_type(context, members[i]->type, elements[i])) return false;
+	}
+
+	if (size > vec_size(elements))
+	{
+		SEMA_ERROR(elements[vec_size(elements) - 1], "Too few elements in initializer, expected %d.", size);
 		return false;
 	}
-	VECEACH(expr->initializer_expr, i)
-	{
-		if (!sema_analyse_expr_of_required_type(context, members[i]->type, expr->initializer_expr[i])) return false;
-	}
-	expr->type = assigned;
 	return true;
 }
 
@@ -1910,6 +2018,7 @@ static Expr *expr_shallow_copy(Expr *source)
 	return copy;
 }
 
+
 static Expr **expr_copy_expr_list_from_macro(Context *context, Expr *macro, Expr **expr_list);
 static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_expr);
 static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source);
@@ -1968,6 +2077,9 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 	Expr *expr = expr_shallow_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_DESIGNATED_INIT:
+			// This type of expression is only created after analysis.
+			UNREACHABLE
 		case EXPR_EXPR_BLOCK:
 			ast_copy_list_from_macro(context, macro, &expr->expr_block.stmts);
 			return expr;
@@ -2017,15 +2129,8 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 		case EXPR_ACCESS:
 			EXPR_COPY(expr->access_expr.parent);
 			return expr;
-		case EXPR_STRUCT_VALUE:
-			expr->struct_value_expr.type = type_info_copy_from_macro(context, macro, expr->struct_value_expr.type);
-			EXPR_COPY(expr->struct_value_expr.init_expr);
-			return expr;
-		case EXPR_STRUCT_INIT_VALUES:
-			TODO
-			return expr;
 		case EXPR_INITIALIZER_LIST:
-			expr->initializer_expr = expr_copy_expr_list_from_macro(context, macro, expr->initializer_expr);
+			expr->expr_initializer.initializer_expr = expr_copy_expr_list_from_macro(context, macro, expr->expr_initializer.initializer_expr);
 			return expr;
 		case EXPR_EXPRESSION_LIST:
 			expr->expression_list = expr_copy_expr_list_from_macro(context, macro, expr->expression_list);
@@ -2426,6 +2531,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_POISONED:
 			return false;
 		case EXPR_SCOPED_EXPR:
+		case EXPR_DESIGNATED_INIT:
 			UNREACHABLE
 		case EXPR_EXPR_BLOCK:
 			return sema_expr_analyse_expr_block(context, to, expr);
@@ -2457,10 +2563,6 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return sema_expr_analyse_subscript(context, to, expr);
 		case EXPR_ACCESS:
 			return sema_expr_analyse_access(context, to, expr);
-		case EXPR_STRUCT_VALUE:
-			return sema_expr_analyse_struct_value(context, to, expr);
-		case EXPR_STRUCT_INIT_VALUES:
-			return sema_expr_analyse_struct_init_values(context, to, expr);
 		case EXPR_INITIALIZER_LIST:
 			return sema_expr_analyse_initializer_list(context, to, expr);
 		case EXPR_CAST:

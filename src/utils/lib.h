@@ -267,6 +267,7 @@ static inline void* _expand(void *vec, size_t element_size)
 #define VECEACH(_vec, _index) \
 	for (unsigned _index = 0, __vecsize = vec_size(_vec); _index < __vecsize; _index++)
 
+
 #define VECNEW(_type, _capacity) ((_type *)(_vec_new(sizeof(_type), _capacity) + 1))
 #define VECADD(_vec, _value) \
 	({ \

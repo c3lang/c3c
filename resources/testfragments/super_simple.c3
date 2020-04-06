@@ -2,16 +2,6 @@ module bar;
 
 typedef int as Bob;
 
-/* hello *//* there */
-/+ why /+ you /* lucky +/ +/
-// Whut
-// Here
-//
-//---
-/*
- Hello
- */
-
 struct Test
 {
     int a;
@@ -36,32 +26,6 @@ struct Teob
     double y;
     int xy;
     int oekfeo;
-}
-
-typedef long as Frob;
-
-enum EnumTestAlias : Frob
-{
-    VALUE1 = 4,
-    VALUE2
-}
-
-enum EnumTestDefault
-{
-    VALUE,
-    VALUE2
-}
-
-enum EnumTestNoOverflowAfterLong : long
-{
-    VALUE = 0x7FFF_FFFF_FFFF_FFFE,
-    VALUE_NO_EXCEED
-}
-
-enum EnumTestSmall : ushort
-{
-    VALUE = 0xFF,
-    VALUE2 = 0xFFFF
 }
 
 enum EnumWithData : ushort (int a, char[] x, long b = 4)
@@ -105,8 +69,8 @@ error Error
 {
     BLURB,
     NO_SUCH_FILE,
-
 }
+
 error OtherError
 {
     FOO_BAR
@@ -128,6 +92,39 @@ enum Inf2 : byte
 
 typedef Inf as BooInf;
 
+struct TestStruct
+{
+    int a;
+}
+
+struct TestStruct2
+{
+    TestStruct a;
+    char xx;
+    TestStruct b;
+    int c;
+}
+
+union TestUnion
+{
+    int a;
+    double f;
+}
+
+
+func TestStruct structTest(int i)
+{
+
+    TestUnion tu;
+/*    TestStruct foo = { i };
+    TestStruct foo2 = { a = i };*/
+    TestStruct foo3 = TestStruct { i };
+    return foo3;
+/*    TestStruct2 bar = { c = 2 };
+    int x = 3 * i;
+    TestStruct2 bar2 = { b.a = x, a.a = x + 1 };
+    return bar2;*/
+}
 func void enumInferenceTest()
 {
     OtherError e = OtherError.FOO_BAR;

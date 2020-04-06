@@ -109,6 +109,7 @@ void target_setup()
 	LLVMTypeRef float_type = LLVMFloatType();
 	LLVMTypeRef double_type = LLVMDoubleType();
 	LLVMTypeRef quad_type = LLVMFP128Type();
+	LLVMTypeRef pointer_type = LLVMPointerType(int_type, 0);
 	build_target.align_byte = LLVMABIAlignmentOfType(build_target.llvm_data_layout, byte_type);
 	build_target.align_short = LLVMABIAlignmentOfType(build_target.llvm_data_layout, short_type);
 	build_target.align_int = LLVMABIAlignmentOfType(build_target.llvm_data_layout, int_type);
@@ -116,6 +117,7 @@ void target_setup()
 	build_target.align_f128 = LLVMABIAlignmentOfType(build_target.llvm_data_layout, quad_type);
 	build_target.align_double = LLVMABIAlignmentOfType(build_target.llvm_data_layout, double_type);
 	build_target.align_float = LLVMABIAlignmentOfType(build_target.llvm_data_layout, float_type);
+	build_target.align_pointer = LLVMABIAlignmentOfType(build_target.llvm_data_layout, pointer_type);
 	build_target.little_endian = LLVMByteOrder(build_target.llvm_data_layout) == LLVMLittleEndian;
 	build_target.width_c_short = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_SHORT);
 	build_target.width_c_int = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_INT);

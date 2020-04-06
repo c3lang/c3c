@@ -198,29 +198,18 @@ size_t type_size(Type *canonical)
 		case TYPE_META_TYPE:
 			return 0;
 		case TYPE_ENUM:
-			return type_size(canonical->decl->enums.type_info->type->canonical);
+			return canonical->decl->enums.type_info->type->canonical->builtin.bytesize;
+		case TYPE_ERROR:
+			return type_error->canonical->builtin.bytesize;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ERROR:
-			TODO
+			return canonical->decl->strukt.size;
 		case TYPE_VOID:
 			return 1;
 		case TYPE_BOOL:
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
-		case TYPE_I64:
-		case TYPE_U8:
-		case TYPE_U16:
-		case TYPE_U32:
-		case TYPE_U64:
-		case TYPE_F32:
-		case TYPE_F64:
+		case ALL_INTS:
+		case ALL_FLOATS:
 			return canonical->builtin.bytesize;
-		case TYPE_IXX:
-			return 8;
-		case TYPE_FXX:
-			return 8;
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
@@ -233,7 +222,44 @@ size_t type_size(Type *canonical)
 		case TYPE_ERROR_UNION:
 			TODO
 	}
-	TODO
+	UNREACHABLE
+}
+
+size_t type_abi_alignment(Type *canonical)
+{
+	assert(canonical && canonical->canonical == canonical);
+	switch (canonical->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_TYPEDEF:
+		case TYPE_VOID:
+			UNREACHABLE;
+		case TYPE_META_TYPE:
+			return 0;
+		case TYPE_ENUM:
+			return canonical->decl->enums.type_info->type->canonical->builtin.abi_alignment;
+		case TYPE_ERROR:
+			return type_error->canonical->builtin.abi_alignment;
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+			return canonical->decl->strukt.abi_alignment;
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+			return canonical->builtin.abi_alignment;
+		case TYPE_FUNC:
+		case TYPE_POINTER:
+		case TYPE_VARARRAY:
+		case TYPE_STRING:
+			return t_usz.canonical->builtin.abi_alignment;
+		case TYPE_ARRAY:
+			return type_abi_alignment(canonical->array.base);
+		case TYPE_SUBARRAY:
+			TODO
+		case TYPE_ERROR_UNION:
+			TODO
+	}
+	UNREACHABLE
 }
 
 static inline void create_type_cache(Type *canonical_type)
@@ -375,7 +401,7 @@ static void type_create(const char *name, Type *location, TypeKind kind, unsigne
 		.type_kind = kind,
 		.builtin.bytesize = (bitsize + 7) / 8,
 		.builtin.bitsize = bitsize,
-		.builtin.min_alignment = align,
+		.builtin.abi_alignment = align,
 		.builtin.pref_alignment = pref_align,
 		.name = name,
 		.canonical = location,
@@ -403,7 +429,7 @@ void builtin_setup(Target *target)
 	type_string.type_kind = TYPE_STRING;
 */
 #define DEF_TYPE(_name, _shortname, _type, _bits, _align) \
-type_create(#_name, &_shortname, _type, _bits, target->align_min_ ## _align, target->align_ ## _align)
+type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target->align_pref_ ## _align)
 
 	DEF_TYPE(bool, t_u1, TYPE_BOOL, 1, byte);
 	DEF_TYPE(float, t_f32, TYPE_F32, 32, float);
@@ -424,7 +450,7 @@ type_create(#_name, &_shortname, _type, _bits, target->align_min_ ## _align, tar
 
 #undef DEF_TYPE
 
-	type_create("void*", &t_voidstar, TYPE_POINTER, target->width_pointer, target->align_min_pointer, target->align_pointer);
+	type_create("void*", &t_voidstar, TYPE_POINTER, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t_voidstar;
 	t_voidstar.pointer = type_void;

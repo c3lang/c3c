@@ -101,12 +101,11 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_POST_UNARY:
 		case EXPR_TYPE_ACCESS:
 		case EXPR_CALL:
-		case EXPR_STRUCT_VALUE:
-		case EXPR_STRUCT_INIT_VALUES:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_CAST:
 		case EXPR_MACRO_EXPR:
+		case EXPR_DESIGNATED_INIT:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -740,30 +739,55 @@ static inline LLVMValueRef gencontext_emit_expression_list_expr(GenContext *cont
 	return value;
 }
 
+
+
 static inline LLVMValueRef gencontext_emit_initializer_list_expr(GenContext *context, Expr *expr)
 {
 	LLVMTypeRef type = llvm_type(expr->type);
 	LLVMValueRef value = LLVMGetUndef(type);
 
-	if (!vec_size(expr->initializer_expr))
+	if (expr->expr_initializer.init_type == INITIALIZER_ZERO)
 	{
 		LLVMValueRef ref = gencontext_emit_alloca(context, type, "temp");
 		value = LLVMBuildMemSet(context->builder, ref, LLVMConstInt(llvm_type(type_byte), 0, false),
-		                        LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false), expr->type->decl->strukt.alignment);
-		return ref;
+		                        LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false), expr->type->decl->strukt.abi_alignment);
+		return value;
 	}
 
-	VECEACH(expr->initializer_expr, i)
+	Expr **elements = expr->expr_initializer.initializer_expr;
+
+	if (expr->expr_initializer.init_type == INITIALIZER_NORMAL)
 	{
-		LLVMValueRef init_value = gencontext_emit_expr(context, expr->initializer_expr[i]);
-		value = LLVMBuildInsertValue(context->builder, value, init_value, i, "literal");
+		VECEACH(elements, i)
+		{
+			LLVMValueRef init_value = gencontext_emit_expr(context, elements[i]);
+			value = LLVMBuildInsertValue(context->builder, value, init_value, i, "literal");
+		}
+		return value;
 	}
-	return value;
-}
 
-static inline LLVMValueRef gencontext_emit_struct_init_values_expr(GenContext *context, Expr *expr)
-{
-	TODO
+	LLVMValueRef ref = gencontext_emit_alloca(context, type, "temp");
+	value = LLVMBuildMemSet(context->builder, ref, LLVMConstInt(llvm_type(type_byte), 0, false),
+	                        LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false), expr->type->decl->strukt.abi_alignment);
+
+	VECEACH(elements, i)
+	{
+		Expr *element = elements[i];
+		LLVMValueRef sub_value = gencontext_emit_expr(context, element->designated_init_expr.value);
+		Decl *parent = expr->type->decl;
+		DesignatedInitPath *path = &element->designated_init_expr.path;
+		LLVMValueRef subref = ref;
+		assert(element->expr_kind == EXPR_DESIGNATED_INIT);
+		while (path)
+		{
+			subref = LLVMBuildStructGEP2(context->builder, llvm_type(parent->type), subref, path->decl->var.id, "access");
+			parent = path->decl;
+			path = path->sub_path;
+		}
+		LLVMBuildStore(context->builder, sub_value, subref);
+	}
+
+	return ref;
 }
 
 static inline LLVMValueRef gencontext_emit_expr_block(GenContext *context, Expr *expr)
@@ -803,6 +827,9 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 	{
 		case EXPR_POISONED:
 			UNREACHABLE
+		case EXPR_DESIGNATED_INIT:
+			// This is handled inside of initializer setup
+			UNREACHABLE
 		case EXPR_EXPR_BLOCK:
 			return gencontext_emit_expr_block(context, expr);
 		case EXPR_SCOPED_EXPR:
@@ -831,10 +858,6 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 			return gencontext_emit_call_expr(context, expr);
 		case EXPR_ACCESS:
 			return gencontext_emit_access_expr(context, expr);
-		case EXPR_STRUCT_VALUE:
-			return gencontext_emit_struct_value_expr(context, expr);
-		case EXPR_STRUCT_INIT_VALUES:
-			return gencontext_emit_struct_init_values_expr(context, expr);
 		case EXPR_INITIALIZER_LIST:
 			return gencontext_emit_initializer_list_expr(context, expr);
 		case EXPR_EXPRESSION_LIST:

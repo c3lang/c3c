@@ -551,12 +551,6 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			fprint_expr_common(file, expr, indent + 1);
 			fprint_type_info_recursive(file, expr->type_access.type, indent + 1);
 			break;
-		case EXPR_STRUCT_VALUE:
-			fprintf_indented(file, indent, "(structvalue\n");
-			fprint_expr_common(file, expr, indent + 1);
-			fprint_type_info_recursive(file, expr->struct_value_expr.type, indent + 1);
-			fprint_expr_recursive(file, expr->struct_value_expr.init_expr, indent + 1);
-			break;
 		case EXPR_ACCESS:
 			fprintf_indented(file, indent, "(access .%s\n", expr->access_expr.sub_element.string);
 			fprint_expr_common(file, expr, indent + 1);
@@ -595,12 +589,27 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			fprint_expr_recursive(file, expr->ternary_expr.else_expr, indent + 1);
 			break;
 		case EXPR_INITIALIZER_LIST:
-			fprintf_indented(file, indent, "(initializerlist\n");
+			fprintf_indented(file, indent, "(initializerlist ");
+			switch (expr->expr_initializer.init_type)
+			{
+				case INITIALIZER_UNKNOWN:
+					fprintf(file, "not-analyzed\n");
+					break;
+				case INITIALIZER_ZERO:
+					fprintf(file, "zero\n");
+					break;
+				case INITIALIZER_NORMAL:
+					fprintf(file, "normal\n");
+					break;
+				case INITIALIZER_DESIGNATED:
+					fprintf(file, "designated\n");
+					break;
+			}
 			fprint_expr_common(file, expr, indent + 1);
 			{
-				VECEACH(expr->initializer_expr, i)
+				VECEACH(expr->expr_initializer.initializer_expr, i)
 				{
-					fprint_expr_recursive(file, expr->initializer_expr[i], indent + 1);
+					fprint_expr_recursive(file, expr->expr_initializer.initializer_expr[i], indent + 1);
 				}
 			}
 			break;

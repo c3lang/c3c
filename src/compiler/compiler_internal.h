@@ -137,7 +137,7 @@ typedef struct
 {
 	unsigned char bitsize;
 	unsigned char bytesize;
-	unsigned char min_alignment;
+	unsigned char abi_alignment;
 	unsigned char pref_alignment;
 }  TypeBuiltin;
 
@@ -226,7 +226,7 @@ typedef struct
 
 typedef struct
 {
-	uint32_t alignment;
+	uint32_t abi_alignment;
 	uint64_t size;
 	Decl **members;
 } StructDecl;
@@ -500,6 +500,32 @@ typedef struct
 	Ast **stmts;
 } ExprFuncBlock;
 
+typedef enum
+{
+	INITIALIZER_UNKNOWN,
+	INITIALIZER_ZERO,
+	INITIALIZER_DESIGNATED,
+	INITIALIZER_NORMAL
+} InitializerType;
+
+typedef struct
+{
+	InitializerType init_type;
+	Expr** initializer_expr;
+} ExprInitializer;
+
+typedef struct _DesignatedInitPath
+{
+	Decl *decl;
+	struct _DesignatedInitPath *sub_path;
+} DesignatedInitPath;
+
+typedef struct
+{
+	DesignatedInitPath path;
+	Expr *value;
+} ExprDesignatedInit;
+
 struct _Expr
 {
 	ExprKind expr_kind : 8;
@@ -507,6 +533,7 @@ struct _Expr
 	SourceRange span;
 	Type *type;
 	union {
+		ExprDesignatedInit designated_init_expr;
 		ExprCast cast_expr;
 		ExprConst const_expr;
 		ExprStructValue struct_value_expr;
@@ -522,7 +549,7 @@ struct _Expr
 		ExprAccess access_expr;
 		ExprIdentifier identifier_expr;
 		ExprType type_expr;
-		Expr** initializer_expr;
+		ExprInitializer expr_initializer;
 		Expr** expression_list;
 		ExprScope expr_scope;
 		ExprFuncBlock expr_block;
@@ -1133,6 +1160,7 @@ bool type_is_subtype(Type *type, Type *possible_subtype);
 Type *type_find_common_ancestor(Type *left, Type *right);
 const char *type_to_error_string(Type *type);
 size_t type_size(Type *canonical);
+size_t type_abi_alignment(Type *canonical);
 void type_append_signature_name(Type *type, char *dst, size_t *offset);
 Type *type_find_max_type(Type *type, Type *other);
 

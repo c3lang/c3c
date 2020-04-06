@@ -44,11 +44,11 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 	{
 		Expr *expr = decl->var.init_expr;
 		// Quick path for empty initializer list
-		if (expr->expr_kind == EXPR_INITIALIZER_LIST && vec_size(expr->initializer_expr) == 0)
+		if (expr->expr_kind == EXPR_INITIALIZER_LIST && expr->expr_initializer.init_type == INITIALIZER_ZERO)
 		{
 			LLVMBuildMemSet(context->builder, decl->var.backend_ref, LLVMConstInt(llvm_type(type_byte), 0, false),
 					LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false),
-					expr->type->decl->strukt.alignment);
+					expr->type->decl->strukt.abi_alignment);
 			return decl->var.backend_ref;
 		}
 

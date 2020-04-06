@@ -1033,7 +1033,9 @@ bool parse_struct_body(Context *context, Decl *parent, Decl *visible_parent)
                 decl_poison(other);
                 decl_poison(member);
             }
+            unsigned index = vec_size(parent->strukt.members);
             parent->strukt.members = VECADD(parent->strukt.members, member);
+            member->var.id = index;
             advance(context);
             if (context->tok.type != TOKEN_COMMA) break;
         }
@@ -1994,11 +1996,7 @@ Expr *parse_type_identifier_with_path(Context *context, Path *path)
 	RANGE_EXTEND_PREV(type);
 	if (context->tok.type == TOKEN_LBRACE)
 	{
-		Expr *expr = EXPR_NEW_TOKEN(EXPR_STRUCT_VALUE, context->tok);
-		expr->struct_value_expr.type = type;
-		expr->struct_value_expr.init_expr = TRY_EXPR_OR(parse_initializer_list(context), &poisoned_expr);
-
-		return expr;
+		return TRY_EXPR_OR(parse_initializer_list(context), &poisoned_expr);
 	}
 	EXPECT_OR(TOKEN_DOT, &poisoned_expr);
 	return parse_type_access(context, type);

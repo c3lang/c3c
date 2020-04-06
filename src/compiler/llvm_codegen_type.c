@@ -226,5 +226,5 @@ void llvm_set_struct_size_alignment(Decl *decl)
 {
 	LLVMTypeRef type = llvm_get_type(LLVMGetGlobalContext(), decl->type);
 	decl->strukt.size = LLVMStoreSizeOfType(target_data_layout(), type);
-	decl->strukt.alignment = LLVMPreferredAlignmentOfType(target_data_layout(), type);
+	decl->strukt.abi_alignment = LLVMPreferredAlignmentOfType(target_data_layout(), type);
 }

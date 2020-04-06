@@ -1,0 +1,65 @@
+Things missing:
+
+* Attributes
+- All types: @noreflect
+- Struct: @packed, @aligned, @opaque
+- Enums: @distinct, @noreflect
+- Unions: @packed, @aligned, @opaque
+- Functions: @inline, @reflect, @noreturn, @section, @unused, @used, @interrupt, @naked, @convention()
+- Calls: @noinline
+- Variables, parameters: @unused
+- Constants, globals: @unused, @used, @section
+
+* Designated initializer
+- Array initializer
+- Array range initializer { [1..2] = 2 }
+
+* Initializers
+- Array initializers
+- Union initializers
+
+* Asserts
+- assert, $assert
+- @unreachable
+
+* Types
+- Vararrays
+- Strings
+- Array
+- Slice
+- Values: size, alignment, name, qualifiedName
+- Functions: offsetof
+- Distinct types
+- Simd types?
+- Complex types?
+- Subtype casts
+- Bitstruct
+- Enumset
+- Typeid
+- Union usage
+
+* Expressions
+- Disallow x >= 0 and x < 0 on unsigned types unless in a macro.
+
+* Switch
+- String switch
+- Range case
+
+* Functions
+- Varargs
+- C ABI
+- Safe varargs
+
+* Pre-post conditions
+- Breakdown here
+
+* Error handling
+- Error unions
+- Catch/try
+- Function return channel
+
+* Enum
+- Values: min, max, array
+- Functions: fomOrdinal, ordinal, fromName, name, fromFullName, fullName, fromQualifiedName, qualifiedName, <value>(), fromValue()
+
+
