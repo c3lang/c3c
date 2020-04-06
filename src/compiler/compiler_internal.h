@@ -227,6 +227,7 @@ typedef struct
 typedef struct
 {
 	uint32_t abi_alignment;
+	uint32_t id;
 	uint64_t size;
 	Decl **members;
 } StructDecl;
@@ -237,7 +238,11 @@ typedef struct _VarDecl
 	unsigned id : 16;
 	VarDeclKind kind : 3;
 	TypeInfo *type_info;
-	Expr *init_expr;
+	union
+	{
+		Expr *init_expr;
+		Decl *parent;
+	};
 	void *backend_ref;
 	void *backend_debug_ref;
 } VarDecl;
@@ -364,7 +369,11 @@ typedef struct _Decl
 	{
 		struct
 		{
-			Decl** method_functions;
+			union
+			{
+				Decl* parent_struct;
+				Decl** method_functions;
+			};
 			union
 			{
 				ErrorDecl error;
@@ -460,8 +469,6 @@ typedef struct
 		Token sub_element;
 		Decl *ref;
 	};
-	// TODO cleanup
-	int index;
 } ExprAccess;
 
 typedef struct
@@ -997,7 +1004,6 @@ bool cast_to_runtime(Expr *expr);
 void cast_to_smallest_runtime(Expr *expr);
 
 void llvm_codegen(Context *context);
-void llvm_set_struct_size_alignment(Decl *decl);
 
 
 bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr);
@@ -1180,6 +1186,20 @@ static inline Type *type_reduced(Type *type)
 	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
 	if (canonical->type_kind == TYPE_ERROR) return type_error->canonical;
 	return canonical;
+}
+
+static inline bool type_is_structlike(Type *type)
+{
+	assert(type->canonical = type);
+	switch (type->type_kind)
+	{
+		case TYPE_UNION:
+		case TYPE_STRUCT:
+			return true;
+		default:
+			return false;
+
+	}
 }
 
 static inline Type *type_reduced_from_expr(Expr *expr)

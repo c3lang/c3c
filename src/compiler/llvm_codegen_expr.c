@@ -54,10 +54,38 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 	}
 }
 
+static LLVMValueRef gencontext_emit_member_addr(GenContext *context, LLVMValueRef value, Decl *parent, Decl *member)
+{
+	unsigned index;
+	Decl *current_parent;
+	if (decl_is_struct_type(member))
+	{
+		index = member->strukt.id;
+		current_parent = member->parent_struct;
+	}
+	else
+	{
+		index = member->var.id;
+		current_parent = member->var.parent;
+	}
+	assert(current_parent);
+	if (parent != current_parent)
+	{
+		value = gencontext_emit_member_addr(context, value, parent, current_parent);
+	}
+
+	if (current_parent->decl_kind == DECL_UNION)
+	{
+		return LLVMBuildBitCast(context->builder, value, LLVMPointerType(llvm_type(member->type), 0), "");
+	}
+	return LLVMBuildStructGEP2(context->builder, llvm_type(current_parent->type), value, index, "");
+}
 static inline LLVMValueRef gencontext_emit_access_addr(GenContext *context, Expr *expr)
 {
-	LLVMValueRef value = gencontext_emit_address(context, expr->access_expr.parent);
-	return LLVMBuildStructGEP2(context->builder, llvm_type(expr->access_expr.parent->type), value, (unsigned)expr->access_expr.index, "");
+	Expr *parent = expr->access_expr.parent;
+	LLVMValueRef value = gencontext_emit_address(context, parent);
+	Decl *member = expr->access_expr.ref;
+	return gencontext_emit_member_addr(context, value, parent->type->canonical->decl, member);
 }
 
 LLVMValueRef gencontext_emit_scoped_expr(GenContext *context, Expr *expr)
@@ -175,6 +203,70 @@ static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *
 {
 	LLVMValueRef rhs = gencontext_emit_expr(context, expr->cast_expr.expr);
 	return gencontext_emit_cast(context, expr->cast_expr.kind, rhs, expr->type->canonical, expr->cast_expr.expr->type->canonical);
+}
+
+static inline LLVMValueRef gencontext_emit_initializer_list_expr(GenContext *context, Expr *expr)
+{
+	LLVMTypeRef type = llvm_type(expr->type);
+	LLVMValueRef ref = gencontext_emit_alloca(context, type, "literal");
+
+	if (expr->expr_initializer.init_type == INITIALIZER_ZERO)
+	{
+		LLVMBuildMemSet(context->builder,
+		                ref,
+		                LLVMConstInt(llvm_type(type_byte), 0, false),
+		                LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false),
+		                expr->type->decl->strukt.abi_alignment);
+		return ref;
+	}
+
+	Expr **elements = expr->expr_initializer.initializer_expr;
+
+	bool is_union = expr->type->canonical->type_kind == TYPE_UNION;
+	if (expr->expr_initializer.init_type == INITIALIZER_NORMAL)
+	{
+		assert(!is_union);
+		VECEACH(elements, i)
+		{
+			Expr *element = elements[i];
+			LLVMValueRef init_value = gencontext_emit_expr(context, element);
+			LLVMValueRef subref = LLVMBuildStructGEP2(context->builder, type, ref, i, "");
+			LLVMBuildStore(context->builder, init_value, subref);
+		}
+		return ref;
+	}
+
+
+	// Clear the temp.
+	LLVMBuildMemSet(context->builder, ref, LLVMConstInt(llvm_type(type_byte), 0, false),
+	                LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false), expr->type->decl->strukt.abi_alignment);
+
+
+	VECEACH(elements, i)
+	{
+		Expr *element = elements[i];
+		LLVMValueRef sub_value = gencontext_emit_expr(context, element->designated_init_expr.value);
+		Decl *parent = expr->type->decl;
+		DesignatedInitPath *path = &element->designated_init_expr.path;
+		LLVMValueRef subref = ref;
+		assert(element->expr_kind == EXPR_DESIGNATED_INIT);
+		// If this is a union, we down a step to begin with.
+		if (is_union)
+		{
+			subref = LLVMBuildBitCast(context->builder, ref, LLVMPointerType(llvm_type(path->decl->type), 0), "unioncast");
+			parent = path->decl;
+			path = path->sub_path;
+		}
+		while (path)
+		{
+			subref = LLVMBuildStructGEP2(context->builder, llvm_type(parent->type), subref, path->decl->var.id, "access");
+			parent = path->decl;
+			path = path->sub_path;
+		}
+		LLVMBuildStore(context->builder, sub_value, subref);
+	}
+
+	return ref;
 }
 
 static inline LLVMValueRef gencontext_emit_inc_dec_change(GenContext *context, bool use_mod, LLVMValueRef current_value, Expr *expr, int diff)
@@ -580,10 +672,6 @@ static LLVMValueRef gencontext_emit_binary_expr(GenContext *context, Expr *expr)
 	if (binary_op == BINARYOP_ASSIGN)
 	{
 		LLVMValueRef addr = gencontext_emit_address(context, expr->binary_expr.left);
-		if (expr->binary_expr.right->expr_kind == EXPR_INITIALIZER_LIST)
-		{
-			return gencontext_emit_initialization_from_expr(context, addr, expr->binary_expr.right);
-		}
 		LLVMValueRef value = gencontext_emit_expr(context, expr->binary_expr.right);
 		LLVMBuildStore(context->builder, value, addr);
 		return value;
@@ -725,7 +813,7 @@ static inline LLVMValueRef gencontext_emit_access_expr(GenContext *context, Expr
 {
 	// Improve, add string description to the access?
 	LLVMValueRef value = gencontext_emit_address(context, expr->access_expr.parent);
-	LLVMValueRef val =  LLVMBuildStructGEP2(context->builder, llvm_type(expr->access_expr.parent->type), value, (unsigned)expr->access_expr.index, "");
+	LLVMValueRef val =  LLVMBuildStructGEP2(context->builder, llvm_type(expr->access_expr.parent->type), value, expr->access_expr.ref->var.id, "");
 	return LLVMBuildLoad2(context->builder, gencontext_get_llvm_type(context, expr->type), val, "");
 }
 
@@ -741,54 +829,6 @@ static inline LLVMValueRef gencontext_emit_expression_list_expr(GenContext *cont
 
 
 
-static inline LLVMValueRef gencontext_emit_initializer_list_expr(GenContext *context, Expr *expr)
-{
-	LLVMTypeRef type = llvm_type(expr->type);
-	LLVMValueRef value = LLVMGetUndef(type);
-
-	if (expr->expr_initializer.init_type == INITIALIZER_ZERO)
-	{
-		LLVMValueRef ref = gencontext_emit_alloca(context, type, "temp");
-		value = LLVMBuildMemSet(context->builder, ref, LLVMConstInt(llvm_type(type_byte), 0, false),
-		                        LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false), expr->type->decl->strukt.abi_alignment);
-		return value;
-	}
-
-	Expr **elements = expr->expr_initializer.initializer_expr;
-
-	if (expr->expr_initializer.init_type == INITIALIZER_NORMAL)
-	{
-		VECEACH(elements, i)
-		{
-			LLVMValueRef init_value = gencontext_emit_expr(context, elements[i]);
-			value = LLVMBuildInsertValue(context->builder, value, init_value, i, "literal");
-		}
-		return value;
-	}
-
-	LLVMValueRef ref = gencontext_emit_alloca(context, type, "temp");
-	value = LLVMBuildMemSet(context->builder, ref, LLVMConstInt(llvm_type(type_byte), 0, false),
-	                        LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false), expr->type->decl->strukt.abi_alignment);
-
-	VECEACH(elements, i)
-	{
-		Expr *element = elements[i];
-		LLVMValueRef sub_value = gencontext_emit_expr(context, element->designated_init_expr.value);
-		Decl *parent = expr->type->decl;
-		DesignatedInitPath *path = &element->designated_init_expr.path;
-		LLVMValueRef subref = ref;
-		assert(element->expr_kind == EXPR_DESIGNATED_INIT);
-		while (path)
-		{
-			subref = LLVMBuildStructGEP2(context->builder, llvm_type(parent->type), subref, path->decl->var.id, "access");
-			parent = path->decl;
-			path = path->sub_path;
-		}
-		LLVMBuildStore(context->builder, sub_value, subref);
-	}
-
-	return ref;
-}
 
 static inline LLVMValueRef gencontext_emit_expr_block(GenContext *context, Expr *expr)
 {

@@ -109,21 +109,64 @@ union TestUnion
 {
     int a;
     double f;
+    TestStruct2 e;
+}
+union SimpleUnion
+{
+    int a;
+    double f;
 }
 
-
-func TestStruct structTest(int i)
+struct AnonStruct
 {
+    int a;
+    struct sune
+    {
+        int b;
+        int c;
+    }
+    struct
+    {
+        int b1;
+        int c1;
+    }
+    union
+    {
+        int b2;
+        int c2;
+    }
+    int x;
+}
 
-    TestUnion tu;
-/*    TestStruct foo = { i };
-    TestStruct foo2 = { a = i };*/
+func void testAnonStruct()
+{
+    AnonStruct s = { b2 = 3, b1 = 7, sune.b = 1 };
+    s.sune.b = 1;
+    s.b1 = 2;
+    s.b2 = 3;
+    s.c2 = 4;
+
+}
+
+func void testUnion()
+{
+    SimpleUnion s;
+    s.a = 1;
+    s.f = 1.0;
+    //s = { f = 1.0 };
+    TestUnion tu = { e = TestStruct2 { c = 1 } };
+    tu.e = TestStruct2 {  c = 1 };
+}
+
+func TestStruct2 structTest(int i)
+{
+    TestStruct foo = { i };
+    TestStruct foo2 = { a = i };
     TestStruct foo3 = TestStruct { i };
-    return foo3;
-/*    TestStruct2 bar = { c = 2 };
+    TestStruct2 bar = { c = 2 };
     int x = 3 * i;
     TestStruct2 bar2 = { b.a = x, a.a = x + 1 };
-    return bar2;*/
+    return bar2;
 }
 func void enumInferenceTest()
 {

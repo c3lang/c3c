@@ -335,17 +335,19 @@ static inline bool sema_expr_analyse_method_function(Context *context, Expr *exp
 }
 
 
-static Decl *strukt_recursive_search_member(Decl *strukt, const char *name, int *index)
+static Decl *strukt_recursive_search_member(Decl *strukt, const char *name)
 {
 	VECEACH(strukt->strukt.members, i)
 	{
-		(*index)++;
 		Decl *member = strukt->strukt.members[i];
 		if (member->name == name) return member;
-		if (!member->name && decl_is_struct_type(member))
+		if (!member->name && type_is_structlike(member->type->canonical))
 		{
-			Decl *result = strukt_recursive_search_member(member, name, index);
-			if (result) return result;
+			Decl *result = strukt_recursive_search_member(member->type->canonical->decl, name);
+			if (result)
+			{
+				return result;
+			}
 		}
 	}
 	return NULL;
@@ -380,8 +382,7 @@ static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *ex
 		default:
 			UNREACHABLE
 	}
-	int index = -1;
-	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string, &index);
+	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string);
 	if (!member)
 	{
 		SEMA_TOKEN_ERROR(expr->access_expr.sub_element, "There is no element '%s.%s'.", decl->name, expr->access_expr.sub_element.string);
@@ -397,7 +398,7 @@ static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *ex
 		expr->access_expr.parent = deref;
 	}
 	expr->type = member->type;
-	expr->access_expr.index = index;
+	expr->access_expr.ref = member;
 	return true;
 }
 

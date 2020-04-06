@@ -52,20 +52,28 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 		}
 		case DECL_UNION:
 		{
-			LLVMTypeRef max_type = NULL;
+			Decl *max_type = NULL;
 			unsigned long long max_size = 0;
 			VECEACH(decl->strukt.members, i)
 			{
-				LLVMTypeRef type = llvm_get_type(context, decl->strukt.members[i]->type);
-				unsigned long long size = LLVMStoreSizeOfType(target_data_layout(), type);
+				Decl *member = decl->strukt.members[i];
+				unsigned size = type_size(member->type);
 				if (size > max_size || !max_type)
 				{
 					max_size = size;
-					max_type = type;
+					max_type = member;
 				}
 			}
 			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->external_name);
-			LLVMStructSetBody(type, &max_type, 1, false);
+			if (max_type)
+			{
+				LLVMTypeRef type_ref = llvm_get_type(context, max_type->type);
+				LLVMStructSetBody(type, &type_ref, 1, false);
+			}
+			else
+			{
+				LLVMStructSetBody(type, NULL, 0, true);
+			}
 			return type;
 		}
 		case DECL_ENUM:
@@ -222,9 +230,3 @@ LLVMTypeRef gencontext_get_llvm_type(GenContext *context, Type *type)
 	return llvm_get_type(context->context, type);
 }
 
-void llvm_set_struct_size_alignment(Decl *decl)
-{
-	LLVMTypeRef type = llvm_get_type(LLVMGetGlobalContext(), decl->type);
-	decl->strukt.size = LLVMStoreSizeOfType(target_data_layout(), type);
-	decl->strukt.abi_alignment = LLVMPreferredAlignmentOfType(target_data_layout(), type);
-}

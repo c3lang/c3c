@@ -8,7 +8,6 @@ static void fprint_asts_recursive(FILE *file, Ast **asts, int indent);
 
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility)
 {
-	assert(name.string);
 	Decl *decl = CALLOCS(Decl);
 	decl->decl_kind = decl_kind;
 	decl->name_span = name.span;
