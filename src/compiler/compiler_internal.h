@@ -844,6 +844,7 @@ typedef struct _Context
 	Decl **ct_ifs;
 	Ast **defers;
 	Decl *active_function_for_analysis;
+	Decl *active_type_for_analysis;
 	Decl **last_local;
 	Ast **labels;
 	Ast **gotos;

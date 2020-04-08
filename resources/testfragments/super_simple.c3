@@ -138,9 +138,13 @@ struct AnonStruct
     int x;
 }
 
+
 func void testAnonStruct()
 {
+
     AnonStruct s = { b2 = 3, b1 = 7, sune.b = 1 };
+    AnonStruct foo;
+
     s.sune.b = 1;
     s.b1 = 2;
     s.b2 = 3;
@@ -153,6 +157,9 @@ func void testUnion()
     SimpleUnion s;
     s.a = 1;
     s.f = 1.0;
+    s = { 1 };
+    int x = 2;
+    s = { (x = 2) };
     //s = { f = 1.0 };
     TestUnion tu = { e = TestStruct2 { c = 1 } };
     tu.e = TestStruct2 {  c = 1 };
@@ -168,6 +175,7 @@ func TestStruct2 structTest(int i)
     TestStruct2 bar2 = { b.a = x, a.a = x + 1 };
     return bar2;
 }
+
 func void enumInferenceTest()
 {
     OtherError e = OtherError.FOO_BAR;

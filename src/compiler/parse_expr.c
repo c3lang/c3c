@@ -208,10 +208,12 @@ static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 static Expr *parse_grouping_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
+	Expr *expr = expr_new(EXPR_GROUP, context->tok.span);
 	advance_and_verify(context, TOKEN_LPAREN);
-	Expr *right = TRY_EXPR_OR(parse_expr(context), &poisoned_expr);
+	expr->group_expr = TRY_EXPR_OR(parse_expr(context), &poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, &poisoned_expr);
-	return right;
+	RANGE_EXTEND_PREV(expr);
+	return expr;
 }
 
 /**

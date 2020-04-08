@@ -20,7 +20,7 @@ void context_push_scope_with_flags(Context *context, ScopeFlags flags)
 	context->current_scope->local_decl_start = context->last_local;
 	context->current_scope->defers.start = parent_defer;
 	context->current_scope->defers.end = parent_defer;
-	if (flags & (SCOPE_DEFER | SCOPE_EXPR_BLOCK))
+	if (flags & (SCOPE_DEFER | SCOPE_EXPR_BLOCK | SCOPE_NEXT))
 	{
 		context->current_scope->flags = flags;
 	}
