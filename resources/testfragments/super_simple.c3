@@ -517,11 +517,52 @@ func void testDefault(int x = 2, int y = 100, int z = -100)
 {
     printf("x = %d, y = %d, z = %d\n", x, y, z);
 }
+
+func int testReturnDefer()
+{
+    int i = 0;
+    i++;
+    defer ++i;
+    return i;
+}
+
+func void testDefer()
+{
+    printf("1 == %d\n", testReturnDefer());
+    printf("1");
+    defer printf("8\n");
+    printf("2");
+    {
+        printf("3");
+        defer printf("5");
+        printf("4");
+    }
+    int i = 0;
+    goto JUMP;
+    defer printf("ERROR");
+    int r = 0;
+JUMP:
+    defer printf("-JUMPDEFER-");
+    if (i++ < 2) goto JUMP;
+    switch (int boo = 2)
+    {
+        case 0:
+            printf("\n0\n");
+        case 2:
+            defer printf("*CaseDefer*");
+            printf("-Case2-");
+        default:
+            break;
+    }
+    defer printf("7");
+    printf("6");
+}
 func int main(int x)
 {
     printf("Helo!\n");
     testDefault(y = 99);
     testPointers(2, 3);
+    testDefer();
     int efd = 9;
     uint fefoek = 1;
     printf("Helo: %d\n", efd + cast(fefoek, int));

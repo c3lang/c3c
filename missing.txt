@@ -47,16 +47,15 @@ Things missing:
 - Disallow x >= 0 and x < 0 on unsigned types unless in a macro.
 - Range check arrays on debug
 - Allow negating int if assigned to a larger type. E.g short x = 1; int y = -x;
+- Expression block does not handle defer correctly.
 
 * Switch
 - String switch
 - Range case
 
 * Functions
-- Varargs
 - C ABI
 - Safe varargs
-- Named parameters
 
 * Pre-post conditions
 - Breakdown here
