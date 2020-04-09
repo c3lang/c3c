@@ -13,7 +13,26 @@ static inline LLVMValueRef gencontext_emit_add_int(GenContext *context, Type *ty
 		return LLVMBuildAdd(context->builder, left, right, "add_mod");
 	}
 
-	// TODO insert trap
+	if (build_options.debug_mode)
+	{
+		LLVMTypeRef type_to_use = llvm_type(type->canonical);
+		LLVMTypeRef types[2] = { type_to_use, type_to_use };
+		LLVMValueRef args[2] = { left, right };
+		assert(type->canonical == type);
+		LLVMValueRef add_res;
+		if (type_is_unsigned(type))
+		{
+			add_res = gencontext_emit_call_intrinsic(context, uadd_overflow_intrinsic_id, types, args, 2);
+		}
+		else
+		{
+			add_res = gencontext_emit_call_intrinsic(context, sadd_overflow_intrinsic_id, types, args, 2);
+		}
+		LLVMValueRef result = LLVMBuildExtractValue(context->builder, add_res, 0, "");
+		LLVMValueRef ok = LLVMBuildExtractValue(context->builder, add_res, 1, "");
+		gencontext_emit_panic_on_true(context, ok, "Addition overflow");
+		return result;
+	}
 	return type_is_unsigned_integer(type)
 		? LLVMBuildNUWAdd(context->builder, left, right, "uadd")
 		: LLVMBuildNSWAdd(context->builder, left, right, "add");
@@ -26,7 +45,28 @@ static inline LLVMValueRef gencontext_emit_sub_int(GenContext *context, Type *ty
 		return LLVMBuildSub(context->builder, left, right, "sub_mod");
 	}
 
-	// TODO insert trap
+	if (build_options.debug_mode)
+	{
+		LLVMTypeRef type_to_use = llvm_type(type);
+		LLVMTypeRef types[2] = { type_to_use, type_to_use };
+		LLVMValueRef args[2] = { left, right };
+		assert(type->canonical == type);
+		LLVMValueRef add_res;
+		if (type_is_unsigned(type))
+		{
+			add_res = gencontext_emit_call_intrinsic(context, usub_overflow_intrinsic_id, types, args, 2);
+		}
+		else
+		{
+			add_res = gencontext_emit_call_intrinsic(context, ssub_overflow_intrinsic_id, types, args, 2);
+		}
+		LLVMValueRef result = LLVMBuildExtractValue(context->builder, add_res, 0, "");
+		LLVMValueRef ok = LLVMBuildExtractValue(context->builder, add_res, 1, "");
+		gencontext_emit_panic_on_true(context, ok, "Subtraction overflow");
+		return result;
+	}
+
+
 	return type_is_unsigned_integer(type)
 	       ? LLVMBuildNUWSub(context->builder, left, right, "usub")
 	       : LLVMBuildNSWSub(context->builder, left, right, "sub");
@@ -211,6 +251,8 @@ static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *
 	LLVMValueRef rhs = gencontext_emit_expr(context, expr->cast_expr.expr);
 	return gencontext_emit_cast(context, expr->cast_expr.kind, rhs, expr->type->canonical, expr->cast_expr.expr->type->canonical);
 }
+
+
 static inline LLVMValueRef gencontext_emit_designated_initializer(GenContext *context, Type *parent_type, LLVMValueRef parent, Expr *expr)
 {
 	assert(parent_type == parent_type->canonical);
@@ -234,6 +276,12 @@ static inline LLVMValueRef gencontext_emit_designated_initializer(GenContext *co
 	}
 }
 
+/**
+ * Emit a Foo { .... } literal.
+ *
+ * Improve: Direct assign in the case where this is assigning to a variable.
+ * Improve: Create constant initializer for the constant case and do a memcopy
+ */
 static inline LLVMValueRef gencontext_emit_initializer_list_expr(GenContext *context, Expr *expr)
 {
 	LLVMTypeRef type = llvm_type(expr->type);
@@ -343,17 +391,27 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 		case UNARYOP_NEGMOD:
 			return LLVMBuildNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "negmod");
 		case UNARYOP_NEG:
-			// TODO improve how unsigned numbers are negated.
 			if (type_is_float(type))
 			{
 				return LLVMBuildFNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "fneg");
 			}
-			if (type_is_unsigned(type))
+			assert(!type_is_unsigned(type));
 			{
-				return LLVMBuildNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "neg");
+				LLVMValueRef to_negate = gencontext_emit_expr(context, expr->unary_expr.expr);
+				LLVMValueRef zero = LLVMConstInt(llvm_type(expr->unary_expr.expr->type->canonical), 0, false);
+				if (build_options.debug_mode)
+				{
+					LLVMTypeRef type_to_use = llvm_type(type->canonical);
+					LLVMValueRef args[2] = { zero, to_negate };
+					LLVMTypeRef types[2] = { type_to_use, type_to_use };
+					LLVMValueRef call_res = gencontext_emit_call_intrinsic(context, ssub_overflow_intrinsic_id, types, args, 2);
+					LLVMValueRef result = LLVMBuildExtractValue(context->builder, call_res, 0, "");
+					LLVMValueRef ok = LLVMBuildExtractValue(context->builder, call_res, 1, "");
+					gencontext_emit_panic_on_true(context, ok, "Signed negation overflow");
+					return result;
+				}
+				return LLVMBuildNSWSub(context->builder, zero, to_negate, "neg");
 			}
-			// TODO insert trap
-			return LLVMBuildNSWNeg(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "neg");
 		case UNARYOP_ADDR:
 			return gencontext_emit_address(context, expr->unary_expr.expr);
 		case UNARYOP_DEREF:
@@ -578,15 +636,33 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 			UNREACHABLE
 		case BINARYOP_MULT:
 			if (is_float) return LLVMBuildFMul(context->builder, lhs_value, rhs_value, "fmul");
-			// TODO insert trap
 			if (type_is_unsigned_integer(lhs_type))
 			{
+				if (build_options.debug_mode)
+				{
+					LLVMTypeRef type_to_use = llvm_type(lhs_type);
+					LLVMValueRef args[2] = { lhs_value, rhs_value };
+					LLVMTypeRef types[2] = { type_to_use, type_to_use };
+					LLVMValueRef call_res = gencontext_emit_call_intrinsic(context, umul_overflow_intrinsic_id, types, args, 2);
+					LLVMValueRef result = LLVMBuildExtractValue(context->builder, call_res, 0, "");
+					LLVMValueRef ok = LLVMBuildExtractValue(context->builder, call_res, 1, "");
+					gencontext_emit_panic_on_true(context, ok, "Unsigned multiplication overflow");
+					return result;
+				}
 				return LLVMBuildNUWMul(context->builder, lhs_value, rhs_value, "umul");
 			}
-			else
+			if (build_options.debug_mode)
 			{
-				return LLVMBuildNSWMul(context->builder, lhs_value, rhs_value, "mul");
+				LLVMTypeRef type_to_use = llvm_type(lhs_type);
+				LLVMValueRef args[2] = { lhs_value, rhs_value };
+				LLVMTypeRef types[2] = { type_to_use, type_to_use };
+				LLVMValueRef call_res = gencontext_emit_call_intrinsic(context, smul_overflow_intrinsic_id, types, args, 2);
+				LLVMValueRef result = LLVMBuildExtractValue(context->builder, call_res, 0, "");
+				LLVMValueRef ok = LLVMBuildExtractValue(context->builder, call_res, 1, "");
+				gencontext_emit_panic_on_true(context, ok, "Signed multiplication overflow");
+				return result;
 			}
+			return LLVMBuildNSWMul(context->builder, lhs_value, rhs_value, "mul");
 		case BINARYOP_MULT_MOD:
 			return LLVMBuildMul(context->builder, lhs_value, rhs_value, "mul");
 		case BINARYOP_SUB:
@@ -651,7 +727,6 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 			return LLVMBuildFCmp(context->builder, LLVMRealULE, lhs_value, rhs_value, "lt");
 		case BINARYOP_AND:
 		case BINARYOP_OR:
-			UNREACHABLE
 		case BINARYOP_ASSIGN:
 		case BINARYOP_MULT_ASSIGN:
 		case BINARYOP_MULT_MOD_ASSIGN:
@@ -877,6 +952,15 @@ static inline LLVMValueRef gencontext_emit_expr_block(GenContext *context, Expr 
 
 	return return_out;
 }
+
+LLVMValueRef gencontext_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id, LLVMTypeRef *types,
+                                            LLVMValueRef *values, unsigned arg_count)
+{
+	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(context->module, intrinsic_id, types, arg_count);
+	LLVMTypeRef type = LLVMIntrinsicGetType(context->context, intrinsic_id, types, arg_count);
+	return LLVMBuildCall2(context->builder, type, decl, values, arg_count, "");
+}
+
 
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 {

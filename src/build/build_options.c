@@ -316,6 +316,7 @@ void parse_arguments(int argc, const char *argv[])
 	build_options.optimization_level = OPTIMIZATION_NOT_SET;
 	build_options.size_optimization_level = SIZE_OPTIMIZATION_NOT_SET;
 	build_options.debug_info = false;
+	build_options.debug_mode = false;
 	build_options.command = COMMAND_MISSING;
 	build_options.symtab_size = DEFAULT_SYMTAB_SIZE;
 	build_options.files = NULL;

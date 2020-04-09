@@ -68,10 +68,20 @@ typedef struct
 	bool did_call_stack_save : 1;
 } GenContext;
 
+extern unsigned sadd_overflow_intrinsic_id;
+extern unsigned uadd_overflow_intrinsic_id;
+extern unsigned ssub_overflow_intrinsic_id;
+extern unsigned usub_overflow_intrinsic_id;
+extern unsigned smul_overflow_intrinsic_id;
+extern unsigned umul_overflow_intrinsic_id;
+extern unsigned trap_intrinsic_id;
 
 void gencontext_begin_module(GenContext *context);
 void gencontext_end_module(GenContext *context);
 void gencontext_emit_stmt(GenContext *context, Ast *ast);
+LLVMValueRef gencontext_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id, LLVMTypeRef *types,
+                                            LLVMValueRef *values, unsigned arg_count);
+void gencontext_emit_panic_on_true(GenContext *context, LLVMValueRef value, const char *panic_name);
 void gencontext_emit_defer(GenContext *context, Ast *defer_start, Ast *defer_end);
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr);
 LLVMValueRef gencontext_emit_ast_expr(GenContext *context, Ast *expr);

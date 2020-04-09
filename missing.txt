@@ -45,6 +45,8 @@ Things missing:
 
 * Expressions
 - Disallow x >= 0 and x < 0 on unsigned types unless in a macro.
+- Range check arrays on debug
+- Allow negating int if assigned to a larger type. E.g short x = 1; int y = -x;
 
 * Switch
 - String switch

@@ -600,6 +600,18 @@ void gencontext_emit_scoped_stmt(GenContext *context, Ast *ast)
 	gencontext_emit_defer(context, ast->scoped_stmt.defers.start, ast->scoped_stmt.defers.end);
 }
 
+void gencontext_emit_panic_on_true(GenContext *context, LLVMValueRef value, const char *panic_name)
+{
+	LLVMBasicBlockRef panic_block = gencontext_create_free_block(context, "panic");
+	LLVMBasicBlockRef ok_block = gencontext_create_free_block(context, "checkok");
+	gencontext_emit_cond_br(context, value, panic_block, ok_block);
+	gencontext_emit_block(context, panic_block);
+	gencontext_emit_call_intrinsic(context, trap_intrinsic_id, NULL, NULL, 0);
+	gencontext_emit_br(context, ok_block);
+	gencontext_emit_block(context, ok_block);
+}
+
+
 void gencontext_emit_stmt(GenContext *context, Ast *ast)
 {
 	switch (ast->ast_kind)

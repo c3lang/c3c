@@ -1005,6 +1005,7 @@ bool cast_to_runtime(Expr *expr);
 void cast_to_smallest_runtime(Expr *expr);
 
 void llvm_codegen(Context *context);
+void llvm_codegen_setup();
 
 
 bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr);

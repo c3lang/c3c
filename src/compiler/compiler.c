@@ -95,6 +95,7 @@ void compiler_compile(BuildTarget *target)
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
 
+	llvm_codegen_setup();
 	VECEACH(contexts, i)
 	{
 		Context *context = contexts[i];

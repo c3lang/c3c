@@ -217,6 +217,7 @@ func int borok() throws
 func void testNoReturn()
 {
     int i = 0;
+    i = -i;
 }
 
 func int testReturn()
@@ -513,7 +514,10 @@ func int testPointers(int x)
 }
 func int main(int x)
 {
+    printf("Helo!\n");
     int efd = 9;
+    uint fefoek = 1;
+    long fefoek = -fefoek;
     int okfe = 1;
     return 1;
     switch (int bobe = okfe > 0 ? 1 : 0)

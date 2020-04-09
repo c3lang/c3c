@@ -103,6 +103,7 @@ typedef struct
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
 	bool debug_info;
+	bool debug_mode;
 	bool emit_llvm;
 	bool emit_bitcode;
 } BuildOptions;

@@ -155,8 +155,39 @@ static int get_inlining_threshold(void)
 			return 250;
 	}
 }
+
+
+static inline unsigned lookup_intrinsic(const char *name)
+{
+	return LLVMLookupIntrinsicID(name, strlen(name));
+}
+
+static bool intrinsics_setup = false;
+unsigned ssub_overflow_intrinsic_id;
+unsigned usub_overflow_intrinsic_id;
+unsigned sadd_overflow_intrinsic_id;
+unsigned uadd_overflow_intrinsic_id;
+unsigned smul_overflow_intrinsic_id;
+unsigned umul_overflow_intrinsic_id;
+unsigned trap_intrinsic_id;
+
+void llvm_codegen_setup()
+{
+	assert(intrinsics_setup == false);
+	ssub_overflow_intrinsic_id = lookup_intrinsic("llvm.ssub.with.overflow");
+	usub_overflow_intrinsic_id = lookup_intrinsic("llvm.usub.with.overflow");
+	sadd_overflow_intrinsic_id = lookup_intrinsic("llvm.sadd.with.overflow");
+	uadd_overflow_intrinsic_id = lookup_intrinsic("llvm.uadd.with.overflow");
+	smul_overflow_intrinsic_id = lookup_intrinsic("llvm.smul.with.overflow");
+	umul_overflow_intrinsic_id = lookup_intrinsic("llvm.umul.with.overflow");
+	trap_intrinsic_id = lookup_intrinsic("llvm.trap");
+
+	intrinsics_setup = true;
+}
+
 void llvm_codegen(Context *context)
 {
+	assert(intrinsics_setup);
 	GenContext gen_context;
 	gencontext_init(&gen_context, context);
 	gencontext_begin_module(&gen_context);
