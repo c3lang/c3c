@@ -891,7 +891,7 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 	{
 		if (context->tok.type != TOKEN_COMMA && context->tok.type != TOKEN_RPAREN)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Unexpected end of the parameter list, did you forget an ')'?");
+			sema_error_at(context->prev_tok_end, "Unexpected end of the parameter list, did you forget an ')'?");
 			return false;
 		}
 		SEMA_ERROR(type, "The function parameter must be named.");
@@ -989,11 +989,11 @@ bool parse_struct_body(Context *context, Decl *parent, Decl *visible_parent)
 			Decl *member;
 			if (context->next_tok.type != TOKEN_IDENT)
 			{
-			    Token name_replacement = context->tok;
-                name_replacement.string = NULL;
-                member = decl_new_with_type(name_replacement, decl_kind, parent->visibility);
-                advance(context);
-            }
+				Token name_replacement = context->tok;
+				name_replacement.string = NULL;
+				member = decl_new_with_type(name_replacement, decl_kind, parent->visibility);
+				advance(context);
+			}
 			else
             {
 			    advance(context);
@@ -1010,6 +1010,8 @@ bool parse_struct_body(Context *context, Decl *parent, Decl *visible_parent)
 				advance_and_verify(context, TOKEN_IDENT);
 			}
 			if (!parse_attributes(context, member)) return false;
+			member->parent_struct = parent;
+			member->strukt.id = vec_size(parent->strukt.members);
 			parent->strukt.members = VECADD(parent->strukt.members, member);
 			if (!parse_struct_body(context, member, context->tok.type == TOKEN_IDENT ? member : visible_parent))
 			{
@@ -1033,7 +1035,10 @@ bool parse_struct_body(Context *context, Decl *parent, Decl *visible_parent)
                 decl_poison(other);
                 decl_poison(member);
             }
+            unsigned index = vec_size(parent->strukt.members);
             parent->strukt.members = VECADD(parent->strukt.members, member);
+            member->var.id = index;
+            member->var.parent = parent;
             advance(context);
             if (context->tok.type != TOKEN_COMMA) break;
         }
@@ -1955,6 +1960,7 @@ void parse_file(Context *context)
 static Expr *parse_type_access(Context *context, TypeInfo *type)
 {
     Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPE_ACCESS, context->tok);
+    expr->span = type->span;
     expr->type_access.type = type;
 
     advance_and_verify(context, TOKEN_DOT);
@@ -1966,6 +1972,7 @@ static Expr *parse_type_access(Context *context, TypeInfo *type)
     	case TOKEN_IDENT:
     	case TOKEN_CONST_IDENT:
     		advance(context);
+		    RANGE_EXTEND_PREV(expr);
 		    return expr;
 	    default:
 	    	SEMA_TOKEN_ERROR(context->tok, "Expected a function name, macro, or constant.");
@@ -1992,11 +1999,7 @@ Expr *parse_type_identifier_with_path(Context *context, Path *path)
 	RANGE_EXTEND_PREV(type);
 	if (context->tok.type == TOKEN_LBRACE)
 	{
-		Expr *expr = EXPR_NEW_TOKEN(EXPR_STRUCT_VALUE, context->tok);
-		expr->struct_value_expr.type = type;
-		expr->struct_value_expr.init_expr = TRY_EXPR_OR(parse_initializer_list(context), &poisoned_expr);
-
-		return expr;
+		return TRY_EXPR_OR(parse_initializer_list(context), &poisoned_expr);
 	}
 	EXPECT_OR(TOKEN_DOT, &poisoned_expr);
 	return parse_type_access(context, type);

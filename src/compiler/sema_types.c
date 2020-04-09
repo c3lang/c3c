@@ -93,7 +93,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 				return type_info_poison(type_info);
 			}
 			DEBUG_LOG("Resolved %s.", type_info->unresolved.name_loc.string);
-			type_info->type = decl->type;
+			type_info->type = decl->typedef_decl.type_info->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
 		case DECL_POISONED:

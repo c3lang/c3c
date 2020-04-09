@@ -4,22 +4,44 @@
 
 #include "compiler_internal.h"
 
-Type *type_bool, *type_void, *type_string, *type_voidptr;
-Type *type_float, *type_double;
-Type *type_char, *type_short, *type_int, *type_long, *type_isize;
-Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
-Type *type_compint, *type_compfloat;
-Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
-Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
+static Type t_u0, t_str, t_u1, t_i8, t_i16, t_i32, t_i64, t_ixx;
+static Type t_u8, t_u16, t_u32, t_u64;
+static Type t_f32, t_f64, t_fxx;
+static Type t_usz, t_isz;
+static Type t_cus, t_cui, t_cul, t_cull;
+static Type t_cs, t_ci, t_cl, t_cll;
+static Type t_voidstar, t_typeid;
+static Type t_err;
 
-Type t_u0, t_str;
-Type t_u1, t_i8, t_i16, t_i32, t_i64, t_ixx;
-Type t_u8, t_u16, t_u32, t_u64, t_uxx;
-Type t_f32, t_f64, t_fxx;
-Type t_usz, t_isz;
-Type t_cus, t_cui, t_cul, t_cull;
-Type t_cs, t_ci, t_cl, t_cll;
-Type t_voidstar;
+Type *type_bool = &t_u1;
+Type *type_void = &t_u0;
+Type *type_string = &t_str;
+Type *type_voidptr = &t_voidstar;
+Type *type_float = &t_f32;
+Type *type_double = &t_f64;
+Type *type_error = &t_err;
+Type *type_typeid = &t_typeid;
+Type *type_char = &t_i8;
+Type *type_short = &t_i16;
+Type *type_int = &t_i32;
+Type *type_long = &t_i64;
+Type *type_isize = &t_isz;
+Type *type_byte = &t_u8;
+Type *type_ushort = &t_u16;
+Type *type_uint = &t_u32;
+Type *type_ulong = &t_u64;
+Type *type_usize = &t_usz;
+Type *type_compint = &t_ixx;
+Type *type_compfloat = &t_fxx;
+Type *type_c_short = &t_cs;
+Type *type_c_int = &t_ci;
+Type *type_c_long = &t_cl;
+Type *type_c_longlong = &t_cll;
+Type *type_c_ushort = &t_cus;
+Type *type_c_uint = &t_cui;
+Type *type_c_ulong = &t_cul;
+Type *type_c_ulonglong = &t_cull;
+
 
 #define META_OFFSET 0
 #define PTR_OFFSET 1
@@ -176,29 +198,18 @@ size_t type_size(Type *canonical)
 		case TYPE_META_TYPE:
 			return 0;
 		case TYPE_ENUM:
-			return type_size(canonical->decl->enums.type_info->type->canonical);
+			return canonical->decl->enums.type_info->type->canonical->builtin.bytesize;
+		case TYPE_ERROR:
+			return type_error->canonical->builtin.bytesize;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ERROR:
-			TODO
+			return canonical->decl->strukt.size;
 		case TYPE_VOID:
 			return 1;
 		case TYPE_BOOL:
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
-		case TYPE_I64:
-		case TYPE_U8:
-		case TYPE_U16:
-		case TYPE_U32:
-		case TYPE_U64:
-		case TYPE_F32:
-		case TYPE_F64:
+		case ALL_INTS:
+		case ALL_FLOATS:
 			return canonical->builtin.bytesize;
-		case TYPE_IXX:
-			return 8;
-		case TYPE_FXX:
-			return 8;
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
@@ -211,7 +222,44 @@ size_t type_size(Type *canonical)
 		case TYPE_ERROR_UNION:
 			TODO
 	}
-	TODO
+	UNREACHABLE
+}
+
+size_t type_abi_alignment(Type *canonical)
+{
+	assert(canonical && canonical->canonical == canonical);
+	switch (canonical->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_TYPEDEF:
+		case TYPE_VOID:
+			UNREACHABLE;
+		case TYPE_META_TYPE:
+			return 0;
+		case TYPE_ENUM:
+			return canonical->decl->enums.type_info->type->canonical->builtin.abi_alignment;
+		case TYPE_ERROR:
+			return type_error->canonical->builtin.abi_alignment;
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+			return canonical->decl->strukt.abi_alignment;
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+			return canonical->builtin.abi_alignment;
+		case TYPE_FUNC:
+		case TYPE_POINTER:
+		case TYPE_VARARRAY:
+		case TYPE_STRING:
+			return t_usz.canonical->builtin.abi_alignment;
+		case TYPE_ARRAY:
+			return type_abi_alignment(canonical->array.base);
+		case TYPE_SUBARRAY:
+			TODO
+		case TYPE_ERROR_UNION:
+			TODO
+	}
+	UNREACHABLE
 }
 
 static inline void create_type_cache(Type *canonical_type)
@@ -346,31 +394,29 @@ Type *type_get_array(Type *arr_type, uint64_t len)
 	return type_create_array(arr_type, len, false);
 }
 
-static void type_create(const char *name, Type *location, Type **ptr, TypeKind kind, unsigned bitsize,
+static void type_create(const char *name, Type *location, TypeKind kind, unsigned bitsize,
                         unsigned align, unsigned pref_align)
 {
 	*location = (Type) {
 		.type_kind = kind,
 		.builtin.bytesize = (bitsize + 7) / 8,
 		.builtin.bitsize = bitsize,
-		.builtin.min_alignment = align,
+		.builtin.abi_alignment = align,
 		.builtin.pref_alignment = pref_align,
 		.name = name,
 		.canonical = location,
 	};
 	location->name = name;
 	location->canonical = location;
-	*ptr = location;
 }
 
-static void type_create_alias(const char *name, Type *location, Type **ptr, Type *canonical)
+static void type_create_alias(const char *name, Type *location, Type *canonical)
 {
 	*location = (Type) {
 		.type_kind = TYPE_TYPEDEF,
 		.name = name,
 		.canonical = canonical
 	};
-	*ptr = location;
 }
 
 
@@ -383,7 +429,7 @@ void builtin_setup(Target *target)
 	type_string.type_kind = TYPE_STRING;
 */
 #define DEF_TYPE(_name, _shortname, _type, _bits, _align) \
-type_create(#_name, &_shortname, &type_ ## _name, _type, _bits, target->align_min_ ## _align, target->align_ ## _align)
+type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target->align_pref_ ## _align)
 
 	DEF_TYPE(bool, t_u1, TYPE_BOOL, 1, byte);
 	DEF_TYPE(float, t_f32, TYPE_F32, 32, float);
@@ -404,26 +450,28 @@ type_create(#_name, &_shortname, &type_ ## _name, _type, _bits, target->align_mi
 
 #undef DEF_TYPE
 
-	type_create("void*", &t_voidstar, &type_voidptr, TYPE_POINTER, target->width_pointer, target->align_min_pointer, target->align_pointer);
+	type_create("void*", &t_voidstar, TYPE_POINTER, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t_voidstar;
 	t_voidstar.pointer = type_void;
-	type_create("compint", &t_ixx, &type_compint, TYPE_IXX, 32, 0, 0);
-	type_create("compfloat", &t_fxx, &type_compfloat, TYPE_FXX, 64, 0, 0);
+	type_create("compint", &t_ixx, TYPE_IXX, 32, 0, 0);
+	type_create("compfloat", &t_fxx, TYPE_FXX, 64, 0, 0);
 
-	type_create_alias("usize", &t_usz, &type_usize, type_unsigned_int_by_bitsize(target->width_pointer));
-	type_create_alias("isize", &t_isz, &type_isize, type_signed_int_by_bitsize(target->width_pointer));
+	type_create_alias("usize", &t_usz, type_unsigned_int_by_bitsize(target->width_pointer));
+	type_create_alias("isize", &t_isz, type_signed_int_by_bitsize(target->width_pointer));
 
-	type_create_alias("c_ushort", &t_cus, &type_c_ushort, type_unsigned_int_by_bitsize(target->width_c_short));
-	type_create_alias("c_uint", &t_cui, &type_c_uint, type_unsigned_int_by_bitsize(target->width_c_int));
-	type_create_alias("c_ulong", &t_cul, &type_c_ulong, type_unsigned_int_by_bitsize(target->width_c_long));
-	type_create_alias("c_ulonglong", &t_cull, &type_c_ulonglong, type_unsigned_int_by_bitsize(target->width_c_long_long));
+	type_create_alias("c_ushort", &t_cus, type_unsigned_int_by_bitsize(target->width_c_short));
+	type_create_alias("c_uint", &t_cui, type_unsigned_int_by_bitsize(target->width_c_int));
+	type_create_alias("c_ulong", &t_cul, type_unsigned_int_by_bitsize(target->width_c_long));
+	type_create_alias("c_ulonglong", &t_cull, type_unsigned_int_by_bitsize(target->width_c_long_long));
 
-	type_create_alias("c_short", &t_cs, &type_c_short, type_signed_int_by_bitsize(target->width_c_short));
-	type_create_alias("c_int", &t_ci, &type_c_int, type_signed_int_by_bitsize(target->width_c_int));
-	type_create_alias("c_long", &t_cl, &type_c_long, type_signed_int_by_bitsize(target->width_c_long));
-	type_create_alias("c_longlong", &t_cll, &type_c_longlong, type_signed_int_by_bitsize(target->width_c_long_long));
-
+	type_create_alias("c_short", &t_cs, type_signed_int_by_bitsize(target->width_c_short));
+	type_create_alias("c_int", &t_ci, type_signed_int_by_bitsize(target->width_c_int));
+	// TODO fix error size
+	type_create_alias("error", &t_err, type_signed_int_by_bitsize(target->width_c_int));
+	type_create_alias("typeid", &t_typeid, type_signed_int_by_bitsize(target->width_pointer));
+	type_create_alias("c_long", &t_cl, type_signed_int_by_bitsize(target->width_c_long));
+	type_create_alias("c_longlong", &t_cll, type_signed_int_by_bitsize(target->width_c_long_long));
 
 }
 
@@ -621,6 +669,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
+			if (other->type_kind == TYPE_ENUM) return type_find_max_type(type, other->decl->enums.type_info->type->canonical);
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:

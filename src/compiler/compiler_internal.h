@@ -30,8 +30,6 @@ typedef struct _Expr Expr;
 typedef struct _Module Module;
 typedef struct _Type Type;
 
-typedef bool(*CastFunc)(Expr *, Type *, Type *, Type *, CastType cast_type);
-
 typedef struct _BigInt
 {
 	unsigned digit_count;
@@ -55,7 +53,11 @@ typedef struct
 			char* chars;
 			int len;
 		} string;
+		Decl *enum_constant;
+		Decl *error_constant;
 	};
+	// Valid type kinds:
+	// bool, ints, floats, string
 	TypeKind kind;
 } ExprConst;
 
@@ -135,7 +137,7 @@ typedef struct
 {
 	unsigned char bitsize;
 	unsigned char bytesize;
-	unsigned char min_alignment;
+	unsigned char abi_alignment;
 	unsigned char pref_alignment;
 }  TypeBuiltin;
 
@@ -224,7 +226,8 @@ typedef struct
 
 typedef struct
 {
-	uint32_t alignment;
+	uint32_t abi_alignment;
+	uint32_t id;
 	uint64_t size;
 	Decl **members;
 } StructDecl;
@@ -235,7 +238,11 @@ typedef struct _VarDecl
 	unsigned id : 16;
 	VarDeclKind kind : 3;
 	TypeInfo *type_info;
-	Expr *init_expr;
+	union
+	{
+		Expr *init_expr;
+		Decl *parent;
+	};
 	void *backend_ref;
 	void *backend_debug_ref;
 } VarDecl;
@@ -315,7 +322,6 @@ typedef struct
 	{
 		FunctionSignature function_signature;
 		TypeInfo *type_info;
-		Type *type;
 	};
 } TypedefDecl;
 
@@ -363,7 +369,11 @@ typedef struct _Decl
 	{
 		struct
 		{
-			Decl** method_functions;
+			union
+			{
+				Decl* parent_struct;
+				Decl** method_functions;
+			};
 			union
 			{
 				ErrorDecl error;
@@ -459,8 +469,6 @@ typedef struct
 		Token sub_element;
 		Decl *ref;
 	};
-	// TODO cleanup
-	int index;
 } ExprAccess;
 
 typedef struct
@@ -499,6 +507,32 @@ typedef struct
 	Ast **stmts;
 } ExprFuncBlock;
 
+typedef enum
+{
+	INITIALIZER_UNKNOWN,
+	INITIALIZER_ZERO,
+	INITIALIZER_DESIGNATED,
+	INITIALIZER_NORMAL
+} InitializerType;
+
+typedef struct
+{
+	InitializerType init_type;
+	Expr** initializer_expr;
+} ExprInitializer;
+
+typedef struct _DesignatedInitPath
+{
+	Decl *decl;
+	struct _DesignatedInitPath *sub_path;
+} DesignatedInitPath;
+
+typedef struct
+{
+	DesignatedInitPath path;
+	Expr *value;
+} ExprDesignatedInit;
+
 struct _Expr
 {
 	ExprKind expr_kind : 8;
@@ -506,6 +540,7 @@ struct _Expr
 	SourceRange span;
 	Type *type;
 	union {
+		ExprDesignatedInit designated_init_expr;
 		ExprCast cast_expr;
 		ExprConst const_expr;
 		ExprStructValue struct_value_expr;
@@ -521,7 +556,7 @@ struct _Expr
 		ExprAccess access_expr;
 		ExprIdentifier identifier_expr;
 		ExprType type_expr;
-		Expr** initializer_expr;
+		ExprInitializer expr_initializer;
 		Expr** expression_list;
 		ExprScope expr_scope;
 		ExprFuncBlock expr_block;
@@ -809,6 +844,7 @@ typedef struct _Context
 	Decl **ct_ifs;
 	Ast **defers;
 	Decl *active_function_for_analysis;
+	Decl *active_type_for_analysis;
 	Decl **last_local;
 	Ast **labels;
 	Ast **gotos;
@@ -884,14 +920,7 @@ extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
-
-extern Type t_i8, t_i16, t_i32, t_i64, t_isz, t_ixx;
-extern Type t_u1, t_u8, t_u16, t_u32, t_u64, t_usz, t_uxx;
-extern Type t_f32, t_f64, t_fxx;
-extern Type t_u0, t_str;
-extern Type t_cus, t_cui, t_cul, t_cull;
-extern Type t_cs, t_ci, t_cl, t_cll;
-extern Type t_voidstar;
+extern Type *type_typeid, *type_error;
 
 extern const char *main_name;
 
@@ -976,7 +1005,7 @@ bool cast_to_runtime(Expr *expr);
 void cast_to_smallest_runtime(Expr *expr);
 
 void llvm_codegen(Context *context);
-void llvm_set_struct_size_alignment(Decl *decl);
+void llvm_codegen_setup();
 
 
 bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr);
@@ -1139,17 +1168,48 @@ bool type_is_subtype(Type *type, Type *possible_subtype);
 Type *type_find_common_ancestor(Type *left, Type *right);
 const char *type_to_error_string(Type *type);
 size_t type_size(Type *canonical);
+size_t type_abi_alignment(Type *canonical);
 void type_append_signature_name(Type *type, char *dst, size_t *offset);
 Type *type_find_max_type(Type *type, Type *other);
 
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_FXX; }
 static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_I64; }
 static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind <= TYPE_U64; }
+static inline bool type_kind_is_any_integer(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_IXX; }
 static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I64; }
 static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
 bool type_may_have_method_functions(Type *type);
+
+static inline Type *type_reduced(Type *type)
+{
+	Type *canonical = type->canonical;
+	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
+	if (canonical->type_kind == TYPE_ERROR) return type_error->canonical;
+	return canonical;
+}
+
+static inline bool type_is_structlike(Type *type)
+{
+	assert(type->canonical = type);
+	switch (type->type_kind)
+	{
+		case TYPE_UNION:
+		case TYPE_STRUCT:
+			return true;
+		default:
+			return false;
+
+	}
+}
+
+static inline Type *type_reduced_from_expr(Expr *expr)
+{
+	return type_reduced(expr->type);
+}
+
+
 static inline bool type_is_integer(Type *type)
 {
 	assert(type == type->canonical);

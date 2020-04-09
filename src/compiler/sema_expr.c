@@ -49,6 +49,8 @@ static bool expr_is_ltype(Expr *expr)
 			return expr->unary_expr.operator == UNARYOP_DEREF;
 		case EXPR_ACCESS:
 			return expr_is_ltype(expr->access_expr.parent);
+		case EXPR_GROUP:
+			return expr_is_ltype(expr->group_expr);
 		case EXPR_SUBSCRIPT:
 			return true;
 		default:
@@ -114,15 +116,72 @@ static inline bool sema_expr_analyse_ternary(Context *context, Type *to, Expr *e
 	return true;
 }
 
+
+static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name, Decl *decl)
+{
+	VECEACH(decl->enums.values, i)
+	{
+		Decl *enum_constant = decl->enums.values[i];
+		if (enum_constant->name == name)
+		{
+			assert(enum_constant->resolve_status == RESOLVE_DONE);
+			expr->type = enum_constant->type;
+			expr->const_expr = enum_constant->enum_constant.expr->const_expr;
+			expr->expr_kind = EXPR_CONST;
+			return true;
+		}
+	}
+	return false;
+}
+
+static inline bool sema_expr_analyse_error_constant(Expr *expr, const char *name, Decl *decl)
+{
+	VECEACH(decl->error.error_constants, i)
+	{
+		Decl *error_constant = decl->error.error_constants[i];
+		if (error_constant->name == name)
+		{
+			assert(error_constant->resolve_status == RESOLVE_DONE);
+			expr->type = decl->type;
+			expr->expr_kind = EXPR_CONST;
+			expr_const_set_int(&expr->const_expr, error_constant->error_constant.value, type_error->canonical->type_kind);
+			return true;
+		}
+	}
+	return false;
+}
+
+static inline bool find_possible_inferred_identifier(Type *to, Expr *expr)
+{
+	if (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_ERROR) return false;
+	Decl *parent_decl = to->canonical->decl;
+	switch (parent_decl->decl_kind)
+	{
+		case DECL_ENUM:
+			return sema_expr_analyse_enum_constant(expr, expr->identifier_expr.identifier, parent_decl);
+		case DECL_ERROR:
+			return sema_expr_analyse_error_constant(expr, expr->identifier_expr.identifier, parent_decl);
+		case DECL_UNION:
+		case DECL_STRUCT:
+			return false;
+		default:
+			UNREACHABLE
+	}
+
+}
 static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr *expr)
 {
-	// TODO what about struct functions
 	Decl *ambiguous_decl;
 	Decl *decl = sema_resolve_symbol(context, expr->identifier_expr.identifier, expr->identifier_expr.path, &ambiguous_decl);
 
+	if (!decl && !expr->identifier_expr.path && to)
+	{
+		if (find_possible_inferred_identifier(to, expr)) return true;
+	}
+
 	if (!decl)
 	{
-		SEMA_ERROR(expr, "Unknown symbol '%s'.", expr->identifier_expr.identifier);
+		SEMA_ERROR(expr, "The symbol '%s' could not be found.", expr->identifier_expr.identifier);
 		return false;
 	}
 
@@ -162,6 +221,7 @@ static inline bool sema_expr_analyse_binary_sub_expr(Context *context, Type *to,
 
 static inline bool sema_expr_analyse_var_call(Context *context, Type *to, Expr *expr) { TODO }
 static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Expr *expr) { TODO };
+
 
 static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr *expr, Decl *decl)
 {
@@ -221,15 +281,6 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	}
 }
 
-static inline bool sema_expr_analyse_struct_value(Context *context, Type *to, Expr *expr)
-{
-	TODO
-}
-
-static inline bool sema_expr_analyse_struct_init_values(Context *context, Type *to, Expr *expr)
-{
-	TODO
-}
 
 static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr *expr)
 {
@@ -284,57 +335,32 @@ static inline bool sema_expr_analyse_method_function(Context *context, Expr *exp
 	return false;
 }
 
-static inline bool sema_expr_analyse_enum_constant(Context *context, Expr *expr, Decl *decl)
-{
-	const char *name = expr->type_access.name.string;
-	VECEACH(decl->enums.values, i)
-	{
-		Decl *enum_constant = decl->enums.values[i];
-		if (enum_constant->name == name)
-		{
-			assert(enum_constant->resolve_status == RESOLVE_DONE);
-			expr_replace(expr, enum_constant->enum_constant.expr);
-			return true;
-		}
-	}
-	SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
-	return false;
-}
 
-static inline bool sema_expr_analyse_error_constant(Context *context, Expr *expr, Decl *decl)
-{
-	const char *name = expr->type_access.name.string;
-	VECEACH(decl->error.error_constants, i)
-	{
-		Decl *error_constant = decl->error.error_constants[i];
-		if (error_constant->name == name)
-		{
-			assert(error_constant->resolve_status == RESOLVE_DONE);
-			expr->type = decl->type;
-			expr->expr_kind = EXPR_CONST;
-			expr_const_set_int(&expr->const_expr, decl->error_constant.value, TYPE_U32);
-			return true;
-		}
-	}
-	SEMA_ERROR(expr, "'%s' has no error type '%s'.", decl->name, name);
-	return false;
-}
-
-static Decl *strukt_recursive_search_member(Decl *strukt, const char *name, int *index)
+static Decl *strukt_recursive_search_member(Decl *strukt, const char *name)
 {
 	VECEACH(strukt->strukt.members, i)
 	{
-		(*index)++;
 		Decl *member = strukt->strukt.members[i];
 		if (member->name == name) return member;
-		if (!member->name && decl_is_struct_type(member))
+		if (!member->name && type_is_structlike(member->type->canonical))
 		{
-			Decl *result = strukt_recursive_search_member(member, name, index);
-			if (result) return result;
+			Decl *result = strukt_recursive_search_member(member->type->canonical->decl, name);
+			if (result)
+			{
+				return result;
+			}
 		}
 	}
 	return NULL;
 }
+
+static inline bool sema_expr_analyse_group(Context *context, Type *to, Expr *expr)
+{
+	if (!sema_analyse_expr(context, to, expr->group_expr)) return false;
+	*expr = *expr->group_expr;
+	return true;
+}
+
 
 static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *expr)
 {
@@ -364,8 +390,7 @@ static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *ex
 		default:
 			UNREACHABLE
 	}
-	int index = -1;
-	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string, &index);
+	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string);
 	if (!member)
 	{
 		SEMA_TOKEN_ERROR(expr->access_expr.sub_element, "There is no element '%s.%s'.", decl->name, expr->access_expr.sub_element.string);
@@ -381,7 +406,7 @@ static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *ex
 		expr->access_expr.parent = deref;
 	}
 	expr->type = member->type;
-	expr->access_expr.index = index;
+	expr->access_expr.ref = member;
 	return true;
 }
 
@@ -389,21 +414,38 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 {
 	TypeInfo *type_info = expr->type_access.type;
 	if (!sema_resolve_type_info(context, type_info)) return false;
-	if (!type_may_have_method_functions(type_info->type))
+	Type *canonical = type_info->type->canonical;
+	if (!type_may_have_method_functions(canonical))
 	{
 		SEMA_ERROR(expr, "'%s' does not have method functions.", type_to_error_string(type_info->type));
 		return false;
 	}
-	Decl *decl = type_info->type->decl;
+	Decl *decl = canonical->decl;
 	// TODO add more constants that can be inspected?
 	// e.g. SomeEnum.values, MyUnion.x.offset etc?
 	switch (decl->decl_kind)
 	{
 		case DECL_ENUM:
-			if (expr->type_access.name.type == TOKEN_CONST_IDENT) return sema_expr_analyse_enum_constant(context, expr, decl);
+			if (expr->type_access.name.type == TOKEN_CONST_IDENT)
+			{
+				if (!sema_expr_analyse_enum_constant(expr, expr->type_access.name.string, decl))
+				{
+					SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, expr->type_access.name.string);
+					return false;
+				}
+				return true;
+			}
 			break;
 		case DECL_ERROR:
-			if (expr->type_access.name.type == TOKEN_CONST_IDENT) return sema_expr_analyse_error_constant(context, expr, decl);
+			if (expr->type_access.name.type == TOKEN_CONST_IDENT)
+			{
+				if (!sema_expr_analyse_error_constant(expr, expr->type_access.name.string, decl))
+				{
+					SEMA_ERROR(expr, "'%s' has no error type '%s'.", decl->name, expr->type_access.name.string);
+					return false;
+				}
+				return true;
+			}
 			break;
 		case DECL_UNION:
 		case DECL_STRUCT:
@@ -448,9 +490,12 @@ static Decl *sema_analyse_init_identifier(Context *context, Decl *strukt, Expr *
 {
 	assert(expr->resolve_status == RESOLVE_NOT_DONE);
 	expr->resolve_status = RESOLVE_RUNNING;
-	expr->identifier_expr.decl = sema_analyse_init_identifier_string(context, strukt, expr->identifier_expr.identifier);
+	Decl *res = sema_analyse_init_identifier_string(context, strukt, expr->identifier_expr.identifier);
+	if (!res) return NULL;
+	expr->identifier_expr.decl = res;
 	expr->resolve_status = RESOLVE_DONE;
-	return expr->identifier_expr.decl;
+	expr->type = res->type;
+	return res;
 }
 
 static Decl *sema_analyse_init_access(Context *context, Decl *strukt, Expr *access_expr)
@@ -465,6 +510,7 @@ static Decl *sema_analyse_init_access(Context *context, Decl *strukt, Expr *acce
 	}
 	decl = access_expr->access_expr.ref = sema_analyse_init_identifier_string(context, decl->type->decl, access_expr->access_expr.sub_element.string);
 	access_expr->resolve_status = RESOLVE_DONE;
+	access_expr->type = decl->type;
 	return decl;
 }
 
@@ -492,75 +538,92 @@ static Decl *sema_analyse_init_path(Context *context, Decl *strukt, Expr *expr)
 	}
 }
 
-
-typedef enum
+static bool sema_expr_analyse_struct_designated_initializer(Context *context, Decl *assigned, Expr *initializer)
 {
-	INIT_SEMA_ERROR,
-	INIT_SEMA_NOT_FOUND,
-	INIT_SEMA_OK
-} InitSemaResult;
+	Expr **init_expressions = initializer->expr_initializer.initializer_expr;
 
-static InitSemaResult sema_expr_analyse_struct_named_initializer_list(Context *context, Decl *assigned, Expr *expr_list)
-{
-	VECEACH(expr_list->initializer_expr, i)
+	VECEACH(init_expressions, i)
 	{
-		Expr *expr = expr_list->initializer_expr[i];
-		if (expr->expr_kind != EXPR_BINARY && expr->binary_expr.operator != BINARYOP_ASSIGN)
+		Expr *expr = init_expressions[i];
+
+		// 1. Ensure that're seeing expr = expr on the top level.
+		if (expr->expr_kind != EXPR_BINARY || expr->binary_expr.operator != BINARYOP_ASSIGN)
 		{
-			if (i != 0)
-			{
-				SEMA_ERROR(expr, "Named and non-named initializers are not allowed together, please choose one or the other.");
-				return INIT_SEMA_ERROR;
-			}
-			// If there is an unexpected expression and no previous element then this is a normal initializer list.
-			return INIT_SEMA_NOT_FOUND;
+			SEMA_ERROR(expr, "Expected an initializer on the format 'foo = 123' here.");
+			return false;
 		}
 		Expr *path = expr->binary_expr.left;
-		Expr *value = expr->binary_expr.right;
-		Decl *result = sema_analyse_init_path(context, assigned, path);
-		if (!result)
+		if (!sema_analyse_init_path(context, assigned, path))
 		{
-			if (i != 0)
-			{
-				SEMA_ERROR(path, "Unexpected element when initializing '%s', did you get the name right?", assigned->name);
-				return INIT_SEMA_ERROR;
-			}
-			return INIT_SEMA_NOT_FOUND;
+			SEMA_ERROR(path, "This is not a valid member of '%s'.", type_to_error_string(assigned->type));
+			return false;
 		}
-		if (!sema_analyse_expr_of_required_type(context, result->type, value)) return INIT_SEMA_ERROR;
+		Expr *value = expr->binary_expr.right;
+		if (!sema_analyse_expr_of_required_type(context, path->type, value)) return false;
+		expr->type = path->type;
 	}
-	return INIT_SEMA_OK;
+	initializer->expr_initializer.init_type = INITIALIZER_DESIGNATED;
+	return true;
 }
 
-static inline bool sema_expr_analyse_struct_initializer_list(Context *context, Type *assigned, Expr *expr)
+static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, Decl *assigned, Expr *initializer)
 {
-	Decl **members = assigned->decl->strukt.members;
-	unsigned size = vec_size(members);
-	// Zero size init will initialize to empty.
-	if (size == 0) return true;
+	Expr **elements = initializer->expr_initializer.initializer_expr;
+	Decl **members = assigned->strukt.members;
+	initializer->expr_initializer.init_type = INITIALIZER_NORMAL;
+	unsigned size = vec_size(elements);
+	unsigned expected_members = vec_size(members);
 
-	InitSemaResult result = sema_expr_analyse_struct_named_initializer_list(context, assigned->decl, expr);
-	if (result == INIT_SEMA_ERROR) return false;
-	if (result == INIT_SEMA_OK)
+	// For struct number of members must be the same as the size of the struct.
+
+	assert(size > 0);
+	if (expected_members == 0)
 	{
-		TODO
-	}
-	if (assigned->type_kind == TYPE_UNION)
-	{
-		SEMA_ERROR(expr->initializer_expr[0], "Initializer list for unions must use named initializers, e.g. { a = 4 }");
+		SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
 		return false;
 	}
-	if (size < vec_size(expr->initializer_expr))
+
+	bool is_union = assigned->decl_kind == DECL_UNION;
+	expected_members = is_union ? 1 : expected_members;
+	VECEACH(elements, i)
 	{
-		SEMA_ERROR(expr->initializer_expr[size], "Too many elements in initializer, expected only %d.", size);
+		if (i >= expected_members)
+		{
+			SEMA_ERROR(elements[i], "Too many elements in initializer, expected only %d.", expected_members);
+			return false;
+		}
+		if (!sema_analyse_expr_of_required_type(context, members[i]->type, elements[i])) return false;
+	}
+	if (expected_members > size)
+	{
+		SEMA_ERROR(elements[size - 1], "Few elements in initializer, there should be elements after this one.");
 		return false;
 	}
-	VECEACH(expr->initializer_expr, i)
-	{
-		if (!sema_analyse_expr_of_required_type(context, members[i]->type, expr->initializer_expr[i])) return false;
-	}
-	expr->type = assigned;
 	return true;
+}
+
+static inline bool sema_expr_analyse_struct_initializer(Context *context, Type *assigned, Expr *expr)
+{
+	expr->type = assigned;
+
+	Expr **init_expressions = expr->expr_initializer.initializer_expr;
+
+	// 1. Zero size init will initialize to empty.
+	if (vec_size(init_expressions) == 0)
+	{
+		expr->expr_initializer.init_type = INITIALIZER_ZERO;
+		return true;
+	}
+
+	// 2. Check if we might have a designated initializer
+	//    this means that in this case we're actually not resolving macros here.
+	if (init_expressions[0]->expr_kind == EXPR_BINARY && init_expressions[0]->binary_expr.operator == BINARYOP_ASSIGN)
+	{
+		return sema_expr_analyse_struct_designated_initializer(context, assigned->decl, expr);
+	}
+
+	// 3. Otherwise use the plain initializer.
+	return sema_expr_analyse_struct_plain_initializer(context, assigned->decl, expr);
 }
 
 static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to, Expr *expr)
@@ -572,7 +635,9 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 	{
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-			if (decl_is_struct_type(assigned->decl)) return sema_expr_analyse_struct_initializer_list(context, assigned, expr);
+			if (decl_is_struct_type(assigned->decl)) return sema_expr_analyse_struct_initializer(context,
+			                                                                                     assigned,
+			                                                                                     expr);
 			break;
 		case TYPE_ARRAY:
 			TODO
@@ -831,6 +896,8 @@ static bool binary_arithmetic_promotion(Expr *left, Expr *right, Type *left_type
  */
 static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
+	// TODO enums
+
 	bool is_mod = expr->binary_expr.operator == BINARYOP_SUB_MOD;
 
 	// 1. Analyse a and b. Do not push down if this is a -%
@@ -926,6 +993,8 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
  */
 static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *left, Expr *right)
 {
+	// TODO enums
+
 	bool is_mod = expr->binary_expr.operator == BINARYOP_ADD_MOD;
 
 	// 1. Promote everything to the recipient type – if possible
@@ -1446,11 +1515,15 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 		Type *max = type_find_max_type(left_type, right_type);
 
 		// 4. If no common type, then that's an error:
-		if (!max) goto ERR;
+		if (!max)
+		{
+			SEMA_ERROR(expr, "'%s' and '%s' are different types and cannot be compared.",
+					type_to_error_string(left->type), type_to_error_string(right->type));
+		};
 
 		// 5. Most types can do equality, but not all can do comparison,
 		//    so we need to check that as well.
-		if (is_equality_type_op)
+		if (!is_equality_type_op)
 		{
 			switch (max->type_kind)
 			{
@@ -1496,21 +1569,7 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 	// 7. Do constant folding.
 	if (both_const(left, right))
 	{
-		switch (left->const_expr.kind)
-		{
-			case TYPE_BOOL:
-				SEMA_ERROR(expr, "Cannot compare booleans, convert them into integers first.");
-				return false;
-			case ALL_FLOATS:
-			case ALL_INTS:
-				expr->const_expr.b = expr_const_compare(&left->const_expr, &right->const_expr, expr->binary_expr.operator);
-				return true;
-			case TYPE_STRING:
-				SEMA_ERROR(expr, "Cannot compare strings.");
-				return false;
-			default:
-				UNREACHABLE
-		}
+		expr->const_expr.b = expr_const_compare(&left->const_expr, &right->const_expr, expr->binary_expr.operator);
 		expr->const_expr.kind = TYPE_BOOL;
 		expr->expr_kind = EXPR_CONST;
 	}
@@ -1678,6 +1737,9 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 			case TYPE_STRING:
 				expr->const_expr.b = !inner->const_expr.string.len;
 				break;
+			case TYPE_ERROR:
+			case TYPE_ENUM:
+				TODO
 			default:
 				UNREACHABLE
 		}
@@ -1871,6 +1933,7 @@ static Expr *expr_shallow_copy(Expr *source)
 	return copy;
 }
 
+
 static Expr **expr_copy_expr_list_from_macro(Context *context, Expr *macro, Expr **expr_list);
 static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_expr);
 static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source);
@@ -1929,6 +1992,9 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 	Expr *expr = expr_shallow_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_DESIGNATED_INIT:
+			// This type of expression is only created after analysis.
+			UNREACHABLE
 		case EXPR_EXPR_BLOCK:
 			ast_copy_list_from_macro(context, macro, &expr->expr_block.stmts);
 			return expr;
@@ -1975,18 +2041,14 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 			EXPR_COPY(expr->subscript_expr.expr);
 			EXPR_COPY(expr->subscript_expr.index);
 			return expr;
+		case EXPR_GROUP:
+			EXPR_COPY(expr->group_expr->group_expr);
+			return expr;
 		case EXPR_ACCESS:
 			EXPR_COPY(expr->access_expr.parent);
 			return expr;
-		case EXPR_STRUCT_VALUE:
-			expr->struct_value_expr.type = type_info_copy_from_macro(context, macro, expr->struct_value_expr.type);
-			EXPR_COPY(expr->struct_value_expr.init_expr);
-			return expr;
-		case EXPR_STRUCT_INIT_VALUES:
-			TODO
-			return expr;
 		case EXPR_INITIALIZER_LIST:
-			expr->initializer_expr = expr_copy_expr_list_from_macro(context, macro, expr->initializer_expr);
+			expr->expr_initializer.initializer_expr = expr_copy_expr_list_from_macro(context, macro, expr->expr_initializer.initializer_expr);
 			return expr;
 		case EXPR_EXPRESSION_LIST:
 			expr->expression_list = expr_copy_expr_list_from_macro(context, macro, expr->expression_list);
@@ -2387,6 +2449,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_POISONED:
 			return false;
 		case EXPR_SCOPED_EXPR:
+		case EXPR_DESIGNATED_INIT:
 			UNREACHABLE
 		case EXPR_EXPR_BLOCK:
 			return sema_expr_analyse_expr_block(context, to, expr);
@@ -2416,12 +2479,10 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return sema_expr_analyse_sizeof(context, to, expr);
 		case EXPR_SUBSCRIPT:
 			return sema_expr_analyse_subscript(context, to, expr);
+		case EXPR_GROUP:
+			return sema_expr_analyse_group(context, to, expr);
 		case EXPR_ACCESS:
 			return sema_expr_analyse_access(context, to, expr);
-		case EXPR_STRUCT_VALUE:
-			return sema_expr_analyse_struct_value(context, to, expr);
-		case EXPR_STRUCT_INIT_VALUES:
-			return sema_expr_analyse_struct_init_values(context, to, expr);
 		case EXPR_INITIALIZER_LIST:
 			return sema_expr_analyse_initializer_list(context, to, expr);
 		case EXPR_CAST:

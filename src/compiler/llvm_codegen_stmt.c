@@ -23,7 +23,7 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 {
 	Decl *decl = ast->declare_stmt;
 
-	decl->var.backend_ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
+	decl->var.backend_ref = gencontext_emit_alloca(context, llvm_type(type_reduced(decl->type)), decl->name);
 	// TODO NRVO
 	// TODO debug info
 	/*
@@ -44,11 +44,11 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 	{
 		Expr *expr = decl->var.init_expr;
 		// Quick path for empty initializer list
-		if (expr->expr_kind == EXPR_INITIALIZER_LIST && vec_size(expr->initializer_expr) == 0)
+		if (expr->expr_kind == EXPR_INITIALIZER_LIST && expr->expr_initializer.init_type == INITIALIZER_ZERO)
 		{
 			LLVMBuildMemSet(context->builder, decl->var.backend_ref, LLVMConstInt(llvm_type(type_byte), 0, false),
 					LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false),
-					expr->type->decl->strukt.alignment);
+					expr->type->decl->strukt.abi_alignment);
 			return decl->var.backend_ref;
 		}
 
@@ -599,6 +599,18 @@ void gencontext_emit_scoped_stmt(GenContext *context, Ast *ast)
 	gencontext_emit_stmt(context, ast->scoped_stmt.stmt);
 	gencontext_emit_defer(context, ast->scoped_stmt.defers.start, ast->scoped_stmt.defers.end);
 }
+
+void gencontext_emit_panic_on_true(GenContext *context, LLVMValueRef value, const char *panic_name)
+{
+	LLVMBasicBlockRef panic_block = gencontext_create_free_block(context, "panic");
+	LLVMBasicBlockRef ok_block = gencontext_create_free_block(context, "checkok");
+	gencontext_emit_cond_br(context, value, panic_block, ok_block);
+	gencontext_emit_block(context, panic_block);
+	gencontext_emit_call_intrinsic(context, trap_intrinsic_id, NULL, NULL, 0);
+	gencontext_emit_br(context, ok_block);
+	gencontext_emit_block(context, ok_block);
+}
+
 
 void gencontext_emit_stmt(GenContext *context, Ast *ast)
 {

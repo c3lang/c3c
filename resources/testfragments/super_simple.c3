@@ -2,16 +2,6 @@ module bar;
 
 typedef int as Bob;
 
-/* hello *//* there */
-/+ why /+ you /* lucky +/ +/
-// Whut
-// Here
-//
-//---
-/*
- Hello
- */
-
 struct Test
 {
     int a;
@@ -38,30 +28,6 @@ struct Teob
     int oekfeo;
 }
 
-enum EnumTest : long
-{
-    VALUE1 = 4,
-    VALUE2
-}
-
-enum EnumTestDefault
-{
-    VALUE,
-    VALUE2
-}
-
-enum EnumTestNoOverflowAfterLong : long
-{
-    VALUE = 0x7FFF_FFFF_FFFF_FFFE,
-    VALUE_NO_EXCEED
-}
-
-enum EnumTestSmall : ushort
-{
-    VALUE = 0xFF,
-    VALUE2 = 0xFFFF
-}
-
 enum EnumWithData : ushort (int a, char[] x, long b = 4)
 {
     // Currently the args are ignored TODO!
@@ -69,36 +35,14 @@ enum EnumWithData : ushort (int a, char[] x, long b = 4)
     TEST2(12, "world")
 }
 
-
-/* ERRORS
-
-enum EnumWithErrorData : int (int
-{
-    TEST
-}
-
-enum EnumWithErrorWithMissingName : int (int)
-{
-    TEST
-}
-
+/*
 enum EnumTestNoOverflowAfterULong : ulong
 {
     VALUE = 0xFFFF_FFFF_FFFF_FFFE,
     VALUE_NO_EXCEED
 }
 
-enum EnumTestOverflow
-{
-    VALUE = 0x80000000,
-}
 
-
-enum EnumTestOverflowAfter
-{
-    VALUE = 0x80000000 - 1,
-    VALUE_EXCEED
-}
 
 enum EnumTestOverflowAfterLong : long
 {
@@ -112,22 +56,151 @@ enum EnumTestOverflowAfterULong : ulong
     VALUE_EXCEED
 }
 
-enum EnumTestErrorType : float
+enum EnumTestOverflowAfter
 {
-    VALUE_BOOM
-}
+    VALUE = 0x80000000 - 1,
+    VALUE_EXCEED
+}*/
 
-*/
+
+
 
 error Error
 {
     BLURB,
     NO_SUCH_FILE,
-
 }
+
 error OtherError
 {
     FOO_BAR
+}
+
+enum Inf
+{
+    A,
+    B,
+    C = 10000
+}
+
+enum Inf2 : byte
+{
+    A,
+    B,
+    C = 129,
+}
+
+typedef Inf as BooInf;
+
+struct TestStruct
+{
+    int a;
+}
+
+struct TestStruct2
+{
+    TestStruct a;
+    char xx;
+    TestStruct b;
+    int c;
+}
+
+union TestUnion
+{
+    int a;
+    double f;
+    TestStruct2 e;
+}
+union SimpleUnion
+{
+    int a;
+    double f;
+}
+
+struct AnonStruct
+{
+    int a;
+    struct sune
+    {
+        int b;
+        int c;
+    }
+    struct
+    {
+        int b1;
+        int c1;
+    }
+    union
+    {
+        int b2;
+        int c2;
+    }
+    int x;
+}
+
+
+func void testAnonStruct()
+{
+
+    AnonStruct s = { b2 = 3, b1 = 7, sune.b = 1 };
+    AnonStruct foo;
+
+    s.sune.b = 1;
+    s.b1 = 2;
+    s.b2 = 3;
+    s.c2 = 4;
+
+}
+
+func void testUnion()
+{
+    SimpleUnion s;
+    s.a = 1;
+    s.f = 1.0;
+    s = { 1 };
+    int x = 2;
+    s = { (x = 2) };
+    //s = { f = 1.0 };
+    TestUnion tu = { e = TestStruct2 { c = 1 } };
+    tu.e = TestStruct2 {  c = 1 };
+}
+
+func TestStruct2 structTest(int i)
+{
+    TestStruct foo = { i };
+    TestStruct foo2 = { a = i };
+    TestStruct foo3 = TestStruct { i };
+    TestStruct2 bar = { c = 2 };
+    int x = 3 * i;
+    TestStruct2 bar2 = { b.a = x, a.a = x + 1 };
+    return bar2;
+}
+
+func void enumInferenceTest()
+{
+    OtherError e = OtherError.FOO_BAR;
+    Inf x = Inf.A;
+    x = BooInf.B;
+    x = A;
+    int x1 = 0;
+    bool y = x1 == x1;
+    Inf2 z = C;
+    if (z == Inf2.A) return;
+    if (z == 1) return;
+    z = 2;
+    switch (z)
+    {
+        case Inf2.A:
+            x1++;
+            return;
+        case B:
+            return;
+        case 111:
+            x1 += 1;
+            return;
+        default:
+            return;
+    }
 }
 
 func int jumptest()
@@ -144,6 +217,7 @@ func int borok() throws
 func void testNoReturn()
 {
     int i = 0;
+    i = -i;
 }
 
 func int testReturn()
@@ -440,7 +514,10 @@ func int testPointers(int x)
 }
 func int main(int x)
 {
+    printf("Helo!\n");
     int efd = 9;
+    uint fefoek = 1;
+    long fefoek = -fefoek;
     int okfe = 1;
     return 1;
     switch (int bobe = okfe > 0 ? 1 : 0)

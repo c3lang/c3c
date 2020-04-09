@@ -31,15 +31,64 @@ static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
 				break;
 			}
 		}
-		constant->error_constant.value = i;
+		constant->error_constant.value = i + 1;
 		constant->resolve_status = RESOLVE_DONE;
 	}
 	return success;
 }
 
 
+static inline void sema_set_struct_size(Decl *decl)
+{
+	// TODO packed
+	uint64_t size = 0;
+	uint64_t alignment = 0;
+	VECEACH(decl->strukt.members, i)
+	{
+		Decl *member = decl->strukt.members[i];
+		Type *canonical = member->type->canonical;
+		uint64_t member_size = type_size(canonical);
+		uint64_t member_alignment = type_abi_alignment(canonical);
+		assert(member_size > 0);
+		// Add padding.
+		if (member_alignment && (size % member_alignment))
+		{
+			size += member_alignment - size % member_alignment;
+		}
+		// Add size.
+		size += member_size;
+		if (member_alignment > alignment) alignment = member_alignment;
+	}
+	decl->strukt.abi_alignment = alignment;
+	if (alignment && size % alignment)
+	{
+		size += alignment - size % alignment;
+	}
+	decl->strukt.size = size;
+}
+
+static inline void sema_set_union_size(Decl *decl)
+{
+	uint64_t size = 0;
+	uint64_t alignment = 0;
+	VECEACH(decl->strukt.members, i)
+	{
+		Decl *member = decl->strukt.members[i];
+		Type *canonical = member->type->canonical;
+		uint64_t member_size = type_size(canonical);
+		uint64_t member_alignment = type_abi_alignment(canonical);
+		if (member_size > size) size = member_size;
+		if (member_alignment > alignment) alignment = member_alignment;
+	}
+	decl->strukt.abi_alignment = alignment;
+	decl->strukt.size = size;
+}
+
+
 static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 {
+	assert(decl->resolve_status == RESOLVE_NOT_DONE);
+	decl->resolve_status = RESOLVE_RUNNING;
 	if (decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION)
 	{
 		DEBUG_LOG("Beginning analysis of inner struct/union");
@@ -61,12 +110,19 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 				decl_poison(decl);
 			}
 		}
+		if (decl->decl_kind == DECL_UNION)
+		{
+			sema_set_union_size(decl);
+		}
+		else
+		{
+			sema_set_struct_size(decl);
+		}
 		DEBUG_LOG("Analysis complete.");
 		return decl_ok(decl);
 	}
 	assert(decl->decl_kind == DECL_VAR);
 	assert(decl->var.kind == VARDECL_MEMBER);
-	assert(!decl->var.init_expr);
 	if (!sema_resolve_type_info(context, decl->var.type_info))
 	{
 		decl_poison(decl);
@@ -74,6 +130,7 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 	}
 	decl->type = decl->var.type_info->type;
 	assert(decl->var.type_info->type);
+	decl->resolve_status = RESOLVE_DONE;
 	return true;
 }
 
@@ -89,7 +146,7 @@ static inline bool sema_analyse_struct_union(Context *context, Decl *decl)
 			decl_poison(decl);
 			continue;
 		}
-		if (!sema_analyse_struct_member(context, decl->strukt.members[i]))
+		if (!sema_analyse_struct_member(context, member))
 		{
 			if (decl_ok(decl))
 			{
@@ -235,7 +292,7 @@ static inline bool sema_analyse_typedef(Context *context, Decl *decl)
 		return true;
 	}
 	if (!sema_resolve_type_info(context, decl->typedef_decl.type_info)) return false;
-	decl->type->canonical = decl->typedef_decl.type_info->type;
+	decl->type->canonical = decl->typedef_decl.type_info->type->canonical;
 	// Do we need anything else?
 	return true;
 }
@@ -246,7 +303,7 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 	if (!sema_resolve_type_info(context, decl->enums.type_info)) return false;
 
 	Type *type = decl->enums.type_info->type;
-	Type *canonical = decl->enums.type_info->type;
+	Type *canonical = type->canonical;
 
 	// Require an integer type
 	if (!type_is_integer(canonical))
@@ -430,6 +487,7 @@ static inline bool sema_analyse_generic(Context *context, Decl *decl)
 	return true;
 }
 
+
 bool sema_analyse_decl(Context *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
@@ -450,9 +508,13 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 			if (!sema_analyse_throws(context, decl)) return decl_poison(decl);
 			break;
 		case DECL_STRUCT:
+			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
+			sema_set_struct_size(decl);
+			decl_set_external_name(decl);
+			break;
 		case DECL_UNION:
 			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
-			llvm_set_struct_size_alignment(decl);
+			sema_set_union_size(decl);
 			decl_set_external_name(decl);
 			break;
 		case DECL_FUNC:

@@ -208,10 +208,12 @@ static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 static Expr *parse_grouping_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
+	Expr *expr = expr_new(EXPR_GROUP, context->tok.span);
 	advance_and_verify(context, TOKEN_LPAREN);
-	Expr *right = TRY_EXPR_OR(parse_expr(context), &poisoned_expr);
+	expr->group_expr = TRY_EXPR_OR(parse_expr(context), &poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, &poisoned_expr);
-	return right;
+	RANGE_EXTEND_PREV(expr);
+	return expr;
 }
 
 /**
@@ -249,8 +251,9 @@ Expr *parse_initializer(Context *context)
 Expr *parse_initializer_list(Context *context)
 {
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST, context->tok);
+	initializer_list->expr_initializer.init_type = INITIALIZER_UNKNOWN;
 	CONSUME_OR(TOKEN_LBRACE, &poisoned_expr);
-	if (!parse_param_list(context, &initializer_list->initializer_expr, false)) return &poisoned_expr;
+	if (!parse_param_list(context, &initializer_list->expr_initializer.initializer_expr, false)) return &poisoned_expr;
 	CONSUME_OR(TOKEN_RBRACE, &poisoned_expr);
 	return initializer_list;
 }
@@ -324,6 +327,8 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 	access_expr->access_expr.parent = left;
 	access_expr->access_expr.sub_element = context->tok;
 	TRY_CONSUME_OR(TOKEN_IDENT, "Expected identifier", &poisoned_expr);
+	access_expr->span = left->span;
+	access_expr->span.end_loc = access_expr->access_expr.sub_element.span.end_loc;
 	return access_expr;
 }
 

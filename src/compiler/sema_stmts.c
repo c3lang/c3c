@@ -20,7 +20,7 @@ void context_push_scope_with_flags(Context *context, ScopeFlags flags)
 	context->current_scope->local_decl_start = context->last_local;
 	context->current_scope->defers.start = parent_defer;
 	context->current_scope->defers.end = parent_defer;
-	if (flags & (SCOPE_DEFER | SCOPE_EXPR_BLOCK))
+	if (flags & (SCOPE_DEFER | SCOPE_EXPR_BLOCK | SCOPE_NEXT))
 	{
 		context->current_scope->flags = flags;
 	}
@@ -550,29 +550,40 @@ static bool sema_analyse_ct_if_stmt(Context *context, Ast *statement)
 	}
 }
 
-
+/**
+ * Cast the case expression to the switch type and ensure it is constant.
+ *
+ * @return true if the analysis succeeds.
+ */
 static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_stmt)
 {
+	assert(to_type);
 	Expr *case_expr = case_stmt->case_stmt.expr;
-	// TODO handle enums
-	// TODO string expr
-	if (!sema_analyse_expr_of_required_type(context, to_type, case_expr)) return false;
+
+	// 1. Try to do implicit conversion to the correct type.
+	if (!sema_analyse_expr(context, to_type, case_expr)) return false;
+
+	// 2. Skip continued analysis if it's not constant.
 	if (case_expr->expr_kind != EXPR_CONST)
 	{
-		SEMA_ERROR(case_expr, "This must be a constant expression.");
+		SEMA_ERROR(case_expr, "A case value must always be constant at compile time.");
 		return false;
 	}
 
-	if (!cast_to_runtime(case_expr)) return false;
+	Type *case_type = case_expr->type->canonical;
+	Type *to_type_canonical = to_type->canonical;
 
-	if (case_expr->const_expr.kind == TYPE_BOOL) return true;
+	// 3. If we already have the same type we're done.
+	if (to_type_canonical == case_type) return true;
 
-	if (!type_is_integer(case_expr->type))
+	// 4. Otherwise check if we have an enum receiving type and a number on
+	//    in the case. In that case we do an implicit conversion.
+	if (to_type_canonical->type_kind == TYPE_ENUM && type_is_any_integer(case_expr->type))
 	{
-		SEMA_ERROR(case_expr, "The 'case' value must be a boolean or integer constant.");
-		return false;
+		return cast(case_expr, to_type, CAST_TYPE_EXPLICIT);
 	}
-	return true;
+
+	return cast_implicit(case_expr, to_type);
 }
 
 
@@ -614,15 +625,23 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 	bool success = sema_analyse_cond(context, cond, false);
 
 	Type *switch_type = ast_cond_type(cond)->canonical;
-	if (switch_type == type_bool || !type_is_integer(switch_type))
+	switch (switch_type->type_kind)
 	{
-		SEMA_ERROR(cond, "Expected an integer or enum type, was '%s'.", type_to_error_string(switch_type));
-		return false;
+		case ALL_INTS:
+			assert(switch_type->type_kind != TYPE_IXX);
+		case TYPE_BOOL:
+		case TYPE_ERROR:
+		case TYPE_META_TYPE:
+		case TYPE_ENUM:
+		case TYPE_STRING:
+			break;
+		default:
+			SEMA_ERROR(cond, "It is not possible to switch over '%s'.", type_to_error_string(switch_type));
+			return false;
 	}
 	Ast *default_case = NULL;
 	assert(context->current_scope->defers.start == context->current_scope->defers.end);
 
-	// TODO enum, exhaustive cases.
 	ExitType prev_exit = context->current_scope->exit;
 	bool exhaustive = false;
 	ExitType lowest_exit = EXIT_NONE;
@@ -693,15 +712,10 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 	}
 	context_pop_defers_and_replace_ast(context, statement);
 	if (lowest_exit <= EXIT_BREAK) lowest_exit = prev_exit;
+	// Check exhaustive use.
 	context->current_scope->exit = exhaustive ? lowest_exit : EXIT_NONE;
 	context_pop_scope(context);
 	if (!success) return false;
-	// Is this a typeless switch value?
-	if (switch_type->type_kind == TYPE_IXX)
-	{
-
-		TODO
-	}
 	return success;
 }
 
