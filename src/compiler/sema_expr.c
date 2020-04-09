@@ -235,9 +235,15 @@ static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr 
 	unsigned num_args = vec_size(args);
 	// unsigned num_params = vec_size(func_params);
 	// TODO handle named parameters, handle default parameters, varargs etc
+	unsigned func_param_count = vec_size(func_params);
 	for (unsigned i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
+		if (func_param_count >= i)
+		{
+			if (!sema_analyse_expr_of_required_type(context, NULL, arg)) return false;
+			continue;
+		}
 		if (!sema_analyse_expr_of_required_type(context, func_params[i]->type, arg)) return false;
 	}
 	expr->type = decl->func.function_signature.rtype->type;

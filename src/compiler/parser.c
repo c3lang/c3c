@@ -931,6 +931,11 @@ static inline bool parse_opt_parameter_type_list(Context *context, Visibility pa
 	CONSUME_OR(TOKEN_LPAREN, false);
 	while (!try_consume(context, TOKEN_RPAREN))
 	{
+		if (signature->variadic)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "Variadic arguments should be the last in a parameter list.");
+			return false;
+		}
 		if (try_consume(context, TOKEN_ELIPSIS))
 		{
 			signature->variadic = true;
@@ -942,11 +947,6 @@ static inline bool parse_opt_parameter_type_list(Context *context, Visibility pa
 		if (!try_consume(context, TOKEN_COMMA))
 		{
 			EXPECT_OR(TOKEN_RPAREN, false);
-		}
-		if (signature->variadic)
-		{
-			SEMA_TOKEN_ERROR(context->tok, "Variadic arguments should be the last in a parameter list.");
-			return false;
 		}
 	}
 	return true;
