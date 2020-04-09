@@ -281,6 +281,7 @@ typedef struct _FunctionSignature
 {
 	CallConvention convention : 4;
 	bool variadic : 1;
+	bool has_default : 1;
 	bool throw_any : 1;
 	TypeInfo *rtype;
 	Decl** params;

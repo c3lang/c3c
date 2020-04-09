@@ -161,8 +161,9 @@ static inline bool sema_analyse_struct_union(Context *context, Decl *decl)
 }
 
 
-static inline bool sema_analyse_function_param(Context *context, Decl *param, bool is_function)
+static inline bool sema_analyse_function_param(Context *context, Decl *param, bool is_function, bool *has_default)
 {
+	*has_default = false;
 	assert(param->decl_kind == DECL_VAR);
 	assert(param->var.kind == VARDECL_PARAM);
 	if (!sema_resolve_type_info(context, param->var.type_info))
@@ -184,6 +185,7 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 			SEMA_ERROR(expr, "Only constant expressions may be used as default values.");
 			return false;
 		}
+		*has_default = true;
 	}
 	return true;
 }
@@ -212,12 +214,14 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 		Decl *param = signature->params[i];
 		assert(param->resolve_status == RESOLVE_NOT_DONE);
 		param->resolve_status = RESOLVE_RUNNING;
-		if (!sema_analyse_function_param(context, param, is_function))
+		bool has_default;
+		if (!sema_analyse_function_param(context, param, is_function, &has_default))
 		{
 			decl_poison(param);
 			all_ok = false;
 			continue;
 		}
+		signature->has_default = signature->has_default || has_default;
 		param->resolve_status = RESOLVE_DONE;
 		if (i > 0 && all_ok)
 		{

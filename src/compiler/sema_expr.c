@@ -223,30 +223,94 @@ static inline bool sema_expr_analyse_var_call(Context *context, Type *to, Expr *
 static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Expr *expr) { TODO };
 
 
+static inline int find_index_of_named_parameter(Decl** func_params, Expr *expr)
+{
+	if (expr->expr_kind != EXPR_IDENTIFIER || expr->identifier_expr.path)
+	{
+		SEMA_ERROR(expr, "Expected the name of a function parameter here, enclose the assignment expression in ().");
+		return -1;
+	}
+	const char *name = expr->identifier_expr.identifier;
+	VECEACH(func_params, i)
+	{
+		if (func_params[i]->name == name) return (int)i;
+	}
+	SEMA_ERROR(expr, "There's no parameter with the name '%s', if you want an assignment expression, enclose it in ().", name);
+	return -1;
+}
+
 static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr *expr, Decl *decl)
 {
-	Expr **args =expr->call_expr.arguments;
-	Decl **func_params = decl->func.function_signature.params;
-	unsigned error_params = decl->func.function_signature.throw_any || decl->func.function_signature.throws;
+	Expr **args = expr->call_expr.arguments;
+	FunctionSignature *signature = &decl->func.function_signature;
+	Decl **func_params = signature->params;
+	unsigned error_params = signature->throw_any || signature->throws;
 	if (error_params)
 	{
 		TODO
 	}
-	unsigned num_args = vec_size(args);
-	// unsigned num_params = vec_size(func_params);
-	// TODO handle named parameters, handle default parameters, varargs etc
 	unsigned func_param_count = vec_size(func_params);
+	unsigned num_args = vec_size(args);
+	unsigned entries_needed = func_param_count > num_args ? func_param_count : num_args;
+	Expr **actual_args = VECNEW(Expr*, entries_needed);
+	for (unsigned i = 0; i < entries_needed; i++) vec_add(actual_args, NULL);
+	memset(actual_args, 0, entries_needed * sizeof(Expr*));
+	bool uses_named_parameters = false;
+
 	for (unsigned i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
-		if (func_param_count >= i)
+		// Named parameters
+		if (arg->expr_kind == EXPR_BINARY && arg->binary_expr.operator == BINARYOP_ASSIGN)
 		{
-			if (!sema_analyse_expr_of_required_type(context, NULL, arg)) return false;
+			uses_named_parameters = true;
+			int index = find_index_of_named_parameter(func_params, arg->binary_expr.left);
+			if (index < 0) return false;
+			if (actual_args[index])
+			{
+				SEMA_ERROR(arg, "The parameter '%s' was already set once.", func_params[index]->name);
+				return false;
+			}
+			if (!sema_analyse_expr_of_required_type(context, func_params[index]->type, arg->binary_expr.right)) return false;
+			actual_args[index] = arg->binary_expr.right;
 			continue;
 		}
+
+		if (i >= func_param_count)
+		{
+			if (!signature->variadic)
+			{
+				SEMA_ERROR(expr, "Too many parameters for this function.");
+				return false;
+			}
+			if (!sema_analyse_expr_of_required_type(context, NULL, arg)) return false;
+			actual_args[i] = arg;
+			continue;
+		}
+
+		if (uses_named_parameters)
+		{
+			SEMA_ERROR(expr, "A regular parameter cannot follow a named parameter.");
+			return false;
+		}
 		if (!sema_analyse_expr_of_required_type(context, func_params[i]->type, arg)) return false;
+		actual_args[i] = arg;
+	}
+	for (unsigned i = 0; i < entries_needed; i++)
+	{
+		if (actual_args[i]) continue;
+
+		if (func_params[i]->var.init_expr)
+		{
+			actual_args[i] = func_params[i]->var.init_expr;
+			continue;
+		}
+
+		SEMA_ERROR(expr, "Parameter '%s' was not set.", func_params[i]->name);
+		return false;
 	}
 	expr->type = decl->func.function_signature.rtype->type;
+	expr->call_expr.arguments = actual_args;
 	return true;
 }
 

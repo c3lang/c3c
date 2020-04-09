@@ -326,7 +326,7 @@ func int boba(int y, int j)
     }
     return x;
 }
-func int test(int x)
+func int test(int x = 100)
 {
     x = x + 1;
     x = x +% 1;
@@ -512,10 +512,16 @@ func int testPointers(int x, int j = 0, double foo = 3.2)
     z - &y > 0 ? 1 : z - &y;
     return 1;
 }
+
+func void testDefault(int x = 2, int y = 100, int z = -100)
+{
+    printf("x = %d, y = %d, z = %d\n", x, y, z);
+}
 func int main(int x)
 {
     printf("Helo!\n");
-    testPointers(2, 3, 2.3);
+    testDefault(y = 99);
+    testPointers(2, 3);
     int efd = 9;
     uint fefoek = 1;
     printf("Helo: %d\n", efd + cast(fefoek, int));

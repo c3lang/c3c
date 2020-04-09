@@ -300,7 +300,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	Expr *call = EXPR_NEW_EXPR(EXPR_CALL, left);
 	call->call_expr.function = left;
 	call->call_expr.arguments = params;
-
+	RANGE_EXTEND_PREV(call);
 	return call;
 }
 
