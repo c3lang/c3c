@@ -372,7 +372,7 @@ typedef func void() as FEok;
 
 typedef func void(int) as Foo;
 //typedef int as Foo;
-extern func void printf(char *hello);
+extern func void printf(char *hello, ...);
 
 macro hello()
 {
@@ -497,7 +497,7 @@ func int xxxx(int x)
     return 1;
 }
 
-func int testPointers(int x)
+func int testPointers(int x, int j = 0, double foo = 3.2)
 {
     1 ? 1 : 2;
     int y = 0;
@@ -515,9 +515,11 @@ func int testPointers(int x)
 func int main(int x)
 {
     printf("Helo!\n");
+    testPointers(2, 3, 2.3);
     int efd = 9;
     uint fefoek = 1;
-    long fefoek = -fefoek;
+    printf("Helo: %d\n", efd + cast(fefoek, int));
+    //long fefoek = -fefoek;
     int okfe = 1;
     return 1;
     switch (int bobe = okfe > 0 ? 1 : 0)

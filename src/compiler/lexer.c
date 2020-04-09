@@ -345,7 +345,7 @@ static inline Token scan_hex(Lexer *lexer)
 		while (is_hex(peek(lexer))) next(lexer);
 	}
 	if (prev(lexer) == '_') return error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
-	return make_token(lexer, is_float ? TOKEN_FLOAT : TOKEN_INTEGER, lexer->lexing_start);
+	return make_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
 }
 
 static inline Token scan_dec(Lexer *lexer)
@@ -372,7 +372,7 @@ static inline Token scan_dec(Lexer *lexer)
 		while (is_digit(peek(lexer))) next(lexer);
 	}
 	if (prev(lexer) == '_') return error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
-	return make_token(lexer, is_float ? TOKEN_FLOAT : TOKEN_INTEGER, lexer->lexing_start);
+	return make_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
 }
 
 
