@@ -180,7 +180,6 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_CAST:
 		case EXPR_MACRO_EXPR:
-		case EXPR_DESIGNATED_INIT:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -967,9 +966,6 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_POISONED:
-			UNREACHABLE
-		case EXPR_DESIGNATED_INIT:
-			// This is handled inside of initializer setup
 			UNREACHABLE
 		case EXPR_EXPR_BLOCK:
 			return gencontext_emit_expr_block(context, expr);

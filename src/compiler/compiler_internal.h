@@ -521,17 +521,6 @@ typedef struct
 	Expr** initializer_expr;
 } ExprInitializer;
 
-typedef struct _DesignatedInitPath
-{
-	Decl *decl;
-	struct _DesignatedInitPath *sub_path;
-} DesignatedInitPath;
-
-typedef struct
-{
-	DesignatedInitPath path;
-	Expr *value;
-} ExprDesignatedInit;
 
 struct _Expr
 {
@@ -540,7 +529,7 @@ struct _Expr
 	SourceRange span;
 	Type *type;
 	union {
-		ExprDesignatedInit designated_init_expr;
+		Expr *group_expr;
 		ExprCast cast_expr;
 		ExprConst const_expr;
 		ExprStructValue struct_value_expr;

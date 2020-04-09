@@ -110,6 +110,10 @@ Decl *decl_new_var(Token name, TypeInfo *type, VarDeclKind kind, Visibility visi
 	return decl;
 }
 
+/**
+ * Recursively find a node in a declaration.
+ * @return NULL if it wasn't found, otherwise the member.
+ */
 Decl *struct_find_name(Decl *decl, const char* name)
 {
     Decl** compare_members = decl->strukt.members;

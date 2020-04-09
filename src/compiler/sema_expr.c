@@ -281,11 +281,10 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	}
 }
 
-
-static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr *expr)
+static inline bool sema_expr_analyse_subscript_after_parent_resolution(Context *context, Expr *expr)
 {
-	if (!sema_analyse_expr(context, NULL, expr->subscript_expr.expr)) return false;
-
+	assert(expr->expr_kind == EXPR_SUBSCRIPT);
+	assert(expr->subscript_expr.expr->resolve_status == RESOLVE_DONE);
 	Type *type = expr->subscript_expr.expr->type->canonical;
 	Type *inner_type;
 	switch (type->type_kind)
@@ -307,7 +306,6 @@ static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr 
 			return false;
 	}
 
-
 	if (!sema_analyse_expr(context, type_isize, expr->subscript_expr.index)) return false;
 
 	// Unless we already have type_usize, cast to type_isize;
@@ -317,6 +315,13 @@ static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr 
 	}
 	expr->type = inner_type;
 	return true;
+}
+
+static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr *expr)
+{
+	if (!sema_analyse_expr(context, NULL, expr->subscript_expr.expr)) return false;
+
+	return sema_expr_analyse_subscript_after_parent_resolution(context, expr);
 }
 
 static inline bool sema_expr_analyse_method_function(Context *context, Expr *expr, Decl *decl, bool is_pointer)
@@ -362,11 +367,12 @@ static inline bool sema_expr_analyse_group(Context *context, Type *to, Expr *exp
 }
 
 
-static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *expr)
+static inline bool sema_expr_analyse_access_after_parent_resolution(Context *context, Expr *expr)
 {
-	if (!sema_analyse_expr(context, NULL, expr->access_expr.parent)) return false;
-	Type *parent_type = expr->access_expr.parent->type;
+	assert(expr->expr_kind == EXPR_ACCESS);
+	assert(expr->access_expr.parent->resolve_status == RESOLVE_DONE);
 
+	Type *parent_type = expr->access_expr.parent->type;
 	Type *type = parent_type->canonical;
 	bool is_pointer = type->type_kind == TYPE_POINTER;
 	if (is_pointer)
@@ -409,6 +415,13 @@ static inline bool sema_expr_analyse_access(Context *context, Type *to, Expr *ex
 	expr->access_expr.ref = member;
 	return true;
 }
+
+static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
+{
+	if (!sema_analyse_expr(context, NULL, expr->access_expr.parent)) return false;
+	return sema_expr_analyse_access_after_parent_resolution(context, expr);
+}
+
 
 static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Expr *expr)
 {
@@ -1992,9 +2005,6 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 	Expr *expr = expr_shallow_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
-		case EXPR_DESIGNATED_INIT:
-			// This type of expression is only created after analysis.
-			UNREACHABLE
 		case EXPR_EXPR_BLOCK:
 			ast_copy_list_from_macro(context, macro, &expr->expr_block.stmts);
 			return expr;
@@ -2449,7 +2459,6 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_POISONED:
 			return false;
 		case EXPR_SCOPED_EXPR:
-		case EXPR_DESIGNATED_INIT:
 			UNREACHABLE
 		case EXPR_EXPR_BLOCK:
 			return sema_expr_analyse_expr_block(context, to, expr);
@@ -2482,7 +2491,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_GROUP:
 			return sema_expr_analyse_group(context, to, expr);
 		case EXPR_ACCESS:
-			return sema_expr_analyse_access(context, to, expr);
+			return sema_expr_analyse_access(context, expr);
 		case EXPR_INITIALIZER_LIST:
 			return sema_expr_analyse_initializer_list(context, to, expr);
 		case EXPR_CAST:
