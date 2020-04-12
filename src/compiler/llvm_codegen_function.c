@@ -223,7 +223,6 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 		                                                      0);
 		LLVMSetSubprogram(decl->func.backend_value, context->debug.function);
 	}
-	if (decl->func.body) gencontext_emit_function_body(context, decl);
 }
 
 void gencontext_emit_extern_decl(GenContext *context, Decl *decl)

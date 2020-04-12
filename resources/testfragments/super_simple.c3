@@ -117,41 +117,6 @@ union SimpleUnion
     double f;
 }
 
-struct AnonStruct
-{
-    int a;
-    struct sune
-    {
-        int b;
-        int c;
-    }
-    struct
-    {
-        int b1;
-        int c1;
-    }
-    union
-    {
-        int b2;
-        int c2;
-    }
-    int x;
-}
-
-
-func void testAnonStruct()
-{
-
-    AnonStruct s = { b2 = 3, b1 = 7, sune.b = 1 };
-    AnonStruct foo;
-
-    s.sune.b = 1;
-    s.b1 = 2;
-    s.b2 = 3;
-    s.c2 = 4;
-
-}
-
 func void testUnion()
 {
     SimpleUnion s;
@@ -160,7 +125,7 @@ func void testUnion()
     s = { 1 };
     int x = 2;
     s = { (x = 2) };
-    //s = { f = 1.0 };
+    s = { f = 1.0 };
     TestUnion tu = { e = TestStruct2 { c = 1 } };
     tu.e = TestStruct2 {  c = 1 };
 }
@@ -290,6 +255,69 @@ func int barok() throws Error, OtherError
     return 100;
 }
 
+struct SimpleStruct
+{
+    int a;
+    int b;
+    double c;
+    double d;
+    char z1;
+    char z2;
+}
+func void testSimpleStruct(int x)
+{
+    SimpleStruct snoinit;
+    SimpleStruct sinit = { b = 1, d = 3.0, z1 = 1 };
+    sinit.a = 1;
+    sinit.b = 2;
+    printf("a = %d, b = %d (1), c = %f, d = %f (3.0), z1 = %d (1), z2 = %d\n", sinit.a, sinit.b, sinit.c, sinit.d, cast(sinit.z1, int), cast(sinit.z2, int));
+    snoinit.b = 1;
+    snoinit.a = 100;
+    snoinit.d = 3.0;
+    snoinit.c = 2.0;
+    snoinit.z1 = 1;
+    snoinit.z2 = 2;
+    printf("b = %d (1), d = %f (3.0), z1 = %d (1)\n", snoinit.b, snoinit.d, snoinit.z1);
+}
+
+struct AnonStruct
+{
+    int a;
+    struct sune
+    {
+        int b;
+        int c;
+    }
+    struct
+    {
+        int b1;
+        int c1;
+    }
+    union
+    {
+        int b2;
+        int c2;
+    }
+    int x;
+}
+
+func void testAnonStruct()
+{
+    AnonStruct s = { b2 = 3, b1 = 7, sune.b = 1 };
+    AnonStruct foo;
+
+    printf("a = %d, b = %d (1), c = %d, b1 = %d (7), c1 = %d, b2 = %d (3), c2 = %d (3), x = %d\n", s.a, s.sune.b, s.sune.c, s.b1, s.c1, s.b2, s.c2, s.x);
+
+    s.sune.b = 100;
+    s.sune.c = 99;
+    s.b1 = 3;
+    s.b2 = 5;
+    s.c2 = 7;
+
+    printf("a = %d, b = %d (100), c = %d (99), b1 = %d (3), c1 = %d, b2 = %d (7), c2 = %d (7), x = %d\n", s.a, s.sune.b, s.sune.c, s.b1, s.c1, s.b2, s.c2, s.x);
+
+
+}
 func int boba(int y, int j)
 {
 //    hello();
@@ -526,6 +554,34 @@ func int testReturnDefer()
     return i;
 }
 
+struct WithArray
+{
+    int[4] x;
+}
+
+func void testArray()
+{
+    //int[4] zebra = { [0] = 1 };
+    WithArray boo;
+    boo.x[0] = 2;
+    printf("boo.x[0] = %d\n", boo.x[0]);
+    printf("boo.x[2] = %d\n", boo.x[2]);
+    int[4] x;
+    x[1] = 1;
+    x[0] = 3;
+    int y = x[1];
+    int z = 1;
+    int* b = &z;
+    printf("b: %d\n", *b);
+    *b = 3;
+    printf("b: %d\n", *b);
+    printf("z: %d\n", z);
+
+    for (int i = 0; i < 4; i++)
+    {
+        printf("x[%d] = %d\n", i, x[i]);
+    }
+}
 func void testDefer()
 {
     printf("1 == %d\n", testReturnDefer());
@@ -557,12 +613,17 @@ JUMP:
     defer printf("7");
     printf("6");
 }
+
+
 func int main(int x)
 {
     printf("Helo!\n");
     testDefault(y = 99);
     testPointers(2, 3);
     testDefer();
+    testArray();
+    testAnonStruct();
+    testSimpleStruct(0);
     int efd = 9;
     uint fefoek = 1;
     printf("Helo: %d\n", efd + cast(fefoek, int));
@@ -724,3 +785,4 @@ func void test2(int* x, int y, int z)
     int j1 = x[0];
     j1 = *x;
 }
+

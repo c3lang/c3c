@@ -133,6 +133,23 @@ typedef struct _Path
 	uint32_t len;
 } Path;
 
+typedef enum
+{
+	DESIGNATED_IDENT,
+	DESIGNATED_SUBSCRIPT
+} DesignatedPathKind;
+
+typedef struct _DesignatedPath
+{
+	DesignatedPathKind kind;
+	struct _DesignatedPath *sub_path;
+	Type *type;
+	union
+	{
+		unsigned index;
+		Expr *index_expr;
+	};
+} DesignatedPath;
 typedef struct
 {
 	unsigned char bitsize;
@@ -508,6 +525,12 @@ typedef struct
 	Ast **stmts;
 } ExprFuncBlock;
 
+typedef struct
+{
+	Expr *left;
+	Expr *right;
+} ExprRange;
+
 typedef enum
 {
 	INITIALIZER_UNKNOWN,
@@ -522,6 +545,11 @@ typedef struct
 	Expr** initializer_expr;
 } ExprInitializer;
 
+typedef struct
+{
+	DesignatedPath *path;
+	Expr* value;
+} ExprDesignatedInit;
 
 struct _Expr
 {
@@ -530,9 +558,11 @@ struct _Expr
 	SourceRange span;
 	Type *type;
 	union {
+		ExprDesignatedInit designated_init_expr;
 		Expr *group_expr;
 		ExprCast cast_expr;
 		ExprConst const_expr;
+		ExprRange range_expr;
 		ExprStructValue struct_value_expr;
 		ExprTypeRef type_access;
 		ExprTry try_expr;
@@ -1151,6 +1181,7 @@ static inline Token wrap(const char *string)
 
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_meta(Type *meta_type);
+Type *type_get_indexed_type(Type *type);
 Type *type_get_array(Type *arr_type, uint64_t len);
 Type *type_signed_int_by_bitsize(unsigned bytesize);
 Type *type_unsigned_int_by_bitsize(unsigned bytesize);

@@ -351,11 +351,12 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	}
 }
 
-static inline bool sema_expr_analyse_subscript_after_parent_resolution(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_subscript_after_parent_resolution(Context *context, Type *parent, Expr *expr)
 {
 	assert(expr->expr_kind == EXPR_SUBSCRIPT);
-	assert(expr->subscript_expr.expr->resolve_status == RESOLVE_DONE);
-	Type *type = expr->subscript_expr.expr->type->canonical;
+	Expr *subscripted = expr->subscript_expr.expr;
+	Type *type = parent ? parent->canonical : subscripted->type->canonical;
+	Expr *index = expr->subscript_expr.index;
 	Type *inner_type;
 	switch (type->type_kind)
 	{
@@ -372,16 +373,45 @@ static inline bool sema_expr_analyse_subscript_after_parent_resolution(Context *
 			inner_type = type_char;
 			break;
 		default:
-			SEMA_ERROR(expr->subscript_expr.expr, "Cannot index '%s'.", type_to_error_string(type));
+			SEMA_ERROR((parent ? expr : subscripted), "Cannot index '%s'.", type_to_error_string(type));
 			return false;
 	}
 
-	if (!sema_analyse_expr(context, type_isize, expr->subscript_expr.index)) return false;
+	if (!sema_analyse_expr(context, type_isize, index)) return false;
 
 	// Unless we already have type_usize, cast to type_isize;
-	if (expr->subscript_expr.index->type->canonical->type_kind != type_usize->canonical->type_kind)
+	if (index->type->canonical->type_kind != type_usize->canonical->type_kind)
 	{
-		if (!cast_implicit(expr->subscript_expr.index, type_isize)) return false;
+		if (!cast_implicit(index, type_isize)) return false;
+	}
+	// Check range
+	if (index->expr_kind == EXPR_CONST)
+	{
+		switch (type->type_kind)
+		{
+			case TYPE_ARRAY:
+			{
+				BigInt size;
+				bigint_init_unsigned(&size, type->array.len);
+				if (bigint_cmp(&size, &index->const_expr.i) != CMP_GT)
+				{
+					SEMA_ERROR(index, "Array index out of bounds, was %s, exceeding max index of %llu.",
+							bigint_to_error_string(&index->const_expr.i, 10), type->array.len - 1);
+					return false;
+				}
+				// fallthrough
+			}
+			case TYPE_VARARRAY:
+			case TYPE_SUBARRAY:
+				if (bigint_cmp_zero(&index->const_expr.i) == CMP_LT)
+				{
+					SEMA_ERROR(index, "Array index out of bounds, was %s.", bigint_to_error_string(&index->const_expr.i, 10));
+					return false;
+				}
+				break;
+			default:
+				break;
+		}
 	}
 	expr->type = inner_type;
 	return true;
@@ -391,7 +421,7 @@ static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr 
 {
 	if (!sema_analyse_expr(context, NULL, expr->subscript_expr.expr)) return false;
 
-	return sema_expr_analyse_subscript_after_parent_resolution(context, expr);
+	return sema_expr_analyse_subscript_after_parent_resolution(context, NULL, expr);
 }
 
 static inline bool sema_expr_analyse_method_function(Context *context, Expr *expr, Decl *decl, bool is_pointer)
@@ -436,9 +466,10 @@ static inline bool sema_expr_analyse_group(Context *context, Type *to, Expr *exp
 	return true;
 }
 
-
-static inline bool sema_expr_analyse_access_after_parent_resolution(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 {
+	if (!sema_analyse_expr(context, NULL, expr->access_expr.parent)) return false;
+
 	assert(expr->expr_kind == EXPR_ACCESS);
 	assert(expr->access_expr.parent->resolve_status == RESOLVE_DONE);
 
@@ -484,12 +515,6 @@ static inline bool sema_expr_analyse_access_after_parent_resolution(Context *con
 	expr->type = member->type;
 	expr->access_expr.ref = member;
 	return true;
-}
-
-static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
-{
-	if (!sema_analyse_expr(context, NULL, expr->access_expr.parent)) return false;
-	return sema_expr_analyse_access_after_parent_resolution(context, expr);
 }
 
 
@@ -550,78 +575,172 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 	return false;
 }
 
-static Decl *sema_analyse_init_path(Context *context, Decl *strukt, Expr *expr);
+static DesignatedPath *sema_analyse_init_path(Context *context, DesignatedPath *path, Expr *expr);
 
-static Decl *sema_analyse_init_identifier_string(Context *context, Decl *strukt, const char *string)
+static DesignatedPath *sema_analyse_init_identifier_string(Context *context, DesignatedPath *parent_path, const char *string)
 {
-	assert(decl_is_struct_type(strukt));
-	Decl **members = strukt->strukt.members;
+	assert(type_is_structlike(parent_path->type));
+	Decl **members = parent_path->type->decl->strukt.members;
 	VECEACH(members, i)
 	{
 		Decl *member = members[i];
-		if (member->name == string) return member;
+		if (member->name == string)
+		{
+			DesignatedPath *sub_path = CALLOCS(DesignatedPath);
+			sub_path->type = member->type;
+			sub_path->kind = DESIGNATED_IDENT;
+			sub_path->index = i;
+			parent_path->sub_path = sub_path;
+			return sub_path;
+		}
 		if (!member->name)
 		{
-			Decl *anonymous_member = sema_analyse_init_identifier_string(context, member->type->decl, string);
-			if (anonymous_member) return anonymous_member;
+			DesignatedPath temp_path;
+			temp_path.type = member->type;
+			DesignatedPath *found = sema_analyse_init_identifier_string(context, &temp_path, string);
+			if (!found) continue;
+			DesignatedPath *real_path = malloc_arena(sizeof(DesignatedPath));
+			*real_path = temp_path;
+			real_path->index = i;
+			real_path->kind = DESIGNATED_IDENT;
+			parent_path->sub_path = real_path;
+			return found;
 		}
 	}
 	return NULL;
 }
 
-static Decl *sema_analyse_init_identifier(Context *context, Decl *strukt, Expr *expr)
+
+static DesignatedPath *sema_analyse_init_access(Context *context, DesignatedPath *parent, Expr *access_expr)
 {
-	assert(expr->resolve_status == RESOLVE_NOT_DONE);
-	expr->resolve_status = RESOLVE_RUNNING;
-	Decl *res = sema_analyse_init_identifier_string(context, strukt, expr->identifier_expr.identifier);
-	if (!res) return NULL;
-	expr->identifier_expr.decl = res;
-	expr->resolve_status = RESOLVE_DONE;
-	expr->type = res->type;
-	return res;
+	DesignatedPath *last_path = sema_analyse_init_path(context, parent, access_expr->access_expr.parent);
+	if (!last_path) return NULL;
+	return sema_analyse_init_identifier_string(context, last_path, access_expr->access_expr.sub_element.string);
 }
 
-static Decl *sema_analyse_init_access(Context *context, Decl *strukt, Expr *access_expr)
+static bool expr_cast_to_index(Expr *index)
 {
-	assert(access_expr->resolve_status == RESOLVE_NOT_DONE);
-	access_expr->resolve_status = RESOLVE_RUNNING;
-	Decl *decl = sema_analyse_init_path(context, strukt, access_expr->access_expr.parent);
-	if (!decl || !decl_is_struct_type(decl->type->decl))
+	if (index->expr_kind == EXPR_RANGE)
 	{
-		access_expr->resolve_status = RESOLVE_DONE;
-		return NULL;
+		TODO
 	}
-	decl = access_expr->access_expr.ref = sema_analyse_init_identifier_string(context, decl->type->decl, access_expr->access_expr.sub_element.string);
-	access_expr->resolve_status = RESOLVE_DONE;
-	access_expr->type = decl->type;
-	return decl;
+	if (index->type->canonical->type_kind == type_usize->canonical->type_kind) return true;
+	return cast_implicit(index, type_isize);
 }
 
-static Decl *sema_analyse_init_subscript(Context *context, Decl *array, Expr *subscript)
+static bool expr_check_index_in_range(Type *type, Expr *index)
 {
-	TODO
-	if (array->type->type_kind != TYPE_ARRAY)
+	if (index->expr_kind == EXPR_RANGE)
 	{
-
+		return expr_check_index_in_range(type, index->range_expr.left) & expr_check_index_in_range(type, index->range_expr.right);
 	}
+	assert(type == type->canonical);
+	if (index->expr_kind == EXPR_CONST)
+	{
+		switch (type->type_kind)
+		{
+			case TYPE_ARRAY:
+			{
+				BigInt size;
+				bigint_init_unsigned(&size, type->array.len);
+				if (bigint_cmp(&size, &index->const_expr.i) != CMP_GT)
+				{
+					SEMA_ERROR(index, "Array index out of bounds, was %s, exceeding max index of %llu.",
+					           bigint_to_error_string(&index->const_expr.i, 10), type->array.len - 1);
+					return false;
+				}
+				// fallthrough
+			}
+			case TYPE_VARARRAY:
+			case TYPE_SUBARRAY:
+				if (bigint_cmp_zero(&index->const_expr.i) == CMP_LT)
+				{
+					SEMA_ERROR(index, "Array index out of bounds, was %s.", bigint_to_error_string(&index->const_expr.i, 10));
+					return false;
+				}
+				break;
+			case TYPE_STRING:
+				TODO
+			default:
+				UNREACHABLE
+		}
+	}
+	return true;
+}
+static DesignatedPath *sema_analyse_init_subscript(Context *context, DesignatedPath *parent, Expr *expr)
+{
+	assert(expr->expr_kind == EXPR_SUBSCRIPT);
+	DesignatedPath *path = sema_analyse_init_path(context, parent, expr->subscript_expr.expr);
+	if (!path) return NULL;
+
+	Type *type = path->type;
+	if (type->canonical->type_kind == TYPE_POINTER)
+	{
+		SEMA_ERROR(expr, "It's not possible to subscript a pointer field in a designated initializer.");
+		return false;
+	}
+
+	Expr *index = expr->subscript_expr.index;
+	Type *inner_type = type_get_indexed_type(type);
+	if (!inner_type)
+	{
+		SEMA_ERROR(expr, "Not possible to index a value of type '%s'.", type_to_error_string(type));
+		return false;
+	}
+	if (!sema_analyse_expr(context, type_isize, index)) return false;
+
+	// Unless we already have type_usize, cast to type_isize;
+	if (!expr_cast_to_index(index)) return false;
+
+	// Check range
+	if (!expr_check_index_in_range(type->canonical, index)) return false;
+
+	DesignatedPath *sub_path = CALLOCS(DesignatedPath);
+	path->sub_path = sub_path;
+	sub_path->type = inner_type;
+	sub_path->kind = DESIGNATED_SUBSCRIPT;
+	sub_path->index_expr = index;
+	return sub_path;
 }
 
-static Decl *sema_analyse_init_path(Context *context, Decl *strukt, Expr *expr)
+static DesignatedPath *sema_analyse_init_path(Context *context, DesignatedPath *parent, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
 		case EXPR_ACCESS:
-			return sema_analyse_init_access(context, strukt, expr);
+			return sema_analyse_init_access(context, parent, expr);
 		case EXPR_IDENTIFIER:
-			return sema_analyse_init_identifier(context, strukt, expr);
+			return sema_analyse_init_identifier_string(context, parent, expr->identifier_expr.identifier);
 		case EXPR_SUBSCRIPT:
-			return sema_analyse_init_subscript(context, strukt, expr);
+			return sema_analyse_init_subscript(context, parent, expr);
 		default:
 			return NULL;
 	}
 }
 
-static bool sema_expr_analyse_struct_designated_initializer(Context *context, Decl *assigned, Expr *initializer)
+/**
+ * Recursively find a node in a declaration.
+ * @return NULL if it wasn't found, otherwise the member.
+ */
+DesignatedInitializer *find_initializer(Decl *decl, DesignatedInitializer *initializer, const char* name)
+{
+	Decl** compare_members = decl->strukt.members;
+	VECEACH(compare_members, i)
+	{
+		Decl *member = compare_members[i];
+		if (!member->name)
+		{
+			DesignatedInitializer *sub_initializer = initializer->initializers[i];
+			DesignatedInitializer *found = find_initializer(member, sub_initializer, name);
+			if (found) return found;
+		}
+		else if (member->name == name) return initializer;
+	}
+	return NULL;
+}
+
+
+static bool sema_expr_analyse_struct_designated_initializer(Context *context, Type *assigned, Expr *initializer)
 {
 	Expr **init_expressions = initializer->expr_initializer.initializer_expr;
 
@@ -635,15 +754,20 @@ static bool sema_expr_analyse_struct_designated_initializer(Context *context, De
 			SEMA_ERROR(expr, "Expected an initializer on the format 'foo = 123' here.");
 			return false;
 		}
-		Expr *path = expr->binary_expr.left;
-		if (!sema_analyse_init_path(context, assigned, path))
+		Expr *init_expr = expr->binary_expr.left;
+		DesignatedPath path = { .type = assigned };
+		DesignatedPath *last_path = sema_analyse_init_path(context, &path, init_expr);
+		if (!last_path)
 		{
-			SEMA_ERROR(path, "This is not a valid member of '%s'.", type_to_error_string(assigned->type));
+			SEMA_ERROR(expr, "This is not a valid member of '%s'.", type_to_error_string(assigned));
 			return false;
 		}
 		Expr *value = expr->binary_expr.right;
-		if (!sema_analyse_expr_of_required_type(context, path->type, value)) return false;
-		expr->type = path->type;
+		if (!sema_analyse_expr_of_required_type(context, last_path->type, value)) return false;
+		expr->expr_kind = EXPR_DESIGNATED_INITIALIZER;
+		expr->designated_init_expr.path = path.sub_path;
+		expr->designated_init_expr.value = value;
+		expr->resolve_status = RESOLVE_DONE;
 	}
 	initializer->expr_initializer.init_type = INITIALIZER_DESIGNATED;
 	return true;
@@ -702,7 +826,7 @@ static inline bool sema_expr_analyse_struct_initializer(Context *context, Type *
 	//    this means that in this case we're actually not resolving macros here.
 	if (init_expressions[0]->expr_kind == EXPR_BINARY && init_expressions[0]->binary_expr.operator == BINARYOP_ASSIGN)
 	{
-		return sema_expr_analyse_struct_designated_initializer(context, assigned->decl, expr);
+		return sema_expr_analyse_struct_designated_initializer(context, assigned, expr);
 	}
 
 	// 3. Otherwise use the plain initializer.
@@ -718,10 +842,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 	{
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-			if (decl_is_struct_type(assigned->decl)) return sema_expr_analyse_struct_initializer(context,
-			                                                                                     assigned,
-			                                                                                     expr);
-			break;
+			return sema_expr_analyse_struct_initializer(context, assigned, expr);
 		case TYPE_ARRAY:
 			TODO
 		case TYPE_VARARRAY:
@@ -2075,6 +2196,13 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 	Expr *expr = expr_shallow_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_DESIGNATED_INITIALIZER:
+			// Created during semantic analysis
+			UNREACHABLE
+		case EXPR_RANGE:
+			EXPR_COPY(expr->range_expr.left);
+			EXPR_COPY(expr->range_expr.right);
+			return expr;
 		case EXPR_EXPR_BLOCK:
 			ast_copy_list_from_macro(context, macro, &expr->expr_block.stmts);
 			return expr;
@@ -2522,12 +2650,20 @@ EXIT:
 	return success;
 }
 
+static inline bool sema_expr_analyse_range(Context *context, Type *to, Expr *expr)
+{
+	TODO
+}
+
 static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
 		case EXPR_POISONED:
 			return false;
+		case EXPR_DESIGNATED_INITIALIZER:
+			// Created during semantic analysis
+			UNREACHABLE
 		case EXPR_SCOPED_EXPR:
 			UNREACHABLE
 		case EXPR_EXPR_BLOCK:
@@ -2536,6 +2672,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return sema_expr_analyse_macro_expr(context, to, expr);
 		case EXPR_TRY:
 			return sema_expr_analyse_try(context, to, expr);
+		case EXPR_RANGE:
+			return sema_expr_analyse_range(context, to, expr);
 		case EXPR_CONST:
 			return true;
 		case EXPR_BINARY:

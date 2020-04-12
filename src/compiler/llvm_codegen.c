@@ -200,6 +200,11 @@ void llvm_codegen(Context *context)
 	{
 		gencontext_emit_function_decl(&gen_context, context->functions[i]);
 	}
+	VECEACH(context->functions, i)
+	{
+		Decl *decl = context->functions[i];
+		if (decl->func.body) gencontext_emit_function_body(&gen_context, decl);
+	}
 
 
 	gencontext_print_llvm_ir(&gen_context);
