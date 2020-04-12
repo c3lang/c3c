@@ -98,7 +98,7 @@ static inline LLVMBasicBlockRef gencontext_create_free_block(GenContext *context
 {
 	return LLVMCreateBasicBlockInContext(context->context, name);
 }
-
+void gencontext_emit_function_body(GenContext *context, Decl *decl);
 void gencontext_emit_implicit_return(GenContext *context);
 void gencontext_emit_function_decl(GenContext *context, Decl *decl);
 void gencontext_emit_extern_decl(GenContext *context, Decl *decl);

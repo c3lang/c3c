@@ -38,10 +38,15 @@ Things missing:
 - Bitstruct
 - Enumset
 - Typeid
+- Ranges
+
+* Arrays
+- Allow fixed arrays with no larger size than 32 bit unsigned.
 
 * Struct / union
 - Cast to union?
 - Structural typed anonymous structs and casts to them.
+- Auto deref on access.
 
 * Expressions
 - Disallow x >= 0 and x < 0 on unsigned types unless in a macro.
@@ -69,4 +74,5 @@ Things missing:
 - Values: min, max, array
 - Functions: fomOrdinal, ordinal, fromName, name, fromFullName, fullName, fromQualifiedName, qualifiedName, <value>(), fromValue()
 
-
+* Error reporting
+- When a variable fails to parse correctly, store it to prevent follow up errors.

@@ -92,6 +92,13 @@ void sema_analysis_pass_conditional_compilation(Context *context)
 	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
 }
 
+static inline bool analyse_func_body(Context *context, Decl *decl)
+{
+	if (!decl->func.body) return true;
+	if (!sema_analyse_function_body(context, decl)) return decl_poison(decl);
+	return true;
+}
+
 void sema_analysis_pass_decls(Context *context)
 {
 	DEBUG_LOG("Pass: Decl analysis %s", context->file->name);
@@ -119,5 +126,14 @@ void sema_analysis_pass_decls(Context *context)
 	{
 		sema_analyse_decl(context, context->functions[i]);
 	}
+	VECEACH(context->struct_functions, i)
+	{
+		analyse_func_body(context, context->struct_functions[i]);
+	}
+	VECEACH(context->functions, i)
+	{
+		analyse_func_body(context, context->functions[i]);
+	}
+
 	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
 }

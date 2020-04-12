@@ -110,14 +110,13 @@ static inline LLVMTypeRef llvm_type_from_ptr(LLVMContextRef context, Type *type)
 
 static inline LLVMTypeRef llvm_type_from_array(LLVMContextRef context, Type *type)
 {
-	LLVMTypeRef base_llvm_type = llvm_get_type(context, type->array.base);
-
 	if (type->canonical != type)
 	{
 		return type->backend_type = llvm_get_type(context, type->canonical);
 	}
 
-	return type->backend_type = LLVMPointerType(base_llvm_type, /** TODO **/0);
+	LLVMTypeRef base_llvm_type = llvm_get_type(context, type->array.base);
+	return type->backend_type = LLVMArrayType(base_llvm_type, type->array.len);
 }
 
 LLVMTypeRef llvm_func_type(LLVMContextRef context, Type *type)
@@ -206,7 +205,7 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 			return type->backend_type = llvm_type_from_ptr(context, type);
 		case TYPE_STRING:
 			// TODO
-			return type->backend_type = LLVMPointerType(LLVMTYPE(type_char), 0);
+			return type->backend_type = LLVMPointerType(llvm_get_type(context, type_char), 0);
 		case TYPE_ARRAY:
 			return type->backend_type = llvm_type_from_array(context, type);
 		case TYPE_SUBARRAY:

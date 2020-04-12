@@ -119,6 +119,7 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 			sema_set_struct_size(decl);
 		}
 		DEBUG_LOG("Analysis complete.");
+		decl->resolve_status = RESOLVE_DONE;
 		return decl_ok(decl);
 	}
 	assert(decl->decl_kind == DECL_VAR);
@@ -429,7 +430,6 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 	{
 		if (!sema_analyse_method_function(context, decl)) return decl_poison(decl);
 	}
-	if (decl->func.body && !sema_analyse_function_body(context, decl)) return decl_poison(decl);
 	if (decl->name == main_name)
 	{
 		if (decl->visibility == VISIBLE_LOCAL)

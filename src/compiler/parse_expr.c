@@ -75,7 +75,17 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type)
 		TypeInfo *type = NULL;
 		Expr *expr = NULL;
 		SourceRange start = context->tok.span;
-		if (!parse_type_or_expr(context, &expr, &type)) return false;
+		// Special handling of [123]
+		if (try_consume(context, TOKEN_LBRACKET))
+		{
+			expr = TRY_EXPR_OR(parse_expr(context), false);
+			CONSUME_OR(TOKEN_RBRACKET, false);
+			expr = TRY_EXPR_OR(parse_precedence_with_left_side(context, expr, PREC_ASSIGNMENT), false);
+		}
+		else
+		{
+			if (!parse_type_or_expr(context, &expr, &type)) return false;
+		}
 		if (!expr)
 		{
 			if (!allow_type)
@@ -253,8 +263,11 @@ Expr *parse_initializer_list(Context *context)
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST, context->tok);
 	initializer_list->expr_initializer.init_type = INITIALIZER_UNKNOWN;
 	CONSUME_OR(TOKEN_LBRACE, &poisoned_expr);
-	if (!parse_param_list(context, &initializer_list->expr_initializer.initializer_expr, false)) return &poisoned_expr;
-	CONSUME_OR(TOKEN_RBRACE, &poisoned_expr);
+	if (!try_consume(context, TOKEN_RBRACE))
+	{
+		if (!parse_param_list(context, &initializer_list->expr_initializer.initializer_expr, false)) return &poisoned_expr;
+		CONSUME_OR(TOKEN_RBRACE, &poisoned_expr);
+	}
 	return initializer_list;
 }
 
@@ -315,6 +328,7 @@ static Expr *parse_subscript_expr(Context *context, Expr *left)
 	Expr *subscript_ast = EXPR_NEW_EXPR(EXPR_SUBSCRIPT, left);
 	subscript_ast->subscript_expr.expr = left;
 	subscript_ast->subscript_expr.index = index;
+	RANGE_EXTEND_PREV(subscript_ast);
 	return subscript_ast;
 }
 

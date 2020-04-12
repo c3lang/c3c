@@ -334,6 +334,27 @@ Type *type_get_meta(Type *meta_type)
 	return type_generate_meta(meta_type, false);
 }
 
+Type *type_get_indexed_type(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_POINTER:
+			return type->pointer;
+		case TYPE_VARARRAY:
+		case TYPE_ARRAY:
+		case TYPE_SUBARRAY:
+			return type->array.base;
+		case TYPE_STRING:
+			return type_char;
+		default:
+			break;
+	}
+	Type *canonical = type->canonical;
+	if (canonical != type) return type_get_indexed_type(type);
+	return NULL;
+
+}
+
 
 Type *type_create_array(Type *arr_type, uint64_t len, bool canonical)
 {
@@ -376,7 +397,7 @@ Type *type_create_array(Type *arr_type, uint64_t len, bool canonical)
 	}
 	Type *array = type_new(TYPE_ARRAY, strformat("%s[%llu]", arr_type->name, len));
 	array->array.base = arr_type;
-	array->array.len = 0;
+	array->array.len = len;
 	if (arr_type->canonical == arr_type)
 	{
 		array->canonical = array;
