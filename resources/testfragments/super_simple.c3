@@ -255,6 +255,7 @@ func int barok() throws Error, OtherError
     return 100;
 }
 
+
 struct SimpleStruct
 {
     int a;
@@ -283,7 +284,7 @@ func void testSimpleStruct(int x)
 struct AnonStruct
 {
     int a;
-    struct sune
+    struct xx
     {
         int b;
         int c;
@@ -301,21 +302,49 @@ struct AnonStruct
     int x;
 }
 
-func void testAnonStruct()
+func void testAnonStruct2()
 {
-    AnonStruct s = { b2 = 3, b1 = 7, sune.b = 1 };
+    AnonStruct s = { b2 = 3, b1 = 7, xx.b = 1 };
     AnonStruct foo;
 
-    printf("a = %d, b = %d (1), c = %d, b1 = %d (7), c1 = %d, b2 = %d (3), c2 = %d (3), x = %d\n", s.a, s.sune.b, s.sune.c, s.b1, s.c1, s.b2, s.c2, s.x);
+    printf("a = %d, b = %d (1), c = %d, b1 = %d (7), c1 = %d, b2 = %d (3), c2 = %d (3), x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
 
-    s.sune.b = 100;
-    s.sune.c = 99;
+    s.xx.b = 100;
+    s.xx.c = 99;
     s.b1 = 3;
     s.b2 = 5;
     s.c2 = 7;
 
-    printf("a = %d, b = %d (100), c = %d (99), b1 = %d (3), c1 = %d, b2 = %d (7), c2 = %d (7), x = %d\n", s.a, s.sune.b, s.sune.c, s.b1, s.c1, s.b2, s.c2, s.x);
+    printf("a = %d, b = %d (100), c = %d (99), b1 = %d (3), c1 = %d, b2 = %d (7), c2 = %d (7), x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
 
+
+}
+
+func void testAnonStruct()
+{
+    AnonStruct s = { b2 = 3, b1 = 7, xx.b = 1 };
+    AnonStruct foo;
+
+    printf("a = %d, b = %d (1), c = %d, b1 = %d (7), c1 = %d, b2 = %d (3), c2 = %d (3), x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
+
+    s.xx.b = 100;
+    s.xx.c = 99;
+    s.b1 = 3;
+    s.b2 = 5;
+    s.c2 = 7;
+
+    printf("a = %d, b = %d (100), c = %d (99), b1 = %d (3), c1 = %d, b2 = %d (7), c2 = %d (7), x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
+
+    s = { xx = { c = 2 }};
+
+    printf("a = %d, b = %d, c = %d (2), b1 = %d, c1 = %d, b2 = %d, c2 = %d, x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
+
+    s.xx.c = 3;
+    s.x = 1212;
+    s.a = 29183;
+    s = AnonStruct { xx = { c = 2 }};
+
+    printf("a = %d, b = %d, c = %d (2), b1 = %d, c1 = %d, b2 = %d, c2 = %d, x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
 
 }
 func int boba(int y, int j)
@@ -561,7 +590,8 @@ struct WithArray
 
 func void testArray()
 {
-    //int[4] zebra = { [0] = 1 };
+    int[4] zebra = { [2] = 1 };
+    int[4] deok = { 1, 2, 3, 4 };
     WithArray boo;
     boo.x[0] = 2;
     printf("boo.x[0] = %d\n", boo.x[0]);
