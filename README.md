@@ -25,8 +25,6 @@ There are some small work being done on the parser here, but most of the structu
 #### What's missing in the parser
 
 - `asm` sections.
-- Macro parameter lists to imports.
-- auxiliary data for enums.
 - Docs not linked to statements/functions/declarations.
 
 #### What's missing in the semantic analyser
@@ -46,17 +44,18 @@ There are some small work being done on the parser here, but most of the structu
 - `type` not handled.
 - Identifier analysis incomplete. 
 - Macro call not handled completely.
-- Function calls not handled completely.
-- Struct initializers not complete.
-- Varargs.
 
 #### What's missing overall
 
-- Integration with C.
+- Improved integration with C.
+- Generic macros.
 
 #### What's working?
 
 - Lexing and parsing works (except for the exceptions noted above).
 - Simple "hello world"
+- Most simpler C code.
+
+(For more details see missing.txt)
 
 If you wish to contribute with ideas, please file issues on the c3docs: https://github.com/c3lang/c3docs instead of the compiler.

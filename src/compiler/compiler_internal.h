@@ -136,7 +136,7 @@ typedef struct _Path
 typedef enum
 {
 	DESIGNATED_IDENT,
-	DESIGNATED_SUBSCRIPT
+	DESIGNATED_SUBSCRIPT,
 } DesignatedPathKind;
 
 typedef struct _DesignatedPath
@@ -150,6 +150,7 @@ typedef struct _DesignatedPath
 		Expr *index_expr;
 	};
 } DesignatedPath;
+
 typedef struct
 {
 	unsigned char bitsize;

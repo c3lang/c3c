@@ -12,13 +12,12 @@ Things missing:
 - Labels: @unused
 
 * Designated initializer
-- Array initializer
 - Array range initializer { [1..2] = 2 }
 
 * Initializers
-- Array initializers
-- Union initializers
-- Initializers with anonymous members
+- Vararray initializers
+- Incremental array initializers
+- Slice initializers
 
 * Asserts
 - assert, $assert

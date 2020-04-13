@@ -76,10 +76,13 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type)
 		Expr *expr = NULL;
 		SourceRange start = context->tok.span;
 		// Special handling of [123]
-		if (try_consume(context, TOKEN_LBRACKET))
+		if (context->tok.type == TOKEN_LBRACKET)
 		{
-			expr = TRY_EXPR_OR(parse_expr(context), false);
+			expr = expr_new(EXPR_SUBSCRIPT, context->tok.span);
+			advance_and_verify(context, TOKEN_LBRACKET);
+			expr->subscript_expr.index = TRY_EXPR_OR(parse_expr(context), false);
 			CONSUME_OR(TOKEN_RBRACKET, false);
+			RANGE_EXTEND_PREV(expr);
 			expr = TRY_EXPR_OR(parse_precedence_with_left_side(context, expr, PREC_ASSIGNMENT), false);
 		}
 		else
