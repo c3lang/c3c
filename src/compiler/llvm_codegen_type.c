@@ -123,31 +123,37 @@ LLVMTypeRef llvm_func_type(LLVMContextRef context, Type *type)
 {
 	LLVMTypeRef *params = NULL;
 	FunctionSignature *signature = type->func.signature;
-	bool return_parameter = func_return_value_as_out(signature);
-	bool return_error = func_has_error_return(signature);
-	unsigned parameters = vec_size(signature->params) + return_parameter;
+	unsigned parameters = vec_size(signature->params);
+	if (signature->return_param) parameters++;
+	if (signature->error_return == ERROR_RETURN_PARAM) parameters++;
 	if (parameters)
 	{
 		params = malloc_arena(sizeof(LLVMTypeRef) * parameters);
-		if (return_parameter)
+		unsigned index = 0;
+		if (signature->return_param)
 		{
-			params[0] = llvm_get_type(context, signature->rtype->type);
+			params[index++] = llvm_get_type(context, type_get_ptr(signature->rtype->type));
+		}
+		if (signature->error_return == ERROR_RETURN_PARAM)
+		{
+			params[index++] = llvm_get_type(context, type_get_ptr(type_error_union));
 		}
 		VECEACH(signature->params, i)
 		{
-			params[i + return_parameter] = llvm_get_type(context, signature->params[i]->type->canonical);
+			params[index++] = llvm_get_type(context, signature->params[i]->type->canonical);
 		}
 	}
 	LLVMTypeRef ret_type;
-	if (return_error)
+	if (signature->error_return == ERROR_RETURN_RETURN)
 	{
 		ret_type = llvm_get_type(context, type_ulong);
 	}
 	else
 	{
-		ret_type = return_parameter ? llvm_get_type(context, type_void) : llvm_get_type(context, type->func.signature->rtype->type);
+		ret_type = signature->return_param ? llvm_get_type(context, type_void) : llvm_get_type(context, type->func.signature->rtype->type);
 	}
-	return LLVMFunctionType( ret_type, params, parameters, signature->variadic);
+	LLVMTypeRef functype = LLVMFunctionType(ret_type, params, parameters, signature->variadic);
+	return functype;
 }
 
 

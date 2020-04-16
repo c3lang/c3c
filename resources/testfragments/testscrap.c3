@@ -119,8 +119,6 @@ union SimpleUnion
 
 func void testUnion()
 {
-    int wdw = 123;
-    wdw = 222;
     SimpleUnion s;
     s.a = 1;
     s.f = 1.0;
@@ -308,7 +306,7 @@ struct AnonStruct
 
 func AnonStruct sendAnonStruct()
 {
-    AnonStruct foo = Foo { a = 1 };
+    AnonStruct foo = {  };
     foo.b2 = 123;
     return foo;
 }
@@ -345,7 +343,7 @@ func void testAnonStruct()
 
     printf("a = %d, b = %d, c = %d (2), b1 = %d, c1 = %d, b2 = %d, c2 = %d, x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
 
-    s = sendAnonStruct();
+ //   s = sendAnonStruct();
 
     printf("Got it sent: a = %d, b = %d (1), c = %d, b1 = %d (7), c1 = %d, b2 = %d (3), c2 = %d (3), x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
 

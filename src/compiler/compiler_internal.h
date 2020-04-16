@@ -294,13 +294,20 @@ typedef struct
 	TypeInfo *type_info;
 } EnumDecl;
 
-
+typedef enum
+{
+	ERROR_RETURN_NONE = 0,
+	ERROR_RETURN_PARAM = 1,
+	ERROR_RETURN_RETURN = 2,
+} ErrorReturn;
 typedef struct _FunctionSignature
 {
 	CallConvention convention : 4;
 	bool variadic : 1;
 	bool has_default : 1;
 	bool throw_any : 1;
+	bool return_param : 1;
+	ErrorReturn error_return : 3;
 	TypeInfo *rtype;
 	Decl** params;
 	Decl** throws;
@@ -941,7 +948,7 @@ extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
-extern Type *type_typeid, *type_error;
+extern Type *type_typeid, *type_error, *type_error_union;
 
 extern const char *main_name;
 
@@ -1095,11 +1102,6 @@ void fprint_decl(FILE *file, Decl *dec);
 void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent);
 void fprint_expr_recursive(FILE *file, Expr *expr, int indent);
 
-bool func_return_value_as_out(FunctionSignature *func_sig);
-static inline bool func_has_error_return(FunctionSignature *func_sig)
-{
-	return func_sig->throws || func_sig->throw_any;
-}
 
 #pragma mark --- Lexer functions
 
@@ -1190,7 +1192,7 @@ bool type_is_subtype(Type *type, Type *possible_subtype);
 Type *type_find_common_ancestor(Type *left, Type *right);
 const char *type_to_error_string(Type *type);
 size_t type_size(Type *canonical);
-size_t type_abi_alignment(Type *canonical);
+unsigned int type_abi_alignment(Type *canonical);
 void type_append_signature_name(Type *type, char *dst, size_t *offset);
 Type *type_find_max_type(Type *type, Type *other);
 
@@ -1336,8 +1338,6 @@ static inline const char* struct_union_name_from_token(TokenType type)
 	return type == TOKEN_STRUCT ? "struct" : "union";
 }
 
-#define llvm_type(type) gencontext_get_llvm_type(context, type)
-#define DEBUG_TYPE(type) gencontext_get_debug_type(context, type)
 
 void advance(Context *context);
 

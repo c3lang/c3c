@@ -11,7 +11,7 @@ static Type t_usz, t_isz;
 static Type t_cus, t_cui, t_cul, t_cull;
 static Type t_cs, t_ci, t_cl, t_cll;
 static Type t_voidstar, t_typeid;
-static Type t_err;
+static Type t_err, t_error_union;
 
 Type *type_bool = &t_u1;
 Type *type_void = &t_u0;
@@ -20,6 +20,7 @@ Type *type_voidptr = &t_voidstar;
 Type *type_float = &t_f32;
 Type *type_double = &t_f64;
 Type *type_error = &t_err;
+Type *type_error_union = &t_error_union;
 Type *type_typeid = &t_typeid;
 Type *type_char = &t_i8;
 Type *type_short = &t_i16;
@@ -225,7 +226,7 @@ size_t type_size(Type *canonical)
 	UNREACHABLE
 }
 
-size_t type_abi_alignment(Type *canonical)
+unsigned int type_abi_alignment(Type *canonical)
 {
 	assert(canonical && canonical->canonical == canonical);
 	switch (canonical->type_kind)

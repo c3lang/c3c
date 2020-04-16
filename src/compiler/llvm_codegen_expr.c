@@ -308,18 +308,19 @@ static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *
  * Improve: Direct assign in the case where this is assigning to a variable.
  * Improve: Create constant initializer for the constant case and do a memcopy
  */
-static inline LLVMValueRef gencontext_emit_initializer_list_expr(GenContext *context, Expr *expr)
+static inline LLVMValueRef  gencontext_emit_initializer_list_expr(GenContext *context, Expr *expr, LLVMValueRef optional_ref)
 {
 	LLVMTypeRef type = llvm_type(expr->type);
-	LLVMValueRef ref = gencontext_emit_alloca(context, type, "literal");
+	LLVMValueRef ref = optional_ref ?: gencontext_emit_alloca(context, type, "literal");
+
+	Type *canonical = expr->type->canonical;
+	if (expr->expr_initializer.init_type != INITIALIZER_NORMAL)
+	{
+		gencontext_emit_memclear(context, ref, canonical);
+	}
 
 	if (expr->expr_initializer.init_type == INITIALIZER_ZERO)
 	{
-		LLVMBuildMemSet(context->builder,
-		                ref,
-		                LLVMConstInt(llvm_type(type_byte), 0, false),
-		                LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false),
-		                expr->type->decl->strukt.abi_alignment);
 		return LLVMBuildLoad2(context->builder, type, ref, "");
 	}
 
@@ -345,12 +346,6 @@ static inline LLVMValueRef gencontext_emit_initializer_list_expr(GenContext *con
 		}
 		return LLVMBuildLoad2(context->builder, type, ref, "");
 	}
-
-
-	// Clear the temp.
-	LLVMBuildMemSet(context->builder, ref, LLVMConstInt(llvm_type(type_byte), 0, false),
-	                LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false), expr->type->decl->strukt.abi_alignment);
-
 
 	VECEACH(elements, i)
 	{
@@ -814,6 +809,28 @@ LLVMValueRef gencontext_emit_post_unary_expr(GenContext *context, Expr *expr)
 	return gencontext_emit_post_inc_dec(context, expr->post_expr.expr, expr->post_expr.operator == POSTUNARYOP_INC ? 1 : -1, false);
 }
 
+LLVMValueRef gencontext_emit_try_expr(GenContext *context, Expr *expr)
+{
+	if (expr->try_expr.else_expr)
+	{
+		LLVMBasicBlockRef catch_block = gencontext_create_free_block(context, "catchblock");
+		LLVMBasicBlockRef after_catch = gencontext_create_free_block(context, "aftercatch");
+		LLVMValueRef res = gencontext_emit_alloca(context, llvm_type(expr->try_expr.else_expr->type), "catch");
+		gencontext_push_catch(context, NULL, catch_block);
+		LLVMValueRef normal_res = gencontext_emit_expr(context, expr->try_expr.expr);
+		gencontext_pop_catch(context);
+		LLVMBuildStore(context->builder, normal_res, res);
+		gencontext_emit_br(context, after_catch);
+		gencontext_emit_block(context, catch_block);
+		LLVMValueRef catch_value = gencontext_emit_expr(context, expr->try_expr.else_expr);
+		LLVMBuildStore(context->builder, catch_value, res);
+		gencontext_emit_br(context, after_catch);
+		gencontext_emit_block(context, after_catch);
+		return LLVMBuildLoad2(context->builder, llvm_type(expr->try_expr.else_expr->type), res, "");
+	}
+	TODO
+}
+
 static LLVMValueRef gencontext_emit_binary_expr(GenContext *context, Expr *expr)
 {
 	BinaryOp binary_op = expr->binary_expr.operator;
@@ -829,9 +846,7 @@ static LLVMValueRef gencontext_emit_binary_expr(GenContext *context, Expr *expr)
 	if (binary_op == BINARYOP_ASSIGN)
 	{
 		LLVMValueRef addr = gencontext_emit_address(context, expr->binary_expr.left);
-		LLVMValueRef value = gencontext_emit_expr(context, expr->binary_expr.right);
-		LLVMBuildStore(context->builder, value, addr);
-		return value;
+		return gencontext_emit_assign_expr(context, addr, expr->binary_expr.right);
 	}
 	return gencontext_emit_binary(context, expr, NULL, binary_op);
 }
@@ -939,22 +954,79 @@ LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 	}
 }
 
+static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRef value)
+{
+	LLVMBasicBlockRef after_block = gencontext_create_free_block(context, "");
+	size_t catch_index = context->catch_stack_index;
+	while (catch_index > 0)
+	{
+		catch_index--;
+		// TODO check error
+		Catch *current_catch = &context->catch_stack[catch_index];
+		if (!current_catch->decl)
+		{
+			gencontext_emit_cond_br(context, value, current_catch->catch_block, after_block);
+			gencontext_emit_block(context, after_block);
+			return;
+		}
+	}
+	TODO
+}
 LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 {
 	size_t args = vec_size(expr->call_expr.arguments);
+	Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
+	FunctionSignature *signature = &function_decl->func.function_signature;
+	LLVMValueRef return_param = NULL;
+	LLVMValueRef error_param = NULL;
+	if (signature->return_param)
+	{
+		return_param = gencontext_emit_alloca(context, llvm_type(signature->rtype->type), "returnparam");
+		args++;
+	}
+	if (signature->error_return == ERROR_RETURN_PARAM)
+	{
+		error_param = gencontext_emit_alloca(context, llvm_type(type_error_union), "errorparam");
+		args++;
+	}
 	LLVMValueRef *values = args ? malloc_arena(args * sizeof(LLVMValueRef)) : NULL;
+	unsigned param_index = 0;
+	if (return_param)
+	{
+		values[param_index++] = return_param;
+	}
+	if (error_param)
+	{
+		values[param_index++] = error_param;
+	}
 	VECEACH(expr->call_expr.arguments, i)
 	{
-		values[i] = gencontext_emit_expr(context, expr->call_expr.arguments[i]);
+		values[param_index++] = gencontext_emit_expr(context, expr->call_expr.arguments[i]);
 	}
-
 
 	Decl *function = expr->call_expr.function->identifier_expr.decl;
 
 	LLVMValueRef func = function->func.backend_value;
 	LLVMTypeRef func_type = llvm_type(function->type);
-	// TODO fix throws and return optimization
 	LLVMValueRef call = LLVMBuildCall2(context->builder, func_type, func, values, args, "call");
+	if (signature->error_return)
+	{
+		if (error_param)
+		{
+			LLVMValueRef maybe_error = LLVMBuildLoad2(context->builder, llvm_type(type_error_union), error_param, "");
+			TODO // Incorrect, must get subset if this is 128 bits
+			gencontext_emit_throw_branch(context, maybe_error);
+		}
+		else
+		{
+			gencontext_emit_throw_branch(context, call);
+		}
+	}
+	// If we used a return param, then load that info here.
+	if (return_param)
+	{
+		call = LLVMBuildLoad2(context->builder, llvm_type(signature->rtype->type), return_param, "");
+	}
 	/*
 	if (function->func.function_signature.convention)
 	{
@@ -1016,6 +1088,20 @@ LLVMValueRef gencontext_emit_call_intrinsic(GenContext *context, unsigned intrin
 	return LLVMBuildCall2(context->builder, type, decl, values, arg_count, "");
 }
 
+LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, Expr *expr)
+{
+	switch (expr->expr_kind)
+	{
+		case EXPR_INITIALIZER_LIST:
+			return gencontext_emit_initializer_list_expr(context, expr, ref);
+		default:
+			break;
+	}
+	LLVMValueRef value = gencontext_emit_expr(context, expr);
+	LLVMBuildStore(context->builder, value, ref);
+	return value;
+}
+
 
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 {
@@ -1042,10 +1128,11 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 			return gencontext_emit_ternary_expr(context, expr);
 		case EXPR_POST_UNARY:
 			return gencontext_emit_post_unary_expr(context, expr);
+		case EXPR_TRY:
+			return gencontext_emit_try_expr(context, expr);
 		case EXPR_TYPE:
 		case EXPR_SIZEOF:
 		case EXPR_TYPE_ACCESS:
-		case EXPR_TRY:
 		case EXPR_MACRO_EXPR:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE
@@ -1058,7 +1145,7 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 		case EXPR_GROUP:
 			return gencontext_emit_expr(context, expr->group_expr);
 		case EXPR_INITIALIZER_LIST:
-			return gencontext_emit_initializer_list_expr(context, expr);
+			return gencontext_emit_initializer_list_expr(context, expr, NULL);
 		case EXPR_EXPRESSION_LIST:
 			return gencontext_emit_expression_list_expr(context, expr);
 		case EXPR_CAST:

@@ -180,15 +180,6 @@ Type* type_get_unsigned(Type *type)
 
 */
 
-bool func_return_value_as_out(FunctionSignature *func_sig)
-{
-	Type *return_type = func_sig->rtype->type->canonical;
-	if (return_type->type_kind == TYPE_VOID) return false;
-	if (func_has_error_return(func_sig)) return true;
-	// TODO improve
-	return type_size(return_type) > 8 * 4;
-}
-
 
 
 BinaryOp binary_op[TOKEN_LAST + 1] = {

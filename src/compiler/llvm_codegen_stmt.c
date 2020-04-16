@@ -42,18 +42,7 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 	*/
 	if (decl->var.init_expr)
 	{
-		Expr *expr = decl->var.init_expr;
-		// Quick path for empty initializer list
-		if (expr->expr_kind == EXPR_INITIALIZER_LIST && expr->expr_initializer.init_type == INITIALIZER_ZERO)
-		{
-			LLVMBuildMemSet(context->builder, decl->var.backend_ref, LLVMConstInt(llvm_type(type_byte), 0, false),
-					LLVMConstInt(llvm_type(type_ulong), expr->type->decl->strukt.size, false),
-					expr->type->decl->strukt.abi_alignment);
-			return decl->var.backend_ref;
-		}
-
-		LLVMValueRef value = gencontext_emit_expr(context, decl->var.init_expr);
-		LLVMBuildStore(context->builder, value, decl->var.backend_ref);
+		gencontext_emit_assign_expr(context, decl->var.backend_ref, decl->var.init_expr);
 		return decl->var.backend_ref;
 	}
 	return decl->var.backend_ref;
@@ -207,10 +196,25 @@ void gencontext_emit_if(GenContext *context, Ast *ast)
 }
 
 
+void gencontext_push_catch(GenContext *context, Decl *error_type, LLVMBasicBlockRef catch_block)
+{
+	size_t index = context->catch_stack_index++;
+	if (index == CATCH_STACK_MAX - 1)
+	{
+		error_exit("Exhausted catch stack - exceeded %d entries.", CATCH_STACK_MAX);
+	}
+	context->catch_stack[index].decl = error_type;
+	context->catch_stack[index].catch_block = catch_block;
+}
 
-static void
-gencontext_push_break_continue(GenContext *context, LLVMBasicBlockRef break_block, LLVMBasicBlockRef continue_block,
-                               LLVMBasicBlockRef next_block)
+void gencontext_pop_catch(GenContext *context)
+{
+	assert(context->catch_stack_index > 0);
+	context->catch_stack_index--;
+}
+
+static void gencontext_push_break_continue(GenContext *context, LLVMBasicBlockRef break_block,
+		LLVMBasicBlockRef continue_block, LLVMBasicBlockRef next_block)
 {
 	size_t index = context->break_continue_stack_index++;
 	if (index == BREAK_STACK_MAX - 1)
@@ -622,7 +626,9 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			gencontext_emit_scoped_stmt(context, ast);
 			break;
 		case AST_EXPR_STMT:
+		{
 			gencontext_emit_expr(context, ast->expr_stmt);
+		}
 			break;
 		case AST_DECLARE_STMT:
 			gencontext_emit_decl(context, ast);
