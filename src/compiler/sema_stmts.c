@@ -754,8 +754,9 @@ static bool sema_analyse_throw_stmt(Context *context, Ast *statement)
 		SEMA_ERROR(throw_value, "Only 'error' types can be thrown, this is a '%s'.", type->name);
 		return false;
 	}
-	if (!context->try_nesting && !func_has_error_return(&context->active_function_for_analysis->func.function_signature))
+	if (!context->try_nesting && !context->active_function_for_analysis->func.function_signature.error_return)
 	{
+		// TODO check error type
 		SEMA_ERROR(statement, "This 'throw' is not handled, please add a 'throws %s' clause to the function signature or use try-catch.", type->name);
 		return false;
 	}

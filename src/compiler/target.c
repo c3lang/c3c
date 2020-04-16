@@ -102,13 +102,14 @@ void target_setup()
 	build_target.alloca_address_space = 0;
 
 
-	LLVMTypeRef byte_type = LLVMIntType(8);
-	LLVMTypeRef short_type = LLVMIntType(16);
-	LLVMTypeRef int_type = LLVMIntType(32);
-	LLVMTypeRef long_type = LLVMIntType(64);
-	LLVMTypeRef float_type = LLVMFloatType();
-	LLVMTypeRef double_type = LLVMDoubleType();
-	LLVMTypeRef quad_type = LLVMFP128Type();
+	LLVMContextRef context = LLVMContextCreate();
+	LLVMTypeRef byte_type = LLVMIntTypeInContext(context, 8);
+	LLVMTypeRef short_type = LLVMIntTypeInContext(context, 16);
+	LLVMTypeRef int_type = LLVMIntTypeInContext(context, 32);
+	LLVMTypeRef long_type = LLVMIntTypeInContext(context, 64);
+	LLVMTypeRef float_type = LLVMFloatTypeInContext(context);
+	LLVMTypeRef double_type = LLVMDoubleTypeInContext(context);
+	LLVMTypeRef quad_type = LLVMFP128TypeInContext(context);
 	LLVMTypeRef pointer_type = LLVMPointerType(int_type, 0);
 	build_target.align_byte = LLVMABIAlignmentOfType(build_target.llvm_data_layout, byte_type);
 	build_target.align_short = LLVMABIAlignmentOfType(build_target.llvm_data_layout, short_type);

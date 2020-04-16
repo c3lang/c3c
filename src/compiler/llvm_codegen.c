@@ -5,11 +5,35 @@
 #include "llvm_codegen_internal.h"
 
 
+static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
+{
+	char *message = LLVMGetDiagInfoDescription(ref);
+	LLVMDiagnosticSeverity severity = LLVMGetDiagInfoSeverity(ref);
+	const char *severerity_name = "unknown";
+	switch (severity)
+	{
+		case LLVMDSError:
+			error_exit("LLVM error generating code for %s: %s", ((GenContext *)context)->ast_context->module->name, message);
+			break;
+		case LLVMDSWarning:
+			severerity_name = "warning";
+			break;
+		case LLVMDSRemark:
+			severerity_name = "remark";
+			break;
+		case LLVMDSNote:
+			severerity_name = "note";
+			break;
+	}
+	DEBUG_LOG("LLVM message [%s]: %s ", severerity_name, message);
+	LLVMDisposeMessage(message);
+}
 
 static void gencontext_init(GenContext *context, Context *ast_context)
 {
 	memset(context, 0, sizeof(GenContext));
 	context->context = LLVMContextCreate();
+	LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
 	context->ast_context = ast_context;
 }
 
@@ -17,6 +41,23 @@ static void gencontext_destroy(GenContext *context)
 {
 	LLVMContextDispose(context->context);
 }
+
+LLVMValueRef gencontext_emit_memclear_size_align(GenContext *context, LLVMValueRef ref, uint64_t size, unsigned int align, bool bitcast)
+{
+	LLVMValueRef target = bitcast ? LLVMBuildBitCast(context->builder, ref, llvm_type(type_get_ptr(type_byte)), "") : ref;
+	return LLVMBuildMemSet(context->builder, target, LLVMConstInt(llvm_type(type_byte), 0, false),
+	                LLVMConstInt(llvm_type(type_ulong), size, false), align);
+
+}
+
+LLVMValueRef gencontext_emit_memclear(GenContext *context, LLVMValueRef ref, Type *type)
+{
+	Type *canonical = type->canonical;
+	// TODO avoid bitcast on those that do not need them.
+	return gencontext_emit_memclear_size_align(context, ref, type_size(canonical),
+			type_abi_alignment(canonical), true);
+}
+
 
 
 static LLVMValueRef gencontext_emit_null_constant(GenContext *context, Type *type)
@@ -162,6 +203,11 @@ static inline unsigned lookup_intrinsic(const char *name)
 	return LLVMLookupIntrinsicID(name, strlen(name));
 }
 
+static inline unsigned lookup_attribute(const char *name)
+{
+	return LLVMGetEnumAttributeKindForName(name, strlen(name));
+}
+
 static bool intrinsics_setup = false;
 unsigned ssub_overflow_intrinsic_id;
 unsigned usub_overflow_intrinsic_id;
@@ -170,6 +216,15 @@ unsigned uadd_overflow_intrinsic_id;
 unsigned smul_overflow_intrinsic_id;
 unsigned umul_overflow_intrinsic_id;
 unsigned trap_intrinsic_id;
+
+unsigned noinline_attribute;
+unsigned alwaysinline_attribute;
+unsigned inlinehint_attribute;
+unsigned noreturn_attribute;
+unsigned nounwind_attribute;
+unsigned writeonly_attribute;
+unsigned readonly_attribute;
+unsigned optnone_attribute;
 
 void llvm_codegen_setup()
 {
@@ -181,6 +236,15 @@ void llvm_codegen_setup()
 	smul_overflow_intrinsic_id = lookup_intrinsic("llvm.smul.with.overflow");
 	umul_overflow_intrinsic_id = lookup_intrinsic("llvm.umul.with.overflow");
 	trap_intrinsic_id = lookup_intrinsic("llvm.trap");
+
+	noinline_attribute = lookup_attribute("noinline");
+	alwaysinline_attribute = lookup_attribute("alwaysinline");
+	inlinehint_attribute = lookup_attribute("inlinehint");
+	noreturn_attribute = lookup_attribute("noreturn");
+	nounwind_attribute = lookup_attribute("nounwind");
+	writeonly_attribute = lookup_attribute("writeonly");
+	readonly_attribute = lookup_attribute("readonly");
+	optnone_attribute = lookup_attribute("optnone");
 
 	intrinsics_setup = true;
 }
@@ -250,4 +314,10 @@ void llvm_codegen(Context *context)
 
 	gencontext_end_module(&gen_context);
 	gencontext_destroy(&gen_context);
+}
+
+void gencontext_add_attribute(GenContext context, unsigned attribute_id, LLVMValueRef value_to_add_attribute_to)
+{
+	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(context.context, attribute_id, 0);
+	LLVMAddAttributeAtIndex(value_to_add_attribute_to, -1, llvm_attr);
 }

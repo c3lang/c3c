@@ -247,7 +247,11 @@ static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr 
 	unsigned error_params = signature->throw_any || signature->throws;
 	if (error_params)
 	{
-		TODO
+		if (context->try_nesting == 0)
+		{
+			SEMA_ERROR(expr, "Function '%s' throws errors, this call must be prefixed 'try'.", decl->name);
+			return false;
+		}
 	}
 	unsigned func_param_count = vec_size(func_params);
 	unsigned num_args = vec_size(args);
@@ -2185,14 +2189,16 @@ static inline bool sema_expr_analyse_post_unary(Context *context, Type *to, Expr
 
 static inline bool sema_expr_analyse_try(Context *context, Type *to, Expr *expr)
 {
-	if (!sema_analyse_expr(context, to, expr->try_expr.expr)) return false;
+	context->try_nesting++;
+	bool success = sema_analyse_expr(context, to, expr->try_expr.expr);
+	context->try_nesting--;
+	if (!success) return false;
 	expr->type = expr->try_expr.expr->type;
 	if (expr->try_expr.else_expr)
 	{
 		if (!sema_analyse_expr(context, to, expr->try_expr.else_expr)) return false;
 	}
-	// Check errors!
-	TODO
+	// TODO Check errors!
 	return true;
 }
 

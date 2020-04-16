@@ -84,7 +84,7 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 
 void gencontext_emit_implicit_return(GenContext *context)
 {
-	if (func_has_error_return(&context->cur_func_decl->func.function_signature))
+	if (context->cur_func_decl->func.function_signature.error_return == ERROR_RETURN_RETURN)
 	{
 		LLVMBuildRet(context->builder, LLVMConstInt(llvm_type(type_ulong), 0, false));
 	}
@@ -115,22 +115,27 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	LLVMValueRef alloca_point = LLVMBuildAlloca(context->builder, LLVMInt32TypeInContext(context->context), "alloca_point");
 	context->alloca_point = alloca_point;
 
-	unsigned return_parameter = func_return_value_as_out(&decl->func.function_signature) ? 1 : 0;
-
-	if (return_parameter)
+	FunctionSignature *signature = &decl->func.function_signature;
+	int arg = 0;
+	if (signature->return_param)
 	{
-		context->return_out = gencontext_emit_alloca(context, llvm_type(decl->func.function_signature.rtype->type), "retval");
-		LLVMBuildStore(context->builder, LLVMGetParam(context->function, 0), context->return_out);
+		context->return_out = LLVMGetParam(context->function, arg++);
 	}
 	else
 	{
 		context->return_out = NULL;
 	}
 
+	if (signature->error_return == ERROR_RETURN_PARAM)
+	{
+		context->error_out = gencontext_emit_alloca(context, llvm_type(type_error_union), "errorval");
+		LLVMBuildStore(context->builder, LLVMGetParam(context->function, arg++), context->error_out);
+	}
+
 	// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
 	VECEACH(decl->func.function_signature.params, i)
 	{
-		gencontext_emit_parameter(context, decl->func.function_signature.params[i], i + return_parameter);
+		gencontext_emit_parameter(context, decl->func.function_signature.params[i], arg++);
 	}
 
 	VECEACH(decl->func.labels, i)
@@ -178,6 +183,7 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 	// Resolve function backend type for function.
 	decl->func.backend_value = LLVMAddFunction(context->module, decl->external_name,
 	                                           llvm_type(decl->type));
+
 
 	// Specify appropriate storage class, visibility and call convention
 	// extern functions (linkedited in separately):

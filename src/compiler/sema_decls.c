@@ -272,6 +272,32 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 			type_append_signature_name(err_decl->type, buffer, &buffer_write_offset);
 		}
 	}
+
+	unsigned error_types = vec_size(signature->throws);
+	if (signature->throw_any || error_types > 1)
+	{
+		signature->error_return = ERROR_RETURN_PARAM;
+	}
+	else if (error_types == 1)
+	{
+		signature->error_return = ERROR_RETURN_RETURN;
+	}
+	else
+	{
+		signature->error_return = ERROR_RETURN_NONE;
+	}
+
+	Type *return_type = signature->rtype->type->canonical;
+	signature->return_param = false;
+	if (return_type->type_kind != TYPE_VOID)
+	{
+		// TODO fix this number with ABI compatibility
+		if (signature->error_return == ERROR_RETURN_RETURN || type_size(return_type) > 8 * 2)
+		{
+			signature->return_param = true;
+		}
+	}
+
 	if (!all_ok) return NULL;
 	TokenType type = TOKEN_INVALID_TOKEN;
 	signature->mangled_signature = symtab_add(buffer, buffer_write_offset, fnv1a(buffer, buffer_write_offset), &type);
