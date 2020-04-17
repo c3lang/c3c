@@ -124,7 +124,7 @@ void target_setup()
 	build_target.width_c_int = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_INT);
 	build_target.width_c_long = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_LONG);
 	build_target.width_c_long_long = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_LONG_LONG);
-
+	LLVMContextDispose(context);
 	builtin_setup(&build_target);
 
 }
