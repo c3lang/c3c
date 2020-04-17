@@ -109,7 +109,7 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	context->current_block = entry;
 	context->current_block_is_target = true;
 	context->expr_block_exit = NULL;
-	context->builder = LLVMCreateBuilder();
+	context->builder = LLVMCreateBuilderInContext(context->context);
 	LLVMPositionBuilderAtEnd(context->builder, entry);
 
 	LLVMValueRef alloca_point = LLVMBuildAlloca(context->builder, LLVMInt32TypeInContext(context->context), "alloca_point");

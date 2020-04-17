@@ -84,7 +84,7 @@ static inline LLVMValueRef gencontext_emit_subscript_addr_from_value(GenContext 
 		case TYPE_ARRAY:
 			// TODO insert trap on overflow.
 		{
-			LLVMValueRef zero = LLVMConstInt(LLVMIntType(32), 0, false);
+			LLVMValueRef zero = LLVMConstInt(llvm_type(type_int), 0, false);
 			LLVMValueRef indices[2] = {
 					zero,
 					index,
@@ -119,7 +119,7 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 		case TYPE_ARRAY:
 		{
 			// TODO insert trap on overflow.
-			LLVMValueRef zero = LLVMConstInt(LLVMIntType(32), 0, false);
+			LLVMValueRef zero = LLVMConstInt(llvm_type(type_int), 0, false);
 			LLVMValueRef indices[2] = {
 					zero,
 					index_value,
@@ -371,7 +371,7 @@ static inline LLVMValueRef  gencontext_emit_initializer_list_expr(GenContext *co
 				case DESIGNATED_SUBSCRIPT:
 				{
 					// TODO range, more arrays
-					LLVMValueRef zero = LLVMConstInt(LLVMIntType(32), 0, false);
+					LLVMValueRef zero = LLVMConstInt(llvm_type(type_int), 0, false);
 					LLVMValueRef index = gencontext_emit_expr(context, path->index_expr);
 					LLVMValueRef indices[2] = {
 							zero,
