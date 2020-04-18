@@ -122,10 +122,12 @@ func void testPointer()
     int i = 0;
     int *x = &i;
     int y = x[2];
+    *x;
 }
 func void testUnion()
 {
     int wdw = 123;
+    cast(wdw, long);
     wdw = 222;
     SimpleUnion s;
     s.a = 1;

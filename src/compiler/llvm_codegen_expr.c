@@ -447,6 +447,7 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 		case UNARYOP_ADDR:
 			return gencontext_emit_address(context, expr->unary_expr.expr);
 		case UNARYOP_DEREF:
+			// TODO check on deref null
 			return gencontext_emit_load(context, expr->type, gencontext_emit_expr(context, expr->unary_expr.expr));
 		case UNARYOP_INC:
 			return gencontext_emit_pre_inc_dec(context, expr->unary_expr.expr, 1, false);
@@ -1069,6 +1070,7 @@ LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, 
 
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 {
+NESTED_RETRY:
 	switch (expr->expr_kind)
 	{
 		case EXPR_RANGE:
@@ -1079,11 +1081,10 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 			// Should only appear when generating designated initializers.
 			UNREACHABLE
 		case EXPR_COMPOUND_LITERAL:
-			return gencontext_emit_load(context,
-			                            expr->type,
-			                            gencontext_emit_initializer_list_expr_addr(context,
-			                                                                       expr->expr_compound_literal.initializer,
-			                                                                       NULL));
+			expr = expr->expr_compound_literal.initializer;
+			goto NESTED_RETRY;
+		case EXPR_INITIALIZER_LIST:
+			return gencontext_emit_load(context, expr->type, gencontext_emit_initializer_list_expr_addr(context, expr, NULL));
 		case EXPR_EXPR_BLOCK:
 			return gencontext_emit_expr_block(context, expr);
 		case EXPR_SCOPED_EXPR:
@@ -1113,11 +1114,8 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 		case EXPR_CALL:
 			return gencontext_emit_call_expr(context, expr);
 		case EXPR_GROUP:
-			return gencontext_emit_expr(context, expr->group_expr);
-		case EXPR_INITIALIZER_LIST:
-			return gencontext_emit_load(context,
-			                            expr->type,
-			                            gencontext_emit_initializer_list_expr_addr(context, expr, NULL));
+			expr = expr->group_expr;
+			goto NESTED_RETRY;
 		case EXPR_EXPRESSION_LIST:
 			return gencontext_emit_expression_list_expr(context, expr);
 		case EXPR_CAST:

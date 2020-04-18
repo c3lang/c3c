@@ -626,9 +626,7 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			gencontext_emit_scoped_stmt(context, ast);
 			break;
 		case AST_EXPR_STMT:
-		{
 			gencontext_emit_expr(context, ast->expr_stmt);
-		}
 			break;
 		case AST_DECLARE_STMT:
 			gencontext_emit_decl(context, ast);
