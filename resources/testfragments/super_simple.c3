@@ -117,6 +117,12 @@ union SimpleUnion
     double f;
 }
 
+func void testPointer()
+{
+    int i = 0;
+    int *x = &i;
+    int y = x[2];
+}
 func void testUnion()
 {
     int wdw = 123;
@@ -130,6 +136,12 @@ func void testUnion()
     s = { f = 1.0 };
     TestUnion tu = { e = TestStruct2 { c = 1 } };
     tu.e = TestStruct2 {  c = 1 };
+
+
+    SimpleUnion y = s = { 2 };
+    double yval = SimpleUnion{ f = 3.333 }.f;
+    printf("Union y: %d\n", y.a);
+    printf("Union simple: %f\n", yval);
 }
 
 func TestStruct2 structTest(int i)
@@ -308,7 +320,8 @@ struct AnonStruct
 
 func AnonStruct sendAnonStruct()
 {
-    AnonStruct foo = Foo { a = 1 };
+    AnonStruct foo = AnonStruct { a = 1 };
+    // Foo { a = 1 }
     foo.b2 = 123;
     return foo;
 }
@@ -677,6 +690,7 @@ func int main(int x)
     testArray();
     testAnonStruct();
     testSimpleStruct(0);
+    testUnion();
     int efd = 9;
     uint fefoek = 1;
     printf("Helo: %d\n", efd + cast(fefoek, int));

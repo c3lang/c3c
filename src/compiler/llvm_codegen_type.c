@@ -168,11 +168,12 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 	{
 		case TYPE_POISONED:
 		case TYPE_META_TYPE:
-		case TYPE_ENUM:
 		case TYPE_ERROR:
 			UNREACHABLE;
 		case TYPE_TYPEDEF:
 			return type->backend_type = llvm_get_type(context, type->canonical);
+		case TYPE_ENUM:
+			return type->backend_type = llvm_get_type(context, type->decl->enums.type_info->type->canonical);
 		case TYPE_ERROR_UNION:
 		{
 			LLVMTypeRef types[2];

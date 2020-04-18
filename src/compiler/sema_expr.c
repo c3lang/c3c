@@ -927,6 +927,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 		default:
 			break;
 	}
+	// Fix error on compound literals
 	SEMA_ERROR(expr, "Cannot assign expression to '%s'.", type_to_error_string(to));
 	return false;
 }
@@ -2275,6 +2276,10 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 	Expr *expr = expr_shallow_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_COMPOUND_LITERAL:
+			EXPR_COPY(expr->expr_compound_literal.initializer);
+			expr->expr_compound_literal.type_info = type_info_copy_from_macro(context, macro, expr->expr_compound_literal.type_info);
+			return expr;
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Created during semantic analysis
 			UNREACHABLE
@@ -2342,7 +2347,7 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 			return expr;
 		case EXPR_CAST:
 			EXPR_COPY(expr->cast_expr.expr);
-			expr->cast_expr.type_info = expr->cast_expr.type_info = type_info_copy_from_macro(context, macro, expr->cast_expr.type_info);
+			expr->cast_expr.type_info = type_info_copy_from_macro(context, macro, expr->cast_expr.type_info);
 			return expr;
 		case EXPR_SCOPED_EXPR:
 			EXPR_COPY(expr->expr_scope.expr);
@@ -2733,6 +2738,14 @@ static inline bool sema_expr_analyse_range(Context *context, Type *to, Expr *exp
 {
 	TODO
 }
+static inline bool sema_expr_analyse_compound_literal(Context *context, Type *to, Expr *expr)
+{
+	if (!sema_resolve_type_info(context, expr->expr_compound_literal.type_info)) return false;
+	Type *type = expr->expr_compound_literal.type_info->type;
+	if (!sema_expr_analyse_initializer_list(context, type, expr->expr_compound_literal.initializer)) return false;
+	expr->type = type;
+	return true;
+}
 
 static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *expr)
 {
@@ -2745,6 +2758,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			UNREACHABLE
 		case EXPR_SCOPED_EXPR:
 			UNREACHABLE
+		case EXPR_COMPOUND_LITERAL:
+			return sema_expr_analyse_compound_literal(context, to, expr);
 		case EXPR_EXPR_BLOCK:
 			return sema_expr_analyse_expr_block(context, to, expr);
 		case EXPR_MACRO_EXPR:

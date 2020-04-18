@@ -9,14 +9,14 @@
 #define CONSUME_OR(_tok, _res) do { if (!expect(context, _tok)) return _res; advance(context); } while(0)
 #define TRY_EXPECT_OR(_tok, _message, _type) do { if (context->tok.type != _tok) { SEMA_TOKEN_ERROR(context->tok, _message); return _type; } } while(0)
 #define TRY_CONSUME_OR(_tok, _message, _type) do { if (!consume(context, _tok, _message)) return _type; } while(0)
-#define TRY_CONSUME(_tok, _message) TRY_CONSUME_OR(_tok, _message, &poisoned_ast)
+#define TRY_CONSUME(_tok, _message) TRY_CONSUME_OR(_tok, _message, poisoned_ast)
 #define TRY_CONSUME_EOS_OR(_res) TRY_CONSUME_OR(TOKEN_EOS, "Expected ';'", _res)
-#define TRY_CONSUME_EOS() TRY_CONSUME_EOS_OR(&poisoned_ast)
-#define RETURN_AFTER_EOS(_ast) extend_ast_with_prev_token(context, ast); TRY_CONSUME_EOS_OR(&poisoned_ast); return _ast
+#define TRY_CONSUME_EOS() TRY_CONSUME_EOS_OR(poisoned_ast)
+#define RETURN_AFTER_EOS(_ast) extend_ast_with_prev_token(context, ast); TRY_CONSUME_EOS_OR(poisoned_ast); return _ast
 #define TRY_CONSUME_LBRACE() TRY_CONSUME(TOKEN_LBRACE, "Expected '{'")
 
 #define TRY_AST_OR(_ast_stmt, _res) ({ Ast* _ast = (_ast_stmt); if (!ast_ok(_ast)) return _res; _ast; })
-#define TRY_AST(_ast_stmt) TRY_AST_OR(_ast_stmt, &poisoned_ast)
+#define TRY_AST(_ast_stmt) TRY_AST_OR(_ast_stmt, poisoned_ast)
 #define TRY_EXPR_OR(_expr_stmt, _res) ({ Expr* _expr = (_expr_stmt); if (!expr_ok(_expr)) return _res; _expr; })
 #define TRY_TYPE_OR(_type_stmt, _res) ({ TypeInfo* _type = (_type_stmt); if (!type_info_ok(_type)) return _res; _type; })
 #define TRY_DECL_OR(_decl_stmt, _res) ({ Decl* _decl = (_decl_stmt); if (!decl_ok(_decl)) return _res; _decl; })
@@ -78,8 +78,8 @@ static inline bool expect_ident(Context *context, const char* name)
 
 static inline Expr *parse_paren_expr(Context *context)
 {
-	CONSUME_OR(TOKEN_LPAREN, &poisoned_expr);
-	Expr *expr = TRY_EXPR_OR(parse_expr(context), &poisoned_expr);
-	CONSUME_OR(TOKEN_RPAREN, &poisoned_expr);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
+	Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	return expr;
 }

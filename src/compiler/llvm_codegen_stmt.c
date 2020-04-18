@@ -77,7 +77,7 @@ LLVMValueRef gencontext_emit_decl_expr_list(GenContext *context, Ast *ast, bool 
 			break;
 		case AST_DECLARE_STMT:
 			type = last->declare_stmt->var.type_info->type;
-			result = gencontext_load_expr(context, gencontext_emit_decl(context, last));
+			result = gencontext_emit_load(context, type, gencontext_emit_decl(context, last));
 			break;
 		default:
 			UNREACHABLE
@@ -539,7 +539,7 @@ void gencontext_emit_defer(GenContext *context, Ast *defer_start, Ast *defer_end
 			LLVMBasicBlockRef exit_block = LLVMCreateBasicBlockInContext(context->context, "skip.defer");
 			LLVMBasicBlockRef defer_block = LLVMCreateBasicBlockInContext(context->context, "do.defer");
 
-			LLVMValueRef value = LLVMBuildLoad2(context->builder, llvm_type(type_bool), gencontext_get_defer_bool(context, defer), "will.defer");
+			LLVMValueRef value = gencontext_emit_load(context, type_bool, gencontext_get_defer_bool(context, defer));
 
 			gencontext_emit_cond_br(context, value, defer_block, exit_block);
 

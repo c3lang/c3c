@@ -555,6 +555,12 @@ typedef struct
 
 typedef struct
 {
+	Expr *initializer;
+	TypeInfo *type_info;
+} ExprCompoundLiteral;
+
+typedef struct
+{
 	DesignatedPath *path;
 	Expr* value;
 } ExprDesignatedInit;
@@ -585,6 +591,7 @@ struct _Expr
 		ExprIdentifier identifier_expr;
 		ExprType type_expr;
 		ExprInitializer expr_initializer;
+		ExprCompoundLiteral expr_compound_literal;
 		Expr** expression_list;
 		ExprScope expr_scope;
 		ExprFuncBlock expr_block;
@@ -931,11 +938,11 @@ typedef struct
 } Compiler;
 
 extern Compiler compiler;
-extern Ast poisoned_ast;
-extern Decl poisoned_decl;
-extern Expr poisoned_expr;
-extern Type poisoned_type;
-extern TypeInfo poisoned_type_info;
+extern Ast *poisoned_ast;
+extern Decl *poisoned_decl;
+extern Expr *poisoned_expr;
+extern Type *poisoned_type;
+extern TypeInfo *poisoned_type_info;
 extern Module poisoned_module;
 extern Diagnostics diagnostics;
 
@@ -1260,7 +1267,7 @@ static inline bool type_is_unsigned_integer(Type *type)
 
 static inline bool type_info_poison(TypeInfo *type)
 {
-	type->type = &poisoned_type;
+	type->type = poisoned_type;
 	type->resolve_status = RESOLVE_DONE;
 	return false;
 }
