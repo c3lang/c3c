@@ -438,7 +438,7 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 	}
 
 	Ast *default_case = NULL;
-	VECEACH(ast->switch_stmt.cases, i)
+	for (unsigned i = 0; i < cases; i++)
 	{
 		Ast *case_stmt = ast->switch_stmt.cases[i];
 		if (!case_stmt->case_stmt.expr)
@@ -457,6 +457,7 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 
 	LLVMBasicBlockRef exit_block = gencontext_create_free_block(context, "switch.exit");
 
+
 	// We will now treat the fallthrough cases:
 	// switch (i)
 	// {
@@ -465,33 +466,24 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 	//      do_something();
 	//    default:
 	// }
-	VECEACH(ast->switch_stmt.cases, i)
+	LLVMBasicBlockRef next_block = exit_block;
+	for (unsigned i = cases; i > 0; i--)
 	{
-		Ast *case_stmt = ast->switch_stmt.cases[i];
-		if (case_stmt->case_stmt.backend_value != NULL) continue;
+		Ast *case_stmt = ast->switch_stmt.cases[i - 1];
+		if (case_stmt->case_stmt.backend_value)
+		{
+			next_block = case_stmt->case_stmt.backend_value;
+			continue;
+		}
 
-		// Look forward for a block
-		for (size_t j = i + 1; j < cases; j++)
-		{
-			Ast *other_case = ast->switch_stmt.cases[j];
-			if (other_case->case_stmt.backend_value != NULL)
-			{
-				case_stmt->case_stmt.backend_value = other_case->case_stmt.backend_value;
-				break;
-			}
-		}
-		// No block found? Then the block is the exit block.
-		if (!case_stmt->case_stmt.backend_value)
-		{
-			case_stmt->case_stmt.backend_value = exit_block;
-		}
+		case_stmt->case_stmt.backend_value = next_block;
 	}
 
 	gencontext_push_break_continue(context, exit_block, NULL, NULL);
 
 	LLVMValueRef switch_stmt = LLVMBuildSwitch(context->builder, switch_value, default_case ? default_case->case_stmt.backend_value : exit_block, cases);
 	context->current_block = NULL;
-	VECEACH(ast->switch_stmt.cases, i)
+	for (unsigned i = 0; i < cases; i++)
 	{
 		Ast *case_stmt = ast->switch_stmt.cases[i];
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_value;

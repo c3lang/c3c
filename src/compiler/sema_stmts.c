@@ -690,7 +690,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 		{
 			context_push_scope_with_flags(context, SCOPE_NEXT | SCOPE_BREAK);
 		}
-		success = success && sema_analyse_compound_statement_no_scope(context, stmt->case_stmt.body);
+		success = success && (!stmt->case_stmt.body || sema_analyse_compound_statement_no_scope(context, stmt->case_stmt.body));
 		ExitType case_exit = context->current_scope->exit;
 		if (case_exit != lowest_exit)
 		{

@@ -254,6 +254,8 @@ func int testReturnSwitch()
     int i = 0;
     switch (i)
     {
+        case 0:
+        case 3:
         case 1:
             return 2;
         case 2:

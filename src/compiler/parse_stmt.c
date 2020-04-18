@@ -160,6 +160,7 @@ static inline bool token_type_ends_case(TokenType type)
 
 static inline Ast *parse_case_stmts(Context *context)
 {
+	if (token_type_ends_case(context->tok.type)) return NULL;
 	Ast *compound = AST_NEW_TOKEN(AST_COMPOUND_STMT, context->tok);
 	while (!token_type_ends_case(context->tok.type))
 	{
