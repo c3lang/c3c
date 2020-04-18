@@ -18,9 +18,10 @@ Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility)
 }
 
 
-Type poisoned_type = { .type_kind = TYPE_POISONED };
-
-TypeInfo poisoned_type_info = { .kind = TYPE_INFO_POISON };
+static Type poison_type = { .type_kind = TYPE_POISONED };
+static TypeInfo poison_type_info = { .kind = TYPE_INFO_POISON };
+Type *poisoned_type = &poison_type;
+TypeInfo *poisoned_type_info = &poison_type_info;
 
 void decl_set_external_name(Decl *decl)
 {
@@ -100,7 +101,8 @@ const char *decl_var_to_string(VarDeclKind kind)
 	UNREACHABLE
 }
 
-Decl poisoned_decl = { .decl_kind = DECL_POISONED, .resolve_status = RESOLVE_DONE };
+static Decl poison_decl = { .decl_kind = DECL_POISONED, .resolve_status = RESOLVE_DONE };
+Decl *poisoned_decl = &poison_decl;
 
 Decl *decl_new_var(Token name, TypeInfo *type, VarDeclKind kind, Visibility visibility)
 {
@@ -132,7 +134,7 @@ Decl *struct_find_name(Decl *decl, const char* name)
 
 Ast *ast_from_expr(Expr *expr)
 {
-	if (!expr_ok(expr)) return &poisoned_ast;
+	if (!expr_ok(expr)) return poisoned_ast;
 	Ast *ast = AST_NEW(AST_EXPR_STMT, expr->span);
 	ast->expr_stmt = expr;
 	return ast;
@@ -147,9 +149,8 @@ Expr *expr_new(ExprKind kind, SourceRange start)
 	return expr;
 }
 
-Expr poisoned_expr = { .expr_kind = EXPR_POISONED, .resolve_status = RESOLVE_DONE };
-
-
+static Expr poison_expr = { .expr_kind = EXPR_POISONED, .resolve_status = RESOLVE_DONE };
+Expr *poisoned_expr = &poison_expr;
 
 Type* type_int_max_type(bool is_signed)
 {
@@ -303,7 +304,8 @@ TokenType postunaryop_to_token(PostUnaryOp type)
 	return TOKEN_INVALID_TOKEN;
 }
 
-Ast poisoned_ast = { .ast_kind = AST_POISONED };
+static Ast poison_ast = { .ast_kind = AST_POISONED };
+Ast *poisoned_ast = &poison_ast;
 
 void fprint_indent(FILE *file, int indent)
 {

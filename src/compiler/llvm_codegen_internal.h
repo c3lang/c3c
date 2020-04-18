@@ -139,11 +139,13 @@ void gencontext_emit_implicit_return(GenContext *context);
 void gencontext_emit_function_decl(GenContext *context, Decl *decl);
 void gencontext_emit_extern_decl(GenContext *context, Decl *decl);
 LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr);
-static inline LLVMValueRef gencontext_load_expr(GenContext *context, LLVMValueRef value)
-{
-	return LLVMBuildLoad(context->builder, value, "");
-}
 LLVMTypeRef gencontext_get_llvm_type(GenContext *context, Type *type);
+static inline LLVMValueRef gencontext_emit_load(GenContext *context, Type *type, LLVMValueRef value)
+{
+	assert(gencontext_get_llvm_type(context, type) == LLVMGetElementType(LLVMTypeOf(value)));
+	return LLVMBuildLoad2(context->builder, gencontext_get_llvm_type(context, type), value, "");
+}
+
 LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMValueRef value, Type *type, Type *target_type);
 static inline bool gencontext_func_pass_return_by_param(GenContext *context, Type *first_param_type) { return false; };
 static inline bool gencontext_func_pass_param_by_reference(GenContext *context, Type *param_type) { return false; }

@@ -219,7 +219,7 @@ void compiler_register_public_symbol(Decl *decl)
 {
 	Decl *prev = stable_get(&compiler.global_symbols, decl->name);
 	// If the previous symbol was already declared globally, remove it.
-	stable_set(&compiler.global_symbols, decl->name, prev ? &poisoned_decl : decl);
+	stable_set(&compiler.global_symbols, decl->name, prev ? poisoned_decl : decl);
 	STable *sub_module_space = stable_get(&compiler.qualified_symbols, decl->module->name->module);
 	if (!sub_module_space)
 	{
@@ -228,5 +228,5 @@ void compiler_register_public_symbol(Decl *decl)
 		stable_set(&compiler.qualified_symbols, decl->module->name->module, sub_module_space);
 	}
 	prev = stable_get(sub_module_space, decl->name);
-	stable_set(sub_module_space, decl->name, prev ? &poisoned_decl : decl);
+	stable_set(sub_module_space, decl->name, prev ? poisoned_decl : decl);
 }

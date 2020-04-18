@@ -319,7 +319,7 @@ static inline TypeInfo *parse_base_type(Context *context)
 		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER, range);
 		type_info->unresolved.path = path;
 		type_info->unresolved.name_loc = context->tok;
-		if (!consume_type_name(context, "types")) return &poisoned_type_info;
+		if (!consume_type_name(context, "types")) return poisoned_type_info;
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
@@ -335,10 +335,10 @@ static inline TypeInfo *parse_base_type(Context *context)
 		case TOKEN_TYPE:
 			type_info = type_info_new(TYPE_INFO_IDENTIFIER, context->tok.span);
 		    advance_and_verify(context, TOKEN_TYPE);
-		    CONSUME_OR(TOKEN_LPAREN, &poisoned_type_info);
+		    CONSUME_OR(TOKEN_LPAREN, poisoned_type_info);
 			type_info->resolve_status = RESOLVE_NOT_DONE;
-			type_info->unresolved_type_expr = TRY_EXPR_OR(parse_initializer(context), &poisoned_type_info);
-			EXPECT_OR(TOKEN_RPAREN, &poisoned_type_info);
+			type_info->unresolved_type_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_type_info);
+			EXPECT_OR(TOKEN_RPAREN, poisoned_type_info);
 			RANGE_EXTEND_PREV(type_info);
 			break;
 		case TOKEN_VOID:
@@ -409,7 +409,7 @@ static inline TypeInfo *parse_base_type(Context *context)
 			break;
 		default:
 			SEMA_TOKEN_ERROR(context->tok, "A type name was expected here.");
-			return &poisoned_type_info;
+			return poisoned_type_info;
 	}
 	if (type_found)
 	{
@@ -440,7 +440,7 @@ static inline TypeInfo *parse_array_type_index(Context *context, TypeInfo *type)
 	advance_and_verify(context, TOKEN_LBRACKET);
 	if (try_consume(context, TOKEN_PLUS))
 	{
-		CONSUME_OR(TOKEN_RBRACKET, &poisoned_type_info);
+		CONSUME_OR(TOKEN_RBRACKET, poisoned_type_info);
         TypeInfo *incr_array = type_info_new(TYPE_INFO_INC_ARRAY, type->span);
         incr_array->array.base = type;
         RANGE_EXTEND_PREV(incr_array);
@@ -456,8 +456,8 @@ static inline TypeInfo *parse_array_type_index(Context *context, TypeInfo *type)
 	}
     TypeInfo *array = type_info_new(TYPE_INFO_ARRAY, type->span);
     array->array.base = type;
-    array->array.len = TRY_EXPR_OR(parse_expr(context), &poisoned_type_info);
-    CONSUME_OR(TOKEN_RBRACKET, &poisoned_type_info);
+    array->array.len = TRY_EXPR_OR(parse_expr(context), poisoned_type_info);
+    CONSUME_OR(TOKEN_RBRACKET, poisoned_type_info);
     RANGE_EXTEND_PREV(array);
     return array;
 }
@@ -512,10 +512,10 @@ Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type)
 	if (context->tok.type == TOKEN_LPAREN)
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Expected '{'.");
-		return &poisoned_decl;
+		return poisoned_decl;
 	}
 
-	EXPECT_IDENT_FOR_OR("variable_name", &poisoned_decl);
+	EXPECT_IDENT_FOR_OR("variable_name", poisoned_decl);
 
 	Token name = context->tok;
 	advance(context);
@@ -528,10 +528,10 @@ Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type)
 		if (!decl)
 		{
 			SEMA_TOKEN_ERROR(context->tok, "Expected an identifier before '='.");
-			return &poisoned_decl;
+			return poisoned_decl;
 		}
 		advance_and_verify(context, TOKEN_EQ);
-		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), &poisoned_decl);
+		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
 	}
 
 	return decl;
@@ -549,9 +549,9 @@ Decl *parse_decl(Context *context)
 	if (local || constant) advance(context);
 
 	TypeInfo *type_info = parse_type_expression(context);
-	TypeInfo *type = TRY_TYPE_OR(type_info, &poisoned_decl);
+	TypeInfo *type = TRY_TYPE_OR(type_info, poisoned_decl);
 
-	Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, local, type), &poisoned_decl);
+	Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, local, type), poisoned_decl);
 
 	if (constant) decl->var.kind = VARDECL_CONST;
 
@@ -576,20 +576,20 @@ static inline Decl *parse_const_declaration(Context *context, Visibility visibil
 		if (!is_all_upper(context->tok.string))
 		{
 			SEMA_TOKEN_ERROR(context->tok, "Compile time constants must be all upper characters.");
-			return &poisoned_decl;
+			return poisoned_decl;
 		}
 	}
 	else
 	{
-		if (!consume_const_name(context, "constant")) return &poisoned_decl;
-		decl->var.type_info = TRY_TYPE_OR(parse_type_expression(context), &poisoned_decl);
+		if (!consume_const_name(context, "constant")) return poisoned_decl;
+		decl->var.type_info = TRY_TYPE_OR(parse_type_expression(context), poisoned_decl);
 	}
 
-	CONSUME_OR(TOKEN_EQ, &poisoned_decl);
+	CONSUME_OR(TOKEN_EQ, poisoned_decl);
 
-	decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), &poisoned_decl);
+	decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
 
-	CONSUME_OR(TOKEN_EOS, &poisoned_decl);
+	CONSUME_OR(TOKEN_EOS, poisoned_decl);
 	return decl;
 }
 
@@ -604,7 +604,7 @@ static inline Decl *parse_const_declaration(Context *context, Visibility visibil
  */
 static inline Decl *parse_global_declaration(Context *context, Visibility visibility)
 {
-	TypeInfo *type = TRY_TYPE_OR(parse_type_expression(context), &poisoned_decl);
+	TypeInfo *type = TRY_TYPE_OR(parse_type_expression(context), poisoned_decl);
 
 	Decl *decl = decl_new_var(context->tok, type, VARDECL_GLOBAL, visibility);
 
@@ -615,13 +615,13 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
 		return false;
 	}
 
-	if (!consume_ident(context, "global variable")) return &poisoned_decl;
+	if (!consume_ident(context, "global variable")) return poisoned_decl;
 
 	if (try_consume(context, TOKEN_EQ))
 	{
-		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), &poisoned_decl);
+		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
 	}
-	TRY_CONSUME_EOS_OR(&poisoned_decl);
+	TRY_CONSUME_EOS_OR(poisoned_decl);
 	return decl;
 }
 
@@ -630,9 +630,9 @@ static inline Decl *parse_incremental_array(Context *context)
 	Token name = context->tok;
 	advance_and_verify(context, TOKEN_IDENT);
 
-	CONSUME_OR(TOKEN_PLUS_ASSIGN, &poisoned_decl);
+	CONSUME_OR(TOKEN_PLUS_ASSIGN, poisoned_decl);
 	Decl *decl = decl_new(DECL_ARRAY_VALUE, name, VISIBLE_LOCAL);
-	decl->incr_array_decl = TRY_EXPR_OR(parse_initializer(context), &poisoned_decl);
+	decl->incr_array_decl = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
 	return decl;
 }
 
@@ -665,7 +665,7 @@ Ast *parse_decl_expr_list(Context *context)
 		}
 		else
 		{
-			Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, false, type), &poisoned_ast);
+			Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, false, type), poisoned_ast);
 			Ast *stmt = AST_NEW(AST_DECLARE_STMT, decl->span);
 			stmt->declare_stmt = decl;
 			vec_add(decl_expr->decl_expr_stmt, stmt);
@@ -1065,17 +1065,17 @@ static inline Decl *parse_struct_declaration(Context *context, Visibility visibi
 
     Token name = context->tok;
 
-    if (!consume_type_name(context, type_name)) return &poisoned_decl;
+    if (!consume_type_name(context, type_name)) return poisoned_decl;
     Decl *decl = decl_new_with_type(name, decl_from_token(type), visibility);
 
 	if (!parse_attributes(context, decl))
 	{
-		return &poisoned_decl;
+		return poisoned_decl;
 	}
 
 	if (!parse_struct_body(context, decl, decl))
 	{
-		return &poisoned_decl;
+		return poisoned_decl;
 	}
 	DEBUG_LOG("Parsed %s %s completely.", type_name, name.string);
 	return decl;
@@ -1089,7 +1089,7 @@ static inline Ast *parse_generics_statements(Context *context)
 	Ast *ast = AST_NEW_TOKEN(AST_COMPOUND_STMT, context->tok);
 	while (context->tok.type != TOKEN_RBRACE && context->tok.type != TOKEN_CASE && context->tok.type != TOKEN_DEFAULT)
 	{
-		Ast *stmt = TRY_AST_OR(parse_stmt(context), &poisoned_ast);
+		Ast *stmt = TRY_AST_OR(parse_stmt(context), poisoned_ast);
 		ast->compound_stmt.stmts = VECADD(ast->compound_stmt.stmts, stmt);
 	}
 	return ast;
@@ -1116,15 +1116,15 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 	TypeInfo *rtype = NULL;
 	if (context->tok.type != TOKEN_IDENT)
 	{
-		rtype = TRY_TYPE_OR(parse_type_expression(context), &poisoned_decl);
+		rtype = TRY_TYPE_OR(parse_type_expression(context), poisoned_decl);
 	}
 	Path *path = parse_path_prefix(context);
 	Decl *decl = decl_new(DECL_GENERIC, context->tok, visibility);
 	decl->generic_decl.path = path;
-	if (!consume_ident(context, "generic function name")) return &poisoned_decl;
+	if (!consume_ident(context, "generic function name")) return poisoned_decl;
 	decl->generic_decl.rtype = rtype;
 	Token *parameters = NULL;
-	CONSUME_OR(TOKEN_LPAREN, &poisoned_decl);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_decl);
 	while (!try_consume(context, TOKEN_RPAREN))
 	{
 		if (context->tok.type != TOKEN_IDENT)
@@ -1134,9 +1134,9 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 		}
 		parameters = VECADD(parameters, context->tok);
 		advance(context);
-		COMMA_RPAREN_OR(&poisoned_decl);
+		COMMA_RPAREN_OR(poisoned_decl);
 	}
-	CONSUME_OR(TOKEN_LBRACE, &poisoned_decl);
+	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
 	Ast **cases = NULL;
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
@@ -1147,16 +1147,16 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 			TypeInfo **types = NULL;
 			while (!try_consume(context, TOKEN_COLON))
 			{
-				TypeInfo *type = TRY_TYPE_OR(parse_type_expression(context), &poisoned_decl);
+				TypeInfo *type = TRY_TYPE_OR(parse_type_expression(context), poisoned_decl);
 				types = VECADD(types, type);
 				if (!try_consume(context, TOKEN_COMMA) && context->tok.type != TOKEN_COLON)
 				{
 					SEMA_TOKEN_ERROR(context->tok, "Expected ',' or ':'.");
-					return &poisoned_decl;
+					return poisoned_decl;
 				}
 			}
 			generic_case->generic_case_stmt.types = types;
-			generic_case->generic_case_stmt.body = TRY_AST_OR(parse_generics_statements(context), &poisoned_decl);
+			generic_case->generic_case_stmt.body = TRY_AST_OR(parse_generics_statements(context), poisoned_decl);
 			cases = VECADD(cases, generic_case);
 			continue;
 		}
@@ -1164,13 +1164,13 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 		{
 			Ast *generic_case = AST_NEW_TOKEN(AST_GENERIC_DEFAULT_STMT, context->tok);
 			advance_and_verify(context, TOKEN_DEFAULT);
-			CONSUME_OR(TOKEN_COLON, &poisoned_decl);
-			generic_case->generic_default_stmt = TRY_AST_OR(parse_generics_statements(context), &poisoned_decl);
+			CONSUME_OR(TOKEN_COLON, poisoned_decl);
+			generic_case->generic_default_stmt = TRY_AST_OR(parse_generics_statements(context), poisoned_decl);
 			cases = VECADD(cases, generic_case);
 			continue;
 		}
 		SEMA_TOKEN_ERROR(context->tok, "Expected 'case' or 'default'.");
-		return &poisoned_decl;
+		return poisoned_decl;
 	}
 	decl->generic_decl.cases = cases;
 	decl->generic_decl.parameters = parameters;
@@ -1234,14 +1234,14 @@ static inline Decl *parse_attribute_declaration(Context *context, Visibility vis
 		last_domain = TOKEN_TO_ATTR[context->tok.type];
 	}
 	Decl *decl = decl_new(DECL_ATTRIBUTE, context->tok, visibility);
-	TRY_CONSUME_OR(TOKEN_IDENT, "Expected an attribute name.", &poisoned_decl);
+	TRY_CONSUME_OR(TOKEN_IDENT, "Expected an attribute name.", poisoned_decl);
 	if (last_domain == 0)
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Expected at least one domain for attribute '%s'.", decl->name);
 		return false;
 	}
-	if (!parse_opt_parameter_type_list(context, visibility, &decl->attr.attr_signature, false)) return &poisoned_decl;
-	TRY_CONSUME_EOS_OR(&poisoned_decl);
+	if (!parse_opt_parameter_type_list(context, visibility, &decl->attr.attr_signature, false)) return poisoned_decl;
+	TRY_CONSUME_EOS_OR(poisoned_decl);
 	return decl;
 }
 
@@ -1274,19 +1274,19 @@ static inline Decl *parse_typedef_declaration(Context *context, Visibility visib
 	Decl *decl = decl_new_with_type(context->tok, DECL_TYPEDEF, visibility);
     if (context->tok.type == TOKEN_FUNC)
     {
-        if (!parse_func_typedef(context, decl, visibility)) return &poisoned_decl;
+        if (!parse_func_typedef(context, decl, visibility)) return poisoned_decl;
     }
     else
     {
-        decl->typedef_decl.type_info = TRY_TYPE_OR(parse_type_expression(context), &poisoned_decl);
+        decl->typedef_decl.type_info = TRY_TYPE_OR(parse_type_expression(context), poisoned_decl);
         decl->typedef_decl.is_func = false;
     }
-	CONSUME_OR(TOKEN_AS, &poisoned_decl);
+	CONSUME_OR(TOKEN_AS, poisoned_decl);
 	decl->name = context->tok.string;
 	decl->name_span = context->tok.span;
     decl->type->name = context->tok.string;
-	if (!consume_type_name(context, "typedef")) return &poisoned_decl;
-	CONSUME_OR(TOKEN_EOS, &poisoned_decl);
+	if (!consume_type_name(context, "typedef")) return poisoned_decl;
+	CONSUME_OR(TOKEN_EOS, poisoned_decl);
 	return decl;
 }
 
@@ -1297,14 +1297,14 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
     TypeInfo *rtype = NULL;
     if (context->tok.type != TOKEN_IDENT)
     {
-        rtype = TRY_TYPE_OR(parse_type_expression(context), &poisoned_decl);
+        rtype = TRY_TYPE_OR(parse_type_expression(context), poisoned_decl);
     }
 
     Decl *decl = decl_new(DECL_MACRO, context->tok, visibility);
     decl->macro_decl.rtype = rtype;
-    TRY_CONSUME_OR(TOKEN_IDENT, "Expected a macro name here", &poisoned_decl);
+    TRY_CONSUME_OR(TOKEN_IDENT, "Expected a macro name here", poisoned_decl);
 
-    CONSUME_OR(TOKEN_LPAREN, &poisoned_decl);
+    CONSUME_OR(TOKEN_LPAREN, poisoned_decl);
     Decl **params = NULL;
     while (!try_consume(context, TOKEN_RPAREN))
     {
@@ -1320,18 +1320,18 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
                 if (parm_type)
                 {
                     SEMA_TOKEN_ERROR(context->tok, "Expected a macro parameter");
-                    return &poisoned_decl;
+                    return poisoned_decl;
                 }
-                parm_type = TRY_TYPE_OR(parse_type_expression(context), &poisoned_decl);
+                parm_type = TRY_TYPE_OR(parse_type_expression(context), poisoned_decl);
                 goto TEST_TYPE;
         }
         Decl *param = decl_new_var(context->tok, parm_type, VARDECL_PARAM, visibility);
         advance(context);
         params = VECADD(params, param);
-        COMMA_RPAREN_OR(&poisoned_decl);
+        COMMA_RPAREN_OR(poisoned_decl);
     }
     decl->macro_decl.parameters = params;
-    decl->macro_decl.body = TRY_AST_OR(parse_stmt(context), &poisoned_decl);
+    decl->macro_decl.body = TRY_AST_OR(parse_stmt(context), poisoned_decl);
 	return decl;
 }
 
@@ -1348,9 +1348,9 @@ static inline Decl *parse_error_declaration(Context *context, Visibility visibil
 
     Decl *error_decl = decl_new_with_type(context->tok, DECL_ERROR, visibility);
 
-    if (!consume_type_name(context, "error type")) return &poisoned_decl;
+    if (!consume_type_name(context, "error type")) return poisoned_decl;
 
-    CONSUME_OR(TOKEN_LBRACE, &poisoned_decl);
+    CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
 
 	while (context->tok.type == TOKEN_CONST_IDENT)
 	{
@@ -1376,9 +1376,9 @@ static inline Decl *parse_error_declaration(Context *context, Visibility visibil
 	if (context->tok.type == TOKEN_TYPE_IDENT || context->tok.type == TOKEN_IDENT)
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Errors must be all upper case.");
-		return &poisoned_decl;
+		return poisoned_decl;
 	}
-	CONSUME_OR(TOKEN_RBRACE, &poisoned_decl);
+	CONSUME_OR(TOKEN_RBRACE, poisoned_decl);
 	return error_decl;
 }
 
@@ -1431,12 +1431,12 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 
     Decl *decl = decl_new_with_type(context->tok, DECL_ENUM, visibility);
 
-    if (!consume_type_name(context, "enum")) return &poisoned_decl;
+    if (!consume_type_name(context, "enum")) return poisoned_decl;
 
 	TypeInfo *type = NULL;
 	if (try_consume(context, TOKEN_COLON))
 	{
-		if (!parse_enum_spec(context, &type, &decl->enums.parameters, visibility)) return &poisoned_decl;
+		if (!parse_enum_spec(context, &type, &decl->enums.parameters, visibility)) return poisoned_decl;
 	}
 
 	CONSUME_OR(TOKEN_LBRACE, false);
@@ -1458,24 +1458,24 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 		}
         if (!consume_const_name(context, "enum constant"))
         {
-            return &poisoned_decl;
+            return poisoned_decl;
         }
         if (try_consume(context, TOKEN_LPAREN))
         {
         	Expr **result = NULL;
-        	if (!parse_param_list(context, &result, true)) return &poisoned_decl;
+        	if (!parse_param_list(context, &result, true)) return poisoned_decl;
         	enum_const->enum_constant.args = result;
-        	CONSUME_OR(TOKEN_RPAREN, &poisoned_decl);
+        	CONSUME_OR(TOKEN_RPAREN, poisoned_decl);
         }
         if (try_consume(context, TOKEN_EQ))
 		{
-		    enum_const->enum_constant.expr = TRY_EXPR_OR(parse_expr(context), &poisoned_decl);
+		    enum_const->enum_constant.expr = TRY_EXPR_OR(parse_expr(context), poisoned_decl);
 		}
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','
 		if (!try_consume(context, TOKEN_COMMA))
         {
-		    EXPECT_OR(TOKEN_RBRACE, &poisoned_decl);
+		    EXPECT_OR(TOKEN_RBRACE, poisoned_decl);
         }
 	}
 	return decl;
@@ -1511,7 +1511,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 {
 	advance_and_verify(context, TOKEN_FUNC);
 
-	TypeInfo *return_type = TRY_TYPE_OR(parse_type_expression(context), false);
+	TypeInfo *return_type = TRY_TYPE_OR(parse_type_expression(context), poisoned_decl);
 
 	Decl *func = decl_new(DECL_FUNC, context->tok, visibility);
 	func->func.function_signature.rtype = return_type;
@@ -1521,7 +1521,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	if (path || context->tok.type == TOKEN_TYPE_IDENT)
 	{
 		// Special case, actually an extension
-		TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "A type was expected after '::'.", &poisoned_decl);
+		TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "A type was expected after '::'.", poisoned_decl);
 		// TODO span is incorrect
 		TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER, start);
 		type->unresolved.path = path;
@@ -1529,17 +1529,17 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 		func->func.type_parent = type;
 		advance_and_verify(context, TOKEN_TYPE_IDENT);
 
-		TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method function.", &poisoned_decl);
+		TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method function.", poisoned_decl);
 	}
 
-	EXPECT_IDENT_FOR_OR("function name", &poisoned_decl);
+	EXPECT_IDENT_FOR_OR("function name", poisoned_decl);
 	func->name = context->tok.string;
 	func->name_span = context->tok.span;
 	advance_and_verify(context, TOKEN_IDENT);
 
-	if (!parse_opt_parameter_type_list(context, visibility, &(func->func.function_signature), is_interface)) return &poisoned_decl;
+	if (!parse_opt_parameter_type_list(context, visibility, &(func->func.function_signature), is_interface)) return poisoned_decl;
 
-	if (!parse_opt_throw_declaration(context, visibility, &(func->func.function_signature))) return &poisoned_decl;
+	if (!parse_opt_throw_declaration(context, visibility, &(func->func.function_signature))) return poisoned_decl;
 
 	// TODO remove
 	is_interface = context->tok.type == TOKEN_EOS;
@@ -1549,15 +1549,15 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 		if (context->tok.type == TOKEN_LBRACE)
 		{
 			SEMA_TOKEN_ERROR(context->next_tok, "Functions bodies are not allowed in interface files.");
-			return &poisoned_decl;
+			return poisoned_decl;
 		}
-		TRY_CONSUME_OR(TOKEN_EOS, "Expected ';' after function declaration.", &poisoned_decl);
+		TRY_CONSUME_OR(TOKEN_EOS, "Expected ';' after function declaration.", poisoned_decl);
 		return func;
 	}
 
-	TRY_EXPECT_OR(TOKEN_LBRACE, "Expected the beginning of a block with '{'", &poisoned_decl);
+	TRY_EXPECT_OR(TOKEN_LBRACE, "Expected the beginning of a block with '{'", poisoned_decl);
 
-	func->func.body = TRY_AST_OR(parse_compound_stmt(context), &poisoned_decl);
+	func->func.body = TRY_AST_OR(parse_compound_stmt(context), poisoned_decl);
 
 	DEBUG_LOG("Finished parsing function %s", func->name);
 	return func;
@@ -1590,17 +1590,17 @@ static inline Decl *parse_ct_if_top_level(Context *context)
 {
 	Decl *ct = decl_new(DECL_CT_IF, context->tok, VISIBLE_LOCAL);
 	advance_and_verify(context, TOKEN_CT_IF);
-	ct->ct_if_decl.expr = TRY_EXPR_OR(parse_paren_expr(context), &poisoned_decl);
+	ct->ct_if_decl.expr = TRY_EXPR_OR(parse_paren_expr(context), poisoned_decl);
 
-	if (!parse_conditional_top_level(context, &ct->ct_if_decl.then)) return &poisoned_decl;
+	if (!parse_conditional_top_level(context, &ct->ct_if_decl.then)) return poisoned_decl;
 
 	CtIfDecl *ct_if_decl = &ct->ct_if_decl;
 	while (context->tok.type == TOKEN_CT_ELIF)
 	{
 		advance_and_verify(context, TOKEN_CT_ELIF);
 		Decl *ct_elif = decl_new(DECL_CT_ELIF, context->tok, VISIBLE_LOCAL);
-		ct_elif->ct_elif_decl.expr = TRY_EXPR_OR(parse_paren_expr(context), &poisoned_decl);
-		if (!parse_conditional_top_level(context, &ct_elif->ct_elif_decl.then)) return &poisoned_decl;
+		ct_elif->ct_elif_decl.expr = TRY_EXPR_OR(parse_paren_expr(context), poisoned_decl);
+		if (!parse_conditional_top_level(context, &ct_elif->ct_elif_decl.then)) return poisoned_decl;
 		ct_if_decl->elif = ct_elif;
 		ct_if_decl = &ct_elif->ct_elif_decl;
 	}
@@ -1609,7 +1609,7 @@ static inline Decl *parse_ct_if_top_level(Context *context)
 		advance_and_verify(context, TOKEN_CT_ELSE);
 		Decl *ct_else = decl_new(DECL_CT_ELSE, context->tok, VISIBLE_LOCAL);
 		ct_if_decl->elif = ct_else;
-		if (!parse_conditional_top_level(context, &ct_else->ct_else_decl)) return &poisoned_decl;
+		if (!parse_conditional_top_level(context, &ct_else->ct_else_decl)) return poisoned_decl;
 	}
 	return ct;
 }
@@ -1705,7 +1705,7 @@ static inline Decl *parse_top_level(Context *context)
 		case TOKEN_EOF:
 			assert(visibility != VISIBLE_MODULE);
 			sema_error_at(context->tok.span.loc - 1, "Expected a top level declaration'.");
-			return &poisoned_decl;
+			return poisoned_decl;
 		default:
 			// We could have included all fundamental types above, but do it here instead.
 			if (token_is_type(context->tok.type))
@@ -1713,7 +1713,7 @@ static inline Decl *parse_top_level(Context *context)
 				return parse_global_declaration(context, visibility);
 			}
 			error_at_current(context, "Unexpected token found");
-			return &poisoned_decl;
+			return poisoned_decl;
 	}
 }
 
@@ -1976,7 +1976,7 @@ static Expr *parse_type_access(Context *context, TypeInfo *type)
 		    return expr;
 	    default:
 	    	SEMA_TOKEN_ERROR(context->tok, "Expected a function name, macro, or constant.");
-	    	return &poisoned_expr;
+	    	return poisoned_expr;
     }
 }
 
@@ -1999,9 +1999,13 @@ Expr *parse_type_identifier_with_path(Context *context, Path *path)
 	RANGE_EXTEND_PREV(type);
 	if (context->tok.type == TOKEN_LBRACE)
 	{
-		return TRY_EXPR_OR(parse_initializer_list(context), &poisoned_expr);
+		Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type->span);
+		expr->expr_compound_literal.type_info = type;
+		expr->expr_compound_literal.initializer = TRY_EXPR_OR(parse_initializer_list(context), poisoned_expr);
+		RANGE_EXTEND_PREV(expr);
+		return expr;
 	}
-	EXPECT_OR(TOKEN_DOT, &poisoned_expr);
+	EXPECT_OR(TOKEN_DOT, poisoned_expr);
 	return parse_type_access(context, type);
 }
 

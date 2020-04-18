@@ -71,51 +71,20 @@ static inline LLVMValueRef gencontext_emit_sub_int(GenContext *context, Type *ty
 	       ? LLVMBuildNUWSub(context->builder, left, right, "usub")
 	       : LLVMBuildNSWSub(context->builder, left, right, "sub");
 }
-static inline LLVMValueRef gencontext_emit_subscript_addr_from_value(GenContext *context, LLVMValueRef parent, Type *parent_type, Expr *index_expr)
-{
-	assert(parent_type->canonical == parent_type);
-	LLVMValueRef index = gencontext_emit_expr(context, index_expr);
-	switch (parent_type->type_kind)
-	{
-		case TYPE_POINTER:
-			return LLVMBuildGEP2(context->builder,
-			                     llvm_type(parent_type->pointer),
-			                     parent, &index, 1, "[]");
-		case TYPE_ARRAY:
-			// TODO insert trap on overflow.
-		{
-			LLVMValueRef zero = LLVMConstInt(llvm_type(type_int), 0, false);
-			LLVMValueRef indices[2] = {
-					zero,
-					index,
-			};
-			return LLVMBuildInBoundsGEP2(context->builder,
-			                             llvm_type(parent_type),
-			                             parent, indices, 2, "[x]");
-
-		}
-		case TYPE_VARARRAY:
-		case TYPE_SUBARRAY:
-		case TYPE_STRING:
-			TODO
-		default:
-			UNREACHABLE
-	}
-
-}
 static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, Expr *expr)
 {
 	Expr *parent = expr->subscript_expr.expr;
 	Expr *index = expr->subscript_expr.index;
 	LLVMValueRef index_value = gencontext_emit_expr(context, index);
 	LLVMValueRef parent_value;
-	switch (parent->type->canonical->type_kind)
+	Type *type = parent->type->canonical;
+	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
 			parent_value = gencontext_emit_expr(context, expr->subscript_expr.expr);
-			return LLVMBuildGEP2(context->builder,
-			                     llvm_type(parent->type->canonical),
-			                     parent_value, &index_value, 1, "[]");
+			return LLVMBuildInBoundsGEP2(context->builder,
+			                     llvm_type(type->pointer),
+			                     parent_value, &index_value, 1, "ptridx");
 		case TYPE_ARRAY:
 		{
 			// TODO insert trap on overflow.
@@ -126,8 +95,8 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 			};
 			parent_value = gencontext_emit_address(context, expr->subscript_expr.expr);
 			return LLVMBuildInBoundsGEP2(context->builder,
-			                             llvm_type(parent->type),
-			                             parent_value, indices, 2, "[x]");
+			                             llvm_type(type),
+			                             parent_value, indices, 2, "arridx");
 		}
 		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
@@ -190,6 +159,8 @@ LLVMValueRef gencontext_emit_scoped_expr_address(GenContext *context, Expr *expr
 	return value;
 }
 
+static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext *context, Expr *expr, LLVMValueRef optional_ref);
+
 LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 {
 	switch (expr->expr_kind)
@@ -206,6 +177,8 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_UNARY:
 			assert(expr->unary_expr.operator == UNARYOP_DEREF);
 			return gencontext_emit_expr(context, expr->unary_expr.expr);
+		case EXPR_COMPOUND_LITERAL:
+			return gencontext_emit_initializer_list_expr_addr(context, expr->expr_compound_literal.initializer, NULL);
 		case EXPR_ACCESS:
 			return gencontext_emit_access_addr(context, expr);
 		case EXPR_SUBSCRIPT:
@@ -308,7 +281,7 @@ static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *
  * Improve: Direct assign in the case where this is assigning to a variable.
  * Improve: Create constant initializer for the constant case and do a memcopy
  */
-static inline LLVMValueRef  gencontext_emit_initializer_list_expr(GenContext *context, Expr *expr, LLVMValueRef optional_ref)
+static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext *context, Expr *expr, LLVMValueRef optional_ref)
 {
 	LLVMTypeRef type = llvm_type(expr->type);
 	LLVMValueRef ref = optional_ref ?: gencontext_emit_alloca(context, type, "literal");
@@ -321,7 +294,7 @@ static inline LLVMValueRef  gencontext_emit_initializer_list_expr(GenContext *co
 
 	if (expr->expr_initializer.init_type == INITIALIZER_ZERO)
 	{
-		return LLVMBuildLoad2(context->builder, type, ref, "");
+		return ref;
 	}
 
 	Expr **elements = expr->expr_initializer.initializer_expr;
@@ -335,7 +308,7 @@ static inline LLVMValueRef  gencontext_emit_initializer_list_expr(GenContext *co
 			LLVMValueRef init_value = gencontext_emit_expr(context, elements[0]);
 			LLVMValueRef u = LLVMBuildBitCast(context->builder, ref, LLVMPointerType(llvm_type(elements[0]->type->canonical), 0), "");
 			LLVMBuildStore(context->builder, init_value, u);
-			return LLVMBuildLoad2(context->builder, type, ref, "");
+			return ref;
 		}
 		VECEACH(elements, i)
 		{
@@ -344,7 +317,7 @@ static inline LLVMValueRef  gencontext_emit_initializer_list_expr(GenContext *co
 			LLVMValueRef subref = LLVMBuildStructGEP2(context->builder, type, ref, i, "");
 			LLVMBuildStore(context->builder, init_value, subref);
 		}
-		return LLVMBuildLoad2(context->builder, type, ref, "");
+		return ref;
 	}
 
 	VECEACH(elements, i)
@@ -379,7 +352,7 @@ static inline LLVMValueRef  gencontext_emit_initializer_list_expr(GenContext *co
 					};
 					sub_ref = LLVMBuildInBoundsGEP2(context->builder,
 					                             llvm_type(parent_type),
-					                             sub_ref, indices, 2, "[x]");
+					                             sub_ref, indices, 2, "arrsub");
 					break;
 				}
 				default:
@@ -391,19 +364,20 @@ static inline LLVMValueRef  gencontext_emit_initializer_list_expr(GenContext *co
 		}
 		LLVMBuildStore(context->builder, sub_value, sub_ref);
 	}
-	return LLVMBuildLoad2(context->builder, type, ref, "");
+	return ref;
 }
 
 static inline LLVMValueRef gencontext_emit_inc_dec_change(GenContext *context, bool use_mod, LLVMValueRef current_value, Expr *expr, int diff)
 {
 	Type *type = type_reduced_from_expr(expr);
-	LLVMTypeRef llvm_type = llvm_type(type);
+
 
 	if (type->type_kind == TYPE_POINTER)
 	{
 		LLVMValueRef add = LLVMConstInt(diff < 0 ? llvm_type(type_isize) : llvm_type(type_usize), diff, diff < 0);
-		return LLVMBuildGEP2(context->builder, llvm_type, current_value, &add, 1, "ptrincdec");
+		return LLVMBuildGEP2(context->builder, llvm_type(type->pointer), current_value, &add, 1, "ptrincdec");
 	}
+	LLVMTypeRef llvm_type = llvm_type(type);
 
 	if (type_is_float(type))
 	{
@@ -420,7 +394,7 @@ static inline LLVMValueRef gencontext_emit_inc_dec_change(GenContext *context, b
 static inline LLVMValueRef gencontext_emit_pre_inc_dec(GenContext *context, Expr *expr, int diff, bool use_mod)
 {
 	LLVMValueRef addr = gencontext_emit_address(context, expr);
-	LLVMValueRef value = LLVMBuildLoad2(context->builder, llvm_type(expr->type), addr, "");
+	LLVMValueRef value = gencontext_emit_load(context, expr->type, addr);
 	LLVMValueRef result = gencontext_emit_inc_dec_change(context, use_mod, value, expr, diff);
 	LLVMBuildStore(context->builder, result, addr);
 	return result;
@@ -429,7 +403,7 @@ static inline LLVMValueRef gencontext_emit_pre_inc_dec(GenContext *context, Expr
 static inline LLVMValueRef gencontext_emit_post_inc_dec(GenContext *context, Expr *expr, int diff, bool use_mod)
 {
 	LLVMValueRef addr = gencontext_emit_address(context, expr);
-	LLVMValueRef value = LLVMBuildLoad2(context->builder, llvm_type(expr->type), addr, "");
+	LLVMValueRef value = gencontext_emit_load(context, expr->type, addr);
 	LLVMValueRef result = gencontext_emit_inc_dec_change(context, use_mod, value, expr, diff);
 	LLVMBuildStore(context->builder, result, addr);
 	return value;
@@ -473,7 +447,7 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 		case UNARYOP_ADDR:
 			return gencontext_emit_address(context, expr->unary_expr.expr);
 		case UNARYOP_DEREF:
-			return LLVMBuildLoad2(context->builder, llvm_type(type), gencontext_emit_expr(context, expr->unary_expr.expr), "deref");
+			return gencontext_emit_load(context, expr->type, gencontext_emit_expr(context, expr->unary_expr.expr));
 		case UNARYOP_INC:
 			return gencontext_emit_pre_inc_dec(context, expr->unary_expr.expr, 1, false);
 		case UNARYOP_DEC:
@@ -523,18 +497,6 @@ static LLVMValueRef gencontext_emit_logical_and_or(GenContext *context, Expr *ex
 	return phi;
 }
 
-static inline LLVMValueRef gencontext_emit_initialization_from_expr(GenContext *context, LLVMValueRef strukt, Expr *expr)
-{
-	assert(expr->expr_kind == EXPR_INITIALIZER_LIST);
-	// TODO
-	return strukt;
-}
-
-static inline LLVMValueRef gencontext_emit_struct_value_expr(GenContext *context, Expr *expr)
-{
-	LLVMValueRef temp_alloc = gencontext_emit_alloca(context, llvm_type(expr->type), "temp");
-	return gencontext_emit_initialization_from_expr(context, temp_alloc, expr->struct_value_expr.init_expr);
-}
 
 
 static LLVMValueRef gencontext_emit_int_comparison(GenContext *context, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op)
@@ -674,7 +636,7 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 	LLVMValueRef rhs_value;
 	if (lhs_addr)
 	{
-		lhs_value = LLVMBuildLoad2(context->builder, llvm_type(lhs->type), lhs_addr, "");
+		lhs_value = gencontext_emit_load(context, lhs->type, lhs_addr);
 	}
 	else
 	{
@@ -729,7 +691,7 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 			{
 				if (lhs->type->canonical == rhs->type->canonical) return LLVMBuildPtrDiff(context->builder, lhs_value, rhs_value, "ptrdiff");
 				rhs_value = LLVMBuildNeg(context->builder, rhs_value, "");
-				return LLVMBuildGEP2(context->builder, llvm_type(lhs->type), lhs_value, &rhs_value, 1, "ptrsub");
+				return LLVMBuildGEP2(context->builder, llvm_type(lhs_type->canonical->pointer), lhs_value, &rhs_value, 1, "ptrsub");
 			}
 			if (is_float) return LLVMBuildFSub(context->builder, lhs_value, rhs_value, "fsub");
 			return gencontext_emit_sub_int(context, lhs->type->canonical, binary_op == BINARYOP_SUB_MOD, lhs_value, rhs_value);
@@ -738,7 +700,7 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 			if (lhs_type->type_kind == TYPE_POINTER)
 			{
 				assert(type_is_integer(rhs->type->canonical));
-				return LLVMBuildGEP2(context->builder, llvm_type(lhs_type), lhs_value, &rhs_value, 1, "ptradd");
+				return LLVMBuildGEP2(context->builder, llvm_type(lhs_type->canonical->pointer), lhs_value, &rhs_value, 1, "ptradd");
 			}
 			if (is_float) return LLVMBuildFAdd(context->builder, lhs_value, rhs_value, "fadd");
 			return gencontext_emit_add_int(context, lhs_type, binary_op == BINARYOP_ADD_MOD, lhs_value, rhs_value);
@@ -826,7 +788,7 @@ LLVMValueRef gencontext_emit_try_expr(GenContext *context, Expr *expr)
 		LLVMBuildStore(context->builder, catch_value, res);
 		gencontext_emit_br(context, after_catch);
 		gencontext_emit_block(context, after_catch);
-		return LLVMBuildLoad2(context->builder, llvm_type(expr->try_expr.else_expr->type), res, "");
+		return gencontext_emit_load(context, expr->try_expr.else_expr->type, res);
 	}
 	TODO
 }
@@ -1013,7 +975,7 @@ LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 	{
 		if (error_param)
 		{
-			LLVMValueRef maybe_error = LLVMBuildLoad2(context->builder, llvm_type(type_error_union), error_param, "");
+			LLVMValueRef maybe_error = gencontext_emit_load(context, type_error_union, error_param);
 			TODO // Incorrect, must get subset if this is 128 bits
 			gencontext_emit_throw_branch(context, maybe_error);
 		}
@@ -1025,7 +987,7 @@ LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 	// If we used a return param, then load that info here.
 	if (return_param)
 	{
-		call = LLVMBuildLoad2(context->builder, llvm_type(signature->rtype->type), return_param, "");
+		call = gencontext_emit_load(context, signature->rtype->type, return_param);
 	}
 	/*
 	if (function->func.function_signature.convention)
@@ -1093,7 +1055,9 @@ LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, 
 	switch (expr->expr_kind)
 	{
 		case EXPR_INITIALIZER_LIST:
-			return gencontext_emit_initializer_list_expr(context, expr, ref);
+			return gencontext_emit_load(context,
+			                            expr->type,
+			                            gencontext_emit_initializer_list_expr_addr(context, expr, ref));
 		default:
 			break;
 	}
@@ -1114,6 +1078,12 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Should only appear when generating designated initializers.
 			UNREACHABLE
+		case EXPR_COMPOUND_LITERAL:
+			return gencontext_emit_load(context,
+			                            expr->type,
+			                            gencontext_emit_initializer_list_expr_addr(context,
+			                                                                       expr->expr_compound_literal.initializer,
+			                                                                       NULL));
 		case EXPR_EXPR_BLOCK:
 			return gencontext_emit_expr_block(context, expr);
 		case EXPR_SCOPED_EXPR:
@@ -1139,13 +1109,15 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 		case EXPR_IDENTIFIER:
 		case EXPR_SUBSCRIPT:
 		case EXPR_ACCESS:
-			return gencontext_load_expr(context, gencontext_emit_address(context, expr));
+			return gencontext_emit_load(context, expr->type, gencontext_emit_address(context, expr));
 		case EXPR_CALL:
 			return gencontext_emit_call_expr(context, expr);
 		case EXPR_GROUP:
 			return gencontext_emit_expr(context, expr->group_expr);
 		case EXPR_INITIALIZER_LIST:
-			return gencontext_emit_initializer_list_expr(context, expr, NULL);
+			return gencontext_emit_load(context,
+			                            expr->type,
+			                            gencontext_emit_initializer_list_expr_addr(context, expr, NULL));
 		case EXPR_EXPRESSION_LIST:
 			return gencontext_emit_expression_list_expr(context, expr);
 		case EXPR_CAST:

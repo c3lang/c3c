@@ -37,7 +37,7 @@ static Expr *parse_precedence(Context *context, Precedence precedence)
 	if (prefix_rule == NULL)
 	{
 		SEMA_TOKEN_ERROR(context->tok, "An expression was expected.");
-		return &poisoned_expr;
+		return poisoned_expr;
 	}
 
 	Expr *left_side = prefix_rule(context, NULL);
@@ -113,7 +113,7 @@ static Expr *parse_macro_expr(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *macro_expr = EXPR_NEW_TOKEN(EXPR_MACRO_EXPR, context->tok);
 	advance_and_verify(context, TOKEN_AT);
-	macro_expr->macro_expr = TRY_EXPR_OR(parse_precedence(context, PREC_UNARY + 1), &poisoned_expr);
+	macro_expr->macro_expr = TRY_EXPR_OR(parse_precedence(context, PREC_UNARY + 1), poisoned_expr);
 	return macro_expr;
 }
 
@@ -133,7 +133,7 @@ static inline Expr* parse_non_assign_expr(Context *context)
 Expr *parse_expression_list(Context *context)
 {
 	Expr *expr_list = EXPR_NEW_TOKEN(EXPR_EXPRESSION_LIST, context->tok);
-	if (!parse_param_list(context, &expr_list->expression_list, false)) return &poisoned_expr;
+	if (!parse_param_list(context, &expr_list->expression_list, false)) return poisoned_expr;
 	return expr_list;
 }
 
@@ -151,11 +151,11 @@ static Expr *parse_cast_expr(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CAST, context->tok);
 	advance_and_verify(context, TOKEN_CAST);
-	CONSUME_OR(TOKEN_LPAREN, &poisoned_expr);
-	expr->cast_expr.expr = TRY_EXPR_OR(parse_expr(context), &poisoned_expr);
-	CONSUME_OR(TOKEN_COMMA, &poisoned_expr);
-	expr->cast_expr.type_info = TRY_TYPE_OR(parse_type_expression(context), &poisoned_expr);
-	CONSUME_OR(TOKEN_RPAREN, &poisoned_expr);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
+	expr->cast_expr.expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	CONSUME_OR(TOKEN_COMMA, poisoned_expr);
+	expr->cast_expr.type_info = TRY_TYPE_OR(parse_type_expression(context), poisoned_expr);
+	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	return expr;
 }
 
@@ -203,12 +203,12 @@ static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 	else
 	{
 		advance_and_verify(context, TOKEN_QUESTION);
-		Expr *true_expr = TRY_EXPR_OR(parse_precedence(context, PREC_TERNARY + 1), &poisoned_expr);
+		Expr *true_expr = TRY_EXPR_OR(parse_precedence(context, PREC_TERNARY + 1), poisoned_expr);
 		expr_ternary->ternary_expr.then_expr = true_expr;
-		CONSUME_OR(TOKEN_COLON, &poisoned_expr);
+		CONSUME_OR(TOKEN_COLON, poisoned_expr);
 	}
 
-	Expr *false_expr = TRY_EXPR_OR(parse_precedence(context, PREC_TERNARY + 1), &poisoned_expr);
+	Expr *false_expr = TRY_EXPR_OR(parse_precedence(context, PREC_TERNARY + 1), poisoned_expr);
 	expr_ternary->ternary_expr.else_expr = false_expr;
 	return expr_ternary;
 }
@@ -223,8 +223,8 @@ static Expr *parse_grouping_expr(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = expr_new(EXPR_GROUP, context->tok.span);
 	advance_and_verify(context, TOKEN_LPAREN);
-	expr->group_expr = TRY_EXPR_OR(parse_expr(context), &poisoned_expr);
-	CONSUME_OR(TOKEN_RPAREN, &poisoned_expr);
+	expr->group_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
@@ -265,11 +265,11 @@ Expr *parse_initializer_list(Context *context)
 {
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST, context->tok);
 	initializer_list->expr_initializer.init_type = INITIALIZER_UNKNOWN;
-	CONSUME_OR(TOKEN_LBRACE, &poisoned_expr);
+	CONSUME_OR(TOKEN_LBRACE, poisoned_expr);
 	if (!try_consume(context, TOKEN_RBRACE))
 	{
-		if (!parse_param_list(context, &initializer_list->expr_initializer.initializer_expr, false)) return &poisoned_expr;
-		CONSUME_OR(TOKEN_RBRACE, &poisoned_expr);
+		if (!parse_param_list(context, &initializer_list->expr_initializer.initializer_expr, false)) return poisoned_expr;
+		CONSUME_OR(TOKEN_RBRACE, poisoned_expr);
 	}
 	return initializer_list;
 }
@@ -286,11 +286,11 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	Expr *right_side;
 	if (context->tok.type == TOKEN_LBRACE && operator_type == TOKEN_EQ)
 	{
-		right_side = TRY_EXPR_OR(parse_initializer_list(context), &poisoned_expr);
+		right_side = TRY_EXPR_OR(parse_initializer_list(context), poisoned_expr);
 	}
 	else
 	{
-		right_side = TRY_EXPR_OR(parse_precedence(context, rules[operator_type].precedence + 1), &poisoned_expr);
+		right_side = TRY_EXPR_OR(parse_precedence(context, rules[operator_type].precedence + 1), poisoned_expr);
 	}
 
 	Expr *expr = EXPR_NEW_EXPR(EXPR_BINARY, left_side);
@@ -309,9 +309,9 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	advance_and_verify(context, TOKEN_LPAREN);
 	if (context->tok.type != TOKEN_RPAREN)
 	{
-		if (!parse_param_list(context, &params, 0)) return &poisoned_expr;
+		if (!parse_param_list(context, &params, 0)) return poisoned_expr;
 	}
-	TRY_CONSUME_OR(TOKEN_RPAREN, "Expected the ending ')' here", &poisoned_expr);
+	TRY_CONSUME_OR(TOKEN_RPAREN, "Expected the ending ')' here", poisoned_expr);
 
 	Expr *call = EXPR_NEW_EXPR(EXPR_CALL, left);
 	call->call_expr.function = left;
@@ -326,8 +326,8 @@ static Expr *parse_subscript_expr(Context *context, Expr *left)
 	assert(left && expr_ok(left));
 
 	advance_and_verify(context, TOKEN_LBRACKET);
-	Expr *index = TRY_EXPR_OR(parse_expr(context), &poisoned_expr);
-	CONSUME_OR(TOKEN_RBRACKET, &poisoned_expr);
+	Expr *index = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	CONSUME_OR(TOKEN_RBRACKET, poisoned_expr);
 	Expr *subscript_ast = EXPR_NEW_EXPR(EXPR_SUBSCRIPT, left);
 	subscript_ast->subscript_expr.expr = left;
 	subscript_ast->subscript_expr.index = index;
@@ -343,7 +343,7 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 	Expr *access_expr = EXPR_NEW_EXPR(EXPR_ACCESS, left);
 	access_expr->access_expr.parent = left;
 	access_expr->access_expr.sub_element = context->tok;
-	TRY_CONSUME_OR(TOKEN_IDENT, "Expected identifier", &poisoned_expr);
+	TRY_CONSUME_OR(TOKEN_IDENT, "Expected identifier", poisoned_expr);
 	access_expr->span = left->span;
 	access_expr->span.end_loc = access_expr->access_expr.sub_element.span.end_loc;
 	return access_expr;
@@ -370,9 +370,9 @@ static Expr *parse_type_expr(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPE, context->tok);
 	advance_and_verify(context, TOKEN_TYPE);
-	CONSUME_OR(TOKEN_LPAREN, &poisoned_expr);
-	TypeInfo *type = TRY_TYPE_OR(parse_type_expression(context), &poisoned_expr);
-	CONSUME_OR(TOKEN_RPAREN, &poisoned_expr);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
+	TypeInfo *type = TRY_TYPE_OR(parse_type_expression(context), poisoned_expr);
+	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	expr->type_expr.type = type;
 	return expr;
 }
@@ -391,7 +391,7 @@ static Expr *parse_maybe_scope(Context *context, Expr *left)
 			return parse_type_identifier_with_path(context, path);
 		default:
 			SEMA_TOKEN_ERROR(context->tok, "Expected a type, function or constant.");
-			return &poisoned_expr;
+			return poisoned_expr;
 	}
 }
 
@@ -400,10 +400,10 @@ static Expr *parse_try_expr(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *try_expr = EXPR_NEW_TOKEN(EXPR_TRY, context->tok);
 	advance_and_verify(context, TOKEN_TRY);
-	try_expr->try_expr.expr = TRY_EXPR_OR(parse_precedence(context, PREC_TRY + 1), &poisoned_expr);
+	try_expr->try_expr.expr = TRY_EXPR_OR(parse_precedence(context, PREC_TRY + 1), poisoned_expr);
 	if (try_consume(context, TOKEN_ELSE))
 	{
-		try_expr->try_expr.else_expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), &poisoned_expr);
+		try_expr->try_expr.else_expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
 	}
 	return try_expr;
 }
@@ -562,7 +562,7 @@ static Expr *parse_double(Context *context, Expr *left)
 	if (end != source_range_len(context->tok.span) + context->tok.start)
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Invalid float value");
-		return &poisoned_expr;
+		return poisoned_expr;
 	}
 	advance(context);
 	number->const_expr.f = fval;
@@ -733,7 +733,7 @@ static Expr* parse_expr_block(Context *context, Expr *left)
 	while (!try_consume(context, TOKEN_RPARBRA))
 	{
 		Ast *stmt = parse_stmt(context);
-		if (!ast_ok(stmt)) return &poisoned_expr;
+		if (!ast_ok(stmt)) return poisoned_expr;
 		vec_add(expr->expr_block.stmts, stmt);
 	}
 	return expr;
