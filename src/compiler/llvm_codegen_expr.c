@@ -265,6 +265,7 @@ LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMV
 		case CAST_ENUMSI:
 			TODO
 	}
+	UNREACHABLE
 }
 static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *expr)
 {

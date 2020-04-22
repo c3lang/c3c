@@ -390,7 +390,7 @@ static inline bool sema_expr_analyse_subscript_after_parent_resolution(Context *
 							bigint_to_error_string(&index->const_expr.i, 10), type->array.len - 1);
 					return false;
 				}
-				// fallthrough
+				FALLTHROUGH;
 			}
 			case TYPE_VARARRAY:
 			case TYPE_SUBARRAY:
@@ -648,7 +648,7 @@ static bool expr_check_index_in_range(Type *type, Expr *index)
 					           bigint_to_error_string(&index->const_expr.i, 10), type->array.len - 1);
 					return false;
 				}
-				// fallthrough
+				FALLTHROUGH;
 			}
 			case TYPE_VARARRAY:
 			case TYPE_SUBARRAY:
@@ -1931,7 +1931,7 @@ static bool sema_expr_analyse_neg(Context *context, Type *to, Expr *expr, Expr *
 		case ALL_INTS:
 			if (is_negmod)
 			{
-				if (inner->expr_kind != TYPE_IXX)
+				if (canonical->type_kind != TYPE_IXX)
 				{
 					SEMA_ERROR(expr, "Cannot use –% on compile time integers, you need to first cast it to an integer type e.g. -%cast(-128, char).");
 
@@ -2175,6 +2175,7 @@ static inline bool sema_expr_analyse_unary(Context *context, Type *to, Expr *exp
 		case UNARYOP_ERROR:
 			return false;
 	}
+	UNREACHABLE
 }
 
 static inline bool sema_expr_analyse_post_unary(Context *context, Type *to, Expr *expr)
@@ -2254,6 +2255,7 @@ static TypeInfo *type_info_copy_from_macro(Context *context, Expr *macro, TypeIn
 			copy->pointer = type_info_copy_from_macro(context, macro, source->pointer);
 			return copy;
 	}
+	UNREACHABLE
 }
 
 
@@ -2357,6 +2359,7 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 			return expr;
 	}
 #undef EXPR_COPY
+	UNREACHABLE
 }
 
 static Expr **expr_copy_expr_list_from_macro(Context *context, Expr *macro, Expr **expr_list)
@@ -2521,7 +2524,7 @@ static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 			AST_COPY(ast->scoped_stmt.stmt);
 			return ast;
 	}
-
+	UNREACHABLE;
 #undef EXPR_COPY
 #undef AST_COPY
 }

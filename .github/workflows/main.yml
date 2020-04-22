@@ -1,0 +1,21 @@
+
+name: CI
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: (Linux) Download LLVM
+        run: sudo apt-get install llvm
+      - name: Build
+        run: |
+          mkdir build && cd build
+          cmake -DLLVM_DIR=/usr/lib/llvm/cmake -DCMAKE_BUILD_TYPE=Debug ..
+          cmake --build .

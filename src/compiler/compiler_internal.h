@@ -1223,7 +1223,7 @@ static inline Type *type_reduced(Type *type)
 
 static inline bool type_is_structlike(Type *type)
 {
-	assert(type->canonical = type);
+	assert(type->canonical == type);
 	switch (type->type_kind)
 	{
 		case TYPE_UNION:

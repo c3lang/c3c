@@ -692,6 +692,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_U32:
 		case TYPE_U64:
 			if (other->type_kind == TYPE_ENUM) return type_find_max_type(type, other->decl->enums.type_info->type->canonical);
+			FALLTHROUGH;
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:

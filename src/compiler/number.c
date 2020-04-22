@@ -192,8 +192,8 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		default:
 			UNREACHABLE
 	}
-	assert(op == BINARYOP_EQ || op == BINARYOP_NE);
-	return op == BINARYOP_EQ == is_eq;
+	assert((op == BINARYOP_EQ) || (op == BINARYOP_NE));
+	return (op == BINARYOP_EQ) && is_eq;
 }
 
 bool expr_const_int_overflowed(const ExprConst *expr)

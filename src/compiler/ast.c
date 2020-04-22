@@ -345,6 +345,7 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 			fprintf_indented(file, indent, "(meta-type");
 			fprint_type_recursive(file, type->child, indent + 1);
 			fprint_endparen(file, indent);
+			return;
 		case TYPE_FUNC:
 			fprintf_indented(file, indent, "(type-func %s)\n", type->func.signature->mangled_signature);
 			return;

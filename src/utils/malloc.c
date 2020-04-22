@@ -4,11 +4,11 @@
 
 #include "common.h"
 
-static const size_t KB = 1024ul;
+#define KB 1024ul
 // Use 1MB at a time.
-static const size_t MB = KB * 1024ul;
-static const size_t BUCKET_SIZE = MB;
-static const size_t  STARTING_ARENA_BUCKETS = 16;
+#define MB (KB * 1024ul)
+#define BUCKET_SIZE MB
+#define STARTING_ARENA_BUCKETS 16
 
 static uint8_t **arena_buckets;
 static size_t arena_buckets_used;

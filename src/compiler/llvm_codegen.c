@@ -69,6 +69,7 @@ static LLVMValueRef gencontext_emit_initializer(GenContext *context, Expr *expr)
 {
 	TODO
 }
+
 static void gencontext_emit_global_variable_definition(GenContext *context, Decl *decl, bool is_tentative)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL);
@@ -86,8 +87,12 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 		init = gencontext_emit_initializer(context, decl->var.init_expr);
 	}
 
+
+	assert(!init);
+
 	// TODO fix name
 	decl->var.backend_ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->name);
+
 
 	// If read only: LLVMSetGlobalConstant(decl->var.backend_ref, 1);
 

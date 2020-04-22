@@ -151,5 +151,5 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 		case TYPE_INFO_POINTER:
 			return sema_resolve_ptr_type(context, type_info);
 	}
-
+	UNREACHABLE
 }

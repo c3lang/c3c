@@ -854,6 +854,7 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_GENERIC_DEFAULT_STMT:
 			TODO
 	}
+	UNREACHABLE
 }
 
 bool sema_analyse_statement(Context *context, Ast *statement)

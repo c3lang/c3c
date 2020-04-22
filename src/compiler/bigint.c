@@ -2148,7 +2148,7 @@ long double bigint_as_float(const BigInt *bigint)
 {
 	if (bigint_fits_in_bits(bigint, 64, bigint->is_negative))
 	{
-		return bigint->is_negative ? bigint_as_signed(bigint) : bigint_as_unsigned(bigint);
+		return bigint->is_negative ? (long double)bigint_as_signed(bigint) : (long double)bigint_as_unsigned(bigint);
 	}
 	BigInt div;
 	uint64_t mult = 0x100000000000ULL;

@@ -384,7 +384,7 @@ void gencontext_emit_do_stmt(GenContext *context, Ast *ast)
 	// A loop must either have a body or an inc.
 	// This type do-while for loop is forbidden:
 	// do { } while (1);
-	assert(cond_block || body_block && "Do has no body and no cond.");
+	assert((cond_block || body_block) && "Do has no body and no cond.");
 
 	// Break is simple it always jumps out.
 	// For continue: if there is no condition, jump to the body.
