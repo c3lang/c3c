@@ -43,11 +43,9 @@ Type *type_c_uint = &t_cui;
 Type *type_c_ulong = &t_cul;
 Type *type_c_ulonglong = &t_cull;
 
-
-#define META_OFFSET 0
-#define PTR_OFFSET 1
-#define VAR_ARRAY_OFFSET 2
-#define ARRAY_OFFSET 3
+#define PTR_OFFSET 0
+#define VAR_ARRAY_OFFSET 1
+#define ARRAY_OFFSET 2
 
 Type *type_signed_int_by_bitsize(unsigned bytesize)
 {
@@ -196,8 +194,6 @@ size_t type_size(Type *canonical)
 		case TYPE_POISONED:
 		case TYPE_TYPEDEF:
 			UNREACHABLE;
-		case TYPE_META_TYPE:
-			return 0;
 		case TYPE_ENUM:
 			return canonical->decl->enums.type_info->type->canonical->builtin.bytesize;
 		case TYPE_ERROR:
@@ -208,6 +204,7 @@ size_t type_size(Type *canonical)
 		case TYPE_VOID:
 			return 1;
 		case TYPE_BOOL:
+		case TYPE_META_TYPE:
 		case ALL_INTS:
 		case ALL_FLOATS:
 			return canonical->builtin.bytesize;
@@ -235,8 +232,6 @@ unsigned int type_abi_alignment(Type *canonical)
 		case TYPE_TYPEDEF:
 		case TYPE_VOID:
 			UNREACHABLE;
-		case TYPE_META_TYPE:
-			return 0;
 		case TYPE_ENUM:
 			return canonical->decl->enums.type_info->type->canonical->builtin.abi_alignment;
 		case TYPE_ERROR:
@@ -244,6 +239,7 @@ unsigned int type_abi_alignment(Type *canonical)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return canonical->decl->strukt.abi_alignment;
+		case TYPE_META_TYPE:
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
@@ -298,41 +294,11 @@ static Type *type_generate_ptr(Type *ptr_type, bool canonical)
 	return ptr;
 }
 
-static Type *type_generate_meta(Type *type, bool canonical)
-{
-	if (canonical) type = type->canonical;
-	if (!type->type_cache)
-	{
-		create_type_cache(type);
-	}
-
-	Type *meta = type->type_cache[META_OFFSET];
-	if (meta == NULL)
-	{
-		meta = type_new(TYPE_META_TYPE, strformat("type %s", type->name));
-		meta->child = type;
-		type->type_cache[META_OFFSET] = meta;
-		if (type == type->canonical)
-		{
-			meta->canonical = meta;
-		}
-		else
-		{
-			meta->canonical = type_generate_meta(type->canonical, true);
-		}
-	}
-	return meta;
-}
 
 
 Type *type_get_ptr(Type *ptr_type)
 {
 	return type_generate_ptr(ptr_type, false);
-}
-
-Type *type_get_meta(Type *meta_type)
-{
-	return type_generate_meta(meta_type, false);
 }
 
 Type *type_get_indexed_type(Type *type)
@@ -472,6 +438,7 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 
 #undef DEF_TYPE
 
+	type_create("typeid", &t_typeid, TYPE_META_TYPE, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	type_create("void*", &t_voidstar, TYPE_POINTER, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t_voidstar;
@@ -491,7 +458,6 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 	type_create_alias("c_int", &t_ci, type_signed_int_by_bitsize(target->width_c_int));
 	// TODO fix error size
 	type_create_alias("error", &t_err, type_signed_int_by_bitsize(target->width_c_int));
-	type_create_alias("typeid", &t_typeid, type_signed_int_by_bitsize(target->width_pointer));
 	type_create_alias("c_long", &t_cl, type_signed_int_by_bitsize(target->width_c_long));
 	type_create_alias("c_longlong", &t_cll, type_signed_int_by_bitsize(target->width_c_long_long));
 

@@ -254,6 +254,73 @@ void llvm_codegen_setup()
 	intrinsics_setup = true;
 }
 
+void gencontext_emit_struct_decl(GenContext *context, Decl *decl)
+{
+	llvm_type(decl->type);
+	LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_type(type_bool), decl->name);
+	LLVMSetLinkage(global_name, LLVMInternalLinkage);
+	LLVMSetGlobalConstant(global_name, 1);
+	LLVMSetInitializer(global_name, LLVMConstInt(llvm_type(type_bool), 1, false));
+
+	decl->type->backend_typeid = global_name;
+	switch (decl->visibility)
+	{
+		case VISIBLE_MODULE:
+			LLVMSetVisibility(decl->var.backend_ref, LLVMProtectedVisibility);
+			break;
+		case VISIBLE_PUBLIC:
+			LLVMSetVisibility(decl->var.backend_ref, LLVMDefaultVisibility);
+			break;
+		case VISIBLE_EXTERN:
+		case VISIBLE_LOCAL:
+			LLVMSetVisibility(decl->var.backend_ref, LLVMHiddenVisibility);
+			break;
+	}
+}
+
+static void gencontext_emit_decl(GenContext *context, Decl *decl)
+{
+	switch (decl->decl_kind)
+	{
+		case DECL_POISONED:
+			UNREACHABLE;
+		case DECL_FUNC:
+			// TODO
+			break;
+		case DECL_VAR:
+			// TODO
+			break;
+		case DECL_TYPEDEF:
+			break;
+		case DECL_ENUM_CONSTANT:
+			// TODO
+			break;;
+		case DECL_STRUCT:
+		case DECL_UNION:
+			gencontext_emit_struct_decl(context, decl);
+			break;
+		case DECL_ENUM:
+			// TODO
+			break;
+		case DECL_ERROR:
+			// TODO
+			break;;
+		case DECL_ERROR_CONSTANT:
+			//TODO
+			break;;
+		case DECL_ARRAY_VALUE:
+		case DECL_IMPORT:
+		case DECL_MACRO:
+		case DECL_GENERIC:
+		case DECL_CT_IF:
+		case DECL_CT_ELSE:
+		case DECL_CT_ELIF:
+		case DECL_ATTRIBUTE:
+		case DECL_THROWS:
+			UNREACHABLE
+	}
+}
+
 void llvm_codegen(Context *context)
 {
 	assert(intrinsics_setup);
@@ -268,6 +335,10 @@ void llvm_codegen(Context *context)
 	VECEACH(context->functions, i)
 	{
 		gencontext_emit_function_decl(&gen_context, context->functions[i]);
+	}
+	VECEACH(context->types, i)
+	{
+		gencontext_emit_decl(&gen_context, context->types[i]);
 	}
 	VECEACH(context->functions, i)
 	{

@@ -96,9 +96,8 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type)
 				sema_error_range(start, "Did not expect a type here, only expressions.");
 				return false;
 			}
-			expr = expr_new(EXPR_TYPE, start);
+			expr = expr_new(EXPR_TYPEID, type->span);
 			RANGE_EXTEND_PREV(expr);
-			expr->type_expr.type = type;
 		}
 		vec_add(*result, expr);
 		if (!try_consume(context, TOKEN_COMMA))
@@ -144,7 +143,7 @@ Expr *parse_expression_list(Context *context)
 static Expr *parse_type_identifier(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	return parse_type_identifier_with_path(context, NULL);
+	return parse_type_expression_with_path(context, NULL);
 }
 static Expr *parse_cast_expr(Context *context, Expr *left)
 {
@@ -154,7 +153,17 @@ static Expr *parse_cast_expr(Context *context, Expr *left)
 	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
 	expr->cast_expr.expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_COMMA, poisoned_expr);
-	expr->cast_expr.type_info = TRY_TYPE_OR(parse_type_expression(context), poisoned_expr);
+	expr->cast_expr.type_info = TRY_TYPE_OR(parse_type(context), poisoned_expr);
+	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
+	return expr;
+}
+static Expr *parse_typeof_expr(Context *context, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEOF, context->tok);
+	advance_and_verify(context, TOKEN_TYPEOF);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
+	expr->typeof_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	return expr;
 }
@@ -365,17 +374,6 @@ static Expr *parse_identifier(Context *context, Expr *left)
 	return parse_identifier_with_path(context, NULL);
 }
 
-static Expr *parse_type_expr(Context *context, Expr *left)
-{
-	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPE, context->tok);
-	advance_and_verify(context, TOKEN_TYPE);
-	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
-	TypeInfo *type = TRY_TYPE_OR(parse_type_expression(context), poisoned_expr);
-	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
-	expr->type_expr.type = type;
-	return expr;
-}
 
 static Expr *parse_maybe_scope(Context *context, Expr *left)
 {
@@ -388,7 +386,7 @@ static Expr *parse_maybe_scope(Context *context, Expr *left)
 		case TOKEN_CONST_IDENT:
 			return parse_identifier_with_path(context, path);
 		case TOKEN_TYPE_IDENT:
-			return parse_type_identifier_with_path(context, path);
+			return parse_type_expression_with_path(context, path);
 		default:
 			SEMA_TOKEN_ERROR(context->tok, "Expected a type, function or constant.");
 			return poisoned_expr;
@@ -721,6 +719,63 @@ static Expr *parse_nil(Context *context, Expr *left)
 	return number;
 }
 
+Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *type_info)
+{
+	Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type_info->span);
+	expr->expr_compound_literal.type_info = type_info;
+	expr->expr_compound_literal.initializer = TRY_EXPR_OR(parse_initializer_list(context), poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info)
+{
+	switch (context->tok.type)
+	{
+		case TOKEN_TYPEID:
+		case TOKEN_IDENT:
+		case TOKEN_CONST_IDENT:
+			break;
+		default:
+			SEMA_TOKEN_ERROR(context->tok, "Expected the name of a type property here.");
+			return poisoned_expr;
+	}
+	Expr *expr = expr_new(EXPR_TYPE_ACCESS, type_info->span);
+	expr->type_access.type = type_info;
+	expr->type_access.name = context->tok;
+	advance(context);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+
+/**
+ * type_identifier
+ *  : TYPE_IDENT initializer_list
+ *  | TYPE_IDENT method_ref
+ *  ;
+ *
+ * @param left must be null.
+ * @return Expr*
+ */
+Expr *parse_type_expression_with_path(Context *context, Path *path)
+{
+	TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER, path ? path->span : context->tok.span );
+	type->unresolved.path = path;
+	type->unresolved.name_loc = context->tok;
+	advance_and_verify(context, TOKEN_TYPE_IDENT);
+	RANGE_EXTEND_PREV(type);
+	if (context->tok.type == TOKEN_LBRACE)
+	{
+		return parse_type_compound_literal_expr_after_type(context, type);
+	}
+	CONSUME_OR(TOKEN_DOT, poisoned_expr);
+	return parse_type_access_expr_after_type(context, type);
+}
+
+
+
+
 /**
  * function_block
  *  : '({' stmt_list '})'
@@ -746,10 +801,9 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },
 		[TOKEN_LPARBRA] = { parse_expr_block, NULL, PREC_NONE },
-		[TOKEN_TYPE] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CAST] = { parse_cast_expr, NULL, PREC_NONE },
+		[TOKEN_TYPEOF] = { parse_typeof_expr, NULL, PREC_NONE },
 		[TOKEN_TRY] = { parse_try_expr, NULL, PREC_TRY },
-		//[TOKEN_SIZEOF] = { parse_sizeof, NULL, PREC_NONE },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
 		[TOKEN_MINUS_MOD] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },

@@ -183,6 +183,7 @@ struct _Type
 	const char *name;
 	Type **type_cache;
 	void *backend_type;
+	void *backend_typeid;
 	void *backend_debug_type;
 	union
 	{
@@ -438,7 +439,7 @@ typedef struct
 		Token name;
 		Decl *method;
 	};
-} ExprTypeRef;
+} ExprTypeAccess;
 
 typedef struct
 {
@@ -505,11 +506,6 @@ typedef struct
 	Decl *decl;
 } ExprIdentifier;
 
-typedef struct
-{
-	TypeInfo *type;
-} ExprType;
-
 
 typedef struct
 {
@@ -575,10 +571,11 @@ struct _Expr
 		ExprDesignatedInit designated_init_expr;
 		Expr *group_expr;
 		ExprCast cast_expr;
+		Expr *typeof_expr;
 		ExprConst const_expr;
 		ExprRange range_expr;
 		ExprStructValue struct_value_expr;
-		ExprTypeRef type_access;
+		ExprTypeAccess type_access;
 		ExprTry try_expr;
 		Expr* macro_expr;
 		ExprBinary binary_expr;
@@ -589,7 +586,7 @@ struct _Expr
 		ExprSubscript subscript_expr;
 		ExprAccess access_expr;
 		ExprIdentifier identifier_expr;
-		ExprType type_expr;
+		TypeInfo *typeid_expr;
 		ExprInitializer expr_initializer;
 		ExprCompoundLiteral expr_compound_literal;
 		Expr** expression_list;

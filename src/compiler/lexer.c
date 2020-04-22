@@ -240,11 +240,14 @@ static inline Token scan_prefixed_ident(Lexer *lexer, TokenType type, TokenType 
 
 // Parses identifiers. Note that this is a bit complicated here since
 // we split identifiers into 2 types + find keywords.
-static inline Token scan_ident(Lexer *lexer)
+static inline Token scan_ident(Lexer *lexer, TokenType normal, TokenType const_token, TokenType type_token, char prefix)
 {
-
 	TokenType type = 0;
 	uint32_t hash = FNV1_SEED;
+	if (prefix)
+	{
+		hash = FNV1a(prefix, hash);
+	}
 	while (peek(lexer) == '_')
 	{
 		hash = FNV1a(next(lexer), hash);
@@ -261,11 +264,11 @@ static inline Token scan_ident(Lexer *lexer)
 			case 'z':
 				if (!type)
 				{
-					type = TOKEN_IDENT;
+					type = normal;
 				}
-				else if (type == TOKEN_CONST_IDENT)
+				else if (type == const_token)
 				{
-					type = TOKEN_TYPE_IDENT;
+					type = type_token;
 				}
 				break;
 			case 'A': case 'B': case 'C': case 'D': case 'E':
@@ -274,7 +277,7 @@ static inline Token scan_ident(Lexer *lexer)
 			case 'P': case 'Q': case 'R': case 'S': case 'T':
 			case 'U': case 'V': case 'W': case 'X': case 'Y':
 			case 'Z':
-				if (!type) type = TOKEN_CONST_IDENT;
+				if (!type) type = const_token;
 				break;
 			case '0': case '1': case '2': case '3': case '4':
 			case '5': case '6': case '7': case '8': case '9':
@@ -284,6 +287,11 @@ static inline Token scan_ident(Lexer *lexer)
 			default:
 				goto EXIT;
 		}
+		hash = FNV1a(next(lexer), hash);
+	}
+	// Allow bang!
+	if (peek(lexer) == '!' && type == normal)
+	{
 		hash = FNV1a(next(lexer), hash);
 	}
 	EXIT:;
@@ -485,9 +493,9 @@ Token lexer_scan_token(Lexer *lexer)
 		case '"':
 			return scan_string(lexer);
 		case '#':
-			return scan_prefixed_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH, false, "#");
+			return make_token(lexer, TOKEN_HASH, "#");
 		case '$':
-			return scan_prefixed_ident(lexer, TOKEN_CT_IDENT, TOKEN_DOLLAR, false, "$");
+			return scan_ident(lexer, TOKEN_CT_TYPE_IDENT, TOKEN_CT_CONST_IDENT, TOKEN_CT_TYPE_IDENT, '$');
 		case ',':
 			return make_token(lexer, TOKEN_COMMA, ",");
 		case ';':
@@ -556,7 +564,7 @@ Token lexer_scan_token(Lexer *lexer)
 			if (is_alphanum_(c))
 			{
 				backtrack(lexer);
-				return is_digit(c) ? scan_digit(lexer) : scan_ident(lexer);
+				return is_digit(c) ? scan_digit(lexer) : scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST_IDENT, TOKEN_TYPE_IDENT, 0);
 			}
 			if (c < 0)
 			{
@@ -610,12 +618,7 @@ Token lexer_scan_ident_test(Lexer *lexer, const char *scan)
 	if (scan[0] == '$')
 	{
 		next(lexer);
-		return scan_prefixed_ident(lexer, TOKEN_CT_IDENT, TOKEN_DOLLAR, false, "$");
+		return scan_ident(lexer, TOKEN_CT_IDENT, TOKEN_CT_CONST_IDENT, TOKEN_CT_TYPE_IDENT, '$');
 	}
-	if (scan[0] == '#')
-	{
-		next(lexer);
-		return scan_prefixed_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH, false, "#");
-	}
-	return scan_ident(lexer);
+	return scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST_IDENT, TOKEN_TYPE_IDENT, 0);
 }

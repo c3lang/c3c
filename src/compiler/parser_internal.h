@@ -31,9 +31,9 @@ SEMA_TOKEN_ERROR(context->tok, "Expected ',' or ')'"); return _res; } } while(0)
 
 Ast *parse_stmt(Context *context);
 Path *parse_path_prefix(Context *context);
-Expr *parse_type_identifier_with_path(Context *context, Path *path);
+Expr *parse_type_expression_with_path(Context *context, Path *path);
 Expr *parse_expr(Context *context);
-TypeInfo *parse_type_expression(Context *context);
+TypeInfo *parse_type(Context *context);
 Expr* parse_constant_expr(Context *context);
 Expr *parse_initializer_list(Context *context);
 Expr *parse_initializer(Context *context);
@@ -44,7 +44,8 @@ Expr *parse_expression_list(Context *context);
 bool parse_type_or_expr(Context *context, Expr **expr_ptr, TypeInfo **type_ptr);
 Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type);
 bool parse_param_list(Context *context, Expr ***result, bool allow_type);
-
+Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *type_info);
+Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info);
 void error_at_current(Context *context, const char* message, ...);
 bool try_consume(Context *context, TokenType type);
 bool consume(Context *context, TokenType type, const char *message, ...);

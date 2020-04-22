@@ -91,7 +91,7 @@ static inline Ast* parse_catch_stmt(Context *context)
 	TypeInfo *type = NULL;
 	if (!try_consume(context, TOKEN_ERROR_TYPE))
 	{
-		type = TRY_TYPE_OR(parse_type_expression(context), poisoned_ast);
+		type = TRY_TYPE_OR(parse_type(context), poisoned_ast);
 	}
 	EXPECT_IDENT_FOR_OR("error parameter", poisoned_ast);
 	Decl *decl = decl_new_var(context->tok, type, VARDECL_PARAM, VISIBLE_LOCAL);
@@ -569,7 +569,7 @@ static inline Ast* parse_ct_switch_stmt(Context *context)
 				advance(context);
 				while (1)
 				{
-					TypeInfo *type = TRY_TYPE_OR(parse_type_expression(context), poisoned_ast);
+					TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_ast);
 					vec_add(stmt->ct_case_stmt.types, type);
 					if (!try_consume(context, TOKEN_COMMA)) break;
 				}
@@ -632,17 +632,19 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_C_UINT:
 		case TOKEN_C_ULONG:
 		case TOKEN_C_ULONGLONG:
+		case TOKEN_TYPEID:
+		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_TYPE_IDENT:
 			if (context->next_tok.type == TOKEN_DOT || context->next_tok.type == TOKEN_LBRACE)
 			{
 				return parse_expr_stmt(context);
 			}
 			return parse_declaration_stmt(context);
+		case TOKEN_TYPEOF:
+			TODO
 		case TOKEN_LOCAL:   // Local means declaration!
 		case TOKEN_CONST:   // Const means declaration!
 			return parse_declaration_stmt(context);
-		case TOKEN_TYPE:
-			return parse_decl_or_expr_stmt(context);
 		case TOKEN_CONST_IDENT:
 			if (context->next_tok.type == TOKEN_COLON)
 			{
@@ -725,7 +727,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_PLUS:
 		case TOKEN_MINUSMINUS:
 		case TOKEN_PLUSPLUS:
-		case TOKEN_HASH_IDENT:
+		case TOKEN_CT_CONST_IDENT:
 		case TOKEN_CT_IDENT:
 		case TOKEN_STRING:
 		case TOKEN_REAL:

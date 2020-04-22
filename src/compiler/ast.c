@@ -553,10 +553,10 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			fprint_expr_common(file, expr, indent + 1);
 			fprint_expr_recursive(file, expr->access_expr.parent, indent + 1);
 			break;
-		case EXPR_TYPE:
-			fprintf_indented(file, indent, "(type\n");
+		case EXPR_TYPEID:
+			fprintf_indented(file, indent, "(typeid \n");
 			fprint_expr_common(file, expr, indent + 1);
-			fprint_type_info_recursive(file, expr->type_expr.type, indent + 1);
+			fprint_type_info_recursive(file, expr->typeid_expr, indent + 1);
 			break;
 		case EXPR_GROUP:
 			fprintf_indented(file, indent, "(group\n");

@@ -167,9 +167,10 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
-		case TYPE_META_TYPE:
 		case TYPE_ERROR:
 			UNREACHABLE;
+		case TYPE_META_TYPE:
+			return type->backend_type = LLVMIntTypeInContext(context, type->builtin.bitsize);
 		case TYPE_TYPEDEF:
 			return type->backend_type = llvm_get_type(context, type->canonical);
 		case TYPE_ENUM:

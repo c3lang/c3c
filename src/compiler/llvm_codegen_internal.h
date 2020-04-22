@@ -76,6 +76,7 @@ typedef struct
 	LLVMBasicBlockRef expr_block_exit;
 	bool current_block_is_target : 1;
 	bool did_call_stack_save : 1;
+	LLVMTypeRef type_data_definitions[TYPE_KINDS];
 } GenContext;
 
 extern unsigned sadd_overflow_intrinsic_id;

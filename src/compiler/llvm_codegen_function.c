@@ -231,6 +231,8 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 	}
 }
 
+
+
 void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 {
 	switch (decl->decl_kind)
@@ -253,6 +255,7 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_STRUCT:
 		case DECL_UNION:
 			llvm_type(decl->type);
+			TODO // Fix typeid
 			break;
 		case DECL_ENUM:
 			TODO

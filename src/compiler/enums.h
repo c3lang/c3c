@@ -216,17 +216,17 @@ typedef enum
 	EXPR_TERNARY,
 	EXPR_UNARY,
 	EXPR_POST_UNARY,
-	EXPR_TYPE,
+	EXPR_TYPEID,
 	EXPR_IDENTIFIER,
 	EXPR_TYPE_ACCESS,
 	EXPR_CALL,
 	EXPR_GROUP,
-	EXPR_SIZEOF,
 	EXPR_SUBSCRIPT,
 	EXPR_ACCESS,
 	EXPR_INITIALIZER_LIST,
 	EXPR_EXPRESSION_LIST,
 	EXPR_CAST,
+	EXPR_TYPEOF,
 	EXPR_SCOPED_EXPR,
 	EXPR_MACRO_EXPR,
 	EXPR_EXPR_BLOCK,
@@ -375,6 +375,7 @@ typedef enum
 	TOKEN_USHORT,
 	TOKEN_USIZE,
 	TOKEN_QUAD,
+	TOKEN_TYPEID,
 
 	// C types
 	TOKEN_C_SHORT,
@@ -393,10 +394,11 @@ typedef enum
 	TOKEN_CONST_IDENT,      // Any purely upper case ident,
 	TOKEN_TYPE_IDENT,       // Any ident on the format FooBar or __FooBar
 
-	// We want to parse #foo / $foo separately.
+	// We want to parse $foo separately.
 	// Otherwise we allow things like "# foo" which would be pretty bad.
-	TOKEN_HASH_IDENT,       // #foobar
 	TOKEN_CT_IDENT,         // $foobar
+	TOKEN_CT_CONST_IDENT,   // $FOOBAR
+	TOKEN_CT_TYPE_IDENT,    // $Foobar
 
 	TOKEN_STRING,           // "Teststring"
 	TOKEN_INTEGER,          // 123 0x23 0b10010 0o327
@@ -444,13 +446,13 @@ typedef enum
 	TOKEN_THROWS,
 	TOKEN_TRUE,
 	TOKEN_TRY,
-	TOKEN_TYPE,             // Reserved
 	TOKEN_TYPEDEF,
 	TOKEN_UNION,
 	TOKEN_UNTIL,
 	TOKEN_VAR,              // Reserved
 	TOKEN_VOLATILE,
 	TOKEN_WHILE,
+	TOKEN_TYPEOF,
 
 	TOKEN_CT_CASE,          // $case
 	TOKEN_CT_DEFAULT,       // $default

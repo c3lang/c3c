@@ -607,24 +607,25 @@ struct WithArray
 {
     int[4] x;
 }
-/*
+
 error Err
 {
     TEST_ERR1
 }
-*/
-/*
+
+
 func int testThrow(int x) throws Err
 {
     if (x < 0) throw Err.TEST_ERR1;
     return x * x;
 }
-*/
+
 func void testErrors()
 {
-    //int x = try testThrow(20) else 0;
-    int x = 0;
+    int x = try testThrow(20) else 1;
     printf("Value was %d, expected 400.\n", x);
+    x = try testThrow(-1) else 20;
+    printf("Value was %d, expected 20.\n", x);
 }
 
 func void testArray()
@@ -683,9 +684,18 @@ JUMP:
     printf("6");
 }
 
+func void testType()
+{
+    printf("Test type\n");
+    typeid x = WithArray.typeid;
+    int y = 0;
+    Teob b;
+    typeid structSize = typeof(b);
+}
 
 func int main(int x)
 {
+
     printf("Helo!\n");
     testErrors();
     testDefault(y = 99);
@@ -695,6 +705,7 @@ func int main(int x)
     testAnonStruct();
     testSimpleStruct(0);
     testUnion();
+    testType();
     int efd = 9;
     uint fefoek = 1;
     printf("Helo: %d\n", efd + cast(fefoek, int));

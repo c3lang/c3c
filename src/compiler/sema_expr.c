@@ -11,6 +11,19 @@
  * - Disallow jumping in and out of an expression block.
  */
 
+static Expr **expr_copy_expr_list_from_macro(Context *context, Expr *macro, Expr **expr_list);
+static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_expr);
+static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source);
+static Ast **ast_copy_list_from_macro(Context *context, Expr *macro, Ast **to_copy);
+
+#define MACRO_COPY_EXPR(x) x = expr_copy_from_macro(context, macro, x)
+#define MACRO_COPY_TYPE(x) x = type_info_copy_from_macro(context, macro, x)
+#define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(context, macro, x)
+#define MACRO_COPY_EXPR_LIST(x) x = expr_copy_expr_list_from_macro(context, macro, x)
+#define MACRO_COPY_AST_LIST(x) x = ast_copy_list_from_macro(context, macro, x)
+#define MACRO_COPY_AST(x) x = ast_copy_from_macro(context, macro, x)
+
+
 static inline bool is_const(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST;
@@ -514,6 +527,14 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 	TypeInfo *type_info = expr->type_access.type;
 	if (!sema_resolve_type_info(context, type_info)) return false;
 	Type *canonical = type_info->type->canonical;
+	if (expr->type_access.name.type == TOKEN_TYPEID)
+	{
+		expr->type = type_typeid;
+		expr->expr_kind = EXPR_TYPEID;
+		expr->typeid_expr = type_info;
+		expr->resolve_status = RESOLVE_DONE;
+		return true;
+	}
 	if (!type_may_have_method_functions(canonical))
 	{
 		SEMA_ERROR(expr, "'%s' does not have method functions.", type_to_error_string(type_info->type));
@@ -932,10 +953,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 	return false;
 }
 
-static inline bool sema_expr_analyse_sizeof(Context *context, Type *to, Expr *expr)
-{
-	TODO
-}
+
 
 static inline bool sema_expr_analyse_expr_list(Context *context, Type *to, Expr *expr)
 {
@@ -2219,10 +2237,6 @@ static Expr *expr_shallow_copy(Expr *source)
 }
 
 
-static Expr **expr_copy_expr_list_from_macro(Context *context, Expr *macro, Expr **expr_list);
-static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_expr);
-static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source);
-static void ast_copy_list_from_macro(Context *context, Expr *macro, Ast ***to_convert);
 
 static TypeInfo *type_info_copy_from_macro(Context *context, Expr *macro, TypeInfo *source)
 {
@@ -2259,106 +2273,103 @@ static TypeInfo *type_info_copy_from_macro(Context *context, Expr *macro, TypeIn
 }
 
 
-static void ast_copy_list_from_macro(Context *context, Expr *macro, Ast ***to_convert)
+static Ast** ast_copy_list_from_macro(Context *context, Expr *macro, Ast **to_copy)
 {
 	Ast **result = NULL;
-	Ast **list = *to_convert;
-	VECEACH(list, i)
+	VECEACH(to_copy, i)
 	{
-		vec_add(result, ast_copy_from_macro(context, macro, list[i]));
+		vec_add(result, ast_copy_from_macro(context, macro, to_copy[i]));
 	}
-	*to_convert = result;
+	return result;
 }
 
 
 static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_expr)
 {
-#define EXPR_COPY(x) x = expr_copy_from_macro(context, macro, x)
 	if (!source_expr) return NULL;
 	Expr *expr = expr_shallow_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_TYPEOF:
+			MACRO_COPY_EXPR(expr->typeof_expr);
+			return expr;
 		case EXPR_COMPOUND_LITERAL:
-			EXPR_COPY(expr->expr_compound_literal.initializer);
-			expr->expr_compound_literal.type_info = type_info_copy_from_macro(context, macro, expr->expr_compound_literal.type_info);
+			MACRO_COPY_EXPR(expr->expr_compound_literal.initializer);
+			MACRO_COPY_TYPE(expr->expr_compound_literal.type_info);
 			return expr;
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Created during semantic analysis
 			UNREACHABLE
 		case EXPR_RANGE:
-			EXPR_COPY(expr->range_expr.left);
-			EXPR_COPY(expr->range_expr.right);
+			MACRO_COPY_EXPR(expr->range_expr.left);
+			MACRO_COPY_EXPR(expr->range_expr.right);
 			return expr;
 		case EXPR_EXPR_BLOCK:
-			ast_copy_list_from_macro(context, macro, &expr->expr_block.stmts);
+			MACRO_COPY_AST_LIST(expr->expr_block.stmts);
 			return expr;
 		case EXPR_POISONED:
 			return source_expr;
 		case EXPR_TRY:
-			EXPR_COPY(expr->try_expr.expr);
-			EXPR_COPY(expr->try_expr.else_expr);
+			MACRO_COPY_EXPR(expr->try_expr.expr);
+			MACRO_COPY_EXPR(expr->try_expr.else_expr);
 			return expr;
 		case EXPR_CONST:
 			return expr;
 		case EXPR_BINARY:
-			EXPR_COPY(expr->binary_expr.left);
-			EXPR_COPY(expr->binary_expr.right);
+			MACRO_COPY_EXPR(expr->binary_expr.left);
+			MACRO_COPY_EXPR(expr->binary_expr.right);
 			return expr;
 		case EXPR_TERNARY:
-			EXPR_COPY(expr->ternary_expr.cond);
-			EXPR_COPY(expr->ternary_expr.then_expr);
-			EXPR_COPY(expr->ternary_expr.else_expr);
+			MACRO_COPY_EXPR(expr->ternary_expr.cond);
+			MACRO_COPY_EXPR(expr->ternary_expr.then_expr);
+			MACRO_COPY_EXPR(expr->ternary_expr.else_expr);
 			return expr;
 		case EXPR_UNARY:
-			EXPR_COPY(expr->unary_expr.expr);
+			MACRO_COPY_EXPR(expr->unary_expr.expr);
 			return expr;
 		case EXPR_POST_UNARY:
-			EXPR_COPY(expr->post_expr.expr);
+			MACRO_COPY_EXPR(expr->post_expr.expr);
 			return expr;
-		case EXPR_TYPE:
-			expr->type_expr.type = type_info_copy_from_macro(context, macro, expr->type_expr.type);
+		case EXPR_TYPEID:
+			MACRO_COPY_TYPE(expr->typeid_expr);
 			return expr;
 		case EXPR_IDENTIFIER:
 			TODO
 			break;
 		case EXPR_TYPE_ACCESS:
-			expr->type_access.type = type_info_copy_from_macro(context, macro, expr->type_expr.type);
+			MACRO_COPY_TYPE(expr->type_access.type);
 			return expr;
 		case EXPR_CALL:
-			EXPR_COPY(expr->call_expr.function);
-			expr->call_expr.arguments = expr_copy_expr_list_from_macro(context, macro, expr->call_expr.arguments);
+			MACRO_COPY_EXPR(expr->call_expr.function);
+			MACRO_COPY_EXPR_LIST(expr->call_expr.arguments);
 			return expr;
-		case EXPR_SIZEOF:
-			TODO
-			break;
 		case EXPR_SUBSCRIPT:
-			EXPR_COPY(expr->subscript_expr.expr);
-			EXPR_COPY(expr->subscript_expr.index);
+			MACRO_COPY_EXPR(expr->subscript_expr.expr);
+			MACRO_COPY_EXPR(expr->subscript_expr.index);
 			return expr;
 		case EXPR_GROUP:
-			EXPR_COPY(expr->group_expr->group_expr);
+			MACRO_COPY_EXPR(expr->group_expr->group_expr);
 			return expr;
 		case EXPR_ACCESS:
-			EXPR_COPY(expr->access_expr.parent);
+			MACRO_COPY_EXPR(expr->access_expr.parent);
 			return expr;
 		case EXPR_INITIALIZER_LIST:
-			expr->expr_initializer.initializer_expr = expr_copy_expr_list_from_macro(context, macro, expr->expr_initializer.initializer_expr);
+			MACRO_COPY_EXPR_LIST(expr->expr_initializer.initializer_expr);
 			return expr;
 		case EXPR_EXPRESSION_LIST:
-			expr->expression_list = expr_copy_expr_list_from_macro(context, macro, expr->expression_list);
+			MACRO_COPY_EXPR_LIST(expr->expression_list);
 			return expr;
 		case EXPR_CAST:
-			EXPR_COPY(expr->cast_expr.expr);
-			expr->cast_expr.type_info = type_info_copy_from_macro(context, macro, expr->cast_expr.type_info);
+			MACRO_COPY_EXPR(expr->cast_expr.expr);
+			MACRO_COPY_TYPE(expr->cast_expr.type_info);
 			return expr;
 		case EXPR_SCOPED_EXPR:
-			EXPR_COPY(expr->expr_scope.expr);
+			MACRO_COPY_EXPR(expr->expr_scope.expr);
 			return expr;
 		case EXPR_MACRO_EXPR:
-			EXPR_COPY(expr->macro_expr);
+			MACRO_COPY_EXPR(expr->macro_expr);
 			return expr;
 	}
-#undef EXPR_COPY
 	UNREACHABLE
 }
 
@@ -2373,21 +2384,18 @@ static Expr **expr_copy_expr_list_from_macro(Context *context, Expr *macro, Expr
 }
 
 
-static void type_info_copy_list_from_macro(Context *context, Expr *macro, TypeInfo ***to_convert)
+static TypeInfo** type_info_copy_list_from_macro(Context *context, Expr *macro, TypeInfo **to_copy)
 {
 	TypeInfo **result = NULL;
-	TypeInfo **list = *to_convert;
-	VECEACH(list, i)
+	VECEACH(to_copy, i)
 	{
-		vec_add(result, type_info_copy_from_macro(context, macro, list[i]));
+		vec_add(result, type_info_copy_from_macro(context, macro, to_copy[i]));
 	}
-	*to_convert = result;
+	return result;
 }
 
 static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 {
-#define EXPR_COPY(x) x = expr_copy_from_macro(context, macro, x)
-#define AST_COPY(x) x = ast_copy_from_macro(context, macro, x)
 	Ast *ast = ast_shallow_copy(source);
 	switch (source->ast_kind)
 	{
@@ -2400,87 +2408,87 @@ static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 		case AST_BREAK_STMT:
 			return ast;
 		case AST_CASE_STMT:
-			AST_COPY(ast->case_stmt.body);
-			EXPR_COPY(ast->case_stmt.expr);
+			MACRO_COPY_AST(ast->case_stmt.body);
+			MACRO_COPY_EXPR(ast->case_stmt.expr);
 			return ast;
 			break;
 		case AST_CATCH_STMT:
-			AST_COPY(ast->catch_stmt.body);
+			MACRO_COPY_AST(ast->catch_stmt.body);
 			return ast;
 		case AST_COMPOUND_STMT:
-			ast_copy_list_from_macro(context, macro, &ast->compound_stmt.stmts);
+			MACRO_COPY_AST_LIST(ast->compound_stmt.stmts);
 			return ast;
 		case AST_CONTINUE_STMT:
 			return ast;
 		case AST_CT_IF_STMT:
-			EXPR_COPY(ast->ct_if_stmt.expr);
-			AST_COPY(ast->ct_if_stmt.elif);
-			AST_COPY(ast->ct_if_stmt.then);
+			MACRO_COPY_EXPR(ast->ct_if_stmt.expr);
+			MACRO_COPY_AST(ast->ct_if_stmt.elif);
+			MACRO_COPY_AST(ast->ct_if_stmt.then);
 			return ast;
 		case AST_CT_ELIF_STMT:
-			EXPR_COPY(ast->ct_elif_stmt.expr);
-			AST_COPY(ast->ct_elif_stmt.then);
-			AST_COPY(ast->ct_elif_stmt.elif);
+			MACRO_COPY_EXPR(ast->ct_elif_stmt.expr);
+			MACRO_COPY_AST(ast->ct_elif_stmt.then);
+			MACRO_COPY_AST(ast->ct_elif_stmt.elif);
 			return ast;
 		case AST_CT_ELSE_STMT:
-			AST_COPY(ast->ct_else_stmt);
+			MACRO_COPY_AST(ast->ct_else_stmt);
 			return ast;
 		case AST_CT_FOR_STMT:
-			AST_COPY(ast->ct_for_stmt.body);
-			EXPR_COPY(ast->ct_for_stmt.expr);
+			MACRO_COPY_AST(ast->ct_for_stmt.body);
+			MACRO_COPY_EXPR(ast->ct_for_stmt.expr);
 			return ast;
 		case AST_CT_SWITCH_STMT:
-			EXPR_COPY(ast->ct_switch_stmt.cond);
-			ast_copy_list_from_macro(context, macro, &ast->ct_switch_stmt.body);
+			MACRO_COPY_EXPR(ast->ct_switch_stmt.cond);
+			MACRO_COPY_AST_LIST(ast->ct_switch_stmt.body);
 			return ast;
 		case AST_CT_DEFAULT_STMT:
-			AST_COPY(ast->ct_default_stmt);
+			MACRO_COPY_AST(ast->ct_default_stmt);
 			return ast;
 		case AST_CT_CASE_STMT:
-			AST_COPY(ast->ct_case_stmt.body);
-			type_info_copy_list_from_macro(context, macro, &ast->ct_case_stmt.types);
+			MACRO_COPY_AST(ast->ct_case_stmt.body);
+			MACRO_COPY_TYPE_LIST(ast->ct_case_stmt.types);
 			return ast;
 		case AST_DECLARE_STMT:
 			TODO
 			return ast;
 		case AST_DEFAULT_STMT:
-			AST_COPY(ast->case_stmt.body);
+			MACRO_COPY_AST(ast->case_stmt.body);
 			return ast;
 		case AST_DEFER_STMT:
 			assert(!ast->defer_stmt.prev_defer);
-			AST_COPY(ast->defer_stmt.body);
+			MACRO_COPY_AST(ast->defer_stmt.body);
 			return ast;
 		case AST_DO_STMT:
-			AST_COPY(ast->do_stmt.body);
-			EXPR_COPY(ast->do_stmt.expr);
+			MACRO_COPY_AST(ast->do_stmt.body);
+			MACRO_COPY_EXPR(ast->do_stmt.expr);
 			return ast;
 		case AST_EXPR_STMT:
-			EXPR_COPY(ast->expr_stmt);
+			MACRO_COPY_EXPR(ast->expr_stmt);
 			return ast;
 		case AST_FOR_STMT:
-			EXPR_COPY(ast->for_stmt.cond);
-			EXPR_COPY(ast->for_stmt.incr);
-			AST_COPY(ast->for_stmt.body);
-			AST_COPY(ast->for_stmt.init);
+			MACRO_COPY_EXPR(ast->for_stmt.cond);
+			MACRO_COPY_EXPR(ast->for_stmt.incr);
+			MACRO_COPY_AST(ast->for_stmt.body);
+			MACRO_COPY_AST(ast->for_stmt.init);
 			return ast;
 		case AST_GENERIC_CASE_STMT:
-			AST_COPY(ast->generic_case_stmt.body);
+			MACRO_COPY_AST(ast->generic_case_stmt.body);
 			// ast->generic_case_stmt.types = ...
 			TODO
 			return ast;
 		case AST_GENERIC_DEFAULT_STMT:
-			AST_COPY(ast->generic_default_stmt);
+			MACRO_COPY_AST(ast->generic_default_stmt);
 			return ast;
 		case AST_GOTO_STMT:
-			AST_COPY(ast->goto_stmt.label);
+			MACRO_COPY_AST(ast->goto_stmt.label);
 			// TODO fixup name, which needs to be macro local.
 			TODO
 			return ast;
 		case AST_IF_STMT:
-			AST_COPY(ast->if_stmt.cond);
-			AST_COPY(ast->if_stmt.decl);
-			AST_COPY(ast->if_stmt.else_body);
-			AST_COPY(ast->if_stmt.then_body);
+			MACRO_COPY_AST(ast->if_stmt.cond);
+			MACRO_COPY_AST(ast->if_stmt.decl);
+			MACRO_COPY_AST(ast->if_stmt.else_body);
+			MACRO_COPY_AST(ast->if_stmt.then_body);
 			return ast;
 		case AST_LABEL:
 			assert(!ast->label_stmt.defer);
@@ -2491,23 +2499,23 @@ static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 		case AST_NOP_STMT:
 			return ast;
 		case AST_RETURN_STMT:
-			EXPR_COPY(ast->return_stmt.expr);
+			MACRO_COPY_EXPR(ast->return_stmt.expr);
 			// TODO handle conversions?
 			TODO
 			return ast;
 		case AST_DECL_EXPR_LIST:
-			ast_copy_list_from_macro(context, macro, &ast->decl_expr_stmt);
+			MACRO_COPY_AST_LIST(ast->decl_expr_stmt);
 			return ast;
 		case AST_SWITCH_STMT:
-			AST_COPY(ast->switch_stmt.decl);
-			AST_COPY(ast->switch_stmt.cond);
-			ast_copy_list_from_macro(context, macro, &ast->switch_stmt.cases);
+			MACRO_COPY_AST(ast->switch_stmt.decl);
+			MACRO_COPY_AST(ast->switch_stmt.cond);
+			MACRO_COPY_AST_LIST(ast->switch_stmt.cases);
 			return ast;
 		case AST_THROW_STMT:
-			EXPR_COPY(ast->throw_stmt.throw_value);
+			MACRO_COPY_EXPR(ast->throw_stmt.throw_value);
 			return ast;
 		case AST_TRY_STMT:
-			AST_COPY(ast->try_stmt);
+			MACRO_COPY_AST(ast->try_stmt);
 			return ast;
 		case AST_NEXT_STMT:
 			TODO
@@ -2516,17 +2524,15 @@ static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 			TODO
 			return ast;
 		case AST_WHILE_STMT:
-			AST_COPY(ast->while_stmt.cond);
-			AST_COPY(ast->while_stmt.decl);
-			AST_COPY(ast->while_stmt.body);
+			MACRO_COPY_AST(ast->while_stmt.cond);
+			MACRO_COPY_AST(ast->while_stmt.decl);
+			MACRO_COPY_AST(ast->while_stmt.body);
 			return ast;
 		case AST_SCOPED_STMT:
-			AST_COPY(ast->scoped_stmt.stmt);
+			MACRO_COPY_AST(ast->scoped_stmt.stmt);
 			return ast;
 	}
 	UNREACHABLE;
-#undef EXPR_COPY
-#undef AST_COPY
 }
 static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *macro, Expr *inner)
 {
@@ -2602,11 +2608,11 @@ static inline bool sema_expr_analyse_macro_expr(Context *context, Type *to, Expr
 
 static inline bool sema_expr_analyse_type(Context *context, Type *to, Expr *expr)
 {
-	if (!sema_resolve_type_info(context, expr->type_expr.type))
+	if (!sema_resolve_type_info(context, expr->typeid_expr))
 	{
 		return expr_poison(expr);
 	}
-	expr->type = type_get_meta(expr->type_expr.type->type);
+	expr->type = type_typeid;
 	return true;
 }
 
@@ -2750,6 +2756,16 @@ static inline bool sema_expr_analyse_compound_literal(Context *context, Type *to
 	return true;
 }
 
+static inline bool sema_expr_analyse_typeof(Context *context, Expr *expr)
+{
+	if (!sema_analyse_expr(context, NULL, expr->typeof_expr)) return false;
+	Type *type = expr->typeof_expr->type->canonical;
+	expr->expr_kind = EXPR_TYPEID;
+	expr->typeid_expr = type_info_new_base(type, expr->typeof_expr->span);
+	expr->type = type_typeid;
+	return true;
+}
+
 static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *expr)
 {
 	switch (expr->expr_kind)
@@ -2761,6 +2777,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			UNREACHABLE
 		case EXPR_SCOPED_EXPR:
 			UNREACHABLE
+		case EXPR_TYPEOF:
+			return sema_expr_analyse_typeof(context, expr);
 		case EXPR_COMPOUND_LITERAL:
 			return sema_expr_analyse_compound_literal(context, to, expr);
 		case EXPR_EXPR_BLOCK:
@@ -2781,7 +2799,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return sema_expr_analyse_unary(context, to, expr);
 		case EXPR_POST_UNARY:
 			return sema_expr_analyse_post_unary(context, to, expr);
-		case EXPR_TYPE:
+		case EXPR_TYPEID:
 			return sema_expr_analyse_type(context, to, expr);
 		case EXPR_IDENTIFIER:
 			return sema_expr_analyse_identifier(context, to, expr);
@@ -2789,8 +2807,6 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return sema_expr_analyse_type_access(context, to, expr);
 		case EXPR_CALL:
 			return sema_expr_analyse_call(context, to, expr);
-		case EXPR_SIZEOF:
-			return sema_expr_analyse_sizeof(context, to, expr);
 		case EXPR_SUBSCRIPT:
 			return sema_expr_analyse_subscript(context, to, expr);
 		case EXPR_GROUP:

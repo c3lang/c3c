@@ -140,10 +140,12 @@ const char *token_type_to_string(TokenType type)
 		// Identifiers
 		case TOKEN_IDENT:
 			return "IDENT";
-		case TOKEN_HASH_IDENT:
-			return "HASH_IDENT";
 		case TOKEN_CT_IDENT:
 			return "CT_IDENT";
+		case TOKEN_CT_CONST_IDENT:
+			return "CT_CONST_IDENT";
+		case TOKEN_CT_TYPE_IDENT:
+			return "CT_TYPE_IDENT";
 		case TOKEN_CONST_IDENT:
 			return "CONST_IDENT";
 		case TOKEN_TYPE_IDENT:
@@ -240,8 +242,10 @@ const char *token_type_to_string(TokenType type)
 			return "true";
 		case TOKEN_TRY:
 			return "try";
-		case TOKEN_TYPE:
-			return "type";
+		case TOKEN_TYPEID:
+			return "typeid";
+		case TOKEN_TYPEOF:
+			return "typeof";
 		case TOKEN_TYPEDEF:
 			return "typedef";
 		case TOKEN_UNION:

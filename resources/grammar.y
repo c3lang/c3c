@@ -9,24 +9,25 @@ int yylex(void);
 void yyerror(char *s);
 %}
 
-%token IDENT CT_IDENT CONSTANT CONST_IDENT TYPE_IDENT STRING_LITERAL SIZEOF
+%token IDENT CT_IDENT CT_TYPE_IDENT CONSTANT CT_CONST_IDENT CONST_IDENT TYPE_IDENT STRING_LITERAL SIZEOF
 %token INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
+%token ADD_MOD SUB_MOD MULT_MOD ADD_MOD_ASSIGN SUB_MOD_ASSIGN
+%token MULT_MOD_ASSIGN NEG_MOD
 %token XOR_ASSIGN OR_ASSIGN VAR NIL ELVIS HASH_IDENT NEXT
-%token AT
 
 %token TYPEDEF MODULE IMPORT
 %token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOLATILE VOID
 %token BYTE USHORT UINT ULONG BOOL
+%token TYPEID
 %token STRUCT UNION ENUM ELLIPSIS AS LOCAL
 
 %token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
-%token TYPE FUNC ERROR MACRO GENERIC CTIF CTELIF CTENDIF CTELSE CTSWITCH CTCASE CTDEFAULT CTFOR
+%token FUNC ERROR MACRO GENERIC CTIF CTELIF CTENDIF CTELSE CTSWITCH CTCASE CTDEFAULT CTFOR
 %token THROWS THROW TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE IN
 
 %token FN_BLOCK_START FN_BLOCK_END
-%token MULTW ADDW SUBW
 %token AUTO
 
 %start translation_unit
@@ -46,6 +47,7 @@ ident_expression
 	: CONST_IDENT
 	| IDENT
     | CT_IDENT
+    | CT_CONST_IDENT
 	;
 
 primary_expression
@@ -55,8 +57,10 @@ primary_expression
 	| path ident_expression
 	| ident_expression
 	| base_type initializer_list
-	| base_type '.' IDENT
-	| TYPE '(' type_expression ')'
+	| type '.' IDENT
+	| type '.' TYPEID
+	| '(' type ')' '.' IDENT
+	| '(' type ')' '.' TYPEID
 	| '(' expression ')'
 	| FN_BLOCK_START statement_list FN_BLOCK_END
 	;
@@ -81,7 +85,6 @@ unary_expression
 	| INC_OP unary_expression
 	| DEC_OP unary_expression
 	| unary_operator unary_expression
-	| SIZEOF '(' type_expression ')'
 	;
 
 unary_operator
@@ -89,7 +92,7 @@ unary_operator
 	| '*'
 	| '+'
 	| '-'
-	| SUBW
+	| NEG_MOD
 	| '~'
 	| '!'
 	| '@'
@@ -99,7 +102,7 @@ unary_operator
 multiplicative_expression
 	: unary_expression
 	| multiplicative_expression '*' unary_expression
-	| multiplicative_expression MULTW unary_expression
+	| multiplicative_expression MULT_MOD unary_expression
 	| multiplicative_expression '/' unary_expression
 	| multiplicative_expression '%' unary_expression
 	;
@@ -120,9 +123,9 @@ bit_expression
 additive_expression
 	: bit_expression
 	| additive_expression '+' bit_expression
-	| additive_expression ADDW bit_expression
+	| additive_expression ADD_MOD bit_expression
 	| additive_expression '-' bit_expression
-	| additive_expression SUBW bit_expression
+	| additive_expression SUB_MOD bit_expression
 	;
 
 relational_expression
@@ -172,6 +175,9 @@ assignment_operator
 	| AND_ASSIGN
 	| XOR_ASSIGN
 	| OR_ASSIGN
+	| MULT_MOD_ASSIGN
+	| ADD_MOD_ASSIGN
+	| SUB_MOD_ASSIGN
 	;
 
 constant_expression
@@ -201,8 +207,8 @@ identifier_list
 macro_argument
     : CT_IDENT
     | IDENT
-    | type_expression IDENT
-    | type_expression CT_IDENT
+    | type IDENT
+    | type CT_IDENT
     ;
 
 macro_argument_list
@@ -211,20 +217,20 @@ macro_argument_list
     ;
 
 declaration
-    : type_expression IDENT '=' initializer
-    | type_expression IDENT
+    : type IDENT '=' initializer
+    | type IDENT
     ;
 
 param_declaration
-    : type_expression
-    | type_expression IDENT
-    | type_expression IDENT '=' initializer
+    : type
+    | type IDENT
+    | type IDENT '=' initializer
     ;
 
 parameter_type_list
 	: parameter_list
 	| parameter_list ',' ELLIPSIS
-	| parameter_list ',' type_expression ELLIPSIS
+	| parameter_list ',' type ELLIPSIS
 	;
 
 opt_parameter_type_list
@@ -253,15 +259,15 @@ base_type
     | DOUBLE
     | TYPE_IDENT
     | path TYPE_IDENT
-    | TYPE '(' constant_expression ')'
+    | CT_TYPE_IDENT
     ;
 
-type_expression
+type
     : base_type
-    | type_expression '*'
-    | type_expression '[' constant_expression ']'
-    | type_expression '[' ']'
-    | type_expression '[' '+' ']'
+    | type '*'
+    | type '[' constant_expression ']'
+    | type '[' ']'
+    | type '[' '+' ']'
     ;
 
 initializer
@@ -345,7 +351,7 @@ defer_statement
     ;
 
 catch_statement
-    : CATCH '(' type_expression IDENT ')' defer_catch_body
+    : CATCH '(' type IDENT ')' defer_catch_body
     | CATCH '(' ERROR IDENT ')' defer_catch_body
     ;
 
@@ -437,8 +443,8 @@ path_ident
     ;
 
 attribute
-    : AT path_ident
-    | AT path_ident '(' constant_expression ')'
+    : '@' path_ident
+    | '@' path_ident '(' constant_expression ')'
     ;
 
 attribute_list
@@ -479,7 +485,7 @@ func_name
     ;
 
 func_declaration
-    : FUNC type_expression func_name opt_parameter_type_list opt_attributes opt_throw_declaration
+    : FUNC type func_name opt_parameter_type_list opt_attributes opt_throw_declaration
     ;
 
 func_definition
@@ -488,7 +494,7 @@ func_definition
     ;
 
 macro_declaration
-    : MACRO type_expression IDENT '(' macro_argument_list ')' compound_statement
+    : MACRO type IDENT '(' macro_argument_list ')' compound_statement
     : MACRO IDENT '(' macro_argument_list ')' compound_statement
     ;
 
@@ -512,13 +518,13 @@ struct_declaration_list
     ;
 
 struct_member_declaration
-    : type_expression identifier_list opt_attributes ';'
+    : type identifier_list opt_attributes ';'
     | struct_or_union IDENT opt_attributes struct_body
     | struct_or_union opt_attributes struct_body
 	;
 
 enum_declaration
-    : ENUM TYPE_IDENT ':' type_expression opt_attributes '{' enumerator_list '}'
+    : ENUM TYPE_IDENT ':' type opt_attributes '{' enumerator_list '}'
     | ENUM TYPE_IDENT opt_attributes '{' enumerator_list '}'
     ;
 
@@ -537,8 +543,8 @@ error_declaration
     ;
 
 type_list
-    : type_expression
-    | type_list ',' type_expression
+    : type
+    | type_list ',' type
     ;
 
 generics_case
@@ -551,20 +557,20 @@ generics_body
 
 generics_declaration
     : GENERIC IDENT '(' macro_argument_list ')' '{' generics_body '}'
-    | GENERIC type_expression IDENT '(' macro_argument_list ')' '{' generics_body '}'
+    | GENERIC type IDENT '(' macro_argument_list ')' '{' generics_body '}'
     ;
 
 const_declaration
-    : CONST CT_IDENT '=' initializer ';'
-    | CONST type_expression IDENT '=' initializer ';'
+    : CONST CT_CONST_IDENT '=' initializer ';'
+    | CONST type CONST_IDENT '=' initializer ';'
     ;
 
 func_typedef
-    : FUNC type_expression opt_parameter_type_list opt_throw_declaration
+    : FUNC type opt_parameter_type_list opt_throw_declaration
     ;
 
 typedef_declaration
-    : TYPEDEF type_expression AS TYPE_IDENT ';'
+    : TYPEDEF type AS TYPE_IDENT ';'
     | TYPEDEF func_typedef AS TYPE_IDENT ';'
     ;
 
@@ -590,8 +596,8 @@ attribute_declaration
     ;
 
 global_declaration
-    : type_expression IDENT ';'
-    | type_expression IDENT '=' initializer ';'
+    : type IDENT ';'
+    | type IDENT '=' initializer ';'
     ;
 
 ct_if
@@ -640,6 +646,7 @@ module_param
     : CT_IDENT
     | HASH_IDENT
     | TYPE_IDENT
+    | CT_TYPE_IDENT
     | IDENT
     ;
 
@@ -656,12 +663,11 @@ module
 specified_import
     : IDENT AS IDENT
     | IDENT
-    | TYPE
-    | CONST
-    | MACRO
-    | TYPE AS TYPE
-    | CONST AS CONST
-    | MACRO AS MACRO
+    | CONST_IDENT
+    | '@' IDENT
+    | TYPE_IDENT AS TYPE_IDENT
+    | CONST_IDENT AS CONST_IDENT
+    | '@' IDENT AS '@' IDENT
     ;
 
 specified_import_list

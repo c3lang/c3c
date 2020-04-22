@@ -6,6 +6,15 @@
 #include "compiler_internal.h"
 #include "bigint.h"
 
+static inline LLVMValueRef gencontext_emit_const_int(GenContext *context, Type *type, uint64_t val)
+{
+	type = type->canonical;
+	assert(type_is_any_integer(type) || type->type_kind == TYPE_BOOL);
+	return LLVMConstInt(llvm_type(type), val, type_is_signed_integer(type));
+}
+
+#define llvm_int(_type, _val) gencontext_emit_const_int(context, _type, _val)
+
 static inline LLVMValueRef gencontext_emit_add_int(GenContext *context, Type *type, bool use_mod, LLVMValueRef left, LLVMValueRef right)
 {
 	if (use_mod)
@@ -88,7 +97,7 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 		case TYPE_ARRAY:
 		{
 			// TODO insert trap on overflow.
-			LLVMValueRef zero = LLVMConstInt(llvm_type(type_int), 0, false);
+			LLVMValueRef zero = llvm_int(type_int, 0);
 			LLVMValueRef indices[2] = {
 					zero,
 					index_value,
@@ -172,6 +181,7 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Should only appear when generating designated initializers.
 			UNREACHABLE
+
 		case EXPR_IDENTIFIER:
 			return expr->identifier_expr.decl->var.backend_ref;
 		case EXPR_UNARY:
@@ -188,10 +198,9 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_GROUP:
 			return gencontext_emit_address(context, expr->group_expr);
 		case EXPR_CONST:
-		case EXPR_TYPE:
+		case EXPR_TYPEID:
 		case EXPR_POISONED:
 		case EXPR_TRY:
-		case EXPR_SIZEOF:
 		case EXPR_BINARY:
 		case EXPR_TERNARY:
 		case EXPR_POST_UNARY:
@@ -201,6 +210,7 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_CAST:
 		case EXPR_MACRO_EXPR:
+		case EXPR_TYPEOF:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -345,7 +355,7 @@ static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext
 				case DESIGNATED_SUBSCRIPT:
 				{
 					// TODO range, more arrays
-					LLVMValueRef zero = LLVMConstInt(llvm_type(type_int), 0, false);
+					LLVMValueRef zero = llvm_int(type_int, 0);
 					LLVMValueRef index = gencontext_emit_expr(context, path->index_expr);
 					LLVMValueRef indices[2] = {
 							zero,
@@ -418,7 +428,8 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 		case UNARYOP_ERROR:
 			FATAL_ERROR("Illegal unary op %s", expr->unary_expr.operator);
 		case UNARYOP_NOT:
-			return LLVMBuildXor(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), LLVMConstInt(llvm_type(type_bool), 1, 0), "not");
+			return LLVMBuildXor(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr),
+					llvm_int(type_bool, 1), "not");
 		case UNARYOP_BITNEG:
 			return LLVMBuildNot(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "bnot");
 		case UNARYOP_NEGMOD:
@@ -431,7 +442,7 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 			assert(!type_is_unsigned(type));
 			{
 				LLVMValueRef to_negate = gencontext_emit_expr(context, expr->unary_expr.expr);
-				LLVMValueRef zero = LLVMConstInt(llvm_type(expr->unary_expr.expr->type->canonical), 0, false);
+				LLVMValueRef zero = llvm_int(expr->unary_expr.expr->type, 0);
 				if (build_options.debug_mode)
 				{
 					LLVMTypeRef type_to_use = llvm_type(type->canonical);
@@ -491,7 +502,7 @@ static LLVMValueRef gencontext_emit_logical_and_or(GenContext *context, Expr *ex
 	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(type_bool), "val");
 
 	// Simplify for LLVM by entering the constants we already know of.
-	LLVMValueRef result_on_skip = LLVMConstInt(LLVMInt1TypeInContext(context->context), op == BINARYOP_AND ? 0 : 1, false);
+	LLVMValueRef result_on_skip = llvm_int(type_bool, op == BINARYOP_AND ? 0 : 1);
 	LLVMValueRef logic_values[2] = { result_on_skip, rhs };
 	LLVMBasicBlockRef blocks[2] = { start_block, rhs_block };
 	LLVMAddIncoming(phi, logic_values, blocks, 2);
@@ -591,7 +602,7 @@ static LLVMValueRef gencontext_emit_int_comparison(GenContext *context, Type *lh
 	if (rhs_signed) return comp_value;
 
 	// Otherwise, special handling for left side signed, right side unsigned.
-	LLVMValueRef zero = LLVMConstInt(llvm_type(lhs_type), 0, true);
+	LLVMValueRef zero = llvm_int(lhs_type, 0);
 	switch (binary_op)
 	{
 		case BINARYOP_EQ:
@@ -773,6 +784,12 @@ LLVMValueRef gencontext_emit_post_unary_expr(GenContext *context, Expr *expr)
 	return gencontext_emit_post_inc_dec(context, expr->post_expr.expr, expr->post_expr.operator == POSTUNARYOP_INC ? 1 : -1, false);
 }
 
+LLVMValueRef gencontext_emit_typeid(GenContext *context, Expr *expr)
+{
+	assert(expr->typeid_expr->type->backend_typeid);
+	return expr->typeid_expr->type->backend_typeid;
+}
+
 LLVMValueRef gencontext_emit_try_expr(GenContext *context, Expr *expr)
 {
 	if (expr->try_expr.else_expr)
@@ -884,27 +901,27 @@ LLVMValueRef gencontext_emit_ternary_expr(GenContext *context, Expr *expr)
 
 LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 {
-	LLVMTypeRef type = llvm_type(type_reduced_from_expr(expr));
+	Type *type = type_reduced_from_expr(expr)->canonical;
 	switch (expr->const_expr.kind)
 	{
 		case ALL_INTS:
-			if (type_is_unsigned(expr->type->canonical))
+			if (type_is_unsigned(type))
 			{
-				return LLVMConstInt(type, bigint_as_unsigned(&expr->const_expr.i), false);
+				return llvm_int(type, bigint_as_unsigned(&expr->const_expr.i));
 			}
 			else
 			{
-				return LLVMConstInt(type, (uint64_t)bigint_as_signed(&expr->const_expr.i), false);
+				return llvm_int(type, bigint_as_signed(&expr->const_expr.i));
 			}
 		case ALL_FLOATS:
-			return LLVMConstReal(type, (double) expr->const_expr.f);
+			return LLVMConstReal(llvm_type(type), (double) expr->const_expr.f);
 		case TYPE_POINTER:
-			return LLVMConstNull(type);
+			return LLVMConstNull(llvm_type(type));
 		case TYPE_BOOL:
-			return LLVMConstInt(type, expr->const_expr.b ? 1 : 0, false);
+			return llvm_int(type, expr->const_expr.b ? 1 : 0);
 		case TYPE_STRING:
 		{
-			LLVMValueRef global_name = LLVMAddGlobal(context->module, type, "string");
+			LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_type(type), "string");
 			LLVMSetLinkage(global_name, LLVMInternalLinkage);
 			LLVMSetGlobalConstant(global_name, 1);
 			LLVMSetInitializer(global_name, LLVMConstStringInContext(context->context,
@@ -918,9 +935,9 @@ LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 	}
 }
 
-static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRef value)
+static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRef value, Type *error_type)
 {
-	LLVMBasicBlockRef after_block = gencontext_create_free_block(context, "");
+	LLVMBasicBlockRef after_block = gencontext_create_free_block(context, "throwafter");
 	size_t catch_index = context->catch_stack_index;
 	while (catch_index > 0)
 	{
@@ -929,7 +946,9 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 		Catch *current_catch = &context->catch_stack[catch_index];
 		if (!current_catch->decl)
 		{
-			gencontext_emit_cond_br(context, value, current_catch->catch_block, after_block);
+
+			LLVMValueRef comparison = LLVMBuildICmp(context->builder, LLVMIntNE, llvm_int(error_type, 0), value, "checkerr");
+			gencontext_emit_cond_br(context, comparison, current_catch->catch_block, after_block);
 			gencontext_emit_block(context, after_block);
 			return;
 		}
@@ -979,11 +998,11 @@ LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 		{
 			LLVMValueRef maybe_error = gencontext_emit_load(context, type_error_union, error_param);
 			TODO // Incorrect, must get subset if this is 128 bits
-			gencontext_emit_throw_branch(context, maybe_error);
+			gencontext_emit_throw_branch(context, maybe_error, type_error_union);
 		}
 		else
 		{
-			gencontext_emit_throw_branch(context, call);
+			gencontext_emit_throw_branch(context, call, type_reduced(type_error));
 		}
 	}
 	// If we used a return param, then load that info here.
@@ -1102,10 +1121,11 @@ NESTED_RETRY:
 			return gencontext_emit_post_unary_expr(context, expr);
 		case EXPR_TRY:
 			return gencontext_emit_try_expr(context, expr);
-		case EXPR_TYPE:
-		case EXPR_SIZEOF:
+		case EXPR_TYPEID:
+			return gencontext_emit_typeid(context, expr);
 		case EXPR_TYPE_ACCESS:
 		case EXPR_MACRO_EXPR:
+		case EXPR_TYPEOF:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE
 		case EXPR_IDENTIFIER:
