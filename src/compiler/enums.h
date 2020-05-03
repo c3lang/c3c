@@ -240,13 +240,6 @@ typedef enum
 
 
 
-typedef enum
-{
-	NUMBER_TYPE_BOOL,
-	NUMBER_TYPE_FLOAT,
-	NUMBER_TYPE_SIGNED_INT,
-	NUMBER_TYPE_UNSIGNED_INT,
-} NumberType;
 
 typedef enum
 {

@@ -669,15 +669,22 @@ func int oekt() throws
 
 func void testErrorMulti()
 {
-
+    defer printf("End defer\n");
     printf("Test error multi\n");
-    int z = try oekt();
+   {
+        defer printf("Defer\n");
+        printf("Will call\n");
+        int z = try oekt();
+        printf("Got here\n");
+    }
     catch (Err e)
     {
+        defer printf("Left error\n");
         printf("Expected particular error.\n");
     }
     catch (error e)
     {
+        defer printf("Left any error\n");
         printf("Unexpected any error error.\n");
     }
     printf("End\n");
@@ -686,8 +693,10 @@ func void testErrorMulti()
 func void throwAOrB(int i) throws Err, Err2
 {
     printf("AB\n");
+    defer printf("A-Err\n");
     if (i == 1) throw Err.TEST_ERR1;
     printf("B\n");
+    defer printf("B-Err\n");
     if (i == 2) throw Err2.TEST_ERR2;
     printf("None\n");
 }

@@ -511,12 +511,13 @@ typedef struct
 		Ast *catch;
 		Decl *error;
 	};
+	Ast *defer;
 } CatchInfo;
 
 typedef struct
 {
 	bool is_completely_handled;
-	DeferList defers;
+	Ast *defer;
 	CatchInfo *catches;
 } ThrowInfo;
 
@@ -798,6 +799,7 @@ typedef struct
 typedef struct
 {
 	Expr *throw_value;
+	Ast *defer;
 } AstThrowStmt;
 
 typedef struct

@@ -146,10 +146,9 @@ static inline void gencontext_emit_throw(GenContext *context, Ast *ast)
 	// Ensure we are on a branch that is non empty.
 	if (!gencontext_check_block_branch_emit(context)) return;
 
-	// TODO defer
-//	gencontext_emit_defer(context, ast->throw_stmt.defers.start, ast->throw_stmt.defers.end);
-
 	LLVMValueRef error_val = gencontext_emit_expr(context, ast->throw_stmt.throw_value);
+
+	gencontext_emit_defer(context, ast->throw_stmt.defer, NULL);
 
 	// In the case that the throw actually contains a single error, but the function is throwing an error union,
 	// we must insert a conversion.

@@ -260,7 +260,7 @@ static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr 
 	FunctionSignature *signature = &decl->func.function_signature;
 	Decl **func_params = signature->params;
 	expr->call_expr.throw_info = CALLOCS(ThrowInfo);
-	expr->call_expr.throw_info->defers = context->current_scope->defers;
+	expr->call_expr.throw_info->defer = context->current_scope->defers.start;
 	unsigned error_params = signature->throw_any || signature->throws;
 	if (error_params)
 	{
@@ -2261,7 +2261,7 @@ static inline bool sema_expr_analyse_try(Context *context, Type *to, Expr *expr)
 	}
 	if (expr->try_expr.else_expr)
 	{
-		CatchInfo info = { .kind = CATCH_TRY_ELSE, .try_else = expr };
+		CatchInfo info = { .kind = CATCH_TRY_ELSE, .try_else = expr, .defer = context->current_scope->defers.start };
 		// Absorb all errors.
 		for (unsigned i = prev_throws; i < new_throws; i++)
 		{

@@ -498,7 +498,7 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 	variable->type = variable->var.type_info->type;
 	Type *error_type = variable->type->canonical;
 
-	CatchInfo catch = { .kind = CATCH_REGULAR, .catch = statement };
+	CatchInfo catch = { .kind = CATCH_REGULAR, .catch = statement, .defer = context->current_scope->defers.start };
 	// 4. Absorb all errors in case of a type error union.
 	if (error_type == type_error_union)
 	{
@@ -833,6 +833,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 static bool sema_analyse_throw_stmt(Context *context, Ast *statement)
 {
 	Expr *throw_value = statement->throw_stmt.throw_value;
+	statement->throw_stmt.defer = context->current_scope->defers.end;
 	UPDATE_EXIT(EXIT_THROW);
 	if (!sema_analyse_expr(context, NULL, throw_value)) return false;
 	Type *type = throw_value->type->canonical;

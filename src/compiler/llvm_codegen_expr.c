@@ -1152,13 +1152,13 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 				LLVMBasicBlockRef else_block = gencontext_create_free_block(context, "erret_one");
 				gencontext_emit_cond_br(context, comparison, else_block, after_block);
 				gencontext_emit_block(context, else_block);
+				gencontext_emit_defer(context, throw_info->defer, NULL);
 				gencontext_emit_return_value(context, value);
 				gencontext_emit_block(context, after_block);
 				return;
 			}
 			case CATCH_RETURN_MANY:
 			{
-				TODO // Check type
 				LLVMBasicBlockRef else_block = gencontext_create_free_block(context, "erret_many");
 				gencontext_emit_cond_br(context, comparison, else_block, after_block);
 				gencontext_emit_block(context, else_block);
@@ -1166,6 +1166,7 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 				{
 					value = gencontext_emit_cast(context, CAST_ERREU, value, type_error_union, call_error_type);
 				}
+				gencontext_emit_defer(context, throw_info->defer, NULL);
 				gencontext_emit_return_value(context, value);
 				gencontext_emit_block(context, after_block);
 				return;
@@ -1173,7 +1174,17 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 			case CATCH_TRY_ELSE:
 			{
 				LLVMBasicBlockRef else_block = gencontext_get_try_target(context, catch->try_else);
-				gencontext_emit_cond_br(context, comparison, else_block, after_block);
+				if (throw_info->defer != catch->defer)
+				{
+					LLVMBasicBlockRef defer_block = gencontext_create_free_block(context, "defer");
+					gencontext_emit_cond_br(context, comparison, defer_block, after_block);
+					gencontext_emit_defer(context, throw_info->defer, catch->defer);
+					gencontext_emit_br(context, else_block);
+				}
+				else
+				{
+					gencontext_emit_cond_br(context, comparison, else_block, after_block);
+				}
 				gencontext_emit_block(context, after_block);
 				return;
 			}
@@ -1186,6 +1197,7 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 				{
 					value = gencontext_emit_cast(context, CAST_ERREU, value, type_error_union, errors[0]->type);
 				}
+				gencontext_emit_defer(context, throw_info->defer, NULL);
 				gencontext_emit_return_value(context, value);
 				gencontext_emit_block(context, after_block);
 				return;
@@ -1205,6 +1217,7 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 					}
 				}
 				LLVMBuildStore(context->builder, value, error_param->var.backend_ref);
+				gencontext_emit_defer(context, throw_info->defer, catch->defer);
 				gencontext_emit_br(context, catch->catch->catch_stmt.block);
 				gencontext_emit_block(context, after_block);
 				return;
@@ -1238,6 +1251,7 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 				LLVMValueRef offset = LLVMBuildBitCast(context->builder, catch->error->error.start_value, llvm_type(type_error_union), "");
 				LLVMValueRef negated = LLVMBuildNeg(context->builder, offset, "");
 				LLVMValueRef final_value = LLVMBuildAnd(context->builder, negated, value, "");
+				gencontext_emit_defer(context, throw_info->defer, NULL);
 				gencontext_emit_return_value(context, final_value);
 				gencontext_emit_block(context, after_block);
 				assert(i == vec_size(throw_info->catches) - 1);
@@ -1247,6 +1261,7 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 			case CATCH_RETURN_ANY:
 			{
 				// This is simple, just return our value.
+				gencontext_emit_defer(context, throw_info->defer, NULL);
 				gencontext_emit_return_value(context, value);
 				gencontext_emit_block(context, after_block);
 				assert(i == vec_size(throw_info->catches) - 1);
@@ -1255,6 +1270,7 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 			case CATCH_TRY_ELSE:
 			{
 				// This should be the last catch.
+				gencontext_emit_defer(context, throw_info->defer, catch->defer);
 				LLVMBasicBlockRef else_block = gencontext_get_try_target(context, catch->try_else);
 				gencontext_emit_br(context, else_block);
 				gencontext_emit_block(context, after_block);
@@ -1272,6 +1288,7 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 				{
 					// Store the value, then jump
 					LLVMBuildStore(context->builder, value, error_param->var.backend_ref);
+					gencontext_emit_defer(context, throw_info->defer, catch->defer);
 					gencontext_emit_br(context, catch->catch->catch_stmt.block);
 					gencontext_emit_block(context, after_block);
 					assert(i == vec_size(throw_info->catches) - 1);
@@ -1292,6 +1309,7 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 				LLVMBasicBlockRef match_block = gencontext_create_free_block(context, "match");
 				gencontext_emit_cond_br(context, match, match_block, err_handling_block);
 				gencontext_emit_block(context, match_block);
+				gencontext_emit_defer(context, throw_info->defer, catch->defer);
 
 				LLVMBuildStore(context->builder, comp_value, error_param->var.backend_ref);
 				gencontext_emit_br(context, catch->catch->catch_stmt.block);
