@@ -278,6 +278,47 @@ void gencontext_emit_struct_decl(GenContext *context, Decl *decl)
 	}
 }
 
+static inline uint32_t upper_power_of_two(uint32_t v)
+{
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v++;
+	return v;
+}
+
+void gencontext_emit_error_decl(GenContext *context, Decl *decl)
+{
+	unsigned slots = vec_size(decl->error.error_constants) + 1;
+	LLVMTypeRef reserved_type = LLVMArrayType(llvm_type(type_char), slots);
+	char *buffer = strcat_arena(decl->external_name, "_DOMAIN");
+	LLVMValueRef global_name = LLVMAddGlobal(context->module, reserved_type, buffer);
+	LLVMSetLinkage(global_name, LLVMInternalLinkage);
+	LLVMSetGlobalConstant(global_name, 1);
+	LLVMSetInitializer(global_name, llvm_int(type_char, 1));
+	decl->error.start_value = global_name;
+	uint32_t min_align = upper_power_of_two(slots);
+	uint32_t pointer_align = type_abi_alignment(type_voidptr);
+	LLVMSetAlignment(global_name, pointer_align > min_align ? pointer_align : min_align);
+	switch (decl->visibility)
+	{
+		case VISIBLE_MODULE:
+			LLVMSetVisibility(global_name, LLVMProtectedVisibility);
+			break;
+		case VISIBLE_PUBLIC:
+			LLVMSetVisibility(global_name, LLVMDefaultVisibility);
+			break;
+		case VISIBLE_EXTERN:
+		case VISIBLE_LOCAL:
+			LLVMSetVisibility(global_name, LLVMHiddenVisibility);
+			break;
+	}
+}
+
+
 static void gencontext_emit_decl(GenContext *context, Decl *decl)
 {
 	switch (decl->decl_kind)
@@ -303,7 +344,7 @@ static void gencontext_emit_decl(GenContext *context, Decl *decl)
 			// TODO
 			break;
 		case DECL_ERROR:
-			// TODO
+			UNREACHABLE;
 			break;;
 		case DECL_ERROR_CONSTANT:
 			//TODO
@@ -340,6 +381,10 @@ void llvm_codegen(Context *context)
 	{
 		gencontext_emit_decl(&gen_context, context->types[i]);
 	}
+	VECEACH(context->error_types, i)
+	{
+		gencontext_emit_error_decl(&gen_context, context->error_types[i]);
+	}
 	VECEACH(context->functions, i)
 	{
 		Decl *decl = context->functions[i];
@@ -354,7 +399,7 @@ void llvm_codegen(Context *context)
 	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, build_options.optimization_level);
 	LLVMPassManagerBuilderSetSizeLevel(pass_manager_builder, build_options.size_optimization_level);
 	LLVMPassManagerBuilderSetDisableUnrollLoops(pass_manager_builder, build_options.optimization_level == OPTIMIZATION_NONE);
-	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, get_inlining_threshold());
+	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, 0); //get_inlining_threshold());
 	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
 	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(gen_context.module);
 	LLVMAddAnalysisPasses(target_machine(), pass_manager);

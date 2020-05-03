@@ -829,7 +829,10 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 		case DECL_ATTRIBUTE:
 			TODO
 		case DECL_THROWS:
-			TODO
+			fprintf_indented(file, indent, "(throws");
+			fprint_type_info_recursive(file, decl->throws, indent + 1);
+			fprint_endparen(file, indent);
+			break;;
 	}
 }
 
@@ -1032,9 +1035,6 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 		case AST_THROW_STMT:
 			fprintf(file, "(throw\n");
 			fprint_expr_recursive(file, ast->throw_stmt.throw_value, indent + 1);
-			break;
-		case AST_TRY_STMT:
-			TODO
 			break;
 		case AST_VOLATILE_STMT:
 			TODO

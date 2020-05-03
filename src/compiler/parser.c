@@ -187,11 +187,10 @@ static void recover_top_level(Context *context)
 			case TOKEN_FUNC:
 			case TOKEN_CONST:
 			case TOKEN_TYPEDEF:
-			case TOKEN_ERROR_TYPE:
 			case TOKEN_STRUCT:
 			case TOKEN_IMPORT:
 			case TOKEN_UNION:
-			case TOKEN_ENUM:
+			case TOKEN_ERRSET:
 			case TOKEN_MACRO:
 			case TOKEN_EXTERN:
 				return;
@@ -332,6 +331,9 @@ static inline TypeInfo *parse_base_type(Context *context)
 		case TOKEN_CT_TYPE_IDENT:
 			type_info = type_info_new(TYPE_INFO_IDENTIFIER, context->tok.span);
 			type_info->unresolved.name_loc = context->tok;
+			break;
+		case TOKEN_ERROR_TYPE:
+			type_found = type_error_union;
 			break;
 		case TOKEN_VOID:
 			type_found = type_void;
@@ -719,6 +721,7 @@ bool parse_type_or_expr(Context *context, Expr **expr_ptr, TypeInfo **type_ptr)
 		case TOKEN_C_ULONGLONG:
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_CT_TYPE_IDENT:
+		case TOKEN_ERROR_TYPE:
 			*type_ptr = parse_type(context);
 			return parse_type_or_expr_after_type(context, expr_ptr, type_ptr);
 			return true;
@@ -1177,7 +1180,7 @@ static AttributeDomains TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
 		[TOKEN_UNION] = ATTR_UNION,
 		[TOKEN_CONST] = ATTR_CONST,
 		[TOKEN_TYPEDEF] = ATTR_TYPEDEF,
-		[TOKEN_ERROR_TYPE] = ATTR_ERROR,
+		[TOKEN_ERRSET] = ATTR_ERROR,
 };
 
 /**
@@ -1333,7 +1336,7 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
  */
 static inline Decl *parse_error_declaration(Context *context, Visibility visibility)
 {
-	advance_and_verify(context, TOKEN_ERROR_TYPE);
+	advance_and_verify(context, TOKEN_ERRSET);
 
     Decl *error_decl = decl_new_with_type(context->tok, DECL_ERROR, visibility);
 
@@ -1680,7 +1683,7 @@ static inline Decl *parse_top_level(Context *context)
 			return parse_macro_declaration(context, visibility);
 		case TOKEN_ENUM:
 			return parse_enum_declaration(context, visibility);
-		case TOKEN_ERROR_TYPE:
+		case TOKEN_ERRSET:
 			return parse_error_declaration(context, visibility);
 		case TOKEN_TYPEDEF:
 			return parse_typedef_declaration(context, visibility);

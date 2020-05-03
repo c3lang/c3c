@@ -64,18 +64,17 @@ enum EnumTestOverflowAfter
 
 
 
-/*
-error Error
+errset Error
 {
     BLURB,
     NO_SUCH_FILE,
 }
 
-error OtherError
+errset OtherError
 {
     FOO_BAR
 }
-*/
+
 enum Inf
 {
     A,
@@ -608,9 +607,45 @@ struct WithArray
     int[4] x;
 }
 
-error Err
+errset Err
 {
     TEST_ERR1
+}
+
+errset Err2
+{
+    TEST_ERR2
+}
+
+func int testThrow1() throws Err
+{
+    throw Err.TEST_ERR1;
+}
+
+func int testThrow2() throws Err, Err2
+{
+    throw Err.TEST_ERR1;
+}
+
+func int testThrow3() throws
+{
+    throw Err.TEST_ERR1;
+}
+
+func int testThrow4(int x) throws
+{
+    throw x > 4 ? Err.TEST_ERR1 : Err2.TEST_ERR2;
+}
+
+func int testThrow5(int x) throws
+{
+    throw x > 4 ? Err.TEST_ERR1 : Err.TEST_ERR1;
+}
+
+func int testThrow6(int x) throws Err, Err2
+{
+    if (x > 4) throw Err.TEST_ERR1;
+    throw Err2.TEST_ERR2;
 }
 
 
@@ -620,12 +655,98 @@ func int testThrow(int x) throws Err
     return x * x;
 }
 
+func int testThrowAny(int x) throws
+{
+    if (x < 0) throw Err.TEST_ERR1;
+    return x * x;
+}
+
+func int oekt() throws
+{
+    int x = try testThrow(-3);
+    return x;
+}
+
+func void testErrorMulti()
+{
+
+    printf("Test error multi\n");
+    int z = try oekt();
+    catch (Err e)
+    {
+        printf("Expected particular error.\n");
+    }
+    catch (error e)
+    {
+        printf("Unexpected any error error.\n");
+    }
+    printf("End\n");
+}
+
+func void throwAOrB(int i) throws Err, Err2
+{
+    printf("AB\n");
+    if (i == 1) throw Err.TEST_ERR1;
+    printf("B\n");
+    if (i == 2) throw Err2.TEST_ERR2;
+    printf("None\n");
+}
+
 func void testErrors()
 {
+
     int x = try testThrow(20) else 1;
     printf("Value was %d, expected 400.\n", x);
+
+
     x = try testThrow(-1) else 20;
     printf("Value was %d, expected 20.\n", x);
+
+    printf("Begin\n");
+    int y = try testThrow(-1);
+
+    printf("Value was %d, expected 9.\n", y);
+
+    printf("Didn't expect this one.\n");
+    catch (error e)
+    {
+        printf("Expected this catch.\n");
+    }
+    y = try testThrow(-1);
+
+    catch (Err e)
+    {
+        printf("Particular error.\n");
+    }
+    testErrorMulti();
+
+    try throwAOrB(1);
+    catch (Err e)
+    {
+        printf("A1\n");
+    }
+    catch (Err2 e)
+    {
+        printf("A2\n");
+    }
+    catch (error e)
+    {
+        printf("Wut\n");
+    }
+    try throwAOrB(2);
+    catch (Err e)
+    {
+        printf("B1\n");
+    }
+    catch (Err2 e)
+    {
+        printf("B2\n");
+    }
+    catch (error e)
+    {
+        printf("Wut\n");
+    }
+    printf("End of errors\n");
 }
 
 func void testArray()
@@ -651,6 +772,7 @@ func void testArray()
     {
         printf("x[%d] = %d\n", i, x[i]);
     }
+
 }
 func void testDefer()
 {

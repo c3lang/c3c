@@ -31,6 +31,7 @@ static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
 				break;
 			}
 		}
+		constant->type = decl->type;
 		constant->error_constant.value = i + 1;
 		constant->resolve_status = RESOLVE_DONE;
 	}
@@ -274,25 +275,23 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 	}
 
 	unsigned error_types = vec_size(signature->throws);
-	if (signature->throw_any || error_types > 1)
+	ErrorReturn error_return = ERROR_RETURN_NONE;
+	if (signature->throw_any)
 	{
-		signature->error_return = ERROR_RETURN_PARAM;
+		error_return = ERROR_RETURN_ANY;
 	}
-	else if (error_types == 1)
+	else if (error_types)
 	{
-		signature->error_return = ERROR_RETURN_RETURN;
+		 error_return = error_types > 1 ? ERROR_RETURN_MANY : ERROR_RETURN_ONE;
 	}
-	else
-	{
-		signature->error_return = ERROR_RETURN_NONE;
-	}
+	signature->error_return = error_return;
 
 	Type *return_type = signature->rtype->type->canonical;
 	signature->return_param = false;
 	if (return_type->type_kind != TYPE_VOID)
 	{
 		// TODO fix this number with ABI compatibility
-		if (signature->error_return == ERROR_RETURN_RETURN || type_size(return_type) > 8 * 2)
+		if (signature->error_return != ERROR_RETURN_NONE || type_size(return_type) > 8 * 2)
 		{
 			signature->return_param = true;
 		}

@@ -22,3 +22,14 @@ char *strformat(const char *var, ...)
 	assert(len == new_len);
 	return buffer;
 }
+
+char *strcat_arena(const char *a, const char *b)
+{
+	unsigned a_len = strlen(a);
+	unsigned b_len = strlen(b);
+	char *buffer = malloc_arena(a_len + b_len + 1);
+	memcpy(buffer, a, a_len);
+	memcpy(buffer + a_len, b, b_len);
+	buffer[a_len + b_len] = '\0';
+	return buffer;
+}

@@ -440,9 +440,119 @@ static inline bool sema_analyse_label(Context *context, Ast *statement)
 }
 
 
-static bool sema_analyse_catch_stmt(Context *context __unused, Ast *statement __unused)
+static inline bool throw_completely_handled_call_throw_many(Throw *throw)
 {
-	TODO
+	assert(throw->kind == THROW_TYPE_CALL_THROW_MANY && "Only for throw many");
+	assert(!throw->throw_info->is_completely_handled && "Expected unhandled");
+	Decl **throws = throw->throws;
+	CatchInfo *catched = throw->throw_info->catches;
+	unsigned catches = 0;
+	unsigned throw_count = vec_size(throws);
+	for (unsigned i = 0; i < throw_count; i++)
+	{
+		Decl *throw_decl = throws[i];
+		if (throw_completely_caught(throw_decl, catched))
+		{
+			catches++;
+		}
+	}
+	return catches == throw_count;
+}
+
+/**
+ * Handle the catch statement
+ * @return true if error checking succeeds.
+ */
+static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
+{
+	unsigned throws = vec_size(context->error_calls);
+
+	// 1. If no errors are found we don't have a try to match.
+	if (throws <= context->current_scope->throws)
+	{
+		SEMA_ERROR(statement, "Unexpected 'catch' without a matching 'try'.");
+		return false;
+	}
+
+	// 2. Let's check that we haven't caught all errors.
+	bool found = false;
+	for (unsigned i = context->current_scope->throws; i < throws; i++)
+	{
+		if (!context->error_calls[i].throw_info->is_completely_handled)
+		{
+			found = true;
+			break;;
+		}
+	}
+	// IMPROVE: Suppress for macro?
+	if (!found)
+	{
+		SEMA_ERROR(statement, "All errors are already caught, so this catch will not handle any errors.");
+		return false;
+	}
+
+	// 3. Resolve variable
+	Decl *variable = statement->catch_stmt.error_param;
+	assert(variable->var.kind == VARDECL_LOCAL);
+	if (!sema_resolve_type_info(context, variable->var.type_info)) return false;
+	variable->type = variable->var.type_info->type;
+	Type *error_type = variable->type->canonical;
+
+	CatchInfo catch = { .kind = CATCH_REGULAR, .catch = statement };
+	// 4. Absorb all errors in case of a type error union.
+	if (error_type == type_error_union)
+	{
+		for (unsigned i = context->current_scope->throws; i < throws; i++)
+		{
+			Throw *throw = &context->error_calls[i];
+			// Skip handled errors
+			if (throw->throw_info->is_completely_handled) continue;
+			vec_add(throw->throw_info->catches, catch);
+			throw->throw_info->is_completely_handled = true;
+		}
+		// Resize to remove the throws from consideration.
+		vec_resize(context->error_calls, context->current_scope->throws);
+	}
+	else
+	{
+		// 5. Otherwise, go through the list of errors and null the errors matching the current type.
+		for (unsigned i = context->current_scope->throws; i < throws; i++)
+		{
+			Throw *throw = &context->error_calls[i];
+			// Skip handled errors
+			if (throw->throw_info->is_completely_handled) continue;
+
+			switch (throw->kind)
+			{
+				case THROW_TYPE_CALL_ANY:
+					vec_add(throw->throw_info->catches, catch);
+					// An error union can never be completely handled.
+					break;
+				case THROW_TYPE_CALL_THROW_ONE:
+					// If there is no match, ignore.
+					if (throw->throw != error_type) continue;
+					// Otherwise add and set to completely handled.
+					vec_add(throw->throw_info->catches, catch);
+					throw->throw_info->is_completely_handled = true;
+					break;
+				case THROW_TYPE_CALL_THROW_MANY:
+					// The most complex situation, add and handle below.
+					vec_add(throw->throw_info->catches, catch);
+					throw->throw_info->is_completely_handled = throw_completely_handled_call_throw_many(throw);
+					break;
+			}
+		}
+	}
+	context_push_scope(context);
+	// Push the error variable
+	if (!sema_add_local(context, variable)) goto ERR_END_SCOPE;
+	if (!sema_analyse_statement(context, statement->catch_stmt.body)) goto ERR_END_SCOPE;
+	context_pop_scope(context);
+	return true;
+
+	ERR_END_SCOPE:
+	context_pop_scope(context);
+	return false;
 }
 
 static bool sema_analyse_asm_stmt(Context *context __unused, Ast *statement __unused)
@@ -719,29 +829,6 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 	return success;
 }
 
-static bool sema_analyse_try_stmt(Context *context, Ast *statement)
-{
-	context->try_nesting++;
-	unsigned errors = vec_size(context->errors);
-	if (!sema_analyse_statement(context, statement->try_stmt))
-	{
-		context->try_nesting--;
-		return false;
-	}
-	unsigned new_errors = vec_size(context->errors);
-	if (new_errors == errors)
-	{
-		SEMA_ERROR(statement, "No error to 'try' in the statement that follows, please remove the 'try'.");
-		return false;
-	}
-	for (unsigned i = errors; i < new_errors; i++)
-	{
-		// At least one uncaught error found!
-		if (context->errors[i]) return true;
-	}
-	SEMA_ERROR(statement, "All errors in the following statement was caught, please remove the 'try'.");
-	return false;
-}
 
 static bool sema_analyse_throw_stmt(Context *context, Ast *statement)
 {
@@ -749,18 +836,44 @@ static bool sema_analyse_throw_stmt(Context *context, Ast *statement)
 	UPDATE_EXIT(EXIT_THROW);
 	if (!sema_analyse_expr(context, NULL, throw_value)) return false;
 	Type *type = throw_value->type->canonical;
-	if (type->type_kind != TYPE_ERROR)
+	if (type->type_kind != TYPE_ERROR && type->type_kind != TYPE_ERROR_UNION)
 	{
 		SEMA_ERROR(throw_value, "Only 'error' types can be thrown, this is a '%s'.", type->name);
 		return false;
 	}
-	if (!context->try_nesting && !context->active_function_for_analysis->func.function_signature.error_return)
+	FunctionSignature *sig = &context->active_function_for_analysis->func.function_signature;
+	if (sig->error_return == ERROR_RETURN_NONE)
 	{
-		// TODO check error type
-		SEMA_ERROR(statement, "This 'throw' is not handled, please add a 'throws %s' clause to the function signature or use try-catch.", type->name);
+		SEMA_ERROR(statement, "This throw requires that the function adds 'throws %s' to its declaration.", type->name);
 		return false;
 	}
-	vec_add(context->errors, type->decl);
+
+	// Check if the error is actually in the list.
+	if (sig->error_return == ERROR_RETURN_MANY || sig->error_return == ERROR_RETURN_ONE)
+	{
+		bool found = false;
+		VECEACH(sig->throws, i)
+		{
+			if (sig->throws[i]->type == type)
+			{
+				found = true;
+			}
+		}
+		if (!found)
+		{
+			if (type != type_error_union)
+			{
+				SEMA_ERROR(statement->throw_stmt.throw_value, "'%s' must be added to the list of errors after 'throws'.", type->name);
+			}
+			else
+			{
+				SEMA_ERROR(statement, "This throw requires the function to use a wildcard 'throws' without types.", type->name);
+			}
+			return false;
+		}
+	}
+
+	vec_add(context->throw, statement);
 	return true;
 }
 
@@ -833,8 +946,6 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 			return sema_analyse_switch_stmt(context, statement);
 		case AST_THROW_STMT:
 			return sema_analyse_throw_stmt(context, statement);
-		case AST_TRY_STMT:
-			return sema_analyse_try_stmt(context, statement);
 		case AST_NEXT_STMT:
 			return sema_analyse_next_stmt(context, statement);
 		case AST_VOLATILE_STMT:
@@ -883,16 +994,75 @@ static inline void defer_list_walk_to_common_depth(Ast **defer_stmt, int this_de
 	}
 }
 
+static inline bool throw_add_error_return_catch(Throw *throw, Decl **func_throws)
+{
+	assert(throw->kind != THROW_TYPE_CALL_ANY);
+	Decl **throws;
+	unsigned throw_count;
+	if (throw->kind == THROW_TYPE_CALL_THROW_MANY)
+	{
+		throws = throw->throws;
+		throw_count = vec_size(throws);
+	}
+	else
+	{
+		throws = &throw->throw->decl;
+		throw_count = 1;
+	}
+	unsigned func_throw_count = vec_size(func_throws);
+	assert(func_throw_count);
+	bool catch_added = false;
+	for (unsigned i = 0; i < func_throw_count; i++)
+	{
+		Decl *func_throw = func_throws[i];
+		for (unsigned j = 0; j < throw_count; j++)
+		{
+			if (throws[j] == func_throw->type->decl)
+			{
+				// If the throw was already caught, ignore it.
+				if (throw_completely_caught(throws[j], throw->throw_info->catches)) continue;
+
+				// One of the throws was caught
+				if (func_throw_count > 1)
+				{
+					CatchInfo info = { .kind = CATCH_RETURN_MANY, .error = func_throw->type->decl };
+					vec_add(throw->throw_info->catches, info);
+				}
+				else
+				{
+					CatchInfo info = { .kind = CATCH_RETURN_ONE, .error = func_throw->type->decl };
+					vec_add(throw->throw_info->catches, info);
+				}
+				// If we only have one count, then we're done!
+				if (throw_count == 1)
+				{
+					throw->throw_info->is_completely_handled = true;
+					return true;
+				}
+				// Otherwise we simply continue.
+			}
+		}
+	}
+	// If we have already caught some, then we might have completely caught all throws.
+	if (throw_count > 1 && catch_added)
+	{
+		throw->throw_info->is_completely_handled = throw_completely_handled_call_throw_many(throw);
+	}
+	return catch_added;
+}
+
 bool sema_analyse_function_body(Context *context, Decl *func)
 {
+	FunctionSignature *signature = &func->func.function_signature;
 	context->active_function_for_analysis = func;
-	context->rtype = func->func.function_signature.rtype->type;
+	context->rtype = signature->rtype->type;
 	context->current_scope = &context->scopes[0];
 	// Clean out the current scope.
 	memset(context->current_scope, 0, sizeof(*context->current_scope));
 
 	// Clear try handling
-	vec_resize(context->errors, 0);
+	vec_resize(context->throw, 0);
+	vec_resize(context->error_calls, 0);
 	// Clear returns
 	vec_resize(context->returns, 0);
 	context->try_nesting = 0;
@@ -904,7 +1074,7 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	context->in_volatile_section = 0;
 	func->func.annotations = CALLOCS(*func->func.annotations);
 	context_push_scope(context);
-	Decl **params = func->func.function_signature.params;
+	Decl **params = signature->params;
 	assert(context->current_scope == &context->scopes[1]);
 	VECEACH(params, i)
 	{
@@ -914,13 +1084,14 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	assert(context->current_scope == &context->scopes[1]);
 	if (context->current_scope->exit != EXIT_RETURN && context->current_scope->exit != EXIT_THROW && context->current_scope->exit != EXIT_GOTO)
 	{
-		if (func->func.function_signature.rtype->type->canonical != type_void)
+		if (signature->rtype->type->canonical != type_void)
 		{
 			// IMPROVE better pointer to end.
 			SEMA_ERROR(func, "Missing return statement at the end of the function.");
 			return false;
 		}
 	}
+
 
 	VECEACH(context->gotos, i)
 	{
@@ -966,6 +1137,40 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 			current = current->defer_stmt.prev_defer;
 		}
 	}
+	bool error_was_useful = vec_size(context->throw) > 0;
+	VECEACH(context->error_calls, i)
+	{
+		Throw *throw = &context->error_calls[i];
+		if (throw->throw_info->is_completely_handled) continue;
+
+		switch (signature->error_return)
+		{
+			case ERROR_RETURN_NONE:
+				// Nothing to do, will result in error.
+				break;
+			case ERROR_RETURN_ANY:
+				// Any return, then any throw is ok, add
+				// an implicit catch.
+				vec_add(throw->throw_info->catches, (CatchInfo) { .kind = CATCH_RETURN_ANY });
+				throw->throw_info->is_completely_handled = true;
+				error_was_useful = true;
+				continue;
+			case ERROR_RETURN_MANY:
+			case ERROR_RETURN_ONE:
+				// Try to add a catch.
+				if (throw_add_error_return_catch(throw, signature->throws))
+				{
+					error_was_useful = true;
+				}
+				break;
+		}
+		// If it's fully catched, then fine.
+		if (throw->throw_info->is_completely_handled) continue;
+		// Otherwise error.
+		SEMA_ERROR(throw, "The errors returned by the call must be completely caught in a catch or else the function current must be declared to throw.");
+		return false;
+	}
+
 	func->func.labels = context->labels;
 	context_pop_scope(context);
 	context->current_scope = NULL;

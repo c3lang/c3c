@@ -18,6 +18,28 @@ static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 	return true;
 }
 
+bool throw_completely_caught(Decl *throw, CatchInfo *catches)
+{
+	VECEACH(catches, i)
+	{
+		CatchInfo *catch_info = &catches[i];
+		switch (catch_info->kind)
+		{
+			case CATCH_REGULAR:
+				if (throw == catch_info->catch->catch_stmt.error_param->type->decl) return true;
+				break;
+			case CATCH_TRY_ELSE:
+			case CATCH_RETURN_ANY:
+				return true;
+			case CATCH_RETURN_MANY:
+			case CATCH_RETURN_ONE:
+				if (throw == catch_info->error) return true;
+				break;
+		}
+	}
+	return false;
+}
+
 
 static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 {

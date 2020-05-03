@@ -200,6 +200,8 @@ const char *token_type_to_string(TokenType type)
 			return "extern";
 		case TOKEN_ERROR_TYPE:
 			return "error";
+		case TOKEN_ERRSET:
+			return "errset";
 		case TOKEN_FALSE:
 			return "false";
 		case TOKEN_FOR:

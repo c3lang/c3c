@@ -45,7 +45,6 @@ typedef struct
 } DebugContext;
 
 #define BREAK_STACK_MAX 256
-#define CATCH_STACK_MAX 256
 
 typedef struct
 {
@@ -67,12 +66,10 @@ typedef struct
 	Ast **defer_stack;
 	DebugContext debug;
 	Context *ast_context;
-	Catch catch_stack[CATCH_STACK_MAX];
-	size_t catch_stack_index;
 	BreakContinue break_continue_stack[BREAK_STACK_MAX];
 	size_t break_continue_stack_index;
 	LLVMValueRef return_out;
-	LLVMValueRef error_out;
+	LLVMBasicBlockRef error_exit_block;
 	LLVMBasicBlockRef expr_block_exit;
 	bool current_block_is_target : 1;
 	bool did_call_stack_save : 1;
@@ -111,12 +108,13 @@ void gencontext_end_module(GenContext *context);
 
 void gencontext_add_attribute(GenContext context, unsigned attribute_id, LLVMValueRef value_to_add_attribute_to);
 void gencontext_emit_stmt(GenContext *context, Ast *ast);
-void gencontext_push_catch(GenContext *context, Decl *error_type, LLVMBasicBlockRef catch_block);
-void gencontext_pop_catch(GenContext *context);
+
+void gencontext_generate_catch_block_if_needed(GenContext *context, Ast *ast);
 LLVMValueRef gencontext_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id, LLVMTypeRef *types,
                                             LLVMValueRef *values, unsigned arg_count);
 void gencontext_emit_panic_on_true(GenContext *context, LLVMValueRef value, const char *panic_name);
 void gencontext_emit_defer(GenContext *context, Ast *defer_start, Ast *defer_end);
+LLVMBasicBlockRef gencontext_get_try_target(GenContext *context, Expr *try_expr);
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr);
 LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, Expr *expr);
 LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type);
@@ -134,7 +132,6 @@ static inline LLVMBasicBlockRef gencontext_create_free_block(GenContext *context
 {
 	return LLVMCreateBasicBlockInContext(context->context, name);
 }
-
 void gencontext_emit_function_body(GenContext *context, Decl *decl);
 void gencontext_emit_implicit_return(GenContext *context);
 void gencontext_emit_function_decl(GenContext *context, Decl *decl);
@@ -146,7 +143,12 @@ static inline LLVMValueRef gencontext_emit_load(GenContext *context, Type *type,
 	assert(gencontext_get_llvm_type(context, type) == LLVMGetElementType(LLVMTypeOf(value)));
 	return LLVMBuildLoad2(context->builder, gencontext_get_llvm_type(context, type), value, "");
 }
-
+static inline void gencontext_emit_return_value(GenContext *context, LLVMValueRef value)
+{
+	LLVMBuildRet(context->builder, value);
+	context->current_block = NULL;
+	context->current_block_is_target = false;
+}
 LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMValueRef value, Type *type, Type *target_type);
 static inline bool gencontext_func_pass_return_by_param(GenContext *context, Type *first_param_type) { return false; };
 static inline bool gencontext_func_pass_param_by_reference(GenContext *context, Type *param_type) { return false; }
@@ -219,3 +221,13 @@ static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi)
 
 #define llvm_type(type) gencontext_get_llvm_type(context, type)
 #define DEBUG_TYPE(type) gencontext_get_debug_type(context, type)
+
+static inline LLVMValueRef gencontext_emit_const_int(GenContext *context, Type *type, uint64_t val)
+{
+	type = type->canonical;
+	if (type == type_error_union) type = type_usize->canonical;
+	assert(type_is_any_integer(type) || type->type_kind == TYPE_BOOL);
+	return LLVMConstInt(llvm_type(type), val, type_is_signed_integer(type));
+}
+
+#define llvm_int(_type, _val) gencontext_emit_const_int(context, _type, _val)

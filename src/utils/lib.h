@@ -303,5 +303,10 @@ static inline bool is_all_lower(const char* string)
 #define __printflike(x, y)
 #endif
 
+char *strcat_arena(const char *a, const char *b);
 char *strformat(const char *var, ...) __printflike(1, 2);
 
+#define MAX(_a, _b) ({ \
+  typeof(_a) __a__ = (_a); \
+  typeof(_b) __b__ = (_b); \
+  __a__ > __b__ ? __a__ : __b__; })

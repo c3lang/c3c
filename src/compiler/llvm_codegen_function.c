@@ -84,14 +84,20 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 
 void gencontext_emit_implicit_return(GenContext *context)
 {
-	if (context->cur_func_decl->func.function_signature.error_return == ERROR_RETURN_RETURN)
+	switch (context->cur_func_decl->func.function_signature.error_return)
 	{
-		LLVMBuildRet(context->builder, LLVMConstInt(llvm_type(type_ulong), 0, false));
+		case ERROR_RETURN_NONE:
+			LLVMBuildRetVoid(context->builder);
+			return;
+		case ERROR_RETURN_ANY:
+		case ERROR_RETURN_MANY:
+			LLVMBuildRet(context->builder, llvm_int(type_usize, 0));
+			return;
+		case ERROR_RETURN_ONE:
+			LLVMBuildRet(context->builder, llvm_int(type_error_base, 0));
+			return;
 	}
-	else
-	{
-		LLVMBuildRetVoid(context->builder);
-	}
+	UNREACHABLE
 }
 
 void gencontext_emit_function_body(GenContext *context, Decl *decl)
@@ -117,6 +123,7 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 
 	FunctionSignature *signature = &decl->func.function_signature;
 	int arg = 0;
+
 	if (signature->return_param)
 	{
 		context->return_out = LLVMGetParam(context->function, arg++);
@@ -124,12 +131,6 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	else
 	{
 		context->return_out = NULL;
-	}
-
-	if (signature->error_return == ERROR_RETURN_PARAM)
-	{
-		context->error_out = gencontext_emit_alloca(context, llvm_type(type_error_union), "errorval");
-		LLVMBuildStore(context->builder, LLVMGetParam(context->function, arg++), context->error_out);
 	}
 
 	// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code

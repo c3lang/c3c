@@ -67,7 +67,7 @@ Things missing:
 * Error handling
 - Error unions
 - Catch/try
-- Function return channel
+- Try goto/return/break/continue/throw
 
 * Enum
 - Values: min, max, array

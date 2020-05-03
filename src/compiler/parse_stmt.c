@@ -89,12 +89,18 @@ static inline Ast* parse_catch_stmt(Context *context)
 	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
 
 	TypeInfo *type = NULL;
-	if (!try_consume(context, TOKEN_ERROR_TYPE))
+	if (context->tok.type == TOKEN_ERROR_TYPE)
+	{
+		type = type_info_new_base(type_error_union, context->tok.span);
+		advance(context);
+	}
+	else
 	{
 		type = TRY_TYPE_OR(parse_type(context), poisoned_ast);
 	}
 	EXPECT_IDENT_FOR_OR("error parameter", poisoned_ast);
-	Decl *decl = decl_new_var(context->tok, type, VARDECL_PARAM, VISIBLE_LOCAL);
+	Decl *decl = decl_new_var(context->tok, type, VARDECL_LOCAL, VISIBLE_LOCAL);
+	advance(context);
 	catch_stmt->catch_stmt.error_param = decl;
 
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
@@ -635,6 +641,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_TYPEID:
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_TYPE_IDENT:
+		case TOKEN_ERROR_TYPE:
 			if (context->next_tok.type == TOKEN_DOT || context->next_tok.type == TOKEN_LBRACE)
 			{
 				return parse_expr_stmt(context);
@@ -680,12 +687,15 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_TRY:
 			if (is_valid_try_statement(context->next_tok.type))
 			{
-				Token token = context->tok;
+				Expr *try_expr = EXPR_NEW_TOKEN(EXPR_TRY, context->tok);
 				advance(context);
 				Ast *stmt = TRY_AST(parse_stmt(context));
-				Ast *try_ast = AST_NEW_TOKEN(AST_TRY_STMT, token);
-				try_ast->try_stmt = stmt;
-				return try_ast;
+				try_expr->try_expr.type = TRY_STMT;
+				try_expr->try_expr.stmt = stmt;
+				RANGE_EXTEND_PREV(try_expr);
+				Ast *ast = AST_NEW(AST_EXPR_STMT, try_expr->span);
+				ast->expr_stmt = try_expr;
+				return ast;
 			}
 			return parse_expr_stmt(context);
 		case TOKEN_CONTINUE:
@@ -784,7 +794,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_AS:
 		case TOKEN_ELSE:
 		case TOKEN_ENUM:
-		case TOKEN_ERROR_TYPE:
 		case TOKEN_FUNC:
 		case TOKEN_GENERIC:
 		case TOKEN_IMPORT:
@@ -794,6 +803,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_EXTERN:
 		case TOKEN_STRUCT:
 		case TOKEN_THROWS:
+		case TOKEN_ERRSET:
 		case TOKEN_TYPEDEF:
 		case TOKEN_UNION:
 		case TOKEN_UNTIL:

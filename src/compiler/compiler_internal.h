@@ -234,6 +234,7 @@ typedef struct
 typedef struct
 {
 	Decl **error_constants;
+	void *start_value;
 } ErrorDecl;
 
 typedef struct
@@ -298,8 +299,9 @@ typedef struct
 typedef enum
 {
 	ERROR_RETURN_NONE = 0,
-	ERROR_RETURN_PARAM = 1,
-	ERROR_RETURN_RETURN = 2,
+	ERROR_RETURN_ONE = 1,
+	ERROR_RETURN_MANY = 2,
+	ERROR_RETURN_ANY = 3,
 } ErrorReturn;
 typedef struct _FunctionSignature
 {
@@ -308,7 +310,7 @@ typedef struct _FunctionSignature
 	bool has_default : 1;
 	bool throw_any : 1;
 	bool return_param : 1;
-	ErrorReturn error_return : 3;
+	ErrorReturn error_return : 4;
 	TypeInfo *rtype;
 	Decl** params;
 	Decl** throws;
@@ -425,10 +427,27 @@ typedef struct _Decl
 	};
 } Decl;
 
+typedef enum
+{
+	TRY_EXPR_ELSE_EXPR,
+	TRY_EXPR_ELSE_JUMP,
+	TRY_STMT,
+} TryType;
+
 typedef struct
 {
-	Expr *expr;
-	Expr *else_expr;
+	TryType type;
+	union
+	{
+		Expr *expr;
+		Ast *stmt;
+	};
+	union
+	{
+		Expr *else_expr;
+		Ast *else_stmt;
+	};
+	void *jump_target;
 } ExprTry;
 
 typedef struct
@@ -474,12 +493,39 @@ typedef struct
 } ExprPostUnary;
 
 
+typedef enum
+{
+	CATCH_TRY_ELSE,
+	CATCH_REGULAR,
+	CATCH_RETURN_ANY,
+	CATCH_RETURN_MANY,
+	CATCH_RETURN_ONE
+} CatchKind;
+
+typedef struct
+{
+	CatchKind kind;
+	union
+	{
+		Expr *try_else;
+		Ast *catch;
+		Decl *error;
+	};
+} CatchInfo;
+
+typedef struct
+{
+	bool is_completely_handled;
+	DeferList defers;
+	CatchInfo *catches;
+} ThrowInfo;
 
 typedef struct
 {
 	bool is_struct_function : 1;
 	Expr *function;
 	Expr **arguments;
+	ThrowInfo *throw_info;
 } ExprCall;
 
 typedef struct
@@ -695,6 +741,7 @@ typedef struct _AstCatchStmt
 {
 	Decl *error_param;
 	struct _Ast *body;
+	void *block;
 } AstCatchStmt;
 
 typedef struct _AstCtIfStmt
@@ -751,7 +798,6 @@ typedef struct
 typedef struct
 {
 	Expr *throw_value;
-	DeferList defers;
 } AstThrowStmt;
 
 typedef struct
@@ -786,7 +832,6 @@ typedef struct _Ast
 		Expr *expr_stmt;
 		AstThrowStmt throw_stmt;
 		Ast *volatile_stmt;
-		Ast *try_stmt;
 		AstLabelStmt label_stmt;
 		AstReturnStmt return_stmt;
 		AstWhileStmt while_stmt;
@@ -838,7 +883,7 @@ typedef struct _DynamicScope
 {
 	ScopeFlags flags;
 	ScopeFlags flags_created;
-	unsigned errors;
+	unsigned throws;
 	Decl **local_decl_start;
 	DeferList defers;
 	ExitType exit;
@@ -856,6 +901,26 @@ typedef struct
 	Token tok;
 	Token next_tok;
 } Lexer;
+
+typedef enum
+{
+	THROW_TYPE_CALL_ANY,
+	THROW_TYPE_CALL_THROW_MANY,
+	THROW_TYPE_CALL_THROW_ONE,
+} ThrowType;
+
+typedef struct
+{
+	SourceRange span;
+	ThrowType kind : 4;
+	ThrowInfo *throw_info;
+	// The error type of the throw.
+	union
+	{
+		Type *throw;
+		Decl **throws;
+	};
+} Throw;
 
 typedef struct _Context
 {
@@ -896,7 +961,8 @@ typedef struct _Context
 	// Error handling
 	struct
 	{
-		Decl **errors;
+		Ast **throw;
+		Throw *error_calls;
 		int try_nesting;
 	};
 	Type *rtype;
@@ -952,7 +1018,8 @@ extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
-extern Type *type_typeid, *type_error, *type_error_union;
+extern Type *type_typeid, *type_error_union, *type_error_base;
+
 
 extern const char *main_name;
 
@@ -1081,6 +1148,7 @@ void diag_reset(void);
 void diag_error_range(SourceRange span, const char *message, ...);
 void diag_verror_range(SourceRange span, const char *message, va_list args);
 
+
 #define EXPR_NEW_EXPR(_kind, _expr) expr_new(_kind, _expr->span)
 #define EXPR_NEW_TOKEN(_kind, _tok) expr_new(_kind, _tok.span)
 Expr *expr_new(ExprKind kind, SourceRange start);
@@ -1176,6 +1244,20 @@ void *target_data_layout();
 void *target_machine();
 void *target_target();
 
+bool throw_completely_caught(Decl *throw, CatchInfo *catches);
+static inline Throw throw_new_single(SourceRange range, ThrowType type, ThrowInfo *info, Type *throw)
+{
+	return (Throw) { .kind = type, .span = range, .throw_info = info, .throw = throw };
+}
+static inline Throw throw_new_union(SourceRange range, ThrowType type, ThrowInfo *info)
+{
+	return (Throw) { .kind = type, .span = range, .throw_info = info, .throw = type_error_union };
+}
+static inline Throw throw_new_multiple(SourceRange range, ThrowInfo *info, Decl **throws)
+{
+	return (Throw) { .kind = THROW_TYPE_CALL_THROW_MANY, .span = range, .throw_info = info, .throws = throws };
+}
+
 #define TOKEN_MAX_LENGTH 0xFFFF
 #define TOK2VARSTR(_token) _token.span.length, _token.start
 bool token_is_type(TokenType type);
@@ -1214,7 +1296,7 @@ static inline Type *type_reduced(Type *type)
 {
 	Type *canonical = type->canonical;
 	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
-	if (canonical->type_kind == TYPE_ERROR) return type_error->canonical;
+	if (canonical->type_kind == TYPE_ERROR) return type_error_base;
 	return canonical;
 }
 

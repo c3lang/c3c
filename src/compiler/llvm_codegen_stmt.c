@@ -146,13 +146,22 @@ static inline void gencontext_emit_throw(GenContext *context, Ast *ast)
 	// Ensure we are on a branch that is non empty.
 	if (!gencontext_check_block_branch_emit(context)) return;
 
-	gencontext_emit_defer(context, ast->throw_stmt.defers.start, ast->throw_stmt.defers.end);
-	// TODO handle throw if simply a jump
-	LLVMBuildRet(context->builder, LLVMConstInt(llvm_type(type_ulong), 10 + ast->throw_stmt.throw_value->identifier_expr.decl->error_constant.value, false));
+	// TODO defer
+//	gencontext_emit_defer(context, ast->throw_stmt.defers.start, ast->throw_stmt.defers.end);
 
-	context->current_block = NULL;
-	LLVMBasicBlockRef post_ret_block = gencontext_create_free_block(context, "ret");
-	gencontext_emit_block(context, post_ret_block);
+	LLVMValueRef error_val = gencontext_emit_expr(context, ast->throw_stmt.throw_value);
+
+	// In the case that the throw actually contains a single error, but the function is throwing an error union,
+	// we must insert a conversion.
+	if (context->cur_func_decl->func.function_signature.error_return != ERROR_RETURN_ONE &&
+	    ast->throw_stmt.throw_value->type->type_kind == TYPE_ERROR)
+	{
+		error_val = gencontext_emit_cast(context, CAST_ERREU, error_val, type_error_union, ast->throw_stmt.throw_value->type);
+	}
+
+	gencontext_emit_return_value(context, error_val);
+	LLVMBasicBlockRef post_throw_block = gencontext_create_free_block(context, "throw");
+	gencontext_emit_block(context, post_throw_block);
 }
 
 
@@ -195,23 +204,6 @@ void gencontext_emit_if(GenContext *context, Ast *ast)
 	gencontext_emit_block(context, exit_block);
 }
 
-
-void gencontext_push_catch(GenContext *context, Decl *error_type, LLVMBasicBlockRef catch_block)
-{
-	size_t index = context->catch_stack_index++;
-	if (index == CATCH_STACK_MAX - 1)
-	{
-		error_exit("Exhausted catch stack - exceeded %d entries.", CATCH_STACK_MAX);
-	}
-	context->catch_stack[index].decl = error_type;
-	context->catch_stack[index].catch_block = catch_block;
-}
-
-void gencontext_pop_catch(GenContext *context)
-{
-	assert(context->catch_stack_index > 0);
-	context->catch_stack_index--;
-}
 
 static void gencontext_push_break_continue(GenContext *context, LLVMBasicBlockRef break_block,
 		LLVMBasicBlockRef continue_block, LLVMBasicBlockRef next_block)
@@ -596,6 +588,35 @@ void gencontext_emit_scoped_stmt(GenContext *context, Ast *ast)
 	gencontext_emit_defer(context, ast->scoped_stmt.defers.start, ast->scoped_stmt.defers.end);
 }
 
+void gencontext_generate_catch_block_if_needed(GenContext *context, Ast *ast)
+{
+	LLVMBasicBlockRef block = ast->catch_stmt.block;
+	if (block) return;
+	block = gencontext_create_free_block(context, "catchblock");
+	ast->catch_stmt.block = block;
+	LLVMTypeRef type;
+	if (ast->catch_stmt.error_param->type == type_error_union)
+	{
+		type = llvm_type(type_error_union);
+	}
+	else
+	{
+		type = llvm_type(type_error_base);
+	}
+	ast->catch_stmt.error_param->var.backend_ref = gencontext_emit_alloca(context, type, "");
+}
+
+void gencontext_emit_catch_stmt(GenContext *context, Ast *ast)
+{
+	gencontext_generate_catch_block_if_needed(context, ast);
+	LLVMBasicBlockRef after_catch = gencontext_create_free_block(context, "after_catch");
+	gencontext_emit_br(context, after_catch);
+	gencontext_emit_block(context, ast->catch_stmt.block);
+	gencontext_emit_stmt(context, ast->catch_stmt.body);
+	gencontext_emit_br(context, after_catch);
+	gencontext_emit_block(context, after_catch);
+}
+
 void gencontext_emit_panic_on_true(GenContext *context, LLVMValueRef value, const char *panic_name)
 {
 	LLVMBasicBlockRef panic_block = gencontext_create_free_block(context, "panic");
@@ -660,9 +681,8 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 		case AST_NOP_STMT:
 			break;
 		case AST_CATCH_STMT:
-		case AST_TRY_STMT:
-			// Should have been lowered.
-			UNREACHABLE
+			gencontext_emit_catch_stmt(context, ast);
+			break;
 		case AST_THROW_STMT:
 			gencontext_emit_throw(context, ast);
 			break;

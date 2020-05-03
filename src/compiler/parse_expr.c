@@ -219,6 +219,7 @@ static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 
 	Expr *false_expr = TRY_EXPR_OR(parse_precedence(context, PREC_TERNARY + 1), poisoned_expr);
 	expr_ternary->ternary_expr.else_expr = false_expr;
+	RANGE_EXTEND_PREV(expr_ternary);
 	return expr_ternary;
 }
 
@@ -399,8 +400,20 @@ static Expr *parse_try_expr(Context *context, Expr *left)
 	Expr *try_expr = EXPR_NEW_TOKEN(EXPR_TRY, context->tok);
 	advance_and_verify(context, TOKEN_TRY);
 	try_expr->try_expr.expr = TRY_EXPR_OR(parse_precedence(context, PREC_TRY + 1), poisoned_expr);
+	try_expr->try_expr.type = TRY_EXPR_ELSE_EXPR;
 	if (try_consume(context, TOKEN_ELSE))
 	{
+		switch (context->tok.type)
+		{
+			case TOKEN_RETURN:
+			case TOKEN_BREAK:
+			case TOKEN_CONTINUE:
+			case TOKEN_THROW:
+				try_expr->try_expr.type = TRY_EXPR_ELSE_JUMP;
+				TODO
+			default:
+				break;
+		}
 		try_expr->try_expr.else_expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
 	}
 	return try_expr;

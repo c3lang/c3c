@@ -157,7 +157,8 @@ static inline bool sema_expr_analyse_error_constant(Expr *expr, const char *name
 			assert(error_constant->resolve_status == RESOLVE_DONE);
 			expr->type = decl->type;
 			expr->expr_kind = EXPR_CONST;
-			expr_const_set_int(&expr->const_expr, error_constant->error_constant.value, type_error->canonical->type_kind);
+			expr->const_expr.error_constant = error_constant;
+			expr->const_expr.kind = TYPE_ERROR;
 			return true;
 		}
 	}
@@ -252,11 +253,14 @@ static inline int find_index_of_named_parameter(Decl** func_params, Expr *expr)
 	return -1;
 }
 
+
 static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr *expr, Decl *decl)
 {
 	Expr **args = expr->call_expr.arguments;
 	FunctionSignature *signature = &decl->func.function_signature;
 	Decl **func_params = signature->params;
+	expr->call_expr.throw_info = CALLOCS(ThrowInfo);
+	expr->call_expr.throw_info->defers = context->current_scope->defers;
 	unsigned error_params = signature->throw_any || signature->throws;
 	if (error_params)
 	{
@@ -264,6 +268,22 @@ static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr 
 		{
 			SEMA_ERROR(expr, "Function '%s' throws errors, this call must be prefixed 'try'.", decl->name);
 			return false;
+		}
+		// Add errors to current context.
+		if (signature->throw_any)
+		{
+			vec_add(context->error_calls, throw_new_union(expr->span, THROW_TYPE_CALL_ANY, expr->call_expr.throw_info));
+		}
+		else
+		{
+			if (vec_size(signature->throws) == 1)
+			{
+				vec_add(context->error_calls, throw_new_single(expr->span, THROW_TYPE_CALL_THROW_ONE, expr->call_expr.throw_info, signature->throws[0]->type));
+			}
+			else
+			{
+				vec_add(context->error_calls, throw_new_multiple(expr->span, expr->call_expr.throw_info, signature->throws));
+			}
 		}
 	}
 	unsigned func_param_count = vec_size(func_params);
@@ -2210,15 +2230,63 @@ static inline bool sema_expr_analyse_post_unary(Context *context, Type *to, Expr
 static inline bool sema_expr_analyse_try(Context *context, Type *to, Expr *expr)
 {
 	context->try_nesting++;
+	// Duplicates code in try for statements.. :(
+	unsigned prev_throws = vec_size(context->error_calls);
 	bool success = sema_analyse_expr(context, to, expr->try_expr.expr);
 	context->try_nesting--;
 	if (!success) return false;
+	unsigned new_throws = vec_size(context->error_calls);
+	if (new_throws == prev_throws)
+	{
+		if (expr->try_expr.type == TRY_STMT)
+		{
+			SEMA_ERROR(expr->try_expr.stmt, "No error to 'try' in the statement that follows, please remove the 'try'.");
+		}
+		else
+		{
+			SEMA_ERROR(expr->try_expr.expr, "No error to 'try' in the expression, please remove the 'try'.");
+		}
+		return false;
+	}
 	expr->type = expr->try_expr.expr->type;
+	bool found = false;
+	for (unsigned i = prev_throws; i < new_throws; i++)
+	{
+		// At least one uncaught error found!
+		if (!context->error_calls[i].throw_info->is_completely_handled)
+		{
+			found = true;
+			break;
+		}
+	}
 	if (expr->try_expr.else_expr)
 	{
+		CatchInfo info = { .kind = CATCH_TRY_ELSE, .try_else = expr };
+		// Absorb all errors.
+		for (unsigned i = prev_throws; i < new_throws; i++)
+		{
+			Throw *throw = &context->error_calls[i];
+			// Skip handled errors
+			if (throw[i].throw_info->is_completely_handled) continue;
+			throw->throw_info->is_completely_handled = true;
+			vec_add(throw->throw_info->catches, info);
+		}
+		// Resize to remove the throws from consideration.
+		vec_resize(context->error_calls, prev_throws);
 		if (!sema_analyse_expr(context, to, expr->try_expr.else_expr)) return false;
 	}
-	// TODO Check errors!
+	if (!found)
+	{
+		if (expr->try_expr.type == TRY_STMT)
+		{
+			SEMA_ERROR(expr->try_expr.stmt, "All errors in the following statement was caught, please remove the 'try'.");
+		}
+		else
+		{
+			SEMA_ERROR(expr->try_expr.expr, "All errors in the expression was caught, please remove the 'try'.");
+		}
+		return false;
+	}
 	return true;
 }
 
@@ -2513,9 +2581,6 @@ static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 			return ast;
 		case AST_THROW_STMT:
 			MACRO_COPY_EXPR(ast->throw_stmt.throw_value);
-			return ast;
-		case AST_TRY_STMT:
-			MACRO_COPY_AST(ast->try_stmt);
 			return ast;
 		case AST_NEXT_STMT:
 			TODO
