@@ -1171,6 +1171,10 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 		return false;
 	}
 
+	if (!error_was_useful)
+	{
+		// Warning here?
+	}
 	func->func.labels = context->labels;
 	context_pop_scope(context);
 	context->current_scope = NULL;
