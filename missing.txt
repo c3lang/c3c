@@ -65,8 +65,6 @@ Things missing:
 - Breakdown here
 
 * Error handling
-- Error unions
-- Catch/try
 - Try goto/return/break/continue/throw
 
 * Enum
