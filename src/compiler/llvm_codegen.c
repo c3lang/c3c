@@ -60,40 +60,22 @@ LLVMValueRef gencontext_emit_memclear(GenContext *context, LLVMValueRef ref, Typ
 
 
 
-static LLVMValueRef gencontext_emit_null_constant(GenContext *context, Type *type)
-{
-	TODO
-}
 
-static LLVMValueRef gencontext_emit_initializer(GenContext *context, Expr *expr)
-{
-	TODO
-}
-
-static void gencontext_emit_global_variable_definition(GenContext *context, Decl *decl, bool is_tentative)
+static void gencontext_emit_global_variable_definition(GenContext *context, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL);
-
-	LLVMValueRef init = NULL;
-
-	if (!decl->var.init_expr)
-	{
-		// Tentative definition, initialized to zero, but only
-		// emitted at the end of the translation unit.
-		init = gencontext_emit_null_constant(context, decl->type);
-	}
-	else
-	{
-		init = gencontext_emit_initializer(context, decl->var.init_expr);
-	}
-
-
-	assert(!init);
 
 	// TODO fix name
 	decl->var.backend_ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->name);
 
-
+	if (decl->var.init_expr)
+	{
+		LLVMSetInitializer(decl->var.backend_ref, gencontext_emit_expr(context, decl->var.init_expr));
+	}
+	else
+	{
+		LLVMSetInitializer(decl->var.backend_ref, LLVMConstInt(llvm_type(type_bool), 0, false));
+	}
 	// If read only: LLVMSetGlobalConstant(decl->var.backend_ref, 1);
 
 	switch (decl->visibility)
@@ -122,7 +104,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 		                                                                          2,
 		                                                                          context->debug.file,
 		                                                                          12 /* lineno */,
-		                                                                          decl->type->backend_debug_type,
+		                                                                          llvm_debug_type(decl->type),
 		                                                                          decl->visibility ==
 		                                                                          VISIBLE_LOCAL, /* expr */
 		                                                                          NULL, /** declaration **/
@@ -384,6 +366,10 @@ void llvm_codegen(Context *context)
 	VECEACH(context->error_types, i)
 	{
 		gencontext_emit_error_decl(&gen_context, context->error_types[i]);
+	}
+	VECEACH(context->vars, i)
+	{
+		gencontext_emit_global_variable_definition(&gen_context, context->vars[i]);
 	}
 	VECEACH(context->functions, i)
 	{

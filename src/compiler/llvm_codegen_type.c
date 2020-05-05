@@ -231,6 +231,7 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 
 LLVMTypeRef gencontext_get_llvm_type(GenContext *context, Type *type)
 {
+	// gencontext_get_debug_type(context, type);
 	return llvm_get_type(context->context, type);
 }
 

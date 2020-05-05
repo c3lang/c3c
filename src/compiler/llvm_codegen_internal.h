@@ -220,7 +220,7 @@ static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi)
 }
 
 #define llvm_type(type) gencontext_get_llvm_type(context, type)
-#define DEBUG_TYPE(type) gencontext_get_debug_type(context, type)
+#define llvm_debug_type(type) gencontext_get_debug_type(context, type)
 
 static inline LLVMValueRef gencontext_emit_const_int(GenContext *context, Type *type, uint64_t val)
 {

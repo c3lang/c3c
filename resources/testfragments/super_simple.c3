@@ -594,9 +594,12 @@ func void testDefault(int x = 2, int y = 100, int z = -100)
     printf("x = %d, y = %d, z = %d\n", x, y, z);
 }
 
+int foofei = 3;
+
 func int testReturnDefer()
 {
     int i = 0;
+    foofei++;
     i++;
     defer ++i;
     return i;
@@ -651,6 +654,7 @@ func int testThrow6(int x) throws Err, Err2
 
 func int testThrow(int x) throws Err
 {
+    throwsDone.times++;
     if (x < 0) throw Err.TEST_ERR1;
     return x * x;
 }
@@ -704,15 +708,29 @@ func void throwAOrB(int i) throws Err, Err2
     printf("None\n");
 }
 
+struct ThrowsDone
+{
+    long x;
+    long y;
+    long z;
+    int times;
+}
+ThrowsDone throwsDone;
+
 func void testErrors()
 {
+
+    printf("Throws: %d\n", throwsDone.times);
 
     int x = try testThrow(20) else 1;
     printf("Value was %d, expected 400.\n", x);
 
+    printf("Throws: %d\n", throwsDone.times);
 
     x = try testThrow(-1) else 20;
     printf("Value was %d, expected 20.\n", x);
+
+    printf("Throws: %d\n", throwsDone.times);
 
     printf("Begin\n");
     int y = try testThrow(-1);
@@ -758,6 +776,7 @@ func void testErrors()
     {
         printf("Wut\n");
     }
+    printf("Throws: %d\n", throwsDone.times);
     printf("End of errors\n");
 }
 

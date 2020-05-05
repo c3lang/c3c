@@ -132,19 +132,21 @@ LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 		case TYPE_POINTER:
 			return type->backend_debug_type = LLVMDIBuilderCreatePointerType(context->debug.builder, type->pointer->backend_debug_type, type_size(type->canonical->pointer), 0, 0, type->name, strlen(type->name));
 		case TYPE_ENUM:
-			break;
+			TODO
 		case TYPE_ERROR:
-			break;
+			TODO
 		case TYPE_FUNC:
-			break;
+			// TODO
+			return NULL;
 		case TYPE_STRUCT:
-			break;
+//			LLVMDIBuilderCreateStructType(context->debug.builder, NULL, type->decl->name, strlen(type->decl->name), type->decl->module->)
+			TODO
 		case TYPE_UNION:
-			break;
+			TODO
 		case TYPE_TYPEDEF:
-			break;
+			TODO
 		case TYPE_STRING:
-			break;
+			TODO
 		case TYPE_ARRAY:
 			{
 				LLVMMetadataRef *ranges = NULL;
@@ -162,11 +164,11 @@ LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 						ranges, vec_size(ranges));
 			}
 		case TYPE_VARARRAY:
-			break;
+			TODO
 		case TYPE_SUBARRAY:
-			break;
+			TODO
 		case TYPE_ERROR_UNION:
 			TODO
 	}
-	TODO
+	UNREACHABLE
 }

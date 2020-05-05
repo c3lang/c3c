@@ -18,6 +18,7 @@ Things missing:
 - Vararray initializers
 - Incremental array initializers
 - Slice initializers
+- Constant initializers for globals
 
 * Asserts
 - assert, $assert
@@ -60,12 +61,10 @@ Things missing:
 * Functions
 - C ABI
 - Safe varargs
+- Malloc/free
 
 * Pre-post conditions
 - Breakdown here
-
-* Error handling
-- Try goto/return/break/continue/throw
 
 * Enum
 - Values: min, max, array

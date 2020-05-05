@@ -488,6 +488,7 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 static inline bool sema_analyse_global(Context *context, Decl *decl)
 {
 	if (!sema_resolve_type_info(context, decl->var.type_info)) return false;
+	decl->type = decl->var.type_info->type;
 	if (decl->var.init_expr)
 	{
 		if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr)) return false;
