@@ -40,6 +40,7 @@ Expr *parse_initializer(Context *context);
 Decl *parse_decl(Context *context);
 Ast *parse_decl_expr_list(Context *context);
 Ast* parse_compound_stmt(Context *context);
+Ast *parse_jump_stmt_no_eos(Context *context);
 Expr *parse_expression_list(Context *context);
 bool parse_type_or_expr(Context *context, Expr **expr_ptr, TypeInfo **type_ptr);
 Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type);

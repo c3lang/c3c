@@ -811,7 +811,7 @@ LLVMValueRef gencontext_emit_typeid(GenContext *context, Expr *expr)
 
 LLVMValueRef gencontext_emit_try_expr(GenContext *context, Expr *expr)
 {
-	if (expr->try_expr.else_expr)
+	if (expr->try_expr.type == TRY_EXPR_ELSE_EXPR)
 	{
 		LLVMBasicBlockRef else_block = gencontext_get_try_target(context, expr);
 		LLVMBasicBlockRef after_catch = gencontext_create_free_block(context, "aftercatch");
@@ -825,6 +825,16 @@ LLVMValueRef gencontext_emit_try_expr(GenContext *context, Expr *expr)
 		gencontext_emit_br(context, after_catch);
 		gencontext_emit_block(context, after_catch);
 		return gencontext_emit_load(context, expr->try_expr.else_expr->type, res);
+	}
+	if (expr->try_expr.type == TRY_EXPR_ELSE_JUMP)
+	{
+		LLVMBasicBlockRef else_block = gencontext_get_try_target(context, expr);
+		LLVMBasicBlockRef after_catch = gencontext_create_free_block(context, "aftercatch");
+		gencontext_emit_br(context, after_catch);
+		gencontext_emit_block(context, else_block);
+		gencontext_emit_stmt(context, expr->try_expr.else_stmt);
+		gencontext_emit_br(context, after_catch);
+		gencontext_emit_block(context, after_catch);
 	}
 	return gencontext_emit_expr(context, expr->try_expr.expr);
 }

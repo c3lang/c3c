@@ -281,4 +281,4 @@
 #define DW_CFA_lo_user 0x1c
 #define DW_CFA_hi_user 0x3f
 
-#define DWARF_PRODUCER_NAME "C3 Compiler"
+#define DWARF_PRODUCER_NAME "c3c"

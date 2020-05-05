@@ -302,50 +302,51 @@ static inline Ast* parse_for_stmt(Context *context)
 }
 
 /**
- * goto_stmt
- *  : GOTO ct_ident EOS
+ * goto
+ *  : GOTO ct_ident
  *  ;
  */
-static inline Ast* parse_goto_stmt(Context *context)
+static inline Ast* parse_goto(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_GOTO_STMT, context->tok);
 	advance_and_verify(context, TOKEN_GOTO);
 	ast->goto_stmt.label_name = context->tok.string;
 	if (!consume_const_name(context, "label")) return poisoned_ast;
-	RETURN_AFTER_EOS(ast);
+	return ast;
 }
 
 /**
  * continue_stmt
- *  : CONTINUE EOS
+ *  : CONTINUE
  */
-static inline Ast* parse_continue_stmt(Context *context)
+static inline Ast* parse_continue(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CONTINUE_STMT, context->tok);
 	advance_and_verify(context, TOKEN_CONTINUE);
-	RETURN_AFTER_EOS(ast);
+	return ast;
 }
 
+
 /**
- * next_stmt
- *  : NEXT EOS
+ * next
+ *  : NEXT
  */
-static inline Ast* parse_next_stmt(Context *context)
+static inline Ast* parse_next(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_NEXT_STMT, context->tok);
 	advance_and_verify(context, TOKEN_NEXT);
-	RETURN_AFTER_EOS(ast);
+	return ast;
 }
 
 /**
- * break_stmt
- *  : BREAK EOS
+ * break
+ *  : BREAK
  */
-static inline Ast* parse_break_stmt(Context *context)
+static inline Ast* parse_break(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_BREAK_STMT, context->tok);
 	advance_and_verify(context, TOKEN_BREAK);
-	RETURN_AFTER_EOS(ast);
+	return ast;
 }
 
 /**
@@ -434,35 +435,34 @@ static inline Ast *parse_label_stmt(Context *context)
 
 
 /**
- * return_stmt
- *  : RETURN expression EOS
- * 	| RETURN EOS
+ * return
+ *  : RETURN expression
+ * 	| RETURN
  * 	;
  */
-static inline Ast *parse_return_stmt(Context *context)
+static inline Ast *parse_return(Context *context)
 {
 	advance_and_verify(context, TOKEN_RETURN);
 	Ast *ast = AST_NEW_TOKEN(AST_RETURN_STMT, context->tok);
 	ast->return_stmt.defer = NULL;
-	if (try_consume(context, TOKEN_EOS))
+	if (context->tok.type != TOKEN_EOS)
 	{
-		ast->return_stmt.expr = NULL;
-		return ast;
+		ast->return_stmt.expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
 	}
-	ast->return_stmt.expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
-	RETURN_AFTER_EOS(ast);
+	return ast;
 }
 
 /**
- * throw_stmt
- *  : THROW expr EOS
+ * throw
+ *  : THROW expr
  */
-static inline Ast *parse_throw_stmt(Context *context)
+static inline Ast *parse_throw(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_THROW_STMT, context->tok);
 	advance_and_verify(context, TOKEN_THROW);
 	ast->throw_stmt.throw_value = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
-	RETURN_AFTER_EOS(ast);
+	RANGE_EXTEND_PREV(ast);
+	return ast;
 }
 
 /**
@@ -486,6 +486,7 @@ static inline bool is_valid_try_statement(TokenType type)
 		case TOKEN_WHILE:
 		case TOKEN_DO:
 		case TOKEN_RETURN:
+		case TOKEN_LBRACE:
 			return true;
 		default:
 			return false;
@@ -667,7 +668,10 @@ Ast *parse_stmt(Context *context)
 			}
 			return parse_expr_stmt(context);
 		case TOKEN_RETURN:
-			return parse_return_stmt(context);
+		{
+			Ast *ast = TRY_AST(parse_return(context));
+			RETURN_AFTER_EOS(ast);
+		}
 		case TOKEN_IF:
 			return parse_if_stmt(context);
 		case TOKEN_WHILE:
@@ -677,7 +681,10 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_SWITCH:
 			return parse_switch_stmt(context);
 		case TOKEN_GOTO:
-			return parse_goto_stmt(context);
+		{
+			Ast *ast = TRY_AST(parse_goto(context));
+			RETURN_AFTER_EOS(ast);
+		}
 		case TOKEN_DO:
 			return parse_do_stmt(context);
 		case TOKEN_FOR:
@@ -699,15 +706,24 @@ Ast *parse_stmt(Context *context)
 			}
 			return parse_expr_stmt(context);
 		case TOKEN_CONTINUE:
-			return parse_continue_stmt(context);
+		{
+			Ast *ast = TRY_AST(parse_continue(context));
+			RETURN_AFTER_EOS(ast);
+		}
 		case TOKEN_CASE:
 			SEMA_TOKEN_ERROR(context->tok, "'case' was found outside of 'switch', did you mismatch a '{ }' pair?");
 			advance(context);
 			return poisoned_ast;
 		case TOKEN_BREAK:
-			return parse_break_stmt(context);
+		{
+			Ast *ast = TRY_AST(parse_break(context));
+			RETURN_AFTER_EOS(ast);
+		}
 		case TOKEN_NEXT:
-			return parse_next_stmt(context);
+		{
+			Ast *ast = TRY_AST(parse_next(context));
+			RETURN_AFTER_EOS(ast);
+		}
 		case TOKEN_ASM:
 			return parse_asm_stmt(context);
 		case TOKEN_DEFAULT:
@@ -721,7 +737,10 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_CT_FOR:
 			return parse_ct_for_stmt(context);
 		case TOKEN_THROW:
-			return parse_throw_stmt(context);
+		{
+			Ast *ast = TRY_AST(parse_throw(context));
+			RETURN_AFTER_EOS(ast);
+		}
 		case TOKEN_VOLATILE:
 			return parse_volatile_stmt(context);
 		case TOKEN_STAR:
@@ -841,6 +860,24 @@ Ast *parse_stmt(Context *context)
 	UNREACHABLE
 }
 
+Ast *parse_jump_stmt_no_eos(Context *context)
+{
+	switch (context->tok.type)
+	{
+		case TOKEN_GOTO:
+			return parse_goto(context);
+		case TOKEN_RETURN:
+			return parse_return(context);
+		case TOKEN_BREAK:
+			return parse_break(context);
+		case TOKEN_CONTINUE:
+			return parse_continue(context);
+		case TOKEN_THROW:
+			return parse_throw(context);
+		default:
+			UNREACHABLE
+	}
+}
 
 
 /**

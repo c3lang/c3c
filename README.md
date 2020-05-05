@@ -9,7 +9,7 @@ C3 tries to be an alternative in the the C/C++ niche: fast and close to the meta
 ### Design Principles
 - Procedural "get things done"-type of language.
 - Try to stay close to C - only change where truly needed.
-- Flawless C integration.
+- C ABI compatibility and C C integration.
 - Learning C3 should be easy for a C programmer.
 - Dare violating the "close to metal" principle if the value is great.
 - Data is inert.

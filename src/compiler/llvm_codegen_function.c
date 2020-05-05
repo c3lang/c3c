@@ -216,19 +216,19 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 				break;
 		}
 		SourcePosition decl_position = source_file_find_position(decl->name_span.loc);
-		context->debug.function = LLVMDIBuilderCreateFunction(context->debug.builder,
+	/*	context->debug.function = LLVMDIBuilderCreateFunction(context->debug.builder,
 		                                                      context->debug.compile_unit,
 		                                                      decl->name, source_range_len(decl->name_span),
 		                                                      decl->name, source_range_len(decl->name_span),
 		                                                      context->debug.file,
 		                                                      decl_position.line,
-		                                                      decl->type->backend_debug_type,
+		                                                      decl->type->backend_type,
 		                                                      decl->visibility == VISIBLE_LOCAL,
 		                                                      1,
 		                                                      decl_position.line,
 		                                                      flags,
-		                                                      0);
-		LLVMSetSubprogram(decl->func.backend_value, context->debug.function);
+		                                                      build_options.optimization_level != OPTIMIZATION_NONE);
+		LLVMSetSubprogram(decl->func.backend_value, context->debug.function);*/
 	}
 }
 

@@ -112,7 +112,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 
 	int alignment = 64; // TODO
 	// Should we set linkage here?
-	if (context->debug.builder)
+	if (context->debug.builder && false)
 	{
 		decl->var.backend_debug_ref = LLVMDIBuilderCreateGlobalVariableExpression(context->debug.builder,
 		                                                                          NULL /*scope*/,

@@ -47,17 +47,17 @@ void gencontext_begin_module(GenContext *context)
 	LLVMSetSourceFileName(context->module, full_path, strlen(context->ast_context->file->full_path));
 
 	LLVMSetTarget(context->module, build_options.target);
-	if (build_options.debug_info)
+	if (build_options.debug_info != DEBUG_INFO_NONE)
 	{
 		const char *filename = context->ast_context->file->name;
 		const char *dir_path = context->ast_context->file->dir_path;
 		context->debug.builder = LLVMCreateDIBuilder(context->module);
 		context->debug.file = LLVMDIBuilderCreateFile(context->debug.builder, filename, strlen(filename), dir_path, strlen(dir_path));
 
-		bool is_optimized = false;
+		bool is_optimized = build_options.optimization_level != OPTIMIZATION_NONE;
 		const char *dwarf_flags = "";
 		unsigned runtime_version = 1;
-		LLVMDWARFEmissionKind emission_kind = LLVMDWARFEmissionFull;
+		LLVMDWARFEmissionKind emission_kind = build_options.debug_info == DEBUG_INFO_FULL ? LLVMDWARFEmissionFull : LLVMDWARFEmissionLineTablesOnly;
 		context->debug.compile_unit = LLVMDIBuilderCreateCompileUnit(context->debug.builder, LLVMDWARFSourceLanguageC,
 		                                                             context->debug.file, DWARF_PRODUCER_NAME,
 		                                                             strlen(DWARF_PRODUCER_NAME), is_optimized,
@@ -70,8 +70,6 @@ void gencontext_begin_module(GenContext *context)
 	// We need to remove the context from the cache after this.
 	// This would seem to indicate that we should change Type / actual type.
 
-	context->pointer_alignment = LLVMPointerSizeForAS(target_data_layout(), 0);
-
 	context->block_global_unique_count = 0;
 	context->ast_alloca_addr_space = target_alloca_addr_space();
 
@@ -79,21 +77,6 @@ void gencontext_begin_module(GenContext *context)
 	{
 		compiler.type[i]->backend_type = NULL;
 	}
-/*
-	SizeSizeInBytes =
-			C.toCharUnitsFromBits(C.getTargetInfo().getMaxPointerWidth()).getQuantity();
-	IntAlignInBytes =
-			C.toCharUnitsFromBits(C.getTargetInfo().getIntAlign()).getQuantity();
-	IntTy = llvm::IntegerType::get(LLVMContext, C.getTargetInfo().getIntWidth());
-	IntPtrTy = llvm::IntegerType::get(LLVMContext,
-	                                  C.getTargetInfo().getMaxPointerWidth());
-	Int8PtrTy = Int8Ty->getPointerTo(0);
-	Int8PtrPtrTy = Int8PtrTy->getPointerTo(0);
-	AllocaInt8PtrTy = Int8Ty->getPointerTo(
-			M.getDataLayout().getAllocaAddrSpace());
-	ASTAllocaAddressSpace = getTargetCodeGenInfo().getASTAllocaAddressSpace();
-*/
-
 }
 
 

@@ -663,6 +663,9 @@ func int testThrowAny(int x) throws
 
 func int oekt() throws
 {
+    int z = try testThrow(-1) else goto NEXT;
+    printf("Skipped.\n");
+    NEXT:
     int x = try testThrow(-3);
     return x;
 }

@@ -400,21 +400,32 @@ static Expr *parse_try_expr(Context *context, Expr *left)
 	Expr *try_expr = EXPR_NEW_TOKEN(EXPR_TRY, context->tok);
 	advance_and_verify(context, TOKEN_TRY);
 	try_expr->try_expr.expr = TRY_EXPR_OR(parse_precedence(context, PREC_TRY + 1), poisoned_expr);
-	try_expr->try_expr.type = TRY_EXPR_ELSE_EXPR;
+	try_expr->try_expr.type = TRY_STMT;
 	if (try_consume(context, TOKEN_ELSE))
 	{
 		switch (context->tok.type)
 		{
+			case TOKEN_GOTO:
 			case TOKEN_RETURN:
 			case TOKEN_BREAK:
 			case TOKEN_CONTINUE:
 			case TOKEN_THROW:
+			{
+				Ast *ast = TRY_AST_OR(parse_jump_stmt_no_eos(context), poisoned_expr);
 				try_expr->try_expr.type = TRY_EXPR_ELSE_JUMP;
-				TODO
+				try_expr->try_expr.else_stmt = ast;
+				if (context->tok.type != TOKEN_EOS)
+				{
+					SEMA_ERROR(ast, "try-else jump statement must end with a ';'");
+					return poisoned_expr;
+				}
+				break;
+			}
 			default:
+				try_expr->try_expr.type = TRY_EXPR_ELSE_EXPR;
+				try_expr->try_expr.else_expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
 				break;
 		}
-		try_expr->try_expr.else_expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
 	}
 	return try_expr;
 }

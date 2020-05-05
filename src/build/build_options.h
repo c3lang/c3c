@@ -86,6 +86,13 @@ typedef enum
 	SIZE_OPTIMIZATION_TINY = 2,     // -Oz
 } SizeOptimizationLevel;
 
+typedef enum
+{
+	DEBUG_INFO_NONE,
+	DEBUG_INFO_LINE_TABLES,
+	DEBUG_INFO_FULL
+} DebugInfo;
+
 typedef struct
 {
 	const char* lib_dir[MAX_LIB_DIRS];
@@ -102,7 +109,7 @@ typedef struct
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
-	bool debug_info;
+	DebugInfo debug_info;
 	bool debug_mode;
 	bool emit_llvm;
 	bool emit_bitcode;

@@ -2259,7 +2259,7 @@ static inline bool sema_expr_analyse_try(Context *context, Type *to, Expr *expr)
 			break;
 		}
 	}
-	if (expr->try_expr.else_expr)
+	if (expr->try_expr.type != TRY_STMT)
 	{
 		CatchInfo info = { .kind = CATCH_TRY_ELSE, .try_else = expr, .defer = context->current_scope->defers.start };
 		// Absorb all errors.
@@ -2273,7 +2273,14 @@ static inline bool sema_expr_analyse_try(Context *context, Type *to, Expr *expr)
 		}
 		// Resize to remove the throws from consideration.
 		vec_resize(context->error_calls, prev_throws);
-		if (!sema_analyse_expr(context, to, expr->try_expr.else_expr)) return false;
+		if (expr->try_expr.type == TRY_EXPR_ELSE_JUMP)
+		{
+			if (!sema_analyse_statement(context, expr->try_expr.else_stmt)) return false;
+		}
+		else
+		{
+			if (!sema_analyse_expr(context, to, expr->try_expr.else_expr)) return false;
+		}
 	}
 	if (!found)
 	{
