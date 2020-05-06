@@ -1863,7 +1863,7 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 				case TYPE_ARRAY:
 				case TYPE_VARARRAY:
 				case TYPE_SUBARRAY:
-				case TYPE_META_TYPE:
+				case TYPE_TYPEID:
 					// Only != and == allowed.
 					goto ERR;
 				case ALL_INTS:
@@ -2099,7 +2099,7 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 		case TYPE_STRING:
 		case TYPE_ENUM:
 		case TYPE_ERROR:
-		case TYPE_META_TYPE:
+		case TYPE_TYPEID:
 			SEMA_ERROR(expr, "Cannot use 'not' on %s", type_to_error_string(inner->type));
 			return false;
 	}
@@ -2259,7 +2259,7 @@ static inline bool sema_expr_analyse_try(Context *context, Type *to, Expr *expr)
 			break;
 		}
 	}
-	if (expr->try_expr.type != TRY_STMT)
+	if (expr->try_expr.type != TRY_STMT && expr->try_expr.type != TRY_EXPR)
 	{
 		CatchInfo info = { .kind = CATCH_TRY_ELSE, .try_else = expr, .defer = context->current_scope->defers.start };
 		// Absorb all errors.

@@ -197,8 +197,6 @@ struct _Type
 		TypeFunc func;
 		// Type*
 		Type *pointer;
-		// Type.type
-		Type *child;
 	};
 };
 
@@ -431,6 +429,7 @@ typedef enum
 {
 	TRY_EXPR_ELSE_EXPR,
 	TRY_EXPR_ELSE_JUMP,
+	TRY_EXPR,
 	TRY_STMT,
 } TryType;
 

@@ -741,7 +741,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 			assert(switch_type->type_kind != TYPE_IXX);
 		case TYPE_BOOL:
 		case TYPE_ERROR:
-		case TYPE_META_TYPE:
+		case TYPE_TYPEID:
 		case TYPE_ENUM:
 		case TYPE_STRING:
 			break;

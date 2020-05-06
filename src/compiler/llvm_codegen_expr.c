@@ -811,6 +811,11 @@ LLVMValueRef gencontext_emit_typeid(GenContext *context, Expr *expr)
 
 LLVMValueRef gencontext_emit_try_expr(GenContext *context, Expr *expr)
 {
+	if (expr->try_expr.type == TRY_STMT)
+	{
+		gencontext_emit_stmt(context, expr->try_expr.stmt);
+		return NULL;
+	}
 	if (expr->try_expr.type == TRY_EXPR_ELSE_EXPR)
 	{
 		LLVMBasicBlockRef else_block = gencontext_get_try_target(context, expr);

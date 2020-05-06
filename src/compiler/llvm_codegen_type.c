@@ -169,7 +169,7 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
-		case TYPE_META_TYPE:
+		case TYPE_TYPEID:
 			return type->backend_type = LLVMIntTypeInContext(context, type->builtin.bitsize);
 		case TYPE_ERROR:
 			return type->backend_type = llvm_get_type(context, type_error_base);

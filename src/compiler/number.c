@@ -67,6 +67,9 @@ void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
 		case TYPE_ERROR:
 			fprintf(file, "%s", expr->error_constant->name);
 			break;
+		case TYPE_STRING:
+			fprintf(file, "%.*s", expr->string.len, expr->string.chars);
+			break;
 		default:
 			UNREACHABLE
 	}

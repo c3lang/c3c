@@ -10,7 +10,7 @@ static inline LLVMTypeRef gencontext_create_basic_llvm_type(GenContext *context,
 {
 	switch (type->type_kind)
 	{
-		case TYPE_META_TYPE:
+		case TYPE_TYPEID:
 			return LLVMIntTypeInContext(context->context, type->builtin.bitsize);
 		case TYPE_BOOL:
 			return LLVMInt1TypeInContext(context->context);

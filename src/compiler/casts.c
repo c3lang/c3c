@@ -754,7 +754,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_ARRAY:
 		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
-		case TYPE_META_TYPE:
+		case TYPE_TYPEID:
 			// Improve consider vararray / subarray conversion to boolean.
 			return CAST_ERROR;
 		case TYPE_BOOL:
@@ -789,7 +789,7 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 	{
 		case TYPE_POISONED:
 		case TYPE_VOID:
-		case TYPE_META_TYPE:
+		case TYPE_TYPEID:
 			break;
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.

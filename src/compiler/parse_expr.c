@@ -400,7 +400,7 @@ static Expr *parse_try_expr(Context *context, Expr *left)
 	Expr *try_expr = EXPR_NEW_TOKEN(EXPR_TRY, context->tok);
 	advance_and_verify(context, TOKEN_TRY);
 	try_expr->try_expr.expr = TRY_EXPR_OR(parse_precedence(context, PREC_TRY + 1), poisoned_expr);
-	try_expr->try_expr.type = TRY_STMT;
+	try_expr->try_expr.type = TRY_EXPR;
 	if (try_consume(context, TOKEN_ELSE))
 	{
 		switch (context->tok.type)

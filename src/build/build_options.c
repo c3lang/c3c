@@ -304,6 +304,9 @@ static void parse_option()
 
 void parse_arguments(int argc, const char *argv[])
 {
+	arg_count = argc;
+	args = argv;
+
 	if (argc < 2)
 	{
 		usage();
@@ -333,8 +336,6 @@ void parse_arguments(int argc, const char *argv[])
 		build_options.severity[i] = DIAG_ERROR;
 	}
 
-	arg_count = argc;
-	args = argv;
 	for (arg_index = 1; arg_index < arg_count; arg_index++)
 	{
 		current_arg = args[arg_index];

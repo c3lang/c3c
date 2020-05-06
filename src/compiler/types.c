@@ -102,9 +102,8 @@ const char *type_to_error_string(Type *type)
 		case TYPE_UNION:
 		case TYPE_ERROR:
 			return type->name;
-		case TYPE_META_TYPE:
-			asprintf(&buffer, "type %s", type_to_error_string(type->child));
-			return buffer;
+		case TYPE_TYPEID:
+			return "typeid";
 		case TYPE_POINTER:
 			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
@@ -208,7 +207,7 @@ size_t type_size(Type *canonical)
 		case TYPE_VOID:
 			return 1;
 		case TYPE_BOOL:
-		case TYPE_META_TYPE:
+		case TYPE_TYPEID:
 		case ALL_INTS:
 		case ALL_FLOATS:
 			return canonical->builtin.bytesize;
@@ -242,7 +241,7 @@ unsigned int type_abi_alignment(Type *canonical)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return canonical->decl->strukt.abi_alignment;
-		case TYPE_META_TYPE:
+		case TYPE_TYPEID:
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
@@ -440,7 +439,7 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 
 #undef DEF_TYPE
 
-	type_create("typeid", &t_typeid, TYPE_META_TYPE, target->width_pointer, target->align_pref_pointer, target->align_pointer);
+	type_create("typeid", &t_typeid, TYPE_TYPEID, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	type_create("void*", &t_voidstar, TYPE_POINTER, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t_voidstar;
@@ -678,7 +677,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_FUNC:
 		case TYPE_UNION:
 		case TYPE_ERROR_UNION:
-		case TYPE_META_TYPE:
+		case TYPE_TYPEID:
 			return NULL;
 		case TYPE_STRUCT:
 			TODO
