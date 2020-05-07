@@ -261,10 +261,10 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 		buffer[buffer_write_offset++] = '!';
 		VECEACH(signature->throws, i)
 		{
-			Decl *err_decl = signature->throws[i];
-			if (!sema_analyse_decl(context, err_decl))
+			TypeInfo *err_decl = signature->throws[i];
+			if (!sema_resolve_type_info(context, err_decl))
 			{
-				continue;
+				return false;
 			}
 			if (i > 0 && all_ok)
 			{
@@ -408,12 +408,6 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 	return success;
 }
 
-static inline bool sema_analyse_throws(Context *context, Decl *decl)
-{
-	if (!sema_resolve_type_info(context, decl->throws)) return false;
-	decl->type = decl->throws->type;
-	return true;
-}
 
 
 static inline bool sema_analyse_method_function(Context *context, Decl *decl)
@@ -534,9 +528,6 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 	decl->module = context->module;
 	switch (decl->decl_kind)
 	{
-		case DECL_THROWS:
-			if (!sema_analyse_throws(context, decl)) return decl_poison(decl);
-			break;
 		case DECL_STRUCT:
 			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
 			sema_set_struct_size(decl);

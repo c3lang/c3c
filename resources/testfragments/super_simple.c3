@@ -759,10 +759,6 @@ func void testErrors()
     {
         printf("A2\n");
     }
-    catch (error e)
-    {
-        printf("Wut\n");
-    }
     try throwAOrB(2);
     catch (Err e)
     {
@@ -771,10 +767,6 @@ func void testErrors()
     catch (Err2 e)
     {
         printf("B2\n");
-    }
-    catch (error e)
-    {
-        printf("Wut\n");
     }
     printf("Throws: %d\n", throwsDone.times);
     printf("End of errors\n");

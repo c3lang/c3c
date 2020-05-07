@@ -16,9 +16,11 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent);
 #define DUMPEND() fprint_endparen(file, indent); return
 #define DUMPEXPR(_expr) fprint_expr_recursive(file, _expr, indent + 1)
 #define DUMPAST(_ast) fprint_ast_recursive(file, _ast, indent + 1)
+#define DUMPASTS(_asts) fprint_asts_recursive(file, _asts, indent + 1)
 #define DUMPTI(_type_info) fprint_type_info_recursive(file, _type_info, indent + 1)
 #define DUMPTYPE(_type) fprint_type_recursive(file, _type, indent + 1)
 #define DUMPDECLS(_decls) fprint_decl_list(file, _decls, indent + 1)
+#define DUMPDECL(_decl) fprint_decl_recursive(file, _decl, indent + 1)
 
 Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility)
 {
@@ -75,7 +77,6 @@ Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility)
 		case DECL_TYPEDEF:
 			kind = TYPE_TYPEDEF;
 			break;
-		case DECL_THROWS:
 		case DECL_POISONED:
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
@@ -347,56 +348,52 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 {
 	if (!type)
 	{
-		fprintf_indented(file, indent, "(none)\n");
+		DUMP("(none)");
 		return;
 	}
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
-			fprintf_indented(file, indent, "(type poison)\n");
+			DUMP("(type poison)");
 			return;
 		case TYPE_TYPEID:
 			DUMP("(typeid)");
 			return;
 		case TYPE_FUNC:
-			fprintf_indented(file, indent, "(type-func %s)\n", type->func.signature->mangled_signature);
+			DUMPF("(func-type %s)", type->name);
 			return;
 		case TYPE_STRUCT:
-			fprintf_indented(file, indent, "(struct %s::%s)\n", type->decl->module->name, type->decl->name);
+			DUMPF("(struct %s)", type->name);
 			return;
 		case TYPE_UNION:
-			fprintf_indented(file, indent, "(union %s::%s)\n", type->decl->module->name, type->decl->name);
+			DUMPF("(union %s)", type->name);
 			return;
 		case TYPE_ENUM:
-			fprintf_indented(file, indent, "(enum %s::%s)\n", type->decl->module->name, type->decl->name);
+			DUMPF("(enum %s)", type->name);
 			return;
 		case TYPE_ERROR:
-			fprintf_indented(file, indent, "(error %s::%s)\n", type->decl->module->name, type->decl->name);
+			DUMPF("(error %s)", type->name);
 			return;
 		case TYPE_TYPEDEF:
-			DUMPF("(user-defined %s", type->name);
+			DUMPF("(typedef %s", type->name);
 			DUMPTYPE(type->canonical);
 			DUMPEND();
 		case TYPE_POINTER:
-			fprintf_indented(file, indent, "(pointer\n");
-			fprint_type_recursive(file, type->pointer, indent + 1);
-			fprint_endparen(file, indent);
-			break;
+			DUMP("(pointer");
+			DUMPTYPE(type->pointer);
+			DUMPEND();
 		case TYPE_SUBARRAY:
-			fprintf_indented(file, indent, "(subarray\n");
-			fprint_type_recursive(file, type->array.base, indent + 1);
-			fprint_endparen(file, indent);
-			break;
+			DUMP("(subarray");
+			DUMPTYPE(type->array.base);
+			DUMPEND();
 		case TYPE_VARARRAY:
-			fprintf_indented(file, indent, "(vararray\n");
-			fprint_type_recursive(file, type->array.base, indent + 1);
-			fprint_endparen(file, indent);
-			break;
+			DUMP("(vararray");
+			DUMPTYPE(type->array.base);
+			DUMPEND();
 		case TYPE_ARRAY:
-			fprintf_indented(file, indent, "(array [%zu]\n", type->array.len);
-			fprint_type_recursive(file, type->array.base, indent + 1);
-			fprint_endparen(file, indent);
-			break;
+			DUMPF("(array [%zu]", type->array.len);
+			DUMPTYPE(type->array.base);
+			DUMPEND();
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case TYPE_I8:
@@ -409,14 +406,14 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 		case TYPE_U64:
 		case TYPE_F32:
 		case TYPE_F64:
-			fprintf_indented(file, indent, "(type %s)\n", type->name);
-			break;
+			DUMPF("(%s)", type->name);
+			return;
 		case TYPE_IXX:
-			fprintf_indented(file, indent, "(comp time int)\n");
-			break;
+			DUMP("(ct int)");
+			return;
 		case TYPE_FXX:
-			fprintf_indented(file, indent, "(comp time float)\n");
-			break;
+			DUMP("(ct float)");
+			return;
 		case TYPE_STRING:
 			DUMP("(string)");
 			return;
@@ -501,14 +498,15 @@ void fprint_expr_common(FILE *file, Expr *expr, int indent)
 	{
 		case RESOLVE_NOT_DONE:
 			DUMP("(unresolved)");
-			break;
+			return;
 		case RESOLVE_RUNNING:
 			DUMP("(resolving)");
-			break;
+			return;
 		case RESOLVE_DONE:
-			fprint_type_recursive(file, expr->type, indent);
-			break;
+			DUMPTYPE(expr->type);
+			return;
 	}
+	UNREACHABLE
 }
 
 #define DUMPEXPC(_expr) fprint_expr_common(file, _expr, indent + 1)
@@ -540,8 +538,8 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 		case EXPR_BINARY:
 			DUMPF("(binary %s", token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
 			DUMPEXPC(expr);
-			fprint_expr_recursive(file, expr->binary_expr.left, indent + 1);
-			fprint_expr_recursive(file, expr->binary_expr.right, indent + 1);
+			DUMPEXPR(expr->binary_expr.left);
+			DUMPEXPR(expr->binary_expr.right);
 			DUMPEND();
 		case EXPR_UNARY:
 			DUMPF("(unary %s", token_type_to_string(unaryop_to_token(expr->unary_expr.operator)));
@@ -574,12 +572,16 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			DUMPEND();
 		case EXPR_CALL:
 			DUMP("(call");
-			fprint_expr_common(file, expr, indent + 1);
-			fprint_expr_recursive(file, expr->call_expr.function, indent + 1);
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->call_expr.function);
+			indent++;
+			DUMP("(args");
 			VECEACH(expr->call_expr.arguments, i)
 			{
-				fprint_expr_recursive(file, expr->call_expr.arguments[i], indent + 1);
+				DUMPEXPR(expr->call_expr.arguments[i]);
 			}
+			DUMPE();
+			indent--;
 			DUMPEND();
 		case EXPR_TERNARY:
 			if (!expr->ternary_expr.then_expr)
@@ -602,7 +604,6 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			switch (expr->expr_initializer.init_type)
 			{
 				case INITIALIZER_UNKNOWN:
-
 					fprintf(file, "not-analyzed\n");
 					break;
 				case INITIALIZER_ZERO:
@@ -616,11 +617,9 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 					break;
 			}
 			DUMPEXPC(expr);
+			VECEACH(expr->expr_initializer.initializer_expr, i)
 			{
-				VECEACH(expr->expr_initializer.initializer_expr, i)
-				{
-					fprint_expr_recursive(file, expr->expr_initializer.initializer_expr[i], indent + 1);
-				}
+				DUMPEXPR(expr->expr_initializer.initializer_expr[i]);
 			}
 			DUMPEND();
 		case EXPR_SUBSCRIPT:
@@ -707,26 +706,34 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 
 void fprint_func_signature(FILE *file, FunctionSignature *signature, int indent)
 {
-	fprint_type_info_recursive(file, signature->rtype, indent);
-	if (!vec_size(signature->params))
+	DUMP("(func-sig");
+	DUMPTI(signature->rtype);
+	do
 	{
-		fprintf_indented(file, indent, "(params none)\n");
-		return;
-	}
-	fprintf_indented(file, indent, "(params\n");
-	fprint_decl_list(file, signature->params, indent + 1);
-	fprint_endparen(file, indent);
-	if (signature->throw_any)
-	{
-		fprintf_indented(file, indent, "(throws any)\n");
-	}
-	else
-	{
-		fprintf_indented(file, indent, "(throws\n");
-		fprint_decl_list(file, signature->throws, indent + 1);
-		fprint_endparen(file, indent);
-	}
+		if (!vec_size(signature->params))
+		{
+			DUMPI("(params none)");
+			break;
+		}
+		indent++;
+		DUMP("(params");
+		DUMPDECLS(signature->params);
+		DUMPE();
+		if (signature->throw_any)
+		{
+			DUMP("(throws any)");
+		}
+		else
+		{
+			DUMP("(throws");
+			VECEACH(signature->throws, i) DUMPTI(signature->throws[i]);
+			DUMPE();
+		}
+		indent--;
+	} while (false);
+	DUMPEND();
 }
+
 void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 {
 	switch (decl->decl_kind)
@@ -737,14 +744,8 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			switch (decl->var.kind)
 			{
 				case VARDECL_CONST:
-					DUMPEXPR(decl->var.init_expr);
-					break;
 				case VARDECL_GLOBAL:
-					DUMPEXPR(decl->var.init_expr);
-					break;
 				case VARDECL_LOCAL:
-					DUMPEXPR(decl->var.init_expr);
-					break;
 				case VARDECL_PARAM:
 					DUMPEXPR(decl->var.init_expr);
 					break;
@@ -763,19 +764,18 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			fprint_endparen(file, indent);
 			break;
 		case DECL_FUNC:
-			fprintf_indented(file, indent, "(func %s\n", decl->name);
+			DUMPF("(func %s", decl->name);
 			if (decl->func.type_parent)
 			{
-				fprint_indent(file, indent + 1);
-				fprintf(file, "(parent_type\n");
-				fprint_type_info_recursive(file, decl->func.type_parent, indent + 2);
-				fprint_indent(file, indent + 1);
-				fprintf(file, ")\n");
+				indent++;
+				DUMP("(parent_type");
+				DUMPTI(decl->func.type_parent);
+				DUMPE();
+				indent--;
 			}
 			fprint_func_signature(file, &decl->func.function_signature, indent + 1);
-			if (decl->func.body) fprint_ast_recursive(file, decl->func.body, indent + 1);
-			fprint_endparen(file, indent);
-			break;
+			if (decl->func.body) DUMPAST(decl->func.body);
+			DUMPEND();
 		case DECL_STRUCT:
 			DUMPF("(struct %s", decl->name);
 			DUMPDECLS(decl->strukt.members);
@@ -785,91 +785,75 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			DUMPDECLS(decl->strukt.members);
 			DUMPEND();
 		case DECL_ENUM:
-			fprintf_indented(file, indent, "(enum %s\n", decl->name);
-			fprint_type_info_recursive(file, decl->enums.type_info, indent + 1);
-			fprint_decl_list(file, decl->enums.values, indent + 1);
-			fprint_endparen(file, indent);
-			break;
+			DUMPF("(enum %s", decl->name);
+			DUMPTI(decl->enums.type_info);
+			DUMPDECLS(decl->enums.values);
+			DUMPEND();
 		case DECL_ERROR:
-			fprintf_indented(file, indent, "(error %s\n", decl->name);
-			fprint_decl_list(file, decl->error.error_constants, indent + 1);
-			fprint_endparen(file, indent);
-			break;
+			DUMPF("(error %s", decl->name);
+			DUMPDECLS(decl->error.error_constants);
+			DUMPEND();
 		case DECL_ENUM_CONSTANT:
 			if (!decl->enum_constant.expr)
 			{
-				fprintf_indented(file, indent, "(enum-constant %s)\n", decl->name);
+				DUMPF("(enum-constant %s)", decl->name);
 				return;
 			}
-			fprintf_indented(file, indent, "(enum-constant %s\n", decl->name);
-			fprint_expr_recursive(file, decl->enum_constant.expr, indent + 1);
-			fprint_endparen(file, indent);
-			break;
+			DUMPF("(enum-constant %s", decl->name);
+			DUMPEXPR(decl->enum_constant.expr);
+			DUMPEND();
 		case DECL_ERROR_CONSTANT:
-			fprintf_indented(file, indent, "(error-constant %s)\n", decl->name);
-			break;
+			DUMPF("(error-constant %s)", decl->name);
+			return;
 		case DECL_GENERIC:
-			fprintf_indented(file, indent, "(generic %s\n", decl->name);
-			fprint_indent(file, indent + 1);
-			fprintf(file, "(params\n");
+			DUMPF("(generic %s\n", decl->name);
+			indent++;
+			DUMP("(params");
+			VECEACH(decl->generic_decl.parameters, i)
 			{
-				VECEACH(decl->generic_decl.parameters, i)
-				{
-					fprint_indent(file, indent + 2);
-					fprintf(file, "%s\n", decl->generic_decl.parameters[i].string);
-				}
+				DUMPFI("%s", decl->generic_decl.parameters[i].string);
 			}
-			fprint_endparen(file, indent + 1);
-			fprint_indent(file, indent + 1);
-			fprintf(file, "(cases\n");
-			{
-				VECEACH(decl->generic_decl.cases, i)
-				{
-					fprint_ast_recursive(file, decl->generic_decl.cases[i], indent + 2);
-				}
-			}
-			fprint_endparen(file, indent + 2);
-			fprint_endparen(file, indent);
-			break;
+			DUMPE();
+			DUMP("(cases");
+			DUMPASTS(decl->generic_decl.cases);
+			DUMPE();
+			indent--;
+			DUMPEND();
 		case DECL_TYPEDEF:
-			fprintf_indented(file, indent, "(typedef %s\n", decl->name);
+			DUMPF("(typedef %s", decl->name);
 			if (decl->typedef_decl.is_func)
 			{
 				fprint_func_signature(file, &decl->typedef_decl.function_signature, indent + 1);
 			}
 			else
 			{
-				fprint_type_info_recursive(file, decl->typedef_decl.type_info, indent + 1);
+				DUMPTI(decl->typedef_decl.type_info);
 			}
-			fprint_endparen(file, indent);
-			break;
+			DUMPEND();
 		case DECL_CT_IF:
-			fprintf_indented(file, indent, "(ct-if\n");
-			fprint_expr_recursive(file, decl->ct_if_decl.expr, indent + 1);
-			fprint_decl_list(file, decl->ct_if_decl.then, indent + 1);
+			DUMP("(ct-if");
+			DUMPEXPR(decl->ct_if_decl.expr);
+			DUMPDECLS(decl->ct_if_decl.then);
 			if (decl->ct_if_decl.elif)
 			{
-				fprint_decl_recursive(file, decl->ct_if_decl.elif, indent + 1);
+				DUMPDECL(decl->ct_if_decl.elif);
 			}
-			fprint_endparen(file, indent);
-			break;
+			DUMPEND();
 		case DECL_CT_ELIF:
-			fprintf_indented(file, indent, "(ct-elif\n");
-			fprint_expr_recursive(file, decl->ct_elif_decl.expr, indent + 1);
-			fprint_decl_list(file, decl->ct_elif_decl.then, indent + 1);
+			DUMP("(ct-elif");
+			DUMPEXPR(decl->ct_elif_decl.expr);
+			DUMPDECLS(decl->ct_elif_decl.then);
 			if (decl->ct_elif_decl.elif)
 			{
-				fprint_decl_recursive(file, decl->ct_elif_decl.elif, indent + 1);
+				DUMPDECL(decl->ct_elif_decl.elif);
 			}
-			fprint_endparen(file, indent);
-			break;
+			DUMPEND();
 		case DECL_CT_ELSE:
-			fprintf_indented(file, indent, "(ct-else\n");
-			fprint_decl_list(file, decl->ct_else_decl, indent + 1);
-			fprint_endparen(file, indent);
-			break;
+			DUMP("(ct-else");
+			DUMPDECLS(decl->ct_else_decl);
+			DUMPEND();
 		case DECL_POISONED:
-			fprintf_indented(file, indent, "(poisoned-decl)\n");
+			DUMP("(poisoned-decl)");
 			return;
 		case DECL_ARRAY_VALUE:
 			fprintf_indented(file, indent, "(array value");
@@ -877,10 +861,10 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			fprint_endparen(file, indent);
 			return;
 		case DECL_IMPORT:
-			fprintf_indented(file, indent, "(import %s", decl->name);
+			DUMPF("(import %s", decl->name);
 
-			fprint_endparen(file, indent);
-			break;
+			// TODO
+			DUMPEND();
 		case DECL_ATTRIBUTE:
 			fprintf_indented(file, indent, "(attribute %s", decl->name);
 			if (decl->attr.domains & ATTR_FUNC)
@@ -918,11 +902,6 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			// TODO attribute
 			fprint_endparen(file, indent);
 			break;
-		case DECL_THROWS:
-			fprintf_indented(file, indent, "(throws");
-			fprint_type_info_recursive(file, decl->throws, indent + 1);
-			fprint_endparen(file, indent);
-			break;;
 	}
 }
 
@@ -958,17 +937,16 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			DUMPEND();
 		case AST_DECL_EXPR_LIST:
 			DUMP("(declexprlist");
-			fprint_asts_recursive(file, ast->decl_expr_stmt, indent + 1);
+			DUMPASTS(ast->decl_expr_stmt);
 			DUMPEND();
 		case AST_DECLARE_STMT:
 			DUMP("(declare");
-			fprint_decl_recursive(file, ast->declare_stmt, indent + 1);
+			DUMPDECL(ast->declare_stmt);
 			DUMPEND();
 		case AST_EXPR_STMT:
 			DUMP("expr");
 			DUMPEXPR(ast->expr_stmt);
 			DUMPEND();
-			return;
 		case AST_WHILE_STMT:
 			DUMP("(while");
 			DUMPAST(ast->while_stmt.cond);
@@ -1038,8 +1016,8 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			DUMPEND();
 	    case AST_SWITCH_STMT:
 	    	DUMP("(switch");
-            fprint_ast_recursive(file, ast->switch_stmt.cond, indent + 1);
-            fprint_asts_recursive(file, ast->switch_stmt.cases, indent + 1);
+	    	DUMPAST(ast->switch_stmt.cond);
+	    	DUMPASTS(ast->switch_stmt.cases);
             DUMPEND();
 		case AST_CASE_STMT:
 			DUMP("(case");
@@ -1050,18 +1028,17 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 	    	DUMPAST(ast->defer_stmt.body);
 	    	DUMPEND();
 		case AST_GENERIC_CASE_STMT:
-			fprintf(file, "(generic-case\n");
-			fprint_indent(file, indent + 1);
-			fprintf(file, "(match\n");
+			DUMP("(generic-case");
+			indent++;
+			DUMP("(match");
+			VECEACH(ast->generic_case_stmt.types, i)
 			{
-				VECEACH(ast->generic_case_stmt.types, i)
-				{
-					fprint_type_info_recursive(file, ast->generic_case_stmt.types[i], indent + 2);
-				}
+				DUMPTI(ast->generic_case_stmt.types[i]);
 			}
-			fprint_endparen(file, indent + 1);
-			fprint_ast_recursive(file, ast->generic_case_stmt.body, indent + 1);
-			break;
+			DUMPE();
+			indent--;
+			DUMPAST(ast->generic_case_stmt.body);
+			DUMPEND();
 		case AST_GENERIC_DEFAULT_STMT:
 			DUMP("(generic-default");
 			DUMPAST(ast->generic_default_stmt);

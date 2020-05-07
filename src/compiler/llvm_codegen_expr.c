@@ -1133,7 +1133,7 @@ static inline bool gencontext_emit_throw_branch_for_single_throw(GenContext *con
 }
 
 
-static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRef value, Decl** errors, ThrowInfo *throw_info, ErrorReturn error_return)
+static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRef value, TypeInfo** errors, ThrowInfo *throw_info, ErrorReturn error_return)
 {
 	Type *call_error_type;
 	switch (error_return)

@@ -18,7 +18,7 @@ static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 	return true;
 }
 
-bool throw_completely_caught(Decl *throw, CatchInfo *catches)
+bool throw_completely_caught(TypeInfo *throw, CatchInfo *catches)
 {
 	VECEACH(catches, i)
 	{
@@ -26,14 +26,14 @@ bool throw_completely_caught(Decl *throw, CatchInfo *catches)
 		switch (catch_info->kind)
 		{
 			case CATCH_REGULAR:
-				if (throw == catch_info->catch->catch_stmt.error_param->type->decl) return true;
+				if (throw->type == catch_info->catch->catch_stmt.error_param->type) return true;
 				break;
 			case CATCH_TRY_ELSE:
 			case CATCH_RETURN_ANY:
 				return true;
 			case CATCH_RETURN_MANY:
 			case CATCH_RETURN_ONE:
-				if (throw == catch_info->error) return true;
+				if (throw->type == catch_info->error->type) return true;
 				break;
 		}
 	}
@@ -97,8 +97,6 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 	}
 	switch (decl->decl_kind)
 	{
-		case DECL_THROWS:
-			TODO
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ERROR:

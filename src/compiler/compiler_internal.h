@@ -311,7 +311,7 @@ typedef struct _FunctionSignature
 	ErrorReturn error_return : 4;
 	TypeInfo *rtype;
 	Decl** params;
-	Decl** throws;
+	TypeInfo** throws;
 	const char *mangled_signature;
 } FunctionSignature;
 
@@ -915,12 +915,7 @@ typedef struct
 	SourceRange span;
 	ThrowType kind : 4;
 	ThrowInfo *throw_info;
-	// The error type of the throw.
-	union
-	{
-		Type *throw;
-		Decl **throws;
-	};
+	TypeInfo **throws;
 } Throw;
 
 typedef struct _Context
@@ -1245,18 +1240,14 @@ void *target_data_layout();
 void *target_machine();
 void *target_target();
 
-bool throw_completely_caught(Decl *throw, CatchInfo *catches);
-static inline Throw throw_new_single(SourceRange range, ThrowType type, ThrowInfo *info, Type *throw)
-{
-	return (Throw) { .kind = type, .span = range, .throw_info = info, .throw = throw };
-}
+bool throw_completely_caught(TypeInfo *throw, CatchInfo *catches);
 static inline Throw throw_new_union(SourceRange range, ThrowType type, ThrowInfo *info)
 {
-	return (Throw) { .kind = type, .span = range, .throw_info = info, .throw = type_error_union };
+	return (Throw) { .kind = THROW_TYPE_CALL_ANY, .span = range, .throw_info = info };
 }
-static inline Throw throw_new_multiple(SourceRange range, ThrowInfo *info, Decl **throws)
+static inline Throw throw_new(SourceRange range, ThrowType type, ThrowInfo *info, TypeInfo **throws)
 {
-	return (Throw) { .kind = THROW_TYPE_CALL_THROW_MANY, .span = range, .throw_info = info, .throws = throws };
+	return (Throw) { .kind = type, .span = range, .throw_info = info, .throws = throws };
 }
 
 #define TOKEN_MAX_LENGTH 0xFFFF

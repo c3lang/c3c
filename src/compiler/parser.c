@@ -834,14 +834,12 @@ static inline bool parse_opt_throw_declaration(Context *context, Visibility visi
 		signature->throw_any = true;
 		return true;
 	}
-	Decl **throws = NULL;
+	TypeInfo **throws = NULL;
 	while (1)
 	{
-		TypeInfo *type_info = parse_base_type(context);
-		if (!type_info_ok(type_info)) return false;
-		Decl *throw = decl_new(DECL_THROWS, context->tok, visibility);
-		throw->throws = type_info;
-		VECADD(throws, throw);
+		TypeInfo *throw = parse_base_type(context);
+		if (!type_info_ok(throw)) return false;
+		vec_add(throws, throw);
 		if (!try_consume(context, TOKEN_COMMA)) break;
 	}
 	switch (context->tok.type)

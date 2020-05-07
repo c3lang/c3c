@@ -195,7 +195,6 @@ typedef enum
 	DECL_CT_ELSE,
 	DECL_CT_ELIF,
 	DECL_ATTRIBUTE,
-	DECL_THROWS,
 } DeclKind;
 
 // Ordering here is in priority if two branches should have the same exit.

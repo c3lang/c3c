@@ -444,13 +444,13 @@ static inline bool throw_completely_handled_call_throw_many(Throw *throw)
 {
 	assert(throw->kind == THROW_TYPE_CALL_THROW_MANY && "Only for throw many");
 	assert(!throw->throw_info->is_completely_handled && "Expected unhandled");
-	Decl **throws = throw->throws;
+	TypeInfo **throws = throw->throws;
 	CatchInfo *catched = throw->throw_info->catches;
 	unsigned catches = 0;
 	unsigned throw_count = vec_size(throws);
 	for (unsigned i = 0; i < throw_count; i++)
 	{
-		Decl *throw_decl = throws[i];
+		TypeInfo *throw_decl = throws[i];
 		if (throw_completely_caught(throw_decl, catched))
 		{
 			catches++;
@@ -530,7 +530,7 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 					break;
 				case THROW_TYPE_CALL_THROW_ONE:
 					// If there is no match, ignore.
-					if (throw->throw != error_type) continue;
+					if (throw->throws[0]->type != error_type) continue;
 					// Otherwise add and set to completely handled.
 					vec_add(throw->throw_info->catches, catch);
 					throw->throw_info->is_completely_handled = true;
@@ -995,30 +995,20 @@ static inline void defer_list_walk_to_common_depth(Ast **defer_stmt, int this_de
 	}
 }
 
-static inline bool throw_add_error_return_catch(Throw *throw, Decl **func_throws)
+static inline bool throw_add_error_return_catch(Throw *throw, TypeInfo **func_throws)
 {
 	assert(throw->kind != THROW_TYPE_CALL_ANY);
-	Decl **throws;
-	unsigned throw_count;
-	if (throw->kind == THROW_TYPE_CALL_THROW_MANY)
-	{
-		throws = throw->throws;
-		throw_count = vec_size(throws);
-	}
-	else
-	{
-		throws = &throw->throw->decl;
-		throw_count = 1;
-	}
+	TypeInfo **throws = throw->throws;
+	unsigned throw_count = vec_size(throws);
 	unsigned func_throw_count = vec_size(func_throws);
 	assert(func_throw_count);
 	bool catch_added = false;
 	for (unsigned i = 0; i < func_throw_count; i++)
 	{
-		Decl *func_throw = func_throws[i];
+		TypeInfo *func_throw = func_throws[i];
 		for (unsigned j = 0; j < throw_count; j++)
 		{
-			if (throws[j] == func_throw->type->decl)
+			if (throws[j]->type == func_throw->type)
 			{
 				// If the throw was already caught, ignore it.
 				if (throw_completely_caught(throws[j], throw->throw_info->catches)) continue;

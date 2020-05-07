@@ -9,7 +9,6 @@ static inline LLVMMetadataRef gencontext_create_debug_type_from_decl(GenContext 
 	static LLVMMetadataRef debug_params[512];
 	switch (decl->decl_kind)
 	{
-		case DECL_THROWS:
 		case DECL_ATTRIBUTE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_POISONED:

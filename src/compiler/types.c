@@ -135,7 +135,6 @@ static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_
 			*offset += len;
 			return;
 		}
-		case DECL_THROWS:
 		case DECL_POISONED:
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:

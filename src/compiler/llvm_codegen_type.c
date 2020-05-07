@@ -91,8 +91,6 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 				context->error_type = error_type;
 			}
 			return context->error_type;*/
-		case DECL_THROWS:
-			UNREACHABLE
 	}
 	UNREACHABLE
 }

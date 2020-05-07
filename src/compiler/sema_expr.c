@@ -276,14 +276,9 @@ static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr 
 		}
 		else
 		{
-			if (vec_size(signature->throws) == 1)
-			{
-				vec_add(context->error_calls, throw_new_single(expr->span, THROW_TYPE_CALL_THROW_ONE, expr->call_expr.throw_info, signature->throws[0]->type));
-			}
-			else
-			{
-				vec_add(context->error_calls, throw_new_multiple(expr->span, expr->call_expr.throw_info, signature->throws));
-			}
+			vec_add(context->error_calls, throw_new(expr->span,
+					vec_size(signature->throws) == 1 ? THROW_TYPE_CALL_THROW_ONE : THROW_TYPE_CALL_THROW_MANY,
+					expr->call_expr.throw_info, signature->throws));
 		}
 	}
 	unsigned func_param_count = vec_size(func_params);

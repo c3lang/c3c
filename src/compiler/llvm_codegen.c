@@ -339,7 +339,6 @@ static void gencontext_emit_decl(GenContext *context, Decl *decl)
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
-		case DECL_THROWS:
 			UNREACHABLE
 	}
 }
