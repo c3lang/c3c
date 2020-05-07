@@ -1002,10 +1002,8 @@ extern Decl *poisoned_decl;
 extern Expr *poisoned_expr;
 extern Type *poisoned_type;
 extern TypeInfo *poisoned_type_info;
-extern Module poisoned_module;
 extern Diagnostics diagnostics;
 
-extern Decl all_error;
 
 extern Type *type_bool, *type_void, *type_string, *type_voidptr;
 extern Type *type_float, *type_double;
@@ -1024,7 +1022,6 @@ extern const char *main_name;
 
 static inline bool ast_ok(Ast *ast) { return ast == NULL || ast->ast_kind != AST_POISONED; }
 static inline bool ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; return false; }
-Ast *ast_from_expr(Expr *expr);
 
 static inline Ast *new_ast(AstKind kind, SourceRange range)
 {
@@ -1165,7 +1162,6 @@ bool expr_const_int_overflowed(const ExprConst *expr);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 const char *expr_const_to_error_string(const ExprConst *expr);
 
-void fprint_ast(FILE *file, Ast *ast);
 void fprint_decl(FILE *file, Decl *dec);
 void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent);
 void fprint_expr_recursive(FILE *file, Expr *expr, int indent);

@@ -687,7 +687,6 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			break;
 		case AST_ASM_STMT:
 			TODO
-		case AST_ATTRIBUTE:
 		case AST_CT_IF_STMT:
 		case AST_CT_ELIF_STMT:
 		case AST_CT_ELSE_STMT:

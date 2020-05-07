@@ -2473,8 +2473,6 @@ static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 			return ast;
 		case AST_ASM_STMT:
 			TODO
-		case AST_ATTRIBUTE:
-			UNREACHABLE
 		case AST_BREAK_STMT:
 			return ast;
 		case AST_CASE_STMT:

@@ -12,7 +12,7 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent);
 #define DUMPF(text, ...) do { fprintf_indented(file, indent, text, __VA_ARGS__); fprintf(file, "\n"); } while(0)
 #define DUMPI(text) do { fprintf_indented(file, indent + 1, text); fprintf(file, "\n"); } while(0)
 #define DUMPFI(text, ...) do { fprintf_indented(file, indent + 1, text, __VA_ARGS__); fprintf(file, "\n"); } while(0)
-#define DUMPE() fprint_endparen(file, indent);
+#define DUMPE() fprint_endparen(file, indent)
 #define DUMPEND() fprint_endparen(file, indent); return
 #define DUMPEXPR(_expr) fprint_expr_recursive(file, _expr, indent + 1)
 #define DUMPAST(_ast) fprint_ast_recursive(file, _ast, indent + 1)
@@ -147,14 +147,6 @@ Decl *struct_find_name(Decl *decl, const char* name)
     return NULL;
 }
 
-Ast *ast_from_expr(Expr *expr)
-{
-	if (!expr_ok(expr)) return poisoned_ast;
-	Ast *ast = AST_NEW(AST_EXPR_STMT, expr->span);
-	ast->expr_stmt = expr;
-	return ast;
-}
-
 Expr *expr_new(ExprKind kind, SourceRange start)
 {
 	Expr *expr = malloc_arena(sizeof(Expr));
@@ -166,37 +158,6 @@ Expr *expr_new(ExprKind kind, SourceRange start)
 
 static Expr poison_expr = { .expr_kind = EXPR_POISONED, .resolve_status = RESOLVE_DONE };
 Expr *poisoned_expr = &poison_expr;
-
-Type* type_int_max_type(bool is_signed)
-{
-	return is_signed ? type_long : type_ulong;
-}
-
-/*
-Type* type_get_unsigned(Type *type)
-{
-	assert(type->type_kind == TYPE_BUILTIN);
-	Decl *decl = type->decl;
-	if (decl->builtin.num_type == NUMBER_TYPE_UNSIGNED_INT) return type;
-	assert(decl->builtin.num_type == NUMBER_TYPE_SIGNED_INT);
-	switch (decl->builtin.bytes)
-	{
-		case 8:
-			return &type_ulong;
-		case 4:
-			return &type_uint;
-		case 2:
-			return &type_ushort;
-		case 1:
-			return &type_byte;
-		default:
-			UNREACHABLE
-	}
-}
-
-*/
-
-
 
 BinaryOp binary_op[TOKEN_LAST + 1] = {
 		[TOKEN_STAR] = BINARYOP_MULT,
@@ -463,7 +424,7 @@ void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent)
 			if (type_info->unresolved.path)
 			{
 				DUMPF("(unresolved %s::%s)\n", type_info->unresolved.path->module, type_info->unresolved.name_loc.string);
-				break;;
+				break;
 			}
 			DUMPF("(unresolved %s)", type_info->unresolved.name_loc.string);
 			break;
@@ -527,13 +488,13 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 				return;
 			}
 			DUMP("(expr_block");
-			fprint_asts_recursive(file, expr->expr_block.stmts, indent + 1);
+			DUMPASTS(expr->expr_block.stmts);
 			DUMPEND();
 		case EXPR_CONST:
 			fprintf_indented(file, indent, "(const ");
 			expr_const_fprint(file, &expr->const_expr);
 			fprintf(file, "\n");
-			fprint_expr_common(file, expr, indent + 1);
+			DUMPEXPC(expr);
 			DUMPEND();
 		case EXPR_BINARY:
 			DUMPF("(binary %s", token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
@@ -736,6 +697,7 @@ void fprint_func_signature(FILE *file, FunctionSignature *signature, int indent)
 
 void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 {
+	if (!decl) return;
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
@@ -754,15 +716,15 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			}
 			DUMPEND();
 		case DECL_MACRO:
-			fprintf_indented(file, indent, "(macro %s\n", decl->name);
-			fprint_type_info_recursive(file, decl->macro_decl.rtype, indent + 1);
-			fprint_indent(file, indent + 1);
-			fprintf(file, "(params\n");
-			fprint_decl_list(file, decl->macro_decl.parameters, indent + 2);
-			fprint_endparen(file, indent + 1);
-			fprint_ast_recursive(file, decl->macro_decl.body, indent + 1);
-			fprint_endparen(file, indent);
-			break;
+			DUMPF("(macro %s", decl->name);
+			DUMPTI(decl->macro_decl.rtype);
+			indent++;
+			DUMP("(params");
+			DUMPDECLS(decl->macro_decl.parameters);
+			DUMPE();
+			indent--;
+			DUMPAST(decl->macro_decl.body);
+			DUMPEND();
 		case DECL_FUNC:
 			DUMPF("(func %s", decl->name);
 			if (decl->func.type_parent)
@@ -843,10 +805,7 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			DUMP("(ct-elif");
 			DUMPEXPR(decl->ct_elif_decl.expr);
 			DUMPDECLS(decl->ct_elif_decl.then);
-			if (decl->ct_elif_decl.elif)
-			{
-				DUMPDECL(decl->ct_elif_decl.elif);
-			}
+			DUMPDECL(decl->ct_elif_decl.elif);
 			DUMPEND();
 		case DECL_CT_ELSE:
 			DUMP("(ct-else");
@@ -856,53 +815,52 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			DUMP("(poisoned-decl)");
 			return;
 		case DECL_ARRAY_VALUE:
-			fprintf_indented(file, indent, "(array value");
-			fprint_expr_recursive(file, decl->incr_array_decl, indent + 1);
-			fprint_endparen(file, indent);
-			return;
+			DUMP("(array value");
+			DUMPEXPR(decl->incr_array_decl);
+			DUMPEND();
 		case DECL_IMPORT:
 			DUMPF("(import %s", decl->name);
 
 			// TODO
 			DUMPEND();
 		case DECL_ATTRIBUTE:
-			fprintf_indented(file, indent, "(attribute %s", decl->name);
+			DUMPF("(attribute %s)", decl->name);
 			if (decl->attr.domains & ATTR_FUNC)
 			{
-				fprintf_indented(file, indent + 1, "(func)");
+				DUMPI("(func)");
 			}
 			if (decl->attr.domains & ATTR_VAR)
 			{
-				fprintf_indented(file, indent + 1, "(var)");
+				DUMPI("(var)");
 			}
 			if (decl->attr.domains & ATTR_ENUM)
 			{
-				fprintf_indented(file, indent + 1, "(enum)");
+				DUMPI("(enum)");
 			}
 			if (decl->attr.domains & ATTR_STRUCT)
 			{
-				fprintf_indented(file, indent + 1, "(struct)");
+				DUMPI("(struct)");
 			}
 			if (decl->attr.domains & ATTR_UNION)
 			{
-				fprintf_indented(file, indent + 1, "(union)");
+				DUMPI("(union)");
 			}
 			if (decl->attr.domains & ATTR_CONST)
 			{
-				fprintf_indented(file, indent + 1, "(const)");
+				DUMPI("(const)");
 			}
 			if (decl->attr.domains & ATTR_ERROR)
 			{
-				fprintf_indented(file, indent + 1, "(error)");
+				DUMPI("(error)");
 			}
 			if (decl->attr.domains & ATTR_TYPEDEF)
 			{
-				fprintf_indented(file, indent + 1, "(typedef");
+				DUMPI("(typedef)");
 			}
 			// TODO attribute
-			fprint_endparen(file, indent);
-			break;
+			DUMPEND();
 	}
+	UNREACHABLE
 }
 
 static void fprint_decl_list(FILE *file, Decl **decls, int indent)
@@ -1047,34 +1005,42 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			DUMP("(ast-poisoned)");
 			return;
 		case AST_ASM_STMT:
-			TODO
-			break;
-		case AST_ATTRIBUTE:
-			TODO
-			break;
+			DUMP("(asm");
+			// TODO
+			DUMPEND();
 		case AST_CATCH_STMT:
 			DUMP("(catch");
-			fprint_decl_recursive(file, ast->catch_stmt.error_param, indent + 1);
+			DUMPDECL(ast->catch_stmt.error_param);
 			DUMPAST(ast->catch_stmt.body);
 			DUMPEND();
 		case AST_CT_IF_STMT:
-			TODO
-			break;
+			DUMP("(ct-if");
+			DUMPEXPR(ast->ct_if_stmt.expr);
+			DUMPAST(ast->ct_if_stmt.then);
+			DUMPAST(ast->ct_if_stmt.elif);
+			DUMPEND();
 		case AST_CT_ELIF_STMT:
-			TODO
-			break;
+			DUMP("(ct-elif");
+			DUMPEXPR(ast->ct_elif_stmt.expr);
+			DUMPAST(ast->ct_elif_stmt.then);
+			DUMPAST(ast->ct_elif_stmt.elif);
+			DUMPEND();
 		case AST_CT_ELSE_STMT:
-			TODO
-			break;
+			DUMP("(ct-else");
+			DUMPAST(ast->ct_else_stmt);
+			DUMPEND();
 		case AST_CT_SWITCH_STMT:
-			TODO
-			break;
+			DUMP("(ct-switch");
+			DUMPEXPR(ast->ct_switch_stmt.cond);
+			DUMPASTS(ast->ct_switch_stmt.body);
+			DUMPEND();
 		case AST_CT_CASE_STMT:
+			DUMP("(ct-case");
 			TODO
-			break;
 		case AST_CT_DEFAULT_STMT:
-			TODO
-			break;
+			DUMP("(ct-default");
+			DUMPAST(ast->ct_default_stmt);
+			DUMPEND();
 		case AST_GOTO_STMT:
 			DUMPF("(goto %s)", ast->goto_stmt.label_name);
 			return;
@@ -1095,14 +1061,8 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 	}
 	UNREACHABLE
 }
-void fprint_ast(FILE *file, Ast *ast)
-{
-	fprint_ast_recursive(file, ast, 0);
-}
 void fprint_decl(FILE *file, Decl *dec)
 {
 	fprint_decl_recursive(file, dec, 0);
 }
-Module poisoned_module = { .name = NULL };
-Decl all_error = { .decl_kind = DECL_ERROR, .name = NULL };
 

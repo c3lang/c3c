@@ -902,7 +902,6 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 	{
 		case AST_POISONED:
 			return false;
-		case AST_ATTRIBUTE:
 		case AST_SCOPED_STMT:
 			UNREACHABLE
 		case AST_ASM_STMT:
