@@ -443,6 +443,7 @@ void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent)
 			DUMP("(incarray");
 			DUMPTI(type_info->array.base);
 			DUMPE();
+			break;
 		case TYPE_INFO_EXPRESSION:
 			DUMP("(typexpr");
 			DUMPEXPR(type_info->unresolved_type_expr);
