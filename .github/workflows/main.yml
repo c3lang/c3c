@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: (Linux) Download LLVM
-        run: sudo apt-get install llvm
+        run: sudo apt-get install -y llvm-10 llvm-10-dev
       - name: Build
         run: |
           mkdir build && cd build
