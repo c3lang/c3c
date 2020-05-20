@@ -18,24 +18,28 @@ C3 tries to be an alternative in the the C/C++ niche: fast and close to the meta
 
 ### Current status
 
-Most work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue](https://github.com/c3lang/c3c/issues) or discuss C3 on the r/ProgrammingLanguages Discord server: https://discord.gg/cfu4wdk
+It's possible to try out the current C3 compiler in the browser: https://ide.judge0.com/?1EFo – this is courtesy of the
+developer of Judge0. 
+
+Design work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue](https://github.com/c3lang/c3c/issues) or discuss C3 on the r/ProgrammingLanguages Discord server: https://discord.gg/cfu4wdk
 
 There are some small work being done on the parser here, but most of the structure is still missing:
 
 #### What's missing in the parser
 
 - `asm` sections.
+- bitstructs
+- array range initializers e.g. `{ [1..2] = 2 }`
+- assert/$assert as keywords
 - Docs not linked to statements/functions/declarations.
 
 #### What's missing in the semantic analyser
 
 - Incomplete handling of imports.
-- `next` not correct
 - Function signatures incomplete.
 - Function typedef not done.
 - `asm` not done.
 - `generic` not analysed.
-- `attribute` not analysed.
 - `$switch` and `$for` not handled.
 - Enums not correctly handled.
 - Type resolution not complete for all types.

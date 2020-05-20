@@ -318,7 +318,7 @@ static inline bool sema_analyse_typedef(Context *context, Decl *decl)
 	{
 		Type *func_type = sema_analyse_function_signature(context, &decl->typedef_decl.function_signature, false);
 		if (!func_type) return false;
-		decl->type->canonical = func_type;
+		decl->type->canonical = type_get_ptr(func_type);
 		return true;
 	}
 	if (!sema_resolve_type_info(context, decl->typedef_decl.type_info)) return false;
@@ -437,7 +437,123 @@ static inline bool sema_analyse_method_function(Context *context, Decl *decl)
 	return true;
 }
 
+static inline AttributeType attribute_by_name(Attr *attr)
+{
+	const char *attribute = attr->name.string;
+	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
+	{
+		if (attribute_list[i] == attribute) return (AttributeType)i;
+	}
+	return ATTRIBUTE_NONE;
+}
 
+static const char *attribute_domain_to_string(AttributeDomain domain)
+{
+	switch (domain)
+	{
+		case ATTR_FUNC:
+			return "function";
+		case ATTR_VAR:
+			return "variable";
+		case ATTR_ENUM:
+			return "enum";
+		case ATTR_STRUCT:
+			return "struct";
+		case ATTR_UNION:
+			return "union";
+		case ATTR_CONST:
+			return "constant";
+		case ATTR_ERROR:
+			return "error type";
+		case ATTR_TYPEDEF:
+			return "typedef";
+	}
+	UNREACHABLE
+}
+static AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDomain domain)
+{
+	AttributeType type = attribute_by_name(attr);
+	if (type == ATTRIBUTE_NONE)
+	{
+		SEMA_TOKEN_ERROR(attr->name, "There is no attribute with the name '%s', did you mistype?", attr->name.string);
+		return ATTRIBUTE_NONE;
+	}
+	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
+			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
+			[ATTRIBUTE_CNAME] = 0xFF,
+			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
+			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
+			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_VAR | ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_INLINE] = ATTR_FUNC,
+			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION
+	};
+
+	if ((attribute_domain[type] & domain) != domain)
+	{
+		SEMA_TOKEN_ERROR(attr->name, "'%s' is not a valid %s attribute.", attr->name.string, attribute_domain_to_string(domain));
+		return ATTRIBUTE_NONE;
+	}
+	switch (type)
+	{
+		case ATTRIBUTE_ALIGN:
+			if (!attr->expr)
+			{
+				SEMA_TOKEN_ERROR(attr->name, "'align' requires an power-of-2 argument, e.g. align(8).");
+				return ATTRIBUTE_NONE;
+			}
+			if (!sema_analyse_expr(context, type_usize, attr->expr)) return false;
+			if (attr->expr->expr_kind != EXPR_CONST || !type_is_any_integer(attr->expr->type->canonical))
+			{
+				SEMA_ERROR(attr->expr, "Expected a constant integer value as argument.");
+				return ATTRIBUTE_NONE;
+			}
+			{
+				BigInt comp;
+				bigint_init_unsigned(&comp, MAX_ALIGNMENT);
+				if (bigint_cmp(&attr->expr->const_expr.i, &comp) == CMP_GT)
+				{
+					SEMA_ERROR(attr->expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
+					return ATTRIBUTE_NONE;
+				}
+				if (bigint_cmp_zero(&attr->expr->const_expr.i) != CMP_GT)
+				{
+					SEMA_ERROR(attr->expr, "Alignment must be greater than zero.");
+					return ATTRIBUTE_NONE;
+				}
+				uint64_t align = bigint_as_unsigned(&attr->expr->const_expr.i);
+				if (!is_power_of_two(align))
+				{
+					SEMA_ERROR(attr->expr, "Alignment must be a power of two.");
+					return ATTRIBUTE_NONE;
+				}
+				attr->alignment = align;
+			}
+			return type;
+		case ATTRIBUTE_SECTION:
+		case ATTRIBUTE_CNAME:
+			if (!attr->expr)
+			{
+				SEMA_TOKEN_ERROR(attr->name, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name.string, attr->name.string);
+				return ATTRIBUTE_NONE;
+			}
+			if (!sema_analyse_expr(context, NULL, attr->expr)) return false;
+			if (attr->expr->expr_kind != EXPR_CONST || attr->expr->type->canonical != type_string)
+			{
+				SEMA_ERROR(attr->expr, "Expected a constant string value as argument.");
+				return ATTRIBUTE_NONE;
+			}
+			return type;
+		default:
+			if (attr->expr)
+			{
+				SEMA_ERROR(attr->expr, "'%s' should not have any arguments.", attr->name.string);
+				return ATTRIBUTE_NONE;
+			}
+			return type;
+	}
+
+}
 
 static inline bool sema_analyse_func(Context *context, Decl *decl)
 {
@@ -449,7 +565,50 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 	{
 		if (!sema_analyse_method_function(context, decl)) return decl_poison(decl);
 	}
-	if (decl->name == main_name)
+	VECEACH(decl->attributes, i)
+	{
+		Attr *attr = decl->attributes[i];
+
+		AttributeType attribute = sema_analyse_attribute(context, attr, ATTR_FUNC);
+		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
+
+		bool had = false;
+#define SET_ATTR(_X) had = decl->func._X; decl->func._X = true; break
+		switch (attribute)
+		{
+			case ATTRIBUTE_CNAME:
+				had = decl->cname != NULL;
+				decl->cname = attr->expr->const_expr.string.chars;
+				break;
+			case ATTRIBUTE_SECTION:
+				had = decl->section != NULL;
+				decl->section = attr->expr->const_expr.string.chars;
+				break;
+			case ATTRIBUTE_ALIGN:
+				had = decl->alignment != 0;
+				decl->alignment = attr->alignment;
+				break;
+			case ATTRIBUTE_NOINLINE: SET_ATTR(attr_noinline);
+			case ATTRIBUTE_STDCALL: SET_ATTR(attr_stdcall);
+			case ATTRIBUTE_INLINE: SET_ATTR(attr_inline);
+			case ATTRIBUTE_NORETURN: SET_ATTR(attr_noreturn);
+			case ATTRIBUTE_WEAK: SET_ATTR(attr_weak);
+			default:
+				UNREACHABLE
+		}
+#undef SET_ATTR
+		if (had)
+		{
+			SEMA_TOKEN_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			return decl_poison(decl);
+		}
+		if (decl->func.attr_inline && decl->func.attr_noinline)
+		{
+			SEMA_TOKEN_ERROR(attr->name, "A function cannot be 'inline' and 'noinline' at the same time.");
+			return decl_poison(decl);
+		}
+	}
+	if (decl->name == main_kw)
 	{
 		if (decl->visibility == VISIBLE_LOCAL)
 		{
@@ -492,6 +651,42 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 			return false;
 		}
 	}
+	AttributeDomain domain = decl->var.kind == VARDECL_CONST ? ATTR_CONST : ATTR_FUNC;
+	VECEACH(decl->attributes, i)
+	{
+		Attr *attr = decl->attributes[i];
+
+		AttributeType attribute = sema_analyse_attribute(context, attr, domain);
+		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
+
+		bool had = false;
+#define SET_ATTR(_X) had = decl->func._X; decl->func._X = true; break
+		switch (attribute)
+		{
+			case ATTRIBUTE_CNAME:
+				had = decl->cname != NULL;
+				decl->cname = attr->expr->const_expr.string.chars;
+				break;
+			case ATTRIBUTE_SECTION:
+				had = decl->section != NULL;
+				decl->section = attr->expr->const_expr.string.chars;
+				break;
+			case ATTRIBUTE_ALIGN:
+				had = decl->alignment != 0;
+				decl->alignment = attr->alignment;
+				break;
+			case ATTRIBUTE_WEAK: SET_ATTR(attr_weak);
+			default:
+				UNREACHABLE
+		}
+#undef SET_ATTR
+		if (had)
+		{
+			SEMA_TOKEN_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			return decl_poison(decl);
+		}
+	}
+
 	switch (decl->var.kind)
 	{
 		case VARDECL_CONST:

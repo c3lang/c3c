@@ -425,6 +425,7 @@ static inline TypeInfo *parse_base_type(Context *context)
  *		: '[' constant_expression ']'
  *		| '[' ']'
  *		| '[' '+' ']'
+ *		| '[' '*' ']'
  *		;
  *
  * @param type the type to wrap, may not be poisoned.
@@ -443,13 +444,22 @@ static inline TypeInfo *parse_array_type_index(Context *context, TypeInfo *type)
         RANGE_EXTEND_PREV(incr_array);
         return incr_array;
 	}
+	if (try_consume(context, TOKEN_STAR))
+	{
+		CONSUME_OR(TOKEN_RBRACKET, poisoned_type_info);
+		TypeInfo *vararray = type_info_new(TYPE_INFO_VARARRAY, type->span);
+		vararray->array.base = type;
+		vararray->array.len = NULL;
+		RANGE_EXTEND_PREV(vararray);
+		return vararray;
+	}
 	if (try_consume(context, TOKEN_RBRACKET))
 	{
-        TypeInfo *array = type_info_new(TYPE_INFO_ARRAY, type->span);
-        array->array.base = type;
-        array->array.len = NULL;
-        RANGE_EXTEND_PREV(array);
-        return array;
+        TypeInfo *subarray = type_info_new(TYPE_INFO_SUBARRAY, type->span);
+		subarray->array.base = type;
+		subarray->array.len = NULL;
+        RANGE_EXTEND_PREV(subarray);
+        return subarray;
 	}
     TypeInfo *array = type_info_new(TYPE_INFO_ARRAY, type->span);
     array->array.base = type;
@@ -927,7 +937,7 @@ static inline bool parse_opt_parameter_type_list(Context *context, Visibility pa
 			SEMA_TOKEN_ERROR(context->tok, "Variadic arguments should be the last in a parameter list.");
 			return false;
 		}
-		if (try_consume(context, TOKEN_ELIPSIS))
+		if (try_consume(context, TOKEN_ELLIPSIS))
 		{
 			signature->variadic = true;
 		}
@@ -1170,7 +1180,7 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 
 
 
-static AttributeDomains TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
+static AttributeDomain TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
 		[TOKEN_FUNC] = ATTR_FUNC,
 		[TOKEN_VAR] = ATTR_VAR,
 		[TOKEN_ENUM] = ATTR_ENUM,
@@ -1209,8 +1219,8 @@ static AttributeDomains TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
 static inline Decl *parse_attribute_declaration(Context *context, Visibility visibility)
 {
 	advance_and_verify(context, TOKEN_ATTRIBUTE);
-	AttributeDomains domains = 0;
-	AttributeDomains last_domain;
+	AttributeDomain domains = 0;
+	AttributeDomain last_domain;
 	last_domain = TOKEN_TO_ATTR[context->tok.type];
 	while (last_domain)
 	{
@@ -1255,7 +1265,7 @@ static inline bool parse_func_typedef(Context *context, Decl *decl, Visibility v
     {
         return false;
     }
-    return parse_opt_throw_declaration(context, VISIBLE_PUBLIC, &(decl->typedef_decl.function_signature));
+    return parse_opt_throw_declaration(context, visibility, &(decl->typedef_decl.function_signature));
 
 }
 
@@ -1290,7 +1300,6 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
     {
         rtype = TRY_TYPE_OR(parse_type(context), poisoned_decl);
     }
-
     Decl *decl = decl_new(DECL_MACRO, context->tok, visibility);
     decl->macro_decl.rtype = rtype;
     TRY_CONSUME_OR(TOKEN_IDENT, "Expected a macro name here", poisoned_decl);
@@ -1530,6 +1539,8 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	if (!parse_opt_parameter_type_list(context, visibility, &(func->func.function_signature), is_interface)) return poisoned_decl;
 
 	if (!parse_opt_throw_declaration(context, visibility, &(func->func.function_signature))) return poisoned_decl;
+
+	if (!parse_attributes(context, func)) return poisoned_decl;
 
 	// TODO remove
 	is_interface = context->tok.type == TOKEN_EOS;

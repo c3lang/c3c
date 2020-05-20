@@ -180,6 +180,7 @@ static inline Ast *parse_case_stmts(Context *context)
 /**
  * case_stmt
  * 	: CASE constant_expression ':' case_stmts
+ * 	| CASE constant_expression ELLIPSIS constant_expression ':' cast_stmts
  */
 static inline Ast* parse_case_stmt(Context *context)
 {
@@ -800,7 +801,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_MULT_ASSIGN:
 		case TOKEN_NOT_EQUAL:
 		case TOKEN_PLUS_ASSIGN:
-		case TOKEN_ELIPSIS:
+		case TOKEN_ELLIPSIS:
 		case TOKEN_SCOPE:
 		case TOKEN_SHR:
 		case TOKEN_SHL:

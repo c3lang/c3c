@@ -66,29 +66,29 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 	assert(decl->var.kind == VARDECL_GLOBAL);
 
 	// TODO fix name
-	decl->var.backend_ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->name);
+	decl->ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->name);
 
 	if (decl->var.init_expr)
 	{
-		LLVMSetInitializer(decl->var.backend_ref, gencontext_emit_expr(context, decl->var.init_expr));
+		LLVMSetInitializer(decl->ref, gencontext_emit_expr(context, decl->var.init_expr));
 	}
 	else
 	{
-		LLVMSetInitializer(decl->var.backend_ref, LLVMConstInt(llvm_type(type_bool), 0, false));
+		LLVMSetInitializer(decl->ref, LLVMConstInt(llvm_type(type_bool), 0, false));
 	}
 	// If read only: LLVMSetGlobalConstant(decl->var.backend_ref, 1);
 
 	switch (decl->visibility)
 	{
 		case VISIBLE_MODULE:
-			LLVMSetVisibility(decl->var.backend_ref, LLVMProtectedVisibility);
+			LLVMSetVisibility(decl->ref, LLVMProtectedVisibility);
 			break;
 		case VISIBLE_PUBLIC:
-			LLVMSetVisibility(decl->var.backend_ref, LLVMDefaultVisibility);
+			LLVMSetVisibility(decl->ref, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_EXTERN:
 		case VISIBLE_LOCAL:
-			LLVMSetVisibility(decl->var.backend_ref, LLVMHiddenVisibility);
+			LLVMSetVisibility(decl->ref, LLVMHiddenVisibility);
 			break;
 	}
 
@@ -212,6 +212,8 @@ unsigned nounwind_attribute;
 unsigned writeonly_attribute;
 unsigned readonly_attribute;
 unsigned optnone_attribute;
+unsigned noalias_attribute;
+unsigned sret_attribute;
 
 void llvm_codegen_setup()
 {
@@ -232,7 +234,8 @@ void llvm_codegen_setup()
 	writeonly_attribute = lookup_attribute("writeonly");
 	readonly_attribute = lookup_attribute("readonly");
 	optnone_attribute = lookup_attribute("optnone");
-
+	sret_attribute = lookup_attribute("sret");
+	noalias_attribute = lookup_attribute("noalias");
 	intrinsics_setup = true;
 }
 
@@ -248,14 +251,14 @@ void gencontext_emit_struct_decl(GenContext *context, Decl *decl)
 	switch (decl->visibility)
 	{
 		case VISIBLE_MODULE:
-			LLVMSetVisibility(decl->var.backend_ref, LLVMProtectedVisibility);
+			LLVMSetVisibility(global_name, LLVMProtectedVisibility);
 			break;
 		case VISIBLE_PUBLIC:
-			LLVMSetVisibility(decl->var.backend_ref, LLVMDefaultVisibility);
+			LLVMSetVisibility(global_name, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_EXTERN:
 		case VISIBLE_LOCAL:
-			LLVMSetVisibility(decl->var.backend_ref, LLVMHiddenVisibility);
+			LLVMSetVisibility(global_name, LLVMHiddenVisibility);
 			break;
 	}
 }
@@ -278,13 +281,14 @@ void gencontext_emit_error_decl(GenContext *context, Decl *decl)
 	LLVMTypeRef reserved_type = LLVMArrayType(llvm_type(type_char), slots);
 	char *buffer = strcat_arena(decl->external_name, "_DOMAIN");
 	LLVMValueRef global_name = LLVMAddGlobal(context->module, reserved_type, buffer);
-	LLVMSetLinkage(global_name, LLVMInternalLinkage);
+	LLVMSetLinkage(global_name, LLVMExternalLinkage);
 	LLVMSetGlobalConstant(global_name, 1);
-	LLVMSetInitializer(global_name, llvm_int(type_char, 1));
-	decl->error.start_value = global_name;
+	LLVMSetInitializer(global_name, LLVMConstAllOnes(reserved_type));
+	decl->error.start_value = LLVMBuildPtrToInt(context->builder, global_name, llvm_type(type_usize), "");
 	uint32_t min_align = upper_power_of_two(slots);
 	uint32_t pointer_align = type_abi_alignment(type_voidptr);
 	LLVMSetAlignment(global_name, pointer_align > min_align ? pointer_align : min_align);
+	LLVMSetVisibility(global_name, LLVMDefaultVisibility);
 	switch (decl->visibility)
 	{
 		case VISIBLE_MODULE:
@@ -422,8 +426,9 @@ void llvm_codegen(Context *context)
 	gencontext_destroy(&gen_context);
 }
 
-void gencontext_add_attribute(GenContext context, unsigned attribute_id, LLVMValueRef value_to_add_attribute_to)
+void
+gencontext_add_attribute(GenContext *context, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index)
 {
-	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(context.context, attribute_id, 0);
-	LLVMAddAttributeAtIndex(value_to_add_attribute_to, -1, llvm_attr);
+	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(context->context, attribute_id, 0);
+	LLVMAddAttributeAtIndex(value_to_add_attribute_to, index, llvm_attr);
 }

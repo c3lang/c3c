@@ -138,6 +138,8 @@ typedef enum
 	CAST_UIUI,
 	CAST_UIFP,
 	CAST_ENUMSI,
+	CAST_APTSA,
+	CAST_SAPTR,
 	/*
 	CAST_NONE,
 	CAST_INLINE,
@@ -242,9 +244,10 @@ typedef enum
 typedef enum
 {
 	PREC_NONE,
-	PREC_ASSIGNMENT,        // =, *=, /=, %=, ...
+	PREC_ASSIGNMENT,        // =, *=, /=, %=, +=, etc
 	PREC_TRY,               // try
 	PREC_TERNARY,           // ?:
+	PREC_RANGE,             // ...
 	PREC_LOGICAL,           // && ||
 	PREC_RELATIONAL,        // < > <= >= == !=
 	PREC_ADDITIVE,          // + -
@@ -279,6 +282,8 @@ typedef enum
 	TYPE_INFO_EXPRESSION,
 	TYPE_INFO_ARRAY,
 	TYPE_INFO_INC_ARRAY,
+	TYPE_INFO_VARARRAY,
+	TYPE_INFO_SUBARRAY,
 	TYPE_INFO_POINTER,
 } TypeInfoKind;
 
@@ -345,7 +350,7 @@ typedef enum
 	TOKEN_SHL,              // <<
 
 	// Three or more
-	TOKEN_ELIPSIS,          // ...
+	TOKEN_ELLIPSIS,         // ...
 	TOKEN_MINUS_MOD_ASSIGN, // -%=
 	TOKEN_MULT_MOD_ASSIGN,  // *%=
 	TOKEN_PLUS_MOD_ASSIGN,  // +%=
@@ -561,7 +566,23 @@ typedef enum
 	ATTR_CONST = 1 << 5,
 	ATTR_ERROR = 1 << 6,
 	ATTR_TYPEDEF = 1 << 7
-} AttributeDomains;
+} AttributeDomain;
+
+typedef enum
+{
+	ATTRIBUTE_INLINE,
+	ATTRIBUTE_NOINLINE,
+	ATTRIBUTE_STDCALL,
+	ATTRIBUTE_OPAQUE,
+	ATTRIBUTE_NORETURN,
+	ATTRIBUTE_SECTION,
+	ATTRIBUTE_CNAME,
+	ATTRIBUTE_WEAK,
+	ATTRIBUTE_ALIGN,
+	ATTRIBUTE_PACKED,
+	NUMBER_OF_ATTRIBUTES = ATTRIBUTE_PACKED + 1,
+	ATTRIBUTE_NONE,
+} AttributeType;
 
 typedef enum
 {

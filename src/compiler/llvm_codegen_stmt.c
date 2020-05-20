@@ -23,7 +23,7 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 {
 	Decl *decl = ast->declare_stmt;
 
-	decl->var.backend_ref = gencontext_emit_alloca(context, llvm_type(type_reduced(decl->type)), decl->name);
+	decl->ref = gencontext_emit_alloca(context, llvm_type(type_reduced(decl->type)), decl->name);
 	// TODO NRVO
 	// TODO debug info
 	/*
@@ -42,10 +42,10 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 	*/
 	if (decl->var.init_expr)
 	{
-		gencontext_emit_assign_expr(context, decl->var.backend_ref, decl->var.init_expr);
-		return decl->var.backend_ref;
+		gencontext_emit_assign_expr(context, decl->ref, decl->var.init_expr);
+		return decl->ref;
 	}
-	return decl->var.backend_ref;
+	return decl->ref;
 }
 
 void gencontext_emit_decl_expr_list_ignore_result(GenContext *context, Ast *ast)
@@ -602,7 +602,7 @@ void gencontext_generate_catch_block_if_needed(GenContext *context, Ast *ast)
 	{
 		type = llvm_type(type_error_base);
 	}
-	ast->catch_stmt.error_param->var.backend_ref = gencontext_emit_alloca(context, type, "");
+	ast->catch_stmt.error_param->ref = gencontext_emit_alloca(context, type, "");
 }
 
 void gencontext_emit_catch_stmt(GenContext *context, Ast *ast)

@@ -124,7 +124,7 @@ const char *token_type_to_string(TokenType type)
 			return "})";
 
 		// Three character tokens
-		case TOKEN_ELIPSIS:
+		case TOKEN_ELLIPSIS:
 			return "...";
 		case TOKEN_MULT_MOD_ASSIGN:
 			return "*%=";

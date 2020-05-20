@@ -76,6 +76,7 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 {
 	Expr *parent = expr->subscript_expr.expr;
 	Expr *index = expr->subscript_expr.index;
+	if (index->expr_kind == EXPR_RANGE) TODO;
 	LLVMValueRef index_value = gencontext_emit_expr(context, index);
 	LLVMValueRef parent_value;
 	Type *type = parent->type->canonical;
@@ -99,8 +100,19 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 			                             llvm_type(type),
 			                             parent_value, indices, 2, "arridx");
 		}
-		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
+		{
+			// TODO insert trap on overflow.
+			LLVMTypeRef subarray_type = llvm_type(type);
+			parent_value = gencontext_emit_address(context, expr->subscript_expr.expr);
+			LLVMValueRef pointer_addr = LLVMBuildStructGEP2(context->builder, subarray_type, parent_value, 0, "");
+			LLVMTypeRef pointer_type = llvm_type(type_get_ptr(type->array.base));
+			LLVMValueRef pointer = LLVMBuildLoad2(context->builder, pointer_type, pointer_addr, "");
+			return LLVMBuildInBoundsGEP2(context->builder,
+			                             llvm_type(type->array.base),
+			                             pointer, &index_value, 1, "sarridx");
+		}
+		case TYPE_VARARRAY:
 		case TYPE_STRING:
 			TODO
 		default:
@@ -175,7 +187,7 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 			UNREACHABLE
 
 		case EXPR_IDENTIFIER:
-			return expr->identifier_expr.decl->var.backend_ref;
+			return expr->identifier_expr.decl->ref;
 		case EXPR_UNARY:
 			assert(expr->unary_expr.operator == UNARYOP_DEREF);
 			return gencontext_emit_expr(context, expr->unary_expr.expr);
@@ -211,12 +223,26 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 static inline LLVMValueRef gencontext_emit_error_cast(GenContext *context, LLVMValueRef value, Type *type)
 {
 	LLVMValueRef global = type->decl->error.start_value;
-	LLVMValueRef val = LLVMBuildBitCast(context->builder, global, llvm_type(type_usize), "");
 	LLVMValueRef extend = LLVMBuildZExtOrBitCast(context->builder, value, llvm_type(type_usize), "");
-	return LLVMBuildAdd(context->builder, val, extend, "");
+	return LLVMBuildAdd(context->builder, global, extend, "");
 }
 
-LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMValueRef value, Type *type, Type *target_type)
+LLVMValueRef gencontext_emit_arr_to_subarray_cast(GenContext *context, LLVMValueRef value, Type *to_type, Type *from_type)
+{
+	size_t size = from_type->pointer->array.len;
+	LLVMTypeRef subarray_type = llvm_type(to_type);
+	LLVMValueRef result = LLVMGetUndef(subarray_type);
+	value = gencontext_emit_bitcast(context, value, type_get_ptr(from_type->pointer->array.base));
+	result = LLVMBuildInsertValue(context->builder, result, value, 0, "");
+	return LLVMBuildInsertValue(context->builder, result, llvm_int(type_usize, size), 1, "");
+}
+
+LLVMValueRef gencontext_emit_subarray_to_ptr_cast(GenContext *context, LLVMValueRef value, Type *to_type, Type *from_type)
+{
+	return LLVMBuildExtractValue(context->builder, value, 0, "");
+}
+
+LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMValueRef value, Type *to_type, Type *from_type)
 {
 	switch (cast_kind)
 	{
@@ -226,9 +252,13 @@ LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMV
 		case CAST_ERROR:
 			UNREACHABLE
 		case CAST_PTRPTR:
-			return LLVMBuildPointerCast(context->builder, value, llvm_type(type), "ptrptr");
+			return LLVMBuildPointerCast(context->builder, value, llvm_type(to_type), "ptrptr");
 		case CAST_PTRXI:
-			return LLVMBuildPtrToInt(context->builder, value, llvm_type(type), "ptrxi");
+			return LLVMBuildPtrToInt(context->builder, value, llvm_type(to_type), "ptrxi");
+		case CAST_APTSA:
+			return gencontext_emit_arr_to_subarray_cast(context, value, to_type, from_type);
+		case CAST_SAPTR:
+			return gencontext_emit_subarray_to_ptr_cast(context, value, to_type, from_type);
 		case CAST_VARRPTR:
 			TODO
 		case CAST_ARRPTR:
@@ -236,51 +266,51 @@ LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMV
 		case CAST_STRPTR:
 			TODO
 		case CAST_ERREU:
-			return gencontext_emit_error_cast(context, value, target_type);
+			return gencontext_emit_error_cast(context, value, from_type);
 		case CAST_EUERR:
 			TODO
 		case CAST_EUBOOL:
 			return LLVMBuildICmp(context->builder, LLVMIntNE, value, llvm_int(type_usize, 0), "eubool");
 		case CAST_PTRBOOL:
-			return LLVMBuildICmp(context->builder, LLVMIntNE, value, LLVMConstPointerNull(llvm_type(type->canonical->pointer)), "ptrbool");
+			return LLVMBuildICmp(context->builder, LLVMIntNE, value, LLVMConstPointerNull(llvm_type(to_type->canonical->pointer)), "ptrbool");
 		case CAST_BOOLINT:
-			return LLVMBuildTrunc(context->builder, value, llvm_type(type), "boolsi");
+			return LLVMBuildTrunc(context->builder, value, llvm_type(to_type), "boolsi");
 		case CAST_FPBOOL:
 			return LLVMBuildFCmp(context->builder, LLVMRealUNE, value, LLVMConstNull(LLVMTypeOf(value)), "fpbool");
 		case CAST_BOOLFP:
-			return LLVMBuildSIToFP(context->builder, value, llvm_type(type), "boolfp");
+			return LLVMBuildSIToFP(context->builder, value, llvm_type(to_type), "boolfp");
 		case CAST_INTBOOL:
 			return LLVMBuildICmp(context->builder, LLVMIntNE, value, LLVMConstNull(LLVMTypeOf(value)), "intbool");
 		case CAST_FPFP:
-			return type_convert_will_trunc(type, target_type)
-			       ? LLVMBuildFPTrunc(context->builder, value, llvm_type(type), "fpfptrunc")
-			       : LLVMBuildFPExt(context->builder, value, llvm_type(type), "fpfpext");
+			return type_convert_will_trunc(to_type, from_type)
+			       ? LLVMBuildFPTrunc(context->builder, value, llvm_type(to_type), "fpfptrunc")
+			       : LLVMBuildFPExt(context->builder, value, llvm_type(to_type), "fpfpext");
 		case CAST_FPSI:
-			return LLVMBuildFPToSI(context->builder, value, llvm_type(type), "fpsi");
+			return LLVMBuildFPToSI(context->builder, value, llvm_type(to_type), "fpsi");
 		case CAST_FPUI:
-			return LLVMBuildFPToUI(context->builder, value, llvm_type(type), "fpui");
+			return LLVMBuildFPToUI(context->builder, value, llvm_type(to_type), "fpui");
 		case CAST_SISI:
-			return type_convert_will_trunc(type, target_type)
-			       ? LLVMBuildTrunc(context->builder, value, llvm_type(type), "sisitrunc")
-			       : LLVMBuildSExt(context->builder, value, llvm_type(type), "sisiext");
+			return type_convert_will_trunc(to_type, from_type)
+			       ? LLVMBuildTrunc(context->builder, value, llvm_type(to_type), "sisitrunc")
+			       : LLVMBuildSExt(context->builder, value, llvm_type(to_type), "sisiext");
 		case CAST_SIUI:
-			return type_convert_will_trunc(type, target_type)
-			       ? LLVMBuildTrunc(context->builder, value, llvm_type(type), "siuitrunc")
-			       : LLVMBuildZExt(context->builder, value, llvm_type(type), "siuiext");
+			return type_convert_will_trunc(to_type, from_type)
+			       ? LLVMBuildTrunc(context->builder, value, llvm_type(to_type), "siuitrunc")
+			       : LLVMBuildZExt(context->builder, value, llvm_type(to_type), "siuiext");
 		case CAST_SIFP:
-			return LLVMBuildSIToFP(context->builder, value, llvm_type(type), "sifp");
+			return LLVMBuildSIToFP(context->builder, value, llvm_type(to_type), "sifp");
 		case CAST_XIPTR:
-			return LLVMBuildIntToPtr(context->builder, value, llvm_type(type), "xiptr");
+			return LLVMBuildIntToPtr(context->builder, value, llvm_type(to_type), "xiptr");
 		case CAST_UISI:
-			return type_convert_will_trunc(type, target_type)
-			       ? LLVMBuildTrunc(context->builder, value, llvm_type(type), "uisitrunc")
-			       : LLVMBuildZExt(context->builder, value, llvm_type(type), "uisiext");
+			return type_convert_will_trunc(to_type, from_type)
+			       ? LLVMBuildTrunc(context->builder, value, llvm_type(to_type), "uisitrunc")
+			       : LLVMBuildZExt(context->builder, value, llvm_type(to_type), "uisiext");
 		case CAST_UIUI:
-			return type_convert_will_trunc(type, target_type)
-			       ? LLVMBuildTrunc(context->builder, value, llvm_type(type), "uiuitrunc")
-			       : LLVMBuildZExt(context->builder, value, llvm_type(type), "uiuiext");
+			return type_convert_will_trunc(to_type, from_type)
+			       ? LLVMBuildTrunc(context->builder, value, llvm_type(to_type), "uiuitrunc")
+			       : LLVMBuildZExt(context->builder, value, llvm_type(to_type), "uiuiext");
 		case CAST_UIFP:
-			return LLVMBuildUIToFP(context->builder, value, llvm_type(type), "uifp");
+			return LLVMBuildUIToFP(context->builder, value, llvm_type(to_type), "uifp");
 		case CAST_ENUMSI:
 			TODO
 	}
@@ -834,12 +864,14 @@ LLVMValueRef gencontext_emit_try_expr(GenContext *context, Expr *expr)
 	if (expr->try_expr.type == TRY_EXPR_ELSE_JUMP)
 	{
 		LLVMBasicBlockRef else_block = gencontext_get_try_target(context, expr);
+		LLVMValueRef val = gencontext_emit_expr(context, expr->try_expr.expr);
 		LLVMBasicBlockRef after_catch = gencontext_create_free_block(context, "aftercatch");
 		gencontext_emit_br(context, after_catch);
 		gencontext_emit_block(context, else_block);
 		gencontext_emit_stmt(context, expr->try_expr.else_stmt);
 		gencontext_emit_br(context, after_catch);
 		gencontext_emit_block(context, after_catch);
+		return val;
 	}
 	return gencontext_emit_expr(context, expr->try_expr.expr);
 }
@@ -953,7 +985,7 @@ LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 			return llvm_int(type, expr->const_expr.b ? 1 : 0);
 		case TYPE_STRING:
 		{
-			LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_type(type), "string");
+			LLVMValueRef global_name = LLVMAddGlobal(context->module, LLVMArrayType(llvm_type(type_char), expr->const_expr.string.len + 1), "");
 			LLVMSetLinkage(global_name, LLVMInternalLinkage);
 			LLVMSetGlobalConstant(global_name, 1);
 			LLVMSetInitializer(global_name, LLVMConstStringInContext(context->context,
@@ -1024,113 +1056,6 @@ static inline void gencontext_emit_throw_union_branch(GenContext *context, Catch
 */
 
 
-static inline bool gencontext_emit_throw_branch_for_single_throw_catch(GenContext *context, Decl *throw, LLVMValueRef value, Ast *catch, bool single_throw)
-{
-	gencontext_generate_catch_block_if_needed(context, catch);
-
-	// Catch any is simple.
-	if (catch->catch_stmt.error_param->type == type_error_union)
-	{
-		// If this was a single throw, then we do a cast first.
-		if (single_throw)
-		{
-			value = gencontext_emit_cast(context, CAST_ERREU, value, type_error_union, throw->type);
-		}
-		// Store the value and jump to the catch.
-		LLVMBuildStore(context->builder, value, catch->catch_stmt.error_param->var.backend_ref);
-		gencontext_emit_br(context, catch->catch_stmt.block);
-		return true;
-	}
-
-	// If we catch a single, the single throw is easy, it *must* be the same type.
-	if (single_throw)
-	{
-		assert(catch->catch_stmt.error_param->type->decl == throw);
-		// Store and jump.
-		LLVMBuildStore(context->builder, value, catch->catch_stmt.error_param->var.backend_ref);
-		gencontext_emit_br(context, catch->catch_stmt.block);
-		return true;
-	}
-
-	// Here instead we more than one throw and we're catching a single error type
-	LLVMValueRef offset = LLVMBuildBitCast(context->builder, catch->catch_stmt.error_param->type->decl->error.start_value, llvm_type(type_error_union), "");
-	LLVMValueRef check = LLVMBuildAnd(context->builder, offset, value, "");
-	LLVMValueRef match = LLVMBuildICmp(context->builder, LLVMIntEQ, offset, check, "");
-	LLVMBasicBlockRef catch_block_set = gencontext_create_free_block(context, "setval");
-	LLVMBasicBlockRef continue_block = gencontext_create_free_block(context, "");
-	gencontext_emit_cond_br(context, match, catch_block_set, continue_block);
-	value = LLVMBuildAnd(context->builder, LLVMBuildNeg(context->builder, offset, ""), value, "");
-	LLVMBuildStore(context->builder, value, catch->catch_stmt.error_param->var.backend_ref);
-	gencontext_emit_br(context, catch->catch_stmt.block);
-	gencontext_emit_block(context, continue_block);
-	return false;
-}
-
-static inline bool gencontext_emit_throw_branch_for_single_throw(GenContext *context, Decl *throw, LLVMValueRef value, CatchInfo *catch_infos, bool single_throw, bool union_return)
-{
-	TODO
-	/*
-	VECEACH(catch_infos, i)
-	{
-		CatchInfo *info = &catch_infos[i];
-		switch (info->kind)
-		{
-			case CATCH_REGULAR:
-				if (gencontext_emit_throw_branch_for_single_throw_catch(context, throw, value, info->catch, single_throw))
-				{
-					// Catching all should only happen on the last branch.
-					assert(i == vec_size(catch_infos));
-					return true;
-				}
-				break;;
-			case CATCH_TRY_ELSE:
-				// Try else should only happen on the last branch.
-				assert(i == vec_size(catch_infos));
-				gencontext_emit_br(context, info->try_else->try_expr.jump_target);
-				return true;
-		}
-	}*/
-
-	// If this is not a single throw, then we need to check first.
-	if (!single_throw)
-	{
-		LLVMValueRef offset = LLVMBuildBitCast(context->builder, throw->error.start_value, llvm_type(type_error_union), "");
-		LLVMValueRef check = LLVMBuildAnd(context->builder, offset, value, "");
-		LLVMValueRef match = LLVMBuildICmp(context->builder, LLVMIntEQ, offset, check, "");
-		LLVMBasicBlockRef catch_block_set = gencontext_create_free_block(context, "setval");
-		LLVMBasicBlockRef continue_block = gencontext_create_free_block(context, "");
-		gencontext_emit_cond_br(context, match, catch_block_set, continue_block);
-		value = LLVMBuildAnd(context->builder, LLVMBuildNeg(context->builder, offset, ""), value, "");
-		//LLVMBuildStore(context->builder, value, catch->catch_stmt.error_param->var.backend_ref);
-		//gencontext_emit_br(context, catch->catch_stmt.block);
-		gencontext_emit_block(context, continue_block);
-
-	}
-	// Case (1) the error return is a normal return, in that case we send the unadorned type.
-/*	if (union_return)
-	{
-
-
-		assert(error_type == type_error_base);
-		gencontext_emit_cond_br(context, comparison, return_block, after_block);
-		gencontext_emit_block(context, return_block);
-		gencontext_emit_return_value(context, value);
-		gencontext_emit_block(context, after_block);
-		return;
-	}
-
-	assert(context->cur_func_decl->func.function_signature.error_return == ERROR_RETURN_UNION);
-	if (error_type == type_error_base)
-	{
-		value = gencontext_emit_cast(context, CAST_EREU, value, cuf, error_type)
-
-		gencontext_emit_cast_expr
-
-
-		return false;
-		*/
-	return false;
-}
 
 
 static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRef value, TypeInfo** errors, ThrowInfo *throw_info, ErrorReturn error_return)
@@ -1231,7 +1156,7 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 						value = gencontext_emit_cast(context, CAST_ERREU, value, type_error_union, errors[0]->type);
 					}
 				}
-				LLVMBuildStore(context->builder, value, error_param->var.backend_ref);
+				LLVMBuildStore(context->builder, value, error_param->ref);
 				gencontext_emit_defer(context, throw_info->defer, catch->defer);
 				gencontext_emit_br(context, catch->catch->catch_stmt.block);
 				gencontext_emit_block(context, after_block);
@@ -1263,8 +1188,7 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 			{
 				// This is always the last catch, so we can assume that we have the correct error
 				// type already.
-				LLVMValueRef offset = LLVMBuildBitCast(context->builder, catch->error->error.start_value, llvm_type(type_error_union), "");
-				LLVMValueRef negated = LLVMBuildNeg(context->builder, offset, "");
+				LLVMValueRef negated = LLVMBuildNeg(context->builder, catch->error->error.start_value, "");
 				LLVMValueRef final_value = LLVMBuildAnd(context->builder, negated, value, "");
 				gencontext_emit_defer(context, throw_info->defer, NULL);
 				gencontext_emit_return_value(context, final_value);
@@ -1294,15 +1218,15 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 			}
 			case CATCH_REGULAR:
 			{
-				Decl *param = catch->catch->catch_stmt.error_param;
 				gencontext_generate_catch_block_if_needed(context, catch->catch);
 				Decl *error_param = catch->catch->catch_stmt.error_param;
+				Type *error_type = error_param->type->canonical;
 
 				// The wildcard catch is always the last one.
-				if (param->type == type_error_union)
+				if (error_type == type_error_union)
 				{
 					// Store the value, then jump
-					LLVMBuildStore(context->builder, value, error_param->var.backend_ref);
+					LLVMBuildStore(context->builder, value, error_param->ref);
 					gencontext_emit_defer(context, throw_info->defer, catch->defer);
 					gencontext_emit_br(context, catch->catch->catch_stmt.block);
 					gencontext_emit_block(context, after_block);
@@ -1312,21 +1236,19 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 
 				// Here we have a normal catch.
 
-				// Find the offset.
-				LLVMValueRef offset = LLVMBuildBitCast(context->builder, param->type->decl->error.start_value, llvm_type(type_error_union), "");
-
 				// wrapping(value - offset) < entries + 1 – this handles both cases since wrapping will make
 				// values below the offset big.
-				LLVMValueRef comp_value = LLVMBuildSub(context->builder, value, offset, "");
-				LLVMValueRef entries_value = llvm_int(type_error_union, vec_size(param->type->decl->error.error_constants) + 1);
-				LLVMValueRef match = LLVMBuildICmp(context->builder, LLVMIntULT, comp_value, entries_value, "matcherr");
+				Decl *error_decl = error_type->decl;
+				LLVMValueRef comp_value = LLVMBuildSub(context->builder, value, error_decl->error.start_value, "");
+				LLVMValueRef entries_value = llvm_int(type_error_union, vec_size(error_decl->error.error_constants) + 1);
+				LLVMValueRef match = LLVMBuildICmp(context->builder, LLVMIntULT, comp_value, entries_value, "regmatch");
 
 				LLVMBasicBlockRef match_block = gencontext_create_free_block(context, "match");
 				gencontext_emit_cond_br(context, match, match_block, err_handling_block);
 				gencontext_emit_block(context, match_block);
 				gencontext_emit_defer(context, throw_info->defer, catch->defer);
 
-				LLVMBuildStore(context->builder, comp_value, error_param->var.backend_ref);
+				LLVMBuildStore(context->builder, comp_value, error_param->ref);
 				gencontext_emit_br(context, catch->catch->catch_stmt.block);
 				gencontext_emit_block(context, err_handling_block);
 				err_handling_block = NULL;
@@ -1341,8 +1263,25 @@ static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRe
 LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 {
 	size_t args = vec_size(expr->call_expr.arguments);
-	Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
-	FunctionSignature *signature = &function_decl->func.function_signature;
+	FunctionSignature *signature;
+	LLVMValueRef func;
+	LLVMTypeRef func_type;
+
+	if (expr->call_expr.is_pointer_call)
+	{
+		signature = expr->call_expr.function->type->canonical->pointer->func.signature;
+		func = gencontext_emit_expr(context, expr->call_expr.function);
+		func_type = llvm_type(expr->call_expr.function->type->canonical->pointer);
+	}
+	else
+	{
+		Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
+		signature = &function_decl->func.function_signature;
+		func = function_decl->ref;
+		func_type = llvm_type(function_decl->type);
+	}
+
+
 	LLVMValueRef return_param = NULL;
 	if (signature->return_param)
 	{
@@ -1360,13 +1299,9 @@ LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 		values[param_index++] = gencontext_emit_expr(context, expr->call_expr.arguments[i]);
 	}
 
-	Decl *function = expr->call_expr.function->identifier_expr.decl;
-
-	LLVMValueRef func = function->func.backend_value;
-	LLVMTypeRef func_type = llvm_type(function->type);
 	LLVMValueRef call = LLVMBuildCall2(context->builder, func_type, func, values, args, "call");
 
-	gencontext_emit_throw_branch(context, call, function->func.function_signature.throws, expr->call_expr.throw_info, signature->error_return);
+	gencontext_emit_throw_branch(context, call, signature->throws, expr->call_expr.throw_info, signature->error_return);
 
 	// If we used a return param, then load that info here.
 	if (return_param)
@@ -1423,7 +1358,7 @@ static inline LLVMValueRef gencontext_emit_expr_block(GenContext *context, Expr 
 	context->return_out = old_ret_out;
 	context->expr_block_exit = saved_expr_block;
 
-	return return_out;
+	return return_out ? gencontext_emit_load(context, expr->type, return_out) : NULL;
 }
 
 LLVMValueRef gencontext_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id, LLVMTypeRef *types,
@@ -1457,7 +1392,6 @@ NESTED_RETRY:
 	switch (expr->expr_kind)
 	{
 		case EXPR_RANGE:
-			TODO
 		case EXPR_POISONED:
 			UNREACHABLE
 		case EXPR_DESIGNATED_INITIALIZER:

@@ -23,6 +23,7 @@ static Ast **ast_copy_list_from_macro(Context *context, Expr *macro, Ast **to_co
 #define MACRO_COPY_AST_LIST(x) x = ast_copy_list_from_macro(context, macro, x)
 #define MACRO_COPY_AST(x) x = ast_copy_from_macro(context, macro, x)
 
+bool sema_analyse_expr_may_be_function(Context *context, Expr *expr);
 
 static inline bool is_const(Expr *expr)
 {
@@ -37,6 +38,30 @@ static inline bool both_const(Expr *left, Expr *right)
 static inline bool both_any_integer(Expr *left, Expr *right)
 {
 	return type_is_any_integer(left->type->canonical) && type_is_any_integer(right->type->canonical);
+}
+
+static inline void context_pop_returns(Context *context, Ast **restore)
+{
+	if (!context->returns_cache && context->returns)
+	{
+		context->returns_cache = context->returns;
+	}
+	context->returns = restore;
+}
+static inline Ast **context_push_returns(Context *context)
+{
+	Ast** old_returns = context->returns;
+	if (context->returns_cache)
+	{
+		context->returns = context->returns_cache;
+		context->returns_cache = NULL;
+		vec_resize(context->returns, 0);
+	}
+	else
+	{
+		context->returns = NULL;
+	}
+	return old_returns;
 }
 
 int sema_check_comp_time_bool(Context *context, Expr *expr)
@@ -55,9 +80,10 @@ static bool expr_is_ltype(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_IDENTIFIER:
-			return expr->identifier_expr.decl->decl_kind == DECL_VAR && (expr->identifier_expr.decl->var.kind == VARDECL_LOCAL
+			return
+				(expr->identifier_expr.decl->decl_kind == DECL_VAR && (expr->identifier_expr.decl->var.kind == VARDECL_LOCAL
 				|| expr->identifier_expr.decl->var.kind == VARDECL_GLOBAL
-				|| expr->identifier_expr.decl->var.kind == VARDECL_PARAM);
+				|| expr->identifier_expr.decl->var.kind == VARDECL_PARAM));
 		case EXPR_UNARY:
 			return expr->unary_expr.operator == UNARYOP_DEREF;
 		case EXPR_ACCESS:
@@ -84,6 +110,15 @@ static inline bool sema_type_error_on_binop(Expr *expr)
 	return false;
 }
 
+static bool expr_cast_to_index(Expr *index)
+{
+	if (index->type->canonical->type_kind == type_usize->canonical->type_kind) return true;
+	if (index->expr_kind != EXPR_RANGE) return cast_implicit(index, type_isize);
+	if (!cast_implicit(index->range_expr.left, type_isize)) return false;
+	if (!cast_implicit(index->range_expr.right, type_isize)) return false;
+	index->type = type_isize;
+	return true;
+}
 
 static inline bool sema_expr_analyse_ternary(Context *context, Type *to, Expr *expr)
 {
@@ -219,8 +254,14 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 	}
 	if (decl->decl_kind == DECL_MACRO)
 	{
-		SEMA_ERROR(expr, "Macro expansions must be prefixed with '@', try using '@%s(...)' instead.", decl->name);
-		return false;
+		if (!context->in_macro_call)
+		{
+			SEMA_ERROR(expr, "Macro expansions must be prefixed with '@', try using '@%s(...)' instead.", decl->name);
+			return false;
+		}
+		expr->identifier_expr.decl = decl;
+		expr->type = type_void;
+		return true;
 	}
 	assert(decl->type);
 	expr->identifier_expr.decl = decl;
@@ -232,10 +273,6 @@ static inline bool sema_expr_analyse_binary_sub_expr(Context *context, Type *to,
 {
 	return sema_analyse_expr(context, to, left) & sema_analyse_expr(context, to, right);
 }
-
-static inline bool sema_expr_analyse_var_call(Context *context, Type *to, Expr *expr) { TODO }
-static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Expr *expr) { TODO };
-
 
 static inline int find_index_of_named_parameter(Decl** func_params, Expr *expr)
 {
@@ -253,14 +290,12 @@ static inline int find_index_of_named_parameter(Decl** func_params, Expr *expr)
 	return -1;
 }
 
-
-static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr *expr, Decl *decl)
+static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionSignature *signature, Expr *expr, Decl *decl, Type *to)
 {
-	Expr **args = expr->call_expr.arguments;
-	FunctionSignature *signature = &decl->func.function_signature;
 	Decl **func_params = signature->params;
 	expr->call_expr.throw_info = CALLOCS(ThrowInfo);
 	expr->call_expr.throw_info->defer = context->current_scope->defers.start;
+	Expr **args = expr->call_expr.arguments;
 	unsigned error_params = signature->throw_any || signature->throws;
 	if (error_params)
 	{
@@ -277,8 +312,8 @@ static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr 
 		else
 		{
 			vec_add(context->error_calls, throw_new(expr->span,
-					vec_size(signature->throws) == 1 ? THROW_TYPE_CALL_THROW_ONE : THROW_TYPE_CALL_THROW_MANY,
-					expr->call_expr.throw_info, signature->throws));
+			                                        vec_size(signature->throws) == 1 ? THROW_TYPE_CALL_THROW_ONE : THROW_TYPE_CALL_THROW_MANY,
+			                                        expr->call_expr.throw_info, signature->throws));
 		}
 	}
 	unsigned func_param_count = vec_size(func_params);
@@ -341,17 +376,103 @@ static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr 
 		SEMA_ERROR(expr, "Parameter '%s' was not set.", func_params[i]->name);
 		return false;
 	}
-	expr->type = decl->func.function_signature.rtype->type;
+	expr->type = signature->rtype->type;
 	expr->call_expr.arguments = actual_args;
 	return true;
 }
 
+static inline bool sema_expr_analyse_var_call(Context *context, Type *to, Expr *expr, Decl *var_decl)
+{
+	Type *func_ptr_type = var_decl->type->canonical;
+	if (func_ptr_type->type_kind != TYPE_POINTER || func_ptr_type->pointer->type_kind != TYPE_FUNC)
+	{
+		SEMA_ERROR(expr, "Only macros, functions and function pointers maybe invoked, this is of type '%s'.", type_to_error_string(var_decl->type));
+		return false;
+	}
+	expr->call_expr.is_pointer_call = true;
+	return sema_expr_analyse_func_invocation(context,
+	                                         func_ptr_type->pointer->func.signature,
+	                                         expr,
+	                                         func_ptr_type->decl,
+	                                         to);
+
+}
+static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Expr *expr) { TODO };
+
+
+
+
+static inline Type *unify_returns(Context *context, Type *to)
+{
+	bool all_returns_need_casts = false;
+	// Let's unify the return statements.
+	VECEACH(context->returns, i)
+	{
+		Ast *return_stmt = context->returns[i];
+		Expr *ret_expr = return_stmt->return_stmt.expr;
+		bool last_expr_was_void = to == type_void;
+		Type *right_canonical = ret_expr ? ret_expr->type->canonical : type_void;
+		bool current_expr_was_void = right_canonical == type_void;
+		if (i > 0 && last_expr_was_void != current_expr_was_void)
+		{
+			SEMA_ERROR(return_stmt, "You can't combine empty returns with value returns.");
+			SEMA_PREV(context->returns[i - 1], "Previous return was here.");
+			return NULL;
+		}
+		if (to)
+		{
+			if (current_expr_was_void)
+			{
+				SEMA_ERROR(return_stmt, "The return must be a value of type '%s'.", type_to_error_string(to));
+				return NULL;
+			}
+			if (!cast_implicit(ret_expr, to))
+			{
+				return NULL;
+			}
+			continue;
+		}
+
+		// The simple case.
+		if (to == right_canonical) continue;
+
+		// Try to find a common type:
+		Type *max = type_find_max_type(to, right_canonical);
+		if (!max)
+		{
+			SEMA_ERROR(return_stmt, "Cannot find a common parent type of '%s' and '%s'",
+			           type_to_error_string(to), type_to_error_string(right_canonical));
+			SEMA_PREV(context->returns[i - 1], "The previous return was here.");
+			return false;
+		}
+		to = max;
+		all_returns_need_casts = true;
+	}
+	if (all_returns_need_casts)
+	{
+		VECEACH(context->returns, i)
+		{
+			Ast *return_stmt = context->returns[i];
+			Expr *ret_expr = return_stmt->return_stmt.expr;
+			if (!cast_implicit(ret_expr, to))
+			{
+				return NULL;
+			}
+		}
+	}
+	return to;
+}
+
+static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr *expr, Decl *decl)
+{
+	expr->call_expr.is_pointer_call = false;
+	return sema_expr_analyse_func_invocation(context, &decl->func.function_signature, expr, decl, to);
+}
+
 static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr)
 {
-	// TODO
 	Expr *func_expr = expr->call_expr.function;
-	// TODO check
-	if (!sema_analyse_expr(context, to, func_expr)) return false;
+	if (!sema_analyse_expr_may_be_function(context, func_expr)) return false;
 	Decl *decl;
 	switch (func_expr->expr_kind)
 	{
@@ -367,7 +488,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
-			return sema_expr_analyse_var_call(context, to, expr);
+			return sema_expr_analyse_var_call(context, to, expr, decl);
 		case DECL_FUNC:
 			return sema_expr_analyse_func_call(context, to, expr, decl);
 		case DECL_MACRO:
@@ -383,6 +504,83 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	}
 }
 
+static inline bool sema_expr_analyse_range(Context *context, Type *to, Expr *expr)
+{
+	Expr *left = expr->range_expr.left;
+	Expr *right = expr->range_expr.right;
+	bool success = sema_analyse_expr(context, to, left) & sema_analyse_expr(context, to, right);
+	if (!success) return expr_poison(expr);
+	Type *left_canonical = left->type->canonical;
+	Type *right_canonical = right->type->canonical;
+	if (!type_is_any_integer(left_canonical))
+	{
+		SEMA_ERROR(left, "Expected an integer value in the range expression.");
+		return false;
+	}
+	if (!type_is_any_integer(right_canonical))
+	{
+		SEMA_ERROR(right, "Expected an integer value in the range expression.");
+		return false;
+	}
+	if (left_canonical != right_canonical)
+	{
+		Type *type = type_find_max_type(left_canonical, right_canonical);
+		if (!cast_implicit(left, type) || !cast_implicit(right, type)) return expr_poison(expr);
+	}
+	if (left->expr_kind == EXPR_CONST && right->expr_kind == EXPR_CONST)
+	{
+		if (expr_const_compare(&left->const_expr, &right->const_expr, BINARYOP_GT))
+		{
+			SEMA_ERROR(expr, "Left side of the range is smaller than the right.");
+			return false;
+		}
+	}
+	expr->type = left->type;
+	return true;
+}
+
+static bool expr_check_index_in_range(Type *type, Expr *index)
+{
+	if (index->expr_kind == EXPR_RANGE)
+	{
+		return expr_check_index_in_range(type, index->range_expr.left) & expr_check_index_in_range(type, index->range_expr.right);
+	}
+	assert(type == type->canonical);
+	if (index->expr_kind == EXPR_CONST)
+	{
+		switch (type->type_kind)
+		{
+			case TYPE_POINTER:
+				return true;
+			case TYPE_ARRAY:
+			{
+				BigInt size;
+				bigint_init_unsigned(&size, type->array.len);
+				if (bigint_cmp(&size, &index->const_expr.i) != CMP_GT)
+				{
+					SEMA_ERROR(index, "Array index out of bounds, was %s, exceeding max index of %llu.",
+					           bigint_to_error_string(&index->const_expr.i, 10), type->array.len - 1);
+					return false;
+				}
+				FALLTHROUGH;
+			}
+			case TYPE_VARARRAY:
+			case TYPE_SUBARRAY:
+				if (bigint_cmp_zero(&index->const_expr.i) == CMP_LT)
+				{
+					SEMA_ERROR(index, "Array index out of bounds, was %s.", bigint_to_error_string(&index->const_expr.i, 10));
+					return false;
+				}
+				break;
+			case TYPE_STRING:
+				TODO
+			default:
+				UNREACHABLE
+		}
+	}
+	return true;
+}
+
 static inline bool sema_expr_analyse_subscript_after_parent_resolution(Context *context, Type *parent, Expr *expr)
 {
 	assert(expr->expr_kind == EXPR_SUBSCRIPT);
@@ -396,41 +594,25 @@ static inline bool sema_expr_analyse_subscript_after_parent_resolution(Context *
 		return false;
 	}
 
-	if (!sema_analyse_expr(context, type_isize, index)) return false;
+	if (index->expr_kind == EXPR_RANGE)
+	{
+		if (!sema_expr_analyse_range(context, type_isize, index)) return false;
+	}
+	else
+	{
+		if (!sema_analyse_expr(context, type_isize, index)) return false;
+	}
 
 	// Unless we already have type_usize, cast to type_isize;
-	if (index->type->canonical->type_kind != type_usize->canonical->type_kind)
-	{
-		if (!cast_implicit(index, type_isize)) return false;
-	}
+	if (!expr_cast_to_index(index)) return false;
+
 	// Check range
-	if (index->expr_kind == EXPR_CONST)
+	if (!expr_check_index_in_range(type, index)) return false;
+
+	if (index->expr_kind == EXPR_RANGE)
 	{
-		switch (type->type_kind)
-		{
-			case TYPE_ARRAY:
-			{
-				BigInt size;
-				bigint_init_unsigned(&size, type->array.len);
-				if (bigint_cmp(&size, &index->const_expr.i) != CMP_GT)
-				{
-					SEMA_ERROR(index, "Array index out of bounds, was %s, exceeding max index of %llu.",
-							bigint_to_error_string(&index->const_expr.i, 10), type->array.len - 1);
-					return false;
-				}
-				FALLTHROUGH;
-			}
-			case TYPE_VARARRAY:
-			case TYPE_SUBARRAY:
-				if (bigint_cmp_zero(&index->const_expr.i) == CMP_LT)
-				{
-					SEMA_ERROR(index, "Array index out of bounds, was %s.", bigint_to_error_string(&index->const_expr.i, 10));
-					return false;
-				}
-				break;
-			default:
-				break;
-		}
+		expr->type = type_get_subarray(inner_type);
+		return true;
 	}
 	expr->type = inner_type;
 	return true;
@@ -653,55 +835,7 @@ static DesignatedPath *sema_analyse_init_access(Context *context, DesignatedPath
 	return path;
 }
 
-static bool expr_cast_to_index(Expr *index)
-{
-	if (index->expr_kind == EXPR_RANGE)
-	{
-		TODO
-	}
-	if (index->type->canonical->type_kind == type_usize->canonical->type_kind) return true;
-	return cast_implicit(index, type_isize);
-}
 
-static bool expr_check_index_in_range(Type *type, Expr *index)
-{
-	if (index->expr_kind == EXPR_RANGE)
-	{
-		return expr_check_index_in_range(type, index->range_expr.left) & expr_check_index_in_range(type, index->range_expr.right);
-	}
-	assert(type == type->canonical);
-	if (index->expr_kind == EXPR_CONST)
-	{
-		switch (type->type_kind)
-		{
-			case TYPE_ARRAY:
-			{
-				BigInt size;
-				bigint_init_unsigned(&size, type->array.len);
-				if (bigint_cmp(&size, &index->const_expr.i) != CMP_GT)
-				{
-					SEMA_ERROR(index, "Array index out of bounds, was %s, exceeding max index of %llu.",
-					           bigint_to_error_string(&index->const_expr.i, 10), type->array.len - 1);
-					return false;
-				}
-				FALLTHROUGH;
-			}
-			case TYPE_VARARRAY:
-			case TYPE_SUBARRAY:
-				if (bigint_cmp_zero(&index->const_expr.i) == CMP_LT)
-				{
-					SEMA_ERROR(index, "Array index out of bounds, was %s.", bigint_to_error_string(&index->const_expr.i, 10));
-					return false;
-				}
-				break;
-			case TYPE_STRING:
-				TODO
-			default:
-				UNREACHABLE
-		}
-	}
-	return true;
-}
 static DesignatedPath *sema_analyse_init_subscript(Context *context, DesignatedPath *parent, Expr *expr, bool *has_found_match, bool *has_reported_error)
 {
 	assert(expr->expr_kind == EXPR_SUBSCRIPT);
@@ -1932,6 +2066,11 @@ static bool sema_expr_analyse_deref(Context *context, Expr *expr, Expr *inner)
  */
 static bool sema_expr_analyse_addr(Context *context, Expr *expr, Expr *inner)
 {
+	if (inner->type->type_kind == TYPE_FUNC)
+	{
+		expr->type = type_get_ptr(inner->type);
+		return true;
+	}
 	// 1. Check that it is an lvalue.
 	if (!expr_is_ltype(inner))
 	{
@@ -2187,23 +2326,27 @@ static inline bool sema_expr_analyse_unary(Context *context, Type *to, Expr *exp
 	assert(expr->resolve_status == RESOLVE_RUNNING);
 	Expr *inner = expr->unary_expr.expr;
 
-	if (!sema_analyse_expr(context, NULL, inner)) return false;
-
 	switch (expr->unary_expr.operator)
 	{
 		case UNARYOP_DEREF:
+			if (!sema_analyse_expr(context, NULL, inner)) return false;
 			return sema_expr_analyse_deref(context, expr, inner);
 		case UNARYOP_ADDR:
+			if (!sema_analyse_expr_may_be_function(context, inner)) return false;
 			return sema_expr_analyse_addr(context, expr, inner);
 		case UNARYOP_NEG:
 		case UNARYOP_NEGMOD:
+			if (!sema_analyse_expr(context, NULL, inner)) return false;
 			return sema_expr_analyse_neg(context, to, expr, inner);
 		case UNARYOP_BITNEG:
+			if (!sema_analyse_expr(context, to, inner)) return false;
 			return sema_expr_analyse_bit_not(context, to, expr, inner);
 		case UNARYOP_NOT:
+			if (!sema_analyse_expr(context, NULL, inner)) return false;
 			return sema_expr_analyse_not(context, to, expr, inner);
 		case UNARYOP_DEC:
 		case UNARYOP_INC:
+			if (!sema_analyse_expr(context, NULL, inner)) return false;
 			return sema_expr_analyse_incdec(context, to, expr, inner);
 		case UNARYOP_ERROR:
 			return false;
@@ -2331,6 +2474,8 @@ static TypeInfo *type_info_copy_from_macro(Context *context, Expr *macro, TypeIn
 			copy->array.base = type_info_copy_from_macro(context, macro, source->array.base);
 			return copy;
 		case TYPE_INFO_INC_ARRAY:
+		case TYPE_INFO_VARARRAY:
+		case TYPE_INFO_SUBARRAY:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.base = type_info_copy_from_macro(context, macro, source->array.base);
 			return copy;
@@ -2599,22 +2744,31 @@ static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 	}
 	UNREACHABLE;
 }
+
 static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *macro, Expr *inner)
 {
-	Expr *func_expr = inner->call_expr.function;
+	if (context->macro_nesting > MAX_MACRO_NESTING)
+	{
+		SEMA_ERROR(context->first_macro_call, "Too deep nesting (more than %d levels) when evaluating this macro.", MAX_MACRO_NESTING);
+		return false;
+	}
 
-	if (!sema_analyse_expr(context, NULL, func_expr)) return false;
+	Expr *func_expr = inner->call_expr.function;
+	bool was_in_macro_call = context->in_macro_call;
+	context->in_macro_call = true;
+	bool ok = sema_analyse_expr(context, NULL, inner->call_expr.function);
+	context->in_macro_call = was_in_macro_call;
+	if (!ok) return ok;
 
 	Decl *decl;
-	switch (func_expr->expr_kind)
+	switch (inner->call_expr.function->expr_kind)
 	{
-		case EXPR_TYPE_ACCESS:
-			TODO
 		case EXPR_IDENTIFIER:
 			decl = func_expr->identifier_expr.decl;
 			break;
 		default:
-			TODO
+			SEMA_ERROR(inner, "Expected a macro identifier here");
+			return false;
 	}
 	if (decl->decl_kind != DECL_MACRO)
 	{
@@ -2623,18 +2777,56 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 	}
 	Expr **args =func_expr->call_expr.arguments;
 	Decl **func_params = decl->macro_decl.parameters;
-	// TODO handle bare macros.
-	// TODO handle $ args and # args
+
 	unsigned num_args = vec_size(args);
-	// unsigned num_params = vec_size(func_params);
 	for (unsigned i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
 		Decl *param = func_params[i];
 		if (!sema_analyse_expr(context, param->type, arg)) return false;
 	}
+
 	Ast *body = ast_copy_from_macro(context, inner, decl->macro_decl.body);
-	TODO
+
+	ok = true;
+	macro->type = type_void;
+
+	Ast **saved_returns = context_push_returns(context);
+	context->expected_block_type = to;
+	context_push_scope_with_flags(context, SCOPE_EXPR_BLOCK);
+	VECEACH(body->compound_stmt.stmts, i)
+	{
+		if (!sema_analyse_statement(context, body->compound_stmt.stmts[i]))
+		{
+			ok = false;
+			goto EXIT;
+		}
+	}
+
+	if (!vec_size(context->returns))
+	{
+		if (to)
+		{
+			SEMA_ERROR(decl, "Missing return in macro that evaluates to %s.", type_to_error_string(to));
+			ok = false;
+		}
+		goto EXIT;
+	}
+
+	Expr *first_return_expr = context->returns[0]->return_stmt.expr;
+	Type *left_canonical = first_return_expr ? first_return_expr->type->canonical : type_void;
+	// Let's unify the return statements.
+	left_canonical = unify_returns(context, left_canonical);
+	if (!left_canonical)
+	{
+		ok = false;
+		goto EXIT;
+	}
+	macro->type = left_canonical;
+	EXIT:
+	context_pop_scope(context);
+	context_pop_returns(context, saved_returns);
+	return ok;
 }
 
 static inline bool sema_expr_analyse_macro_call2(Context *context, Type *to, Expr *expr, Decl *macro)
@@ -2683,30 +2875,7 @@ static inline bool sema_expr_analyse_type(Context *context, Type *to, Expr *expr
 
 
 
-static inline Ast **context_push_returns(Context *context)
-{
-	Ast** old_returns = context->returns;
-	if (context->returns_cache)
-	{
-		context->returns = context->returns_cache;
-		context->returns_cache = NULL;
-		vec_resize(context->returns, 0);
-	}
-	else
-	{
-		context->returns = NULL;
-	}
-	return old_returns;
-}
 
-static inline void context_pop_returns(Context *context, Ast **restore)
-{
-	if (!context->returns_cache && context->returns)
-	{
-		context->returns_cache = context->returns;
-	}
-	context->returns = restore;
-}
 
 
 static inline bool sema_expr_analyse_expr_block(Context *context, Type *to, Expr *expr)
@@ -2739,66 +2908,12 @@ static inline bool sema_expr_analyse_expr_block(Context *context, Type *to, Expr
 
 	Expr *first_return_expr = context->returns[0]->return_stmt.expr;
 	Type *left_canonical = first_return_expr ? first_return_expr->type->canonical : type_void;
-	bool all_returns_needs_casts = false;
 	// Let's unify the return statements.
-	VECEACH(context->returns, i)
+	left_canonical = unify_returns(context, left_canonical);
+	if (!left_canonical)
 	{
-		Ast *return_stmt = context->returns[i];
-		Expr *ret_expr = return_stmt->return_stmt.expr;
-		bool last_expr_was_void = left_canonical == type_void;
-		Type *right_canonical = ret_expr ? ret_expr->type->canonical : type_void;
-		bool current_expr_was_void = right_canonical == type_void;
-		if (i > 0 && last_expr_was_void != current_expr_was_void)
-		{
-			SEMA_ERROR(return_stmt, "You can't combine empty returns with value returns.");
-			SEMA_PREV(context->returns[i - 1], "Previous return was here.");
-			success = false;
-			goto EXIT;
-		}
-		if (to)
-		{
-			if (current_expr_was_void)
-			{
-				SEMA_ERROR(return_stmt, "The return must be a value of type '%s'.", type_to_error_string(to));
-				success = false;
-				goto EXIT;
-			}
-			if (!cast_implicit(ret_expr, to))
-			{
-				success = false;
-				goto EXIT;
-			}
-			continue;
-		}
-
-		// The simple case.
-		if (left_canonical == right_canonical) continue;
-
-		// Try to find a common type:
-		Type *max = type_find_max_type(left_canonical, right_canonical);
-		if (!max)
-		{
-			SEMA_ERROR(return_stmt, "Cannot find a common parent type of '%s' and '%s'",
-			           type_to_error_string(left_canonical), type_to_error_string(right_canonical));
-			SEMA_PREV(context->returns[i - 1], "The previous return was here.");
-			success = false;
-			goto EXIT;
-		}
-		left_canonical = max;
-		all_returns_needs_casts = true;
-	}
-	if (all_returns_needs_casts)
-	{
-		VECEACH(context->returns, i)
-		{
-			Ast *return_stmt = context->returns[i];
-			Expr *ret_expr = return_stmt->return_stmt.expr;
-			if (!cast_implicit(ret_expr, left_canonical))
-			{
-				success = false;
-				goto EXIT;
-			}
-		}
+		success = false;
+		goto EXIT;
 	}
 	expr->type = left_canonical;
 EXIT:
@@ -2808,10 +2923,7 @@ EXIT:
 	return success;
 }
 
-static inline bool sema_expr_analyse_range(Context *context, Type *to, Expr *expr)
-{
-	TODO
-}
+
 static inline bool sema_expr_analyse_compound_literal(Context *context, Type *to, Expr *expr)
 {
 	if (!sema_resolve_type_info(context, expr->expr_compound_literal.type_info)) return false;
@@ -2853,7 +2965,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_TRY:
 			return sema_expr_analyse_try(context, to, expr);
 		case EXPR_RANGE:
-			return sema_expr_analyse_range(context, to, expr);
+			SEMA_ERROR(expr, "Range expression was not expected here.");
+			return false;
 		case EXPR_CONST:
 			return true;
 		case EXPR_BINARY:
@@ -2910,5 +3023,36 @@ bool sema_analyse_expr(Context *context, Type *to, Expr *expr)
 	}
 	if (!sema_analyse_expr_dispatch(context, to, expr)) return expr_poison(expr);
 	expr->resolve_status = RESOLVE_DONE;
+	if (expr->expr_kind == EXPR_IDENTIFIER)
+	{
+		if (expr->identifier_expr.decl->decl_kind == DECL_FUNC)
+		{
+			SEMA_ERROR(expr, "Expected function followed by (...) or prefixed by &.");
+			return false;
+		}
+		if (expr->identifier_expr.decl->decl_kind == DECL_MACRO)
+		{
+			SEMA_ERROR(expr, "Expected macro followed by (...) or prefixed by &.");
+			return false;
+		}
+	}
 	return to ? cast(expr, to, CAST_TYPE_OPTIONAL_IMPLICIT) : true;
+}
+
+bool sema_analyse_expr_may_be_function(Context *context, Expr *expr)
+{
+	switch (expr->resolve_status)
+	{
+		case RESOLVE_NOT_DONE:
+			expr->resolve_status = RESOLVE_RUNNING;
+			break;
+		case RESOLVE_RUNNING:
+			SEMA_ERROR(expr, "Recursive resolution of expression");
+			return expr_poison(expr);
+		case RESOLVE_DONE:
+			return expr_ok(expr);
+	}
+	if (!sema_analyse_expr_dispatch(context, NULL, expr)) return expr_poison(expr);
+	expr->resolve_status = RESOLVE_DONE;
+	return true;
 }

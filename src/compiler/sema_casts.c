@@ -617,7 +617,14 @@ bool vava(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
 
 bool sapt(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
 {
-	TODO
+	bool is_subtype = type_is_subtype(canonical->pointer, from->array.base);
+	if (!is_subtype)
+	{
+		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
+		return sema_type_mismatch(left, type, cast_type);
+	}
+	insert_cast(left, CAST_SAPTR, canonical);
+	return true;
 }
 
 bool vasa(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
@@ -625,10 +632,7 @@ bool vasa(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
 	TODO
 }
 
-bool usui(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
+
 
 bool euxi(Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
@@ -684,6 +688,24 @@ bool eubool(Expr *left, Type *canonical, Type *type, CastType cast_type)
 bool ptva(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
 {
 	TODO
+}
+
+bool ptsa(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+{
+	if (from->pointer->type_kind != TYPE_ARRAY)
+	{
+		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
+		sema_type_mismatch(left, type, CAST_TYPE_EXPLICIT);
+		return false;
+	}
+	if (!type_is_subtype(canonical->array.base, from->pointer->array.base))
+	{
+		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
+		sema_type_mismatch(left, type, CAST_TYPE_EXPLICIT);
+		return false;
+	}
+	insert_cast(left, CAST_APTSA, canonical);
+	return true;
 }
 
 bool usbo(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
@@ -845,6 +867,7 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 			if (canonical->type_kind == TYPE_POINTER) return ptpt(expr, from_type, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_FUNC) return ptfu(expr, from_type, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_VARARRAY) return ptva(expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_SUBARRAY) return ptsa(expr, from_type, canonical, to_type, cast_type);
 			break;
 		case TYPE_ENUM:
 			if (type_is_integer(canonical)) return enxi(expr, from_type, canonical, to_type, cast_type);
@@ -854,9 +877,8 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 			if (canonical == type_error_union) return ereu(expr);
 			break;
 		case TYPE_FUNC:
-			if (type_is_integer(canonical)) return ptxi(expr, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_POINTER) return fupt(expr, from_type, canonical, to_type, cast_type);
-			break;
+			SEMA_ERROR(expr, "The function call is missing (...), if you want to take the address of a function it must be prefixed with '&'.");
+			return false;
 		case TYPE_STRUCT:
 			if (canonical->type_kind == TYPE_STRUCT) return stst(expr, from_type, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_UNION) return stun(expr, from_type, canonical, to_type, cast_type);

@@ -189,8 +189,7 @@ bool context_add_import(Context *context, Path *path, Token token, Token alias)
     }
 
     vec_add(context->imports, import);
-    printf("Added import %s\n", path->module);
-
+	DEBUG_LOG("Added import %s\n", path->module);
     return true;
 }
 

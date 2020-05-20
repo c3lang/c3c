@@ -34,7 +34,9 @@ typedef struct _Entry
 
 static SymTab symtab;
 
-const char *main_name;
+const char *attribute_list[NUMBER_OF_ATTRIBUTES];
+
+const char *main_kw;
 
 void symtab_init(uint32_t capacity)
 {
@@ -64,9 +66,21 @@ void symtab_init(uint32_t capacity)
 		assert(type == (TokenType)i);
 		assert(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 	}
+
 	// Init some constant idents
 	TokenType type = TOKEN_IDENT;
-	main_name = symtab_add("main", 4, fnv1a("main", 4), &type);
+#define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
+	main_kw = KW_DEF("main");
+	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("inline");
+	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
+	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("stdcall");
+	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("noreturn");
+	attribute_list[ATTRIBUTE_ALIGN] = KW_DEF("align");
+	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("packed");
+	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("section");
+	attribute_list[ATTRIBUTE_CNAME] = KW_DEF("cname");
+	attribute_list[ATTRIBUTE_WEAK] = KW_DEF("weak");
+	attribute_list[ATTRIBUTE_OPAQUE] = KW_DEF("opaque");
 }
 
 static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t hash)

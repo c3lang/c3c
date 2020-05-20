@@ -198,6 +198,18 @@ static Expr *parse_post_unary(Context *context, Expr *left)
 	return unary;
 }
 
+static Expr *parse_range_expr(Context *context, Expr *left_side)
+{
+	assert(expr_ok(left_side));
+	advance_and_verify(context, TOKEN_ELLIPSIS);
+	Expr *right = TRY_EXPR_OR(parse_precedence(context, PREC_RANGE + 1), poisoned_expr);
+	Expr *range = expr_new(EXPR_RANGE, left_side->span);
+	range->range_expr.left = left_side;
+	range->range_expr.right = right;
+	RANGE_EXTEND_PREV(range);
+	return range;
+}
+
 static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 {
 	assert(expr_ok(left_side));
@@ -819,6 +831,7 @@ static Expr* parse_expr_block(Context *context, Expr *left)
 }
 
 ParseRule rules[TOKEN_EOF + 1] = {
+		[TOKEN_ELLIPSIS] = { NULL, parse_range_expr, PREC_RANGE },
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },

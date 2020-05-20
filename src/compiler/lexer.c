@@ -333,7 +333,7 @@ static inline Token scan_hex(Lexer *lexer)
 	}
 	while (is_hex_or_(peek(lexer))) next(lexer);
 	bool is_float = false;
-	if (peek(lexer) == '.')
+	if (peek(lexer) == '.' && peek_next(lexer) != '.')
 	{
 		is_float = true;
 		next(lexer);
@@ -360,7 +360,7 @@ static inline Token scan_dec(Lexer *lexer)
 {
 	while (is_digit_or_(peek(lexer))) next(lexer);
 	bool is_float = false;
-	if (peek(lexer) == '.')
+	if (peek(lexer) == '.' && peek_next(lexer) != '.')
 	{
 		is_float = true;
 		next(lexer);
@@ -495,7 +495,7 @@ Token lexer_scan_token(Lexer *lexer)
 		case '#':
 			return make_token(lexer, TOKEN_HASH, "#");
 		case '$':
-			return scan_ident(lexer, TOKEN_CT_TYPE_IDENT, TOKEN_CT_CONST_IDENT, TOKEN_CT_TYPE_IDENT, '$');
+			return scan_ident(lexer, TOKEN_CT_IDENT, TOKEN_CT_CONST_IDENT, TOKEN_CT_TYPE_IDENT, '$');
 		case ',':
 			return make_token(lexer, TOKEN_COMMA, ",");
 		case ';':
@@ -513,7 +513,7 @@ Token lexer_scan_token(Lexer *lexer)
 		case ']':
 			return make_token(lexer, TOKEN_RBRACKET, "]");
 		case '.':
-			if (match(lexer, '.')) return match(lexer, '.') ? make_token(lexer, TOKEN_ELIPSIS, "...") : make_token(lexer, TOKEN_DOTDOT, "..");
+			if (match(lexer, '.')) return match(lexer, '.') ? make_token(lexer, TOKEN_ELLIPSIS, "...") : make_token(lexer, TOKEN_DOTDOT, "..");
 			return make_token(lexer, TOKEN_DOT, ".");
 		case '~':
 			return make_token(lexer, TOKEN_BIT_NOT, "~");

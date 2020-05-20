@@ -372,6 +372,7 @@ label_statement
 labeled_statement
 	: label_statement
 	| CASE constant_expression ':'
+	| CASE constant_expression ELLIPSIS constant_expression ':'
 	| DEFAULT ':'
 	;
 

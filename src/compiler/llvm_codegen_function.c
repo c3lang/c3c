@@ -4,10 +4,7 @@
 
 
 #include "llvm_codegen_internal.h"
-
-
-
-
+#include "bigint.h"
 
 bool gencontext_check_block_branch_emit(GenContext *context)
 {
@@ -78,8 +75,8 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	// Allocate room on stack and copy.
-	decl->var.backend_ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
-	LLVMBuildStore(context->builder, LLVMGetParam(context->function, index), decl->var.backend_ref);
+	decl->ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
+	LLVMBuildStore(context->builder, LLVMGetParam(context->function, index), decl->ref);
 }
 
 void gencontext_emit_implicit_return(GenContext *context)
@@ -103,12 +100,12 @@ void gencontext_emit_implicit_return(GenContext *context)
 void gencontext_emit_function_body(GenContext *context, Decl *decl)
 {
 	DEBUG_LOG("Generating function %s.", decl->external_name);
-	assert(decl->func.backend_value);
+	assert(decl->ref);
 
 	LLVMValueRef prev_function = context->function;
 	LLVMBuilderRef prev_builder = context->builder;
 
-	context->function = decl->func.backend_value;
+	context->function = decl->ref;
 	context->cur_func_decl = decl;
 
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context->context, context->function, "entry");
@@ -182,22 +179,61 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_FUNC);
 	// Resolve function backend type for function.
-	decl->func.backend_value = LLVMAddFunction(context->module, decl->external_name,
-	                                           llvm_type(decl->type));
-
-
-	// Specify appropriate storage class, visibility and call convention
-	// extern functions (linkedited in separately):
-	/*
-	if (glofn->flags & FlagSystem) {
-		LLVMSetFunctionCallConv(glofn->llvmvar, LLVMX86StdcallCallConv);
-		LLVMSetDLLStorageClass(glofn->llvmvar, LLVMDLLImportStorageClass);
-	}*/
-	if (decl->visibility == VISIBLE_LOCAL)
+	LLVMValueRef function = LLVMAddFunction(context->module, decl->cname ?: decl->external_name, llvm_type(decl->type));
+	decl->ref = function;
+	if (decl->func.function_signature.return_param)
 	{
-		LLVMSetVisibility(decl->func.backend_value, LLVMHiddenVisibility);
+		if (decl->func.function_signature.error_return == ERROR_RETURN_NONE)
+		{
+			gencontext_add_attribute(context, function, sret_attribute, 1);
+		}
+		gencontext_add_attribute(context, function, noalias_attribute, 1);
+	}
+	if (decl->func.attr_inline)
+	{
+		gencontext_add_attribute(context, function, alwaysinline_attribute, -1);
+	}
+	if (decl->func.attr_noinline)
+	{
+		gencontext_add_attribute(context, function, noinline_attribute, -1);
+	}
+	if (decl->func.attr_noreturn)
+	{
+		gencontext_add_attribute(context, function, noreturn_attribute, -1);
+	}
+	if (decl->alignment)
+	{
+		LLVMSetAlignment(function, decl->alignment);
+	}
+	if (decl->section)
+	{
+		LLVMSetSection(function, decl->section);
+	}
+	gencontext_add_attribute(context, function, nounwind_attribute, -1);
+
+	// TODO only for windows.
+	if (decl->func.attr_stdcall)
+	{
+		LLVMSetFunctionCallConv(function, LLVMX86StdcallCallConv);
+		LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
 	}
 
+	switch (decl->visibility)
+	{
+		case VISIBLE_EXTERN:
+			LLVMSetLinkage(function, decl->func.attr_weak ? LLVMExternalWeakLinkage : LLVMExternalLinkage);
+			LLVMSetVisibility(function, LLVMDefaultVisibility);
+			break;
+		case VISIBLE_PUBLIC:
+		case VISIBLE_MODULE:
+			if (decl->func.attr_weak) LLVMSetLinkage(function, LLVMWeakAnyLinkage);
+			LLVMSetVisibility(function, LLVMDefaultVisibility);
+			break;
+		case VISIBLE_LOCAL:
+			LLVMSetLinkage(function, decl->func.attr_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
+			LLVMSetVisibility(function, LLVMDefaultVisibility);
+			break;;
+	}
 	if (context->debug.builder)
 	{
 		LLVMDIFlags flags = LLVMDIFlagZero;
@@ -241,13 +277,13 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_POISONED:
 			UNREACHABLE;
 		case DECL_FUNC:
-			decl->func.backend_value = LLVMAddFunction(context->module, decl->external_name,
+			decl->ref = LLVMAddFunction(context->module, decl->cname ?: decl->external_name,
 			                                           llvm_type(decl->type));
-			LLVMSetVisibility(decl->func.backend_value, LLVMDefaultVisibility);
+			LLVMSetVisibility(decl->ref, LLVMDefaultVisibility);
 			break;
 		case DECL_VAR:
-			decl->var.backend_ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->external_name);
-			LLVMSetVisibility(decl->var.backend_ref, LLVMDefaultVisibility);
+			decl->ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->cname ?: decl->external_name);
+			LLVMSetVisibility(decl->ref, LLVMDefaultVisibility);
 			break;
 		case DECL_TYPEDEF:
 			UNREACHABLE

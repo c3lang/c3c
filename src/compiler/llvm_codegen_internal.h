@@ -100,13 +100,17 @@ extern unsigned writeonly_attribute;
 extern unsigned readonly_attribute;
 // Disable optimization.
 extern unsigned optnone_attribute;
-
+// Sret (pointer)
+extern unsigned sret_attribute;
+// Noalias (pointer)
+extern unsigned noalias_attribute;
 
 void gencontext_begin_module(GenContext *context);
 void gencontext_end_module(GenContext *context);
 
 
-void gencontext_add_attribute(GenContext context, unsigned attribute_id, LLVMValueRef value_to_add_attribute_to);
+void
+gencontext_add_attribute(GenContext *context, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index);
 void gencontext_emit_stmt(GenContext *context, Ast *ast);
 
 void gencontext_generate_catch_block_if_needed(GenContext *context, Ast *ast);
@@ -149,9 +153,13 @@ static inline void gencontext_emit_return_value(GenContext *context, LLVMValueRe
 	context->current_block = NULL;
 	context->current_block_is_target = false;
 }
-LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMValueRef value, Type *type, Type *target_type);
+LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMValueRef value, Type *to_type, Type *from_type);
 static inline bool gencontext_func_pass_return_by_param(GenContext *context, Type *first_param_type) { return false; };
 static inline bool gencontext_func_pass_param_by_reference(GenContext *context, Type *param_type) { return false; }
+static inline LLVMValueRef gencontext_emit_bitcast(GenContext *context, LLVMValueRef value, Type *type)
+{
+	return LLVMBuildBitCast(context->builder, value, gencontext_get_llvm_type(context, type), "");
+}
 
 static inline bool gencontext_use_debug(GenContext *context)
 {

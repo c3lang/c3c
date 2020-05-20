@@ -152,8 +152,7 @@ LLVMTypeRef llvm_func_type(LLVMContextRef context, Type *type)
 		default:
 			UNREACHABLE
 	}
-	LLVMTypeRef functype = LLVMFunctionType(ret_type, params, parameters, signature->variadic);
-	return functype;
+	return LLVMFunctionType(ret_type, params, parameters, signature->variadic);
 }
 
 
@@ -213,16 +212,15 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 			return type->backend_type = llvm_type_from_array(context, type);
 		case TYPE_SUBARRAY:
 		{
-			LLVMTypeRef base_type = llvm_get_type(context, type->array.base);
+			LLVMTypeRef base_type = llvm_get_type(context, type_get_ptr(type->array.base));
 			LLVMTypeRef size_type = llvm_get_type(context, type_usize);
-			assert(type->array.base->canonical->type_kind == TYPE_POINTER);
 			LLVMTypeRef array_type = LLVMStructCreateNamed(context, type->name);
 			LLVMTypeRef types[2] = { base_type, size_type };
 			LLVMStructSetBody(array_type, types, 2, false);
 			return type->backend_type = array_type;
 		}
 		case TYPE_VARARRAY:
-			return type->backend_type = LLVMPointerType(llvm_get_type(context, type->array.base), 0);
+			return type->backend_type = llvm_get_type(context, type_get_ptr(type->array.base));
 	}
 	UNREACHABLE;
 }

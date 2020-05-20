@@ -659,11 +659,7 @@ func int testThrow(int x) throws Err
     return x * x;
 }
 
-func int testThrowAny(int x) throws
-{
-    if (x < 0) throw Err.TEST_ERR1;
-    return x * x;
-}
+
 
 func int oekt() throws
 {
@@ -671,9 +667,46 @@ func int oekt() throws
     printf("Skipped.\n");
     NEXT:
     int x = try testThrow(-3);
+    catch (error e)
+    {
+    printf("An error %p\n", cast(e, usize));
+        throw e;
+    }
     return x;
 }
 
+errset Xan
+{
+    EE,
+    FF,
+    DD,
+}
+
+func int testThrowAny(int x) throws
+{
+    if (x < 0) throw Err.TEST_ERR1;
+    return x * x;
+}
+
+func void testErrorBug()
+{
+    printf("Test error multi\n");
+   {
+        printf("Will call\n");
+        try oekt();
+    }
+    catch (Err e)
+    {
+        printf("Expected particular error.\n");
+    }
+    catch (error e)
+    {
+        error foo = Err.TEST_ERR1;
+        printf("Not expected %p != %p\n", cast(e, usize), cast(foo, usize));
+        printf("Unexpected any error error.\n");
+    }
+    printf("End\n");
+}
 func void testErrorMulti()
 {
     defer printf("End defer\n");
@@ -692,6 +725,8 @@ func void testErrorMulti()
     catch (error e)
     {
         defer printf("Left any error\n");
+        error foo = Err.TEST_ERR1;
+        printf("Not expected %p != %p\n", cast(e, usize), cast(foo, usize));
         printf("Unexpected any error error.\n");
     }
     printf("End\n");
@@ -771,15 +806,50 @@ func void testErrors()
     printf("Throws: %d\n", throwsDone.times);
     printf("End of errors\n");
 }
+macro void arrayCallMacro($x)
+{
+    printf("Array call: %d, %d\n", $x[0], $x[1]);
+}
 
+typedef func int(int) as IntInt;
+
+func int funcTest(int i)
+{
+    return i * i;
+}
+
+func void testFuncPointer()
+{
+    IntInt bobd =  &funcTest;
+    int x = bobd(2);
+    printf("Func test: %d\n", x);
+    printf("Func test: %d\n", bobd(100));
+}
+
+func void arrayCall(int[2] x) @inline @weak @align(16) @cname("Foo")
+{
+    printf("Array call: %d, %d\n", x[0], x[1]);
+}
 func void testArray()
 {
     int[4] zebra = { [2] = 1 };
-    int[4] deok = { 1, 2, 3, 4 };
+    int[4] deok = { 1, 5, 9, 16 };
+    int[] sa = &deok;
+    int* sp = sa;
     WithArray boo;
     boo.x[0] = 2;
     printf("boo.x[0] = %d\n", boo.x[0]);
     printf("boo.x[2] = %d\n", boo.x[2]);
+    printf("sa[2] = %d\n", sa[2]);
+    printf("sa[3] = %d\n", sa[3]);
+    deok[2] = 100;
+    sa[1] = 999;
+    printf("sa[2] = %d\n", sa[2]);
+    printf("sp[2] = %d\n", sp[2]);
+    printf("deok[1] = %d\n", deok[1]);
+    int[2] two = { 142, 2 };
+    arrayCall(two);
+    //@arrayCallMacro(two);
     int[4] x;
     x[1] = 1;
     x[0] = 3;
@@ -838,10 +908,38 @@ func void testType()
     typeid structSize = typeof(b);
 }
 
+struct Big
+{
+    long x;
+    long y;
+    long z;
+}
+func Big testStructReturn()
+{
+    return Big { 1, 2, 3};
+}
+
+func void testExprBlock()
+{
+    printf("ExprBlock\n");
+    int x = ({
+        int y = 1;
+        for (int i = 0; i < 100; i++)
+        {
+            printf("%d\n", i);
+            if (y % 3 == 0 && y % 2 == 0) return y;
+            y++;
+        }
+        return 100;
+    });
+    printf("Was %d\n", x);
+}
+
 func int main(int x)
 {
 
     printf("Helo!\n");
+    testErrorBug();
     testErrors();
     testDefault(y = 99);
     testPointers(2, 3);
@@ -851,6 +949,8 @@ func int main(int x)
     testSimpleStruct(0);
     testUnion();
     testType();
+    testExprBlock();
+    testFuncPointer();
     int efd = 9;
     uint fefoek = 1;
     printf("Helo: %d\n", efd + cast(fefoek, int));

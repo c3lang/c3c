@@ -428,6 +428,16 @@ void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent)
 			}
 			DUMPF("(unresolved %s)", type_info->unresolved.name_loc.string);
 			break;
+		case TYPE_INFO_VARARRAY:
+			DUMP("(vararray");
+			DUMPTI(type_info->array.base);
+			DUMPE();
+			break;
+		case TYPE_INFO_SUBARRAY:
+			DUMP("(subarray");
+			DUMPTI(type_info->array.base);
+			DUMPE();
+			break;
 		case TYPE_INFO_ARRAY:
 			DUMP("(unresolved-array");
 			DUMPTI(type_info->array.base);
@@ -435,7 +445,7 @@ void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent)
 			DUMPE();
 			break;
 		case TYPE_INFO_POINTER:
-			DUMP("pointer");
+			DUMP("(pointer");
 			DUMPTI(type_info->pointer);
 			DUMPE();
 			break;
@@ -821,7 +831,6 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			DUMPEND();
 		case DECL_IMPORT:
 			DUMPF("(import %s", decl->name);
-
 			// TODO
 			DUMPEND();
 		case DECL_ATTRIBUTE:

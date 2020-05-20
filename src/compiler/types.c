@@ -48,8 +48,9 @@ unsigned size_error_code;
 unsigned alignment_error_code;
 
 #define PTR_OFFSET 0
-#define VAR_ARRAY_OFFSET 1
-#define ARRAY_OFFSET 2
+#define SUB_ARRAY_OFFSET 1
+#define VAR_ARRAY_OFFSET 2
+#define ARRAY_OFFSET 3
 
 Type *type_signed_int_by_bitsize(unsigned bytesize)
 {
@@ -113,10 +114,10 @@ const char *type_to_error_string(Type *type)
 			asprintf(&buffer, "%s[%zu]", type_to_error_string(type->array.base), type->array.len);
 			return buffer;
 		case TYPE_VARARRAY:
-			asprintf(&buffer, "%s[]", type_to_error_string(type->array.base));
+			asprintf(&buffer, "%s[*]", type_to_error_string(type->array.base));
 			return buffer;
 		case TYPE_SUBARRAY:
-			asprintf(&buffer, "%s[:]", type_to_error_string(type->array.base));
+			asprintf(&buffer, "%s[]", type_to_error_string(type->array.base));
 			return buffer;
 		case TYPE_ERROR_UNION:
 			return "error";
@@ -294,11 +295,72 @@ static Type *type_generate_ptr(Type *ptr_type, bool canonical)
 	return ptr;
 }
 
+static Type *type_generate_subarray(Type *arr_type, bool canonical)
+{
+	if (canonical) arr_type = arr_type->canonical;
+	if (!arr_type->type_cache)
+	{
+		create_type_cache(arr_type);
+	}
+
+	Type *arr = arr_type->type_cache[SUB_ARRAY_OFFSET];
+	if (arr == NULL)
+	{
+		arr = type_new(TYPE_SUBARRAY, strformat("%s[]", arr_type->name));
+		arr->array.base = arr_type;
+		arr_type->type_cache[SUB_ARRAY_OFFSET] = arr;
+		if (arr_type == arr_type->canonical)
+		{
+			arr->canonical = arr;
+		}
+		else
+		{
+			arr->canonical = type_generate_subarray(arr_type->canonical, true);
+		}
+	}
+	return arr;
+}
+
+static Type *type_generate_vararray(Type *arr_type, bool canonical)
+{
+	if (canonical) arr_type = arr_type->canonical;
+	if (!arr_type->type_cache)
+	{
+		create_type_cache(arr_type);
+	}
+
+	Type *arr = arr_type->type_cache[VAR_ARRAY_OFFSET];
+	if (arr == NULL)
+	{
+		arr = type_new(TYPE_VARARRAY, strformat("%s[*]", arr_type->name));
+		arr->array.base = arr_type;
+		arr_type->type_cache[VAR_ARRAY_OFFSET] = arr;
+		if (arr_type == arr_type->canonical)
+		{
+			arr->canonical = arr;
+		}
+		else
+		{
+			arr->canonical = type_generate_vararray(arr_type->canonical, true);
+		}
+	}
+	return arr;
+}
 
 
 Type *type_get_ptr(Type *ptr_type)
 {
 	return type_generate_ptr(ptr_type, false);
+}
+
+Type *type_get_subarray(Type *arr_type)
+{
+	return type_generate_subarray(arr_type, false);
+}
+
+Type *type_get_vararray(Type *arr_type)
+{
+	return type_generate_subarray(arr_type, false);
 }
 
 Type *type_get_indexed_type(Type *type)
@@ -330,34 +392,11 @@ Type *type_create_array(Type *arr_type, uint64_t len, bool canonical)
 	{
 		create_type_cache(arr_type);
 	}
-
-	// Dynamic array
-	if (len == 0)
-	{
-		Type *array = arr_type->type_cache[VAR_ARRAY_OFFSET];
-		if (array == NULL)
-		{
-			array = type_new(TYPE_VARARRAY, strformat("%s[]", arr_type->name));
-			array->array.base = arr_type;
-			array->array.len = 0;
-			if (arr_type->canonical == arr_type)
-			{
-				array->canonical = array;
-			}
-			else
-			{
-				array->canonical = type_create_array(arr_type, len, true);
-			}
-			arr_type->type_cache[VAR_ARRAY_OFFSET] = array;
-		}
-		return array;
-	}
-
 	int entries = (int)vec_size(arr_type->type_cache);
 	for (int i = ARRAY_OFFSET; i < entries; i++)
 	{
 		Type *ptr = arr_type->type_cache[i];
-		if (ptr->array.len == arr_type->array.len)
+		if (ptr->array.len == len)
 		{
 			return ptr;
 		}

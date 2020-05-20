@@ -70,7 +70,7 @@ add_executable(c3c
         src/compiler/context.c
         src/compiler/sema_expr.c
         src/compiler/enums.h
-        src/compiler/casts.c
+        src/compiler/sema_casts.c
         src/compiler/target.c
         src/compiler/compiler.h
         src/compiler/types.c

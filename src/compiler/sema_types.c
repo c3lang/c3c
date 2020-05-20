@@ -48,18 +48,28 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 		return type_info_poison(type);
 	}
 	uint64_t len = 0;
-	if (type->array.len)
+	switch (type->kind)
 	{
-		if (!sema_analyse_expr_of_required_type(context, type_usize, type->array.len)) return type_info_poison(type);
-		if (type->array.len->expr_kind != EXPR_CONST)
-		{
-			SEMA_ERROR(type->array.len, "Expected a constant value as array size.");
-			return type_info_poison(type);
-		}
-		len = bigint_as_unsigned(&type->array.len->const_expr.i);
+		case TYPE_INFO_VARARRAY:
+			type->type = type_get_vararray(type->array.base->type);
+			break;
+		case TYPE_INFO_SUBARRAY:
+			type->type = type_get_subarray(type->array.base->type);
+			break;;
+		case TYPE_INFO_ARRAY:
+			if (!sema_analyse_expr_of_required_type(context, type_usize, type->array.len)) return type_info_poison(type);
+			if (type->array.len->expr_kind != EXPR_CONST)
+			{
+				SEMA_ERROR(type->array.len, "Expected a constant value as array size.");
+				return type_info_poison(type);
+			}
+			len = bigint_as_unsigned(&type->array.len->const_expr.i);
+			type->type = type_get_array(type->array.base->type, len);
+			break;
+		default:
+			UNREACHABLE
 	}
 	assert(!type->array.len || type->array.len->expr_kind == EXPR_CONST);
-	type->type = type_get_array(type->array.base->type, len);
 	type->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -101,20 +111,14 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_UNION:
 		case DECL_ERROR:
 		case DECL_ENUM:
+		case DECL_TYPEDEF:
+			if (decl->resolve_status == RESOLVE_NOT_DONE)
+			{
+				if (!sema_analyse_decl(context, decl)) return decl_poison(decl);
+			}
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			DEBUG_LOG("Resolved %s.", type_info->unresolved.name_loc.string);
-			return true;
-		case DECL_TYPEDEF:
-			// TODO func
-			if (!sema_resolve_type_info(context, decl->typedef_decl.type_info))
-			{
-				decl_poison(decl);
-				return type_info_poison(type_info);
-			}
-			DEBUG_LOG("Resolved %s.", type_info->unresolved.name_loc.string);
-			type_info->type = decl->typedef_decl.type_info->type;
-			type_info->resolve_status = RESOLVE_DONE;
 			return true;
 		case DECL_POISONED:
 			return type_info_poison(type_info);
@@ -166,6 +170,8 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 				return type_info_poison(type_info);
 			}
 			TODO
+		case TYPE_INFO_SUBARRAY:
+		case TYPE_INFO_VARARRAY:
 		case TYPE_INFO_ARRAY:
 			return sema_resolve_array_type(context, type_info);
 		case TYPE_INFO_POINTER:

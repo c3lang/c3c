@@ -19,9 +19,11 @@ typedef uint32_t SourceLoc;
 #define MAX_SCOPE_DEPTH 0xFF
 #define MAX_PATH 1024
 #define MAX_DEFERS 0xFFFF
+#define MAX_MACRO_NESTING 1024
 #define MAX_FUNCTION_SIGNATURE_SIZE 2048
 #define MAX_PARAMS 512
 #define MAX_ERRORS 0xFFFF
+#define MAX_ALIGNMENT (1U << 29U)
 
 typedef struct _Ast Ast;
 typedef struct _Decl Decl;
@@ -226,6 +228,7 @@ typedef struct
 	union
 	{
 		Expr *expr;
+		uint32_t alignment;
 	};
 } Attr;
 
@@ -261,7 +264,6 @@ typedef struct _VarDecl
 		Expr *init_expr;
 		Decl *parent;
 	};
-	void *backend_ref;
 	void *backend_debug_ref;
 } VarDecl;
 
@@ -301,6 +303,7 @@ typedef enum
 	ERROR_RETURN_MANY = 2,
 	ERROR_RETURN_ANY = 3,
 } ErrorReturn;
+
 typedef struct _FunctionSignature
 {
 	CallConvention convention : 4;
@@ -322,18 +325,27 @@ typedef struct
 
 typedef struct
 {
+	struct
+	{
+		bool attr_weak : 1;
+		bool attr_noreturn : 1;
+		bool attr_inline : 1;
+		bool attr_noinline : 1;
+		bool attr_cname : 1;
+		bool attr_stdcall : 1;
+	};
+
 	TypeInfo *type_parent;
 	FunctionSignature function_signature;
 	Ast *body;
 	FuncAnnotations *annotations;
 	Decl **locals;
 	Ast **labels;
-	void *backend_value;
 } FuncDecl;
 
 typedef struct
 {
-	AttributeDomains domains;
+	AttributeDomain domains;
 	FunctionSignature attr_signature;
 } AttrDecl;
 
@@ -378,7 +390,11 @@ typedef struct _Decl
 	Visibility visibility : 2;
 	ResolveStatus resolve_status : 2;
 	bool is_packed : 1;
-/*	bool is_exported : 1;
+	void *ref;
+	const char *cname;
+	uint32_t alignment;
+	const char *section;
+	/*	bool is_exported : 1;
 	bool is_used : 1;
 	bool is_used_public : 1;
 	bool has_cname : 1;
@@ -523,6 +539,7 @@ typedef struct
 typedef struct
 {
 	bool is_struct_function : 1;
+	bool is_pointer_call : 1;
 	Expr *function;
 	Expr **arguments;
 	ThrowInfo *throw_info;
@@ -963,6 +980,14 @@ typedef struct _Context
 	};
 	Type *rtype;
 	int in_volatile_section;
+	struct
+	{
+		bool in_macro_call : 1;
+		bool in_macro : 1;
+		int macro_counter;
+		int macro_nesting;
+		Expr *first_macro_call;
+	};
 	Decl *locals[MAX_LOCALS];
 	DynamicScope scopes[MAX_SCOPE_DEPTH];
 	char path_scratch[MAX_PATH];
@@ -1014,8 +1039,9 @@ extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
 extern Type *type_typeid, *type_error_union, *type_error_base;
 
+extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
-extern const char *main_name;
+extern const char *main_kw;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, _token.span)
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
@@ -1257,6 +1283,8 @@ static inline Token wrap(const char *string)
 }
 
 Type *type_get_ptr(Type *ptr_type);
+Type *type_get_subarray(Type *arr_type);
+Type *type_get_vararray(Type *arr_type);
 Type *type_get_meta(Type *meta_type);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_array(Type *arr_type, uint64_t len);

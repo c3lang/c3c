@@ -2,10 +2,10 @@ Things missing:
 
 * Attributes
 - All types: @noreflect, @deprecated
-- Struct: @packed, @aligned, @opaque
+- Struct: @packed, @opaque
 - Enums: @distinct, @noreflect
-- Unions: @packed, @aligned, @opaque
-- Functions: @inline, @reflect, @noreturn, @section, @unused, @used, @interrupt, @naked, @convention()
+- Unions: @packed, @opaque
+- Functions: @reflect, @noreturn, @unused, @used, @interrupt, @naked, @convention()
 - Calls: @noinline, @inline
 - Variables, parameters: @unused
 - Constants, globals: @unused, @used, @section
@@ -62,6 +62,7 @@ Things missing:
 - C ABI
 - Safe varargs
 - Malloc/free
+- Check that structs are transferred the right way.
 
 * Pre-post conditions
 - Breakdown here
