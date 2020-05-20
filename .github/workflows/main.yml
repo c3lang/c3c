@@ -16,5 +16,5 @@ jobs:
       - name: Build
         run: |
           mkdir build && cd build
-          cmake -DLLVM_DIR=/usr/lib/llvm/cmake -DCMAKE_BUILD_TYPE=Debug ..
+          cmake -DLLVM_DIR=/usr/lib/llvm-9/cmake -DCMAKE_BUILD_TYPE=Debug ..
           cmake --build .
