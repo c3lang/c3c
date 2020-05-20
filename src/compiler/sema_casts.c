@@ -37,7 +37,29 @@ static bool sema_type_mismatch(Expr *expr, Type *type, CastType cast_type)
 		case CAST_TYPE_OPTIONAL_IMPLICIT:
 			UNREACHABLE
 	}
-	SEMA_ERROR(expr, "Cannot %s '%s' to '%s'.", action, type_to_error_string(expr->type), type_to_error_string(type));
+	Type *expr_type = expr->type;
+	if (expr_type == expr_type->canonical)
+	{
+		if (type->canonical == type)
+		{
+			SEMA_ERROR(expr, "Cannot %s '%s' to '%s'.", action, type_to_error_string(expr_type), type_to_error_string(type));
+		}
+		else
+		{
+			SEMA_ERROR(expr, "Cannot %s '%s' to '%s' ('%s').", action, type_to_error_string(expr_type), type_to_error_string(type), type_to_error_string(type->canonical));
+		}
+	}
+	else
+	{
+		if (type->canonical == type)
+		{
+			SEMA_ERROR(expr, "Cannot %s '%s' (%s) to '%s'.", action, type_to_error_string(expr_type), type_to_error_string(expr_type->canonical), type_to_error_string(type));
+		}
+		else
+		{
+			SEMA_ERROR(expr, "Cannot %s '%s' (%s) to '%s' ('%s').", action, type_to_error_string(expr_type), type_to_error_string(expr_type->canonical), type_to_error_string(type), type_to_error_string(type->canonical));
+		}
+	}
 	return false;
 }
 
@@ -132,6 +154,7 @@ bool ptpt(Expr* left, Type *from_canonical, Type *canonical, Type *type, CastTyp
 {
 	if (cast_type != CAST_TYPE_EXPLICIT && !may_implicitly_cast_ptr_to_ptr(from_canonical, canonical))
 	{
+		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
 		return sema_type_mismatch(left, type, cast_type);
 	}
 	RETURN_NON_CONST_CAST(CAST_PTRPTR);

@@ -935,9 +935,15 @@ func void testExprBlock()
     printf("Was %d\n", x);
 }
 
+typedef func int(int) as Blorb;
+
+func int eokf(int x)
+{
+    return x * x + 1;
+}
+
 func int main(int x)
 {
-
     printf("Helo!\n");
     testErrorBug();
     testErrors();

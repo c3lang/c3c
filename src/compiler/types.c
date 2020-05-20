@@ -99,13 +99,38 @@ const char *type_to_error_string(Type *type)
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:
-		case TYPE_FUNC:
 		case TYPE_UNION:
 		case TYPE_ERROR:
 			return type->name;
+		case TYPE_FUNC:
+		{
+			asprintf(&buffer, "func %s(", type_to_error_string(type->func.signature->rtype->type));
+			VECEACH(type->func.signature->params, i)
+			{
+				if (i != 0) buffer = strcat_arena(buffer, ", ");
+				strcat_arena(buffer, type_to_error_string(type->func.signature->params[i]->type));
+			}
+			buffer = strcat_arena(buffer, ")");
+			if (type->func.signature->throw_any)
+			{
+				return strcat_arena(buffer, " throws");
+			}
+			if (!vec_size(type->func.signature->throws)) return buffer;
+			buffer = strcat_arena(buffer, " throws ");
+			VECEACH(type->func.signature->throws, i)
+			{
+				if (i != 0) buffer = strcat_arena(buffer, ", ");
+				buffer = strcat_arena(buffer, type_to_error_string(type->func.signature->throws[i]->type));
+			}
+			return buffer;
+		}
 		case TYPE_TYPEID:
 			return "typeid";
 		case TYPE_POINTER:
+			if (type->pointer->type_kind == TYPE_FUNC)
+			{
+				return type_to_error_string(type->pointer);
+			}
 			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
 		case TYPE_STRING:
