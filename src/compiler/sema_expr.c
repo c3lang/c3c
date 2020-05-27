@@ -290,7 +290,7 @@ static inline int find_index_of_named_parameter(Decl** func_params, Expr *expr)
 	return -1;
 }
 
-static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionSignature *signature, Expr *expr, Decl *decl, Type *to)
+static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionSignature *signature, Expr *expr, Decl *decl, Type *to, Expr *struct_var)
 {
 	Decl **func_params = signature->params;
 	expr->call_expr.throw_info = CALLOCS(ThrowInfo);
@@ -316,8 +316,9 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 			                                        expr->call_expr.throw_info, signature->throws));
 		}
 	}
+	unsigned struct_args = struct_var == NULL ? 0 : 1;
 	unsigned func_param_count = vec_size(func_params);
-	unsigned num_args = vec_size(args);
+	unsigned num_args = vec_size(args) + struct_args;
 	unsigned entries_needed = func_param_count > num_args ? func_param_count : num_args;
 	Expr **actual_args = VECNEW(Expr*, entries_needed);
 	for (unsigned i = 0; i < entries_needed; i++) vec_add(actual_args, NULL);
@@ -326,9 +327,10 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 
 	for (unsigned i = 0; i < num_args; i++)
 	{
-		Expr *arg = args[i];
+		bool is_implicit = i < struct_args;
+		Expr *arg = is_implicit ? struct_var : args[i - struct_args];
 		// Named parameters
-		if (arg->expr_kind == EXPR_BINARY && arg->binary_expr.operator == BINARYOP_ASSIGN)
+		if (!is_implicit && arg->expr_kind == EXPR_BINARY && arg->binary_expr.operator == BINARYOP_ASSIGN)
 		{
 			uses_named_parameters = true;
 			int index = find_index_of_named_parameter(func_params, arg->binary_expr.left);
@@ -394,7 +396,7 @@ static inline bool sema_expr_analyse_var_call(Context *context, Type *to, Expr *
 	                                         func_ptr_type->pointer->func.signature,
 	                                         expr,
 	                                         func_ptr_type->decl,
-	                                         to);
+	                                         to, NULL);
 
 }
 static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Expr *expr) { TODO };
@@ -463,10 +465,10 @@ static inline Type *unify_returns(Context *context, Type *to)
 	return to;
 }
 
-static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr *expr, Decl *decl)
+static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr *expr, Decl *decl, Expr *struct_var)
 {
 	expr->call_expr.is_pointer_call = false;
-	return sema_expr_analyse_func_invocation(context, &decl->func.function_signature, expr, decl, to);
+	return sema_expr_analyse_func_invocation(context, &decl->func.function_signature, expr, decl, to, struct_var);
 }
 
 static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr)
@@ -474,6 +476,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	Expr *func_expr = expr->call_expr.function;
 	if (!sema_analyse_expr_may_be_function(context, func_expr)) return false;
 	Decl *decl;
+	Expr *struct_var = NULL;
 	switch (func_expr->expr_kind)
 	{
 		case EXPR_TYPE_ACCESS:
@@ -481,6 +484,19 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			break;
 		case EXPR_IDENTIFIER:
 			decl = func_expr->identifier_expr.decl;
+			break;
+		case EXPR_ACCESS:
+			decl = func_expr->access_expr.ref;
+			if (decl->decl_kind == DECL_FUNC)
+			{
+				expr->call_expr.is_struct_function = true;
+				struct_var = expr_new(EXPR_UNARY, func_expr->access_expr.parent->span);
+				struct_var->unary_expr.expr = func_expr->access_expr.parent;
+				struct_var->unary_expr.operator = UNARYOP_ADDR;
+				struct_var->resolve_status = RESOLVE_DONE;
+				assert(func_expr->access_expr.parent->resolve_status == RESOLVE_DONE);
+				struct_var->type = type_get_ptr(struct_var->unary_expr.expr->type);
+			}
 			break;
 		default:
 			TODO
@@ -490,7 +506,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 		case DECL_VAR:
 			return sema_expr_analyse_var_call(context, to, expr, decl);
 		case DECL_FUNC:
-			return sema_expr_analyse_func_call(context, to, expr, decl);
+			return sema_expr_analyse_func_call(context, to, expr, decl, struct_var);
 		case DECL_MACRO:
 			SEMA_ERROR(expr, "Macro calls must be preceeded by '@'.");
 			return false;
@@ -633,11 +649,20 @@ static inline bool sema_expr_analyse_method_function(Context *context, Expr *exp
 		Decl *function = decl->method_functions[i];
 		if (function->name == name)
 		{
-			// TODO
+			expr->access_expr.ref = function;
+			expr->type = function->type;
 			return true;
 		}
 	}
-	SEMA_ERROR(expr, "Cannot find method function '%s.%s'", decl->name, name);
+
+	if (decl_is_struct_type(decl))
+	{
+		SEMA_ERROR(expr, "There is no element nor method function '%s.%s'.", decl->name, name);
+	}
+	else
+	{
+		SEMA_ERROR(expr, "Cannot find method function '%s.%s'", decl->name, name);
+	}
 	return false;
 }
 
@@ -701,7 +726,7 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string);
 	if (!member)
 	{
-		SEMA_TOKEN_ERROR(expr->access_expr.sub_element, "There is no element '%s.%s'.", decl->name, expr->access_expr.sub_element.string);
+		return sema_expr_analyse_method_function(context, expr, decl, is_pointer);
 		return false;
 	}
 	if (is_pointer)

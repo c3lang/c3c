@@ -42,6 +42,7 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 		}
 	}
 	size_t lines_in_file = vec_size(position.file->lines);
+	const char *start = NULL;
 	for (unsigned i = LINES_SHOWN; i > 0; i--)
 	{
 		if (position.line < i) continue;
@@ -51,7 +52,8 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 		SourceLoc line_end = line_number == lines_in_file ? position.file->end_id :
 				position.file->lines[line_number];
 		uint32_t line_len = line_end - line_start - 1;
- 		eprintf(number_buffer, line_number, line_len, position.file->contents + line_start - position.file->start_id);
+		start = position.file->contents + line_start - position.file->start_id;
+ 		eprintf(number_buffer, line_number, line_len, start);
 	}
 	eprintf("  ");
 	for (unsigned i = 0; i < max_line_length; i++)
@@ -60,7 +62,7 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 	}
 	for (unsigned i = 0; i < position.col - 1; i++)
 	{
-		if (position.start[i] == '\t')
+		if (start[i] == '\t')
 		{
 			eprintf("\t");
 		}
@@ -78,13 +80,13 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 	switch (print_type)
 	{
 		case PRINT_TYPE_ERROR:
-			eprintf("(%s:%d) Error: %s\n", position.file->name, position.line, message);
+			eprintf("(%s:%d) Error: %s\n\n", position.file->name, position.line, message);
 			break;
 		case PRINT_TYPE_PREV:
-			eprintf("(%s:%d) %s\n", position.file->name, position.line, message);
+			eprintf("(%s:%d) %s\n\n", position.file->name, position.line, message);
 			break;
 		case PRINT_TYPE_WARN:
-			eprintf("(%s:%d) Warning: %s\n", position.file->name, position.line, message);
+			eprintf("(%s:%d) Warning: %s\n\n", position.file->name, position.line, message);
 			break;
 		default:
 			UNREACHABLE

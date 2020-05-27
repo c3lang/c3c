@@ -943,6 +943,37 @@ func int eokf(int x)
     return x * x + 1;
 }
 
+func void Big.init(Big* big)
+{
+    big.x = 1;
+    big.y = 2;
+    big.z = 3;
+}
+func void Big.mult(Big* big, int x)
+{
+    big.x *= x;
+    big.y *= x;
+    big.z *= x;
+}
+
+struct Bork
+{
+    Big x;
+    Big y;
+}
+func void testMethodFunctions()
+{
+    Big b;
+    b.init();
+    printf("%d %d %d\n", b.x, b.y, b.z);
+    b.mult(3);
+    printf("%d %d %d\n", b.x, b.y, b.z);
+    Bork x;
+    x.x.init();
+    x.x.mult(4);
+    printf("%d %d %d\n", x.x.x, x.x.y, x.x.z);
+}
+
 func int main(int x)
 {
     printf("Helo!\n");
@@ -958,6 +989,7 @@ func int main(int x)
     testType();
     testExprBlock();
     testFuncPointer();
+    testMethodFunctions();
     int efd = 9;
     uint fefoek = 1;
     printf("Helo: %d\n", efd + cast(fefoek, int));

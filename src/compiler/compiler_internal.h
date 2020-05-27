@@ -949,7 +949,7 @@ typedef struct _Context
 	Decl **error_types;
 	Decl **types;
 	Decl **functions;
-	Decl **struct_functions;
+	Decl **method_functions;
 	Decl **vars;
 	Decl **ct_ifs;
 	Ast **defers;

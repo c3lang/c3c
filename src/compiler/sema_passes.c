@@ -114,9 +114,9 @@ void sema_analysis_pass_decls(Context *context)
 	{
 		sema_analyse_decl(context, context->error_types[i]);
 	}
-	VECEACH(context->struct_functions, i)
+	VECEACH(context->method_functions, i)
 	{
-		sema_analyse_decl(context, context->struct_functions[i]);
+		sema_analyse_decl(context, context->method_functions[i]);
 	}
 	VECEACH(context->vars, i)
 	{
@@ -126,9 +126,9 @@ void sema_analysis_pass_decls(Context *context)
 	{
 		sema_analyse_decl(context, context->functions[i]);
 	}
-	VECEACH(context->struct_functions, i)
+	VECEACH(context->method_functions, i)
 	{
-		analyse_func_body(context, context->struct_functions[i]);
+		analyse_func_body(context, context->method_functions[i]);
 	}
 	VECEACH(context->functions, i)
 	{

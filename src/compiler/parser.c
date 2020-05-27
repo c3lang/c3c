@@ -1535,7 +1535,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	func->name = context->tok.string;
 	func->name_span = context->tok.span;
 	advance_and_verify(context, TOKEN_IDENT);
-
+	RANGE_EXTEND_PREV(func);
 	if (!parse_opt_parameter_type_list(context, visibility, &(func->func.function_signature), is_interface)) return poisoned_decl;
 
 	if (!parse_opt_throw_declaration(context, visibility, &(func->func.function_signature))) return poisoned_decl;

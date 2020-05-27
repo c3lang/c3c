@@ -96,7 +96,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_FUNC:
 			if (decl->func.type_parent)
 			{
-				vec_add(context->struct_functions, decl);
+				vec_add(context->method_functions, decl);
 				// TODO set name
 				return;
 			}

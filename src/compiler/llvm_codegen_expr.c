@@ -1273,6 +1273,13 @@ LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 		func = gencontext_emit_expr(context, expr->call_expr.function);
 		func_type = llvm_type(expr->call_expr.function->type->canonical->pointer);
 	}
+	else if (expr->call_expr.is_struct_function)
+	{
+		Decl *function_decl = expr->call_expr.function->access_expr.ref;
+		signature = &function_decl->func.function_signature;
+		func = function_decl->ref;
+		func_type = llvm_type(function_decl->type);
+	}
 	else
 	{
 		Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
