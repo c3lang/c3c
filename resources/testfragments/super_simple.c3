@@ -35,14 +35,13 @@ enum EnumWithData : ushort (int a, char[] x, long b = 4)
     TEST2(12, "world")
 }
 
-/*
 enum EnumTestNoOverflowAfterULong : ulong
 {
     VALUE = 0xFFFF_FFFF_FFFF_FFFE,
     VALUE_NO_EXCEED
 }
 
-
+$if (false) {
 
 enum EnumTestOverflowAfterLong : long
 {
@@ -60,7 +59,9 @@ enum EnumTestOverflowAfter
 {
     VALUE = 0x80000000 - 1,
     VALUE_EXCEED
-}*/
+}
+
+}
 
 
 
@@ -158,7 +159,7 @@ func TestStruct2 structTest(int i)
 
 func void enumInferenceTest()
 {
-//    OtherError e = OtherError.FOO_BAR;
+    OtherError e = OtherError.FOO_BAR;
     Inf x = Inf.A;
     x = BooInf.B;
     x = A;
@@ -190,11 +191,11 @@ func int jumptest()
     LABELX:
     return 2;
 }
-/*
 func int borok() throws
 {
     return 1;
-}*/
+}
+
 func void testNoReturn()
 {
     int i = 0;
@@ -536,7 +537,7 @@ func void test_expr_block(int x)
         if (x == 0) return 100;
         return -x;
     });
-    //printf("The result was %d\n", a);
+    printf("The result was %d\n", a);
 }
 
 func int expr_block()

@@ -1130,12 +1130,11 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 			current = current->defer_stmt.prev_defer;
 		}
 	}
-	bool error_was_useful = vec_size(context->throw) > 0;
+	bool error_was_useful = signature->error_return == ERROR_RETURN_NONE;
 	VECEACH(context->error_calls, i)
 	{
 		Throw *throw = &context->error_calls[i];
 		if (throw->throw_info->is_completely_handled) continue;
-
 		switch (signature->error_return)
 		{
 			case ERROR_RETURN_NONE:
@@ -1151,20 +1150,18 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 			case ERROR_RETURN_MANY:
 			case ERROR_RETURN_ONE:
 				// Try to add a catch.
-				if (throw_add_error_return_catch(throw, signature->throws))
-				{
-					error_was_useful = true;
-				}
+				error_was_useful = true;
+				throw_add_error_return_catch(throw, signature->throws);
 				break;
 		}
-		// If it's fully catched, then fine.
+		// If it's fully caught, then fine.
 		if (throw->throw_info->is_completely_handled) continue;
 		// Otherwise error.
 		SEMA_ERROR(throw, "The errors returned by the call must be completely caught in a catch or else the function current must be declared to throw.");
 		return false;
 	}
 
-	if (!error_was_useful)
+	if (!error_was_useful && !vec_size(context->throw))
 	{
 		// Warning here?
 	}
