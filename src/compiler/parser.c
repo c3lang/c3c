@@ -1528,7 +1528,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 		func->func.type_parent = type;
 		advance_and_verify(context, TOKEN_TYPE_IDENT);
 
-		TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method function.", poisoned_decl);
+		TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method declaration.", poisoned_decl);
 	}
 
 	EXPECT_IDENT_FOR_OR("function name", poisoned_decl);

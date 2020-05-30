@@ -480,7 +480,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	switch (func_expr->expr_kind)
 	{
 		case EXPR_TYPE_ACCESS:
-			decl = func_expr->type_access.method;
+			decl = func_expr->type_access.decl;
 			break;
 		case EXPR_IDENTIFIER:
 			decl = func_expr->identifier_expr.decl;
@@ -641,12 +641,12 @@ static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr 
 	return sema_expr_analyse_subscript_after_parent_resolution(context, NULL, expr);
 }
 
-static inline bool sema_expr_analyse_method_function(Context *context, Expr *expr, Decl *decl, bool is_pointer)
+static inline bool sema_expr_analyse_method(Context *context, Expr *expr, Decl *decl, bool is_pointer)
 {
 	const char *name = expr->access_expr.sub_element.string;
-	VECEACH(decl->method_functions, i)
+	VECEACH(decl->methods, i)
 	{
-		Decl *function = decl->method_functions[i];
+		Decl *function = decl->methods[i];
 		if (function->name == name)
 		{
 			expr->access_expr.ref = function;
@@ -657,11 +657,11 @@ static inline bool sema_expr_analyse_method_function(Context *context, Expr *exp
 
 	if (decl_is_struct_type(decl))
 	{
-		SEMA_ERROR(expr, "There is no element nor method function '%s.%s'.", decl->name, name);
+		SEMA_ERROR(expr, "There is no element nor method '%s.%s'.", decl->name, name);
 	}
 	else
 	{
-		SEMA_ERROR(expr, "Cannot find method function '%s.%s'", decl->name, name);
+		SEMA_ERROR(expr, "Cannot find method '%s.%s'", decl->name, name);
 	}
 	return false;
 }
@@ -706,7 +706,7 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	{
 		type = type->pointer;
 	}
-	if (!type_may_have_method_functions(type))
+	if (!type_may_have_method(type))
 	{
 		SEMA_ERROR(expr, "Cannot access '%s' on '%s'", expr->access_expr.sub_element.string, type_to_error_string(parent_type));
 		return false;
@@ -716,7 +716,7 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	{
 		case DECL_ENUM:
 		case DECL_ERROR:
-			return sema_expr_analyse_method_function(context, expr, decl, is_pointer);
+			return sema_expr_analyse_method(context, expr, decl, is_pointer);
 		case DECL_STRUCT:
 		case DECL_UNION:
 			break;
@@ -726,7 +726,7 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string);
 	if (!member)
 	{
-		return sema_expr_analyse_method_function(context, expr, decl, is_pointer);
+		return sema_expr_analyse_method(context, expr, decl, is_pointer);
 		return false;
 	}
 	if (is_pointer)
@@ -743,6 +743,13 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	return true;
 }
 
+static inline void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value)
+{
+	expr_to_rewrite->expr_kind = EXPR_CONST;
+	expr_const_set_int(&expr_to_rewrite->const_expr, value, type->canonical->type_kind);
+	expr_to_rewrite->type = type;
+	expr_to_rewrite->resolve_status = true;
+}
 
 static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Expr *expr)
 {
@@ -757,9 +764,9 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 		expr->resolve_status = RESOLVE_DONE;
 		return true;
 	}
-	if (!type_may_have_method_functions(canonical))
+	if (!type_may_have_method(canonical))
 	{
-		SEMA_ERROR(expr, "'%s' does not have method functions.", type_to_error_string(type_info->type));
+		SEMA_ERROR(expr, "'%s' does not have methods.", type_to_error_string(type_info->type));
 		return false;
 	}
 	Decl *decl = canonical->decl;
@@ -777,6 +784,11 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 				}
 				return true;
 			}
+			if (expr->type_access.name.start == kw_sizeof)
+			{
+				expr_rewrite_to_int_const(expr, type_usize, type_size(decl->enums.type_info->type));
+				return true;
+			}
 			break;
 		case DECL_ERROR:
 			if (expr->type_access.name.type == TOKEN_CONST_IDENT)
@@ -788,24 +800,46 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 				}
 				return true;
 			}
+			if (expr->type_access.name.start == kw_sizeof)
+			{
+				expr_rewrite_to_int_const(expr, type_usize, type_size(type_error_base->canonical));
+				return true;
+			}
 			break;
 		case DECL_UNION:
 		case DECL_STRUCT:
+			if (expr->type_access.name.start == kw_sizeof)
+			{
+				expr_rewrite_to_int_const(expr, type_usize, type_size(decl->type));
+				return true;
+			}
 			break;
 		default:
 			UNREACHABLE
 	}
-	VECEACH(type_info->type->decl->method_functions, i)
+
+
+	VECEACH(decl->methods, i)
 	{
-		Decl *function = type_info->type->decl->method_functions[i];
+		Decl *function = decl->methods[i];
 		if (expr->type_access.name.string == function->name)
 		{
-			expr->type_access.method = function;
-			expr->type = function->func.function_signature.rtype->type;
+			expr->type_access.decl = function;
+			expr->type = function->type;
 			return true;
 		}
 	}
-	SEMA_ERROR(expr, "No function '%s.%s' found.", type_to_error_string(type_info->type), expr->type_access.name.string);
+	VECEACH(decl->strukt.members, i)
+	{
+		Decl *member = decl->strukt.members[i];
+		if (expr->type_access.name.string == member->name)
+		{
+			expr->type_access.decl = member;
+			expr->type = member->type;
+			return true;
+		}
+	}
+	SEMA_ERROR(expr, "No function or member '%s.%s' found.", type_to_error_string(type_info->type), expr->type_access.name.string);
 	return false;
 }
 
@@ -2018,6 +2052,7 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 				case TYPE_VARARRAY:
 				case TYPE_SUBARRAY:
 				case TYPE_TYPEID:
+				case TYPE_MEMBER:
 					// Only != and == allowed.
 					goto ERR;
 				case ALL_INTS:
@@ -2259,6 +2294,7 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 		case TYPE_ENUM:
 		case TYPE_ERROR:
 		case TYPE_TYPEID:
+		case TYPE_MEMBER:
 			SEMA_ERROR(expr, "Cannot use 'not' on %s", type_to_error_string(inner->type));
 			return false;
 	}

@@ -410,30 +410,30 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 
 
 
-static inline bool sema_analyse_method_function(Context *context, Decl *decl)
+static inline bool sema_analyse_method(Context *context, Decl *decl)
 {
 	TypeInfo *parent_type = decl->func.type_parent;
 	if (!sema_resolve_type_info(context, parent_type)) return false;
-	if (!type_may_have_method_functions(parent_type->type))
+	if (!type_may_have_method(parent_type->type))
 	{
 		SEMA_ERROR(decl,
-		           "Method functions can not be associated with '%s'",
+		           "Methods can not be associated with '%s'",
 		           type_to_error_string(decl->func.type_parent->type));
 		return false;
 	}
 	Decl *parent = parent_type->type->decl;
-	VECEACH(parent->method_functions, i)
+	VECEACH(parent->methods, i)
 	{
-		Decl *function = parent->method_functions[i];
+		Decl *function = parent->methods[i];
 		if (function->name == decl->name)
 		{
-			SEMA_ERROR(decl, "Duplicate name '%s' for method function.", function->name);
+			SEMA_ERROR(decl, "Duplicate name '%s' for method.", function->name);
 			SEMA_PREV(function, "Previous definition here.");
 			return false;
 		}
 	}
-	DEBUG_LOG("Method function '%s.%s' analysed.", parent->name, decl->name);
-	vec_add(parent->method_functions, decl);
+	DEBUG_LOG("Method '%s.%s' analysed.", parent->name, decl->name);
+	vec_add(parent->methods, decl);
 	return true;
 }
 
@@ -563,7 +563,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 	if (!func_type) return decl_poison(decl);
 	if (decl->func.type_parent)
 	{
-		if (!sema_analyse_method_function(context, decl)) return decl_poison(decl);
+		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
 	}
 	VECEACH(decl->attributes, i)
 	{
@@ -608,7 +608,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 			return decl_poison(decl);
 		}
 	}
-	if (decl->name == main_kw)
+	if (decl->name == kw_main)
 	{
 		if (decl->visibility == VISIBLE_LOCAL)
 		{

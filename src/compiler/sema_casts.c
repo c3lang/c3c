@@ -796,6 +796,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_ERROR:
 		case TYPE_ENUM:
 		case TYPE_FUNC:
+		case TYPE_MEMBER:
 		case TYPE_ARRAY:
 		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
@@ -835,6 +836,7 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_TYPEID:
+		case TYPE_MEMBER:
 			break;
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.

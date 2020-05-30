@@ -189,7 +189,7 @@ struct _Type
 	void *backend_debug_type;
 	union
 	{
-		// Error, Struct, Union, Typedef
+		// Error, Struct, Union, Typedef, Member
 		Decl *decl;
 		// int, float, bool
 		TypeBuiltin builtin;
@@ -415,7 +415,7 @@ typedef struct _Decl
 			union
 			{
 				Decl* parent_struct;
-				Decl** method_functions;
+				Decl** methods;
 			};
 			union
 			{
@@ -471,7 +471,7 @@ typedef struct
 	union
 	{
 		Token name;
-		Decl *method;
+		Decl *decl;
 	};
 } ExprTypeAccess;
 
@@ -949,7 +949,7 @@ typedef struct _Context
 	Decl **error_types;
 	Decl **types;
 	Decl **functions;
-	Decl **method_functions;
+	Decl **methods;
 	Decl **vars;
 	Decl **ct_ifs;
 	Ast **defers;
@@ -1021,6 +1021,13 @@ typedef struct
 	Type **type;
 } Compiler;
 
+typedef enum
+{
+	MODULE_SYMBOL_SEARCH_EXTERNAL,
+	MODULE_SYMBOL_SEARCH_PARENT,
+	MODULE_SYMBOL_SEARCH_THIS
+} ModuleSymbolSearch;
+
 extern Compiler compiler;
 extern Ast *poisoned_ast;
 extern Decl *poisoned_decl;
@@ -1041,7 +1048,8 @@ extern Type *type_typeid, *type_error_union, *type_error_base;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
-extern const char *main_kw;
+extern const char *kw_main;
+extern const char *kw_sizeof;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, _token.span)
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
@@ -1202,12 +1210,6 @@ void lexer_init_with_file(Lexer *lexer, File *file);
 File* lexer_current_file(Lexer *lexer);
 
 
-typedef enum
-{
-	MODULE_SYMBOL_SEARCH_EXTERNAL,
-	MODULE_SYMBOL_SEARCH_PARENT,
-	MODULE_SYMBOL_SEARCH_THIS
-} ModuleSymbolSearch;
 
 Decl *module_find_symbol(Module *module, const char *symbol, ModuleSymbolSearch search);
 
@@ -1306,7 +1308,7 @@ static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I
 static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
-bool type_may_have_method_functions(Type *type);
+bool type_may_have_method(Type *type);
 
 static inline Type *type_reduced(Type *type)
 {

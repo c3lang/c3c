@@ -108,6 +108,7 @@ LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 		case TYPE_IXX:
 		case TYPE_FXX:
 		case TYPE_TYPEID:
+		case TYPE_MEMBER:
 			UNREACHABLE
 		case TYPE_BOOL:
 			return gencontext_simple_debug_type(context, type, DW_ATE_boolean);

@@ -165,7 +165,9 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
 	DEBUG_LOG("Generating type %s", type->name);
 	switch (type->type_kind)
 	{
+		case TYPE_MEMBER:
 		case TYPE_POISONED:
+			UNREACHABLE
 		case TYPE_TYPEID:
 			return type->backend_type = LLVMIntTypeInContext(context, type->builtin.bitsize);
 		case TYPE_ERROR:

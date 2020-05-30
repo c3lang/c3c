@@ -358,9 +358,9 @@ void llvm_codegen(Context *context)
 	{
 		gencontext_emit_extern_decl(&gen_context, context->external_symbol_list[i]);
 	}
-	VECEACH(context->method_functions, i)
+	VECEACH(context->methods, i)
 	{
-		gencontext_emit_function_decl(&gen_context, context->method_functions[i]);
+		gencontext_emit_function_decl(&gen_context, context->methods[i]);
 	}
 	VECEACH(context->functions, i)
 	{
@@ -383,9 +383,9 @@ void llvm_codegen(Context *context)
 		Decl *decl = context->functions[i];
 		if (decl->func.body) gencontext_emit_function_body(&gen_context, decl);
 	}
-	VECEACH(context->method_functions, i)
+	VECEACH(context->methods, i)
 	{
-		Decl *decl = context->method_functions[i];
+		Decl *decl = context->methods[i];
 		if (decl->func.body) gencontext_emit_function_body(&gen_context, decl);
 	}
 

@@ -133,6 +133,8 @@ const char *type_to_error_string(Type *type)
 			}
 			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
+		case TYPE_MEMBER:
+			return "member";
 		case TYPE_STRING:
 			return "string";
 		case TYPE_ARRAY:
@@ -236,6 +238,8 @@ size_t type_size(Type *canonical)
 		case ALL_INTS:
 		case ALL_FLOATS:
 			return canonical->builtin.bytesize;
+		case TYPE_MEMBER:
+			return type_size(canonical->decl->var.type_info->type);
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
@@ -272,6 +276,8 @@ unsigned int type_abi_alignment(Type *canonical)
 		case ALL_FLOATS:
 		case TYPE_ERROR_UNION:
 			return canonical->builtin.abi_alignment;
+		case TYPE_MEMBER:
+			return type_abi_alignment(canonical->decl->var.type_info->type);
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
@@ -552,7 +558,7 @@ bool type_is_subtype(Type *type, Type *possible_subtype)
 }
 
 
-bool type_may_have_method_functions(Type *type)
+bool type_may_have_method(Type *type)
 {
 	// An alias is not ok.
 	switch (type->type_kind)
@@ -737,6 +743,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_ERROR:
 			if (other->type_kind == TYPE_ERROR) return type_error_union;
 			return NULL;
+		case TYPE_MEMBER:
 		case TYPE_FUNC:
 		case TYPE_UNION:
 		case TYPE_ERROR_UNION:

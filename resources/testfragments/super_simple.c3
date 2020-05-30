@@ -974,6 +974,46 @@ func void testMethodFunctions()
     printf("%d %d %d\n", x.x.x, x.x.y, x.x.z);
 }
 
+enum TestEnumSize : ushort
+{
+    BLURB
+}
+
+enum TestEnumSizeDefault
+{
+    BLURB
+}
+
+struct TestStructSize
+{
+    char x;
+    long y;
+}
+
+struct TestStructInt
+{
+    int a;
+    int b;
+    int c;
+}
+
+union TestUnionSize
+{
+    short a;
+    int b;
+    char[5] c;
+}
+func void testTypeValues()
+{
+    TestUnionSize.a.sizeof;
+    printf("Enum size: %d = 2\n", TestEnumSize.sizeof);
+    printf("Enum size: %d = 4\n", TestEnumSizeDefault.sizeof);
+    printf("Struct size: %d = 12\n", TestStructInt.sizeof);
+    printf("Struct size: %d = 16\n", TestStructSize.sizeof);
+    printf("Union size: %d = 5\n", TestUnionSize.sizeof);
+    printf("Error size: %d = 4\n", Err.sizeof);
+}
+
 func int main(int x)
 {
     printf("Helo!\n");
@@ -990,6 +1030,7 @@ func int main(int x)
     testExprBlock();
     testFuncPointer();
     testMethodFunctions();
+    testTypeValues();
     int efd = 9;
     uint fefoek = 1;
     printf("Helo: %d\n", efd + cast(fefoek, int));

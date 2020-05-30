@@ -36,7 +36,8 @@ static SymTab symtab;
 
 const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
-const char *main_kw;
+const char *kw_main;
+const char *kw_sizeof;
 
 void symtab_init(uint32_t capacity)
 {
@@ -70,7 +71,8 @@ void symtab_init(uint32_t capacity)
 	// Init some constant idents
 	TokenType type = TOKEN_IDENT;
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
-	main_kw = KW_DEF("main");
+	kw_main = KW_DEF("main");
+	kw_sizeof = KW_DEF("sizeof");
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("inline");
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
 	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("stdcall");

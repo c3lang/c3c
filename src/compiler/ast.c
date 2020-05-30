@@ -335,6 +335,10 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 		case TYPE_ERROR:
 			DUMPF("(error %s)", type->name);
 			return;
+		case TYPE_MEMBER:
+			DUMPF("(member %s", type->name);
+			DUMPTYPE(type->decl->parent_struct->type);
+			DUMPEND();
 		case TYPE_TYPEDEF:
 			DUMPF("(typedef %s", type->name);
 			DUMPTYPE(type->canonical);
