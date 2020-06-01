@@ -375,7 +375,7 @@ static inline bool sema_analyse_method(Context *context, Decl *decl)
 {
 	TypeInfo *parent_type = decl->func.type_parent;
 	if (!sema_resolve_type_info(context, parent_type)) return false;
-	if (!type_may_have_method(parent_type->type))
+	if (!type_may_have_sub_elements(parent_type->type))
 	{
 		SEMA_ERROR(decl,
 		           "Methods can not be associated with '%s'",

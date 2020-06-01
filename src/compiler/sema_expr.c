@@ -15,6 +15,7 @@ static Expr **expr_copy_expr_list_from_macro(Context *context, Expr *macro, Expr
 static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_expr);
 static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source);
 static Ast **ast_copy_list_from_macro(Context *context, Expr *macro, Ast **to_copy);
+static bool sema_expr_analyse_type_access(Context *context, Type *to, Expr *expr);
 
 #define MACRO_COPY_EXPR(x) x = expr_copy_from_macro(context, macro, x)
 #define MACRO_COPY_TYPE(x) x = type_info_copy_from_macro(context, macro, x)
@@ -695,56 +696,6 @@ static inline bool sema_expr_analyse_group(Context *context, Type *to, Expr *exp
 	return true;
 }
 
-static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
-{
-	if (!sema_analyse_expr(context, NULL, expr->access_expr.parent)) return false;
-
-	assert(expr->expr_kind == EXPR_ACCESS);
-	assert(expr->access_expr.parent->resolve_status == RESOLVE_DONE);
-
-	Type *parent_type = expr->access_expr.parent->type;
-	Type *type = parent_type->canonical;
-	bool is_pointer = type->type_kind == TYPE_POINTER;
-	if (is_pointer)
-	{
-		type = type->pointer;
-	}
-	if (!type_may_have_method(type))
-	{
-		SEMA_ERROR(expr, "Cannot access '%s' on '%s'", expr->access_expr.sub_element.string, type_to_error_string(parent_type));
-		return false;
-	}
-	Decl *decl = type->decl;
-	switch (decl->decl_kind)
-	{
-		case DECL_ENUM:
-		case DECL_ERROR:
-			return sema_expr_analyse_method(context, expr, decl, is_pointer);
-		case DECL_STRUCT:
-		case DECL_UNION:
-			break;
-		default:
-			UNREACHABLE
-	}
-	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string);
-	if (!member)
-	{
-		return sema_expr_analyse_method(context, expr, decl, is_pointer);
-		return false;
-	}
-	if (is_pointer)
-	{
-		Expr *deref = expr_new(EXPR_UNARY, expr->span);
-		deref->unary_expr.operator = UNARYOP_DEREF;
-		deref->unary_expr.expr = expr->access_expr.parent;
-		deref->resolve_status = RESOLVE_DONE;
-		deref->type = type;
-		expr->access_expr.parent = deref;
-	}
-	expr->type = member->type;
-	expr->access_expr.ref = member;
-	return true;
-}
 
 static inline void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value)
 {
@@ -754,7 +705,7 @@ static inline void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, 
 	expr_to_rewrite->resolve_status = true;
 }
 
-static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Expr *expr)
+static bool sema_expr_analyse_type_access(Context *context, Type *to, Expr *expr)
 {
 	TypeInfo *type_info = expr->type_access.type;
 	if (!sema_resolve_type_info(context, type_info)) return false;
@@ -767,7 +718,7 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 		expr->resolve_status = RESOLVE_DONE;
 		return true;
 	}
-	if (!type_may_have_method(canonical))
+	if (!type_may_have_sub_elements(canonical))
 	{
 		SEMA_ERROR(expr, "'%s' does not have methods.", type_to_error_string(type_info->type));
 		return false;
@@ -838,12 +789,157 @@ static inline bool sema_expr_analyse_type_access(Context *context, Type *to, Exp
 		if (expr->type_access.name.string == member->name)
 		{
 			expr->type_access.decl = member;
-			expr->type = member->type;
+			expr->type = member->member_decl.reference_type;
 			return true;
 		}
 	}
 	SEMA_ERROR(expr, "No function or member '%s.%s' found.", type_to_error_string(type_info->type), expr->type_access.name.string);
 	return false;
+}
+
+static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
+{
+	Type *type = expr->access_expr.parent->type->decl->member_decl.type_info->type;
+	Type *canonical = type->canonical;
+	Token token = expr->access_expr.sub_element;
+	const char *sub_element = token.string;
+	if (sub_element == kw_sizeof)
+	{
+		expr_rewrite_to_int_const(expr, type_usize, type_size(canonical));
+		return true;
+	}
+	if (sub_element == kw_offsetof)
+	{
+		TODO // calculate offset.
+	}
+	// Possibly alignof
+	if (!type_may_have_sub_elements(type))
+	{
+		SEMA_ERROR(expr, "'%s' does not have a member '%s'.", type_to_error_string(type), sub_element);
+		return false;
+	}
+	Decl *decl = canonical->decl;
+
+	switch (decl->decl_kind)
+	{
+		case DECL_ENUM:
+			if (token.type == TOKEN_CONST_IDENT)
+			{
+				if (!sema_expr_analyse_enum_constant(expr, sub_element, decl))
+				{
+					SEMA_ERROR(expr,
+					           "'%s' has no enumeration value '%s'.",
+					           decl->name,
+					           sub_element);
+					return false;
+				}
+				return true;
+			}
+			break;
+		case DECL_ERROR:
+			if (expr->type_access.name.type == TOKEN_CONST_IDENT)
+			{
+				if (!sema_expr_analyse_error_constant(expr, sub_element, decl))
+				{
+					SEMA_ERROR(expr, "'%s' has no error type '%s'.", decl->name, sub_element);
+					return false;
+				}
+				return true;
+			}
+			break;
+		case DECL_UNION:
+		case DECL_STRUCT:
+			break;
+		default:
+			UNREACHABLE
+	}
+
+	VECEACH(decl->methods, i)
+	{
+		Decl *function = decl->methods[i];
+		if (sub_element == function->name)
+		{
+			expr->access_expr.ref = function;
+			expr->type = function->type;
+			return true;
+		}
+	}
+
+	if (decl_is_struct_type(decl))
+	{
+		VECEACH(decl->strukt.members, i)
+		{
+			Decl *member = decl->strukt.members[i];
+			if (sub_element == member->name)
+			{
+				expr->access_expr.ref = member;
+				expr->type = member->member_decl.reference_type;
+				return true;
+			}
+		}
+	}
+	SEMA_ERROR(expr,
+	           "No function or member '%s.%s' found.",
+	           type_to_error_string(type),
+	           sub_element);
+	return false;
+}
+
+
+static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
+{
+	if (!sema_analyse_expr(context, NULL, expr->access_expr.parent)) return false;
+
+	assert(expr->expr_kind == EXPR_ACCESS);
+	assert(expr->access_expr.parent->resolve_status == RESOLVE_DONE);
+
+	Type *parent_type = expr->access_expr.parent->type;
+	Type *type = parent_type->canonical;
+
+	if (type->type_kind == TYPE_MEMBER)
+	{
+		return sema_expr_analyse_member_access(context, expr);
+	}
+	bool is_pointer = type->type_kind == TYPE_POINTER;
+	if (is_pointer)
+	{
+		type = type->pointer;
+	}
+	if (!type_may_have_sub_elements(type))
+	{
+		SEMA_ERROR(expr, "Cannot access '%s' on '%s'", expr->access_expr.sub_element.string, type_to_error_string(parent_type));
+		return false;
+	}
+	Decl *decl = type->decl;
+	switch (decl->decl_kind)
+	{
+		case DECL_ENUM:
+		case DECL_ERROR:
+			return sema_expr_analyse_method(context, expr, decl, is_pointer);
+		case DECL_STRUCT:
+		case DECL_UNION:
+			break;
+		default:
+			UNREACHABLE
+	}
+	Decl *member = strukt_recursive_search_member(decl, expr->access_expr.sub_element.string);
+	if (!member)
+	{
+		return sema_expr_analyse_method(context, expr, decl, is_pointer);
+		return false;
+	}
+	if (is_pointer)
+	{
+		Expr *deref = expr_new(EXPR_UNARY, expr->span);
+		deref->unary_expr.operator = UNARYOP_DEREF;
+		deref->unary_expr.expr = expr->access_expr.parent;
+		deref->resolve_status = RESOLVE_DONE;
+		deref->type = type;
+		expr->access_expr.parent = deref;
+	}
+	expr->type = member->type;
+	expr->access_expr.ref = member;
+	return true;
 }
 
 static DesignatedPath *sema_analyse_init_path(Context *context, DesignatedPath *parent, Expr *expr, bool *has_found_match, bool *has_reported_error);

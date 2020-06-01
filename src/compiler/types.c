@@ -560,7 +560,7 @@ bool type_is_subtype(Type *type, Type *possible_subtype)
 }
 
 
-bool type_may_have_method(Type *type)
+bool type_may_have_sub_elements(Type *type)
 {
 	// An alias is not ok.
 	switch (type->type_kind)

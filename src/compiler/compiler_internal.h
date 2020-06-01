@@ -1053,6 +1053,7 @@ extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
 extern const char *kw_main;
 extern const char *kw_sizeof;
+extern const char *kw_offsetof;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, _token.span)
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
@@ -1311,7 +1312,7 @@ static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I
 static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
-bool type_may_have_method(Type *type);
+bool type_may_have_sub_elements(Type *type);
 
 static inline Type *type_reduced(Type *type)
 {

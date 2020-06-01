@@ -62,8 +62,8 @@ inline Expr* parse_constant_expr(Context *context)
  *  ;
  *
  * parameter
- *  : type
- *  | expr
+ *  : expr
+ *  | '[' expr ']' '=' expr
  *  ;
  *
  */
@@ -87,17 +87,7 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type)
 		}
 		else
 		{
-			if (!parse_type_or_expr(context, &expr, &type)) return false;
-		}
-		if (!expr)
-		{
-			if (!allow_type)
-			{
-				sema_error_range(start, "Did not expect a type here, only expressions.");
-				return false;
-			}
-			expr = expr_new(EXPR_TYPEID, type->span);
-			RANGE_EXTEND_PREV(expr);
+			expr = parse_expr(context);
 		}
 		vec_add(*result, expr);
 		if (!try_consume(context, TOKEN_COMMA))
@@ -781,7 +771,7 @@ Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info)
 	expr->type_access.name = context->tok;
 	advance(context);
 	RANGE_EXTEND_PREV(expr);
-	return expr;
+	return parse_precedence_with_left_side(context, expr, PREC_CALL - 1);
 }
 
 

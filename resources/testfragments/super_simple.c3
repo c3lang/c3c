@@ -435,7 +435,7 @@ func void testAnonStruct()
     if (s.a != 1) printf("Error s.a\n");
     if (s.x != 0) printf("Error s.x\n");
     if (s.xx.b != 0) printf("Error s.xx.b = %d\n", s.xx.b);
-    if (s.xx.c != 2) printf("Error s.xx.c\n");
+    if (s.xx.c != 0) printf("Error s.xx.c\n");
     if (s.b1 != 0) printf("Error s.b1\n");
     if (s.c1 != 0) printf("Error s.c1\n");
     if (s.b2 != 123) printf("Error s.b2\n");
@@ -1080,13 +1080,13 @@ union TestUnionSize
 }
 func void testTypeValues()
 {
-//    TestUnionSize.a.sizeof;
     printf("Enum size: %d = 2\n", TestEnumSize.sizeof);
     printf("Enum size: %d = 4\n", TestEnumSizeDefault.sizeof);
     printf("Struct size: %d = 12\n", TestStructInt.sizeof);
     printf("Struct size: %d = 16\n", TestStructSize.sizeof);
     printf("Union size: %d = 5\n", TestUnionSize.sizeof);
     printf("Error size: %d = 4\n", Err.sizeof);
+    printf("Testunion.a sizeof: %d = 2\n", TestUnionSize.a.sizeof);
 }
 
 func int main(int x)

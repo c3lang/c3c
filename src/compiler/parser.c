@@ -660,20 +660,18 @@ Ast *parse_decl_expr_list(Context *context)
 	decl_expr->decl_expr_stmt = NULL;
 	while (1)
 	{
-		Expr *expr = NULL;
-		TypeInfo *type = NULL;
-		if (!parse_type_or_expr(context, &expr, &type)) return false;
-		if (expr)
+		if (parse_next_is_decl(context))
 		{
-			Ast *stmt = AST_NEW(AST_EXPR_STMT, expr->span);
-			stmt->expr_stmt = expr;
+			Decl *decl = TRY_DECL_OR(parse_decl(context), poisoned_ast);
+			Ast *stmt = AST_NEW(AST_DECLARE_STMT, decl->span);
+			stmt->declare_stmt = decl;
 			vec_add(decl_expr->decl_expr_stmt, stmt);
 		}
 		else
 		{
-			Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, false, type), poisoned_ast);
-			Ast *stmt = AST_NEW(AST_DECLARE_STMT, decl->span);
-			stmt->declare_stmt = decl;
+			Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+			Ast *stmt = AST_NEW(AST_EXPR_STMT, expr->span);
+			stmt->expr_stmt = expr;
 			vec_add(decl_expr->decl_expr_stmt, stmt);
 		}
 		if (!try_consume(context, TOKEN_COMMA)) break;
@@ -682,27 +680,7 @@ Ast *parse_decl_expr_list(Context *context)
 }
 
 
-static inline bool is_expr_after_type_ident(Context *context)
-{
-	return context->next_tok.type == TOKEN_DOT || context->next_tok.type == TOKEN_LPAREN;
-}
-
-bool parse_type_or_expr_after_type(Context *context, Expr **expr_ptr, TypeInfo **type_ptr)
-{
-	if (!type_info_ok(*type_ptr)) return false;
-	if (try_consume(context, TOKEN_DOT))
-	{
-		*expr_ptr = parse_type_access_expr_after_type(context, *type_ptr);
-		*type_ptr = NULL;
-		return expr_ok(*expr_ptr);
-	}
-	if (context->tok.type == TOKEN_LBRACE)
-	{
-		return parse_type_compound_literal_expr_after_type(context, *type_ptr);
-	}
-	return true;
-}
-bool parse_type_or_expr(Context *context, Expr **expr_ptr, TypeInfo **type_ptr)
+bool parse_next_is_decl(Context *context)
 {
 	switch (context->tok.type)
 	{
@@ -732,33 +710,22 @@ bool parse_type_or_expr(Context *context, Expr **expr_ptr, TypeInfo **type_ptr)
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_ERROR_TYPE:
-			*type_ptr = parse_type(context);
-			return parse_type_or_expr_after_type(context, expr_ptr, type_ptr);
-			return true;
+		case TOKEN_TYPEID:
+			return context->next_tok.type == TOKEN_STAR || context->next_tok.type == TOKEN_LBRACKET || context->next_tok.type == TOKEN_IDENT;
 		case TOKEN_IDENT:
-			if (context->next_tok.type == TOKEN_SCOPE)
+			if (context->next_tok.type != TOKEN_SCOPE) return false;
+			// We need a little lookahead to see if this is type or expression.
+			context_store_lexer_state(context);
+			do
 			{
-				// We need a little lookahead to see if this is type or expression.
-				context_store_lexer_state(context);
-				do
-				{
-					advance(context); advance(context);
-				} while (context->tok.type == TOKEN_IDENT && context->next_tok.type == TOKEN_SCOPE);
-				if (context->tok.type == TOKEN_TYPE_IDENT)
-				{
-					context_restore_lexer_state(context);
-					*type_ptr = parse_type(context);
-					return parse_type_or_expr_after_type(context, expr_ptr, type_ptr);
-				}
-				context_restore_lexer_state(context);
-			}
-			break;
+				advance(context); advance(context);
+			} while (context->tok.type == TOKEN_IDENT && context->next_tok.type == TOKEN_SCOPE);
+			bool is_type = context->tok.type == TOKEN_TYPE_IDENT;
+			context_restore_lexer_state(context);
+			return is_type;
 		default:
-			break;
+			return false;
 	}
-	*expr_ptr = parse_expr(context);
-	return expr_ok(*expr_ptr);
-
 }
 
 
@@ -961,6 +928,7 @@ void add_struct_member(Decl *parent, Decl *parent_struct, Decl *member, TypeInfo
 	vec_add(parent_struct->strukt.members, member);
 	member->member_decl.index = index;
 	member->member_decl.reference_type = type_new(TYPE_MEMBER, member->name);
+	member->member_decl.reference_type->canonical = member->member_decl.reference_type;
 	member->member_decl.reference_type->decl = member;
 	member->member_decl.type_info = type;
 	member->member_decl.parent = parent;
@@ -1959,38 +1927,6 @@ void parse_file(Context *context)
 	parse_current(context);
 }
 
-
-
-/**
- * method_ref
- * 	: '.' IDENT
- * 	;
- *
- * @param type
- * @return Expr
- */
-static Expr *parse_type_access(Context *context, TypeInfo *type)
-{
-    Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPE_ACCESS, context->tok);
-    expr->span = type->span;
-    expr->type_access.type = type;
-
-    advance_and_verify(context, TOKEN_DOT);
-    expr->type_access.name = context->tok;
-
-    switch (context->tok.type)
-    {
-    	case TOKEN_MACRO:
-    	case TOKEN_IDENT:
-    	case TOKEN_CONST_IDENT:
-    		advance(context);
-		    RANGE_EXTEND_PREV(expr);
-		    return expr;
-	    default:
-	    	SEMA_TOKEN_ERROR(context->tok, "Expected a function name, macro, or constant.");
-	    	return poisoned_expr;
-    }
-}
 
 
 

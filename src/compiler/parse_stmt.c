@@ -494,28 +494,7 @@ static inline bool is_valid_try_statement(TokenType type)
 	}
 }
 
-static inline Ast *parse_decl_or_expr_stmt(Context *context)
-{
-	Expr *expr = NULL;
-	TypeInfo *type = NULL;
 
-	if (!parse_type_or_expr(context, &expr, &type)) return poisoned_ast;
-
-	Ast *ast;
-	if (expr)
-	{
-		ast = AST_NEW(AST_EXPR_STMT, expr->span);
-		ast->expr_stmt = expr;
-	}
-	else
-	{
-		Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, false, type), poisoned_ast);
-		ast = AST_NEW(AST_DECLARE_STMT, decl->span);
-		ast->declare_stmt = decl;
-	}
-	CONSUME_OR(TOKEN_EOS, poisoned_ast);
-	return ast;
-}
 
 /**
  * ct_for_stmt
@@ -644,11 +623,15 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_ERROR_TYPE:
-			if (context->next_tok.type == TOKEN_DOT || context->next_tok.type == TOKEN_LBRACE)
+		case TOKEN_IDENT:
+			if (parse_next_is_decl(context))
+			{
+				return parse_declaration_stmt(context);
+			}
+			else
 			{
 				return parse_expr_stmt(context);
 			}
-			return parse_declaration_stmt(context);
 		case TOKEN_TYPEOF:
 			TODO
 		case TOKEN_LOCAL:   // Local means declaration!
@@ -661,12 +644,6 @@ Ast *parse_stmt(Context *context)
 			}
 			return parse_expr_stmt(context);
 		case TOKEN_AT:
-			return parse_expr_stmt(context);
-		case TOKEN_IDENT:
-			if (context->next_tok.type == TOKEN_SCOPE)
-			{
-				return parse_decl_or_expr_stmt(context);
-			}
 			return parse_expr_stmt(context);
 		case TOKEN_RETURN:
 		{

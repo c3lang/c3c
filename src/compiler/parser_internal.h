@@ -42,17 +42,16 @@ Ast *parse_decl_expr_list(Context *context);
 Ast* parse_compound_stmt(Context *context);
 Ast *parse_jump_stmt_no_eos(Context *context);
 Expr *parse_expression_list(Context *context);
-bool parse_type_or_expr(Context *context, Expr **expr_ptr, TypeInfo **type_ptr);
 Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type);
 bool parse_param_list(Context *context, Expr ***result, bool allow_type);
 Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *type_info);
 Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info);
+bool parse_next_is_decl(Context *context);
 void error_at_current(Context *context, const char* message, ...);
 bool try_consume(Context *context, TokenType type);
 bool consume(Context *context, TokenType type, const char *message, ...);
 bool consume_const_name(Context *context, const char* type);
 Expr *parse_precedence_with_left_side(Context *context, Expr *left_side, Precedence precedence);
-
 
 static inline bool expect(Context *context, TokenType token_type)
 {
