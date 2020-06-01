@@ -281,6 +281,7 @@ bool fpfp(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
  */
 bool fpxi(Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
+	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
 	if (cast_type != CAST_TYPE_EXPLICIT) EXIT_T_MISMATCH();
 	RETURN_NON_CONST_CAST(CAST_FPUI);
 

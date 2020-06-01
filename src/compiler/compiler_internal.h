@@ -248,7 +248,6 @@ typedef struct
 typedef struct
 {
 	uint32_t abi_alignment;
-	uint32_t id;
 	uint64_t size;
 	Decl **members;
 } StructDecl;
@@ -259,11 +258,7 @@ typedef struct _VarDecl
 	unsigned id : 16;
 	VarDeclKind kind : 3;
 	TypeInfo *type_info;
-	union
-	{
-		Expr *init_expr;
-		Decl *parent;
-	};
+	Expr *init_expr;
 	void *backend_debug_ref;
 } VarDecl;
 
@@ -379,6 +374,14 @@ typedef struct
 	Path *path; // For redefinition
 } GenericDecl;
 
+typedef struct
+{
+	unsigned index : 32;
+	bool anonymous : 1;
+	Decl *parent;
+	TypeInfo *type_info;
+	Type *reference_type;
+} MemberDecl;
 
 typedef struct _Decl
 {
@@ -414,7 +417,6 @@ typedef struct _Decl
 		{
 			union
 			{
-				Decl* parent_struct;
 				Decl** methods;
 			};
 			union
@@ -438,6 +440,7 @@ typedef struct _Decl
 		Decl** ct_else_decl;
 		Expr *incr_array_decl;
 		TypeInfo *throws;
+		MemberDecl member_decl;
 	};
 } Decl;
 

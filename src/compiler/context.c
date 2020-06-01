@@ -131,6 +131,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
+		case DECL_MEMBER:
 			UNREACHABLE
 			break;
 		case DECL_CT_IF:

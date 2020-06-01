@@ -184,6 +184,7 @@ typedef enum
 	DECL_ENUM_CONSTANT,
 	DECL_TYPEDEF,
 	DECL_STRUCT,
+	DECL_MEMBER,
 	DECL_UNION,
 	DECL_ENUM,
 	DECL_ERROR,
@@ -545,7 +546,6 @@ typedef enum
 	VARDECL_GLOBAL = 1,
 	VARDECL_LOCAL = 2,
 	VARDECL_PARAM = 3,
-	VARDECL_MEMBER = 4,
 } VarDeclKind;
 
 typedef enum

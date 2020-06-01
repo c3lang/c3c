@@ -176,6 +176,7 @@ static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
+		case DECL_MEMBER:
 			UNREACHABLE
 		case DECL_STRUCT:
 		case DECL_UNION:
@@ -230,6 +231,7 @@ size_t type_size(Type *canonical)
 			return alignment_error_code;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
+			assert(canonical->decl->resolve_status == RESOLVE_DONE);
 			return canonical->decl->strukt.size;
 		case TYPE_VOID:
 			return 1;

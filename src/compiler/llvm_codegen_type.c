@@ -23,6 +23,7 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 		case DECL_ERROR_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
+		case DECL_MEMBER:
 			UNREACHABLE;
 		case DECL_FUNC:
 		{
@@ -46,7 +47,7 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 			{
 				vec_add(types, llvm_get_type(context, decl->strukt.members[i]->type));
 			}
-			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->external_name);
+			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->name);
 			LLVMStructSetBody(type, types, vec_size(types), decl->is_packed);
 			return type;
 		}

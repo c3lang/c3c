@@ -123,30 +123,18 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 
 static LLVMValueRef gencontext_emit_member_addr(GenContext *context, LLVMValueRef value, Decl *parent, Decl *member)
 {
-	unsigned index;
-	Decl *current_parent;
 	assert(member->resolve_status == RESOLVE_DONE);
-	if (decl_is_struct_type(member))
-	{
-		index = member->strukt.id;
-		current_parent = member->parent_struct;
-	}
-	else
-	{
-		index = member->var.id;
-		current_parent = member->var.parent;
-	}
-	assert(current_parent);
-	if (parent != current_parent)
+	Decl *current_parent = member->member_decl.parent;
+	if (current_parent->decl_kind == DECL_MEMBER && current_parent->member_decl.anonymous)
 	{
 		value = gencontext_emit_member_addr(context, value, parent, current_parent);
 	}
 
-	if (current_parent->decl_kind == DECL_UNION)
+	if (current_parent->type->canonical->type_kind == TYPE_UNION)
 	{
-		return LLVMBuildBitCast(context->builder, value, LLVMPointerType(llvm_type(member->type), 0), member->name ?: "anon");
+		return LLVMBuildBitCast(context->builder, value, LLVMPointerType(llvm_type(member->type), 0), member->name);
 	}
-	return LLVMBuildStructGEP2(context->builder, llvm_type(current_parent->type), value, index, member->name ?: "anon");
+	return LLVMBuildStructGEP2(context->builder, llvm_type(current_parent->type), value, member->member_decl.index, member->name);
 }
 
 
@@ -384,11 +372,11 @@ static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext
 				case DESIGNATED_IDENT:
 					if (parent_type->canonical->type_kind == TYPE_UNION)
 					{
-						sub_ref = LLVMBuildBitCast(context->builder, sub_ref, LLVMPointerType(llvm_type(path->type), 0), "unionref");
+						sub_ref = LLVMBuildBitCast(context->builder, sub_ref, LLVMPointerType(llvm_type(path->type), 0), path->type->name);
 					}
 					else
 					{
-						sub_ref = LLVMBuildStructGEP2(context->builder, llvm_type(parent_type), sub_ref, path->index, "structref");
+						sub_ref = LLVMBuildStructGEP2(context->builder, llvm_type(parent_type), sub_ref, path->index, path->type->name);
 					}
 					break;
 				case DESIGNATED_SUBSCRIPT:

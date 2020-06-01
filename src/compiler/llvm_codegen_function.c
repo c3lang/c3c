@@ -300,6 +300,7 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 			TODO
 		case DECL_ERROR_CONSTANT:
 			TODO
+		case DECL_MEMBER:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:

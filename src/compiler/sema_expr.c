@@ -672,14 +672,17 @@ static Decl *strukt_recursive_search_member(Decl *strukt, const char *name)
 	VECEACH(strukt->strukt.members, i)
 	{
 		Decl *member = strukt->strukt.members[i];
-		if (member->name == name) return member;
-		if (!member->name && type_is_structlike(member->type->canonical))
+		if (member->member_decl.anonymous)
 		{
 			Decl *result = strukt_recursive_search_member(member->type->canonical->decl, name);
 			if (result)
 			{
 				return result;
 			}
+		}
+		else
+		{
+			if (member->name == name) return member;
 		}
 	}
 	return NULL;
@@ -852,17 +855,7 @@ static DesignatedPath *sema_analyse_init_identifier_string(Context *context, Des
 	VECEACH(members, i)
 	{
 		Decl *member = members[i];
-		if (member->name == string)
-		{
-			DesignatedPath *sub_path = CALLOCS(DesignatedPath);
-			sub_path->type = member->type;
-			sub_path->kind = DESIGNATED_IDENT;
-			sub_path->index = i;
-			parent_path->sub_path = sub_path;
-			*has_found_match = true;
-			return sub_path;
-		}
-		if (!member->name)
+		if (member->member_decl.anonymous)
 		{
 			DesignatedPath temp_path;
 			temp_path.type = member->type;
@@ -875,6 +868,16 @@ static DesignatedPath *sema_analyse_init_identifier_string(Context *context, Des
 			parent_path->sub_path = real_path;
 			*has_found_match = true;
 			return found;
+		}
+		if (member->name == string)
+		{
+			DesignatedPath *sub_path = CALLOCS(DesignatedPath);
+			sub_path->type = member->type;
+			sub_path->kind = DESIGNATED_IDENT;
+			sub_path->index = i;
+			parent_path->sub_path = sub_path;
+			*has_found_match = true;
+			return sub_path;
 		}
 	}
 	return NULL;

@@ -90,48 +90,9 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 {
 	assert(decl->resolve_status == RESOLVE_NOT_DONE);
 	decl->resolve_status = RESOLVE_RUNNING;
-	if (decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION)
-	{
-		DEBUG_LOG("Beginning analysis of inner struct/union");
-		VECEACH(decl->strukt.members, i)
-		{
-			Decl *member = decl->strukt.members[i];
-			if (!decl_ok(member))
-			{
-				decl_poison(decl);
-				continue;
-			}
-			if (!sema_analyse_struct_member(context, decl->strukt.members[i]))
-			{
-				if (decl_ok(decl))
-				{
-					decl_poison(decl);
-					continue;
-				}
-				decl_poison(decl);
-			}
-		}
-		if (decl->decl_kind == DECL_UNION)
-		{
-			sema_set_union_size(decl);
-		}
-		else
-		{
-			sema_set_struct_size(decl);
-		}
-		DEBUG_LOG("Analysis complete.");
-		decl->resolve_status = RESOLVE_DONE;
-		return decl_ok(decl);
-	}
-	assert(decl->decl_kind == DECL_VAR);
-	assert(decl->var.kind == VARDECL_MEMBER);
-	if (!sema_resolve_type_info(context, decl->var.type_info))
-	{
-		decl_poison(decl);
-		return false;
-	}
-	decl->type = decl->var.type_info->type;
-	assert(decl->var.type_info->type);
+	assert(decl->decl_kind == DECL_MEMBER);
+	if (!sema_resolve_type_info(context, decl->member_decl.type_info)) return decl_poison(decl);
+	decl->type = decl->member_decl.type_info->type;
 	decl->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -767,12 +728,12 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_ARRAY_VALUE:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
+		case DECL_MEMBER:
 			UNREACHABLE
 		case DECL_CT_IF:
 			// Handled elsewhere
 			UNREACHABLE
 	}
 	decl->resolve_status = RESOLVE_DONE;
-	DEBUG_LOG("<<< Analysis of %s successful.", decl->name);
 	return true;
 }

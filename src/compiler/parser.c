@@ -955,6 +955,17 @@ static inline bool parse_opt_parameter_type_list(Context *context, Visibility pa
 
 #pragma mark --- Parse types
 
+void add_struct_member(Decl *parent, Decl *parent_struct, Decl *member, TypeInfo *type)
+{
+	unsigned index = vec_size(parent_struct->strukt.members);
+	vec_add(parent_struct->strukt.members, member);
+	member->member_decl.index = index;
+	member->member_decl.reference_type = type_new(TYPE_MEMBER, member->name);
+	member->member_decl.reference_type->decl = member;
+	member->member_decl.type_info = type;
+	member->member_decl.parent = parent;
+}
+
 /**
  * Expect pointer to after '{'
  *
@@ -973,14 +984,16 @@ static inline bool parse_opt_parameter_type_list(Context *context, Visibility pa
  *		| struct_or_union opt_attributes struct_body
  *		;
  *
- * @param parent the direct parent.
- * @param visible_parent the visible parent when checking duplicate symbols.
+ * @param parent the parent if this is the body of member
+ * @param struct_parent the struct this is the body of
+ * @param visible_parent the visible struct parent for checking duplicates.
  */
-bool parse_struct_body(Context *context, Decl *parent, Decl *visible_parent)
+bool parse_struct_body(Context *context, Decl *parent, Decl *parent_struct, Decl *visible_parent)
 {
 
 	CONSUME_OR(TOKEN_LBRACE, false);
 
+	assert(decl_is_struct_type(parent_struct));
 	while (context->tok.type != TOKEN_RBRACE)
 	{
 		TokenType token_type = context->tok.type;
@@ -988,17 +1001,19 @@ bool parse_struct_body(Context *context, Decl *parent, Decl *visible_parent)
 		{
 			DeclKind decl_kind = decl_from_token(token_type);
 			Decl *member;
+			Token name_replacement = context->tok;
+			name_replacement.string = "anon";
+			Decl *strukt_type = decl_new_with_type(name_replacement, decl_kind, visible_parent->visibility);
 			if (context->next_tok.type != TOKEN_IDENT)
 			{
-				Token name_replacement = context->tok;
-				name_replacement.string = NULL;
-				member = decl_new_with_type(name_replacement, decl_kind, parent->visibility);
+				member = decl_new(DECL_MEMBER, name_replacement, visible_parent->visibility);
+				member->member_decl.anonymous = true;
 				advance(context);
 			}
 			else
             {
 			    advance(context);
-				member = decl_new_with_type(context->tok, decl_kind, parent->visibility);
+	            member = decl_new(DECL_MEMBER, context->tok, visible_parent->visibility);
 				Decl *other = struct_find_name(visible_parent, context->tok.string);
 				if (other)
 				{
@@ -1007,26 +1022,25 @@ bool parse_struct_body(Context *context, Decl *parent, Decl *visible_parent)
 					decl_poison(visible_parent);
 					decl_poison(other);
 					decl_poison(member);
+					return false;
 				}
 				advance_and_verify(context, TOKEN_IDENT);
 			}
-			if (!parse_attributes(context, member)) return false;
-			member->parent_struct = parent;
-			member->strukt.id = vec_size(parent->strukt.members);
-			parent->strukt.members = VECADD(parent->strukt.members, member);
-			if (!parse_struct_body(context, member, context->tok.type == TOKEN_IDENT ? member : visible_parent))
+			if (!parse_attributes(context, strukt_type)) return false;
+			if (!parse_struct_body(context, member, strukt_type, context->tok.type == TOKEN_IDENT ? strukt_type : visible_parent))
 			{
 				decl_poison(visible_parent);
 				return false;
 			}
+			VECADD(context->types, strukt_type);
+			add_struct_member(parent, parent_struct, member, type_info_new_base(strukt_type->type, strukt_type->span));
 			continue;
 		}
 		TypeInfo *type = TRY_TYPE_OR(parse_type(context), false);
-
 		while (1)
         {
             EXPECT_OR(TOKEN_IDENT, false);
-            Decl *member = decl_new_var(context->tok, type, VARDECL_MEMBER, parent->visibility);
+            Decl *member = decl_new(DECL_MEMBER, context->tok, visible_parent->visibility);
             Decl *other = struct_find_name(visible_parent, member->name);
             if (other)
             {
@@ -1036,10 +1050,7 @@ bool parse_struct_body(Context *context, Decl *parent, Decl *visible_parent)
                 decl_poison(other);
                 decl_poison(member);
             }
-            unsigned index = vec_size(parent->strukt.members);
-            parent->strukt.members = VECADD(parent->strukt.members, member);
-            member->var.id = index;
-            member->var.parent = parent;
+            add_struct_member(parent, parent_struct, member, type);
             advance(context);
             if (context->tok.type != TOKEN_COMMA) break;
         }
@@ -1074,7 +1085,7 @@ static inline Decl *parse_struct_declaration(Context *context, Visibility visibi
 		return poisoned_decl;
 	}
 
-	if (!parse_struct_body(context, decl, decl))
+	if (!parse_struct_body(context, decl, decl, decl))
 	{
 		return poisoned_decl;
 	}

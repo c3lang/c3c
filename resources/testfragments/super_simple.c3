@@ -92,6 +92,7 @@ enum Inf2 : byte
 
 typedef Inf as BooInf;
 
+
 struct TestStruct
 {
     int a;
@@ -117,6 +118,36 @@ union SimpleUnion
     double f;
 }
 
+struct ExtraSimple
+{
+    int a;
+    int b;
+    struct c
+    {
+        double e;
+        double f0;
+        double f1;
+        double f;
+        double j;
+    }
+    struct
+    {
+        int r;
+        int s;
+    }
+    union
+    {
+        double o0;
+        int o1;
+    }
+    int g;
+}
+func void testSimple()
+{
+    ExtraSimple a = { c.j = 3.3 };
+    a.c.j = 3.4;
+    printf("a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\n", a.a, a.c.e, a.c.f, a.c.j, a.g, a.o0, a.r, a.s);
+}
 func void testPointer()
 {
     int i = 0;
@@ -291,7 +322,12 @@ func void testSimpleStruct(int x)
     SimpleStruct sinit = { b = 1, d = 3.0, z1 = 1 };
     sinit.a = 1;
     sinit.b = 2;
-    printf("a = %d, b = %d (1), c = %f, d = %f (3.0), z1 = %d (1), z2 = %d\n", sinit.a, sinit.b, sinit.c, sinit.d, cast(sinit.z1, int), cast(sinit.z2, int));
+    printf("Testing:\n");
+    printf("a = %d, b = %d (2), c = %f, d = %f (3.0), z1 = %d (1), z2 = %d\n", sinit.a, sinit.b, sinit.c, sinit.d, cast(sinit.z1, int), cast(sinit.z2, int));
+    if (sinit.a != 1) printf("ERROR a\n");
+    if (sinit.b != 2) printf("ERROR b\n");
+    if (sinit.d != 3.0) printf("ERROR d\n");
+    if (sinit.z1 != 1) printf("ERROR z1\n");
     snoinit.b = 1;
     snoinit.a = 100;
     snoinit.d = 3.0;
@@ -299,6 +335,9 @@ func void testSimpleStruct(int x)
     snoinit.z1 = 1;
     snoinit.z2 = 2;
     printf("b = %d (1), d = %f (3.0), z1 = %d (1)\n", snoinit.b, snoinit.d, snoinit.z1);
+    if (snoinit.b != 1) printf("ERROR b\n");
+    if (snoinit.d != 3.0) printf("ERROR d\n");
+    if (snoinit.z1 != 1) printf("ERROR z1\n");
 }
 
 struct AnonStruct
@@ -338,10 +377,18 @@ func void testAnonStruct2()
 
 func void testAnonStruct()
 {
+
     AnonStruct s = { b2 = 3, b1 = 7, xx.b = 1 };
     AnonStruct foo;
 
-    printf("a = %d, b = %d (1), c = %d, b1 = %d (7), c1 = %d, b2 = %d (3), c2 = %d (3), x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
+    if (s.a != 0) printf("Error s.a\n");
+    if (s.x != 0) printf("Error s.x\n");
+    if (s.xx.b != 1) printf("Error s.xx.b = %d\n", s.xx.b);
+    if (s.xx.c != 0) printf("Error s.xx.c\n");
+    if (s.b1 != 7) printf("Error s.b1\n");
+    if (s.c1 != 0) printf("Error s.c1\n");
+    if (s.b2 != 3) printf("Error s.b2\n");
+    if (s.c2 != 3) printf("Error s.c2\n");
 
     s.xx.b = 100;
     s.xx.c = 99;
@@ -349,22 +396,50 @@ func void testAnonStruct()
     s.b2 = 5;
     s.c2 = 7;
 
-    printf("a = %d, b = %d (100), c = %d (99), b1 = %d (3), c1 = %d, b2 = %d (7), c2 = %d (7), x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
+    if (s.a != 0) printf("Error s.a\n");
+    if (s.x != 0) printf("Error s.x\n");
+    if (s.xx.b != 100) printf("Error s.xx.b = %d\n", s.xx.b);
+    if (s.xx.c != 99) printf("Error s.xx.c\n");
+    if (s.b1 != 3) printf("Error s.b1\n");
+    if (s.c1 != 0) printf("Error s.c1\n");
+    if (s.b2 != 7) printf("Error s.b2\n");
+    if (s.c2 != 7) printf("Error s.c2\n");
 
     s = { xx = { c = 2 }};
 
-    printf("a = %d, b = %d, c = %d (2), b1 = %d, c1 = %d, b2 = %d, c2 = %d, x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
+    if (s.a != 0) printf("Error s.a\n");
+    if (s.x != 0) printf("Error s.x\n");
+    if (s.xx.b != 0) printf("Error s.xx.b = %d\n", s.xx.b);
+    if (s.xx.c != 2) printf("Error s.xx.c\n");
+    if (s.b1 != 0) printf("Error s.b1\n");
+    if (s.c1 != 0) printf("Error s.c1\n");
+    if (s.b2 != 0) printf("Error s.b2\n");
+    if (s.c2 != 0) printf("Error s.c2\n");
 
     s.xx.c = 3;
     s.x = 1212;
     s.a = 29183;
     s = AnonStruct { xx = { c = 2 }};
 
-    printf("a = %d, b = %d, c = %d (2), b1 = %d, c1 = %d, b2 = %d, c2 = %d, x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
+    if (s.a != 0) printf("Error s.a\n");
+    if (s.x != 0) printf("Error s.x\n");
+    if (s.xx.b != 0) printf("Error s.xx.b = %d\n", s.xx.b);
+    if (s.xx.c != 2) printf("Error s.xx.c\n");
+    if (s.b1 != 0) printf("Error s.b1\n");
+    if (s.c1 != 0) printf("Error s.c1\n");
+    if (s.b2 != 0) printf("Error s.b2\n");
+    if (s.c2 != 0) printf("Error s.c2\n");
 
     s = sendAnonStruct();
 
-    printf("Got it sent: a = %d, b = %d (1), c = %d, b1 = %d (7), c1 = %d, b2 = %d (3), c2 = %d (3), x = %d\n", s.a, s.xx.b, s.xx.c, s.b1, s.c1, s.b2, s.c2, s.x);
+    if (s.a != 1) printf("Error s.a\n");
+    if (s.x != 0) printf("Error s.x\n");
+    if (s.xx.b != 0) printf("Error s.xx.b = %d\n", s.xx.b);
+    if (s.xx.c != 2) printf("Error s.xx.c\n");
+    if (s.b1 != 0) printf("Error s.b1\n");
+    if (s.c1 != 0) printf("Error s.c1\n");
+    if (s.b2 != 123) printf("Error s.b2\n");
+    if (s.c2 != 123) printf("Error s.c2\n");
 
 }
 func int boba(int y, int j)
@@ -1005,7 +1080,7 @@ union TestUnionSize
 }
 func void testTypeValues()
 {
-    TestUnionSize.a.sizeof;
+//    TestUnionSize.a.sizeof;
     printf("Enum size: %d = 2\n", TestEnumSize.sizeof);
     printf("Enum size: %d = 4\n", TestEnumSizeDefault.sizeof);
     printf("Struct size: %d = 12\n", TestStructInt.sizeof);
@@ -1016,7 +1091,7 @@ func void testTypeValues()
 
 func int main(int x)
 {
-    printf("Helo!\n");
+    testSimple();
     testErrorBug();
     testErrors();
     testDefault(y = 99);

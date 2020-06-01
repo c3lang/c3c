@@ -47,7 +47,7 @@ void decl_set_external_name(Decl *decl)
 		return;
 	}
 	char buffer[1024];
-	uint32_t len = sprintf(buffer, "%s::%s", decl->module->name->module, decl->name);
+	uint32_t len = sprintf(buffer, "%s.%s", decl->module->name->module, decl->name);
 	assert(len);
 	TokenType type = TOKEN_INVALID_TOKEN;
 	decl->external_name = symtab_add(buffer, len, fnv1a(buffer, len), &type);
@@ -89,6 +89,7 @@ Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility)
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
+		case DECL_MEMBER:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, name.string);
@@ -110,8 +111,6 @@ const char *decl_var_to_string(VarDeclKind kind)
 			return "local";
 		case VARDECL_PARAM:
 			return "param";
-		case VARDECL_MEMBER:
-			return "member";
 	}
 	UNREACHABLE
 }
@@ -137,7 +136,7 @@ Decl *struct_find_name(Decl *decl, const char* name)
     VECEACH(compare_members, i)
     {
         Decl *member = compare_members[i];
-        if (!member->name)
+        if (member->member_decl.anonymous)
         {
             Decl *found = struct_find_name(member, name);
             if (found) return found;
@@ -337,7 +336,7 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 			return;
 		case TYPE_MEMBER:
 			DUMPF("(member %s", type->name);
-			DUMPTYPE(type->decl->parent_struct->type);
+			DUMPTYPE(type->decl->member_decl.parent->type);
 			DUMPEND();
 		case TYPE_TYPEDEF:
 			DUMPF("(typedef %s", type->name);
@@ -716,7 +715,7 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
-			DUMPF("(var-%s %s", decl_var_to_string(decl->var.kind), decl->name ?: "");
+			DUMPF("(var-%s %s", decl_var_to_string(decl->var.kind), decl->name);
 			DUMPTI(decl->var.type_info);
 			switch (decl->var.kind)
 			{
@@ -725,8 +724,6 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 				case VARDECL_LOCAL:
 				case VARDECL_PARAM:
 					DUMPEXPR(decl->var.init_expr);
-					break;
-				case VARDECL_MEMBER:
 					break;
 			}
 			DUMPEND();
@@ -836,6 +833,10 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 		case DECL_IMPORT:
 			DUMPF("(import %s", decl->name);
 			// TODO
+			DUMPEND();
+		case DECL_MEMBER:
+			DUMPF("(member %s", decl->name);
+			DUMPTI(decl->member_decl.type_info);
 			DUMPEND();
 		case DECL_ATTRIBUTE:
 			DUMPF("(attribute %s)", decl->name);

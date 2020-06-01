@@ -21,6 +21,7 @@ static inline LLVMMetadataRef gencontext_create_debug_type_from_decl(GenContext 
 		case DECL_ERROR_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
+		case DECL_MEMBER:
 			UNREACHABLE;
 		case DECL_FUNC:
 		{
