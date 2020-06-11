@@ -112,8 +112,8 @@ static inline bool is_digit(char c)
 static inline int char_to_nibble(char c)
 {
 	if (c >= '0' && c <= '9') return c - '0';
-	if (c <= 'F') return c - 'A';
-	if (c <= 'f') return c - 'f';
+	if (c <= 'F') return c - 'A' + 10;
+	if (c <= 'f') return c - 'a' + 10;
 	return -1;
 }
 

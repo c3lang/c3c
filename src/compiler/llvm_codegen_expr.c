@@ -173,7 +173,8 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Should only appear when generating designated initializers.
 			UNREACHABLE
-
+		case EXPR_MACRO_BLOCK:
+			TODO
 		case EXPR_IDENTIFIER:
 			return expr->identifier_expr.decl->ref;
 		case EXPR_UNARY:
@@ -201,7 +202,6 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_CAST:
-		case EXPR_MACRO_EXPR:
 		case EXPR_TYPEOF:
 			UNREACHABLE
 	}
@@ -522,16 +522,23 @@ static LLVMValueRef gencontext_emit_logical_and_or(GenContext *context, Expr *ex
 
 	gencontext_emit_block(context, rhs_block);
 	LLVMValueRef rhs = gencontext_emit_expr(context, expr->binary_expr.right);
+	LLVMBasicBlockRef end_block = context->current_block;
 	gencontext_emit_br(context, phi_block);
 
-			// Generate phi
+	// Generate phi
 	gencontext_emit_block(context, phi_block);
-	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(type_bool), "val");
 
 	// Simplify for LLVM by entering the constants we already know of.
 	LLVMValueRef result_on_skip = llvm_int(type_bool, op == BINARYOP_AND ? 0 : 1);
+
+	// One possibility here is that a return happens inside of the expression.
+	if (!end_block)
+	{
+		return result_on_skip;
+	}
+	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(type_bool), "val");
 	LLVMValueRef logic_values[2] = { result_on_skip, rhs };
-	LLVMBasicBlockRef blocks[2] = { start_block, rhs_block };
+	LLVMBasicBlockRef blocks[2] = { start_block, end_block };
 	LLVMAddIncoming(phi, logic_values, blocks, 2);
 
 	return phi;
@@ -823,6 +830,10 @@ LLVMValueRef gencontext_emit_post_unary_expr(GenContext *context, Expr *expr)
 
 LLVMValueRef gencontext_emit_typeid(GenContext *context, Expr *expr)
 {
+	if (type_is_builtin(expr->typeid_expr->type->type_kind))
+	{
+		return gencontext_emit_const_int(context, type_usize, expr->typeid_expr->type->type_kind);
+	}
 	assert(expr->typeid_expr->type->backend_typeid);
 	return expr->typeid_expr->type->backend_typeid;
 }
@@ -1356,6 +1367,47 @@ static inline LLVMValueRef gencontext_emit_expr_block(GenContext *context, Expr 
 	return return_out ? gencontext_emit_load(context, expr->type, return_out) : NULL;
 }
 
+static inline LLVMValueRef gencontext_emit_macro_block(GenContext *context, Expr *expr)
+{
+	LLVMValueRef old_ret_out = context->return_out;
+	LLVMBasicBlockRef saved_expr_block = context->expr_block_exit;
+
+	LLVMBasicBlockRef expr_block = gencontext_create_free_block(context, "expr_block.exit");
+	context->expr_block_exit = expr_block;
+
+	LLVMValueRef return_out = NULL;
+	if (expr->type != type_void)
+	{
+		return_out = gencontext_emit_alloca(context, llvm_type(expr->type), "blockret");
+	}
+	context->return_out = return_out;
+
+	Ast **stmts = expr->macro_block.stmts;
+	VECEACH(expr->macro_block.params, i)
+	{
+		// In case we have a constant, we never do an emit. The value is already folded.
+		if (!expr->macro_block.args[i]) continue;
+		Decl *decl = expr->macro_block.params[i];
+		decl->ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
+		LLVMValueRef value = gencontext_emit_expr(context, expr->macro_block.args[i]);
+		LLVMBuildStore(context->builder, value, decl->ref);
+	}
+
+	VECEACH(stmts, i)
+	{
+		gencontext_emit_stmt(context, stmts[i]);
+	}
+	gencontext_emit_br(context, expr_block);
+
+	// Emit the exit block.
+	gencontext_emit_block(context, expr_block);
+
+	context->return_out = old_ret_out;
+	context->expr_block_exit = saved_expr_block;
+
+	return return_out ? gencontext_emit_load(context, expr->type, return_out) : NULL;
+}
+
 LLVMValueRef gencontext_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id, LLVMTypeRef *types,
                                             LLVMValueRef *values, unsigned arg_count)
 {
@@ -1392,6 +1444,8 @@ NESTED_RETRY:
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Should only appear when generating designated initializers.
 			UNREACHABLE
+		case EXPR_MACRO_BLOCK:
+			return gencontext_emit_macro_block(context, expr);
 		case EXPR_COMPOUND_LITERAL:
 			expr = expr->expr_compound_literal.initializer;
 			goto NESTED_RETRY;
@@ -1416,7 +1470,6 @@ NESTED_RETRY:
 		case EXPR_TYPEID:
 			return gencontext_emit_typeid(context, expr);
 		case EXPR_TYPE_ACCESS:
-		case EXPR_MACRO_EXPR:
 		case EXPR_TYPEOF:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE

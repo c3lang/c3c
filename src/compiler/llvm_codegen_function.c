@@ -211,8 +211,7 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 	}
 	gencontext_add_attribute(context, function, nounwind_attribute, -1);
 
-	// TODO only for windows.
-	if (decl->func.attr_stdcall)
+	if (decl->func.attr_stdcall && (build_target.os == OS_TYPE_WIN32))
 	{
 		LLVMSetFunctionCallConv(function, LLVMX86StdcallCallConv);
 		LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);

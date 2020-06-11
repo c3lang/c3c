@@ -97,13 +97,19 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type)
 	}
 }
 
-static Expr *parse_macro_expr(Context *context, Expr *left)
+static Expr *parse_macro_ident(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *macro_expr = EXPR_NEW_TOKEN(EXPR_MACRO_EXPR, context->tok);
+	Expr *macro_ident = EXPR_NEW_TOKEN(EXPR_IDENTIFIER, context->tok);
+	macro_ident->identifier_expr.is_macro = true;
 	advance_and_verify(context, TOKEN_AT);
-	macro_expr->macro_expr = TRY_EXPR_OR(parse_precedence(context, PREC_UNARY + 1), poisoned_expr);
-	return macro_expr;
+	bool had_error = false;
+	macro_ident->identifier_expr.path = parse_path_prefix(context, &had_error);
+	if (had_error) return poisoned_expr;
+	macro_ident->identifier_expr.identifier = context->tok.string;
+	CONSUME_OR(TOKEN_IDENT, poisoned_expr);
+	RANGE_EXTEND_PREV(macro_ident);
+	return macro_ident;
 }
 
 
@@ -381,7 +387,9 @@ static Expr *parse_identifier(Context *context, Expr *left)
 static Expr *parse_maybe_scope(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Path *path = parse_path_prefix(context);
+	bool had_error;
+	Path *path = parse_path_prefix(context, &had_error);
+	if (had_error) return poisoned_expr;
 	switch (context->tok.type)
 	{
 		case TOKEN_IDENT:
@@ -707,7 +715,13 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 			if (context->tok.string[i] == '\\')
 			{
 				i++;
-				i += append_esc_string_token(str, context->tok.string + i, &len) - 1;
+				int scanned = append_esc_string_token(str, context->tok.string + i, &len) - 1;
+				if (scanned < -1)
+				{
+					SEMA_TOKEN_ERROR(context->tok, "Invalid escape in string.");
+					return poisoned_expr;
+				}
+				i += scanned;
 				continue;
 			}
 			str[len++] = context->tok.string[i];
@@ -861,7 +875,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_IDENT] = { parse_maybe_scope, NULL, PREC_NONE },
 		[TOKEN_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_CT_IDENT] = { parse_identifier, NULL, PREC_NONE },
-		[TOKEN_AT] = { parse_macro_expr, NULL, PREC_UNARY },
+		[TOKEN_AT] = { parse_macro_ident, NULL, PREC_NONE },
 		[TOKEN_CONST_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_STRING] = { parse_string_literal, NULL, PREC_NONE },
 		[TOKEN_REAL] = { parse_double, NULL, PREC_NONE },

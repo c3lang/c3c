@@ -28,6 +28,10 @@ void context_push_scope_with_flags(Context *context, ScopeFlags flags)
 	{
 		context->current_scope->flags = previous_flags | flags;
 	}
+	if (previous_flags & SCOPE_MACRO)
+	{
+		context->current_scope->flags = previous_flags | SCOPE_MACRO;
+	}
 	context->current_scope->flags_created = flags;
 }
 

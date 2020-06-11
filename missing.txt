@@ -29,7 +29,7 @@ Things missing:
 - Strings
 - Array
 - Slice
-- Values: size, alignment, name, qualifiedName
+- Values: alignment, name, qualifiedName
 - Functions: offsetof
 - Distinct types
 - Simd types?
@@ -46,7 +46,6 @@ Things missing:
 * Struct / union
 - Cast to union?
 - Structural typed anonymous structs and casts to them.
-- Auto deref on access.
 
 * Expressions
 - Disallow x >= 0 and x < 0 on unsigned types unless in a macro.

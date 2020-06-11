@@ -447,7 +447,8 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_VAR | ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC,
-			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION
+			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_STDCALL] = ATTR_FUNC
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
@@ -457,6 +458,8 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 	}
 	switch (type)
 	{
+		case ATTRIBUTE_STDCALL:
+			return type;
 		case ATTRIBUTE_ALIGN:
 			if (!attr->expr)
 			{

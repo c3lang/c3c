@@ -75,6 +75,7 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 	if (context->current_scope)
 	{
 		Decl **first = &context->locals[0];
+		if (context->macro_nesting) first = context->macro_locals_start;
 		Decl **current = context->last_local - 1;
 		while (current >= first)
 		{
@@ -141,4 +142,15 @@ bool sema_add_local(Context *context, Decl *decl)
 	return true;
 }
 
+bool sema_add_macro_local(Context *context, Decl *decl)
+{
+	if (context->last_local == &context->locals[MAX_LOCALS - 1])
+	{
+		SEMA_ERROR(decl, "Reached the maximum number of locals.");
+		return false;
+	}
+	context->last_local[0] = decl;
+	context->last_local++;
+	return true;
+}
 

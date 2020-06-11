@@ -8,6 +8,10 @@
 #define EXIT_T_MISMATCH() return sema_type_mismatch(left, canonical, cast_type)
 #define IS_EXPLICT()
 #define RETURN_NON_CONST_CAST(kind) do { if (left->expr_kind != EXPR_CONST) { insert_cast(left, kind, canonical); return true; } } while (0)
+#define REQUIRE_EXPLICIT_CAST(_cast_type)\
+  do { if (_cast_type == CAST_TYPE_EXPLICIT) break;\
+  if (_cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;\
+  EXIT_T_MISMATCH(); } while (0)
 
 static inline void insert_cast(Expr *expr, CastKind kind, Type *canonical)
 {
@@ -71,13 +75,9 @@ bool erro(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
 
 bool ptxi(Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
-	if (cast_type != CAST_TYPE_EXPLICIT)
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		EXIT_T_MISMATCH();
-	}
-	RETURN_NON_CONST_CAST(CAST_PTRXI);
+	REQUIRE_EXPLICIT_CAST(cast_type);
 
+	RETURN_NON_CONST_CAST(CAST_PTRXI);
 	assert(left->const_expr.kind == TYPE_POINTER);
 	expr_const_set_int(&left->const_expr, 0, type->type_kind);
 	left->type = type;
@@ -109,16 +109,6 @@ static inline bool may_implicitly_cast_ptr_to_ptr(Type *current_type, Type *targ
 	return true;
 }
 
-
-bool ptfu(Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool fupt(Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
 
 bool stst(Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
 {
@@ -206,6 +196,7 @@ void const_int_to_fp_cast(Expr *left, Type *canonical, Type *type)
  */
 bool boxi(Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
+	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
 	if (cast_type != CAST_TYPE_EXPLICIT) EXIT_T_MISMATCH();
 	RETURN_NON_CONST_CAST(CAST_BOOLINT);
 	assert(left->const_expr.kind == TYPE_BOOL);
@@ -281,8 +272,8 @@ bool fpfp(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
  */
 bool fpxi(Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
-	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-	if (cast_type != CAST_TYPE_EXPLICIT) EXIT_T_MISMATCH();
+	REQUIRE_EXPLICIT_CAST(cast_type);
+
 	RETURN_NON_CONST_CAST(CAST_FPUI);
 
 	assert(canonical->type_kind >= TYPE_I8 && canonical->type_kind <= TYPE_U64);
@@ -343,8 +334,7 @@ bool ixxen(Expr *left, Type *canonical, Type *type, CastType cast_type)
 bool ixxer(Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
 	// Assigning zero = no value is always ok.
-	if (cast_type == CAST_TYPE_IMPLICIT) EXIT_T_MISMATCH();
-	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
+	REQUIRE_EXPLICIT_CAST(cast_type);
 
 	if (left->expr_kind == EXPR_CONST)
 	{
@@ -459,7 +449,7 @@ bool uisi(Expr* left, Type *from_canonical, Type *canonical, Type *type, CastTyp
  */
 bool siui(Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
-	if (cast_type != CAST_TYPE_EXPLICIT) EXIT_T_MISMATCH();
+	REQUIRE_EXPLICIT_CAST(cast_type);
 
 	RETURN_NON_CONST_CAST(CAST_SIUI);
 
@@ -891,7 +881,6 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 			if (type_is_integer(canonical)) return ptxi(expr, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_BOOL) return ptbo(expr, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_POINTER) return ptpt(expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_FUNC) return ptfu(expr, from_type, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_VARARRAY) return ptva(expr, from_type, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_SUBARRAY) return ptsa(expr, from_type, canonical, to_type, cast_type);
 			break;

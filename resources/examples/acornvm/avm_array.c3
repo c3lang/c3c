@@ -8,6 +8,10 @@ module acorn::arr;
  * See Copyright Notice in avm.h
  */
 
+error SearchError
+{
+    NOT_FOUND
+}
 /* Return a new Array, allocating len slots for Values. */
 func Value new(Value th, Value *dest, Value type, AuintIdx len)
 {

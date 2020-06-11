@@ -632,8 +632,6 @@ Ast *parse_stmt(Context *context)
 			{
 				return parse_expr_stmt(context);
 			}
-		case TOKEN_TYPEOF:
-			TODO
 		case TOKEN_LOCAL:   // Local means declaration!
 		case TOKEN_CONST:   // Const means declaration!
 			return parse_declaration_stmt(context);
@@ -743,6 +741,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_NIL:
 		case TOKEN_TRUE:
 		case TOKEN_LPARBRA:
+		case TOKEN_TYPEOF:
 			return parse_expr_stmt(context);
 		case TOKEN_INVALID_TOKEN:
 			advance(context);

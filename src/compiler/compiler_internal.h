@@ -257,6 +257,7 @@ typedef struct _VarDecl
 {
 	unsigned id : 16;
 	VarDeclKind kind : 3;
+	bool constant : 1;
 	TypeInfo *type_info;
 	Expr *init_expr;
 	void *backend_debug_ref;
@@ -569,6 +570,7 @@ typedef struct
 	Path *path;
 	const char *identifier;
 	bool is_ref;
+	bool is_macro;
 	Decl *decl;
 } ExprIdentifier;
 
@@ -594,6 +596,13 @@ typedef struct
 {
 	Ast **stmts;
 } ExprFuncBlock;
+
+typedef struct
+{
+	Ast **stmts;
+	Expr **args;
+	Decl **params;
+} ExprMacroBlock;
 
 typedef struct
 {
@@ -643,7 +652,6 @@ struct _Expr
 		ExprStructValue struct_value_expr;
 		ExprTypeAccess type_access;
 		ExprTry try_expr;
-		Expr* macro_expr;
 		ExprBinary binary_expr;
 		ExprTernary ternary_expr;
 		ExprUnary unary_expr;
@@ -658,6 +666,7 @@ struct _Expr
 		Expr** expression_list;
 		ExprScope expr_scope;
 		ExprFuncBlock expr_block;
+		ExprMacroBlock macro_block;
 	};
 };
 
@@ -987,9 +996,9 @@ typedef struct _Context
 	{
 		bool in_macro_call : 1;
 		bool in_macro : 1;
+		Decl **macro_locals_start;
 		int macro_counter;
 		int macro_nesting;
-		Expr *first_macro_call;
 	};
 	Decl *locals[MAX_LOCALS];
 	DynamicScope scopes[MAX_SCOPE_DEPTH];

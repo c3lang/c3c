@@ -492,8 +492,20 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 	switch (expr->expr_kind)
 	{
 		case EXPR_IDENTIFIER:
-			DUMPF("(ident %s", expr->identifier_expr.identifier);
+			if (expr->identifier_expr.is_macro)
+			{
+				DUMPF("(ident @%s", expr->identifier_expr.identifier);
+			}
+			else
+			{
+				DUMPF("(ident %s", expr->identifier_expr.identifier);
+			}
 			DUMPEXPC(expr);
+			DUMPEND();
+		case EXPR_MACRO_BLOCK:
+			DUMP("(macro_block");
+			DUMPASTS(expr->macro_block.stmts);
+			DUMPDECLS(expr->macro_block.params);
 			DUMPEND();
 		case EXPR_EXPR_BLOCK:
 			if (!expr->expr_block.stmts)
@@ -654,10 +666,6 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			DUMP("(scopedexpr");
 			DUMPEXPR(expr->expr_scope.expr);
 			// TODO defers.
-			DUMPEND();
-		case EXPR_MACRO_EXPR:
-			DUMP("(macro-expr");
-			DUMPEXPR(expr->macro_expr);
 			DUMPEND();
 		case EXPR_RANGE:
 			DUMP("(range");

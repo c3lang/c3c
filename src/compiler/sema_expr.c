@@ -11,18 +11,20 @@
  * - Disallow jumping in and out of an expression block.
  */
 
-static Expr **expr_copy_expr_list_from_macro(Context *context, Expr *macro, Expr **expr_list);
-static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_expr);
-static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source);
-static Ast **ast_copy_list_from_macro(Context *context, Expr *macro, Ast **to_copy);
+static Expr **expr_copy_expr_list_from_macro(Context *context, Expr **expr_list);
+static Expr *expr_copy_from_macro(Context *context, Expr *source_expr);
+static Ast *ast_copy_from_macro(Context *context, Ast *source);
+static Ast **ast_copy_list_from_macro(Context *context, Ast **to_copy);
 static bool sema_expr_analyse_type_access(Context *context, Type *to, Expr *expr);
+static Decl *decl_copy_local_from_macro(Context *context, Decl *to_copy);
+static TypeInfo *type_info_copy_from_macro(Context *context, TypeInfo *source);
 
-#define MACRO_COPY_EXPR(x) x = expr_copy_from_macro(context, macro, x)
-#define MACRO_COPY_TYPE(x) x = type_info_copy_from_macro(context, macro, x)
-#define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(context, macro, x)
-#define MACRO_COPY_EXPR_LIST(x) x = expr_copy_expr_list_from_macro(context, macro, x)
-#define MACRO_COPY_AST_LIST(x) x = ast_copy_list_from_macro(context, macro, x)
-#define MACRO_COPY_AST(x) x = ast_copy_from_macro(context, macro, x)
+#define MACRO_COPY_EXPR(x) x = expr_copy_from_macro(context, x)
+#define MACRO_COPY_TYPE(x) x = type_info_copy_from_macro(context, x)
+#define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(context, x)
+#define MACRO_COPY_EXPR_LIST(x) x = expr_copy_expr_list_from_macro(context, x)
+#define MACRO_COPY_AST_LIST(x) x = ast_copy_list_from_macro(context, x)
+#define MACRO_COPY_AST(x) x = ast_copy_from_macro(context, x)
 
 bool sema_analyse_expr_may_be_function(Context *context, Expr *expr);
 
@@ -165,6 +167,15 @@ static inline bool sema_expr_analyse_ternary(Context *context, Type *to, Expr *e
 	return true;
 }
 
+static inline Decl *decl_copy_local_from_macro(Context *context, Decl *to_copy)
+{
+	assert(to_copy->decl_kind == DECL_VAR);
+	Decl *copy = malloc_arena(sizeof(Decl));
+	memcpy(copy, to_copy, sizeof(Decl));
+	MACRO_COPY_TYPE(copy->var.type_info);
+	MACRO_COPY_EXPR(copy->var.init_expr);
+	return copy;
+}
 
 static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name, Decl *decl)
 {
@@ -255,13 +266,24 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 	}
 	if (decl->decl_kind == DECL_MACRO)
 	{
-		if (!context->in_macro_call)
+		if (!expr->identifier_expr.is_macro)
 		{
 			SEMA_ERROR(expr, "Macro expansions must be prefixed with '@', try using '@%s(...)' instead.", decl->name);
 			return false;
 		}
 		expr->identifier_expr.decl = decl;
 		expr->type = type_void;
+		return true;
+	}
+	if (expr->identifier_expr.is_macro)
+	{
+		SEMA_ERROR(expr, "Only macro expansions can be prefixed with '@', please try to remove it.", decl->name);
+	}
+	if (decl->decl_kind == DECL_VAR && decl->var.constant)
+	{
+		assert(decl->var.init_expr && decl->var.init_expr->resolve_status == RESOLVE_DONE);
+		// Todo, maybe make a copy?
+		expr_replace(expr, decl->var.init_expr);
 		return true;
 	}
 	assert(decl->type);
@@ -472,6 +494,109 @@ static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr 
 	return sema_expr_analyse_func_invocation(context, &decl->func.function_signature, expr, decl, to, struct_var);
 }
 
+static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, Decl *decl)
+{
+	if (context->macro_nesting >= MAX_MACRO_NESTING)
+	{
+		SEMA_ERROR(call_expr, "Too deep nesting (more than %d levels) when evaluating this macro.", MAX_MACRO_NESTING);
+		return false;
+	}
+
+	Expr **args = call_expr->call_expr.arguments;
+	Decl **func_params = decl->macro_decl.parameters;
+
+	unsigned num_args = vec_size(args);
+	for (unsigned i = 0; i < num_args; i++)
+	{
+		Expr *arg = args[i];
+		Decl *param = func_params[i];
+		if (!sema_analyse_expr(context, param->type, arg))
+		{
+			return false;
+		}
+		if (param->var.type_info)
+		{
+			if (!sema_resolve_type_info(context, param->var.type_info))
+			{
+				return false;
+			}
+			param->type = param->var.type_info->type;
+		}
+		else
+		{
+			param->type = arg->type;
+		}
+	}
+
+	context->macro_nesting++;
+	context->macro_counter++;
+	Decl **old_macro_locals_start = context->macro_locals_start;
+	context->macro_locals_start = context->last_local;
+
+	bool ok = true;
+
+	Ast *body = ast_copy_from_macro(context, decl->macro_decl.body);
+
+	call_expr->type = type_void;
+
+	Ast **saved_returns = context_push_returns(context);
+	context->expected_block_type = to;
+	context_push_scope_with_flags(context, SCOPE_MACRO);
+
+	for (unsigned i = 0; i < num_args; i++)
+	{
+		Decl *param = func_params[i];
+		if (args[i]->expr_kind == EXPR_CONST)
+		{
+			param = decl_copy_local_from_macro(context, param);
+			param->var.constant = true;
+			param->var.init_expr = args[i];
+			args[i] = NULL;
+		}
+		sema_add_local(context, param);
+	}
+
+	VECEACH(body->compound_stmt.stmts, i)
+	{
+		if (!sema_analyse_statement(context, body->compound_stmt.stmts[i]))
+		{
+			ok = false;
+			goto EXIT;
+		}
+	}
+
+	if (!vec_size(context->returns))
+	{
+		if (to)
+		{
+			SEMA_ERROR(decl, "Missing return in macro that evaluates to %s.", type_to_error_string(to));
+			ok = false;
+			goto EXIT;
+		}
+	}
+
+	Expr *first_return_expr = context->returns[0]->return_stmt.expr;
+	Type *left_canonical = first_return_expr ? first_return_expr->type->canonical : type_void;
+	// Let's unify the return statements.
+	left_canonical = unify_returns(context, left_canonical);
+	if (!left_canonical)
+	{
+		ok = false;
+		goto EXIT;
+	}
+	call_expr->type = left_canonical;
+	call_expr->expr_kind = EXPR_MACRO_BLOCK;
+	call_expr->macro_block.stmts = body->compound_stmt.stmts;
+	call_expr->macro_block.params = func_params;
+	call_expr->macro_block.args = args;
+	EXIT:
+	context_pop_scope(context);
+	context_pop_returns(context, saved_returns);
+	context->macro_nesting--;
+	context->macro_locals_start = old_macro_locals_start;
+	return ok;
+}
+
 static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr)
 {
 	Expr *func_expr = expr->call_expr.function;
@@ -509,8 +634,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 		case DECL_FUNC:
 			return sema_expr_analyse_func_call(context, to, expr, decl, struct_var);
 		case DECL_MACRO:
-			SEMA_ERROR(expr, "Macro calls must be preceeded by '@'.");
-			return false;
+			return sema_expr_analyse_macro_call(context, to, expr, decl);
 		case DECL_GENERIC:
 			return sema_expr_analyse_generic_call(context, to, expr);
 		case DECL_POISONED:
@@ -2611,7 +2735,7 @@ static Expr *expr_shallow_copy(Expr *source)
 
 
 
-static TypeInfo *type_info_copy_from_macro(Context *context, Expr *macro, TypeInfo *source)
+static TypeInfo *type_info_copy_from_macro(Context *context, TypeInfo *source)
 {
 	if (!source) return NULL;
 	TypeInfo *copy = malloc_arena(sizeof(TypeInfo));
@@ -2621,50 +2745,50 @@ static TypeInfo *type_info_copy_from_macro(Context *context, Expr *macro, TypeIn
 		case TYPE_INFO_POISON:
 			return copy;
 		case TYPE_INFO_IDENTIFIER:
-			assert(source->resolve_status == RESOLVE_NOT_DONE);
-			TODO
-			break;
+			return copy;
 		case TYPE_INFO_EXPRESSION:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
-			copy->unresolved_type_expr = expr_copy_from_macro(context, macro, source->unresolved_type_expr);
+			copy->unresolved_type_expr = expr_copy_from_macro(context, source->unresolved_type_expr);
 			return copy;
 		case TYPE_INFO_ARRAY:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
-			copy->array.len = expr_copy_from_macro(context, macro, source->array.len);
-			copy->array.base = type_info_copy_from_macro(context, macro, source->array.base);
+			copy->array.len = expr_copy_from_macro(context, source->array.len);
+			copy->array.base = type_info_copy_from_macro(context, source->array.base);
 			return copy;
 		case TYPE_INFO_INC_ARRAY:
 		case TYPE_INFO_VARARRAY:
 		case TYPE_INFO_SUBARRAY:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
-			copy->array.base = type_info_copy_from_macro(context, macro, source->array.base);
+			copy->array.base = type_info_copy_from_macro(context, source->array.base);
 			return copy;
 		case TYPE_INFO_POINTER:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
-			copy->pointer = type_info_copy_from_macro(context, macro, source->pointer);
+			copy->pointer = type_info_copy_from_macro(context, source->pointer);
 			return copy;
 	}
 	UNREACHABLE
 }
 
 
-static Ast** ast_copy_list_from_macro(Context *context, Expr *macro, Ast **to_copy)
+static Ast** ast_copy_list_from_macro(Context *context, Ast **to_copy)
 {
 	Ast **result = NULL;
 	VECEACH(to_copy, i)
 	{
-		vec_add(result, ast_copy_from_macro(context, macro, to_copy[i]));
+		vec_add(result, ast_copy_from_macro(context, to_copy[i]));
 	}
 	return result;
 }
 
 
-static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_expr)
+static Expr *expr_copy_from_macro(Context *context, Expr *source_expr)
 {
 	if (!source_expr) return NULL;
 	Expr *expr = expr_shallow_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_MACRO_BLOCK:
+			UNREACHABLE
 		case EXPR_TYPEOF:
 			MACRO_COPY_EXPR(expr->typeof_expr);
 			return expr;
@@ -2709,8 +2833,8 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 			MACRO_COPY_TYPE(expr->typeid_expr);
 			return expr;
 		case EXPR_IDENTIFIER:
-			TODO
-			break;
+			// TODO
+			return expr;
 		case EXPR_TYPE_ACCESS:
 			MACRO_COPY_TYPE(expr->type_access.type);
 			return expr;
@@ -2741,35 +2865,32 @@ static Expr *expr_copy_from_macro(Context *context, Expr *macro, Expr *source_ex
 		case EXPR_SCOPED_EXPR:
 			MACRO_COPY_EXPR(expr->expr_scope.expr);
 			return expr;
-		case EXPR_MACRO_EXPR:
-			MACRO_COPY_EXPR(expr->macro_expr);
-			return expr;
 	}
 	UNREACHABLE
 }
 
-static Expr **expr_copy_expr_list_from_macro(Context *context, Expr *macro, Expr **expr_list)
+static Expr **expr_copy_expr_list_from_macro(Context *context, Expr **expr_list)
 {
 	Expr **result = NULL;
 	VECEACH(expr_list, i)
 	{
-		vec_add(result, expr_copy_from_macro(context, macro, expr_list[i]));
+		vec_add(result, expr_copy_from_macro(context, expr_list[i]));
 	}
 	return result;
 }
 
 
-static TypeInfo** type_info_copy_list_from_macro(Context *context, Expr *macro, TypeInfo **to_copy)
+static TypeInfo** type_info_copy_list_from_macro(Context *context, TypeInfo **to_copy)
 {
 	TypeInfo **result = NULL;
 	VECEACH(to_copy, i)
 	{
-		vec_add(result, type_info_copy_from_macro(context, macro, to_copy[i]));
+		vec_add(result, type_info_copy_from_macro(context, to_copy[i]));
 	}
 	return result;
 }
 
-static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
+static Ast *ast_copy_from_macro(Context *context, Ast *source)
 {
 	Ast *ast = ast_shallow_copy(source);
 	switch (source->ast_kind)
@@ -2822,7 +2943,7 @@ static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 			MACRO_COPY_TYPE_LIST(ast->ct_case_stmt.types);
 			return ast;
 		case AST_DECLARE_STMT:
-			TODO
+			ast->declare_stmt = decl_copy_local_from_macro(context, ast->declare_stmt);
 			return ast;
 		case AST_DEFAULT_STMT:
 			MACRO_COPY_AST(ast->case_stmt.body);
@@ -2905,89 +3026,6 @@ static Ast *ast_copy_from_macro(Context *context, Expr *macro, Ast *source)
 	UNREACHABLE;
 }
 
-static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *macro, Expr *inner)
-{
-	if (context->macro_nesting > MAX_MACRO_NESTING)
-	{
-		SEMA_ERROR(context->first_macro_call, "Too deep nesting (more than %d levels) when evaluating this macro.", MAX_MACRO_NESTING);
-		return false;
-	}
-
-	Expr *func_expr = inner->call_expr.function;
-	bool was_in_macro_call = context->in_macro_call;
-	context->in_macro_call = true;
-	bool ok = sema_analyse_expr(context, NULL, inner->call_expr.function);
-	context->in_macro_call = was_in_macro_call;
-	if (!ok) return ok;
-
-	Decl *decl;
-	switch (inner->call_expr.function->expr_kind)
-	{
-		case EXPR_IDENTIFIER:
-			decl = func_expr->identifier_expr.decl;
-			break;
-		default:
-			SEMA_ERROR(inner, "Expected a macro identifier here");
-			return false;
-	}
-	if (decl->decl_kind != DECL_MACRO)
-	{
-		SEMA_ERROR(macro, "A macro was expected here.");
-		return false;
-	}
-	Expr **args =func_expr->call_expr.arguments;
-	Decl **func_params = decl->macro_decl.parameters;
-
-	unsigned num_args = vec_size(args);
-	for (unsigned i = 0; i < num_args; i++)
-	{
-		Expr *arg = args[i];
-		Decl *param = func_params[i];
-		if (!sema_analyse_expr(context, param->type, arg)) return false;
-	}
-
-	Ast *body = ast_copy_from_macro(context, inner, decl->macro_decl.body);
-
-	ok = true;
-	macro->type = type_void;
-
-	Ast **saved_returns = context_push_returns(context);
-	context->expected_block_type = to;
-	context_push_scope_with_flags(context, SCOPE_EXPR_BLOCK);
-	VECEACH(body->compound_stmt.stmts, i)
-	{
-		if (!sema_analyse_statement(context, body->compound_stmt.stmts[i]))
-		{
-			ok = false;
-			goto EXIT;
-		}
-	}
-
-	if (!vec_size(context->returns))
-	{
-		if (to)
-		{
-			SEMA_ERROR(decl, "Missing return in macro that evaluates to %s.", type_to_error_string(to));
-			ok = false;
-		}
-		goto EXIT;
-	}
-
-	Expr *first_return_expr = context->returns[0]->return_stmt.expr;
-	Type *left_canonical = first_return_expr ? first_return_expr->type->canonical : type_void;
-	// Let's unify the return statements.
-	left_canonical = unify_returns(context, left_canonical);
-	if (!left_canonical)
-	{
-		ok = false;
-		goto EXIT;
-	}
-	macro->type = left_canonical;
-	EXIT:
-	context_pop_scope(context);
-	context_pop_returns(context, saved_returns);
-	return ok;
-}
 
 static inline bool sema_expr_analyse_macro_call2(Context *context, Type *to, Expr *expr, Decl *macro)
 {
@@ -3007,9 +3045,11 @@ static inline bool sema_expr_analyse_macro_call2(Context *context, Type *to, Exp
 	return success;
 }
 
-static inline bool sema_expr_analyse_macro_expr(Context *context, Type *to, Expr *expr)
+static inline bool sema_expr_analyse_macro_ident(Context *context, Type *to, Expr *expr)
 {
-	Expr *inner = expr->macro_expr;
+	return false;
+	/*
+	Expr *inner = expr->macro_ident;
 	switch (inner->expr_kind)
 	{
 		case EXPR_CALL:
@@ -3020,7 +3060,7 @@ static inline bool sema_expr_analyse_macro_expr(Context *context, Type *to, Expr
 		default:
 			SEMA_ERROR(expr, "Expected a macro name after '@'");
 			return false;
-	}
+	}*/
 }
 
 static inline bool sema_expr_analyse_type(Context *context, Type *to, Expr *expr)
@@ -3112,6 +3152,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Created during semantic analysis
 			UNREACHABLE
+		case EXPR_MACRO_BLOCK:
 		case EXPR_SCOPED_EXPR:
 			UNREACHABLE
 		case EXPR_TYPEOF:
@@ -3120,8 +3161,6 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return sema_expr_analyse_compound_literal(context, to, expr);
 		case EXPR_EXPR_BLOCK:
 			return sema_expr_analyse_expr_block(context, to, expr);
-		case EXPR_MACRO_EXPR:
-			return sema_expr_analyse_macro_expr(context, to, expr);
 		case EXPR_TRY:
 			return sema_expr_analyse_try(context, to, expr);
 		case EXPR_RANGE:

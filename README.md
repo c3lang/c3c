@@ -43,8 +43,6 @@ There are some small work being done on the parser here, but most of the structu
 - `$switch` and `$for` not handled.
 - Enums not correctly handled.
 - Type resolution not complete for all types.
-- `type` not handled.
-- Identifier analysis incomplete. 
 - Macro call not handled completely.
 
 #### What's missing overall

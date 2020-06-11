@@ -245,8 +245,9 @@ static inline Path *parse_module_path(Context *context)
 	return path_create_from_string(scratch_ptr, offset, span);
 }
 
-Path *parse_path_prefix(Context *context)
+Path *parse_path_prefix(Context *context, bool *had_error)
 {
+	*had_error = false;
 	if (context->tok.type != TOKEN_IDENT || context->next_tok.type != TOKEN_SCOPE) return NULL;
 
 	char *scratch_ptr = context->path_scratch;
@@ -277,6 +278,7 @@ Path *parse_path_prefix(Context *context)
 	if (type != TOKEN_IDENT)
 	{
 		sema_error_range(path->span, "A module name was expected here.");
+		*had_error = true;
 		return NULL;
 
 	}
@@ -312,7 +314,9 @@ Path *parse_path_prefix(Context *context)
 static inline TypeInfo *parse_base_type(Context *context)
 {
 	SourceRange range = context->tok.span;
-	Path *path = parse_path_prefix(context);
+	bool had_error;
+	Path *path = parse_path_prefix(context, &had_error);
+	if (had_error) return poisoned_type_info;
 	if (path)
 	{
 		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER, range);
@@ -587,8 +591,11 @@ static inline Decl *parse_const_declaration(Context *context, Visibility visibil
 	}
 	else
 	{
+		if (token_is_type(context->tok.type) || context->tok.type == TOKEN_CT_TYPE_IDENT || context->tok.type == TOKEN_TYPE_IDENT)
+		{
+			decl->var.type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+		}
 		if (!consume_const_name(context, "constant")) return poisoned_decl;
-		decl->var.type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
 	}
 
 	CONSUME_OR(TOKEN_EQ, poisoned_decl);
@@ -755,7 +762,9 @@ static inline bool parse_attributes(Context *context, Decl *parent_decl)
 
 	while (try_consume(context, TOKEN_AT))
 	{
-		Path *path = parse_path_prefix(context);
+		bool had_error;
+		Path *path = parse_path_prefix(context, &had_error);
+		if (had_error) return false;
 
 		Attr *attr = malloc_arena(sizeof(Attr));
 
@@ -859,6 +868,11 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 	{
 		if (context->tok.type != TOKEN_COMMA && context->tok.type != TOKEN_RPAREN)
 		{
+			if (context->tok.type == TOKEN_CT_IDENT)
+			{
+				SEMA_TOKEN_ERROR(context->tok, "Compile time identifiers are only allowed as macro parameters.");
+				return false;
+			}
 			sema_error_at(context->prev_tok_end, "Unexpected end of the parameter list, did you forget an ')'?");
 			return false;
 		}
@@ -1098,7 +1112,9 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 	{
 		rtype = TRY_TYPE_OR(parse_type(context), poisoned_decl);
 	}
-	Path *path = parse_path_prefix(context);
+	bool had_error;
+	Path *path = parse_path_prefix(context, &had_error);
+	if (had_error) return poisoned_decl;
 	Decl *decl = decl_new(DECL_GENERIC, context->tok, visibility);
 	decl->generic_decl.path = path;
 	if (!consume_ident(context, "generic function name")) return poisoned_decl;
@@ -1495,7 +1511,9 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	func->func.function_signature.rtype = return_type;
 
 	SourceRange start = context->tok.span;
-	Path *path = parse_path_prefix(context);
+	bool had_error;
+	Path *path = parse_path_prefix(context, &had_error);
+	if (had_error) return poisoned_decl;
 	if (path || context->tok.type == TOKEN_TYPE_IDENT)
 	{
 		// Special case, actually an extension

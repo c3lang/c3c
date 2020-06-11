@@ -1,6 +1,6 @@
 module bar;
 
-import baz::foo;
+import baz.foo;
 import testbaz;
 
 public func void test()

@@ -50,7 +50,7 @@ int findBlockVar(Value th, Value locvars, Value varnm)
 }
 
 /* Look for local variable. Returns idx if found, -1 otherwise. */
-func int CompInfo.findLocalVar(CompInfo *comp, Value varnm)
+func int CompInfo.findLocalVar(CompInfo *comp, Value varnm) throws SearchError
 {
 	assert(varnm.isSym());
 
@@ -68,7 +68,7 @@ func int CompInfo.findLocalVar(CompInfo *comp, Value varnm)
 		}
 		locvars = arrGet(th, locvars, 0); // link to prior local variables
 	} while (locvars != aNull);
-	return -1;
+	throw SearchError.NOT_FOUND;
 }
 
 /* Look for closure variable. Returns idx if found, -1 otherwise. */

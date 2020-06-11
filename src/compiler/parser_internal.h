@@ -10,7 +10,7 @@
 #define TRY_EXPECT_OR(_tok, _message, _type) do { if (context->tok.type != _tok) { SEMA_TOKEN_ERROR(context->tok, _message); return _type; } } while(0)
 #define TRY_CONSUME_OR(_tok, _message, _type) do { if (!consume(context, _tok, _message)) return _type; } while(0)
 #define TRY_CONSUME(_tok, _message) TRY_CONSUME_OR(_tok, _message, poisoned_ast)
-#define TRY_CONSUME_EOS_OR(_res) TRY_CONSUME_OR(TOKEN_EOS, "Expected ';'", _res)
+#define TRY_CONSUME_EOS_OR(_res) do { if (context->tok.type != TOKEN_EOS) { sema_error_at(context->prev_tok_end, "Expected ';'"); return _res; } advance(context); } while(0)
 #define TRY_CONSUME_EOS() TRY_CONSUME_EOS_OR(poisoned_ast)
 #define RETURN_AFTER_EOS(_ast) extend_ast_with_prev_token(context, ast); TRY_CONSUME_EOS_OR(poisoned_ast); return _ast
 #define TRY_CONSUME_LBRACE() TRY_CONSUME(TOKEN_LBRACE, "Expected '{'")
@@ -30,7 +30,7 @@ SEMA_TOKEN_ERROR(context->tok, "Expected ',' or ')'"); return _res; } } while(0)
 
 
 Ast *parse_stmt(Context *context);
-Path *parse_path_prefix(Context *context);
+Path *parse_path_prefix(Context *context, bool *had_error);
 Expr *parse_type_expression_with_path(Context *context, Path *path);
 Expr *parse_expr(Context *context);
 TypeInfo *parse_type(Context *context);

@@ -194,6 +194,7 @@ static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_
 }
 void type_append_signature_name(Type *type, char *dst, size_t *offset)
 {
+	type = type->canonical;
 	assert(*offset < MAX_FUNCTION_SIGNATURE_SIZE);
 	const char *name;
 	switch (type->type_kind)
