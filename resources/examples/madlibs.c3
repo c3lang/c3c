@@ -7,7 +7,7 @@ func void main()
     string story = "";
     while (1)
     {
-        try string line = stdin.readln().strip();
+        string line = stdin.readln().strip() else "";
         if (!line.size) break;
         story += line + "\n";
     }
@@ -21,14 +21,14 @@ func void main()
     {
         string s = match.string;
         printf("Enter a value for '%s': ", s.slice(1, s.size - 2));
-        try string word = strin.readln().strip();
+        string! word = strin.readln().strip();
+        catch (word)
+        {
+            // Exit on error.
+            return;
+        }
         story = story.replace(s, word);
     }
 
     println("\nThe story becomes:\n%s\n", story);
-
-    catch (error e)
-    {
-        // Ignore any error
-    }
 }

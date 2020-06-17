@@ -751,6 +751,44 @@ func int oekt() throws
     return x;
 }
 
+func int! oekt2() throws
+{
+    int z = testThrow(-1) else goto NEXT;
+    printf("Skipped.\n");
+    NEXT:
+    int! x = testThrow(-3);
+    catch (err = x)
+    {
+        printf("An error %p\n", usize(e));
+        return err!;
+    }
+    return x;
+}
+
+func int! oekt3()
+{
+    int z = testThrow(-1) else goto NEXT;
+    printf("Skipped.\n");
+    NEXT:
+    int! x = testThrow(-3);
+
+    if (e = catch(x)) printf("An error %p\n", usize(e));
+
+    return x;
+}
+
+func int! oekt3()
+{
+    int z = testThrow(-1) else goto NEXT;
+    printf("Skipped.\n");
+    NEXT:
+    int! x = testThrow(-3);
+
+    if (e = x!) printf("An error %p\n", usize(e));
+
+    return x;
+}
+
 errset Xan
 {
     EE,
@@ -783,6 +821,51 @@ func void testErrorBug()
     }
     printf("End\n");
 }
+
+func void testErrorBug2()
+{
+    printf("Test error multi\n");
+    error e;
+    {
+        printf("Will call\n");
+        e = catch(oekt());
+    }
+    switch (e)
+    {
+        case TestErr1:
+            printf("Expected particular error.\n");
+        default:
+            error foo = Err.TEST_ERR1;
+            printf("Not expected %p != %p\n", usize(e), usize(foo));
+            printf("Unexpected any error error.\n");
+    }
+    printf("End\n");
+}
+
+func void testErrorMulti()
+{
+    defer printf("End defer\n");
+    int! z;
+    printf("Test error multi\n");
+    {
+        defer printf("Defer\n");
+        printf("Will call\n");
+        z = oekt();
+        printf("Got here\n");
+    }
+    switch (e = z!)
+    {
+        case TestErr1:
+            printf("Expected particular error.\n");
+        default:
+            error foo = Err.TEST_ERR1;
+            printf("Not expected %p != %p\n", usize(e), usize(foo));
+            printf("Unexpected any error error.\n");
+    }
+    printf("End\n");
+}
+
+
 func void testErrorMulti()
 {
     defer printf("End defer\n");
@@ -878,6 +961,59 @@ func void testErrors()
     catch (Err2 e)
     {
         printf("B2\n");
+    }
+    printf("Throws: %d\n", throwsDone.times);
+    printf("End of errors\n");
+}
+
+func void testErrors()
+{
+
+    printf("Throws: %d\n", throwsDone.times);
+
+    int x = testThrow(20) else 1;
+    printf("Value was %d, expected 400.\n", x);
+
+    printf("Throws: %d\n", throwsDone.times);
+
+    x = testThrow(-1) else 20;
+    printf("Value was %d, expected 20.\n", x);
+
+    printf("Throws: %d\n", throwsDone.times);
+
+    printf("Begin\n");
+    int! y = testThrow(-1);
+
+    if (y)
+    {
+        printf("Value was %d, expected 9.\n", y);
+        printf("Didn't expect this one.\n");
+    }
+    else catch(y)
+    {
+        printf("Expected this catch.\n");
+    }
+
+    y = testThrow(-1);
+    catch (y)
+    {
+        printf("Particular error.\n");
+    }
+    testErrorMulti();
+
+    catch (throwAOrB(1))
+    {
+        case Err:
+            printf("A1\n");
+        case Err2:
+            printf("A2\n");
+    }
+    catch (throwAOrB(2))
+    {
+        case Err:
+            printf("B1\n");
+        case Err2:
+            printf("B2\n");
     }
     printf("Throws: %d\n", throwsDone.times);
     printf("End of errors\n");

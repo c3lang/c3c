@@ -103,7 +103,13 @@ func void Tokenizer.init(Tokenizer* t, char* input)
     t.text[0] = 0;
 }
 
-func void Tokenizer.lex(Tokenizer* t, Token* result)
+error LexedEOF;
+error LexError
+{
+    string error_message;
+}
+
+func void! Tokenizer.lex(Tokenizer* t, Token* result)
 {
     if (t.haveNext)
     {
@@ -118,16 +124,12 @@ func void Tokenizer.lex(Tokenizer* t, Token* result)
         switch (t.current[0])
         {
             case 0:
-                result.loc = t.loc;
-                result.kind = TokenKind.EOF;
-                return;
+                return! LexedEOF();
             case '#':
                 if (t.loc.column != 1)
                 {
                     sprintf(t.text, "unexpected '#' after line start at %s", t.loc.str());
-                    result.kind = TokenKind.ERROR;
-                    result.text = t.text;
-                    return;
+                    return! LexError(t.text);
                 }
                 t.parseComment();
             case ' ':
@@ -214,18 +216,16 @@ func void Tokenizer.lex(Tokenizer* t, Token* result)
                     return;
                 }
                 sprintf(t.text, "unexpected char '%c' at %s", t.current[0], t.loc.str());
-                result.kind = ERROR;
-                result.text = t.text;
-                return;
+                return LexError(t.text);
         }
     }
 }
 
-func Token* Tokenizer.lookahead(Tokenizer* t)
+func Token*! Tokenizer.lookahead(Tokenizer* t)
 {
     if (!t.haveNext)
     {
-        t.lex(&t.nextToken);
+        try t.lex(&t.nextToken);
         t.haveNext = true;
     }
     return &t.nextToken;
@@ -277,7 +277,7 @@ func void Tokenizer.parseText(Tokenizer* t, Token* result)
     t.advance(1);
 }
 
-func void Tokenizer.parseMultiText(Tokenizer* t, Token* result)
+func void! Tokenizer.parseMultiText(Tokenizer* t, Token* result)
 {
     t.advance(3);
     if (t.current[0] == '\n')
@@ -293,9 +293,7 @@ func void Tokenizer.parseMultiText(Tokenizer* t, Token* result)
         if (t.current[0] == 0)
         {
             sprintf(t.text, "missing end \"\"\" %s", t.loc.str());
-            result.kind = TokenKind.Error;
-            result.text = t.text;
-            return;
+            return! LexError(t.text);
         }
         if (t.current[0] == '\n')
         {
@@ -310,7 +308,7 @@ func void Tokenizer.parseMultiText(Tokenizer* t, Token* result)
         t.current++;
     }
 
-    uint len = cast(uint, t.current - start);
+    uint len = uint(t.current - start);
     // assert(len < MaxText);
     memcpy(t.text, start, len);
     t.text[len] = 0;
@@ -325,7 +323,7 @@ func void Tokenizer.parseNumber(Tokenizer* t, Token* result)
     // handle hexadecimal/ocal/binary number
     // handle '_', like 1_000_000
 
-    uint number = cast(atoi(t.current), uint);
+    uint number = uint(atoi(t.current));
     result.kind = TokenKind.Number;
     result.number = number;
     while (t.current[0] && isdigit(t.current[0]))

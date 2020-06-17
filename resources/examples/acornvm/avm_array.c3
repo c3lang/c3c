@@ -8,15 +8,12 @@ module acorn::arr;
  * See Copyright Notice in avm.h
  */
 
-error SearchError
-{
-    NOT_FOUND
-}
+
 /* Return a new Array, allocating len slots for Values. */
 func Value new(Value th, Value *dest, Value type, AuintIdx len)
 {
 	// Create an array object
-	ArrInfo* val = @cast(mem::new(th, ArrEnc, sizeof(ArrInfo), ArrInfo*);
+	ArrInfo* val = cast(mem::new(th, ArrEnc, sizeof(ArrInfo), ArrInfo*);
 	val.flags1 = 0;	// Initialize Flags1 flags
 	val.type = type;
 	val.avail = len;
@@ -30,7 +27,7 @@ func Value new(Value th, Value *dest, Value type, AuintIdx len)
 func Value newClosure(Value *th, Value *dest, Value type, AuintIdx len)
 {
 	// Create an array object
-	ArrInfo* val = @cast(mem::new(th, ArrEnc, sizeof(ArrInfo), ArrInfo*);
+	ArrInfo* val = cast(mem::new(th, ArrEnc, sizeof(ArrInfo), ArrInfo*);
 	val.flags1 = TypeClo;	// Initialize Flags1 flags
 	val.type = type;
 	val.avail = len;

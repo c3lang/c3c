@@ -18,7 +18,7 @@ const uint MaxDepth = 8;
 
 $if (DEBUG_NODES):
 
-func void Blocks.dump(const Blocks* b)
+func void Blocks.dump(Blocks* b)
 {
     printf("Nodes (%u/%u)  (%u bytes)\n", b.nodeCount, b.maxNodes, b.nodeCount * sizeof(Node));
     for (uint i = 0; i < b.nodeCount; i++)
@@ -170,7 +170,7 @@ func uint addType(uint raw, ValueType t) @(inline)
     return raw | (t << ValueTypeOffset);
 }
 
-func void Parser.parseKeyValue(Parser* p) throws ParseError
+func void! Parser.parseKeyValue(Parser* p)
 {
     //printf("parseKeyValue()\n");
     char[MaxText] key;
@@ -193,7 +193,7 @@ func void Parser.parseKeyValue(Parser* p) throws ParseError
     p.lastChild[p.numParents] = node;
 }
 
-func void Parser.parseTable(Parser* p) throws ParseError
+func void! Parser.parseTable(Parser* p)
 {
     //printf("parseTable()\n");
     try p.consumeToken();
@@ -348,13 +348,10 @@ func u32 Parser.addTable(Parser* p, const char* name, u32 depth, bool isTop, Nod
     return 0;
 }
 
-func Location Parser.consumeToken(Parser* p) {
+func Location! Parser.consumeToken(Parser* p)
+{
     Location prev = p.tok.loc;
-    p.tokenizer.lex(&p.tok);
-    if (p.tok.is(TokenKind.Error)) {
-        strcpy(p.errorMsg, p.tok.text);
-        longjmp(p.jump_err, 1);
-    }
+    try p.tokenizer.lex(&p.tok);
     return prev;
 }
 
@@ -362,16 +359,19 @@ func Token* Parser.nextToken(Parser* p) {
     return p.tokenizer.lookahead();
 }
 
-func void Parser.expectAndConsume(Parser* p, TokenKind k) {
-    if (p.tok.isNot(k)) {
+func void! Parser.expectAndConsume(Parser* p, TokenKind k) {
+    if (p.tok.isNot(k))
+    {
         sprintf(p.errorMsg, "expected '%s' at %s", token2str(k), p.tok.loc.str());
         longjmp(p.jump_err, 1);
     }
-    p.consumeToken();
+    try p.consumeToken();
 }
 
-func void Parser.expect(Parser* p, TokenKind k) {
-    if (p.tok.isNot(k)) {
+func void Parser.expect(Parser* p, TokenKind k)
+{
+    if (p.tok.isNot(k))
+    {
         sprintf(p.errorMsg, "expected '%s' at %s", token2str(k), p.tok.loc.str());
         longjmp(p.jump_err, 1);
     }
@@ -385,7 +385,7 @@ public struct TomlReader @opaque
     Blocks* blocks;
 }
 
-public func TomlReader* TomlReader.create()
+public func TomlReader* new_toml()
 {
     TomlReader* r = @malloc(TomlReader);
     r.blocks = @malloc(Blocks);
@@ -405,7 +405,9 @@ public func const char* TomlReader.getMsg(const TomlReader* r)
     return r.message;
 }
 
-public func void TomlReader.parse(TomlReader* r, string filename) throws ParseError, FileError
+error EmptyFileError;
+
+public func void! TomlReader.parse(TomlReader* r, string filename)
 {
     Reader file;
 
@@ -416,7 +418,7 @@ public func void TomlReader.parse(TomlReader* r, string filename) throws ParseEr
     if (file.isEmpty())
     {
         printf("file %s is empty\n", filename);
-        throw ParseError.EMPTY_FILE;
+        raise EmptyFileError;
     }
 
     Parser parser;
@@ -431,7 +433,8 @@ $endif
 // --------------------------------------------------------------
 // Getters+iters
 
-func const Node* Reader.findNode(const Reader* r, const char* key) {
+func const Node* Reader.findNode(const Reader* r, const char* key)
+{
     char[MaxText] name;
     const char* cp = key;
     const char* start = cp;

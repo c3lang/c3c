@@ -82,7 +82,13 @@ public func void encode(byte[] in, string *out)
     }
 }
 
-public func int decode(string in, byte[] out) throws Base64Error
+error InvalidCharacter
+{
+    int index;
+    char c;
+}
+
+public func int! decode(string in, byte[] out)
 {
     int j = 0;
 
@@ -92,9 +98,9 @@ public func int decode(string in, byte[] out) throws Base64Error
 
         if (value == PAD) return j;
 
-        if (value < FIRST || in[i] > LAST) throw INVALID_CHARACTER;
+        if (value < FIRST || in[i] > LAST) return! InvalidCharacter(i, value);
         byte c = LUT_DEC[in[i] - FIRST);
-        if (c == ERR) throw INVALID_CHARACTER;
+        if (c == ERR) return! InvalidCharacter(i, value);
 
         switch (i % 4)
         {

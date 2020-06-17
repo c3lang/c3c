@@ -4,9 +4,7 @@ func int main(void)
 {
     Curl curl;
 
-    try curl.init();
-
-    catch (error e)
+    catch (e = curl.init())
     {
         printf("Failed to create new curl: %s\n", e.message);
         exit(FAILURE);
@@ -15,9 +13,7 @@ func int main(void)
     curl.setopt(URL, "http://www.rosettacode.org/");
     curl.setopt(FOLLOWLOCATION, 1);
 
-    try curl.perform();
-
-    catch (CurlError e)
+    catch (e = curl.perform())
     {
         printf("Error making request: %s\n", e.message);
         exit(FAILURE);

@@ -49,6 +49,7 @@ There are some small work being done on the parser here, but most of the structu
 
 - Improved integration with C.
 - Generic macros.
+- Update of error system
 
 #### What's working?
 

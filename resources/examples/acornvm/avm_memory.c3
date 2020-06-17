@@ -14,18 +14,16 @@ module acorn::mem;
  * It returns the location of the new block or NULL (if freed). */
 func void* gcrealloc(Value th, void *block, Auint osize, Auint nsize)
 {
-	Value newblock;
-
 	// Check consistency of block and osize (both must be null or specified)
 	Auint realosize = block ? osize : 0;
 	assert((realosize == 0) == (block == nil));
 
 	// Allocate/free/resize the memory block
-	newblock = @cast(frealloc(block, nsize), Value);
+	Value newblock = cast(frealloc(block, nsize), Value);
 
     $if (defined(MEMORYLOG))
     {
-	    if (nsize==0)
+	    if (nsize == 0)
 	    {
 		    vmLog("Freeing %p size %d", block, osize);
 	    }
@@ -40,7 +38,7 @@ func void* gcrealloc(Value th, void *block, Auint osize, Auint nsize)
 	{
 		// realloc cannot fail when shrinking a block
 		gcfull(th, 1);  // try to free some memory...
-		newblock = @cast(frealloc(block, nsize), Value);  // try again
+		newblock = cast(frealloc(block, nsize), Value);  // try again
 		if (newblock == nil)
 		{
 		    logSevere("Out of memory trying allocate or grow a memory block.");
@@ -57,7 +55,7 @@ func void* gcreallocv(Value th, void* block, Auint osize, Auint nsize, Auint esi
 {
 	// Ensure we are not asking for more memory than available in address space
 	// If we do not do this, calculating the needed memory will overflow
-	if (nsize+1 > ~((Auint)0) / esize)
+	if (nsize + 1 > ~(cast(0, Auint)) / esize)
 	{
 	    logSevere("Out of memory trying to ask for more memory than address space has.");
 	}
@@ -72,20 +70,17 @@ func void* gcreallocv(Value th, void* block, Auint osize, Auint nsize, Auint esi
  **/
 func void* frealloc(void* block, Auint size)
 {
-	if (size == 0)
+	if (!size)
 	{
 		free(block);
 		return NULL;
 	}
-	else
-	{
-		return realloc(block, size);
-	}
+	return realloc(block, size);
 }
 
 macro type($type) @amalloc($type)
 {
-    return @cast(mem_frealloc(NULL, sizeof($type)), $type);
+    return cast(mem_frealloc(NULL, sizeof($type)), $type);
 }
 
 
@@ -103,7 +98,7 @@ MemInfo* new(Value th, int enc, Auint sz)
 	    gccheck(th);	// Incremental GC before memory allocation events
     }
 	vm(th).gcnbrnew++;
-	MemInfo* o = (MemInfo*) (char *) gcrealloc(th, nil, 0, sz);
+	MemInfo* o = cast(gcrealloc(th, nil, 0, sz), MemInfo *);
 	o.marked = vm(th).currentwhite & WHITEBITS;
 	o.enctyp = enc;
 
@@ -132,7 +127,7 @@ func MemInfo* newnolink(Value th, int enc, Auint sz)
 	}
 	vm(th)->gcnbrnew++;
 	// Allocate and initialize
-	MemInfo *o = (MemInfo*) (char *) gcrealloc(th, NULL, 0, sz);
+	MemInfo *o = cast(gcrealloc(th, NULL, 0, sz), MemInfo*);
 	o.marked = vm(th)->currentwhite & WHITEBITS;
 	o.enctyp = enc;
 	return o;
@@ -142,7 +137,7 @@ func MemInfo* newnolink(Value th, int enc, Auint sz)
 func void growaux_(Value th, void *block, AuintIdx *size, AuintIdx size_elems, AuintIdx limit)
 {
 	void* newblock;
-	AuintIdx newsize;
+	AuintIdx newsize = void;
 	// cannot double it?
 	if (*size >= limit / 2)
 	{

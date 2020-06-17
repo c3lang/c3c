@@ -25,7 +25,7 @@ void yyerror(char *s);
 
 %token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
 %token FUNC ERROR MACRO GENERIC CTIF CTELIF CTENDIF CTELSE CTSWITCH CTCASE CTDEFAULT CTFOR
-%token THROWS THROW TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE IN
+%token TRY CATCH SCOPE PUBLIC DEFER ATTRIBUTE IN
 
 %token FN_BLOCK_START FN_BLOCK_END
 %token AUTO
@@ -150,8 +150,13 @@ conditional_expression
 	| logical_expression ELVIS conditional_expression
 	;
 
-assignment_expression
+error_expression
     : conditional_expression
+    | conditional_expression '!'
+    ;
+
+assignment_expression
+    : error_expression
     | unary_expression assignment_operator assignment_expression
     | unary_expression '=' initializer_list
     ;
@@ -159,7 +164,7 @@ assignment_expression
 expression
 	: assignment_expression
 	| TRY assignment_expression
-	| TRY assignment_expression ELSE assignment_expression
+	| assignment_expression ELSE assignment_expression
 	;
 
 
@@ -217,8 +222,8 @@ macro_argument_list
     ;
 
 declaration
-    : type IDENT '=' initializer
-    | type IDENT
+    : failable_type IDENT '=' initializer
+    | failable_type IDENT
     ;
 
 param_declaration
@@ -270,6 +275,11 @@ type
     | type '[' '+' ']'
     ;
 
+failable_type
+    : type
+    | type '!'
+    ;
+
 initializer
 	: expression
 	| initializer_list
@@ -318,8 +328,6 @@ ct_statement
     | ct_for_stmt
     ;
 
-throw_statement
-    : THROW expression ';'
 
 statement
 	: compound_statement
@@ -334,7 +342,6 @@ statement
 	| try_statement
 	| defer_statement
 	| ct_statement
-	| throw_statement
 	;
 
 defer_catch_body
@@ -351,8 +358,7 @@ defer_statement
     ;
 
 catch_statement
-    : CATCH '(' type IDENT ')' defer_catch_body
-    | CATCH '(' ERROR IDENT ')' defer_catch_body
+    : CATCH '(' expression ')' defer_catch_body
     ;
 
 try_statement
@@ -469,16 +475,6 @@ error_list
     | error_list error_type
     ;
 
-throw_declaration
-    : THROWS
-    | THROWS error_list
-    ;
-
-opt_throw_declaration
-    : throw_declaration
-    |
-    ;
-
 func_name
     : path TYPE_IDENT '.' IDENT
     | TYPE_IDENT '.' IDENT
@@ -486,7 +482,7 @@ func_name
     ;
 
 func_declaration
-    : FUNC type func_name opt_parameter_type_list opt_attributes opt_throw_declaration
+    : FUNC failable_type func_name opt_parameter_type_list opt_attributes
     ;
 
 func_definition
@@ -567,7 +563,7 @@ const_declaration
     ;
 
 func_typedef
-    : FUNC type opt_parameter_type_list opt_throw_declaration
+    : FUNC failable_type opt_parameter_type_list
     ;
 
 typedef_declaration
