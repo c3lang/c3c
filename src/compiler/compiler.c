@@ -101,6 +101,7 @@ void compiler_compile(BuildTarget *target)
 		Context *context = contexts[i];
 		llvm_codegen(context);
 	}
+	print_arena_status();
 	exit(EXIT_SUCCESS);
 }
 

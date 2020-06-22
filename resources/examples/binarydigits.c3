@@ -8,10 +8,10 @@ func int main()
     }
 }
 
-func string@ bin(int x)
+func string bin(int x)
 {
     int bits = (x == 0) ? 1 : log10(cast(x, double)) / log10(2);
-    string@ ret = string.make_repeat('0', bits);
+    string ret = str.make_repeat('0', bits);
     for (int i = 0; i < bits; i++)
     {
         ret[bits - i - 1] = x & 1 ? '1' : '0';

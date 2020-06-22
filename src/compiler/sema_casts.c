@@ -15,11 +15,10 @@
 
 static inline void insert_cast(Expr *expr, CastKind kind, Type *canonical)
 {
-	Expr *inner = malloc_arena(sizeof(Expr));
 	assert(expr->resolve_status == RESOLVE_DONE);
 	assert(expr->type);
 	assert(canonical->canonical == canonical);
-	*inner = *expr;
+	Expr *inner = COPY(expr);
 	expr->expr_kind = EXPR_CAST;
 	expr->cast_expr.kind = kind;
 	expr->cast_expr.expr = inner;
@@ -226,6 +225,7 @@ bool bofp(Expr *left, Type *canonical, Type *type, CastType cast_type)
  */
 bool xibo(Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
+	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
 //	if (cast_type >= CAST_TYPE_IMPLICIT_ASSIGN) EXIT_T_MISMATCH();
 	RETURN_NON_CONST_CAST(CAST_INTBOOL);
 
@@ -326,40 +326,6 @@ bool ixxen(Expr *left, Type *canonical, Type *type, CastType cast_type)
 	assert(canonical->type_kind == TYPE_ENUM);
 	canonical = canonical->decl->enums.type_info->type->canonical;
 	return ixxxi(left, canonical, type, cast_type);
-}
-
-/**
- * Convert from compile time int to error value
- */
-bool ixxer(Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-	// Assigning zero = no value is always ok.
-	REQUIRE_EXPLICIT_CAST(cast_type);
-
-	if (left->expr_kind == EXPR_CONST)
-	{
-		if (bigint_cmp_zero(&left->const_expr.i) != CMP_GT)
-		{
-			SEMA_ERROR(left, "Cannot cast '%s' to an error value.", expr_const_to_error_string(&left->const_expr));
-			return false;
-		}
-		BigInt comp;
-		bigint_init_unsigned(&comp, vec_size(canonical->decl->error.error_constants));
-		if (bigint_cmp(&left->const_expr.i, &comp) == CMP_GT)
-		{
-			SEMA_ERROR(left, "Cannot cast '%s' to a valid '%s' error value.", expr_const_to_error_string(&left->const_expr), canonical->decl->name);
-			return false;
-		}
-		left->type = type;
-		return true;
-	}
-	assert(canonical->type_kind == TYPE_ERROR);
-
-	if (!ixxxi(left, type_error_base->canonical, type_error_base, cast_type)) return false;
-
-	insert_cast(left, CAST_XIERR, canonical);
-
-	return true;
 }
 
 /**
@@ -613,16 +579,6 @@ bool enxi(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
 	// 3. Dispatch to the right cast:
 	return xixi(left, enum_type_canonical, canonical, type, cast_type);
 }
-bool erxi(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool ereu(Expr *left)
-{
-	insert_cast(left, CAST_ERREU, type_error_union);
-	return true;
-}
 
 bool vava(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
 {
@@ -648,17 +604,6 @@ bool vasa(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
 
 
 
-bool euxi(Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-	if (cast_type == CAST_TYPE_IMPLICIT)
-	{
-		SEMA_ERROR(left, "Cannot implictly cast an error to '%s'.", type_to_error_string(type));
-		return false;
-	}
-	left->type = type;
-	return true;
-}
 
 bool xieu(Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
@@ -670,23 +615,6 @@ bool xierr(Expr *left, Type *canonical, Type *type, CastType cast_type)
 	TODO
 }
 
-/**
- * Convert error union to error. This is always a required cast.
- * @return false if an error was reported.
- */
-bool euer(Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-	if (cast_type == CAST_TYPE_IMPLICIT)
-	{
-		SEMA_ERROR(left, "Cannot implictly cast an error union back to '%s'.", type_to_error_string(type));
-		return false;
-	}
-	insert_cast(left, CAST_EUERR, canonical);
-	return true;
-}
-
 
 /**
  * Convert error union to error. This is always a required cast.
@@ -694,11 +622,24 @@ bool euer(Expr *left, Type *canonical, Type *type, CastType cast_type)
  */
 bool eubool(Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
-	TODO
 	insert_cast(left, CAST_EUBOOL, canonical);
 	return true;
 }
 
+
+bool euer(Expr *left, Type *canonical, Type *type, CastType cast_type)
+{
+	REQUIRE_EXPLICIT_CAST(cast_type);
+	insert_cast(left, CAST_EUER, canonical);
+	return true;
+}
+
+
+bool ereu(Expr *left, Type *canonical, Type *type, CastType cast_type)
+{
+	insert_cast(left, CAST_EREU, canonical);
+	return true;
+}
 bool ptva(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
 {
 	TODO
@@ -733,10 +674,10 @@ bool vapt(Expr* left, Type *from, Type *canonical, Type *type, CastType cast_typ
 }
 
 
-
-bool cast_to_runtime(Expr *expr)
+bool cast_implicitly_to_runtime(Expr *expr)
 {
 	Type *canonical = expr->type->canonical;
+	int success;
 	switch (canonical->type_kind)
 	{
 		case TYPE_IXX:
@@ -745,23 +686,6 @@ bool cast_to_runtime(Expr *expr)
 			return cast(expr, type_double, CAST_TYPE_IMPLICIT);
 		default:
 			return true;
-	}
-}
-
-void cast_to_smallest_runtime(Expr *expr)
-{
-	Type *canonical = expr->type->canonical;
-	int success;
-	switch (canonical->type_kind)
-	{
-		case TYPE_IXX:
-			success = cast(expr, type_long, CAST_TYPE_IMPLICIT);
-			break;
-		case TYPE_FXX:
-			success = cast(expr, type_double, CAST_TYPE_IMPLICIT);
-			break;
-		default:
-			return;
 	}
 	assert(success && "This should always work");
 }
@@ -780,11 +704,11 @@ CastKind cast_to_bool_kind(Type *type)
 			return cast_to_bool_kind(type->canonical);
 		case TYPE_POISONED:
 		case TYPE_VOID:
-		case TYPE_ERROR_UNION:
+		case TYPE_ERR_UNION:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_STRING:
-		case TYPE_ERROR:
+		case TYPE_ERRTYPE:
 		case TYPE_ENUM:
 		case TYPE_FUNC:
 		case TYPE_MEMBER:
@@ -834,10 +758,9 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 			if (type_is_integer(canonical)) return boxi(expr, canonical, to_type, cast_type);
 			if (type_is_float(canonical)) return bofp(expr, canonical, to_type, cast_type);
 			break;
-		case TYPE_ERROR_UNION:
+		case TYPE_ERR_UNION:
 			if (to_type->type_kind == TYPE_BOOL) return eubool(expr, canonical, to_type, cast_type);
-			if (type_is_integer(canonical)) return euxi(expr, canonical, to_type, cast_type);
-			if (to_type->type_kind == TYPE_ERROR) return euer(expr, canonical, to_type, cast_type);
+			if (to_type->type_kind == TYPE_ERRTYPE) return euer(expr, canonical, to_type, cast_type);
 			break;
 		case TYPE_IXX:
 			// Compile time integers may convert into ints, floats, bools
@@ -846,7 +769,6 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 			if (canonical == type_bool) return ixxbo(expr, to_type);
 			if (canonical->type_kind == TYPE_POINTER) return xipt(expr, from_type, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_ENUM) return ixxen(expr, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_ERROR) return ixxer(expr, canonical, to_type, cast_type);
 			break;
 		case TYPE_I8:
 		case TYPE_I16:
@@ -857,8 +779,6 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 			if (type_is_float(canonical)) return sifp(expr, canonical, to_type);
 			if (canonical == type_bool) return xibo(expr, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_POINTER) return xipt(expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_ERROR_UNION) return xieu(expr, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_ERROR) return xierr(expr, canonical, to_type, cast_type);
 			break;
 		case TYPE_U8:
 		case TYPE_U16:
@@ -887,9 +807,8 @@ bool cast(Expr *expr, Type *to_type, CastType cast_type)
 		case TYPE_ENUM:
 			if (type_is_integer(canonical)) return enxi(expr, from_type, canonical, to_type, cast_type);
 			break;
-		case TYPE_ERROR:
-			if (type_is_integer(canonical)) return erxi(expr, from_type, canonical, to_type, cast_type);
-			if (canonical == type_error_union) return ereu(expr);
+		case TYPE_ERRTYPE:
+			if (canonical->type_kind == TYPE_ERR_UNION) return ereu(expr, canonical, to_type, cast_type);
 			break;
 		case TYPE_FUNC:
 			SEMA_ERROR(expr, "The function call is missing (...), if you want to take the address of a function it must be prefixed with '&'.");

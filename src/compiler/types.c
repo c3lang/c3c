@@ -10,7 +10,7 @@ static Type t_f32, t_f64, t_fxx;
 static Type t_usz, t_isz;
 static Type t_cus, t_cui, t_cul, t_cull;
 static Type t_cs, t_ci, t_cl, t_cll;
-static Type t_voidstar, t_typeid, t_error_union;
+static Type t_voidstar, t_typeid, t_error;
 
 Type *type_bool = &t_u1;
 Type *type_void = &t_u0;
@@ -39,8 +39,7 @@ Type *type_c_ushort = &t_cus;
 Type *type_c_uint = &t_cui;
 Type *type_c_ulong = &t_cul;
 Type *type_c_ulonglong = &t_cull;
-Type *type_error_union = &t_error_union;
-Type *type_error_base = &t_ci;
+Type *type_error = &t_error;
 
 static unsigned size_subarray;
 static unsigned alignment_subarray;
@@ -100,29 +99,19 @@ const char *type_to_error_string(Type *type)
 		case TYPE_F64:
 		case TYPE_FXX:
 		case TYPE_UNION:
-		case TYPE_ERROR:
+		case TYPE_ERRTYPE:
 			return type->name;
 		case TYPE_FUNC:
 		{
-			asprintf(&buffer, "func %s(", type_to_error_string(type->func.signature->rtype->type));
+			asprintf(&buffer, type->func.signature->failable ? "func %s!(" : "func %s(",
+					type_to_error_string(type->func.signature->rtype->type));
 			VECEACH(type->func.signature->params, i)
 			{
 				if (i != 0) buffer = strcat_arena(buffer, ", ");
 				strcat_arena(buffer, type_to_error_string(type->func.signature->params[i]->type));
 			}
-			buffer = strcat_arena(buffer, ")");
-			if (type->func.signature->throw_any)
-			{
-				return strcat_arena(buffer, " throws");
-			}
-			if (!vec_size(type->func.signature->throws)) return buffer;
-			buffer = strcat_arena(buffer, " throws ");
-			VECEACH(type->func.signature->throws, i)
-			{
-				if (i != 0) buffer = strcat_arena(buffer, ", ");
-				buffer = strcat_arena(buffer, type_to_error_string(type->func.signature->throws[i]->type));
-			}
-			return buffer;
+
+			return strcat_arena(buffer, ")");
 		}
 		case TYPE_TYPEID:
 			return "typeid";
@@ -146,7 +135,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_SUBARRAY:
 			asprintf(&buffer, "%s[]", type_to_error_string(type->array.base));
 			return buffer;
-		case TYPE_ERROR_UNION:
+		case TYPE_ERR_UNION:
 			return "error";
 	}
 	UNREACHABLE
@@ -167,7 +156,6 @@ static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
 		case DECL_TYPEDEF:
-		case DECL_ERROR_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
@@ -177,11 +165,12 @@ static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
 		case DECL_MEMBER:
+		case DECL_LABEL:
 			UNREACHABLE
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ENUM:
-		case DECL_ERROR:
+		case DECL_ERR:
 		{
 			unsigned len = source_range_len(decl->name_span);
 			memcpy(dst + *offset, decl->name, len);
@@ -202,7 +191,7 @@ void type_append_signature_name(Type *type, char *dst, size_t *offset)
 		case TYPE_POISONED:
 		case TYPE_TYPEDEF:
 			UNREACHABLE;
-		case TYPE_ERROR:
+		case TYPE_ERRTYPE:
 		case TYPE_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -218,76 +207,76 @@ void type_append_signature_name(Type *type, char *dst, size_t *offset)
 
 
 
-size_t type_size(Type *canonical)
+size_t type_size(Type *type)
 {
-	assert(canonical && canonical->canonical == canonical);
-	switch (canonical->type_kind)
+	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
-		case TYPE_TYPEDEF:
 			UNREACHABLE;
+		case TYPE_TYPEDEF:
+			return type_size(type->canonical);
 		case TYPE_ENUM:
-			return canonical->decl->enums.type_info->type->canonical->builtin.bytesize;
-		case TYPE_ERROR:
+			return type->decl->enums.type_info->type->canonical->builtin.bytesize;
+		case TYPE_ERRTYPE:
 			return alignment_error_code;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-			assert(canonical->decl->resolve_status == RESOLVE_DONE);
-			return canonical->decl->strukt.size;
+			assert(type->decl->resolve_status == RESOLVE_DONE);
+			return type->decl->strukt.size;
 		case TYPE_VOID:
 			return 1;
 		case TYPE_BOOL:
 		case TYPE_TYPEID:
 		case ALL_INTS:
 		case ALL_FLOATS:
-			return canonical->builtin.bytesize;
+		case TYPE_ERR_UNION:
+			return type->builtin.bytesize;
 		case TYPE_MEMBER:
-			return type_size(canonical->decl->var.type_info->type);
+			return type_size(type->decl->var.type_info->type);
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
 		case TYPE_STRING:
-		case TYPE_ERROR_UNION:
 			return t_usz.canonical->builtin.bytesize;
 		case TYPE_ARRAY:
-			return type_size(canonical->array.base) * canonical->array.len;
+			return type_size(type->array.base) * type->array.len;
 		case TYPE_SUBARRAY:
 			return size_subarray;
 	}
 	UNREACHABLE
 }
 
-unsigned int type_abi_alignment(Type *canonical)
+unsigned int type_abi_alignment(Type *type)
 {
-	assert(canonical && canonical->canonical == canonical);
-	switch (canonical->type_kind)
+	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
-		case TYPE_TYPEDEF:
 		case TYPE_VOID:
 			UNREACHABLE;
+		case TYPE_TYPEDEF:
+			return type_abi_alignment(type->canonical);
 		case TYPE_ENUM:
-			return canonical->decl->enums.type_info->type->canonical->builtin.abi_alignment;
-		case TYPE_ERROR:
+			return type->decl->enums.type_info->type->canonical->builtin.abi_alignment;
+		case TYPE_ERRTYPE:
 			return alignment_error_code;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-			return canonical->decl->strukt.abi_alignment;
+			return type->decl->strukt.abi_alignment;
 		case TYPE_TYPEID:
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
-		case TYPE_ERROR_UNION:
-			return canonical->builtin.abi_alignment;
+		case TYPE_ERR_UNION:
+			return type->builtin.abi_alignment;
 		case TYPE_MEMBER:
-			return type_abi_alignment(canonical->decl->var.type_info->type);
+			return type_abi_alignment(type->decl->var.type_info->type);
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
 		case TYPE_STRING:
 			return t_usz.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
-			return type_abi_alignment(canonical->array.base);
+			return type_abi_alignment(type->array.base);
 		case TYPE_SUBARRAY:
 			return alignment_subarray;
 	}
@@ -328,6 +317,7 @@ static Type *type_generate_ptr(Type *ptr_type, bool canonical)
 	}
 	return ptr;
 }
+
 
 static Type *type_generate_subarray(Type *arr_type, bool canonical)
 {
@@ -534,7 +524,7 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 
 	alignment_subarray = MAX(type_abi_alignment(&t_voidstar), type_abi_alignment(t_usz.canonical));
 	size_subarray = alignment_subarray * 2;
-	type_create("error", &t_error_union, TYPE_ERROR_UNION, target->width_pointer, target->align_pointer, target->align_pref_pointer);
+	type_create("error", &t_error, TYPE_ERR_UNION, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
 }
 
 /**
@@ -569,7 +559,7 @@ bool type_may_have_sub_elements(Type *type)
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
-		case TYPE_ERROR:
+		case TYPE_ERRTYPE:
 			return true;
 		default:
 			return false;
@@ -743,13 +733,13 @@ Type *type_find_max_type(Type *type, Type *other)
 			// IMPROVE: should there be implicit conversion between one enum and the other in
 			// some way?
 			return NULL;
-		case TYPE_ERROR:
-			if (other->type_kind == TYPE_ERROR) return type_error_union;
+		case TYPE_ERRTYPE:
+			if (other->type_kind == TYPE_ERRTYPE) return type_error;
 			return NULL;
 		case TYPE_MEMBER:
 		case TYPE_FUNC:
 		case TYPE_UNION:
-		case TYPE_ERROR_UNION:
+		case TYPE_ERR_UNION:
 		case TYPE_TYPEID:
 			return NULL;
 		case TYPE_STRUCT:

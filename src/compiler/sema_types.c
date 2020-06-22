@@ -18,28 +18,6 @@ static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 	return true;
 }
 
-bool throw_completely_caught(TypeInfo *throw, CatchInfo *catches)
-{
-	VECEACH(catches, i)
-	{
-		CatchInfo *catch_info = &catches[i];
-		switch (catch_info->kind)
-		{
-			case CATCH_REGULAR:
-				if (throw->type == catch_info->catch->catch_stmt.error_param->type) return true;
-				break;
-			case CATCH_TRY_ELSE:
-			case CATCH_RETURN_ANY:
-				return true;
-			case CATCH_RETURN_MANY:
-			case CATCH_RETURN_ONE:
-				if (throw->type == catch_info->error->type) return true;
-				break;
-		}
-	}
-	return false;
-}
-
 
 static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 {
@@ -57,7 +35,10 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 			type->type = type_get_subarray(type->array.base->type);
 			break;;
 		case TYPE_INFO_ARRAY:
-			if (!sema_analyse_expr_of_required_type(context, type_usize, type->array.len)) return type_info_poison(type);
+			if (!sema_analyse_expr_of_required_type(context,
+			                                        type_usize,
+			                                        type->array.len,
+			                                        false)) return type_info_poison(type);
 			if (type->array.len->expr_kind != EXPR_CONST)
 			{
 				SEMA_ERROR(type->array.len, "Expected a constant value as array size.");
@@ -82,7 +63,6 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 	                                 type_info->unresolved.name_loc.string,
 	                                 type_info->unresolved.path,
 	                                 &ambiguous_decl);
-
 	if (!decl)
 	{
 		SEMA_TOKEN_ERROR(type_info->unresolved.name_loc, "Unknown type '%s'.", type_info->unresolved.name_loc.string);
@@ -109,7 +89,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 	{
 		case DECL_STRUCT:
 		case DECL_UNION:
-		case DECL_ERROR:
+		case DECL_ERR:
 		case DECL_ENUM:
 		case DECL_TYPEDEF:
 			if (decl->resolve_status == RESOLVE_NOT_DONE)
@@ -125,11 +105,11 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_FUNC:
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
-		case DECL_ERROR_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
 		case DECL_GENERIC:
+		case DECL_LABEL:
 			SEMA_TOKEN_ERROR(type_info->unresolved.name_loc, "This is not a type.");
 			return type_info_poison(type_info);
 		case DECL_CT_ELSE:
@@ -164,7 +144,8 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 		case TYPE_INFO_INC_ARRAY:
 			UNREACHABLE
 		case TYPE_INFO_IDENTIFIER:
-			return sema_resolve_type_identifier(context, type_info);
+			if (!sema_resolve_type_identifier(context, type_info)) return false;
+			break;
 		case TYPE_INFO_EXPRESSION:
 			if (!sema_analyse_expr(context, NULL, type_info->unresolved_type_expr))
 			{
@@ -174,9 +155,11 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_VARARRAY:
 		case TYPE_INFO_ARRAY:
-			return sema_resolve_array_type(context, type_info);
+			if (!sema_resolve_array_type(context, type_info)) return false;
+			break;
 		case TYPE_INFO_POINTER:
-			return sema_resolve_ptr_type(context, type_info);
+			if (!sema_resolve_ptr_type(context, type_info)) return false;
+			break;
 	}
-	UNREACHABLE
+	return true;
 }

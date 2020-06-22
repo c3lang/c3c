@@ -16,12 +16,13 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 void memory_init(void);
 void *malloc_arena(unsigned long mem);
 void free_arena(void);
+void print_arena_status(void);
 
 void run_arena_allocator_tests(void);
 
 #define MALLOC(mem) malloc_arena(mem)
-#define MALLOCS(type) malloc_arena(sizeof(type))
-#define CALLOCS(type) ({ void *__x = malloc_arena(sizeof(type)); memset(__x, 0, sizeof(type)); __x; })
+#define CALLOCS(type) ({ type *__x = malloc_arena(sizeof(type)); memset(__x, 0, sizeof(type)); __x; })
+#define COPY(value) ({ typeof(value) __x = malloc_arena(sizeof(*value)); memcpy(__x, value, sizeof(*value)); __x; })
 
 static inline bool is_power_of_two(uint64_t x)
 {
@@ -305,6 +306,7 @@ static inline bool is_all_lower(const char* string)
 
 char *strcat_arena(const char *a, const char *b);
 char *strformat(const char *var, ...) __printflike(1, 2);
+char *strcopy(const char *start, size_t len);
 
 #define MAX(_a, _b) ({ \
   typeof(_a) __a__ = (_a); \

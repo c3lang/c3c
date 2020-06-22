@@ -6,37 +6,6 @@
 #include "bigint.h"
 
 
-static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
-{
-	Decl **constants = decl->error.error_constants;
-	unsigned size = vec_size(constants);
-	if (size > MAX_ERRORS)
-	{
-		SEMA_ERROR(decl, "More than %d errors declared in a single error type.", MAX_ERRORS);
-		return false;
-	}
-	bool success = true;
-	for (unsigned i = 0; i < size; i++)
-	{
-		Decl *constant = constants[i];
-		for (unsigned j = 0; j < i; j++)
-		{
-			if (constant->name == constants[j]->name)
-			{
-				SEMA_ERROR(constant, "Duplicate error names, please remove one of them.");
-				SEMA_PREV(constants[j], "The previous declaration was here.");
-				decl_poison(constant);
-				decl_poison(constants[j]);
-				success = false;
-				break;
-			}
-		}
-		constant->type = decl->type;
-		constant->error_constant.value = i + 1;
-		constant->resolve_status = RESOLVE_DONE;
-	}
-	return success;
-}
 
 
 static inline void sema_set_struct_size(Decl *decl)
@@ -142,7 +111,7 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 	if (param->var.init_expr)
 	{
 		Expr *expr = param->var.init_expr;
-		if (!sema_analyse_expr_of_required_type(context, param->type, expr)) return false;
+		if (!sema_analyse_expr_of_required_type(context, param->type, expr, false)) return false;
 		if (expr->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(expr, "Only constant expressions may be used as default values.");
@@ -162,6 +131,7 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 	if (all_ok)
 	{
 		type_append_signature_name(signature->rtype->type, buffer, &buffer_write_offset);
+		if (signature->failable) buffer[buffer_write_offset++] = '!';
 		buffer[buffer_write_offset++] = '(';
 	}
 	if (vec_size(signature->params) > MAX_PARAMS)
@@ -212,47 +182,13 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 		buffer[buffer_write_offset++] = '.';
 	}
 	buffer[buffer_write_offset++] = ')';
-	if (signature->throw_any)
-	{
-		assert(!signature->throws);
-		buffer[buffer_write_offset++] = '!';
-	}
-	if (vec_size(signature->throws))
-	{
-		buffer[buffer_write_offset++] = '!';
-		VECEACH(signature->throws, i)
-		{
-			TypeInfo *err_decl = signature->throws[i];
-			if (!sema_resolve_type_info(context, err_decl))
-			{
-				return false;
-			}
-			if (i > 0 && all_ok)
-			{
-				buffer[buffer_write_offset++] = '|';
-			}
-			type_append_signature_name(err_decl->type, buffer, &buffer_write_offset);
-		}
-	}
-
-	unsigned error_types = vec_size(signature->throws);
-	ErrorReturn error_return = ERROR_RETURN_NONE;
-	if (signature->throw_any)
-	{
-		error_return = ERROR_RETURN_ANY;
-	}
-	else if (error_types)
-	{
-		 error_return = error_types > 1 ? ERROR_RETURN_MANY : ERROR_RETURN_ONE;
-	}
-	signature->error_return = error_return;
 
 	Type *return_type = signature->rtype->type->canonical;
 	signature->return_param = false;
 	if (return_type->type_kind != TYPE_VOID)
 	{
 		// TODO fix this number with ABI compatibility
-		if (signature->error_return != ERROR_RETURN_NONE || type_size(return_type) > 8 * 2)
+		if (signature->failable || type_size(return_type) > 8 * 2)
 		{
 			signature->return_param = true;
 		}
@@ -339,7 +275,7 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 		}
 
 		// We try to convert to the desired type.
-		if (!sema_analyse_expr_of_required_type(context, type, expr))
+		if (!sema_analyse_expr_of_required_type(context, type, expr, false))
 		{
 			success = false;
 			enum_value->resolve_status = RESOLVE_DONE;
@@ -608,7 +544,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 	decl->type = decl->var.type_info->type;
 	if (decl->var.init_expr)
 	{
-		if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr)) return false;
+		if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr, false)) return false;
 		if (decl->var.init_expr->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(decl->var.init_expr, "The expression must be a constant value.");
@@ -671,6 +607,49 @@ static inline bool sema_analyse_generic(Context *context, Decl *decl)
 }
 
 
+
+static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
+{
+	Decl **members = decl->strukt.members;
+	unsigned member_count = vec_size(members);
+	bool success = true;
+	unsigned error_size = 0;
+	for (unsigned i = 0; i < member_count; i++)
+	{
+		Decl *member = members[i];
+		for (unsigned j = 0; j < i; j++)
+		{
+			if (member->name == members[j]->name)
+			{
+				SEMA_ERROR(member, "Duplicate error names, please remove one of them.");
+				SEMA_PREV(members[j], "The previous declaration was here.");
+				decl_poison(member);
+				decl_poison(members[j]);
+				success = false;
+				break;
+			}
+		}
+		sema_analyse_struct_member(context, member);
+		unsigned alignment = type_abi_alignment(member->type);
+		unsigned size = type_size(member->type);
+		if (error_size % alignment != 0)
+		{
+			error_size += alignment - (error_size % alignment);
+		}
+		error_size += size;
+	}
+	sema_set_struct_size(decl);
+	if (decl->strukt.size > type_size(type_usize))
+	{
+		SEMA_ERROR(decl, "Error type may exceed pointer size (%d bytes) it was %d bytes.", type_size(type_usize), error_size);
+		return false;
+	}
+	decl->strukt.abi_alignment = type_abi_alignment(type_voidptr);
+	decl->strukt.size = type_size(type_error);
+	return success;
+}
+
+
 bool sema_analyse_decl(Context *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
@@ -715,7 +694,7 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 			if (!sema_analyse_enum(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
-		case DECL_ERROR:
+		case DECL_ERR:
 			if (!sema_analyse_error(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
@@ -727,11 +706,11 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_POISONED:
 		case DECL_IMPORT:
 		case DECL_ENUM_CONSTANT:
-		case DECL_ERROR_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_MEMBER:
+		case DECL_LABEL:
 			UNREACHABLE
 		case DECL_CT_IF:
 			// Handled elsewhere

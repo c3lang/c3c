@@ -782,6 +782,7 @@ int i = 0;
     return 1;
 }
 
+
 func void test2(int* x, int y, int z)
 {
     *(&(&x)[0]);

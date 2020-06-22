@@ -190,7 +190,6 @@ static void recover_top_level(Context *context)
 			case TOKEN_STRUCT:
 			case TOKEN_IMPORT:
 			case TOKEN_UNION:
-			case TOKEN_ERRSET:
 			case TOKEN_MACRO:
 			case TOKEN_EXTERN:
 				return;
@@ -336,8 +335,8 @@ static inline TypeInfo *parse_base_type(Context *context)
 			type_info = type_info_new(TYPE_INFO_IDENTIFIER, context->tok.span);
 			type_info->unresolved.name_loc = context->tok;
 			break;
-		case TOKEN_ERROR_TYPE:
-			type_found = type_error_union;
+		case TOKEN_ERR:
+			type_found = type_error;
 			break;
 		case TOKEN_VOID:
 			type_found = type_void;
@@ -509,6 +508,7 @@ TypeInfo *parse_type(Context *context)
 	return type_info;
 }
 
+
 #pragma mark --- Decl parsing
 
 /**
@@ -543,7 +543,6 @@ Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type)
 		advance_and_verify(context, TOKEN_EQ);
 		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
 	}
-
 	return decl;
 }
 
@@ -561,8 +560,14 @@ Decl *parse_decl(Context *context)
 	TypeInfo *type_info = parse_type(context);
 	TypeInfo *type = TRY_TYPE_OR(type_info, poisoned_decl);
 
+	bool failable = try_consume(context, TOKEN_BANG);
 	Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, local, type), poisoned_decl);
-
+	if (failable && decl->var.unwrap)
+	{
+		SEMA_ERROR(decl, "You cannot use unwrap with a failable variable.");
+		return poisoned_decl;
+	}
+	decl->var.failable = failable;
 	if (constant) decl->var.kind = VARDECL_CONST;
 
 	return decl;
@@ -591,10 +596,12 @@ static inline Decl *parse_const_declaration(Context *context, Visibility visibil
 	}
 	else
 	{
-		if (token_is_type(context->tok.type) || context->tok.type == TOKEN_CT_TYPE_IDENT || context->tok.type == TOKEN_TYPE_IDENT)
+		if (token_is_any_type(context->tok.type))
 		{
 			decl->var.type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
 		}
+		decl->name = context->tok.string;
+		decl->name_span = context->tok.span;
 		if (!consume_const_name(context, "constant")) return poisoned_decl;
 	}
 
@@ -608,8 +615,8 @@ static inline Decl *parse_const_declaration(Context *context, Visibility visibil
 
 /**
  * global_declaration
- * 	: type_expression IDENT ';'
- * 	| type_expression IDENT '=' expression ';'
+ * 	: failable_type IDENT ';'
+ * 	| failable_type IDENT '=' expression ';'
  * 	;
  *
  * @param visibility
@@ -643,6 +650,11 @@ static inline Decl *parse_incremental_array(Context *context)
 	Token name = context->tok;
 	advance_and_verify(context, TOKEN_IDENT);
 
+	if (!try_consume(context, TOKEN_PLUS_ASSIGN))
+	{
+		SEMA_TOKEN_ERROR(name, "Did you miss a declaration before the variable name?");
+		return poisoned_decl;
+	}
 	CONSUME_OR(TOKEN_PLUS_ASSIGN, poisoned_decl);
 	Decl *decl = decl_new(DECL_ARRAY_VALUE, name, VISIBLE_LOCAL);
 	decl->incr_array_decl = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
@@ -661,34 +673,36 @@ static inline Decl *parse_incremental_array(Context *context)
  *
  * @return bool
  */
-Ast *parse_decl_expr_list(Context *context)
+Expr *parse_decl_expr_list(Context *context)
 {
-	Ast *decl_expr = AST_NEW_TOKEN(AST_DECL_EXPR_LIST, context->tok);
-	decl_expr->decl_expr_stmt = NULL;
+	Expr *decl_expr = EXPR_NEW_TOKEN(EXPR_DECL_LIST, context->tok);
+	decl_expr->dexpr_list_expr = NULL;
 	while (1)
 	{
 		if (parse_next_is_decl(context))
 		{
-			Decl *decl = TRY_DECL_OR(parse_decl(context), poisoned_ast);
+			Decl *decl = TRY_DECL_OR(parse_decl(context), poisoned_expr);
 			Ast *stmt = AST_NEW(AST_DECLARE_STMT, decl->span);
 			stmt->declare_stmt = decl;
-			vec_add(decl_expr->decl_expr_stmt, stmt);
+			vec_add(decl_expr->dexpr_list_expr, stmt);
 		}
 		else
 		{
-			Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+			Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
 			Ast *stmt = AST_NEW(AST_EXPR_STMT, expr->span);
 			stmt->expr_stmt = expr;
-			vec_add(decl_expr->decl_expr_stmt, stmt);
+			vec_add(decl_expr->dexpr_list_expr, stmt);
 		}
 		if (!try_consume(context, TOKEN_COMMA)) break;
 	}
-	return extend_ast_with_prev_token(context, decl_expr);
+	RANGE_EXTEND_PREV(decl_expr);
+	return decl_expr;
 }
 
 
 bool parse_next_is_decl(Context *context)
 {
+	TokenType next_tok = context->next_tok.type;
 	switch (context->tok.type)
 	{
 		case TOKEN_VOID:
@@ -716,11 +730,11 @@ bool parse_next_is_decl(Context *context)
 		case TOKEN_C_ULONGLONG:
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_CT_TYPE_IDENT:
-		case TOKEN_ERROR_TYPE:
+		case TOKEN_ERR:
 		case TOKEN_TYPEID:
-			return context->next_tok.type == TOKEN_STAR || context->next_tok.type == TOKEN_LBRACKET || context->next_tok.type == TOKEN_IDENT;
+			return (next_tok == TOKEN_BANG) | (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) | (next_tok == TOKEN_IDENT);
 		case TOKEN_IDENT:
-			if (context->next_tok.type != TOKEN_SCOPE) return false;
+			if (next_tok != TOKEN_SCOPE) return false;
 			// We need a little lookahead to see if this is type or expression.
 			context_store_lexer_state(context);
 			do
@@ -735,6 +749,56 @@ bool parse_next_is_decl(Context *context)
 	}
 }
 
+
+
+bool parse_next_is_case_type(Context *context)
+{
+	TokenType next_tok = context->next_tok.type;
+	switch (context->tok.type)
+	{
+		case TOKEN_VOID:
+		case TOKEN_BYTE:
+		case TOKEN_BOOL:
+		case TOKEN_CHAR:
+		case TOKEN_DOUBLE:
+		case TOKEN_FLOAT:
+		case TOKEN_INT:
+		case TOKEN_ISIZE:
+		case TOKEN_LONG:
+		case TOKEN_SHORT:
+		case TOKEN_UINT:
+		case TOKEN_ULONG:
+		case TOKEN_USHORT:
+		case TOKEN_USIZE:
+		case TOKEN_QUAD:
+		case TOKEN_C_SHORT:
+		case TOKEN_C_INT:
+		case TOKEN_C_LONG:
+		case TOKEN_C_LONGLONG:
+		case TOKEN_C_USHORT:
+		case TOKEN_C_UINT:
+		case TOKEN_C_ULONG:
+		case TOKEN_C_ULONGLONG:
+		case TOKEN_TYPE_IDENT:
+		case TOKEN_CT_TYPE_IDENT:
+		case TOKEN_ERR:
+		case TOKEN_TYPEID:
+			return (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET | next_tok == TOKEN_COLON | next_tok == TOKEN_EOS);
+		case TOKEN_IDENT:
+			if (next_tok != TOKEN_SCOPE) return false;
+			// We need a little lookahead to see if this is type or expression.
+			context_store_lexer_state(context);
+			do
+			{
+				advance(context); advance(context);
+			} while (context->tok.type == TOKEN_IDENT && context->next_tok.type == TOKEN_SCOPE);
+			bool is_type = context->tok.type == TOKEN_TYPE_IDENT;
+			context_restore_lexer_state(context);
+			return is_type;
+		default:
+			return false;
+	}
+}
 
 
 
@@ -794,55 +858,6 @@ static inline bool parse_attributes(Context *context, Decl *parent_decl)
 
 
 
-/**
- * throw_declaration
- *  : THROWS
- *  | THROWS error_list
- *  ;
- *
- *  opt_throw_declaration
- *  : throw_declaration
- *  |
- *  ;
- *
- */
-static inline bool parse_opt_throw_declaration(Context *context, Visibility visibility, FunctionSignature *signature)
-{
-	if (context->tok.type == TOKEN_THROW)
-	{
-		SEMA_TOKEN_ERROR(context->tok, "Did you mean 'throws'?");
-		return false;
-	}
-
-	if (!try_consume(context, TOKEN_THROWS)) return true;
-	if (context->tok.type != TOKEN_TYPE_IDENT && context->tok.type != TOKEN_IDENT)
-	{
-		signature->throw_any = true;
-		return true;
-	}
-	TypeInfo **throws = NULL;
-	while (1)
-	{
-		TypeInfo *throw = parse_base_type(context);
-		if (!type_info_ok(throw)) return false;
-		vec_add(throws, throw);
-		if (!try_consume(context, TOKEN_COMMA)) break;
-	}
-	switch (context->tok.type)
-	{
-		case TOKEN_TYPE_IDENT:
-			SEMA_TOKEN_ERROR(context->tok, "Expected ',' between each error type.");
-			return false;
-		case TOKEN_IDENT:
-		case TOKEN_CONST_IDENT:
-			SEMA_TOKEN_ERROR(context->tok, "Expected an error type.");
-			return false;
-		default:
-			break;
-	}
-	signature->throws = throws;
-	return true;
-}
 
 
 /**
@@ -1093,7 +1108,7 @@ static inline Ast *parse_generics_statements(Context *context)
 /**
  * generics_declaration
  *	: GENERIC opt_path IDENT '(' macro_argument_list ')' '{' generics_body '}'
- *	| GENERIC type_expression opt_path IDENT '(' macro_argument_list ')' '{' generics_body '}'
+ *	| GENERIC failable_type opt_path IDENT '(' macro_argument_list ')' '{' generics_body '}'
  *	;
  *
  * opt_path
@@ -1134,45 +1149,47 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 	}
 	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
 	Ast **cases = NULL;
-	while (!try_consume(context, TOKEN_RBRACE))
-	{
-		if (context->tok.type == TOKEN_CASE)
-		{
-			Ast *generic_case = AST_NEW_TOKEN(AST_GENERIC_CASE_STMT, context->tok);
-			advance_and_verify(context, TOKEN_CASE);
-			TypeInfo **types = NULL;
-			while (!try_consume(context, TOKEN_COLON))
-			{
-				TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-				types = VECADD(types, type);
-				if (!try_consume(context, TOKEN_COMMA) && context->tok.type != TOKEN_COLON)
-				{
-					SEMA_TOKEN_ERROR(context->tok, "Expected ',' or ':'.");
-					return poisoned_decl;
-				}
-			}
-			generic_case->generic_case_stmt.types = types;
-			generic_case->generic_case_stmt.body = TRY_AST_OR(parse_generics_statements(context), poisoned_decl);
-			cases = VECADD(cases, generic_case);
-			continue;
-		}
-		if (context->tok.type == TOKEN_DEFAULT)
-		{
-			Ast *generic_case = AST_NEW_TOKEN(AST_GENERIC_DEFAULT_STMT, context->tok);
-			advance_and_verify(context, TOKEN_DEFAULT);
-			CONSUME_OR(TOKEN_COLON, poisoned_decl);
-			generic_case->generic_default_stmt = TRY_AST_OR(parse_generics_statements(context), poisoned_decl);
-			cases = VECADD(cases, generic_case);
-			continue;
-		}
-		SEMA_TOKEN_ERROR(context->tok, "Expected 'case' or 'default'.");
-		return poisoned_decl;
-	}
+	if (!parse_switch_body(context, &cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_decl;
 	decl->generic_decl.cases = cases;
 	decl->generic_decl.parameters = parameters;
 	return decl;
 }
 
+static inline Decl *parse_define(Context *context, Visibility visibility)
+{
+	advance_and_verify(context, TOKEN_DEFINE);
+	TypeInfo *rtype = NULL;
+	if (context->tok.type != TOKEN_IDENT)
+	{
+		rtype = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+	}
+	bool had_error;
+	Path *path = parse_path_prefix(context, &had_error);
+	if (had_error) return poisoned_decl;
+	Decl *decl = decl_new(DECL_GENERIC, context->tok, visibility);
+	decl->generic_decl.path = path;
+	if (!consume_ident(context, "generic function name")) return poisoned_decl;
+	decl->generic_decl.rtype = rtype;
+	Token *parameters = NULL;
+	CONSUME_OR(TOKEN_LPAREN, poisoned_decl);
+	while (!try_consume(context, TOKEN_RPAREN))
+	{
+		if (context->tok.type != TOKEN_IDENT)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "Expected an identifier.");
+			return false;
+		}
+		parameters = VECADD(parameters, context->tok);
+		advance(context);
+		COMMA_RPAREN_OR(poisoned_decl);
+	}
+	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
+	Ast **cases = NULL;
+	if (!parse_switch_body(context, &cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_decl;
+	decl->generic_decl.cases = cases;
+	decl->generic_decl.parameters = parameters;
+	return decl;
+}
 
 
 static AttributeDomain TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
@@ -1183,7 +1200,7 @@ static AttributeDomain TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
 		[TOKEN_UNION] = ATTR_UNION,
 		[TOKEN_CONST] = ATTR_CONST,
 		[TOKEN_TYPEDEF] = ATTR_TYPEDEF,
-		[TOKEN_ERRSET] = ATTR_ERROR,
+		[TOKEN_ERR] = ATTR_ERROR,
 };
 
 /**
@@ -1246,8 +1263,8 @@ static inline Decl *parse_attribute_declaration(Context *context, Visibility vis
  */
 /**
  * func_typedef
- *  : FUNC type_expression opt_parameter_type_list
- *  | FUNC type_expression opt_parameter_type_list throw_declaration
+ *  : FUNC failable_type opt_parameter_type_list
+ *  | FUNC failable_type opt_parameter_type_list throw_declaration
  *  ;
  */
 static inline bool parse_func_typedef(Context *context, Decl *decl, Visibility visibility)
@@ -1255,12 +1272,16 @@ static inline bool parse_func_typedef(Context *context, Decl *decl, Visibility v
     decl->typedef_decl.is_func = true;
     advance_and_verify(context, TOKEN_FUNC);
     TypeInfo *type_info = TRY_TYPE_OR(parse_type(context), false);
+    if (try_consume(context, TOKEN_BANG))
+    {
+    	decl->typedef_decl.function_signature.failable = true;
+    }
     decl->typedef_decl.function_signature.rtype = type_info;
     if (!parse_opt_parameter_type_list(context, visibility, &(decl->typedef_decl.function_signature), true))
     {
         return false;
     }
-    return parse_opt_throw_declaration(context, visibility, &(decl->typedef_decl.function_signature));
+    return true;
 
 }
 
@@ -1291,12 +1312,15 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
     advance_and_verify(context, TOKEN_MACRO);
 
     TypeInfo *rtype = NULL;
+    bool failable = false;
     if (context->tok.type != TOKEN_IDENT)
     {
         rtype = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+        failable = try_consume(context, TOKEN_BANG);
     }
     Decl *decl = decl_new(DECL_MACRO, context->tok, visibility);
     decl->macro_decl.rtype = rtype;
+    decl->macro_decl.failable = failable;
     TRY_CONSUME_OR(TOKEN_IDENT, "Expected a macro name here", poisoned_decl);
 
     CONSUME_OR(TOKEN_LPAREN, poisoned_decl);
@@ -1332,48 +1356,37 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 
 /**
  * error_declaration
- *		: ERROR TYPE_IDENT '{' error_list '}'
+ *		: ERROR TYPE_IDENT ';'
+ *		| ERROR TYPE_IDENT '{' error_data '}'
  *		;
- *
  */
 static inline Decl *parse_error_declaration(Context *context, Visibility visibility)
 {
-	advance_and_verify(context, TOKEN_ERRSET);
+	advance_and_verify(context, TOKEN_ERR);
 
-    Decl *error_decl = decl_new_with_type(context->tok, DECL_ERROR, visibility);
+    Decl *err_decl = decl_new_with_type(context->tok, DECL_ERR, visibility);
 
     if (!consume_type_name(context, "error type")) return poisoned_decl;
 
-    CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
-
-	while (context->tok.type == TOKEN_CONST_IDENT)
-	{
-		Decl *err_constant = decl_new(DECL_ERROR_CONSTANT, context->tok, error_decl->visibility);
-
-		err_constant->error_constant.parent = error_decl;
-		VECEACH(error_decl->error.error_constants, i)
-		{
-			Decl *other_constant = error_decl->error.error_constants[i];
-			if (other_constant->name == context->tok.string)
-			{
-				SEMA_TOKEN_ERROR(context->tok, "This error is declared twice.");
-				SEMA_PREV(other_constant, "The previous declaration was here.");
-				decl_poison(err_constant);
-				decl_poison(error_decl);
-                break;
-			}
-		}
-        error_decl->error.error_constants = VECADD(error_decl->error.error_constants, err_constant);
-		advance_and_verify(context, TOKEN_CONST_IDENT);
-		if (!try_consume(context, TOKEN_COMMA)) break;
-	}
-	if (context->tok.type == TOKEN_TYPE_IDENT || context->tok.type == TOKEN_IDENT)
-	{
-		SEMA_TOKEN_ERROR(context->tok, "Errors must be all upper case.");
-		return poisoned_decl;
-	}
-	CONSUME_OR(TOKEN_RBRACE, poisoned_decl);
-	return error_decl;
+    if (try_consume(context, TOKEN_LBRACE))
+    {
+    	while (!try_consume(context, TOKEN_RBRACE))
+	    {
+    		TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+    		if (context->tok.type != TOKEN_IDENT)
+		    {
+    			SEMA_TOKEN_ERROR(context->tok, "Expected an identifier here.");
+    			return poisoned_decl;
+		    }
+		    Decl *member = decl_new(DECL_MEMBER, context->tok, visibility);
+    		advance(context);
+    		add_struct_member(err_decl, err_decl, member, type);
+		    TRY_CONSUME_EOS_OR(poisoned_decl);
+	    }
+    	return err_decl;
+    }
+    TRY_CONSUME_EOS_OR(poisoned_decl);
+	return err_decl;
 }
 
 /**
@@ -1457,7 +1470,7 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
         if (try_consume(context, TOKEN_LPAREN))
         {
         	Expr **result = NULL;
-        	if (!parse_param_list(context, &result, true)) return poisoned_decl;
+        	if (!parse_param_list(context, &result, true, TOKEN_RPAREN)) return poisoned_decl;
         	enum_const->enum_constant.args = result;
         	CONSUME_OR(TOKEN_RPAREN, poisoned_decl);
         }
@@ -1494,8 +1507,8 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
  *  	;
  *
  * func_declaration
- *  	: FUNC type_expression func_name '(' opt_parameter_type_list ')' opt_attributes
- *		| FUNC type_expression func_name '(' opt_parameter_type_list ')' throw_declaration opt_attributes
+ *  	: FUNC failable_type func_name '(' opt_parameter_type_list ')' opt_attributes
+ *		| FUNC failable_type func_name '(' opt_parameter_type_list ')' throw_declaration opt_attributes
  *		;
  *
  * @param visibility
@@ -1506,10 +1519,9 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	advance_and_verify(context, TOKEN_FUNC);
 
 	TypeInfo *return_type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-
 	Decl *func = decl_new(DECL_FUNC, context->tok, visibility);
 	func->func.function_signature.rtype = return_type;
-
+	func->func.function_signature.failable = try_consume(context, TOKEN_BANG);
 	SourceRange start = context->tok.span;
 	bool had_error;
 	Path *path = parse_path_prefix(context, &had_error);
@@ -1534,8 +1546,6 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	advance_and_verify(context, TOKEN_IDENT);
 	RANGE_EXTEND_PREV(func);
 	if (!parse_opt_parameter_type_list(context, visibility, &(func->func.function_signature), is_interface)) return poisoned_decl;
-
-	if (!parse_opt_throw_declaration(context, visibility, &(func->func.function_signature))) return poisoned_decl;
 
 	if (!parse_attributes(context, func)) return poisoned_decl;
 
@@ -1671,6 +1681,8 @@ static inline Decl *parse_top_level(Context *context)
 
 	switch (context->tok.type)
 	{
+		case TOKEN_DEFINE:
+			return parse_define(context, visibility);
 		case TOKEN_ATTRIBUTE:
 			return parse_attribute_declaration(context, visibility);
 		case TOKEN_FUNC:
@@ -1689,7 +1701,7 @@ static inline Decl *parse_top_level(Context *context)
 			return parse_macro_declaration(context, visibility);
 		case TOKEN_ENUM:
 			return parse_enum_declaration(context, visibility);
-		case TOKEN_ERRSET:
+		case TOKEN_ERR:
 			return parse_error_declaration(context, visibility);
 		case TOKEN_TYPEDEF:
 			return parse_typedef_declaration(context, visibility);

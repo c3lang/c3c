@@ -18,6 +18,7 @@
 #include <llvm-c/Transforms/Scalar.h>
 #include <llvm-c/Transforms/IPO.h>
 #include <llvm-c/Transforms/Utils.h>
+#include <llvm-c/Comdat.h>
 #include "dwarf.h"
 
 typedef struct
@@ -54,6 +55,9 @@ typedef struct
 	LLVMValueRef alloca_point;
 	LLVMBuilderRef builder;
 	LLVMBasicBlockRef current_block;
+	LLVMBasicBlockRef catch_block;
+	LLVMValueRef error_var;
+
 	Decl *cur_code_decl;
 	Decl *cur_func_decl;
 	TypeInfo *current_return_type;
@@ -66,8 +70,6 @@ typedef struct
 	Ast **defer_stack;
 	DebugContext debug;
 	Context *ast_context;
-	BreakContinue break_continue_stack[BREAK_STACK_MAX];
-	size_t break_continue_stack_index;
 	LLVMValueRef return_out;
 	LLVMBasicBlockRef error_exit_block;
 	LLVMBasicBlockRef expr_block_exit;
@@ -118,9 +120,9 @@ LLVMValueRef gencontext_emit_call_intrinsic(GenContext *context, unsigned intrin
                                             LLVMValueRef *values, unsigned arg_count);
 void gencontext_emit_panic_on_true(GenContext *context, LLVMValueRef value, const char *panic_name);
 void gencontext_emit_defer(GenContext *context, Ast *defer_start, Ast *defer_end);
-LLVMBasicBlockRef gencontext_get_try_target(GenContext *context, Expr *try_expr);
+
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr);
-LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, Expr *expr);
+LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, Expr *expr, LLVMValueRef failable);
 LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type);
 void gencontext_emit_debug_location(GenContext *context, SourceRange location);
 LLVMMetadataRef gencontext_create_builtin_debug_type(GenContext *context, Type *builtin_type);
@@ -136,6 +138,13 @@ static inline LLVMBasicBlockRef gencontext_create_free_block(GenContext *context
 {
 	return LLVMCreateBasicBlockInContext(context->context, name);
 }
+#define PUSH_ERROR() \
+ LLVMBasicBlockRef _old_catch = context->catch_block; \
+ LLVMValueRef _old_error_var = context->error_var
+#define POP_ERROR() \
+ context->catch_block = _old_catch; \
+ context->error_var = _old_error_var
+
 void gencontext_emit_function_body(GenContext *context, Decl *decl);
 void gencontext_emit_implicit_return(GenContext *context);
 void gencontext_emit_function_decl(GenContext *context, Decl *decl);
@@ -147,12 +156,34 @@ static inline LLVMValueRef gencontext_emit_load(GenContext *context, Type *type,
 	assert(gencontext_get_llvm_type(context, type) == LLVMGetElementType(LLVMTypeOf(value)));
 	return LLVMBuildLoad2(context->builder, gencontext_get_llvm_type(context, type), value, "");
 }
+
 static inline void gencontext_emit_return_value(GenContext *context, LLVMValueRef value)
 {
 	LLVMBuildRet(context->builder, value);
 	context->current_block = NULL;
 	context->current_block_is_target = false;
 }
+
+static inline LLVMValueRef decl_failable_ref(Decl *decl)
+{
+	assert(decl->decl_kind == DECL_VAR);
+	if (decl->var.kind == VARDECL_ALIAS) return decl_failable_ref(decl->var.alias);
+	return decl->var.failable_ref;
+}
+
+static inline LLVMValueRef decl_ref(Decl *decl)
+{
+	assert(decl->decl_kind == DECL_VAR);
+	if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_ALIAS) return decl_ref(decl->var.alias);
+	return decl->ref;
+}
+
+static inline void gencontext_emit_store(GenContext *context, Decl *decl, LLVMValueRef value)
+{
+	LLVMBuildStore(context->builder, value, decl_ref(decl));
+}
+
+
 LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMValueRef value, Type *to_type, Type *from_type);
 static inline bool gencontext_func_pass_return_by_param(GenContext *context, Type *first_param_type) { return false; };
 static inline bool gencontext_func_pass_param_by_reference(GenContext *context, Type *param_type) { return false; }
@@ -230,12 +261,18 @@ static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi)
 #define llvm_type(type) gencontext_get_llvm_type(context, type)
 #define llvm_debug_type(type) gencontext_get_debug_type(context, type)
 
+static inline LLVMValueRef gencontext_emit_no_error_union(GenContext *context)
+{
+	return LLVMConstInt(llvm_type(type_error), 0, false);
+}
+
 static inline LLVMValueRef gencontext_emit_const_int(GenContext *context, Type *type, uint64_t val)
 {
 	type = type->canonical;
-	if (type == type_error_union) type = type_usize->canonical;
+	if (type == type_error) type = type_usize->canonical;
 	assert(type_is_any_integer(type) || type->type_kind == TYPE_BOOL);
 	return LLVMConstInt(llvm_type(type), val, type_is_signed_integer(type));
 }
 
 #define llvm_int(_type, _val) gencontext_emit_const_int(context, _type, _val)
+LLVMValueRef gencontext_emit_typeid(GenContext *context, Expr *expr);

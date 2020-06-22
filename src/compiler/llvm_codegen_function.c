@@ -8,7 +8,7 @@
 
 bool gencontext_check_block_branch_emit(GenContext *context)
 {
-	assert(context->current_block);
+	if (!context->current_block) return false;
 	// If it's not used, we can delete the previous block and skip the branch.
 	// Unless it is the entry block or a label target for jumps
 	// These empty blocks will occur when doing branches.
@@ -76,25 +76,24 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 
 	// Allocate room on stack and copy.
 	decl->ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
-	LLVMBuildStore(context->builder, LLVMGetParam(context->function, index), decl->ref);
+	gencontext_emit_store(context, decl, LLVMGetParam(context->function, index));
 }
 
 void gencontext_emit_implicit_return(GenContext *context)
 {
-	switch (context->cur_func_decl->func.function_signature.error_return)
+	if (context->cur_func_decl->func.function_signature.failable)
 	{
-		case ERROR_RETURN_NONE:
-			LLVMBuildRetVoid(context->builder);
-			return;
-		case ERROR_RETURN_ANY:
-		case ERROR_RETURN_MANY:
-			LLVMBuildRet(context->builder, llvm_int(type_usize, 0));
-			return;
-		case ERROR_RETURN_ONE:
-			LLVMBuildRet(context->builder, llvm_int(type_error_base, 0));
-			return;
+		LLVMBuildRet(context->builder, gencontext_emit_no_error_union(context));
 	}
-	UNREACHABLE
+	else
+	{
+		if (context->cur_func_decl->func.function_signature.rtype->type != type_void && !context->cur_func_decl->func.function_signature.return_param)
+		{
+			LLVMBuildUnreachable(context->builder);
+			return;
+		}
+		LLVMBuildRetVoid(context->builder);
+	}
 }
 
 void gencontext_emit_function_body(GenContext *context, Decl *decl)
@@ -104,6 +103,9 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 
 	LLVMValueRef prev_function = context->function;
 	LLVMBuilderRef prev_builder = context->builder;
+
+	context->error_var = NULL;
+	context->catch_block = NULL;
 
 	context->function = decl->ref;
 	context->cur_func_decl = decl;
@@ -134,12 +136,6 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	VECEACH(decl->func.function_signature.params, i)
 	{
 		gencontext_emit_parameter(context, decl->func.function_signature.params[i], arg++);
-	}
-
-	VECEACH(decl->func.labels, i)
-	{
-		Ast *label = decl->func.labels[i];
-		label->label_stmt.backend_value = gencontext_create_free_block(context, label->label_stmt.name);
 	}
 
 	VECEACH(decl->func.body->compound_stmt.stmts, i)
@@ -183,7 +179,7 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 	decl->ref = function;
 	if (decl->func.function_signature.return_param)
 	{
-		if (decl->func.function_signature.error_return == ERROR_RETURN_NONE)
+		if (!decl->func.function_signature.failable)
 		{
 			gencontext_add_attribute(context, function, sret_attribute, 1);
 		}
@@ -290,14 +286,11 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 			TODO
 		case DECL_STRUCT:
 		case DECL_UNION:
+		case DECL_ERR:
 			llvm_type(decl->type);
 			TODO // Fix typeid
 			break;
 		case DECL_ENUM:
-			TODO
-		case DECL_ERROR:
-			TODO
-		case DECL_ERROR_CONSTANT:
 			TODO
 		case DECL_MEMBER:
 		case DECL_ARRAY_VALUE:
@@ -308,6 +301,7 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
+		case DECL_LABEL:
 			UNREACHABLE
 	}
 }

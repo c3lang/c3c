@@ -29,6 +29,11 @@ do { if (!try_consume(context, TOKEN_COMMA) && context->tok.type != TOKEN_RPAREN
 SEMA_TOKEN_ERROR(context->tok, "Expected ',' or ')'"); return _res; } } while(0)
 
 
+typedef enum
+{
+	DECL_PARSE_NORMAL,
+	DECL_PARSE_UNWRAP
+} DeclParse;
 Ast *parse_stmt(Context *context);
 Path *parse_path_prefix(Context *context, bool *had_error);
 Expr *parse_type_expression_with_path(Context *context, Path *path);
@@ -38,15 +43,17 @@ Expr* parse_constant_expr(Context *context);
 Expr *parse_initializer_list(Context *context);
 Expr *parse_initializer(Context *context);
 Decl *parse_decl(Context *context);
-Ast *parse_decl_expr_list(Context *context);
+Expr *parse_decl_expr_list(Context *context);
 Ast* parse_compound_stmt(Context *context);
 Ast *parse_jump_stmt_no_eos(Context *context);
+bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, TokenType default_type);
 Expr *parse_expression_list(Context *context);
 Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type);
-bool parse_param_list(Context *context, Expr ***result, bool allow_type);
+bool parse_param_list(Context *context, Expr ***result, bool allow_type, TokenType end_type);
 Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *type_info);
 Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info);
 bool parse_next_is_decl(Context *context);
+bool parse_next_is_case_type(Context *context);
 void error_at_current(Context *context, const char* message, ...);
 bool try_consume(Context *context, TokenType type);
 bool consume(Context *context, TokenType type, const char *message, ...);

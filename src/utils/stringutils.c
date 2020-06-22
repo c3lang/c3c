@@ -23,6 +23,14 @@ char *strformat(const char *var, ...)
 	return buffer;
 }
 
+char *strcopy(const char *start, size_t len)
+{
+	char *buffer = malloc_arena(len + 1);
+	memcpy(buffer, start, len);
+	buffer[len] = '\0';
+	return buffer;
+}
+
 char *strcat_arena(const char *a, const char *b)
 {
 	unsigned a_len = strlen(a);
