@@ -1,4 +1,7 @@
 #pragma once
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "bugprone-reserved-identifier"
+
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
@@ -16,6 +19,7 @@ typedef uint32_t SourceLoc;
 #define INVALID_RANGE ((SourceRange){ .loc = UINT32_MAX })
 #define EMPTY_TOKEN ((Token) { .string = NULL })
 #define MAX_LOCALS 0xFFFF
+#define MAX_FLAGS 0xFFFF
 #define MAX_SCOPE_DEPTH 0xFF
 #define MAX_PATH 1024
 #define MAX_DEFERS 0xFFFF
@@ -56,7 +60,6 @@ typedef struct
 			int len;
 		} string;
 		Decl *enum_constant;
-		Decl *error_constant;
 	};
 	// Valid type kinds:
 	// bool, ints, floats, string
@@ -234,12 +237,6 @@ typedef struct
 
 typedef struct
 {
-	Decl **error_constants;
-	void *start_value;
-} ErrorDecl;
-
-typedef struct
-{
 	Path *path;
 	Token symbol;
 	bool aliased;
@@ -255,12 +252,18 @@ typedef struct
 
 typedef struct _VarDecl
 {
-	unsigned id : 16;
 	VarDeclKind kind : 3;
 	bool constant : 1;
+	bool failable : 1;
+	bool unwrap : 1;
 	TypeInfo *type_info;
-	Expr *init_expr;
+	union
+	{
+		Expr *init_expr;
+		Decl *alias;
+	};
 	void *backend_debug_ref;
+	void *failable_ref;
 } VarDecl;
 
 
@@ -292,25 +295,15 @@ typedef struct
 	TypeInfo *type_info;
 } EnumDecl;
 
-typedef enum
-{
-	ERROR_RETURN_NONE = 0,
-	ERROR_RETURN_ONE = 1,
-	ERROR_RETURN_MANY = 2,
-	ERROR_RETURN_ANY = 3,
-} ErrorReturn;
-
 typedef struct _FunctionSignature
 {
 	CallConvention convention : 4;
 	bool variadic : 1;
 	bool has_default : 1;
-	bool throw_any : 1;
 	bool return_param : 1;
-	ErrorReturn error_return : 4;
+	bool failable : 1;
 	TypeInfo *rtype;
 	Decl** params;
-	TypeInfo** throws;
 	const char *mangled_signature;
 } FunctionSignature;
 
@@ -362,6 +355,7 @@ typedef struct
 
 typedef struct
 {
+	bool failable : 1;
 	Decl **parameters;
 	TypeInfo *rtype; // May be null!
 	struct _Ast *body;
@@ -374,6 +368,17 @@ typedef struct
 	TypeInfo *rtype; // May be null!
 	Path *path; // For redefinition
 } GenericDecl;
+
+typedef struct
+{
+	Ast *defer;
+	void *break_target;
+	void *continue_target;
+	unsigned scope_id;
+	bool next_target : 1;
+	Ast *parent;
+
+} LabelDecl;
 
 typedef struct
 {
@@ -422,7 +427,6 @@ typedef struct _Decl
 			};
 			union
 			{
-				ErrorDecl error;
 				StructDecl strukt;
 				EnumDecl enums;
 			};
@@ -430,6 +434,7 @@ typedef struct _Decl
 		ErrorConstantDecl error_constant;
 		ImportDecl import;
 		VarDecl var;
+		LabelDecl label;
 		EnumConstantDecl enum_constant;
 		FuncDecl func;
 		AttrDecl attr;
@@ -440,34 +445,23 @@ typedef struct _Decl
 		CtIfDecl ct_elif_decl;
 		Decl** ct_else_decl;
 		Expr *incr_array_decl;
-		TypeInfo *throws;
 		MemberDecl member_decl;
 	};
 } Decl;
 
-typedef enum
-{
-	TRY_EXPR_ELSE_EXPR,
-	TRY_EXPR_ELSE_JUMP,
-	TRY_EXPR,
-	TRY_STMT,
-} TryType;
+
 
 typedef struct
 {
-	TryType type;
-	union
-	{
-		Expr *expr;
-		Ast *stmt;
-	};
+	bool is_jump : 1;
+	Expr *expr;
 	union
 	{
 		Expr *else_expr;
 		Ast *else_stmt;
 	};
 	void *jump_target;
-} ExprTry;
+} ExprElse;
 
 typedef struct
 {
@@ -497,6 +491,8 @@ typedef struct
 	Expr *left;
 	Expr *right;
 	BinaryOp operator;
+	bool left_maybe : 1;
+	bool right_maybe : 1;
 } ExprBinary;
 
 typedef struct
@@ -505,6 +501,7 @@ typedef struct
 	UnaryOp operator;
 } ExprUnary;
 
+
 typedef struct
 {
 	Expr* expr;
@@ -512,33 +509,7 @@ typedef struct
 } ExprPostUnary;
 
 
-typedef enum
-{
-	CATCH_TRY_ELSE,
-	CATCH_REGULAR,
-	CATCH_RETURN_ANY,
-	CATCH_RETURN_MANY,
-	CATCH_RETURN_ONE
-} CatchKind;
 
-typedef struct
-{
-	CatchKind kind;
-	union
-	{
-		Expr *try_else;
-		Ast *catch;
-		Decl *error;
-	};
-	Ast *defer;
-} CatchInfo;
-
-typedef struct
-{
-	bool is_completely_handled;
-	Ast *defer;
-	CatchInfo *catches;
-} ThrowInfo;
 
 typedef struct
 {
@@ -546,7 +517,6 @@ typedef struct
 	bool is_pointer_call : 1;
 	Expr *function;
 	Expr **arguments;
-	ThrowInfo *throw_info;
 } ExprCall;
 
 typedef struct
@@ -636,10 +606,17 @@ typedef struct
 	Expr* value;
 } ExprDesignatedInit;
 
+typedef struct
+{
+	const char *name;
+	SourceRange span;
+} Label;
+
 struct _Expr
 {
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 3;
+	bool failable : 1;
 	SourceRange span;
 	Type *type;
 	union {
@@ -651,9 +628,12 @@ struct _Expr
 		ExprRange range_expr;
 		ExprStructValue struct_value_expr;
 		ExprTypeAccess type_access;
-		ExprTry try_expr;
+		Expr *guard_expr;
+		Expr *trycatch_expr;
+		ExprElse else_expr;
 		ExprBinary binary_expr;
 		ExprTernary ternary_expr;
+		Expr *fail_check_expr;
 		ExprUnary unary_expr;
 		ExprPostUnary post_expr;
 		ExprCall call_expr;
@@ -667,13 +647,10 @@ struct _Expr
 		ExprScope expr_scope;
 		ExprFuncBlock expr_block;
 		ExprMacroBlock macro_block;
+		Expr* failable_expr;
+		Ast** dexpr_list_expr;
 	};
 };
-
-typedef struct
-{
-
-} AstAttribute;
 
 
 typedef struct
@@ -682,15 +659,6 @@ typedef struct
 	DeferList defer_list;
 } AstCompoundStmt;
 
-typedef struct
-{
-	const char *name;
-	uint16_t last_goto;
-	bool is_used : 1;
-	Ast *defer;
-	struct _Ast *in_defer;
-	void *backend_value;
-} AstLabelStmt;
 
 typedef struct
 {
@@ -700,78 +668,103 @@ typedef struct
 
 typedef struct
 {
-	Ast *decl;
-	Ast *cond;
+	Decl *label;
+	Expr *cond;
 	Ast *body;
+	void *break_block;
+	void *continue_block;
 } AstWhileStmt;
 
 typedef struct
 {
-	Expr *expr;
-	Ast *body;
 	DeferList expr_defer;
 	DeferList body_defer;
+	union
+	{
+		struct
+		{
+			void *break_block;
+			void *continue_block;
+		};
+		struct
+		{
+			Decl *label;
+			Expr *expr;
+			Ast *body;
+		};
+	};
 } AstDoStmt;
 
 typedef struct
 {
-	Ast *decl;
-	Ast *cond;
+	Decl *label;
+	Expr *cond;
 	Ast *then_body;
 	Ast *else_body;
+	void *break_block;
 } AstIfStmt;
 
 
 typedef struct
 {
-	Expr *expr; // NULL == DEFAULT
+	bool is_type;
+	union
+	{
+		TypeInfo *type_info;
+		Expr *expr;
+	};
 	Ast *body;
-	void *backend_value;
+	void *backend_block;
 } AstCaseStmt;
 
 
 typedef struct
 {
-	Ast *decl;
-	Ast *cond;
+	Decl *label;
+	Expr *cond;
 	Ast **cases;
+	void *retry_block;
+	void *exit_block;
+	void *retry_var;
+	Ast *defer;
 } AstSwitchStmt;
 
 typedef struct
 {
-	Ast *init;
+	Decl *label;
+	Expr *init;
 	Expr *cond;
 	Expr *incr;
 	Ast *body;
+	void *continue_block;
+	void *exit_block;
 } AstForStmt;
-
-
 
 typedef struct
 {
-	const char *label_name;
-	Ast *label;
-	DeferList defer;
-	union
-	{
-		struct _Ast *in_defer;
-	};
-} AstGotoStmt;
-
-typedef struct _AstDeferStmt
-{
-	bool emit_boolean : 1;
 	Ast *body; // Compound statement
 	Ast *prev_defer;
-	void *bool_var;
 } AstDeferStmt;
 
-typedef struct _AstCatchStmt
+typedef struct
 {
-	Decl *error_param;
-	struct _Ast *body;
+	bool is_switch : 1;
+	bool has_err_var : 1;
+	Decl *label;
+	union
+	{
+		Expr *catchable;
+		Decl *err_var;
+	};
+	union
+	{
+		Ast *body;
+		Ast **cases;
+	};
 	void *block;
+	Ast *defer;
 } AstCatchStmt;
+
 
 typedef struct _AstCtIfStmt
 {
@@ -780,12 +773,6 @@ typedef struct _AstCtIfStmt
 	struct _Ast *elif;
 } AstCtIfStmt;
 
-
-typedef struct _AstGenericCaseStmt
-{
-	TypeInfo **types;
-	struct _Ast *body;
-} AstGenericCaseStmt;
 
 typedef struct
 {
@@ -799,11 +786,6 @@ typedef struct
 	Ast **body;
 } AstCtSwitchStmt;
 
-typedef struct
-{
-	TypeInfo **types;
-	Ast *body;
-} AstCtCaseStmt;
 
 typedef struct
 {
@@ -815,38 +797,67 @@ typedef struct
 
 typedef struct
 {
+	bool is_label;
+	union
+	{
+		Label label;
+		Ast *ast;
+	};
 	DeferList defers;
 } AstContinueBreakStmt;
 
 typedef struct
 {
-	Ast *prev;
 	DeferList defers;
+	union
+	{
+		struct
+		{
+			Label label;
+			bool is_type;
+			union
+			{
+				Expr *target;
+				TypeInfo *type_info;
+			};
+		};
+		struct
+		{
+			Ast *case_switch_stmt;
+			Expr *switch_expr;
+		};
+	};
 } AstNextStmt;
 
-typedef struct
-{
-	Expr *throw_value;
-	Ast *defer;
-} AstThrowStmt;
 
 typedef struct
 {
-	Token name;
+	Expr *expr;
+	Token alias;
 	Token constraints;
-	Token token;
 } AsmOperand;
+
+typedef struct
+{
+	Expr *decl_expr;
+	Ast *body;
+} AstTryStmt;
+
+typedef struct
+{
+	AsmOperand *inputs;
+	AsmOperand *outputs;
+	Token *clobbers;
+	Token *labels;
+} AsmParams;
 
 typedef struct
 {
 	bool is_volatile : 1;
 	bool is_inline : 1;
 	bool is_goto : 1;
-	Expr *asm_template;
-	AsmOperand** output_operands;
-	AsmOperand** input_operands;
-	AsmOperand** clobbers;
-	Token* labels;
+	AsmParams *params;
+	Token *instructions;
 } AstAsmStmt;
 
 typedef struct _Ast
@@ -855,40 +866,33 @@ typedef struct _Ast
 	AstKind ast_kind : 8;
 	union
 	{
-		AstAttribute attribute;
-		AstAsmStmt asm_stmt;
-		AstCompoundStmt compound_stmt;
-		Decl *declare_stmt;
-		Expr *expr_stmt;
-		AstThrowStmt throw_stmt;
-		Ast *volatile_stmt;
-		AstLabelStmt label_stmt;
-		AstReturnStmt return_stmt;
-		AstWhileStmt while_stmt;
-		AstDoStmt do_stmt;
-		AstIfStmt if_stmt;
-		AstDeferStmt defer_stmt;
-		AstSwitchStmt switch_stmt;
-		AstCaseStmt case_stmt;
-		AstCtSwitchStmt ct_switch_stmt;
-		AstCtCaseStmt ct_case_stmt;
-		AstContinueBreakStmt continue_stmt;
-		AstContinueBreakStmt break_stmt;
-		Ast* ct_default_stmt;
-		AstNextStmt next_stmt;
-		AstCatchStmt catch_stmt;
-		AstGotoStmt goto_stmt;
-		AstForStmt for_stmt;
-		AstCtIfStmt ct_if_stmt;
-		AstCtIfStmt ct_elif_stmt;
-		Ast *ct_else_stmt;
-		AstCtForStmt ct_for_stmt;
-		AstGenericCaseStmt generic_case_stmt;
-		Ast *generic_default_stmt;
-		Ast** decl_expr_stmt;
-		AstScopedStmt scoped_stmt;
+		AstAsmStmt asm_stmt;            // 24
+		AstCompoundStmt compound_stmt;  // 16
+		Decl *declare_stmt;             // 8
+		Expr *expr_stmt;                // 8
+		AstTryStmt try_stmt;
+		Decl *define_stmt;              // 8
+		Ast *volatile_stmt;             // 8
+		AstReturnStmt return_stmt;      // 16
+		AstWhileStmt while_stmt;        // 24
+		AstDoStmt do_stmt;              // 32
+		AstIfStmt if_stmt;              // 32
+		AstDeferStmt defer_stmt;        // 32
+		AstSwitchStmt switch_stmt;      // 24
+		AstCaseStmt case_stmt;          // 32
+		AstCtSwitchStmt ct_switch_stmt; // 16
+		AstContinueBreakStmt contbreak_stmt; // 8
+		AstNextStmt next_stmt;              // 16
+		AstCatchStmt catch_stmt;            // 32
+		AstForStmt for_stmt;                // 32
+		AstCtIfStmt ct_if_stmt;             // 24
+		AstCtIfStmt ct_elif_stmt;           // 24
+		Ast *ct_else_stmt;                  // 8
+		AstCtForStmt ct_for_stmt;           // 64
+		AstScopedStmt scoped_stmt;          // 16
 	};
 } Ast;
+
 
 
 typedef struct _Module
@@ -909,14 +913,17 @@ typedef struct _Module
 } Module;
 
 
+
 typedef struct _DynamicScope
 {
+	unsigned scope_id;
 	ScopeFlags flags;
 	ScopeFlags flags_created;
-	unsigned throws;
 	Decl **local_decl_start;
 	DeferList defers;
+	Ast *current_defer;
 	ExitType exit;
+	const char* label;
 } DynamicScope;
 
 
@@ -928,37 +935,21 @@ typedef struct
 	uint16_t source_file;
 	File *current_file;
 	SourceLoc last_in_range;
-	Token tok;
-	Token next_tok;
 } Lexer;
 
-typedef enum
-{
-	THROW_TYPE_CALL_ANY,
-	THROW_TYPE_CALL_THROW_MANY,
-	THROW_TYPE_CALL_THROW_ONE,
-} ThrowType;
-
-typedef struct
-{
-	SourceRange span;
-	ThrowType kind : 4;
-	ThrowInfo *throw_info;
-	TypeInfo **throws;
-} Throw;
 
 typedef struct _Context
 {
+	unsigned numbering;
+	unsigned current_block;
 	BuildTarget *target;
 	Path *module_name;
 	Token* module_parameters;
 	File* file;
 	Decl** imports;
-	Decl *specified_imports;
 	Module *module;
 	STable local_symbols;
 	Decl **enums;
-	Decl **error_types;
 	Decl **types;
 	Decl **functions;
 	Decl **methods;
@@ -966,31 +957,30 @@ typedef struct _Context
 	Decl **ct_ifs;
 	Ast **defers;
 	Decl *active_function_for_analysis;
-	Decl *active_type_for_analysis;
-	Decl **last_local;
-	Ast **labels;
-	Ast **gotos;
 	Token *comments;
 	Token *lead_comment;
 	Token *trailing_comment;
 	Token *next_lead_comment;
+	unsigned scope_id;
+	Ast *break_target;
+	Ast *break_defer;
+	Ast *continue_target;
+	Ast *continue_defer;
+	Ast *next_target;
+	Ast *next_switch;
+	Ast *next_defer;
 	DynamicScope *current_scope;
 	struct
 	{
 		Type *expected_block_type;
 		Ast **returns;
+		bool expr_failable_return;
 		// Reusable returns cache.
 		Ast **returns_cache;
 	};
 	Decl *evaluating_macro;
-	// Error handling
-	struct
-	{
-		Ast **throw;
-		Throw *error_calls;
-		int try_nesting;
-	};
 	Type *rtype;
+	bool failable_return;
 	int in_volatile_section;
 	struct
 	{
@@ -1000,7 +990,8 @@ typedef struct _Context
 		int macro_counter;
 		int macro_nesting;
 	};
-	Decl *locals[MAX_LOCALS];
+	Decl* locals[MAX_LOCALS];
+	Decl **last_local;
 	DynamicScope scopes[MAX_SCOPE_DEPTH];
 	char path_scratch[MAX_PATH];
 	struct {
@@ -1056,7 +1047,7 @@ extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
-extern Type *type_typeid, *type_error_union, *type_error_base;
+extern Type *type_typeid, *type_error;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
@@ -1072,12 +1063,12 @@ static inline bool ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; return f
 
 static inline Ast *new_ast(AstKind kind, SourceRange range)
 {
-	Ast *ast = malloc_arena(sizeof(Ast));
-	memset(ast, 0, sizeof(Ast));
+	Ast *ast = CALLOCS(Ast);
 	ast->span = range;
 	ast->ast_kind = kind;
 	return ast;
 }
+
 
 static inline Ast *extend_ast(Ast *ast, Token token)
 {
@@ -1140,14 +1131,15 @@ bool cast_implicit(Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type, CastType cast_type);
 bool cast_binary_arithmetic(Expr *left, Expr *right, const char *action);
 CastKind cast_to_bool_kind(Type *type);
-bool cast_to_runtime(Expr *expr);
-void cast_to_smallest_runtime(Expr *expr);
+
+bool cast_implicitly_to_runtime(Expr *expr);
 
 void llvm_codegen(Context *context);
 void llvm_codegen_setup();
 
 
-bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr);
+bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *left_type, Expr *right, ExprFailableStatus lhs_is_failable);
+bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr, bool may_be_failable);
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
 
@@ -1171,10 +1163,21 @@ Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility);
 Decl *decl_new_var(Token name, TypeInfo *type, VarDeclKind kind, Visibility visibility);
 void decl_set_external_name(Decl *decl);
 const char *decl_var_to_string(VarDeclKind kind);
+static inline Decl *decl_raw(Decl *decl)
+{
+	if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_ALIAS) return decl;
+	decl = decl->var.alias;
+	assert(decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_ALIAS);
+	return decl;
+}
 
-static inline bool decl_ok(Decl *decl) { return decl->decl_kind != DECL_POISONED; }
+static inline bool decl_ok(Decl *decl) { return !decl || decl->decl_kind != DECL_POISONED; }
 static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
-static inline bool decl_is_struct_type(Decl *decl) { return decl->decl_kind == DECL_UNION || decl->decl_kind == DECL_STRUCT; }
+static inline bool decl_is_struct_type(Decl *decl)
+{
+	DeclKind kind = decl->decl_kind;
+	return kind == DECL_UNION | kind == DECL_STRUCT | kind == DECL_ERR;
+}
 static inline DeclKind decl_from_token(TokenType type)
 {
 	if (type == TOKEN_STRUCT) return DECL_STRUCT;
@@ -1216,6 +1219,8 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent);
 
 #pragma mark --- Lexer functions
 
+Token lexer_scan_asm(Lexer *lexer);
+Token lexer_scan_asm_constraint(Lexer *lexer);
 Token lexer_scan_token(Lexer *lexer);
 Token lexer_scan_ident_test(Lexer *lexer, const char *scan);
 void lexer_init_for_test(Lexer *lexer, const char *text, size_t len);
@@ -1232,14 +1237,17 @@ Path *path_find_parent_path(Path *path);
 
 const char *resolve_status_to_string(ResolveStatus status);
 
-#define SEMA_TOKEN_ERROR(_tok, ...) sema_error_range(_tok.span, __VA_ARGS__)
-#define SEMA_ERROR(_node, ...) sema_error_range(_node->span, __VA_ARGS__)
-#define SEMA_PREV(_node, ...) sema_prev_at_range(_node->span, __VA_ARGS__)
+#define SEMA_TOKEN_ERROR(_tok, ...) sema_error_range((_tok).span, __VA_ARGS__)
+#define SEMA_ERROR(_node, ...) sema_error_range((_node)->span, __VA_ARGS__)
+#define SEMA_PREV(_node, ...) sema_prev_at_range((_node)->span, __VA_ARGS__)
 void sema_analysis_pass_process_imports(Context *context);
 void sema_analysis_pass_conditional_compilation(Context *context);
 void sema_analysis_pass_decls(Context *context);
 
 bool sema_add_local(Context *context, Decl *decl);
+bool sema_unwrap_var(Context *context, Decl *decl);
+bool sema_rewrap_var(Context *context, Decl *decl);
+
 bool sema_analyse_statement(Context *context, Ast *statement);
 Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
@@ -1277,19 +1285,10 @@ void *target_data_layout();
 void *target_machine();
 void *target_target();
 
-bool throw_completely_caught(TypeInfo *throw, CatchInfo *catches);
-static inline Throw throw_new_union(SourceRange range, ThrowType type, ThrowInfo *info)
-{
-	return (Throw) { .kind = THROW_TYPE_CALL_ANY, .span = range, .throw_info = info };
-}
-static inline Throw throw_new(SourceRange range, ThrowType type, ThrowInfo *info, TypeInfo **throws)
-{
-	return (Throw) { .kind = type, .span = range, .throw_info = info, .throws = throws };
-}
-
 #define TOKEN_MAX_LENGTH 0xFFFF
 #define TOK2VARSTR(_token) _token.span.length, _token.start
 bool token_is_type(TokenType type);
+bool token_is_any_type(TokenType type);
 bool token_is_symbol(TokenType type);
 const char *token_type_to_string(TokenType type);
 static inline Token wrap(const char *string)
@@ -1308,11 +1307,10 @@ Type *type_unsigned_int_by_bitsize(unsigned bytesize);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 Type *type_find_common_ancestor(Type *left, Type *right);
 const char *type_to_error_string(Type *type);
-size_t type_size(Type *canonical);
-unsigned int type_abi_alignment(Type *canonical);
+size_t type_size(Type *type);
+unsigned int type_abi_alignment(Type *type);
 void type_append_signature_name(Type *type, char *dst, size_t *offset);
 Type *type_find_max_type(Type *type, Type *other);
-
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_FXX; }
 static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_I64; }
 static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind <= TYPE_U64; }
@@ -1327,7 +1325,6 @@ static inline Type *type_reduced(Type *type)
 {
 	Type *canonical = type->canonical;
 	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
-	if (canonical->type_kind == TYPE_ERROR) return type_error_base;
 	return canonical;
 }
 
@@ -1382,6 +1379,24 @@ static inline bool type_info_poison(TypeInfo *type)
 	return false;
 }
 
+static inline bool type_is_ct(Type *type)
+{
+	while (1)
+	{
+		switch (type->type_kind)
+		{
+			case TYPE_FXX:
+			case TYPE_IXX:
+				return true;
+			case TYPE_TYPEDEF:
+				type = type->canonical;
+				break;
+			default:
+				return false;
+		}
+	}
+}
+
 static inline bool type_is_float(Type *type)
 {
 	assert(type == type->canonical);
@@ -1390,8 +1405,7 @@ static inline bool type_is_float(Type *type)
 
 static inline TypeInfo *type_info_new(TypeInfoKind kind, SourceRange range)
 {
-	TypeInfo *type_info = malloc_arena(sizeof(TypeInfo));
-	memset(type_info, 0, sizeof(TypeInfo));
+	TypeInfo *type_info = CALLOCS(TypeInfo);
 	type_info->kind = kind;
 	type_info->span = range;
 	type_info->resolve_status = RESOLVE_NOT_DONE;
@@ -1400,8 +1414,7 @@ static inline TypeInfo *type_info_new(TypeInfoKind kind, SourceRange range)
 
 static inline TypeInfo *type_info_new_base(Type *type, SourceRange range)
 {
-	TypeInfo *type_info = malloc_arena(sizeof(TypeInfo));
-	memset(type_info, 0, sizeof(TypeInfo));
+	TypeInfo *type_info = CALLOCS(TypeInfo);
 	type_info->kind = TYPE_INFO_IDENTIFIER;
 	type_info->resolve_status = RESOLVE_DONE;
 	type_info->type = type;
@@ -1429,7 +1442,7 @@ static inline bool type_convert_will_trunc(Type *destination, Type *source)
 
 static inline bool type_is_numeric(Type *type)
 {
-	assert(type == type->canonical);
+	if (type->type_kind == TYPE_TYPEDEF) type = type->canonical;
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_FXX;
 }
 
@@ -1464,3 +1477,4 @@ static inline void advance_and_verify(Context *context, TokenType token_type)
 	assert(context->tok.type == token_type);
 	advance(context);
 }
+#pragma clang diagnostic pop

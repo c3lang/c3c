@@ -52,7 +52,7 @@ const char *token_type_to_string(TokenType type)
 			return "-";
 		case TOKEN_MOD:
 			return "%";
-		case TOKEN_NOT:
+		case TOKEN_BANG:
 			return "!";
 		case TOKEN_PLUS:
 			return "+";
@@ -90,6 +90,8 @@ const char *token_type_to_string(TokenType type)
 			return ">=";
 		case TOKEN_LESS_EQ:
 			return "<=";
+		case TOKEN_LPARBRA:
+			return "({";
 		case TOKEN_MINUS_ASSIGN:
 			return "-=";
 		case TOKEN_MINUS_MOD:
@@ -112,16 +114,16 @@ const char *token_type_to_string(TokenType type)
 			return "+%";
 		case TOKEN_PLUSPLUS:
 			return "++";
+		case TOKEN_RPARBRA:
+			return "})";
 		case TOKEN_SCOPE:
 			return "::";
 		case TOKEN_SHL:
 			return "<<";
 		case TOKEN_SHR:
 			return ">>";
-		case TOKEN_LPARBRA:
-			return "({";
-		case TOKEN_RPARBRA:
-			return "})";
+		case TOKEN_BANGBANG:
+			return "!!";
 
 		// Three character tokens
 		case TOKEN_ELLIPSIS:
@@ -150,6 +152,12 @@ const char *token_type_to_string(TokenType type)
 			return "CONST_IDENT";
 		case TOKEN_TYPE_IDENT:
 			return "TYPE_IDENT";
+
+		// Asm
+		case TOKEN_ASM_STRING:
+			return "ASM_STRING";
+		case TOKEN_ASM_CONSTRAINT:
+			return "ASM_CONSTRAINT";
 
 		// Values
 		case TOKEN_STRING:
@@ -190,6 +198,8 @@ const char *token_type_to_string(TokenType type)
 			return "default";
 		case TOKEN_DEFER:
 			return "defer";
+		case TOKEN_DEFINE:
+			return "define";
 		case TOKEN_DO:
 			return "do";
 		case TOKEN_ELSE:
@@ -198,10 +208,8 @@ const char *token_type_to_string(TokenType type)
 			return "enum";
 		case TOKEN_EXTERN:
 			return "extern";
-		case TOKEN_ERROR_TYPE:
+		case TOKEN_ERR:
 			return "error";
-		case TOKEN_ERRSET:
-			return "errset";
 		case TOKEN_FALSE:
 			return "false";
 		case TOKEN_FOR:
@@ -210,8 +218,6 @@ const char *token_type_to_string(TokenType type)
 			return "func";
 		case TOKEN_GENERIC:
 			return "generic";
-		case TOKEN_GOTO:
-			return "goto";
 		case TOKEN_IF:
 			return "if";
 		case TOKEN_IMPORT:
@@ -236,10 +242,6 @@ const char *token_type_to_string(TokenType type)
 			return "struct";
 		case TOKEN_SWITCH:
 			return "switch";
-		case TOKEN_THROW:
-			return "throw";
-		case TOKEN_THROWS:
-			return "throws";
 		case TOKEN_TRUE:
 			return "true";
 		case TOKEN_TRY:
@@ -362,3 +364,7 @@ bool token_is_type(TokenType type)
 	return type >= TOKEN_VOID && type <= TOKEN_C_ULONGLONG;
 }
 
+bool token_is_any_type(TokenType type)
+{
+	return (type >= TOKEN_VOID && type <= TOKEN_C_ULONGLONG) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT;
+}

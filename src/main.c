@@ -43,6 +43,7 @@ int main(int argc, const char *argv[])
 		case COMMAND_BENCH:
 			printf("TODO\n");
 	}
+	print_arena_status();
 	free_arena();
 	return 0;
 }

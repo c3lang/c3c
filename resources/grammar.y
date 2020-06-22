@@ -16,6 +16,7 @@ void yyerror(char *s);
 %token ADD_MOD SUB_MOD MULT_MOD ADD_MOD_ASSIGN SUB_MOD_ASSIGN
 %token MULT_MOD_ASSIGN NEG_MOD
 %token XOR_ASSIGN OR_ASSIGN VAR NIL ELVIS HASH_IDENT NEXT
+%token NOFAIL_ASSIGN
 
 %token TYPEDEF MODULE IMPORT
 %token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOLATILE VOID
@@ -402,14 +403,25 @@ expression_statement
 	;
 
 
+if_expr
+    : failable_type IDENT '=' initializer
+    | failable_type IDENT NOFAIL_ASSIGN expression
+    | expression
+    ;
+
+if_cond_expr
+    : if_expr
+    | if_cond_expr ',' if_expr
+    ;
+
 control_expression
     : decl_expr_list
     | decl_expr_list ';' decl_expr_list
     ;
 
 selection_statement
-	: IF '(' control_expression ')' statement
-	| IF '(' control_expression ')' compound_statement ELSE statement
+	: IF '(' if_cond_expr ')' statement
+	| IF '(' if_cond_expr ')' compound_statement ELSE statement
 	| SWITCH '(' control_expression ')' compound_statement
 	;
 

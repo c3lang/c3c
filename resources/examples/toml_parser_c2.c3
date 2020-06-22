@@ -110,7 +110,7 @@ struct Parser
 /**
  * @ensure const(input)
  */
-func Parser.parse(Parser* p, char* input, char* diagMsg, Blocks* blocks) throws
+func void! Parser.parse(Parser* p, char* input, char* diagMsg, Blocks* blocks)
 {
     p.tokenizer.init(input);
     p.tok.init();
@@ -125,15 +125,9 @@ func Parser.parse(Parser* p, char* input, char* diagMsg, Blocks* blocks) throws
 
     try p.consumeToken();
     try p.parseTopLevel();
-    return true;
-
-    catch (error e)
-    {
-        return false;
-    }
 }
 
-func void Parser.parseTopLevel(Parser* p) throws ParseError
+func void! Parser.parseTopLevel(Parser* p)
 {
     // key = value
     // | [[array]]
@@ -150,7 +144,7 @@ func void Parser.parseTopLevel(Parser* p) throws ParseError
                 p.parseTableArray();
             default:
                 sprintf(p.errorMsg, "syntax error %s", p.tok.loc.str());
-                throw ParseError.SYNTAX_ERROR;
+                return SyntaxError!;
         }
     }
 }

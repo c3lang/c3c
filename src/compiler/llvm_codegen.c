@@ -52,10 +52,9 @@ LLVMValueRef gencontext_emit_memclear_size_align(GenContext *context, LLVMValueR
 
 LLVMValueRef gencontext_emit_memclear(GenContext *context, LLVMValueRef ref, Type *type)
 {
-	Type *canonical = type->canonical;
 	// TODO avoid bitcast on those that do not need them.
-	return gencontext_emit_memclear_size_align(context, ref, type_size(canonical),
-			type_abi_alignment(canonical), true);
+	return gencontext_emit_memclear_size_align(context, ref, type_size(type),
+			type_abi_alignment(type), true);
 }
 
 
@@ -74,7 +73,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 	}
 	else
 	{
-		LLVMSetInitializer(decl->ref, LLVMConstInt(llvm_type(type_bool), 0, false));
+		LLVMSetInitializer(decl->ref, LLVMConstNull(llvm_type(decl->type)));
 	}
 	// If read only: LLVMSetGlobalConstant(decl->var.backend_ref, 1);
 
@@ -116,8 +115,7 @@ static void gencontext_verify_ir(GenContext *context)
 {
 	char *error = NULL;
 	assert(context->module);
-	LLVMVerifyModule(context->module, LLVMPrintMessageAction, &error);
-	if (error)
+	if (LLVMVerifyModule(context->module, LLVMPrintMessageAction, &error))
 	{
 		if (*error)
 		{
@@ -137,7 +135,7 @@ void gencontext_emit_object_file(GenContext *context)
 
 	// Generate .o or .obj file
 	char *filename = strformat("%.*s.o", (int)strlen(context->ast_context->file->name) - 3, context->ast_context->file->name);
-	if (LLVMTargetMachineEmitToFile(target_machine(), context->module, filename, LLVMObjectFile, &err) != 0)
+	if (LLVMTargetMachineEmitToFile(target_machine(), context->module, filename, LLVMObjectFile, &err))
 	{
 		error_exit("Could not emit object file: %s", err);
 	}
@@ -147,7 +145,7 @@ void gencontext_print_llvm_ir(GenContext *context)
 {
 	char *err = NULL;
 	char *filename = strformat("%.*s.ll", (int)strlen(context->ast_context->file->name) - 3, context->ast_context->file->name);
-	if (LLVMPrintModuleToFile(context->module, filename, &err) != 0)
+	if (LLVMPrintModuleToFile(context->module, filename, &err))
 	{
 		error_exit("Could not emit ir to file: %s", err);
 	}
@@ -239,26 +237,25 @@ void llvm_codegen_setup()
 	intrinsics_setup = true;
 }
 
-void gencontext_emit_struct_decl(GenContext *context, Decl *decl)
+void gencontext_emit_introspection_type(GenContext *context, Decl *decl)
 {
 	llvm_type(decl->type);
-	LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_type(type_bool), decl->name);
-	LLVMSetLinkage(global_name, LLVMInternalLinkage);
+	LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_type(type_byte), decl->name);
 	LLVMSetGlobalConstant(global_name, 1);
-	LLVMSetInitializer(global_name, LLVMConstInt(llvm_type(type_bool), 1, false));
+	LLVMSetInitializer(global_name, LLVMConstInt(llvm_type(type_byte), 1, false));
+	decl->type->backend_typeid = LLVMBuildPtrToInt(context->builder, global_name, llvm_type(type_typeid), "");
 
-	decl->type->backend_typeid = global_name;
 	switch (decl->visibility)
 	{
 		case VISIBLE_MODULE:
-			LLVMSetVisibility(global_name, LLVMProtectedVisibility);
-			break;
 		case VISIBLE_PUBLIC:
+			LLVMSetLinkage(global_name, LLVMLinkOnceODRLinkage);
 			LLVMSetVisibility(global_name, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_EXTERN:
 		case VISIBLE_LOCAL:
 			LLVMSetVisibility(global_name, LLVMHiddenVisibility);
+			LLVMSetLinkage(global_name, LLVMLinkerPrivateLinkage);
 			break;
 	}
 }
@@ -273,35 +270,6 @@ static inline uint32_t upper_power_of_two(uint32_t v)
 	v |= v >> 16;
 	v++;
 	return v;
-}
-
-void gencontext_emit_error_decl(GenContext *context, Decl *decl)
-{
-	unsigned slots = vec_size(decl->error.error_constants) + 1;
-	LLVMTypeRef reserved_type = LLVMArrayType(llvm_type(type_char), slots);
-	char *buffer = strcat_arena(decl->external_name, "_DOMAIN");
-	LLVMValueRef global_name = LLVMAddGlobal(context->module, reserved_type, buffer);
-	LLVMSetLinkage(global_name, LLVMExternalLinkage);
-	LLVMSetGlobalConstant(global_name, 1);
-	LLVMSetInitializer(global_name, LLVMConstAllOnes(reserved_type));
-	decl->error.start_value = LLVMBuildPtrToInt(context->builder, global_name, llvm_type(type_usize), "");
-	uint32_t min_align = upper_power_of_two(slots);
-	uint32_t pointer_align = type_abi_alignment(type_voidptr);
-	LLVMSetAlignment(global_name, pointer_align > min_align ? pointer_align : min_align);
-	LLVMSetVisibility(global_name, LLVMDefaultVisibility);
-	switch (decl->visibility)
-	{
-		case VISIBLE_MODULE:
-			LLVMSetVisibility(global_name, LLVMProtectedVisibility);
-			break;
-		case VISIBLE_PUBLIC:
-			LLVMSetVisibility(global_name, LLVMDefaultVisibility);
-			break;
-		case VISIBLE_EXTERN:
-		case VISIBLE_LOCAL:
-			LLVMSetVisibility(global_name, LLVMHiddenVisibility);
-			break;
-	}
 }
 
 
@@ -324,17 +292,12 @@ static void gencontext_emit_decl(GenContext *context, Decl *decl)
 			break;;
 		case DECL_STRUCT:
 		case DECL_UNION:
-			gencontext_emit_struct_decl(context, decl);
+		case DECL_ERR:
+			gencontext_emit_introspection_type(context, decl);
 			break;
 		case DECL_ENUM:
 			// TODO
 			break;
-		case DECL_ERROR:
-			UNREACHABLE;
-			break;;
-		case DECL_ERROR_CONSTANT:
-			//TODO
-			break;;
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
@@ -344,6 +307,7 @@ static void gencontext_emit_decl(GenContext *context, Decl *decl)
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
 		case DECL_MEMBER:
+		case DECL_LABEL:
 			UNREACHABLE
 	}
 }
@@ -370,10 +334,6 @@ void llvm_codegen(Context *context)
 	VECEACH(context->types, i)
 	{
 		gencontext_emit_decl(&gen_context, context->types[i]);
-	}
-	VECEACH(context->error_types, i)
-	{
-		gencontext_emit_error_decl(&gen_context, context->error_types[i]);
 	}
 	VECEACH(context->vars, i)
 	{
@@ -428,6 +388,8 @@ void llvm_codegen(Context *context)
 
 	// Serialize the LLVM IR, if requested
 	if (build_options.emit_llvm) gencontext_print_llvm_ir(&gen_context);
+
+	gencontext_verify_ir(&gen_context);
 
 	if (build_options.emit_bitcode) gencontext_emit_object_file(&gen_context);
 

@@ -18,10 +18,10 @@ static inline LLVMMetadataRef gencontext_create_debug_type_from_decl(GenContext 
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_VAR:
-		case DECL_ERROR_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MEMBER:
+		case DECL_LABEL:
 			UNREACHABLE;
 		case DECL_FUNC:
 		{
@@ -45,7 +45,7 @@ static inline LLVMMetadataRef gencontext_create_debug_type_from_decl(GenContext 
 			TODO
 		case DECL_ENUM:
 			TODO
-		case DECL_ERROR:
+		case DECL_ERR:
 			TODO
 	}
 	UNREACHABLE
@@ -134,7 +134,7 @@ LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 			return type->backend_debug_type = LLVMDIBuilderCreatePointerType(context->debug.builder, type->pointer->backend_debug_type, type_size(type->canonical->pointer), 0, 0, type->name, strlen(type->name));
 		case TYPE_ENUM:
 			TODO
-		case TYPE_ERROR:
+		case TYPE_ERRTYPE:
 			TODO
 		case TYPE_FUNC:
 			// TODO
@@ -168,7 +168,7 @@ LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 			TODO
 		case TYPE_SUBARRAY:
 			TODO
-		case TYPE_ERROR_UNION:
+		case TYPE_ERR_UNION:
 			TODO
 	}
 	UNREACHABLE

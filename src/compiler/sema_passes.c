@@ -110,10 +110,6 @@ void sema_analysis_pass_decls(Context *context)
 	{
 		sema_analyse_decl(context, context->types[i]);
 	}
-	VECEACH(context->error_types, i)
-	{
-		sema_analyse_decl(context, context->error_types[i]);
-	}
 	VECEACH(context->methods, i)
 	{
 		sema_analyse_decl(context, context->methods[i]);

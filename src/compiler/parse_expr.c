@@ -24,6 +24,11 @@ inline Expr *parse_precedence_with_left_side(Context *context, Expr *left_side, 
 	{
 		if (!expr_ok(left_side)) return left_side;
 		ParseFn infix_rule = rules[context->tok.type].infix;
+		if (!infix_rule)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "An expression was expected.");
+			return poisoned_expr;
+		}
 		left_side = infix_rule(context, left_side);
 	}
 	return left_side;
@@ -67,7 +72,7 @@ inline Expr* parse_constant_expr(Context *context)
  *  ;
  *
  */
-bool parse_param_list(Context *context, Expr ***result, bool allow_type)
+bool parse_param_list(Context *context, Expr ***result, bool allow_type, TokenType param_end)
 {
 	*result = NULL;
 	while (1)
@@ -94,6 +99,7 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type)
 		{
 			return true;
 		}
+		if (context->tok.type == param_end) return true;
 	}
 }
 
@@ -128,7 +134,7 @@ static inline Expr* parse_non_assign_expr(Context *context)
 Expr *parse_expression_list(Context *context)
 {
 	Expr *expr_list = EXPR_NEW_TOKEN(EXPR_EXPRESSION_LIST, context->tok);
-	if (!parse_param_list(context, &expr_list->expression_list, false)) return poisoned_expr;
+	if (!parse_param_list(context, &expr_list->expression_list, false, TOKEN_INVALID_TOKEN)) return poisoned_expr;
 	return expr_list;
 }
 
@@ -206,11 +212,41 @@ static Expr *parse_range_expr(Context *context, Expr *left_side)
 	return range;
 }
 
+static bool token_may_end_expression(TokenType type)
+{
+	switch (type)
+	{
+		case TOKEN_RPAREN:
+		case TOKEN_RBRACE:
+		case TOKEN_RBRACKET:
+		case TOKEN_EOS:
+		case TOKEN_COMMA:
+			return true;
+		default:
+			return false;
+	}
+}
+static inline Expr *parse_check_failable(Context *context, Expr *left_side)
+{
+	Expr *expr_unwrap = EXPR_NEW_EXPR(EXPR_FAIL_CHECK, left_side);
+	advance_and_verify(context, TOKEN_QUESTION);
+	expr_unwrap->fail_check_expr = left_side;
+	RANGE_EXTEND_PREV(expr_unwrap);
+	return expr_unwrap;
+}
+
 static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 {
 	assert(expr_ok(left_side));
+
+	if (context->tok.type == TOKEN_QUESTION && token_may_end_expression(context->next_tok.type))
+	{
+		return parse_check_failable(context, left_side);
+	}
+
 	Expr *expr_ternary = EXPR_NEW_EXPR(EXPR_TERNARY, left_side);
 	expr_ternary->ternary_expr.cond = left_side;
+
 
 	// Check for elvis
 	if (try_consume(context, TOKEN_ELVIS))
@@ -286,12 +322,20 @@ Expr *parse_initializer_list(Context *context)
 	CONSUME_OR(TOKEN_LBRACE, poisoned_expr);
 	if (!try_consume(context, TOKEN_RBRACE))
 	{
-		if (!parse_param_list(context, &initializer_list->expr_initializer.initializer_expr, false)) return poisoned_expr;
+		if (!parse_param_list(context, &initializer_list->expr_initializer.initializer_expr, false, TOKEN_RBRACE)) return poisoned_expr;
 		CONSUME_OR(TOKEN_RBRACE, poisoned_expr);
 	}
 	return initializer_list;
 }
 
+static Expr *parse_failable(Context *context, Expr *left_side)
+{
+	Expr *failable = expr_new(EXPR_FAILABLE, left_side->span);
+	advance_and_verify(context, TOKEN_BANG);
+	failable->failable_expr = left_side;
+	RANGE_EXTEND_PREV(failable);
+	return failable;
+}
 static Expr *parse_binary(Context *context, Expr *left_side)
 {
 	assert(left_side && expr_ok(left_side));
@@ -327,7 +371,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	advance_and_verify(context, TOKEN_LPAREN);
 	if (context->tok.type != TOKEN_RPAREN)
 	{
-		if (!parse_param_list(context, &params, 0)) return poisoned_expr;
+		if (!parse_param_list(context, &params, 0, TOKEN_RPAREN)) return poisoned_expr;
 	}
 	TRY_CONSUME_OR(TOKEN_RPAREN, "Expected the ending ')' here", poisoned_expr);
 
@@ -407,37 +451,48 @@ static Expr *parse_maybe_scope(Context *context, Expr *left)
 static Expr *parse_try_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *try_expr = EXPR_NEW_TOKEN(EXPR_TRY, context->tok);
-	advance_and_verify(context, TOKEN_TRY);
-	try_expr->try_expr.expr = TRY_EXPR_OR(parse_precedence(context, PREC_TRY + 1), poisoned_expr);
-	try_expr->try_expr.type = TRY_EXPR;
-	if (try_consume(context, TOKEN_ELSE))
-	{
-		switch (context->tok.type)
-		{
-			case TOKEN_GOTO:
-			case TOKEN_RETURN:
-			case TOKEN_BREAK:
-			case TOKEN_CONTINUE:
-			case TOKEN_THROW:
-			{
-				Ast *ast = TRY_AST_OR(parse_jump_stmt_no_eos(context), poisoned_expr);
-				try_expr->try_expr.type = TRY_EXPR_ELSE_JUMP;
-				try_expr->try_expr.else_stmt = ast;
-				if (context->tok.type != TOKEN_EOS)
-				{
-					SEMA_ERROR(ast, "try-else jump statement must end with a ';'");
-					return poisoned_expr;
-				}
-				break;
-			}
-			default:
-				try_expr->try_expr.type = TRY_EXPR_ELSE_EXPR;
-				try_expr->try_expr.else_expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
-				break;
-		}
-	}
+	Expr *try_expr = EXPR_NEW_TOKEN(context->tok.type == TOKEN_TRY ? EXPR_TRY : EXPR_CATCH, context->tok);
+	advance(context);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
+	try_expr->trycatch_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	return try_expr;
+}
+
+static Expr *parse_bangbang_expr(Context *context, Expr *left)
+{
+	Expr *guard_expr = EXPR_NEW_TOKEN(EXPR_GUARD, context->tok);
+	advance_and_verify(context, TOKEN_BANGBANG);
+	guard_expr->guard_expr = left;
+	return guard_expr;
+}
+
+static Expr *parse_else_expr(Context *context, Expr *left)
+{
+	Expr *else_expr = EXPR_NEW_TOKEN(EXPR_ELSE, context->tok);
+	advance_and_verify(context, TOKEN_ELSE);
+	else_expr->else_expr.expr = left;
+	switch (context->tok.type)
+	{
+		case TOKEN_RETURN:
+		case TOKEN_BREAK:
+		case TOKEN_CONTINUE:
+		{
+			Ast *ast = TRY_AST_OR(parse_jump_stmt_no_eos(context), poisoned_expr);
+			else_expr->else_expr.is_jump = true;
+			else_expr->else_expr.else_stmt = ast;
+			if (context->tok.type != TOKEN_EOS)
+			{
+				SEMA_ERROR(ast, "An else jump statement must end with a ';'");
+				return poisoned_expr;
+			}
+			break;
+		}
+		default:
+			else_expr->else_expr.else_expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
+			break;
+	}
+	return else_expr;
 }
 
 static Expr *parse_integer(Context *context, Expr *left)
@@ -809,6 +864,17 @@ Expr *parse_type_expression_with_path(Context *context, Path *path)
 	{
 		return parse_type_compound_literal_expr_after_type(context, type);
 	}
+	if (try_consume(context, TOKEN_BANG))
+	{
+		Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type->span);
+		expr->expr_compound_literal.type_info = type;
+		expr->expr_compound_literal.initializer = expr_new(EXPR_INITIALIZER_LIST, type->span);
+
+		Expr *failable = expr_new(EXPR_FAILABLE, expr->span);
+		failable->failable_expr = expr;
+		RANGE_EXTEND_PREV(failable);
+		return failable;
+	}
 	CONSUME_OR(TOKEN_DOT, poisoned_expr);
 	return parse_type_access_expr_after_type(context, type);
 }
@@ -835,6 +901,7 @@ static Expr* parse_expr_block(Context *context, Expr *left)
 }
 
 ParseRule rules[TOKEN_EOF + 1] = {
+		[TOKEN_ELSE] = { NULL, parse_else_expr, PREC_TRY_ELSE },
 		[TOKEN_ELLIPSIS] = { NULL, parse_range_expr, PREC_RANGE },
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
@@ -844,7 +911,9 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_LPARBRA] = { parse_expr_block, NULL, PREC_NONE },
 		[TOKEN_CAST] = { parse_cast_expr, NULL, PREC_NONE },
 		[TOKEN_TYPEOF] = { parse_typeof_expr, NULL, PREC_NONE },
-		[TOKEN_TRY] = { parse_try_expr, NULL, PREC_TRY },
+		[TOKEN_TRY] = { parse_try_expr, NULL, PREC_NONE },
+		[TOKEN_CATCH] = { parse_try_expr, NULL, PREC_NONE },
+		[TOKEN_BANGBANG] = { NULL, parse_bangbang_expr, PREC_CALL },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
 		[TOKEN_MINUS_MOD] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
@@ -855,7 +924,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_STAR] = { parse_unary_expr, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_MULT_MOD] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_DOT] = { NULL, parse_access_expr, PREC_CALL },
-		[TOKEN_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
+		[TOKEN_BANG] = { parse_unary_expr, parse_failable, PREC_UNARY },
 		[TOKEN_BIT_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
 		[TOKEN_BIT_XOR] = { NULL, parse_binary, PREC_BIT },
 		[TOKEN_BIT_OR] = { NULL, parse_binary, PREC_BIT },

@@ -1,5 +1,6 @@
 module bar;
 
+
 typedef int as Bob;
 
 struct Test
@@ -64,17 +65,6 @@ enum EnumTestOverflowAfter
 }
 
 
-
-errset Error
-{
-    BLURB,
-    NO_SUCH_FILE,
-}
-
-errset OtherError
-{
-    FOO_BAR
-}
 
 enum Inf
 {
@@ -142,6 +132,37 @@ struct ExtraSimple
     }
     int g;
 }
+
+
+func void testIf()
+{
+
+    int a = 0;
+    int b = 1;
+    if (a, b)
+    {
+        printf("Yes!\n");
+    }
+    if (int x = 0, int y = 2)
+    {
+        printf("Yes: %d/%d\n", x, y);
+    }
+    if (int x = 2, int y = 0)
+    {
+        printf("No: %d/%d\n", x, y);
+    }
+    int! z = 67;
+    /*
+    try (int j = z, int k = z + 1)
+    {
+        printf("Check: %d %d\n", j, k);
+    }*/
+    try (z)
+    {
+        printf("Show :%d", z);
+    }
+}
+
 func void testSimple()
 {
     ExtraSimple a = { c.j = 3.3 };
@@ -190,7 +211,6 @@ func TestStruct2 structTest(int i)
 
 func void enumInferenceTest()
 {
-    OtherError e = OtherError.FOO_BAR;
     Inf x = Inf.A;
     x = BooInf.B;
     x = A;
@@ -215,17 +235,51 @@ func void enumInferenceTest()
     }
 }
 
+func void switchTest()
+{
+/*
+    switch FOO: (cast(1, int))
+    {
+        case 1:
+            printf("1\n");
+            next FOO:3;
+        case 2:
+            printf("2\n");
+            next 4;
+        case 3:
+            printf("3\n");
+            next 2;
+        case 4:
+            printf("4\n");
+    }*/
+}
+
 func int jumptest()
 {
-    if (1) goto LABELX;
-    return 1;
-    LABELX:
+
+    do LABELX:
+    {
+        if (0) break LABELX;
+        printf("Hello\n");
+    };
+    do LABELX:
+    {
+        if (1) break LABELX;
+        return 1;
+    } while(1);
+    do LABELX:
+    {
+        if (1) continue LABELX;
+        return 1;
+    } while(0);
+
     return 2;
 }
-func int borok() throws
+/*
+func int! borok()
 {
     return 1;
-}
+}*/
 
 func void testNoReturn()
 {
@@ -590,21 +644,6 @@ func void zzzz()
     x += 3;
 }
 
-func int jumpback(int x)
-{
-    {
-        defer x += 1;
-        {
-            defer x += 2;
-            LABELX:
-            x += 3;
-        }
-    }
-
-    if (x < 100) goto LABELX;
-    return x + 1;
-}
-
 func void test_expr_block(int x)
 {
     int a = ({
@@ -634,18 +673,17 @@ func int xxxx(int x)
 {
 
 
+    do LABELD:
     {
         x += 10;
         defer printf("XXX");
-        if (x < 100) goto LABELD;
+        if (x < 100) break LABELD;
         defer printf("EODfe");
-    }
+    };
     {
         defer printf("Defer says hello!\n");
-        LABELD:
         x--;
     }
-    if (x > 0) goto LABELD;
     return 1;
 }
 
@@ -686,72 +724,157 @@ struct WithArray
     int[4] x;
 }
 
-errset Err
+error TestErr1;
+error TestErr2;
+
+func void testErr1()
 {
-    TEST_ERR1
+
 }
 
-errset Err2
+struct Feok
 {
-    TEST_ERR2
+    long a;
+    long b;
+    long c;
 }
 
-func int testThrow1() throws Err
+error FooErr
 {
-    throw Err.TEST_ERR1;
+    int x;
+    int y;
 }
 
-func int testThrow2() throws Err, Err2
+func int! testThrow1()
 {
-    throw Err.TEST_ERR1;
+    return TestErr1!;
+}
+/*
+func void syntaxErrors()
+{
+    int! i = 0;
+    while (i + 1) {}
+    if (i + 1) {}
+    for (int x = i;;) {}
+    for (int x = 0; x < i + 1;) {}
+    for (int x = 0; x < 10; x += i + 1) {}
+    switch (i + 1)
+    {
+        default:
+            i + 1;
+    }
+}
+*/
+
+func int frob(int i)
+{
+    return i * i;
 }
 
-func int testThrow3() throws
+
+func void show()
 {
-    throw Err.TEST_ERR1;
+    int! num = 3;
+    num = frob(num + 1);
+    printf("Num: %d\n", num);
+}
+func void testAllErrors()
+{
+/*
+    printf("Try test all\n");
+    int! i = 7;
+    int*! iptr = &i;
+    int**! iptrptr = &iptr;
+    catch (err = iptrptr)
+    {
+        printf("Unexpected error!\n");
+    }
+    catch (int i = **iptrptr)
+    {
+        printf("Unexpected error!\n");
+    }
+    bool! hej = (i + 1);
+    try (hej)
+    {
+        printf("Was clean!\n");
+    }
+    i = TestErr1!;
+    hej = (i + 1);
+    catch (hej) printf("Not clean!\n");
+    i = 2938;
+    try(i) printf("Fine? %d\n", i);
+    catch(i) printf("Not fine\n");
+    try (int j = i)
+    {
+        printf("Gotcha %d\n", j);
+    }
+    int hupp = 3;
+    iptr = &hupp;
+    iptr = TestErr1!;
+    catch (err = *iptr)
+    {
+        printf("Expected error!\n");
+    }
+
+    i = 2;
+    Feok z;
+    z.a = 1;
+    Feok! x = z;
+    int! j;
+    j = i;
+    j = TestErr1!;
+    FooErr fex = FooErr { 1, 3 };
+    fex.x = 2;
+    printf("Fex: %d\n", fex.x);
+    error test33 = fex;
+    FooErr fex2 = cast(test33, FooErr);
+    printf("Fex2: %d\n", fex.x);
+    TestErr1 eok = TestErr1{};
+    error e = eok;
+    catch (err = x)
+    {
+        printf("Error!\n");
+    }
+    catch (err = j)
+    {
+        case FooErr:
+            printf("FooErr\n");
+        case TestErr1:
+            printf("TestErr1\n");
+        default:
+            printf("Default error!\n");
+    }
+    printf("No error!\n");
+    int! flow = 1;
+    catch (flow) return;
+    int xy = flow;*/
+}
+/*
+
+
+func int! testThrow4(int x)
+{
+    return x > 4 ? TestErr1! : TestErr2!;
 }
 
-func int testThrow4(int x) throws
-{
-    throw x > 4 ? Err.TEST_ERR1 : Err2.TEST_ERR2;
-}
 
-func int testThrow5(int x) throws
+func int! testThrow6(int x)
 {
-    throw x > 4 ? Err.TEST_ERR1 : Err.TEST_ERR1;
-}
-
-func int testThrow6(int x) throws Err, Err2
-{
-    if (x > 4) throw Err.TEST_ERR1;
-    throw Err2.TEST_ERR2;
+    if (x > 4) return TestErr1!;
+    return TestErr2!;
 }
 
 
-func int testThrow(int x) throws Err
+func int! testThrow(int x)
 {
     throwsDone.times++;
-    if (x < 0) throw Err.TEST_ERR1;
+    if (x < 0) return TestErr1!;
     return x * x;
 }
+*/
 
-
-
-func int oekt() throws
-{
-    int z = try testThrow(-1) else goto NEXT;
-    printf("Skipped.\n");
-    NEXT:
-    int x = try testThrow(-3);
-    catch (error e)
-    {
-    printf("An error %p\n", cast(e, usize));
-        throw e;
-    }
-    return x;
-}
-
-func int! oekt2() throws
+/*
+func int! oekt()
 {
     int z = testThrow(-1) else goto NEXT;
     printf("Skipped.\n");
@@ -759,89 +882,35 @@ func int! oekt2() throws
     int! x = testThrow(-3);
     catch (err = x)
     {
-        printf("An error %p\n", usize(e));
+        printf("An error %p\n", cast(err, usize));
         return err!;
     }
     return x;
 }
-
-func int! oekt3()
+*/
+/*
+func int! testThrowAny(int x)
 {
-    int z = testThrow(-1) else goto NEXT;
-    printf("Skipped.\n");
-    NEXT:
-    int! x = testThrow(-3);
-
-    if (e = catch(x)) printf("An error %p\n", usize(e));
-
-    return x;
-}
-
-func int! oekt3()
-{
-    int z = testThrow(-1) else goto NEXT;
-    printf("Skipped.\n");
-    NEXT:
-    int! x = testThrow(-3);
-
-    if (e = x!) printf("An error %p\n", usize(e));
-
-    return x;
-}
-
-errset Xan
-{
-    EE,
-    FF,
-    DD,
-}
-
-func int testThrowAny(int x) throws
-{
-    if (x < 0) throw Err.TEST_ERR1;
+    if (x < 0) return TestErr1!;
     return x * x;
 }
-
+*/
+/*
 func void testErrorBug()
 {
     printf("Test error multi\n");
-   {
-        printf("Will call\n");
-        try oekt();
-    }
-    catch (Err e)
-    {
-        printf("Expected particular error.\n");
-    }
-    catch (error e)
-    {
-        error foo = Err.TEST_ERR1;
-        printf("Not expected %p != %p\n", cast(e, usize), cast(foo, usize));
-        printf("Unexpected any error error.\n");
-    }
-    printf("End\n");
-}
-
-func void testErrorBug2()
-{
-    printf("Test error multi\n");
-    error e;
-    {
-        printf("Will call\n");
-        e = catch(oekt());
-    }
-    switch (e)
+    printf("Will call\n");
+    catch(oekt())
     {
         case TestErr1:
             printf("Expected particular error.\n");
         default:
             error foo = Err.TEST_ERR1;
-            printf("Not expected %p != %p\n", usize(e), usize(foo));
+            printf("Not expected %p != %p\n", cast(e, usize), cast(foo, usize));
             printf("Unexpected any error error.\n");
     }
     printf("End\n");
 }
-
 func void testErrorMulti()
 {
     defer printf("End defer\n");
@@ -853,7 +922,7 @@ func void testErrorMulti()
         z = oekt();
         printf("Got here\n");
     }
-    switch (e = z!)
+    switch (e = z)
     {
         case TestErr1:
             printf("Expected particular error.\n");
@@ -864,44 +933,21 @@ func void testErrorMulti()
     }
     printf("End\n");
 }
+*/
 
 
-func void testErrorMulti()
-{
-    defer printf("End defer\n");
-    printf("Test error multi\n");
-   {
-        defer printf("Defer\n");
-        printf("Will call\n");
-        int z = try oekt();
-        printf("Got here\n");
-    }
-    catch (Err e)
-    {
-        defer printf("Left error\n");
-        printf("Expected particular error.\n");
-    }
-    catch (error e)
-    {
-        defer printf("Left any error\n");
-        error foo = Err.TEST_ERR1;
-        printf("Not expected %p != %p\n", cast(e, usize), cast(foo, usize));
-        printf("Unexpected any error error.\n");
-    }
-    printf("End\n");
-}
-
-func void throwAOrB(int i) throws Err, Err2
+/*
+func void! throwAOrB(int i)
 {
     printf("AB\n");
     defer printf("A-Err\n");
-    if (i == 1) throw Err.TEST_ERR1;
+    if (i == 1) return TestErr1!;
     printf("B\n");
     defer printf("B-Err\n");
-    if (i == 2) throw Err2.TEST_ERR2;
+    if (i == 2) return TestErr2!;
     printf("None\n");
 }
-
+*/
 struct ThrowsDone
 {
     long x;
@@ -911,61 +957,7 @@ struct ThrowsDone
 }
 ThrowsDone throwsDone;
 
-func void testErrors()
-{
-
-    printf("Throws: %d\n", throwsDone.times);
-
-    int x = try testThrow(20) else 1;
-    printf("Value was %d, expected 400.\n", x);
-
-    printf("Throws: %d\n", throwsDone.times);
-
-    x = try testThrow(-1) else 20;
-    printf("Value was %d, expected 20.\n", x);
-
-    printf("Throws: %d\n", throwsDone.times);
-
-    printf("Begin\n");
-    int y = try testThrow(-1);
-
-    printf("Value was %d, expected 9.\n", y);
-
-    printf("Didn't expect this one.\n");
-    catch (error e)
-    {
-        printf("Expected this catch.\n");
-    }
-    y = try testThrow(-1);
-
-    catch (Err e)
-    {
-        printf("Particular error.\n");
-    }
-    testErrorMulti();
-
-    try throwAOrB(1);
-    catch (Err e)
-    {
-        printf("A1\n");
-    }
-    catch (Err2 e)
-    {
-        printf("A2\n");
-    }
-    try throwAOrB(2);
-    catch (Err e)
-    {
-        printf("B1\n");
-    }
-    catch (Err2 e)
-    {
-        printf("B2\n");
-    }
-    printf("Throws: %d\n", throwsDone.times);
-    printf("End of errors\n");
-}
-
+/*
 func void testErrors()
 {
 
@@ -989,9 +981,12 @@ func void testErrors()
         printf("Value was %d, expected 9.\n", y);
         printf("Didn't expect this one.\n");
     }
-    else catch(y)
+    else
     {
-        printf("Expected this catch.\n");
+        catch(y)
+        {
+            printf("Expected this catch.\n");
+        }
     }
 
     y = testThrow(-1);
@@ -999,7 +994,7 @@ func void testErrors()
     {
         printf("Particular error.\n");
     }
-    testErrorMulti();
+  //  testErrorMulti();
 
     catch (throwAOrB(1))
     {
@@ -1018,7 +1013,7 @@ func void testErrors()
     printf("Throws: %d\n", throwsDone.times);
     printf("End of errors\n");
 }
-
+*/
 macro void arrayCallMacro($x)
 {
     printf("Array call: %d, %d\n", $x[0], $x[1]);
@@ -1080,6 +1075,22 @@ func void testArray()
     }
 
 }
+func void testBreak()
+{
+    for FOO: (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < 10; j++)
+        {
+            for BAR: (int k = 0; k < 10; k++)
+            {
+                printf("%d %d %d\n", i, j, k);
+                continue FOO;
+            }
+            printf("ERROR\n");
+        }
+        printf("ERROR\n");
+    }
+}
 func void testDefer()
 {
     printf("1 == %d\n", testReturnDefer());
@@ -1092,12 +1103,7 @@ func void testDefer()
         printf("4");
     }
     int i = 0;
-    goto JUMP;
-    defer printf("ERROR");
-    int r = 0;
-JUMP:
     defer printf("-JUMPDEFER-");
-    if (i++ < 2) goto JUMP;
     switch (int boo = 2)
     {
         case 0:
@@ -1222,8 +1228,6 @@ func void testTypeValues()
     printf("Struct size: %d = 12\n", TestStructInt.sizeof);
     printf("Struct size: %d = 16\n", TestStructSize.sizeof);
     printf("Union size: %d = 5\n", TestUnionSize.sizeof);
-    printf("Error size: %d = 4\n", Err.sizeof);
-    printf("Testunion.a sizeof: %d = 2\n", TestUnionSize.a.sizeof);
 }
 
 func int testTypeofHelp()
@@ -1252,6 +1256,7 @@ func void testMacros()
     printf("i: %d\n", i);
 }
 
+/*
 const char[] LUT_ENC = {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
@@ -1262,9 +1267,10 @@ const char[] LUT_ENC = {
     'w', 'x', 'y', 'z', '0', '1', '2', '3',
     '4', '5', '6', '7', '8', '9', '+', '/',
 };
+*/
+//const byte ERR = 0xFF;
 
-const byte ERR = 0xFF;
-
+/*
 const byte[256] LUT_DEC = {
     // '+', ',', '-', '.', '/', '0', '1', '2'
         62, ERR, ERR, ERR, 63,  52,  53,  54,
@@ -1287,65 +1293,63 @@ const byte[256] LUT_DEC = {
     // 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
         44,  45,  46,  47,  48,  49,  50,  51,
 };
-
-
+*/
+/*
 const char PAD = '=';
 const char FIRST = '+';
 const char LAST = 'z';
+*/
+public error InvalidCharacterError;
 
-public error Base64Error
-{
-    INVALID_CHARACTER
-}
-
-public func void encode(byte[] in, string *out)
+/*
+public func void encode(byte[] infile, char[] *out)
 {
 	int j = 0;
 
-    for (int i = 0; i < in.len; i++);
+    for (int i = 0; i < i.len; i++);
 	{
         switch (i % 3)
         {
             case 0:
-                out[j++] = LUT_ENC[(in[i] >> 2) & 0x3F];
+                out[j++] = LUT_ENC[(infile[i] >> 2) & 0x3F];
             case 1:
-                out[j++] = LUT_ENC[(in[i-1] & 0x3) << 4 + ((in[i] >> 4) & 0xF)];
+                out[j++] = LUT_ENC[(infile[i-1] & 0x3) << 4 + ((infile[i] >> 4) & 0xF)];
             case 2:
-                out[j++] = LUT_ENC[(in[i-1] & 0xF) << 2 + ((in[i] >> 6) & 0x3)];
-                out[j++] = LUT_ENC[in[i] & 0x3F];
+                out[j++] = LUT_ENC[(infile[i-1] & 0xF) << 2 + ((infile[i] >> 6) & 0x3)];
+                out[j++] = LUT_ENC[infile[i] & 0x3F];
         }
         i++;
 	}
 
     // move back
-    int last = in.len - 1;
+    int last = infile.len - 1;
 
     // check the last and add padding
     switch (last % 3)
     {
         case 0:
-            out[j++] = LUT_ENC[(in[last] & 0x3) << 4];
+            out[j++] = LUT_ENC[(infile[last] & 0x3) << 4];
             out[j++] = PAD;
             out[j++] = PAD;
         case 1:
-            out[j++] = LUT_ENC[(in[last] & 0xF) << 2];
+            out[j++] = LUT_ENC[(infile[last] & 0xF) << 2];
             out[j++] = PAD;
     }
 }
 
-public func int decode(char[] in, byte[] out) throws Base64Error
+public func int! decode(char[] infile, byte[] out)
 {
     int j = 0;
 
     for (int i = 0; i < len; i++)
     {
-        char value = in[i];
+        char value = infile[i];
 
         if (value == PAD) return j;
 
-        if (value < FIRST || in[i] > LAST) throw INVALID_CHARACTER;
-        byte c = LUT_DEC[in[i] - FIRST);
-        if (c == ERR) throw INVALID_CHARACTER;
+        if (value < FIRST || infile[i] > LAST) return InvalidCharacterError!;
+        byte c = LUT_DEC[infile[i] - FIRST];
+        if (c == ERR) return InvalidCharacterError!;
 
         switch (i % 4)
         {
@@ -1354,13 +1358,13 @@ public func int decode(char[] in, byte[] out) throws Base64Error
             case 1:
                 out[j++] += (c >> 4) & 0x3;
                 // if not last char with padding
-                if (i < (len - 3) || in[len - 2] != PAD)
+                if (i < (len - 3) || infile[len - 2] != PAD)
                 {
                     out[j] = (c & 0xF) << 4;
                 }
             case 2:
                 out[j++] += (c >> 2) & 0xF;
-                if (i < (len -2) || in[len -1] != PAD)
+                if (i < (len -2) || infile[len -1] != PAD)
                 {
                     out[j] = (c & 0x3) << 6;
                 }
@@ -1370,14 +1374,17 @@ public func int decode(char[] in, byte[] out) throws Base64Error
     }
     return j;
 }
-
+*/
 func int main(int x)
 {
+    testBreak();
+    show();
     testMacros();
     testTypeof();
     testSimple();
-    testErrorBug();
-    testErrors();
+    testAllErrors();
+    //testErrorBug();
+    //testErrors();
     testDefault(y = 99);
     testPointers(2, 3);
     testDefer();
@@ -1392,6 +1399,7 @@ func int main(int x)
     testTypeValues();
     int efd = 9;
     uint fefoek = 1;
+    testIf();
     printf("Helo: %d\n", efd + cast(fefoek, int));
     //long fefoek = -fefoek;
     int okfe = 1;
@@ -1435,7 +1443,8 @@ func int main(int x)
         printf(":okko");
     }
     printf("\n");
-    while (int ok = 0; int j = ok++, ok < 10)
+    int ok = 0;
+    while (int j = ok++, ok < 10)
     {
         printf("foo");
     }
@@ -1468,35 +1477,40 @@ func int main(int x)
     long deee = (eok ? a : b) + (eok ? b : c);
 int i = 0;
 
-    JUMP:
-    i = i + 1;
-    //@hello();
-    printf("Hello worldABC" "D" "E\u2701\n");
-    float f = 3.0;
-    float* pf = &f;
-    switch (i)
+    do JUMP:
     {
-        case 0:
-            printf("c0\n");
-        case 1:
-            printf("c1\n");
-        case 2:
-            printf("c2\n");
-        case 3:
-            printf("c3\n");
-        default:
-            printf("default\n");
-    }
-    if (*pf > i) goto JUMP;
-    goto EX;
-    YEF:
-    return 4;
-    EX:
-    printf("EX\n");
-    goto YEF;
+        i = i + 1;
+        //@hello();
+        printf("Hello worldABC" "D" "E\u2701\n");
+        float f = 3.0;
+        float* pf = &f;
+        switch (i)
+        {
+            case 0:
+                printf("c0\n");
+           case 1:
+                printf("c1\n");
+            case 2:
+                printf("c2\n");
+            case 3:
+                printf("c3\n");
+            default:
+                printf("default\n");
+        }
+        if (*pf > i) continue JUMP;
+        break JUMP;
+    } while (1);
+
     return 1;
 }
 
+func void teeeest()
+{
+    long z = 3;
+    (1 ? (z < 1 ? 2 : 1) : 3) == 3;
+    (1 ?: (z ?: 7)) == 4;
+    (1 ?: (3 ?: 7)) == 4;
+}
 func void test2(int* x, int y, int z)
 {
     *(&(&x)[0]);
@@ -1522,6 +1536,8 @@ func void test2(int* x, int y, int z)
     g <<= z;
     g >>= 2;
     g >>= z;
+    2 << g;
+    3 >> 4;
     int fz = 100;
     y && z;
     y || z;
@@ -1530,7 +1546,6 @@ func void test2(int* x, int y, int z)
     ~z;
     !z;
     -z;
-
     int i = 3;
     uint ui = 2;
     int j = 129;
@@ -1552,3 +1567,254 @@ func void test2(int* x, int y, int z)
     j1 = *x;
 }
 
+
+func void testBreak()
+{
+    defer printf("ALL TESTS DONE\n");
+    int i = 0;
+    int j = 0;
+    while (j < 2)
+    {
+        defer printf("Defer while %d\n", j);
+        break;
+        defer printf("Exit\n");
+    }
+    do
+    {
+        defer printf("Defer do %d\n", j);
+        break;
+        defer printf("Exit\n");
+    } while (j < 2);
+
+    for (j = 0; j < 2; j++)
+    {
+        defer printf("Defer for %d\n", j);
+        break;
+        defer printf("Exit\n");
+    }
+
+    while (j < 2)
+    {
+        defer printf("Defer while %d\n", j);
+        j++;
+        continue;
+        defer printf("Exit\n");
+        printf("ERROR\n");
+    }
+    do
+    {
+        defer printf("Defer do %d\n", j);
+        j++;
+        continue;
+        defer printf("Exit\n");
+        printf("ERROR\n");
+    } while (j < 2);
+
+    for (j = 0; j < 2; j++)
+    {
+        defer printf("Defer for %d\n", j);
+        continue;
+        defer printf("Exit\n");
+        printf("ERROR\n");
+    }
+
+    if FOO: (i == 0)
+    {
+        printf("Enter if\n");
+        i++;
+        defer("EXIT_FOO\n");
+        while BAZ: (1)
+        {
+            defer("EXIT_BAZ\n");
+            if BAR: (i > 0) break FOO;
+        }
+        printf("WRONG\n");
+    }
+    printf("Test done\n");
+
+    while (i < 10)
+    {
+        i++;
+        if (i % 2 == 0) continue;
+        printf("%d\n", i);
+        if (i > 6) break;
+    }
+
+    i = 0;
+    j = 0;
+    while FOO: (i < 10)
+    {
+        i++;
+        j = 0;
+        while (j < 3)
+        {
+            j++;
+            printf("%d, %d\n", i, j);
+            if ((i + j) % 3 == 0) continue FOO;
+            if (i + j > 8) break FOO;
+        }
+    }
+    i = 0;
+    do
+    {
+        i++;
+        if (i % 2 == 0) continue;
+        printf("%d\n", i);
+        if (i > 6) break;
+    } while (i < 10);
+
+    i = 0;
+    do FOO:
+    {
+        i++;
+        j = 0;
+        while (j < 3)
+        {
+            j++;
+            printf("%d, %d\n", i, j);
+            if ((i + j) % 3 == 0) continue FOO;
+            if (i + j > 8) break FOO;
+        }
+    } while (i < 10);
+
+    i = 0;
+    switch (i)
+    {
+        case 0:
+            printf("case0\n");
+            break;
+            printf("ERROR\n");
+        case 1:
+            printf("ERROR\n");
+    }
+
+    printf("TestFor\n");
+    for (i = 0; i < 15; i++)
+    {
+        for (j = 0; j < 3; j++)
+        {
+            printf("%d, %d\n", i, j);
+            if ((i + j) % 3 == 0) continue;
+            if (i + j > 8) break;
+        }
+    }
+
+    printf("TestFor2\n");
+    for FOO: (i = 0; i < 12; i++)
+    {
+        for (j = 0; j < 3; j++)
+        {
+            printf("%d, %d\n", i, j);
+            if ((i + j) % 3 == 0) continue FOO;
+            if (i + j > 8) break FOO;
+        }
+    }
+    printf("Test1\n");
+    i = 0;
+    switch FOO: (i)
+    {
+        case 0:
+            defer printf("Test1DeferOuter\n");
+            while (1)
+            {
+                printf("case0\n");
+                defer printf("Test1DeferInner\n");
+                break FOO;
+            }
+            printf("ERROR\n");
+        case 1:
+            printf("ERROR\n");
+    }
+    printf("Test2\n");
+    switch FOO: (i)
+    {
+        case 0:
+            printf("case0\n");
+            defer printf("Test2DeferNext\n");
+            next;
+        case 1:
+            defer printf("Test2DeferCase\n");
+            printf("case1\n");
+    }
+    printf("Test3\n");
+    switch FOO: (i)
+    {
+        case 0:
+            defer printf("Test3DeferNext\n");
+            printf("case0\n");
+            next 2;
+        case 1:
+            defer printf("Test3DeferErr\n");
+            printf("case1\n");
+        case 2:
+            defer printf("Test3DeferCase\n");
+            printf("case2\n");
+    }
+    printf("Test4\n");
+    switch FOO: (i)
+    {
+        case 0:
+            printf("case0\n");
+            defer printf("OuterDefer\n");
+            switch (i)
+            {
+                case 0:
+                    printf("Inner\n");
+                    defer printf("InnerDefer\n");
+                    next FOO:2;
+                case 2:
+                    printf("ERROR\n");
+            }
+            next 1;
+        case 1:
+            printf("case1\n");
+        case 2:
+            defer printf("Case2Defer\n");
+            printf("case2\n");
+    }
+    printf("Test5\n");
+    switch FOO: (i)
+    {
+        case 0:
+            defer printf("DEFER\n");
+            printf("case0\n");
+            switch (i)
+            {
+                case 0:
+                    printf("Inner\n");
+                    defer printf("DEFERINNER\n");
+                    int k = 1;
+                    next FOO: k;
+                case 2:
+                    printf("ERROR\n");
+            }
+            next 1;
+        case 1:
+            printf("case1\n");
+        case 2:
+            printf("case2\n");
+    }
+
+    i = 0;
+    switch FOO: (i)
+    {
+        case 0:
+            printf("0: %d\n", i);
+            i++;
+            next i;
+        case 1:
+            i += 2;
+            defer printf("DEFER1\n");
+            printf("1: %d\n", i);
+            next i;
+        case 2:
+            printf("2: END\n", i);
+        case 3:
+            i--;
+            printf("3: %d\n", i);
+            next i;
+        default:
+            printf("WAAAIT\n");
+    }
+
+}

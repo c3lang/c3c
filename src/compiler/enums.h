@@ -6,24 +6,6 @@
 
 typedef enum
 {
-	ASSIGNOP_ERROR,
-	ASSIGNOP_ASSIGN,
-	ASSIGNOP_MULT_ASSIGN,
-	ASSIGNOP_ADD_ASSIGN,
-	ASSIGNOP_SUB_ASSIGN,
-	ASSIGNOP_DIV_ASSIGN,
-	ASSIGNOP_MOD_ASSIGN,
-	ASSIGNOP_AND_ASSIGN,
-	ASSIGNOP_OR_ASSIGN,
-	ASSIGNOP_BIT_AND_ASSIGN,
-	ASSIGNOP_BIT_OR_ASSIGN,
-	ASSIGNOP_BIT_XOR_ASSIGN,
-	ASSIGNOP_SHR_ASSIGN,
-	ASSIGNOP_SHL_ASSIGN,
-} AssignOp;
-
-typedef enum
-{
 	BINARYOP_ERROR,
 	BINARYOP_MULT,
 	BINARYOP_MULT_MOD,
@@ -74,29 +56,23 @@ typedef enum
 	AST_CATCH_STMT,
 	AST_COMPOUND_STMT,
 	AST_CONTINUE_STMT,
+	AST_DEFINE_STMT,
 	AST_CT_IF_STMT,
 	AST_CT_ELIF_STMT,
 	AST_CT_ELSE_STMT,
 	AST_CT_FOR_STMT,
 	AST_CT_SWITCH_STMT,
-	AST_CT_DEFAULT_STMT,
-	AST_CT_CASE_STMT,
 	AST_DECLARE_STMT,
 	AST_DEFAULT_STMT,
 	AST_DEFER_STMT,
 	AST_DO_STMT,
 	AST_EXPR_STMT,
+	AST_TRY_STMT,
 	AST_FOR_STMT,
-	AST_GENERIC_CASE_STMT,
-	AST_GENERIC_DEFAULT_STMT,
-	AST_GOTO_STMT,
 	AST_IF_STMT,
-	AST_LABEL,
 	AST_NOP_STMT,
 	AST_RETURN_STMT,
-	AST_DECL_EXPR_LIST,
 	AST_SWITCH_STMT,
-	AST_THROW_STMT,
 	AST_NEXT_STMT,
 	AST_VOLATILE_STMT,
 	AST_WHILE_STMT,
@@ -113,9 +89,9 @@ typedef enum
 typedef enum
 {
 	CAST_ERROR,
-	CAST_ERREU,
-	CAST_EUERR,
 	CAST_EUBOOL,
+	CAST_EUER,
+	CAST_EREU,
 	CAST_XIERR,
 	CAST_PTRPTR,
 	CAST_PTRXI,
@@ -140,34 +116,9 @@ typedef enum
 	CAST_ENUMSI,
 	CAST_APTSA,
 	CAST_SAPTR,
-	/*
-	CAST_NONE,
-	CAST_INLINE,
-	CAST_FAILED,
-	CAST_SUBTYPE,
-	CAST_VARRPTR,
-	CAST_STRPTR,
-	CAST_ARRPTR,
-	CAST_INTPTR,
-	CAST_PTRINT,
-	CAST_PTRBOOL,
-	CAST_FPFP,
-	CAST_FPUI,
-	CAST_FPSI,
-	CAST_FPBOOL,
-	CAST_UIFP,
-	CAST_UIUI,
-	CAST_UISI,
-	CAST_SIFP,
-	CAST_SISI,
-	CAST_SIUI,
-	CAST_INTBOOL,
-	CAST_BOOLFP,
-	CAST_BOOLINT,
-	CAST_RVALUE,*/
 } CastKind;
 
-typedef enum _CastType
+typedef enum
 {
 	CAST_TYPE_EXPLICIT,
 	CAST_TYPE_IMPLICIT,
@@ -181,14 +132,14 @@ typedef enum
 	DECL_POISONED = 0,
 	DECL_FUNC,
 	DECL_VAR,
+	DECL_LABEL,
 	DECL_ENUM_CONSTANT,
 	DECL_TYPEDEF,
 	DECL_STRUCT,
 	DECL_MEMBER,
 	DECL_UNION,
 	DECL_ENUM,
-	DECL_ERROR,
-	DECL_ERROR_CONSTANT,
+	DECL_ERR,
 	DECL_ARRAY_VALUE,
 	DECL_IMPORT,
 	DECL_MACRO,
@@ -203,18 +154,19 @@ typedef enum
 typedef enum
 {
 	EXIT_NONE = 0,
-	EXIT_BREAK,
-	EXIT_NEXT,
-	EXIT_GOTO,
-	EXIT_CONTINUE,
-	EXIT_THROW,
-	EXIT_RETURN,
+	EXIT_BREAK = 1 << 1,
+	EXIT_NEXT = 1 << 2,
+	EXIT_CONTINUE = 1 << 5,
+	EXIT_RETURN = 1 << 6,
 } ExitType;
 
 typedef enum
 {
 	EXPR_POISONED,
+	EXPR_GUARD,
 	EXPR_TRY,
+	EXPR_CATCH,
+	EXPR_ELSE,
 	EXPR_CONST,
 	EXPR_BINARY,
 	EXPR_TERNARY,
@@ -237,16 +189,24 @@ typedef enum
 	EXPR_RANGE,
 	EXPR_DESIGNATED_INITIALIZER,
 	EXPR_COMPOUND_LITERAL,
+	EXPR_FAILABLE,
+	EXPR_FAIL_CHECK,
+	EXPR_DECL_LIST
 } ExprKind;
 
-
+typedef enum
+{
+	FAILABLE_NO,
+	FAILABLE_YES,
+	FAILABLE_UNWRAPPED
+} ExprFailableStatus;
 
 
 typedef enum
 {
 	PREC_NONE,
 	PREC_ASSIGNMENT,        // =, *=, /=, %=, +=, etc
-	PREC_TRY,               // try
+	PREC_TRY_ELSE,          // try and else
 	PREC_TERNARY,           // ?:
 	PREC_RANGE,             // ...
 	PREC_LOGICAL,           // && ||
@@ -262,12 +222,10 @@ typedef enum
 typedef enum
 {
 	SCOPE_NONE = 0,
-	SCOPE_BREAK = 1 << 0,
-	SCOPE_CONTINUE = 1 << 1,
-	SCOPE_NEXT = 1 << 2,
-	SCOPE_DEFER = 1 << 3,
-	SCOPE_EXPR_BLOCK = 1 << 4,
-	SCOPE_MACRO = 1 << 5
+	SCOPE_DEFER = 1 << 4,
+	SCOPE_EXPR_BLOCK = 1 << 5,
+	SCOPE_MACRO = 1 << 6,
+	SCOPE_COND = 1 << 7,
 } ScopeFlags;
 
 typedef enum
@@ -314,7 +272,7 @@ typedef enum
 	TOKEN_LPAREN,           // (
 	TOKEN_MINUS,            // -
 	TOKEN_MOD,              // %
-	TOKEN_NOT,              // !
+	TOKEN_BANG,             // !
 	TOKEN_OR,               // |
 	TOKEN_PLUS,             // +
 	TOKEN_QUESTION,         // ?
@@ -350,6 +308,7 @@ typedef enum
 	TOKEN_SCOPE,            // ::
 	TOKEN_SHR,              // >>
 	TOKEN_SHL,              // <<
+	TOKEN_BANGBANG,         // !!
 
 	// Three or more
 	TOKEN_ELLIPSIS,         // ...
@@ -390,10 +349,13 @@ typedef enum
 
 
 	// Literals.
-
 	TOKEN_IDENT,            // Any normal ident.
 	TOKEN_CONST_IDENT,      // Any purely upper case ident,
 	TOKEN_TYPE_IDENT,       // Any ident on the format FooBar or __FooBar
+
+	// Asm
+	TOKEN_ASM_STRING,
+	TOKEN_ASM_CONSTRAINT,
 
 	// We want to parse $foo separately.
 	// Otherwise we allow things like "# foo" which would be pretty bad.
@@ -419,18 +381,18 @@ typedef enum
 	TOKEN_CATCH,
 	TOKEN_CONST,
 	TOKEN_CONTINUE,
+	TOKEN_DEFINE,
 	TOKEN_DEFAULT,
 	TOKEN_DEFER,
 	TOKEN_DO,
 	TOKEN_ELSE,
 	TOKEN_ENUM,
-	TOKEN_ERROR_TYPE,
+	TOKEN_ERR,
 	TOKEN_EXTERN,
 	TOKEN_FALSE,
 	TOKEN_FOR,
 	TOKEN_FUNC,
 	TOKEN_GENERIC,
-	TOKEN_GOTO,
 	TOKEN_IF,
 	TOKEN_IMPORT,
 	TOKEN_IN,
@@ -443,8 +405,6 @@ typedef enum
 	TOKEN_RETURN,
 	TOKEN_STRUCT,
 	TOKEN_SWITCH,
-	TOKEN_THROW,
-	TOKEN_THROWS,
 	TOKEN_TRUE,
 	TOKEN_TRY,
 	TOKEN_TYPEDEF,
@@ -454,7 +414,6 @@ typedef enum
 	TOKEN_VOLATILE,
 	TOKEN_WHILE,
 	TOKEN_TYPEOF,
-	TOKEN_ERRSET,
 
 	TOKEN_CT_CASE,          // $case
 	TOKEN_CT_DEFAULT,       // $default
@@ -498,11 +457,11 @@ typedef enum
 	TYPE_FXX,
 	TYPE_POINTER,
 	TYPE_ENUM,
-	TYPE_ERROR,
 	TYPE_FUNC,
 	TYPE_STRUCT,
 	TYPE_UNION,
-	TYPE_ERROR_UNION,
+	TYPE_ERRTYPE,
+	TYPE_ERR_UNION,
 	TYPE_TYPEDEF,
 	TYPE_STRING,
 	TYPE_ARRAY,
@@ -547,6 +506,9 @@ typedef enum
 	VARDECL_GLOBAL = 1,
 	VARDECL_LOCAL = 2,
 	VARDECL_PARAM = 3,
+	VARDECL_LOCAL_CT = 4,
+	VARDECL_LOCAL_CT_TYPE = 5,
+	VARDECL_ALIAS = 6,
 } VarDeclKind;
 
 typedef enum

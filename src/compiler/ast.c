@@ -68,8 +68,8 @@ Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility)
 		case DECL_STRUCT:
 			kind = TYPE_STRUCT;
 			break;
-		case DECL_ERROR:
-			kind = TYPE_ERROR;
+		case DECL_ERR:
+			kind = TYPE_ERRTYPE;
 			break;
 		case DECL_ENUM:
 			kind = TYPE_ENUM;
@@ -80,7 +80,6 @@ Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility)
 		case DECL_POISONED:
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
-		case DECL_ERROR_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
@@ -90,6 +89,7 @@ Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility)
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
 		case DECL_MEMBER:
+		case DECL_LABEL:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, name.string);
@@ -111,6 +111,12 @@ const char *decl_var_to_string(VarDeclKind kind)
 			return "local";
 		case VARDECL_PARAM:
 			return "param";
+		case VARDECL_ALIAS:
+			return "alias";
+		case VARDECL_LOCAL_CT:
+			return "$local";
+		case VARDECL_LOCAL_CT_TYPE:
+			return "$Local";
 	}
 	UNREACHABLE
 }
@@ -148,7 +154,7 @@ Decl *struct_find_name(Decl *decl, const char* name)
 
 Expr *expr_new(ExprKind kind, SourceRange start)
 {
-	Expr *expr = malloc_arena(sizeof(Expr));
+	Expr *expr = CALLOCS(Expr);
 	expr->expr_kind = kind;
 	expr->span = start;
 	expr->type = NULL;
@@ -222,7 +228,7 @@ UnaryOp unary_op[TOKEN_LAST + 1] = {
 		[TOKEN_STAR] = UNARYOP_DEREF,
 		[TOKEN_AMP] = UNARYOP_ADDR,
 		[TOKEN_BIT_NOT] = UNARYOP_BITNEG,
-		[TOKEN_NOT] = UNARYOP_NOT,
+		[TOKEN_BANG] = UNARYOP_NOT,
 		[TOKEN_MINUS] = UNARYOP_NEG,
 		[TOKEN_MINUS_MOD] = UNARYOP_NEGMOD,
 		[TOKEN_PLUSPLUS] = UNARYOP_INC,
@@ -331,8 +337,8 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 		case TYPE_ENUM:
 			DUMPF("(enum %s)", type->name);
 			return;
-		case TYPE_ERROR:
-			DUMPF("(error %s)", type->name);
+		case TYPE_ERRTYPE:
+			DUMPF("(errtype %s)", type->name);
 			return;
 		case TYPE_MEMBER:
 			DUMPF("(member %s", type->name);
@@ -381,8 +387,8 @@ void fprint_type_recursive(FILE *file, Type *type, int indent)
 		case TYPE_STRING:
 			DUMP("(string)");
 			return;
-		case TYPE_ERROR_UNION:
-			DUMP("(error-union)");
+		case TYPE_ERR_UNION:
+			DUMP("(any-error)");
 			return;
 	}
 }
@@ -491,6 +497,20 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
+		case EXPR_FAIL_CHECK:
+			DUMP("(fail-check");
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->fail_check_expr);
+			DUMPEND();
+		case EXPR_DECL_LIST:
+			DUMP("(decllist");
+			DUMPASTS(expr->dexpr_list_expr);
+			DUMPEND();
+		case EXPR_FAILABLE:
+			DUMP("(failable");
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->failable_expr);
+			DUMPEND();
 		case EXPR_IDENTIFIER:
 			if (expr->identifier_expr.is_macro)
 			{
@@ -537,6 +557,16 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			DUMPF("(postunary %s", token_type_to_string(postunaryop_to_token(expr->post_expr.operator)));
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->post_expr.expr);
+			DUMPEND();
+		case EXPR_CATCH:
+			DUMP("(catch");
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->trycatch_expr);
+			DUMPEND();
+		case EXPR_TRY:
+			DUMP("(try");
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->trycatch_expr);
 			DUMPEND();
 		case EXPR_TYPE_ACCESS:
 			DUMPF("(typeaccess .%s", expr->type_access.name.string);
@@ -615,29 +645,26 @@ void fprint_expr_recursive(FILE *file, Expr *expr, int indent)
 			DUMPEXPR(expr->subscript_expr.expr);
 			DUMPEXPC(expr->subscript_expr.index);
 			DUMPEND();
-		case EXPR_TRY:
-			switch (expr->try_expr.type)
+		case EXPR_GUARD:
+			DUMP("(guard");
+			DUMPEXPR(expr->guard_expr);
+			DUMPEND();
+		case EXPR_ELSE:
+			if (expr->else_expr.is_jump)
 			{
-				case TRY_EXPR_ELSE_JUMP:
-					DUMP("(try-else-jump");
-					DUMPEXPC(expr);
-					DUMPEXPR(expr->try_expr.expr);
-					DUMPAST(expr->try_expr.else_stmt);
-					DUMPEND();
-				case TRY_EXPR_ELSE_EXPR:
-					DUMP("(try-else");
-					DUMPEXPC(expr);
-					DUMPEXPR(expr->try_expr.expr);
-					DUMPEXPR(expr->try_expr.else_expr);
-					DUMPEND();
-				case TRY_STMT:
-					DUMP("(try-stmt");
-					DUMPAST(expr->try_expr.stmt);
-					DUMPEND();
-				case TRY_EXPR:
-					DUMP("(try-expr");
-					DUMPEXPR(expr->try_expr.expr);
-					DUMPEND();
+				DUMP("(else-jump");
+				DUMPEXPC(expr);
+				DUMPEXPR(expr->else_expr.expr);
+				DUMPAST(expr->else_expr.else_stmt);
+				DUMPEND();
+			}
+			else
+			{
+				DUMP("(else-expr");
+				DUMPEXPC(expr);
+				DUMPEXPR(expr->else_expr.expr);
+				DUMPEXPR(expr->else_expr.else_expr);
+				DUMPEND();
 			}
 			UNREACHABLE
 		case EXPR_CAST:
@@ -702,16 +729,6 @@ void fprint_func_signature(FILE *file, FunctionSignature *signature, int indent)
 		DUMP("(params");
 		DUMPDECLS(signature->params);
 		DUMPE();
-		if (signature->throw_any)
-		{
-			DUMP("(throws any)");
-		}
-		else
-		{
-			DUMP("(throws");
-			VECEACH(signature->throws, i) DUMPTI(signature->throws[i]);
-			DUMPE();
-		}
 		indent--;
 	} while (false);
 	DUMPEND();
@@ -731,9 +748,19 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 				case VARDECL_GLOBAL:
 				case VARDECL_LOCAL:
 				case VARDECL_PARAM:
+				case VARDECL_LOCAL_CT:
 					DUMPEXPR(decl->var.init_expr);
 					break;
+				case VARDECL_LOCAL_CT_TYPE:
+					DUMPTI(decl->var.type_info);
+					break;
+				case VARDECL_ALIAS:
+					DUMPDECL(decl->var.alias);
+					break;
 			}
+			DUMPEND();
+		case DECL_LABEL:
+			DUMPF("(label %s", decl->name);
 			DUMPEND();
 		case DECL_MACRO:
 			DUMPF("(macro %s", decl->name);
@@ -771,9 +798,9 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			DUMPTI(decl->enums.type_info);
 			DUMPDECLS(decl->enums.values);
 			DUMPEND();
-		case DECL_ERROR:
+		case DECL_ERR:
 			DUMPF("(error %s", decl->name);
-			DUMPDECLS(decl->error.error_constants);
+			DUMPDECLS(decl->strukt.members);
 			DUMPEND();
 		case DECL_ENUM_CONSTANT:
 			if (!decl->enum_constant.expr)
@@ -784,9 +811,6 @@ void fprint_decl_recursive(FILE *file, Decl *decl, int indent)
 			DUMPF("(enum-constant %s", decl->name);
 			DUMPEXPR(decl->enum_constant.expr);
 			DUMPEND();
-		case DECL_ERROR_CONSTANT:
-			DUMPF("(error-constant %s)", decl->name);
-			return;
 		case DECL_GENERIC:
 			DUMPF("(generic %s\n", decl->name);
 			indent++;
@@ -907,6 +931,11 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 	if (!ast) return;
 	switch (ast->ast_kind)
 	{
+		case AST_TRY_STMT:
+			DUMP("(try");
+			DUMPEXPR(ast->try_stmt.decl_expr);
+			DUMPAST(ast->try_stmt.body);
+			DUMPEND();
 		case AST_COMPOUND_STMT:
 			if (!ast->compound_stmt.stmts)
 			{
@@ -916,9 +945,9 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			DUMP("(compound\n");
 			fprint_asts_recursive(file, ast->compound_stmt.stmts, indent + 1);
 			DUMPEND();
-		case AST_DECL_EXPR_LIST:
-			DUMP("(declexprlist");
-			DUMPASTS(ast->decl_expr_stmt);
+		case AST_DEFINE_STMT:
+			DUMP("(define");
+			DUMPDECL(ast->define_stmt);
 			DUMPEND();
 		case AST_DECLARE_STMT:
 			DUMP("(declare");
@@ -930,7 +959,7 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			DUMPEND();
 		case AST_WHILE_STMT:
 			DUMP("(while");
-			DUMPAST(ast->while_stmt.cond);
+			DUMPEXPR(ast->while_stmt.cond);
 			DUMPAST(ast->while_stmt.body);
 			DUMPEND();
 		case AST_SCOPED_STMT:
@@ -977,7 +1006,7 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			return;
 		case AST_FOR_STMT:
 			DUMP("(for");
-			DUMPAST(ast->for_stmt.init);
+			DUMPEXPR(ast->for_stmt.init);
 			DUMPEXPR(ast->for_stmt.cond);
 			if (ast->for_stmt.incr)
 			{
@@ -991,39 +1020,31 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			DUMPEND();
 		case AST_IF_STMT:
 			DUMP("(if");
-			DUMPAST(ast->if_stmt.cond);
+			DUMPEXPR(ast->if_stmt.cond);
 			DUMPAST(ast->if_stmt.then_body);
 			DUMPAST(ast->if_stmt.else_body);
 			DUMPEND();
 	    case AST_SWITCH_STMT:
 	    	DUMP("(switch");
-	    	DUMPAST(ast->switch_stmt.cond);
+	    	DUMPEXPR(ast->switch_stmt.cond);
 	    	DUMPASTS(ast->switch_stmt.cases);
             DUMPEND();
 		case AST_CASE_STMT:
 			DUMP("(case");
-			DUMPEXPR(ast->case_stmt.expr);
+			if (ast->case_stmt.is_type)
+			{
+				DUMPTI(ast->case_stmt.type_info);
+			}
+			else
+			{
+				DUMPEXPR(ast->case_stmt.expr);
+			}
+			DUMPAST(ast->case_stmt.body);
 			DUMPEND();
 	    case AST_DEFER_STMT:
 	    	DUMP("(defer");
 	    	DUMPAST(ast->defer_stmt.body);
 	    	DUMPEND();
-		case AST_GENERIC_CASE_STMT:
-			DUMP("(generic-case");
-			indent++;
-			DUMP("(match");
-			VECEACH(ast->generic_case_stmt.types, i)
-			{
-				DUMPTI(ast->generic_case_stmt.types[i]);
-			}
-			DUMPE();
-			indent--;
-			DUMPAST(ast->generic_case_stmt.body);
-			DUMPEND();
-		case AST_GENERIC_DEFAULT_STMT:
-			DUMP("(generic-default");
-			DUMPAST(ast->generic_default_stmt);
-			DUMPEND();
 		case AST_POISONED:
 			DUMP("(ast-poisoned)");
 			return;
@@ -1033,7 +1054,7 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			DUMPEND();
 		case AST_CATCH_STMT:
 			DUMP("(catch");
-			DUMPDECL(ast->catch_stmt.error_param);
+			DUMPEXPR(ast->catch_stmt.catchable);
 			DUMPAST(ast->catch_stmt.body);
 			DUMPEND();
 		case AST_CT_IF_STMT:
@@ -1057,26 +1078,9 @@ static void fprint_ast_recursive(FILE *file, Ast *ast, int indent)
 			DUMPEXPR(ast->ct_switch_stmt.cond);
 			DUMPASTS(ast->ct_switch_stmt.body);
 			DUMPEND();
-		case AST_CT_CASE_STMT:
-			DUMP("(ct-case");
-			TODO
-		case AST_CT_DEFAULT_STMT:
-			DUMP("(ct-default");
-			DUMPAST(ast->ct_default_stmt);
-			DUMPEND();
-		case AST_GOTO_STMT:
-			DUMPF("(goto %s)", ast->goto_stmt.label_name);
-			return;
-		case AST_LABEL:
-			DUMPF("(label %s)", ast->label_stmt.name);
-			return;
 		case AST_NOP_STMT:
 			DUMP("(nop)");
 			return;
-		case AST_THROW_STMT:
-			DUMP("(throw");
-			DUMPEXPR(ast->throw_stmt.throw_value);
-			DUMPEND();
 		case AST_VOLATILE_STMT:
 			DUMP("(volatile");
 			DUMPAST(ast->volatile_stmt);

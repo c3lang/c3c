@@ -4,7 +4,7 @@
 
 #include "llvm_codegen_internal.h"
 
-LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type);
+LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *any_type);
 
 static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl)
 {
@@ -20,10 +20,10 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_VAR:
-		case DECL_ERROR_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MEMBER:
+		case DECL_LABEL:
 			UNREACHABLE;
 		case DECL_FUNC:
 		{
@@ -79,19 +79,31 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 		}
 		case DECL_ENUM:
 			return llvm_get_type(context, decl->type);
-		case DECL_ERROR:
-			TODO
-			/*
-			if (!context->error_type)
+		case DECL_ERR:
+		{
+			LLVMTypeRef *types = NULL;
+			vec_add(types, llvm_get_type(context, type_typeid));
+			unsigned size = type_size(type_typeid);
+			VECEACH(decl->strukt.members, i)
 			{
-				LLVMTypeRef domain_type = LLVMInt64TypeInContext(LLVMCONTEXT(context));
-				LLVMTypeRef pointer_type = BACKEND_TYPE(type_voidptr);
-				LLVMTypeRef error_type = LLVMStructCreateNamed(LLVMCONTEXT(context), "error");
-				LLVMTypeRef types[2] = { domain_type, pointer_type };
-				LLVMStructSetBody(error_type, types, 2, false);
-				context->error_type = error_type;
+				Type *type = decl->strukt.members[i]->type->canonical;
+				unsigned alignment = type_abi_alignment(type);
+				if (size % alignment != 0)
+				{
+					size += alignment - size % alignment;
+				}
+				size += type_size(type);
+				vec_add(types, llvm_get_type(context, type));
 			}
-			return context->error_type;*/
+			unsigned padding = type_size(type_error) - size;
+			if (padding > 0)
+			{
+				vec_add(types, LLVMIntTypeInContext(context, padding * 8));
+			}
+			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->name);
+			LLVMStructSetBody(type, types, vec_size(types), false);
+			return type;
+		}
 	}
 	UNREACHABLE
 }
@@ -138,92 +150,86 @@ LLVMTypeRef llvm_func_type(LLVMContextRef context, Type *type)
 		}
 	}
 	LLVMTypeRef ret_type;
-	switch (signature->error_return)
+	if (signature->failable)
 	{
-		case ERROR_RETURN_ANY:
-		case ERROR_RETURN_MANY:
-			ret_type = llvm_get_type(context, type_error_union);
-			break;
-		case ERROR_RETURN_ONE:
-			ret_type = llvm_get_type(context, type_error_base);
-			break;;
-		case ERROR_RETURN_NONE:
-			ret_type = signature->return_param ? llvm_get_type(context, type_void) : llvm_get_type(context, type->func.signature->rtype->type);
-			break;
-		default:
-			UNREACHABLE
+		ret_type = llvm_get_type(context, type_error);
+	}
+	else
+	{
+		ret_type = signature->return_param
+				? llvm_get_type(context, type_void)
+				: llvm_get_type(context, type->func.signature->rtype->type);
 	}
 	return LLVMFunctionType(ret_type, params, parameters, signature->variadic);
 }
 
 
-LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *type)
+LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *any_type)
 {
-	if (type->backend_type && LLVMGetTypeContext(type->backend_type) == context)
+	if (any_type->backend_type && LLVMGetTypeContext(any_type->backend_type) == context)
 	{
-		return type->backend_type;
+		return any_type->backend_type;
 	}
-	DEBUG_LOG("Generating type %s", type->name);
-	switch (type->type_kind)
+	DEBUG_LOG("Generating type %s", any_type->name);
+	switch (any_type->type_kind)
 	{
 		case TYPE_MEMBER:
 		case TYPE_POISONED:
 			UNREACHABLE
 		case TYPE_TYPEID:
-			return type->backend_type = LLVMIntTypeInContext(context, type->builtin.bitsize);
-		case TYPE_ERROR:
-			return type->backend_type = llvm_get_type(context, type_error_base);
+			return any_type->backend_type = LLVMIntTypeInContext(context, any_type->builtin.bitsize);
 		case TYPE_TYPEDEF:
-			return type->backend_type = llvm_get_type(context, type->canonical);
+			return any_type->backend_type = llvm_get_type(context, any_type->canonical);
 		case TYPE_ENUM:
-			return type->backend_type = llvm_get_type(context, type->decl->enums.type_info->type->canonical);
-		case TYPE_ERROR_UNION:
-			return type->backend_type = LLVMIntTypeInContext(context, type->builtin.bitsize);
+			return any_type->backend_type = llvm_get_type(context, any_type->decl->enums.type_info->type->canonical);
+		case TYPE_ERR_UNION:
+			return any_type->backend_type = LLVMIntTypeInContext(context, any_type->builtin.bitsize);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-			return type->backend_type = llvm_type_from_decl(context, type->decl);
+		case TYPE_ERRTYPE:
+			return any_type->backend_type = llvm_type_from_decl(context, any_type->decl);
 		case TYPE_FUNC:
-			return type->backend_type = llvm_func_type(context, type);
+			return any_type->backend_type = llvm_func_type(context, any_type);
 		case TYPE_VOID:
-			return type->backend_type = LLVMVoidTypeInContext(context);
+			return any_type->backend_type = LLVMVoidTypeInContext(context);
 		case TYPE_F64:
 		case TYPE_FXX:
-			return type->backend_type = LLVMDoubleTypeInContext(context);
+			return any_type->backend_type = LLVMDoubleTypeInContext(context);
 		case TYPE_F32:
-			return type->backend_type = LLVMFloatTypeInContext(context);
+			return any_type->backend_type = LLVMFloatTypeInContext(context);
 		case TYPE_U64:
 		case TYPE_I64:
-			return type->backend_type = LLVMIntTypeInContext(context, 64U);
+			return any_type->backend_type = LLVMIntTypeInContext(context, 64U);
 		case TYPE_U32:
 		case TYPE_I32:
 		case TYPE_IXX:
-			return type->backend_type = LLVMIntTypeInContext(context, 32U);
+			return any_type->backend_type = LLVMIntTypeInContext(context, 32U);
 		case TYPE_U16:
 		case TYPE_I16:
-			return type->backend_type = LLVMIntTypeInContext(context, 16U);
+			return any_type->backend_type = LLVMIntTypeInContext(context, 16U);
 		case TYPE_U8:
 		case TYPE_I8:
-			return type->backend_type = LLVMIntTypeInContext(context, 8U);
+			return any_type->backend_type = LLVMIntTypeInContext(context, 8U);
 		case TYPE_BOOL:
-			return type->backend_type = LLVMIntTypeInContext(context, 1U);
+			return any_type->backend_type = LLVMIntTypeInContext(context, 1U);
 		case TYPE_POINTER:
-			return type->backend_type = llvm_type_from_ptr(context, type);
+			return any_type->backend_type = llvm_type_from_ptr(context, any_type);
 		case TYPE_STRING:
 			// TODO
-			return type->backend_type = LLVMPointerType(llvm_get_type(context, type_char), 0);
+			return any_type->backend_type = LLVMPointerType(llvm_get_type(context, type_char), 0);
 		case TYPE_ARRAY:
-			return type->backend_type = llvm_type_from_array(context, type);
+			return any_type->backend_type = llvm_type_from_array(context, any_type);
 		case TYPE_SUBARRAY:
 		{
-			LLVMTypeRef base_type = llvm_get_type(context, type_get_ptr(type->array.base));
+			LLVMTypeRef base_type = llvm_get_type(context, type_get_ptr(any_type->array.base));
 			LLVMTypeRef size_type = llvm_get_type(context, type_usize);
-			LLVMTypeRef array_type = LLVMStructCreateNamed(context, type->name);
+			LLVMTypeRef array_type = LLVMStructCreateNamed(context, any_type->name);
 			LLVMTypeRef types[2] = { base_type, size_type };
 			LLVMStructSetBody(array_type, types, 2, false);
-			return type->backend_type = array_type;
+			return any_type->backend_type = array_type;
 		}
 		case TYPE_VARARRAY:
-			return type->backend_type = llvm_get_type(context, type_get_ptr(type->array.base));
+			return any_type->backend_type = llvm_get_type(context, type_get_ptr(any_type->array.base));
 	}
 	UNREACHABLE;
 }

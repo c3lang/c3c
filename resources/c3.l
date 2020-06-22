@@ -58,8 +58,6 @@ void comment(void);
 "void"			{ count(); return(VOID); }
 "volatile"		{ count(); return(VOLATILE); }
 "while"			{ count(); return(WHILE); }
-"throw"         { count(); return(THROW); }
-"throws"        { count(); return(THROWS); }
 "func"          { count(); return(FUNC); }
 "nil"           { count(); return(NIL); }
 "next"          { count(); return(NEXT); }

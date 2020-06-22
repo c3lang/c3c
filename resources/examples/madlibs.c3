@@ -21,12 +21,7 @@ func void main()
     {
         string s = match.string;
         printf("Enter a value for '%s': ", s.slice(1, s.size - 2));
-        string! word = strin.readln().strip();
-        catch (word)
-        {
-            // Exit on error.
-            return;
-        }
+        string word = strin.readln().strip() else return;
         story = story.replace(s, word);
     }
 

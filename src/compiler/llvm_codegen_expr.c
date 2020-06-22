@@ -130,11 +130,17 @@ static LLVMValueRef gencontext_emit_member_addr(GenContext *context, LLVMValueRe
 		value = gencontext_emit_member_addr(context, value, parent, current_parent);
 	}
 
-	if (current_parent->type->canonical->type_kind == TYPE_UNION)
+	switch (current_parent->type->canonical->type_kind)
 	{
-		return LLVMBuildBitCast(context->builder, value, LLVMPointerType(llvm_type(member->type), 0), member->name);
+		case TYPE_UNION:
+			return LLVMBuildBitCast(context->builder, value, LLVMPointerType(llvm_type(member->type), 0), member->name);
+		case TYPE_ERRTYPE:
+			return LLVMBuildStructGEP2(context->builder, llvm_type(current_parent->type), value, member->member_decl.index + 1, member->name);
+		case TYPE_STRUCT:
+			return LLVMBuildStructGEP2(context->builder, llvm_type(current_parent->type), value, member->member_decl.index, member->name);
+		default:
+			UNREACHABLE
 	}
-	return LLVMBuildStructGEP2(context->builder, llvm_type(current_parent->type), value, member->member_decl.index, member->name);
 }
 
 
@@ -168,15 +174,15 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 	{
 		case EXPR_RANGE:
 			TODO
-		case EXPR_EXPR_BLOCK:
-			TODO
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Should only appear when generating designated initializers.
 			UNREACHABLE
 		case EXPR_MACRO_BLOCK:
 			TODO
+		case EXPR_FAIL_CHECK:
+			UNREACHABLE
 		case EXPR_IDENTIFIER:
-			return expr->identifier_expr.decl->ref;
+			return decl_ref(expr->identifier_expr.decl);
 		case EXPR_UNARY:
 			assert(expr->unary_expr.operator == UNARYOP_DEREF);
 			return gencontext_emit_expr(context, expr->unary_expr.expr);
@@ -193,7 +199,7 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_CONST:
 		case EXPR_TYPEID:
 		case EXPR_POISONED:
-		case EXPR_TRY:
+		case EXPR_GUARD:
 		case EXPR_BINARY:
 		case EXPR_TERNARY:
 		case EXPR_POST_UNARY:
@@ -203,16 +209,15 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_CAST:
 		case EXPR_TYPEOF:
+		case EXPR_FAILABLE:
+		case EXPR_CATCH:
+		case EXPR_TRY:
+		case EXPR_EXPR_BLOCK:
+		case EXPR_DECL_LIST:
+		case EXPR_ELSE:
 			UNREACHABLE
 	}
 	UNREACHABLE
-}
-
-static inline LLVMValueRef gencontext_emit_error_cast(GenContext *context, LLVMValueRef value, Type *type)
-{
-	LLVMValueRef global = type->decl->error.start_value;
-	LLVMValueRef extend = LLVMBuildZExtOrBitCast(context->builder, value, llvm_type(type_usize), "");
-	return LLVMBuildAdd(context->builder, global, extend, "");
 }
 
 LLVMValueRef gencontext_emit_arr_to_subarray_cast(GenContext *context, LLVMValueRef value, Type *to_type, Type *from_type)
@@ -230,6 +235,13 @@ LLVMValueRef gencontext_emit_subarray_to_ptr_cast(GenContext *context, LLVMValue
 	return LLVMBuildExtractValue(context->builder, value, 0, "");
 }
 
+LLVMValueRef gencontext_emit_value_bitcast(GenContext *context, LLVMValueRef value, Type *to_type, Type *from_type)
+{
+	LLVMValueRef ptr = gencontext_emit_alloca(context, llvm_type(from_type), "");
+	LLVMBuildStore(context->builder, value, ptr);
+	LLVMValueRef ptr_cast = gencontext_emit_bitcast(context, ptr, type_get_ptr(to_type));
+	return gencontext_emit_load(context, to_type, ptr_cast);
+}
 LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMValueRef value, Type *to_type, Type *from_type)
 {
 	switch (cast_kind)
@@ -253,14 +265,13 @@ LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMV
 			TODO
 		case CAST_STRPTR:
 			TODO
-		case CAST_ERREU:
-			return gencontext_emit_error_cast(context, value, from_type);
-		case CAST_EUERR:
-			TODO
+		case CAST_EREU:
+		case CAST_EUER:
+			return gencontext_emit_value_bitcast(context, value, to_type, from_type);
 		case CAST_EUBOOL:
-			return LLVMBuildICmp(context->builder, LLVMIntNE, value, llvm_int(type_usize, 0), "eubool");
+			return LLVMBuildICmp(context->builder, LLVMIntNE, value, gencontext_emit_no_error_union(context), "eubool");
 		case CAST_PTRBOOL:
-			return LLVMBuildICmp(context->builder, LLVMIntNE, value, LLVMConstPointerNull(llvm_type(to_type->canonical->pointer)), "ptrbool");
+			return LLVMBuildICmp(context->builder, LLVMIntNE, value, LLVMConstPointerNull(llvm_type(to_type->canonical)), "ptrbool");
 		case CAST_BOOLINT:
 			return LLVMBuildTrunc(context->builder, value, llvm_type(to_type), "boolsi");
 		case CAST_FPBOOL:
@@ -330,6 +341,14 @@ static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext
 		gencontext_emit_memclear(context, ref, canonical);
 	}
 
+	bool is_error = expr->type->canonical->type_kind == TYPE_ERRTYPE;
+
+	if (is_error)
+	{
+		LLVMValueRef err_type = LLVMBuildStructGEP2(context->builder, type, ref, 0, "");
+		LLVMBuildStore(context->builder, expr->type->canonical->backend_typeid, err_type);
+	}
+
 	if (expr->expr_initializer.init_type == INITIALIZER_ZERO)
 	{
 		return ref;
@@ -338,6 +357,7 @@ static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext
 	Expr **elements = expr->expr_initializer.initializer_expr;
 
 	bool is_union = expr->type->canonical->type_kind == TYPE_UNION;
+
 	if (expr->expr_initializer.init_type == INITIALIZER_NORMAL)
 	{
 		if (is_union)
@@ -352,7 +372,7 @@ static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext
 		{
 			Expr *element = elements[i];
 			LLVMValueRef init_value = gencontext_emit_expr(context, element);
-			LLVMValueRef subref = LLVMBuildStructGEP2(context->builder, type, ref, i, "");
+			LLVMValueRef subref = LLVMBuildStructGEP2(context->builder, type, ref, i + (int)is_error, "");
 			LLVMBuildStore(context->builder, init_value, subref);
 		}
 		return ref;
@@ -360,6 +380,7 @@ static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext
 
 	VECEACH(elements, i)
 	{
+		if (is_error) TODO
 		Expr *element = elements[i];
 		DesignatedPath *path = element->designated_init_expr.path;
 		LLVMValueRef sub_value = gencontext_emit_expr(context, element->designated_init_expr.value);
@@ -455,8 +476,16 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 		case UNARYOP_ERROR:
 			FATAL_ERROR("Illegal unary op %s", expr->unary_expr.operator);
 		case UNARYOP_NOT:
-			return LLVMBuildXor(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr),
-					llvm_int(type_bool, 1), "not");
+			if (type_is_float(type))
+			{
+				LLVMValueRef val = gencontext_emit_expr(context, expr->unary_expr.expr);
+				return LLVMBuildFCmp(context->builder, LLVMRealUNE, val, LLVMConstNull(llvm_type(type)), "");
+			}
+			else
+			{
+				LLVMValueRef val = gencontext_emit_expr(context, expr->unary_expr.expr);
+				return LLVMBuildICmp(context->builder, LLVMIntEQ, val, LLVMConstNull(llvm_type(type)), "");
+			}
 		case UNARYOP_BITNEG:
 			return LLVMBuildNot(context->builder, gencontext_emit_expr(context, expr->unary_expr.expr), "bnot");
 		case UNARYOP_NEGMOD:
@@ -813,15 +842,6 @@ static LLVMValueRef gencontext_emit_binary(GenContext *context, Expr *expr, LLVM
 	UNREACHABLE
 }
 
-LLVMBasicBlockRef gencontext_get_try_target(GenContext *context, Expr *try_expr)
-{
-	if (!try_expr->try_expr.jump_target)
-	{
-		try_expr->try_expr.jump_target = gencontext_create_free_block(context, "tryjump");
-	}
-	return try_expr->try_expr.jump_target;
-}
-
 
 LLVMValueRef gencontext_emit_post_unary_expr(GenContext *context, Expr *expr)
 {
@@ -838,41 +858,45 @@ LLVMValueRef gencontext_emit_typeid(GenContext *context, Expr *expr)
 	return expr->typeid_expr->type->backend_typeid;
 }
 
-LLVMValueRef gencontext_emit_try_expr(GenContext *context, Expr *expr)
+LLVMValueRef gencontext_emit_trycatch_expr(GenContext *context, Expr *expr)
 {
-	if (expr->try_expr.type == TRY_STMT)
-	{
-		gencontext_emit_stmt(context, expr->try_expr.stmt);
-		return NULL;
-	}
-	if (expr->try_expr.type == TRY_EXPR_ELSE_EXPR)
-	{
-		LLVMBasicBlockRef else_block = gencontext_get_try_target(context, expr);
-		LLVMBasicBlockRef after_catch = gencontext_create_free_block(context, "aftercatch");
-		LLVMValueRef res = gencontext_emit_alloca(context, llvm_type(expr->try_expr.else_expr->type), "catch");
-		LLVMValueRef normal_res = gencontext_emit_expr(context, expr->try_expr.expr);
-		LLVMBuildStore(context->builder, normal_res, res);
-		gencontext_emit_br(context, after_catch);
-		gencontext_emit_block(context, else_block);
-		LLVMValueRef catch_value = gencontext_emit_expr(context, expr->try_expr.else_expr);
-		LLVMBuildStore(context->builder, catch_value, res);
-		gencontext_emit_br(context, after_catch);
-		gencontext_emit_block(context, after_catch);
-		return gencontext_emit_load(context, expr->try_expr.else_expr->type, res);
-	}
-	if (expr->try_expr.type == TRY_EXPR_ELSE_JUMP)
-	{
-		LLVMBasicBlockRef else_block = gencontext_get_try_target(context, expr);
-		LLVMValueRef val = gencontext_emit_expr(context, expr->try_expr.expr);
-		LLVMBasicBlockRef after_catch = gencontext_create_free_block(context, "aftercatch");
-		gencontext_emit_br(context, after_catch);
-		gencontext_emit_block(context, else_block);
-		gencontext_emit_stmt(context, expr->try_expr.else_stmt);
-		gencontext_emit_br(context, after_catch);
-		gencontext_emit_block(context, after_catch);
-		return val;
-	}
-	return gencontext_emit_expr(context, expr->try_expr.expr);
+
+	LLVMBasicBlockRef error_block = gencontext_create_free_block(context, "error_block");
+	LLVMBasicBlockRef no_err_block = gencontext_create_free_block(context, "noerr_block");
+	LLVMBasicBlockRef phi_block = gencontext_create_free_block(context, "phi_block");
+
+	// Store catch/error var
+	PUSH_ERROR();
+
+	// Set the catch/error var
+	context->error_var = NULL;
+	context->catch_block = error_block;
+
+	gencontext_emit_expr(context, expr->trycatch_expr);
+
+	// Restore.
+	POP_ERROR();
+
+	// Emit success and jump to phi.
+	gencontext_emit_br(context, no_err_block);
+	gencontext_emit_block(context, no_err_block);
+	gencontext_emit_br(context, phi_block);
+
+	// Emit error and jump to phi
+	gencontext_emit_block(context, error_block);
+	gencontext_emit_br(context, phi_block);
+
+	gencontext_emit_block(context, phi_block);
+
+	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(expr->type), "val");
+	LLVMValueRef lhs = llvm_int(type_bool, expr->expr_kind == EXPR_TRY ? 1 : 0);
+	LLVMValueRef rhs = llvm_int(type_bool, expr->expr_kind == EXPR_TRY ? 0 : 1);
+
+	LLVMValueRef logic_values[2] = { lhs, rhs };
+	LLVMBasicBlockRef blocks[2] = { no_err_block, error_block };
+	LLVMAddIncoming(phi, logic_values, blocks, 2);
+
+	return phi;
 }
 
 static LLVMValueRef gencontext_emit_binary_expr(GenContext *context, Expr *expr)
@@ -890,7 +914,12 @@ static LLVMValueRef gencontext_emit_binary_expr(GenContext *context, Expr *expr)
 	if (binary_op == BINARYOP_ASSIGN)
 	{
 		LLVMValueRef addr = gencontext_emit_address(context, expr->binary_expr.left);
-		return gencontext_emit_assign_expr(context, addr, expr->binary_expr.right);
+		LLVMValueRef failable_ref = NULL;
+		if (expr->binary_expr.left->expr_kind == EXPR_IDENTIFIER)
+		{
+			failable_ref = decl_failable_ref(expr->binary_expr.left->identifier_expr.decl);
+		}
+		return gencontext_emit_assign_expr(context, addr, expr->binary_expr.right, failable_ref);
 	}
 	return gencontext_emit_binary(context, expr, NULL, binary_op);
 }
@@ -915,14 +944,17 @@ LLVMValueRef gencontext_emit_elvis_expr(GenContext *context, Expr *expr)
 
 	gencontext_emit_block(context, rhs_block);
 	LLVMValueRef rhs = gencontext_emit_expr(context, expr->ternary_expr.else_expr);
+	LLVMBasicBlockRef end_block = context->current_block;
+
 	gencontext_emit_br(context, phi_block);
 
 	// Generate phi
 	gencontext_emit_block(context, phi_block);
+
 	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(expr->type), "val");
 
 	LLVMValueRef logic_values[2] = { lhs, rhs };
-	LLVMBasicBlockRef blocks[2] = { current_block, rhs_block };
+	LLVMBasicBlockRef blocks[2] = { current_block, end_block };
 	LLVMAddIncoming(phi, logic_values, blocks, 2);
 
 	return phi;
@@ -944,10 +976,12 @@ LLVMValueRef gencontext_emit_ternary_expr(GenContext *context, Expr *expr)
 
 	gencontext_emit_block(context, lhs_block);
 	LLVMValueRef lhs = gencontext_emit_expr(context, expr->ternary_expr.then_expr);
+	LLVMBasicBlockRef lhs_exit = context->current_block;
 	gencontext_emit_br(context, phi_block);
 
 	gencontext_emit_block(context, rhs_block);
 	LLVMValueRef rhs = gencontext_emit_expr(context, expr->ternary_expr.else_expr);
+	LLVMBasicBlockRef rhs_exit = context->current_block;
 	gencontext_emit_br(context, phi_block);
 
 	// Generate phi
@@ -955,7 +989,7 @@ LLVMValueRef gencontext_emit_ternary_expr(GenContext *context, Expr *expr)
 	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(expr->type), "val");
 
 	LLVMValueRef logic_values[2] = { lhs, rhs };
-	LLVMBasicBlockRef blocks[2] = { lhs_block, rhs_block };
+	LLVMBasicBlockRef blocks[2] = { lhs_exit, rhs_exit };
 	LLVMAddIncoming(phi, logic_values, blocks, 2);
 
 	return phi;
@@ -993,270 +1027,11 @@ LLVMValueRef gencontext_emit_const_expr(GenContext *context, Expr *expr)
 			                                                         0));
 			return global_name;
 		}
-		case TYPE_ERROR:
-			return llvm_int(type_error_base, expr->const_expr.error_constant->error_constant.value);
+		case TYPE_ERRTYPE:
+			TODO
 		default:
 			UNREACHABLE
 	}
-}
-/*
-static inline void gencontext_emit_throw_union_branch(GenContext *context, CatchInfo *catches, LLVMValueRef value)
-{
-	LLVMBasicBlockRef after_block = gencontext_create_free_block(context, "throwafter");
-
-	type_error_union
-	value = LLVMBuildExtractValue(context->builder, value, 1, "");
-	LLVMValueRef comparison = LLVMBuildICmp(context->builder, LLVMIntNE, llvm_int(error_type, 0), value, "checkerr");
-
-	VECEACH(catches, i)
-	{
-		LLVMBasicBlockRef ret_err_block = gencontext_create_free_block(context, "ret_err");
-		gencontext_emit_cond_br(context, comparison, ret_err_block, after_block);
-		gencontext_emit_block(context, ret_err_block);
-
-		if (catches->kind == CATCH_TRY_ELSE)
-		{
-
-		}
-	}
-
-	if (error_type == type_error_union)
-	size_t catch_index = context->catch_stack_index;
-	while (catch_index > 0)
-	{
-		catch_index--;
-		// TODO check error
-		Catch *current_catch = &context->catch_stack[catch_index];
-		if (!current_catch->decl)
-		{
-			LLVMValueRef zero = llvm_int(type_reduced(type_error), 0);
-			// TODO emit defers.
-			if (error_type == type_error_union)
-			{
-			}
-			LLVMValueRef comparison = LLVMBuildICmp(context->builder, LLVMIntNE, zero, value, "checkerr");
-			gencontext_emit_cond_br(context, comparison, current_catch->catch_block, after_block);
-			gencontext_emit_block(context, after_block);
-			return;
-		}
-	}
-	// Fix defers gencontext_emit_defer(context, ast->throw_stmt.defers.start, ast->throw_stmt.defers.end);
-
-	if (error_type == type_error_union)
-	{
-		gencontext_emit_load(context, type_error_union, context->error_out);
-		TODO
-	}
-	LLVMBuildRet(context->builder, value);
-	context->current_block = NULL;
-	context->current_block_is_target = false;
-	gencontext_emit_block(context, after_block);
-}
-*/
-
-
-
-
-static inline void gencontext_emit_throw_branch(GenContext *context, LLVMValueRef value, TypeInfo** errors, ThrowInfo *throw_info, ErrorReturn error_return)
-{
-	Type *call_error_type;
-	switch (error_return)
-	{
-		case ERROR_RETURN_NONE:
-			// If there is no error return, this is a no-op.
-			return;
-		case ERROR_RETURN_ONE:
-			call_error_type = type_error_base;
-			break;
-		case ERROR_RETURN_MANY:
-		case ERROR_RETURN_ANY:
-			call_error_type = type_error_union;
-			break;;
-	}
-
-	LLVMBasicBlockRef after_block = gencontext_create_free_block(context, "throwafter");
-	LLVMValueRef comparison = LLVMBuildICmp(context->builder, LLVMIntNE, llvm_int(call_error_type, 0), value, "checkerr");
-
-	unsigned catch_count = vec_size(throw_info->catches);
-	assert(throw_info->is_completely_handled && catch_count);
-
-	// Special handling for a single catch.
-	if (catch_count == 1)
-	{
-		CatchInfo *catch = &throw_info->catches[0];
-		switch (catch->kind)
-		{
-			case CATCH_RETURN_ONE:
-			{
-				LLVMBasicBlockRef else_block = gencontext_create_free_block(context, "erret_one");
-				gencontext_emit_cond_br(context, comparison, else_block, after_block);
-				gencontext_emit_block(context, else_block);
-				gencontext_emit_defer(context, throw_info->defer, NULL);
-				gencontext_emit_return_value(context, value);
-				gencontext_emit_block(context, after_block);
-				return;
-			}
-			case CATCH_RETURN_MANY:
-			{
-				LLVMBasicBlockRef else_block = gencontext_create_free_block(context, "erret_many");
-				gencontext_emit_cond_br(context, comparison, else_block, after_block);
-				gencontext_emit_block(context, else_block);
-				if (call_error_type == type_error_base)
-				{
-					value = gencontext_emit_cast(context, CAST_ERREU, value, type_error_union, call_error_type);
-				}
-				gencontext_emit_defer(context, throw_info->defer, NULL);
-				gencontext_emit_return_value(context, value);
-				gencontext_emit_block(context, after_block);
-				return;
-			}
-			case CATCH_TRY_ELSE:
-			{
-				LLVMBasicBlockRef else_block = gencontext_get_try_target(context, catch->try_else);
-				if (throw_info->defer != catch->defer)
-				{
-					LLVMBasicBlockRef defer_block = gencontext_create_free_block(context, "defer");
-					gencontext_emit_cond_br(context, comparison, defer_block, after_block);
-					gencontext_emit_defer(context, throw_info->defer, catch->defer);
-					gencontext_emit_br(context, else_block);
-				}
-				else
-				{
-					gencontext_emit_cond_br(context, comparison, else_block, after_block);
-				}
-				gencontext_emit_block(context, after_block);
-				return;
-			}
-			case CATCH_RETURN_ANY:
-			{
-				LLVMBasicBlockRef else_block = gencontext_create_free_block(context, "erret_any");
-				gencontext_emit_cond_br(context, comparison, else_block, after_block);
-				gencontext_emit_block(context, else_block);
-				if (call_error_type == type_error_base)
-				{
-					value = gencontext_emit_cast(context, CAST_ERREU, value, type_error_union, errors[0]->type);
-				}
-				gencontext_emit_defer(context, throw_info->defer, NULL);
-				gencontext_emit_return_value(context, value);
-				gencontext_emit_block(context, after_block);
-				return;
-			}
-			case CATCH_REGULAR:
-			{
-				gencontext_generate_catch_block_if_needed(context, catch->catch);
-				LLVMBasicBlockRef else_block = gencontext_create_free_block(context, "catch_regular");
-				gencontext_emit_cond_br(context, comparison, else_block, after_block);
-				gencontext_emit_block(context, else_block);
-				Decl *error_param = catch->catch->catch_stmt.error_param;
-				if (call_error_type == type_error_base)
-				{
-					if (error_param->type == type_error_union)
-					{
-						value = gencontext_emit_cast(context, CAST_ERREU, value, type_error_union, errors[0]->type);
-					}
-				}
-				LLVMBuildStore(context->builder, value, error_param->ref);
-				gencontext_emit_defer(context, throw_info->defer, catch->defer);
-				gencontext_emit_br(context, catch->catch->catch_stmt.block);
-				gencontext_emit_block(context, after_block);
-				return;
-			}
-		}
-		UNREACHABLE
-	}
-	// Here we handle multiple branches.
-
-	LLVMBasicBlockRef err_handling_block = gencontext_create_free_block(context, "errhandlingblock");
-	gencontext_emit_cond_br(context, comparison, err_handling_block, after_block);
-	gencontext_emit_block(context, err_handling_block);
-	err_handling_block = NULL;
-
-	assert(error_return != ERROR_RETURN_ONE && "Should already be handled.");
-
-	// Below here we can assume we're handling error unions.
-	VECEACH(throw_info->catches, i)
-	{
-		if (err_handling_block == NULL)
-		{
-			err_handling_block = gencontext_create_free_block(context, "thrownext");
-		}
-		CatchInfo *catch = &throw_info->catches[i];
-		switch (catch->kind)
-		{
-			case CATCH_RETURN_ONE:
-			{
-				// This is always the last catch, so we can assume that we have the correct error
-				// type already.
-				LLVMValueRef negated = LLVMBuildNeg(context->builder, catch->error->error.start_value, "");
-				LLVMValueRef final_value = LLVMBuildAnd(context->builder, negated, value, "");
-				gencontext_emit_defer(context, throw_info->defer, NULL);
-				gencontext_emit_return_value(context, final_value);
-				gencontext_emit_block(context, after_block);
-				assert(i == vec_size(throw_info->catches) - 1);
-				return;
-			}
-			case CATCH_RETURN_MANY:
-			case CATCH_RETURN_ANY:
-			{
-				// This is simple, just return our value.
-				gencontext_emit_defer(context, throw_info->defer, NULL);
-				gencontext_emit_return_value(context, value);
-				gencontext_emit_block(context, after_block);
-				assert(i == vec_size(throw_info->catches) - 1);
-				return;
-			}
-			case CATCH_TRY_ELSE:
-			{
-				// This should be the last catch.
-				gencontext_emit_defer(context, throw_info->defer, catch->defer);
-				LLVMBasicBlockRef else_block = gencontext_get_try_target(context, catch->try_else);
-				gencontext_emit_br(context, else_block);
-				gencontext_emit_block(context, after_block);
-				assert(i == vec_size(throw_info->catches) - 1);
-				return;
-			}
-			case CATCH_REGULAR:
-			{
-				gencontext_generate_catch_block_if_needed(context, catch->catch);
-				Decl *error_param = catch->catch->catch_stmt.error_param;
-				Type *error_type = error_param->type->canonical;
-
-				// The wildcard catch is always the last one.
-				if (error_type == type_error_union)
-				{
-					// Store the value, then jump
-					LLVMBuildStore(context->builder, value, error_param->ref);
-					gencontext_emit_defer(context, throw_info->defer, catch->defer);
-					gencontext_emit_br(context, catch->catch->catch_stmt.block);
-					gencontext_emit_block(context, after_block);
-					assert(i == vec_size(throw_info->catches) - 1);
-					return;
-				}
-
-				// Here we have a normal catch.
-
-				// wrapping(value - offset) < entries + 1 – this handles both cases since wrapping will make
-				// values below the offset big.
-				Decl *error_decl = error_type->decl;
-				LLVMValueRef comp_value = LLVMBuildSub(context->builder, value, error_decl->error.start_value, "");
-				LLVMValueRef entries_value = llvm_int(type_error_union, vec_size(error_decl->error.error_constants) + 1);
-				LLVMValueRef match = LLVMBuildICmp(context->builder, LLVMIntULT, comp_value, entries_value, "regmatch");
-
-				LLVMBasicBlockRef match_block = gencontext_create_free_block(context, "match");
-				gencontext_emit_cond_br(context, match, match_block, err_handling_block);
-				gencontext_emit_block(context, match_block);
-				gencontext_emit_defer(context, throw_info->defer, catch->defer);
-
-				LLVMBuildStore(context->builder, comp_value, error_param->ref);
-				gencontext_emit_br(context, catch->catch->catch_stmt.block);
-				gencontext_emit_block(context, err_handling_block);
-				err_handling_block = NULL;
-				break;
-			}
-		}
-	}
-	gencontext_emit_br(context, after_block);
-	gencontext_emit_block(context, after_block);
 }
 
 LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
@@ -1305,9 +1080,9 @@ LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 		values[param_index++] = gencontext_emit_expr(context, expr->call_expr.arguments[i]);
 	}
 
-	LLVMValueRef call = LLVMBuildCall2(context->builder, func_type, func, values, args, "call");
+	LLVMValueRef call = LLVMBuildCall2(context->builder, func_type, func, values, args, "");
 
-	gencontext_emit_throw_branch(context, call, signature->throws, expr->call_expr.throw_info, signature->error_return);
+	//gencontext_emit_throw_branch(context, call, signature->throws, expr->call_expr.throw_info, signature->error_return);
 
 	// If we used a return param, then load that info here.
 	if (return_param)
@@ -1390,7 +1165,7 @@ static inline LLVMValueRef gencontext_emit_macro_block(GenContext *context, Expr
 		Decl *decl = expr->macro_block.params[i];
 		decl->ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
 		LLVMValueRef value = gencontext_emit_expr(context, expr->macro_block.args[i]);
-		LLVMBuildStore(context->builder, value, decl->ref);
+		gencontext_emit_store(context, decl, value);
 	}
 
 	VECEACH(stmts, i)
@@ -1416,22 +1191,118 @@ LLVMValueRef gencontext_emit_call_intrinsic(GenContext *context, unsigned intrin
 	return LLVMBuildCall2(context->builder, type, decl, values, arg_count, "");
 }
 
-LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, Expr *expr)
+LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, Expr *expr, LLVMValueRef failable_ref)
 {
+	LLVMBasicBlockRef assign_block = NULL;
+
+	PUSH_ERROR();
+
+	if (failable_ref)
+	{
+		assign_block = gencontext_create_free_block(context, "after_assign");
+
+		context->error_var = failable_ref;
+		context->catch_block = assign_block;
+
+	}
+	LLVMValueRef value;
 	switch (expr->expr_kind)
 	{
 		case EXPR_INITIALIZER_LIST:
-			return gencontext_emit_load(context,
+			value = gencontext_emit_load(context,
 			                            expr->type,
 			                            gencontext_emit_initializer_list_expr_addr(context, expr, ref));
 		default:
+			value = gencontext_emit_expr(context, expr);
+			LLVMBuildStore(context->builder, value, ref);
 			break;
 	}
-	LLVMValueRef value = gencontext_emit_expr(context, expr);
-	LLVMBuildStore(context->builder, value, ref);
+	if (failable_ref)
+	{
+		LLVMBuildStore(context->builder, gencontext_emit_no_error_union(context), failable_ref);
+	}
+	POP_ERROR();
+
+	if (failable_ref)
+	{
+		gencontext_emit_br(context, assign_block);
+		gencontext_emit_block(context, assign_block);
+
+	}
+
 	return value;
 }
 
+
+static inline LLVMValueRef gencontext_emit_identifier_rvalue(GenContext *context, Decl *decl)
+{
+	if (decl->decl_kind != DECL_VAR || !decl->var.failable)
+	{
+		return gencontext_emit_load(context, decl->type, decl_ref(decl));
+	}
+
+	assert(context->catch_block);
+	LLVMBasicBlockRef after_block = gencontext_create_free_block(context, "after_check");
+	LLVMValueRef error_value = gencontext_emit_load(context, type_error, decl_failable_ref(decl));
+	LLVMValueRef comp = LLVMBuildICmp(context->builder, LLVMIntEQ, error_value,
+	                                  gencontext_emit_no_error_union(context), "");
+	if (context->error_var)
+	{
+		LLVMBasicBlockRef error_block = gencontext_create_free_block(context, "error");
+		gencontext_emit_cond_br(context, comp, after_block, error_block);
+		gencontext_emit_block(context, error_block);
+		LLVMBuildStore(context->builder, error_value, gencontext_emit_bitcast(context, context->error_var, type_get_ptr(type_error)));
+		gencontext_emit_br(context, context->catch_block);
+	}
+	else
+	{
+		gencontext_emit_cond_br(context, comp, after_block, context->catch_block);
+	}
+	gencontext_emit_block(context, after_block);
+	return gencontext_emit_load(context, decl->type, decl_ref(decl));
+}
+
+static inline LLVMValueRef gencontext_emit_failable(GenContext *context, Expr *expr)
+{
+	Expr *fail = expr->failable_expr;
+	if (context->error_var)
+	{
+		assert(context->error_var);
+		LLVMValueRef value = gencontext_emit_expr(context, fail);
+		LLVMBuildStore(context->builder, value, gencontext_emit_bitcast(context, context->error_var, type_get_ptr(fail->type)));
+	}
+	gencontext_emit_br(context, context->catch_block);
+	LLVMBasicBlockRef ignored_block = gencontext_create_free_block(context, "");
+	gencontext_emit_block(context, ignored_block);
+	return LLVMGetUndef(llvm_type(expr->type));
+}
+
+LLVMValueRef gencontext_emit_check_failable(GenContext *context, Expr *expr)
+{
+	PUSH_ERROR();
+
+	LLVMBasicBlockRef after_check_block = gencontext_create_free_block(context, "after_check");
+
+	context->error_var = NULL;
+	context->catch_block = after_check_block;
+
+	gencontext_emit_expr(context, expr->fail_check_expr);
+
+	POP_ERROR();
+
+	LLVMBasicBlockRef phi_block = gencontext_create_free_block(context, "checkphi");
+	LLVMBasicBlockRef normal_block = context->current_block;
+	gencontext_emit_br(context, phi_block);
+	gencontext_emit_block(context, after_check_block);
+	gencontext_emit_br(context, phi_block);
+
+	gencontext_emit_block(context, phi_block);
+	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(type_bool), "val");
+	LLVMValueRef logic_values[2] = { llvm_int(type_bool, 0), llvm_int(type_bool, 1) };
+	LLVMBasicBlockRef blocks[2] = { after_check_block, normal_block };
+	LLVMAddIncoming(phi, logic_values, blocks, 2);
+	return phi;
+}
 
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 {
@@ -1440,10 +1311,20 @@ NESTED_RETRY:
 	{
 		case EXPR_RANGE:
 		case EXPR_POISONED:
+		case EXPR_DECL_LIST:
 			UNREACHABLE
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Should only appear when generating designated initializers.
 			UNREACHABLE
+		case EXPR_FAIL_CHECK:
+			return gencontext_emit_check_failable(context, expr);
+		case EXPR_FAILABLE:
+			return gencontext_emit_failable(context, expr);
+		case EXPR_TRY:
+		case EXPR_CATCH:
+			return gencontext_emit_trycatch_expr(context, expr);
+		case EXPR_ELSE:
+			TODO
 		case EXPR_MACRO_BLOCK:
 			return gencontext_emit_macro_block(context, expr);
 		case EXPR_COMPOUND_LITERAL:
@@ -1465,8 +1346,8 @@ NESTED_RETRY:
 			return gencontext_emit_ternary_expr(context, expr);
 		case EXPR_POST_UNARY:
 			return gencontext_emit_post_unary_expr(context, expr);
-		case EXPR_TRY:
-			return gencontext_emit_try_expr(context, expr);
+		case EXPR_GUARD:
+			return gencontext_emit_trycatch_expr(context, expr);
 		case EXPR_TYPEID:
 			return gencontext_emit_typeid(context, expr);
 		case EXPR_TYPE_ACCESS:
@@ -1474,6 +1355,7 @@ NESTED_RETRY:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE
 		case EXPR_IDENTIFIER:
+			return gencontext_emit_identifier_rvalue(context, expr->identifier_expr.decl);
 		case EXPR_SUBSCRIPT:
 		case EXPR_ACCESS:
 			return gencontext_emit_load(context, expr->type, gencontext_emit_address(context, expr));

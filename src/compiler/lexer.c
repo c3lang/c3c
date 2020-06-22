@@ -161,7 +161,7 @@ static inline Token parse_nested_comment(Lexer *lexer)
 		}
 		next(lexer);
 	}
-	if (reached_end(lexer))
+	if (nesting > 0)
 	{
 		return error_token(lexer, "Missing '+/' to end the nested comment.");
 	}
@@ -470,6 +470,102 @@ static inline Token scan_string(Lexer *lexer)
 
 #pragma mark --- Lexer public functions
 
+Token lexer_scan_asm_constraint(Lexer *lexer)
+{
+	// Skip the whitespace.
+	skip_whitespace(lexer);
+
+	// Point start to the first non-whitespace character.
+	lexer->lexing_start = lexer->current;
+
+	if (reached_end(lexer))
+	{
+		return make_token(lexer, TOKEN_EOF, "\n");
+	}
+
+	// Move past '+=&'
+	char c;
+	while (1)
+	{
+		c = next(lexer);
+		if (c == '+' || c == '=' || c == '&') continue;
+		break;
+	}
+
+	while (1)
+	{
+		if (is_letter(c) || is_digit(c))
+		{
+			c = next(lexer);
+			continue;
+		}
+		if (c != ' ')
+		{
+			return error_token(lexer, "Invalid asm constraint");
+		}
+		break;
+	}
+
+	return make_token(lexer, TOKEN_ASM_CONSTRAINT, strcopy(lexer->lexing_start, lexer->current - lexer->lexing_start + 1));
+}
+
+Token lexer_scan_asm(Lexer *lexer)
+{
+	// Skip the whitespace.
+	skip_whitespace(lexer);
+
+	// Point start to the first non-whitespace character.
+	lexer->lexing_start = lexer->current;
+
+	if (reached_end(lexer))
+	{
+		return make_token(lexer, TOKEN_EOF, "\n");
+	}
+
+	int bracket = 0;
+	const char* last_non_whitespace = lexer->lexing_start;
+	while (1)
+	{
+		char c = next(lexer);
+		switch (c)
+		{
+			case '\n':
+				break;
+			case ';':
+				while (!reached_end(lexer) && next(lexer) != '\n');
+				break;
+			case '\t':
+			case '\r':
+			case '\f':
+			case ' ':
+				continue;
+			case '{':
+				bracket++;
+				last_non_whitespace = lexer->current - 1;
+				continue;
+			case '}':
+				if (--bracket >= 0)
+				{
+					// Matched bracket.
+					last_non_whitespace = lexer->current - 1;
+					continue;
+				}
+				// Non matched right bracket.
+				// If this is the first non whitespace this is an end of asm.
+				if (lexer->lexing_start == lexer->current - 1)
+				{
+					return make_token(lexer, TOKEN_RBRACE, "}");
+				}
+				// Otherwise we need to return the previous as a token.
+				break;
+			default:
+				last_non_whitespace = lexer->current - 1;
+				continue;
+		}
+		return make_token(lexer, TOKEN_ASM_STRING, strcopy(lexer->lexing_start, last_non_whitespace - lexer->lexing_start + 1));
+	}
+}
+
 Token lexer_scan_token(Lexer *lexer)
 {
 	// Now skip the whitespace.
@@ -520,7 +616,8 @@ Token lexer_scan_token(Lexer *lexer)
 		case ':':
 			return match(lexer, ':') ? make_token(lexer, TOKEN_SCOPE, "::") : make_token(lexer, TOKEN_COLON, ":");
 		case '!':
-			return match(lexer, '=') ? make_token(lexer, TOKEN_NOT_EQUAL, "!=") : make_token(lexer, TOKEN_NOT, "!");
+			if (match(lexer, '!')) return make_token(lexer, TOKEN_BANGBANG, "!!");
+			return match(lexer, '=') ? make_token(lexer, TOKEN_NOT_EQUAL, "!=") : make_token(lexer, TOKEN_BANG, "!");
 		case '/':
 			if (match(lexer, '/')) return parse_line_comment(lexer);
 			if (match(lexer, '*')) return parse_multiline_comment(lexer);

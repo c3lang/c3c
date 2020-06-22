@@ -117,6 +117,21 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 	return decl;
 }
 
+static inline bool sema_append_local(Context *context, Decl *decl)
+{
+	Decl *** vars = &context->active_function_for_analysis->func.annotations->vars;
+	unsigned num_vars = vec_size(*vars);
+	if (num_vars == MAX_LOCALS - 1 || context->last_local == &context->locals[MAX_LOCALS - 1])
+	{
+		SEMA_ERROR(decl, "Reached the maximum number of locals.");
+		return false;
+	}
+	*vars = VECADD(*vars, decl);
+	context->last_local[0] = decl;
+	context->last_local++;
+	return true;
+}
+
 bool sema_add_local(Context *context, Decl *decl)
 {
 	Decl *dummy;
@@ -128,29 +143,26 @@ bool sema_add_local(Context *context, Decl *decl)
 		decl_poison(other);
 		return false;
 	}
-	Decl *** vars = &context->active_function_for_analysis->func.annotations->vars;
-	unsigned num_vars = vec_size(*vars);
-	if (num_vars == MAX_LOCALS - 1 || context->last_local == &context->locals[MAX_LOCALS - 1])
-	{
-		SEMA_ERROR(decl, "Reached the maximum number of locals.");
-		return false;
-	}
-	decl->var.id = num_vars;
-	*vars = VECADD(*vars, decl);
-	context->last_local[0] = decl;
-	context->last_local++;
-	return true;
+	return sema_append_local(context, decl);
+}
+
+bool sema_unwrap_var(Context *context, Decl *decl)
+{
+	Decl *alias = COPY(decl);
+	alias->var.kind = VARDECL_ALIAS;
+	alias->var.alias = decl;
+	alias->var.failable = false;
+	return sema_append_local(context, decl);
+}
+
+bool sema_rewrap_var(Context *context, Decl *decl)
+{
+	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_ALIAS && decl->var.alias->var.failable);
+	return sema_append_local(context, decl->var.alias);
 }
 
 bool sema_add_macro_local(Context *context, Decl *decl)
 {
-	if (context->last_local == &context->locals[MAX_LOCALS - 1])
-	{
-		SEMA_ERROR(decl, "Reached the maximum number of locals.");
-		return false;
-	}
-	context->last_local[0] = decl;
-	context->last_local++;
-	return true;
+	return sema_add_local(context, decl);
 }
 
