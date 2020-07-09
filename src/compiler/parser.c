@@ -783,7 +783,7 @@ bool parse_next_is_case_type(Context *context)
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_ERR:
 		case TOKEN_TYPEID:
-			return (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET | next_tok == TOKEN_COLON | next_tok == TOKEN_EOS);
+			return (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) | (next_tok == TOKEN_COLON) | (next_tok == TOKEN_EOS);
 		case TOKEN_IDENT:
 			if (next_tok != TOKEN_SCOPE) return false;
 			// We need a little lookahead to see if this is type or expression.
