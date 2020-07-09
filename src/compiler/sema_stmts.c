@@ -752,6 +752,7 @@ static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
 				break;
 			case AST_DO_STMT:
 				if (target->label.parent->do_stmt.expr) break;
+				FALLTHROUGH;
 			default:
 				SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");
 				return false;
