@@ -349,7 +349,8 @@ static inline bool sema_analyse_define_stmt(Context *context, Ast *statement)
 			if (decl->var.type_info && !sema_resolve_type_info(context, decl->var.type_info)) return false;
 			break;
 		case VARDECL_LOCAL:
-			if (decl->var.init_expr) TODO
+			if (decl->var.init_expr) TODO;
+			TODO
 		default:
 			UNREACHABLE
 	}
