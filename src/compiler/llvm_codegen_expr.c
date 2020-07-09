@@ -1212,6 +1212,7 @@ LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, 
 			value = gencontext_emit_load(context,
 			                            expr->type,
 			                            gencontext_emit_initializer_list_expr_addr(context, expr, ref));
+			break;
 		default:
 			value = gencontext_emit_expr(context, expr);
 			LLVMBuildStore(context->builder, value, ref);
