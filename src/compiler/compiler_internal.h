@@ -1176,7 +1176,7 @@ static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; de
 static inline bool decl_is_struct_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
-	return kind == DECL_UNION | kind == DECL_STRUCT | kind == DECL_ERR;
+	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_ERR);
 }
 static inline DeclKind decl_from_token(TokenType type)
 {

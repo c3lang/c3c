@@ -5,10 +5,14 @@
 #include "compiler_tests/tests.h"
 #include "utils/lib.h"
 
+static int version = 100;
+
 int main(int argc, const char *argv[])
 {
 	// First setup memory
 	memory_init();
+
+	DEBUG_LOG("Version: %d", version);
 
 	// Init the compiler
 	compiler_init();
