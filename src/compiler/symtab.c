@@ -40,6 +40,7 @@ const char *kw_main;
 const char *kw_sizeof;
 const char *kw_offsetof;
 
+
 void symtab_init(uint32_t capacity)
 {
 	assert (is_power_of_two(capacity) && "Must be a power of two");

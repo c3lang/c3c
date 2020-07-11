@@ -4,16 +4,16 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
+#define TOKEN_IS(_type) (context->tok.type == _type)
 #define EXPECT_IDENT_FOR_OR(_name, _res) do { if (!expect_ident(context, _name)) return _res; } while(0)
 #define EXPECT_OR(_tok, _res) do { if (!expect(context, _tok)) return _res; } while(0)
 #define CONSUME_OR(_tok, _res) do { if (!expect(context, _tok)) return _res; advance(context); } while(0)
 #define TRY_EXPECT_OR(_tok, _message, _type) do { if (context->tok.type != _tok) { SEMA_TOKEN_ERROR(context->tok, _message); return _type; } } while(0)
 #define TRY_CONSUME_OR(_tok, _message, _type) do { if (!consume(context, _tok, _message)) return _type; } while(0)
 #define TRY_CONSUME(_tok, _message) TRY_CONSUME_OR(_tok, _message, poisoned_ast)
-#define TRY_CONSUME_EOS_OR(_res) do { if (context->tok.type != TOKEN_EOS) { sema_error_at(context->prev_tok_end, "Expected ';'"); return _res; } advance(context); } while(0)
+#define TRY_CONSUME_EOS_OR(_res) do { if (!TOKEN_IS(TOKEN_EOS)) { sema_error_at_prev_end(context->tok, "Expected ';'"); return _res; } advance(context); } while(0)
 #define TRY_CONSUME_EOS() TRY_CONSUME_EOS_OR(poisoned_ast)
 #define RETURN_AFTER_EOS(_ast) extend_ast_with_prev_token(context, ast); TRY_CONSUME_EOS_OR(poisoned_ast); return _ast
-#define TRY_CONSUME_LBRACE() TRY_CONSUME(TOKEN_LBRACE, "Expected '{'")
 
 #define TRY_AST_OR(_ast_stmt, _res) ({ Ast* _ast = (_ast_stmt); if (!ast_ok(_ast)) return _res; _ast; })
 #define TRY_AST(_ast_stmt) TRY_AST_OR(_ast_stmt, poisoned_ast)
@@ -25,7 +25,7 @@
 
 
 #define COMMA_RPAREN_OR(_res) \
-do { if (!try_consume(context, TOKEN_COMMA) && context->tok.type != TOKEN_RPAREN) { \
+do { if (!try_consume(context, TOKEN_COMMA) && !TOKEN_IS(TOKEN_RPAREN)) { \
 SEMA_TOKEN_ERROR(context->tok, "Expected ',' or ')'"); return _res; } } while(0)
 
 
@@ -54,7 +54,7 @@ Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *ty
 Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info);
 bool parse_next_is_decl(Context *context);
 bool parse_next_is_case_type(Context *context);
-void error_at_current(Context *context, const char* message, ...);
+
 bool try_consume(Context *context, TokenType type);
 bool consume(Context *context, TokenType type, const char *message, ...);
 bool consume_const_name(Context *context, const char* type);

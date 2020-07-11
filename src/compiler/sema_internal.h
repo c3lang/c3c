@@ -11,7 +11,7 @@ int sema_check_comp_time_bool(Context *context, Expr *expr);
 bool sema_analyse_function_body(Context *context, Decl *func);
 void context_pop_scope(Context *context);
 void context_push_scope_with_flags(Context *context, ScopeFlags flags);
-#define PUSH_X(ast, X) Ast *_old_##X##_defer = context->X##_defer; Ast *_old_##X = context->X##_target; context->X##_target = ast; context->X##_defer = context->current_scope->defers.start
+#define PUSH_X(ast, X) AstId _old_##X##_defer = context->X##_defer; AstId _old_##X = context->X##_target; context->X##_target = astid(ast); context->X##_defer = context->current_scope->defers.start
 #define POP_X(X) context->X##_target = _old_##X; context->X##_defer = _old_##X##_defer
 #define PUSH_CONTINUE(ast) PUSH_X(ast, continue)
 #define POP_CONTINUE() POP_X(continue)
@@ -21,10 +21,3 @@ void context_push_scope_with_flags(Context *context, ScopeFlags flags);
 #define POP_NEXT() POP_X(next); context->next_switch = _old_next_switch
 #define PUSH_BREAKCONT(ast) PUSH_CONTINUE(ast); PUSH_BREAK(ast)
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
-
-#define PUSH_FAILABLES() \
- unsigned _prev_failables = context->failables_found; \
- context->failables_found = 0;
-
-#define POP_FAILABLES() \
- ({ unsigned _failables = context->failables_found; context->failables_found = _prev_failables; _failables; })

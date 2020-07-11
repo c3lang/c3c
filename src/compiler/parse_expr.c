@@ -77,13 +77,11 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type, TokenTy
 	*result = NULL;
 	while (1)
 	{
-		TypeInfo *type = NULL;
 		Expr *expr = NULL;
-		SourceRange start = context->tok.span;
 		// Special handling of [123]
-		if (context->tok.type == TOKEN_LBRACKET)
+		if (TOKEN_IS(TOKEN_LBRACKET))
 		{
-			expr = expr_new(EXPR_SUBSCRIPT, context->tok.span);
+			expr = EXPR_NEW_TOKEN(EXPR_SUBSCRIPT, context->tok);
 			advance_and_verify(context, TOKEN_LBRACKET);
 			expr->subscript_expr.index = TRY_EXPR_OR(parse_expr(context), false);
 			CONSUME_OR(TOKEN_RBRACKET, false);
@@ -99,7 +97,7 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type, TokenTy
 		{
 			return true;
 		}
-		if (context->tok.type == param_end) return true;
+		if (TOKEN_IS(param_end)) return true;
 	}
 }
 
@@ -112,7 +110,7 @@ static Expr *parse_macro_ident(Context *context, Expr *left)
 	bool had_error = false;
 	macro_ident->identifier_expr.path = parse_path_prefix(context, &had_error);
 	if (had_error) return poisoned_expr;
-	macro_ident->identifier_expr.identifier = context->tok.string;
+	macro_ident->identifier_expr.identifier = TOKSTR(context->tok);
 	CONSUME_OR(TOKEN_IDENT, poisoned_expr);
 	RANGE_EXTEND_PREV(macro_ident);
 	return macro_ident;
@@ -239,7 +237,7 @@ static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 {
 	assert(expr_ok(left_side));
 
-	if (context->tok.type == TOKEN_QUESTION && token_may_end_expression(context->next_tok.type))
+	if (TOKEN_IS(TOKEN_QUESTION) && token_may_end_expression(context->next_tok.type))
 	{
 		return parse_check_failable(context, left_side);
 	}
@@ -275,7 +273,7 @@ static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 static Expr *parse_grouping_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *expr = expr_new(EXPR_GROUP, context->tok.span);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_GROUP, context->tok);
 	advance_and_verify(context, TOKEN_LPAREN);
 	expr->group_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
@@ -294,7 +292,7 @@ static Expr *parse_grouping_expr(Context *context, Expr *left)
  */
 Expr *parse_initializer(Context *context)
 {
-	if (context->tok.type == TOKEN_LBRACE)
+	if (TOKEN_IS(TOKEN_LBRACE))
 	{
 		return parse_initializer_list(context);
 	}
@@ -346,7 +344,7 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	advance(context);
 
 	Expr *right_side;
-	if (context->tok.type == TOKEN_LBRACE && operator_type == TOKEN_EQ)
+	if (TOKEN_IS(TOKEN_LBRACE) && operator_type == TOKEN_EQ)
 	{
 		right_side = TRY_EXPR_OR(parse_initializer_list(context), poisoned_expr);
 	}
@@ -369,7 +367,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 
 	Expr **params = NULL;
 	advance_and_verify(context, TOKEN_LPAREN);
-	if (context->tok.type != TOKEN_RPAREN)
+	if (!TOKEN_IS(TOKEN_RPAREN))
 	{
 		if (!parse_param_list(context, &params, 0, TOKEN_RPAREN)) return poisoned_expr;
 	}
@@ -404,10 +402,10 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 	advance_and_verify(context, TOKEN_DOT);
 	Expr *access_expr = EXPR_NEW_EXPR(EXPR_ACCESS, left);
 	access_expr->access_expr.parent = left;
-	access_expr->access_expr.sub_element = context->tok;
+	access_expr->access_expr.sub_element = context->tok.id;
 	TRY_CONSUME_OR(TOKEN_IDENT, "Expected identifier", poisoned_expr);
 	access_expr->span = left->span;
-	access_expr->span.end_loc = access_expr->access_expr.sub_element.span.end_loc;
+	access_expr->span.end_loc = access_expr->access_expr.sub_element;
 	return access_expr;
 }
 
@@ -415,7 +413,7 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 static Expr *parse_identifier_with_path(Context *context, Path *path)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_IDENTIFIER, context->tok);
-	expr->identifier_expr.identifier = context->tok.string;
+	expr->identifier_expr.identifier = TOKSTR(context->tok);
 	expr->identifier_expr.path = path;
 	advance(context);
 	return expr;
@@ -451,7 +449,7 @@ static Expr *parse_maybe_scope(Context *context, Expr *left)
 static Expr *parse_try_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *try_expr = EXPR_NEW_TOKEN(context->tok.type == TOKEN_TRY ? EXPR_TRY : EXPR_CATCH, context->tok);
+	Expr *try_expr = EXPR_NEW_TOKEN(TOKEN_IS(TOKEN_TRY) ? EXPR_TRY : EXPR_CATCH, context->tok);
 	advance(context);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
 	try_expr->trycatch_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
@@ -481,7 +479,7 @@ static Expr *parse_else_expr(Context *context, Expr *left)
 			Ast *ast = TRY_AST_OR(parse_jump_stmt_no_eos(context), poisoned_expr);
 			else_expr->else_expr.is_jump = true;
 			else_expr->else_expr.else_stmt = ast;
-			if (context->tok.type != TOKEN_EOS)
+			if (!TOKEN_IS(TOKEN_EOS))
 			{
 				SEMA_ERROR(ast, "An else jump statement must end with a ';'");
 				return poisoned_expr;
@@ -499,8 +497,8 @@ static Expr *parse_integer(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	const char *string = context->tok.start;
-	const char *end = string + source_range_len(context->tok.span);
+	const char *string = TOKSTR(context->tok);
+	const char *end = string + TOKLEN(context->tok);
 	if (string[0] == '\'')
 	{
 		union
@@ -575,7 +573,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 	BigInt ten;
 	bigint_init_unsigned(&ten, 10);
 	BigInt res;
-	switch (source_range_len(context->tok.span) > 2 ? string[1] : '0')
+	switch (TOKLEN(context->tok) > 2 ? string[1] : '0')
 	{
 		case 'x':
 			string += 2;
@@ -643,18 +641,10 @@ static Expr *parse_double(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	char *end = NULL;
-	// IMPROVE
-	long double fval = strtold(context->tok.start, &end);
-	if (end != source_range_len(context->tok.span) + context->tok.start)
-	{
-		SEMA_TOKEN_ERROR(context->tok, "Invalid float value");
-		return poisoned_expr;
-	}
-	advance(context);
-	number->const_expr.f = fval;
+	number->const_expr.f = TOKREAL(context->tok.id);
 	number->type = type_compfloat;
 	number->const_expr.kind = TYPE_FXX;
+	advance(context);
 	return number;
 }
 
@@ -760,17 +750,18 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 	char *str = NULL;
 	size_t len = 0;
 
-	while (context->tok.type == TOKEN_STRING)
+	while (TOKEN_IS(TOKEN_STRING))
 	{
-		char *new_string = malloc_arena(len + source_range_len(context->tok.span));
+		char *new_string = malloc_arena(len + TOKLEN(context->tok));
 		if (str) memcpy(new_string, str, len);
+		const char *sourcestr = TOKSTR(context->tok);
 		str = new_string;
-		for (unsigned i = 1; i < source_range_len(context->tok.span) - 1; i++)
+		for (unsigned i = 1; i < TOKLEN(context->tok) - 1; i++)
 		{
-			if (context->tok.string[i] == '\\')
+			if (sourcestr[i] == '\\')
 			{
 				i++;
-				int scanned = append_esc_string_token(str, context->tok.string + i, &len) - 1;
+				int scanned = append_esc_string_token(str, sourcestr + i, &len) - 1;
 				if (scanned < -1)
 				{
 					SEMA_TOKEN_ERROR(context->tok, "Invalid escape in string.");
@@ -779,7 +770,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 				i += scanned;
 				continue;
 			}
-			str[len++] = context->tok.string[i];
+			str[len++] = sourcestr[i];
 		}
 		advance_and_verify(context, TOKEN_STRING);
 	}
@@ -797,7 +788,7 @@ static Expr *parse_bool(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	number->const_expr = (ExprConst) { .b = context->tok.type == TOKEN_TRUE, .kind = TYPE_BOOL };
+	number->const_expr = (ExprConst) { .b = TOKEN_IS(TOKEN_TRUE), .kind = TYPE_BOOL };
 	number->type = type_bool;
 	number->resolve_status = RESOLVE_DONE;
 	advance(context);
@@ -837,7 +828,7 @@ Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info)
 	}
 	Expr *expr = expr_new(EXPR_TYPE_ACCESS, type_info->span);
 	expr->type_access.type = type_info;
-	expr->type_access.name = context->tok;
+	expr->type_access.name = context->tok.id;
 	advance(context);
 	RANGE_EXTEND_PREV(expr);
 	return parse_precedence_with_left_side(context, expr, PREC_CALL - 1);
@@ -855,12 +846,12 @@ Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info)
  */
 Expr *parse_type_expression_with_path(Context *context, Path *path)
 {
-	TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER, path ? path->span : context->tok.span );
+	TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER, path ? path->span : source_span_from_token_id(context->tok.id));
 	type->unresolved.path = path;
-	type->unresolved.name_loc = context->tok;
+	type->unresolved.name_loc = context->tok.id;
 	advance_and_verify(context, TOKEN_TYPE_IDENT);
 	RANGE_EXTEND_PREV(type);
-	if (context->tok.type == TOKEN_LBRACE)
+	if (TOKEN_IS(TOKEN_LBRACE))
 	{
 		return parse_type_compound_literal_expr_after_type(context, type);
 	}

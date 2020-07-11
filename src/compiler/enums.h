@@ -154,10 +154,10 @@ typedef enum
 typedef enum
 {
 	EXIT_NONE = 0,
-	EXIT_BREAK = 1 << 1,
-	EXIT_NEXT = 1 << 2,
-	EXIT_CONTINUE = 1 << 5,
-	EXIT_RETURN = 1 << 6,
+	EXIT_CONTINUE,
+	EXIT_RETURN,
+	EXIT_NEXT,
+	EXIT_BREAK,
 } ExitType;
 
 typedef enum
@@ -247,7 +247,7 @@ typedef enum
 	TYPE_INFO_POINTER,
 } TypeInfoKind;
 
-typedef enum
+typedef enum 
 {
 	TOKEN_INVALID_TOKEN = 0,
 

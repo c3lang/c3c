@@ -31,9 +31,14 @@ static void test_lexer(void)
 		const char* interned = symtab_add(token, len[i], fnv1a(token, len[i]), &lookup);
 		if (lookup != TOKEN_IDENT)
 		{
-			Token scanned = lexer_scan_ident_test(&lexer, token);
-			TEST_ASSERT(scanned.type == i, "Mismatch scanning: was '%s', expected '%s' - lookup: %s - interned: %s.",
-					token_type_to_string(scanned.type),
+			if (!lexer_scan_ident_test(&lexer, token))
+			{
+				TEST_ASSERT(false, "Failed to scan token %s", token);
+			}
+			int index = toktype_arena.allocated;
+			TokenType type_scanned = (TokenType)(toktypeptr(index - 1))[0];
+			TEST_ASSERT(type_scanned == (TokenType)i, "Mismatch scanning: was '%s', expected '%s' - lookup: %s - interned: %s.",
+					token_type_to_string(type_scanned),
 					token_type_to_string(i),
 					token_type_to_string(lookup),
 					interned);
@@ -58,7 +63,7 @@ static void test_lexer(void)
 		{
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
-			volatile TokenType t = lexer_scan_ident_test(&lexer, tokens[i]).type;
+			volatile bool t = lexer_scan_ident_test(&lexer, tokens[i]);
 #pragma clang diagnostic pop
 		}
 	}
@@ -84,7 +89,7 @@ static void test_lexer(void)
 		Token token;
 		while (1)
 		{
-			token = lexer_scan_token(&lexer);
+			token = lexer_advance(&lexer);
 			if (token.type == TOKEN_EOF) break;
 			TEST_ASSERT(token.type != TOKEN_INVALID_TOKEN, "Got invalid token");
 

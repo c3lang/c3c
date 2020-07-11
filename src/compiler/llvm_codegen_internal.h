@@ -40,7 +40,7 @@ typedef struct
 	LLVMMetadataRef file;
 	LLVMMetadataRef compile_unit;
 	LLVMMetadataRef function;
-	SourceRange current_range;
+	SourceSpan current_range;
 	LLVMMetadataRef *lexical_block_stack;
 	LLVMMetadataRef inlined_at;
 } DebugContext;
@@ -119,12 +119,12 @@ void gencontext_generate_catch_block_if_needed(GenContext *context, Ast *ast);
 LLVMValueRef gencontext_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id, LLVMTypeRef *types,
                                             LLVMValueRef *values, unsigned arg_count);
 void gencontext_emit_panic_on_true(GenContext *context, LLVMValueRef value, const char *panic_name);
-void gencontext_emit_defer(GenContext *context, Ast *defer_start, Ast *defer_end);
+void gencontext_emit_defer(GenContext *context, AstId defer_start, AstId defer_end);
 
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr);
 LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, Expr *expr, LLVMValueRef failable);
 LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type);
-void gencontext_emit_debug_location(GenContext *context, SourceRange location);
+void gencontext_emit_debug_location(GenContext *context, SourceSpan location);
 LLVMMetadataRef gencontext_create_builtin_debug_type(GenContext *context, Type *builtin_type);
 LLVMValueRef gencontext_emit_alloca(GenContext *context, LLVMTypeRef type, const char *name);
 void gencontext_emit_compound_stmt(GenContext *context, Ast *ast);
@@ -138,6 +138,25 @@ static inline LLVMBasicBlockRef gencontext_create_free_block(GenContext *context
 {
 	return LLVMCreateBasicBlockInContext(context->context, name);
 }
+
+static inline bool block_in_use(LLVMBasicBlockRef block)
+{
+	return LLVMGetFirstUse(LLVMBasicBlockAsValue(block)) != NULL;
+}
+
+static inline LLVMBasicBlockRef gencontext_current_block_if_in_use(GenContext *context)
+{
+	LLVMBasicBlockRef block = context->current_block;
+	if (!LLVMGetFirstInstruction(block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(block)))
+	{
+		LLVMDeleteBasicBlock(block);
+		context->current_block = NULL;
+		context->current_block_is_target = false;
+		return NULL;
+	}
+	return block;
+}
+
 #define PUSH_ERROR() \
  LLVMBasicBlockRef _old_catch = context->catch_block; \
  LLVMValueRef _old_error_var = context->error_var
@@ -173,7 +192,6 @@ static inline LLVMValueRef decl_failable_ref(Decl *decl)
 
 static inline LLVMValueRef decl_ref(Decl *decl)
 {
-	assert(decl->decl_kind == DECL_VAR);
 	if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_ALIAS) return decl_ref(decl->var.alias);
 	return decl->ref;
 }

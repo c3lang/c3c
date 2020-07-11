@@ -141,7 +141,7 @@ static inline void gencontext_emit_return(GenContext *context, Ast *ast)
 
 	POP_ERROR();
 
-	gencontext_emit_defer(context, ast->return_stmt.defer, NULL);
+	gencontext_emit_defer(context, ast->return_stmt.defer, 0);
 
 	// Are we in an expression block?
 	if (context->expr_block_exit)
@@ -231,7 +231,7 @@ void gencontext_emit_if(GenContext *context, Ast *ast)
 
 	POP_ERROR();
 
-	Decl *label = ast->if_stmt.label;
+	Decl *label = ast->if_stmt.flow.label;
 	if (label)
 	{
 		label->label.break_target = exit_block;
@@ -349,7 +349,7 @@ void gencontext_emit_while_stmt(GenContext *context, Ast *ast)
 	// Emit cond
 	gencontext_emit_br(context, begin_block);
 	gencontext_emit_block(context, begin_block);
-	DeferList defers = { NULL, NULL };
+	DeferList defers = { 0, 0 };
 	Expr *cond = ast->while_stmt.cond;
 	if (cond->expr_kind == EXPR_SCOPED_EXPR)
 	{
@@ -550,8 +550,8 @@ void gencontext_emit_switch_body(GenContext *context, LLVMValueRef switch_value,
 
 	LLVMBasicBlockRef exit_block = gencontext_create_free_block(context, "switch.exit");
 	LLVMBasicBlockRef switch_block = gencontext_create_free_block(context, "switch.entry");
-	switch_ast->switch_stmt.retry_block = switch_block;
-	switch_ast->switch_stmt.exit_block = exit_block;
+	switch_ast->switch_stmt.codegen.retry_block = switch_block;
+	switch_ast->switch_stmt.codegen.exit_block = exit_block;
 
 	// We will now treat the fallthrough cases:
 	// switch (i)
@@ -577,7 +577,7 @@ void gencontext_emit_switch_body(GenContext *context, LLVMValueRef switch_value,
 
 	Type *switch_type = switch_ast->switch_stmt.cond->type;
 	LLVMValueRef switch_var = gencontext_emit_alloca(context, llvm_type(switch_type), "");
-	switch_ast->switch_stmt.retry_var = switch_var;
+	switch_ast->switch_stmt.codegen.retry_var = switch_var;
 	LLVMBuildStore(context->builder, switch_value, switch_var);
 
 	gencontext_emit_br(context, switch_block);
@@ -624,14 +624,15 @@ void gencontext_emit_switch(GenContext *context, Ast *ast)
 	return gencontext_emit_switch_body(context, switch_value, ast);
 }
 
-void gencontext_emit_defer(GenContext *context, Ast *defer_start, Ast *defer_end)
+void gencontext_emit_defer(GenContext *context, AstId defer_start, AstId defer_end)
 {
 	if (defer_start == defer_end) return;
-	Ast *defer = defer_start;
+	AstId defer = defer_start;
 	while (defer && defer != defer_end)
 	{
-		gencontext_emit_stmt(context, defer->defer_stmt.body);
-		defer = defer->defer_stmt.prev_defer;
+		Ast *def = astptr(defer);
+		gencontext_emit_stmt(context, def->defer_stmt.body);
+		defer = def->defer_stmt.prev_defer;
 	}
 }
 
@@ -639,7 +640,7 @@ void gencontext_emit_defer(GenContext *context, Ast *defer_start, Ast *defer_end
 void gencontext_emit_break(GenContext *context, Ast *ast)
 {
 	gencontext_emit_defer(context, ast->contbreak_stmt.defers.start, ast->contbreak_stmt.defers.end);
-	Ast *jump_target = ast->contbreak_stmt.ast;
+	Ast *jump_target = astptr(ast->contbreak_stmt.ast);
 	LLVMBasicBlockRef jump;
 	switch (jump_target->ast_kind)
 	{
@@ -656,7 +657,7 @@ void gencontext_emit_break(GenContext *context, Ast *ast)
 			jump = jump_target->do_stmt.break_block;
 			break;
 		case AST_SWITCH_STMT:
-			jump = jump_target->switch_stmt.exit_block;
+			jump = jump_target->switch_stmt.codegen.exit_block;
 			break;
 		default:
 			UNREACHABLE
@@ -666,7 +667,7 @@ void gencontext_emit_break(GenContext *context, Ast *ast)
 
 void gencontext_emit_continue(GenContext *context, Ast *ast)
 {	gencontext_emit_defer(context, ast->contbreak_stmt.defers.start, ast->contbreak_stmt.defers.end);
-	Ast *jump_target = ast->contbreak_stmt.ast;
+	Ast *jump_target = astptr(ast->contbreak_stmt.ast);
 	LLVMBasicBlockRef jump;
 	switch (jump_target->ast_kind)
 	{
@@ -691,7 +692,7 @@ void gencontext_emit_continue(GenContext *context, Ast *ast)
 
 void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 {
-	Ast *jump_target = ast->next_stmt.case_switch_stmt;
+	Ast *jump_target = astptr(ast->next_stmt.case_switch_stmt);
 	if (jump_target->ast_kind != AST_SWITCH_STMT)
 	{
 		gencontext_emit_defer(context, ast->next_stmt.defers.start, ast->next_stmt.defers.end);
@@ -699,9 +700,9 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 		return;
 	}
 	LLVMValueRef value = gencontext_emit_expr(context, ast->next_stmt.switch_expr);
-	LLVMBuildStore(context->builder, value, jump_target->switch_stmt.retry_var);
+	LLVMBuildStore(context->builder, value, jump_target->switch_stmt.codegen.retry_var);
 	gencontext_emit_defer(context, ast->next_stmt.defers.start, ast->next_stmt.defers.end);
-	gencontext_emit_jmp(context, jump_target->switch_stmt.retry_block);
+	gencontext_emit_jmp(context, jump_target->switch_stmt.codegen.retry_block);
 }
 
 void gencontext_emit_scoped_stmt(GenContext *context, Ast *ast)

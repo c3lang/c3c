@@ -67,20 +67,6 @@ void source_file_append_line_end(File *file, SourceLoc loc)
 	vec_add(file->lines, file->current_line_start);
 }
 
-SourceRange source_range_from_ranges(SourceRange first, SourceRange last)
-{
-	return (SourceRange) {
-		.loc = first.loc,
-		.end_loc = last.end_loc
-	};
-}
-
-SourcePosition source_file_find_position(SourceLoc loc)
-{
-	File *file = source_file_from_position(loc);
-	return source_file_find_position_in_file(file, loc);
-}
-
 SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc)
 {
 	assert(file->start_id <= loc);
@@ -114,38 +100,6 @@ SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc)
 					.loc = loc,
 					.start = file->contents + loc - file->start_id,
 				};
-	}
-}
-
-File *source_file_from_position(SourceLoc loc)
-{
-	if (loc == INVALID_LOC)
-	{
-		pseudo_file.contents = "---";
-		return &pseudo_file;
-	}
-	static File *last_file = NULL;
-	//if (!last_file) last_file = lexer_current_file();
-	//if (last_file->start_id <= loc && loc < last_file->end_id) return last_file;
-	unsigned low = 0;
-	unsigned high = vec_size(source_files.files) - 1;
-	//assert(vec_size(source_files.files) > 1);
-	while (1)
-	{
-		// Binary search
-		unsigned mid = (high + low) / 2;
-		File *file = source_files.files[mid];
-		if (file->start_id > loc)
-		{
-			high = mid - 1;
-			continue;
-		}
-		if (file->end_id < loc)
-		{
-			low = mid + 1;
-			continue;
-		}
-		return last_file = file;
 	}
 }
 

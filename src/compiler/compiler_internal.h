@@ -13,11 +13,19 @@
 #include "compiler.h"
 #include "enums.h"
 #include "target.h"
+#include "utils/malloc.h"
 
 typedef uint32_t SourceLoc;
+typedef struct
+{
+	unsigned index;
+} TokenId;
+
 #define INVALID_LOC UINT32_MAX
-#define INVALID_RANGE ((SourceRange){ .loc = UINT32_MAX })
-#define EMPTY_TOKEN ((Token) { .string = NULL })
+#define NO_TOKEN_ID ((TokenId) { 0 })
+#define NO_TOKEN ((Token) { .type = TOKEN_INVALID_TOKEN })
+#define INVALID_TOKEN_ID ((TokenId) { UINT32_MAX })
+#define INVALID_RANGE ((SourceSpan){ INVALID_TOKEN_ID, INVALID_TOKEN_ID })
 #define MAX_LOCALS 0xFFFF
 #define MAX_FLAGS 0xFFFF
 #define MAX_SCOPE_DEPTH 0xFF
@@ -28,6 +36,7 @@ typedef uint32_t SourceLoc;
 #define MAX_PARAMS 512
 #define MAX_ERRORS 0xFFFF
 #define MAX_ALIGNMENT (1U << 29U)
+#define LEXER_VM_SIZE_MB 2048
 
 typedef struct _Ast Ast;
 typedef struct _Decl Decl;
@@ -35,6 +44,8 @@ typedef struct _TypeInfo TypeInfo;
 typedef struct _Expr Expr;
 typedef struct _Module Module;
 typedef struct _Type Type;
+
+typedef unsigned AstId;
 
 typedef struct _BigInt
 {
@@ -68,25 +79,44 @@ typedef struct
 
 typedef struct
 {
-	SourceLoc loc;
-	SourceLoc end_loc;
-} SourceRange;
+	TokenId loc;
+	TokenId end_loc;
+} SourceSpan;
 
 typedef struct
 {
-	Ast *start;
-	Ast *end;
+	AstId start;
+	AstId end;
 } DeferList;
 
+
 typedef struct
 {
-	SourceRange span;
+	const char *contents;
+	char *name;
+	char *dir_path;
+	const char *full_path;
+	SourceLoc start_id;
+	SourceLoc end_id;
+	SourceLoc *lines;
+	SourceLoc current_line_start;
+	unsigned token_start_id;
+} File;
+
+typedef struct
+{
+	File *file;
+	uint32_t line;
+	uint32_t col;
+	uint32_t start;
+	uint32_t length;
+} SourceLocation;
+
+
+typedef struct
+{
+	TokenId id;
 	TokenType type : 8;
-	union
-	{
-		const char *string;
-		const char* start;
-	};
 } Token;
 
 typedef struct _Diagnostics
@@ -112,18 +142,6 @@ typedef struct
 
 typedef struct
 {
-	const char *contents;
-	char *name;
-	char *dir_path;
-	const char *full_path;
-	SourceLoc start_id;
-	SourceLoc end_id;
-	SourceLoc *lines;
-	SourceLoc current_line_start;
-} File;
-
-typedef struct
-{
 	File *file;
 	uint32_t line;
 	uint32_t col;
@@ -131,9 +149,11 @@ typedef struct
 	const char *start;
 } SourcePosition;
 
+
+
 typedef struct _Path
 {
-	SourceRange span;
+	SourceSpan span;
 	const char *module;
 	uint32_t len;
 } Path;
@@ -166,7 +186,7 @@ typedef struct
 
 typedef struct
 {
-	Token name_loc;
+	TokenId name_loc;
 	Path *path;
 } TypeUnresolved;
 
@@ -210,7 +230,7 @@ struct _TypeInfo
 	ResolveStatus resolve_status : 2;
 	Type *type;
 	TypeInfoKind kind;
-	SourceRange span;
+	SourceSpan span;
 	union
 	{
 		TypeUnresolved unresolved;
@@ -227,7 +247,7 @@ struct _TypeInfo
 typedef struct
 {
 	Path *path;
-	Token name;
+	TokenId name;
 	union
 	{
 		Expr *expr;
@@ -238,7 +258,7 @@ typedef struct
 typedef struct
 {
 	Path *path;
-	Token symbol;
+	TokenId symbol;
 	bool aliased;
 } ImportDecl;
 
@@ -364,19 +384,19 @@ typedef struct
 typedef struct
 {
 	struct _Ast **cases;
-	Token *parameters;
+	TokenId *parameters;
 	TypeInfo *rtype; // May be null!
 	Path *path; // For redefinition
 } GenericDecl;
 
 typedef struct
 {
-	Ast *defer;
+	AstId defer;
+	bool next_target : 1;
 	void *break_target;
 	void *continue_target;
 	unsigned scope_id;
-	bool next_target : 1;
-	Ast *parent;
+	AstId parent;
 
 } LabelDecl;
 
@@ -392,8 +412,8 @@ typedef struct
 typedef struct _Decl
 {
 	const char *name;
-	SourceRange name_span;
-	SourceRange span;
+	TokenId name_token;
+	SourceSpan span;
 	const char *external_name;
 	DeclKind decl_kind : 6;
 	Visibility visibility : 2;
@@ -460,7 +480,6 @@ typedef struct
 		Expr *else_expr;
 		Ast *else_stmt;
 	};
-	void *jump_target;
 } ExprElse;
 
 typedef struct
@@ -468,7 +487,7 @@ typedef struct
 	TypeInfo *type;
 	union
 	{
-		Token name;
+		TokenId name;
 		Decl *decl;
 	};
 } ExprTypeAccess;
@@ -530,7 +549,7 @@ typedef struct
 	Expr *parent;
 	union
 	{
-		Token sub_element;
+		TokenId sub_element;
 		Decl *ref;
 	};
 } ExprAccess;
@@ -609,7 +628,7 @@ typedef struct
 typedef struct
 {
 	const char *name;
-	SourceRange span;
+	TokenId span;
 } Label;
 
 struct _Expr
@@ -617,7 +636,7 @@ struct _Expr
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 3;
 	bool failable : 1;
-	SourceRange span;
+	SourceSpan span;
 	Type *type;
 	union {
 		ExprDesignatedInit designated_init_expr;
@@ -663,12 +682,19 @@ typedef struct
 typedef struct
 {
 	Expr *expr; // May be NULL
-	Ast *defer;
+	AstId defer;
 } AstReturnStmt;
 
 typedef struct
 {
+	bool has_break : 1;
+	bool no_exit : 1;
 	Decl *label;
+} FlowCommon;
+
+typedef struct
+{
+	FlowCommon flow;
 	Expr *cond;
 	Ast *body;
 	void *break_block;
@@ -677,6 +703,7 @@ typedef struct
 
 typedef struct
 {
+	FlowCommon flow;
 	DeferList expr_defer;
 	DeferList body_defer;
 	union
@@ -688,7 +715,6 @@ typedef struct
 		};
 		struct
 		{
-			Decl *label;
 			Expr *expr;
 			Ast *body;
 		};
@@ -697,7 +723,7 @@ typedef struct
 
 typedef struct
 {
-	Decl *label;
+	FlowCommon flow;
 	Expr *cond;
 	Ast *then_body;
 	Ast *else_body;
@@ -720,18 +746,28 @@ typedef struct
 
 typedef struct
 {
-	Decl *label;
+	FlowCommon flow;
+	AstId defer;
 	Expr *cond;
 	Ast **cases;
-	void *retry_block;
-	void *exit_block;
-	void *retry_var;
-	Ast *defer;
+	union
+	{
+		struct
+		{
+			unsigned scope_id;
+		};
+		struct
+		{
+			void *retry_block;
+			void *exit_block;
+			void *retry_var;
+		} codegen;
+	};
 } AstSwitchStmt;
 
 typedef struct
 {
-	Decl *label;
+	FlowCommon flow;
 	Expr *init;
 	Expr *cond;
 	Expr *incr;
@@ -742,15 +778,17 @@ typedef struct
 
 typedef struct
 {
+	AstId prev_defer;
 	Ast *body; // Compound statement
-	Ast *prev_defer;
 } AstDeferStmt;
 
 typedef struct
 {
+	FlowCommon flow;
 	bool is_switch : 1;
 	bool has_err_var : 1;
-	Decl *label;
+	unsigned scope_id;
+	AstId defer;
 	union
 	{
 		Expr *catchable;
@@ -762,7 +800,6 @@ typedef struct
 		Ast **cases;
 	};
 	void *block;
-	Ast *defer;
 } AstCatchStmt;
 
 
@@ -789,8 +826,8 @@ typedef struct
 
 typedef struct
 {
-	Token index;
-	Token value;
+	TokenId index;
+	TokenId value;
 	Expr *expr;
 	Ast *body;
 } AstCtForStmt;
@@ -801,7 +838,7 @@ typedef struct
 	union
 	{
 		Label label;
-		Ast *ast;
+		AstId ast;
 	};
 	DeferList defers;
 } AstContinueBreakStmt;
@@ -823,7 +860,7 @@ typedef struct
 		};
 		struct
 		{
-			Ast *case_switch_stmt;
+			AstId case_switch_stmt;
 			Expr *switch_expr;
 		};
 	};
@@ -833,8 +870,8 @@ typedef struct
 typedef struct
 {
 	Expr *expr;
-	Token alias;
-	Token constraints;
+	TokenId alias;
+	TokenId constraints;
 } AsmOperand;
 
 typedef struct
@@ -847,8 +884,8 @@ typedef struct
 {
 	AsmOperand *inputs;
 	AsmOperand *outputs;
-	Token *clobbers;
-	Token *labels;
+	TokenId **clobbers;
+	TokenId **labels;
 } AsmParams;
 
 typedef struct
@@ -857,15 +894,17 @@ typedef struct
 	bool is_inline : 1;
 	bool is_goto : 1;
 	AsmParams *params;
-	Token *instructions;
+	TokenId **instructions;
 } AstAsmStmt;
+
 
 typedef struct _Ast
 {
-	SourceRange span;
+	SourceSpan span;
 	AstKind ast_kind : 8;
 	union
 	{
+		FlowCommon flow;                // Shared struct
 		AstAsmStmt asm_stmt;            // 24
 		AstCompoundStmt compound_stmt;  // 16
 		Decl *declare_stmt;             // 8
@@ -917,22 +956,30 @@ typedef struct _Module
 typedef struct _DynamicScope
 {
 	unsigned scope_id;
+	bool allow_dead_code : 1;
+	bool jump_end : 1;
 	ScopeFlags flags;
-	ScopeFlags flags_created;
 	Decl **local_decl_start;
 	DeferList defers;
 	Ast *current_defer;
-	ExitType exit;
-	const char* label;
 } DynamicScope;
 
 
+typedef union
+{
+	const char *string;
+	long double value;
+} TokenData;
+
 typedef struct
 {
+	unsigned lexer_index;
 	const char *file_begin;
 	const char *lexing_start;
 	const char *current;
 	uint16_t source_file;
+	unsigned current_line;
+	const char *line_start;
 	File *current_file;
 	SourceLoc last_in_range;
 } Lexer;
@@ -940,11 +987,10 @@ typedef struct
 
 typedef struct _Context
 {
-	unsigned numbering;
 	unsigned current_block;
 	BuildTarget *target;
 	Path *module_name;
-	Token* module_parameters;
+	TokenId* module_parameters;
 	File* file;
 	Decl** imports;
 	Module *module;
@@ -962,13 +1008,13 @@ typedef struct _Context
 	Token *trailing_comment;
 	Token *next_lead_comment;
 	unsigned scope_id;
-	Ast *break_target;
-	Ast *break_defer;
-	Ast *continue_target;
-	Ast *continue_defer;
-	Ast *next_target;
+	AstId break_target;
+	AstId break_defer;
+	AstId continue_target;
+	AstId continue_defer;
+	AstId next_target;
 	Ast *next_switch;
-	Ast *next_defer;
+	AstId next_defer;
 	DynamicScope *current_scope;
 	struct
 	{
@@ -1000,7 +1046,6 @@ typedef struct _Context
 	};
 	STable scratch_table;
 	Lexer lexer;
-	SourceLoc prev_tok_end;
 	Token tok;
 	Token next_tok;
 	struct
@@ -1013,6 +1058,7 @@ typedef struct _Context
 		Token *lead_comment;
 		Token *trailing_comment;
 		Token *next_lead_comment;
+		unsigned lexer_index;
 	} stored;
 } Context;
 
@@ -1055,30 +1101,33 @@ extern const char *kw_main;
 extern const char *kw_sizeof;
 extern const char *kw_offsetof;
 
-#define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, _token.span)
+#define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id(_token.id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
+
+ARENA_DEF(ast, Ast);
+ARENA_DEF(expr, Expr);
+ARENA_DEF(sourceloc, SourceLocation);
+ARENA_DEF(toktype, char);
+ARENA_DEF(tokdata, TokenData);
+ARENA_DEF(decl, Decl);
+ARENA_DEF(type_info, TypeInfo);
 
 static inline bool ast_ok(Ast *ast) { return ast == NULL || ast->ast_kind != AST_POISONED; }
 static inline bool ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; return false; }
 
-static inline Ast *new_ast(AstKind kind, SourceRange range)
+static inline Ast *new_ast(AstKind kind, SourceSpan range)
 {
-	Ast *ast = CALLOCS(Ast);
+	Ast *ast = ast_calloc();
 	ast->span = range;
 	ast->ast_kind = kind;
 	return ast;
 }
 
 
-static inline Ast *extend_ast(Ast *ast, Token token)
-{
-	ast->span.end_loc = token.span.end_loc;
-	return ast;
-}
 
 static inline Ast *extend_ast_with_prev_token(Context *context, Ast *ast)
 {
-	ast->span.end_loc = context->prev_tok_end;
+	ast->span.end_loc.index = context->tok.id.index - 1;
 	return ast;
 }
 
@@ -1127,12 +1176,11 @@ static inline bool builtin_may_bit_negate(Type *canonical)
 }
 
 
-bool cast_implicit(Expr *expr, Type *to_type);
-bool cast(Expr *expr, Type *to_type, CastType cast_type);
-bool cast_binary_arithmetic(Expr *left, Expr *right, const char *action);
+bool cast_implicit(Context *context, Expr *expr, Type *to_type);
+bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type);
 CastKind cast_to_bool_kind(Type *type);
 
-bool cast_implicitly_to_runtime(Expr *expr);
+bool cast_implicitly_to_runtime(Context *context, Expr *expr);
 
 void llvm_codegen(Context *context);
 void llvm_codegen_setup();
@@ -1144,7 +1192,7 @@ bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
 
 void compiler_add_type(Type *type);
-Decl *compiler_find_symbol(Token token);
+Decl *compiler_find_symbol(const char *name);
 Module *compiler_find_or_create_module(Path *module_name);
 void compiler_register_public_symbol(Decl *decl);
 
@@ -1153,14 +1201,17 @@ void context_register_global_decl(Context *context, Decl *decl);
 void context_register_external_symbol(Context *context, Decl *decl);
 bool context_add_import(Context *context, Path *path, Token symbol, Token alias);
 bool context_set_module_from_filename(Context *context);
-bool context_set_module(Context *context, Path *path, Token *generic_parameters);
+bool context_set_module(Context *context, Path *path, TokenId *generic_parameters);
 void context_print_ast(Context *context, FILE *file);
 
 #pragma mark --- Decl functions
 
-Decl *decl_new(DeclKind decl_kind, Token name, Visibility visibility);
-Decl *decl_new_with_type(Token name, DeclKind decl_type, Visibility visibility);
-Decl *decl_new_var(Token name, TypeInfo *type, VarDeclKind kind, Visibility visibility);
+Decl *decl_new(DeclKind decl_kind, TokenId name, Visibility visibility);
+Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility);
+Decl *decl_new_var(TokenId name, TypeInfo *type, VarDeclKind kind, Visibility visibility);
+#define DECL_NEW(_kind, _vis) decl_new(_kind, context->tok.id, _vis)
+#define DECL_NEW_WITH_TYPE(_kind, _vis) decl_new_with_type(context->tok.id, _kind, _vis)
+#define DECL_NEW_VAR(_type, _kind, _vis) decl_new_var(context->tok.id, _type, _kind, _vis)
 void decl_set_external_name(Decl *decl);
 const char *decl_var_to_string(VarDeclKind kind);
 static inline Decl *decl_raw(Decl *decl)
@@ -1188,18 +1239,17 @@ static inline DeclKind decl_from_token(TokenType type)
 #pragma mark --- Diag functions
 
 void diag_reset(void);
-void diag_error_range(SourceRange span, const char *message, ...);
-void diag_verror_range(SourceRange span, const char *message, va_list args);
 
+void diag_verror_range(SourceLocation *location, const char *message, va_list args);
 
 #define EXPR_NEW_EXPR(_kind, _expr) expr_new(_kind, _expr->span)
-#define EXPR_NEW_TOKEN(_kind, _tok) expr_new(_kind, _tok.span)
-Expr *expr_new(ExprKind kind, SourceRange start);
+#define EXPR_NEW_TOKEN(_kind, _tok) expr_new(_kind, source_span_from_token_id(_tok.id))
+Expr *expr_new(ExprKind kind, SourceSpan start);
 static inline bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
 static inline bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
 static inline void expr_replace(Expr *expr, Expr *replacement)
 {
-	SourceRange loc = expr->span;
+	SourceSpan loc = expr->span;
 	*expr = *replacement;
 	expr->span = loc;
 }
@@ -1212,34 +1262,56 @@ bool expr_const_int_overflowed(const ExprConst *expr);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 const char *expr_const_to_error_string(const ExprConst *expr);
 
-void fprint_decl(FILE *file, Decl *dec);
-void fprint_type_info_recursive(FILE *file, TypeInfo *type_info, int indent);
-void fprint_expr_recursive(FILE *file, Expr *expr, int indent);
+void fprint_decl(Context *context, FILE *file, Decl *dec);
+void fprint_type_info_recursive(Context *context, FILE *file, TypeInfo *type_info, int indent);
+void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent);
 
 
 #pragma mark --- Lexer functions
 
-Token lexer_scan_asm(Lexer *lexer);
-Token lexer_scan_asm_constraint(Lexer *lexer);
-Token lexer_scan_token(Lexer *lexer);
-Token lexer_scan_ident_test(Lexer *lexer, const char *scan);
+
+Token lexer_advance(Lexer *lexer);
+bool lexer_scan_ident_test(Lexer *lexer, const char *scan);
 void lexer_init_for_test(Lexer *lexer, const char *text, size_t len);
 void lexer_init_with_file(Lexer *lexer, File *file);
 File* lexer_current_file(Lexer *lexer);
 
+static inline SourceLocation *TOKILOC(TokenId token) { return sourcelocptr(token.index); }
+static inline SourceLocation *TOKKLOC(Token token) { return sourcelocptr(token.id.index); }
+static inline TokenData *tokendata_from_id(TokenId token) { return tokdataptr(token.index); }
 
+#define TOKLOC(T) _Generic((T), TokenId: TOKILOC, Token: TOKKLOC)(T)
 
+static inline const char *TOKISTR(TokenId token) { return tokendata_from_id(token)->string; }
+static inline const char *TOKKSTR(Token token) { return tokendata_from_id(token.id)->string; }
+#define TOKSTR(T) _Generic((T), TokenId: TOKISTR, Token: TOKKSTR)(T)
+
+static inline double TOKIREAL(TokenId token) { return tokendata_from_id(token)->value; }
+static inline double TOKKREAL(Token token) { return tokendata_from_id(token.id)->value; }
+#define TOKREAL(T) _Generic((T), TokenId: TOKIREAL, Token: TOKKREAL)(T)
+
+static inline TokenType TOKITYPE(TokenId token) { return toktypeptr(token.index)[0]; }
+static inline TokenType TOKKTYPE(Token token) { return toktypeptr(token.id.index)[0]; }
+#define TOKTYPE(T) _Generic((T), TokenId: TOKITYPE, Token: TOKKTYPE)(T)
+
+static inline uint32_t TOKILEN(TokenId token) { return TOKILOC(token)->length; }
+static inline uint32_t TOKKLEN(Token token) { return TOKKLOC(token)->length; }
+#define TOKLEN(T) _Generic((T), TokenId: TOKILEN, Token:TOKKLEN)(T)
+
+#define TOKVALID(_tok) (_tok.index != 0)
 Decl *module_find_symbol(Module *module, const char *symbol, ModuleSymbolSearch search);
 
 void parse_file(Context *context);
-Path *path_create_from_string(const char *string, size_t len, SourceRange span);
-Path *path_find_parent_path(Path *path);
+Path *path_create_from_string(Context *context, const char *string, size_t len, SourceSpan span);
+Path *path_find_parent_path(Context *context, Path *path);
 
 const char *resolve_status_to_string(ResolveStatus status);
 
-#define SEMA_TOKEN_ERROR(_tok, ...) sema_error_range((_tok).span, __VA_ARGS__)
-#define SEMA_ERROR(_node, ...) sema_error_range((_node)->span, __VA_ARGS__)
-#define SEMA_PREV(_node, ...) sema_prev_at_range((_node)->span, __VA_ARGS__)
+#define SEMA_TOKEN_ERROR(_tok, ...) sema_error_range3(source_span_from_token_id(_tok.id), __VA_ARGS__)
+#define SEMA_TOKID_ERROR(_tok_id, ...) sema_error_range3(source_span_from_token_id(_tok_id), __VA_ARGS__)
+#define SEMA_ERROR(_node, ...) sema_error_range3((_node)->span, __VA_ARGS__)
+#define SEMA_PREV(_node, ...) sema_prev_at_range3((_node)->span, __VA_ARGS__)
+
 void sema_analysis_pass_process_imports(Context *context);
 void sema_analysis_pass_conditional_compilation(Context *context);
 void sema_analysis_pass_decls(Context *context);
@@ -1252,24 +1324,28 @@ bool sema_analyse_statement(Context *context, Ast *statement);
 Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info);
-void sema_error_at(SourceLoc loc, const char *message, ...);
-void sema_error_range(SourceRange range, const char *message, ...);
-void sema_verror_at(SourceLoc loc, const char *message, va_list args);
-void sema_verror_range(SourceRange range, const char *message, va_list args);
+
+void sema_error_at_prev_end(Token token, const char *message, ...);
+
+void sema_error_range2(SourceLocation *location, const char *message, ...);
+void sema_error_range3(SourceSpan location, const char *message, ...);
+
+void sema_verror_range(SourceLocation *location, const char *message, va_list args);
 void sema_error(Context *context, const char *message, ...);
-void sema_prev_at_range(SourceRange span, const char *message, ...);
-void sema_prev_at(SourceLoc loc, const char *message, ...);
+void sema_prev_at_range3(SourceSpan span, const char *message, ...);
 void sema_shadow_error(Decl *decl, Decl *old);
 
 File *source_file_load(const char *filename, bool *already_loaded);
-File *source_file_from_position(SourceLoc loc);
 void source_file_append_line_end(File *file, SourceLoc loc);
 SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc);
-SourcePosition source_file_find_position(SourceLoc loc);
-SourceRange source_range_from_ranges(SourceRange first, SourceRange last);
-#define RANGE_EXTEND_PREV(x) (x)->span.end_loc = context->prev_tok_end
 
-static inline unsigned source_range_len(SourceRange range) { return range.end_loc - range.loc; }
+static inline SourceSpan source_span_from_token_id(TokenId id)
+{
+	return (SourceSpan) { id, id };
+}
+
+
+#define RANGE_EXTEND_PREV(x) ((x)->span.end_loc.index = context->tok.id.index - 1)
 
 void stable_init(STable *table, uint32_t initial_size);
 void *stable_set(STable *table, const char *key, void *value);
@@ -1291,10 +1367,6 @@ bool token_is_type(TokenType type);
 bool token_is_any_type(TokenType type);
 bool token_is_symbol(TokenType type);
 const char *token_type_to_string(TokenType type);
-static inline Token wrap(const char *string)
-{
-	return (Token) { .span = INVALID_RANGE, .type = TOKEN_IDENT, .string = string };
-}
 
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_subarray(Type *arr_type);
@@ -1403,22 +1475,22 @@ static inline bool type_is_float(Type *type)
 	return type->type_kind >= TYPE_F32 && type->type_kind <= TYPE_FXX;
 }
 
-static inline TypeInfo *type_info_new(TypeInfoKind kind, SourceRange range)
+static inline TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span)
 {
-	TypeInfo *type_info = CALLOCS(TypeInfo);
+	TypeInfo *type_info = type_info_calloc();
 	type_info->kind = kind;
-	type_info->span = range;
+	type_info->span = span;
 	type_info->resolve_status = RESOLVE_NOT_DONE;
 	return type_info;
 }
 
-static inline TypeInfo *type_info_new_base(Type *type, SourceRange range)
+static inline TypeInfo *type_info_new_base(Type *type, SourceSpan span)
 {
-	TypeInfo *type_info = CALLOCS(TypeInfo);
+	TypeInfo *type_info = type_info_calloc();
 	type_info->kind = TYPE_INFO_IDENTIFIER;
 	type_info->resolve_status = RESOLVE_DONE;
 	type_info->type = type;
-	type_info->span = range;
+	type_info->span = span;
 	return type_info;
 }
 

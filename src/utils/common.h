@@ -19,3 +19,11 @@
 #ifndef __unused
 #define __unused
 #endif
+
+#if defined( _WIN32 ) || defined( __WIN32__ ) || defined( _WIN64 )
+#define PLATFORM_WINDOWS 1
+#define PLATFORM_POSIX 0
+#else
+#define PLATFORM_WINDOWS 0
+#define PLATFORM_POSIX 1
+#endif

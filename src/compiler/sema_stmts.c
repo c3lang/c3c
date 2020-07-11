@@ -15,14 +15,15 @@ void context_push_scope_with_flags(Context *context, ScopeFlags flags)
 	}
 	ScopeFlags previous_flags = context->current_scope->flags;
 	Ast *previous_defer = context->current_scope->current_defer;
-	Ast *parent_defer = context->current_scope->defers.start;
+	AstId parent_defer = context->current_scope->defers.start;
 	context->current_scope++;
 	context->current_scope->scope_id = ++context->scope_id;
+	context->current_scope->allow_dead_code = false;
+	context->current_scope->jump_end = false;
 	if (context->scope_id == 0)
 	{
 		FATAL_ERROR("Too many scopes.");
 	}
-	context->current_scope->exit = EXIT_NONE;
 	context->current_scope->local_decl_start = context->last_local;
 	context->current_scope->current_defer = previous_defer;
 	context->current_scope->defers.start = parent_defer;
@@ -40,12 +41,12 @@ void context_push_scope_with_flags(Context *context, ScopeFlags flags)
 	{
 		context->current_scope->flags = previous_flags | SCOPE_MACRO;
 	}
-	context->current_scope->flags_created = flags;
 }
 
 void context_push_scope_with_label(Context *context, Decl *label)
 {
 	context_push_scope_with_flags(context, SCOPE_NONE);
+
 	if (label)
 	{
 		label->label.defer = context->current_scope->defers.end;
@@ -70,28 +71,19 @@ static inline void context_pop_defers_to(Context *context, DeferList *list)
 	context_pop_defers(context);
 }
 
-static inline void context_add_exit(Context *context, ExitType exit)
-{
-	if (!context->current_scope->exit) context->current_scope->exit = exit;
-}
 
 
 void context_pop_scope(Context *context)
 {
 	assert(context->current_scope != &context->scopes[0]);
 	context->last_local = context->current_scope->local_decl_start;
-	ExitType exit_type = context->current_scope->exit;
 	assert (context->current_scope->defers.end == context->current_scope->defers.start);
 	context->current_scope--;
-	if (!context->current_scope->exit && exit_type)
-	{
-		context->current_scope->exit = exit_type;
-	}
 }
 
 static Expr *context_pop_defers_and_wrap_expr(Context *context, Expr *expr)
 {
-	DeferList defers = { NULL, NULL };
+	DeferList defers = { 0, 0 };
 	context_pop_defers_to(context, &defers);
 	if (defers.end == defers.start) return expr;
 	Expr *wrap = expr_new(EXPR_SCOPED_EXPR, expr->span);
@@ -104,12 +96,12 @@ static Expr *context_pop_defers_and_wrap_expr(Context *context, Expr *expr)
 
 static void context_pop_defers_and_replace_ast(Context *context, Ast *ast)
 {
-	DeferList defers = { NULL, NULL };
+	DeferList defers = { 0, 0 };
 	context_pop_defers_to(context, &defers);
 	if (defers.end == defers.start) return;
 	if (ast->ast_kind == AST_DEFER_STMT)
 	{
-		assert(defers.start == ast);
+		assert(defers.start == astid(ast));
 		*ast = *ast->defer_stmt.body;
 		return;
 	}
@@ -122,8 +114,6 @@ static void context_pop_defers_and_replace_ast(Context *context, Ast *ast)
 
 #pragma mark --- Helper functions
 
-#define UPDATE_EXIT(exit_type) \
- do { if (!context->current_scope->exit) context->current_scope->exit = exit_type; } while(0)
 
 
 #pragma mark --- Sema analyse stmts
@@ -132,7 +122,7 @@ static void context_pop_defers_and_replace_ast(Context *context, Ast *ast)
 static inline bool sema_analyse_block_return_stmt(Context *context, Ast *statement)
 {
 	assert(context->current_scope->flags & SCOPE_EXPR_BLOCK);
-	UPDATE_EXIT(EXIT_RETURN);
+	context->current_scope->jump_end = true;
 	if (statement->return_stmt.expr)
 	{
 		if (!sema_analyse_expr_of_required_type(context,
@@ -151,9 +141,7 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 	{
 		return sema_analyse_block_return_stmt(context, statement);
 	}
-
-	UPDATE_EXIT(EXIT_RETURN);
-
+	context->current_scope->jump_end = true;
 	Type *expected_rtype = context->rtype;
 	Expr *return_expr = statement->return_stmt.expr;
 	statement->return_stmt.defer = context->current_scope->defers.start;
@@ -172,7 +160,7 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 		}
 		return true;
 	}
-	if (expected_rtype == type_void)
+	if (expected_rtype == type_void && !context->failable_return)
 	{
 		SEMA_ERROR(statement, "You can't return a value from a void function, you need to add a return type.");
 		return false;
@@ -243,12 +231,12 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 			if (last->expr_stmt->failable)
 			{
 				SEMA_ERROR(last, "'%s!' cannot be converted into '%s'.",
-						type_to_error_string(last->expr_stmt->type),
+				               type_to_error_string(last->expr_stmt->type),
 						cast_to_bool ? "bool" : type_to_error_string(last->expr_stmt->type));
 			}
 			if (cast_to_bool)
 			{
-				if (!cast_implicit(last->expr_stmt, type_bool)) return false;
+				if (!cast_implicit(context, last->expr_stmt, type_bool)) return false;
 			}
 			return true;
 		case AST_DECLARE_STMT:
@@ -263,7 +251,7 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 			if (init->failable && !decl->var.unwrap)
 			{
 				SEMA_ERROR(last, "'%s!' cannot be converted into '%s'.",
-				           type_to_error_string(last->expr_stmt->type),
+				               type_to_error_string(last->expr_stmt->type),
 				           cast_to_bool ? "bool" : type_to_error_string(init->type));
 			}
 			if (!decl->var.unwrap && cast_to_bool && init->type->type_kind != TYPE_BOOL &&
@@ -285,7 +273,7 @@ static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 	Ast *body = statement->while_stmt.body;
 	context_push_scope(context);
 	bool success = sema_analyse_cond(context, cond, true);
-	context_push_scope_with_label(context, statement->while_stmt.label);
+	context_push_scope_with_label(context, statement->while_stmt.flow.label);
 
 	PUSH_BREAKCONT(statement);
 	success = success && sema_analyse_statement(context, body);
@@ -304,18 +292,29 @@ static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 	Expr *expr = statement->do_stmt.expr;
 	Ast *body = statement->do_stmt.body;
 	bool success;
-	context_push_scope_with_label(context, statement->do_stmt.label);
+	context_push_scope_with_label(context, statement->do_stmt.flow.label);
 	PUSH_BREAKCONT(statement);
 	success = sema_analyse_statement(context, body);
 	context_pop_defers_and_replace_ast(context, body);
 	POP_BREAKCONT();
+	statement->do_stmt.flow.no_exit = context->current_scope->jump_end;
 	context_pop_scope(context);
 	if (!success) return false;
 	if (!statement->do_stmt.expr) return success;
+
 	context_push_scope(context);
 	success = sema_analyse_expr_of_required_type(context, type_bool, expr, false);
 	statement->do_stmt.expr = context_pop_defers_and_wrap_expr(context, expr);
 	context_pop_scope(context);
+
+	// while (1) with no break means that we've reached a statement which ends with a jump.
+	if (statement->do_stmt.expr->expr_kind == EXPR_CONST && statement->do_stmt.expr->const_expr.b)
+	{
+		if (statement->do_stmt.flow.no_exit && !statement->do_stmt.flow.has_break)
+		{
+			context->current_scope->jump_end = true;
+		}
+	}
 	return success;
 }
 
@@ -367,8 +366,8 @@ static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
 {
 	// TODO special parsing of "catch"
 	context_push_scope_with_flags(context, SCOPE_DEFER); // NOLINT(hicpp-signed-bitwise)
-	context->current_scope->defers.start = NULL;
-	context->current_scope->defers.end = NULL;
+	context->current_scope->defers.start = 0;
+	context->current_scope->defers.end = 0;
 	context->current_scope->current_defer = statement;
 
 	PUSH_CONTINUE(statement);
@@ -388,7 +387,7 @@ static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
 	if (!success) return false;
 
 	statement->defer_stmt.prev_defer = context->current_scope->defers.start;
-	context->current_scope->defers.start = statement;
+	context->current_scope->defers.start = astid(statement);
 	return true;
 }
 
@@ -399,6 +398,7 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 
 	// Enter for scope
 	context_push_scope(context);
+	bool is_infinite = statement->for_stmt.cond == NULL;
 	if (statement->for_stmt.init)
 	{
 		success = sema_analyse_decl_expr_list(context, statement->for_stmt.init);
@@ -410,6 +410,12 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 		Expr *cond = statement->for_stmt.cond;
 		success = sema_analyse_expr_of_required_type(context, type_bool, cond, false);
 		statement->for_stmt.cond = context_pop_defers_and_wrap_expr(context, cond);
+		// If this is const true, then set this to infinte and remove the expression.
+		if (statement->for_stmt.cond->expr_kind == EXPR_CONST && statement->for_stmt.cond->const_expr.b)
+		{
+			statement->for_stmt.cond = NULL;
+			is_infinite = true;
+		}
 		// Conditional scope end
 		context_pop_scope(context);
 	}
@@ -430,9 +436,10 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 	}
 
 	// Create the for body scope.
-	context_push_scope_with_label(context, statement->for_stmt.label);
+	context_push_scope_with_label(context, statement->for_stmt.flow.label);
 	PUSH_BREAKCONT(statement);
 	success = sema_analyse_statement(context, statement->for_stmt.body);
+	statement->for_stmt.flow.no_exit = context->current_scope->jump_end;
 	POP_BREAKCONT();
 	// End for body scope
 	context_pop_defers_and_replace_ast(context, statement->for_stmt.body);
@@ -440,6 +447,10 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 	context_pop_defers_and_replace_ast(context, statement);
 	// End for scope
 	context_pop_scope(context);
+	if (statement->for_stmt.flow.no_exit && is_infinite && !statement->for_stmt.flow.has_break)
+	{
+		context->current_scope->jump_end = true;
+	}
 	return success;
 }
 
@@ -461,33 +472,42 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 		if (statement->if_stmt.then_body->ast_kind != AST_COMPOUND_STMT)
 		{
 			SEMA_ERROR(statement->if_stmt.then_body,
-			           "if-statements with an 'else' must use '{ }' even around a single statement.");
+			               "if-statements with an 'else' must use '{ }' even around a single statement.");
 			success = false;
 		}
 		if (success && statement->if_stmt.else_body->ast_kind != AST_COMPOUND_STMT)
 		{
 			SEMA_ERROR(statement->if_stmt.else_body,
-			           "An 'else' must use '{ }' even around a single statement.");
+			               "An 'else' must use '{ }' even around a single statement.");
 			success = false;
 		}
 	}
-	ExitType prev_exit = context->current_scope->exit;
-	context_push_scope_with_label(context, statement->if_stmt.label);
+	if (context->current_scope->jump_end && !context->current_scope->allow_dead_code)
+	{
+		SEMA_ERROR(statement->if_stmt.then_body, "This code can never be executed.");
+		success = false;
+	}
+
+	context_push_scope_with_label(context, statement->if_stmt.flow.label);
+
 	success = success && sema_analyse_statement(context, statement->if_stmt.then_body);
+	bool then_jump = context->current_scope->jump_end;
 	context_pop_scope(context);
-	ExitType if_exit = context->current_scope->exit;
-	ExitType else_exit = prev_exit;
+	bool else_jump = false;
 	if (statement->if_stmt.else_body)
 	{
-		context_push_scope_with_label(context, statement->if_stmt.label);
-		context->current_scope->exit = prev_exit;
+		context_push_scope_with_label(context, statement->if_stmt.flow.label);
 		success = success && sema_analyse_statement(context, statement->if_stmt.else_body);
-		else_exit = context->current_scope->exit;
+		else_jump = context->current_scope->jump_end;
 		context_pop_scope(context);
 	}
-	context->current_scope->exit = else_exit < if_exit ? else_exit : if_exit;
 	context_pop_defers_and_replace_ast(context, statement);
 	context_pop_scope(context);
+
+	if (then_jump && else_jump && !statement->flow.has_break)
+	{
+		context->current_scope->jump_end = true;
+	}
 	return success;
 }
 
@@ -523,7 +543,7 @@ static inline Decl *sema_analyse_label(Context *context, Ast *stmt)
 	}
 	if (target->decl_kind != DECL_LABEL)
 	{
-		sema_error_range(stmt->contbreak_stmt.label.span, "Expected the name to match a label, not a constant.");
+		SEMA_TOKID_ERROR(stmt->contbreak_stmt.label.span, "Expected the name to match a label, not a constant.");
 		return poisoned_decl;
 	}
 	if (context->current_scope->current_defer)
@@ -532,7 +552,7 @@ static inline Decl *sema_analyse_label(Context *context, Ast *stmt)
 		if (scope->current_defer != context->current_scope->current_defer)
 		{
 			SEMA_ERROR(stmt, stmt->ast_kind == AST_BREAK_STMT ? "You cannot break out of a defer." : "You cannot use continue out of a defer.");
-			return false;
+			return poisoned_decl;
 		}
 	}
 	return target;
@@ -549,6 +569,7 @@ static bool context_labels_exist_in_scope(Context *context)
 
 static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 {
+	context->current_scope->jump_end = true;
 	if (!context->break_target && !statement->contbreak_stmt.label.name)
 	{
 		if (context_labels_exist_in_scope(context))
@@ -562,33 +583,31 @@ static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 		return false;
 	}
 
-	UPDATE_EXIT(EXIT_BREAK);
-
 	statement->contbreak_stmt.defers.start = context->current_scope->defers.start;
-
 	if (statement->contbreak_stmt.label.name)
 	{
 		Decl *target = sema_analyse_label(context, statement);
 		if (!decl_ok(target)) return false;
 
+		astptr(target->label.parent)->flow.has_break = true;
 		statement->contbreak_stmt.ast = target->label.parent;
 		statement->contbreak_stmt.defers.end = target->label.defer;
 		return true;
 	}
 	statement->contbreak_stmt.defers.end = context->break_defer;
 	statement->contbreak_stmt.ast = context->break_target;
+	astptr(context->break_target)->flow.has_break = true;
 	return true;
 }
 
 static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 {
+	context->current_scope->jump_end = true;
 	if (!context->next_target && !statement->next_stmt.label.name)
 	{
 		SEMA_ERROR(statement, "'next' is not allowed here.");
 		return false;
 	}
-	UPDATE_EXIT(EXIT_NEXT);
-
 	Ast *parent = context->next_switch;
 
 	if (statement->next_stmt.label.name)
@@ -602,27 +621,28 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 		}
 		if (target->decl_kind != DECL_LABEL)
 		{
-			sema_error_range(statement->next_stmt.label.span, "Expected the name to match a label, not a constant.");
+			SEMA_TOKID_ERROR(statement->next_stmt.label.span, "Expected the name to match a label, not a constant.");
 			return false;
 		}
-		if (target->label.parent->ast_kind != AST_SWITCH_STMT && target->label.parent->ast_kind != AST_CATCH_STMT)
+		parent = astptr(target->label.parent);
+		AstKind kind = parent->ast_kind;
+		if (kind != AST_SWITCH_STMT && kind != AST_CATCH_STMT)
 		{
-			sema_error_range(statement->next_stmt.label.span, "Expected the label to match a 'switch' or 'catch' statement.");
+			SEMA_TOKID_ERROR(statement->next_stmt.label.span, "Expected the label to match a 'switch' or 'catch' statement.");
 			return false;
 		}
-		parent = target->label.parent;
 		bool defer_mismatch = false;
 		if (parent->ast_kind == AST_SWITCH_STMT)
 		{
-			defer_mismatch = context->current_scope->current_defer != parent->switch_stmt.defer;
+			defer_mismatch = context->current_scope->current_defer != context_find_scope_by_id(context, parent->switch_stmt.scope_id)->current_defer;
 		}
 		else
 		{
-			defer_mismatch = context->current_scope->current_defer != parent->catch_stmt.defer;
+			defer_mismatch = context->current_scope->current_defer != context_find_scope_by_id(context, parent->catch_stmt.scope_id)->current_defer;
 		}
 		if (defer_mismatch)
 		{
-			SEMA_ERROR(statement, "This 'next' would jump out of a defer which isn't possible.");
+			SEMA_ERROR(statement, "This 'next' would jump out of a defer which is not allowed.");
 			return false;
 		}
 		assert(statement->next_stmt.target);
@@ -630,7 +650,7 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 
 	statement->next_stmt.defers.start = context->current_scope->defers.start;
 	statement->next_stmt.defers.end = parent->switch_stmt.defer;
-
+	// Plain next.
 	if (!statement->next_stmt.target)
 	{
 		if (!context->next_target)
@@ -674,13 +694,13 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 			}
 			if (case_stmt->case_stmt.type_info->type->canonical == statement->next_stmt.type_info->type->canonical)
 			{
-				statement->next_stmt.case_switch_stmt = case_stmt;
+				statement->next_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
 			}
 		}
 		if (default_stmt)
 		{
-			statement->next_stmt.case_switch_stmt = default_stmt;
+			statement->next_stmt.case_switch_stmt = astid(default_stmt);
 			return true;
 		}
 		SEMA_ERROR(statement->next_stmt.type_info, "There is no case for type '%s'.", type_to_error_string(statement->next_stmt.type_info->type));
@@ -695,7 +715,7 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 
 	if (!sema_analyse_expr(context, parent->switch_stmt.cond->type, target)) return false;
 
-	if (!cast_implicit(target, parent->switch_stmt.cond->type)) return false;
+	if (!cast_implicit(context, target, parent->switch_stmt.cond->type)) return false;
 
 	if (target->expr_kind == EXPR_CONST)
 	{
@@ -711,48 +731,47 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 			}
 			if (expr_const_compare(&target->const_expr, &case_stmt->case_stmt.expr->const_expr, BINARYOP_EQ))
 			{
-				statement->next_stmt.case_switch_stmt = case_stmt;
+				statement->next_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
 			}
 		}
 		if (default_stmt)
 		{
-			statement->next_stmt.case_switch_stmt = default_stmt;
+			statement->next_stmt.case_switch_stmt = astid(default_stmt);
 			return true;
 		}
 		SEMA_ERROR(statement, "The 'next' needs to jump to an exact case statement.");
 		return false;
 	}
 
-	statement->next_stmt.case_switch_stmt = parent;
+	statement->next_stmt.case_switch_stmt = astid(parent);
 	statement->next_stmt.switch_expr = target;
 	return true;
 }
 
 static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
 {
+	context->current_scope->jump_end = true;
+	statement->contbreak_stmt.defers.start = context->current_scope->defers.start;
 
-	if (!context->break_target && !statement->contbreak_stmt.label.name)
+	if (!context->continue_target && !statement->contbreak_stmt.label.name)
 	{
 		SEMA_ERROR(statement, "'continue' is not allowed here.");
 		return false;
 	}
 
-	UPDATE_EXIT(EXIT_CONTINUE);
-
-	statement->contbreak_stmt.defers.start = context->current_scope->defers.start;
-
 	if (statement->contbreak_stmt.label.name)
 	{
 		Decl *target = sema_analyse_label(context, statement);
 		if (!decl_ok(target)) return false;
-		switch (target->label.parent->ast_kind)
+		Ast *parent = astptr(target->label.parent);
+		switch (parent->ast_kind)
 		{
 			case AST_FOR_STMT:
 			case AST_WHILE_STMT:
 				break;
 			case AST_DO_STMT:
-				if (target->label.parent->do_stmt.expr) break;
+				if (parent->do_stmt.expr) break;
 				FALLTHROUGH;
 			default:
 				SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");
@@ -763,7 +782,7 @@ static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
 		return true;
 	}
 	statement->contbreak_stmt.defers.end = context->continue_defer;
-	statement->contbreak_stmt.ast = context->break_target;
+	statement->contbreak_stmt.ast = context->continue_target;
 	return true;
 }
 
@@ -841,10 +860,10 @@ static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_st
 	//    in the case. In that case we do an implicit conversion.
 	if (to_type_canonical->type_kind == TYPE_ENUM && type_is_any_integer(case_expr->type))
 	{
-		return cast(case_expr, to_type, CAST_TYPE_EXPLICIT);
+		return cast(context, case_expr, to_type, CAST_TYPE_EXPLICIT);
 	}
 
-	return cast_implicit(case_expr, to_type);
+	return cast_implicit(context, case_expr, to_type);
 }
 
 
@@ -932,9 +951,8 @@ static inline bool sema_check_value_case(Context *context, Type *switch_type, As
 	return true;
 }
 
-static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceRange expr_span, Type *switch_type, Ast **cases)
+static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases)
 {
-	// TODO switch next/break labels
 	bool use_type_id = false;
 	switch (switch_type->type_kind)
 	{
@@ -949,20 +967,17 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceRan
 		case TYPE_STRING:
 			break;
 		default:
-			sema_error_range(expr_span, "It is not possible to switch over '%s'.", type_to_error_string(switch_type));
+			sema_error_range3(expr_span, "It is not possible to switch over '%s'.", type_to_error_string(switch_type));
 			return false;
 	}
 	Ast *default_case = NULL;
 	assert(context->current_scope->defers.start == context->current_scope->defers.end);
 
-	ExitType prev_exit = context->current_scope->exit;
 	bool exhaustive = false;
-	ExitType lowest_exit = EXIT_NONE;
 	unsigned case_count = vec_size(cases);
 	bool success = true;
 	for (unsigned i = 0; i < case_count; i++)
 	{
-		context->current_scope->exit = prev_exit;
 		Ast *stmt = cases[i];
 		switch (stmt->ast_kind)
 		{
@@ -998,45 +1013,31 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceRan
 				UNREACHABLE;
 		}
 	}
+
+	bool all_jump_end = exhaustive;
 	for (unsigned i = 0; i < case_count; i++)
 	{
-		context->current_scope->exit = prev_exit;
 		Ast *stmt = cases[i];
 		context_push_scope(context);
 		PUSH_BREAK(statement);
 		Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
 		PUSH_NEXT(next, statement);
-		success = success && (!stmt->case_stmt.body || sema_analyse_compound_statement_no_scope(context, stmt->case_stmt.body));
-		ExitType case_exit = context->current_scope->exit;
-		if (case_exit != lowest_exit)
-		{
-			switch (case_exit)
-			{
-				case EXIT_NONE:
-				case EXIT_BREAK:
-					lowest_exit = EXIT_BREAK;
-					break;
-				case EXIT_NEXT:
-					// We ignore this completely
-					break;
-				default:
-					if (!lowest_exit || lowest_exit > case_exit) lowest_exit = case_exit;
-					break;
-			}
-		}
+		Ast *body = stmt->case_stmt.body;
+		success = success && (!body || sema_analyse_compound_statement_no_scope(context, body));
 		POP_BREAK();
 		POP_NEXT();
+		bool x =
+		all_jump_end &= (!body | context->current_scope->jump_end);
 		context_pop_scope(context);
 	}
-	if (lowest_exit <= EXIT_BREAK) lowest_exit = prev_exit;
-	// Check exhaustive use.
-	context->current_scope->exit = exhaustive ? lowest_exit : EXIT_NONE;
+	statement->flow.no_exit = all_jump_end;
 	if (!success) return false;
 	return success;
 }
 static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 {
-	context_push_scope_with_label(context, statement->switch_stmt.label);
+	statement->switch_stmt.scope_id = context->current_scope->scope_id;
+	context_push_scope_with_label(context, statement->switch_stmt.flow.label);
 	Expr *cond = statement->switch_stmt.cond;
 	if (!sema_analyse_cond(context, cond, false)) return false;
 
@@ -1047,8 +1048,11 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 	                                switch_type->canonical,
 	                                statement->switch_stmt.cases);
 	if (success) context_pop_defers_and_replace_ast(context, statement);
-
 	context_pop_scope(context);
+	if (statement->flow.no_exit && !statement->flow.has_break)
+	{
+		context->current_scope->jump_end = true;
+	}
 	return success;
 }
 
@@ -1063,9 +1067,9 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 	Expr *error_expr = catch_expr;
 	Decl *unwrapped = NULL;
 
-	context_push_scope_with_label(context, statement->catch_stmt.label);
+	statement->catch_stmt.scope_id = context->current_scope->scope_id;
+	context_push_scope_with_label(context, statement->catch_stmt.flow.label);
 
-	Expr *maybe_unwrapped = NULL;
 	statement->catch_stmt.defer = context->current_scope->defers.start;
 	if (catch_expr->expr_kind == EXPR_BINARY && catch_expr->binary_expr.operator == BINARYOP_ASSIGN)
 	{
@@ -1079,10 +1083,7 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 			                                           &ambiguous_decl);
 			if (!error_var_decl)
 			{
-
-				error_var = decl_new_var((Token) { .span = left->span, .string = left->identifier_expr.identifier },
-				                         type_info_new_base(type_error, left->span),
-				                         VARDECL_LOCAL,
+				error_var = decl_new_var(left->span.loc, type_info_new_base(type_error, left->span), VARDECL_LOCAL,
 				                         VISIBLE_LOCAL);
 				error_var->type = type_error;
 				Expr *right = catch_expr->binary_expr.right;
@@ -1106,10 +1107,13 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 	{
 		const char *error_type = type_to_error_string(error_expr->type);
 		if (error_expr->expr_kind == EXPR_IDENTIFIER
-			&& error_expr->identifier_expr.decl->decl_kind == DECL_VAR
-			&& error_expr->identifier_expr.decl->var.kind == VARDECL_ALIAS)
+		    && error_expr->identifier_expr.decl->decl_kind == DECL_VAR
+		    && error_expr->identifier_expr.decl->var.kind == VARDECL_ALIAS)
 		{
-			SEMA_ERROR(error_expr, "'%s' is unwrapped to '%s' here, so it cannot be caught.", error_expr->identifier_expr.decl->name, error_type);
+			SEMA_ERROR(error_expr,
+			           "'%s' is unwrapped to '%s' here, so it cannot be caught.",
+			           error_expr->identifier_expr.decl->name,
+			           error_type);
 			success = false;
 			goto EXIT;
 		}
@@ -1130,24 +1134,23 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 
 	if (statement->catch_stmt.is_switch)
 	{
-		success = sema_analyse_switch_body(context, statement, error_expr->span, type_error, statement->catch_stmt.cases);
+		success = sema_analyse_switch_body(context,
+		                                   statement,
+		                                   error_expr->span,
+		                                   type_error,
+		                                   statement->catch_stmt.cases);
 	}
 	else
 	{
 		success = sema_analyse_statement(context, statement->catch_stmt.body);
+		if (context->current_scope->jump_end) statement->flow.no_exit = true;
 	}
-	bool was_exit = context->current_scope->exit == EXIT_RETURN;
 	if (success) context_pop_defers_and_replace_ast(context, statement);
 	context_pop_scope(context);
-
-	if (error_var)
-	{
-	}
-
 EXIT:
 	if (success)
 	{
-		if (unwrapped && was_exit)
+		if (unwrapped && !statement->flow.has_break && statement->flow.no_exit)
 		{
 			Decl *decl = COPY(unwrapped);
 			decl->var.kind = VARDECL_ALIAS;
@@ -1216,17 +1219,27 @@ static bool sema_analyse_compound_stmt(Context *context, Ast *statement)
 {
 	context_push_scope(context);
 	bool success = sema_analyse_compound_statement_no_scope(context, statement);
+	bool ends_with_jump = context->current_scope->jump_end;
 	context_pop_scope(context);
+	context->current_scope->jump_end = ends_with_jump;
 	return success;
 }
 
-
 static inline bool sema_analyse_statement_inner(Context *context, Ast *statement)
 {
+	if (statement->ast_kind == AST_POISONED)
+	{
+		return false;
+	}
+	if (context->current_scope->jump_end && !context->current_scope->allow_dead_code)
+	{
+		//SEMA_ERROR(statement, "This code will never execute.");
+		context->current_scope->allow_dead_code = true;
+		//return false;
+	}
 	switch (statement->ast_kind)
 	{
 		case AST_POISONED:
-			return false;
 		case AST_SCOPED_STMT:
 			UNREACHABLE
 		case AST_DEFINE_STMT:
@@ -1317,10 +1330,10 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	context->in_macro = 0;
 	context->macro_counter = 0;
 	context->macro_nesting = 0;
-	context->continue_target = NULL;
-	context->next_target = NULL;
-	context->next_switch = NULL;
-	context->break_target = NULL;
+	context->continue_target = 0;
+	context->next_target = 0;
+	context->next_switch = 0;
+	context->break_target = 0;
 	func->func.annotations = CALLOCS(FuncAnnotations);
 	context_push_scope(context);
 	Decl **params = signature->params;
@@ -1331,7 +1344,7 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	}
 	if (!sema_analyse_compound_statement_no_scope(context, func->func.body)) return false;
 	assert(context->current_scope == &context->scopes[1]);
-	if (context->current_scope->exit != EXIT_RETURN)
+	if (!context->current_scope->jump_end)
 	{
 		Type *canonical_rtype = signature->rtype->type->canonical;
 		if (canonical_rtype != type_void)

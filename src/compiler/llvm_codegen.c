@@ -98,7 +98,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 		decl->var.backend_debug_ref = LLVMDIBuilderCreateGlobalVariableExpression(context->debug.builder,
 		                                                                          NULL /*scope*/,
 		                                                                          decl->name,
-		                                                                          source_range_len(decl->name_span),
+		                                                                          1, /*source_range_len(decl->name_span),*/
 		                                                                          "linkagename",
 		                                                                          2,
 		                                                                          context->debug.file,

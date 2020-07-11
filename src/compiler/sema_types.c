@@ -60,12 +60,12 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 {
 	Decl *ambiguous_decl;
 	Decl *decl = sema_resolve_symbol(context,
-	                                 type_info->unresolved.name_loc.string,
+	                                 TOKSTR(type_info->unresolved.name_loc),
 	                                 type_info->unresolved.path,
 	                                 &ambiguous_decl);
 	if (!decl)
 	{
-		SEMA_TOKEN_ERROR(type_info->unresolved.name_loc, "Unknown type '%s'.", type_info->unresolved.name_loc.string);
+		SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "Unknown type '%s'.", TOKSTR(type_info->unresolved.name_loc));
 		return type_info_poison(type_info);
 	}
 
@@ -78,9 +78,9 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 
 	if (ambiguous_decl)
 	{
-		SEMA_TOKEN_ERROR(type_info->unresolved.name_loc,
+		SEMA_TOKID_ERROR(type_info->unresolved.name_loc,
 		                 "Ambiguous type '%s' – both defined in %s and %s, please add the module name to resolve the ambiguity",
-		                 type_info->unresolved.name_loc.string,
+		                 TOKSTR(type_info->unresolved.name_loc),
 		                 decl->module->name->module,
 		                 ambiguous_decl->module->name->module);
 		return type_info_poison(type_info);
@@ -98,7 +98,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 			}
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
-			DEBUG_LOG("Resolved %s.", type_info->unresolved.name_loc.string);
+			DEBUG_LOG("Resolved %s.", TOKSTR(type_info->unresolved.name_loc));
 			return true;
 		case DECL_POISONED:
 			return type_info_poison(type_info);
@@ -110,7 +110,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_MACRO:
 		case DECL_GENERIC:
 		case DECL_LABEL:
-			SEMA_TOKEN_ERROR(type_info->unresolved.name_loc, "This is not a type.");
+			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "This is not a type.");
 			return type_info_poison(type_info);
 		case DECL_CT_ELSE:
 		case DECL_CT_IF:
@@ -130,9 +130,9 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 	if (type_info->resolve_status == RESOLVE_RUNNING)
 	{
 		// TODO this is incorrect for unresolved expressions
-		SEMA_TOKEN_ERROR(type_info->unresolved.name_loc,
+		SEMA_TOKID_ERROR(type_info->unresolved.name_loc,
 		                 "Circular dependency resolving type '%s'.",
-		                 type_info->unresolved.name_loc.string);
+		                 TOKSTR(type_info->unresolved.name_loc));
 		return type_info_poison(type_info);
 	}
 
