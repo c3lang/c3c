@@ -141,46 +141,6 @@ const char *type_to_error_string(Type *type)
 	UNREACHABLE
 }
 
-static void type_append_signature_name_user_defined(Decl *decl, char *dst, size_t *offset)
-{
-	switch (decl->decl_kind)
-	{
-		case DECL_FUNC:
-		{
-			assert(decl->func.function_signature.mangled_signature);
-			int len = sprintf(dst + *offset, "func %s", decl->func.function_signature.mangled_signature);
-			*offset += len;
-			return;
-		}
-		case DECL_POISONED:
-		case DECL_VAR:
-		case DECL_ENUM_CONSTANT:
-		case DECL_TYPEDEF:
-		case DECL_ARRAY_VALUE:
-		case DECL_IMPORT:
-		case DECL_MACRO:
-		case DECL_GENERIC:
-		case DECL_CT_IF:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
-		case DECL_ATTRIBUTE:
-		case DECL_MEMBER:
-		case DECL_LABEL:
-			UNREACHABLE
-		case DECL_STRUCT:
-		case DECL_UNION:
-		case DECL_ENUM:
-		case DECL_ERR:
-		{
-			unsigned len = source_range_len(decl->name_span);
-			memcpy(dst + *offset, decl->name, len);
-			*offset += len;
-			return;
-
-		}
-	}
-	UNREACHABLE
-}
 void type_append_signature_name(Type *type, char *dst, size_t *offset)
 {
 	type = type->canonical;

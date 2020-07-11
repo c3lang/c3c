@@ -7,10 +7,29 @@
 
 Compiler compiler;
 
+Vmem ast_arena;
+Vmem expr_arena;
+Vmem sourceloc_arena;
+Vmem toktype_arena;
+Vmem tokdata_arena;
+Vmem decl_arena;
+Vmem type_info_arena;
+
 void compiler_init(void)
 {
 	stable_init(&compiler.modules, 64);
 	stable_init(&compiler.global_symbols, 0x1000);
+	vmem_init(&ast_arena, 4 * 1024);
+	vmem_init(&expr_arena, 4 * 1024);
+	vmem_init(&decl_arena, 1024);
+	vmem_init(&sourceloc_arena, 4 * 1024);
+	vmem_init(&toktype_arena, 4 * 1024);
+	vmem_init(&tokdata_arena, 4 * 1024);
+	vmem_init(&type_info_arena, 1024);
+	// Create zero index value.
+	SourceLocation *loc = sourceloc_calloc();
+	char *token_type = toktype_calloc();
+	TokenData *data = tokdata_calloc();
 }
 
 static void compiler_lex(BuildTarget *target)
@@ -25,7 +44,7 @@ static void compiler_lex(BuildTarget *target)
 		printf("# %s\n", file->full_path);
 		while (1)
 		{
-			Token token = lexer_scan_token(&lexer);
+			Token token = lexer_advance(&lexer);
 			printf("%s ", token_type_to_string(token.type));
 			if (token.type == TOKEN_EOF) break;
 		}
@@ -101,6 +120,15 @@ void compiler_compile(BuildTarget *target)
 		Context *context = contexts[i];
 		llvm_codegen(context);
 	}
+
+	printf("-- AST/EXPR INFO -- \n");
+	printf(" * Ast memory use: %llukb\n", (unsigned long long)ast_arena.allocated / 1024);
+	printf(" * Decl memory use: %llukb\n", (unsigned long long)decl_arena.allocated / 1024);
+	printf(" * Expr memory use: %llukb\n", (unsigned long long)expr_arena.allocated / 1024);
+	printf(" * TypeInfo memory use: %llukb\n", (unsigned long long)type_info_arena.allocated / 1024);
+	printf(" * Token memory use: %llukb\n", (unsigned long long)(toktype_arena.allocated) / 1024);
+	printf(" * Sourceloc memory use: %llukb\n", (unsigned long long)(sourceloc_arena.allocated) / 1024);
+	printf(" * Token data memory use: %llukb\n", (unsigned long long)(tokdata_arena.allocated) / 1024);
 	print_arena_status();
 	exit(EXIT_SUCCESS);
 }
@@ -173,9 +201,9 @@ void compile_files(BuildTarget *target)
 }
 
 
-Decl *compiler_find_symbol(Token token)
+Decl *compiler_find_symbol(const char *string)
 {
-	return stable_get(&compiler.global_symbols, token.string);
+	return stable_get(&compiler.global_symbols, string);
 }
 
 void compiler_add_type(Type *type)
@@ -192,7 +220,7 @@ Module *compiler_find_or_create_module(Path *module_name)
 	{
 		// We might have gotten an auto-generated module, if so
 		// update the path here.
-		if (module->name->span.loc == INVALID_LOC && module_name->span.loc != INVALID_LOC)
+		if (module->name->span.loc.index == INVALID_TOKEN_ID.index && module_name->span.loc.index != INVALID_TOKEN_ID.index)
 		{
 			module->name = module_name;
 		}
@@ -206,7 +234,7 @@ Module *compiler_find_or_create_module(Path *module_name)
 	stable_init(&module->symbols, 0x10000);
 	stable_set(&compiler.modules, module_name->module, module);
 	// Now find the possible parent array:
-	Path *parent_path = path_find_parent_path(module_name);
+	Path *parent_path = path_find_parent_path(NULL, module_name);
 	if (parent_path)
 	{
 		// Get the parent

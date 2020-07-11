@@ -7,8 +7,7 @@
 
 Context *context_create(File *file, BuildTarget *target)
 {
-    Context *context = malloc_arena(sizeof(Context));
-    memset(context, 0, sizeof(Context));
+    Context *context = CALLOCS(Context);
     context->file = file;
     context->target = target;
     stable_init(&context->local_symbols, 256);
@@ -28,7 +27,7 @@ static inline bool create_module_or_check_name(Context *context, Path *module_na
     }
     else if (context->module->name->module != module_name->module)
     {
-        sema_error_range(module_name->span, "Module name here '%s' did not match actual module '%s'.", module_name->module, context->module->name->module);
+    	SEMA_ERROR(module_name, "Module name here '%s' did not match actual module '%s'.", module_name->module, context->module->name->module);
         return false;
     }
     return true;
@@ -48,8 +47,8 @@ bool context_set_module_from_filename(Context *context)
     const char *module_name = symtab_add(buffer, (uint32_t) len, fnv1a(buffer, (uint32_t) len), &type);
     if (type != TOKEN_IDENT)
     {
-        sema_error(context, "Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
-                   "try using an explicit module name.");
+	    sema_error(context, "Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
+	                        "try using an explicit module name.");
         return false;
     }
     Path *path = CALLOCS(Path);
@@ -59,14 +58,14 @@ bool context_set_module_from_filename(Context *context)
     return create_module_or_check_name(context, path);
 }
 
-bool context_set_module(Context *context, Path *path, Token *generic_parameters)
+bool context_set_module(Context *context, Path *path, TokenId *generic_parameters)
 {
     DEBUG_LOG("CONTEXT: Setting module to '%s'.", path->module);
     // Note that we allow the illegal name for now, to be able to parse further.
     context->module_name = path;
     if (!is_all_lower(path->module))
     {
-        sema_error_range(path->span, "A module name may not have any upper case characters.");
+        SEMA_ERROR(path, "A module name may not have any upper case characters.");
         return false;
     }
     context->module_parameters = generic_parameters;
@@ -161,29 +160,30 @@ bool context_add_import(Context *context, Path *path, Token token, Token alias)
 
 	if (!is_all_lower(path->module))
 	{
-		sema_error_range(path->span, "A module is not expected to have any upper case characters, please change it.");
+		SEMA_ERROR(path, "A module is not expected to have any upper case characters, please change it.");
 		return false;
 	}
 
-	Decl *import = CALLOCS(Decl);
+	Decl *import = decl_calloc();
 	import->decl_kind = DECL_IMPORT;
 	import->visibility = VISIBLE_LOCAL;
 	import->import.path = path;
-	import->import.symbol = token;
+	import->import.symbol = token.id;
 	if (alias.type != TOKEN_INVALID_TOKEN)
     {
-	    if (alias.string == token.string)
+		const char *alias_name = TOKKSTR(alias);
+	    if (alias_name == TOKKSTR(token))
 	    {
-		    sema_error_range(alias.span, "If an alias would be the same as the symbol aliased, it wouldn't have any effect.");
+		    SEMA_TOKEN_ERROR(alias, "If an alias would be the same as the symbol aliased, it wouldn't have any effect.");
 		    return false;
 	    }
-	    if (alias.string == context->module_name->module)
+	    if (alias_name == context->module_name->module)
 	    {
-		    sema_error_range(alias.span, "An alias cannot have not have the same as the name of the current module.");
+		    SEMA_TOKEN_ERROR(alias, "An alias cannot have not have the same as the name of the current module.");
 		    return false;
 	    }
 	    import->import.aliased = true;
-		TODO
+	    TODO
     }
 
     vec_add(context->imports, import);
@@ -195,22 +195,22 @@ void context_print_ast(Context *context, FILE *file)
 {
 	VECEACH(context->enums, i)
 	{
-		fprint_decl(file, context->enums[i]);
+		fprint_decl(context, file, context->enums[i]);
 	}
 	VECEACH(context->vars, i)
 	{
-		fprint_decl(file, context->vars[i]);
+		fprint_decl(context, file, context->vars[i]);
 	}
 	VECEACH(context->types, i)
 	{
-		fprint_decl(file, context->types[i]);
+		fprint_decl(context, file, context->types[i]);
 	}
 	VECEACH(context->functions, i)
 	{
-		fprint_decl(file, context->functions[i]);
+		fprint_decl(context, file, context->functions[i]);
 	}
 	VECEACH(context->ct_ifs, i)
 	{
-		fprint_decl(file, context->ct_ifs[i]);
+		fprint_decl(context, file, context->ct_ifs[i]);
 	}
 }

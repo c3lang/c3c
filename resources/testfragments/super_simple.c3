@@ -3,6 +3,11 @@ module bar;
 
 typedef int as Bob;
 
+func int! testThrow4(int x)
+{
+    return x > 4 ? TestErr1! : TestErr2!;
+}
+
 struct Test
 {
     int a;
@@ -152,11 +157,11 @@ func void testIf()
         printf("No: %d/%d\n", x, y);
     }
     int! z = 67;
-    /*
+
     try (int j = z, int k = z + 1)
     {
         printf("Check: %d %d\n", j, k);
-    }*/
+    }
     try (z)
     {
         printf("Show :%d", z);
@@ -237,7 +242,7 @@ func void enumInferenceTest()
 
 func void switchTest()
 {
-/*
+
     switch FOO: (cast(1, int))
     {
         case 1:
@@ -251,7 +256,7 @@ func void switchTest()
             next 2;
         case 4:
             printf("4\n");
-    }*/
+    }
 }
 
 func int jumptest()
@@ -300,13 +305,6 @@ func int testReturnWithOtherAtEnd()
     if (i == 10) i++;
     i = i + 2;
 }
-/*
-func int testReturnWithError() throws Error
-{
-    int i = 0;
-    throw Error.NO_SUCH_FILE;
-    i = i + 1;
-}*/
 
 func int testReturnWithConditional()
 {
@@ -780,7 +778,7 @@ func void show()
 }
 func void testAllErrors()
 {
-/*
+
     printf("Try test all\n");
     int! i = 7;
     int*! iptr = &i;
@@ -789,7 +787,7 @@ func void testAllErrors()
     {
         printf("Unexpected error!\n");
     }
-    catch (int i = **iptrptr)
+    catch (i = **iptrptr)
     {
         printf("Unexpected error!\n");
     }
@@ -847,15 +845,23 @@ func void testAllErrors()
     printf("No error!\n");
     int! flow = 1;
     catch (flow) return;
-    int xy = flow;*/
+    int xy = flow;
+
+    catch (err = i) return;
+    if (i > 0)
+    {
+        printf("Ok!\n");
+    }
+    i = TestErr1!;
+/* Error    if (i > 0)
+    {
+        printf("Not ok!\n");
+    }*/
+
 }
-/*
 
 
-func int! testThrow4(int x)
-{
-    return x > 4 ? TestErr1! : TestErr2!;
-}
+
 
 
 func int! testThrow6(int x)
@@ -871,31 +877,23 @@ func int! testThrow(int x)
     if (x < 0) return TestErr1!;
     return x * x;
 }
-*/
-
-/*
 func int! oekt()
 {
-    int z = testThrow(-1) else goto NEXT;
+    int z = testThrow(-1) else return 1;
     printf("Skipped.\n");
-    NEXT:
     int! x = testThrow(-3);
     catch (err = x)
     {
-        printf("An error %p\n", cast(err, usize));
+//        printf("An error %p\n", cast(err, usize));
         return err!;
     }
     return x;
 }
-*/
-/*
 func int! testThrowAny(int x)
 {
     if (x < 0) return TestErr1!;
     return x * x;
 }
-*/
-/*
 func void testErrorBug()
 {
     printf("Test error multi\n");
@@ -905,8 +903,8 @@ func void testErrorBug()
         case TestErr1:
             printf("Expected particular error.\n");
         default:
-            error foo = Err.TEST_ERR1;
-            printf("Not expected %p != %p\n", cast(e, usize), cast(foo, usize));
+            error foo = TestErr2{};
+            //printf("Not expected %p != %p\n", cast(e, usize), cast(foo, usize));
             printf("Unexpected any error error.\n");
     }
     printf("End\n");
@@ -922,21 +920,18 @@ func void testErrorMulti()
         z = oekt();
         printf("Got here\n");
     }
-    switch (e = z)
+    catch (e = z)
     {
         case TestErr1:
             printf("Expected particular error.\n");
         default:
-            error foo = Err.TEST_ERR1;
-            printf("Not expected %p != %p\n", usize(e), usize(foo));
+            error foo = TestErr1{};
+//            printf("Not expected %p != %p\n", cast(e, usize), cast(foo, usize));
             printf("Unexpected any error error.\n");
     }
     printf("End\n");
 }
-*/
 
-
-/*
 func void! throwAOrB(int i)
 {
     printf("AB\n");
@@ -947,7 +942,7 @@ func void! throwAOrB(int i)
     if (i == 2) return TestErr2!;
     printf("None\n");
 }
-*/
+
 struct ThrowsDone
 {
     long x;
@@ -957,7 +952,6 @@ struct ThrowsDone
 }
 ThrowsDone throwsDone;
 
-/*
 func void testErrors()
 {
 
@@ -976,17 +970,14 @@ func void testErrors()
     printf("Begin\n");
     int! y = testThrow(-1);
 
-    if (y)
+    try (y)
     {
         printf("Value was %d, expected 9.\n", y);
         printf("Didn't expect this one.\n");
     }
-    else
+    catch(y)
     {
-        catch(y)
-        {
-            printf("Expected this catch.\n");
-        }
+        printf("Expected this catch.\n");
     }
 
     y = testThrow(-1);
@@ -994,26 +985,26 @@ func void testErrors()
     {
         printf("Particular error.\n");
     }
-  //  testErrorMulti();
+    testErrorMulti();
 
     catch (throwAOrB(1))
     {
-        case Err:
+        case TestErr1:
             printf("A1\n");
-        case Err2:
+        case TestErr2:
             printf("A2\n");
     }
     catch (throwAOrB(2))
     {
-        case Err:
+        case TestErr1:
             printf("B1\n");
-        case Err2:
+        case TestErr2:
             printf("B2\n");
     }
     printf("Throws: %d\n", throwsDone.times);
     printf("End of errors\n");
 }
-*/
+
 macro void arrayCallMacro($x)
 {
     printf("Array call: %d, %d\n", $x[0], $x[1]);
@@ -1075,7 +1066,7 @@ func void testArray()
     }
 
 }
-func void testBreak()
+func void testBreak1()
 {
     for FOO: (int i = 0; i < 10; i++)
     {
@@ -1398,6 +1389,7 @@ func int main(int x)
     testMethodFunctions();
     testTypeValues();
     int efd = 9;
+
     uint fefoek = 1;
     testIf();
     printf("Helo: %d\n", efd + cast(fefoek, int));
@@ -1567,9 +1559,9 @@ func void test2(int* x, int y, int z)
     j1 = *x;
 }
 
-
 func void testBreak()
 {
+
     defer printf("ALL TESTS DONE\n");
     int i = 0;
     int j = 0;
@@ -1816,5 +1808,4 @@ func void testBreak()
         default:
             printf("WAAAIT\n");
     }
-
 }

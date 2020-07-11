@@ -33,7 +33,7 @@ Decl *module_find_symbol(Module *module, const char *symbol, ModuleSymbolSearch 
 	return decl;
 }
 
-Path *path_create_from_string(const char *string, size_t len, SourceRange span)
+Path *path_create_from_string(Context *context, const char *string, size_t len, SourceSpan span)
 {
 	Path *path = CALLOCS(Path);
 	path->span = span;
@@ -42,19 +42,19 @@ Path *path_create_from_string(const char *string, size_t len, SourceRange span)
 	path->len = len;
 	if (type != TOKEN_IDENT)
 	{
-		sema_error_range(span, "A module name was expected here.");
+		SEMA_ERROR(path, "A module name was expected here.");
 		return NULL;
 	}
 	return path;
 }
 
-Path *path_find_parent_path(Path *path)
+Path *path_find_parent_path(Context *context, Path *path)
 {
 	const char *last_scope_chars = strrchr(path->module, ':');
 	// No parent
 	if (!last_scope_chars) return NULL;
 
-	Path *parent_path = path_create_from_string(path->module, last_scope_chars - path->module - 1, INVALID_RANGE);
+	Path *parent_path = path_create_from_string(context, path->module, last_scope_chars - path->module - 1, INVALID_RANGE);
 
 	// Should never fail.
 	assert(parent_path);

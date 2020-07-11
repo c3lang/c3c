@@ -10,7 +10,6 @@ void sema_shadow_error(Decl *decl, Decl *old)
 	SEMA_PREV(old, "The previous use of '%s' was here.", decl->name);
 }
 
-
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info)
 {
 	if (!sema_resolve_type_shallow(context, type_info)) return false;

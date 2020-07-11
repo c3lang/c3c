@@ -4,5 +4,15 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "common.h"
+#include "vmem.h"
 
+#define ARENA_DEF(name, type) \
+extern Vmem name##_arena; \
+typedef unsigned type##Id; \
+static inline type *name##_alloc(void) { return (type *)vmem_alloc(&name##_arena, sizeof(type)); } \
+static inline type *name##_calloc(void) { \
+	type *ptr = name##_alloc(); \
+	memset(ptr, 0, sizeof(type)); \
+	return ptr; } \
+static inline type *name##ptr(type ## Id id) { return ((type *)name##_arena.ptr) + id; } \
+static inline type##Id name##id(type *ptr) { return (unsigned) { ptr - ((type *)name##_arena.ptr) }; }

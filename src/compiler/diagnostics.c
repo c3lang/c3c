@@ -21,46 +21,44 @@ typedef enum
 	PRINT_TYPE_WARN
 } PrintType;
 
-static void print_error(SourceRange source_range, const char *message, PrintType print_type)
+static void print_error2(SourceLocation *location, const char *message, PrintType print_type)
 {
-	SourcePosition position = source_file_find_position(source_range.loc);
-
 	static const int LINES_SHOWN = 4;
 
-	unsigned max_line_length = (int)round(log10(position.line)) + 1;
+	unsigned max_line_length = (int)round(log10(location->line)) + 1;
 
 	char number_buffer[20];
 	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);
 
 	// Insert end in case it's not yet there.
-	for (SourceLoc s = position.loc; s < position.file->end_id; s++)
+	for (SourceLoc s = location->start; s < location->file->end_id; s++)
 	{
-		if ((position.file->contents + s - position.file->start_id)[0] == '\n')
+		if ((location->file->contents + s - location->file->start_id)[0] == '\n')
 		{
-			source_file_append_line_end(position.file, s);
+			source_file_append_line_end(location->file, s);
 			break;
 		}
 	}
-	size_t lines_in_file = vec_size(position.file->lines);
+	size_t lines_in_file = vec_size(location->file->lines);
 	const char *start = NULL;
 	for (unsigned i = LINES_SHOWN; i > 0; i--)
 	{
-		if (position.line < i) continue;
-		uint32_t line_number = position.line + 1 - i;
-		SourceLoc line_start = position.file->lines[line_number - 1];
+		if (location->line < i) continue;
+		uint32_t line_number = location->line + 1 - i;
+		SourceLoc line_start = location->file->lines[line_number - 1];
 
-		SourceLoc line_end = line_number == lines_in_file ? position.file->end_id :
-				position.file->lines[line_number];
+		SourceLoc line_end = line_number == lines_in_file ? location->file->end_id :
+		                     location->file->lines[line_number];
 		uint32_t line_len = line_end - line_start - 1;
-		start = position.file->contents + line_start - position.file->start_id;
- 		eprintf(number_buffer, line_number, line_len, start);
+		start = location->file->contents + line_start - location->file->start_id;
+		eprintf(number_buffer, line_number, line_len, start);
 	}
 	eprintf("  ");
 	for (unsigned i = 0; i < max_line_length; i++)
 	{
 		eprintf(" ");
 	}
-	for (unsigned i = 0; i < position.col - 1; i++)
+	for (unsigned i = 0; i < location->col - 1; i++)
 	{
 		if (start[i] == '\t')
 		{
@@ -71,7 +69,7 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 			eprintf(" ");
 		}
 	}
-	for (uint32_t i = 0; i < source_range_len(source_range); i++)
+	for (uint32_t i = 0; i < location->length; i++)
 	{
 		eprintf("^");
 	}
@@ -80,13 +78,13 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 	switch (print_type)
 	{
 		case PRINT_TYPE_ERROR:
-			eprintf("(%s:%d) Error: %s\n\n", position.file->name, position.line, message);
+			eprintf("(%s:%d) Error: %s\n\n", location->file->name, location->line, message);
 			break;
 		case PRINT_TYPE_PREV:
-			eprintf("(%s:%d) %s\n\n", position.file->name, position.line, message);
+			eprintf("(%s:%d) %s\n\n", location->file->name, location->line, message);
 			break;
 		case PRINT_TYPE_WARN:
-			eprintf("(%s:%d) Warning: %s\n\n", position.file->name, position.line, message);
+			eprintf("(%s:%d) Warning: %s\n\n", location->file->name, location->line, message);
 			break;
 		default:
 			UNREACHABLE
@@ -94,60 +92,77 @@ static void print_error(SourceRange source_range, const char *message, PrintType
 
 }
 
-
-static void vprint_error(SourceRange span, const char *message, va_list args)
+static void vprint_error(SourceLocation *location, const char *message, va_list args)
 {
 	char buffer[256];
 	vsnprintf(buffer, 256, message, args);
-	print_error(span, buffer, PRINT_TYPE_ERROR);
+	print_error2(location, buffer, PRINT_TYPE_ERROR);
 }
 
-void diag_error_range(SourceRange span, const char *message, ...)
+
+void diag_verror_range(SourceLocation *location, const char *message, va_list args)
 {
 	if (diagnostics.panic_mode) return;
 	diagnostics.panic_mode = true;
-	va_list args;
-	va_start(args, message);
-	vprint_error(span, message, args);
-	va_end(args);
+	vprint_error(location, message, args);
 	diagnostics.errors++;
 }
 
-void diag_verror_range(SourceRange span, const char *message, va_list args)
+
+void sema_verror_range(SourceLocation *location, const char *message, va_list args)
 {
-	if (diagnostics.panic_mode) return;
-	diagnostics.panic_mode = true;
-	vprint_error(span, message, args);
+	vprint_error(location, message, args);
 	diagnostics.errors++;
 }
 
-void sema_error_at(SourceLoc loc, const char *message, ...)
+void sema_error_range2(SourceLocation *location, const char *message, ...)
 {
 	va_list list;
 	va_start(list, message);
-	sema_verror_at(loc, message, list);
+	sema_verror_range(location, message, list);
 	va_end(list);
 }
 
-void sema_error_range(SourceRange range, const char *message, ...)
+void sema_error_range3(SourceSpan location, const char *message, ...)
 {
+	SourceLocation *start = TOKLOC(location.loc);
+	SourceLocation *end = TOKLOC(location.end_loc);
+
+	SourceLocation loc = *start;
+	loc.length = end->start - start->start + end->length;
 	va_list list;
 	va_start(list, message);
-	sema_verror_range(range, message, list);
+	sema_verror_range(&loc, message, list);
 	va_end(list);
 }
 
-void sema_verror_at(SourceLoc loc, const char *message, va_list args)
+void sema_error_at_prev_end(Token token, const char *message, ...)
 {
-	vprint_error((SourceRange) { loc, loc + 1 }, message, args);
-	diagnostics.errors++;
+	SourceLocation *curr = TOKLOC(token);
+	SourceLocation *prev = TOKLOC((TokenId) { token.id.index - 1 });
+	SourceLocation location;
+	if (curr->file != prev->file)
+	{
+		// Ok, this is the first location, so then we create a "start" location:
+		location = *curr;
+		location.start = 0;
+		location.line = 1;
+		location.col = 1;
+	}
+	else
+	{
+		// TODO handle multiline
+		location = *prev;
+		location.col += location.length;
+		location.start += location.length;
+	}
+	location.length = 1;
+	va_list list;
+	va_start(list, message);
+	sema_verror_range(&location, message, list);
+	va_end(list);
 }
 
-void sema_verror_range(SourceRange range, const char *message, va_list args)
-{
-	vprint_error(range, message, args);
-	diagnostics.errors++;
-}
 
 void sema_error(Context *context, const char *message, ...)
 {
@@ -160,25 +175,20 @@ void sema_error(Context *context, const char *message, ...)
 	va_end(list);
 }
 
-void sema_prev_at_range(SourceRange span, const char *message, ...)
+void sema_prev_at_range3(SourceSpan span, const char *message, ...)
 {
+	SourceLocation *start = TOKLOC(span.loc);
+	SourceLocation *end = TOKLOC(span.end_loc);
 	va_list args;
 	va_start(args, message);
 	char buffer[256];
 	vsnprintf(buffer, 256, message, args);
-	print_error(span, buffer, PRINT_TYPE_PREV);
+	SourceLocation loc = *start;
+	loc.length = end->start - start->start + end->length;
+	print_error2(&loc, buffer, PRINT_TYPE_PREV);
 	va_end(args);
 }
 
-void sema_prev_at(SourceLoc loc, const char *message, ...)
-{
-	va_list args;
-	va_start(args, message);
-	char buffer[256];
-	vsnprintf(buffer, 256, message, args);
-	print_error((SourceRange){ loc, loc + 1 }, buffer, PRINT_TYPE_PREV);
-	va_end(args);
-}
 
 /*
 
@@ -241,43 +251,7 @@ bool diagnostics_silence_warnings(Array *warnings)
 
 
 
-void prev_at_range(SourceRange span, const char *message, ...)
-{
-	va_list args;
-	va_start(args, message);
-	char buffer[256];
-	vsnprintf(buffer, 256, message, args);
-	print_error(span, buffer, PRINT_TYPE_PREV);
-	va_end(args);
-}
 
-void prev_at(SourceLoc loc, const char *message, ...)
-{
-	va_list args;
-	va_start(args, message);
-	char buffer[256];
-	vsnprintf(buffer, 256, message, args);
-	print_error((SourceRange){ loc, 1 }, buffer, PRINT_TYPE_PREV);
-	va_end(args);
-}
-
-void sema_error_range(SourceRange token, const char *message, ...)
-{
-	va_list args;
-	va_start(args, message);
-	vprint_error(token, message, args);
-	va_end(args);
-	diagnostics.errors++;
-}
-
-void sema_error_at(SourceLoc loc, const char *message, ...)
-{
-	va_list args;
-	va_start(args, message);
-	vprint_error((SourceRange) { loc, 1 }, message, args);
-	va_end(args);
-	diagnostics.errors++;
-}
 
 void sema_warn_at(DiagnosticsType type, SourceLoc loc, const char *message, ...)
 {

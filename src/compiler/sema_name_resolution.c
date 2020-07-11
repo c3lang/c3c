@@ -36,7 +36,7 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 	{
 		Decl *import = context->imports[i];
 		// Partial imports
-		if (import->import.symbol.string && import->import.symbol.string != symbol) continue;
+		if (TOKVALID(import->import.symbol) && TOKSTR(import->import.symbol) != symbol) continue;
 		// Full import, first match the subpath.
 		if (path->len > import->import.path->len) continue;
 		if (!matches_subpath(import->import.path, path)) continue;

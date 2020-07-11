@@ -265,7 +265,7 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 		// This will be evaluated later to catch the case
 		if (!expr)
 		{
-			expr = expr_new(EXPR_CONST, enum_value->name_span);
+			expr = expr_new(EXPR_CONST, source_span_from_token_id(enum_value->name_token));
 			expr->type = type;
 			expr->resolve_status = RESOLVE_NOT_DONE;
 			bigint_init_bigint(&expr->const_expr.i, &value);
@@ -314,8 +314,8 @@ static inline bool sema_analyse_method(Context *context, Decl *decl)
 	if (!type_may_have_sub_elements(parent_type->type))
 	{
 		SEMA_ERROR(decl,
-		           "Methods can not be associated with '%s'",
-		           type_to_error_string(decl->func.type_parent->type));
+		               "Methods can not be associated with '%s'",
+		               type_to_error_string(decl->func.type_parent->type));
 		return false;
 	}
 	Decl *parent = parent_type->type->decl;
@@ -336,7 +336,7 @@ static inline bool sema_analyse_method(Context *context, Decl *decl)
 
 static inline AttributeType attribute_by_name(Attr *attr)
 {
-	const char *attribute = attr->name.string;
+	const char *attribute = TOKSTR(attr->name);
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 	{
 		if (attribute_list[i] == attribute) return (AttributeType)i;
@@ -372,7 +372,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 	AttributeType type = attribute_by_name(attr);
 	if (type == ATTRIBUTE_NONE)
 	{
-		SEMA_TOKEN_ERROR(attr->name, "There is no attribute with the name '%s', did you mistype?", attr->name.string);
+		SEMA_TOKID_ERROR(attr->name, "There is no attribute with the name '%s', did you mistype?", TOKSTR(attr->name));
 		return ATTRIBUTE_NONE;
 	}
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
@@ -389,7 +389,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 
 	if ((attribute_domain[type] & domain) != domain)
 	{
-		SEMA_TOKEN_ERROR(attr->name, "'%s' is not a valid %s attribute.", attr->name.string, attribute_domain_to_string(domain));
+		SEMA_TOKID_ERROR(attr->name, "'%s' is not a valid %s attribute.", TOKSTR(attr->name), attribute_domain_to_string(domain));
 		return ATTRIBUTE_NONE;
 	}
 	switch (type)
@@ -399,7 +399,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 		case ATTRIBUTE_ALIGN:
 			if (!attr->expr)
 			{
-				SEMA_TOKEN_ERROR(attr->name, "'align' requires an power-of-2 argument, e.g. align(8).");
+				SEMA_TOKID_ERROR(attr->name, "'align' requires an power-of-2 argument, e.g. align(8).");
 				return ATTRIBUTE_NONE;
 			}
 			if (!sema_analyse_expr(context, type_usize, attr->expr)) return false;
@@ -434,7 +434,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 		case ATTRIBUTE_CNAME:
 			if (!attr->expr)
 			{
-				SEMA_TOKEN_ERROR(attr->name, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name.string, attr->name.string);
+				SEMA_TOKID_ERROR(attr->name, "'%s' requires a string argument, e.g. %s(\"foo\").", TOKSTR(attr->name), TOKSTR(attr->name));
 				return ATTRIBUTE_NONE;
 			}
 			if (!sema_analyse_expr(context, NULL, attr->expr)) return false;
@@ -447,7 +447,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 		default:
 			if (attr->expr)
 			{
-				SEMA_ERROR(attr->expr, "'%s' should not have any arguments.", attr->name.string);
+				SEMA_ERROR(attr->expr, "'%s' should not have any arguments.", TOKSTR(attr->name));
 				return ATTRIBUTE_NONE;
 			}
 			return type;
@@ -499,12 +499,12 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 #undef SET_ATTR
 		if (had)
 		{
-			SEMA_TOKEN_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 		if (decl->func.attr_inline && decl->func.attr_noinline)
 		{
-			SEMA_TOKEN_ERROR(attr->name, "A function cannot be 'inline' and 'noinline' at the same time.");
+			SEMA_TOKID_ERROR(attr->name, "A function cannot be 'inline' and 'noinline' at the same time.");
 			return decl_poison(decl);
 		}
 	}
@@ -582,7 +582,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 #undef SET_ATTR
 		if (had)
 		{
-			SEMA_TOKEN_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 	}

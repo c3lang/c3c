@@ -153,8 +153,8 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	// Insert a return (and defer) if needed.
 	if (context->current_block && !LLVMGetBasicBlockTerminator(context->current_block))
 	{
-		assert(decl->func.body->compound_stmt.defer_list.end == NULL);
-		gencontext_emit_defer(context, decl->func.body->compound_stmt.defer_list.start, NULL);
+		assert(!decl->func.body->compound_stmt.defer_list.end);
+		gencontext_emit_defer(context, decl->func.body->compound_stmt.defer_list.start, 0);
 		gencontext_emit_implicit_return(context);
 	}
 
@@ -246,7 +246,6 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 				flags |= LLVMDIFlagPublic;
 				break;
 		}
-		SourcePosition decl_position = source_file_find_position(decl->name_span.loc);
 	/*	context->debug.function = LLVMDIBuilderCreateFunction(context->debug.builder,
 		                                                      context->debug.compile_unit,
 		                                                      decl->name, source_range_len(decl->name_span),

@@ -51,38 +51,24 @@ static inline LLVMMetadataRef gencontext_create_debug_type_from_decl(GenContext 
 	UNREACHABLE
 }
 
-void gencontext_set_debug_location(GenContext *context, SourceRange source_range)
+void gencontext_set_debug_location(GenContext *context, SourceSpan source_span)
 {
-	if (source_range.loc == INVALID_LOC) return;
+	if (!source_span.end_loc.index) return;
 
-	context->debug.current_range = source_range;
-#ifdef TODOLATER
-	CurLoc = CGM.getContext().getSourceManager().getExpansionLoc(Loc);
-#endif
-	// If we've changed files in the middle of a lexical scope go ahead
-	// and create a new lexical scope with file node if it's different
-	// from the one in the scope.
-	if (!vec_size(context->debug.lexical_block_stack)) return;
-
-#ifdef TODOLATE
-	if (auto *LBF = dyn_cast<llvm::DILexicalBlockFile>(Scope)) {
-		LexicalBlockStack.pop_back();
-		LexicalBlockStack.emplace_back(DBuilder.createLexicalBlockFile(
-				LBF->getScope(), getOrCreateFile(CurLoc)));
-	} else if (isa<llvm::DILexicalBlock>(Scope) ||
-	           isa<llvm::DISubprogram>(Scope)) {
-		LexicalBlockStack.pop_back();
-		LexicalBlockStack.emplace_back(
-				DBuilder.createLexicalBlockFile(Scope, getOrCreateFile(CurLoc)));
-	}
-#endif
+	context->debug.current_range = source_span;
+	SourceLocation *location = TOKLOC(source_span.loc);
+	LLVMDIBuilderCreateDebugLocation(context->context,
+			location->line,
+			location->col,
+			*context->debug.lexical_block_stack,
+			/* inlined at */ 0);
 }
 
-void gencontext_emit_debug_location(GenContext *context, SourceRange location)
+void gencontext_emit_debug_location(GenContext *context, SourceSpan location)
 {
 	gencontext_set_debug_location(context, location);
 
-	if (context->debug.current_range.loc == INVALID_LOC || vec_size(context->debug.lexical_block_stack) == 0) return;
+	if (!context->debug.current_range.loc.index || vec_size(context->debug.lexical_block_stack) == 0) return;
 
 	LLVMMetadataRef scope = VECLAST(context->debug.lexical_block_stack);
 	LLVMMetadataRef debug_location = LLVMDIBuilderCreateDebugLocation(context->context, 320, 12, scope, context->debug.inlined_at);
