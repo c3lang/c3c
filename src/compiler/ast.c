@@ -499,11 +499,6 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
-		case EXPR_FAIL_CHECK:
-			DUMP("(fail-check");
-			DUMPEXPC(expr);
-			DUMPEXPR(expr->fail_check_expr);
-			DUMPEND();
 		case EXPR_DECL_LIST:
 			DUMP("(decllist");
 			DUMPASTS(expr->dexpr_list_expr);
@@ -649,7 +644,7 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEND();
 		case EXPR_GUARD:
 			DUMP("(guard");
-			DUMPEXPR(expr->guard_expr);
+			DUMPEXPR(expr->guard_expr.inner);
 			DUMPEND();
 		case EXPR_ELSE:
 			if (expr->else_expr.is_jump)

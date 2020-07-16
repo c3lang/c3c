@@ -273,6 +273,11 @@ static void parse_option()
 				build_options.lib_dir[build_options.lib_count++] = check_dir(next_arg());
 				return;
 			}
+			if (match_longopt("test"))
+			{
+				build_options.test_mode = true;
+				return;
+			}
 			if (match_longopt("path"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --path needs a directory.");

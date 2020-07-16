@@ -1,8 +1,40 @@
 module bar;
-
+import baz;
+import gen;
 
 typedef int as Bob;
+/*
+macro namespaceFor(ns; void(int i) $body)
+{
+    for (usize i = 0; i < ns.avail; i++)
+    {
+        @$body(i);
+    }
+}
 
+macro usize nameHashFn(char *strp, usize strl)
+{
+    usize hash = 5381;
+    for (usize i = 0; i < strl; i++)
+    {
+        hash = ((hash << 5) + hash) ^ cast(strp[i], usize);
+    }
+    return hash;
+}
+
+macro INode *nodesGet(nodes, index)
+{
+    return cast(node + 1, INode**)[index];
+}
+
+macro lexReturnPuncTok!(tok, skip, implicit lex, implicit srcp)
+{
+    lex.toktype = tok;
+    lex.tokp = srcp;
+    lex.srcp = srcp + skip;
+    return;
+}
+*/
 func int! testThrow4(int x)
 {
     return x > 4 ? TestErr1! : TestErr2!;
@@ -776,12 +808,14 @@ func void show()
     num = frob(num + 1);
     printf("Num: %d\n", num);
 }
-func void testAllErrors()
+func void! testAllErrors()
 {
 
     printf("Try test all\n");
     int! i = 7;
     int*! iptr = &i;
+    int* xd = iptr!!;
+    printf("%d\n", *xd);
     int**! iptrptr = &iptr;
     catch (err = iptrptr)
     {
@@ -1368,6 +1402,7 @@ public func int! decode(char[] infile, byte[] out)
 */
 func int main(int x)
 {
+    baz::runBaz();
     testBreak();
     show();
     testMacros();

@@ -190,7 +190,6 @@ typedef enum
 	EXPR_DESIGNATED_INITIALIZER,
 	EXPR_COMPOUND_LITERAL,
 	EXPR_FAILABLE,
-	EXPR_FAIL_CHECK,
 	EXPR_DECL_LIST
 } ExprKind;
 
@@ -365,6 +364,7 @@ typedef enum
 
 	TOKEN_STRING,           // "Teststring"
 	TOKEN_INTEGER,          // 123 0x23 0b10010 0o327
+	TOKEN_CHAR_LITERAL,        // 'a' 'FO' 'BARS' '\u1232'
 	TOKEN_REAL,             // 0x23.2p-2a 43.23e23
 
 	TOKEN_COMMENT,          // Comment

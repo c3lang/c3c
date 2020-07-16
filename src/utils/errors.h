@@ -32,7 +32,7 @@ void error_exit(const char *format, ...) __attribute__((noreturn));
 
 
 #ifndef NDEBUG
-#define DEBUG_LOG(_string, ...) eprintf("-- DEBUG: "); eprintf(_string, ##__VA_ARGS__); eprintf("\n")
+#define DEBUG_LOG(_string, ...) printf("-- DEBUG: "); printf(_string, ##__VA_ARGS__); printf("\n")
 #else
 #define DEBUG_LOG(_string, ...)
 #endif

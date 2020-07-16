@@ -641,7 +641,7 @@ static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
 	sema_set_struct_size(decl);
 	if (decl->strukt.size > type_size(type_usize))
 	{
-		SEMA_ERROR(decl, "Error type may exceed pointer size (%d bytes) it was %d bytes.", type_size(type_usize), error_size);
+		SEMA_ERROR(decl, "Error type may not exceed pointer size (%d bytes) it was %d bytes.", type_size(type_usize), error_size);
 		return false;
 	}
 	decl->strukt.abi_alignment = type_abi_alignment(type_voidptr);

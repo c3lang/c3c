@@ -884,6 +884,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_STAR:
 		case TOKEN_AMP:
 		case TOKEN_INTEGER:
+		case TOKEN_CHAR_LITERAL:
 		case TOKEN_BIT_NOT:
 		case TOKEN_BIT_OR:
 		case TOKEN_BIT_XOR:

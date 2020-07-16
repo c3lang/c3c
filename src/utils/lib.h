@@ -112,10 +112,31 @@ static inline bool is_digit(char c)
  */
 static inline int char_to_nibble(char c)
 {
-	if (c >= '0' && c <= '9') return c - '0';
-	if (c <= 'F') return c - 'A' + 10;
-	if (c <= 'f') return c - 'a' + 10;
-	return -1;
+	char conv[256] = {
+			['0'] = 1,
+			['1'] = 2,
+			['2'] = 3,
+			['3'] = 4,
+			['4'] = 5,
+			['5'] = 6,
+			['6'] = 7,
+			['7'] = 8,
+			['8'] = 9,
+			['9'] = 10,
+			['A'] = 11,
+			['B'] = 12,
+			['C'] = 13,
+			['D'] = 14,
+			['E'] = 15,
+			['F'] = 16,
+			['a'] = 11,
+			['b'] = 12,
+			['c'] = 13,
+			['d'] = 14,
+			['e'] = 15,
+			['f'] = 16,
+	};
+	return conv[(unsigned)c] - 1;
 }
 
 static inline bool is_hex_or_(char c)
@@ -132,6 +153,45 @@ static inline bool is_hex_or_(char c)
 			return true;
 		default:
 			return false;
+	}
+}
+
+static inline char is_valid_escape(char c)
+{
+	switch (c)
+	{
+		case 'a':
+			return '\a';
+		case 'b':
+			return '\b';
+		case 'e':
+			return 0x1B;
+		case 'f':
+			return '\f';
+		case 'n':
+			return '\n';
+		case 'r':
+			return '\r';
+		case 't':
+			return '\t';
+		case 'v':
+			return '\v';
+		case 'x':
+			return 'x';
+		case 'u':
+			return 'u';
+		case 'U':
+			return 'U';
+		case '\'':
+			return '\'';
+		case '"':
+			return '"';
+		case '\\':
+			return '\\';
+		case '0':
+			return '\0';
+		default:
+			return -1;
 	}
 }
 

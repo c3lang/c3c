@@ -26,7 +26,8 @@ static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 	return 0 == memcmp(path_to_check->module + compare_start, path_to_find->module, path_to_find->len);
 }
 
-static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl)
+static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl,
+                                      Decl **private_decl)
 {
 	assert(path && "Expected path.");
 	*ambiguous_other_decl = NULL;
@@ -41,7 +42,7 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 		if (path->len > import->import.path->len) continue;
 		if (!matches_subpath(import->import.path, path)) continue;
 		path_found = true;
-		Decl *found = module_find_symbol(import->module, symbol, MODULE_SYMBOL_SEARCH_EXTERNAL);
+		Decl *found = module_find_symbol(import->module, symbol, MODULE_SYMBOL_SEARCH_EXTERNAL, private_decl);
 		if (!found) continue;
 		if (decl)
 		{
@@ -63,11 +64,12 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 	return decl;
 }
 
-Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl)
+Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl,
+                          Decl **private_decl)
 {
 	if (path)
 	{
-		return sema_resolve_path_symbol(context, symbol, path, ambiguous_other_decl);
+		return sema_resolve_path_symbol(context, symbol, path, ambiguous_other_decl, private_decl);
 	}
 
 	*ambiguous_other_decl = NULL;
@@ -90,7 +92,7 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 	if (decl) return decl;
 
 	// Search in the module and child modules.
-	decl = module_find_symbol(context->module, symbol, MODULE_SYMBOL_SEARCH_THIS);
+	decl = module_find_symbol(context->module, symbol, MODULE_SYMBOL_SEARCH_THIS, private_decl);
 
 	if (decl)
 	{
@@ -103,7 +105,7 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 	{
 		Decl *import = context->imports[i];
 		if (!decl_ok(import)) continue;
-		Decl *found = module_find_symbol(import->module, symbol, MODULE_SYMBOL_SEARCH_EXTERNAL);
+		Decl *found = module_find_symbol(import->module, symbol, MODULE_SYMBOL_SEARCH_EXTERNAL, private_decl);
 		if (!found) continue;
 		if (decl)
 		{
@@ -135,7 +137,8 @@ static inline bool sema_append_local(Context *context, Decl *decl)
 bool sema_add_local(Context *context, Decl *decl)
 {
 	Decl *dummy;
-	Decl *other = sema_resolve_symbol(context, decl->name, NULL, &dummy);
+	Decl *dummy2;
+	Decl *other = sema_resolve_symbol(context, decl->name, NULL, &dummy, &dummy2);
 	if (other)
 	{
 		sema_shadow_error(decl, other);

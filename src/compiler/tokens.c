@@ -166,6 +166,8 @@ const char *token_type_to_string(TokenType type)
 			return "INTEGER";
 		case TOKEN_REAL:
 			return "FLOAT";
+		case TOKEN_CHAR_LITERAL:
+			return "CHAR_LITERAL";
 
 		// Comments
 		case TOKEN_COMMENT:

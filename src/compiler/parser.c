@@ -196,6 +196,8 @@ static void recover_top_level(Context *context)
 			case TOKEN_UNION:
 			case TOKEN_MACRO:
 			case TOKEN_EXTERN:
+			case TOKEN_ENUM:
+			case TOKEN_ERR:
 				return;
 			default:
 				advance(context);
@@ -209,6 +211,7 @@ static void recover_top_level(Context *context)
 
 static inline Path *parse_module_path(Context *context)
 {
+
 	assert(TOKEN_IS(TOKEN_IDENT));
 	char *scratch_ptr = context->path_scratch;
 	size_t offset = 0;
@@ -1791,6 +1794,12 @@ static inline void parse_module(Context *context)
 		return;
 	}
 
+	if (!TOKEN_IS(TOKEN_IDENT))
+	{
+		SEMA_TOKEN_ERROR(context->tok, "Module statement should be followed by the name of the module to import.");
+		return;
+	}
+
 	Path *path = parse_module_path(context);
 
 	// Expect the module name
@@ -1948,6 +1957,7 @@ static inline void parse_current(Context *context)
 void parse_file(Context *context)
 {
 	lexer_init_with_file(&context->lexer, context->file);
+	if (diagnostics.errors) return;
 	parse_current(context);
 }
 

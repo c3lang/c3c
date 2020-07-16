@@ -249,8 +249,13 @@ static inline bool find_possible_inferred_identifier(Type *to, Expr *expr)
 }
 static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr *expr)
 {
-	Decl *ambiguous_decl;
-	Decl *decl = sema_resolve_symbol(context, expr->identifier_expr.identifier, expr->identifier_expr.path, &ambiguous_decl);
+	Decl *ambiguous_decl = NULL;
+	Decl *private_symbol = NULL;
+	Decl *decl = sema_resolve_symbol(context,
+	                                 expr->identifier_expr.identifier,
+	                                 expr->identifier_expr.path,
+	                                 &ambiguous_decl,
+	                                 &private_symbol);
 	if (!decl && !expr->identifier_expr.path && to)
 	{
 		if (find_possible_inferred_identifier(to, expr)) return true;
@@ -258,7 +263,18 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 
 	if (!decl)
 	{
-		SEMA_ERROR(expr, "The symbol '%s' could not be found.", expr->identifier_expr.identifier);
+		if (private_symbol)
+		{
+			SEMA_ERROR(expr, "'%s' is not visible from this module.", expr->identifier_expr.identifier);
+		}
+		else if (ambiguous_decl)
+		{
+			SEMA_ERROR(expr, "The name '%s' ambiguous, please add a path.", expr->identifier_expr.identifier);
+		}
+		else
+		{
+			SEMA_ERROR(expr, "Identifier '%s' could not be found.", expr->identifier_expr.identifier);
+		}
 		return false;
 	}
 
@@ -1408,45 +1424,6 @@ static inline bool sema_expr_analyse_cast(Context *context, Type *to, Expr *expr
 	*expr = *inner;
 	expr->span = loc;
 	expr->failable = expr->failable;
-	return true;
-}
-
-static inline bool sema_expr_analyse_fail_check(Context *context, Expr *expr)
-{
-	Expr *inner = expr->fail_check_expr;
-	switch (inner->expr_kind)
-	{
-		case EXPR_IDENTIFIER:
-		case EXPR_CALL:
-		case EXPR_CAST:
-		case EXPR_EXPR_BLOCK:
-		case EXPR_GROUP:
-		case EXPR_TYPE_ACCESS:
-		case EXPR_SUBSCRIPT:
-		case EXPR_ACCESS:
-		case EXPR_TYPEID:
-		case EXPR_TYPEOF:
-			break;
-		default:
-			SEMA_ERROR(expr, "Ambiguous use of unwrapping operator '?', use '()' around the expression to indicate intent.");
-			return false;
-	}
-	if (!sema_analyse_expr(context, NULL, inner)) return false;
-	if (!inner->failable)
-	{
-		SEMA_ERROR(expr, "You can only check a failable type e.g. '%s!' not '%s'.",
-		               type_to_error_string(inner->type), type_to_error_string(inner->type));
-		return false;
-	}
-	if (inner->expr_kind == EXPR_IDENTIFIER && (context->current_scope->flags & SCOPE_COND))
-	{
-		Decl *var = inner->identifier_expr.decl;
-		Decl *decl = COPY(var);
-		decl->var.kind = VARDECL_ALIAS;
-		decl->var.alias = var;
-		sema_unwrap_var(context, decl);
-	}
-	expr->type = type_bool;
 	return true;
 }
 
@@ -2766,6 +2743,26 @@ static inline bool sema_expr_analyse_else(Context *context, Type *to, Expr *expr
 	return cast_implicit(context, expr->else_expr.expr, common);
 }
 
+static inline bool sema_expr_analyse_guard(Context *context, Type *to, Expr *expr)
+{
+	Expr *inner = expr->guard_expr.inner;
+	bool success = sema_analyse_expr(context, to, inner);
+	expr->guard_expr.defer = context->current_scope->defers.end;
+	if (!success) return false;
+	expr->type = inner->type;
+	if (!inner->failable)
+	{
+		SEMA_ERROR(inner, "No failable to rethrow before '!!' in the expression, please remove '!!'.");
+		return false;
+	}
+	if (!context->failable_return)
+	{
+		SEMA_ERROR(expr, "This expression implicitly returns with a failable result, but the function does not allow failable results. Did you mean to use 'else' instead?");
+		return false;
+	}
+	return true;
+}
+
 static Ast *ast_shallow_copy(Ast *source)
 {
 	return COPY(source);
@@ -2837,9 +2834,6 @@ static Expr *expr_copy_from_macro(Context *context, Expr *source_expr)
 		case EXPR_DECL_LIST:
 			MACRO_COPY_AST_LIST(expr->dexpr_list_expr);
 			return expr;
-		case EXPR_FAIL_CHECK:
-			MACRO_COPY_EXPR(expr->fail_check_expr);
-			return expr;
 		case EXPR_FAILABLE:
 			MACRO_COPY_EXPR(expr->failable_expr);
 			return expr;
@@ -2876,7 +2870,7 @@ static Expr *expr_copy_from_macro(Context *context, Expr *source_expr)
 		case EXPR_POISONED:
 			return source_expr;
 		case EXPR_GUARD:
-			MACRO_COPY_EXPR(expr->guard_expr);
+			MACRO_COPY_EXPR(expr->guard_expr.inner);
 			return expr;
 		case EXPR_CONST:
 			return expr;
@@ -3234,8 +3228,6 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 	{
 		case EXPR_DECL_LIST:
 			UNREACHABLE
-		case EXPR_FAIL_CHECK:
-			return sema_expr_analyse_fail_check(context, expr);
 		case EXPR_FAILABLE:
 			return sema_expr_analyse_failable(context, to, expr);
 		case EXPR_POISONED:
@@ -3259,7 +3251,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_EXPR_BLOCK:
 			return sema_expr_analyse_expr_block(context, to, expr);
 		case EXPR_GUARD:
-			return sema_expr_analyse_try(context, expr);
+			return sema_expr_analyse_guard(context, to, expr);
 		case EXPR_RANGE:
 			SEMA_ERROR(expr, "Range expression was not expected here.");
 			return false;

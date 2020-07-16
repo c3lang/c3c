@@ -58,14 +58,26 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 
 static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 {
-	Decl *ambiguous_decl;
+	Decl *ambiguous_decl = NULL;
+	Decl *private_decl = NULL;
 	Decl *decl = sema_resolve_symbol(context,
 	                                 TOKSTR(type_info->unresolved.name_loc),
 	                                 type_info->unresolved.path,
-	                                 &ambiguous_decl);
+	                                 &ambiguous_decl, &private_decl);
 	if (!decl)
 	{
-		SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "Unknown type '%s'.", TOKSTR(type_info->unresolved.name_loc));
+		if (private_decl)
+		{
+			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "Type '%s' is not visible from this module.", TOKSTR(type_info->unresolved.name_loc));
+		}
+		else if (ambiguous_decl)
+		{
+			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "The type '%s' ambiguous, please add a path.", TOKSTR(type_info->unresolved.name_loc));
+		}
+		else
+		{
+			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "Unknown type '%s'.", TOKSTR(type_info->unresolved.name_loc));
+		}
 		return type_info_poison(type_info);
 	}
 
