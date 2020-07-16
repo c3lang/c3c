@@ -112,6 +112,10 @@ void compiler_compile(BuildTarget *target)
 	{
 		sema_analysis_pass_decls(contexts[i]);
 	}
+	VECEACH(contexts, i)
+	{
+		sema_analysis_pass_functions(contexts[i]);
+	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
 
 	llvm_codegen_setup();

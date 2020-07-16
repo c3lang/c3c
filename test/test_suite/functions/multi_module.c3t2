@@ -1,0 +1,58 @@
+// @recipe bin
+    $warnings no-unused
+    $generate-c
+
+// #file: file1
+module test1;
+
+import test2;
+
+public func void pub1() {}
+
+func void nonpub1() {}
+
+public func i32 main(i32 argc, const i8*[] argv) {
+    return 0;
+}
+
+// #file: file2
+module test2;
+
+public func void pub2() {}
+
+func void nonpub2() {}
+
+// #expect: test1.h
+
+void test1_pub1();
+
+// #expect: test1.c
+#include "test1.h"
+
+static void test1_nonpub1();
+
+void test1_pub1() {
+}
+
+static void test1_nonpub1() {
+}
+
+int32_t main(int32_t argc, const char* argv[]) {
+    return 0;
+}
+
+// @expect{atleast, build/test2.h}
+
+void test2_pub2();
+
+// @expect{atleast, build/test2.c}
+#include "test2.h"
+
+static void test2_nonpub2();
+
+void test2_pub2() {
+}
+
+static void test2_nonpub2() {
+}
+

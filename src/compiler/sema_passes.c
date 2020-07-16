@@ -122,6 +122,13 @@ void sema_analysis_pass_decls(Context *context)
 	{
 		sema_analyse_decl(context, context->functions[i]);
 	}
+	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
+}
+
+void sema_analysis_pass_functions(Context *context)
+{
+	DEBUG_LOG("Pass: Function analysis %s", context->file->name);
+
 	VECEACH(context->methods, i)
 	{
 		analyse_func_body(context, context->methods[i]);

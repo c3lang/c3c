@@ -23,6 +23,22 @@ typedef enum
 
 static void print_error2(SourceLocation *location, const char *message, PrintType print_type)
 {
+	if (build_options.test_mode)
+	{
+		switch (print_type)
+		{
+			case PRINT_TYPE_ERROR:
+				eprintf("Error|%s|%d|%s\n", location->file->name, location->line, message);
+				return;
+			case PRINT_TYPE_PREV:
+				return;
+			case PRINT_TYPE_WARN:
+				eprintf("Warning|%s|%d|%s\n", location->file->name, location->line, message);
+				return;
+			default:
+				UNREACHABLE
+		}
+	}
 	static const int LINES_SHOWN = 4;
 
 	unsigned max_line_length = (int)round(log10(location->line)) + 1;
@@ -47,7 +63,7 @@ static void print_error2(SourceLocation *location, const char *message, PrintTyp
 		uint32_t line_number = location->line + 1 - i;
 		SourceLoc line_start = location->file->lines[line_number - 1];
 
-		SourceLoc line_end = line_number == lines_in_file ? location->file->end_id :
+		SourceLoc line_end = line_number == lines_in_file ? location->file->end_id + 1 :
 		                     location->file->lines[line_number];
 		uint32_t line_len = line_end - line_start - 1;
 		start = location->file->contents + line_start - location->file->start_id;

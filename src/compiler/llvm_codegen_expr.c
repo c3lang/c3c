@@ -179,8 +179,6 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 			UNREACHABLE
 		case EXPR_MACRO_BLOCK:
 			TODO
-		case EXPR_FAIL_CHECK:
-			UNREACHABLE
 		case EXPR_IDENTIFIER:
 			return decl_ref(expr->identifier_expr.decl);
 		case EXPR_UNARY:
@@ -928,6 +926,7 @@ static inline LLVMValueRef gencontext_emit_else_jump_expr(GenContext *context, E
 	return value;
 }
 
+
 static LLVMValueRef gencontext_emit_else_expr(GenContext *context, Expr *expr)
 {
 	if (expr->else_expr.is_jump) return gencontext_emit_else_jump_expr(context, expr);
@@ -977,6 +976,47 @@ static LLVMValueRef gencontext_emit_else_expr(GenContext *context, Expr *expr)
 
 	return phi;
 
+}
+
+
+static inline LLVMValueRef gencontext_emit_guard_expr(GenContext *context, Expr *expr)
+{
+	LLVMBasicBlockRef guard_block = gencontext_create_free_block(context, "guard_block");
+	LLVMBasicBlockRef no_err_block = gencontext_create_free_block(context, "noerr_block");
+
+	// Store catch/error var
+	PUSH_ERROR();
+
+	// Set the catch/error var
+	LLVMValueRef error_var = gencontext_emit_alloca(context, llvm_type(type_error), "");
+
+	context->error_var = error_var;
+	context->catch_block = guard_block;
+
+	LLVMValueRef value = gencontext_emit_expr(context, expr->guard_expr.inner);
+
+	// Restore.
+	POP_ERROR();
+
+	// Emit success and to end.
+	gencontext_emit_br(context, no_err_block);
+
+	POP_ERROR();
+
+	// Emit else
+	gencontext_emit_block(context, guard_block);
+
+	// Ensure we are on a branch that is non empty.
+	if (gencontext_check_block_branch_emit(context))
+	{
+		gencontext_emit_defer(context, expr->guard_expr.defer, 0);
+		LLVMBuildRet(context->builder, gencontext_emit_load(context, type_error, error_var));
+		context->current_block = NULL;
+		context->current_block_is_target = NULL;
+	}
+	gencontext_emit_block(context, no_err_block);
+
+	return value;
 }
 
 static LLVMValueRef gencontext_emit_binary_expr(GenContext *context, Expr *expr)
@@ -1366,33 +1406,6 @@ static inline LLVMValueRef gencontext_emit_failable(GenContext *context, Expr *e
 	return LLVMGetUndef(llvm_type(expr->type));
 }
 
-LLVMValueRef gencontext_emit_check_failable(GenContext *context, Expr *expr)
-{
-	PUSH_ERROR();
-
-	LLVMBasicBlockRef after_check_block = gencontext_create_free_block(context, "after_check");
-
-	context->error_var = NULL;
-	context->catch_block = after_check_block;
-
-	gencontext_emit_expr(context, expr->fail_check_expr);
-
-	POP_ERROR();
-
-	LLVMBasicBlockRef phi_block = gencontext_create_free_block(context, "checkphi");
-	LLVMBasicBlockRef normal_block = context->current_block;
-	gencontext_emit_br(context, phi_block);
-	gencontext_emit_block(context, after_check_block);
-	gencontext_emit_br(context, phi_block);
-
-	gencontext_emit_block(context, phi_block);
-	LLVMValueRef phi = LLVMBuildPhi(context->builder, llvm_type(type_bool), "val");
-	LLVMValueRef logic_values[2] = { llvm_int(type_bool, 0), llvm_int(type_bool, 1) };
-	LLVMBasicBlockRef blocks[2] = { after_check_block, normal_block };
-	LLVMAddIncoming(phi, logic_values, blocks, 2);
-	return phi;
-}
-
 LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 {
 NESTED_RETRY:
@@ -1405,8 +1418,6 @@ NESTED_RETRY:
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Should only appear when generating designated initializers.
 			UNREACHABLE
-		case EXPR_FAIL_CHECK:
-			return gencontext_emit_check_failable(context, expr);
 		case EXPR_FAILABLE:
 			return gencontext_emit_failable(context, expr);
 		case EXPR_TRY:
@@ -1436,7 +1447,7 @@ NESTED_RETRY:
 		case EXPR_POST_UNARY:
 			return gencontext_emit_post_unary_expr(context, expr);
 		case EXPR_GUARD:
-			return gencontext_emit_trycatch_expr(context, expr);
+			return gencontext_emit_guard_expr(context, expr);
 		case EXPR_TYPEID:
 			return gencontext_emit_typeid(context, expr);
 		case EXPR_TYPE_ACCESS:

@@ -82,7 +82,7 @@ static bool add_error_token(Lexer *lexer, const char *message, ...)
 	add_generic_token(lexer, TOKEN_INVALID_TOKEN, &loc, &data);
 	va_list list;
 	va_start(list, message);
-	diag_verror_range(loc, message, list);
+	sema_verror_range(loc, message, list);
 	va_end(list);
 	return false;
 }
@@ -425,34 +425,132 @@ static inline bool scan_digit(Lexer *lexer)
 
 #pragma mark --- Character & string scan
 
+static inline int64_t scan_hex_literal(Lexer *lexer, int positions)
+{
+	int64_t hex = 0;
+	for (int j = 0; j < positions; j++)
+	{
+		hex <<= 4U;
+		int i = char_to_nibble(next(lexer));
+		if (i < 0)
+		{
+			if (lexer->current[-1] == '\'')
+			{
+				backtrack(lexer);
+				return -1;
+			}
+			while (lexer->current[0] != '\'' && lexer->current[0] != '\0' && ++j < positions)
+			{
+				next(lexer);
+			}
+			return -1;
+		}
+		hex += i;
+	}
+	return hex;
+}
+
 static inline bool scan_char(Lexer *lexer)
 {
 	int width = 0;
 	char c;
+	union
+	{
+		uint8_t u8;
+		uint16_t u16;
+		uint32_t u32;
+		uint64_t u64;
+		uint8_t b[8];
+	} bytes;
 	while ((c = next(lexer)) != '\'')
 	{
-		if (c == '\0' || c == '\n') return add_error_token(lexer, "Character literal did not terminate.");
-		width++;
-		// Was this an escape?
+		if (c == '\0')
+		{
+			return add_error_token(lexer, "Character literal did not terminate.");
+		}
+		if (width > 7)
+		{
+			width++;
+			continue;
+		}
+		if (c != '\\')
+		{
+			bytes.b[width++] = c;
+		}
 		if (c == '\\')
 		{
-			// Yes, so check if it's hex:
-			if (next(lexer) == 'x')
+			c = next(lexer);
+			const char *start = lexer->current;
+			char escape = is_valid_escape(c);
+			if (escape == -1)
 			{
-				// Walk through the two characters.
-				for (int i = 0; i < 2; i++)
+				lexer->lexing_start = start;
+				return add_error_token(lexer, "Invalid escape sequence '\\%c'.", c);
+			}
+			switch (escape)
+			{
+				case 'x':
 				{
-					if (!is_hex(next(lexer)))
+					int64_t hex = scan_hex_literal(lexer, 2);
+					if (hex < 0)
 					{
-						return add_error_token(lexer,
-								"An escape sequence starting with "
-								"'\\x' needs to be followed by "
-								"a two digit hexadecimal number.");
+						lexer->lexing_start = start;
+						// Fix underlining if this is an unfinished escape.
+						return add_error_token(lexer, "Expected a two character hex value after \\x.");
 					}
+					bytes.b[width++] = hex;
+					break;
 				}
+				case 'u':
+				{
+					int64_t hex = scan_hex_literal(lexer, 4);
+					if (hex < 0)
+					{
+						lexer->lexing_start = start;
+						return add_error_token(lexer, "Expected a four character hex value after \\u.");
+					}
+					if (build_target.little_endian)
+					{
+						bytes.b[width++] = hex & 0xFF;
+						bytes.b[width++] = hex >> 8;
+					}
+					else
+					{
+						bytes.b[width++] = hex >> 8;
+						bytes.b[width++] = hex & 0xFF;
+					}
+					break;
+				}
+				case 'U':
+				{
+					int64_t hex = scan_hex_literal(lexer, 8);
+					if (hex < 0)
+					{
+						lexer->lexing_start = start;
+						return add_error_token(lexer, "Expected an eight character hex value after \\U.");
+					}
+					if (build_target.little_endian)
+					{
+						bytes.b[width++] = hex & 0xFF;
+						bytes.b[width++] = (hex >> 8) & 0xFF;
+						bytes.b[width++] = (hex >> 16) & 0xFF;
+						bytes.b[width++] = hex >> 24;
+					}
+					else
+					{
+						bytes.b[width++] = hex >> 24;
+						bytes.b[width++] = (hex >> 16) & 0xFF;
+						bytes.b[width++] = (hex >> 8) & 0xFF;
+						bytes.b[width++] = hex & 0xFF;
+					}
+					break;
+				}
+				default:
+					bytes.b[width++] = escape;
 			}
 		}
 	}
+
 	if (width == 0)
 	{
 		return add_error_token(lexer, "The character literal was empty.");
@@ -461,7 +559,13 @@ static inline bool scan_char(Lexer *lexer)
 	{
 		add_error_token(lexer, "Character literals may only be 1, 2 or 8 characters wide.");
 	}
-	return add_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
+
+	TokenData *data;
+	SourceLocation *loc;
+	add_generic_token(lexer, TOKEN_CHAR_LITERAL, &loc, &data);
+	data->char_lit.u64 = bytes.u64;
+	data->width = (char)width;
+	return true;
 }
 
 static inline bool scan_string(Lexer *lexer)
@@ -643,9 +747,9 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case ']':
 			return add_token(lexer, TOKEN_RBRACKET, "]");
 		case '.':
-			if (match(lexer, '.')) return match(lexer, '.') ? add_token(lexer, TOKEN_ELLIPSIS, "...") : add_token(lexer,
-			                                                                                                      TOKEN_DOTDOT,
-			                                                                                                      "..");
+			if (match(lexer, '.')) return match(lexer, '.')
+				? add_token(lexer, TOKEN_ELLIPSIS, "...")
+				: add_token(lexer, TOKEN_DOTDOT, "..");
 			return add_token(lexer, TOKEN_DOT, ".");
 		case '~':
 			return add_token(lexer, TOKEN_BIT_NOT, "~");
@@ -748,7 +852,13 @@ void lexer_init_with_file(Lexer *lexer, File *file)
 	lexer->lexer_index = file->token_start_id;
 	while(1)
 	{
-		if (!lexer_scan_token_inner(lexer)) break;
+		if (!lexer_scan_token_inner(lexer))
+		{
+			if (reached_end(lexer)) break;
+			while (!reached_end(lexer) && peek(lexer) != '\n') next(lexer);
+			lexer->lexing_start = lexer->current;
+			continue;
+		}
 	}
 
 }

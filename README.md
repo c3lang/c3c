@@ -50,12 +50,16 @@ There are some small work being done on the parser here, but most of the structu
 - Improved integration with C.
 - Generic macros.
 - Update of error system
+- Imports aren't quite stable
+- Strings, vararrays aren't finalized
+- Stdlib not started
+- More tests and support for multi file tests.
 
 #### What's working?
 
-- Lexing and parsing works (except for the exceptions noted above).
-- Simple "hello world"
-- Most simpler C code.
+- Lexing and parsing works with some minor exceptions
+- Normal code works
+- You can use any C function by declaring it as a normal C3 function with external 
 
 (For more details see missing.txt)
 

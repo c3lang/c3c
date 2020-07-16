@@ -397,7 +397,6 @@ typedef struct
 	void *continue_target;
 	unsigned scope_id;
 	AstId parent;
-
 } LabelDecl;
 
 typedef struct
@@ -631,6 +630,12 @@ typedef struct
 	TokenId span;
 } Label;
 
+typedef struct
+{
+	Expr *inner;
+	AstId defer;
+} ExprGuard;
+
 struct _Expr
 {
 	ExprKind expr_kind : 8;
@@ -647,12 +652,11 @@ struct _Expr
 		ExprRange range_expr;
 		ExprStructValue struct_value_expr;
 		ExprTypeAccess type_access;
-		Expr *guard_expr;
+		ExprGuard guard_expr;
 		Expr *trycatch_expr;
 		ExprElse else_expr;
 		ExprBinary binary_expr;
 		ExprTernary ternary_expr;
-		Expr *fail_check_expr;
 		ExprUnary unary_expr;
 		ExprPostUnary post_expr;
 		ExprCall call_expr;
@@ -969,6 +973,18 @@ typedef union
 {
 	const char *string;
 	long double value;
+	struct
+	{
+		union
+		{
+			uint8_t b[8];
+			uint8_t u8;
+			uint16_t u16;
+			uint32_t u32;
+			uint64_t u64;
+		} char_lit;
+		char width;
+	};
 } TokenData;
 
 typedef struct
@@ -987,7 +1003,6 @@ typedef struct
 
 typedef struct _Context
 {
-	unsigned current_block;
 	BuildTarget *target;
 	Path *module_name;
 	TokenId* module_parameters;
@@ -1299,7 +1314,7 @@ static inline uint32_t TOKKLEN(Token token) { return TOKKLOC(token)->length; }
 #define TOKLEN(T) _Generic((T), TokenId: TOKILEN, Token:TOKKLEN)(T)
 
 #define TOKVALID(_tok) (_tok.index != 0)
-Decl *module_find_symbol(Module *module, const char *symbol, ModuleSymbolSearch search);
+Decl *module_find_symbol(Module *module, const char *symbol, ModuleSymbolSearch search, Decl **private_decl);
 
 void parse_file(Context *context);
 Path *path_create_from_string(Context *context, const char *string, size_t len, SourceSpan span);
@@ -1315,13 +1330,14 @@ const char *resolve_status_to_string(ResolveStatus status);
 void sema_analysis_pass_process_imports(Context *context);
 void sema_analysis_pass_conditional_compilation(Context *context);
 void sema_analysis_pass_decls(Context *context);
+void sema_analysis_pass_functions(Context *context);
 
 bool sema_add_local(Context *context, Decl *decl);
 bool sema_unwrap_var(Context *context, Decl *decl);
 bool sema_rewrap_var(Context *context, Decl *decl);
 
 bool sema_analyse_statement(Context *context, Ast *statement);
-Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl);
+Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl, Decl **private_decl);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info);
 

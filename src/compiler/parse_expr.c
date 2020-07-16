@@ -224,23 +224,12 @@ static bool token_may_end_expression(TokenType type)
 			return false;
 	}
 }
-static inline Expr *parse_check_failable(Context *context, Expr *left_side)
-{
-	Expr *expr_unwrap = EXPR_NEW_EXPR(EXPR_FAIL_CHECK, left_side);
-	advance_and_verify(context, TOKEN_QUESTION);
-	expr_unwrap->fail_check_expr = left_side;
-	RANGE_EXTEND_PREV(expr_unwrap);
-	return expr_unwrap;
-}
+
+
 
 static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 {
 	assert(expr_ok(left_side));
-
-	if (TOKEN_IS(TOKEN_QUESTION) && token_may_end_expression(context->next_tok.type))
-	{
-		return parse_check_failable(context, left_side);
-	}
 
 	Expr *expr_ternary = EXPR_NEW_EXPR(EXPR_TERNARY, left_side);
 	expr_ternary->ternary_expr.cond = left_side;
@@ -459,9 +448,10 @@ static Expr *parse_try_expr(Context *context, Expr *left)
 
 static Expr *parse_bangbang_expr(Context *context, Expr *left)
 {
-	Expr *guard_expr = EXPR_NEW_TOKEN(EXPR_GUARD, context->tok);
+	Expr *guard_expr = EXPR_NEW_EXPR(EXPR_GUARD, left);
 	advance_and_verify(context, TOKEN_BANGBANG);
-	guard_expr->guard_expr = left;
+	guard_expr->guard_expr.inner = left;
+	RANGE_EXTEND_PREV(guard_expr);
 	return guard_expr;
 }
 
@@ -499,73 +489,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	const char *string = TOKSTR(context->tok);
 	const char *end = string + TOKLEN(context->tok);
-	if (string[0] == '\'')
-	{
-		union
-		{
-			uint8_t u8;
-			uint16_t u16;
-			uint32_t u32;
-			uint64_t u64;
-			uint8_t b[8];
-		} bytes;
-		int pos = 0;
-		while (++string < end - 1)
-		{
-			if (*string == '\\')
-			{
-				if (*(++string) == 'x')
-				{
-					int hex = 0;
-					for (int j = 0; j < 2; j++)
-					{
-						hex <<= 4U;
-						char c = *(++string);
-						if (c < 'A')
-						{
-							hex += c - '0';
-						}
-						else if (c < 'a')
-						{
-							hex += c - 'A' + 10;
-						}
-						else
-						{
-							hex += c - 'a' + 10;
-						}
-					}
-					bytes.b[pos++] = hex;
-					continue;
-				}
-			}
-			bytes.b[pos++] = (unsigned)*string;
-		}
 
-		switch (pos)
-		{
-			case 1:
-				expr_const_set_int(&expr_int->const_expr, bytes.u8, TYPE_U8);
-				expr_int->type = type_byte;
-				break;
-			case 2:
-				expr_const_set_int(&expr_int->const_expr, bytes.u8, TYPE_U16);
-				expr_int->type = type_ushort;
-				break;
-			case 4:
-				expr_const_set_int(&expr_int->const_expr, bytes.u8, TYPE_U32);
-				expr_int->type = type_uint;
-				break;
-			case 8:
-				expr_const_set_int(&expr_int->const_expr, bytes.u8, TYPE_U64);
-				expr_int->type = type_ulong;
-				break;
-			default:
-				UNREACHABLE
-		}
-		expr_int->resolve_status = RESOLVE_DONE;
-		advance(context);
-		return expr_int;
-	}
 	BigInt *i = &expr_int->const_expr.i;
 	bigint_init_unsigned(i, 0);
 	BigInt diff;
@@ -632,6 +556,38 @@ static Expr *parse_integer(Context *context, Expr *left)
 	}
 	expr_int->const_expr.kind = TYPE_IXX;
 	expr_int->type = type_compint;
+	advance(context);
+	return expr_int;
+}
+
+static Expr *parse_char_lit(Context *context, Expr *left)
+{
+	assert(!left && "Had left hand side");
+	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
+	TokenData *data = tokendata_from_id(context->tok.id);
+	switch (data->width)
+	{
+		case 1:
+			expr_const_set_int(&expr_int->const_expr, data->char_lit.u8, TYPE_IXX);
+			expr_int->type = type_compint;
+			break;
+		case 2:
+			expr_const_set_int(&expr_int->const_expr, data->char_lit.u16, TYPE_IXX);
+			expr_int->type = type_compint;
+			break;
+		case 4:
+			expr_const_set_int(&expr_int->const_expr, data->char_lit.u32, TYPE_IXX);
+			expr_int->type = type_compint;
+			break;
+		case 8:
+			expr_const_set_int(&expr_int->const_expr, data->char_lit.u64, TYPE_U64);
+			expr_int->type = type_ulong;
+			break;
+		default:
+			UNREACHABLE
+	}
+
+	expr_int->resolve_status = RESOLVE_DONE;
 	advance(context);
 	return expr_int;
 }
@@ -932,6 +888,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_FALSE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_NIL] = { parse_nil, NULL, PREC_NONE },
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
+		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },
 		[TOKEN_IDENT] = { parse_maybe_scope, NULL, PREC_NONE },
 		[TOKEN_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_CT_IDENT] = { parse_identifier, NULL, PREC_NONE },
