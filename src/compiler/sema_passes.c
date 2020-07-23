@@ -102,6 +102,9 @@ static inline bool analyse_func_body(Context *context, Decl *decl)
 void sema_analysis_pass_decls(Context *context)
 {
 	DEBUG_LOG("Pass: Decl analysis %s", context->file->name);
+	context->current_scope = &context->scopes[0];
+	context->current_scope->scope_id = 0;
+	context->last_local = &context->locals[0];
 	VECEACH(context->enums, i)
 	{
 		sema_analyse_decl(context, context->enums[i]);

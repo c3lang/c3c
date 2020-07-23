@@ -122,8 +122,6 @@ const char *type_to_error_string(Type *type)
 			}
 			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
-		case TYPE_MEMBER:
-			return "member";
 		case TYPE_STRING:
 			return "string";
 		case TYPE_ARRAY:
@@ -191,8 +189,6 @@ size_t type_size(Type *type)
 		case ALL_FLOATS:
 		case TYPE_ERR_UNION:
 			return type->builtin.bytesize;
-		case TYPE_MEMBER:
-			return type_size(type->decl->var.type_info->type);
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
@@ -228,8 +224,6 @@ unsigned int type_abi_alignment(Type *type)
 		case ALL_FLOATS:
 		case TYPE_ERR_UNION:
 			return type->builtin.abi_alignment;
-		case TYPE_MEMBER:
-			return type_abi_alignment(type->decl->var.type_info->type);
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
@@ -345,6 +339,22 @@ Type *type_get_subarray(Type *arr_type)
 Type *type_get_vararray(Type *arr_type)
 {
 	return type_generate_subarray(arr_type, false);
+}
+
+bool type_is_user_defined(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_ERRTYPE:
+		case TYPE_TYPEDEF:
+			return true;
+		default:
+			return false;
+	}
 }
 
 Type *type_get_indexed_type(Type *type)
@@ -696,7 +706,6 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_ERRTYPE:
 			if (other->type_kind == TYPE_ERRTYPE) return type_error;
 			return NULL;
-		case TYPE_MEMBER:
 		case TYPE_FUNC:
 		case TYPE_UNION:
 		case TYPE_ERR_UNION:

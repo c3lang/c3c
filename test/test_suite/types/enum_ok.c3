@@ -29,3 +29,18 @@ enum EnumTestSmall : ushort
     VALUE = 0xFF,
     VALUE2 = 0xFFFF
 }
+
+enum EnumWithErrorData2 : int (int bar, )
+{
+    TEST
+}
+
+enum EnumTestErrorType4
+{
+}
+
+enum EnumTest5
+{
+    B = 0,
+    C,
+}

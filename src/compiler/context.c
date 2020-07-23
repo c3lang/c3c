@@ -85,6 +85,7 @@ void context_register_external_symbol(Context *context, Decl *decl)
 
 void context_register_global_decl(Context *context, Decl *decl)
 {
+	assert(decl->name);
 	decl->module = context->module;
 	switch (decl->decl_kind)
 	{
@@ -126,7 +127,6 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
-		case DECL_MEMBER:
 		case DECL_LABEL:
 			UNREACHABLE
 			break;

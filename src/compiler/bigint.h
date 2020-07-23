@@ -26,6 +26,7 @@ void bigint_read_twos_complement(BigInt *dest, const uint8_t *buf, size_t bit_co
 void bigint_add(BigInt *dest, const BigInt *op1, const BigInt *op2);
 void bigint_add_wrap(BigInt *dest, const BigInt *op1, const BigInt *op2, size_t bit_count, bool is_signed);
 void bigint_sub(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_sub_wrap(BigInt *dest, const BigInt *op1, const BigInt *op2, size_t bit_count, bool is_signed);
 void bigint_mul(BigInt *dest, const BigInt *op1, const BigInt *op2);
 void bigint_mul_wrap(BigInt *dest, const BigInt *op1, const BigInt *op2, size_t bit_count, bool is_signed);
 void bigint_rem(BigInt *dest, const BigInt *op1, const BigInt *op2);

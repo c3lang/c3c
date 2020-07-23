@@ -50,6 +50,7 @@ inline void advance(Context *context)
 	context->lead_comment = context->next_lead_comment;
 	context->trailing_comment = NULL;
 	context->next_lead_comment = NULL;
+	context->prev_tok = context->tok.id;
 	context->tok = context->next_tok;
 	while(1)
 	{
@@ -948,17 +949,6 @@ static inline bool parse_opt_parameter_type_list(Context *context, Visibility pa
 
 #pragma mark --- Parse types
 
-void add_struct_member(Decl *parent, Decl *parent_struct, Decl *member, TypeInfo *type)
-{
-	unsigned index = vec_size(parent_struct->strukt.members);
-	vec_add(parent_struct->strukt.members, member);
-	member->member_decl.index = index;
-	member->member_decl.reference_type = type_new(TYPE_MEMBER, member->name);
-	member->member_decl.reference_type->canonical = member->member_decl.reference_type;
-	member->member_decl.reference_type->decl = member;
-	member->member_decl.type_info = type;
-	member->member_decl.parent = parent;
-}
 
 /**
  * Expect pointer to after '{'
@@ -978,16 +968,14 @@ void add_struct_member(Decl *parent, Decl *parent_struct, Decl *member, TypeInfo
  *		| struct_or_union opt_attributes struct_body
  *		;
  *
- * @param parent the parent if this is the body of member
- * @param struct_parent the struct this is the body of
- * @param visible_parent the visible struct parent for checking duplicates.
+ * @param parent the parent of the struct
  */
-bool parse_struct_body(Context *context, Decl *parent, Decl *parent_struct, Decl *visible_parent)
+bool parse_struct_body(Context *context, Decl *parent)
 {
 
 	CONSUME_OR(TOKEN_LBRACE, false);
 
-	assert(decl_is_struct_type(parent_struct));
+	assert(decl_is_struct_type(parent));
 	while (!TOKEN_IS(TOKEN_RBRACE))
 	{
 		TokenType token_type = context->tok.type;
@@ -995,56 +983,36 @@ bool parse_struct_body(Context *context, Decl *parent, Decl *parent_struct, Decl
 		{
 			DeclKind decl_kind = decl_from_token(token_type);
 			Decl *member;
-			const char *name = TOKSTR(context->tok);
-			Decl *strukt_type = decl_new_with_type(context->tok.id, decl_kind, visible_parent->visibility);
 			if (context->next_tok.type != TOKEN_IDENT)
 			{
-				member = decl_new(DECL_MEMBER, NO_TOKEN_ID, visible_parent->visibility);
+				member = decl_new_with_type(NO_TOKEN_ID, decl_kind, parent->visibility);
+				member->span = source_span_from_token_id(context->tok.id);
 				advance(context);
 			}
 			else
             {
 			    advance(context);
-	            member = decl_new(DECL_MEMBER, context->tok.id, visible_parent->visibility);
-				Decl *other = struct_find_name(visible_parent, TOKSTR(context->tok));
-				if (other)
-				{
-					SEMA_TOKEN_ERROR(context->tok, "Duplicate member '%s' found.", TOKSTR(context->tok.id));
-					SEMA_PREV(other, "Previous declaration with the same name was here.");
-					decl_poison(visible_parent);
-					decl_poison(other);
-					decl_poison(member);
-					return false;
-				}
-				advance_and_verify(context, TOKEN_IDENT);
+	            member = decl_new_with_type(context->tok.id, decl_kind, parent->visibility);
+	            member->span.loc = context->prev_tok;
+	            advance_and_verify(context, TOKEN_IDENT);
 			}
-			if (!parse_attributes(context, strukt_type)) return false;
-			if (!parse_struct_body(context, member, strukt_type, TOKEN_IS(TOKEN_IDENT) ? strukt_type : visible_parent))
+			if (!parse_attributes(context, member)) return false;
+			if (!parse_struct_body(context, member))
 			{
-				decl_poison(visible_parent);
+				decl_poison(parent);
 				return false;
 			}
-			VECADD(context->types, strukt_type);
-			add_struct_member(parent, parent_struct, member, type_info_new_base(strukt_type->type, strukt_type->span));
+			vec_add(parent->strukt.members, member);
 			continue;
 		}
 		TypeInfo *type = TRY_TYPE_OR(parse_type(context), false);
 		while (1)
         {
             EXPECT_OR(TOKEN_IDENT, false);
-            Decl *member = decl_new(DECL_MEMBER, context->tok.id, visible_parent->visibility);
-            Decl *other = struct_find_name(visible_parent, member->name);
-            if (other)
-            {
-                SEMA_ERROR(member, "Duplicate member '%s' found.", member->name);
-                SEMA_PREV(other, "Previous declaration with the same name was here.");
-                decl_poison(visible_parent);
-                decl_poison(other);
-                decl_poison(member);
-            }
-            add_struct_member(parent, parent_struct, member, type);
+            Decl *member = decl_new_var(context->tok.id, type, VARDECL_MEMBER, parent->visibility);
+            vec_add(parent->strukt.members, member);
             advance(context);
-            if (!TOKEN_IS(TOKEN_COMMA)) break;
+            if (!try_consume(context, TOKEN_COMMA)) break;
         }
 		CONSUME_OR(TOKEN_EOS, false);
 	}
@@ -1077,7 +1045,7 @@ static inline Decl *parse_struct_declaration(Context *context, Visibility visibi
 		return poisoned_decl;
 	}
 
-	if (!parse_struct_body(context, decl, decl, decl))
+	if (!parse_struct_body(context, decl))
 	{
 		return poisoned_decl;
 	}
@@ -1373,9 +1341,9 @@ static inline Decl *parse_error_declaration(Context *context, Visibility visibil
     			SEMA_TOKEN_ERROR(context->tok, "Expected an identifier here.");
     			return poisoned_decl;
 		    }
-		    Decl *member = decl_new(DECL_MEMBER, context->tok.id, visibility);
+		    Decl *member = decl_new_var(context->tok.id, type, VARDECL_MEMBER, visibility);
     		advance(context);
-    		add_struct_member(err_decl, err_decl, member, type);
+    		vec_add(err_decl->strukt.members, member);
 		    TRY_CONSUME_EOS_OR(poisoned_decl);
 	    }
     	return err_decl;
@@ -1392,7 +1360,7 @@ static inline Decl *parse_error_declaration(Context *context, Visibility visibil
  */
 static inline bool parse_enum_spec(Context *context, TypeInfo **type_ref, Decl*** parameters_ref, Visibility parent_visibility)
 {
-	*type_ref = TRY_TYPE_OR(parse_base_type(context), false);
+	*type_ref = TRY_TYPE_OR(parse_type(context), false);
 	if (!try_consume(context, TOKEN_LPAREN)) return true;
 	while (!try_consume(context, TOKEN_RPAREN))
 	{

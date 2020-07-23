@@ -54,22 +54,43 @@ static inline void sema_set_union_size(Decl *decl)
 	decl->strukt.size = size;
 }
 
+static bool sema_analyse_struct_union(Context *context, Decl *decl);
 
 static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 {
-	assert(decl->resolve_status == RESOLVE_NOT_DONE);
-	decl->resolve_status = RESOLVE_RUNNING;
-	assert(decl->decl_kind == DECL_MEMBER);
-	if (!sema_resolve_type_info(context, decl->member_decl.type_info)) return decl_poison(decl);
-	decl->type = decl->member_decl.type_info->type;
-	decl->resolve_status = RESOLVE_DONE;
-	return true;
+	if (decl->name)
+	{
+		Decl *other = sema_resolve_symbol_in_current_dynamic_scope(context, decl->name);
+		if (other)
+		{
+			SEMA_ERROR(decl, "Duplicate member name '%s'.", other->name);
+			SEMA_PREV(other, "Previous declaration was here.");
+			return false;
+		}
+		if (decl->name) sema_add_member(context, decl);
+	}
+	switch (decl->decl_kind)
+	{
+		case DECL_VAR:
+			assert(decl->var.kind == VARDECL_MEMBER);
+			decl->resolve_status = RESOLVE_RUNNING;
+			if (!sema_resolve_type_info(context, decl->var.type_info)) return decl_poison(decl);
+			decl->type = decl->var.type_info->type;
+			decl->resolve_status = RESOLVE_DONE;
+			return true;
+		case DECL_STRUCT:
+		case DECL_UNION:
+			return sema_analyse_decl(context, decl);
+		default:
+			UNREACHABLE
+	}
 }
 
-static inline bool sema_analyse_struct_union(Context *context, Decl *decl)
+static bool sema_analyse_struct_union(Context *context, Decl *decl)
 {
-	DEBUG_LOG("Beginning analysis of %s.", decl->name);
+	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : "anon");
 	assert(decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION);
+	if (decl->name) context_push_scope(context);
 	VECEACH(decl->strukt.members, i)
 	{
 		Decl *member = decl->strukt.members[i];
@@ -88,6 +109,7 @@ static inline bool sema_analyse_struct_union(Context *context, Decl *decl)
 			decl_poison(decl);
 		}
 	}
+	if (decl->name) context_pop_scope(context);
 	DEBUG_LOG("Analysis complete.");
 	return decl_ok(decl);
 }
@@ -537,6 +559,35 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 
 
 
+static inline bool expr_is_constant_eval(Expr *expr)
+{
+	switch (expr->expr_kind)
+	{
+		case EXPR_CONST:
+			return true;
+		case EXPR_COMPOUND_LITERAL:
+			return expr_is_constant_eval(expr->expr_compound_literal.initializer);
+		case EXPR_INITIALIZER_LIST:
+		{
+			Expr** init_exprs = expr->expr_initializer.initializer_expr;
+			switch (expr->expr_initializer.init_type)
+			{
+				case INITIALIZER_NORMAL:
+				{
+					VECEACH(init_exprs, i)
+					{
+						if (!expr_is_constant_eval(init_exprs[i])) return false;
+					}
+					return true;
+				}
+				default:
+					return false;
+			}
+		}
+		default:
+			return false;
+	}
+}
 
 static inline bool sema_analyse_global(Context *context, Decl *decl)
 {
@@ -545,8 +596,9 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 	if (decl->var.init_expr)
 	{
 		if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr, false)) return false;
-		if (decl->var.init_expr->expr_kind != EXPR_CONST)
+		if (!expr_is_constant_eval(decl->var.init_expr))
 		{
+
 			SEMA_ERROR(decl->var.init_expr, "The expression must be a constant value.");
 			return false;
 		}
@@ -595,6 +647,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 		case VARDECL_GLOBAL:
 			return true;
 		default:
+			eprintf("Decl %s %d\n", decl->name, decl->var.kind);
 			UNREACHABLE
 			break;
 	}
@@ -614,22 +667,12 @@ static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
 	unsigned member_count = vec_size(members);
 	bool success = true;
 	unsigned error_size = 0;
+	context_push_scope(context);
 	for (unsigned i = 0; i < member_count; i++)
 	{
 		Decl *member = members[i];
-		for (unsigned j = 0; j < i; j++)
-		{
-			if (member->name == members[j]->name)
-			{
-				SEMA_ERROR(member, "Duplicate error names, please remove one of them.");
-				SEMA_PREV(members[j], "The previous declaration was here.");
-				decl_poison(member);
-				decl_poison(members[j]);
-				success = false;
-				break;
-			}
-		}
-		sema_analyse_struct_member(context, member);
+		success = sema_analyse_struct_member(context, member);
+		if (!success) continue;
 		unsigned alignment = type_abi_alignment(member->type);
 		unsigned size = type_size(member->type);
 		if (error_size % alignment != 0)
@@ -638,6 +681,8 @@ static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
 		}
 		error_size += size;
 	}
+	context_pop_scope(context);
+	if (!success) return false;
 	sema_set_struct_size(decl);
 	if (decl->strukt.size > type_size(type_usize))
 	{
@@ -654,10 +699,10 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
 
-	DEBUG_LOG(">>> Analysing %s.", decl->name);
+	DEBUG_LOG(">>> Analysing %s.", decl->name ? decl->name : "anon");
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{
-		SEMA_ERROR(decl, "Recursive dependency on %s.", decl->name);
+		SEMA_ERROR(decl, "Recursive definition of '%s'.", decl->name ? decl->name : "anon");
 		decl_poison(decl);
 		return false;
 	}
@@ -709,7 +754,6 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_ARRAY_VALUE:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
-		case DECL_MEMBER:
 		case DECL_LABEL:
 			UNREACHABLE
 		case DECL_CT_IF:

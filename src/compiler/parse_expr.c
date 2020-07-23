@@ -177,9 +177,8 @@ static Expr *parse_unary_expr(Context *context, Expr *left)
 
 	Expr *unary = EXPR_NEW_TOKEN(EXPR_UNARY, context->tok);
 	unary->unary_expr.operator = unaryop_from_token(operator_type);
-	Precedence rule_precedence = rules[operator_type].precedence;
 	advance(context);
-	Expr *right_side = parse_precedence(context, rule_precedence);
+	Expr *right_side = parse_precedence(context, PREC_UNARY);
 
 	CHECK_EXPR(right_side);
 
