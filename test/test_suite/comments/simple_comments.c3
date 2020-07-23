@@ -11,3 +11,4 @@ func void test()
 {
    return;
 }
+

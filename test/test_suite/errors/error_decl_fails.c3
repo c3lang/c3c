@@ -1,9 +1,12 @@
 module foo;
 
-error TooBig // #error: Error type may not exceed pointer
+
+
+error TheError
 {
-    usize a;
-    char b;
+    union // #error: A type name was expected here
+    {
+        int a;
+        int b;
+    }
 }
-
-

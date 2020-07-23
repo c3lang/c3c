@@ -20,7 +20,6 @@ static inline LLVMMetadataRef gencontext_create_debug_type_from_decl(GenContext 
 		case DECL_VAR:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
-		case DECL_MEMBER:
 		case DECL_LABEL:
 			UNREACHABLE;
 		case DECL_FUNC:
@@ -95,7 +94,6 @@ LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 		case TYPE_IXX:
 		case TYPE_FXX:
 		case TYPE_TYPEID:
-		case TYPE_MEMBER:
 			UNREACHABLE
 		case TYPE_BOOL:
 			return gencontext_simple_debug_type(context, type, DW_ATE_boolean);

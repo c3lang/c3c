@@ -68,11 +68,11 @@ class Issues:
                 print('"' + parts[3] + '"')
         if len(self.errors) > 0:
             self.set_failed()
-            print("Expected errors that never occured:")
+            print("Expected errors that never occurred:")
             num = 1
             for key, value in self.errors.items():
                 pos = key.split(":", 2)
-                print(str(num) + ". " + pos[0] + " line: " + pos[1] + " expected: " + value)
+                print(str(num) + ". " + pos[0] + " line: " + pos[1] + " expected: \"" + value + "\"")
                 num += 1
 
     def compile(self, args):
@@ -80,7 +80,7 @@ class Issues:
         code = subprocess.run(path + 'c3c ' + args, universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if code.returncode != 0 and code.returncode != 1:
             self.set_failed()
-            print("Error: " + code.stderr)
+            print("Error (" + str(code.returncode) + "): " + code.stderr)
             self.has_errors = True
             return
         self.parse_result(code.stderr.splitlines(keepends=False))

@@ -121,26 +121,51 @@ static inline LLVMValueRef gencontext_emit_subscript_addr(GenContext *context, E
 	}
 }
 
+static int find_member_index(Decl *parent, Decl *member)
+{
+	VECEACH(parent->strukt.members, i)
+	{
+		Decl *maybe_member = parent->strukt.members[i];
+		if (member == maybe_member)
+		{
+			return (int)i;
+		}
+		if (!maybe_member->name)
+		{
+			if (find_member_index(maybe_member, member) != -1) return (int)i;
+		}
+	}
+	return -1;
+}
+
 static LLVMValueRef gencontext_emit_member_addr(GenContext *context, LLVMValueRef value, Decl *parent, Decl *member)
 {
 	assert(member->resolve_status == RESOLVE_DONE);
-	Decl *current_parent = member->member_decl.parent;
-	if (current_parent->decl_kind == DECL_MEMBER && current_parent->member_decl.anonymous)
-	{
-		value = gencontext_emit_member_addr(context, value, parent, current_parent);
-	}
 
-	switch (current_parent->type->canonical->type_kind)
+	Decl *found = NULL;
+	do
 	{
-		case TYPE_UNION:
-			return LLVMBuildBitCast(context->builder, value, LLVMPointerType(llvm_type(member->type), 0), member->name);
-		case TYPE_ERRTYPE:
-			return LLVMBuildStructGEP2(context->builder, llvm_type(current_parent->type), value, member->member_decl.index + 1, member->name);
-		case TYPE_STRUCT:
-			return LLVMBuildStructGEP2(context->builder, llvm_type(current_parent->type), value, member->member_decl.index, member->name);
-		default:
-			UNREACHABLE
-	}
+		int index = find_member_index(parent, member);
+		assert(index > -1);
+		found = parent->strukt.members[index];
+		const char *name = found->name ? found->name : "anon";
+		switch (parent->type->canonical->type_kind)
+		{
+			case TYPE_UNION:
+				value = LLVMBuildBitCast(context->builder, value, LLVMPointerType(llvm_type(found->type), 0), name);
+				break;
+			case TYPE_ERRTYPE:
+				value = LLVMBuildStructGEP2(context->builder, llvm_type(parent->type), value, index + 1, name);
+				break;
+			case TYPE_STRUCT:
+				value = LLVMBuildStructGEP2(context->builder, llvm_type(parent->type), value, index, name);
+				break;
+			default:
+				UNREACHABLE
+		}
+		parent = found;
+	} while (found != member);
+	return value;
 }
 
 

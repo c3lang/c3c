@@ -55,10 +55,6 @@ void context_push_scope_with_label(Context *context, Decl *label)
 	}
 }
 
-static inline void context_push_scope(Context *context)
-{
-	context_push_scope_with_flags(context, SCOPE_NONE);
-}
 
 static inline void context_pop_defers(Context *context)
 {

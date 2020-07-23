@@ -36,3 +36,14 @@ func void testDiv(int a, int b)
     a /= b;
     a /= 1;
 }
+
+func void testAssignment()
+{
+    char x = -3 - 5;
+    char c = -128;
+}
+
+func byte test22()
+{
+    return 100;
+}

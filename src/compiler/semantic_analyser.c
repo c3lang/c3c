@@ -6,12 +6,16 @@
 
 void sema_shadow_error(Decl *decl, Decl *old)
 {
-	SEMA_ERROR(decl, "The '%s' would shadow a previous declaration.", decl->name);
+	SEMA_ERROR(decl, "'%s' would shadow a previous declaration.", decl->name);
 	SEMA_PREV(old, "The previous use of '%s' was here.", decl->name);
 }
 
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info)
 {
 	if (!sema_resolve_type_shallow(context, type_info)) return false;
-	return true;
+	Type *type = type_info->type;
+	// usize and similar typedefs will not have a decl.
+	if (type->type_kind == TYPE_TYPEDEF && type->decl == NULL) return true;
+	if (!type_is_user_defined(type)) return true;
+	return sema_analyse_decl(context, type->decl);
 }

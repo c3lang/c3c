@@ -131,18 +131,25 @@ void sema_verror_range(SourceLocation *location, const char *message, va_list ar
 	diagnostics.errors++;
 }
 
-void sema_error_range2(SourceLocation *location, const char *message, ...)
+
+void sema_prev_at_range3(SourceSpan span, const char *message, ...)
 {
-	va_list list;
-	va_start(list, message);
-	sema_verror_range(location, message, list);
-	va_end(list);
+	SourceLocation *start = TOKLOC(span.loc);
+	SourceLocation *end = TOKLOC(span.end_loc);
+	va_list args;
+	va_start(args, message);
+	char buffer[256];
+	vsnprintf(buffer, 256, message, args);
+	SourceLocation loc = *start;
+	loc.length = end->start - start->start + end->length;
+	print_error2(&loc, buffer, PRINT_TYPE_PREV);
+	va_end(args);
 }
 
-void sema_error_range3(SourceSpan location, const char *message, ...)
+void sema_error_range3(SourceSpan span, const char *message, ...)
 {
-	SourceLocation *start = TOKLOC(location.loc);
-	SourceLocation *end = TOKLOC(location.end_loc);
+	SourceLocation *start = TOKLOC(span.loc);
+	SourceLocation *end = TOKLOC(span.end_loc);
 
 	SourceLocation loc = *start;
 	loc.length = end->start - start->start + end->length;
@@ -191,19 +198,6 @@ void sema_error(Context *context, const char *message, ...)
 	va_end(list);
 }
 
-void sema_prev_at_range3(SourceSpan span, const char *message, ...)
-{
-	SourceLocation *start = TOKLOC(span.loc);
-	SourceLocation *end = TOKLOC(span.end_loc);
-	va_list args;
-	va_start(args, message);
-	char buffer[256];
-	vsnprintf(buffer, 256, message, args);
-	SourceLocation loc = *start;
-	loc.length = end->start - start->start + end->length;
-	print_error2(&loc, buffer, PRINT_TYPE_PREV);
-	va_end(args);
-}
 
 
 /*

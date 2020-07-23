@@ -22,7 +22,6 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 		case DECL_VAR:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
-		case DECL_MEMBER:
 		case DECL_LABEL:
 			UNREACHABLE;
 		case DECL_FUNC:
@@ -43,11 +42,13 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 		case DECL_STRUCT:
 		{
 			LLVMTypeRef *types = NULL;
+			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->external_name);
+			// Avoid recursive issues.
+			decl->type->backend_type = type;
 			VECEACH(decl->strukt.members, i)
 			{
 				vec_add(types, llvm_get_type(context, decl->strukt.members[i]->type));
 			}
-			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->name);
 			LLVMStructSetBody(type, types, vec_size(types), decl->is_packed);
 			return type;
 		}
@@ -55,6 +56,9 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 		{
 			Decl *max_type = NULL;
 			unsigned long long max_size = 0;
+			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->external_name);
+			// Avoid recursive issues.
+			decl->type->backend_type = type;
 			VECEACH(decl->strukt.members, i)
 			{
 				Decl *member = decl->strukt.members[i];
@@ -65,7 +69,6 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 					max_type = member;
 				}
 			}
-			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->external_name);
 			if (max_type)
 			{
 				LLVMTypeRef type_ref = llvm_get_type(context, max_type->type);
@@ -81,6 +84,9 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 			return llvm_get_type(context, decl->type);
 		case DECL_ERR:
 		{
+			LLVMTypeRef err_type = LLVMStructCreateNamed(context, decl->external_name);
+			// Avoid recursive issues.
+			decl->type->backend_type = err_type;
 			LLVMTypeRef *types = NULL;
 			vec_add(types, llvm_get_type(context, type_typeid));
 			unsigned size = type_size(type_typeid);
@@ -100,9 +106,8 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 			{
 				vec_add(types, LLVMIntTypeInContext(context, padding * 8));
 			}
-			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->name);
-			LLVMStructSetBody(type, types, vec_size(types), false);
-			return type;
+			LLVMStructSetBody(err_type, types, vec_size(types), false);
+			return err_type;
 		}
 	}
 	UNREACHABLE
@@ -173,7 +178,6 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *any_type)
 	DEBUG_LOG("Generating type %s", any_type->name);
 	switch (any_type->type_kind)
 	{
-		case TYPE_MEMBER:
 		case TYPE_POISONED:
 			UNREACHABLE
 		case TYPE_TYPEID:

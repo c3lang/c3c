@@ -311,6 +311,10 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 	{
 		SEMA_ERROR(expr, "Only macro expansions can be prefixed with '@', please try to remove it.", decl->name);
 	}
+	if (decl->resolve_status != RESOLVE_DONE)
+	{
+		if (!sema_analyse_decl(context, decl)) return poisoned_decl;
+	}
 	if (decl->decl_kind == DECL_VAR && decl->var.failable)
 	{
 		expr->failable = true;
@@ -787,11 +791,23 @@ static inline bool sema_expr_analyse_subscript_after_parent_resolution(Context *
 	return true;
 }
 
-static inline bool sema_expr_analyse_subscript(Context *context, Type *to, Expr *expr)
+static inline bool sema_expr_analyse_subscript(Context *context, Expr *expr)
 {
 	if (!sema_analyse_expr(context, NULL, expr->subscript_expr.expr)) return false;
 	expr->failable = expr->subscript_expr.expr->failable;
 	return sema_expr_analyse_subscript_after_parent_resolution(context, NULL, expr);
+}
+
+static inline void insert_access_deref(Expr *expr)
+{
+	Expr *deref = expr_new(EXPR_UNARY, expr->span);
+	deref->unary_expr.operator = UNARYOP_DEREF;
+	deref->unary_expr.expr = expr->access_expr.parent;
+	deref->resolve_status = RESOLVE_DONE;
+	assert(expr->access_expr.parent->type->canonical->type_kind == TYPE_POINTER);
+	deref->type = expr->access_expr.parent->type->canonical->pointer;
+	deref->failable = expr->access_expr.parent->failable;
+	expr->access_expr.parent = deref;
 }
 
 static inline bool sema_expr_analyse_method(Context *context, Expr *expr, Decl *decl, bool is_pointer)
@@ -802,6 +818,10 @@ static inline bool sema_expr_analyse_method(Context *context, Expr *expr, Decl *
 		Decl *function = decl->methods[i];
 		if (function->name == name)
 		{
+			if (is_pointer)
+			{
+				insert_access_deref(expr);
+			}
 			expr->access_expr.ref = function;
 			expr->type = function->type;
 			return true;
@@ -810,7 +830,7 @@ static inline bool sema_expr_analyse_method(Context *context, Expr *expr, Decl *
 
 	if (decl_is_struct_type(decl))
 	{
-		SEMA_ERROR(expr, "There is no element nor method '%s.%s'.", decl->name, name);
+		SEMA_ERROR(expr, "There is no element or method '%s.%s'.", decl->name, name);
 	}
 	else
 	{
@@ -825,17 +845,14 @@ static Decl *strukt_recursive_search_member(Decl *strukt, const char *name)
 	VECEACH(strukt->strukt.members, i)
 	{
 		Decl *member = strukt->strukt.members[i];
-		if (member->member_decl.anonymous)
+		if (member->name == name) return member;
+		if (decl_is_struct_type(member) && !member->name)
 		{
-			Decl *result = strukt_recursive_search_member(member->type->canonical->decl, name);
+			Decl *result = strukt_recursive_search_member(member, name);
 			if (result)
 			{
 				return result;
 			}
-		}
-		else
-		{
-			if (member->name == name) return member;
 		}
 	}
 	return NULL;
@@ -843,7 +860,7 @@ static Decl *strukt_recursive_search_member(Decl *strukt, const char *name)
 
 static inline bool sema_expr_analyse_group(Context *context, Type *to, Expr *expr)
 {
-	if (!sema_analyse_expr(context, to, expr->group_expr)) return false;
+	if (!sema_analyse_expr(context, NULL, expr->group_expr)) return false;
 	*expr = *expr->group_expr;
 	return true;
 }
@@ -928,14 +945,14 @@ static bool sema_expr_analyse_type_access(Context *context, Type *to, Expr *expr
 		if (name == member->name)
 		{
 			expr->type_access.decl = member;
-			expr->type = member->member_decl.reference_type;
+			expr->type = member->type;
 			return true;
 		}
 	}
 	SEMA_ERROR(expr, "No function or member '%s.%s' found.", type_to_error_string(type_info->type), name);
 	return false;
 }
-
+/*
 static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 {
 	Type *type = expr->access_expr.parent->type->decl->member_decl.type_info->type;
@@ -1012,6 +1029,7 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 	               sub_element);
 	return false;
 }
+*/
 
 
 static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
@@ -1026,15 +1044,12 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	Type *parent_type = expr->access_expr.parent->type;
 	Type *type = parent_type->canonical;
 
-	if (type->type_kind == TYPE_MEMBER)
-	{
-		return sema_expr_analyse_member_access(context, expr);
-	}
 	bool is_pointer = type->type_kind == TYPE_POINTER;
 	if (is_pointer)
 	{
 		type = type->pointer;
 	}
+
 	if (!type_may_have_sub_elements(type))
 	{
 		SEMA_ERROR(expr, "Cannot access '%s' on '%s'", TOKSTR(expr->access_expr.sub_element), type_to_error_string(parent_type));
@@ -1060,13 +1075,7 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	}
 	if (is_pointer)
 	{
-		Expr *deref = expr_new(EXPR_UNARY, expr->span);
-		deref->unary_expr.operator = UNARYOP_DEREF;
-		deref->unary_expr.expr = expr->access_expr.parent;
-		deref->resolve_status = RESOLVE_DONE;
-		deref->type = type;
-		deref->failable = expr->access_expr.parent->failable;
-		expr->access_expr.parent = deref;
+		insert_access_deref(expr);
 	}
 	expr->type = member->type;
 	expr->access_expr.ref = member;
@@ -1082,7 +1091,7 @@ static DesignatedPath *sema_analyse_init_identifier_string(Context *context, Des
 	VECEACH(members, i)
 	{
 		Decl *member = members[i];
-		if (member->member_decl.anonymous)
+		if (!member->name)
 		{
 			DesignatedPath temp_path;
 			temp_path.type = member->type;
@@ -1643,10 +1652,19 @@ static bool sema_expr_analyse_add_sub_assign(Context *context, Expr *expr, Expr 
 	return true;
 }
 
-static bool binary_arithmetic_promotion(Context *context, Expr *left, Expr *right, Type *left_type, Type *right_type)
+static bool binary_arithmetic_promotion(Context *context, Expr *left, Expr *right, Type *left_type, Type *right_type, Expr *parent, const char *error_message)
 {
 	Type *max = type_find_max_type(left_type, right_type);
-	return max && type_is_numeric(max) && cast_implicit(context, left, max) && cast_implicit(context, right, max);
+	if (!max || !type_is_numeric(max))
+	{
+		if (!error_message)
+		{
+			return sema_type_error_on_binop(context, parent);
+		}
+		SEMA_ERROR(parent, error_message, type_to_error_string(left_type), type_to_error_string(right_type));
+		return false;
+	}
+	return cast_implicit(context, left, max) && cast_implicit(context, right, max);
 }
 
 /**
@@ -1709,19 +1727,38 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 	}
 
 	// 7. Attempt arithmetic promotion, to promote both to a common type.
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot subtract '%s' from '%s'"))
 	{
-		SEMA_ERROR(expr, "Cannot subtract '%s' from '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
 		return false;
 	}
+
+	left_type = left->type->canonical;
 
 	// 8. Handle constant folding.
 	if (both_const(left, right))
 	{
-		switch (left->const_expr.kind)
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.kind = left_type->type_kind;
+		switch (left_type->type_kind)
 		{
 			case ALL_INTS:
-				bigint_sub(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
+				if (is_mod && left_type != type_compint)
+				{
+					bigint_sub_wrap(&expr->const_expr.i,
+					                &left->const_expr.i,
+					                &right->const_expr.i,
+					                left_type->builtin.bitsize,
+					                type_is_signed(left_type));
+				}
+				else
+				{
+					bigint_sub(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
+				}
+				if (expr_const_int_overflowed(&expr->const_expr))
+				{
+					SEMA_ERROR(expr, "Cannot fit '%s' into type '%s'.", expr_const_to_error_string(&expr->const_expr), type_to_error_string(left_type));
+					return false;
+				}
 				break;
 			case ALL_FLOATS:
 				// IMPROVE precision.
@@ -1730,8 +1767,6 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 			default:
 				UNREACHABLE
 		}
-		expr->expr_kind = EXPR_CONST;
-		expr->const_expr.kind = left->const_expr.kind;
 	}
 
 	// 9. Is this -%? That's not ok unless we are adding integers.
@@ -1807,19 +1842,34 @@ static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *
 
 	// 5. Do the binary arithmetic promotion (finding a common super type)
 	//    If none can be find, send an error.
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot add '%s' to '%s'"))
 	{
-		SEMA_ERROR(expr, "Cannot add '%s' to '%s'", type_to_error_string(left_type), type_to_error_string(right_type));
 		return false;
 	}
+
+	left_type = left->type->canonical;
 
 	// 6. Handle the "both const" case. We should only see ints and floats at this point.
 	if (both_const(left, right))
 	{
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.kind = left_type->type_kind;
 		switch (left->const_expr.kind)
 		{
 			case ALL_INTS:
-				bigint_add(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
+				if (is_mod && left_type != type_compint)
+				{
+					bigint_add_wrap(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i, left_type->builtin.bitsize, type_is_signed(left_type));
+				}
+				else
+				{
+					bigint_add(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
+				}
+				if (expr_const_int_overflowed(&expr->const_expr))
+				{
+					SEMA_ERROR(expr, "Cannot fit '%s' into type '%s'.", expr_const_to_error_string(&expr->const_expr), type_to_error_string(left_type));
+					return false;
+				}
 				break;
 			case ALL_FLOATS:
 				expr->const_expr.f = left->const_expr.f + right->const_expr.f;
@@ -1827,8 +1877,6 @@ static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *
 			default:
 				UNREACHABLE
 		}
-		expr->expr_kind = EXPR_CONST;
-		expr->const_expr.kind = left->const_expr.kind;
 	}
 
 	// 7. Is this +%? That's not ok unless we are adding integers.
@@ -1865,9 +1913,8 @@ static bool sema_expr_analyse_mult(Context *context, Type *to, Expr *expr, Expr 
 	Type *right_type = right->type->canonical;
 
 	// 2. Perform promotion to a common type.
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot multiply '%s' by '%s'"))
 	{
-		SEMA_ERROR(expr, "Cannot multiply '%s' with '%s'", type_to_error_string(left->type), type_to_error_string(right->type));
 		return false;
 	}
 
@@ -1880,7 +1927,7 @@ static bool sema_expr_analyse_mult(Context *context, Type *to, Expr *expr, Expr 
 	// 4. Prevent *% use on non-integers.
 	if (is_mod && !type_is_any_integer(left_type))
 	{
-		SEMA_ERROR(expr, "*% can only be used with integer types, try * instead.");
+		SEMA_ERROR(expr, "*%% can only be used with integer types, try * instead.");
 		return false;
 	}
 
@@ -1888,7 +1935,7 @@ static bool sema_expr_analyse_mult(Context *context, Type *to, Expr *expr, Expr 
 	if (both_const(left, right))
 	{
 		expr->expr_kind = EXPR_CONST;
-		expr->const_expr.kind = left->const_expr.kind;
+		expr->const_expr.kind = left_type->type_kind;
 
 		switch (left->const_expr.kind)
 		{
@@ -1899,11 +1946,18 @@ static bool sema_expr_analyse_mult(Context *context, Type *to, Expr *expr, Expr 
 					bigint_mul_wrap(&expr->const_expr.i,
 					                &left->const_expr.i,
 					                &right->const_expr.i,
-					                is_mod,
-					                left_type->builtin.bitsize);
-					return true;
+					                left_type->builtin.bitsize,
+					                type_is_signed(left_type));
 				}
-				bigint_mul(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
+				else
+				{
+					bigint_mul(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
+				}
+				if (expr_const_int_overflowed(&expr->const_expr))
+				{
+					SEMA_ERROR(expr, "Cannot fit '%s' into type '%s'.", expr_const_to_error_string(&expr->const_expr), type_to_error_string(left_type));
+					return false;
+				}
 				break;
 			case ALL_FLOATS:
 				expr->const_expr.f = left->const_expr.f * right->const_expr.f;
@@ -1930,9 +1984,8 @@ static bool sema_expr_analyse_div(Context *context, Type *to, Expr *expr, Expr *
 	Type *right_type = right->type->canonical;
 
 	// 2. Perform promotion to a common type.
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot divide '%s' by '%s'."))
 	{
-		SEMA_ERROR(expr, "Cannot divide '%s' by '%s'.", type_to_error_string(left_type), type_to_error_string(right_type));
 		return false;
 	}
 
@@ -2038,9 +2091,9 @@ static bool sema_expr_analyse_bit(Context *context, Type *to, Expr *expr, Expr *
 	Type *left_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
 
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, NULL))
 	{
-		return sema_type_error_on_binop(context, expr);
+		return false;
 	}
 
 	// 4. Do constant folding if both sides are constant.
@@ -2309,7 +2362,6 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 				case TYPE_VARARRAY:
 				case TYPE_SUBARRAY:
 				case TYPE_TYPEID:
-				case TYPE_MEMBER:
 					// Only != and == allowed.
 					goto ERR;
 				case ALL_INTS:
@@ -2551,7 +2603,6 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 		case TYPE_ENUM:
 		case TYPE_ERRTYPE:
 		case TYPE_TYPEID:
-		case TYPE_MEMBER:
 			SEMA_ERROR(expr, "Cannot use 'not' on %s", type_to_error_string(inner->type));
 			return false;
 	}
@@ -3283,7 +3334,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_CALL:
 			return sema_expr_analyse_call(context, to, expr);
 		case EXPR_SUBSCRIPT:
-			return sema_expr_analyse_subscript(context, to, expr);
+			return sema_expr_analyse_subscript(context, expr);
 		case EXPR_GROUP:
 			return sema_expr_analyse_group(context, to, expr);
 		case EXPR_ACCESS:
@@ -3317,15 +3368,16 @@ bool sema_analyse_expr(Context *context, Type *to, Expr *expr)
 	{
 		case RESOLVE_NOT_DONE:
 			expr->resolve_status = RESOLVE_RUNNING;
+			if (!sema_analyse_expr_dispatch(context, to, expr)) return expr_poison(expr);
+			expr->resolve_status = RESOLVE_DONE;
 			break;
 		case RESOLVE_RUNNING:
 			SEMA_ERROR(expr, "Recursive resolution of expression");
 			return expr_poison(expr);
 		case RESOLVE_DONE:
-			return expr_ok(expr);
+			if (!expr_ok(expr)) return false;
+			break;
 	}
-	if (!sema_analyse_expr_dispatch(context, to, expr)) return expr_poison(expr);
-	expr->resolve_status = RESOLVE_DONE;
 	if (expr->expr_kind == EXPR_IDENTIFIER)
 	{
 		if (expr->identifier_expr.decl->decl_kind == DECL_FUNC)

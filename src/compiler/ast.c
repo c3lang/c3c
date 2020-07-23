@@ -28,8 +28,14 @@ Decl *decl_new(DeclKind decl_kind, TokenId name, Visibility visibility)
 	decl->decl_kind = decl_kind;
 	decl->name_token = name;
 	decl->span = source_span_from_token_id(name);
-	decl->name = name.index ? TOKSTR(name) : "anon";
-	decl->member_decl.anonymous = name.index == 0;
+	if (name.index)
+	{
+		decl->name = TOKSTR(name);
+	}
+	else
+	{
+		decl->name = NULL;
+	}
 	decl->visibility = visibility;
 	return decl;
 }
@@ -44,11 +50,12 @@ void decl_set_external_name(Decl *decl)
 {
 	if (decl->visibility == VISIBLE_EXTERN)
 	{
+		assert(decl->name);
 		decl->external_name = decl->name;
 		return;
 	}
 	char buffer[1024];
-	uint32_t len = sprintf(buffer, "%s.%s", decl->module->name->module, decl->name);
+	uint32_t len = sprintf(buffer, "%s.%s", decl->module->name->module, decl->name ? decl->name : "anon");
 	assert(len);
 	TokenType type = TOKEN_INVALID_TOKEN;
 	decl->external_name = symtab_add(buffer, len, fnv1a(buffer, len), &type);
@@ -89,11 +96,10 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
-		case DECL_MEMBER:
 		case DECL_LABEL:
 			UNREACHABLE
 	}
-	Type *type = type_new(kind, TOKSTR(name));
+	Type *type = type_new(kind, !name.index ? "anon" : TOKSTR(name));
 	type->canonical = type;
 	type->decl = decl;
 	decl->type = type;
@@ -110,6 +116,8 @@ const char *decl_var_to_string(VarDeclKind kind)
 			return "global";
 		case VARDECL_LOCAL:
 			return "local";
+		case VARDECL_MEMBER:
+			return "member";
 		case VARDECL_PARAM:
 			return "param";
 		case VARDECL_ALIAS:
@@ -133,26 +141,6 @@ Decl *decl_new_var(TokenId name, TypeInfo *type, VarDeclKind kind, Visibility vi
 	return decl;
 }
 
-/**
- * Recursively find a node in a declaration.
- * @return NULL if it wasn't found, otherwise the member.
- */
-Decl *struct_find_name(Decl *decl, const char* name)
-{
-    Decl** compare_members = decl->strukt.members;
-    VECEACH(compare_members, i)
-    {
-        Decl *member = compare_members[i];
-        if (member->member_decl.anonymous)
-        {
-        	assert(member->decl_kind == DECL_MEMBER);
-            Decl *found = struct_find_name(member->member_decl.type_info->type->decl, name);
-            if (found) return found;
-        }
-        else if (member->name == name) return member;
-    }
-    return NULL;
-}
 
 Expr *expr_new(ExprKind kind, SourceSpan start)
 {
@@ -342,10 +330,6 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 		case TYPE_ERRTYPE:
 			DUMPF("(errtype %s)", type->name);
 			return;
-		case TYPE_MEMBER:
-			DUMPF("(member %s", type->name);
-			DUMPTYPE(type->decl->member_decl.parent->type);
-			DUMPEND();
 		case TYPE_TYPEDEF:
 			DUMPF("(typedef %s", type->name);
 			DUMPTYPE(type->canonical);
@@ -737,7 +721,7 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
-			DUMPF("(var-%s %s", decl_var_to_string(decl->var.kind), decl->name);
+			DUMPF("(var-%s %s", decl_var_to_string(decl->var.kind), decl->name ? decl->name : "anon");
 			DUMPTI(decl->var.type_info);
 			switch (decl->var.kind)
 			{
@@ -745,6 +729,7 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 				case VARDECL_GLOBAL:
 				case VARDECL_LOCAL:
 				case VARDECL_PARAM:
+				case VARDECL_MEMBER:
 				case VARDECL_LOCAL_CT:
 					DUMPEXPR(decl->var.init_expr);
 					break;
@@ -783,11 +768,11 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			if (decl->func.body) DUMPAST(decl->func.body);
 			DUMPEND();
 		case DECL_STRUCT:
-			DUMPF("(struct %s", decl->name);
+			DUMPF("(struct %s", decl->name ? decl->name : "anon");
 			DUMPDECLS(decl->strukt.members);
 			DUMPEND();
 		case DECL_UNION:
-			DUMPF("(union %s", decl->name);
+			DUMPF("(union %s", decl->name ? decl->name : "anon");
 			DUMPDECLS(decl->strukt.members);
 			DUMPEND();
 		case DECL_ENUM:
@@ -862,10 +847,6 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 		case DECL_IMPORT:
 			DUMPF("(import %s", decl->name);
 			// TODO
-			DUMPEND();
-		case DECL_MEMBER:
-			DUMPF("(member %s", decl->name);
-			DUMPTI(decl->member_decl.type_info);
 			DUMPEND();
 		case DECL_ATTRIBUTE:
 			DUMPF("(attribute %s)", decl->name);

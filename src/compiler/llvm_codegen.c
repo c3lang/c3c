@@ -240,7 +240,7 @@ void llvm_codegen_setup()
 void gencontext_emit_introspection_type(GenContext *context, Decl *decl)
 {
 	llvm_type(decl->type);
-	LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_type(type_byte), decl->name);
+	LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_type(type_byte), decl->name ? decl->name : "anon");
 	LLVMSetGlobalConstant(global_name, 1);
 	LLVMSetInitializer(global_name, LLVMConstInt(llvm_type(type_byte), 1, false));
 	decl->type->backend_typeid = LLVMBuildPtrToInt(context->builder, global_name, llvm_type(type_typeid), "");
@@ -306,7 +306,6 @@ static void gencontext_emit_decl(GenContext *context, Decl *decl)
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
-		case DECL_MEMBER:
 		case DECL_LABEL:
 			UNREACHABLE
 	}

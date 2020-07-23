@@ -201,7 +201,6 @@ void compile_files(BuildTarget *target)
 			compiler_compile(target);
 			break;
 	}
-	TODO
 }
 
 
@@ -250,6 +249,7 @@ Module *compiler_find_or_create_module(Path *module_name)
 
 void compiler_register_public_symbol(Decl *decl)
 {
+	assert(decl->name);
 	Decl *prev = stable_get(&compiler.global_symbols, decl->name);
 	// If the previous symbol was already declared globally, remove it.
 	stable_set(&compiler.global_symbols, decl->name, prev ? poisoned_decl : decl);

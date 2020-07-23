@@ -75,7 +75,7 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	// Allocate room on stack and copy.
-	decl->ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
+	decl->ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name ? decl->name : "anon");
 	gencontext_emit_store(context, decl, LLVMGetParam(context->function, index));
 }
 
@@ -291,7 +291,6 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 			break;
 		case DECL_ENUM:
 			TODO
-		case DECL_MEMBER:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:

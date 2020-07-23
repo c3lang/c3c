@@ -302,11 +302,6 @@ typedef struct
 	uint64_t ordinal;
 } EnumConstantDecl;
 
-typedef struct
-{
-	Decl *parent;
-	uint32_t value;
-} ErrorConstantDecl;
 
 typedef struct
 {
@@ -399,14 +394,6 @@ typedef struct
 	AstId parent;
 } LabelDecl;
 
-typedef struct
-{
-	unsigned index : 32;
-	bool anonymous : 1;
-	Decl *parent;
-	TypeInfo *type_info;
-	Type *reference_type;
-} MemberDecl;
 
 typedef struct _Decl
 {
@@ -450,7 +437,6 @@ typedef struct _Decl
 				EnumDecl enums;
 			};
 		};
-		ErrorConstantDecl error_constant;
 		ImportDecl import;
 		VarDecl var;
 		LabelDecl label;
@@ -464,7 +450,6 @@ typedef struct _Decl
 		CtIfDecl ct_elif_decl;
 		Decl** ct_else_decl;
 		Expr *incr_array_decl;
-		MemberDecl member_decl;
 	};
 } Decl;
 
@@ -1062,6 +1047,7 @@ typedef struct _Context
 	STable scratch_table;
 	Lexer lexer;
 	Token tok;
+	TokenId prev_tok;
 	Token next_tok;
 	struct
 	{
@@ -1142,7 +1128,7 @@ static inline Ast *new_ast(AstKind kind, SourceSpan range)
 
 static inline Ast *extend_ast_with_prev_token(Context *context, Ast *ast)
 {
-	ast->span.end_loc.index = context->tok.id.index - 1;
+	ast->span.end_loc = context->prev_tok;
 	return ast;
 }
 
@@ -1332,19 +1318,20 @@ void sema_analysis_pass_conditional_compilation(Context *context);
 void sema_analysis_pass_decls(Context *context);
 void sema_analysis_pass_functions(Context *context);
 
+bool sema_add_member(Context *context, Decl *decl);
 bool sema_add_local(Context *context, Decl *decl);
 bool sema_unwrap_var(Context *context, Decl *decl);
 bool sema_rewrap_var(Context *context, Decl *decl);
 
 bool sema_analyse_statement(Context *context, Ast *statement);
+Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol);
 Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl, Decl **private_decl);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info);
 
 void sema_error_at_prev_end(Token token, const char *message, ...);
 
-void sema_error_range2(SourceLocation *location, const char *message, ...);
-void sema_error_range3(SourceSpan location, const char *message, ...);
+void sema_error_range3(SourceSpan span, const char *message, ...);
 
 void sema_verror_range(SourceLocation *location, const char *message, va_list args);
 void sema_error(Context *context, const char *message, ...);
@@ -1361,7 +1348,7 @@ static inline SourceSpan source_span_from_token_id(TokenId id)
 }
 
 
-#define RANGE_EXTEND_PREV(x) ((x)->span.end_loc.index = context->tok.id.index - 1)
+#define RANGE_EXTEND_PREV(x) ((x)->span.end_loc = context->prev_tok)
 
 void stable_init(STable *table, uint32_t initial_size);
 void *stable_set(STable *table, const char *key, void *value);
@@ -1390,6 +1377,7 @@ Type *type_get_vararray(Type *arr_type);
 Type *type_get_meta(Type *meta_type);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_array(Type *arr_type, uint64_t len);
+bool type_is_user_defined(Type *type);
 Type *type_signed_int_by_bitsize(unsigned bytesize);
 Type *type_unsigned_int_by_bitsize(unsigned bytesize);
 bool type_is_subtype(Type *type, Type *possible_subtype);
@@ -1423,6 +1411,7 @@ static inline bool type_is_structlike(Type *type)
 	{
 		case TYPE_UNION:
 		case TYPE_STRUCT:
+		case TYPE_ERRTYPE:
 			return true;
 		default:
 			return false;
@@ -1515,6 +1504,7 @@ static inline Type *type_new(TypeKind kind, const char *name)
 	Type *type = malloc_arena(sizeof(Type));
 	memset(type, 0, sizeof(Type));
 	type->type_kind = kind;
+	assert(name);
 	type->name = name;
 	compiler_add_type(type);
 	return type;
@@ -1546,9 +1536,6 @@ TokenType postunaryop_to_token(PostUnaryOp type);
 BinaryOp binaryop_from_token(TokenType type);
 BinaryOp binaryop_assign_base_op(BinaryOp assign_binary_op);
 TokenType binaryop_to_token(BinaryOp type);
-
-
-Decl *struct_find_name(Decl *decl, const char* name);
 
 
 static inline const char* struct_union_name_from_token(TokenType type)

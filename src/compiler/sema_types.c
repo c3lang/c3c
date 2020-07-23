@@ -104,10 +104,6 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_ERR:
 		case DECL_ENUM:
 		case DECL_TYPEDEF:
-			if (decl->resolve_status == RESOLVE_NOT_DONE)
-			{
-				if (!sema_analyse_decl(context, decl)) return decl_poison(decl);
-			}
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			DEBUG_LOG("Resolved %s.", TOKSTR(type_info->unresolved.name_loc));
@@ -128,7 +124,6 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_CT_IF:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
-		case DECL_MEMBER:
 			UNREACHABLE
 	}
 	UNREACHABLE

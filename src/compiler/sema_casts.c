@@ -306,7 +306,7 @@ bool ixxxi(Context *context, Expr *left, Type *canonical, Type *type, CastType c
 	if (cast_type != CAST_TYPE_EXPLICIT && !bigint_fits_in_bits(&left->const_expr.i, bitsize, is_signed))
 	{
 		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		SEMA_ERROR(left, "'%s' does not fit into '%s'", expr_const_to_error_string(&left->const_expr), canonical->name);
+		SEMA_ERROR(left, "'%s' does not fit in type '%s'", expr_const_to_error_string(&left->const_expr), canonical->name);
 		return false;
 	}
 	BigInt temp;
@@ -571,7 +571,7 @@ bool enxi(Context *context, Expr* left, Type *from, Type *canonical, Type *type,
 	if (cast_type != CAST_TYPE_EXPLICIT && type_find_max_type(enum_type_canonical, canonical) != canonical)
 	{
 		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		SEMA_ERROR(left, "Cannot implictly convert '%s' with underlying type of '%s' to '%s',"
+		SEMA_ERROR(left, "Cannot implicitly convert '%s' with underlying type of '%s' to '%s',"
 		                 " use an explicit cast if this is what you want.", type_to_error_string(from),
 		               type_to_error_string(enum_type_canonical), type_to_error_string(canonical));
 		return false;
@@ -711,7 +711,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_ERRTYPE:
 		case TYPE_ENUM:
 		case TYPE_FUNC:
-		case TYPE_MEMBER:
 		case TYPE_ARRAY:
 		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
@@ -751,7 +750,6 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_TYPEID:
-		case TYPE_MEMBER:
 			break;
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.
