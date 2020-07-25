@@ -1000,6 +1000,7 @@ typedef struct _Context
 	Decl **functions;
 	Decl **methods;
 	Decl **vars;
+	Decl **incr_array;
 	Decl **ct_ifs;
 	Ast **defers;
 	Decl *active_function_for_analysis;

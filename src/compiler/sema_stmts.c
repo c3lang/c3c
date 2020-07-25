@@ -319,6 +319,7 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 {
 	Decl *decl = statement->declare_stmt;
 	assert(decl->decl_kind == DECL_VAR);
+	if (!sema_add_local(context, decl)) return decl_poison(decl);
 	if (!sema_resolve_type_info(context, decl->var.type_info)) return decl_poison(decl);
 	decl->type = decl->var.type_info->type;
 	if (decl->var.init_expr)
@@ -330,7 +331,6 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 			return false;
 		}
 	}
-	if (!sema_add_local(context, decl)) return decl_poison(decl);
 	return true;
 }
 

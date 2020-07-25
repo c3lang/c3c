@@ -83,7 +83,7 @@ func void test16()
     uint b = 2;
     ushort c = 3;
     a = a + c;
-    int c = a + b;      // #error: Cannot add 'int' to 'uint'
+    int g = a + b;      // #error: Cannot add 'int' to 'uint'
 }
 
 func void test17()

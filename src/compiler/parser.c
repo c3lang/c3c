@@ -653,9 +653,9 @@ static inline Decl *parse_incremental_array(Context *context)
 		SEMA_TOKEN_ERROR(name, "Did you miss a declaration before the variable name?");
 		return poisoned_decl;
 	}
-	CONSUME_OR(TOKEN_PLUS_ASSIGN, poisoned_decl);
 	Decl *decl = decl_new(DECL_ARRAY_VALUE, name.id, VISIBLE_LOCAL);
 	decl->incr_array_decl = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
+	TRY_CONSUME_EOS_OR(poisoned_decl);
 	return decl;
 }
 
