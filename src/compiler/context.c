@@ -39,7 +39,7 @@ bool context_set_module_from_filename(Context *context)
     int len = filename_to_module(context->file->full_path, buffer);
     if (!len)
     {
-        sema_error(context, "The filename '%s' could not be converted to a valid module name, try using an explicit module name.");
+        sema_error(context, "The filename '%s' could not be converted to a valid module name, try using an explicit module name.", context->file->full_path);
         return false;
     }
 
@@ -48,7 +48,7 @@ bool context_set_module_from_filename(Context *context)
     if (type != TOKEN_IDENT)
     {
 	    sema_error(context, "Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
-	                        "try using an explicit module name.");
+	                        "try using an explicit module name.", context->file->full_path);
         return false;
     }
     Path *path = CALLOCS(Path);
@@ -165,6 +165,7 @@ bool context_add_import(Context *context, Path *path, Token token, Token alias)
 	}
 
 	Decl *import = decl_calloc();
+	import->span = path->span;
 	import->decl_kind = DECL_IMPORT;
 	import->visibility = VISIBLE_LOCAL;
 	import->import.path = path;

@@ -1753,19 +1753,18 @@ static inline bool parse_optional_module_params(Context *context, TokenId **toke
  * 		: MODULE path ';'
  * 		| MODULE path '(' module_params ')' ';'
  */
-static inline void parse_module(Context *context)
+static inline bool parse_module(Context *context)
 {
 
 	if (!try_consume(context, TOKEN_MODULE))
 	{
-		context_set_module_from_filename(context);
-		return;
+		return context_set_module_from_filename(context);
 	}
 
 	if (!TOKEN_IS(TOKEN_IDENT))
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Module statement should be followed by the name of the module to import.");
-		return;
+		return false;
 	}
 
 	Path *path = parse_module_path(context);
@@ -1779,7 +1778,7 @@ static inline void parse_module(Context *context)
 		path->span = INVALID_RANGE;
 		context_set_module(context, path, NULL);
 		recover_top_level(context);
-		return;
+		return false;
 	}
 
 	// Is this a generic module?
@@ -1788,10 +1787,11 @@ static inline void parse_module(Context *context)
 	{
 		context_set_module(context, path, generic_parameters);
 		recover_top_level(context);
-		return;
+		return true;
 	}
 	context_set_module(context, path, generic_parameters);
-	TRY_CONSUME_EOS_OR();
+	TRY_CONSUME_EOS_OR(false);
+	return true;
 }
 
 /**
@@ -1906,7 +1906,7 @@ static inline void parse_current(Context *context)
 {
 	// Prime everything
 	advance(context); advance(context);
-	parse_module(context);
+	if (!parse_module(context)) return;
 	parse_imports(context);
 	while (!TOKEN_IS(TOKEN_EOF))
 	{

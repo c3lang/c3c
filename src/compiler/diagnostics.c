@@ -189,6 +189,7 @@ void sema_error_at_prev_end(Token token, const char *message, ...)
 
 void sema_error(Context *context, const char *message, ...)
 {
+	diagnostics.errors++;
 	File *file = lexer_current_file(&context->lexer);
 	va_list list;
 	va_start(list, message);
@@ -196,6 +197,8 @@ void sema_error(Context *context, const char *message, ...)
 	evprintf(message, list);
 	eprintf("\n");
 	va_end(list);
+
+
 }
 
 
