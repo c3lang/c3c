@@ -35,13 +35,20 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 			type->type = type_get_subarray(type->array.base->type);
 			break;;
 		case TYPE_INFO_ARRAY:
-			if (!sema_analyse_expr_of_required_type(context,
-			                                        type_usize,
-			                                        type->array.len,
-			                                        false)) return type_info_poison(type);
+			if (!sema_analyse_expr(context, type_usize, type->array.len)) return type_info_poison(type);
 			if (type->array.len->expr_kind != EXPR_CONST)
 			{
 				SEMA_ERROR(type->array.len, "Expected a constant value as array size.");
+				return type_info_poison(type);
+			}
+			if (!type_is_integer(type->array.len->type->canonical))
+			{
+				SEMA_ERROR(type->array.len, "Expected an integer size.");
+				return type_info_poison(type);
+			}
+			if (bigint_cmp_zero(&type->array.len->const_expr.i) == CMP_LT)
+			{
+				SEMA_ERROR(type->array.len, "An array may not have a negative size.");
 				return type_info_poison(type);
 			}
 			len = bigint_as_unsigned(&type->array.len->const_expr.i);

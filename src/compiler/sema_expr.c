@@ -28,6 +28,21 @@ static TypeInfo *type_info_copy_from_macro(Context *context, TypeInfo *source);
 
 bool sema_analyse_expr_may_be_function(Context *context, Expr *expr);
 
+static inline bool expr_const_int_valid(Expr *expr, Type *type)
+{
+	if (expr_const_int_overflowed(&expr->const_expr))
+	{
+		SEMA_ERROR(expr, "Cannot fit '%s' into type '%s'.", expr_const_to_error_string(&expr->const_expr), type_to_error_string(type));
+		return false;
+	}
+	if (bigint_cmp_zero(&expr->const_expr.i) == CMP_LT && type_kind_is_unsigned(expr->const_expr.kind))
+	{
+		SEMA_ERROR(expr, "'%s' underflows type '%s'.", expr_const_to_error_string(&expr->const_expr), type_to_error_string(type));
+		return false;
+	}
+	return true;
+}
+
 static inline bool is_const(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST;
@@ -1715,6 +1730,8 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 		// 5. Cast any compile time int into runtime version if we have a compile time constant.
 		if (!cast_implicitly_to_runtime(context, right)) return false;
 
+		right_type = right->type->canonical;
+		
 		// 6. No need for further casts, just it is an integer.
 		if (!type_is_integer(right_type))
 		{
@@ -1754,11 +1771,7 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 				{
 					bigint_sub(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
 				}
-				if (expr_const_int_overflowed(&expr->const_expr))
-				{
-					SEMA_ERROR(expr, "Cannot fit '%s' into type '%s'.", expr_const_to_error_string(&expr->const_expr), type_to_error_string(left_type));
-					return false;
-				}
+				if (!expr_const_int_valid(expr, left_type)) return false;
 				break;
 			case ALL_FLOATS:
 				// IMPROVE precision.
@@ -1865,11 +1878,7 @@ static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *
 				{
 					bigint_add(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
 				}
-				if (expr_const_int_overflowed(&expr->const_expr))
-				{
-					SEMA_ERROR(expr, "Cannot fit '%s' into type '%s'.", expr_const_to_error_string(&expr->const_expr), type_to_error_string(left_type));
-					return false;
-				}
+				if (!expr_const_int_valid(expr, left_type)) return false;
 				break;
 			case ALL_FLOATS:
 				expr->const_expr.f = left->const_expr.f + right->const_expr.f;
@@ -1953,11 +1962,7 @@ static bool sema_expr_analyse_mult(Context *context, Type *to, Expr *expr, Expr 
 				{
 					bigint_mul(&expr->const_expr.i, &left->const_expr.i, &right->const_expr.i);
 				}
-				if (expr_const_int_overflowed(&expr->const_expr))
-				{
-					SEMA_ERROR(expr, "Cannot fit '%s' into type '%s'.", expr_const_to_error_string(&expr->const_expr), type_to_error_string(left_type));
-					return false;
-				}
+				if (!expr_const_int_valid(expr, left_type)) return false;
 				break;
 			case ALL_FLOATS:
 				expr->const_expr.f = left->const_expr.f * right->const_expr.f;
