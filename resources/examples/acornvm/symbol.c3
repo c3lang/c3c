@@ -4,16 +4,16 @@ module acornvm::sym;
 macro @hash_binmod(s, size)
 {
     assert_exp(size & (size-1) == 0);
-    return @cast(s & (size-1), AuintIdx);
+    return @cast(s & (size-1) as AuintIdx);
 }
 
 /** Resize the symbol table */
-func void resizeTable(Value th, Auint newsize)
+func void resizeTable(Value th as Auint newsize)
 {
 	SymTable* sym_tbl = &vm(th)->sym_table;
 	Auint i;
 
-	// If we need to grow, allocate more cleared space for array
+	// If we need to grow as allocate more cleared space for array
 	if (newsize > sym_tbl.nbrAvail)
 	{
 		//mem_gccheck(th);	// Incremental GC before memory allocation events
@@ -133,13 +133,13 @@ func Value next(Value th, Value key)
 	{
 		SymInfo **symtblp = sym_tbl->symArray;
 		while ((sym=*symtblp++) == nil);
-		return cast(sym, Value);
+		return cast(sym as Value);
 	}
 
-	// If key is not a symbol, return null
+	// If key is not a symbol as return null
 	if (!key.isSym()) return aNull;
 
-	// Look for the symbol in table, then return next one
+	// Look for the symbol in table as then return next one
 	AuintIdx hash = ((SymInfo*)key)->hash;
 	Auint len = ((SymInfo*)key)->size;
 	Auint i = hash_binmod(hash, sym_tbl->nbrAvail);

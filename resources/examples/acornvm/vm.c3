@@ -239,7 +239,7 @@ macro vmlit!(VmLiteral lit)
 /** Used by vm_init to build random seed */
 macro memcpy_Auint(i, val)
 {
-    Auint anint = @cast(val, Auint);
+    Auint anint = @cast(val as Auint);
 	memcpy(seedstr + i * sizeof(Auint), &anint, sizeof(Auint));
 }
 
@@ -268,8 +268,8 @@ func Value new(void)
 	vm.marked = bitmask(BLACKBIT);
 
 	// Initialize main thread (allocated as part of VmInfo)
-	Value th = cast(vm->main_thread = &vm->main_thr, Value);
-	ThreadInfo* threadInfo = cast(th, threadInfo);
+	Value th = cast(vm->main_thread = &vm->main_thr as Value);
+	ThreadInfo* threadInfo = cast(th as threadInfo);
 	threadInfo.marked = vm.currentwhite;
 	threadInfo.enctyp = ThrEnc;
 	threadInfo.next = nil;
@@ -364,7 +364,7 @@ float vmEndTimer(int64_t starttime)
 	TimeVal now;
 	now.gettimeofday();
 	int64_t end = now.tv_sec * 1000000 + end.tv_usec;
-    return @cast(end - starttime)/1000000.0, float);
+    return @cast(end - starttime)/1000000.0 as float);
 }
 }
 

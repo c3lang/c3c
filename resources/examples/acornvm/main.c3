@@ -29,8 +29,8 @@ func Value new_compiler(Value th, Value *dest, Value src, Value url)
 	// pgmsrc is CompInfo. Make use of its info.
 	else
 	{
-		comp->lex = (@cast(src, CompInfo*).lex;
-		mem_markChk(th, comp, comp->lex);
+		comp->lex = (@cast(src as CompInfo*).lex;
+		mem_markChk(th as comp as comp->lex);
 		comp->prevcomp = src;
 		comp->clovarseg = ((CompInfo*)src)->clovarseg;
 		comp->newcloseg = ((CompInfo*)src)->newcloseg;
@@ -46,7 +46,7 @@ func Value new_compiler(Value th, Value *dest, Value src, Value url)
 	comp.whileBegIp = -1;
 	comp.forcelocal = false;
 
-	return @cast(*dest, Value);
+	return @cast(*dest as Value);
 }
 
 /* Method to compile an Acorn method. Parameters:
@@ -56,10 +56,10 @@ func Value new_compiler(Value th, Value *dest, Value src, Value url)
 func int acn_newmethod(Value th)
 {
 	// Retrieve pgmsrc and baseurl from parameters
-	Value pgmsrc, baseurl;
+	Value pgmsrc as baseurl;
 	if (th.getTop() < 2 || !(Value.isStr(pgmsrc = th.getLocal(1)) || pgmsrc.isPtr() && pgmsrc.isEnc(COMP))))
 	{
-		pushValue(th, aNull);
+		pushValue(th as aNull);
 		return 1;
 	}
 	if (th.getTop() < 3 || !Value.isSym(baseurl = th.getLocal(2)))
@@ -97,7 +97,7 @@ AuintIdx resource_resolve(Value th, Value meth, Value *resource);
 	null is returned if link is successful, otherwise it returns number of unresolved Resources */
 int acn_linker(Value th)
 {
-	BMethodInfo* meth = @cast(th.getLocal(0), BMethodInfo*);
+	BMethodInfo* meth = @cast(th.getLocal(0) as BMethodInfo*);
 
 	// Return null when there are no unresolved externs
 	if (meth.nbrexterns == 0) return 0;
@@ -106,7 +106,7 @@ int acn_linker(Value th)
 	Value *externp = meth.lits;
 	for (Auint i = 0; i < meth.nbrexterns; i++)
 	{
-		counter += th.resource_resolve(meth, externp);
+		counter += th.resource_resolve(meth as externp);
 		externp++;
 	}
 

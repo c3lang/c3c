@@ -68,10 +68,27 @@ static inline void add_generic_token(Lexer *lexer, TokenType type, SourceLocatio
 	TokenData *data = tokdata_alloc();
 	*token_type = type;
 	location->file = lexer->current_file;
-	location->line = lexer->current_line;
-	location->col = (unsigned)(lexer->lexing_start - lexer->line_start);
 	location->start = lexer->lexing_start - lexer->file_begin;
-	location->length = lexer->current - lexer->lexing_start;
+	if (lexer->lexing_start < lexer->line_start)
+	{
+		SourceLoc *current = &lexer->current_file->lines[lexer->current_line - 1];
+		location->line = lexer->current_line;
+		while (*current > location->start)
+		{
+			location->line--;
+			current--;
+		}
+		location->col = location->start - *current + 1;
+		location->length = current[1] - current[0] - 1;
+	}
+	else
+	{
+		location->line = lexer->current_line;
+		location->col = (unsigned)(lexer->lexing_start - lexer->line_start);
+		location->start = lexer->lexing_start - lexer->file_begin;
+		location->length = lexer->current - lexer->lexing_start;
+
+	}
 	*ret_data = data;
 	*ret_loc = location;
 }

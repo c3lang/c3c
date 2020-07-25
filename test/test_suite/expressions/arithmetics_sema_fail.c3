@@ -115,12 +115,6 @@ func void test20()
 
 func void check(char x) {}
 
-func void test21()
-{
-    int a = 0;
-    int b = 2;
-    a++ = b++;      // #error: Expression is not assignable
-}
 
 func byte test22()
 {

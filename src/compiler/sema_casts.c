@@ -490,7 +490,7 @@ bool ussi(Context *context, Expr* left, Type *from, Type *canonical, Type *type,
 		left->const_expr.i = value->const_expr.i;
 		// TODO narrowing
 	}
-	insert_cast(left, CAST_ENUMSI, canonical);
+	insert_cast(left, CAST_ENUMLOW, canonical);
 	return true;
 }
 
@@ -525,11 +525,11 @@ bool xipt(Context *context, Expr *left, Type *from, Type *canonical, Type *type,
 	}
 	if (type_size(from) < type_size(type_voidptr))
 	{
-		SEMA_ERROR(left, "Cannot cast to '%s' from the smaller integer type '%s'.", type_to_error_string(type), type_to_error_string(from));
-		return false;
+		// Widen.
+		if (!cast(context, left, type_usize, cast_type)) return false;
 	}
 	// If we have a *larger* int type - narrow it.
-	if (cast(context, left, type_usize, cast_type)) return false;
+	if (!cast(context, left, type_usize, cast_type)) return false;
 	insert_cast(left, CAST_XIPTR, canonical);
 	return true;
 }
@@ -593,6 +593,34 @@ bool enxi(Context *context, Expr* left, Type *from, Type *canonical, Type *type,
 	}
 	// 3. Dispatch to the right cast:
 	return xixi(context, left, enum_type_canonical, canonical, type, cast_type);
+}
+
+bool enfp(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+{
+	REQUIRE_EXPLICIT_CAST(cast_type);
+	Type *enum_type = from->decl->enums.type_info->type;
+	Type *enum_type_canonical = enum_type->canonical;
+	if (type_is_unsigned_integer(enum_type_canonical))
+	{
+		return uifp(context, left, enum_type_canonical, type);
+	}
+	return sifp(context, left, enum_type_canonical, type);
+}
+
+bool enbo(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+{
+	REQUIRE_EXPLICIT_CAST(cast_type);
+	Type *enum_type = from->decl->enums.type_info->type;
+	Type *enum_type_canonical = enum_type->canonical;
+	return xibo(context, left, enum_type_canonical, type, cast_type);
+}
+
+bool enpt(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+{
+	REQUIRE_EXPLICIT_CAST(cast_type);
+	Type *enum_type = from->decl->enums.type_info->type;
+	Type *enum_type_canonical = enum_type->canonical;
+	return xipt(context, left, enum_type_canonical, canonical, type, cast_type);
 }
 
 bool vava(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
@@ -819,6 +847,9 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 			break;
 		case TYPE_ENUM:
 			if (type_is_integer(canonical)) return enxi(context, expr, from_type, canonical, to_type, cast_type);
+			if (type_is_float(canonical)) return enfp(context, expr, from_type, canonical, to_type, cast_type);
+			if (canonical == type_bool) return enbo(context, expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_POINTER) return enpt(context, expr, from_type, canonical, to_type, cast_type);
 			break;
 		case TYPE_ERRTYPE:
 			if (canonical->type_kind == TYPE_ERR_UNION) return ereu(context, expr, canonical, to_type, cast_type);

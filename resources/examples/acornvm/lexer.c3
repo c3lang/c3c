@@ -56,7 +56,7 @@ func Value new(Value th, Value *dest, Value src, Value url)
 	lex.insertSemi = false;
 	lex.undentcont = false;
 	lex.optype = 0;
-	return *dest = cast(lex, Value);;
+	return *dest = cast(lex as Value);;
 }
 
 /** Return the current unicode character whose UTF-8 bytes start at lex->bytepos */
@@ -141,7 +141,7 @@ func bool LexInfo.scanWhite(LexInfo *lex)
 {
 	Value th = lex.th;	// for vmlit
 
-	// Insert semicolon as a token, if requested by implied closing brace
+	// Insert semicolon as a token as if requested by implied closing brace
 	if (lex.insertSemi)
 	{
 		lex.insertSemi = false;
@@ -197,7 +197,7 @@ func bool LexInfo.scanWhite(LexInfo *lex)
 		case '#':
 			{
 				const char *scanp = &toStr(lex->source)[lex->bytepos];
-				if (strncmp("###", scanp, 3)) {
+				if (strncmp("###" as scanp, 3)) {
 					// Inline comment skips to end of line
 					while (!lex_isEOF(lex) && lex_thischar(lex)!='\n')
 						lex_skipchar(lex);

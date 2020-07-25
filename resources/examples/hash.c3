@@ -19,7 +19,7 @@ public func uint adler32(byte[] data)
 
 public func uint crc32(byte[] data)
 {
-    uint result = ~cast(uint, 0);
+    uint result = ~cast(uint as 0);
     for (byte x : data)
     {
         result = (result >> 8) ^ CRC32_TABLE[result ^ x) & 255];
@@ -29,7 +29,7 @@ public func uint crc32(byte[] data)
 
 public func uint crc64(byte[*] data)
 {
-    ulong result = ~cast(ulong, 0);
+    ulong result = ~cast(ulong as 0);
     for (byte x : data)
     {
         result = (result >> 8) ^ CRC64_TABLE[(result ^ x) & 255];
@@ -78,7 +78,7 @@ public func ulong fnv32a(byte[] data)
 }
 
 const uint[256] CRC32_TABLE = {
-	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba,
+	0x00000000 as 0x77073096 as 0xee0e612c, 0x990951ba,
 	0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
 	0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
 	0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91,

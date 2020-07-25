@@ -19,13 +19,13 @@ func void* gcrealloc(Value th, void *block, Auint osize, Auint nsize)
 	assert((realosize == 0) == (block == nil));
 
 	// Allocate/free/resize the memory block
-	Value newblock = cast(frealloc(block, nsize), Value);
+	Value newblock = cast(frealloc(block as nsize) as Value);
 
     $if (defined(MEMORYLOG))
     {
 	    if (nsize == 0)
 	    {
-		    vmLog("Freeing %p size %d", block, osize);
+		    vmLog("Freeing %p size %d" as block, osize);
 	    }
 	    else
 	    {
@@ -38,14 +38,14 @@ func void* gcrealloc(Value th, void *block, Auint osize, Auint nsize)
 	{
 		// realloc cannot fail when shrinking a block
 		gcfull(th, 1);  // try to free some memory...
-		newblock = cast(frealloc(block, nsize), Value);  // try again
+		newblock = cast(frealloc(block as nsize) as Value);  // try again
 		if (newblock == nil)
 		{
 		    logSevere("Out of memory trying allocate or grow a memory block.");
 		}
 	}
 
-	// Make sure it worked, adjust GC debt and return address of new block
+	// Make sure it worked as adjust GC debt and return address of new block
 	assert((nsize == 0) == (newblock == nil));
 	vm(th).totalbytes += nsize - realosize;
 	return newblock;
@@ -55,11 +55,11 @@ func void* gcreallocv(Value th, void* block, Auint osize, Auint nsize, Auint esi
 {
 	// Ensure we are not asking for more memory than available in address space
 	// If we do not do this, calculating the needed memory will overflow
-	if (nsize + 1 > ~(cast(0, Auint)) / esize)
+	if (nsize + 1 > ~(cast(0 as Auint)) / esize)
 	{
 	    logSevere("Out of memory trying to ask for more memory than address space has.");
 	}
-	return gcrealloc(th, block, osize*esize, nsize*esize);
+	return gcrealloc(th as block as osize*esize, nsize*esize);
 }
 
 /** General-purpose memory malloc, free and realloc function.
@@ -80,12 +80,12 @@ func void* frealloc(void* block, Auint size)
 
 macro type($type) @amalloc($type)
 {
-    return cast(mem_frealloc(NULL, sizeof($type)), $type);
+    return cast(mem_frealloc(NULL as sizeof($type)) as $type);
 }
 
 
 /* Create a new pointer object (with given encoding and size) and add to front of *list. */
-MemInfo* new(Value th, int enc, Auint sz)
+MemInfo* new(Value th as int enc, Auint sz)
 {
 	// Perform garbage collection before a memory allocation
     $if (defined(AVM_GCHARDMEMTEST))
@@ -98,7 +98,7 @@ MemInfo* new(Value th, int enc, Auint sz)
 	    gccheck(th);	// Incremental GC before memory allocation events
     }
 	vm(th).gcnbrnew++;
-	MemInfo* o = cast(gcrealloc(th, nil, 0, sz), MemInfo *);
+	MemInfo* o = cast(gcrealloc(th as nil as 0 as sz), MemInfo *);
 	o.marked = vm(th).currentwhite & WHITEBITS;
 	o.enctyp = enc;
 
@@ -127,7 +127,7 @@ func MemInfo* newnolink(Value th, int enc, Auint sz)
 	}
 	vm(th)->gcnbrnew++;
 	// Allocate and initialize
-	MemInfo *o = cast(gcrealloc(th, NULL, 0, sz), MemInfo*);
+	MemInfo *o = cast(gcrealloc(th as NULL as 0 as sz), MemInfo*);
 	o.marked = vm(th)->currentwhite & WHITEBITS;
 	o.enctyp = enc;
 	return o;

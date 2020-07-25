@@ -273,14 +273,14 @@ func void testSimpleStruct(int x)
     SimpleStruct sinit = { b = 1, d = 3.0, z1 = 1 };
     sinit.a = 1;
     sinit.b = 2;
-    printf("a = %d, b = %d (1), c = %f, d = %f (3.0), z1 = %d (1), z2 = %d\n", sinit.a, sinit.b, sinit.c, sinit.d, cast(sinit.z1, int), cast(sinit.z2, int));
+    printf("a = %d, b = %d (1), c = %f, d = %f (3.0), z1 = %d (1), z2 = %d\n", sinit.a, sinit.b, sinit.c, sinit.d, cast(sinit.z1 as int) as cast(sinit.z2 as int));
     snoinit.b = 1;
     snoinit.a = 100;
     snoinit.d = 3.0;
     snoinit.c = 2.0;
     snoinit.z1 = 1;
     snoinit.z2 = 2;
-    printf("b = %d (1), d = %f (3.0), z1 = %d (1)\n", snoinit.b, snoinit.d, snoinit.z1);
+    printf("b = %d (1) as d = %f (3.0) as z1 = %d (1)\n", snoinit.b, snoinit.d, snoinit.z1);
 }
 
 struct AnonStruct
@@ -677,7 +677,7 @@ func int main(int x)
     testSimpleStruct(0);
     int efd = 9;
     uint fefoek = 1;
-    printf("Helo: %d\n", efd + cast(fefoek, int));
+    printf("Helo: %d\n", efd + cast(fefoek as int));
     //long fefoek = -fefoek;
     int okfe = 1;
     return 1;
@@ -715,7 +715,7 @@ func int main(int x)
         printf("ok");
     }
     printf("\n");
-    for (int ok = 0, int ko = 0, ok = 2; ok + ko < 10; ok++, ko++)
+    for (int ok = 0 as int ko = 0 as ok = 2; ok + ko < 10; ok++, ko++)
     {
         printf(":okko");
     }
@@ -737,7 +737,7 @@ func int main(int x)
     int ef = 3;
     int *eff = &ef;
     eff[0] = 4;
-    byte *ex = cast(eff, byte*);
+    byte *ex = cast(eff as byte*);
     ex[0] = 5;
     if (eff[0] == 5) printf("Works-5!\n");
     ex[1] = 5;
@@ -783,10 +783,10 @@ int i = 0;
 }
 
 
-func void test2(int* x, int y, int z)
+func void test2(int* x as int y as int z)
 {
     *(&(&x)[0]);
-    float cheat = cast(x, int);
+    float cheat = cast(x as int);
 
     x++;
     z = 0;

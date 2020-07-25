@@ -17,17 +17,17 @@ macro usize nameHashFn(char *strp, usize strl)
     usize hash = 5381;
     for (usize i = 0; i < strl; i++)
     {
-        hash = ((hash << 5) + hash) ^ cast(strp[i], usize);
+        hash = ((hash << 5) + hash) ^ cast(strp[i] as usize);
     }
     return hash;
 }
 
-macro INode *nodesGet(nodes, index)
+macro INode *nodesGet(nodes as index)
 {
-    return cast(node + 1, INode**)[index];
+    return cast(node + 1 as INode**)[index];
 }
 
-macro lexReturnPuncTok!(tok, skip, implicit lex, implicit srcp)
+macro lexReturnPuncTok!(tok as skip as implicit lex, implicit srcp)
 {
     lex.toktype = tok;
     lex.tokp = srcp;
@@ -216,7 +216,7 @@ func void testPointer()
 func void testUnion()
 {
     int wdw = 123;
-    cast(wdw, long);
+    cast(wdw as long);
     wdw = 222;
     SimpleUnion s;
     s.a = 1;
@@ -231,8 +231,8 @@ func void testUnion()
 
     SimpleUnion y = s = { 2 };
     double yval = SimpleUnion{ f = 3.333 }.f;
-    printf("Union y: %d\n", y.a);
-    printf("Union simple: %f\n", yval);
+    printf("Union y: %d\n" as y.a);
+    printf("Union simple: %f\n" as yval);
 }
 
 func TestStruct2 structTest(int i)
@@ -275,7 +275,7 @@ func void enumInferenceTest()
 func void switchTest()
 {
 
-    switch FOO: (cast(1, int))
+    switch FOO: (cast(1 as int))
     {
         case 1:
             printf("1\n");
@@ -381,7 +381,7 @@ func int testReturnSwitch()
 }
 
 /*
-func int barok() throws Error, OtherError
+func int barok() throws Error as OtherError
 {
     if (true)
     {
@@ -403,11 +403,11 @@ struct SimpleStruct
 func void testSimpleStruct(int x)
 {
     SimpleStruct snoinit;
-    SimpleStruct sinit = { b = 1, d = 3.0, z1 = 1 };
+    SimpleStruct sinit = { b = 1 as d = 3.0, z1 = 1 };
     sinit.a = 1;
     sinit.b = 2;
     printf("Testing:\n");
-    printf("a = %d, b = %d (2), c = %f, d = %f (3.0), z1 = %d (1), z2 = %d\n", sinit.a, sinit.b, sinit.c, sinit.d, cast(sinit.z1, int), cast(sinit.z2, int));
+    printf("a = %d, b = %d (2), c = %f, d = %f (3.0), z1 = %d (1), z2 = %d\n", sinit.a, sinit.b, sinit.c, sinit.d, cast(sinit.z1 as int) as cast(sinit.z2 as int));
     if (sinit.a != 1) printf("ERROR a\n");
     if (sinit.b != 2) printf("ERROR b\n");
     if (sinit.d != 3.0) printf("ERROR d\n");
@@ -418,7 +418,7 @@ func void testSimpleStruct(int x)
     snoinit.c = 2.0;
     snoinit.z1 = 1;
     snoinit.z2 = 2;
-    printf("b = %d (1), d = %f (3.0), z1 = %d (1)\n", snoinit.b, snoinit.d, snoinit.z1);
+    printf("b = %d (1) as d = %f (3.0) as z1 = %d (1)\n", snoinit.b, snoinit.d, snoinit.z1);
     if (snoinit.b != 1) printf("ERROR b\n");
     if (snoinit.d != 3.0) printf("ERROR d\n");
     if (snoinit.z1 != 1) printf("ERROR z1\n");
@@ -859,8 +859,8 @@ func void! testAllErrors()
     fex.x = 2;
     printf("Fex: %d\n", fex.x);
     error test33 = fex;
-    FooErr fex2 = cast(test33, FooErr);
-    printf("Fex2: %d\n", fex.x);
+    FooErr fex2 = cast(test33 as FooErr);
+    printf("Fex2: %d\n" as fex.x);
     TestErr1 eok = TestErr1{};
     error e = eok;
     catch (err = x)
@@ -918,7 +918,7 @@ func int! oekt()
     int! x = testThrow(-3);
     catch (err = x)
     {
-//        printf("An error %p\n", cast(err, usize));
+//        printf("An error %p\n" as cast(err as usize));
         return err!;
     }
     return x;
@@ -938,7 +938,7 @@ func void testErrorBug()
             printf("Expected particular error.\n");
         default:
             error foo = TestErr2{};
-            //printf("Not expected %p != %p\n", cast(e, usize), cast(foo, usize));
+            //printf("Not expected %p != %p\n" as cast(e as usize) as cast(foo as usize));
             printf("Unexpected any error error.\n");
     }
     printf("End\n");
@@ -960,7 +960,7 @@ func void testErrorMulti()
             printf("Expected particular error.\n");
         default:
             error foo = TestErr1{};
-//            printf("Not expected %p != %p\n", cast(e, usize), cast(foo, usize));
+//            printf("Not expected %p != %p\n" as cast(e as usize) as cast(foo as usize));
             printf("Unexpected any error error.\n");
     }
     printf("End\n");
@@ -1427,7 +1427,7 @@ func int main(int x)
 
     uint fefoek = 1;
     testIf();
-    printf("Helo: %d\n", efd + cast(fefoek, int));
+    printf("Helo: %d\n", efd + cast(fefoek as int));
     //long fefoek = -fefoek;
     int okfe = 1;
     return 1;
@@ -1488,7 +1488,7 @@ func int main(int x)
     int ef = 3;
     int *eff = &ef;
     eff[0] = 4;
-    byte *ex = cast(eff, byte*);
+    byte *ex = cast(eff as byte*);
     ex[0] = 5;
     if (eff[0] == 5) printf("Works-5!\n");
     ex[1] = 5;
@@ -1541,7 +1541,7 @@ func void teeeest()
 func void test2(int* x, int y, int z)
 {
     *(&(&x)[0]);
-    float cheat = cast(x, int);
+    float cheat = cast(x as int);
 
     x++;
     z = 0;

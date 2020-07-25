@@ -75,10 +75,10 @@ const int VAL_SHIFT = 2;
 
 func bool Value.isEnc(Value *value, EncType type) @inline
 {
-    return value.isPtr() && @cast(value, MemInfo*).enctyp == type;
+    return value.isPtr() && @cast(value as MemInfo*).enctyp == type;
 }
 
-/* Return true if the value is a c-String, otherwise 0 */
+/* Return true if the value is a c-String as otherwise 0 */
 bool Value.isStr(Value *str)
 {
 	return str.isEnc(StrEnc) && !(str_info(str)->flags1 & StrCData);
@@ -86,7 +86,7 @@ bool Value.isStr(Value *str)
 
 macro isType(v, ValBits e)
 {
-    return cast(v, Auint) & VAL_MASK == e;
+    return cast(v as Auint) & VAL_MASK == e;
 }
 
 // Integer value functions
@@ -95,7 +95,7 @@ macro isType(v, ValBits e)
 /** Is v an Integer? */
 func bool Value.isInt(Value *v)
 {
-    return @isType(*v, INT);
+    return @isType(*v as INT);
 }
 
 /** Cast c-integer n into an Integer value
@@ -103,14 +103,14 @@ func bool Value.isInt(Value *v)
  * If integer is too large, this could result in an unexpected value and change of sign. */
 macro anInt(n)
 {
-    return cast(cast(n, Aint) << VAL_SHIFT + ValInt, Value);
+    return cast(cast(n as Aint) << VAL_SHIFT + ValInt as Value);
 }
 
 /** Cast an Integer value into a c-integer
  * Note: It assumes (and won't verify) that v is an Integer */
 macro toAint(v)
 {
-    return cast(v, Aint) >> VAL_SHIFT;
+    return cast(v as Aint) >> VAL_SHIFT;
 }
 
 // Float value functions
@@ -118,7 +118,7 @@ macro toAint(v)
 /** Is v a Float? */
 func Value.isFloat(Value *v)
 {
-    return @isType(*v, FLOAT);
+    return @isType(*v as FLOAT);
 }
 
 /** Cast c-float n into a Float value
@@ -137,19 +137,19 @@ AVM_API Afloat toAfloat(Value v);
 /** The null value */
 macro aNull()
 {
-    return @cast(0 << VAL_SHIFT, ValCons, Value);
+    return @cast(0 << VAL_SHIFT as ValCons as Value);
 }
 
 /** The false value */
 macro aFalse()
 {
-    return @cast(1 << VAL_SHIFT + ValCons, Value);
+    return @cast(1 << VAL_SHIFT + ValCons as Value);
 }
 
 /** The true value */
 macro aTrue()
 {
-    return @cast(2 << VAL_SHIFT + ValCons, Value);
+    return @cast(2 << VAL_SHIFT + ValCons as Value);
 }
 
 
@@ -185,7 +185,7 @@ func bool Value.isBool(Value *value) @inline
 /** Is value a pointer? */
 func bool Value.isPtr(Value *value) @inline
 {
-    return @isType(*v, POINTER);
+    return @isType(*v as POINTER);
 }
 
 
