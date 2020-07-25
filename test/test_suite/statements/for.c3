@@ -1,4 +1,5 @@
-/*
+// #skip
+module for_test;
 
 public func int main()
 {
@@ -28,4 +29,3 @@ public func int test3()
     }
     return 0;
 }
-*/

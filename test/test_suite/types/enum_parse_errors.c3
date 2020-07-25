@@ -15,7 +15,6 @@ enum EnumWithErrorData2 : int (int, int bar) // #error: function parameter must 
 }
 
 
-
 enum EnumTestErrorType3 : int
 {
     A,

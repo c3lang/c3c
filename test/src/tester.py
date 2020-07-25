@@ -2,21 +2,26 @@
 import os, sys, shutil, subprocess
 
 TEST_DIR = '/tmp/c3test/'
+
 class Config:
     run_skipped = False
     cwd = "."
     numtests = 0
+    numsuccess = 0
+    numskipped = 0
 
 class File:
     def __init__(self, filepath):
         with open(filepath) as reader:
             self.content = reader.read().splitlines()
-        self.filename = filepath
+        self.filepath = filepath
+        self.filename = os.path.basename(filepath)
 
 
 
 class Issues:
     def __init__(self, conf, file, single):
+        self.conf = conf
         self.file = file
         self.single = single
         self.line = 0
@@ -30,10 +35,10 @@ class Issues:
         self.errors = {}
         self.warnings = {}
         if single:
-            self.current_file = conf.cwd + "/" + file.filename
+            self.current_file = conf.cwd + "/" + file.filepath
 
     def exit_error(self, message):
-        print('Error in file ' + self.file.filename + ': ' + message)
+        print('Error in file ' + self.file.filepath + ': ' + message)
         exit(-1)
 
     def set_failed(self):
@@ -41,7 +46,6 @@ class Issues:
         self.has_errors = True
 
     def check_line(self, type, file, line, message):
-        if file == 'test.c3': file = self.file.filename
         map = {}
         if type == 'Error':
             map = self.errors
@@ -92,13 +96,15 @@ class Issues:
             if "// #" in line:
                 self.parse_trailing_directive(line)
             self.line += 1
-        with open(TEST_DIR + 'test.c3', mode='w') as f:
+        target_file = TEST_DIR + self.file.filename
+        with open(target_file, mode='w') as f:
             f.write("\n".join(self.file.content))
             f.write("\n")
-        print("- " + self.file.filename + ":", end="")
-        self.compile("--test compile " + TEST_DIR + 'test.c3')
+        print("- " + self.file.filepath + ":", end="")
+        self.compile("--test compile " + target_file)
 
         if not self.has_errors:
+            self.conf.numsuccess += 1
             print(" Passed.")
 
     def parse_header_directive(self, line):
@@ -143,7 +149,10 @@ class Issues:
     def parse(self):
         if len(self.file.content) == 0: self.exit_error("File was empty")
         is_skip = self.file.content[0].startswith("// #skip")
-        if is_skip != self.skip: return
+        if is_skip != self.skip:
+            print("- " + self.file.filepath + ": *SKIPPED*")
+            self.conf.numskipped += 1
+            return
 
         if is_skip: self.line += 1
         if self.single:
@@ -201,5 +210,6 @@ def main():
         handle_dir(filepath, conf)
     else:
         usage()
+    print("Found %d tests: %d / %d passed (%d skipped)." % (conf.numtests, conf.numsuccess, conf.numtests - conf.numskipped, conf.numskipped))
 
 main()
