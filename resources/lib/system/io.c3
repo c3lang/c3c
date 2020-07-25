@@ -46,10 +46,10 @@ public func void File.open(File *file, char *filename, char *mode) throws FileEr
 
 public func void File.seek(File *file, long offset, Seek seekMode = Seek.SET) throws FileError
 {
-    if (fseek(file->file, offset, cast(seekMode, int))) throw errorFromErrno();
+    if (fseek(file->file, offset, cast(seekMode as int))) throw errorFromErrno();
 }
 
-public func void File.putChar(File *file, char c) throws FileError
+public func void File.putChar(File *file as char c) throws FileError
 {
     if (fputc(c, file->file)) throw errorFromErrno();
 }

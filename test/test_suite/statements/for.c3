@@ -1,11 +1,7 @@
-// #skip
 module for_test;
 
-public func int main()
-{
-    for (;;) {}
-    return 0;
-}
+
+
 public func int test1()
 {
     for (int x = 0;;)

@@ -26,7 +26,7 @@ func int test(int a0, uint b0, ushort c0, short d0)
     a = c +% c;
     a = c -% c;
     a = c *% c;
-    a = d + cast(c + c, ushort);
+    a = d + cast(c + c as ushort);
     // a = c << 2; TODO
     //a = c << c;
     //a <<= c;
@@ -37,12 +37,12 @@ func int test(int a0, uint b0, ushort c0, short d0)
 }
 
 
-func int test_top_down(int a0, uint b0, ushort c0, short d0)
+func int test_top_down(int a0 as uint b0 as ushort c0, short d0)
 {
     int a = 0;
     uint b = 0;
     ushort c = 0;
     short d = 0;
-    a = d + cast(c +% c, ushort);
+    a = d + cast(c +% c as ushort);
     return a;
 }

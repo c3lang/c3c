@@ -152,7 +152,7 @@ static Expr *parse_cast_expr(Context *context, Expr *left)
 	advance_and_verify(context, TOKEN_CAST);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
 	expr->cast_expr.expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
-	CONSUME_OR(TOKEN_COMMA, poisoned_expr);
+	CONSUME_OR(TOKEN_AS, poisoned_expr);
 	expr->cast_expr.type_info = TRY_TYPE_OR(parse_type(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	return expr;

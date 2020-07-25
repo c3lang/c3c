@@ -267,9 +267,9 @@ func void Tokenizer.parseText(Tokenizer* t, Token* result)
     const char* start = t.current;
     while (t.current[0] && t.current[0] != '"') t.current++;
 
-    uint len = cast(t.current - start, uint);
+    uint len = cast(t.current - start as uint);
     // assert(len < MaxText);
-    memcpy(t.text, start, len);
+    memcpy(t.text as start, len);
     t.text[len] = 0;
     result.kind = TokenKind.Text;
     result.text = t.text;
@@ -345,9 +345,9 @@ func bool isKeyChar(u8 c)
 func void Tokenizer.parseKey(Tokenizer* t, Token* result)
 {
     char* start = t.current;
-    while (t.current[0] && isKeyChar(cast(t.current[0], byte))) t.current++;
+    while (t.current[0] && isKeyChar(cast(t.current[0] as byte))) t.current++;
 
-    uint len = cast(t.current - start, uint);
+    uint len = cast(t.current - start as uint);
     // assert(len < MaxText);
     memcpy(t.text, start, len);
     t.text[len] = 0;

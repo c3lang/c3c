@@ -1437,8 +1437,9 @@ static inline bool sema_expr_analyse_expr_list(Context *context, Type *to, Expr 
 static inline bool sema_expr_analyse_cast(Context *context, Type *to, Expr *expr)
 {
 	Expr *inner = expr->cast_expr.expr;
-	if (!sema_resolve_type_info(context, expr->cast_expr.type_info)) return false;
-	if (!sema_analyse_expr_of_required_type(context, NULL, inner, true)) return false;
+	bool success = sema_resolve_type_info(context, expr->cast_expr.type_info);
+	success &= sema_analyse_expr(context, NULL, inner);
+	if (!success) return false;
 
 	if (!cast(context, inner, expr->cast_expr.type_info->type, CAST_TYPE_EXPLICIT)) return false;
 

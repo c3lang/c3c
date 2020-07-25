@@ -333,8 +333,8 @@ LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMV
 			       : LLVMBuildZExt(context->builder, value, llvm_type(to_type), "uiuiext");
 		case CAST_UIFP:
 			return LLVMBuildUIToFP(context->builder, value, llvm_type(to_type), "uifp");
-		case CAST_ENUMSI:
-			TODO
+		case CAST_ENUMLOW:
+			return value;
 	}
 	UNREACHABLE
 }

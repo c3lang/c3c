@@ -273,11 +273,6 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 	LLVMBasicBlockRef body_block = ast->for_stmt.body->compound_stmt.stmts ? gencontext_create_free_block(context, "for.body") : NULL;
 	LLVMBasicBlockRef cond_block = ast->for_stmt.cond ? gencontext_create_free_block(context, "for.cond") : NULL;
 
-	// A loop must either have a body or an inc.
-	// This type of for loop is forbidden:
-	// for (;;);
-	assert((cond_block || inc_block || body_block) && "For has no body, no inc and no cond.");
-
 	// Break is simple it always jumps out.
 	// For continue:
 	// 1. If there is inc, jump to the condition
@@ -288,6 +283,7 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 	ast->for_stmt.exit_block = exit_block;
 	LLVMValueRef value = NULL;
 
+	LLVMBasicBlockRef loopback_block = cond_block;
 	if (cond_block)
 	{
 		// Emit cond
@@ -311,6 +307,7 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 		if (!cond_block)
 		{
 			// We don't have a cond, so we need to unconditionally jump here.
+			loopback_block = body_block;
 			gencontext_emit_br(context, body_block);
 		}
 		gencontext_emit_block(context, body_block);
@@ -324,13 +321,25 @@ void gencontext_emit_for_stmt(GenContext *context, Ast *ast)
 
 	if (inc_block)
 	{
+		if (!body_block && !cond_block)
+		{
+			// We have neither cond nor body, so jump here
+			loopback_block = inc_block;
+			gencontext_emit_br(context, inc_block);
+		}
 		// Emit the block
 		gencontext_emit_block(context, inc_block);
 		gencontext_emit_expr(context, ast->for_stmt.incr);
 	}
 
+	if (!loopback_block)
+	{
+		loopback_block = gencontext_create_free_block(context, "infiniteloop");
+		gencontext_emit_br(context, loopback_block);
+		gencontext_emit_block(context, loopback_block);
+	}
 	// Loop back.
-	gencontext_emit_br(context, cond_block ? cond_block : (body_block ? body_block : inc_block));
+	gencontext_emit_br(context, loopback_block);
 
 	// And insert exit block
 	gencontext_emit_block(context, exit_block);

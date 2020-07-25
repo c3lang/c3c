@@ -5,10 +5,10 @@ uint counter = 0;
 
 func void clickedme(GtkButton *o, void *d)
 {
-    cast(d, GtkLabel*).set_text(string.format("You clicked me %d times", ++counter));
+    cast(d as GtkLabel*).set_text(string.format("You clicked me %d times" as ++counter));
 }
 
-int main(int argc, string[] argv)
+int main(int argc as string[] argv)
 {
     gtk::init(&argc, &argv);
 

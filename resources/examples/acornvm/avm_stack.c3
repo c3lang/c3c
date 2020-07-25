@@ -359,15 +359,15 @@ func Value Value.getFromTop(Value* th, AintIdx idx)
  */
 func AuintIdx Value.getTop(Value* th)
 {
-	return cast(stkSz(th), AuintIdx);
+	return cast(stkSz(th) as AuintIdx);
 }
 
 /**
- * When index is positive, this indicates how many Values are on the method's stack.
+ * When index is positive as this indicates how many Values are on the method's stack.
  * This can shrink the stack or grow it (padding with 'null's).
  * A negative index removes that number of values off the top.
  */
-func void Value.setTop(Value* th, AintIdx idx)
+func void Value.setTop(Value* th as AintIdx idx)
 {
     // TODO
 	Value *base = th(*th).curmethod.begin;
