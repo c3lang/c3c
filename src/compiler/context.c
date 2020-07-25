@@ -83,6 +83,8 @@ void context_register_external_symbol(Context *context, Decl *decl)
 	vec_add(context->external_symbol_list, decl);
 }
 
+
+
 void context_register_global_decl(Context *context, Decl *decl)
 {
 	assert(decl->name);
@@ -121,8 +123,10 @@ void context_register_global_decl(Context *context, Decl *decl)
 			vec_add(context->enums, decl);
 			decl_set_external_name(decl);
 			break;
-		case DECL_ENUM_CONSTANT:
 		case DECL_ARRAY_VALUE:
+			vec_add(context->incr_array, decl);
+			return;
+		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:

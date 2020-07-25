@@ -1,4 +1,4 @@
-
+// #skip
 struct Struct
 {
     int x;
@@ -32,6 +32,6 @@ func void test2(Enum e)
 
 func void test3(Enum e)
 {
-    EnumB h = cast(e as EnumB);
-    Func i = cast(e as Func);
+    //EnumB h = cast(e as EnumB);
+    //Func i = cast(e as Func);
 }
