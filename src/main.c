@@ -5,7 +5,7 @@
 #include "compiler_tests/tests.h"
 #include "utils/lib.h"
 
-static int version = 101;
+static int version = 102;
 
 int main(int argc, const char *argv[])
 {

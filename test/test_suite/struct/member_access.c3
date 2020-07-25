@@ -51,6 +51,9 @@ func void tester()
     Point *p2 = &p;
     p2.bb.b = 3;
     p = { a = 1, bb.b = 3, e = 2 };
+
+    Point* pp = &p;
+    pp.a = 20;
 }
 
 struct Aa1

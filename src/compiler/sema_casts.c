@@ -303,6 +303,11 @@ bool ixxxi(Context *context, Expr *left, Type *canonical, Type *type, CastType c
 {
 	bool is_signed = canonical->type_kind < TYPE_U8;
 	int bitsize = canonical->builtin.bitsize;
+	if (!is_signed && bigint_cmp_zero(&left->const_expr.i) == CMP_LT)
+	{
+		SEMA_ERROR(left, "Negative number '%s' cannot be assigned to type '%s'", expr_const_to_error_string(&left->const_expr), canonical->name);
+		return false;
+	}
 	if (cast_type != CAST_TYPE_EXPLICIT && !bigint_fits_in_bits(&left->const_expr.i, bitsize, is_signed))
 	{
 		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
@@ -505,7 +510,8 @@ bool uius(Context *context, Expr* left, Type *from, Type *canonical, Type *type,
  */
 bool xipt(Context *context, Expr *left, Type *from, Type *canonical, Type *type, CastType cast_type)
 {
-	if (cast_type == CAST_TYPE_EXPLICIT && left->expr_kind == EXPR_CONST)
+	REQUIRE_EXPLICIT_CAST(cast_type);
+	if (left->expr_kind == EXPR_CONST)
 	{
 		RETURN_NON_CONST_CAST(CAST_XIPTR);
 		if (bigint_cmp_zero(&left->const_expr.i) != CMP_EQ)
@@ -515,8 +521,17 @@ bool xipt(Context *context, Expr *left, Type *from, Type *canonical, Type *type,
 		}
 		expr_const_set_nil(&left->const_expr);
 		left->type = type;
+		return true;
 	}
-	return cast(context, left, type_is_unsigned(from) ? type_usize : type_isize, cast_type);
+	if (type_size(from) < type_size(type_voidptr))
+	{
+		SEMA_ERROR(left, "Cannot cast to '%s' from the smaller integer type '%s'.", type_to_error_string(type), type_to_error_string(from));
+		return false;
+	}
+	// If we have a *larger* int type - narrow it.
+	if (cast(context, left, type_usize, cast_type)) return false;
+	insert_cast(left, CAST_XIPTR, canonical);
+	return true;
 }
 
 bool usus(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
