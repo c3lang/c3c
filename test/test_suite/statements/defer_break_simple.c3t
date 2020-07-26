@@ -1,0 +1,58 @@
+module test;
+
+public func void test2() {}
+public func void testA() {}
+public func void testB() {}
+public func void test3() {}
+
+public func int main(int argc)
+{
+	int a = 0;
+    while (a)
+    {
+	    defer test2();
+	    defer
+	    {
+	       testA();
+	       testB();
+	    }
+        if (argc == 1) break;
+        test3();
+    }
+    return 0;
+}
+
+// #expect: defer_break_simple.ll
+
+store i32 0, i32* %a
+br label %while.begin
+
+while.begin:
+    %1 = load i32, i32* %a
+    %intbool = icmp ne i32 %1, 0
+    br i1 %intbool, label %while.body, label %while.exit
+while.body:
+    %2 = load i32, i32* %argc
+    %eq = icmp eq i32 %2, 1
+    br i1 %eq, label %if.then, label %if.exit
+if.then:
+    call void @test.testA()
+    call void @test.testB()
+    br label %exit
+exit:
+    call void @test.test2()
+    br label %exit1
+exit1:
+    br label %while.exit
+if.exit:
+    call void @test.test3()
+    call void @test.testA()
+    call void @test.testB()
+    br label %exit2
+exit2:
+    call void @test.test2()
+    br label %exit3
+exit3:
+    br label %while.begin
+while.exit:
+    ret i32 0

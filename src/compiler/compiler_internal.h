@@ -769,6 +769,10 @@ typedef struct
 {
 	AstId prev_defer;
 	Ast *body; // Compound statement
+	struct
+	{
+		void *exit_block;
+	} codegen;
 } AstDeferStmt;
 
 typedef struct

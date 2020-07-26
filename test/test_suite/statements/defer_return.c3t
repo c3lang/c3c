@@ -1,0 +1,116 @@
+module test;
+func void test1() {}
+func void test2() {}
+func void test3() {}
+func void test4() {}
+func void test5() {}
+func void test6() {}
+func void test7() {}
+func void test8() {}
+func void test9() {}
+
+public func int main(int argc)
+{
+    defer test1();
+    int a = 0;
+    while (a)
+    {
+	    defer test2();
+        if (argc == 1) return a + argc;
+        defer test3();
+        test4();
+    }
+    defer test5();
+    while (a)
+    {
+        defer test6();
+        if (argc == 1) return a + 2;
+        defer test7();
+		test8();
+		return 2 + 2;
+        defer test9();
+    }
+    return 0 + argc;
+}
+
+// #expect: defer_return.ll
+
+while.begin:
+    %1 = load i32, i32* %a
+    %intbool = icmp ne i32 %1, 0
+    br i1 %intbool, label %while.body, label %while.exit
+
+while.body:
+    %2 = load i32, i32* %argc
+    %eq = icmp eq i32 %2, 1
+    br i1 %eq, label %if.then, label %if.exit
+
+if.then:
+    %3 = load i32, i32* %a
+    %4 = load i32, i32* %argc
+    %add = add nsw i32 %3, %4
+    call void @test.test2()
+    br label %exit
+exit:
+    call void @test.test1()
+    br label %exit1
+exit1:
+    ret i32 %add
+if.exit:
+    call void @test.test4()
+    call void @test.test3()
+    br label %exit2
+exit2:
+    call void @test.test2()
+    br label %exit3
+exit3:
+    br label %while.begin
+while.exit:
+    br label %while.begin4
+while.begin4:
+    %5 = load i32, i32* %a
+    %intbool5 = icmp ne i32 %5, 0
+    br i1 %intbool5, label %while.body6, label %while.exit21
+while.body6:
+    %6 = load i32, i32* %argc
+    %eq7 = icmp eq i32 %6, 1
+    br i1 %eq7, label %if.then8, label %if.exit13
+if.then8:
+    %7 = load i32, i32* %a
+    %add9 = add nsw i32 %7, 2
+    call void @test.test6()
+    br label %exit10
+exit10:
+    call void @test.test5()
+    br label %exit11
+exit11:
+    call void @test.test1()
+    br label %exit12
+exit12:
+    ret i32 %add9
+if.exit13:
+    call void @test.test8()
+    call void @test.test7()
+    br label %exit14
+exit14:
+    call void @test.test6()
+    br label %exit15
+exit15:
+    call void @test.test5()
+    br label %exit16
+exit16:
+    call void @test.test1()
+    br label %exit17
+exit17:
+    ret i32 4
+while.exit21:
+    %8 = load i32, i32* %argc
+    %add22 = add nsw i32 0, %8
+    call void @test.test5()
+    br label %exit23
+exit23:
+    call void @test.test1()
+    br label %exit24
+exit24:
+    ret i32 %add22
+}

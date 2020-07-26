@@ -17,12 +17,31 @@ class File:
         self.filepath = filepath
         self.filename = os.path.basename(filepath)
 
+class TargetFile:
+    def __init__(self, filepath, is_target):
+        self.is_target = is_target
+        if is_target:
+            self.file = open(filepath, mode="w")
+        else:
+            self.expected_lines = []
+            self.file = None
+        self.filepath = filepath
+        self.filename = os.path.basename(filepath)
 
+    def close(self):
+        if self.file: self.file.close()
+        self.file = None
+
+    def write(self, line):
+        if self.file:
+            self.file.write(line + "\n")
+        else:
+            self.expected_lines.append(line)
 
 class Issues:
     def __init__(self, conf, file, single):
         self.conf = conf
-        self.file = file
+        self.sourcefile = file
         self.single = single
         self.line = 0
         self.file_start = 0
@@ -32,13 +51,12 @@ class Issues:
         self.skip = False
         self.cur = 0
         self.current_file = None
+        self.files = []
         self.errors = {}
         self.warnings = {}
-        if single:
-            self.current_file = conf.cwd + "/" + file.filepath
 
     def exit_error(self, message):
-        print('Error in file ' + self.file.filepath + ': ' + message)
+        print('Error in file ' + self.sourcefile.filepath + ': ' + message)
         exit(-1)
 
     def set_failed(self):
@@ -80,8 +98,9 @@ class Issues:
                 num += 1
 
     def compile(self, args):
-        path = os.path.dirname(sys.argv[0]) + "/../../cmake-build-debug/"
-        code = subprocess.run(path + 'c3c ' + args, universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        os.chdir(TEST_DIR)
+        code = subprocess.run(self.conf.compiler + ' -O0 ' + args, universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        os.chdir(self.conf.cwd)
         if code.returncode != 0 and code.returncode != 1:
             self.set_failed()
             print("Error (" + str(code.returncode) + "): " + code.stderr)
@@ -89,37 +108,40 @@ class Issues:
             return
         self.parse_result(code.stderr.splitlines(keepends=False))
 
+
     def parse_single(self):
-        lines = len(self.file.content)
+        self.current_file = TargetFile(TEST_DIR + self.sourcefile.filename, True)
+        lines = len(self.sourcefile.content)
         while self.line < lines:
-            line = self.file.content[self.line].strip()
+            line = self.sourcefile.content[self.line].strip()
             if "// #" in line:
                 self.parse_trailing_directive(line)
+            self.current_file.write(self.sourcefile.content[self.line])
             self.line += 1
-        target_file = TEST_DIR + self.file.filename
-        with open(target_file, mode='w') as f:
-            f.write("\n".join(self.file.content))
-            f.write("\n")
-        print("- " + self.file.filepath + ":", end="")
-        self.compile("--test compile " + target_file)
 
+        self.current_file.close()
+        print("- " + self.sourcefile.filepath + ":", end="")
+        self.compile("--test compile " + self.current_file.filepath)
         if not self.has_errors:
             self.conf.numsuccess += 1
             print(" Passed.")
 
     def parse_header_directive(self, line):
         line = line[4:].strip()
-        if (line.startswith("warnings:")):
-            print("TODO" + line)
-            exit(-1)
-        elif (line.startswith("file:")):
+        if (line.startswith("file:")):
+            if self.current_file:
+                self.current_file.close()
             line = line[5:].strip()
-            print("NEW FILE" + line)
-            exit(-1)
+            self.current_file = TargetFile(TEST_DIR + line, True)
+            self.files.append(self.current_file)
+            return
         elif (line.startswith("expect:")):
             line = line[7:].strip()
-            print("Expect " + line)
-            exit(-1)
+            if self.current_file:
+                self.current_file.close()
+            self.current_file = TargetFile(TEST_DIR + line, False)
+            self.files.append(self.current_file)
+            return
         else:
             self.exit_error("unknown header directive " + line)
 
@@ -130,30 +152,73 @@ class Issues:
             exit(-1)
         elif (line.startswith("error:")):
             line = line[6:].strip()
-            self.errors[self.file.filename + ":%d" % (self.line + 1)] = line
+            self.errors[self.current_file.filename + ":%d" % (self.line + 1)] = line
         else:
             self.exit_error("unknown trailing directive " + line)
 
     def parse_template(self):
-        lines = len(self.file.content)
+        lines = len(self.sourcefile.content)
         while self.line < lines:
-            line = self.file.content[self.line].strip()
+            line = self.sourcefile.content[self.line].strip()
             if line.startswith("// #"):
                 self.parse_header_directive(line)
             elif "// #" in line:
                 self.parse_trailing_directive(line)
+            else:
+                if not self.current_file:
+                    self.current_file = TargetFile(TEST_DIR + self.sourcefile.filename[:-4] + ".c3", True)
+                    self.files.append(self.current_file)
+                self.current_file.write(self.sourcefile.content[self.line])
             self.line += 1
 
-        print("parse mult")
+        if self.current_file:
+            self.current_file.close()
+            self.current_file = None
+
+        print("- " + self.sourcefile.filepath + ":", end="")
+        files_to_compile = ""
+        for file in self.files:
+            if file.is_target:
+                files_to_compile += " " + file.filepath
+
+
+        self.compile("--test compile " + files_to_compile)
+        if self.has_errors: return
+
+        for file in self.files:
+            if not file.is_target:
+                if not os.path.exists(file.filepath):
+                    self.set_failed()
+                    print("Did not compile file " + file.filename)
+                    return
+                with open(file.filepath) as reader:
+                    lines = reader.read().splitlines()
+                searched_line = 0
+                current_line = 0
+                while searched_line < len(file.expected_lines):
+                    line = file.expected_lines[searched_line].strip()
+                    if current_line >= len(lines):
+                        self.set_failed()
+                        print(file.filename + " did not contain: \"" + line + "\"")
+                        print("\n".join(lines) + "\n")
+                        return
+                    if line in lines[current_line]:
+                        current_line += 1
+                        searched_line += 1
+                        continue
+                    current_line += 1
+
+        if not self.has_errors:
+            self.conf.numsuccess += 1
+            print(" Passed.")
 
     def parse(self):
-        if len(self.file.content) == 0: self.exit_error("File was empty")
-        is_skip = self.file.content[0].startswith("// #skip")
+        if len(self.sourcefile.content) == 0: self.exit_error("File was empty")
+        is_skip = self.sourcefile.content[0].startswith("// #skip")
         if is_skip != self.skip:
-            print("- " + self.file.filepath + ": *SKIPPED*")
+            print("- " + self.sourcefile.filepath + ": *SKIPPED*")
             self.conf.numskipped += 1
             return
-
         if is_skip: self.line += 1
         if self.single:
             self.parse_single()
@@ -197,6 +262,8 @@ def handle_dir(filepath, conf):
 def main():
     args = len(sys.argv)
     conf = Config()
+    conf.compiler = os.path.dirname(sys.argv[0]) + "/../../cmake-build-debug/c3c"
+
     if args != 1 and args > 3: usage()
     if args == 3:
         if (sys.argv[2] != '-s' and sys.argv[2] != '--skipped'): usage()

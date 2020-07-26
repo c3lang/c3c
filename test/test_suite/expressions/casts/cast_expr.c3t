@@ -1,0 +1,27 @@
+module test;
+
+public func int main(int argc, char** argv)
+{
+    int a = 10;
+
+    int b = cast(20 as char);
+    int c = cast(a as char);
+    return 0;
+}
+
+// #expect: cast_expr.ll
+
+define i32 @main
+
+    %a = alloca i32
+    %b = alloca i32
+    %c = alloca i32
+
+    store i32 10, i32* %a
+    store i32 20, i32* %b
+    %2 = load i32, i32* %a
+    trunc i32 %2 to i8
+    sext i8 %sisitrunc to i32
+    store i32 %sisiext, i32* %c
+    ret i32 0
+}

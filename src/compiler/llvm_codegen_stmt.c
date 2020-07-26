@@ -640,7 +640,12 @@ void gencontext_emit_defer(GenContext *context, AstId defer_start, AstId defer_e
 	while (defer && defer != defer_end)
 	{
 		Ast *def = astptr(defer);
-		gencontext_emit_stmt(context, def->defer_stmt.body);
+		LLVMBasicBlockRef exit = gencontext_create_free_block(context, "exit");
+		Ast *body = def->defer_stmt.body;
+		def->defer_stmt.codegen.exit_block = exit;
+		gencontext_emit_stmt(context, body);
+		gencontext_emit_br(context, exit);
+		gencontext_emit_block(context, exit);
 		defer = def->defer_stmt.prev_defer;
 	}
 }
@@ -667,6 +672,9 @@ void gencontext_emit_break(GenContext *context, Ast *ast)
 			break;
 		case AST_SWITCH_STMT:
 			jump = jump_target->switch_stmt.codegen.exit_block;
+			break;
+		case AST_DEFER_STMT:
+			jump = jump_target->defer_stmt.codegen.exit_block;
 			break;
 		default:
 			UNREACHABLE

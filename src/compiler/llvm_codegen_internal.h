@@ -45,7 +45,6 @@ typedef struct
 	LLVMMetadataRef inlined_at;
 } DebugContext;
 
-#define BREAK_STACK_MAX 256
 
 typedef struct
 {
