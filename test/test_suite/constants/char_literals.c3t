@@ -1,0 +1,24 @@
+// #file: file1.c3
+module test;
+
+public char a = ' ';
+public char b = '\r';
+public char c = '\t';
+public char d = '\n';
+public char e = '\0';
+public char f = '\'';
+public char g = '"';
+public char h = '\\';
+public char i = '\e';
+
+// #expect: file1.ll
+
+@a = global i8 32
+@b = global i8 13
+@c = global i8 9
+@d = global i8 10
+@e = global i8 0
+@f = global i8 39
+@g = global i8 34
+@h = global i8 92
+@i = global i8 27

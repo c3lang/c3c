@@ -1,0 +1,115 @@
+module foo;
+
+extern func void printf(char* message, ...);
+
+public func void defer1() {}
+public func void defer2() {}
+public func void defer3() {}
+public func void defer4() {}
+public func void defer5() {}
+public func void defer6() {}
+public func void defer7() {}
+public func void defer8() {}
+public func void defer9() {}
+public func void defer10() {}
+public func void defer11() {}
+
+public func int main(int argc)
+{
+	int a = 0;
+    {
+        defer
+        {
+            if (a == 1) break;
+            defer1();
+        }
+        defer2();
+    }
+    defer defer3();
+    while (a)
+    {
+	    defer defer4();
+        if (argc == 1) break;
+        defer defer5();
+        defer6();
+    }
+    defer defer7();
+    while (a)
+    {
+	    defer defer8();
+        if (argc == 1) break;
+        defer defer9();
+        defer10();
+		break;
+		defer11();
+    }
+    return 0;
+}
+
+// #expect: defer_break.ll
+    call void @foo.defer2()
+    %1 = load i32, i32* %a
+    %eq = icmp eq i32 %1, 1
+    br i1 %eq, label %if.then, label %if.exit
+if.then:
+    br label %exit
+if.exit:
+    call void @foo.defer1()
+    br label %exit
+exit:
+    br label %while.begin
+while.begin:
+    %2 = load i32, i32* %a
+    %intbool = icmp ne i32 %2, 0
+    br i1 %intbool, label %while.body, label %while.exit
+while.body:
+    %3 = load i32, i32* %argc
+    %eq1 = icmp eq i32 %3, 1
+    br i1 %eq1, label %if.then2, label %if.exit4
+if.then2:
+    call void @foo.defer4()
+    br label %exit3
+exit3:
+    br label %while.exit
+if.exit4:
+    call void @foo.defer6()
+    call void @foo.defer5()
+    br label %exit5
+exit5:
+    call void @foo.defer4()
+    br label %exit6
+exit6:
+    br label %while.begin
+while.exit:
+    br label %while.begin7
+while.begin7:
+    %4 = load i32, i32* %a
+    %intbool8 = icmp ne i32 %4, 0
+    br i1 %intbool8, label %while.body9, label %while.exit18
+while.body9:
+    %5 = load i32, i32* %argc
+    %eq10 = icmp eq i32 %5, 1
+    br i1 %eq10, label %if.then11, label %if.exit13
+if.then11:
+    call void @foo.defer8()
+    br label %exit12
+exit12:
+    br label %while.exit18
+if.exit13:
+    call void @foo.defer10()
+    call void @foo.defer9()
+    br label %exit14
+exit14:
+    call void @foo.defer8()
+    br label %exit15
+exit15:
+    br label %while.exit18
+while.exit18:
+    call void @foo.defer7()
+    br label %exit19
+exit19:
+    call void @foo.defer3()
+    br label %exit20
+exit20:
+    ret i32 0
+}

@@ -15,7 +15,7 @@ static inline void context_push_scope(Context *context)
 {
 	context_push_scope_with_flags(context, SCOPE_NONE);
 }
-#define PUSH_X(ast, X) AstId _old_##X##_defer = context->X##_defer; AstId _old_##X = context->X##_target; context->X##_target = astid(ast); context->X##_defer = context->current_scope->defers.start
+#define PUSH_X(ast, X) AstId _old_##X##_defer = context->X##_defer; AstId _old_##X = context->X##_target; context->X##_target = ast ? astid(ast) : 0; context->X##_defer = context->current_scope->defers.start
 #define POP_X(X) context->X##_target = _old_##X; context->X##_defer = _old_##X##_defer
 #define PUSH_CONTINUE(ast) PUSH_X(ast, continue)
 #define POP_CONTINUE() POP_X(continue)

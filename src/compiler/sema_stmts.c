@@ -366,8 +366,8 @@ static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
 	context->current_scope->defers.end = 0;
 	context->current_scope->current_defer = statement;
 
-	PUSH_CONTINUE(statement);
-	PUSH_BREAK(NULL);
+	PUSH_CONTINUE(NULL);
+	PUSH_BREAK(statement);
 	PUSH_NEXT(NULL, NULL);
 
 	// Only ones allowed.
@@ -567,7 +567,7 @@ static bool context_labels_exist_in_scope(Context *context)
 static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 {
 	context->current_scope->jump_end = true;
-	if (!context->break_target && !statement->contbreak_stmt.label.name)
+	if (!context->break_target && !statement->contbreak_stmt.is_label)
 	{
 		if (context_labels_exist_in_scope(context))
 		{
