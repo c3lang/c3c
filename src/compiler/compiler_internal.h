@@ -953,8 +953,8 @@ typedef struct _DynamicScope
 	bool jump_end : 1;
 	ScopeFlags flags;
 	Decl **local_decl_start;
-	DeferList defers;
-	Ast *current_defer;
+	AstId defer_last;
+	Ast *in_defer;
 } DynamicScope;
 
 
