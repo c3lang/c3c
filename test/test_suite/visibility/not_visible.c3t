@@ -1,0 +1,16 @@
+// #file: file1.c3
+module baz;
+import bar;
+
+public func void runBar()
+{
+    bar::notVisible(); // #error: 'notVisible' is not visible from this module.
+}
+
+// #file: file2.c3
+module bar;
+
+func void notVisible()
+{
+
+}

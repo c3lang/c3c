@@ -18,8 +18,9 @@ class File:
         self.filename = os.path.basename(filepath)
 
 class TargetFile:
-    def __init__(self, filepath, is_target):
+    def __init__(self, filepath, is_target, line_offset):
         self.is_target = is_target
+        self.line_offset = line_offset
         if is_target:
             self.file = open(filepath, mode="w")
         else:
@@ -110,7 +111,7 @@ class Issues:
 
 
     def parse_single(self):
-        self.current_file = TargetFile(TEST_DIR + self.sourcefile.filename, True)
+        self.current_file = TargetFile(TEST_DIR + self.sourcefile.filename, True, 1)
         lines = len(self.sourcefile.content)
         while self.line < lines:
             line = self.sourcefile.content[self.line].strip()
@@ -132,14 +133,14 @@ class Issues:
             if self.current_file:
                 self.current_file.close()
             line = line[5:].strip()
-            self.current_file = TargetFile(TEST_DIR + line, True)
+            self.current_file = TargetFile(TEST_DIR + line, True, -self.line)
             self.files.append(self.current_file)
             return
         elif (line.startswith("expect:")):
             line = line[7:].strip()
             if self.current_file:
                 self.current_file.close()
-            self.current_file = TargetFile(TEST_DIR + line, False)
+            self.current_file = TargetFile(TEST_DIR + line, False, 0)
             self.files.append(self.current_file)
             return
         else:
@@ -152,7 +153,7 @@ class Issues:
             exit(-1)
         elif (line.startswith("error:")):
             line = line[6:].strip()
-            self.errors[self.current_file.filename + ":%d" % (self.line + 1)] = line
+            self.errors[self.current_file.filename + ":%d" % (self.line + self.current_file.line_offset)] = line
         else:
             self.exit_error("unknown trailing directive " + line)
 
@@ -162,13 +163,14 @@ class Issues:
             line = self.sourcefile.content[self.line].strip()
             if line.startswith("// #"):
                 self.parse_header_directive(line)
+                self.line += 1
+                continue
             elif "// #" in line:
                 self.parse_trailing_directive(line)
-            else:
-                if not self.current_file:
-                    self.current_file = TargetFile(TEST_DIR + self.sourcefile.filename[:-4] + ".c3", True)
-                    self.files.append(self.current_file)
-                self.current_file.write(self.sourcefile.content[self.line])
+            if not self.current_file:
+                self.current_file = TargetFile(TEST_DIR + self.sourcefile.filename[:-4] + ".c3", True, 1)
+                self.files.append(self.current_file)
+            self.current_file.write(self.sourcefile.content[self.line])
             self.line += 1
 
         if self.current_file:
