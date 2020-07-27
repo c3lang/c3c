@@ -1,0 +1,35 @@
+func void errored()
+{}
+
+func void test() {}
+
+func void testBreak()
+{
+    for FOO: (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < 10; j++)
+        {
+            for BAR: (int k = 0; k < 10; k++)
+            {
+                test();
+                continue FOO;
+            }
+            errored();
+        }
+        errored();
+    }
+}
+
+// #expect: labelled_continue_for.ll
+
+for.cond:
+
+  call void @labelled_continue_for.test()
+  br label %for.inc8
+
+for.inc8:
+  %4 = load i32, i32* %i
+  %add9 = add nsw i32 %4, 1
+  store i32 %add9, i32* %i
+  br label %for.cond
+

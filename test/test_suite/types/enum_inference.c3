@@ -1,0 +1,43 @@
+
+enum Inf
+{
+    A,
+    B,
+    C = 10000
+}
+
+enum Inf2 : byte
+{
+    A,
+    B,
+    C = 129,
+}
+
+typedef Inf as BooInf;
+
+
+func void enumInferenceTest()
+{
+    Inf x = Inf.A;
+    x = BooInf.B;
+    x = A;
+    int x1 = 0;
+    bool y = x1 == x1;
+    Inf2 z = C;
+    if (z == Inf2.A) return;
+    if (z == 1) return;
+    z = 2;
+    switch (z)
+    {
+        case Inf2.A:
+            x1++;
+            return;
+        case B:
+            return;
+        case 111:
+            x1 += 1;
+            return;
+        default:
+            return;
+    }
+}

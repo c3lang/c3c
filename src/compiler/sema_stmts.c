@@ -333,7 +333,7 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 		if (decl->var.unwrap && !decl->var.init_expr->failable)
 		{
 			SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
-			return false;
+			return decl_poison(decl);
 		}
 	}
 	return true;
@@ -1316,6 +1316,7 @@ bool sema_analyse_statement(Context *context, Ast *statement)
 
 bool sema_analyse_function_body(Context *context, Decl *func)
 {
+	if (!decl_ok(func)) return false;
 	FunctionSignature *signature = &func->func.function_signature;
 	context->active_function_for_analysis = func;
 	context->rtype = signature->rtype->type;
