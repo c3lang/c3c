@@ -145,31 +145,6 @@ union SimpleUnion
     double f;
 }
 
-struct ExtraSimple
-{
-    int a;
-    int b;
-    struct c
-    {
-        double e;
-        double f0;
-        double f1;
-        double f;
-        double j;
-    }
-    struct
-    {
-        int r;
-        int s;
-    }
-    union
-    {
-        double o0;
-        int o1;
-    }
-    int g;
-}
-
 
 func void testIf()
 {
@@ -200,12 +175,7 @@ func void testIf()
     }
 }
 
-func void testSimple()
-{
-    ExtraSimple a = { c.j = 3.3 };
-    a.c.j = 3.4;
-    printf("a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\n", a.a, a.c.e, a.c.f, a.c.j, a.g, a.o0, a.r, a.s);
-}
+
 func void testPointer()
 {
     int i = 0;
@@ -1407,7 +1377,6 @@ func int main(int x)
     show();
     testMacros();
     testTypeof();
-    testSimple();
     testAllErrors();
     //testErrorBug();
     //testErrors();

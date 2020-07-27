@@ -1,0 +1,16 @@
+// #file: file1.c3
+module baz;
+import bar;
+
+public func void runBar()
+{
+    bar::visible();
+}
+
+// #file: file2.c3
+module bar;
+
+public func void visible()
+{
+
+}

@@ -1,0 +1,23 @@
+// #file: file1.c3
+module baz;
+
+public func void runBar()
+{
+    visible();
+    bar::barFunc(); // #error: Unknown module 'bar'
+}
+
+// #file: file2.c3
+module baz;
+import bar;
+
+func void visible()
+{
+    bar::barFunc();
+}
+
+// #file: file3.c3
+module bar;
+
+public func void barFunc()
+{}

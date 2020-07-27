@@ -1,0 +1,81 @@
+
+extern func void printf(char* c, ...);
+
+struct ExtraSimple
+{
+    int a;
+    int b;
+    struct c
+    {
+        double e;
+        double f0;
+        double f1;
+        double f;
+        double j;
+    }
+    struct
+    {
+        int r;
+        int s;
+    }
+    union
+    {
+        double o0;
+        int o1;
+    }
+    int g;
+}
+
+
+func void testSimple()
+{
+    ExtraSimple a = { c.j = 3.3 };
+    a.c.j = 3.4;
+    printf("a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\n", a.a, a.c.e, a.c.f, a.c.j, a.g, a.o0, a.r, a.s);
+}
+
+// #expect: pointer_access.ll
+
+%pointer_access.ExtraSimple = type { i32, i32, %pointer_access.c, %pointer_access.anon, %pointer_access.anon.0, i32 }
+%pointer_access.c = type { double, double, double, double, double }
+%pointer_access.anon = type { i32, i32 }
+%pointer_access.anon.0 = type { double }
+
+@ExtraSimple = linkonce_odr constant i8 1
+
+entry:
+  %a = alloca %pointer_access.ExtraSimple
+  %0 = bitcast %pointer_access.ExtraSimple* %a to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %0, i8 0, i64 72, i1 false)
+  %c = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 2
+  %double = getelementptr inbounds %pointer_access.c, %pointer_access.c* %c, i32 0, i32 4
+  store double 3.300000e+00, double* %double
+  %1 = load %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a
+  %c1 = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 2
+  %j = getelementptr inbounds %pointer_access.c, %pointer_access.c* %c1, i32 0, i32 4
+  store double 3.400000e+00, double* %j
+  %a2 = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 0
+  %2 = load i32, i32* %a2
+  %c3 = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 2
+  %e = getelementptr inbounds %pointer_access.c, %pointer_access.c* %c3, i32 0, i32 0
+  %3 = load double, double* %e
+  %c4 = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 2
+  %f = getelementptr inbounds %pointer_access.c, %pointer_access.c* %c4, i32 0, i32 3
+  %4 = load double, double* %f
+  %c5 = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 2
+  %j6 = getelementptr inbounds %pointer_access.c, %pointer_access.c* %c5, i32 0, i32 4
+  %5 = load double, double* %j6
+  %g = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 5
+  %6 = load i32, i32* %g
+  %anon = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 4
+  %o0 = bitcast %pointer_access.anon.0* %anon to double*
+  %7 = load double, double* %o0
+  %anon7 = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 3
+  %r = getelementptr inbounds %pointer_access.anon, %pointer_access.anon* %anon7, i32 0, i32 0
+  %8 = load i32, i32* %r
+  %anon8 = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 3
+  %s = getelementptr inbounds %pointer_access.anon, %pointer_access.anon* %anon8, i32 0, i32 1
+  %9 = load i32, i32* %s
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([71 x i8], [71 x i8]* @0, i32 0, i32 0), i32 %2, double %3, double %4, double %5, i32 %6, double %7, i32 %8, i32 %9)
+  ret void
+}

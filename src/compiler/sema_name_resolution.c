@@ -59,7 +59,7 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 	{
 		if (!path_found)
 		{
-			SEMA_ERROR(path, "Unknown module %.*s.", path->len, path->module);
+			SEMA_ERROR(path, "Unknown module '%.*s', did you forget to import it?", path->len, path->module);
 			return poisoned_decl;
 		}
 		return NULL;
