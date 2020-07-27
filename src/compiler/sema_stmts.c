@@ -14,8 +14,8 @@ void context_push_scope_with_flags(Context *context, ScopeFlags flags)
 		FATAL_ERROR("Too deeply nested scopes.");
 	}
 	ScopeFlags previous_flags = context->current_scope->flags;
-	Ast *previous_defer = context->current_scope->current_defer;
-	AstId parent_defer = context->current_scope->defers.start;
+	Ast *previous_defer = context->current_scope->in_defer;
+	AstId parent_defer = context->current_scope->defer_last;
 	context->current_scope++;
 	context->current_scope->scope_id = ++context->scope_id;
 	context->current_scope->allow_dead_code = false;
@@ -25,9 +25,8 @@ void context_push_scope_with_flags(Context *context, ScopeFlags flags)
 		FATAL_ERROR("Too many scopes.");
 	}
 	context->current_scope->local_decl_start = context->last_local;
-	context->current_scope->current_defer = previous_defer;
-	context->current_scope->defers.start = parent_defer;
-	context->current_scope->defers.end = parent_defer;
+	context->current_scope->in_defer = previous_defer;
+	context->current_scope->defer_last = parent_defer;
 
 	if (flags & (SCOPE_DEFER | SCOPE_EXPR_BLOCK))
 	{
@@ -49,22 +48,19 @@ void context_push_scope_with_label(Context *context, Decl *label)
 
 	if (label)
 	{
-		label->label.defer = context->current_scope->defers.end;
+		label->label.defer = context->current_scope->defer_last;
 		sema_add_local(context, label);
 		label->label.scope_id = context->current_scope->scope_id;
 	}
 }
 
 
-static inline void context_pop_defers(Context *context)
-{
-	context->current_scope->defers.start = context->current_scope->defers.end;
-}
 
 static inline void context_pop_defers_to(Context *context, DeferList *list)
 {
-	*list = context->current_scope->defers;
-	context_pop_defers(context);
+	list->end = context_start_defer(context);
+	list->start = context->current_scope->defer_last;
+	context->current_scope->defer_last = list->end;
 }
 
 
@@ -73,7 +69,9 @@ void context_pop_scope(Context *context)
 {
 	assert(context->current_scope != &context->scopes[0]);
 	context->last_local = context->current_scope->local_decl_start;
-	assert (context->current_scope->defers.end == context->current_scope->defers.start);
+
+	assert(context_start_defer(context) == context->current_scope->defer_last);
+
 	context->current_scope--;
 }
 
@@ -108,6 +106,13 @@ static void context_pop_defers_and_replace_ast(Context *context, Ast *ast)
 	ast->scoped_stmt.defers = defers;
 }
 
+AstId context_start_defer(Context *context)
+{
+	if (context->current_scope == context->scopes) return 0;
+	if (context->current_scope->in_defer != context->current_scope[-1].in_defer) return 0;
+	return context->current_scope[-1].defer_last;
+}
+
 #pragma mark --- Helper functions
 
 
@@ -140,7 +145,7 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 	context->current_scope->jump_end = true;
 	Type *expected_rtype = context->rtype;
 	Expr *return_expr = statement->return_stmt.expr;
-	statement->return_stmt.defer = context->current_scope->defers.start;
+	statement->return_stmt.defer = context->current_scope->defer_last;
 	if (return_expr == NULL)
 	{
 		if (!expected_rtype)
@@ -362,9 +367,9 @@ static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
 {
 	// TODO special parsing of "catch"
 	context_push_scope_with_flags(context, SCOPE_DEFER); // NOLINT(hicpp-signed-bitwise)
-	context->current_scope->defers.start = 0;
-	context->current_scope->defers.end = 0;
-	context->current_scope->current_defer = statement;
+
+	context->current_scope->defer_last = 0;
+	context->current_scope->in_defer = statement;
 
 	PUSH_CONTINUE(NULL);
 	PUSH_BREAK(statement);
@@ -378,12 +383,14 @@ static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
 	POP_BREAKCONT();
 	POP_NEXT();
 
+	context_pop_defers_and_replace_ast(context, statement->defer_stmt.body);
+
 	context_pop_scope(context);
 
 	if (!success) return false;
 
-	statement->defer_stmt.prev_defer = context->current_scope->defers.start;
-	context->current_scope->defers.start = astid(statement);
+	statement->defer_stmt.prev_defer = context->current_scope->defer_last;
+	context->current_scope->defer_last = astid(statement);
 	return true;
 }
 
@@ -543,10 +550,10 @@ static inline Decl *sema_analyse_label(Context *context, Ast *stmt)
 		SEMA_TOKID_ERROR(stmt->contbreak_stmt.label.span, "Expected the name to match a label, not a constant.");
 		return poisoned_decl;
 	}
-	if (context->current_scope->current_defer)
+	if (context->current_scope->in_defer)
 	{
 		DynamicScope *scope = context_find_scope_by_id(context, target->label.scope_id);
-		if (scope->current_defer != context->current_scope->current_defer)
+		if (scope->in_defer != context->current_scope->in_defer)
 		{
 			SEMA_ERROR(stmt, stmt->ast_kind == AST_BREAK_STMT ? "You cannot break out of a defer." : "You cannot use continue out of a defer.");
 			return poisoned_decl;
@@ -580,7 +587,7 @@ static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 		return false;
 	}
 
-	statement->contbreak_stmt.defers.start = context->current_scope->defers.start;
+	statement->contbreak_stmt.defers.start = context->current_scope->defer_last;
 	if (statement->contbreak_stmt.label.name)
 	{
 		Decl *target = sema_analyse_label(context, statement);
@@ -632,11 +639,11 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 		bool defer_mismatch = false;
 		if (parent->ast_kind == AST_SWITCH_STMT)
 		{
-			defer_mismatch = context->current_scope->current_defer != context_find_scope_by_id(context, parent->switch_stmt.scope_id)->current_defer;
+			defer_mismatch = context->current_scope->in_defer != context_find_scope_by_id(context, parent->switch_stmt.scope_id)->in_defer;
 		}
 		else
 		{
-			defer_mismatch = context->current_scope->current_defer != context_find_scope_by_id(context, parent->catch_stmt.scope_id)->current_defer;
+			defer_mismatch = context->current_scope->in_defer != context_find_scope_by_id(context, parent->catch_stmt.scope_id)->in_defer;
 		}
 		if (defer_mismatch)
 		{
@@ -646,7 +653,7 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 		assert(statement->next_stmt.target);
 	}
 
-	statement->next_stmt.defers.start = context->current_scope->defers.start;
+	statement->next_stmt.defers.start = context->current_scope->defer_last;
 	statement->next_stmt.defers.end = parent->switch_stmt.defer;
 	// Plain next.
 	if (!statement->next_stmt.target)
@@ -750,7 +757,7 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
 {
 	context->current_scope->jump_end = true;
-	statement->contbreak_stmt.defers.start = context->current_scope->defers.start;
+	statement->contbreak_stmt.defers.start = context->current_scope->defer_last;
 
 	if (!context->continue_target && !statement->contbreak_stmt.label.name)
 	{
@@ -969,7 +976,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 			return false;
 	}
 	Ast *default_case = NULL;
-	assert(context->current_scope->defers.start == context->current_scope->defers.end);
+	assert(context_start_defer(context) == context->current_scope->defer_last);
 
 	bool exhaustive = false;
 	unsigned case_count = vec_size(cases);
@@ -1041,7 +1048,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 
 
 	Type *switch_type = ast_cond_type(cond)->canonical;
-	statement->switch_stmt.defer = context->current_scope->defers.start;
+	statement->switch_stmt.defer = context->current_scope->defer_last;
 	bool success = sema_analyse_switch_body(context, statement, cond->span,
 	                                switch_type->canonical,
 	                                statement->switch_stmt.cases);
@@ -1068,7 +1075,7 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 	statement->catch_stmt.scope_id = context->current_scope->scope_id;
 	context_push_scope_with_label(context, statement->catch_stmt.flow.label);
 
-	statement->catch_stmt.defer = context->current_scope->defers.start;
+	statement->catch_stmt.defer = context->current_scope->defer_last;
 	if (catch_expr->expr_kind == EXPR_BINARY && catch_expr->binary_expr.operator == BINARYOP_ASSIGN)
 	{
 		Expr *left = catch_expr->binary_expr.left;

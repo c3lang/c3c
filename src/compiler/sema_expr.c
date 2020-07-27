@@ -2804,7 +2804,7 @@ static inline bool sema_expr_analyse_guard(Context *context, Type *to, Expr *exp
 {
 	Expr *inner = expr->guard_expr.inner;
 	bool success = sema_analyse_expr(context, to, inner);
-	expr->guard_expr.defer = context->current_scope->defers.end;
+	expr->guard_expr.defer = context->current_scope->defer_last;
 	if (!success) return false;
 	expr->type = inner->type;
 	if (!inner->failable)

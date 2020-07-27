@@ -1,0 +1,36 @@
+
+func void test1() {}
+func void test2() {}
+func void test3() {}
+func void test4() {}
+
+func void test()
+{
+    defer
+    {
+        defer test1();
+        test2();
+        defer test3();
+    }
+    test4();
+}
+
+func void test_line()
+{
+    defer defer test1();
+}
+
+// #expect: defer_in_defer.ll
+
+entry:
+  call void @defer_in_defer.test4()
+  call void @defer_in_defer.test2()
+  call void @defer_in_defer.test3()
+  br label %exit
+
+exit:
+  call void @defer_in_defer.test1()
+
+entry:
+  call void @defer_in_defer.test1()
+  br label %exit
