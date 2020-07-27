@@ -294,7 +294,7 @@ LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMV
 		case CAST_EUBOOL:
 			return LLVMBuildICmp(context->builder, LLVMIntNE, value, gencontext_emit_no_error_union(context), "eubool");
 		case CAST_PTRBOOL:
-			return LLVMBuildICmp(context->builder, LLVMIntNE, value, LLVMConstPointerNull(llvm_type(from_type->canonical)), "ptrbool");
+			return LLVMBuildIsNotNull(context->builder, value, "ptrbool");
 		case CAST_BOOLINT:
 			return LLVMBuildTrunc(context->builder, value, llvm_type(to_type), "boolsi");
 		case CAST_FPBOOL:

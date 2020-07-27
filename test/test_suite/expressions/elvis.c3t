@@ -1,0 +1,45 @@
+func int* elvis(int *x, int *y)
+{
+    return x ?: y;
+}
+
+func int* elvis2(int *x, int *y)
+{
+    return x ?: (y ?: x);
+}
+
+// #expect: elvis.ll
+
+    store i32* %0, i32** %x
+    store i32* %1, i32** %y
+    %2 = load i32*, i32** %x
+    %ptrbool = icmp ne i32* %2, null
+    br i1 %ptrbool, label %cond.phi, label %cond.rhs
+cond.rhs:
+    %3 = load i32*, i32** %y
+    br label %cond.phi
+cond.phi:
+    %val = phi i32* [ %2, %entry ], [ %3, %cond.rhs ]
+    ret i32* %val
+
+    store i32* %0, i32** %x
+    store i32* %1, i32** %y
+    %2 = load i32*, i32** %x
+    %ptrbool = icmp ne i32* %2, null
+    br i1 %ptrbool, label %cond.phi3, label %cond.rhs
+cond.rhs:
+    %3 = load i32*, i32** %y
+    %ptrbool1 = icmp ne i32* %3, null
+    br i1 %ptrbool1, label %cond.phi, label %cond.rhs2
+
+cond.rhs2:
+    %4 = load i32*, i32** %x
+    br label %cond.phi
+
+cond.phi:
+    %val = phi i32* [ %3, %cond.rhs ], [ %4, %cond.rhs2 ]
+    br label %cond.phi3
+
+cond.phi3:
+    %val4 = phi i32* [ %2, %entry ], [ %val, %cond.phi ]
+    ret i32* %val4

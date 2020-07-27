@@ -1,0 +1,49 @@
+
+func void test1()
+{}
+
+func void test2()
+{}
+
+func void test(int i)
+{
+    bool b = true;
+    switch (i)
+    {
+        case 1:
+            defer test2();
+            if (b) next;
+            test1();
+        case 2:
+            test1();
+    }
+}
+
+// #expect: defer_next_switch.ll
+
+switch.case:
+  %4 = load i1, i1* %b
+  br i1 %4, label %if.then, label %if.exit
+
+if.then:
+  call void @defer_next_switch.test2()
+  br label %exit
+
+exit:
+  br label %switch.case2
+
+if.exit:
+  call void @defer_next_switch.test1()
+  call void @defer_next_switch.test2()
+  br label %exit1
+
+exit1:
+  br label %switch.exit
+
+switch.case2:
+  call void @defer_next_switch.test1()
+  br label %switch.exit
+
+switch.exit:
+  ret void
+}

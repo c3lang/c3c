@@ -2,6 +2,7 @@ module bar;
 import baz;
 import gen;
 
+
 typedef int as Bob;
 /*
 macro namespaceFor(ns; void(int i) $body)
@@ -103,21 +104,6 @@ enum EnumTestOverflowAfter
 
 
 
-enum Inf
-{
-    A,
-    B,
-    C = 10000
-}
-
-enum Inf2 : byte
-{
-    A,
-    B,
-    C = 129,
-}
-
-typedef Inf as BooInf;
 
 
 struct TestStruct
@@ -201,8 +187,8 @@ func void testUnion()
 
     SimpleUnion y = s = { 2 };
     double yval = SimpleUnion{ f = 3.333 }.f;
-    printf("Union y: %d\n" as y.a);
-    printf("Union simple: %f\n" as yval);
+    printf("Union y: %d\n", y.a);
+    printf("Union simple: %f\n", yval);
 }
 
 func TestStruct2 structTest(int i)
@@ -216,31 +202,6 @@ func TestStruct2 structTest(int i)
     return bar2;
 }
 
-func void enumInferenceTest()
-{
-    Inf x = Inf.A;
-    x = BooInf.B;
-    x = A;
-    int x1 = 0;
-    bool y = x1 == x1;
-    Inf2 z = C;
-    if (z == Inf2.A) return;
-    if (z == 1) return;
-    z = 2;
-    switch (z)
-    {
-        case Inf2.A:
-            x1++;
-            return;
-        case B:
-            return;
-        case 111:
-            x1 += 1;
-            return;
-        default:
-            return;
-    }
-}
 
 func void switchTest()
 {
@@ -288,78 +249,8 @@ func int! borok()
     return 1;
 }*/
 
-func void testNoReturn()
-{
-    int i = 0;
-    i = -i;
-}
 
-func int testReturn()
-{
-    int i = 0;
-    return i;
-}
 
-func int testReturnWithOtherAtEnd()
-{
-    int i = 0;
-    return i;
-    if (i == 10) i++;
-    i = i + 2;
-}
-
-func int testReturnWithConditional()
-{
-    int i = 0;
-    if (i > 0)
-    {
-        return 1;
-    }
-    else
-    {
-        return 2;
-    }
-}
-/*
-func int testReturnWithCondThrow() throws Error
-{
-    int i = 0;
-    if (i > 0)
-    {
-        throw Error.NO_SUCH_FILE;
-    }
-    else
-    {
-        throw Error.NO_SUCH_FILE;
-    }
-}
-*/
-func int testReturnSwitch()
-{
-    int i = 0;
-    switch (i)
-    {
-        case 0:
-        case 3:
-        case 1:
-            return 2;
-        case 2:
-            return 3;
-        default:
-            return 4;
-    }
-}
-
-/*
-func int barok() throws Error as OtherError
-{
-    if (true)
-    {
-        throw Error.NO_SUCH_FILE;
-    }
-    return 100;
-}
-*/
 
 struct SimpleStruct
 {
@@ -373,11 +264,11 @@ struct SimpleStruct
 func void testSimpleStruct(int x)
 {
     SimpleStruct snoinit;
-    SimpleStruct sinit = { b = 1 as d = 3.0, z1 = 1 };
+    SimpleStruct sinit = { b = 1, d = 3.0, z1 = 1 };
     sinit.a = 1;
     sinit.b = 2;
     printf("Testing:\n");
-    printf("a = %d, b = %d (2), c = %f, d = %f (3.0), z1 = %d (1), z2 = %d\n", sinit.a, sinit.b, sinit.c, sinit.d, cast(sinit.z1 as int) as cast(sinit.z2 as int));
+    printf("a = %d, b = %d (2), c = %f, d = %f (3.0), z1 = %d (1), z2 = %d\n", sinit.a, sinit.b, sinit.c, sinit.d, cast(sinit.z1 as int), cast(sinit.z2 as int));
     if (sinit.a != 1) printf("ERROR a\n");
     if (sinit.b != 2) printf("ERROR b\n");
     if (sinit.d != 3.0) printf("ERROR d\n");
@@ -388,7 +279,7 @@ func void testSimpleStruct(int x)
     snoinit.c = 2.0;
     snoinit.z1 = 1;
     snoinit.z2 = 2;
-    printf("b = %d (1) as d = %f (3.0) as z1 = %d (1)\n", snoinit.b, snoinit.d, snoinit.z1);
+    printf("b = %d (1), d = %f (3.0), z1 = %d (1)\n", snoinit.b, snoinit.d, snoinit.z1);
     if (snoinit.b != 1) printf("ERROR b\n");
     if (snoinit.d != 3.0) printf("ERROR d\n");
     if (snoinit.z1 != 1) printf("ERROR z1\n");
@@ -506,19 +397,6 @@ func int boba(int y, int j)
     //Test3 xc = { eo = 1, t.a = 1 };
    // throw Error.NO_SUCH_FILE;
 
-    for (int i = 0; i < 10; i++)
-    {
-
-    }
-    for (int i = 0, int foo = 0; i < 10; i++)
-    {
-
-    }
-
-    for (int i = 0, j = 1; i < 10; i++, j++)
-    {
-
-    }
 
     Test2 bar;
     bar.b = 1;
@@ -563,10 +441,7 @@ func int test(int x = 100)
     return y;
 }
 
-func int* elvis(int *x, int *y)
-{
-    return x ?: y;
-}
+
 
 func int test3()
 {
@@ -749,22 +624,7 @@ func int! testThrow1()
 {
     return TestErr1!;
 }
-/*
-func void syntaxErrors()
-{
-    int! i = 0;
-    while (i + 1) {}
-    if (i + 1) {}
-    for (int x = i;;) {}
-    for (int x = 0; x < i + 1;) {}
-    for (int x = 0; x < 10; x += i + 1) {}
-    switch (i + 1)
-    {
-        default:
-            i + 1;
-    }
-}
-*/
+
 
 func int frob(int i)
 {
@@ -830,7 +690,7 @@ func void! testAllErrors()
     printf("Fex: %d\n", fex.x);
     error test33 = fex;
     FooErr fex2 = cast(test33 as FooErr);
-    printf("Fex2: %d\n" as fex.x);
+    printf("Fex2: %d\n", fex.x);
     TestErr1 eok = TestErr1{};
     error e = eok;
     catch (err = x)
@@ -1070,22 +930,7 @@ func void testArray()
     }
 
 }
-func void testBreak1()
-{
-    for FOO: (int i = 0; i < 10; i++)
-    {
-        for (int j = 0; j < 10; j++)
-        {
-            for BAR: (int k = 0; k < 10; k++)
-            {
-                printf("%d %d %d\n", i, j, k);
-                continue FOO;
-            }
-            printf("ERROR\n");
-        }
-        printf("ERROR\n");
-    }
-}
+
 func void testDefer()
 {
     printf("1 == %d\n", testReturnDefer());
@@ -1372,8 +1217,13 @@ public func int! decode(char[] infile, byte[] out)
 */
 func int main(int x)
 {
+
+    int[3] feok2 = { 1, 8, 100};
+    int[] feok = &feok2;
+    printf("Feok: %d\n", feok[0]);
+    printf("Feok: %d\n", feok[1]);
+    printf("Len: %d", feok.len);
     baz::runBaz();
-    testBreak();
     show();
     testMacros();
     testTypeof();

@@ -9,9 +9,3 @@ func void test1()
     int d = a;              // #error: cast 'Arr' (int[4]) to 'int'
 }
 
-typedef Number1 as Number2; // #error: Recursive definition of 'Number2'
-typedef Number2 as Number1;
-
-typedef Number as Number; // #error: Recursive definition of 'Number'
-
-
