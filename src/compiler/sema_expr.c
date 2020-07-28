@@ -852,6 +852,11 @@ static inline bool sema_expr_analyse_slice_after_parent_resolution(Context *cont
 			SEMA_ERROR(expr->slice_expr.start, "Indexing from the end is not allowed for pointers.");
 			return false;
 		}
+		if (!end)
+		{
+			SEMA_ERROR(expr, "Omitting end index is not allowed for pointers.");
+			return false;
+		}
 		if (end && expr->slice_expr.end_from_back)
 		{
 			SEMA_ERROR(expr->slice_expr.end, "Indexing from the end is not allowed for pointers.");
