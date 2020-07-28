@@ -51,6 +51,12 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 				SEMA_ERROR(type->array.len, "An array may not have a negative size.");
 				return type_info_poison(type);
 			}
+			if (!bigint_fits_in_bits(&type->array.len->const_expr.i, 64, true))
+			{
+				SEMA_ERROR(type->array.len, "An array may not exceed the max of an 64 bit signed int.");
+				return type_info_poison(type);
+			}
+
 			len = bigint_as_unsigned(&type->array.len->const_expr.i);
 			type->type = type_get_array(type->array.base->type, len);
 			break;

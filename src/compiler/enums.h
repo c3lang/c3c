@@ -177,6 +177,8 @@ typedef enum
 	EXPR_CALL,
 	EXPR_GROUP,
 	EXPR_SUBSCRIPT,
+	EXPR_SLICE,
+	EXPR_SLICE_ASSIGN,
 	EXPR_ACCESS,
 	EXPR_INITIALIZER_LIST,
 	EXPR_EXPRESSION_LIST,
@@ -185,11 +187,11 @@ typedef enum
 	EXPR_SCOPED_EXPR,
 	EXPR_EXPR_BLOCK,
 	EXPR_MACRO_BLOCK,
-	EXPR_RANGE,
 	EXPR_DESIGNATED_INITIALIZER,
 	EXPR_COMPOUND_LITERAL,
 	EXPR_FAILABLE,
-	EXPR_DECL_LIST
+	EXPR_DECL_LIST,
+	EXPR_LEN,
 } ExprKind;
 
 typedef enum
@@ -206,7 +208,6 @@ typedef enum
 	PREC_ASSIGNMENT,        // =, *=, /=, %=, +=, etc
 	PREC_TRY_ELSE,          // try and else
 	PREC_TERNARY,           // ?:
-	PREC_RANGE,             // ...
 	PREC_LOGICAL,           // && ||
 	PREC_RELATIONAL,        // < > <= >= == !=
 	PREC_ADDITIVE,          // + -

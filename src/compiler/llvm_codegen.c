@@ -58,8 +58,6 @@ LLVMValueRef gencontext_emit_memclear(GenContext *context, LLVMValueRef ref, Typ
 }
 
 
-
-
 static void gencontext_emit_global_variable_definition(GenContext *context, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL);

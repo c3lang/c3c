@@ -39,7 +39,7 @@ const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 const char *kw_main;
 const char *kw_sizeof;
 const char *kw_offsetof;
-
+const char *kw_len;
 
 void symtab_init(uint32_t capacity)
 {
@@ -76,6 +76,7 @@ void symtab_init(uint32_t capacity)
 	kw_main = KW_DEF("main");
 	kw_sizeof = KW_DEF("sizeof");
 	kw_offsetof = KW_DEF("offsetof");
+	kw_len = KW_DEF("len");
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("inline");
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
 	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("stdcall");

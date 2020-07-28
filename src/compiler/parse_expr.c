@@ -197,32 +197,6 @@ static Expr *parse_post_unary(Context *context, Expr *left)
 	return unary;
 }
 
-static Expr *parse_range_expr(Context *context, Expr *left_side)
-{
-	assert(expr_ok(left_side));
-	advance_and_verify(context, TOKEN_ELLIPSIS);
-	Expr *right = TRY_EXPR_OR(parse_precedence(context, PREC_RANGE + 1), poisoned_expr);
-	Expr *range = expr_new(EXPR_RANGE, left_side->span);
-	range->range_expr.left = left_side;
-	range->range_expr.right = right;
-	RANGE_EXTEND_PREV(range);
-	return range;
-}
-
-static bool token_may_end_expression(TokenType type)
-{
-	switch (type)
-	{
-		case TOKEN_RPAREN:
-		case TOKEN_RBRACE:
-		case TOKEN_RBRACKET:
-		case TOKEN_EOS:
-		case TOKEN_COMMA:
-			return true;
-		default:
-			return false;
-	}
-}
 
 
 
@@ -369,18 +343,61 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 }
 
 
+
 static Expr *parse_subscript_expr(Context *context, Expr *left)
 {
 	assert(left && expr_ok(left));
-
 	advance_and_verify(context, TOKEN_LBRACKET);
-	Expr *index = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+
+	Expr *subs_expr = EXPR_NEW_EXPR(EXPR_SUBSCRIPT, left);
+	Expr *index = NULL;
+	bool is_range = false;
+	bool from_back = false;
+	bool end_from_back = false;
+	Expr *end = NULL;
+
+	// Not range with missing entry
+	if (!TOKEN_IS(TOKEN_DOTDOT))
+	{
+		// Might be ^ prefix
+		from_back = try_consume(context, TOKEN_BIT_XOR);
+		index = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	}
+	else
+	{
+		index = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
+		index->type = type_usize;
+		index->resolve_status = RESOLVE_DONE;
+		expr_const_set_int(&index->const_expr, 0, type_usize->canonical->type_kind);
+	}
+	if (try_consume(context, TOKEN_DOTDOT))
+	{
+		is_range = true;
+		if (!TOKEN_IS(TOKEN_RBRACKET))
+		{
+			end_from_back = try_consume(context, TOKEN_BIT_XOR);
+			end = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+		}
+	}
 	CONSUME_OR(TOKEN_RBRACKET, poisoned_expr);
-	Expr *subscript_ast = EXPR_NEW_EXPR(EXPR_SUBSCRIPT, left);
-	subscript_ast->subscript_expr.expr = left;
-	subscript_ast->subscript_expr.index = index;
-	RANGE_EXTEND_PREV(subscript_ast);
-	return subscript_ast;
+	RANGE_EXTEND_PREV(subs_expr);
+
+	if (is_range)
+	{
+		subs_expr->expr_kind = EXPR_SLICE;
+		subs_expr->slice_expr.expr = left;
+		subs_expr->slice_expr.start = index;
+		subs_expr->slice_expr.start_from_back = from_back;
+		subs_expr->slice_expr.end = end;
+		subs_expr->slice_expr.end_from_back = end_from_back;
+	}
+	else
+	{
+		subs_expr->subscript_expr.expr = left;
+		subs_expr->subscript_expr.index = index;
+		subs_expr->subscript_expr.from_back = from_back;
+	}
+	return subs_expr;
 }
 
 
@@ -848,7 +865,6 @@ static Expr* parse_expr_block(Context *context, Expr *left)
 
 ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_ELSE] = { NULL, parse_else_expr, PREC_TRY_ELSE },
-		[TOKEN_ELLIPSIS] = { NULL, parse_range_expr, PREC_RANGE },
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },

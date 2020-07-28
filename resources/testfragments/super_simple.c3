@@ -1218,11 +1218,30 @@ public func int! decode(char[] infile, byte[] out)
 func int main(int x)
 {
 
-    int[3] feok2 = { 1, 8, 100};
+    int[6] feok2 = { 1, 8, 100, 293, 23982, 34};
     int[] feok = &feok2;
+    int[] flok = feok2[3..6];
+    int[] flak = flok[1..2];
+    printf("HEllo\n");
     printf("Feok: %d\n", feok[0]);
     printf("Feok: %d\n", feok[1]);
-    printf("Len: %d", feok.len);
+    printf("Len: %d\n", feok.len);
+    printf("Len: %d\n", feok2.len);
+    printf("Len: %d\n", flok.len);
+    printf("Flok: %d\n", flok[0]);
+    printf("Flak: %d\n", flak[0]);
+    printf("Len: %d\n", flak.len);
+    feok2[1..^2] = 0xAA;
+    printf("Flok[0]: %d\n", flok[0]);
+    printf("Flok[1]: %d\n", flok[1]);
+    printf("Flok[2]: %d\n", flok[2]);
+    printf("Feok[0]: %d\n", feok[0]);
+    printf("Feok[1]: %d\n", feok[1]);
+    printf("Feok[2]: %d\n", feok[2]);
+    for (int ef = 0; ef < 6; ef++)
+    {
+        printf("feok2[%d] = %d\n", ef, feok2[ef]);
+    }
     baz::runBaz();
     show();
     testMacros();

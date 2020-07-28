@@ -524,9 +524,26 @@ typedef struct
 
 typedef struct
 {
+	bool from_back : 1;
 	Expr *expr;
 	Expr *index;
 } ExprSubscript;
+
+typedef struct
+{
+	Expr *expr;
+	bool start_from_back : 1;
+	bool end_from_back : 1;
+	Expr *start;
+	Expr *end;
+} ExprSlice;
+
+typedef struct
+{
+	Expr *left;
+	Expr *right;
+} ExprSliceAssign;
+
 
 typedef struct
 {
@@ -621,6 +638,11 @@ typedef struct
 	AstId defer;
 } ExprGuard;
 
+typedef struct
+{
+	Expr *inner;
+} ExprLen;
+
 struct _Expr
 {
 	ExprKind expr_kind : 8;
@@ -631,6 +653,7 @@ struct _Expr
 	union {
 		ExprDesignatedInit designated_init_expr;
 		Expr *group_expr;
+		ExprLen len_expr;
 		ExprCast cast_expr;
 		Expr *typeof_expr;
 		ExprConst const_expr;
@@ -640,11 +663,13 @@ struct _Expr
 		ExprGuard guard_expr;
 		Expr *trycatch_expr;
 		ExprElse else_expr;
+		ExprSliceAssign slice_assign_expr;
 		ExprBinary binary_expr;
 		ExprTernary ternary_expr;
 		ExprUnary unary_expr;
 		ExprPostUnary post_expr;
 		ExprCall call_expr;
+		ExprSlice slice_expr;
 		ExprSubscript subscript_expr;
 		ExprAccess access_expr;
 		ExprIdentifier identifier_expr;
@@ -1106,6 +1131,7 @@ extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *kw_main;
 extern const char *kw_sizeof;
 extern const char *kw_offsetof;
+extern const char *kw_len;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id(_token.id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
