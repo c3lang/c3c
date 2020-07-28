@@ -1,0 +1,22 @@
+func void test()
+{
+    int[3] x = { 1, 2, 3 };
+    int[] y = x[1..^1];
+}
+
+// #expect: slice_offset_neg_end.ll
+
+%x = alloca [3 x i32]
+%y = alloca %"int[]"
+%0 = getelementptr inbounds [3 x i32], [3 x i32]* %x, i32 0, i32 0
+store i32 1, i32* %0
+%1 = getelementptr inbounds [3 x i32], [3 x i32]* %x, i32 0, i32 1
+store i32 2, i32* %1
+%2 = getelementptr inbounds [3 x i32], [3 x i32]* %x, i32 0, i32 2
+store i32 3, i32* %2
+%3 = load [3 x i32], [3 x i32]* %x
+%4 = bitcast [3 x i32]* %x to i32*
+%offset = getelementptr inbounds i32, i32* %4, i64 1
+%5 = insertvalue %"int[]" undef, i32* %offset, 0
+%6 = insertvalue %"int[]" %5, i64 1, 1
+store %"int[]" %6, %"int[]"* %y

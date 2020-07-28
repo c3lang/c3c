@@ -483,6 +483,17 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
+		case EXPR_SLICE_ASSIGN:
+			DUMP("(sliceassign");
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->slice_assign_expr.left);
+			DUMPEXPR(expr->slice_assign_expr.right);
+			DUMPEND();
+		case EXPR_LEN:
+			DUMP("(len");
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->len_expr.inner);
+			DUMPEND();
 		case EXPR_DECL_LIST:
 			DUMP("(decllist");
 			DUMPASTS(expr->dexpr_list_expr);
@@ -626,6 +637,13 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEXPR(expr->subscript_expr.expr);
 			DUMPEXPC(expr->subscript_expr.index);
 			DUMPEND();
+		case EXPR_SLICE:
+			DUMP("(slice");
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->slice_expr.expr);
+			DUMPEXPR(expr->slice_expr.start);
+			DUMPEXPR(expr->slice_expr.end);
+			DUMPEND();
 		case EXPR_GUARD:
 			DUMP("(guard");
 			DUMPEXPR(expr->guard_expr.inner);
@@ -674,11 +692,6 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMP("(scopedexpr");
 			DUMPEXPR(expr->expr_scope.expr);
 			// TODO defers.
-			DUMPEND();
-		case EXPR_RANGE:
-			DUMP("(range");
-			DUMPEXPR(expr->range_expr.left);
-			DUMPEXPR(expr->range_expr.right);
 			DUMPEND();
 		case EXPR_DESIGNATED_INITIALIZER:
 			DUMP("(designated-initializer");

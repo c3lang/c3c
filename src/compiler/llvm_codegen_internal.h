@@ -115,8 +115,9 @@ gencontext_add_attribute(GenContext *context, LLVMValueRef value_to_add_attribut
 void gencontext_emit_stmt(GenContext *context, Ast *ast);
 
 void gencontext_generate_catch_block_if_needed(GenContext *context, Ast *ast);
-LLVMValueRef gencontext_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id, LLVMTypeRef *types,
-                                            LLVMValueRef *values, unsigned arg_count);
+LLVMValueRef
+gencontext_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id, LLVMTypeRef *types, unsigned type_count,
+                               LLVMValueRef *values, unsigned arg_count);
 void gencontext_emit_panic_on_true(GenContext *context, LLVMValueRef value, const char *panic_name);
 void gencontext_emit_defer(GenContext *context, AstId defer_start, AstId defer_end);
 
@@ -130,6 +131,7 @@ void gencontext_emit_compound_stmt(GenContext *context, Ast *ast);
 void gencontext_emit_block(GenContext *context, LLVMBasicBlockRef next_block);
 LLVMValueRef gencontext_emit_memclear_size_align(GenContext *context, LLVMValueRef ref, uint64_t size, unsigned align, bool bitcast);
 LLVMValueRef gencontext_emit_memclear(GenContext *context, LLVMValueRef ref, Type *type);
+
 void gencontext_emit_br(GenContext *context, LLVMBasicBlockRef next_block);
 bool gencontext_check_block_branch_emit(GenContext *context);
 void gencontext_emit_cond_br(GenContext *context, LLVMValueRef value, LLVMBasicBlockRef thenBlock, LLVMBasicBlockRef elseBlock);
