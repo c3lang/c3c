@@ -909,6 +909,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_AT] = { parse_macro_ident, NULL, PREC_NONE },
 		[TOKEN_CONST_IDENT] = { parse_identifier, NULL, PREC_NONE },
+		[TOKEN_CT_CONST_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_STRING] = { parse_string_literal, NULL, PREC_NONE },
 		[TOKEN_REAL] = { parse_double, NULL, PREC_NONE },
 		[TOKEN_OR] = { NULL, parse_binary, PREC_LOGICAL },

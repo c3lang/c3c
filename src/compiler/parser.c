@@ -576,7 +576,7 @@ Decl *parse_decl(Context *context)
 
 /**
  * const_decl
- *  : 'const' CT_IDENT '=' const_expr ';'
+ *  : 'const' CT_CONST_IDENT '=' const_expr ';'
  *  | 'const' type IDENT '=' const_expr ';'
  *  ;
  */
@@ -585,9 +585,12 @@ static inline Decl *parse_const_declaration(Context *context, Visibility visibil
 	advance_and_verify(context, TOKEN_CONST);
 
 	Decl *decl = DECL_NEW_VAR(NULL, VARDECL_CONST, visibility);
+	decl->span.loc = context->prev_tok;
+
 	// Parse the compile time constant.
-	if (TOKEN_IS(TOKEN_CT_IDENT))
+	if (try_consume(context, TOKEN_CT_CONST_IDENT))
 	{
+		decl->var.kind = VARDECL_CONST_CT;
 		if (!is_all_upper(decl->name))
 		{
 			SEMA_TOKEN_ERROR(context->tok, "Compile time constants must be all upper characters.");
@@ -596,10 +599,9 @@ static inline Decl *parse_const_declaration(Context *context, Visibility visibil
 	}
 	else
 	{
-		if (token_is_any_type(context->tok.type))
-		{
-			decl->var.type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-		}
+		decl->var.type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+		decl->name = TOKKSTR(context->tok);
+		decl->name_token = context->tok.id;
 		if (!consume_const_name(context, "constant")) return poisoned_decl;
 	}
 
@@ -1680,6 +1682,17 @@ static inline Decl *parse_top_level(Context *context)
 			assert(visibility != VISIBLE_MODULE);
 			TODO
 			//sema_error_at(context->token->span.loc - 1, "Expected a top level declaration'.");
+			return poisoned_decl;
+		case TOKEN_CT_CONST_IDENT:
+			if (context->next_tok.type == TOKEN_EQ)
+			{
+				SEMA_TOKEN_ERROR(context->tok,
+				                 "Did you forget a 'const' before the name of this compile time constant?");
+			}
+			else
+			{
+				SEMA_TOKEN_ERROR(context->tok, "Compile time constant unexpectedly found.");
+			}
 			return poisoned_decl;
 		default:
 			// We could have included all fundamental types above, but do it here instead.

@@ -508,7 +508,8 @@ typedef enum
 	VARDECL_MEMBER = 4,
 	VARDECL_LOCAL_CT = 5,
 	VARDECL_LOCAL_CT_TYPE = 6,
-	VARDECL_ALIAS = 7,
+	VARDECL_CONST_CT = 7,
+	VARDECL_ALIAS = 8,
 } VarDeclKind;
 
 typedef enum

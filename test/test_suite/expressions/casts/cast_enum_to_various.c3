@@ -1,4 +1,6 @@
-// #skip
+
+
+
 struct Struct
 {
     int x;
