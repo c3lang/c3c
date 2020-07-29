@@ -332,17 +332,25 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 	{
 		expr->failable = true;
 	}
-	if (decl->decl_kind == DECL_VAR && decl->var.constant)
+	if (decl->decl_kind == DECL_VAR)
 	{
-		assert(decl->var.init_expr && decl->var.init_expr->resolve_status == RESOLVE_DONE);
-		if (decl->var.failable)
+		switch (decl->var.kind)
 		{
-			SEMA_ERROR(expr, "Constants may never be 'failable', please remove the '!'.");
-			return false;
+			case VARDECL_CONST:
+				assert(decl->var.init_expr && decl->var.init_expr->resolve_status == RESOLVE_DONE);
+				if (decl->var.failable)
+				{
+					SEMA_ERROR(expr, "Constants may never be 'failable', please remove the '!'.");
+					return false;
+				}
+				expr_replace(expr, expr_copy_from_macro(context, decl->var.init_expr));
+				return true;
+			case VARDECL_CONST_CT:
+				expr_replace(expr, expr_copy_from_macro(context, decl->var.init_expr));
+				return sema_analyse_expr(context, to, expr);
+			default:
+				break;
 		}
-		// Todo, maybe make a copy?
-		expr_replace(expr, decl->var.init_expr);
-		return true;
 	}
 	assert(decl->type);
 	expr->identifier_expr.decl = decl;
@@ -2643,12 +2651,11 @@ static bool sema_expr_analyse_neg(Context *context, Type *to, Expr *expr, Expr *
 static bool sema_expr_analyse_bit_not(Context *context, Type *to, Expr *expr, Expr *inner)
 {
 	Type *canonical = inner->type->canonical;
-	if (!type_is_any_integer(canonical) && canonical != type_bool)
+	if (!type_is_integer(canonical) && canonical != type_bool)
 	{
 		SEMA_ERROR(expr, "Cannot bit negate '%s'.", type_to_error_string(inner->type));
 		return false;
 	}
-
 	// The simple case, non-const.
 	if (inner->expr_kind != EXPR_CONST)
 	{
@@ -2660,11 +2667,10 @@ static bool sema_expr_analyse_bit_not(Context *context, Type *to, Expr *expr, Ex
 	switch (expr->const_expr.kind)
 	{
 		case ALL_SIGNED_INTS:
-		case ALL_UNSIGNED_INTS:
-			bigint_negate_wrap(&expr->const_expr.i, &inner->const_expr.i, canonical->builtin.bitsize);
+			bigint_not(&expr->const_expr.i, &inner->const_expr.i, canonical->builtin.bitsize, true);
 			break;
-		case TYPE_IXX:
-			bigint_negate(&expr->const_expr.i, &inner->const_expr.i);
+		case ALL_UNSIGNED_INTS:
+			bigint_not(&expr->const_expr.i, &inner->const_expr.i, canonical->builtin.bitsize, false);
 			break;
 		case TYPE_BOOL:
 			expr->const_expr.b = !expr->const_expr.b;

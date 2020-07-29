@@ -272,7 +272,7 @@ typedef struct
 
 typedef struct _VarDecl
 {
-	VarDeclKind kind : 3;
+	VarDeclKind kind : 4;
 	bool constant : 1;
 	bool failable : 1;
 	bool unwrap : 1;

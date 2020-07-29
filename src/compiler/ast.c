@@ -112,6 +112,8 @@ const char *decl_var_to_string(VarDeclKind kind)
 	{
 		case VARDECL_CONST:
 			return "const";
+		case VARDECL_CONST_CT:
+			return "$const";
 		case VARDECL_GLOBAL:
 			return "global";
 		case VARDECL_LOCAL:
@@ -738,6 +740,7 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			DUMPTI(decl->var.type_info);
 			switch (decl->var.kind)
 			{
+				case VARDECL_CONST_CT:
 				case VARDECL_CONST:
 				case VARDECL_GLOBAL:
 				case VARDECL_LOCAL:

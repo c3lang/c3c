@@ -60,7 +60,9 @@ LLVMValueRef gencontext_emit_memclear(GenContext *context, LLVMValueRef ref, Typ
 
 static void gencontext_emit_global_variable_definition(GenContext *context, Decl *decl)
 {
-	assert(decl->var.kind == VARDECL_GLOBAL);
+	if (decl->var.kind == VARDECL_CONST_CT) return;
+
+	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
 	// TODO fix name
 	decl->ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->name);
@@ -73,7 +75,8 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 	{
 		LLVMSetInitializer(decl->ref, LLVMConstNull(llvm_type(decl->type)));
 	}
-	// If read only: LLVMSetGlobalConstant(decl->var.backend_ref, 1);
+
+	LLVMSetGlobalConstant(decl->ref, decl->var.kind == VARDECL_CONST);
 
 	switch (decl->visibility)
 	{

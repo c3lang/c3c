@@ -1,7 +1,0 @@
-// #skip
-
-const uint AA = (~0);
-
-// #expect: constant_paren.ll
-
-#define test_AA (~0)

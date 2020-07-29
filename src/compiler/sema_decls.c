@@ -591,6 +591,8 @@ static inline bool expr_is_constant_eval(Expr *expr)
 
 static inline bool sema_analyse_global(Context *context, Decl *decl)
 {
+	if (decl->var.kind == VARDECL_CONST_CT) return true;
+
 	if (!sema_resolve_type_info(context, decl->var.type_info)) return false;
 	decl->type = decl->var.type_info->type;
 	if (decl->var.init_expr)
@@ -649,7 +651,6 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 		default:
 			eprintf("Decl %s %d\n", decl->name, decl->var.kind);
 			UNREACHABLE
-			break;
 	}
 }
 

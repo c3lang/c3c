@@ -476,34 +476,6 @@ bool ixxbo(Context *context, Expr *left, Type *type)
 }
 
 
-bool ussi(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	if (type->type_kind != TYPE_ENUM) return sema_type_mismatch(context, left, type, CAST_TYPE_EXPLICIT);
-	if (cast_type != CAST_TYPE_EXPLICIT) EXIT_T_MISMATCH();
-
-	if (left->expr_kind == EXPR_IDENTIFIER && left->identifier_expr.decl->decl_kind == DECL_ENUM_CONSTANT)
-	{
-		// TODO
-		Expr *value = left->identifier_expr.decl->enum_constant.expr;
-		assert(value->expr_kind == EXPR_CONST);
-//		assert(value->const_expr.type == CONST_INT);
-		left->const_expr.i = value->const_expr.i;
-		// TODO narrowing
-	}
-	insert_cast(left, CAST_ENUMLOW, canonical);
-	return true;
-}
-
-bool sius(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool uius(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
 /**
  * Cast comptime, signed or unsigned -> pointer.
  * @return true unless the constant value evaluates to zero.
@@ -592,6 +564,7 @@ bool enxi(Context *context, Expr* left, Type *from, Type *canonical, Type *type,
 		return false;
 	}
 	// 3. Dispatch to the right cast:
+	insert_cast(left, CAST_ENUMLOW, enum_type);
 	return xixi(context, left, enum_type_canonical, canonical, type, cast_type);
 }
 

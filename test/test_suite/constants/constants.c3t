@@ -1,0 +1,34 @@
+const byte AA = ~0;
+const byte BB = 200 ;
+const uint CC = ~0;
+const uint DD = $FOO;
+
+const $FOO = ~0;
+
+uint x = AA;
+uint z = CC;
+byte w = $FOO;
+ushort v = $FOO;
+uint z2 = DD;
+
+func void test()
+{
+    int xx = $FOO;
+}
+
+// #expect: constants.ll
+
+@AA = protected constant i8 -1
+@BB = protected constant i8 -56
+@CC = protected constant i32 -1
+@DD = protected constant i32 -1
+@x = protected global i32 255
+@z = protected global i32 -1
+@w = protected global i8 -1
+@v = protected global i16 -1
+@z2 = protected global i32 -1
+
+entry:
+    %xx = alloca i32
+    store i32 -1, i32* %xx
+    ret void
