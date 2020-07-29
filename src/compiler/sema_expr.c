@@ -2937,7 +2937,7 @@ static inline bool sema_expr_analyse_guard(Context *context, Type *to, Expr *exp
 	expr->type = inner->type;
 	if (!inner->failable)
 	{
-		SEMA_ERROR(inner, "No failable to rethrow before '!!' in the expression, please remove '!!'.");
+		SEMA_ERROR(expr, "No failable to rethrow before '!!' in the expression, please remove '!!'.");
 		return false;
 	}
 	if (!context->failable_return)

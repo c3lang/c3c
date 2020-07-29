@@ -1,0 +1,27 @@
+
+func void! test()
+{
+    int! i;
+    i!!;
+}
+
+// #expect: rethrow.ll
+
+    %i = alloca i32
+    %i1 = alloca i128
+    %0 = alloca i128
+    store i128 0, i128* %i1
+    %1 = load i128, i128* %i1
+    %2 = icmp eq i128 %1, 0
+    br i1 %2, label %after_check, label %error
+error:
+    store i128 %1, i128* %0
+    br label %guard_block
+after_check:
+    %3 = load i32, i32* %i
+    br label %noerr_block
+guard_block:
+    %4 = load i128, i128* %0
+    ret i128 %4
+noerr_block:
+    ret i128 0
