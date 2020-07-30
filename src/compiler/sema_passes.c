@@ -36,6 +36,16 @@ void sema_analysis_pass_process_imports(Context *context)
 	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
 }
 
+void sema_analysis_pass_register_globals(Context *context)
+{
+	DEBUG_LOG("Pass: Register globals for %s", context->file->name);
+	VECEACH(context->global_decls, i)
+	{
+		context_register_global_decl(context, context->global_decls[i]);
+	}
+	vec_resize(context->global_decls, 0);
+	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
+}
 
 static inline void sema_append_decls(Context *context, Decl **decls)
 {
@@ -88,6 +98,16 @@ void sema_analysis_pass_conditional_compilation(Context *context)
 	for (unsigned i = 0; i < vec_size(context->ct_ifs); i++)
 	{
 		sema_analyse_top_level_if(context, context->ct_ifs[i]);
+	}
+	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
+}
+
+void sema_analysis_pass_ct_assert(Context *context)
+{
+	DEBUG_LOG("Pass: $assert checks %s", context->file->name);
+	VECEACH(context->ct_asserts, i)
+	{
+		sema_analyse_ct_assert_stmt(context, context->ct_asserts[i]);
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
 }

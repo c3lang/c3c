@@ -34,6 +34,7 @@ typedef enum
 	DECL_PARSE_NORMAL,
 	DECL_PARSE_UNWRAP
 } DeclParse;
+Ast *parse_ct_assert_stmt(Context *context);
 Ast *parse_stmt(Context *context);
 Path *parse_path_prefix(Context *context, bool *had_error);
 Expr *parse_type_expression_with_path(Context *context, Path *path);
