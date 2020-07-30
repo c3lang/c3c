@@ -767,7 +767,23 @@ static inline Ast* parse_ct_switch_stmt(Context *context)
 	return ast;
 }
 
+
 #pragma mark --- External functions
+
+Ast *parse_ct_assert_stmt(Context *context)
+{
+	Ast *ast = AST_NEW_TOKEN(AST_CT_ASSERT, context->tok);
+	advance_and_verify(context, TOKEN_CT_ASSERT);
+	TRY_CONSUME_OR(TOKEN_LPAREN, "'$assert' needs a '(' here, did you forget it?", poisoned_ast);
+	ast->ct_assert_stmt.expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+	if (try_consume(context, TOKEN_COMMA))
+	{
+		ast->ct_assert_stmt.message = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+	}
+	TRY_CONSUME_OR(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
+	TRY_CONSUME_EOS();
+	return ast;
+}
 
 Ast *parse_stmt(Context *context)
 {
@@ -873,6 +889,8 @@ Ast *parse_stmt(Context *context)
 			SEMA_TOKEN_ERROR(context->tok, "'default' was found outside of 'switch', did you mismatch a '{ }' pair?");
 			advance(context);
 			return poisoned_ast;
+		case TOKEN_CT_ASSERT:
+			return parse_ct_assert_stmt(context);
 		case TOKEN_CT_IF:
 			return parse_ct_if_stmt(context);
 		case TOKEN_CT_SWITCH:

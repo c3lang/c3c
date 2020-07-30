@@ -925,6 +925,11 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 	if (!ast) return;
 	switch (ast->ast_kind)
 	{
+		case AST_CT_ASSERT:
+			DUMP("($assert");
+			DUMPEXPR(ast->ct_assert_stmt.expr);
+			DUMPEXPR(ast->ct_assert_stmt.message);
+			DUMPEND();
 		case AST_TRY_STMT:
 			DUMP("(try");
 			DUMPEXPR(ast->try_stmt.decl_expr);

@@ -1215,6 +1215,18 @@ public func int! decode(char[] infile, byte[] out)
     return j;
 }
 */
+
+int xx = 0;
+const int FOOP = 2;
+
+$assert(xx == 0);
+
+func void test22()
+{
+    $assert(FOOP == 2, "Bad");
+    $assert(FOOP == 0, "Good");
+}
+
 func int main(int x)
 {
 

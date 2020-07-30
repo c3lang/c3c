@@ -87,7 +87,7 @@ int sema_check_comp_time_bool(Context *context, Expr *expr)
 	if (!sema_analyse_expr_of_required_type(context, type_bool, expr, false)) return -1;
 	if (expr->expr_kind != EXPR_CONST)
 	{
-		SEMA_ERROR(expr, "$if requires a compile time constant value.");
+		SEMA_ERROR(expr, "Compile time evaluation requires a compile time constant value.");
 		return -1;
 	}
 	return expr->const_expr.b;
@@ -3163,6 +3163,9 @@ static Ast *ast_copy_from_macro(Context *context, Ast *source)
 			return ast;
 		case AST_ASM_STMT:
 			TODO
+		case AST_CT_ASSERT:
+			MACRO_COPY_EXPR(ast->ct_assert_stmt.expr);
+			return ast;
 		case AST_BREAK_STMT:
 			return ast;
 		case AST_TRY_STMT:

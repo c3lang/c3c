@@ -1221,6 +1221,37 @@ static bool sema_analyse_volatile_stmt(Context *context, Ast *statement)
 	return result;
 }
 
+bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
+{
+	Expr *expr = statement->ct_assert_stmt.expr;
+	Expr *message = statement->ct_assert_stmt.message;
+	if (message)
+	{
+		if (!sema_analyse_expr(context, type_string, message)) return false;
+		if (message->type->type_kind != TYPE_STRING)
+		{
+			SEMA_ERROR(message, "Expected a string as the error message.");
+		}
+	}
+	int res = sema_check_comp_time_bool(context, expr);
+
+	if (res == -1) return false;
+	if (!res)
+	{
+		if (message)
+		{
+			SEMA_ERROR(expr, "Compile time assert - %.*s", message->const_expr.string.len, message->const_expr.string.chars);
+		}
+		else
+		{
+			SEMA_ERROR(expr, "Compile time assert failed.");
+		}
+		return false;
+	}
+	statement->ast_kind = AST_NOP_STMT;
+	return true;
+}
+
 static bool sema_analyse_compound_stmt(Context *context, Ast *statement)
 {
 	context_push_scope(context);
@@ -1248,6 +1279,8 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_POISONED:
 		case AST_SCOPED_STMT:
 			UNREACHABLE
+		case AST_CT_ASSERT:
+			return sema_analyse_ct_assert_stmt(context, statement);
 		case AST_DEFINE_STMT:
 			return sema_analyse_define_stmt(context, statement);
 		case AST_ASM_STMT:

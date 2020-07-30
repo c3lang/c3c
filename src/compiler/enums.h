@@ -57,6 +57,7 @@ typedef enum
 	AST_COMPOUND_STMT,
 	AST_CONTINUE_STMT,
 	AST_DEFINE_STMT,
+	AST_CT_ASSERT,
 	AST_CT_IF_STMT,
 	AST_CT_ELIF_STMT,
 	AST_CT_ELSE_STMT,
@@ -415,6 +416,7 @@ typedef enum
 	TOKEN_WHILE,
 	TOKEN_TYPEOF,
 
+	TOKEN_CT_ASSERT,        // $assert
 	TOKEN_CT_CASE,          // $case
 	TOKEN_CT_DEFAULT,       // $default
 	TOKEN_CT_FOR,           // $for

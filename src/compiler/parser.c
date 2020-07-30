@@ -1627,6 +1627,7 @@ static inline bool check_no_visibility_before(Context *context, Visibility visib
  */
 static inline Decl *parse_top_level(Context *context)
 {
+
 	Visibility visibility = VISIBLE_MODULE;
 	switch (context->tok.type)
 	{
@@ -1653,8 +1654,15 @@ static inline Decl *parse_top_level(Context *context)
 			return parse_attribute_declaration(context, visibility);
 		case TOKEN_FUNC:
 			return parse_func_definition(context, visibility, false);
+		case TOKEN_CT_ASSERT:
+			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
+			{
+				Ast *ast = TRY_AST_OR(parse_ct_assert_stmt(context), false);
+				vec_add(context->ct_asserts, ast);
+				return NULL;
+			}
 		case TOKEN_CT_IF:
-			if (!check_no_visibility_before(context, visibility)) return false;
+			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
 			return parse_ct_if_top_level(context);
 		case TOKEN_CONST:
 			return parse_const_declaration(context, visibility);
@@ -1676,7 +1684,7 @@ static inline Decl *parse_top_level(Context *context)
 			// All of these start type
 			return parse_global_declaration(context, visibility);
 		case TOKEN_IDENT:
-			if (!check_no_visibility_before(context, visibility)) return false;
+			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
 			return parse_incremental_array(context);
 		case TOKEN_EOF:
 			assert(visibility != VISIBLE_MODULE);
@@ -1924,9 +1932,10 @@ static inline void parse_current(Context *context)
 	while (!TOKEN_IS(TOKEN_EOF))
 	{
 		Decl *decl = parse_top_level(context);
+		if (!decl) continue;
 		if (decl_ok(decl))
 		{
-			context_register_global_decl(context, decl);
+			vec_add(context->global_decls, decl);
 		}
 		else
 		{

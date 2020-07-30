@@ -71,12 +71,12 @@ void compiler_parse(BuildTarget *target)
 void compiler_compile(BuildTarget *target)
 {
 	Context **contexts = NULL;
+	diag_reset();
 	VECEACH(target->sources, i)
 	{
 		bool loaded = false;
 		File *file = source_file_load(target->sources[i], &loaded);
 		if (loaded) continue;
-		diag_reset();
 		Context *context = context_create(file, target);
 		vec_add(contexts, context);
 		parse_file(context);
@@ -104,6 +104,12 @@ void compiler_compile(BuildTarget *target)
 
 	VECEACH(contexts, i)
 	{
+		sema_analysis_pass_register_globals(contexts[i]);
+	}
+	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
+	VECEACH(contexts, i)
+	{
 		sema_analysis_pass_conditional_compilation(contexts[i]);
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
@@ -112,6 +118,14 @@ void compiler_compile(BuildTarget *target)
 	{
 		sema_analysis_pass_decls(contexts[i]);
 	}
+	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
+	VECEACH(contexts, i)
+	{
+		sema_analysis_pass_ct_assert(contexts[i]);
+	}
+	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
 	VECEACH(contexts, i)
 	{
 		sema_analysis_pass_functions(contexts[i]);

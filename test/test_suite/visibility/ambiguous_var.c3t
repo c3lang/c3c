@@ -1,0 +1,27 @@
+// #file: file1.c3
+module foo;
+
+public int a;
+public int b;
+
+// #file: file2.c3
+module bar;
+public int a;
+public int b;
+
+// #file: file3.c3
+
+module baz;
+import foo;
+import bar;
+
+public int a;
+
+func void test2()
+{
+    int c = a;  // This is fine.
+    c = foo::b;
+    c = bar::b;
+    c = foo::a;
+    c = b; // #error: Ambiguous symbol 'b' – both defined in foo and bar, please add the module name to resolve the ambiguity
+}

@@ -915,6 +915,11 @@ typedef struct
 	TokenId **instructions;
 } AstAsmStmt;
 
+typedef struct
+{
+	Expr *message;
+	Expr *expr;
+} AstCtAssertStmt;
 
 typedef struct _Ast
 {
@@ -947,6 +952,7 @@ typedef struct _Ast
 		Ast *ct_else_stmt;                  // 8
 		AstCtForStmt ct_for_stmt;           // 64
 		AstScopedStmt scoped_stmt;          // 16
+		AstCtAssertStmt ct_assert_stmt;
 	};
 } Ast;
 
@@ -1024,6 +1030,7 @@ typedef struct _Context
 	Decl** imports;
 	Module *module;
 	STable local_symbols;
+	Decl **global_decls;
 	Decl **enums;
 	Decl **types;
 	Decl **functions;
@@ -1031,6 +1038,7 @@ typedef struct _Context
 	Decl **vars;
 	Decl **incr_array;
 	Decl **ct_ifs;
+	Ast **ct_asserts;
 	Ast **defers;
 	Decl *active_function_for_analysis;
 	Token *comments;
@@ -1345,8 +1353,10 @@ const char *resolve_status_to_string(ResolveStatus status);
 #define SEMA_PREV(_node, ...) sema_prev_at_range3((_node)->span, __VA_ARGS__)
 
 void sema_analysis_pass_process_imports(Context *context);
+void sema_analysis_pass_register_globals(Context *context);
 void sema_analysis_pass_conditional_compilation(Context *context);
 void sema_analysis_pass_decls(Context *context);
+void sema_analysis_pass_ct_assert(Context *context);
 void sema_analysis_pass_functions(Context *context);
 
 bool sema_add_member(Context *context, Decl *decl);
@@ -1354,6 +1364,7 @@ bool sema_add_local(Context *context, Decl *decl);
 bool sema_unwrap_var(Context *context, Decl *decl);
 bool sema_rewrap_var(Context *context, Decl *decl);
 
+bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement);
 bool sema_analyse_statement(Context *context, Ast *statement);
 Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol);
 Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl, Decl **private_decl);
