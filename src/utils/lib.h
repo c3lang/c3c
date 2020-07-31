@@ -7,6 +7,7 @@
 #include "common.h"
 
 const char* expand_path(const char* path);
+const char* find_lib_dir(void);
 char *read_file(const char *path, size_t *return_size);
 int filename_to_module(const char *path, char buffer[MAX_IDENTIFIER_LENGTH + 1]);
 void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);

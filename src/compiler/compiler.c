@@ -17,6 +17,8 @@ Vmem type_info_arena;
 
 void compiler_init(void)
 {
+	compiler.lib_dir = find_lib_dir();
+	DEBUG_LOG("Found std library: %s", compiler.lib_dir);
 	stable_init(&compiler.modules, 64);
 	stable_init(&compiler.global_symbols, 0x1000);
 	vmem_init(&ast_arena, 4 * 1024);
@@ -72,6 +74,8 @@ void compiler_compile(BuildTarget *target)
 {
 	Context **contexts = NULL;
 	diag_reset();
+	vec_add(target->sources, strformat("%s/std/builtin.c3", compiler.lib_dir));
+	//vec_add(target->sources, strformat("%s/std/io.c3", compiler.lib_dir));
 	VECEACH(target->sources, i)
 	{
 		bool loaded = false;

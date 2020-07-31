@@ -1708,7 +1708,7 @@ static inline Decl *parse_top_level(Context *context)
 			{
 				return parse_global_declaration(context, visibility);
 			}
-			SEMA_TOKEN_ERROR(context->tok, "Unexpected symbol found");
+			SEMA_TOKEN_ERROR(context->tok, "Unexpected symbol found.");
 			return poisoned_decl;
 	}
 }

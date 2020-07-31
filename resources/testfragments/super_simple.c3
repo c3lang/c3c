@@ -2,8 +2,14 @@ module bar;
 import baz;
 import gen;
 
-
 typedef int as Bob;
+
+func void testVararg(int foo, ... args)
+{
+    @args.start();
+    int i = @args.next(i, int);
+    @args.end();
+}
 /*
 macro namespaceFor(ns; void(int i) $body)
 {
@@ -1229,7 +1235,6 @@ func void test22()
 
 func int main(int x)
 {
-
     int[6] feok2 = { 1, 8, 100, 293, 23982, 34};
     int[] feok = &feok2;
     int[] flok = feok2[3..6];

@@ -205,6 +205,8 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 	}
 	buffer[buffer_write_offset++] = ')';
 
+	if (!all_ok) return NULL;
+
 	Type *return_type = signature->rtype->type->canonical;
 	signature->return_param = false;
 	if (return_type->type_kind != TYPE_VOID)
@@ -216,7 +218,6 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 		}
 	}
 
-	if (!all_ok) return NULL;
 	TokenType type = TOKEN_INVALID_TOKEN;
 	signature->mangled_signature = symtab_add(buffer, buffer_write_offset, fnv1a(buffer, buffer_write_offset), &type);
 	Type *func_type = stable_get(&context->local_symbols, signature->mangled_signature);
