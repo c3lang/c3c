@@ -1099,6 +1099,7 @@ typedef struct
 	STable global_symbols;
 	STable qualified_symbols;
 	Type **type;
+	const char *lib_dir;
 } Compiler;
 
 typedef enum

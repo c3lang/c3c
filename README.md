@@ -9,12 +9,30 @@ C3 tries to be an alternative in the the C/C++ niche: fast and close to the meta
 ### Design Principles
 - Procedural "get things done"-type of language.
 - Try to stay close to C - only change where truly needed.
-- C ABI compatibility and C C integration.
+- C ABI compatibility and excellent C integration.
 - Learning C3 should be easy for a C programmer.
-- Dare violating the "close to metal" principle if the value is great.
 - Data is inert.
-- Avoid "big ideas".
-- Avoid the kitchen sink language trap.
+- Avoid "big ideas" & the "more is better" fallacy.
+- Dare introducing some conveniences not "close to metal" if the value is great.
+
+
+### In what ways do C3 differ from C?
+
+- No mandatory header files
+- New semantic macro system
+- Generic modules
+- Module based
+- Subarrays (slices) and vararrays built in
+- Compile time reflection
+- Enhanced compile time execution
+- "Result" based zero overhead error handling
+- Defer
+- Value methods
+- Associated enum data
+- Built in strings
+- No preprocessor
+- Undefined behaviour trapped on debug by default
+- Optional pre and post conditions
 
 ### Current status
 
@@ -23,44 +41,34 @@ developer of Judge0.
 
 Design work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue](https://github.com/c3lang/c3c/issues) or discuss C3 on the r/ProgrammingLanguages Discord server: https://discord.gg/cfu4wdk
 
-There are some small work being done on the parser here, but most of the structure is still missing:
 
-#### What's missing in the parser
+#### What's currently missing
 
 - `asm` sections.
 - bitstructs
 - array range initializers e.g. `{ [1..2] = 2 }`
-- assert/$assert as keywords
-- Docs not linked to statements/functions/declarations.
+- `assert` - with compiler hint
+- `$switch` `$for` - compile time iteration / switch
+- Pre/post conditions
+- `generic` - explicit overloading
+- `malloc` / `free`
+- `string` not fully implemented
+- vararrays, e.g. `int[*]` not working
+- `unreachable` for compiler hinting
+- Generic modules
+- Stdlib not linked.
 
-#### What's missing in the semantic analyser
-
-- Incomplete handling of imports.
-- Function signatures incomplete.
-- Function typedef not done.
-- `asm` not done.
-- `generic` not analysed.
-- `$switch` and `$for` not handled.
-- Enums not correctly handled.
-- Type resolution not complete for all types.
-- Macro call not handled completely.
-
-#### What's missing overall
-
-- Improved integration with C.
-- Generic macros.
-- Update of error system
-- Imports aren't quite stable
-- Strings, vararrays aren't finalized
-- Stdlib not started
-- More tests and support for multi file tests.
+Also see: https://github.com/c3lang/c3c/issues
 
 #### What's working?
 
-- Lexing and parsing works with some minor exceptions
-- Normal code works
+- Lexing/parsing/semantic analysis/codegen.
+- "Regular code" should mostly work.
 - You can use any C function by declaring it as a normal C3 function with external 
 
-(For more details see missing.txt)
+#### What can you help with?
 
-If you wish to contribute with ideas, please file issues on the c3docs: https://github.com/c3lang/c3docs instead of the compiler.
+- If you wish to contribute with ideas, please file issues on the c3docs: https://github.com/c3lang/c3docs instead of the compiler.
+- Discuss the language on discord to help iron out syntax.
+- Stdlib work will soon start, do you want to help out building the C3 std lib?
+- Do you want do do real compiler work? Everyone is welcome to contribute.

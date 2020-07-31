@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/errno.h>
+#include "whereami.h"
 
 const char* expand_path(const char* path)
 {
@@ -55,6 +56,7 @@ int filename_to_module(const char *path, char buffer[MAX_IDENTIFIER_LENGTH + 1])
 	return namelen;
 }
 
+
 char *read_file(const char *path, size_t *return_size)
 {
 	FILE *file = fopen(path, "rb");
@@ -69,22 +71,54 @@ char *read_file(const char *path, size_t *return_size)
 	*return_size = file_size;
 	rewind(file);
 
-	char *buffer = (char *)malloc((size_t)file_size + 1);
+	char *buffer = (char *)malloc(file_size + 1);
 	if (buffer == NULL)
 	{
 		error_exit("Not enough memory to read \"%s\".\n", path);
 	}
 
-	size_t bytesRead = fread(buffer, sizeof(char), (size_t)file_size, file);
-	if (bytesRead < file_size)
+	size_t bytes_read = fread(buffer, sizeof(char), file_size, file);
+	if (bytes_read < file_size)
 	{
 		error_exit("Failed to read file \"%s\".\n", path);
 	}
 
-	buffer[bytesRead] = '\0';
+	buffer[bytes_read] = '\0';
 
 	fclose(file);
 	return buffer;
+}
+
+const char* find_lib_dir(void)
+{
+	const char *path = find_executable_path();
+
+	DEBUG_LOG("Detected executable path at %s", path);
+
+	struct stat info;
+	char *lib_path = NULL;
+	asprintf(&lib_path, "%s../lib/std/", path);
+	DEBUG_LOG("Checking %s", lib_path);
+	int err = stat(lib_path, &info);
+
+	// Found it at ../lib/std
+	if (!err && S_ISDIR(info.st_mode))
+	{
+		asprintf(&lib_path, "%s../lib/", path);
+		return lib_path;
+	}
+
+	asprintf(&lib_path, "%slib/std/", path);
+	err = stat(lib_path, &info);
+
+	// Found it at ./lib/std
+	if (!err && S_ISDIR(info.st_mode))
+	{
+		asprintf(&lib_path, "%slib/", path);
+		return lib_path;
+	}
+
+	error_exit("Could not find the standard library /lib/std/");
 }
 
 void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path)
@@ -105,8 +139,6 @@ void path_get_dir_and_filename_from_full(const char *full_path, char **filename,
 	*dir_path = malloc(dir_len + 1);
 	strncpy(*dir_path, dir, dir_len + 1);
 }
-
-
 
 
 void file_find_top_dir()

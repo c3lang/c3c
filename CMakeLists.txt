@@ -43,9 +43,10 @@ set(LLVM_LINK_COMPONENTS
 
 llvm_map_components_to_libnames(llvm_libs support core irreader ${LLVM_LINK_COMPONENTS})
 
+file(COPY ${CMAKE_SOURCE_DIR}/resources/lib DESTINATION ${CMAKE_BINARY_DIR})
+
 include_directories(
-        "${CMAKE_SOURCE_DIR}/src/"
-        "${CMAKE_SOURCE_DIR}/build/")
+        "${CMAKE_SOURCE_DIR}/src/")
 
 add_executable(c3c
         src/main.c
@@ -86,8 +87,25 @@ add_executable(c3c
         src/compiler/llvm_codegen_function.c
         src/build/builder.c
         src/utils/toml.c src/build/project.c
-        src/compiler/sema_name_resolution.c src/target_info/target_info.c src/compiler/parse_expr.c src/compiler/parser_internal.h src/compiler/parse_stmt.c src/compiler/sema_passes.c src/compiler/sema_internal.h src/compiler/sema_decls.c src/compiler/sema_types.c src/compiler/sema_stmts.c src/compiler/number.c src/utils/vmem.c src/utils/vmem.h)
+        src/compiler/sema_name_resolution.c
+        src/target_info/target_info.c
+        src/compiler/parse_expr.c
+        src/compiler/parser_internal.h
+        src/compiler/parse_stmt.c
+        src/compiler/sema_passes.c
+        src/compiler/sema_internal.h
+        src/compiler/sema_decls.c
+        src/compiler/sema_types.c
+        src/compiler/sema_stmts.c
+        src/compiler/number.c
+        src/utils/vmem.c
+        src/utils/vmem.h
+        src/utils/whereami.c
+        )
 
 target_compile_options(c3c PRIVATE -Wimplicit-int -Werror -Wall -Wno-unknown-pragmas -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 
 target_link_libraries(c3c m ${llvm_libs})
+
+install(TARGETS c3c DESTINATION bin)
+
