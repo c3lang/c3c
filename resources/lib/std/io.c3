@@ -1,23 +1,32 @@
-module system::io;
+module std::io;
 
-typedef File as void;
-
+/*
 extern File *stdin @cname(__stdinp);
 extern File *stdout @cname(__stdoutp);
 extern File *stderr @cname(__stderrp);
+*/
+/*
+extern func int fputc(int, aliased void*);
+extern func void clearerr(aliased void*);
+extern func int fclose(aliased void*);
+extern func int feof(aliased void*);
+extern func int ferror(aliased void*);
+extern func int fflush(aliased FILE *);
+extern func int fgetc(aliased FILE *);
+extern func int fgetpos(FILE *, fpos_t *);
+extern func int fseek(void*, long, int);
+extern func void* fopen(char *, char *);
+*/
 
-extern int fputc(int, aliased void*);
-extern void clearerr(aliased void*);
-extern int fclose(aliased void*);
-extern int feof(aliased void*);
-extern int ferror(aliased void*);
-extern int fflush(aliased FILE *);
-extern int fgetc(aliased FILE *);
-extern int fgetpos(FILE *, fpos_t *);
-extern int fseek(void*, long, int);
-extern void* fopen(char *, char *);
+extern func int _puts(char* message) @cname("puts");
+extern func int printf(char* message, ...);
 
+public func int println(char *message)
+{
+    return _puts(message);
+}
 
+/*
 struct File
 {
     void *file;
@@ -30,38 +39,40 @@ enum Seek
     END = 2
 }
 
-errorset FileError
+error FileError
 {
+    ulong errno;
 }
 
-local func FileError errorFromErrno()
+func FileError errorFromErrno()
 {
+    return FileError { };
 }
 
-public func void File.open(File *file, char *filename, char *mode) throws FileError
+public func void! File.open(File *file, char *filename, char *mode)
 {
     file.file = fopen(filename, mode);
-    if (!file.file) throw errorFromErrno();
+    if (!file.file) return errorFromErrno()!;
 }
 
-public func void File.seek(File *file, long offset, Seek seekMode = Seek.SET) throws FileError
+public func void! File.seek(File *file, long offset, Seek seekMode = Seek.SET)
 {
-    if (fseek(file->file, offset, cast(seekMode as int))) throw errorFromErrno();
+    if (fseek(file->file, offset, cast(seekMode as int))) return errorFromErrno()!;
 }
 
-public func void File.putChar(File *file as char c) throws FileError
+public func void! File.putChar(File *file as char c)
 {
-    if (fputc(c, file->file)) throw errorFromErrno();
+    if (fputc(c, file->file)) return errorFromErrno()!;
 }
 
-pubic func void File.clearerr(File *file) @inline throws FileError
+pubic func void! File.clearerr(File *file) @inline
 {
     clearerr(file->file);
 }
 
 func void File.close(File *file) @inline
 {
-    if (fclose(file->file)) throw errorFromErrno();
+    if (fclose(file->file)) return errorFromErrno()!;
 }
 
 func void File.eof(File *file) @inline
@@ -73,7 +84,8 @@ func void File.error(File *file) @inline
 {
     int err = ferror
 }
-
+*/
+/+
 
 #define	__SLBF	0x0001		/* line buffered */
 #define	__SNBF	0x0002		/* unbuffered */
@@ -388,3 +400,4 @@ __END_DECLS
 #endif
 
 #endif /* _STDIO_H_ */
++/

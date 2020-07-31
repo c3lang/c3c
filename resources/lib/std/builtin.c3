@@ -1,4 +1,4 @@
-module system::builtin;
+module std::builtin;
 
 enum TypeKind
 {
@@ -30,56 +30,56 @@ struct TypeData
 
 struct TypeAlias
 {
-    TypeData;
+    TypeData data;
     typeid aliasType;
 }
 
 struct TypeError
 {
-    TypeData;
+    TypeData data;
     TypeErrorValue[] errors;
 }
 
 struct TypeArray
 {
-    TypeData;
+    TypeData data;
     typeid elementType;
     ulong elements;
 }
 
 struct TypeVarArray
 {
-    TypeData;
+    TypeData data;
     typeid elementType;
 }
 
 struct TypeSubarray
 {
-    TypeData;
+    TypeData data;
     typeid elementType;
 }
 
 struct TypePointer
 {
-    TypeData;
+    TypeData data;
     typeid baseType;
 }
 
 struct TypeStruct
 {
-    TypeData;
+    TypeData data;
     TypeData*[] fields;
 }
 
 struct TypeUnion
 {
-    TypeData;
+    TypeData data;
     TypeData*[] variants;
 }
 
 struct TypeEnum
 {
-    TypeData;
+    TypeData data;
     typeid valueType;
     TypeData*[] associated_value_types;
 }
