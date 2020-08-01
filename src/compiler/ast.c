@@ -1085,6 +1085,9 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 		case AST_NOP_STMT:
 			DUMP("(nop)");
 			return;
+		case AST_UNREACHABLE_STMT:
+			DUMP("(unreachable)");
+			return;
 		case AST_VOLATILE_STMT:
 			DUMP("(volatile");
 			DUMPAST(ast->volatile_stmt);

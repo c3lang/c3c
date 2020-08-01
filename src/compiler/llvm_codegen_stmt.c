@@ -847,6 +847,17 @@ static inline void gencontext_emit_assert_stmt(GenContext *context, Ast *ast)
 	gencontext_emit_assume(context, ast->assert_stmt.expr);
 }
 
+static inline void gencontext_emit_unreachable_stmt(GenContext *context, Ast *ast)
+{
+	// TODO emit message
+	gencontext_emit_call_intrinsic(context, trap_intrinsic_id, NULL, 0, NULL, 0);
+	LLVMBuildUnreachable(context->builder);
+	LLVMBasicBlockRef block = gencontext_create_free_block(context, "unreachable_block");
+	context->current_block = NULL;
+	context->current_block_is_target = false;
+	gencontext_emit_block(context, block);
+}
+
 void gencontext_emit_expr_stmt(GenContext *context, Ast *ast)
 {
 	if (ast->expr_stmt->failable)
@@ -1003,13 +1014,15 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 		case AST_CT_ELSE_STMT:
 		case AST_CT_FOR_STMT:
 		case AST_CT_SWITCH_STMT:
+		case AST_CASE_STMT:
+		case AST_DEFAULT_STMT:
 			UNREACHABLE
 		case AST_SWITCH_STMT:
 			gencontext_emit_switch(context, ast);
 			break;
-		case AST_CASE_STMT:
-		case AST_DEFAULT_STMT:
-			TODO
+		case AST_UNREACHABLE_STMT:
+			gencontext_emit_unreachable_stmt(context, ast);
+			break;
 		case AST_VOLATILE_STMT:
 			TODO
 	}

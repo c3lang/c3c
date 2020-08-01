@@ -178,6 +178,12 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 	return true;
 }
 
+static inline bool sema_analyse_unreachable_stmt(Context *context, Ast *statement)
+{
+	context->current_scope->jump_end = true;
+	return true;
+}
+
 static inline bool sema_analyse_decl_expr_list(Context *context, Expr *expr)
 {
 	assert(expr->expr_kind == EXPR_DECL_LIST);
@@ -1286,6 +1292,11 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 	}
 	if (context->current_scope->jump_end && !context->current_scope->allow_dead_code)
 	{
+		if (statement->ast_kind == AST_UNREACHABLE_STMT)
+		{
+			context->current_scope->allow_dead_code = true;
+			return true;
+		}
 		//SEMA_ERROR(statement, "This code will never execute.");
 		context->current_scope->allow_dead_code = true;
 		//return false;
@@ -1341,10 +1352,13 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 			return sema_analyse_switch_stmt(context, statement);
 		case AST_NEXT_STMT:
 			return sema_analyse_next_stmt(context, statement);
+		case AST_UNREACHABLE_STMT:
+			return sema_analyse_unreachable_stmt(context, statement);
 		case AST_VOLATILE_STMT:
 			return sema_analyse_volatile_stmt(context, statement);
 		case AST_WHILE_STMT:
 			return sema_analyse_while_stmt(context, statement);
+
 		case AST_CT_ELIF_STMT:
 		case AST_CT_ELSE_STMT:
 			UNREACHABLE

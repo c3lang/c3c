@@ -6,6 +6,8 @@
 #include "parser_internal.h"
 
 
+Ast *parse_unreachable_stmt(Context *context);
+
 #pragma mark --- Internal functions
 
 
@@ -913,6 +915,8 @@ Ast *parse_stmt(Context *context)
 			return parse_ct_for_stmt(context);
 		case TOKEN_VOLATILE:
 			return parse_volatile_stmt(context);
+		case TOKEN_CT_UNREACHABLE:
+			return parse_unreachable_stmt(context);
 		case TOKEN_STAR:
 		case TOKEN_AMP:
 		case TOKEN_INTEGER:
@@ -1032,6 +1036,14 @@ Ast *parse_stmt(Context *context)
 			return poisoned_ast;
 	}
 	UNREACHABLE
+}
+
+Ast *parse_unreachable_stmt(Context *context)
+{
+	Ast *ast = AST_NEW_TOKEN(AST_UNREACHABLE_STMT, context->tok);
+	advance_and_verify(context, TOKEN_CT_UNREACHABLE);
+	TRY_CONSUME_EOS_OR(poisoned_ast);
+	return ast;
 }
 
 Ast *parse_jump_stmt_no_eos(Context *context)

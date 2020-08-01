@@ -344,6 +344,8 @@ const char *token_type_to_string(TokenType type)
 			return "$if";
 		case TOKEN_CT_SWITCH:
 			return "$switch";
+		case TOKEN_CT_UNREACHABLE:
+			return "$unreachable";
 		case TOKEN_EOF:
 			return "EOF";
 
