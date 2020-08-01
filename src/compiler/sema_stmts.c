@@ -1252,6 +1252,22 @@ bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
 	return true;
 }
 
+bool sema_analyse_assert_stmt(Context *context, Ast *statement)
+{
+	Expr *expr = statement->ct_assert_stmt.expr;
+	Expr *message = statement->ct_assert_stmt.message;
+	if (message)
+	{
+		if (!sema_analyse_expr(context, type_string, message)) return false;
+		if (message->type->type_kind != TYPE_STRING)
+		{
+			SEMA_ERROR(message, "Expected a string as the error message.");
+		}
+	}
+	if (!sema_analyse_expr_of_required_type(context, type_bool, expr, false)) return false;
+	return true;
+}
+
 static bool sema_analyse_compound_stmt(Context *context, Ast *statement)
 {
 	context_push_scope(context);
@@ -1279,12 +1295,10 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_POISONED:
 		case AST_SCOPED_STMT:
 			UNREACHABLE
-		case AST_CT_ASSERT:
-			return sema_analyse_ct_assert_stmt(context, statement);
-		case AST_DEFINE_STMT:
-			return sema_analyse_define_stmt(context, statement);
 		case AST_ASM_STMT:
 			return sema_analyse_asm_stmt(context, statement);
+		case AST_ASSERT_STMT:
+			return sema_analyse_assert_stmt(context, statement);
 		case AST_BREAK_STMT:
 			return sema_analyse_break_stmt(context, statement);
 		case AST_CASE_STMT:
@@ -1296,6 +1310,8 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 			return sema_analyse_compound_stmt(context, statement);
 		case AST_CONTINUE_STMT:
 			return sema_analyse_continue_stmt(context, statement);
+		case AST_CT_ASSERT:
+			return sema_analyse_ct_assert_stmt(context, statement);
 		case AST_CT_IF_STMT:
 			return sema_analyse_ct_if_stmt(context, statement);
 		case AST_DECLARE_STMT:
@@ -1305,6 +1321,8 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 			return false;
 		case AST_DEFER_STMT:
 			return sema_analyse_defer_stmt(context, statement);
+		case AST_DEFINE_STMT:
+			return sema_analyse_define_stmt(context, statement);
 		case AST_DO_STMT:
 			return sema_analyse_do_stmt(context, statement);
 		case AST_EXPR_STMT:

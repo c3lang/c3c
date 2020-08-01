@@ -182,6 +182,8 @@ const char *token_type_to_string(TokenType type)
 			return "as";
 		case TOKEN_ASM:
 			return "asm";
+		case TOKEN_ASSERT:
+			return "assert";
 		case TOKEN_ATTRIBUTE:
 			return "attribute";
 		case TOKEN_BREAK:

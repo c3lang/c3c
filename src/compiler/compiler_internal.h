@@ -648,6 +648,8 @@ struct _Expr
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 3;
 	bool failable : 1;
+	bool pure : 1;
+	bool constant : 1;
 	SourceSpan span;
 	Type *type;
 	union {
@@ -919,7 +921,7 @@ typedef struct
 {
 	Expr *message;
 	Expr *expr;
-} AstCtAssertStmt;
+} AstAssertStmt;
 
 typedef struct _Ast
 {
@@ -952,7 +954,8 @@ typedef struct _Ast
 		Ast *ct_else_stmt;                  // 8
 		AstCtForStmt ct_for_stmt;           // 64
 		AstScopedStmt scoped_stmt;          // 16
-		AstCtAssertStmt ct_assert_stmt;
+		AstAssertStmt ct_assert_stmt;
+		AstAssertStmt assert_stmt;
 	};
 } Ast;
 

@@ -1,0 +1,68 @@
+
+public func int foo()
+{
+    return 1;
+}
+
+public func void test()
+{
+    int x = foo();
+    int y = foo();
+    int z = foo();
+    assert(x > 0);
+    assert(y > 0 && z > 0);
+    assert(x > 0 && y > 0 && z > 0);
+    assert(foo() > 0);
+    assert(x > 0 && foo() > 0);
+    assert(!(x < 1 || y < 1), "Foo");
+}
+
+
+// #expect: assert_variants.ll
+
+    %x = alloca i32
+    %y = alloca i32
+    %z = alloca i32
+    %0 = call i32 @assert_variants.foo()
+    store i32 %0, i32* %x
+    %1 = call i32 @assert_variants.foo()
+    store i32 %1, i32* %y
+    %2 = call i32 @assert_variants.foo()
+    store i32 %2, i32* %z
+
+    %3 = load i32, i32* %x
+    %gt = icmp sgt i32 %3, 0
+    call void @llvm.assume(i1 %gt)
+
+    %4 = load i32, i32* %y
+    %gt1 = icmp sgt i32 %4, 0
+    call void @llvm.assume(i1 %gt1)
+    %5 = load i32, i32* %z
+    %gt2 = icmp sgt i32 %5, 0
+    call void @llvm.assume(i1 %gt2)
+
+    %6 = load i32, i32* %x
+    %gt3 = icmp sgt i32 %6, 0
+    call void @llvm.assume(i1 %gt3)
+
+    %7 = load i32, i32* %y
+    %gt4 = icmp sgt i32 %7, 0
+    call void @llvm.assume(i1 %gt4)
+
+    %8 = load i32, i32* %z
+    %gt5 = icmp sgt i32 %8, 0
+    call void @llvm.assume(i1 %gt5)
+
+    %9 = load i32, i32* %x
+    %gt6 = icmp sgt i32 %9, 0
+    call void @llvm.assume(i1 %gt6)
+
+    %10 = load i32, i32* %x
+    %lt = icmp slt i32 %10, 1
+    %11 = icmp eq i1 %lt, false
+    call void @llvm.assume(i1 %11)
+
+    %12 = load i32, i32* %y
+    %lt7 = icmp slt i32 %12, 1
+    %13 = icmp eq i1 %lt7, false
+    call void @llvm.assume(i1 %13)

@@ -84,6 +84,7 @@ extern unsigned usub_overflow_intrinsic_id;
 extern unsigned smul_overflow_intrinsic_id;
 extern unsigned umul_overflow_intrinsic_id;
 extern unsigned trap_intrinsic_id;
+extern unsigned assume_intrinsic_id;
 
 // No function inlining
 extern unsigned noinline_attribute;

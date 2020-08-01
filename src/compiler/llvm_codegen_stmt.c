@@ -791,6 +791,62 @@ void gencontext_emit_try_stmt(GenContext *context, Ast *ast)
 
 }
 
+
+static inline void gencontext_emit_assume(GenContext *context, Expr *expr)
+{
+	// 1. Convert x > 0 && y > 2 => llvm.assume(x > 0) + llvm.assume(y > 2)
+	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator == BINARYOP_AND)
+	{
+		gencontext_emit_assume(context, expr->binary_expr.left);
+		gencontext_emit_assume(context, expr->binary_expr.right);
+		return;
+	}
+
+	// 2. Convert !(x > 0 || y > 2) => llvm.assume(!(x > 0)) + llvm.assume(!(y > 2))
+	if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_NOT)
+	{
+		Expr *inner = expr->unary_expr.expr;
+		if (inner->expr_kind == EXPR_BINARY && inner->binary_expr.operator == BINARYOP_OR)
+		{
+			Expr *left = inner->binary_expr.left;
+			Expr *right = inner->binary_expr.right;
+
+			expr->unary_expr.expr = left;
+			gencontext_emit_assume(context, expr);
+
+
+			expr->unary_expr.expr = right;
+			gencontext_emit_assume(context, expr);
+
+			return;
+		}
+	}
+
+	// 3. Check if pure, if so we emit the assume.
+	if (expr->pure)
+	{
+		LLVMValueRef value = gencontext_emit_expr(context, expr);
+		gencontext_emit_call_intrinsic(context, assume_intrinsic_id, NULL, 0, &value, 1);
+	}
+
+}
+static inline void gencontext_emit_assert_stmt(GenContext *context, Ast *ast)
+{
+	if (build_options.debug_mode)
+	{
+		LLVMValueRef value = gencontext_emit_expr(context, ast->assert_stmt.expr);
+		LLVMBasicBlockRef on_fail = gencontext_create_free_block(context, "assert_fail");
+		LLVMBasicBlockRef on_ok = gencontext_create_free_block(context, "assert_ok");
+		gencontext_emit_cond_br(context, value, on_fail, on_ok);
+		gencontext_emit_block(context, on_fail);
+		// TODO emit message
+		gencontext_emit_call_intrinsic(context, trap_intrinsic_id, NULL, 0, NULL, 0);
+		gencontext_emit_block(context, on_ok);
+		return;
+	}
+	gencontext_emit_assume(context, ast->assert_stmt.expr);
+}
+
 void gencontext_emit_expr_stmt(GenContext *context, Ast *ast)
 {
 	if (ast->expr_stmt->failable)
@@ -938,6 +994,9 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			break;
 		case AST_ASM_STMT:
 			TODO
+		case AST_ASSERT_STMT:
+			gencontext_emit_assert_stmt(context, ast);
+			break;;
 		case AST_CT_ASSERT:
 		case AST_CT_IF_STMT:
 		case AST_CT_ELIF_STMT:

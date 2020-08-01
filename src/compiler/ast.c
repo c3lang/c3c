@@ -930,6 +930,11 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 			DUMPEXPR(ast->ct_assert_stmt.expr);
 			DUMPEXPR(ast->ct_assert_stmt.message);
 			DUMPEND();
+		case AST_ASSERT_STMT:
+			DUMP("(assert");
+			DUMPEXPR(ast->assert_stmt.expr);
+			DUMPEXPR(ast->assert_stmt.message);
+			DUMPEND();
 		case AST_TRY_STMT:
 			DUMP("(try");
 			DUMPEXPR(ast->try_stmt.decl_expr);

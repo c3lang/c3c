@@ -4,12 +4,18 @@ import gen;
 
 typedef int as Bob;
 
+func void testAssert(int x)
+{
+    assert(x > 0, "Bad things!");
+}
+/*
 func void testVararg(int foo, ... args)
 {
     @args.start();
     int i = @args.next(i, int);
     @args.end();
-}
+}*/
+
 /*
 macro namespaceFor(ns; void(int i) $body)
 {
@@ -1221,17 +1227,6 @@ public func int! decode(char[] infile, byte[] out)
     return j;
 }
 */
-
-int xx = 0;
-const int FOOP = 2;
-
-$assert(xx == 0);
-
-func void test22()
-{
-    $assert(FOOP == 2, "Bad");
-    $assert(FOOP == 0, "Good");
-}
 
 func int main(int x)
 {

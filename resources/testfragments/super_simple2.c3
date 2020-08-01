@@ -1,15 +1,24 @@
 module baz;
 import gen;
 
-extern func void printf(char *hello, ...);
-
-//define Bobafett(int) as BobaInt;
+extern func int printf(char *hello, ...);
 
 public func void runBaz()
 {
-    printf("Baz func\n");
-//    BobaInt x = { 1 };
+    int x = printf("Baz func\n");
+    int y = printf("FOek");
+
+    assert(x > 0 && y > 0);
+
+    int z = printf("Foefe\n");
+    x = printf("Baz func\n");
+    y = printf("FOek");
+
+    assert(x > 0 && y > 0 && printf("Fejei") > 0);
+
+
 }
+
 
 func void notVisible()
 {

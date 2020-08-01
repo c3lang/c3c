@@ -51,6 +51,7 @@ typedef enum
 {
 	AST_POISONED,
 	AST_ASM_STMT,
+	AST_ASSERT_STMT,
 	AST_BREAK_STMT,
 	AST_CASE_STMT,
 	AST_CATCH_STMT,
@@ -374,6 +375,7 @@ typedef enum
 	// Keywords
 	TOKEN_ALIAS,            // Reserved
 	TOKEN_AS,
+	TOKEN_ASSERT,
 	TOKEN_ASM,
 	TOKEN_ATTRIBUTE,
 	TOKEN_BREAK,
