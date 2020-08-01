@@ -2,19 +2,18 @@ module baz;
 import gen;
 
 extern func int printf(char *hello, ...);
+extern func void blurg();
 
 public func void runBaz()
 {
-    int x = printf("Baz func\n");
-    int y = printf("FOek");
 
-    assert(x > 0 && y > 0);
+    int i = printf("hello");
 
-    int z = printf("Foefe\n");
-    x = printf("Baz func\n");
-    y = printf("FOek");
+    if (i > 0) blurg();
 
-    assert(x > 0 && y > 0 && printf("Fejei") > 0);
+    if (i > 0) return;
+
+    $unreachable;
 
 
 }

@@ -3395,6 +3395,8 @@ static Ast *ast_copy_from_macro(Context *context, Ast *source)
 			MACRO_COPY_EXPR(ast->try_stmt.decl_expr);
 			MACRO_COPY_AST(ast->try_stmt.body);
 			return ast;
+		case AST_UNREACHABLE_STMT:
+			return ast;
 		case AST_VOLATILE_STMT:
 			TODO
 			return ast;

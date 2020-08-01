@@ -1,0 +1,36 @@
+
+public func int foo()
+{
+    return 1;
+}
+
+public func void test()
+{
+    int x = foo();
+    if (x > 0) return;
+    $unreachable;
+    x++;
+}
+
+
+// #expect: unreachable.ll
+
+    %x = alloca i32
+    %0 = call i32 @unreachable.foo()
+    store i32 %0, i32* %x
+    %1 = load i32, i32* %x
+    %gt = icmp sgt i32 %1, 0
+    br i1 %gt, label %if.then, label %if.exit
+
+if.then:
+    ret void
+
+if.exit:
+    call void @llvm.trap()
+    unreachable
+
+unreachable_block:
+    %2 = load i32, i32* %x
+    %add = add nsw i32 %2, 1
+    store i32 %add, i32* %x
+    ret void
