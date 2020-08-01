@@ -767,6 +767,20 @@ static inline Ast* parse_ct_switch_stmt(Context *context)
 	return ast;
 }
 
+static inline Ast *parse_assert_stmt(Context *context)
+{
+	Ast *ast = AST_NEW_TOKEN(AST_ASSERT_STMT, context->tok);
+	advance_and_verify(context, TOKEN_ASSERT);
+	TRY_CONSUME_OR(TOKEN_LPAREN, "'assert' needs a '(' here, did you forget it?", poisoned_ast);
+	ast->ct_assert_stmt.expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+	if (try_consume(context, TOKEN_COMMA))
+	{
+		ast->ct_assert_stmt.message = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+	}
+	TRY_CONSUME_OR(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
+	TRY_CONSUME_EOS();
+	return ast;
+}
 
 #pragma mark --- External functions
 
@@ -924,6 +938,8 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_LPARBRA:
 		case TOKEN_TYPEOF:
 			return parse_expr_stmt(context);
+		case TOKEN_ASSERT:
+			return parse_assert_stmt(context);
 		case TOKEN_INVALID_TOKEN:
 			advance(context);
 			return poisoned_ast;

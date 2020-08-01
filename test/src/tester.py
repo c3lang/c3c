@@ -199,6 +199,9 @@ class Issues:
                 current_line = 0
                 while searched_line < len(file.expected_lines):
                     line = file.expected_lines[searched_line].strip()
+                    if line == "":
+                        searched_line += 1
+                        continue
                     if current_line >= len(lines):
                         self.set_failed()
                         print(file.filename + " did not contain: \"" + line + "\"")

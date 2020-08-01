@@ -202,6 +202,7 @@ unsigned uadd_overflow_intrinsic_id;
 unsigned smul_overflow_intrinsic_id;
 unsigned umul_overflow_intrinsic_id;
 unsigned trap_intrinsic_id;
+unsigned assume_intrinsic_id;
 
 unsigned noinline_attribute;
 unsigned alwaysinline_attribute;
@@ -224,6 +225,7 @@ void llvm_codegen_setup()
 	smul_overflow_intrinsic_id = lookup_intrinsic("llvm.smul.with.overflow");
 	umul_overflow_intrinsic_id = lookup_intrinsic("llvm.umul.with.overflow");
 	trap_intrinsic_id = lookup_intrinsic("llvm.trap");
+	assume_intrinsic_id = lookup_intrinsic("llvm.assume");
 
 	noinline_attribute = lookup_attribute("noinline");
 	alwaysinline_attribute = lookup_attribute("alwaysinline");
