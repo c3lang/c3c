@@ -204,16 +204,16 @@ static inline Ast* parse_do_stmt(Context *context)
 	return do_ast;
 }
 
-static inline bool token_type_ends_case(TokenType type)
+static inline bool token_type_ends_case(TokenType type, TokenType case_type, TokenType default_type)
 {
-	return type == TOKEN_CASE || type == TOKEN_DEFAULT || type == TOKEN_RBRACE;
+	return type == case_type || type == default_type || type == TOKEN_RBRACE;
 }
 
-static inline Ast *parse_case_stmts(Context *context)
+static inline Ast *parse_case_stmts(Context *context, TokenType case_type, TokenType default_type)
 {
-	if (token_type_ends_case(context->tok.type)) return NULL;
+	if (token_type_ends_case(context->tok.type, case_type, default_type)) return NULL;
 	Ast *compound = AST_NEW_TOKEN(AST_COMPOUND_STMT, context->tok);
-	while (!token_type_ends_case(context->tok.type))
+	while (!token_type_ends_case(context->tok.type, case_type, default_type))
 	{
 		Ast *stmt = TRY_AST(parse_stmt(context));
 		vec_add(compound->compound_stmt.stmts, stmt);
@@ -341,7 +341,7 @@ static bool parse_type_or_expr(Context *context, TypeInfo **type_info, Expr **ex
  * 	| CAST type ':' cast_stmts
  * 	;
  */
-static inline Ast* parse_case_stmt(Context *context)
+static inline Ast* parse_case_stmt(Context *context, TokenType case_type, TokenType default_type)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CASE_STMT, context->tok);
 	advance(context);
@@ -359,7 +359,7 @@ static inline Ast* parse_case_stmt(Context *context)
 	}
 	TRY_CONSUME(TOKEN_COLON, "Missing ':' after case");
 	extend_ast_with_prev_token(context, ast);
-	ast->case_stmt.body = TRY_AST(parse_case_stmts(context));
+	ast->case_stmt.body = TRY_AST(parse_case_stmts(context, case_type, default_type));
 	return ast;
 }
 
@@ -367,13 +367,13 @@ static inline Ast* parse_case_stmt(Context *context)
  * default_stmt
  *  : DEFAULT ':' case_stmts
  */
-static inline Ast *parse_default_stmt(Context *context)
+static inline Ast *parse_default_stmt(Context *context, TokenType case_type, TokenType default_type)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_DEFAULT_STMT, context->tok);
 	advance(context);
 	TRY_CONSUME_OR(TOKEN_COLON, "Expected ':' after 'default'.", poisoned_ast);
 	extend_ast_with_prev_token(context, ast);
-	ast->case_stmt.body = TRY_AST(parse_case_stmts(context));
+	ast->case_stmt.body = TRY_AST(parse_case_stmts(context, case_type, default_type));
 	ast->case_stmt.expr = NULL;
 	return ast;
 }
@@ -395,11 +395,11 @@ bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, Toke
 		TokenType next = context->tok.type;
 		if (next == case_type)
 		{
-			result = TRY_AST_OR(parse_case_stmt(context), false);
+			result = TRY_AST_OR(parse_case_stmt(context, case_type, default_type), false);
 		}
 		else if (next == default_type)
 		{
-			result = TRY_AST_OR(parse_default_stmt(context), false);
+			result = TRY_AST_OR(parse_default_stmt(context, case_type, default_type), false);
 		}
 		else
 		{

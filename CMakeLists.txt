@@ -92,6 +92,7 @@ add_executable(c3c
         src/compiler/parse_expr.c
         src/compiler/parser_internal.h
         src/compiler/parse_stmt.c
+        src/compiler/parse_global.c
         src/compiler/sema_passes.c
         src/compiler/sema_internal.h
         src/compiler/sema_decls.c

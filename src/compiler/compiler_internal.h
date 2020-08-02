@@ -1042,7 +1042,6 @@ typedef struct _Context
 	Decl **incr_array;
 	Decl **ct_ifs;
 	Ast **ct_asserts;
-	Ast **defers;
 	Decl *active_function_for_analysis;
 	Token *comments;
 	Token *lead_comment;
@@ -1090,18 +1089,6 @@ typedef struct _Context
 	Token tok;
 	TokenId prev_tok;
 	Token next_tok;
-	struct
-	{
-		bool in_lookahead;
-		const char *current;
-		const char *start;
-		Token tok;
-		Token next_tok;
-		Token *lead_comment;
-		Token *trailing_comment;
-		Token *next_lead_comment;
-		unsigned lexer_index;
-	} stored;
 } Context;
 
 typedef struct
