@@ -4,10 +4,9 @@ import gen;
 
 typedef int as Bob;
 
-func void testAssert(int x)
-{
-    assert(x > 0, "Bad things!");
-}
+
+
+
 /*
 func void testVararg(int foo, ... args)
 {

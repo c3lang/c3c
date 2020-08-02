@@ -946,7 +946,7 @@ static inline bool sema_check_value_case(Context *context, Type *switch_type, As
 	Expr *expr = case_stmt->case_stmt.expr;
 	if (use_type_id)
 	{
-		SEMA_ERROR(case_stmt, "Unexpected value of type '%s' when expecting a type.", type_to_error_string(expr->type));
+		SEMA_ERROR(case_stmt, "Unexpected value of type '%s' when expecting a value.", type_to_error_string(expr->type));
 		return false;
 	}
 	for (unsigned i = 0; i < index; i++)
@@ -1037,7 +1037,6 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 		success = success && (!body || sema_analyse_compound_statement_no_scope(context, body));
 		POP_BREAK();
 		POP_NEXT();
-		bool x =
 		all_jump_end &= (!body | context->current_scope->jump_end);
 		context_pop_scope(context);
 	}
@@ -1045,6 +1044,101 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 	if (!success) return false;
 	return success;
 }
+
+static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
+{
+	Expr *cond = statement->ct_switch_stmt.cond;
+	bool use_type_id = cond->expr_kind == EXPR_TYPEID;
+	Type *type = use_type_id ? cond->typeid_expr->type->canonical : NULL;
+	Ast **cases = statement->ct_switch_stmt.body;
+	unsigned case_count = vec_size(cases);
+
+	Ast *match = NULL;
+	for (unsigned i = 0; i < case_count; i++)
+	{
+		Ast *stmt = cases[i];
+		switch (stmt->ast_kind)
+		{
+			case AST_CASE_STMT:
+				if (use_type_id)
+				{
+					if (!stmt->case_stmt.is_type)
+					{
+						SEMA_ERROR(stmt, "Unexpectedly encountered a value rather than a type in the $case");
+						return false;
+					}
+					TypeInfo *case_type = stmt->case_stmt.type_info;
+					if (!sema_resolve_type_info(context, case_type)) return false;
+					Type *case_canonical = case_type->type->canonical;
+					if (case_canonical == type)
+					{
+						// Is this a better match?
+						if (!match || match->case_stmt.type_info->type->canonical != type)
+						{
+							match = stmt;
+						}
+					}
+					// TODO only do suptyping when explicit
+					/*
+					else if (!match && type_is_subtype(case_canonical, type))
+					{
+						match = stmt;
+					}*/
+				}
+				else
+				{
+					if (stmt->case_stmt.is_type)
+					{
+						SEMA_ERROR(stmt, "Unexpectedly encountered a type rather than a value in the $case");
+						return false;
+					}
+					if (!sema_analyse_expr_of_required_type(context,
+					                                        cond->type,
+					                                        stmt->case_stmt.expr,
+					                                        false))
+					{
+						return false;
+					}
+					if (!match && expr_const_compare(&stmt->case_stmt.expr->const_expr, &cond->const_expr, BINARYOP_EQ))
+					{
+						match = stmt;
+					}
+				}
+				break;
+			case AST_DEFAULT_STMT:
+				if (!match) match = stmt;
+				break;
+			default:
+				UNREACHABLE;
+		}
+	}
+
+	if (!match)
+	{
+		statement->ast_kind = AST_NOP_STMT;
+		return true;
+	}
+
+	match = match->case_stmt.body;
+	if (!sema_analyse_statement(context, match)) return false;
+
+	*statement = *match;
+	return true;
+}
+
+static bool sema_analyse_ct_switch_stmt(Context *context, Ast *statement)
+{
+	Expr *cond = statement->ct_switch_stmt.cond;
+	if (!sema_analyse_expr(context, NULL, cond)) return false;
+	if (cond->expr_kind != EXPR_CONST && cond->expr_kind != EXPR_TYPEID)
+	{
+		SEMA_ERROR(cond, "A compile time $switch must be over a constant value.");
+		return false;
+	}
+
+	return sema_analyse_ct_switch_body(context, statement);
+}
+
 static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 {
 	statement->switch_stmt.scope_id = context->current_scope->scope_id;
@@ -1358,12 +1452,12 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 			return sema_analyse_volatile_stmt(context, statement);
 		case AST_WHILE_STMT:
 			return sema_analyse_while_stmt(context, statement);
-
+		case AST_CT_SWITCH_STMT:
+			return sema_analyse_ct_switch_stmt(context, statement);
 		case AST_CT_ELIF_STMT:
 		case AST_CT_ELSE_STMT:
 			UNREACHABLE
 		case AST_CT_FOR_STMT:
-		case AST_CT_SWITCH_STMT:
 			TODO
 	}
 

@@ -25,11 +25,13 @@ static inline bool create_module_or_check_name(Context *context, Path *module_na
     	context->module = compiler_find_or_create_module(module_name);
 	    return true;
     }
-    else if (context->module->name->module != module_name->module)
+
+    if (context->module->name->module != module_name->module)
     {
     	SEMA_ERROR(module_name, "Module name here '%s' did not match actual module '%s'.", module_name->module, context->module->name->module);
         return false;
     }
+
     return true;
 }
 

@@ -34,6 +34,7 @@ typedef enum
 	DECL_PARSE_NORMAL,
 	DECL_PARSE_UNWRAP
 } DeclParse;
+Decl *parse_top_level(Context *context);
 Ast *parse_ct_assert_stmt(Context *context);
 Ast *parse_stmt(Context *context);
 Path *parse_path_prefix(Context *context, bool *had_error);
@@ -43,7 +44,9 @@ TypeInfo *parse_type(Context *context);
 Expr* parse_constant_expr(Context *context);
 Expr *parse_initializer_list(Context *context);
 Expr *parse_initializer(Context *context);
+void parse_imports(Context *context);
 Decl *parse_decl(Context *context);
+void recover_top_level(Context *context);
 Expr *parse_decl_expr_list(Context *context);
 Ast* parse_compound_stmt(Context *context);
 Ast *parse_jump_stmt_no_eos(Context *context);
@@ -55,6 +58,7 @@ Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *ty
 Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info);
 bool parse_next_is_decl(Context *context);
 bool parse_next_is_case_type(Context *context);
+bool parse_module(Context *context);
 
 bool try_consume(Context *context, TokenType type);
 bool consume(Context *context, TokenType type, const char *message, ...);
