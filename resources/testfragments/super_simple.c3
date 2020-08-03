@@ -1229,6 +1229,10 @@ public func int! decode(char[] infile, byte[] out)
 
 func int main(int x)
 {
+    if (x < 0) printf("Hello\n");
+    if (x
+    < 0) printf("Hello\n");
+
     int[6] feok2 = { 1, 8, 100, 293, 23982, 34};
     int[] feok = &feok2;
     int[] flok = feok2[3..6];

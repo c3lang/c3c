@@ -484,10 +484,21 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 			               "if-statements with an 'else' must use '{ }' even around a single statement.");
 			success = false;
 		}
-		if (success && statement->if_stmt.else_body->ast_kind != AST_COMPOUND_STMT)
+		if (success && statement->if_stmt.else_body->ast_kind != AST_COMPOUND_STMT  && statement->if_stmt.else_body->ast_kind != AST_IF_STMT)
 		{
 			SEMA_ERROR(statement->if_stmt.else_body,
 			               "An 'else' must use '{ }' even around a single statement.");
+			success = false;
+		}
+	}
+	if (success && statement->if_stmt.then_body->ast_kind != AST_COMPOUND_STMT)
+	{
+		SourceLocation *end_of_cond = TOKILOC(cond->span.end_loc);
+		SourceLocation *start_of_then = TOKILOC(statement->if_stmt.then_body->span.loc);
+		if (end_of_cond->line != start_of_then->line)
+		{
+			SEMA_ERROR(statement->if_stmt.then_body,
+			           "The 'then' part of a single line if-statement must start on the same line as the 'if' or use '{ }'");
 			success = false;
 		}
 	}
