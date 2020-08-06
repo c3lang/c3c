@@ -166,7 +166,9 @@ typedef enum
 
 typedef struct _DesignatedPath
 {
-	DesignatedPathKind kind;
+	DesignatedPathKind kind : 3;
+	bool constant : 1;
+	bool pure : 1;
 	struct _DesignatedPath *sub_path;
 	Type *type;
 	union
@@ -623,7 +625,7 @@ typedef struct
 typedef struct
 {
 	DesignatedPath *path;
-	Expr* value;
+	Expr *value;
 } ExprDesignatedInit;
 
 typedef struct
@@ -1585,4 +1587,11 @@ static inline void advance_and_verify(Context *context, TokenType token_type)
 	assert(context->tok.type == token_type);
 	advance(context);
 }
+
+#define TRY_AST_OR(_ast_stmt, _res) ({ Ast* _ast = (_ast_stmt); if (!ast_ok(_ast)) return _res; _ast; })
+#define TRY_EXPR_OR(_expr_stmt, _res) ({ Expr* _expr = (_expr_stmt); if (!expr_ok(_expr)) return _res; _expr; })
+#define TRY_TYPE_OR(_type_stmt, _res) ({ TypeInfo* _type = (_type_stmt); if (!type_info_ok(_type)) return _res; _type; })
+#define TRY_TYPE_REAL_OR(_type_stmt, _res) ({ Type* _type = (_type_stmt); if (!type_ok(_type)) return _res; _type; })
+#define TRY_DECL_OR(_decl_stmt, _res) ({ Decl* _decl = (_decl_stmt); if (!decl_ok(_decl)) return _res; _decl; })
+
 #pragma clang diagnostic pop

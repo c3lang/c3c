@@ -15,11 +15,7 @@
 #define TRY_CONSUME_EOS() TRY_CONSUME_EOS_OR(poisoned_ast)
 #define RETURN_AFTER_EOS(_ast) extend_ast_with_prev_token(context, ast); TRY_CONSUME_EOS_OR(poisoned_ast); return _ast
 
-#define TRY_AST_OR(_ast_stmt, _res) ({ Ast* _ast = (_ast_stmt); if (!ast_ok(_ast)) return _res; _ast; })
 #define TRY_AST(_ast_stmt) TRY_AST_OR(_ast_stmt, poisoned_ast)
-#define TRY_EXPR_OR(_expr_stmt, _res) ({ Expr* _expr = (_expr_stmt); if (!expr_ok(_expr)) return _res; _expr; })
-#define TRY_TYPE_OR(_type_stmt, _res) ({ TypeInfo* _type = (_type_stmt); if (!type_info_ok(_type)) return _res; _type; })
-#define TRY_DECL_OR(_decl_stmt, _res) ({ Decl* _decl = (_decl_stmt); if (!decl_ok(_decl)) return _res; _decl; })
 
 #define CHECK_EXPR(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
