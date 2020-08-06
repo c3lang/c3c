@@ -13,7 +13,7 @@ C3 tries to be an alternative in the the C/C++ niche: fast and close to the meta
 - Learning C3 should be easy for a C programmer.
 - Data is inert.
 - Avoid "big ideas" & the "more is better" fallacy.
-- Dare introducing some conveniences not "close to metal" if the value is great.
+- Introduce some higher level conveniences where the value is great.
 
 
 ### In what ways do C3 differ from C?
@@ -42,29 +42,69 @@ developer of Judge0.
 Design work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue](https://github.com/c3lang/c3c/issues) or discuss C3 on the r/ProgrammingLanguages Discord server: https://discord.gg/cfu4wdk
 
 
-#### What's currently missing
+#### Todo / done
 
-- `asm` sections.
-- bitstructs
-- array range initializers e.g. `{ [1..2] = 2 }`
-- `assert` - with compiler hint
-- `$switch` `$for` - compile time iteration / switch
-- Pre/post conditions
-- `generic` - explicit overloading
-- `malloc` / `free`
-- `string` not fully implemented
-- vararrays, e.g. `int[*]` not working
-- `unreachable` for compiler hinting
-- Generic modules
-- Stdlib not linked.
-
-Also see: https://github.com/c3lang/c3c/issues
-
-#### What's working?
-
-- Lexing/parsing/semantic analysis/codegen.
-- "Regular code" should mostly work.
-- You can use any C function by declaring it as a normal C3 function with external 
+- [x] For/while/do
+- [x] `if`/ternary
+- [x] Structs
+- [x] Union
+- [x] Enums
+- [x] Value methods
+- [x] Compound literals
+- [x] Designated initalizers
+- [x] Slicing syntax
+- [x] Arrays and subarrays
+- [x] Modules
+- [x] `$unreachable`
+- [x] Compile time assert with `$assert`
+- [x] Compiler guiding `assert` 
+- [x] C code calling by declaring methods `extern`
+- [x] Compile time variables
+- [x] Basic macros
+- [x] 4cc, 8cc, 2cc
+- [x] Enum type inference in switch/assignment
+- [x] Integer type inference
+- [x] Error type
+- [x] Failable error handling
+- [x] `try` for conditional execution
+- [x] `catch` for error handling
+- [x] Implicit unwrap after `catch`
+- [x] `sizeof`
+- [x] `typeof`
+- [x] 2s complement wrapping operators
+- [x] Labelled break / continue
+- [x] `next` statement
+- [x] Expression blocks
+- [x] Do-without-while
+- [ ] Foreach statement
+- [ ] All attributes
+- [ ] Associative array literals
+- [ ] CT type constants
+- [ ] Reflection methods
+- [ ] Anonymous structs
+- [ ] Distinct types
+- [ ] LTO/ThinLTO setup
+- [ ] Built-in linking
+- [ ] `global` / `shared` for globals 
+- [ ] Complex macros
+- [ ] CT only macros evaluating to constants
+- [ ] Escape macros
+- [ ] Implicit capturing macros
+- [ ] Trailing body macros
+- [ ] Subarray initializers
+- [ ] slice initializers e.g. `{ [1..2] = 2 }`
+- [ ] Bitstructs
+- [ ] `asm` section
+- [ ] `$switch`
+- [ ] `$for`
+- [ ] Pre-post conditions
+- [ ] Stdlib inclusion
+- [ ] Generic modules
+- [ ] String functions
+- [ ] Vararrays e.g. `int[*]`
+- [ ] Compile time incremental arrays
+- [ ] Complete C ABI conformance
+- [ ] Generic functions
 
 #### What can you help with?
 

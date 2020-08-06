@@ -369,8 +369,141 @@ static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *
 	return gencontext_emit_cast(context, expr->cast_expr.kind, rhs, expr->type->canonical, expr->cast_expr.expr->type->canonical);
 }
 
+static LLVMValueRef gencontext_emit_initializer_list_expr_const(GenContext *context, Expr *expr);
 
+static LLVMValueRef gencontext_construct_const_value(GenContext *context, Expr *expr)
+{
+	NESTED_RETRY:
+	if (expr->expr_kind == EXPR_COMPOUND_LITERAL)
+	{
+		expr = expr->expr_compound_literal.initializer;
+		goto NESTED_RETRY;
+	}
+	if (expr->expr_kind == EXPR_INITIALIZER_LIST)
+	{
+		return gencontext_emit_initializer_list_expr_const(context, expr);
+	}
+	return gencontext_emit_expr(context, expr);
+}
 
+static LLVMValueRef gencontext_construct_const_union_struct(GenContext *context, Type *canonical, Expr *value)
+{
+	LLVMValueRef values[2];
+	values[0] = gencontext_construct_const_value(context, value);
+	unsigned size_diff = type_size(canonical) - type_size(value->type);
+	if (size_diff > 0)
+	{
+		LLVMTypeRef size = LLVMArrayType(llvm_type(type_char), size_diff);
+		values[1] = LLVMConstNull(size);
+	}
+	return LLVMConstStructInContext(context->context, values, size_diff > 0 ? 2 : 1, false);
+}
+static LLVMValueRef gencontext_recursive_set_const_value(GenContext *context, DesignatedPath *path, LLVMValueRef parent, Type *parent_type, Expr *value)
+{
+	switch (path->kind)
+	{
+		case DESIGNATED_IDENT:
+			if (!path->sub_path)
+			{
+				if (parent_type->canonical->type_kind == TYPE_UNION)
+				{
+					return gencontext_construct_const_union_struct(context, parent_type, value);
+				}
+				return LLVMConstInsertValue(parent, gencontext_construct_const_value(context, value), &path->index, 1);
+			}
+			else
+			{
+				parent_type = path->type;
+				return LLVMConstInsertValue(parent,
+				                            gencontext_recursive_set_const_value(context,
+				                                                                 path->sub_path,
+				                                                                 LLVMConstExtractValue(parent,
+				                                                                                       &path->index,
+				                                                                                       1),
+				                                                                 parent_type,
+				                                                                 value), &path->index, 1);
+			}
+		case DESIGNATED_SUBSCRIPT:
+		{
+			// TODO range, more arrays
+			assert(path->index_expr->expr_kind == EXPR_CONST);
+			unsigned int index = (unsigned int)bigint_as_unsigned(&path->index_expr->const_expr.i);
+			if (!path->sub_path)
+			{
+				LLVMValueRef res = gencontext_construct_const_value(context, value);
+				return LLVMConstInsertValue(parent, res, &index, 1);
+			}
+			parent_type = path->type;
+			return LLVMConstInsertValue(parent,
+			                            gencontext_recursive_set_const_value(context,
+			                                                                 path->sub_path,
+			                                                                 LLVMConstExtractValue(parent, &index, 1),
+			                                                                 parent_type,
+			                                                                 value), &index, 1);
+		}
+		default:
+			UNREACHABLE;
+
+	}
+
+}
+
+static LLVMValueRef gencontext_emit_initializer_list_expr_const(GenContext *context, Expr *expr)
+{
+	Type *canonical = expr->type->canonical;
+	LLVMTypeRef type = llvm_type(canonical);
+
+	if (expr->expr_initializer.init_type == INITIALIZER_ZERO)
+	{
+		return LLVMConstNull(type);
+	}
+
+	bool is_error = expr->type->canonical->type_kind == TYPE_ERRTYPE;
+
+	if (is_error)
+	{
+		TODO
+	}
+
+	Expr **elements = expr->expr_initializer.initializer_expr;
+
+	bool is_union = expr->type->canonical->type_kind == TYPE_UNION;
+
+	if (expr->expr_initializer.init_type == INITIALIZER_NORMAL && is_union)
+	{
+		assert(vec_size(elements) == 1);
+		return gencontext_construct_const_union_struct(context, canonical, elements[0]);
+	}
+
+	if (expr->expr_initializer.init_type == INITIALIZER_NORMAL)
+	{
+		LLVMValueRef value = LLVMGetUndef(type);
+		VECEACH(elements, i)
+		{
+			Expr *element = elements[i];
+			if (element->expr_kind == EXPR_CONST)
+			{
+
+			}
+			value = LLVMConstInsertValue(value, gencontext_emit_expr(context, element), &i, 1);
+		}
+		return value;
+	}
+
+	LLVMValueRef value = LLVMConstNull(type);
+	VECEACH(elements, i)
+	{
+		Expr *element = elements[i];
+		DesignatedPath *path = element->designated_init_expr.path;
+		Type *parent_type = expr->type->canonical;
+		value = gencontext_recursive_set_const_value(context,
+		                                             path,
+		                                             value,
+		                                             parent_type,
+		                                             element->designated_init_expr.value);
+	}
+	return value;
+}
 
 /**
  * Emit a Foo { .... } literal.
@@ -380,6 +513,19 @@ static inline LLVMValueRef gencontext_emit_cast_expr(GenContext *context, Expr *
  */
 static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext *context, Expr *expr, LLVMValueRef optional_ref)
 {
+	if (expr->constant && type_size(expr->type) <= type_size(type_voidptr) * 4)
+	{
+		LLVMTypeRef type = llvm_type(expr->type);
+		LLVMValueRef val = gencontext_emit_initializer_list_expr_const(context, expr);
+		LLVMValueRef ref = LLVMAddGlobal(context->module, type, "");
+		LLVMSetInitializer(ref, val);
+		LLVMSetGlobalConstant(ref, true);
+		if (optional_ref)
+		{
+			LLVMBuildMemCpy(context->builder, optional_ref, LLVMGetAlignment(optional_ref), ref, LLVMGetAlignment(ref), LLVMSizeOf(type));
+		}
+		return ref;
+	}
 	LLVMTypeRef type = llvm_type(expr->type);
 	LLVMValueRef ref = optional_ref ?: gencontext_emit_alloca(context, type, "literal");
 
@@ -425,6 +571,7 @@ static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext
 		}
 		return ref;
 	}
+
 
 	VECEACH(elements, i)
 	{
