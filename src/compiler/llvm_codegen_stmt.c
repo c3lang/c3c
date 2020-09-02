@@ -8,12 +8,20 @@ void gencontext_emit_try_stmt(GenContext *context, Ast *pAst);
 
 void gencontext_emit_compound_stmt(GenContext *context, Ast *ast)
 {
+	if (gencontext_use_debug(context))
+	{
+		gencontext_debug_push_lexical_scope(context, ast->span);
+	}
 	assert(ast->ast_kind == AST_COMPOUND_STMT);
 	VECEACH(ast->compound_stmt.stmts, i)
 	{
 		gencontext_emit_stmt(context, ast->compound_stmt.stmts[i]);
 	}
 	gencontext_emit_defer(context, ast->compound_stmt.defer_list.start, ast->compound_stmt.defer_list.end);
+	if (gencontext_use_debug(context))
+	{
+		gencontext_pop_debug_scope(context);
+	}
 }
 
 
@@ -952,6 +960,10 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 	if (context->catch_block == NULL)
 	{
 		context->catch_block = gencontext_create_free_block(context, "stmt_catch");
+	}
+	if (gencontext_use_debug(context))
+	{
+		gencontext_emit_debug_location(context, ast->span);
 	}
 	switch (ast->ast_kind)
 	{

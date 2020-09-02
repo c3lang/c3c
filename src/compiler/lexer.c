@@ -585,6 +585,7 @@ static inline bool scan_char(Lexer *lexer)
 	return true;
 }
 
+
 static inline bool scan_string(Lexer *lexer)
 {
 	char c;

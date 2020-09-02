@@ -236,8 +236,8 @@ const char *token_type_to_string(TokenType type)
 			return "module";
 		case TOKEN_NEXT:
 			return "next";
-		case TOKEN_NIL:
-			return "nil";
+		case TOKEN_NULL:
+			return "null";
 		case TOKEN_PUBLIC:
 			return "public";
 		case TOKEN_RETURN:
@@ -258,8 +258,6 @@ const char *token_type_to_string(TokenType type)
 			return "typedef";
 		case TOKEN_UNION:
 			return "union";
-		case TOKEN_UNTIL:
-			return "until";
 		case TOKEN_WHILE:
 			return "while";
 		case TOKEN_VAR:

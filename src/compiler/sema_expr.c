@@ -1601,7 +1601,7 @@ static inline bool sema_expr_analyse_cast(Context *context, Type *to, Expr *expr
 	expr->constant = inner->constant;
 	if (!success) return false;
 
-	if (!cast(context, inner, expr->cast_expr.type_info->type, CAST_TYPE_EXPLICIT)) return false;
+	if (!cast(context, inner, expr->cast_expr.type_info->type->canonical, CAST_TYPE_EXPLICIT)) return false;
 
 	// TODO above is probably not right, cast type not set.
 	// Overwrite cast.

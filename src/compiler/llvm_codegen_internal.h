@@ -126,6 +126,10 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr);
 LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, Expr *expr, LLVMValueRef failable);
 LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type);
 void gencontext_emit_debug_location(GenContext *context, SourceSpan location);
+void gencontext_debug_push_lexical_scope(GenContext *context, SourceSpan location);
+void gencontext_push_debug_scope(GenContext *context, LLVMMetadataRef debug_scope);
+void gencontext_pop_debug_scope(GenContext *context);
+
 LLVMMetadataRef gencontext_create_builtin_debug_type(GenContext *context, Type *builtin_type);
 LLVMValueRef gencontext_emit_alloca(GenContext *context, LLVMTypeRef type, const char *name);
 void gencontext_emit_compound_stmt(GenContext *context, Ast *ast);
@@ -214,7 +218,7 @@ static inline LLVMValueRef gencontext_emit_bitcast(GenContext *context, LLVMValu
 
 static inline bool gencontext_use_debug(GenContext *context)
 {
-	return context && context->debug.builder != NULL;
+	return context->debug.builder != NULL;
 }
 
 static inline bool call_supports_variadic(CallABI abi)

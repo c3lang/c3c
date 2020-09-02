@@ -217,6 +217,10 @@ static inline LLVMValueRef gencontext_emit_initializer_list_expr_addr(GenContext
 
 LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 {
+	if (gencontext_use_debug(context))
+	{
+		gencontext_emit_debug_location(context, expr->span);
+	}
 	switch (expr->expr_kind)
 	{
 		case EXPR_DESIGNATED_INITIALIZER:
@@ -1685,6 +1689,27 @@ LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 
 	LLVMValueRef call = LLVMBuildCall2(context->builder, func_type, func, values, args, "");
 
+	if (signature->failable)
+	{
+		LLVMBasicBlockRef after_block = gencontext_create_free_block(context, "after_check");
+		LLVMValueRef comp = LLVMBuildICmp(context->builder, LLVMIntEQ, call,
+		                                  gencontext_emit_no_error_union(context), "");
+		if (context->error_var)
+		{
+			LLVMBasicBlockRef error_block = gencontext_create_free_block(context, "error");
+			gencontext_emit_cond_br(context, comp, after_block, error_block);
+			gencontext_emit_block(context, error_block);
+			LLVMBuildStore(context->builder,
+			               call,
+			               gencontext_emit_bitcast(context, context->error_var, type_get_ptr(type_error)));
+			gencontext_emit_br(context, context->catch_block);
+		}
+		else
+		{
+			gencontext_emit_cond_br(context, comp, after_block, context->catch_block);
+		}
+		gencontext_emit_block(context, after_block);
+	}
 	//gencontext_emit_throw_branch(context, call, signature->throws, expr->call_expr.throw_info, signature->error_return);
 
 	// If we used a return param, then load that info here.
@@ -1803,7 +1828,6 @@ LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, 
 	if (failable_ref)
 	{
 		assign_block = gencontext_create_free_block(context, "after_assign");
-
 		context->error_var = failable_ref;
 		context->catch_block = assign_block;
 
@@ -1831,7 +1855,6 @@ LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, 
 	{
 		gencontext_emit_br(context, assign_block);
 		gencontext_emit_block(context, assign_block);
-
 	}
 
 	return value;

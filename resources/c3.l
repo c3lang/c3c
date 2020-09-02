@@ -8,8 +8,6 @@ UA          [A-Z_0-9]
 DC          [a-z]
 UC          [A-Z]
 E			[Ee][+-]?{D}+
-FS			(f|F|l|L)
-IS			(u|U|l|L)*
 
 %{
 #include <stdio.h>
@@ -75,14 +73,14 @@ void comment(void);
 [_]*[a-z]{AN}*    { count(); return(IDENT); }
 ${L}+             { count(); return(CT_IDENT); }
 #{L}+           { count(); return(HASH_IDENT); }
-0[xX]{H}+{IS}?	{ count(); return(CONSTANT); }
-0{D}+{IS}?		{ count(); return(CONSTANT); }
-{D}+{IS}?		{ count(); return(CONSTANT); }
+0[xX]{H}+	{ count(); return(CONSTANT); }
+0{D}+?		{ count(); return(CONSTANT); }
+{D}+		{ count(); return(CONSTANT); }
 L?'(\\.|[^\\'])+'	{ count(); return(CONSTANT); }
 
-{D}+{E}{FS}?		{ count(); return(CONSTANT); }
-{D}*"."{D}+({E})?{FS}?	{ count(); return(CONSTANT); }
-{D}+"."{D}*({E})?{FS}?	{ count(); return(CONSTANT); }
+{D}+{E}		{ count(); return(CONSTANT); }
+{D}*"."{D}+({E})?	{ count(); return(CONSTANT); }
+{D}+"."{D}*({E})?	{ count(); return(CONSTANT); }
 
 L?\"(\\.|[^\\"])*\"	{ count(); return(STRING_LITERAL); }
 

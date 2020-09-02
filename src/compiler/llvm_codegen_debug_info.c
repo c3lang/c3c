@@ -50,29 +50,62 @@ static inline LLVMMetadataRef gencontext_create_debug_type_from_decl(GenContext 
 	UNREACHABLE
 }
 
-void gencontext_set_debug_location(GenContext *context, SourceSpan source_span)
+void gencontext_push_debug_scope(GenContext *context, LLVMMetadataRef debug_scope)
 {
-	if (!source_span.end_loc.index) return;
+	VECADD(context->debug.lexical_block_stack, debug_scope);
+}
 
-	context->debug.current_range = source_span;
-	SourceLocation *location = TOKLOC(source_span.loc);
-	LLVMDIBuilderCreateDebugLocation(context->context,
-			location->line,
-			location->col,
-			*context->debug.lexical_block_stack,
-			/* inlined at */ 0);
+void gencontext_pop_debug_scope(GenContext *context)
+{
+	vec_pop(context->debug.lexical_block_stack);
 }
 
 void gencontext_emit_debug_location(GenContext *context, SourceSpan location)
 {
-	gencontext_set_debug_location(context, location);
 
-	if (!context->debug.current_range.loc.index || vec_size(context->debug.lexical_block_stack) == 0) return;
+	SourceLocation *source_loc = TOKLOC(location.loc);
 
-	LLVMMetadataRef scope = VECLAST(context->debug.lexical_block_stack);
-	LLVMMetadataRef debug_location = LLVMDIBuilderCreateDebugLocation(context->context, 320, 12, scope, context->debug.inlined_at);
-	LLVMSetCurrentDebugLocation2(context->builder, debug_location);
+	LLVMMetadataRef scope;
+	if (vec_size(context->debug.lexical_block_stack) > 0)
+	{
+		scope = VECLAST(context->debug.lexical_block_stack);
+	}
+	else
+	{
+		scope = context->debug.compile_unit;
+	}
+
+	LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(context->context,
+	                                                       source_loc->line,
+	                                                       source_loc->col,
+	                                                       scope, /* inlined at */ 0);
+
+	LLVMSetCurrentDebugLocation2(context->builder, loc);
 }
+
+void gencontext_debug_push_lexical_scope(GenContext *context, SourceSpan location)
+{
+
+	SourceLocation *source_loc = TOKLOC(location.loc);
+
+	LLVMMetadataRef scope;
+	if (vec_size(context->debug.lexical_block_stack) > 0)
+	{
+		scope = VECLAST(context->debug.lexical_block_stack);
+	}
+	else
+	{
+		scope = context->debug.compile_unit;
+	}
+
+	LLVMMetadataRef block =
+			LLVMDIBuilderCreateLexicalBlock(context->debug.builder, scope, context->debug.file,
+			                                source_loc->line,
+			                                source_loc->col);
+
+	gencontext_push_debug_scope(context, block);
+}
+
 
 static LLVMMetadataRef gencontext_simple_debug_type(GenContext *context, Type *type, int dwarf_code)
 {
@@ -82,6 +115,22 @@ static LLVMMetadataRef gencontext_simple_debug_type(GenContext *context, Type *t
 	                                                               type->builtin.bitsize,
 	                                                               dwarf_code, 0);
 
+}
+
+static LLVMMetadataRef gencontext_func_debug_type(GenContext *context, Type *type)
+{
+	FunctionSignature *sig = type->func.signature;
+	static LLVMMetadataRef *buffer = NULL;
+	vec_resize(buffer, 0);
+	vec_add(buffer, llvm_debug_type(sig->rtype->type));
+	VECEACH(sig->params, i)
+	{
+		vec_add(buffer, llvm_debug_type(sig->params[i]->type));
+	}
+	return LLVMDIBuilderCreateSubroutineType(context->debug.builder,
+	                                         context->debug.file,
+	                                         buffer,
+	                                         vec_size(buffer), 0);
 }
 
 LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
@@ -121,8 +170,7 @@ LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 		case TYPE_ERRTYPE:
 			TODO
 		case TYPE_FUNC:
-			// TODO
-			return NULL;
+			return type->backend_debug_type = gencontext_func_debug_type(context, type);
 		case TYPE_STRUCT:
 //			LLVMDIBuilderCreateStructType(context->debug.builder, NULL, type->decl->name, strlen(type->decl->name), type->decl->module->)
 			TODO
@@ -144,8 +192,8 @@ LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 				return type->backend_debug_type = LLVMDIBuilderCreateArrayType(
 						context->debug.builder,
 						type->array.len,
-						0 /* ALIGN */,
-						type->array.base->backend_debug_type,
+						type_abi_alignment(type->array.base),
+						llvm_debug_type(type->array.base),
 						ranges, vec_size(ranges));
 			}
 		case TYPE_VARARRAY:

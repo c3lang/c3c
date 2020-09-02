@@ -564,7 +564,7 @@ bool enxi(Context *context, Expr* left, Type *from, Type *canonical, Type *type,
 		return false;
 	}
 	// 3. Dispatch to the right cast:
-	insert_cast(left, CAST_ENUMLOW, enum_type);
+	insert_cast(left, CAST_ENUMLOW, enum_type_canonical);
 	return xixi(context, left, enum_type_canonical, canonical, type, cast_type);
 }
 
