@@ -75,8 +75,30 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	// Allocate room on stack and copy.
-	decl->ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name ? decl->name : "anon");
+	const char *name = decl->name ? decl->name : "anon";
+	decl->ref = gencontext_emit_alloca(context, llvm_type(decl->type), name);
+	if (gencontext_use_debug(context))
+	{
+		SourceLocation *loc = TOKLOC(decl->span.loc);
+		LLVMMetadataRef var = LLVMDIBuilderCreateParameterVariable(
+				context->debug.builder,
+				context->debug.function,
+				name,
+				strlen(name),
+				index + 1,
+				context->debug.file,
+				loc->line,
+				gencontext_get_debug_type(context, decl->type),
+				true, 0 /* flags */
+				);
+		decl->var.backend_debug_ref = var;
+		LLVMDIBuilderInsertDeclareAtEnd(context->debug.builder,
+								   decl->ref, var, LLVMDIBuilderCreateExpression(context->debug.builder, NULL, 0),
+								   LLVMDIBuilderCreateDebugLocation(context->context, loc->line, loc->col, context->debug.function, /* inline at */NULL),
+								   LLVMGetInsertBlock(context->builder));
+	}
 	gencontext_emit_store(context, decl, LLVMGetParam(context->function, index));
+
 }
 
 void gencontext_emit_implicit_return(GenContext *context)
@@ -101,6 +123,7 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	DEBUG_LOG("Generating function %s.", decl->external_name);
 	assert(decl->ref);
 
+	bool emit_debug = gencontext_use_debug(context);
 	LLVMValueRef prev_function = context->function;
 	LLVMBuilderRef prev_builder = context->builder;
 
@@ -108,6 +131,11 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	context->catch_block = NULL;
 
 	context->function = decl->ref;
+	if (emit_debug)
+	{
+		context->debug.function = LLVMGetSubprogram(context->function);
+	}
+
 	context->cur_func_decl = decl;
 
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context->context, context->function, "entry");
@@ -132,11 +160,19 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 		context->return_out = NULL;
 	}
 
+	if (emit_debug)
+	{
+		gencontext_push_debug_scope(context, context->debug.function);
+	}
+
+
 	// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
 	VECEACH(decl->func.function_signature.params, i)
 	{
 		gencontext_emit_parameter(context, decl->func.function_signature.params[i], arg++);
 	}
+
+	LLVMSetCurrentDebugLocation2(context->builder, NULL);
 
 	VECEACH(decl->func.body->compound_stmt.stmts, i)
 	{
@@ -166,6 +202,11 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	}
 
 	LLVMDisposeBuilder(context->builder);
+
+	if (gencontext_use_debug(context))
+	{
+		gencontext_pop_debug_scope(context);
+	}
 
 	context->builder = prev_builder;
 	context->function = prev_function;
@@ -246,19 +287,21 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 				flags |= LLVMDIFlagPublic;
 				break;
 		}
-	/*	context->debug.function = LLVMDIBuilderCreateFunction(context->debug.builder,
-		                                                      context->debug.compile_unit,
-		                                                      decl->name, source_range_len(decl->name_span),
-		                                                      decl->name, source_range_len(decl->name_span),
+		flags |= LLVMDIFlagPrototyped;
+		SourceLocation *loc = TOKILOC(decl->span.loc);
+		context->debug.function = LLVMDIBuilderCreateFunction(context->debug.builder,
 		                                                      context->debug.file,
-		                                                      decl_position.line,
-		                                                      decl->type->backend_type,
+		                                                      decl->name, TOKILEN(decl->name_token),
+		                                                      decl->external_name, strlen(decl->external_name),
+		                                                      context->debug.file,
+		                                                      loc->line,
+		                                                      llvm_debug_type(decl->type),
 		                                                      decl->visibility == VISIBLE_LOCAL,
-		                                                      1,
-		                                                      decl_position.line,
+		                                                      true,
+		                                                      loc->line,
 		                                                      flags,
 		                                                      build_options.optimization_level != OPTIMIZATION_NONE);
-		LLVMSetSubprogram(decl->func.backend_value, context->debug.function);*/
+		LLVMSetSubprogram(function, context->debug.function);
 	}
 }
 

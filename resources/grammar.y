@@ -99,34 +99,49 @@ unary_operator
 	| '@'
 	;
 
+mult_operator
+    : '*'
+    | MULT_MOD
+    | '/'
+    | '%'
+    ;
 
 multiplicative_expression
 	: unary_expression
-	| multiplicative_expression '*' unary_expression
-	| multiplicative_expression MULT_MOD unary_expression
-	| multiplicative_expression '/' unary_expression
-	| multiplicative_expression '%' unary_expression
+	| multiplicative_expression mult_operator unary_expression
 	;
+
+shift_op
+    : LEFT_OP
+    | RIGHT_OP
+    ;
 
 shift_expression
 	: multiplicative_expression
-	| shift_expression LEFT_OP multiplicative_expression
-	| shift_expression RIGHT_OP multiplicative_expression
+	| shift_expression shift_op multiplicative_expression
 	;
+
+bit_op
+    : '&'
+    | '^'
+    | '|'
+    ;
 
 bit_expression
 	: shift_expression
-	| bit_expression '&' shift_expression
-	| bit_expression '^' shift_expression
-	| bit_expression '|' shift_expression
+	| bit_expression bit_op shift_expression
 	;
+
+additive_op
+    : '+'
+    | ADD_MOD
+    | SUB_MOD
+    | '-'
+    ;
 
 additive_expression
 	: bit_expression
-	| additive_expression '+' bit_expression
-	| additive_expression ADD_MOD bit_expression
-	| additive_expression '-' bit_expression
-	| additive_expression SUB_MOD bit_expression
+	| additive_expression additive_op bit_expression
 	;
 
 relational_expression
@@ -449,9 +464,13 @@ iteration_statement
 	;
 
 jump_statement
-	: GOTO CONSTANT ';'
+	: CONTINUE CONSTANT ';'
 	| CONTINUE ';'
 	| BREAK ';'
+	| BREAK CONSTANT ';'
+	| NEXT CONSTANT ';'
+	| NEXT ';'
+	| NEXT expression ';'
 	| RETURN ';'
 	| RETURN expression ';'
 	;

@@ -352,6 +352,7 @@ void llvm_codegen(Context *context)
 		if (decl->func.body) gencontext_emit_function_body(&gen_context, decl);
 	}
 
+	if (gen_context.debug.builder) LLVMDIBuilderFinalize(gen_context.debug.builder);
 	gencontext_print_llvm_ir(&gen_context);
 
 	// Starting from here we could potentially thread this:

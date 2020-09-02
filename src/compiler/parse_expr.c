@@ -481,6 +481,7 @@ static Expr *parse_else_expr(Context *context, Expr *left)
 		case TOKEN_RETURN:
 		case TOKEN_BREAK:
 		case TOKEN_CONTINUE:
+		case TOKEN_NEXT:
 		{
 			Ast *ast = TRY_AST_OR(parse_jump_stmt_no_eos(context), poisoned_expr);
 			else_expr->else_expr.is_jump = true;
@@ -767,7 +768,7 @@ static Expr *parse_bool(Context *context, Expr *left)
 	return number;
 }
 
-static Expr *parse_nil(Context *context, Expr *left)
+static Expr *parse_null(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
@@ -901,7 +902,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_SHR] = { NULL, parse_binary, PREC_SHIFT },
 		[TOKEN_TRUE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_FALSE] = { parse_bool, NULL, PREC_NONE },
-		[TOKEN_NIL] = { parse_nil, NULL, PREC_NONE },
+		[TOKEN_NULL] = { parse_null, NULL, PREC_NONE },
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
 		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },
 		[TOKEN_IDENT] = { parse_maybe_scope, NULL, PREC_NONE },

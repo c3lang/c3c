@@ -937,7 +937,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_REAL:
 		case TOKEN_CAST:
 		case TOKEN_FALSE:
-		case TOKEN_NIL:
+		case TOKEN_NULL:
 		case TOKEN_TRUE:
 		case TOKEN_LPARBRA:
 		case TOKEN_TYPEOF:
@@ -1001,7 +1001,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_STRUCT:
 		case TOKEN_TYPEDEF:
 		case TOKEN_UNION:
-		case TOKEN_UNTIL:
 		case TOKEN_ATTRIBUTE:
 		case TOKEN_VAR:
 		case TOKEN_DOCS_START:
@@ -1050,6 +1049,8 @@ Ast *parse_jump_stmt_no_eos(Context *context)
 {
 	switch (context->tok.type)
 	{
+		case TOKEN_NEXT:
+			return parse_next(context);
 		case TOKEN_RETURN:
 			return parse_return(context);
 		case TOKEN_BREAK:

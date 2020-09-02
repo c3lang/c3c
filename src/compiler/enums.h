@@ -256,6 +256,7 @@ typedef enum
 	// Single-character tokens.
 	TOKEN_AMP,              // &
 	TOKEN_AT,               // @
+	TOKEN_BANG,             // !
 	TOKEN_BIT_NOT,          // ~
 	TOKEN_BIT_OR,           // =
 	TOKEN_BIT_XOR,          // ^
@@ -274,8 +275,6 @@ typedef enum
 	TOKEN_LPAREN,           // (
 	TOKEN_MINUS,            // -
 	TOKEN_MOD,              // %
-	TOKEN_BANG,             // !
-	TOKEN_OR,               // |
 	TOKEN_PLUS,             // +
 	TOKEN_QUESTION,         // ?
 	TOKEN_RBRACE,           // }
@@ -303,13 +302,14 @@ typedef enum
 	TOKEN_MULT_ASSIGN,      // *=
 	TOKEN_MULT_MOD,         // *%
 	TOKEN_NOT_EQUAL,        // !=
+	TOKEN_OR,               // ||
 	TOKEN_PLUS_ASSIGN,      // +=
 	TOKEN_PLUS_MOD,         // +%
 	TOKEN_PLUSPLUS,         // ++
 	TOKEN_RPARBRA,          // })
 	TOKEN_SCOPE,            // ::
-	TOKEN_SHR,              // >>
 	TOKEN_SHL,              // <<
+	TOKEN_SHR,              // >>
 	TOKEN_BANGBANG,         // !!
 
 	// Three or more
@@ -317,8 +317,8 @@ typedef enum
 	TOKEN_MINUS_MOD_ASSIGN, // -%=
 	TOKEN_MULT_MOD_ASSIGN,  // *%=
 	TOKEN_PLUS_MOD_ASSIGN,  // +%=
+	TOKEN_SHL_ASSIGN,       // <<=
 	TOKEN_SHR_ASSIGN,       // >>=
-	TOKEN_SHL_ASSIGN,       // >>=
 
 	// Basic types names
 	TOKEN_VOID,
@@ -404,7 +404,7 @@ typedef enum
 	TOKEN_MACRO,
 	TOKEN_MODULE,
 	TOKEN_NEXT,
-	TOKEN_NIL,
+	TOKEN_NULL,
 	TOKEN_PUBLIC,
 	TOKEN_RETURN,
 	TOKEN_STRUCT,
@@ -412,13 +412,11 @@ typedef enum
 	TOKEN_TRUE,
 	TOKEN_TRY,
 	TOKEN_TYPEDEF,
+	TOKEN_TYPEOF,
 	TOKEN_UNION,
-	TOKEN_CT_UNREACHABLE,
-	TOKEN_UNTIL,
 	TOKEN_VAR,              // Reserved
 	TOKEN_VOLATILE,
 	TOKEN_WHILE,
-	TOKEN_TYPEOF,
 
 	TOKEN_CT_ASSERT,        // $assert
 	TOKEN_CT_CASE,          // $case
@@ -428,6 +426,7 @@ typedef enum
 	TOKEN_CT_ELSE,          // $else
 	TOKEN_CT_IF,            // $if
 	TOKEN_CT_SWITCH,        // $switch
+	TOKEN_CT_UNREACHABLE,   // $unreachable
 
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
