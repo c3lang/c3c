@@ -9,18 +9,10 @@ static inline LLVMMetadataRef gencontext_create_debug_type_from_decl(GenContext 
 	static LLVMMetadataRef debug_params[512];
 	switch (decl->decl_kind)
 	{
-		case DECL_ATTRIBUTE:
-		case DECL_ENUM_CONSTANT:
 		case DECL_POISONED:
-		case DECL_GENERIC:
-		case DECL_MACRO:
-		case DECL_CT_IF:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
 		case DECL_VAR:
-		case DECL_ARRAY_VALUE:
-		case DECL_IMPORT:
-		case DECL_LABEL:
+		case DECL_ENUM_CONSTANT:
+		case NON_TYPE_DECLS:
 			UNREACHABLE;
 		case DECL_FUNC:
 		{
@@ -143,6 +135,8 @@ LLVMMetadataRef gencontext_get_debug_type(GenContext *context, Type *type)
 		case TYPE_IXX:
 		case TYPE_FXX:
 		case TYPE_TYPEID:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			UNREACHABLE
 		case TYPE_BOOL:
 			return gencontext_simple_debug_type(context, type, DW_ATE_boolean);

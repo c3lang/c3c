@@ -145,6 +145,7 @@ static Expr *parse_type_identifier(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	return parse_type_expression_with_path(context, NULL);
 }
+
 static Expr *parse_cast_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -408,7 +409,13 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 	Expr *access_expr = EXPR_NEW_EXPR(EXPR_ACCESS, left);
 	access_expr->access_expr.parent = left;
 	access_expr->access_expr.sub_element = context->tok.id;
-	TRY_CONSUME_OR(TOKEN_IDENT, "Expected identifier", poisoned_expr);
+	if (!try_consume(context, TOKEN_TYPEID))
+	{
+		if (!try_consume(context, TOKEN_CONST_IDENT))
+		{
+			TRY_CONSUME_OR(TOKEN_IDENT, "Expected identifier", poisoned_expr);
+		}
+	}
 	access_expr->span = left->span;
 	access_expr->span.end_loc = access_expr->access_expr.sub_element;
 	return access_expr;
@@ -787,25 +794,6 @@ Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *ty
 	return expr;
 }
 
-Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info)
-{
-	switch (context->tok.type)
-	{
-		case TOKEN_TYPEID:
-		case TOKEN_IDENT:
-		case TOKEN_CONST_IDENT:
-			break;
-		default:
-			SEMA_TOKEN_ERROR(context->tok, "Expected the name of a type property here.");
-			return poisoned_expr;
-	}
-	Expr *expr = expr_new(EXPR_TYPE_ACCESS, type_info->span);
-	expr->type_access.type = type_info;
-	expr->type_access.name = context->tok.id;
-	advance(context);
-	RANGE_EXTEND_PREV(expr);
-	return parse_precedence_with_left_side(context, expr, PREC_CALL - 1);
-}
 
 
 /**
@@ -819,28 +807,27 @@ Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info)
  */
 Expr *parse_type_expression_with_path(Context *context, Path *path)
 {
-	TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER, path ? path->span : source_span_from_token_id(context->tok.id));
-	type->unresolved.path = path;
-	type->unresolved.name_loc = context->tok.id;
-	advance_and_verify(context, TOKEN_TYPE_IDENT);
-	RANGE_EXTEND_PREV(type);
+	TypeInfo *type;
+	if (path)
+	{
+		type = type_info_new(TYPE_INFO_IDENTIFIER, path->span);
+		type->unresolved.path = path;
+		type->unresolved.name_loc = context->tok.id;
+		advance_and_verify(context, TOKEN_TYPE_IDENT);
+		RANGE_EXTEND_PREV(type);
+		type = TRY_TYPE_OR(parse_type_with_base(context, type), poisoned_expr);
+	}
+	else
+	{
+		type = TRY_TYPE_OR(parse_type(context), poisoned_expr);
+	}
 	if (TOKEN_IS(TOKEN_LBRACE))
 	{
 		return parse_type_compound_literal_expr_after_type(context, type);
 	}
-	if (try_consume(context, TOKEN_BANG))
-	{
-		Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type->span);
-		expr->expr_compound_literal.type_info = type;
-		expr->expr_compound_literal.initializer = expr_new(EXPR_INITIALIZER_LIST, type->span);
-
-		Expr *failable = expr_new(EXPR_FAILABLE, expr->span);
-		failable->failable_expr = expr;
-		RANGE_EXTEND_PREV(failable);
-		return failable;
-	}
-	CONSUME_OR(TOKEN_DOT, poisoned_expr);
-	return parse_type_access_expr_after_type(context, type);
+	Expr *expr = expr_new(EXPR_TYPEINFO, type->span);
+	expr->type_expr = type;
+	return expr;
 }
 
 
@@ -865,6 +852,24 @@ static Expr* parse_expr_block(Context *context, Expr *left)
 }
 
 ParseRule rules[TOKEN_EOF + 1] = {
+		[TOKEN_BOOL] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_BYTE] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_CHAR] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_SHORT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_USHORT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_INT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_UINT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_LONG] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_ULONG] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_ISIZE] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_USIZE] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_FLOAT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_DOUBLE] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_HALF] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_QUAD] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_VOID] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_TYPEID] = { parse_type_identifier, NULL, PREC_NONE },
+
 		[TOKEN_ELSE] = { NULL, parse_else_expr, PREC_TRY_ELSE },
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },

@@ -19,6 +19,6 @@ func void test()
     flak = flok[^4..5];
     flak = flok[2..^2];
     flak = flok[^3..^1];
-    int* p = nil;
+    int* p = null;
     // TODO p[-1..20];
 }

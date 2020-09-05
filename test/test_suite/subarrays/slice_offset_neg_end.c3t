@@ -6,17 +6,12 @@ func void test()
 
 // #expect: slice_offset_neg_end.ll
 
-%x = alloca [3 x i32]
-%y = alloca %"int[]"
-%0 = getelementptr inbounds [3 x i32], [3 x i32]* %x, i32 0, i32 0
-store i32 1, i32* %0
-%1 = getelementptr inbounds [3 x i32], [3 x i32]* %x, i32 0, i32 1
-store i32 2, i32* %1
-%2 = getelementptr inbounds [3 x i32], [3 x i32]* %x, i32 0, i32 2
-store i32 3, i32* %2
-%3 = load [3 x i32], [3 x i32]* %x
-%4 = bitcast [3 x i32]* %x to i32*
-%offset = getelementptr inbounds i32, i32* %4, i64 1
-%5 = insertvalue %"int[]" undef, i32* %offset, 0
-%6 = insertvalue %"int[]" %5, i64 1, 1
-store %"int[]" %6, %"int[]"* %y
+  %x = alloca [3 x i32]
+  %y = alloca %"int[]"
+  %0 = load [3 x i32], [3 x i32]* @0
+  store [3 x i32] %0, [3 x i32]* %x
+  %1 = bitcast [3 x i32]* %x to i32*
+  %offset = getelementptr inbounds i32, i32* %1, i64 1
+  %2 = insertvalue %"int[]" undef, i32* %offset, 0
+  %3 = insertvalue %"int[]" %2, i64 1, 1
+  store %"int[]" %3, %"int[]"* %y

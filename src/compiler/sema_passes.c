@@ -97,6 +97,7 @@ void sema_analysis_pass_conditional_compilation(Context *context)
 	DEBUG_LOG("Pass: Top level conditionals %s", context->file->name);
 	for (unsigned i = 0; i < vec_size(context->ct_ifs); i++)
 	{
+		// Also handle switch!
 		sema_analyse_top_level_if(context, context->ct_ifs[i]);
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);

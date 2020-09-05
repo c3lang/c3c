@@ -10,7 +10,7 @@ static Type t_f32, t_f64, t_fxx;
 static Type t_usz, t_isz;
 static Type t_cus, t_cui, t_cul, t_cull;
 static Type t_cs, t_ci, t_cl, t_cll;
-static Type t_voidstar, t_typeid, t_error;
+static Type t_voidstar, t_typeid, t_error, t_typeinfo, t_member;
 
 Type *type_bool = &t_u1;
 Type *type_void = &t_u0;
@@ -19,6 +19,8 @@ Type *type_voidptr = &t_voidstar;
 Type *type_float = &t_f32;
 Type *type_double = &t_f64;
 Type *type_typeid = &t_typeid;
+Type *type_typeinfo = &t_typeinfo;
+Type *type_member = &t_member;
 Type *type_char = &t_i8;
 Type *type_short = &t_i16;
 Type *type_int = &t_i32;
@@ -113,6 +115,10 @@ const char *type_to_error_string(Type *type)
 
 			return strcat_arena(buffer, ")");
 		}
+		case TYPE_MEMBER:
+			return "member";
+		case TYPE_TYPEINFO:
+			return "typeinfo";
 		case TYPE_TYPEID:
 			return "typeid";
 		case TYPE_POINTER:
@@ -170,6 +176,8 @@ size_t type_size(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			UNREACHABLE;
 		case TYPE_TYPEDEF:
 			return type_size(type->canonical);
@@ -202,12 +210,20 @@ size_t type_size(Type *type)
 	UNREACHABLE
 }
 
+const char *type_generate_qname(Type *type)
+{
+	if (type_is_builtin(type->type_kind)) return type->name;
+	return strformat("%s::%s", type->decl->module->name->module, type->name);
+}
+
 unsigned int type_abi_alignment(Type *type)
 {
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
 		case TYPE_VOID:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			UNREACHABLE;
 		case TYPE_TYPEDEF:
 			return type_abi_alignment(type->canonical);
@@ -471,6 +487,8 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 
 #undef DEF_TYPE
 
+	type_create("typeinfo", &t_typeinfo, TYPE_TYPEINFO, 0, 0, 0);
+	type_create("member", &t_member, TYPE_MEMBER, 0, 0, 0);
 	type_create("typeid", &t_typeid, TYPE_TYPEID, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	type_create("void*", &t_voidstar, TYPE_POINTER, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	create_type_cache(type_void);
@@ -681,6 +699,8 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_BOOL:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			return NULL;
 		case TYPE_I8:
 		case TYPE_I16:

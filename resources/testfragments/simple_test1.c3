@@ -13,7 +13,7 @@ public func int Foo.test(Foo *foo)
 
 public func void gonk()
 {
-    Foo.test(nil);
+    Foo.test(null);
     printf("Bob\n");
 }
 func void test()

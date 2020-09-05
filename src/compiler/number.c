@@ -40,7 +40,7 @@ void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
 	switch (expr->kind)
 	{
 		case TYPE_POINTER:
-			fprintf(file, "nil");
+			fprintf(file, "null");
 			break;
 		case TYPE_BOOL:
 			fprintf(file, expr->b ? "true" : "false");
@@ -92,7 +92,7 @@ void expr_const_set_bool(ExprConst *expr, bool b)
 	expr->kind = TYPE_BOOL;
 }
 
-void expr_const_set_nil(ExprConst *expr)
+void expr_const_set_null(ExprConst *expr)
 {
 	expr->i.digit_count = 0;
 	expr->i.digit = 0;
@@ -228,7 +228,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 	switch (expr->kind)
 	{
 		case TYPE_POINTER:
-			return "nil";
+			return "null";
 		case TYPE_BOOL:
 			return expr->b ? "true" : "false";
 		case TYPE_I8:

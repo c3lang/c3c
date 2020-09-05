@@ -14,7 +14,6 @@ static Expr **expr_copy_expr_list_from_macro(Context *context, Expr **expr_list)
 static Expr *expr_copy_from_macro(Context *context, Expr *source_expr);
 static Ast *ast_copy_from_macro(Context *context, Ast *source);
 static Ast **ast_copy_list_from_macro(Context *context, Ast **to_copy);
-static bool sema_expr_analyse_type_access(Context *context, Type *to, Expr *expr);
 static Decl *decl_copy_local_from_macro(Context *context, Decl *to_copy);
 static TypeInfo *type_info_copy_from_macro(Context *context, TypeInfo *source);
 
@@ -668,9 +667,6 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	Expr *struct_var = NULL;
 	switch (func_expr->expr_kind)
 	{
-		case EXPR_TYPE_ACCESS:
-			decl = func_expr->type_access.decl;
-			break;
 		case EXPR_IDENTIFIER:
 			decl = func_expr->identifier_expr.decl;
 			break;
@@ -953,87 +949,30 @@ static inline void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, 
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
 }
 
-static bool sema_expr_analyse_type_access(Context *context, Type *to, Expr *expr)
+static inline void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
+{
+	expr_to_rewrite->expr_kind = EXPR_CONST;
+	expr_to_rewrite->constant = true;
+	expr_to_rewrite->const_expr.kind = TYPE_STRING;
+	expr_to_rewrite->const_expr.string.chars = (char *)string;
+	expr_to_rewrite->const_expr.string.len = (int)strlen(string);
+	expr_to_rewrite->pure = true;
+	expr_to_rewrite->resolve_status = RESOLVE_DONE;
+	expr_to_rewrite->type = type_string;
+}
+
+
+static bool sema_expr_analyse_typeinfo(Context *context, Expr *expr)
 {
 	expr->constant = true;
 	expr->pure = true;
 
-	TypeInfo *type_info = expr->type_access.type;
+	TypeInfo *type_info = expr->type_expr;
 	if (!sema_resolve_type_info(context, type_info)) return false;
-	Type *canonical = type_info->type->canonical;
-	TokenType type = TOKTYPE(expr->type_access.name);
-	const char *name = TOKSTR(expr->type_access.name);
-	if (type == TOKEN_TYPEID)
-	{
-		expr->type = type_typeid;
-		expr->expr_kind = EXPR_TYPEID;
-		expr->typeid_expr = type_info;
-		expr->resolve_status = RESOLVE_DONE;
-		return true;
-	}
-	if (!type_may_have_sub_elements(canonical))
-	{
-		SEMA_ERROR(expr, "'%s' does not have methods.", type_to_error_string(type_info->type));
-		return false;
-	}
-	Decl *decl = canonical->decl;
-	// TODO add more constants that can be inspected?
-	// e.g. SomeEnum.values, MyUnion.x.offset etc?
-	switch (decl->decl_kind)
-	{
-		case DECL_ENUM:
-			if (type == TOKEN_CONST_IDENT)
-			{
-				if (!sema_expr_analyse_enum_constant(expr, name, decl))
-				{
-					SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
-					return false;
-				}
-				return true;
-			}
-			if (name == kw_sizeof)
-			{
-				expr_rewrite_to_int_const(expr, type_usize, type_size(decl->enums.type_info->type));
-				return true;
-			}
-			break;
-		case DECL_ERR:
-		case DECL_UNION:
-		case DECL_STRUCT:
-			if (name == kw_sizeof)
-			{
-				expr_rewrite_to_int_const(expr, type_usize, type_size(decl->type));
-				return true;
-			}
-			break;
-		default:
-			UNREACHABLE
-	}
-
-
-	VECEACH(decl->methods, i)
-	{
-		Decl *function = decl->methods[i];
-		if (name == function->name)
-		{
-			expr->type_access.decl = function;
-			expr->type = function->type;
-			return true;
-		}
-	}
-	VECEACH(decl->strukt.members, i)
-	{
-		Decl *member = decl->strukt.members[i];
-		if (name == member->name)
-		{
-			expr->type_access.decl = member;
-			expr->type = member->type;
-			return true;
-		}
-	}
-	SEMA_ERROR(expr, "No function or member '%s.%s' found.", type_to_error_string(type_info->type), name);
-	return false;
+	expr->type = type_typeinfo;
+	return true;
 }
+
 /*
 static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 {
@@ -1137,11 +1076,233 @@ static void add_members_to_context(Context *context, Decl *decl)
 	}
 }
 
+static inline bool sema_expr_analyse_type_access(Context *context, Expr *expr, TypeInfo *parent, bool was_group)
+{
+	if (!was_group && type_kind_is_derived(parent->type->type_kind))
+	{
+		SEMA_ERROR(expr->access_expr.parent, "Array and pointer types must be enclosed in (), did you forget it?");
+		return false;
+	}
+
+	expr->constant = true;
+	expr->pure = true;
+
+	Type *canonical = parent->type->canonical;
+	TokenType type = TOKTYPE(expr->access_expr.sub_element);
+	const char *name = TOKSTR(expr->access_expr.sub_element);
+	if (type == TOKEN_TYPEID)
+	{
+		expr->type = type_typeid;
+		expr->expr_kind = EXPR_TYPEID;
+		expr->typeid_expr = parent;
+		expr->resolve_status = RESOLVE_DONE;
+		return true;
+	}
+	if (name == kw_sizeof)
+	{
+		expr_rewrite_to_int_const(expr, type_usize, type_size(canonical));
+		return true;
+	}
+	if (name == kw_alignof)
+	{
+		expr_rewrite_to_int_const(expr, type_usize, type_abi_alignment(canonical));
+		return true;
+	}
+	if (name == kw_nameof)
+	{
+		expr_rewrite_to_string(expr, canonical->name);
+		return true;
+	}
+	if (name == kw_qnameof)
+	{
+		expr_rewrite_to_string(expr, type_generate_qname(canonical));
+		return true;
+	}
+	if (!type_may_have_sub_elements(canonical))
+	{
+		SEMA_ERROR(expr, "'%s' does not have a property '%s'.", type_to_error_string(parent->type), name);
+		return false;
+	}
+	Decl *decl = canonical->decl;
+	// TODO add more constants that can be inspected?
+	// e.g. SomeEnum.values, MyUnion.x.offset etc?
+	switch (decl->decl_kind)
+	{
+		case DECL_ENUM:
+			if (type == TOKEN_CONST_IDENT)
+			{
+				if (!sema_expr_analyse_enum_constant(expr, name, decl))
+				{
+					SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
+					return false;
+				}
+				return true;
+			}
+			if (name == kw_sizeof)
+			{
+				expr_rewrite_to_int_const(expr, type_usize, type_size(decl->enums.type_info->type));
+				return true;
+			}
+			if (name == kw_alignof)
+			{
+				expr_rewrite_to_int_const(expr, type_usize, type_abi_alignment(decl->enums.type_info->type));
+				return true;
+			}
+			break;
+		case DECL_ERR:
+		case DECL_UNION:
+		case DECL_STRUCT:
+			if (name == kw_sizeof)
+			{
+				expr_rewrite_to_int_const(expr, type_usize, type_size(decl->type));
+				return true;
+			}
+			if (name == kw_alignof)
+			{
+				expr_rewrite_to_int_const(expr, type_usize, type_abi_alignment(decl->type));
+				return true;
+			}
+			break;
+		default:
+			UNREACHABLE
+	}
+
+
+	VECEACH(decl->methods, i)
+	{
+		Decl *function = decl->methods[i];
+		if (name == function->name)
+		{
+			expr->access_expr.ref = function;
+			expr->type = function->type;
+			return true;
+		}
+	}
+	VECEACH(decl->strukt.members, i)
+	{
+		Decl *member = decl->strukt.members[i];
+		if (name == member->name)
+		{
+			expr->access_expr.ref = member;
+			expr->type = type_member;
+			return true;
+		}
+	}
+	SEMA_ERROR(expr, "No function or member '%s.%s' found.", type_to_error_string(parent->type), name);
+	return false;
+}
+
+static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
+{
+	Expr *parent = expr->access_expr.parent;
+
+	expr->constant = true;
+	expr->pure = true;
+
+	TokenType type = TOKTYPE(expr->access_expr.sub_element);
+	const char *name = TOKSTR(expr->access_expr.sub_element);
+
+	Decl *ref = parent->access_expr.ref;
+
+	bool is_plain_member = ref->decl_kind == DECL_VAR;
+	if (type == TOKEN_TYPEID)
+	{
+		expr->type = type_typeid;
+		expr->expr_kind = EXPR_TYPEID;
+		if (is_plain_member)
+		{
+			expr->typeid_expr = ref->var.type_info;
+		}
+		else
+		{
+			expr->typeid_expr = type_info_new_base(ref->type, parent->span);
+		}
+		expr->resolve_status = RESOLVE_DONE;
+		return true;
+	}
+	if (name == kw_sizeof)
+	{
+		expr_rewrite_to_int_const(expr, type_usize, type_size(ref->type));
+		return true;
+	}
+	if (name == kw_alignof)
+	{
+		expr_rewrite_to_int_const(expr, type_usize, type_size(ref->type));
+		return true;
+	}
+	if (name == kw_alignof)
+	{
+		expr_rewrite_to_int_const(expr, type_usize, type_abi_alignment(ref->type));
+		return true;
+	}
+	if (name == kw_offsetof)
+	{
+		TODO
+	}
+	if (name == kw_nameof)
+	{
+		TODO
+	}
+	if (name == kw_qnameof)
+	{
+		TODO
+	}
+	if (name == kw_kindof)
+	{
+		TODO
+	}
+	// If we have something like struct Foo { Bar b; int c; struct d { int e; } }
+	// If we are inspecting Foo.c we're done here. Otherwise handle struct d / Bar b case
+	// The same way.
+	if (is_plain_member)
+	{
+		if (!type_is_structlike(ref->type))
+		{
+			SEMA_ERROR(expr, "'%s' does not have a member or property '%s'", type_to_error_string(ref->type), name);
+			return false;
+		}
+		// Pretend to be an inline struct.
+		ref = ref->type->decl;
+	}
+	VECEACH(ref->methods, i)
+	{
+		Decl *function = ref->methods[i];
+		if (name == function->name)
+		{
+			expr->access_expr.ref = function;
+			expr->type = function->type;
+			return true;
+		}
+	}
+	VECEACH(ref->strukt.members, i)
+	{
+		Decl *member = ref->strukt.members[i];
+		if (name == member->name)
+		{
+			expr->access_expr.ref = member;
+			expr->type = type_member;
+			return true;
+		}
+	}
+	TODO
+	SEMA_ERROR(expr, "No function or member '%s.%s' found.", "todo", name);
+	return false;
+}
+
 static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 {
 	Expr *parent = expr->access_expr.parent;
+	bool was_group = parent->expr_kind == EXPR_GROUP;
 	if (!sema_analyse_expr(context, NULL, parent)) return false;
 
+	if (parent->type == type_typeinfo)
+	{
+		return sema_expr_analyse_type_access(context, expr, parent->type_expr, was_group);
+	}
+	if (parent->type == type_member)
+	{
+		return sema_expr_analyse_member_access(context, expr);
+	}
 	expr->failable = parent->failable;
 
 	assert(expr->expr_kind == EXPR_ACCESS);
@@ -1601,7 +1762,7 @@ static inline bool sema_expr_analyse_cast(Context *context, Type *to, Expr *expr
 	expr->constant = inner->constant;
 	if (!success) return false;
 
-	if (!cast(context, inner, expr->cast_expr.type_info->type->canonical, CAST_TYPE_EXPLICIT)) return false;
+	if (!cast(context, inner, expr->cast_expr.type_info->type, CAST_TYPE_EXPLICIT)) return false;
 
 	// TODO above is probably not right, cast type not set.
 	// Overwrite cast.
@@ -2567,6 +2728,8 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 				case TYPE_POISONED:
 					return false;
 				case TYPE_VOID:
+				case TYPE_TYPEINFO:
+				case TYPE_MEMBER:
 				case TYPE_TYPEDEF:
 					UNREACHABLE
 				case TYPE_BOOL:
@@ -2635,10 +2798,10 @@ static bool sema_expr_analyse_deref(Context *context, Expr *expr, Expr *inner)
 		SEMA_ERROR(inner, "Cannot dereference a value of type '%s'", type_to_error_string(inner->type));
 		return false;
 	}
-	// 2. This could be a constant, in which case it is a nil which is an error.
+	// 2. This could be a constant, in which case it is a null which is an error.
 	if (inner->expr_kind == EXPR_CONST)
 	{
-		SEMA_ERROR(inner, "Dereferencing nil is not allowed.");
+		SEMA_ERROR(inner, "Dereferencing null is not allowed.");
 		return false;
 	}
 	// 3. Now the type might not be a pointer because of a typedef,
@@ -2838,6 +3001,8 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 		case TYPE_ENUM:
 		case TYPE_ERRTYPE:
 		case TYPE_TYPEID:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			SEMA_ERROR(expr, "Cannot use 'not' on %s", type_to_error_string(inner->type));
 			return false;
 	}
@@ -3124,6 +3289,11 @@ static Expr *expr_copy_from_macro(Context *context, Expr *source_expr)
 	Expr *expr = expr_shallow_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_UNDEF:
+			return expr;
+		case EXPR_TYPEINFO:
+			MACRO_COPY_TYPE(expr->type_expr);
+			return expr;
 		case EXPR_SLICE_ASSIGN:
 			MACRO_COPY_EXPR(expr->slice_assign_expr.left);
 			MACRO_COPY_EXPR(expr->slice_assign_expr.right);
@@ -3199,9 +3369,6 @@ static Expr *expr_copy_from_macro(Context *context, Expr *source_expr)
 			return expr;
 		case EXPR_IDENTIFIER:
 			// TODO
-			return expr;
-		case EXPR_TYPE_ACCESS:
-			MACRO_COPY_TYPE(expr->type_access.type);
 			return expr;
 		case EXPR_CALL:
 			MACRO_COPY_EXPR(expr->call_expr.function);
@@ -3523,6 +3690,19 @@ static inline bool sema_expr_analyse_failable(Context *context, Type *to, Expr *
 	if (!sema_analyse_expr(context, NULL, inner)) return false;
 	expr->pure = inner->pure;
 	expr->constant = inner->constant;
+	if (inner->expr_kind == EXPR_TYPEINFO)
+	{
+		TypeInfo *inner_type_info = inner->type_expr;
+		if (inner_type_info->type->type_kind != TYPE_ERRTYPE)
+		{
+			SEMA_ERROR(inner, "This must be an error type.");
+			return false;
+		}
+		inner->expr_kind = EXPR_COMPOUND_LITERAL;
+		inner->expr_compound_literal.type_info = inner_type_info;
+		inner->expr_compound_literal.initializer = NULL;
+		inner->type = inner_type_info->type;
+	}
 	if (inner->failable)
 	{
 		SEMA_ERROR(inner, "The inner expression is already a failable.");
@@ -3554,6 +3734,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 	switch (expr->expr_kind)
 	{
 		case EXPR_DECL_LIST:
+		case EXPR_UNDEF:
 			UNREACHABLE
 		case EXPR_FAILABLE:
 			return sema_expr_analyse_failable(context, to, expr);
@@ -3567,6 +3748,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_MACRO_BLOCK:
 		case EXPR_SCOPED_EXPR:
 			UNREACHABLE
+		case EXPR_TYPEINFO:
+			return sema_expr_analyse_typeinfo(context, expr);
 		case EXPR_SLICE:
 			return sema_expr_analyse_slice(context, expr);
 		case EXPR_CATCH:
@@ -3608,8 +3791,6 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return sema_expr_analyse_type(context, to, expr);
 		case EXPR_IDENTIFIER:
 			return sema_expr_analyse_identifier(context, to, expr);
-		case EXPR_TYPE_ACCESS:
-			return sema_expr_analyse_type_access(context, to, expr);
 		case EXPR_CALL:
 			return sema_expr_analyse_call(context, to, expr);
 		case EXPR_SUBSCRIPT:

@@ -43,7 +43,7 @@ func void tester()
     p.bb.b = 2;
     p.b = 3;
     p.c = 4;
-    p.p = nil;
+    p.p = null;
     p.d = 5;
     p.e = 6;
     p.uu.d = 7;

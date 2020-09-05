@@ -58,7 +58,7 @@ func void test9()
 
 func void test10()
 {
-    int* x = nil;
+    int* x = null;
     x[-10..-3];
     int[] w = x[0..]; // #error: Omitting end index is not allowed for pointers.
     int[] z = x[^2..]; // #error: Indexing from the end is not allowed for pointers.

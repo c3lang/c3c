@@ -226,10 +226,14 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Should only appear when generating designated initializers.
 			UNREACHABLE
+		case EXPR_UNDEF:
+			// Should never occur here.
+			UNREACHABLE
 		case EXPR_MACRO_BLOCK:
 			TODO
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE:
+		case EXPR_TYPEINFO:
 			// Should never be an lvalue
 			UNREACHABLE
 		case EXPR_IDENTIFIER:
@@ -254,7 +258,6 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_BINARY:
 		case EXPR_TERNARY:
 		case EXPR_POST_UNARY:
-		case EXPR_TYPE_ACCESS:
 		case EXPR_CALL:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_EXPRESSION_LIST:
@@ -329,7 +332,7 @@ LLVMValueRef gencontext_emit_cast(GenContext *context, CastKind cast_kind, LLVMV
 		case CAST_FPBOOL:
 			return LLVMBuildFCmp(context->builder, LLVMRealUNE, value, LLVMConstNull(LLVMTypeOf(value)), "fpbool");
 		case CAST_BOOLFP:
-			return LLVMBuildSIToFP(context->builder, value, llvm_type(to_type), "boolfp");
+			return LLVMBuildUIToFP(context->builder, value, llvm_type(to_type), "boolfp");
 		case CAST_INTBOOL:
 			return LLVMBuildICmp(context->builder, LLVMIntNE, value, LLVMConstNull(LLVMTypeOf(value)), "intbool");
 		case CAST_FPFP:
@@ -1830,21 +1833,10 @@ LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, 
 		assign_block = gencontext_create_free_block(context, "after_assign");
 		context->error_var = failable_ref;
 		context->catch_block = assign_block;
+	}
+	LLVMValueRef value = gencontext_emit_expr(context, expr);
+	LLVMBuildStore(context->builder, value, ref);
 
-	}
-	LLVMValueRef value;
-	switch (expr->expr_kind)
-	{
-		case EXPR_INITIALIZER_LIST:
-			value = gencontext_emit_load(context,
-			                            expr->type,
-			                            gencontext_emit_initializer_list_expr_addr(context, expr, ref));
-			break;
-		default:
-			value = gencontext_emit_expr(context, expr);
-			LLVMBuildStore(context->builder, value, ref);
-			break;
-	}
 	if (failable_ref)
 	{
 		LLVMBuildStore(context->builder, gencontext_emit_no_error_union(context), failable_ref);
@@ -1912,6 +1904,10 @@ NESTED_RETRY:
 	{
 		case EXPR_POISONED:
 		case EXPR_DECL_LIST:
+		case EXPR_TYPEINFO:
+			UNREACHABLE
+		case EXPR_UNDEF:
+			// Should never reach this.
 			UNREACHABLE
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Should only appear when generating designated initializers.
@@ -1954,7 +1950,6 @@ NESTED_RETRY:
 			return gencontext_emit_guard_expr(context, expr);
 		case EXPR_TYPEID:
 			return gencontext_emit_typeid(context, expr);
-		case EXPR_TYPE_ACCESS:
 		case EXPR_TYPEOF:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE

@@ -334,15 +334,7 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 			break;
 		case DECL_ENUM:
 			TODO
-		case DECL_ARRAY_VALUE:
-		case DECL_IMPORT:
-		case DECL_MACRO:
-		case DECL_GENERIC:
-		case DECL_CT_IF:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
-		case DECL_ATTRIBUTE:
-		case DECL_LABEL:
+		case NON_TYPE_DECLS:
 			UNREACHABLE
 	}
 }

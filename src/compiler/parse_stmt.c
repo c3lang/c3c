@@ -566,6 +566,34 @@ static inline Ast *parse_try_stmt(Context *context)
 	return stmt;
 }
 
+static inline Ast *parse_decl_or_expr_stmt(Context *context)
+{
+	Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+	Ast *ast = ast_calloc();
+	ast->span = expr->span;
+	bool failable = false;
+	// We might be parsing "int!"
+	// If so we need to unwrap this.
+	if (expr->expr_kind == EXPR_FAILABLE && expr->failable_expr->expr_kind == EXPR_TYPEINFO)
+	{
+		failable = true;
+		expr_replace(expr, expr->failable_expr);
+	}
+	if (expr->expr_kind == EXPR_TYPEINFO)
+	{
+		ast->ast_kind = AST_DECLARE_STMT;
+		ast->declare_stmt = TRY_DECL_OR(parse_decl_after_type(context, true, expr->type_expr), poisoned_ast);
+		ast->declare_stmt->var.failable = failable;
+	}
+	else
+	{
+		ast->ast_kind = AST_EXPR_STMT;
+		ast->expr_stmt = expr;
+	}
+	CONSUME_OR(TOKEN_EOS, poisoned_ast);
+	return ast;
+}
+
 /**
  * define_stmt
  *  : define CT_IDENT '=' const_expr EOS
@@ -627,7 +655,7 @@ static inline Ast *parse_ct_elif_stmt(Context *context)
 	Ast *ast = AST_NEW_TOKEN(AST_CT_ELIF_STMT, context->tok);
 	advance_and_verify(context, TOKEN_CT_ELIF);
 
-	ast->ct_elif_stmt.expr = TRY_EXPR_OR(parse_paren_expr(context), poisoned_ast);
+	ast->ct_elif_stmt.expr = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_ast);
 
 	ast->ct_elif_stmt.then = TRY_AST(parse_compound_stmt(context));
 
@@ -652,7 +680,7 @@ static inline Ast* parse_ct_if_stmt(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CT_IF_STMT, context->tok);
 	advance_and_verify(context, TOKEN_CT_IF);
-	ast->ct_if_stmt.expr = TRY_EXPR_OR(parse_paren_expr(context), poisoned_ast);
+	ast->ct_if_stmt.expr = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_ast);
 	ast->ct_if_stmt.then = TRY_AST(parse_compound_stmt(context));
 	if (TOKEN_IS(TOKEN_CT_ELIF))
 	{
@@ -764,7 +792,7 @@ static inline Ast* parse_ct_switch_stmt(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CT_SWITCH_STMT, context->tok);
 	advance_and_verify(context, TOKEN_CT_SWITCH);
-	ast->ct_switch_stmt.cond = TRY_EXPR_OR(parse_paren_expr(context), poisoned_ast);
+	ast->ct_switch_stmt.cond = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_ast);
 	if (!parse_switch_body(context, &ast->ct_switch_stmt.body, TOKEN_CT_CASE, TOKEN_CT_DEFAULT)) return poisoned_ast;
 	return ast;
 }
@@ -786,15 +814,20 @@ static inline Ast *parse_assert_stmt(Context *context)
 
 #pragma mark --- External functions
 
+/**
+ * ct_assert_stmt ::= CT_ASSERT '(' constant_expression (',' constant_expression) ')' ';'
+ * @param context
+ * @return
+ */
 Ast *parse_ct_assert_stmt(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CT_ASSERT, context->tok);
 	advance_and_verify(context, TOKEN_CT_ASSERT);
 	TRY_CONSUME_OR(TOKEN_LPAREN, "'$assert' needs a '(' here, did you forget it?", poisoned_ast);
-	ast->ct_assert_stmt.expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+	ast->ct_assert_stmt.expr = TRY_EXPR_OR(parse_constant_expr(context), poisoned_ast);
 	if (try_consume(context, TOKEN_COMMA))
 	{
-		ast->ct_assert_stmt.message = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+		ast->ct_assert_stmt.message = TRY_EXPR_OR(parse_constant_expr(context), poisoned_ast);
 	}
 	TRY_CONSUME_OR(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
 	TRY_CONSUME_EOS();
@@ -842,14 +875,8 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_ERR:
 		case TOKEN_IDENT:
-			if (parse_next_is_decl(context))
-			{
-				return parse_declaration_stmt(context);
-			}
-			else
-			{
-				return parse_expr_stmt(context);
-			}
+		case TOKEN_CONST_IDENT:
+			return parse_decl_or_expr_stmt(context);
 		case TOKEN_TRY:
 			return parse_try_stmt(context);
 		case TOKEN_DEFINE:
@@ -857,8 +884,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_LOCAL:   // Local means declaration!
 		case TOKEN_CONST:   // Const means declaration!
 			return parse_declaration_stmt(context);
-		case TOKEN_CONST_IDENT:
-			return parse_expr_stmt(context);
 		case TOKEN_AT:
 			return parse_expr_stmt(context);
 		case TOKEN_RETURN:

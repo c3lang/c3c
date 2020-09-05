@@ -107,7 +107,11 @@ bool consume(Context *context, TokenType type, const char *message, ...)
 
 #pragma mark --- Extern functions
 
-static inline void parse_current(Context *context)
+/**
+ * module? imports top_level_statement*
+ * @param context
+ */
+static inline void parse_translation_unit(Context *context)
 {
 	// Prime everything
 	advance(context); advance(context);
@@ -115,8 +119,8 @@ static inline void parse_current(Context *context)
 	parse_imports(context);
 	while (!TOKEN_IS(TOKEN_EOF))
 	{
-		Decl *decl = parse_top_level(context);
-		if (!decl) continue;
+		Decl *decl = parse_top_level_statement(context);
+		assert(decl);
 		if (decl_ok(decl))
 		{
 			vec_add(context->global_decls, decl);
@@ -132,7 +136,7 @@ void parse_file(Context *context)
 {
 	lexer_init_with_file(&context->lexer, context->file);
 	if (diagnostics.errors) return;
-	parse_current(context);
+	parse_translation_unit(context);
 }
 
 

@@ -137,6 +137,9 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_CT_IF:
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
+		case DECL_CT_SWITCH:
+		case DECL_CT_CASE:
+		case DECL_DEFINE:
 			UNREACHABLE
 	}
 	UNREACHABLE

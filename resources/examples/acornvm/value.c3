@@ -155,7 +155,7 @@ macro aTrue()
 
 /**
  * Is value null?
- * @require value != nil
+ * @require value != null
  */
 func bool Value.isNull(Value *value) @inline
 {
@@ -164,7 +164,7 @@ func bool Value.isNull(Value *value) @inline
 
 /**
  * Is value false or null?
- * @require value != nil
+ * @require value != null
  */
 func bool Value.isFalse(Value *value) @inline
 {

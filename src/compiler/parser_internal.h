@@ -30,13 +30,14 @@ typedef enum
 	DECL_PARSE_NORMAL,
 	DECL_PARSE_UNWRAP
 } DeclParse;
-Decl *parse_top_level(Context *context);
+Decl *parse_top_level_statement(Context *context);
 Ast *parse_ct_assert_stmt(Context *context);
 Ast *parse_stmt(Context *context);
 Path *parse_path_prefix(Context *context, bool *had_error);
 Expr *parse_type_expression_with_path(Context *context, Path *path);
 Expr *parse_expr(Context *context);
 TypeInfo *parse_type(Context *context);
+TypeInfo *parse_type_with_base(Context *context, TypeInfo *type_info);
 Expr* parse_constant_expr(Context *context);
 Expr *parse_initializer_list(Context *context);
 Expr *parse_initializer(Context *context);
@@ -85,10 +86,10 @@ static inline bool expect_ident(Context *context, const char* name)
 	}
 }
 
-static inline Expr *parse_paren_expr(Context *context)
+static inline Expr *parse_const_paren_expr(Context *context)
 {
 	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
-	Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	Expr *expr = TRY_EXPR_OR(parse_constant_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	return expr;
 }
