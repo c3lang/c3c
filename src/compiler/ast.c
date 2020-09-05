@@ -97,6 +97,9 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
 		case DECL_LABEL:
+		case DECL_CT_SWITCH:
+		case DECL_CT_CASE:
+		case DECL_DEFINE:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, !name.index ? "anon" : TOKSTR(name));
@@ -311,6 +314,13 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 	}
 	switch (type->type_kind)
 	{
+
+		case TYPE_TYPEINFO:
+			DUMP("(type typeinfo)");
+			return;
+		case TYPE_MEMBER:
+			DUMP("(type member)");
+			return;
 		case TYPE_POISONED:
 			DUMP("(type poison)");
 			return;
@@ -485,6 +495,11 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
+		case EXPR_UNDEF:
+			DUMP("(undef)");
+			return;
+		case EXPR_TYPEINFO:
+			TODO;
 		case EXPR_SLICE_ASSIGN:
 			DUMP("(sliceassign");
 			DUMPEXPC(expr);
@@ -561,11 +576,6 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMP("(try");
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->trycatch_expr);
-			DUMPEND();
-		case EXPR_TYPE_ACCESS:
-			DUMPF("(typeaccess .%s", TOKSTR(expr->type_access.name));
-			DUMPEXPC(expr);
-			DUMPTI(expr->type_access.type);
 			DUMPEND();
 		case EXPR_ACCESS:
 			DUMPF("(access .%s", TOKSTR(expr->access_expr.sub_element));
@@ -757,6 +767,9 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 					break;
 			}
 			DUMPEND();
+		case DECL_DEFINE:
+			DUMPF("(define %s", decl->name);
+			DUMPEND();
 		case DECL_LABEL:
 			DUMPF("(label %s", decl->name);
 			DUMPEND();
@@ -863,6 +876,23 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 		case DECL_IMPORT:
 			DUMPF("(import %s", decl->name);
 			// TODO
+			DUMPEND();
+		case DECL_CT_CASE:
+			if (decl->ct_case_decl.type)
+			{
+				DUMP("($case");
+				DUMPTI(decl->ct_case_decl.type);
+			}
+			else
+			{
+				DUMP("($default");
+			}
+			DUMPDECLS(decl->ct_case_decl.body);
+			DUMPEND();
+		case DECL_CT_SWITCH:
+			DUMP("($switch");
+			DUMPEXPR(decl->ct_switch_decl.expr);
+			DUMPDECLS(decl->ct_switch_decl.cases);
 			DUMPEND();
 		case DECL_ATTRIBUTE:
 			DUMPF("(attribute %s)", decl->name);

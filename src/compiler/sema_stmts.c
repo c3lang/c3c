@@ -335,8 +335,17 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 	decl->type = decl->var.type_info->type;
 	if (decl->var.init_expr)
 	{
-		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, decl->var.init_expr, decl->var.failable || decl->var.unwrap ? FAILABLE_YES : FAILABLE_NO)) return decl_poison(decl);
-		if (decl->var.unwrap && !decl->var.init_expr->failable)
+		Expr *init = decl->var.init_expr;
+		// Handle explicit undef
+		if (init->expr_kind == EXPR_TYPEINFO && init->type_expr->resolve_status == RESOLVE_DONE
+			&& init->type_expr->type->type_kind == TYPE_VOID)
+		{
+			init->expr_kind = EXPR_UNDEF;
+			init->resolve_status = RESOLVE_DONE;
+			return true;
+		}
+		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, decl->var.failable || decl->var.unwrap ? FAILABLE_YES : FAILABLE_NO)) return decl_poison(decl);
+		if (decl->var.unwrap && !init->failable)
 		{
 			SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
 			return decl_poison(decl);

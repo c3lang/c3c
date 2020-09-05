@@ -355,7 +355,6 @@ bool token_is_symbol(TokenType type)
 {
 	switch (type)
 	{
-		case TOKEN_MACRO:
 		case TOKEN_CONST:
 		case TOKEN_IDENT:
 		case TOKEN_TYPE_IDENT:

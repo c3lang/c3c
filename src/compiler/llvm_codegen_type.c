@@ -11,19 +11,11 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 	static LLVMTypeRef params[MAX_PARAMS];
 	switch (decl->decl_kind)
 	{
-		case DECL_ATTRIBUTE:
+		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
 		case DECL_POISONED:
-		case DECL_GENERIC:
-		case DECL_MACRO:
-		case DECL_CT_IF:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
-		case DECL_VAR:
-		case DECL_ARRAY_VALUE:
-		case DECL_IMPORT:
-		case DECL_LABEL:
-			UNREACHABLE;
+		case NON_TYPE_DECLS:
+			UNREACHABLE
 		case DECL_FUNC:
 		{
 			VECEACH(decl->func.function_signature.params, i)
@@ -179,6 +171,8 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *any_type)
 	switch (any_type->type_kind)
 	{
 		case TYPE_POISONED:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			UNREACHABLE
 		case TYPE_TYPEID:
 			return any_type->backend_type = LLVMIntTypeInContext(context, any_type->builtin.bitsize);

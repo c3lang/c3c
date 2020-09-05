@@ -1,3 +1,5 @@
+// #skip
+
 module foo;
 
 

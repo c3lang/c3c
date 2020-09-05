@@ -757,9 +757,10 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_LABEL:
-			UNREACHABLE
+		case DECL_CT_SWITCH:
+		case DECL_CT_CASE:
 		case DECL_CT_IF:
-			// Handled elsewhere
+		case DECL_DEFINE:
 			UNREACHABLE
 	}
 	decl->resolve_status = RESOLVE_DONE;

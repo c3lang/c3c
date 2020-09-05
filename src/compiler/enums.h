@@ -149,8 +149,16 @@ typedef enum
 	DECL_CT_IF,
 	DECL_CT_ELSE,
 	DECL_CT_ELIF,
+	DECL_CT_SWITCH,
+	DECL_CT_CASE,
 	DECL_ATTRIBUTE,
+	DECL_DEFINE,
 } DeclKind;
+
+#define NON_TYPE_DECLS DECL_ARRAY_VALUE: case DECL_IMPORT: case DECL_MACRO: \
+	case DECL_GENERIC: case DECL_CT_IF: case DECL_CT_ELSE: case DECL_CT_ELIF: \
+	case DECL_CT_SWITCH: case DECL_CT_CASE: case DECL_ATTRIBUTE: case DECL_LABEL: \
+    case DECL_DEFINE
 
 // Ordering here is in priority if two branches should have the same exit.
 typedef enum
@@ -176,7 +184,6 @@ typedef enum
 	EXPR_POST_UNARY,
 	EXPR_TYPEID,
 	EXPR_IDENTIFIER,
-	EXPR_TYPE_ACCESS,
 	EXPR_CALL,
 	EXPR_GROUP,
 	EXPR_SUBSCRIPT,
@@ -186,6 +193,7 @@ typedef enum
 	EXPR_INITIALIZER_LIST,
 	EXPR_EXPRESSION_LIST,
 	EXPR_CAST,
+	EXPR_TYPEINFO,
 	EXPR_TYPEOF,
 	EXPR_SCOPED_EXPR,
 	EXPR_EXPR_BLOCK,
@@ -195,6 +203,7 @@ typedef enum
 	EXPR_FAILABLE,
 	EXPR_DECL_LIST,
 	EXPR_LEN,
+	EXPR_UNDEF,
 } ExprKind;
 
 typedef enum
@@ -472,6 +481,8 @@ typedef enum
 	TYPE_ARRAY,
 	TYPE_VARARRAY,
 	TYPE_SUBARRAY,
+	TYPE_TYPEINFO,
+	TYPE_MEMBER,
 	TYPE_TYPEID,
 	TYPE_LAST = TYPE_TYPEID
 } TypeKind;

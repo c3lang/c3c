@@ -20,10 +20,10 @@ const int SCREEN_HEIGHT = 480;
 
 
 //The window we'll be rendering to
-void* gWindow = nil;
+void* gWindow = null;
 
 //The surface contained by the window
-void* gScreenSurface = nil;
+void* gScreenSurface = null;
 
 
 extern func int init(uint flags) @cname("SDL_Init");

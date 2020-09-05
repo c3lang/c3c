@@ -121,6 +121,10 @@ void context_register_global_decl(Context *context, Decl *decl)
 			vec_add(context->types, decl);
 			decl_set_external_name(decl);
 			break;
+		case DECL_DEFINE:
+			vec_add(context->generic_defines, decl);
+			decl_set_external_name(decl);
+			break;
 		case DECL_ENUM:
 			vec_add(context->enums, decl);
 			decl_set_external_name(decl);
@@ -134,9 +138,11 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_CT_ELIF:
 		case DECL_ATTRIBUTE:
 		case DECL_LABEL:
+		case DECL_CT_CASE:
 			UNREACHABLE
 			break;
 		case DECL_CT_IF:
+		case DECL_CT_SWITCH:
 			vec_add(context->ct_ifs, decl);
 			return;
 	}
@@ -203,6 +209,10 @@ void context_print_ast(Context *context, FILE *file)
 	VECEACH(context->enums, i)
 	{
 		fprint_decl(context, file, context->enums[i]);
+	}
+	VECEACH(context->global_decls, i)
+	{
+		fprint_decl(context, file, context->global_decls[i]);
 	}
 	VECEACH(context->vars, i)
 	{

@@ -74,7 +74,7 @@ func void test14()
 
 func void test15()
 {
-    nil = nil;        // #error: Expression is not assignable
+    null = null;      // #error: Expression is not assignable
 }
 
 func void test16()

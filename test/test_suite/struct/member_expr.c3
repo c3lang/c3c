@@ -58,7 +58,7 @@ func void test_nonstatic_stuct_func1()
 func void test_nonstatic_stuct_func2()
 {
     int a = Foo.func2.sizeof;
-    int b = Foo.func2(nil, 2);
+    int b = Foo.func2(null, 2);
 }
 
 */

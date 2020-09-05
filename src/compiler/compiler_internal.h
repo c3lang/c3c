@@ -296,6 +296,17 @@ typedef struct
 	Decl *elif;
 } CtIfDecl;
 
+typedef struct
+{
+	Expr *expr;
+	Decl **cases;
+} CtSwitchDecl;
+
+typedef struct
+{
+	TypeInfo *type;
+	Decl **body;
+} CtCaseDecl;
 
 typedef struct
 {
@@ -388,6 +399,13 @@ typedef struct
 
 typedef struct
 {
+	Path *path;
+	Expr **params;
+	Token alias;
+} DefineDecl;
+
+typedef struct
+{
 	AstId defer;
 	bool next_target : 1;
 	void *break_target;
@@ -448,8 +466,11 @@ typedef struct _Decl
 		TypedefDecl typedef_decl;
 		MacroDecl macro_decl;
 		GenericDecl generic_decl;
+		DefineDecl define_decl;
 		CtIfDecl ct_if_decl;
 		CtIfDecl ct_elif_decl;
+		CtSwitchDecl ct_switch_decl;
+		CtCaseDecl ct_case_decl;
 		Decl** ct_else_decl;
 		Expr *incr_array_decl;
 	};
@@ -468,15 +489,6 @@ typedef struct
 	};
 } ExprElse;
 
-typedef struct
-{
-	TypeInfo *type;
-	union
-	{
-		TokenId name;
-		Decl *decl;
-	};
-} ExprTypeAccess;
 
 typedef struct
 {
@@ -660,10 +672,10 @@ struct _Expr
 		ExprLen len_expr;
 		ExprCast cast_expr;
 		Expr *typeof_expr;
+		TypeInfo *type_expr;
 		ExprConst const_expr;
 		ExprRange range_expr;
 		ExprStructValue struct_value_expr;
-		ExprTypeAccess type_access;
 		ExprGuard guard_expr;
 		Expr *trycatch_expr;
 		ExprElse else_expr;
@@ -1038,6 +1050,7 @@ typedef struct _Context
 	Decl **global_decls;
 	Decl **enums;
 	Decl **types;
+	Decl **generic_defines;
 	Decl **functions;
 	Decl **methods;
 	Decl **vars;
@@ -1125,13 +1138,17 @@ extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
-extern Type *type_typeid, *type_error;
+extern Type *type_typeid, *type_error, *type_typeinfo, *type_member;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
 extern const char *kw_main;
 extern const char *kw_sizeof;
+extern const char *kw_alignof;
 extern const char *kw_offsetof;
+extern const char *kw_kindof;
+extern const char *kw_nameof;
+extern const char *kw_qnameof;
 extern const char *kw_len;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id(_token.id))
@@ -1289,7 +1306,7 @@ static inline void expr_replace(Expr *expr, Expr *replacement)
 void expr_const_set_int(ExprConst *expr, uint64_t v, TypeKind kind);
 void expr_const_set_float(ExprConst *expr, long double d, TypeKind kind);
 void expr_const_set_bool(ExprConst *expr, bool b);
-void expr_const_set_nil(ExprConst *expr);
+void expr_const_set_null(ExprConst *expr);
 void expr_const_fprint(FILE *__restrict file, ExprConst *expr);
 bool expr_const_int_overflowed(const ExprConst *expr);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
@@ -1420,6 +1437,7 @@ Type *type_find_common_ancestor(Type *left, Type *right);
 const char *type_to_error_string(Type *type);
 size_t type_size(Type *type);
 unsigned int type_abi_alignment(Type *type);
+const char *type_generate_qname(Type *type);
 void type_append_signature_name(Type *type, char *dst, size_t *offset);
 Type *type_find_max_type(Type *type, Type *other);
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_FXX; }
@@ -1431,6 +1449,19 @@ static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
 bool type_may_have_sub_elements(Type *type);
+static inline bool type_kind_is_derived(TypeKind kind)
+{
+	switch (kind)
+	{
+		case TYPE_ARRAY:
+		case TYPE_POINTER:
+		case TYPE_VARARRAY:
+		case TYPE_SUBARRAY:
+			return true;
+		default:
+			return false;
+	}
+}
 
 static inline Type *type_reduced(Type *type)
 {

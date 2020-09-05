@@ -29,7 +29,8 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 {
 	Decl *decl = ast->declare_stmt;
 
-	decl->ref = gencontext_emit_alloca(context, llvm_type(type_reduced(decl->type)), decl->name);
+	LLVMTypeRef alloc_type = llvm_type(type_reduced(decl->type));
+	decl->ref = gencontext_emit_alloca(context, alloc_type, decl->name);
 	if (decl->var.failable)
 	{
 		decl->var.failable_ref = gencontext_emit_alloca(context, llvm_type(type_error), decl->name);
@@ -51,9 +52,20 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 		                                    UsePointerValue);
 	}
 	*/
-	if (decl->var.init_expr)
+	Expr *init = decl->var.init_expr;
+	if (init)
 	{
-		gencontext_emit_assign_expr(context, decl->ref, decl->var.init_expr, decl->var.failable_ref);
+		// If we don't have undef, then make an assign.
+		if (init->expr_kind != EXPR_UNDEF)
+		{
+			gencontext_emit_assign_expr(context, decl->ref, decl->var.init_expr, decl->var.failable_ref);
+		}
+		// TODO trap on undef in debug mode.
+	}
+	else
+	{
+		// Normal case, zero init.
+		gencontext_emit_store(context, decl, LLVMConstNull(alloc_type));
 	}
 	return decl->ref;
 }

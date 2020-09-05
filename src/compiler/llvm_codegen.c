@@ -243,6 +243,18 @@ void llvm_codegen_setup()
 void gencontext_emit_introspection_type(GenContext *context, Decl *decl)
 {
 	llvm_type(decl->type);
+	if (decl_is_struct_type(decl))
+	{
+		Decl **decls = decl->strukt.members;
+		VECEACH(decls, i)
+		{
+			Decl *member_decl = decls[i];
+			if (decl_is_struct_type(member_decl))
+			{
+				gencontext_emit_introspection_type(context, member_decl);
+			}
+		}
+	}
 	LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_type(type_byte), decl->name ? decl->name : "anon");
 	LLVMSetGlobalConstant(global_name, 1);
 	LLVMSetInitializer(global_name, LLVMConstInt(llvm_type(type_byte), 1, false));
@@ -301,15 +313,7 @@ static void gencontext_emit_decl(GenContext *context, Decl *decl)
 		case DECL_ENUM:
 			// TODO
 			break;
-		case DECL_ARRAY_VALUE:
-		case DECL_IMPORT:
-		case DECL_MACRO:
-		case DECL_GENERIC:
-		case DECL_CT_IF:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
-		case DECL_ATTRIBUTE:
-		case DECL_LABEL:
+		case NON_TYPE_DECLS:
 			UNREACHABLE
 	}
 }
@@ -363,9 +367,11 @@ void llvm_codegen(Context *context)
 	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, 0); //get_inlining_threshold());
 	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
 	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(gen_context.module);
-	LLVMAddAnalysisPasses(target_machine(), pass_manager);
 	LLVMAddAnalysisPasses(target_machine(), function_pass_manager);
+	LLVMAddAnalysisPasses(target_machine(), pass_manager);
 	LLVMPassManagerBuilderPopulateModulePassManager(pass_manager_builder, pass_manager);
+	// We insert a memcpy pass here, or it will be used too late to fix our aggregate copies.
+	LLVMAddMemCpyOptPass(function_pass_manager);
 	LLVMPassManagerBuilderPopulateFunctionPassManager(pass_manager_builder, function_pass_manager);
 
 	// IMPROVE

@@ -28,6 +28,17 @@ static inline void insert_cast(Expr *expr, CastKind kind, Type *canonical)
 
 static bool sema_type_mismatch(Context *context, Expr *expr, Type *type, CastType cast_type)
 {
+	Type *expr_type = expr->type;
+	if (expr_type == type_typeinfo)
+	{
+		SEMA_ERROR(expr, "A raw type cannot be used in an expression. Add the suffix '.typeid' to use it as a value.");
+		return false;
+	}
+	if (expr_type == type_member)
+	{
+		SEMA_ERROR(expr, "A raw member reference cannot be used in an expression.");
+		return false;
+	}
 	const char *action = "";
 	switch (cast_type)
 	{
@@ -40,7 +51,6 @@ static bool sema_type_mismatch(Context *context, Expr *expr, Type *type, CastTyp
 		case CAST_TYPE_OPTIONAL_IMPLICIT:
 			UNREACHABLE
 	}
-	Type *expr_type = expr->type;
 	if (expr_type == expr_type->canonical)
 	{
 		if (type->canonical == type)
@@ -491,7 +501,7 @@ bool xipt(Context *context, Expr *left, Type *from, Type *canonical, Type *type,
 			SEMA_ERROR(left, "Cannot cast non zero constants into pointers.");
 			return false;
 		}
-		expr_const_set_nil(&left->const_expr);
+		expr_const_set_null(&left->const_expr);
 		left->type = type;
 		return true;
 	}
@@ -731,6 +741,8 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_TYPEID:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			// Improve consider vararray / subarray conversion to boolean.
 			return CAST_ERROR;
 		case TYPE_BOOL:
@@ -766,6 +778,8 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_TYPEID:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 			break;
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.

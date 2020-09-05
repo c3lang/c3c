@@ -18,10 +18,7 @@ func void test1()
 @Point = linkonce_odr constant i8 1
 
 entry:
-    %p = alloca %test.Point
-    %0 = getelementptr inbounds %test.Point, %test.Point* %p, i32 0, i32 0
-    store i32 5, i32* %0
-    %1 = getelementptr inbounds %test.Point, %test.Point* %p, i32 0, i32 1
-    store i32 6, i32* %1
-    %2 = load %test.Point, %test.Point* %p
+  %p = alloca %test.Point
+  %0 = load %test.Point, %test.Point* @0
+  store %test.Point %0, %test.Point* %p
 
