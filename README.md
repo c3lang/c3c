@@ -15,6 +15,17 @@ C3 tries to be an alternative in the the C/C++ niche: fast and close to the meta
 - Avoid "big ideas" & the "more is better" fallacy.
 - Introduce some higher level conveniences where the value is great.
 
+### Example code
+
+```c++
+module hello_world;
+import std::io;
+
+func void main()
+{
+   io::printf("Hello, world!\n");
+}
+```
 
 ### In what ways do C3 differ from C?
 
