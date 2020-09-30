@@ -44,6 +44,7 @@ func void main()
 - No preprocessor
 - Undefined behaviour trapped on debug by default
 - Optional pre and post conditions
+- Easier than c language
 
 ### Current status
 
