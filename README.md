@@ -53,7 +53,7 @@ developer of Judge0.
 Design work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have any suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue] (https://github.com/c3lang/c3c/issues) or discuss 
 C3 on its dedicated Discord: https://discord.gg/qN76R87
 you are also welcome to discuss in the C3 channel on 
-the r/Programming Languages Discord: https://discord.gg/cfu4wdk
+the r/ProgrammingLanguages Discord: https://discord.gg/cfu4wdk
 
 
 #### Todo / done
