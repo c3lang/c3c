@@ -284,7 +284,11 @@ typedef struct _VarDecl
 		Expr *init_expr;
 		Decl *alias;
 	};
-	void *backend_debug_ref;
+	union
+	{
+		void *backend_debug_ref;
+		void *scope;
+	};
 	void *failable_ref;
 } VarDecl;
 
@@ -425,7 +429,8 @@ typedef struct _Decl
 	Visibility visibility : 2;
 	ResolveStatus resolve_status : 2;
 	bool is_packed : 1;
-	void *ref;
+	bool has_addr : 1;
+	void *backend_ref;
 	const char *cname;
 	uint32_t alignment;
 	const char *section;
@@ -573,10 +578,25 @@ typedef struct
 {
 	Path *path;
 	const char *identifier;
-	bool is_ref;
-	bool is_macro;
+	bool is_ref : 1;
+	bool is_rvalue : 1;
 	Decl *decl;
 } ExprIdentifier;
+
+typedef struct
+{
+	const char *identifier;
+	bool is_ref : 1;
+	bool is_rvalue : 1;
+	Decl *decl;
+} ExprIdentifierRaw;
+
+typedef struct
+{
+	const char *identifier;
+	bool is_macro;
+	Decl *decl;
+} ExprCtIdentifier;
 
 
 typedef struct
@@ -689,8 +709,12 @@ struct _Expr
 		ExprSubscript subscript_expr;
 		ExprAccess access_expr;
 		ExprIdentifier identifier_expr;
+		ExprIdentifier macro_identifier_expr;
+		ExprIdentifierRaw ct_ident_expr;
+		ExprIdentifierRaw ct_macro_ident_expr;
 		TypeInfo *typeid_expr;
 		ExprInitializer expr_initializer;
+		Decl *expr_enum;
 		ExprCompoundLiteral expr_compound_literal;
 		Expr** expression_list;
 		ExprScope expr_scope;
@@ -946,6 +970,7 @@ typedef struct _Ast
 		FlowCommon flow;                // Shared struct
 		AstAsmStmt asm_stmt;            // 24
 		AstCompoundStmt compound_stmt;  // 16
+		Ast** ct_compound_stmt;
 		Decl *declare_stmt;             // 8
 		Expr *expr_stmt;                // 8
 		AstTryStmt try_stmt;
@@ -1138,7 +1163,7 @@ extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
-extern Type *type_typeid, *type_error, *type_typeinfo, *type_member;
+extern Type *type_typeid, *type_error, *type_typeinfo;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
@@ -1150,6 +1175,7 @@ extern const char *kw_kindof;
 extern const char *kw_nameof;
 extern const char *kw_qnameof;
 extern const char *kw_len;
+extern const char *kw_ordinal;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id(_token.id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
@@ -1240,6 +1266,7 @@ bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *lef
 bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr, bool may_be_failable);
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
+bool expr_is_constant_eval(Expr *expr);
 
 void compiler_add_type(Type *type);
 Decl *compiler_find_symbol(const char *name);
@@ -1440,7 +1467,8 @@ unsigned int type_abi_alignment(Type *type);
 const char *type_generate_qname(Type *type);
 void type_append_signature_name(Type *type, char *dst, size_t *offset);
 Type *type_find_max_type(Type *type, Type *other);
-static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_FXX; }
+
+static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_TYPEID; }
 static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_I64; }
 static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind <= TYPE_U64; }
 static inline bool type_kind_is_any_integer(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_IXX; }
@@ -1626,3 +1654,5 @@ static inline void advance_and_verify(Context *context, TokenType token_type)
 #define TRY_DECL_OR(_decl_stmt, _res) ({ Decl* _decl = (_decl_stmt); if (!decl_ok(_decl)) return _res; _decl; })
 
 #pragma clang diagnostic pop
+
+

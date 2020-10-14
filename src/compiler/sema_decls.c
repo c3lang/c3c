@@ -560,43 +560,15 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 
 
 
-static inline bool expr_is_constant_eval(Expr *expr)
-{
-	switch (expr->expr_kind)
-	{
-		case EXPR_CONST:
-			return true;
-		case EXPR_COMPOUND_LITERAL:
-			return expr_is_constant_eval(expr->expr_compound_literal.initializer);
-		case EXPR_INITIALIZER_LIST:
-		{
-			Expr** init_exprs = expr->expr_initializer.initializer_expr;
-			switch (expr->expr_initializer.init_type)
-			{
-				case INITIALIZER_NORMAL:
-				{
-					VECEACH(init_exprs, i)
-					{
-						if (!expr_is_constant_eval(init_exprs[i])) return false;
-					}
-					return true;
-				}
-				default:
-					return false;
-			}
-		}
-		default:
-			return false;
-	}
-}
 
 static inline bool sema_analyse_global(Context *context, Decl *decl)
 {
-	if (decl->var.kind == VARDECL_CONST_CT) return true;
-
-	if (!sema_resolve_type_info(context, decl->var.type_info)) return false;
-	decl->type = decl->var.type_info->type;
-	if (decl->var.init_expr)
+	if (decl->var.type_info)
+	{
+		if (!sema_resolve_type_info(context, decl->var.type_info)) return false;
+		decl->type = decl->var.type_info->type;
+	}
+	if (decl->var.init_expr && decl->type)
 	{
 		if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr, false)) return false;
 		if (!expr_is_constant_eval(decl->var.init_expr))
@@ -605,7 +577,12 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 			SEMA_ERROR(decl->var.init_expr, "The expression must be a constant value.");
 			return false;
 		}
+		if (!decl->type) decl->type = decl->var.init_expr->type;
 	}
+	// We expect a constant to actually be parsed correctly so that it has a value, so
+	// this should always be true.
+	assert(decl->type || decl->var.kind == VARDECL_CONST);
+
 	AttributeDomain domain = decl->var.kind == VARDECL_CONST ? ATTR_CONST : ATTR_FUNC;
 	VECEACH(decl->attributes, i)
 	{
@@ -657,6 +634,13 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 
 static inline bool sema_analyse_generic(Context *context, Decl *decl)
 {
+	TODO
+	return true;
+}
+
+static inline bool sema_analyse_define(Context *context, Decl *decl)
+{
+	Path *path = decl->generic_decl.path;
 	TODO
 	return true;
 }
@@ -748,6 +732,9 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_GENERIC:
 			if (!sema_analyse_generic(context, decl)) return decl_poison(decl);
 			break;
+		case DECL_DEFINE:
+			if (!sema_analyse_define(context, decl)) return decl_poison(decl);
+			break;
 		case DECL_ATTRIBUTE:
 			TODO
 		case DECL_POISONED:
@@ -760,7 +747,6 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_CT_SWITCH:
 		case DECL_CT_CASE:
 		case DECL_CT_IF:
-		case DECL_DEFINE:
 			UNREACHABLE
 	}
 	decl->resolve_status = RESOLVE_DONE;
