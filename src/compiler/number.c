@@ -61,9 +61,6 @@ void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
 		case TYPE_FXX:
 			fprintf(file, "%Lf", expr->f);
 			break;
-		case TYPE_ENUM:
-			fprintf(file, "%s", expr->enum_constant->name);
-			break;
 		case TYPE_STRING:
 			fprintf(file, "%.*s", expr->string.len, expr->string.chars);
 			break;
@@ -245,9 +242,6 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case TYPE_F64:
 		case TYPE_FXX:
 			asprintf(&buff, "%Lf", expr->f);
-			return buff;
-		case TYPE_ENUM:
-			asprintf(&buff, "%s.%s", expr->enum_constant->type->name, expr->enum_constant->name);
 			return buff;
 		case TYPE_STRING:
 			asprintf(&buff, "\"%*.s\"", expr->string.len, expr->string.chars);

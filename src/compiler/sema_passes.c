@@ -146,6 +146,10 @@ void sema_analysis_pass_decls(Context *context)
 	{
 		sema_analyse_decl(context, context->functions[i]);
 	}
+	VECEACH(context->generic_defines, i)
+	{
+		sema_analyse_decl(context, context->generic_defines[i]);
+	}
 	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
 }
 

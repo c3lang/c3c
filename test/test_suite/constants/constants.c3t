@@ -1,19 +1,20 @@
 const byte AA = ~0;
 const byte BB = 200 ;
 const uint CC = ~0;
-const uint DD = $FOO;
+const uint DD = FOO;
 
-const $FOO = ~0;
+const FOO = ~0;
 
 uint x = AA;
 uint z = CC;
-byte w = $FOO;
-ushort v = $FOO;
+byte w = FOO;
+ushort v = FOO;
 uint z2 = DD;
 
 func void test()
 {
-    int xx = $FOO;
+    int xx = FOO;
+    int* yy = &&FOO;
 }
 
 // #expect: constants.ll
@@ -30,5 +31,9 @@ func void test()
 
 entry:
     %xx = alloca i32
+    %yy = alloca i32*
+    %taddr = alloca i32
     store i32 -1, i32* %xx
+    store i32 -1, i32* %taddr
+    store i32* %taddr, i32** %yy
     ret void

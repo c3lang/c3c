@@ -1,10 +1,7 @@
-module bar;
-
-struct Type { int x; }
+module bar(Type, i);
 
 public func Type blub(Type type)
 {
-int i = 0;
     type.x = i;
     return type;
 }
