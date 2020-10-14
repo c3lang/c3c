@@ -1,6 +1,7 @@
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
+static Decl *parse_const_declaration(Context *context, Visibility visibility);
 
 static bool context_next_up_is_type_with_path(Context *context)
 {
@@ -221,8 +222,8 @@ static inline Path *parse_module_path(Context *context)
 /**
  *
  * module_param
- * 		: CT_IDENT
- *		| HASH_IDENT
+ * 		: TYPE_IDENT
+ *		| IDENT
  *		;
  *
  * module_params
@@ -249,14 +250,15 @@ static inline bool parse_optional_module_params(Context *context, TokenId **toke
 		switch (context->tok.type)
 		{
 			case TOKEN_IDENT:
-				SEMA_TOKEN_ERROR(context->tok, "The module parameter must be a $ or #-prefixed name, did you forgot the '$'?");
+			case TOKEN_TYPE_IDENT:
 				return false;
 			case TOKEN_COMMA:
 				SEMA_TOKEN_ERROR(context->tok, "Unexpected ','");
 				return false;
 			case TOKEN_CT_IDENT:
-			case TOKEN_TYPE_IDENT:
-				break;
+			case TOKEN_CT_TYPE_IDENT:
+				SEMA_TOKEN_ERROR(context->tok, "The module parameter cannot be a $-prefixed name.");
+				return false;
 			default:
 				SEMA_TOKEN_ERROR(context->tok, "Only generic parameters are allowed here as parameters to the module.");
 				return false;
@@ -384,7 +386,7 @@ bool consume_const_name(Context *context, const char* type)
 		SEMA_TOKEN_ERROR(context->tok, "Names of %ss must be all upper case.", type);
 		return false;
 	}
-	if (!consume(context, TOKEN_CONST_IDENT, "'%s' should be followed by the name of the %s.", type, type)) return false;
+	if (!consume(context, TOKEN_CONST_IDENT, "The constant name was expected here, did you forget it?")) return false;
 	return true;
 }
 
@@ -683,7 +685,8 @@ Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type)
 		return poisoned_decl;
 	}
 
-	EXPECT_IDENT_FOR_OR("variable_name", poisoned_decl);
+
+	EXPECT_IDENT_FOR_OR("variable name", poisoned_decl);
 
 	TokenId name = context->tok.id;
 	advance(context);
@@ -703,6 +706,7 @@ Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type)
 	return decl;
 }
 
+
 /**
  * declaration ::= ('local' | 'const')? type variable ('=' expr)?
  *
@@ -710,14 +714,22 @@ Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type)
  */
 Decl *parse_decl(Context *context)
 {
-	bool local = TOKEN_IS(TOKEN_LOCAL);
-	bool constant = TOKEN_IS(TOKEN_CONST);
-	if (local || constant) advance(context);
+	bool local = try_consume(context, TOKEN_LOCAL);
 
-	TypeInfo *type_info = parse_type(context);
-	TypeInfo *type = TRY_TYPE_OR(type_info, poisoned_decl);
+	if (TOKEN_IS(TOKEN_CONST))
+	{
+		if (local)
+		{
+			SEMA_TOKID_ERROR(context->prev_tok, "A 'local' variable cannot also be declared 'constant'.");
+			return poisoned_decl;
+		}
+		return parse_const_declaration(context, VISIBLE_LOCAL);
+	}
+
+	TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
 
 	bool failable = try_consume(context, TOKEN_BANG);
+
 	Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, local, type), poisoned_decl);
 	if (failable && decl->var.unwrap)
 	{
@@ -725,7 +737,6 @@ Decl *parse_decl(Context *context)
 		return poisoned_decl;
 	}
 	decl->var.failable = failable;
-	if (constant) decl->var.kind = VARDECL_CONST;
 
 	return decl;
 }
@@ -734,40 +745,28 @@ Decl *parse_decl(Context *context)
 
 /**
  * const_decl
- *  : 'const' CT_CONST_IDENT '=' const_expr ';'
- *  | 'const' type IDENT '=' const_expr ';'
+ *  : 'const' type? IDENT '=' const_expr
  *  ;
  */
-static inline Decl *parse_const_declaration(Context *context, Visibility visibility)
+static Decl *parse_const_declaration(Context *context, Visibility visibility)
 {
 	advance_and_verify(context, TOKEN_CONST);
 
 	Decl *decl = DECL_NEW_VAR(NULL, VARDECL_CONST, visibility);
 	decl->span.loc = context->prev_tok;
 
-	// Parse the compile time constant.
-	if (try_consume(context, TOKEN_CT_CONST_IDENT))
-	{
-		decl->var.kind = VARDECL_CONST_CT;
-		if (!is_all_upper(decl->name))
-		{
-			SEMA_TOKEN_ERROR(context->tok, "Compile time constants must be all upper characters.");
-			return poisoned_decl;
-		}
-	}
-	else
+	if (parse_next_is_decl(context))
 	{
 		decl->var.type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-		decl->name = TOKKSTR(context->tok);
-		decl->name_token = context->tok.id;
-		if (!consume_const_name(context, "constant")) return poisoned_decl;
 	}
+	decl->name = TOKKSTR(context->tok);
+	decl->name_token = context->tok.id;
+	if (!consume_const_name(context, "const")) return poisoned_decl;
 
 	CONSUME_OR(TOKEN_EQ, poisoned_decl);
 
 	decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
 
-	CONSUME_OR(TOKEN_EOS, poisoned_decl);
 	return decl;
 }
 
@@ -790,9 +789,14 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
 	{
 		SEMA_TOKEN_ERROR(context->tok, "'func' can't appear here, maybe you intended to put 'func' the type?");
 		advance(context);
-		return false;
+		return poisoned_decl;
 	}
 
+	if (TOKEN_IS(TOKEN_CONST_IDENT))
+	{
+		SEMA_TOKEN_ERROR(context->tok, "This looks like a constant variable, did you forget 'const'?");
+		return poisoned_decl;
+	}
 	if (!consume_ident(context, "global variable")) return poisoned_decl;
 
 	if (try_consume(context, TOKEN_EQ))
@@ -890,7 +894,8 @@ bool parse_next_is_decl(Context *context)
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_ERR:
 		case TOKEN_TYPEID:
-			return (next_tok == TOKEN_BANG) | (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) | (next_tok == TOKEN_IDENT);
+			return (next_tok == TOKEN_BANG) | (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) | (next_tok == TOKEN_IDENT)
+			       | (next_tok == TOKEN_CONST_IDENT);
 		case TOKEN_IDENT:
 			if (next_tok != TOKEN_SCOPE) return false;
 			return context_next_up_is_type_with_path(context);
@@ -1197,6 +1202,13 @@ static inline Decl *parse_struct_declaration(Context *context, Visibility visibi
 	return decl;
 }
 
+static inline Decl *parse_top_level_const_declaration(Context *context, Visibility visibility)
+{
+	Decl *decl = TRY_DECL_OR(parse_const_declaration(context, visibility), poisoned_decl);
+	TRY_CONSUME_EOS_OR(poisoned_decl);
+	return decl;
+}
+
 /**
  * Parse statements up to the next '}', 'case' or 'default'
  */
@@ -1264,6 +1276,11 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 
 static inline Decl *parse_define(Context *context, Visibility visibility)
 {
+	if (context->next_tok.type == TOKEN_CT_TYPE_IDENT || context->next_tok.type == TOKEN_CT_IDENT)
+	{
+		SEMA_TOKEN_ERROR(context->next_tok, "Compile time variables cannot be defined at the global level.");
+		return poisoned_decl;
+	}
 	advance_and_verify(context, TOKEN_DEFINE);
 	bool had_error = false;
 	Path *path = parse_path_prefix(context, &had_error);
@@ -1437,12 +1454,32 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 	while (!try_consume(context, TOKEN_RPAREN))
 	{
 		TypeInfo *parm_type = NULL;
+		VarDeclKind param_kind;
 		TEST_TYPE:
 		switch (context->tok.type)
 		{
 			case TOKEN_IDENT:
-			case TOKEN_CT_IDENT:
+				param_kind = VARDECL_PARAM;
 				break;
+			case TOKEN_CT_IDENT:
+				param_kind = VARDECL_PARAM_CT;
+				break;
+			case TOKEN_AND:
+				advance(context);
+				if (!TOKEN_IS(TOKEN_IDENT))
+				{
+					SEMA_TOKEN_ERROR(context->tok, "Only normal variables may be passed by reference.");
+				}
+				param_kind = VARDECL_PARAM_REF;
+				break;
+			case TOKEN_HASH_IDENT:
+				param_kind = VARDECL_PARAM_EXPR;
+				break;
+			case TOKEN_HASH_TYPE_IDENT:
+				param_kind = VARDECL_PARAM_EXPR;
+				break;
+			case TOKEN_ELLIPSIS:
+				TODO
 			default:
 				if (parm_type)
 				{
@@ -1452,7 +1489,7 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 				parm_type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
 				goto TEST_TYPE;
 		}
-		Decl *param = decl_new_var(context->tok.id, parm_type, VARDECL_PARAM, visibility);
+		Decl *param = decl_new_var(context->tok.id, parm_type, param_kind, visibility);
 		advance(context);
 		params = VECADD(params, param);
 		COMMA_RPAREN_OR(poisoned_decl);
@@ -1767,7 +1804,7 @@ void parse_imports(Context *context)
  *		| attribute_declaration
  *		;
  * @param visibility
- * @return true if parsing worked
+ * @return Decl* or a poison value if parsing failed
  */
 Decl *parse_top_level_statement(Context *context)
 {
@@ -1811,7 +1848,7 @@ Decl *parse_top_level_statement(Context *context)
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
 			return parse_ct_switch_top_level(context);
 		case TOKEN_CONST:
-			return parse_const_declaration(context, visibility);
+			return parse_top_level_const_declaration(context, visibility);
 		case TOKEN_STRUCT:
 		case TOKEN_UNION:
 			return parse_struct_declaration(context, visibility);
@@ -1854,7 +1891,7 @@ Decl *parse_top_level_statement(Context *context)
 			{
 				return parse_global_declaration(context, visibility);
 			}
-			SEMA_TOKEN_ERROR(context->tok, "Unexpected symbol found.");
+			SEMA_TOKEN_ERROR(context->tok, "Expected a top level declaration here.");
 			return poisoned_decl;
 	}
 }

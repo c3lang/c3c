@@ -206,7 +206,7 @@ static inline Ast* parse_do_stmt(Context *context)
 
 static inline bool token_type_ends_case(TokenType type, TokenType case_type, TokenType default_type)
 {
-	return type == case_type || type == default_type || type == TOKEN_RBRACE;
+	return type == case_type || type == default_type || type == TOKEN_RBRACE || type == TOKEN_CT_ENDSWITCH;
 }
 
 static inline Ast *parse_case_stmts(Context *context, TokenType case_type, TokenType default_type)
@@ -605,14 +605,13 @@ static inline Ast *parse_decl_or_expr_stmt(Context *context)
 static inline Ast *parse_define_stmt(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_DEFINE_STMT, context->tok);
-
+	TokenId start = context->tok.id;
 	advance_and_verify(context, TOKEN_DEFINE);
-	Decl *decl = decl_new_var(context->tok.id, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
-	ast->define_stmt = decl;
-
+	Decl *decl;
 	switch (context->tok.type)
 	{
 		case TOKEN_CT_IDENT:
+			decl = decl_new_var(context->tok.id, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
 			advance(context);
 			if (try_consume(context, TOKEN_EQ))
 			{
@@ -620,6 +619,7 @@ static inline Ast *parse_define_stmt(Context *context)
 			}
 			break;
 		case TOKEN_CT_TYPE_IDENT:
+			decl = decl_new_var(context->tok.id, NULL, VARDECL_LOCAL_CT_TYPE, VISIBLE_LOCAL);
 			advance(context);
 			if (try_consume(context, TOKEN_EQ))
 			{
@@ -630,35 +630,52 @@ static inline Ast *parse_define_stmt(Context *context)
 			SEMA_TOKEN_ERROR(context->tok, "Expected a compile time variable name ('$Foo' or '$foo').");
 			return poisoned_ast;
 	}
+	decl->span.loc = start;
+	ast->define_stmt = decl;
+	RANGE_EXTEND_PREV(decl);
+	RANGE_EXTEND_PREV(ast);
 	TRY_CONSUME_EOS();
 	return ast;
 }
 
+static inline Ast* parse_ct_compound_stmt(Context *context)
+{
+	Ast *stmts = AST_NEW_TOKEN(AST_CT_COMPOUND_STMT, context->tok);
+	while (1)
+	{
+		TokenType token = context->tok.type;
+		if (token == TOKEN_CT_ELSE || token == TOKEN_CT_ELIF || token == TOKEN_CT_ENDIF) break;
+		Ast *stmt = TRY_AST(parse_stmt(context));
+		vec_add(stmts->ct_compound_stmt, stmt);
+		RANGE_EXTEND_PREV(stmts);
+	}
+	return stmts;
+}
+
 /**
  * ct_else_stmt
- *  : CT_ELSE compound_stmt
+ *  : CT_ELSE ':' ct_compound_stmt
  */
 static inline Ast* parse_ct_else_stmt(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CT_ELSE_STMT, context->tok);
 	advance_and_verify(context, TOKEN_CT_ELSE);
-	ast->ct_elif_stmt.then = TRY_AST(parse_compound_stmt(context));
+	TRY_CONSUME(TOKEN_COLON, "$else needs a ':', did you forget it?");
+	ast->ct_else_stmt = TRY_AST(parse_ct_compound_stmt(context));
 	return ast;
 }
 
 /**
  * ct_elif_stmt
- * 	: CT_ELIF '(' expression ')' compound_statement
+ * 	: CT_ELIF '(' expression ')' ':' ct_compound_stmt (ct_elif_stmt | ct_else_stmt)?
  */
 static inline Ast *parse_ct_elif_stmt(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CT_ELIF_STMT, context->tok);
 	advance_and_verify(context, TOKEN_CT_ELIF);
-
 	ast->ct_elif_stmt.expr = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_ast);
-
-	ast->ct_elif_stmt.then = TRY_AST(parse_compound_stmt(context));
-
+	TRY_CONSUME(TOKEN_COLON, "$elif needs a ':' after the expression, did you forget it?");
+	ast->ct_elif_stmt.then = TRY_AST(parse_ct_compound_stmt(context));
 	if (TOKEN_IS(TOKEN_CT_ELIF))
 	{
 		ast->ct_elif_stmt.elif = TRY_AST(parse_ct_elif_stmt(context));
@@ -669,11 +686,10 @@ static inline Ast *parse_ct_elif_stmt(Context *context)
 	}
 	return ast;
 }
+
 /**
  * ct_if_stmt
- * 	: CT_IF '(' expression ')' compound_stmt
- * 	| CT_IF '(' expression ')' compound_stmt elif_stmt
- * 	| CT_IF '(' expression ')' compound_stmt else_stmt
+ * 	: CT_IF '(' expression ')' ':' ct_compound_stmt (ct_elif_stmt | ct_else_stmt) CT_ENDIF EOS
  * 	;
  */
 static inline Ast* parse_ct_if_stmt(Context *context)
@@ -681,7 +697,8 @@ static inline Ast* parse_ct_if_stmt(Context *context)
 	Ast *ast = AST_NEW_TOKEN(AST_CT_IF_STMT, context->tok);
 	advance_and_verify(context, TOKEN_CT_IF);
 	ast->ct_if_stmt.expr = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_ast);
-	ast->ct_if_stmt.then = TRY_AST(parse_compound_stmt(context));
+	TRY_CONSUME(TOKEN_COLON, "$if needs a ':' after the expression, did you forget it?");
+	ast->ct_if_stmt.then = TRY_AST(parse_ct_compound_stmt(context));
 	if (TOKEN_IS(TOKEN_CT_ELIF))
 	{
 		ast->ct_if_stmt.elif = TRY_AST(parse_ct_elif_stmt(context));
@@ -690,6 +707,9 @@ static inline Ast* parse_ct_if_stmt(Context *context)
 	{
 		ast->ct_if_stmt.elif = TRY_AST(parse_ct_else_stmt(context));
 	}
+	advance_and_verify(context, TOKEN_CT_ENDIF);
+	RANGE_EXTEND_PREV(ast);
+	TRY_CONSUME_EOS();
 	return ast;
 }
 
@@ -774,7 +794,7 @@ static inline Ast* parse_ct_for_stmt(Context *context)
 }
 
 /**
- * CTSWITCH '(' expression ')' '{' ct_switch_body '}'
+ * CTSWITCH '(' expression ')' ':' '{' ct_switch_body '}'
  *
  * ct_switch_body
  *  	: ct_case_statement
@@ -793,7 +813,29 @@ static inline Ast* parse_ct_switch_stmt(Context *context)
 	Ast *ast = AST_NEW_TOKEN(AST_CT_SWITCH_STMT, context->tok);
 	advance_and_verify(context, TOKEN_CT_SWITCH);
 	ast->ct_switch_stmt.cond = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_ast);
-	if (!parse_switch_body(context, &ast->ct_switch_stmt.body, TOKEN_CT_CASE, TOKEN_CT_DEFAULT)) return poisoned_ast;
+	TRY_CONSUME(TOKEN_COLON, "Expected ':' after $switch expression, did you forget it?");
+	Ast **cases = NULL;
+	while (!try_consume(context, TOKEN_CT_ENDSWITCH))
+	{
+		Ast *result;
+		TokenType next = context->tok.type;
+		if (next == TOKEN_CT_CASE)
+		{
+			result = TRY_AST_OR(parse_case_stmt(context, TOKEN_CT_CASE, TOKEN_CT_DEFAULT), poisoned_ast);
+		}
+		else if (next == TOKEN_CT_DEFAULT)
+		{
+			result = TRY_AST_OR(parse_default_stmt(context, TOKEN_CT_CASE, TOKEN_CT_DEFAULT), poisoned_ast);
+		}
+		else
+		{
+			SEMA_TOKEN_ERROR(context->tok, "A '$case' or '$default' would be needed here, '%.*s' is not allowed.", TOKLEN(context->tok.id), TOKSTR(context->tok.id));
+			return poisoned_ast;
+		}
+		vec_add(cases, result);
+	}
+	TRY_CONSUME_EOS();
+	ast->ct_switch_stmt.body = cases;
 	return ast;
 }
 
@@ -872,6 +914,9 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_C_ULONGLONG:
 		case TOKEN_TYPEID:
 		case TOKEN_CT_TYPE_IDENT:
+		case TOKEN_HASH_TYPE_IDENT:
+		case TOKEN_HASH_CONST_IDENT:
+		case TOKEN_HASH_IDENT:
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_ERR:
 		case TOKEN_IDENT:
@@ -1038,6 +1083,8 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_CT_ELIF:
 		case TOKEN_CT_ELSE:
 		case TOKEN_CT_DEFAULT:
+		case TOKEN_CT_ENDIF:
+		case TOKEN_CT_ENDSWITCH:
 		case TOKEN_RPARBRA:
 		case TOKEN_IN:
 		case TOKEN_BANGBANG:

@@ -11,8 +11,8 @@ func void test1()
     test2(a);           // #error: Cannot implicitly cast 'int' to 'char'.
     test2(100 + a);     // #error: Cannot implicitly cast 'int' to 'char'.
 
-    const int x = 120;
-    test2(x);           // #error: Cannot implicitly cast 'int' to 'char'.
+    const int X = 120;
+    test2(X);           // #error: Cannot implicitly cast 'int' to 'char'.
 
     test2(100 + 100);   // #error: Cannot fit '200' into type 'char'.
 }

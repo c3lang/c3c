@@ -104,9 +104,16 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type, TokenTy
 static Expr *parse_macro_ident(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *macro_ident = EXPR_NEW_TOKEN(EXPR_IDENTIFIER, context->tok);
-	macro_ident->identifier_expr.is_macro = true;
+	Expr *macro_ident = EXPR_NEW_TOKEN(EXPR_MACRO_IDENTIFIER, context->tok);
 	advance_and_verify(context, TOKEN_AT);
+	if (TOKEN_IS(TOKEN_CT_IDENT))
+	{
+		macro_ident->ct_macro_ident_expr.identifier = TOKSTR(context->tok);
+		macro_ident->expr_kind = EXPR_MACRO_CT_IDENTIFIER;
+		advance_and_verify(context, TOKEN_CT_IDENT);
+		RANGE_EXTEND_PREV(macro_ident);
+		return macro_ident;
+	}
 	bool had_error = false;
 	macro_ident->identifier_expr.path = parse_path_prefix(context, &had_error);
 	if (had_error) return poisoned_expr;
@@ -424,9 +431,23 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 
 static Expr *parse_identifier_with_path(Context *context, Path *path)
 {
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_IDENTIFIER, context->tok);
+	Expr *expr = EXPR_NEW_TOKEN(context->tok.type == TOKEN_CONST_IDENT ? EXPR_CONST_IDENTIFIER : EXPR_IDENTIFIER , context->tok);
 	expr->identifier_expr.identifier = TOKSTR(context->tok);
 	expr->identifier_expr.path = path;
+	advance(context);
+	return expr;
+}
+
+static Expr *parse_ct_ident(Context *context, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	if (try_consume(context, TOKEN_CT_CONST_IDENT))
+	{
+		SEMA_TOKID_ERROR(context->prev_tok, "Compile time identifiers may not be constants.");
+		return poisoned_expr;
+	}
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_IDENT, context->tok);
+	expr->ct_ident_expr.identifier = TOKSTR(context->tok);
 	advance(context);
 	return expr;
 }
@@ -447,7 +468,6 @@ static Expr *parse_maybe_scope(Context *context, Expr *left)
 	switch (context->tok.type)
 	{
 		case TOKEN_IDENT:
-		case TOKEN_CT_IDENT:
 		case TOKEN_CONST_IDENT:
 			return parse_identifier_with_path(context, path);
 		case TOKEN_TYPE_IDENT:
@@ -910,16 +930,11 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_NULL] = { parse_null, NULL, PREC_NONE },
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
 		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },
-		[TOKEN_IDENT] = { parse_maybe_scope, NULL, PREC_NONE },
-		[TOKEN_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
-		[TOKEN_CT_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_AT] = { parse_macro_ident, NULL, PREC_NONE },
-		[TOKEN_CONST_IDENT] = { parse_identifier, NULL, PREC_NONE },
-		[TOKEN_CT_CONST_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_STRING] = { parse_string_literal, NULL, PREC_NONE },
 		[TOKEN_REAL] = { parse_double, NULL, PREC_NONE },
 		[TOKEN_OR] = { NULL, parse_binary, PREC_LOGICAL },
-		[TOKEN_AND] = { NULL, parse_binary, PREC_LOGICAL },
+		[TOKEN_AND] = { parse_unary_expr, parse_binary, PREC_LOGICAL },
 		[TOKEN_EQ] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_PLUS_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_PLUS_MOD_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
@@ -934,4 +949,13 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_BIT_OR_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_SHR_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_SHL_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
+
+		[TOKEN_IDENT] = { parse_maybe_scope, NULL, PREC_NONE },
+		[TOKEN_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_CT_IDENT] = { parse_ct_ident, NULL, PREC_NONE },
+		[TOKEN_CONST_IDENT] = { parse_identifier, NULL, PREC_NONE },
+		[TOKEN_CT_CONST_IDENT] = { parse_ct_ident, NULL, PREC_NONE },
+		[TOKEN_CT_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
+		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier(, NULL, PREC_NONE }
+
 };

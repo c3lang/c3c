@@ -223,6 +223,12 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 	}
 	switch (expr->expr_kind)
 	{
+		case EXPR_MEMBER_ACCESS:
+		case EXPR_ENUM_CONSTANT:
+		case EXPR_CT_IDENT:
+		case EXPR_MACRO_CT_IDENTIFIER:
+		case EXPR_MACRO_IDENTIFIER:
+			UNREACHABLE
 		case EXPR_DESIGNATED_INITIALIZER:
 			// Should only appear when generating designated initializers.
 			UNREACHABLE
@@ -236,6 +242,7 @@ LLVMValueRef gencontext_emit_address(GenContext *context, Expr *expr)
 		case EXPR_TYPEINFO:
 			// Should never be an lvalue
 			UNREACHABLE
+		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:
 			return decl_ref(expr->identifier_expr.decl);
 		case EXPR_UNARY:
@@ -677,6 +684,13 @@ LLVMValueRef gencontext_emit_unary_expr(GenContext *context, Expr *expr)
 	{
 		case UNARYOP_ERROR:
 			FATAL_ERROR("Illegal unary op %s", expr->unary_expr.operator);
+		case UNARYOP_TADDR:
+		{
+			LLVMValueRef val = gencontext_emit_expr(context, expr->unary_expr.expr);
+			LLVMValueRef temp = gencontext_emit_alloca(context, llvm_type(expr->unary_expr.expr->type), "taddr");
+			LLVMBuildStore(context->builder, val, temp);
+			return temp;
+		}
 		case UNARYOP_NOT:
 			if (type_is_float(type))
 			{
@@ -1661,14 +1675,14 @@ LLVMValueRef gencontext_emit_call_expr(GenContext *context, Expr *expr)
 	{
 		Decl *function_decl = expr->call_expr.function->access_expr.ref;
 		signature = &function_decl->func.function_signature;
-		func = function_decl->ref;
+		func = function_decl->backend_ref;
 		func_type = llvm_type(function_decl->type);
 	}
 	else
 	{
 		Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
 		signature = &function_decl->func.function_signature;
-		func = function_decl->ref;
+		func = function_decl->backend_ref;
 		func_type = llvm_type(function_decl->type);
 	}
 
@@ -1792,9 +1806,26 @@ static inline LLVMValueRef gencontext_emit_macro_block(GenContext *context, Expr
 	VECEACH(expr->macro_block.params, i)
 	{
 		// In case we have a constant, we never do an emit. The value is already folded.
-		if (!expr->macro_block.args[i]) continue;
 		Decl *decl = expr->macro_block.params[i];
-		decl->ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
+		switch (decl->var.kind)
+		{
+			case VARDECL_CONST:
+			case VARDECL_GLOBAL:
+			case VARDECL_LOCAL:
+			case VARDECL_MEMBER:
+			case VARDECL_LOCAL_CT:
+			case VARDECL_LOCAL_CT_TYPE:
+			case VARDECL_ALIAS:
+				UNREACHABLE
+			case VARDECL_PARAM_REF:
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_CT_TYPE:
+			case VARDECL_PARAM_EXPR:
+				continue;
+			case VARDECL_PARAM:
+				break;
+		}
+		decl->backend_ref = gencontext_emit_alloca(context, llvm_type(decl->type), decl->name);
 		LLVMValueRef value = gencontext_emit_expr(context, expr->macro_block.args[i]);
 		gencontext_emit_store(context, decl, value);
 	}
@@ -1855,6 +1886,7 @@ LLVMValueRef gencontext_emit_assign_expr(GenContext *context, LLVMValueRef ref, 
 
 static inline LLVMValueRef gencontext_emit_identifier_rvalue(GenContext *context, Decl *decl)
 {
+
 	if (decl->decl_kind != DECL_VAR || !decl->var.failable)
 	{
 		return gencontext_emit_load(context, decl->type, decl_ref(decl));
@@ -1902,9 +1934,14 @@ LLVMValueRef gencontext_emit_expr(GenContext *context, Expr *expr)
 NESTED_RETRY:
 	switch (expr->expr_kind)
 	{
+		case EXPR_MEMBER_ACCESS:
 		case EXPR_POISONED:
 		case EXPR_DECL_LIST:
 		case EXPR_TYPEINFO:
+		case EXPR_ENUM_CONSTANT:
+		case EXPR_MACRO_IDENTIFIER:
+		case EXPR_MACRO_CT_IDENTIFIER:
+		case EXPR_CT_IDENT:
 			UNREACHABLE
 		case EXPR_UNDEF:
 			// Should never reach this.
@@ -1954,6 +1991,8 @@ NESTED_RETRY:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE
 		case EXPR_IDENTIFIER:
+		case EXPR_CONST_IDENTIFIER:
+			assert(expr->identifier_expr.is_rvalue);
 			return gencontext_emit_identifier_rvalue(context, expr->identifier_expr.decl);
 		case EXPR_SUBSCRIPT:
 		case EXPR_ACCESS:

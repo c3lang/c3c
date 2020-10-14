@@ -60,15 +60,17 @@ func void test8()
 
 func void test9()
 {
-    const char a = 1;   // TODO should be "A"
-    char b = a;
-    a = b;              // #error: Expression is not assignable
+    const char A = 1;
+    char b = A;
+    A = b;              // #error: Expression is not assignable
 }
 
 func void test10()
 {
-    const char a = 1;
-    char* b = &a;       // #error: address of values
+    const char B = 1;
+    char* c = &B;
+    const A = 1;
+    char* b = &A;       // #error: To take the address of a temporary value, use '&&' instead of '&'
 }
 
 enum Enum : int
@@ -182,3 +184,15 @@ func void test24()
 {
     int a = b123;  // #error: cast 'int[2][3]' to 'int'
 }
+
+func void test25()
+{
+    const A = void; // #error: Constants cannot be undefined.
+}
+
+func void test26()
+{
+    const int A = void; // #error: Constants cannot be undefined.
+}
+
+

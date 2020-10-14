@@ -10,7 +10,7 @@ static Type t_f32, t_f64, t_fxx;
 static Type t_usz, t_isz;
 static Type t_cus, t_cui, t_cul, t_cull;
 static Type t_cs, t_ci, t_cl, t_cll;
-static Type t_voidstar, t_typeid, t_error, t_typeinfo, t_member;
+static Type t_voidstar, t_typeid, t_error, t_typeinfo;
 
 Type *type_bool = &t_u1;
 Type *type_void = &t_u0;
@@ -20,7 +20,6 @@ Type *type_float = &t_f32;
 Type *type_double = &t_f64;
 Type *type_typeid = &t_typeid;
 Type *type_typeinfo = &t_typeinfo;
-Type *type_member = &t_member;
 Type *type_char = &t_i8;
 Type *type_short = &t_i16;
 Type *type_int = &t_i32;
@@ -488,7 +487,6 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 #undef DEF_TYPE
 
 	type_create("typeinfo", &t_typeinfo, TYPE_TYPEINFO, 0, 0, 0);
-	type_create("member", &t_member, TYPE_MEMBER, 0, 0, 0);
 	type_create("typeid", &t_typeid, TYPE_TYPEID, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	type_create("void*", &t_voidstar, TYPE_POINTER, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	create_type_cache(type_void);

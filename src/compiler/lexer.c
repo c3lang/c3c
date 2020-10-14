@@ -745,7 +745,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case '"':
 			return scan_string(lexer);
 		case '#':
-			return add_token(lexer, TOKEN_HASH, "#");
+			return scan_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH_CONST_IDENT, TOKEN_HASH_TYPE_IDENT, '$');
 		case '$':
 			return scan_ident(lexer, TOKEN_CT_IDENT, TOKEN_CT_CONST_IDENT, TOKEN_CT_TYPE_IDENT, '$');
 		case ',':
@@ -914,6 +914,11 @@ bool lexer_scan_ident_test(Lexer *lexer, const char *scan)
 	{
 		next(lexer);
 		return scan_ident(lexer, TOKEN_CT_IDENT, TOKEN_CT_CONST_IDENT, TOKEN_CT_TYPE_IDENT, '$');
+	}
+	if (scan[0] == '#')
+	{
+		next(lexer);
+		return scan_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH_CONST_IDENT, TOKEN_HASH_TYPE_IDENT, '#');
 	}
 	return scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST_IDENT, TOKEN_TYPE_IDENT, 0);
 }
