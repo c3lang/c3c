@@ -34,11 +34,6 @@ static bool sema_type_mismatch(Context *context, Expr *expr, Type *type, CastTyp
 		SEMA_ERROR(expr, "A raw type cannot be used in an expression. Add the suffix '.typeid' to use it as a value.");
 		return false;
 	}
-	if (expr_type == type_member)
-	{
-		SEMA_ERROR(expr, "A raw member reference cannot be used in an expression.");
-		return false;
-	}
 	const char *action = "";
 	switch (cast_type)
 	{

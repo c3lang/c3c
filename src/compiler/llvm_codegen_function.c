@@ -76,7 +76,7 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 
 	// Allocate room on stack and copy.
 	const char *name = decl->name ? decl->name : "anon";
-	decl->ref = gencontext_emit_alloca(context, llvm_type(decl->type), name);
+	decl->backend_ref = gencontext_emit_alloca(context, llvm_type(decl->type), name);
 	if (gencontext_use_debug(context))
 	{
 		SourceLocation *loc = TOKLOC(decl->span.loc);
@@ -93,9 +93,9 @@ static inline void gencontext_emit_parameter(GenContext *context, Decl *decl, un
 				);
 		decl->var.backend_debug_ref = var;
 		LLVMDIBuilderInsertDeclareAtEnd(context->debug.builder,
-								   decl->ref, var, LLVMDIBuilderCreateExpression(context->debug.builder, NULL, 0),
-								   LLVMDIBuilderCreateDebugLocation(context->context, loc->line, loc->col, context->debug.function, /* inline at */NULL),
-								   LLVMGetInsertBlock(context->builder));
+		                                decl->backend_ref, var, LLVMDIBuilderCreateExpression(context->debug.builder, NULL, 0),
+		                                LLVMDIBuilderCreateDebugLocation(context->context, loc->line, loc->col, context->debug.function, /* inline at */NULL),
+		                                LLVMGetInsertBlock(context->builder));
 	}
 	gencontext_emit_store(context, decl, LLVMGetParam(context->function, index));
 
@@ -121,7 +121,7 @@ void gencontext_emit_implicit_return(GenContext *context)
 void gencontext_emit_function_body(GenContext *context, Decl *decl)
 {
 	DEBUG_LOG("Generating function %s.", decl->external_name);
-	assert(decl->ref);
+	assert(decl->backend_ref);
 
 	bool emit_debug = gencontext_use_debug(context);
 	LLVMValueRef prev_function = context->function;
@@ -130,7 +130,7 @@ void gencontext_emit_function_body(GenContext *context, Decl *decl)
 	context->error_var = NULL;
 	context->catch_block = NULL;
 
-	context->function = decl->ref;
+	context->function = decl->backend_ref;
 	if (emit_debug)
 	{
 		context->debug.function = LLVMGetSubprogram(context->function);
@@ -217,7 +217,7 @@ void gencontext_emit_function_decl(GenContext *context, Decl *decl)
 	assert(decl->decl_kind == DECL_FUNC);
 	// Resolve function backend type for function.
 	LLVMValueRef function = LLVMAddFunction(context->module, decl->cname ?: decl->external_name, llvm_type(decl->type));
-	decl->ref = function;
+	decl->backend_ref = function;
 	if (decl->func.function_signature.return_param)
 	{
 		if (!decl->func.function_signature.failable)
@@ -314,13 +314,13 @@ void gencontext_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_POISONED:
 			UNREACHABLE;
 		case DECL_FUNC:
-			decl->ref = LLVMAddFunction(context->module, decl->cname ?: decl->external_name,
-			                                           llvm_type(decl->type));
-			LLVMSetVisibility(decl->ref, LLVMDefaultVisibility);
+			decl->backend_ref = LLVMAddFunction(context->module, decl->cname ?: decl->external_name,
+			                                    llvm_type(decl->type));
+			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case DECL_VAR:
-			decl->ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->cname ?: decl->external_name);
-			LLVMSetVisibility(decl->ref, LLVMDefaultVisibility);
+			decl->backend_ref = LLVMAddGlobal(context->module, llvm_type(decl->type), decl->cname ?: decl->external_name);
+			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case DECL_TYPEDEF:
 			UNREACHABLE

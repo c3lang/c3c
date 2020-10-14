@@ -148,6 +148,12 @@ const char *token_type_to_string(TokenType type)
 			return "CT_CONST_IDENT";
 		case TOKEN_CT_TYPE_IDENT:
 			return "CT_TYPE_IDENT";
+		case TOKEN_HASH_IDENT:
+			return "HASH_IDENT";
+		case TOKEN_HASH_CONST_IDENT:
+			return "HASH_CONST_IDENT";
+		case TOKEN_HASH_TYPE_IDENT:
+			return "HASH_TYPE_IDENT";
 		case TOKEN_CONST_IDENT:
 			return "CONST_IDENT";
 		case TOKEN_TYPE_IDENT:
@@ -338,6 +344,10 @@ const char *token_type_to_string(TokenType type)
 			return "$else";
 		case TOKEN_CT_ELIF:
 			return "$elif";
+		case TOKEN_CT_ENDIF:
+			return "$endif";
+		case TOKEN_CT_ENDSWITCH:
+			return "$endswitch";
 		case TOKEN_CT_IF:
 			return "$if";
 		case TOKEN_CT_SWITCH:

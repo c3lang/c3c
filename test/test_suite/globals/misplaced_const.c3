@@ -1,6 +1,6 @@
-const $FOO = 3;
-$BAR = 4; // #error: Did you forget a 'const' before the name of this compile time constant?
+const FOO = 3;
+int BAR = 4; // #error: This looks like a constant variable, did you forget 'const'?
 
-const $BAZ = "ofke";
+const BAZ = "ofke";
 
-$FOOBAR; // #error: Compile time constant unexpectedly found
+FOOBAR; // #error: Expected a top level declaration here.

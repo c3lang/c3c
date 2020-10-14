@@ -199,7 +199,7 @@ static inline LLVMValueRef decl_failable_ref(Decl *decl)
 static inline LLVMValueRef decl_ref(Decl *decl)
 {
 	if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_ALIAS) return decl_ref(decl->var.alias);
-	return decl->ref;
+	return decl->backend_ref;
 }
 
 static inline void gencontext_emit_store(GenContext *context, Decl *decl, LLVMValueRef value)

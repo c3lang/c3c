@@ -122,7 +122,7 @@ AstId context_start_defer(Context *context)
 
 static inline bool sema_analyse_block_return_stmt(Context *context, Ast *statement)
 {
-	assert(context->current_scope->flags & SCOPE_EXPR_BLOCK);
+	assert(context->current_scope->flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO));
 	context->current_scope->jump_end = true;
 	if (statement->return_stmt.expr)
 	{
@@ -138,7 +138,7 @@ static inline bool sema_analyse_block_return_stmt(Context *context, Ast *stateme
 static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 {
 	// This might be a return in a function block or a macro which must be treated differently.
-	if (context->current_scope->flags & SCOPE_EXPR_BLOCK)
+	if (context->current_scope->flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
 	{
 		return sema_analyse_block_return_stmt(context, statement);
 	}
@@ -331,6 +331,26 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 	Decl *decl = statement->declare_stmt;
 	assert(decl->decl_kind == DECL_VAR);
 	if (!sema_add_local(context, decl)) return decl_poison(decl);
+	if (decl->var.kind == VARDECL_CONST)
+	{
+		Expr *init_expr = decl->var.init_expr;
+		if (!init_expr)
+		{
+			SEMA_ERROR(decl, "Constants need to have an initial value.");
+			return false;
+		}
+		if (init_expr->expr_kind == EXPR_TYPEINFO && init_expr->type_expr->resolve_status == RESOLVE_DONE
+			   && init_expr->type_expr->type->type_kind == TYPE_VOID)
+		{
+			SEMA_ERROR(decl, "Constants cannot be undefined.");
+			return false;
+		}
+		if (!decl->var.type_info)
+		{
+			// Skip further evaluation.
+			return true;
+		}
+	}
 	if (!sema_resolve_type_info(context, decl->var.type_info)) return decl_poison(decl);
 	decl->type = decl->var.type_info->type;
 	if (decl->var.init_expr)
@@ -357,19 +377,61 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 static inline bool sema_analyse_define_stmt(Context *context, Ast *statement)
 {
 	Decl *decl = statement->declare_stmt;
+	statement->ast_kind = AST_NOP_STMT;
 	assert(decl->decl_kind == DECL_VAR);
 	switch (decl->var.kind)
 	{
 		case VARDECL_LOCAL_CT_TYPE:
 			if (decl->var.type_info && !sema_resolve_type_info(context, decl->var.type_info)) return false;
 			break;
-		case VARDECL_LOCAL:
-			if (decl->var.init_expr) TODO;
-			TODO
+		case VARDECL_LOCAL_CT:
+			if (decl->var.type_info && !sema_resolve_type_info(context, decl->var.type_info)) return false;
+			if (decl->var.type_info)
+			{
+				decl->type = decl->var.type_info->type->canonical;
+				if (!type_is_builtin(decl->type->type_kind))
+				{
+					SEMA_ERROR(decl->var.type_info, "Compile time variables may only be built-in types.");
+					return false;
+				}
+				if (decl->var.init_expr)
+				{
+					if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr, false)) return false;
+					if (decl->var.init_expr->expr_kind != EXPR_CONST)
+					{
+						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression here.");
+						return false;
+					}
+				}
+				else
+				{
+					TODO // generate.
+					// decl->var.init_expr =
+				}
+			}
+			else
+			{
+				if (decl->var.init_expr)
+				{
+					if (!sema_analyse_expr(context, NULL, decl->var.init_expr)) return false;
+					if (decl->var.init_expr->expr_kind != EXPR_CONST)
+					{
+						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression here.");
+						return false;
+					}
+					decl->type = decl->var.init_expr->type;
+				}
+				else
+				{
+					decl->type = type_void;
+				}
+			}
+			break;
 		default:
 			UNREACHABLE
 	}
-	TODO;
+	decl->var.scope = context->current_scope;
+	return sema_add_local(context, decl);
 }
 
 static inline bool sema_analyse_expr_stmt(Context *context, Ast *statement)
@@ -1398,6 +1460,20 @@ static bool sema_analyse_compound_stmt(Context *context, Ast *statement)
 	return success;
 }
 
+static bool sema_analyse_ct_compound_stmt(Context *context, Ast *statement)
+{
+	bool all_ok = ast_ok(statement);
+	VECEACH(statement->ct_compound_stmt, i)
+	{
+		if (!sema_analyse_statement(context, statement->ct_compound_stmt[i]))
+		{
+			ast_poison(statement->ct_compound_stmt[i]);
+			all_ok = false;
+		}
+	}
+	return all_ok;
+}
+
 static inline bool sema_analyse_statement_inner(Context *context, Ast *statement)
 {
 	if (statement->ast_kind == AST_POISONED)
@@ -1437,6 +1513,8 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 			return sema_analyse_continue_stmt(context, statement);
 		case AST_CT_ASSERT:
 			return sema_analyse_ct_assert_stmt(context, statement);
+		case AST_CT_COMPOUND_STMT:
+			return sema_analyse_ct_compound_stmt(context, statement);
 		case AST_CT_IF_STMT:
 			return sema_analyse_ct_if_stmt(context, statement);
 		case AST_DECLARE_STMT:

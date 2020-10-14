@@ -24,13 +24,22 @@ void gencontext_emit_compound_stmt(GenContext *context, Ast *ast)
 	}
 }
 
+void gencontext_emit_ct_compound_stmt(GenContext *context, Ast *ast)
+{
+	assert(ast->ast_kind == AST_CT_COMPOUND_STMT);
+	VECEACH(ast->compound_stmt.stmts, i)
+	{
+		gencontext_emit_stmt(context, ast->compound_stmt.stmts[i]);
+	}
+}
+
 
 static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 {
 	Decl *decl = ast->declare_stmt;
 
 	LLVMTypeRef alloc_type = llvm_type(type_reduced(decl->type));
-	decl->ref = gencontext_emit_alloca(context, alloc_type, decl->name);
+	decl->backend_ref = gencontext_emit_alloca(context, alloc_type, decl->name);
 	if (decl->var.failable)
 	{
 		decl->var.failable_ref = gencontext_emit_alloca(context, llvm_type(type_error), decl->name);
@@ -58,7 +67,7 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 		// If we don't have undef, then make an assign.
 		if (init->expr_kind != EXPR_UNDEF)
 		{
-			gencontext_emit_assign_expr(context, decl->ref, decl->var.init_expr, decl->var.failable_ref);
+			gencontext_emit_assign_expr(context, decl->backend_ref, decl->var.init_expr, decl->var.failable_ref);
 		}
 		// TODO trap on undef in debug mode.
 	}
@@ -67,7 +76,7 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 		// Normal case, zero init.
 		gencontext_emit_store(context, decl, LLVMConstNull(alloc_type));
 	}
-	return decl->ref;
+	return decl->backend_ref;
 }
 
 void gencontext_emit_decl_expr_list_ignore_result(GenContext *context, Expr *expr)
@@ -904,7 +913,7 @@ void gencontext_emit_catch_stmt(GenContext *context, Ast *ast)
 		Decl *error_var = ast->catch_stmt.err_var;
 		assert(error_var->type->canonical == type_error);
 		error_result = gencontext_emit_alloca(context, llvm_type(type_error), error_var->name);
-		error_var->ref = error_result;
+		error_var->backend_ref = error_result;
 		catch_expr = error_var->var.init_expr;
 
 	}
@@ -1008,6 +1017,9 @@ void gencontext_emit_stmt(GenContext *context, Ast *ast)
 			break;
 		case AST_COMPOUND_STMT:
 			gencontext_emit_compound_stmt(context, ast);
+			break;
+		case AST_CT_COMPOUND_STMT:
+			gencontext_emit_ct_compound_stmt(context, ast);
 			break;
 		case AST_FOR_STMT:
 			gencontext_emit_for_stmt(context, ast);

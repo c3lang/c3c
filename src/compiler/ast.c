@@ -115,8 +115,6 @@ const char *decl_var_to_string(VarDeclKind kind)
 	{
 		case VARDECL_CONST:
 			return "const";
-		case VARDECL_CONST_CT:
-			return "$const";
 		case VARDECL_GLOBAL:
 			return "global";
 		case VARDECL_LOCAL:
@@ -127,6 +125,14 @@ const char *decl_var_to_string(VarDeclKind kind)
 			return "param";
 		case VARDECL_ALIAS:
 			return "alias";
+		case VARDECL_PARAM_CT:
+			return "$param";
+		case VARDECL_PARAM_CT_TYPE:
+			return "$Param";
+		case VARDECL_PARAM_EXPR:
+			return "#param";
+		case VARDECL_PARAM_REF:
+			return "&param";
 		case VARDECL_LOCAL_CT:
 			return "$local";
 		case VARDECL_LOCAL_CT_TYPE:
@@ -222,6 +228,7 @@ BinaryOp binaryop_assign_base_op(BinaryOp assign_binary_op)
 UnaryOp unary_op[TOKEN_LAST + 1] = {
 		[TOKEN_STAR] = UNARYOP_DEREF,
 		[TOKEN_AMP] = UNARYOP_ADDR,
+		[TOKEN_AND] = UNARYOP_TADDR,
 		[TOKEN_BIT_NOT] = UNARYOP_BITNEG,
 		[TOKEN_BANG] = UNARYOP_NOT,
 		[TOKEN_MINUS] = UNARYOP_NEG,
@@ -495,8 +502,14 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
+		case EXPR_MEMBER_ACCESS:
+			DUMP("(member access)");
+			return;
 		case EXPR_UNDEF:
 			DUMP("(undef)");
+			return;
+		case EXPR_ENUM_CONSTANT:
+			DUMP("(enumconstant)");
 			return;
 		case EXPR_TYPEINFO:
 			TODO;
@@ -520,15 +533,24 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->failable_expr);
 			DUMPEND();
+		case EXPR_MACRO_IDENTIFIER:
+			DUMPF("(ident @%s", expr->macro_identifier_expr.identifier);
+			DUMPEXPC(expr);
+			DUMPEND();
 		case EXPR_IDENTIFIER:
-			if (expr->identifier_expr.is_macro)
-			{
-				DUMPF("(ident @%s", expr->identifier_expr.identifier);
-			}
-			else
-			{
-				DUMPF("(ident %s", expr->identifier_expr.identifier);
-			}
+			DUMPF("(ident %s", expr->identifier_expr.identifier);
+			DUMPEXPC(expr);
+			DUMPEND();
+		case EXPR_CT_IDENT:
+			DUMPF("(ctident %s", expr->ct_ident_expr.identifier);
+			DUMPEXPC(expr);
+			DUMPEND();
+		case EXPR_MACRO_CT_IDENTIFIER:
+			DUMPF("(macroctident @%s", expr->ct_ident_expr.identifier);
+			DUMPEXPC(expr);
+			DUMPEND();
+		case EXPR_CONST_IDENTIFIER:
+			DUMPF("(ident %s", expr->identifier_expr.identifier);
 			DUMPEXPC(expr);
 			DUMPEND();
 		case EXPR_MACRO_BLOCK:
@@ -750,15 +772,18 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			DUMPTI(decl->var.type_info);
 			switch (decl->var.kind)
 			{
-				case VARDECL_CONST_CT:
 				case VARDECL_CONST:
 				case VARDECL_GLOBAL:
 				case VARDECL_LOCAL:
 				case VARDECL_PARAM:
+				case VARDECL_PARAM_CT:
+				case VARDECL_PARAM_EXPR:
+				case VARDECL_PARAM_REF:
 				case VARDECL_MEMBER:
 				case VARDECL_LOCAL_CT:
 					DUMPEXPR(decl->var.init_expr);
 					break;
+				case VARDECL_PARAM_CT_TYPE:
 				case VARDECL_LOCAL_CT_TYPE:
 					DUMPTI(decl->var.type_info);
 					break;
@@ -978,6 +1003,15 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 			}
 			DUMP("(compound\n");
 			fprint_asts_recursive(context, file, ast->compound_stmt.stmts, indent + 1);
+			DUMPEND();
+		case AST_CT_COMPOUND_STMT:
+			if (!ast->compound_stmt.stmts)
+			{
+				DUMP("(ct-compound)");
+				return;
+			}
+			DUMP("(ct-compound\n");
+			fprint_asts_recursive(context, file, ast->ct_compound_stmt, indent + 1);
 			DUMPEND();
 		case AST_DEFINE_STMT:
 			DUMP("(define");

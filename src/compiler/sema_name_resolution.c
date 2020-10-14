@@ -154,6 +154,7 @@ bool sema_add_member(Context *context, Decl *decl)
 {
 	return sema_append_local(context, decl);
 }
+
 bool sema_add_local(Context *context, Decl *decl)
 {
 	Decl *dummy;

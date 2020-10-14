@@ -56,7 +56,7 @@ Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info);
 bool parse_next_is_decl(Context *context);
 bool parse_next_is_case_type(Context *context);
 bool parse_module(Context *context);
-
+Decl *parse_define_compile_time_variable(Context *context, bool global);
 bool try_consume(Context *context, TokenType type);
 bool consume(Context *context, TokenType type, const char *message, ...);
 bool consume_const_name(Context *context, const char* type);
