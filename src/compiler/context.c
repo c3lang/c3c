@@ -94,8 +94,11 @@ void context_register_global_decl(Context *context, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:
-		case DECL_MACRO:
 		case DECL_GENERIC:
+			break;
+		case DECL_MACRO:
+			vec_add(context->macros, decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_FUNC:
 			if (decl->func.type_parent)

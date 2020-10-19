@@ -2,6 +2,12 @@ module game_of_life;
 
 extern func void printf(char *fmt, ...);
 extern func int atoi(char *val);
+extern void *__stdoutp;
+extern func void fflush(void *std);
+extern func int rand();
+extern func void* malloc(usize size);
+extern func void usleep(int time);
+
 
 struct GameBoard
 {
@@ -10,12 +16,6 @@ struct GameBoard
     byte* world;
     byte* temp;
 }
-
-extern void *__stdoutp;
-extern func void fflush(void *std);
-extern func int rand();
-extern func void* malloc(usize size);
-extern func void usleep(int time);
 
 func void GameBoard.show(GameBoard *board)
 {

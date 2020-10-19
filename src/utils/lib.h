@@ -30,7 +30,7 @@ static inline bool is_power_of_two(uint64_t x)
 	return x != 0 && (x & (x - 1)) == 0;
 }
 
-static inline uint32_t nextHighestPowerOf2(uint32_t v)
+static inline uint32_t next_highest_power_of_2(uint32_t v)
 {
 	v--;
 	v |= v >> 1U;
@@ -374,3 +374,7 @@ char *strcopy(const char *start, size_t len);
   typeof(_b) __b__ = (_b); \
   __a__ > __b__ ? __a__ : __b__; })
 
+#define MIN(_a, _b) ({ \
+  typeof(_a) __a__ = (_a); \
+  typeof(_b) __b__ = (_b); \
+  __a__ < __b__ ? __a__ : __b__; })

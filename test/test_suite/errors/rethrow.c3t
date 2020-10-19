@@ -8,20 +8,22 @@ func void! test()
 // #expect: rethrow.ll
 
     %i = alloca i32
-    %i1 = alloca i128
-    %0 = alloca i128
-    store i128 0, i128* %i1
-    %1 = load i128, i128* %i1
-    %2 = icmp eq i128 %1, 0
-    br i1 %2, label %after_check, label %error
+    %i1 = alloca { i64, i64 }, align 8
+    %error_var = alloca { i64, i64 }, align 8
+    store { i64, i64 } zeroinitializer, { i64, i64 }* %i1
+    store i32 0, i32* %i
+    %0 = load { i64, i64 }, { i64, i64 }* %i1
+    %1 = extractvalue { i64, i64 } %0, 0
+    %noerr = icmp eq i64 %1, 0
+    br i1 %noerr, label %after_check, label %error
 error:
-    store i128 %1, i128* %0
+    store { i64, i64 } %0, { i64, i64 }* %error_var
     br label %guard_block
 after_check:
-    %3 = load i32, i32* %i
+    %2 = load i32, i32* %i, align 4
     br label %noerr_block
 guard_block:
-    %4 = load i128, i128* %0
-    ret i128 %4
+    %3 = load { i64, i64 }, { i64, i64 }* %error_var
+    ret { i64, i64 } %3
 noerr_block:
-    ret i128 0
+    ret { i64, i64 } zeroinitializer

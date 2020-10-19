@@ -4,9 +4,8 @@
 
 #include "llvm_codegen_internal.h"
 
-LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *any_type);
 
-static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl)
+static inline LLVMTypeRef llvm_type_from_decl(GenContext *context, Decl *decl)
 {
 	static LLVMTypeRef params[MAX_PARAMS];
 	switch (decl->decl_kind)
@@ -34,7 +33,7 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 		case DECL_STRUCT:
 		{
 			LLVMTypeRef *types = NULL;
-			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->external_name);
+			LLVMTypeRef type = LLVMStructCreateNamed(context->context, decl->external_name);
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			VECEACH(decl->strukt.members, i)
@@ -48,7 +47,7 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 		{
 			Decl *max_type = NULL;
 			unsigned long long max_size = 0;
-			LLVMTypeRef type = LLVMStructCreateNamed(context, decl->external_name);
+			LLVMTypeRef type = LLVMStructCreateNamed(context->context, decl->external_name);
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			VECEACH(decl->strukt.members, i)
@@ -76,7 +75,7 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 			return llvm_get_type(context, decl->type);
 		case DECL_ERR:
 		{
-			LLVMTypeRef err_type = LLVMStructCreateNamed(context, decl->external_name);
+			LLVMTypeRef err_type = LLVMStructCreateNamed(context->context, decl->external_name);
 			// Avoid recursive issues.
 			decl->type->backend_type = err_type;
 			LLVMTypeRef *types = NULL;
@@ -96,7 +95,7 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 			unsigned padding = type_size(type_error) - size;
 			if (padding > 0)
 			{
-				vec_add(types, LLVMIntTypeInContext(context, padding * 8));
+				vec_add(types, LLVMIntTypeInContext(context->context, padding * 8));
 			}
 			LLVMStructSetBody(err_type, types, vec_size(types), false);
 			return err_type;
@@ -104,66 +103,190 @@ static inline LLVMTypeRef llvm_type_from_decl(LLVMContextRef context, Decl *decl
 	}
 	UNREACHABLE
 }
-static inline LLVMTypeRef llvm_type_from_ptr(LLVMContextRef context, Type *type)
-{
-	LLVMTypeRef base_llvm_type = llvm_get_type(context, type->pointer);
-
-	if (type->canonical != type)
-	{
-		return type->backend_type = llvm_get_type(context, type->canonical);
-	}
-
-	return type->backend_type = LLVMPointerType(base_llvm_type, /** TODO **/0);
-}
-
-static inline LLVMTypeRef llvm_type_from_array(LLVMContextRef context, Type *type)
+static inline LLVMTypeRef llvm_type_from_ptr(GenContext *context, Type *type)
 {
 	if (type->canonical != type)
 	{
 		return type->backend_type = llvm_get_type(context, type->canonical);
 	}
 
-	LLVMTypeRef base_llvm_type = llvm_get_type(context, type->array.base);
-	return type->backend_type = LLVMArrayType(base_llvm_type, type->array.len);
+	return type->backend_type = LLVMPointerType(llvm_get_type(context, type->pointer), /** TODO **/0);
 }
 
-LLVMTypeRef llvm_func_type(LLVMContextRef context, Type *type)
+static inline LLVMTypeRef llvm_type_from_array(GenContext *context, Type *type)
+{
+	if (type->canonical != type)
+	{
+		return type->backend_type = llvm_get_type(context, type->canonical);
+	}
+
+	return type->backend_type = LLVMArrayType(llvm_get_type(context, type->array.base), type->array.len);
+}
+
+
+static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_TYPEDEF:
+			UNREACHABLE
+		case TYPE_ARRAY:
+			for (size_t i = type->array.len; i > 0; i--)
+			{
+				param_expand(context, params_ref, type->array.base);
+			}
+			return;
+		case TYPE_STRUCT:
+		{
+			Decl **members = type->decl->strukt.members;
+			VECEACH(members, i)
+			{
+				param_expand(context, params_ref, members[i]->type);
+			}
+			return;
+		}
+		case TYPE_ENUM:
+			param_expand(context, params_ref, type_lowering(type));
+			return;
+		case TYPE_ERR_UNION:
+			param_expand(context, params_ref, type_usize->canonical);
+			param_expand(context, params_ref, type_usize->canonical);
+			return;
+		case TYPE_ERRTYPE:
+			// TODO
+			param_expand(context, params_ref, type_usize->canonical);
+			return;
+		case TYPE_UNION:
+		{
+			size_t largest = 0;
+			Type *largest_type = NULL;
+			Decl **members = type->decl->strukt.members;
+			VECEACH(members, i)
+			{
+				if (type_size(type) > largest)
+				{
+					largest = type_size(type);
+					type = type->canonical;
+				}
+			}
+			if (!largest) return;
+			param_expand(context, params_ref, largest_type);
+			return;
+		}
+		default:
+			// Type complex: return 2;
+			vec_add(*params_ref, llvm_get_type(context, type));
+			return;
+	}
+
+}
+
+static inline void add_func_type_param(GenContext *context, Type *param_type, ABIArgInfo *arg_info, LLVMTypeRef **params)
+{
+	arg_info->param_index_start = vec_size(*params);
+	switch (arg_info->kind)
+	{
+		case ABI_ARG_IGNORE:
+			break;
+		case ABI_ARG_INDIRECT:
+			vec_add(*params, llvm_get_ptr_type(context, param_type));
+			break;
+		case ABI_ARG_EXPAND:
+			// Expanding a structs
+			param_expand(context, params, param_type->canonical);
+			// If we have padding, add it here.
+			if (arg_info->expand.padding_type)
+			{
+				vec_add(*params, llvm_get_type(context, arg_info->expand.padding_type));
+			}
+			break;
+		case ABI_ARG_DIRECT_COERCE:
+		{
+			// Normal direct.
+			if (!arg_info->direct_coerce.type)
+			{
+				vec_add(*params, llvm_get_type(context, param_type));
+				break;
+			}
+			LLVMTypeRef coerce_type = llvm_abi_type(context, arg_info->direct_coerce.type);
+			if (!abi_info_should_flatten(arg_info))
+			{
+				vec_add(*params, coerce_type);
+				break;
+			}
+			for (unsigned idx = 0; idx < arg_info->direct_coerce.elements; idx++)
+			{
+				vec_add(*params, coerce_type);
+			}
+			break;
+		}
+		case ABI_ARG_DIRECT_PAIR:
+			// Pairs are passed by param.
+			vec_add(*params, llvm_abi_type(context, arg_info->direct_pair.lo));
+			vec_add(*params, llvm_abi_type(context, arg_info->direct_pair.hi));
+			break;
+	}
+	arg_info->param_index_end = vec_size(*params);
+}
+
+LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 {
 	LLVMTypeRef *params = NULL;
 	FunctionSignature *signature = type->func.signature;
-	unsigned parameters = vec_size(signature->params);
-	if (signature->return_param) parameters++;
-	if (parameters)
+
+	c_abi_func_create(context, signature);
+
+	LLVMTypeRef return_type = NULL;
+
+	Type *real_return_type = signature->failable ? type_error : signature->rtype->type->canonical;
+	ABIArgInfo *ret_arg_info = signature->failable ? signature->failable_abi_info : signature->ret_abi_info;
+
+	ret_arg_info->param_index_end = 0;
+	ret_arg_info->param_index_start = 0;
+
+	switch (ret_arg_info->kind)
 	{
-		params = malloc_arena(sizeof(LLVMTypeRef) * parameters);
-		unsigned index = 0;
-		if (signature->return_param)
+		case ABI_ARG_EXPAND:
+			UNREACHABLE;
+		case ABI_ARG_INDIRECT:
+			vec_add(params, llvm_get_ptr_type(context, real_return_type));
+			FALLTHROUGH;
+		case ABI_ARG_IGNORE:
+			return_type = llvm_get_type(context, type_void);
+			break;
+		case ABI_ARG_DIRECT_PAIR:
 		{
-			params[index++] = llvm_get_type(context, type_get_ptr(signature->rtype->type));
+			LLVMTypeRef lo = llvm_abi_type(context, ret_arg_info->direct_pair.lo);
+			LLVMTypeRef hi = llvm_abi_type(context, ret_arg_info->direct_pair.hi);
+			return_type = gencontext_get_twostruct(context, lo, hi);
+			break;
 		}
-		VECEACH(signature->params, i)
-		{
-			params[index++] = llvm_get_type(context, signature->params[i]->type->canonical);
-		}
+		case ABI_ARG_DIRECT_COERCE:
+			assert(!abi_info_should_flatten(ret_arg_info));
+			return_type = llvm_get_coerce_type(context, ret_arg_info) ?: llvm_get_type(context, real_return_type);
+			break;
 	}
-	LLVMTypeRef ret_type;
-	if (signature->failable)
+
+	// If it's failable and it's not void (meaning ret_abi_info will be NULL)
+	if (signature->failable && signature->ret_abi_info)
 	{
-		ret_type = llvm_get_type(context, type_error);
+		add_func_type_param(context, type_get_ptr(signature->rtype->type), signature->ret_abi_info, &params);
 	}
-	else
+
+	// Add in all of the required arguments.
+	VECEACH(signature->params, i)
 	{
-		ret_type = signature->return_param
-				? llvm_get_type(context, type_void)
-				: llvm_get_type(context, type->func.signature->rtype->type);
+		add_func_type_param(context, signature->params[i]->type, signature->params[i]->var.abi_info, &params);
 	}
-	return LLVMFunctionType(ret_type, params, parameters, signature->variadic);
+
+	return LLVMFunctionType(return_type, params, vec_size(params), signature->variadic);
 }
 
 
-LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *any_type)
+
+LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 {
-	if (any_type->backend_type && LLVMGetTypeContext(any_type->backend_type) == context)
+	if (any_type->backend_type && LLVMGetTypeContext(any_type->backend_type) == c->context)
 	{
 		return any_type->backend_type;
 	}
@@ -175,66 +298,104 @@ LLVMTypeRef llvm_get_type(LLVMContextRef context, Type *any_type)
 		case TYPE_MEMBER:
 			UNREACHABLE
 		case TYPE_TYPEID:
-			return any_type->backend_type = LLVMIntTypeInContext(context, any_type->builtin.bitsize);
+			return any_type->backend_type = LLVMIntTypeInContext(c->context, any_type->builtin.bitsize);
 		case TYPE_TYPEDEF:
-			return any_type->backend_type = llvm_get_type(context, any_type->canonical);
+			return any_type->backend_type = llvm_get_type(c, any_type->canonical);
 		case TYPE_ENUM:
-			return any_type->backend_type = llvm_get_type(context, any_type->decl->enums.type_info->type->canonical);
+			return any_type->backend_type = llvm_get_type(c, any_type->decl->enums.type_info->type->canonical);
 		case TYPE_ERR_UNION:
-			return any_type->backend_type = LLVMIntTypeInContext(context, any_type->builtin.bitsize);
+		{
+			LLVMTypeRef elements[2] = { llvm_get_type(c, type_usize->canonical), llvm_get_type(c, type_usize->canonical) };
+			return any_type->backend_type = LLVMStructTypeInContext(c->context, elements, 2, false);
+		}
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ERRTYPE:
-			return any_type->backend_type = llvm_type_from_decl(context, any_type->decl);
+			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
 		case TYPE_FUNC:
-			return any_type->backend_type = llvm_func_type(context, any_type);
+			return any_type->backend_type = llvm_func_type(c, any_type);
 		case TYPE_VOID:
-			return any_type->backend_type = LLVMVoidTypeInContext(context);
+			return any_type->backend_type = LLVMVoidTypeInContext(c->context);
 		case TYPE_F64:
 		case TYPE_FXX:
-			return any_type->backend_type = LLVMDoubleTypeInContext(context);
+			return any_type->backend_type = LLVMDoubleTypeInContext(c->context);
+		case TYPE_F16:
+			return any_type->backend_type = LLVMHalfTypeInContext(c->context);
 		case TYPE_F32:
-			return any_type->backend_type = LLVMFloatTypeInContext(context);
-		case TYPE_U64:
-		case TYPE_I64:
-			return any_type->backend_type = LLVMIntTypeInContext(context, 64U);
-		case TYPE_U32:
-		case TYPE_I32:
+			return any_type->backend_type = LLVMFloatTypeInContext(c->context);
+		case TYPE_F128:
+			return any_type->backend_type = LLVMFP128TypeInContext(c->context);
+		case ALL_SIGNED_INTS:
+		case ALL_UNSIGNED_INTS:
+			return any_type->backend_type = LLVMIntTypeInContext(c->context, any_type->builtin.bitsize);
 		case TYPE_IXX:
-			return any_type->backend_type = LLVMIntTypeInContext(context, 32U);
-		case TYPE_U16:
-		case TYPE_I16:
-			return any_type->backend_type = LLVMIntTypeInContext(context, 16U);
-		case TYPE_U8:
-		case TYPE_I8:
-			return any_type->backend_type = LLVMIntTypeInContext(context, 8U);
+			return any_type->backend_type = LLVMIntTypeInContext(c->context, 32U);
 		case TYPE_BOOL:
-			return any_type->backend_type = LLVMIntTypeInContext(context, 1U);
+			return any_type->backend_type = LLVMIntTypeInContext(c->context, 8U);
 		case TYPE_POINTER:
-			return any_type->backend_type = llvm_type_from_ptr(context, any_type);
+			return any_type->backend_type = llvm_type_from_ptr(c, any_type);
 		case TYPE_STRING:
 			// TODO
-			return any_type->backend_type = LLVMPointerType(llvm_get_type(context, type_char), 0);
+			return any_type->backend_type = LLVMPointerType(llvm_get_type(c, type_char), 0);
 		case TYPE_ARRAY:
-			return any_type->backend_type = llvm_type_from_array(context, any_type);
+			return any_type->backend_type = llvm_type_from_array(c, any_type);
 		case TYPE_SUBARRAY:
 		{
-			LLVMTypeRef base_type = llvm_get_type(context, type_get_ptr(any_type->array.base));
-			LLVMTypeRef size_type = llvm_get_type(context, type_usize);
-			LLVMTypeRef array_type = LLVMStructCreateNamed(context, any_type->name);
+			LLVMTypeRef base_type = llvm_get_type(c, type_get_ptr(any_type->array.base));
+			LLVMTypeRef size_type = llvm_get_type(c, type_usize);
+			LLVMTypeRef array_type = LLVMStructCreateNamed(c->context, any_type->name);
 			LLVMTypeRef types[2] = { base_type, size_type };
 			LLVMStructSetBody(array_type, types, 2, false);
 			return any_type->backend_type = array_type;
 		}
 		case TYPE_VARARRAY:
-			return any_type->backend_type = llvm_get_type(context, type_get_ptr(any_type->array.base));
+			return any_type->backend_type = llvm_get_type(c, type_get_ptr(any_type->array.base));
+		case TYPE_VECTOR:
+			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->vector.base), any_type->vector.len);
+		case TYPE_COMPLEX:
+			return any_type->backend_type = gencontext_get_twostruct(c, llvm_get_type(c, any_type->complex), llvm_get_type(c, any_type->complex));
 	}
 	UNREACHABLE;
 }
 
-LLVMTypeRef gencontext_get_llvm_type(GenContext *context, Type *type)
+
+LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 {
-	// gencontext_get_debug_type(context, type);
-	return llvm_get_type(context->context, type);
+	if (arg_info->kind == ABI_ARG_DIRECT_COERCE)
+	{
+		if (!arg_info->direct_coerce.type) return NULL;
+		LLVMTypeRef coerce_type = llvm_abi_type(c, arg_info->direct_coerce.type);
+		if (arg_info->direct_coerce.elements < 2U) return coerce_type;
+		LLVMTypeRef *refs = MALLOC(sizeof(LLVMValueRef) * arg_info->direct_coerce.elements);
+		for (unsigned i = 0; i < arg_info->direct_coerce.elements; i++)
+		{
+			refs[i] = coerce_type;
+		}
+		return LLVMStructTypeInContext(c->context, refs, arg_info->direct_coerce.elements, false);
+	}
+	if (arg_info->kind == ABI_ARG_DIRECT_PAIR)
+	{
+		LLVMTypeRef lo = llvm_abi_type(c, arg_info->direct_pair.lo);
+		LLVMTypeRef hi = llvm_abi_type(c, arg_info->direct_pair.hi);
+		return gencontext_get_twostruct(c, lo, hi);
+	}
+	UNREACHABLE
 }
 
+LLVMTypeRef gencontext_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef hi)
+{
+	LLVMTypeRef types[2] = { lo, hi };
+	return LLVMStructTypeInContext(context->context, types, 2, false);
+}
+
+LLVMTypeRef llvm_abi_type(GenContext *c, AbiType *type)
+{
+	switch (type->kind)
+	{
+		case ABI_TYPE_PLAIN:
+			return llvm_get_type(c, type->type);
+		case ABI_TYPE_INT_BITS:
+			return LLVMIntTypeInContext(c->context, type->int_bits);
+	}
+	UNREACHABLE
+}

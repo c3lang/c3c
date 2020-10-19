@@ -123,8 +123,16 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 			return true;
 		case DECL_POISONED:
 			return type_info_poison(type_info);
-		case DECL_FUNC:
 		case DECL_VAR:
+			if (decl->var.kind == VARDECL_PARAM_CT_TYPE || decl->var.kind == VARDECL_LOCAL_CT_TYPE)
+			{
+				assert(decl->var.init_expr->expr_kind == EXPR_TYPEINFO);
+				assert(decl->var.init_expr->resolve_status == RESOLVE_DONE);
+				*type_info = *decl->var.init_expr->type_expr;
+				return true;
+			}
+			FALLTHROUGH;
+		case DECL_FUNC:
 		case DECL_ENUM_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:

@@ -70,6 +70,7 @@ typedef enum
 	CTYPE_LONG,
 	CTYPE_LONG_LONG
 } CType;
+
 typedef enum
 {
 	OS_TYPE_UNKNOWN,
@@ -113,6 +114,42 @@ typedef enum
 
 typedef enum
 {
+	ENV_TYPE_UNKNOWN,
+	ENV_TYPE_GNU,
+	ENV_TYPE_GNUABIN32,
+	ENV_TYPE_GNUABI64,
+	ENV_TYPE_GNUEABI,
+	ENV_TYPE_GNUEABIHF,
+	ENV_TYPE_GNUX32,
+	ENV_TYPE_CODE16,
+	ENV_TYPE_EABI,
+	ENV_TYPE_EABIHF,
+	ENV_TYPE_ELFV1,
+	ENV_TYPE_ELFV2,
+	ENV_TYPE_ANDROID,
+	ENV_TYPE_MUSL,
+	ENV_TYPE_MUSLEABI,
+	ENV_TYPE_MUSLEABIHF,
+	ENV_TYPE_MSVC,
+	ENV_TYPE_ITANIUM,
+	ENV_TYPE_CYGNUS,
+	ENV_TYPE_CORECLR,
+	ENV_TYPE_SIMULATOR,
+	ENV_TYPE_MACABI,
+	ENV_TYPE_LAST = ENV_TYPE_MACABI
+} EnvironmentType;
+
+typedef enum
+{
+	OBJ_FORMAT_COFF,
+	OBJ_FORMAT_ELF,
+	OBJ_FORMAT_MACHO,
+	OBJ_FORMAT_WASM,
+	OBJ_FORMAT_XCOFF
+} ObjectFormatType;
+
+typedef enum
+{
 	VENDOR_UNKNOWN,
 	VENDOR_APPLE,
 	VENDOR_PC,
@@ -133,6 +170,50 @@ typedef enum
 	VENDOR_LAST = VENDOR_OPEN_EMBEDDED
 } VendorType;
 
+typedef enum
+{
+	ABI_UNKNOWN,
+	ABI_X64,
+	ABI_WIN64,
+	ABI_X86,
+	ABI_AARCH64,
+	ABI_WASM,
+	ABI_ARM,
+	ABI_PPC32,
+	ABI_PPC64_SVR4,
+	ABI_RISCV,
+} ABI;
+
+
+typedef enum
+{
+	FLOAT_ABI_NONE,
+	FLOAT_ABI_SOFT,
+	FLOAT_ABI_HARD,
+} FloatABI;
+
+typedef enum
+{
+	AVX_NONE,
+	AVX,
+	AVX_512,
+} AVXLevel;
+
+typedef enum
+{
+	ARM_AAPCS,
+	ARM_AAPCS16,
+	ARM_APCS_GNU,
+	ARM_AAPCS_LINUX,
+} ARMVariant;
+
+typedef enum
+{
+	ARM_ABI_AAPCS,
+	ARM_ABI_APCS,
+	ARM_ABI_AAPCS16_VFP,
+	ARM_ABI_AAPCS_VFP,
+} ARMABIVariant;
 
 typedef struct
 {
@@ -145,17 +226,87 @@ typedef struct
 	const char *os_name;
 	VendorType vendor;
 	const char *vendor_name;
+	EnvironmentType environment_type;
+	const char *environment_name;
+	ObjectFormatType object_format;
 	int alloca_address_space;
+	ABI abi;
+	FloatABI float_abi : 3;
+	unsigned default_number_regs : 8;
+	union
+	{
+		struct
+		{
+			bool is_darwin_vector_abi : 1;
+			bool return_small_struct_in_reg_abi : 1;
+			bool is_win32_float_struct_abi : 1;
+			bool use_soft_float : 1;
+			bool is_win_api : 1;
+			bool is_mcu_api : 1;
+		} x86;
+		struct
+		{
+			AVXLevel avx_level : 3;
+			bool is_win64 : 1;
+			bool is_mingw64 : 1;
+			bool pass_int128_vector_in_mem : 1;
+		} x64;
+		struct
+		{
+			bool is_32_bit : 1;
+		} mips;
+		struct
+		{
+			bool is_aapcs : 1;
+			bool is_darwin_pcs : 1;
+		} aarch64;
+		struct
+		{
+			bool is_darwin : 1;
+			bool is_win32 : 1;
+		} aarch;
+		struct
+		{
+			bool is_win32 : 1;
+			ARMVariant variant : 3;
+			ARMABIVariant abi_variant : 3;
+		} arm;
+		struct
+		{
+			bool is_softfp : 1;
+		} ppc;
+		struct
+		{
+			bool is_softfp : 1;
+			bool is_elfv2 : 1;
+			bool has_qpx : 1;
+		} ppc64;
+		struct
+		{
+			unsigned xlen;
+			unsigned abiflen;
+		} riscv;
+		struct
+		{
+			bool has_vector : 1;
+		} systemz;
+	};
 	bool little_endian;
 	bool tls_supported;
 	bool asm_supported;
 	bool float_128;
 	bool float_16;
+	bool vec_128i;
+	bool vec_64i;
+	bool vec_128f;
+	bool vec_64f;
+	bool int_128;
 	unsigned align_pref_pointer;
 	unsigned align_pref_byte;
 	unsigned align_pref_short;
 	unsigned align_pref_int;
 	unsigned align_pref_long;
+	unsigned align_pref_i128;
 	unsigned align_pref_half;
 	unsigned align_pref_float;
 	unsigned align_pref_double;
@@ -165,6 +316,7 @@ typedef struct
 	unsigned align_short;
 	unsigned align_int;
 	unsigned align_long;
+	unsigned align_i128;
 	unsigned align_half;
 	unsigned align_float;
 	unsigned align_double;
@@ -191,7 +343,9 @@ typedef struct
 	unsigned sse_reg_param_max;
 	unsigned builtin_ms_valist;
 	unsigned aarch64sve_types;
+	unsigned max_size_for_return;
 	char *platform_name;
+
 } Target;
 
 extern Target build_target;

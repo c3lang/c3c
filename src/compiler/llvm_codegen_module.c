@@ -5,38 +5,6 @@
 #include "llvm_codegen_internal.h"
 
 
-
-static inline LLVMTypeRef gencontext_create_basic_llvm_type(GenContext *context, Type *type)
-{
-	switch (type->type_kind)
-	{
-		case TYPE_TYPEID:
-			return LLVMIntTypeInContext(context->context, type->builtin.bitsize);
-		case TYPE_BOOL:
-			return LLVMInt1TypeInContext(context->context);
-		case TYPE_I8:
-		case TYPE_U8:
-			return LLVMInt8TypeInContext(context->context);
-		case TYPE_I16:
-		case TYPE_U16:
-			return LLVMInt16TypeInContext(context->context);
-		case TYPE_I32:
-		case TYPE_U32:
-			return LLVMInt32TypeInContext(context->context);
-		case TYPE_I64:
-		case TYPE_U64:
-			return LLVMInt64TypeInContext(context->context);
-		case TYPE_F32:
-			return LLVMFloatTypeInContext(context->context);
-		case TYPE_F64:
-			return LLVMDoubleTypeInContext(context->context);
-		case TYPE_VOID:
-			return LLVMVoidTypeInContext(context->context);
-		default:
-			UNREACHABLE
-	}
-}
-
 void gencontext_begin_module(GenContext *context)
 {
 	assert(!context->module && "Expected no module");
@@ -51,6 +19,8 @@ void gencontext_begin_module(GenContext *context)
 	{
 		const char *filename = context->ast_context->file->name;
 		const char *dir_path = context->ast_context->file->dir_path;
+		// Set runtime version here.
+		context->debug.runtime_version = 1;
 		context->debug.builder = LLVMCreateDIBuilder(context->module);
 		context->debug.file = LLVMDIBuilderCreateFile(context->debug.builder, filename, strlen(filename), dir_path, strlen(dir_path));
 
@@ -82,7 +52,7 @@ void gencontext_begin_module(GenContext *context)
 
 void gencontext_end_module(GenContext *context)
 {
-	if (context->debug.builder)
+	if (llvm_use_debug(context))
 	{
 		LLVMDIBuilderFinalize(context->debug.builder);
 	}

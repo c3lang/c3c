@@ -22,7 +22,8 @@ func void test(int i)
 // #expect: defer_break_switch.ll
 
 switch.case:
-  %4 = load i1, i1* %b
+  %3 = load i8, i8* %b, align 1
+  %4 = trunc i8 %3 to i1
   br i1 %4, label %if.then, label %if.exit
 
 if.then:

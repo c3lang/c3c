@@ -1,0 +1,42 @@
+func void test(int* foo)
+{
+    foo++;
+    foo--;
+    int y = 10;
+    y++;
+    y--;
+    float z = 2.0;
+    z++;
+    ++z;
+    z--;
+}
+
+// #expect: incdec.ll
+
+  %foo = alloca i32*, align 8
+  %y = alloca i32, align 4
+  %z = alloca float, align 4
+  store i32* %0, i32** %foo
+  %1 = load i32*, i32** %foo, align 8
+  %ptrincdec = getelementptr i32, i32* %1, i8 1
+  store i32* %ptrincdec, i32** %foo, align 8
+  %2 = load i32*, i32** %foo, align 8
+  %ptrincdec1 = getelementptr i32, i32* %2, i8 -1
+  store i32* %ptrincdec1, i32** %foo, align 8
+  store i32 10, i32* %y, align 4
+  %3 = load i32, i32* %y, align 4
+  %add = add nsw i32 %3, 1
+  store i32 %add, i32* %y, align 4
+  %4 = load i32, i32* %y, align 4
+  %sub = sub nsw i32 %4, 1
+  store i32 %sub, i32* %y, align 4
+  store float 2.000000e+00, float* %z, align 4
+  %5 = load float, float* %z, align 4
+  %fincdec = fadd float %5, 1.000000e+00
+  store float %fincdec, float* %z, align 4
+  %6 = load float, float* %z, align 4
+  %fincdec2 = fadd float %6, 1.000000e+00
+  store float %fincdec2, float* %z, align 4
+  %7 = load float, float* %z, align 4
+  %fincdec3 = fadd float %7, -1.000000e+00
+  store float %fincdec3, float* %z, align 4

@@ -1591,7 +1591,6 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	context->expected_block_type = NULL;
 	context->last_local = &context->locals[0];
 	context->in_volatile_section = 0;
-	context->in_macro = 0;
 	context->macro_counter = 0;
 	context->macro_nesting = 0;
 	context->continue_target = 0;

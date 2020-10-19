@@ -101,7 +101,7 @@ the r/ProgrammingLanguages Discord: https://discord.gg/cfu4wdk
 - [ ] Built-in linking
 - [ ] `global` / `shared` for globals 
 - [ ] Complex macros
-- [ ] CT only macros evaluating to constants
+- [x] CT only macros evaluating to constants
 - [ ] Escape macros
 - [ ] Implicit capturing macros
 - [ ] Trailing body macros
@@ -117,8 +117,11 @@ the r/ProgrammingLanguages Discord: https://discord.gg/cfu4wdk
 - [ ] String functions
 - [ ] Vararrays e.g. `int[*]`
 - [ ] Compile time incremental arrays
-- [ ] Complete C ABI conformance
+- [-] Complete C ABI conformance *in progress*
 - [ ] Generic functions
+- [-] Debug info *in progress*
+- [ ] Simd vectors
+- [ ] Complex types
 
 #### What can you help with?
 
