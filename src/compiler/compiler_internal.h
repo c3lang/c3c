@@ -21,22 +21,17 @@ typedef struct
 	unsigned index;
 } TokenId;
 
-#define INVALID_LOC UINT32_MAX
 #define NO_TOKEN_ID ((TokenId) { 0 })
 #define NO_TOKEN ((Token) { .type = TOKEN_INVALID_TOKEN })
 #define INVALID_TOKEN_ID ((TokenId) { UINT32_MAX })
 #define INVALID_RANGE ((SourceSpan){ INVALID_TOKEN_ID, INVALID_TOKEN_ID })
 #define MAX_LOCALS 0xFFFF
-#define MAX_FLAGS 0xFFFF
 #define MAX_SCOPE_DEPTH 0xFF
 #define MAX_PATH 1024
-#define MAX_DEFERS 0xFFFF
 #define MAX_MACRO_NESTING 1024
 #define MAX_FUNCTION_SIGNATURE_SIZE 2048
 #define MAX_PARAMS 512
-#define MAX_ERRORS 0xFFFF
 #define MAX_ALIGNMENT (1U << 29U)
-#define LEXER_VM_SIZE_MB 2048
 
 typedef struct _Ast Ast;
 typedef struct _Decl Decl;
@@ -71,6 +66,11 @@ typedef struct
 			int len;
 		} string;
 		Decl *enum_constant;
+		struct
+		{
+			long double i;
+			long double r;
+		} complex;
 	};
 	// Valid type kinds:
 	// bool, ints, floats, string
@@ -200,6 +200,12 @@ typedef struct
 
 typedef struct
 {
+	Type *base;
+	size_t len;
+} TypeVector;
+
+typedef struct
+{
 	struct _FunctionSignature *signature;
 } TypeFunc;
 
@@ -224,6 +230,9 @@ struct _Type
 		TypeFunc func;
 		// Type*
 		Type *pointer;
+		// Type[<123>] or Type<[123]>
+		TypeVector vector;
+		Type *complex;
 	};
 };
 
@@ -266,7 +275,6 @@ typedef struct
 
 typedef struct
 {
-	uint32_t abi_alignment;
 	uint64_t size;
 	Decl **members;
 } StructDecl;
@@ -289,7 +297,11 @@ typedef struct _VarDecl
 		void *backend_debug_ref;
 		void *scope;
 	};
-	void *failable_ref;
+	union
+	{
+		void *failable_ref;
+		struct ABIArgInfo_ *abi_info;
+	};
 } VarDecl;
 
 
@@ -332,9 +344,10 @@ typedef struct _FunctionSignature
 	CallConvention convention : 4;
 	bool variadic : 1;
 	bool has_default : 1;
-	bool return_param : 1;
 	bool failable : 1;
 	TypeInfo *rtype;
+	struct ABIArgInfo_ *ret_abi_info;
+	struct ABIArgInfo_ *failable_abi_info;
 	Decl** params;
 	const char *mangled_signature;
 } FunctionSignature;
@@ -434,6 +447,7 @@ typedef struct _Decl
 	const char *cname;
 	uint32_t alignment;
 	const char *section;
+	size_t offset;
 	/*	bool is_exported : 1;
 	bool is_used : 1;
 	bool is_used_public : 1;
@@ -458,6 +472,7 @@ typedef struct _Decl
 			};
 			union
 			{
+				// Unions, Errtype and Struct use strukt
 				StructDecl strukt;
 				EnumDecl enums;
 			};
@@ -593,14 +608,6 @@ typedef struct
 
 typedef struct
 {
-	const char *identifier;
-	bool is_macro;
-	Decl *decl;
-} ExprCtIdentifier;
-
-
-typedef struct
-{
 	CastKind kind;
 	Expr *expr;
 	TypeInfo *type_info;
@@ -684,6 +691,7 @@ struct _Expr
 	bool failable : 1;
 	bool pure : 1;
 	bool constant : 1;
+	bool reeval : 1;
 	SourceSpan span;
 	Type *type;
 	union {
@@ -712,6 +720,7 @@ struct _Expr
 		ExprIdentifier macro_identifier_expr;
 		ExprIdentifierRaw ct_ident_expr;
 		ExprIdentifierRaw ct_macro_ident_expr;
+		ExprIdentifierRaw hash_ident_expr;
 		TypeInfo *typeid_expr;
 		ExprInitializer expr_initializer;
 		Decl *expr_enum;
@@ -1011,7 +1020,6 @@ typedef struct _Module
 	Ast **files; // Asts
 
 	Decl** functions;
-	STable struct_functions;
 	STable symbols;
 	STable public_symbols;
 	Module **sub_modules;
@@ -1077,6 +1085,7 @@ typedef struct _Context
 	Decl **types;
 	Decl **generic_defines;
 	Decl **functions;
+	Decl **macros;
 	Decl **methods;
 	Decl **vars;
 	Decl **incr_array;
@@ -1110,8 +1119,6 @@ typedef struct _Context
 	int in_volatile_section;
 	struct
 	{
-		bool in_macro_call : 1;
-		bool in_macro : 1;
 		Decl **macro_locals_start;
 		int macro_counter;
 		int macro_nesting;
@@ -1157,9 +1164,10 @@ extern Diagnostics diagnostics;
 
 
 extern Type *type_bool, *type_void, *type_string, *type_voidptr;
-extern Type *type_float, *type_double;
+extern Type *type_half, *type_float, *type_double, *type_quad;
 extern Type *type_char, *type_short, *type_int, *type_long, *type_isize;
 extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
+extern Type *type_u128, *type_i128;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
@@ -1170,6 +1178,7 @@ extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *kw_main;
 extern const char *kw_sizeof;
 extern const char *kw_alignof;
+extern const char *kw_align;
 extern const char *kw_offsetof;
 extern const char *kw_kindof;
 extern const char *kw_nameof;
@@ -1230,26 +1239,6 @@ static inline bool builtin_may_negate(Type *canonical)
 	}
 }
 
-static inline bool builtin_may_bit_negate(Type *canonical)
-{
-	assert(canonical->canonical == canonical);
-	switch (canonical->type_kind)
-	{
-		case TYPE_BOOL:
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
-		case TYPE_I64:
-		case TYPE_IXX:
-		case TYPE_U8:
-		case TYPE_U16:
-		case TYPE_U32:
-		case TYPE_U64:
-			return true;
-		default:
-			return false;
-	}
-}
 
 
 bool cast_implicit(Context *context, Expr *expr, Type *to_type);
@@ -1261,12 +1250,6 @@ bool cast_implicitly_to_runtime(Context *context, Expr *expr);
 void llvm_codegen(Context *context);
 void llvm_codegen_setup();
 
-
-bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *left_type, Expr *right, ExprFailableStatus lhs_is_failable);
-bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr, bool may_be_failable);
-bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
-bool sema_analyse_decl(Context *context, Decl *decl);
-bool expr_is_constant_eval(Expr *expr);
 
 void compiler_add_type(Type *type);
 Decl *compiler_find_symbol(const char *name);
@@ -1291,27 +1274,12 @@ Decl *decl_new_var(TokenId name, TypeInfo *type, VarDeclKind kind, Visibility vi
 #define DECL_NEW_VAR(_type, _kind, _vis) decl_new_var(context->tok.id, _type, _kind, _vis)
 void decl_set_external_name(Decl *decl);
 const char *decl_var_to_string(VarDeclKind kind);
-static inline Decl *decl_raw(Decl *decl)
-{
-	if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_ALIAS) return decl;
-	decl = decl->var.alias;
-	assert(decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_ALIAS);
-	return decl;
-}
-
+static inline Decl *decl_raw(Decl *decl);
 static inline bool decl_ok(Decl *decl) { return !decl || decl->decl_kind != DECL_POISONED; }
 static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
-static inline bool decl_is_struct_type(Decl *decl)
-{
-	DeclKind kind = decl->decl_kind;
-	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_ERR);
-}
-static inline DeclKind decl_from_token(TokenType type)
-{
-	if (type == TOKEN_STRUCT) return DECL_STRUCT;
-	if (type == TOKEN_UNION) return DECL_UNION;
-	UNREACHABLE
-}
+static inline bool decl_is_struct_type(Decl *decl);
+unsigned decl_abi_alignment(Decl *decl);
+static inline DeclKind decl_from_token(TokenType type);
 
 #pragma mark --- Diag functions
 
@@ -1337,6 +1305,7 @@ void expr_const_set_null(ExprConst *expr);
 void expr_const_fprint(FILE *__restrict file, ExprConst *expr);
 bool expr_const_int_overflowed(const ExprConst *expr);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
+bool expr_is_constant_eval(Expr *expr);
 const char *expr_const_to_error_string(const ExprConst *expr);
 
 void fprint_decl(Context *context, FILE *file, Decl *dec);
@@ -1401,8 +1370,13 @@ bool sema_add_local(Context *context, Decl *decl);
 bool sema_unwrap_var(Context *context, Decl *decl);
 bool sema_rewrap_var(Context *context, Decl *decl);
 
+bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr, bool may_be_failable);
+bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
+bool sema_analyse_decl(Context *context, Decl *decl);
 bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement);
 bool sema_analyse_statement(Context *context, Ast *statement);
+bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *left_type, Expr *right, ExprFailableStatus lhs_is_failable);
+
 Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol);
 Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl, Decl **private_decl);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
@@ -1437,7 +1411,7 @@ void stable_clear(STable *table);
 
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 
-void target_setup();
+void target_setup(void);
 int target_alloca_addr_space();
 void *target_data_layout();
 void *target_machine();
@@ -1450,72 +1424,67 @@ bool token_is_any_type(TokenType type);
 bool token_is_symbol(TokenType type);
 const char *token_type_to_string(TokenType type);
 
+unsigned type_abi_alignment(Type *type);
+unsigned type_alloca_alignment(Type *type);
+void type_append_signature_name(Type *type, char *dst, size_t *offset);
+static inline bool type_convert_will_trunc(Type *destination, Type *source);
+Type *type_find_common_ancestor(Type *left, Type *right);
+Type *type_find_largest_union_element(Type *type);
+Type *type_find_max_type(Type *type, Type *other);
+Type *type_find_single_struct_element(Type *type);
+const char *type_generate_qname(Type *type);
+Type *type_get_array(Type *arr_type, uint64_t len);
+Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_subarray(Type *arr_type);
 Type *type_get_vararray(Type *arr_type);
-Type *type_get_meta(Type *meta_type);
-Type *type_get_indexed_type(Type *type);
-Type *type_get_array(Type *arr_type, uint64_t len);
-bool type_is_user_defined(Type *type);
-Type *type_signed_int_by_bitsize(unsigned bytesize);
-Type *type_unsigned_int_by_bitsize(unsigned bytesize);
+Type *type_get_vector(Type *vector_type, unsigned len);
+Type *type_int_signed_by_bitsize(unsigned bytesize);
+Type *type_int_unsigned_by_bitsize(unsigned bytesize);
+bool type_is_abi_aggregate(Type *type);
+static inline bool type_is_any_integer(Type *type);
+static inline bool type_is_builtin(TypeKind kind);
+static inline bool type_is_ct(Type *type);
+bool type_is_empty_union_struct(Type *type, bool allow_array);
+bool type_is_empty_field(Type *type, bool allow_array);
+static inline bool type_is_float(Type *type);
+bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements);
+bool type_is_int128(Type *type);
+static inline bool type_is_integer(Type *type);
+static inline bool type_is_integer_unsigned(Type *type);
+static inline bool type_is_integer_signed(Type *type);
+static inline bool type_is_integer_kind(Type *type);
+static inline bool type_is_numeric(Type *type);
+static inline bool type_is_pointer(Type *type);
+static inline bool type_is_promotable_integer(Type *type);
+static inline bool type_is_signed(Type *type);
+static inline bool type_is_structlike(Type *type);
+static inline bool type_is_promotable_integer(Type *type);
 bool type_is_subtype(Type *type, Type *possible_subtype);
-Type *type_find_common_ancestor(Type *left, Type *right);
-const char *type_to_error_string(Type *type);
-size_t type_size(Type *type);
-unsigned int type_abi_alignment(Type *type);
-const char *type_generate_qname(Type *type);
-void type_append_signature_name(Type *type, char *dst, size_t *offset);
-Type *type_find_max_type(Type *type, Type *other);
-
-static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_TYPEID; }
-static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_I64; }
-static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind <= TYPE_U64; }
-static inline bool type_kind_is_any_integer(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_IXX; }
-static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I64; }
-static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64; }
-static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
-static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
+bool type_is_union_struct(Type *type);
+bool type_is_user_defined(Type *type);
+static inline Type *type_lowering(Type *type);
 bool type_may_have_sub_elements(Type *type);
-static inline bool type_kind_is_derived(TypeKind kind)
-{
-	switch (kind)
-	{
-		case TYPE_ARRAY:
-		case TYPE_POINTER:
-		case TYPE_VARARRAY:
-		case TYPE_SUBARRAY:
-			return true;
-		default:
-			return false;
-	}
-}
+static inline bool type_ok(Type *type);
+static inline Type *type_reduced_from_expr(Expr *expr);
+size_t type_size(Type *type);
+const char *type_to_error_string(Type *type);
 
-static inline Type *type_reduced(Type *type)
-{
-	Type *canonical = type->canonical;
-	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
-	return canonical;
-}
+static inline TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
+static inline TypeInfo *type_info_new_base(Type *type, SourceSpan span);
+static inline bool type_info_ok(TypeInfo *type_info);
+static inline bool type_info_poison(TypeInfo *type);
 
-static inline bool type_is_structlike(Type *type)
-{
-	assert(type->canonical == type);
-	switch (type->type_kind)
-	{
-		case TYPE_UNION:
-		case TYPE_STRUCT:
-		case TYPE_ERRTYPE:
-			return true;
-		default:
-			return false;
+static inline bool type_kind_is_signed(TypeKind kind);
+static inline bool type_kind_is_unsigned(TypeKind kind);
+static inline bool type_kind_is_any_integer(TypeKind kind);
+static inline bool type_kind_is_derived(TypeKind kind);
 
-	}
-}
 
+// ---- static inline function implementations.
 static inline Type *type_reduced_from_expr(Expr *expr)
 {
-	return type_reduced(expr->type);
+	return type_lowering(expr->type);
 }
 
 
@@ -1525,19 +1494,26 @@ static inline bool type_is_integer(Type *type)
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_U64;
 }
 
+
 static inline bool type_is_any_integer(Type *type)
 {
 	assert(type == type->canonical);
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_IXX;
 }
 
-static inline bool type_is_signed_integer(Type *type)
+static inline bool type_is_integer_signed(Type *type)
 {
 	assert(type == type->canonical);
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I64;
 }
 
-static inline bool type_is_unsigned_integer(Type *type)
+static inline bool type_is_integer_kind(Type *type)
+{
+	assert(type == type->canonical);
+	return type->type_kind >= TYPE_BOOL && type->type_kind <= TYPE_U64;
+}
+
+static inline bool type_is_integer_unsigned(Type *type)
 {
 	assert(type == type->canonical);
 	return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64;
@@ -1552,20 +1528,28 @@ static inline bool type_info_poison(TypeInfo *type)
 
 static inline bool type_is_ct(Type *type)
 {
-	while (1)
+	RETRY:
+	switch (type->type_kind)
 	{
-		switch (type->type_kind)
-		{
-			case TYPE_FXX:
-			case TYPE_IXX:
-				return true;
-			case TYPE_TYPEDEF:
-				type = type->canonical;
-				break;
-			default:
-				return false;
-		}
+		case TYPE_FXX:
+		case TYPE_IXX:
+			return true;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		default:
+			return false;
 	}
+}
+
+static inline bool type_is_pointer(Type *type)
+{
+	return type->type_kind == TYPE_POINTER || type->type_kind == TYPE_VARARRAY;
+}
+
+static inline size_t aligned_offset(size_t offset, size_t alignment)
+{
+	return ((offset + alignment - 1) / alignment) * alignment;
 }
 
 static inline bool type_is_float(Type *type)
@@ -1618,11 +1602,6 @@ static inline bool type_is_numeric(Type *type)
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_FXX;
 }
 
-
-#define TYPE_MODULE_UNRESOLVED(_module, _name) ({ Type *__type = type_new(TYPE_USER_DEFINED); \
- __type->name_loc = _name; __type->unresolved.module = _module; __type; })
-#define TYPE_UNRESOLVED(_name) ({ TypeInfo *__type = type_new(TYPE_USER_DEFINED); __type->name_loc = _name; __type; })
-
 UnaryOp unaryop_from_token(TokenType type);
 TokenType unaryop_to_token(UnaryOp type);
 PostUnaryOp post_unaryop_from_token(TokenType type);
@@ -1645,6 +1624,80 @@ static inline void advance_and_verify(Context *context, TokenType token_type)
 {
 	assert(context->tok.type == token_type);
 	advance(context);
+}
+
+
+static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_TYPEID; }
+static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_I64; }
+static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind <= TYPE_U64; }
+static inline bool type_kind_is_any_integer(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_IXX; }
+static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I64; }
+static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64; }
+static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
+static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
+
+static inline bool type_kind_is_derived(TypeKind kind)
+{
+	switch (kind)
+	{
+		case TYPE_ARRAY:
+		case TYPE_POINTER:
+		case TYPE_VARARRAY:
+		case TYPE_SUBARRAY:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static inline bool type_is_structlike(Type *type)
+{
+	assert(type->canonical == type);
+	switch (type->type_kind)
+	{
+		case TYPE_UNION:
+		case TYPE_STRUCT:
+		case TYPE_ERRTYPE:
+			return true;
+		default:
+			return false;
+
+	}
+}
+
+static inline Type *type_lowering(Type *type)
+{
+	Type *canonical = type->canonical;
+	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
+	if (canonical->type_kind == TYPE_TYPEID) return type_usize->canonical;
+	return canonical;
+}
+
+static inline Decl *decl_raw(Decl *decl)
+{
+	if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_ALIAS) return decl;
+	decl = decl->var.alias;
+	assert(decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_ALIAS);
+	return decl;
+}
+
+static inline bool decl_is_struct_type(Decl *decl)
+{
+	DeclKind kind = decl->decl_kind;
+	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_ERR);
+}
+
+static inline DeclKind decl_from_token(TokenType type)
+{
+	if (type == TOKEN_STRUCT) return DECL_STRUCT;
+	if (type == TOKEN_UNION) return DECL_UNION;
+	UNREACHABLE
+}
+
+static inline bool type_is_promotable_integer(Type *type)
+{
+	// If we support other architectures, update this.
+	return type_is_integer_kind(type) && type->builtin.bytesize < type_c_int->builtin.bytesize;
 }
 
 #define TRY_AST_OR(_ast_stmt, _res) ({ Ast* _ast = (_ast_stmt); if (!ast_ok(_ast)) return _res; _ast; })

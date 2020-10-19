@@ -452,6 +452,15 @@ static Expr *parse_ct_ident(Context *context, Expr *left)
 	return expr;
 }
 
+static Expr *parse_hash_ident(Context *context, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_HASH_IDENT, context->tok);
+	expr->ct_ident_expr.identifier = TOKSTR(context->tok);
+	advance(context);
+	return expr;
+}
+
 static Expr *parse_identifier(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -868,6 +877,7 @@ static Expr* parse_expr_block(Context *context, Expr *left)
 		if (!ast_ok(stmt)) return poisoned_expr;
 		vec_add(expr->expr_block.stmts, stmt);
 	}
+	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
@@ -956,6 +966,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CONST_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		[TOKEN_CT_CONST_IDENT] = { parse_ct_ident, NULL, PREC_NONE },
 		[TOKEN_CT_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_HASH_IDENT] = { parse_hash_ident, NULL, PREC_NONE },
 		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier(, NULL, PREC_NONE }
 
 };

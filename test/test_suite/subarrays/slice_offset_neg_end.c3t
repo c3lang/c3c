@@ -6,12 +6,13 @@ func void test()
 
 // #expect: slice_offset_neg_end.ll
 
-  %x = alloca [3 x i32]
-  %y = alloca %"int[]"
-  %0 = load [3 x i32], [3 x i32]* @0
-  store [3 x i32] %0, [3 x i32]* %x
+  %x = alloca [3 x i32], align 4
+  %y = alloca %"int[]", align 8
+  %0 = bitcast [3 x i32]* %x to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %0, i8* align 4 bitcast ([3 x i32]* @0 to i8*), i32 12, i1 false)
   %1 = bitcast [3 x i32]* %x to i32*
   %offset = getelementptr inbounds i32, i32* %1, i64 1
   %2 = insertvalue %"int[]" undef, i32* %offset, 0
   %3 = insertvalue %"int[]" %2, i64 1, 1
-  store %"int[]" %3, %"int[]"* %y
+  store %"int[]" %3, %"int[]"* %y, align 8
+

@@ -8,51 +8,9 @@
 
 
 
-static inline void sema_set_struct_size(Decl *decl)
-{
-	// TODO packed
-	uint64_t size = 0;
-	uint64_t alignment = 0;
-	VECEACH(decl->strukt.members, i)
-	{
-		Decl *member = decl->strukt.members[i];
-		Type *canonical = member->type->canonical;
-		uint64_t member_size = type_size(canonical);
-		uint64_t member_alignment = type_abi_alignment(canonical);
-		assert(member_size > 0);
-		// Add padding.
-		if (member_alignment && (size % member_alignment))
-		{
-			size += member_alignment - size % member_alignment;
-		}
-		// Add size.
-		size += member_size;
-		if (member_alignment > alignment) alignment = member_alignment;
-	}
-	decl->strukt.abi_alignment = alignment;
-	if (alignment && size % alignment)
-	{
-		size += alignment - size % alignment;
-	}
-	decl->strukt.size = size;
-}
 
-static inline void sema_set_union_size(Decl *decl)
-{
-	uint64_t size = 0;
-	uint64_t alignment = 0;
-	VECEACH(decl->strukt.members, i)
-	{
-		Decl *member = decl->strukt.members[i];
-		Type *canonical = member->type->canonical;
-		uint64_t member_size = type_size(canonical);
-		uint64_t member_alignment = type_abi_alignment(canonical);
-		if (member_size > size) size = member_size;
-		if (member_alignment > alignment) alignment = member_alignment;
-	}
-	decl->strukt.abi_alignment = alignment;
-	decl->strukt.size = size;
-}
+static AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDomain domain);
+
 
 static bool sema_analyse_struct_union(Context *context, Decl *decl);
 
@@ -88,8 +46,64 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 
 static bool sema_analyse_struct_union(Context *context, Decl *decl)
 {
+	AttributeDomain domain;
+	switch (decl->decl_kind)
+	{
+		case DECL_STRUCT:
+			domain = ATTR_STRUCT;
+			break;
+		case DECL_UNION:
+			domain = ATTR_UNION;
+			break;
+		case DECL_ERR:
+			domain = ATTR_ERROR;
+			break;
+		default:
+			UNREACHABLE
+	}
+	VECEACH(decl->attributes, i)
+	{
+		Attr *attr = decl->attributes[i];
+
+		AttributeType attribute = sema_analyse_attribute(context, attr, domain);
+		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
+
+		bool had = false;
+#define SET_ATTR(_X) had = decl->func._X; decl->func._X = true; break
+		switch (attribute)
+		{
+			case ATTRIBUTE_CNAME:
+				had = decl->cname != NULL;
+				decl->cname = attr->expr->const_expr.string.chars;
+				break;
+			case ATTRIBUTE_SECTION:
+				had = decl->section != NULL;
+				decl->section = attr->expr->const_expr.string.chars;
+				break;
+			case ATTRIBUTE_ALIGN:
+				had = decl->alignment != 0;
+				decl->alignment = attr->alignment;
+				break;
+			case ATTRIBUTE_PACKED:
+				had = decl->is_packed;
+				decl->is_packed = true;
+				break;
+			default:
+				UNREACHABLE
+		}
+#undef SET_ATTR
+		if (had)
+		{
+			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			return decl_poison(decl);
+		}
+	}
+
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : "anon");
-	assert(decl->decl_kind == DECL_STRUCT || decl->decl_kind == DECL_UNION);
+	size_t offset = 0;
+	// Default alignment is 1.
+	size_t alignment = 1;
+	size_t size = 0;
 	if (decl->name) context_push_scope(context);
 	VECEACH(decl->strukt.members, i)
 	{
@@ -106,9 +120,38 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 				decl_poison(decl);
 				continue;
 			}
-			decl_poison(decl);
+			continue;
+		}
+
+		size_t member_alignment = type_abi_alignment(member->type);
+		size_t member_size = type_size(member->type);
+		if (member_alignment > alignment) alignment = member_alignment;
+		if (decl->decl_kind == DECL_UNION)
+		{
+			if (member_size > size) size = member_size;
+			member->offset = 0;
+		}
+		else
+		{
+			if (!decl->is_packed)
+			{
+				offset = aligned_offset(offset, member_alignment);
+			}
+			member->offset = offset;
+			offset += member_size;
 		}
 	}
+	if (!decl->alignment) decl->alignment = alignment;
+	if (decl->decl_kind != DECL_UNION)
+	{
+		size = offset;
+		if (!decl->is_packed)
+		{
+			size = aligned_offset(size, decl->alignment);
+		}
+	}
+	decl->strukt.size = size;
+	DEBUG_LOG("Struct/union size %d, alignment %d.", (int)size, (int)decl->alignment);
 	if (decl->name) context_pop_scope(context);
 	DEBUG_LOG("Analysis complete.");
 	return decl_ok(decl);
@@ -206,17 +249,6 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 	buffer[buffer_write_offset++] = ')';
 
 	if (!all_ok) return NULL;
-
-	Type *return_type = signature->rtype->type->canonical;
-	signature->return_param = false;
-	if (return_type->type_kind != TYPE_VOID)
-	{
-		// TODO fix this number with ABI compatibility
-		if (signature->failable || type_size(return_type) > 8 * 2)
-		{
-			signature->return_param = true;
-		}
-	}
 
 	TokenType type = TOKEN_INVALID_TOKEN;
 	signature->mangled_signature = symtab_add(buffer, buffer_write_offset, fnv1a(buffer, buffer_write_offset), &type);
@@ -402,7 +434,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
 			[ATTRIBUTE_CNAME] = 0xFF,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
-			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION | ATTR_ERROR,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_VAR | ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC,
@@ -552,8 +584,30 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 	{
 		Decl *param = decl->macro_decl.parameters[i];
 		assert(param->decl_kind == DECL_VAR);
-		assert(param->var.kind == VARDECL_PARAM);
-		if (param->var.type_info && !sema_resolve_type_info(context, param->var.type_info)) return false;
+		switch (param->var.kind)
+		{
+			case VARDECL_PARAM:
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_REF:
+				if (param->var.type_info && !sema_resolve_type_info(context, param->var.type_info)) return false;
+				break;
+			case VARDECL_PARAM_CT_TYPE:
+				if (param->var.type_info)
+				{
+					SEMA_ERROR(param->var.type_info, "A compile time type parameter cannot have a type itself.");
+					return false;
+				}
+				break;
+			case VARDECL_CONST:
+			case VARDECL_GLOBAL:
+			case VARDECL_LOCAL:
+			case VARDECL_MEMBER:
+			case VARDECL_LOCAL_CT:
+			case VARDECL_LOCAL_CT_TYPE:
+			case VARDECL_ALIAS:
+				UNREACHABLE
+		}
 	}
 	return true;
 }
@@ -649,35 +703,13 @@ static inline bool sema_analyse_define(Context *context, Decl *decl)
 
 static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
 {
-	Decl **members = decl->strukt.members;
-	unsigned member_count = vec_size(members);
-	bool success = true;
-	unsigned error_size = 0;
-	context_push_scope(context);
-	for (unsigned i = 0; i < member_count; i++)
-	{
-		Decl *member = members[i];
-		success = sema_analyse_struct_member(context, member);
-		if (!success) continue;
-		unsigned alignment = type_abi_alignment(member->type);
-		unsigned size = type_size(member->type);
-		if (error_size % alignment != 0)
-		{
-			error_size += alignment - (error_size % alignment);
-		}
-		error_size += size;
-	}
-	context_pop_scope(context);
-	if (!success) return false;
-	sema_set_struct_size(decl);
+	if (!sema_analyse_struct_union(context, decl)) return false;
 	if (decl->strukt.size > type_size(type_usize))
 	{
-		SEMA_ERROR(decl, "Error type may not exceed pointer size (%d bytes) it was %d bytes.", type_size(type_usize), error_size);
+		SEMA_ERROR(decl, "Error type may not exceed pointer size (%d bytes) it was %d bytes.", type_size(type_usize), decl->strukt.size);
 		return false;
 	}
-	decl->strukt.abi_alignment = type_abi_alignment(type_voidptr);
-	decl->strukt.size = type_size(type_error);
-	return success;
+	return true;
 }
 
 
@@ -698,13 +730,8 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_STRUCT:
-			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
-			sema_set_struct_size(decl);
-			decl_set_external_name(decl);
-			break;
 		case DECL_UNION:
 			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
-			sema_set_union_size(decl);
 			decl_set_external_name(decl);
 			break;
 		case DECL_FUNC:

@@ -7,23 +7,22 @@
 
 #define EXIT_T_MISMATCH() return sema_type_mismatch(context, left, canonical, cast_type)
 #define IS_EXPLICT()
-#define RETURN_NON_CONST_CAST(kind) do { if (left->expr_kind != EXPR_CONST) { insert_cast(left, kind, canonical); return true; } } while (0)
+#define RETURN_NON_CONST_CAST(kind) do { if (left->expr_kind != EXPR_CONST) { insert_cast(left, kind, type); return true; } } while (0)
 #define REQUIRE_EXPLICIT_CAST(_cast_type)\
   do { if (_cast_type == CAST_TYPE_EXPLICIT) break;\
   if (_cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;\
   EXIT_T_MISMATCH(); } while (0)
 
-static inline void insert_cast(Expr *expr, CastKind kind, Type *canonical)
+static inline void insert_cast(Expr *expr, CastKind kind, Type *type)
 {
 	assert(expr->resolve_status == RESOLVE_DONE);
 	assert(expr->type);
-	assert(canonical->canonical == canonical);
 	Expr *inner = COPY(expr);
 	expr->expr_kind = EXPR_CAST;
 	expr->cast_expr.kind = kind;
 	expr->cast_expr.expr = inner;
 	expr->cast_expr.type_info = NULL;
-	expr->type = canonical;
+	expr->type = type;
 }
 
 static bool sema_type_mismatch(Context *context, Expr *expr, Type *type, CastType cast_type)
@@ -306,6 +305,11 @@ bool fpxi(Context *context, Expr *left, Type *canonical, Type *type, CastType ca
  */
 bool ixxxi(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
 {
+	if (left->expr_kind != EXPR_CONST)
+	{
+		SEMA_ERROR(left, "This expression could not be resolved to a concrete type. Please add more type annotations.");
+		return false;
+	}
 	bool is_signed = canonical->type_kind < TYPE_U8;
 	int bitsize = canonical->builtin.bitsize;
 	if (!is_signed && bigint_cmp_zero(&left->const_expr.i) == CMP_LT)
@@ -578,7 +582,7 @@ bool enfp(Context *context, Expr* left, Type *from, Type *canonical, Type *type,
 	REQUIRE_EXPLICIT_CAST(cast_type);
 	Type *enum_type = from->decl->enums.type_info->type;
 	Type *enum_type_canonical = enum_type->canonical;
-	if (type_is_unsigned_integer(enum_type_canonical))
+	if (type_is_integer_unsigned(enum_type_canonical))
 	{
 		return uifp(context, left, enum_type_canonical, type);
 	}
@@ -742,22 +746,16 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_ERROR;
 		case TYPE_BOOL:
 			UNREACHABLE
-		case TYPE_IXX:
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
-		case TYPE_I64:
-		case TYPE_U8:
-		case TYPE_U16:
-		case TYPE_U32:
-		case TYPE_U64:
+		case ALL_INTS:
 			return CAST_INTBOOL;
-		case TYPE_F32:
-		case TYPE_F64:
-		case TYPE_FXX:
+		case TYPE_COMPLEX:
+			return CAST_CXBOOL;
+		case ALL_FLOATS:
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
 			return CAST_PTRBOOL;
+		case TYPE_VECTOR:
+			return CAST_ERROR;
 	}
 	UNREACHABLE
 }
@@ -787,35 +785,40 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 			break;
 		case TYPE_IXX:
 			// Compile time integers may convert into ints, floats, bools
+			if (expr->expr_kind != EXPR_CONST && !expr->reeval)
+			{
+				expr->resolve_status = RESOLVE_NOT_DONE;
+				expr->reeval = true;
+				return sema_analyse_expr(context, to_type, expr);
+			}
 			if (type_is_integer(canonical)) return ixxxi(context, expr, canonical, to_type, cast_type);
 			if (type_is_float(canonical)) return ixxfp(context, expr, canonical, to_type, cast_type);
 			if (canonical == type_bool) return ixxbo(context, expr, to_type);
 			if (canonical->type_kind == TYPE_POINTER) return xipt(context, expr, from_type, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_ENUM) return ixxen(context, expr, canonical, to_type, cast_type);
 			break;
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
-		case TYPE_I64:
-			if (type_is_unsigned_integer(canonical)) return siui(context, expr, canonical, to_type, cast_type);
-			if (type_is_signed_integer(canonical)) return sisi(context, expr, from_type, canonical, to_type, cast_type);
+		case ALL_SIGNED_INTS:
+			if (type_is_integer_unsigned(canonical)) return siui(context, expr, canonical, to_type, cast_type);
+			if (type_is_integer_signed(canonical)) return sisi(context, expr, from_type, canonical, to_type, cast_type);
 			if (type_is_float(canonical)) return sifp(context, expr, canonical, to_type);
 			if (canonical == type_bool) return xibo(context, expr, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_POINTER) return xipt(context, expr, from_type, canonical, to_type, cast_type);
 			break;
-		case TYPE_U8:
-		case TYPE_U16:
-		case TYPE_U32:
-		case TYPE_U64:
-			if (type_is_unsigned_integer(canonical)) return uiui(context, expr, from_type, canonical, to_type, cast_type);
-			if (type_is_signed_integer(canonical)) return uisi(context, expr, from_type, canonical, to_type, cast_type);
+		case ALL_UNSIGNED_INTS:
+			if (type_is_integer_unsigned(canonical)) return uiui(context, expr, from_type, canonical, to_type, cast_type);
+			if (type_is_integer_signed(canonical)) return uisi(context, expr, from_type, canonical, to_type, cast_type);
 			if (type_is_float(canonical)) return uifp(context, expr, canonical, to_type);
 			if (canonical == type_bool) return xibo(context, expr, canonical, to_type, cast_type);
 			if (canonical->type_kind == TYPE_POINTER) return xipt(context, expr, from_type, canonical, to_type, cast_type);
 			break;
-		case TYPE_F32:
-		case TYPE_F64:
-		case TYPE_FXX:
+		case ALL_FLOATS:
+			// Compile time integers may convert into ints, floats, bools
+			if (from_type->type_kind == TYPE_FXX && expr->expr_kind != EXPR_CONST && !expr->reeval)
+			{
+				expr->resolve_status = RESOLVE_NOT_DONE;
+				expr->reeval = true;
+				return sema_analyse_expr(context, to_type, expr);
+			}
 			if (type_is_integer(canonical)) return fpxi(context, expr, canonical, to_type, cast_type);
 			if (canonical == type_bool) return fpbo(context, expr, canonical, to_type, cast_type);
 			if (type_is_float(canonical)) return fpfp(context, expr, from_type, canonical, to_type, cast_type);
@@ -863,6 +866,10 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 		case TYPE_SUBARRAY:
 			if (canonical->type_kind == TYPE_POINTER) return sapt(context, expr, from_type, canonical, to_type, cast_type);
 			break;
+		case TYPE_VECTOR:
+			TODO
+		case TYPE_COMPLEX:
+			TODO
 	}
 	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
 	return sema_type_mismatch(context, expr, canonical, cast_type);

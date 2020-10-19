@@ -17,8 +17,8 @@ func int testReturnSwitch()
 // #expect: return_switch.ll
 
 switch.entry:
-  %2 = load i32, i32* %0
-  switch i32 %2, label %switch.default [
+  %1 = load i32, i32* %switch
+  switch i32 %1, label %switch.default [
     i32 0, label %switch.case
     i32 3, label %switch.case
     i32 1, label %switch.case

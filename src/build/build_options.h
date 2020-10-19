@@ -103,6 +103,15 @@ typedef struct
 	const char* path;
 	const char* cpu;
 	const char* target_triple;
+	struct
+	{
+		bool reg_struct_return : 1;
+		bool stack_struct_return : 1;
+		bool no_memcpy_pass : 1;
+		bool soft_float : 1;
+		bool no_soft_float : 1;
+	} feature;
+	unsigned version;
 	CompilerCommand command;
 	uint32_t symtab_size;
 	CompileOption compile_option;

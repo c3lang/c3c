@@ -1,0 +1,955 @@
+// Copyright (c) 2020 Christoffer Lerno. All rights reserved.
+// Use of this source code is governed by a LGPLv3.0
+// a copy of which can be found in the LICENSE file.
+
+#include "llvm_codegen_c_abi_internal.h"
+
+typedef enum
+{
+	UNNAMED,
+	NAMED
+} NamedArgument;
+
+typedef struct
+{
+	unsigned sse_registers;
+	unsigned int_registers;
+} Registers;
+
+bool try_use_registers(Registers *available, Registers *used)
+{
+	if (available->sse_registers < used->sse_registers) return false;
+	if (available->int_registers < used->int_registers) return false;
+	available->int_registers -= used->int_registers;
+	available->sse_registers -= used->sse_registers;
+	return true;
+}
+
+typedef enum
+{
+	// No not change ordering.
+	CLASS_NO_CLASS,
+	CLASS_MEMORY,
+	CLASS_INTEGER,
+	CLASS_SSE,
+	CLASS_SSEUP,
+} X64Class;
+
+static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named);
+static bool x64_type_is_structure(Type *type);
+
+ABIArgInfo *x64_indirect_return_result(Type *type)
+{
+	if (type_is_abi_aggregate(type))
+	{
+		return abi_arg_new(ABI_ARG_INDIRECT);
+	}
+	type = type_lowering(type);
+	if (type_is_promotable_integer(type))
+	{
+		return abi_arg_new_direct_int_ext(type);
+	}
+	return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+}
+static size_t x64_native_vector_size_for_avx(void)
+{
+	switch (build_target.x64.avx_level)
+	{
+		case AVX_NONE:
+			return 16;
+		case AVX:
+			return 32;
+		case AVX_512:
+			return 64;
+	}
+	UNREACHABLE
+}
+
+
+static bool x64_type_is_illegal_vector(Type *type)
+{
+	// Only check vectors.
+	if (type->type_kind != TYPE_VECTOR) return false;
+	unsigned size = type_size(type);
+	// Less than 64 bits or larger than the avx native size => not allowed.
+	if (size <= 8 || size > x64_native_vector_size_for_avx()) return true;
+	// If we pass i128 in mem, then check for that.
+	if (build_target.x64.pass_int128_vector_in_mem)
+	{
+		// Illegal if i128/u128
+		TypeKind kind = type->vector.base->type_kind;
+		return kind == TYPE_I128 || kind == TYPE_U128;
+	}
+	// Otherwise fine!
+	return true;
+}
+
+ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
+{
+	// If this is a scalar LLVM value then assume LLVM will pass it in the right
+	// place naturally.
+	//
+	// This assumption is optimistic, as there could be free registers available
+	// when we need to pass this argument in memory, and LLVM could try to pass
+	// the argument in the free register. This does not seem to happen currently,
+	// but this code would be much safer if we could mark the argument with
+	// 'onstack'. See PR12193.
+	type = type_lowering(type);
+	if (!type_is_abi_aggregate(type) && !x64_type_is_illegal_vector(type))
+	{
+		if (type_is_promotable_integer(type))
+		{
+			return abi_arg_new_direct_int_ext(type);
+		}
+		// No change, just put it on the stack.
+		return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	}
+
+	// The byval alignment
+	unsigned align = type_abi_alignment(type);
+
+	// Pass as arguments if there are no more free int regs
+	// (if 'onstack' appears, change this code)
+	if (!free_int_regs)
+	{
+		unsigned size = type_size(type);
+		if (align == 8 && size <= 8)
+		{
+			return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
+		}
+	}
+	if (align < 8)
+	{
+		return abi_arg_new_indirect_realigned(8);
+	}
+	return abi_arg_new(ABI_ARG_INDIRECT);
+}
+
+
+ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *needed_registers)
+{
+	if (type->type_kind == TYPE_ERR_UNION || type->type_kind == TYPE_STRING || type->type_kind == TYPE_SUBARRAY)
+	{
+		needed_registers->int_registers += 2;
+		return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	}
+
+	// Union, struct, err type handled =>
+	assert(type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION || type->type_kind == TYPE_ERRTYPE);
+
+	Decl **members = type->decl->strukt.members;
+	VECEACH(members, i)
+	{
+		Type *member_type = type_lowering(members[i]->type->canonical);
+		ABIArgInfo *member_info;
+		Registers temp_needed_registers = {};
+		if (x64_type_is_structure(member_type))
+		{
+			member_info = x64_classify_reg_call_struct_type_check(member_type, &temp_needed_registers);
+		}
+		else
+		{
+			member_info = x64_classify_argument_type(member_type, (unsigned)-1, &temp_needed_registers, NAMED);
+		}
+		if (abi_arg_is_indirect(member_info))
+		{
+			*needed_registers = (Registers) {};
+			return x64_indirect_return_result(type);
+		}
+		needed_registers->sse_registers += temp_needed_registers.sse_registers;
+		needed_registers->int_registers += temp_needed_registers.int_registers;
+	}
+	// Check this!
+	return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+}
+
+ABIArgInfo *x64_classify_reg_call_struct_type(Type *return_type, Registers *available_registers)
+{
+	Registers needed_registers = {};
+	ABIArgInfo *info = x64_classify_reg_call_struct_type_check(return_type, &needed_registers);
+	if (!try_use_registers(available_registers, &needed_registers))
+	{
+		return x64_indirect_return_result(return_type);
+	}
+	return info;
+}
+
+static void x64_classify(Type *type, size_t offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named);
+
+static X64Class x64_merge(X64Class accum, X64Class field)
+{
+	// 1. Same => result
+	// 2. no class + something => something
+	// 3. mem + something => mem
+	// 4. int + something => int
+	// 6. SSE
+
+	// Accum should never be memory (we should have returned) or
+	assert(accum != CLASS_MEMORY);
+	if (accum == field) return accum;
+
+	// Swap
+	if (accum > field)
+	{
+		X64Class temp = field;
+		field = accum;
+		accum = temp;
+	}
+	switch (accum)
+	{
+		case CLASS_NO_CLASS:
+			return field;
+		case CLASS_MEMORY:
+			return CLASS_MEMORY;
+		case CLASS_INTEGER:
+			// Other can only be non MEM and non NO_CLASS
+			return CLASS_INTEGER;
+		case CLASS_SSEUP:
+		case CLASS_SSE:
+			// Other can only be SSE type
+			return CLASS_SSE;
+	}
+	UNREACHABLE
+}
+void x64_classify_post_merge(size_t size, X64Class *lo_class, X64Class *hi_class)
+{
+	// If one is MEM => both is mem
+	// If X87UP is not before X87 => mem
+	// If size > 16 && first isn't SSE or any other is not SSEUP => mem
+	// If SSEUP is not preceeded by SSE/SSEUP => convert to SSE.
+	if (*hi_class == CLASS_MEMORY) goto DEFAULT_TO_MEMORY;
+	if (size > 16 && (*lo_class != CLASS_SSE || *hi_class != CLASS_SSEUP)) goto DEFAULT_TO_MEMORY;
+	if (*hi_class == CLASS_SSEUP && *lo_class != CLASS_SSE && *lo_class != CLASS_SSEUP)
+	{
+		// TODO check this
+		*hi_class = CLASS_SSE;
+	}
+	return;
+
+	DEFAULT_TO_MEMORY:
+	*lo_class = CLASS_MEMORY;
+}
+
+void x64_classify_struct_union(Type *type, size_t offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class, NamedArgument named_arg)
+{
+	size_t size = type_size(type);
+	// 64 byte max.
+	if (size > 64) return;
+
+	// Re-classify
+	*current = CLASS_NO_CLASS;
+	bool is_union = type->type_kind == TYPE_UNION;
+
+	Decl **members = type->decl->strukt.members;
+	VECEACH(members, i)
+	{
+		Decl *member = members[i];
+		size_t offset = offset_base + member->offset;
+		// The only case a 256-bit or a 512-bit wide vector could be used is when
+		// the struct contains a single 256-bit or 512-bit element. Early check
+		// and fallback to memory.
+		if (size > 16 &&
+			((!is_union && size != type_size(member->type))
+			|| size > x64_native_vector_size_for_avx()))
+		{
+			*lo_class = CLASS_MEMORY;
+			x64_classify_post_merge(size, lo_class, hi_class);
+			return;
+		}
+		// Not aligned?
+		if (offset % type_abi_alignment(member->type))
+		{
+			*lo_class = CLASS_MEMORY;
+			x64_classify_post_merge(size, lo_class, hi_class);
+			return;
+		}
+
+		X64Class field_lo;
+		X64Class field_hi;
+		x64_classify(member->type, offset, &field_lo, &field_hi, named_arg);
+		*lo_class = x64_merge(*lo_class, field_lo);
+		*hi_class = x64_merge(*hi_class, field_hi);
+		if (*lo_class == CLASS_MEMORY || *hi_class == CLASS_MEMORY) break;
+	}
+
+	x64_classify_post_merge(size, lo_class, hi_class);
+}
+
+void x64_classify_array(Type *type, size_t offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class, NamedArgument named_arg)
+{
+	size_t size = type_size(type);
+	Type *element = type->array.base;
+	size_t element_size = type_size(element);
+	// Bigger than 64 bytes => MEM
+	if (size > 64) return;
+
+	if (offset_base % type_abi_alignment(element))
+	{
+		*lo_class = CLASS_MEMORY;
+		x64_classify_post_merge(size, lo_class, hi_class);
+		return;
+	}
+
+	// Re-classify
+	*current = CLASS_NO_CLASS;
+	// The only case a 256-bit or a 512-bit wide vector could be used is when
+	// the struct contains a single 256-bit or 512-bit element. Early check
+	// and fallback to memory.
+	if (size > 16 && (size != type_size(element) || size > x64_native_vector_size_for_avx()))
+	{
+		*lo_class = CLASS_MEMORY;
+		return;
+	}
+
+	size_t offset = offset_base;
+	for (size_t i = 0; i < type->array.len; i++)
+	{
+		X64Class field_lo;
+		X64Class field_hi;
+		x64_classify(element, offset, &field_lo, &field_hi, named_arg);
+		offset_base += element_size;
+		*lo_class = x64_merge(*lo_class, field_lo);
+		*hi_class = x64_merge(*hi_class, field_hi);
+		if (*lo_class == CLASS_MEMORY || *hi_class == CLASS_MEMORY) break;
+	}
+	x64_classify_post_merge(size, lo_class, hi_class);
+	assert(*hi_class != CLASS_SSEUP || *lo_class == CLASS_SSE);
+}
+
+void x64_classify_vector(Type *type, size_t offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class,
+                         NamedArgument named_arg)
+{
+	unsigned size = type_size(type);
+	// Pass as int
+	if (size == 1 || size == 2 || size == 4)
+	{
+		*current = CLASS_INTEGER;
+		// Check boundary crossing
+		size_t lo = offset_base / 8;
+		size_t hi = (offset_base + size - 1) / 8;
+
+		// If it crosses boundary, split it.
+		if (hi != lo)
+		{
+			*hi_class = *lo_class;
+		}
+		return;
+	}
+	if (size == 8)
+	{
+		Type *element = type->vector.base;
+
+		// 1 x double passed in memory (by gcc)
+		if (element->type_kind == TYPE_F64) return;
+
+		// 1 x long long is passed different on older clang and
+		// gcc, we pick SSE which is the GCC and later Clang standard.
+		*current = CLASS_SSE;
+		// Split if crossing boundary.
+		if (offset_base && offset_base != 8)
+		{
+			*hi_class = *lo_class;
+		}
+		return;
+	}
+	if (size == 16 || named_arg || size <= x64_native_vector_size_for_avx())
+	{
+		if (build_target.x64.pass_int128_vector_in_mem) return;
+
+		*lo_class = CLASS_SSE;
+		*hi_class = CLASS_SSEUP;
+	}
+	// Default pass by mem
+}
+
+void x64_classify_complex(Type *type, size_t offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class)
+{
+	Type *element = type->complex;
+	size_t element_size = type_size(element);
+	switch (type->type_kind)
+	{
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+			*current = CLASS_INTEGER;
+			break;
+		case TYPE_I128:
+		case TYPE_U128:
+			*lo_class = *hi_class = CLASS_INTEGER;
+			break;
+		case TYPE_F16:
+			TODO
+		case TYPE_F32:
+			*current = CLASS_SSE;
+			break;
+		case TYPE_F64:
+			*lo_class = *hi_class = CLASS_SSE;
+			break;
+		case TYPE_F128:
+			*current = CLASS_MEMORY;
+			break;
+		default:
+			UNREACHABLE
+	}
+	size_t real = offset_base / 8;
+	size_t imag = (offset_base + element_size) / 8;
+	// If it crosses boundary, split it.
+	if (*hi_class == CLASS_NO_CLASS && real != imag)
+	{
+		*hi_class = *lo_class;
+	}
+}
+
+Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
+{
+	if (type_size(decl->type) <= offset) return NULL;
+	Decl **members = decl->strukt.members;
+	Decl *last_match = NULL;
+	VECEACH(members, i)
+	{
+		if (members[i]->offset > offset) break;
+		last_match = members[i];
+	}
+	assert(last_match);
+	return last_match;
+}
+
+static void x64_classify(Type *type, size_t offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named)
+{
+	*lo_class = CLASS_NO_CLASS;
+	*hi_class = CLASS_NO_CLASS;
+	X64Class *current = offset_base < 8 ? lo_class : hi_class;
+	*current = CLASS_MEMORY;
+	type = type_lowering(type);
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_ENUM:
+		case TYPE_TYPEDEF:
+		case TYPE_FXX:
+		case TYPE_IXX:
+		case TYPE_TYPEID:
+		case TYPE_FUNC:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			UNREACHABLE
+		case TYPE_VOID:
+			*current = CLASS_NO_CLASS;
+			break;
+		case TYPE_I128:
+		case TYPE_U128:
+		case TYPE_ERR_UNION:
+		case TYPE_SUBARRAY:
+			*lo_class = CLASS_INTEGER;
+			*hi_class = CLASS_INTEGER;
+			break;
+		case TYPE_BOOL:
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+			*current = CLASS_INTEGER;
+			break;
+		case TYPE_F16:
+			TODO
+		case TYPE_F32:
+		case TYPE_F64:
+			*current = CLASS_SSE;
+			break;
+		case TYPE_F128:
+			*lo_class = CLASS_SSE;
+			*hi_class = CLASS_SSEUP;
+			break;
+		case TYPE_VARARRAY:
+		case TYPE_POINTER:
+			*current = CLASS_INTEGER;
+			break;
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_ERRTYPE:
+			x64_classify_struct_union(type, offset_base, current, lo_class, hi_class, named);
+			break;
+		case TYPE_STRING:
+			TODO
+		case TYPE_ARRAY:
+			x64_classify_array(type, offset_base, current, lo_class, hi_class, named);
+			break;
+		case TYPE_VECTOR:
+			x64_classify_vector(type, offset_base, current, lo_class, hi_class, named);
+			break;
+		case TYPE_COMPLEX:
+			x64_classify_complex(type, offset_base, current, lo_class, hi_class);
+			break;
+	}
+}
+
+bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
+{
+	// If the bytes being queried are off the end of the type, there is no user
+	// data hiding here.  This handles analysis of builtins, vectors and other
+	// types that don't contain interesting padding.
+	size_t size = type_size(type);
+	if (size <= start) return true;
+	if (type->type_kind == TYPE_ARRAY)
+	{
+		// Check each element to see if the element overlaps with the queried range.
+		size_t element_size = type_size(type->array.base);
+		for (unsigned i = 0; i < type->array.len; i++)
+		{
+			// If the element is after the span we care about, then we're done..
+			size_t offset = i * element_size;
+			if (offset >= end) break;
+			unsigned element_start = offset < start ? start - offset : 0;
+			if (!x64_bits_contain_no_user_data(type->array.base, element_start, end - offset)) return false;
+		}
+		// No overlap
+		return true;
+	}
+	if (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_ERRTYPE || type->type_kind == TYPE_UNION)
+	{
+		Decl **members = type->decl->strukt.members;
+		VECEACH(members, i)
+		{
+			Decl *member = members[i];
+			unsigned offset = member->offset;
+			if (offset > end) break;
+			unsigned field_start = offset < start ? start - offset : 0;
+			if (!x64_bits_contain_no_user_data(member->type, field_start, end - offset)) return false;
+		}
+		// No overlap
+		return true;
+	}
+	return false;
+}
+
+bool x64_contains_float_at_offset(Type *type, unsigned offset)
+{
+	if (offset == 0 && type->type_kind == TYPE_F32) return true;
+
+	// If this is a struct, recurse into the field at the specified offset.
+	if (type->type_kind == TYPE_ERRTYPE || type->type_kind == TYPE_STRUCT)
+	{
+		Decl *member = x64_get_member_at_offset(type->decl, offset);
+		offset -= member->offset;
+		return x64_contains_float_at_offset(member->type, offset);
+	}
+	if (type->type_kind == TYPE_ARRAY)
+	{
+		Type *element_type = type->array.base;
+		unsigned element_size = type_size(element_type);
+		offset -= (offset / element_size) * element_size;
+		return x64_contains_float_at_offset(element_type, offset);
+	}
+	return false;
+}
+
+AbiType *x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *source_type, unsigned source_offset)
+{
+	// The only three choices we have are either double, <2 x float>, or float. We
+	// pass as float if the last 4 bytes is just padding.  This happens for
+	// structs that contain 3 floats.
+	if (x64_bits_contain_no_user_data(source_type, source_offset + 4, source_offset + 8)) return abi_type_new_plain(type_float);
+
+	// We want to pass as <2 x float> if the LLVM IR type contains a float at
+	// offset+0 and offset+4.  Walk the LLVM IR type to find out if this is the
+	// case.
+	if (x64_contains_float_at_offset(type, ir_offset) &&
+	    x64_contains_float_at_offset(type, ir_offset + 4))
+	{
+		return abi_type_new_plain(type_get_vector(type_float, 2));
+	}
+	return abi_type_new_plain(type_double);
+}
+
+
+AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_type, unsigned source_offset)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_U64:
+		case TYPE_I64:
+		case TYPE_VARARRAY:
+		case TYPE_POINTER:
+			if (!offset) return abi_type_new_plain(type);
+			break;
+		case TYPE_BOOL:
+		case TYPE_U8:
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_I32:
+			if (!offset) break;
+			if (x64_bits_contain_no_user_data(source_type,
+			                                  source_offset + type_size(type),
+			                                  source_offset + 8))
+			{
+				return abi_type_new_plain(type);
+			}
+			break;
+		case TYPE_STRUCT:
+		case TYPE_ERRTYPE:
+		{
+			Decl *member = x64_get_member_at_offset(type->decl, offset);
+			if (member)
+			{
+				return x64_get_int_type_at_offset(member->type, offset - member->offset, source_type, source_offset);
+			}
+			break;
+		}
+		case TYPE_ERR_UNION:
+			if (offset < 16) return abi_type_new_plain(type_usize);
+			break;
+		case TYPE_SUBARRAY:
+		case TYPE_STRING:
+			if (offset < 8) return abi_type_new_plain(type_usize);
+			if (offset < 16) return abi_type_new_plain(type_voidptr);
+			break;
+		case TYPE_ARRAY:
+		{
+			Type *element = type->array.base;
+			size_t element_size = type_size(element);
+			size_t element_offset = (offset / element_size) * element_size;
+			return x64_get_int_type_at_offset(element, offset - element_offset, source_type, source_offset);
+		}
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_FXX:
+		case TYPE_IXX:
+		case TYPE_TYPEID:
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+		case TYPE_TYPEDEF:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			UNREACHABLE
+		case TYPE_I128:
+		case TYPE_U128:
+		case TYPE_F16:
+		case TYPE_F32:
+		case TYPE_F64:
+		case TYPE_F128:
+		case TYPE_UNION:
+		case TYPE_VECTOR:
+		case TYPE_COMPLEX:
+			break;
+	}
+	size_t size = type_size(source_type);
+	assert(size != source_offset);
+	if (size - source_offset > 8) return abi_type_new_plain(type_ulong);
+	return abi_type_new_int_bits((size - source_offset) * 8);
+}
+
+
+/**
+ * This is only called on SSE.
+ */
+static AbiType *x64_get_byte_vector_type(Type *type)
+{
+	// Wrapper structs/arrays that only contain vectors are passed just like
+	// vectors; strip them off if present.
+	Type *inner_type = type_find_single_struct_element(type);
+	if (inner_type) type = inner_type;
+	type = type_lowering(type);
+
+	// If vector
+	if (type->type_kind == TYPE_VECTOR)
+	{
+		Type *element = type->vector.base->canonical;
+		if (build_target.x64.pass_int128_vector_in_mem && type_is_int128(element))
+		{
+			// Convert to u64
+			return abi_type_new_plain(type_get_vector(type_ulong, type_size(type) / 8));
+		}
+		return abi_type_new_plain(type);
+	}
+
+	if (type->type_kind == TYPE_F128) return abi_type_new_plain(type);
+
+	unsigned size = type_size(type);
+
+	assert(size == 16 || size == 32 || size == 64);
+
+	// Return a vector type based on the size.
+	return abi_type_new_plain(type_get_vector(type_double, size / 8));
+}
+
+static ABIArgInfo *x64_get_argument_pair_return(AbiType *low_type, AbiType *high_type)
+{
+	unsigned low_size = abi_type_size(low_type);
+	unsigned hi_start = aligned_offset(low_size, abi_type_abi_alignment(high_type));
+	assert(hi_start == 8 && "Expected aligned with C-style structs.");
+	return abi_arg_new_direct_pair(low_type, high_type);
+}
+
+
+ABIArgInfo *x64_classify_return(Type *return_type)
+{
+	// AMD64-ABI 3.2.3p4: Rule 1. Classify the return type with the
+	// classification algorithm.
+	X64Class hi_class;
+	X64Class lo_class;
+	x64_classify(return_type, 0, &lo_class, &hi_class, NAMED);
+
+	// Invariants
+	assert(hi_class != CLASS_MEMORY || lo_class == CLASS_MEMORY);
+	assert(hi_class != CLASS_SSEUP || lo_class == CLASS_SSE);
+
+	AbiType *result_type = NULL;
+	switch (lo_class)
+	{
+		case CLASS_NO_CLASS:
+			if (hi_class == CLASS_NO_CLASS)
+			{
+				return abi_arg_new(ABI_ARG_IGNORE);
+			}
+			// If low part is padding, keep type null
+			assert(hi_class == CLASS_SSE || hi_class == CLASS_INTEGER);
+			break;
+		case CLASS_SSEUP:
+			UNREACHABLE
+		case CLASS_MEMORY:
+			// AMD64-ABI 3.2.3p4: Rule 2. Types of class memory are returned via
+			// hidden argument.
+			return x64_indirect_return_result(return_type);
+		case CLASS_INTEGER:
+			// AMD64-ABI 3.2.3p4: Rule 3. If the class is INTEGER, the next
+			// available register of the sequence %rax, %rdx is used.
+			result_type = x64_get_int_type_at_offset(return_type, 0, return_type, 0);
+			if (hi_class == CLASS_NO_CLASS && abi_type_is_integer(result_type))
+			{
+				if (type_is_promotable_integer(return_type))
+				{
+					return abi_arg_new_direct_int_ext(return_type);
+				}
+			}
+			break;
+		case CLASS_SSE:
+			result_type = x64_get_sse_type_at_offset(return_type, 0, return_type, 0);
+			break;
+	}
+
+	AbiType *high_part = NULL;
+	switch (hi_class)
+	{
+		case CLASS_MEMORY:
+		case CLASS_NO_CLASS:
+			// Previously handled.
+			break;
+		case CLASS_INTEGER:
+			assert(lo_class != CLASS_NO_CLASS);
+			high_part = x64_get_int_type_at_offset(return_type, 8, return_type, 8);
+			break;
+		case CLASS_SSE:
+			assert(lo_class != CLASS_NO_CLASS);
+			high_part = x64_get_sse_type_at_offset(return_type, 8, return_type, 8);
+			break;
+		case CLASS_SSEUP:
+			// AMD64-ABI 3.2.3p4: Rule 5. If the class is SSEUP, the eightbyte
+			// is passed in the next available eightbyte chunk if the last used
+			// vector register.
+			//
+			// SSEUP should always be preceded by SSE, just widen.
+			assert(lo_class == CLASS_SSE && "Unexpected SSEUp classification.");
+			result_type = x64_get_byte_vector_type(return_type);
+			break;
+	}
+
+	// If a high part was specified, merge it together with the low part.  It is
+	// known to pass in the high eightbyte of the result.  We do this by forming a
+	// first class struct aggregate with the high and low part: {low, high}
+	if (high_part) return x64_get_argument_pair_return(result_type, high_part);
+
+	if (result_type->kind == ABI_TYPE_PLAIN &&
+		return_type->canonical == result_type->type->canonical)
+	{
+		return abi_arg_new_direct();
+	}
+	return abi_arg_new_direct_coerce(result_type);
+}
+
+
+static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named)
+{
+	X64Class hi_class;
+	X64Class lo_class;
+	x64_classify(type, 0, &lo_class, &hi_class, NAMED);
+
+	// Invariants
+	assert(hi_class != CLASS_MEMORY || lo_class == CLASS_MEMORY);
+	assert(hi_class != CLASS_SSEUP || lo_class == CLASS_SSE);
+
+	AbiType *result_type = NULL;
+	*needed_registers = (Registers) { 0, 0 };
+
+	switch (lo_class)
+	{
+		case CLASS_NO_CLASS:
+			// Only C++ would leave 8 bytes of padding, so we can ignore that case.
+			assert(hi_class == CLASS_NO_CLASS);
+			return abi_arg_new(ABI_ARG_IGNORE);
+		case CLASS_SSEUP:
+			UNREACHABLE
+		case CLASS_MEMORY:
+			return x64_indirect_result(type, free_int_regs);
+		case CLASS_INTEGER:
+			needed_registers->int_registers++;
+			result_type = x64_get_int_type_at_offset(type, 0, type, 0);
+			if (hi_class == CLASS_NO_CLASS && abi_type_is_integer(result_type))
+			{
+				if (type_is_promotable_integer(type))
+				{
+					return abi_arg_new_direct_int_ext(type);
+				}
+			}
+			break;
+		case CLASS_SSE:
+			result_type = x64_get_sse_type_at_offset(type, 0, type, 0);
+			needed_registers->sse_registers++;
+			break;
+	}
+
+	AbiType *high_part = NULL;
+	switch (hi_class)
+	{
+		case CLASS_MEMORY:
+			UNREACHABLE
+		case CLASS_NO_CLASS:
+			break;
+		case CLASS_INTEGER:
+			needed_registers->int_registers++;
+			high_part = x64_get_int_type_at_offset(type, 8, type, 8);
+			// Return directly into high part.
+			assert(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed");
+			break;
+		case CLASS_SSE:
+			needed_registers->sse_registers++;
+			high_part = x64_get_sse_type_at_offset(type, 8, type, 8);
+			assert(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed");
+			break;
+		case CLASS_SSEUP:
+			assert(lo_class == CLASS_SSE && "Unexpected SSEUp classification.");
+			result_type = x64_get_byte_vector_type(type);
+			break;
+	}
+
+	// If a high part was specified, merge it together with the low part.  It is
+	// known to pass in the high eightbyte of the result.  We do this by forming a
+	// first class struct aggregate with the high and low part: {low, high}
+	if (high_part) return x64_get_argument_pair_return(result_type, high_part);
+
+	if (result_type->kind == ABI_TYPE_PLAIN)
+	{
+		Type *result = result_type->type->canonical;
+		type = type->canonical;
+		if (type == result) return abi_arg_new_direct();
+		if (type_is_integer(type) && type_is_integer(result) && type->builtin.bytesize == result->builtin.bytesize)
+		{
+			return abi_arg_new_direct();
+		}
+		if (type_is_integer(type->canonical) && type_is_integer(result_type->type)
+			&& result_type->type->canonical == type->canonical)
+		{
+			return abi_arg_new_direct();
+		}
+	}
+	return abi_arg_new_direct_coerce(result_type);
+}
+
+bool x64_type_is_structure(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_STRUCT:
+		case TYPE_ERRTYPE:
+		case TYPE_ERR_UNION:
+		case TYPE_STRING:
+		case TYPE_SUBARRAY:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static ABIArgInfo *x64_classify_return_type(Type *ret_type, Registers *registers, bool is_regcall)
+{
+	ret_type = type_lowering(ret_type);
+	if (is_regcall && x64_type_is_structure(ret_type))
+	{
+		return x64_classify_reg_call_struct_type(ret_type, registers);
+	}
+	return x64_classify_return(ret_type);
+}
+
+static ABIArgInfo *x64_classify_parameter(Type *type, Registers *available_registers, bool is_regcall)
+{
+	// TODO check "NAMED"
+	NamedArgument arg = NAMED;
+	Registers needed_registers = {};
+	type = type_lowering(type);
+	ABIArgInfo *info;
+	// If this is a reg call, use the struct type check.
+	if (is_regcall && (type_is_structlike(type) || type->type_kind == TYPE_UNION))
+	{
+		info = x64_classify_reg_call_struct_type_check(type, &needed_registers);
+	}
+	else
+	{
+		info = x64_classify_argument_type(type, available_registers->int_registers, &needed_registers, arg);
+	}
+	if (!try_use_registers(available_registers, &needed_registers))
+	{
+		// use a register?
+		info = x64_indirect_result(type, available_registers->int_registers);
+	}
+	return info;
+}
+
+void c_abi_func_create_x64(GenContext *context, FunctionSignature *signature)
+{
+	// TODO 32 bit pointers
+	// TODO allow override to get win64
+	bool is_regcall = signature->convention == CALL_CONVENTION_REGCALL;
+	context->abi.call_convention = signature->convention;
+
+	Registers available_registers = {
+			.int_registers = is_regcall ? 11 : 16,
+			.sse_registers = is_regcall ? 16 : 8
+	};
+
+	if (signature->failable)
+	{
+		signature->failable_abi_info = x64_classify_return_type(type_error, &available_registers, is_regcall);
+		if (abi_arg_is_indirect(signature->failable_abi_info))
+		{
+			available_registers.int_registers--;
+		}
+		if (signature->rtype->type->type_kind != TYPE_VOID)
+		{
+			signature->ret_abi_info = x64_classify_parameter(type_get_ptr(type_lowering(signature->rtype->type)), &available_registers, is_regcall);
+		}
+	}
+	else
+	{
+		signature->ret_abi_info = x64_classify_return_type(signature->rtype->type, &available_registers, is_regcall);
+		if (abi_arg_is_indirect(signature->ret_abi_info))
+		{
+			available_registers.int_registers--;
+		}
+	}
+
+	Decl **params = signature->params;
+	VECEACH(params, i)
+	{
+		params[i]->var.abi_info = x64_classify_parameter(params[i]->type, &available_registers, is_regcall);
+	}
+}
