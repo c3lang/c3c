@@ -419,7 +419,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 		return LLVMDIBuilderCreateTypedef(c->debug.builder,
 		                                  llvm_get_debug_type(c, type->canonical),
 		                                  type->name, strlen(type->name),
-		                                  NULL, 0, NULL);
+		                                  NULL, 0, NULL, 0);
 	}
 
 	SourceLocation *location = TOKLOC(decl->span.loc);
@@ -432,7 +432,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 	                                                  llvm_get_debug_type(c, decl->typedef_decl.type_info->type),
 	                                                  decl->name, TOKLEN(decl->name_token),
 	                                                  c->debug.file, location->line,
-	                                                  c->debug.file);
+	                                                  c->debug.file, type_abi_alignment(type));
 	if (type->backend_debug_type)
 	{
 		LLVMMetadataReplaceAllUsesWith(type->backend_debug_type, real);

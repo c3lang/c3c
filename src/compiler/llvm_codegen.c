@@ -276,7 +276,7 @@ void gencontext_emit_introspection_type(GenContext *context, Decl *decl)
 	LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_get_type(context, type_byte), decl->name ? decl->name : "anon");
 	LLVMSetGlobalConstant(global_name, 1);
 	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(context, type_byte), 1, false));
-	decl->type->backend_typeid = LLVMBuildPtrToInt(context->builder, global_name, llvm_get_type(context, type_typeid), "");
+	decl->type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(context, type_typeid));
 
 	switch (decl->visibility)
 	{
@@ -629,7 +629,7 @@ void llvm_store_self_aligned(GenContext *context, LLVMValueRef pointer, LLVMValu
 void llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, unsigned alignment)
 {
 	LLVMValueRef ref = LLVMBuildStore(context->builder, value, pointer);
-	LLVMSetAlignment(ref, alignment);
+	if (alignment) LLVMSetAlignment(ref, alignment);
 }
 
 void llvm_store_aligned_decl(GenContext *context, Decl *decl, LLVMValueRef value)
