@@ -174,7 +174,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			{
 				LLVMValueRef param = llvm_get_next_param(c, index);
 				// Store it with the alignment of the decl.
-				llvm_store_aligned_decl(c, decl, param);
+				llvm_store_aligned(c, cast, param, decl->alignment);
 				return;
 			}
 

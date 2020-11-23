@@ -220,14 +220,11 @@ typedef struct
 	void *target;
 	void *machine;
 	void *llvm_data_layout;
+	const char *target_triple;
 	ArchType arch;
-	const char *arch_name;
 	OsType os;
-	const char *os_name;
 	VendorType vendor;
-	const char *vendor_name;
 	EnvironmentType environment_type;
-	const char *environment_name;
 	ObjectFormatType object_format;
 	int alloca_address_space;
 	ABI abi;

@@ -16,6 +16,16 @@
 static const int DEFAULT_SYMTAB_SIZE = 64 * 1024;
 static const int MAX_SYMTAB_SIZE = 1024 * 1024;
 
+static char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
+		[X86_DARWIN] = "x86_darwin",
+		[X86_LINUX] = "x86_linux",
+		[X64_DARWIN] = "x64_darwin",
+		[X64_LINUX] = "x64_linux",
+		[X64_WINDOWS] = "x64_windows",
+		[AARCH64_LINUX] = "aarch64_linux",
+		[AARCH64_DARWIN] = "aarch64_darwin",
+};
+
 BuildOptions build_options;
 static int arg_index;
 static int arg_count;
@@ -23,6 +33,7 @@ static const char** args;
 static const char* current_arg;
 
 
+#define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
 #define OUTPUT(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__)
 #define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(); exit(EXIT_FAILURE); } while (0)
 
@@ -57,6 +68,12 @@ static void usage(void)
 	OUTPUT("  -Os                   - Optimize for size.");
 	OUTPUT("  -O3                   - Aggressive optimization.");
 	OUTPUT("  --emit-llvm           - Emit LLVM IR as a .ll file per module.");
+	OUTPUT("  --target <target>     - Compile for a particular architecture + OS target.");
+	OUTPUT("  --target-list         - List all architectures the compiler supports.");
+	OUTPUT("");
+	OUTPUT("  -g                    - Emit full debug info.");
+	OUTPUT("  -g0                   - Emit no debug info.");
+	OUTPUT("  -gline-tables-only    - Only emit line tables for debugging.");
 	OUTPUT("");
 	OUTPUT("  -freg-struct-return   - Override default ABI to return small structs in registers.");
 	OUTPUT("  -fpcc-struct-return   - Override default ABI to return small structs on the stack.");
@@ -129,11 +146,11 @@ static void parse_optional_target()
 {
 	if (at_end() || next_is_opt())
 	{
-		build_options.target = NULL;
+		build_options.target_select = NULL;
 	}
 	else
 	{
-		build_options.target = next_arg();
+		build_options.target_select = next_arg();
 	}
 }
 
@@ -205,10 +222,36 @@ static void parse_command(void)
 	}
 	FAIL_WITH_ERR("Cannot process the unknown command \"%s\".", current_arg);
 }
-static void parse_option()
+static void print_all_targets(void)
+{
+	OUTPUT("Available targets:");
+	for (unsigned i = 0; i <= ARCH_OS_TARGET_LAST; i++)
+	{
+		OUTPUT("   %s", arch_os_target[i]);
+	}
+}
+
+static void parse_option(void)
 {
 	switch (current_arg[1])
 	{
+		case 'g':
+			if (match_shortopt("gline-tables-only"))
+			{
+				build_options.debug_info = DEBUG_INFO_LINE_TABLES;
+				FATAL_ERROR("Line tables only are currently not available");
+			}
+			if (match_shortopt("g") || match_shortopt("g1"))
+			{
+				build_options.debug_info = DEBUG_INFO_FULL;
+				return;
+			}
+			if (match_shortopt("g0"))
+			{
+				build_options.debug_info = DEBUG_INFO_NONE;
+				return;
+			}
+			FAIL_WITH_ERR("Unknown debug argument -%s.", &current_arg[1]);
 		case 'h':
 			break;
 		case 'f':
@@ -299,6 +342,37 @@ static void parse_option()
 				OUTPUT("C3 is low level programming language based on C.");
 				exit(EXIT_SUCCESS);
 			}
+			if (match_longopt("target"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --target needs a arch+os definition.");
+				const char *target = next_arg();
+				for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
+				{
+					if (strcasecmp(arch_os_target[i], target) == 0)
+					{
+						build_options.arch_os_target = i;
+						return;
+					}
+				}
+				OUTPUT("Available targets:");
+				EOUTPUT("Invalid target %s.", target);
+				EOUTPUT("These targets are supported:");
+				for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
+				{
+					EOUTPUT("   %s", arch_os_target[i]);
+				}
+				exit(EXIT_FAILURE);
+			}
+			if (match_longopt("target-list"))
+			{
+				print_all_targets();
+				OUTPUT("Available targets:");
+				for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
+				{
+					OUTPUT("   %s", arch_os_target[i]);
+				}
+				exit(EXIT_SUCCESS);
+			}
 			if (match_longopt("emit-llvm"))
 			{
 				build_options.emit_llvm = true;
@@ -361,7 +435,7 @@ void parse_arguments(int argc, const char *argv[])
 	build_options.emit_bitcode = true;
 	build_options.optimization_level = OPTIMIZATION_NOT_SET;
 	build_options.size_optimization_level = SIZE_OPTIMIZATION_NOT_SET;
-	build_options.debug_info = DEBUG_INFO_FULL;
+	build_options.debug_info = DEBUG_INFO_NONE;
 	build_options.debug_mode = false;
 	build_options.command = COMMAND_MISSING;
 	build_options.symtab_size = DEFAULT_SYMTAB_SIZE;

@@ -14,7 +14,7 @@ void gencontext_begin_module(GenContext *context)
 	LLVMSetModuleDataLayout(context->module, target_data_layout());
 	LLVMSetSourceFileName(context->module, full_path, strlen(context->ast_context->file->full_path));
 
-	LLVMSetTarget(context->module, build_options.target);
+	LLVMSetTarget(context->module, build_target.target_triple);
 	if (build_options.debug_info != DEBUG_INFO_NONE)
 	{
 		const char *filename = context->ast_context->file->name;

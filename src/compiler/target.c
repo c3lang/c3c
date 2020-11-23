@@ -344,6 +344,16 @@ static inline void target_setup_x64_abi(void)
 	}
 }
 
+static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
+		[X86_DARWIN] = "i386-apple-darwin",
+		[X86_LINUX] = "i386-pc-linux",
+		[X64_DARWIN] = "x86_64-apple-darwin",
+		[X64_LINUX] = "x86_64-pc-linux",
+		[X64_WINDOWS] = "x86_64-pc-win32",
+		[AARCH64_LINUX] = "aarch64-pc-linux",
+		[AARCH64_DARWIN] = "aarch64-apple-darwin",
+};
+
 void target_setup(void)
 {
 	assert(!build_target.target);
@@ -355,13 +365,19 @@ void target_setup(void)
 	LLVMInitializeAllAsmParsers();
 
 	build_target.target = NULL;
-	if (!build_options.target)
-	{
-		build_options.target = LLVMGetDefaultTargetTriple();
-	}
-	char *err = NULL;
 
-	if (LLVMGetTargetFromTriple(build_options.target, ((LLVMTargetRef *)&build_target.target), &err) != 0)
+	const char *triple;
+	if (build_options.arch_os_target == ARCH_OS_TARGET_DEFAULT)
+	{
+		triple = LLVMGetDefaultTargetTriple();
+	}
+	else
+	{
+		triple = arch_to_target_triple[build_options.arch_os_target];
+	}
+
+	char *err = NULL;
+	if (LLVMGetTargetFromTriple(triple, ((LLVMTargetRef *)&build_target.target), &err) != 0)
 	{
 		error_exit("Could not create target: %s", err);
 		// Usually we would dispose of err, but no need to do it due to exit.
@@ -369,7 +385,7 @@ void target_setup(void)
 
 	build_target.alloca_address_space = 0;
 
-	DEBUG_LOG("Target set to %s.", build_options.target);
+	DEBUG_LOG("Target set to %s.", triple);
 	// Create a specific target machine
 	LLVMCodeGenOptLevel level;
 	LLVMRelocMode reloc_mode = LLVMRelocDefault;
@@ -403,7 +419,7 @@ void target_setup(void)
 	{
 		opt->features = "";
 	}*/
-	if (!(build_target.machine = LLVMCreateTargetMachine(build_target.target, build_options.target, "", "", level, reloc_mode,
+	if (!(build_target.machine = LLVMCreateTargetMachine(build_target.target, triple, "", "", level, reloc_mode,
 	                                                     LLVMCodeModelDefault))) {
 		error_exit("Failed to create target machine.");
 	}
@@ -412,22 +428,19 @@ void target_setup(void)
 
 	char *target_triple = LLVMGetTargetMachineTriple(build_target.machine);
 
-	build_target.arch_name = strdup(strtok(target_triple, "-"));
-	build_target.vendor_name = strdup(strtok(NULL, "-"));
-	build_target.os_name = strdup(strtok(NULL, "-"));
-	char *env = strtok(NULL, "0123456789");
-	build_target.environment_name = env ? strdup(env) : "unknown";
-
-	LLVMDisposeMessage(target_triple);
-
-	build_target.arch = arch_from_llvm_string(build_target.arch_name);
+	build_target.target_triple = strdup(target_triple);
+	build_target.arch = arch_from_llvm_string(strtok(target_triple, "-"));
 	if (!arch_is_supported(build_target.arch))
 	{
 		printf("WARNING! This architecture is not supported.\n");
 	}
-	build_target.environment_type = environment_type_from_llvm_string(build_target.environment_name);
-	build_target.os = os_from_llvm_string(build_target.os_name);
-	build_target.vendor = vendor_from_llvm_string(build_target.vendor_name);
+	build_target.vendor = vendor_from_llvm_string(strtok(NULL, "-"));
+	build_target.os = os_from_llvm_string(strtok(NULL, "-"));
+	char *env = strtok(NULL, "0123456789");
+	build_target.environment_type = env ? environment_type_from_llvm_string(env) : ENV_TYPE_UNKNOWN;
+
+	LLVMDisposeMessage(target_triple);
+
 	build_target.float_abi = false;
 	build_target.width_pointer = arch_pointer_bit_width(build_target.os, build_target.arch);
 	assert(build_target.width_pointer == LLVMPointerSize(build_target.llvm_data_layout) * 8);
@@ -512,7 +525,7 @@ void target_setup(void)
 		case ARCH_TYPE_ARC:
 		case ARCH_TYPE_SPIR64:
 		case ARCH_TYPE_SPIR:
-			FATAL_ERROR("Unsupported arch %s.", build_target.arch_name);
+			UNREACHABLE
 			break;
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
