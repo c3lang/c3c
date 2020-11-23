@@ -16,7 +16,7 @@ void build(void)
 	file_find_top_dir();
 	// Parse it
 	Project *project = project_load();
-	BuildTarget *target = project_select_target(project, build_options.target);
+	BuildTarget *target = project_select_target(project, build_options.target_select);
 
 	if (!target->target_triple && build_options.target_triple)
 	{

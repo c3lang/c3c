@@ -122,7 +122,7 @@ static void gencontext_verify_ir(GenContext *context)
 void gencontext_emit_object_file(GenContext *context)
 {
 	char *err = "";
-	LLVMSetTarget(context->module, build_options.target);
+	LLVMSetTarget(context->module, build_options.target_triple);
 	char *layout = LLVMCopyStringRepOfTargetData(target_data_layout());
 	LLVMSetDataLayout(context->module, layout);
 	LLVMDisposeMessage(layout);

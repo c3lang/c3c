@@ -93,13 +93,27 @@ typedef enum
 	DEBUG_INFO_FULL
 } DebugInfo;
 
+typedef enum
+{
+	ARCH_OS_TARGET_DEFAULT = 0,
+	X86_DARWIN,
+	X86_LINUX,
+	X64_DARWIN,
+	X64_LINUX,
+	X64_WINDOWS,
+	AARCH64_LINUX,
+	AARCH64_DARWIN,
+	ARCH_OS_TARGET_LAST = AARCH64_DARWIN
+} ArchOsTarget;
+
 typedef struct
 {
 	const char* lib_dir[MAX_LIB_DIRS];
 	int lib_count;
 	const char** files;
 	const char* project_name;
-	const char* target;
+	ArchOsTarget arch_os_target;
+	const char* target_select;
 	const char* path;
 	const char* cpu;
 	const char* target_triple;
@@ -124,6 +138,7 @@ typedef struct
 	bool emit_bitcode;
 	bool test_mode;
 } BuildOptions;
+
 
 
 
