@@ -34,7 +34,11 @@ void gencontext_begin_module(GenContext *context)
 		                                                             dwarf_flags, strlen(dwarf_flags),
 		                                                             runtime_version, "" /* split name */, 0 /* len */,
 		                                                             emission_kind, /* dwo */0, /* inlining */0,
-		                                                             /* debug for profiling */0);
+		                                                             /* debug for profiling */0
+#if LLVM_VERSION_MAJOR > 10
+		                                                             , "", 0, "", 0
+#endif
+		                                                             );
 	}
 	// Setup all types. Not thread-safe, but at this point in time we can assume a single context.
 	// We need to remove the context from the cache after this.

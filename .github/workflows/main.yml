@@ -12,9 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: (Linux) Download LLVM
-        run: sudo apt-get install llvm-9 llvm-9-dev
+        run: |
+          sudo apt-get install llvm-10
       - name: Build
         run: |
           mkdir build && cd build
-          cmake -DLLVM_DIR=/usr/lib/llvm-9/cmake -DCMAKE_BUILD_TYPE=Debug ..
+          cmake -DLLVM_DIR=/usr/lib/llvm-10/cmake -DCMAKE_BUILD_TYPE=Debug ..
           cmake --build .
