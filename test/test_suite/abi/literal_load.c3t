@@ -1,0 +1,29 @@
+// #target: x64_darwin
+
+struct Test
+{
+    int x;
+}
+
+extern func void blorg(Test t);
+
+func Test creator()
+{
+    blorg(Test {} );
+    return Test {};
+}
+
+// #expect: literal_load.ll
+
+  %literal = alloca %literal_load.Test, align 4
+  %literal1 = alloca %literal_load.Test, align 4
+  %0 = bitcast %literal_load.Test* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 4, i1 false)
+  %1 = bitcast %literal_load.Test* %literal to i32*
+  %coerced = load i32, i32* %1, align 4
+  call void @blorg(i32 %coerced)
+  %2 = bitcast %literal_load.Test* %literal1 to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %2, i8 0, i64 4, i1 false)
+  %3 = bitcast %literal_load.Test* %literal1 to i32*
+  %coerced2 = load i32, i32* %3, align 4
+  ret i32 %coerced2

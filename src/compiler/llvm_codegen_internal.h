@@ -209,8 +209,9 @@ void llvm_value_set_bool(BEValue *value, LLVMValueRef llvm_value);
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type *type, unsigned alignment);
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type);
+void llvm_value_fold_failable(GenContext *c, BEValue *value);
 
-LLVMValueRef bevalue_store_value(GenContext *c, BEValue *value);
+LLVMValueRef llvm_value_rvalue_store(GenContext *c, BEValue *value);
 
 LLVMTypeRef llvm_abi_type(GenContext *c, AbiType *type);
 unsigned llvm_abi_size(LLVMTypeRef type);
@@ -252,7 +253,7 @@ void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, un
 void llvm_emit_stmt(GenContext *c, Ast *ast);
 static inline LLVMValueRef llvm_emit_store(GenContext *context, Decl *decl, LLVMValueRef value);
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name);
-void llvm_emit_return_abi(GenContext *c, LLVMValueRef return_value, LLVMValueRef failable);
+void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable);
 void llvm_emit_return_implicit(GenContext *c);
 
 LLVMValueRef llvm_get_next_param(GenContext *context, unsigned *index);
@@ -283,7 +284,7 @@ void llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef 
 void llvm_store_aligned_decl(GenContext *context, Decl *decl, LLVMValueRef value);
 
 LLVMTypeRef gencontext_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef hi);
-LLVMValueRef gencontext_emit_convert_value_to_coerced(GenContext *context, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type);
+LLVMValueRef llvm_emit_coerce(GenContext *context, LLVMTypeRef coerced, BEValue *value, Type *original_type);
 
 static inline LLVMValueRef gencontext_emit_load(GenContext *c, Type *type, LLVMValueRef value)
 {

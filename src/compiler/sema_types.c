@@ -18,7 +18,6 @@ static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 	return true;
 }
 
-
 static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 {
 	if (!sema_resolve_type_info(context, type->array.base))
@@ -53,7 +52,7 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 			}
 			if (!bigint_fits_in_bits(&type->array.len->const_expr.i, 64, true))
 			{
-				SEMA_ERROR(type->array.len, "An array may not exceed the max of an 64 bit signed int.");
+				SEMA_ERROR(type->array.len, "An array length may not exceed the max of an 64 bit signed int.");
 				return type_info_poison(type);
 			}
 

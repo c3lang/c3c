@@ -51,15 +51,30 @@ static inline LLVMValueRef gencontext_emit_add_int(GenContext *context, Type *ty
 		: LLVMBuildNSWAdd(context->builder, left, right, "add");
 }
 
-LLVMValueRef gencontext_emit_convert_value_to_coerced(GenContext *context, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type)
+LLVMValueRef llvm_emit_coerce(GenContext *context, LLVMTypeRef coerced, BEValue *value, Type *original_type)
 {
-	// Must be the same size.
-	assert(type_size(original_type) <= llvm_abi_size(coerced));
-	assert(llvm_get_type(context, original_type) != coerced);
-	unsigned max_align = MAX(type_abi_alignment(original_type), llvm_abi_alignment(coerced));
-	LLVMValueRef temp = llvm_emit_alloca_aligned(context, original_type, "tempcoerce1");
-	llvm_store_aligned(context, temp, value, max_align);
-	LLVMValueRef cast = LLVMBuildBitCast(context->builder, temp, LLVMPointerType(coerced, 0), "");
+	LLVMValueRef cast;
+	unsigned target_alignment = llvm_abi_alignment(coerced);
+	unsigned max_align = MAX(((unsigned)value->alignment), llvm_abi_alignment(coerced));
+
+	// If we are loading something with greater alignment than what we have, we cannot directly memcpy.
+	if (llvm_value_is_addr(value) && value->alignment < target_alignment)
+	{
+		// So load it instead.
+		llvm_value_rvalue(context, value);
+	}
+
+	// In this case we have something nicely aligned, so we just do a cast.
+	if (llvm_value_is_addr(value))
+	{
+		cast = LLVMBuildBitCast(context->builder, value->value, LLVMPointerType(coerced, 0), "");
+	}
+	else
+	{
+		cast = llvm_emit_alloca(context, coerced, max_align, "coerce");
+		LLVMValueRef target = LLVMBuildBitCast(context->builder, cast, llvm_get_ptr_type(context, value->type), "");
+		llvm_store_bevalue_aligned(context, target, value, max_align);
+	}
 	return llvm_emit_load_aligned(context, coerced, cast, max_align, "coerced");
 }
 
@@ -522,7 +537,7 @@ static void gencontext_construct_const_union_struct(GenContext *context, BEValue
 {
 	LLVMValueRef values[2];
 	gencontext_construct_const_value(context, be_value, value);
-	values[0] = bevalue_store_value(context, be_value);
+	values[0] = llvm_value_rvalue_store(context, be_value);
 	unsigned size_diff = type_size(canonical) - type_size(value->type);
 	if (size_diff > 0)
 	{
@@ -547,7 +562,7 @@ static void gencontext_recursive_set_const_value(GenContext *context, BEValue *b
 				}
 				gencontext_construct_const_value(context, be_value, value);
 				llvm_value_set(be_value,
-				               LLVMConstInsertValue(parent, bevalue_store_value(context, be_value), &path->index, 1),
+				               LLVMConstInsertValue(parent, llvm_value_rvalue_store(context, be_value), &path->index, 1),
 				               parent_type);
 				return;
 			}
@@ -558,7 +573,7 @@ static void gencontext_recursive_set_const_value(GenContext *context, BEValue *b
 				                                     LLVMConstExtractValue(parent, &path->index, 1), parent_type,
 				                                     value);
 				llvm_value_set(be_value,
-				               LLVMConstInsertValue(parent, bevalue_store_value(context, be_value), &path->index, 1),
+				               LLVMConstInsertValue(parent, llvm_value_rvalue_store(context, be_value), &path->index, 1),
 				               parent_type);
 				return;
 			}
@@ -571,7 +586,7 @@ static void gencontext_recursive_set_const_value(GenContext *context, BEValue *b
 			{
 				gencontext_construct_const_value(context, be_value, value);
 				llvm_value_set(be_value,
-				               LLVMConstInsertValue(parent, bevalue_store_value(context, be_value), &index, 1),
+				               LLVMConstInsertValue(parent, llvm_value_rvalue_store(context, be_value), &index, 1),
 				               parent_type);
 				return ;
 			}
@@ -580,7 +595,7 @@ static void gencontext_recursive_set_const_value(GenContext *context, BEValue *b
 			                                     LLVMConstExtractValue(parent, &index, 1), parent_type,
 			                                     value);
 			llvm_value_set(be_value,
-			               LLVMConstInsertValue(parent, bevalue_store_value(context, be_value), &index, 1),
+			               LLVMConstInsertValue(parent, llvm_value_rvalue_store(context, be_value), &index, 1),
 			               parent_type);
 			return;
 		}
@@ -631,7 +646,7 @@ static void gencontext_emit_initializer_list_expr_const(GenContext *context, BEV
 
 			}
 			llvm_emit_expr(context, be_value, element);
-			value = LLVMConstInsertValue(value, bevalue_store_value(context, be_value), &i, 1);
+			value = LLVMConstInsertValue(value, llvm_value_rvalue_store(context, be_value), &i, 1);
 		}
 		llvm_value_set(be_value, value, expr->type);
 		return;
@@ -649,7 +664,7 @@ static void gencontext_emit_initializer_list_expr_const(GenContext *context, BEV
 		                                     value,
 		                                     parent_type,
 		                                     element->designated_init_expr.value);
-		value = bevalue_store_value(context, be_value);
+		value = llvm_value_rvalue_store(context, be_value);
 	}
 	llvm_value_set(be_value, value, expr->type);
 }
@@ -668,7 +683,7 @@ static inline LLVMValueRef llvm_emit_initializer_list_expr_addr(GenContext *c, E
 		BEValue be_value;
 		gencontext_emit_initializer_list_expr_const(c, &be_value, expr);
 		LLVMValueRef ref = LLVMAddGlobal(c->module, type, "");
-		LLVMSetInitializer(ref, bevalue_store_value(c, &be_value));
+		LLVMSetInitializer(ref, llvm_value_rvalue_store(c, &be_value));
 		LLVMSetGlobalConstant(ref, true);
 		if (optional_ref)
 		{
@@ -710,7 +725,7 @@ static inline LLVMValueRef llvm_emit_initializer_list_expr_addr(GenContext *c, E
 			BEValue init_value;
 			llvm_emit_expr(c, &init_value, elements[0]);
 			LLVMValueRef u = LLVMBuildBitCast(c->builder, ref, llvm_get_ptr_type(c, elements[0]->type->canonical), "");
-			LLVMBuildStore(c->builder, bevalue_store_value(c, &init_value), u);
+			LLVMBuildStore(c->builder, llvm_value_rvalue_store(c, &init_value), u);
 			return ref;
 		}
 		VECEACH(elements, i)
@@ -719,7 +734,7 @@ static inline LLVMValueRef llvm_emit_initializer_list_expr_addr(GenContext *c, E
 			BEValue init_value;
 			llvm_emit_expr(c, &init_value, element);
 			LLVMValueRef subref = LLVMBuildStructGEP2(c->builder, type, ref, i + (int)is_error, "");
-			llvm_store_self_aligned(c, subref, bevalue_store_value(c, &init_value), element->type);
+			llvm_store_self_aligned(c, subref, llvm_value_rvalue_store(c, &init_value), element->type);
 		}
 		return ref;
 	}
@@ -756,7 +771,7 @@ static inline LLVMValueRef llvm_emit_initializer_list_expr_addr(GenContext *c, E
 					llvm_emit_expr(c, &index, path->index_expr);
 					LLVMValueRef indices[2] = {
 							zero,
-							bevalue_store_value(c, &index),
+							llvm_value_rvalue_store(c, &index),
 					};
 					sub_ref = LLVMBuildInBoundsGEP2(c->builder,
 					                                llvm_get_type(c, parent_type),
@@ -770,7 +785,7 @@ static inline LLVMValueRef llvm_emit_initializer_list_expr_addr(GenContext *c, E
 			parent_type = path->type;
 			path = path->sub_path;
 		}
-		LLVMBuildStore(c->builder, bevalue_store_value(c, &sub_value), sub_ref);
+		LLVMBuildStore(c->builder, llvm_value_rvalue_store(c, &sub_value), sub_ref);
 	}
 	return ref;
 }
@@ -1826,7 +1841,9 @@ static inline void gencontext_emit_guard_expr(GenContext *c, BEValue *be_value, 
 	if (llvm_emit_check_block_branch(c))
 	{
 		llvm_emit_defer(c, expr->guard_expr.defer, 0);
-		llvm_emit_return_abi(c, NULL, gencontext_emit_load(c, type_error, error_var));
+		BEValue value;
+		llvm_value_set_address(&value, error_var, type_error);
+		llvm_emit_return_abi(c, NULL, &value);
 		c->current_block = NULL;
 		c->current_block_is_target = NULL;
 	}
@@ -2103,7 +2120,7 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 		signature = expr->call_expr.function->type->canonical->pointer->func.signature;
 		BEValue func_value;
 		llvm_emit_expr(context, &func_value, expr->call_expr.function);
-		func = bevalue_store_value(context, &func_value);
+		func = llvm_value_rvalue_store(context, &func_value);
 		func_type = llvm_get_type(context, expr->call_expr.function->type->canonical->pointer);
 	}
 	else if (expr->call_expr.is_struct_function)
@@ -2154,8 +2171,6 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 	{
 		Expr *arg_expr = expr->call_expr.arguments[i];
 		llvm_emit_expr(context, be_value, arg_expr);
-		LLVMValueRef value = bevalue_store_value(context, be_value);
-		printf("TODO: param passing is not using bevalue\n");
 		Decl *param = signature->params[i];
 		ABIArgInfo *info = param->var.abi_info;
 		switch (info->kind)
@@ -2171,31 +2186,50 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 				                                         llvm_get_type(context, param->type),
 				                                         alignment,
 				                                         "indirectarg");
-				llvm_store_aligned(context, indirect, value, alignment);
+				llvm_store_bevalue_aligned(context, indirect, be_value, alignment);
 				vec_add(values, indirect);
 				break;
 			}
 			case ABI_ARG_DIRECT_COERCE:
 			{
-				LLVMTypeRef type = llvm_get_coerce_type(context, info);
-				if (!type || llvm_get_type(context, param->type))
+				LLVMTypeRef coerce_type = llvm_get_coerce_type(context, info);
+				if (!coerce_type || coerce_type == llvm_get_type(context, param->type))
 				{
-					vec_add(values, value);
+					vec_add(values, llvm_value_rvalue_store(context, be_value));
 					break;
 				}
+
 				if (!abi_info_should_flatten(info))
 				{
-					vec_add(values, gencontext_emit_convert_value_to_coerced(context, type, value, param->type));
+					vec_add(values, llvm_emit_coerce(context, coerce_type, be_value, param->type));
 					break;
 				}
-				unsigned max_align = MAX(type_abi_alignment(param->type), llvm_abi_alignment(type));
-				LLVMValueRef temp = llvm_emit_alloca(context, type, max_align, "tempcoerce");
-				LLVMValueRef cast = LLVMBuildBitCast(context->builder, temp, LLVMPointerType(type, 0), "");
-				llvm_store_aligned(context, cast, value, max_align);
+				LLVMValueRef cast;
+				unsigned target_alignment = llvm_abi_alignment(coerce_type);
+				unsigned max_align = MAX(((unsigned)be_value->alignment), llvm_abi_alignment(coerce_type));
+
+				// If we are loading something with greater alignment than what we have, we cannot directly memcpy.
+				if (llvm_value_is_addr(be_value) && be_value->alignment < target_alignment)
+				{
+					// So load it instead.
+					llvm_value_rvalue(context, be_value);
+				}
+
+				// In this case we have something nicely aligned, so we just do a cast.
+				if (llvm_value_is_addr(be_value))
+				{
+					cast = LLVMBuildBitCast(context->builder, be_value->value, LLVMPointerType(coerce_type, 0), "");
+				}
+				else
+				{
+					cast = llvm_emit_alloca(context, coerce_type, max_align, "coerce");
+					LLVMValueRef target = LLVMBuildBitCast(context->builder, cast, llvm_get_ptr_type(context, param->type), "");
+					llvm_store_bevalue_aligned(context, target, be_value, max_align);
+				}
 				LLVMTypeRef element = llvm_abi_type(context, info->direct_coerce.type);
 				for (unsigned idx = 0; idx < info->direct_coerce.elements; idx++)
 				{
-					LLVMValueRef element_ptr = LLVMBuildStructGEP2(context->builder, type, temp, idx, "");
+					LLVMValueRef element_ptr = LLVMBuildStructGEP2(context->builder, coerce_type, cast, idx, "");
 					vec_add(values,
 					        llvm_emit_load_aligned(context, element, element_ptr, llvm_abi_alignment(element), ""));
 				}
@@ -2203,6 +2237,8 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 			}
 			case ABI_ARG_DIRECT_PAIR:
 			{
+				printf("TODO: Optimize load\n");
+				LLVMValueRef value = llvm_value_rvalue_store(context, be_value);
 				// Here we do the following transform:
 				// struct -> { lo, hi } -> lo, hi
 				LLVMTypeRef lo = llvm_abi_type(context, info->direct_pair.lo);
@@ -2225,6 +2261,8 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 			}
 			case ABI_ARG_EXPAND:
 			{
+				printf("TODO: Optimize load\n");
+				LLVMValueRef value = llvm_value_rvalue_store(context, be_value);
 				LLVMValueRef expand = llvm_emit_alloca_aligned(context, param->type, "expand");
 				llvm_store_aligned(context, expand, value, type_abi_alignment(param->type));
 				llvm_expand_type_to_args(context, param->type, expand, &values);
@@ -2242,7 +2280,7 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 		Expr *arg_expr = expr->call_expr.arguments[i];
 		llvm_emit_expr(context, be_value, arg_expr);
 		printf("TODO: varargs should be expanded correctly\n");
-		vec_add(values, bevalue_store_value(context, be_value));
+		vec_add(values, llvm_value_rvalue_store(context, be_value));
 	}
 
 	LLVMValueRef call = LLVMBuildCall2(context->builder, func_type, func, values, vec_size(values), "");
@@ -2414,7 +2452,7 @@ static inline void gencontext_emit_macro_block(GenContext *context, BEValue *be_
 		BEValue value;
 		llvm_emit_expr(context, &value, expr->macro_block.args[i]);
 		printf("TODO: unoptimized use of BEValue\n");
-		llvm_emit_store(context, decl, bevalue_store_value(context, &value));
+		llvm_emit_store(context, decl, llvm_value_rvalue_store(context, &value));
 	}
 
 	VECEACH(stmts, i)
@@ -2497,7 +2535,7 @@ static inline void gencontext_emit_failable(GenContext *context, BEValue *be_val
 		assert(context->error_var);
 		llvm_emit_expr(context, be_value, fail);
 		printf("TODO // fix failable \n");
-		LLVMBuildStore(context->builder, bevalue_store_value(context, be_value),
+		LLVMBuildStore(context->builder, llvm_value_rvalue_store(context, be_value),
 		               llvm_emit_bitcast(context, context->error_var, type_get_ptr(fail->type)));
 	}
 	llvm_emit_br(context, context->catch_block);
