@@ -228,7 +228,7 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 	context->current_block_is_target = false;
 }
 
-void llvm_emit_return_abi(GenContext *c, LLVMValueRef return_value, LLVMValueRef failable)
+void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable)
 {
 	FunctionSignature *signature = &c->cur_func_decl->func.function_signature;
 	ABIArgInfo *info = signature->ret_abi_info;
@@ -243,7 +243,7 @@ void llvm_emit_return_abi(GenContext *c, LLVMValueRef return_value, LLVMValueRef
 	{
 		if (return_value)
 		{
-			LLVMBuildStore(c->builder, return_value, c->return_out);
+			llvm_store_bevalue_aligned(c, c->return_out, return_value, 0);
 		}
 		return_out = c->failable_out;
 		return_type = type_error;
@@ -254,8 +254,7 @@ void llvm_emit_return_abi(GenContext *c, LLVMValueRef return_value, LLVMValueRef
 	switch (info->kind)
 	{
 		case ABI_ARG_INDIRECT:
-			LLVMBuildStore(c->builder, return_value, return_out);
-			if (info->indirect.realignment) TODO
+			llvm_store_bevalue_aligned(c, return_out, return_value, info->indirect.realignment);
 			llvm_emit_return_value(c, NULL);
 			return;
 		case ABI_ARG_IGNORE:
@@ -272,15 +271,11 @@ void llvm_emit_return_abi(GenContext *c, LLVMValueRef return_value, LLVMValueRef
 			if (!coerce_type || coerce_type == llvm_get_type(c, return_type))
 			{
 				// The normal return
-				llvm_emit_return_value(c, return_value);
+				llvm_emit_return_value(c, llvm_value_rvalue_store(c, return_value));
 				return;
 			}
 			assert(!abi_info_should_flatten(info));
-			llvm_emit_return_value(c,
-			                       gencontext_emit_convert_value_to_coerced(c,
-			                                                                coerce_type,
-			                                                                return_value,
-			                                                                return_type));
+			llvm_emit_return_value(c, llvm_emit_coerce(c, coerce_type, return_value, return_type));
 			return;
 		}
 	}
@@ -293,9 +288,14 @@ void llvm_emit_return_implicit(GenContext *c)
 		LLVMBuildUnreachable(c->builder);
 		return;
 	}
-	LLVMValueRef failable = c->cur_func_decl->func.function_signature.failable ?
-	                        LLVMConstNull(llvm_get_type(c, type_error)) : NULL;
-	llvm_emit_return_abi(c, NULL, failable);
+	if (!c->cur_func_decl->func.function_signature.failable)
+	{
+		llvm_emit_return_abi(c, NULL, NULL);
+		return;
+	}
+	BEValue value;
+	llvm_value_set(&value, LLVMConstNull(llvm_get_type(c, type_error)), type_error);
+	llvm_emit_return_abi(c, NULL, &value);
 }
 
 void llvm_emit_function_body(GenContext *context, Decl *decl)

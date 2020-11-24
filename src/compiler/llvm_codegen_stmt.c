@@ -155,12 +155,12 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 		c->catch_block = error_return_block;
 	}
 
-	LLVMValueRef ret_value = NULL;
-	if (ast->return_stmt.expr)
+	bool has_return_value = ast->return_stmt.expr != NULL;
+	BEValue return_value = {};
+	if (has_return_value)
 	{
-		BEValue value = {};
-		llvm_emit_expr(c, &value, ast->return_stmt.expr);
-		ret_value = bevalue_store_value(c, &value);
+		llvm_emit_expr(c, &return_value, ast->return_stmt.expr);
+		llvm_value_fold_failable(c, &return_value);
 	}
 
 	POP_ERROR();
@@ -172,25 +172,27 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 	{
 		if (c->return_out)
 		{
-			LLVMBuildStore(c->builder, ret_value, c->return_out);
+			llvm_store_bevalue_aligned(c, c->return_out, &return_value, 0);
 		}
 		gencontext_emit_jmp(c, c->expr_block_exit);
 		return;
 	}
 
-	if (!ret_value)
+	if (!has_return_value)
 	{
 		llvm_emit_return_implicit(c);
 	}
 	else
 	{
-		llvm_emit_return_abi(c, ret_value, NULL);
+		llvm_emit_return_abi(c, &return_value, NULL);
 	}
 	c->current_block = NULL;
 	if (error_return_block && LLVMGetFirstUse(LLVMBasicBlockAsValue(error_return_block)))
 	{
 		llvm_emit_block(c, error_return_block);
-		llvm_emit_return_abi(c, NULL, gencontext_emit_load(c, type_error, error_out));
+		BEValue value;
+		llvm_value_set_address(&value, error_out, type_error);
+		llvm_emit_return_abi(c, NULL, &value);
 		c->current_block = NULL;
 	}
 	LLVMBasicBlockRef post_ret_block = llvm_basic_block_new(c, "ret");
@@ -622,7 +624,7 @@ static void gencontext_emit_switch_body(GenContext *context, BEValue *switch_val
 	Type *switch_type = switch_ast->switch_stmt.cond->type;
 	LLVMValueRef switch_var = llvm_emit_alloca_aligned(context, switch_type, "switch");
 	switch_ast->switch_stmt.codegen.retry_var = switch_var;
-	LLVMBuildStore(context->builder, bevalue_store_value(context, switch_value), switch_var);
+	LLVMBuildStore(context->builder, llvm_value_rvalue_store(context, switch_value), switch_var);
 
 	llvm_emit_br(context, switch_block);
 	llvm_emit_block(context, switch_block);
@@ -758,7 +760,8 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 	}
 	BEValue be_value;
 	llvm_emit_expr(context, &be_value, ast->next_stmt.switch_expr);
-	LLVMBuildStore(context->builder, bevalue_store_value(context, &be_value), jump_target->switch_stmt.codegen.retry_var);
+	LLVMBuildStore(context->builder,
+	               llvm_value_rvalue_store(context, &be_value), jump_target->switch_stmt.codegen.retry_var);
 	llvm_emit_defer(context, ast->next_stmt.defers.start, ast->next_stmt.defers.end);
 	gencontext_emit_jmp(context, jump_target->switch_stmt.codegen.retry_block);
 }

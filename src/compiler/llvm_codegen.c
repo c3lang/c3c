@@ -75,7 +75,7 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 	{
 		BEValue value;
 		llvm_emit_expr(context, &value, decl->var.init_expr);
-		LLVMSetInitializer(decl->backend_ref, bevalue_store_value(context, &value));
+		LLVMSetInitializer(decl->backend_ref, llvm_value_rvalue_store(context, &value));
 	}
 	else
 	{
@@ -338,7 +338,7 @@ void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type)
 	llvm_value_set_address_align(value, llvm_value, type, type_abi_alignment(type));
 }
 
-static inline void be_value_fold_failable(GenContext *c, BEValue *value)
+void llvm_value_fold_failable(GenContext *c, BEValue *value)
 {
 	if (value->kind == BE_ADDRESS_FAILABLE)
 	{
@@ -364,9 +364,9 @@ static inline void be_value_fold_failable(GenContext *c, BEValue *value)
 	}
 }
 
-LLVMValueRef bevalue_store_value(GenContext *c, BEValue *value)
+LLVMValueRef llvm_value_rvalue_store(GenContext *c, BEValue *value)
 {
-	be_value_fold_failable(c, value);
+	llvm_value_fold_failable(c, value);
 	switch (value->kind)
 	{
 		case BE_VALUE:
@@ -393,7 +393,7 @@ LLVMBasicBlockRef llvm_basic_block_new(GenContext *c, const char *name)
 
 void llvm_value_addr(GenContext *c, BEValue *value)
 {
-	be_value_fold_failable(c, value);
+	llvm_value_fold_failable(c, value);
 	if (value->kind == BE_ADDRESS) return;
 	LLVMValueRef temp = llvm_emit_alloca_aligned(c, value->type, "tempaddr");
 	llvm_store_self_aligned(c, temp, value->value, value->type);
@@ -403,7 +403,7 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 void llvm_value_rvalue(GenContext *c, BEValue *value)
 {
 	if (value->kind != BE_ADDRESS && value->kind != BE_ADDRESS_FAILABLE) return;
-	be_value_fold_failable(c, value);
+	llvm_value_fold_failable(c, value);
 	value->value = llvm_emit_load_aligned(c,
 	                                      llvm_get_type(c, value->type),
 	                                      value->value,
@@ -573,7 +573,7 @@ unsigned llvm_abi_alignment(LLVMTypeRef type)
 void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, unsigned alignment)
 {
 	// If we have an address but not an aggregate, do a load.
-	be_value_fold_failable(c, value);
+	llvm_value_fold_failable(c, value);
 	if (value->kind == BE_ADDRESS && !type_is_abi_aggregate(value->type))
 	{
 		value->value = llvm_emit_load_aligned(c, llvm_get_type(c, value->type), value->value, value->alignment, "");
