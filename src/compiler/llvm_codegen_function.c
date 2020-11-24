@@ -435,7 +435,7 @@ static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef functio
 			}
 			if (is_return)
 			{
-				llvm_attribute_add(context, function, attribute_sret, index);
+				llvm_attribute_add(context, function, attribute_sret, 1);
 			}
 			else
 			{
