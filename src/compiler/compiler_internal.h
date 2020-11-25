@@ -1417,7 +1417,6 @@ void *target_data_layout();
 void *target_machine();
 void *target_target();
 
-#define TOKEN_MAX_LENGTH 0xFFFF
 #define TOK2VARSTR(_token) _token.span.length, _token.start
 bool token_is_type(TokenType type);
 bool token_is_any_type(TokenType type);

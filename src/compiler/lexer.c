@@ -9,21 +9,25 @@
 
 static bool lexer_scan_token_inner(Lexer *lexer);
 
+// Peek at the current character in the buffer.
 static inline char peek(Lexer *lexer)
 {
 	return *lexer->current;
 }
 
+// Look at the prev character in the buffer.
 static inline char prev(Lexer *lexer)
 {
 	return lexer->current[-1];
 }
 
+// Backtrack the buffer read one step.
 static inline void backtrack(Lexer *lexer)
 {
 	lexer->current--;
 }
 
+// Store a line ending (and current line start at the current character)
 void lexer_store_line_end(Lexer *lexer)
 {
 	lexer->current_line++;
@@ -31,26 +35,32 @@ void lexer_store_line_end(Lexer *lexer)
 	source_file_append_line_end(lexer->current_file, lexer->current_file->start_id + lexer->current - lexer->file_begin);
 }
 
+// Peek one character ahead.
 static inline char peek_next(Lexer *lexer)
 {
 	return lexer->current[1];
 }
 
+// Return the current character and step one character forward.
 static inline char next(Lexer *lexer)
 {
 	return *(lexer->current++);
 }
 
+// Skip the x next characters.
 static inline void skip(Lexer *lexer, int steps)
 {
+	assert(steps > 0);
 	lexer->current += steps;
 }
 
+// Is the current character '\0' if so we assume we reached the end.
 static inline bool reached_end(Lexer *lexer)
 {
 	return *lexer->current == '\0';
 }
 
+// Match a single character – if successful, more one step forward.
 static inline bool match(Lexer *lexer, char expected)
 {
 	if (reached_end(lexer)) return false;
@@ -61,37 +71,64 @@ static inline bool match(Lexer *lexer, char expected)
 
 #pragma mark --- Token creation
 
+/**
+ * Allocate data for a token, including source location.
+ * This call is doing the basic allocation, with other functions
+ * filling out additional information.
+ **/
 static inline void add_generic_token(Lexer *lexer, TokenType type, SourceLocation **ret_loc, TokenData **ret_data)
 {
+	// Allocate source location, type, data for the token
+	// each of these use their own arena,
+	// causing them to be allocated directly into
+	// what amounts to a huge array.
+	// Consequently these allocs are actually simultaneously
+	// allocating data and putting that data in an array.
 	SourceLocation *location = sourceloc_alloc();
 	char *token_type = toktype_alloc();
 	TokenData *data = tokdata_alloc();
 	*token_type = type;
+
+	// Set the location.
 	location->file = lexer->current_file;
 	location->start = lexer->lexing_start - lexer->file_begin;
+
+	// Calculate the column
 	if (lexer->lexing_start < lexer->line_start)
 	{
+		// In this case lexing started before the start of the current line.
+		// Start by looking at the previous line.
 		SourceLoc *current = &lexer->current_file->lines[lexer->current_line - 1];
 		location->line = lexer->current_line;
+		// Walk upwards until we find a line that starts before the current.
 		while (*current > location->start)
 		{
 			location->line--;
 			current--;
 		}
+		// We found the line we wanted, so the col is just an offset from the start.
 		location->col = location->start - *current + 1;
+		// Length is restricted to the end of the line.
 		location->length = current[1] - current[0] - 1;
 	}
 	else
 	{
+		// The simple case, where the parsing started on the current line.
 		location->line = lexer->current_line;
+		// Col is simple difference.
 		location->col = (unsigned)(lexer->lexing_start - lexer->line_start);
+		// Start is offset to file begin.
 		location->start = lexer->lexing_start - lexer->file_begin;
+		// Length is diff between current and start.
 		location->length = lexer->current - lexer->lexing_start;
-
 	}
+	// Return pointers to the data and the location,
+	// these maybe be used to fill in data.
 	*ret_data = data;
 	*ret_loc = location;
 }
+
+// Error? We simply generate an invalid token and print out the error.
 static bool add_error_token(Lexer *lexer, const char *message, ...)
 {
 	TokenData *data;
@@ -104,10 +141,9 @@ static bool add_error_token(Lexer *lexer, const char *message, ...)
 	return false;
 }
 
+// Add a new regular token.
 static bool add_token(Lexer *lexer, TokenType type, const char *string)
 {
-	size_t token_size = lexer->current - lexer->lexing_start;
-	if (token_size > TOKEN_MAX_LENGTH) return add_error_token(lexer, "Token exceeding max length");
 	TokenData *data;
 	SourceLocation *loc;
 	add_generic_token(lexer, type, &loc, &data);
@@ -119,6 +155,11 @@ static bool add_token(Lexer *lexer, TokenType type, const char *string)
 
 #pragma mark --- Comment parsing
 
+/**
+ * Parsing of the "//" line comment,
+ * also handling "///" doc comments that we probably don't need,
+ * but let's keep it for now.
+ */
 static inline bool parse_line_comment(Lexer *lexer)
 {
 	// // style comment
@@ -143,12 +184,14 @@ static inline bool parse_line_comment(Lexer *lexer)
 	return success;
 }
 
+/**
+ * Parsing of /+ +/ style comments which may nest.
+ **/
 static inline bool parse_nested_comment(Lexer *lexer)
 {
 	next(lexer);
-	int nesting = 0;
+	int nesting = 1;
 	// /+ style comment
-	nesting = 1;
 	while (!reached_end(lexer) && nesting > 0)
 	{
 		switch (peek(lexer))
@@ -181,6 +224,9 @@ static inline bool parse_nested_comment(Lexer *lexer)
 	return add_token(lexer, TOKEN_COMMENT, lexer->lexing_start);
 }
 
+/**
+ * Parse the common / *  * / style multiline comments
+ **/
 static inline bool parse_multiline_comment(Lexer *lexer)
 {
 	TokenType type = peek(lexer) == '*' && peek_next(lexer) != '/' ? TOKEN_DOC_COMMENT : TOKEN_COMMENT;
@@ -212,12 +258,11 @@ static void skip_whitespace(Lexer *lexer)
 {
 	while (1)
 	{
-		char c = peek(lexer);
-		switch (c)
+		switch (peek(lexer))
 		{
 			case '\n':
 				lexer_store_line_end(lexer);
-				// fallthrough
+				FALLTHROUGH;
 			case ' ':
 			case '\t':
 			case '\r':
@@ -318,6 +363,11 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 
 #pragma mark --- Number scanning
 
+/**
+ * Parsing octals. Here we depart from the (error prone) C style octals with initial zero e.g. 0231
+ * Instead we only support 0o prefix like 0o231. Note that lexing here doesn't actually parse the
+ * number itself.
+ */
 static bool scan_oct(Lexer *lexer)
 {
 	char o = next(lexer); // Skip the o
@@ -326,7 +376,9 @@ static bool scan_oct(Lexer *lexer)
 	return add_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
 }
 
-
+/**
+ * Binary style literals e.g. 0b10101011
+ **/
 static bool scan_binary(Lexer *lexer)
 {
 	next(lexer); // Skip the b
@@ -339,6 +391,10 @@ static bool scan_binary(Lexer *lexer)
 	return add_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
 }
 
+/**
+ * Scan a hex number, including floating point hex numbers of the format 0x31a31ff.21p12. Note that the
+ * exponent is written in decimal.
+ **/
 static inline bool scan_hex(Lexer *lexer)
 {
 	if (!is_hex(next(lexer)))
@@ -363,42 +419,70 @@ static inline bool scan_hex(Lexer *lexer)
 		is_float = true;
 		next(lexer);
 		char c2 = next(lexer);
-		if (c2 == '+' || c2 == '-') c2 = next(lexer);
-		if (!is_hex(c2)) return add_error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c2);
-		while (is_hex(peek(lexer))) next(lexer);
-	}
-	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
-	return add_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
-}
-
-static inline bool scan_dec(Lexer *lexer)
-{
-	while (is_digit_or_(peek(lexer))) next(lexer);
-	bool is_float = false;
-	if (peek(lexer) == '.' && peek_next(lexer) != '.')
-	{
-		is_float = true;
-		next(lexer);
-		char c = peek(lexer);
-		if (c == '_') return add_error_token(lexer, "Can't parse this as a floating point value due to the '_' directly after decimal point.");
-		if (is_digit(c)) next(lexer);
-		while (is_digit_or_(peek(lexer))) next(lexer);
-	}
-	char c = peek(lexer);
-	if (c == 'e' || c == 'E')
-	{
-		is_float = true;
-		next(lexer);
-		char c2 = next(lexer);
+		// The exponent may be prefixed with +/-
 		if (c2 == '+' || c2 == '-') c2 = next(lexer);
 		if (!is_digit(c2)) return add_error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c2);
 		while (is_digit(peek(lexer))) next(lexer);
 	}
 	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
+	return add_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
+}
+
+/**
+ * Scans integer and float decimal values.
+ */
+static inline bool scan_dec(Lexer *lexer)
+{
+	assert(is_digit(peek(lexer)));
+
+	// Walk through the digits, we don't need to worry about
+	// initial _ because we only call this if we have a digit initially.
+	while (is_digit_or_(peek(lexer))) next(lexer);
+
+	// Assume no float.
+	bool is_float = false;
+
+	// If we have a single dot, we assume that we have a float.
+	// Note that this current parsing means we can't have functions on
+	// literals, like "123.sizeof", but we're fine with that.
+	if (peek(lexer) == '.' && peek_next(lexer) != '.')
+	{
+		is_float = true;
+		// Step past '.'
+		next(lexer);
+		// Check our rule to disallow 123._32
+		char c = peek(lexer);
+		if (c == '_') return add_error_token(lexer, "Can't parse this as a floating point value due to the '_' directly after decimal point.");
+		// Now walk until we see no more digits.
+		// This allows 123. as a floating point number.
+		while (is_digit_or_(peek(lexer))) next(lexer);
+	}
+	char c = peek(lexer);
+	// We might have an exponential. We allow 123e1 and 123.e1 as floating point, so
+	// just set it to floating point and check the exponential.
+	if (c == 'e' || c == 'E')
+	{
+		is_float = true;
+		// Step past e/E
+		next(lexer);
+		char c2 = next(lexer);
+		// Step past +/-
+		if (c2 == '+' || c2 == '-') c2 = next(lexer);
+		// Now we need at least one digit
+		if (!is_digit(c2)) return add_error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c2);
+		// Walk through all of the digits.
+		while (is_digit(peek(lexer))) next(lexer);
+	}
+
+	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
 
 	if (is_float)
 	{
 		// IMPROVE
+		// For the float we actually parse things, using strtold
+		// this is not ideal, we should try to use f128 if possible for example.
+		// Possibly we should move to a BigDecimal implementation or at least a soft float 256
+		// implementation for the constants.
 		char *end = NULL;
 		long double fval = strtold(lexer->lexing_start, &end);
 		if (end != lexer->current)
@@ -414,7 +498,17 @@ static inline bool scan_dec(Lexer *lexer)
 	return add_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
 }
 
-
+/**
+ * Scan a digit, switching on initial zero on possible parsing schemes:
+ * 0x... -> Hex
+ * 0o... -> Octal
+ * 0b... -> Binary
+ *
+ * Default is decimal.
+ *
+ * It's actually pretty simple to add encoding schemes here, so for example Base64 could
+ * be added.
+ */
 static inline bool scan_digit(Lexer *lexer)
 {
 	if (peek(lexer) == '0')
@@ -606,114 +700,6 @@ static inline bool scan_string(Lexer *lexer)
 
 #pragma mark --- Lexer public functions
 
-SourceLocation *lexer_scan_asm_constraint(Lexer *lexer)
-{
-	// Skip the whitespace.
-	skip_whitespace(lexer);
-
-	// Point start to the first non-whitespace character.
-	lexer->lexing_start = lexer->current;
-
-	if (reached_end(lexer))
-	{
-		TODO
-//		return add_token(lexer, TOKEN_EOF, "\n");
-	}
-
-	// Move past '+=&'
-	char c;
-	while (1)
-	{
-		c = next(lexer);
-		if (c == '+' || c == '=' || c == '&') continue;
-		break;
-	}
-
-	while (1)
-	{
-		if (is_letter(c) || is_digit(c))
-		{
-			c = next(lexer);
-			continue;
-		}
-		if (c != ' ')
-		{
-			TODO
-			//return error_token(lexer, "Invalid asm constraint");
-		}
-		break;
-	}
-
-	TODO
-	/*
-	return add_token(lexer,
-	                 TOKEN_ASM_CONSTRAINT,
-	                 strcopy(lexer->lexing_start, lexer->current - lexer->lexing_start + 1));*/
-}
-
-SourceLocation *lexer_scan_asm(Lexer *lexer)
-{
-	TODO
-	/*
-	// Skip the whitespace.
-	skip_whitespace(lexer);
-
-	// Point start to the first non-whitespace character.
-	lexer->lexing_start = lexer->current;
-
-	if (reached_end(lexer))
-	{
-		return add_token(lexer, TOKEN_EOF, "\n");
-	}
-
-	int bracket = 0;
-	const char* last_non_whitespace = lexer->lexing_start;
-	while (1)
-	{
-		char c = next(lexer);
-		switch (c)
-		{
-			case '\n':
-				break;
-			case ';':
-				while (!reached_end(lexer) && next(lexer) != '\n');
-				break;
-			case '\t':
-			case '\r':
-			case '\f':
-			case ' ':
-				continue;
-			case '{':
-				bracket++;
-				last_non_whitespace = lexer->current - 1;
-				continue;
-			case '}':
-				if (--bracket >= 0)
-				{
-					// Matched bracket.
-					last_non_whitespace = lexer->current - 1;
-					continue;
-				}
-				// Non matched right bracket.
-				// If this is the first non whitespace this is an end of asm.
-				if (lexer->lexing_start == lexer->current - 1)
-				{
-					return add_token(lexer, TOKEN_RBRACE, "}");
-				}
-				// Otherwise we need to return the previous as a token.
-				break;
-			default:
-				last_non_whitespace = lexer->current - 1;
-				continue;
-		}
-		return add_token(lexer,
-		                 TOKEN_ASM_STRING,
-		                 strcopy(lexer->lexing_start, last_non_whitespace - lexer->lexing_start + 1));
-	}
-	 */
-}
-
-
 
 Token lexer_advance(Lexer *lexer)
 {
@@ -765,9 +751,11 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case ']':
 			return add_token(lexer, TOKEN_RBRACKET, "]");
 		case '.':
-			if (match(lexer, '.')) return match(lexer, '.')
-				? add_token(lexer, TOKEN_ELLIPSIS, "...")
-				: add_token(lexer, TOKEN_DOTDOT, "..");
+			if (match(lexer, '.'))
+			{
+				if (match(lexer, '.')) return add_token(lexer, TOKEN_ELLIPSIS, "...");
+				return add_token(lexer, TOKEN_DOTDOT, "..");
+			}
 			return add_token(lexer, TOKEN_DOT, ".");
 		case '~':
 			return add_token(lexer, TOKEN_BIT_NOT, "~");
@@ -782,10 +770,11 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			if (match(lexer, '+')) return parse_nested_comment(lexer);
 			return match(lexer, '=') ? add_token(lexer, TOKEN_DIV_ASSIGN, "/=") : add_token(lexer, TOKEN_DIV, "/");
 		case '*':
-			if (match(lexer, '%')) return match(lexer, '=') ? add_token(lexer, TOKEN_MULT_MOD_ASSIGN, "*%=") : add_token(
-						lexer,
-						TOKEN_MULT_MOD,
-						"*%");
+			if (match(lexer, '%'))
+			{
+				if (match(lexer, '=')) return add_token(lexer, TOKEN_MULT_MOD_ASSIGN, "*%=");
+				return add_token(lexer, TOKEN_MULT_MOD, "*%");
+			}
 			return match(lexer, '=') ? add_token(lexer, TOKEN_MULT_ASSIGN, "*=") : add_token(lexer, TOKEN_STAR, "*");
 		case '=':
 			return match(lexer, '=') ? add_token(lexer, TOKEN_EQEQ, "==") : add_token(lexer, TOKEN_EQ, "=");
@@ -796,16 +785,18 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case '?':
 			return match(lexer, ':') ? add_token(lexer, TOKEN_ELVIS, "?:") : add_token(lexer, TOKEN_QUESTION, "?");
 		case '<':
-			if (match(lexer, '<')) return match(lexer, '=') ? add_token(lexer, TOKEN_SHL_ASSIGN, "<<=") : add_token(
-						lexer,
-						TOKEN_SHL,
-						"<<");
+			if (match(lexer, '<'))
+			{
+				if (match(lexer, '=')) return add_token(lexer, TOKEN_SHL_ASSIGN, "<<=");
+				return add_token(lexer, TOKEN_SHL, "<<");
+			}
 			return match(lexer, '=') ? add_token(lexer, TOKEN_LESS_EQ, "<=") : add_token(lexer, TOKEN_LESS, "<");
 		case '>':
-			if (match(lexer, '>')) return match(lexer, '=') ? add_token(lexer, TOKEN_SHR_ASSIGN, ">>=") : add_token(
-						lexer,
-						TOKEN_SHR,
-						">>");
+			if (match(lexer, '>'))
+			{
+				if (match(lexer, '=')) return add_token(lexer, TOKEN_SHR_ASSIGN, ">>=");
+				return add_token(lexer, TOKEN_SHR, ">>");
+			}
 			return match(lexer, '=') ? add_token(lexer, TOKEN_GREATER_EQ, ">=") : add_token(lexer, TOKEN_GREATER, ">");
 		case '%':
 			return match(lexer, '=') ? add_token(lexer, TOKEN_MOD_ASSIGN, "%=") : add_token(lexer, TOKEN_MOD, "%");
@@ -818,19 +809,21 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			                                                                                   TOKEN_BIT_OR,
 			                                                                                   "|");
 		case '+':
-			if (match(lexer, '%')) return match(lexer, '=') ? add_token(lexer, TOKEN_PLUS_MOD_ASSIGN, "+%=") : add_token(
-						lexer,
-						TOKEN_PLUS_MOD,
-						"+%");
+			if (match(lexer, '%'))
+			{
+				if (match(lexer, '=')) return add_token(lexer, TOKEN_PLUS_MOD_ASSIGN, "+%=");
+				return add_token(lexer, TOKEN_PLUS_MOD, "+%");
+			}
 			if (match(lexer, '+')) return add_token(lexer, TOKEN_PLUSPLUS, "++");
 			if (match(lexer, '=')) return add_token(lexer, TOKEN_PLUS_ASSIGN, "+=");
 			return add_token(lexer, TOKEN_PLUS, "+");
 		case '-':
 			if (match(lexer, '>')) return add_token(lexer, TOKEN_ARROW, "->");
-			if (match(lexer, '%')) return match(lexer, '=') ? add_token(lexer, TOKEN_MINUS_MOD_ASSIGN, "-%=") : add_token(
-						lexer,
-						TOKEN_MINUS_MOD,
-						"-%");
+			if (match(lexer, '%'))
+			{
+				if (match(lexer, '=')) return add_token(lexer, TOKEN_MINUS_MOD_ASSIGN, "-%=");
+				return add_token(lexer, TOKEN_MINUS_MOD, "-%");
+			}
 			if (match(lexer, '-')) return add_token(lexer, TOKEN_MINUSMINUS, "--");
 			if (match(lexer, '=')) return add_token(lexer, TOKEN_MINUS_ASSIGN, "-=");
 			return add_token(lexer, TOKEN_MINUS, "-");
