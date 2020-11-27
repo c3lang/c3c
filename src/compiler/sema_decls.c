@@ -47,7 +47,7 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **members)
 {
 	unsigned max_size = 0;
-	unsigned max_size_element = 0;
+	//unsigned max_size_element = 0;
 	unsigned max_alignment_element = 0;
 	unsigned max_alignment = 0;
 
@@ -81,7 +81,7 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 		// Update max size
 		if (member_size > max_size)
 		{
-			max_size_element = i;
+			//max_size_element = i;
 			max_size = member_size;
 			// If this is bigger than the previous with max
 			// alignment, pick this as the maximum size element.
