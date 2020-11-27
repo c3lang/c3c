@@ -31,6 +31,10 @@ int main(int argc, const char *argv[])
 		case COMMAND_UNIT_TEST:
 			compiler_tests();
 			break;
+		case COMMAND_GENERATE_HEADERS:
+			build_options.compile_option = COMPILE_OUTPUT_HEADERS;
+			compile_files(NULL);
+			break;
 		case COMMAND_COMPILE:
 			compile_files(NULL);
 			break;

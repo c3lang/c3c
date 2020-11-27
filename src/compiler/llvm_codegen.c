@@ -488,7 +488,13 @@ void llvm_codegen(Context *context)
 	}
 
 	if (llvm_use_debug(&gen_context)) LLVMDIBuilderFinalize(gen_context.debug.builder);
-	gencontext_print_llvm_ir(&gen_context);
+
+	// If it's in test, then we want to serialize the IR before it is optimized.
+	if (build_options.test_mode)
+	{
+		gencontext_print_llvm_ir(&gen_context);
+		gencontext_verify_ir(&gen_context);
+	}
 
 	// Starting from here we could potentially thread this:
 	LLVMPassManagerBuilderRef pass_manager_builder = LLVMPassManagerBuilderCreate();
@@ -524,10 +530,12 @@ void llvm_codegen(Context *context)
 	LLVMRunPassManager(pass_manager, gen_context.module);
 	LLVMDisposePassManager(pass_manager);
 
-	// Serialize the LLVM IR, if requested
-	if (build_options.emit_llvm) gencontext_print_llvm_ir(&gen_context);
-
-	gencontext_verify_ir(&gen_context);
+	// Serialize the LLVM IR, if requested, also verify the IR in this case
+	if (build_options.emit_llvm)
+	{
+		gencontext_print_llvm_ir(&gen_context);
+		gencontext_verify_ir(&gen_context);
+	}
 
 	if (build_options.emit_bitcode) gencontext_emit_object_file(&gen_context);
 

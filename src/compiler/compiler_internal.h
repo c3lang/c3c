@@ -442,7 +442,7 @@ typedef struct _Decl
 	Visibility visibility : 2;
 	ResolveStatus resolve_status : 2;
 	bool is_packed : 1;
-	bool has_addr : 1;
+	bool needs_additional_pad : 1;
 	void *backend_ref;
 	const char *cname;
 	uint32_t alignment;
@@ -1250,6 +1250,7 @@ bool cast_implicitly_to_runtime(Context *context, Expr *expr);
 void llvm_codegen(Context *context);
 void llvm_codegen_setup();
 
+void header_gen(Context *context);
 
 void compiler_add_type(Type *type);
 Decl *compiler_find_symbol(const char *name);

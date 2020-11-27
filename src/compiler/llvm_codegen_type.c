@@ -36,9 +36,25 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *context, Decl *decl)
 			LLVMTypeRef type = LLVMStructCreateNamed(context->context, decl->external_name);
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
-			VECEACH(decl->strukt.members, i)
+			Decl **members = decl->strukt.members;
+			VECEACH(members, i)
 			{
-				vec_add(types, llvm_get_type(context, decl->strukt.members[i]->type));
+				vec_add(types, llvm_get_type(context, members[i]->type));
+			}
+			if (decl->needs_additional_pad)
+			{
+				Decl *last_member = VECLAST(members);
+				unsigned member_end = last_member->offset + type_size(last_member->type);
+				unsigned bytes = decl->strukt.size - member_end;
+				assert(bytes > 0);
+				if (bytes == 1)
+				{
+					vec_add(types, llvm_get_type(context, type_byte));
+				}
+				else
+				{
+					vec_add(types, LLVMArrayType(llvm_get_type(context, type_byte), bytes));
+				}
 			}
 			LLVMStructSetBody(type, types, vec_size(types), decl->is_packed);
 			return type;

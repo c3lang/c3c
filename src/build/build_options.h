@@ -13,6 +13,7 @@ typedef enum
 {
 	COMMAND_MISSING = 0,
 	COMMAND_COMPILE,
+	COMMAND_GENERATE_HEADERS,
 	COMMAND_INIT,
 	COMMAND_BUILD,
 	COMMAND_COMPILE_RUN,
@@ -66,6 +67,7 @@ typedef enum
 	COMPILE_NORMAL,
 	COMPILE_LEX_ONLY,
 	COMPILE_LEX_PARSE_ONLY,
+	COMPILE_OUTPUT_HEADERS,
 	COMPILE_OUTPUT_AST,
 } CompileOption;
 
@@ -88,6 +90,14 @@ typedef enum
 
 typedef enum
 {
+	PIC_DEFAULT,
+	PIC_NONE,
+	BIG_PIC_USE,
+	SMALL_PIC_USE,
+} PicGeneration;
+
+typedef enum
+{
 	DEBUG_INFO_NONE,
 	DEBUG_INFO_LINE_TABLES,
 	DEBUG_INFO_FULL
@@ -96,14 +106,23 @@ typedef enum
 typedef enum
 {
 	ARCH_OS_TARGET_DEFAULT = 0,
-	X86_DARWIN,
+	X86_FREEBSD,
+	X86_OPENBSD,
 	X86_LINUX,
+	X86_WINDOWS,
+	X86_MCU,
 	X64_DARWIN,
 	X64_LINUX,
+	X64_NETBSD,
 	X64_WINDOWS,
+	X64_WINDOWS_GNU,
 	AARCH64_LINUX,
 	AARCH64_DARWIN,
-	ARCH_OS_TARGET_LAST = AARCH64_DARWIN
+	RISCV32_LINUX,
+	RISCV64_LINUX,
+	WASM32,
+	WASM64,
+	ARCH_OS_TARGET_LAST = WASM64
 } ArchOsTarget;
 
 typedef struct
@@ -117,6 +136,8 @@ typedef struct
 	const char* path;
 	const char* cpu;
 	const char* target_triple;
+	PicGeneration pic;
+	bool generate_lib;
 	struct
 	{
 		bool reg_struct_return : 1;

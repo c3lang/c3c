@@ -11,19 +11,26 @@
 #include <string.h>
 #include <utils/lib.h>
 
-#include "../utils/errors.h"
-
 static const int DEFAULT_SYMTAB_SIZE = 64 * 1024;
 static const int MAX_SYMTAB_SIZE = 1024 * 1024;
 
 static char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
-		[X86_DARWIN] = "x86_darwin",
+		[X86_FREEBSD] = "x86_freebsd",
+		[X86_OPENBSD] = "x86_openbsd",
+		[X86_MCU] = "x86_mcu",
+		[X86_WINDOWS] = "x86-windows",
 		[X86_LINUX] = "x86_linux",
 		[X64_DARWIN] = "x64_darwin",
 		[X64_LINUX] = "x64_linux",
 		[X64_WINDOWS] = "x64_windows",
+		[X64_WINDOWS_GNU] = "x64_mingw",
+		[X64_NETBSD] = "x64_netbsd",
 		[AARCH64_LINUX] = "aarch64_linux",
 		[AARCH64_DARWIN] = "aarch64_darwin",
+		[RISCV32_LINUX] = "riscv32-linux",
+		[RISCV64_LINUX] = "riscv64-linux",
+		[WASM32] = "wasm32",
+		[WASM64] = "wasm64",
 };
 
 BuildOptions build_options;
@@ -53,6 +60,7 @@ static void usage(void)
 	OUTPUT("  bench [<target>]                   Benchmark a target.");
 	OUTPUT("  clean-run [<target>]               Clean, then run the target.");
 	OUTPUT("  compile-run <file1> [<file2> ...]  Compile files then immediately run the result.");
+	OUTPUT("  headers <file1> [<file2> ...]      Analyse files and generate C headers for public methods.");
 	OUTPUT("");
 	OUTPUT("Options:");
 	OUTPUT("  --lib <dir>           - Use this directory as the c3 library path.");
@@ -78,6 +86,10 @@ static void usage(void)
 	OUTPUT("  -freg-struct-return   - Override default ABI to return small structs in registers.");
 	OUTPUT("  -fpcc-struct-return   - Override default ABI to return small structs on the stack.");
 	OUTPUT("  -fno-memcpy-pass      - Prevents compiler from doing a mem copy pass (for debug).");
+	OUTPUT("  -fpic                 - Generate position independent (PIC) code if suitable.");
+	OUTPUT("  -fno-pic              - Do not generate position independent code.");
+	OUTPUT("  -fPIC                 - Always generate position independent (PIC) code.");
+	OUTPUT("  -fno-PIC              - generate position independent (PIC) code.");
 	OUTPUT("");
 	OUTPUT("  -msoft-float          - Use software floating point.");
 	OUTPUT("  -mno-soft-float       - Prevent use of software floating point.");
@@ -173,6 +185,11 @@ static void parse_command(void)
 		build_options.command = COMMAND_COMPILE;
 		return;
 	}
+	if (arg_match("headers"))
+	{
+		build_options.command = COMMAND_GENERATE_HEADERS;
+		return;
+	}
 	if (arg_match("build"))
 	{
 		build_options.command = COMMAND_BUILD;
@@ -258,6 +275,21 @@ static void parse_option(void)
 			if (match_shortopt("freg-struct-return"))
 			{
 				build_options.feature.reg_struct_return = true;
+				return;
+			}
+			if (match_shortopt("fpic"))
+			{
+				build_options.pic = SMALL_PIC_USE;
+				return;
+			}
+			if (match_shortopt("fPIC"))
+			{
+				build_options.pic = BIG_PIC_USE;
+				return;
+			}
+			if (match_shortopt("fno-pic"))
+			{
+				build_options.pic = PIC_NONE;
 				return;
 			}
 			if (match_shortopt("fpcc-struct-return"))
@@ -466,7 +498,9 @@ void parse_arguments(int argc, const char *argv[])
 			parse_command();
 			continue;
 		}
-		if (build_options.command == COMMAND_COMPILE_RUN || build_options.command == COMMAND_COMPILE)
+		if (build_options.command == COMMAND_COMPILE_RUN
+			|| build_options.command == COMMAND_COMPILE
+			|| build_options.command == COMMAND_GENERATE_HEADERS)
 		{
 			append_file();
 			continue;

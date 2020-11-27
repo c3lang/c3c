@@ -345,14 +345,24 @@ static inline void target_setup_x64_abi(void)
 }
 
 static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
-		[X86_DARWIN] = "i386-apple-darwin",
-		[X86_LINUX] = "i386-pc-linux",
+		[X86_FREEBSD] = "i386-unknown-freebsd",
+		[X86_OPENBSD] = "i386-unknown-openbsd",
+		[X86_MCU] = "i386-pc-elfiamcu",
+		[X86_WINDOWS] = "i386-pc-win32",
+		[X86_LINUX] = "i386-unknown-linux",
 		[X64_DARWIN] = "x86_64-apple-darwin",
-		[X64_LINUX] = "x86_64-pc-linux",
-		[X64_WINDOWS] = "x86_64-pc-win32",
-		[AARCH64_LINUX] = "aarch64-pc-linux",
+		[X64_LINUX] = "x86_64-unknown-linux-gnu",
+		[X64_WINDOWS] = "x86_64-pc-windows-msvc",
+		[X64_WINDOWS_GNU] = "x86_64-pc-windows-gnu",
+		[X64_NETBSD] = "x86_64-unknown-netbsd",
+		[AARCH64_LINUX] = "aarch64-unknown-linux-gnu",
 		[AARCH64_DARWIN] = "aarch64-apple-darwin",
+		[RISCV32_LINUX] = "riscv32-unknown-linux",
+		[RISCV64_LINUX] = "riscv32-unknown-linux",
+		[WASM32] = "wasm32-unknown-unknown",
+		[WASM64] = "wasm64-unknown-unknown",
 };
+
 
 void target_setup(void)
 {
@@ -409,7 +419,15 @@ void target_setup(void)
 		default:
 			UNREACHABLE;
 	}
-//	reloc = (opt->pic || opt->library)? LLVMRelocPIC : LLVMRelocDefault;
+	 if (build_options.pic == BIG_PIC_USE || build_options.pic == SMALL_PIC_USE || build_options.generate_lib)
+	 {
+	 	reloc_mode = LLVMRelocPIC;
+	 }
+	 if (build_options.pic == PIC_NONE)
+	 {
+	 	reloc_mode = LLVMRelocStatic;
+	 }
+
 	if (!build_options.cpu)
 	{
 		build_options.cpu = "generic";
@@ -446,6 +464,7 @@ void target_setup(void)
 	assert(build_target.width_pointer == LLVMPointerSize(build_target.llvm_data_layout) * 8);
 	build_target.alloca_address_space = 0;
 
+	// Todo PIC or no PIC depending on architecture.
 	switch (build_target.arch)
 	{
 		case ARCH_TYPE_X86_64:
@@ -488,6 +507,12 @@ void target_setup(void)
 	build_target.width_c_long = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_LONG);
 	build_target.width_c_long_long = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_LONG_LONG);
 
+	/**
+	 * x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
+	 * x86-64-v2: (close to Nehalem) CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3
+     * x86-64-v3: (close to Haswell) AVX, AVX2, BMI1, BMI2, F16C, FMA, LZCNT, MOVBE, XSAVE
+     * x86-64-v4: AVX512F, AVX512BW, AVX512CD, AVX512DQ, AVX512VL
+	 */
 	switch (build_target.arch)
 	{
 		case ARCH_TYPE_AARCH64_32:
@@ -544,9 +569,7 @@ void target_setup(void)
 			target_setup_arm_abi();
 			break;
 		case ARCH_TYPE_PPC:
-			build_target.abi = ABI_PPC32;
-			build_target.ppc.is_softfp = /** has spe || **/  build_target.float_abi == FLOAT_ABI_SOFT;
-			break;
+			FATAL_ERROR("PPC32 is not supported.");
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC64LE:
 			if (build_target.object_format != OBJ_FORMAT_ELF)

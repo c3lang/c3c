@@ -3364,7 +3364,6 @@ static inline bool sema_take_addr_of_var(Expr *expr, Decl *decl)
 		case VARDECL_GLOBAL:
 		case VARDECL_PARAM:
 		case VARDECL_PARAM_REF:
-			decl->has_addr = true;
 			return true;
 		case VARDECL_CONST:
 			if (!decl->var.type_info)
@@ -3373,7 +3372,6 @@ static inline bool sema_take_addr_of_var(Expr *expr, Decl *decl)
 				SEMA_PREV(decl, "The constant was defined here.");
 				return false;
 			}
-			decl->has_addr = true;
 			return true;
 		case VARDECL_PARAM_EXPR:
 			SEMA_ERROR(expr, "It is not possible to take the address of a captured expression, but you can use && to take a reference to the temporary value.");
@@ -3399,7 +3397,6 @@ static inline bool sema_take_addr_of_ident(Expr *inner)
 	{
 		case DECL_ENUM_CONSTANT:
 		case DECL_FUNC:
-			decl->has_addr = true;
 			return true;
 		case DECL_VAR:
 			return sema_take_addr_of_var(inner, decl);

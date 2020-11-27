@@ -86,20 +86,6 @@ void compiler_compile(BuildTarget *target)
 		vec_add(contexts, context);
 		parse_file(context);
 	}
-	/*
-	const char *printf = "printf";
-	TokenType t_type = TOKEN_IDENT;
-	const char *interned = symtab_add(printf, (uint32_t) 6, fnv1a(printf, (uint32_t)6), &t_type);
-	Decl *decl = decl_new(DECL_FUNC, wrap(interned), VISIBLE_PUBLIC);
-	Type *type = type_new(TYPE_POINTER);
-	type->base = type_char;
-	sema_resolve_type(contexts[0], type);
-	Decl *param = decl_new_var(wrap("str"), type, VARDECL_PARAM, VISIBLE_LOCAL);
-	vec_add(decl->func.function_signature.params, param);
-	decl->func.function_signature.rtype = type_void;
-	decl->resolve_status = RESOLVE_DONE;
-	context_register_global_decl(contexts[0], decl);
-*/
 	assert(contexts);
 	VECEACH(contexts, i)
 	{
@@ -136,6 +122,16 @@ void compiler_compile(BuildTarget *target)
 		sema_analysis_pass_functions(contexts[i]);
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
+	if (build_options.command == COMMAND_GENERATE_HEADERS)
+	{
+		VECEACH(contexts, i)
+		{
+			Context *context = contexts[i];
+			header_gen(context);
+		}
+		return;
+	}
 
 	llvm_codegen_setup();
 	VECEACH(contexts, i)
@@ -216,6 +212,7 @@ void compile_files(BuildTarget *target)
 		case COMPILE_LEX_PARSE_ONLY:
 			compiler_parse(target);
 			break;
+		case COMPILE_OUTPUT_HEADERS:
 		default:
 			compiler_compile(target);
 			break;

@@ -44,6 +44,172 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 	}
 }
 
+static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **members)
+{
+	unsigned max_size = 0;
+	unsigned max_size_element = 0;
+	unsigned max_alignment_element = 0;
+	unsigned max_alignment = 0;
+
+	VECEACH(members, i)
+	{
+		Decl *member = members[i];
+		if (!decl_ok(member))
+		{
+			decl_poison(decl);
+			continue;
+		}
+		if (!sema_analyse_struct_member(context, member))
+		{
+			if (decl_ok(decl))
+			{
+				decl_poison(decl);
+				continue;
+			}
+			continue;
+		}
+
+		size_t member_alignment = type_abi_alignment(member->type);
+		size_t member_size = type_size(member->type);
+
+		// Update max alignment
+		if (member_alignment > max_alignment)
+		{
+			max_alignment = member_alignment;
+			max_alignment_element = i;
+		}
+		// Update max size
+		if (member_size > max_size)
+		{
+			max_size_element = i;
+			max_size = member_size;
+			// If this is bigger than the previous with max
+			// alignment, pick this as the maximum size element.
+			if (max_alignment_element != i && max_alignment == member_alignment)
+			{
+				max_alignment_element = i;
+			}
+		}
+		// Offset is always 0
+		member->offset = 0;
+	}
+
+	if (!decl_ok(decl)) return false;
+
+	// 1. If packed, then the alignment is zero, unless previously given
+	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
+
+	// 2. Otherwise pick the highest of the natural alignment and the given alignment.
+	if (!decl->is_packed) decl->alignment = MAX(decl->alignment, max_alignment);
+
+	// We're only packed if the max alignment is > 1
+	decl->is_packed = max_alignment > 1;
+
+	// The actual size might be larger than the max size due to alignment.
+	unsigned size = aligned_offset(max_size, decl->alignment);
+
+	// If the actual size is bigger than the real size, add
+	// padding.
+	decl->needs_additional_pad = size > max_size;
+
+	decl->strukt.size = size;
+
+	return true;
+}
+
+static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **members)
+{
+	// Default alignment is 1 even if the it is empty.
+	size_t natural_alignment = 1;
+	bool is_unaligned = false;
+	size_t size = 0;
+	size_t offset = 0;
+	bool is_packed = decl->is_packed;
+	VECEACH(members, i)
+	{
+		Decl *member = decl->strukt.members[i];
+		if (!decl_ok(member))
+		{
+			decl_poison(decl);
+			continue;
+		}
+		if (!sema_analyse_struct_member(context, member))
+		{
+			if (decl_ok(decl))
+			{
+				decl_poison(decl);
+				continue;
+			}
+			continue;
+		}
+
+		if (!decl_ok(decl)) return false;
+
+		size_t member_alignment = type_abi_alignment(member->type);
+
+		// If the member alignment is higher than the currently detected alignment,
+		// then we update the natural alignment
+		if (member_alignment > natural_alignment)
+		{
+			natural_alignment = member_alignment;
+		}
+		// In the case of a struct, we will align this to the next offset,
+		// using the alignment of the member.
+		unsigned align_offset = aligned_offset(offset, member_alignment);
+
+		// Usually we align things, but if this is a packed struct we don't
+		// so offsets may mismatch
+		if (align_offset > offset)
+		{
+			if (is_packed)
+			{
+				// If it is packed, we note that the packing made it unaligned.
+				is_unaligned = true;
+			}
+			else
+			{
+				// Otherwise we insert the (implicit) padding by moving to the aligned offset.
+				offset = align_offset;
+			}
+		}
+		member->offset = offset;
+		offset += type_size(member->type);
+		;
+	}
+
+	// Set the alignment:
+
+	// 1. If packed, use the alignment given, otherwise set to 1.
+	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
+
+	// 2. Otherwise pick the highest of the natural alignment and the given alignment.
+	if (!decl->is_packed) decl->alignment = MAX(decl->alignment, natural_alignment);
+
+	// We must now possibly add the end padding.
+	// First we calculate the actual size
+	size = aligned_offset(offset, decl->alignment);
+
+	// We might get a size that is greater than the natural alignment
+	// in this case we need an additional padding
+	if (size > aligned_offset(offset, natural_alignment))
+	{
+		decl->needs_additional_pad = true;
+	}
+
+	// If the size is smaller the naturally aligned struct, then it is also unaligned
+	if (size < aligned_offset(offset, natural_alignment))
+	{
+		is_unaligned = true;
+	}
+	if (is_unaligned && size > offset)
+	{
+		decl->needs_additional_pad = true;
+	}
+	decl->is_packed = is_unaligned;
+	decl->strukt.size = size;
+	return true;
+}
+
 static bool sema_analyse_struct_union(Context *context, Decl *decl)
 {
 	AttributeDomain domain;
@@ -100,60 +266,20 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 	}
 
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : "anon");
-	size_t offset = 0;
-	// Default alignment is 1.
-	size_t alignment = 1;
-	size_t size = 0;
 	if (decl->name) context_push_scope(context);
-	VECEACH(decl->strukt.members, i)
+	bool success;
+	if (decl->decl_kind == DECL_UNION)
 	{
-		Decl *member = decl->strukt.members[i];
-		if (!decl_ok(member))
-		{
-			decl_poison(decl);
-			continue;
-		}
-		if (!sema_analyse_struct_member(context, member))
-		{
-			if (decl_ok(decl))
-			{
-				decl_poison(decl);
-				continue;
-			}
-			continue;
-		}
-
-		size_t member_alignment = type_abi_alignment(member->type);
-		size_t member_size = type_size(member->type);
-		if (member_alignment > alignment) alignment = member_alignment;
-		if (decl->decl_kind == DECL_UNION)
-		{
-			if (member_size > size) size = member_size;
-			member->offset = 0;
-		}
-		else
-		{
-			if (!decl->is_packed)
-			{
-				offset = aligned_offset(offset, member_alignment);
-			}
-			member->offset = offset;
-			offset += member_size;
-		}
+		success = sema_analyse_union_members(context, decl, decl->strukt.members);
 	}
-	if (!decl->alignment) decl->alignment = alignment;
-	if (decl->decl_kind != DECL_UNION)
+	else
 	{
-		size = offset;
-		if (!decl->is_packed)
-		{
-			size = aligned_offset(size, decl->alignment);
-		}
+		success = sema_analyse_struct_members(context, decl, decl->strukt.members);
 	}
-	decl->strukt.size = size;
-	DEBUG_LOG("Struct/union size %d, alignment %d.", (int)size, (int)decl->alignment);
+	DEBUG_LOG("Struct/union size %d, alignment %d.", (int)decl->strukt.size, (int)decl->alignment);
 	if (decl->name) context_pop_scope(context);
 	DEBUG_LOG("Analysis complete.");
+	if (!success) return decl_poison(decl);
 	return decl_ok(decl);
 }
 
