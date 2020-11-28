@@ -15,7 +15,7 @@ ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 	TODO
 }
 
-ABIArgInfo *aarch64_classify_argument_type(GenContext *context, Type *type)
+ABIArgInfo *aarch64_classify_argument_type(Type *type)
 {
 	type = type_lowering(type);
 
@@ -79,7 +79,7 @@ ABIArgInfo *aarch64_classify_argument_type(GenContext *context, Type *type)
 	return abi_arg_new_indirect_not_by_val();
 }
 
-ABIArgInfo *aarch64_classify_return_type(GenContext *context, Type *type, bool variadic)
+ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 {
 	type = type_lowering(type);
 
@@ -138,24 +138,24 @@ ABIArgInfo *aarch64_classify_return_type(GenContext *context, Type *type, bool v
 }
 
 
-void c_abi_func_create_aarch64(GenContext *context, FunctionSignature *signature)
+void c_abi_func_create_aarch64(FunctionSignature *signature)
 {
 	if (signature->failable)
 	{
-		signature->failable_abi_info = aarch64_classify_return_type(context, signature->rtype->type, signature->variadic);
+		signature->failable_abi_info = aarch64_classify_return_type(signature->rtype->type, signature->variadic);
 		if (signature->rtype->type->type_kind != TYPE_VOID)
 		{
-			signature->ret_abi_info = aarch64_classify_argument_type(context, type_get_ptr(type_lowering(signature->rtype->type)));
+			signature->ret_abi_info = aarch64_classify_argument_type(type_get_ptr(type_lowering(signature->rtype->type)));
 		}
 	}
 	else
 	{
-		signature->ret_abi_info = aarch64_classify_return_type(context, signature->rtype->type, signature->variadic);
+		signature->ret_abi_info = aarch64_classify_return_type(signature->rtype->type, signature->variadic);
 	}
 	Decl **params = signature->params;
 	VECEACH(params, i)
 	{
-		params[i]->var.abi_info = aarch64_classify_argument_type(context, params[i]->type);
+		params[i]->var.abi_info = aarch64_classify_argument_type(params[i]->type);
 	}
 
 }

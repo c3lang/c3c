@@ -48,7 +48,7 @@ ABIArgInfo *c_abi_classify_argument_type_default(Type *type);
 void c_abi_func_create_win64(GenContext *context, FunctionSignature *signature);
 void c_abi_func_create_x86(GenContext *context, FunctionSignature *signature);
 void c_abi_func_create_x64(GenContext *context, FunctionSignature *signature);
-void c_abi_func_create_aarch64(GenContext *context, FunctionSignature *signature);
+void c_abi_func_create_aarch64(FunctionSignature *signature);
 void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature);
 
 // Implementation

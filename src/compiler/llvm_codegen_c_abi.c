@@ -265,7 +265,10 @@ void c_abi_func_create(GenContext *context, FunctionSignature *signature)
 			c_abi_func_create_win64(context, signature);
 			break;
 		case ABI_AARCH64:
-			c_abi_func_create_aarch64(context, signature);
+			c_abi_func_create_aarch64(signature);
+			break;
+		case ABI_RISCV:
+			c_abi_func_create_riscv(context, signature);
 			break;
 		default:
 			FATAL_ERROR("Unsupported ABI");

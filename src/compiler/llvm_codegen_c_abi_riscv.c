@@ -294,14 +294,13 @@ void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature)
 	Type *return_type = signature->failable ? type_error : signature->rtype->type;
 	return_type = type_lowering(return_type);
 	ABIArgInfo *return_abi = riscv_classify_return(context, return_type);
-	// TODO fixup of failable.
 
 	// IsRetIndirect is true if classifyArgumentType indicated the value should
 	// be passed indirect, or if the type size is a scalar greater than 2*XLen
 	// and not a complex type with elements <= FLen. e.g. fp128 is passed direct
 	// in LLVM IR, relying on the backend lowering code to rewrite the argument
 	// list and pass indirectly on RV32.
-	bool is_ret_indirect = abi_arg_is_indirect(signature->failable ? signature->failable_abi_info : signature->ret_abi_info);
+	bool is_ret_indirect = abi_arg_is_indirect(return_abi);
 	if (!is_ret_indirect && type_is_scalar(return_type) && type_size(return_type) > 2 * build_target.riscv.xlen)
 	{
 		if (return_type->type_kind == TYPE_COMPLEX && build_target.riscv.flen)
@@ -322,8 +321,13 @@ void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature)
 	unsigned arg_gprs_left = is_ret_indirect ? gpr - 1 : gpr;
 	unsigned arg_fprs_left = build_target.riscv.flen ? fpr : 0;
 
-	// unsigned fixed_arguments = vec_size(signature->params); todo
-	// TODO fix failable.
+	// If we have a failable, then the return type is a parameter.
+	if (signature->failable && signature->rtype->type->type_kind != TYPE_VOID)
+	{
+		signature->ret_abi_info = riscv_classify_argument_type(context, type_get_ptr(type_lowering(signature->rtype->type)),
+														 true, &arg_gprs_left, &arg_fprs_left);
+	}
+
 	Decl **params = signature->params;
 	VECEACH(params, i)
 	{
