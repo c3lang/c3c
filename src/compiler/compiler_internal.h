@@ -1459,7 +1459,7 @@ static inline bool type_is_pointer(Type *type);
 static inline bool type_is_promotable_integer(Type *type);
 static inline bool type_is_signed(Type *type);
 static inline bool type_is_structlike(Type *type);
-static inline bool type_is_promotable_integer(Type *type);
+static inline size_t type_min_alignment(size_t a, size_t b);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_union_struct(Type *type);
 bool type_is_user_defined(Type *type);
@@ -1635,7 +1635,7 @@ static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I
 static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
-
+bool type_is_scalar(Type *type);
 static inline bool type_kind_is_derived(TypeKind kind)
 {
 	switch (kind)
@@ -1698,6 +1698,15 @@ static inline bool type_is_promotable_integer(Type *type)
 {
 	// If we support other architectures, update this.
 	return type_is_integer_kind(type) && type->builtin.bytesize < type_c_int->builtin.bytesize;
+}
+
+/**
+ * Minimum alignment, values are either offsets or alignments.
+ * @return
+ */
+static inline size_t type_min_alignment(size_t a, size_t b)
+{
+	return (a | b) & (1 + ~(a | b));
 }
 
 #define TRY_AST_OR(_ast_stmt, _res) ({ Ast* _ast = (_ast_stmt); if (!ast_ok(_ast)) return _res; _ast; })

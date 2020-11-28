@@ -135,13 +135,27 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			llvm_emit_memcpy_to_decl(c, decl, pointer, info->indirect.realignment);
 			return;
 		}
+		case ABI_ARG_EXPAND_COERCE:
+		{
+			// Create the expand type:
+			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
+			LLVMValueRef temp = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
+			LLVMValueRef gep_first = LLVMBuildStructGEP2(c->builder, coerce_type, temp, info->coerce_expand.lo_index, "first");
+			llvm_store_aligned(c, gep_first, llvm_get_next_param(c, index), 0);
+			if (info->coerce_expand.hi)
+			{
+				LLVMValueRef gep_second = LLVMBuildStructGEP2(c->builder, coerce_type, temp, info->coerce_expand.hi_index, "second");
+				llvm_store_aligned(c, gep_second, llvm_get_next_param(c, index), 0);
+			}
+			break;
+		}
 		case ABI_ARG_DIRECT_PAIR:
 		{
 			// Here we do the following transform:
 			// lo, hi -> { lo, hi } -> struct
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
 			LLVMTypeRef hi = llvm_abi_type(c, info->direct_pair.hi);
-			LLVMTypeRef struct_type = gencontext_get_twostruct(c, lo, hi);
+			LLVMTypeRef struct_type = llvm_get_twostruct(c, lo, hi);
 			unsigned decl_alignment = decl_abi_alignment(decl);
 			// Cast to { lo, hi }
 			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(struct_type, 0), "pair");
@@ -264,6 +278,47 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			// Expands to multiple slots -
 			// Not applicable to return values.
 			UNREACHABLE
+		case ABI_ARG_EXPAND_COERCE:
+		{
+			// Pick the return as an address.
+			llvm_value_addr(c, return_value);
+			// Get the coerce type.
+			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
+			// Create the new pointer
+			LLVMValueRef coerce = LLVMBuildBitCast(c->builder, return_value->value, coerce_type, "");
+			// We might have only one value, in that case, build a GEP to that one.
+			LLVMValueRef lo_val;
+			unsigned alignment;
+			LLVMValueRef lo = llvm_emit_struct_gep(c, coerce, coerce_type, info->coerce_expand.lo_index,
+			                                       return_value->alignment,
+			                                       info->coerce_expand.offset_lo, &alignment);
+			LLVMTypeRef lo_type = llvm_abi_type(c, info->coerce_expand.hi);
+			lo_val = llvm_emit_load_aligned(c, lo_type, lo, alignment, "");
+
+			// We're done if there's a single element.
+			if (!info->coerce_expand.hi)
+			{
+				llvm_emit_return_value(c, lo_val);
+				return;
+			}
+
+			// Let's make a first class aggregate
+			LLVMValueRef hi = llvm_emit_struct_gep(c, coerce, coerce_type, info->coerce_expand.hi_index,
+			                                       return_value->alignment,
+			                                       info->coerce_expand.offset_hi, &alignment);
+			LLVMTypeRef hi_type = llvm_abi_type(c, info->coerce_expand.hi);
+			LLVMValueRef hi_val = llvm_emit_load_aligned(c, hi_type, hi, alignment, "");
+
+			LLVMTypeRef unpadded_type = llvm_get_twostruct(c, lo_type, hi_type);
+			LLVMValueRef composite = LLVMGetUndef(unpadded_type);
+
+			composite = LLVMBuildInsertValue(c->builder, composite, lo_val, 0, "");
+			composite = LLVMBuildInsertValue(c->builder, composite, hi_val, 1, "");
+
+			// And return that unpadded result
+			llvm_emit_return_value(c, composite);
+			break;
+		}
 		case ABI_ARG_DIRECT_PAIR:
 		case ABI_ARG_DIRECT_COERCE:
 		{
@@ -427,6 +482,7 @@ static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef functio
 		case ABI_ARG_IGNORE:
 		case ABI_ARG_DIRECT_COERCE:
 		case ABI_ARG_DIRECT_PAIR:
+		case ABI_ARG_EXPAND_COERCE:
 			break;
 		case ABI_ARG_INDIRECT:
 			if (info->indirect.realignment)

@@ -281,7 +281,7 @@ typedef struct
 		struct
 		{
 			unsigned xlen;
-			unsigned abiflen;
+			unsigned flen;
 		} riscv;
 		struct
 		{

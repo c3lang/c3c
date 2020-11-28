@@ -207,6 +207,13 @@ static inline void add_func_type_param(GenContext *context, Type *param_type, AB
 		case ABI_ARG_INDIRECT:
 			vec_add(*params, llvm_get_ptr_type(context, param_type));
 			break;
+		case ABI_ARG_EXPAND_COERCE:
+			vec_add(*params, llvm_abi_type(context, arg_info->coerce_expand.lo));
+			if (arg_info->coerce_expand.hi)
+			{
+				vec_add(*params, llvm_abi_type(context, arg_info->coerce_expand.hi));
+			}
+			break;
 		case ABI_ARG_EXPAND:
 			// Expanding a structs
 			param_expand(context, params, param_type->canonical);
@@ -267,6 +274,18 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 		case ABI_ARG_INDIRECT:
 			vec_add(params, llvm_get_ptr_type(context, real_return_type));
 			FALLTHROUGH;
+		case ABI_ARG_EXPAND_COERCE:
+		{
+			LLVMTypeRef lo = llvm_abi_type(context, ret_arg_info->direct_pair.lo);
+			if (!ret_arg_info->direct_pair.hi)
+			{
+				return_type = lo;
+				break;
+			}
+			LLVMTypeRef hi = llvm_abi_type(context, ret_arg_info->direct_pair.hi);
+			return_type = llvm_get_twostruct(context, lo, hi);
+			break;
+		}
 		case ABI_ARG_IGNORE:
 			return_type = llvm_get_type(context, type_void);
 			break;
@@ -274,7 +293,7 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 		{
 			LLVMTypeRef lo = llvm_abi_type(context, ret_arg_info->direct_pair.lo);
 			LLVMTypeRef hi = llvm_abi_type(context, ret_arg_info->direct_pair.hi);
-			return_type = gencontext_get_twostruct(context, lo, hi);
+			return_type = llvm_get_twostruct(context, lo, hi);
 			break;
 		}
 		case ABI_ARG_DIRECT_COERCE:
@@ -369,7 +388,9 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_VECTOR:
 			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->vector.base), any_type->vector.len);
 		case TYPE_COMPLEX:
-			return any_type->backend_type = gencontext_get_twostruct(c, llvm_get_type(c, any_type->complex), llvm_get_type(c, any_type->complex));
+			return any_type->backend_type = llvm_get_twostruct(c,
+			                                                   llvm_get_type(c, any_type->complex),
+			                                                   llvm_get_type(c, any_type->complex));
 	}
 	UNREACHABLE;
 }
@@ -377,6 +398,27 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 
 LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 {
+	if (arg_info->kind == ABI_ARG_EXPAND_COERCE)
+	{
+		unsigned element_index = 0;
+		LLVMTypeRef elements[4];
+		// Add padding if needed.
+		if (arg_info->coerce_expand.offset_lo)
+		{
+			elements[element_index++] = LLVMArrayType(llvm_get_type(c, type_byte), arg_info->coerce_expand.offset_lo);
+		}
+		elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.lo);
+		if (arg_info->coerce_expand.padding_hi)
+		{
+			elements[element_index++] = LLVMArrayType(llvm_get_type(c, type_byte), arg_info->coerce_expand.padding_hi);
+		}
+		if (arg_info->coerce_expand.hi)
+		{
+			elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.hi);
+		}
+		return LLVMStructType(elements, element_index, arg_info->coerce_expand.packed);
+	}
+
 	if (arg_info->kind == ABI_ARG_DIRECT_COERCE)
 	{
 		if (!arg_info->direct_coerce.type) return NULL;
@@ -393,12 +435,12 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 	{
 		LLVMTypeRef lo = llvm_abi_type(c, arg_info->direct_pair.lo);
 		LLVMTypeRef hi = llvm_abi_type(c, arg_info->direct_pair.hi);
-		return gencontext_get_twostruct(c, lo, hi);
+		return llvm_get_twostruct(c, lo, hi);
 	}
 	UNREACHABLE
 }
 
-LLVMTypeRef gencontext_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef hi)
+LLVMTypeRef llvm_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef hi)
 {
 	LLVMTypeRef types[2] = { lo, hi };
 	return LLVMStructTypeInContext(context->context, types, 2, false);

@@ -9,6 +9,7 @@ ABIArgInfo *aarch64_illegal_vector(Type *type)
 	// Need to look up SVE vectors.
 	return false;
 }
+
 ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 {
 	TODO

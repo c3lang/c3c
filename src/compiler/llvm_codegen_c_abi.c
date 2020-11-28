@@ -70,6 +70,7 @@ bool abi_arg_is_indirect(ABIArgInfo *info)
 		case ABI_ARG_DIRECT_COERCE:
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_DIRECT_PAIR:
+		case ABI_ARG_EXPAND_COERCE:
 			return false;
 		case ABI_ARG_INDIRECT:
 			return true;
@@ -96,7 +97,7 @@ ABIArgInfo *abi_arg_new_indirect_by_val(void)
 ABIArgInfo *abi_arg_new_indirect_not_by_val(void)
 {
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT);
-	info->indirect.by_val = true;
+	info->indirect.by_val = false;
 	return info;
 }
 
@@ -176,6 +177,30 @@ ABIArgInfo *abi_arg_new_direct_pair(AbiType *low_type, AbiType *high_type)
 ABIArgInfo *abi_arg_new_direct(void)
 {
 	return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+}
+
+ABIArgInfo *abi_arg_new_expand_coerce(AbiType *target_type, unsigned offset)
+{
+	ABIArgInfo *arg = abi_arg_new(ABI_ARG_EXPAND_COERCE);
+	arg->coerce_expand.packed = offset > 0;
+	arg->coerce_expand.offset_lo = offset;
+	arg->coerce_expand.lo_index = offset > 0 ? 1 : 0;
+	arg->coerce_expand.lo = target_type;
+	return arg;
+}
+
+ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType *first_element, unsigned initial_offset, AbiType *second_element, unsigned padding, bool is_packed)
+{
+	ABIArgInfo *arg = abi_arg_new(ABI_ARG_EXPAND_COERCE);
+	arg->coerce_expand.packed = is_packed;
+	arg->coerce_expand.offset_lo = initial_offset;
+	arg->coerce_expand.lo_index = initial_offset > 0 ? 1 : 0;
+	arg->coerce_expand.lo = first_element;
+	arg->coerce_expand.hi = second_element;
+	arg->coerce_expand.padding_hi = padding;
+	arg->coerce_expand.offset_hi = padding + initial_offset + abi_type_size(first_element);
+	arg->coerce_expand.hi_index = arg->coerce_expand.lo_index + (padding > 0 ? 1U : 0U);
+	return arg;
 }
 
 ABIArgInfo *abi_arg_new_direct_coerce(AbiType *target_type)

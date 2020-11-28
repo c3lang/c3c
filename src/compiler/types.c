@@ -913,6 +913,42 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 	type_create("error", &t_error, TYPE_ERR_UNION, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
 }
 
+bool type_is_scalar(Type *type)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			UNREACHABLE
+		case TYPE_VOID:
+		case TYPE_FUNC:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_ARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_VECTOR:
+			return false;
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_TYPEID:
+		case TYPE_POINTER:
+		case TYPE_ENUM:
+		case TYPE_ERRTYPE:
+		case TYPE_ERR_UNION:
+		case TYPE_VARARRAY:
+		case TYPE_COMPLEX:
+			return true;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_STRING:
+			TODO
+	}
+	UNREACHABLE
+}
 /**
  * Check if a type is contained in another type.
  *

@@ -30,6 +30,8 @@ ABIArgInfo *abi_arg_new_direct_pair(AbiType *low_type, AbiType *high_type);
 ABIArgInfo *abi_arg_new_direct(void);
 ABIArgInfo *abi_arg_new_direct_int_ext(Type *type_to_extend);
 ABIArgInfo *abi_arg_new_direct_coerce(AbiType *target_type);
+ABIArgInfo *abi_arg_new_expand_coerce(AbiType *target_type, unsigned offset);
+ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType *first_element, unsigned initial_offset, AbiType *second_element, unsigned padding, bool is_packed);
 ABIArgInfo *abi_arg_new_expand_padded(Type *padding);
 ABIArgInfo *abi_arg_new_indirect_realigned(unsigned alignment);
 ABIArgInfo *abi_arg_new_indirect_by_val(void);
@@ -47,7 +49,7 @@ void c_abi_func_create_win64(GenContext *context, FunctionSignature *signature);
 void c_abi_func_create_x86(GenContext *context, FunctionSignature *signature);
 void c_abi_func_create_x64(GenContext *context, FunctionSignature *signature);
 void c_abi_func_create_aarch64(GenContext *context, FunctionSignature *signature);
-
+void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature);
 
 // Implementation
 static inline ABIArgInfo *abi_arg_by_reg_attr(ABIArgInfo *info)

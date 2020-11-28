@@ -591,7 +591,7 @@ void target_setup(void)
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_RISCV32:
 			build_target.riscv.xlen = 0; // pointer width
-			build_target.riscv.abiflen = 32; // ends with f / d (64)
+			build_target.riscv.flen = 32; // ends with f / d (64)
 			build_target.abi = ABI_RISCV;
 			TODO
 		case ARCH_TYPE_X86:

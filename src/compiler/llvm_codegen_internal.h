@@ -50,6 +50,7 @@ typedef enum
 	ABI_ARG_IGNORE,
 	ABI_ARG_DIRECT_PAIR,
 	ABI_ARG_DIRECT_COERCE,
+	ABI_ARG_EXPAND_COERCE,
 	ABI_ARG_INDIRECT,
 	ABI_ARG_EXPAND,
 }  ABIKind;
@@ -93,6 +94,17 @@ typedef struct ABIArgInfo_
 			AbiType *lo;
 			AbiType *hi;
 		} direct_pair;
+		struct
+		{
+			unsigned char offset_lo;
+			unsigned char padding_hi;
+			unsigned char lo_index;
+			unsigned char hi_index;
+			unsigned char offset_hi;
+			bool packed : 1;
+			AbiType *lo;
+			AbiType *hi;
+		} coerce_expand;
 		struct
 		{
 			AbiType *partial_type;
@@ -210,6 +222,7 @@ void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type *type, unsigned alignment);
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_fold_failable(GenContext *c, BEValue *value);
+void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_pointer, unsigned index);
 
 LLVMValueRef llvm_value_rvalue_store(GenContext *c, BEValue *value);
 
@@ -255,6 +268,7 @@ static inline LLVMValueRef llvm_emit_store(GenContext *context, Decl *decl, LLVM
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name);
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable);
 void llvm_emit_return_implicit(GenContext *c);
+LLVMValueRef llvm_emit_struct_gep(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index, unsigned struct_alignment, unsigned offset, unsigned *alignment);
 
 LLVMValueRef llvm_get_next_param(GenContext *context, unsigned *index);
 LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info);
@@ -283,7 +297,7 @@ void llvm_store_self_aligned(GenContext *context, LLVMValueRef pointer, LLVMValu
 void llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, unsigned alignment);
 void llvm_store_aligned_decl(GenContext *context, Decl *decl, LLVMValueRef value);
 
-LLVMTypeRef gencontext_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef hi);
+LLVMTypeRef llvm_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef hi);
 LLVMValueRef llvm_emit_coerce(GenContext *context, LLVMTypeRef coerced, BEValue *value, Type *original_type);
 
 static inline LLVMValueRef gencontext_emit_load(GenContext *c, Type *type, LLVMValueRef value)
