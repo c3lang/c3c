@@ -5,7 +5,7 @@
 #include "llvm_codegen_c_abi_internal.h"
 
 
-ABIArgInfo *abi_arg_new(ABIKind kind)
+static ABIArgInfo *abi_arg_new(ABIKind kind)
 {
 	ABIArgInfo *info = CALLOCS(ABIArgInfo);
 	info->kind = kind;
@@ -183,6 +183,11 @@ ABIArgInfo *abi_arg_new_direct_pair(AbiType *low_type, AbiType *high_type)
 ABIArgInfo *abi_arg_new_direct(void)
 {
 	return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+}
+
+ABIArgInfo *abi_arg_new_expand(void)
+{
+	return abi_arg_new(ABI_ARG_EXPAND);
 }
 
 ABIArgInfo *abi_arg_new_expand_coerce(AbiType *target_type, unsigned offset)

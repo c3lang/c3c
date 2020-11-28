@@ -24,9 +24,9 @@ ABIArgInfo *win64_classify(GenContext *context, Type *type, bool is_return, bool
 				// Direct if return / builtin / vector
 				if (is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR)
 				{
-					return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+					return abi_arg_new_direct();
 				}
-				return abi_arg_new(ABI_ARG_EXPAND);
+				return abi_arg_new_expand();
 			}
 			// Otherwise use indirect
 			return abi_arg_new_indirect_not_by_val();
@@ -38,14 +38,10 @@ ABIArgInfo *win64_classify(GenContext *context, Type *type, bool is_return, bool
 				(is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR))
 			{
 				context->abi.sse_registers -= elements;
-				return abi_arg_new(ABI_ARG_DIRECT_COERCE);
-			}
-			if (is_return)
-			{
-				return abi_arg_new(ABI_ARG_INDIRECT);
+				return abi_arg_new_direct();
 			}
 			// HVAs are handled later.
-			if (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_VECTOR)
+			if (is_return || (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_VECTOR))
 			{
 				return abi_arg_new_indirect_not_by_val();
 			}
@@ -83,7 +79,7 @@ ABIArgInfo *win64_classify(GenContext *context, Type *type, bool is_return, bool
 	{
 		return abi_arg_new_indirect_not_by_val();
 	}
-	return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	return abi_arg_new_direct();
 }
 
 ABIArgInfo *win64_reclassify_hva_arg(GenContext *context, Type *type, ABIArgInfo *info)
@@ -97,7 +93,7 @@ ABIArgInfo *win64_reclassify_hva_arg(GenContext *context, Type *type, ABIArgInfo
 		if (context->abi.sse_registers >= elements)
 		{
 			context->abi.sse_registers -= elements;
-			ABIArgInfo *new_info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
+			ABIArgInfo *new_info = abi_arg_new_direct();
 			new_info->attributes.by_reg = true;
 			return new_info;
 		}

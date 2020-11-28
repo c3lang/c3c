@@ -25,10 +25,10 @@ typedef enum
 static inline ABIArgInfo *abi_arg_by_reg_attr(ABIArgInfo *info);
 size_t abi_arg_expanded_size(ABIArgInfo *type_info, Type *type);
 bool abi_arg_is_indirect(ABIArgInfo *info);
-ABIArgInfo *abi_arg_new(ABIKind kind);
 ABIArgInfo *abi_arg_ignore(void);
 ABIArgInfo *abi_arg_new_direct_pair(AbiType *low_type, AbiType *high_type);
 ABIArgInfo *abi_arg_new_direct(void);
+ABIArgInfo *abi_arg_new_expand(void);
 ABIArgInfo *abi_arg_new_direct_int_ext(Type *type_to_extend);
 ABIArgInfo *abi_arg_new_direct_coerce(AbiType *target_type);
 ABIArgInfo *abi_arg_new_expand_coerce(AbiType *target_type, unsigned offset);

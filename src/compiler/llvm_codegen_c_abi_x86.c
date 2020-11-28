@@ -81,7 +81,7 @@ static ABIArgInfo *x86_create_indirect_result(GenContext *context, Type *type, B
 
 ABIArgInfo *create_indirect_return_x86(GenContext *context)
 {
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT);
+	ABIArgInfo *info = abi_arg_new_indirect_not_by_val();
 	if (!context->abi.int_registers) return info;
 	// Consume a register for the return.
 	context->abi.int_registers--;
@@ -163,7 +163,7 @@ ABIArgInfo *x86_classify_return(GenContext *context, Type *type)
 		// Pass in the normal way.
 		if (type_is_homogenous_aggregate(type, &base, &elements))
 		{
-			return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+			return abi_arg_new_direct();
 		}
 	}
 
@@ -186,7 +186,7 @@ ABIArgInfo *x86_classify_return(GenContext *context, Type *type)
 			}
 			return create_indirect_return_x86(context);
 		}
-		return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+		return abi_arg_new_direct();
 	}
 
 	if (type_is_abi_aggregate(type))
@@ -212,11 +212,11 @@ ABIArgInfo *x86_classify_return(GenContext *context, Type *type)
 			{
 				if ((type_is_float(single_element) && !build_target.x86.is_win32_float_struct_abi))
 				{
-					return abi_arg_new(ABI_ARG_EXPAND);
+					return abi_arg_new_expand();
 				}
 				if (type_is_pointer(type))
 				{
-					return abi_arg_new(ABI_ARG_EXPAND);
+					return abi_arg_new_expand();
 				}
 			}
 			// This is not a single element struct, so we wrap it in an int.
@@ -235,7 +235,7 @@ ABIArgInfo *x86_classify_return(GenContext *context, Type *type)
 	if (type_is_integer(type) && type_size(type) > 8) return create_indirect_return_x86(context);
 
 	// Otherwise we expect to just pass this nicely in the return.
-	return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	return abi_arg_new_direct();
 
 }
 
@@ -418,7 +418,7 @@ static inline ABIArgInfo *x86_classify_homogenous_aggregate(GenContext *context,
 	// don't flatten.
 	if (is_vec_call)
 	{
-		ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
+		ABIArgInfo *info = abi_arg_new_direct();
 		info->attributes.by_reg = true;
 		return info;
 	}
@@ -430,7 +430,7 @@ static inline ABIArgInfo *x86_classify_homogenous_aggregate(GenContext *context,
 	}
 
 	// Otherwise just a normal expand.
-	return abi_arg_new(ABI_ARG_EXPAND);
+	return abi_arg_new_expand();
 }
 
 static inline ABIArgInfo *x86_classify_vector(GenContext *context, Type *type)
@@ -517,7 +517,7 @@ static inline ABIArgInfo *x86_classify_aggregate(GenContext *context, Type *type
 	if (size <= 16 && (!build_target.x86.is_mcu_api || !context->abi.int_registers) &&
 			x86_can_expand_indirect_aggregate_arg(type))
 	{
-		if (!needs_padding_in_reg) return abi_arg_new(ABI_ARG_EXPAND);
+		if (!needs_padding_in_reg) return abi_arg_new_expand();
 
 		// This is padded expansion
 		ABIArgInfo *info = abi_arg_new_expand_padded(type_int);

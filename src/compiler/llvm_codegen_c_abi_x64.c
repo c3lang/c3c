@@ -42,14 +42,14 @@ ABIArgInfo *x64_indirect_return_result(Type *type)
 {
 	if (type_is_abi_aggregate(type))
 	{
-		return abi_arg_new(ABI_ARG_INDIRECT);
+		return abi_arg_new_indirect_not_by_val();
 	}
 	type = type_lowering(type);
 	if (type_is_promotable_integer(type))
 	{
 		return abi_arg_new_direct_int_ext(type);
 	}
-	return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	return abi_arg_new_direct();
 }
 static size_t x64_native_vector_size_for_avx(void)
 {
@@ -102,7 +102,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 			return abi_arg_new_direct_int_ext(type);
 		}
 		// No change, just put it on the stack.
-		return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+		return abi_arg_new_direct();
 	}
 
 	// The byval alignment
@@ -122,7 +122,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 	{
 		return abi_arg_new_indirect_realigned(8);
 	}
-	return abi_arg_new(ABI_ARG_INDIRECT);
+	return abi_arg_new_direct();
 }
 
 
@@ -131,7 +131,7 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 	if (type->type_kind == TYPE_ERR_UNION || type->type_kind == TYPE_STRING || type->type_kind == TYPE_SUBARRAY)
 	{
 		needed_registers->int_registers += 2;
-		return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+		return abi_arg_new_direct();
 	}
 
 	// Union, struct, err type handled =>
@@ -160,7 +160,7 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 		needed_registers->int_registers += temp_needed_registers.int_registers;
 	}
 	// Check this!
-	return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	return abi_arg_new_direct();
 }
 
 ABIArgInfo *x64_classify_reg_call_struct_type(Type *return_type, Registers *available_registers)

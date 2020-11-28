@@ -36,7 +36,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		{
 			return abi_arg_new_direct_int_ext(type);
 		}
-		return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+		return abi_arg_new_direct();
 	}
 
 	// Is empty
@@ -104,7 +104,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 		{
 			return abi_arg_new_direct_int_ext(type);
 		}
-		return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+		return abi_arg_new_direct();
 	}
 
 	// Abi aggregate:
