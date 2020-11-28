@@ -13,6 +13,20 @@ void gencontext_begin_module(GenContext *context)
 	context->module = LLVMModuleCreateWithNameInContext(mangled_module_name, context->context);
 	LLVMSetModuleDataLayout(context->module, target_data_layout());
 	LLVMSetSourceFileName(context->module, full_path, strlen(context->ast_context->file->full_path));
+	LLVMTypeRef options_type = LLVMInt8TypeInContext(context->context);
+
+	if (build_options.pic == PIC_BIG || build_options.pic == PIC_SMALL)
+	{
+		static const char *pic_level = "PIC Level";
+		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, build_options.pic, false));
+		LLVMAddModuleFlag(context->module, LLVMModuleFlagBehaviorOverride, pic_level, strlen(pic_level), setting);
+	}
+	if (build_options.pie == PIE_BIG || build_options.pie == PIE_SMALL)
+	{
+		static const char *pie_level = "PIE Level";
+		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, build_options.pie, false));
+		LLVMAddModuleFlag(context->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
+	}
 
 	LLVMSetTarget(context->module, build_target.target_triple);
 	if (build_options.debug_info != DEBUG_INFO_NONE)

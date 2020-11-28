@@ -419,7 +419,7 @@ void target_setup(void)
 		default:
 			UNREACHABLE;
 	}
-	 if (build_options.pic == BIG_PIC_USE || build_options.pic == SMALL_PIC_USE || build_options.generate_lib)
+	 if (build_options.pic == PIC_BIG || build_options.pic == PIC_SMALL || build_options.generate_lib)
 	 {
 	 	reloc_mode = LLVMRelocPIC;
 	 }

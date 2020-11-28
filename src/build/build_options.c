@@ -277,14 +277,29 @@ static void parse_option(void)
 				build_options.feature.reg_struct_return = true;
 				return;
 			}
+			if (match_shortopt("fpie"))
+			{
+				build_options.pie = PIE_SMALL;
+				return;
+			}
+			if (match_shortopt("fPIE"))
+			{
+				build_options.pie = PIE_BIG;
+				return;
+			}
+			if (match_shortopt("fno-pie"))
+			{
+				build_options.pie = PIE_NONE;
+				return;
+			}
 			if (match_shortopt("fpic"))
 			{
-				build_options.pic = SMALL_PIC_USE;
+				build_options.pic = PIC_SMALL;
 				return;
 			}
 			if (match_shortopt("fPIC"))
 			{
-				build_options.pic = BIG_PIC_USE;
+				build_options.pic = PIC_BIG;
 				return;
 			}
 			if (match_shortopt("fno-pic"))

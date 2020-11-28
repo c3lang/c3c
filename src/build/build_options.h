@@ -88,13 +88,23 @@ typedef enum
 	SIZE_OPTIMIZATION_TINY = 2,     // -Oz
 } SizeOptimizationLevel;
 
+// Values correspond to LLVM values.
 typedef enum
 {
-	PIC_DEFAULT,
-	PIC_NONE,
-	BIG_PIC_USE,
-	SMALL_PIC_USE,
+	PIC_DEFAULT = -1,
+	PIC_NONE = 0,
+	PIC_SMALL = 1,
+	PIC_BIG = 2,
 } PicGeneration;
+
+// Values correspond to LLVM values
+typedef enum
+{
+	PIE_NONE = -1,
+	PIE_DEFAULT = 0,
+	PIE_SMALL = 1,
+	PIE_BIG = 2,
+} PieGeneration;
 
 typedef enum
 {
@@ -137,6 +147,7 @@ typedef struct
 	const char* cpu;
 	const char* target_triple;
 	PicGeneration pic;
+	PieGeneration pie;
 	bool generate_lib;
 	struct
 	{
