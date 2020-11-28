@@ -106,7 +106,7 @@ add_executable(c3c
         src/utils/vmem.c
         src/utils/vmem.h
         src/utils/whereami.c
-        src/compiler/llvm_codegen_c_abi_x86.c src/compiler/llvm_codegen_c_abi_internal.h src/compiler/llvm_codegen_c_abi_x64.c src/compiler/llvm_codegen_c_abi_win64.c src/compiler/llvm_codegen_c_abi_aarch64.c src/compiler/headers.c src/compiler/llvm_codegen_c_abi_riscv.c)
+        src/compiler/llvm_codegen_c_abi_x86.c src/compiler/llvm_codegen_c_abi_internal.h src/compiler/llvm_codegen_c_abi_x64.c src/compiler/llvm_codegen_c_abi_win64.c src/compiler/llvm_codegen_c_abi_aarch64.c src/compiler/headers.c src/compiler/llvm_codegen_c_abi_riscv.c src/compiler/llvm_codegen_c_abi_wasm.c)
 
 target_compile_options(c3c PRIVATE -Wimplicit-int -Werror -Wall -Wno-unknown-pragmas -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 

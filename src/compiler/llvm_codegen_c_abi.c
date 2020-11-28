@@ -12,6 +12,12 @@ ABIArgInfo *abi_arg_new(ABIKind kind)
 	return info;
 }
 
+ABIArgInfo *abi_arg_ignore(void)
+{
+	static ABIArgInfo info = { .kind = ABI_ARG_IGNORE };
+	return &info;
+}
+
 AbiType *abi_type_new_plain(Type *type)
 {
 	AbiType *abi_type = CALLOCS(AbiType);
@@ -219,37 +225,6 @@ ABIArgInfo *abi_arg_new_expand_padded(Type *padding)
 	return info;
 }
 
-ABIArgInfo *classify_return_type_default(Type *type)
-{
-	if (type == type_void)
-	{
-		return abi_arg_new(ABI_ARG_IGNORE);
-	}
-
-	// Struct-likes are returned by sret
-	if (type_is_abi_aggregate(type))
-	{
-		return abi_arg_new(ABI_ARG_INDIRECT);
-	}
-
-	// Otherwise do we have a type that needs promotion?
-	if (type_is_promotable_integer(type_lowering(type)))
-	{
-		ABIArgInfo *arg_info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
-		if (type_is_signed(type))
-		{
-			arg_info->attributes.signext = true;
-		}
-		else
-		{
-			arg_info->attributes.zeroext = true;
-		}
-		return arg_info;
-	}
-
-	// No, then do a direct pass.
-	return abi_arg_new_direct();
-}
 
 void c_abi_func_create(GenContext *context, FunctionSignature *signature)
 {
@@ -270,31 +245,33 @@ void c_abi_func_create(GenContext *context, FunctionSignature *signature)
 		case ABI_RISCV:
 			c_abi_func_create_riscv(context, signature);
 			break;
+		case ABI_WASM:
+			c_abi_func_create_wasm(signature);
+			break;
 		default:
 			FATAL_ERROR("Unsupported ABI");
 	}
 }
 
+
+ABIArgInfo *c_abi_classify_return_type_default(Type *type)
+{
+	if (type->type_kind == TYPE_VOID) return abi_arg_ignore();
+	return c_abi_classify_return_type_default(type);
+}
+
 ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
 {
+	// Perform general lowering.
 	type = type_lowering(type);
 
 	// Struct-likes are returned by sret
-	if (type_is_abi_aggregate(type))
-	{
-		return abi_arg_new(ABI_ARG_INDIRECT);
-	}
+	if (type_is_abi_aggregate(type)) return abi_arg_new_indirect_by_val();
 
-	if (type_is_int128(type) && !build_target.int_128)
-	{
-		return abi_arg_new_indirect_by_val();
-	}
+	if (type_is_int128(type) && !build_target.int_128) return abi_arg_new_indirect_by_val();
 
 	// Otherwise do we have a type that needs promotion?
-	if (type_is_promotable_integer(type))
-	{
-		return abi_arg_new_direct_int_ext(type);
-	}
+	if (type_is_promotable_integer(type)) return abi_arg_new_direct_int_ext(type);
 
 	// No, then do a direct pass.
 	return abi_arg_new_direct();

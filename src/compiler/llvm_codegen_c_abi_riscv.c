@@ -167,7 +167,7 @@ static ABIArgInfo *riscv_classify_argument_type(GenContext *c, Type *type, bool 
 	unsigned xlen = build_target.riscv.xlen;
 
 	// Ignore empty structs/unions.
-	if (type_is_empty_union_struct(type, true)) return abi_arg_new(ABI_ARG_IGNORE);
+	if (type_is_empty_union_struct(type, true)) return abi_arg_ignore();
 
 	size_t size = type_size(type);
 
@@ -275,7 +275,7 @@ static ABIArgInfo *riscv_classify_argument_type(GenContext *c, Type *type, bool 
 
 static ABIArgInfo *riscv_classify_return(GenContext *c, Type *return_type)
 {
-	if (return_type->type_kind == TYPE_VOID) return abi_arg_new(ABI_ARG_IGNORE);
+	if (return_type->type_kind == TYPE_VOID) return abi_arg_ignore();
 
 	unsigned arg_gpr_left = 2;
 	unsigned arg_fpr_left = build_target.riscv.flen ? 2 : 0;
@@ -294,6 +294,14 @@ void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature)
 	Type *return_type = signature->failable ? type_error : signature->rtype->type;
 	return_type = type_lowering(return_type);
 	ABIArgInfo *return_abi = riscv_classify_return(context, return_type);
+	if (signature->failable)
+	{
+		signature->failable_abi_info = return_abi;
+	}
+	else
+	{
+		signature->ret_abi_info = return_abi;
+	}
 
 	// IsRetIndirect is true if classifyArgumentType indicated the value should
 	// be passed indirect, or if the type size is a scalar greater than 2*XLen

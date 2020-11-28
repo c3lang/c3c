@@ -258,7 +258,7 @@ bool type_is_int128(Type *type)
 	return kind == TYPE_U128 || kind == TYPE_I128;
 }
 
-Type *type_find_single_struct_element(Type *type)
+Type *type_abi_find_single_struct_element(Type *type)
 {
 	if (!type_is_union_struct(type)) return NULL;
 
@@ -282,7 +282,7 @@ Type *type_find_single_struct_element(Type *type)
 
 		if (type_is_union_struct(field_type))
 		{
-			field_type = type_find_single_struct_element(field_type);
+			field_type = type_abi_find_single_struct_element(field_type);
 			if (!field_type) return NULL;
 		}
 		found = field_type;

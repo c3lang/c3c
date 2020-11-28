@@ -152,7 +152,7 @@ ABIArgInfo *x86_classify_return(GenContext *context, Type *type)
 {
 	if (type == type_void)
 	{
-		return abi_arg_new(ABI_ARG_IGNORE);
+		return abi_arg_ignore();
 	}
 
 	type = type_lowering(type);
@@ -199,7 +199,7 @@ ABIArgInfo *x86_classify_return(GenContext *context, Type *type)
 		// Ignore empty struct/unions
 		if (type_is_empty_union_struct(type, true))
 		{
-			return abi_arg_new(ABI_ARG_IGNORE);
+			return abi_arg_ignore();
 		}
 
 		// Check if we can return it in a register.
@@ -207,7 +207,7 @@ ABIArgInfo *x86_classify_return(GenContext *context, Type *type)
 		{
 			size_t size = type_size(type);
 			// Special case is floats and pointers in single element structs (except for MSVC)
-			Type *single_element = type_find_single_struct_element(type);
+			Type *single_element = type_abi_find_single_struct_element(type);
 			if (single_element)
 			{
 				if ((type_is_float(single_element) && !build_target.x86.is_win32_float_struct_abi))
@@ -481,7 +481,7 @@ static inline ABIArgInfo *x86_classify_aggregate(GenContext *context, Type *type
 	// Ignore empty unions / structs on non-win.
 	if (!build_target.x86.is_win32_float_struct_abi && type_is_empty_union_struct(type, true))
 	{
-		return abi_arg_new(ABI_ARG_IGNORE);
+		return abi_arg_ignore();
 	}
 
 	unsigned size = type_size(type);

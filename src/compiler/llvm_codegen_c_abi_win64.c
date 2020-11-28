@@ -6,7 +6,7 @@
 
 ABIArgInfo *win64_classify(GenContext *context, Type *type, bool is_return, bool is_vector, bool is_reg)
 {
-	if (type->type_kind == TYPE_VOID) return abi_arg_new(ABI_ARG_IGNORE);
+	if (type->type_kind == TYPE_VOID) return abi_arg_ignore();
 
 	// Lower enums etc.
 	type = type_lowering(type);

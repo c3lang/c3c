@@ -19,7 +19,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 {
 	type = type_lowering(type);
 
-	if (type->type_kind == TYPE_VOID) return abi_arg_new(ABI_ARG_IGNORE);
+	if (type->type_kind == TYPE_VOID) return abi_arg_ignore();
 
 	if (type->type_kind == TYPE_VECTOR && aarch64_illegal_vector(type))
 	{
@@ -40,7 +40,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	}
 
 	// Is empty
-	if (!size) return abi_arg_new(ABI_ARG_IGNORE);
+	if (!size) return abi_arg_ignore();
 
 	// Homogeneous Floating-point Aggregates (HFAs) need to be expanded.
 	Type *base = NULL;
@@ -83,7 +83,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 {
 	type = type_lowering(type);
 
-	if (type->type_kind == TYPE_VOID) return abi_arg_new(ABI_ARG_IGNORE);
+	if (type->type_kind == TYPE_VOID) return abi_arg_ignore();
 
 	if (type->type_kind == TYPE_VECTOR && aarch64_illegal_vector(type))
 	{
@@ -110,14 +110,14 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 	// Abi aggregate:
 
 	// Is empty
-	if (!size) return abi_arg_new(ABI_ARG_IGNORE);
+	if (!size) return abi_arg_ignore();
 
 	Type *base = NULL;
 	unsigned members = 0;
 	if (type_is_homogenous_aggregate(type, &base, &members) &&
 	    !(build_target.arch == ARCH_TYPE_AARCH64_32 && variadic))
 	{
-		return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+		return abi_arg_ignore();
 	}
 
 	// Aggregates <= in registers

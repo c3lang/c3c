@@ -1431,7 +1431,7 @@ static inline bool type_convert_will_trunc(Type *destination, Type *source);
 Type *type_find_common_ancestor(Type *left, Type *right);
 Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other);
-Type *type_find_single_struct_element(Type *type);
+Type *type_abi_find_single_struct_element(Type *type);
 const char *type_generate_qname(Type *type);
 Type *type_get_array(Type *arr_type, uint64_t len);
 Type *type_get_indexed_type(Type *type);

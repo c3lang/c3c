@@ -657,7 +657,7 @@ static AbiType *x64_get_byte_vector_type(Type *type)
 {
 	// Wrapper structs/arrays that only contain vectors are passed just like
 	// vectors; strip them off if present.
-	Type *inner_type = type_find_single_struct_element(type);
+	Type *inner_type = type_abi_find_single_struct_element(type);
 	if (inner_type) type = inner_type;
 	type = type_lowering(type);
 
@@ -710,7 +710,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 		case CLASS_NO_CLASS:
 			if (hi_class == CLASS_NO_CLASS)
 			{
-				return abi_arg_new(ABI_ARG_IGNORE);
+				return abi_arg_ignore();
 			}
 			// If low part is padding, keep type null
 			assert(hi_class == CLASS_SSE || hi_class == CLASS_INTEGER);
@@ -796,7 +796,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 		case CLASS_NO_CLASS:
 			// Only C++ would leave 8 bytes of padding, so we can ignore that case.
 			assert(hi_class == CLASS_NO_CLASS);
-			return abi_arg_new(ABI_ARG_IGNORE);
+			return abi_arg_ignore();
 		case CLASS_SSEUP:
 			UNREACHABLE
 		case CLASS_MEMORY:

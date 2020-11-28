@@ -26,6 +26,7 @@ static inline ABIArgInfo *abi_arg_by_reg_attr(ABIArgInfo *info);
 size_t abi_arg_expanded_size(ABIArgInfo *type_info, Type *type);
 bool abi_arg_is_indirect(ABIArgInfo *info);
 ABIArgInfo *abi_arg_new(ABIKind kind);
+ABIArgInfo *abi_arg_ignore(void);
 ABIArgInfo *abi_arg_new_direct_pair(AbiType *low_type, AbiType *high_type);
 ABIArgInfo *abi_arg_new_direct(void);
 ABIArgInfo *abi_arg_new_direct_int_ext(Type *type_to_extend);
@@ -44,12 +45,14 @@ AbiType *abi_type_new_plain(Type *type);
 AbiType *abi_type_new_int_bits(unsigned bits);
 size_t abi_type_size(AbiType *type);
 
+ABIArgInfo *c_abi_classify_return_type_default(Type *type);
 ABIArgInfo *c_abi_classify_argument_type_default(Type *type);
 void c_abi_func_create_win64(GenContext *context, FunctionSignature *signature);
 void c_abi_func_create_x86(GenContext *context, FunctionSignature *signature);
 void c_abi_func_create_x64(GenContext *context, FunctionSignature *signature);
 void c_abi_func_create_aarch64(FunctionSignature *signature);
 void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature);
+void c_abi_func_create_wasm(FunctionSignature *signature);
 
 // Implementation
 static inline ABIArgInfo *abi_arg_by_reg_attr(ABIArgInfo *info)
