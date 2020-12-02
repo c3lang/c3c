@@ -361,6 +361,7 @@ typedef struct
 {
 	struct
 	{
+		bool is_builtin;
 		bool attr_weak : 1;
 		bool attr_noreturn : 1;
 		bool attr_inline : 1;
@@ -1185,6 +1186,8 @@ extern const char *kw_nameof;
 extern const char *kw_qnameof;
 extern const char *kw_len;
 extern const char *kw_ordinal;
+extern const char *kw___alloc;
+extern const char *kw___free;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id(_token.id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
@@ -1544,6 +1547,7 @@ static inline bool type_is_ct(Type *type)
 
 static inline bool type_is_pointer(Type *type)
 {
+	type = type->canonical;
 	return type->type_kind == TYPE_POINTER || type->type_kind == TYPE_VARARRAY;
 }
 

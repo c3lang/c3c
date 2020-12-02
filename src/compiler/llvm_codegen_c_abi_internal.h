@@ -7,17 +7,6 @@
 
 typedef enum
 {
-	WIN32_CDECL,
-	WIN32_VEC,
-	WIN32_STD,
-	WIN32_SYS,
-	UNIX_CDECL,
-	WIN64_CC,
-	AMD64_CC,
-} CABIKind;
-
-typedef enum
-{
 	BY_VAL,
 	BY_VAL_SKIP
 } ByVal;

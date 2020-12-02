@@ -692,8 +692,54 @@ static inline int find_index_of_named_parameter(Context *context, Decl** func_pa
 	return -1;
 }
 
+static inline bool sema_expr_analyse_intrinsic_invocation(Context *context, Expr *expr, Decl *decl, Type *to)
+{
+	unsigned arguments = vec_size(expr->call_expr.arguments);
+	if (decl->name == kw___alloc)
+	{
+		if (to && type_is_pointer(to))
+		{
+			expr->type = to;
+		}
+		else
+		{
+			expr->type = type_voidptr;
+		}
+		if (arguments != 1)
+		{
+			SEMA_ERROR(expr, "Expected 1 argument to intrinsic __alloc.");
+			return false;
+		}
+		if (!sema_analyse_expr_of_required_type(context, type_usize, expr->call_expr.arguments[0], false)) return false;
+		return true;
+	}
+	if (decl->name == kw___free)
+	{
+		expr->type = type_void;
+		if (arguments != 1)
+		{
+			SEMA_ERROR(expr, "Expected 1 argument to intrinsic __free.");
+			return false;
+		}
+		Expr *pointer_expr = expr->call_expr.arguments[0];
+		if (!sema_analyse_expr(context, NULL, pointer_expr)) return false;
+		if (pointer_expr->type->type_kind != TYPE_POINTER)
+		{
+			// TODO vararrays - handle them.
+			SEMA_ERROR(expr, "Expected expected to free a pointer type.");
+		}
+		return true;
+	}
+	UNREACHABLE
+}
+
 static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionSignature *signature, Expr *expr, Decl *decl, Type *to, Expr *struct_var)
 {
+	if (decl->func.is_builtin)
+	{
+		assert(!struct_var);
+		return sema_expr_analyse_intrinsic_invocation(context, expr, decl, to);
+	}
 	Decl **func_params = signature->params;
 	Expr **args = expr->call_expr.arguments;
 	unsigned struct_args = struct_var == NULL ? 0 : 1;

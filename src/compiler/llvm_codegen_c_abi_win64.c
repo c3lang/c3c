@@ -103,13 +103,13 @@ ABIArgInfo *win64_reclassify_hva_arg(GenContext *context, Type *type, ABIArgInfo
 
 void win64_vector_call_args(GenContext *context, FunctionSignature *signature, bool is_vector, bool is_reg)
 {
-	static const unsigned MaxParamVectorCallsAsReg = 6;
+	static const unsigned max_param_vector_calls_as_reg = 6;
 	unsigned count = 0;
 	Decl **params = signature->params;
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
-		if (count < MaxParamVectorCallsAsReg)
+		if (count < max_param_vector_calls_as_reg)
 		{
 			param->var.abi_info = win64_classify(context, param->type, false, is_vector, is_reg);
 		}
@@ -130,6 +130,7 @@ void win64_vector_call_args(GenContext *context, FunctionSignature *signature, b
 	}
 
 }
+
 void c_abi_func_create_win64(GenContext *context, FunctionSignature *signature)
 {
 	// allow calling sysv?

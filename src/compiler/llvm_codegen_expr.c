@@ -2133,6 +2133,32 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 	element->alignment = alignment;
 }
 
+void gencontext_emit_call_intrinsic_expr(GenContext *context, BEValue *be_value, Expr *expr)
+{
+	Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
+	if (function_decl->name == kw___alloc)
+	{
+		unsigned arguments = vec_size(expr->call_expr.arguments);
+		BEValue size_value;
+		llvm_emit_expr(context, &size_value, expr->call_expr.arguments[0]);
+		llvm_value_rvalue(context, &size_value);
+		LLVMValueRef result = LLVMBuildArrayMalloc(context->builder, llvm_get_type(context, type_byte), llvm_value_rvalue_store(context, &size_value), "");
+		result = LLVMBuildBitCast(context->builder, result, llvm_get_type(context, expr->type), "");
+		llvm_value_set(be_value, result, expr->type);
+		return;
+	}
+	if (function_decl->name == kw___free)
+	{
+		unsigned arguments = vec_size(expr->call_expr.arguments);
+		BEValue size_value;
+		llvm_emit_expr(context, &size_value, expr->call_expr.arguments[0]);
+		llvm_value_rvalue(context, &size_value);
+		LLVMBuildFree(context->builder, llvm_value_rvalue_store(context, &size_value));
+		return;
+	}
+	UNREACHABLE
+}
+
 void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *expr)
 {
 	printf("Optimize call return\n");
@@ -2157,6 +2183,11 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 	else
 	{
 		Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
+		if (function_decl->func.is_builtin)
+		{
+			gencontext_emit_call_intrinsic_expr(context, be_value, expr);
+			return;
+		}
 		signature = &function_decl->func.function_signature;
 		func = function_decl->backend_ref;
 		func_type = llvm_get_type(context, function_decl->type);

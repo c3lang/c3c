@@ -4,6 +4,18 @@
 
 #include "sema_internal.h"
 
+void context_add_intrinsic(Context *context, const char *name)
+{
+	Decl *decl = decl_calloc();
+	decl->module = context->module;
+	decl->decl_kind = DECL_FUNC;
+	decl->resolve_status = RESOLVE_DONE;
+	decl->func.is_builtin = true;
+	decl->name = name;
+	Decl *old = stable_set(&context->local_symbols, decl->name, decl);
+	assert(!old);
+}
+
 void sema_analysis_pass_process_imports(Context *context)
 {
 	DEBUG_LOG("Pass: Importing dependencies for %s", context->file->name);
@@ -33,6 +45,8 @@ void sema_analysis_pass_process_imports(Context *context)
 			}
 		}
 	}
+	context_add_intrinsic(context, kw___alloc);
+	context_add_intrinsic(context, kw___free);
 	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
 }
 
