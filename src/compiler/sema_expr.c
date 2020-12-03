@@ -692,9 +692,43 @@ static inline int find_index_of_named_parameter(Context *context, Decl** func_pa
 	return -1;
 }
 
+static inline bool sema_expr_analyse_intrinsic_fp_invocation(Context *context, Expr *expr, Decl *decl, Type *to)
+{
+	unsigned arguments = vec_size(expr->call_expr.arguments);
+	if (arguments != 1)
+	{
+		SEMA_ERROR(expr, "Expected 1 argument to intrinsic %s.", decl->name);
+		return false;
+	}
+	Expr *arg = expr->call_expr.arguments[0];
+	if (!sema_analyse_expr(context, to, arg)) return false;
+	// Convert ints to float comptime float.
+	if (type_is_any_integer(arg->type->canonical))
+	{
+		if (!cast_implicit(context, arg, type_compfloat)) return false;
+	}
+	// If this is not a float argument => error.
+	if (!type_is_float(arg->type->canonical))
+	{
+		SEMA_ERROR(arg, "Expected a floating point argument.", decl->name);
+		return false;
+	}
+	// We lower to a real float in case we got a compfloat.
+	if (!cast_implicitly_to_runtime(context, arg)) return false;
+
+	// The expression type is the argument type.
+	expr->type = arg->type;
+	return true;
+
+}
+
 static inline bool sema_expr_analyse_intrinsic_invocation(Context *context, Expr *expr, Decl *decl, Type *to)
 {
 	unsigned arguments = vec_size(expr->call_expr.arguments);
+	if (decl->name == kw___ceil || decl->name == kw___trunc || decl->name == kw___round || decl->name == kw___sqrt)
+	{
+		return sema_expr_analyse_intrinsic_fp_invocation(context, expr, decl, to);
+	}
 	if (decl->name == kw___alloc)
 	{
 		if (to && type_is_pointer(to))

@@ -1188,6 +1188,10 @@ extern const char *kw_len;
 extern const char *kw_ordinal;
 extern const char *kw___alloc;
 extern const char *kw___free;
+extern const char *kw___round;
+extern const char *kw___ceil;
+extern const char *kw___trunc;
+extern const char *kw___sqrt;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id(_token.id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)

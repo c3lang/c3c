@@ -203,14 +203,65 @@ static inline unsigned lookup_attribute(const char *name)
 }
 
 static bool intrinsics_setup = false;
-unsigned intrinsic_id_ssub_overflow;
-unsigned intrinsic_id_usub_overflow;
-unsigned intrinsic_id_sadd_overflow;
-unsigned intrinsic_id_uadd_overflow;
-unsigned intrinsic_id_smul_overflow;
-unsigned intrinsic_id_umul_overflow;
 unsigned intrinsic_id_trap;
 unsigned intrinsic_id_assume;
+
+unsigned intrinsic_id_ssub_overflow;
+unsigned intrinsic_id_ssub_sat;
+unsigned intrinsic_id_usub_overflow;
+unsigned intrinsic_id_usub_sat;
+unsigned intrinsic_id_sadd_overflow;
+unsigned intrinsic_id_sadd_sat;
+unsigned intrinsic_id_uadd_overflow;
+unsigned intrinsic_id_uadd_sat;
+unsigned intrinsic_id_smul_overflow;
+unsigned intrinsic_id_umul_overflow;
+unsigned intrinsic_id_sshl_sat;
+unsigned intrinsic_id_ushl_sat;
+unsigned intrinsic_id_fmuladd;
+unsigned intrinsic_id_rint;
+unsigned intrinsic_id_trunc;
+unsigned intrinsic_id_ceil;
+unsigned intrinsic_id_floor;
+unsigned intrinsic_id_sqrt;
+unsigned intrinsic_id_nearbyint;
+unsigned intrinsic_id_roundeven;
+unsigned intrinsic_in_lround;
+unsigned intrinsic_in_llround;
+unsigned intrinsic_in_lrint;
+unsigned intrinsic_in_llrint;
+unsigned intrinsic_id_powi;
+unsigned intrinsic_id_pow;
+unsigned intrinsic_id_sin;
+unsigned intrinsic_id_cos;
+unsigned intrinsic_id_exp;
+unsigned intrinsic_id_exp2;
+unsigned intrinsic_id_log;
+unsigned intrinsic_id_log10;
+unsigned intrinsic_id_fabs;
+unsigned intrinsic_id_fma;
+unsigned intrinsic_id_copysign;
+unsigned intrinsic_id_minnum;
+unsigned intrinsic_id_maxnum;
+unsigned intrinsic_id_minimum;
+unsigned intrinsic_id_maximum;
+unsigned intrinsic_id_smax;
+unsigned intrinsic_id_smin;
+unsigned intrinsic_id_umax;
+unsigned intrinsic_id_umin;
+unsigned intrinsic_id_abs;
+unsigned intrinsic_id_fshl;
+unsigned intrinsic_id_fshr;
+unsigned intrinsic_id_bitreverse;
+unsigned intrinsic_id_bswap;
+unsigned intrinsic_id_ctpop;
+unsigned intrinsic_id_ctlz;
+unsigned intrinsic_id_cttz;
+unsigned intrinsic_id_convert_from_fp16;
+unsigned intrinsic_id_convert_to_fp16;
+
+
+
 
 unsigned attribute_noinline;
 unsigned attribute_alwaysinline;
@@ -231,14 +282,68 @@ unsigned attribute_inreg;
 void llvm_codegen_setup()
 {
 	assert(intrinsics_setup == false);
-	intrinsic_id_ssub_overflow = lookup_intrinsic("llvm.ssub.with.overflow");
-	intrinsic_id_usub_overflow = lookup_intrinsic("llvm.usub.with.overflow");
-	intrinsic_id_sadd_overflow = lookup_intrinsic("llvm.sadd.with.overflow");
-	intrinsic_id_uadd_overflow = lookup_intrinsic("llvm.uadd.with.overflow");
-	intrinsic_id_smul_overflow = lookup_intrinsic("llvm.smul.with.overflow");
-	intrinsic_id_umul_overflow = lookup_intrinsic("llvm.umul.with.overflow");
 	intrinsic_id_trap = lookup_intrinsic("llvm.trap");
 	intrinsic_id_assume = lookup_intrinsic("llvm.assume");
+
+
+
+
+
+
+	intrinsic_id_ssub_overflow = lookup_intrinsic("llvm.ssub.with.overflow");
+	intrinsic_id_ssub_sat = lookup_intrinsic("llvm.ssub.sat");
+	intrinsic_id_usub_overflow = lookup_intrinsic("llvm.usub.with.overflow");
+	intrinsic_id_usub_sat = lookup_intrinsic("llvm.usub.sat");
+	intrinsic_id_sadd_overflow = lookup_intrinsic("llvm.sadd.with.overflow");
+	intrinsic_id_sadd_sat = lookup_intrinsic("llvm.sadd.sat");
+	intrinsic_id_uadd_overflow = lookup_intrinsic("llvm.uadd.with.overflow");
+	intrinsic_id_uadd_sat = lookup_intrinsic("llvm.uadd.sat");
+	intrinsic_id_smul_overflow = lookup_intrinsic("llvm.smul.with.overflow");
+	intrinsic_id_umul_overflow = lookup_intrinsic("llvm.umul.with.overflow");
+	//intrinsic_id_sshl_sat = lookup_intrinsic("llvm.sshl.sat");
+	//intrinsic_id_ushl_sat = lookup_intrinsic("llvm.ushl.sat");
+	intrinsic_id_fshl = lookup_intrinsic("llvm.fshl");
+	intrinsic_id_fshr = lookup_intrinsic("llvm.fshr");
+	intrinsic_id_bitreverse = lookup_intrinsic("llvm.bitreverse");
+	intrinsic_id_bswap = lookup_intrinsic("llvm.bswap");
+	intrinsic_id_ctpop = lookup_intrinsic("llvm.ctpop");
+	intrinsic_id_cttz = lookup_intrinsic("llvm.cttz");
+	intrinsic_id_ctlz = lookup_intrinsic("llvm.ctlz");
+
+	intrinsic_id_rint = lookup_intrinsic("llvm.rint");
+	intrinsic_id_trunc = lookup_intrinsic("llvm.trunc");
+	intrinsic_id_ceil = lookup_intrinsic("llvm.ceil");
+	intrinsic_id_floor = lookup_intrinsic("llvm.floor");
+	intrinsic_id_sqrt = lookup_intrinsic("llvm.sqrt");
+	intrinsic_id_powi = lookup_intrinsic("llvm.powi");
+	intrinsic_id_pow = lookup_intrinsic("llvm.pow");
+	intrinsic_id_sin = lookup_intrinsic("llvm.sin");
+	intrinsic_id_cos = lookup_intrinsic("llvm.cos");
+	intrinsic_id_exp = lookup_intrinsic("llvm.exp");
+	intrinsic_id_exp2 = lookup_intrinsic("llvm.exp2");
+	intrinsic_id_log = lookup_intrinsic("llvm.log");
+	intrinsic_id_log10 = lookup_intrinsic("llvm.log10");
+	intrinsic_id_fabs = lookup_intrinsic("llvm.fabs");
+	intrinsic_id_fma = lookup_intrinsic("llvm.fma");
+	intrinsic_id_copysign = lookup_intrinsic("llvm.copysign");
+	intrinsic_id_minnum = lookup_intrinsic("llvm.minnum");
+	intrinsic_id_maxnum = lookup_intrinsic("llvm.maxnum");
+	intrinsic_id_minimum = lookup_intrinsic("llvm.minimum");
+	intrinsic_id_maximum = lookup_intrinsic("llvm.maximum");
+	intrinsic_id_convert_to_fp16 = lookup_intrinsic("llvm.convert.to.fp16");
+	intrinsic_id_convert_from_fp16 = lookup_intrinsic("llvm.convert.from.fp16");
+	intrinsic_id_nearbyint = lookup_intrinsic("llvm.nearbyint");
+	intrinsic_id_roundeven = lookup_intrinsic("llvm.roundeven");
+	intrinsic_in_lround = lookup_intrinsic("llvm.lround");
+	intrinsic_in_llround = lookup_intrinsic("llvm.llround");
+	intrinsic_in_lrint = lookup_intrinsic("llvm.lrint");
+	intrinsic_in_llrint = lookup_intrinsic("llvm.llrint");
+
+	//intrinsic_id_abs = lookup_intrinsic("llvm.abs");
+	intrinsic_id_smax = lookup_intrinsic("llvm.smax");
+	intrinsic_id_smin = lookup_intrinsic("llvm.smin");
+	intrinsic_id_umax = lookup_intrinsic("llvm.umax");
+	intrinsic_id_umin = lookup_intrinsic("llvm.umin");
 
 	attribute_noinline = lookup_attribute("noinline");
 	attribute_alwaysinline = lookup_attribute("alwaysinline");

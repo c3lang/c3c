@@ -2133,17 +2133,46 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 	element->alignment = alignment;
 }
 
-void gencontext_emit_call_intrinsic_expr(GenContext *context, BEValue *be_value, Expr *expr)
+static void llvm_emit_fp_intrinsic_expr(GenContext *c, unsigned intrinsic_id, BEValue *be_value, Expr *expr)
+{
+	unsigned arguments = vec_size(expr->call_expr.arguments);
+	llvm_emit_expr(c, be_value, expr->call_expr.arguments[0]);
+	llvm_value_rvalue(c, be_value);
+	LLVMTypeRef call_type = llvm_get_type(c, be_value->type);
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id, &call_type, 1, &be_value->value, 1);
+	be_value->value = result;
+}
+void gencontext_emit_call_intrinsic_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
+	if (function_decl->name == kw___round)
+	{
+		llvm_emit_fp_intrinsic_expr(c, intrinsic_id_rint, be_value, expr);
+		return;
+	}
+	if (function_decl->name == kw___sqrt)
+	{
+		llvm_emit_fp_intrinsic_expr(c, intrinsic_id_sqrt, be_value, expr);
+		return;
+	}
+	if (function_decl->name == kw___trunc)
+	{
+		llvm_emit_fp_intrinsic_expr(c, intrinsic_id_trunc, be_value, expr);
+		return;
+	}
+	if (function_decl->name == kw___ceil)
+	{
+		llvm_emit_fp_intrinsic_expr(c, intrinsic_id_ceil, be_value, expr);
+		return;
+	}
 	if (function_decl->name == kw___alloc)
 	{
 		unsigned arguments = vec_size(expr->call_expr.arguments);
 		BEValue size_value;
-		llvm_emit_expr(context, &size_value, expr->call_expr.arguments[0]);
-		llvm_value_rvalue(context, &size_value);
-		LLVMValueRef result = LLVMBuildArrayMalloc(context->builder, llvm_get_type(context, type_byte), llvm_value_rvalue_store(context, &size_value), "");
-		result = LLVMBuildBitCast(context->builder, result, llvm_get_type(context, expr->type), "");
+		llvm_emit_expr(c, &size_value, expr->call_expr.arguments[0]);
+		llvm_value_rvalue(c, &size_value);
+		LLVMValueRef result = LLVMBuildArrayMalloc(c->builder, llvm_get_type(c, type_byte), llvm_value_rvalue_store(c, &size_value), "");
+		result = LLVMBuildBitCast(c->builder, result, llvm_get_type(c, expr->type), "");
 		llvm_value_set(be_value, result, expr->type);
 		return;
 	}
@@ -2151,9 +2180,9 @@ void gencontext_emit_call_intrinsic_expr(GenContext *context, BEValue *be_value,
 	{
 		unsigned arguments = vec_size(expr->call_expr.arguments);
 		BEValue size_value;
-		llvm_emit_expr(context, &size_value, expr->call_expr.arguments[0]);
-		llvm_value_rvalue(context, &size_value);
-		LLVMBuildFree(context->builder, llvm_value_rvalue_store(context, &size_value));
+		llvm_emit_expr(c, &size_value, expr->call_expr.arguments[0]);
+		llvm_value_rvalue(c, &size_value);
+		LLVMBuildFree(c->builder, llvm_value_rvalue_store(c, &size_value));
 		return;
 	}
 	UNREACHABLE

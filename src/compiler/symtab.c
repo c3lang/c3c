@@ -48,6 +48,10 @@ const char *kw_len;
 const char *kw_ordinal;
 const char *kw___alloc;
 const char *kw___free;
+const char *kw___round;
+const char *kw___ceil;
+const char *kw___trunc;
+const char *kw___sqrt;
 
 void symtab_init(uint32_t capacity)
 {
@@ -93,6 +97,11 @@ void symtab_init(uint32_t capacity)
 	kw_ordinal = KW_DEF("ordinal");
 	kw___alloc = KW_DEF("__alloc");
 	kw___free = KW_DEF("__free");
+	kw___round = KW_DEF("__round");
+	kw___sqrt = KW_DEF("__sqrt");
+	kw___trunc = KW_DEF("__trunc");
+	kw___ceil = KW_DEF("__ceil");
+
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("inline");
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
 	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("stdcall");

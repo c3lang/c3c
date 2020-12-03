@@ -45,8 +45,12 @@ void sema_analysis_pass_process_imports(Context *context)
 			}
 		}
 	}
+	context_add_intrinsic(context, kw___round);
+	context_add_intrinsic(context, kw___trunc);
+	context_add_intrinsic(context, kw___ceil);
 	context_add_intrinsic(context, kw___alloc);
 	context_add_intrinsic(context, kw___free);
+	context_add_intrinsic(context, kw___sqrt);
 	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
 }
 
