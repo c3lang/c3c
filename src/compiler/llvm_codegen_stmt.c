@@ -949,6 +949,7 @@ void gencontext_emit_catch_stmt(GenContext *c, Ast *ast)
 	// Emit the catch, which will create jumps like we want them.
 	BEValue value;
 	llvm_emit_expr(c, &value, catch_expr);
+	llvm_value_fold_failable(c, &value);
 
 	// Restore.
 	POP_ERROR();

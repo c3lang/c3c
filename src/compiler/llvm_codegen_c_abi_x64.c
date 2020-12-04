@@ -2,7 +2,7 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
-#include "llvm_codegen_c_abi_internal.h"
+#include "c_abi_internal.h"
 
 typedef enum
 {
@@ -914,12 +914,11 @@ static ABIArgInfo *x64_classify_parameter(Type *type, Registers *available_regis
 	return info;
 }
 
-void c_abi_func_create_x64(GenContext *context, FunctionSignature *signature)
+void c_abi_func_create_x64(FunctionSignature *signature)
 {
 	// TODO 32 bit pointers
 	// TODO allow override to get win64
 	bool is_regcall = signature->convention == CALL_CONVENTION_REGCALL;
-	context->abi.call_convention = signature->convention;
 
 	Registers available_registers = {
 			.int_registers = is_regcall ? 11 : 16,

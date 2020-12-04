@@ -45,85 +45,9 @@ typedef struct
 	LLVMBasicBlockRef next_block;
 }  BreakContinue;
 
-typedef enum
-{
-	ABI_ARG_IGNORE,
-	ABI_ARG_DIRECT_PAIR,
-	ABI_ARG_DIRECT_COERCE,
-	ABI_ARG_EXPAND_COERCE,
-	ABI_ARG_INDIRECT,
-	ABI_ARG_EXPAND,
-}  ABIKind;
 
-typedef enum
-{
-	ABI_TYPE_PLAIN,
-	ABI_TYPE_INT_BITS
-} AbiTypeKind;
 
-typedef struct
-{
-	AbiTypeKind kind : 2;
-	union
-	{
-		Type *type;
-		unsigned int_bits;
-	};
-} AbiType;
 
-typedef struct ABIArgInfo_
-{
-	unsigned param_index_start : 16;
-	unsigned param_index_end : 16;
-	ABIKind kind : 6;
-	struct
-	{
-		bool by_reg : 1;
-		bool zeroext : 1;
-		bool signext : 1;
-	} attributes;
-	union
-	{
-		struct
-		{
-			bool padding_by_reg : 1;
-			Type *padding_type;
-		} expand;
-		struct
-		{
-			AbiType *lo;
-			AbiType *hi;
-		} direct_pair;
-		struct
-		{
-			unsigned char offset_lo;
-			unsigned char padding_hi;
-			unsigned char lo_index;
-			unsigned char hi_index;
-			unsigned char offset_hi;
-			bool packed : 1;
-			AbiType *lo;
-			AbiType *hi;
-		} coerce_expand;
-		struct
-		{
-			AbiType *partial_type;
-		};
-		struct
-		{
-			AbiType *type;
-			unsigned elements : 3;
-			bool prevent_flatten : 1;
-		} direct_coerce;
-		struct
-		{
-			// We may request a certain alignment of the parameters.
-			unsigned realignment : 16;
-			bool by_val : 1;
-		} indirect;
-	};
-
-} ABIArgInfo;
 
 
 typedef struct
@@ -171,14 +95,6 @@ typedef struct
 	bool current_block_is_target : 1;
 	bool did_call_stack_save : 1;
 	LLVMTypeRef type_data_definitions[TYPE_KINDS];
-	struct
-	{
-		unsigned int_registers;
-		unsigned sse_registers;
-		unsigned simd_registers;
-		int args;
-		CallConvention call_convention;
-	} abi;
 } GenContext;
 
 // LLVM Intrinsics
@@ -331,7 +247,6 @@ void llvm_debug_scope_pop(GenContext *context);
 void llvm_debug_push_lexical_scope(GenContext *context, SourceSpan location);
 LLVMMetadataRef llvm_debug_current_scope(GenContext *context);
 
-void c_abi_func_create(GenContext *context, FunctionSignature *signature);
 
 bool llvm_emit_check_block_branch(GenContext *context);
 

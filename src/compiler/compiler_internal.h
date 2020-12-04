@@ -443,6 +443,7 @@ typedef struct _Decl
 	Visibility visibility : 2;
 	ResolveStatus resolve_status : 2;
 	bool is_packed : 1;
+	bool is_opaque : 1;
 	bool needs_additional_pad : 1;
 	void *backend_ref;
 	const char *cname;
@@ -1154,6 +1155,86 @@ typedef enum
 	MODULE_SYMBOL_SEARCH_PARENT,
 	MODULE_SYMBOL_SEARCH_THIS
 } ModuleSymbolSearch;
+
+typedef enum
+{
+	ABI_ARG_IGNORE,
+	ABI_ARG_DIRECT_PAIR,
+	ABI_ARG_DIRECT_COERCE,
+	ABI_ARG_EXPAND_COERCE,
+	ABI_ARG_INDIRECT,
+	ABI_ARG_EXPAND,
+}  ABIKind;
+
+typedef enum
+{
+	ABI_TYPE_PLAIN,
+	ABI_TYPE_INT_BITS
+} AbiTypeKind;
+
+typedef struct
+{
+	AbiTypeKind kind : 2;
+	union
+	{
+		Type *type;
+		unsigned int_bits;
+	};
+} AbiType;
+
+typedef struct ABIArgInfo_
+{
+	unsigned param_index_start : 16;
+	unsigned param_index_end : 16;
+	ABIKind kind : 6;
+	struct
+	{
+		bool by_reg : 1;
+		bool zeroext : 1;
+		bool signext : 1;
+	} attributes;
+	union
+	{
+		struct
+		{
+			bool padding_by_reg : 1;
+			Type *padding_type;
+		} expand;
+		struct
+		{
+			AbiType *lo;
+			AbiType *hi;
+		} direct_pair;
+		struct
+		{
+			unsigned char offset_lo;
+			unsigned char padding_hi;
+			unsigned char lo_index;
+			unsigned char hi_index;
+			unsigned char offset_hi;
+			bool packed : 1;
+			AbiType *lo;
+			AbiType *hi;
+		} coerce_expand;
+		struct
+		{
+			AbiType *partial_type;
+		};
+		struct
+		{
+			AbiType *type;
+			unsigned elements : 3;
+			bool prevent_flatten : 1;
+		} direct_coerce;
+		struct
+		{
+			// We may request a certain alignment of the parameters.
+			unsigned realignment : 16;
+			bool by_val : 1;
+		} indirect;
+	};
+
+} ABIArgInfo;
 
 extern Compiler compiler;
 extern Ast *poisoned_ast;

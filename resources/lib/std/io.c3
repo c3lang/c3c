@@ -20,8 +20,27 @@ extern func void* fopen(char *, char *);
 
 extern func int _puts(char* message) @cname("puts");
 extern func int printf(char* message, ...);
+extern func int _putchar(char c) @cname("putchar");
 
-public func int println(char *message)
+
+
+public func int putchar(char c) @inline
+{
+    return _putchar(c);
+}
+
+public func int print(char *message)
+{
+    char* pointer = message;
+    while (*pointer != '\0')
+    {
+        if (!putchar(*pointer)) return 0;
+        pointer++;
+    }
+    return 1;
+}
+
+public func int println(char *message) @inline
 {
     return _puts(message);
 }

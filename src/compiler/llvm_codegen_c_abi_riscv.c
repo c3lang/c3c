@@ -2,7 +2,7 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
-#include "llvm_codegen_c_abi_internal.h"
+#include "c_abi_internal.h"
 
 
 static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType *field1, unsigned field1_offset, AbiType *field2, unsigned field2_offset)
@@ -32,7 +32,7 @@ static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType *field1, unsigned
 	return abi_arg_new_expand_coerce_pair(field1, field1_offset, field2, padding, is_packed);
 }
 
-static bool riscv_detect_fpcc_struct_internal(GenContext *c, Type *type, unsigned current_offset, AbiType **field1, unsigned *field1_offset, AbiType **field2, unsigned *field2_offset)
+static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offset, AbiType **field1, unsigned *field1_offset, AbiType **field2, unsigned *field2_offset)
 {
 	bool is_int = type_is_integer(type);
 	bool is_float = type_is_float(type);
@@ -87,8 +87,7 @@ static bool riscv_detect_fpcc_struct_internal(GenContext *c, Type *type, unsigne
 		unsigned element_size = type_size(element_type);
 		for (size_t i = 0; i < array_len; i++)
 		{
-			if (!riscv_detect_fpcc_struct_internal(c,
-			                                       element_type,
+			if (!riscv_detect_fpcc_struct_internal(element_type,
 			                                       current_offset,
 			                                       field1,
 			                                       field1_offset,
@@ -108,8 +107,7 @@ static bool riscv_detect_fpcc_struct_internal(GenContext *c, Type *type, unsigne
 		VECEACH(members, i)
 		{
 			Decl *member = members[i];
-			if (!riscv_detect_fpcc_struct_internal(c,
-			                                       member->type,
+			if (!riscv_detect_fpcc_struct_internal(member->type,
 			                                       current_offset + member->offset,
 			                                       field1,
 			                                       field1_offset,
@@ -122,14 +120,14 @@ static bool riscv_detect_fpcc_struct_internal(GenContext *c, Type *type, unsigne
 	return false;
 }
 
-static bool riscv_detect_fpcc_struct(GenContext *c, Type *type, AbiType **field1, unsigned *field1_offset, AbiType **field2, unsigned *field2_offset, unsigned *gprs, unsigned *fprs)
+static bool riscv_detect_fpcc_struct(Type *type, AbiType **field1, unsigned *field1_offset, AbiType **field2, unsigned *field2_offset, unsigned *gprs, unsigned *fprs)
 {
 	*field1 = NULL;
 	*field2 = NULL;
 	*gprs = 0;
 	*fprs = 0;
 
-	bool is_candidate = riscv_detect_fpcc_struct_internal(c, type, 0, field1, field1_offset, field2, field2_offset);
+	bool is_candidate = riscv_detect_fpcc_struct_internal(type, 0, field1, field1_offset, field2, field2_offset);
 
 	// Not really a candidate if we have a single int but no float.
 	if (*field1 && !*field2 && !abi_type_is_float(*field1)) return false;
@@ -159,7 +157,7 @@ static bool riscv_detect_fpcc_struct(GenContext *c, Type *type, AbiType **field1
 	return true;
 }
 
-static ABIArgInfo *riscv_classify_argument_type(GenContext *c, Type *type, bool is_fixed, unsigned *gprs, unsigned *fprs)
+static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsigned *gprs, unsigned *fprs)
 {
 
 	assert(type == type->canonical);
@@ -199,8 +197,7 @@ static ABIArgInfo *riscv_classify_argument_type(GenContext *c, Type *type, bool 
 		unsigned offset2 = 0;
 		unsigned needed_gprs;
 		unsigned needed_fprs;
-		bool is_candidate = riscv_detect_fpcc_struct(c,
-		                                             type,
+		bool is_candidate = riscv_detect_fpcc_struct(type,
 		                                             &field1,
 		                                             &offset1,
 		                                             &field2,
@@ -273,7 +270,7 @@ static ABIArgInfo *riscv_classify_argument_type(GenContext *c, Type *type, bool 
 	return abi_arg_new_indirect_not_by_val();
 }
 
-static ABIArgInfo *riscv_classify_return(GenContext *c, Type *return_type)
+static ABIArgInfo *riscv_classify_return(Type *return_type)
 {
 	if (return_type->type_kind == TYPE_VOID) return abi_arg_ignore();
 
@@ -282,10 +279,10 @@ static ABIArgInfo *riscv_classify_return(GenContext *c, Type *return_type)
 
 	// The rules for return and argument types are the same, so defer to
 	// classifyArgumentType.
-	return riscv_classify_argument_type(c, return_type, true, &arg_gpr_left, &arg_fpr_left);
+	return riscv_classify_argument_type(return_type, true, &arg_gpr_left, &arg_fpr_left);
 }
 
-void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature)
+void c_abi_func_create_riscv(FunctionSignature *signature)
 {
 	// Registers
 	unsigned gpr = 8;
@@ -293,7 +290,7 @@ void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature)
 
 	Type *return_type = signature->failable ? type_error : signature->rtype->type;
 	return_type = type_lowering(return_type);
-	ABIArgInfo *return_abi = riscv_classify_return(context, return_type);
+	ABIArgInfo *return_abi = riscv_classify_return(return_type);
 	if (signature->failable)
 	{
 		signature->failable_abi_info = return_abi;
@@ -332,7 +329,7 @@ void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature)
 	// If we have a failable, then the return type is a parameter.
 	if (signature->failable && signature->rtype->type->type_kind != TYPE_VOID)
 	{
-		signature->ret_abi_info = riscv_classify_argument_type(context, type_get_ptr(type_lowering(signature->rtype->type)),
+		signature->ret_abi_info = riscv_classify_argument_type(type_get_ptr(type_lowering(signature->rtype->type)),
 														 true, &arg_gprs_left, &arg_fprs_left);
 	}
 
@@ -340,6 +337,6 @@ void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature)
 	VECEACH(params, i)
 	{
 		bool is_fixed = true;
-		params[i]->var.abi_info = riscv_classify_argument_type(context, type_lowering(params[i]->type), is_fixed, &arg_gprs_left, &arg_fprs_left);
+		params[i]->var.abi_info = riscv_classify_argument_type(type_lowering(params[i]->type), is_fixed, &arg_gprs_left, &arg_fprs_left);
 	}
 }

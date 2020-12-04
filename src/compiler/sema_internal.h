@@ -26,3 +26,5 @@ static inline void context_push_scope(Context *context)
 #define POP_NEXT() POP_X(next); context->next_switch = _old_next_switch
 #define PUSH_BREAKCONT(ast) PUSH_CONTINUE(ast); PUSH_BREAK(ast)
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
+
+void c_abi_func_create(FunctionSignature *signature);

@@ -33,6 +33,7 @@ void compiler_init(void)
 	SourceLocation *loc = sourceloc_calloc();
 	char *token_type = toktype_calloc();
 	TokenData *data = tokdata_calloc();
+	compiler.lib_dir = find_lib_dir();
 }
 
 static void compiler_lex(BuildTarget *target)
@@ -75,8 +76,11 @@ void compiler_compile(BuildTarget *target)
 {
 	Context **contexts = NULL;
 	diag_reset();
-	//vec_add(target->sources, strformat("%s/std/builtin.c3", compiler.lib_dir));
-	//vec_add(target->sources, strformat("%s/std/io.c3", compiler.lib_dir));
+	if (compiler.lib_dir)
+	{
+		vec_add(target->sources, strformat("%s/std/builtin.c3", compiler.lib_dir));
+		vec_add(target->sources, strformat("%s/std/io.c3", compiler.lib_dir));
+	}
 	VECEACH(target->sources, i)
 	{
 		bool loaded = false;

@@ -3,7 +3,7 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
-#include "llvm_codegen_internal.h"
+#include "compiler_internal.h"
 
 typedef enum
 {
@@ -34,13 +34,19 @@ AbiType *abi_type_new_plain(Type *type);
 AbiType *abi_type_new_int_bits(unsigned bits);
 size_t abi_type_size(AbiType *type);
 
+typedef struct
+{
+	unsigned int_regs;
+	unsigned float_regs;
+} Regs;
+
 ABIArgInfo *c_abi_classify_return_type_default(Type *type);
 ABIArgInfo *c_abi_classify_argument_type_default(Type *type);
-void c_abi_func_create_win64(GenContext *context, FunctionSignature *signature);
-void c_abi_func_create_x86(GenContext *context, FunctionSignature *signature);
-void c_abi_func_create_x64(GenContext *context, FunctionSignature *signature);
+void c_abi_func_create_win64(FunctionSignature *signature);
+void c_abi_func_create_x86(FunctionSignature *signature);
+void c_abi_func_create_x64(FunctionSignature *signature);
 void c_abi_func_create_aarch64(FunctionSignature *signature);
-void c_abi_func_create_riscv(GenContext *context, FunctionSignature *signature);
+void c_abi_func_create_riscv(FunctionSignature *signature);
 void c_abi_func_create_wasm(FunctionSignature *signature);
 
 // Implementation

@@ -2188,6 +2188,117 @@ void gencontext_emit_call_intrinsic_expr(GenContext *c, BEValue *be_value, Expr 
 	UNREACHABLE
 }
 
+void llvm_emit_parameter(GenContext *context, LLVMValueRef **args, ABIArgInfo *info, BEValue *be_value, Type *type)
+{
+	switch (info->kind)
+	{
+		case ABI_ARG_IGNORE:
+			// Skip.
+			return;
+		case ABI_ARG_INDIRECT:
+		{
+			// If we want we could optimize for structs by doing it by reference here.
+			unsigned alignment = info->indirect.realignment ?: type_abi_alignment(type);
+			LLVMValueRef indirect = llvm_emit_alloca(context,
+			                                         llvm_get_type(context, type),
+			                                         alignment,
+			                                         "indirectarg");
+			llvm_store_bevalue_aligned(context, indirect, be_value, alignment);
+			vec_add(*args, indirect);
+			return;
+		}
+		case ABI_ARG_DIRECT_COERCE:
+		{
+			LLVMTypeRef coerce_type = llvm_get_coerce_type(context, info);
+			if (!coerce_type || coerce_type == llvm_get_type(context, type))
+			{
+				vec_add(*args, llvm_value_rvalue_store(context, be_value));
+				return;
+			}
+			if (!abi_info_should_flatten(info))
+			{
+				vec_add(*args, llvm_emit_coerce(context, coerce_type, be_value, type));
+				return;
+			}
+			LLVMValueRef cast;
+			unsigned target_alignment = llvm_abi_alignment(coerce_type);
+			unsigned max_align = MAX(((unsigned)be_value->alignment), llvm_abi_alignment(coerce_type));
+
+			// If we are loading something with greater alignment than what we have, we cannot directly memcpy.
+			if (llvm_value_is_addr(be_value) && be_value->alignment < target_alignment)
+			{
+				// So load it instead.
+				llvm_value_rvalue(context, be_value);
+			}
+
+			// In this case we have something nicely aligned, so we just do a cast.
+			if (llvm_value_is_addr(be_value))
+			{
+				cast = LLVMBuildBitCast(context->builder, be_value->value, LLVMPointerType(coerce_type, 0), "");
+			}
+			else
+			{
+				cast = llvm_emit_alloca(context, coerce_type, max_align, "coerce");
+				LLVMValueRef target = LLVMBuildBitCast(context->builder, cast, llvm_get_ptr_type(context, type), "");
+				llvm_store_bevalue_aligned(context, target, be_value, max_align);
+			}
+			LLVMTypeRef element = llvm_abi_type(context, info->direct_coerce.type);
+			for (unsigned idx = 0; idx < info->direct_coerce.elements; idx++)
+			{
+				LLVMValueRef element_ptr = LLVMBuildStructGEP2(context->builder, coerce_type, cast, idx, "");
+				vec_add(*args,
+				        llvm_emit_load_aligned(context, element, element_ptr, llvm_abi_alignment(element), ""));
+			}
+			return;
+		}
+		case ABI_ARG_DIRECT_PAIR:
+		{
+			llvm_value_addr(context, be_value);
+			printf("Handle invalid alignment");
+			// Here we do the following transform:
+			// struct -> { lo, hi } -> lo, hi
+			LLVMTypeRef lo = llvm_abi_type(context, info->direct_pair.lo);
+			LLVMTypeRef hi = llvm_abi_type(context, info->direct_pair.hi);
+			LLVMTypeRef struct_type = llvm_get_coerce_type(context, info);
+			LLVMValueRef cast = LLVMBuildBitCast(context->builder, be_value->value, llvm_get_ptr_type(context, type), "casttemp");
+			// Get the lo value.
+			LLVMValueRef lo_ptr = LLVMBuildStructGEP2(context->builder, struct_type, cast, 0, "lo");
+			vec_add(*args, llvm_emit_load_aligned(context, lo, lo_ptr, llvm_abi_alignment(lo), "lo"));
+			// Get the hi value.
+			LLVMValueRef hi_ptr = LLVMBuildStructGEP2(context->builder, struct_type, cast, 1, "hi");
+			vec_add(*args, llvm_emit_load_aligned(context, hi, hi_ptr, llvm_abi_alignment(hi), "hi"));
+			return;
+		}
+		case ABI_ARG_EXPAND_COERCE:
+		{
+			// Move this to an address (if needed)
+			llvm_value_addr(context, be_value);
+			LLVMTypeRef coerce_type = llvm_get_coerce_type(context, info);
+			LLVMValueRef temp = LLVMBuildBitCast(context->builder, be_value->value, LLVMPointerType(coerce_type, 0), "coerce");
+			LLVMValueRef gep_first = LLVMBuildStructGEP2(context->builder, coerce_type, temp, info->coerce_expand.lo_index, "first");
+			vec_add(*args, LLVMBuildLoad2(context->builder, llvm_abi_type(context, info->coerce_expand.lo), gep_first, ""));
+			if (info->coerce_expand.hi)
+			{
+				LLVMValueRef gep_second = LLVMBuildStructGEP2(context->builder, coerce_type, temp, info->coerce_expand.hi_index, "second");
+				vec_add(*args, LLVMBuildLoad2(context->builder, llvm_abi_type(context, info->coerce_expand.hi), gep_second, ""));
+			}
+			return;
+		}
+		case ABI_ARG_EXPAND:
+		{
+			// Move this to an address (if needed)
+			llvm_value_addr(context, be_value);
+			llvm_expand_type_to_args(context, type, be_value->value, args);
+			// Expand the padding here.
+			if (info->expand.padding_type)
+			{
+				vec_add(*args, LLVMGetUndef(llvm_get_type(context, info->expand.padding_type)));
+			}
+			return;
+		}
+	}
+
+}
 void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *expr)
 {
 	printf("Optimize call return\n");
@@ -2225,8 +2336,15 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 
 	LLVMValueRef return_param = NULL;
 	LLVMValueRef *values = NULL;
+
 	ABIArgInfo *ret_info = signature->ret_abi_info;
 	Type *return_type = signature->rtype->type->canonical;
+
+	if (signature->failable)
+	{
+		ret_info = signature->failable_abi_info;
+		return_type = type_error;
+	}
 
 	switch (ret_info->kind)
 	{
@@ -2249,7 +2367,14 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 		case ABI_ARG_EXPAND_COERCE:
 			break;
 	}
-	unsigned param_index = 0;
+
+	if (signature->failable && signature->ret_abi_info)
+	{
+		Type *actual_return_type = type_lowering(signature->rtype->type);
+		return_param = llvm_emit_alloca(context, llvm_get_type(context, actual_return_type), 0, "retparam");
+		llvm_value_set(be_value, return_param, type_get_ptr(actual_return_type));
+		llvm_emit_parameter(context, &values, signature->ret_abi_info, be_value, be_value->type);
+	}
 	unsigned arguments = vec_size(expr->call_expr.arguments);
 	assert(arguments >= vec_size(signature->params));
 	VECEACH(signature->params, i)
@@ -2258,113 +2383,7 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 		llvm_emit_expr(context, be_value, arg_expr);
 		Decl *param = signature->params[i];
 		ABIArgInfo *info = param->var.abi_info;
-		switch (info->kind)
-		{
-			case ABI_ARG_IGNORE:
-				// Skip.
-				break;
-			case ABI_ARG_INDIRECT:
-			{
-				// If we want we could optimize for structs by doing it by reference here.
-				unsigned alignment = info->indirect.realignment ?: type_abi_alignment(param->type);
-				LLVMValueRef indirect = llvm_emit_alloca(context,
-				                                         llvm_get_type(context, param->type),
-				                                         alignment,
-				                                         "indirectarg");
-				llvm_store_bevalue_aligned(context, indirect, be_value, alignment);
-				vec_add(values, indirect);
-				break;
-			}
-			case ABI_ARG_DIRECT_COERCE:
-			{
-				LLVMTypeRef coerce_type = llvm_get_coerce_type(context, info);
-				if (!coerce_type || coerce_type == llvm_get_type(context, param->type))
-				{
-					vec_add(values, llvm_value_rvalue_store(context, be_value));
-					break;
-				}
-				if (!abi_info_should_flatten(info))
-				{
-					vec_add(values, llvm_emit_coerce(context, coerce_type, be_value, param->type));
-					break;
-				}
-				LLVMValueRef cast;
-				unsigned target_alignment = llvm_abi_alignment(coerce_type);
-				unsigned max_align = MAX(((unsigned)be_value->alignment), llvm_abi_alignment(coerce_type));
-
-				// If we are loading something with greater alignment than what we have, we cannot directly memcpy.
-				if (llvm_value_is_addr(be_value) && be_value->alignment < target_alignment)
-				{
-					// So load it instead.
-					llvm_value_rvalue(context, be_value);
-				}
-
-				// In this case we have something nicely aligned, so we just do a cast.
-				if (llvm_value_is_addr(be_value))
-				{
-					cast = LLVMBuildBitCast(context->builder, be_value->value, LLVMPointerType(coerce_type, 0), "");
-				}
-				else
-				{
-					cast = llvm_emit_alloca(context, coerce_type, max_align, "coerce");
-					LLVMValueRef target = LLVMBuildBitCast(context->builder, cast, llvm_get_ptr_type(context, param->type), "");
-					llvm_store_bevalue_aligned(context, target, be_value, max_align);
-				}
-				LLVMTypeRef element = llvm_abi_type(context, info->direct_coerce.type);
-				for (unsigned idx = 0; idx < info->direct_coerce.elements; idx++)
-				{
-					LLVMValueRef element_ptr = LLVMBuildStructGEP2(context->builder, coerce_type, cast, idx, "");
-					vec_add(values,
-					        llvm_emit_load_aligned(context, element, element_ptr, llvm_abi_alignment(element), ""));
-				}
-				break;
-			}
-			case ABI_ARG_DIRECT_PAIR:
-			{
-				llvm_value_addr(context, be_value);
-				printf("Handle invalid alignment");
-				// Here we do the following transform:
-				// struct -> { lo, hi } -> lo, hi
-				LLVMTypeRef lo = llvm_abi_type(context, info->direct_pair.lo);
-				LLVMTypeRef hi = llvm_abi_type(context, info->direct_pair.hi);
-				LLVMTypeRef struct_type = llvm_get_coerce_type(context, info);
-				LLVMValueRef cast = LLVMBuildBitCast(context->builder, be_value->value, llvm_get_ptr_type(context, param->type), "casttemp");
-				// Get the lo value.
-				LLVMValueRef lo_ptr = LLVMBuildStructGEP2(context->builder, struct_type, cast, 0, "lo");
-				vec_add(values, llvm_emit_load_aligned(context, lo, lo_ptr, llvm_abi_alignment(lo), "lo"));
-				// Get the hi value.
-				LLVMValueRef hi_ptr = LLVMBuildStructGEP2(context->builder, struct_type, cast, 1, "hi");
-				vec_add(values, llvm_emit_load_aligned(context, hi, hi_ptr, llvm_abi_alignment(hi), "hi"));
-				break;
-			}
-			case ABI_ARG_EXPAND_COERCE:
-			{
-				// Move this to an address (if needed)
-				llvm_value_addr(context, be_value);
-				LLVMTypeRef coerce_type = llvm_get_coerce_type(context, info);
-				LLVMValueRef temp = LLVMBuildBitCast(context->builder, be_value->value, LLVMPointerType(coerce_type, 0), "coerce");
-				LLVMValueRef gep_first = LLVMBuildStructGEP2(context->builder, coerce_type, temp, info->coerce_expand.lo_index, "first");
-				vec_add(values, LLVMBuildLoad2(context->builder, llvm_abi_type(context, info->coerce_expand.lo), gep_first, ""));
-				if (info->coerce_expand.hi)
-				{
-					LLVMValueRef gep_second = LLVMBuildStructGEP2(context->builder, coerce_type, temp, info->coerce_expand.hi_index, "second");
-					vec_add(values, LLVMBuildLoad2(context->builder, llvm_abi_type(context, info->coerce_expand.hi), gep_second, ""));
-				}
-				break;
-			}
-			case ABI_ARG_EXPAND:
-			{
-				// Move this to an address (if needed)
-				llvm_value_addr(context, be_value);
-				llvm_expand_type_to_args(context, param->type, be_value->value, &values);
-				// Expand the padding here.
-				if (info->expand.padding_type)
-				{
-					vec_add(values, LLVMGetUndef(llvm_get_type(context, info->expand.padding_type)));
-				}
-				break;
-			}
-		}
+		llvm_emit_parameter(context, &values, info, be_value, param->type);
 	}
 	for (unsigned i = vec_size(signature->params); i < arguments; i++)
 	{
@@ -2473,16 +2492,14 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 			llvm_emit_cond_br(context, &no_err, after_block, context->catch_block);
 		}
 		llvm_emit_block(context, after_block);
+		// If void, be_value contents should be skipped.
+		if (!signature->ret_abi_info) return;
+
+		llvm_value_set_address(be_value, return_param, expr->type);
+		return;
 	}
-	//gencontext_emit_throw_branch(context, call, signature->throws, expr->call_expr.throw_info, signature->error_return);
 
-	/*
-	if (function->func.function_signature.convention)
-	{
-		LLVMSetFunctionCallConv(call, LLVMX86StdcallCallConv);
-	}*/
 	llvm_value_set(be_value, call, expr->type);
-
 }
 
 

@@ -254,6 +254,10 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 				had = decl->is_packed;
 				decl->is_packed = true;
 				break;
+			case ATTRIBUTE_OPAQUE:
+				had = decl->is_opaque;
+				decl->is_opaque = true;
+				break;
 			default:
 				UNREACHABLE
 		}
@@ -379,6 +383,7 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 	TokenType type = TOKEN_INVALID_TOKEN;
 	signature->mangled_signature = symtab_add(buffer, buffer_write_offset, fnv1a(buffer, buffer_write_offset), &type);
 	Type *func_type = stable_get(&context->local_symbols, signature->mangled_signature);
+	c_abi_func_create(signature);
 	if (!func_type)
 	{
 		func_type = type_new(TYPE_FUNC, signature->mangled_signature);
@@ -564,6 +569,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_VAR | ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC,
+			[ATTRIBUTE_NOINLINE] = ATTR_FUNC,
 			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_STDCALL] = ATTR_FUNC
 	};

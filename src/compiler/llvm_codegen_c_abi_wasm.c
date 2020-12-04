@@ -2,7 +2,7 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
-#include "llvm_codegen_c_abi_internal.h"
+#include "c_abi_internal.h"
 
 static ABIArgInfo *wasm_classify_argument_type(Type *type)
 {

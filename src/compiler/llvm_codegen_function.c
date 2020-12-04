@@ -252,6 +252,8 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 	LLVMValueRef return_out = c->return_out;
 	Type *return_type = signature->rtype->type;
 
+	BEValue no_fail;
+
 	// In this case we use the failable as the actual return.
 	if (signature->failable)
 	{
@@ -261,6 +263,11 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 		}
 		return_out = c->failable_out;
 		return_type = type_error;
+		if (!failable)
+		{
+			llvm_value_set(&no_fail, LLVMConstNull(llvm_get_type(c, type_error)), type_error);
+			failable = &no_fail;
+		}
 		return_value = failable;
 		info = signature->failable_abi_info;
 	}
@@ -406,6 +413,10 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 	else
 	{
 		context->return_out = NULL;
+		if (signature->ret_abi_info && signature->failable)
+		{
+			context->return_out = LLVMGetParam(context->function, arg++);
+		}
 	}
 
 

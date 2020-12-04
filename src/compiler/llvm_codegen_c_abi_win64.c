@@ -2,9 +2,9 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
-#include "llvm_codegen_c_abi_internal.h"
+#include "c_abi_internal.h"
 
-ABIArgInfo *win64_classify(GenContext *context, Type *type, bool is_return, bool is_vector, bool is_reg)
+ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vector, bool is_reg)
 {
 	if (type->type_kind == TYPE_VOID) return abi_arg_ignore();
 
@@ -18,9 +18,9 @@ ABIArgInfo *win64_classify(GenContext *context, Type *type, bool is_return, bool
 		if (is_reg)
 		{
 			// Enough registers? Then use direct/expand
-			if (context->abi.sse_registers >= elements)
+			if (regs->float_regs >= elements)
 			{
-				context->abi.sse_registers -= elements;
+				regs->float_regs -= elements;
 				// Direct if return / builtin / vector
 				if (is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR)
 				{
@@ -34,10 +34,10 @@ ABIArgInfo *win64_classify(GenContext *context, Type *type, bool is_return, bool
 		if (is_vector)
 		{
 			// Enough registers AND return / builtin / vector
-			if (context->abi.sse_registers >= elements &&
+			if (regs->float_regs >= elements &&
 				(is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR))
 			{
-				context->abi.sse_registers -= elements;
+				regs->float_regs -= elements;
 				return abi_arg_new_direct();
 			}
 			// HVAs are handled later.
@@ -82,7 +82,7 @@ ABIArgInfo *win64_classify(GenContext *context, Type *type, bool is_return, bool
 	return abi_arg_new_direct();
 }
 
-ABIArgInfo *win64_reclassify_hva_arg(GenContext *context, Type *type, ABIArgInfo *info)
+ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, Type *type, ABIArgInfo *info)
 {
 	// Assumes vectorCall calling convention.
 	Type *base = NULL;
@@ -90,9 +90,9 @@ ABIArgInfo *win64_reclassify_hva_arg(GenContext *context, Type *type, ABIArgInfo
 	type = type_lowering(type);
 	if (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_VECTOR && type_is_homogenous_aggregate(type, &base, &elements))
 	{
-		if (context->abi.sse_registers >= elements)
+		if (regs->float_regs >= elements)
 		{
-			context->abi.sse_registers -= elements;
+			regs->float_regs -= elements;
 			ABIArgInfo *new_info = abi_arg_new_direct();
 			new_info->attributes.by_reg = true;
 			return new_info;
@@ -101,7 +101,7 @@ ABIArgInfo *win64_reclassify_hva_arg(GenContext *context, Type *type, ABIArgInfo
 	return info;
 }
 
-void win64_vector_call_args(GenContext *context, FunctionSignature *signature, bool is_vector, bool is_reg)
+void win64_vector_call_args(Regs *regs, FunctionSignature *signature, bool is_vector, bool is_reg)
 {
 	static const unsigned max_param_vector_calls_as_reg = 6;
 	unsigned count = 0;
@@ -111,85 +111,85 @@ void win64_vector_call_args(GenContext *context, FunctionSignature *signature, b
 		Decl *param = params[i];
 		if (count < max_param_vector_calls_as_reg)
 		{
-			param->var.abi_info = win64_classify(context, param->type, false, is_vector, is_reg);
+			param->var.abi_info = win64_classify(regs, param->type, false, is_vector, is_reg);
 		}
 		else
 		{
 			// Cannot be passed in registers pretend no registers.
-			unsigned regs = context->abi.sse_registers;
-			context->abi.sse_registers = 0;
-			param->var.abi_info = win64_classify(context, param->type, false, is_vector, is_reg);
-			context->abi.sse_registers = regs;
+			unsigned float_regs = regs->float_regs;
+			regs->float_regs = 0;
+			param->var.abi_info = win64_classify(regs, param->type, false, is_vector, is_reg);
+			regs->float_regs = float_regs;
 		}
 		count++;
 	}
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
-		param->var.abi_info = win64_reclassify_hva_arg(context, param->type, param->var.abi_info);
+		param->var.abi_info = win64_reclassify_hva_arg(regs, param->type, param->var.abi_info);
 	}
 
 }
 
-void c_abi_func_create_win64(GenContext *context, FunctionSignature *signature)
+void c_abi_func_create_win64(FunctionSignature *signature)
 {
 	// allow calling sysv?
 
 	// Set up return registers.
-	context->abi.int_registers = 0;
+	Regs regs = { 0, 0 };
 	bool is_reg_call = false;
 	bool is_vector_call = false;
-	switch (context->abi.call_convention)
+	switch (signature->convention)
 	{
 		case CALL_CONVENTION_VECTOR:
-			context->abi.sse_registers = 4;
+			regs.float_regs = 4;
 			is_vector_call = true;
 			break;
 		case CALL_CONVENTION_REGCALL:
-			context->abi.sse_registers = 16;
+			regs.float_regs = 16;
 			is_reg_call = true;
 			break;
 		default:
-			context->abi.sse_registers = 0;
+			regs.float_regs = 0;
 			break;
 	}
 
 	if (signature->failable)
 	{
-		signature->failable_abi_info = win64_classify(context, type_error, true, is_vector_call, is_reg_call);
+		signature->failable_abi_info = win64_classify(&regs, type_error, true, is_vector_call, is_reg_call);
 		if (signature->rtype->type->type_kind != TYPE_VOID)
 		{
-			signature->ret_abi_info = win64_classify(context, type_get_ptr(type_lowering(signature->rtype->type)), false, is_vector_call, is_reg_call);
+			signature->ret_abi_info = win64_classify(&regs, type_get_ptr(type_lowering(signature->rtype->type)), false, is_vector_call, is_reg_call);
 		}
 	}
 	else
 	{
-		signature->ret_abi_info = win64_classify(context, signature->rtype->type, true, is_vector_call, is_reg_call);
+		signature->ret_abi_info = win64_classify(&regs, signature->rtype->type, true, is_vector_call, is_reg_call);
 	}
 
 	// Set up parameter registers.
-	switch (context->abi.call_convention)
+	switch (signature->convention)
 	{
 		case CALL_CONVENTION_VECTOR:
-			context->abi.sse_registers = 6;
+			regs.float_regs = 6;
 			is_vector_call = true;
 			break;
 		case CALL_CONVENTION_REGCALL:
-			context->abi.sse_registers = 16;
+			regs.float_regs = 16;
 			is_reg_call = true;
 			break;
 		default:
-			context->abi.sse_registers = 0;
+			regs.float_regs = 0;
 			break;
 	}
 	if (is_vector_call)
 	{
-		win64_vector_call_args(context, signature, is_vector_call, is_reg_call);
+		win64_vector_call_args(&regs, signature, is_vector_call, is_reg_call);
 		return;
 	}
 	Decl **params = signature->params;
 	VECEACH(params, i)
 	{
-		params[i]->var.abi_info = win64_classify(context, params[i]->type, false, is_vector_call, is_reg_call);
+		params[i]->var.abi_info = win64_classify(&regs, params[i]->type, false, is_vector_call, is_reg_call);
 	}
 }

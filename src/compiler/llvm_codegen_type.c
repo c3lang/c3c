@@ -257,8 +257,6 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 	LLVMTypeRef *params = NULL;
 	FunctionSignature *signature = type->func.signature;
 
-	c_abi_func_create(context, signature);
-
 	LLVMTypeRef return_type = NULL;
 
 	Type *real_return_type = signature->failable ? type_error : signature->rtype->type->canonical;

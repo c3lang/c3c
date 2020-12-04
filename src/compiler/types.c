@@ -612,6 +612,7 @@ unsigned int type_abi_alignment(Type *type)
 		case TYPE_UNION:
 			return type->decl->alignment;
 		case TYPE_TYPEID:
+			return type_abi_alignment(type_usize);
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:

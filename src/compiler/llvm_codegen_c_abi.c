@@ -2,7 +2,7 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "llvm_codegen_c_abi_internal.h"
+#include "c_abi_internal.h"
 
 
 static ABIArgInfo *abi_arg_new(ABIKind kind)
@@ -231,24 +231,24 @@ ABIArgInfo *abi_arg_new_expand_padded(Type *padding)
 }
 
 
-void c_abi_func_create(GenContext *context, FunctionSignature *signature)
+void c_abi_func_create(FunctionSignature *signature)
 {
 	switch (build_target.abi)
 	{
 		case ABI_X64:
-			c_abi_func_create_x64(context, signature);
+			c_abi_func_create_x64(signature);
 			break;
 		case ABI_X86:
-			c_abi_func_create_x86(context, signature);
+			c_abi_func_create_x86(signature);
 			break;
 		case ABI_WIN64:
-			c_abi_func_create_win64(context, signature);
+			c_abi_func_create_win64(signature);
 			break;
 		case ABI_AARCH64:
 			c_abi_func_create_aarch64(signature);
 			break;
 		case ABI_RISCV:
-			c_abi_func_create_riscv(context, signature);
+			c_abi_func_create_riscv(signature);
 			break;
 		case ABI_WASM:
 			c_abi_func_create_wasm(signature);

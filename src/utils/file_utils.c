@@ -118,7 +118,8 @@ const char* find_lib_dir(void)
 		return lib_path;
 	}
 
-	error_exit("Could not find the standard library /lib/std/");
+	DEBUG_LOG("Could not find the standard library /lib/std/");
+	return NULL;
 }
 
 void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path)
