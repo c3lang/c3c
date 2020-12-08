@@ -244,6 +244,7 @@ static inline bool sema_type_error_on_binop(Context *context, Expr *expr)
 
 static bool expr_cast_to_index(Context *context, Expr *index)
 {
+	printf("TODO: consider changing indexing size\n");
 	if (index->type->canonical->type_kind == type_usize->canonical->type_kind) return true;
 	return cast_implicit(context, index, type_isize);
 }
@@ -460,6 +461,7 @@ static inline bool sema_expr_analyse_identifier_resolve(Context *context, Type *
 
 bool expr_is_constant_eval(Expr *expr)
 {
+	// TODO rethink this.
 	switch (expr->expr_kind)
 	{
 		case EXPR_CONST:
@@ -468,8 +470,8 @@ bool expr_is_constant_eval(Expr *expr)
 			return expr_is_constant_eval(expr->expr_compound_literal.initializer);
 		case EXPR_INITIALIZER_LIST:
 		{
-			Expr** init_exprs = expr->expr_initializer.initializer_expr;
-			switch (expr->expr_initializer.init_type)
+			Expr** init_exprs = expr->initializer_expr.initializer_expr;
+			switch (expr->initializer_expr.init_type)
 			{
 				case INITIALIZER_NORMAL:
 				{
@@ -676,14 +678,20 @@ static inline bool sema_expr_analyse_binary_sub_expr(Context *context, Type *to,
 	return sema_analyse_expr(context, to, left) & sema_analyse_expr(context, to, right);
 }
 
-static inline int find_index_of_named_parameter(Context *context, Decl** func_params, Expr *expr)
+static inline int find_index_of_named_parameter(Decl **func_params, Expr *expr)
 {
-	if (expr->expr_kind != EXPR_IDENTIFIER || expr->identifier_expr.path)
+	if (vec_size(expr->designator_expr.path) != 1)
 	{
-		SEMA_ERROR(expr, "Expected the name of a function parameter here, enclose the assignment expression in ().");
+		SEMA_ERROR(expr, "Expected the name of a function parameter here, this looks like a member path.");
 		return -1;
 	}
-	const char *name = expr->identifier_expr.identifier;
+	DesignatorElement *element = expr->designator_expr.path[0];
+	if (element->kind != DESIGNATOR_FIELD)
+	{
+		SEMA_ERROR(expr, "Expected the name of a function parameter here, this looks like an array path field.");
+		return -1;
+	}
+	const char *name = element->field;
 	VECEACH(func_params, i)
 	{
 		if (func_params[i]->name == name) return (int)i;
@@ -790,10 +798,10 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 		bool is_implicit = i < struct_args;
 		Expr *arg = is_implicit ? struct_var : args[i - struct_args];
 		// Named parameters
-		if (!is_implicit && arg->expr_kind == EXPR_BINARY && arg->binary_expr.operator == BINARYOP_ASSIGN)
+		if (arg->expr_kind == EXPR_DESIGNATOR)
 		{
 			uses_named_parameters = true;
-			int index = find_index_of_named_parameter(context, func_params, arg->binary_expr.left);
+			int index = find_index_of_named_parameter(func_params, arg);
 			if (index < 0) return false;
 			if (actual_args[index])
 			{
@@ -814,6 +822,32 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 				return false;
 			}
 			if (!sema_analyse_expr_of_required_type(context, NULL, arg, true)) return false;
+			// In the case of a compile time variable we cast to c_int / double.
+
+			Type *arg_type = arg->type->canonical;
+			if (type_is_ct(arg_type))
+			{
+				// Pick double / CInt
+				Type *target_type = type_is_any_integer(arg_type) ? type_c_int->canonical : type_double;
+				if (!cast_implicit(context, arg, target_type)) return false;
+				arg_type = target_type;
+			}
+			// bools need explicit promotion.
+			if (arg_type == type_bool)
+			{
+				if (!cast(context, arg, type_c_int->canonical, CAST_TYPE_EXPLICIT)) return false;
+			}
+			// Promote any integer to at least CInt
+			if (type_is_promotable_integer(arg_type) || arg_type == type_bool)
+			{
+				if (!cast_implicit(context, arg, type_c_int->canonical)) return false;
+				arg_type = type_c_int->canonical;
+			}
+			if (type_is_promotable_float(arg->type))
+			{
+				if (!cast_implicit(context, arg, type_double)) return false;
+				arg_type = type_double;
+			}
 			actual_args[i] = arg;
 			expr->failable |= arg->failable;
 			continue;
@@ -1187,8 +1221,17 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			break;
 		case EXPR_MACRO_IDENTIFIER:
 			return sema_expr_analyse_macro_call(context, to, expr, func_expr->identifier_expr.decl);
+		case EXPR_LEN:
+			if (func_expr->type == type_void)
+			{
+				func_expr->type = type_usize;
+				expr_replace(expr, func_expr);
+				return true;
+			}
+			FALLTHROUGH;
 		default:
-			TODO
+			SEMA_ERROR(expr, "This value cannot be invoked, did you accidentally add ()?");
+			return false;
 	}
 	switch (decl->decl_kind)
 	{
@@ -1271,7 +1314,7 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 				index = len - index;
 			}
 			// Checking end can only be done for arrays.
-			if (end_index && index > len)
+			if (end_index && index >= len)
 			{
 				SEMA_ERROR(index_expr, "Array end index out of bounds, was %lld, exceeding array length %lld.", (long long)index, (long long)len);
 				return false;
@@ -1395,6 +1438,24 @@ static inline bool sema_expr_analyse_slice_after_parent_resolution(Context *cont
 
 	if (start && end && start->expr_kind == EXPR_CONST && end->expr_kind == EXPR_CONST)
 	{
+		if (type->type_kind == TYPE_ARRAY)
+		{
+			BigInt len;
+			bigint_init_unsigned(&len, type->array.len);
+			BigInt result;
+			if (expr->slice_expr.start_from_back)
+			{
+				bigint_sub(&result, &len, &start->const_expr.i);
+				start->const_expr.i = result;
+				expr->slice_expr.start_from_back = false;
+			}
+			if (expr->slice_expr.end_from_back)
+			{
+				bigint_sub(&result, &len, &end->const_expr.i);
+				end->const_expr.i = result;
+				expr->slice_expr.end_from_back = false;
+			}
+		}
 		if (expr->slice_expr.start_from_back && expr->slice_expr.end_from_back)
 		{
 			if (expr_const_compare(&start->const_expr, &end->const_expr, BINARYOP_LT))
@@ -1403,7 +1464,7 @@ static inline bool sema_expr_analyse_slice_after_parent_resolution(Context *cont
 				return false;
 			}
 		}
-		else
+		else if (!expr->slice_expr.start_from_back && !expr->slice_expr.end_from_back)
 		{
 			if (expr_const_compare(&start->const_expr, &end->const_expr, BINARYOP_GT))
 			{
@@ -1834,7 +1895,7 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 			{
 				expr->expr_kind = EXPR_LEN;
 				expr->len_expr.inner = parent;
-				expr->type = type_usize;
+				expr->type = type_void;
 				expr->resolve_status = RESOLVE_DONE;
 				return true;
 			}
@@ -1869,7 +1930,7 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	context_pop_scope(context);
 	if (!member)
 	{
-		SEMA_ERROR(expr, "There is no element or method '%s.%s'.", decl->name, kw);
+		SEMA_ERROR(expr, "There is no field or method '%s.%s'.", decl->name, kw);
 		return false;
 	}
 	if (is_pointer)
@@ -1885,146 +1946,481 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	return true;
 }
 
-static DesignatedPath *sema_analyse_init_path(Context *context, DesignatedPath *parent, Expr *expr, bool *has_found_match, bool *has_reported_error);
-
-static DesignatedPath *sema_analyse_init_identifier_string(Context *context, DesignatedPath *parent_path, const char *string, bool *has_found_match, bool *has_reported_error)
+static Decl *sema_resolve_element_for_name(Decl** decls, DesignatorElement **elements, unsigned *index)
 {
-	assert(type_is_structlike(parent_path->type));
-	Decl **members = parent_path->type->decl->strukt.members;
-	VECEACH(members, i)
+
+	DesignatorElement *element = elements[*index];
+	const char *name = element->field;
+	unsigned old_index = *index;
+	VECEACH(decls, i)
 	{
-		Decl *member = members[i];
-		if (!member->name)
+		Decl *decl = decls[i];
+		// The simple case, we have a match.
+		if (decl->name == name)
 		{
-			DesignatedPath temp_path;
-			temp_path.type = member->type;
-			DesignatedPath *found = sema_analyse_init_identifier_string(context, &temp_path, string, has_found_match, has_reported_error);
-			if (!found) continue;
-			DesignatedPath *real_path = malloc_arena(sizeof(DesignatedPath));
-			*real_path = temp_path;
-			real_path->index = i;
-			real_path->kind = DESIGNATED_IDENT;
-			parent_path->sub_path = real_path;
-			*has_found_match = true;
-			return found;
+			element->index = i;
+			return decl;
 		}
-		if (member->name == string)
+		if (!decl->name)
 		{
-			DesignatedPath *sub_path = CALLOCS(DesignatedPath);
-			sub_path->type = member->type;
-			sub_path->kind = DESIGNATED_IDENT;
-			sub_path->index = i;
-			parent_path->sub_path = sub_path;
-			sub_path->pure = true;
-			sub_path->constant = true;
-			*has_found_match = true;
-			return sub_path;
+			assert(type_is_structlike(decl->type));
+			// Anonymous struct
+			Decl *found = sema_resolve_element_for_name(decl->strukt.members, elements, index);
+			// No match, continue...
+			if (!found) continue;
+
+			// Special handling, we now need to patch the elements
+			unsigned current_size = vec_size(elements);
+			// Add an element at the end.
+			vec_add(elements, NULL);
+			// Shift all elements
+			for (unsigned j = current_size; j > old_index; j--)
+			{
+				elements[j] = elements[j - 1];
+			}
+			// Create our anon field.
+			DesignatorElement *anon_element = CALLOCS(DesignatorElement);
+			anon_element->kind = DESIGNATOR_FIELD;
+			anon_element->index = i;
+			elements[old_index] = anon_element;
+			// Advance
+			(*index)++;
+			return found;
 		}
 	}
 	return NULL;
 }
 
-
-static DesignatedPath *sema_analyse_init_access(Context *context, DesignatedPath *parent, Expr *access_expr, bool *has_found_match, bool *has_reported_error)
+static int64_t sema_analyse_designator_index(Context *context, Expr *index)
 {
-	DesignatedPath *last_path = sema_analyse_init_path(context, parent, access_expr->access_expr.parent, has_found_match, has_reported_error);
-	if (!last_path) return NULL;
-	DesignatedPath *path = sema_analyse_init_identifier_string(context, last_path,
-	                                                           TOKSTR(access_expr->access_expr.sub_element), has_found_match, has_reported_error);
-	if (path)
+	if (!sema_analyse_expr_value(context, type_usize, index))
 	{
-		path->pure = true;
-		path->constant = true;
-	}
-	if (!path && has_found_match && !has_reported_error)
-	{
-		SEMA_TOKID_ERROR(access_expr->access_expr.sub_element, "'%s' is not a valid sub member.", TOKSTR(access_expr->access_expr.sub_element));
-		*has_reported_error = true;
-	}
-	return path;
-}
-
-
-static DesignatedPath *sema_analyse_init_subscript(Context *context, DesignatedPath *parent, Expr *expr, bool *has_found_match, bool *has_reported_error)
-{
-	assert(expr->expr_kind == EXPR_SUBSCRIPT);
-	DesignatedPath *path = parent;
-	if (expr->subscript_expr.expr)
-	{
-		path = sema_analyse_init_path(context, parent, expr->subscript_expr.expr, has_found_match, has_reported_error);
-	}
-	if (!path) return NULL;
-
-	Type *type = path->type;
-	if (type->canonical->type_kind == TYPE_POINTER)
-	{
-		SEMA_ERROR(expr, "It's not possible to subscript a pointer field in a designated initializer.");
-		*has_reported_error = true;
-		return NULL;
-	}
-
-	Expr *index = expr->subscript_expr.index;
-	Type *inner_type = type_get_indexed_type(type);
-	if (!inner_type)
-	{
-		SEMA_ERROR(expr, "Not possible to index a value of type '%s'.", type_to_error_string(type));
-		*has_reported_error = true;
-		return NULL;
-	}
-	if (!sema_analyse_expr(context, type_isize, index))
-	{
-		*has_reported_error = true;
-		return NULL;
+		return -1;
 	}
 
 	// Unless we already have type_usize, cast to type_isize;
 	if (!expr_cast_to_index(context, index))
 	{
-		*has_reported_error = true;
-		return NULL;
+		return -1;
 	}
-
-	// Check range
-	if (!expr_check_index_in_range(context, type->canonical, index, false, false))
+	if (index->expr_kind == EXPR_CONST)
 	{
-		*has_reported_error = true;
-		return NULL;
+		if (!bigint_fits_in_bits(&index->const_expr.i, 64, true))
+		{
+			SEMA_ERROR(index, "The value of the index does not fit in a long.");
+			return -1;
+		}
+		int64_t index_val = bigint_as_signed(&index->const_expr.i);
+		if (index_val < 0)
+		{
+			SEMA_ERROR(index, "Negative index values is not allowed.");
+			return -1;
+		}
+		return index_val;
 	}
-
-	DesignatedPath *sub_path = CALLOCS(DesignatedPath);
-	path->sub_path = sub_path;
-	sub_path->pure = index->pure;
-	sub_path->constant = index->constant;
-	path->constant &= index->pure;
-	path->pure &= index->pure;
-
-	sub_path->type = inner_type;
-	sub_path->kind = DESIGNATED_SUBSCRIPT;
-	sub_path->index_expr = index;
-	*has_found_match = true;
-	return sub_path;
+	return 0;
 }
 
-static DesignatedPath *sema_analyse_init_path(Context *context, DesignatedPath *parent, Expr *expr, bool *has_found_match, bool *has_reported_error)
+static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error)
 {
-	switch (expr->expr_kind)
+	Type *type_lowered = type_lowering(type);
+	DesignatorElement *element = elements[*curr_index];
+	if (element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE)
 	{
-		case EXPR_ACCESS:
-			return sema_analyse_init_access(context, parent, expr, has_found_match, has_reported_error);
-		case EXPR_IDENTIFIER:
-			return sema_analyse_init_identifier_string(context, parent, expr->identifier_expr.identifier, has_found_match, has_reported_error);
-		case EXPR_SUBSCRIPT:
-			return sema_analyse_init_subscript(context, parent, expr, has_found_match, has_reported_error);
+		if (type_lowered->type_kind != TYPE_ARRAY)
+		{
+			return NULL;
+		}
+		int64_t index = sema_analyse_designator_index(context, element->index_expr);
+		if (index < 0)
+		{
+			*did_report_error = true;
+			return NULL;
+		}
+		element->index = index;
+		if (element->index_expr->expr_kind != EXPR_CONST) *is_constant = false;
+
+		if (element->kind == DESIGNATOR_RANGE)
+		{
+			int64_t end_index = sema_analyse_designator_index(context, element->index_end_expr);
+			if (end_index < 0)
+			{
+				*did_report_error = true;
+				return NULL;
+			}
+			if (element->index_end_expr->expr_kind == EXPR_CONST
+				&& element->index_expr->expr_kind == EXPR_CONST
+				&& index > end_index)
+			{
+				SEMA_ERROR(element->index_end_expr, "End index must be greater than start index.");
+				return false;
+			}
+			element->index_end = end_index;
+		}
+		return type_lowered->array.base;
+	}
+	assert(element->kind == DESIGNATOR_FIELD);
+	if (!type_is_structlike(type_lowered))
+	{
+		return NULL;
+	}
+	Decl *member = sema_resolve_element_for_name(type_lowered->decl->strukt.members, elements, curr_index);
+	if (!member) return NULL;
+	return member->type;
+}
+
+static Type *sema_expr_analyse_designator(Context *context, Type *current, Expr *expr)
+{
+	DesignatorElement **path = expr->designator_expr.path;
+	Expr *value = expr->designator_expr.value;
+
+	// Walk down into this path
+	bool is_constant = true;
+	bool did_report_error = false;
+	for (unsigned i = 0; i < vec_size(path); i++)
+	{
+		current = sema_find_type_of_element(context, current, path, &i, &is_constant, &did_report_error);
+		if (!current) break;
+	}
+	if (!current && !did_report_error)
+	{
+		SEMA_ERROR(expr, "This is not a valid member of '%s'.", type_to_error_string(current));
+	}
+	expr->constant = is_constant;
+	expr->pure = is_constant;
+	return current;
+}
+
+static void sema_update_const_initializer_with_designator(ConstInitializer *const_init,
+														  DesignatorElement **curr,
+														  DesignatorElement **end,
+														  Expr *value);
+
+static void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value)
+{
+	if (value->expr_kind == EXPR_INITIALIZER_LIST && value->initializer_expr.init_type == INITIALIZER_CONST)
+	{
+		*const_init = *value->initializer_expr.initializer;
+		value->initializer_expr.initializer = const_init;
+		return;
+	}
+	const_init->type = value->type->canonical;
+	const_init->kind = CONST_VALUE;
+	const_init->value = value;
+}
+
+static bool is_empty_initializer_list(Expr *value)
+{
+	return value->initializer_expr.init_type == INITIALIZER_CONST && value->initializer_expr.initializer->kind == CONST_INIT_ZERO;
+}
+static void sema_create_const_initializer(ConstInitializer *const_init, Expr *initializer);
+
+static inline void sema_update_const_initializer_with_designator_struct(ConstInitializer *const_init,
+																		DesignatorElement **curr,
+																		DesignatorElement **end,
+																		Expr *value)
+{
+	DesignatorElement *element = curr[0];
+	assert(element->kind == DESIGNATOR_FIELD);
+	DesignatorElement **next_element = curr + 1;
+	bool at_end = next_element == end;
+	// Optimize in case this is a zero.
+	if (at_end && is_empty_initializer_list(value))
+	{
+		const_init->kind = CONST_INIT_ZERO;
+		return;
+	}
+	if (const_init->kind == CONST_INIT_ZERO)
+	{
+		Decl **elements = const_init->type->decl->strukt.members;
+		ConstInitializer **const_inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
+		VECEACH(elements, i)
+		{
+			ConstInitializer *element_init = CALLOCS(ConstInitializer);
+			element_init->type = elements[i]->type->canonical;
+			element_init->kind = CONST_INIT_ZERO;
+			const_inits[i] = element_init;
+		}
+		const_init->elements = const_inits;
+		const_init->kind = CONST_INIT_EXPANDED;
+	}
+	ConstInitializer *sub_element = const_init->elements[element->index];
+	if (!at_end)
+	{
+		sema_update_const_initializer_with_designator(sub_element, next_element, end, value);
+		return;
+	}
+	sema_create_const_initializer_value(sub_element, value);
+}
+
+static inline void sema_update_const_initializer_with_designator_union(ConstInitializer *const_init,
+                                                                        DesignatorElement **curr,
+                                                                        DesignatorElement **end,
+                                                                        Expr *value)
+{
+	DesignatorElement *element = curr[0];
+	assert(element->kind == DESIGNATOR_FIELD);
+	ConstInitializer *sub_element = const_init->union_const.element;
+	// If it's an empty initializer, just clear everything back to CONST_INIT_ZERO
+	DesignatorElement **next_element = curr + 1;
+	bool is_at_end = next_element == end;
+	if (is_at_end && is_empty_initializer_list(value))
+	{
+		const_init->kind = CONST_INIT_ZERO;
+		return;
+	}
+	if (const_init->kind == CONST_INIT_ZERO)
+	{
+		sub_element = const_init->union_const.element = CALLOCS(ConstInitializer);
+		sub_element->kind = CONST_INIT_ZERO;
+		const_init->union_const.element = sub_element;
+	}
+	else if (element->index != const_init->union_const.index)
+	{
+		sub_element->kind = CONST_INIT_ZERO;
+		sub_element->type = value->type;
+	}
+	sub_element->type = const_init->type->decl->strukt.members[element->index]->type->canonical;
+	const_init->union_const.index = element->index;
+	const_init->kind = CONST_SELECTED;
+	if (!is_at_end)
+	{
+		sema_update_const_initializer_with_designator(sub_element, next_element, end, value);
+		return;
+	}
+	sema_create_const_initializer_value(sub_element, value);
+}
+
+
+
+static inline ConstInitializer *sema_find_const_init_array_slice(ConstInitializer *const_init, ArrayIndex index)
+{
+	if (!const_init) return NULL;
+	switch (const_init->kind)
+	{
+		case CONST_INIT_ARRAY_SPLIT:
+		{
+			ConstInitializer *found;
+			if ((found = sema_find_const_init_array_slice(const_init->split_const.low, index))) return found;
+			if ((found = sema_find_const_init_array_slice(const_init->split_const.mid, index))) return found;
+			if ((found = sema_find_const_init_array_slice(const_init->split_const.hi, index))) return found;
+			return false;
+		}
+		case CONST_INIT_ARRAY_RANGE_ZERO:
+			if (const_init->array_range_zero.low > index || const_init->array_range_zero.high < index) return NULL;
+			return const_init;
+		case CONST_INIT_ARRAY_VALUE_FRAGMENT:
+			return const_init->single_array_index.index == index ? const_init : NULL;
 		default:
+			UNREACHABLE
+	}
+}
+
+static inline ConstInitializer *sema_split_const_init_array_slice(ConstInitializer *const_init, ArrayIndex index)
+{
+	switch (const_init->kind)
+	{
+		case CONST_INIT_ARRAY_SPLIT:
+			UNREACHABLE
+		case CONST_INIT_ARRAY_RANGE_ZERO:
+		{
+			// Special case: single element.
+			if (const_init->array_range_zero.low == const_init->array_range_zero.high)
+			{
+				const_init->kind = CONST_INIT_ARRAY_VALUE_FRAGMENT;
+				const_init->type = const_init->type->array.base;
+				const_init->single_array_index.index = index;
+				const_init->single_array_index.element = MALLOC(sizeof(ConstInitializer));
+				const_init->single_array_index.element->type = const_init->type->array.base;
+				const_init->single_array_index.element->kind = CONST_INIT_ZERO;
+				return const_init;
+			}
+			ConstInitializer *low = NULL;
+			ConstInitializer *hi = NULL;
+			if (const_init->array_range_zero.low < index)
+			{
+				low = MALLOC(sizeof(ConstInitializer));
+				low->kind = CONST_INIT_ARRAY_RANGE_ZERO;
+				low->array_range_zero.low = const_init->array_range_zero.low;
+				low->array_range_zero.high = index - 1;
+				low->type = type_get_array(const_init->type->array.base, low->array_range_zero.high - low->array_range_zero.low + 1);
+			}
+			if (const_init->array_range_zero.high > index)
+			{
+				hi = MALLOC(sizeof(ConstInitializer));
+				hi->kind = CONST_INIT_ARRAY_RANGE_ZERO;
+				hi->array_range_zero.low = index + 1;
+				hi->array_range_zero.high = const_init->array_range_zero.high;
+				hi->type = type_get_array(const_init->type->array.base, hi->array_range_zero.high - hi->array_range_zero.low + 1);
+			}
+			ConstInitializer *mid = MALLOC(sizeof(ConstInitializer));
+			mid->kind = CONST_INIT_ARRAY_VALUE_FRAGMENT;
+			mid->type = const_init->type->array.base;
+			mid->single_array_index.index = index;
+			mid->single_array_index.element = MALLOC(sizeof(ConstInitializer));
+			mid->single_array_index.element->type = const_init->type->array.base;
+			mid->single_array_index.element->kind = CONST_INIT_ZERO;
+			const_init->split_const.low = low;
+			const_init->split_const.mid = mid;
+			const_init->split_const.hi = hi;
+			const_init->kind = CONST_INIT_ARRAY_SPLIT;
+			return mid;
+		}
+		case CONST_INIT_ARRAY_VALUE_FRAGMENT:
+			return const_init;
+		case CONST_INIT_ZERO:
+		case CONST_INIT_EXPANDED:
+		case CONST_SELECTED:
+		case CONST_VALUE:
 			return NULL;
 	}
+	UNREACHABLE
 }
 
+static inline void sema_update_const_initializer_with_designator_array(ConstInitializer *const_init,
+                                                                       DesignatorElement **curr,
+                                                                       DesignatorElement **end,
+                                                                       Expr *value)
+{
+	DesignatorElement *element = curr[0];
+	ArrayIndex low_index = element->index;
+	ArrayIndex high_index = element->kind == DESIGNATOR_RANGE ? element->index_end : element->index;
+	assert(element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE);
+	if (const_init->kind == CONST_INIT_ZERO)
+	{
+		const_init->kind = CONST_INIT_ARRAY_RANGE_ZERO;
+		const_init->array_range_zero.low = 0;
+		const_init->array_range_zero.high = const_init->type->array.len - 1;
+	}
 
+	DesignatorElement **next_element = curr + 1;
+	bool is_direct_update = next_element == end;
+	for (ArrayIndex index = low_index; index <= high_index; index++)
+	{
+		ConstInitializer *sub_element = sema_find_const_init_array_slice(const_init, index);
+		sub_element = sema_split_const_init_array_slice(sub_element, index)->single_array_index.element;
+		if (!is_direct_update)
+		{
+			sema_update_const_initializer_with_designator(sub_element, next_element, end, value);
+			continue;
+		}
+		sema_create_const_initializer_value(sub_element, value);
+	}
+}
+
+static inline void sema_update_const_initializer_with_designator(
+		ConstInitializer *const_init,
+		DesignatorElement **curr,
+		DesignatorElement **end,
+		Expr *value)
+{
+	switch (const_init->type->type_kind)
+	{
+		case TYPE_STRUCT:
+		case TYPE_ERRTYPE:
+			sema_update_const_initializer_with_designator_struct(const_init, curr, end, value);
+			return;
+		case TYPE_UNION:
+			sema_update_const_initializer_with_designator_union(const_init, curr, end, value);
+			return;
+		case TYPE_ARRAY:
+			sema_update_const_initializer_with_designator_array(const_init, curr, end, value);
+			return;
+		case TYPE_VECTOR:
+			TODO
+		default:
+			UNREACHABLE
+	}
+}
+
+static void sema_create_const_initializer(ConstInitializer *const_init, Expr *initializer)
+{
+	const_init->type = initializer->type->canonical;
+	const_init->kind = CONST_INIT_ZERO;
+	Expr **init_expressions = initializer->initializer_expr.initializer_expr;
+	VECEACH(init_expressions, i)
+	{
+		Expr *expr = init_expressions[i];
+		DesignatorElement **path = expr->designator_expr.path;
+		Expr *value = expr->designator_expr.value;
+		sema_update_const_initializer_with_designator(const_init, path, path + vec_size(path), value);
+	}
+}
+
+static void debug_dump_const_initializer(ConstInitializer *init, const char *name, unsigned indent)
+{
+	for (unsigned i = 0; i < indent; i++) printf("  ");
+	if (name)
+	{
+		printf("%s : %s", name, init->type->name ?: "WTF");
+	}
+	else
+	{
+		printf("%s", init->type->name ?: "WTF");
+	}
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			printf(" = 0\n");
+			return;
+		case CONST_SELECTED:
+		{
+			printf(" ->\n");
+			Decl** members = init->type->decl->strukt.members;
+			debug_dump_const_initializer(init->union_const.element, members[init->union_const.index]->name, indent + 1);
+			return;
+		}
+		case CONST_INIT_EXPANDED:
+		{
+			printf(" ->\n");
+			Decl** members = init->type->decl->strukt.members;
+			unsigned member_count = vec_size(members);
+			for (unsigned i = 0; i < member_count; i++)
+			{
+				debug_dump_const_initializer(init->elements[i], members[i]->name, indent + 1);
+			}
+			return;
+		}
+		case CONST_INIT_ARRAY_VALUE_FRAGMENT:
+		{
+			printf(" [%llu] ->\n", init->single_array_index.index);
+			debug_dump_const_initializer(init->single_array_index.element, "", indent + 1);
+			return;
+		}
+		case CONST_VALUE:
+		{
+			assert(init->value->expr_kind == EXPR_CONST);
+			printf("  = ");
+			expr_const_fprint(stdout, &init->value->const_expr);
+			puts("");
+			return;
+		}
+		case CONST_INIT_ARRAY_SPLIT:
+			printf(" [//] ->\n");
+			if (init->split_const.low)
+			{
+				debug_dump_const_initializer(init->split_const.low, NULL, indent + 1);
+			}
+			if (init->split_const.mid)
+			{
+				debug_dump_const_initializer(init->split_const.mid, NULL, indent + 1);
+			}
+			if (init->split_const.hi)
+			{
+				debug_dump_const_initializer(init->split_const.hi, NULL, indent + 1);
+			}
+			return;
+		case CONST_INIT_ARRAY_RANGE_ZERO:
+			printf(" [%llu .. %llu] = 0\n", init->array_range_zero.low, init->array_range_zero.high);
+			return;
+	}
+	UNREACHABLE
+}
 
 static bool sema_expr_analyse_designated_initializer(Context *context, Type *assigned, Expr *initializer)
 {
-	Expr **init_expressions = initializer->expr_initializer.initializer_expr;
+	Expr **init_expressions = initializer->initializer_expr.initializer_expr;
+	Type *original = assigned->canonical;
 	bool is_structlike = type_is_structlike(assigned->canonical);
 
 	initializer->pure = true;
@@ -2032,44 +2428,27 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 	VECEACH(init_expressions, i)
 	{
 		Expr *expr = init_expressions[i];
-		// 1. Ensure that're seeing expr = expr on the top level.
-		if (expr->expr_kind != EXPR_BINARY || expr->binary_expr.operator != BINARYOP_ASSIGN)
-		{
-			if (is_structlike)
-			{
-				SEMA_ERROR(expr, "Expected an initializer on the format 'foo = 123' here.");
-			}
-			else
-			{
-				SEMA_ERROR(expr, "Expected an initializer on the format '[1] = 123' here.");
-			}
-			return false;
-		}
-		Expr *init_expr = expr->binary_expr.left;
-		DesignatedPath path = { .type = assigned };
-		path.pure = true;
-		path.constant = true;
-		bool has_reported_error = false;
-		bool has_found_match = false;
-		DesignatedPath *last_path = sema_analyse_init_path(context, &path, init_expr, &has_found_match, &has_reported_error);
-		if (!has_reported_error && !last_path)
-		{
-			SEMA_ERROR(expr, "This is not a valid member of '%s'.", type_to_error_string(assigned));
-			return false;
-		}
-		Expr *value = expr->binary_expr.right;
-		if (!sema_analyse_expr_of_required_type(context, last_path->type, value, true)) return false;
-		expr->pure = value->pure & last_path->pure;
-		expr->constant = value->constant & last_path->constant;
-		expr->expr_kind = EXPR_DESIGNATED_INITIALIZER;
-		expr->designated_init_expr.path = path.sub_path;
-		expr->designated_init_expr.value = value;
-		expr->failable |= value->failable;
+		Type *result = sema_expr_analyse_designator(context, original, expr);
+		if (!result) return false;
+		if (!sema_analyse_expr_of_required_type(context, result, expr->designator_expr.value, true)) return false;
+		expr->pure &= expr->designator_expr.value->pure;
+		expr->constant &= expr->designator_expr.value->constant;
+		expr->failable |= expr->designator_expr.value->failable;
 		expr->resolve_status = RESOLVE_DONE;
 		initializer->pure &= expr->pure;
 		initializer->constant &= expr->constant;
 	}
-	initializer->expr_initializer.init_type = INITIALIZER_DESIGNATED;
+	if (initializer->constant)
+	{
+		ConstInitializer *const_init = MALLOC(sizeof(ConstInitializer));
+		sema_create_const_initializer(const_init, initializer);
+		printf("---------------------------------\n");
+		debug_dump_const_initializer(const_init, "TOP", 0);
+		initializer->initializer_expr.init_type = INITIALIZER_CONST;
+		initializer->initializer_expr.initializer = const_init;
+		return true;
+	}
+	initializer->initializer_expr.init_type = INITIALIZER_DESIGNATED;
 	return true;
 }
 
@@ -2082,9 +2461,9 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 	initializer->pure = true;
 	initializer->constant = true;
 
-	Expr **elements = initializer->expr_initializer.initializer_expr;
+	Expr **elements = initializer->initializer_expr.initializer_expr;
 	Decl **members = assigned->strukt.members;
-	initializer->expr_initializer.init_type = INITIALIZER_NORMAL;
+	initializer->initializer_expr.init_type = INITIALIZER_NORMAL;
 	unsigned size = vec_size(elements);
 	unsigned expected_members = vec_size(members);
 
@@ -2122,13 +2501,32 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 		initializer->failable |= element->failable;
 	}
 
-	// 6. There's the case of too few values as well. Mark the last element as wrong.
+	// 6. There's the case of too few values as well. Mark the last field as wrong.
 	if (expected_members > size)
 	{
 		SEMA_ERROR(elements[size - 1], "Too few elements in initializer, there should be elements after this one.");
 		return false;
 	}
 
+	if (initializer->constant)
+	{
+		ConstInitializer *const_init = CALLOCS(ConstInitializer);
+		const_init->kind = CONST_INIT_EXPANDED;
+		ConstInitializer **inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
+		VECEACH(elements, i)
+		{
+			Expr *expr = elements[i];
+			if (expr->expr_kind == EXPR_INITIALIZER_LIST)
+			{
+				assert(expr->constant);
+				inits[i] = expr->initializer_expr.initializer;
+				continue;
+			}
+			ConstInitializer *element_init = MALLOC(sizeof(ConstInitializer));
+			sema_create_const_initializer_value(element_init, expr);
+			inits[i] = element_init;
+		}
+	}
 	// 7. Done!
 	return true;
 }
@@ -2143,7 +2541,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 	initializer->pure = true;
 	initializer->constant = true;
 
-	Expr **elements = initializer->expr_initializer.initializer_expr;
+	Expr **elements = initializer->initializer_expr.initializer_expr;
 
 	assert(assigned->type_kind == TYPE_ARRAY && "The other types are not done yet.");
 
@@ -2151,7 +2549,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 	assert(inner_type);
 
 
-	initializer->expr_initializer.init_type = INITIALIZER_NORMAL;
+	initializer->initializer_expr.init_type = INITIALIZER_NORMAL;
 	unsigned size = vec_size(elements);
 	unsigned expected_members = assigned->array.len;
 
@@ -2191,18 +2589,24 @@ static inline bool sema_expr_analyse_initializer(Context *context, Type *assigne
 {
 	expr->type = assigned;
 
-	Expr **init_expressions = expr->expr_initializer.initializer_expr;
+	Expr **init_expressions = expr->initializer_expr.initializer_expr;
 
 	// 1. Zero size init will initialize to empty.
 	if (vec_size(init_expressions) == 0)
 	{
-		expr->expr_initializer.init_type = INITIALIZER_ZERO;
+		ConstInitializer *initializer = CALLOCS(ConstInitializer);
+		initializer->kind = CONST_INIT_ZERO;
+		initializer->type = expr->type;
+		expr->initializer_expr.init_type = INITIALIZER_CONST;
+		expr->initializer_expr.initializer = initializer;
+		expr->constant = true;
+		expr->pure = true;
 		return true;
 	}
 
 	// 2. Check if we might have a designated initializer
 	//    this means that in this case we're actually not resolving macros here.
-	if (init_expressions[0]->expr_kind == EXPR_BINARY && init_expressions[0]->binary_expr.operator == BINARYOP_ASSIGN)
+	if (init_expressions[0]->expr_kind == EXPR_DESIGNATOR)
 	{
 		return sema_expr_analyse_designated_initializer(context, assigned, expr);
 	}
@@ -2243,7 +2647,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 static inline bool sema_expr_analyse_expr_list(Context *context, Type *to, Expr *expr)
 {
 	bool success = true;
-	size_t last = vec_size(expr->expression_list) - 1;
+	ByteSize last = vec_size(expr->expression_list) - 1;
 	bool constant = true;
 	bool pure = true;
 	VECEACH(expr->expression_list, i)
@@ -3007,6 +3411,7 @@ static bool sema_expr_analyse_div(Context *context, Type *to, Expr *expr, Expr *
 			default:
 				UNREACHABLE
 		}
+		expr->expr_kind = EXPR_CONST;
 	}
 
 	// 5. Done.
@@ -4051,6 +4456,32 @@ static Ast** ast_copy_list_from_macro(Context *context, Ast **to_copy)
 	return result;
 }
 
+static DesignatorElement** macro_copy_designator_list(Context *context, DesignatorElement **list)
+{
+	DesignatorElement **result = NULL;
+	VECEACH(list, i)
+	{
+		DesignatorElement *element = MALLOC(sizeof(DesignatorElement));
+		DesignatorElement *to_copy = list[i];
+		*element = *to_copy;
+		switch (to_copy->kind)
+		{
+			case DESIGNATOR_FIELD:
+				// Nothing needed
+				break;
+			case DESIGNATOR_RANGE:
+				MACRO_COPY_EXPR(element->index_end_expr);
+				FALLTHROUGH;
+			case DESIGNATOR_ARRAY:
+				MACRO_COPY_EXPR(element->index_expr);
+				break;
+			default:
+				UNREACHABLE
+		}
+		vec_add(result, element);
+	}
+	return result;
+}
 
 static Expr *expr_copy_from_macro(Context *context, Expr *source_expr)
 {
@@ -4069,6 +4500,10 @@ static Expr *expr_copy_from_macro(Context *context, Expr *source_expr)
 		case EXPR_MACRO_CT_IDENTIFIER:
 		case EXPR_HASH_IDENT:
 			// TODO
+			return expr;
+		case EXPR_DESIGNATOR:
+			expr->designator_expr.path = macro_copy_designator_list(context, expr->designator_expr.path);
+			MACRO_COPY_EXPR(expr->designator_expr.value);
 			return expr;
 		case EXPR_TYPEINFO:
 			MACRO_COPY_TYPE(expr->type_expr);
@@ -4115,9 +4550,6 @@ static Expr *expr_copy_from_macro(Context *context, Expr *source_expr)
 			MACRO_COPY_EXPR(expr->expr_compound_literal.initializer);
 			MACRO_COPY_TYPE(expr->expr_compound_literal.type_info);
 			return expr;
-		case EXPR_DESIGNATED_INITIALIZER:
-			// Created during semantic analysis
-			UNREACHABLE
 		case EXPR_EXPR_BLOCK:
 			MACRO_COPY_AST_LIST(expr->expr_block.stmts);
 			return expr;
@@ -4164,7 +4596,7 @@ static Expr *expr_copy_from_macro(Context *context, Expr *source_expr)
 			MACRO_COPY_EXPR(expr->access_expr.parent);
 			return expr;
 		case EXPR_INITIALIZER_LIST:
-			MACRO_COPY_EXPR_LIST(expr->expr_initializer.initializer_expr);
+			MACRO_COPY_EXPR_LIST(expr->initializer_expr.initializer_expr);
 			return expr;
 		case EXPR_EXPRESSION_LIST:
 			MACRO_COPY_EXPR_LIST(expr->expression_list);
@@ -4439,15 +4871,12 @@ EXIT:
 }
 
 
-static inline bool sema_expr_analyse_compound_literal(Context *context, Type *to, Expr *expr)
+static inline bool sema_expr_analyse_compound_literal(Context *context, Expr *expr)
 {
 	if (!sema_resolve_type_info(context, expr->expr_compound_literal.type_info)) return false;
 	Type *type = expr->expr_compound_literal.type_info->type;
 	if (!sema_expr_analyse_initializer_list(context, type, expr->expr_compound_literal.initializer)) return false;
-	expr->pure = expr->expr_compound_literal.initializer->pure;
-	expr->constant = expr->expr_compound_literal.initializer->constant;
-	expr->type = type;
-	expr->failable = expr->expr_compound_literal.initializer->failable;
+	expr_replace(expr, expr->expr_compound_literal.initializer);
 	return true;
 }
 
@@ -4517,6 +4946,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_UNDEF:
 		case EXPR_ENUM_CONSTANT:
 		case EXPR_MEMBER_ACCESS:
+		case EXPR_DESIGNATOR:
 			UNREACHABLE
 		case EXPR_HASH_IDENT:
 			return sema_expr_analyse_hash_identifier(context, to, expr);
@@ -4528,7 +4958,6 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_POISONED:
 			return false;
 		case EXPR_LEN:
-		case EXPR_DESIGNATED_INITIALIZER:
 		case EXPR_SLICE_ASSIGN:
 			// Created during semantic analysis
 			UNREACHABLE
@@ -4548,7 +4977,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_ELSE:
 			return sema_expr_analyse_else(context, to, expr);
 		case EXPR_COMPOUND_LITERAL:
-			return sema_expr_analyse_compound_literal(context, to, expr);
+			return sema_expr_analyse_compound_literal(context, expr);
 		case EXPR_EXPR_BLOCK:
 			return sema_expr_analyse_expr_block(context, to, expr);
 		case EXPR_GUARD:
@@ -4635,6 +5064,10 @@ static inline bool sema_cast_rvalue(Context *context, Type *to, Expr *expr)
 				return true;
 			}
 			SEMA_ERROR(expr, "A member must be followed by '.' plus a property like 'sizeof'.");
+			return false;
+		case EXPR_LEN:
+			if (expr->type != type_void) return true;
+			SEMA_ERROR(expr, "Expected () after 'len' for subarrays.");
 			return false;
 		case EXPR_TYPEINFO:
 			SEMA_ERROR(expr, "A type must be followed by either (...) or '.'.");

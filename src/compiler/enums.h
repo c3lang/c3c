@@ -83,12 +83,6 @@ typedef enum
 	AST_SCOPED_STMT,
 } AstKind;
 
-typedef enum
-{
-	ATTR_INVALID,
-	ATTR_UNRESOLVED,
-} AttrKind;
-
 
 typedef enum
 {
@@ -162,16 +156,6 @@ typedef enum
 	case DECL_CT_SWITCH: case DECL_CT_CASE: case DECL_ATTRIBUTE: case DECL_LABEL: \
     case DECL_DEFINE
 
-// Ordering here is in priority if two branches should have the same exit.
-typedef enum
-{
-	EXIT_NONE = 0,
-	EXIT_CONTINUE,
-	EXIT_RETURN,
-	EXIT_NEXT,
-	EXIT_BREAK,
-} ExitType;
-
 typedef enum
 {
 	EXPR_POISONED,
@@ -206,14 +190,21 @@ typedef enum
 	EXPR_SCOPED_EXPR,
 	EXPR_EXPR_BLOCK,
 	EXPR_MACRO_BLOCK,
-	EXPR_DESIGNATED_INITIALIZER,
 	EXPR_COMPOUND_LITERAL,
 	EXPR_FAILABLE,
 	EXPR_DECL_LIST,
 	EXPR_LEN,
 	EXPR_UNDEF,
 	EXPR_ENUM_CONSTANT,
+	EXPR_DESIGNATOR,
 } ExprKind;
+
+typedef enum
+{
+	DESIGNATOR_FIELD,
+	DESIGNATOR_ARRAY,
+	DESIGNATOR_RANGE
+} DesignatorType;
 
 typedef enum
 {
@@ -312,7 +303,7 @@ typedef enum
 	TOKEN_EQEQ,             // ==
 	TOKEN_GREATER_EQ,       // >=
 	TOKEN_LESS_EQ,          // <=
-	TOKEN_LPARBRA,          // ({
+	TOKEN_LBRAPIPE,         // {|
 	TOKEN_MINUS_ASSIGN,     // -=
 	TOKEN_MINUS_MOD,        // -%
 	TOKEN_MINUSMINUS,       // --
@@ -324,7 +315,7 @@ typedef enum
 	TOKEN_PLUS_ASSIGN,      // +=
 	TOKEN_PLUS_MOD,         // +%
 	TOKEN_PLUSPLUS,         // ++
-	TOKEN_RPARBRA,          // })
+	TOKEN_RBRAPIPE,         // |}
 	TOKEN_SCOPE,            // ::
 	TOKEN_SHL,              // <<
 	TOKEN_SHR,              // >>

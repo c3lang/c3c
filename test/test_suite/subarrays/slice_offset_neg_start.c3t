@@ -1,7 +1,7 @@
 func void test()
 {
     int[3] x = { 1, 2, 3 };
-    int[] y = x[^2..2];
+    int[] y = x[^2..1];
 }
 
 // #expect: slice_offset_neg_start.ll

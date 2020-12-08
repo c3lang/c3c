@@ -61,25 +61,25 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *context, Decl *decl)
 		}
 		case DECL_UNION:
 		{
-			Decl *max_type = NULL;
-			unsigned long long max_size = 0;
 			LLVMTypeRef type = LLVMStructCreateNamed(context->context, decl->external_name);
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
-			VECEACH(decl->strukt.members, i)
+			Decl **members = decl->strukt.members;
+			if (vec_size(members))
 			{
-				Decl *member = decl->strukt.members[i];
-				unsigned size = type_size(member->type);
-				if (size > max_size || !max_type)
+
+				Decl *rep_type = members[decl->strukt.union_rep];
+				LLVMTypeRef type_ref[2] = {
+						llvm_get_type(context, rep_type->type),
+						NULL
+				};
+				unsigned elements = 1;
+				if (decl->needs_additional_pad)
 				{
-					max_size = size;
-					max_type = member;
+					type_ref[elements++] = LLVMArrayType(llvm_get_type(context, type_bool), type_size(decl->type) - type_size(rep_type->type));
+
 				}
-			}
-			if (max_type)
-			{
-				LLVMTypeRef type_ref = llvm_get_type(context, max_type->type);
-				LLVMStructSetBody(type, &type_ref, 1, false);
+				LLVMStructSetBody(type, type_ref, elements, decl->is_packed);
 			}
 			else
 			{
@@ -147,7 +147,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 		case TYPE_TYPEDEF:
 			UNREACHABLE
 		case TYPE_ARRAY:
-			for (size_t i = type->array.len; i > 0; i--)
+			for (ByteSize i = type->array.len; i > 0; i--)
 			{
 				param_expand(context, params_ref, type->array.base);
 			}
@@ -174,7 +174,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 			return;
 		case TYPE_UNION:
 		{
-			size_t largest = 0;
+			ByteSize largest = 0;
 			Type *largest_type = NULL;
 			Decl **members = type->decl->strukt.members;
 			VECEACH(members, i)

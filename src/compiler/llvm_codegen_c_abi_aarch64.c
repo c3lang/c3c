@@ -26,7 +26,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		return aarch64_coerce_illegal_vector(type);
 	}
 
-	size_t size = type_size(type);
+	ByteSize size = type_size(type);
 
 	if (!type_is_abi_aggregate(type))
 	{
@@ -56,7 +56,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	if (size <= 16)
 	{
 		// For RenderScript <= 16 needs to be coerced.
-		unsigned alignment = type_abi_alignment(type);
+		AlignSize alignment = type_abi_alignment(type);
 		if (build_target.aarch64.is_aapcs)
 		{
 			alignment = alignment < 16 ? 8 : 16;
@@ -90,7 +90,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 		return aarch64_coerce_illegal_vector(type);
 	}
 
-	size_t size = type_size(type);
+	ByteSize size = type_size(type);
 
 	// Large vectors by mem.
 	if (type->type_kind == TYPE_VECTOR && size > 16)

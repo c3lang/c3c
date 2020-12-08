@@ -13,6 +13,7 @@ static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *ex
 static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue *addr, BEValue *after, BEValue *before, Expr *expr, int diff);
 static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr);
 static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c, BEValue *parent, BEValue *index);
+static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_t offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
 
 LLVMValueRef llvm_emit_is_no_error(GenContext *c, LLVMValueRef error)
 {
@@ -20,6 +21,10 @@ LLVMValueRef llvm_emit_is_no_error(GenContext *c, LLVMValueRef error)
 	return LLVMBuildICmp(c->builder, LLVMIntEQ, domain, llvm_get_zero(c, type_usize), "noerr");
 }
 
+LLVMValueRef llvm_const_padding(GenContext *c, ByteSize size)
+{
+	return LLVMGetUndef(LLVMArrayType(llvm_get_type(c, type_byte), size));
+}
 
 static inline LLVMValueRef gencontext_emit_add_int(GenContext *context, Type *type, bool use_mod, LLVMValueRef left, LLVMValueRef right)
 {
@@ -55,8 +60,8 @@ static inline LLVMValueRef gencontext_emit_add_int(GenContext *context, Type *ty
 LLVMValueRef llvm_emit_coerce(GenContext *context, LLVMTypeRef coerced, BEValue *value, Type *original_type)
 {
 	LLVMValueRef cast;
-	unsigned target_alignment = llvm_abi_alignment(coerced);
-	unsigned max_align = MAX(((unsigned)value->alignment), llvm_abi_alignment(coerced));
+	AlignSize target_alignment = llvm_abi_alignment(coerced);
+	AlignSize max_align = MAX(value->alignment, llvm_abi_alignment(coerced));
 
 	// If we are loading something with greater alignment than what we have, we cannot directly memcpy.
 	if (llvm_value_is_addr(value) && value->alignment < target_alignment)
@@ -143,7 +148,7 @@ static inline void gencontext_emit_subscript_addr_base(GenContext *context, BEVa
 			assert(value->kind == BE_ADDRESS);
 			LLVMValueRef pointer_addr = LLVMBuildStructGEP2(context->builder, subarray_type, value->value, 0, "subarray_ptr");
 			LLVMTypeRef pointer_type = llvm_get_type(context, type_get_ptr(type->array.base));
-			unsigned alignment = type_abi_alignment(type_voidptr);
+			AlignSize alignment = type_abi_alignment(type_voidptr);
 			// We need to pick the worst alignment in case this is packed in an array.
 			if (value->alignment < alignment) alignment = value->alignment;
 			llvm_value_set_address_align(value,
@@ -342,7 +347,7 @@ static void gencontext_emit_scoped_expr(GenContext *context, BEValue *value, Exp
 }
 
 
-static inline LLVMValueRef llvm_emit_initializer_list_expr_addr(GenContext *c, Expr *expr, LLVMValueRef optional_ref);
+static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *value, Expr *expr);
 
 static inline void gencontext_emit_identifier(GenContext *c, BEValue *value, Decl *decl)
 {
@@ -369,7 +374,7 @@ static void gencontext_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, 
 {
 	llvm_value_rvalue(c, value);
 	printf("TODO optimize subarray cast\n");
-	size_t size = from_type->pointer->array.len;
+	ByteSize size = from_type->pointer->array.len;
 	LLVMTypeRef subarray_type = llvm_get_type(c, to_type);
 	LLVMValueRef result = LLVMGetUndef(subarray_type);
 	value->value = llvm_emit_bitcast(c, value->value, type_get_ptr(from_type->pointer->array.base));
@@ -407,9 +412,12 @@ static LLVMValueRef gencontext_emit_cast_inner(GenContext *c, CastKind cast_kind
 			gencontext_emit_arr_to_subarray_cast(c, value, to_type, from_type);
 			return value->value;
 		case CAST_SAPTR:
-			if (value->kind == BE_ADDRESS)
+			if (llvm_value_is_addr(value))
 			{
-				LLVMBuildStructGEP2(c->builder, llvm_get_ptr_type(c, from_type), value->value, 0, "");
+				llvm_value_fold_failable(c, value);
+				return llvm_emit_load_aligned(c, llvm_get_type(c, to_type),
+				                              LLVMBuildStructGEP(c->builder, value->value, 0, ""),
+				                              value->alignment, "");
 			}
 			return LLVMBuildExtractValue(c->builder, value->value, 0, "");
 		case CAST_VARRPTR:
@@ -516,19 +524,13 @@ static inline void gencontext_emit_cast_expr(GenContext *context, BEValue *be_va
 	               expr->cast_expr.expr->type->canonical);
 }
 
-static void gencontext_emit_initializer_list_expr_const(GenContext *context, BEValue *be_value, Expr *expr);
+static LLVMValueRef llvm_emit_initializer_list_expr_const(GenContext *c, Expr *expr);
 
 static void gencontext_construct_const_value(GenContext *context, BEValue *be_value, Expr *expr)
 {
-	NESTED_RETRY:
-	if (expr->expr_kind == EXPR_COMPOUND_LITERAL)
-	{
-		expr = expr->expr_compound_literal.initializer;
-		goto NESTED_RETRY;
-	}
 	if (expr->expr_kind == EXPR_INITIALIZER_LIST)
 	{
-		gencontext_emit_initializer_list_expr_const(context, be_value, expr);
+		llvm_emit_initializer_list_expr_const(context, expr);
 		return;
 	}
 	llvm_emit_expr(context, be_value, expr);
@@ -549,73 +551,76 @@ static void gencontext_construct_const_union_struct(GenContext *context, BEValue
 	               LLVMConstStructInContext(context->context, values, size_diff > 0 ? 2 : 1, false),
 	               canonical);
 }
-static void gencontext_recursive_set_const_value(GenContext *context, BEValue *be_value, DesignatedPath *path, LLVMValueRef parent, Type *parent_type, Expr *value)
+
+static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **current_element_ptr, LLVMValueRef parent, DesignatorElement **last_element_ptr, Expr *value)
 {
-	switch (path->kind)
+	DesignatorElement *current_element = current_element_ptr[0];
+	if (current_element_ptr == last_element_ptr)
 	{
-		case DESIGNATED_IDENT:
-			if (!path->sub_path)
-			{
-				if (parent_type->canonical->type_kind == TYPE_UNION)
-				{
-					gencontext_construct_const_union_struct(context, be_value, parent_type, value);
-					return;
-				}
-				gencontext_construct_const_value(context, be_value, value);
-				llvm_value_set(be_value,
-				               LLVMConstInsertValue(parent, llvm_value_rvalue_store(context, be_value), &path->index, 1),
-				               parent_type);
-				return;
-			}
-			else
-			{
-				parent_type = path->type;
-				gencontext_recursive_set_const_value(context, be_value, path->sub_path,
-				                                     LLVMConstExtractValue(parent, &path->index, 1), parent_type,
-				                                     value);
-				llvm_value_set(be_value,
-				               LLVMConstInsertValue(parent, llvm_value_rvalue_store(context, be_value), &path->index, 1),
-				               parent_type);
-				return;
-			}
-		case DESIGNATED_SUBSCRIPT:
+		BEValue res;
+		llvm_emit_expr(c, &res, value);
+		unsigned index = current_element->index;
+		LLVMValueRef val = llvm_value_rvalue_store(c, &res);
+		switch (current_element->kind)
 		{
-			// TODO range, more arrays
-			assert(path->index_expr->expr_kind == EXPR_CONST);
-			unsigned int index = (unsigned int)bigint_as_unsigned(&path->index_expr->const_expr.i);
-			if (!path->sub_path)
-			{
-				gencontext_construct_const_value(context, be_value, value);
-				llvm_value_set(be_value,
-				               LLVMConstInsertValue(parent, llvm_value_rvalue_store(context, be_value), &index, 1),
-				               parent_type);
-				return ;
-			}
-			parent_type = path->type;
-			gencontext_recursive_set_const_value(context, be_value, path->sub_path,
-			                                     LLVMConstExtractValue(parent, &index, 1), parent_type,
-			                                     value);
-			llvm_value_set(be_value,
-			               LLVMConstInsertValue(parent, llvm_value_rvalue_store(context, be_value), &index, 1),
-			               parent_type);
-			return;
+			case DESIGNATOR_FIELD:
+				return LLVMConstInsertValue(parent, val, &index, 1);
+			case DESIGNATOR_ARRAY:
+				return LLVMConstInsertElement(parent, val, llvm_const_int(c, type_isize, current_element->index));
+			case DESIGNATOR_RANGE:
+				for (int64_t i = current_element->index; i <= current_element->index_end; i++)
+				{
+					parent = LLVMConstInsertElement(parent, val, llvm_const_int(c, type_isize, i));
+				}
+				return parent;
 		}
-		default:
-			UNREACHABLE;
-
+		UNREACHABLE
 	}
-
+	LLVMValueRef current_val;
+	switch (current_element->kind)
+	{
+		case DESIGNATOR_FIELD:
+		{
+			unsigned index = current_element->index;
+			current_val = LLVMConstExtractValue(parent, &index, 1);
+			current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
+			return LLVMConstInsertValue(parent, current_val, &index, 1);
+		}
+		case DESIGNATOR_ARRAY:
+		{
+			LLVMValueRef index = llvm_const_int(c, type_isize, current_element->index);
+			current_val = LLVMConstExtractElement(parent, index);
+			current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
+			return LLVMConstInsertElement(parent, current_val, index);
+		}
+		case DESIGNATOR_RANGE:
+			for (int64_t i = current_element->index; i <= current_element->index_end; i++)
+			{
+				LLVMValueRef index = llvm_const_int(c, type_isize, i);
+				current_val = LLVMConstExtractElement(parent, index);
+				current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
+				parent = LLVMConstInsertElement(parent, current_val, index);
+			}
+			return parent;
+		default:
+			UNREACHABLE
+	}
+}
+static LLVMValueRef llvm_recursive_set_const_value(GenContext *context, DesignatorElement **path, LLVMValueRef value, Type *parent_type, Expr *assign)
+{
+	unsigned path_count = vec_size(path);
+	return llvm_recursive_set_value(context, path, value, path + (path_count - 1), assign);
 }
 
-static void gencontext_emit_initializer_list_expr_const(GenContext *context, BEValue *be_value, Expr *expr)
+
+static LLVMValueRef llvm_emit_initializer_list_expr_const(GenContext *c, Expr *expr)
 {
 	Type *canonical = expr->type->canonical;
-	LLVMTypeRef type = llvm_get_type(context, canonical);
+	LLVMTypeRef type = llvm_get_type(c, canonical);
 
-	if (expr->expr_initializer.init_type == INITIALIZER_ZERO)
+	if (expr->initializer_expr.init_type == INITIALIZER_CONST)
 	{
-		llvm_value_set(be_value, LLVMConstNull(type), canonical);
-		return;
+		return LLVMConstNull(type);
 	}
 
 	bool is_error = expr->type->canonical->type_kind == TYPE_ERRTYPE;
@@ -625,129 +630,378 @@ static void gencontext_emit_initializer_list_expr_const(GenContext *context, BEV
 		TODO
 	}
 
-	Expr **elements = expr->expr_initializer.initializer_expr;
+	Expr **elements = expr->initializer_expr.initializer_expr;
 
 	bool is_union = expr->type->canonical->type_kind == TYPE_UNION;
 
-	if (expr->expr_initializer.init_type == INITIALIZER_NORMAL && is_union)
+	if (expr->initializer_expr.init_type == INITIALIZER_NORMAL && is_union)
 	{
 		assert(vec_size(elements) == 1);
-		gencontext_construct_const_union_struct(context, be_value, canonical, elements[0]);
-		return;
+
+		TODO
+		// gencontext_construct_const_union_struct(c, be_value, canonical, elements[0]);
 	}
 
-	if (expr->expr_initializer.init_type == INITIALIZER_NORMAL)
+	if (expr->initializer_expr.init_type == INITIALIZER_NORMAL)
 	{
 		LLVMValueRef value = LLVMGetUndef(type);
 		VECEACH(elements, i)
 		{
 			Expr *element = elements[i];
-			if (element->expr_kind == EXPR_CONST)
+			if (element->expr_kind == EXPR_INITIALIZER_LIST)
 			{
-
+				value = LLVMConstInsertValue(value, llvm_emit_initializer_list_expr_const(c, element), &i, 1);
+				continue;
 			}
-			llvm_emit_expr(context, be_value, element);
-			value = LLVMConstInsertValue(value, llvm_value_rvalue_store(context, be_value), &i, 1);
+			BEValue be_value;
+			llvm_emit_expr(c, &be_value, element);
+			value = LLVMConstInsertValue(value, llvm_value_rvalue_store(c, &be_value), &i, 1);
 		}
-		llvm_value_set(be_value, value, expr->type);
-		return;
+		return value;
 	}
 
 	LLVMValueRef value = LLVMConstNull(type);
 	VECEACH(elements, i)
 	{
 		Expr *element = elements[i];
-		DesignatedPath *path = element->designated_init_expr.path;
 		Type *parent_type = expr->type->canonical;
-		gencontext_recursive_set_const_value(context,
-		                                     be_value,
-		                                     path,
-		                                     value,
-		                                     parent_type,
-		                                     element->designated_init_expr.value);
-		value = llvm_value_rvalue_store(context, be_value);
+		value = llvm_recursive_set_const_value(c,
+		                                       element->designator_expr.path,
+		                                       value,
+		                                       parent_type,
+		                                       element->designator_expr.value);
 	}
-	llvm_value_set(be_value, value, expr->type);
+	return value;
+}
+
+static inline void llvm_emit_initialize_reference_small_const(GenContext *c, BEValue *ref, Expr *expr)
+{
+	// First create the constant value.
+	LLVMValueRef value = llvm_emit_initializer_list_expr_const(c, expr);
+
+	// Create a global const.
+	LLVMTypeRef type = llvm_get_type(c, expr->type);
+	LLVMValueRef global_copy = LLVMAddGlobal(c->module, type, "");
+
+	// Set a nice alignment
+	unsigned alignment = LLVMPreferredAlignmentOfGlobal(target_data_layout(), global_copy);
+	LLVMSetAlignment(global_copy, alignment);
+
+	// Set the value and make it constant
+	LLVMSetInitializer(global_copy, value);
+	LLVMSetGlobalConstant(global_copy, true);
+
+	// Ensure we have a reference.
+	llvm_value_addr(c, ref);
+
+	// Perform the memcpy.
+	llvm_emit_memcpy(c, ref->value, ref->alignment, global_copy, alignment, type_size(expr->type));
+}
+
+static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *ref, Expr *expr)
+{
+	// Getting ready to initialize, get the real type.
+	Type *real_type = ref->type->canonical;
+	Expr **elements = expr->initializer_expr.initializer_expr;
+
+	// Make sure we have an address.
+	llvm_value_addr(c, ref);
+	LLVMValueRef value = ref->value;
+
+	// If this is a union, we assume it's initializing the first element.
+	if (real_type->type_kind == TYPE_UNION)
+	{
+		assert(vec_size(elements) == 1);
+		real_type = type_lowering(real_type->decl->strukt.members[0]->type);
+		value = LLVMBuildBitCast(c->builder, ref->value, llvm_get_ptr_type(c, real_type), "");
+	}
+
+	LLVMTypeRef llvm_type = llvm_get_type(c, real_type);
+	bool is_struct = type_is_structlike(real_type);
+	bool is_array = real_type->type_kind == TYPE_ARRAY;
+
+	// Now walk through the elements.
+	VECEACH(elements, i)
+	{
+		Expr *element = elements[i];
+		BEValue init_value;
+		if (element->expr_kind == EXPR_COMPOUND_LITERAL)
+		{
+			element = element->expr_compound_literal.initializer;
+		}
+		unsigned offset = 0;
+		LLVMValueRef pointer;
+		if (is_struct)
+		{
+			Decl *member = real_type->decl->strukt.members[i];
+			offset = member->offset;
+			pointer = LLVMBuildStructGEP2(c->builder, llvm_type, value, i, "");
+		}
+		else if (is_array)
+		{
+			// Todo optimize
+			offset = i * type_size(element->type);
+			LLVMValueRef indices[2] = { 0, llvm_const_int(c, type_uint, i) };
+			pointer = LLVMBuildInBoundsGEP2(c->builder, llvm_type, value, indices, 2, "");
+		}
+		else
+		{
+			pointer = value;
+		}
+		unsigned alignment = aligned_offset(offset, ref->alignment);
+		// If this is an initializer, we want to actually run the initialization recursively.
+		if (element->expr_kind == EXPR_INITIALIZER_LIST)
+		{
+			llvm_value_set_address_align(&init_value, pointer, element->type, alignment);
+			llvm_emit_initialize_reference(c, &init_value, element);
+			continue;
+		}
+		llvm_emit_expr(c, &init_value, element);
+		llvm_store_aligned(c, pointer, llvm_value_rvalue_store(c, &init_value), alignment);
+	}
+}
+
+static void llvm_emit_initialize_designated_const_range(GenContext *c, BEValue *ref, uint64_t offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value)
+{
+	DesignatorElement *curr = current[0];
+	llvm_value_addr(c, ref);
+
+	assert(curr->kind == DESIGNATOR_RANGE);
+
+	BEValue emitted_local;
+	if (!emitted_value)
+	{
+		llvm_emit_expr(c, &emitted_local, expr);
+		emitted_value = &emitted_local;
+	}
+	LLVMTypeRef ref_type = llvm_get_type(c, ref->type);
+	// Assign the index_ptr to the start value.
+	LLVMValueRef indices[2] = {
+			llvm_get_zero(c, curr->index_expr->type),
+			NULL
+	};
+	for (unsigned i = curr->index; i <= curr->index_end; i++)
+	{
+		indices[1] = llvm_const_int(c, curr->index_expr->type, i);
+		BEValue new_ref;
+		LLVMValueRef ptr = LLVMBuildInBoundsGEP2(c->builder, ref_type, ref->value, indices, 2, "");
+		llvm_value_set_address(&new_ref, ptr, type_get_indexed_type(ref->type));
+		llvm_emit_initialize_designated(c, &new_ref, offset, current + 1, last, expr, emitted_value);
+	}
+}
+
+static void llvm_emit_initialize_designated_range(GenContext *c, BEValue *ref, uint64_t offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value)
+{
+	DesignatorElement *curr = current[0];
+	llvm_value_addr(c, ref);
+	assert(curr->kind == DESIGNATOR_RANGE);
+
+	BEValue emitted_local;
+	if (!emitted_value)
+	{
+		llvm_emit_expr(c, &emitted_local, expr);
+		emitted_value = &emitted_local;
+	}
+	LLVMBasicBlockRef start_block = llvm_basic_block_new(c, "set_start");
+	LLVMBasicBlockRef store_block = llvm_basic_block_new(c, "set_store");
+	LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "set_done");
+
+	BEValue start;
+	BEValue end;
+	llvm_emit_expr(c, &start, curr->index_expr);
+	LLVMValueRef max_index = llvm_const_int(c, start.type, ref->type->canonical->array.len);
+	llvm_emit_array_bounds_check(c, &start, max_index);
+	llvm_emit_expr(c, &end, curr->index_end_expr);
+	llvm_emit_array_bounds_check(c, &end, max_index);
+	LLVMTypeRef ref_type = llvm_get_type(c, ref->type);
+	LLVMValueRef end_value = llvm_value_rvalue_store(c, &end);
+	LLVMTypeRef index_type = llvm_get_type(c, start.type);
+	LLVMValueRef index_ptr = llvm_emit_alloca(c, index_type, start.alignment, "rangeidx");
+	LLVMValueRef add_one = llvm_const_int(c, start.type, 1);
+	// Assign the index_ptr to the start value.
+	llvm_store_bevalue_dest_aligned(c, index_ptr, &start);
+	LLVMValueRef indices[2] = {
+			llvm_get_zero(c, start.type),
+			NULL
+	};
+	llvm_emit_br(c, start_block);
+	llvm_emit_block(c, start_block);
+	LLVMValueRef index_val = llvm_emit_load_aligned(c, index_type, index_ptr, start.alignment, "");
+	BEValue comp;
+	llvm_value_set_bool(&comp, llvm_emit_int_comparison(c, start.type, end.type, index_val, end_value, BINARYOP_LE));
+	llvm_emit_cond_br(c, &comp, store_block, after_block);
+	llvm_emit_block(c, store_block);
+	indices[1] = index_val;
+	LLVMValueRef ptr_next = LLVMBuildInBoundsGEP2(c->builder, ref_type, ref->value, indices, 2, "");
+	BEValue new_ref;
+	llvm_value_set_address(&new_ref, ptr_next, type_get_indexed_type(ref->type));
+	llvm_emit_initialize_designated(c, &new_ref, offset, current + 1, last, expr, emitted_value);
+	LLVMValueRef new_index = LLVMBuildAdd(c->builder, index_val, add_one, "");
+	llvm_store_aligned(c, index_ptr, new_index, start.alignment);
+	llvm_emit_br(c, start_block);
+	llvm_emit_block(c, after_block);
+}
+static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_t offset, DesignatorElement** current,
+											DesignatorElement **last, Expr *expr, BEValue *emitted_value)
+{
+	BEValue value;
+	if (current > last)
+	{
+		if (emitted_value)
+		{
+			llvm_store_bevalue(c, ref, emitted_value);
+			return;
+		}
+		if (expr->expr_kind == EXPR_INITIALIZER_LIST)
+		{
+			llvm_emit_initialize_reference(c, ref, expr);
+			return;
+		}
+		BEValue val;
+		llvm_emit_expr(c, &val, expr);
+		llvm_store_bevalue(c, ref, &val);
+		return;
+	}
+	DesignatorElement *curr = current[0];
+	switch (curr->kind)
+	{
+		case DESIGNATOR_FIELD:
+		{
+			Decl *decl = ref->type->canonical->decl->strukt.members[curr->index];
+			offset += decl->offset;
+			Type *type = decl->type->canonical;
+			unsigned decl_alignment = decl_abi_alignment(decl);
+			if (ref->type->type_kind == TYPE_UNION)
+			{
+				llvm_value_set_address_align(&value, llvm_emit_bitcast(c, ref->value, type_get_ptr(type)), type, aligned_offset(offset, decl_alignment));
+			}
+			else
+			{
+				unsigned alignment = 1;
+				LLVMValueRef ptr = llvm_emit_struct_gep(c, ref->value, llvm_get_type(c, ref->type), curr->index, decl_alignment, offset, &alignment);
+				llvm_value_set_address_align(&value, ptr, type, alignment);
+			}
+			llvm_emit_initialize_designated(c, &value, offset, current + 1, last, expr, emitted_value);
+			break;
+		}
+		case DESIGNATOR_ARRAY:
+		{
+			Type *type = ref->type->canonical->array.base;
+			LLVMValueRef indices[2];
+			if (curr->index_expr->expr_kind == EXPR_CONST)
+			{
+				offset += curr->index * type_size(type);
+				Type *index_type = curr->index > UINT32_MAX ? type_uint : type_ulong;
+				indices[0] = llvm_const_int(c, index_type, 0);
+				indices[1] = llvm_const_int(c, index_type, curr->index);
+			}
+			else
+			{
+				BEValue res;
+				llvm_emit_expr(c, &res, curr->index_expr);
+				indices[0] = llvm_const_int(c, curr->index_expr->type, 0);
+				indices[1] = llvm_value_rvalue_store(c, &res);
+			}
+			LLVMValueRef ptr = LLVMBuildInBoundsGEP2(c->builder, llvm_get_type(c, ref->type), ref->value, indices, 2, "");
+			llvm_value_set_address_align(&value, ptr, type, aligned_offset(offset, type_abi_alignment(type)));
+			llvm_emit_initialize_designated(c, &value, offset, current + 1, last, expr, emitted_value);
+			break;
+		}
+		case DESIGNATOR_RANGE:
+			if (curr->index_expr->expr_kind == EXPR_CONST && curr->index_end_expr->expr_kind == EXPR_CONST)
+			{
+				llvm_emit_initialize_designated_const_range(c, ref, offset, current, last, expr, emitted_value);
+			}
+			else
+			{
+				llvm_emit_initialize_designated_range(c, ref, offset, current, last, expr, emitted_value);
+			}
+			break;
+		default:
+			UNREACHABLE
+	}
+}
+
+static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEValue *ref, Expr *expr)
+{
+	// Getting ready to initialize, get the real type.
+	Type *real_type = ref->type->canonical;
+	Expr **elements = expr->initializer_expr.initializer_expr;
+
+	// Make sure we have an address.
+	llvm_value_addr(c, ref);
+
+	// Clear the memory
+	llvm_emit_memclear(c, ref);
+
+	LLVMValueRef value = ref->value;
+
+	// Now walk through the elements.
+	VECEACH(elements, i)
+	{
+		Expr *designator = elements[i];
+		DesignatorElement **last_element = designator->designator_expr.path + vec_size(designator->designator_expr.path) - 1;
+		llvm_emit_initialize_designated(c, ref, 0, designator->designator_expr.path, last_element, designator->designator_expr.value, NULL);
+	}
 }
 
 /**
- * Emit a Foo { .... } literal.
+ * Initialize an aggregate type.
  *
- * Improve: Direct assign in the case where this is assigning to a variable.
- * Improve: Create constant initializer for the constant case and do a memcopy
+ * There are three methods:
+ * 1. Create a constant and store it in a global, followed by a memcopy from this global.
+ *    this is what Clang does for elements up to 4 pointers wide.
+ * 2. For empty elements, we do a memclear.
+ * 3. For the rest use GEP into the appropriate elements.
  */
-static inline LLVMValueRef llvm_emit_initializer_list_expr_addr(GenContext *c, Expr *expr, LLVMValueRef optional_ref)
+static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr)
 {
-	if (expr->constant && type_size(expr->type) <= type_size(type_voidptr) * 4)
+	// In the case of a const, we have some optimizations:
+	if (expr->constant)
 	{
-		LLVMTypeRef type = llvm_get_type(c, expr->type);
-		BEValue be_value;
-		gencontext_emit_initializer_list_expr_const(c, &be_value, expr);
-		LLVMValueRef ref = LLVMAddGlobal(c->module, type, "");
-		LLVMSetInitializer(ref, llvm_value_rvalue_store(c, &be_value));
-		LLVMSetGlobalConstant(ref, true);
-		if (optional_ref)
+		ConstInitializer *initializer = expr->initializer_expr.initializer;
+		if (initializer->kind == CONST_INIT_ZERO)
 		{
-			LLVMBuildMemCpy(c->builder, optional_ref, LLVMGetAlignment(optional_ref), ref, LLVMGetAlignment(ref), LLVMSizeOf(type));
+			// In case of a zero, optimize.
+			llvm_emit_memclear(c, ref);
+			return;
 		}
-		return ref;
-	}
-	LLVMTypeRef type = llvm_get_type(c, expr->type);
-	LLVMValueRef ref = optional_ref ?: llvm_emit_alloca_aligned(c, expr->type, "literal");
-
-	Type *canonical = expr->type->canonical;
-	if (expr->expr_initializer.init_type != INITIALIZER_NORMAL)
-	{
-		llvm_emit_memclear(c, ref, canonical);
-	}
-
-	bool is_error = expr->type->canonical->type_kind == TYPE_ERRTYPE;
-
-	if (is_error)
-	{
-		LLVMValueRef err_type = LLVMBuildStructGEP2(c->builder, type, ref, 0, "");
-		LLVMBuildStore(c->builder, expr->type->canonical->backend_typeid, err_type);
-	}
-
-	if (expr->expr_initializer.init_type == INITIALIZER_ZERO)
-	{
-		return ref;
-	}
-
-	Expr **elements = expr->expr_initializer.initializer_expr;
-
-	bool is_union = expr->type->canonical->type_kind == TYPE_UNION;
-
-	if (expr->expr_initializer.init_type == INITIALIZER_NORMAL)
-	{
-		if (is_union)
+		// In case of small const initializers, use copy.
+		if (type_size(expr->type) <= 1000 * type_size(type_voidptr) * 4)
 		{
-			assert(vec_size(elements) == 1);
-			BEValue init_value;
-			llvm_emit_expr(c, &init_value, elements[0]);
-			LLVMValueRef u = LLVMBuildBitCast(c->builder, ref, llvm_get_ptr_type(c, elements[0]->type->canonical), "");
-			LLVMBuildStore(c->builder, llvm_value_rvalue_store(c, &init_value), u);
-			return ref;
+			llvm_emit_initialize_reference_small_const(c, ref, expr);
+			return;
 		}
-		VECEACH(elements, i)
-		{
-			Expr *element = elements[i];
-			BEValue init_value;
-			llvm_emit_expr(c, &init_value, element);
-			LLVMValueRef subref = LLVMBuildStructGEP2(c->builder, type, ref, i + (int)is_error, "");
-			llvm_store_self_aligned(c, subref, llvm_value_rvalue_store(c, &init_value), element->type);
-		}
-		return ref;
+	}
+
+	switch (expr->initializer_expr.init_type)
+	{
+		case INITIALIZER_CONST:
+			// Just clear memory
+			llvm_emit_memclear(c, ref);
+			break;
+		case INITIALIZER_NORMAL:
+			llvm_emit_initialize_reference_list(c, ref, expr);
+			break;
+		case INITIALIZER_DESIGNATED:
+			llvm_emit_initialize_reference_designated(c, ref, expr);
+			break;
+		default:
+			UNREACHABLE
 	}
 
 
+	return;
+	TODO
+/*
 	VECEACH(elements, i)
 	{
 		if (is_error) TODO
-		Expr *element = elements[i];
-		DesignatedPath *path = element->designated_init_expr.path;
+		Expr *field = elements[i];
+
+		DesignatedPath *path = field->designated_init_expr.path;
 		BEValue sub_value;
-		llvm_emit_expr(c, &sub_value, element->designated_init_expr.value);
+		llvm_emit_expr(c, &sub_value, field->designated_init_expr.value);
 		LLVMValueRef sub_ref = ref;
 		Type *parent_type = expr->type->canonical;
 		while (path)
@@ -789,6 +1043,7 @@ static inline LLVMValueRef llvm_emit_initializer_list_expr_addr(GenContext *c, E
 		LLVMBuildStore(c->builder, llvm_value_rvalue_store(c, &sub_value), sub_ref);
 	}
 	return ref;
+ */
 }
 
 static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue *addr, BEValue *after, BEValue *before, Expr *expr, int diff)
@@ -1078,11 +1333,12 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 	// Check that index does not extend beyond the length.
 	if (parent_type->type_kind != TYPE_POINTER && build_options.debug_mode)
 	{
+
 		LLVMValueRef exceeds_size = llvm_emit_int_comparison(context,
 		                                                     type_usize,
 		                                                     start_type,
-		                                                     len,
 		                                                     start_index.value,
+		                                                     len,
 		                                                     BINARYOP_GE);
 		llvm_emit_panic_on_true(context, exceeds_size, "Index exceeds array length.");
 	}
@@ -1107,6 +1363,7 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 		if (slice->slice_expr.end_from_back)
 		{
 			end_index.value = gencontext_emit_sub_int(context, end_type, false, len, end_index.value);
+			llvm_value_rvalue(context, &end_index);
 		}
 
 		// This will trap any bad negative index, so we're fine.
@@ -1116,7 +1373,7 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 			                                               start_type,
 			                                               end_type,
 			                                               start_index.value,
-			                                               *end_index_ref,
+			                                               end_index.value,
 			                                               BINARYOP_GT);
 			llvm_emit_panic_on_true(context, excess, "Negative size");
 
@@ -1135,8 +1392,8 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 	else
 	{
 		assert(len && "Pointer should never end up here.");
-		// Otherwise everything is fine and dandy. Our len is our end index.
-		end_index.value = len;
+		// Otherwise everything is fine and dandy. Our len - 1 is our end index.
+		end_index.value = LLVMBuildSub(context->builder, len, LLVMConstInt(LLVMTypeOf(len), 1, false), "");
 		end_type = type_usize;
 	}
 
@@ -1163,7 +1420,7 @@ static void gencontext_emit_slice(GenContext *context, BEValue *be_value, Expr *
 
 
 	// Calculate the size
-	LLVMValueRef size = LLVMBuildSub(context->builder, end_index, start_index, "size");
+	LLVMValueRef size = LLVMBuildSub(context->builder, LLVMBuildAdd(context->builder, end_index, llvm_const_int(context, start_type, 1), ""), start_index, "size");
 
 	LLVMValueRef start_pointer;
 	switch (parent_type->type_kind)
@@ -1180,6 +1437,12 @@ static void gencontext_emit_slice(GenContext *context, BEValue *be_value, Expr *
 		case TYPE_SUBARRAY:
 		{
 			start_pointer = LLVMBuildInBoundsGEP(context->builder, parent_base, &start_index, 1, "offsetsub");
+			break;
+		}
+		case TYPE_POINTER:
+		{
+			// Move pointer
+			start_pointer = LLVMBuildInBoundsGEP2(context->builder, llvm_get_type(context, parent_type->pointer), parent_base, &start_index, 1, "offset");
 			break;
 		}
 		default:
@@ -2045,7 +2308,7 @@ static void gencontext_expand_array_to_args(GenContext *c, Type *param_type, LLV
 	LLVMTypeRef element_type = llvm_get_type(c, param_type->array.base);
 	LLVMValueRef zero = llvm_get_zero(c, type_int);
 	LLVMValueRef indices[2] = { zero, zero, };
-	for (size_t i = 0; i < param_type->array.len; i++)
+	for (ByteSize i = 0; i < param_type->array.len; i++)
 	{
 		indices[1] = llvm_const_int(c, type_int, i);
 		LLVMValueRef element_ptr = LLVMBuildGEP2(c->builder, element_type, expand_ptr, indices, 2, "");
@@ -2221,8 +2484,8 @@ void llvm_emit_parameter(GenContext *context, LLVMValueRef **args, ABIArgInfo *i
 				return;
 			}
 			LLVMValueRef cast;
-			unsigned target_alignment = llvm_abi_alignment(coerce_type);
-			unsigned max_align = MAX(((unsigned)be_value->alignment), llvm_abi_alignment(coerce_type));
+			AlignSize target_alignment = llvm_abi_alignment(coerce_type);
+			AlignSize max_align = MAX((be_value->alignment), llvm_abi_alignment(coerce_type));
 
 			// If we are loading something with greater alignment than what we have, we cannot directly memcpy.
 			if (llvm_value_is_addr(be_value) && be_value->alignment < target_alignment)
@@ -2433,7 +2696,7 @@ void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *exp
 			                                       type_abi_alignment(return_type),
 			                                       ret_info->coerce_expand.offset_lo, &alignment);
 
-			// If there is only a single element, we simply store the value.
+			// If there is only a single field, we simply store the value.
 			if (!ret_info->coerce_expand.hi)
 			{
 				llvm_store_aligned(context, lo, call, alignment);
@@ -2654,9 +2917,20 @@ LLVMValueRef llvm_emit_assign_expr(GenContext *c, LLVMValueRef ref, Expr *expr, 
 		}
 	}
 	BEValue value;
-	llvm_emit_expr(c, &value, expr);
-	printf("TODO: // Optimize store \n");
-	llvm_store_bevalue_aligned(c, ref, &value, 0);
+	if (expr->expr_kind == EXPR_COMPOUND_LITERAL) expr = expr->expr_compound_literal.initializer;
+	if (expr->expr_kind == EXPR_INITIALIZER_LIST)
+	{
+		BEValue val;
+		printf("TODO: Fix alignment and return!\n");
+		llvm_value_set_address(&val, ref, expr->type);
+		llvm_emit_initialize_reference(c, &val, expr);
+	}
+	else
+	{
+		llvm_emit_expr(c, &value, expr);
+		printf("TODO: // Optimize store \n");
+		llvm_store_bevalue_aligned(c, ref, &value, 0);
+	}
 
 	if (failable)
 	{
@@ -2697,12 +2971,18 @@ static inline void gencontext_emit_failable(GenContext *context, BEValue *be_val
 	llvm_value_set(be_value, LLVMGetUndef(llvm_get_type(context, expr->type)), expr->type);
 }
 
+static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_value_set_address(value, llvm_emit_alloca_aligned(c, expr->type, "literal"), expr->type);
+	llvm_emit_initialize_reference(c, value, expr);
+}
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_LOC(c, expr);
-NESTED_RETRY:
 	switch (expr->expr_kind)
 	{
+		case EXPR_DESIGNATOR:
 		case EXPR_MEMBER_ACCESS:
 		case EXPR_POISONED:
 		case EXPR_DECL_LIST:
@@ -2715,9 +2995,6 @@ NESTED_RETRY:
 			UNREACHABLE
 		case EXPR_UNDEF:
 			// Should never reach this.
-			UNREACHABLE
-		case EXPR_DESIGNATED_INITIALIZER:
-			// Should only appear when generating designated initializers.
 			UNREACHABLE
 		case EXPR_SLICE_ASSIGN:
 			gencontext_emit_slice_assign(c, value, expr);
@@ -2742,12 +3019,9 @@ NESTED_RETRY:
 			gencontext_emit_macro_block(c, value, expr);
 			return;
 		case EXPR_COMPOUND_LITERAL:
-			expr = expr->expr_compound_literal.initializer;
-			goto NESTED_RETRY;
+			UNREACHABLE
 		case EXPR_INITIALIZER_LIST:
-			llvm_value_set_address(value,
-			                       llvm_emit_initializer_list_expr_addr(c, expr, NULL),
-			                       expr->type);
+			llvm_emit_initializer_list_expr(c, value, expr);
 			return;
 		case EXPR_EXPR_BLOCK:
 			gencontext_emit_expr_block(c, value, expr);

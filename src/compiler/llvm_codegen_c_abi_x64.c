@@ -51,7 +51,7 @@ ABIArgInfo *x64_indirect_return_result(Type *type)
 	}
 	return abi_arg_new_direct();
 }
-static size_t x64_native_vector_size_for_avx(void)
+static ByteSize x64_native_vector_size_for_avx(void)
 {
 	switch (build_target.x64.avx_level)
 	{
@@ -174,7 +174,7 @@ ABIArgInfo *x64_classify_reg_call_struct_type(Type *return_type, Registers *avai
 	return info;
 }
 
-static void x64_classify(Type *type, size_t offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named);
+static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named);
 
 static X64Class x64_merge(X64Class accum, X64Class field)
 {
@@ -211,7 +211,7 @@ static X64Class x64_merge(X64Class accum, X64Class field)
 	}
 	UNREACHABLE
 }
-void x64_classify_post_merge(size_t size, X64Class *lo_class, X64Class *hi_class)
+void x64_classify_post_merge(ByteSize size, X64Class *lo_class, X64Class *hi_class)
 {
 	// If one is MEM => both is mem
 	// If X87UP is not before X87 => mem
@@ -230,9 +230,9 @@ void x64_classify_post_merge(size_t size, X64Class *lo_class, X64Class *hi_class
 	*lo_class = CLASS_MEMORY;
 }
 
-void x64_classify_struct_union(Type *type, size_t offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class, NamedArgument named_arg)
+void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class, NamedArgument named_arg)
 {
-	size_t size = type_size(type);
+	ByteSize size = type_size(type);
 	// 64 byte max.
 	if (size > 64) return;
 
@@ -244,9 +244,9 @@ void x64_classify_struct_union(Type *type, size_t offset_base, X64Class *current
 	VECEACH(members, i)
 	{
 		Decl *member = members[i];
-		size_t offset = offset_base + member->offset;
+		ByteSize offset = offset_base + member->offset;
 		// The only case a 256-bit or a 512-bit wide vector could be used is when
-		// the struct contains a single 256-bit or 512-bit element. Early check
+		// the struct contains a single 256-bit or 512-bit field. Early check
 		// and fallback to memory.
 		if (size > 16 &&
 			((!is_union && size != type_size(member->type))
@@ -275,11 +275,11 @@ void x64_classify_struct_union(Type *type, size_t offset_base, X64Class *current
 	x64_classify_post_merge(size, lo_class, hi_class);
 }
 
-void x64_classify_array(Type *type, size_t offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class, NamedArgument named_arg)
+void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class, NamedArgument named_arg)
 {
-	size_t size = type_size(type);
+	ByteSize size = type_size(type);
 	Type *element = type->array.base;
-	size_t element_size = type_size(element);
+	ByteSize element_size = type_size(element);
 	// Bigger than 64 bytes => MEM
 	if (size > 64) return;
 
@@ -293,7 +293,7 @@ void x64_classify_array(Type *type, size_t offset_base, X64Class *current, X64Cl
 	// Re-classify
 	*current = CLASS_NO_CLASS;
 	// The only case a 256-bit or a 512-bit wide vector could be used is when
-	// the struct contains a single 256-bit or 512-bit element. Early check
+	// the struct contains a single 256-bit or 512-bit field. Early check
 	// and fallback to memory.
 	if (size > 16 && (size != type_size(element) || size > x64_native_vector_size_for_avx()))
 	{
@@ -301,8 +301,8 @@ void x64_classify_array(Type *type, size_t offset_base, X64Class *current, X64Cl
 		return;
 	}
 
-	size_t offset = offset_base;
-	for (size_t i = 0; i < type->array.len; i++)
+	ByteSize offset = offset_base;
+	for (ByteSize i = 0; i < type->array.len; i++)
 	{
 		X64Class field_lo;
 		X64Class field_hi;
@@ -316,7 +316,7 @@ void x64_classify_array(Type *type, size_t offset_base, X64Class *current, X64Cl
 	assert(*hi_class != CLASS_SSEUP || *lo_class == CLASS_SSE);
 }
 
-void x64_classify_vector(Type *type, size_t offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class,
+void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class,
                          NamedArgument named_arg)
 {
 	unsigned size = type_size(type);
@@ -325,8 +325,8 @@ void x64_classify_vector(Type *type, size_t offset_base, X64Class *current, X64C
 	{
 		*current = CLASS_INTEGER;
 		// Check boundary crossing
-		size_t lo = offset_base / 8;
-		size_t hi = (offset_base + size - 1) / 8;
+		ByteSize lo = offset_base / 8;
+		ByteSize hi = (offset_base + size - 1) / 8;
 
 		// If it crosses boundary, split it.
 		if (hi != lo)
@@ -362,10 +362,10 @@ void x64_classify_vector(Type *type, size_t offset_base, X64Class *current, X64C
 	// Default pass by mem
 }
 
-void x64_classify_complex(Type *type, size_t offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class)
+void x64_classify_complex(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class)
 {
 	Type *element = type->complex;
-	size_t element_size = type_size(element);
+	ByteSize element_size = type_size(element);
 	switch (type->type_kind)
 	{
 		case TYPE_I8:
@@ -396,8 +396,8 @@ void x64_classify_complex(Type *type, size_t offset_base, X64Class *current, X64
 		default:
 			UNREACHABLE
 	}
-	size_t real = offset_base / 8;
-	size_t imag = (offset_base + element_size) / 8;
+	ByteSize real = offset_base / 8;
+	ByteSize imag = (offset_base + element_size) / 8;
 	// If it crosses boundary, split it.
 	if (*hi_class == CLASS_NO_CLASS && real != imag)
 	{
@@ -419,7 +419,7 @@ Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
 	return last_match;
 }
 
-static void x64_classify(Type *type, size_t offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named)
+static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named)
 {
 	*lo_class = CLASS_NO_CLASS;
 	*hi_class = CLASS_NO_CLASS;
@@ -497,16 +497,16 @@ bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
 	// If the bytes being queried are off the end of the type, there is no user
 	// data hiding here.  This handles analysis of builtins, vectors and other
 	// types that don't contain interesting padding.
-	size_t size = type_size(type);
+	ByteSize size = type_size(type);
 	if (size <= start) return true;
 	if (type->type_kind == TYPE_ARRAY)
 	{
-		// Check each element to see if the element overlaps with the queried range.
-		size_t element_size = type_size(type->array.base);
+		// Check each field to see if the field overlaps with the queried range.
+		ByteSize element_size = type_size(type->array.base);
 		for (unsigned i = 0; i < type->array.len; i++)
 		{
-			// If the element is after the span we care about, then we're done..
-			size_t offset = i * element_size;
+			// If the field is after the span we care about, then we're done..
+			ByteSize offset = i * element_size;
 			if (offset >= end) break;
 			unsigned element_start = offset < start ? start - offset : 0;
 			if (!x64_bits_contain_no_user_data(type->array.base, element_start, end - offset)) return false;
@@ -617,8 +617,8 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 		case TYPE_ARRAY:
 		{
 			Type *element = type->array.base;
-			size_t element_size = type_size(element);
-			size_t element_offset = (offset / element_size) * element_size;
+			ByteSize element_size = type_size(element);
+			ByteSize element_offset = (offset / element_size) * element_size;
 			return x64_get_int_type_at_offset(element, offset - element_offset, source_type, source_offset);
 		}
 		case TYPE_POISONED:
@@ -643,7 +643,7 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 		case TYPE_COMPLEX:
 			break;
 	}
-	size_t size = type_size(source_type);
+	ByteSize size = type_size(source_type);
 	assert(size != source_offset);
 	if (size - source_offset > 8) return abi_type_new_plain(type_ulong);
 	return abi_type_new_int_bits((size - source_offset) * 8);

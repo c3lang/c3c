@@ -2,9 +2,9 @@ func void test()
 {
     int[6] feok2 = { 1, 8, 100, 293, 23982, 34};
     int[] feok = &feok2;
-    int[] flok = feok2[3..6];
+    int[] flok = feok2[3..5];
     int[] flak = flok[1..2];
-    flok = feok2[..6];
+    flok = feok2[..5];
     flok = feok2[..^2];
     flok = feok2[..];
     flok = feok2[^3..];

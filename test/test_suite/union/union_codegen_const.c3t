@@ -1,0 +1,20 @@
+module test;
+
+union Foo
+{
+    int a;
+    double b;
+}
+
+Foo f = { .a = 23 };
+Foo g = { .b = 2.3 };
+Foo h = { .a = 23, .b = 2.3 };
+Foo i = { .b = 2.3, .a = 23 };
+
+// #expect: union_codegen_const.ll
+
+@f = protected global { i32, [4 x i8] } { i32 23, [4 x i8] undef }, align 8
+@g = protected global %test.Foo { double 2.300000e+00 }, align 8
+@h = protected global %test.Foo { double 2.300000e+00 }, align 8
+@i = protected global { i32, [4 x i8] } { i32 23, [4 x i8] undef }, align 8
+

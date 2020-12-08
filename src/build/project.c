@@ -11,7 +11,7 @@ TomlArray *get_array(TomlTable *table, const char *key)
 	if (!value) return NULL;
 	if (value->type != TOML_ARRAY)
 	{
-		error_exit("The key '%s' was not an array element. Did you type '[%s]' instead of '[[%s]]'?");
+		error_exit("The key '%s' was not an array field. Did you type '[%s]' instead of '[[%s]]'?");
 	}
 	return value->value.array;
 }

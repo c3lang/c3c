@@ -34,20 +34,20 @@ void gencontext_emit_ct_compound_stmt(GenContext *context, Ast *ast)
 }
 
 
-static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
+static LLVMValueRef llvm_emit_decl(GenContext *c, Ast *ast)
 {
 	Decl *decl = ast->declare_stmt;
 
-	LLVMTypeRef alloc_type = llvm_get_type(context, type_lowering(decl->type));
-	decl->backend_ref = llvm_emit_decl_alloca(context, decl);
+	LLVMTypeRef alloc_type = llvm_get_type(c, type_lowering(decl->type));
+	decl->backend_ref = llvm_emit_decl_alloca(c, decl);
 	if (decl->var.failable)
 	{
-		decl->var.failable_ref = llvm_emit_alloca_aligned(context, type_error, decl->name);
-		LLVMBuildStore(context->builder, LLVMConstNull(llvm_get_type(context, type_error)), decl->var.failable_ref);
+		decl->var.failable_ref = llvm_emit_alloca_aligned(c, type_error, decl->name);
+		LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_error)), decl->var.failable_ref);
 	}
-	if (llvm_use_debug(context))
+	if (llvm_use_debug(c))
 	{
-		llvm_emit_debug_local_var(context, decl);
+		llvm_emit_debug_local_var(c, decl);
 	}
 	Expr *init = decl->var.init_expr;
 	if (init)
@@ -55,14 +55,21 @@ static LLVMValueRef gencontext_emit_decl(GenContext *context, Ast *ast)
 		// If we don't have undef, then make an assign.
 		if (init->expr_kind != EXPR_UNDEF)
 		{
-			llvm_emit_assign_expr(context, decl->backend_ref, decl->var.init_expr, decl->var.failable_ref);
+			llvm_emit_assign_expr(c, decl->backend_ref, decl->var.init_expr, decl->var.failable_ref);
 		}
 		// TODO trap on undef in debug mode.
 	}
 	else
 	{
 		// Normal case, zero init.
-		llvm_emit_store(context, decl, LLVMConstNull(alloc_type));
+		if (type_is_builtin(decl->type->canonical->type_kind))
+		{
+			llvm_emit_store(c, decl, LLVMConstNull(alloc_type));
+		}
+		else
+		{
+			llvm_emit_memclear_size_align(c, decl->backend_ref, type_size(decl->type), decl_abi_alignment(decl), true);
+		}
 	}
 	return decl->backend_ref;
 }
@@ -79,14 +86,14 @@ void llvm_emit_decl_expr_list_ignore_result(GenContext *context, Expr *expr)
 void gencontext_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr, bool bool_cast)
 {
 	assert(expr->expr_kind == EXPR_DECL_LIST);
-	size_t size = vec_size(expr->dexpr_list_expr);
-	size_t last_index = size - 1;
-	for (size_t i = 0; i < last_index; i++)
+	ByteSize size = vec_size(expr->dexpr_list_expr);
+	ByteSize last_index = size - 1;
+	for (ByteSize i = 0; i < last_index; i++)
 	{
 		Ast *ast = expr->dexpr_list_expr[i];
 		if (ast->ast_kind == AST_DECLARE_STMT)
 		{
-			gencontext_emit_decl(context, ast);
+			llvm_emit_decl(context, ast);
 		}
 		else
 		{
@@ -106,7 +113,7 @@ void gencontext_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr
 		case AST_DECLARE_STMT:
 			type = last->declare_stmt->var.type_info->type;
 			{
-				LLVMValueRef decl_value = gencontext_emit_decl(context, last);
+				LLVMValueRef decl_value = llvm_emit_decl(context, last);
 				if (bool_cast && last->declare_stmt->var.unwrap)
 				{
 					llvm_value_set_bool(be_value, LLVMConstInt(context->bool_type, 1, false));
@@ -486,7 +493,7 @@ void gencontext_emit_do_stmt(GenContext *c, Ast *ast)
 
 void gencontext_emit_if_switch_body(GenContext *context, LLVMValueRef switch_value, Ast **cases)
 {
-	size_t case_count = vec_size(cases);
+	ByteSize case_count = vec_size(cases);
 	if (!case_count)
 	{
 		// No body or default is empty, just exit after the value.
@@ -569,7 +576,7 @@ void gencontext_emit_if_switch_body(GenContext *context, LLVMValueRef switch_val
 static void gencontext_emit_switch_body(GenContext *context, BEValue *switch_value, Ast *switch_ast)
 {
 	Ast **cases = switch_ast->switch_stmt.cases;
-	size_t case_count = vec_size(cases);
+	ByteSize case_count = vec_size(cases);
 	if (!case_count)
 	{
 		// No body or default is empty, just exit after the value.
@@ -798,7 +805,7 @@ void gencontext_emit_try_stmt(GenContext *c, Ast *ast)
 				llvm_value_rvalue(c, &be_value);
 				break;
 			case AST_DECLARE_STMT:
-				gencontext_emit_decl(c, dexpr);
+				llvm_emit_decl(c, dexpr);
 				break;
 			default:
 				UNREACHABLE
@@ -976,17 +983,33 @@ void gencontext_emit_catch_stmt(GenContext *c, Ast *ast)
 	llvm_emit_block(c, after_catch);
 }
 
-void llvm_emit_panic_on_true(GenContext *context, LLVMValueRef value, const char *panic_name)
+void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name)
 {
-	LLVMBasicBlockRef panic_block = llvm_basic_block_new(context, "panic");
-	LLVMBasicBlockRef ok_block = llvm_basic_block_new(context, "checkok");
+	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
+	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
 	BEValue be_value;
 	llvm_value_set_bool(&be_value, value);
-	llvm_emit_cond_br(context, &be_value, panic_block, ok_block);
-	llvm_emit_block(context, panic_block);
-	llvm_emit_call_intrinsic(context, intrinsic_id_trap, NULL, 0, NULL, 0);
-	llvm_emit_br(context, ok_block);
-	llvm_emit_block(context, ok_block);
+	llvm_emit_cond_br(c, &be_value, panic_block, ok_block);
+	llvm_emit_block(c, panic_block);
+	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
+	LLVMTypeRef type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), &char_ptr_type, 1, false);
+	LLVMValueRef puts_func = LLVMGetNamedFunction(c->module, "puts");
+	if (!puts_func)
+	{
+		puts_func = LLVMAddFunction(c->module, "puts", type);
+	}
+	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), strlen(panic_name) + 1), "");
+	LLVMSetLinkage(global_name, LLVMInternalLinkage);
+	LLVMSetGlobalConstant(global_name, 1);
+	LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context, panic_name, strlen(panic_name), 0));
+
+	LLVMValueRef zero = llvm_get_zero(c, type_usize);
+	LLVMValueRef string = LLVMBuildInBoundsGEP2(c->builder, LLVMTypeOf(global_name), global_name, &zero, 1, "");
+	string = LLVMBuildBitCast(c->builder, string, char_ptr_type, "");
+	LLVMBuildCall(c->builder, puts_func, &string, 1, "");
+	llvm_emit_call_intrinsic(c, intrinsic_id_trap, NULL, 0, NULL, 0);
+	llvm_emit_br(c, ok_block);
+	llvm_emit_block(c, ok_block);
 }
 
 
@@ -1012,7 +1035,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			gencontext_emit_expr_stmt(c, ast);
 			break;
 		case AST_DECLARE_STMT:
-			gencontext_emit_decl(c, ast);
+			llvm_emit_decl(c, ast);
 			break;
 		case AST_BREAK_STMT:
 			gencontext_emit_break(c, ast);

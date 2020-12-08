@@ -44,7 +44,7 @@ bool abi_type_is_float(AbiType *type)
 	return type->kind != ABI_TYPE_INT_BITS && type_is_float(type->type);
 }
 
-size_t abi_type_size(AbiType *type)
+ByteSize abi_type_size(AbiType *type)
 {
 	switch (type->kind)
 	{
@@ -56,7 +56,7 @@ size_t abi_type_size(AbiType *type)
 	UNREACHABLE;
 }
 
-size_t abi_type_abi_alignment(AbiType *type)
+ByteSize abi_type_abi_alignment(AbiType *type)
 {
 	switch (type->kind)
 	{
@@ -107,7 +107,7 @@ ABIArgInfo *abi_arg_new_indirect_not_by_val(void)
 	return info;
 }
 
-size_t abi_arg_expanded_size(ABIArgInfo *type_info, Type *type)
+ByteSize abi_arg_expanded_size(ABIArgInfo *type_info, Type *type)
 {
 	switch (type->type_kind)
 	{
@@ -118,7 +118,7 @@ size_t abi_arg_expanded_size(ABIArgInfo *type_info, Type *type)
 		case TYPE_STRUCT:
 		{
 			Decl **members = type->decl->strukt.members;
-			size_t result = 0;
+			ByteSize result = 0;
 			VECEACH(members, i)
 			{
 				members += abi_arg_expanded_size(type_info, members[i]->type);

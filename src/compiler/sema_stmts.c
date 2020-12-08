@@ -611,7 +611,7 @@ static bool sema_analyse_asm_stmt(Context *context __unused, Ast *statement __un
 	TODO
 }
 
-static DynamicScope *context_find_scope_by_id(Context *context, unsigned scope_id)
+static DynamicScope *context_find_scope_by_id(Context *context, ScopeId scope_id)
 {
 	DynamicScope *scope = context->current_scope;
 	while (1)

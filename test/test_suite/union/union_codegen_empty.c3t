@@ -1,0 +1,45 @@
+union UnionA
+{
+    int a;
+}
+
+union UnionB
+{
+    struct b
+    {
+        int a;
+    }
+    int c;
+    double d;
+}
+
+func void test()
+{
+    UnionA a = {};
+    UnionA a2;
+    UnionB b = {};
+    UnionB b2;
+    UnionB b3 = { .b = {} };
+    UnionB b4 = { .b.a = 23, .c = 4, .d = 0.4, .b = {} };
+}
+
+// #expect: union_codegen_empty.ll
+
+%a = alloca %union_codegen_empty.UnionA, align 4
+%a2 = alloca %union_codegen_empty.UnionA, align 4
+%b = alloca %union_codegen_empty.UnionB, align 8
+%b2 = alloca %union_codegen_empty.UnionB, align 8
+%b3 = alloca %union_codegen_empty.UnionB, align 8
+%b4 = alloca %union_codegen_empty.UnionB, align 8
+%0 = bitcast %union_codegen_empty.UnionA* %a to i8*
+call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 4, i1 false)
+%1 = bitcast %union_codegen_empty.UnionA* %a2 to i8*
+call void @llvm.memset.p0i8.i64(i8* align 4 %1, i8 0, i64 4, i1 false)
+%2 = bitcast %union_codegen_empty.UnionB* %b to i8*
+call void @llvm.memset.p0i8.i64(i8* align 8 %2, i8 0, i64 8, i1 false)
+ %3 = bitcast %union_codegen_empty.UnionB* %b2 to i8*
+call void @llvm.memset.p0i8.i64(i8* align 8 %3, i8 0, i64 8, i1 false)
+%4 = bitcast %union_codegen_empty.UnionB* %b3 to i8*
+call void @llvm.memset.p0i8.i64(i8* align 8 %4, i8 0, i64 8, i1 false)
+%5 = bitcast %union_codegen_empty.UnionB* %b4 to i8*
+call void @llvm.memset.p0i8.i64(i8* align 8 %5, i8 0, i64 8, i1 false)

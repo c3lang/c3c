@@ -106,10 +106,19 @@ static inline bool may_implicitly_cast_ptr_to_ptr(Type *current_type, Type *targ
 	assert(current_type->canonical == current_type);
 	assert(target_type->canonical == target_type);
 
-	// Neither is void* or have matching bases:
-	if (target_type->pointer != type_void && current_type->pointer != type_void && target_type->pointer != current_type->pointer) return false;
+	// void* converts freely to and from:
+	if (target_type->pointer == type_void || current_type->pointer == type_void) return true;
 
-	return true;
+	// Pointee is same? Fine!
+	if (target_type->pointer == current_type->pointer) return true;
+
+	// Special case, does it point to an array, then it's okay if the element is the same.
+	if (current_type->pointer->type_kind == TYPE_ARRAY &&
+		target_type->pointer == current_type->pointer->array.base) return true;
+
+	// IMPROVE Vector
+
+	return false;
 }
 
 

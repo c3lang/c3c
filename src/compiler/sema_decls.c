@@ -46,10 +46,9 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 
 static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **members)
 {
-	unsigned max_size = 0;
-	//unsigned max_size_element = 0;
-	unsigned max_alignment_element = 0;
-	unsigned max_alignment = 0;
+	ByteSize max_size = 0;
+	MemberIndex max_alignment_element = 0;
+	AlignSize max_alignment = 0;
 
 	VECEACH(members, i)
 	{
@@ -69,8 +68,8 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 			continue;
 		}
 
-		size_t member_alignment = type_abi_alignment(member->type);
-		size_t member_size = type_size(member->type);
+		AlignSize member_alignment = type_abi_alignment(member->type);
+		ByteSize member_size = type_size(member->type);
 
 		// Update max alignment
 		if (member_alignment > max_alignment)
@@ -84,10 +83,10 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 			//max_size_element = i;
 			max_size = member_size;
 			// If this is bigger than the previous with max
-			// alignment, pick this as the maximum size element.
-			if (max_alignment_element != i && max_alignment == member_alignment)
+			// alignment, pick this as the maximum size field.
+			if (max_alignment_element != (MemberIndex)i && max_alignment == member_alignment)
 			{
-				max_alignment_element = i;
+				max_alignment_element = (MemberIndex)i;
 			}
 		}
 		// Offset is always 0
@@ -103,7 +102,9 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 	if (!decl->is_packed) decl->alignment = MAX(decl->alignment, max_alignment);
 
 	// We're only packed if the max alignment is > 1
-	decl->is_packed = max_alignment > 1;
+	decl->is_packed = decl->is_packed && max_alignment > 1;
+
+	decl->strukt.union_rep = max_alignment_element;
 
 	// The actual size might be larger than the max size due to alignment.
 	unsigned size = aligned_offset(max_size, decl->alignment);
@@ -120,10 +121,10 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **members)
 {
 	// Default alignment is 1 even if the it is empty.
-	size_t natural_alignment = 1;
+	AlignSize natural_alignment = 1;
 	bool is_unaligned = false;
-	size_t size = 0;
-	size_t offset = 0;
+	ByteSize size = 0;
+	ByteSize offset = 0;
 	bool is_packed = decl->is_packed;
 	VECEACH(members, i)
 	{
@@ -145,7 +146,7 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 
 		if (!decl_ok(decl)) return false;
 
-		size_t member_alignment = type_abi_alignment(member->type);
+		AlignSize member_alignment = type_abi_alignment(member->type);
 
 		// If the member alignment is higher than the currently detected alignment,
 		// then we update the natural alignment
@@ -614,6 +615,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 					SEMA_ERROR(attr->expr, "Alignment must be a power of two.");
 					return ATTRIBUTE_NONE;
 				}
+
 				attr->alignment = align;
 			}
 			return type;
@@ -757,7 +759,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 	if (decl->var.init_expr && decl->type)
 	{
 		if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr, false)) return false;
-		if (!expr_is_constant_eval(decl->var.init_expr))
+		if (!decl->var.init_expr->constant)
 		{
 
 			SEMA_ERROR(decl->var.init_expr, "The expression must be a constant value.");

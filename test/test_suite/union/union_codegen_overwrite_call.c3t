@@ -1,0 +1,30 @@
+module test;
+
+union UnionB
+{
+    struct b
+    {
+        int a;
+    }
+    int c;
+    double d;
+}
+
+extern func int bar();
+
+func void test()
+{
+    UnionB b = { .c = bar(), .b = {} };
+}
+
+// #expect: union_codegen_overwrite_call.ll
+
+entry:
+%b = alloca %test.UnionB, align 8
+%1 = bitcast %test.UnionB* %b to i32*
+%2 = call i32 @bar()
+store i32 %2, i32* %1, align 4
+%3 = bitcast %test.UnionB* %b to %test.b*
+%4 = bitcast %test.b* %3 to i8*
+call void @llvm.memset.p0i8.i64(i8* %4, i8 0, i64 4, i1 false)
+ret void

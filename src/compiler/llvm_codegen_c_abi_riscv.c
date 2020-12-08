@@ -68,7 +68,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		// Is the first field already occupied?
 		// Then fail because both needs to be available.
 		if (*field1) return false;
-		// If the element doesn't fit a register - bail.
+		// If the field doesn't fit a register - bail.
 		Type *element_type = type->complex;
 		unsigned element_size = type_size(element_type);
 		if (element_size > flen) return false;
@@ -82,10 +82,10 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 
 	if (type->type_kind == TYPE_ARRAY)
 	{
-		size_t array_len = type->array.len;
+		ByteSize array_len = type->array.len;
 		Type *element_type = type->array.base;
 		unsigned element_size = type_size(element_type);
-		for (size_t i = 0; i < array_len; i++)
+		for (ByteSize i = 0; i < array_len; i++)
 		{
 			if (!riscv_detect_fpcc_struct_internal(element_type,
 			                                       current_offset,
@@ -167,7 +167,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 	// Ignore empty structs/unions.
 	if (type_is_empty_union_struct(type, true)) return abi_arg_ignore();
 
-	size_t size = type_size(type);
+	ByteSize size = type_size(type);
 
 	// Pass floating point values via FPRs if possible.
 	if (is_fixed && type_is_float(type) && build_target.riscv.flen >= size && *fprs)
@@ -254,7 +254,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 	if (size <= 2 * xlen)
 	{
 		// Use a single XLen int if possible, 2*XLen if 2*XLen alignment is
-		// required, and a 2-element XLen array if only XLen alignment is required.
+		// required, and a 2-field XLen array if only XLen alignment is required.
 		if (size <= xlen)
 		{
 			return abi_arg_new_direct_coerce(abi_type_new_int_bits(xlen * 8));

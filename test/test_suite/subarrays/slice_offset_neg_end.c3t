@@ -14,6 +14,6 @@ func void test()
   %1 = bitcast [3 x i32]* %x to i32*
   %offset = getelementptr inbounds i32, i32* %1, i64 1
   %2 = insertvalue %"int[]" undef, i32* %offset, 0
-  %3 = insertvalue %"int[]" %2, i64 1, 1
+  %3 = insertvalue %"int[]" %2, i64 2, 1
   store %"int[]" %3, %"int[]"* %y, align 8
 

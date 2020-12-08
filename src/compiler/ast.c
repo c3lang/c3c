@@ -46,7 +46,7 @@ static TypeInfo poison_type_info = { .kind = TYPE_INFO_POISON };
 Type *poisoned_type = &poison_type;
 TypeInfo *poisoned_type_info = &poison_type_info;
 
-unsigned decl_abi_alignment(Decl *decl)
+AlignSize decl_abi_alignment(Decl *decl)
 {
 	return decl->alignment ?: type_abi_alignment(decl->type);
 }
@@ -506,6 +506,9 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
+		case EXPR_DESIGNATOR:
+			DUMP("(named param)");
+			return;
 		case EXPR_MEMBER_ACCESS:
 			DUMP("(member access)");
 			return;
@@ -652,13 +655,13 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEND();
 		case EXPR_INITIALIZER_LIST:
 			fprintf_indented(file, indent, "(initializerlist ");
-			switch (expr->expr_initializer.init_type)
+			switch (expr->initializer_expr.init_type)
 			{
 				case INITIALIZER_UNKNOWN:
 					fprintf(file, "not-analyzed\n");
 					break;
-				case INITIALIZER_ZERO:
-					fprintf(file, "zero\n");
+				case INITIALIZER_CONST:
+					fprintf(file, "const\n");
 					break;
 				case INITIALIZER_NORMAL:
 					fprintf(file, "normal\n");
@@ -668,9 +671,9 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 					break;
 			}
 			DUMPEXPC(expr);
-			VECEACH(expr->expr_initializer.initializer_expr, i)
+			VECEACH(expr->initializer_expr.initializer_expr, i)
 			{
-				DUMPEXPR(expr->expr_initializer.initializer_expr[i]);
+				DUMPEXPR(expr->initializer_expr.initializer_expr[i]);
 			}
 			DUMPEND();
 		case EXPR_SUBSCRIPT:
@@ -734,11 +737,6 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMP("(scopedexpr");
 			DUMPEXPR(expr->expr_scope.expr);
 			// TODO defers.
-			DUMPEND();
-		case EXPR_DESIGNATED_INITIALIZER:
-			DUMP("(designated-initializer");
-			// TODO path
-			DUMPEXPR(expr->designated_init_expr.value);
 			DUMPEND();
 		case EXPR_COMPOUND_LITERAL:
 			DUMP("(compound-literal");

@@ -1009,7 +1009,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_FALSE:
 		case TOKEN_NULL:
 		case TOKEN_TRUE:
-		case TOKEN_LPARBRA:
+		case TOKEN_LBRAPIPE:
 		case TOKEN_TYPEOF:
 			return parse_expr_stmt(context);
 		case TOKEN_ASSERT:
@@ -1085,7 +1085,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_CT_DEFAULT:
 		case TOKEN_CT_ENDIF:
 		case TOKEN_CT_ENDSWITCH:
-		case TOKEN_RPARBRA:
+		case TOKEN_RBRAPIPE:
 		case TOKEN_IN:
 		case TOKEN_BANGBANG:
 			SEMA_TOKEN_ERROR(context->tok, "Unexpected '%s' found when expecting a statement.", token_type_to_string(context->tok.type));

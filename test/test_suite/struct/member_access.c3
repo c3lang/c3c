@@ -50,7 +50,7 @@ func void tester()
     p.uu.e = 8;
     Point *p2 = &p;
     p2.bb.b = 3;
-    p = { a = 1, bb.b = 3, e = 2 };
+    p = { .a = 1, .bb.b = 3, .e = 2 };
 
     Point* pp = &p;
     pp.a = 20;
@@ -82,6 +82,6 @@ struct Struct
 func void myfunc()
 {
     Struct s;
-    s.b = 10;       // #error: There is no element or method 'Struct.b'
+    s.b = 10;       // #error: There is no field or method 'Struct.b'
 }
 

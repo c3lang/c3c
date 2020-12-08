@@ -48,7 +48,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 			// => to main handling.
 		}
 	}
-	size_t size = type_size(type);
+	ByteSize size = type_size(type);
 	if (type_is_abi_aggregate(type))
 	{
 		// Not 1, 2, 4, 8? Pass indirect.

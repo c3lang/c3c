@@ -179,7 +179,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 				return abi_arg_new_direct_coerce(abi_type_new_plain(type_get_vector(type_long, 2)));
 			}
 			// Always return in register if it fits in a general purpose
-			// register, or if it is 64 bits and has a single element.
+			// register, or if it is 64 bits and has a single field.
 			if (size == 1 || size == 2 || size == 4 || (size == 8 && type->vector.len == 1))
 			{
 				return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
@@ -205,8 +205,8 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 		// Check if we can return it in a register.
 		if (x86_should_return_type_in_reg(type))
 		{
-			size_t size = type_size(type);
-			// Special case is floats and pointers in single element structs (except for MSVC)
+			ByteSize size = type_size(type);
+			// Special case is floats and pointers in single field structs (except for MSVC)
 			Type *single_element = type_abi_find_single_struct_element(type);
 			if (single_element)
 			{
@@ -219,7 +219,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 					return abi_arg_new_expand();
 				}
 			}
-			// This is not a single element struct, so we wrap it in an int.
+			// This is not a single field struct, so we wrap it in an int.
 			return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
 		}
 		return create_indirect_return_x86(regs);
@@ -291,7 +291,7 @@ static inline bool x86_can_expand_indirect_aggregate_arg(Type *type)
 	if (type->canonical->type_kind == TYPE_ERRTYPE) return true;
 	if (!type_is_union_struct(type)) return false;
 
-	size_t size = 0;
+	ByteSize size = 0;
 	Decl **members = type->decl->strukt.members;
 	VECEACH(members, i)
 	{
@@ -307,7 +307,7 @@ static inline bool x86_can_expand_indirect_aggregate_arg(Type *type)
 				break;
 			case TYPE_COMPLEX:
 			{
-				size_t complex_type_size = type_size(member_type->complex);
+				ByteSize complex_type_size = type_size(member_type->complex);
 				if (complex_type_size != 4 && complex_type_size != 8) return false;
 				size += type_size(member_type);
 				break;

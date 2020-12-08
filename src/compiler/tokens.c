@@ -90,8 +90,8 @@ const char *token_type_to_string(TokenType type)
 			return ">=";
 		case TOKEN_LESS_EQ:
 			return "<=";
-		case TOKEN_LPARBRA:
-			return "({";
+		case TOKEN_LBRAPIPE:
+			return "{|";
 		case TOKEN_MINUS_ASSIGN:
 			return "-=";
 		case TOKEN_MINUS_MOD:
@@ -114,8 +114,8 @@ const char *token_type_to_string(TokenType type)
 			return "+%";
 		case TOKEN_PLUSPLUS:
 			return "++";
-		case TOKEN_RPARBRA:
-			return "})";
+		case TOKEN_RBRAPIPE:
+			return "|}";
 		case TOKEN_SCOPE:
 			return "::";
 		case TOKEN_SHL:

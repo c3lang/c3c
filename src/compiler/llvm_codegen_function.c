@@ -156,18 +156,18 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
 			LLVMTypeRef hi = llvm_abi_type(c, info->direct_pair.hi);
 			LLVMTypeRef struct_type = llvm_get_twostruct(c, lo, hi);
-			unsigned decl_alignment = decl_abi_alignment(decl);
+			AlignSize decl_alignment = decl_abi_alignment(decl);
 			// Cast to { lo, hi }
 			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(struct_type, 0), "pair");
 			// Point to the lo value.
 			LLVMValueRef lo_ptr = LLVMBuildStructGEP2(c->builder, struct_type, cast, 0, "lo");
 			// Store it in the struct.
-			unsigned lo_alignment = MIN(llvm_abi_alignment(lo), decl_alignment);
+			AlignSize lo_alignment = MIN(llvm_abi_alignment(lo), decl_alignment);
 			llvm_store_aligned(c, lo_ptr, llvm_get_next_param(c, index), lo_alignment);
 			// Point to the hi value.
 			LLVMValueRef hi_ptr = LLVMBuildStructGEP2(c->builder, struct_type, cast, 1, "hi");
 			// Store it in the struct.
-			unsigned hi_alignment = MIN(llvm_abi_alignment(hi), decl_alignment);
+			AlignSize hi_alignment = MIN(llvm_abi_alignment(hi), decl_alignment);
 			llvm_store_aligned(c, hi_ptr, llvm_get_next_param(c, index), decl_alignment);
 			return;
 		}
@@ -181,7 +181,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			}
 			// Cast to the coerce type.
 			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
-			unsigned decl_alignment = decl_abi_alignment(decl);
+			AlignSize decl_alignment = decl_abi_alignment(decl);
 
 			// If we're not flattening, we simply do a store.
 			if (!abi_info_should_flatten(info))
@@ -302,7 +302,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			LLVMTypeRef lo_type = llvm_abi_type(c, info->coerce_expand.hi);
 			lo_val = llvm_emit_load_aligned(c, lo_type, lo, alignment, "");
 
-			// We're done if there's a single element.
+			// We're done if there's a single field.
 			if (!info->coerce_expand.hi)
 			{
 				llvm_emit_return_value(c, lo_val);

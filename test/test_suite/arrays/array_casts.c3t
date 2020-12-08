@@ -1,0 +1,25 @@
+module test;
+
+
+func void test()
+{
+    int[3] x;
+    int *y = &x;
+    int[] z = &x;
+}
+
+// #expect: array_casts.ll
+
+%"int[]" = type { i32*, i64 }
+
+%x = alloca [3 x i32], align 4
+%y = alloca i32*, align 8
+%z = alloca %"int[]", align 8
+%0 = bitcast [3 x i32]* %x to i8*
+call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 12, i1 false)
+%ptrptr = bitcast [3 x i32]* %x to i32*
+store i32* %ptrptr, i32** %y, align 8
+%1 = bitcast [3 x i32]* %x to i32*
+%2 = insertvalue %"int[]" undef, i32* %1, 0
+%3 = insertvalue %"int[]" %2, i64 3, 1
+store %"int[]" %3, %"int[]"* %z, align 8

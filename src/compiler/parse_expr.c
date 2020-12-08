@@ -18,6 +18,8 @@ typedef struct
 
 extern ParseRule rules[TOKEN_EOF + 1];
 
+static Expr *parse_identifier_with_path(Context *context, Path *path);
+
 inline Expr *parse_precedence_with_left_side(Context *context, Expr *left_side, Precedence precedence)
 {
 	while (precedence <= rules[context->tok.type].precedence)
@@ -50,6 +52,15 @@ static Expr *parse_precedence(Context *context, Precedence precedence)
 	return parse_precedence_with_left_side(context, left_side, precedence);
 }
 
+static inline Expr *parse_expr_or_initializer_list(Context *context)
+{
+	if (TOKEN_IS(TOKEN_LBRACE))
+	{
+		return parse_initializer_list(context);
+	}
+	return parse_expr(context);
+}
+
 inline Expr* parse_expr(Context *context)
 {
 	return parse_precedence(context, PREC_ASSIGNMENT);
@@ -61,6 +72,50 @@ inline Expr* parse_constant_expr(Context *context)
 }
 
 /**
+ * param_path : ('[' expression ']' | '.' IDENT)*
+ *
+ * @param context
+ * @param path reference to the path to return
+ * @return true if parsing succeeds, false otherwise.
+ */
+static bool parse_param_path(Context *context, DesignatorElement ***path)
+{
+	*path = NULL;
+	while (true)
+	{
+		if (TOKEN_IS(TOKEN_LBRACKET))
+		{
+			// Parse the inside of [ ]
+			DesignatorElement *element = CALLOCS(DesignatorElement);
+			element->kind = DESIGNATOR_ARRAY;
+			advance_and_verify(context, TOKEN_LBRACKET);
+			element->index_expr = TRY_EXPR_OR(parse_expr(context), false);
+			// Possible range
+			if (try_consume(context, TOKEN_DOTDOT))
+			{
+				element->index_end_expr = TRY_EXPR_OR(parse_expr(context), false);
+				element->kind = DESIGNATOR_RANGE;
+			}
+			CONSUME_OR(TOKEN_RBRACKET, false);
+			// Include ] in the expr
+			vec_add(*path, element);
+			continue;
+		}
+		if (TOKEN_IS(TOKEN_DOT))
+		{
+			advance(context);
+			DesignatorElement *element = CALLOCS(DesignatorElement);
+			element->kind = DESIGNATOR_FIELD;
+			element->field = TOKSTR(context->tok.id);
+			EXPECT_OR(TOKEN_IDENT, false);
+			advance(context);
+			vec_add(*path, element);
+			continue;
+		}
+		return true;
+	}
+}
+/**
  * param_list
  *  : parameter
  *  | parameter ',' parameters
@@ -68,7 +123,7 @@ inline Expr* parse_constant_expr(Context *context)
  *
  * parameter
  *  : expr
- *  | '[' expr ']' '=' expr
+ *  | param_path '=' expr
  *  ;
  *
  */
@@ -78,19 +133,25 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type, TokenTy
 	while (1)
 	{
 		Expr *expr = NULL;
-		// Special handling of [123]
-		if (TOKEN_IS(TOKEN_LBRACKET))
+		DesignatorElement **path;
+		Token current = context->tok;
+		if (!parse_param_path(context, &path)) return false;
+		if (path != NULL)
 		{
-			expr = EXPR_NEW_TOKEN(EXPR_SUBSCRIPT, context->tok);
-			advance_and_verify(context, TOKEN_LBRACKET);
-			expr->subscript_expr.index = TRY_EXPR_OR(parse_expr(context), false);
-			CONSUME_OR(TOKEN_RBRACKET, false);
+			// Create the parameter expr
+			expr = EXPR_NEW_TOKEN(EXPR_DESIGNATOR, current);
+			expr->designator_expr.path = path;
 			RANGE_EXTEND_PREV(expr);
-			expr = TRY_EXPR_OR(parse_precedence_with_left_side(context, expr, PREC_ASSIGNMENT), false);
+
+			// Expect the '=' after.
+			CONSUME_OR(TOKEN_EQ, false);
+
+			// Now parse the rest
+			expr->designator_expr.value = TRY_EXPR_OR(parse_expr_or_initializer_list(context), false);
 		}
 		else
 		{
-			expr = parse_expr(context);
+			expr = parse_expr_or_initializer_list(context);
 		}
 		vec_add(*result, expr);
 		if (!try_consume(context, TOKEN_COMMA))
@@ -286,11 +347,11 @@ Expr *parse_initializer(Context *context)
 Expr *parse_initializer_list(Context *context)
 {
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST, context->tok);
-	initializer_list->expr_initializer.init_type = INITIALIZER_UNKNOWN;
+	initializer_list->initializer_expr.init_type = INITIALIZER_UNKNOWN;
 	CONSUME_OR(TOKEN_LBRACE, poisoned_expr);
 	if (!try_consume(context, TOKEN_RBRACE))
 	{
-		if (!parse_param_list(context, &initializer_list->expr_initializer.initializer_expr, false, TOKEN_RBRACE)) return poisoned_expr;
+		if (!parse_param_list(context, &initializer_list->initializer_expr.initializer_expr, false, TOKEN_RBRACE)) return poisoned_expr;
 		CONSUME_OR(TOKEN_RBRACE, poisoned_expr);
 	}
 	return initializer_list;
@@ -304,6 +365,7 @@ static Expr *parse_failable(Context *context, Expr *left_side)
 	RANGE_EXTEND_PREV(failable);
 	return failable;
 }
+
 static Expr *parse_binary(Context *context, Expr *left_side)
 {
 	assert(left_side && expr_ok(left_side));
@@ -375,6 +437,7 @@ static Expr *parse_subscript_expr(Context *context, Expr *left)
 	{
 		index = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 		index->type = type_usize;
+		index->constant = true;
 		index->resolve_status = RESOLVE_DONE;
 		expr_const_set_int(&index->const_expr, 0, type_usize->canonical->type_kind);
 	}
@@ -640,7 +703,6 @@ static Expr *parse_char_lit(Context *context, Expr *left)
 			UNREACHABLE
 	}
 
-	expr_int->resolve_status = RESOLVE_DONE;
 	advance(context);
 	return expr_int;
 }
@@ -753,7 +815,6 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	expr_string->resolve_status = RESOLVE_DONE;
 	expr_string->type = type_string;
 
 	char *str = NULL;
@@ -799,7 +860,6 @@ static Expr *parse_bool(Context *context, Expr *left)
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	number->const_expr = (ExprConst) { .b = TOKEN_IS(TOKEN_TRUE), .kind = TYPE_BOOL };
 	number->type = type_bool;
-	number->resolve_status = RESOLVE_DONE;
 	advance(context);
 	return number;
 }
@@ -816,9 +876,11 @@ static Expr *parse_null(Context *context, Expr *left)
 
 Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *type_info)
 {
+	advance_and_verify(context, TOKEN_LPAREN);
 	Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type_info->span);
 	expr->expr_compound_literal.type_info = type_info;
 	expr->expr_compound_literal.initializer = TRY_EXPR_OR(parse_initializer_list(context), poisoned_expr);
+	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
@@ -850,7 +912,7 @@ Expr *parse_type_expression_with_path(Context *context, Path *path)
 	{
 		type = TRY_TYPE_OR(parse_type(context), poisoned_expr);
 	}
-	if (TOKEN_IS(TOKEN_LBRACE))
+	if (TOKEN_IS(TOKEN_LPAREN) && context->next_tok.type == TOKEN_LBRACE)
 	{
 		return parse_type_compound_literal_expr_after_type(context, type);
 	}
@@ -870,8 +932,8 @@ static Expr* parse_expr_block(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_EXPR_BLOCK, context->tok);
-	advance_and_verify(context, TOKEN_LPARBRA);
-	while (!try_consume(context, TOKEN_RPARBRA))
+	advance_and_verify(context, TOKEN_LBRAPIPE);
+	while (!try_consume(context, TOKEN_RBRAPIPE))
 	{
 		Ast *stmt = parse_stmt(context);
 		if (!ast_ok(stmt)) return poisoned_expr;
@@ -906,7 +968,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },
-		[TOKEN_LPARBRA] = { parse_expr_block, NULL, PREC_NONE },
+		[TOKEN_LBRAPIPE] = { parse_expr_block, NULL, PREC_NONE },
 		[TOKEN_CAST] = { parse_cast_expr, NULL, PREC_NONE },
 		[TOKEN_TYPEOF] = { parse_typeof_expr, NULL, PREC_NONE },
 		[TOKEN_TRY] = { parse_try_expr, NULL, PREC_NONE },

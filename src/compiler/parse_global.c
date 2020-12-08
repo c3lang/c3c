@@ -1125,6 +1125,7 @@ bool parse_struct_body(Context *context, Decl *parent)
 	CONSUME_OR(TOKEN_LBRACE, false);
 
 	assert(decl_is_struct_type(parent));
+	MemberIndex index = 0;
 	while (!TOKEN_IS(TOKEN_RBRACE))
 	{
 		TokenType token_type = context->tok.type;
@@ -1152,6 +1153,12 @@ bool parse_struct_body(Context *context, Decl *parent)
 				return false;
 			}
 			vec_add(parent->strukt.members, member);
+			index++;
+			if (index > MAX_MEMBERS)
+			{
+				SEMA_ERROR(member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
+				return false;
+			}
 			continue;
 		}
 		TypeInfo *type = TRY_TYPE_OR(parse_type(context), false);
@@ -1160,6 +1167,12 @@ bool parse_struct_body(Context *context, Decl *parent)
 			EXPECT_OR(TOKEN_IDENT, false);
 			Decl *member = decl_new_var(context->tok.id, type, VARDECL_MEMBER, parent->visibility);
 			vec_add(parent->strukt.members, member);
+			index++;
+			if (index > MAX_MEMBERS)
+			{
+				SEMA_ERROR(member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
+				return false;
+			}
 			advance(context);
 			if (!try_consume(context, TOKEN_COMMA)) break;
 		}

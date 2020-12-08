@@ -53,34 +53,142 @@ LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint
 
 }
 
-LLVMValueRef llvm_emit_memclear(GenContext *c, LLVMValueRef ref, Type *type)
+LLVMValueRef llvm_emit_memclear(GenContext *c, BEValue *ref)
 {
 	// TODO avoid bitcast on those that do not need them.
-	return llvm_emit_memclear_size_align(c, ref, type_size(type),
-	                                     type_abi_alignment(type), true);
+	llvm_value_addr(c, ref);
+	return llvm_emit_memclear_size_align(c, ref->value, type_size(ref->type), ref->alignment, true);
 }
 
+LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init, bool *modified)
+{
+	switch (const_init->kind)
+	{
+		case CONST_INIT_ZERO:
+			return LLVMConstNull(llvm_get_type(c, const_init->type));
+		case CONST_VALUE:
+		{
+			BEValue val;
+			llvm_emit_expr(c, &val, const_init->value);
+			return llvm_value_rvalue_store(c, &val);
+		}
+		case CONST_INIT_ARRAY_SPLIT:
+		{
+			*modified = true;
+			LLVMValueRef pieces[3];
+			unsigned count = 0;
+			if (const_init->split_const.low)
+			{
+				pieces[count++] = llvm_emit_const_initializer(c, const_init->split_const.low, modified);
+			}
+			pieces[count++] = llvm_emit_const_initializer(c, const_init->split_const.mid, modified);
+			if (const_init->split_const.low)
+			{
+				pieces[count++] = llvm_emit_const_initializer(c, const_init->split_const.low, modified);
+			}
+			return LLVMConstStructInContext(c->context, pieces, count, true);
+		}
+		case CONST_INIT_ARRAY_VALUE_FRAGMENT:
+			*modified = true;
+			return llvm_emit_const_initializer(c, const_init->single_array_index.element, modified);
+		case CONST_SELECTED:
+		{
+			Type *member_type = const_init->union_const.element->type;
+			ByteSize union_size = type_size(const_init->type);
+			Type *rep_type = const_init->type->decl->strukt.members[const_init->type->decl->strukt.union_rep]->type;
+			LLVMTypeRef rep_type_llvm = llvm_get_type(c, rep_type);
+			LLVMTypeRef member_type_llvm = llvm_get_type(c, member_type);
+			bool is_modified = rep_type_llvm != member_type_llvm;
+			if (is_modified) *modified = true;
 
-static void gencontext_emit_global_variable_definition(GenContext *context, Decl *decl)
+			// Emit our value.
+			LLVMValueRef result = llvm_emit_const_initializer(c, const_init->union_const.element, modified);
+
+			LLVMValueRef values[2] = {
+					result,
+					NULL
+			};
+
+			// There is a case, where we need additional padding for this member, in that case
+			// Create a struct for it.
+			ByteSize member_size = type_size(member_type);
+			if (union_size > member_size)
+			{
+				values[1] = llvm_const_padding(c, union_size - member_size);
+				// Now we use an unnamed struct.
+				return LLVMConstStructInContext(c->context, values, 2, const_init->type->decl->is_packed);
+			}
+
+			return LLVMConstNamedStruct(llvm_get_type(c, const_init->type), values, 1);
+		}
+		case CONST_INIT_EXPANDED:
+		{
+			MemberIndex count = vec_size(const_init->type->decl->strukt.members);
+			LLVMValueRef *entries = MALLOC(sizeof(LLVMValueRef) * count);
+			for (MemberIndex i = 0; i < count; i++)
+			{
+				entries[i] = llvm_emit_const_initializer(c, const_init->elements[i], modified);
+			}
+			if (*modified)
+			{
+				return LLVMConstStructInContext(c->context, entries, count, const_init->type->decl->is_packed);
+			}
+			return LLVMConstNamedStruct(llvm_get_type(c, const_init->type), entries, count);
+		}
+		case CONST_INIT_ARRAY_RANGE_ZERO:
+			return LLVMConstNull(llvm_get_type(c, const_init->type));
+	}
+	UNREACHABLE
+}
+LLVMValueRef llvm_emit_const_aggregate(GenContext *c, Expr *expr, bool *modified)
+{
+	switch (expr->initializer_expr.init_type)
+	{
+		case INITIALIZER_UNKNOWN:
+		case INITIALIZER_DESIGNATED:
+			UNREACHABLE
+		case INITIALIZER_CONST:
+			return llvm_emit_const_initializer(c, expr->initializer_expr.initializer, modified);
+		case INITIALIZER_NORMAL:
+			TODO
+	}
+	UNREACHABLE
+}
+
+static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
 	// Skip real constants.
 	if (!decl->type) return;
 
-	// TODO fix name
-	decl->backend_ref = LLVMAddGlobal(context->module, llvm_get_type(context, decl->type), decl->name);
+	bool modified = false;
+	LLVMValueRef init_value;
 
+	ByteSize alignment = type_abi_alignment(decl->type);
 	if (decl->var.init_expr)
 	{
-		BEValue value;
-		llvm_emit_expr(context, &value, decl->var.init_expr);
-		LLVMSetInitializer(decl->backend_ref, llvm_value_rvalue_store(context, &value));
+		if (decl->var.init_expr->expr_kind == EXPR_INITIALIZER_LIST)
+		{
+			init_value = llvm_emit_const_aggregate(c, decl->var.init_expr, &modified);
+		}
+		else
+		{
+			BEValue value;
+			assert(decl->var.init_expr->expr_kind == EXPR_CONST);
+			llvm_emit_expr(c, &value, decl->var.init_expr);
+			init_value = llvm_value_rvalue_store(c, &value);
+		}
 	}
 	else
 	{
-		LLVMSetInitializer(decl->backend_ref, LLVMConstNull(llvm_get_type(context, decl->type)));
+		init_value = LLVMConstNull(llvm_get_type(c, decl->type));
 	}
+
+	// TODO fix name
+	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->name);
+	LLVMSetAlignment(decl->backend_ref, alignment);
+	LLVMSetInitializer(decl->backend_ref, init_value);
 
 	LLVMSetGlobalConstant(decl->backend_ref, decl->var.kind == VARDECL_CONST);
 
@@ -98,11 +206,14 @@ static void gencontext_emit_global_variable_definition(GenContext *context, Decl
 			break;
 	}
 
-	int alignment = 64; // TODO
-	// Should we set linkage here?
-	if (llvm_use_debug(context))
+	if (modified)
 	{
-		llvm_emit_debug_global_var(context, decl);
+		decl->backend_ref = LLVMConstBitCast(decl->backend_ref, llvm_get_ptr_type(c, decl->type));
+	}
+	// Should we set linkage here?
+	if (llvm_use_debug(c))
+	{
+		llvm_emit_debug_global_var(c, decl);
 	}
 }
 static void gencontext_verify_ir(GenContext *context)
@@ -678,9 +789,9 @@ unsigned llvm_abi_size(LLVMTypeRef type)
 	return LLVMABISizeOfType(target_data_layout(), type);
 }
 
-unsigned llvm_abi_alignment(LLVMTypeRef type)
+AlignSize llvm_abi_alignment(LLVMTypeRef type)
 {
-	return LLVMABIAlignmentOfType(target_data_layout(), type);
+	return (AlignSize)LLVMABIAlignmentOfType(target_data_layout(), type);
 }
 
 void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, unsigned alignment)
@@ -705,7 +816,7 @@ void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue
 		case BE_ADDRESS:
 		{
 			// Here we do an optimized(?) memcopy.
-			size_t size = type_size(value->type);
+			ByteSize size = type_size(value->type);
 			LLVMValueRef copy_size = llvm_const_int(c, size <= UINT32_MAX ? type_uint : type_usize, size);
 			destination = LLVMBuildBitCast(c->builder, destination, llvm_get_ptr_type(c, type_byte), "");
 			LLVMValueRef source = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, type_byte), "");
@@ -750,11 +861,22 @@ void llvm_store_aligned_decl(GenContext *context, Decl *decl, LLVMValueRef value
 	llvm_store_aligned(context, decl->backend_ref, value, decl->alignment);
 }
 
+void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len)
+{
+	assert(dest_align && src_align);
+	if (len <= UINT32_MAX)
+	{
+		LLVMBuildMemCpy(c->builder, dest, dest_align, source, src_align, llvm_const_int(c, type_uint, len));
+		return;
+	}
+	LLVMBuildMemCpy(c->builder, dest, dest_align, source, src_align, llvm_const_int(c, type_ulong, len));
+}
+
 void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, unsigned source_alignment)
 {
 	if (source_alignment == 0) source_alignment = type_abi_alignment(decl->type);
-	LLVMBuildMemCpy(c->builder, decl->backend_ref, decl->alignment ?: type_abi_alignment(decl->type),
-	                source, source_alignment, llvm_const_int(c, type_usize, type_size(decl->type)));
+	llvm_emit_memcpy(c, decl->backend_ref, decl->alignment ?: type_abi_alignment(decl->type),
+	                 source, source_alignment, type_size(decl->type));
 }
 
 LLVMValueRef llvm_emit_load_aligned(GenContext *context, LLVMTypeRef type, LLVMValueRef pointer, unsigned alignment, const char *name)

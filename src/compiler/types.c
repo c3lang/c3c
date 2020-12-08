@@ -129,7 +129,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_STRING:
 			return "string";
 		case TYPE_ARRAY:
-			asprintf(&buffer, "%s[%zu]", type_to_error_string(type->array.base), type->array.len);
+			asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
 		case TYPE_VARARRAY:
 			asprintf(&buffer, "%s[*]", type_to_error_string(type->array.base));
@@ -169,7 +169,7 @@ void type_append_signature_name(Type *type, char *dst, size_t *offset)
 
 
 
-size_t type_size(Type *type)
+ByteSize type_size(Type *type)
 {
 	switch (type->type_kind)
 	{
@@ -269,7 +269,7 @@ Type *type_abi_find_single_struct_element(Type *type)
 		// Ignore empty arrays
 		if (type_is_empty_field(members[i]->type, true)) continue;
 
-		// Already one element found, not single element.
+		// Already one field found, not single field.
 		if (found) return NULL;
 
 		Type *field_type = members[i]->type->canonical;
@@ -575,7 +575,7 @@ unsigned int type_alloca_alignment(Type *type)
 Type *type_find_largest_union_element(Type *type)
 {
 	assert(type->type_kind == TYPE_UNION);
-	size_t largest = 0;
+	ByteSize largest = 0;
 	Type *largest_type = NULL;
 	Decl **members = type->decl->strukt.members;
 	VECEACH(members, i)
@@ -589,7 +589,7 @@ Type *type_find_largest_union_element(Type *type)
 	return largest_type;
 }
 
-unsigned int type_abi_alignment(Type *type)
+AlignSize type_abi_alignment(Type *type)
 {
 	switch (type->type_kind)
 	{

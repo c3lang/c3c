@@ -11,8 +11,8 @@ static ABIArgInfo *wasm_classify_argument_type(Type *type)
 	{
 		// Ignore empty structs/unions.
 		if (type_is_empty_union_struct(type, true)) return abi_arg_ignore();
-		// Clang: Lower single-element structs to just pass a regular value. TODO: We
-		// could do reasonable-size multiple-element structs too, using getExpand(),
+		// Clang: Lower single-field structs to just pass a regular value. TODO: We
+		// could do reasonable-size multiple-field structs too, using getExpand(),
 		// though watch out for things like bitfields.
 		Type *single_type = type_abi_find_single_struct_element(type);
 		if (single_type) return abi_arg_new_direct_coerce(abi_type_new_plain(single_type));

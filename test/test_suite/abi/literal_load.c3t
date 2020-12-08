@@ -5,12 +5,14 @@ struct Test
     int x;
 }
 
+Test foo = {};
+
 extern func void blorg(Test t);
 
 func Test creator()
 {
-    blorg(Test {} );
-    return Test {};
+    blorg(Test({}));
+    return Test({});
 }
 
 // #expect: literal_load.ll

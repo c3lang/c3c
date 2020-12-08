@@ -12,7 +12,7 @@ typedef enum
 } ByVal;
 
 static inline ABIArgInfo *abi_arg_by_reg_attr(ABIArgInfo *info);
-size_t abi_arg_expanded_size(ABIArgInfo *type_info, Type *type);
+ByteSize abi_arg_expanded_size(ABIArgInfo *type_info, Type *type);
 bool abi_arg_is_indirect(ABIArgInfo *info);
 ABIArgInfo *abi_arg_ignore(void);
 ABIArgInfo *abi_arg_new_direct_pair(AbiType *low_type, AbiType *high_type);
@@ -27,12 +27,12 @@ ABIArgInfo *abi_arg_new_indirect_realigned(unsigned alignment);
 ABIArgInfo *abi_arg_new_indirect_by_val(void);
 ABIArgInfo *abi_arg_new_indirect_not_by_val(void);
 
-size_t abi_type_abi_alignment(AbiType *type);
+ByteSize abi_type_abi_alignment(AbiType *type);
 bool abi_type_is_integer(AbiType *type);
 bool abi_type_is_float(AbiType *type);
 AbiType *abi_type_new_plain(Type *type);
 AbiType *abi_type_new_int_bits(unsigned bits);
-size_t abi_type_size(AbiType *type);
+ByteSize abi_type_size(AbiType *type);
 
 typedef struct
 {

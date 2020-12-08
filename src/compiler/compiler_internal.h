@@ -15,6 +15,14 @@
 #include "target.h"
 #include "utils/malloc.h"
 
+typedef uint64_t ByteSize;
+typedef int64_t ArrayIndex;
+typedef int32_t MemberIndex;
+typedef int32_t AlignSize;
+typedef int32_t ScopeId;
+
+
+
 typedef uint32_t SourceLoc;
 typedef struct
 {
@@ -31,7 +39,9 @@ typedef struct
 #define MAX_MACRO_NESTING 1024
 #define MAX_FUNCTION_SIGNATURE_SIZE 2048
 #define MAX_PARAMS 512
-#define MAX_ALIGNMENT (1U << 29U)
+#define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
+#define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
+#define MAX_OFFSET ((ArrayIndex)(((uint64_t)2) << 60))
 
 typedef struct _Ast Ast;
 typedef struct _Decl Decl;
@@ -158,25 +168,6 @@ typedef struct _Path
 	uint32_t len;
 } Path;
 
-typedef enum
-{
-	DESIGNATED_IDENT,
-	DESIGNATED_SUBSCRIPT,
-} DesignatedPathKind;
-
-typedef struct _DesignatedPath
-{
-	DesignatedPathKind kind : 3;
-	bool constant : 1;
-	bool pure : 1;
-	struct _DesignatedPath *sub_path;
-	Type *type;
-	union
-	{
-		unsigned index;
-		Expr *index_expr;
-	};
-} DesignatedPath;
 
 typedef struct
 {
@@ -195,13 +186,13 @@ typedef struct
 typedef struct
 {
 	Type *base;
-	size_t len;
+	ByteSize len;
 } TypeArray;
 
 typedef struct
 {
 	Type *base;
-	size_t len;
+	ByteSize len;
 } TypeVector;
 
 typedef struct
@@ -277,6 +268,7 @@ typedef struct
 {
 	uint64_t size;
 	Decl **members;
+	MemberIndex union_rep;
 } StructDecl;
 
 
@@ -428,7 +420,7 @@ typedef struct
 	bool next_target : 1;
 	void *break_target;
 	void *continue_target;
-	unsigned scope_id;
+	ScopeId scope_id;
 	AstId parent;
 } LabelDecl;
 
@@ -447,9 +439,9 @@ typedef struct _Decl
 	bool needs_additional_pad : 1;
 	void *backend_ref;
 	const char *cname;
-	uint32_t alignment;
+	AlignSize alignment;
 	const char *section;
-	size_t offset;
+	ArrayIndex offset;
 	/*	bool is_exported : 1;
 	bool is_used : 1;
 	bool is_used_public : 1;
@@ -591,6 +583,72 @@ typedef struct
 	};
 } ExprAccess;
 
+typedef struct DesignatorElement_
+{
+	DesignatorType kind : 4;
+	union
+	{
+		const char *field;
+		struct
+		{
+			Expr *index_expr;
+			Expr *index_end_expr;
+		};
+	};
+	ArrayIndex index;
+	ArrayIndex index_end;
+} DesignatorElement;
+
+typedef enum
+{
+	CONST_INIT_ZERO,
+	CONST_INIT_EXPANDED,
+	CONST_SELECTED,
+	CONST_VALUE,
+	CONST_INIT_ARRAY_SPLIT,
+	CONST_INIT_ARRAY_RANGE_ZERO,
+	CONST_INIT_ARRAY_VALUE_FRAGMENT
+} ConstInitType;
+
+
+typedef struct ConstInitializer_
+{
+	Type *type;
+	ConstInitType kind;
+	union
+	{
+		struct ConstInitializer_ **elements;
+		Expr *value;
+		struct
+		{
+			struct ConstInitializer_ *element;
+			MemberIndex index;
+		} union_const;
+		struct
+		{
+			struct ConstInitializer_ *low;
+			struct ConstInitializer_ *mid;
+			struct ConstInitializer_ *hi;
+		} split_const;
+		struct
+		{
+			ArrayIndex low;
+			ArrayIndex high;
+		} array_range_zero;
+		struct
+		{
+			struct ConstInitializer_ *element;
+			ArrayIndex index;
+		} single_array_index;
+	};
+} ConstInitializer;
+
+typedef struct
+{
+	DesignatorElement **path;
+	Expr *value;
+} ExprDesignator;
+
 typedef struct
 {
 	Path *path;
@@ -646,15 +704,19 @@ typedef struct
 typedef enum
 {
 	INITIALIZER_UNKNOWN,
-	INITIALIZER_ZERO,
 	INITIALIZER_DESIGNATED,
-	INITIALIZER_NORMAL
+	INITIALIZER_NORMAL,
+	INITIALIZER_CONST,
 } InitializerType;
 
 typedef struct
 {
 	InitializerType init_type;
-	Expr** initializer_expr;
+	union
+	{
+		Expr** initializer_expr;
+		ConstInitializer *initializer;
+	};
 } ExprInitializer;
 
 typedef struct
@@ -662,12 +724,6 @@ typedef struct
 	Expr *initializer;
 	TypeInfo *type_info;
 } ExprCompoundLiteral;
-
-typedef struct
-{
-	DesignatedPath *path;
-	Expr *value;
-} ExprDesignatedInit;
 
 typedef struct
 {
@@ -686,6 +742,7 @@ typedef struct
 	Expr *inner;
 } ExprLen;
 
+
 struct _Expr
 {
 	ExprKind expr_kind : 8;
@@ -697,7 +754,6 @@ struct _Expr
 	SourceSpan span;
 	Type *type;
 	union {
-		ExprDesignatedInit designated_init_expr;
 		Expr *group_expr;
 		ExprLen len_expr;
 		ExprCast cast_expr;
@@ -718,13 +774,14 @@ struct _Expr
 		ExprSlice slice_expr;
 		ExprSubscript subscript_expr;
 		ExprAccess access_expr;
+		ExprDesignator designator_expr;
 		ExprIdentifier identifier_expr;
 		ExprIdentifier macro_identifier_expr;
 		ExprIdentifierRaw ct_ident_expr;
 		ExprIdentifierRaw ct_macro_ident_expr;
 		ExprIdentifierRaw hash_ident_expr;
 		TypeInfo *typeid_expr;
-		ExprInitializer expr_initializer;
+		ExprInitializer initializer_expr;
 		Decl *expr_enum;
 		ExprCompoundLiteral expr_compound_literal;
 		Expr** expression_list;
@@ -819,7 +876,7 @@ typedef struct
 	{
 		struct
 		{
-			unsigned scope_id;
+			ScopeId scope_id;
 		};
 		struct
 		{
@@ -856,7 +913,7 @@ typedef struct
 	FlowCommon flow;
 	bool is_switch : 1;
 	bool has_err_var : 1;
-	unsigned scope_id;
+	ScopeId scope_id;
 	AstId defer;
 	union
 	{
@@ -1031,7 +1088,7 @@ typedef struct _Module
 
 typedef struct _DynamicScope
 {
-	unsigned scope_id;
+	ScopeId scope_id;
 	bool allow_dead_code : 1;
 	bool jump_end : 1;
 	ScopeFlags flags;
@@ -1061,12 +1118,12 @@ typedef union
 
 typedef struct
 {
-	unsigned lexer_index;
+	uint32_t lexer_index;
 	const char *file_begin;
 	const char *lexing_start;
 	const char *current;
 	uint16_t source_file;
-	unsigned current_line;
+	uint32_t current_line;
 	const char *line_start;
 	File *current_file;
 	SourceLoc last_in_range;
@@ -1098,7 +1155,7 @@ typedef struct _Context
 	Token *lead_comment;
 	Token *trailing_comment;
 	Token *next_lead_comment;
-	unsigned scope_id;
+	ScopeId scope_id;
 	AstId break_target;
 	AstId break_defer;
 	AstId continue_target;
@@ -1178,14 +1235,14 @@ typedef struct
 	union
 	{
 		Type *type;
-		unsigned int_bits;
+		uint32_t int_bits;
 	};
 } AbiType;
 
 typedef struct ABIArgInfo_
 {
-	unsigned param_index_start : 16;
-	unsigned param_index_end : 16;
+	MemberIndex param_index_start : 16;
+	MemberIndex param_index_end : 16;
 	ABIKind kind : 6;
 	struct
 	{
@@ -1207,11 +1264,11 @@ typedef struct ABIArgInfo_
 		} direct_pair;
 		struct
 		{
-			unsigned char offset_lo;
-			unsigned char padding_hi;
-			unsigned char lo_index;
-			unsigned char hi_index;
-			unsigned char offset_hi;
+			uint8_t offset_lo;
+			uint8_t padding_hi;
+			uint8_t lo_index;
+			uint8_t hi_index;
+			uint8_t offset_hi;
 			bool packed : 1;
 			AbiType *lo;
 			AbiType *hi;
@@ -1223,13 +1280,13 @@ typedef struct ABIArgInfo_
 		struct
 		{
 			AbiType *type;
-			unsigned elements : 3;
+			uint8_t elements : 3;
 			bool prevent_flatten : 1;
 		} direct_coerce;
 		struct
 		{
 			// We may request a certain alignment of the parameters.
-			unsigned realignment : 16;
+			AlignSize realignment;
 			bool by_val : 1;
 		} indirect;
 	};
@@ -1367,7 +1424,7 @@ static inline Decl *decl_raw(Decl *decl);
 static inline bool decl_ok(Decl *decl) { return !decl || decl->decl_kind != DECL_POISONED; }
 static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
 static inline bool decl_is_struct_type(Decl *decl);
-unsigned decl_abi_alignment(Decl *decl);
+AlignSize decl_abi_alignment(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 
 #pragma mark --- Diag functions
@@ -1512,7 +1569,7 @@ bool token_is_any_type(TokenType type);
 bool token_is_symbol(TokenType type);
 const char *token_type_to_string(TokenType type);
 
-unsigned type_abi_alignment(Type *type);
+AlignSize type_abi_alignment(Type *type);
 unsigned type_alloca_alignment(Type *type);
 void type_append_signature_name(Type *type, char *dst, size_t *offset);
 static inline bool type_convert_will_trunc(Type *destination, Type *source);
@@ -1544,6 +1601,7 @@ static inline bool type_is_integer_signed(Type *type);
 static inline bool type_is_integer_kind(Type *type);
 static inline bool type_is_numeric(Type *type);
 static inline bool type_is_pointer(Type *type);
+static inline bool type_is_promotable_float(Type *type);
 static inline bool type_is_promotable_integer(Type *type);
 static inline bool type_is_signed(Type *type);
 static inline bool type_is_structlike(Type *type);
@@ -1555,7 +1613,7 @@ static inline Type *type_lowering(Type *type);
 bool type_may_have_sub_elements(Type *type);
 static inline bool type_ok(Type *type);
 static inline Type *type_reduced_from_expr(Expr *expr);
-size_t type_size(Type *type);
+ByteSize type_size(Type *type);
 const char *type_to_error_string(Type *type);
 
 static inline TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
@@ -1636,7 +1694,7 @@ static inline bool type_is_pointer(Type *type)
 	return type->type_kind == TYPE_POINTER || type->type_kind == TYPE_VARARRAY;
 }
 
-static inline size_t aligned_offset(size_t offset, size_t alignment)
+static inline uint64_t aligned_offset(uint64_t offset, uint64_t alignment)
 {
 	return ((offset + alignment - 1) / alignment) * alignment;
 }
@@ -1786,7 +1844,13 @@ static inline DeclKind decl_from_token(TokenType type)
 static inline bool type_is_promotable_integer(Type *type)
 {
 	// If we support other architectures, update this.
-	return type_is_integer_kind(type) && type->builtin.bytesize < type_c_int->builtin.bytesize;
+	return type_is_integer_kind(type) && type->builtin.bytesize < type_c_int->canonical->builtin.bytesize;
+}
+
+static inline bool type_is_promotable_float(Type *type)
+{
+	// If we support other architectures, update this.
+	return type_is_float(type->canonical) && type->builtin.bytesize < type_double->builtin.bytesize;
 }
 
 /**
