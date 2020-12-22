@@ -567,7 +567,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	return type_homogenous_aggregate_small_enough(type, *elements);
 }
 
-unsigned int type_alloca_alignment(Type *type)
+AlignSize type_alloca_alignment(Type *type)
 {
 	return type_abi_alignment(type);
 }

@@ -1570,7 +1570,7 @@ bool token_is_symbol(TokenType type);
 const char *token_type_to_string(TokenType type);
 
 AlignSize type_abi_alignment(Type *type);
-unsigned type_alloca_alignment(Type *type);
+AlignSize type_alloca_alignment(Type *type);
 void type_append_signature_name(Type *type, char *dst, size_t *offset);
 static inline bool type_convert_will_trunc(Type *destination, Type *source);
 Type *type_find_common_ancestor(Type *left, Type *right);

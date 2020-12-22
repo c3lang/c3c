@@ -5,6 +5,11 @@
 #include "llvm_codegen_internal.h"
 
 
+static inline void llvm_set_alignment(LLVMValueRef alloca, LLVMTypeRef type, AlignSize alignment)
+{
+	LLVMSetAlignment(alloca, alignment ?: llvm_abi_alignment(type));
+}
+
 static int get_inlining_threshold(void);
 static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 {
@@ -262,7 +267,7 @@ LLVMValueRef llvm_emit_alloca(GenContext *context, LLVMTypeRef type, unsigned al
 	LLVMBasicBlockRef current_block = LLVMGetInsertBlock(context->builder);
 	LLVMPositionBuilderBefore(context->builder, context->alloca_point);
 	LLVMValueRef alloca = LLVMBuildAlloca(context->builder, type, name);
-	LLVMSetAlignment(alloca, alignment ?: llvm_abi_alignment(type));
+	llvm_set_alignment(alloca, type, alignment);
 	LLVMPositionBuilderAtEnd(context->builder, current_block);
 	return alloca;
 }
@@ -794,7 +799,7 @@ AlignSize llvm_abi_alignment(LLVMTypeRef type)
 	return (AlignSize)LLVMABIAlignmentOfType(target_data_layout(), type);
 }
 
-void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, unsigned alignment)
+void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
 {
 	// If we have an address but not an aggregate, do a load.
 	llvm_value_fold_failable(c, value);
@@ -850,7 +855,7 @@ void llvm_store_self_aligned(GenContext *context, LLVMValueRef pointer, LLVMValu
 	llvm_store_aligned(context, pointer, value, type_abi_alignment(type));
 }
 
-void llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, unsigned alignment)
+void llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
 {
 	LLVMValueRef ref = LLVMBuildStore(context->builder, value, pointer);
 	if (alignment) LLVMSetAlignment(ref, alignment);
@@ -882,7 +887,7 @@ void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, un
 LLVMValueRef llvm_emit_load_aligned(GenContext *context, LLVMTypeRef type, LLVMValueRef pointer, unsigned alignment, const char *name)
 {
 	LLVMValueRef value = LLVMBuildLoad2(context->builder, type, pointer, name);
-	LLVMSetAlignment(value, alignment ?: llvm_abi_alignment(type));
+	llvm_set_alignment(value, type, alignment);
 	return value;
 }
 

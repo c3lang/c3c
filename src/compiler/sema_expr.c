@@ -2383,7 +2383,7 @@ static void debug_dump_const_initializer(ConstInitializer *init, const char *nam
 		}
 		case CONST_INIT_ARRAY_VALUE_FRAGMENT:
 		{
-			printf(" [%llu] ->\n", init->single_array_index.index);
+			printf(" [%llu] ->\n", (unsigned long long)init->single_array_index.index);
 			debug_dump_const_initializer(init->single_array_index.element, "", indent + 1);
 			return;
 		}
@@ -2411,7 +2411,7 @@ static void debug_dump_const_initializer(ConstInitializer *init, const char *nam
 			}
 			return;
 		case CONST_INIT_ARRAY_RANGE_ZERO:
-			printf(" [%llu .. %llu] = 0\n", init->array_range_zero.low, init->array_range_zero.high);
+			printf(" [%llu .. %llu] = 0\n", (unsigned long long)init->array_range_zero.low, (unsigned long long)init->array_range_zero.high);
 			return;
 	}
 	UNREACHABLE
