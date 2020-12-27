@@ -222,6 +222,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
 void llvm_emit_defer(GenContext *c, AstId defer_start, AstId defer_end);
 void llvm_emit_extern_decl(GenContext *context, Decl *decl);
+LLVMValueRef llvm_emit_const_aggregate(GenContext *c, Expr *expr, bool *modified);
 LLVMValueRef llvm_emit_is_no_error(GenContext *c, LLVMValueRef error);
 LLVMValueRef llvm_emit_load_aligned(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, unsigned alignment, const char *name);
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);

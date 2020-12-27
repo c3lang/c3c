@@ -87,10 +87,11 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				pieces[count++] = llvm_emit_const_initializer(c, const_init->split_const.low, modified);
 			}
 			pieces[count++] = llvm_emit_const_initializer(c, const_init->split_const.mid, modified);
-			if (const_init->split_const.low)
+			if (const_init->split_const.hi)
 			{
-				pieces[count++] = llvm_emit_const_initializer(c, const_init->split_const.low, modified);
+				pieces[count++] = llvm_emit_const_initializer(c, const_init->split_const.hi, modified);
 			}
+			if (count == 1) return pieces[0];
 			return LLVMConstStructInContext(c->context, pieces, count, true);
 		}
 		case CONST_INIT_ARRAY_VALUE_FRAGMENT:

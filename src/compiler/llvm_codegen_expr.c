@@ -524,33 +524,8 @@ static inline void gencontext_emit_cast_expr(GenContext *context, BEValue *be_va
 	               expr->cast_expr.expr->type->canonical);
 }
 
-static LLVMValueRef llvm_emit_initializer_list_expr_const(GenContext *c, Expr *expr);
+static LLVMValueRef llvm_emit_initializer_list_expr_const(GenContext *c, Expr *expr, bool *modified);
 
-static void gencontext_construct_const_value(GenContext *context, BEValue *be_value, Expr *expr)
-{
-	if (expr->expr_kind == EXPR_INITIALIZER_LIST)
-	{
-		llvm_emit_initializer_list_expr_const(context, expr);
-		return;
-	}
-	llvm_emit_expr(context, be_value, expr);
-}
-
-static void gencontext_construct_const_union_struct(GenContext *context, BEValue *be_value, Type *canonical, Expr *value)
-{
-	LLVMValueRef values[2];
-	gencontext_construct_const_value(context, be_value, value);
-	values[0] = llvm_value_rvalue_store(context, be_value);
-	unsigned size_diff = type_size(canonical) - type_size(value->type);
-	if (size_diff > 0)
-	{
-		LLVMTypeRef size = LLVMArrayType(llvm_get_type(context, type_char), size_diff);
-		values[1] = LLVMConstNull(size);
-	}
-	llvm_value_set(be_value,
-	               LLVMConstStructInContext(context->context, values, size_diff > 0 ? 2 : 1, false),
-	               canonical);
-}
 
 static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **current_element_ptr, LLVMValueRef parent, DesignatorElement **last_element_ptr, Expr *value)
 {
@@ -613,15 +588,16 @@ static LLVMValueRef llvm_recursive_set_const_value(GenContext *context, Designat
 }
 
 
-static LLVMValueRef llvm_emit_initializer_list_expr_const(GenContext *c, Expr *expr)
+static LLVMValueRef llvm_emit_initializer_list_expr_const(GenContext *c, Expr *expr, bool *modified)
 {
 	Type *canonical = expr->type->canonical;
 	LLVMTypeRef type = llvm_get_type(c, canonical);
 
 	if (expr->initializer_expr.init_type == INITIALIZER_CONST)
 	{
-		return LLVMConstNull(type);
+		return llvm_emit_const_aggregate(c, expr, modified);
 	}
+
 
 	bool is_error = expr->type->canonical->type_kind == TYPE_ERRTYPE;
 
@@ -650,7 +626,7 @@ static LLVMValueRef llvm_emit_initializer_list_expr_const(GenContext *c, Expr *e
 			Expr *element = elements[i];
 			if (element->expr_kind == EXPR_INITIALIZER_LIST)
 			{
-				value = LLVMConstInsertValue(value, llvm_emit_initializer_list_expr_const(c, element), &i, 1);
+				value = LLVMConstInsertValue(value, llvm_emit_initializer_list_expr_const(c, element, modified), &i, 1);
 				continue;
 			}
 			BEValue be_value;
@@ -676,11 +652,12 @@ static LLVMValueRef llvm_emit_initializer_list_expr_const(GenContext *c, Expr *e
 
 static inline void llvm_emit_initialize_reference_small_const(GenContext *c, BEValue *ref, Expr *expr)
 {
+	bool modified = false;
 	// First create the constant value.
-	LLVMValueRef value = llvm_emit_initializer_list_expr_const(c, expr);
+	LLVMValueRef value = llvm_emit_initializer_list_expr_const(c, expr, &modified);
 
 	// Create a global const.
-	LLVMTypeRef type = llvm_get_type(c, expr->type);
+	LLVMTypeRef type = modified ? LLVMTypeOf(value) : llvm_get_type(c, expr->type);
 	LLVMValueRef global_copy = LLVMAddGlobal(c->module, type, "");
 
 	// Set a nice alignment

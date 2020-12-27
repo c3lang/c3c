@@ -2031,9 +2031,16 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 		{
 			return NULL;
 		}
-		int64_t index = sema_analyse_designator_index(context, element->index_expr);
+		ByteSize len = type_lowered->array.len;
+		ArrayIndex index = sema_analyse_designator_index(context, element->index_expr);
 		if (index < 0)
 		{
+			*did_report_error = true;
+			return NULL;
+		}
+		if (index >= (ArrayIndex)len)
+		{
+			SEMA_ERROR(element->index_expr, "The index may must be less than the array length (which was %llu).", (unsigned long long)len);
 			*did_report_error = true;
 			return NULL;
 		}
@@ -2053,8 +2060,16 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 				&& index > end_index)
 			{
 				SEMA_ERROR(element->index_end_expr, "End index must be greater than start index.");
-				return false;
+				*did_report_error = true;
+				return NULL;
 			}
+			if (end_index > (ArrayIndex)len)
+			{
+				*did_report_error = true;
+				SEMA_ERROR(element->index_expr, "The index may must be less than the array length (which was %llu).", (unsigned long long)len);
+				return NULL;
+			}
+
 			element->index_end = end_index;
 		}
 		return type_lowered->array.base;
@@ -2442,8 +2457,6 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 	{
 		ConstInitializer *const_init = MALLOC(sizeof(ConstInitializer));
 		sema_create_const_initializer(const_init, initializer);
-		printf("---------------------------------\n");
-		debug_dump_const_initializer(const_init, "TOP", 0);
 		initializer->initializer_expr.init_type = INITIALIZER_CONST;
 		initializer->initializer_expr.initializer = const_init;
 		return true;
