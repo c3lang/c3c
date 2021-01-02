@@ -47,7 +47,10 @@ static void gencontext_init(GenContext *context, Context *ast_context)
 
 static void gencontext_destroy(GenContext *context)
 {
+	free(context->ir_filename);
+	free(context->object_filename);
 	LLVMContextDispose(context->context);
+	free(context);
 }
 
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, unsigned int align, bool bitcast)
@@ -245,8 +248,7 @@ void gencontext_emit_object_file(GenContext *context)
 	LLVMDisposeMessage(layout);
 
 	// Generate .o or .obj file
-	char *filename = strformat("%.*s.o", (int)strlen(context->ast_context->file->name) - 3, context->ast_context->file->name);
-	if (LLVMTargetMachineEmitToFile(target_machine(), context->module, filename, LLVMObjectFile, &err))
+	if (LLVMTargetMachineEmitToFile(target_machine(), context->module, context->object_filename, LLVMObjectFile, &err))
 	{
 		error_exit("Could not emit object file: %s", err);
 	}
@@ -255,8 +257,7 @@ void gencontext_emit_object_file(GenContext *context)
 void gencontext_print_llvm_ir(GenContext *context)
 {
 	char *err = NULL;
-	char *filename = strformat("%.*s.ll", (int)strlen(context->ast_context->file->name) - 3, context->ast_context->file->name);
-	if (LLVMPrintModuleToFile(context->module, filename, &err))
+	if (LLVMPrintModuleToFile(context->module, context->ir_filename, &err))
 	{
 		error_exit("Could not emit ir to file: %s", err);
 	}
@@ -671,53 +672,10 @@ static void gencontext_emit_decl(GenContext *context, Decl *decl)
 	}
 }
 
-void llvm_codegen(Context *context)
+void llvm_codegen(void *context)
 {
-	assert(intrinsics_setup);
-	GenContext gen_context;
-	gencontext_init(&gen_context, context);
-	gencontext_begin_module(&gen_context);
-	// EmitDeferred()
-	VECEACH(context->external_symbol_list, i)
-	{
-		llvm_emit_extern_decl(&gen_context, context->external_symbol_list[i]);
-	}
-	VECEACH(context->methods, i)
-	{
-		llvm_emit_function_decl(&gen_context, context->methods[i]);
-	}
-	VECEACH(context->functions, i)
-	{
-		llvm_emit_function_decl(&gen_context, context->functions[i]);
-	}
-	VECEACH(context->types, i)
-	{
-		gencontext_emit_decl(&gen_context, context->types[i]);
-	}
-	VECEACH(context->vars, i)
-	{
-		gencontext_emit_global_variable_definition(&gen_context, context->vars[i]);
-	}
-	VECEACH(context->functions, i)
-	{
-		Decl *decl = context->functions[i];
-		if (decl->func.body) llvm_emit_function_body(&gen_context, decl);
-	}
-	VECEACH(context->methods, i)
-	{
-		Decl *decl = context->methods[i];
-		if (decl->func.body) llvm_emit_function_body(&gen_context, decl);
-	}
-
-	if (llvm_use_debug(&gen_context)) LLVMDIBuilderFinalize(gen_context.debug.builder);
-
-	// If it's in test, then we want to serialize the IR before it is optimized.
-	if (build_options.test_mode)
-	{
-		gencontext_print_llvm_ir(&gen_context);
-		gencontext_verify_ir(&gen_context);
-	}
-
+	GenContext *gen_context = context;
+	LLVMModuleRef module = gen_context->module;
 	// Starting from here we could potentially thread this:
 	LLVMPassManagerBuilderRef pass_manager_builder = LLVMPassManagerBuilderCreate();
 	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, build_options.optimization_level);
@@ -725,7 +683,7 @@ void llvm_codegen(Context *context)
 	LLVMPassManagerBuilderSetDisableUnrollLoops(pass_manager_builder, build_options.optimization_level == OPTIMIZATION_NONE);
 	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, get_inlining_threshold());
 	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
-	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(gen_context.module);
+	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(module);
 	LLVMAddAnalysisPasses(target_machine(), function_pass_manager);
 	LLVMAddAnalysisPasses(target_machine(), pass_manager);
 	LLVMPassManagerBuilderPopulateModulePassManager(pass_manager_builder, pass_manager);
@@ -739,7 +697,7 @@ void llvm_codegen(Context *context)
 
 	// Run function passes
 	LLVMInitializeFunctionPassManager(function_pass_manager);
-	LLVMValueRef current_function = LLVMGetFirstFunction(gen_context.module);
+	LLVMValueRef current_function = LLVMGetFirstFunction(module);
 	while (current_function)
 	{
 		LLVMRunFunctionPassManager(function_pass_manager, current_function);
@@ -749,20 +707,70 @@ void llvm_codegen(Context *context)
 	LLVMDisposePassManager(function_pass_manager);
 
 	// Run module pass
-	LLVMRunPassManager(pass_manager, gen_context.module);
+	LLVMRunPassManager(pass_manager, module);
 	LLVMDisposePassManager(pass_manager);
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
 	if (build_options.emit_llvm)
 	{
-		gencontext_print_llvm_ir(&gen_context);
-		gencontext_verify_ir(&gen_context);
+		gencontext_print_llvm_ir(gen_context);
+		gencontext_verify_ir(gen_context);
 	}
 
-	if (build_options.emit_bitcode) gencontext_emit_object_file(&gen_context);
+	if (build_options.emit_bitcode) gencontext_emit_object_file(gen_context);
 
-	gencontext_end_module(&gen_context);
-	gencontext_destroy(&gen_context);
+	gencontext_end_module(gen_context);
+	gencontext_destroy(gen_context);
+
+
+}
+void *llvm_gen(Context *context)
+{
+	assert(intrinsics_setup);
+	GenContext *gen_context = calloc(sizeof(GenContext), 1);
+	gencontext_init(gen_context, context);
+	gencontext_begin_module(gen_context);
+	// EmitDeferred()
+	VECEACH(context->external_symbol_list, i)
+	{
+		llvm_emit_extern_decl(gen_context, context->external_symbol_list[i]);
+	}
+	VECEACH(context->methods, i)
+	{
+		llvm_emit_function_decl(gen_context, context->methods[i]);
+	}
+	VECEACH(context->functions, i)
+	{
+		llvm_emit_function_decl(gen_context, context->functions[i]);
+	}
+	VECEACH(context->types, i)
+	{
+		gencontext_emit_decl(gen_context, context->types[i]);
+	}
+	VECEACH(context->vars, i)
+	{
+		gencontext_emit_global_variable_definition(gen_context, context->vars[i]);
+	}
+	VECEACH(context->functions, i)
+	{
+		Decl *decl = context->functions[i];
+		if (decl->func.body) llvm_emit_function_body(gen_context, decl);
+	}
+	VECEACH(context->methods, i)
+	{
+		Decl *decl = context->methods[i];
+		if (decl->func.body) llvm_emit_function_body(gen_context, decl);
+	}
+
+	if (llvm_use_debug(gen_context)) LLVMDIBuilderFinalize(gen_context->debug.builder);
+
+	// If it's in test, then we want to serialize the IR before it is optimized.
+	if (build_options.test_mode)
+	{
+		gencontext_print_llvm_ir(gen_context);
+		gencontext_verify_ir(gen_context);
+	}
+	return gen_context;
 }
 
 void llvm_attribute_add_int(GenContext *context, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, uint64_t val, int index)

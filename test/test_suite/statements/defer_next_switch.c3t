@@ -12,7 +12,7 @@ func void test(int i)
     {
         case 1:
             defer test2();
-            if (b) next;
+            if (b) nextcase;
             test1();
         case 2:
             test1();

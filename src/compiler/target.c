@@ -480,7 +480,6 @@ void target_setup(void)
 			break;
 		default:
 			FATAL_ERROR("Unsupported architecture.");
-			break;
 	}
 
 	build_target.int_128 = os_target_supports_int128(build_target.os, build_target.arch);

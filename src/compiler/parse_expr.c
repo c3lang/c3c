@@ -580,7 +580,7 @@ static Expr *parse_else_expr(Context *context, Expr *left)
 		case TOKEN_RETURN:
 		case TOKEN_BREAK:
 		case TOKEN_CONTINUE:
-		case TOKEN_NEXT:
+		case TOKEN_NEXTCASE:
 		{
 			Ast *ast = TRY_AST_OR(parse_jump_stmt_no_eos(context), poisoned_expr);
 			else_expr->else_expr.is_jump = true;

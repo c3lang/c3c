@@ -437,6 +437,7 @@ typedef struct _Decl
 	bool is_packed : 1;
 	bool is_opaque : 1;
 	bool needs_additional_pad : 1;
+	bool is_substruct : 1;
 	void *backend_ref;
 	const char *cname;
 	AlignSize alignment;
@@ -1323,9 +1324,8 @@ extern const char *kw_kindof;
 extern const char *kw_nameof;
 extern const char *kw_qnameof;
 extern const char *kw_len;
+extern const char *kw_inline;
 extern const char *kw_ordinal;
-extern const char *kw___alloc;
-extern const char *kw___free;
 extern const char *kw___round;
 extern const char *kw___ceil;
 extern const char *kw___trunc;
@@ -1392,7 +1392,8 @@ CastKind cast_to_bool_kind(Type *type);
 
 bool cast_implicitly_to_runtime(Context *context, Expr *expr);
 
-void llvm_codegen(Context *context);
+void llvm_codegen(void *module);
+void *llvm_gen(Context *context);
 void llvm_codegen_setup();
 
 void header_gen(Context *context);
@@ -1697,6 +1698,12 @@ static inline bool type_is_pointer(Type *type)
 static inline uint64_t aligned_offset(uint64_t offset, uint64_t alignment)
 {
 	return ((offset + alignment - 1) / alignment) * alignment;
+}
+
+static inline bool type_is_substruct(Type *type)
+{
+	assert(type == type->canonical);
+	return type->type_kind == TYPE_STRUCT && type->decl->is_substruct;
 }
 
 static inline bool type_is_float(Type *type)

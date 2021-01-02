@@ -45,9 +45,8 @@ const char *kw_nameof;
 const char *kw_qnameof;
 const char *kw_kindof;
 const char *kw_len;
+const char *kw_inline;
 const char *kw_ordinal;
-const char *kw___alloc;
-const char *kw___free;
 const char *kw___round;
 const char *kw___ceil;
 const char *kw___trunc;
@@ -85,6 +84,7 @@ void symtab_init(uint32_t capacity)
 	// Init some constant idents
 	TokenType type = TOKEN_IDENT;
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
+	kw_inline = KW_DEF("inline");
 	kw_main = KW_DEF("main");
 	kw_sizeof = KW_DEF("sizeof");
 	kw_alignof = KW_DEF("alignof");
@@ -95,14 +95,12 @@ void symtab_init(uint32_t capacity)
 	kw_len = KW_DEF("len");
 	kw_align = KW_DEF("align");
 	kw_ordinal = KW_DEF("ordinal");
-	kw___alloc = KW_DEF("__alloc");
-	kw___free = KW_DEF("__free");
 	kw___round = KW_DEF("__round");
 	kw___sqrt = KW_DEF("__sqrt");
 	kw___trunc = KW_DEF("__trunc");
 	kw___ceil = KW_DEF("__ceil");
 
-	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("inline");
+	attribute_list[ATTRIBUTE_INLINE] = kw_inline;
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
 	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("stdcall");
 	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("noreturn");

@@ -240,8 +240,8 @@ const char *token_type_to_string(TokenType type)
 			return "macro";
 		case TOKEN_MODULE:
 			return "module";
-		case TOKEN_NEXT:
-			return "next";
+		case TOKEN_NEXTCASE:
+			return "nextcase";
 		case TOKEN_NULL:
 			return "null";
 		case TOKEN_PUBLIC:

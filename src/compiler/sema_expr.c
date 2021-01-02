@@ -26,6 +26,16 @@ static inline bool sema_cast_rvalue(Context *context, Type *to, Expr *expr);
 #define MACRO_COPY_AST_LIST(x) x = ast_copy_list_from_macro(context, x)
 #define MACRO_COPY_AST(x) x = ast_copy_from_macro(context, x)
 
+static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
+{
+	Expr *embedded_struct = expr_new(EXPR_ACCESS, parent->span);
+	embedded_struct->resolve_status = RESOLVE_DONE;
+	embedded_struct->access_expr.parent = parent;
+	embedded_struct->access_expr.ref = parent_decl->strukt.members[0];
+	embedded_struct->type = embedded_struct->access_expr.ref->type;
+	return embedded_struct;
+}
+
 static inline bool sema_expr_analyse_binary(Context *context, Type *to, Expr *expr);
 static inline bool sema_analyse_expr_value(Context *context, Type *to, Expr *expr);
 static inline bool expr_const_int_valid(Expr *expr, Type *type)
@@ -696,7 +706,7 @@ static inline int find_index_of_named_parameter(Decl **func_params, Expr *expr)
 	{
 		if (func_params[i]->name == name) return (int)i;
 	}
-	SEMA_ERROR(expr, "There's no parameter with the name '%s', if you want an assignment expression, enclose it in ().", name);
+	SEMA_ERROR(expr, "There's no parameter with the name '%s'.", name);
 	return -1;
 }
 
@@ -736,41 +746,6 @@ static inline bool sema_expr_analyse_intrinsic_invocation(Context *context, Expr
 	if (decl->name == kw___ceil || decl->name == kw___trunc || decl->name == kw___round || decl->name == kw___sqrt)
 	{
 		return sema_expr_analyse_intrinsic_fp_invocation(context, expr, decl, to);
-	}
-	if (decl->name == kw___alloc)
-	{
-		if (to && type_is_pointer(to))
-		{
-			expr->type = to;
-		}
-		else
-		{
-			expr->type = type_voidptr;
-		}
-		if (arguments != 1)
-		{
-			SEMA_ERROR(expr, "Expected 1 argument to intrinsic __alloc.");
-			return false;
-		}
-		if (!sema_analyse_expr_of_required_type(context, type_usize, expr->call_expr.arguments[0], false)) return false;
-		return true;
-	}
-	if (decl->name == kw___free)
-	{
-		expr->type = type_void;
-		if (arguments != 1)
-		{
-			SEMA_ERROR(expr, "Expected 1 argument to intrinsic __free.");
-			return false;
-		}
-		Expr *pointer_expr = expr->call_expr.arguments[0];
-		if (!sema_analyse_expr(context, NULL, pointer_expr)) return false;
-		if (pointer_expr->type->type_kind != TYPE_POINTER)
-		{
-			// TODO vararrays - handle them.
-			SEMA_ERROR(expr, "Expected expected to free a pointer type.");
-		}
-		return true;
 	}
 	UNREACHABLE
 }
@@ -1351,19 +1326,38 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 	return true;
 }
 
-static inline bool sema_expr_analyse_subscript_after_parent_resolution(Context *context, Type *parent, Expr *expr)
+static Type *sema_expr_find_indexable_type_recursively(Type **type, Expr **parent)
 {
+	while (1)
+	{
+		Type *inner_type = type_get_indexed_type(*type);
+		if (!inner_type && type_is_substruct(*type))
+		{
+			Expr *embedded_struct = expr_access_inline_member(*parent, (*type)->decl);
+			*type = embedded_struct->type->canonical;
+			*parent = embedded_struct;
+			continue;
+		}
+		return inner_type;
+	}
+}
+static inline bool sema_expr_analyse_subscript(Context *context, Expr *expr)
+{
+	if (!sema_analyse_expr(context, NULL, expr->subscript_expr.expr)) return false;
+	expr->failable = expr->subscript_expr.expr->failable;
 	assert(expr->expr_kind == EXPR_SUBSCRIPT);
 	Expr *subscripted = expr->subscript_expr.expr;
-	Type *type = parent ? parent->canonical : subscripted->type->canonical;
+	Type *type = subscripted->type->canonical;
 	Expr *index = expr->subscript_expr.index;
-	Type *inner_type = type_get_indexed_type(type);
+	Type *current_type = type;
+	Expr *current_expr = subscripted;
+
+	Type *inner_type = sema_expr_find_indexable_type_recursively(&current_type, &current_expr);
 	if (!inner_type)
 	{
-		SEMA_ERROR((parent ? expr : subscripted), "Cannot index '%s'.", type_to_error_string(type));
+		SEMA_ERROR(subscripted, "Cannot index '%s'.", type_to_error_string(type));
 		return false;
 	}
-
 	if (!sema_analyse_expr(context, type_isize, index)) return false;
 
 	expr->constant = index->constant & subscripted->constant;
@@ -1373,35 +1367,35 @@ static inline bool sema_expr_analyse_subscript_after_parent_resolution(Context *
 	if (!expr_cast_to_index(context, index)) return false;
 
 	// Check range
-	if (!expr_check_index_in_range(context, type, index, false, expr->subscript_expr.from_back)) return false;
+	if (!expr_check_index_in_range(context, current_type, index, false, expr->subscript_expr.from_back)) return false;
 
+	expr->subscript_expr.expr = current_expr;
 	expr->failable |= index->failable;
 	expr->type = inner_type;
 	return true;
 }
 
-static inline bool sema_expr_analyse_subscript(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_slice(Context *context, Expr *expr)
 {
-	if (!sema_analyse_expr(context, NULL, expr->subscript_expr.expr)) return false;
-	expr->failable = expr->subscript_expr.expr->failable;
-	return sema_expr_analyse_subscript_after_parent_resolution(context, NULL, expr);
-}
-
-static inline bool sema_expr_analyse_slice_after_parent_resolution(Context *context, Type *parent, Expr *expr)
-{
+	if (!sema_analyse_expr(context, NULL, expr->slice_expr.expr)) return false;
+	expr->failable = expr->slice_expr.expr->failable;
 	assert(expr->expr_kind == EXPR_SLICE);
 	Expr *subscripted = expr->slice_expr.expr;
 	expr->pure = subscripted->pure;
 	expr->constant = subscripted->constant;
-	Type *type = parent ? parent->canonical : subscripted->type->canonical;
+	Type *type = subscripted->type->canonical;
 	Expr *start = expr->slice_expr.start;
 	Expr *end = expr->slice_expr.end;
-	Type *inner_type = type_get_indexed_type(type);
+
+	Expr *current_expr = subscripted;
+
+	Type *inner_type = sema_expr_find_indexable_type_recursively(&type, &current_expr);
 	if (!inner_type)
 	{
-		SEMA_ERROR((parent ? expr : subscripted), "Cannot slice '%s'.", type_to_error_string(type));
+		SEMA_ERROR(subscripted, "Cannot index '%s'.", type_to_error_string(subscripted->type));
 		return false;
 	}
+	expr->slice_expr.expr = current_expr;
 
 	if (!sema_analyse_expr(context, type_isize, start)) return false;
 	expr->pure &= start->pure;
@@ -1477,13 +1471,6 @@ static inline bool sema_expr_analyse_slice_after_parent_resolution(Context *cont
 	expr->failable |= start->failable;
 	expr->type = type_get_subarray(inner_type);
 	return true;
-}
-
-static inline bool sema_expr_analyse_slice(Context *context, Expr *expr)
-{
-	if (!sema_analyse_expr(context, NULL, expr->slice_expr.expr)) return false;
-	expr->failable = expr->slice_expr.expr->failable;
-	return sema_expr_analyse_slice_after_parent_resolution(context, NULL, expr);
 }
 
 static inline void insert_access_deref(Expr *expr)
@@ -1855,6 +1842,7 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 	return false;
 }
 
+
 static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 {
 	Expr *parent = expr->access_expr.parent;
@@ -1881,8 +1869,13 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	if (is_pointer)
 	{
 		type = type->pointer;
+		if (!sema_cast_rvalue(context, NULL, parent)) return false;
+		insert_access_deref(expr);
+		parent = expr->access_expr.parent;
 	}
 	const char *kw = TOKSTR(expr->access_expr.sub_element);
+	Expr *current_parent = parent;
+CHECK_DEEPER:
 	switch (type->type_kind)
 	{
 		case TYPE_SUBARRAY:
@@ -1922,22 +1915,28 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 			SEMA_ERROR(expr, "Cannot access '%s' on '%s'", TOKSTR(expr->access_expr.sub_element), type_to_error_string(parent_type));
 			return false;
 	}
+
 	Decl *decl = type->decl;
 	context_push_scope(context);
 	add_members_to_context(context, decl);
 	Decl *member = sema_resolve_symbol_in_current_dynamic_scope(context, kw);
-
 	context_pop_scope(context);
+
+
 	if (!member)
 	{
+		// We have a potential embedded struct check:
+		if (type_is_substruct(type))
+		{
+			Expr *embedded_struct = expr_access_inline_member(parent, type->decl);
+			current_parent = embedded_struct;
+			type = embedded_struct->type->canonical;
+			goto CHECK_DEEPER;
+		}
 		SEMA_ERROR(expr, "There is no field or method '%s.%s'.", decl->name, kw);
 		return false;
 	}
-	if (is_pointer)
-	{
-		if (!sema_cast_ident_rvalue(context, NULL, expr->access_expr.parent)) return false;
-		insert_access_deref(expr);
-	}
+	expr->access_expr.parent = current_parent;
 	expr->constant = expr->access_expr.parent->constant;
 	expr->pure = expr->access_expr.parent->pure;
 

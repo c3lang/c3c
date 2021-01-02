@@ -125,7 +125,10 @@ static inline LLVMTypeRef llvm_type_from_ptr(GenContext *context, Type *type)
 	{
 		return type->backend_type = llvm_get_type(context, type->canonical);
 	}
-
+	if (type == type_voidptr)
+	{
+		return type->backend_type = llvm_get_ptr_type(context, type_byte);
+	}
 	return type->backend_type = LLVMPointerType(llvm_get_type(context, type->pointer), /** TODO **/0);
 }
 

@@ -1437,7 +1437,7 @@ static void gencontext_emit_slice_assign(GenContext *c, BEValue *be_value, Expr 
 	// We will be replacing the slice assign with code that roughly looks like this:
 	// size_t end = slice_end;
 	// size_t slice_current = slice_start;
-	// while (slice_current < end) pointer[slice_current++] = value;
+	// while (slice_current <= end) pointer[slice_current++] = value;
 
 	// First, find the value assigned.
 	Expr *assigned_value = expr->slice_assign_expr.right;
@@ -1470,7 +1470,7 @@ static void gencontext_emit_slice_assign(GenContext *c, BEValue *be_value, Expr 
 	LLVMValueRef offset = LLVMBuildPhi(c->builder, llvm_get_type(c, start_type), "");
 
 	// Check if we're not at the end.
-	LLVMValueRef not_at_end = llvm_emit_int_comparison(c, start_type, end_type, offset, end_index, BINARYOP_LT);
+	LLVMValueRef not_at_end = llvm_emit_int_comparison(c, start_type, end_type, offset, end_index, BINARYOP_LE);
 
 	// If jump to the assign block if we're not at the end index.
 	BEValue value;
@@ -2405,26 +2405,6 @@ void gencontext_emit_call_intrinsic_expr(GenContext *c, BEValue *be_value, Expr 
 		llvm_emit_fp_intrinsic_expr(c, intrinsic_id_ceil, be_value, expr);
 		return;
 	}
-	if (function_decl->name == kw___alloc)
-	{
-		unsigned arguments = vec_size(expr->call_expr.arguments);
-		BEValue size_value;
-		llvm_emit_expr(c, &size_value, expr->call_expr.arguments[0]);
-		llvm_value_rvalue(c, &size_value);
-		LLVMValueRef result = LLVMBuildArrayMalloc(c->builder, llvm_get_type(c, type_byte), llvm_value_rvalue_store(c, &size_value), "");
-		result = LLVMBuildBitCast(c->builder, result, llvm_get_type(c, expr->type), "");
-		llvm_value_set(be_value, result, expr->type);
-		return;
-	}
-	if (function_decl->name == kw___free)
-	{
-		unsigned arguments = vec_size(expr->call_expr.arguments);
-		BEValue size_value;
-		llvm_emit_expr(c, &size_value, expr->call_expr.arguments[0]);
-		llvm_value_rvalue(c, &size_value);
-		LLVMBuildFree(c->builder, llvm_value_rvalue_store(c, &size_value));
-		return;
-	}
 	UNREACHABLE
 }
 
@@ -2539,7 +2519,7 @@ void llvm_emit_parameter(GenContext *context, LLVMValueRef **args, ABIArgInfo *i
 	}
 
 }
-void gencontext_emit_call_expr(GenContext *context, BEValue *be_value, Expr *expr)
+void llvm_emit_call_expr(GenContext *context, BEValue *be_value, Expr *expr)
 {
 	printf("Optimize call return\n");
 	FunctionSignature *signature;
@@ -3041,7 +3021,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			gencontext_emit_access_addr(c, value, expr);
 			return;
 		case EXPR_CALL:
-			gencontext_emit_call_expr(c, value, expr);
+			llvm_emit_call_expr(c, value, expr);
 			return;
 		case EXPR_GROUP:
 			expr = expr->group_expr;

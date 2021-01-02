@@ -18,11 +18,16 @@ extern func int fseek(void*, long, int);
 extern func void* fopen(char *, char *);
 */
 
+struct File
+{
+    void *file;
+}
+
 extern func int _puts(char* message) @cname("puts");
 extern func int printf(char* message, ...);
 extern func int _putchar(char c) @cname("putchar");
 
-
+extern File *__stdinp;
 
 public func int putchar(char c) @inline
 {
@@ -46,10 +51,6 @@ public func int println(char *message) @inline
 }
 
 /*
-struct File
-{
-    void *file;
-}
 
 enum Seek
 {

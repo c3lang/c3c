@@ -1014,7 +1014,7 @@ static inline bool parse_attributes(Context *context, Decl *parent_decl)
  *  | type_expression IDENT '=' initializer
  *  ;
  */
-static inline bool parse_param_decl(Context *context, Visibility parent_visibility, Decl*** parameters, bool type_only)
+static inline bool parse_param_decl(Context *context, Visibility parent_visibility, Decl*** parameters, bool require_name)
 {
 	TypeInfo *type = TRY_TYPE_OR(parse_type(context), false);
 	Decl *param = decl_new_var(context->tok.id, type, VARDECL_PARAM, parent_visibility);
@@ -1026,7 +1026,7 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 
 	const char *name = param->name;
 
-	if (!name && !type_only)
+	if (!name && require_name)
 	{
 		if (!TOKEN_IS(TOKEN_COMMA) && !TOKEN_IS(TOKEN_RPAREN))
 		{
@@ -1038,7 +1038,7 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 			sema_error_at_prev_end(context->tok, "Unexpected end of the parameter list, did you forget an ')'?");
 			return false;
 		}
-		SEMA_ERROR(type, "The function parameter must be named.");
+		SEMA_ERROR(type, "The parameter must be named.");
 		return false;
 	}
 	if (name && try_consume(context, TOKEN_EQ))
@@ -1086,7 +1086,7 @@ static inline bool parse_opt_parameter_type_list(Context *context, Visibility pa
 		}
 		else
 		{
-			if (!parse_param_decl(context, parent_visibility, &(signature->params), is_interface)) return false;
+			if (!parse_param_decl(context, parent_visibility, &(signature->params), false)) return false;
 		}
 		if (!try_consume(context, TOKEN_COMMA))
 		{
@@ -1121,7 +1121,6 @@ static inline bool parse_opt_parameter_type_list(Context *context, Visibility pa
  */
 bool parse_struct_body(Context *context, Decl *parent)
 {
-
 	CONSUME_OR(TOKEN_LBRACE, false);
 
 	assert(decl_is_struct_type(parent));
@@ -1161,6 +1160,23 @@ bool parse_struct_body(Context *context, Decl *parent)
 			}
 			continue;
 		}
+		bool was_inline = false;
+		if (token_type == TOKEN_IDENT && TOKSTR(context->tok) == kw_inline)
+		{
+			if (parent->decl_kind != DECL_STRUCT)
+			{
+				SEMA_TOKEN_ERROR(context->tok, "Only structs may have 'inline' elements, did you make a mistake?");
+				return false;
+			}
+			if (index > 0)
+			{
+				SEMA_TOKID_ERROR(context->prev_tok, "Only the first element may be 'inline', did you order your fields wrong?");
+				return false;
+			}
+			parent->is_substruct = true;
+			was_inline = true;
+			advance(context);
+		}
 		TypeInfo *type = TRY_TYPE_OR(parse_type(context), false);
 		while (1)
 		{
@@ -1175,6 +1191,11 @@ bool parse_struct_body(Context *context, Decl *parent)
 			}
 			advance(context);
 			if (!try_consume(context, TOKEN_COMMA)) break;
+			if (was_inline)
+			{
+				SEMA_ERROR(member, "'Inline' can only be applied to a single member, so please define it on its own line.");
+				return false;
+			}
 		}
 		CONSUME_OR(TOKEN_EOS, false);
 	}
@@ -1575,7 +1596,7 @@ static inline bool parse_enum_spec(Context *context, TypeInfo **type_ref, Decl**
 	if (!try_consume(context, TOKEN_LPAREN)) return true;
 	while (!try_consume(context, TOKEN_RPAREN))
 	{
-		if (!parse_param_decl(context, parent_visibility, parameters_ref, false)) return false;
+		if (!parse_param_decl(context, parent_visibility, parameters_ref, true)) return false;
 		if (!try_consume(context, TOKEN_COMMA))
 		{
 			EXPECT_OR(TOKEN_RPAREN, false);
@@ -1698,7 +1719,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	func->func.function_signature.rtype = return_type;
 	func->func.function_signature.failable = try_consume(context, TOKEN_BANG);
 	SourceSpan start = source_span_from_token_id(context->tok.id);
-	bool had_error;
+	bool had_error = false;
 	Path *path = parse_path_prefix(context, &had_error);
 	if (had_error) return poisoned_decl;
 	if (path || TOKEN_IS(TOKEN_TYPE_IDENT))

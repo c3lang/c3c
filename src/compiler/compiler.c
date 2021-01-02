@@ -80,6 +80,8 @@ void compiler_compile(BuildTarget *target)
 	{
 		vec_add(target->sources, strformat("%s/std/builtin.c3", compiler.lib_dir));
 		vec_add(target->sources, strformat("%s/std/io.c3", compiler.lib_dir));
+		vec_add(target->sources, strformat("%s/std/mem.c3", compiler.lib_dir));
+		vec_add(target->sources, strformat("%s/std/array.c3", compiler.lib_dir));
 	}
 	VECEACH(target->sources, i)
 	{
@@ -90,38 +92,39 @@ void compiler_compile(BuildTarget *target)
 		vec_add(contexts, context);
 		parse_file(context);
 	}
+	unsigned source_count = vec_size(contexts);
 	assert(contexts);
-	VECEACH(contexts, i)
+	for (unsigned i = 0; i < source_count; i++)
 	{
 		sema_analysis_pass_process_imports(contexts[i]);
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
 
-	VECEACH(contexts, i)
+	for (unsigned i = 0; i < source_count; i++)
 	{
 		sema_analysis_pass_register_globals(contexts[i]);
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
 
-	VECEACH(contexts, i)
+	for (unsigned i = 0; i < source_count; i++)
 	{
 		sema_analysis_pass_conditional_compilation(contexts[i]);
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
 
-	VECEACH(contexts, i)
+	for (unsigned i = 0; i < source_count; i++)
 	{
 		sema_analysis_pass_decls(contexts[i]);
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
 
-	VECEACH(contexts, i)
+	for (unsigned i = 0; i < source_count; i++)
 	{
 		sema_analysis_pass_ct_assert(contexts[i]);
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
 
-	VECEACH(contexts, i)
+	for (unsigned i = 0; i < source_count; i++)
 	{
 		sema_analysis_pass_functions(contexts[i]);
 	}
@@ -129,7 +132,7 @@ void compiler_compile(BuildTarget *target)
 
 	if (build_options.command == COMMAND_GENERATE_HEADERS)
 	{
-		VECEACH(contexts, i)
+		for (unsigned i = 0; i < source_count; i++)
 		{
 			Context *context = contexts[i];
 			header_gen(context);
@@ -137,11 +140,14 @@ void compiler_compile(BuildTarget *target)
 		return;
 	}
 
+
 	llvm_codegen_setup();
-	VECEACH(contexts, i)
+
+	void **gen_contexts = malloc(source_count * sizeof(void*));
+	for (unsigned i = 0; i < source_count; i++)
 	{
 		Context *context = contexts[i];
-		llvm_codegen(context);
+		gen_contexts[i] = llvm_gen(context);
 	}
 
 	printf("-- AST/EXPR INFO -- \n");
@@ -152,7 +158,23 @@ void compiler_compile(BuildTarget *target)
 	printf(" * Token memory use: %llukb\n", (unsigned long long)(toktype_arena.allocated) / 1024);
 	printf(" * Sourceloc memory use: %llukb\n", (unsigned long long)(sourceloc_arena.allocated) / 1024);
 	printf(" * Token data memory use: %llukb\n", (unsigned long long)(tokdata_arena.allocated) / 1024);
+
+	ast_arena_free();
+	decl_arena_free();
+	expr_arena_free();
+	type_info_arena_free();
+	sourceloc_arena_free();
+	tokdata_arena_free();
+
 	print_arena_status();
+
+	free_arena();
+
+	for (unsigned i = 0; i < source_count; i++)
+	{
+		llvm_codegen(gen_contexts[i]);
+	}
+
 	exit(EXIT_SUCCESS);
 }
 

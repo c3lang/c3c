@@ -8,6 +8,10 @@
 void gencontext_begin_module(GenContext *context)
 {
 	assert(!context->module && "Expected no module");
+
+	asprintf(&context->ir_filename, "%.*s.ll", (int)strlen(context->ast_context->file->name) - 3, context->ast_context->file->name);
+	asprintf(&context->object_filename, "%.*s.o", (int)strlen(context->ast_context->file->name) - 3, context->ast_context->file->name);
+
 	const char *full_path = context->ast_context->file->full_path;
 	char *mangled_module_name = strformat("%s-%s", context->ast_context->module->name->module, context->ast_context->file->name);
 	context->module = LLVMModuleCreateWithNameInContext(mangled_module_name, context->context);

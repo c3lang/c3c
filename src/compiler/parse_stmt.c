@@ -499,7 +499,7 @@ static inline Ast* parse_continue(Context *context)
 static inline Ast* parse_next(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_NEXT_STMT, context->tok);
-	advance_and_verify(context, TOKEN_NEXT);
+	advance_and_verify(context, TOKEN_NEXTCASE);
 	if (!TOKEN_IS(TOKEN_EOS))
 	{
 		if (TOKEN_IS(TOKEN_CONST_IDENT) && context->next_tok.type == TOKEN_COLON)
@@ -964,7 +964,7 @@ Ast *parse_stmt(Context *context)
 			Ast *ast = TRY_AST(parse_break(context));
 			RETURN_AFTER_EOS(ast);
 		}
-		case TOKEN_NEXT:
+		case TOKEN_NEXTCASE:
 		{
 			Ast *ast = TRY_AST(parse_next(context));
 			RETURN_AFTER_EOS(ast);
@@ -1121,7 +1121,7 @@ Ast *parse_jump_stmt_no_eos(Context *context)
 {
 	switch (context->tok.type)
 	{
-		case TOKEN_NEXT:
+		case TOKEN_NEXTCASE:
 			return parse_next(context);
 		case TOKEN_RETURN:
 			return parse_return(context);
