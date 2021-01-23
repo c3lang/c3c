@@ -412,7 +412,7 @@ Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
 	Decl *last_match = NULL;
 	VECEACH(members, i)
 	{
-		if (members[i]->offset > offset) break;
+		if (members[i]->offset > (ArrayIndex)offset) break;
 		last_match = members[i];
 	}
 	assert(last_match);

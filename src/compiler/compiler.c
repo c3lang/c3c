@@ -82,6 +82,7 @@ void compiler_compile(BuildTarget *target)
 		vec_add(target->sources, strformat("%s/std/io.c3", compiler.lib_dir));
 		vec_add(target->sources, strformat("%s/std/mem.c3", compiler.lib_dir));
 		vec_add(target->sources, strformat("%s/std/array.c3", compiler.lib_dir));
+		vec_add(target->sources, strformat("%s/std/math.c3", compiler.lib_dir));
 	}
 	VECEACH(target->sources, i)
 	{

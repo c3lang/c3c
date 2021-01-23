@@ -37,6 +37,7 @@ public func uint crc64(byte[*] data)
 	return ~result;
 }
 
+
 public func uint fnv32(byte[*] data)
 {
     uint h = 0x811c9dc5;

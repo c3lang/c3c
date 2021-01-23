@@ -1,0 +1,12 @@
+module test;
+
+struct Foo
+{
+    int x, y;
+}
+
+Foo[10] array;
+
+// #expect: array_struct.ll
+
+@array = protected global [10 x %test.Foo] zeroinitializer, align 4

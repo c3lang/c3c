@@ -1,0 +1,71 @@
+module test;
+
+
+extern func int printf(char*, ...);
+extern func int foo();
+
+func int main()
+{
+  while (foo())
+  {
+     switch (foo())
+     {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+            printf("3");
+            nextcase;
+        case 4:
+            printf("4");
+            nextcase;
+        case 5:
+        case 6:
+        default:
+            break;
+     }
+   }
+   return 0;
+}
+
+// #expect: while_switch.ll
+
+
+@0 = internal constant [2 x i8] c"3\00"
+@1 = internal constant [2 x i8] c"4\00"
+
+entry:
+  %switch = alloca i32, align 4
+  br label %while.begin
+while.begin:
+  %0 = call i32 @foo()
+  %intbool = icmp ne i32 %0, 0
+  br i1 %intbool, label %while.body, label %while.exit
+while.body:
+  %1 = call i32 @foo()
+  store i32 %1, i32* %switch, align 4
+  br label %switch.entry
+switch.entry:
+  %2 = load i32, i32* %switch, align 4
+  switch i32 %2, label %switch.default [
+    i32 0, label %switch.case
+    i32 1, label %switch.case
+    i32 2, label %switch.case
+    i32 3, label %switch.case
+    i32 4, label %switch.case1
+    i32 5, label %switch.default
+    i32 6, label %switch.default
+  ]
+switch.case:
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @0, i32 0, i32 0))
+  br label %switch.case1
+switch.case1:
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @1, i32 0, i32 0))
+  br label %switch.default
+switch.default:
+  br label %switch.exit
+switch.exit:
+  br label %while.begin
+while.exit:
+  ret i32 0
+

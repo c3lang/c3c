@@ -30,13 +30,13 @@ public func void test3(long* x)
   %c = alloca i64, align 8
   store i64* %0, i64** %x
   %1 = load i64*, i64** %x, align 8
-  %ptridx = getelementptr inbounds i64, i64* %1, i64 0
+  %ptridx = getelementptr inbounds i64, i64* %1, i32 0
   %2 = load i64, i64* %ptridx, align 8
   store i64 %2, i64* %a, align 8
   %3 = load i64*, i64** %x, align 8
   %4 = load i64, i64* %3, align 8
   store i64 %4, i64* %b, align 8
   %5 = load i64*, i64** %x, align 8
-  %ptridx1 = getelementptr inbounds i64, i64* %5, i64 1
+  %ptridx1 = getelementptr inbounds i64, i64* %5, i32 1
   %6 = load i64, i64* %ptridx1, align 8
   store i64 %6, i64* %c, align 8

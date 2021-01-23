@@ -786,7 +786,7 @@ static inline Ast* parse_ct_for_stmt(Context *context)
 	}
 	ast->ct_for_stmt.value = context->tok.id;
 	TRY_CONSUME_OR(TOKEN_CT_IDENT, "Expected a compile time variable", poisoned_ast);
-	TRY_CONSUME_OR(TOKEN_IN, "Expected 'in'.", poisoned_ast);
+	TRY_CONSUME_OR(TOKEN_COLON, "Expected ':'.", poisoned_ast);
 	ast->ct_for_stmt.expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
 	ast->ct_for_stmt.body = TRY_AST(parse_stmt(context));
@@ -1086,7 +1086,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_CT_ENDIF:
 		case TOKEN_CT_ENDSWITCH:
 		case TOKEN_RBRAPIPE:
-		case TOKEN_IN:
 		case TOKEN_BANGBANG:
 			SEMA_TOKEN_ERROR(context->tok, "Unexpected '%s' found when expecting a statement.", token_type_to_string(context->tok.type));
 			advance(context);

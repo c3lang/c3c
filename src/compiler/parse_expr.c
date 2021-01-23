@@ -436,10 +436,10 @@ static Expr *parse_subscript_expr(Context *context, Expr *left)
 	else
 	{
 		index = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-		index->type = type_usize;
+		index->type = type_uint;
 		index->constant = true;
 		index->resolve_status = RESOLVE_DONE;
-		expr_const_set_int(&index->const_expr, 0, type_usize->canonical->type_kind);
+		expr_const_set_int(&index->const_expr, 0, type_uint->type_kind);
 	}
 	if (try_consume(context, TOKEN_DOTDOT))
 	{

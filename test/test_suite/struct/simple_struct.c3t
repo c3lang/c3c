@@ -1,0 +1,14 @@
+module test;
+
+Foo a;
+
+struct Foo
+{
+    int x;
+    double a;
+}
+
+// #expect: simple_struct.ll
+
+%test.Foo = type { i32, double }
+@a = protected global %test.Foo zeroinitializer, align 8

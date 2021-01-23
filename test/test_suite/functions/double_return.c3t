@@ -1,0 +1,13 @@
+module test;
+
+func int test(bool pos, bool color)
+{
+  return 0;
+  return cast(pos && color as int);
+}
+
+// #expect: double_return.ll
+
+entry:
+  ret i32 0
+}

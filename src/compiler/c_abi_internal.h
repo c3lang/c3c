@@ -12,7 +12,7 @@ typedef enum
 } ByVal;
 
 static inline ABIArgInfo *abi_arg_by_reg_attr(ABIArgInfo *info);
-ByteSize abi_arg_expanded_size(ABIArgInfo *type_info, Type *type);
+
 bool abi_arg_is_indirect(ABIArgInfo *info);
 ABIArgInfo *abi_arg_ignore(void);
 ABIArgInfo *abi_arg_new_direct_pair(AbiType *low_type, AbiType *high_type);

@@ -1,0 +1,10 @@
+module test;
+
+func char* foo()
+{
+  return "*** Word \"%s\" on line %d is not";
+}
+
+// #expect: strings.ll
+
+@0 = internal constant [32 x i8] c"*** Word \22%s\22 on line %d is not\00"

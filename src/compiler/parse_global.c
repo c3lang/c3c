@@ -1190,6 +1190,7 @@ bool parse_struct_body(Context *context, Decl *parent)
 				return false;
 			}
 			advance(context);
+			if (!parse_attributes(context, member)) return false;
 			if (!try_consume(context, TOKEN_COMMA)) break;
 			if (was_inline)
 			{
@@ -1888,7 +1889,7 @@ Decl *parse_top_level_statement(Context *context)
 			{
 				Ast *ast = TRY_AST_OR(parse_ct_assert_stmt(context), false);
 				vec_add(context->ct_asserts, ast);
-				return poisoned_decl;
+				return NULL;
 			}
 		case TOKEN_CT_IF:
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
