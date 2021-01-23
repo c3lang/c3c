@@ -6,6 +6,12 @@
 
 void gencontext_emit_try_stmt(GenContext *context, Ast *pAst);
 
+bool ast_is_empty_compound_stmt(Ast *ast)
+{
+	if (ast->ast_kind != AST_COMPOUND_STMT) return false;
+	return !vec_size(ast->compound_stmt.stmts) && ast->compound_stmt.defer_list.start == ast->compound_stmt.defer_list.end;
+}
+
 void llvm_emit_compound_stmt(GenContext *context, Ast *ast)
 {
 	if (llvm_use_debug(context))
@@ -61,8 +67,9 @@ static LLVMValueRef llvm_emit_decl(GenContext *c, Ast *ast)
 	}
 	else
 	{
+		Type *type = decl->type->canonical;
 		// Normal case, zero init.
-		if (type_is_builtin(decl->type->canonical->type_kind))
+		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
 		{
 			llvm_emit_store(c, decl, LLVMConstNull(alloc_type));
 		}
@@ -208,56 +215,37 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 
 
 
-void gencontext_emit_if(GenContext *c, Ast *ast)
+/**
+ * Emit if (...) { ... } else { ... }
+ *
+ * This code is slightly optimized to omit branches when not needed. This is something LLVM
+ * will optimize as well, but it is convenient to make the code slightly smaller for LLVM to work with:
+ * 1. If the "then" branch is empty, replace it with "exit".
+ * 2. If the "else" branch is empty or missing, replace if with "exit".
+ * 3. If both "else" and "then" branches are empty, replace it with just the condition and remove the "exit"
+ */
+void llvm_emit_if(GenContext *c, Ast *ast)
 {
 	// We need at least the exit block and the "then" block.
 	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "if.exit");
-	LLVMBasicBlockRef then_block = llvm_basic_block_new(c, "if.then");
-	LLVMBasicBlockRef else_block = NULL;
+	LLVMBasicBlockRef then_block = exit_block;
+	LLVMBasicBlockRef else_block = exit_block;
+
+	// Only generate a target if
+	if (!ast_is_empty_compound_stmt(ast->if_stmt.then_body))
+	{
+		then_block = llvm_basic_block_new(c, "if.then");
+	}
 
 	// We have an optional else block.
-	if (ast->if_stmt.else_body)
+	if (ast->if_stmt.else_body && !ast_is_empty_compound_stmt(ast->if_stmt.else_body))
 	{
 		else_block = llvm_basic_block_new(c, "if.else");
 	}
-	else
-	{
-		else_block = exit_block;
-	}
 
 	ast->if_stmt.break_block = exit_block;
+
 	// Output boolean value and switch.
-
-	PUSH_ERROR();
-
-	c->catch_block = else_block ?: exit_block;
-	c->error_var = NULL;
-
-	BEValue be_value = {};
-	gencontext_emit_decl_expr_list(c, &be_value, ast->if_stmt.cond, true);
-	llvm_value_rvalue(c, &be_value);
-
-	assert(llvm_value_is_bool(&be_value));
-
-	if (llvm_value_is_const(&be_value))
-	{
-		if (LLVMConstIntGetZExtValue(be_value.value))
-		{
-			llvm_emit_br(c, then_block);
-			else_block = NULL;
-		}
-		else
-		{
-			llvm_emit_br(c, else_block);
-			then_block = NULL;
-		}
-	}
-	else
-	{
-		llvm_emit_cond_br(c, &be_value, then_block, else_block);
-	}
-
-	POP_ERROR();
 
 	Decl *label = ast->if_stmt.flow.label;
 	if (label)
@@ -265,8 +253,42 @@ void gencontext_emit_if(GenContext *c, Ast *ast)
 		label->label.break_target = exit_block;
 	}
 
+	BEValue be_value = {};
+	gencontext_emit_decl_expr_list(c, &be_value, ast->if_stmt.cond, true);
+	llvm_value_rvalue(c, &be_value);
+
+	assert(llvm_value_is_bool(&be_value));
+
+	bool exit_in_use = true;
+
+	if (llvm_value_is_const(&be_value) && then_block != else_block)
+	{
+		if (LLVMConstIntGetZExtValue(be_value.value))
+		{
+			llvm_emit_br(c, then_block);
+			else_block = exit_block;
+		}
+		else
+		{
+			llvm_emit_br(c, else_block);
+			then_block = exit_block;
+		}
+	}
+	else
+	{
+		if (then_block != else_block)
+		{
+			llvm_emit_cond_br(c, &be_value, then_block, else_block);
+		}
+		else
+		{
+			exit_in_use = LLVMGetFirstUse(LLVMBasicBlockAsValue(exit_block)) != NULL;
+			if (exit_in_use) llvm_emit_br(c, exit_block);
+		}
+	}
+
 	// Emit the 'then' code.
-	if (then_block)
+	if (then_block != exit_block)
 	{
 		llvm_emit_block(c, then_block);
 		llvm_emit_stmt(c, ast->if_stmt.then_body);
@@ -275,9 +297,8 @@ void gencontext_emit_if(GenContext *c, Ast *ast)
 		llvm_emit_br(c, exit_block);
 	}
 
-
 	// Emit the 'else' branch if present.
-	if (else_block && else_block != exit_block)
+	if (else_block != exit_block)
 	{
 		llvm_emit_block(c, else_block);
 		llvm_emit_stmt(c, ast->if_stmt.else_body);
@@ -285,7 +306,10 @@ void gencontext_emit_if(GenContext *c, Ast *ast)
 	}
 
 	// And now we just emit the exit block.
-	llvm_emit_block(c, exit_block);
+	if (exit_in_use)
+	{
+		llvm_emit_block(c, exit_block);
+	}
 }
 
 
@@ -1044,7 +1068,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			gencontext_emit_continue(c, ast);
 			break;
 		case AST_IF_STMT:
-			gencontext_emit_if(c, ast);
+			llvm_emit_if(c, ast);
 			break;
 		case AST_RETURN_STMT:
 			gencontext_emit_return(c, ast);

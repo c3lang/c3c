@@ -107,56 +107,6 @@ ABIArgInfo *abi_arg_new_indirect_not_by_val(void)
 	return info;
 }
 
-ByteSize abi_arg_expanded_size(ABIArgInfo *type_info, Type *type)
-{
-	switch (type->type_kind)
-	{
-		case TYPE_TYPEDEF:
-			return abi_arg_expanded_size(type_info, type->canonical);
-		case TYPE_ARRAY:
-			return abi_arg_expanded_size(type_info, type->array.base) * type->array.len;
-		case TYPE_STRUCT:
-		{
-			Decl **members = type->decl->strukt.members;
-			ByteSize result = 0;
-			VECEACH(members, i)
-			{
-				members += abi_arg_expanded_size(type_info, members[i]->type);
-			}
-			return result;
-		}
-		case TYPE_UNION:
-		{
-			Type *max_union = type_find_largest_union_element(type);
-			if (!max_union) return 0;
-			return abi_arg_expanded_size(type_info, max_union);
-		}
-		case TYPE_COMPLEX:
-		case TYPE_SUBARRAY:
-		case TYPE_STRING:
-			// Complex is { real, real }, Sub array { pointer, len } = String?
-			return 2;
-		case TYPE_ERR_UNION:
-		case TYPE_VOID:
-		case TYPE_BOOL:
-		case ALL_FLOATS:
-		case ALL_INTS:
-		case TYPE_TYPEID:
-		case TYPE_POINTER:
-		case TYPE_ENUM:
-		case TYPE_ERRTYPE:
-		case TYPE_VARARRAY:
-		case TYPE_VECTOR:
-			return 1;
-		case TYPE_POISONED:
-		case TYPE_FUNC:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
-			UNREACHABLE
-	}
-	UNREACHABLE
-}
-
 
 ABIArgInfo *abi_arg_new_direct_int_ext(Type *int_to_extend)
 {

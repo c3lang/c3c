@@ -186,7 +186,7 @@ ByteSize type_size(Type *type)
 		case TYPE_ENUM:
 			return type->decl->enums.type_info->type->canonical->builtin.bytesize;
 		case TYPE_ERRTYPE:
-			return alignment_error_code;
+			return type_size(type_usize->canonical);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
@@ -607,7 +607,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_ENUM:
 			return type->decl->enums.type_info->type->canonical->builtin.abi_alignment;
 		case TYPE_ERRTYPE:
-			return alignment_error_code;
+			return t_usz.canonical->builtin.abi_alignment;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return type->decl->alignment;

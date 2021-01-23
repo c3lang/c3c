@@ -1,0 +1,118 @@
+module test;
+
+func int foo1()
+{
+  byte *pp = void;
+  uint w_cnt = void;
+
+  w_cnt += *pp;
+
+  return cast(w_cnt as int);
+}
+
+extern func void test2(int, double, float);
+
+func void foo2(int x)
+{
+    test2(x, x ? 1.0 : 12.5, 1.0);
+}
+
+func int trys(char* s, int x)
+{
+    int asa = void;
+    double val = void;
+    int lls = void;
+    if (x)
+    {
+        asa = lls + asa;
+    }
+    else
+    {
+    }
+    return asa + cast(val as int);
+}
+
+struct InternalFPF
+{
+    byte type;
+}
+
+local func void setInternalFPFZero(InternalFPF* dest) @noinline
+{
+    dest.type = 0;
+}
+
+func void denormalize(InternalFPF* ptr)
+{
+    setInternalFPFZero(ptr);
+}
+
+
+// #expect: assorted_tests.ll
+
+  %pp = alloca i8*, align 8
+  %w_cnt = alloca i32, align 4
+  %0 = load i32, i32* %w_cnt, align 4
+  %1 = load i8*, i8** %pp, align 8
+  %2 = load i8, i8* %1, align 8
+  %uiuiext = zext i8 %2 to i32
+  %uadd = add nuw i32 %0, %uiuiext
+  store i32 %uadd, i32* %w_cnt, align 4
+  %3 = load i32, i32* %w_cnt, align 4
+  ret i32 %3
+
+  %x = alloca i32, align 4
+  store i32 %0, i32* %x, align 4
+  %1 = load i32, i32* %x, align 4
+  %2 = load i32, i32* %x, align 4
+  %intbool = icmp ne i32 %2, 0
+  br i1 %intbool, label %cond.lhs, label %cond.rhs
+cond.lhs:
+  br label %cond.phi
+cond.rhs:
+  br label %cond.phi
+cond.phi:
+  %val = phi double [ 1.000000e+00, %cond.lhs ], [ 1.250000e+01, %cond.rhs ]
+  call void @test2(i32 %1, double %val, float 1.000000e+00)
+  ret void
+
+  %s = alloca i8*, align 8
+  %x = alloca i32, align 4
+  %asa = alloca i32, align 4
+  %val = alloca double, align 8
+  %lls = alloca i32, align 4
+  store i32 %1, i32* %x, align 4
+  %2 = load i32, i32* %x, align 4
+  %intbool = icmp ne i32 %2, 0
+  br i1 %intbool, label %if.then, label %if.exit
+
+if.then:
+  %3 = load i32, i32* %lls, align 4
+  %4 = load i32, i32* %asa, align 4
+  %add = add nsw i32 %3, %4
+  store i32 %add, i32* %asa, align 4
+  br label %if.exit
+
+if.exit:
+  %5 = load i32, i32* %asa, align 4
+  %6 = load double, double* %val, align 8
+  %fpui = fptoui double %6 to i32
+  %add1 = add nsw i32 %5, %fpui
+  ret i32 %add1
+
+
+void @test.setInternalFPFZero(%test.InternalFPF* %0)
+  %dest = alloca %test.InternalFPF*, align 8
+  store %test.InternalFPF* %0, %test.InternalFPF** %dest, align 8
+  %1 = load %test.InternalFPF*, %test.InternalFPF** %dest, align 8
+  %2 = getelementptr inbounds %test.InternalFPF, %test.InternalFPF* %1, i32 0, i32 0
+  store i8 0, i8* %2, align 1
+  ret void
+
+void @test.denormalize(%test.InternalFPF* %0)
+entry:
+  %ptr = alloca %test.InternalFPF*, align 8
+  store %test.InternalFPF* %0, %test.InternalFPF** %ptr, align 8
+  %1 = load %test.InternalFPF*, %test.InternalFPF** %ptr, align 8
+  call void @test.setInternalFPFZero(%test.InternalFPF* %1)
+  ret void

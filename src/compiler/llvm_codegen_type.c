@@ -5,7 +5,7 @@
 #include "llvm_codegen_internal.h"
 
 
-static inline LLVMTypeRef llvm_type_from_decl(GenContext *context, Decl *decl)
+static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 {
 	static LLVMTypeRef params[MAX_PARAMS];
 	switch (decl->decl_kind)
@@ -19,49 +19,43 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *context, Decl *decl)
 		{
 			VECEACH(decl->func.function_signature.params, i)
 			{
-				params[i] = llvm_get_type(context, decl->func.function_signature.params[i]->type);
+				params[i] = llvm_get_type(c, decl->func.function_signature.params[i]->type);
 			}
 			unsigned param_size = vec_size(decl->func.function_signature.params);
-			return LLVMFunctionType(llvm_get_type(context, decl->func.function_signature.rtype->type),
+			return LLVMFunctionType(llvm_get_type(c, decl->func.function_signature.rtype->type),
 			                        params,
 			                        param_size,
 			                        decl->func.function_signature.variadic);
 
 		}
 		case DECL_TYPEDEF:
-			return llvm_get_type(context, decl->typedef_decl.type_info->type);
+			return llvm_get_type(c, decl->typedef_decl.type_info->type);
 		case DECL_STRUCT:
 		{
 			LLVMTypeRef *types = NULL;
-			LLVMTypeRef type = LLVMStructCreateNamed(context->context, decl->external_name);
+			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->external_name);
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			Decl **members = decl->strukt.members;
 			VECEACH(members, i)
 			{
-				vec_add(types, llvm_get_type(context, members[i]->type));
+				Decl *member = members[i];
+				if (member->padding)
+				{
+					vec_add(types, llvm_const_padding_type(c, member->padding));
+				}
+				vec_add(types, llvm_get_type(c, members[i]->type));
 			}
-			if (decl->needs_additional_pad)
+			if (decl->strukt.padding)
 			{
-				Decl *last_member = VECLAST(members);
-				unsigned member_end = last_member->offset + type_size(last_member->type);
-				unsigned bytes = decl->strukt.size - member_end;
-				assert(bytes > 0);
-				if (bytes == 1)
-				{
-					vec_add(types, llvm_get_type(context, type_byte));
-				}
-				else
-				{
-					vec_add(types, LLVMArrayType(llvm_get_type(context, type_byte), bytes));
-				}
+				vec_add(types, llvm_const_padding_type(c, decl->strukt.padding));
 			}
 			LLVMStructSetBody(type, types, vec_size(types), decl->is_packed);
 			return type;
 		}
 		case DECL_UNION:
 		{
-			LLVMTypeRef type = LLVMStructCreateNamed(context->context, decl->external_name);
+			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->external_name);
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			Decl **members = decl->strukt.members;
@@ -70,14 +64,13 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *context, Decl *decl)
 
 				Decl *rep_type = members[decl->strukt.union_rep];
 				LLVMTypeRef type_ref[2] = {
-						llvm_get_type(context, rep_type->type),
+						llvm_get_type(c, rep_type->type),
 						NULL
 				};
 				unsigned elements = 1;
-				if (decl->needs_additional_pad)
+				if (decl->strukt.padding)
 				{
-					type_ref[elements++] = LLVMArrayType(llvm_get_type(context, type_bool), type_size(decl->type) - type_size(rep_type->type));
-
+					type_ref[elements++] = llvm_const_padding_type(c, decl->strukt.padding);
 				}
 				LLVMStructSetBody(type, type_ref, elements, decl->is_packed);
 			}
@@ -88,15 +81,14 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *context, Decl *decl)
 			return type;
 		}
 		case DECL_ENUM:
-			return llvm_get_type(context, decl->type);
+			return llvm_get_type(c, decl->type);
 		case DECL_ERR:
 		{
-			LLVMTypeRef err_type = LLVMStructCreateNamed(context->context, decl->external_name);
+			LLVMTypeRef err_type = LLVMStructCreateNamed(c->context, decl->external_name);
 			// Avoid recursive issues.
 			decl->type->backend_type = err_type;
 			LLVMTypeRef *types = NULL;
-			vec_add(types, llvm_get_type(context, type_typeid));
-			unsigned size = type_size(type_typeid);
+			unsigned size = 0;
 			VECEACH(decl->strukt.members, i)
 			{
 				Type *type = decl->strukt.members[i]->type->canonical;
@@ -106,12 +98,11 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *context, Decl *decl)
 					size += alignment - size % alignment;
 				}
 				size += type_size(type);
-				vec_add(types, llvm_get_type(context, type));
+				vec_add(types, llvm_get_type(c, type));
 			}
-			unsigned padding = type_size(type_error) - size;
-			if (padding > 0)
+			if (decl->strukt.padding)
 			{
-				vec_add(types, LLVMIntTypeInContext(context->context, padding * 8));
+				vec_add(types, llvm_const_padding_type(c, decl->strukt.padding));
 			}
 			LLVMStructSetBody(err_type, types, vec_size(types), false);
 			return err_type;

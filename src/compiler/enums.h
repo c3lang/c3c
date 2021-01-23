@@ -413,7 +413,6 @@ typedef enum
 	TOKEN_GENERIC,
 	TOKEN_IF,
 	TOKEN_IMPORT,
-	TOKEN_IN,
 	TOKEN_LOCAL,
 	TOKEN_MACRO,
 	TOKEN_MODULE,
@@ -564,7 +563,8 @@ typedef enum
 	ATTR_UNION = 1 << 4,
 	ATTR_CONST = 1 << 5,
 	ATTR_ERROR = 1 << 6,
-	ATTR_TYPEDEF = 1 << 7
+	ATTR_TYPEDEF = 1 << 7,
+	ATTR_MEMBER = 1 << 8,
 } AttributeDomain;
 
 typedef enum

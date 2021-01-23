@@ -296,10 +296,10 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			// We might have only one value, in that case, build a GEP to that one.
 			LLVMValueRef lo_val;
 			unsigned alignment;
-			LLVMValueRef lo = llvm_emit_struct_gep(c, coerce, coerce_type, info->coerce_expand.lo_index,
-			                                       return_value->alignment,
-			                                       info->coerce_expand.offset_lo, &alignment);
-			LLVMTypeRef lo_type = llvm_abi_type(c, info->coerce_expand.hi);
+			LLVMValueRef lo = llvm_emit_struct_gep_raw(c, coerce, coerce_type, info->coerce_expand.lo_index,
+			                                           return_value->alignment,
+			                                           info->coerce_expand.offset_lo, &alignment);
+			LLVMTypeRef lo_type = llvm_abi_type(c, info->coerce_expand.lo);
 			lo_val = llvm_emit_load_aligned(c, lo_type, lo, alignment, "");
 
 			// We're done if there's a single field.
@@ -310,9 +310,9 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			}
 
 			// Let's make a first class aggregate
-			LLVMValueRef hi = llvm_emit_struct_gep(c, coerce, coerce_type, info->coerce_expand.hi_index,
-			                                       return_value->alignment,
-			                                       info->coerce_expand.offset_hi, &alignment);
+			LLVMValueRef hi = llvm_emit_struct_gep_raw(c, coerce, coerce_type, info->coerce_expand.hi_index,
+			                                           return_value->alignment,
+			                                           info->coerce_expand.offset_hi, &alignment);
 			LLVMTypeRef hi_type = llvm_abi_type(c, info->coerce_expand.hi);
 			LLVMValueRef hi_val = llvm_emit_load_aligned(c, hi_type, hi, alignment, "");
 

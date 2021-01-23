@@ -68,87 +68,207 @@ LLVMValueRef llvm_emit_memclear(GenContext *c, BEValue *ref)
 	return llvm_emit_memclear_size_align(c, ref->value, type_size(ref->type), ref->alignment, true);
 }
 
+LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, IndexDiff diff, bool *modified)
+{
+	if (diff == 1) return LLVMConstNull(element_type);
+	*modified = true;
+	LLVMTypeRef padding_type = LLVMArrayType(element_type, (unsigned)diff);
+	return LLVMConstNull(padding_type);
+}
+
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init, bool *modified)
 {
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:
 			return LLVMConstNull(llvm_get_type(c, const_init->type));
-		case CONST_VALUE:
+		case CONST_INIT_ARRAY_VALUE:
+			UNREACHABLE
+		case CONST_INIT_ARRAY_FULL:
 		{
-			BEValue val;
-			llvm_emit_expr(c, &val, const_init->value);
-			return llvm_value_rvalue_store(c, &val);
-		}
-		case CONST_INIT_ARRAY_SPLIT:
-		{
-			*modified = true;
-			LLVMValueRef pieces[3];
-			unsigned count = 0;
-			if (const_init->split_const.low)
+			bool was_modified = false;
+			Type *array_type = const_init->type;
+			Type *element_type = array_type->array.base;
+			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
+			ConstInitializer **elements = const_init->init_array_full;
+			ArrayIndex size = array_type->array.len;
+			assert(size > 0);
+			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
+			for (ArrayIndex i = 0; i < size; i++)
 			{
-				pieces[count++] = llvm_emit_const_initializer(c, const_init->split_const.low, modified);
+				vec_add(parts, llvm_emit_const_initializer(c, elements[i], &was_modified));
 			}
-			pieces[count++] = llvm_emit_const_initializer(c, const_init->split_const.mid, modified);
-			if (const_init->split_const.hi)
+			if (was_modified) *modified = was_modified;
+			if (was_modified)
 			{
-				pieces[count++] = llvm_emit_const_initializer(c, const_init->split_const.hi, modified);
+				return LLVMConstStructInContext(c->context, parts, vec_size(parts), true);
 			}
-			if (count == 1) return pieces[0];
-			return LLVMConstStructInContext(c->context, pieces, count, true);
+			return LLVMConstArray(element_type_llvm, parts, vec_size(parts));
 		}
-		case CONST_INIT_ARRAY_VALUE_FRAGMENT:
-			*modified = true;
-			return llvm_emit_const_initializer(c, const_init->single_array_index.element, modified);
-		case CONST_SELECTED:
+
+		case CONST_INIT_ARRAY:
 		{
-			Type *member_type = const_init->union_const.element->type;
-			ByteSize union_size = type_size(const_init->type);
-			Type *rep_type = const_init->type->decl->strukt.members[const_init->type->decl->strukt.union_rep]->type;
-			LLVMTypeRef rep_type_llvm = llvm_get_type(c, rep_type);
-			LLVMTypeRef member_type_llvm = llvm_get_type(c, member_type);
-			bool is_modified = rep_type_llvm != member_type_llvm;
-			if (is_modified) *modified = true;
+			bool was_modified = false;
+			Type *array_type = const_init->type;
+			Type *element_type = array_type->array.base;
+			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
+			ConstInitializer **elements = const_init->init_array.elements;
+			unsigned element_count = vec_size(elements);
+			assert(element_count > 0 && "Array should always have gotten at least one element.");
+			ArrayIndex current_index = 0;
+			unsigned alignment = 0;
+			LLVMValueRef *parts = NULL;
+			bool pack = false;
+			VECEACH(elements, i)
+			{
+				ConstInitializer *element = elements[i];
+				assert(element->kind == CONST_INIT_ARRAY_VALUE);
+				ArrayIndex element_index = element->init_array_value.index;
+				IndexDiff diff = element_index - current_index;
+				unsigned curr_alignment = type_abi_alignment(element->type);
+				if (alignment && curr_alignment != alignment)
+				{
+					pack = true;
+				}
+				alignment = curr_alignment;
+				// Add zeroes
+				if (diff > 0)
+				{
+					vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, diff, &was_modified));
+				}
+				vec_add(parts, llvm_emit_const_initializer(c, element->init_array_value.element, &was_modified));
+				current_index = element_index + 1;
+			}
+
+			IndexDiff end_diff = array_type->array.len - current_index;
+			if (end_diff > 0)
+			{
+				vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, end_diff, &was_modified));
+			}
+			if (was_modified) *modified = was_modified;
+			if (was_modified)
+			{
+				return LLVMConstStructInContext(c->context, parts, vec_size(parts), pack);
+			}
+			return LLVMConstArray(element_type_llvm, parts, vec_size(parts));
+		}
+		case CONST_INIT_UNION:
+		{
+			Decl *decl = const_init->type->decl;
+			// Get the type of the member that is used for this particular
+			// constant value, for example if this is a union { double, int }
+			// then the type may be double or int.
+			Type *member_type = decl->strukt.members[const_init->init_union.index]->type->canonical;
 
 			// Emit our value.
-			LLVMValueRef result = llvm_emit_const_initializer(c, const_init->union_const.element, modified);
+			LLVMValueRef result = llvm_emit_const_initializer(c, const_init->init_union.element, modified);
 
-			LLVMValueRef values[2] = {
-					result,
-					NULL
-			};
+			// Get the union value
+			LLVMTypeRef union_type_llvm = llvm_get_type(c, decl->type);
 
-			// There is a case, where we need additional padding for this member, in that case
-			// Create a struct for it.
+			// Take the first type in the union (note that there may be padding!)
+			LLVMTypeRef first_type = LLVMStructGetTypeAtIndex(union_type_llvm, 0);
+
+			// We need to calculate some possible padding.
+			ByteSize union_size = type_size(const_init->type);
 			ByteSize member_size = type_size(member_type);
-			if (union_size > member_size)
+			ByteSize padding = union_size - member_size;
+
+			// Create the resulting values:
+			LLVMValueRef values[2] = { result, NULL };
+			unsigned value_count = 1;
+
+			// Add possible padding as and i8 array.
+			if (padding > 0)
 			{
-				values[1] = llvm_const_padding(c, union_size - member_size);
-				// Now we use an unnamed struct.
-				return LLVMConstStructInContext(c->context, values, 2, const_init->type->decl->is_packed);
+				values[1] = llvm_emit_const_padding(c, padding);
+				value_count = 2;
 			}
 
-			return LLVMConstNamedStruct(llvm_get_type(c, const_init->type), values, 1);
+			// Is this another type than usual for the union?
+			if (first_type != llvm_get_type(c, member_type))
+			{
+				// Yes, so the type needs to be modified.
+				*modified = true;
+			}
+
+			// If it is modified we simply create a packed struct for representation.
+			if (*modified)
+			{
+				return LLVMConstStructInContext(c->context, values, value_count, false);
+			}
+
+			return LLVMConstNamedStruct(union_type_llvm, values, value_count);
 		}
-		case CONST_INIT_EXPANDED:
+		case CONST_INIT_STRUCT:
 		{
-			MemberIndex count = vec_size(const_init->type->decl->strukt.members);
-			LLVMValueRef *entries = MALLOC(sizeof(LLVMValueRef) * count);
+			Decl *decl = const_init->type->decl;
+			Decl **members = decl->strukt.members;
+			MemberIndex count = vec_size(members);
+			LLVMValueRef *entries = NULL;
 			for (MemberIndex i = 0; i < count; i++)
 			{
-				entries[i] = llvm_emit_const_initializer(c, const_init->elements[i], modified);
+				if (members[i]->padding)
+				{
+					vec_add(entries, llvm_emit_const_padding(c, members[i]->padding));
+				}
+				vec_add(entries, llvm_emit_const_initializer(c, const_init->init_struct[i], modified));
+			}
+			if (decl->strukt.padding)
+			{
+				vec_add(entries, llvm_emit_const_padding(c, decl->strukt.padding));
 			}
 			if (*modified)
 			{
-				return LLVMConstStructInContext(c->context, entries, count, const_init->type->decl->is_packed);
+				return LLVMConstStructInContext(c->context, entries, vec_size(entries), decl->is_packed);
 			}
-			return LLVMConstNamedStruct(llvm_get_type(c, const_init->type), entries, count);
+			return LLVMConstNamedStruct(llvm_get_type(c, const_init->type), entries, vec_size(entries));
 		}
-		case CONST_INIT_ARRAY_RANGE_ZERO:
-			return LLVMConstNull(llvm_get_type(c, const_init->type));
+		case CONST_INIT_VALUE:
+		{
+			BEValue value;
+			llvm_emit_expr(c, &value, const_init->init_value);
+			LLVMValueRef llvm_value = llvm_value_rvalue_store(c, &value);
+			LLVMTypeRef expected_type = llvm_get_type(c, const_init->type);
+			if (expected_type != LLVMTypeOf(llvm_value)) *modified = true;
+			return llvm_value;
+		}
 	}
 	UNREACHABLE
 }
+
+static LLVMValueRef llvm_emit_const_initializer_simple(GenContext *c, Expr *expr, bool *modified)
+{
+	Expr **elements = expr->initializer_expr.initializer_expr;
+	unsigned element_count = vec_size(elements);
+	LLVMValueRef* values = malloc_arena(element_count * sizeof(LLVMValueRef));
+	Type *expr_type = expr->type->canonical;
+	LLVMTypeRef array_type = expr_type->type_kind == TYPE_ARRAY ? llvm_get_type(c, expr_type->array.base) : NULL;
+	assert(array_type || type_is_structlike(expr_type));
+	for (unsigned i = 0; i < element_count; i++)
+	{
+		BEValue value;
+		llvm_emit_expr(c, &value, elements[i]);
+		LLVMValueRef llvm_value = llvm_value_rvalue_store(c, &value);
+		LLVMTypeRef expected_type = array_type ? array_type : llvm_get_type(c, expr_type->decl->strukt.members[0]->type);
+		if (expected_type != LLVMTypeOf(llvm_value)) *modified = true;
+		values[i] = llvm_value;
+	}
+	if (array_type)
+	{
+		if (*modified)
+		{
+			return LLVMConstStructInContext(c->context, values, element_count, true);
+		}
+		return LLVMConstArray(array_type, values, element_count);
+	}
+	if (*modified)
+	{
+		return LLVMConstStructInContext(c->context, values, element_count, true);
+	}
+	return LLVMConstNamedStruct(llvm_get_type(c, expr_type), values, element_count);
+}
+
 LLVMValueRef llvm_emit_const_aggregate(GenContext *c, Expr *expr, bool *modified)
 {
 	switch (expr->initializer_expr.init_type)
@@ -159,7 +279,7 @@ LLVMValueRef llvm_emit_const_aggregate(GenContext *c, Expr *expr, bool *modified
 		case INITIALIZER_CONST:
 			return llvm_emit_const_initializer(c, expr->initializer_expr.initializer, modified);
 		case INITIALIZER_NORMAL:
-			TODO
+			return llvm_emit_const_initializer_simple(c, expr, modified);
 	}
 	UNREACHABLE
 }
@@ -197,7 +317,10 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 	// TODO fix name
 	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->name);
 	LLVMSetAlignment(decl->backend_ref, alignment);
-	LLVMSetInitializer(decl->backend_ref, init_value);
+	if (decl->visibility != VISIBLE_EXTERN)
+	{
+		LLVMSetInitializer(decl->backend_ref, init_value);
+	}
 
 	LLVMSetGlobalConstant(decl->backend_ref, decl->var.kind == VARDECL_CONST);
 
@@ -210,6 +333,9 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_EXTERN:
+			LLVMSetLinkage(decl->backend_ref, LLVMExternalLinkage);
+			//LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
+			break;
 		case VISIBLE_LOCAL:
 			LLVMSetVisibility(decl->backend_ref, LLVMHiddenVisibility);
 			break;

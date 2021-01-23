@@ -120,7 +120,7 @@ static inline void parse_translation_unit(Context *context)
 	while (!TOKEN_IS(TOKEN_EOF))
 	{
 		Decl *decl = parse_top_level_statement(context);
-		assert(decl);
+		if (!decl) continue;
 		if (decl_ok(decl))
 		{
 			vec_add(context->global_decls, decl);

@@ -17,6 +17,7 @@
 
 typedef uint64_t ByteSize;
 typedef int64_t ArrayIndex;
+typedef int64_t IndexDiff;
 typedef int32_t MemberIndex;
 typedef int32_t AlignSize;
 typedef int32_t ScopeId;
@@ -269,6 +270,7 @@ typedef struct
 	uint64_t size;
 	Decl **members;
 	MemberIndex union_rep;
+	int16_t padding;
 } StructDecl;
 
 
@@ -442,7 +444,8 @@ typedef struct _Decl
 	const char *cname;
 	AlignSize alignment;
 	const char *section;
-	ArrayIndex offset;
+	ArrayIndex offset : 32;
+	ArrayIndex padding : 32;
 	/*	bool is_exported : 1;
 	bool is_used : 1;
 	bool is_used_public : 1;
@@ -603,44 +606,39 @@ typedef struct DesignatorElement_
 typedef enum
 {
 	CONST_INIT_ZERO,
-	CONST_INIT_EXPANDED,
-	CONST_SELECTED,
-	CONST_VALUE,
-	CONST_INIT_ARRAY_SPLIT,
-	CONST_INIT_ARRAY_RANGE_ZERO,
-	CONST_INIT_ARRAY_VALUE_FRAGMENT
+	CONST_INIT_STRUCT,
+	CONST_INIT_UNION,
+	CONST_INIT_VALUE,
+	CONST_INIT_ARRAY,
+	CONST_INIT_ARRAY_FULL,
+	CONST_INIT_ARRAY_VALUE,
 } ConstInitType;
 
 
 typedef struct ConstInitializer_
 {
-	Type *type;
 	ConstInitType kind;
+	// Type initialized
+	Type *type;
 	union
 	{
-		struct ConstInitializer_ **elements;
-		Expr *value;
+		struct ConstInitializer_ **init_struct;
+		Expr *init_value;
 		struct
 		{
 			struct ConstInitializer_ *element;
 			MemberIndex index;
-		} union_const;
+		} init_union;
 		struct
 		{
-			struct ConstInitializer_ *low;
-			struct ConstInitializer_ *mid;
-			struct ConstInitializer_ *hi;
-		} split_const;
-		struct
-		{
-			ArrayIndex low;
-			ArrayIndex high;
-		} array_range_zero;
+			struct ConstInitializer_ **elements;
+		} init_array;
+		struct ConstInitializer_ **init_array_full;
 		struct
 		{
 			struct ConstInitializer_ *element;
 			ArrayIndex index;
-		} single_array_index;
+		} init_array_value;
 	};
 } ConstInitializer;
 

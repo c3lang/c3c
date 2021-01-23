@@ -1,0 +1,15 @@
+module test;
+
+struct Event
+{
+    int op;
+}
+
+func Event test(int x)
+{
+  Event foo = { 1 };
+  Event bar = { 2 };
+  return x ? foo : bar;
+}
+
+// TODO possibly look at the IR

@@ -232,8 +232,6 @@ const char *token_type_to_string(TokenType type)
 			return "if";
 		case TOKEN_IMPORT:
 			return "import";
-		case TOKEN_IN:
-			return "in";
 		case TOKEN_LOCAL:
 			return "local";
 		case TOKEN_MACRO:

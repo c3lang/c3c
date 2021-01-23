@@ -1,7 +1,13 @@
 module base64;
 // Based on the C2 version.
 
-const char[] LUT_ENC = {
+error InvalidCharacter
+{
+    int index;
+    char c;
+}
+
+const char[64] LUT_ENC = {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
     'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
@@ -14,27 +20,22 @@ const char[] LUT_ENC = {
 
 const byte ERR = 0xFF;
 
-const byte[256] LUT_DEC = {
-    // '+', ',', '-', '.', '/', '0', '1', '2'
-        62, ERR, ERR, ERR, 63,  52,  53,  54,
-    // '3', '4', '5', '6', '7', '8', '9', ':'
-        55,  56,  57,  58,  59,  60,  61, ERR,
-    // ';', '<', '=', '>', '?', '@', 'A', 'B'
-        ERR, ERR, ERR, ERR, ERR, ERR,  0,  1,
-    // 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'
-         2,   3,   4,   5,   6,   7,   8,   9,
-    // 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'
-        10,  11,  12,  13,  14,  15,  16,  17,
-    // 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
-        18,  19,  20,  21,  22,  23,  24,  25,
-    // '[', '\', ']', '^', '_', '`', 'a', 'b'
-       ERR, ERR, ERR, ERR, ERR, ERR,  26,  27,
-    // 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'
-        28,  29,  30,  31,  32,  33,  34,  35,
-    // 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r'
-        36,  37,  38,  39,  40,  41,  42,  43,
-    // 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-        44,  45,  46,  47,  48,  49,  50,  51,
+const byte[256] LUT_DEC =
+{
+    [0..255] = ERR,
+    ['A'] = 0, ['B'] = 1, ['C'] = 2, ['D'] = 3, ['E'] = 4,
+    ['F'] = 5, ['G'] = 6, ['H'] = 7, ['I'] = 8, ['J'] = 9,
+    ['K'] = 10, ['L'] = 11, ['M'] = 12, ['N'] = 13, ['O'] = 14,
+    ['P'] = 15, ['Q'] = 16, ['R'] = 17, ['S'] = 18, ['T'] = 19,
+    ['U'] = 20, ['V'] = 21, ['W'] = 22, ['X'] = 23, ['Y'] = 24,
+    ['Z'] = 25, ['a'] = 26, ['b'] = 27, ['c'] = 28, ['d'] = 29,
+    ['e'] = 30, ['f'] = 31, ['g'] = 32, ['h'] = 33, ['i'] = 34,
+    ['j'] = 35, ['k'] = 36, ['l'] = 37, ['m'] = 38, ['n'] = 39,
+    ['o'] = 40, ['p'] = 41, ['q'] = 42, ['r'] = 43, ['s'] = 44,
+    ['t'] = 45, ['u'] = 46, ['v'] = 47, ['w'] = 48, ['x'] = 49,
+    ['y'] = 50, ['z'] = 51, ['0'] = 52, ['1'] = 53, ['2'] = 54,
+    ['3'] = 55, ['4'] = 56, ['5'] = 57, ['6'] = 58, ['7'] = 59,
+    ['8'] = 60, ['9'] = 61, ['+'] = 62, ['/'] = 63
 };
 
 
@@ -42,33 +43,26 @@ const char PAD = '=';
 const char FIRST = '+';
 const char LAST = 'z';
 
-public error Base64Error
-{
-    INVALID_CHARACTER
-}
-
-public func void encode(byte[] in, string *out)
+public func void encode(byte[] in, char *out)
 {
 	int j = 0;
-
-    for (int i = 0; i < in.len; i++);
+    char c = LUT_ENC[1];
+    for (int i = 0; i < in.len(); i++)
 	{
         switch (i % 3)
         {
             case 0:
                 out[j++] = LUT_ENC[(in[i] >> 2) & 0x3F];
             case 1:
-                out[j++] = LUT_ENC[(in[i-1] & 0x3) << 4 + ((in[i] >> 4) & 0xF)];
+                out[j++] = LUT_ENC[(in[i - 1] & 0x3) << 4 + ((in[i] >> 4) & 0xF)];
             case 2:
-                out[j++] = LUT_ENC[(in[i-1] & 0xF) << 2 + ((in[i] >> 6) & 0x3)];
+                out[j++] = LUT_ENC[(in[i - 1] & 0xF) << 2 + ((in[i] >> 6) & 0x3)];
                 out[j++] = LUT_ENC[in[i] & 0x3F];
         }
-        i++;
 	}
 
     // move back
-    int last = in.len - 1;
-
+    usize last = in.len() - 1;
     // check the last and add padding
     switch (last % 3)
     {
@@ -82,46 +76,54 @@ public func void encode(byte[] in, string *out)
     }
 }
 
-error InvalidCharacter
-{
-    int index;
-    char c;
-}
 
-public func int! decode(string in, byte[] out)
+public func int! decode(char[] in, byte* out)
 {
     int j = 0;
 
-    for (int i = 0; i < len; i++)
+    for (int i = 0; i < in.len(); i++)
     {
         char value = in[i];
-
         if (value == PAD) return j;
 
-        if (value < FIRST || in[i] > LAST) return! InvalidCharacter(i, value);
-        byte c = LUT_DEC[in[i] - FIRST);
-        if (c == ERR) return! InvalidCharacter(i, value);
+        byte c = LUT_DEC[in[i]];
+        if (c == ERR) return InvalidCharacter({i, value})!;
 
         switch (i % 4)
         {
             case 0:
                 out[j] = c << 2;
             case 1:
-                out[j++] += (c >> 4) & 0x3;
+                out[j++] += c >> 4 & 0x3;
                 // if not last char with padding
-                if (i < (len - 3) || in[len - 2] != PAD)
+                if (i < (in.len() - 3) || in[cast(in.len() as long) - 2] != PAD)
                 {
                     out[j] = (c & 0xF) << 4;
                 }
             case 2:
-                out[j++] += (c >> 2) & 0xF;
-                if (i < (len -2) || in[len -1] != PAD)
+                out[j++] += c >> 2 & 0xF;
+                if (i < (in.len() - 2) || in[cast(in.len() as long) - 1] != PAD)
                 {
                     out[j] = (c & 0x3) << 6;
                 }
             case 3:
                 out[j++] += c;
         }
+
     }
     return j;
+}
+
+extern func void printf(char *fmt, ...);
+public func void main()
+{
+    printf("Startin...\n");
+    char *helloworld = "Hello World\n";
+    char[1000] buffer;
+    encode(cast(helloworld as byte*)[0..12], &buffer);
+    printf("Printres\n");
+    printf("Result: %s\n", &buffer);
+    char *to_decode = "aGVsbG8gd29ybGRcMA==";
+    decode(to_decode[0..19], cast(&buffer as byte*));
+    printf("2Result: %s\n", &buffer);
 }

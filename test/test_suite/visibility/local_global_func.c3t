@@ -1,0 +1,31 @@
+module test;
+
+int x;
+local int y = 12;
+
+local func void foo(int z) @noinline
+{
+    y = z;
+}
+
+func void* test()
+{
+    foo(12);
+    return &y;
+}
+
+// #expect: local_global_func.ll
+
+@x = protected global i32 0, align 4
+@y = hidden global i32 12, align 4
+
+define internal void @test.foo(i32 %0)
+
+  %z = alloca i32, align 4
+  store i32 %0, i32* %z, align 4
+  %1 = load i32, i32* %z, align 4
+  store i32 %1, i32* @y, align 4
+  ret void
+define i8* @test.test()
+  call void @test.foo(i32 12)
+  ret i8* bitcast (i32* @y to i8*)

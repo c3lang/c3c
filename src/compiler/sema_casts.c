@@ -496,7 +496,7 @@ bool ixxbo(Context *context, Expr *left, Type *type)
 
 /**
  * Cast comptime, signed or unsigned -> pointer.
- * @return true unless the constant value evaluates to zero.
+ * @return true if the cast succeeds.
  */
 bool xipt(Context *context, Expr *left, Type *from, Type *canonical, Type *type, CastType cast_type)
 {
@@ -504,14 +504,11 @@ bool xipt(Context *context, Expr *left, Type *from, Type *canonical, Type *type,
 	if (left->expr_kind == EXPR_CONST)
 	{
 		RETURN_NON_CONST_CAST(CAST_XIPTR);
-		if (bigint_cmp_zero(&left->const_expr.i) != CMP_EQ)
+		if (bigint_cmp_zero(&left->const_expr.i) == CMP_EQ)
 		{
-			SEMA_ERROR(left, "Cannot cast non zero constants into pointers.");
-			return false;
+			expr_const_set_null(&left->const_expr);
+			left->type = type;
 		}
-		expr_const_set_null(&left->const_expr);
-		left->type = type;
-		return true;
 	}
 	if (type_size(from) < type_size(type_voidptr))
 	{

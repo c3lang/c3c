@@ -106,12 +106,24 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 
 	decl->strukt.union_rep = max_alignment_element;
 
+	if (!max_size)
+	{
+		decl->strukt.size = 0;
+		decl->alignment = 1;
+		return true;
+	}
+
 	// The actual size might be larger than the max size due to alignment.
 	unsigned size = aligned_offset(max_size, decl->alignment);
 
+	unsigned rep_size = type_size(members[max_alignment_element]->type);
+
 	// If the actual size is bigger than the real size, add
 	// padding.
-	decl->needs_additional_pad = size > max_size;
+	if (size > rep_size)
+	{
+		decl->strukt.padding = size - rep_size;
+	}
 
 	decl->strukt.size = size;
 
@@ -146,36 +158,56 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 
 		if (!decl_ok(decl)) return false;
 
-		AlignSize member_alignment = type_abi_alignment(member->type);
+		AlignSize member_natural_alignment = type_abi_alignment(member->type);
+		AlignSize member_alignment = is_packed ? 1 : member_natural_alignment;
+		Attr **attributes = member->attributes;
+		unsigned count = vec_size(attributes);
+		for (unsigned j = 0; j < count; j++)
+		{
+			Attr *attribute = attributes[j];
+			if (!sema_analyse_attribute(context, attribute, ATTR_VAR)) return false;
+			if (TOKSTR(attribute->name) == kw_align)
+			{
+				member_alignment = attribute->alignment;
+				// Update total alignment if we have a member that has bigger alignment.
+				if (member_alignment > decl->alignment) decl->alignment = member_alignment;
+			}
+		}
 
 		// If the member alignment is higher than the currently detected alignment,
 		// then we update the natural alignment
-		if (member_alignment > natural_alignment)
+		if (member_natural_alignment > natural_alignment)
 		{
-			natural_alignment = member_alignment;
+			natural_alignment = member_natural_alignment;
 		}
+
 		// In the case of a struct, we will align this to the next offset,
 		// using the alignment of the member.
 		unsigned align_offset = aligned_offset(offset, member_alignment);
 
-		// Usually we align things, but if this is a packed struct we don't
-		// so offsets may mismatch
-		if (align_offset > offset)
+		unsigned natural_align_offset = aligned_offset(offset, member_natural_alignment);
+
+		// If the natural align is different from the aligned offset we have two cases:
+		if (natural_align_offset != align_offset)
 		{
-			if (is_packed)
+			// If the natural alignment is greater, in this case the struct is unaligned.
+			if (member_natural_alignment > member_alignment)
 			{
-				// If it is packed, we note that the packing made it unaligned.
+				assert(natural_align_offset > align_offset);
 				is_unaligned = true;
 			}
 			else
 			{
-				// Otherwise we insert the (implicit) padding by moving to the aligned offset.
-				offset = align_offset;
+				// Otherwise we have a greater offset, and in this case
+				// we add padding for the difference.
+				assert(natural_align_offset < align_offset);
+				member->padding = align_offset - offset;
 			}
 		}
+
+		offset = align_offset;
 		member->offset = offset;
 		offset += type_size(member->type);
-		;
 	}
 
 	// Set the alignment:
@@ -194,7 +226,7 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 	// in this case we need an additional padding
 	if (size > aligned_offset(offset, natural_alignment))
 	{
-		decl->needs_additional_pad = true;
+		decl->strukt.padding = size - offset;
 	}
 
 	// If the size is smaller the naturally aligned struct, then it is also unaligned
@@ -204,7 +236,8 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 	}
 	if (is_unaligned && size > offset)
 	{
-		decl->needs_additional_pad = true;
+		assert(!decl->strukt.padding);
+		decl->strukt.padding = size - offset;
 	}
 	decl->is_packed = is_unaligned;
 	decl->strukt.size = size;
@@ -535,6 +568,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 {
 	switch (domain)
 	{
+		case ATTR_MEMBER:
+			return "member";
 		case ATTR_FUNC:
 			return "function";
 		case ATTR_VAR:
@@ -564,11 +599,11 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 	}
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
-			[ATTRIBUTE_CNAME] = 0xFF,
+			[ATTRIBUTE_CNAME] = ~0,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION | ATTR_ERROR,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
-			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_VAR | ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_VAR | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC,
 			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION,
@@ -756,14 +791,35 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 		if (!sema_resolve_type_info(context, decl->var.type_info)) return false;
 		decl->type = decl->var.type_info->type;
 	}
+	// Check the initializer.
 	if (decl->var.init_expr && decl->type)
 	{
-		if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr, false)) return false;
-		if (!decl->var.init_expr->constant)
+		Expr *init_expr = decl->var.init_expr;
+		// 1. Check type.
+		if (!sema_analyse_expr_of_required_type(context, decl->type, init_expr, false)) return false;
+		// 2. Check const-ness
+		if (!init_expr->constant)
 		{
-
-			SEMA_ERROR(decl->var.init_expr, "The expression must be a constant value.");
-			return false;
+			// 3. Special case is when the init expression is the reference
+			// to a constant global structure.
+			if (init_expr->expr_kind == EXPR_CONST_IDENTIFIER)
+			{
+				// 4. If so we copy the init expression, which should always be constant.
+				*init_expr = *init_expr->identifier_expr.decl->var.init_expr;
+				assert(init_expr->constant);
+			}
+			else
+			{
+				if (init_expr->expr_kind == EXPR_CAST)
+				{
+					SEMA_ERROR(decl->var.init_expr, "The expression may not be a non constant cast.");
+				}
+				else
+				{
+					SEMA_ERROR(decl->var.init_expr, "The expression must be a constant value.");
+				}
+				return false;
+			}
 		}
 		if (!decl->type) decl->type = decl->var.init_expr->type;
 	}
@@ -838,10 +894,17 @@ static inline bool sema_analyse_define(Context *context, Decl *decl)
 static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
 {
 	if (!sema_analyse_struct_union(context, decl)) return false;
-	if (decl->strukt.size > type_size(type_usize))
+	ByteSize error_full_size = type_size(type_voidptr);
+	if (decl->strukt.size > error_full_size)
 	{
-		SEMA_ERROR(decl, "Error type may not exceed pointer size (%d bytes) it was %d bytes.", type_size(type_usize), decl->strukt.size);
+		SEMA_ERROR(decl, "Error type may not exceed pointer size (%d bytes) it was %d bytes.", error_full_size, decl->strukt.size);
 		return false;
+	}
+
+	if (decl->strukt.size < error_full_size)
+	{
+		decl->strukt.padding = error_full_size - decl->strukt.size;
+		decl->strukt.size = error_full_size;
 	}
 	return true;
 }

@@ -1,0 +1,65 @@
+module iftest;
+
+func void test1(int x)
+{
+    if (x > 0)
+    {
+        defer x += 1;
+    }
+    else
+    {}
+}
+
+func void test2(int x)
+{
+    if (x > 0)
+    {
+    }
+    else
+    {}
+}
+
+func void test3(int x)
+{
+    if (x > 0)
+    {}
+    else { x += 1; }
+}
+
+// #expect: if_tests.ll
+
+  %x = alloca i32, align 4
+  store i32 %0, i32* %x, align 4
+  %1 = load i32, i32* %x, align 4
+  %gt = icmp sgt i32 %1, 0
+  br i1 %gt, label %if.then, label %if.exit
+if.then:
+  %2 = load i32, i32* %x, align 4
+  %add = add nsw i32 %2, 1
+  store i32 %add, i32* %x, align 4
+  br label %exit
+exit:
+  br label %if.exit
+if.exit:
+  ret void
+
+define void @iftest.test2(i32 %0)
+  %x = alloca i32, align 4
+  store i32 %0, i32* %x, align 4
+  %1 = load i32, i32* %x, align 4
+  %gt = icmp sgt i32 %1, 0
+  ret void
+
+define void @iftest.test3(i32 %0)
+  %x = alloca i32, align 4
+  store i32 %0, i32* %x, align 4
+  %1 = load i32, i32* %x, align 4
+  %gt = icmp sgt i32 %1, 0
+  br i1 %gt, label %if.exit, label %if.else
+if.else:
+  %2 = load i32, i32* %x, align 4
+  %add = add nsw i32 %2, 1
+  store i32 %add, i32* %x, align 4
+  br label %if.exit
+if.exit:
+  ret void
