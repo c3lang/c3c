@@ -115,15 +115,14 @@ public func int! decode(char[] in, byte* out)
 }
 
 extern func void printf(char *fmt, ...);
+
 public func void main()
 {
-    printf("Startin...\n");
     char *helloworld = "Hello World\n";
     char[1000] buffer;
     encode(cast(helloworld as byte*)[0..12], &buffer);
-    printf("Printres\n");
     printf("Result: %s\n", &buffer);
     char *to_decode = "aGVsbG8gd29ybGRcMA==";
     decode(to_decode[0..19], cast(&buffer as byte*));
-    printf("2Result: %s\n", &buffer);
+    printf("Result: %s\n", &buffer);
 }

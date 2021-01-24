@@ -807,38 +807,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 		if (!sema_resolve_type_info(context, decl->var.type_info)) return false;
 		decl->type = decl->var.type_info->type;
 	}
-	// Check the initializer.
-	if (decl->var.init_expr && decl->type)
-	{
-		Expr *init_expr = decl->var.init_expr;
-		// 1. Check type.
-		if (!sema_analyse_expr_of_required_type(context, decl->type, init_expr, false)) return false;
-		// 2. Check const-ness
-		if (!init_expr->constant)
-		{
-			// 3. Special case is when the init expression is the reference
-			// to a constant global structure.
-			if (init_expr->expr_kind == EXPR_CONST_IDENTIFIER)
-			{
-				// 4. If so we copy the init expression, which should always be constant.
-				*init_expr = *init_expr->identifier_expr.decl->var.init_expr;
-				assert(init_expr->constant);
-			}
-			else
-			{
-				if (init_expr->expr_kind == EXPR_CAST)
-				{
-					SEMA_ERROR(decl->var.init_expr, "The expression may not be a non constant cast.");
-				}
-				else
-				{
-					SEMA_ERROR(decl->var.init_expr, "The expression must be a constant value.");
-				}
-				return false;
-			}
-		}
-		if (!decl->type) decl->type = decl->var.init_expr->type;
-	}
+
 	// We expect a constant to actually be parsed correctly so that it has a value, so
 	// this should always be true.
 	assert(decl->type || decl->var.kind == VARDECL_CONST);
@@ -876,6 +845,45 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 		{
 			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
+		}
+	}
+
+	// If we already have the type resolved then we can pretend to be done,
+	// this will help in case we otherwise would get circular references.
+	if (decl->type)
+	{
+		decl->resolve_status = RESOLVE_DONE;
+	}
+
+	// Check the initializer.
+	if (decl->var.init_expr && decl->type)
+	{
+		Expr *init_expr = decl->var.init_expr;
+		// 1. Check type.
+		if (!sema_analyse_expr_of_required_type(context, decl->type, init_expr, false)) return false;
+		// 2. Check const-ness
+		if (!init_expr->constant)
+		{
+			// 3. Special case is when the init expression is the reference
+			// to a constant global structure.
+			if (init_expr->expr_kind == EXPR_CONST_IDENTIFIER)
+			{
+				// 4. If so we copy the init expression, which should always be constant.
+				*init_expr = *init_expr->identifier_expr.decl->var.init_expr;
+				assert(init_expr->constant);
+			}
+			else
+			{
+				if (init_expr->expr_kind == EXPR_CAST)
+				{
+					SEMA_ERROR(decl->var.init_expr, "The expression may not be a non constant cast.");
+				}
+				else
+				{
+					SEMA_ERROR(decl->var.init_expr, "The expression must be a constant value.");
+				}
+				return false;
+			}
 		}
 	}
 
