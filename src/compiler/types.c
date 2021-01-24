@@ -97,6 +97,7 @@ const char *type_to_error_string(Type *type)
 		case ALL_FLOATS:
 		case TYPE_UNION:
 		case TYPE_ERRTYPE:
+		case TYPE_DISTINCT:
 			return type->name;
 		case TYPE_FUNC:
 		{
@@ -173,6 +174,8 @@ ByteSize type_size(Type *type)
 {
 	switch (type->type_kind)
 	{
+		case TYPE_DISTINCT:
+			return type_size(type->decl->distinct_decl.base_type);
 		case TYPE_VECTOR:
 			return type_size(type->vector.base) * type->vector.len;
 		case TYPE_COMPLEX:
@@ -316,6 +319,8 @@ bool type_is_abi_aggregate(Type *type)
 	{
 		case TYPE_POISONED:
 			return false;
+		case TYPE_DISTINCT:
+			return type_is_abi_aggregate(type->decl->distinct_decl.base_type);
 		case TYPE_TYPEDEF:
 			return type_is_abi_aggregate(type->canonical);
 		case ALL_FLOATS:
@@ -462,6 +467,8 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			*base = type->complex;
 			*elements = 2;
 			break;
+		case TYPE_DISTINCT:
+			return type_is_homogenous_aggregate(type->decl->distinct_decl.base_type, base, elements);
 		case TYPE_FXX:
 		case TYPE_POISONED:
 		case TYPE_IXX:
@@ -602,6 +609,8 @@ AlignSize type_abi_alignment(Type *type)
 			TODO
 		case TYPE_VOID:
 			return 1;
+		case TYPE_DISTINCT:
+			return type_abi_alignment(type->decl->distinct_decl.base_type);
 		case TYPE_TYPEDEF:
 			return type_abi_alignment(type->canonical);
 		case TYPE_ENUM:
@@ -752,6 +761,7 @@ bool type_is_user_defined(Type *type)
 
 Type *type_get_indexed_type(Type *type)
 {
+	RETRY:
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
@@ -762,13 +772,15 @@ Type *type_get_indexed_type(Type *type)
 			return type->array.base;
 		case TYPE_STRING:
 			return type_char;
+		case TYPE_DISTINCT:
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
 		default:
-			break;
+			return NULL;
 	}
-	Type *canonical = type->canonical;
-	if (canonical != type) return type_get_indexed_type(type);
-	return NULL;
-
 }
 
 
@@ -942,6 +954,9 @@ bool type_is_scalar(Type *type)
 		case TYPE_VARARRAY:
 		case TYPE_COMPLEX:
 			return true;
+		case TYPE_DISTINCT:
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
@@ -1142,10 +1157,17 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 			return NULL;
-		case ALL_INTS:
-			if (other->type_kind == TYPE_ENUM) return type_find_max_type(type, other->decl->enums.type_info->type->canonical);
+		case TYPE_IXX:
+			if (other->type_kind == TYPE_DISTINCT && type_is_numeric(other->decl->distinct_decl.base_type)) return other;
 			FALLTHROUGH;
-		case ALL_FLOATS:
+		case ALL_SIGNED_INTS:
+		case ALL_UNSIGNED_INTS:
+			if (other->type_kind == TYPE_ENUM) return type_find_max_type(type, other->decl->enums.type_info->type->canonical);
+			return type_find_max_num_type(type, other);
+		case TYPE_FXX:
+			if (other->type_kind == TYPE_DISTINCT && type_is_float(other->decl->distinct_decl.base_type)) return other;
+			FALLTHROUGH;
+		case ALL_REAL_FLOATS:
 			return type_find_max_num_type(type, other);
 		case TYPE_POINTER:
 			return type_find_max_ptr_type(type, other);
@@ -1156,11 +1178,12 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_ERRTYPE:
 			if (other->type_kind == TYPE_ERRTYPE) return type_error;
 			return NULL;
+		case TYPE_DISTINCT:
+			return NULL;
 		case TYPE_FUNC:
 		case TYPE_UNION:
 		case TYPE_ERR_UNION:
 		case TYPE_TYPEID:
-			return NULL;
 		case TYPE_STRUCT:
 			TODO
 		case TYPE_TYPEDEF:

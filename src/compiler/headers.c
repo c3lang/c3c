@@ -96,6 +96,8 @@ static void header_print_type(FILE *file, Type *type)
 		case TYPE_UNION:
 			OUTPUT("union %s__", type->decl->external_name);
 			return;
+		case TYPE_DISTINCT:
+			TODO
 		case TYPE_ERRTYPE:
 			break;
 		case TYPE_ERR_UNION:
@@ -204,6 +206,7 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 		case DECL_FUNC:
 			TODO
 		case DECL_TYPEDEF:
+		case DECL_DISTINCT:
 			TODO
 		case DECL_STRUCT:
 			header_gen_struct(file, indent, decl);

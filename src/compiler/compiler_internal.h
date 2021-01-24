@@ -395,6 +395,16 @@ typedef struct
 
 typedef struct
 {
+	union
+	{
+		TypedefDecl typedef_decl;
+		Type *base_type;
+	};
+	Decl** methods;
+} DistinctDecl;
+
+typedef struct
+{
 	bool failable : 1;
 	Decl **parameters;
 	TypeInfo *rtype; // May be null!
@@ -482,6 +492,7 @@ typedef struct _Decl
 		FuncDecl func;
 		AttrDecl attr;
 		TypedefDecl typedef_decl;
+		DistinctDecl distinct_decl;
 		MacroDecl macro_decl;
 		GenericDecl generic_decl;
 		DefineDecl define_decl;
@@ -1313,21 +1324,22 @@ extern Type *type_typeid, *type_error, *type_typeinfo;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
-extern const char *kw_main;
-extern const char *kw_sizeof;
-extern const char *kw_alignof;
 extern const char *kw_align;
-extern const char *kw_offsetof;
-extern const char *kw_kindof;
-extern const char *kw_nameof;
-extern const char *kw_qnameof;
-extern const char *kw_len;
+extern const char *kw_alignof;
+extern const char *kw_distinct;
 extern const char *kw_inline;
+extern const char *kw_kindof;
+extern const char *kw_len;
+extern const char *kw_main;
+extern const char *kw_nameof;
+extern const char *kw_offsetof;
 extern const char *kw_ordinal;
-extern const char *kw___round;
+extern const char *kw_qnameof;
+extern const char *kw_sizeof;
 extern const char *kw___ceil;
-extern const char *kw___trunc;
+extern const char *kw___round;
 extern const char *kw___sqrt;
+extern const char *kw___trunc;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id(_token.id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
@@ -1748,11 +1760,6 @@ static inline bool type_convert_will_trunc(Type *destination, Type *source)
 	return (unsigned)destination->canonical->builtin.bitsize < (unsigned)source->canonical->builtin.bitsize;
 }
 
-static inline bool type_is_numeric(Type *type)
-{
-	if (type->type_kind == TYPE_TYPEDEF) type = type->canonical;
-	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_FXX;
-}
 
 UnaryOp unaryop_from_token(TokenType type);
 TokenType unaryop_to_token(UnaryOp type);
@@ -1779,6 +1786,11 @@ static inline void advance_and_verify(Context *context, TokenType token_type)
 }
 
 
+static inline Type *type_flatten(Type *type)
+{
+	type = type->canonical;
+	return type->type_kind == TYPE_DISTINCT ? type->decl->distinct_decl.base_type : type;
+}
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_TYPEID; }
 static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_I64; }
 static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind <= TYPE_U64; }
@@ -1788,6 +1800,13 @@ static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
 bool type_is_scalar(Type *type);
+
+static inline bool type_is_numeric(Type *type)
+{
+	type = type_flatten(type);
+	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_FXX;
+}
+
 static inline bool type_kind_is_derived(TypeKind kind)
 {
 	switch (kind)
@@ -1819,7 +1838,7 @@ static inline bool type_is_structlike(Type *type)
 
 static inline Type *type_lowering(Type *type)
 {
-	Type *canonical = type->canonical;
+	Type *canonical = type_flatten(type);
 	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
 	if (canonical->type_kind == TYPE_TYPEID) return type_usize->canonical;
 	return canonical;

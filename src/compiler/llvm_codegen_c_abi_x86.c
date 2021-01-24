@@ -114,11 +114,12 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
 		case TYPE_TYPEINFO:
+		case TYPE_DISTINCT:
+		case TYPE_ENUM:
 			UNREACHABLE
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
-		case TYPE_ENUM:
 		case TYPE_POINTER:
 		case TYPE_TYPEID:
 		case TYPE_VARARRAY:
@@ -588,6 +589,7 @@ static ABIArgInfo *x86_classify_argument(CallConvention call, Regs *regs, Type *
 		case TYPE_TYPEDEF:
 		case TYPE_VOID:
 		case TYPE_ENUM:
+		case TYPE_DISTINCT:
 		case TYPE_FUNC:
 		case TYPE_TYPEID:
 			UNREACHABLE

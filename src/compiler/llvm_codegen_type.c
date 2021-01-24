@@ -30,6 +30,8 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		}
 		case DECL_TYPEDEF:
 			return llvm_get_type(c, decl->typedef_decl.type_info->type);
+		case DECL_DISTINCT:
+			return llvm_get_type(c, decl->distinct_decl.base_type);
 		case DECL_STRUCT:
 		{
 			LLVMTypeRef *types = NULL;
@@ -328,6 +330,8 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			return any_type->backend_type = LLVMIntTypeInContext(c->context, any_type->builtin.bitsize);
 		case TYPE_TYPEDEF:
 			return any_type->backend_type = llvm_get_type(c, any_type->canonical);
+		case TYPE_DISTINCT:
+			return any_type->backend_type = llvm_get_type(c, any_type->decl->distinct_decl.base_type);
 		case TYPE_ENUM:
 			return any_type->backend_type = llvm_get_type(c, any_type->decl->enums.type_info->type->canonical);
 		case TYPE_ERR_UNION:

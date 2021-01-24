@@ -615,6 +615,7 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 	{
 		case DECL_POISONED:
 		case DECL_TYPEDEF:
+		case DECL_DISTINCT:
 			UNREACHABLE;
 		case DECL_FUNC:
 			decl->backend_ref = LLVMAddFunction(context->module, decl->cname ?: decl->external_name,

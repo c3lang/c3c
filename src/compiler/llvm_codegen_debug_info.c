@@ -525,6 +525,8 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return type->backend_debug_type = llvm_debug_structlike_type(c, type, scope);
+		case TYPE_DISTINCT:
+			TODO
 		case TYPE_TYPEDEF:
 			return type->backend_debug_type = llvm_debug_typedef_type(c, type);
 		case TYPE_STRING:

@@ -33,7 +33,7 @@ typedef struct
 {
 	BackendValueKind kind : 5;
 	AlignSize alignment;
-	Type *type;
+	Type *type; // Should never be a distinct or canonical type.
 	LLVMValueRef value;
 	LLVMValueRef failable;
 } BEValue;
