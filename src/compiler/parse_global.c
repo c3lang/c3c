@@ -1420,9 +1420,6 @@ static inline Decl *parse_attribute_declaration(Context *context, Visibility vis
 }
 
 /**
- *
- */
-/**
  * func_typedef
  *  : FUNC failable_type opt_parameter_type_list
  *  | FUNC failable_type opt_parameter_type_list throw_declaration
@@ -1446,6 +1443,14 @@ static inline bool parse_func_typedef(Context *context, Decl *decl, Visibility v
 
 }
 
+/**
+ * typedef_declaration
+ * 	: TYPEDEF (func_typedef | type) AS ('distinct')? type_ident
+ *
+ * @param context
+ * @param visibility
+ * @return
+ */
 static inline Decl *parse_typedef_declaration(Context *context, Visibility visibility)
 {
 	advance_and_verify(context, TOKEN_TYPEDEF);
@@ -1460,6 +1465,14 @@ static inline Decl *parse_typedef_declaration(Context *context, Visibility visib
 		decl->typedef_decl.is_func = false;
 	}
 	CONSUME_OR(TOKEN_AS, poisoned_decl);
+
+	// Parse optional "distinct"
+	if (context->tok.type == TOKEN_IDENT && TOKSTR(context->tok) == kw_distinct)
+	{
+		advance(context);
+		decl->type->type_kind = TYPE_DISTINCT;
+		decl->decl_kind = DECL_DISTINCT;
+	}
 	decl->name = TOKSTR(context->tok);
 	decl->type->name = TOKSTR(context->tok);
 	decl->name_token = context->tok.id;

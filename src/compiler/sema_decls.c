@@ -444,6 +444,22 @@ static inline bool sema_analyse_typedef(Context *context, Decl *decl)
 	return true;
 }
 
+static inline bool sema_analyse_distinct(Context *context, Decl *decl)
+{
+	if (decl->distinct_decl.typedef_decl.is_func)
+	{
+		Type *func_type = sema_analyse_function_signature(context, &decl->distinct_decl.typedef_decl.function_signature, false);
+		if (!func_type) return false;
+		decl->distinct_decl.base_type = type_get_ptr(func_type);
+		return true;
+	}
+	TypeInfo *info = decl->distinct_decl.typedef_decl.type_info;
+	if (!sema_resolve_type_info(context, info)) return false;
+	decl->distinct_decl.base_type = info->type->canonical;
+	// Do we need anything else?
+	return true;
+}
+
 static inline bool sema_analyse_enum(Context *context, Decl *decl)
 {
 	// Resolve the type of the enum.
@@ -941,6 +957,9 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_VAR:
 			if (!sema_analyse_global(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
+			break;
+		case DECL_DISTINCT:
+			if (!sema_analyse_distinct(context, decl)) return decl_poison(decl);
 			break;
 		case DECL_TYPEDEF:
 			if (!sema_analyse_typedef(context, decl)) return decl_poison(decl);

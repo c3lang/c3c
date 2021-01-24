@@ -729,10 +729,11 @@ bool cast_implicit(Context *context, Expr *expr, Type *to_type)
 
 CastKind cast_to_bool_kind(Type *type)
 {
-	switch (type->type_kind)
+	switch (type_flatten(type)->type_kind)
 	{
 		case TYPE_TYPEDEF:
-			return cast_to_bool_kind(type->canonical);
+		case TYPE_DISTINCT:
+			UNREACHABLE
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_ERR_UNION:
@@ -772,6 +773,16 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 	Type *from_type = expr->type->canonical;
 	Type *canonical = to_type->canonical;
 	if (from_type == canonical) return true;
+	if (cast_type == CAST_TYPE_EXPLICIT)
+	{
+		canonical = type_flatten(canonical);
+		from_type = type_flatten(from_type);
+		if (from_type == canonical)
+		{
+			expr->type = to_type;
+			return true;
+		}
+	}
 	switch (from_type->type_kind)
 	{
 		case TYPE_POISONED:
@@ -779,6 +790,7 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_DISTINCT:
 			break;
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.
@@ -790,6 +802,7 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 			if (to_type->type_kind == TYPE_ERRTYPE) return euer(context, expr, canonical, to_type, cast_type);
 			break;
 		case TYPE_IXX:
+			canonical = type_flatten(canonical);
 			// Compile time integers may convert into ints, floats, bools
 			if (expr->expr_kind != EXPR_CONST && !expr->reeval)
 			{
@@ -818,6 +831,10 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 			if (canonical->type_kind == TYPE_POINTER) return xipt(context, expr, from_type, canonical, to_type, cast_type);
 			break;
 		case ALL_FLOATS:
+			if (from_type->type_kind == TYPE_FXX)
+			{
+				canonical = type_flatten(canonical);
+			}
 			// Compile time integers may convert into ints, floats, bools
 			if (from_type->type_kind == TYPE_FXX && expr->expr_kind != EXPR_CONST && !expr->reeval)
 			{

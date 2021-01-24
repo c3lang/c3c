@@ -87,6 +87,9 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_ENUM:
 			kind = TYPE_ENUM;
 			break;
+		case DECL_DISTINCT:
+			kind = TYPE_DISTINCT;
+			break;
 		case DECL_TYPEDEF:
 			kind = TYPE_TYPEDEF;
 			break;
@@ -326,7 +329,9 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 	}
 	switch (type->type_kind)
 	{
-
+		case TYPE_DISTINCT:
+			DUMPF("(distinct %s)", type->name);
+			return;
 		case TYPE_COMPLEX:
 			DUMP("(type complex");
 			return;
@@ -869,6 +874,17 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			DUMPEND();
 		case DECL_TYPEDEF:
 			DUMPF("(typedef %s", decl->name);
+			if (decl->typedef_decl.is_func)
+			{
+				fprint_func_signature(context, file, &decl->typedef_decl.function_signature, indent + 1);
+			}
+			else
+			{
+				DUMPTI(decl->typedef_decl.type_info);
+			}
+			DUMPEND();
+		case DECL_DISTINCT:
+			DUMPF("(distinct %s", decl->name);
 			if (decl->typedef_decl.is_func)
 			{
 				fprint_func_signature(context, file, &decl->typedef_decl.function_signature, indent + 1);

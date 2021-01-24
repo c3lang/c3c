@@ -65,7 +65,7 @@ static inline bool both_const(Expr *left, Expr *right)
 
 static inline bool both_any_integer(Expr *left, Expr *right)
 {
-	return type_is_any_integer(left->type->canonical) && type_is_any_integer(right->type->canonical);
+	return type_is_any_integer(type_flatten(left->type)) && type_is_any_integer(type_flatten(right->type));
 }
 
 static inline void context_pop_returns(Context *context, Ast **restore)
@@ -163,6 +163,8 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 			return true;
 		case DECL_VAR:
 			break;
+		case DECL_DISTINCT:
+			TODO
 		case DECL_TYPEDEF:
 			UNREACHABLE
 		case DECL_POISONED:
@@ -1412,7 +1414,7 @@ static inline bool sema_expr_analyse_subscript(Context *context, Expr *expr)
 	expr->failable = expr->subscript_expr.expr->failable;
 	assert(expr->expr_kind == EXPR_SUBSCRIPT);
 	Expr *subscripted = expr->subscript_expr.expr;
-	Type *type = subscripted->type->canonical;
+	Type *type = type_flatten(subscripted->type);
 	Expr *index = expr->subscript_expr.index;
 	Type *current_type = type;
 	Expr *current_expr = subscripted;
@@ -1448,7 +1450,7 @@ static inline bool sema_expr_analyse_slice(Context *context, Expr *expr)
 	Expr *subscripted = expr->slice_expr.expr;
 	expr->pure = subscripted->pure;
 	expr->constant = subscripted->constant;
-	Type *type = subscripted->type->canonical;
+	Type *type = type_flatten(subscripted->type);
 	Expr *start = expr->slice_expr.start;
 	Expr *end = expr->slice_expr.end;
 
@@ -1928,12 +1930,12 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	assert(parent->resolve_status == RESOLVE_DONE);
 
 	Type *parent_type = parent->type;
-	Type *type = parent_type->canonical;
+	Type *type = type_flatten(parent_type);
 
 	bool is_pointer = type->type_kind == TYPE_POINTER;
 	if (is_pointer)
 	{
-		type = type->pointer;
+		type = type_flatten(type->pointer);
 		if (!sema_cast_rvalue(context, NULL, parent)) return false;
 		insert_access_deref(expr);
 		parent = expr->access_expr.parent;
@@ -1941,6 +1943,7 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	const char *kw = TOKSTR(expr->access_expr.sub_element);
 	Expr *current_parent = parent;
 CHECK_DEEPER:
+
 	switch (type->type_kind)
 	{
 		case TYPE_SUBARRAY:
@@ -2187,7 +2190,7 @@ static void sema_create_const_initializer_value(ConstInitializer *const_init, Ex
 		return;
 	}
 	const_init->init_value = value;
-	const_init->type = value->type->canonical;
+	const_init->type = type_flatten(value->type);
 	const_init->kind = CONST_INIT_VALUE;
 }
 
@@ -2228,7 +2231,7 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 		{
 			// Create zero initializers for each of those { a: zeroinit, b: zeroinit, ... }
 			ConstInitializer *element_init = MALLOC(sizeof(ConstInitializer));
-			element_init->type = elements[i]->type->canonical;
+			element_init->type = type_flatten(elements[i]->type);
 			element_init->kind = CONST_INIT_ZERO;
 			const_inits[i] = element_init;
 		}
@@ -2296,7 +2299,7 @@ static inline void sema_update_const_initializer_with_designator_union(ConstInit
 	}
 
 	// Update of the sub element.
-	sub_element->type = const_init->type->decl->strukt.members[element->index]->type->canonical;
+	sub_element->type = type_flatten(const_init->type->decl->strukt.members[element->index]->type);
 
 	// And the index
 	const_init->init_union.index = element->index;
@@ -2338,7 +2341,7 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 		const_init->init_array.elements = NULL;
 	}
 
-	Type *element_type = const_init->type->array.base;
+	Type *element_type = type_flatten(const_init->type->array.base);
 	DesignatorElement **next_element = curr + 1;
 	bool is_last_path_element = next_element == end;
 
@@ -2444,10 +2447,16 @@ static inline void sema_update_const_initializer_with_designator(
 }
 
 
+/**
+ * Create a const initializer.
+ */
 static void sema_create_const_initializer(ConstInitializer *const_init, Expr *initializer)
 {
 	const_init->kind = CONST_INIT_ZERO;
-	const_init->type = initializer->type->canonical;
+	// Flatten the type since the external type might be typedef or a distinct type.
+	const_init->type = type_flatten(initializer->type);
+
+	// Loop through the initializers.
 	Expr **init_expressions = initializer->initializer_expr.initializer_expr;
 	VECEACH(init_expressions, i)
 	{
@@ -2623,7 +2632,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 	{
 		ConstInitializer *const_init = CALLOCS(ConstInitializer);
 		const_init->kind = CONST_INIT_STRUCT;
-		const_init->type = initializer->type->canonical;
+		const_init->type = type_flatten(initializer->type);
 		ConstInitializer **inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
 		VECEACH(elements, i)
 		{
@@ -2701,7 +2710,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 	{
 		ConstInitializer *const_init = CALLOCS(ConstInitializer);
 		const_init->kind = CONST_INIT_ARRAY_FULL;
-		const_init->type = initializer->type->canonical;
+		const_init->type = type_flatten(initializer->type);
 		ConstInitializer **inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
 		VECEACH(elements, i)
 		{
@@ -2725,9 +2734,9 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 	return true;
 }
 
-static inline bool sema_expr_analyse_initializer(Context *context, Type *assigned, Expr *expr)
+static inline bool sema_expr_analyse_initializer(Context *context, Type *external_type, Type *assigned, Expr *expr)
 {
-	expr->type = assigned;
+	expr->type = external_type;
 
 	Expr **init_expressions = expr->initializer_expr.initializer_expr;
 
@@ -2736,7 +2745,7 @@ static inline bool sema_expr_analyse_initializer(Context *context, Type *assigne
 	{
 		ConstInitializer *initializer = CALLOCS(ConstInitializer);
 		initializer->kind = CONST_INIT_ZERO;
-		initializer->type = expr->type;
+		initializer->type = type_flatten(expr->type);
 		expr->initializer_expr.init_type = INITIALIZER_CONST;
 		expr->initializer_expr.initializer = initializer;
 		expr->constant = true;
@@ -2763,15 +2772,14 @@ static inline bool sema_expr_analyse_initializer(Context *context, Type *assigne
 static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to, Expr *expr)
 {
 	assert(to);
-	Type *assigned = to->canonical;
-	assert(assigned);
+	Type *assigned = type_flatten(to);
 	switch (assigned->type_kind)
 	{
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ARRAY:
 		case TYPE_ERRTYPE:
-			return sema_expr_analyse_initializer(context, assigned, expr);
+			return sema_expr_analyse_initializer(context, to, assigned, expr);
 		case TYPE_VARARRAY:
 			TODO
 		default:
@@ -3857,8 +3865,8 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 
 	bool is_equality_type_op = expr->binary_expr.operator == BINARYOP_NE || expr->binary_expr.operator == BINARYOP_EQ;
 
-	Type *left_type = left->type->canonical;
-	Type *right_type = right->type->canonical;
+	Type *left_type = type_flatten(left->type);
+	Type *right_type = type_flatten(right->type);
 
 	// 2. Handle the case of signed comparisons.
 	//    This happens when either side has a definite integer type
@@ -3873,7 +3881,7 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 	else
 	{
 		// 3. In the normal case, treat this as a binary op, finding the max type.
-		Type *max = type_find_max_type(left_type, right_type);
+		Type *max = type_find_max_type(left->type->canonical, right->type->canonical);
 
 		// 4. If no common type, then that's an error:
 		if (!max)
@@ -3886,7 +3894,12 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 		//    so we need to check that as well.
 		if (!is_equality_type_op)
 		{
-			switch (max->type_kind)
+			Type *effective_type = max;
+			if (max->type_kind == TYPE_DISTINCT)
+			{
+				effective_type = max->decl->distinct_decl.base_type;
+			}
+			switch (effective_type->type_kind)
 			{
 				case TYPE_POISONED:
 					return false;
@@ -3894,6 +3907,7 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 				case TYPE_TYPEINFO:
 				case TYPE_MEMBER:
 				case TYPE_TYPEDEF:
+				case TYPE_DISTINCT:
 					UNREACHABLE
 				case TYPE_BOOL:
 				case TYPE_ENUM:
@@ -4241,13 +4255,14 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 		return true;
 	}
 	Type *canonical = inner->type->canonical;
-	switch (canonical->type_kind)
+	switch (type_flatten(canonical)->type_kind)
 	{
 		case TYPE_POISONED:
 		case TYPE_IXX:
 		case TYPE_FXX:
 		case TYPE_TYPEDEF:
 		case TYPE_ERR_UNION:
+		case TYPE_DISTINCT:
 			UNREACHABLE
 		case TYPE_FUNC:
 		case TYPE_ARRAY:

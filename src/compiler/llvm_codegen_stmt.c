@@ -134,7 +134,7 @@ void gencontext_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr
 	}
 	if (bool_cast)
 	{
-		type = type->canonical;
+		type = type_flatten(type);
 		if (type->type_kind != TYPE_BOOL)
 		{
 			CastKind cast = cast_to_bool_kind(type);

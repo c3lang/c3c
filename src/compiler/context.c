@@ -120,6 +120,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_TYPEDEF:
+		case DECL_DISTINCT:
 		case DECL_ERR:
 			vec_add(context->types, decl);
 			decl_set_external_name(decl);

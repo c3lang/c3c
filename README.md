@@ -96,7 +96,7 @@ the r/ProgrammingLanguages Discord: https://discord.gg/cfu4wdk
 - [ ] CT type constants
 - [ ] Reflection methods
 - [ ] Anonymous structs
-- [ ] Distinct types
+- [x] Distinct types
 - [ ] LTO/ThinLTO setup
 - [ ] Built-in linking
 - [ ] `global` / `shared` for globals 
@@ -106,7 +106,7 @@ the r/ProgrammingLanguages Discord: https://discord.gg/cfu4wdk
 - [ ] Implicit capturing macros
 - [ ] Trailing body macros
 - [ ] Subarray initializers
-- [ ] slice initializers e.g. `{ [1..2] = 2 }`
+- [x] range initializers e.g. `{ [1..2] = 2 }`
 - [ ] Bitstructs
 - [ ] `asm` section
 - [ ] `$switch`
