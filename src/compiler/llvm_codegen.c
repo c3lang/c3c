@@ -291,10 +291,22 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 	// Skip real constants.
 	if (!decl->type) return;
 
+	decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
+
+}
+
+static void gencontext_emit_global_variable_init(GenContext *c, Decl *decl)
+{
+	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
+
+	// Skip real constants.
+	if (!decl->type) return;
+
 	bool modified = false;
 	LLVMValueRef init_value;
 
 	ByteSize alignment = type_abi_alignment(decl->type);
+
 	if (decl->var.init_expr)
 	{
 		if (decl->var.init_expr->expr_kind == EXPR_INITIALIZER_LIST)
@@ -315,6 +327,7 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 	}
 
 	// TODO fix name
+	LLVMValueRef old = decl->backend_ref;
 	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->name);
 	LLVMSetAlignment(decl->backend_ref, alignment);
 	if (decl->visibility != VISIBLE_EXTERN)
@@ -345,6 +358,8 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 	{
 		decl->backend_ref = LLVMConstBitCast(decl->backend_ref, llvm_get_ptr_type(c, decl->type));
 	}
+	LLVMReplaceAllUsesWith(old, decl->backend_ref);
+
 	// Should we set linkage here?
 	if (llvm_use_debug(c))
 	{
@@ -879,6 +894,10 @@ void *llvm_gen(Context *context)
 	VECEACH(context->vars, i)
 	{
 		gencontext_emit_global_variable_definition(gen_context, context->vars[i]);
+	}
+	VECEACH(context->vars, i)
+	{
+		gencontext_emit_global_variable_init(gen_context, context->vars[i]);
 	}
 	VECEACH(context->functions, i)
 	{

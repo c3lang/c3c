@@ -4011,6 +4011,7 @@ static inline bool sema_take_addr_of_var(Expr *expr, Decl *decl, bool *is_consta
 		case VARDECL_PARAM_REF:
 			return true;
 		case VARDECL_CONST:
+			*is_constant = true;
 			if (!decl->var.type_info)
 			{
 				SEMA_ERROR(expr, "The constant is not typed, either type it or use && to take the reference to a temporary.");
