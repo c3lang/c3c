@@ -348,6 +348,7 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 		}
 		*has_default = true;
 	}
+	param->alignment = type_abi_alignment(param->type);
 	return true;
 }
 
@@ -853,6 +854,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 	if (decl->type)
 	{
 		decl->resolve_status = RESOLVE_DONE;
+		if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 	}
 
 	// Check the initializer.

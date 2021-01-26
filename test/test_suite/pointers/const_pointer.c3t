@@ -1,3 +1,5 @@
+// #target: x64_darwin
+
 module test;
 
 double foo = 17;
@@ -11,4 +13,4 @@ void*[3] data = { &foo, &bar, &xx };
 @foo = protected global double 1.700000e+01, align 8
 @bar = protected global double 1.200000e+01, align 8
 @xx = protected global float 1.200000e+01, align 4
-@data = protected global [3 x i8*] [i8* bitcast (double* @foo to i8*), i8* bitcast (double* @bar to i8*), i8* bitcast (float* @xx to i8*)], align 8
+@data = protected global [3 x i8*] [i8* bitcast (double* @foo to i8*), i8* bitcast (double* @bar to i8*), i8* bitcast (float* @xx to i8*)], align 16

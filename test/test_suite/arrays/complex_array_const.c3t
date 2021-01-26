@@ -1,3 +1,4 @@
+// #target: x64_darwin
 module test;
 
 struct Connection
@@ -17,4 +18,4 @@ Connection[3] link
 @0 = internal constant [6 x i8] c"link1\00"
 @1 = internal constant [6 x i8] c"link2\00"
 @2 = internal constant [6 x i8] c"link3\00"
-@link = protected global [3 x %test.Connection] [%test.Connection { i64 1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @0, i32 0, i32 0), i64 10 }, %test.Connection { i64 2, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @1, i32 0, i32 0), i64 20 }, %test.Connection { i64 3, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @2, i32 0, i32 0), i64 30 }], align 8
+@link = protected global [3 x %test.Connection] [%test.Connection { i64 1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @0, i32 0, i32 0), i64 10 }, %test.Connection { i64 2, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @1, i32 0, i32 0), i64 20 }, %test.Connection { i64 3, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @2, i32 0, i32 0), i64 30 }], align 16

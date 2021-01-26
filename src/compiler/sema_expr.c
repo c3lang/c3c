@@ -2070,22 +2070,23 @@ static int64_t sema_analyse_designator_index(Context *context, Expr *index)
 	{
 		return -1;
 	}
-	if (index->expr_kind == EXPR_CONST)
+	if (index->expr_kind != EXPR_CONST)
 	{
-		if (!bigint_fits_in_bits(&index->const_expr.i, 64, true))
-		{
-			SEMA_ERROR(index, "The value of the index does not fit in a long.");
-			return -1;
-		}
-		int64_t index_val = bigint_as_signed(&index->const_expr.i);
-		if (index_val < 0)
-		{
-			SEMA_ERROR(index, "Negative index values is not allowed.");
-			return -1;
-		}
-		return index_val;
+		SEMA_ERROR(index, "The index must be a constant value.");
+		return -1;
 	}
-	return 0;
+	if (!bigint_fits_in_bits(&index->const_expr.i, 64, true))
+	{
+		SEMA_ERROR(index, "The value of the index does not fit in a long.");
+		return -1;
+	}
+	int64_t index_val = bigint_as_signed(&index->const_expr.i);
+	if (index_val < 0)
+	{
+		SEMA_ERROR(index, "Negative index values is not allowed.");
+		return -1;
+	}
+	return index_val;
 }
 
 static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error)
@@ -2112,7 +2113,6 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 			return NULL;
 		}
 		element->index = index;
-		if (element->index_expr->expr_kind != EXPR_CONST) *is_constant = false;
 
 		if (element->kind == DESIGNATOR_RANGE)
 		{
@@ -2122,9 +2122,7 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 				*did_report_error = true;
 				return NULL;
 			}
-			if (element->index_end_expr->expr_kind == EXPR_CONST
-				&& element->index_expr->expr_kind == EXPR_CONST
-				&& index > end_index)
+			if (index > end_index)
 			{
 				SEMA_ERROR(element->index_end_expr, "End index must be greater than start index.");
 				*did_report_error = true;
@@ -2136,7 +2134,6 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 				SEMA_ERROR(element->index_expr, "The index may must be less than the array length (which was %llu).", (unsigned long long)len);
 				return NULL;
 			}
-
 			element->index_end = end_index;
 		}
 		return type_lowered->array.base;
@@ -4921,6 +4918,13 @@ static Ast *ast_copy_from_macro(Context *context, Ast *source)
 			MACRO_COPY_AST(ast->for_stmt.body);
 			MACRO_COPY_EXPR(ast->for_stmt.init);
 			return ast;
+		case AST_FOREACH_STMT:
+			copy_flow(context, ast);
+			MACRO_COPY_DECL(ast->foreach_stmt.index);
+			MACRO_COPY_DECL(ast->foreach_stmt.variable);
+			MACRO_COPY_EXPR(ast->foreach_stmt.enumeration);
+			MACRO_COPY_AST(ast->for_stmt.body);
+			return ast;
 		case AST_IF_STMT:
 			copy_flow(context, ast);
 			MACRO_COPY_EXPR(ast->if_stmt.cond);
@@ -5208,7 +5212,7 @@ bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr, 
 	if (expr->failable && !may_be_failable)
 	{
 		if (!to) to = expr->type;
-		SEMA_ERROR(expr, "'%s!' cannot be implicitly cast to '%s'.", type_to_error_string(expr->type), type_to_error_string(to));
+		SEMA_ERROR(expr, "'%s!' cannot be converted into '%s'.", type_to_error_string(expr->type), type_to_error_string(to));
 		return false;
 	}
 	return cast_implicit(context, expr, to);
@@ -5287,6 +5291,62 @@ bool sema_analyse_expr_value(Context *context, Type *to, Expr *expr)
 		default:
 			UNREACHABLE
 	}
+}
+
+ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size)
+{
+	assert(initializer->expr_kind == EXPR_INITIALIZER_LIST);
+	Expr **initializers = initializer->initializer_expr.initializer_expr;
+	*may_be_array = true;
+	*is_const_size = true;
+	unsigned element_count = vec_size(initializers);
+	// If it's empty or the first element is not a designator, we assume an array list
+	// with that many elements.
+	if (!element_count || initializers[0]->expr_kind != EXPR_DESIGNATOR) return element_count;
+	ArrayIndex size = 0;
+	// Otherwise we assume everything's a designator.
+	VECEACH(initializers, i)
+	{
+		Expr *sub_initializer = initializers[i];
+		if (sub_initializer->expr_kind != EXPR_DESIGNATOR)
+		{
+			// Simply messed up: a mix of designators and regular ones.
+			return -1;
+		}
+		DesignatorElement *element = sub_initializer->designator_expr.path[0];
+		switch (element->kind)
+		{
+			case DESIGNATOR_FIELD:
+				// Struct, abandon!
+				*may_be_array = false;
+				return -1;
+			case DESIGNATOR_ARRAY:
+			{
+				ArrayIndex index = sema_analyse_designator_index(context, element->index_expr);
+				if (index < 0 || element->index_expr->expr_kind != EXPR_CONST)
+				{
+					*is_const_size = false;
+					return -1;
+				}
+				size = MAX(size, index + 1);
+				break;
+			}
+			case DESIGNATOR_RANGE:
+			{
+				ArrayIndex index = sema_analyse_designator_index(context, element->index_end_expr);
+				if (index < 0 || element->index_end_expr->expr_kind != EXPR_CONST)
+				{
+					*is_const_size = false;
+					return -1;
+				}
+				size = MAX(size, index + 1);
+				break;
+			}
+			default:
+				UNREACHABLE
+		}
+	}
+	return size;
 }
 
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr)

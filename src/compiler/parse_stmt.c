@@ -477,6 +477,77 @@ static inline Ast* parse_for_stmt(Context *context)
 	return ast;
 }
 
+static inline bool parse_foreach_var(Context *context, Ast *foreach)
+{
+	TypeInfo *type = NULL;
+
+	bool failable = false;
+
+	// If we don't get foreach (foo ... or foreach (*foo ... then a type is expected.
+	if (!TOKEN_IS(TOKEN_IDENT) && !TOKEN_IS(TOKEN_AMP))
+	{
+		type = TRY_TYPE_OR(parse_type(context), false);
+		failable = try_consume(context, TOKEN_BANG);
+		// Add the failable to the type for nicer error reporting.
+		RANGE_EXTEND_PREV(type);
+	}
+	if (try_consume(context, TOKEN_AMP))
+	{
+		foreach->foreach_stmt.value_by_ref = true;
+	}
+	if (!try_consume(context, TOKEN_IDENT))
+	{
+		if (type)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "Expected an identifier after the type.");
+			return false;
+		}
+		SEMA_TOKEN_ERROR(context->tok, "Expected an identifier or type.");
+		return false;
+	}
+	Decl *var = decl_new_var(context->prev_tok, type, VARDECL_LOCAL, VISIBLE_LOCAL);
+	var->var.failable = failable;
+	foreach->foreach_stmt.variable = var;
+	return true;
+}
+/**
+ * foreach_statement
+ * 	: FOREACH (CONST_IDENT ':')? '(' type? '*'? IDENT (',' type? '*'? IDENT) ':' expression ')' statement
+ *	;
+ */
+static inline Ast* parse_foreach_stmt(Context *context)
+{
+	Ast *ast = AST_NEW_TOKEN(AST_FOREACH_STMT, context->tok);
+	advance_and_verify(context, TOKEN_FOREACH);
+	ast->foreach_stmt.flow.label = TRY_DECL_OR(parse_optional_label(context, ast), poisoned_ast);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
+
+	// Parse the first variable.
+	if (!parse_foreach_var(context, ast)) return poisoned_ast;
+
+	// Do we have a second variable?
+	if (try_consume(context, TOKEN_COMMA))
+	{
+		// Copy the first variable to "index"
+		ast->foreach_stmt.index = ast->foreach_stmt.variable;
+		ast->foreach_stmt.index_by_ref = ast->foreach_stmt.value_by_ref;
+		ast->foreach_stmt.value_by_ref = false;
+
+		// Parse the second variable
+		if (!parse_foreach_var(context, ast)) return poisoned_ast;
+	}
+
+	CONSUME_OR(TOKEN_COLON, poisoned_ast);
+
+	ast->foreach_stmt.enumeration = TRY_EXPR_OR(parse_initializer(context), poisoned_ast);
+
+	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
+
+	extend_ast_with_prev_token(context, ast);
+	ast->foreach_stmt.body = TRY_AST(parse_stmt(context));
+	return ast;
+}
+
 /**
  * continue_stmt
  *  : CONTINUE
@@ -948,6 +1019,8 @@ Ast *parse_stmt(Context *context)
 			return parse_do_stmt(context);
 		case TOKEN_FOR:
 			return parse_for_stmt(context);
+		case TOKEN_FOREACH:
+			return parse_foreach_stmt(context);
 		case TOKEN_CATCH:
 			return parse_catch_stmt(context);
 		case TOKEN_CONTINUE:

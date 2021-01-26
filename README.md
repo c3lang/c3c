@@ -90,7 +90,7 @@ the r/ProgrammingLanguages Discord: https://discord.gg/cfu4wdk
 - [x] `next` statement
 - [x] Expression blocks
 - [x] Do-without-while
-- [ ] Foreach statement
+- [x] Foreach statement
 - [ ] All attributes
 - [ ] Associative array literals
 - [ ] CT type constants
@@ -117,10 +117,10 @@ the r/ProgrammingLanguages Discord: https://discord.gg/cfu4wdk
 - [ ] String functions
 - [ ] Vararrays e.g. `int[*]`
 - [ ] Compile time incremental arrays
-- [-] Complete C ABI conformance *in progress*
+- [ ] Complete C ABI conformance *in progress*
 - [ ] Generic functions
-- [-] Debug info *in progress*
-- [ ] Simd vectors
+- [ ] Debug info *in progress*
+- [ ] Simd vector types
 - [ ] Complex types
 
 #### What can you help with?

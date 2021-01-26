@@ -106,7 +106,7 @@ void @test.setInternalFPFZero(%test.InternalFPF* %0)
   store %test.InternalFPF* %0, %test.InternalFPF** %dest, align 8
   %1 = load %test.InternalFPF*, %test.InternalFPF** %dest, align 8
   %2 = getelementptr inbounds %test.InternalFPF, %test.InternalFPF* %1, i32 0, i32 0
-  store i8 0, i8* %2, align 1
+  store i8 0, i8* %2, align 8
   ret void
 
 void @test.denormalize(%test.InternalFPF* %0)

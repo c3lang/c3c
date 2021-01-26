@@ -1,0 +1,51 @@
+module test;
+
+func void test()
+{
+    int[3] x;
+    int g = 0;
+    foreach (z : x)
+    {
+        if (z > 0) break;
+        if (z == 1) continue;
+        g += z;
+    }
+}
+
+// #expect: foreach_break.ll
+
+  store i32 0, i32* %g, align 4
+  store i64 0, i64* %idx, align 8
+  br label %foreach.cond
+foreach.cond:
+  %1 = load i64, i64* %idx, align 8
+  %lt = icmp ult i64 %1, 3
+  br i1 %lt, label %foreach.body, label %foreach.exit
+
+foreach.body:
+  %2 = getelementptr inbounds i32, [3 x i32]* %x, i64 %1
+  %3 = load i32, i32* %2, align 4
+  store i32 %3, i32* %z, align 4
+  %4 = load i32, i32* %z, align 4
+  %gt = icmp sgt i32 %4, 0
+  br i1 %gt, label %if.then, label %if.exit
+if.then:
+  br label %foreach.exit
+if.exit:
+  %5 = load i32, i32* %z, align 4
+  %eq = icmp eq i32 %5, 1
+  br i1 %eq, label %if.then1, label %if.exit2
+if.then1:
+  br label %foreach.inc
+if.exit2:
+  %6 = load i32, i32* %g, align 4
+  %7 = load i32, i32* %z, align 4
+  %add = add nsw i32 %6, %7
+  store i32 %add, i32* %g, align 4
+  br label %foreach.inc
+foreach.inc:
+  %8 = load i64, i64* %idx, align 8
+  %9 = add i64 %8, 1
+  store i64 %9, i64* %idx, align 8
+  br label %foreach.cond
+foreach.exit:

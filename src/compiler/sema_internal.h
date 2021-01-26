@@ -10,6 +10,7 @@
 int sema_check_comp_time_bool(Context *context, Expr *expr);
 bool sema_analyse_function_body(Context *context, Decl *func);
 void context_pop_scope(Context *context);
+void context_pop_scope_error(Context *context);
 void context_push_scope_with_flags(Context *context, ScopeFlags flags);
 AstId context_start_defer(Context *context);
 static inline void context_push_scope(Context *context)

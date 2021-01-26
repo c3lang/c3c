@@ -354,6 +354,7 @@ Expr *parse_initializer_list(Context *context)
 		if (!parse_param_list(context, &initializer_list->initializer_expr.initializer_expr, false, TOKEN_RBRACE)) return poisoned_expr;
 		CONSUME_OR(TOKEN_RBRACE, poisoned_expr);
 	}
+	RANGE_EXTEND_PREV(initializer_list);
 	return initializer_list;
 }
 
