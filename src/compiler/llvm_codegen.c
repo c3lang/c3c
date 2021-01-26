@@ -5,10 +5,6 @@
 #include "llvm_codegen_internal.h"
 
 
-static inline void llvm_set_alignment(LLVMValueRef alloca, LLVMTypeRef type, AlignSize alignment)
-{
-	LLVMSetAlignment(alloca, alignment ?: llvm_abi_alignment(type));
-}
 
 static int get_inlining_threshold(void);
 static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
@@ -292,7 +288,6 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 	if (!decl->type) return;
 
 	decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
-
 }
 
 static void gencontext_emit_global_variable_init(GenContext *c, Decl *decl)
@@ -305,7 +300,7 @@ static void gencontext_emit_global_variable_init(GenContext *c, Decl *decl)
 	bool modified = false;
 	LLVMValueRef init_value;
 
-	ByteSize alignment = type_abi_alignment(decl->type);
+	ByteSize alignment = type_alloca_alignment(decl->type);
 
 	if (decl->var.init_expr)
 	{
@@ -329,7 +324,7 @@ static void gencontext_emit_global_variable_init(GenContext *c, Decl *decl)
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
 	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->name);
-	LLVMSetAlignment(decl->backend_ref, alignment);
+	llvm_set_alignment(decl->backend_ref, alignment);
 	if (decl->visibility != VISIBLE_EXTERN)
 	{
 		LLVMSetInitializer(decl->backend_ref, init_value);
@@ -407,10 +402,11 @@ void gencontext_print_llvm_ir(GenContext *context)
 
 LLVMValueRef llvm_emit_alloca(GenContext *context, LLVMTypeRef type, unsigned alignment, const char *name)
 {
+	assert(alignment > 0);
 	LLVMBasicBlockRef current_block = LLVMGetInsertBlock(context->builder);
 	LLVMPositionBuilderBefore(context->builder, context->alloca_point);
 	LLVMValueRef alloca = LLVMBuildAlloca(context->builder, type, name);
-	llvm_set_alignment(alloca, type, alignment);
+	llvm_set_alignment(alloca, alignment);
 	LLVMPositionBuilderAtEnd(context->builder, current_block);
 	return alloca;
 }
@@ -420,13 +416,20 @@ LLVMValueRef llvm_emit_alloca_aligned(GenContext *c, Type *type, const char *nam
 	return llvm_emit_alloca(c, llvm_get_type(c, type), type_alloca_alignment(type), name);
 }
 
-LLVMValueRef llvm_emit_decl_alloca(GenContext *c, Decl *decl)
+void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 {
 	LLVMTypeRef type = llvm_get_type(c, decl->type);
-	return llvm_emit_alloca(c,
-	                        type,
-	                        decl->alignment ?: type_alloca_alignment(decl->type),
-	                        decl->name ?: "anon");
+	decl->backend_ref = llvm_emit_alloca(c, type, decl->alignment, decl->name ?: "anon");
+}
+
+void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)
+{
+	llvm_emit_and_set_decl_alloca(c, decl);
+	if (llvm_use_debug(c))
+	{
+		llvm_emit_debug_local_var(c, decl);
+	}
+
 }
 
 /**
@@ -697,6 +700,18 @@ void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type 
 	value->kind = BE_ADDRESS;
 	value->type = type_flatten(type);
 }
+void llvm_value_set_decl_address(BEValue *value, Decl *decl)
+{
+	llvm_value_set_address(value, decl_ref(decl), decl->type);
+	value->alignment = decl->alignment;
+
+	if (decl->decl_kind == DECL_VAR && decl->var.failable)
+	{
+		value->kind = BE_ADDRESS_FAILABLE;
+		value->failable = decl->var.failable_ref;
+	}
+}
+
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type)
 {
 	llvm_value_set_address_align(value, llvm_value, type_flatten(type), type_abi_alignment(type));
@@ -1015,7 +1030,7 @@ void llvm_store_self_aligned(GenContext *context, LLVMValueRef pointer, LLVMValu
 void llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
 {
 	LLVMValueRef ref = LLVMBuildStore(context->builder, value, pointer);
-	if (alignment) LLVMSetAlignment(ref, alignment);
+	if (alignment) llvm_set_alignment(ref, alignment);
 }
 
 void llvm_store_aligned_decl(GenContext *context, Decl *decl, LLVMValueRef value)
@@ -1037,18 +1052,29 @@ void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLV
 void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, unsigned source_alignment)
 {
 	if (source_alignment == 0) source_alignment = type_abi_alignment(decl->type);
-	llvm_emit_memcpy(c, decl->backend_ref, decl->alignment ?: type_abi_alignment(decl->type),
-	                 source, source_alignment, type_size(decl->type));
+	llvm_emit_memcpy(c, decl->backend_ref, decl->alignment, source, source_alignment, type_size(decl->type));
 }
 
 LLVMValueRef llvm_emit_load_aligned(GenContext *context, LLVMTypeRef type, LLVMValueRef pointer, unsigned alignment, const char *name)
 {
 	LLVMValueRef value = LLVMBuildLoad2(context->builder, type, pointer, name);
-	llvm_set_alignment(value, type, alignment);
+	llvm_set_alignment(value, alignment ?: llvm_abi_alignment(type));
 	return value;
 }
 
 unsigned llvm_store_size(LLVMTypeRef type)
 {
 	return LLVMStoreSizeOfType(target_data_layout(), type);
+}
+
+void llvm_set_error_exit(GenContext *c, LLVMBasicBlockRef block)
+{
+	c->catch_block = block;
+	c->error_var = NULL;
+}
+
+void llvm_set_error_exit_and_value(GenContext *c, LLVMBasicBlockRef block, LLVMValueRef ref)
+{
+	c->catch_block = block;
+	c->error_var = ref;
 }

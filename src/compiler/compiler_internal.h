@@ -910,6 +910,20 @@ typedef struct
 
 typedef struct
 {
+	FlowCommon flow;
+	bool index_by_ref : 1;
+	bool value_by_ref : 1;
+	CastKind cast;
+	Decl *index;
+	Decl *variable;
+	Expr *enumeration;
+	Ast *body;
+	void *continue_block;
+	void *exit_block;
+} AstForeachStmt;
+
+typedef struct
+{
 	AstId prev_defer;
 	Ast *body; // Compound statement
 	struct
@@ -1066,6 +1080,7 @@ typedef struct _Ast
 		AstNextStmt next_stmt;              // 16
 		AstCatchStmt catch_stmt;            // 32
 		AstForStmt for_stmt;                // 32
+		AstForeachStmt foreach_stmt;
 		AstCtIfStmt ct_if_stmt;             // 24
 		AstCtIfStmt ct_elif_stmt;           // 24
 		Ast *ct_else_stmt;                  // 8
@@ -1435,7 +1450,6 @@ static inline Decl *decl_raw(Decl *decl);
 static inline bool decl_ok(Decl *decl) { return !decl || decl->decl_kind != DECL_POISONED; }
 static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
 static inline bool decl_is_struct_type(Decl *decl);
-AlignSize decl_abi_alignment(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 
 #pragma mark --- Diag functions
@@ -1528,6 +1542,7 @@ bool sema_unwrap_var(Context *context, Decl *decl);
 bool sema_rewrap_var(Context *context, Decl *decl);
 
 bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr, bool may_be_failable);
+ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
 bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement);
@@ -1648,7 +1663,7 @@ static inline Type *type_reduced_from_expr(Expr *expr)
 static inline bool type_is_integer(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_U64;
+	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_U128;
 }
 
 
@@ -1661,19 +1676,19 @@ static inline bool type_is_any_integer(Type *type)
 static inline bool type_is_integer_signed(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I64;
+	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I128;
 }
 
 static inline bool type_is_integer_kind(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_BOOL && type->type_kind <= TYPE_U64;
+	return type->type_kind >= TYPE_BOOL && type->type_kind <= TYPE_U128;
 }
 
 static inline bool type_is_integer_unsigned(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64;
+	return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U128;
 }
 
 static inline bool type_info_poison(TypeInfo *type)

@@ -576,6 +576,11 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 
 AlignSize type_alloca_alignment(Type *type)
 {
+	if (build_target.abi == ABI_X64)
+	{
+		type = type_flatten(type);
+		if (type->type_kind == TYPE_ARRAY && type_size(type) >= 16) return 16;
+	}
 	return type_abi_alignment(type);
 }
 

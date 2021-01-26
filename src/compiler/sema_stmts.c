@@ -75,6 +75,12 @@ void context_pop_scope(Context *context)
 	context->current_scope--;
 }
 
+void context_pop_scope_error(Context *context)
+{
+	context->current_scope->defer_last = context_start_defer(context);
+	context_pop_scope(context);
+}
+
 static Expr *context_pop_defers_and_wrap_expr(Context *context, Expr *expr)
 {
 	DeferList defers = { 0, 0 };
@@ -326,9 +332,8 @@ static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 }
 
 
-static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_local_decl(Context *context, Decl *decl)
 {
-	Decl *decl = statement->declare_stmt;
 	assert(decl->decl_kind == DECL_VAR);
 	if (!sema_add_local(context, decl)) return decl_poison(decl);
 	if (decl->var.kind == VARDECL_CONST)
@@ -353,6 +358,7 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 	}
 	if (!sema_resolve_type_info(context, decl->var.type_info)) return decl_poison(decl);
 	decl->type = decl->var.type_info->type;
+	if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 	if (decl->var.init_expr)
 	{
 		Expr *init = decl->var.init_expr;
@@ -372,6 +378,11 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 		}
 	}
 	return true;
+}
+
+static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
+{
+	return sema_analyse_local_decl(context, statement->declare_stmt);
 }
 
 static inline bool sema_analyse_define_stmt(Context *context, Ast *statement)
@@ -478,11 +489,13 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 
 	// Enter for scope
 	context_push_scope(context);
+
 	bool is_infinite = statement->for_stmt.cond == NULL;
 	if (statement->for_stmt.init)
 	{
 		success = sema_analyse_decl_expr_list(context, statement->for_stmt.init);
 	}
+
 	if (success && statement->for_stmt.cond)
 	{
 		// Conditional scope start
@@ -490,7 +503,7 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 		Expr *cond = statement->for_stmt.cond;
 		success = sema_analyse_expr_of_required_type(context, type_bool, cond, false);
 		statement->for_stmt.cond = context_pop_defers_and_wrap_expr(context, cond);
-		// If this is const true, then set this to infinte and remove the expression.
+		// If this is const true, then set this to infinite and remove the expression.
 		if (statement->for_stmt.cond->expr_kind == EXPR_CONST && statement->for_stmt.cond->const_expr.b)
 		{
 			statement->for_stmt.cond = NULL;
@@ -511,7 +524,7 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 	}
 	if (!success)
 	{
-		context_pop_scope(context);
+		context_pop_scope_error(context);
 		return false;
 	}
 
@@ -534,6 +547,172 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 	return success;
 }
 
+
+static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
+{
+	// Pull out the relevant data.
+	Decl *index = statement->foreach_stmt.index;
+	Decl *var = statement->foreach_stmt.variable;
+	Expr *enumerator = statement->foreach_stmt.enumeration;
+	Ast *body = statement->foreach_stmt.body;
+
+	// First fold the enumerator expression, removing any () around it.
+	while (enumerator->expr_kind == EXPR_GROUP) enumerator = enumerator->group_expr;
+
+
+	// First analyse the enumerator.
+
+	// Conditional scope start
+	context_push_scope_with_flags(context, SCOPE_COND);
+
+	// In the case of foreach (int x : { 1, 2, 3 }) we will infer the int[] type, so pick out the number of elements.
+	Type *inferred_type = NULL;
+
+	// We may have an initializer list, in this case we rely on an inferred type.
+	if (enumerator->expr_kind == EXPR_INITIALIZER_LIST)
+	{
+		bool may_be_array;
+		bool is_const_size;
+		ArrayIndex size = sema_get_initializer_const_array_size(context, enumerator, &may_be_array, &is_const_size);
+		if (!may_be_array)
+		{
+			SEMA_ERROR(enumerator, "This initializer appears to be a struct initializer when, an array initializer was expected.");
+			goto EXIT_FAIL;
+		}
+		if (!is_const_size)
+		{
+			SEMA_ERROR(enumerator, "Only constant sized initializers may be implicitly initialized.");
+			goto EXIT_FAIL;
+		}
+		if (size < 0)
+		{
+			SEMA_ERROR(enumerator, "The initializer mixes designated initialization with array initialization.");
+			goto EXIT_FAIL;
+		}
+		assert(size >= 0);
+
+		TypeInfo *variable_type_info = var->var.type_info;
+
+		if (!variable_type_info)
+		{
+			SEMA_ERROR(var, "Add the type of your variable here if you want to iterate over an initializer list.");
+			goto EXIT_FAIL;
+		}
+		// First infer the type of the variable.
+		if (!sema_resolve_type_info(context, variable_type_info)) return false;
+		// And create the inferred type:
+		inferred_type = type_get_array(var->var.type_info->type, size);
+	}
+
+	// because we don't want the index + variable to move into the internal scope
+	if (!sema_analyse_expr(context, inferred_type, enumerator))
+	{
+		// Exit early here, because semantic checking might be messed up otherwise.
+		goto EXIT_FAIL;
+	}
+
+	// Check that we can even index this expression.
+	Type *indexed_type = type_get_indexed_type(enumerator->type);
+	if (!indexed_type)
+	{
+		SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type '%s'.", type_to_error_string(enumerator->type));
+		goto EXIT_FAIL;
+	}
+
+	// Pop any possible defers.
+	enumerator = context_pop_defers_and_wrap_expr(context, enumerator);
+
+	// And pop the cond scope.
+	context_pop_scope(context);
+
+	// Enter foreach scope, to put index + variable into the internal scope.
+	// the foreach may be labelled.
+	context_push_scope_with_label(context, statement->foreach_stmt.flow.label);
+
+	if (index)
+	{
+		if (statement->foreach_stmt.index_by_ref)
+		{
+			SEMA_ERROR(index, "The index cannot be held by reference, did you accidentally add a '&'?");
+			goto EXIT_FAIL;
+		}
+		// Set type to isize if missing.
+		if (!index->var.type_info)
+		{
+			index->var.type_info = type_info_new_base(type_isize, index->span);
+		}
+		// Analyse the declaration.
+		if (!sema_analyse_local_decl(context, index)) goto EXIT_FAIL;
+
+		// Make sure that the index is an integer.
+		if (!type_is_integer(type_flatten(index->type)))
+		{
+			SEMA_ERROR(index->var.type_info, "Index must be an integer type, '%s' is not valid.", type_to_error_string(index->type));
+			goto EXIT_FAIL;
+		}
+		if (index->var.failable)
+		{
+			SEMA_ERROR(index->var.type_info, "The index may not be a failable.");
+			goto EXIT_FAIL;
+		}
+	}
+
+	// Find the expected type for the value.
+	Type *expected_var_type = indexed_type;
+
+	// If by ref, then the pointer.
+	if (statement->foreach_stmt.value_by_ref) expected_var_type = type_get_ptr(expected_var_type);
+
+	// If we type infer, then the expected type is the same as the indexed type.
+	if (!var->var.type_info)
+	{
+		var->var.type_info = type_info_new_base(expected_var_type, var->span);
+	}
+
+	// Analyse the value declaration.
+	if (!sema_analyse_local_decl(context, var)) goto EXIT_FAIL;
+
+	if (var->var.failable)
+	{
+		SEMA_ERROR(var->var.type_info, "The variable may not be a failable.");
+		goto EXIT_FAIL;
+	}
+	// TODO consider failables.
+
+	// We may have an implicit cast happening.
+	statement->foreach_stmt.cast = CAST_ERROR;
+
+	// If the type is different, attempt an implicit cast.
+	if (var->type != expected_var_type)
+	{
+		// This is hackish, replace when cast is refactored.
+		Expr dummy = { .resolve_status = RESOLVE_DONE, .span = { var->var.type_info->span.loc, var->span.end_loc }, .expr_kind = EXPR_IDENTIFIER, .type = expected_var_type };
+		if (!cast_implicit(context, &dummy, var->type)) goto EXIT_FAIL;
+		assert(dummy.expr_kind == EXPR_CAST);
+		statement->foreach_stmt.cast = dummy.cast_expr.kind;
+	}
+
+	// Push the statement on the break/continue stack.
+	PUSH_BREAKCONT(statement);
+
+	bool success = sema_analyse_statement(context, body);
+	statement->foreach_stmt.flow.no_exit = context->current_scope->jump_end;
+
+	// Pop the stack.
+	POP_BREAKCONT();
+
+	// End foreach scope
+	context_pop_defers_and_replace_ast(context, body);
+	context_pop_scope(context);
+
+	return success;
+
+EXIT_FAIL:
+
+	context_pop_scope_error(context);
+	return false;
+
+}
 
 
 
@@ -1234,8 +1413,15 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 	bool success = sema_analyse_switch_body(context, statement, cond->span,
 	                                switch_type->canonical,
 	                                statement->switch_stmt.cases);
-	if (success) context_pop_defers_and_replace_ast(context, statement);
-	context_pop_scope(context);
+	if (success)
+	{
+		context_pop_defers_and_replace_ast(context, statement);
+		context_pop_scope(context);
+	}
+	else
+	{
+		context_pop_scope_error(context);
+	}
 	if (statement->flow.no_exit && !statement->flow.has_break)
 	{
 		context->current_scope->jump_end = true;
@@ -1333,8 +1519,15 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 		success = sema_analyse_statement(context, statement->catch_stmt.body);
 		if (context->current_scope->jump_end) statement->flow.no_exit = true;
 	}
-	if (success) context_pop_defers_and_replace_ast(context, statement);
-	context_pop_scope(context);
+	if (success)
+	{
+		context_pop_defers_and_replace_ast(context, statement);
+		context_pop_scope(context);
+	}
+	else
+	{
+		context_pop_scope_error(context);
+	}
 EXIT:
 	if (success)
 	{
@@ -1391,7 +1584,7 @@ static bool sema_analyse_try_stmt(Context *context, Ast *stmt)
 	return true;
 
 	ERR:
-	context_pop_scope(context);
+	context_pop_scope_error(context);
 	return false;
 }
 
@@ -1530,6 +1723,8 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 			return sema_analyse_do_stmt(context, statement);
 		case AST_EXPR_STMT:
 			return sema_analyse_expr_stmt(context, statement);
+		case AST_FOREACH_STMT:
+			return sema_analyse_foreach_stmt(context, statement);
 		case AST_FOR_STMT:
 			return sema_analyse_for_stmt(context, statement);
 		case AST_TRY_STMT:

@@ -1,3 +1,4 @@
+// #target: x64_darwin
 module test;
 
 struct Foo
@@ -9,4 +10,4 @@ Foo[10] array;
 
 // #expect: array_struct.ll
 
-@array = protected global [10 x %test.Foo] zeroinitializer, align 4
+@array = protected global [10 x %test.Foo] zeroinitializer, align 16

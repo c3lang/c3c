@@ -46,11 +46,6 @@ static TypeInfo poison_type_info = { .kind = TYPE_INFO_POISON };
 Type *poisoned_type = &poison_type;
 TypeInfo *poisoned_type_info = &poison_type_info;
 
-AlignSize decl_abi_alignment(Decl *decl)
-{
-	return decl->alignment ?: type_abi_alignment(decl->type);
-}
-
 void decl_set_external_name(Decl *decl)
 {
 	if (decl->visibility == VISIBLE_EXTERN)
@@ -1107,6 +1102,13 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 				DUMPI("(noincr)");
 			}
 			DUMPAST(ast->for_stmt.body);
+			DUMPEND();
+		case AST_FOREACH_STMT:
+			DUMP("(foreach");
+			DUMPDECL(ast->foreach_stmt.index);
+			DUMPDECL(ast->foreach_stmt.variable);
+			DUMPEXPR(ast->foreach_stmt.enumeration);
+			DUMPAST(ast->foreach_stmt.body);
 			DUMPEND();
 		case AST_IF_STMT:
 			DUMP("(if");
