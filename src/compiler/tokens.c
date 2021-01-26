@@ -224,6 +224,8 @@ const char *token_type_to_string(TokenType type)
 			return "false";
 		case TOKEN_FOR:
 			return "for";
+		case TOKEN_FOREACH:
+			return "foreach";
 		case TOKEN_FUNC:
 			return "func";
 		case TOKEN_GENERIC:

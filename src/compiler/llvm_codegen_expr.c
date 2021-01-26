@@ -6,7 +6,6 @@
 #include "compiler_internal.h"
 #include "bigint.h"
 
-static LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op);
 static void gencontext_emit_unary_expr(GenContext *context, BEValue *value, Expr *expr);
 static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
 static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
@@ -354,18 +353,6 @@ static void gencontext_emit_scoped_expr(GenContext *context, BEValue *value, Exp
 
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *value, Expr *expr);
 
-static inline void gencontext_emit_identifier(GenContext *c, BEValue *value, Decl *decl)
-{
-	llvm_value_set_address(value, decl_ref(decl), decl->type);
-	value->alignment = decl_abi_alignment(decl);
-
-	if (decl->decl_kind == DECL_VAR && decl->var.failable)
-	{
-		value->kind = BE_ADDRESS_FAILABLE;
-		value->failable = decl->var.failable_ref;
-	}
-
-}
 
 /**
  * Here we are converting an array to a subarray.
@@ -617,8 +604,8 @@ static inline void llvm_emit_initialize_reference_temporary_const(GenContext *c,
 	LLVMValueRef global_copy = LLVMAddGlobal(c->module, type, "");
 
 	// Set a nice alignment
-	unsigned alignment = LLVMPreferredAlignmentOfGlobal(target_data_layout(), global_copy);
-	LLVMSetAlignment(global_copy, alignment);
+	unsigned alignment = type_alloca_alignment(expr->type);
+	llvm_set_alignment(global_copy, alignment);
 
 	// Set the value and make it constant
 	LLVMSetInitializer(global_copy, value);
@@ -829,57 +816,6 @@ static void llvm_emit_initialize_designated_const_range(GenContext *c, BEValue *
 	}
 }
 
-static void llvm_emit_initialize_designated_range(GenContext *c, BEValue *ref, uint64_t offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value)
-{
-	DesignatorElement *curr = current[0];
-	llvm_value_addr(c, ref);
-	assert(curr->kind == DESIGNATOR_RANGE);
-
-	BEValue emitted_local;
-	if (!emitted_value)
-	{
-		llvm_emit_expr(c, &emitted_local, expr);
-		emitted_value = &emitted_local;
-	}
-	LLVMBasicBlockRef start_block = llvm_basic_block_new(c, "set_start");
-	LLVMBasicBlockRef store_block = llvm_basic_block_new(c, "set_store");
-	LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "set_done");
-
-	BEValue start;
-	BEValue end;
-	llvm_emit_expr(c, &start, curr->index_expr);
-	LLVMValueRef max_index = llvm_const_int(c, start.type, ref->type->canonical->array.len);
-	llvm_emit_array_bounds_check(c, &start, max_index);
-	llvm_emit_expr(c, &end, curr->index_end_expr);
-	llvm_emit_array_bounds_check(c, &end, max_index);
-	LLVMTypeRef ref_type = llvm_get_type(c, ref->type);
-	LLVMValueRef end_value = llvm_value_rvalue_store(c, &end);
-	LLVMTypeRef index_type = llvm_get_type(c, start.type);
-	LLVMValueRef index_ptr = llvm_emit_alloca(c, index_type, start.alignment, "rangeidx");
-	LLVMValueRef add_one = llvm_const_int(c, start.type, 1);
-	// Assign the index_ptr to the start value.
-	llvm_store_bevalue_dest_aligned(c, index_ptr, &start);
-	LLVMValueRef indices[2] = {
-			llvm_get_zero(c, start.type),
-			NULL
-	};
-	llvm_emit_br(c, start_block);
-	llvm_emit_block(c, start_block);
-	LLVMValueRef index_val = llvm_emit_load_aligned(c, index_type, index_ptr, start.alignment, "");
-	BEValue comp;
-	llvm_value_set_bool(&comp, llvm_emit_int_comparison(c, start.type, end.type, index_val, end_value, BINARYOP_LE));
-	llvm_emit_cond_br(c, &comp, store_block, after_block);
-	llvm_emit_block(c, store_block);
-	indices[1] = index_val;
-	LLVMValueRef ptr_next = LLVMBuildInBoundsGEP2(c->builder, ref_type, ref->value, indices, 2, "");
-	BEValue new_ref;
-	llvm_value_set_address(&new_ref, ptr_next, type_get_indexed_type(ref->type));
-	llvm_emit_initialize_designated(c, &new_ref, offset, current + 1, last, expr, emitted_value);
-	LLVMValueRef new_index = LLVMBuildAdd(c->builder, index_val, add_one, "");
-	llvm_store_aligned(c, index_ptr, new_index, start.alignment);
-	llvm_emit_br(c, start_block);
-	llvm_emit_block(c, after_block);
-}
 static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_t offset, DesignatorElement** current,
 											DesignatorElement **last, Expr *expr, BEValue *emitted_value)
 {
@@ -909,7 +845,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_
 			Decl *decl = ref->type->canonical->decl->strukt.members[curr->index];
 			offset += decl->offset;
 			Type *type = decl->type->canonical;
-			unsigned decl_alignment = decl_abi_alignment(decl);
+			unsigned decl_alignment = decl->alignment;
 			if (ref->type->type_kind == TYPE_UNION)
 			{
 				llvm_value_set_address_align(&value, llvm_emit_bitcast(c, ref->value, type_get_ptr(type)), type, type_min_alignment(offset, decl_alignment));
@@ -925,34 +861,17 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_
 		{
 			Type *type = ref->type->array.base;
 			LLVMValueRef indices[2];
-			if (curr->index_expr->expr_kind == EXPR_CONST)
-			{
-				offset += curr->index * type_size(type);
-				Type *index_type = curr->index > UINT32_MAX ? type_uint : type_ulong;
-				indices[0] = llvm_const_int(c, index_type, 0);
-				indices[1] = llvm_const_int(c, index_type, curr->index);
-			}
-			else
-			{
-				BEValue res;
-				llvm_emit_expr(c, &res, curr->index_expr);
-				indices[0] = llvm_const_int(c, curr->index_expr->type, 0);
-				indices[1] = llvm_value_rvalue_store(c, &res);
-			}
+			offset += curr->index * type_size(type);
+			Type *index_type = curr->index > UINT32_MAX ? type_uint : type_ulong;
+			indices[0] = llvm_const_int(c, index_type, 0);
+			indices[1] = llvm_const_int(c, index_type, curr->index);
 			LLVMValueRef ptr = LLVMBuildInBoundsGEP2(c->builder, llvm_get_type(c, ref->type), ref->value, indices, 2, "");
 			llvm_value_set_address_align(&value, ptr, type, type_min_alignment(offset, type_abi_alignment(type)));
 			llvm_emit_initialize_designated(c, &value, offset, current + 1, last, expr, emitted_value);
 			break;
 		}
 		case DESIGNATOR_RANGE:
-			if (curr->index_expr->expr_kind == EXPR_CONST && curr->index_end_expr->expr_kind == EXPR_CONST)
-			{
-				llvm_emit_initialize_designated_const_range(c, ref, offset, current, last, expr, emitted_value);
-			}
-			else
-			{
-				llvm_emit_initialize_designated_range(c, ref, offset, current, last, expr, emitted_value);
-			}
+			llvm_emit_initialize_designated_const_range(c, ref, offset, current, last, expr, emitted_value);
 			break;
 		default:
 			UNREACHABLE
@@ -1206,23 +1125,20 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 	UNREACHABLE
 }
 
-static void gencontext_emit_len(GenContext *c, BEValue *be_value, Expr *expr)
+void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_len)
 {
-	Expr *inner = expr->len_expr.inner;
-	llvm_emit_expr(c, be_value, inner);
-	llvm_value_addr(c, be_value);
-	Type *type = inner->type;
-	switch (type->canonical->type_kind)
+	llvm_value_addr(c, expr_to_len);
+	switch (expr_to_len->type->type_kind)
 	{
 		case TYPE_SUBARRAY:
 		{
-			LLVMTypeRef subarray_type = llvm_get_type(c, type);
-			LLVMValueRef len_addr = LLVMBuildStructGEP2(c->builder, subarray_type, be_value->value, 1, "len");
+			LLVMTypeRef subarray_type = llvm_get_type(c, expr_to_len->type);
+			LLVMValueRef len_addr = LLVMBuildStructGEP2(c->builder, subarray_type, expr_to_len->value, 1, "len");
 			llvm_value_set_address(be_value, len_addr, type_usize);
 			break;
 		}
 		case TYPE_ARRAY:
-			llvm_value_set(be_value, llvm_const_int(c, type_usize, type->array.len), type_usize);
+			llvm_value_set(be_value, llvm_const_int(c, type_usize, expr_to_len->type->array.len), type_usize);
 			break;
 		case TYPE_VARARRAY:
 		case TYPE_STRING:
@@ -1230,6 +1146,11 @@ static void gencontext_emit_len(GenContext *c, BEValue *be_value, Expr *expr)
 		default:
 			UNREACHABLE
 	}
+}
+static void llvm_emit_len(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	llvm_emit_expr(c, be_value, expr->len_expr.inner);
+	llvm_emit_len_for_expr(c, be_value, be_value);
 }
 
 static void gencontext_emit_trap_negative(GenContext *context, Expr *expr, LLVMValueRef value, const char *error)
@@ -1561,7 +1482,7 @@ static void gencontext_emit_logical_and_or(GenContext *c, BEValue *be_value, Exp
 
 
 
-static LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op)
+LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op)
 {
 	bool lhs_signed = type_is_signed(lhs_type);
 	bool rhs_signed = type_is_signed(rhs_type);
@@ -2122,8 +2043,7 @@ static void gencontext_emit_binary_expr(GenContext *context, BEValue *be_value, 
 		{
 			failable_ref = decl_failable_ref(expr->binary_expr.left->identifier_expr.decl);
 		}
-		LLVMValueRef result = llvm_emit_assign_expr(context, be_value->value, expr->binary_expr.right, failable_ref);
-		llvm_value_set(be_value, result, expr->type);
+		*be_value = llvm_emit_assign_expr(context, be_value, expr->binary_expr.right, failable_ref);
 		return;
 	}
 
@@ -2594,7 +2514,7 @@ void llvm_emit_call_expr(GenContext *context, BEValue *be_value, Expr *expr)
 			vec_add(values, return_param);
 			if (ret_info->indirect.realignment)
 			{
-				LLVMSetAlignment(return_param, ret_info->indirect.realignment);
+				llvm_set_alignment(return_param, ret_info->indirect.realignment);
 			}
 			break;
 		case ABI_ARG_EXPAND:
@@ -2834,7 +2754,7 @@ static inline void gencontext_emit_macro_block(GenContext *context, BEValue *be_
 			case VARDECL_PARAM:
 				break;
 		}
-		decl->backend_ref = llvm_emit_decl_alloca(context, decl);
+		llvm_emit_and_set_decl_alloca(context, decl);
 		BEValue value;
 		llvm_emit_expr(context, &value, expr->macro_block.args[i]);
 		printf("TODO: unoptimized use of BEValue\n");
@@ -2871,8 +2791,9 @@ LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id
 	return LLVMBuildCall2(context->builder, type, decl, values, arg_count, "");
 }
 
-LLVMValueRef llvm_emit_assign_expr(GenContext *c, LLVMValueRef ref, Expr *expr, LLVMValueRef failable)
+BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable)
 {
+	llvm_value_addr(c, ref);
 	LLVMBasicBlockRef assign_block = NULL;
 
 	PUSH_ERROR();
@@ -2895,16 +2816,13 @@ LLVMValueRef llvm_emit_assign_expr(GenContext *c, LLVMValueRef ref, Expr *expr, 
 	if (expr->expr_kind == EXPR_COMPOUND_LITERAL) expr = expr->expr_compound_literal.initializer;
 	if (expr->expr_kind == EXPR_INITIALIZER_LIST)
 	{
-		BEValue val;
-		printf("TODO: Fix alignment and return!\n");
-		llvm_value_set_address(&val, ref, expr->type);
-		llvm_emit_initialize_reference(c, &val, expr);
+		llvm_emit_initialize_reference(c, ref, expr);
+		value = *ref;
 	}
 	else
 	{
 		llvm_emit_expr(c, &value, expr);
-		printf("TODO: // Optimize store \n");
-		llvm_store_bevalue_aligned(c, ref, &value, 0);
+		llvm_store_bevalue(c, ref, &value);
 	}
 
 	if (failable)
@@ -2919,7 +2837,7 @@ LLVMValueRef llvm_emit_assign_expr(GenContext *c, LLVMValueRef ref, Expr *expr, 
 		llvm_emit_block(c, assign_block);
 	}
 
-	return value.value;
+	return value;
 }
 
 
@@ -2978,7 +2896,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			gencontext_emit_slice(c, value, expr);
 			return;
 		case EXPR_LEN:
-			gencontext_emit_len(c, value, expr);
+			llvm_emit_len(c, value, expr);
 			return;
 		case EXPR_FAILABLE:
 			gencontext_emit_failable(c, value, expr);
@@ -3030,7 +2948,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			UNREACHABLE
 		case EXPR_IDENTIFIER:
 		case EXPR_CONST_IDENTIFIER:
-			gencontext_emit_identifier(c, value, expr->identifier_expr.decl);
+			llvm_value_set_decl_address(value, expr->identifier_expr.decl);
 			return;
 		case EXPR_SUBSCRIPT:
 			gencontext_emit_subscript(c, value, expr);

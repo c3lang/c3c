@@ -156,7 +156,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
 			LLVMTypeRef hi = llvm_abi_type(c, info->direct_pair.hi);
 			LLVMTypeRef struct_type = llvm_get_twostruct(c, lo, hi);
-			AlignSize decl_alignment = decl_abi_alignment(decl);
+			AlignSize decl_alignment = decl->alignment;
 			// Cast to { lo, hi }
 			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(struct_type, 0), "pair");
 			// Point to the lo value.
@@ -181,7 +181,6 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			}
 			// Cast to the coerce type.
 			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
-			AlignSize decl_alignment = decl_abi_alignment(decl);
 
 			// If we're not flattening, we simply do a store.
 			if (!abi_info_should_flatten(info))
@@ -200,7 +199,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 				LLVMValueRef element_ptr = LLVMBuildStructGEP2(c->builder, coerce_type, cast, idx, "");
 				LLVMValueRef value = llvm_get_next_param(c, index);
 
-				llvm_store_aligned(c, element_ptr, value, MIN(llvm_abi_alignment(element_type), decl_alignment));
+				llvm_store_aligned(c, element_ptr, value, MIN(llvm_abi_alignment(element_type), decl->alignment));
 			}
 			return;
 		}
@@ -220,7 +219,7 @@ static inline void llvm_emit_parameter(GenContext *context, Decl *decl, unsigned
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	// Allocate room on stack, but do not copy.
-	decl->backend_ref = llvm_emit_decl_alloca(context, decl);
+	llvm_emit_and_set_decl_alloca(context, decl);
 	llvm_process_parameter_value(context, decl, index);
 	if (llvm_use_debug(context))
 	{
@@ -571,7 +570,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	}
 	if (decl->alignment)
 	{
-		LLVMSetAlignment(function, decl->alignment);
+		llvm_set_alignment(function, decl->alignment);
 	}
 	if (decl->section)
 	{
