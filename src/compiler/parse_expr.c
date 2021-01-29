@@ -946,8 +946,8 @@ static Expr* parse_expr_block(Context *context, Expr *left)
 
 ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_BOOL] = { parse_type_identifier, NULL, PREC_NONE },
-		[TOKEN_BYTE] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_CHAR] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_ICHAR] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_SHORT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_USHORT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_INT] = { parse_type_identifier, NULL, PREC_NONE },

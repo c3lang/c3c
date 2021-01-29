@@ -88,36 +88,36 @@ func void test16()
 
 func void test17()
 {
-    byte a = 100 + 300; // #error: '300' does not fit in type 'byte'
+    char a = 100 + 300; // #error: '300' does not fit in type 'char'
 }
 
 func void test18()
 {
-    byte b = 100 + 156; // #error: Cannot fit '256' into type 'byte'
+    char b = 100 + 156; // #error: Cannot fit '256' into type 'char'
 }
 
 func void test19()
 {
-    char b = (-40) - 126; // #error: Cannot fit '-166' into type 'char'
+    ichar b = (-40) - 126; // #error: Cannot fit '-166' into type 'ichar'
 }
 
 
 
 func void test20()
 {
-    char d = ((-128 - 10) + 10) - 2; // #error: Cannot fit '-130' into type 'char'
-    char c = 100 * 100; // #error: Cannot fit '10000' into type 'char'
-    char e = (-138 + 30);
-    char f = -138 + 30; // #error: '-138' does not fit in type 'char'
-    char g = -(128);
-    check(128); // #error: '128' does not fit in type 'char'
+    ichar d = ((-128 - 10) + 10) - 2; // #error: Cannot fit '-130' into type 'ichar'
+    ichar c = 100 * 100; // #error: Cannot fit '10000' into type 'ichar'
+    ichar e = (-138 + 30);
+    ichar f = -138 + 30; // #error: '-138' does not fit in type 'ichar'
+    ichar g = -(128);
+    check(128); // #error: '128' does not fit in type 'ichar'
 }
 
-func void check(char x) {}
+func void check(ichar x) {}
 
 
-func byte test22()
+func char test22()
 {
-    return 300;     // #error: '300' does not fit in type 'byte'
+    return 300;     // #error: '300' does not fit in type 'char'
 }
 

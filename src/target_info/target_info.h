@@ -53,7 +53,7 @@ typedef struct
 	bool float_128;
 	bool float_16;
 	unsigned align_pointer;
-	unsigned align_byte;
+	unsigned align_char;
 	unsigned align_short;
 	unsigned align_int;
 	unsigned align_long;

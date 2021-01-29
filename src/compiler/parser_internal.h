@@ -62,6 +62,11 @@ bool consume(Context *context, TokenType type, const char *message, ...);
 bool consume_const_name(Context *context, const char* type);
 Expr *parse_precedence_with_left_side(Context *context, Expr *left_side, Precedence precedence);
 
+static inline bool tok_is(Context *context, TokenType type)
+{
+	return context->tok.type == type;
+}
+
 static inline bool expect(Context *context, TokenType token_type)
 {
 	if (token_type == context->tok.type) return true;

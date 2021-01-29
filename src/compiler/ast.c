@@ -1030,6 +1030,13 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 			DUMP("(ct-compound\n");
 			fprint_asts_recursive(context, file, ast->ct_compound_stmt, indent + 1);
 			DUMPEND();
+		case AST_DOCS:
+			DUMP("(directives");
+			fprint_asts_recursive(context, file, ast->directives, indent + 1);
+			DUMPEND();
+		case AST_DOC_DIRECTIVE:
+			DUMP("(doc-directive");
+			DUMPEND();
 		case AST_DEFINE_STMT:
 			DUMP("(define");
 			DUMPDECL(ast->define_stmt);

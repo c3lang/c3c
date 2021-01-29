@@ -6,8 +6,6 @@
 #include "parser_internal.h"
 
 
-
-
 #pragma mark --- Parser base methods
 
 /**
@@ -22,7 +20,7 @@ inline void advance(Context *context)
 	context->next_lead_comment = NULL;
 	context->prev_tok = context->tok.id;
 	context->tok = context->next_tok;
-	while(1)
+	while (1)
 	{
 		if (context->tok.type == TOKEN_EOF)
 		{
@@ -54,7 +52,8 @@ inline void advance(Context *context)
 			{
 				if (context->trailing_comment)
 				{
-					SEMA_TOKEN_ERROR(context->next_tok, "You have multiple trailing doc-style comments, should the second one go on the next line?");
+					SEMA_TOKEN_ERROR(context->next_tok,
+					                 "You have multiple trailing doc-style comments, should the second one go on the next line?");
 				}
 				else
 				{
@@ -65,7 +64,8 @@ inline void advance(Context *context)
 			{
 				if (context->lead_comment)
 				{
-					SEMA_TOKEN_ERROR(context->next_tok, "You have multiple doc-style comments in a row, are all of them really meant to document the code that follows?");
+					SEMA_TOKEN_ERROR(context->next_tok,
+					                 "You have multiple doc-style comments in a row, are all of them really meant to document the code that follows?");
 				}
 				else
 				{
@@ -104,7 +104,6 @@ bool consume(Context *context, TokenType type, const char *message, ...)
 }
 
 
-
 #pragma mark --- Extern functions
 
 /**
@@ -114,7 +113,8 @@ bool consume(Context *context, TokenType type, const char *message, ...)
 static inline void parse_translation_unit(Context *context)
 {
 	// Prime everything
-	advance(context); advance(context);
+	advance(context);
+	advance(context);
 	if (!parse_module(context)) return;
 	parse_imports(context);
 	while (!TOKEN_IS(TOKEN_EOF))

@@ -16,9 +16,9 @@ func void test2()
 
 func void test3()
 {
-    char a = 1;
+    ichar a = 1;
     int b = 2;
-    char c = a + b; // #error: Cannot implicitly cast 'int' to 'char'
+    ichar c = a + b; // #error: Cannot implicitly cast 'int' to 'ichar'
 }
 
 func void test4()
@@ -54,7 +54,7 @@ typedef int as Number;
 func void test8()
 {
     Number a = 10;
-    char c = a;         // #error: implicitly cast 'Number' (int) to 'char'
+    ichar c = a;         // #error: implicitly cast 'Number' (int) to 'ichar'
 }
 
 
@@ -82,33 +82,33 @@ enum Enum : int
 func void test11()
 {
     int a = Enum.A;
-    char b = Enum.B;     // #error: Cannot implicitly convert 'Enum' with underlying type of 'int' to 'char'
+    ichar b = Enum.B;     // #error: Cannot implicitly convert 'Enum' with underlying type of 'int' to 'ichar'
 }
 
 func void test12()
 {
     float f = 3.14;
-    char a = f;         // #error: cast 'float' to 'char'
+    ichar a = f;         // #error: cast 'float' to 'ichar'
 }
 
 func void test13()
 {
     int a = 1;
-    char b = a;         // #error: cast 'int' to 'char'
+    ichar b = a;         // #error: cast 'int' to 'ichar'
 }
 
 func void test14()
 {
-    byte a = 1;
-    char b = a;         // #error: cast 'byte' to 'char'
+    char a = 1;
+    ichar b = a;         // #error: cast 'char' to 'ichar'
 }
 
 func void test15()
 {
     float f = 3.14;
-    char c = 1;
-    char* a = &f;       // #error: cast 'float*' to 'char*'
-    char* b = &c;
+    ichar c = 1;
+    ichar* a = &f;       // #error: cast 'float*' to 'ichar*'
+    ichar* b = &c;
 }
 
 func void test16()
@@ -116,9 +116,9 @@ func void test16()
     float f = 3.14;
     int i = 1;
 
-    char c = 1 ? 'c' : 'd';
-    char d = 1 ? 'c' : i;       // #error: cast 'int' to 'char'
-    char e = 1 ? i : 0;         // #error: cast 'int' to 'char'
+    ichar c = 1 ? 'c' : 'd';
+    ichar d = 1 ? 'c' : i;       // #error: cast 'int' to 'ichar'
+    ichar e = 1 ? i : 0;         // #error: cast 'int' to 'ichar'
     int g = 1 ? i : f;          // #error: cast 'float' to 'int'
     int a = f ? 1 : 0;
 }
@@ -157,11 +157,11 @@ func void foo() {}
 
 func void test22()
 {
-    char a = foo();             // #error: cast 'void' to 'char'
+    ichar a = foo();             // #error: cast 'void' to 'ichar'
     short b = foo();            // #error: cast 'void' to 'short'
     int c = foo();              // #error: cast 'void' to 'int'
     long d = foo();             // #error: cast 'void' to 'long'
-    byte e = foo();             // #error: cast 'void' to 'byte'
+    char e = foo();             // #error: cast 'void' to 'char'
     ushort f = foo();           // #error: cast 'void' to 'ushort'
     uint g = foo();             // #error: cast 'void' to 'uint'
     ulong h = foo();            // #error: cast 'void' to 'ulong'

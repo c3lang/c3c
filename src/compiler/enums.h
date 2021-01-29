@@ -69,6 +69,8 @@ typedef enum
 	AST_DEFAULT_STMT,
 	AST_DEFER_STMT,
 	AST_DO_STMT,
+	AST_DOC_DIRECTIVE,
+	AST_DOCS,
 	AST_EXPR_STMT,
 	AST_TRY_STMT,
 	AST_FOR_STMT,
@@ -157,6 +159,16 @@ typedef enum
 	case DECL_GENERIC: case DECL_CT_IF: case DECL_CT_ELSE: case DECL_CT_ELIF: \
 	case DECL_CT_SWITCH: case DECL_CT_CASE: case DECL_ATTRIBUTE: case DECL_LABEL: \
     case DECL_DEFINE
+
+typedef enum
+{
+	DOC_DIRECTIVE_UNKNOWN,
+	DOC_DIRECTIVE_PURE,
+	DOC_DIRECTIVE_REQUIRE,
+	DOC_DIRECTIVE_PARAM,
+	DOC_DIRECTIVE_ERRORS,
+	DOC_DIRECTIVE_ENSURE,
+} DocDirectiveKind;
 
 typedef enum
 {
@@ -296,6 +308,7 @@ typedef enum
 	// two character tokens.
 	TOKEN_AND,              // &&
 	TOKEN_ARROW,            // -> // Not used but reserved
+	TOKEN_BANGBANG,         // !!
 	TOKEN_BIT_AND_ASSIGN,   // &=
 	TOKEN_BIT_OR_ASSIGN,    // |=
 	TOKEN_BIT_XOR_ASSIGN,   // ^=
@@ -321,7 +334,6 @@ typedef enum
 	TOKEN_SCOPE,            // ::
 	TOKEN_SHL,              // <<
 	TOKEN_SHR,              // >>
-	TOKEN_BANGBANG,         // !!
 
 	// Three or more
 	TOKEN_ELLIPSIS,         // ...
@@ -333,12 +345,12 @@ typedef enum
 
 	// Basic types names
 	TOKEN_VOID,
-	TOKEN_BYTE,
 	TOKEN_BOOL,
 	TOKEN_CHAR,
 	TOKEN_DOUBLE,
 	TOKEN_FLOAT,
 	TOKEN_HALF,
+	TOKEN_ICHAR,
 	TOKEN_INT,
 	TOKEN_ISIZE,
 	TOKEN_LONG,
@@ -448,7 +460,8 @@ typedef enum
 
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
-	TOKEN_DOCS_EOL,         // "\n" only seen in docs.
+	TOKEN_DOCS_EOL,         // "\n" only seen in directives.
+	TOKEN_DOCS_DIRECTIVE,   // @ in the directive
 	TOKEN_DOCS_LINE,        // Any line within /** **/
 
 	TOKEN_EOF,              // \n - SHOULD ALWAYS BE THE LAST TOKEN.

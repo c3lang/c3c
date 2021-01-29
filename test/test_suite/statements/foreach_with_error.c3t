@@ -51,7 +51,7 @@ foreach.body:
   br i1 %noerr2, label %after_check3, label %voiderr
 
 after_check3:
-  %arridx = getelementptr inbounds [3 x i32], [3 x i32]* %x, i32 0, i32 0
+  %arridx = getelementptr inbounds [3 x i32], [3 x i32]* %x, i64 0, i64 0
   store i32 1, i32* %arridx, align 4
   br label %voiderr
 

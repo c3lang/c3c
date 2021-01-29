@@ -491,9 +491,6 @@ static inline TypeInfo *parse_base_type(Context *context)
 		case TOKEN_BOOL:
 			type_found = type_bool;
 			break;
-		case TOKEN_BYTE:
-			type_found = type_byte;
-			break;
 		case TOKEN_CHAR:
 			type_found = type_char;
 			break;
@@ -502,6 +499,9 @@ static inline TypeInfo *parse_base_type(Context *context)
 			break;
 		case TOKEN_FLOAT:
 			type_found = type_float;
+			break;
+		case TOKEN_ICHAR:
+			type_found = type_ichar;
 			break;
 		case TOKEN_INT:
 			type_found = type_int;
@@ -868,9 +868,9 @@ bool parse_next_is_decl(Context *context)
 	switch (context->tok.type)
 	{
 		case TOKEN_VOID:
-		case TOKEN_BYTE:
-		case TOKEN_BOOL:
 		case TOKEN_CHAR:
+		case TOKEN_BOOL:
+		case TOKEN_ICHAR:
 		case TOKEN_DOUBLE:
 		case TOKEN_FLOAT:
 		case TOKEN_INT:
@@ -912,11 +912,11 @@ bool parse_next_is_case_type(Context *context)
 	switch (context->tok.type)
 	{
 		case TOKEN_VOID:
-		case TOKEN_BYTE:
 		case TOKEN_BOOL:
 		case TOKEN_CHAR:
 		case TOKEN_DOUBLE:
 		case TOKEN_FLOAT:
+		case TOKEN_ICHAR:
 		case TOKEN_INT:
 		case TOKEN_ISIZE:
 		case TOKEN_LONG:
@@ -1849,6 +1849,125 @@ void parse_imports(Context *context)
 	}
 }
 
+static inline TokenId parse_doc_opt_rest_of_line(Context *context)
+{
+	return try_consume(context, TOKEN_DOCS_LINE) ? context->prev_tok : INVALID_TOKEN_ID;
+}
+
+static inline bool parse_doc_param(Context *context, Ast *docs)
+{
+	switch (context->tok.type)
+	{
+		case TOKEN_IDENT:
+		case TOKEN_CT_IDENT:
+		case TOKEN_TYPE_IDENT:
+		case TOKEN_CT_CONST_IDENT:
+		case TOKEN_HASH_CONST_IDENT:
+		case TOKEN_HASH_TYPE_IDENT:
+		case TOKEN_CT_TYPE_IDENT:
+		case TOKEN_CONST_IDENT:
+		case TOKEN_HASH_IDENT:
+			break;
+		default:
+			SEMA_TOKEN_ERROR(context->tok, "Expected a parameter name here.");
+			return false;
+	}
+	docs->doc_directive.kind = DOC_DIRECTIVE_PARAM;
+	docs->doc_directive.param.param = context->tok.id;
+	advance(context);
+	docs->doc_directive.param.rest_of_line = parse_doc_opt_rest_of_line(context);
+	return true;
+}
+
+static inline bool parse_doc_errors(Context *context, Ast *docs)
+{
+	TODO
+	while (1)
+	{
+		if (context->tok.type != TOKEN_TYPE_IDENT)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "Expected an error type here.");
+		}
+	}
+	switch (context->tok.type)
+	{
+		case TOKEN_TYPE_IDENT:
+			break;
+		default:
+			return false;
+	}
+	docs->doc_directive.kind = DOC_DIRECTIVE_PARAM;
+	docs->doc_directive.param.param = context->tok.id;
+	advance(context);
+	docs->doc_directive.param.rest_of_line = parse_doc_opt_rest_of_line(context);
+	return true;
+}
+
+static inline bool parse_doc_contract(Context *context, Ast *docs)
+{
+	docs->doc_directive.contract.decl_exprs = TRY_EXPR_OR(parse_decl_expr_list(context), false);
+	if (try_consume(context, TOKEN_COLON))
+	{
+		docs->doc_directive.contract.comment = TRY_EXPR_OR(parse_expr(context), false);
+	}
+	return true;
+}
+
+static bool parse_docs(Context *context, Ast **docs)
+{
+	*docs = NULL;
+	if (!try_consume(context, TOKEN_DOCS_START)) return true;
+
+	Ast *ast = new_ast(AST_DOCS, (SourceSpan) { .loc = context->prev_tok, .end_loc = context->prev_tok });
+	while (!try_consume(context, TOKEN_DOCS_END))
+	{
+		// Spin past the lines and line ends
+		if (try_consume(context, TOKEN_DOCS_EOL)) continue;
+		if (try_consume(context, TOKEN_DOCS_LINE)) continue;
+		CONSUME_OR(TOKEN_DOCS_DIRECTIVE, false);
+		CONSUME_OR(TOKEN_IDENT, false);
+		const char *directive = TOKSTR(context->prev_tok);
+		SourceSpan span = { context->prev_tok, context->prev_tok };
+		Ast *doc_ast = new_ast(AST_DOC_DIRECTIVE, span);
+		if (directive == kw_param)
+		{
+			if (!parse_doc_param(context, doc_ast)) return false;
+			goto LINE_END;
+		}
+		if (directive == kw_pure)
+		{
+			vec_add(ast->directives, doc_ast);
+			doc_ast->doc_directive.kind = DOC_DIRECTIVE_PURE;
+			doc_ast->doc_directive.pure.rest_of_line = parse_doc_opt_rest_of_line(context);
+			goto LINE_END;
+		}
+		if (directive == kw_ensure)
+		{
+			doc_ast->doc_directive.kind = DOC_DIRECTIVE_ENSURE;
+			if (!parse_doc_contract(context, ast)) return false;
+			goto LINE_END;
+		}
+		if (directive == kw_require)
+		{
+			doc_ast->doc_directive.kind = DOC_DIRECTIVE_REQUIRE;
+			if (!parse_doc_contract(context, ast)) return false;
+			goto LINE_END;
+		}
+		if (directive == kw_errors)
+		{
+			if (!parse_doc_errors(context, ast)) return false;
+			goto LINE_END;
+		}
+		doc_ast->doc_directive.kind = DOC_DIRECTIVE_UNKNOWN;
+		doc_ast->doc_directive.generic.directive_name = directive;
+		doc_ast->doc_directive.generic.rest_of_line = parse_doc_opt_rest_of_line(context);
+
+LINE_END:
+		if (try_consume(context, TOKEN_DOCS_EOL)) continue;
+		EXPECT_OR(TOKEN_DOCS_END, false);
+	}
+	return true;
+}
 
 /**
  * top_level_statement ::= visibility? top_level
@@ -1871,6 +1990,8 @@ void parse_imports(Context *context)
  */
 Decl *parse_top_level_statement(Context *context)
 {
+	Ast *docs = NULL;
+	if (!parse_docs(context, &docs)) return poisoned_decl;
 	Visibility visibility = VISIBLE_MODULE;
 	switch (context->tok.type)
 	{
@@ -1889,53 +2010,95 @@ Decl *parse_top_level_statement(Context *context)
 			break;
 	}
 
+	Decl *decl;
 	switch (context->tok.type)
 	{
+		case TOKEN_DOCS_START:
+			if (context->docs_start.index == INVALID_TOKEN_ID.index)
+			{
+				SEMA_TOKEN_ERROR(context->tok, "Did not expect doc comments after visibility.");
+				return poisoned_decl;
+			}
+			SEMA_TOKEN_ERROR(context->tok, "There are more than one doc comment in a row, that is not allowed.");
+			return poisoned_decl;
 		case TOKEN_DEFINE:
-			return parse_define(context, visibility);
+			decl = TRY_DECL_OR(parse_define(context, visibility), poisoned_decl);
+			break;
 		case TOKEN_ATTRIBUTE:
-			return parse_attribute_declaration(context, visibility);
+			decl = TRY_DECL_OR(parse_attribute_declaration(context, visibility), poisoned_decl);
+			break;
 		case TOKEN_FUNC:
-			return parse_func_definition(context, visibility, false);
+			decl = TRY_DECL_OR(parse_func_definition(context, visibility, false), poisoned_decl);
+			break;
 		case TOKEN_CT_ASSERT:
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
 			{
 				Ast *ast = TRY_AST_OR(parse_ct_assert_stmt(context), false);
 				vec_add(context->ct_asserts, ast);
+				if (docs)
+				{
+					SEMA_ERROR(docs, "Unexpected doc comment before $assert, did you mean to use a regular comment?");
+					return poisoned_decl;
+				}
 				return NULL;
 			}
 		case TOKEN_CT_IF:
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
-			return parse_ct_if_top_level(context);
+			decl = TRY_DECL_OR(parse_ct_if_top_level(context), poisoned_decl);
+			if (docs)
+			{
+				SEMA_ERROR(docs, "Unexpected doc comment before $if, did you mean to use a regular comment?");
+				return poisoned_decl;
+			}
+			break;
 		case TOKEN_CT_SWITCH:
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
-			return parse_ct_switch_top_level(context);
+			decl = TRY_DECL_OR(parse_ct_switch_top_level(context), poisoned_decl);
+			if (docs)
+			{
+				SEMA_ERROR(docs, "Unexpected doc comment before $switch, did you mean to use a regular comment?");
+				return poisoned_decl;
+			}
+			break;
 		case TOKEN_CONST:
-			return parse_top_level_const_declaration(context, visibility);
+			decl = TRY_DECL_OR(parse_top_level_const_declaration(context, visibility), poisoned_decl);
+			break;
 		case TOKEN_STRUCT:
 		case TOKEN_UNION:
-			return parse_struct_declaration(context, visibility);
+			decl = TRY_DECL_OR(parse_struct_declaration(context, visibility), poisoned_decl);
+			break;
 		case TOKEN_GENERIC:
-			return parse_generics_declaration(context, visibility);
+			decl = TRY_DECL_OR(parse_generics_declaration(context, visibility), poisoned_decl);
+			break;
 		case TOKEN_MACRO:
-			return parse_macro_declaration(context, visibility);
+			decl = TRY_DECL_OR(parse_macro_declaration(context, visibility), poisoned_decl);
+			break;
 		case TOKEN_ENUM:
-			return parse_enum_declaration(context, visibility);
+			decl = TRY_DECL_OR(parse_enum_declaration(context, visibility), poisoned_decl);
+			break;
 		case TOKEN_ERR:
-			return parse_error_declaration(context, visibility);
+			decl = TRY_DECL_OR(parse_error_declaration(context, visibility), poisoned_decl);
+			break;
 		case TOKEN_TYPEDEF:
-			return parse_typedef_declaration(context, visibility);
+			decl = TRY_DECL_OR(parse_typedef_declaration(context, visibility), poisoned_decl);
+			break;
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_TYPE_IDENT:
 			// All of these start type
-			return parse_global_declaration(context, visibility);
+			decl = TRY_DECL_OR(parse_global_declaration(context, visibility), poisoned_decl);
+			break;
 		case TOKEN_IDENT:
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
-			return parse_incremental_array(context);
+			decl = TRY_DECL_OR(parse_incremental_array(context), poisoned_decl);
+			if (docs)
+			{
+				SEMA_ERROR(docs,
+				           "Unexpected doc comment before incremental array, did you mean to use a regular comment?");
+				return poisoned_decl;
+			}
+			break;
 		case TOKEN_EOF:
-			assert(visibility != VISIBLE_MODULE);
-			TODO
-			//sema_error_at(context->token->span.loc - 1, "Expected a top level declaration'.");
+			SEMA_TOKID_ERROR(context->prev_tok, "Expected a top level declaration");
 			return poisoned_decl;
 		case TOKEN_CT_CONST_IDENT:
 			if (context->next_tok.type == TOKEN_EQ)
@@ -1950,11 +2113,14 @@ Decl *parse_top_level_statement(Context *context)
 			return poisoned_decl;
 		default:
 			// We could have included all fundamental types above, but do it here instead.
-			if (token_is_type(context->tok.type))
+			if (!token_is_type(context->tok.type))
 			{
-				return parse_global_declaration(context, visibility);
+				SEMA_TOKEN_ERROR(context->tok, "Expected a top level declaration here.");
+				return poisoned_decl;
 			}
-			SEMA_TOKEN_ERROR(context->tok, "Expected a top level declaration here.");
-			return poisoned_decl;
+			decl = TRY_DECL_OR(parse_global_declaration(context, visibility), poisoned_decl);
+			break;
 	}
+	decl->docs = docs;
+	return decl;
 }

@@ -7,8 +7,8 @@ error TheError
 
 error TheError2
 {
-    byte a;
-    byte b;
+    char a;
+    char b;
 }
 
 error TheError3

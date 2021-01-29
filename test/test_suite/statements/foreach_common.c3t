@@ -22,7 +22,7 @@ func void main()
     {
         printf("Value[%d]: %f\n", i, a);
     }
-    foreach (byte i, double a : foo)
+    foreach (char i, double a : foo)
     {
         printf("Value2[%d]: %f\n", i, a);
     }

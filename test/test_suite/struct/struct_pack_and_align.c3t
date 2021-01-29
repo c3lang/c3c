@@ -44,13 +44,13 @@ public Foo4 foo4 = { 1, 2 };
 struct Foo5
 {
     int bar @align(16);
-    char foo @align(16);
+    ichar foo @align(16);
 }
 
 $assert(Foo5.sizeof == 32);
 public Foo5 foo5 = { 1, 2 };
 
-func int test5(char x)
+func int test5(ichar x)
 {
     Foo5 y = { .foo = x };
     return y.foo + y.bar;

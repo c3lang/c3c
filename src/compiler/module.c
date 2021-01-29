@@ -63,8 +63,7 @@ Path *path_find_parent_path(Context *context, Path *path)
 
 	Path *parent_path = path_create_from_string(context, path->module, last_scope_chars - path->module - 1, INVALID_RANGE);
 
-	// Should never fail.
-	assert(parent_path);
+	assert(parent_path && "Didn't we pass in a TOKEN_IDENT? That's the only reason this could fail.");
 
 	return parent_path;
 }

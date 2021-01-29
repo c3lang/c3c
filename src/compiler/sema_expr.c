@@ -268,54 +268,19 @@ static bool expr_cast_to_index(Context *context, Expr *index)
 			return cast_implicit(context, index, type_isize);
 		case TYPE_I8:
 		case TYPE_I16:
-			return cast_implicit(context, index, type_int);
-		case TYPE_U8:
-		case TYPE_U16:
-			return cast_implicit(context, index, type_uint);
 		case TYPE_I32:
-		case TYPE_U32:
 		case TYPE_I64:
-		case TYPE_U64:
-			// This is fine.
-			return true;
-		case TYPE_U128:
-			SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
-			return false;
-		case TYPE_I128:
-			SEMA_ERROR(index, "You need to explicitly cast this to a int or long.");
-			return false;
-		default:
-			SEMA_ERROR(index, "Cannot implicitly convert '%s' to an index.", type_to_error_string(index->type));
-			return false;
-	}
-}
-
-static bool expr_cast_to_index_size(Context *context, Expr *index)
-{
-	switch (index->type->canonical->type_kind)
-	{
-		case TYPE_IXX:
-			if (!bigint_fits_in_bits(&index->const_expr.i, 64, true))
-			{
-				SEMA_ERROR(index, "The index is out of range, it must fit in a signed 64 bit integer.");
-				return false;
-			}
 			return cast_implicit(context, index, type_isize);
 		case TYPE_U8:
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_U64:
 			return cast_implicit(context, index, type_usize);
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
-		case TYPE_I64:
-			return cast_implicit(context, index, type_isize);
 		case TYPE_U128:
-			SEMA_ERROR(index, "You need to explicitly cast this to a usize.");
+			SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
 			return false;
 		case TYPE_I128:
-			SEMA_ERROR(index, "You need to explicitly cast this to a size.");
+			SEMA_ERROR(index, "You need to explicitly cast this to a int or long.");
 			return false;
 		default:
 			SEMA_ERROR(index, "Cannot implicitly convert '%s' to an index.", type_to_error_string(index->type));
@@ -1425,7 +1390,7 @@ static inline bool sema_expr_analyse_subscript(Context *context, Expr *expr)
 		SEMA_ERROR(subscripted, "Cannot index '%s'.", type_to_error_string(type));
 		return false;
 	}
-	if (!sema_analyse_expr(context, type_int, index)) return false;
+	if (!sema_analyse_expr(context, NULL, index)) return false;
 
 	expr->constant = index->constant & subscripted->constant;
 	expr->pure = index->pure & subscripted->pure;
@@ -1472,8 +1437,8 @@ static inline bool sema_expr_analyse_slice(Context *context, Expr *expr)
 	expr->constant &= !end || end->constant;
 
 	// Fix index sizes
-	if (!expr_cast_to_index_size(context, start)) return false;
-	if (end && !expr_cast_to_index_size(context, end)) return false;
+	if (!expr_cast_to_index(context, start)) return false;
+	if (end && !expr_cast_to_index(context, end)) return false;
 
 	// Check range
 	if (type->type_kind == TYPE_POINTER)
@@ -4815,6 +4780,24 @@ static Ast *ast_copy_from_macro(Context *context, Ast *source)
 	Ast *ast = ast_shallow_copy(source);
 	switch (source->ast_kind)
 	{
+		case AST_DOCS:
+			ast->directives = ast_copy_list_from_macro(context, ast->directives);
+			return ast;
+		case AST_DOC_DIRECTIVE:
+			switch (ast->doc_directive.kind)
+			{
+				case DOC_DIRECTIVE_REQUIRE:
+				case DOC_DIRECTIVE_ENSURE:
+					MACRO_COPY_EXPR(ast->doc_directive.contract.decl_exprs);
+					MACRO_COPY_EXPR(ast->doc_directive.contract.comment);
+					break;
+				case DOC_DIRECTIVE_PARAM:
+				case DOC_DIRECTIVE_ERRORS:
+				case DOC_DIRECTIVE_PURE:
+				case DOC_DIRECTIVE_UNKNOWN:
+					break;
+			}
+			return ast;
 		case AST_POISONED:
 			return ast;
 		case AST_ASM_STMT:

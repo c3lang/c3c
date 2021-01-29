@@ -6,7 +6,7 @@ enum Inf
     C = 10000
 }
 
-enum Inf2 : byte
+enum Inf2 : char
 {
     A,
     B,

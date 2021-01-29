@@ -953,6 +953,7 @@ Ast *parse_stmt(Context *context)
 	{
 		case TOKEN_ASM_STRING:
 		case TOKEN_ASM_CONSTRAINT:
+		case TOKEN_DOCS_DIRECTIVE:
 			UNREACHABLE
 		case TOKEN_LBRACE:
 			return parse_compound_stmt(context);
@@ -962,11 +963,11 @@ Ast *parse_stmt(Context *context)
 			advance(context);
 			return poisoned_ast;
 		case TOKEN_VOID:
-		case TOKEN_BYTE:
-		case TOKEN_BOOL:
 		case TOKEN_CHAR:
+		case TOKEN_BOOL:
 		case TOKEN_DOUBLE:
 		case TOKEN_FLOAT:
+		case TOKEN_ICHAR:
 		case TOKEN_INT:
 		case TOKEN_ISIZE:
 		case TOKEN_LONG:

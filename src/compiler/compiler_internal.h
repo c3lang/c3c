@@ -443,6 +443,7 @@ typedef struct _Decl
 	TokenId name_token;
 	SourceSpan span;
 	const char *external_name;
+	Ast *docs;
 	DeclKind decl_kind : 6;
 	Visibility visibility : 2;
 	ResolveStatus resolve_status : 2;
@@ -1053,6 +1054,34 @@ typedef struct
 	Expr *expr;
 } AstAssertStmt;
 
+typedef struct
+{
+	DocDirectiveKind kind;
+	union
+	{
+		struct
+		{
+			TokenId param;
+			TokenId rest_of_line;
+		} param;
+		struct
+		{
+			Expr *decl_exprs;
+			Expr *comment;
+		} contract;
+		struct
+		{
+			TokenId rest_of_line;
+		} pure;
+		struct
+		{
+			const char *directive_name;
+			TokenId rest_of_line;
+		} generic;
+
+	};
+} AstDocDirective;
+
 typedef struct _Ast
 {
 	SourceSpan span;
@@ -1088,6 +1117,8 @@ typedef struct _Ast
 		AstScopedStmt scoped_stmt;          // 16
 		AstAssertStmt ct_assert_stmt;
 		AstAssertStmt assert_stmt;
+		Ast **directives;
+		AstDocDirective doc_directive;
 	};
 } Ast;
 
@@ -1152,6 +1183,9 @@ typedef struct
 	const char *line_start;
 	File *current_file;
 	SourceLoc last_in_range;
+	TokenData *latest_token_data;
+	SourceLocation *latest_token_loc;
+	unsigned char *latest_token_type;
 } Lexer;
 
 
@@ -1220,6 +1254,8 @@ typedef struct _Context
 	Token tok;
 	TokenId prev_tok;
 	Token next_tok;
+	TokenId docs_start;
+	TokenId docs_end;
 } Context;
 
 typedef struct
@@ -1329,8 +1365,8 @@ extern Diagnostics diagnostics;
 
 extern Type *type_bool, *type_void, *type_string, *type_voidptr;
 extern Type *type_half, *type_float, *type_double, *type_quad;
-extern Type *type_char, *type_short, *type_int, *type_long, *type_isize;
-extern Type *type_byte, *type_ushort, *type_uint, *type_ulong, *type_usize;
+extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isize;
+extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_u128, *type_i128;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
@@ -1342,6 +1378,7 @@ extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *kw_align;
 extern const char *kw_alignof;
 extern const char *kw_distinct;
+extern const char *kw_ensure;
 extern const char *kw_inline;
 extern const char *kw_kindof;
 extern const char *kw_len;
@@ -1350,6 +1387,11 @@ extern const char *kw_nameof;
 extern const char *kw_offsetof;
 extern const char *kw_ordinal;
 extern const char *kw_qnameof;
+extern const char *kw_reqparse;
+extern const char *kw_require;
+extern const char *kw_pure;
+extern const char *kw_param;
+extern const char *kw_errors;
 extern const char *kw_sizeof;
 extern const char *kw___ceil;
 extern const char *kw___round;

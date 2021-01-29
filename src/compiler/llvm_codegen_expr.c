@@ -23,8 +23,8 @@ LLVMValueRef llvm_emit_is_no_error(GenContext *c, LLVMValueRef error)
 LLVMTypeRef llvm_const_padding_type(GenContext *c, ByteSize size)
 {
 	assert(size > 0);
-	if (size == 1) return llvm_get_type(c, type_byte);
-	return LLVMArrayType(llvm_get_type(c, type_byte), size);
+	if (size == 1) return llvm_get_type(c, type_char);
+	return LLVMArrayType(llvm_get_type(c, type_char), size);
 }
 
 LLVMValueRef llvm_emit_const_padding(GenContext *c, ByteSize size)
@@ -132,42 +132,12 @@ static inline LLVMValueRef gencontext_emit_sub_int(GenContext *context, Type *ty
 	       : LLVMBuildNSWSub(context->builder, left, right, "sub");
 }
 
-static inline void gencontext_emit_subscript_addr_base(GenContext *context, BEValue *value, Expr *parent)
+static inline void llvm_emit_subscript_addr_base(GenContext *context, BEValue *value, Expr *parent)
 {
 	LLVMValueRef parent_value;
 	Type *type = type_flatten(parent->type);
-	switch (type->type_kind)
-	{
-		case TYPE_POINTER:
-			llvm_emit_expr(context, value, parent);
-			llvm_value_rvalue(context, value);
-			value->kind = BE_ADDRESS;
-			return;
-		case TYPE_ARRAY:
-			llvm_emit_expr(context, value, parent);
-			return;
-		case TYPE_SUBARRAY:
-		{
-			// TODO insert trap on overflow.
-			LLVMTypeRef subarray_type = llvm_get_type(context, type);
-			llvm_emit_expr(context, value, parent);
-			assert(value->kind == BE_ADDRESS);
-			LLVMValueRef pointer_addr = LLVMBuildStructGEP2(context->builder, subarray_type, value->value, 0, "subarray_ptr");
-			LLVMTypeRef pointer_type = llvm_get_type(context, type_get_ptr(type->array.base));
-			AlignSize alignment = type_abi_alignment(type_voidptr);
-			// We need to pick the worst alignment in case this is packed in an array.
-			if (value->alignment < alignment) alignment = value->alignment;
-			llvm_value_set_address_align(value,
-			                             llvm_emit_load_aligned(context, pointer_type, pointer_addr, 0, "subarrptr"), type, alignment);
-			return;
-		}
-		case TYPE_VARARRAY:
-		case TYPE_STRING:
-			TODO
-		default:
-			UNREACHABLE
-
-	}
+	llvm_emit_expr(context, value, parent);
+	llvm_emit_ptr_from_array(context, value);
 }
 
 static inline LLVMValueRef llvm_emit_subscript_addr_with_base(GenContext *c, Type *parent_type, LLVMValueRef parent_value, LLVMValueRef index_value)
@@ -274,7 +244,7 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 {
 	BEValue ref;
 	// First, get thing being subscripted.
-	gencontext_emit_subscript_addr_base(c, &ref, expr->subscript_expr.expr);
+	llvm_emit_subscript_addr_base(c, &ref, expr->subscript_expr.expr);
 	// It needs to be an address.
 	llvm_value_addr(c, &ref);
 
@@ -967,7 +937,7 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue
 		case TYPE_POINTER:
 		{
 			// Use byte here, we don't need a big offset.
-			LLVMValueRef add = LLVMConstInt(diff < 0 ? llvm_get_type(c, type_char) : llvm_get_type(c, type_byte), diff, diff < 0);
+			LLVMValueRef add = LLVMConstInt(diff < 0 ? llvm_get_type(c, type_ichar) : llvm_get_type(c, type_char), diff, diff < 0);
 			after_value = LLVMBuildGEP2(c->builder, llvm_get_type(c, type->pointer), value.value, &add, 1, "ptrincdec");
 			break;
 		}
@@ -1325,7 +1295,6 @@ static void gencontext_emit_slice(GenContext *context, BEValue *be_value, Expr *
 
 	// Calculate the size
 	LLVMValueRef size = LLVMBuildSub(context->builder, LLVMBuildAdd(context->builder, end_index, llvm_const_int(context, start_type, 1), ""), start_index, "size");
-
 	LLVMValueRef start_pointer;
 	switch (parent_type->type_kind)
 	{
@@ -2187,7 +2156,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			return;
 		case TYPE_STRING:
 		{
-			LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.string.len + 1), "");
+			LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_ichar), expr->const_expr.string.len + 1), "");
 			LLVMSetLinkage(global_name, LLVMInternalLinkage);
 			LLVMSetGlobalConstant(global_name, 1);
 			LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context,
@@ -2529,7 +2498,7 @@ void llvm_emit_call_expr(GenContext *context, BEValue *be_value, Expr *expr)
 	if (signature->failable && signature->ret_abi_info)
 	{
 		Type *actual_return_type = type_lowering(signature->rtype->type);
-		return_param = llvm_emit_alloca(context, llvm_get_type(context, actual_return_type), 0, "retparam");
+		return_param = llvm_emit_alloca_aligned(context, actual_return_type, "retparam");
 		llvm_value_set(be_value, return_param, type_get_ptr(actual_return_type));
 		llvm_emit_parameter(context, &values, signature->ret_abi_info, be_value, be_value->type);
 	}

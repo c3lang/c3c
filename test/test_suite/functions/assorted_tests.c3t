@@ -2,7 +2,7 @@ module test;
 
 func int foo1()
 {
-  byte *pp = void;
+  char *pp = void;
   uint w_cnt = void;
 
   w_cnt += *pp;
@@ -17,7 +17,7 @@ func void foo2(int x)
     test2(x, x ? 1.0 : 12.5, 1.0);
 }
 
-func int trys(char* s, int x)
+func int trys(ichar* s, int x)
 {
     int asa = void;
     double val = void;
@@ -34,7 +34,7 @@ func int trys(char* s, int x)
 
 struct InternalFPF
 {
-    byte type;
+    char type;
 }
 
 local func void setInternalFPFZero(InternalFPF* dest) @noinline

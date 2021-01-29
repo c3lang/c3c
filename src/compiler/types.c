@@ -22,13 +22,13 @@ Type *type_double = &t_f64;
 Type *type_quad = &t_f128;
 Type *type_typeid = &t_typeid;
 Type *type_typeinfo = &t_typeinfo;
-Type *type_char = &t_i8;
+Type *type_ichar = &t_i8;
 Type *type_short = &t_i16;
 Type *type_int = &t_i32;
 Type *type_long = &t_i64;
 Type *type_i128 = &t_i128;
 Type *type_isize = &t_isz;
-Type *type_byte = &t_u8;
+Type *type_char = &t_u8;
 Type *type_ushort = &t_u16;
 Type *type_uint = &t_u32;
 Type *type_ulong = &t_u64;
@@ -60,7 +60,7 @@ Type *type_int_signed_by_bitsize(unsigned bytesize)
 {
 	switch (bytesize)
 	{
-		case 8: return type_char;
+		case 8: return type_ichar;
 		case 16: return type_short;
 		case 32: return type_int;
 		case 64: return type_long;
@@ -72,7 +72,7 @@ Type *type_int_unsigned_by_bitsize(unsigned bytesize)
 {
 	switch (bytesize)
 	{
-		case 8: return type_byte;
+		case 8: return type_char;
 		case 16: return type_ushort;
 		case 32: return type_uint;
 		case 64: return type_ulong;
@@ -535,7 +535,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			break;
 		case TYPE_BOOL:
 			// Lower bool to unsigned char
-			type = type_byte;
+			type = type_char;
 			break;
 		case ALL_SIGNED_INTS:
 			// Lower signed to unsigned
@@ -887,13 +887,13 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 	DEF_TYPE(float, t_f32, TYPE_F32, 32, float);
 	DEF_TYPE(double, t_f64, TYPE_F64, 64, double);
 
-	DEF_TYPE(char, t_i8, TYPE_I8, 8, byte);
+	DEF_TYPE(ichar, t_i8, TYPE_I8, 8, byte);
 	DEF_TYPE(short, t_i16, TYPE_I16, 16, short);
 	DEF_TYPE(int, t_i32, TYPE_I32, 32, int);
 	DEF_TYPE(long, t_i64, TYPE_I64, 64, long);
 	DEF_TYPE(i128, t_i128, TYPE_I128, 128, i128);
 
-	DEF_TYPE(byte, t_u8, TYPE_U8, 8, byte);
+	DEF_TYPE(char, t_u8, TYPE_U8, 8, byte);
 	DEF_TYPE(ushort, t_u16, TYPE_U16, 16, short);
 	DEF_TYPE(uint, t_u32, TYPE_U32, 32, int);
 	DEF_TYPE(ulong, t_u64, TYPE_U64, 64, long);

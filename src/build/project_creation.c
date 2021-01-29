@@ -84,9 +84,9 @@ void create_project(void)
 
 	chdir("..");
 
-	if (mkdir("docs", 0755)) goto ERROR;
+	if (mkdir("directives", 0755)) goto ERROR;
 
-	chdir("docs");
+	chdir("directives");
 
 	file = fopen("about.md", "a");
 	if (!file) goto ERROR;

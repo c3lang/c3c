@@ -7,7 +7,7 @@ import stdlib;
 
 const uint MaxText = 1024;
 
-enum TokenKind : byte (string name)
+enum TokenKind : char (string name)
 {
     WORD("word"),
     TEXT("text"),
@@ -345,7 +345,7 @@ func bool isKeyChar(u8 c)
 func void Tokenizer.parseKey(Tokenizer* t, Token* result)
 {
     char* start = t.current;
-    while (t.current[0] && isKeyChar(cast(t.current[0] as byte))) t.current++;
+    while (t.current[0] && isKeyChar(cast(t.current[0] as char))) t.current++;
 
     uint len = cast(t.current - start as uint);
     // assert(len < MaxText);

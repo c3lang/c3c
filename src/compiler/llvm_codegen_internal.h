@@ -240,6 +240,7 @@ void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, un
 void llvm_emit_stmt(GenContext *c, Ast *ast);
 static inline LLVMValueRef llvm_emit_store(GenContext *context, Decl *decl, LLVMValueRef value);
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name);
+void llvm_emit_ptr_from_array(GenContext *c, BEValue *value);
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable);
 void llvm_emit_return_implicit(GenContext *c);
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index, unsigned struct_alignment, unsigned offset, unsigned *alignment);
