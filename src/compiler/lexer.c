@@ -4,10 +4,23 @@
 
 #include "compiler_internal.h"
 
+typedef enum
+{
+	LEX_NORMAL,
+	LEX_DOCS,
+} LexMode;
+
+typedef enum
+{
+	DOC_END_EOF,
+	DOC_END_LAST,
+	DOC_END_EOL,
+	DOC_END_ERROR,
+} DocEnd;
 
 #pragma mark --- Lexing general methods.
 
-static bool lexer_scan_token_inner(Lexer *lexer);
+static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode);
 
 // Peek at the current character in the buffer.
 static inline char peek(Lexer *lexer)
@@ -76,7 +89,7 @@ static inline bool match(Lexer *lexer, char expected)
  * This call is doing the basic allocation, with other functions
  * filling out additional information.
  **/
-static inline void add_generic_token(Lexer *lexer, TokenType type, SourceLocation **ret_loc, TokenData **ret_data)
+static inline void add_generic_token(Lexer *lexer, TokenType type)
 {
 	// Allocate source location, type, data for the token
 	// each of these use their own arena,
@@ -85,7 +98,7 @@ static inline void add_generic_token(Lexer *lexer, TokenType type, SourceLocatio
 	// Consequently these allocs are actually simultaneously
 	// allocating data and putting that data in an array.
 	SourceLocation *location = sourceloc_alloc();
-	char *token_type = toktype_alloc();
+	unsigned char *token_type = (unsigned char *)toktype_alloc();
 	TokenData *data = tokdata_alloc();
 	*token_type = type;
 
@@ -124,19 +137,18 @@ static inline void add_generic_token(Lexer *lexer, TokenType type, SourceLocatio
 	}
 	// Return pointers to the data and the location,
 	// these maybe be used to fill in data.
-	*ret_data = data;
-	*ret_loc = location;
+	lexer->latest_token_data = data;
+	lexer->latest_token_loc = location;
+	lexer->latest_token_type = token_type;
 }
 
 // Error? We simply generate an invalid token and print out the error.
 static bool add_error_token(Lexer *lexer, const char *message, ...)
 {
-	TokenData *data;
-	SourceLocation *loc;
-	add_generic_token(lexer, TOKEN_INVALID_TOKEN, &loc, &data);
+	add_generic_token(lexer, TOKEN_INVALID_TOKEN);
 	va_list list;
 	va_start(list, message);
-	sema_verror_range(loc, message, list);
+	sema_verror_range(lexer->latest_token_loc, message, list);
 	va_end(list);
 	return false;
 }
@@ -144,10 +156,8 @@ static bool add_error_token(Lexer *lexer, const char *message, ...)
 // Add a new regular token.
 static bool add_token(Lexer *lexer, TokenType type, const char *string)
 {
-	TokenData *data;
-	SourceLocation *loc;
-	add_generic_token(lexer, type, &loc, &data);
-	data->string = string;
+	add_generic_token(lexer, type);
+	lexer->latest_token_data->string = string;
 	return true;
 }
 
@@ -251,16 +261,18 @@ static inline bool parse_multiline_comment(Lexer *lexer)
 	}
 }
 
+
 /**
  * Skip regular whitespace.
  */
-static void skip_whitespace(Lexer *lexer)
+static void skip_whitespace(Lexer *lexer, LexMode lex_type)
 {
 	while (1)
 	{
 		switch (peek(lexer))
 		{
 			case '\n':
+				if (lex_type != LEX_NORMAL) return;
 				lexer_store_line_end(lexer);
 				FALLTHROUGH;
 			case ' ':
@@ -274,6 +286,7 @@ static void skip_whitespace(Lexer *lexer)
 		}
 	}
 }
+
 
 
 #pragma mark --- Identifier scanning
@@ -489,10 +502,8 @@ static inline bool scan_dec(Lexer *lexer)
 		{
 			return add_error_token(lexer, "Invalid float value.");
 		}
-		SourceLocation *token;
-		TokenData *data;
-		add_generic_token(lexer, TOKEN_REAL, &token, &data);
-		data->value = fval;
+		add_generic_token(lexer, TOKEN_REAL);
+		lexer->latest_token_data->value = fval;
 		return true;
 	}
 	return add_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
@@ -671,11 +682,9 @@ static inline bool scan_char(Lexer *lexer)
 		add_error_token(lexer, "Character literals may only be 1, 2 or 8 characters wide.");
 	}
 
-	TokenData *data;
-	SourceLocation *loc;
-	add_generic_token(lexer, TOKEN_CHAR_LITERAL, &loc, &data);
-	data->char_lit.u64 = bytes.u64;
-	data->width = (char)width;
+	add_generic_token(lexer, TOKEN_CHAR_LITERAL);
+	lexer->latest_token_data->char_lit.u64 = bytes.u64;
+	lexer->latest_token_data->width = (char)width;
 	return true;
 }
 
@@ -698,6 +707,282 @@ static inline bool scan_string(Lexer *lexer)
 	return add_token(lexer, TOKEN_STRING, lexer->lexing_start);
 }
 
+#pragma mark --- Lexer doc lexing
+
+/**
+ * Skip any stars until we either have no more * or we find '* /'
+ * @param lexer
+ */
+static void skip_doc_stars(Lexer *lexer)
+{
+	while (peek(lexer) == '*' && peek_next(lexer) != '/') next(lexer);
+}
+
+/**
+ * OPTIONALLY adds * / token. This allows any number of '*' to preceed it.
+ * @param lexer
+ * @return
+ */
+static bool parse_add_end_of_docs_if_present(Lexer *lexer)
+{
+	int lookahead = 0;
+	// while we see '*' walk forward.
+	while (lexer->current[lookahead] == '*') lookahead++;
+	// if we didn't see a '*' to begin with, then it's not an end
+	if (lookahead < 1) return false;
+	// And if it doesn't have a '/' at the last position it isn't either.
+	if (lexer->current[lookahead] != '/') return false;
+	// Otherwise, gladly skip ahead and store the end.
+	skip(lexer, lookahead + 1);
+	add_token(lexer, TOKEN_DOCS_END, lexer->lexing_start);
+	lexer->lexing_start = lexer->current;
+	return true;
+}
+
+
+static void parse_add_end_of_doc_line(Lexer *lexer)
+{
+	assert(peek(lexer) == '\n');
+	// Add the EOL token.
+	lexer_store_line_end(lexer);
+	next(lexer);
+	add_token(lexer, TOKEN_DOCS_EOL, lexer->lexing_start);
+	lexer->lexing_start = lexer->current;
+	// Skip whitespace
+	skip_whitespace(lexer, LEX_DOCS);
+	// And any leading stars:
+	skip_doc_stars(lexer);
+}
+
+/**
+ * Parse the end of a directive or a simple line, e.g.
+ * For "* @param lexer The lexer used." then the remainder is "The lexer used."
+ * For "*** Hello world" the remainder is "Hello world"
+ */
+static DocEnd parse_doc_remainder(Lexer *lexer)
+{
+	// Skip all initial whitespace.
+	skip_whitespace(lexer, LEX_DOCS);
+	lexer->lexing_start = lexer->current;
+
+	int characters_read = 0;
+	while (1)
+	{
+		switch (peek(lexer))
+		{
+			case '*':
+				// Did we find the end of the directives?
+				// If so return control.
+				if (characters_read > 0)
+				{
+					add_token(lexer, TOKEN_DOCS_LINE, 0);
+					lexer->lexing_start = lexer->current;
+				}
+				if (parse_add_end_of_docs_if_present(lexer)) return DOC_END_LAST;
+				// Otherwise use default parsing.
+				break;
+			case '\n':
+				// End of line
+				if (characters_read > 0)
+				{
+					add_token(lexer, TOKEN_DOCS_LINE, 0);
+					lexer->lexing_start = lexer->current;
+				}
+				return DOC_END_EOL;
+			case '\0':
+				if (characters_read > 0)
+				{
+					add_token(lexer, TOKEN_DOCS_LINE, 0);
+					lexer->lexing_start = lexer->current;
+				}
+				return DOC_END_EOF;
+			default:
+				break;
+		}
+		// Otherwise move forward
+		characters_read++;
+		next(lexer);
+	}
+}
+
+static DocEnd parse_doc_error_directive(Lexer *lexer)
+{
+	while (1)
+	{
+		// Skip any whitespace.
+		skip_whitespace(lexer, LEX_DOCS);
+
+		// First scan the name
+		if (!lexer_scan_token_inner(lexer, LEX_DOCS)) return DOC_END_ERROR;
+
+		if (*lexer->latest_token_type != TOKEN_TYPE_IDENT) break;
+
+		// Skip any whitespace.
+		skip_whitespace(lexer, LEX_DOCS);
+
+		// If we don't reach "|" we exit, since errors are composed using ErrorA | ErrorB
+		if (peek(lexer) != '|') break;
+
+		if (!lexer_scan_token_inner(lexer, LEX_DOCS)) return DOC_END_ERROR;
+
+		// We might get "|=" or something, in that case exit.
+		if (*lexer->latest_token_type != TOKEN_BIT_OR) break;
+	}
+	return parse_doc_remainder(lexer);
+}
+
+/**
+ * Contract directives use the style: "@require a > 2, b && c == true : "Must work foo"
+ *
+ * @param lexer
+ * @return
+ */
+static DocEnd parse_doc_contract_directive(Lexer *lexer)
+{
+	while (1)
+	{
+		// Skip all initial whitespace.
+		skip_whitespace(lexer, LEX_DOCS);
+
+		switch (peek(lexer))
+		{
+			case '*':
+				// Did we find the end of the directives?
+				// If so return control.
+				if (parse_add_end_of_docs_if_present(lexer)) return DOC_END_LAST;
+				// Otherwise use default parsing.
+				break;
+			case '\n':
+				return DOC_END_EOL;
+			case '\0':
+				return DOC_END_EOF;
+			default:
+				break;
+		}
+		// Otherwise move forward
+		if (!lexer_scan_token_inner(lexer, LEX_DOCS)) return DOC_END_ERROR;
+
+		// "return" is an identifier inside.
+		if (*lexer->latest_token_type == TOKEN_RETURN)
+		{
+			*lexer->latest_token_type = TOKEN_IDENT;
+		}
+	}
+}
+
+static DocEnd parse_doc_param_directive(Lexer *lexer)
+{
+	// Skip any whitespace.
+	skip_whitespace(lexer, LEX_DOCS);
+
+	// First scan the name
+	if (!lexer_scan_token_inner(lexer, LEX_DOCS)) return DOC_END_ERROR;
+
+	// Then the remainder
+	return parse_doc_remainder(lexer);
+}
+
+static DocEnd parse_doc_directive(Lexer *lexer)
+{
+	// We expect a directive here.
+	if (!is_letter(peek_next(lexer)))
+	{
+		return add_error_token(lexer, "Expected doc directive here.");
+	}
+	lexer->lexing_start = lexer->current;
+	// First parse the '@'
+	skip(lexer, 1);
+	add_token(lexer, TOKEN_DOCS_DIRECTIVE, "@");
+	lexer->lexing_start = lexer->current;
+
+	// Then our keyword
+	if (!scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST, TOKEN_TYPE_IDENT, 0)) return DOC_END_ERROR;
+
+	assert(*lexer->latest_token_type == TOKEN_IDENT || *lexer->latest_token_type == TOKEN_RETURN);
+
+	const char *last_token_string = lexer->latest_token_data->string;
+
+	if (*lexer->latest_token_type == TOKEN_RETURN)
+	{
+		// Backpatch the type.
+		*lexer->latest_token_type = TOKEN_IDENT;
+		return parse_doc_remainder(lexer);
+	}
+	if (kw_errors == last_token_string)
+	{
+		return parse_doc_error_directive(lexer);
+	}
+	if (last_token_string == kw_require || last_token_string == kw_ensure || last_token_string == kw_reqparse)
+	{
+		return parse_doc_contract_directive(lexer);
+	}
+	if (last_token_string == kw_param)
+	{
+		// The variable
+		return parse_doc_param_directive(lexer);
+	}
+	return parse_doc_remainder(lexer);
+}
+
+/**
+ * Parse the / **  * / directives comments
+ **/
+static bool parse_doc_comment(Lexer *lexer)
+{
+	// Add the doc start token.
+	add_token(lexer, TOKEN_DOCS_START, lexer->lexing_start);
+
+	// Skip any additional stars
+	skip_doc_stars(lexer);
+
+	// Main "doc parse" loop.
+	while (1)
+	{
+		// 1. Skip any whitespace
+		skip_whitespace(lexer, LEX_DOCS);
+
+		// 2. Did we find the end?
+		if (reached_end(lexer))	return add_error_token(lexer, "Missing '*/' to end the doc comment.");
+
+		// 3. See if we reach the end of the docs.
+		if (parse_add_end_of_docs_if_present(lexer)) return true;
+
+		DocEnd end;
+		// Parse a segment
+		switch (peek(lexer))
+		{
+			case '@':
+				end = parse_doc_directive(lexer);
+				break;
+			case '\n':
+				end = DOC_END_EOL;
+				break;
+			default:
+				end = parse_doc_remainder(lexer);
+				break;
+		}
+
+		// We're done parsing a line:
+		switch (end)
+		{
+			case DOC_END_ERROR:
+				return false;
+			case DOC_END_EOF:
+				// Just continue, this will be picked up in the beginning of the loop.
+				break;
+			case DOC_END_LAST:
+				// We're done, so return.
+				return true;
+			case DOC_END_EOL:
+				// Walk past the end of line.
+				parse_add_end_of_doc_line(lexer);
+				break;
+			default:
+				UNREACHABLE
+		}
+	}
+}
+
 #pragma mark --- Lexer public functions
 
 
@@ -708,16 +993,18 @@ Token lexer_advance(Lexer *lexer)
 	return token;
 }
 
-static bool lexer_scan_token_inner(Lexer *lexer)
+
+static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 {
 	// Now skip the whitespace.
-	skip_whitespace(lexer);
+	skip_whitespace(lexer, mode);
 
 	// Point start to the first non-whitespace character.
 	lexer->lexing_start = lexer->current;
 
 	if (reached_end(lexer))
 	{
+		assert(mode == LEX_NORMAL);
 		return add_token(lexer, TOKEN_EOF, "\n") && false;
 	}
 
@@ -765,9 +1052,13 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			if (match(lexer, '!')) return add_token(lexer, TOKEN_BANGBANG, "!!");
 			return match(lexer, '=') ? add_token(lexer, TOKEN_NOT_EQUAL, "!=") : add_token(lexer, TOKEN_BANG, "!");
 		case '/':
-			if (match(lexer, '/')) return parse_line_comment(lexer);
-			if (match(lexer, '*')) return parse_multiline_comment(lexer);
-			if (match(lexer, '+')) return parse_nested_comment(lexer);
+			// We can't get any directives comments here.
+			if (mode != LEX_DOCS)
+			{
+				if (match(lexer, '/')) return parse_line_comment(lexer);
+				if (match(lexer, '*')) return match(lexer, '*') ? parse_doc_comment(lexer) : parse_multiline_comment(lexer);
+				if (match(lexer, '+')) return parse_nested_comment(lexer);
+			}
 			return match(lexer, '=') ? add_token(lexer, TOKEN_DIV_ASSIGN, "/=") : add_token(lexer, TOKEN_DIV, "/");
 		case '*':
 			if (match(lexer, '%'))
@@ -864,7 +1155,7 @@ void lexer_init_with_file(Lexer *lexer, File *file)
 	lexer->lexer_index = file->token_start_id;
 	while(1)
 	{
-		if (!lexer_scan_token_inner(lexer))
+		if (!lexer_scan_token_inner(lexer, LEX_NORMAL))
 		{
 			if (reached_end(lexer)) break;
 			while (!reached_end(lexer) && peek(lexer) != '\n') next(lexer);

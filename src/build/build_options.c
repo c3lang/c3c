@@ -56,7 +56,7 @@ static void usage(void)
 	OUTPUT("  clean                              Clean all build files.");
 	OUTPUT("  run [<target>]                     Run (and build if needed) the target in the current project.");
 	OUTPUT("  dist [<target>]                    Clean and build a target for distribution.");
-	OUTPUT("  docs [<target>]                    Generate documentation for the target.");
+	OUTPUT("  directives [<target>]                    Generate documentation for the target.");
 	OUTPUT("  bench [<target>]                   Benchmark a target.");
 	OUTPUT("  clean-run [<target>]               Clean, then run the target.");
 	OUTPUT("  compile-run <file1> [<file2> ...]  Compile files then immediately run the result.");
@@ -225,7 +225,7 @@ static void parse_command(void)
 		parse_optional_target();
 		return;
 	}
-	if (arg_match("docs"))
+	if (arg_match("directives"))
 	{
 		build_options.command = COMMAND_DOCS;
 		parse_optional_target();

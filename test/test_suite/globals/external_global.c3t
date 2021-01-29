@@ -8,7 +8,7 @@ struct MinInfo
 
 struct UzGlobs
 {
-    char answerbuf;
+    ichar answerbuf;
     MinInfo[1] info;
     MinInfo* pInfo;
 }

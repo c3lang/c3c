@@ -400,7 +400,7 @@ void gencontext_emit_for_stmt(GenContext *c, Ast *ast)
 	llvm_emit_block(c, exit_block);
 }
 
-void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
+static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 {
 	// First we generate an exit.
 	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "foreach.exit");
@@ -420,6 +420,8 @@ void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 
 	// We pop the error here.
 	POP_ERROR();
+
+	llvm_emit_ptr_from_array(c, &enum_value);
 
 	// Create the index and optionally the index var
 	LLVMTypeRef real_index_type = llvm_get_type(c, type_isize);
@@ -1178,6 +1180,8 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 	}
 	switch (ast->ast_kind)
 	{
+		case AST_DOCS:
+		case AST_DOC_DIRECTIVE:
 		case AST_POISONED:
 		case AST_DEFINE_STMT:
 			UNREACHABLE

@@ -10,7 +10,7 @@ enum Enum : uint
 
 typedef func void(int) as Func;
 
-typedef func bool(byte*) as FuncOther;
+typedef func bool(char*) as FuncOther;
 
 typedef func void(int) as FuncSame;
 
@@ -22,7 +22,7 @@ func void test1(Func arg)
 
 func void test2(Func arg)
 {
-    char b = cast(arg as char);
+    ichar b = cast(arg as ichar);
 }
 
 func void test3(Func arg)

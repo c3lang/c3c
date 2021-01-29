@@ -18,9 +18,9 @@ const char[64] LUT_ENC = {
     '4', '5', '6', '7', '8', '9', '+', '/',
 };
 
-const byte ERR = 0xFF;
+const char ERR = 0xFF;
 
-const byte[256] LUT_DEC =
+const char[256] LUT_DEC =
 {
     [0..255] = ERR,
     ['A'] = 0, ['B'] = 1, ['C'] = 2, ['D'] = 3, ['E'] = 4,
@@ -43,7 +43,7 @@ const char PAD = '=';
 const char FIRST = '+';
 const char LAST = 'z';
 
-public func void encode(byte[] in, char *out)
+public func void encode(char[] in, char *out)
 {
 	int j = 0;
     char c = LUT_ENC[1];
@@ -77,7 +77,7 @@ public func void encode(byte[] in, char *out)
 }
 
 
-public func int! decode(char[] in, byte* out)
+public func int! decode(char[] in, char* out)
 {
     int j = 0;
 
@@ -86,7 +86,7 @@ public func int! decode(char[] in, byte* out)
         char value = in[i];
         if (value == PAD) return j;
 
-        byte c = LUT_DEC[in[i]];
+        char c = LUT_DEC[in[i]];
         if (c == ERR) return InvalidCharacter({i, value})!;
 
         switch (i % 4)
@@ -120,9 +120,9 @@ public func void main()
 {
     char *helloworld = "Hello World\n";
     char[1000] buffer;
-    encode(cast(helloworld as byte*)[0..12], &buffer);
+    encode(helloworld[0..12], &buffer);
     printf("Result: %s\n", &buffer);
     char *to_decode = "aGVsbG8gd29ybGRcMA==";
-    decode(to_decode[0..19], cast(&buffer as byte*));
+    decode(to_decode[0..19], &buffer);
     printf("Result: %s\n", &buffer);
 }

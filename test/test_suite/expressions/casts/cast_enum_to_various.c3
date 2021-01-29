@@ -11,7 +11,7 @@ enum Enum : uint
     A, B
 }
 
-enum EnumB : byte
+enum EnumB : char
 {
     C, D
 }
@@ -21,7 +21,7 @@ typedef func void(Enum) as Func;
 func void test1(Enum e)
 {
     bool a = cast(e as bool);
-    byte b = cast(e as byte);
+    char b = cast(e as char);
     uint c = cast(e as uint);
     float d = cast(e as float);
     uint* f = cast(e as uint*);

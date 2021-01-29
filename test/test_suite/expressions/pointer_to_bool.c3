@@ -1,6 +1,6 @@
 struct Struct
 {
-    byte* ptr;
+    char* ptr;
 }
 
 func void test1(Struct* s)

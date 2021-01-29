@@ -175,7 +175,7 @@ bool strpt(Context *context, Expr* left, Type *from_canonical, Type *canonical, 
 
 bool stpt(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
 {
-	if (canonical->pointer != type_char && canonical->pointer != type_byte)
+	if (canonical->pointer != type_ichar && canonical->pointer != type_char)
 	{
 		return sema_type_mismatch(context, left, type, cast_type);
 	}

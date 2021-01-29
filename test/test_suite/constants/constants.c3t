@@ -1,5 +1,5 @@
-const byte AA = ~0;
-const byte BB = 200 ;
+const char AA = ~0;
+const char BB = 200 ;
 const uint CC = ~0;
 const uint DD = FOO;
 
@@ -7,7 +7,7 @@ const FOO = ~0;
 
 uint x = AA;
 uint z = CC;
-byte w = FOO;
+char w = FOO;
 ushort v = FOO;
 uint z2 = DD;
 

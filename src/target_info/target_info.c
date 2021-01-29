@@ -43,7 +43,7 @@ TargetInfo target_info_new()
 		.float_128 = false,
 		.float_16 = false,
 		.align_pointer = 8,
-		.align_byte = 8,
+		.align_char = 8,
 		.align_c_int = 32,
 		.align_c_long = 32,
 		.align_c_long_long = 64,

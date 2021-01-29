@@ -7,7 +7,7 @@ func void test()
   printf("%d\n", true);
   printf("%d\n", 123);
   printf("%f\n", 12.3);
-  char x1 = -123;
+  ichar x1 = -123;
   bool b = false;
   float z1 = 12.3;
   printf("%d\n", b);

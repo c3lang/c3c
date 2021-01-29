@@ -51,8 +51,8 @@ static void gencontext_destroy(GenContext *context)
 
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, unsigned int align, bool bitcast)
 {
-	LLVMValueRef target = bitcast ? LLVMBuildBitCast(c->builder, ref, llvm_get_type(c, type_get_ptr(type_byte)), "") : ref;
-	return LLVMBuildMemSet(c->builder, target, LLVMConstInt(llvm_get_type(c, type_byte), 0, false),
+	LLVMValueRef target = bitcast ? LLVMBuildBitCast(c->builder, ref, llvm_get_type(c, type_get_ptr(type_char)), "") : ref;
+	return LLVMBuildMemSet(c->builder, target, LLVMConstInt(llvm_get_type(c, type_char), 0, false),
 	                       LLVMConstInt(llvm_get_type(c, type_ulong), size, false), align);
 
 }
@@ -290,6 +290,38 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 	decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
 }
 
+
+void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
+{
+	switch (value->type->type_kind)
+	{
+		case TYPE_POINTER:
+			llvm_value_rvalue(c, value);
+			value->kind = BE_ADDRESS;
+			return;
+		case TYPE_ARRAY:
+			return;
+		case TYPE_SUBARRAY:
+		{
+			// TODO insert trap on overflow.
+			LLVMTypeRef subarray_type = llvm_get_type(c, value->type);
+			assert(value->kind == BE_ADDRESS);
+			LLVMValueRef pointer_addr = LLVMBuildStructGEP2(c->builder, subarray_type, value->value, 0, "subarray_ptr");
+			LLVMTypeRef pointer_type = llvm_get_type(c, type_get_ptr(value->type->array.base));
+			AlignSize alignment = type_abi_alignment(type_voidptr);
+			// We need to pick the worst alignment in case this is packed in an array.
+			if (value->alignment < alignment) alignment = value->alignment;
+			llvm_value_set_address_align(value,
+			                             llvm_emit_load_aligned(c, pointer_type, pointer_addr, 0, "subarrptr"), value->type, alignment);
+			return;
+		}
+		case TYPE_VARARRAY:
+		case TYPE_STRING:
+			TODO
+		default:
+			UNREACHABLE
+	}
+}
 static void gencontext_emit_global_variable_init(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
@@ -640,9 +672,9 @@ void gencontext_emit_introspection_type(GenContext *context, Decl *decl)
 			}
 		}
 	}
-	LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_get_type(context, type_byte), decl->name ? decl->name : "anon");
+	LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_get_type(context, type_char), decl->name ? decl->name : "anon");
 	LLVMSetGlobalConstant(global_name, 1);
-	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(context, type_byte), 1, false));
+	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(context, type_char), 1, false));
 	decl->type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(context, type_typeid));
 
 	switch (decl->visibility)
@@ -995,8 +1027,8 @@ void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue
 			// Here we do an optimized(?) memcopy.
 			ByteSize size = type_size(value->type);
 			LLVMValueRef copy_size = llvm_const_int(c, size <= UINT32_MAX ? type_uint : type_usize, size);
-			destination = LLVMBuildBitCast(c->builder, destination, llvm_get_ptr_type(c, type_byte), "");
-			LLVMValueRef source = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, type_byte), "");
+			destination = LLVMBuildBitCast(c->builder, destination, llvm_get_ptr_type(c, type_char), "");
+			LLVMValueRef source = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, type_char), "");
 			LLVMBuildMemCpy(c->builder, destination, alignment ?: type_abi_alignment(value->type),
 			                source, value->alignment ?: type_abi_alignment(value->type), copy_size);
 			return;

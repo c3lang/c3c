@@ -3,7 +3,7 @@ module test;
 
 struct Connection
 {
-   long    to;
+   long to;
    char* type;
    long length;
 }

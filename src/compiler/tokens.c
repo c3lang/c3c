@@ -294,8 +294,8 @@ const char *token_type_to_string(TokenType type)
 			return "short";
 		case TOKEN_USHORT:
 			return "ushort";
-		case TOKEN_BYTE:
-			return "byte";
+		case TOKEN_ICHAR:
+			return "ichar";
 		case TOKEN_CHAR:
 			return "char";
 		case TOKEN_ISIZE:
@@ -329,6 +329,8 @@ const char *token_type_to_string(TokenType type)
 			return "/**";
 		case TOKEN_DOCS_END:
 			return "*/";
+		case TOKEN_DOCS_DIRECTIVE:
+			return "directive";
 		case TOKEN_DOCS_LINE:
 			return "DOCS_LINE";
 

@@ -39,11 +39,11 @@ func void testDiv(int a, int b)
 
 func void testAssignment()
 {
-    char x = -3 - 5;
-    char c = -128;
+    ichar x = -3 - 5;
+    ichar c = -128;
 }
 
-func byte test22()
+func char test22()
 {
     return 100;
 }

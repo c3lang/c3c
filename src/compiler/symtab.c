@@ -39,6 +39,8 @@ const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 const char *kw_align;
 const char *kw_alignof;
 const char *kw_distinct;
+const char *kw_ensure;
+const char *kw_errors;
 const char *kw_inline;
 const char *kw_kindof;
 const char *kw_len;
@@ -46,12 +48,17 @@ const char *kw_main;
 const char *kw_nameof;
 const char *kw_offsetof;
 const char *kw_ordinal;
+const char *kw_param;
+const char *kw_pure;
 const char *kw_qnameof;
+const char *kw_reqparse;
+const char *kw_require;
 const char *kw_sizeof;
 const char *kw___ceil;
 const char *kw___round;
 const char *kw___sqrt;
 const char *kw___trunc;
+
 
 void symtab_init(uint32_t capacity)
 {
@@ -88,6 +95,8 @@ void symtab_init(uint32_t capacity)
 	kw_align = KW_DEF("align");
 	kw_alignof = KW_DEF("alignof");
 	kw_distinct = KW_DEF("distinct");
+	kw_ensure = KW_DEF("ensure");
+	kw_errors = KW_DEF("errors");
 	kw_inline = KW_DEF("inline");
 	kw_kindof = KW_DEF("kindof");
 	kw_len = KW_DEF("len");
@@ -95,7 +104,10 @@ void symtab_init(uint32_t capacity)
 	kw_nameof = KW_DEF("nameof");
 	kw_offsetof = KW_DEF("offsetof");
 	kw_ordinal = KW_DEF("ordinal");
+	kw_param = KW_DEF("param");
+	kw_pure = KW_DEF("pure");
 	kw_qnameof = KW_DEF("qnameof");
+	kw_require = KW_DEF("required");
 	kw_sizeof = KW_DEF("sizeof");
 	kw___ceil = KW_DEF("__ceil");
 	kw___round = KW_DEF("__round");

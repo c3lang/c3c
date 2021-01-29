@@ -11,7 +11,7 @@ bitstruct BitField
 }
 
 
-bitstruct BitField2 : byte
+bitstruct BitField2 : char
 {
   int a : 3;
   int b : 3;
@@ -30,7 +30,7 @@ struct Packet
   int packet_id;
 }
 
-bitstruct BitField3 : byte[3]
+bitstruct BitField3 : char[3]
 {
   int a : 3;
   int b : 6;
@@ -38,7 +38,7 @@ bitstruct BitField3 : byte[3]
   int d : 5;
 }
 
-bitstruct BitField3 : byte[3] @aligned
+bitstruct BitField3 : char[3] @aligned
 {
   int a : 3;
   int b : 5;

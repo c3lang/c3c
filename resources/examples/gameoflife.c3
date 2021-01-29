@@ -13,15 +13,15 @@ struct GameBoard
 {
     int h;
     int w;
-    byte* world;
-    byte* temp;
+    char* world;
+    char* temp;
 }
 
 func void GameBoard.show(GameBoard *board)
 {
 
 	printf("\e[H");
-	byte* current = board.world;
+	char* current = board.world;
 	for (int y = 0; y < board.h; y++)
 	{
 	    for (int x = 0; x < board.w; x++)
@@ -51,7 +51,7 @@ func void GameBoard.evolve(GameBoard *board)
 		        }
 		    }
 		    if (board.world[x + y * board.w]) n--;
-            board.temp[x + y * board.w] = cast(n == 3 || (n == 2 && board.world[x + y * board.w]) as byte);
+            board.temp[x + y * board.w] = cast(n == 3 || (n == 2 && board.world[x + y * board.w]) as char);
 	    }
 	}
 	for (int i = 0; i < board.w * board.h; i++)
@@ -61,7 +61,7 @@ func void GameBoard.evolve(GameBoard *board)
 }
 
 
-func int main(int c as char** v)
+func int main(int c, char** v)
 {
 	int w = 0;
 	int h = 0;
