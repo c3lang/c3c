@@ -9,7 +9,7 @@
 
 static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 {
-	if (!sema_resolve_type_shallow(context, type_info->pointer))
+	if (!sema_resolve_type_shallow(context, type_info->pointer, false))
 	{
 		return type_info_poison(type_info);
 	}
@@ -32,7 +32,10 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 			break;
 		case TYPE_INFO_SUBARRAY:
 			type->type = type_get_subarray(type->array.base->type);
-			break;;
+			break;
+		case TYPE_INFO_INFERRED_ARRAY:
+			type->type = type_get_inferred_array(type->array.base->type);
+			break;
 		case TYPE_INFO_ARRAY:
 			if (!sema_analyse_expr(context, type_usize, type->array.len)) return type_info_poison(type);
 			if (type->array.len->expr_kind != EXPR_CONST)
@@ -154,7 +157,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 
 }
 
-bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
+bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type)
 {
 	if (type_info->resolve_status == RESOLVE_DONE) return type_info_ok(type_info);
 
@@ -183,6 +186,13 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 				return type_info_poison(type_info);
 			}
 			TODO
+		case TYPE_INFO_INFERRED_ARRAY:
+			if (!allow_inferred_type)
+			{
+				SEMA_ERROR(type_info, "Inferred array types can only be used in declarations with initializers.");
+				return type_info_poison(type_info);
+			}
+			FALLTHROUGH;
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_VARARRAY:
 		case TYPE_INFO_ARRAY:
@@ -193,4 +203,11 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info)
 			break;
 	}
 	return true;
+}
+
+Type *sema_type_lower_by_size(Type *type, ByteSize element_size)
+{
+	if (type->type_kind != TYPE_INFERRED_ARRAY) return type;
+
+	return type_get_array(type->array.base, element_size);
 }

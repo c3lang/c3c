@@ -11,10 +11,10 @@ static Type t_usz, t_isz;
 static Type t_cus, t_cui, t_cul, t_cull;
 static Type t_cs, t_ci, t_cl, t_cll;
 static Type t_voidstar, t_typeid, t_error, t_typeinfo;
+static Type t_str;
 
 Type *type_bool = &t_u1;
 Type *type_void = &t_u0;
-Type *type_string = &t_str;
 Type *type_voidptr = &t_voidstar;
 Type *type_half = &t_f16;
 Type *type_float = &t_f32;
@@ -36,6 +36,7 @@ Type *type_u128 = &t_u128;
 Type *type_usize = &t_usz;
 Type *type_compint = &t_ixx;
 Type *type_compfloat = &t_fxx;
+Type *type_compstr = &t_str;
 Type *type_c_short = &t_cs;
 Type *type_c_int = &t_ci;
 Type *type_c_long = &t_cl;
@@ -52,9 +53,10 @@ unsigned size_error_code;
 unsigned alignment_error_code;
 
 #define PTR_OFFSET 0
-#define SUB_ARRAY_OFFSET 1
-#define VAR_ARRAY_OFFSET 2
-#define ARRAY_OFFSET 3
+#define INFERRED_ARRAY_OFFSET 1
+#define SUB_ARRAY_OFFSET 2
+#define VAR_ARRAY_OFFSET 3
+#define ARRAY_OFFSET 4
 
 Type *type_int_signed_by_bitsize(unsigned bytesize)
 {
@@ -127,13 +129,16 @@ const char *type_to_error_string(Type *type)
 			}
 			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
-		case TYPE_STRING:
-			return "string";
+		case TYPE_CTSTR:
+			return "compile time string";
 		case TYPE_ARRAY:
 			asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
 		case TYPE_VARARRAY:
 			asprintf(&buffer, "%s[*]", type_to_error_string(type->array.base));
+			return buffer;
+		case TYPE_INFERRED_ARRAY:
+			asprintf(&buffer, "%s[?]", type_to_error_string(type->array.base));
 			return buffer;
 		case TYPE_SUBARRAY:
 			asprintf(&buffer, "%s[]", type_to_error_string(type->array.base));
@@ -183,6 +188,7 @@ ByteSize type_size(Type *type)
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE;
 		case TYPE_TYPEDEF:
 			return type_size(type->canonical);
@@ -202,10 +208,10 @@ ByteSize type_size(Type *type)
 		case ALL_FLOATS:
 		case TYPE_ERR_UNION:
 			return type->builtin.bytesize;
+		case TYPE_CTSTR:
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
-		case TYPE_STRING:
 			return t_usz.canonical->builtin.bytesize;
 		case TYPE_ARRAY:
 			return type_size(type->array.base) * type->array.len;
@@ -332,7 +338,7 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_POINTER:
 		case TYPE_ENUM:
 		case TYPE_FUNC:
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 		case TYPE_VECTOR:
 			return false;
 		case TYPE_ERRTYPE:
@@ -345,6 +351,7 @@ bool type_is_abi_aggregate(Type *type)
 			return true;
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -477,8 +484,9 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_MEMBER:
 		case TYPE_TYPEID:
 		case TYPE_FUNC:
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 		case TYPE_SUBARRAY:
+		case TYPE_INFERRED_ARRAY:
 			return false;
 		case TYPE_ERR_UNION:
 			*base = type_usize->canonical;
@@ -608,6 +616,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE;
 		case TYPE_VECTOR:
 		case TYPE_COMPLEX:
@@ -635,7 +644,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 			return t_usz.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
 			return type_abi_alignment(type->array.base);
@@ -706,6 +715,32 @@ static Type *type_generate_subarray(Type *arr_type, bool canonical)
 	return arr;
 }
 
+static Type *type_generate_inferred_array(Type *arr_type, bool canonical)
+{
+	if (canonical) arr_type = arr_type->canonical;
+	if (!arr_type->type_cache)
+	{
+		create_type_cache(arr_type);
+	}
+
+	Type *arr = arr_type->type_cache[INFERRED_ARRAY_OFFSET];
+	if (arr == NULL)
+	{
+		arr = type_new(TYPE_INFERRED_ARRAY, strformat("%s[_]", arr_type->name));
+		arr->array.base = arr_type;
+		arr_type->type_cache[INFERRED_ARRAY_OFFSET] = arr;
+		if (arr_type == arr_type->canonical)
+		{
+			arr->canonical = arr;
+		}
+		else
+		{
+			arr->canonical = type_generate_inferred_array(arr_type->canonical, true);
+		}
+	}
+	return arr;
+}
+
 static Type *type_generate_vararray(Type *arr_type, bool canonical)
 {
 	if (canonical) arr_type = arr_type->canonical;
@@ -743,6 +778,11 @@ Type *type_get_subarray(Type *arr_type)
 	return type_generate_subarray(arr_type, false);
 }
 
+Type *type_get_inferred_array(Type *arr_type)
+{
+	return type_generate_inferred_array(arr_type, false);
+}
+
 Type *type_get_vararray(Type *arr_type)
 {
 	return type_generate_subarray(arr_type, false);
@@ -774,8 +814,9 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_VARARRAY:
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
+		case TYPE_INFERRED_ARRAY:
 			return type->array.base;
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 			return type_char;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
@@ -836,7 +877,7 @@ static Type *type_create_array(Type *element_type, uint64_t len, bool vector, bo
 	return vec_arr;
 }
 
-Type *type_get_array(Type *arr_type, uint64_t len)
+Type *type_get_array(Type *arr_type, ByteSize len)
 {
 	return type_create_array(arr_type, len, false, false);
 }
@@ -900,7 +941,7 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 	DEF_TYPE(u128, t_u128, TYPE_U128, 128, i128);
 
 	DEF_TYPE(void, t_u0, TYPE_VOID, 8, byte);
-	DEF_TYPE(string, t_str, TYPE_STRING, target->width_pointer, pointer);
+	DEF_TYPE(string, t_str, TYPE_CTSTR, target->width_pointer, pointer);
 
 #undef DEF_TYPE
 
@@ -939,6 +980,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_FUNC:
@@ -951,6 +993,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
+		case TYPE_CTSTR:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
@@ -965,8 +1008,6 @@ bool type_is_scalar(Type *type)
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
-		case TYPE_STRING:
-			TODO
 	}
 	UNREACHABLE
 }
@@ -1156,7 +1197,9 @@ Type *type_find_max_type(Type *type, Type *other)
 
 	switch (type->type_kind)
 	{
+		case TYPE_INFERRED_ARRAY:
 		case TYPE_POISONED:
+			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case TYPE_TYPEINFO:
@@ -1183,8 +1226,6 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_ERRTYPE:
 			if (other->type_kind == TYPE_ERRTYPE) return type_error;
 			return NULL;
-		case TYPE_DISTINCT:
-			return NULL;
 		case TYPE_FUNC:
 		case TYPE_UNION:
 		case TYPE_ERR_UNION:
@@ -1193,8 +1234,17 @@ Type *type_find_max_type(Type *type, Type *other)
 			TODO
 		case TYPE_TYPEDEF:
 			UNREACHABLE
-		case TYPE_STRING:
-			TODO
+		case TYPE_CTSTR:
+			if (other->type_kind == TYPE_DISTINCT)
+			{
+				// In this case we only react to the flattened type.
+				Type *flatten_other = type_flatten(other);
+				if (flatten_other->type_kind == TYPE_SUBARRAY && flatten_other->array.base->type_kind == TYPE_U8) return other;
+				if (flatten_other->type_kind == TYPE_POINTER && flatten_other->pointer->type_kind == TYPE_U8) return other;
+			}
+			return NULL;
+		case TYPE_DISTINCT:
+			return NULL;
 		case TYPE_ARRAY:
 			return NULL;
 		case TYPE_VARARRAY:

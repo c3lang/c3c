@@ -128,7 +128,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 
 ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *needed_registers)
 {
-	if (type->type_kind == TYPE_ERR_UNION || type->type_kind == TYPE_STRING || type->type_kind == TYPE_SUBARRAY)
+	if (type->type_kind == TYPE_ERR_UNION || type->type_kind == TYPE_SUBARRAY)
 	{
 		needed_registers->int_registers += 2;
 		return abi_arg_new_direct();
@@ -438,6 +438,8 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_DISTINCT:
+		case TYPE_CTSTR:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_VOID:
 			*current = CLASS_NO_CLASS;
@@ -479,8 +481,6 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 		case TYPE_ERRTYPE:
 			x64_classify_struct_union(type, offset_base, current, lo_class, hi_class, named);
 			break;
-		case TYPE_STRING:
-			TODO
 		case TYPE_ARRAY:
 			x64_classify_array(type, offset_base, current, lo_class, hi_class, named);
 			break;
@@ -611,7 +611,6 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 			if (offset < 16) return abi_type_new_plain(type_usize);
 			break;
 		case TYPE_SUBARRAY:
-		case TYPE_STRING:
 			if (offset < 8) return abi_type_new_plain(type_usize);
 			if (offset < 16) return abi_type_new_plain(type_voidptr);
 			break;
@@ -633,6 +632,8 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_DISTINCT:
+		case TYPE_CTSTR:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_I128:
 		case TYPE_U128:
@@ -874,7 +875,6 @@ bool x64_type_is_structure(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_ERRTYPE:
 		case TYPE_ERR_UNION:
-		case TYPE_STRING:
 		case TYPE_SUBARRAY:
 			return true;
 		default:

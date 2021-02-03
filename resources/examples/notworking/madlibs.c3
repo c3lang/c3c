@@ -4,12 +4,12 @@ import regex, stdio;
 func void main()
 {
     println("Enter a story template, terminated by an empty line:");
-    string story = "";
+    String story = "";
     while (1)
     {
-        string line = stdin.readln().strip() else "";
-        if (!line.size) break;
-        story += line + "\n";
+        String line = stdin.readln().strip() else break;
+        story = story.append(line);
+        story = story.append("\n");
     }
 
     Regex r;
@@ -19,9 +19,9 @@ func void main()
 
     foreach (RegexMatch* match : r.match(story))
     {
-        string s = match.string;
-        printf("Enter a value for '%s': ", s.slice(1, s.size - 2));
-        string word = strin.readln().strip() else return;
+        String s = match.string;
+        printf("Enter a value for '%s': ", s[1..^2]);
+        string word = stdin.readln().strip() else return;
         story = story.replace(s, word);
     }
 

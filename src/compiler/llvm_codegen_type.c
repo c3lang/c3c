@@ -325,6 +325,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_TYPEID:
 			return any_type->backend_type = LLVMIntTypeInContext(c->context, any_type->builtin.bitsize);
@@ -365,8 +366,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			return any_type->backend_type = LLVMIntTypeInContext(c->context, 8U);
 		case TYPE_POINTER:
 			return any_type->backend_type = llvm_type_from_ptr(c, any_type);
-		case TYPE_STRING:
-			// TODO
+		case TYPE_CTSTR:
 			return any_type->backend_type = LLVMPointerType(llvm_get_type(c, type_char), 0);
 		case TYPE_ARRAY:
 			return any_type->backend_type = llvm_type_from_array(c, any_type);

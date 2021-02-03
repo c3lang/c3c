@@ -167,9 +167,21 @@ bool ptpt(Context *context, Expr* left, Type *from_canonical, Type *canonical, T
 
 bool strpt(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
 {
+	if (canonical->array.base->type_kind != TYPE_U8 && cast_type != CAST_TYPE_EXPLICIT)
+	{
+		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
+		return sema_type_mismatch(context, left, type, cast_type);
+	}
+	insert_cast(left, CAST_STRPTR, type);
+	return true;
+}
 
-	// TODO
-	insert_cast(left, CAST_PTRPTR, canonical);
+bool strsa(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
+{
+	if (canonical->array.base->type_kind != TYPE_U8) return false;
+	Type *array_type = type_get_array(type_char, left->const_expr.string.len);
+	insert_cast(left, CAST_STRPTR, type_get_ptr(array_type));
+	insert_cast(left, CAST_APTSA, type);
 	return true;
 }
 
@@ -733,13 +745,14 @@ CastKind cast_to_bool_kind(Type *type)
 	{
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_ERR_UNION:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 		case TYPE_ERRTYPE:
 		case TYPE_ENUM:
 		case TYPE_FUNC:
@@ -785,7 +798,9 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 	}
 	switch (from_type->type_kind)
 	{
+		case TYPE_INFERRED_ARRAY:
 		case TYPE_POISONED:
+			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
@@ -875,8 +890,10 @@ bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
 			break;
 		case TYPE_TYPEDEF:
 			UNREACHABLE
-		case TYPE_STRING:
+		case TYPE_CTSTR:
+			canonical = type_flatten(canonical);
 			if (canonical->type_kind == TYPE_POINTER) return strpt(context, expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_SUBARRAY) return strsa(context, expr, from_type, canonical, to_type, cast_type);
 			break;
 		case TYPE_ARRAY:
 			// There is no valid cast from array to anything else.

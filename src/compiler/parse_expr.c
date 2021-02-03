@@ -816,7 +816,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	expr_string->type = type_string;
+	expr_string->type = type_compstr;
 
 	char *str = NULL;
 	size_t len = 0;
@@ -850,8 +850,8 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 	str[len] = '\0';
 	expr_string->const_expr.string.chars = str;
 	expr_string->const_expr.string.len = len;
-	expr_string->type = type_string;
-	expr_string->const_expr.kind = TYPE_STRING;
+	expr_string->type = type_compstr;
+	expr_string->const_expr.kind = TYPE_CTSTR;
 	return expr_string;
 }
 

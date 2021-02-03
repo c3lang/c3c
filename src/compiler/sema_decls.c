@@ -679,7 +679,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 				return ATTRIBUTE_NONE;
 			}
 			if (!sema_analyse_expr(context, NULL, attr->expr)) return false;
-			if (attr->expr->expr_kind != EXPR_CONST || attr->expr->type->canonical != type_string)
+			if (attr->expr->expr_kind != EXPR_CONST || attr->expr->type->canonical != type_compstr)
 			{
 				SEMA_ERROR(attr->expr, "Expected a constant string value as argument.");
 				return ATTRIBUTE_NONE;
@@ -805,7 +805,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 {
 	if (decl->var.type_info)
 	{
-		if (!sema_resolve_type_info(context, decl->var.type_info)) return false;
+		if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, decl->var.init_expr != NULL)) return false;
 		decl->type = decl->var.type_info->type;
 	}
 
@@ -863,6 +863,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 		Expr *init_expr = decl->var.init_expr;
 		// 1. Check type.
 		if (!sema_analyse_expr_of_required_type(context, decl->type, init_expr, false)) return false;
+
 		// 2. Check const-ness
 		if (!init_expr->constant)
 		{
@@ -878,14 +879,20 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 			{
 				if (init_expr->expr_kind == EXPR_CAST)
 				{
-					SEMA_ERROR(decl->var.init_expr, "The expression may not be a non constant cast.");
+					SEMA_ERROR(init_expr, "The expression may not be a non constant cast.");
 				}
 				else
 				{
-					SEMA_ERROR(decl->var.init_expr, "The expression must be a constant value.");
+					SEMA_ERROR(init_expr, "The expression must be a constant value.");
 				}
 				return false;
 			}
+		}
+
+		if (decl->type->type_kind == TYPE_INFERRED_ARRAY)
+		{
+			assert(init_expr->type->canonical->type_kind == TYPE_ARRAY);
+			decl->type = type_get_array(decl->type->array.base, init_expr->type->canonical->array.len);
 		}
 	}
 

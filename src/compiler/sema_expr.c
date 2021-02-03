@@ -1333,9 +1333,9 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 			}
 			break;
 		}
+		case TYPE_CTSTR:
 		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
-		case TYPE_STRING:
 			// If not from end, just check the negative values.
 			if (!from_end) break;
 			// From end we can only do sanity checks ^0 is invalid for non-end index. ^-1 and less is invalid for all.
@@ -1537,12 +1537,12 @@ static inline void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *str
 {
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 	expr_to_rewrite->constant = true;
-	expr_to_rewrite->const_expr.kind = TYPE_STRING;
+	expr_to_rewrite->const_expr.kind = TYPE_CTSTR;
 	expr_to_rewrite->const_expr.string.chars = (char *)string;
 	expr_to_rewrite->const_expr.string.len = (int)strlen(string);
 	expr_to_rewrite->pure = true;
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
-	expr_to_rewrite->type = type_string;
+	expr_to_rewrite->type = type_compstr;
 }
 
 
@@ -2054,17 +2054,17 @@ static int64_t sema_analyse_designator_index(Context *context, Expr *index)
 	return index_val;
 }
 
-static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error)
+static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index)
 {
 	Type *type_lowered = type_lowering(type);
 	DesignatorElement *element = elements[*curr_index];
 	if (element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE)
 	{
-		if (type_lowered->type_kind != TYPE_ARRAY)
+		if (type_lowered->type_kind != TYPE_ARRAY && type_lowered->type_kind != TYPE_INFERRED_ARRAY)
 		{
 			return NULL;
 		}
-		ByteSize len = type_lowered->array.len;
+		ByteSize len = type_lowered->type_kind == TYPE_INFERRED_ARRAY ? MAX_ARRAYINDEX : type_lowered->array.len;
 		ArrayIndex index = sema_analyse_designator_index(context, element->index_expr);
 		if (index < 0)
 		{
@@ -2077,8 +2077,9 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 			*did_report_error = true;
 			return NULL;
 		}
-		element->index = index;
 
+		element->index = index;
+		if (max_index && *max_index < index) *max_index = index;
 		if (element->kind == DESIGNATOR_RANGE)
 		{
 			int64_t end_index = sema_analyse_designator_index(context, element->index_end_expr);
@@ -2100,6 +2101,7 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 				return NULL;
 			}
 			element->index_end = end_index;
+			if (max_index && *max_index < end_index) *max_index = end_index;
 		}
 		return type_lowered->array.base;
 	}
@@ -2113,7 +2115,7 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 	return member->type;
 }
 
-static Type *sema_expr_analyse_designator(Context *context, Type *current, Expr *expr)
+static Type *sema_expr_analyse_designator(Context *context, Type *current, Expr *expr, ArrayIndex *max_index)
 {
 	DesignatorElement **path = expr->designator_expr.path;
 	Expr *value = expr->designator_expr.value;
@@ -2123,7 +2125,7 @@ static Type *sema_expr_analyse_designator(Context *context, Type *current, Expr 
 	bool did_report_error = false;
 	for (unsigned i = 0; i < vec_size(path); i++)
 	{
-		Type *new_current = sema_find_type_of_element(context, current, path, &i, &is_constant, &did_report_error);
+		Type *new_current = sema_find_type_of_element(context, current, path, &i, &is_constant, &did_report_error, i == 0 ? max_index : NULL);
 		if (!new_current)
 		{
 			if (!did_report_error) SEMA_ERROR(expr, "This is not a valid member of '%s'.", type_to_error_string(current));
@@ -2508,10 +2510,11 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 
 	initializer->pure = true;
 	initializer->constant = true;
+	ArrayIndex max_index = -1;
 	VECEACH(init_expressions, i)
 	{
 		Expr *expr = init_expressions[i];
-		Type *result = sema_expr_analyse_designator(context, original, expr);
+		Type *result = sema_expr_analyse_designator(context, original, expr, &max_index);
 		if (!result) return false;
 		if (!sema_analyse_expr_of_required_type(context, result, expr->designator_expr.value, true)) return false;
 		expr->pure &= expr->designator_expr.value->pure;
@@ -2520,6 +2523,11 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 		expr->resolve_status = RESOLVE_DONE;
 		initializer->pure &= expr->pure;
 		initializer->constant &= expr->constant;
+	}
+
+	if (!is_structlike && initializer->type->type_kind == TYPE_INFERRED_ARRAY)
+	{
+		initializer->type = sema_type_lower_by_size(initializer->type, max_index + 1);
 	}
 	if (initializer->constant)
 	{
@@ -2630,15 +2638,15 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 
 	Expr **elements = initializer->initializer_expr.initializer_expr;
 
-	assert(assigned->type_kind == TYPE_ARRAY && "The other types are not done yet.");
+	assert((assigned->type_kind == TYPE_ARRAY) && "The other types are not done yet.");
 
 	Type *inner_type = type_get_indexed_type(assigned);
 	assert(inner_type);
 
-
 	initializer->initializer_expr.init_type = INITIALIZER_NORMAL;
 	unsigned size = vec_size(elements);
 	unsigned expected_members = assigned->array.len;
+	if (assigned->type_kind != TYPE_ARRAY) expected_members = size;
 
 	assert(size > 0 && "We should already have handled the size == 0 case.");
 	if (expected_members == 0)
@@ -2698,13 +2706,16 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 
 static inline bool sema_expr_analyse_initializer(Context *context, Type *external_type, Type *assigned, Expr *expr)
 {
-	expr->type = external_type;
-
 	Expr **init_expressions = expr->initializer_expr.initializer_expr;
 
+	unsigned init_expression_count = vec_size(init_expressions);
+
 	// 1. Zero size init will initialize to empty.
-	if (vec_size(init_expressions) == 0)
+	if (init_expression_count == 0)
 	{
+		external_type = sema_type_lower_by_size(external_type, 0);
+		assigned = sema_type_lower_by_size(assigned, 0);
+		expr->type = external_type;
 		ConstInitializer *initializer = CALLOCS(ConstInitializer);
 		initializer->kind = CONST_INIT_ZERO;
 		initializer->type = type_flatten(expr->type);
@@ -2719,11 +2730,16 @@ static inline bool sema_expr_analyse_initializer(Context *context, Type *externa
 	//    this means that in this case we're actually not resolving macros here.
 	if (init_expressions[0]->expr_kind == EXPR_DESIGNATOR)
 	{
+		expr->type = external_type;
 		return sema_expr_analyse_designated_initializer(context, assigned, expr);
 	}
 
+	external_type = sema_type_lower_by_size(external_type, init_expression_count);
+	assigned = sema_type_lower_by_size(assigned, init_expression_count);
+	expr->type = external_type;
+
 	// 3. Otherwise use the plain initializer.
-	if (assigned->type_kind == TYPE_ARRAY)
+	if (assigned->type_kind == TYPE_ARRAY || assigned->type_kind == TYPE_INFERRED_ARRAY)
 	{
 		return sema_expr_analyse_array_plain_initializer(context, assigned, expr);
 	}
@@ -2741,6 +2757,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 		case TYPE_UNION:
 		case TYPE_ARRAY:
 		case TYPE_ERRTYPE:
+		case TYPE_INFERRED_ARRAY:
 			return sema_expr_analyse_initializer(context, to, assigned, expr);
 		case TYPE_VARARRAY:
 			TODO
@@ -3870,6 +3887,7 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 				case TYPE_MEMBER:
 				case TYPE_TYPEDEF:
 				case TYPE_DISTINCT:
+				case TYPE_INFERRED_ARRAY:
 					UNREACHABLE
 				case TYPE_BOOL:
 				case TYPE_ENUM:
@@ -3878,7 +3896,7 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 				case TYPE_STRUCT:
 				case TYPE_UNION:
 				case TYPE_ERR_UNION:
-				case TYPE_STRING:
+				case TYPE_CTSTR:
 				case TYPE_ARRAY:
 				case TYPE_VARARRAY:
 				case TYPE_SUBARRAY:
@@ -4204,7 +4222,7 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 			case ALL_FLOATS:
 				expr->const_expr.b = inner->const_expr.f == 0.0;
 				break;
-			case TYPE_STRING:
+			case TYPE_CTSTR:
 				expr->const_expr.b = !inner->const_expr.string.len;
 				break;
 			case TYPE_ERRTYPE:
@@ -4226,6 +4244,7 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 		case TYPE_TYPEDEF:
 		case TYPE_ERR_UNION:
 		case TYPE_DISTINCT:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_FUNC:
 		case TYPE_ARRAY:
@@ -4242,7 +4261,7 @@ static bool sema_expr_analyse_not(Context *context, Type *to, Expr *expr, Expr *
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_VOID:
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 		case TYPE_ENUM:
 		case TYPE_ERRTYPE:
 		case TYPE_TYPEID:
@@ -4568,6 +4587,7 @@ static TypeInfo *type_info_copy_from_macro(Context *context, TypeInfo *source)
 			copy->array.base = type_info_copy_from_macro(context, source->array.base);
 			return copy;
 		case TYPE_INFO_INC_ARRAY:
+		case TYPE_INFO_INFERRED_ARRAY:
 		case TYPE_INFO_VARARRAY:
 		case TYPE_INFO_SUBARRAY:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);

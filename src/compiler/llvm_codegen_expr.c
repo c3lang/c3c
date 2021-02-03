@@ -169,7 +169,6 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base(GenContext *c, Typ
 			                             parent_value, &index_value, 1, "sarridx");
 		}
 		case TYPE_VARARRAY:
-		case TYPE_STRING:
 			TODO
 		default:
 			UNREACHABLE
@@ -228,8 +227,9 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c,
 		case TYPE_VARARRAY:
 			// TODO insert trap on overflow.
 			TODO
-		case TYPE_STRING:
-			TODO
+		case TYPE_CTSTR:
+			// TODO insert trap on overflow.
+			return LLVMBuildInBoundsGEP(c->builder, parent->value, &index->value, 1, "ptridx");
 		default:
 			UNREACHABLE
 
@@ -366,6 +366,7 @@ static LLVMValueRef gencontext_emit_cast_inner(GenContext *c, CastKind cast_kind
 			return value->value;
 		case CAST_ERROR:
 			UNREACHABLE
+		case CAST_STRPTR:
 		case CAST_PTRPTR:
 			llvm_value_rvalue(c, value);
 			if (c->builder)
@@ -395,8 +396,6 @@ static LLVMValueRef gencontext_emit_cast_inner(GenContext *c, CastKind cast_kind
 		case CAST_VARRPTR:
 			return value->value;
 		case CAST_ARRPTR:
-			TODO
-		case CAST_STRPTR:
 			TODO
 		case CAST_EREU:
 		case CAST_EUER:
@@ -1110,8 +1109,11 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 		case TYPE_ARRAY:
 			llvm_value_set(be_value, llvm_const_int(c, type_usize, expr_to_len->type->array.len), type_usize);
 			break;
+		case TYPE_CTSTR:
+			TODO
+			break;
+
 		case TYPE_VARARRAY:
-		case TYPE_STRING:
 			TODO
 		default:
 			UNREACHABLE
@@ -1161,7 +1163,7 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 			parent_base = parent_addr;
 			break;
 		case TYPE_VARARRAY:
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 			TODO
 		default:
 			UNREACHABLE
@@ -1191,7 +1193,7 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 				len = llvm_const_int(context, type_usize, parent_type->array.len);
 				break;
 			case TYPE_VARARRAY:
-			case TYPE_STRING:
+			case TYPE_CTSTR:
 				TODO
 			default:
 				UNREACHABLE
@@ -2154,7 +2156,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case TYPE_BOOL:
 			llvm_value_set_bool(be_value, LLVMConstInt(c->bool_type, expr->const_expr.b ? 1 : 0, 0));
 			return;
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 		{
 			LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_ichar), expr->const_expr.string.len + 1), "");
 			LLVMSetLinkage(global_name, LLVMInternalLinkage);
@@ -2214,6 +2216,8 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_DISTINCT:
+		case TYPE_CTSTR:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 			break;
 		case TYPE_BOOL:
@@ -2239,7 +2243,6 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 			break;
 		case TYPE_UNION:
 		case TYPE_COMPLEX:
-		case TYPE_STRING:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
 			TODO

@@ -70,7 +70,7 @@ func void test10()
     const char B = 1;
     char* c = &B;
     const A = 1;
-    char* b = &A;       // #error: To take the address of a temporary value, use '&&' instead of '&'
+    char* b = &A;       // #error: either type it or use && to take the reference to a temporary
 }
 
 enum Enum : int
@@ -125,7 +125,7 @@ func void test16()
 
 func void test17()
 {
-    int a = "test";             // #error: cast 'string' to 'int'
+    int a = "test";             // #error: cast 'compile time string' to 'int'
 }
 
 func void test18()

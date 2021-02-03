@@ -594,6 +594,14 @@ static inline TypeInfo *parse_array_type_index(Context *context, TypeInfo *type)
 		RANGE_EXTEND_PREV(incr_array);
 		return incr_array;
 	}
+	if (try_consume(context, TOKEN_QUESTION))
+	{
+		CONSUME_OR(TOKEN_RBRACKET, poisoned_type_info);
+		TypeInfo *inferred_array = type_info_new(TYPE_INFO_INFERRED_ARRAY, type->span);
+		inferred_array->array.base = type;
+		RANGE_EXTEND_PREV(inferred_array);
+		return inferred_array;
+	}
 	if (try_consume(context, TOKEN_STAR))
 	{
 		CONSUME_OR(TOKEN_RBRACKET, poisoned_type_info);

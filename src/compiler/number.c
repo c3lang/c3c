@@ -61,7 +61,7 @@ void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
 		case TYPE_FXX:
 			fprintf(file, "%Lf", expr->f);
 			break;
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 			fprintf(file, "%.*s", expr->string.len, expr->string.chars);
 			break;
 		default:
@@ -173,7 +173,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			return compare_fps(left->f, right->f, op);
 		case TYPE_POINTER:
 			return true;
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 			if (left->string.len != right->string.len)
 			{
 				is_eq = false;
@@ -243,7 +243,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case TYPE_FXX:
 			asprintf(&buff, "%Lf", expr->f);
 			return buff;
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 			asprintf(&buff, "\"%*.s\"", expr->string.len, expr->string.chars);
 			return buff;
 		default:

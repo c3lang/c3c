@@ -66,6 +66,8 @@ const char *token_type_to_string(TokenType type)
 			return ")";
 		case TOKEN_STAR:
 			return "*";
+		case TOKEN_UNDERSCORE:
+			return "_";
 
 		// Two character tokens
 		case TOKEN_AND:
