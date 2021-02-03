@@ -370,6 +370,11 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 	}
 	EXIT:;
 	uint32_t len = lexer->current - lexer->lexing_start;
+	if (!type)
+	{
+		if (!prefix && len == 1) return add_token(lexer, TOKEN_UNDERSCORE, "_");
+		add_error_token(lexer, "An identifier may not consist of only '_' characters.");
+	}
 	const char* interned_string = symtab_add(lexer->lexing_start, len, hash, &type);
 	return add_token(lexer, type, interned_string);
 }

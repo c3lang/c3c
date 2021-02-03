@@ -97,15 +97,17 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT("union %s__", type->decl->external_name);
 			return;
 		case TYPE_DISTINCT:
-			TODO
+			header_print_type(file, type->decl->distinct_decl.base_type);
+			return;
 		case TYPE_ERRTYPE:
 			break;
 		case TYPE_ERR_UNION:
 			break;
 		case TYPE_TYPEDEF:
 			break;
-		case TYPE_STRING:
-			break;
+		case TYPE_CTSTR:
+		case TYPE_INFERRED_ARRAY:
+			UNREACHABLE
 		case TYPE_ARRAY:
 			break;
 		case TYPE_VARARRAY:

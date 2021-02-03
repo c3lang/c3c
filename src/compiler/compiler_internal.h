@@ -15,6 +15,7 @@
 #include "target.h"
 #include "utils/malloc.h"
 
+#define MAX_ARRAYINDEX INT64_MAX
 typedef uint64_t ByteSize;
 typedef int64_t ArrayIndex;
 typedef int64_t IndexDiff;
@@ -1363,7 +1364,7 @@ extern TypeInfo *poisoned_type_info;
 extern Diagnostics diagnostics;
 
 
-extern Type *type_bool, *type_void, *type_string, *type_voidptr;
+extern Type *type_bool, *type_void, *type_compstr, *type_voidptr;
 extern Type *type_half, *type_float, *type_double, *type_quad;
 extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isize;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;
@@ -1594,7 +1595,9 @@ bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *lef
 Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol);
 Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl, Decl **private_decl);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
-bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info);
+bool sema_resolve_type_info_maybe_inferred(Context *context, TypeInfo *type_info, bool allow_inferred_type);
+bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type);
+Type *sema_type_lower_by_size(Type *type, ByteSize element_size);
 
 void sema_error_at_prev_end(Token token, const char *message, ...);
 
@@ -1646,10 +1649,11 @@ Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other);
 Type *type_abi_find_single_struct_element(Type *type);
 const char *type_generate_qname(Type *type);
-Type *type_get_array(Type *arr_type, uint64_t len);
+Type *type_get_array(Type *arr_type, ByteSize len);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_subarray(Type *arr_type);
+Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_vararray(Type *arr_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_int_signed_by_bitsize(unsigned bytesize);

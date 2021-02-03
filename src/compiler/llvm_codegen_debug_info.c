@@ -487,6 +487,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_BOOL:
 			return llvm_debug_simple_type(c, type, DW_ATE_boolean);
@@ -529,7 +530,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			TODO
 		case TYPE_TYPEDEF:
 			return type->backend_debug_type = llvm_debug_typedef_type(c, type);
-		case TYPE_STRING:
+		case TYPE_CTSTR:
 			TODO
 		case TYPE_ARRAY:
 			return type->backend_debug_type = llvm_debug_array_type(c, type);

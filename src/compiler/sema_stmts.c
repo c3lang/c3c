@@ -352,31 +352,47 @@ static inline bool sema_analyse_local_decl(Context *context, Decl *decl)
 		}
 		if (!decl->var.type_info)
 		{
+			if (!sema_analyse_expr(context, NULL, init_expr)) return false;
+			decl->type = init_expr->type;
 			// Skip further evaluation.
-			return true;
+			goto EXIT_OK;
 		}
 	}
-	if (!sema_resolve_type_info(context, decl->var.type_info)) return decl_poison(decl);
+	if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, decl->var.init_expr != NULL)) return decl_poison(decl);
 	decl->type = decl->var.type_info->type;
-	if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 	if (decl->var.init_expr)
 	{
+		bool type_is_inferred = decl->type->type_kind == TYPE_INFERRED_ARRAY;
 		Expr *init = decl->var.init_expr;
 		// Handle explicit undef
 		if (init->expr_kind == EXPR_TYPEINFO && init->type_expr->resolve_status == RESOLVE_DONE
 			&& init->type_expr->type->type_kind == TYPE_VOID)
 		{
+			if (type_is_inferred)
+			{
+				SEMA_ERROR(decl->var.type_info, "Size of the array cannot be inferred with explicit undef.");
+				return false;
+			}
 			init->expr_kind = EXPR_UNDEF;
 			init->resolve_status = RESOLVE_DONE;
-			return true;
+			goto EXIT_OK;
 		}
 		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, decl->var.failable || decl->var.unwrap ? FAILABLE_YES : FAILABLE_NO)) return decl_poison(decl);
+
+		if (type_is_inferred)
+		{
+			Type *right_side_type = init->type->canonical;
+			assert(right_side_type->type_kind == TYPE_ARRAY);
+			decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
+		}
 		if (decl->var.unwrap && !init->failable)
 		{
 			SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
 			return decl_poison(decl);
 		}
 	}
+	EXIT_OK:
+	if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 	return true;
 }
 
@@ -1112,6 +1128,8 @@ static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_st
 	assert(to_type);
 	Expr *case_expr = case_stmt->case_stmt.expr;
 
+	// TODO string switch.
+
 	// 1. Try to do implicit conversion to the correct type.
 	if (!sema_analyse_expr(context, to_type, case_expr)) return false;
 
@@ -1226,7 +1244,8 @@ static inline bool sema_check_value_case(Context *context, Type *switch_type, As
 static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases)
 {
 	bool use_type_id = false;
-	switch (switch_type->type_kind)
+	Type *switch_type_flattened = type_flatten(switch_type);
+	switch (switch_type_flattened->type_kind)
 	{
 		case TYPE_TYPEID:
 		case TYPE_ERR_UNION:
@@ -1236,8 +1255,13 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 			assert(switch_type->type_kind != TYPE_IXX);
 		case TYPE_BOOL:
 		case TYPE_ENUM:
-		case TYPE_STRING:
 			break;
+		case TYPE_DISTINCT:
+			UNREACHABLE
+		case TYPE_SUBARRAY:
+			// Allow switching over char[] and String
+			if (switch_type_flattened->array.base->type_kind == TYPE_U8) break;
+			FALLTHROUGH;
 		default:
 			sema_error_range3(expr_span, "It is not possible to switch over '%s'.", type_to_error_string(switch_type));
 			return false;
@@ -1602,8 +1626,8 @@ bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
 	Expr *message = statement->ct_assert_stmt.message;
 	if (message)
 	{
-		if (!sema_analyse_expr(context, type_string, message)) return false;
-		if (message->type->type_kind != TYPE_STRING)
+		if (!sema_analyse_expr(context, type_compstr, message)) return false;
+		if (message->type->type_kind != TYPE_CTSTR)
 		{
 			SEMA_ERROR(message, "Expected a string as the error message.");
 		}
@@ -1633,8 +1657,8 @@ bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 	Expr *message = statement->ct_assert_stmt.message;
 	if (message)
 	{
-		if (!sema_analyse_expr(context, type_string, message)) return false;
-		if (message->type->type_kind != TYPE_STRING)
+		if (!sema_analyse_expr(context, type_compstr, message)) return false;
+		if (message->type->type_kind != TYPE_CTSTR)
 		{
 			SEMA_ERROR(message, "Expected a string as the error message.");
 		}

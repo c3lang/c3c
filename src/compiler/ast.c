@@ -376,6 +376,10 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 			DUMP("(vararray");
 			DUMPTYPE(type->array.base);
 			DUMPEND();
+		case TYPE_INFERRED_ARRAY:
+			DUMP("(inferred-array");
+			DUMPTYPE(type->array.base);
+			DUMPEND();
 		case TYPE_ARRAY:
 			DUMPF("(array [%zu]", type->array.len);
 			DUMPTYPE(type->array.base);
@@ -393,8 +397,8 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 		case TYPE_FXX:
 			DUMP("(ct float)");
 			return;
-		case TYPE_STRING:
-			DUMP("(string)");
+		case TYPE_CTSTR:
+			DUMP("(ct string)");
 			return;
 		case TYPE_ERR_UNION:
 			DUMP("(any-error)");
@@ -469,6 +473,11 @@ void fprint_type_info_recursive(Context *context, FILE *file, TypeInfo *type_inf
 			break;
 		case TYPE_INFO_INC_ARRAY:
 			DUMP("(incarray");
+			DUMPTI(type_info->array.base);
+			DUMPE();
+			break;
+		case TYPE_INFO_INFERRED_ARRAY:
+			DUMP("(inferredarray");
 			DUMPTI(type_info->array.base);
 			DUMPE();
 			break;
