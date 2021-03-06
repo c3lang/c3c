@@ -2,6 +2,7 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
+#include <sys/stat.h>
 #include "common.h"
 #include "errors.h"
 #include "lib.h"
@@ -9,8 +10,7 @@
 #include <dirent.h>
 #include <limits.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <sys/errno.h>
+#include <errno.h>
 #include "whereami.h"
 
 const char* expand_path(const char* path)

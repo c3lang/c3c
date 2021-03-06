@@ -193,7 +193,7 @@ static void to_twos_complement(BigInt *dest, const BigInt *source, size_t bit_co
 		if (dest->digit == 0) dest->digit_count = 0;
 		return;
 	}
-	dest->digits = malloc_arena(dest->digit_count * sizeof(u_int64_t));
+	dest->digits = malloc_arena(dest->digit_count * sizeof(uint64_t));
 	for (size_t i = 0; i < digits_to_copy; i += 1)
 	{
 		uint64_t digit = (i < source->digit_count) ? source_digits[i] : 0;
