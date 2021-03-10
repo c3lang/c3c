@@ -47,13 +47,11 @@ func void main()
 
 ### Current status
 
-It's possible to try out the current C3 compiler in the browser: https://ide.judge0.com/?1EFo – this is courtesy of the
+It's possible to try out the current C3 compiler in the browser: https://ide.judge0.com/ – this is courtesy of the
 developer of Judge0. 
 
 Design work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have any suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue] (https://github.com/c3lang/c3c/issues) or discuss 
 C3 on its dedicated Discord: https://discord.gg/qN76R87
-you are also welcome to discuss in the C3 channel on 
-the r/ProgrammingLanguages Discord: https://discord.gg/cfu4wdk
 
 
 #### Todo / done
