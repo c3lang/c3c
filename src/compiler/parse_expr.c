@@ -410,7 +410,7 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	expr->binary_expr.right = right_side;
 	
 	// check if both sides have a binary operation where the precedence is unclear. Example: a ^ b | c
-	if (!plain_op_precedence(&left_side, &right_side)) 
+	if (!plain_op_precedence(left_side, right_side)) 
 	{
 		// uncomment line below if everything works.
 		//SEMA_TOKEN_ERROR(context->tok, "You need to add explicit parentheses.");
