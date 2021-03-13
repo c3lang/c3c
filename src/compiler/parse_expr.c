@@ -367,6 +367,24 @@ static Expr *parse_failable(Context *context, Expr *left_side)
 	return failable;
 }
 
+int plain_op_precedence(Expr *left_side, Expr *right_side)
+{
+	if (left_side.ExprKind == EXPR_BINARY && right_side.ExprKind == EXPR_BINARY)
+	{
+		if ((left_side.binary_expr.operator  == BINARYOP_BIT_AND  || 
+		     left_side.binary_expr.operator  == BINARYOP_BIT_OR   ||
+		     left_side.binary_expr.operator  == BINARYOP_BIT_XOR)
+		    &&
+		    (right_side.binary_expr.operator == BINARYOP_BIT_AND  || 
+		     right_side.binary_expr.operator == BINARYOP_BIT_OR   ||
+		     right_side.binary_expr.operator == BINARYOP_BIT_XOR))
+		{
+			return 0;
+		}	
+	}
+	return 1;
+}
+
 static Expr *parse_binary(Context *context, Expr *left_side)
 {
 	assert(left_side && expr_ok(left_side));
@@ -390,6 +408,13 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	expr->binary_expr.operator = binaryop_from_token(operator_type);
 	expr->binary_expr.left = left_side;
 	expr->binary_expr.right = right_side;
+	
+	// check if both sides have a binary operation where the precedence is unclear. Example: a ^ b | c
+	if (!plain_op_precedence(left_side, right_side)) 
+	{
+		SEMA_TOKEN_ERROR(context->tok, "You need to add explicit parentheses.");
+	}
+	
 	expr->span.end_loc = right_side->span.end_loc;
 	return expr;
 }
