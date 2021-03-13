@@ -369,15 +369,15 @@ static Expr *parse_failable(Context *context, Expr *left_side)
 
 int plain_op_precedence(Expr *left_side, Expr *right_side)
 {
-	if (left_side.ExprKind == EXPR_BINARY && right_side.ExprKind == EXPR_BINARY)
+	if (left_side->ExprKind == EXPR_BINARY && right_side->ExprKind == EXPR_BINARY)
 	{
-		if ((left_side.binary_expr.operator  == BINARYOP_BIT_AND  || 
-		     left_side.binary_expr.operator  == BINARYOP_BIT_OR   ||
-		     left_side.binary_expr.operator  == BINARYOP_BIT_XOR)
+		if ((left_side->binary_expr.operator  == BINARYOP_BIT_AND  || 
+		     left_side->binary_expr.operator  == BINARYOP_BIT_OR   ||
+		     left_side->binary_expr.operator  == BINARYOP_BIT_XOR)
 		    &&
-		    (right_side.binary_expr.operator == BINARYOP_BIT_AND  || 
-		     right_side.binary_expr.operator == BINARYOP_BIT_OR   ||
-		     right_side.binary_expr.operator == BINARYOP_BIT_XOR))
+		    (right_side->binary_expr.operator == BINARYOP_BIT_AND  || 
+		     right_side->binary_expr.operator == BINARYOP_BIT_OR   ||
+		     right_side->binary_expr.operator == BINARYOP_BIT_XOR))
 		{
 			return 0;
 		}	
@@ -410,7 +410,7 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	expr->binary_expr.right = right_side;
 	
 	// check if both sides have a binary operation where the precedence is unclear. Example: a ^ b | c
-	if (!plain_op_precedence(left_side, right_side)) 
+	if (!plain_op_precedence(&left_side, &right_side)) 
 	{
 		// uncomment line below if everything works.
 		//SEMA_TOKEN_ERROR(context->tok, "You need to add explicit parentheses.");
