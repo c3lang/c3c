@@ -369,7 +369,7 @@ static Expr *parse_failable(Context *context, Expr *left_side)
 
 int plain_op_precedence(Expr *left_side, Expr *right_side)
 {
-	if (left_side->ExprKind == EXPR_BINARY && right_side->ExprKind == EXPR_BINARY)
+	if (left_side->expr_kind == EXPR_BINARY && right_side->expr_kind == EXPR_BINARY)
 	{
 		if ((left_side->binary_expr.operator  == BINARYOP_BIT_AND  || 
 		     left_side->binary_expr.operator  == BINARYOP_BIT_OR   ||
