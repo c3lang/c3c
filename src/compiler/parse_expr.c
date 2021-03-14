@@ -381,7 +381,23 @@ int plain_op_precedence(Expr *left_side, Expr *right_side)
 		     right_side->binary_expr.operator == BINARYOP_BIT_XOR))
 		{
 			return 0;
-		}	
+		}
+		else if ((left_side->binary_expr.operator  == BINARYOP_GT || 
+		     	  left_side->binary_expr.operator  == BINARYOP_GE ||
+			  left_side->binary_expr.operator  == BINARYOP_LT ||
+			  left_side->binary_expr.operator  == BINARYOP_LE ||
+			  left_side->binary_expr.operator  == BINARYOP_NE ||
+			  left_side->binary_expr.operator  == BINARYOP_EQ)
+		          &&
+		         (right_side->binary_expr.operator == BINARYOP_GT || 
+		          right_side->binary_expr.operator == BINARYOP_GE ||
+			  right_side->binary_expr.operator == BINARYOP_LT ||
+			  right_side->binary_expr.operator == BINARYOP_LE ||
+			  right_side->binary_expr.operator == BINARYOP_NE ||
+			  right_side->binary_expr.operator == BINARYOP_EQ))
+		{
+			return 0;
+		}
 	}
 	return 1;
 }
@@ -413,8 +429,7 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	// check if both sides have a binary operation where the precedence is unclear. Example: a ^ b | c
 	if (!plain_op_precedence(left_side, right_side)) 
 	{
-		// uncomment line below if everything works.
-		//SEMA_TOKEN_ERROR(context->tok, "You need to add explicit parentheses.");
+		SEMA_TOKEN_ERROR(context->tok, "You need to add explicit parentheses.");
 	}
 	
 	expr->span.end_loc = right_side->span.end_loc;
