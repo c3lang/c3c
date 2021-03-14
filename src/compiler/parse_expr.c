@@ -391,7 +391,7 @@ static Expr *parse_failable(Context *context, Expr *left_side)
 }
 
 
-int plain_op_precedence(Expr *left_side, Expr * main_expr, Expr *right_side)
+bool plain_op_precedence(Expr *left_side, Expr * main_expr, Expr *right_side)
 {
 	int precedence_main = BINOP_PREC_REQ[main_expr->binary_expr.operator];
 	if (left_side->expr_kind == EXPR_BINARY)
@@ -404,7 +404,7 @@ int plain_op_precedence(Expr *left_side, Expr * main_expr, Expr *right_side)
 		int precedence_right = BINOP_PREC_REQ[right_side->binary_expr.operator];
 		return !(precedence_right && (precedence_right == precedence_main));
 	}
-	return 1;
+	return true;
 }
 
 static Expr *parse_binary(Context *context, Expr *left_side)
