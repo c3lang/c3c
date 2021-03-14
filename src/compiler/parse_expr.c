@@ -6,6 +6,8 @@
 #include "parser_internal.h"
 #include "bigint.h"
 
+#define BINOP_PREC_REQ_LEN 40
+int BINOP_PREC_REQ[BINOP_PREC_REQ_LEN];
 
 typedef Expr *(*ParseFn)(Context *context, Expr *);
 
@@ -61,8 +63,29 @@ static inline Expr *parse_expr_or_initializer_list(Context *context)
 	return parse_expr(context);
 }
 
+void init_BINOP_PREC_REQ(){
+	for (int i = 0; i < BINOP_PREC_REQ_LEN; i++)
+	{
+		BINOP_PREC_REQ[i] = 0;
+	}
+	
+	// bitwise operations
+	BINOP_PREC_REQ[BINARYOP_BIT_OR] = 1;
+	BINOP_PREC_REQ[BINARYOP_BIT_XOR] = 1;
+	BINOP_PREC_REQ[BINARYOP_BIT_AND] = 1;
+	
+	// comparison operations
+	BINOP_PREC_REQ[BINARYOP_GT] = 2;
+	BINOP_PREC_REQ[BINARYOP_GE] = 2;
+	BINOP_PREC_REQ[BINARYOP_LT] = 2;
+	BINOP_PREC_REQ[BINARYOP_LE] = 2;
+	BINOP_PREC_REQ[BINARYOP_NE] = 2;
+	BINOP_PREC_REQ[BINARYOP_EQ] = 2;
+}
+
 inline Expr* parse_expr(Context *context)
 {
+	init_BINOP_PREC_REQ();
 	return parse_precedence(context, PREC_ASSIGNMENT);
 }
 
@@ -368,36 +391,18 @@ static Expr *parse_failable(Context *context, Expr *left_side)
 }
 
 
-int plain_op_precedence(Expr *left_side, Expr *right_side)
+int plain_op_precedence(Expr *left_side, Expr * main_expr, Expr *right_side)
 {
-	if (left_side->expr_kind == EXPR_BINARY && right_side->expr_kind == EXPR_BINARY)
+	int precedence_main = BINOP_PREC_REQ[main_expr->binary_expr.operator];
+	if (left_side->expr_kind == EXPR_BINARY)
 	{
-		if ((left_side->binary_expr.operator  == BINARYOP_BIT_AND  || 
-		     left_side->binary_expr.operator  == BINARYOP_BIT_OR   ||
-		     left_side->binary_expr.operator  == BINARYOP_BIT_XOR)
-		    &&
-		    (right_side->binary_expr.operator == BINARYOP_BIT_AND  || 
-		     right_side->binary_expr.operator == BINARYOP_BIT_OR   ||
-		     right_side->binary_expr.operator == BINARYOP_BIT_XOR))
-		{
-			return 0;
-		}
-		else if ((left_side->binary_expr.operator  == BINARYOP_GT || 
-		     	  left_side->binary_expr.operator  == BINARYOP_GE ||
-			  left_side->binary_expr.operator  == BINARYOP_LT ||
-			  left_side->binary_expr.operator  == BINARYOP_LE ||
-			  left_side->binary_expr.operator  == BINARYOP_NE ||
-			  left_side->binary_expr.operator  == BINARYOP_EQ)
-		          &&
-		         (right_side->binary_expr.operator == BINARYOP_GT || 
-		          right_side->binary_expr.operator == BINARYOP_GE ||
-			  right_side->binary_expr.operator == BINARYOP_LT ||
-			  right_side->binary_expr.operator == BINARYOP_LE ||
-			  right_side->binary_expr.operator == BINARYOP_NE ||
-			  right_side->binary_expr.operator == BINARYOP_EQ))
-		{
-			return 0;
-		}
+		int precedence_left = BINOP_PREC_REQ[left_side->binary_expr.operator]; 
+		return !(precedence_left && (precedence_left == precedence_main));
+	}
+	if (right_side->expr_kind == EXPR_BINARY)
+	{
+		int precedence_right = BINOP_PREC_REQ[right_side->binary_expr.operator];
+		return !(precedence_right && (precedence_right == precedence_main));
 	}
 	return 1;
 }
@@ -427,7 +432,7 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	expr->binary_expr.right = right_side;
 	
 	// check if both sides have a binary operation where the precedence is unclear. Example: a ^ b | c
-	if (!plain_op_precedence(left_side, right_side)) 
+	if (!plain_op_precedence(left_side, expr, right_side)) 
 	{
 		SEMA_TOKEN_ERROR(context->tok, "You need to add explicit parentheses.");
 	}
