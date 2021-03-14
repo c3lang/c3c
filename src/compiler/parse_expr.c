@@ -7,7 +7,20 @@
 #include "bigint.h"
 
 #define BINOP_PREC_REQ_LEN 40
-int BINOP_PREC_REQ[BINOP_PREC_REQ_LEN];
+int BINOP_PREC_REQ[BINOP_PREC_REQ_LEN] = {
+	// bitwise operations
+	[BINARYOP_BIT_OR] = 1,
+	[BINARYOP_BIT_XOR] = 1,
+	[BINARYOP_BIT_AND] = 1,
+	
+	// comparison operations
+	[BINARYOP_GT] = 2,
+	[BINARYOP_GE] = 2,
+	[BINARYOP_LT] = 2,
+	[BINARYOP_LE] = 2,
+	[BINARYOP_NE] = 2,
+	[BINARYOP_EQ] = 2
+};
 
 typedef Expr *(*ParseFn)(Context *context, Expr *);
 
@@ -63,29 +76,8 @@ static inline Expr *parse_expr_or_initializer_list(Context *context)
 	return parse_expr(context);
 }
 
-void init_BINOP_PREC_REQ(){
-	for (int i = 0; i < BINOP_PREC_REQ_LEN; i++)
-	{
-		BINOP_PREC_REQ[i] = 0;
-	}
-	
-	// bitwise operations
-	BINOP_PREC_REQ[BINARYOP_BIT_OR] = 1;
-	BINOP_PREC_REQ[BINARYOP_BIT_XOR] = 1;
-	BINOP_PREC_REQ[BINARYOP_BIT_AND] = 1;
-	
-	// comparison operations
-	BINOP_PREC_REQ[BINARYOP_GT] = 2;
-	BINOP_PREC_REQ[BINARYOP_GE] = 2;
-	BINOP_PREC_REQ[BINARYOP_LT] = 2;
-	BINOP_PREC_REQ[BINARYOP_LE] = 2;
-	BINOP_PREC_REQ[BINARYOP_NE] = 2;
-	BINOP_PREC_REQ[BINARYOP_EQ] = 2;
-}
-
 inline Expr* parse_expr(Context *context)
 {
-	init_BINOP_PREC_REQ();
 	return parse_precedence(context, PREC_ASSIGNMENT);
 }
 
