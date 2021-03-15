@@ -82,7 +82,7 @@ enum Enum : int
 func void test11()
 {
     int a = Enum.A;
-    ichar b = Enum.B;     // #error: Cannot implicitly convert 'Enum' with underlying type of 'int' to 'ichar'
+    ichar b = Enum.B;     // #error: Cannot implicitly cast 'Enum' to 'ichar'
 }
 
 func void test12()
@@ -100,7 +100,7 @@ func void test13()
 func void test14()
 {
     char a = 1;
-    ichar b = a;         // #error: cast 'char' to 'ichar'
+    ichar b = a;
 }
 
 func void test15()
@@ -137,7 +137,7 @@ func void test18()
 func void test19()
 {
     uint a = 1;
-    int b = a;                  // #error: cast 'uint' to 'int'
+    int b = a;
 }
 
 /*
@@ -150,7 +150,7 @@ func void test1() {
 func void test21()
 {
     int a = 1;
-    uint b = a;                 // #error: cast 'int' to 'uint'
+    uint b = a;
 }
 
 func void foo() {}

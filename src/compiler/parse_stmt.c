@@ -976,14 +976,10 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_ULONG:
 		case TOKEN_USHORT:
 		case TOKEN_USIZE:
-		case TOKEN_C_SHORT:
-		case TOKEN_C_INT:
-		case TOKEN_C_LONG:
-		case TOKEN_C_LONGLONG:
-		case TOKEN_C_USHORT:
-		case TOKEN_C_UINT:
-		case TOKEN_C_ULONG:
-		case TOKEN_C_ULONGLONG:
+		case TOKEN_IPTRDIFF:
+		case TOKEN_UPTRDIFF:
+		case TOKEN_IPTR:
+		case TOKEN_UPTR:
 		case TOKEN_TYPEID:
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_HASH_TYPE_IDENT:
@@ -1108,9 +1104,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_BIT_AND_ASSIGN:
 		case TOKEN_BIT_OR_ASSIGN:
 		case TOKEN_BIT_XOR_ASSIGN:
-		case TOKEN_PLUS_MOD:
-		case TOKEN_MINUS_MOD:
-		case TOKEN_MULT_MOD:
 		case TOKEN_DIV_ASSIGN:
 		case TOKEN_DOTDOT:
 		case TOKEN_ELVIS:
@@ -1126,9 +1119,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_SCOPE:
 		case TOKEN_SHR:
 		case TOKEN_SHL:
-		case TOKEN_MULT_MOD_ASSIGN:
-		case TOKEN_PLUS_MOD_ASSIGN:
-		case TOKEN_MINUS_MOD_ASSIGN:
 		case TOKEN_SHR_ASSIGN:
 		case TOKEN_SHL_ASSIGN:
 		case TOKEN_ALIAS:

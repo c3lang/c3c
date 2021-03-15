@@ -105,7 +105,7 @@ static void header_print_type(FILE *file, Type *type)
 			break;
 		case TYPE_TYPEDEF:
 			break;
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_ARRAY:

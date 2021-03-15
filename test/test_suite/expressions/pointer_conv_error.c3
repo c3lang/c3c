@@ -13,6 +13,6 @@ func void test2()
 func void test3()
 {
     uint myUInt = 1;
-    int* p2 = cast(myUInt as int*);
+    int* p2 = cast(myUInt as int*);     // #error: Cannot cast 'uint' to 'int*'.
 }
 

@@ -169,6 +169,7 @@ typedef struct
 	bool emit_llvm;
 	bool emit_bitcode;
 	bool test_mode;
+	bool trap_wrapping;
 } BuildOptions;
 
 

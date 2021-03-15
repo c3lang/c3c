@@ -29,7 +29,7 @@ for.cond:
 
 for.inc8:
   %4 = load i32, i32* %i
-  %add9 = add nsw i32 %4, 1
+  %add9 = add i32 %4, 1
   store i32 %add9, i32* %i
   br label %for.cond
 

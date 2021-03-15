@@ -506,6 +506,12 @@ static inline TypeInfo *parse_base_type(Context *context)
 		case TOKEN_INT:
 			type_found = type_int;
 			break;
+		case TOKEN_IPTR:
+			type_found = type_iptr;
+			break;
+		case TOKEN_IPTRDIFF:
+			type_found = type_iptrdiff;
+			break;
 		case TOKEN_ISIZE:
 			type_found = type_isize;
 			break;
@@ -521,35 +527,17 @@ static inline TypeInfo *parse_base_type(Context *context)
 		case TOKEN_ULONG:
 			type_found = type_ulong;
 			break;
+		case TOKEN_UPTR:
+			type_found = type_uptr;
+			break;
+		case TOKEN_UPTRDIFF:
+			type_found = type_uptrdiff;
+			break;
 		case TOKEN_USHORT:
 			type_found = type_ushort;
 			break;
 		case TOKEN_USIZE:
 			type_found = type_usize;
-			break;
-		case TOKEN_C_SHORT:
-			type_found = type_c_short;
-			break;
-		case TOKEN_C_INT:
-			type_found = type_c_int;
-			break;
-		case TOKEN_C_LONG:
-			type_found = type_c_long;
-			break;
-		case TOKEN_C_LONGLONG:
-			type_found = type_c_longlong;
-			break;
-		case TOKEN_C_USHORT:
-			type_found = type_c_ushort;
-			break;
-		case TOKEN_C_UINT:
-			type_found = type_c_uint;
-			break;
-		case TOKEN_C_ULONG:
-			type_found = type_c_ulong;
-			break;
-		case TOKEN_C_ULONGLONG:
-			type_found = type_c_ulonglong;
 			break;
 		case TOKEN_TYPEID:
 			type_found = type_typeid;
@@ -890,14 +878,6 @@ bool parse_next_is_decl(Context *context)
 		case TOKEN_USHORT:
 		case TOKEN_USIZE:
 		case TOKEN_QUAD:
-		case TOKEN_C_SHORT:
-		case TOKEN_C_INT:
-		case TOKEN_C_LONG:
-		case TOKEN_C_LONGLONG:
-		case TOKEN_C_USHORT:
-		case TOKEN_C_UINT:
-		case TOKEN_C_ULONG:
-		case TOKEN_C_ULONGLONG:
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_ERR:
@@ -934,14 +914,6 @@ bool parse_next_is_case_type(Context *context)
 		case TOKEN_USHORT:
 		case TOKEN_USIZE:
 		case TOKEN_QUAD:
-		case TOKEN_C_SHORT:
-		case TOKEN_C_INT:
-		case TOKEN_C_LONG:
-		case TOKEN_C_LONGLONG:
-		case TOKEN_C_USHORT:
-		case TOKEN_C_UINT:
-		case TOKEN_C_ULONG:
-		case TOKEN_C_ULONGLONG:
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_ERR:

@@ -26,7 +26,7 @@ func void enumInferenceTest()
     Inf2 z = C;
     if (z == Inf2.A) return;
     if (z == 1) return;
-    z = 2;
+    z = cast(2 as Inf2);
     switch (z)
     {
         case Inf2.A:

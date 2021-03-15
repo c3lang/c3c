@@ -476,7 +476,7 @@ static Expr *parse_subscript_expr(Context *context, Expr *left)
 	else
 	{
 		index = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-		index->type = type_uint;
+		expr_set_type(index, type_uint);
 		index->constant = true;
 		index->resolve_status = RESOLVE_DONE;
 		expr_const_set_int(&index->const_expr, 0, type_uint->type_kind);
@@ -711,7 +711,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 			break;
 	}
 	expr_int->const_expr.kind = TYPE_IXX;
-	expr_int->type = type_compint;
+	expr_set_type(expr_int, type_compint);
 	advance(context);
 	return expr_int;
 }
@@ -725,19 +725,19 @@ static Expr *parse_char_lit(Context *context, Expr *left)
 	{
 		case 1:
 			expr_const_set_int(&expr_int->const_expr, data->char_lit.u8, TYPE_IXX);
-			expr_int->type = type_compint;
+			expr_set_type(expr_int, type_compint);
 			break;
 		case 2:
 			expr_const_set_int(&expr_int->const_expr, data->char_lit.u16, TYPE_IXX);
-			expr_int->type = type_compint;
+			expr_set_type(expr_int, type_compint);
 			break;
 		case 4:
 			expr_const_set_int(&expr_int->const_expr, data->char_lit.u32, TYPE_IXX);
-			expr_int->type = type_compint;
+			expr_set_type(expr_int, type_compint);
 			break;
 		case 8:
 			expr_const_set_int(&expr_int->const_expr, data->char_lit.u64, TYPE_U64);
-			expr_int->type = type_ulong;
+			expr_set_type(expr_int, type_compint);
 			break;
 		default:
 			UNREACHABLE
@@ -753,7 +753,7 @@ static Expr *parse_double(Context *context, Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	number->const_expr.f = TOKREAL(context->tok.id);
-	number->type = type_compfloat;
+	expr_set_type(number, type_compfloat);
 	number->const_expr.kind = TYPE_FXX;
 	advance(context);
 	return number;
@@ -855,7 +855,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	expr_string->type = type_compstr;
+	expr_set_type(expr_string, type_compstr);
 
 	char *str = NULL;
 	size_t len = 0;
@@ -889,8 +889,8 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 	str[len] = '\0';
 	expr_string->const_expr.string.chars = str;
 	expr_string->const_expr.string.len = len;
-	expr_string->type = type_compstr;
-	expr_string->const_expr.kind = TYPE_CTSTR;
+	expr_set_type(expr_string, type_compstr);
+	expr_string->const_expr.kind = TYPE_STRLIT;
 	return expr_string;
 }
 
@@ -899,7 +899,7 @@ static Expr *parse_bool(Context *context, Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	number->const_expr = (ExprConst) { .b = TOKEN_IS(TOKEN_TRUE), .kind = TYPE_BOOL };
-	number->type = type_bool;
+	expr_set_type(number, type_bool);
 	advance(context);
 	return number;
 }
@@ -909,7 +909,7 @@ static Expr *parse_null(Context *context, Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	number->const_expr.kind = TYPE_POINTER;
-	number->type = type_voidptr;
+	expr_set_type(number, type_voidptr);
 	advance(context);
 	return number;
 }
@@ -995,6 +995,10 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_ULONG] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_ISIZE] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_USIZE] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_IPTR] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_UPTR] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_IPTRDIFF] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_UPTRDIFF] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FLOAT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_DOUBLE] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_HALF] = { parse_type_identifier, NULL, PREC_NONE },
@@ -1016,13 +1020,10 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_BANGBANG] = { NULL, parse_bangbang_expr, PREC_CALL },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
-		[TOKEN_MINUS_MOD] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
 		[TOKEN_PLUS] = { NULL, parse_binary, PREC_ADDITIVE },
-		[TOKEN_PLUS_MOD] = { NULL, parse_binary, PREC_ADDITIVE },
 		[TOKEN_DIV] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_MOD] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_STAR] = { parse_unary_expr, parse_binary, PREC_MULTIPLICATIVE },
-		[TOKEN_MULT_MOD] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_DOT] = { NULL, parse_access_expr, PREC_CALL },
 		[TOKEN_BANG] = { parse_unary_expr, parse_failable, PREC_UNARY },
 		[TOKEN_BIT_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
@@ -1049,11 +1050,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_AND] = { parse_unary_expr, parse_binary, PREC_LOGICAL },
 		[TOKEN_EQ] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_PLUS_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
-		[TOKEN_PLUS_MOD_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_MINUS_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
-		[TOKEN_MINUS_MOD_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_MULT_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
-		[TOKEN_MULT_MOD_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_MOD_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_DIV_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_BIT_XOR_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },

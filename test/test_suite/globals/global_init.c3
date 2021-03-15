@@ -17,8 +17,8 @@ ichar cb = 1;
 ichar cc = 127;
 ichar cd = -128;
 
-ichar ce = 128;       // #error: '128' does not fit
-ichar cf = -129;      // #error: '-129' does not fit
+ichar ce = 128;       // #error: The value '128' is out of range for 'ichar'
+ichar cf = -129;      // #error: The value '-129' is out of range for 'ichar'
 
-ichar cg = 70000;     // #error: '70000' does not fit
-ichar ch = -70000;    // #error: '-70000' does not fit
+ichar cg = 70000;     // #error: The value '70000' is out of range for 'ichar'
+ichar ch = -70000;    // #error: The value '-70000' is out of range for 'ichar'

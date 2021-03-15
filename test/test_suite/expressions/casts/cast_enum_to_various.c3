@@ -24,16 +24,16 @@ func void test1(Enum e)
     char b = cast(e as char);
     uint c = cast(e as uint);
     float d = cast(e as float);
-    uint* f = cast(e as uint*);
+    uint* f = cast(e as uint*);         // #error: cast 'Enum' to 'uint*'
 }
 
 func void test2(Enum e)
 {
-    Struct* g = cast(e as Struct*);
+    Struct* g = cast(e as Struct*);     // #error: cast 'Enum' to 'Struct*'
 }
 
 func void test3(Enum e)
 {
-    //EnumB h = cast(e as EnumB);
-    //Func i = cast(e as Func);
+    EnumB h = cast(e as EnumB);
+    Func i = cast(e as Func);           // #error: cast 'Enum' to 'Func'
 }

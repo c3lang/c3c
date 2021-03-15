@@ -3,7 +3,7 @@ struct Struct
     int x;
 }
 
-enum Enum : uint
+enum Enum : uptr
 {
     A, B
 }
@@ -18,16 +18,17 @@ typedef func void(int) as FuncSame;
 func void test1(Func arg)
 {
     bool a = cast(arg as bool);
+    bool b = arg;
 }
 
 func void test2(Func arg)
 {
-    ichar b = cast(arg as ichar);
+    ichar b = cast(arg as ichar);               // #error: Cannot cast 'Func' (func void()) to 'ichar'.
 }
 
 func void test3(Func arg)
 {
-    uint c = cast(arg as uint);
+    uint c = cast(arg as uint);                 // #error: Cannot cast 'Func' (func void()) to 'uint'.
 }
 
 func void test4(Func arg)
@@ -40,7 +41,7 @@ func void test7(Func arg)
     usize g = cast(arg as usize);
     FuncOther k = cast(arg as FuncOther);
     FuncSame l = cast(arg as FuncSame);
-    FuncOther ke = arg;                         // #error: Cannot implicitly cast 'Func' (func void()) to 'FuncOther' ('func bool()')
+    FuncOther ke = arg;                         // #error: Cannot implicitly cast 'Func' (func void()) to 'FuncOther' (func bool())
     FuncSame fe = arg;
     Enum j = cast(arg as Enum);                 // #error: Cannot cast 'Func' (func void()) to 'Enum'.
 }

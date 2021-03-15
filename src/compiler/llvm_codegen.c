@@ -315,7 +315,7 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			                             llvm_emit_load_aligned(c, pointer_type, pointer_addr, 0, "subarrptr"), value->type, alignment);
 			return;
 		}
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 			TODO
 		case TYPE_VARARRAY:
 		default:

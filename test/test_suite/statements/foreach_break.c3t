@@ -40,7 +40,7 @@ if.then1:
 if.exit2:
   %6 = load i32, i32* %g, align 4
   %7 = load i32, i32* %z, align 4
-  %add = add nsw i32 %6, %7
+  %add = add i32 %6, %7
   store i32 %add, i32* %g, align 4
   br label %foreach.inc
 foreach.inc:

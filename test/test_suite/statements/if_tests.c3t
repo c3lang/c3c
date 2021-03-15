@@ -35,7 +35,7 @@ func void test3(int x)
   br i1 %gt, label %if.then, label %if.exit
 if.then:
   %2 = load i32, i32* %x, align 4
-  %add = add nsw i32 %2, 1
+  %add = add i32 %2, 1
   store i32 %add, i32* %x, align 4
   br label %exit
 exit:
@@ -58,7 +58,7 @@ define void @iftest.test3(i32 %0)
   br i1 %gt, label %if.exit, label %if.else
 if.else:
   %2 = load i32, i32* %x, align 4
-  %add = add nsw i32 %2, 1
+  %add = add i32 %2, 1
   store i32 %add, i32* %x, align 4
   br label %if.exit
 if.exit:

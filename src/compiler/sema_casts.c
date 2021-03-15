@@ -6,14 +6,12 @@
 #include "bigint.h"
 
 #define EXIT_T_MISMATCH() return sema_type_mismatch(context, left, canonical, cast_type)
-#define IS_EXPLICT()
-#define RETURN_NON_CONST_CAST(kind) do { if (left->expr_kind != EXPR_CONST) { insert_cast(left, kind, type); return true; } } while (0)
-#define REQUIRE_EXPLICIT_CAST(_cast_type)\
-  do { if (_cast_type == CAST_TYPE_EXPLICIT) break;\
-  if (_cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;\
-  EXIT_T_MISMATCH(); } while (0)
 
-static inline void insert_cast(Expr *expr, CastKind kind, Type *type)
+#define FLOAT32_LIMIT 340282346638528859811704183484516925440.0000000000000000
+#define FLOAT64_LIMIT 179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0000000000000000
+#define FLOAT16_LIMIT 65504
+
+static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 {
 	assert(expr->resolve_status == RESOLVE_DONE);
 	assert(expr->type);
@@ -22,7 +20,14 @@ static inline void insert_cast(Expr *expr, CastKind kind, Type *type)
 	expr->cast_expr.kind = kind;
 	expr->cast_expr.expr = inner;
 	expr->cast_expr.type_info = NULL;
-	expr->type = type;
+	expr_set_type(expr, type);
+	return true;
+}
+
+static inline bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type)
+{
+	if (expr->expr_kind == EXPR_CONST) return false;
+	return insert_cast(expr, kind, type);
 }
 
 static bool sema_type_mismatch(Context *context, Expr *expr, Type *type, CastType cast_type)
@@ -70,34 +75,23 @@ static bool sema_type_mismatch(Context *context, Expr *expr, Type *type, CastTyp
 	return false;
 }
 
-
-bool erro(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+bool pointer_to_integer(Expr *expr, Type *type)
 {
-	EXIT_T_MISMATCH();
-}
+	if (insert_runtime_cast_unless_const(expr, CAST_PTRXI, type)) return true;
 
-bool ptxi(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-	REQUIRE_EXPLICIT_CAST(cast_type);
-
-	RETURN_NON_CONST_CAST(CAST_PTRXI);
-	assert(left->const_expr.kind == TYPE_POINTER);
-	expr_const_set_int(&left->const_expr, 0, type->type_kind);
-	left->type = type;
-
+	// Must have been a null
+	expr_const_set_int(&expr->const_expr, 0, TYPE_POINTER);
+	expr_set_type(expr, type);
 	return true;
 }
 
-
-bool ptbo(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
+bool pointer_to_bool(Expr *expr, Type *type)
 {
-	RETURN_NON_CONST_CAST(CAST_PTRBOOL);
+	if (insert_runtime_cast_unless_const(expr, CAST_PTRBOOL, type)) return true;
 
-	assert(left->const_expr.kind == TYPE_POINTER);
-	left->const_expr.b = false;
-
-	left->type = type;
-
+	// Must have been a null
+	expr->const_expr.b = false;
+	expr_set_type(expr, type);
 	return true;
 }
 
@@ -121,126 +115,66 @@ static inline bool may_implicitly_cast_ptr_to_ptr(Type *current_type, Type *targ
 	return false;
 }
 
-
-bool stst(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
+bool pointer_to_pointer(Expr* expr, Type *type)
 {
-	TODO
-}
+	if (insert_runtime_cast_unless_const(expr, CAST_PTRPTR, type)) return true;
 
-bool unst(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool stun(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool unun(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool arpt(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool arsa(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool ptpt(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	if (cast_type != CAST_TYPE_EXPLICIT && !may_implicitly_cast_ptr_to_ptr(from_canonical, canonical))
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		return sema_type_mismatch(context, left, type, cast_type);
-	}
-	RETURN_NON_CONST_CAST(CAST_PTRPTR);
-	assert(left->const_expr.kind == TYPE_POINTER);
-	left->type = type;
+	// Must have been a null
+	expr_set_type(expr, type);
 	return true;
 }
 
-bool strpt(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	if (canonical->array.base->type_kind != TYPE_U8 && cast_type != CAST_TYPE_EXPLICIT)
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		return sema_type_mismatch(context, left, type, cast_type);
-	}
-	insert_cast(left, CAST_STRPTR, type);
-	return true;
-}
 
-bool strsa(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
+bool string_literal_to_subarray(Expr* left, Type *type)
 {
-	if (canonical->array.base->type_kind != TYPE_U8) return false;
 	Type *array_type = type_get_array(type_char, left->const_expr.string.len);
 	insert_cast(left, CAST_STRPTR, type_get_ptr(array_type));
 	insert_cast(left, CAST_APTSA, type);
 	return true;
 }
 
-bool stpt(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type)
 {
-	if (canonical->pointer != type_ichar && canonical->pointer != type_char)
-	{
-		return sema_type_mismatch(context, left, type, cast_type);
-	}
-	left->type = canonical;
-	return true;
-}
-
-void const_int_to_fp_cast(Context *context, Expr *left, Type *canonical, Type *type)
-{
-	long double f = bigint_as_float(&left->const_expr.i);
+	long double f = bigint_as_float(&expr->const_expr.i);
 	switch (canonical->type_kind)
 	{
 		case TYPE_F32:
-			left->const_expr.f = (float)f;
+			expr->const_expr.f = (float)f;
 			break;
 		case TYPE_F64:
-			left->const_expr.f = (double)f;
+			expr->const_expr.f = (double)f;
 			break;
 		default:
-			left->const_expr.f = f;
+			expr->const_expr.f = f;
 			break;
 	}
-	left->type = type;
-	left->const_expr.kind = canonical->type_kind;
+	expr_set_type(expr, type);
+	expr->const_expr.kind = canonical->type_kind;
 }
 
+
 /**
- * Bool into a signed or unsigned int. Explicit conversions only.
- * @return true unless this is not an explicit conversion.
+ * Bool into a signed or unsigned int.
  */
-bool boxi(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
+bool bool_to_int(Expr *expr, Type *canonical, Type *type)
 {
-	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-	if (cast_type != CAST_TYPE_EXPLICIT) EXIT_T_MISMATCH();
-	RETURN_NON_CONST_CAST(CAST_BOOLINT);
-	assert(left->const_expr.kind == TYPE_BOOL);
-	expr_const_set_int(&left->const_expr, left->const_expr.b ? 1 : 0, canonical->type_kind);
-	left->type = type;
+	if (insert_runtime_cast_unless_const(expr, CAST_BOOLINT, type)) return true;
+	expr_const_set_int(&expr->const_expr, expr->const_expr.b ? 1 : 0, canonical->type_kind);
+	expr_set_type(expr, type);
 	return true;
 }
 
-/**
- * Bool into a float. Explicit conversions only.
- * @return true unless this is not an explicit conversion.
- */
-bool bofp(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-//	if (cast_type >= CAST_TYPE_IMPLICIT_ASSIGN) EXIT_T_MISMATCH();
-	RETURN_NON_CONST_CAST(CAST_BOOLFP);
 
-	assert(left->const_expr.kind == TYPE_BOOL);
-	expr_const_set_float(&left->const_expr, left->const_expr.b ? 1.0 : 0.0, canonical->type_kind);
-	left->type = type;
+/**
+ * Cast bool to float.
+ */
+bool bool_to_float(Expr *expr, Type *canonical, Type *type)
+{
+	if (insert_runtime_cast_unless_const(expr, CAST_BOOLFP, type)) return true;
+
+	assert(expr->const_expr.kind == TYPE_BOOL);
+	expr_const_set_float(&expr->const_expr, expr->const_expr.b ? 1.0 : 0.0, canonical->type_kind);
+	expr_set_type(expr, type);
 	return true;
 }
 
@@ -248,74 +182,63 @@ bool bofp(Context *context, Expr *left, Type *canonical, Type *type, CastType ca
  * Convert from any into to bool.
  * @return true for any implicit conversion except assign and assign add.
  */
-bool xibo(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
+bool integer_to_bool(Expr *expr, Type *type)
 {
-	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-//	if (cast_type >= CAST_TYPE_IMPLICIT_ASSIGN) EXIT_T_MISMATCH();
-	RETURN_NON_CONST_CAST(CAST_INTBOOL);
+	if (insert_runtime_cast_unless_const(expr, CAST_INTBOOL, type)) return true;
 
-	expr_const_set_bool(&left->const_expr, bigint_cmp_zero(&left->const_expr.i) != CMP_EQ);
-	left->type = type;
+	expr_const_set_bool(&expr->const_expr, bigint_cmp_zero(&expr->const_expr.i) != CMP_EQ);
+	expr_set_type(expr, type);
 	return true;
 }
 
 /**
  * Convert from any float to bool
- * @return true for any implicit conversion except assign and assign add
  */
-bool fpbo(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
+bool float_to_bool(Expr *expr, Type *type)
 {
-//	if (cast_type >= CAST_TYPE_IMPLICIT_ASSIGN) EXIT_T_MISMATCH();
-	RETURN_NON_CONST_CAST(CAST_FPBOOL);
+	if (insert_runtime_cast_unless_const(expr, CAST_FPBOOL, type)) return true;
 
-	expr_const_set_bool(&left->const_expr, left->const_expr.f != 0.0);
-	left->type = type;
+	expr_const_set_bool(&expr->const_expr, expr->const_expr.f != 0.0);
+	expr_set_type(expr, type);
 	return true;
 }
 
 
 /**
  * Convert from any fp to fp
- * @return true for all except implicit assign (but allowing assign add)
  */
-bool fpfp(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+static bool float_to_float(Expr* expr, Type *canonical, Type *type)
 {
-	bool is_narrowing = from->builtin.bytesize < canonical->builtin.bytesize && from->type_kind != TYPE_FXX;
+	if (insert_runtime_cast_unless_const(expr, CAST_FPFP, type)) return true;
 
-//	if (is_narrowing && cast_type == CAST_TYPE_IMPLICIT_ASSIGN) EXIT_T_MISMATCH();
-
-	RETURN_NON_CONST_CAST(CAST_FPFP);
-
-	expr_const_set_float(&left->const_expr, left->const_expr.f, canonical->type_kind);
-	left->type = type;
+	expr_const_set_float(&expr->const_expr, expr->const_expr.f, canonical->type_kind);
+	expr_set_type(expr, type);
 	return true;
 }
 
 /**
  * Convert from any floating point to int
- * @return true only on explicit conversions.
  */
-bool fpxi(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
+bool float_to_integer(Expr *expr, Type *canonical, Type *type)
 {
-	REQUIRE_EXPLICIT_CAST(cast_type);
+	bool is_signed = type_is_unsigned(canonical);
+	if (insert_runtime_cast_unless_const(expr, is_signed ? CAST_FPSI : CAST_FPUI, type)) return true;
 
-	RETURN_NON_CONST_CAST(CAST_FPUI);
-
-	assert(canonical->type_kind >= TYPE_I8 && canonical->type_kind <= TYPE_U64);
-	long double d = left->const_expr.f;
+	assert(canonical->type_kind >= TYPE_I8 && canonical->type_kind < TYPE_IXX);
+	long double d = expr->const_expr.f;
 	BigInt temp;
-	if (canonical->type_kind >= TYPE_U8)
+	if (is_signed)
 	{
-		bigint_init_unsigned(&temp, (uint64_t)d);
-		bigint_truncate(&left->const_expr.i, &temp, canonical->builtin.bitsize, false);
+		bigint_init_signed(&temp, (int64_t)d);
+		bigint_truncate(&expr->const_expr.i, &temp, canonical->builtin.bitsize, true);
 	}
 	else
 	{
-		bigint_init_signed(&temp, (int64_t)d);
-		bigint_truncate(&left->const_expr.i, &temp, canonical->builtin.bitsize, true);
+		bigint_init_unsigned(&temp, (uint64_t)d);
+		bigint_truncate(&expr->const_expr.i, &temp, canonical->builtin.bitsize, false);
 	}
-	left->const_expr.kind = canonical->type_kind;
-	left->type = type;
+	expr->const_expr.kind = canonical->type_kind;
+	expr_set_type(expr, type);
 	return true;
 }
 
@@ -324,420 +247,169 @@ bool fpxi(Context *context, Expr *left, Type *canonical, Type *type, CastType ca
  * Convert from compile time int to any signed or unsigned int
  * @return true unless the conversion was lossy.
  */
-bool ixxxi(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
+static bool int_literal_to_int(Expr *expr, Type *canonical, Type *type)
 {
-	if (left->expr_kind != EXPR_CONST)
+	if (expr->expr_kind != EXPR_CONST)
 	{
-		SEMA_ERROR(left, "This expression could not be resolved to a concrete type. Please add more type annotations.");
-		return false;
+		SEMA_ERROR(expr, "This expression could not be resolved to a concrete type. Please add more type annotations.");
+		UNREACHABLE
 	}
 	bool is_signed = canonical->type_kind < TYPE_U8;
-	int bitsize = canonical->builtin.bitsize;
-	if (!is_signed && bigint_cmp_zero(&left->const_expr.i) == CMP_LT)
-	{
-		SEMA_ERROR(left, "Negative number '%s' cannot be assigned to type '%s'", expr_const_to_error_string(&left->const_expr), canonical->name);
-		return false;
-	}
-	if (cast_type != CAST_TYPE_EXPLICIT && !bigint_fits_in_bits(&left->const_expr.i, bitsize, is_signed))
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		SEMA_ERROR(left, "'%s' does not fit in type '%s'", expr_const_to_error_string(&left->const_expr), canonical->name);
-		return false;
-	}
 	BigInt temp;
-	bigint_truncate(&temp, &left->const_expr.i, canonical->builtin.bitsize, is_signed);
-	left->const_expr.i = temp;
-	left->const_expr.kind = canonical->type_kind;
-	left->type = type;
+	bigint_truncate(&temp, &expr->const_expr.i, canonical->builtin.bitsize, is_signed);
+	expr->const_expr.i = temp;
+	expr->const_expr.kind = canonical->type_kind;
+	expr_set_type(expr, type);
 	return true;
 }
 
 /**
- * Convert from compile time int to any signed or unsigned int
- * @return true unless the conversion was lossy.
+ * Convert from compile time int to any enum
  */
-bool ixxen(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
+bool lit_integer_to_enum(Expr *expr, Type *canonical, Type *type)
 {
 	assert(canonical->type_kind == TYPE_ENUM);
-	canonical = canonical->decl->enums.type_info->type->canonical;
-	return ixxxi(context, left, canonical, type, cast_type);
+	canonical = type_flatten(canonical->decl->enums.type_info->type);
+	return int_literal_to_int(expr, canonical, type);
 }
 
-/**
- * Convert from compile time int to error union
- */
-bool ixxeu(Context *context, Expr *left, Type *type)
+
+static bool int_conversion(Expr *expr, CastKind kind, Type *canonical, Type *type)
 {
-	UNREACHABLE
-}
-
-/**
- * Cast signed int -> signed int
- * @return true if this is a widening, an explicit cast or if it is an implicit assign add
- */
-bool sisi(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	bool is_narrowing = from_canonical->builtin.bytesize > canonical->builtin.bytesize;
-
-	if (is_narrowing && cast_type != CAST_TYPE_EXPLICIT)
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		EXIT_T_MISMATCH();
-	}
-
-	RETURN_NON_CONST_CAST(CAST_SISI);
+	if (insert_runtime_cast_unless_const(expr, kind, type)) return true;
 
 	BigInt temp;
-	bigint_truncate(&temp, &left->const_expr.i, canonical->builtin.bitsize, true);
-	left->const_expr.i = temp;
-	left->const_expr.kind = canonical->type_kind;
-	left->type = type;
-	return true;
-}
-
-/**
- * Cast unsigned int -> unsigned int
- * @return true if this was not a narrowing implicit assign or narrowing implicit assign add
- */
-bool uiui(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	bool is_narrowing = from_canonical->builtin.bytesize > canonical->builtin.bytesize;
-
-	if (is_narrowing && cast_type != CAST_TYPE_EXPLICIT)
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		EXIT_T_MISMATCH();
-	}
-
-	RETURN_NON_CONST_CAST(CAST_UIUI);
-
-	BigInt temp;
-	bigint_truncate(&temp, &left->const_expr.i, canonical->builtin.bitsize, false);
-	left->const_expr.i = temp;
-	left->const_expr.kind = canonical->type_kind;
-	left->type = type;
-	return true;
-}
-
-
-/**
- * Cast unsigned int -> signed int
- * @return true if this is an explicit cast or if it is an implicit assign add or if it is a widening cast.
- */
-bool uisi(Context *context, Expr* left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
-{
-	bool is_widening = from_canonical->builtin.bytesize < canonical->builtin.bytesize;
-
-	if (!is_widening && cast_type != CAST_TYPE_EXPLICIT)
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		EXIT_T_MISMATCH();
-	}
-
-	RETURN_NON_CONST_CAST(CAST_UISI);
-
-	BigInt temp;
-	bigint_truncate(&temp, &left->const_expr.i, canonical->builtin.bitsize, true);
-	left->const_expr.i = temp;
-	left->const_expr.kind = canonical->type_kind;
-	left->type = type;
-	return true;
-}
-
-/*
- * Cast signed int -> unsigned int
- * @return true if this was an implicit add or or explicit cast.
- */
-bool siui(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-	REQUIRE_EXPLICIT_CAST(cast_type);
-
-	RETURN_NON_CONST_CAST(CAST_SIUI);
-
-	BigInt temp;
-	bigint_truncate(&temp, &left->const_expr.i, canonical->builtin.bitsize, false);
-	left->const_expr.i = temp;
-	left->const_expr.kind = canonical->type_kind;
-	left->type = type;
+	bigint_truncate(&temp, &expr->const_expr.i, canonical->builtin.bitsize, kind == CAST_UISI || kind == CAST_SISI);
+	expr->const_expr.i = temp;
+	expr->const_expr.kind = canonical->type_kind;
+	expr_set_type(expr, type);
 	return true;
 }
 
 
 /**
  * Cast a signed or unsigned integer -> floating point
- * @return true always
  */
-bool sifp(Context *context, Expr *left, Type *canonical, Type *type)
+static bool int_to_float(Expr *expr, CastKind kind, Type *canonical, Type *type)
 {
-	RETURN_NON_CONST_CAST(CAST_SIFP);
-	const_int_to_fp_cast(context, left, canonical, type);
+	if (insert_runtime_cast_unless_const(expr, kind, type)) return true;
+	const_int_to_fp_cast(expr, canonical, type);
 	return true;
 }
 
-/**
- * Cast a signed or unsigned integer -> floating point
- * @return true always
- */
-bool uifp(Context *context, Expr *left, Type *canonical, Type *type)
-{
-	RETURN_NON_CONST_CAST(CAST_UIFP);
-	const_int_to_fp_cast(context, left, canonical, type);
-	return true;
-}
 
-bool ixxfp(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
+static bool int_literal_to_float(Expr *expr, Type *canonical, Type *type)
 {
 	assert(type_is_float(canonical));
-	assert(left->expr_kind == EXPR_CONST);
-	const_int_to_fp_cast(context, left, canonical, type);
+	assert(expr->expr_kind == EXPR_CONST);
+	const_int_to_fp_cast(expr, canonical, type);
 	return true;
 }
 
 /**
  * Convert a compile time into to a boolean.
- * @return true always
  */
-bool ixxbo(Context *context, Expr *left, Type *type)
+static bool int_literal_to_bool(Expr *expr, Type *type)
 {
-	assert(left->expr_kind == EXPR_CONST);
-	expr_const_set_bool(&left->const_expr, bigint_cmp_zero(&left->const_expr.i) != CMP_EQ);
-	left->type = type;
+	assert(expr->expr_kind == EXPR_CONST);
+	expr_const_set_bool(&expr->const_expr, bigint_cmp_zero(&expr->const_expr.i) != CMP_EQ);
+	expr_set_type(expr, type);
 	return true;
 }
 
 
 /**
- * Cast comptime, signed or unsigned -> pointer.
- * @return true if the cast succeeds.
+ * Cast any int to a pointer -> pointer.
  */
-bool xipt(Context *context, Expr *left, Type *from, Type *canonical, Type *type, CastType cast_type)
+static bool int_to_pointer(Expr *expr, Type *type)
 {
-	REQUIRE_EXPLICIT_CAST(cast_type);
-	if (left->expr_kind == EXPR_CONST)
+	if (expr->expr_kind == EXPR_CONST)
 	{
-		RETURN_NON_CONST_CAST(CAST_XIPTR);
-		if (bigint_cmp_zero(&left->const_expr.i) == CMP_EQ)
+		if (bigint_cmp_zero(&expr->const_expr.i) == CMP_EQ)
 		{
-			expr_const_set_null(&left->const_expr);
-			left->type = type;
-		}
-	}
-	if (type_size(from) < type_size(type_voidptr))
-	{
-		// Widen.
-		if (!cast(context, left, type_usize, cast_type)) return false;
-	}
-	// If we have a *larger* int type - narrow it.
-	if (!cast(context, left, type_usize, cast_type)) return false;
-	insert_cast(left, CAST_XIPTR, canonical);
-	return true;
-}
-
-bool usus(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	assert(canonical->canonical == canonical);
-	assert(canonical->type_kind == TYPE_POINTER);
-	assert(from->type_kind == TYPE_POINTER);
-
-	if (cast_type != CAST_TYPE_EXPLICIT)
-	{
-		if (type_is_subtype(from->pointer, canonical->pointer))
-		{
-			insert_cast(left, CAST_PTRPTR, canonical);
+			expr_const_set_null(&expr->const_expr);
+			expr_set_type(expr, type);
 			return true;
 		}
-		sema_type_mismatch(context, left, type, cast_type);
-		return false;
 	}
-	insert_cast(left, CAST_PTRPTR, canonical);
-	return true;
+	cast(expr, type_uptr);
+	return insert_cast(expr, CAST_XIPTR, type);
 }
 
-bool xixi(Context *context, Expr *left, Type *from_canonical, Type *canonical, Type *type, CastType cast_type)
+
+static bool int_to_int(Expr *left, Type *from_canonical, Type *canonical, Type *type)
 {
 	assert(from_canonical->canonical == from_canonical);
 	switch (from_canonical->type_kind)
 	{
 		case TYPE_IXX:
-			return ixxxi(context, left, canonical, type, cast_type);
+			return int_literal_to_int(left, canonical, type);
 		case ALL_SIGNED_INTS:
-			if (type_is_unsigned(canonical)) return siui(context, left, canonical, type, cast_type);
-			return sisi(context, left, from_canonical, canonical, type, cast_type);
+			return int_conversion(left, type_is_unsigned(canonical) ? CAST_SIUI : CAST_SISI, canonical, type);
 		case ALL_UNSIGNED_INTS:
-			if (type_is_unsigned(canonical)) return uiui(context, left, from_canonical, canonical, type, cast_type);
-			return uisi(context, left, from_canonical, canonical, type, cast_type);
+			return int_conversion(left, type_is_unsigned(canonical) ? CAST_UIUI : CAST_UISI, canonical, type);
 		default:
 			UNREACHABLE
 	}
 }
 
-bool enxi(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+static bool enum_to_integer(Expr* expr, Type *from, Type *canonical, Type *type)
 {
 	Type *enum_type = from->decl->enums.type_info->type;
-	Type *enum_type_canonical = enum_type->canonical;
+	Type *enum_type_canonical = type_flatten(enum_type);
 	// 1. If the underlying type is the same, this is just setting the type.
 	if (canonical == enum_type_canonical)
 	{
-		left->type = type;
+		expr_set_type(expr, type);
 		return true;
 	}
-	// 2. See if we can convert to the target type.
-	if (cast_type != CAST_TYPE_EXPLICIT && type_find_max_type(enum_type_canonical, canonical) != canonical)
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		SEMA_ERROR(left, "Cannot implicitly convert '%s' with underlying type of '%s' to '%s',"
-		                 " use an explicit cast if this is what you want.", type_to_error_string(from),
-		               type_to_error_string(enum_type_canonical), type_to_error_string(canonical));
-		return false;
-	}
-	// 3. Dispatch to the right cast:
-	insert_cast(left, CAST_ENUMLOW, enum_type_canonical);
-	return xixi(context, left, enum_type_canonical, canonical, type, cast_type);
+	// 2. Dispatch to the right cast:
+	// TODO can be inlined if enums are constants
+	insert_cast(expr, CAST_ENUMLOW, enum_type_canonical);
+	return int_to_int(expr, enum_type_canonical, canonical, type);
 }
 
-bool enfp(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+static bool enum_to_float(Expr* expr, Type *from, Type *canonical, Type *type)
 {
-	REQUIRE_EXPLICIT_CAST(cast_type);
 	Type *enum_type = from->decl->enums.type_info->type;
-	Type *enum_type_canonical = enum_type->canonical;
-	if (type_is_integer_unsigned(enum_type_canonical))
-	{
-		return uifp(context, left, enum_type_canonical, type);
-	}
-	return sifp(context, left, enum_type_canonical, type);
+	Type *enum_type_canonical = type_flatten(enum_type);
+	// TODO can be inlined if enums are constants
+	insert_cast(expr, CAST_ENUMLOW, enum_type_canonical);
+	return int_to_float(expr, type_is_unsigned(enum_type_canonical) ? CAST_UIFP : CAST_SIFP, canonical, type);
 }
 
-bool enbo(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+bool enum_to_bool(Expr* expr, Type *from, Type *type)
 {
-	REQUIRE_EXPLICIT_CAST(cast_type);
 	Type *enum_type = from->decl->enums.type_info->type;
-	Type *enum_type_canonical = enum_type->canonical;
-	return xibo(context, left, enum_type_canonical, type, cast_type);
+	Type *enum_type_canonical = type_flatten(enum_type);
+	// TODO can be inlined if enums are constants
+	insert_cast(expr, CAST_ENUMLOW, enum_type_canonical);
+	return integer_to_bool(expr, type);
 }
 
-bool enpt(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
+bool enum_to_pointer(Expr* expr, Type *from, Type *type)
 {
-	REQUIRE_EXPLICIT_CAST(cast_type);
 	Type *enum_type = from->decl->enums.type_info->type;
-	Type *enum_type_canonical = enum_type->canonical;
-	return xipt(context, left, enum_type_canonical, canonical, type, cast_type);
+	Type *enum_type_canonical = type_flatten(enum_type);
+	// TODO can be inlined if enums are constants
+	insert_cast(expr, CAST_ENUMLOW, enum_type_canonical);
+	return int_to_pointer(expr, type);
 }
 
-bool vava(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool sapt(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	bool is_subtype = type_is_subtype(canonical->pointer, from->array.base);
-	if (!is_subtype)
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		return sema_type_mismatch(context, left, type, cast_type);
-	}
-	insert_cast(left, CAST_SAPTR, canonical);
-	return true;
-}
-
-bool vasa(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-
-
-
-bool xieu(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool xierr(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-
-/**
- * Convert error union to error. This is always a required cast.
- * @return false if an error was reported.
- */
-bool eubool(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-	insert_cast(left, CAST_EUBOOL, canonical);
-	return true;
-}
-
-
-bool euer(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-	REQUIRE_EXPLICIT_CAST(cast_type);
-	insert_cast(left, CAST_EUER, canonical);
-	return true;
-}
-
-
-bool ereu(Context *context, Expr *left, Type *canonical, Type *type, CastType cast_type)
-{
-	insert_cast(left, CAST_EREU, canonical);
-	return true;
-}
-bool ptva(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool ptsa(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	if (from->pointer->type_kind != TYPE_ARRAY)
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		sema_type_mismatch(context, left, type, CAST_TYPE_EXPLICIT);
-		return false;
-	}
-	if (!type_is_subtype(canonical->array.base, from->pointer->array.base))
-	{
-		if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-		sema_type_mismatch(context, left, type, CAST_TYPE_EXPLICIT);
-		return false;
-	}
-	insert_cast(left, CAST_APTSA, canonical);
-	return true;
-}
-
-bool usbo(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-bool vapt(Context *context, Expr* left, Type *from, Type *canonical, Type *type, CastType cast_type)
-{
-	TODO
-}
-
-
-bool cast_implicitly_to_runtime(Context *context, Expr *expr)
+bool cast_implicitly_to_runtime(Expr *expr)
 {
 	Type *canonical = expr->type->canonical;
-	int success;
 	switch (canonical->type_kind)
 	{
 		case TYPE_IXX:
-			return cast(context, expr, type_long, CAST_TYPE_IMPLICIT);
+			return cast(expr, type_long);
 		case TYPE_FXX:
-			return cast(context, expr, type_double, CAST_TYPE_IMPLICIT);
+			return cast(expr, type_double);
 		default:
 			return true;
 	}
-	assert(success && "This should always work");
 }
 
-bool cast_implicit(Context *context, Expr *expr, Type *to_type)
-{
-	if (!to_type) return true;
-	return cast(context, expr, to_type, CAST_TYPE_IMPLICIT);
-}
 
 CastKind cast_to_bool_kind(Type *type)
 {
@@ -747,25 +419,14 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_DISTINCT:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
-		case TYPE_POISONED:
-		case TYPE_VOID:
-		case TYPE_ERR_UNION:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_CTSTR:
-		case TYPE_ERRTYPE:
-		case TYPE_ENUM:
-		case TYPE_FUNC:
-		case TYPE_ARRAY:
-		case TYPE_VARARRAY:
-		case TYPE_SUBARRAY:
-		case TYPE_TYPEID:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
-			// Improve consider vararray / subarray conversion to boolean.
-			return CAST_ERROR;
 		case TYPE_BOOL:
-			UNREACHABLE
+			return CAST_BOOLBOOL;
+		case TYPE_ERR_UNION:
+			return CAST_EUBOOL;
+		case TYPE_VARARRAY:
+			return CAST_VARBOOL;
+		case TYPE_SUBARRAY:
+			return CAST_SABOOL;
 		case ALL_INTS:
 			return CAST_INTBOOL;
 		case TYPE_COMPLEX:
@@ -774,143 +435,451 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
 			return CAST_PTRBOOL;
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_STRLIT:
+		case TYPE_ERRTYPE:
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+		case TYPE_ARRAY:
+		case TYPE_TYPEID:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
 		case TYPE_VECTOR:
 			return CAST_ERROR;
 	}
 	UNREACHABLE
 }
 
-
-bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type)
+bool cast_to_bool_implicit(Expr *expr)
 {
-	Type *from_type = expr->type->canonical;
-	Type *canonical = to_type->canonical;
-	if (from_type == canonical) return true;
-	if (cast_type == CAST_TYPE_EXPLICIT)
+	assert(expr->resolve_status == RESOLVE_DONE);
+	if (cast_to_bool_kind(expr->type) == CAST_ERROR) return false;
+	return cast(expr, type_bool);
+}
+
+bool cast_may_explicit(Type *from_type, Type *to_type)
+{
+	// 1. We flatten the distinct types, since they should be freely convertible
+	Type *from = type_flatten_distinct(from_type);
+	Type *to = type_flatten_distinct(to_type);
+
+	// 2. Same underlying type, always ok
+	if (from == to) return true;
+
+	TypeKind to_kind = to->type_kind;
+	switch (from->type_kind)
 	{
-		canonical = type_flatten(canonical);
-		from_type = type_flatten(from_type);
-		if (from_type == canonical)
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+		case TYPE_DISTINCT:
+		case TYPE_FUNC:
+		case TYPE_TYPEDEF:
+			UNREACHABLE
+		case TYPE_TYPEID:
+			// May convert to anything pointer sized or larger, no enums
+			return type_is_pointer_sized_or_more(to);
+		case TYPE_BOOL:
+			// May convert to any integer / distinct integer / float, no enums
+			return type_is_integer(to) || type_is_float(to);
+		case TYPE_ERR_UNION:
+			// May convert to a bool, or an error type.
+			return to == type_bool || to_kind == TYPE_ERRTYPE;
+		case TYPE_IXX:
+		case ALL_SIGNED_INTS:
+		case ALL_UNSIGNED_INTS:
+		case TYPE_ENUM:
+			// Allow conversion int/enum -> float/bool/enum int/enum -> pointer is only allowed if the int/enum is pointer sized.
+			if (type_is_integer(to) || type_is_float(to) || to == type_bool || to_kind == TYPE_ENUM) return true;
+			// TODO think about this, maybe we should require a bitcast?
+			if (to_kind == TYPE_POINTER && (from_type == type_compint || type_is_pointer_sized(from_type))) return true;
+			return false;
+		case ALL_FLOATS:
+			// Allow conversion float -> float/int/bool/enum
+			return type_is_any_integer(to) || type_is_float(to) || to == type_bool || to_kind == TYPE_ENUM;
+		case TYPE_POINTER:
+			// Allow conversion ptr -> int (min pointer size)/bool/pointer/vararray
+			if ((type_is_integer(to) && type_size(to) >= type_size(type_iptr)) || to == type_bool || to_kind == TYPE_POINTER || to_kind == TYPE_VARARRAY) return true;
+			// Special subarray conversion: someType[N]* -> someType[]
+			if (to_kind == TYPE_SUBARRAY && from->pointer->type_kind == TYPE_ARRAY && from->pointer->array.base == to->array.base) return true;
+			return false;
+		case TYPE_ERRTYPE:
+			// Allow only MyError.A -> error
+			return to->type_kind == TYPE_ERR_UNION;
+		case TYPE_ARRAY:
+			if (to_kind == TYPE_VECTOR)
+			{
+				return to->array.len == from->vector.len && to->array.base == from->array.base;
+			}
+			FALLTHROUGH;
+		case TYPE_STRUCT:
+			if (type_is_substruct(from_type))
+			{
+				if (cast_may_explicit(from_type->decl->strukt.members[0]->type, to_type)) return true;
+			}
+			FALLTHROUGH;
+		case TYPE_UNION:
+			return type_is_structurally_equivalent(from, to);
+		case TYPE_STRLIT:
+			if (to_kind == TYPE_POINTER) return true;
+			if (to_kind == TYPE_SUBARRAY && (to->array.base == type_char || to->array.base == type_ichar)) return true;
+			return false;
+		case TYPE_VARARRAY:
+			if (to_kind == TYPE_POINTER) return true;
+			if (to_kind == TYPE_SUBARRAY || to_kind == TYPE_VARARRAY)
+			{
+				return type_is_structurally_equivalent(from->array.base, from->pointer->array.base);
+			}
+			return false;
+		case TYPE_SUBARRAY:
+			return to_kind == TYPE_POINTER;
+		case TYPE_VECTOR:
+			return type_is_structurally_equivalent(type_get_array(from->vector.base, from->vector.len), to);
+		case TYPE_COMPLEX:
+			return type_is_structurally_equivalent(type_get_array(from->complex, 2), to);
+	}
+	UNREACHABLE
+}
+
+bool cast_may_implicit(Type *from_type, Type *to_type)
+{
+	Type *from = from_type->canonical;
+	Type *to = to_type->canonical;
+
+	// 1. Same canonical type - we're fine.
+	if (from == to) return true;
+
+	// 2. Handle floats
+	if (type_is_float(to))
+	{
+		// 2a. Any integer may convert to a float.
+		if (type_is_any_integer(from)) return true;
+
+		// 2b. Any narrower float or FXX may convert to a float.
+		if (type_is_float(from))
 		{
-			expr->type = to_type;
-			return true;
+			// This works because the type_size of FXX = 0
+			unsigned a = type_size(to);
+			unsigned b = type_size(from);
+			return type_size(to) >= type_size(from);
 		}
+		return false;
+	}
+
+	// 3. Handle ints
+	if (type_is_integer(to))
+	{
+		// TODO, consider size here, and maybe the type should b removed.
+		if (from->type_kind == TYPE_IXX) return true;
+
+		// For an enum, lower to the underlying enum type.
+		if (from->type_kind == TYPE_ENUM)
+		{
+			from = from->decl->enums.type_info->type->canonical;
+		}
+
+		// 3a. Any narrower int may convert to a wider or same int, regardless of signedness.
+		if (type_is_integer(from))
+		{
+			return type_size(to) >= type_size(from);
+		}
+		return false;
+	}
+
+	// 4. Handle pointers
+	if (type_is_pointer(to))
+	{
+		// 4a. Assigning a subarray or vararray to a pointer of the same base type is fine
+		if (from->type_kind == TYPE_SUBARRAY || from->type_kind == TYPE_VARARRAY)
+		{
+			// void* conversion always work.
+			if (to == type_voidptr) return true;
+
+			// Use subtype matching
+			return type_is_subtype(to->pointer->canonical, from->array.base->canonical);
+		}
+
+		// 4b. Assigning a pointer
+		if (from->type_kind == TYPE_POINTER)
+		{
+			// For void* on either side, no checks.
+			if (to == type_voidptr || from == type_voidptr) return true;
+
+			// Special handling of int* = int[4]*
+			if (from->pointer->type_kind == TYPE_ARRAY)
+			{
+				if (type_is_subtype(to->pointer, from->pointer->array.base)) return true;
+			}
+
+			// Use subtype matching
+			return type_is_subtype(to->pointer, from->pointer);
+		}
+
+		// 4c. Assigning a compile time string to char* is fine. TODO fix correct later
+		if (from->type_kind == TYPE_STRLIT && to->pointer == type_char) return true;
+
+		return false;
+	}
+
+	// 5. Handle sub arrays
+	if (to->type_kind == TYPE_SUBARRAY)
+	{
+		// 5a. Assign sized array pointer int[] = int[4]*
+		if (type_is_pointer(from))
+		{
+			return from->pointer->type_kind == TYPE_ARRAY && from->pointer->array.base == to->array.base;
+		}
+
+		// 5b. Assign var array int[] = int[*]
+		if (from->type_kind == TYPE_VARARRAY)
+		{
+			return from->array.base == to->array.base;
+		}
+
+		return false;
+	}
+
+	// 7. In the case of distinct types, we allow implicit conversion from literal types.
+	if (to->type_kind == TYPE_DISTINCT)
+	{
+		if (from->type_kind == TYPE_STRLIT || from->type_kind == TYPE_FXX || from->type_kind == TYPE_IXX)
+		{
+			return cast_may_implicit(from, type_flatten(to));
+		}
+	}
+
+
+	if (to->type_kind == TYPE_BOOL)
+	{
+		return cast_to_bool_kind(from) != CAST_ERROR;
+	}
+
+	// TODO struct embedding
+
+	return false;
+}
+
+bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
+{
+	Type *to_type_flat = type_flatten(to_type);
+	long double limit;
+	switch (to_type_flat->type_kind)
+	{
+		case TYPE_F16:
+			limit = FLOAT16_LIMIT;
+			break;
+		case TYPE_F32:
+			limit = FLOAT32_LIMIT;
+			break;
+		case TYPE_F64:
+			limit = FLOAT64_LIMIT;
+			break;
+		case TYPE_F128:
+			// Assume this to be true
+			return true;
+		default:
+			UNREACHABLE
+	}
+	if (expr->const_expr.f < -limit && expr->const_expr.f > limit)
+	{
+		SEMA_ERROR(expr, "The value '%Lg' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.f, type_quoted_error_string(to_type));
+		return false;
+	}
+	return true;
+}
+
+bool may_convert_int_const_implicit(Expr *expr, Type *to_type)
+{
+	Type *to_type_flat = type_flatten(to_type);
+	if (expr_const_will_overflow(&expr->const_expr, to_type_flat->type_kind))
+	{
+		SEMA_ERROR(expr, "The value '%s' is out of range for %s, it can be truncated with an explicit cast.", bigint_to_error_string(&expr->const_expr.i, 10), type_quoted_error_string(to_type));
+		return false;
+	}
+	return true;
+}
+
+bool may_convert_const_implicit(Expr *expr, Type *to_type)
+{
+	switch (expr->type->canonical->type_kind)
+	{
+		case TYPE_FXX:
+			return may_convert_float_const_implicit(expr, to_type);
+		case TYPE_IXX:
+			return may_convert_int_const_implicit(expr, to_type);
+		default:
+			UNREACHABLE
+
+	}
+}
+bool cast_implicit(Expr *expr, Type *to_type)
+{
+	assert(expr->original_type);
+	if (expr->type == to_type) return true;
+	if (!cast_may_implicit(expr->original_type, to_type) && !cast_may_implicit(expr->type->canonical, to_type))
+	{
+		SEMA_ERROR(expr, "Cannot implicitly cast %s to %s.", type_quoted_error_string(expr->original_type), type_quoted_error_string(to_type));
+		return false;
+	}
+	// Additional checks for compile time values.
+	if (expr->expr_kind == EXPR_CONST)
+	{
+		if (expr->type->type_kind == TYPE_FXX)
+		{
+			if (!may_convert_float_const_implicit(expr, to_type)) return false;
+		}
+		else if (expr->type->type_kind == TYPE_IXX)
+		{
+			if (!may_convert_int_const_implicit(expr, to_type)) return false;
+		}
+	}
+	Type *original_type = expr->original_type ? expr->original_type : expr->type;
+	cast(expr, to_type);
+	expr->original_type = original_type;
+	return true;
+}
+
+bool cast_implicit_bit_width(Expr *expr, Type *to_type)
+{
+	Type *to_canonical = to_type->canonical;
+	Type *from_canonical = expr->type->canonical;
+	if (type_is_integer(to_canonical) && type_is_integer(from_canonical))
+	{
+		if (type_is_unsigned(to_canonical) != type_is_unsigned(from_canonical))
+		{
+			if (type_is_unsigned(from_canonical))
+			{
+				to_type = type_int_unsigned_by_bitsize(type_size(to_canonical) * 8);
+			}
+			else
+			{
+				to_type = type_int_signed_by_bitsize(type_size(to_canonical) * 8);
+			}
+		}
+	}
+	return cast_implicit(expr, to_type);
+}
+
+bool cast(Expr *expr, Type *to_type)
+{
+	Type *from_type = type_flatten(expr->type->canonical);
+	Type *canonical = type_lowering(to_type);
+	if (from_type == canonical)
+	{
+		expr_set_type(expr, to_type);
+		return true;
 	}
 	switch (from_type->type_kind)
 	{
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_POISONED:
-			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_DISTINCT:
-			break;
+		case TYPE_FUNC:
+		case TYPE_TYPEDEF:
+			UNREACHABLE
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.
-			if (type_is_integer(canonical)) return boxi(context, expr, canonical, to_type, cast_type);
-			if (type_is_float(canonical)) return bofp(context, expr, canonical, to_type, cast_type);
+			if (type_is_integer(canonical)) return bool_to_int(expr, canonical, to_type);
+			if (type_is_float(canonical)) return bool_to_float(expr, canonical, to_type);
 			break;
 		case TYPE_ERR_UNION:
-			if (to_type->type_kind == TYPE_BOOL) return eubool(context, expr, canonical, to_type, cast_type);
-			if (to_type->type_kind == TYPE_ERRTYPE) return euer(context, expr, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_BOOL) return insert_cast(expr, CAST_EUBOOL, to_type);
+			if (canonical->type_kind == TYPE_ERRTYPE) return insert_cast(expr, CAST_EUER, to_type);
 			break;
 		case TYPE_IXX:
-			canonical = type_flatten(canonical);
 			// Compile time integers may convert into ints, floats, bools
 			if (expr->expr_kind != EXPR_CONST && !expr->reeval)
 			{
 				expr->resolve_status = RESOLVE_NOT_DONE;
 				expr->reeval = true;
-				return sema_analyse_expr(context, to_type, expr);
+				TODO
+				// return sema_analyse_expr(context, to_type, expr);
 			}
-			if (type_is_integer(canonical)) return ixxxi(context, expr, canonical, to_type, cast_type);
-			if (type_is_float(canonical)) return ixxfp(context, expr, canonical, to_type, cast_type);
-			if (canonical == type_bool) return ixxbo(context, expr, to_type);
-			if (canonical->type_kind == TYPE_POINTER) return xipt(context, expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_ENUM) return ixxen(context, expr, canonical, to_type, cast_type);
+			if (type_is_integer(canonical)) return int_literal_to_int(expr, canonical, to_type);
+			if (type_is_float(canonical)) return int_literal_to_float(expr, canonical, to_type);
+			if (canonical == type_bool) return int_literal_to_bool(expr, to_type);
+			if (canonical->type_kind == TYPE_POINTER) return int_to_pointer(expr, to_type);
+			if (canonical->type_kind == TYPE_ENUM) return lit_integer_to_enum(expr, canonical, to_type);
 			break;
 		case ALL_SIGNED_INTS:
-			if (type_is_integer_unsigned(canonical)) return siui(context, expr, canonical, to_type, cast_type);
-			if (type_is_integer_signed(canonical)) return sisi(context, expr, from_type, canonical, to_type, cast_type);
-			if (type_is_float(canonical)) return sifp(context, expr, canonical, to_type);
-			if (canonical == type_bool) return xibo(context, expr, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_POINTER) return xipt(context, expr, from_type, canonical, to_type, cast_type);
+			if (type_is_integer_unsigned(canonical)) return int_conversion(expr, CAST_SIUI, canonical, to_type);
+			if (type_is_integer_signed(canonical)) return int_conversion(expr, CAST_SISI, canonical, to_type);
+			if (type_is_float(canonical)) return int_to_float(expr, CAST_SIFP, canonical, to_type);
+			if (canonical == type_bool) return integer_to_bool(expr, to_type);
+			if (canonical->type_kind == TYPE_POINTER) return int_to_pointer(expr, to_type);
+			if (canonical->type_kind == TYPE_ENUM) return lit_integer_to_enum(expr, canonical, to_type);
 			break;
 		case ALL_UNSIGNED_INTS:
-			if (type_is_integer_unsigned(canonical)) return uiui(context, expr, from_type, canonical, to_type, cast_type);
-			if (type_is_integer_signed(canonical)) return uisi(context, expr, from_type, canonical, to_type, cast_type);
-			if (type_is_float(canonical)) return uifp(context, expr, canonical, to_type);
-			if (canonical == type_bool) return xibo(context, expr, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_POINTER) return xipt(context, expr, from_type, canonical, to_type, cast_type);
+			if (type_is_integer_unsigned(canonical)) return int_conversion(expr, CAST_UIUI, canonical, to_type);
+			if (type_is_integer_signed(canonical)) return int_conversion(expr, CAST_UISI, canonical, to_type);
+			if (type_is_float(canonical)) return int_to_float(expr, CAST_UIFP, canonical, to_type);
+			if (canonical == type_bool) return integer_to_bool(expr, to_type);
+			if (canonical->type_kind == TYPE_POINTER) return int_to_pointer(expr, to_type);
 			break;
 		case ALL_FLOATS:
-			if (from_type->type_kind == TYPE_FXX)
-			{
-				canonical = type_flatten(canonical);
-			}
 			// Compile time integers may convert into ints, floats, bools
 			if (from_type->type_kind == TYPE_FXX && expr->expr_kind != EXPR_CONST && !expr->reeval)
 			{
 				expr->resolve_status = RESOLVE_NOT_DONE;
 				expr->reeval = true;
-				return sema_analyse_expr(context, to_type, expr);
+				TODO
+//				return sema_analyse_expr(context, to_type, expr);
 			}
-			if (type_is_integer(canonical)) return fpxi(context, expr, canonical, to_type, cast_type);
-			if (canonical == type_bool) return fpbo(context, expr, canonical, to_type, cast_type);
-			if (type_is_float(canonical)) return fpfp(context, expr, from_type, canonical, to_type, cast_type);
+			if (type_is_integer(canonical)) return float_to_integer(expr, canonical, to_type);
+			if (canonical == type_bool) return float_to_bool(expr, to_type);
+			if (type_is_float(canonical)) return float_to_float(expr, canonical, to_type);
 			break;
 		case TYPE_POINTER:
-			if (type_is_integer(canonical)) return ptxi(context, expr, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_BOOL) return ptbo(context, expr, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_POINTER) return ptpt(context, expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_VARARRAY) return ptva(context, expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_SUBARRAY) return ptsa(context, expr, from_type, canonical, to_type, cast_type);
+			if (type_is_integer(canonical)) return pointer_to_integer(expr, to_type);
+			if (canonical->type_kind == TYPE_BOOL) return pointer_to_bool(expr, to_type);
+			if (canonical->type_kind == TYPE_POINTER) return pointer_to_pointer(expr, to_type);
+			if (canonical->type_kind == TYPE_VARARRAY) return insert_cast(expr, CAST_PTRVAR, to_type);
+			if (canonical->type_kind == TYPE_SUBARRAY) return insert_cast(expr, CAST_APTSA, to_type);
 			break;
 		case TYPE_ENUM:
-			if (type_is_integer(canonical)) return enxi(context, expr, from_type, canonical, to_type, cast_type);
-			if (type_is_float(canonical)) return enfp(context, expr, from_type, canonical, to_type, cast_type);
-			if (canonical == type_bool) return enbo(context, expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_POINTER) return enpt(context, expr, from_type, canonical, to_type, cast_type);
+			if (type_is_integer(canonical)) return enum_to_integer(expr, from_type, canonical, to_type);
+			if (type_is_float(canonical)) return enum_to_float(expr, from_type, canonical, to_type);
+			if (canonical == type_bool) return enum_to_bool(expr, from_type, to_type);
+			if (canonical->type_kind == TYPE_POINTER) return enum_to_pointer(expr, from_type, to_type);
 			break;
 		case TYPE_ERRTYPE:
-			if (canonical->type_kind == TYPE_ERR_UNION) return ereu(context, expr, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_ERR_UNION) return insert_cast(expr, CAST_EREU, to_type);
 			break;
-		case TYPE_FUNC:
-			SEMA_ERROR(expr, "The function call is missing (...), if you want to take the address of a function it must be prefixed with '&'.");
-			return false;
 		case TYPE_STRUCT:
-			if (canonical->type_kind == TYPE_STRUCT) return stst(context, expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_UNION) return stun(context, expr, from_type, canonical, to_type, cast_type);
-			break;
 		case TYPE_UNION:
-			if (canonical->type_kind == TYPE_STRUCT) return unst(context, expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_UNION) return unun(context, expr, from_type, canonical, to_type, cast_type);
-			break;
-		case TYPE_TYPEDEF:
-			UNREACHABLE
-		case TYPE_CTSTR:
-			canonical = type_flatten(canonical);
-			if (canonical->type_kind == TYPE_POINTER) return strpt(context, expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_SUBARRAY) return strsa(context, expr, from_type, canonical, to_type, cast_type);
-			break;
 		case TYPE_ARRAY:
-			// There is no valid cast from array to anything else.
+			if (canonical->type_kind == TYPE_ARRAY || canonical->type_kind == TYPE_STRUCT || canonical->type_kind == TYPE_UNION)
+			{
+				return insert_cast(expr, CAST_STST, to_type);
+			}
+			break;
+			UNREACHABLE
+		case TYPE_STRLIT:
+			canonical = type_flatten(canonical);
+			if (canonical->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_STRPTR, to_type);
+			if (canonical->type_kind == TYPE_SUBARRAY) return string_literal_to_subarray(expr, to_type);
 			break;
 		case TYPE_VARARRAY:
-			if (canonical->type_kind == TYPE_SUBARRAY) return vasa(context, expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_VARARRAY) return vava(context, expr, from_type, canonical, to_type, cast_type);
-			if (canonical->type_kind == TYPE_POINTER) return vapt(context, expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_SUBARRAY) return insert_cast(expr, CAST_VARSA, to_type);
+			if (canonical->type_kind == TYPE_VARARRAY) return insert_cast(expr, CAST_VARVAR, to_type);
+			if (canonical->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_VARPTR, to_type);
 			break;
 		case TYPE_SUBARRAY:
-			if (canonical->type_kind == TYPE_POINTER) return sapt(context, expr, from_type, canonical, to_type, cast_type);
+			if (canonical->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_SAPTR, canonical);
 			break;
 		case TYPE_VECTOR:
 			TODO
 		case TYPE_COMPLEX:
 			TODO
 	}
-	if (cast_type == CAST_TYPE_OPTIONAL_IMPLICIT) return true;
-	return sema_type_mismatch(context, expr, canonical, cast_type);
+	UNREACHABLE
 }

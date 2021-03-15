@@ -57,7 +57,7 @@ public func uint fnv32(char[] data)
     uint h = 0x811c9dc5;
     foreach (char x : data)
     {
-        h = (h *% 0x01000193) ^ x;
+        h = (h * 0x01000193) ^ x;
     }
     return h;
 }
@@ -67,7 +67,7 @@ public func ulong fnv64(char[] data)
     ulong h = 0xcbf29ce484222325;
     foreach (char x : data)
     {
-        h = (h *% 0x100000001b3) ^ x;
+        h = (h * 0x100000001b3) ^ x;
     }
     return h;
 }
@@ -77,7 +77,7 @@ public func uint fnv32a(char[] data)
     uint h = 0x811c9dc5;
     foreach (char x : data)
     {
-        h = (h ^ x) *% 0x01000193;
+        h = (h ^ x) * 0x01000193;
     }
     return h;
 }
@@ -87,7 +87,7 @@ public func ulong fnv64a(char[] data)
     ulong h = 0xcbf29ce484222325;
     foreach (char x : data)
     {
-        h = (h ^ x) *% 0x100000001b3;
+        h = (h ^ x) * 0x100000001b3;
     }
     return h;
 }

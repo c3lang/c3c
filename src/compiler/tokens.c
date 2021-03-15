@@ -96,14 +96,10 @@ const char *token_type_to_string(TokenType type)
 			return "{|";
 		case TOKEN_MINUS_ASSIGN:
 			return "-=";
-		case TOKEN_MINUS_MOD:
-			return "-%";
 		case TOKEN_MINUSMINUS:
 			return "--";
 		case TOKEN_MULT_ASSIGN:
 			return "*=";
-		case TOKEN_MULT_MOD:
-			return "*%";
 		case TOKEN_MOD_ASSIGN:
 			return "%=";
 		case TOKEN_NOT_EQUAL:
@@ -112,8 +108,6 @@ const char *token_type_to_string(TokenType type)
 			return "||";
 		case TOKEN_PLUS_ASSIGN:
 			return "+=";
-		case TOKEN_PLUS_MOD:
-			return "+%";
 		case TOKEN_PLUSPLUS:
 			return "++";
 		case TOKEN_RBRAPIPE:
@@ -130,16 +124,10 @@ const char *token_type_to_string(TokenType type)
 		// Three character tokens
 		case TOKEN_ELLIPSIS:
 			return "...";
-		case TOKEN_MULT_MOD_ASSIGN:
-			return "*%=";
-		case TOKEN_PLUS_MOD_ASSIGN:
-			return "+%=";
 		case TOKEN_SHL_ASSIGN:
 			return "<<=";
 		case TOKEN_SHR_ASSIGN:
 			return ">>=";
-		case TOKEN_MINUS_MOD_ASSIGN:
-			return "-%=";
 
 		// Identifiers
 		case TOKEN_IDENT:
@@ -304,26 +292,16 @@ const char *token_type_to_string(TokenType type)
 			return "isize";
 		case TOKEN_USIZE:
 			return "usize";
+		case TOKEN_IPTR:
+			return "iptr";
+		case TOKEN_UPTR:
+			return "uptr";
+		case TOKEN_IPTRDIFF:
+			return "iptrdiff";
+		case TOKEN_UPTRDIFF:
+			return "uptrdiff";
 		case TOKEN_HALF:
 			return "half";
-
-		case TOKEN_C_SHORT:
-			return "c_short";
-		case TOKEN_C_INT:
-			return "c_int";
-		case TOKEN_C_LONG:
-			return "c_long";
-		case TOKEN_C_LONGLONG:
-			return "c_longlong";
-		case TOKEN_C_USHORT:
-			return "c_ushort";
-		case TOKEN_C_UINT:
-			return "c_uint";
-		case TOKEN_C_ULONG:
-			return "c_ulong";
-		case TOKEN_C_ULONGLONG:
-			return "c_ulonglong";
-
 
 		case TOKEN_DOCS_EOL:
 			return "EOL";
@@ -380,10 +358,10 @@ bool token_is_symbol(TokenType type)
 
 bool token_is_type(TokenType type)
 {
-	return type >= TOKEN_VOID && type <= TOKEN_C_ULONGLONG;
+	return type >= TOKEN_VOID && type <= TOKEN_TYPEID;
 }
 
 bool token_is_any_type(TokenType type)
 {
-	return (type >= TOKEN_VOID && type <= TOKEN_C_ULONGLONG) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT;
+	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT;
 }
