@@ -14,6 +14,6 @@ func void test1()
     const int X = 120;
     test2(X);           // #error: Cannot implicitly cast 'int' to 'ichar'.
 
-    test2(100 + 100);   // #error: Cannot fit '200' into type 'ichar'.
+    test2(100 + 100);   // #error: '200' is out of range for 'ichar'
 }
 

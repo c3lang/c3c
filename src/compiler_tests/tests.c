@@ -18,7 +18,7 @@ static void test_lexer(void)
 	printf("Begin lexer testing.\n");
 	printf("-- Check number of keywords...\n");
 	int tokens_found = 0;
-	const int EXPECTED_TOKENS = TOKEN_CT_SWITCH - TOKEN_ALIAS + 1 + TOKEN_C_ULONGLONG - TOKEN_VOID + 1;
+	const int EXPECTED_TOKENS = TOKEN_CT_SWITCH - TOKEN_ALIAS + 1 + TOKEN_TYPEID - TOKEN_VOID + 1;
 	const char* tokens[TOKEN_EOF];
 	int len[TOKEN_EOF];
 	Lexer lexer;

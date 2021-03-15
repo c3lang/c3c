@@ -7,7 +7,7 @@
 static Type t_u0, t_str, t_u1, t_i8, t_i16, t_i32, t_i64, t_i128, t_ixx;
 static Type t_u8, t_u16, t_u32, t_u64, t_u128;
 static Type t_f16, t_f32, t_f64, t_f128, t_fxx;
-static Type t_usz, t_isz;
+static Type t_usz, t_isz, t_uptr, t_iptr, t_uptrdiff, t_iptrdiff;
 static Type t_cus, t_cui, t_cul, t_cull;
 static Type t_cs, t_ci, t_cl, t_cll;
 static Type t_voidstar, t_typeid, t_error, t_typeinfo;
@@ -27,12 +27,16 @@ Type *type_short = &t_i16;
 Type *type_int = &t_i32;
 Type *type_long = &t_i64;
 Type *type_i128 = &t_i128;
+Type *type_iptr = &t_iptr;
+Type *type_iptrdiff = &t_iptrdiff;
 Type *type_isize = &t_isz;
 Type *type_char = &t_u8;
 Type *type_ushort = &t_u16;
 Type *type_uint = &t_u32;
 Type *type_ulong = &t_u64;
 Type *type_u128 = &t_u128;
+Type *type_uptr = &t_uptr;
+Type *type_uptrdiff = &t_uptrdiff;
 Type *type_usize = &t_usz;
 Type *type_compint = &t_ixx;
 Type *type_compfloat = &t_fxx;
@@ -83,6 +87,17 @@ Type *type_int_unsigned_by_bitsize(unsigned bytesize)
 	}
 }
 
+const char *type_quoted_error_string(Type *type)
+{
+	char *buffer = NULL;
+	if (type->canonical != type)
+	{
+		asprintf(&buffer, "'%s' (%s)", type_to_error_string(type), type_to_error_string(type->canonical));
+		return buffer;
+	}
+	asprintf(&buffer, "'%s'", type_to_error_string(type));
+	return buffer;
+}
 const char *type_to_error_string(Type *type)
 {
 	char *buffer = NULL;
@@ -129,7 +144,7 @@ const char *type_to_error_string(Type *type)
 			}
 			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 			return "compile time string";
 		case TYPE_ARRAY:
 			asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
@@ -208,7 +223,7 @@ ByteSize type_size(Type *type)
 		case ALL_FLOATS:
 		case TYPE_ERR_UNION:
 			return type->builtin.bytesize;
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
@@ -338,7 +353,7 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_POINTER:
 		case TYPE_ENUM:
 		case TYPE_FUNC:
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 		case TYPE_VECTOR:
 			return false;
 		case TYPE_ERRTYPE:
@@ -484,7 +499,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_MEMBER:
 		case TYPE_TYPEID:
 		case TYPE_FUNC:
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
 			return false;
@@ -644,7 +659,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 			return t_usz.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
 			return type_abi_alignment(type->array.base);
@@ -788,6 +803,98 @@ Type *type_get_vararray(Type *arr_type)
 	return type_generate_subarray(arr_type, false);
 }
 
+static inline bool array_structurally_equivalent_to_struct(Type *array, Type *type)
+{
+	assert(array->type_kind == TYPE_ARRAY);
+
+	ByteSize len = array->array.len;
+	if (!len) return type_size(type) == 0;
+
+	Type *base = array->array.base;
+
+	if (len == 1 && type_is_structurally_equivalent(base, type)) return true;
+
+	assert(type->type_kind != TYPE_UNION && "Does not work on unions");
+
+	if (!type_is_structlike(type)) return false;
+
+	Decl **members = type->decl->strukt.members;
+
+	// For structs / errors, all members must match.
+	ArrayIndex  offset = 0;
+	AlignSize align_size = type_abi_alignment(array);
+	Type *array_base = array->array.base;
+	VECEACH(members, i)
+	{
+		if (!type_is_structurally_equivalent(array_base, members[i]->type)) return false;
+		if (members[i]->offset != offset) return false;
+		offset += align_size;
+	}
+	return true;
+}
+
+bool type_is_structurally_equivalent(Type *type1, Type *type2)
+{
+	type1 = type_flatten(type1);
+	type2 = type_flatten(type2);
+
+	if (type1 == type2) return true;
+
+	if (type_size(type1) != type_size(type2)) return false;
+
+	// If the other type is a union, we check against every member
+	// noting that there is only structural equivalence if it fills out the
+	if (type2->type_kind == TYPE_UNION)
+	{
+		Decl **members = type2->decl->strukt.members;
+		// If any member is structurally equivalent, then
+		// the cast is valid.
+		VECEACH(members, i)
+		{
+			if (type_is_structurally_equivalent(type1, members[i]->type)) return true;
+		}
+		// In this case we can't get a match.
+		return false;
+	}
+
+	if (type1->type_kind == TYPE_ARRAY)
+	{
+		return array_structurally_equivalent_to_struct(type1, type2);
+	}
+
+	if (type2->type_kind == TYPE_ARRAY)
+	{
+		return array_structurally_equivalent_to_struct(type2, type1);
+	}
+
+	if (!type_is_structlike(type1)) return false;
+
+	Decl **members = type1->decl->strukt.members;
+	if (type1->type_kind == TYPE_UNION)
+	{
+		// If any member is structurally equivalent, then
+		// the cast is valid.
+		VECEACH(members, i)
+		{
+			if (type_is_structurally_equivalent(members[i]->type, type2)) return true;
+		}
+		return false;
+	}
+
+	// The only thing we have left is to check against another structlike.
+	if (!type_is_structlike(type2)) return false;
+
+	Decl **other_members = type2->decl->strukt.members;
+
+	// For structs / errors, all members must match.
+	VECEACH(members, i)
+	{
+		if (!type_is_structurally_equivalent(members[i]->type, other_members[i]->type)) return false;
+		if (members[i]->offset != other_members[i]->offset) return false;
+	}
+	return true;
+}
+
 bool type_is_user_defined(Type *type)
 {
 	switch (type->type_kind)
@@ -816,7 +923,7 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
 			return type->array.base;
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 			return type_char;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
@@ -941,7 +1048,7 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 	DEF_TYPE(u128, t_u128, TYPE_U128, 128, i128);
 
 	DEF_TYPE(void, t_u0, TYPE_VOID, 8, byte);
-	DEF_TYPE(string, t_str, TYPE_CTSTR, target->width_pointer, pointer);
+	DEF_TYPE(string, t_str, TYPE_STRLIT, target->width_pointer, pointer);
 
 #undef DEF_TYPE
 
@@ -951,11 +1058,17 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t_voidstar;
 	t_voidstar.pointer = type_void;
-	type_create("compint", &t_ixx, TYPE_IXX, 32, 0, 0);
-	type_create("compfloat", &t_fxx, TYPE_FXX, 64, 0, 0);
+	type_create("compint", &t_ixx, TYPE_IXX, 0, 0, 0);
+	type_create("compfloat", &t_fxx, TYPE_FXX, 0, 0, 0);
 
 	type_create_alias("usize", &t_usz, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("isize", &t_isz, type_int_signed_by_bitsize(target->width_pointer));
+
+	type_create_alias("uptr", &t_uptr, type_int_unsigned_by_bitsize(target->width_pointer));
+	type_create_alias("iptr", &t_iptr, type_int_signed_by_bitsize(target->width_pointer));
+
+	type_create_alias("uptrdiff", &t_uptrdiff, type_int_unsigned_by_bitsize(target->width_pointer));
+	type_create_alias("iptrdiff", &t_iptrdiff, type_int_signed_by_bitsize(target->width_pointer));
 
 	type_create_alias("c_ushort", &t_cus, type_int_unsigned_by_bitsize(target->width_c_short));
 	type_create_alias("c_uint", &t_cui, type_int_unsigned_by_bitsize(target->width_c_int));
@@ -993,7 +1106,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
@@ -1050,52 +1163,58 @@ bool type_may_have_sub_elements(Type *type)
 	}
 }
 
-typedef enum
-{
-	L,
-	R,
-	FL,
-	X,
-} MaxType;
-
 Type *type_find_max_num_type(Type *num_type, Type *other_num)
 {
 	TypeKind kind = num_type->type_kind;
 	TypeKind other_kind = other_num->type_kind;
+	assert(kind <= other_kind && "Expected ordering");
+	assert(kind != other_kind);
+
+	// 1. The only conversions need to happen if the other type is a number.
 	if (other_kind < TYPE_I8 || other_kind > TYPE_FXX) return NULL;
-	static MaxType max_conv[TYPE_FXX - TYPE_I8 + 1][TYPE_FXX - TYPE_I8 + 1] = {
-		// I8 I16 I32 I64 I128 U8 U16 U32 U64 U128 IXX F16 F32 F64 F128 FXX
-		{   L,  R,  R,  R,  R,  X,  X,  X,  X,  X,  L,  R,  R,  R,  R,  FL }, // I8
-		{   L,  L,  R,  R,  R,  L,  X,  X,  X,  X,  L,  R,  R,  R,  R,  FL }, // I16
-		{   L,  L,  L,  R,  R,  L,  L,  X,  X,  X,  L,  R,  R,  R,  R,  FL }, // I32
-		{   L,  L,  L,  L,  R,  L,  L,  L,  X,  X,  L,  R,  R,  R,  R,  FL }, // I64
-		{   L,  L,  L,  L,  L,  L,  L,  L,  X,  X,  L,  R,  R,  R,  R,  FL }, // I128
-		{   X,  R,  R,  R,  R,  L,  R,  R,  R,  R,  L,  R,  R,  R,  R,  FL }, // U8
-		{   X,  X,  R,  R,  R,  L,  L,  R,  R,  R,  L,  R,  R,  R,  R,  FL }, // U16
-		{   X,  X,  X,  R,  R,  L,  L,  L,  R,  R,  L,  R,  R,  R,  R,  FL }, // U32
-		{   X,  X,  X,  X,  R,  L,  L,  L,  L,  R,  L,  R,  R,  R,  R,  FL }, // U64
-		{   X,  X,  X,  X,  X,  L,  L,  L,  L,  L,  L,  R,  R,  R,  R,  FL }, // U128
-		{   R,  R,  R,  R,  R,  R,  R,  R,  R,  R,  L,  R,  R,  R,  R,  R  }, // IXX
-		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  R,  R,  R,  L  }, // F16
-		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  R,  R,  L  }, // F32
-		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  R,  L  }, // F64
-		{   L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L,  L  }, // F128
-		{  FL, FL, FL, FL, FL, FL, FL, FL, FL, FL, FL,  R,  R,  R,  R,  L  }, // FXX
-	};
-	MaxType conversion = max_conv[num_type->type_kind - TYPE_I8][other_num->type_kind - TYPE_I8];
-	switch (conversion)
+
+	// 2. First check the float case.
+	if (other_kind >= TYPE_F16 && other_kind <= TYPE_FXX)
 	{
-		case X:
-			return NULL;
-		case L:
-			return num_type;
-		case R:
-			return other_num;
-		case FL:
-			return type_double;
-		default:
-			UNREACHABLE
+		switch (other_kind)
+		{
+			case TYPE_FXX:
+				return kind <= TYPE_IXX ? type_double : other_num;
+			case TYPE_F16:
+			case TYPE_F32:
+			case TYPE_F64:
+			case TYPE_F128:
+				// Pick the biggest, which will be in other_num due to ordering.
+				return other_num;
+			default:
+				UNREACHABLE
+		}
 	}
+
+	// Handle integer <=> integer conversions.
+	assert(type_kind_is_any_integer(other_kind) && type_is_integer(num_type));
+
+	// 3. If the other type is IXX, return the current type.
+	if (other_kind == TYPE_IXX) return num_type;
+
+	// 4. Check the bit sizes.
+	unsigned other_bit_size = other_num->builtin.bitsize;
+	unsigned bit_size = num_type->builtin.bitsize;
+
+	// 5. The other type is unsigned
+	if (type_kind_is_unsigned(other_kind))
+	{
+		if (type_kind_is_signed(kind))
+		{
+			// 5a. Signed + Unsigned -> Signed
+			return bit_size >= other_bit_size ? num_type : NULL;
+		}
+		// 5b. Unsigned + Unsigned -> return other_num which is the bigger due to ordering.
+		return other_num;
+	}
+
+	// 6. The other type is signed, then pick other_num which is bigger due to ordering.
+	return other_num;
 }
 
 /**
@@ -1234,7 +1353,7 @@ Type *type_find_max_type(Type *type, Type *other)
 			TODO
 		case TYPE_TYPEDEF:
 			UNREACHABLE
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 			if (other->type_kind == TYPE_DISTINCT)
 			{
 				// In this case we only react to the flattened type.

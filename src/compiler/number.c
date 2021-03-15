@@ -61,7 +61,7 @@ void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
 		case TYPE_FXX:
 			fprintf(file, "%Lf", expr->f);
 			break;
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 			fprintf(file, "%.*s", expr->string.len, expr->string.chars);
 			break;
 		default:
@@ -173,7 +173,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			return compare_fps(left->f, right->f, op);
 		case TYPE_POINTER:
 			return true;
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 			if (left->string.len != right->string.len)
 			{
 				is_eq = false;
@@ -193,9 +193,9 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 	return (op == BINARYOP_EQ) && is_eq;
 }
 
-bool expr_const_int_overflowed(const ExprConst *expr)
+bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 {
-	switch (expr->kind)
+	switch (kind)
 	{
 		case TYPE_I8:
 			return !bigint_fits_in_bits(&expr->i, 8, true);
@@ -206,18 +206,30 @@ bool expr_const_int_overflowed(const ExprConst *expr)
 		case TYPE_I64:
 			return !bigint_fits_in_bits(&expr->i, 64, true);
 		case TYPE_U8:
-			return !bigint_fits_in_bits(&expr->i, 8, false);
+			return expr->i.is_negative || !bigint_fits_in_bits(&expr->i, 8, false);
 		case TYPE_U16:
-			return !bigint_fits_in_bits(&expr->i, 16, false);
+			return expr->i.is_negative || !bigint_fits_in_bits(&expr->i, 16, false);
 		case TYPE_U32:
-			return !bigint_fits_in_bits(&expr->i, 32, false);
+			return expr->i.is_negative || !bigint_fits_in_bits(&expr->i, 32, false);
 		case TYPE_U64:
-			return !bigint_fits_in_bits(&expr->i, 64, false);
+			return expr->i.is_negative || !bigint_fits_in_bits(&expr->i, 64, false);
+		case TYPE_F16:
+			return !bigint_fits_in_bits(&expr->i, 17, false);
 		case TYPE_IXX:
+		case TYPE_F32:
+		case TYPE_F64:
+		case TYPE_F128:
+		case TYPE_FXX:
+		case TYPE_BOOL:
 			return false;
 		default:
 			UNREACHABLE
 	}
+}
+
+bool expr_const_int_overflowed(const ExprConst *expr)
+{
+	return expr_const_will_overflow(expr, expr->kind);
 }
 const char *expr_const_to_error_string(const ExprConst *expr)
 {
@@ -243,7 +255,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case TYPE_FXX:
 			asprintf(&buff, "%Lf", expr->f);
 			return buff;
-		case TYPE_CTSTR:
+		case TYPE_STRLIT:
 			asprintf(&buff, "\"%*.s\"", expr->string.len, expr->string.chars);
 			return buff;
 		default:

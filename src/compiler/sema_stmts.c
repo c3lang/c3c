@@ -87,7 +87,7 @@ static Expr *context_pop_defers_and_wrap_expr(Context *context, Expr *expr)
 	context_pop_defers_to(context, &defers);
 	if (defers.end == defers.start) return expr;
 	Expr *wrap = expr_new(EXPR_SCOPED_EXPR, expr->span);
-	wrap->type = expr->type;
+	expr_copy_types(wrap, expr);
 	wrap->resolve_status = RESOLVE_DONE;
 	wrap->expr_scope.expr = expr;
 	wrap->expr_scope.defers = defers;
@@ -206,17 +206,17 @@ static inline bool sema_analyse_decl_expr_list(Context *context, Expr *expr)
 	}
 	if (entries == 0)
 	{
-		expr->type = type_void;
+		expr_set_type(expr, type_void);
 		return true;
 	}
 	Ast *last = dexprs[entries - 1];
 	switch (last->ast_kind)
 	{
 		case AST_DECLARE_STMT:
-			expr->type = last->declare_stmt->type;
+			expr_set_type(expr, last->declare_stmt->type);
 			break;
 		case AST_EXPR_STMT:
-			expr->type = last->expr_stmt->type;
+			expr_copy_types(expr, last->expr_stmt);
 			break;
 		default:
 			UNREACHABLE
@@ -249,7 +249,7 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 			}
 			if (cast_to_bool)
 			{
-				if (!cast_implicit(context, last->expr_stmt, type_bool)) return false;
+				if (!cast_implicit(last->expr_stmt, type_bool)) return false;
 			}
 			return true;
 		case AST_DECLARE_STMT:
@@ -267,8 +267,7 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 				               type_to_error_string(last->expr_stmt->type),
 				           cast_to_bool ? "bool" : type_to_error_string(init->type));
 			}
-			if (!decl->var.unwrap && cast_to_bool && init->type->type_kind != TYPE_BOOL &&
-			    cast_to_bool_kind(decl->var.type_info->type) == CAST_ERROR)
+			if (!decl->var.unwrap && cast_to_bool && cast_to_bool_kind(decl->var.type_info->type) == CAST_ERROR)
 			{
 				SEMA_ERROR(last->declare_stmt->var.init_expr, "The expression needs to be convertible to a boolean.");
 				return false;
@@ -378,6 +377,11 @@ static inline bool sema_analyse_local_decl(Context *context, Decl *decl)
 			goto EXIT_OK;
 		}
 		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, decl->var.failable || decl->var.unwrap ? FAILABLE_YES : FAILABLE_NO)) return decl_poison(decl);
+
+		if (decl->type)
+		{
+			expr_set_type(decl->var.init_expr, decl->type);
+		}
 
 		if (type_is_inferred)
 		{
@@ -702,8 +706,8 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 	if (var->type != expected_var_type)
 	{
 		// This is hackish, replace when cast is refactored.
-		Expr dummy = { .resolve_status = RESOLVE_DONE, .span = { var->var.type_info->span.loc, var->span.end_loc }, .expr_kind = EXPR_IDENTIFIER, .type = expected_var_type };
-		if (!cast_implicit(context, &dummy, var->type)) goto EXIT_FAIL;
+		Expr dummy = { .resolve_status = RESOLVE_DONE, .span = { var->var.type_info->span.loc, var->span.end_loc }, .expr_kind = EXPR_IDENTIFIER, .type = expected_var_type, .original_type = expected_var_type };
+		if (!cast_implicit(&dummy, var->type)) goto EXIT_FAIL;
 		assert(dummy.expr_kind == EXPR_CAST);
 		statement->foreach_stmt.cast = dummy.cast_expr.kind;
 	}
@@ -1003,7 +1007,7 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 
 	if (!sema_analyse_expr(context, parent->switch_stmt.cond->type, target)) return false;
 
-	if (!cast_implicit(context, target, parent->switch_stmt.cond->type)) return false;
+	if (!cast_implicit(target, parent->switch_stmt.cond->type)) return false;
 
 	if (target->expr_kind == EXPR_CONST)
 	{
@@ -1140,7 +1144,7 @@ static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_st
 		return false;
 	}
 
-	Type *case_type = case_expr->type->canonical;
+	Type *case_type = case_expr->original_type->canonical;
 	Type *to_type_canonical = to_type->canonical;
 
 	// 3. If we already have the same type we're done.
@@ -1148,12 +1152,12 @@ static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_st
 
 	// 4. Otherwise check if we have an enum receiving type and a number on
 	//    in the case. In that case we do an implicit conversion.
-	if (to_type_canonical->type_kind == TYPE_ENUM && type_is_any_integer(case_expr->type))
+	if (to_type_canonical->type_kind == TYPE_ENUM && type_is_any_integer(case_type))
 	{
-		return cast(context, case_expr, to_type, CAST_TYPE_EXPLICIT);
+		return cast(case_expr, to_type);
 	}
 
-	return cast_implicit(context, case_expr, to_type);
+	return cast_implicit(case_expr, to_type);
 }
 
 
@@ -1627,7 +1631,7 @@ bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
 	if (message)
 	{
 		if (!sema_analyse_expr(context, type_compstr, message)) return false;
-		if (message->type->type_kind != TYPE_CTSTR)
+		if (message->type->type_kind != TYPE_STRLIT)
 		{
 			SEMA_ERROR(message, "Expected a string as the error message.");
 		}
@@ -1658,7 +1662,7 @@ bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 	if (message)
 	{
 		if (!sema_analyse_expr(context, type_compstr, message)) return false;
-		if (message->type->type_kind != TYPE_CTSTR)
+		if (message->type->type_kind != TYPE_STRLIT)
 		{
 			SEMA_ERROR(message, "Expected a string as the error message.");
 		}

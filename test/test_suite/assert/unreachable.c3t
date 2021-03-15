@@ -31,6 +31,6 @@ if.exit:
 
 unreachable_block:
     %2 = load i32, i32* %x
-    %add = add nsw i32 %2, 1
+    %add = add i32 %2, 1
     store i32 %add, i32* %x
     ret void

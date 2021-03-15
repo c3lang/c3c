@@ -98,5 +98,5 @@ entry:
   %sisiext = sext i8 %5 to i32
   %6 = getelementptr inbounds %struct2.Foo5, %struct2.Foo5* %y, i32 0, i32 0
   %7 = load i32, i32* %6, align 16
-  %add = add nsw i32 %sisiext, %7
+  %add = add i32 %sisiext, %7
   ret i32 %add

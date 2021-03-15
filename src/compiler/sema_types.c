@@ -43,7 +43,7 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 				SEMA_ERROR(type->array.len, "Expected a constant value as array size.");
 				return type_info_poison(type);
 			}
-			if (!type_is_integer(type->array.len->type->canonical))
+			if (!type_is_any_integer(type->array.len->type->canonical))
 			{
 				SEMA_ERROR(type->array.len, "Expected an integer size.");
 				return type_info_poison(type);

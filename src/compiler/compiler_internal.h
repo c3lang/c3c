@@ -765,6 +765,7 @@ struct _Expr
 	bool reeval : 1;
 	SourceSpan span;
 	Type *type;
+	Type *original_type;
 	union {
 		Expr *group_expr;
 		ExprLen len_expr;
@@ -1368,6 +1369,7 @@ extern Type *type_bool, *type_void, *type_compstr, *type_voidptr;
 extern Type *type_half, *type_float, *type_double, *type_quad;
 extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isize;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;
+extern Type *type_iptr, *type_uptr, *type_iptrdiff, *type_uptrdiff;
 extern Type *type_u128, *type_i128;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
@@ -1438,13 +1440,8 @@ static inline bool builtin_may_negate(Type *canonical)
 	assert(canonical->canonical == canonical);
 	switch (canonical->type_kind)
 	{
-		case TYPE_FXX:
-		case TYPE_F32:
-		case TYPE_F64:
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
-		case TYPE_I64:
+		case ALL_FLOATS:
+		case ALL_SIGNED_INTS:
 		case TYPE_IXX:
 			return true;
 		default:
@@ -1453,12 +1450,16 @@ static inline bool builtin_may_negate(Type *canonical)
 }
 
 
+bool cast_implicit(Expr *expr, Type *to_type);
+bool cast(Expr *expr, Type *to_type);
+bool cast_to_bool_implicit(Expr *expr);
+bool cast_may_implicit(Type *from_type, Type *to_type);
+bool cast_may_explicit(Type *from_type, Type *to_type);
+bool cast_implicit_bit_width(Expr *expr, Type *to_type);
 
-bool cast_implicit(Context *context, Expr *expr, Type *to_type);
-bool cast(Context *context, Expr *expr, Type *to_type, CastType cast_type);
 CastKind cast_to_bool_kind(Type *type);
 
-bool cast_implicitly_to_runtime(Context *context, Expr *expr);
+bool cast_implicitly_to_runtime(Expr *expr);
 
 void llvm_codegen(void *module);
 void *llvm_gen(Context *context);
@@ -1512,6 +1513,8 @@ static inline void expr_replace(Expr *expr, Expr *replacement)
 	*expr = *replacement;
 	expr->span = loc;
 }
+void expr_copy_types(Expr *to, Expr *from);
+void expr_copy_properties(Expr *to, Expr *from);
 void expr_const_set_int(ExprConst *expr, uint64_t v, TypeKind kind);
 void expr_const_set_float(ExprConst *expr, long double d, TypeKind kind);
 void expr_const_set_bool(ExprConst *expr, bool b);
@@ -1519,8 +1522,15 @@ void expr_const_set_null(ExprConst *expr);
 void expr_const_fprint(FILE *__restrict file, ExprConst *expr);
 bool expr_const_int_overflowed(const ExprConst *expr);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
+bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
 bool expr_is_constant_eval(Expr *expr);
 const char *expr_const_to_error_string(const ExprConst *expr);
+static inline void expr_set_type(Expr *expr, Type *type)
+{
+	assert(type);
+	expr->type = type;
+	expr->original_type = type;
+}
 
 void fprint_decl(Context *context, FILE *file, Decl *dec);
 void fprint_type_info_recursive(Context *context, FILE *file, TypeInfo *type_info, int indent);
@@ -1681,12 +1691,14 @@ static inline size_t type_min_alignment(size_t a, size_t b);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_union_struct(Type *type);
 bool type_is_user_defined(Type *type);
+bool type_is_structurally_equivalent(Type *type1, Type *type);
 static inline Type *type_lowering(Type *type);
 bool type_may_have_sub_elements(Type *type);
 static inline bool type_ok(Type *type);
 static inline Type *type_reduced_from_expr(Expr *expr);
 ByteSize type_size(Type *type);
 const char *type_to_error_string(Type *type);
+const char *type_quoted_error_string(Type *type);
 
 static inline TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
 static inline TypeInfo *type_info_new_base(Type *type, SourceSpan span);
@@ -1706,10 +1718,20 @@ static inline Type *type_reduced_from_expr(Expr *expr)
 }
 
 
+static inline bool type_is_pointer_sized_or_more(Type *type)
+{
+	return type_is_integer(type) && type_size(type) >= type_size(type_iptr);
+}
+
+static inline bool type_is_pointer_sized(Type *type)
+{
+	return type_is_integer(type) && type_size(type) == type_size(type_iptr);
+}
+
 static inline bool type_is_integer(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_U128;
+	return type->type_kind >= TYPE_I8 && type->type_kind < TYPE_IXX;
 }
 
 
@@ -1722,19 +1744,19 @@ static inline bool type_is_any_integer(Type *type)
 static inline bool type_is_integer_signed(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I128;
+	return type->type_kind >= TYPE_I8 && type->type_kind < TYPE_U8;
 }
 
 static inline bool type_is_integer_kind(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_BOOL && type->type_kind <= TYPE_U128;
+	return type->type_kind >= TYPE_BOOL && type->type_kind < TYPE_IXX;
 }
 
 static inline bool type_is_integer_unsigned(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U128;
+	return type->type_kind >= TYPE_U8 && type->type_kind < TYPE_IXX;
 }
 
 static inline bool type_info_poison(TypeInfo *type)
@@ -1780,7 +1802,7 @@ static inline bool type_is_substruct(Type *type)
 static inline bool type_is_float(Type *type)
 {
 	assert(type == type->canonical);
-	return type->type_kind >= TYPE_F32 && type->type_kind <= TYPE_FXX;
+	return type->type_kind >= TYPE_F16 && type->type_kind <= TYPE_FXX;
 }
 
 static inline TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span)
@@ -1847,17 +1869,40 @@ static inline void advance_and_verify(Context *context, TokenType token_type)
 }
 
 
+static inline Type *type_flatten_distinct(Type *type)
+{
+	type = type->canonical;
+	while (type->type_kind == TYPE_DISTINCT)
+	{
+		type = type->decl->distinct_decl.base_type->canonical;
+	}
+	return type;
+}
+
 static inline Type *type_flatten(Type *type)
 {
 	type = type->canonical;
-	return type->type_kind == TYPE_DISTINCT ? type->decl->distinct_decl.base_type : type;
+	while (1)
+	{
+		if (type->type_kind == TYPE_DISTINCT)
+		{
+			type = type->decl->distinct_decl.base_type;
+			continue;
+		}
+		if (type->type_kind == TYPE_ENUM)
+		{
+			type = type->decl->enums.type_info->type;
+			continue;
+		}
+		return type;
+	}
 }
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_TYPEID; }
-static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_I64; }
-static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind <= TYPE_U64; }
+static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind < TYPE_U8; }
+static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind < TYPE_IXX; }
 static inline bool type_kind_is_any_integer(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_IXX; }
-static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_I64; }
-static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U64; }
+static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I8 && type->type_kind < TYPE_U8; }
+static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind < TYPE_IXX; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
 bool type_is_scalar(Type *type);

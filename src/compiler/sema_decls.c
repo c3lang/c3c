@@ -456,7 +456,46 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 	}
 	TypeInfo *info = decl->distinct_decl.typedef_decl.type_info;
 	if (!sema_resolve_type_info(context, info)) return false;
-	decl->distinct_decl.base_type = info->type->canonical;
+	Type *base = type_flatten_distinct(info->type);
+	decl->distinct_decl.base_type = base;
+	switch (base->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_STRLIT:
+		case TYPE_IXX:
+		case TYPE_FXX:
+		case TYPE_FUNC:
+		case TYPE_TYPEDEF:
+		case TYPE_DISTINCT:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			UNREACHABLE
+			return false;
+		case TYPE_ERRTYPE:
+			SEMA_ERROR(decl, "You cannot create a distinct type from an error.");
+			return false;
+		case TYPE_ERR_UNION:
+			SEMA_ERROR(decl, "You cannot create a distinct type from an error union.");
+			return false;
+		case TYPE_VOID:
+		case TYPE_TYPEID:
+			SEMA_ERROR(decl, "Cannot create a distinct type from %s.", type_quoted_error_string(base));
+		case TYPE_BOOL:
+		case ALL_SIGNED_INTS:
+		case ALL_UNSIGNED_INTS:
+		case ALL_REAL_FLOATS:
+		case TYPE_POINTER:
+		case TYPE_ENUM:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_ARRAY:
+		case TYPE_VARARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_VECTOR:
+		case TYPE_COMPLEX:
+			break;
+	}
 	// Do we need anything else?
 	return true;
 }
@@ -503,11 +542,11 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 		if (!expr)
 		{
 			expr = expr_new(EXPR_CONST, source_span_from_token_id(enum_value->name_token));
-			expr->type = type;
+			expr_set_type(expr, type);
 			expr->resolve_status = RESOLVE_NOT_DONE;
 			bigint_init_bigint(&expr->const_expr.i, &value);
 			expr->const_expr.kind = TYPE_IXX;
-			expr->type = type_compint;
+			expr_set_type(expr, type_compint);
 			enum_value->enum_constant.expr = expr;
 		}
 
@@ -861,6 +900,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 	if (decl->var.init_expr && decl->type)
 	{
 		Expr *init_expr = decl->var.init_expr;
+
 		// 1. Check type.
 		if (!sema_analyse_expr_of_required_type(context, decl->type, init_expr, false)) return false;
 

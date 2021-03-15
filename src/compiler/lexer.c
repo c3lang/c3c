@@ -44,7 +44,7 @@ static inline void backtrack(Lexer *lexer)
 void lexer_store_line_end(Lexer *lexer)
 {
 	lexer->current_line++;
-	lexer->line_start = lexer->current;
+	lexer->line_start = lexer->current + 1;
 	source_file_append_line_end(lexer->current_file, lexer->current_file->start_id + lexer->current - lexer->file_begin);
 }
 
@@ -129,7 +129,7 @@ static inline void add_generic_token(Lexer *lexer, TokenType type)
 		// The simple case, where the parsing started on the current line.
 		location->line = lexer->current_line;
 		// Col is simple difference.
-		location->col = (unsigned)(lexer->lexing_start - lexer->line_start);
+		location->col = (unsigned)(lexer->lexing_start - lexer->line_start) + 1;
 		// Start is offset to file begin.
 		location->start = lexer->lexing_start - lexer->file_begin;
 		// Length is diff between current and start.
@@ -1066,11 +1066,6 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 			}
 			return match(lexer, '=') ? add_token(lexer, TOKEN_DIV_ASSIGN, "/=") : add_token(lexer, TOKEN_DIV, "/");
 		case '*':
-			if (match(lexer, '%'))
-			{
-				if (match(lexer, '=')) return add_token(lexer, TOKEN_MULT_MOD_ASSIGN, "*%=");
-				return add_token(lexer, TOKEN_MULT_MOD, "*%");
-			}
 			return match(lexer, '=') ? add_token(lexer, TOKEN_MULT_ASSIGN, "*=") : add_token(lexer, TOKEN_STAR, "*");
 		case '=':
 			return match(lexer, '=') ? add_token(lexer, TOKEN_EQEQ, "==") : add_token(lexer, TOKEN_EQ, "=");
@@ -1106,21 +1101,11 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 			                                                                                   TOKEN_BIT_OR,
 			                                                                                   "|");
 		case '+':
-			if (match(lexer, '%'))
-			{
-				if (match(lexer, '=')) return add_token(lexer, TOKEN_PLUS_MOD_ASSIGN, "+%=");
-				return add_token(lexer, TOKEN_PLUS_MOD, "+%");
-			}
 			if (match(lexer, '+')) return add_token(lexer, TOKEN_PLUSPLUS, "++");
 			if (match(lexer, '=')) return add_token(lexer, TOKEN_PLUS_ASSIGN, "+=");
 			return add_token(lexer, TOKEN_PLUS, "+");
 		case '-':
 			if (match(lexer, '>')) return add_token(lexer, TOKEN_ARROW, "->");
-			if (match(lexer, '%'))
-			{
-				if (match(lexer, '=')) return add_token(lexer, TOKEN_MINUS_MOD_ASSIGN, "-%=");
-				return add_token(lexer, TOKEN_MINUS_MOD, "-%");
-			}
 			if (match(lexer, '-')) return add_token(lexer, TOKEN_MINUSMINUS, "--");
 			if (match(lexer, '=')) return add_token(lexer, TOKEN_MINUS_ASSIGN, "-=");
 			return add_token(lexer, TOKEN_MINUS, "-");
