@@ -1,0 +1,67 @@
+module test;
+
+func int foo()
+{
+    int x = 0;
+    int y;
+    x += y;
+    x -= y;
+    x %= y;
+    x /= y;
+    x *= y;
+    x <<= y;
+    x >>= y;
+    x ^= y;
+    x |= y;
+    x &= y;
+    return x;
+}
+
+
+// #expect: int_assign.ll
+
+  %x = alloca i32, align 4
+  %y = alloca i32, align 4
+  store i32 0, i32* %x, align 4
+  store i32 0, i32* %y, align 4
+  %0 = load i32, i32* %x, align 4
+  %1 = load i32, i32* %y, align 4
+  %add = add i32 %0, %1
+  store i32 %add, i32* %x, align 4
+  %2 = load i32, i32* %x, align 4
+  %3 = load i32, i32* %y, align 4
+  %sub = sub i32 %2, %3
+  store i32 %sub, i32* %x, align 4
+  %4 = load i32, i32* %x, align 4
+  %5 = load i32, i32* %y, align 4
+  %smod = srem i32 %4, %5
+  store i32 %smod, i32* %x, align 4
+  %6 = load i32, i32* %x, align 4
+  %7 = load i32, i32* %y, align 4
+  %sdiv = sdiv i32 %6, %7
+  store i32 %sdiv, i32* %x, align 4
+  %8 = load i32, i32* %x, align 4
+  %9 = load i32, i32* %y, align 4
+  %mul = mul i32 %8, %9
+  store i32 %mul, i32* %x, align 4
+  %10 = load i32, i32* %x, align 4
+  %11 = load i32, i32* %y, align 4
+  %shl = shl i32 %10, %11
+  store i32 %shl, i32* %x, align 4
+  %12 = load i32, i32* %x, align 4
+  %13 = load i32, i32* %y, align 4
+  %ashr = ashr i32 %12, %13
+  store i32 %ashr, i32* %x, align 4
+  %14 = load i32, i32* %x, align 4
+  %15 = load i32, i32* %y, align 4
+  %xor = xor i32 %14, %15
+  store i32 %xor, i32* %x, align 4
+  %16 = load i32, i32* %x, align 4
+  %17 = load i32, i32* %y, align 4
+  %or = or i32 %16, %17
+  store i32 %or, i32* %x, align 4
+  %18 = load i32, i32* %x, align 4
+  %19 = load i32, i32* %y, align 4
+  %and = and i32 %18, %19
+  store i32 %and, i32* %x, align 4
+  %20 = load i32, i32* %x, align 4
