@@ -518,7 +518,8 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMP("(enumconstant)");
 			return;
 		case EXPR_TYPEINFO:
-			TODO;
+			DUMP("(typeinfo)");
+			return;
 		case EXPR_SLICE_ASSIGN:
 			DUMP("(sliceassign");
 			DUMPEXPC(expr);

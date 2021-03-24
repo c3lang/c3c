@@ -18,6 +18,8 @@ unsigned os_target_supports_float16(OsType os, ArchType arch);
 unsigned os_target_supports_float128(OsType os, ArchType arch);
 unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int);
 
+
+
 Target build_target = {};
 
 int target_alloca_addr_space()
@@ -33,6 +35,8 @@ static void type_dump(LLVMTargetDataRef llvm_target_data, LLVMTypeRef type)
 
 	printf(" | %-3d  %-3d %-3d", size, abialign, prefalign);
 }
+
+
 
 void llvm_dump(void)
 {
@@ -287,7 +291,7 @@ static inline void target_setup_arm_abi(void)
 	UNREACHABLE
 }
 
-static inline void target_setup_x86_abi(void)
+static inline void target_setup_x86_abi(BuildTarget *target)
 {
 	build_target.abi = ABI_X86;
 	build_target.x86.is_win_api = build_target.os == OS_TYPE_WIN32;
@@ -297,8 +301,10 @@ static inline void target_setup_x86_abi(void)
 	}
 	build_target.x86.use_soft_float = build_target.float_abi == FLOAT_ABI_SOFT;
 	// Build target override.
-	if (build_options.feature.soft_float) build_target.x86.use_soft_float = true;
-	if (build_options.feature.no_soft_float) build_target.x86.use_soft_float = false;
+	if (target->feature.soft_float != SOFT_FLOAT_DEFAULT)
+	{
+		build_target.x86.use_soft_float = target->feature.soft_float == SOFT_FLOAT_YES;
+	}
 
 	build_target.x86.is_win32_float_struct_abi = build_target.os == OS_TYPE_WIN32;
 	build_target.x86.is_mcu_api = build_target.os == OS_TYPE_ELFIAMCU;
@@ -324,8 +330,10 @@ static inline void target_setup_x86_abi(void)
 		default:
 			break;
 	}
-	if (build_options.feature.reg_struct_return) build_target.x86.return_small_struct_in_reg_abi = true;
-	if (build_options.feature.stack_struct_return) build_target.x86.return_small_struct_in_reg_abi = false;
+	if (target->feature.struct_return != STRUCT_RETURN_DEFAULT)
+	{
+		build_target.x86.return_small_struct_in_reg_abi = target->feature.struct_return == STRUCT_RETURN_REG;
+	}
 }
 
 
@@ -364,7 +372,7 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 };
 
 
-void target_setup(void)
+void target_setup(BuildTarget *target)
 {
 	assert(!build_target.target);
 
@@ -377,13 +385,13 @@ void target_setup(void)
 	build_target.target = NULL;
 
 	const char *triple;
-	if (build_options.arch_os_target == ARCH_OS_TARGET_DEFAULT)
+	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
 	{
 		triple = LLVMGetDefaultTargetTriple();
 	}
 	else
 	{
-		triple = arch_to_target_triple[build_options.arch_os_target];
+		triple = arch_to_target_triple[target->arch_os_target];
 	}
 
 	char *err = NULL;
@@ -400,7 +408,7 @@ void target_setup(void)
 	LLVMCodeGenOptLevel level;
 	LLVMRelocMode reloc_mode = LLVMRelocDefault;
 
-	switch (build_options.optimization_level)
+	switch (target->optimization_level)
 	{
 		case OPTIMIZATION_NOT_SET:
 			UNREACHABLE;
@@ -419,19 +427,15 @@ void target_setup(void)
 		default:
 			UNREACHABLE;
 	}
-	 if (build_options.pic == PIC_BIG || build_options.pic == PIC_SMALL || build_options.generate_lib)
+	 if (target->pic == PIC_BIG || target->pic == PIC_SMALL || (target->type != TARGET_TYPE_EXECUTABLE && target->type != TARGET_TYPE_TEST))
 	 {
 	 	reloc_mode = LLVMRelocPIC;
 	 }
-	 if (build_options.pic == PIC_NONE)
+	 if (target->pic == PIC_NONE)
 	 {
 	 	reloc_mode = LLVMRelocStatic;
 	 }
 
-	if (!build_options.cpu)
-	{
-		build_options.cpu = "generic";
-	}
 	/*
 	if (!opt->features)
 	{
@@ -594,7 +598,7 @@ void target_setup(void)
 			build_target.abi = ABI_RISCV;
 			TODO
 		case ARCH_TYPE_X86:
-			target_setup_x86_abi();
+			target_setup_x86_abi(target);
 			break;
 		case ARCH_TYPE_X86_64:
 			target_setup_x64_abi();

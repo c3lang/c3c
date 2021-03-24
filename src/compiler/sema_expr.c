@@ -191,7 +191,6 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case DECL_VAR:
 			break;
 		case DECL_DISTINCT:
-			TODO
 		case DECL_TYPEDEF:
 			UNREACHABLE
 		case DECL_POISONED:
@@ -273,7 +272,7 @@ static ExprFailableStatus expr_is_failable(Expr *expr)
 }
 
 
-static inline bool sema_type_error_on_binop(Context *context, Expr *expr)
+static inline bool sema_type_error_on_binop(Expr *expr)
 {
 	const char *c = token_type_to_string(binaryop_to_token(expr->binary_expr.operator));
 	SEMA_ERROR(expr, "%s is not defined in the expression '%s' %s '%s'.",
@@ -932,7 +931,22 @@ static inline bool sema_expr_analyse_var_call(Context *context, Type *to, Expr *
 
 }
 
-static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Expr *expr) { TODO };
+static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Decl *decl, Expr *expr)
+{
+	Expr **arguments = expr->call_expr.arguments;
+	TokenId *parameter_list = decl->generic_decl.parameters;
+	if (vec_size(parameter_list) != vec_size(arguments))
+	{
+		SEMA_ERROR(expr, "Expected %d parameter(s) to the generic function.", vec_size(parameter_list));
+		return false;
+	}
+	VECEACH(arguments, i)
+	{
+		if (!sema_analyse_expr(context, NULL, arguments[i])) return false;
+	}
+
+	TODO
+};
 
 
 
@@ -1244,7 +1258,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			decl = func_expr->access_expr.ref;
 			if (decl->decl_kind == DECL_FUNC)
 			{
-				expr->call_expr.is_struct_function = true;
+				expr->call_expr.is_type_method = true;
 				struct_var = expr_new(EXPR_UNARY, func_expr->access_expr.parent->span);
 				struct_var->unary_expr.expr = func_expr->access_expr.parent;
 				struct_var->unary_expr.operator = UNARYOP_ADDR;
@@ -1279,7 +1293,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 		case DECL_MACRO:
 			UNREACHABLE
 		case DECL_GENERIC:
-			return sema_expr_analyse_generic_call(context, to, expr);
+			return sema_expr_analyse_generic_call(context, to, decl, expr);
 		case DECL_POISONED:
 			return false;
 		default:
@@ -1855,7 +1869,8 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 	}
 	if (name == kw_nameof)
 	{
-		TODO
+		expr_rewrite_to_string(expr, ref->name);
+		return true;
 	}
 	if (name == kw_qnameof)
 	{
@@ -1942,6 +1957,7 @@ CHECK_DEEPER:
 	switch (type->type_kind)
 	{
 		case TYPE_SUBARRAY:
+		case TYPE_VARARRAY:
 			if (kw == kw_sizeof)
 			{
 				expr_rewrite_to_int_const(expr, type_usize, type_size(type));
@@ -1975,7 +1991,7 @@ CHECK_DEEPER:
 			break;
 		default:
 		NO_MATCH:
-			SEMA_ERROR(expr, "Cannot access '%s' on '%s'", TOKSTR(expr->access_expr.sub_element), type_to_error_string(parent_type));
+			SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", TOKSTR(expr->access_expr.sub_element), type_to_error_string(parent_type));
 			return false;
 	}
 
@@ -3183,7 +3199,7 @@ static bool binary_arithmetic_promotion(Context *context, Expr *left, Expr *righ
 	{
 		if (!error_message)
 		{
-			return sema_type_error_on_binop(context, parent);
+			return sema_type_error_on_binop(parent);
 		}
 		SEMA_ERROR(parent, error_message, type_to_error_string(left_type), type_to_error_string(right_type));
 		return false;
@@ -3191,7 +3207,7 @@ static bool binary_arithmetic_promotion(Context *context, Expr *left, Expr *righ
 	return cast_implicit(left, max) & cast_implicit(right, max);
 }
 
-static bool sema_check_int_type_fit(Context *context, Expr *expr, Type *target_type)
+static bool sema_check_int_type_fit(Expr *expr, Type *target_type)
 {
 	if (!target_type) return true;
 	Type *type = expr->type->canonical;
@@ -3236,7 +3252,7 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 			expr_unify_binary_properties(expr, left, right);
 
 			// 3d. Otherwise check against assigned type so for example short x = &p - &q is an error.
-			return sema_check_int_type_fit(context, expr, to);
+			return sema_check_int_type_fit(expr, to);
 		}
 
 		right_type = right->type->canonical;
@@ -3543,7 +3559,7 @@ static bool sema_expr_analyse_bit(Context *context, Type *to, Expr *expr, Expr *
 	// 2. Check that both are integers.
 	if (!both_any_integer(left, right))
 	{
-		return sema_type_error_on_binop(context, expr);
+		return sema_type_error_on_binop(expr);
 	}
 
 	// 3. Promote to the same type.
@@ -3596,7 +3612,7 @@ static bool sema_expr_analyse_shift(Context *context, Type *to, Expr *expr, Expr
 	// 3. Only integers may be shifted.
 	if (!both_any_integer(left, right))
 	{
-		return sema_type_error_on_binop(context, expr);
+		return sema_type_error_on_binop(expr);
 	}
 
 	// 4. Promote lhs using the usual numeric promotion.
@@ -3697,7 +3713,7 @@ static bool sema_expr_analyse_shift_assign(Context *context, Expr *expr, Expr *l
 	}
 
 	// 3. Only integers may be shifted.
-	if (!both_any_integer(left, right)) return sema_type_error_on_binop(context, expr);
+	if (!both_any_integer(left, right)) return sema_type_error_on_binop(expr);
 
 	// 4. For a constant right hand side we will make a series of checks.
 	if (is_const(right))
@@ -4673,7 +4689,6 @@ static Expr *expr_copy_from_macro(Context *context, Expr *source_expr)
 			MACRO_COPY_TYPE(expr->typeid_expr);
 			return expr;
 		case EXPR_IDENTIFIER:
-			// TODO
 			return expr;
 		case EXPR_CALL:
 			MACRO_COPY_EXPR(expr->call_expr.function);
@@ -4909,25 +4924,8 @@ static Ast *ast_copy_from_macro(Context *context, Ast *source)
 
 
 
-static inline bool sema_expr_analyse_macro_ident(Context *context, Type *to, Expr *expr)
-{
-	return false;
-	/*
-	Expr *inner = expr->macro_ident;
-	switch (inner->expr_kind)
-	{
-		case EXPR_CALL:
-			return sema_expr_analyse_macro_call(context, to, expr, inner);
-		case EXPR_ACCESS:
-		case EXPR_IDENTIFIER:
-			// Allow @f unrolling?
-		default:
-			SEMA_ERROR(expr, "Expected a macro name after '@'");
-			return false;
-	}*/
-}
 
-static inline bool sema_expr_analyse_type(Context *context, Type *to, Expr *expr)
+static inline bool sema_expr_analyse_type(Context *context, Expr *expr)
 {
 	if (!sema_resolve_type_info(context, expr->typeid_expr))
 	{
@@ -5121,7 +5119,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			if (expr->expr_kind == EXPR_UNARY) expr->failable = expr->unary_expr.expr->failable;
 			return true;
 		case EXPR_TYPEID:
-			return sema_expr_analyse_type(context, to, expr);
+			return sema_expr_analyse_type(context, expr);
 		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:
 		case EXPR_MACRO_IDENTIFIER:

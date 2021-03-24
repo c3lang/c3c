@@ -141,6 +141,18 @@ static inline bool sema_analyse_block_return_stmt(Context *context, Ast *stateme
 	return true;
 }
 
+/**
+ * We have the following possibilities:
+ *  1. return
+ *  2. return <non void expr>
+ *  3. return <void expr>
+ *
+ * If we are in a block or a macro expansion we need to handle it differently.
+ *
+ * @param context
+ * @param statement
+ * @return
+ */
 static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 {
 	// This might be a return in a function block or a macro which must be treated differently.
@@ -148,18 +160,18 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 	{
 		return sema_analyse_block_return_stmt(context, statement);
 	}
+	// 1. We mark that the current scope ends with a jump.
 	context->current_scope->jump_end = true;
+
 	Type *expected_rtype = context->rtype;
+	assert(expected_rtype && "We should always have known type from a function return.");
+
 	Expr *return_expr = statement->return_stmt.expr;
 	statement->return_stmt.defer = context->current_scope->defer_last;
+
+	// 2. First handle the plain return.
 	if (return_expr == NULL)
 	{
-		if (!expected_rtype)
-		{
-			assert(context->evaluating_macro);
-			context->rtype = type_void;
-			return true;
-		}
 		if (expected_rtype->canonical != type_void)
 		{
 			SEMA_ERROR(statement, "Expected to return a result of type %s.", type_to_error_string(expected_rtype));
@@ -167,55 +179,62 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 		}
 		return true;
 	}
-	if (expected_rtype == type_void && !context->failable_return)
-	{
-		SEMA_ERROR(statement, "You can't return a value from a void function, you need to add a return type.");
-		return false;
-	}
+
+	// 3. Evaluate the return value to be the expected return type.
 	if (!sema_analyse_expr_of_required_type(context, expected_rtype, return_expr, context->failable_return)) return false;
-	if (!expected_rtype)
-	{
-		assert(context->evaluating_macro);
-		context->rtype = type_void;
-		context->active_function_for_analysis->func.function_signature.rtype->type->canonical = statement->return_stmt.expr->type->canonical;
-		return true;
-	}
+
 	assert(statement->return_stmt.expr->type->canonical == expected_rtype->canonical);
+
 	return true;
 }
 
-static inline bool sema_analyse_unreachable_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_unreachable_stmt(Context *context)
 {
 	context->current_scope->jump_end = true;
 	return true;
 }
 
+/**
+ * An decl-expr-list is a list of a mixture of declarations and expressions.
+ * The last declaration or expression is propagated. So for example:
+ *
+ *   int a = 3, b = 4, float c = 4.0
+ *
+ * In this case the final value is 4.0 and the type is float.
+ */
 static inline bool sema_analyse_decl_expr_list(Context *context, Expr *expr)
 {
 	assert(expr->expr_kind == EXPR_DECL_LIST);
 
 	Ast **dexprs = expr->dexpr_list_expr;
 	unsigned entries = vec_size(dexprs);
-	for (unsigned i = 0; i < entries; i++)
-	{
-		Ast *ast = dexprs[i];
-		if (!sema_analyse_statement(context, ast))
-		{
-			return false;
-		}
-	}
+
+	// 1. Special case, there are no entries, so the type is void
 	if (entries == 0)
 	{
 		expr_set_type(expr, type_void);
 		return true;
 	}
+
+	// 2. Walk through each of our declarations / expressions as if they were regular statements.
+	for (unsigned i = 0; i < entries; i++)
+	{
+		if (!sema_analyse_statement(context, dexprs[i])) return false;
+	}
+
+	// 3. We now look at the final expression and copy its type as the type of the entire list.
+	//    There is a subtle difference here. The expression might have a different original type
+	//    than the expression's type. In most (all?) cases this is isn't something one uses,
+	//    but this makes sure that analysis is correct.
 	Ast *last = dexprs[entries - 1];
 	switch (last->ast_kind)
 	{
 		case AST_DECLARE_STMT:
+			// In the declaration case, the value is the type of the declaration.
 			expr_set_type(expr, last->declare_stmt->type);
 			break;
 		case AST_EXPR_STMT:
+			// In the expression case, *copy* the expression's types.
 			expr_copy_types(expr, last->expr_stmt);
 			break;
 		default:
@@ -224,29 +243,50 @@ static inline bool sema_analyse_decl_expr_list(Context *context, Expr *expr)
 	return true;
 }
 
-
+/**
+ * Analyse a conditional expression:
+ *
+ *  1. The middle statement in a for loop
+ *  2. The expression in an if, while
+ *  3. The expression in a switch
+ *
+ * @param context the current context
+ * @param expr the conditional to evaluate
+ * @param cast_to_bool if the result is to be cast to bool after
+ * @return true if it passes analysis.
+ */
 static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_bool)
 {
-	assert(expr->expr_kind == EXPR_DECL_LIST);
+	assert(expr->expr_kind == EXPR_DECL_LIST && "Conditional expressions should always be of type EXPR_DECL_LIST");
+
 	size_t size = vec_size(expr->dexpr_list_expr);
-	if (!size)
+
+	// 1. Analyse the declaration list.
+	if (!sema_analyse_decl_expr_list(context, expr)) return false;
+
+	// 2. If we get "void", either through a void call or an empty list,
+	//    signal that.
+	if (expr->type->type_kind == TYPE_VOID)
 	{
-		SEMA_ERROR(expr, "Expected a boolean expression");
+		SEMA_ERROR(expr, cast_to_bool ? "Expected a boolean expression." : "Expected an expression resulting in a value.");
 		return false;
 	}
 
-	if (!sema_analyse_decl_expr_list(context, expr)) return false;
+	// 3. We look at the last element (which is guaranteed to exist because
+	//    the type was not void.
+	Ast *last = VECLAST(expr->dexpr_list_expr);
 
-	Ast *last = expr->dexpr_list_expr[size - 1];
 	switch (last->ast_kind)
 	{
 		case AST_EXPR_STMT:
+			// 3a. Check for failables in case of an expression.
 			if (last->expr_stmt->failable)
 			{
 				SEMA_ERROR(last, "'%s!' cannot be converted into '%s'.",
 				               type_to_error_string(last->expr_stmt->type),
-						cast_to_bool ? "bool" : type_to_error_string(last->expr_stmt->type));
+				               cast_to_bool ? "bool" : type_to_error_string(last->expr_stmt->type));
 			}
+			// 3b. Cast to bool if that is needed
 			if (cast_to_bool)
 			{
 				if (!cast_implicit(last->expr_stmt, type_bool)) return false;
@@ -254,19 +294,23 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 			return true;
 		case AST_DECLARE_STMT:
 		{
+			// 3c. The declaration case
 			Decl *decl = last->declare_stmt;
 			Expr *init = decl->var.init_expr;
+			// 3d. We expect an initialization for the last declaration.
 			if (!init)
 			{
 				SEMA_ERROR(last, "Expected a declaration with initializer.");
 				return false;
 			}
+			// 3e. Expect that it isn't a failable
 			if (init->failable && !decl->var.unwrap)
 			{
 				SEMA_ERROR(last, "'%s!' cannot be converted into '%s'.",
 				               type_to_error_string(last->expr_stmt->type),
 				           cast_to_bool ? "bool" : type_to_error_string(init->type));
 			}
+			// TODO document
 			if (!decl->var.unwrap && cast_to_bool && cast_to_bool_kind(decl->var.type_info->type) == CAST_ERROR)
 			{
 				SEMA_ERROR(last->declare_stmt->var.init_expr, "The expression needs to be convertible to a boolean.");
@@ -279,72 +323,146 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 	}
 }
 
+static inline bool sema_analyse_stmt_placement(Expr *cond, Ast *stmt)
+{
+	if (stmt->ast_kind == AST_COMPOUND_STMT) return true;
+	SourceLocation *end_of_cond = TOKILOC(cond->span.end_loc);
+	SourceLocation *start_of_then = TOKILOC(stmt->span.loc);
+	return end_of_cond->line == start_of_then->line;
+}
+
+/**
+ * Check "while" statement, including end of line placement of a single statement.
+ */
 static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 {
 	Expr *cond = statement->while_stmt.cond;
 	Ast *body = statement->while_stmt.body;
-	context_push_scope(context);
-	bool success = sema_analyse_cond(context, cond, true);
+
+	// 1. Begin our scope, this is relevant in case we have something like
+	//    while (File *f = @getFileAndClose!()) where the macro pushes a defer into the scope.
 	context_push_scope_with_label(context, statement->while_stmt.flow.label);
 
+	// 2. Analyze the condition
+	if (!sema_analyse_cond(context, cond, true))
+	{
+		// 2a. In case of error, pop context and exit.
+		context_pop_scope_error(context);
+		return false;
+	}
+
+	// 4. Push break / continue - which is independent of the scope.
 	PUSH_BREAKCONT(statement);
-	success = success && sema_analyse_statement(context, body);
-	context_pop_defers_and_replace_ast(context, body);
+
+	// 5. Analyse the statement
+	bool success = sema_analyse_statement(context, body);
+
+	// 6. Pop break / continue
 	POP_BREAKCONT();
 
+	// 7. Check placement, in case of a single statement, it must be placed on the same line.
+	if (success && !sema_analyse_stmt_placement(cond, body))
+	{
+		SEMA_ERROR(body, "A single statement after 'while' must be placed on the same line, or be enclosed in {}.");
+		context_pop_scope_error(context);
+		return false;
+	}
+
+	// 8. Pop defers attach them to the statement if needed
+	context_pop_defers_and_replace_ast(context, body);
+
+	// 9. Pop the while scope.
 	context_pop_scope(context);
-	context_pop_defers_and_replace_ast(context, statement);
-	context_pop_scope(context);
-	if (!success) return false;
+
 	return success;
 }
 
+/**
+ * Check the do ... while (...) statement.
+ */
 static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 {
 	Expr *expr = statement->do_stmt.expr;
 	Ast *body = statement->do_stmt.body;
 	bool success;
+
+	// 1. Begin pushing the scope and break / continue.
 	context_push_scope_with_label(context, statement->do_stmt.flow.label);
 	PUSH_BREAKCONT(statement);
+
+	// 2. We analyze the statement.
 	success = sema_analyse_statement(context, body);
-	context_pop_defers_and_replace_ast(context, body);
+
+	// 3. Pop break / continue
 	POP_BREAKCONT();
+
+	// 4. Pop any defers
+	context_pop_defers_and_replace_ast(context, body);
+
+	// 5. If the current scope ended in a jump, then
+	//    the do statement has no exit.
 	statement->do_stmt.flow.no_exit = context->current_scope->jump_end;
+
+	// 6. Pop the scope
 	context_pop_scope(context);
+
+	// 7. We can now exit if there was an error further up.
 	if (!success) return false;
-	if (!statement->do_stmt.expr) return success;
 
+	// 8. Handle the do { } expression
+	if (!statement->do_stmt.expr) return true;
+
+	// 9. We next handle the while test. This is its own scope.
 	context_push_scope(context);
-	success = sema_analyse_expr_of_required_type(context, type_bool, expr, false);
+
+	// 10. Try to evaluate and implicitly cast to boolean.
+	if (!sema_analyse_expr_of_required_type(context, type_bool, expr, false))
+	{
+		// 10a. On failure, pop and return false.
+		context_pop_scope_error(context);
+		return false;
+	}
+
+	// 11. Pop any defers in the expression.
 	statement->do_stmt.expr = context_pop_defers_and_wrap_expr(context, expr);
+
+	// 12. Pop the scope itself.
 	context_pop_scope(context);
 
-	// while (1) with no break means that we've reached a statement which ends with a jump.
+	// 13. Check for infinite loops using do ... while (1).
+	//     If it has no break then that means we've reached a statement which ends with a jump.
 	if (statement->do_stmt.expr->expr_kind == EXPR_CONST && statement->do_stmt.expr->const_expr.b)
 	{
-		if (statement->do_stmt.flow.no_exit && !statement->do_stmt.flow.has_break)
-		{
-			context->current_scope->jump_end = true;
-		}
+		// Unless there is a break, this won't ever exit.
+		context->current_scope->jump_end = !statement->do_stmt.flow.has_break;
 	}
-	return success;
+	return true;
 }
 
 
+/**
+ * Analyse a regular local declaration, e.g. int x = 123
+ */
 static inline bool sema_analyse_local_decl(Context *context, Decl *decl)
 {
-	assert(decl->decl_kind == DECL_VAR);
+	assert(decl->decl_kind == DECL_VAR && "Unexpected declaration type");
+
+	// TODO unify with global decl analysis
+	// Add a local to the current context, will throw error on shadowing.
 	if (!sema_add_local(context, decl)) return decl_poison(decl);
+
+	// 1. Local constants: const int FOO = 123.
 	if (decl->var.kind == VARDECL_CONST)
 	{
 		Expr *init_expr = decl->var.init_expr;
+		// 1a. We require an init expression.
 		if (!init_expr)
 		{
 			SEMA_ERROR(decl, "Constants need to have an initial value.");
 			return false;
 		}
-		if (init_expr->expr_kind == EXPR_TYPEINFO && init_expr->type_expr->resolve_status == RESOLVE_DONE
-			   && init_expr->type_expr->type->type_kind == TYPE_VOID)
+		// 1b. We require defined constants
+		if (init_expr->expr_kind == EXPR_UNDEF)
 		{
 			SEMA_ERROR(decl, "Constants cannot be undefined.");
 			return false;
@@ -364,18 +482,16 @@ static inline bool sema_analyse_local_decl(Context *context, Decl *decl)
 		bool type_is_inferred = decl->type->type_kind == TYPE_INFERRED_ARRAY;
 		Expr *init = decl->var.init_expr;
 		// Handle explicit undef
-		if (init->expr_kind == EXPR_TYPEINFO && init->type_expr->resolve_status == RESOLVE_DONE
-			&& init->type_expr->type->type_kind == TYPE_VOID)
+		if (init->expr_kind == EXPR_UNDEF)
 		{
 			if (type_is_inferred)
 			{
 				SEMA_ERROR(decl->var.type_info, "Size of the array cannot be inferred with explicit undef.");
 				return false;
 			}
-			init->expr_kind = EXPR_UNDEF;
-			init->resolve_status = RESOLVE_DONE;
 			goto EXIT_OK;
 		}
+
 		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, decl->var.failable || decl->var.unwrap ? FAILABLE_YES : FAILABLE_NO)) return decl_poison(decl);
 
 		if (decl->type)
@@ -389,6 +505,7 @@ static inline bool sema_analyse_local_decl(Context *context, Decl *decl)
 			assert(right_side_type->type_kind == TYPE_ARRAY);
 			decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
 		}
+
 		if (decl->var.unwrap && !init->failable)
 		{
 			SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
@@ -1770,7 +1887,7 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_NEXT_STMT:
 			return sema_analyse_next_stmt(context, statement);
 		case AST_UNREACHABLE_STMT:
-			return sema_analyse_unreachable_stmt(context, statement);
+			return sema_analyse_unreachable_stmt(context);
 		case AST_VOLATILE_STMT:
 			return sema_analyse_volatile_stmt(context, statement);
 		case AST_WHILE_STMT:

@@ -5,65 +5,65 @@
 #include "llvm_codegen_internal.h"
 
 
-void gencontext_begin_module(GenContext *context)
+void gencontext_begin_module(GenContext *c)
 {
-	assert(!context->module && "Expected no module");
+	assert(!c->module && "Expected no module");
 
-	asprintf(&context->ir_filename, "%.*s.ll", (int)strlen(context->ast_context->file->name) - 3, context->ast_context->file->name);
-	asprintf(&context->object_filename, "%.*s.o", (int)strlen(context->ast_context->file->name) - 3, context->ast_context->file->name);
+	c->ir_filename = strformat("%.*s.ll", (int)strlen(c->ast_context->file->name) - 3, c->ast_context->file->name);
+	c->object_filename = strformat("%.*s.o", (int)strlen(c->ast_context->file->name) - 3, c->ast_context->file->name);
 
-	const char *full_path = context->ast_context->file->full_path;
-	char *mangled_module_name = strformat("%s-%s", context->ast_context->module->name->module, context->ast_context->file->name);
-	context->module = LLVMModuleCreateWithNameInContext(mangled_module_name, context->context);
-	LLVMSetModuleDataLayout(context->module, target_data_layout());
-	LLVMSetSourceFileName(context->module, full_path, strlen(context->ast_context->file->full_path));
-	LLVMTypeRef options_type = LLVMInt8TypeInContext(context->context);
+	const char *full_path = c->ast_context->file->full_path;
+	char *mangled_module_name = strformat("%s-%s", c->ast_context->module->name->module, c->ast_context->file->name);
+	c->module = LLVMModuleCreateWithNameInContext(mangled_module_name, c->context);
+	LLVMSetModuleDataLayout(c->module, target_data_layout());
+	LLVMSetSourceFileName(c->module, full_path, strlen(c->ast_context->file->full_path));
+	LLVMTypeRef options_type = LLVMInt8TypeInContext(c->context);
 
-	if (build_options.pic == PIC_BIG || build_options.pic == PIC_SMALL)
+	if (c->build_target->pic == PIC_BIG || c->build_target->pic == PIC_SMALL)
 	{
 		static const char *pic_level = "PIC Level";
-		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, build_options.pic, false));
-		LLVMAddModuleFlag(context->module, LLVMModuleFlagBehaviorOverride, pic_level, strlen(pic_level), setting);
+		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, c->build_target->pic, false));
+		LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pic_level, strlen(pic_level), setting);
 	}
-	if (build_options.pie == PIE_BIG || build_options.pie == PIE_SMALL)
+	if (c->build_target->pie == PIE_BIG || c->build_target->pie == PIE_SMALL)
 	{
 		static const char *pie_level = "PIE Level";
-		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, build_options.pie, false));
-		LLVMAddModuleFlag(context->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
+		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, c->build_target->pie, false));
+		LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
 	}
 
-	LLVMSetTarget(context->module, build_target.target_triple);
-	if (build_options.debug_info != DEBUG_INFO_NONE)
+	LLVMSetTarget(c->module, build_target.target_triple);
+	if (c->build_target->debug_info != DEBUG_INFO_NONE)
 	{
-		const char *filename = context->ast_context->file->name;
-		const char *dir_path = context->ast_context->file->dir_path;
+		const char *filename = c->ast_context->file->name;
+		const char *dir_path = c->ast_context->file->dir_path;
 		// Set runtime version here.
-		context->debug.runtime_version = 1;
-		context->debug.builder = LLVMCreateDIBuilder(context->module);
-		context->debug.file = LLVMDIBuilderCreateFile(context->debug.builder, filename, strlen(filename), dir_path, strlen(dir_path));
+		c->debug.runtime_version = 1;
+		c->debug.builder = LLVMCreateDIBuilder(c->module);
+		c->debug.file = LLVMDIBuilderCreateFile(c->debug.builder, filename, strlen(filename), dir_path, strlen(dir_path));
 
-		bool is_optimized = build_options.optimization_level != OPTIMIZATION_NONE;
+		bool is_optimized = c->build_target->optimization_level != OPTIMIZATION_NONE;
 		const char *dwarf_flags = "";
 		unsigned runtime_version = 1;
-		LLVMDWARFEmissionKind emission_kind = build_options.debug_info == DEBUG_INFO_FULL ? LLVMDWARFEmissionFull : LLVMDWARFEmissionLineTablesOnly;
-		context->debug.compile_unit = LLVMDIBuilderCreateCompileUnit(context->debug.builder, LLVMDWARFSourceLanguageC,
-		                                                             context->debug.file, DWARF_PRODUCER_NAME,
-		                                                             strlen(DWARF_PRODUCER_NAME), is_optimized,
-		                                                             dwarf_flags, strlen(dwarf_flags),
-		                                                             runtime_version, "" /* split name */, 0 /* len */,
-		                                                             emission_kind, /* dwo */0, /* inlining */0,
+		LLVMDWARFEmissionKind emission_kind = c->build_target->debug_info == DEBUG_INFO_FULL ? LLVMDWARFEmissionFull : LLVMDWARFEmissionLineTablesOnly;
+		c->debug.compile_unit = LLVMDIBuilderCreateCompileUnit(c->debug.builder, LLVMDWARFSourceLanguageC,
+		                                                       c->debug.file, DWARF_PRODUCER_NAME,
+		                                                       strlen(DWARF_PRODUCER_NAME), is_optimized,
+		                                                       dwarf_flags, strlen(dwarf_flags),
+		                                                       runtime_version, "" /* split name */, 0 /* len */,
+		                                                       emission_kind, /* dwo */0, /* inlining */0,
 		                                                             /* debug for profiling */0
 #if LLVM_VERSION_MAJOR > 10
 		                                                             , "", 0, "", 0
 #endif
-		                                                             );
+		                                                      );
 	}
 	// Setup all types. Not thread-safe, but at this point in time we can assume a single context.
 	// We need to remove the context from the cache after this.
 	// This would seem to indicate that we should change Type / actual type.
 
-	context->block_global_unique_count = 0;
-	context->ast_alloca_addr_space = target_alloca_addr_space();
+	c->block_global_unique_count = 0;
+	c->ast_alloca_addr_space = target_alloca_addr_space();
 
 	VECEACH(compiler.type, i)
 	{

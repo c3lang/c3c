@@ -5,8 +5,6 @@
 #include "compiler_internal.h"
 #include "bigint.h"
 
-#define EXIT_T_MISMATCH() return sema_type_mismatch(context, left, canonical, cast_type)
-
 #define FLOAT32_LIMIT 340282346638528859811704183484516925440.0000000000000000
 #define FLOAT64_LIMIT 179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0000000000000000
 #define FLOAT16_LIMIT 65504
@@ -30,7 +28,7 @@ static inline bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, T
 	return insert_cast(expr, kind, type);
 }
 
-static bool sema_type_mismatch(Context *context, Expr *expr, Type *type, CastType cast_type)
+static bool sema_type_mismatch(Expr *expr, Type *type, CastType cast_type)
 {
 	Type *expr_type = expr->type;
 	if (expr_type == type_typeinfo)
@@ -453,13 +451,6 @@ CastKind cast_to_bool_kind(Type *type)
 	UNREACHABLE
 }
 
-bool cast_to_bool_implicit(Expr *expr)
-{
-	assert(expr->resolve_status == RESOLVE_DONE);
-	if (cast_to_bool_kind(expr->type) == CAST_ERROR) return false;
-	return cast(expr, type_bool);
-}
-
 bool cast_may_explicit(Type *from_type, Type *to_type)
 {
 	// 1. We flatten the distinct types, since they should be freely convertible
@@ -546,6 +537,9 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 	UNREACHABLE
 }
 
+/**
+ * Can the conversion occur implicitly?
+ */
 bool cast_may_implicit(Type *from_type, Type *to_type)
 {
 	Type *from = from_type->canonical;
@@ -564,8 +558,6 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 		if (type_is_float(from))
 		{
 			// This works because the type_size of FXX = 0
-			unsigned a = type_size(to);
-			unsigned b = type_size(from);
 			return type_size(to) >= type_size(from);
 		}
 		return false;
@@ -654,12 +646,17 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 	}
 
 
+	// 8. Check if we may cast this to bool. It is safe for many types.
 	if (to->type_kind == TYPE_BOOL)
 	{
 		return cast_to_bool_kind(from) != CAST_ERROR;
 	}
 
-	// TODO struct embedding
+	// 9. Substruct cast, if the first member is inline, see if we can cast to this member.
+	if (type_is_substruct(from))
+	{
+		return cast_may_implicit(from->decl->strukt.members[0]->type, to);
+	}
 
 	return false;
 }
@@ -796,14 +793,6 @@ bool cast(Expr *expr, Type *to_type)
 			if (canonical->type_kind == TYPE_ERRTYPE) return insert_cast(expr, CAST_EUER, to_type);
 			break;
 		case TYPE_IXX:
-			// Compile time integers may convert into ints, floats, bools
-			if (expr->expr_kind != EXPR_CONST && !expr->reeval)
-			{
-				expr->resolve_status = RESOLVE_NOT_DONE;
-				expr->reeval = true;
-				TODO
-				// return sema_analyse_expr(context, to_type, expr);
-			}
 			if (type_is_integer(canonical)) return int_literal_to_int(expr, canonical, to_type);
 			if (type_is_float(canonical)) return int_literal_to_float(expr, canonical, to_type);
 			if (canonical == type_bool) return int_literal_to_bool(expr, to_type);
@@ -826,14 +815,6 @@ bool cast(Expr *expr, Type *to_type)
 			if (canonical->type_kind == TYPE_POINTER) return int_to_pointer(expr, to_type);
 			break;
 		case ALL_FLOATS:
-			// Compile time integers may convert into ints, floats, bools
-			if (from_type->type_kind == TYPE_FXX && expr->expr_kind != EXPR_CONST && !expr->reeval)
-			{
-				expr->resolve_status = RESOLVE_NOT_DONE;
-				expr->reeval = true;
-				TODO
-//				return sema_analyse_expr(context, to_type, expr);
-			}
 			if (type_is_integer(canonical)) return float_to_integer(expr, canonical, to_type);
 			if (canonical == type_bool) return float_to_bool(expr, to_type);
 			if (type_is_float(canonical)) return float_to_float(expr, canonical, to_type);
@@ -860,9 +841,8 @@ bool cast(Expr *expr, Type *to_type)
 			if (canonical->type_kind == TYPE_ARRAY || canonical->type_kind == TYPE_STRUCT || canonical->type_kind == TYPE_UNION)
 			{
 				return insert_cast(expr, CAST_STST, to_type);
-			}
+			} // Starting in a little while...
 			break;
-			UNREACHABLE
 		case TYPE_STRLIT:
 			canonical = type_flatten(canonical);
 			if (canonical->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_STRPTR, to_type);

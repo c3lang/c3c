@@ -244,7 +244,7 @@ static inline Ast* parse_catch_stmt(Context *context)
 	if (TOKEN_IS(TOKEN_LBRACE) && (context->next_tok.type == TOKEN_CASE || context->next_tok.type == TOKEN_DEFAULT))
 	{
 		catch_stmt->catch_stmt.is_switch = true;
-		if (!parse_switch_body(context, &catch_stmt->catch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_ast;
+		if (!parse_switch_body(context, &catch_stmt->catch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT, false)) return poisoned_ast;
 		return catch_stmt;
 	}
 
@@ -341,7 +341,7 @@ static bool parse_type_or_expr(Context *context, TypeInfo **type_info, Expr **ex
  * 	| CAST type ':' cast_stmts
  * 	;
  */
-static inline Ast* parse_case_stmt(Context *context, TokenType case_type, TokenType default_type)
+static inline Ast* parse_case_stmt(Context *context, TokenType case_type, TokenType default_type, bool allow_multiple_values)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CASE_STMT, context->tok);
 	advance(context);
@@ -356,6 +356,19 @@ static inline Ast* parse_case_stmt(Context *context, TokenType case_type, TokenT
 	else
 	{
 		ast->case_stmt.expr = expr;
+	}
+	if (type && allow_multiple_values && try_consume(context, TOKEN_COMMA))
+	{
+		ast->case_stmt.is_type_list = true;
+		TypeInfo **type_infos = NULL;
+		vec_add(type_infos, type);
+		while (1)
+		{
+			type = TRY_TYPE_OR(parse_type(context), false);
+			vec_add(type_infos, type);
+			if (!try_consume(context, TOKEN_COMMA)) break;
+		}
+		ast->case_stmt.type_infos = type_infos;
 	}
 	TRY_CONSUME(TOKEN_COLON, "Missing ':' after case");
 	extend_ast_with_prev_token(context, ast);
@@ -386,7 +399,8 @@ static inline Ast *parse_default_stmt(Context *context, TokenType case_type, Tok
  *  | default_stmt switch body
  *  ;
  */
-bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, TokenType default_type)
+bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, TokenType default_type,
+                       bool allow_multiple_values)
 {
 	CONSUME_OR(TOKEN_LBRACE, false);
 	while (!try_consume(context, TOKEN_RBRACE))
@@ -395,7 +409,7 @@ bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, Toke
 		TokenType next = context->tok.type;
 		if (next == case_type)
 		{
-			result = TRY_AST_OR(parse_case_stmt(context, case_type, default_type), false);
+			result = TRY_AST_OR(parse_case_stmt(context, case_type, default_type, allow_multiple_values), false);
 		}
 		else if (next == default_type)
 		{
@@ -425,7 +439,7 @@ static inline Ast* parse_switch_stmt(Context *context)
 	switch_ast->switch_stmt.cond = TRY_EXPR_OR(parse_decl_expr_list(context), poisoned_ast);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
 
-	if (!parse_switch_body(context, &switch_ast->switch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_ast;
+	if (!parse_switch_body(context, &switch_ast->switch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT, false)) return poisoned_ast;
 	return switch_ast;
 }
 
@@ -892,7 +906,7 @@ static inline Ast* parse_ct_switch_stmt(Context *context)
 		TokenType next = context->tok.type;
 		if (next == TOKEN_CT_CASE)
 		{
-			result = TRY_AST_OR(parse_case_stmt(context, TOKEN_CT_CASE, TOKEN_CT_DEFAULT), poisoned_ast);
+			result = TRY_AST_OR(parse_case_stmt(context, TOKEN_CT_CASE, TOKEN_CT_DEFAULT, true), poisoned_ast);
 		}
 		else if (next == TOKEN_CT_DEFAULT)
 		{

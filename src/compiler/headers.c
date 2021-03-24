@@ -52,7 +52,8 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT("int64_t");
 			return;
 		case TYPE_I128:
-			TODO
+			OUTPUT("__int128");
+			return;
 		case TYPE_U8:
 			OUTPUT("uint8_t");
 			return;
@@ -66,9 +67,11 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT("uint64_t");
 			return;
 		case TYPE_U128:
-			TODO
+			OUTPUT("unsigned __int128");
+			return;
 		case TYPE_F16:
-			TODO
+			OUTPUT("__fp16");
+			return;
 		case TYPE_F32:
 			OUTPUT("float");
 			return;
@@ -77,7 +80,8 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT("double");
 			return;
 		case TYPE_F128:
-			TODO
+			OUTPUT("__float128");
+			return;
 		case TYPE_TYPEID:
 			OUTPUT("c3typeid_t");
 			return;

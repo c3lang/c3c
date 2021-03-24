@@ -64,9 +64,9 @@ static LLVMValueRef llvm_emit_decl(GenContext *c, Ast *ast)
 	}
 	else
 	{
-		Type *type = decl->type->canonical;
+		Type *type = type_flatten(decl->type);
 		// Normal case, zero init.
-		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
+		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER || type->type_kind == TYPE_VARARRAY)
 		{
 			llvm_emit_store(c, decl, LLVMConstNull(alloc_type));
 		}
@@ -1029,7 +1029,7 @@ static inline void gencontext_emit_assume(GenContext *c, Expr *expr)
 
 static inline void gencontext_emit_assert_stmt(GenContext *c, Ast *ast)
 {
-	if (build_options.debug_mode)
+	if (c->build_target->feature.safe_mode)
 	{
 		BEValue value;
 		llvm_emit_expr(c, &value, ast->assert_stmt.expr);
@@ -1174,10 +1174,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 void llvm_emit_stmt(GenContext *c, Ast *ast)
 {
 	EMIT_LOC(c, ast);
-	if (c->catch_block == NULL)
-	{
-		c->catch_block = llvm_basic_block_new(c, "stmt_catch");
-	}
+	assert(!c->catch_block && "Did not expect a catch block here.");
 	switch (ast->ast_kind)
 	{
 		case AST_DOCS:

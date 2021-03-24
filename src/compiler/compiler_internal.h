@@ -24,6 +24,11 @@ typedef int32_t AlignSize;
 typedef int32_t ScopeId;
 
 
+#if PLATFORM_WINDOWS
+#define DEFAULT_EXE "a.exe"
+#else
+#define DEFAULT_EXE "a.out"
+#endif
 
 typedef uint32_t SourceLoc;
 typedef struct
@@ -136,6 +141,7 @@ typedef struct _Diagnostics
 	bool panic_mode;
 	unsigned errors;
 	unsigned warnings;
+	bool test_mode;
 } Diagnostics;
 
 typedef struct
@@ -209,6 +215,7 @@ struct _Type
 	const char *name;
 	Type **type_cache;
 	void *backend_type;
+	void *backend_aux_type;
 	void *backend_typeid;
 	void *backend_debug_type;
 	union
@@ -561,7 +568,7 @@ typedef struct
 
 typedef struct
 {
-	bool is_struct_function : 1;
+	bool is_type_method : 1;
 	bool is_pointer_call : 1;
 	Expr *function;
 	Expr **arguments;
@@ -762,7 +769,6 @@ struct _Expr
 	bool failable : 1;
 	bool pure : 1;
 	bool constant : 1;
-	bool reeval : 1;
 	SourceSpan span;
 	Type *type;
 	Type *original_type;
@@ -869,9 +875,11 @@ typedef struct
 typedef struct
 {
 	bool is_type;
+	bool is_type_list;
 	union
 	{
 		TypeInfo *type_info;
+		TypeInfo **type_infos;
 		Expr *expr;
 	};
 	Ast *body;
@@ -1206,6 +1214,7 @@ typedef struct _Context
 	Decl **generic_defines;
 	Decl **functions;
 	Decl **macros;
+	Decl **generics;
 	Decl **methods;
 	Decl **vars;
 	Decl **incr_array;
@@ -1233,7 +1242,6 @@ typedef struct _Context
 		// Reusable returns cache.
 		Ast **returns_cache;
 	};
-	Decl *evaluating_macro;
 	Type *rtype;
 	bool failable_return;
 	int in_volatile_section;
@@ -1374,7 +1382,7 @@ extern Type *type_u128, *type_i128;
 extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
-extern Type *type_typeid, *type_error, *type_typeinfo;
+extern Type *type_typeid, *type_error, *type_typeinfo, *type_varheader;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
@@ -1452,7 +1460,7 @@ static inline bool builtin_may_negate(Type *canonical)
 
 bool cast_implicit(Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type);
-bool cast_to_bool_implicit(Expr *expr);
+
 bool cast_may_implicit(Type *from_type, Type *to_type);
 bool cast_may_explicit(Type *from_type, Type *to_type);
 bool cast_implicit_bit_width(Expr *expr, Type *to_type);
@@ -1461,7 +1469,7 @@ CastKind cast_to_bool_kind(Type *type);
 
 bool cast_implicitly_to_runtime(Expr *expr);
 
-void llvm_codegen(void *module);
+const char *llvm_codegen(void *context);
 void *llvm_gen(Context *context);
 void llvm_codegen_setup();
 
@@ -1498,7 +1506,7 @@ static inline DeclKind decl_from_token(TokenType type);
 
 #pragma mark --- Diag functions
 
-void diag_reset(void);
+void diag_setup(bool test_output);
 
 void diag_verror_range(SourceLocation *location, const char *message, va_list args);
 
@@ -1638,7 +1646,7 @@ void stable_clear(STable *table);
 
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 
-void target_setup(void);
+void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
 void *target_data_layout();
 void *target_machine();
@@ -1991,6 +1999,8 @@ static inline size_t type_min_alignment(size_t a, size_t b)
 {
 	return (a | b) & (1 + ~(a | b));
 }
+
+void linker(const char *output_file, const char **files, unsigned file_count);
 
 #define TRY_AST_OR(_ast_stmt, _res) ({ Ast* _ast = (_ast_stmt); if (!ast_ok(_ast)) return _res; _ast; })
 #define TRY_EXPR_OR(_expr_stmt, _res) ({ Expr* _expr = (_expr_stmt); if (!expr_ok(_expr)) return _res; _expr; })

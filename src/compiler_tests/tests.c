@@ -155,6 +155,8 @@ void test_file(void)
 }
 void compiler_tests(void)
 {
+	symtab_init(0x100000);
+
 	test_file();
 	test_lexer();
 	test_compiler();

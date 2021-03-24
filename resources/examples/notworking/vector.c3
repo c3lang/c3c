@@ -2,7 +2,7 @@ module vector(Type);
 
 public struct Vector
 {
-    Type[*] array;
+    Type[] array;
 }
 
 public func void Vector.init()

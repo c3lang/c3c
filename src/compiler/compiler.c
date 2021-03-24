@@ -4,6 +4,7 @@
 
 #include "compiler_internal.h"
 #include "../build/build_options.h"
+#include <unistd.h>
 
 Compiler compiler;
 
@@ -64,7 +65,7 @@ void compiler_parse(BuildTarget *target)
 		bool loaded = false;
 		File *file = source_file_load(target->sources[i], &loaded);
 		if (loaded) continue;
-		diag_reset();
+		diag_setup(target->test_output);
 		Context *context = context_create(file, target);
 		parse_file(context);
 		context_print_ast(context, stdout);
@@ -75,7 +76,7 @@ void compiler_parse(BuildTarget *target)
 void compiler_compile(BuildTarget *target)
 {
 	Context **contexts = NULL;
-	diag_reset();
+	diag_setup(target->test_output);
 	if (compiler.lib_dir)
 	{
 		vec_add(target->sources, strformat("%s/std/builtin.c3", compiler.lib_dir));
@@ -131,7 +132,7 @@ void compiler_compile(BuildTarget *target)
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
 
-	if (build_options.command == COMMAND_GENERATE_HEADERS)
+	if (target->output_headers)
 	{
 		for (unsigned i = 0; i < source_count; i++)
 		{
@@ -144,7 +145,7 @@ void compiler_compile(BuildTarget *target)
 
 	llvm_codegen_setup();
 
-	void **gen_contexts = malloc(source_count * sizeof(void*));
+	void **gen_contexts = malloc(source_count * sizeof(void *));
 	for (unsigned i = 0; i < source_count; i++)
 	{
 		Context *context = contexts[i];
@@ -169,13 +170,30 @@ void compiler_compile(BuildTarget *target)
 
 	print_arena_status();
 
-	free_arena();
+
+	bool create_exe = !target->test_output && (target->type == TARGET_TYPE_EXECUTABLE || target->type == TARGET_TYPE_TEST);
+#if PLATFORM_WINDOWS
+	create_exe = false;
+#endif
+	const char **obj_files = NULL;
 
 	for (unsigned i = 0; i < source_count; i++)
 	{
-		llvm_codegen(gen_contexts[i]);
+		const char *file_name = llvm_codegen(gen_contexts[i]);
+		assert(file_name || !create_exe);
+		vec_add(obj_files, file_name);
 	}
 
+	if (create_exe)
+	{
+		linker(target->name, obj_files, source_count);
+		if (target->run_after_compile)
+		{
+			system(strformat("./%s", target->name));
+		}
+	}
+
+	free_arena();
 	exit(EXIT_SUCCESS);
 }
 
@@ -220,30 +238,23 @@ static void target_expand_source_names(BuildTarget *target)
 
 void compile_files(BuildTarget *target)
 {
-	if (!target)
-	{
-		target = CALLOCS(BuildTarget);
-		target->type = TARGET_TYPE_EXECUTABLE;
-		target->sources = build_options.files;
-		target->name = "a.out";
-	}
+	symtab_init(target->symtab_size ? target->symtab_size : 64 * 1024);
+	assert(target);
 	target_expand_source_names(target);
-	target_setup();
+	target_setup(target);
 
 	if (!vec_size(target->sources)) error_exit("No files to compile.");
-	switch (build_options.compile_option)
+	if (target->lex_only)
 	{
-		case COMPILE_LEX_ONLY:
-			compiler_lex(target);
-			break;
-		case COMPILE_LEX_PARSE_ONLY:
-			compiler_parse(target);
-			break;
-		case COMPILE_OUTPUT_HEADERS:
-		default:
-			compiler_compile(target);
-			break;
+		compiler_lex(target);
+		return;
 	}
+	if (target->parse_only)
+	{
+		compiler_parse(target);
+		return;
+	}
+	compiler_compile(target);
 }
 
 
@@ -258,6 +269,7 @@ void compiler_add_type(Type *type)
 	assert(type_ok(type));
 	VECADD(compiler.type, type);
 }
+
 Module *compiler_find_or_create_module(Path *module_name)
 {
 	Module *module = stable_get(&compiler.modules, module_name->module);

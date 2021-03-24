@@ -7,6 +7,7 @@
 #include "utils/lib.h"
 #include "utils/toml.h"
 #include "build_options.h"
+#define DEFAULT_SYMTAB_SIZE (64 * 1024)
 
 typedef struct
 {
@@ -15,3 +16,4 @@ typedef struct
 
 Project *project_load(void);
 BuildTarget *project_select_target(Project *project, const char *optional_target);
+

@@ -3,37 +3,60 @@
 
 static Decl *parse_const_declaration(Context *context, Visibility visibility);
 
-static bool context_next_up_is_type_with_path(Context *context)
+/**
+ * Walk forward through the token stream to identify a type on the format: foo::bar::Type
+ *
+ * @return true if there is a type at the end.
+ */
+static bool context_next_is_type_with_path_prefix(Context *context)
 {
+	// We assume it's called after "foo::" parsing.
+	assert(context->tok.type == TOKEN_IDENT && context->next_tok.type == TOKEN_SCOPE);
+
 	TokenId current = context->next_tok.id;
-	TokenType tok = context->next_tok.type;
 	while (1)
 	{
+		TokenType tok;
+
+		// 1. Step past the '::' and any following comment (doc comments are not allowed here!)
 		while (1)
 		{
 			current.index += 1;
 			tok = TOKITYPE(current);
-			if (tok == TOKEN_COMMENT || tok == TOKEN_DOC_COMMENT) continue;
-			if (tok != TOKEN_IDENT) goto DONE_CHECK;
-			break;
+			if (tok != TOKEN_COMMENT) break;
 		}
+
+		// 2. Check that we have an ident, otherwise if
+		// we see a type token, we're done and return true
+		// on any other
+		if (tok != TOKEN_IDENT) return tok == TOKEN_TYPE_IDENT;
+
+		// 3. Now we've confirmed that there is an ident, step past it
+		//    and any following comments.
 		while (1)
 		{
 			current.index += 1;
 			tok = TOKITYPE(current);
-			if (tok == TOKEN_COMMENT || tok == TOKEN_DOC_COMMENT) continue;
-			if (tok != TOKEN_SCOPE) goto DONE_CHECK;
-			break;
+			if (tok != TOKEN_COMMENT) break;
 		}
+
+		// 4. If we don't see '::' after an ident we're done.
+		// And we know it's not a type.
+		if (tok != TOKEN_SCOPE) return false;
+
+		// 5. Do another pass
 	}
-	DONE_CHECK:
-	return tok == TOKEN_TYPE_IDENT;
 }
 
 
 /**
- * Walk until we find the first top level construct.
- * (Note that this is the slow path, so no need to inline)
+ * Walk until we find the first top level construct, the current heuristic is this:
+ * public, typedef, struct, import, union, extern, enum, generic, attribute, define
+ * are *always* sync points.
+ *
+ * func, any type, CT_IDENT, CT_TYPE_IDENT, $if, $for, $switch, generic,
+ * doc comment start, asm, typeof, TYPE_IDENT, local, const, IDENT
+ * - are sync points only if they appear in the first column.
  */
 void recover_top_level(Context *context)
 {
@@ -43,17 +66,55 @@ void recover_top_level(Context *context)
 		switch (context->tok.type)
 		{
 			case TOKEN_PUBLIC:
-			case TOKEN_FUNC:
-			case TOKEN_CONST:
 			case TOKEN_TYPEDEF:
 			case TOKEN_STRUCT:
 			case TOKEN_IMPORT:
 			case TOKEN_UNION:
-			case TOKEN_MACRO:
 			case TOKEN_EXTERN:
 			case TOKEN_ENUM:
-			case TOKEN_ERR:
+			case TOKEN_GENERIC:
+			case TOKEN_ATTRIBUTE:
+			case TOKEN_DEFINE:
 				return;
+			case TOKEN_IDENT: // Incr arrays only
+			case TOKEN_LOCAL:
+			case TOKEN_CONST:
+			case TOKEN_ASM:
+			case TOKEN_TYPEOF:
+			case TOKEN_CT_ASSERT:
+			case TOKEN_CT_TYPE_IDENT:
+			case TOKEN_DOCS_START:
+			case TOKEN_TYPE_IDENT:
+			case TOKEN_CT_IDENT:
+			case TOKEN_CT_IF:
+			case TOKEN_CT_FOR:
+			case TOKEN_CT_SWITCH:
+			case TOKEN_FUNC:
+			case TOKEN_VOID:
+			case TOKEN_BOOL:
+			case TOKEN_CHAR:
+			case TOKEN_DOUBLE:
+			case TOKEN_FLOAT:
+			case TOKEN_HALF:
+			case TOKEN_ICHAR:
+			case TOKEN_INT:
+			case TOKEN_IPTR:
+			case TOKEN_IPTRDIFF:
+			case TOKEN_ISIZE:
+			case TOKEN_LONG:
+			case TOKEN_SHORT:
+			case TOKEN_UINT:
+			case TOKEN_ULONG:
+			case TOKEN_UPTR:
+			case TOKEN_UPTRDIFF:
+			case TOKEN_USHORT:
+			case TOKEN_USIZE:
+			case TOKEN_QUAD:
+			case TOKEN_TYPEID:
+				// Only recover if this is in the first col.
+				if (TOKLOC(context->tok)->col == 1) return;
+				advance(context);
+				break;
 			default:
 				advance(context);
 				break;
@@ -886,7 +947,7 @@ bool parse_next_is_decl(Context *context)
 			       | (next_tok == TOKEN_CONST_IDENT);
 		case TOKEN_IDENT:
 			if (next_tok != TOKEN_SCOPE) return false;
-			return context_next_up_is_type_with_path(context);
+			return context_next_is_type_with_path_prefix(context);
 		default:
 			return false;
 	}
@@ -918,10 +979,10 @@ bool parse_next_is_case_type(Context *context)
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_ERR:
 		case TOKEN_TYPEID:
-			return (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) | (next_tok == TOKEN_COLON) | (next_tok == TOKEN_EOS);
+			return (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) |  (next_tok == TOKEN_COMMA) | (next_tok == TOKEN_COLON) | (next_tok == TOKEN_EOS);
 		case TOKEN_IDENT:
 			if (next_tok != TOKEN_SCOPE) return false;
-			return context_next_up_is_type_with_path(context);
+			return context_next_is_type_with_path_prefix(context);
 		default:
 			return false;
 	}
@@ -1281,14 +1342,16 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 		advance(context);
 		COMMA_RPAREN_OR(poisoned_decl);
 	}
-	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
 	Ast **cases = NULL;
-	if (!parse_switch_body(context, &cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_decl;
+	if (!parse_switch_body(context, &cases, TOKEN_CASE, TOKEN_DEFAULT, true)) return poisoned_decl;
 	decl->generic_decl.cases = cases;
 	decl->generic_decl.parameters = parameters;
 	return decl;
 }
 
+/**
+ * define_decl ::= DEFINE path? (IDENT | TYPE_IDENT | CONST_IDENT) '(' expr (',' expr)* ')' as (IDENT | TYPE_IDENT | CONST_IDENT)
+ */
 static inline Decl *parse_define(Context *context, Visibility visibility)
 {
 	if (context->next_tok.type == TOKEN_CT_TYPE_IDENT || context->next_tok.type == TOKEN_CT_IDENT)

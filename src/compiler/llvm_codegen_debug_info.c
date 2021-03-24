@@ -123,7 +123,7 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 	                                                true,
 	                                                loc->line,
 	                                                flags,
-	                                                build_options.optimization_level != OPTIMIZATION_NONE);
+	                                                c->build_target->optimization_level != OPTIMIZATION_NONE);
 	LLVMSetSubprogram(decl->backend_ref, c->debug.function);
 }
 
@@ -139,7 +139,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 			c->debug.file,
 			location->line,
 			llvm_get_debug_type(c, decl->type),
-			build_options.optimization_level != OPTIMIZATION_NONE,
+			c->build_target->optimization_level != OPTIMIZATION_NONE,
 			LLVMDIFlagZero,
 			decl->alignment);
 	decl->var.backend_debug_ref = var;
@@ -214,7 +214,7 @@ static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const 
 	                                                   type->name, strlen(type->name),
 	                                                   scope,
 	                                                   c->debug.file, loc ? loc->line : 0,
-	                                                   build_options.version,
+	                                                   1 /* version TODO */,
 	                                                   type_size(type) * 8,
 	                                                   type_abi_alignment(type) * 8,
 	                                                   flags,
@@ -371,6 +371,54 @@ static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type)
 	return llvm_get_debug_struct(c, type, type->name, elements, 2, NULL, NULL, LLVMDIFlagZero);
 }
 
+static LLVMMetadataRef llvm_debug_vararray_type(GenContext *c, Type *type)
+{
+	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, type->name, NULL, NULL, LLVMDIFlagZero);
+	type->backend_debug_type = forward;
+	Type *element = type->array.base;
+
+	LLVMMetadataRef array = LLVMDIBuilderCreateArrayType(
+			c->debug.builder,
+			type_size(type),
+			type_abi_alignment(element),
+			llvm_get_debug_type(c, element),
+			NULL, 0);
+
+	LLVMMetadataRef array_member = LLVMDIBuilderCreateMemberType(
+			c->debug.builder,
+			forward,
+			"array", strlen("array"),
+			NULL,
+			0, 0,
+			type_abi_alignment(element) * 8,
+			type_size(type_usize) * 2 * 8, LLVMDIFlagZero, array);
+
+	LLVMMetadataRef elements[3] = {
+			llvm_get_debug_member(c, type_get_ptr(type->array.base), "len", 0, NULL, forward, LLVMDIFlagZero),
+			llvm_get_debug_member(c, type_usize, "capacity", type_size(type_usize), NULL, forward, LLVMDIFlagZero),
+			array_member
+	};
+	unsigned strukt_size = type_size(type_usize) * 2 * 8;
+	unsigned alignment = type_abi_alignment(type_usize) * 8;
+	LLVMMetadataRef strukt = LLVMDIBuilderCreateStructType(c->debug.builder,
+	                                                     NULL,
+	                                                     "", 0, NULL, 0, strukt_size,
+	                                                     alignment,
+	                                                     LLVMDIFlagZero, NULL,
+	                                                     elements, 3,
+	                                                     c->debug.runtime_version,
+	                                                     NULL, // VTable
+	                                                     "", 0);
+	LLVMMetadataRef real = LLVMDIBuilderCreatePointerType(c->debug.builder,
+	                                                         strukt,
+	                                                         strukt_size,
+	                                                         alignment, 0,
+	                                                         type->name, strlen(type->name));
+
+	LLVMMetadataReplaceAllUsesWith(forward, real);
+	return real;
+}
+
 static LLVMMetadataRef llvm_debug_errunion_type(GenContext *c, Type *type)
 {
 	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, type->name, NULL, NULL, LLVMDIFlagZero);
@@ -422,6 +470,8 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 		                                  NULL, 0, NULL, 0);
 	}
 
+	Type *original_type = type->type_kind == TYPE_TYPEDEF ? decl->typedef_decl.type_info->type : decl->distinct_decl.base_type;
+
 	SourceLocation *location = TOKLOC(decl->span.loc);
 	// Use forward references in case we haven't resolved the original type, since we could have this:
 	if (!type->canonical->backend_debug_type)
@@ -429,7 +479,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 		type->backend_debug_type = llvm_debug_forward_comp(c, type, type->name, location, NULL, LLVMDIFlagZero);
 	}
 	LLVMMetadataRef real = LLVMDIBuilderCreateTypedef(c->debug.builder,
-	                                                  llvm_get_debug_type(c, decl->typedef_decl.type_info->type),
+	                                                  llvm_get_debug_type(c, original_type),
 	                                                  decl->name, TOKLEN(decl->name_token),
 	                                                  c->debug.file, location->line,
 	                                                  c->debug.file, type_abi_alignment(type));
@@ -488,6 +538,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_STRLIT:
 			UNREACHABLE
 		case TYPE_BOOL:
 			return llvm_debug_simple_type(c, type, DW_ATE_boolean);
@@ -527,15 +578,12 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_UNION:
 			return type->backend_debug_type = llvm_debug_structlike_type(c, type, scope);
 		case TYPE_DISTINCT:
-			TODO
 		case TYPE_TYPEDEF:
 			return type->backend_debug_type = llvm_debug_typedef_type(c, type);
-		case TYPE_STRLIT:
-			TODO
 		case TYPE_ARRAY:
 			return type->backend_debug_type = llvm_debug_array_type(c, type);
 		case TYPE_VARARRAY:
-			TODO
+			return type->backend_debug_type = llvm_debug_vararray_type(c, type);
 		case TYPE_SUBARRAY:
 			return type->backend_debug_type = llvm_debug_subarray_type(c, type);
 		case TYPE_ERR_UNION:

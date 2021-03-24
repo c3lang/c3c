@@ -154,6 +154,10 @@ void sema_analysis_pass_decls(Context *context)
 	{
 		sema_analyse_decl(context, context->macros[i]);
 	}
+	VECEACH(context->generics, i)
+	{
+		sema_analyse_decl(context, context->generics[i]);
+	}
 	VECEACH(context->methods, i)
 	{
 		sema_analyse_decl(context, context->methods[i]);

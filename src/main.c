@@ -18,39 +18,39 @@ int main(int argc, const char *argv[])
 	compiler_init();
 
 	// Parse arguments.
-	parse_arguments(argc, argv);
+	BuildOptions build_options = parse_arguments(argc, argv);
 
-	// Now we set up the symtab.
-	symtab_init(build_options.symtab_size);
+	BuildTarget build_target = {};
 
 	switch (build_options.command)
 	{
 		case COMMAND_INIT:
-			create_project();
+			create_project(&build_options);
 			break;
 		case COMMAND_UNIT_TEST:
 			compiler_tests();
 			break;
 		case COMMAND_GENERATE_HEADERS:
-			build_options.compile_option = COMPILE_OUTPUT_HEADERS;
-			compile_files(NULL);
-			break;
 		case COMMAND_COMPILE:
-			compile_files(NULL);
+		case COMMAND_COMPILE_RUN:
+			init_default_build_target(&build_target, &build_options, "foo.out");
+			compile_files(&build_target);
 			break;
 		case COMMAND_BUILD:
-			build();
-			break;
-		case COMMAND_COMPILE_RUN:
-		case COMMAND_MISSING:
 		case COMMAND_RUN:
 		case COMMAND_CLEAN_RUN:
 		case COMMAND_CLEAN:
 		case COMMAND_DIST:
 		case COMMAND_DOCS:
 		case COMMAND_BENCH:
+			init_build_target(&build_target, &build_options);
+			compile_files(&build_target);
+			break;
+		case COMMAND_MISSING:
 			printf("TODO\n");
 	}
+
+
 	print_arena_status();
 	free_arena();
 	return 0;

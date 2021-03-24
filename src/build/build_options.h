@@ -73,6 +73,17 @@ typedef enum
 
 typedef enum
 {
+	OPT_SETTING_NOT_SET = -1,
+	OPT_SETTING_O0 = 0,
+	OPT_SETTING_O1 = 1,
+	OPT_SETTING_O2 = 2,
+	OPT_SETTING_O3 = 3,
+	OPT_SETTING_OSMALL = 4,
+	OPT_SETTING_OTINY = 5,
+} OptimizationSetting;
+
+typedef enum
+{
 	OPTIMIZATION_NOT_SET = -1,
 	OPTIMIZATION_NONE = 0,          // -O0
 	OPTIMIZATION_LESS = 1,          // -O1
@@ -100,14 +111,29 @@ typedef enum
 // Values correspond to LLVM values
 typedef enum
 {
-	PIE_NONE = -1,
-	PIE_DEFAULT = 0,
+	PIE_DEFAULT = -1,
+	PIE_NONE = 0,
 	PIE_SMALL = 1,
 	PIE_BIG = 2,
 } PieGeneration;
 
 typedef enum
 {
+	SOFT_FLOAT_DEFAULT = -1,
+	SOFT_FLOAT_NONE = 0,
+	SOFT_FLOAT_YES = 1
+} SoftFloat;
+
+typedef enum
+{
+	STRUCT_RETURN_DEFAULT = -1,
+	STRUCT_RETURN_STACK = 0,
+	STRUCT_RETURN_REG = 1
+} StructReturn;
+
+typedef enum
+{
+	DEBUG_INFO_NOT_SET = -1,
 	DEBUG_INFO_NONE,
 	DEBUG_INFO_LINE_TABLES,
 	DEBUG_INFO_FULL
@@ -135,42 +161,27 @@ typedef enum
 	ARCH_OS_TARGET_LAST = WASM64
 } ArchOsTarget;
 
-typedef struct
+typedef struct BuildOptions_
 {
 	const char* lib_dir[MAX_LIB_DIRS];
 	int lib_count;
 	const char** files;
 	const char* project_name;
-	ArchOsTarget arch_os_target;
 	const char* target_select;
 	const char* path;
-	const char* cpu;
-	const char* target_triple;
-	PicGeneration pic;
-	PieGeneration pie;
-	bool generate_lib;
-	struct
-	{
-		bool reg_struct_return : 1;
-		bool stack_struct_return : 1;
-		bool no_memcpy_pass : 1;
-		bool soft_float : 1;
-		bool no_soft_float : 1;
-	} feature;
 	unsigned version;
 	CompilerCommand command;
-	uint32_t symtab_size;
 	CompileOption compile_option;
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
-	OptimizationLevel optimization_level;
-	SizeOptimizationLevel size_optimization_level;
-	DebugInfo debug_info;
+	OptimizationSetting optimization_setting_override;
+	DebugInfo debug_info_override;
+	ArchOsTarget arch_os_target_override;
 	bool debug_mode;
 	bool emit_llvm;
 	bool emit_bitcode;
 	bool test_mode;
-	bool trap_wrapping;
 } BuildOptions;
+
 
 
 
@@ -191,9 +202,32 @@ typedef struct
 	const char *langrev;
 	const char **sources;
 	const char **libraries;
-	const char *target_triple;
+	const char *cpu;
+	bool run_after_compile : 1;
+	bool test_output : 1;
+	bool output_headers : 1;
+	bool output_ast : 1;
+	bool lex_only : 1;
+	bool parse_only : 1;
+	bool emit_llvm : 1;
+	bool emit_object_files : 1;
+	OptimizationLevel optimization_level;
+	SizeOptimizationLevel size_optimization_level;
+	DebugInfo debug_info;
+	PieGeneration pie;
+	PicGeneration pic;
+	ArchOsTarget arch_os_target;
+	uint32_t symtab_size;
+	struct
+	{
+		SoftFloat soft_float : 3;
+		StructReturn struct_return : 3;
+		bool no_memcpy_pass : 1;
+		bool trap_on_wrap : 1;
+		bool safe_mode : 1;
+	} feature;
 } BuildTarget;
 
-extern BuildOptions build_options;
 
-void parse_arguments(int argc, const char *argv[]);
+BuildOptions parse_arguments(int argc, const char *argv[]);
+ArchOsTarget arch_os_target_from_string(const char *target);

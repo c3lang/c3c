@@ -7,11 +7,12 @@
 
 Diagnostics diagnostics;
 
-void diag_reset(void)
+void diag_setup(bool test_output)
 {
 	diagnostics.panic_mode = false;
 	diagnostics.errors = 0;
 	diagnostics.warnings = 0;
+	diagnostics.test_mode = test_output;
 }
 
 typedef enum
@@ -23,7 +24,7 @@ typedef enum
 
 static void print_error2(SourceLocation *location, const char *message, PrintType print_type)
 {
-	if (build_options.test_mode)
+	if (diagnostics.test_mode)
 	{
 		switch (print_type)
 		{
