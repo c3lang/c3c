@@ -29,33 +29,33 @@ const char* TOML =
     "# libraries to use\n"
 	"libs = [\"lib/**\"]\n";
 
-void create_project(void)
+void create_project(BuildOptions *build_options)
 {
 	for (int i = 0; ; i++)
 	{
-		char c = build_options.project_name[i];
+		char c = build_options->project_name[i];
 		if (c == '\0') break;
 		if (!is_alphanum_(c))
 		{
-			fprintf(stderr, "'%s' is not a valid project name.\n", build_options.project_name);
+			fprintf(stderr, "'%s' is not a valid project name.\n", build_options->project_name);
 			exit(EXIT_FAILURE);
 		}
 	}
 
-	if (chdir(build_options.path))
+	if (chdir(build_options->path))
 	{
-		fprintf(stderr, "Can't open path %s\n", build_options.path);
+		fprintf(stderr, "Can't open path %s\n", build_options->path);
 		exit(EXIT_FAILURE);
 	}
 
-	int error = mkdir(build_options.project_name, 0755);
+	int error = mkdir(build_options->project_name, 0755);
 	if (error)
 	{
-		fprintf(stderr, "Could not create directory %s: %s\n", build_options.project_name, strerror(errno));
+		fprintf(stderr, "Could not create directory %s: %s\n", build_options->project_name, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
-	if (chdir(build_options.project_name)) goto ERROR;
+	if (chdir(build_options->project_name)) goto ERROR;
 
 	FILE *file = fopen("LICENCE", "a");
 	if (!file) goto ERROR;
@@ -67,7 +67,7 @@ void create_project(void)
 
 	file = fopen("project.toml", "a");
 	if (!file) goto ERROR;
-	fprintf(file, TOML, build_options.project_name);
+	fprintf(file, TOML, build_options->project_name);
 	fclose(file);
 
 	if (mkdir("lib", 0755)) goto ERROR;
@@ -80,7 +80,7 @@ void create_project(void)
 
 	chdir("test");
 
-	if (mkdir(build_options.project_name, 0755)) goto ERROR;
+	if (mkdir(build_options->project_name, 0755)) goto ERROR;
 
 	chdir("..");
 
@@ -106,9 +106,9 @@ void create_project(void)
 
 	chdir("src");
 
-	if (mkdir(build_options.project_name, 0755)) goto ERROR;
+	if (mkdir(build_options->project_name, 0755)) goto ERROR;
 
-	chdir(build_options.project_name);
+	chdir(build_options->project_name);
 
 	file = fopen("main.c3", "a");
 	if (!file) goto ERROR;
@@ -116,14 +116,14 @@ void create_project(void)
 
 	chdir("../..");
 
-	printf("Project '%s' created.\n", build_options.project_name);
+	printf("Project '%s' created.\n", build_options->project_name);
 	exit(EXIT_SUCCESS);
 
 ERROR:
 	fprintf(stderr, "Err: %s\n", strerror(errno));
 
 	printf("Something went wrong creating the project.");
-	chdir(build_options.path);
-	rmdir(build_options.project_name);
+	chdir(build_options->path);
+	rmdir(build_options->project_name);
 	exit(EXIT_FAILURE);
 }

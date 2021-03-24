@@ -277,6 +277,7 @@ static Expr *parse_post_unary(Context *context, Expr *left)
 	Expr *unary = EXPR_NEW_TOKEN(EXPR_POST_UNARY, context->tok);
 	unary->post_expr.expr = left;
 	unary->post_expr.operator = post_unaryop_from_token(context->tok.type);
+	unary->span.loc = left->span.loc;
 	advance(context);
 	return unary;
 }
@@ -331,6 +332,7 @@ static Expr *parse_grouping_expr(Context *context, Expr *left)
  * initializer
  *  : initializer_list
  *  | expr
+ *  | void
  *  ;
  *
  * @param context
@@ -338,6 +340,14 @@ static Expr *parse_grouping_expr(Context *context, Expr *left)
  */
 Expr *parse_initializer(Context *context)
 {
+	if (TOKEN_IS(TOKEN_VOID))
+	{
+		Expr *expr = EXPR_NEW_TOKEN(EXPR_UNDEF, context->tok);
+		expr->type = type_void;
+		expr->resolve_status = RESOLVE_DONE;
+		advance(context);
+		return expr;
+	}
 	if (TOKEN_IS(TOKEN_LBRACE))
 	{
 		return parse_initializer_list(context);

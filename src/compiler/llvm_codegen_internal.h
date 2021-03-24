@@ -97,6 +97,7 @@ typedef struct
 	bool current_block_is_target : 1;
 	bool did_call_stack_save : 1;
 	LLVMTypeRef type_data_definitions[TYPE_KINDS];
+	BuildTarget *build_target;
 } GenContext;
 
 // LLVM Intrinsics
@@ -174,7 +175,7 @@ extern unsigned attribute_sext; // sign extend
 extern unsigned attribute_byval; // ByVal (param)
 extern unsigned attribute_inreg; // inreg (param)
 
-void gencontext_begin_module(GenContext *context);
+void gencontext_begin_module(GenContext *c);
 void gencontext_end_module(GenContext *context);
 
 // BE value
@@ -212,7 +213,7 @@ void llvm_emit_block(GenContext *c, LLVMBasicBlockRef next_block);
 void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block);
 void llvm_emit_compound_stmt(GenContext *context, Ast *ast);
 void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl);
-LLVMValueRef llvm_emit_convert_value_from_coerced(GenContext *context, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type);
+void llvm_emit_convert_value_from_coerced(GenContext *context, BEValue *result, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type);
 void llvm_emit_function_body(GenContext *context, Decl *decl);
 void llvm_emit_function_decl(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic_id, LLVMTypeRef *types, unsigned type_count, LLVMValueRef *values, unsigned arg_count);
@@ -228,7 +229,8 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl);
 
 LLVMValueRef llvm_emit_const_aggregate(GenContext *c, Expr *expr, bool *modified);
 LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op);
-LLVMValueRef llvm_emit_is_no_error(GenContext *c, LLVMValueRef error);
+
+LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value);
 void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_len);
 LLVMValueRef llvm_emit_load_aligned(GenContext *context, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name);
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);

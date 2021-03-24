@@ -951,9 +951,63 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 
 static inline bool sema_analyse_generic(Context *context, Decl *decl)
 {
-	TODO
+	// 1. If it has a return type, make sure it resolves.
+	if (decl->generic_decl.rtype && !sema_resolve_type_info(context, decl->generic_decl.rtype)) return false;
+
+	unsigned param_count = vec_size(decl->generic_decl.parameters);
+	if (param_count < 1)
+	{
+		SEMA_ERROR(decl, "A generic function needs at least 1 parameter.");
+		return false;
+	}
+	Ast **cases = decl->generic_decl.cases;
+
+	bool default_has_been_found = false;
+	VECEACH(cases, i)
+	{
+		Ast *generic_case = cases[i];
+		if (generic_case->ast_kind == AST_CASE_STMT)
+		{
+			if (!generic_case->case_stmt.is_type)
+			{
+				SEMA_ERROR(generic_case->case_stmt.expr, "Expected a type as the argument.");
+				return false;
+			}
+			if (!generic_case->case_stmt.is_type_list)
+			{
+				TypeInfo **type_infos = VECNEW(TypeInfo *, 2);
+				vec_add(type_infos, generic_case->case_stmt.type_info);
+				generic_case->case_stmt.type_infos = type_infos;
+				generic_case->case_stmt.is_type_list = true;
+			}
+			TypeInfo **type_infos = generic_case->case_stmt.type_infos;
+			unsigned args = vec_size(type_infos);
+			for (unsigned j = 0; j < args; j++)
+			{
+				if (!sema_resolve_type_info(context, type_infos[j])) return false;
+			}
+			if (args != param_count)
+			{
+				if (param_count == 1)
+				{
+					SEMA_ERROR(type_infos[1], "Expected a single type as the argument.");
+					return false;
+				}
+				SEMA_ERROR(type_infos[args - 1], "Expected %d types in the case statement.", param_count);
+				return false;
+			}
+			continue;
+		}
+		assert(generic_case->ast_kind == AST_DEFAULT_STMT);
+		if (default_has_been_found)
+		{
+			SEMA_ERROR(generic_case, "More than one default statement found.");
+			return false;
+		}
+	}
 	return true;
 }
+
 
 static inline bool sema_analyse_define(Context *context, Decl *decl)
 {
@@ -963,17 +1017,24 @@ static inline bool sema_analyse_define(Context *context, Decl *decl)
 }
 
 
-
-static inline bool sema_analyse_error(Context *context __unused, Decl *decl)
+/**
+ * Semantic analysis on an error first checks the internals as if it was
+ * a struct, then checks that the size is not exceeded and adds padding.
+ */
+static inline bool sema_analyse_error(Context *context, Decl *decl)
 {
+	// 1. Step one is to analyze the error as it it was a regular struct.
 	if (!sema_analyse_struct_union(context, decl)) return false;
-	ByteSize error_full_size = type_size(type_voidptr);
+
+	// 2. Because an error is always pointer sized, we check so that it isn't exceeded.
+	ByteSize error_full_size = type_size(type_uptr);
 	if (decl->strukt.size > error_full_size)
 	{
 		SEMA_ERROR(decl, "Error type may not exceed pointer size (%d bytes) it was %d bytes.", error_full_size, decl->strukt.size);
 		return false;
 	}
 
+	// 3. If the size is smaller than than pointer sized, we add padding.
 	if (decl->strukt.size < error_full_size)
 	{
 		decl->strukt.padding = error_full_size - decl->strukt.size;

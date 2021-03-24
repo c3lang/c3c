@@ -11,7 +11,7 @@ static Type t_usz, t_isz, t_uptr, t_iptr, t_uptrdiff, t_iptrdiff;
 static Type t_cus, t_cui, t_cul, t_cull;
 static Type t_cs, t_ci, t_cl, t_cll;
 static Type t_voidstar, t_typeid, t_error, t_typeinfo;
-static Type t_str;
+static Type t_str, t_varheader;
 
 Type *type_bool = &t_u1;
 Type *type_void = &t_u0;
@@ -50,6 +50,7 @@ Type *type_c_uint = &t_cui;
 Type *type_c_ulong = &t_cul;
 Type *type_c_ulonglong = &t_cull;
 Type *type_error = &t_error;
+Type *type_varheader = &t_varheader;
 
 static unsigned size_subarray;
 static unsigned alignment_subarray;
@@ -129,8 +130,22 @@ const char *type_to_error_string(Type *type)
 			return strcat_arena(buffer, ")");
 		}
 		case TYPE_COMPLEX:
+			switch (type->complex->type_kind)
+			{
+				case TYPE_F16:
+					return "complex16";
+				case TYPE_F32:
+					return "complex32";
+				case TYPE_F64:
+					return "complex64";
+				case TYPE_F128:
+					return "complex128";
+				default:
+					UNREACHABLE
+			}
 		case TYPE_VECTOR:
-			TODO
+			asprintf(&buffer, "%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
+			return buffer;
 		case TYPE_MEMBER:
 			return "member";
 		case TYPE_TYPEINFO:
@@ -800,7 +815,7 @@ Type *type_get_inferred_array(Type *arr_type)
 
 Type *type_get_vararray(Type *arr_type)
 {
-	return type_generate_subarray(arr_type, false);
+	return type_generate_vararray(arr_type, false);
 }
 
 static inline bool array_structurally_equivalent_to_struct(Type *array, Type *type)

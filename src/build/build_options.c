@@ -11,10 +11,17 @@
 #include <string.h>
 #include <utils/lib.h>
 
-static const int DEFAULT_SYMTAB_SIZE = 64 * 1024;
-static const int MAX_SYMTAB_SIZE = 1024 * 1024;
 
-static char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
+
+
+
+
+static int arg_index;
+static int arg_count;
+static const char** args;
+static const char* current_arg;
+
+char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[X86_FREEBSD] = "x86_freebsd",
 		[X86_OPENBSD] = "x86_openbsd",
 		[X86_MCU] = "x86_mcu",
@@ -32,13 +39,6 @@ static char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[WASM32] = "wasm32",
 		[WASM64] = "wasm64",
 };
-
-BuildOptions build_options;
-static int arg_index;
-static int arg_count;
-static const char** args;
-static const char* current_arg;
-
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
 #define OUTPUT(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__)
@@ -139,14 +139,14 @@ static inline bool match_shortopt(const char* name)
 }
 
 
-void append_file()
+void append_file(BuildOptions *build_options)
 {
-	if (vec_size(build_options.files) == MAX_FILES)
+	if (vec_size(build_options->files) == MAX_FILES)
 	{
 		fprintf(stderr, "Max %d files may be specified\n", MAX_FILES);
 		exit(EXIT_FAILURE);
 	}
-	build_options.files = VECADD(build_options.files, current_arg);
+	build_options->files = VECADD(build_options->files, current_arg);
 }
 
 static bool arg_match(const char *candidate)
@@ -154,87 +154,86 @@ static bool arg_match(const char *candidate)
 	return strcmp(current_arg, candidate) == 0;
 }
 
-static void parse_optional_target()
+static void parse_optional_target(BuildOptions *options)
 {
 	if (at_end() || next_is_opt())
 	{
-		build_options.target_select = NULL;
+		options->target_select = NULL;
 	}
 	else
 	{
-		build_options.target_select = next_arg();
+		options->target_select = next_arg();
 	}
 }
 
-static void parse_command(void)
+static void parse_command(BuildOptions *options)
 {
 	if (arg_match("init"))
 	{
-		build_options.command = COMMAND_INIT;
+		options->command = COMMAND_INIT;
 		if (at_end() || next_is_opt()) error_exit("Expected a project name after init");
-		build_options.project_name = next_arg();
+		options->project_name = next_arg();
 		return;
 	}
 	if (arg_match("utest"))
 	{
-		build_options.command = COMMAND_UNIT_TEST;
+		options->command = COMMAND_UNIT_TEST;
 		return;
 	}
 	if (arg_match("compile"))
 	{
-		build_options.command = COMMAND_COMPILE;
+		options->command = COMMAND_COMPILE;
 		return;
 	}
 	if (arg_match("headers"))
 	{
-		build_options.command = COMMAND_GENERATE_HEADERS;
+		options->command = COMMAND_GENERATE_HEADERS;
 		return;
 	}
 	if (arg_match("build"))
 	{
-		build_options.command = COMMAND_BUILD;
-		parse_optional_target();
+		options->command = COMMAND_BUILD;
+		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("run"))
 	{
-		build_options.command = COMMAND_RUN;
-		parse_optional_target();
+		options->command = COMMAND_RUN;
+		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("compile-run"))
 	{
-		build_options.command = COMMAND_COMPILE_RUN;
-		parse_optional_target();
+		options->command = COMMAND_COMPILE_RUN;
 		return;
 	}
 	if (arg_match("clean-run"))
 	{
-		build_options.command = COMMAND_CLEAN_RUN;
-		parse_optional_target();
+		options->command = COMMAND_CLEAN_RUN;
+		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("clean"))
 	{
-		build_options.command = COMMAND_CLEAN;
+		options->command = COMMAND_CLEAN;
 		return;
 	}
 	if (arg_match("dist"))
 	{
-		build_options.command = COMMAND_CLEAN_RUN;
-		parse_optional_target();
+		options->command = COMMAND_CLEAN_RUN;
+		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("directives"))
 	{
-		build_options.command = COMMAND_DOCS;
-		parse_optional_target();
+		options->command = COMMAND_DOCS;
+		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("bench"))
 	{
-		build_options.command = COMMAND_BENCH;
-		parse_optional_target();
+		options->command = COMMAND_BENCH;
+		parse_optional_target(options);
 		return;
 	}
 	FAIL_WITH_ERR("Cannot process the unknown command \"%s\".", current_arg);
@@ -242,126 +241,63 @@ static void parse_command(void)
 static void print_all_targets(void)
 {
 	OUTPUT("Available targets:");
-	for (unsigned i = 0; i <= ARCH_OS_TARGET_LAST; i++)
+	for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
 	{
 		OUTPUT("   %s", arch_os_target[i]);
 	}
 }
 
-static void parse_option(void)
+static void parse_option(BuildOptions *options)
 {
 	switch (current_arg[1])
 	{
 		case 'g':
 			if (match_shortopt("gline-tables-only"))
 			{
-				build_options.debug_info = DEBUG_INFO_LINE_TABLES;
+				options->debug_info_override = DEBUG_INFO_LINE_TABLES;
 				FATAL_ERROR("Line tables only are currently not available");
 			}
 			if (match_shortopt("g") || match_shortopt("g1"))
 			{
-				build_options.debug_info = DEBUG_INFO_FULL;
+				options->debug_info_override = DEBUG_INFO_FULL;
 				return;
 			}
 			if (match_shortopt("g0"))
 			{
-				build_options.debug_info = DEBUG_INFO_NONE;
+				options->debug_info_override = DEBUG_INFO_NONE;
 				return;
 			}
 			FAIL_WITH_ERR("Unknown debug argument -%s.", &current_arg[1]);
 		case 'h':
 			break;
-		case 'f':
-			if (match_shortopt("freg-struct-return"))
-			{
-				build_options.feature.reg_struct_return = true;
-				return;
-			}
-			if (match_shortopt("fpie"))
-			{
-				build_options.pie = PIE_SMALL;
-				return;
-			}
-			if (match_shortopt("fPIE"))
-			{
-				build_options.pie = PIE_BIG;
-				return;
-			}
-			if (match_shortopt("fno-pie"))
-			{
-				build_options.pie = PIE_NONE;
-				return;
-			}
-			if (match_shortopt("fpic"))
-			{
-				build_options.pic = PIC_SMALL;
-				return;
-			}
-			if (match_shortopt("fPIC"))
-			{
-				build_options.pic = PIC_BIG;
-				return;
-			}
-			if (match_shortopt("fno-pic"))
-			{
-				build_options.pic = PIC_NONE;
-				return;
-			}
-			if (match_shortopt("fpcc-struct-return"))
-			{
-				build_options.feature.stack_struct_return = true;
-				return;
-			}
-			if (match_shortopt("fno-memcpy-pass"))
-			{
-				build_options.feature.no_memcpy_pass = true;
-				return;
-			}
-			FAIL_WITH_ERR("Unknown argument -%s.", &current_arg[1]);
-		case 'm':
-			if (match_shortopt("msoft-float"))
-			{
-				build_options.feature.soft_float = true;
-				build_options.feature.no_soft_float = false;
-				return;
-			}
-			if (match_shortopt("mno-soft-float"))
-			{
-				build_options.feature.soft_float = true;
-				build_options.feature.no_soft_float = false;
-				return;
-			}
-			FAIL_WITH_ERR("Cannot process the unknown command \"%s\".", current_arg);
 		case 'O':
-			if (build_options.optimization_level != OPTIMIZATION_NOT_SET)
+			if (options->optimization_setting_override != OPT_SETTING_NOT_SET)
 			{
 				FAIL_WITH_ERR("Multiple optimization levels were set.");
 			}
 			if (match_shortopt("O0"))
 			{
-				build_options.optimization_level = OPTIMIZATION_NONE;
+				options->optimization_setting_override = OPT_SETTING_O0;
 			}
 			else if (match_shortopt("O1"))
 			{
-				build_options.optimization_level = OPTIMIZATION_LESS;
+				options->optimization_setting_override = OPT_SETTING_O1;
 			}
 			else if (match_shortopt("O2"))
 			{
-				build_options.optimization_level = OPTIMIZATION_DEFAULT;
+				options->optimization_setting_override = OPT_SETTING_O2;
+			}
+			else if (match_shortopt("O2"))
+			{
+				options->optimization_setting_override = OPT_SETTING_O3;
 			}
 			else if (match_shortopt("Os"))
 			{
-				build_options.optimization_level = OPTIMIZATION_DEFAULT;
-				build_options.size_optimization_level = SIZE_OPTIMIZATION_SMALL;
+				options->optimization_setting_override = OPT_SETTING_OSMALL;
 			}
 			else if (match_shortopt("Oz"))
 			{
-				build_options.optimization_level = OPTIMIZATION_DEFAULT;
-				build_options.size_optimization_level = SIZE_OPTIMIZATION_TINY;
-			}
-			else if (match_shortopt("O3"))
-			{
-				build_options.optimization_level = OPTIMIZATION_AGGRESSIVE;
+				options->optimization_setting_override = OPT_SETTING_OTINY;
 			}
 			else
 			{
@@ -369,18 +305,18 @@ static void parse_option(void)
 			}
 			return;
 		case 'E':
-			if (build_options.compile_option != COMPILE_NORMAL)
+			if (options->compile_option != COMPILE_NORMAL)
 			{
 				FAIL_WITH_ERR("Illegal combination of compile options.");
 			}
-			build_options.compile_option = COMPILE_LEX_ONLY;
+			options->compile_option = COMPILE_LEX_ONLY;
 			return;
 		case 'P':
-			if (build_options.compile_option != COMPILE_NORMAL)
+			if (options->compile_option != COMPILE_NORMAL)
 			{
 				FAIL_WITH_ERR("Illegal combination of compile options.");
 			}
-			build_options.compile_option = COMPILE_LEX_PARSE_ONLY;
+			options->compile_option = COMPILE_LEX_PARSE_ONLY;
 			return;
 		case '-':
 			if (match_longopt("about"))
@@ -393,13 +329,11 @@ static void parse_option(void)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --target needs a arch+os definition.");
 				const char *target = next_arg();
-				for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
+				ArchOsTarget target_arch_os = arch_os_target_from_string(target);
+				if (target_arch_os >= 0)
 				{
-					if (strcasecmp(arch_os_target[i], target) == 0)
-					{
-						build_options.arch_os_target = i;
-						return;
-					}
+					options->arch_os_target_override = target_arch_os;
+					return;
 				}
 				OUTPUT("Available targets:");
 				EOUTPUT("Invalid target %s.", target);
@@ -422,35 +356,25 @@ static void parse_option(void)
 			}
 			if (match_longopt("emit-llvm"))
 			{
-				build_options.emit_llvm = true;
+				options->emit_llvm = true;
 				return;
 			}
 			if (match_longopt("lib"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --lib needs a directory.");
-				if (build_options.lib_count == MAX_LIB_DIRS) error_exit("Max %d libraries may be specified.", MAX_LIB_DIRS);
-				build_options.lib_dir[build_options.lib_count++] = check_dir(next_arg());
+				if (options->lib_count == MAX_LIB_DIRS) error_exit("Max %d libraries may be specified.", MAX_LIB_DIRS);
+				options->lib_dir[options->lib_count++] = check_dir(next_arg());
 				return;
 			}
 			if (match_longopt("test"))
 			{
-				build_options.test_mode = true;
+				options->test_mode = true;
 				return;
 			}
 			if (match_longopt("path"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --path needs a directory.");
-				build_options.path = check_dir(next_arg());
-				return;
-			}
-			if (match_longopt("symtab"))
-			{
-				if (at_end() || next_is_opt()) error_exit("error: --symtab needs a number.");
-				const char *number = next_arg();
-				int size = atoi(number); // NOLINT(cert-err34-c)
-				if (size < 1024) error_exit("error: --symtab valid size > 1024.");
-				if (size > MAX_SYMTAB_SIZE) error_exit("error: --symptab size cannot exceed %d", MAX_SYMTAB_SIZE);
-				build_options.symtab_size = size;
+				options->path = check_dir(next_arg());
 				return;
 			}
 			if (match_longopt("help"))
@@ -466,7 +390,7 @@ static void parse_option(void)
 }
 
 
-void parse_arguments(int argc, const char *argv[])
+BuildOptions parse_arguments(int argc, const char *argv[])
 {
 	arg_count = argc;
 	args = argv;
@@ -477,16 +401,16 @@ void parse_arguments(int argc, const char *argv[])
 		exit(EXIT_SUCCESS);
 	}
 
-	build_options.path = ".";
-	build_options.emit_llvm = false;
-	build_options.emit_bitcode = true;
-	build_options.optimization_level = OPTIMIZATION_NOT_SET;
-	build_options.size_optimization_level = SIZE_OPTIMIZATION_NOT_SET;
-	build_options.debug_info = DEBUG_INFO_NONE;
-	build_options.debug_mode = false;
-	build_options.command = COMMAND_MISSING;
-	build_options.symtab_size = DEFAULT_SYMTAB_SIZE;
-	build_options.files = NULL;
+	BuildOptions build_options = {
+		.path = ".",
+		.emit_llvm = false,
+		.emit_bitcode = true,
+		.optimization_setting_override = OPT_SETTING_NOT_SET,
+		.debug_info_override = DEBUG_INFO_NOT_SET,
+		.debug_mode = false,
+		.command = COMMAND_MISSING,
+		.files = NULL
+	};
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)
 	{
 		build_options.severity[i] = DIAG_IGNORE;
@@ -505,19 +429,19 @@ void parse_arguments(int argc, const char *argv[])
 		current_arg = args[arg_index];
 		if (current_arg[0] == '-')
 		{
-			parse_option();
+			parse_option(&build_options);
 			continue;
 		}
 		if (build_options.command == COMMAND_MISSING)
 		{
-			parse_command();
+			parse_command(&build_options);
 			continue;
 		}
 		if (build_options.command == COMMAND_COMPILE_RUN
 			|| build_options.command == COMMAND_COMPILE
 			|| build_options.command == COMMAND_GENERATE_HEADERS)
 		{
-			append_file();
+			append_file(&build_options);
 			continue;
 		}
 		FAIL_WITH_ERR("Found the unexpected argument \"%s\".", current_arg);
@@ -526,13 +450,18 @@ void parse_arguments(int argc, const char *argv[])
 	{
 		FAIL_WITH_ERR("No command found.");
 	}
-	if (build_options.optimization_level == OPTIMIZATION_NOT_SET)
-	{
-		build_options.optimization_level = OPTIMIZATION_DEFAULT;
-	}
-	if (build_options.size_optimization_level == SIZE_OPTIMIZATION_NOT_SET)
-	{
-		build_options.size_optimization_level = SIZE_OPTIMIZATION_NONE;
-	}
+	return build_options;
+}
 
+
+ArchOsTarget arch_os_target_from_string(const char *target)
+{
+	for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
+	{
+		if (strcasecmp(arch_os_target[i], target) == 0)
+		{
+			return i;
+		}
+	}
+	return -1;
 }

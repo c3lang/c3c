@@ -6,7 +6,6 @@
 
 
 
-static int get_inlining_threshold(void);
 static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 {
 	char *message = LLVMGetDiagInfoDescription(ref);
@@ -16,7 +15,6 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	{
 		case LLVMDSError:
 			error_exit("LLVM error generating code for %s: %s", ((GenContext *)context)->ast_context->module->name, message);
-			break;
 		case LLVMDSWarning:
 			severerity_name = "warning";
 			break;
@@ -35,6 +33,7 @@ static void gencontext_init(GenContext *context, Context *ast_context)
 {
 	memset(context, 0, sizeof(GenContext));
 	context->context = LLVMContextCreate();
+	context->build_target = ast_context->target;
 	context->bool_type = LLVMInt1TypeInContext(context->context);
 	context->byte_type = LLVMInt8TypeInContext(context->context);
 	LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
@@ -43,8 +42,6 @@ static void gencontext_init(GenContext *context, Context *ast_context)
 
 static void gencontext_destroy(GenContext *context)
 {
-	free(context->ir_filename);
-	free(context->object_filename);
 	LLVMContextDispose(context->context);
 	free(context);
 }
@@ -306,18 +303,30 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			// TODO insert trap on overflow.
 			LLVMTypeRef subarray_type = llvm_get_type(c, value->type);
 			assert(value->kind == BE_ADDRESS);
-			LLVMValueRef pointer_addr = LLVMBuildStructGEP2(c->builder, subarray_type, value->value, 0, "subarray_ptr");
+			LLVMValueRef pointer_addr = LLVMBuildStructGEP2(c->builder, subarray_type, value->value, 0, "subarrayptr");
 			LLVMTypeRef pointer_type = llvm_get_type(c, type_get_ptr(value->type->array.base));
 			AlignSize alignment = type_abi_alignment(type_voidptr);
 			// We need to pick the worst alignment in case this is packed in an array.
 			if (value->alignment < alignment) alignment = value->alignment;
 			llvm_value_set_address_align(value,
-			                             llvm_emit_load_aligned(c, pointer_type, pointer_addr, 0, "subarrptr"), value->type, alignment);
+			                             llvm_emit_load_aligned(c, pointer_type, pointer_addr, 0, "saptr"), value->type, alignment);
 			return;
 		}
 		case TYPE_STRLIT:
 			TODO
 		case TYPE_VARARRAY:
+		{
+			llvm_value_rvalue(c, value);
+			LLVMTypeRef struct_type = value->type->backend_aux_type;
+			LLVMValueRef pointer_addr = LLVMBuildStructGEP2(c->builder, struct_type, value->value, 3, "vararrptr");
+			LLVMTypeRef pointer_type = llvm_get_type(c, type_get_ptr(value->type->array.base));
+			AlignSize alignment = type_abi_alignment(type_voidptr);
+			// We need to pick the worst alignment in case this is packed in an array.
+			if (value->alignment < alignment) alignment = value->alignment;
+			llvm_value_set_address_align(value,
+			                             llvm_emit_load_aligned(c, pointer_type, pointer_addr, 0, "vaptr"), value->type, alignment);
+			return;
+		}
 		default:
 			UNREACHABLE
 	}
@@ -410,7 +419,7 @@ static void gencontext_verify_ir(GenContext *context)
 void gencontext_emit_object_file(GenContext *context)
 {
 	char *err = "";
-	LLVMSetTarget(context->module, build_options.target_triple);
+	LLVMSetTarget(context->module, build_target.target_triple);
 	char *layout = LLVMCopyStringRepOfTargetData(target_data_layout());
 	LLVMSetDataLayout(context->module, layout);
 	LLVMDisposeMessage(layout);
@@ -468,13 +477,13 @@ void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)
  * Values here taken from LLVM.
  * @return return the inlining threshold given the build options.
  */
-static int get_inlining_threshold(void)
+static int get_inlining_threshold(BuildTarget *target)
 {
-	if (build_options.optimization_level == OPTIMIZATION_AGGRESSIVE)
+	if (target->optimization_level == OPTIMIZATION_AGGRESSIVE)
 	{
 		return 250;
 	}
-	switch (build_options.size_optimization_level)
+	switch (target->size_optimization_level)
 	{
 		case SIZE_OPTIMIZATION_TINY:
 			return 5;
@@ -751,19 +760,20 @@ void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type)
 
 void llvm_value_fold_failable(GenContext *c, BEValue *value)
 {
+
 	if (value->kind == BE_ADDRESS_FAILABLE)
 	{
 		LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after_check");
-		// TODO optimize load.
-		LLVMValueRef error_value = gencontext_emit_load(c, type_error, value->failable);
+		BEValue error_value;
+		llvm_value_set_address(&error_value, value->failable, type_error);
 		BEValue comp;
-		llvm_value_set_bool(&comp, llvm_emit_is_no_error(c, error_value));
+		llvm_value_set_bool(&comp, llvm_emit_is_no_error_value(c, &error_value));
 		if (c->error_var)
 		{
 			LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error");
 			llvm_emit_cond_br(c, &comp, after_block, error_block);
 			llvm_emit_block(c, error_block);
-			llvm_store_aligned(c, c->error_var, error_value, type_abi_alignment(type_usize));
+			llvm_store_bevalue_dest_aligned(c, c->error_var, &error_value);
 			llvm_emit_br(c, c->catch_block);
 		}
 		else
@@ -863,16 +873,16 @@ static void gencontext_emit_decl(GenContext *context, Decl *decl)
 	}
 }
 
-void llvm_codegen(void *context)
+const char *llvm_codegen(void *context)
 {
-	GenContext *gen_context = context;
-	LLVMModuleRef module = gen_context->module;
+	GenContext *c = context;
+	LLVMModuleRef module = c->module;
 	// Starting from here we could potentially thread this:
 	LLVMPassManagerBuilderRef pass_manager_builder = LLVMPassManagerBuilderCreate();
-	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, build_options.optimization_level);
-	LLVMPassManagerBuilderSetSizeLevel(pass_manager_builder, build_options.size_optimization_level);
-	LLVMPassManagerBuilderSetDisableUnrollLoops(pass_manager_builder, build_options.optimization_level == OPTIMIZATION_NONE);
-	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, get_inlining_threshold());
+	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, c->build_target->optimization_level);
+	LLVMPassManagerBuilderSetSizeLevel(pass_manager_builder, c->build_target->size_optimization_level);
+	LLVMPassManagerBuilderSetDisableUnrollLoops(pass_manager_builder, c->build_target->optimization_level == OPTIMIZATION_NONE);
+	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, get_inlining_threshold(c->build_target));
 	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
 	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(module);
 	LLVMAddAnalysisPasses(target_machine(), function_pass_manager);
@@ -902,19 +912,25 @@ void llvm_codegen(void *context)
 	LLVMDisposePassManager(pass_manager);
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
-	if (build_options.emit_llvm)
+	if (c->build_target->emit_llvm)
 	{
-		gencontext_print_llvm_ir(gen_context);
-		gencontext_verify_ir(gen_context);
+		gencontext_print_llvm_ir(c);
+		gencontext_verify_ir(c);
 	}
 
-	if (build_options.emit_bitcode) gencontext_emit_object_file(gen_context);
+	const char *object_name = NULL;
+	if (c->build_target->emit_object_files)
+	{
+		gencontext_emit_object_file(c);
+		object_name = c->object_filename;
+	}
 
-	gencontext_end_module(gen_context);
-	gencontext_destroy(gen_context);
+	gencontext_end_module(c);
+	gencontext_destroy(c);
 
-
+	return object_name;
 }
+
 void *llvm_gen(Context *context)
 {
 	assert(intrinsics_setup);
@@ -960,7 +976,7 @@ void *llvm_gen(Context *context)
 	if (llvm_use_debug(gen_context)) LLVMDIBuilderFinalize(gen_context->debug.builder);
 
 	// If it's in test, then we want to serialize the IR before it is optimized.
-	if (build_options.test_mode)
+	if (diagnostics.test_mode)
 	{
 		gencontext_print_llvm_ir(gen_context);
 		gencontext_verify_ir(gen_context);

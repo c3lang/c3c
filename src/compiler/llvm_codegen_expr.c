@@ -14,10 +14,12 @@ static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Ex
 static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c, BEValue *parent, BEValue *index);
 static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_t offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
 
-LLVMValueRef llvm_emit_is_no_error(GenContext *c, LLVMValueRef error)
+LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value)
 {
-	LLVMValueRef domain = LLVMBuildExtractValue(c->builder, error, 0, "");
-	return LLVMBuildICmp(c->builder, LLVMIntEQ, domain, llvm_get_zero(c, type_usize), "noerr");
+	assert(value->kind == BE_ADDRESS);
+	LLVMValueRef val = LLVMBuildStructGEP2(c->builder, llvm_get_type(c, value->type), value->value, 0, "err_domain");
+	LLVMValueRef domain = llvm_emit_load_aligned(c, llvm_get_type(c, type_uptr), val, value->alignment, "");
+	return LLVMBuildICmp(c->builder, LLVMIntEQ, domain, llvm_get_zero(c, type_uptr), "not_err");
 }
 
 LLVMTypeRef llvm_const_padding_type(GenContext *c, ByteSize size)
@@ -32,29 +34,29 @@ LLVMValueRef llvm_emit_const_padding(GenContext *c, ByteSize size)
 	return LLVMGetUndef(llvm_const_padding_type(c, size));
 }
 
-static inline LLVMValueRef llvm_emit_add_int(GenContext *context, Type *type, LLVMValueRef left, LLVMValueRef right)
+static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
 {
-	if (build_options.trap_wrapping)
+	if (c->build_target->feature.trap_on_wrap)
 	{
-		LLVMTypeRef type_to_use = llvm_get_type(context, type->canonical);
+		LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
 		LLVMValueRef args[2] = { left, right };
 		assert(type->canonical == type);
 		LLVMValueRef add_res;
 		if (type_is_unsigned(type))
 		{
-			add_res = llvm_emit_call_intrinsic(context, intrinsic_id_uadd_overflow, &type_to_use, 1, args, 2);
+			add_res = llvm_emit_call_intrinsic(c, intrinsic_id_uadd_overflow, &type_to_use, 1, args, 2);
 		}
 		else
 		{
-			add_res = llvm_emit_call_intrinsic(context, intrinsic_id_sadd_overflow, &type_to_use, 1, args, 2);
+			add_res = llvm_emit_call_intrinsic(c, intrinsic_id_sadd_overflow, &type_to_use, 1, args, 2);
 		}
-		LLVMValueRef result = LLVMBuildExtractValue(context->builder, add_res, 0, "");
-		LLVMValueRef ok = LLVMBuildExtractValue(context->builder, add_res, 1, "");
-		llvm_emit_panic_on_true(context, ok, "Addition overflow");
+		LLVMValueRef result = LLVMBuildExtractValue(c->builder, add_res, 0, "");
+		LLVMValueRef ok = LLVMBuildExtractValue(c->builder, add_res, 1, "");
+		llvm_emit_panic_on_true(c, ok, "Addition overflow");
 		return result;
 	}
 
-	return LLVMBuildAdd(context->builder, left, right, "add");
+	return LLVMBuildAdd(c->builder, left, right, "add");
 }
 
 LLVMValueRef llvm_emit_coerce(GenContext *context, LLVMTypeRef coerced, BEValue *value, Type *original_type)
@@ -84,39 +86,39 @@ LLVMValueRef llvm_emit_coerce(GenContext *context, LLVMTypeRef coerced, BEValue 
 	return llvm_emit_load_aligned(context, coerced, cast, max_align, "coerced");
 }
 
-LLVMValueRef llvm_emit_convert_value_from_coerced(GenContext *context, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type)
+void llvm_emit_convert_value_from_coerced(GenContext *context, BEValue *result, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type)
 {
 	unsigned max_align = MAX(llvm_abi_alignment(coerced), type_abi_alignment(original_type));
 	LLVMValueRef temp = llvm_emit_alloca(context, coerced, max_align, "coerce_temp");
 	llvm_store_aligned(context, temp, value, max_align);
 	temp = LLVMBuildBitCast(context->builder, temp, llvm_get_type(context, type_get_ptr(original_type)), "");
-	return llvm_emit_load_aligned(context, llvm_get_type(context, original_type), temp, max_align, "coerced");
+	llvm_value_set_address_align(result, temp, original_type, max_align);
 }
 
 static inline LLVMValueRef
-llvm_emit_sub_int(GenContext *context, Type *type, LLVMValueRef left, LLVMValueRef right)
+llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
 {
-	if (build_options.trap_wrapping)
+	if (c->build_target->feature.trap_on_wrap)
 	{
-		LLVMTypeRef type_to_use = llvm_get_type(context, type);
+		LLVMTypeRef type_to_use = llvm_get_type(c, type);
 		LLVMValueRef args[2] = { left, right };
 		assert(type->canonical == type);
 		LLVMValueRef add_res;
 		if (type_is_unsigned(type))
 		{
-			add_res = llvm_emit_call_intrinsic(context, intrinsic_id_usub_overflow, &type_to_use, 1, args, 2);
+			add_res = llvm_emit_call_intrinsic(c, intrinsic_id_usub_overflow, &type_to_use, 1, args, 2);
 		}
 		else
 		{
-			add_res = llvm_emit_call_intrinsic(context, intrinsic_id_ssub_overflow, &type_to_use, 1, args, 2);
+			add_res = llvm_emit_call_intrinsic(c, intrinsic_id_ssub_overflow, &type_to_use, 1, args, 2);
 		}
-		LLVMValueRef result = LLVMBuildExtractValue(context->builder, add_res, 0, "");
-		LLVMValueRef ok = LLVMBuildExtractValue(context->builder, add_res, 1, "");
-		llvm_emit_panic_on_true(context, ok, "Subtraction overflow");
+		LLVMValueRef result = LLVMBuildExtractValue(c->builder, add_res, 0, "");
+		LLVMValueRef ok = LLVMBuildExtractValue(c->builder, add_res, 1, "");
+		llvm_emit_panic_on_true(c, ok, "Subtraction overflow");
 		return result;
 	}
 
-	return LLVMBuildSub(context->builder, left, right, "sub");
+	return LLVMBuildSub(c->builder, left, right, "sub");
 }
 
 static inline void llvm_emit_subscript_addr_base(GenContext *context, BEValue *value, Expr *parent)
@@ -188,7 +190,7 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c,
 			return LLVMBuildInBoundsGEP(c->builder, parent->value, &index->value, 1, "ptridx");
 		case TYPE_ARRAY:
 		{
-			if (build_options.debug_mode)
+			if (c->build_target->feature.safe_mode)
 			{
 				llvm_emit_array_bounds_check(c, index, llvm_const_int(c, index->type, type->array.len));
 			}
@@ -203,7 +205,7 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c,
 		}
 		case TYPE_SUBARRAY:
 		{
-			if (build_options.debug_mode)
+			if (c->build_target->feature.safe_mode)
 			{
 				// TODO insert trap on overflow.
 			}
@@ -1076,7 +1078,7 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 			assert(!type_is_unsigned(type));
 			{
 				LLVMValueRef zero = llvm_get_zero(c, expr->unary_expr.expr->type);
-				if (build_options.trap_wrapping)
+				if (c->build_target->feature.trap_on_wrap)
 				{
 					// TODO
 					LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
@@ -1137,9 +1139,33 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 		case TYPE_STRLIT:
 			TODO
 			break;
-
 		case TYPE_VARARRAY:
-			TODO
+		{
+			llvm_value_rvalue(c, be_value);
+			LLVMValueRef check = LLVMBuildIsNull(c->builder, be_value->value, "checknull");
+			BEValue bool_value;
+			llvm_value_set_bool(&bool_value, check);
+			LLVMBasicBlockRef null_block = llvm_basic_block_new(c, "lennull");
+			LLVMBasicBlockRef non_null_block = llvm_basic_block_new(c, "lennormal");
+			LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "lenend");
+			llvm_emit_cond_br(c, &bool_value, null_block, non_null_block);
+			llvm_emit_block(c, null_block);
+			LLVMValueRef result_null = llvm_get_zero(c, type_usize);
+			llvm_emit_br(c, exit_block);
+			llvm_emit_block(c, non_null_block);
+			LLVMTypeRef struct_type = be_value->type->backend_aux_type;
+			LLVMValueRef len_addr = LLVMBuildStructGEP2(c->builder, struct_type, be_value->value, 0, "");
+			llvm_value_set_address(be_value, len_addr, type_usize);
+			LLVMValueRef result = llvm_value_rvalue_store(c, be_value);
+			llvm_emit_br(c, exit_block);
+			llvm_emit_block(c, exit_block);
+			LLVMValueRef total = LLVMBuildPhi(c->builder, llvm_get_type(c, type_usize), "");
+			LLVMValueRef logic_values[2] = { result_null, result };
+			LLVMBasicBlockRef blocks[2] = { null_block, non_null_block };
+			LLVMAddIncoming(total, logic_values, blocks, 2);
+			llvm_value_set(be_value, total, type_usize);
+			return;
+		}
 		default:
 			UNREACHABLE
 	}
@@ -1150,39 +1176,39 @@ static void llvm_emit_len(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_emit_len_for_expr(c, be_value, be_value);
 }
 
-static void gencontext_emit_trap_negative(GenContext *context, Expr *expr, LLVMValueRef value, const char *error)
+static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef value, const char *error)
 {
-	if (!build_options.debug_mode) return;
+	if (!c->build_target->feature.safe_mode) return;
 	if (type_is_integer_unsigned(expr->type->canonical)) return;
 
-	LLVMValueRef zero = llvm_const_int(context, expr->type, 0);
-	LLVMValueRef ok = LLVMBuildICmp(context->builder, LLVMIntSLT, value, zero, "underflow");
-	llvm_emit_panic_on_true(context, ok, error);
+	LLVMValueRef zero = llvm_const_int(c, expr->type, 0);
+	LLVMValueRef ok = LLVMBuildICmp(c->builder, LLVMIntSLT, value, zero, "underflow");
+	llvm_emit_panic_on_true(c, ok, error);
 }
 
 static void
-gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_type_ref, LLVMValueRef *parent_base_ref,
-                             Type **start_type_ref, LLVMValueRef *start_index_ref, Type **end_type_ref,
-                             LLVMValueRef *end_index_ref)
+llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMValueRef *parent_base_ref,
+                       Type **start_type_ref, LLVMValueRef *start_index_ref, Type **end_type_ref,
+                       LLVMValueRef *end_index_ref)
 {
 	assert(slice->expr_kind == EXPR_SLICE);
 
 	Expr *parent_expr = slice->slice_expr.expr;
 	Type *parent_type = parent_expr->type->canonical;
 	BEValue parent_addr_x;
-	llvm_emit_expr(context, &parent_addr_x, parent_expr);
-	llvm_value_addr(context, &parent_addr_x);
+	llvm_emit_expr(c, &parent_addr_x, parent_expr);
+	llvm_value_addr(c, &parent_addr_x);
 	LLVMValueRef parent_addr = parent_addr_x.value;
 	LLVMValueRef parent_load_value;
 	LLVMValueRef parent_base;
 	switch (parent_type->type_kind)
 	{
 		case TYPE_POINTER:
-			parent_load_value = parent_base = gencontext_emit_load(context, parent_type, parent_addr);
+			parent_load_value = parent_base = gencontext_emit_load(c, parent_type, parent_addr);
 			break;
 		case TYPE_SUBARRAY:
-			parent_load_value = gencontext_emit_load(context, parent_type, parent_addr);
-			parent_base = LLVMBuildExtractValue(context->builder, parent_load_value, 0, "");
+			parent_load_value = gencontext_emit_load(c, parent_type, parent_addr);
+			parent_base = LLVMBuildExtractValue(c->builder, parent_load_value, 0, "");
 			break;
 		case TYPE_ARRAY:
 			parent_base = parent_addr;
@@ -1200,11 +1226,11 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 	// Emit the start and end
 	Type *start_type = start->type->canonical;
 	BEValue start_index;
-	llvm_emit_expr(context, &start_index, start);
-	llvm_value_rvalue(context, &start_index);
+	llvm_emit_expr(c, &start_index, start);
+	llvm_value_rvalue(c, &start_index);
 
 	LLVMValueRef len;
-	if (!end || slice->slice_expr.start_from_back || slice->slice_expr.end_from_back || build_options.debug_mode)
+	if (!end || slice->slice_expr.start_from_back || slice->slice_expr.end_from_back || c->build_target->feature.safe_mode)
 	{
 		switch (parent_type->type_kind)
 		{
@@ -1212,10 +1238,10 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 				len = NULL;
 				break;
 			case TYPE_SUBARRAY:
-				len = LLVMBuildExtractValue(context->builder, parent_load_value, 1, "");
+				len = LLVMBuildExtractValue(c->builder, parent_load_value, 1, "");
 				break;
 			case TYPE_ARRAY:
-				len = llvm_const_int(context, type_usize, parent_type->array.len);
+				len = llvm_const_int(c, type_usize, parent_type->array.len);
 				break;
 			case TYPE_VARARRAY:
 			case TYPE_STRLIT:
@@ -1228,26 +1254,26 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 	// Walk from end if it is slice from the back.
 	if (slice->slice_expr.start_from_back)
 	{
-		start_index.value = llvm_emit_sub_int(context, start_type, len, start_index.value);
+		start_index.value = llvm_emit_sub_int(c, start_type, len, start_index.value);
 	}
 
 	// Check that index does not extend beyond the length.
-	if (parent_type->type_kind != TYPE_POINTER && build_options.debug_mode)
+	if (parent_type->type_kind != TYPE_POINTER && c->build_target->feature.safe_mode)
 	{
 
-		LLVMValueRef exceeds_size = llvm_emit_int_comparison(context,
+		LLVMValueRef exceeds_size = llvm_emit_int_comparison(c,
 		                                                     type_usize,
 		                                                     start_type,
 		                                                     start_index.value,
 		                                                     len,
 		                                                     BINARYOP_GE);
-		llvm_emit_panic_on_true(context, exceeds_size, "Index exceeds array length.");
+		llvm_emit_panic_on_true(c, exceeds_size, "Index exceeds array length.");
 	}
 
 	// Insert trap for negative start offset for non pointers.
 	if (parent_type->type_kind != TYPE_POINTER)
 	{
-		gencontext_emit_trap_negative(context, start, start_index.value, "Negative index");
+		llvm_emit_trap_negative(c, start, start_index.value, "Negative index");
 	}
 
 	Type *end_type;
@@ -1256,37 +1282,37 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 	if (end)
 	{
 		// Get the index.
-		llvm_emit_expr(context, &end_index, end);
-		llvm_value_rvalue(context, &end_index);
+		llvm_emit_expr(c, &end_index, end);
+		llvm_value_rvalue(c, &end_index);
 		end_type = end->type->canonical;
 
 		// Reverse if it is "from back"
 		if (slice->slice_expr.end_from_back)
 		{
-			end_index.value = llvm_emit_sub_int(context, end_type, len, end_index.value);
-			llvm_value_rvalue(context, &end_index);
+			end_index.value = llvm_emit_sub_int(c, end_type, len, end_index.value);
+			llvm_value_rvalue(c, &end_index);
 		}
 
 		// This will trap any bad negative index, so we're fine.
-		if (build_options.debug_mode)
+		if (c->build_target->feature.safe_mode)
 		{
-			LLVMValueRef excess = llvm_emit_int_comparison(context,
+			LLVMValueRef excess = llvm_emit_int_comparison(c,
 			                                               start_type,
 			                                               end_type,
 			                                               start_index.value,
 			                                               end_index.value,
 			                                               BINARYOP_GT);
-			llvm_emit_panic_on_true(context, excess, "Negative size");
+			llvm_emit_panic_on_true(c, excess, "Negative size");
 
 			if (len)
 			{
-				LLVMValueRef exceeds_size = llvm_emit_int_comparison(context,
+				LLVMValueRef exceeds_size = llvm_emit_int_comparison(c,
 				                                                     type_usize,
 				                                                     end_type,
 				                                                     len,
 				                                                     end_index.value,
 				                                                     BINARYOP_LT);
-				llvm_emit_panic_on_true(context, exceeds_size, "Size exceeds index");
+				llvm_emit_panic_on_true(c, exceeds_size, "Size exceeds index");
 			}
 		}
 	}
@@ -1294,7 +1320,7 @@ gencontext_emit_slice_values(GenContext *context, Expr *slice, Type **parent_typ
 	{
 		assert(len && "Pointer should never end up here.");
 		// Otherwise everything is fine and dandy. Our len - 1 is our end index.
-		end_index.value = LLVMBuildSub(context->builder, len, LLVMConstInt(LLVMTypeOf(len), 1, false), "");
+		end_index.value = LLVMBuildSub(c->builder, len, LLVMConstInt(LLVMTypeOf(len), 1, false), "");
 		end_type = type_usize;
 	}
 
@@ -1315,9 +1341,9 @@ static void gencontext_emit_slice(GenContext *context, BEValue *be_value, Expr *
 	Type *start_type;
 	LLVMValueRef start_index;
 	// Use general function to get all the values we need (a lot!)
-	gencontext_emit_slice_values(context, expr, &parent_type,
-	                             &parent_base,
-	                             &start_type, &start_index, &end_type, &end_index);
+	llvm_emit_slice_values(context, expr, &parent_type,
+	                       &parent_base,
+	                       &start_type, &start_index, &end_type, &end_index);
 
 
 	// Calculate the size
@@ -1373,9 +1399,9 @@ static void gencontext_emit_slice_assign(GenContext *c, BEValue *be_value, Expr 
 	Type *start_type;
 	LLVMValueRef start_index;
 	// Use general function to get all the values we need (a lot!)
-	gencontext_emit_slice_values(c, expr->slice_assign_expr.left, &parent_type,
-	                             &parent_base,
-	                             &start_type, &start_index, &end_type, &end_index);
+	llvm_emit_slice_values(c, expr->slice_assign_expr.left, &parent_type,
+	                       &parent_base,
+	                       &start_type, &start_index, &end_type, &end_index);
 
 	// We will need to iterate for the general case.
 	LLVMBasicBlockRef start_block = c->current_block;
@@ -1618,7 +1644,7 @@ static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left
 
 static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
 {
-	if (build_options.trap_wrapping)
+	if (c->build_target->feature.trap_on_wrap)
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type);
 		LLVMValueRef args[2] = { left, right };
@@ -2450,65 +2476,95 @@ void llvm_emit_parameter(GenContext *context, LLVMValueRef **args, ABIArgInfo *i
 	}
 
 }
-void llvm_emit_call_expr(GenContext *context, BEValue *be_value, Expr *expr)
+void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	printf("Optimize call return\n");
+	Expr *function = expr->call_expr.function;
 	FunctionSignature *signature;
 	LLVMTypeRef func_type;
 	LLVMValueRef func;
+
+
+	// 1. Call through a pointer.
 	if (expr->call_expr.is_pointer_call)
 	{
-		signature = expr->call_expr.function->type->canonical->pointer->func.signature;
+		// 1a. Find the pointee type for the function pointer:
+		Type *type = function->type->canonical->pointer;
+
+		// 1b. Find the type signature using the underlying pointer.
+		signature = type->func.signature;
+
+		// 1c. Evaluate the pointer expression.
 		BEValue func_value;
-		llvm_emit_expr(context, &func_value, expr->call_expr.function);
-		func = llvm_value_rvalue_store(context, &func_value);
-		func_type = llvm_get_type(context, expr->call_expr.function->type->canonical->pointer);
+		llvm_emit_expr(c, &func_value, expr->call_expr.function);
+
+		// 1d. Load it as a value
+		func = llvm_value_rvalue_store(c, &func_value);
+
+		// 1e. Calculate the function type
+		func_type = llvm_get_type(c, type);
 	}
-	else if (expr->call_expr.is_struct_function)
+	else if (expr->call_expr.is_type_method)
 	{
+		// 2. Call through a type method
+
+		// 2a. Get the function declaration
 		Decl *function_decl = expr->call_expr.function->access_expr.ref;
+
+		// 2b. Set signature, function and function type
 		signature = &function_decl->func.function_signature;
 		func = function_decl->backend_ref;
-		func_type = llvm_get_type(context, function_decl->type);
+		func_type = llvm_get_type(c, function_decl->type);
 	}
 	else
 	{
+		// 3. Call a regular function.
 		Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
+
+		// 3a. This may be an intrinsic, if so generate an intrinsic call instead.
 		if (function_decl->func.is_builtin)
 		{
-			gencontext_emit_call_intrinsic_expr(context, be_value, expr);
+			gencontext_emit_call_intrinsic_expr(c, be_value, expr);
 			return;
 		}
+
+		// 3b. Set signature, function and function type
 		signature = &function_decl->func.function_signature;
 		func = function_decl->backend_ref;
-		func_type = llvm_get_type(context, function_decl->type);
+		func_type = llvm_get_type(c, function_decl->type);
 	}
 
 
-	LLVMValueRef return_param = NULL;
 	LLVMValueRef *values = NULL;
 
+	// 4. Prepare the return abi data.
 	ABIArgInfo *ret_info = signature->ret_abi_info;
 	Type *return_type = signature->rtype->type->canonical;
 
+	// 5. In the case of a failable, the error is replacing the regular return abi.
+	LLVMValueRef error_var = NULL;
 	if (signature->failable)
 	{
 		ret_info = signature->failable_abi_info;
 		return_type = type_error;
 	}
 
+	// 6. Generate data for the return value.
 	switch (ret_info->kind)
 	{
 		case ABI_ARG_INDIRECT:
-			// Create the return parameter
-			return_param = llvm_emit_alloca(context, llvm_get_type(context, return_type),
-			                                ret_info->indirect.realignment, "sretparam");
-			// Add the pointer to the list of arguments.
-			vec_add(values, return_param);
-			if (ret_info->indirect.realignment)
+			// 6a. We can use the stored error var if there is no redirect.
+			if (signature->failable && c->error_var && type_abi_alignment(return_type) < ret_info->indirect.realignment)
 			{
-				llvm_set_alignment(return_param, ret_info->indirect.realignment);
+				error_var = c->error_var;
+				vec_add(values, error_var);
+				break;
 			}
+			// 6b. Return true is indirect, in this case we allocate a local, using the desired alignment on the caller side.
+			AlignSize alignment = ret_info->indirect.realignment ? ret_info->indirect.realignment : type_abi_alignment(return_type);
+			llvm_value_set_address_align(be_value, llvm_emit_alloca(c, llvm_get_type(c, return_type), alignment, "sretparam"), return_type, alignment);
+
+			// 6c. Add the pointer to the list of arguments.
+			vec_add(values, be_value->value);
 			break;
 		case ABI_ARG_EXPAND:
 			UNREACHABLE
@@ -2519,138 +2575,215 @@ void llvm_emit_call_expr(GenContext *context, BEValue *be_value, Expr *expr)
 			break;
 	}
 
+
+	// 7. We might have a failable indirect return and a normal return.
+	//    In this case we need to add it by hand.
+	BEValue synthetic_return_param = {};
 	if (signature->failable && signature->ret_abi_info)
 	{
+		// 7b. Create the address to hold the return.
 		Type *actual_return_type = type_lowering(signature->rtype->type);
-		return_param = llvm_emit_alloca_aligned(context, actual_return_type, "retparam");
-		llvm_value_set(be_value, return_param, type_get_ptr(actual_return_type));
-		llvm_emit_parameter(context, &values, signature->ret_abi_info, be_value, be_value->type);
+		llvm_value_set(&synthetic_return_param, llvm_emit_alloca_aligned(c, actual_return_type, "retparam"), type_get_ptr(actual_return_type));
+		// 7c. Emit it as a parameter as a pointer (will implicitly add it to the value list)
+		llvm_emit_parameter(c, &values, signature->ret_abi_info, &synthetic_return_param, synthetic_return_param.type);
+		// 7d. Update the be_value to actually be an address.
+		llvm_value_set_address(&synthetic_return_param, synthetic_return_param.value, actual_return_type);
 	}
+
+
+	// 8. Add all other arguments.
 	unsigned arguments = vec_size(expr->call_expr.arguments);
 	assert(arguments >= vec_size(signature->params));
 	VECEACH(signature->params, i)
 	{
+		// 8a. Evaluate the expression.
 		Expr *arg_expr = expr->call_expr.arguments[i];
-		llvm_emit_expr(context, be_value, arg_expr);
+		llvm_emit_expr(c, be_value, arg_expr);
+
+		// 8b. Emit the parameter according to ABI rules.
 		Decl *param = signature->params[i];
 		ABIArgInfo *info = param->var.abi_info;
-		llvm_emit_parameter(context, &values, info, be_value, param->type);
+		llvm_emit_parameter(c, &values, info, be_value, param->type);
 	}
+
+	// 9. Emit varargs.
 	for (unsigned i = vec_size(signature->params); i < arguments; i++)
 	{
 		Expr *arg_expr = expr->call_expr.arguments[i];
-		llvm_emit_expr(context, be_value, arg_expr);
+		llvm_emit_expr(c, be_value, arg_expr);
 		printf("TODO: varargs should be expanded correctly\n");
-		vec_add(values, llvm_value_rvalue_store(context, be_value));
+		vec_add(values, llvm_value_rvalue_store(c, be_value));
 	}
 
-	LLVMValueRef call = LLVMBuildCall2(context->builder, func_type, func, values, vec_size(values), "");
+	// 10. Create the actual call
+	LLVMValueRef call_value = LLVMBuildCall2(c->builder, func_type, func, values, vec_size(values), "");
 
+	// 11. Process the return value.
 	switch (ret_info->kind)
 	{
 		case ABI_ARG_EXPAND:
 			UNREACHABLE
 		case ABI_ARG_IGNORE:
-			// Default behaviour is fine.
-			break;
+			// 12. Basically void returns or empty structs.
+			//     Here we know we don't have a failable or any return value that can be used.
+			assert(!signature->failable && "Failable should have produced a return value.");
+			*be_value = (BEValue) {};
+			return;
 		case ABI_ARG_INDIRECT:
-			// TODO look at failable
-			call = llvm_emit_load_aligned(context,
-			                              llvm_get_type(context, return_type),
-			                              return_param,
-			                              ret_info->indirect.realignment,
-			                              "");
+
+			// 13. Indirect, that is passing the result through an out parameter.
+
+			// 13a. In the case of an already present error_var, we don't need to do a load here.
+			if (error_var) break;
+
+			// 13b. Otherwise it will be contained in a be_value that is an address
+			//      so we don't need to do anything more.
+			assert(be_value->kind == BE_ADDRESS);
+
 			break;
 		case ABI_ARG_DIRECT_PAIR:
 		{
-			// TODO look at failable
-			LLVMTypeRef lo = llvm_abi_type(context, ret_info->direct_pair.lo);
-			LLVMTypeRef hi = llvm_abi_type(context, ret_info->direct_pair.hi);
-			LLVMTypeRef struct_type = llvm_get_twostruct(context, lo, hi);
-			call = llvm_emit_convert_value_from_coerced(context, struct_type, call, return_type);
+			// 14. A direct pair, in this case the data is stored like { lo, hi }
+			//     For example we might have { int, int, short, short, int },
+			//     this then gets bitcast to { long, long }, so we recover it by loading
+			//     { long, long } into memory, then performing a bitcast to { int, int, short, short, int }
+
+			// 14a. Generate the type.
+			LLVMTypeRef lo = llvm_abi_type(c, ret_info->direct_pair.lo);
+			LLVMTypeRef hi = llvm_abi_type(c, ret_info->direct_pair.hi);
+			LLVMTypeRef struct_type = llvm_get_twostruct(c, lo, hi);
+
+			// 14b. Use the coerce method to go from the struct to the actual type
+			//      by storing the { lo, hi } struct to memory, then loading it
+			//      again using a bitcast.
+			llvm_emit_convert_value_from_coerced(c, be_value, struct_type, call_value, return_type);
 			break;
 		}
 		case ABI_ARG_EXPAND_COERCE:
 		{
-			LLVMValueRef ret = llvm_emit_alloca_aligned(context, return_type, "");
-			LLVMTypeRef coerce_type = llvm_get_coerce_type(context, ret_info);
-			LLVMValueRef coerce = LLVMBuildBitCast(context->builder, ret, coerce_type, "");
+			// 15. Expand-coerce, this is similar to "direct pair", but looks like this:
+			//     { lo, hi } set into { pad, lo, pad, hi } -> original type.
 
-			LLVMTypeRef lo_type = llvm_abi_type(context, ret_info->coerce_expand.lo);
+			// 15a. Create memory to hold the return type.
+			LLVMValueRef ret = llvm_emit_alloca_aligned(c, return_type, "");
+			llvm_value_set_address(be_value, ret, return_type);
 
-			// Find the address to the low value
+			// 15b. "Convert" this return type pointer in memory to our coerce type which is { pad, lo, pad, hi }
+			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, ret_info);
+			LLVMValueRef coerce = LLVMBuildBitCast(c->builder, ret, coerce_type, "");
+
+			// 15c. Find the type of the "lo" element.
+			LLVMTypeRef lo_type = llvm_abi_type(c, ret_info->coerce_expand.lo);
+
+			// 15d. Find the address to the low value
 			unsigned alignment;
-			LLVMValueRef lo = llvm_emit_struct_gep_raw(context, coerce, coerce_type, ret_info->coerce_expand.lo_index,
+			LLVMValueRef lo = llvm_emit_struct_gep_raw(c, coerce, coerce_type, ret_info->coerce_expand.lo_index,
 			                                           type_abi_alignment(return_type),
 			                                           ret_info->coerce_expand.offset_lo, &alignment);
 
-			// If there is only a single field, we simply store the value.
+			// 15e. If there is only a single field, we simply store the value,
+			//      so { lo } set into { pad, lo, pad } -> original type.
 			if (!ret_info->coerce_expand.hi)
 			{
-				llvm_store_aligned(context, lo, call, alignment);
-				call = llvm_emit_load_aligned(context, llvm_get_type(context, return_type), ret, 0, "");
+				// Here we do a store to call -> lo (leaving the rest undefined)
+				llvm_store_aligned(c, lo, call_value, alignment);
+
 				break;
 			}
 
-			LLVMTypeRef hi_type = llvm_abi_type(context, ret_info->coerce_expand.hi);
+			// 15f. Calculate the hi type.
+			LLVMTypeRef hi_type = llvm_abi_type(c, ret_info->coerce_expand.hi);
 
-			LLVMValueRef lo_value = LLVMBuildExtractValue(context->builder, call, 0, "");
-			LLVMValueRef hi_value = LLVMBuildExtractValue(context->builder, call, 1, "");
+			// 15g. We can now extract { lo, hi } to lo_value and hi_value.
+			LLVMValueRef lo_value = LLVMBuildExtractValue(c->builder, call_value, 0, "");
+			LLVMValueRef hi_value = LLVMBuildExtractValue(c->builder, call_value, 1, "");
 
-			// Store the low value.
-			llvm_store_aligned(context, lo, lo_value, alignment);
+			// 15h. Store lo_value into the { pad, lo, pad, hi } struct.
+			llvm_store_aligned(c, lo, lo_value, alignment);
 
-			LLVMValueRef hi = llvm_emit_struct_gep_raw(context, coerce, coerce_type, ret_info->coerce_expand.hi_index,
+			// 15i. Calculate the address to the high value (like for the low in 15d.
+			LLVMValueRef hi = llvm_emit_struct_gep_raw(c, coerce, coerce_type, ret_info->coerce_expand.hi_index,
 			                                           type_abi_alignment(return_type),
 			                                           ret_info->coerce_expand.offset_hi, &alignment);
 
-			// Store the high value.
-			llvm_store_aligned(context, lo, lo_value, alignment);
+			// 15h. Store the high value.
+			llvm_store_aligned(c, hi, hi_value, alignment);
 
-			// Now we can get the actual return value.
-			call = llvm_emit_load_aligned(context, llvm_get_type(context, return_type), ret, 0, "");
 			break;
 		}
 		case ABI_ARG_DIRECT_COERCE:
 		{
-			// TODO look at failable
-			LLVMTypeRef coerce = llvm_get_coerce_type(context, ret_info);
-			// Default behaviour.
-			if (!coerce || coerce == llvm_get_type(context, return_type)) break;
-			assert(!abi_info_should_flatten(ret_info));
-			call = llvm_emit_convert_value_from_coerced(context, coerce, call, return_type);
+			// 16. A direct coerce, this is basically "call result" bitcast return type.
+
+			// 16a. Get the type of the return.
+			LLVMTypeRef coerce = llvm_get_coerce_type(c, ret_info);
+
+			// 16b. If we don't have any coerce type, or the actual LLVM types are the same, we're done.
+			if (!coerce || coerce == llvm_get_type(c, return_type))
+			{
+				// 16c. We just set as a value in be_value.
+				llvm_value_set(be_value, call_value, return_type);
+				break;
+			}
+			// 16c. We use a normal bitcast coerce.
+			assert(!abi_info_should_flatten(ret_info) && "Did not expect flattening on return types.");
+			llvm_emit_convert_value_from_coerced(c, be_value, coerce, call_value, return_type);
 			break;
 		}
 	}
 
+	// 17. Handle failables.
 	if (signature->failable)
 	{
-		LLVMBasicBlockRef after_block = llvm_basic_block_new(context, "after_check");
 		BEValue no_err;
-		llvm_value_set_bool(&no_err, llvm_emit_is_no_error(context, call));
-		if (context->error_var)
+
+		// 17a. If we used the error var as the indirect recipient, then that will hold the error.
+		//      otherwise it's whatever value in be_value.
+		BEValue error_holder = *be_value;
+		if (error_var)
 		{
-			LLVMBasicBlockRef error_block = llvm_basic_block_new(context, "error");
-			llvm_emit_cond_br(context, &no_err, after_block, error_block);
-			llvm_emit_block(context, error_block);
-			LLVMBuildStore(context->builder,
-			               call,
-			               llvm_emit_bitcast(context, context->error_var, type_get_ptr(type_error)));
-			llvm_emit_br(context, context->catch_block);
+			llvm_value_set_address(&error_holder, c->error_var, type_error);
+		}
+		// 17b. Generate a boolean switch.
+		llvm_value_set_bool(&no_err, llvm_emit_is_no_error_value(c, &error_holder));
+
+		// 17c. If we have an error var, or we aren't interested in the error variable
+		//      - then it's straightforward. We just jump to the catch block.
+		LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after_check");
+		if (error_var || !c->error_var)
+		{
+			llvm_emit_cond_br(c, &no_err, after_block, c->catch_block);
 		}
 		else
 		{
-			llvm_emit_cond_br(context, &no_err, after_block, context->catch_block);
+			// 17d. If we have an error var we need to assign, then we need to
+			//      first jump to an error block, where we do the copy.
+			LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error");
+			llvm_emit_cond_br(c, &no_err, after_block, error_block);
+			llvm_emit_block(c, error_block);
+			llvm_store_bevalue_aligned(c, c->error_var, be_value, 0);
+			// 17e. Then jump to the catch.
+			llvm_emit_br(c, c->catch_block);
 		}
-		llvm_emit_block(context, after_block);
-		// If void, be_value contents should be skipped.
-		if (!signature->ret_abi_info) return;
 
-		llvm_value_set_address(be_value, return_param, expr->type);
+		// 17f. Emit the "after" block.
+		llvm_emit_block(c, after_block);
+
+		// 17g. If void, be_value contents should be skipped.
+		if (!signature->ret_abi_info)
+		{
+			*be_value = (BEValue) {};
+			return;
+		}
+
+		// 17h. Assign the return param to be_value.
+		*be_value = synthetic_return_param;
 		return;
 	}
 
-	llvm_value_set(be_value, call, expr->type);
+	// 17i. The simple case here is where there is a normal return.
+	//      In this case be_value already holds the result
+	return;
 }
 
 
@@ -2786,7 +2919,7 @@ LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id
 
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable)
 {
-	llvm_value_addr(c, ref);
+	assert(ref->kind == BE_ADDRESS || ref->kind == BE_ADDRESS_FAILABLE);
 	LLVMBasicBlockRef assign_block = NULL;
 
 	PUSH_ERROR();

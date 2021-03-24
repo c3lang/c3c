@@ -103,6 +103,7 @@ add_executable(c3c
         src/compiler/sema_types.c
         src/compiler/sema_stmts.c
         src/compiler/number.c
+        src/compiler/linker.c
         src/utils/vmem.c
         src/utils/vmem.h
         src/utils/whereami.c

@@ -338,7 +338,9 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_ERR_UNION:
 		{
 			LLVMTypeRef elements[2] = { llvm_get_type(c, type_usize->canonical), llvm_get_type(c, type_usize->canonical) };
-			return any_type->backend_type = LLVMStructTypeInContext(c->context, elements, 2, false);
+			LLVMTypeRef strukt = LLVMStructCreateNamed(c->context, "error_union");
+			LLVMStructSetBody(strukt, elements, 2, false);
+			return any_type->backend_type = strukt;
 		}
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -380,7 +382,17 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			return any_type->backend_type = array_type;
 		}
 		case TYPE_VARARRAY:
-			return any_type->backend_type = llvm_get_type(c, type_get_ptr(any_type->array.base));
+		{
+			LLVMTypeRef size_type = llvm_get_type(c, type_usize);
+			LLVMTypeRef capacity_type = llvm_get_type(c, type_usize);
+			LLVMTypeRef func_type = llvm_get_type(c, type_voidptr);
+			LLVMTypeRef ptr_type = LLVMPointerType(llvm_get_type(c, any_type->array.base), 0);
+			LLVMTypeRef types[4] = { size_type, capacity_type, func_type, ptr_type };
+			LLVMTypeRef array_type = LLVMStructCreateNamed(c->context, any_type->name);
+			LLVMStructSetBody(array_type, types, 4, false);
+			any_type->backend_aux_type = array_type;
+			return any_type->backend_type = LLVMPointerType(array_type, 0);
+		}
 		case TYPE_VECTOR:
 			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->vector.base), any_type->vector.len);
 		case TYPE_COMPLEX:
