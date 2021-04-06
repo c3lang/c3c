@@ -176,7 +176,7 @@ typedef struct BuildOptions_
 	OptimizationSetting optimization_setting_override;
 	DebugInfo debug_info_override;
 	ArchOsTarget arch_os_target_override;
-	bool debug_mode;
+	int safe_mode;
 	bool emit_llvm;
 	bool emit_bitcode;
 	bool test_mode;

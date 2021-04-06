@@ -287,7 +287,7 @@ static void parse_option(BuildOptions *options)
 			{
 				options->optimization_setting_override = OPT_SETTING_O2;
 			}
-			else if (match_shortopt("O2"))
+			else if (match_shortopt("O3"))
 			{
 				options->optimization_setting_override = OPT_SETTING_O3;
 			}
@@ -377,6 +377,16 @@ static void parse_option(BuildOptions *options)
 				options->path = check_dir(next_arg());
 				return;
 			}
+			if (match_longopt("safe"))
+			{
+				options->safe_mode = 1;
+				return;
+			}
+			if (match_longopt("unsafe"))
+			{
+				options->safe_mode = 0;
+				return;
+			}
 			if (match_longopt("help"))
 			{
 				break;
@@ -407,7 +417,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_bitcode = true,
 		.optimization_setting_override = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
-		.debug_mode = false,
+		.safe_mode = -1,
 		.command = COMMAND_MISSING,
 		.files = NULL
 	};
