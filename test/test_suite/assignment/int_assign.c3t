@@ -47,21 +47,23 @@ func int foo()
   %10 = load i32, i32* %x, align 4
   %11 = load i32, i32* %y, align 4
   %shl = shl i32 %10, %11
-  store i32 %shl, i32* %x, align 4
-  %12 = load i32, i32* %x, align 4
-  %13 = load i32, i32* %y, align 4
-  %ashr = ashr i32 %12, %13
-  store i32 %ashr, i32* %x, align 4
-  %14 = load i32, i32* %x, align 4
-  %15 = load i32, i32* %y, align 4
-  %xor = xor i32 %14, %15
-  store i32 %xor, i32* %x, align 4
+  %12 = freeze i32 %shl
+  store i32 %12, i32* %x, align 4
+  %13 = load i32, i32* %x, align 4
+  %14 = load i32, i32* %y, align 4
+  %ashr = ashr i32 %13, %14
+  %15 = freeze i32 %ashr
+  store i32 %15, i32* %x, align 4
   %16 = load i32, i32* %x, align 4
   %17 = load i32, i32* %y, align 4
-  %or = or i32 %16, %17
-  store i32 %or, i32* %x, align 4
+  %xor = xor i32 %16, %17
+  store i32 %xor, i32* %x, align 4
   %18 = load i32, i32* %x, align 4
   %19 = load i32, i32* %y, align 4
-  %and = and i32 %18, %19
-  store i32 %and, i32* %x, align 4
+  %or = or i32 %18, %19
+  store i32 %or, i32* %x, align 4
   %20 = load i32, i32* %x, align 4
+  %21 = load i32, i32* %y, align 4
+  %and = and i32 %20, %21
+  store i32 %and, i32* %x, align 4
+  %22 = load i32, i32* %x, align 4

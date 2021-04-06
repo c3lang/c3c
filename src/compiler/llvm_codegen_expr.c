@@ -1076,25 +1076,22 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 			}
 			assert(type->canonical != type_bool);
 			assert(!type_is_unsigned(type));
+			llvm_emit_expr(c, value, expr->unary_expr.expr);
+			llvm_value_rvalue(c, value);
+			if (c->build_target->feature.trap_on_wrap)
 			{
 				LLVMValueRef zero = llvm_get_zero(c, expr->unary_expr.expr->type);
-				if (c->build_target->feature.trap_on_wrap)
-				{
-					// TODO
-					LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
-					LLVMValueRef args[2] = { zero, value->value };
-					LLVMValueRef call_res = llvm_emit_call_intrinsic(c, intrinsic_id_ssub_overflow,
-					                                                 &type_to_use, 1, args, 2);
-					value->value = LLVMBuildExtractValue(c->builder, call_res, 0, "");
-					LLVMValueRef ok = LLVMBuildExtractValue(c->builder, call_res, 1, "");
-					llvm_emit_panic_on_true(c, ok, "Signed negation overflow");
-					return;
-				}
-				llvm_emit_expr(c, value, expr->unary_expr.expr);
-				llvm_value_rvalue(c, value);
-				value->value = LLVMBuildNeg(c->builder, value->value, "neg");
+				LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
+				LLVMValueRef args[2] = { zero, value->value };
+				LLVMValueRef call_res = llvm_emit_call_intrinsic(c, intrinsic_id_ssub_overflow,
+				                                                 &type_to_use, 1, args, 2);
+				value->value = LLVMBuildExtractValue(c->builder, call_res, 0, "");
+				LLVMValueRef ok = LLVMBuildExtractValue(c->builder, call_res, 1, "");
+				llvm_emit_panic_on_true(c, ok, "Signed negation overflow");
 				return;
 			}
+			value->value = LLVMBuildNeg(c->builder, value->value, "neg");
+			return;
 		case UNARYOP_ADDR:
 			llvm_emit_expr(c, value, expr->unary_expr.expr);
 			// Create an addr
@@ -1184,6 +1181,34 @@ static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef valu
 	LLVMValueRef zero = llvm_const_int(c, expr->type, 0);
 	LLVMValueRef ok = LLVMBuildICmp(c->builder, LLVMIntSLT, value, zero, "underflow");
 	llvm_emit_panic_on_true(c, ok, error);
+}
+
+static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, const char *error)
+{
+	if (!c->build_target->feature.safe_mode) return;
+
+	LLVMValueRef zero = llvm_get_zero(c, type);
+	LLVMValueRef ok = type_is_any_integer(type) ? LLVMBuildICmp(c->builder, LLVMIntEQ, value, zero, "zero") : LLVMBuildFCmp(c->builder, LLVMRealUEQ, value, zero, "zero");
+	llvm_emit_panic_on_true(c, ok, error);
+}
+
+
+static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type *type, const char *error)
+{
+	if (!c->build_target->feature.safe_mode) return;
+	unsigned type_bit_size = type_size(type) * 8;
+	LLVMValueRef max = llvm_const_int(c, type, type_bit_size);
+	if (type_is_unsigned(type))
+	{
+		LLVMValueRef equal_or_greater = LLVMBuildICmp(c->builder, LLVMIntUGE, value, max, "shift_exceeds");
+		llvm_emit_panic_on_true(c, equal_or_greater, error);
+		return;
+	}
+	LLVMValueRef zero = llvm_const_int(c, type, 0);
+	LLVMValueRef negative = LLVMBuildICmp(c->builder, LLVMIntSLT, value, zero, "shift_underflow");
+	llvm_emit_panic_on_true(c, negative, error);
+	LLVMValueRef equal_or_greater = LLVMBuildICmp(c->builder, LLVMIntSGE, value, max, "shift_exceeds");
+	llvm_emit_panic_on_true(c, equal_or_greater, error);
 }
 
 static void
@@ -1636,10 +1661,7 @@ static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left
 	{
 		return LLVMBuildTrunc(c->builder, right, left_type, "");
 	}
-	else
-	{
-		return LLVMBuildZExt(c->builder, right, left_type, "");
-	}
+	return LLVMBuildZExt(c->builder, right, left_type, "");
 }
 
 static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
@@ -1695,13 +1717,7 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 	EMIT_LOC(c, expr);
 	if (type_is_integer(lhs_type) && binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
 	{
-		llvm_value_set_bool(be_value,
-		                    llvm_emit_int_comparison(c,
-		                                             lhs_type,
-		                                             rhs_type,
-		                                             lhs_value,
-		                                             rhs_value,
-		                                             binary_op));
+		llvm_value_set_bool(be_value, llvm_emit_int_comparison(c, lhs_type, rhs_type, lhs_value, rhs_value, binary_op));
 		return;
 	}
 	bool is_float = type_is_float(lhs_type);
@@ -1752,6 +1768,7 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 			val = llvm_emit_add_int(c, lhs_type, lhs_value, rhs_value);
 			break;
 		case BINARYOP_DIV:
+			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero");
 			if (is_float)
 			{
 				val = LLVMBuildFDiv(c->builder, lhs_value, rhs_value, "fdiv");
@@ -1762,19 +1779,24 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 			      : LLVMBuildSDiv(c->builder, lhs_value, rhs_value, "sdiv");
 			break;
 		case BINARYOP_MOD:
+			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero");
 			val = type_is_unsigned(lhs_type)
 			      ? LLVMBuildURem(c->builder, lhs_value, rhs_value, "umod")
 			      : LLVMBuildSRem(c->builder, lhs_value, rhs_value, "smod");
 			break;
 		case BINARYOP_SHR:
 			rhs_value = llvm_fixup_shift_rhs(c, lhs_value, rhs_value);
+			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.");
 			val = type_is_unsigned(lhs_type)
 			      ? LLVMBuildLShr(c->builder, lhs_value, rhs_value, "lshr")
 			      : LLVMBuildAShr(c->builder, lhs_value, rhs_value, "ashr");
+			val = LLVMBuildFreeze(c->builder, val, "");
 			break;
 		case BINARYOP_SHL:
 			rhs_value = llvm_fixup_shift_rhs(c, lhs_value, rhs_value);
+			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.");
 			val = LLVMBuildShl(c->builder, lhs_value, rhs_value, "shl");
+			val = LLVMBuildFreeze(c->builder, val, "");
 			break;
 		case BINARYOP_BIT_AND:
 			val = LLVMBuildAnd(c->builder, lhs_value, rhs_value, "and");
@@ -1788,28 +1810,28 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 		case BINARYOP_EQ:
 			// Unordered?
 			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealUEQ, lhs_value, rhs_value, "eq"));
+			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealOEQ, lhs_value, rhs_value, "eq"));
 			return;
 		case BINARYOP_NE:
 			// Unordered?
 			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealUNE, lhs_value, rhs_value, "neq"));
+			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealONE, lhs_value, rhs_value, "neq"));
 			return;
 		case BINARYOP_GE:
 			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealUGE, lhs_value, rhs_value, "ge"));
+			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealOGE, lhs_value, rhs_value, "ge"));
 			return;
 		case BINARYOP_GT:
 			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealUGT, lhs_value, rhs_value, "gt"));
+			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealOGT, lhs_value, rhs_value, "gt"));
 			return;
 		case BINARYOP_LE:
 			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealULE, lhs_value, rhs_value, "le"));
+			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealOLE, lhs_value, rhs_value, "le"));
 			return;
 		case BINARYOP_LT:
 			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealULT, lhs_value, rhs_value, "lt"));
+			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealOLT, lhs_value, rhs_value, "lt"));
 			return;
 		case BINARYOP_AND:
 		case BINARYOP_OR:

@@ -82,6 +82,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		default:
 			UNREACHABLE
 	}
+	if (options->safe_mode > -1)
+	{
+		target->feature.safe_mode = options->safe_mode == 1;
+	}
 	if (options->debug_info_override != DEBUG_INFO_NOT_SET)
 	{
 		target->debug_info = options->debug_info_override;
