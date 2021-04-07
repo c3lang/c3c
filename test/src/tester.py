@@ -239,7 +239,7 @@ class Issues:
 
 
 def usage():
-    print("Usage: " + sys.argv[0] +  " <file/dir> [-s]")
+    print("Usage: " + sys.argv[0] +  " <compiler path> <file/dir> [-s]")
     print('')
     print('Options:')
     print("  -s, --skipped       only run skipped tests")
@@ -274,13 +274,15 @@ def handle_dir(filepath, conf):
 def main():
     args = len(sys.argv)
     conf = Config()
-    conf.compiler = os.path.dirname(sys.argv[0]) + "/../../cmake-build-debug/c3c"
-
-    if args != 1 and args > 3: usage()
-    if args == 3:
-        if (sys.argv[2] != '-s' and sys.argv[2] != '--skipped'): usage()
+    if args < 3 or args > 4: usage()
+    conf.compiler = os.getcwd() + "/" + sys.argv[1]
+    if not os.path.isfile(conf.compiler):
+        print("Error: Invalid path to compiler: " + conf.compiler)
+        usage()
+    if args == 4:
+        if (sys.argv[3] != '-s' and sys.argv[3] != '--skipped'): usage()
         conf.run_skipped = True
-    filepath = sys.argv[1]
+    filepath = sys.argv[2]
     if filepath.endswith('/'): filepath = filepath[:-1]
     conf.cwd = os.getcwd()
     if os.path.isfile(filepath):
@@ -288,6 +290,7 @@ def main():
     elif os.path.isdir(filepath):
         handle_dir(filepath, conf)
     else:
+        print("Error: Invalid path to tests: " + filepath)
         usage()
     print("Found %d tests: %d / %d passed (%d skipped)." % (conf.numtests, conf.numsuccess, conf.numtests - conf.numskipped, conf.numskipped))
 
