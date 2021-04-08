@@ -53,7 +53,7 @@ ABIArgInfo *x64_indirect_return_result(Type *type)
 }
 static ByteSize x64_native_vector_size_for_avx(void)
 {
-	switch (build_target.x64.avx_level)
+	switch (platform_target.x64.avx_level)
 	{
 		case AVX_NONE:
 			return 16;
@@ -74,7 +74,7 @@ static bool x64_type_is_illegal_vector(Type *type)
 	// Less than 64 bits or larger than the avx native size => not allowed.
 	if (size <= 8 || size > x64_native_vector_size_for_avx()) return true;
 	// If we pass i128 in mem, then check for that.
-	if (build_target.x64.pass_int128_vector_in_mem)
+	if (platform_target.x64.pass_int128_vector_in_mem)
 	{
 		// Illegal if i128/u128
 		TypeKind kind = type->vector.base->type_kind;
@@ -354,7 +354,7 @@ void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X6
 	}
 	if (size == 16 || named_arg || size <= x64_native_vector_size_for_avx())
 	{
-		if (build_target.x64.pass_int128_vector_in_mem) return;
+		if (platform_target.x64.pass_int128_vector_in_mem) return;
 
 		*lo_class = CLASS_SSE;
 		*hi_class = CLASS_SSEUP;
@@ -668,7 +668,7 @@ static AbiType *x64_get_byte_vector_type(Type *type)
 	if (type->type_kind == TYPE_VECTOR)
 	{
 		Type *element = type->vector.base->canonical;
-		if (build_target.x64.pass_int128_vector_in_mem && type_is_int128(element))
+		if (platform_target.x64.pass_int128_vector_in_mem && type_is_int128(element))
 		{
 			// Convert to u64
 			return abi_type_new_plain(type_get_vector(type_ulong, type_size(type) / 8));

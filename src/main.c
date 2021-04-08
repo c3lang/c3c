@@ -6,11 +6,12 @@
 #include "utils/lib.h"
 
 static int version = 102;
-
 int main(int argc, const char *argv[])
 {
 	// First setup memory
 	memory_init();
+
+
 
 	DEBUG_LOG("Version: %d", version);
 

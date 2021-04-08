@@ -13,18 +13,19 @@ static unsigned os_target_alignment_of_int(OsType os, ArchType arch, int bits);
 static unsigned os_target_alignment_of_float(OsType os, ArchType arch, int bits);
 static OsType os_from_llvm_string(const char *string);
 static VendorType vendor_from_llvm_string(const char *string);
-unsigned os_target_supports_int128(OsType os, ArchType arch);
-unsigned os_target_supports_float16(OsType os, ArchType arch);
-unsigned os_target_supports_float128(OsType os, ArchType arch);
-unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int);
+static ObjectFormatType object_format_from_os(OsType os);
+static unsigned os_target_supports_int128(OsType os, ArchType arch);
+static unsigned os_target_supports_float16(OsType os, ArchType arch);
+static unsigned os_target_supports_float128(OsType os, ArchType arch);
+static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int);
 
 
 
-Target build_target = {};
+PlatformTarget platform_target = {};
 
 int target_alloca_addr_space()
 {
-	return build_target.alloca_address_space;
+	return platform_target.alloca_address_space;
 }
 
 static void type_dump(LLVMTargetDataRef llvm_target_data, LLVMTypeRef type)
@@ -203,89 +204,89 @@ void llvm_dump(void)
 
 static inline bool os_is_apple(OsType os_type)
 {
-	return os_type == OS_TYPE_TVOS || os_type == OS_TYPE_WATCHOS || os_type == OS_TYPE_DARWIN ||
+	return os_type == OS_TYPE_TVOS || os_type == OS_TYPE_WATCHOS ||
 	       os_type == OS_TYPE_MACOSX || os_type == OS_TYPE_IOS;
 }
 
 static inline void target_setup_arm_abi(void)
 {
-	build_target.abi = ABI_ARM;
-	if (build_target.os)
+	platform_target.abi = ABI_ARM;
+	if (platform_target.os)
 	{
-		build_target.arm.is_win32 = true;
-		build_target.arm.variant = ARM_AAPCS;
-		build_target.arm.abi_variant = ARM_ABI_AAPCS16_VFP;
+		platform_target.arm.is_win32 = true;
+		platform_target.arm.variant = ARM_AAPCS;
+		platform_target.arm.abi_variant = ARM_ABI_AAPCS16_VFP;
 		return;
 	}
-	if (build_target.object_format == OBJ_FORMAT_MACHO)
+	if (platform_target.object_format == OBJ_FORMAT_MACHO)
 	{
-		if (build_target.environment_type == ENV_TYPE_EABI
-		    || build_target.os == OS_TYPE_UNKNOWN /* or is M */)
+		if (platform_target.environment_type == ENV_TYPE_EABI
+		    || platform_target.os == OS_TYPE_UNKNOWN /* or is M */)
 		{
-			build_target.arm.variant = ARM_AAPCS;
+			platform_target.arm.variant = ARM_AAPCS;
 			return;
 		}
 		// TODO
 		if (/* is watch abi */ false)
 		{
-			build_target.arm.variant = ARM_AAPCS16;
+			platform_target.arm.variant = ARM_AAPCS16;
 			goto SET_ABI;
 		}
-		build_target.arm.variant = ARM_APCS_GNU;
+		platform_target.arm.variant = ARM_APCS_GNU;
 		goto SET_ABI;
 	}
-	switch (build_target.environment_type)
+	switch (platform_target.environment_type)
 	{
 		case ENV_TYPE_ANDROID:
 		case ENV_TYPE_GNUEABI:
 		case ENV_TYPE_GNUEABIHF:
 		case ENV_TYPE_MUSLEABI:
 		case ENV_TYPE_MUSLEABIHF:
-			build_target.arm.variant = ARM_AAPCS_LINUX;
+			platform_target.arm.variant = ARM_AAPCS_LINUX;
 			goto SET_ABI;
 		case ENV_TYPE_EABI:
 		case ENV_TYPE_EABIHF:
-			build_target.arm.variant = ARM_AAPCS;
+			platform_target.arm.variant = ARM_AAPCS;
 			goto SET_ABI;
 		case ENV_TYPE_GNU:
-			build_target.arm.variant = ARM_APCS_GNU;
+			platform_target.arm.variant = ARM_APCS_GNU;
 			goto SET_ABI;
 		default:
 			break;
 	}
-	switch (build_target.os)
+	switch (platform_target.os)
 	{
 		case OS_TYPE_NETBSD:
-			build_target.arm.variant = ARM_APCS_GNU;
+			platform_target.arm.variant = ARM_APCS_GNU;
 			break;
 		case OS_TYPE_OPENBSD:
-			build_target.arm.variant = ARM_AAPCS_LINUX;
+			platform_target.arm.variant = ARM_AAPCS_LINUX;
 			break;
 		default:
-			build_target.arm.variant = ARM_AAPCS;
+			platform_target.arm.variant = ARM_AAPCS;
 			break;
 	}
 	SET_ABI:
-	switch (build_target.arm.variant)
+	switch (platform_target.arm.variant)
 	{
 		case ARM_APCS_GNU:
-			build_target.arm.abi_variant = ARM_ABI_APCS;
+			platform_target.arm.abi_variant = ARM_ABI_APCS;
 			return;
 		case ARM_AAPCS16:
-			build_target.arm.abi_variant = ARM_ABI_AAPCS16_VFP;
+			platform_target.arm.abi_variant = ARM_ABI_AAPCS16_VFP;
 			return;
 		case ARM_AAPCS:
 		case ARM_AAPCS_LINUX:
-			if (build_target.float_abi == FLOAT_ABI_HARD ||
-			    (build_target.float_abi != FLOAT_ABI_SOFT &&
-			     (build_target.environment_type == ENV_TYPE_GNUEABIHF ||
-			      build_target.environment_type == ENV_TYPE_MUSLEABIHF ||
-			      build_target.environment_type == ENV_TYPE_EABIHF)))
+			if (platform_target.float_abi == FLOAT_ABI_HARD ||
+			    (platform_target.float_abi != FLOAT_ABI_SOFT &&
+			     (platform_target.environment_type == ENV_TYPE_GNUEABIHF ||
+			      platform_target.environment_type == ENV_TYPE_MUSLEABIHF ||
+			      platform_target.environment_type == ENV_TYPE_EABIHF)))
 			{
-				build_target.arm.abi_variant = ARM_ABI_AAPCS_VFP;
+				platform_target.arm.abi_variant = ARM_ABI_AAPCS_VFP;
 				return;
 			}
-			build_target.arm.abi_variant = ARM_ABI_AAPCS;
+			platform_target.arm.abi_variant = ARM_ABI_AAPCS;
 			break;
 	}
 	UNREACHABLE
@@ -293,62 +294,61 @@ static inline void target_setup_arm_abi(void)
 
 static inline void target_setup_x86_abi(BuildTarget *target)
 {
-	build_target.abi = ABI_X86;
-	build_target.x86.is_win_api = build_target.os == OS_TYPE_WIN32;
-	if (os_is_apple(build_target.os))
+	platform_target.abi = ABI_X86;
+	platform_target.x86.is_win_api = platform_target.os == OS_TYPE_WIN32;
+	if (os_is_apple(platform_target.os))
 	{
-		build_target.x86.is_darwin_vector_abi = true;
+		platform_target.x86.is_darwin_vector_abi = true;
 	}
-	build_target.x86.use_soft_float = build_target.float_abi == FLOAT_ABI_SOFT;
+	platform_target.x86.use_soft_float = platform_target.float_abi == FLOAT_ABI_SOFT;
 	// Build target override.
 	if (target->feature.soft_float != SOFT_FLOAT_DEFAULT)
 	{
-		build_target.x86.use_soft_float = target->feature.soft_float == SOFT_FLOAT_YES;
+		platform_target.x86.use_soft_float = target->feature.soft_float == SOFT_FLOAT_YES;
 	}
 
-	build_target.x86.is_win32_float_struct_abi = build_target.os == OS_TYPE_WIN32;
-	build_target.x86.is_mcu_api = build_target.os == OS_TYPE_ELFIAMCU;
-	if (build_target.environment_type == ENV_TYPE_CYGNUS
-	    || build_target.environment_type == ENV_TYPE_GNU)
+	platform_target.x86.is_win32_float_struct_abi = platform_target.os == OS_TYPE_WIN32;
+	platform_target.x86.is_mcu_api = platform_target.os == OS_TYPE_ELFIAMCU;
+	if (platform_target.environment_type == ENV_TYPE_CYGNUS
+	    || platform_target.environment_type == ENV_TYPE_GNU)
 	{
-		build_target.x86.is_win32_float_struct_abi = false;
+		platform_target.x86.is_win32_float_struct_abi = false;
 	}
-	switch (build_target.os)
+	switch (platform_target.os)
 	{
 		case OS_TYPE_MACOSX:
 		case OS_TYPE_IOS:
 		case OS_TYPE_WATCHOS:
 		case OS_TYPE_TVOS:
-		case OS_TYPE_DARWIN:
 		case OS_TYPE_DRAGON_FLY:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_ELFIAMCU:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_WIN32:
-			build_target.x86.return_small_struct_in_reg_abi = true;
+			platform_target.x86.return_small_struct_in_reg_abi = true;
 			break;
 		default:
 			break;
 	}
 	if (target->feature.struct_return != STRUCT_RETURN_DEFAULT)
 	{
-		build_target.x86.return_small_struct_in_reg_abi = target->feature.struct_return == STRUCT_RETURN_REG;
+		platform_target.x86.return_small_struct_in_reg_abi = target->feature.struct_return == STRUCT_RETURN_REG;
 	}
 }
 
 
 static inline void target_setup_x64_abi(void)
 {
-	build_target.abi = ABI_X64;
-	build_target.x64.avx_level = AVX;
-	build_target.x64.is_win64 = build_target.os == OS_TYPE_WIN32;
-	if (build_target.environment_type == ENV_TYPE_GNU)
+	platform_target.abi = ABI_X64;
+	platform_target.x64.avx_level = AVX;
+	platform_target.x64.is_win64 = platform_target.os == OS_TYPE_WIN32;
+	if (platform_target.environment_type == ENV_TYPE_GNU)
 	{
-		build_target.x64.is_mingw64 = build_target.x64.is_win64;
+		platform_target.x64.is_mingw64 = platform_target.x64.is_win64;
 	}
-	if (build_target.os == OS_TYPE_LINUX || build_target.os == OS_TYPE_NETBSD)
+	if (platform_target.os == OS_TYPE_LINUX || platform_target.os == OS_TYPE_NETBSD)
 	{
-		build_target.x64.pass_int128_vector_in_mem = true;
+		platform_target.x64.pass_int128_vector_in_mem = true;
 	}
 }
 
@@ -372,270 +372,25 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 };
 
 
-void target_setup(BuildTarget *target)
-{
-	assert(!build_target.target);
-
-	LLVMInitializeAllTargetInfos();
-	LLVMInitializeAllTargetMCs();
-	LLVMInitializeAllTargets();
-	LLVMInitializeAllAsmPrinters();
-	LLVMInitializeAllAsmParsers();
-
-	build_target.target = NULL;
-
-	const char *triple;
-	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
-	{
-		triple = LLVMGetDefaultTargetTriple();
-	}
-	else
-	{
-		triple = arch_to_target_triple[target->arch_os_target];
-	}
-
-	char *err = NULL;
-	if (LLVMGetTargetFromTriple(triple, ((LLVMTargetRef *)&build_target.target), &err) != 0)
-	{
-		error_exit("Could not create target: %s", err);
-		// Usually we would dispose of err, but no need to do it due to exit.
-	}
-
-	build_target.alloca_address_space = 0;
-
-	DEBUG_LOG("Target set to %s.", triple);
-	// Create a specific target machine
-	LLVMCodeGenOptLevel level;
-	LLVMRelocMode reloc_mode = LLVMRelocDefault;
-
-	switch (target->optimization_level)
-	{
-		case OPTIMIZATION_NOT_SET:
-			UNREACHABLE;
-		case OPTIMIZATION_AGGRESSIVE:
-			level = LLVMCodeGenLevelAggressive;
-			break;
-		case OPTIMIZATION_DEFAULT:
-			level = LLVMCodeGenLevelDefault;
-			break;
-		case OPTIMIZATION_LESS:
-			level = LLVMCodeGenLevelLess;
-			break;
-		case OPTIMIZATION_NONE:
-			level = LLVMCodeGenLevelNone;
-			break;
-		default:
-			UNREACHABLE;
-	}
-	 if (target->pic == PIC_BIG || target->pic == PIC_SMALL || (target->type != TARGET_TYPE_EXECUTABLE && target->type != TARGET_TYPE_TEST))
-	 {
-	 	reloc_mode = LLVMRelocPIC;
-	 }
-	 if (target->pic == PIC_NONE)
-	 {
-	 	reloc_mode = LLVMRelocStatic;
-	 }
-
-	/*
-	if (!opt->features)
-	{
-		opt->features = "";
-	}*/
-	if (!(build_target.machine = LLVMCreateTargetMachine(build_target.target, triple, "", "", level, reloc_mode,
-	                                                     LLVMCodeModelDefault))) {
-		error_exit("Failed to create target machine.");
-	}
-
-	build_target.llvm_data_layout = LLVMCreateTargetDataLayout(build_target.machine);
-
-	char *target_triple = LLVMGetTargetMachineTriple(build_target.machine);
-
-	build_target.target_triple = strdup(target_triple);
-	build_target.arch = arch_from_llvm_string(strtok(target_triple, "-"));
-	if (!arch_is_supported(build_target.arch))
-	{
-		printf("WARNING! This architecture is not supported.\n");
-	}
-	build_target.vendor = vendor_from_llvm_string(strtok(NULL, "-"));
-	build_target.os = os_from_llvm_string(strtok(NULL, "-"));
-	char *env = strtok(NULL, "0123456789");
-	build_target.environment_type = env ? environment_type_from_llvm_string(env) : ENV_TYPE_UNKNOWN;
-
-	LLVMDisposeMessage(target_triple);
-
-	build_target.float_abi = false;
-	build_target.width_pointer = arch_pointer_bit_width(build_target.os, build_target.arch);
-	assert(build_target.width_pointer == LLVMPointerSize(build_target.llvm_data_layout) * 8);
-	build_target.alloca_address_space = 0;
-
-	// Todo PIC or no PIC depending on architecture.
-	switch (build_target.arch)
-	{
-		case ARCH_TYPE_X86_64:
-		case ARCH_TYPE_X86:
-		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_ARM:
-		case ARCH_TYPE_RISCV32:
-		case ARCH_TYPE_RISCV64:
-			build_target.max_size_for_return = build_target.width_pointer * 2 / 8;
-			break;
-		case ARCH_TYPE_PPC64:
-			build_target.max_size_for_return = 0;
-			break;
-		default:
-			FATAL_ERROR("Unsupported architecture.");
-	}
-
-	build_target.int_128 = os_target_supports_int128(build_target.os, build_target.arch);
-	build_target.vec_128f = os_target_supports_vec(build_target.os, build_target.arch, 128, false);
-	build_target.vec_128i = os_target_supports_vec(build_target.os, build_target.arch, 128, true);
-	build_target.vec_64f = os_target_supports_vec(build_target.os, build_target.arch, 64, false);
-	build_target.vec_64i = os_target_supports_vec(build_target.os, build_target.arch, 64, true);
-	build_target.float_128 = os_target_supports_float128(build_target.os, build_target.arch);
-	build_target.float_16 = os_target_supports_float16(build_target.os, build_target.arch);
-	build_target.align_byte = os_target_alignment_of_int(build_target.os, build_target.arch, 8);
-	build_target.align_short = os_target_alignment_of_int(build_target.os, build_target.arch, 16);
-	build_target.align_int = os_target_alignment_of_int(build_target.os, build_target.arch, 32);
-	build_target.align_long = os_target_alignment_of_int(build_target.os, build_target.arch, 64);
-	build_target.align_i128 = os_target_alignment_of_int(build_target.os, build_target.arch, 128);
-	build_target.align_half = os_target_alignment_of_float(build_target.os, build_target.arch, 16);
-	build_target.align_float = os_target_alignment_of_float(build_target.os, build_target.arch, 32);
-	build_target.align_double = os_target_alignment_of_float(build_target.os, build_target.arch, 64);
-	build_target.align_f128 = os_target_alignment_of_float(build_target.os, build_target.arch, 128);
-	build_target.align_int = os_target_alignment_of_int(build_target.os, build_target.arch, 32);
-	build_target.align_pointer = build_target.width_pointer / 8;
-	build_target.little_endian = LLVMByteOrder(build_target.llvm_data_layout) == LLVMLittleEndian;
-	build_target.width_c_short = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_SHORT);
-	build_target.width_c_int = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_INT);
-	build_target.width_c_long = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_LONG);
-	build_target.width_c_long_long = os_target_c_type_bits(build_target.os, build_target.arch, CTYPE_LONG_LONG);
-
-	/**
-	 * x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
-	 * x86-64-v2: (close to Nehalem) CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3
-     * x86-64-v3: (close to Haswell) AVX, AVX2, BMI1, BMI2, F16C, FMA, LZCNT, MOVBE, XSAVE
-     * x86-64-v4: AVX512F, AVX512BW, AVX512CD, AVX512DQ, AVX512VL
-	 */
-	switch (build_target.arch)
-	{
-		case ARCH_TYPE_AARCH64_32:
-		case ARCH_TYPE_BPFEL:
-		case ARCH_TYPE_BPFEB:
-		case ARCH_TYPE_SPARCEL:
-		case ARCH_TYPE_LE64:
-		case ARCH_TYPE_AMDIL:
-		case ARCH_TYPE_AMDIL64:
-		case ARCH_TYPE_HSAIL:
-		case ARCH_TYPE_HSAIL64:
-		case ARCH_TYPE_KALIMBA:
-		case ARCH_TYPE_SHAVE:
-		case ARCH_TYPE_RSCRIPT32:
-		case ARCH_TYPE_RSCRIPT64:
-		case ARCH_TYPE_LE32:
-		case ARCH_TYPE_MIPS:
-		case ARCH_TYPE_MIPSEL:
-		case ARCH_TYPE_MIPS64EL:
-		case ARCH_TYPE_MIPS64:
-		case ARCH_TYPE_AVR:
-		case ARCH_TYPE_NVPTX64:
-		case ARCH_TYPE_NVPTX:
-		case ARCH_TYPE_MSP430:
-		case ARCH_TYPE_SYSTEMZ:
-		case ARCH_TYPE_TCELE:
-		case ARCH_TYPE_TCE:
-		case ARCH_TYPE_LANAI:
-		case ARCH_TYPE_HEXAGON:
-		case ARCH_TYPE_AMDGCN:
-		case ARCH_TYPE_R600:
-		case ARCH_TYPE_SPARC:
-		case ARCH_TYPE_SPARCV9:
-		case ARCH_TYPE_XCORE:
-		case ARCH_TYPE_ARC:
-		case ARCH_TYPE_SPIR64:
-		case ARCH_TYPE_SPIR:
-			UNREACHABLE
-			break;
-		case ARCH_TYPE_AARCH64:
-		case ARCH_TYPE_AARCH64_BE:
-			build_target.aarch.is_darwin = os_is_apple(build_target.os);
-			build_target.aarch.is_win32 = build_target.os == OS_TYPE_WIN32;
-			build_target.abi = ABI_AARCH64;
-			break;
-		case ARCH_TYPE_WASM32:
-		case ARCH_TYPE_WASM64:
-			build_target.abi = ABI_WASM;
-			break;
-		case ARCH_TYPE_ARMB:
-		case ARCH_TYPE_ARM:
-		case ARCH_TYPE_THUMBEB:
-		case ARCH_TYPE_THUMB:
-			target_setup_arm_abi();
-			break;
-		case ARCH_TYPE_PPC:
-			FATAL_ERROR("PPC32 is not supported.");
-		case ARCH_TYPE_PPC64:
-		case ARCH_TYPE_PPC64LE:
-			if (build_target.object_format != OBJ_FORMAT_ELF)
-			{
-				if (build_target.arch == ARCH_TYPE_PPC64LE)
-				{
-					FATAL_ERROR("PPC64 LE non-ELF not supported.");
-				}
-				FATAL_ERROR("PPC64 not supported");
-			}
-			/** Here we need to have different codegen depending on elf version :( */
-			build_target.abi = ABI_PPC64_SVR4;
-			build_target.ppc64.is_softfp = build_target.float_abi == FLOAT_ABI_SOFT;
-			/* todo enable if elfv2 */
-			build_target.ppc64.is_elfv2 = build_target.arch == ARCH_TYPE_PPC64LE;
-			/* todo enable if elfv1-qpx */
-			build_target.ppc64.has_qpx = false;
-			break;
-		case ARCH_TYPE_RISCV64:
-		case ARCH_TYPE_RISCV32:
-			build_target.riscv.xlen = 0; // pointer width
-			build_target.riscv.flen = 32; // ends with f / d (64)
-			build_target.abi = ABI_RISCV;
-			TODO
-		case ARCH_TYPE_X86:
-			target_setup_x86_abi(target);
-			break;
-		case ARCH_TYPE_X86_64:
-			target_setup_x64_abi();
-			build_target.x64.avx_level = 0; /* TODO */
-			if (build_target.os == OS_TYPE_WIN32)
-			{
-				build_target.abi = ABI_WIN64;
-				break;
-			}
-			build_target.abi = ABI_X64;
-			break;
-		case ARCH_TYPE_UNKNOWN:
-			build_target.abi = ABI_UNKNOWN;
-			break;
-	}
-	// TODO remove
-	builtin_setup(&build_target);
-}
 
 void target_destroy()
 {
-	assert(build_target.machine);
-	LLVMDisposeTargetMachine(build_target.machine);
+	assert(platform_target.machine);
+	LLVMDisposeTargetMachine(platform_target.machine);
 }
 
 void *target_target()
 {
-	return build_target.target;
+	return platform_target.target;
 }
 
 void *target_machine()
 {
-	return build_target.machine;
+	return platform_target.machine;
 }
 void *target_data_layout()
 {
-	return build_target.llvm_data_layout;
+	return platform_target.llvm_data_layout;
 }
 
 static bool arch_is_supported(ArchType arch)
@@ -769,12 +524,16 @@ static EnvironmentType environment_type_from_llvm_string(const char *string)
 #undef STRCASE
 	}
 
-static OsType os_from_llvm_string(const char *string)
+static OsType os_from_llvm_string(const char *os_string)
 {
-#define STRCASE(_str, _os) if (strcmp(string, _str) == 0) return _os;
+	char *string = strdup(os_string);
+	int len = 0;
+	while (string[len] >= 'A') len++;
+	string[len] = '\0';
+#define STRCASE(_str, _os) if (strncmp(string, _str, sizeof(_str)) == 0) { free(string); return _os; }
 	STRCASE("ananas", OS_TYPE_ANANAS)
 	STRCASE("cloudabi", OS_TYPE_CLOUD_ABI)
-	STRCASE("darwin", OS_TYPE_DARWIN)
+	STRCASE("darwin", OS_TYPE_MACOSX)
 	STRCASE("dragonfly", OS_TYPE_DRAGON_FLY)
 	STRCASE("freebsd", OS_TYPE_FREE_BSD)
 	STRCASE("fuchsia", OS_TYPE_FUCHSIA)
@@ -807,6 +566,7 @@ static OsType os_from_llvm_string(const char *string)
 	STRCASE("hurd", OS_TYPE_HURD)
 	STRCASE("wasi", OS_TYPE_WASI)
 	STRCASE("emscripten", OS_TYPE_EMSCRIPTEN)
+	free(string);
 	return OS_TYPE_UNKNOWN;
 #undef STRCASE
 }
@@ -903,68 +663,7 @@ static unsigned arch_pointer_bit_width(OsType os, ArchType arch)
 	}
 }
 
-unsigned arch_is_big_endian(ArchType arch)
-{
-	switch (arch)
-	{
-		case ARCH_TYPE_UNKNOWN:
-		case ARCH_TYPE_AVR:
-		case ARCH_TYPE_ARC:
-		case ARCH_TYPE_TCE:
-		case ARCH_TYPE_TCELE:
-		case ARCH_TYPE_LE32:
-		case ARCH_TYPE_LE64:
-		case ARCH_TYPE_AMDIL:
-		case ARCH_TYPE_AMDIL64:
-		case ARCH_TYPE_HSAIL:
-		case ARCH_TYPE_HSAIL64:
-		case ARCH_TYPE_SPIR:
-		case ARCH_TYPE_SPIR64:
-		case ARCH_TYPE_KALIMBA:
-		case ARCH_TYPE_SHAVE:
-		case ARCH_TYPE_RSCRIPT32:
-		case ARCH_TYPE_RSCRIPT64:
-			UNREACHABLE
-		case ARCH_TYPE_X86:
-		case ARCH_TYPE_X86_64:
-		case ARCH_TYPE_AARCH64:
-		case ARCH_TYPE_AARCH64_32:
-		case ARCH_TYPE_ARM:
-		case ARCH_TYPE_BPFEL:
-		case ARCH_TYPE_HEXAGON:
-		case ARCH_TYPE_MIPSEL:
-		case ARCH_TYPE_MIPS64EL:
-		case ARCH_TYPE_MSP430:
-		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_R600:
-		case ARCH_TYPE_AMDGCN:
-		case ARCH_TYPE_RISCV32:
-		case ARCH_TYPE_RISCV64:
-		case ARCH_TYPE_SPARCEL:
-		case ARCH_TYPE_THUMB:
-		case ARCH_TYPE_XCORE:
-		case ARCH_TYPE_NVPTX:
-		case ARCH_TYPE_NVPTX64:
-		case ARCH_TYPE_WASM64:
-		case ARCH_TYPE_WASM32:
-			return false;
-		case ARCH_TYPE_AARCH64_BE:
-		case ARCH_TYPE_ARMB:
-		case ARCH_TYPE_BPFEB:
-		case ARCH_TYPE_MIPS:
-		case ARCH_TYPE_MIPS64:
-		case ARCH_TYPE_PPC64:
-		case ARCH_TYPE_PPC:
-		case ARCH_TYPE_SPARC:
-		case ARCH_TYPE_SPARCV9:
-		case ARCH_TYPE_SYSTEMZ:
-		case ARCH_TYPE_THUMBEB:
-		case ARCH_TYPE_LANAI:
-			return true;
-	}
-	UNREACHABLE
-}
-unsigned os_target_supports_float16(OsType os, ArchType arch)
+static unsigned os_target_supports_float16(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
@@ -975,7 +674,7 @@ unsigned os_target_supports_float16(OsType os, ArchType arch)
 	}
 }
 
-unsigned os_target_supports_float128(OsType os, ArchType arch)
+static unsigned os_target_supports_float128(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
@@ -988,14 +687,14 @@ unsigned os_target_supports_float128(OsType os, ArchType arch)
 			if (os == OS_TYPE_MACOSX) return false; // Only for later OS X 10.4+
 			return false;
 		case ARCH_TYPE_X86:
-			if (os == OS_TYPE_DARWIN || os == OS_TYPE_MACOSX) return true;
+			if (os == OS_TYPE_MACOSX) return true;
 			return false;
 		default:
 			return false;
 	}
 }
 
-unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int)
+static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int)
 {
 	if (bits != 64 && bits != 128) return false;
 	switch (arch)
@@ -1005,7 +704,7 @@ unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int)
 		case ARCH_TYPE_PPC:
 			return true;
 		case ARCH_TYPE_X86:
-			if (os == OS_TYPE_DARWIN || os == OS_TYPE_MACOSX)
+			if (os == OS_TYPE_MACOSX)
 			{
 				// 64i 128f 128i
 				return bits == 128 || is_int;
@@ -1016,7 +715,55 @@ unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int)
 	}
 }
 
-unsigned os_target_supports_int128(OsType os, ArchType arch)
+static ObjectFormatType object_format_from_os(OsType os)
+{
+	switch (os)
+	{
+		case OS_TYPE_LINUX:
+		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NETBSD:
+		case OS_TYPE_OPENBSD:
+			return OBJ_FORMAT_ELF;
+		case OS_TYPE_ANANAS:
+		case OS_TYPE_CLOUD_ABI:
+		case OS_TYPE_DRAGON_FLY:
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_FUCHSIA:
+		case OS_TYPE_KFREEBSD:
+		case OS_TYPE_PS3:
+		case OS_TYPE_SOLARIS:
+		case OS_TYPE_HAIKU:
+		case OS_TYPE_MINIX:
+		case OS_TYPE_RTEMS:
+		case OS_TYPE_NACL:
+		case OS_TYPE_CNK:
+		case OS_TYPE_CUDA:
+		case OS_TYPE_NVOPENCL:
+		case OS_TYPE_AMDHSA:
+		case OS_TYPE_PS4:
+		case OS_TYPE_ELFIAMCU:
+		case OS_TYPE_MESA3D:
+		case OS_TYPE_CONTIKI:
+		case OS_TYPE_AMDPAL:
+		case OS_TYPE_HERMITCORE:
+		case OS_TYPE_HURD:
+		case OS_TYPE_EMSCRIPTEN:
+			return OBJ_FORMAT_UNSUPPORTED;
+		case OS_TYPE_MACOSX:
+		case OS_TYPE_IOS:
+		case OS_TYPE_TVOS:
+		case OS_TYPE_WATCHOS:
+			return OBJ_FORMAT_MACHO;
+		case OS_TYPE_WIN32:
+			return OBJ_FORMAT_COFF;
+		case OS_TYPE_AIX:
+			return OBJ_FORMAT_XCOFF;
+		case OS_TYPE_WASI:
+			return OBJ_FORMAT_WASM;
+	}
+	UNREACHABLE
+}
+static unsigned os_target_supports_int128(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
@@ -1028,7 +775,7 @@ unsigned os_target_supports_int128(OsType os, ArchType arch)
 	}
 }
 
-unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
+static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 {
 	switch (os)
 	{
@@ -1050,7 +797,6 @@ unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 			}
 			// Use default
 			break;
-		case OS_TYPE_DARWIN:
 		case OS_TYPE_MACOSX:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_FREE_BSD:
@@ -1198,6 +944,68 @@ static unsigned os_target_alignment_of_int(OsType os, ArchType arch, int bits)
 				return (os == OS_TYPE_WIN32 || os == OS_TYPE_NACL) ? 8 : 4;
 			}
 			return bits / 8;
+	}
+	UNREACHABLE
+}
+
+static unsigned arch_little_endian(ArchType arch)
+{
+	switch (arch)
+	{
+		case ARCH_TYPE_UNKNOWN:
+		case ARCH_TYPE_X86:
+		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_AARCH64_32:
+		case ARCH_TYPE_ARM:
+		case ARCH_TYPE_THUMB:
+		case ARCH_TYPE_BPFEL:
+		case ARCH_TYPE_AVR:
+		case ARCH_TYPE_HEXAGON:
+		case ARCH_TYPE_PPC64LE:
+		case ARCH_TYPE_MIPSEL:
+		case ARCH_TYPE_MIPS64EL:
+		case ARCH_TYPE_MSP430:
+		case ARCH_TYPE_X86_64:
+		case ARCH_TYPE_R600:
+		case ARCH_TYPE_AMDGCN:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_RISCV64:
+		case ARCH_TYPE_SPARCEL:
+		case ARCH_TYPE_XCORE:
+		case ARCH_TYPE_NVPTX:
+		case ARCH_TYPE_NVPTX64:
+		case ARCH_TYPE_WASM32:
+		case ARCH_TYPE_WASM64:
+			return true;
+		case ARCH_TYPE_ARMB:
+		case ARCH_TYPE_THUMBEB:
+		case ARCH_TYPE_AARCH64_BE:
+		case ARCH_TYPE_BPFEB:
+		case ARCH_TYPE_MIPS:
+		case ARCH_TYPE_MIPS64:
+		case ARCH_TYPE_PPC64:
+		case ARCH_TYPE_PPC:
+		case ARCH_TYPE_SPARC:
+		case ARCH_TYPE_SPARCV9:
+		case ARCH_TYPE_SYSTEMZ:
+		case ARCH_TYPE_LANAI:
+			return false;
+		case ARCH_TYPE_ARC:
+		case ARCH_TYPE_LE32:
+		case ARCH_TYPE_LE64:
+		case ARCH_TYPE_AMDIL:
+		case ARCH_TYPE_AMDIL64:
+		case ARCH_TYPE_HSAIL:
+		case ARCH_TYPE_HSAIL64:
+		case ARCH_TYPE_SPIR:
+		case ARCH_TYPE_SPIR64:
+		case ARCH_TYPE_KALIMBA:
+		case ARCH_TYPE_SHAVE:
+		case ARCH_TYPE_RSCRIPT32:
+		case ARCH_TYPE_RSCRIPT64:
+		case ARCH_TYPE_TCE:
+		case ARCH_TYPE_TCELE:
+			UNREACHABLE
 	}
 	UNREACHABLE
 }
@@ -1427,3 +1235,250 @@ static unsigned os_target_pref_alignment_of_float(OsType os, ArchType arch, int 
 	UNREACHABLE
 }
 
+void target_setup(BuildTarget *target)
+{
+	assert(!platform_target.target);
+
+	LLVMInitializeAllTargetInfos();
+	LLVMInitializeAllTargetMCs();
+	LLVMInitializeAllTargets();
+	LLVMInitializeAllAsmPrinters();
+	LLVMInitializeAllAsmParsers();
+
+	platform_target.target = NULL;
+
+	const char *triple;
+	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
+	{
+		triple = LLVMGetDefaultTargetTriple();
+	}
+	else
+	{
+		triple = arch_to_target_triple[target->arch_os_target];
+	}
+
+	char *err = NULL;
+	if (LLVMGetTargetFromTriple(triple, ((LLVMTargetRef *)&platform_target.target), &err) != 0)
+	{
+		error_exit("Could not create target: %s", err);
+		// Usually we would dispose of err, but no need to do it due to exit.
+	}
+
+	platform_target.alloca_address_space = 0;
+
+	DEBUG_LOG("Target set to %s.", triple);
+	// Create a specific target machine
+	LLVMCodeGenOptLevel level;
+	LLVMRelocMode reloc_mode = LLVMRelocDefault;
+
+	switch (target->optimization_level)
+	{
+		case OPTIMIZATION_NOT_SET:
+			UNREACHABLE;
+		case OPTIMIZATION_AGGRESSIVE:
+			level = LLVMCodeGenLevelAggressive;
+			break;
+		case OPTIMIZATION_DEFAULT:
+			level = LLVMCodeGenLevelDefault;
+			break;
+		case OPTIMIZATION_LESS:
+			level = LLVMCodeGenLevelLess;
+			break;
+		case OPTIMIZATION_NONE:
+			level = LLVMCodeGenLevelNone;
+			break;
+		default:
+			UNREACHABLE;
+	}
+	if (target->pic == PIC_BIG || target->pic == PIC_SMALL || (target->type != TARGET_TYPE_EXECUTABLE && target->type != TARGET_TYPE_TEST))
+	{
+		reloc_mode = LLVMRelocPIC;
+	}
+	if (target->pic == PIC_NONE)
+	{
+		reloc_mode = LLVMRelocStatic;
+	}
+
+	/*
+	if (!opt->features)
+	{
+		opt->features = "";
+	}*/
+	if (!(platform_target.machine = LLVMCreateTargetMachine(platform_target.target, triple, "", "", level, reloc_mode,
+	                                                        LLVMCodeModelDefault))) {
+		error_exit("Failed to create target machine.");
+	}
+
+	platform_target.llvm_data_layout = LLVMCreateTargetDataLayout(platform_target.machine);
+
+	char *target_triple = LLVMGetTargetMachineTriple(platform_target.machine);
+
+	platform_target.target_triple = strdup(target_triple);
+	platform_target.arch = arch_from_llvm_string(strtok(target_triple, "-"));
+	if (!arch_is_supported(platform_target.arch))
+	{
+		printf("WARNING! This architecture is not supported.\n");
+	}
+	platform_target.vendor = vendor_from_llvm_string(strtok(NULL, "-"));
+	platform_target.os = os_from_llvm_string(strtok(NULL, "-"));
+	char *env = strtok(NULL, "0123456789");
+	platform_target.environment_type = env ? environment_type_from_llvm_string(env) : ENV_TYPE_UNKNOWN;
+
+	LLVMDisposeMessage(target_triple);
+
+	platform_target.float_abi = false;
+	platform_target.little_endian = arch_little_endian(platform_target.arch);
+	platform_target.width_pointer = arch_pointer_bit_width(platform_target.os, platform_target.arch);
+	assert(platform_target.width_pointer == LLVMPointerSize(platform_target.llvm_data_layout) * 8);
+	platform_target.alloca_address_space = 0;
+
+	// Todo PIC or no PIC depending on architecture.
+	switch (platform_target.arch)
+	{
+		case ARCH_TYPE_X86_64:
+		case ARCH_TYPE_X86:
+		case ARCH_TYPE_PPC64LE:
+		case ARCH_TYPE_ARM:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_RISCV64:
+			platform_target.max_size_for_return = platform_target.width_pointer * 2 / 8;
+			break;
+		case ARCH_TYPE_PPC64:
+			platform_target.max_size_for_return = 0;
+			break;
+		default:
+			FATAL_ERROR("Unsupported architecture.");
+	}
+
+	platform_target.object_format = object_format_from_os(platform_target.os);
+
+	platform_target.int128 = os_target_supports_int128(platform_target.os, platform_target.arch);
+	platform_target.vec128f = os_target_supports_vec(platform_target.os, platform_target.arch, 128, false);
+	platform_target.vec128i = os_target_supports_vec(platform_target.os, platform_target.arch, 128, true);
+	platform_target.vec64f = os_target_supports_vec(platform_target.os, platform_target.arch, 64, false);
+	platform_target.vec64i = os_target_supports_vec(platform_target.os, platform_target.arch, 64, true);
+	platform_target.float128 = os_target_supports_float128(platform_target.os, platform_target.arch);
+	platform_target.float16 = os_target_supports_float16(platform_target.os, platform_target.arch);
+	platform_target.align_byte = os_target_alignment_of_int(platform_target.os, platform_target.arch, 8);
+	platform_target.align_short = os_target_alignment_of_int(platform_target.os, platform_target.arch, 16);
+	platform_target.align_int = os_target_alignment_of_int(platform_target.os, platform_target.arch, 32);
+	platform_target.align_long = os_target_alignment_of_int(platform_target.os, platform_target.arch, 64);
+	platform_target.align_i128 = os_target_alignment_of_int(platform_target.os, platform_target.arch, 128);
+	platform_target.align_half = os_target_alignment_of_float(platform_target.os, platform_target.arch, 16);
+	platform_target.align_float = os_target_alignment_of_float(platform_target.os, platform_target.arch, 32);
+	platform_target.align_double = os_target_alignment_of_float(platform_target.os, platform_target.arch, 64);
+	platform_target.align_f128 = os_target_alignment_of_float(platform_target.os, platform_target.arch, 128);
+	platform_target.align_int = os_target_alignment_of_int(platform_target.os, platform_target.arch, 32);
+	platform_target.align_pointer = platform_target.width_pointer / 8;
+	platform_target.width_c_short = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_SHORT);
+	platform_target.width_c_int = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_INT);
+	platform_target.width_c_long = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_LONG);
+	platform_target.width_c_long_long = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_LONG_LONG);
+
+	/**
+	 * x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
+	 * x86-64-v2: (close to Nehalem) CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3
+     * x86-64-v3: (close to Haswell) AVX, AVX2, BMI1, BMI2, F16C, FMA, LZCNT, MOVBE, XSAVE
+     * x86-64-v4: AVX512F, AVX512BW, AVX512CD, AVX512DQ, AVX512VL
+	 */
+	switch (platform_target.arch)
+	{
+		case ARCH_TYPE_AARCH64_32:
+		case ARCH_TYPE_BPFEL:
+		case ARCH_TYPE_BPFEB:
+		case ARCH_TYPE_SPARCEL:
+		case ARCH_TYPE_LE64:
+		case ARCH_TYPE_AMDIL:
+		case ARCH_TYPE_AMDIL64:
+		case ARCH_TYPE_HSAIL:
+		case ARCH_TYPE_HSAIL64:
+		case ARCH_TYPE_KALIMBA:
+		case ARCH_TYPE_SHAVE:
+		case ARCH_TYPE_RSCRIPT32:
+		case ARCH_TYPE_RSCRIPT64:
+		case ARCH_TYPE_LE32:
+		case ARCH_TYPE_MIPS:
+		case ARCH_TYPE_MIPSEL:
+		case ARCH_TYPE_MIPS64EL:
+		case ARCH_TYPE_MIPS64:
+		case ARCH_TYPE_AVR:
+		case ARCH_TYPE_NVPTX64:
+		case ARCH_TYPE_NVPTX:
+		case ARCH_TYPE_MSP430:
+		case ARCH_TYPE_SYSTEMZ:
+		case ARCH_TYPE_TCELE:
+		case ARCH_TYPE_TCE:
+		case ARCH_TYPE_LANAI:
+		case ARCH_TYPE_HEXAGON:
+		case ARCH_TYPE_AMDGCN:
+		case ARCH_TYPE_R600:
+		case ARCH_TYPE_SPARC:
+		case ARCH_TYPE_SPARCV9:
+		case ARCH_TYPE_XCORE:
+		case ARCH_TYPE_ARC:
+		case ARCH_TYPE_SPIR64:
+		case ARCH_TYPE_SPIR:
+			UNREACHABLE
+			break;
+		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_AARCH64_BE:
+			platform_target.aarch.is_darwin = os_is_apple(platform_target.os);
+			platform_target.aarch.is_win32 = platform_target.os == OS_TYPE_WIN32;
+			platform_target.abi = ABI_AARCH64;
+			break;
+		case ARCH_TYPE_WASM32:
+		case ARCH_TYPE_WASM64:
+			platform_target.abi = ABI_WASM;
+			break;
+		case ARCH_TYPE_ARMB:
+		case ARCH_TYPE_ARM:
+		case ARCH_TYPE_THUMBEB:
+		case ARCH_TYPE_THUMB:
+			target_setup_arm_abi();
+			break;
+		case ARCH_TYPE_PPC:
+			FATAL_ERROR("PPC32 is not supported.");
+		case ARCH_TYPE_PPC64:
+		case ARCH_TYPE_PPC64LE:
+			if (platform_target.object_format != OBJ_FORMAT_ELF)
+			{
+				if (platform_target.arch == ARCH_TYPE_PPC64LE)
+				{
+					FATAL_ERROR("PPC64 LE non-ELF not supported.");
+				}
+				FATAL_ERROR("PPC64 not supported");
+			}
+			/** Here we need to have different codegen depending on elf version :( */
+			platform_target.abi = ABI_PPC64_SVR4;
+			platform_target.ppc64.is_softfp = platform_target.float_abi == FLOAT_ABI_SOFT;
+			/* todo enable if elfv2 */
+			platform_target.ppc64.is_elfv2 = platform_target.arch == ARCH_TYPE_PPC64LE;
+			/* todo enable if elfv1-qpx */
+			platform_target.ppc64.has_qpx = false;
+			break;
+		case ARCH_TYPE_RISCV64:
+		case ARCH_TYPE_RISCV32:
+			platform_target.riscv.xlen = 0; // pointer width
+			platform_target.riscv.flen = 32; // ends with f / d (64)
+			platform_target.abi = ABI_RISCV;
+			TODO
+		case ARCH_TYPE_X86:
+			target_setup_x86_abi(target);
+			break;
+		case ARCH_TYPE_X86_64:
+			target_setup_x64_abi();
+			platform_target.x64.avx_level = 0; /* TODO */
+			if (platform_target.os == OS_TYPE_WIN32)
+			{
+				platform_target.abi = ABI_WIN64;
+				break;
+			}
+			platform_target.abi = ABI_X64;
+			break;
+		case ARCH_TYPE_UNKNOWN:
+			platform_target.abi = ABI_UNKNOWN;
+			break;
+	}
+	// TODO remove
+	builtin_setup(&platform_target);
+}

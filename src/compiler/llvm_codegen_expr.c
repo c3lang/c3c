@@ -1657,7 +1657,7 @@ static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left
 	LLVMTypeRef left_type = LLVMTypeOf(left);
 	LLVMTypeRef right_type = LLVMTypeOf(right);
 	if (left_type == right_type) return right;
-	if (LLVMStoreSizeOfType(build_target.target, left_type) < LLVMStoreSizeOfType(build_target.target, right_type))
+	if (LLVMStoreSizeOfType(platform_target.target, left_type) < LLVMStoreSizeOfType(platform_target.target, right_type))
 	{
 		return LLVMBuildTrunc(c->builder, right, left_type, "");
 	}

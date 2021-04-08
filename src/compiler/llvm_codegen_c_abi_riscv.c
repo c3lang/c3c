@@ -36,11 +36,11 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 {
 	bool is_int = type_is_integer(type);
 	bool is_float = type_is_float(type);
-	unsigned flen = build_target.riscv.flen;
+	unsigned flen = platform_target.riscv.flen;
 	unsigned size = type_size(type);
 	if (is_int || is_float)
 	{
-		if (is_int && size > build_target.riscv.xlen) return false;
+		if (is_int && size > platform_target.riscv.xlen) return false;
 		// Can't be eligible if larger than the FP registers. Half precision isn't
 		// currently supported on RISC-V and the ABI hasn't been confirmed, so
 		// default to the integer ABI in that case.
@@ -162,7 +162,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 
 	assert(type == type->canonical);
 
-	unsigned xlen = build_target.riscv.xlen;
+	unsigned xlen = platform_target.riscv.xlen;
 
 	// Ignore empty structs/unions.
 	if (type_is_empty_union_struct(type, true)) return abi_arg_ignore();
@@ -170,7 +170,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 	ByteSize size = type_size(type);
 
 	// Pass floating point values via FPRs if possible.
-	if (is_fixed && type_is_float(type) && build_target.riscv.flen >= size && *fprs)
+	if (is_fixed && type_is_float(type) && platform_target.riscv.flen >= size && *fprs)
 	{
 		(*fprs)--;
 		return abi_arg_new_direct();
@@ -181,7 +181,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 	if (is_fixed && type->type_kind == TYPE_COMPLEX && *fprs >= 2)
 	{
 		Type *element_type = type->complex;
-		if (type_size(element_type) <= build_target.riscv.flen)
+		if (type_size(element_type) <= platform_target.riscv.flen)
 		{
 			(*fprs) -= 2;
 			// TODO check that this will expand correctly.
@@ -189,7 +189,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		}
 	}
 
-	if (is_fixed && build_target.riscv.flen && (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_ERRTYPE))
+	if (is_fixed && platform_target.riscv.flen && (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_ERRTYPE))
 	{
 		AbiType *field1 = NULL;
 		AbiType *field2 = NULL;
@@ -242,7 +242,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		{
 			return abi_arg_new_expand_padded(type_int_unsigned_by_bitsize(xlen * 8));
 		}
-		if (size > 16 || (size > 8 && !build_target.int_128))
+		if (size > 16 || (size > 8 && !platform_target.int128))
 		{
 			return abi_arg_new_indirect_not_by_val();
 		}
@@ -259,7 +259,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		{
 			return abi_arg_new_direct_coerce(abi_type_new_int_bits(xlen * 8));
 		}
-		if (alignment == 2 * build_target.riscv.xlen)
+		if (alignment == 2 * platform_target.riscv.xlen)
 		{
 			return abi_arg_new_direct_coerce(abi_type_new_int_bits(xlen * 16));
 		}
@@ -275,7 +275,7 @@ static ABIArgInfo *riscv_classify_return(Type *return_type)
 	if (return_type->type_kind == TYPE_VOID) return abi_arg_ignore();
 
 	unsigned arg_gpr_left = 2;
-	unsigned arg_fpr_left = build_target.riscv.flen ? 2 : 0;
+	unsigned arg_fpr_left = platform_target.riscv.flen ? 2 : 0;
 
 	// The rules for return and argument types are the same, so defer to
 	// classifyArgumentType.
@@ -306,11 +306,11 @@ void c_abi_func_create_riscv(FunctionSignature *signature)
 	// in LLVM IR, relying on the backend lowering code to rewrite the argument
 	// list and pass indirectly on RV32.
 	bool is_ret_indirect = abi_arg_is_indirect(return_abi);
-	if (!is_ret_indirect && type_is_scalar(return_type) && type_size(return_type) > 2 * build_target.riscv.xlen)
+	if (!is_ret_indirect && type_is_scalar(return_type) && type_size(return_type) > 2 * platform_target.riscv.xlen)
 	{
-		if (return_type->type_kind == TYPE_COMPLEX && build_target.riscv.flen)
+		if (return_type->type_kind == TYPE_COMPLEX && platform_target.riscv.flen)
 		{
-			is_ret_indirect = type_size(return_type->complex) > build_target.riscv.flen;
+			is_ret_indirect = type_size(return_type->complex) > platform_target.riscv.flen;
 		}
 		else
 		{
@@ -324,7 +324,7 @@ void c_abi_func_create_riscv(FunctionSignature *signature)
 	// different for variadic arguments, we must also track whether we are
 	// examining a vararg or not.
 	unsigned arg_gprs_left = is_ret_indirect ? gpr - 1 : gpr;
-	unsigned arg_fprs_left = build_target.riscv.flen ? fpr : 0;
+	unsigned arg_fprs_left = platform_target.riscv.flen ? fpr : 0;
 
 	// If we have a failable, then the return type is a parameter.
 	if (signature->failable && signature->rtype->type->type_kind != TYPE_VOID)

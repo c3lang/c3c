@@ -191,8 +191,8 @@ bool context_add_import(Context *context, Path *path, Token token, Token alias)
 	import->import.symbol = token.id;
 	if (alias.type != TOKEN_INVALID_TOKEN)
     {
-		const char *alias_name = TOKKSTR(alias);
-	    if (alias_name == TOKKSTR(token))
+		const char *alias_name = TOKSTR(alias);
+	    if (alias_name == TOKSTR(token))
 	    {
 		    SEMA_TOKEN_ERROR(alias, "If an alias would be the same as the symbol aliased, it wouldn't have any effect.");
 		    return false;

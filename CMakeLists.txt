@@ -11,11 +11,13 @@ find_package(LLVM REQUIRED CONFIG)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+message(STATUS "Libraries located in: ${LLVM_LIBRARY_DIRS}")
 
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 set(LLVM_LINK_COMPONENTS
         AllTargetsAsmParsers
@@ -42,14 +44,43 @@ set(LLVM_LINK_COMPONENTS
         native
         nativecodegen
         AsmPrinter
+        Linker
+        LTO
+        Option
+        WindowsManifest
+        DebugInfoPDB
+        LibDriver
         )
 
-llvm_map_components_to_libnames(llvm_libs support core irreader ${LLVM_LINK_COMPONENTS})
+
+llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 
 file(COPY ${CMAKE_SOURCE_DIR}/resources/lib DESTINATION ${CMAKE_BINARY_DIR})
 
-include_directories(
-        "${CMAKE_SOURCE_DIR}/src/")
+find_library(LLD_COFF NAMES lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLD_COMMON NAMES lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLD_CORE NAMES lldCore.a liblldCore.a PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLD_WASM NAMES lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLD_MINGW NAMES lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLD_ELF NAMES lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLD_DRIVER NAMES lldDriver.a liblldDriver.a PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLD_READER_WRITER NAMES lldReaderWriter.a liblldReaderWriter.a PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLD_MACHO NAMES lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLD_YAML NAMES lldYAML.a liblldYAML.a PATHS ${LLVM_LIBRARY_DIRS})
+
+set(lld_libs
+        ${LLD_COFF}
+        ${LLD_COMMON}
+        ${LLD_WASM}
+        ${LLD_MINGW}
+        ${LLD_ELF}
+        ${LLD_DRIVER}
+        ${LLD_READER_WRITER}
+        ${LLD_MACHO}
+        ${LLD_YAML}
+        ${LLD_CORE}
+        )
+add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
 
 add_executable(c3c
         src/main.c
@@ -107,11 +138,29 @@ add_executable(c3c
         src/utils/vmem.c
         src/utils/vmem.h
         src/utils/whereami.c
-        src/compiler/llvm_codegen_c_abi_x86.c src/compiler/c_abi_internal.h src/compiler/llvm_codegen_c_abi_x64.c src/compiler/llvm_codegen_c_abi_win64.c src/compiler/llvm_codegen_c_abi_aarch64.c src/compiler/headers.c src/compiler/llvm_codegen_c_abi_riscv.c src/compiler/llvm_codegen_c_abi_wasm.c)
+        src/compiler/llvm_codegen_c_abi_x86.c
+        src/compiler/c_abi_internal.h
+        src/compiler/llvm_codegen_c_abi_x64.c
+        src/compiler/llvm_codegen_c_abi_win64.c
+        src/compiler/llvm_codegen_c_abi_aarch64.c
+        src/compiler/headers.c
+        src/compiler/llvm_codegen_c_abi_riscv.c
+        src/compiler/llvm_codegen_c_abi_wasm.c)
 
 target_compile_options(c3c PRIVATE -Wsign-compare -Wimplicit-int -Werror -Wall -Wno-unknown-pragmas -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 
-target_link_libraries(c3c m ${llvm_libs})
+target_include_directories(c3c PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/")
+
+target_include_directories(c3c_wrappers PRIVATE
+        "${CMAKE_SOURCE_DIR}/wrapper/src/")
+
+
+message(STATUS "Found LLD ${lld_libs}")
+
+target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
+#target_link_libraries(c3c m ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
+target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${lld_libs})
 
 install(TARGETS c3c DESTINATION bin)
 

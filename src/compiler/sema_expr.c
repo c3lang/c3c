@@ -3181,7 +3181,7 @@ static Type *numeric_arithmetic_promotion(Type *type)
 	{
 		case ALL_SIGNED_INTS:
 		case ALL_UNSIGNED_INTS:
-			if (type->builtin.bitsize < build_target.width_c_int) return type_c_int->canonical;
+			if (type->builtin.bitsize < platform_target.width_c_int) return type_c_int->canonical;
 			return type;
 		case TYPE_F16:
 			// Promote F16 to a real type.

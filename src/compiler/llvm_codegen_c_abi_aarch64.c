@@ -32,7 +32,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	{
 		// Over 128 bits should be indirect, but
 		// we don't have that (yet?)
-		if (type_is_promotable_integer(type) && build_target.aarch64.is_darwin_pcs)
+		if (type_is_promotable_integer(type) && platform_target.aarch64.is_darwin_pcs)
 		{
 			return abi_arg_new_direct_int_ext(type);
 		}
@@ -57,7 +57,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	{
 		// For RenderScript <= 16 needs to be coerced.
 		AlignSize alignment = type_abi_alignment(type);
-		if (build_target.aarch64.is_aapcs)
+		if (platform_target.aarch64.is_aapcs)
 		{
 			alignment = alignment < 16 ? 8 : 16;
 		}
@@ -100,7 +100,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 
 	if (!type_is_abi_aggregate(type))
 	{
-		if (type_is_promotable_integer(type) && build_target.aarch64.is_darwin_pcs)
+		if (type_is_promotable_integer(type) && platform_target.aarch64.is_darwin_pcs)
 		{
 			return abi_arg_new_direct_int_ext(type);
 		}
@@ -115,7 +115,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 	Type *base = NULL;
 	unsigned members = 0;
 	if (type_is_homogenous_aggregate(type, &base, &members) &&
-	    !(build_target.arch == ARCH_TYPE_AARCH64_32 && variadic))
+	    !(platform_target.arch == ARCH_TYPE_AARCH64_32 && variadic))
 	{
 		return abi_arg_ignore();
 	}

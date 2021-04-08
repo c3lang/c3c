@@ -578,7 +578,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	}
 	llvm_attribute_add(c, function, attribute_nounwind, -1);
 
-	if (decl->func.attr_stdcall && (build_target.os == OS_TYPE_WIN32))
+	if (decl->func.attr_stdcall && (platform_target.os == OS_TYPE_WIN32))
 	{
 		LLVMSetFunctionCallConv(function, LLVMX86StdcallCallConv);
 		LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
