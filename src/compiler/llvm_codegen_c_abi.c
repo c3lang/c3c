@@ -183,7 +183,7 @@ ABIArgInfo *abi_arg_new_expand_padded(Type *padding)
 
 void c_abi_func_create(FunctionSignature *signature)
 {
-	switch (build_target.abi)
+	switch (platform_target.abi)
 	{
 		case ABI_X64:
 			c_abi_func_create_x64(signature);
@@ -223,7 +223,7 @@ ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
 	// Struct-likes are returned by sret
 	if (type_is_abi_aggregate(type)) return abi_arg_new_indirect_by_val();
 
-	if (type_is_int128(type) && !build_target.int_128) return abi_arg_new_indirect_by_val();
+	if (type_is_int128(type) && !platform_target.int128) return abi_arg_new_indirect_by_val();
 
 	// Otherwise do we have a type that needs promotion?
 	if (type_is_promotable_integer(type)) return abi_arg_new_direct_int_ext(type);

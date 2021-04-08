@@ -1441,7 +1441,7 @@ static inline Ast *extend_ast_with_prev_token(Context *context, Ast *ast)
 
 
 
-void builtin_setup(Target *target);
+void builtin_setup(PlatformTarget *target);
 
 static inline bool builtin_may_negate(Type *canonical)
 {
@@ -1554,27 +1554,24 @@ void lexer_init_for_test(Lexer *lexer, const char *text, size_t len);
 void lexer_init_with_file(Lexer *lexer, File *file);
 File* lexer_current_file(Lexer *lexer);
 
-static inline SourceLocation *TOKILOC(TokenId token) { return sourcelocptr(token.index); }
-static inline SourceLocation *TOKKLOC(Token token) { return sourcelocptr(token.id.index); }
+
+static inline SourceLocation *tokenid_loc(TokenId token) { return sourcelocptr(token.index); }
+static inline SourceLocation *token_loc(Token token) { return sourcelocptr(token.id.index); }
 static inline TokenData *tokendata_from_id(TokenId token) { return tokdataptr(token.index); }
+static inline TokenData *tokendata_from_token(Token token) { return tokdataptr(token.id.index); }
 
-#define TOKLOC(T) _Generic((T), TokenId: TOKILOC, Token: TOKKLOC)(T)
+#define TOKDATA(T) _Generic((T), TokenId: tokendata_from_id, Token: tokendata_from_token)(T)
+#define TOKLOC(T) _Generic((T), TokenId: tokenid_loc, Token: token_loc)(T)
 
-static inline const char *TOKISTR(TokenId token) { return tokendata_from_id(token)->string; }
-static inline const char *TOKKSTR(Token token) { return tokendata_from_id(token.id)->string; }
-#define TOKSTR(T) _Generic((T), TokenId: TOKISTR, Token: TOKKSTR)(T)
+#define TOKSTR(T) TOKDATA(T)->string
 
-static inline double TOKIREAL(TokenId token) { return tokendata_from_id(token)->value; }
-static inline double TOKKREAL(Token token) { return tokendata_from_id(token.id)->value; }
-#define TOKREAL(T) _Generic((T), TokenId: TOKIREAL, Token: TOKKREAL)(T)
+#define TOKREAL(T) TOKDATA(T)->value
 
-static inline TokenType TOKITYPE(TokenId token) { return toktypeptr(token.index)[0]; }
-static inline TokenType TOKKTYPE(Token token) { return toktypeptr(token.id.index)[0]; }
-#define TOKTYPE(T) _Generic((T), TokenId: TOKITYPE, Token: TOKKTYPE)(T)
+static inline TokenType tokenid_type(TokenId token) { return toktypeptr(token.index)[0]; }
+static inline TokenType token_type(Token token) { return toktypeptr(token.id.index)[0]; }
+#define TOKTYPE(T) _Generic((T), TokenId: tokenid_type, Token: token_type)(T)
 
-static inline uint32_t TOKILEN(TokenId token) { return TOKILOC(token)->length; }
-static inline uint32_t TOKKLEN(Token token) { return TOKKLOC(token)->length; }
-#define TOKLEN(T) _Generic((T), TokenId: TOKILEN, Token:TOKKLEN)(T)
+#define TOKLEN(T) TOKLOC(T)->length
 
 #define TOKVALID(_tok) (_tok.index != 0)
 Decl *module_find_symbol(Module *module, const char *symbol, ModuleSymbolSearch search, Decl **private_decl);
@@ -2000,7 +1997,9 @@ static inline size_t type_min_alignment(size_t a, size_t b)
 	return (a | b) & (1 + ~(a | b));
 }
 
+bool obj_format_linking_supported(ObjectFormatType format_type);
 void linker(const char *output_file, const char **files, unsigned file_count);
+
 
 #define TRY_AST_OR(_ast_stmt, _res) ({ Ast* _ast = (_ast_stmt); if (!ast_ok(_ast)) return _res; _ast; })
 #define TRY_EXPR_OR(_expr_stmt, _res) ({ Expr* _expr = (_expr_stmt); if (!expr_ok(_expr)) return _res; _expr; })

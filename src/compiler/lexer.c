@@ -636,7 +636,7 @@ static inline bool scan_char(Lexer *lexer)
 						lexer->lexing_start = start;
 						return add_error_token(lexer, "Expected a four character hex value after \\u.");
 					}
-					if (build_target.little_endian)
+					if (platform_target.little_endian)
 					{
 						bytes.b[width++] = hex & 0xFF;
 						bytes.b[width++] = hex >> 8;
@@ -656,7 +656,7 @@ static inline bool scan_char(Lexer *lexer)
 						lexer->lexing_start = start;
 						return add_error_token(lexer, "Expected an eight character hex value after \\U.");
 					}
-					if (build_target.little_endian)
+					if (platform_target.little_endian)
 					{
 						bytes.b[width++] = hex & 0xFF;
 						bytes.b[width++] = (hex >> 8) & 0xFF;

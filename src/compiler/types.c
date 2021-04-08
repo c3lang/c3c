@@ -333,7 +333,7 @@ Type *type_abi_find_single_struct_element(Type *type)
 
 static bool type_is_qpx_vector(Type *type)
 {
-	if (build_target.abi != ABI_PPC64_SVR4 || !build_target.ppc64.has_qpx) return false;
+	if (platform_target.abi != ABI_PPC64_SVR4 || !platform_target.ppc64.has_qpx) return false;
 	type = type->canonical;
 	if (type->type_kind != TYPE_VECTOR) return false;
 	if (type->vector.len == 1) return false;
@@ -389,17 +389,17 @@ bool type_is_abi_aggregate(Type *type)
 bool type_is_homogenous_base_type(Type *type)
 {
 	type = type->canonical;
-	switch (build_target.abi)
+	switch (platform_target.abi)
 	{
 		case ABI_PPC64_SVR4:
 			switch (type->type_kind)
 			{
 				case TYPE_F128:
-					if (!build_target.float_128) return false;
+					if (!platform_target.float128) return false;
 					FALLTHROUGH;
 				case TYPE_F32:
 				case TYPE_F64:
-					return !build_target.ppc64.is_softfp;
+					return !platform_target.ppc64.is_softfp;
 				case TYPE_VECTOR:
 					return type_size(type) == 128 / 8 || type_is_qpx_vector(type);
 				default:
@@ -474,10 +474,10 @@ bool type_is_homogenous_base_type(Type *type)
 
 bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
 {
-	switch (build_target.abi)
+	switch (platform_target.abi)
 	{
 		case ABI_PPC64_SVR4:
-			if (type->type_kind == TYPE_F128 && build_target.float_128) return members <= 8;
+			if (type->type_kind == TYPE_F128 && platform_target.float128) return members <= 8;
 			if (type->type_kind == TYPE_VECTOR) return members <= 8;
 			return ((type_size(type) + 7) / 8) * members <= 8;
 		case ABI_X64:
@@ -614,7 +614,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 
 AlignSize type_alloca_alignment(Type *type)
 {
-	if (build_target.abi == ABI_X64)
+	if (platform_target.abi == ABI_X64)
 	{
 		type = type_flatten(type);
 		if (type->type_kind == TYPE_ARRAY && type_size(type) >= 16) return 16;
@@ -1035,7 +1035,7 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 }
 
 
-void builtin_setup(Target *target)
+void builtin_setup(PlatformTarget *target)
 {
 
 	/*TODO

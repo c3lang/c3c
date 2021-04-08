@@ -35,7 +35,7 @@ static unsigned x86_stack_alignment(Type *type, unsigned alignment)
 	if (alignment < MIN_ABI_STACK_ALIGN) return 0;
 
 	// On non-Darwin, the stack type alignment is always 4.
-	if (!build_target.x86.is_darwin_vector_abi) return MIN_ABI_STACK_ALIGN;
+	if (!platform_target.x86.is_darwin_vector_abi) return MIN_ABI_STACK_ALIGN;
 
 	// Otherwise, if the type contains an SSE vector type, the alignment is 16.
 	if (alignment >= 16 && (type_is_simd_vector(type) || type_is_union_struct_with_simd_vector(type)))
@@ -55,7 +55,7 @@ static ABIArgInfo *x86_create_indirect_result(Regs *regs, Type *type, ByVal by_v
 		if (regs->int_regs)
 		{
 			regs->int_regs--;
-			if (!build_target.x86.is_mcu_api) info->attributes.by_reg = true;
+			if (!platform_target.x86.is_mcu_api) info->attributes.by_reg = true;
 		}
 		return info;
 	}
@@ -85,7 +85,7 @@ ABIArgInfo *create_indirect_return_x86(Regs *regs)
 	if (!regs->int_regs) return info;
 	// Consume a register for the return.
 	regs->int_regs--;
-	if (build_target.x86.is_mcu_api) return info;
+	if (platform_target.x86.is_mcu_api) return info;
 
 	return abi_arg_by_reg_attr(info);
 }
@@ -97,7 +97,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 	if (size > 8) return false;
 
 	// Require power of two for everything except mcu.
-	if (!build_target.x86.is_mcu_api && !is_power_of_two(size)) return false;
+	if (!platform_target.x86.is_mcu_api && !is_power_of_two(size)) return false;
 
 	if (type->type_kind == TYPE_VECTOR)
 	{
@@ -172,7 +172,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 	if (type->type_kind == TYPE_VECTOR)
 	{
 		// On Darwin, vectors may be returned in registers.
-		if (build_target.x86.is_darwin_vector_abi)
+		if (platform_target.x86.is_darwin_vector_abi)
 		{
 			unsigned size = type_size(type);
 			if (size == 16)
@@ -194,7 +194,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 	if (type_is_abi_aggregate(type))
 	{
 		// If we don't allow small structs in reg:
-		if (!build_target.x86.return_small_struct_in_reg_abi && type->type_kind == TYPE_COMPLEX)
+		if (!platform_target.x86.return_small_struct_in_reg_abi && type->type_kind == TYPE_COMPLEX)
 		{
 			return create_indirect_return_x86(regs);
 		}
@@ -212,7 +212,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 			Type *single_element = type_abi_find_single_struct_element(type);
 			if (single_element)
 			{
-				if ((type_is_float(single_element) && !build_target.x86.is_win32_float_struct_abi))
+				if ((type_is_float(single_element) && !platform_target.x86.is_win32_float_struct_abi))
 				{
 					return abi_arg_new_expand();
 				}
@@ -246,13 +246,13 @@ static inline bool x86_should_aggregate_use_direct(CallConvention call, Regs *re
 	// On Windows, aggregates other than HFAs are never passed in registers, and
 	// they do not consume register slots. Homogenous floating-point aggregates
 	// (HFAs) have already been dealt with at this point.
-	if (build_target.x86.is_win32_float_struct_abi) return false;
+	if (platform_target.x86.is_win32_float_struct_abi) return false;
 
 	*needs_padding = false;
 
 	if (!x86_try_use_free_regs(regs, type)) return false;
 
-	if (build_target.x86.is_mcu_api) return true;
+	if (platform_target.x86.is_mcu_api) return true;
 
 	switch (call)
 	{
@@ -324,7 +324,7 @@ static inline bool x86_can_expand_indirect_aggregate_arg(Type *type)
 static bool x86_try_use_free_regs(Regs *regs, Type *type)
 {
 	// 1. Floats are not passed in regs on soft floats.
-	if (!build_target.x86.use_soft_float && type_is_float(type)) return false;
+	if (!platform_target.x86.use_soft_float && type_is_float(type)) return false;
 
 	unsigned size = type_size(type);
 
@@ -338,7 +338,7 @@ static bool x86_try_use_free_regs(Regs *regs, Type *type)
 	//    earlier parameters that are passed on the stack. Also,
 	//	  it does not allow passing >8-byte structs in-register,
 	//	  even if there are 3 free registers available.
-	if (build_target.x86.is_mcu_api)
+	if (platform_target.x86.is_mcu_api)
 	{
 		// 4a. Just return if there are not enough registers.
 		if (size_in_regs > regs->int_regs) return false;
@@ -377,7 +377,7 @@ static bool x86_try_put_primitive_in_reg(CallConvention call, Regs *regs, Type *
 	if (!x86_try_use_free_regs(regs, type)) return false;
 
 	// 2. On MCU, do not use the inreg attribute.
-	if (build_target.x86.is_mcu_api) return false;
+	if (platform_target.x86.is_mcu_api) return false;
 
 	// 3. Reg/fast/vec calls limit it to 32 bits
 	//    and integer / pointer types.
@@ -442,7 +442,7 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 	// On Windows, vectors are passed directly if registers are available, or
 	// indirectly if not. This avoids the need to align argument memory. Pass
 	// user-defined vector types larger than 512 bits indirectly for simplicity.
-	if (build_target.x86.is_win32_float_struct_abi)
+	if (platform_target.x86.is_win32_float_struct_abi)
 	{
 		if (size < 64 && regs->float_regs)
 		{
@@ -453,7 +453,7 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 	}
 	// On Darwin, some vectors are passed in memory, we handle this by passing
 	// it as an i8/i16/i32/i64.
-	if (build_target.x86.is_darwin_vector_abi)
+	if (platform_target.x86.is_darwin_vector_abi)
 	{
 		if ((size == 1 || size == 2 || size == 4) || (size == 8 && type->vector.len == 1))
 		{
@@ -481,7 +481,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallConvention call, Regs *regs
 	assert(type_is_abi_aggregate(type));
 
 	// Ignore empty unions / structs on non-win.
-	if (!build_target.x86.is_win32_float_struct_abi && type_is_empty_union_struct(type, true))
+	if (!platform_target.x86.is_win32_float_struct_abi && type_is_empty_union_struct(type, true))
 	{
 		return abi_arg_ignore();
 	}
@@ -491,7 +491,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallConvention call, Regs *regs
 
 	// Pass over-aligned aggregates on Windows indirectly. This behavior was
 	// added in MSVC 2015.
-	if (build_target.x86.is_win32_float_struct_abi && type_abi_alignment(type) > 4)
+	if (platform_target.x86.is_win32_float_struct_abi && type_abi_alignment(type) > 4)
 	{
 		return x86_create_indirect_result(regs, type, BY_VAL_SKIP);
 	}
@@ -506,7 +506,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallConvention call, Regs *regs
 		ABIArgInfo *info = abi_arg_new_direct_coerce(abi_type_new_int_bits(32));
 		info->direct_coerce.elements = size_in_regs;
 		// Not in reg on MCU
-		if (!build_target.x86.is_mcu_api) info->attributes.by_reg = true;
+		if (!platform_target.x86.is_mcu_api) info->attributes.by_reg = true;
 		return info;
 	}
 
@@ -516,8 +516,8 @@ static inline ABIArgInfo *x86_classify_aggregate(CallConvention call, Regs *regs
 	// optimizations.
 	// Don't do this for the MCU if there are still free integer registers
 	// (see X86_64 ABI for full explanation).
-	if (size <= 16 && (!build_target.x86.is_mcu_api || !regs->int_regs) &&
-			x86_can_expand_indirect_aggregate_arg(type))
+	if (size <= 16 && (!platform_target.x86.is_mcu_api || !regs->int_regs) &&
+	    x86_can_expand_indirect_aggregate_arg(type))
 	{
 		if (!needs_padding_in_reg) return abi_arg_new_expand();
 
@@ -626,11 +626,11 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 	{
 		case CALL_CONVENTION_NORMAL:
 		case CALL_CONVENTION_SYSCALL:
-			if (build_target.x86.is_win32_float_struct_abi)
+			if (platform_target.x86.is_win32_float_struct_abi)
 			{
 				regs.float_regs = 3;
 			}
-			regs.int_regs = build_target.default_number_regs;
+			regs.int_regs = platform_target.default_number_regs;
 			break;
 		case CALL_CONVENTION_REGCALL:
 			regs.int_regs = 5;
@@ -646,7 +646,7 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 		default:
 			UNREACHABLE
 	}
-	if (build_target.x86.is_mcu_api)
+	if (platform_target.x86.is_mcu_api)
 	{
 		regs.float_regs = 0;
 		regs.int_regs = 3;

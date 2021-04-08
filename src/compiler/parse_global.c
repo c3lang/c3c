@@ -22,7 +22,7 @@ static bool context_next_is_type_with_path_prefix(Context *context)
 		while (1)
 		{
 			current.index += 1;
-			tok = TOKITYPE(current);
+			tok = TOKTYPE(current);
 			if (tok != TOKEN_COMMENT) break;
 		}
 
@@ -36,7 +36,7 @@ static bool context_next_is_type_with_path_prefix(Context *context)
 		while (1)
 		{
 			current.index += 1;
-			tok = TOKITYPE(current);
+			tok = TOKTYPE(current);
 			if (tok != TOKEN_COMMENT) break;
 		}
 
@@ -816,7 +816,7 @@ static Decl *parse_const_declaration(Context *context, Visibility visibility)
 	{
 		decl->var.type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
 	}
-	decl->name = TOKKSTR(context->tok);
+	decl->name = TOKSTR(context->tok);
 	decl->name_token = context->tok.id;
 	if (!consume_const_name(context, "const")) return poisoned_decl;
 

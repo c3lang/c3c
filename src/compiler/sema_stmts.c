@@ -326,8 +326,8 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 static inline bool sema_analyse_stmt_placement(Expr *cond, Ast *stmt)
 {
 	if (stmt->ast_kind == AST_COMPOUND_STMT) return true;
-	SourceLocation *end_of_cond = TOKILOC(cond->span.end_loc);
-	SourceLocation *start_of_then = TOKILOC(stmt->span.loc);
+	SourceLocation *end_of_cond = TOKLOC(cond->span.end_loc);
+	SourceLocation *start_of_then = TOKLOC(stmt->span.loc);
 	return end_of_cond->line == start_of_then->line;
 }
 
@@ -880,8 +880,8 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 	}
 	if (success && statement->if_stmt.then_body->ast_kind != AST_COMPOUND_STMT)
 	{
-		SourceLocation *end_of_cond = TOKILOC(cond->span.end_loc);
-		SourceLocation *start_of_then = TOKILOC(statement->if_stmt.then_body->span.loc);
+		SourceLocation *end_of_cond = TOKLOC(cond->span.end_loc);
+		SourceLocation *start_of_then = TOKLOC(statement->if_stmt.then_body->span.loc);
 		if (end_of_cond->line != start_of_then->line)
 		{
 			SEMA_ERROR(statement->if_stmt.then_body,

@@ -76,7 +76,6 @@ typedef enum
 	OS_TYPE_UNKNOWN,
 	OS_TYPE_ANANAS,
 	OS_TYPE_CLOUD_ABI,
-	OS_TYPE_DARWIN,
 	OS_TYPE_DRAGON_FLY,
 	OS_TYPE_FREE_BSD,
 	OS_TYPE_FUCHSIA,
@@ -141,11 +140,14 @@ typedef enum
 
 typedef enum
 {
+	OBJ_FORMAT_UNSUPPORTED,
 	OBJ_FORMAT_COFF,
+	OBJ_FORMAT_GOFF,
 	OBJ_FORMAT_ELF,
 	OBJ_FORMAT_MACHO,
 	OBJ_FORMAT_WASM,
-	OBJ_FORMAT_XCOFF
+	OBJ_FORMAT_XCOFF,
+	OBJ_FORMAT_AOUT,
 } ObjectFormatType;
 
 typedef enum
@@ -291,13 +293,13 @@ typedef struct
 	bool little_endian;
 	bool tls_supported;
 	bool asm_supported;
-	bool float_128;
-	bool float_16;
-	bool vec_128i;
-	bool vec_64i;
-	bool vec_128f;
-	bool vec_64f;
-	bool int_128;
+	bool float128;
+	bool float16;
+	bool vec128i;
+	bool vec64i;
+	bool vec128f;
+	bool vec64f;
+	bool int128;
 	unsigned align_pref_pointer;
 	unsigned align_pref_byte;
 	unsigned align_pref_short;
@@ -343,7 +345,7 @@ typedef struct
 	unsigned max_size_for_return;
 	char *platform_name;
 
-} Target;
+} PlatformTarget;
 
 
-extern Target build_target;
+extern PlatformTarget platform_target;

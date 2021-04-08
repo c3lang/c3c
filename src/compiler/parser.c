@@ -44,8 +44,8 @@ inline void advance(Context *context)
 		// Handle doc comments
 		if (context->next_tok.type == TOKEN_DOC_COMMENT)
 		{
-			SourceLocation *curr = TOKKLOC(context->tok);
-			SourceLocation *next = TOKKLOC(context->next_tok);
+			SourceLocation *curr = TOKLOC(context->tok);
+			SourceLocation *next = TOKLOC(context->next_tok);
 			vec_add(context->comments, context->next_tok);
 
 			if (curr->line == next->line)
@@ -98,7 +98,7 @@ bool consume(Context *context, TokenType type, const char *message, ...)
 
 	va_list args;
 	va_start(args, message);
-	sema_verror_range(TOKKLOC(context->tok), message, args);
+	sema_verror_range(TOKLOC(context->tok), message, args);
 	va_end(args);
 	return false;
 }

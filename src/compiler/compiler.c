@@ -31,9 +31,9 @@ void compiler_init(void)
 	vmem_init(&tokdata_arena, 4 * 1024);
 	vmem_init(&type_info_arena, 1024);
 	// Create zero index value.
-	SourceLocation *loc = sourceloc_calloc();
-	char *token_type = toktype_calloc();
-	TokenData *data = tokdata_calloc();
+	(void) sourceloc_calloc();
+	(void) toktype_calloc();
+	(void) tokdata_calloc();
 	compiler.lib_dir = find_lib_dir();
 }
 
@@ -172,9 +172,7 @@ void compiler_compile(BuildTarget *target)
 
 
 	bool create_exe = !target->test_output && (target->type == TARGET_TYPE_EXECUTABLE || target->type == TARGET_TYPE_TEST);
-#if PLATFORM_WINDOWS
-	create_exe = false;
-#endif
+
 	const char **obj_files = NULL;
 
 	for (unsigned i = 0; i < source_count; i++)
@@ -184,7 +182,7 @@ void compiler_compile(BuildTarget *target)
 		vec_add(obj_files, file_name);
 	}
 
-	if (create_exe)
+	if (create_exe && obj_format_linking_supported(platform_target.object_format))
 	{
 		linker(target->name, obj_files, source_count);
 		if (target->run_after_compile)

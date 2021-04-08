@@ -32,7 +32,7 @@ void gencontext_begin_module(GenContext *c)
 		LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
 	}
 
-	LLVMSetTarget(c->module, build_target.target_triple);
+	LLVMSetTarget(c->module, platform_target.target_triple);
 	if (c->build_target->debug_info != DEBUG_INFO_NONE)
 	{
 		const char *filename = c->ast_context->file->name;

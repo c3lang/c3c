@@ -42,7 +42,7 @@ static inline void parse_optional_label_target(Context *context, Label *label)
 	if (TOKEN_IS(TOKEN_CONST_IDENT))
 	{
 		label->span = context->tok.id;
-		label->name = TOKKSTR(context->tok);
+		label->name = TOKSTR(context->tok);
 		advance_and_verify(context, TOKEN_CONST_IDENT);
 	}
 }

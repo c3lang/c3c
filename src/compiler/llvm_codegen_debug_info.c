@@ -111,10 +111,10 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 	flags |= LLVMDIFlagPrototyped;
 	if (decl->func.attr_noreturn) flags |= LLVMDIFlagNoReturn;
 
-	SourceLocation *loc = TOKILOC(decl->span.loc);
+	SourceLocation *loc = TOKLOC(decl->span.loc);
 	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
 	                                                c->debug.file,
-	                                                decl->name, TOKILEN(decl->name_token),
+	                                                decl->name, TOKLEN(decl->name_token),
 	                                                decl->external_name, strlen(decl->external_name),
 	                                                c->debug.file,
 	                                                loc->line,

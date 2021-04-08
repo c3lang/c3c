@@ -330,7 +330,7 @@ static void parse_option(BuildOptions *options)
 				if (at_end() || next_is_opt()) error_exit("error: --target needs a arch+os definition.");
 				const char *target = next_arg();
 				ArchOsTarget target_arch_os = arch_os_target_from_string(target);
-				if (target_arch_os >= 0)
+				if (target_arch_os != ARCH_OS_TARGET_DEFAULT)
 				{
 					options->arch_os_target_override = target_arch_os;
 					return;
@@ -473,5 +473,5 @@ ArchOsTarget arch_os_target_from_string(const char *target)
 			return i;
 		}
 	}
-	return -1;
+	return ARCH_OS_TARGET_DEFAULT;
 }
