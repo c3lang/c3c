@@ -96,7 +96,7 @@ C3 on its dedicated Discord: https://discord.gg/qN76R87
 - [ ] Anonymous structs
 - [x] Distinct types
 - [ ] LTO/ThinLTO setup
-- [ ] Built-in linking
+- [x] Built-in linking
 - [ ] `global` / `shared` for globals 
 - [ ] Complex macros
 - [x] CT only macros evaluating to constants
