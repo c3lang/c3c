@@ -18,7 +18,7 @@ static unsigned os_target_supports_int128(OsType os, ArchType arch);
 static unsigned os_target_supports_float16(OsType os, ArchType arch);
 static unsigned os_target_supports_float128(OsType os, ArchType arch);
 static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int);
-
+static bool os_requires_libc(OsType os);
 
 
 PlatformTarget platform_target = {};
@@ -600,56 +600,21 @@ static unsigned arch_pointer_bit_width(OsType os, ArchType arch)
 	switch (arch)
 	{
 		case ARCH_TYPE_UNKNOWN:
+		case ARCH_UNSUPPORTED:
 			return 0;
-		case ARCH_TYPE_MSP430:
-		case ARCH_TYPE_AVR:
-			return 16;
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_ARMB:
-		case ARCH_TYPE_ARC:
-		case ARCH_TYPE_HEXAGON:
-		case ARCH_TYPE_MIPS:
-		case ARCH_TYPE_MIPSEL:
 		case ARCH_TYPE_PPC:
-		case ARCH_TYPE_R600:
 		case ARCH_TYPE_RISCV32:
-		case ARCH_TYPE_SPARC:
-		case ARCH_TYPE_SPARCEL:
-		case ARCH_TYPE_TCE:
-		case ARCH_TYPE_TCELE:
 		case ARCH_TYPE_THUMB:
 		case ARCH_TYPE_THUMBEB:
 		case ARCH_TYPE_X86:
-		case ARCH_TYPE_XCORE:
-		case ARCH_TYPE_NVPTX:
-		case ARCH_TYPE_LE32:
-		case ARCH_TYPE_AMDIL:
-		case ARCH_TYPE_HSAIL:
-		case ARCH_TYPE_SPIR:
-		case ARCH_TYPE_KALIMBA:
-		case ARCH_TYPE_SHAVE:
-		case ARCH_TYPE_LANAI:
 		case ARCH_TYPE_WASM32:
-		case ARCH_TYPE_RSCRIPT32:
-		case ARCH_TYPE_AARCH64_32:
 			return 32;
-		case ARCH_TYPE_SPIR64:
-		case ARCH_TYPE_RSCRIPT64:
 		case ARCH_TYPE_WASM64:
-		case ARCH_TYPE_LE64:
-		case ARCH_TYPE_BPFEL:
-		case ARCH_TYPE_BPFEB:
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
-		case ARCH_TYPE_SYSTEMZ:
-		case ARCH_TYPE_SPARCV9:
-		case ARCH_TYPE_MIPS64:
-		case ARCH_TYPE_NVPTX64:
-		case ARCH_TYPE_AMDIL64:
-		case ARCH_TYPE_HSAIL64:
 		case ARCH_TYPE_RISCV64:
-		case ARCH_TYPE_AMDGCN:
-		case ARCH_TYPE_MIPS64EL:
 			return 64;
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC64LE:
@@ -719,36 +684,14 @@ static ObjectFormatType object_format_from_os(OsType os)
 {
 	switch (os)
 	{
+		case OS_UNSUPPORTED:
+			return OBJ_FORMAT_UNSUPPORTED;
 		case OS_TYPE_LINUX:
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
-			return OBJ_FORMAT_ELF;
-		case OS_TYPE_ANANAS:
-		case OS_TYPE_CLOUD_ABI:
-		case OS_TYPE_DRAGON_FLY:
 		case OS_TYPE_FREE_BSD:
-		case OS_TYPE_FUCHSIA:
-		case OS_TYPE_KFREEBSD:
-		case OS_TYPE_PS3:
-		case OS_TYPE_SOLARIS:
-		case OS_TYPE_HAIKU:
-		case OS_TYPE_MINIX:
-		case OS_TYPE_RTEMS:
-		case OS_TYPE_NACL:
-		case OS_TYPE_CNK:
-		case OS_TYPE_CUDA:
-		case OS_TYPE_NVOPENCL:
-		case OS_TYPE_AMDHSA:
-		case OS_TYPE_PS4:
-		case OS_TYPE_ELFIAMCU:
-		case OS_TYPE_MESA3D:
-		case OS_TYPE_CONTIKI:
-		case OS_TYPE_AMDPAL:
-		case OS_TYPE_HERMITCORE:
-		case OS_TYPE_HURD:
-		case OS_TYPE_EMSCRIPTEN:
-			return OBJ_FORMAT_UNSUPPORTED;
+			return OBJ_FORMAT_ELF;
 		case OS_TYPE_MACOSX:
 		case OS_TYPE_IOS:
 		case OS_TYPE_TVOS:
@@ -756,8 +699,6 @@ static ObjectFormatType object_format_from_os(OsType os)
 			return OBJ_FORMAT_MACHO;
 		case OS_TYPE_WIN32:
 			return OBJ_FORMAT_COFF;
-		case OS_TYPE_AIX:
-			return OBJ_FORMAT_XCOFF;
 		case OS_TYPE_WASI:
 			return OBJ_FORMAT_WASM;
 	}
@@ -779,6 +720,8 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 {
 	switch (os)
 	{
+		case OS_UNSUPPORTED:
+			UNREACHABLE
 		case OS_TYPE_UNKNOWN:
 			if (arch == ARCH_TYPE_MSP430)
 			{
@@ -801,10 +744,8 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 		case OS_TYPE_LINUX:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_NETBSD:
-		case OS_TYPE_DRAGON_FLY:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_WASI:
-		case OS_TYPE_EMSCRIPTEN:
 			// Use default
 			break;
 		case OS_TYPE_WIN32:
@@ -821,6 +762,8 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 					UNREACHABLE
 			}
 		case OS_TYPE_IOS:
+		case OS_TYPE_TVOS:
+		case OS_TYPE_WATCHOS:
 			switch (type)
 			{
 				case CTYPE_SHORT:
@@ -833,31 +776,6 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 				default:
 					UNREACHABLE
 			}
-		case OS_TYPE_ANANAS:
-		case OS_TYPE_CLOUD_ABI:
-		case OS_TYPE_FUCHSIA:
-		case OS_TYPE_KFREEBSD:
-		case OS_TYPE_PS3:
-		case OS_TYPE_SOLARIS:
-		case OS_TYPE_HAIKU:
-		case OS_TYPE_MINIX:
-		case OS_TYPE_RTEMS:
-		case OS_TYPE_NACL:
-		case OS_TYPE_CNK:
-		case OS_TYPE_AIX:
-		case OS_TYPE_CUDA:
-		case OS_TYPE_NVOPENCL:
-		case OS_TYPE_AMDHSA:
-		case OS_TYPE_PS4:
-		case OS_TYPE_ELFIAMCU:
-		case OS_TYPE_TVOS:
-		case OS_TYPE_WATCHOS:
-		case OS_TYPE_MESA3D:
-		case OS_TYPE_CONTIKI:
-		case OS_TYPE_AMDPAL:
-		case OS_TYPE_HERMITCORE:
-		case OS_TYPE_HURD:
-			TODO
 	}
 	switch (type)
 	{
@@ -880,22 +798,7 @@ static unsigned os_target_alignment_of_int(OsType os, ArchType arch, int bits)
 	switch (arch)
 	{
 		case ARCH_TYPE_UNKNOWN:
-		case ARCH_TYPE_AVR:
-		case ARCH_TYPE_ARC:
-		case ARCH_TYPE_TCE:
-		case ARCH_TYPE_TCELE:
-		case ARCH_TYPE_LE32:
-		case ARCH_TYPE_LE64:
-		case ARCH_TYPE_AMDIL:
-		case ARCH_TYPE_AMDIL64:
-		case ARCH_TYPE_HSAIL:
-		case ARCH_TYPE_HSAIL64:
-		case ARCH_TYPE_SPIR:
-		case ARCH_TYPE_SPIR64:
-		case ARCH_TYPE_KALIMBA:
-		case ARCH_TYPE_SHAVE:
-		case ARCH_TYPE_RSCRIPT32:
-		case ARCH_TYPE_RSCRIPT64:
+		case ARCH_UNSUPPORTED:
 			UNREACHABLE
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_THUMB:
@@ -905,38 +808,18 @@ static unsigned os_target_alignment_of_int(OsType os, ArchType arch, int bits)
 		case ARCH_TYPE_THUMBEB:
 			if (os == OS_TYPE_NETBSD && bits > 32) return 4;
 			return bits > 64 ? 8 : bits / 8;
-		case ARCH_TYPE_BPFEB:
-		case ARCH_TYPE_BPFEL:
-		case ARCH_TYPE_HEXAGON:
-		case ARCH_TYPE_MIPS:
-		case ARCH_TYPE_MIPSEL:
-		case ARCH_TYPE_MIPS64:
-		case ARCH_TYPE_MIPS64EL:
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_R600:
-		case ARCH_TYPE_AMDGCN:
 		case ARCH_TYPE_RISCV32:
-		case ARCH_TYPE_SPARC:
-		case ARCH_TYPE_SPARCEL:
-		case ARCH_TYPE_SPARCV9:
-		case ARCH_TYPE_SYSTEMZ:
 		case ARCH_TYPE_X86_64:
-		case ARCH_TYPE_LANAI:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
 			return bits > 64 ? 8 : bits / 8;
-		case ARCH_TYPE_XCORE:
 			return bits > 32 ? 4 : bits / 8;
-		case ARCH_TYPE_MSP430:
-			return bits > 16 ? 2 : bits / 8;
 		case ARCH_TYPE_AARCH64:
-		case ARCH_TYPE_AARCH64_32:
 		case ARCH_TYPE_AARCH64_BE:
 		case ARCH_TYPE_RISCV64:
-		case ARCH_TYPE_NVPTX:
-		case ARCH_TYPE_NVPTX64:
 			return bits / 8;
 		case ARCH_TYPE_X86:
 			if (bits >= 64)
@@ -955,56 +838,22 @@ static unsigned arch_little_endian(ArchType arch)
 		case ARCH_TYPE_UNKNOWN:
 		case ARCH_TYPE_X86:
 		case ARCH_TYPE_AARCH64:
-		case ARCH_TYPE_AARCH64_32:
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_THUMB:
-		case ARCH_TYPE_BPFEL:
-		case ARCH_TYPE_AVR:
-		case ARCH_TYPE_HEXAGON:
 		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_MIPSEL:
-		case ARCH_TYPE_MIPS64EL:
-		case ARCH_TYPE_MSP430:
 		case ARCH_TYPE_X86_64:
-		case ARCH_TYPE_R600:
-		case ARCH_TYPE_AMDGCN:
 		case ARCH_TYPE_RISCV32:
 		case ARCH_TYPE_RISCV64:
-		case ARCH_TYPE_SPARCEL:
-		case ARCH_TYPE_XCORE:
-		case ARCH_TYPE_NVPTX:
-		case ARCH_TYPE_NVPTX64:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
 			return true;
 		case ARCH_TYPE_ARMB:
 		case ARCH_TYPE_THUMBEB:
 		case ARCH_TYPE_AARCH64_BE:
-		case ARCH_TYPE_BPFEB:
-		case ARCH_TYPE_MIPS:
-		case ARCH_TYPE_MIPS64:
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC:
-		case ARCH_TYPE_SPARC:
-		case ARCH_TYPE_SPARCV9:
-		case ARCH_TYPE_SYSTEMZ:
-		case ARCH_TYPE_LANAI:
 			return false;
-		case ARCH_TYPE_ARC:
-		case ARCH_TYPE_LE32:
-		case ARCH_TYPE_LE64:
-		case ARCH_TYPE_AMDIL:
-		case ARCH_TYPE_AMDIL64:
-		case ARCH_TYPE_HSAIL:
-		case ARCH_TYPE_HSAIL64:
-		case ARCH_TYPE_SPIR:
-		case ARCH_TYPE_SPIR64:
-		case ARCH_TYPE_KALIMBA:
-		case ARCH_TYPE_SHAVE:
-		case ARCH_TYPE_RSCRIPT32:
-		case ARCH_TYPE_RSCRIPT64:
-		case ARCH_TYPE_TCE:
-		case ARCH_TYPE_TCELE:
+		case ARCH_UNSUPPORTED:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -1015,69 +864,29 @@ static unsigned os_target_pref_alignment_of_int(OsType os, ArchType arch, int bi
 	switch (arch)
 	{
 		case ARCH_TYPE_UNKNOWN:
-		case ARCH_TYPE_AVR:
-		case ARCH_TYPE_ARC:
-		case ARCH_TYPE_TCE:
-		case ARCH_TYPE_TCELE:
-		case ARCH_TYPE_LE32:
-		case ARCH_TYPE_LE64:
-		case ARCH_TYPE_AMDIL:
-		case ARCH_TYPE_AMDIL64:
-		case ARCH_TYPE_HSAIL:
-		case ARCH_TYPE_HSAIL64:
-		case ARCH_TYPE_SPIR:
-		case ARCH_TYPE_SPIR64:
-		case ARCH_TYPE_KALIMBA:
-		case ARCH_TYPE_SHAVE:
-		case ARCH_TYPE_RSCRIPT32:
-		case ARCH_TYPE_RSCRIPT64:
+		case ARCH_UNSUPPORTED:
 			UNREACHABLE
 		case ARCH_TYPE_X86:
 			if (os == OS_TYPE_ELFIAMCU && bits > 32) return 4;
 			return bits > 64 ? 8 : bits / 8;
 		case ARCH_TYPE_AARCH64:
-		case ARCH_TYPE_AARCH64_32:
 			if (bits < 32 && !os_is_apple(os) && os != OS_TYPE_WIN32) return 4;
 			return bits / 8;
 		case ARCH_TYPE_AARCH64_BE:
 			return bits < 32 ? 4 : bits / 8;
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_ARMB:
-		case ARCH_TYPE_BPFEB:
-		case ARCH_TYPE_BPFEL:
-		case ARCH_TYPE_HEXAGON:
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64LE:
 		case ARCH_TYPE_PPC64:
-		case ARCH_TYPE_R600:
-		case ARCH_TYPE_AMDGCN:
 		case ARCH_TYPE_RISCV32:
-		case ARCH_TYPE_SPARC:
-		case ARCH_TYPE_SPARCEL:
-		case ARCH_TYPE_SPARCV9:
 		case ARCH_TYPE_THUMB:
 		case ARCH_TYPE_THUMBEB:
 		case ARCH_TYPE_X86_64:
-		case ARCH_TYPE_LANAI:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
 			return bits < 64 ? bits / 8 : 8;
-		case ARCH_TYPE_XCORE:
-			return 4;
-		case ARCH_TYPE_SYSTEMZ:
-			if (bits <= 16) return 2;
-			return bits < 64 ? bits / 8 : 8;
-		case ARCH_TYPE_MIPS:
-		case ARCH_TYPE_MIPSEL:
-		case ARCH_TYPE_MIPS64EL:
-		case ARCH_TYPE_MIPS64:
-			if (bits < 32) return 4;
-			return bits < 64 ? bits / 8 : 8;
-		case ARCH_TYPE_MSP430:
-			return bits < 16 ? bits / 8 : 2;
 		case ARCH_TYPE_RISCV64:
-		case ARCH_TYPE_NVPTX:
-		case ARCH_TYPE_NVPTX64:
 			return bits / 8;
 	}
 	UNREACHABLE
@@ -1088,22 +897,7 @@ static unsigned os_target_alignment_of_float(OsType os, ArchType arch, int bits)
 	switch (arch)
 	{
 		case ARCH_TYPE_UNKNOWN:
-		case ARCH_TYPE_AVR:
-		case ARCH_TYPE_ARC:
-		case ARCH_TYPE_TCE:
-		case ARCH_TYPE_TCELE:
-		case ARCH_TYPE_LE32:
-		case ARCH_TYPE_LE64:
-		case ARCH_TYPE_AMDIL:
-		case ARCH_TYPE_AMDIL64:
-		case ARCH_TYPE_HSAIL:
-		case ARCH_TYPE_HSAIL64:
-		case ARCH_TYPE_SPIR:
-		case ARCH_TYPE_SPIR64:
-		case ARCH_TYPE_KALIMBA:
-		case ARCH_TYPE_SHAVE:
-		case ARCH_TYPE_RSCRIPT32:
-		case ARCH_TYPE_RSCRIPT64:
+		case ARCH_UNSUPPORTED:
 			UNREACHABLE
 		case ARCH_TYPE_X86:
 			if (os == OS_TYPE_ELFIAMCU && bits >= 32) return 4;
@@ -1114,30 +908,14 @@ static unsigned os_target_alignment_of_float(OsType os, ArchType arch, int bits)
 			return bits == 64 ? 4 : bits / 8;
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
-		case ARCH_TYPE_AARCH64_32:
-		case ARCH_TYPE_BPFEB:
-		case ARCH_TYPE_BPFEL:
-		case ARCH_TYPE_HEXAGON:
-		case ARCH_TYPE_MIPS:
-		case ARCH_TYPE_MIPSEL:
-		case ARCH_TYPE_MIPS64:
-		case ARCH_TYPE_MIPS64EL:
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC64LE:
 		case ARCH_TYPE_PPC:
-		case ARCH_TYPE_R600:
-		case ARCH_TYPE_AMDGCN:
 		case ARCH_TYPE_RISCV32:
 		case ARCH_TYPE_RISCV64:
-		case ARCH_TYPE_SPARCV9:
-		case ARCH_TYPE_NVPTX:
-		case ARCH_TYPE_NVPTX64:
-		case ARCH_TYPE_LANAI:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
 			return bits / 8;
-		case ARCH_TYPE_MSP430:
-			return bits < 128 ? 2 : 16;
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_THUMB:
 			if ((os_is_apple(os) || os == OS_TYPE_NETBSD) && bits == 64)
@@ -1152,16 +930,87 @@ static unsigned os_target_alignment_of_float(OsType os, ArchType arch, int bits)
 				return 4;
 			}
 			return bits / 8;
-		case ARCH_TYPE_SPARC:
-		case ARCH_TYPE_SPARCEL:
-		case ARCH_TYPE_SYSTEMZ:
-			return bits < 64 ? bits / 8 : 8;
 		case ARCH_TYPE_X86_64:
 			if (bits == 128 && os == OS_TYPE_ELFIAMCU) return 4;
 			return bits / 8;
-		case ARCH_TYPE_XCORE:
-			if (bits == 64) return 4;
-			return bits / 8;
+	}
+	UNREACHABLE
+}
+
+static const char *os_dynamic_library_suffix(OsType os)
+{
+	if (os_is_apple(os)) return ".dylib";
+	if (os == OS_TYPE_WIN32) return ".dll";
+	return ".so";
+}
+
+static PicGeneration arch_os_pic_default(ArchType arch, OsType os)
+{
+	switch (os)
+	{
+		case OS_UNSUPPORTED:
+			UNREACHABLE
+		case OS_TYPE_OPENBSD:
+		case OS_DARWIN_TYPES:
+			return PIC_SMALL;
+		case OS_TYPE_WIN32:
+			return ARCH_TYPE_X86_64 == arch;
+		case OS_TYPE_WASI:
+			return PIC_NONE;
+		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_LINUX:
+		case OS_TYPE_NETBSD:
+			switch (arch)
+			{
+				case ARCH_TYPE_MIPS64:
+				case ARCH_TYPE_MIPS64EL:
+					return PIC_SMALL;
+				default:
+					return PIC_NONE;
+			}
+	}
+	UNREACHABLE
+}
+static bool arch_os_pic_default_forced(ArchType arch, OsType os)
+{
+	switch (os)
+	{
+		case OS_TYPE_WIN32:
+			return arch == ARCH_TYPE_X86_64;
+		case OS_DARWIN_TYPES:
+			return arch == ARCH_TYPE_AARCH64 || arch == ARCH_TYPE_X86_64;
+		case OS_TYPE_WASI:
+		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_LINUX:
+		case OS_TYPE_NETBSD:
+		case OS_TYPE_OPENBSD:
+			return false;
+		case OS_UNSUPPORTED:
+			UNREACHABLE
+	}
+	UNREACHABLE
+}
+
+static PieGeneration arch_os_pie_default(ArchType arch, OsType os, EnvironmentType env)
+{
+	switch (os)
+	{
+		case OS_TYPE_UNKNOWN:
+			return PIE_NONE;
+		case OS_TYPE_OPENBSD:
+			return PIE_SMALL;
+		case OS_TYPE_WIN32:
+		case OS_DARWIN_TYPES:
+		case OS_TYPE_WASI:
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_NETBSD:
+			return PIE_SMALL;
+		case OS_TYPE_LINUX:
+			return env == ENV_TYPE_MUSLEABI || env == ENV_TYPE_MUSLEABIHF || env == ENV_TYPE_ANDROID ? PIE_SMALL : PIE_NONE;
+		case OS_UNSUPPORTED:
+			UNREACHABLE
 	}
 	UNREACHABLE
 }
@@ -1171,47 +1020,18 @@ static unsigned os_target_pref_alignment_of_float(OsType os, ArchType arch, int 
 	switch (arch)
 	{
 		case ARCH_TYPE_UNKNOWN:
-		case ARCH_TYPE_AVR:
-		case ARCH_TYPE_ARC:
-		case ARCH_TYPE_TCE:
-		case ARCH_TYPE_TCELE:
-		case ARCH_TYPE_LE32:
-		case ARCH_TYPE_LE64:
-		case ARCH_TYPE_AMDIL:
-		case ARCH_TYPE_AMDIL64:
-		case ARCH_TYPE_HSAIL:
-		case ARCH_TYPE_HSAIL64:
-		case ARCH_TYPE_SPIR:
-		case ARCH_TYPE_SPIR64:
-		case ARCH_TYPE_KALIMBA:
-		case ARCH_TYPE_SHAVE:
-		case ARCH_TYPE_RSCRIPT32:
-		case ARCH_TYPE_RSCRIPT64:
+		case ARCH_UNSUPPORTED:
 			UNREACHABLE
 		case ARCH_TYPE_X86:
 			if (os == OS_TYPE_ELFIAMCU && bits >= 32) return 4;
 			return bits / 8;
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
-		case ARCH_TYPE_AARCH64_32:
-		case ARCH_TYPE_BPFEB:
-		case ARCH_TYPE_BPFEL:
-		case ARCH_TYPE_HEXAGON:
-		case ARCH_TYPE_MIPS:
-		case ARCH_TYPE_MIPSEL:
-		case ARCH_TYPE_MIPS64:
-		case ARCH_TYPE_MIPS64EL:
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC64LE:
 		case ARCH_TYPE_PPC:
-		case ARCH_TYPE_R600:
-		case ARCH_TYPE_AMDGCN:
 		case ARCH_TYPE_RISCV32:
 		case ARCH_TYPE_RISCV64:
-		case ARCH_TYPE_SPARCV9:
-		case ARCH_TYPE_NVPTX:
-		case ARCH_TYPE_NVPTX64:
-		case ARCH_TYPE_LANAI:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_ARM:
@@ -1219,17 +1039,8 @@ static unsigned os_target_pref_alignment_of_float(OsType os, ArchType arch, int 
 		case ARCH_TYPE_THUMBEB:
 		case ARCH_TYPE_ARMB:
 			return bits / 8;
-		case ARCH_TYPE_MSP430:
-			return bits < 128 ? 2 : 16;
-		case ARCH_TYPE_SPARC:
-		case ARCH_TYPE_SPARCEL:
-		case ARCH_TYPE_SYSTEMZ:
-			return bits < 64 ? bits / 8 : 8;
 		case ARCH_TYPE_X86_64:
 			if (bits == 128 && os == OS_TYPE_ELFIAMCU) return 4;
-			return bits / 8;
-		case ARCH_TYPE_XCORE:
-			if (bits == 64) return 4;
 			return bits / 8;
 	}
 	UNREACHABLE
@@ -1290,13 +1101,30 @@ void target_setup(BuildTarget *target)
 		default:
 			UNREACHABLE;
 	}
-	if (target->pic == PIC_BIG || target->pic == PIC_SMALL || (target->type != TARGET_TYPE_EXECUTABLE && target->type != TARGET_TYPE_TEST))
+
+	// Override PIE if needed.
+	if (target->pie != PIE_DEFAULT) platform_target.pie = target->pie;
+	// Override PIC, but only if the platform does not require PIC
+	if (target->pic != PIC_DEFAULT && (target->pic != PIC_NONE || !platform_target.pic_required))
 	{
-		reloc_mode = LLVMRelocPIC;
+		platform_target.pic = target->pic;
 	}
-	if (target->pic == PIC_NONE)
+
+	assert(platform_target.pic != PIC_DEFAULT && platform_target.pie != PIE_DEFAULT && "PIC and PIE must have been set.");
+
+	reloc_mode = LLVMRelocDefault;
+	if (target->type != TARGET_TYPE_EXECUTABLE && target->type != TARGET_TYPE_TEST)
 	{
-		reloc_mode = LLVMRelocStatic;
+		if (platform_target.pic == PIC_BIG || platform_target.pic == PIC_SMALL)
+		{
+			reloc_mode = LLVMRelocPIC;
+		}
+		else
+		{
+			assert(platform_target.pic == PIC_NONE);
+			reloc_mode = LLVMRelocStatic;
+		}
+
 	}
 
 	/*
@@ -1383,41 +1211,7 @@ void target_setup(BuildTarget *target)
 	 */
 	switch (platform_target.arch)
 	{
-		case ARCH_TYPE_AARCH64_32:
-		case ARCH_TYPE_BPFEL:
-		case ARCH_TYPE_BPFEB:
-		case ARCH_TYPE_SPARCEL:
-		case ARCH_TYPE_LE64:
-		case ARCH_TYPE_AMDIL:
-		case ARCH_TYPE_AMDIL64:
-		case ARCH_TYPE_HSAIL:
-		case ARCH_TYPE_HSAIL64:
-		case ARCH_TYPE_KALIMBA:
-		case ARCH_TYPE_SHAVE:
-		case ARCH_TYPE_RSCRIPT32:
-		case ARCH_TYPE_RSCRIPT64:
-		case ARCH_TYPE_LE32:
-		case ARCH_TYPE_MIPS:
-		case ARCH_TYPE_MIPSEL:
-		case ARCH_TYPE_MIPS64EL:
-		case ARCH_TYPE_MIPS64:
-		case ARCH_TYPE_AVR:
-		case ARCH_TYPE_NVPTX64:
-		case ARCH_TYPE_NVPTX:
-		case ARCH_TYPE_MSP430:
-		case ARCH_TYPE_SYSTEMZ:
-		case ARCH_TYPE_TCELE:
-		case ARCH_TYPE_TCE:
-		case ARCH_TYPE_LANAI:
-		case ARCH_TYPE_HEXAGON:
-		case ARCH_TYPE_AMDGCN:
-		case ARCH_TYPE_R600:
-		case ARCH_TYPE_SPARC:
-		case ARCH_TYPE_SPARCV9:
-		case ARCH_TYPE_XCORE:
-		case ARCH_TYPE_ARC:
-		case ARCH_TYPE_SPIR64:
-		case ARCH_TYPE_SPIR:
+		case ARCH_UNSUPPORTED:
 			UNREACHABLE
 			break;
 		case ARCH_TYPE_AARCH64:
@@ -1479,6 +1273,11 @@ void target_setup(BuildTarget *target)
 			platform_target.abi = ABI_UNKNOWN;
 			break;
 	}
-	// TODO remove
+
+	platform_target.pic = arch_os_pic_default(platform_target.arch, platform_target.os);
+	platform_target.pie = arch_os_pie_default(platform_target.arch, platform_target.os, platform_target.environment_type);
+	platform_target.pic_required = arch_os_pic_default_forced(platform_target.arch, platform_target.os);
+
+		// TODO remove
 	builtin_setup(&platform_target);
 }

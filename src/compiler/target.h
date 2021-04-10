@@ -63,6 +63,15 @@ typedef enum
 
 } ArchType;
 
+#define ARCH_UNSUPPORTED ARCH_TYPE_AARCH64_32: case ARCH_TYPE_BPFEL: case ARCH_TYPE_BPFEB: case ARCH_TYPE_SPARCEL: \
+ case ARCH_TYPE_LE64: case ARCH_TYPE_AMDIL: case ARCH_TYPE_AMDIL64: case ARCH_TYPE_HSAIL: case ARCH_TYPE_HSAIL64:  \
+ case ARCH_TYPE_KALIMBA: case ARCH_TYPE_SHAVE: case ARCH_TYPE_RSCRIPT32: case ARCH_TYPE_RSCRIPT64:                 \
+ case ARCH_TYPE_LE32: case ARCH_TYPE_MIPS: case ARCH_TYPE_MIPSEL: case ARCH_TYPE_MIPS64EL: case ARCH_TYPE_MIPS64:  \
+ case ARCH_TYPE_AVR: case ARCH_TYPE_NVPTX64: case ARCH_TYPE_NVPTX: case ARCH_TYPE_MSP430: case ARCH_TYPE_SYSTEMZ:  \
+ case ARCH_TYPE_TCELE: case ARCH_TYPE_TCE: case ARCH_TYPE_LANAI: case ARCH_TYPE_HEXAGON: case ARCH_TYPE_AMDGCN:    \
+ case ARCH_TYPE_R600: case ARCH_TYPE_SPARC: case ARCH_TYPE_SPARCV9: case ARCH_TYPE_XCORE: case ARCH_TYPE_ARC:      \
+ case ARCH_TYPE_SPIR64: case ARCH_TYPE_SPIR
+
 typedef enum
 {
 	CTYPE_SHORT,
@@ -110,6 +119,13 @@ typedef enum
 	OS_TYPE_EMSCRIPTEN,
 	OS_TYPE_LAST = OS_TYPE_EMSCRIPTEN
 } OsType;
+
+#define OS_DARWIN_TYPES OS_TYPE_WATCHOS: case OS_TYPE_IOS: case OS_TYPE_TVOS: case OS_TYPE_MACOSX
+#define OS_UNSUPPORTED OS_TYPE_AIX: case OS_TYPE_HAIKU: case OS_TYPE_ANANAS: case OS_TYPE_CLOUD_ABI: \
+ case OS_TYPE_DRAGON_FLY: case OS_TYPE_FUCHSIA: case OS_TYPE_KFREEBSD: case OS_TYPE_PS3: case OS_TYPE_RTEMS: \
+ case OS_TYPE_SOLARIS: case OS_TYPE_MINIX: case OS_TYPE_NACL: case OS_TYPE_CNK: case OS_TYPE_CUDA:   \
+ case OS_TYPE_NVOPENCL: case OS_TYPE_AMDHSA: case OS_TYPE_PS4: case OS_TYPE_ELFIAMCU: case OS_TYPE_MESA3D:   \
+ case OS_TYPE_CONTIKI: case OS_TYPE_AMDPAL: case OS_TYPE_HERMITCORE: case OS_TYPE_HURD: case OS_TYPE_EMSCRIPTEN
 
 typedef enum
 {
@@ -230,6 +246,9 @@ typedef struct
 	ObjectFormatType object_format;
 	int alloca_address_space;
 	ABI abi;
+	PicGeneration pic : 3;
+	PieGeneration pie : 3;
+	bool pic_required : 1;
 	FloatABI float_abi : 3;
 	unsigned default_number_regs : 8;
 	union

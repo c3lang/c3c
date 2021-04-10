@@ -192,7 +192,6 @@ void project_add_target(Project *project, TomlValue *wrapped_table, const char *
 	target->pie = get_valid_string_setting(table, "pie", type, pies, 0, 3, "'yes-limited', 'yes-unlimited' or 'no'.");
 	target->pic = get_valid_string_setting(table, "pic", type, pies, 0, 3, "'yes-limited', 'yes-unlimited' or 'no'.");
 
-	target->pic = PIC_DEFAULT;
 	target->feature.no_memcpy_pass = get_valid_bool(table, "no-memcpy-pass", type, false);
 	target->feature.trap_on_wrap = get_valid_bool(table, "trap-on-wrap", type, false);
 	// Use the fact that they correspond to 0, 1, -1

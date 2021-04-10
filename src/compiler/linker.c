@@ -32,12 +32,14 @@ static void link_exe(const char *output_file, const char **files_to_link, unsign
 			vec_add(args, "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk");
 			break;
 		case OS_TYPE_LINUX:
+			vec_add(args, "-L/");
 			vec_add(args, "-lc");
 			vec_add(args, "-lm");
 			break;
 		default:
 			break;
 	}
+	vec_add(args, platform_target.pie ? "-pie" : "-no_pie");
 
 	bool success;
 	switch (platform_target.object_format)
