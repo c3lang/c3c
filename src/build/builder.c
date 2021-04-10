@@ -134,7 +134,9 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options, const
 		.size_optimization_level = SIZE_OPTIMIZATION_NONE,
 		.symtab_size = DEFAULT_SYMTAB_SIZE,
 		.debug_info = DEBUG_INFO_NONE,
-		.arch_os_target = ARCH_OS_TARGET_DEFAULT
+		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
+		.pie = PIE_DEFAULT,
+		.pic = PIC_DEFAULT
 	};
 	update_build_target_from_options(target, options);
 }

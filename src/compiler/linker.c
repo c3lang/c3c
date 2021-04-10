@@ -30,11 +30,13 @@ static void link_exe(const char *output_file, const char **files_to_link, unsign
 			vec_add(args, "-lm");
 			vec_add(args, "-syslibroot");
 			vec_add(args, "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk");
+			vec_add(args, platform_target.pie ? "-pie" : "-no_pie");
 			break;
 		case OS_TYPE_LINUX:
 			vec_add(args, "-L/");
 			vec_add(args, "-lc");
 			vec_add(args, "-lm");
+			vec_add(args, platform_target.pie ? "-pie" : "-no-pie");
 			break;
 		default:
 			break;
