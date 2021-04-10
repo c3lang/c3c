@@ -33,7 +33,8 @@ static void link_exe(const char *output_file, const char **files_to_link, unsign
 			vec_add(args, platform_target.pie ? "-pie" : "-no_pie");
 			break;
 		case OS_TYPE_LINUX:
-			vec_add(args, "-L/");
+			vec_add(args, "-L/usr/lib/");
+			vec_add(args, "-L/lib/");
 			vec_add(args, "-lc");
 			vec_add(args, "-lm");
 			vec_add(args, platform_target.pie ? "-pie" : "-no-pie");
