@@ -127,3 +127,32 @@ C3 on its dedicated Discord: https://discord.gg/qN76R87
 - Discuss the language on discord to help iron out syntax.
 - Stdlib work will soon start, do you want to help out building the C3 std lib?
 - Do you want to do real compiler work? Everyone is welcome to contribute.
+
+#### Installing on Ubuntu
+
+(This installation has been tested on 20.10)
+
+1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
+2. Install CMake: `sudo apt install cmake`
+3. Install LLVM 11: `sudo apt-get install clang-11 zlib1g zlib1g-dev libllvm11 llvm-11 llvm-11-dev llvm-11-runtime liblld-11-dev liblld-11`
+4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+5. Enter the C3C directory `cd c3c`.
+6. Create a build directory `mkdir build`
+7. Change directory to the build directory `cd build`
+8. Set up CMake build for debug: `cmake -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=Debug ..`
+9. Build: `cmake --build .`
+
+You should now have a `c3c` executable.
+
+You can try it out by running some sample code: `./c3c compile ../resources/examples/hash.c3`
+
+#### Installing on OS X using Homebrew
+
+2. Install CMake: `brew install cmake`
+3. Install LLVM 11: `brew install llvm`
+4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+5. Enter the C3C directory `cd c3c`.
+6. Create a build directory `mkdir build`
+7. Change directory to the build directory `cd build`
+8. Set up CMake build for debug: `cmake ..`
+9. Build: `cmake --build .`
