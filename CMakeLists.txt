@@ -28,15 +28,10 @@ set(LLVM_LINK_COMPONENTS
         Analysis
         BitReader
         Core
-        ExecutionEngine
         InstCombine
-        Interpreter
         MC
         MCDisassembler
-        MCJIT
         Object
-        OrcJIT
-        RuntimeDyld
         ScalarOpts
         Support
         Target
@@ -46,10 +41,11 @@ set(LLVM_LINK_COMPONENTS
         AsmPrinter
         Linker
         LTO
-        Option
         WindowsManifest
         DebugInfoPDB
         LibDriver
+        Option
+        IrReader
         )
 
 
