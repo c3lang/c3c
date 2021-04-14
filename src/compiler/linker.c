@@ -14,7 +14,7 @@ static void add_files(const char ***args, const char **files_to_link, unsigned f
 	}
 }
 
-static void link_exe(const char *output_file, const char **files_to_link, unsigned file_count)
+static bool link_exe(const char *output_file, const char **files_to_link, unsigned file_count)
 {
 	const char **args = NULL;
 	vec_add(args, "-o");
@@ -24,7 +24,7 @@ static void link_exe(const char *output_file, const char **files_to_link, unsign
 	switch (platform_target.os)
 	{
 		case OS_TYPE_WIN32:
-			break;
+			return false;
 		case OS_TYPE_MACOSX:
 			add_files(&args, files_to_link, file_count);
 			vec_add(args, "-lSystem");
@@ -44,14 +44,13 @@ static void link_exe(const char *output_file, const char **files_to_link, unsign
 			break;
 		case OS_TYPE_WATCHOS:
 		case OS_TYPE_IOS:
-			TODO
+			return false;
 		case OS_TYPE_WASI:
-			break;
+			return false;
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_FREE_BSD:
-			TODO
-			break;
+			return false;
 		case OS_TYPE_LINUX:
 			vec_add(args, "-m");
 			switch (platform_target.arch)
@@ -84,21 +83,17 @@ static void link_exe(const char *output_file, const char **files_to_link, unsign
 					vec_add(args, "--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
 					break;
 				case ARCH_TYPE_X86:
-					TODO
-					vec_add(args, "elf_i386");
-					break;
+//					vec_add(args, "elf_i386");
+					return false;
 				case ARCH_TYPE_AARCH64:
-					TODO
 					vec_add(args, "aarch64elf");
-					break;
+					return false;
 				case ARCH_TYPE_RISCV32:
-					TODO
 					vec_add(args, "elf32lriscv");
-					break;
+					return false;
 				case ARCH_TYPE_RISCV64:
 					vec_add(args, "elf64lriscv");
-					TODO
-					break;
+					return false;
 				default:
 					UNREACHABLE
 			}
@@ -108,7 +103,7 @@ static void link_exe(const char *output_file, const char **files_to_link, unsign
 		default:
 			add_files(&args, files_to_link, file_count);
 			vec_add(args, platform_target.pie ? "-pie" : "-no_pie");
-			break;
+			return false;
 	}
 
 	bool success;
@@ -133,6 +128,7 @@ static void link_exe(const char *output_file, const char **files_to_link, unsign
 	{
 		error_exit("Failed to create an executable: %s", error);
 	}
+	return true;
 }
 
 bool obj_format_linking_supported(ObjectFormatType format_type)
@@ -153,9 +149,47 @@ bool obj_format_linking_supported(ObjectFormatType format_type)
 	UNREACHABLE
 
 }
-void linker(const char *output_file, const char **files, unsigned file_count)
+
+const char *concat_string_parts(const char **args)
 {
-	link_exe(output_file, files, file_count);
+	unsigned size_needed = 0;
+	VECEACH(args, i)
+	{
+		size_needed += strlen(args[i]) + 1;
+	}
+	char *output = malloc_arena(size_needed);
+	char *ptr = output;
+	VECEACH(args, i)
+	{
+		unsigned len = strlen(args[i]);
+		memcpy(ptr, args[i], len);
+		ptr += len;
+		*(ptr++) = ' ';
+	}
+	ptr[-1] = '\0';
+	return output;
+}
+
+void platform_linker(const char *output_file, const char **files, unsigned file_count)
+{
+	const char **parts = NULL;
+	vec_add(parts, "cc");
+	vec_add(parts, "-o");
+	vec_add(parts, output_file);
+	for (unsigned i = 0; i < file_count; i++)
+	{
+		vec_add(parts, files[i]);
+	}
+	const char *output = concat_string_parts(parts);
+	if (system(output) != 0)
+	{
+		error_exit("Failed to link executable '%s' using command '%s'.\n", output_file, output);
+	}
+	printf("Program linked to executable '%s'.\n", output_file);
+}
+bool linker(const char *output_file, const char **files, unsigned file_count)
+{
+	return link_exe(output_file, files, file_count);
 }
 
 /**

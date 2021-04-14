@@ -10,22 +10,25 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 {
 	char *message = LLVMGetDiagInfoDescription(ref);
 	LLVMDiagnosticSeverity severity = LLVMGetDiagInfoSeverity(ref);
-	const char *severerity_name = "unknown";
+	const char *severity_name;
 	switch (severity)
 	{
 		case LLVMDSError:
 			error_exit("LLVM error generating code for %s: %s", ((GenContext *)context)->ast_context->module->name, message);
 		case LLVMDSWarning:
-			severerity_name = "warning";
+			severity_name = "warning";
 			break;
 		case LLVMDSRemark:
-			severerity_name = "remark";
+			severity_name = "remark";
 			break;
 		case LLVMDSNote:
-			severerity_name = "note";
+			severity_name = "note";
+			break;
+		default:
+			severity_name = "message";
 			break;
 	}
-	DEBUG_LOG("LLVM message [%s]: %s ", severerity_name, message);
+	DEBUG_LOG("LLVM %s: %s ", severity_name, message);
 	LLVMDisposeMessage(message);
 }
 
