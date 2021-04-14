@@ -124,21 +124,15 @@ const char* find_lib_dir(void)
 
 void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path)
 {
-	char path[256];
+	char path[1024];
 	size_t path_len = strlen(full_path);
-	if (path_len > 255) error_exit("Path %s too long.", full_path);
+	if (path_len >= sizeof(path)) error_exit("Path %s too long.", full_path);
 
-	strncpy(path, full_path, path_len + 1);
-	const char *base_name = basename(path);
-	size_t filename_len = strlen(base_name);
-	*filename = malloc(filename_len + 1);
-	strncpy(*filename, base_name, filename_len + 1);
+	strcpy(path, full_path);
+	*filename = strdup(basename(path));
 
-	strncpy(path, full_path, path_len + 1);
-	const char *dir = dirname(path);
-	size_t dir_len = strlen(dir);
-	*dir_path = malloc(dir_len + 1);
-	strncpy(*dir_path, dir, dir_len + 1);
+	strcpy(path, full_path);
+	*dir_path = strdup(dirname(path));
 }
 
 
