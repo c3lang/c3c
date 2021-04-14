@@ -9,7 +9,7 @@ static int begin = 0;
 
 void bench_begin(void)
 {
-	begin = clock();
+	begin = (int)clock();
 }
 double bench_mark(void)
 {

@@ -1412,13 +1412,13 @@ extern const char *kw___trunc;
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id(_token.id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
 
-ARENA_DEF(ast, Ast);
-ARENA_DEF(expr, Expr);
-ARENA_DEF(sourceloc, SourceLocation);
-ARENA_DEF(toktype, char);
-ARENA_DEF(tokdata, TokenData);
-ARENA_DEF(decl, Decl);
-ARENA_DEF(type_info, TypeInfo);
+ARENA_DEF(ast, Ast)
+ARENA_DEF(expr, Expr)
+ARENA_DEF(sourceloc, SourceLocation)
+ARENA_DEF(toktype, char)
+ARENA_DEF(tokdata, TokenData)
+ARENA_DEF(decl, Decl)
+ARENA_DEF(type_info, TypeInfo)
 
 static inline bool ast_ok(Ast *ast) { return ast == NULL || ast->ast_kind != AST_POISONED; }
 static inline bool ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; return false; }
@@ -1998,8 +1998,8 @@ static inline size_t type_min_alignment(size_t a, size_t b)
 }
 
 bool obj_format_linking_supported(ObjectFormatType format_type);
-void linker(const char *output_file, const char **files, unsigned file_count);
-
+bool linker(const char *output_file, const char **files, unsigned file_count);
+void platform_linker(const char *output_file, const char **files, unsigned file_count);
 
 #define TRY_AST_OR(_ast_stmt, _res) ({ Ast* _ast = (_ast_stmt); if (!ast_ok(_ast)) return _res; _ast; })
 #define TRY_EXPR_OR(_expr_stmt, _res) ({ Expr* _expr = (_expr_stmt); if (!expr_ok(_expr)) return _res; _expr; })

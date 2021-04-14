@@ -182,9 +182,20 @@ void compiler_compile(BuildTarget *target)
 		vec_add(obj_files, file_name);
 	}
 
-	if (create_exe && obj_format_linking_supported(platform_target.object_format))
+	if (create_exe)
 	{
-		linker(target->name, obj_files, source_count);
+		if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
+		{
+			platform_linker(target->name, obj_files, source_count);
+		}
+		else
+		{
+			if (!obj_format_linking_supported(platform_target.object_format) || !linker(target->name, obj_files, source_count))
+			{
+				printf("No linking is performed due to missing linker support.");
+				target->run_after_compile = false;
+			}
+		}
 		if (target->run_after_compile)
 		{
 			system(strformat("./%s", target->name));

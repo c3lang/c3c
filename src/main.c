@@ -21,7 +21,7 @@ int main(int argc, const char *argv[])
 	// Parse arguments.
 	BuildOptions build_options = parse_arguments(argc, argv);
 
-	BuildTarget build_target = {};
+	BuildTarget build_target = { .name = NULL };
 
 	switch (build_options.command)
 	{
