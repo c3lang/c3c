@@ -28,6 +28,10 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 			severity_name = "message";
 			break;
 	}
+#ifdef NDEBUG
+	// Avoid warnings when not in debug.
+	(void)severity_name; (void)message;
+#endif
 	DEBUG_LOG("LLVM %s: %s ", severity_name, message);
 	LLVMDisposeMessage(message);
 }
