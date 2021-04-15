@@ -347,11 +347,6 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("target-list"))
 			{
 				print_all_targets();
-				OUTPUT("Available targets:");
-				for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
-				{
-					OUTPUT("   %s", arch_os_target[i]);
-				}
 				exit(EXIT_SUCCESS);
 			}
 			if (match_longopt("emit-llvm"))
