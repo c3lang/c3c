@@ -1524,8 +1524,12 @@ static inline Decl *parse_typedef_declaration(Context *context, Visibility visib
 	return decl;
 }
 
+static bool next_is_type_and_not_ident(Context *context)
+{
+	return context->tok.type != TOKEN_IDENT || context->next_tok.type == TOKEN_COLON;
+}
 /**
- * macro ::= MACRO type? identifier '(' macro_params ')' compound_statement
+ * macro ::= MACRO (type '!'?)? identifier '!'? '(' macro_params ')' compound_statement
  */
 static inline Decl *parse_macro_declaration(Context *context, Visibility visibility)
 {
@@ -1533,7 +1537,9 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 
 	TypeInfo *rtype = NULL;
 	bool failable = false;
-	if (!TOKEN_IS(TOKEN_IDENT))
+
+	// 1. Return type?
+	if (next_is_type_and_not_ident(context))
 	{
 		rtype = TRY_TYPE_OR(parse_type(context), poisoned_decl);
 		failable = try_consume(context, TOKEN_BANG);
@@ -1541,7 +1547,13 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 	Decl *decl = decl_new(DECL_MACRO, context->tok.id, visibility);
 	decl->macro_decl.rtype = rtype;
 	decl->macro_decl.failable = failable;
-	TRY_CONSUME_OR(TOKEN_IDENT, "Expected a macro name here", poisoned_decl);
+	if (rtype && TOKEN_IS(TOKEN_DOT))
+	{
+		SEMA_ERROR(rtype, "Expected a macro name here.");
+		return poisoned_decl;
+	}
+
+	TRY_CONSUME_OR(TOKEN_IDENT, "Expected a macro name here.", poisoned_decl);
 
 	CONSUME_OR(TOKEN_LPAREN, poisoned_decl);
 	Decl **params = NULL;
