@@ -627,7 +627,8 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 	}
 	if (expr->expr_kind == EXPR_MACRO_IDENTIFIER)
 	{
-		SEMA_ERROR(expr, "Only macro expansions can be prefixed with '@', please try to remove it.", decl->name);
+		SEMA_ERROR(expr, "Only macro expansions can be prefixed with '@', please try removing it.", decl->name);
+		return false;
 	}
 	if (decl->resolve_status != RESOLVE_DONE)
 	{
