@@ -331,6 +331,10 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 	{
 		return false;
 	}
+	if (param->var.vararg)
+	{
+		param->var.type_info->type = type_get_subarray(param->var.type_info->type);
+	}
 	param->type = param->var.type_info->type;
 	if (param->var.init_expr && !is_function)
 	{

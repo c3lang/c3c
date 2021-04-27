@@ -2319,11 +2319,31 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 	}
 }
 
+
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index, unsigned struct_alignment, unsigned offset, unsigned *alignment)
 {
 	*alignment = type_min_alignment(offset, struct_alignment);
 	LLVMValueRef addr = LLVMBuildStructGEP2(context->builder, struct_type, ptr, index, "");
 	return addr;
+}
+
+void llvm_emit_subarray_len(GenContext *c, BEValue *subarray, BEValue *len)
+{
+	llvm_value_addr(c, subarray);
+	unsigned alignment = 0;
+	LLVMValueRef len_addr = llvm_emit_struct_gep_raw(c, subarray->value, llvm_get_type(c, subarray->type), 1, subarray->alignment,
+	                                                 type_abi_alignment(type_voidptr), &alignment);
+	llvm_value_set_address_align(len, len_addr, type_usize, alignment);
+}
+
+void llvm_emit_subarray_pointer(GenContext *c, BEValue *subarray, BEValue *pointer)
+{
+	llvm_value_addr(c, subarray);
+	unsigned alignment = 0;
+	LLVMValueRef len_addr = llvm_emit_struct_gep_raw(c, subarray->value, llvm_get_type(c, subarray->type), 0, subarray->alignment,
+	                                                 0, &alignment);
+	llvm_value_set_address_align(pointer, len_addr, type_get_ptr(subarray->type->array.base), alignment);
+
 }
 
 void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_pointer, unsigned index)
@@ -2498,6 +2518,39 @@ void llvm_emit_parameter(GenContext *context, LLVMValueRef **args, ABIArgInfo *i
 	}
 
 }
+static void llvm_emit_unpacked_variadic_arg(GenContext *c, Expr *expr, BEValue *subarray)
+{
+	BEValue value;
+	llvm_emit_expr(c, &value, expr);
+	BEValue len_addr;
+	BEValue pointer_addr;
+	llvm_emit_subarray_len(c, subarray, &len_addr);
+	llvm_emit_subarray_pointer(c, subarray, &pointer_addr);
+	Type *type = expr->type->canonical;
+	switch (type->type_kind)
+	{
+		case TYPE_ARRAY:
+		{
+			llvm_store_bevalue_raw(c, &len_addr, llvm_const_int(c, type_usize, type->array.len));
+			llvm_value_addr(c, &value);
+			llvm_store_bevalue_raw(c, &pointer_addr, llvm_emit_bitcast(c, value.value, type_get_ptr(type->array.base)));
+			return;
+		}
+		case TYPE_POINTER:
+			// Load the pointer
+			llvm_value_rvalue(c, &value);
+			llvm_store_bevalue_raw(c, &len_addr, llvm_const_int(c, type_usize, type->pointer->array.len));
+			llvm_store_bevalue_raw(c, &pointer_addr, llvm_emit_bitcast(c, value.value, type_get_ptr(type->array.base)));
+			return;
+		case TYPE_SUBARRAY:
+			*subarray = value;
+			return;
+		case TYPE_VARARRAY:
+			TODO
+		default:
+			UNREACHABLE
+	}
+}
 void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *function = expr->call_expr.function;
@@ -2615,8 +2668,10 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 
 	// 8. Add all other arguments.
 	unsigned arguments = vec_size(expr->call_expr.arguments);
-	assert(arguments >= vec_size(signature->params));
-	VECEACH(signature->params, i)
+	unsigned non_variadic_params = vec_size(signature->params);
+	if (signature->typed_variadic) non_variadic_params--;
+	assert(arguments >= non_variadic_params);
+	for (unsigned i = 0; i < non_variadic_params; i++)
 	{
 		// 8a. Evaluate the expression.
 		Expr *arg_expr = expr->call_expr.arguments[i];
@@ -2628,13 +2683,71 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		llvm_emit_parameter(c, &values, info, be_value, param->type);
 	}
 
-	// 9. Emit varargs.
-	for (unsigned i = vec_size(signature->params); i < arguments; i++)
+	// 9. Typed varargs
+	if (signature->typed_variadic)
 	{
-		Expr *arg_expr = expr->call_expr.arguments[i];
-		llvm_emit_expr(c, be_value, arg_expr);
-		printf("TODO: varargs should be expanded correctly\n");
-		vec_add(values, llvm_value_rvalue_store(c, be_value));
+		printf("All varargs should be called with non-alias!\n");
+		Decl *vararg_param = signature->params[non_variadic_params];
+
+		BEValue subarray;
+
+		llvm_value_set_address(&subarray, llvm_emit_alloca_aligned(c, vararg_param->type, "vararg"), vararg_param->type);
+
+		// 9a. Special case, empty argument
+		if (arguments == non_variadic_params + 1 && !expr->call_expr.arguments[non_variadic_params])
+		{
+			// Just set the size to zero.
+			BEValue len_addr;
+			llvm_emit_subarray_len(c, &subarray, &len_addr);
+			llvm_store_bevalue_raw(c, &len_addr, llvm_get_zero(c, type_usize));
+		}
+		else if (arguments == non_variadic_params + 1 && expr->call_expr.unsplat_last)
+		{
+			// 9b. We unpack the last type which is either a slice, an array or a dynamic array.
+			llvm_emit_unpacked_variadic_arg(c, expr->call_expr.arguments[non_variadic_params], &subarray);
+		}
+		else
+		{
+			// 9b. Otherwise we also need to allocate memory for the arguments:
+			Type *pointee_type = vararg_param->type->pointer;
+			LLVMTypeRef llvm_pointee = llvm_get_type(c, pointee_type);
+			Type *array = type_get_array(pointee_type, arguments - non_variadic_params);
+			LLVMTypeRef llvm_array_type = llvm_get_type(c, array);
+			LLVMValueRef array_ref = llvm_emit_alloca_aligned(c, array, "varargslots");
+			LLVMValueRef zero = llvm_get_zero(c, type_usize);
+			LLVMValueRef indices[2] = {
+					zero,
+					zero,
+			};
+			for (unsigned i = non_variadic_params; i < arguments; i++)
+			{
+				Expr *arg_expr = expr->call_expr.arguments[i];
+				llvm_emit_expr(c, be_value, arg_expr);
+				indices[1] = llvm_const_int(c, type_usize, i - non_variadic_params);
+				LLVMValueRef slot = LLVMBuildInBoundsGEP2(c->builder, llvm_array_type, array_ref, indices, 2, "");
+				llvm_store_bevalue_aligned(c, slot, be_value, 0);
+			}
+			BEValue len_addr;
+			llvm_emit_subarray_len(c, &subarray, &len_addr);
+			llvm_store_bevalue_raw(c, &len_addr, llvm_const_int(c, type_usize, arguments - non_variadic_params));
+			BEValue pointer_addr;
+			llvm_emit_subarray_pointer(c, &subarray, &pointer_addr);
+			Type *array_as_pointer_type = type_get_ptr(pointee_type);
+			llvm_store_bevalue_raw(c, &pointer_addr, llvm_emit_bitcast(c, array_ref, array_as_pointer_type));
+		}
+		ABIArgInfo *info = vararg_param->var.abi_info;
+		llvm_emit_parameter(c, &values, info, &subarray, vararg_param->type);
+	}
+	else
+	{
+		// 9. Emit varargs.
+		for (unsigned i = vec_size(signature->params); i < arguments; i++)
+		{
+			Expr *arg_expr = expr->call_expr.arguments[i];
+			llvm_emit_expr(c, be_value, arg_expr);
+			printf("TODO: varargs should be expanded correctly\n");
+			vec_add(values, llvm_value_rvalue_store(c, be_value));
+		}
 	}
 
 	// 10. Create the actual call

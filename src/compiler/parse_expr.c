@@ -131,20 +131,14 @@ static bool parse_param_path(Context *context, DesignatorElement ***path)
 	}
 }
 /**
- * param_list
- *  : parameter
- *  | parameter ',' parameters
- *  ;
+ * param_list ::= ('...' parameter | parameter (',' parameter)*)?
  *
- * parameter
- *  : expr
- *  | param_path '=' expr
- *  ;
- *
+ * parameter ::= (param_path '=')? expr
  */
-bool parse_param_list(Context *context, Expr ***result, bool allow_type, TokenType param_end)
+bool parse_param_list(Context *context, Expr ***result, TokenType param_end, bool *unsplat)
 {
 	*result = NULL;
+	if (unsplat) *unsplat = false;
 	while (1)
 	{
 		Expr *expr = NULL;
@@ -166,7 +160,11 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type, TokenTy
 		}
 		else
 		{
-			expr = parse_expr_or_initializer_list(context);
+			if (unsplat)
+			{
+				*unsplat = try_consume(context, TOKEN_ELLIPSIS);
+			}
+			expr = TRY_EXPR_OR(parse_expr_or_initializer_list(context), false);
 		}
 		vec_add(*result, expr);
 		if (!try_consume(context, TOKEN_COMMA))
@@ -174,6 +172,11 @@ bool parse_param_list(Context *context, Expr ***result, bool allow_type, TokenTy
 			return true;
 		}
 		if (TOKEN_IS(param_end)) return true;
+		if (unsplat && *unsplat)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "'...' is only allowed on the last argument in a call.");
+			return false;
+		}
 	}
 }
 
@@ -215,7 +218,13 @@ static inline Expr* parse_non_assign_expr(Context *context)
 Expr *parse_expression_list(Context *context)
 {
 	Expr *expr_list = EXPR_NEW_TOKEN(EXPR_EXPRESSION_LIST, context->tok);
-	if (!parse_param_list(context, &expr_list->expression_list, false, TOKEN_INVALID_TOKEN)) return poisoned_expr;
+	while (1)
+	{
+		Expr *expr = NULL;
+		expr = TRY_EXPR_OR(parse_expr_or_initializer_list(context), poisoned_expr);
+		vec_add(expr_list->expression_list, expr);
+		if (!try_consume(context, TOKEN_COMMA)) break;
+	}
 	return expr_list;
 }
 
@@ -376,7 +385,7 @@ Expr *parse_initializer_list(Context *context)
 	CONSUME_OR(TOKEN_LBRACE, poisoned_expr);
 	if (!try_consume(context, TOKEN_RBRACE))
 	{
-		if (!parse_param_list(context, &initializer_list->initializer_expr.initializer_expr, false, TOKEN_RBRACE)) return poisoned_expr;
+		if (!parse_param_list(context, &initializer_list->initializer_expr.initializer_expr, TOKEN_RBRACE, NULL)) return poisoned_expr;
 		CONSUME_OR(TOKEN_RBRACE, poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(initializer_list);
@@ -449,15 +458,17 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 
 	Expr **params = NULL;
 	advance_and_verify(context, TOKEN_LPAREN);
+	bool unsplat;
 	if (!TOKEN_IS(TOKEN_RPAREN))
 	{
-		if (!parse_param_list(context, &params, 0, TOKEN_RPAREN)) return poisoned_expr;
+		if (!parse_param_list(context, &params, TOKEN_RPAREN, &unsplat)) return poisoned_expr;
 	}
 	TRY_CONSUME_OR(TOKEN_RPAREN, "Expected the ending ')' here", poisoned_expr);
 
 	Expr *call = EXPR_NEW_EXPR(EXPR_CALL, left);
 	call->call_expr.function = left;
 	call->call_expr.arguments = params;
+	call->call_expr.unsplat_last = unsplat;
 	RANGE_EXTEND_PREV(call);
 	return call;
 }
