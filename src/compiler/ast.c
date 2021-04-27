@@ -857,11 +857,7 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			DUMPF("(generic %s\n", decl->name);
 			indent++;
 			DUMP("(params");
-			VECEACH(decl->generic_decl.parameters, i)
-			{
-				DUMPFI("%s", TOKSTR(decl->generic_decl.parameters[i]));
-			}
-			DUMPE();
+			DUMPDECLS(decl->generic_decl.parameters);
 			DUMP("(cases");
 			DUMPASTS(decl->generic_decl.cases);
 			DUMPE();
