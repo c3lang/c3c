@@ -156,6 +156,8 @@ extern unsigned intrinsic_id_ctlz;
 extern unsigned intrinsic_id_cttz;
 extern unsigned intrinsic_id_convert_from_fp16;
 extern unsigned intrinsic_id_convert_to_fp16;
+extern unsigned intrinsic_id_lifetime_start;
+extern unsigned intrinsic_id_lifetime_end;
 
 
 // LLVM Attributes
@@ -246,6 +248,8 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value);
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable);
 void llvm_emit_return_implicit(GenContext *c);
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index, unsigned struct_alignment, unsigned offset, unsigned *alignment);
+void llvm_emit_subarray_len(GenContext *context, BEValue *subarray, BEValue *len);
+void llvm_emit_subarray_pointer(GenContext *context, BEValue *subarray, BEValue *pointer);
 LLVMValueRef llvm_get_next_param(GenContext *context, unsigned *index);
 LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info);
 static inline LLVMBasicBlockRef llvm_get_current_block_if_in_use(GenContext *context);

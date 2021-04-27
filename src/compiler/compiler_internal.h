@@ -288,6 +288,7 @@ typedef struct _VarDecl
 	bool constant : 1;
 	bool failable : 1;
 	bool unwrap : 1;
+	bool vararg : 1;
 	TypeInfo *type_info;
 	union
 	{
@@ -347,6 +348,7 @@ typedef struct _FunctionSignature
 	bool variadic : 1;
 	bool has_default : 1;
 	bool failable : 1;
+	bool typed_variadic : 1;
 	TypeInfo *rtype;
 	struct ABIArgInfo_ *ret_abi_info;
 	struct ABIArgInfo_ *failable_abi_info;
@@ -422,7 +424,7 @@ typedef struct
 typedef struct
 {
 	struct _Ast **cases;
-	TokenId *parameters;
+	Decl **parameters;
 	TypeInfo *rtype; // May be null!
 	Path *path; // For redefinition
 } GenericDecl;
@@ -570,6 +572,7 @@ typedef struct
 {
 	bool is_type_method : 1;
 	bool is_pointer_call : 1;
+	bool unsplat_last : 1;
 	Expr *function;
 	Expr **arguments;
 } ExprCall;

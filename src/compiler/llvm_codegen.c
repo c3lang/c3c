@@ -569,7 +569,8 @@ unsigned intrinsic_id_ctlz;
 unsigned intrinsic_id_cttz;
 unsigned intrinsic_id_convert_from_fp16;
 unsigned intrinsic_id_convert_to_fp16;
-
+unsigned intrinsic_id_lifetime_start;
+unsigned intrinsic_id_lifetime_end;
 
 
 
@@ -595,10 +596,8 @@ void llvm_codegen_setup()
 	intrinsic_id_trap = lookup_intrinsic("llvm.trap");
 	intrinsic_id_assume = lookup_intrinsic("llvm.assume");
 
-
-
-
-
+	intrinsic_id_lifetime_start = lookup_intrinsic("llvm.lifetime.start");
+	intrinsic_id_lifetime_end = lookup_intrinsic("llvm.lifetime.end");
 
 	intrinsic_id_ssub_overflow = lookup_intrinsic("llvm.ssub.with.overflow");
 	intrinsic_id_ssub_sat = lookup_intrinsic("llvm.ssub.sat");
