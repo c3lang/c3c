@@ -846,7 +846,7 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 }
 
 
-static void gencontext_emit_decl(GenContext *context, Decl *decl)
+static void gencontext_emit_type_decls(GenContext *context, Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
@@ -870,6 +870,9 @@ static void gencontext_emit_decl(GenContext *context, Decl *decl)
 		case DECL_UNION:
 		case DECL_ERR:
 			gencontext_emit_introspection_type(context, decl);
+			break;
+		case DECL_INTERFACE:
+			// TODO
 			break;
 		case DECL_ENUM:
 			// TODO
@@ -958,7 +961,7 @@ void *llvm_gen(Context *context)
 	}
 	VECEACH(context->types, i)
 	{
-		gencontext_emit_decl(gen_context, context->types[i]);
+		gencontext_emit_type_decls(gen_context, context->types[i]);
 	}
 	VECEACH(context->vars, i)
 	{

@@ -79,6 +79,7 @@ void recover_top_level(Context *context)
 			case TOKEN_PUBLIC:
 			case TOKEN_TYPEDEF:
 			case TOKEN_STRUCT:
+			case TOKEN_INTERFACE:
 			case TOKEN_IMPORT:
 			case TOKEN_UNION:
 			case TOKEN_EXTERN:
@@ -524,6 +525,7 @@ Path *parse_path_prefix(Context *context, bool *had_error)
  *		| TYPE_IDENT
  *		| ident_scope TYPE_IDENT
  *		| CT_TYPE_IDENT
+ *		| VIRTUAL (ident_scope TYPE_IDENT)?
  *		;
  *
  * Assume prev_token is the type.
@@ -531,6 +533,7 @@ Path *parse_path_prefix(Context *context, bool *had_error)
  */
 static inline TypeInfo *parse_base_type(Context *context)
 {
+	bool virtual = try_consume(context, TOKEN_VIRTUAL);
 	SourceSpan range = source_span_from_token_id(context->tok.id);
 	bool had_error;
 	Path *path = parse_path_prefix(context, &had_error);
@@ -540,7 +543,9 @@ static inline TypeInfo *parse_base_type(Context *context)
 		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER, range);
 		type_info->unresolved.path = path;
 		type_info->unresolved.name_loc = context->tok.id;
+		type_info->virtual_type = virtual;
 		if (!consume_type_name(context, "type")) return poisoned_type_info;
+		if (virtual) TRY_CONSUME_OR(TOKEN_STAR, "Expected '*' after virtual name.", poisoned_type_info);
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
@@ -615,17 +620,36 @@ static inline TypeInfo *parse_base_type(Context *context)
 			type_found = type_typeid;
 			break;
 		default:
+			// Special case: "virtual *"
+			if (virtual && context->tok.type == TOKEN_STAR)
+			{
+				type_info = type_info_new(TYPE_INFO_IDENTIFIER, source_span_from_token_id(context->prev_tok));
+				advance(context);
+				type_info->resolve_status = RESOLVE_DONE;
+				type_info->type = type_virtual;
+				type_info->virtual_type = true;
+				RANGE_EXTEND_PREV(type_info);
+				return type_info;
+			}
 			SEMA_TOKEN_ERROR(context->tok, "A type name was expected here.");
 			return poisoned_type_info;
 	}
 	if (type_found)
 	{
+		if (virtual)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "Expected an interface name.");
+			advance(context);
+			return poisoned_type_info;
+		}
 		assert(!type_info);
 		type_info = type_info_new(TYPE_INFO_IDENTIFIER, source_span_from_token_id(context->tok.id));
 		type_info->resolve_status = RESOLVE_DONE;
 		type_info->type = type_found;
 	}
+	type_info->virtual_type = virtual;
 	advance(context);
+	if (virtual) TRY_CONSUME_OR(TOKEN_STAR, "Expected '*' after virtual name.", poisoned_type_info);
 	RANGE_EXTEND_PREV(type_info);
 	return type_info;
 }
@@ -1289,6 +1313,7 @@ static inline Decl *parse_struct_declaration(Context *context, Visibility visibi
 	return decl;
 }
 
+
 static inline Decl *parse_top_level_const_declaration(Context *context, Visibility visibility)
 {
 	Decl *decl = TRY_DECL_OR(parse_const_declaration(context, visibility), poisoned_decl);
@@ -1470,6 +1495,7 @@ static AttributeDomain TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
 		[TOKEN_VAR] = ATTR_VAR,
 		[TOKEN_ENUM] = ATTR_ENUM,
 		[TOKEN_STRUCT] = ATTR_STRUCT,
+		[TOKEN_INTERFACE] = ATTR_INTERFACE,
 		[TOKEN_UNION] = ATTR_UNION,
 		[TOKEN_CONST] = ATTR_CONST,
 		[TOKEN_TYPEDEF] = ATTR_TYPEDEF,
@@ -1834,7 +1860,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	{
 		if (TOKEN_IS(TOKEN_LBRACE))
 		{
-			SEMA_TOKEN_ERROR(context->next_tok, "Functions bodies are not allowed in interface files.");
+			SEMA_TOKEN_ERROR(context->next_tok, "A function body is not allowed here.");
 			return poisoned_decl;
 		}
 		TRY_CONSUME_OR(TOKEN_EOS, "Expected ';' after function declaration.", poisoned_decl);
@@ -1849,6 +1875,38 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	return func;
 }
 
+
+/**
+ * interface_declaration ::= INTERFACE TYPE '{' func_decl* '}'
+ *
+ * @param visibility
+ */
+static inline Decl *parse_interface_declaration(Context *context, Visibility visibility)
+{
+	advance_and_verify(context, TOKEN_INTERFACE);
+
+	TokenId name = context->tok.id;
+
+	if (!consume_type_name(context, "interface")) return poisoned_decl;
+	Decl *decl = decl_new_with_type(name, DECL_INTERFACE, visibility);
+
+	if (!parse_attributes(context, decl))
+	{
+		return poisoned_decl;
+	}
+
+	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
+
+	while (TOKEN_IS(TOKEN_FUNC))
+	{
+		Decl *function = TRY_DECL_OR(parse_func_definition(context, visibility, true), poisoned_decl);
+		vec_add(decl->interface_decl.functions, function);
+	}
+
+	CONSUME_OR(TOKEN_RBRACE, poisoned_decl);
+	DEBUG_LOG("Parsed interface %s completely.", TOKSTR(name));
+	return decl;
+}
 
 static inline bool check_no_visibility_before(Context *context, Visibility visibility)
 {
@@ -2130,6 +2188,9 @@ Decl *parse_top_level_statement(Context *context)
 			break;
 		case TOKEN_CONST:
 			decl = TRY_DECL_OR(parse_top_level_const_declaration(context, visibility), poisoned_decl);
+			break;
+		case TOKEN_INTERFACE:
+			decl = TRY_DECL_OR(parse_interface_declaration(context, visibility), poisoned_decl);
 			break;
 		case TOKEN_STRUCT:
 		case TOKEN_UNION:

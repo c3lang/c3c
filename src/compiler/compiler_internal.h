@@ -239,6 +239,7 @@ struct _Type
 struct _TypeInfo
 {
 	ResolveStatus resolve_status : 2;
+	bool virtual_type : 1;
 	Type *type;
 	TypeInfoKind kind;
 	SourceSpan span;
@@ -403,6 +404,12 @@ typedef struct
 	};
 } TypedefDecl;
 
+
+typedef struct
+{
+	Decl **functions;
+} InterfaceDecl;
+
 typedef struct
 {
 	union
@@ -503,6 +510,7 @@ typedef struct _Decl
 		FuncDecl func;
 		AttrDecl attr;
 		TypedefDecl typedef_decl;
+		InterfaceDecl interface_decl;
 		DistinctDecl distinct_decl;
 		MacroDecl macro_decl;
 		GenericDecl generic_decl;
@@ -1218,6 +1226,7 @@ typedef struct _Context
 	Decl **functions;
 	Decl **macros;
 	Decl **generics;
+	Decl **interfaces;
 	Decl **methods;
 	Decl **vars;
 	Decl **incr_array;
@@ -1386,6 +1395,7 @@ extern Type *type_compint, *type_compfloat;
 extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
 extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
 extern Type *type_typeid, *type_error, *type_typeinfo, *type_varheader;
+extern Type *type_virtual, *type_virtual_generic;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 

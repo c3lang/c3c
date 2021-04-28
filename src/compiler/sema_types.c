@@ -120,6 +120,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_ENUM:
 		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
+		case DECL_INTERFACE:
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			DEBUG_LOG("Resolved %s.", TOKSTR(type_info->unresolved.name_loc));

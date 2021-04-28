@@ -11,11 +11,13 @@ static Type t_usz, t_isz, t_uptr, t_iptr, t_uptrdiff, t_iptrdiff;
 static Type t_cus, t_cui, t_cul, t_cull;
 static Type t_cs, t_ci, t_cl, t_cll;
 static Type t_voidstar, t_typeid, t_error, t_typeinfo;
-static Type t_str, t_varheader;
+static Type t_str, t_varheader, t_virtual, t_virtual_generic;
 
 Type *type_bool = &t_u1;
 Type *type_void = &t_u0;
 Type *type_voidptr = &t_voidstar;
+Type *type_virtual = &t_virtual;
+Type *type_virtual_generic = &t_virtual_generic;
 Type *type_half = &t_f16;
 Type *type_float = &t_f32;
 Type *type_double = &t_f64;
@@ -116,6 +118,8 @@ const char *type_to_error_string(Type *type)
 		case TYPE_UNION:
 		case TYPE_ERRTYPE:
 		case TYPE_DISTINCT:
+		case TYPE_VIRTUAL_ANY:
+		case TYPE_VIRTUAL:
 			return type->name;
 		case TYPE_FUNC:
 		{
@@ -237,7 +241,10 @@ ByteSize type_size(Type *type)
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_ERR_UNION:
+		case TYPE_VIRTUAL_ANY:
 			return type->builtin.bytesize;
+		case TYPE_VIRTUAL:
+			return type_virtual_generic->builtin.bytesize;
 		case TYPE_STRLIT:
 		case TYPE_FUNC:
 		case TYPE_POINTER:
@@ -378,6 +385,8 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_ARRAY:
 		case TYPE_ERR_UNION:
 		case TYPE_COMPLEX:
+		case TYPE_VIRTUAL:
+		case TYPE_VIRTUAL_ANY:
 			return true;
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
@@ -519,11 +528,13 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_INFERRED_ARRAY:
 			return false;
 		case TYPE_ERR_UNION:
-			*base = type_usize->canonical;
+		case TYPE_VIRTUAL:
+		case TYPE_VIRTUAL_ANY:
+			*base = type_iptr->canonical;
 			*elements = 2;
 			return true;
 		case TYPE_ERRTYPE:
-			*base = type_usize->canonical;
+			*base = type_iptr->canonical;
 			*elements = 1;
 			return true;
 		case TYPE_TYPEDEF:
@@ -670,7 +681,10 @@ AlignSize type_abi_alignment(Type *type)
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_ERR_UNION:
+		case TYPE_VIRTUAL_ANY:
 			return type->builtin.abi_alignment;
+		case TYPE_VIRTUAL:
+			return type_virtual_generic->builtin.abi_alignment;
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_VARARRAY:
@@ -1073,6 +1087,9 @@ type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target-
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t_voidstar;
 	t_voidstar.pointer = type_void;
+	type_create("virtual*", &t_virtual, TYPE_VIRTUAL_ANY, target->width_pointer * 2, target->align_pref_pointer, target->align_pointer);
+	type_create("virtual_generic", &t_virtual_generic, TYPE_VIRTUAL, target->width_pointer * 2, target->align_pref_pointer, target->align_pointer);
+
 	type_create("compint", &t_ixx, TYPE_IXX, 0, 0, 0);
 	type_create("compfloat", &t_fxx, TYPE_FXX, 0, 0, 0);
 
@@ -1129,6 +1146,8 @@ bool type_is_scalar(Type *type)
 		case TYPE_ERR_UNION:
 		case TYPE_VARARRAY:
 		case TYPE_COMPLEX:
+		case TYPE_VIRTUAL:
+		case TYPE_VIRTUAL_ANY:
 			return true;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
@@ -1338,6 +1357,8 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_BOOL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_VIRTUAL:
+		case TYPE_VIRTUAL_ANY:
 			return NULL;
 		case TYPE_IXX:
 			if (other->type_kind == TYPE_DISTINCT && type_is_numeric(other->decl->distinct_decl.base_type)) return other;

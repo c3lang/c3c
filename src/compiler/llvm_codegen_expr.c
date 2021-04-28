@@ -350,6 +350,11 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 
 	switch (cast_kind)
 	{
+		case CAST_VRBOOL:
+		case CAST_VRPTR:
+		case CAST_PTRVR:
+			TODO
+
 		case CAST_CXBOOL:
 			TODO
 		case CAST_XIERR:
@@ -2314,6 +2319,8 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_COMPLEX:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
+		case TYPE_VIRTUAL_ANY:
+		case TYPE_VIRTUAL:
 			TODO
 			break;
 	}
@@ -2540,7 +2547,7 @@ static void llvm_emit_unpacked_variadic_arg(GenContext *c, Expr *expr, BEValue *
 			// Load the pointer
 			llvm_value_rvalue(c, &value);
 			llvm_store_bevalue_raw(c, &len_addr, llvm_const_int(c, type_usize, type->pointer->array.len));
-			llvm_store_bevalue_raw(c, &pointer_addr, llvm_emit_bitcast(c, value.value, type_get_ptr(type->array.base)));
+			llvm_store_bevalue_raw(c, &pointer_addr, llvm_emit_bitcast(c, value.value, type_get_ptr(type->pointer->array.base)));
 			return;
 		case TYPE_SUBARRAY:
 			*subarray = value;

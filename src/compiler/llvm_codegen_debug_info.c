@@ -588,6 +588,9 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_subarray_type(c, type);
 		case TYPE_ERR_UNION:
 			return type->backend_debug_type = llvm_debug_errunion_type(c, type);
+		case TYPE_VIRTUAL:
+		case TYPE_VIRTUAL_ANY:
+			TODO
 	}
 	UNREACHABLE
 }

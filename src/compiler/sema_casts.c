@@ -417,6 +417,9 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_DISTINCT:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
+		case TYPE_VIRTUAL_ANY:
+		case TYPE_VIRTUAL:
+			return CAST_VRBOOL;
 		case TYPE_BOOL:
 			return CAST_BOOLBOOL;
 		case TYPE_ERR_UNION:
@@ -499,6 +502,9 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 			// Special subarray conversion: someType[N]* -> someType[]
 			if (to_kind == TYPE_SUBARRAY && from->pointer->type_kind == TYPE_ARRAY && from->pointer->array.base == to->array.base) return true;
 			return false;
+		case TYPE_VIRTUAL_ANY:
+		case TYPE_VIRTUAL:
+			return to_kind == TYPE_POINTER;
 		case TYPE_ERRTYPE:
 			// Allow only MyError.A -> error
 			return to->type_kind == TYPE_ERR_UNION;
@@ -652,7 +658,20 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 		return cast_to_bool_kind(from) != CAST_ERROR;
 	}
 
-	// 9. Substruct cast, if the first member is inline, see if we can cast to this member.
+	// 9. Virtual any cast
+	if (to->type_kind == TYPE_VIRTUAL_ANY)
+	{
+		return from_type->type_kind == TYPE_POINTER;
+	}
+
+	// 10. Virtual cast
+	if (to->type_kind == TYPE_VIRTUAL)
+	{
+		TODO
+//
+	}
+
+	// 11. Substruct cast, if the first member is inline, see if we can cast to this member.
 	if (type_is_substruct(from))
 	{
 		return cast_may_implicit(from->decl->strukt.members[0]->type, to);
@@ -825,6 +844,10 @@ bool cast(Expr *expr, Type *to_type)
 			if (canonical->type_kind == TYPE_POINTER) return pointer_to_pointer(expr, to_type);
 			if (canonical->type_kind == TYPE_VARARRAY) return insert_cast(expr, CAST_PTRVAR, to_type);
 			if (canonical->type_kind == TYPE_SUBARRAY) return insert_cast(expr, CAST_APTSA, to_type);
+			break;
+		case TYPE_VIRTUAL:
+		case TYPE_VIRTUAL_ANY:
+			if (canonical->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_VRPTR, to_type);
 			break;
 		case TYPE_ENUM:
 			if (type_is_integer(canonical)) return enum_to_integer(expr, from_type, canonical, to_type);

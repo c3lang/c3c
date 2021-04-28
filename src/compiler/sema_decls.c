@@ -476,6 +476,10 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 		case TYPE_MEMBER:
 			UNREACHABLE
 			return false;
+		case TYPE_VIRTUAL_ANY:
+		case TYPE_VIRTUAL:
+			SEMA_ERROR(decl, "You cannot create a distinct type from a virtual type.");
+			return false;
 		case TYPE_ERRTYPE:
 			SEMA_ERROR(decl, "You cannot create a distinct type from an error.");
 			return false;
@@ -628,6 +632,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 {
 	switch (domain)
 	{
+		case ATTR_INTERFACE:
+			return "interface";
 		case ATTR_MEMBER:
 			return "member";
 		case ATTR_FUNC:
@@ -1064,6 +1070,8 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 	decl->module = context->module;
 	switch (decl->decl_kind)
 	{
+		case DECL_INTERFACE:
+			TODO
 		case DECL_STRUCT:
 		case DECL_UNION:
 			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);

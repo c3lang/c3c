@@ -128,6 +128,8 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_ERR_UNION:
 		case TYPE_SUBARRAY:
 		case TYPE_ERRTYPE:
+		case TYPE_VIRTUAL_ANY:
+		case TYPE_VIRTUAL:
 		case TYPE_COMPLEX:
 			return true;
 		case TYPE_ARRAY:
@@ -608,6 +610,8 @@ static ABIArgInfo *x86_classify_argument(CallConvention call, Regs *regs, Type *
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_SUBARRAY:
+		case TYPE_VIRTUAL_ANY:
+		case TYPE_VIRTUAL:
 		case TYPE_ARRAY:
 		case TYPE_ERR_UNION:
 		case TYPE_COMPLEX:
