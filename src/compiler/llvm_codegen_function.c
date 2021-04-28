@@ -636,6 +636,7 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_ENUM:
 			TODO
 		case NON_TYPE_DECLS:
+		case DECL_INTERFACE:
 			return;
 	}
 }

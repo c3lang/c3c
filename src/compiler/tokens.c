@@ -224,6 +224,8 @@ const char *token_type_to_string(TokenType type)
 			return "if";
 		case TOKEN_IMPORT:
 			return "import";
+		case TOKEN_INTERFACE:
+			return "interface";
 		case TOKEN_LOCAL:
 			return "local";
 		case TOKEN_MACRO:
@@ -262,6 +264,8 @@ const char *token_type_to_string(TokenType type)
 			return "volatile";
 
 		// Named types
+		case TOKEN_VIRTUAL:
+			return "virtual";
 		case TOKEN_VOID:
 			return "void";
 		case TOKEN_BOOL:

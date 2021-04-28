@@ -116,6 +116,9 @@ static void header_print_type(FILE *file, Type *type)
 			break;
 		case TYPE_VARARRAY:
 			break;
+		case TYPE_VIRTUAL:
+		case TYPE_VIRTUAL_ANY:
+			break;
 		case TYPE_SUBARRAY:
 			break;
 		case TYPE_TYPEINFO:
@@ -208,6 +211,7 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 		case DECL_CT_CASE:
 		case DECL_ATTRIBUTE:
 		case DECL_DEFINE:
+		case DECL_INTERFACE:
 			UNREACHABLE
 		case DECL_FUNC:
 			TODO

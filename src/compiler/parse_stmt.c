@@ -994,6 +994,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_UPTRDIFF:
 		case TOKEN_IPTR:
 		case TOKEN_UPTR:
+		case TOKEN_VIRTUAL:
 		case TOKEN_TYPEID:
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_HASH_TYPE_IDENT:
@@ -1147,6 +1148,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_PUBLIC:
 		case TOKEN_EXTERN:
 		case TOKEN_STRUCT:
+		case TOKEN_INTERFACE:
 		case TOKEN_TYPEDEF:
 		case TOKEN_UNION:
 		case TOKEN_ATTRIBUTE:

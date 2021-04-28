@@ -458,7 +458,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 
 	Expr **params = NULL;
 	advance_and_verify(context, TOKEN_LPAREN);
-	bool unsplat;
+	bool unsplat = false;
 	if (!TOKEN_IS(TOKEN_RPAREN))
 	{
 		if (!parse_param_list(context, &params, TOKEN_RPAREN, &unsplat)) return poisoned_expr;
@@ -949,10 +949,7 @@ Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *ty
 
 
 /**
- * type_identifier
- *  : TYPE_IDENT initializer_list
- *  | TYPE_IDENT method_ref
- *  ;
+ * type_identifier ::= VIRTUAL? TYPE_IDENT initializer_list?
  *
  * @param left must be null.
  * @return Expr*
@@ -973,7 +970,7 @@ Expr *parse_type_expression_with_path(Context *context, Path *path)
 	{
 		type = TRY_TYPE_OR(parse_type(context), poisoned_expr);
 	}
-	if (TOKEN_IS(TOKEN_LPAREN) && context->next_tok.type == TOKEN_LBRACE)
+	if (!type->virtual_type && TOKEN_IS(TOKEN_LPAREN) && context->next_tok.type == TOKEN_LBRACE)
 	{
 		return parse_type_compound_literal_expr_after_type(context, type);
 	}
@@ -1005,6 +1002,7 @@ static Expr* parse_expr_block(Context *context, Expr *left)
 }
 
 ParseRule rules[TOKEN_EOF + 1] = {
+		[TOKEN_VIRTUAL] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_BOOL] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_CHAR] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_ICHAR] = { parse_type_identifier, NULL, PREC_NONE },

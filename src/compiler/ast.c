@@ -67,6 +67,9 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 	TypeKind kind = TYPE_POISONED;
 	switch (decl_type)
 	{
+		case DECL_INTERFACE:
+			kind = TYPE_VIRTUAL;
+			break;
 		case DECL_FUNC:
 			kind = TYPE_FUNC;
 			break;
@@ -380,6 +383,12 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 		case ALL_UNSIGNED_INTS:
 		case ALL_REAL_FLOATS:
 			DUMPF("(%s)", type->name);
+			return;
+		case TYPE_VIRTUAL_ANY:
+			DUMP("(virtual*)");
+			return;
+		case TYPE_VIRTUAL:
+			DUMPF("(virtual %s*)", type->name);
 			return;
 		case TYPE_IXX:
 			DUMP("(ct int)");
@@ -773,6 +782,10 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 	if (!decl) return;
 	switch (decl->decl_kind)
 	{
+		case DECL_INTERFACE:
+			DUMPF("(interface %s", decl->name);
+			DUMPDECLS(decl->interface_decl.functions);
+			DUMPEND();
 		case DECL_VAR:
 			DUMPF("(var-%s %s", decl_var_to_string(decl->var.kind), decl->name ? decl->name : "anon");
 			DUMPTI(decl->var.type_info);

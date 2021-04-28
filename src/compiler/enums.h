@@ -119,6 +119,9 @@ typedef enum
 	CAST_SAPTR,
 	CAST_SABOOL,
 	CAST_STST,
+	CAST_VRPTR,
+	CAST_PTRVR,
+	CAST_VRBOOL,
 } CastKind;
 
 typedef enum
@@ -154,6 +157,7 @@ typedef enum
 	DECL_CT_CASE,
 	DECL_ATTRIBUTE,
 	DECL_DEFINE,
+	DECL_INTERFACE,
 } DeclKind;
 
 #define NON_TYPE_DECLS DECL_ARRAY_VALUE: case DECL_IMPORT: case DECL_MACRO: \
@@ -418,6 +422,7 @@ typedef enum
 	TOKEN_GENERIC,
 	TOKEN_IF,
 	TOKEN_IMPORT,
+	TOKEN_INTERFACE,
 	TOKEN_LOCAL,
 	TOKEN_MACRO,
 	TOKEN_MODULE,
@@ -433,6 +438,7 @@ typedef enum
 	TOKEN_TYPEOF,
 	TOKEN_UNION,
 	TOKEN_VAR,              // Reserved
+	TOKEN_VIRTUAL,
 	TOKEN_VOLATILE,
 	TOKEN_WHILE,
 
@@ -504,6 +510,8 @@ typedef enum
 	TYPE_MEMBER,
 	TYPE_VECTOR,
 	TYPE_COMPLEX,
+	TYPE_VIRTUAL,
+	TYPE_VIRTUAL_ANY,
 	TYPE_LAST = TYPE_MEMBER
 } TypeKind;
 
@@ -572,6 +580,7 @@ typedef enum
 	ATTR_ERROR = 1 << 6,
 	ATTR_TYPEDEF = 1 << 7,
 	ATTR_MEMBER = 1 << 8,
+	ATTR_INTERFACE = 1 << 9,
 } AttributeDomain;
 
 typedef enum

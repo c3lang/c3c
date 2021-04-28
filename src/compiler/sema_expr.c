@@ -198,6 +198,9 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case DECL_LABEL:
 			SEMA_ERROR(expr, "Did you intend to use the label '%s' here?", decl->name);
 			return expr_poison(expr);
+		case DECL_INTERFACE:
+			SEMA_ERROR(expr, "Expected interface followed by '.'.");
+			return expr_poison(expr);
 		case DECL_STRUCT:
 			SEMA_ERROR(expr, "Expected struct followed by (...) or '.'.");
 			return expr_poison(expr);
@@ -3993,6 +3996,8 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 				case TYPE_VARARRAY:
 				case TYPE_SUBARRAY:
 				case TYPE_TYPEID:
+				case TYPE_VIRTUAL_ANY:
+				case TYPE_VIRTUAL:
 					// Only != and == allowed.
 					goto ERR;
 				case ALL_INTS:
@@ -4327,6 +4332,8 @@ static bool sema_expr_analyse_not(Expr *expr, Expr *inner)
 		case TYPE_FUNC:
 		case TYPE_ARRAY:
 		case TYPE_POINTER:
+		case TYPE_VIRTUAL:
+		case TYPE_VIRTUAL_ANY:
 		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_COMPLEX:
