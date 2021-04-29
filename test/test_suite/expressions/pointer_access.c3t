@@ -94,5 +94,5 @@ entry:
   %34 = getelementptr inbounds %pointer_access.ExtraSimple, %pointer_access.ExtraSimple* %a, i32 0, i32 3
   %35 = getelementptr inbounds %pointer_access.anon, %pointer_access.anon* %34, i32 0, i32 1
   %36 = load i32, i32* %35, align 4
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([71 x i8], [71 x i8]* @0, i32 0, i32 0), i32 %16, double %19, double %22, double %25, i32 %27, double %30, i32 %33, i32 %36)
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([71 x i8], [71 x i8]* @.str, i32 0, i32 0), i32 %16, double %19, double %22, double %25, i32 %27, double %30, i32 %33, i32 %36)
   ret void

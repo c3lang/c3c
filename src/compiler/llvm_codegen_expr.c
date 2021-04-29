@@ -136,7 +136,7 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base(GenContext *c, Typ
 	{
 		case TYPE_POINTER:
 			return LLVMBuildInBoundsGEP2(c->builder,
-			                             llvm_get_type(c, type->pointer),
+			                             llvm_get_pointee_type(c, type),
 			                             parent_value, &index_value, 1, "ptridx");
 		case TYPE_ARRAY:
 		{
@@ -605,7 +605,8 @@ static inline void llvm_emit_initialize_reference_temporary_const(GenContext *c,
 
 	// Create a global const.
 	LLVMTypeRef type = modified ? LLVMTypeOf(value) : llvm_get_type(c, expr->type);
-	LLVMValueRef global_copy = LLVMAddGlobal(c->module, type, "");
+	LLVMValueRef global_copy = LLVMAddGlobal(c->module, type, ".__const");
+	LLVMSetLinkage(global_copy, LLVMPrivateLinkage);
 
 	// Set a nice alignment
 	unsigned alignment = type_alloca_alignment(expr->type);
@@ -972,7 +973,7 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue
 		{
 			// Use byte here, we don't need a big offset.
 			LLVMValueRef add = LLVMConstInt(diff < 0 ? llvm_get_type(c, type_ichar) : llvm_get_type(c, type_char), diff, diff < 0);
-			after_value = LLVMBuildGEP2(c->builder, llvm_get_type(c, type->pointer), value.value, &add, 1, "ptrincdec");
+			after_value = LLVMBuildGEP2(c->builder, llvm_get_pointee_type(c, type), value.value, &add, 1, "ptrincdec");
 			break;
 		}
 		case ALL_FLOATS:
@@ -1387,7 +1388,7 @@ static void gencontext_emit_slice(GenContext *context, BEValue *be_value, Expr *
 			// Change pointer from Foo[x] to Foo*
 			parent_base = llvm_emit_bitcast(context, parent_base, pointer_type);
 			// Move pointer
-			start_pointer = LLVMBuildInBoundsGEP2(context->builder, llvm_get_type(context, pointer_type->pointer), parent_base, &start_index, 1, "offset");
+			start_pointer = LLVMBuildInBoundsGEP2(context->builder, llvm_get_pointee_type(context, pointer_type), parent_base, &start_index, 1, "offset");
 			break;
 		}
 		case TYPE_SUBARRAY:
@@ -1398,7 +1399,7 @@ static void gencontext_emit_slice(GenContext *context, BEValue *be_value, Expr *
 		case TYPE_POINTER:
 		{
 			// Move pointer
-			start_pointer = LLVMBuildInBoundsGEP2(context->builder, llvm_get_type(context, parent_type->pointer), parent_base, &start_index, 1, "offset");
+			start_pointer = LLVMBuildInBoundsGEP2(context->builder, llvm_get_pointee_type(context, parent_type), parent_base, &start_index, 1, "offset");
 			break;
 		}
 		default:
@@ -1657,6 +1658,29 @@ LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_t
 
 }
 
+static LLVMValueRef llvm_emit_ptr_comparison(GenContext *c, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op)
+{
+	switch (binary_op)
+	{
+		case BINARYOP_EQ:
+			return LLVMBuildICmp(c->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
+		case BINARYOP_NE:
+			return LLVMBuildICmp(c->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
+		case BINARYOP_GE:
+			return LLVMBuildICmp(c->builder, LLVMIntUGE, lhs_value, rhs_value, "ge");
+		case BINARYOP_GT:
+			return LLVMBuildICmp(c->builder, LLVMIntUGT, lhs_value, rhs_value, "gt");
+		case BINARYOP_LE:
+			return LLVMBuildICmp(c->builder, LLVMIntULE, lhs_value, rhs_value, "le");
+		case BINARYOP_LT:
+			return LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt");
+		default:
+			UNREACHABLE
+	}
+
+
+}
+
 static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left, LLVMValueRef right)
 {
 	LLVMTypeRef left_type = LLVMTypeOf(left);
@@ -1725,6 +1749,11 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 		llvm_value_set_bool(be_value, llvm_emit_int_comparison(c, lhs_type, rhs_type, lhs_value, rhs_value, binary_op));
 		return;
 	}
+	if (type_is_pointer(lhs_type) && binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
+	{
+		llvm_value_set_bool(be_value, llvm_emit_ptr_comparison(c, lhs_value, rhs_value, binary_op));
+		return;
+	}
 	bool is_float = type_is_float(lhs_type);
 	LLVMValueRef val;
 	switch (binary_op)
@@ -1744,11 +1773,14 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 			{
 				if (lhs_type == rhs_type)
 				{
-					val = LLVMBuildPtrDiff(c->builder, lhs_value, rhs_value, "ptrdiff");
+					LLVMTypeRef int_type = llvm_get_type(c, type_iptrdiff);
+					val = LLVMBuildSub(c->builder, LLVMBuildPtrToInt(c->builder, lhs_value, int_type, ""),
+					                   LLVMBuildPtrToInt(c->builder, rhs_value, int_type, ""), "");
+					val = LLVMBuildExactSDiv(c->builder, val, llvm_const_int(c, type_iptrdiff, type_abi_alignment(lhs_type->pointer)), "");
 					break;
 				}
 				rhs_value = LLVMBuildNeg(c->builder, rhs_value, "");
-				val = LLVMBuildGEP2(c->builder, llvm_get_type(c, lhs_type->canonical->pointer), lhs_value, &rhs_value, 1, "ptrsub");
+				val = LLVMBuildGEP2(c->builder, llvm_get_pointee_type(c, lhs_type), lhs_value, &rhs_value, 1, "ptrsub");
 				break;
 			}
 			if (is_float)
@@ -1762,7 +1794,7 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 			if (lhs_type->type_kind == TYPE_POINTER)
 			{
 				assert(type_is_integer(rhs_type));
-				val = LLVMBuildGEP2(c->builder, llvm_get_type(c, lhs_type->pointer), lhs_value, &rhs_value, 1, "ptradd");
+				val = LLVMBuildGEP2(c->builder, llvm_get_pointee_type(c, lhs_type), lhs_value, &rhs_value, 1, "ptradd");
 				break;
 			}
 			if (is_float)
@@ -2231,13 +2263,14 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			return;
 		case TYPE_STRLIT:
 		{
-			LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.string.len + 1), "");
-			LLVMSetLinkage(global_name, LLVMInternalLinkage);
+			LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.string.len + 1), ".str");
+			LLVMSetLinkage(global_name, LLVMPrivateLinkage);
 			LLVMSetGlobalConstant(global_name, 1);
 			LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context,
 			                                                         expr->const_expr.string.chars,
 			                                                         expr->const_expr.string.len,
 			                                                         0));
+			llvm_set_alignment(global_name, 1);
 			global_name = LLVMConstBitCast(global_name, LLVMPointerType(llvm_get_type(c, type_char), 0));
 			llvm_value_set(be_value, global_name, type);
 			return;
@@ -2716,7 +2749,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		else
 		{
 			// 9b. Otherwise we also need to allocate memory for the arguments:
-			Type *pointee_type = vararg_param->type->pointer;
+			Type *pointee_type = vararg_param->type->array.base;
 			LLVMTypeRef llvm_pointee = llvm_get_type(c, pointee_type);
 			Type *array = type_get_array(pointee_type, arguments - non_variadic_params);
 			LLVMTypeRef llvm_array_type = llvm_get_type(c, array);

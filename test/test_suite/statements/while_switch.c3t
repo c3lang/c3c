@@ -31,8 +31,8 @@ func int main()
 // #expect: while_switch.ll
 
 
-@0 = internal constant [2 x i8] c"3\00"
-@1 = internal constant [2 x i8] c"4\00"
+@.str = private constant [2 x i8] c"3\00"
+@.str.1 = private constant [2 x i8] c"4\00"
 
 entry:
   %switch = alloca i32, align 4
@@ -57,10 +57,10 @@ switch.entry:
     i32 6, label %switch.default
   ]
 switch.case:
-  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @0, i32 0, i32 0))
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str, i32 0, i32 0))
   br label %switch.case1
 switch.case1:
-  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @1, i32 0, i32 0))
+  %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i32 0, i32 0))
   br label %switch.default
 switch.default:
   br label %switch.exit

@@ -256,6 +256,7 @@ static inline LLVMBasicBlockRef llvm_get_current_block_if_in_use(GenContext *con
 LLVMMetadataRef llvm_get_debug_type(GenContext *c, Type *type);
 static inline LLVMTypeRef llvm_get_ptr_type(GenContext *c, Type *type);
 LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type);
+LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type);
 static inline LLVMValueRef llvm_get_zero(GenContext *c, Type *type);
 
 void llvm_debug_scope_push(GenContext *context, LLVMMetadataRef debug_scope);

@@ -164,6 +164,7 @@ typedef enum
 typedef struct BuildOptions_
 {
 	const char* lib_dir[MAX_LIB_DIRS];
+	const char* std_lib_dir;
 	int lib_count;
 	const char** files;
 	const char* project_name;

@@ -91,12 +91,14 @@ char *read_file(const char *path, size_t *return_size)
 
 const char* find_lib_dir(void)
 {
+
 	const char *path = find_executable_path();
 
 	DEBUG_LOG("Detected executable path at %s", path);
 
 	struct stat info;
 	char *lib_path = NULL;
+
 	asprintf(&lib_path, "%s../lib/std/", path);
 	DEBUG_LOG("Checking %s", lib_path);
 	int err = stat(lib_path, &info);

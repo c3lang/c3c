@@ -313,6 +313,13 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 }
 
 
+LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type)
+{
+	any_type = any_type->canonical;
+	assert(any_type->type_kind == TYPE_POINTER);
+	if (any_type == type_voidptr) return llvm_get_type(c, type_char);
+	return llvm_get_type(c, any_type->pointer);
+}
 
 LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 {

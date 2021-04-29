@@ -63,7 +63,8 @@ static void usage(void)
 	OUTPUT("  headers <file1> [<file2> ...]      Analyse files and generate C headers for public methods.");
 	OUTPUT("");
 	OUTPUT("Options:");
-	OUTPUT("  --lib <dir>           - Use this directory as the c3 library path.");
+	OUTPUT("  --stdlib <dir>        - Use this directory as the C3 standard library path.");
+	OUTPUT("  --lib <dir>           - Use this directory as the C3 library path.");
 	OUTPUT("  --path <dir>          - Use this as the base directory for the current command.");
 	OUTPUT("  --template <template> - Use a different template: \"lib\", \"staticlib\" or a path.");
 	OUTPUT("  --about               - Prints a short description of C3.");
@@ -352,6 +353,12 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("emit-llvm"))
 			{
 				options->emit_llvm = true;
+				return;
+			}
+			if (match_longopt("stdlib"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --stdlib needs a directory.");
+				options->std_lib_dir = check_dir(next_arg());
 				return;
 			}
 			if (match_longopt("lib"))
