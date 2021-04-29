@@ -117,7 +117,7 @@ void test_compiler(void)
 	{
 		printf("Running %s...\n", files[i]);
 		char *res = NULL;
-		(void)asprintf(&res, "tests/%s", files[i]);
+		asprintf(&res, "tests/%s", files[i]);
 		single_file[0] = res;
 		BuildTarget target = { .type = TARGET_TYPE_EXECUTABLE, .sources = single_file, .name = "a.out" };
 		compile_files(&target);

@@ -99,24 +99,24 @@ const char* find_lib_dir(void)
 	struct stat info;
 	char *lib_path = NULL;
 
-	(void)asprintf(&lib_path, "%s../lib/std/", path);
+	asprintf(&lib_path, "%s../lib/std/", path);
 	DEBUG_LOG("Checking %s", lib_path);
 	int err = stat(lib_path, &info);
 
 	// Found it at ../lib/std
 	if (!err && S_ISDIR(info.st_mode))
 	{
-		(void)asprintf(&lib_path, "%s../lib/", path);
+		asprintf(&lib_path, "%s../lib/", path);
 		return lib_path;
 	}
 
-	(void)asprintf(&lib_path, "%slib/std/", path);
+	asprintf(&lib_path, "%slib/std/", path);
 	err = stat(lib_path, &info);
 
 	// Found it at ./lib/std
 	if (!err && S_ISDIR(info.st_mode))
 	{
-		(void)asprintf(&lib_path, "%slib/", path);
+		asprintf(&lib_path, "%slib/", path);
 		return lib_path;
 	}
 
