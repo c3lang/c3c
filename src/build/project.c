@@ -165,7 +165,7 @@ void project_add_target(Project *project, TomlValue *wrapped_table, const char *
 	if (arch_os_string)
 	{
 		ArchOsTarget arch_os = arch_os_target_from_string(arch_os_string);
-		if (arch_os < 0) error_exit("Error reading %s: %s target was not valid.", PROJECT_TOML, type);
+		if (arch_os == ARCH_OS_TARGET_DEFAULT) error_exit("Error reading %s: %s target was not valid.", PROJECT_TOML, type);
 		target->arch_os_target = arch_os;
 	}
 	long symtab_size = get_valid_integer(table, "symtab", type, false);
