@@ -103,6 +103,10 @@ void compiler_compile(BuildTarget *target)
 		parse_file(context);
 	}
 	unsigned source_count = vec_size(contexts);
+	if (!source_count)
+	{
+		error_exit("No source files to compile.");
+	}
 	assert(contexts);
 	for (unsigned i = 0; i < source_count; i++)
 	{
