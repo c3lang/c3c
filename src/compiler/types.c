@@ -4,7 +4,7 @@
 
 #include "compiler_internal.h"
 
-static Type t_u0, t_str, t_u1, t_i8, t_i16, t_i32, t_i64, t_i128, t_ixx;
+static Type t_u0, t_u1, t_i8, t_i16, t_i32, t_i64, t_i128, t_ixx;
 static Type t_u8, t_u16, t_u32, t_u64, t_u128;
 static Type t_f16, t_f32, t_f64, t_f128, t_fxx;
 static Type t_usz, t_isz, t_uptr, t_iptr, t_uptrdiff, t_iptrdiff;

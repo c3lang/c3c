@@ -150,7 +150,7 @@ target_compile_options(c3c PRIVATE -Wno-unknown-warning-option
         -Wold-style-declaration -Woverride-init
         -Wtype-limits -Wshift-negative-value
         -Wnested-externs -Wvla
-        -Wpointer-arith -Wpacked -Wredundant-decls
+        -Wpointer-arith -Wpacked
         -Walloc-zero -Wduplicated-cond -Wshadow
         -Wmissing-field-initializers -Wmissing-parameter-type
          -Wno-unused-result -Wno-maybe-uninitialized
