@@ -2018,13 +2018,13 @@ TomlTable *toml_walk_table_path(TomlParser *parser, TomlTable *table,
                 goto error;
             }
 
-            TomlValue *new_table = toml_value_new_table(&err);
+            TomlValue *temp_table = toml_value_new_table(&err);
             if (err.code != TOML_OK) goto error;
 
-            toml_array_append(t->value.array, new_table, &err);
+            toml_array_append(t->value.array, temp_table, &err);
             if (err.code != TOML_OK) goto error;
 
-            real_table = new_table->value.table;
+            real_table = temp_table->value.table;
         }
     }
     else

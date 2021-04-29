@@ -149,6 +149,9 @@ target_compile_options(c3c PRIVATE -Wno-unknown-warning-option
         -Wignored-qualifiers -Wimplicit-fallthrough=3 -Wmisleading-indentation
         -Wold-style-declaration -Woverride-init
         -Wtype-limits -Wshift-negative-value
+        -Wnested-externs -Wvla
+        -Wpointer-arith -Wpacked -Wredundant-decls
+        -Walloc-zero -Wduplicated-cond -Wshadow
         -Wmissing-field-initializers -Wmissing-parameter-type
          -Wno-unused-result -Wno-maybe-uninitialized
         -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
