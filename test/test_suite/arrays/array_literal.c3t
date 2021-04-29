@@ -14,14 +14,14 @@ func double test(uint x)
 
 // #expect: array_literal.ll
 
-@0 = constant [30 x double] [double 0.000000e+00, double 1.270600e+01, double 4.303000e+00, double 3.182000e+00, double 2.776000e+00, double 2.571000e+00, double 2.447000e+00, double 2.365000e+00, double 2.306000e+00, double 2.262000e+00, double 2.228000e+00, double 2.201000e+00, double 2.179000e+00, double 2.160000e+00, double 2.145000e+00, double 2.131000e+00, double 2.120000e+00, double 2.110000e+00, double 2.101000e+00, double 2.093000e+00, double 2.086000e+00, double 2.080000e+00, double 2.074000e+00, double 2.069000e+00, double 2.064000e+00, double 2.060000e+00, double 2.056000e+00, double 2.052000e+00, double 2.048000e+00, double 2.045000e+00], align 16
+@.__const = private constant [30 x double] [double 0.000000e+00, double 1.270600e+01, double 4.303000e+00, double 3.182000e+00, double 2.776000e+00, double 2.571000e+00, double 2.447000e+00, double 2.365000e+00, double 2.306000e+00, double 2.262000e+00, double 2.228000e+00, double 2.201000e+00, double 2.179000e+00, double 2.160000e+00, double 2.145000e+00, double 2.131000e+00, double 2.120000e+00, double 2.110000e+00, double 2.101000e+00, double 2.093000e+00, double 2.086000e+00, double 2.080000e+00, double 2.074000e+00, double 2.069000e+00, double 2.064000e+00, double 2.060000e+00, double 2.056000e+00, double 2.052000e+00, double 2.048000e+00, double 2.045000e+00], align 16
 
 entry:
   %x = alloca i32, align 4
   %student_t = alloca [30 x double], align 16
   store i32 %0, i32* %x, align 4
   %1 = bitcast [30 x double]* %student_t to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %1, i8* align 16 bitcast ([30 x double]* @0 to i8*), i32 240, i1 false)
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %1, i8* align 16 bitcast ([30 x double]* @.__const to i8*), i32 240, i1 false)
   %2 = load i32, i32* %x, align 4
   %uiuiext = zext i32 %2 to i64
   %arridx = getelementptr inbounds [30 x double], [30 x double]* %student_t, i64 0, i64 %uiuiext

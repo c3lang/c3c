@@ -256,8 +256,9 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 	// In this case we use the failable as the actual return.
 	if (signature->failable)
 	{
-		if (return_value)
+		if (return_value && return_value->value)
 		{
+
 			llvm_store_bevalue_aligned(c, c->return_out, return_value, 0);
 		}
 		return_out = c->failable_out;

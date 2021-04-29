@@ -3351,6 +3351,20 @@ static bool sema_check_int_type_fit(Expr *expr, Type *target_type)
 	return true;
 }
 
+static void unify_voidptr(Expr *left, Expr *right, Type **left_type_ref, Type **right_type_ref)
+{
+	if (*left_type_ref == *right_type_ref) return;
+	if (*left_type_ref == type_voidptr)
+	{
+		cast(left, *right_type_ref);
+		*left_type_ref = *right_type_ref;
+	}
+	if (*right_type_ref == type_voidptr)
+	{
+		cast(right, *left_type_ref);
+		*right_type_ref = *left_type_ref;
+	}
+}
 /**
  * Analyse a - b
  * @return true if analysis succeeded
@@ -3370,6 +3384,7 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 		if (right_type->type_kind == TYPE_POINTER)
 		{
 			// 3a. Require that both types are the same.
+			unify_voidptr(left, right, &left_type, &right_type);
 			if (left_type != right_type)
 			{
 				SEMA_ERROR(expr, "'%s' - '%s' is not allowed. Subtracting pointers of different types from each other is not possible.", type_to_error_string(left_type), type_to_error_string(right_type));
@@ -3466,6 +3481,8 @@ static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *
 		left = temp;
 		right_type = left_type;
 		left_type = left->type->canonical;
+		expr->binary_expr.left = left;
+		expr->binary_expr.right = right;
 	}
 
 	// 3. The "left" will now always be the pointer.
@@ -4006,7 +4023,7 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 					break;
 				case TYPE_POINTER:
 					// Only comparisons between the same type is allowed. Subtypes not allowed.
-					if (left_type != right_type)
+					if (left_type != right_type && left_type != type_voidptr && right_type != type_voidptr)
 					{
 						SEMA_ERROR(expr, "Cannot compare pointers of different types.");
 						return false;

@@ -16,7 +16,7 @@ Vmem tokdata_arena;
 Vmem decl_arena;
 Vmem type_info_arena;
 
-void compiler_init(void)
+void compiler_init(const char *std_lib_dir)
 {
 	// Skip library detection.
 	//compiler.lib_dir = find_lib_dir();
@@ -34,7 +34,14 @@ void compiler_init(void)
 	(void) sourceloc_calloc();
 	(void) toktype_calloc();
 	(void) tokdata_calloc();
-	compiler.lib_dir = find_lib_dir();
+	if (std_lib_dir)
+	{
+		compiler.lib_dir = std_lib_dir;
+	}
+	else
+	{
+		compiler.lib_dir = find_lib_dir();
+	}
 }
 
 static void compiler_lex(BuildTarget *target)
@@ -79,6 +86,7 @@ void compiler_compile(BuildTarget *target)
 	diag_setup(target->test_output);
 	if (compiler.lib_dir)
 	{
+		vec_add(target->sources, strformat("%s/std/runtime.c3", compiler.lib_dir));
 		vec_add(target->sources, strformat("%s/std/builtin.c3", compiler.lib_dir));
 		vec_add(target->sources, strformat("%s/std/io.c3", compiler.lib_dir));
 		vec_add(target->sources, strformat("%s/std/mem.c3", compiler.lib_dir));

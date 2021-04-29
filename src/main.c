@@ -15,11 +15,12 @@ int main(int argc, const char *argv[])
 
 	DEBUG_LOG("Version: %d", version);
 
-	// Init the compiler
-	compiler_init();
 
 	// Parse arguments.
 	BuildOptions build_options = parse_arguments(argc, argv);
+
+	// Init the compiler
+	compiler_init(build_options.std_lib_dir);
 
 	BuildTarget build_target = { .name = NULL };
 
