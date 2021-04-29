@@ -51,8 +51,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-cmake-build-debug/
-
+/build/
+/cmake-build-debug/
 .idea/
 /resources/grammar.tab.c
 /resources/grammar.vcg
