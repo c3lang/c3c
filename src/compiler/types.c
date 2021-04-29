@@ -95,10 +95,10 @@ const char *type_quoted_error_string(Type *type)
 	char *buffer = NULL;
 	if (type->canonical != type)
 	{
-		asprintf(&buffer, "'%s' (%s)", type_to_error_string(type), type_to_error_string(type->canonical));
+		(void)asprintf(&buffer, "'%s' (%s)", type_to_error_string(type), type_to_error_string(type->canonical));
 		return buffer;
 	}
-	asprintf(&buffer, "'%s'", type_to_error_string(type));
+	(void)asprintf(&buffer, "'%s'", type_to_error_string(type));
 	return buffer;
 }
 const char *type_to_error_string(Type *type)
@@ -123,7 +123,7 @@ const char *type_to_error_string(Type *type)
 			return type->name;
 		case TYPE_FUNC:
 		{
-			asprintf(&buffer, type->func.signature->failable ? "func %s!(" : "func %s(",
+			(void)asprintf(&buffer, type->func.signature->failable ? "func %s!(" : "func %s(",
 					type_to_error_string(type->func.signature->rtype->type));
 			VECEACH(type->func.signature->params, i)
 			{
@@ -148,7 +148,7 @@ const char *type_to_error_string(Type *type)
 					UNREACHABLE
 			}
 		case TYPE_VECTOR:
-			asprintf(&buffer, "%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
+			(void)asprintf(&buffer, "%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
 		case TYPE_MEMBER:
 			return "member";
@@ -161,21 +161,21 @@ const char *type_to_error_string(Type *type)
 			{
 				return type_to_error_string(type->pointer);
 			}
-			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
+			(void)asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
 		case TYPE_STRLIT:
 			return "compile time string";
 		case TYPE_ARRAY:
-			asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
+			(void)asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
 		case TYPE_VARARRAY:
-			asprintf(&buffer, "%s[*]", type_to_error_string(type->array.base));
+			(void)asprintf(&buffer, "%s[*]", type_to_error_string(type->array.base));
 			return buffer;
 		case TYPE_INFERRED_ARRAY:
-			asprintf(&buffer, "%s[?]", type_to_error_string(type->array.base));
+			(void)asprintf(&buffer, "%s[?]", type_to_error_string(type->array.base));
 			return buffer;
 		case TYPE_SUBARRAY:
-			asprintf(&buffer, "%s[]", type_to_error_string(type->array.base));
+			(void)asprintf(&buffer, "%s[]", type_to_error_string(type->array.base));
 			return buffer;
 		case TYPE_ERR_UNION:
 			return "error";

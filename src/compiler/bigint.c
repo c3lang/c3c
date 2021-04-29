@@ -1898,11 +1898,11 @@ const char *bigint_to_error_string(const BigInt *bigint, uint64_t base)
 		char *res = NULL;
 		if (bigint->is_negative)
 		{
-			asprintf(&res, "-%" PRIu64, bigint->digit);
+			(void)asprintf(&res, "-%" PRIu64, bigint->digit);
 		}
 		else
 		{
-			asprintf(&res, "%" PRIu64, bigint->digit);
+			(void)asprintf(&res, "%" PRIu64, bigint->digit);
 		}
 		return res;
 	}

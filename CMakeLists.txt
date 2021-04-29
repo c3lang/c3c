@@ -143,7 +143,7 @@ add_executable(c3c
         src/compiler/llvm_codegen_c_abi_riscv.c
         src/compiler/llvm_codegen_c_abi_wasm.c)
 
-target_compile_options(c3c PRIVATE -Wsign-compare -Wno-unknown-warning-option -Wno-unused-result -Wno-maybe-uninitialized -Wimplicit-int -Werror -Wall -Wno-unknown-pragmas -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
+target_compile_options(c3c PRIVATE -Wsign-compare -Wno-unknown-warning-option -Wno-maybe-uninitialized -Wimplicit-int -Werror -Wall -Wno-unknown-pragmas -Wextra -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 
 target_include_directories(c3c PRIVATE
         "${CMAKE_SOURCE_DIR}/src/")

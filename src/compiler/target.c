@@ -176,7 +176,7 @@ void llvm_dump(void)
 			LLVMTargetRef target;
 			char *error;
 			char *triplet = NULL;
-			asprintf(&triplet, "%s-unknown-%s-unknown", archs[i], os[j]);
+			(void)asprintf(&triplet, "%s-unknown-%s-unknown", archs[i], os[j]);
 			if (LLVMGetTargetFromTriple(triplet, &target, &error)) continue;
 			LLVMTargetMachineRef machine = NULL;
 			if (!(machine = LLVMCreateTargetMachine(target, triplet, "", "", 0, LLVMRelocDefault, LLVMCodeModelDefault))) {

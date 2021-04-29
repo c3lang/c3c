@@ -253,10 +253,10 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:
-			asprintf(&buff, "%Lf", expr->f);
+			(void)asprintf(&buff, "%Lf", expr->f);
 			return buff;
 		case TYPE_STRLIT:
-			asprintf(&buff, "\"%*.s\"", expr->string.len, expr->string.chars);
+			(void)asprintf(&buff, "\"%*.s\"", expr->string.len, expr->string.chars);
 			return buff;
 		default:
 			UNREACHABLE
