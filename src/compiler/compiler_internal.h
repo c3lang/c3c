@@ -1212,7 +1212,6 @@ typedef struct
 
 typedef struct _Context
 {
-	BuildTarget *target;
 	Path *module_name;
 	TokenId* module_parameters;
 	File* file;
@@ -1287,6 +1286,7 @@ typedef struct
 	STable qualified_symbols;
 	Type **type;
 	const char *lib_dir;
+	const char **sources;
 } Compiler;
 
 typedef enum
@@ -1377,6 +1377,7 @@ typedef struct ABIArgInfo_
 } ABIArgInfo;
 
 extern Compiler compiler;
+extern BuildTarget active_target;
 extern Ast *poisoned_ast;
 extern Decl *poisoned_decl;
 extern Expr *poisoned_expr;
@@ -1493,7 +1494,7 @@ Decl *compiler_find_symbol(const char *name);
 Module *compiler_find_or_create_module(Path *module_name);
 void compiler_register_public_symbol(Decl *decl);
 
-Context *context_create(File *file, BuildTarget *target);
+Context *context_create(File *file);
 void context_register_global_decl(Context *context, Decl *decl);
 void context_register_external_symbol(Context *context, Decl *decl);
 bool context_add_import(Context *context, Path *path, Token symbol, Token alias);

@@ -19,21 +19,21 @@ void gencontext_begin_module(GenContext *c)
 	LLVMSetSourceFileName(c->module, full_path, strlen(c->ast_context->file->full_path));
 	LLVMTypeRef options_type = LLVMInt8TypeInContext(c->context);
 
-	if (c->build_target->pic == PIC_BIG || c->build_target->pic == PIC_SMALL)
+	if (active_target.pic == PIC_BIG || active_target.pic == PIC_SMALL)
 	{
 		static const char *pic_level = "PIC Level";
-		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, c->build_target->pic, false));
+		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, active_target.pic, false));
 		LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pic_level, strlen(pic_level), setting);
 	}
-	if (c->build_target->pie == PIE_BIG || c->build_target->pie == PIE_SMALL)
+	if (active_target.pie == PIE_BIG || active_target.pie == PIE_SMALL)
 	{
 		static const char *pie_level = "PIE Level";
-		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, c->build_target->pie, false));
+		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, active_target.pie, false));
 		LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
 	}
 
 	LLVMSetTarget(c->module, platform_target.target_triple);
-	if (c->build_target->debug_info != DEBUG_INFO_NONE)
+	if (active_target.debug_info != DEBUG_INFO_NONE)
 	{
 		const char *filename = c->ast_context->file->name;
 		const char *dir_path = c->ast_context->file->dir_path;
@@ -42,10 +42,10 @@ void gencontext_begin_module(GenContext *c)
 		c->debug.builder = LLVMCreateDIBuilder(c->module);
 		c->debug.file = LLVMDIBuilderCreateFile(c->debug.builder, filename, strlen(filename), dir_path, strlen(dir_path));
 
-		bool is_optimized = c->build_target->optimization_level != OPTIMIZATION_NONE;
+		bool is_optimized = active_target.optimization_level != OPTIMIZATION_NONE;
 		const char *dwarf_flags = "";
 		unsigned runtime_version = 1;
-		LLVMDWARFEmissionKind emission_kind = c->build_target->debug_info == DEBUG_INFO_FULL ? LLVMDWARFEmissionFull : LLVMDWARFEmissionLineTablesOnly;
+		LLVMDWARFEmissionKind emission_kind = active_target.debug_info == DEBUG_INFO_FULL ? LLVMDWARFEmissionFull : LLVMDWARFEmissionLineTablesOnly;
 		c->debug.compile_unit = LLVMDIBuilderCreateCompileUnit(c->debug.builder, LLVMDWARFSourceLanguageC,
 		                                                       c->debug.file, DWARF_PRODUCER_NAME,
 		                                                       strlen(DWARF_PRODUCER_NAME), is_optimized,

@@ -5,11 +5,10 @@
 #include "compiler_internal.h"
 
 
-Context *context_create(File *file, BuildTarget *target)
+Context *context_create(File *file)
 {
     Context *context = CALLOCS(Context);
     context->file = file;
-    context->target = target;
     stable_init(&context->local_symbols, 256);
 	stable_init(&context->external_symbols, 256);
 	stable_init(&context->scratch_table, 32);

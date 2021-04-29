@@ -35,8 +35,7 @@ int main(int argc, const char *argv[])
 		case COMMAND_GENERATE_HEADERS:
 		case COMMAND_COMPILE:
 		case COMMAND_COMPILE_RUN:
-			init_default_build_target(&build_target, &build_options, "foo.out");
-			compile_files(&build_target);
+			compile_target(&build_options);
 			break;
 		case COMMAND_BUILD:
 		case COMMAND_RUN:
@@ -45,8 +44,7 @@ int main(int argc, const char *argv[])
 		case COMMAND_DIST:
 		case COMMAND_DOCS:
 		case COMMAND_BENCH:
-			init_build_target(&build_target, &build_options);
-			compile_files(&build_target);
+			compile_file_list(&build_options);
 			break;
 		case COMMAND_MISSING:
 			printf("TODO\n");

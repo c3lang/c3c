@@ -9,19 +9,7 @@
 
 void load_library_files(void) {}
 void load_files(void) {}
-void compile_files(BuildTarget *target);
 
-void build(const char *optional_target)
-{
-	// Locate the project.toml
-	file_find_top_dir();
-	// Parse it
-	Project *project = project_load();
-	BuildTarget *target = project_select_target(project, optional_target);
-
-	load_library_files();
-	compile_files(target);
-}
 
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
@@ -143,6 +131,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options, const
 
 void init_build_target(BuildTarget *target, BuildOptions *options)
 {
+	*target = (BuildTarget) { 0 };
 	// Locate the project.toml
 	file_find_top_dir();
 	// Parse it

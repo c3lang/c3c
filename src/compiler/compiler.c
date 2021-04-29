@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 Compiler compiler;
+BuildTarget active_target;
 
 Vmem ast_arena;
 Vmem expr_arena;
@@ -44,12 +45,12 @@ void compiler_init(const char *std_lib_dir)
 	}
 }
 
-static void compiler_lex(BuildTarget *target)
+static void compiler_lex(void)
 {
-	VECEACH(target->sources, i)
+	VECEACH(compiler.sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(target->sources[i], &loaded);
+		File *file = source_file_load(compiler.sources[i], &loaded);
 		if (loaded) continue;
 		Lexer lexer;
 		lexer_init_with_file(&lexer, file);
@@ -65,40 +66,40 @@ static void compiler_lex(BuildTarget *target)
 	exit(EXIT_SUCCESS);
 }
 
-void compiler_parse(BuildTarget *target)
+void compiler_parse(void)
 {
-	VECEACH(target->sources, i)
+	VECEACH(compiler.sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(target->sources[i], &loaded);
+		File *file = source_file_load(compiler.sources[i], &loaded);
 		if (loaded) continue;
-		diag_setup(target->test_output);
-		Context *context = context_create(file, target);
+		diag_setup(active_target.test_output);
+		Context *context = context_create(file);
 		parse_file(context);
 		context_print_ast(context, stdout);
 	}
 	exit(EXIT_SUCCESS);
 }
 
-void compiler_compile(BuildTarget *target)
+void compiler_compile(void)
 {
 	Context **contexts = NULL;
-	diag_setup(target->test_output);
+	diag_setup(active_target.test_output);
 	if (compiler.lib_dir)
 	{
-		vec_add(target->sources, strformat("%s/std/runtime.c3", compiler.lib_dir));
-		vec_add(target->sources, strformat("%s/std/builtin.c3", compiler.lib_dir));
-		vec_add(target->sources, strformat("%s/std/io.c3", compiler.lib_dir));
-		vec_add(target->sources, strformat("%s/std/mem.c3", compiler.lib_dir));
-		vec_add(target->sources, strformat("%s/std/array.c3", compiler.lib_dir));
-		vec_add(target->sources, strformat("%s/std/math.c3", compiler.lib_dir));
+		vec_add(compiler.sources, strformat("%s/std/runtime.c3", compiler.lib_dir));
+		vec_add(compiler.sources, strformat("%s/std/builtin.c3", compiler.lib_dir));
+		vec_add(compiler.sources, strformat("%s/std/io.c3", compiler.lib_dir));
+		vec_add(compiler.sources, strformat("%s/std/mem.c3", compiler.lib_dir));
+		vec_add(compiler.sources, strformat("%s/std/array.c3", compiler.lib_dir));
+		vec_add(compiler.sources, strformat("%s/std/math.c3", compiler.lib_dir));
 	}
-	VECEACH(target->sources, i)
+	VECEACH(compiler.sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(target->sources[i], &loaded);
+		File *file = source_file_load(compiler.sources[i], &loaded);
 		if (loaded) continue;
-		Context *context = context_create(file, target);
+		Context *context = context_create(file);
 		vec_add(contexts, context);
 		parse_file(context);
 	}
@@ -144,7 +145,7 @@ void compiler_compile(BuildTarget *target)
 	}
 	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
 
-	if (target->output_headers)
+	if (active_target.output_headers)
 	{
 		for (unsigned i = 0; i < source_count; i++)
 		{
@@ -183,7 +184,7 @@ void compiler_compile(BuildTarget *target)
 	print_arena_status();
 
 
-	bool create_exe = !target->test_output && (target->type == TARGET_TYPE_EXECUTABLE || target->type == TARGET_TYPE_TEST);
+	bool create_exe = !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST);
 
 	const char **obj_files = NULL;
 
@@ -196,21 +197,21 @@ void compiler_compile(BuildTarget *target)
 
 	if (create_exe)
 	{
-		if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
+		if (active_target.arch_os_target == ARCH_OS_TARGET_DEFAULT)
 		{
-			platform_linker(target->name, obj_files, source_count);
+			platform_linker(active_target.name, obj_files, source_count);
 		}
 		else
 		{
-			if (!obj_format_linking_supported(platform_target.object_format) || !linker(target->name, obj_files, source_count))
+			if (!obj_format_linking_supported(platform_target.object_format) || !linker(active_target.name, obj_files, source_count))
 			{
 				printf("No linking is performed due to missing linker support.");
-				target->run_after_compile = false;
+				active_target.run_after_compile = false;
 			}
 		}
-		if (target->run_after_compile)
+		if (active_target.run_after_compile)
 		{
-			system(strformat("./%s", target->name));
+			system(strformat("./%s", active_target.name));
 		}
 	}
 
@@ -257,25 +258,37 @@ static void target_expand_source_names(BuildTarget *target)
 	target->sources = files;
 }
 
-void compile_files(BuildTarget *target)
+void compile_target(BuildOptions *options)
 {
-	symtab_init(target->symtab_size ? target->symtab_size : 64 * 1024);
-	assert(target);
-	target_expand_source_names(target);
-	target_setup(target);
+	init_default_build_target(&active_target, options, "foo.out");
+	compile();
+}
 
-	if (!vec_size(target->sources)) error_exit("No files to compile.");
-	if (target->lex_only)
+void compile_file_list(BuildOptions *options)
+{
+	init_build_target(&active_target, options);
+	compile();
+}
+
+void compile()
+{
+	compiler.sources = active_target.sources;
+	symtab_init(active_target.symtab_size ? active_target.symtab_size : 64 * 1024);
+	target_expand_source_names(&active_target);
+	target_setup(&active_target);
+
+	if (!vec_size(active_target.sources)) error_exit("No files to compile.");
+	if (active_target.lex_only)
 	{
-		compiler_lex(target);
+		compiler_lex();
 		return;
 	}
-	if (target->parse_only)
+	if (active_target.parse_only)
 	{
-		compiler_parse(target);
+		compiler_parse();
 		return;
 	}
-	compiler_compile(target);
+	compiler_compile();
 }
 
 

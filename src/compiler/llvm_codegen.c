@@ -40,7 +40,6 @@ static void gencontext_init(GenContext *context, Context *ast_context)
 {
 	memset(context, 0, sizeof(GenContext));
 	context->context = LLVMContextCreate();
-	context->build_target = ast_context->target;
 	context->bool_type = LLVMInt1TypeInContext(context->context);
 	context->byte_type = LLVMInt8TypeInContext(context->context);
 	LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
@@ -484,13 +483,13 @@ void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)
  * Values here taken from LLVM.
  * @return return the inlining threshold given the build options.
  */
-static int get_inlining_threshold(BuildTarget *target)
+static int get_inlining_threshold()
 {
-	if (target->optimization_level == OPTIMIZATION_AGGRESSIVE)
+	if (active_target.optimization_level == OPTIMIZATION_AGGRESSIVE)
 	{
 		return 250;
 	}
-	switch (target->size_optimization_level)
+	switch (active_target.size_optimization_level)
 	{
 		case SIZE_OPTIMIZATION_TINY:
 			return 5;
@@ -888,10 +887,10 @@ const char *llvm_codegen(void *context)
 	LLVMModuleRef module = c->module;
 	// Starting from here we could potentially thread this:
 	LLVMPassManagerBuilderRef pass_manager_builder = LLVMPassManagerBuilderCreate();
-	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, c->build_target->optimization_level);
-	LLVMPassManagerBuilderSetSizeLevel(pass_manager_builder, c->build_target->size_optimization_level);
-	LLVMPassManagerBuilderSetDisableUnrollLoops(pass_manager_builder, c->build_target->optimization_level == OPTIMIZATION_NONE);
-	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, get_inlining_threshold(c->build_target));
+	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, active_target.optimization_level);
+	LLVMPassManagerBuilderSetSizeLevel(pass_manager_builder, active_target.size_optimization_level);
+	LLVMPassManagerBuilderSetDisableUnrollLoops(pass_manager_builder, active_target.optimization_level == OPTIMIZATION_NONE);
+	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, get_inlining_threshold());
 	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
 	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(module);
 	LLVMAddAnalysisPasses(target_machine(), function_pass_manager);
@@ -921,14 +920,14 @@ const char *llvm_codegen(void *context)
 	LLVMDisposePassManager(pass_manager);
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
-	if (c->build_target->emit_llvm)
+	if (active_target.emit_llvm)
 	{
 		gencontext_print_llvm_ir(c);
 		gencontext_verify_ir(c);
 	}
 
 	const char *object_name = NULL;
-	if (c->build_target->emit_object_files)
+	if (active_target.emit_object_files)
 	{
 		gencontext_emit_object_file(c);
 		object_name = c->object_filename;

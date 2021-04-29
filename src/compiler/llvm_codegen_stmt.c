@@ -1029,7 +1029,7 @@ static inline void gencontext_emit_assume(GenContext *c, Expr *expr)
 
 static inline void gencontext_emit_assert_stmt(GenContext *c, Ast *ast)
 {
-	if (c->build_target->feature.safe_mode)
+	if (active_target.feature.safe_mode)
 	{
 		BEValue value;
 		llvm_emit_expr(c, &value, ast->assert_stmt.expr);

@@ -36,7 +36,7 @@ LLVMValueRef llvm_emit_const_padding(GenContext *c, ByteSize size)
 
 static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
 {
-	if (c->build_target->feature.trap_on_wrap)
+	if (active_target.feature.trap_on_wrap)
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
 		LLVMValueRef args[2] = { left, right };
@@ -98,7 +98,7 @@ void llvm_emit_convert_value_from_coerced(GenContext *context, BEValue *result, 
 static inline LLVMValueRef
 llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
 {
-	if (c->build_target->feature.trap_on_wrap)
+	if (active_target.feature.trap_on_wrap)
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type);
 		LLVMValueRef args[2] = { left, right };
@@ -190,7 +190,7 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c,
 			return LLVMBuildInBoundsGEP(c->builder, parent->value, &index->value, 1, "ptridx");
 		case TYPE_ARRAY:
 		{
-			if (c->build_target->feature.safe_mode)
+			if (active_target.feature.safe_mode)
 			{
 				llvm_emit_array_bounds_check(c, index, llvm_const_int(c, index->type, type->array.len));
 			}
@@ -205,7 +205,7 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c,
 		}
 		case TYPE_SUBARRAY:
 		{
-			if (c->build_target->feature.safe_mode)
+			if (active_target.feature.safe_mode)
 			{
 				// TODO insert trap on overflow.
 			}
@@ -1084,7 +1084,7 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 			assert(!type_is_unsigned(type));
 			llvm_emit_expr(c, value, expr->unary_expr.expr);
 			llvm_value_rvalue(c, value);
-			if (c->build_target->feature.trap_on_wrap)
+			if (active_target.feature.trap_on_wrap)
 			{
 				LLVMValueRef zero = llvm_get_zero(c, expr->unary_expr.expr->type);
 				LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
@@ -1181,7 +1181,7 @@ static void llvm_emit_len(GenContext *c, BEValue *be_value, Expr *expr)
 
 static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef value, const char *error)
 {
-	if (!c->build_target->feature.safe_mode) return;
+	if (!active_target.feature.safe_mode) return;
 	if (type_is_integer_unsigned(expr->type->canonical)) return;
 
 	LLVMValueRef zero = llvm_const_int(c, expr->type, 0);
@@ -1191,7 +1191,7 @@ static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef valu
 
 static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, const char *error)
 {
-	if (!c->build_target->feature.safe_mode) return;
+	if (!active_target.feature.safe_mode) return;
 
 	LLVMValueRef zero = llvm_get_zero(c, type);
 	LLVMValueRef ok = type_is_any_integer(type) ? LLVMBuildICmp(c->builder, LLVMIntEQ, value, zero, "zero") : LLVMBuildFCmp(c->builder, LLVMRealUEQ, value, zero, "zero");
@@ -1201,7 +1201,7 @@ static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, c
 
 static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type *type, const char *error)
 {
-	if (!c->build_target->feature.safe_mode) return;
+	if (!active_target.feature.safe_mode) return;
 	unsigned type_bit_size = type_size(type) * 8;
 	LLVMValueRef max = llvm_const_int(c, type, type_bit_size);
 	if (type_is_unsigned(type))
@@ -1261,7 +1261,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 	llvm_value_rvalue(c, &start_index);
 
 	LLVMValueRef len;
-	if (!end || slice->slice_expr.start_from_back || slice->slice_expr.end_from_back || c->build_target->feature.safe_mode)
+	if (!end || slice->slice_expr.start_from_back || slice->slice_expr.end_from_back || active_target.feature.safe_mode)
 	{
 		switch (parent_type->type_kind)
 		{
@@ -1289,7 +1289,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 	}
 
 	// Check that index does not extend beyond the length.
-	if (parent_type->type_kind != TYPE_POINTER && c->build_target->feature.safe_mode)
+	if (parent_type->type_kind != TYPE_POINTER && active_target.feature.safe_mode)
 	{
 
 		LLVMValueRef exceeds_size = llvm_emit_int_comparison(c,
@@ -1325,7 +1325,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 		}
 
 		// This will trap any bad negative index, so we're fine.
-		if (c->build_target->feature.safe_mode)
+		if (active_target.feature.safe_mode)
 		{
 			LLVMValueRef excess = llvm_emit_int_comparison(c,
 			                                               start_type,
@@ -1695,7 +1695,7 @@ static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left
 
 static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
 {
-	if (c->build_target->feature.trap_on_wrap)
+	if (active_target.feature.trap_on_wrap)
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type);
 		LLVMValueRef args[2] = { left, right };

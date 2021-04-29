@@ -119,8 +119,7 @@ void test_compiler(void)
 		char *res = NULL;
 		asprintf(&res, "tests/%s", files[i]);
 		single_file[0] = res;
-		BuildTarget target = { .type = TARGET_TYPE_EXECUTABLE, .sources = single_file, .name = "a.out" };
-		compile_files(&target);
+		active_target = (BuildTarget) { .type = TARGET_TYPE_EXECUTABLE, .sources = single_file, .name = "a.out" };
 		free(res);
 	}
 

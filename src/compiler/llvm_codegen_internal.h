@@ -97,7 +97,6 @@ typedef struct
 	bool current_block_is_target : 1;
 	bool did_call_stack_save : 1;
 	LLVMTypeRef type_data_definitions[TYPE_KINDS];
-	BuildTarget *build_target;
 } GenContext;
 
 // LLVM Intrinsics
