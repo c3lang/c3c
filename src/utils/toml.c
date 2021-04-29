@@ -1068,11 +1068,6 @@ TomlString *toml_parse_basic_string(TomlParser *self, TomlErr *error)
                 toml_string_append_char(result, '\r', &err);
                 toml_move_next(self);
             }
-            else if (ch2 == '"')
-            {
-                toml_string_append_char(result, '\"', &err);
-                toml_move_next(self);
-            }
             else if (ch2 == '\\')
             {
                 toml_string_append_char(result, '\\', &err);
@@ -1236,11 +1231,6 @@ TomlValue *toml_parse_multi_line_basic_string(TomlParser *self, TomlErr *error)
             else if (ch2 == 'r')
             {
                 toml_string_append_char(result, '\r', &err);
-                toml_move_next(self);
-            }
-            else if (ch2 == '"')
-            {
-                toml_string_append_char(result, '\"', &err);
                 toml_move_next(self);
             }
             else if (ch2 == '\\')
