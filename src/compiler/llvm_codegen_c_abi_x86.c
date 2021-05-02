@@ -72,10 +72,10 @@ static ABIArgInfo *x86_create_indirect_result(Regs *regs, Type *type, ByVal by_v
 	// Realign if alignment is greater.
 	if (alignment > stack_alignment)
 	{
-		return abi_arg_new_indirect_realigned(stack_alignment);
+		return abi_arg_new_indirect_realigned(stack_alignment, type);
 	}
 
-	return abi_arg_new_indirect_by_val();
+	return abi_arg_new_indirect_by_val(type);
 }
 
 

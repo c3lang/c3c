@@ -507,8 +507,11 @@ static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef functio
 			else
 			{
 				// TODO then type attributes are added to LLVM-C, use that for byval.
-				if (info->indirect.by_val) llvm_attribute_add(context, function, attribute_byval, index);
-				llvm_attribute_add(context, function, attribute_noalias, index);
+				if (info->indirect.by_val_type) llvm_attribute_add(context, function, attribute_byval, index);
+				if (!info->indirect.realignment)
+				{
+					llvm_attribute_add_int(context, function, attribute_align, type_abi_alignment(info->indirect.by_val_type), index);
+				}
 			}
 			break;
 

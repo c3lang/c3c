@@ -134,7 +134,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 		return abi_arg_new_direct_coerce(abi_type_new_int_bits(aligned_size * 8));
 	}
 
-	return abi_arg_new_indirect_by_val();
+	return abi_arg_new_indirect_by_val(type);
 }
 
 

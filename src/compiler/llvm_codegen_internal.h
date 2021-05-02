@@ -21,6 +21,8 @@
 #include <llvm-c/Comdat.h>
 #include "dwarf.h"
 
+
+
 typedef enum
 {
 	BE_VALUE,
@@ -44,11 +46,6 @@ typedef struct
 	LLVMBasicBlockRef break_block;
 	LLVMBasicBlockRef next_block;
 }  BreakContinue;
-
-
-
-
-
 
 typedef struct
 {

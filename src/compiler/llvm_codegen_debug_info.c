@@ -470,7 +470,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 		                                  NULL, 0, NULL, 0);
 	}
 
-	Type *original_type = type->type_kind == TYPE_TYPEDEF ? decl->typedef_decl.type_info->type : decl->distinct_decl.base_type;
+	Type *original_type = type->type_kind == TYPE_TYPEDEF ? type->canonical : decl->distinct_decl.base_type;
 
 	SourceLocation *location = TOKLOC(decl->span.loc);
 	// Use forward references in case we haven't resolved the original type, since we could have this:

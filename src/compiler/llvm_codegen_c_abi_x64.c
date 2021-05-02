@@ -113,16 +113,16 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 	if (!free_int_regs)
 	{
 		unsigned size = type_size(type);
-		if (align == 8 && size <= 8)
+		if (align <= 8 && size <= 8)
 		{
 			return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
 		}
 	}
 	if (align < 8)
 	{
-		return abi_arg_new_indirect_realigned(8);
+		return abi_arg_new_indirect_realigned(8, type);
 	}
-	return abi_arg_new_direct();
+	return abi_arg_new_indirect_by_val(type);
 }
 
 
@@ -794,7 +794,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 {
 	X64Class hi_class;
 	X64Class lo_class;
-	x64_classify(type, 0, &lo_class, &hi_class, NAMED);
+	x64_classify(type, 0, &lo_class, &hi_class, is_named);
 
 	// Invariants
 	assert(hi_class != CLASS_MEMORY || lo_class == CLASS_MEMORY);

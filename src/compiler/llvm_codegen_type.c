@@ -323,11 +323,11 @@ LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type)
 
 LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 {
-	if (any_type->backend_type && LLVMGetTypeContext(any_type->backend_type) == c->context)
+	if (any_type->backend_type)
 	{
+		assert(LLVMGetTypeContext(any_type->backend_type) == c->context && "Should have been purged");
 		return any_type->backend_type;
 	}
-	DEBUG_LOG("Generating type %s", any_type->name);
 	switch (any_type->type_kind)
 	{
 		case TYPE_POISONED:

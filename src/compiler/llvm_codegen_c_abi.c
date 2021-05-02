@@ -84,26 +84,26 @@ bool abi_arg_is_indirect(ABIArgInfo *info)
 	UNREACHABLE
 }
 
-ABIArgInfo *abi_arg_new_indirect_realigned(unsigned alignment)
+ABIArgInfo *abi_arg_new_indirect_realigned(unsigned alignment, Type *by_val_type)
 {
 	assert(alignment > 0);
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT);
 	info->indirect.realignment = alignment;
-	info->indirect.by_val = true;
+	info->indirect.by_val_type = by_val_type;
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_indirect_by_val(void)
+ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type)
 {
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT);
-	info->indirect.by_val = true;
+	info->indirect.by_val_type = by_val_type;
 	return info;
 }
 
 ABIArgInfo *abi_arg_new_indirect_not_by_val(void)
 {
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT);
-	info->indirect.by_val = false;
+	info->indirect.by_val_type = NULL;
 	return info;
 }
 
@@ -221,9 +221,9 @@ ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
 	type = type_lowering(type);
 
 	// Struct-likes are returned by sret
-	if (type_is_abi_aggregate(type)) return abi_arg_new_indirect_by_val();
+	if (type_is_abi_aggregate(type)) return abi_arg_new_indirect_by_val(type);
 
-	if (type_is_int128(type) && !platform_target.int128) return abi_arg_new_indirect_by_val();
+	if (type_is_int128(type) && !platform_target.int128) return abi_arg_new_indirect_by_val(type);
 
 	// Otherwise do we have a type that needs promotion?
 	if (type_is_promotable_integer(type)) return abi_arg_new_direct_int_ext(type);

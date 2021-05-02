@@ -6,7 +6,7 @@
 #include "../build/build_options.h"
 #include <unistd.h>
 
-Compiler compiler;
+GlobalContext global_context;
 BuildTarget active_target;
 
 Vmem ast_arena;
@@ -22,8 +22,8 @@ void compiler_init(const char *std_lib_dir)
 	// Skip library detection.
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
-	stable_init(&compiler.modules, 64);
-	stable_init(&compiler.global_symbols, 0x1000);
+	stable_init(&global_context.modules, 64);
+	stable_init(&global_context.global_symbols, 0x1000);
 	vmem_init(&ast_arena, 4 * 1024);
 	vmem_init(&expr_arena, 4 * 1024);
 	vmem_init(&decl_arena, 1024);
@@ -37,20 +37,20 @@ void compiler_init(const char *std_lib_dir)
 	(void) tokdata_calloc();
 	if (std_lib_dir)
 	{
-		compiler.lib_dir = std_lib_dir;
+		global_context.lib_dir = std_lib_dir;
 	}
 	else
 	{
-		compiler.lib_dir = find_lib_dir();
+		global_context.lib_dir = find_lib_dir();
 	}
 }
 
 static void compiler_lex(void)
 {
-	VECEACH(compiler.sources, i)
+	VECEACH(global_context.sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(compiler.sources[i], &loaded);
+		File *file = source_file_load(global_context.sources[i], &loaded);
 		if (loaded) continue;
 		Lexer lexer;
 		lexer_init_with_file(&lexer, file);
@@ -68,10 +68,10 @@ static void compiler_lex(void)
 
 void compiler_parse(void)
 {
-	VECEACH(compiler.sources, i)
+	VECEACH(global_context.sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(compiler.sources[i], &loaded);
+		File *file = source_file_load(global_context.sources[i], &loaded);
 		if (loaded) continue;
 		diag_setup(active_target.test_output);
 		Context *context = context_create(file);
@@ -85,19 +85,19 @@ void compiler_compile(void)
 {
 	Context **contexts = NULL;
 	diag_setup(active_target.test_output);
-	if (compiler.lib_dir)
+	if (global_context.lib_dir)
 	{
-		vec_add(compiler.sources, strformat("%s/std/runtime.c3", compiler.lib_dir));
-		vec_add(compiler.sources, strformat("%s/std/builtin.c3", compiler.lib_dir));
-		vec_add(compiler.sources, strformat("%s/std/io.c3", compiler.lib_dir));
-		vec_add(compiler.sources, strformat("%s/std/mem.c3", compiler.lib_dir));
-		vec_add(compiler.sources, strformat("%s/std/array.c3", compiler.lib_dir));
-		vec_add(compiler.sources, strformat("%s/std/math.c3", compiler.lib_dir));
+		vec_add(global_context.sources, strformat("%s/std/runtime.c3", global_context.lib_dir));
+		vec_add(global_context.sources, strformat("%s/std/builtin.c3", global_context.lib_dir));
+		vec_add(global_context.sources, strformat("%s/std/io.c3", global_context.lib_dir));
+		vec_add(global_context.sources, strformat("%s/std/mem.c3", global_context.lib_dir));
+		vec_add(global_context.sources, strformat("%s/std/array.c3", global_context.lib_dir));
+		vec_add(global_context.sources, strformat("%s/std/math.c3", global_context.lib_dir));
 	}
-	VECEACH(compiler.sources, i)
+	VECEACH(global_context.sources, i)
 	{
 		bool loaded = false;
-		File *file = source_file_load(compiler.sources[i], &loaded);
+		File *file = source_file_load(global_context.sources[i], &loaded);
 		if (loaded) continue;
 		Context *context = context_create(file);
 		vec_add(contexts, context);
@@ -272,7 +272,7 @@ void compile_file_list(BuildOptions *options)
 
 void compile()
 {
-	compiler.sources = active_target.sources;
+	global_context.sources = active_target.sources;
 	symtab_init(active_target.symtab_size ? active_target.symtab_size : 64 * 1024);
 	target_expand_source_names(&active_target);
 	target_setup(&active_target);
@@ -294,19 +294,19 @@ void compile()
 
 Decl *compiler_find_symbol(const char *string)
 {
-	return stable_get(&compiler.global_symbols, string);
+	return stable_get(&global_context.global_symbols, string);
 }
 
-void compiler_add_type(Type *type)
+void global_context_add_type(Type *type)
 {
 	DEBUG_LOG("Created type %s.", type->name);
 	assert(type_ok(type));
-	VECADD(compiler.type, type);
+	VECADD(global_context.type, type);
 }
 
 Module *compiler_find_or_create_module(Path *module_name)
 {
-	Module *module = stable_get(&compiler.modules, module_name->module);
+	Module *module = stable_get(&global_context.modules, module_name->module);
 
 	if (module)
 	{
@@ -324,7 +324,7 @@ Module *compiler_find_or_create_module(Path *module_name)
 	module = CALLOCS(Module);
 	module->name = module_name;
 	stable_init(&module->symbols, 0x10000);
-	stable_set(&compiler.modules, module_name->module, module);
+	stable_set(&global_context.modules, module_name->module, module);
 	// Now find the possible parent array:
 	Path *parent_path = path_find_parent_path(NULL, module_name);
 	if (parent_path)
@@ -339,15 +339,15 @@ Module *compiler_find_or_create_module(Path *module_name)
 void compiler_register_public_symbol(Decl *decl)
 {
 	assert(decl->name);
-	Decl *prev = stable_get(&compiler.global_symbols, decl->name);
+	Decl *prev = stable_get(&global_context.global_symbols, decl->name);
 	// If the previous symbol was already declared globally, remove it.
-	stable_set(&compiler.global_symbols, decl->name, prev ? poisoned_decl : decl);
-	STable *sub_module_space = stable_get(&compiler.qualified_symbols, decl->module->name->module);
+	stable_set(&global_context.global_symbols, decl->name, prev ? poisoned_decl : decl);
+	STable *sub_module_space = stable_get(&global_context.qualified_symbols, decl->module->name->module);
 	if (!sub_module_space)
 	{
 		sub_module_space = malloc_arena(sizeof(*sub_module_space));
 		stable_init(sub_module_space, 0x100);
-		stable_set(&compiler.qualified_symbols, decl->module->name->module, sub_module_space);
+		stable_set(&global_context.qualified_symbols, decl->module->name->module, sub_module_space);
 	}
 	prev = stable_get(sub_module_space, decl->name);
 	stable_set(sub_module_space, decl->name, prev ? poisoned_decl : decl);

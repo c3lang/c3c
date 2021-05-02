@@ -25,7 +25,7 @@ void sema_analysis_pass_process_imports(Context *context)
 		Decl *import = context->imports[i];
 		import->resolve_status = RESOLVE_RUNNING;
 		Path *path = import->import.path;
-		Module *module = stable_get(&compiler.modules, path->module);
+		Module *module = stable_get(&global_context.modules, path->module);
 		DEBUG_LOG("- Import of %s.", path->module);
 		if (!module)
 		{

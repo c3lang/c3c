@@ -2790,7 +2790,9 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		}
 	}
 
-	// 10. Create the actual call
+
+	// 10. Create the actual call (remember to emit a loc, because we might have shifted loc emitting the params)
+	EMIT_LOC(c, expr);
 	LLVMValueRef call_value = LLVMBuildCall2(c->builder, func_type, func, values, vec_size(values), "");
 
 	// 11. Process the return value.

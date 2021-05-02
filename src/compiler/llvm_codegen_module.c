@@ -65,9 +65,10 @@ void gencontext_begin_module(GenContext *c)
 	c->block_global_unique_count = 0;
 	c->ast_alloca_addr_space = target_alloca_addr_space();
 
-	VECEACH(compiler.type, i)
+	VECEACH(global_context.type, i)
 	{
-		compiler.type[i]->backend_type = NULL;
+		global_context.type[i]->backend_type = NULL;
+		global_context.type[i]->backend_debug_type = NULL;
 	}
 }
 

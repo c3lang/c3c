@@ -206,6 +206,7 @@ typedef struct
 typedef struct
 {
 	struct _FunctionSignature *signature;
+	const char *mangled_function_signature;
 } TypeFunc;
 
 struct _Type
@@ -354,7 +355,6 @@ typedef struct _FunctionSignature
 	struct ABIArgInfo_ *ret_abi_info;
 	struct ABIArgInfo_ *failable_abi_info;
 	Decl** params;
-	const char *mangled_signature;
 } FunctionSignature;
 
 typedef struct
@@ -1287,7 +1287,7 @@ typedef struct
 	Type **type;
 	const char *lib_dir;
 	const char **sources;
-} Compiler;
+} GlobalContext;
 
 typedef enum
 {
@@ -1370,13 +1370,13 @@ typedef struct ABIArgInfo_
 		{
 			// We may request a certain alignment of the parameters.
 			AlignSize realignment;
-			bool by_val : 1;
+			Type *by_val_type;
 		} indirect;
 	};
 
 } ABIArgInfo;
 
-extern Compiler compiler;
+extern GlobalContext global_context;
 extern BuildTarget active_target;
 extern Ast *poisoned_ast;
 extern Decl *poisoned_decl;
@@ -1489,7 +1489,7 @@ void llvm_codegen_setup();
 
 void header_gen(Context *context);
 
-void compiler_add_type(Type *type);
+void global_context_add_type(Type *type);
 Decl *compiler_find_symbol(const char *name);
 Module *compiler_find_or_create_module(Path *module_name);
 void compiler_register_public_symbol(Decl *decl);
@@ -1850,7 +1850,7 @@ static inline Type *type_new(TypeKind kind, const char *name)
 	type->type_kind = kind;
 	assert(name);
 	type->name = name;
-	compiler_add_type(type);
+	global_context_add_type(type);
 	return type;
 }
 

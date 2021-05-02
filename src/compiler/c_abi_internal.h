@@ -23,8 +23,8 @@ ABIArgInfo *abi_arg_new_direct_coerce(AbiType *target_type);
 ABIArgInfo *abi_arg_new_expand_coerce(AbiType *target_type, unsigned offset);
 ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType *first_element, unsigned initial_offset, AbiType *second_element, unsigned padding, bool is_packed);
 ABIArgInfo *abi_arg_new_expand_padded(Type *padding);
-ABIArgInfo *abi_arg_new_indirect_realigned(unsigned alignment);
-ABIArgInfo *abi_arg_new_indirect_by_val(void);
+ABIArgInfo *abi_arg_new_indirect_realigned(unsigned alignment, Type *by_val_type);
+ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type);
 ABIArgInfo *abi_arg_new_indirect_not_by_val(void);
 
 ByteSize abi_type_abi_alignment(AbiType *type);

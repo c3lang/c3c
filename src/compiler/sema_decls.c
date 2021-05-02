@@ -420,15 +420,16 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 	if (!all_ok) return NULL;
 
 	TokenType type = TOKEN_INVALID_TOKEN;
-	signature->mangled_signature = symtab_add(buffer, buffer_write_offset, fnv1a(buffer, buffer_write_offset), &type);
-	Type *func_type = stable_get(&context->local_symbols, signature->mangled_signature);
+	const char *mangled_signature = symtab_add(buffer, buffer_write_offset, fnv1a(buffer, buffer_write_offset), &type);
+	Type *func_type = stable_get(&context->local_symbols, mangled_signature);
 	c_abi_func_create(signature);
 	if (!func_type)
 	{
-		func_type = type_new(TYPE_FUNC, signature->mangled_signature);
+		func_type = type_new(TYPE_FUNC, mangled_signature);
 		func_type->canonical = func_type;
 		func_type->func.signature = signature;
-		stable_set(&context->local_symbols, signature->mangled_signature, func_type);
+		func_type->func.mangled_function_signature = mangled_signature;
+		stable_set(&context->local_symbols, mangled_signature, func_type);
 	}
 	return func_type;
 

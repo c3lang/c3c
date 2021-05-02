@@ -122,17 +122,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_VIRTUAL:
 			return type->name;
 		case TYPE_FUNC:
-		{
-			asprintf(&buffer, type->func.signature->failable ? "func %s!(" : "func %s(",
-					type_to_error_string(type->func.signature->rtype->type));
-			VECEACH(type->func.signature->params, i)
-			{
-				if (i != 0) buffer = strcat_arena(buffer, ", ");
-				strcat_arena(buffer, type_to_error_string(type->func.signature->params[i]->type));
-			}
-
-			return strcat_arena(buffer, ")");
-		}
+			return strcat_arena("func ", type->func.mangled_function_signature);
 		case TYPE_COMPLEX:
 			switch (type->complex->type_kind)
 			{
@@ -1037,6 +1027,7 @@ static void type_create(const char *name, Type *location, TypeKind kind, unsigne
 	};
 	location->name = name;
 	location->canonical = location;
+	global_context_add_type(location);
 }
 
 static void type_create_alias(const char *name, Type *location, Type *canonical)
@@ -1046,6 +1037,7 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 		.name = name,
 		.canonical = canonical
 	};
+	global_context_add_type(location);
 }
 
 
