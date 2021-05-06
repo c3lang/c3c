@@ -136,13 +136,6 @@ typedef struct
 	TokenType type : 8;
 } Token;
 
-typedef struct _Diagnostics
-{
-	bool panic_mode;
-	unsigned errors;
-	unsigned warnings;
-	bool test_mode;
-} Diagnostics;
 
 typedef struct
 {
@@ -272,6 +265,7 @@ typedef struct
 {
 	Path *path;
 	TokenId symbol;
+	bool private;
 	bool aliased;
 } ImportDecl;
 
@@ -291,6 +285,7 @@ typedef struct _VarDecl
 	bool failable : 1;
 	bool unwrap : 1;
 	bool vararg : 1;
+	bool is_static : 1;
 	TypeInfo *type_info;
 	union
 	{
@@ -379,8 +374,6 @@ typedef struct
 	FunctionSignature function_signature;
 	Ast *body;
 	FuncAnnotations *annotations;
-	Decl **locals;
-	Ast **labels;
 } FuncDecl;
 
 typedef struct
@@ -440,7 +433,7 @@ typedef struct
 {
 	Path *path;
 	Expr **params;
-	Token alias;
+	TokenId name;
 } DefineDecl;
 
 typedef struct
@@ -492,10 +485,7 @@ typedef struct _Decl
 	{
 		struct
 		{
-			union
-			{
-				Decl** methods;
-			};
+			Decl** methods;
 			union
 			{
 				// Unions, Errtype and Struct use strukt
@@ -1148,17 +1138,19 @@ typedef struct _Ast
 typedef struct _Module
 {
 	Path *name;
+	TokenId *parameters;
 
-	bool is_external;
-	bool is_c_library;
-	bool is_exported;
+	bool is_external : 1;
+	bool is_c_library : 1;
+	bool is_exported : 1;
+	bool is_generic : 1;
 
 	Ast **files; // Asts
 
 	Decl** functions;
 	STable symbols;
 	STable public_symbols;
-	Module **sub_modules;
+	struct _Context **contexts;
 } Module;
 
 
@@ -1213,7 +1205,6 @@ typedef struct
 typedef struct _Context
 {
 	Path *module_name;
-	TokenId* module_parameters;
 	File* file;
 	Decl** imports;
 	Module *module;
@@ -1262,9 +1253,7 @@ typedef struct _Context
 		int macro_counter;
 		int macro_nesting;
 	};
-	Decl* locals[MAX_LOCALS];
 	Decl **last_local;
-	DynamicScope scopes[MAX_SCOPE_DEPTH];
 	char path_scratch[MAX_PATH];
 	struct {
 		STable external_symbols;
@@ -1277,23 +1266,30 @@ typedef struct _Context
 	Token next_tok;
 	TokenId docs_start;
 	TokenId docs_end;
+	Decl* locals[MAX_LOCALS];
+	DynamicScope scopes[MAX_SCOPE_DEPTH];
 } Context;
 
 typedef struct
 {
 	STable modules;
+	Module **module_list;
+	Module **generic_module_list;
 	STable global_symbols;
 	STable qualified_symbols;
 	Type **type;
 	const char *lib_dir;
 	const char **sources;
+	bool in_panic_mode : 1;
+	bool in_test_mode : 1;
+	unsigned errors_found;
+	unsigned warnings_found;
 } GlobalContext;
 
 typedef enum
 {
 	MODULE_SYMBOL_SEARCH_EXTERNAL,
-	MODULE_SYMBOL_SEARCH_PARENT,
-	MODULE_SYMBOL_SEARCH_THIS
+	MODULE_SYMBOL_SEARCH_MODULE
 } ModuleSymbolSearch;
 
 typedef enum
@@ -1383,7 +1379,6 @@ extern Decl *poisoned_decl;
 extern Expr *poisoned_expr;
 extern Type *poisoned_type;
 extern TypeInfo *poisoned_type_info;
-extern Diagnostics diagnostics;
 
 
 extern Type *type_bool, *type_void, *type_compstr, *type_voidptr;
@@ -1491,13 +1486,14 @@ void header_gen(Context *context);
 
 void global_context_add_type(Type *type);
 Decl *compiler_find_symbol(const char *name);
-Module *compiler_find_or_create_module(Path *module_name);
+Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters);
+Module *global_context_find_module(const char *name);
 void compiler_register_public_symbol(Decl *decl);
 
 Context *context_create(File *file);
 void context_register_global_decl(Context *context, Decl *decl);
 void context_register_external_symbol(Context *context, Decl *decl);
-bool context_add_import(Context *context, Path *path, Token symbol, Token alias);
+bool context_add_import(Context *context, Path *path, Token symbol, Token alias, bool private_import);
 bool context_set_module_from_filename(Context *context);
 bool context_set_module(Context *context, Path *path, TokenId *generic_parameters);
 void context_print_ast(Context *context, FILE *file);
@@ -1520,7 +1516,6 @@ static inline DeclKind decl_from_token(TokenType type);
 
 #pragma mark --- Diag functions
 
-void diag_setup(bool test_output);
 
 void diag_verror_range(SourceLocation *location, const char *message, va_list args);
 
@@ -1588,21 +1583,21 @@ static inline TokenType token_type(Token token) { return toktypeptr(token.id.ind
 #define TOKLEN(T) TOKLOC(T)->length
 
 #define TOKVALID(_tok) (_tok.index != 0)
-Decl *module_find_symbol(Module *module, const char *symbol, ModuleSymbolSearch search, Decl **private_decl);
+Decl *module_find_symbol(Module *module, const char *symbol);
 
-void parse_file(Context *context);
+bool parse_file(Context *context);
 Path *path_create_from_string(Context *context, const char *string, size_t len, SourceSpan span);
 Path *path_find_parent_path(Context *context, Path *path);
 
 const char *resolve_status_to_string(ResolveStatus status);
 
-#define SEMA_TOKEN_ERROR(_tok, ...) sema_error_range3(source_span_from_token_id(_tok.id), __VA_ARGS__)
-#define SEMA_TOKID_ERROR(_tok_id, ...) sema_error_range3(source_span_from_token_id(_tok_id), __VA_ARGS__)
-#define SEMA_ERROR(_node, ...) sema_error_range3((_node)->span, __VA_ARGS__)
+#define SEMA_TOKEN_ERROR(_tok, ...) sema_error_range(source_span_from_token_id(_tok.id), __VA_ARGS__)
+#define SEMA_TOKID_ERROR(_tok_id, ...) sema_error_range(source_span_from_token_id(_tok_id), __VA_ARGS__)
+#define SEMA_ERROR(_node, ...) sema_error_range((_node)->span, __VA_ARGS__)
 #define SEMA_PREV(_node, ...) sema_prev_at_range3((_node)->span, __VA_ARGS__)
 
-void sema_analysis_pass_process_imports(Context *context);
-void sema_analysis_pass_register_globals(Context *context);
+void sema_analysis_pass_process_imports(Module *module);
+void sema_analysis_pass_register_globals(Module *module);
 void sema_analysis_pass_conditional_compilation(Context *context);
 void sema_analysis_pass_decls(Context *context);
 void sema_analysis_pass_ct_assert(Context *context);
@@ -1630,7 +1625,7 @@ Type *sema_type_lower_by_size(Type *type, ByteSize element_size);
 
 void sema_error_at_prev_end(Token token, const char *message, ...);
 
-void sema_error_range3(SourceSpan span, const char *message, ...);
+void sema_error_range(SourceSpan span, const char *message, ...);
 
 void sema_verror_range(SourceLocation *location, const char *message, va_list args);
 void sema_error(Context *context, const char *message, ...);
@@ -2001,6 +1996,24 @@ static inline bool type_is_promotable_float(Type *type)
 	// If we support other architectures, update this.
 	return type_is_float(type->canonical) && type->builtin.bytesize < type_double->builtin.bytesize;
 }
+
+#define MACRO_COPY_DECL(x) x = copy_decl(context, x)
+#define MACRO_COPY_DECL_LIST(x) x = copy_decl_list(context, x)
+#define MACRO_COPY_EXPR(x) x = copy_expr(context, x)
+#define MACRO_COPY_TYPE(x) x = copy_type_info(context, x)
+#define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(context, x)
+#define MACRO_COPY_EXPR_LIST(x) x = copy_expr_list(context, x)
+#define MACRO_COPY_AST_LIST(x) x = copy_ast_list(context, x)
+#define MACRO_COPY_AST(x) x = copy_ast(context, x)
+
+Expr **copy_expr_list(Context *context, Expr **expr_list);
+Expr *copy_expr(Context *context, Expr *source_expr);
+Ast *copy_ast(Context *context, Ast *source);
+Ast **copy_ast_list(Context *context, Ast **to_copy);
+Decl *decl_copy_local_from_macro(Context *context, Decl *to_copy);
+Decl *copy_decl(Context *context, Decl *decl);
+Decl **copy_decl_list(Context *context, Decl **decl_list);
+TypeInfo *copy_type_info(Context *context, TypeInfo *source);
 
 /**
  * Minimum alignment, values are either offsets or alignments.

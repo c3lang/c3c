@@ -984,7 +984,7 @@ void *llvm_gen(Context *context)
 	if (llvm_use_debug(gen_context)) LLVMDIBuilderFinalize(gen_context->debug.builder);
 
 	// If it's in test, then we want to serialize the IR before it is optimized.
-	if (diagnostics.test_mode)
+	if (active_target.test_output)
 	{
 		gencontext_print_llvm_ir(gen_context);
 		gencontext_verify_ir(gen_context);

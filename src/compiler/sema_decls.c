@@ -1020,11 +1020,107 @@ static inline bool sema_analyse_generic(Context *context, Decl *decl)
 }
 
 
-static inline bool sema_analyse_define(Context *context, Decl *decl)
+static bool sema_analyse_plain_define(Context *c, Decl *decl, Decl *symbol)
 {
-	Path *path = decl->generic_decl.path;
+	unsigned parameter_count = vec_size(symbol->module->parameters);
+	if (parameter_count > 0)
+	{
+		SEMA_ERROR(decl, "Using 'define' with parameterized modules, requires parameters - did you forget them?");
+		return false;
+	}
 	TODO
-	return true;
+}
+
+static Module *sema_instantiate_module(Context *context, Module *module, Path *path, Expr **parms)
+{
+	Module *new_module = compiler_find_or_create_module(path, NULL);
+	new_module->functions = copy_decl_list(context, module->functions);
+	TODO
+}
+static bool sema_analyse_parameterized_define(Context *c, Decl *decl, Module *module)
+{
+	Expr **params = decl->define_decl.params;
+	unsigned parameter_count = vec_size(module->parameters);
+	assert(parameter_count > 0);
+	if (parameter_count != vec_size(params))
+	{
+		sema_error_range((SourceSpan) { params[0]->span.loc, VECLAST(params)->span.end_loc }, "The generic module expected %d arguments, but you only supplied %d, did you make a mistake?",
+		           parameter_count, vec_size(decl->define_decl.params));
+		return false;
+	}
+	char *param_path = c->path_scratch;
+	memcpy(param_path, module->name->module, module->name->len);
+	unsigned offset = module->name->len;
+	param_path[offset++] = '(';
+	VECEACH(decl->define_decl.params, i)
+	{
+		Expr *expr = decl->define_decl.params[i];
+		if (expr->expr_kind != EXPR_TYPEINFO)
+		{
+			SEMA_ERROR(expr, "A generic module can only take plain types as arguments.");
+			return false;
+		}
+		if (!sema_resolve_type_info(c, expr->type_expr)) return false;
+		if (i != 0) param_path[offset++] = ',';
+		const char *type_name = expr->type_expr->type->canonical->name;
+		unsigned len = strlen(type_name);
+		memcpy(param_path + offset, type_name, len);
+		offset += len;
+	}
+	param_path[offset++] = ')';
+	param_path[offset] = '\0';
+	TokenType ident_type = TOKEN_IDENT;
+	const char *path_string = symtab_add(param_path, offset, fnv1a(param_path, offset), &ident_type);
+	Module *instantiated_module = global_context_find_module(path_string);
+	if (!instantiated_module)
+	{
+		Path *path = CALLOCS(Path);
+		path->module = path_string;
+		path->span = module->name->span;
+		path->len = offset;
+		instantiated_module = sema_instantiate_module(c, module, path, decl->define_decl.params);
+		TODO
+	}
+	TODO
+}
+static inline bool sema_analyse_define(Context *c, Decl *decl)
+{
+	Path *path = decl->define_decl.path;
+	if (path)
+	{
+		VECEACH(c->imports, i)
+		{
+			Decl *import = c->imports[i];
+			if (path->module == import->import.path->module)
+			{
+				return sema_analyse_parameterized_define(c, decl, import->module);
+			}
+		}
+	}
+	Decl *ambiguous_decl = NULL;
+	Decl *private_decl = NULL;
+	Decl *symbol = sema_resolve_symbol(c, TOKSTR(decl->define_decl.name), decl->define_decl.path, &ambiguous_decl, &private_decl);
+	if (!symbol)
+	{
+		if (private_decl)
+		{
+			SEMA_TOKID_ERROR(decl->define_decl.name, "'%s' is not visible from this module.", private_decl->name);
+		}
+		else if (ambiguous_decl)
+		{
+			SEMA_TOKID_ERROR(decl->define_decl.name, "The name '%s' ambiguous, please add a path.", ambiguous_decl->name);
+		}
+		else
+		{
+			SEMA_TOKID_ERROR(decl->define_decl.name, "Identifier '%s' could not be found.", TOKSTR(decl->define_decl.name));
+		}
+		return false;
+	}
+	if (vec_size(decl->define_decl.params) > 0)
+	{
+		sema_error_range((SourceSpan) { decl->define_decl.params[0]->span.loc, VECLAST(decl->define_decl.params)->span.end_loc }, "Using 'define' with arguments is only for generic modules, did you add arguments by accident?");
+	}
+	return sema_analyse_plain_define(c, decl, symbol);
 }
 
 

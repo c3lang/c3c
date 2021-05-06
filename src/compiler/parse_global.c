@@ -66,7 +66,7 @@ static bool context_next_is_type_and_not_ident(Context *context)
  * are *always* sync points.
  *
  * func, any type, CT_IDENT, CT_TYPE_IDENT, $if, $for, $switch, generic,
- * doc comment start, asm, typeof, TYPE_IDENT, local, const, IDENT
+ * doc comment start, asm, typeof, TYPE_IDENT, const, IDENT
  * - are sync points only if they appear in the first column.
  */
 void recover_top_level(Context *context)
@@ -89,7 +89,6 @@ void recover_top_level(Context *context)
 			case TOKEN_DEFINE:
 				return;
 			case TOKEN_IDENT: // Incr arrays only
-			case TOKEN_LOCAL:
 			case TOKEN_CONST:
 			case TOKEN_ASM:
 			case TOKEN_TYPEOF:
@@ -324,7 +323,7 @@ static inline bool parse_optional_module_params(Context *context, TokenId **toke
 		{
 			case TOKEN_IDENT:
 			case TOKEN_TYPE_IDENT:
-				return false;
+				break;
 			case TOKEN_COMMA:
 				SEMA_TOKEN_ERROR(context->tok, "Unexpected ','");
 				return false;
@@ -343,6 +342,7 @@ static inline bool parse_optional_module_params(Context *context, TokenId **toke
 			return consume(context, TOKEN_RPAREN, "Expected ')'.");
 		}
 	}
+
 }
 /**
  * module ::= MODULE module_path ('(' module_params ')')? EOS
@@ -378,7 +378,7 @@ bool parse_module(Context *context)
 	TokenId *generic_parameters = NULL;
 	if (!parse_optional_module_params(context, &generic_parameters))
 	{
-		context_set_module(context, path, generic_parameters);
+		context_set_module(context, path, NULL);
 		recover_top_level(context);
 		return true;
 	}
@@ -406,7 +406,7 @@ static inline bool parse_specified_import(Context *context, Path *path)
 	// Alias?
 	if (!try_consume(context, TOKEN_AS))
 	{
-		return context_add_import(context, path, symbol, NO_TOKEN);
+		return context_add_import(context, path, symbol, NO_TOKEN, false);
 	}
 	if (context->tok.type != symbol.type)
 	{
@@ -420,7 +420,7 @@ static inline bool parse_specified_import(Context *context, Path *path)
 	}
 	Token alias = context->tok;
 	advance(context);
-	return context_add_import(context, path, symbol, alias);
+	return context_add_import(context, path, symbol, alias, false);
 }
 
 
@@ -765,11 +765,11 @@ TypeInfo *parse_type(Context *context)
 
 /**
  * Parse ident ('=' expr)?
- * @param local
+ * @param is_static
  * @param type
  * @return
  */
-Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type)
+Decl *parse_decl_after_type(Context *context, TypeInfo *type)
 {
 	if (TOKEN_IS(TOKEN_LPAREN))
 	{
@@ -783,8 +783,7 @@ Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type)
 	TokenId name = context->tok.id;
 	advance(context);
 
-	Visibility visibility = local ? VISIBLE_LOCAL : VISIBLE_MODULE;
-	Decl *decl = decl_new_var(name, type, VARDECL_LOCAL, visibility);
+	Decl *decl = decl_new_var(name, type, VARDECL_LOCAL, VISIBLE_LOCAL);
 	if (TOKEN_IS(TOKEN_EQ))
 	{
 		if (!decl)
@@ -800,21 +799,14 @@ Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type)
 
 
 /**
- * declaration ::= ('local' | 'const')? type variable ('=' expr)?
+ * declaration ::= ('static' | 'const')? type variable ('=' expr)?
  *
  * @return Decl* (poisoned on error)
  */
 Decl *parse_decl(Context *context)
 {
-	bool local = try_consume(context, TOKEN_LOCAL);
-
 	if (TOKEN_IS(TOKEN_CONST))
 	{
-		if (local)
-		{
-			SEMA_TOKID_ERROR(context->prev_tok, "A 'local' variable cannot also be declared 'constant'.");
-			return poisoned_decl;
-		}
 		return parse_const_declaration(context, VISIBLE_LOCAL);
 	}
 
@@ -822,7 +814,7 @@ Decl *parse_decl(Context *context)
 
 	bool failable = try_consume(context, TOKEN_BANG);
 
-	Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, local, type), poisoned_decl);
+	Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, type), poisoned_decl);
 	if (failable && decl->var.unwrap)
 	{
 		SEMA_ERROR(decl, "You cannot use unwrap with a failable variable.");
@@ -1453,16 +1445,17 @@ static inline Decl *parse_define(Context *context, Visibility visibility)
 		SEMA_TOKEN_ERROR(context->next_tok, "Compile time variables cannot be defined at the global level.");
 		return poisoned_decl;
 	}
+	TokenId first = context->tok.id;
 	advance_and_verify(context, TOKEN_DEFINE);
 	bool had_error = false;
 	Path *path = parse_path_prefix(context, &had_error);
 	if (had_error) return poisoned_decl;
-	Decl *decl = decl_new(DECL_DEFINE, context->tok.id, visibility);
 	if (!token_is_symbol(context->tok.type))
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Expected an identifier here.");
 		return poisoned_decl;
 	}
+	TokenId name = context->tok.id;
 	advance(context);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_decl);
 	Expr **exprs = NULL;
@@ -1475,16 +1468,19 @@ static inline Decl *parse_define(Context *context, Visibility visibility)
 			TRY_CONSUME_OR(TOKEN_COMMA, "Expected ',' after argument.", poisoned_decl);
 		}
 	}
-	decl->define_decl.path = path;
-	decl->define_decl.params = exprs;
 	TRY_CONSUME_OR(TOKEN_AS, "Expected 'as' after generic declaration.", poisoned_decl);
 	if (!token_is_symbol(context->tok.type))
 	{
 		SEMA_TOKEN_ERROR(context->tok, "The aliased name must follow after 'as'.");
 		return poisoned_decl;
 	}
-	decl->define_decl.alias = context->tok;
+	Decl *decl = decl_new(DECL_DEFINE, context->tok.id, visibility);
+	decl->define_decl.path = path;
+	decl->define_decl.params = exprs;
+	decl->define_decl.name = name;
+	decl->span = (SourceSpan){ first, context->tok.id };
 	advance(context);
+
 	TRY_CONSUME_EOS_OR(poisoned_decl);
 	return decl;
 }
@@ -1930,9 +1926,7 @@ static inline bool check_no_visibility_before(Context *context, Visibility visib
 
 /**
  *
- * import ::= IMPORT import_path (':' specified_import_list)? ';'
- *
- * specified_import_list ::= specified_import (',' specified_import)*
+ * import ::= IMPORT import_path (AS MODULE)? ';'
  *
  * @return true if import succeeded
  */
@@ -1957,7 +1951,12 @@ static inline bool parse_import(Context *context)
 	}
 	else
 	{
-		context_add_import(context, path, NO_TOKEN, NO_TOKEN);
+		bool private = try_consume(context, TOKEN_AS);
+		if (private)
+		{
+			CONSUME_OR(TOKEN_MODULE, false);
+		}
+		context_add_import(context, path, NO_TOKEN, NO_TOKEN, private);
 	}
 	TRY_CONSUME_EOS_OR(false);
 	return true;
@@ -2123,10 +2122,6 @@ Decl *parse_top_level_statement(Context *context)
 	{
 		case TOKEN_PUBLIC:
 			visibility = VISIBLE_PUBLIC;
-			advance(context);
-			break;
-		case TOKEN_LOCAL:
-			visibility = VISIBLE_LOCAL;
 			advance(context);
 			break;
 		case TOKEN_EXTERN:
