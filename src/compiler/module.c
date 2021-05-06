@@ -4,40 +4,9 @@
 
 #include "compiler_internal.h"
 
-Decl *module_find_symbol(Module *module, const char *symbol, ModuleSymbolSearch search, Decl **private_decl)
+Decl *module_find_symbol(Module *module, const char *symbol)
 {
-	Decl *decl = stable_get(&module->symbols, symbol);
-	if (decl)
-	{
-		switch (decl->visibility)
-		{
-			case VISIBLE_LOCAL:
-				*private_decl = decl;
-				decl = NULL;
-				break;
-			case VISIBLE_EXTERN:
-				decl = NULL;
-				break;
-			case VISIBLE_MODULE:
-				if (search == MODULE_SYMBOL_SEARCH_EXTERNAL)
-				{
-					*private_decl = decl;
-					decl = NULL;
-				}
-				break;
-			case VISIBLE_PUBLIC:
-				break;
-		}
-	}
-	if (!decl)
-	{
-		if (search == MODULE_SYMBOL_SEARCH_THIS) search = MODULE_SYMBOL_SEARCH_PARENT;
-		VECEACH (module->sub_modules, i)
-		{
-			if ((decl = module_find_symbol(module->sub_modules[i], symbol, search, private_decl))) break;
-		}
-	}
-	return decl;
+	return stable_get(&module->symbols, symbol);
 }
 
 Path *path_create_from_string(Context *context, const char *string, size_t len, SourceSpan span)

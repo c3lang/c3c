@@ -16,51 +16,87 @@ void context_add_intrinsic(Context *context, const char *name)
 	assert(!old);
 }
 
-void sema_analysis_pass_process_imports(Context *context)
+void sema_analysis_pass_process_imports(Module *module)
 {
-	DEBUG_LOG("Pass: Importing dependencies for %s", context->file->name);
-	unsigned imports = vec_size(context->imports);
-	for (unsigned i = 0; i < imports; i++)
+	DEBUG_LOG("Pass: Importing dependencies for files in module '%s'.", module->name->module);
+	unsigned import_count = 0;
+	VECEACH(module->contexts, index)
 	{
-		Decl *import = context->imports[i];
-		import->resolve_status = RESOLVE_RUNNING;
-		Path *path = import->import.path;
-		Module *module = stable_get(&global_context.modules, path->module);
-		DEBUG_LOG("- Import of %s.", path->module);
-		if (!module)
+		// 1. Loop through each context in the module.
+		Context *context = module->contexts[index];
+		DEBUG_LOG("Checking imports for %s.", context->file->name);
+
+		// 2. Loop through imports
+		unsigned imports = vec_size(context->imports);
+		for (unsigned i = 0; i < imports; i++)
 		{
-			SEMA_ERROR(import, "No module named '%s' could be found.", path->module);
-			decl_poison(import);
-			continue;
-		}
-		import->module = module;
-		for (unsigned j = 0; j < i; j++)
-		{
-			if (import->module == context->imports[j]->module)
+			// 3. Begin analysis
+			Decl *import = context->imports[i];
+			assert(import->resolve_status == RESOLVE_NOT_DONE);
+			import->resolve_status = RESOLVE_RUNNING;
+
+			// 4. Find the module.
+			Path *path = import->import.path;
+			Module *import_module = global_context_find_module(path->module);
+
+			// 5. Do we find it?
+			if (!import_module)
 			{
-				SEMA_ERROR(import, "Module '%s' imported more than once.", path->module);
-				SEMA_PREV(context->imports[i], "Previous import was here");
+				SEMA_ERROR(import, "No module named '%s' could be found, did you type the name right?", path->module);
 				decl_poison(import);
-				break;
+				continue;
+			}
+
+			// 6. Importing itself is not allowed.
+			if (import_module == module)
+			{
+				SEMA_ERROR(import, "Importing the current module is not allowed, you need to remove it.");
+				decl_poison(import);
+				continue;
+			}
+
+			// 6. Assign the module.
+			DEBUG_LOG("* Import of %s.", path->module);
+			import->module = import_module;
+			for (unsigned j = 0; j < i; j++)
+			{
+				// 7. We might run into multiple imports of the same package.
+				if (import->module == context->imports[j]->module)
+				{
+					SEMA_ERROR(import, "Module '%s' was imported more than once, please remove the duplicates.", path->module);
+					SEMA_PREV(context->imports[j], "Previous import was here");
+					decl_poison(import);
+					break;
+				}
 			}
 		}
+		import_count += imports;
+		// TODO probably remove this:
+		context_add_intrinsic(context, kw___round);
+		context_add_intrinsic(context, kw___trunc);
+		context_add_intrinsic(context, kw___ceil);
+		context_add_intrinsic(context, kw___sqrt);
 	}
-	context_add_intrinsic(context, kw___round);
-	context_add_intrinsic(context, kw___trunc);
-	context_add_intrinsic(context, kw___ceil);
-	context_add_intrinsic(context, kw___sqrt);
-	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
+	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", import_count, global_context.errors_found);
 }
 
-void sema_analysis_pass_register_globals(Context *context)
+void sema_analysis_pass_register_globals(Module *module)
 {
-	DEBUG_LOG("Pass: Register globals for %s", context->file->name);
-	VECEACH(context->global_decls, i)
+	DEBUG_LOG("Pass: Register globals for module '%s'.", module->name->module);
+
+	VECEACH(module->contexts, index)
 	{
-		context_register_global_decl(context, context->global_decls[i]);
+		Context *context = module->contexts[index];
+		DEBUG_LOG("Processing %s.", context->file->name);
+		Decl **decls = context->global_decls;
+		VECEACH(decls, i)
+		{
+			context_register_global_decl(context, decls[i]);
+		}
+		vec_resize(context->global_decls, 0);
 	}
-	vec_resize(context->global_decls, 0);
-	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
+
+	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
 static inline void sema_append_decls(Context *context, Decl **decls)
@@ -110,23 +146,28 @@ static inline bool sema_analyse_top_level_if(Context *context, Decl *ct_if)
 
 void sema_analysis_pass_conditional_compilation(Context *context)
 {
+	// We never look at conditional compilation.
+	if (context->module->parameters) return;
+
 	DEBUG_LOG("Pass: Top level conditionals %s", context->file->name);
 	for (unsigned i = 0; i < vec_size(context->ct_ifs); i++)
 	{
 		// Also handle switch!
 		sema_analyse_top_level_if(context, context->ct_ifs[i]);
 	}
-	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
+	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
 void sema_analysis_pass_ct_assert(Context *context)
 {
+	if (context->module->parameters) return;
+
 	DEBUG_LOG("Pass: $assert checks %s", context->file->name);
 	VECEACH(context->ct_asserts, i)
 	{
 		sema_analyse_ct_assert_stmt(context, context->ct_asserts[i]);
 	}
-	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
+	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
 static inline bool analyse_func_body(Context *context, Decl *decl)
@@ -138,6 +179,8 @@ static inline bool analyse_func_body(Context *context, Decl *decl)
 
 void sema_analysis_pass_decls(Context *context)
 {
+	if (context->module->parameters) return;
+
 	DEBUG_LOG("Pass: Decl analysis %s", context->file->name);
 	context->current_scope = &context->scopes[0];
 	context->current_scope->scope_id = 0;
@@ -174,12 +217,14 @@ void sema_analysis_pass_decls(Context *context)
 	{
 		sema_analyse_decl(context, context->generic_defines[i]);
 	}
-	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
+	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
 void sema_analysis_pass_functions(Context *context)
 {
 	DEBUG_LOG("Pass: Function analysis %s", context->file->name);
+
+	if (context->module->parameters) return;
 
 	VECEACH(context->methods, i)
 	{
@@ -190,5 +235,5 @@ void sema_analysis_pass_functions(Context *context)
 		analyse_func_body(context, context->functions[i]);
 	}
 
-	DEBUG_LOG("Pass finished with %d error(s).", diagnostics.errors);
+	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }

@@ -1141,6 +1141,26 @@ void gencontext_emit_catch_stmt(GenContext *c, Ast *ast)
 	llvm_emit_block(c, after_catch);
 }
 
+void llvm_emit_puts_output(GenContext *c, const char *message)
+{
+	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
+	LLVMTypeRef type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), &char_ptr_type, 1, false);
+	LLVMValueRef puts_func = LLVMGetNamedFunction(c->module, "puts");
+	if (!puts_func)
+	{
+		puts_func = LLVMAddFunction(c->module, "puts", type);
+	}
+	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), strlen(message) + 1), "");
+	LLVMSetLinkage(global_name, LLVMInternalLinkage);
+	LLVMSetGlobalConstant(global_name, 1);
+	LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context, message, strlen(message), 0));
+
+	LLVMValueRef zero = llvm_get_zero(c, type_usize);
+	LLVMValueRef string = LLVMBuildInBoundsGEP2(c->builder, LLVMTypeOf(global_name), global_name, &zero, 1, "");
+	string = LLVMBuildBitCast(c->builder, string, char_ptr_type, "");
+	LLVMBuildCall(c->builder, puts_func, &string, 1, "");
+
+}
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name)
 {
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
@@ -1149,22 +1169,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 	llvm_value_set_bool(&be_value, value);
 	llvm_emit_cond_br(c, &be_value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
-	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
-	LLVMTypeRef type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), &char_ptr_type, 1, false);
-	LLVMValueRef puts_func = LLVMGetNamedFunction(c->module, "puts");
-	if (!puts_func)
-	{
-		puts_func = LLVMAddFunction(c->module, "puts", type);
-	}
-	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), strlen(panic_name) + 1), "");
-	LLVMSetLinkage(global_name, LLVMInternalLinkage);
-	LLVMSetGlobalConstant(global_name, 1);
-	LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context, panic_name, strlen(panic_name), 0));
-
-	LLVMValueRef zero = llvm_get_zero(c, type_usize);
-	LLVMValueRef string = LLVMBuildInBoundsGEP2(c->builder, LLVMTypeOf(global_name), global_name, &zero, 1, "");
-	string = LLVMBuildBitCast(c->builder, string, char_ptr_type, "");
-	LLVMBuildCall(c->builder, puts_func, &string, 1, "");
+	llvm_emit_puts_output(c, panic_name);
 	llvm_emit_call_intrinsic(c, intrinsic_id_trap, NULL, 0, NULL, 0);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);

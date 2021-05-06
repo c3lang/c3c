@@ -226,8 +226,6 @@ const char *token_type_to_string(TokenType type)
 			return "import";
 		case TOKEN_INTERFACE:
 			return "interface";
-		case TOKEN_LOCAL:
-			return "local";
 		case TOKEN_MACRO:
 			return "macro";
 		case TOKEN_MODULE:
@@ -240,6 +238,8 @@ const char *token_type_to_string(TokenType type)
 			return "public";
 		case TOKEN_RETURN:
 			return "return";
+		case TOKEN_STATIC:
+			return "static";
 		case TOKEN_STRUCT:
 			return "struct";
 		case TOKEN_SWITCH:
@@ -306,7 +306,6 @@ const char *token_type_to_string(TokenType type)
 			return "uptrdiff";
 		case TOKEN_HALF:
 			return "half";
-
 		case TOKEN_DOCS_EOL:
 			return "EOL";
 		case TOKEN_DOCS_START:

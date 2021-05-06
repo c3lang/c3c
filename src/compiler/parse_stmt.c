@@ -19,6 +19,7 @@ static inline Ast *parse_declaration_stmt(Context *context)
 {
 	Ast *decl_stmt = AST_NEW_TOKEN(AST_DECLARE_STMT, context->tok);
 	decl_stmt->declare_stmt = TRY_DECL_OR(parse_decl(context), poisoned_ast);
+	decl_stmt->declare_stmt->var.is_static = try_consume(context, TOKEN_STATIC);
 	CONSUME_OR(TOKEN_EOS, poisoned_ast);
 	return decl_stmt;
 }
@@ -667,7 +668,7 @@ static inline Ast *parse_decl_or_expr_stmt(Context *context)
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
 		ast->ast_kind = AST_DECLARE_STMT;
-		ast->declare_stmt = TRY_DECL_OR(parse_decl_after_type(context, true, expr->type_expr), poisoned_ast);
+		ast->declare_stmt = TRY_DECL_OR(parse_decl_after_type(context, expr->type_expr), poisoned_ast);
 		ast->declare_stmt->var.failable = failable;
 	}
 	else
@@ -1009,7 +1010,7 @@ Ast *parse_stmt(Context *context)
 			return parse_try_stmt(context);
 		case TOKEN_DEFINE:
 			return parse_define_stmt(context);
-		case TOKEN_LOCAL:   // Local means declaration!
+		case TOKEN_STATIC:   // Static means declaration!
 		case TOKEN_CONST:   // Const means declaration!
 			return parse_declaration_stmt(context);
 		case TOKEN_AT:

@@ -132,11 +132,14 @@ static inline void parse_translation_unit(Context *context)
 	}
 }
 
-void parse_file(Context *context)
+bool parse_file(Context *context)
 {
 	lexer_init_with_file(&context->lexer, context->file);
-	if (diagnostics.errors) return;
+	if (global_context.errors_found) return false;
 	parse_translation_unit(context);
+	if (!context->module) return false;
+	vec_add(context->module->contexts, context);
+	return true;
 }
 
 

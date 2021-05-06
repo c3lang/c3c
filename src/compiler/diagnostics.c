@@ -5,15 +5,7 @@
 #include "compiler_internal.h"
 #include <math.h>
 
-Diagnostics diagnostics;
 
-void diag_setup(bool test_output)
-{
-	diagnostics.panic_mode = false;
-	diagnostics.errors = 0;
-	diagnostics.warnings = 0;
-	diagnostics.test_mode = test_output;
-}
 
 typedef enum
 {
@@ -24,7 +16,7 @@ typedef enum
 
 static void print_error2(SourceLocation *location, const char *message, PrintType print_type)
 {
-	if (diagnostics.test_mode)
+	if (active_target.test_output)
 	{
 		switch (print_type)
 		{
@@ -119,17 +111,17 @@ static void vprint_error(SourceLocation *location, const char *message, va_list 
 
 void diag_verror_range(SourceLocation *location, const char *message, va_list args)
 {
-	if (diagnostics.panic_mode) return;
-	diagnostics.panic_mode = true;
+	if (global_context.in_panic_mode) return;
+	global_context.in_panic_mode = true;
 	vprint_error(location, message, args);
-	diagnostics.errors++;
+	global_context.errors_found++;
 }
 
 
 void sema_verror_range(SourceLocation *location, const char *message, va_list args)
 {
 	vprint_error(location, message, args);
-	diagnostics.errors++;
+	global_context.errors_found++;
 }
 
 
@@ -147,7 +139,7 @@ void sema_prev_at_range3(SourceSpan span, const char *message, ...)
 	va_end(args);
 }
 
-void sema_error_range3(SourceSpan span, const char *message, ...)
+void sema_error_range(SourceSpan span, const char *message, ...)
 {
 	SourceLocation *start = TOKLOC(span.loc);
 	SourceLocation *end = TOKLOC(span.end_loc);
@@ -190,7 +182,7 @@ void sema_error_at_prev_end(Token token, const char *message, ...)
 
 void sema_error(Context *context, const char *message, ...)
 {
-	diagnostics.errors++;
+	global_context.errors_found++;
 	File *file = lexer_current_file(&context->lexer);
 	va_list list;
 	va_start(list, message);

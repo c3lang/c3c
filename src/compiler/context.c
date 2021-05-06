@@ -16,12 +16,12 @@ Context *context_create(File *file)
 }
 
 
-static inline bool create_module_or_check_name(Context *context, Path *module_name)
+static inline bool create_module_or_check_name(Context *context, Path *module_name, TokenId *parameters)
 {
     context->module_name = module_name;
     if (context->module == NULL)
     {
-    	context->module = compiler_find_or_create_module(module_name);
+    	context->module = compiler_find_or_create_module(module_name, parameters);
 	    return true;
     }
 
@@ -56,12 +56,11 @@ bool context_set_module_from_filename(Context *context)
     path->span = INVALID_RANGE;
     path->module = module_name;
     path->len = len;
-    return create_module_or_check_name(context, path);
+    return create_module_or_check_name(context, path, NULL);
 }
 
 bool context_set_module(Context *context, Path *path, TokenId *generic_parameters)
 {
-    DEBUG_LOG("CONTEXT: Setting module to '%s'.", path->module);
     // Note that we allow the illegal name for now, to be able to parse further.
     context->module_name = path;
     if (!is_all_lower(path->module))
@@ -69,9 +68,8 @@ bool context_set_module(Context *context, Path *path, TokenId *generic_parameter
         SEMA_ERROR(path, "A module name may not have any upper case characters.");
         return false;
     }
-    context->module_parameters = generic_parameters;
 
-    return create_module_or_check_name(context, path);
+    return create_module_or_check_name(context, path, generic_parameters);
 }
 
 
@@ -159,7 +157,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 	DEBUG_LOG("Registering symbol '%s'.", decl->name);
 
 	Decl *old = stable_set(&context->local_symbols, decl->name, decl);
-	if (!old && decl->visibility != VISIBLE_LOCAL)
+	if (!old)
 	{
 		old = stable_set(&context->module->symbols, decl->name, decl);
 	}
@@ -176,9 +174,10 @@ void context_register_global_decl(Context *context, Decl *decl)
 	}
 }
 
-bool context_add_import(Context *context, Path *path, Token token, Token alias)
+bool context_add_import(Context *context, Path *path, Token token, Token alias, bool private_import)
 {
     DEBUG_LOG("SEMA: Add import of '%s'.", path->module);
+
 
 	if (!is_all_lower(path->module))
 	{
@@ -191,6 +190,7 @@ bool context_add_import(Context *context, Path *path, Token token, Token alias)
 	import->decl_kind = DECL_IMPORT;
 	import->visibility = VISIBLE_LOCAL;
 	import->import.path = path;
+	import->import.private = private_import;
 	import->import.symbol = token.id;
 	if (alias.type != TOKEN_INVALID_TOKEN)
     {

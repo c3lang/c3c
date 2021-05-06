@@ -17,12 +17,21 @@ Vmem tokdata_arena;
 Vmem decl_arena;
 Vmem type_info_arena;
 
+static void global_context_clear_errors(void)
+{
+	global_context.in_panic_mode = false;
+	global_context.errors_found = 0;
+	global_context.warnings_found = 0;
+}
+
 void compiler_init(const char *std_lib_dir)
 {
 	// Skip library detection.
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
 	stable_init(&global_context.modules, 64);
+	global_context.module_list = NULL;
+	global_context.generic_module_list = NULL;
 	stable_init(&global_context.global_symbols, 0x1000);
 	vmem_init(&ast_arena, 4 * 1024);
 	vmem_init(&expr_arena, 4 * 1024);
@@ -73,7 +82,8 @@ void compiler_parse(void)
 		bool loaded = false;
 		File *file = source_file_load(global_context.sources[i], &loaded);
 		if (loaded) continue;
-		diag_setup(active_target.test_output);
+
+		global_context_clear_errors();
 		Context *context = context_create(file);
 		parse_file(context);
 		context_print_ast(context, stdout);
@@ -81,10 +91,17 @@ void compiler_parse(void)
 	exit(EXIT_SUCCESS);
 }
 
+static inline void halt_on_error(void)
+{
+	if (global_context.errors_found > 0) exit(EXIT_FAILURE);
+}
+
 void compiler_compile(void)
 {
 	Context **contexts = NULL;
-	diag_setup(active_target.test_output);
+
+	global_context_clear_errors();
+
 	if (global_context.lib_dir)
 	{
 		vec_add(global_context.sources, strformat("%s/std/runtime.c3", global_context.lib_dir));
@@ -101,7 +118,7 @@ void compiler_compile(void)
 		if (loaded) continue;
 		Context *context = context_create(file);
 		vec_add(contexts, context);
-		parse_file(context);
+		if (!parse_file(context)) continue;
 	}
 	unsigned source_count = vec_size(contexts);
 	if (!source_count)
@@ -109,47 +126,57 @@ void compiler_compile(void)
 		error_exit("No source files to compile.");
 	}
 	assert(contexts);
-	for (unsigned i = 0; i < source_count; i++)
-	{
-		sema_analysis_pass_process_imports(contexts[i]);
-	}
-	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+	Module **modules = global_context.module_list;
 
-	for (unsigned i = 0; i < source_count; i++)
+	unsigned module_count = vec_size(modules);
+	for (unsigned i = 0; i < module_count; i++)
 	{
-		sema_analysis_pass_register_globals(contexts[i]);
+		sema_analysis_pass_process_imports(modules[i]);
 	}
-	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
+	halt_on_error();
+
+	for (unsigned i = 0; i < module_count; i++)
+	{
+		sema_analysis_pass_register_globals(modules[i]);
+	}
+
+	halt_on_error();
 
 	for (unsigned i = 0; i < source_count; i++)
 	{
 		sema_analysis_pass_conditional_compilation(contexts[i]);
 	}
-	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
+	halt_on_error();
 
 	for (unsigned i = 0; i < source_count; i++)
 	{
 		sema_analysis_pass_decls(contexts[i]);
 	}
-	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
+	halt_on_error();
 
 	for (unsigned i = 0; i < source_count; i++)
 	{
 		sema_analysis_pass_ct_assert(contexts[i]);
 	}
-	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
+	halt_on_error();
 
 	for (unsigned i = 0; i < source_count; i++)
 	{
 		sema_analysis_pass_functions(contexts[i]);
 	}
-	if (diagnostics.errors > 0) exit(EXIT_FAILURE);
+
+	halt_on_error();
 
 	if (active_target.output_headers)
 	{
 		for (unsigned i = 0; i < source_count; i++)
 		{
 			Context *context = contexts[i];
+			if (context->module->parameters) break;
 			header_gen(context);
 		}
 		return;
@@ -162,6 +189,11 @@ void compiler_compile(void)
 	for (unsigned i = 0; i < source_count; i++)
 	{
 		Context *context = contexts[i];
+		if (context->module->parameters)
+		{
+			gen_contexts[i] = NULL;
+			continue;
+		}
 		gen_contexts[i] = llvm_gen(context);
 	}
 
@@ -190,6 +222,7 @@ void compiler_compile(void)
 
 	for (unsigned i = 0; i < source_count; i++)
 	{
+		if (!gen_contexts[i]) continue;
 		const char *file_name = llvm_codegen(gen_contexts[i]);
 		assert(file_name || !create_exe);
 		vec_add(obj_files, file_name);
@@ -199,11 +232,12 @@ void compiler_compile(void)
 	{
 		if (active_target.arch_os_target == ARCH_OS_TARGET_DEFAULT)
 		{
-			platform_linker(active_target.name, obj_files, source_count);
+			platform_linker(active_target.name, obj_files, vec_size(obj_files));
 		}
 		else
 		{
-			if (!obj_format_linking_supported(platform_target.object_format) || !linker(active_target.name, obj_files, source_count))
+			if (!obj_format_linking_supported(platform_target.object_format) || !linker(active_target.name, obj_files,
+			                                                                            vec_size(obj_files)))
 			{
 				printf("No linking is performed due to missing linker support.");
 				active_target.run_after_compile = false;
@@ -304,10 +338,14 @@ void global_context_add_type(Type *type)
 	VECADD(global_context.type, type);
 }
 
-Module *compiler_find_or_create_module(Path *module_name)
+Module *global_context_find_module(const char *name)
 {
-	Module *module = stable_get(&global_context.modules, module_name->module);
+	return stable_get(&global_context.modules, name);
+}
 
+Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters)
+{
+	Module *module = global_context_find_module(module_name->module);
 	if (module)
 	{
 		// We might have gotten an auto-generated module, if so
@@ -315,6 +353,7 @@ Module *compiler_find_or_create_module(Path *module_name)
 		if (module->name->span.loc.index == INVALID_TOKEN_ID.index && module_name->span.loc.index != INVALID_TOKEN_ID.index)
 		{
 			module->name = module_name;
+			module->parameters = parameters;
 		}
 		return module;
 	}
@@ -323,15 +362,24 @@ Module *compiler_find_or_create_module(Path *module_name)
 	// Set up the module.
 	module = CALLOCS(Module);
 	module->name = module_name;
+	module->parameters = parameters;
 	stable_init(&module->symbols, 0x10000);
 	stable_set(&global_context.modules, module_name->module, module);
+	if (parameters)
+	{
+		vec_add(global_context.generic_module_list, module);
+	}
+	else
+	{
+		vec_add(global_context.module_list, module);
+	}
+
 	// Now find the possible parent array:
 	Path *parent_path = path_find_parent_path(NULL, module_name);
 	if (parent_path)
 	{
 		// Get the parent
-		Module *parent_module = compiler_find_or_create_module(parent_path);
-		vec_add(parent_module->sub_modules, module);
+		compiler_find_or_create_module(parent_path, NULL);
 	}
 	return module;
 }

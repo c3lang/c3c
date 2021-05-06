@@ -1384,7 +1384,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 			if (switch_type_flattened->array.base->type_kind == TYPE_U8) break;
 			FALLTHROUGH;
 		default:
-			sema_error_range3(expr_span, "It is not possible to switch over '%s'.", type_to_error_string(switch_type));
+			sema_error_range(expr_span, "It is not possible to switch over '%s'.", type_to_error_string(switch_type));
 			return false;
 	}
 	Ast *default_case = NULL;

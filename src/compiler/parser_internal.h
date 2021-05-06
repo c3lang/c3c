@@ -51,7 +51,7 @@ Ast *parse_jump_stmt_no_eos(Context *context);
 bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, TokenType default_type,
                        bool allow_multiple_values);
 Expr *parse_expression_list(Context *context);
-Decl *parse_decl_after_type(Context *context, bool local, TypeInfo *type);
+Decl *parse_decl_after_type(Context *context, TypeInfo *type);
 
 bool parse_param_list(Context *context, Expr ***result, TokenType param_end, bool *unsplat);
 Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *type_info);

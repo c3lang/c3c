@@ -37,7 +37,7 @@ struct InternalFPF
     char type;
 }
 
-local func void setInternalFPFZero(InternalFPF* dest) @noinline
+func void setInternalFPFZero(InternalFPF* dest) @noinline
 {
     dest.type = 0;
 }

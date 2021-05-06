@@ -326,8 +326,11 @@ static inline void* _expand(void *vec, size_t element_size)
 	return vec;
 }
 
+
+#define CONCAT_INNER(a, b) a ## b
+#define CONCAT(a, b) CONCAT_INNER(a, b)
 #define VECEACH(_vec, _index) \
-	for (unsigned _index = 0, __vecsize = vec_size(_vec); _index < __vecsize; _index++)
+	for (unsigned _index = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); _index < CONCAT(__vecsize_, __LINE__); _index++)
 
 
 #define VECNEW(_type, _capacity) ((_type *)(_vec_new(sizeof(_type), _capacity) + 1))
