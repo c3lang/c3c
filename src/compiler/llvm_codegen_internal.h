@@ -63,6 +63,8 @@ typedef struct
 typedef struct
 {
 	LLVMModuleRef module;
+	LLVMTargetMachineRef machine;
+	LLVMTargetDataRef target_data;
 	LLVMContextRef context;
 	LLVMValueRef function;
 	LLVMValueRef alloca_point;
@@ -193,8 +195,8 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 LLVMValueRef llvm_value_rvalue_store(GenContext *c, BEValue *value);
 
 LLVMTypeRef llvm_abi_type(GenContext *c, AbiType *type);
-unsigned llvm_abi_size(LLVMTypeRef type);
-AlignSize llvm_abi_alignment(LLVMTypeRef type);
+unsigned llvm_abi_size(GenContext *c, LLVMTypeRef type);
+AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type);
 void llvm_attribute_add_range(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index_start, int index_end);
 void llvm_attribute_add(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index);
 void llvm_attribute_add_string(GenContext *c, LLVMValueRef value_to_add_attribute_to, const char *attribute, const char *value, int index);
@@ -211,7 +213,7 @@ void llvm_emit_block(GenContext *c, LLVMBasicBlockRef next_block);
 void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block);
 void llvm_emit_compound_stmt(GenContext *context, Ast *ast);
 void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl);
-void llvm_emit_convert_value_from_coerced(GenContext *context, BEValue *result, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type);
+void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type);
 void llvm_emit_function_body(GenContext *context, Decl *decl);
 void llvm_emit_function_decl(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic_id, LLVMTypeRef *types, unsigned type_count, LLVMValueRef *values, unsigned arg_count);
@@ -230,7 +232,7 @@ LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_t
 
 LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value);
 void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_len);
-LLVMValueRef llvm_emit_load_aligned(GenContext *context, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name);
+LLVMValueRef llvm_emit_load_aligned(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name);
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, unsigned align, bool bitcast);
@@ -264,7 +266,7 @@ LLVMMetadataRef llvm_debug_current_scope(GenContext *context);
 bool llvm_emit_check_block_branch(GenContext *context);
 
 
-unsigned llvm_store_size(LLVMTypeRef type);
+unsigned llvm_store_size(GenContext *c, LLVMTypeRef type);
 void llvm_store_bevalue(GenContext *c, BEValue *destination, BEValue *value);
 void llvm_store_bevalue_raw(GenContext *c, BEValue *destination, LLVMValueRef raw_value);
 void llvm_store_bevalue_dest_aligned(GenContext *c, LLVMValueRef destination, BEValue *value);
@@ -274,7 +276,7 @@ void llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef 
 void llvm_store_aligned_decl(GenContext *context, Decl *decl, LLVMValueRef value);
 
 LLVMTypeRef llvm_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef hi);
-LLVMValueRef llvm_emit_coerce(GenContext *context, LLVMTypeRef coerced, BEValue *value, Type *original_type);
+LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value, Type *original_type);
 
 static inline LLVMValueRef gencontext_emit_load(GenContext *c, Type *type, LLVMValueRef value)
 {

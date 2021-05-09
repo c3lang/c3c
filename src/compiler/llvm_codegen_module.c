@@ -15,7 +15,9 @@ void gencontext_begin_module(GenContext *c)
 	const char *full_path = c->ast_context->file->full_path;
 	char *mangled_module_name = strformat("%s-%s", c->ast_context->module->name->module, c->ast_context->file->name);
 	c->module = LLVMModuleCreateWithNameInContext(mangled_module_name, c->context);
-	LLVMSetModuleDataLayout(c->module, target_data_layout());
+	c->machine = llvm_target_machine_create();
+	c->target_data = LLVMCreateTargetDataLayout(c->machine);
+	LLVMSetModuleDataLayout(c->module, c->target_data);
 	LLVMSetSourceFileName(c->module, full_path, strlen(c->ast_context->file->full_path));
 	LLVMTypeRef options_type = LLVMInt8TypeInContext(c->context);
 

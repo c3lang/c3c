@@ -373,7 +373,7 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 		SEMA_ERROR(signature->params[MAX_PARAMS], "Number of params exceeds %d which is unsupported.", MAX_PARAMS);
 		return false;
 	}
-	STable *names = &context->scratch_table;
+	STable *names = &global_context.scratch_table;
 	stable_clear(names);
 
 	VECEACH(signature->params, i)
@@ -1048,7 +1048,7 @@ static bool sema_analyse_parameterized_define(Context *c, Decl *decl, Module *mo
 		           parameter_count, vec_size(decl->define_decl.params));
 		return false;
 	}
-	char *param_path = c->path_scratch;
+	char *param_path = global_context.path_scratch;
 	memcpy(param_path, module->name->module, module->name->len);
 	unsigned offset = module->name->len;
 	param_path[offset++] = '(';

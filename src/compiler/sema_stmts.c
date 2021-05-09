@@ -9,7 +9,7 @@
 
 void context_push_scope_with_flags(Context *context, ScopeFlags flags)
 {
-	if (context->current_scope == &context->scopes[MAX_SCOPE_DEPTH - 1])
+	if (context->current_scope == &global_context.scopes[MAX_SCOPE_DEPTH - 1])
 	{
 		FATAL_ERROR("Too deeply nested scopes.");
 	}
@@ -67,7 +67,7 @@ static inline void context_pop_defers_to(Context *context, DeferList *list)
 
 void context_pop_scope(Context *context)
 {
-	assert(context->current_scope != &context->scopes[0]);
+	assert(context->current_scope != &global_context.scopes[0]);
 	context->last_local = context->current_scope->local_decl_start;
 
 	assert(context_start_defer(context) == context->current_scope->defer_last);
@@ -114,7 +114,7 @@ static void context_pop_defers_and_replace_ast(Context *context, Ast *ast)
 
 AstId context_start_defer(Context *context)
 {
-	if (context->current_scope == context->scopes) return 0;
+	if (context->current_scope == global_context.scopes) return 0;
 	if (context->current_scope->in_defer != context->current_scope[-1].in_defer) return 0;
 	return context->current_scope[-1].defer_last;
 }
@@ -933,7 +933,7 @@ static DynamicScope *context_find_scope_by_id(Context *context, ScopeId scope_id
 	while (1)
 	{
 		if (scope->scope_id == scope_id) return scope;
-		assert(scope != &context->scopes[0]);
+		assert(scope != &global_context.scopes[0]);
 		scope--;
 	}
 	UNREACHABLE
@@ -968,7 +968,7 @@ static inline Decl *sema_analyse_label(Context *context, Ast *stmt)
 
 static bool context_labels_exist_in_scope(Context *context)
 {
-	for (Decl **from = &context->locals[0]; from < context->last_local; from++)
+	for (Decl **from = &global_context.locals[0]; from < context->last_local; from++)
 	{
 		if ((*from)->decl_kind == DECL_LABEL) return true;
 	}
@@ -1919,7 +1919,7 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	FunctionSignature *signature = &func->func.function_signature;
 	context->active_function_for_analysis = func;
 	context->rtype = signature->rtype->type;
-	context->current_scope = &context->scopes[0];
+	context->current_scope = &global_context.scopes[0];
 	context->current_scope->scope_id = 0;
 	context->failable_return = signature->failable;
 
@@ -1929,9 +1929,8 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	// Clear returns
 	vec_resize(context->returns, 0);
 	context->scope_id = 0;
-	context->returns = NULL;
 	context->expected_block_type = NULL;
-	context->last_local = &context->locals[0];
+	context->last_local = &global_context.locals[0];
 	context->in_volatile_section = 0;
 	context->macro_counter = 0;
 	context->macro_nesting = 0;
@@ -1942,13 +1941,13 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	func->func.annotations = CALLOCS(FuncAnnotations);
 	context_push_scope(context);
 	Decl **params = signature->params;
-	assert(context->current_scope == &context->scopes[1]);
+	assert(context->current_scope == &global_context.scopes[1]);
 	VECEACH(params, i)
 	{
 		if (!sema_add_local(context, params[i])) return false;
 	}
 	if (!sema_analyse_compound_statement_no_scope(context, func->func.body)) return false;
-	assert(context->current_scope == &context->scopes[1]);
+	assert(context->current_scope == &global_context.scopes[1]);
 	if (!context->current_scope->jump_end)
 	{
 		Type *canonical_rtype = signature->rtype->type->canonical;

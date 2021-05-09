@@ -257,7 +257,7 @@ static inline Decl *parse_ct_switch_top_level(Context *context)
 static inline Path *parse_module_path(Context *context)
 {
 	assert(TOKEN_IS(TOKEN_IDENT));
-	char *scratch_ptr = context->path_scratch;
+	char *scratch_ptr = global_context.path_scratch;
 	size_t offset = 0;
 	SourceSpan span = source_span_from_token_id(context->tok.id);
 	unsigned len = TOKLEN(context->tok);
@@ -469,7 +469,7 @@ Path *parse_path_prefix(Context *context, bool *had_error)
 	*had_error = false;
 	if (!TOKEN_IS(TOKEN_IDENT) || context->next_tok.type != TOKEN_SCOPE) return NULL;
 
-	char *scratch_ptr = context->path_scratch;
+	char *scratch_ptr = global_context.path_scratch;
 	size_t offset = 0;
 
 	Path *path = CALLOCS(Path);
