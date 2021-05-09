@@ -235,10 +235,11 @@ typedef enum
 
 typedef struct
 {
-	void *target;
-	void *machine;
-	void *llvm_data_layout;
 	const char *target_triple;
+	int llvm_opt_level;
+	int llvm_reloc_mode;
+	const char *features;
+	const char *cpu;
 	ArchType arch;
 	OsType os;
 	VendorType vendor;

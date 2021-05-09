@@ -49,6 +49,8 @@ static void gencontext_init(GenContext *context, Context *ast_context)
 static void gencontext_destroy(GenContext *context)
 {
 	LLVMContextDispose(context->context);
+	LLVMDisposeTargetData(context->target_data);
+	LLVMDisposeTargetMachine(context->machine);
 	free(context);
 }
 
@@ -426,12 +428,12 @@ void gencontext_emit_object_file(GenContext *context)
 {
 	char *err = "";
 	LLVMSetTarget(context->module, platform_target.target_triple);
-	char *layout = LLVMCopyStringRepOfTargetData(target_data_layout());
+	char *layout = LLVMCopyStringRepOfTargetData(context->target_data);
 	LLVMSetDataLayout(context->module, layout);
 	LLVMDisposeMessage(layout);
 
 	// Generate .o or .obj file
-	if (LLVMTargetMachineEmitToFile(target_machine(), context->module, context->object_filename, LLVMObjectFile, &err))
+	if (LLVMTargetMachineEmitToFile(context->machine, context->module, context->object_filename, LLVMObjectFile, &err))
 	{
 		error_exit("Could not emit object file: %s", err);
 	}
@@ -893,8 +895,8 @@ const char *llvm_codegen(void *context)
 	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, get_inlining_threshold());
 	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
 	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(module);
-	LLVMAddAnalysisPasses(target_machine(), function_pass_manager);
-	LLVMAddAnalysisPasses(target_machine(), pass_manager);
+	LLVMAddAnalysisPasses(c->machine, function_pass_manager);
+	LLVMAddAnalysisPasses(c->machine, pass_manager);
 	LLVMPassManagerBuilderPopulateModulePassManager(pass_manager_builder, pass_manager);
 	LLVMPassManagerBuilderPopulateFunctionPassManager(pass_manager_builder, function_pass_manager);
 
@@ -1017,14 +1019,14 @@ void llvm_attribute_add_string(GenContext *context, LLVMValueRef value_to_add_at
 	LLVMAddAttributeAtIndex(value_to_add_attribute_to, index, llvm_attr);
 }
 
-unsigned llvm_abi_size(LLVMTypeRef type)
+unsigned llvm_abi_size(GenContext *c, LLVMTypeRef type)
 {
-	return LLVMABISizeOfType(target_data_layout(), type);
+	return LLVMABISizeOfType(c->target_data, type);
 }
 
-AlignSize llvm_abi_alignment(LLVMTypeRef type)
+AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type)
 {
-	return (AlignSize)LLVMABIAlignmentOfType(target_data_layout(), type);
+	return (AlignSize)LLVMABIAlignmentOfType(c->target_data, type);
 }
 
 void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
@@ -1111,16 +1113,16 @@ void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, un
 	llvm_emit_memcpy(c, decl->backend_ref, decl->alignment, source, source_alignment, type_size(decl->type));
 }
 
-LLVMValueRef llvm_emit_load_aligned(GenContext *context, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name)
+LLVMValueRef llvm_emit_load_aligned(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name)
 {
-	LLVMValueRef value = LLVMBuildLoad2(context->builder, type, pointer, name);
-	llvm_set_alignment(value, alignment ?: llvm_abi_alignment(type));
+	LLVMValueRef value = LLVMBuildLoad2(c->builder, type, pointer, name);
+	llvm_set_alignment(value, alignment ?: llvm_abi_alignment(c, type));
 	return value;
 }
 
-unsigned llvm_store_size(LLVMTypeRef type)
+unsigned llvm_store_size(GenContext *c, LLVMTypeRef type)
 {
-	return LLVMStoreSizeOfType(target_data_layout(), type);
+	return LLVMStoreSizeOfType(c->target_data, type);
 }
 
 void llvm_set_error_exit(GenContext *c, LLVMBasicBlockRef block)

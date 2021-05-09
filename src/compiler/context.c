@@ -11,7 +11,6 @@ Context *context_create(File *file)
     context->file = file;
     stable_init(&context->local_symbols, 256);
 	stable_init(&context->external_symbols, 256);
-	stable_init(&context->scratch_table, 32);
     return context;
 }
 

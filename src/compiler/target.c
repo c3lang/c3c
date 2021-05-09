@@ -375,22 +375,6 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 
 void target_destroy()
 {
-	assert(platform_target.machine);
-	LLVMDisposeTargetMachine(platform_target.machine);
-}
-
-void *target_target()
-{
-	return platform_target.target;
-}
-
-void *target_machine()
-{
-	return platform_target.machine;
-}
-void *target_data_layout()
-{
-	return platform_target.llvm_data_layout;
 }
 
 static bool arch_is_supported(ArchType arch)
@@ -1046,38 +1030,54 @@ static unsigned os_target_pref_alignment_of_float(OsType os, ArchType arch, int 
 	UNREACHABLE
 }
 
+void *llvm_target_machine_create(void)
+{
+	char *err = NULL;
+	LLVMTargetRef target = NULL;
+	if (LLVMGetTargetFromTriple(platform_target.target_triple, &target, &err) != 0)
+	{
+		error_exit("Could not create target: %s for triple '%s'", err, platform_target.target_triple);
+		// Usually we would dispose of err, but no need to do it due to exit.
+	}
+	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
+	                                       platform_target.cpu ?: "", platform_target.features ?: "",
+	                                       (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
+	                                       (LLVMRelocMode)platform_target.llvm_reloc_mode, LLVMCodeModelDefault);
+	if (!result) error_exit("Failed to create target machine.");
+	return result;
+}
+
+
+#define INITIALIZE_TARGET(X) do { \
+  DEBUG_LOG("Initialize target: %s.", #X); \
+  LLVMInitialize ## X ## AsmParser(); \
+  LLVMInitialize ## X ## AsmPrinter(); \
+  LLVMInitialize ## X ## TargetInfo(); \
+  LLVMInitialize ## X ## Target(); \
+  LLVMInitialize ## X ## Disassembler(); \
+  LLVMInitialize ## X ## TargetMC(); \
+ } while(0)
+
 void target_setup(BuildTarget *target)
 {
-	assert(!platform_target.target);
+	INITIALIZE_TARGET(ARM);
+	INITIALIZE_TARGET(AArch64);
+	INITIALIZE_TARGET(RISCV);
+	INITIALIZE_TARGET(WebAssembly);
+	INITIALIZE_TARGET(X86);
+	// To support more targets, add them above.
 
-	LLVMInitializeAllTargetInfos();
-	LLVMInitializeAllTargetMCs();
-	LLVMInitializeAllTargets();
-	LLVMInitializeAllAsmPrinters();
-	LLVMInitializeAllAsmParsers();
-
-	platform_target.target = NULL;
-
-	const char *triple;
 	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
 	{
-		triple = LLVMGetDefaultTargetTriple();
+		platform_target.target_triple = LLVMGetDefaultTargetTriple();
 	}
 	else
 	{
-		triple = arch_to_target_triple[target->arch_os_target];
-	}
-
-	char *err = NULL;
-	if (LLVMGetTargetFromTriple(triple, ((LLVMTargetRef *)&platform_target.target), &err) != 0)
-	{
-		error_exit("Could not create target: %s", err);
-		// Usually we would dispose of err, but no need to do it due to exit.
+		platform_target.target_triple = arch_to_target_triple[target->arch_os_target];
 	}
 
 	platform_target.alloca_address_space = 0;
 
-	DEBUG_LOG("Target set to %s.", triple);
 	// Create a specific target machine
 	LLVMCodeGenOptLevel level;
 	LLVMRelocMode reloc_mode = LLVMRelocDefault;
@@ -1123,19 +1123,15 @@ void target_setup(BuildTarget *target)
 		reloc_mode = LLVMRelocStatic;
 	}
 
-	/*
-	if (!opt->features)
-	{
-		opt->features = "";
-	}*/
-	if (!(platform_target.machine = LLVMCreateTargetMachine(platform_target.target, triple, "", "", level, reloc_mode,
-	                                                        LLVMCodeModelDefault))) {
-		error_exit("Failed to create target machine.");
-	}
+	DEBUG_LOG("Feature and CPU not checked.");
 
-	platform_target.llvm_data_layout = LLVMCreateTargetDataLayout(platform_target.machine);
+	platform_target.llvm_opt_level = (int)level;
+	platform_target.llvm_reloc_mode = (int)reloc_mode;
+	DEBUG_LOG("Triple picked was %s.", platform_target.target_triple);
 
-	char *target_triple = LLVMGetTargetMachineTriple(platform_target.machine);
+	LLVMTargetMachineRef machine = llvm_target_machine_create();
+	char *target_triple = LLVMGetTargetMachineTriple(machine);
+	LLVMDisposeTargetMachine(machine);
 
 	platform_target.target_triple = strdup(target_triple);
 	platform_target.arch = arch_from_llvm_string(strtok(target_triple, "-"));
@@ -1153,7 +1149,6 @@ void target_setup(BuildTarget *target)
 	platform_target.float_abi = false;
 	platform_target.little_endian = arch_little_endian(platform_target.arch);
 	platform_target.width_pointer = arch_pointer_bit_width(platform_target.os, platform_target.arch);
-	assert(platform_target.width_pointer == LLVMPointerSize(platform_target.llvm_data_layout) * 8);
 	platform_target.alloca_address_space = 0;
 
 	// Todo PIC or no PIC depending on architecture.

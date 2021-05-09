@@ -3,8 +3,14 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
-#include "../build/build_options.h"
 #include <unistd.h>
+
+#if PLATFORM_POSIX
+#include <pthread.h>
+#define USE_PTHREAD 1
+#else
+#define USE_PTHREAD 0
+#endif
 
 GlobalContext global_context;
 BuildTarget active_target;
@@ -30,6 +36,7 @@ void compiler_init(const char *std_lib_dir)
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
 	stable_init(&global_context.modules, 64);
+	stable_init(&global_context.scratch_table, 32);
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
 	stable_init(&global_context.global_symbols, 0x1000);
@@ -96,6 +103,12 @@ static inline void halt_on_error(void)
 	if (global_context.errors_found > 0) exit(EXIT_FAILURE);
 }
 
+#if USE_PTHREAD
+void* compile_on_pthread(void *gencontext)
+{
+	return (void *)llvm_codegen(gencontext);
+}
+#endif
 void compiler_compile(void)
 {
 	Context **contexts = NULL;
@@ -186,6 +199,7 @@ void compiler_compile(void)
 	llvm_codegen_setup();
 
 	void **gen_contexts = malloc(source_count * sizeof(void *));
+
 	for (unsigned i = 0; i < source_count; i++)
 	{
 		Context *context = contexts[i];
@@ -196,6 +210,7 @@ void compiler_compile(void)
 		}
 		gen_contexts[i] = llvm_gen(context);
 	}
+
 
 	printf("-- AST/EXPR INFO -- \n");
 	printf(" * Ast memory use: %llukb\n", (unsigned long long)ast_arena.allocated / 1024);
@@ -220,6 +235,22 @@ void compiler_compile(void)
 
 	const char **obj_files = NULL;
 
+#if USE_PTHREAD
+	pthread_t *threads = malloc(source_count * sizeof(threads));
+	for (unsigned i = 0; i < source_count; i++)
+	{
+		if (!gen_contexts[i]) continue;
+		pthread_create(&threads[i], NULL, &compile_on_pthread, gen_contexts[i]);
+	}
+	for (unsigned i = 0; i < source_count; i++)
+	{
+		void *file_name;
+		pthread_join(threads[i], &file_name);
+		assert(file_name || !create_exe);
+		printf("Received result: %s\n", (char*)file_name);
+		vec_add(obj_files, file_name);
+	}
+#else
 	for (unsigned i = 0; i < source_count; i++)
 	{
 		if (!gen_contexts[i]) continue;
@@ -227,6 +258,7 @@ void compiler_compile(void)
 		assert(file_name || !create_exe);
 		vec_add(obj_files, file_name);
 	}
+#endif
 
 	if (create_exe)
 	{

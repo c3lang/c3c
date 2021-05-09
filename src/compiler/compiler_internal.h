@@ -41,8 +41,8 @@ typedef struct
 #define INVALID_TOKEN_ID ((TokenId) { UINT32_MAX })
 #define INVALID_RANGE ((SourceSpan){ INVALID_TOKEN_ID, INVALID_TOKEN_ID })
 #define MAX_LOCALS 0xFFFF
-#define MAX_SCOPE_DEPTH 0xFF
-#define MAX_PATH 1024
+#define MAX_SCOPE_DEPTH 0x1000
+#define MAX_PATH 0x10000
 #define MAX_MACRO_NESTING 1024
 #define MAX_FUNCTION_SIGNATURE_SIZE 2048
 #define MAX_PARAMS 512
@@ -1254,20 +1254,16 @@ typedef struct _Context
 		int macro_nesting;
 	};
 	Decl **last_local;
-	char path_scratch[MAX_PATH];
 	struct {
 		STable external_symbols;
 		Decl **external_symbol_list;
 	};
-	STable scratch_table;
 	Lexer lexer;
 	Token tok;
 	TokenId prev_tok;
 	Token next_tok;
 	TokenId docs_start;
 	TokenId docs_end;
-	Decl* locals[MAX_LOCALS];
-	DynamicScope scopes[MAX_SCOPE_DEPTH];
 } Context;
 
 typedef struct
@@ -1284,13 +1280,12 @@ typedef struct
 	bool in_test_mode : 1;
 	unsigned errors_found;
 	unsigned warnings_found;
+	char path_scratch[MAX_PATH];
+	Decl* locals[MAX_LOCALS];
+	DynamicScope scopes[MAX_SCOPE_DEPTH];
+	STable scratch_table;
 } GlobalContext;
 
-typedef enum
-{
-	MODULE_SYMBOL_SEARCH_EXTERNAL,
-	MODULE_SYMBOL_SEARCH_MODULE
-} ModuleSymbolSearch;
 
 typedef enum
 {
@@ -1652,11 +1647,9 @@ void stable_clear(STable *table);
 
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 
+void *llvm_target_machine_create(void);
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
-void *target_data_layout();
-void *target_machine();
-void *target_target();
 
 #define TOK2VARSTR(_token) _token.span.length, _token.start
 bool token_is_type(TokenType type);

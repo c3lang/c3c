@@ -162,12 +162,12 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			// Point to the lo value.
 			LLVMValueRef lo_ptr = LLVMBuildStructGEP2(c->builder, struct_type, cast, 0, "lo");
 			// Store it in the struct.
-			AlignSize lo_alignment = MIN(llvm_abi_alignment(lo), decl_alignment);
+			AlignSize lo_alignment = MIN(llvm_abi_alignment(c, lo), decl_alignment);
 			llvm_store_aligned(c, lo_ptr, llvm_get_next_param(c, index), lo_alignment);
 			// Point to the hi value.
 			LLVMValueRef hi_ptr = LLVMBuildStructGEP2(c->builder, struct_type, cast, 1, "hi");
 			// Store it in the struct.
-			AlignSize hi_alignment = MIN(llvm_abi_alignment(hi), decl_alignment);
+			AlignSize hi_alignment = MIN(llvm_abi_alignment(c, hi), decl_alignment);
 			llvm_store_aligned(c, hi_ptr, llvm_get_next_param(c, index), decl_alignment);
 			return;
 		}
@@ -199,7 +199,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 				LLVMValueRef element_ptr = LLVMBuildStructGEP2(c->builder, coerce_type, cast, idx, "");
 				LLVMValueRef value = llvm_get_next_param(c, index);
 
-				llvm_store_aligned(c, element_ptr, value, MIN(llvm_abi_alignment(element_type), decl->alignment));
+				llvm_store_aligned(c, element_ptr, value, MIN(llvm_abi_alignment(c, element_type), decl->alignment));
 			}
 			return;
 		}
