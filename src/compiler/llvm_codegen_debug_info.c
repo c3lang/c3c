@@ -445,8 +445,8 @@ static LLVMMetadataRef llvm_debug_array_type(GenContext *c, Type *type)
 	}
 	LLVMMetadataRef real = LLVMDIBuilderCreateArrayType(
 			c->debug.builder,
-			type_size(type),
-			type_abi_alignment(current_type),
+			type_size(type) * 8,
+			type_abi_alignment(current_type) * 8,
 			llvm_get_debug_type(c, current_type),
 			ranges, vec_size(ranges));
 
@@ -502,8 +502,8 @@ static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type)
 	}
 	return LLVMDIBuilderCreateVectorType(
 			c->debug.builder,
-			type_size(type),
-			type_abi_alignment(current_type),
+			type_size(type) * 8,
+			type_abi_alignment(current_type) * 8,
 			llvm_get_debug_type(c, current_type),
 			ranges, vec_size(ranges));
 }
