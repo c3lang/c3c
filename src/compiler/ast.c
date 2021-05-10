@@ -56,7 +56,7 @@ void decl_set_external_name(Decl *decl)
 	}
 	scratch_buffer_clear();
 	scratch_buffer_append(decl->module->name->module);
-	scratch_buffer_append("::");
+	scratch_buffer_append(".");
 	scratch_buffer_append(decl->name ?: "anon");
 	TokenType type = TOKEN_INVALID_TOKEN;
 	const char *buffer = scratch_buffer_to_string();
