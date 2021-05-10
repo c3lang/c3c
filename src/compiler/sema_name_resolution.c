@@ -94,6 +94,7 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 		// 16. Otherwise return null.
 		return NULL;
 	}
+
 	// 17. Store that this external symbol is used and return.
 	context_register_external_symbol(context, decl);
 	return decl;

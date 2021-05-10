@@ -28,7 +28,7 @@ func int main()
    return 0;
 }
 
-// #expect: while_switch.ll
+// #expect: test.ll
 
 
 @.str = private constant [2 x i8] c"3\00"

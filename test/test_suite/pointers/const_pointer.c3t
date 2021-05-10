@@ -1,6 +1,6 @@
 // #target: x64_darwin
 
-module test;
+module const_pointer;
 
 double foo = 17;
 double bar = 12.0;

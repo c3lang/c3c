@@ -1048,7 +1048,7 @@ static bool sema_analyse_parameterized_define(Context *c, Decl *decl, Module *mo
 		           parameter_count, vec_size(decl->define_decl.params));
 		return false;
 	}
-	char *param_path = global_context.path_scratch;
+	char *param_path = global_context.scratch_buffer;
 	memcpy(param_path, module->name->module, module->name->len);
 	unsigned offset = module->name->len;
 	param_path[offset++] = '(';

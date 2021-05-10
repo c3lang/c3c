@@ -67,7 +67,7 @@ struct Foo6 @packed
 $assert(Foo6.sizeof == 8);
 public Foo6 foo6 = { 1, 2, 3 };
 
-// #expect: struct_pack_and_align.ll
+// #expect: struct2.ll
 
 %struct2.Foo1 = type <{ i64, i8, [3 x i8] }>
 %struct2.Foo2 = type <{ i8, i64, [3 x i8] }>

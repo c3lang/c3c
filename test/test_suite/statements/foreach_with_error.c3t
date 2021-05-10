@@ -11,7 +11,7 @@ func void test()
     }
 }
 
-// #expect: foreach_with_error.ll
+// #expect: test.ll
 
 entry:
   %x = alloca [3 x i32], align 4

@@ -42,7 +42,7 @@ typedef struct
 #define INVALID_RANGE ((SourceSpan){ INVALID_TOKEN_ID, INVALID_TOKEN_ID })
 #define MAX_LOCALS 0xFFFF
 #define MAX_SCOPE_DEPTH 0x1000
-#define MAX_PATH 0x10000
+#define MAX_STRING_BUFFER 0x10000
 #define MAX_MACRO_NESTING 1024
 #define MAX_FUNCTION_SIGNATURE_SIZE 2048
 #define MAX_PARAMS 512
@@ -1264,6 +1264,8 @@ typedef struct _Context
 	Token next_tok;
 	TokenId docs_start;
 	TokenId docs_end;
+	void *llvm_debug_file;
+	void *llvm_debug_compile_unit;
 } Context;
 
 typedef struct
@@ -1280,7 +1282,8 @@ typedef struct
 	bool in_test_mode : 1;
 	unsigned errors_found;
 	unsigned warnings_found;
-	char path_scratch[MAX_PATH];
+	char scratch_buffer[MAX_STRING_BUFFER];
+	size_t scratch_buffer_len;
 	Decl* locals[MAX_LOCALS];
 	DynamicScope scopes[MAX_SCOPE_DEPTH];
 	STable scratch_table;
@@ -1474,7 +1477,7 @@ CastKind cast_to_bool_kind(Type *type);
 bool cast_implicitly_to_runtime(Expr *expr);
 
 const char *llvm_codegen(void *context);
-void *llvm_gen(Context *context);
+void *llvm_gen(Module *module);
 void llvm_codegen_setup();
 
 void header_gen(Context *context);
@@ -1581,7 +1584,7 @@ static inline TokenType token_type(Token token) { return toktypeptr(token.id.ind
 Decl *module_find_symbol(Module *module, const char *symbol);
 
 bool parse_file(Context *context);
-Path *path_create_from_string(Context *context, const char *string, size_t len, SourceSpan span);
+Path *path_create_from_string(const char *string, size_t len, SourceSpan span);
 Path *path_find_parent_path(Context *context, Path *path);
 
 const char *resolve_status_to_string(ResolveStatus status);
@@ -1644,6 +1647,12 @@ void *stable_set(STable *table, const char *key, void *value);
 void *stable_get(STable *table, const char *key);
 void *stable_delete(STable *table, const char *key);
 void stable_clear(STable *table);
+
+void scratch_buffer_clear(void);
+void scratch_buffer_append(const char *string);
+void scratch_buffer_append_len(const char *string, size_t len);
+void scratch_buffer_append_char(char c);
+char *scratch_buffer_to_string(void);
 
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 

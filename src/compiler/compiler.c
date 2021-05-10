@@ -198,17 +198,16 @@ void compiler_compile(void)
 
 	llvm_codegen_setup();
 
-	void **gen_contexts = malloc(source_count * sizeof(void *));
+	void **gen_contexts = malloc(module_count * sizeof(void *));
 
-	for (unsigned i = 0; i < source_count; i++)
+	for (unsigned i = 0; i < module_count; i++)
 	{
-		Context *context = contexts[i];
-		if (context->module->parameters)
+		if (!modules[i]->contexts)
 		{
 			gen_contexts[i] = NULL;
 			continue;
 		}
-		gen_contexts[i] = llvm_gen(context);
+		gen_contexts[i] = llvm_gen(modules[i]);
 	}
 
 
@@ -236,8 +235,8 @@ void compiler_compile(void)
 	const char **obj_files = NULL;
 
 #if USE_PTHREAD
-	pthread_t *threads = malloc(source_count * sizeof(threads));
-	for (unsigned i = 0; i < source_count; i++)
+	pthread_t *threads = malloc(module_count * sizeof(threads));
+	for (unsigned i = 0; i < module_count; i++)
 	{
 		if (!gen_contexts[i]) continue;
 		pthread_create(&threads[i], NULL, &compile_on_pthread, gen_contexts[i]);
@@ -247,11 +246,10 @@ void compiler_compile(void)
 		void *file_name;
 		pthread_join(threads[i], &file_name);
 		assert(file_name || !create_exe);
-		printf("Received result: %s\n", (char*)file_name);
 		vec_add(obj_files, file_name);
 	}
 #else
-	for (unsigned i = 0; i < source_count; i++)
+	for (unsigned i = 0; i < module_count; i++)
 	{
 		if (!gen_contexts[i]) continue;
 		const char *file_name = llvm_codegen(gen_contexts[i]);
@@ -431,4 +429,38 @@ void compiler_register_public_symbol(Decl *decl)
 	}
 	prev = stable_get(sub_module_space, decl->name);
 	stable_set(sub_module_space, decl->name, prev ? poisoned_decl : decl);
+}
+
+void scratch_buffer_clear(void)
+{
+	global_context.scratch_buffer_len = 0;
+}
+
+void scratch_buffer_append_len(const char *string, size_t len)
+{
+	if (len + global_context.scratch_buffer_len > MAX_STRING_BUFFER - 1)
+	{
+		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
+	}
+	memcpy(global_context.scratch_buffer + global_context.scratch_buffer_len, string, len);
+	global_context.scratch_buffer_len += len;
+}
+
+void scratch_buffer_append(const char *string)
+{
+	scratch_buffer_append_len(string, strlen(string));
+}
+
+void scratch_buffer_append_char(char c)
+{
+	if (global_context.scratch_buffer_len + 1 > MAX_STRING_BUFFER - 1)
+	{
+		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
+	}
+	global_context.scratch_buffer[global_context.scratch_buffer_len++] = c;
+}
+char *scratch_buffer_to_string(void)
+{
+	global_context.scratch_buffer[global_context.scratch_buffer_len] = '\0';
+	return global_context.scratch_buffer;
 }

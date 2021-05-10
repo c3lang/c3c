@@ -32,7 +32,7 @@ func void main()
     }
 }
 
-// #expect: foreach_common.ll
+// #expect: test.ll
 
 entry:
   %foo = alloca [3 x float], align 4

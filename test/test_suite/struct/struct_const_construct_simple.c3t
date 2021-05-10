@@ -17,7 +17,7 @@ Foo foo6;
 const Foo FOO7 = { 1, 2 };
 Foo foo8 = FOO7;
 
-// #expect: struct_const_construct_simple.ll
+// #expect: structo.ll
 
 %structo.Foo = type { i32, i64 }
 

@@ -1,4 +1,4 @@
-module test;
+module varargs;
 
 extern func void printf(char* c, ...);
 

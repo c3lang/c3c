@@ -48,7 +48,7 @@ func void denormalize(InternalFPF* ptr)
 }
 
 
-// #expect: assorted_tests.ll
+// #expect: test.ll
 
   %pp = alloca i8*, align 8
   %w_cnt = alloca i32, align 4

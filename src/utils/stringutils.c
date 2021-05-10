@@ -23,6 +23,24 @@ char *strformat(const char *var, ...)
 	return buffer;
 }
 
+StringSlice strnexttok(StringSlice *slice, char separator)
+{
+	for (size_t i = 0; i < slice->len; i++)
+	{
+		if (slice->ptr[i] == separator)
+		{
+			StringSlice result = { slice->ptr, i };
+			slice->ptr = slice->ptr + i + 1;
+			slice->len = slice->len - i - 1;
+			return result;
+		}
+	}
+	StringSlice result = *slice;
+	slice->ptr = slice->ptr + slice->len;
+	slice->len = 0;
+	return result;
+}
+
 char *strcopy(const char *start, size_t len)
 {
 	char *buffer = malloc_arena(len + 1);

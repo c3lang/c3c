@@ -88,7 +88,7 @@ typedef struct
 	int return_expressions;
 	Ast **defer_stack;
 	DebugContext debug;
-	Context *ast_context;
+	Module *code_module;
 	LLVMValueRef return_out;
 	LLVMValueRef failable_out;
 	LLVMBasicBlockRef error_exit_block;
@@ -176,6 +176,8 @@ extern unsigned attribute_byval; // ByVal (param)
 extern unsigned attribute_inreg; // inreg (param)
 
 void gencontext_begin_module(GenContext *c);
+void gencontext_init_file_emit(GenContext *c, Context *ast);
+void gencontext_end_file_emit(GenContext *c, Context *ast);
 void gencontext_end_module(GenContext *context);
 
 // BE value
