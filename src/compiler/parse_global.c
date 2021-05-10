@@ -257,12 +257,11 @@ static inline Decl *parse_ct_switch_top_level(Context *context)
 static inline Path *parse_module_path(Context *context)
 {
 	assert(TOKEN_IS(TOKEN_IDENT));
-	char *scratch_ptr = global_context.path_scratch;
+	scratch_buffer_clear();
+	char *scratch_ptr = global_context.scratch_buffer;
 	size_t offset = 0;
 	SourceSpan span = source_span_from_token_id(context->tok.id);
-	unsigned len = TOKLEN(context->tok);
-	memcpy(scratch_ptr, TOKSTR(context->tok), len);
-	offset += len;
+	scratch_buffer_append_len(TOKSTR(context->tok), TOKLEN(context->tok));
 	TokenId last_token;
 	while (1)
 	{
@@ -277,14 +276,10 @@ static inline Path *parse_module_path(Context *context)
 			span.end_loc = last_token;
 			break;
 		}
-		scratch_ptr[offset++] = ':';
-		scratch_ptr[offset++] = ':';
-		len = TOKLEN(context->tok);
-		memcpy(scratch_ptr + offset, TOKSTR(context->tok), len);
-		offset += len;
+		scratch_buffer_append("::");
+		scratch_buffer_append_len(TOKSTR(context->tok), TOKLEN(context->tok));
 	}
-	scratch_ptr[offset] = '\0';
-	return path_create_from_string(context, scratch_ptr, offset, span);
+	return path_create_from_string(scratch_buffer_to_string(), global_context.scratch_buffer_len, span);
 }
 
 
@@ -469,7 +464,7 @@ Path *parse_path_prefix(Context *context, bool *had_error)
 	*had_error = false;
 	if (!TOKEN_IS(TOKEN_IDENT) || context->next_tok.type != TOKEN_SCOPE) return NULL;
 
-	char *scratch_ptr = global_context.path_scratch;
+	char *scratch_ptr = global_context.scratch_buffer;
 	size_t offset = 0;
 
 	Path *path = CALLOCS(Path);

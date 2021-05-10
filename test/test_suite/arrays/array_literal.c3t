@@ -1,5 +1,5 @@
 // #target: x64_darwin
-module testing;
+module array_literal;
 
 func double test(uint x)
 {

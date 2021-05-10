@@ -1,4 +1,4 @@
-module test;
+module simple_float_sub_neg;
 
 func double test(double a, double b, double c, double d)
 {

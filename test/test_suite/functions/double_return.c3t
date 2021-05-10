@@ -1,4 +1,4 @@
-module test;
+module double_return;
 
 func int test(bool pos, bool color)
 {

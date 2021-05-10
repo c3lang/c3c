@@ -33,7 +33,7 @@ public func int main(int argc)
     return 0 + argc;
 }
 
-// #expect: defer_return.ll
+// #expect: test.ll
 
 while.begin:
     %1 = load i32, i32* %a

@@ -1,4 +1,4 @@
-module foo;
+module pointer_index;
 
 public func void test1(int* x)
 {

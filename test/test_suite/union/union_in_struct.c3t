@@ -17,7 +17,7 @@ func void test(Blend_Map_Entry* foo)
 {
 }
 
-// #expect: union_in_struct.ll
+// #expect: test.ll
 
 
 %test.Blend_Map_Entry = type { %test.vals }

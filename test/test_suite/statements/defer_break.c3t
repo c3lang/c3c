@@ -46,7 +46,7 @@ public func int main(int argc)
     return 0;
 }
 
-// #expect: defer_break.ll
+// #expect: foo.ll
     call void @foo.defer2()
     %1 = load i32, i32* %a
     %eq = icmp eq i32 %1, 1

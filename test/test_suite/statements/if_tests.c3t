@@ -26,7 +26,7 @@ func void test3(int x)
     else { x += 1; }
 }
 
-// #expect: if_tests.ll
+// #expect: iftest.ll
 
   %x = alloca i32, align 4
   store i32 %0, i32* %x, align 4

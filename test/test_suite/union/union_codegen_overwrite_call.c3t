@@ -17,7 +17,7 @@ func void test()
     UnionB b = { .c = bar(), .b = {} };
 }
 
-// #expect: union_codegen_overwrite_call.ll
+// #expect: test.ll
 
 entry:
 %b = alloca %test.UnionB, align 8

@@ -11,7 +11,7 @@ public char g = '"';
 public char h = '\\';
 public char i = '\e';
 
-// #expect: file1.ll
+// #expect: test.ll
 
 @a = global i8 32
 @b = global i8 13

@@ -1,4 +1,4 @@
-module test;
+module cast_expr;
 
 public func int main(int argc, char** argv)
 {

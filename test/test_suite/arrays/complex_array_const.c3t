@@ -13,7 +13,7 @@ Connection[3] link
     {2, "link2", 20},
     {3, "link3", 30} };
 
-// #expect: complex_array_const.ll
+// #expect: test.ll
 
 @.str = private constant [6 x i8] c"link1\00"
 @.str.1 = private constant [6 x i8] c"link2\00"

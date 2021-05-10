@@ -368,9 +368,26 @@ static inline bool is_all_lower(const char* string)
 #define __printflike(x, y)
 #endif
 
+typedef struct StringSlice_
+{
+	const char *ptr;
+	size_t len;
+} StringSlice;
+
 char *strcat_arena(const char *a, const char *b);
 char *strformat(const char *var, ...) __printflike(1, 2);
 char *strcopy(const char *start, size_t len);
+StringSlice strnexttok(StringSlice *slice, char separator);
+static inline bool slicestrcmp(StringSlice slice, const char *other)
+{
+	if (strlen(other) != slice.len) return false;
+	return strncmp(slice.ptr, other, slice.len) == 0;
+}
+
+static inline StringSlice strtoslice(const char *data)
+{
+	return (StringSlice) { data, strlen(data) };
+}
 
 #define MAX(_a, _b) ({ \
   typeof(_a) __a__ = (_a); \

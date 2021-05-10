@@ -14,7 +14,7 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	switch (severity)
 	{
 		case LLVMDSError:
-			error_exit("LLVM error generating code for %s: %s", ((GenContext *)context)->ast_context->module->name, message);
+			error_exit("LLVM error generating code for %s: %s", ((GenContext *)context)->code_module->name, message);
 		case LLVMDSWarning:
 			severity_name = "warning";
 			break;
@@ -36,14 +36,14 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	LLVMDisposeMessage(message);
 }
 
-static void gencontext_init(GenContext *context, Context *ast_context)
+static void gencontext_init(GenContext *context, Module *module)
 {
 	memset(context, 0, sizeof(GenContext));
 	context->context = LLVMContextCreate();
 	context->bool_type = LLVMInt1TypeInContext(context->context);
 	context->byte_type = LLVMInt8TypeInContext(context->context);
 	LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
-	context->ast_context = ast_context;
+	context->code_module = module;
 }
 
 static void gencontext_destroy(GenContext *context)
@@ -941,47 +941,69 @@ const char *llvm_codegen(void *context)
 	return object_name;
 }
 
-void *llvm_gen(Context *context)
+void *llvm_gen(Module *module)
 {
 	assert(intrinsics_setup);
 	GenContext *gen_context = calloc(sizeof(GenContext), 1);
-	gencontext_init(gen_context, context);
+	gencontext_init(gen_context, module);
 	gencontext_begin_module(gen_context);
+
+	VECEACH(module->contexts, j)
+	{
+		Context *context = module->contexts[j];
+		gencontext_init_file_emit(gen_context, context);
+		gen_context->debug.compile_unit = context->llvm_debug_compile_unit;
+		gen_context->debug.file = context->llvm_debug_file;
+
+		VECEACH(context->external_symbol_list, i)
+		{
+			Decl *d = context->external_symbol_list[i];
+			// Avoid duplicating symbol
+			if (d->module == context->module) continue;
+			llvm_emit_extern_decl(gen_context, context->external_symbol_list[i]);
+		}
+		VECEACH(context->methods, i)
+		{
+			llvm_emit_function_decl(gen_context, context->methods[i]);
+		}
+		VECEACH(context->types, i)
+		{
+			gencontext_emit_type_decls(gen_context, context->types[i]);
+		}
+		VECEACH(context->functions, i)
+		{
+			llvm_emit_function_decl(gen_context, context->functions[i]);
+		}
+	}
+
+	VECEACH(module->contexts, j)
+	{
+		Context *context = module->contexts[j];
+		gen_context->debug.compile_unit = context->llvm_debug_compile_unit;
+		gen_context->debug.file = context->llvm_debug_file;
+
+		VECEACH(context->vars, i)
+		{
+			gencontext_emit_global_variable_definition(gen_context, context->vars[i]);
+		}
+		VECEACH(context->vars, i)
+		{
+			gencontext_emit_global_variable_init(gen_context, context->vars[i]);
+		}
+		VECEACH(context->functions, i)
+		{
+			Decl *decl = context->functions[i];
+			if (decl->func.body) llvm_emit_function_body(gen_context, decl);
+		}
+		VECEACH(context->methods, i)
+		{
+			Decl *decl = context->methods[i];
+			if (decl->func.body) llvm_emit_function_body(gen_context, decl);
+		}
+
+		gencontext_end_file_emit(gen_context, context);
+	}
 	// EmitDeferred()
-	VECEACH(context->external_symbol_list, i)
-	{
-		llvm_emit_extern_decl(gen_context, context->external_symbol_list[i]);
-	}
-	VECEACH(context->methods, i)
-	{
-		llvm_emit_function_decl(gen_context, context->methods[i]);
-	}
-	VECEACH(context->functions, i)
-	{
-		llvm_emit_function_decl(gen_context, context->functions[i]);
-	}
-	VECEACH(context->types, i)
-	{
-		gencontext_emit_type_decls(gen_context, context->types[i]);
-	}
-	VECEACH(context->vars, i)
-	{
-		gencontext_emit_global_variable_definition(gen_context, context->vars[i]);
-	}
-	VECEACH(context->vars, i)
-	{
-		gencontext_emit_global_variable_init(gen_context, context->vars[i]);
-	}
-	VECEACH(context->functions, i)
-	{
-		Decl *decl = context->functions[i];
-		if (decl->func.body) llvm_emit_function_body(gen_context, decl);
-	}
-	VECEACH(context->methods, i)
-	{
-		Decl *decl = context->methods[i];
-		if (decl->func.body) llvm_emit_function_body(gen_context, decl);
-	}
 
 	if (llvm_use_debug(gen_context)) LLVMDIBuilderFinalize(gen_context->debug.builder);
 

@@ -22,7 +22,7 @@ public func int main(int argc)
     return 0;
 }
 
-// #expect: defer_break_simple.ll
+// #expect: test.ll
 
 store i32 0, i32* %a
 br label %while.begin

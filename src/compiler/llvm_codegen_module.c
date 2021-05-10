@@ -9,16 +9,27 @@ void gencontext_begin_module(GenContext *c)
 {
 	assert(!c->module && "Expected no module");
 
-	c->ir_filename = strformat("%.*s.ll", (int)strlen(c->ast_context->file->name) - 3, c->ast_context->file->name);
-	c->object_filename = strformat("%.*s.o", (int)strlen(c->ast_context->file->name) - 3, c->ast_context->file->name);
+	scratch_buffer_clear();
+	StringSlice slice = strtoslice(c->code_module->name->module);
+	while (true)
+	{
+		StringSlice part = strnexttok(&slice, ':');
+		scratch_buffer_append_len(part.ptr, part.len);
+		if (!slice.len) break;
+		slice.ptr++;
+		slice.len--;
+		scratch_buffer_append_char('.');
+	}
+	const char *result = scratch_buffer_to_string();
+	c->ir_filename = strformat("%s.ll", result);
+	// TODO filename should depend on platform.
+	c->object_filename = strformat("%s.o", result);
 
-	const char *full_path = c->ast_context->file->full_path;
-	char *mangled_module_name = strformat("%s-%s", c->ast_context->module->name->module, c->ast_context->file->name);
-	c->module = LLVMModuleCreateWithNameInContext(mangled_module_name, c->context);
+	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();
 	c->target_data = LLVMCreateTargetDataLayout(c->machine);
 	LLVMSetModuleDataLayout(c->module, c->target_data);
-	LLVMSetSourceFileName(c->module, full_path, strlen(c->ast_context->file->full_path));
+	LLVMSetSourceFileName(c->module, c->code_module->name->module, strlen(c->code_module->name->module));
 	LLVMTypeRef options_type = LLVMInt8TypeInContext(c->context);
 
 	if (active_target.pic == PIC_BIG || active_target.pic == PIC_SMALL)
@@ -35,31 +46,7 @@ void gencontext_begin_module(GenContext *c)
 	}
 
 	LLVMSetTarget(c->module, platform_target.target_triple);
-	if (active_target.debug_info != DEBUG_INFO_NONE)
-	{
-		const char *filename = c->ast_context->file->name;
-		const char *dir_path = c->ast_context->file->dir_path;
-		// Set runtime version here.
-		c->debug.runtime_version = 1;
-		c->debug.builder = LLVMCreateDIBuilder(c->module);
-		c->debug.file = LLVMDIBuilderCreateFile(c->debug.builder, filename, strlen(filename), dir_path, strlen(dir_path));
 
-		bool is_optimized = active_target.optimization_level != OPTIMIZATION_NONE;
-		const char *dwarf_flags = "";
-		unsigned runtime_version = 1;
-		LLVMDWARFEmissionKind emission_kind = active_target.debug_info == DEBUG_INFO_FULL ? LLVMDWARFEmissionFull : LLVMDWARFEmissionLineTablesOnly;
-		c->debug.compile_unit = LLVMDIBuilderCreateCompileUnit(c->debug.builder, LLVMDWARFSourceLanguageC,
-		                                                       c->debug.file, DWARF_PRODUCER_NAME,
-		                                                       strlen(DWARF_PRODUCER_NAME), is_optimized,
-		                                                       dwarf_flags, strlen(dwarf_flags),
-		                                                       runtime_version, "" /* split name */, 0 /* len */,
-		                                                       emission_kind, /* dwo */0, /* inlining */0,
-		                                                             /* debug for profiling */0
-#if LLVM_VERSION_MAJOR > 10
-		                                                             , "", 0, "", 0
-#endif
-		                                                      );
-	}
 	// Setup all types. Not thread-safe, but at this point in time we can assume a single context.
 	// We need to remove the context from the cache after this.
 	// This would seem to indicate that we should change Type / actual type.
@@ -72,8 +59,64 @@ void gencontext_begin_module(GenContext *c)
 		global_context.type[i]->backend_type = NULL;
 		global_context.type[i]->backend_debug_type = NULL;
 	}
+	if (active_target.debug_info != DEBUG_INFO_NONE)
+	{
+		c->debug.runtime_version = 1;
+		c->debug.builder = LLVMCreateDIBuilder(c->module);
+	}
 }
 
+void gencontext_init_file_emit(GenContext *c, Context *ast)
+{
+	if (active_target.debug_info != DEBUG_INFO_NONE)
+	{
+		const char *filename = ast->file->name;
+		const char *dir_path = ast->file->dir_path;
+		// Set runtime version here.
+		ast->llvm_debug_file = LLVMDIBuilderCreateFile(c->debug.builder,
+		                                               filename,
+		                                               strlen(filename),
+		                                               dir_path,
+		                                               strlen(dir_path));
+
+		bool is_optimized = active_target.optimization_level != OPTIMIZATION_NONE;
+		const char *dwarf_flags = "";
+		unsigned runtime_version = 1;
+		LLVMDWARFEmissionKind emission_kind =
+				active_target.debug_info == DEBUG_INFO_FULL ? LLVMDWARFEmissionFull : LLVMDWARFEmissionLineTablesOnly;
+		const char *debug_output_file = "";
+		bool emit_debug_info_for_profiling = false;
+		bool split_debug_inlining = false;
+		const char *sysroot = "";
+		const char *sdk = "";
+		unsigned dwo_id = 0;
+		ast->llvm_debug_compile_unit = LLVMDIBuilderCreateCompileUnit(c->debug.builder,
+		                                                              LLVMDWARFSourceLanguageC,
+		                                                              ast->llvm_debug_file,
+		                                                              DWARF_PRODUCER_NAME,
+		                                                              strlen(DWARF_PRODUCER_NAME),
+		                                                              is_optimized,
+		                                                              dwarf_flags,
+		                                                              strlen(dwarf_flags),
+		                                                              runtime_version,
+		                                                              debug_output_file,
+		                                                              strlen(debug_output_file),
+		                                                              emission_kind,
+		                                                              dwo_id,
+		                                                              split_debug_inlining,
+		                                                              emit_debug_info_for_profiling,
+		                                                              sysroot,
+		                                                              strlen(sysroot),
+		                                                              sdk,
+		                                                              strlen(sdk)
+		                                                      );
+	}
+}
+
+
+void gencontext_end_file_emit(GenContext *c, Context *ast)
+{
+}
 
 void gencontext_end_module(GenContext *context)
 {

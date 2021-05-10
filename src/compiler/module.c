@@ -9,7 +9,7 @@ Decl *module_find_symbol(Module *module, const char *symbol)
 	return stable_get(&module->symbols, symbol);
 }
 
-Path *path_create_from_string(Context *context, const char *string, size_t len, SourceSpan span)
+Path *path_create_from_string(const char *string, size_t len, SourceSpan span)
 {
 	Path *path = CALLOCS(Path);
 	path->span = span;
@@ -30,7 +30,7 @@ Path *path_find_parent_path(Context *context, Path *path)
 	// No parent
 	if (!last_scope_chars) return NULL;
 
-	Path *parent_path = path_create_from_string(context, path->module, last_scope_chars - path->module - 1, INVALID_RANGE);
+	Path *parent_path = path_create_from_string(path->module, last_scope_chars - path->module - 1, INVALID_RANGE);
 
 	assert(parent_path && "Didn't we pass in a TOKEN_IDENT? That's the only reason this could fail.");
 

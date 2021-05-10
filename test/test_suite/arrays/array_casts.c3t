@@ -1,4 +1,4 @@
-module test;
+module array_casts;
 
 
 func void test()

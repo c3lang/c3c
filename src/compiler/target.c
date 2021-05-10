@@ -5,14 +5,14 @@
 #include "compiler_internal.h"
 
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
-static ArchType arch_from_llvm_string(const char *string);
-static EnvironmentType environment_type_from_llvm_string(const char *string);
+static ArchType arch_from_llvm_string(StringSlice string);
+static EnvironmentType environment_type_from_llvm_string(StringSlice string);
 static bool arch_is_supported(ArchType arch);
 static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type);
 static unsigned os_target_alignment_of_int(OsType os, ArchType arch, int bits);
 static unsigned os_target_alignment_of_float(OsType os, ArchType arch, int bits);
-static OsType os_from_llvm_string(const char *string);
-static VendorType vendor_from_llvm_string(const char *string);
+static OsType os_from_llvm_string(StringSlice string);
+static VendorType vendor_from_llvm_string(StringSlice string);
 static ObjectFormatType object_format_from_os(OsType os);
 static unsigned os_target_supports_int128(OsType os, ArchType arch);
 static unsigned os_target_supports_float16(OsType os, ArchType arch);
@@ -387,9 +387,9 @@ static bool arch_is_supported(ArchType arch)
 			return false;
 	}
 }
-static ArchType arch_from_llvm_string(const char *string)
+static ArchType arch_from_llvm_string(StringSlice slice)
 {
-#define STRCASE(_str, _arch) if (strcmp(string, _str) == 0) return _arch;
+#define STRCASE(_str, _arch) if (slicestrcmp(slice, _str)) return _arch;
 	STRCASE("i386", ARCH_TYPE_X86)
 	STRCASE("i486", ARCH_TYPE_X86)
 	STRCASE("i586", ARCH_TYPE_X86)
@@ -480,9 +480,19 @@ static ArchType arch_from_llvm_string(const char *string)
 	// TODO parse arm & bpf names
 }
 
-static EnvironmentType environment_type_from_llvm_string(const char *string)
+static EnvironmentType environment_type_from_llvm_string(StringSlice env)
 {
-#define STRCASE(_str, _arch) if (strcmp(string, _str) == 0) return _arch;
+	// Remove trailing parts.
+	for (size_t i = 0; i < env.len; i++)
+	{
+		if (env.ptr[i] < 'A')
+		{
+			env.len = i;
+			break;
+		}
+	}
+
+#define STRCASE(_str, _arch) if (slicestrcmp(env, _str) == 0) return _arch;
 		STRCASE("gnu", ENV_TYPE_GNU)
 		STRCASE("gnuabin32", ENV_TYPE_GNUABIN32)
 		STRCASE("gnuabi64", ENV_TYPE_GNUABI64)
@@ -508,13 +518,18 @@ static EnvironmentType environment_type_from_llvm_string(const char *string)
 #undef STRCASE
 	}
 
-static OsType os_from_llvm_string(const char *os_string)
+static OsType os_from_llvm_string(StringSlice os_string)
 {
-	char *string = strdup(os_string);
-	int len = 0;
-	while (string[len] >= 'A') len++;
-	string[len] = '\0';
-#define STRCASE(_str, _os) if (strncmp(string, _str, sizeof(_str)) == 0) { free(string); return _os; }
+	// Remove trailing parts.
+	for (size_t i = 0; i < os_string.len; i++)
+	{
+		if (os_string.ptr[i] < 'A')
+		{
+			os_string.len = i;
+			break;
+		}
+	}
+#define STRCASE(_str, _os) if (slicestrcmp(os_string, _str)) return _os;
 	STRCASE("ananas", OS_TYPE_ANANAS)
 	STRCASE("cloudabi", OS_TYPE_CLOUD_ABI)
 	STRCASE("darwin", OS_TYPE_MACOSX)
@@ -550,14 +565,13 @@ static OsType os_from_llvm_string(const char *os_string)
 	STRCASE("hurd", OS_TYPE_HURD)
 	STRCASE("wasi", OS_TYPE_WASI)
 	STRCASE("emscripten", OS_TYPE_EMSCRIPTEN)
-	free(string);
 	return OS_TYPE_UNKNOWN;
 #undef STRCASE
 }
 
-static VendorType vendor_from_llvm_string(const char *string)
+static VendorType vendor_from_llvm_string(StringSlice slice)
 {
-#define STRCASE(_str, _vendor) if (strcmp(string, _str) == 0) return _vendor;
+#define STRCASE(_str, _vendor) if (slicestrcmp(slice, _str) == 0) return _vendor;
 	STRCASE("apple", VENDOR_APPLE)
 	STRCASE("pc", VENDOR_PC)
 	STRCASE("scei", VENDOR_SCEI)
@@ -1131,20 +1145,19 @@ void target_setup(BuildTarget *target)
 
 	LLVMTargetMachineRef machine = llvm_target_machine_create();
 	char *target_triple = LLVMGetTargetMachineTriple(machine);
+	platform_target.target_triple = strdup(target_triple);
+	LLVMDisposeMessage(target_triple);
 	LLVMDisposeTargetMachine(machine);
 
-	platform_target.target_triple = strdup(target_triple);
-	platform_target.arch = arch_from_llvm_string(strtok(target_triple, "-"));
+	StringSlice target_triple_string = strtoslice(platform_target.target_triple);
+	platform_target.arch = arch_from_llvm_string(strnexttok(&target_triple_string, '-'));
 	if (!arch_is_supported(platform_target.arch))
 	{
 		printf("WARNING! This architecture is not supported.\n");
 	}
-	platform_target.vendor = vendor_from_llvm_string(strtok(NULL, "-"));
-	platform_target.os = os_from_llvm_string(strtok(NULL, "-"));
-	char *env = strtok(NULL, "0123456789");
-	platform_target.environment_type = env ? environment_type_from_llvm_string(env) : ENV_TYPE_UNKNOWN;
-
-	LLVMDisposeMessage(target_triple);
+	platform_target.vendor = vendor_from_llvm_string(strnexttok(&target_triple_string, '-'));
+	platform_target.os = os_from_llvm_string(strnexttok(&target_triple_string, '-'));
+	platform_target.environment_type = environment_type_from_llvm_string(target_triple_string);
 
 	platform_target.float_abi = false;
 	platform_target.little_endian = arch_little_endian(platform_target.arch);
