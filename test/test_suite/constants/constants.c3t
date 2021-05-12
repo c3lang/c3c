@@ -19,15 +19,15 @@ func void test()
 
 // #expect: constants.ll
 
-@AA = protected constant i8 -1
-@BB = protected constant i8 -56
-@CC = protected constant i32 -1
-@DD = protected constant i32 -1
-@x = protected global i32 255
-@z = protected global i32 -1
-@w = protected global i8 -1
-@v = protected global i16 -1
-@z2 = protected global i32 -1
+@constants.AA = protected constant i8 -1, align 1
+@constants.BB = protected constant i8 -56, align 1
+@constants.CC = protected constant i32 -1, align 4
+@constants.DD = protected constant i32 -1, align 4
+@constants.x = protected global i32 255, align 4
+@constants.z = protected global i32 -1, align 4
+@constants.w = protected global i8 -1, align 1
+@constants.v = protected global i16 -1, align 2
+@constants.z2 = protected global i32 -1, align 4
 
 entry:
     %xx = alloca i32

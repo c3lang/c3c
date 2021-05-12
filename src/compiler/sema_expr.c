@@ -162,6 +162,7 @@ static bool expr_is_ltype(Expr *expr)
 static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr)
 {
 	Decl *decl = expr->identifier_expr.decl;
+	decl = decl_flatten(decl);
 	expr->identifier_expr.is_rvalue = true;
 
 	switch (decl->decl_kind)
@@ -218,16 +219,16 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 	{
 		case VARDECL_CONST:
 			if (!type_is_builtin(decl->type->type_kind)) break;
-			expr_replace(expr, copy_expr(context, decl->var.init_expr));
+			expr_replace(expr, copy_expr(decl->var.init_expr));
 			return sema_analyse_expr(context, to, expr);
 		case VARDECL_PARAM_EXPR:
-			expr_replace(expr, copy_expr(context, decl->var.init_expr));
+			expr_replace(expr, copy_expr(decl->var.init_expr));
 			assert(decl->var.init_expr->resolve_status == RESOLVE_DONE);
 			return true;
 		case VARDECL_PARAM_CT_TYPE:
 			TODO
 		case VARDECL_PARAM_REF:
-			expr_replace(expr, copy_expr(context, decl->var.init_expr));
+			expr_replace(expr, copy_expr(decl->var.init_expr));
 			return sema_cast_rvalue(context, to, expr);
 		case VARDECL_PARAM:
 		case VARDECL_GLOBAL:
@@ -619,7 +620,7 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 			case VARDECL_CONST:
 				if (!decl->type)
 				{
-					Expr *copy = copy_expr(context, decl->var.init_expr);
+					Expr *copy = copy_expr(decl->var.init_expr);
 					if (!sema_analyse_expr(context, to, copy)) return false;
 					if (!expr_is_constant_eval(copy))
 					{
@@ -716,7 +717,7 @@ static inline bool sema_expr_analyse_hash_identifier(Context *context, Type *to,
 	assert(decl->resolve_status == RESOLVE_DONE);
 
 	assert(decl->var.init_expr->resolve_status == RESOLVE_DONE);
-	expr_replace(expr, copy_expr(context, decl->var.init_expr));
+	expr_replace(expr, copy_expr(decl->var.init_expr));
 	return sema_analyse_expr(context, to, expr);
 }
 
@@ -1185,7 +1186,7 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 	for (unsigned i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
-		Decl *param = copy_decl(context, func_params[i]);
+		Decl *param = copy_decl(func_params[i]);
 		vec_add(params, param);
 		assert(param->decl_kind == DECL_VAR);
 		assert(param->resolve_status == RESOLVE_NOT_DONE);
@@ -1274,7 +1275,7 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 
 	bool ok = true;
 
-	Ast *body = copy_ast(context, decl->macro_decl.body);
+	Ast *body = copy_ast(decl->macro_decl.body);
 
 	TypeInfo *foo = decl->macro_decl.rtype;
 
@@ -1341,6 +1342,8 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 	return ok;
 }
 
+
+
 static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr)
 {
 	expr->constant = false;
@@ -1386,6 +1389,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			SEMA_ERROR(expr, "This value cannot be invoked, did you accidentally add ()?");
 			return false;
 	}
+	decl = decl_flatten(decl);
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
@@ -1399,9 +1403,10 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 		case DECL_POISONED:
 			return false;
 		default:
-			SEMA_ERROR(expr, "The expression cannot be called.");
-			return false;
+			break;
 	}
+	SEMA_ERROR(expr, "The expression cannot be called.");
+	return false;
 }
 
 static inline bool sema_expr_analyse_range(Context *context, Type *to, Expr *expr)
@@ -4865,7 +4870,7 @@ bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr, 
 static inline bool sema_cast_ct_ident_rvalue(Context *context, Type *to, Expr *expr)
 {
 	Decl *decl = expr->ct_ident_expr.decl;
-	Expr *copy = copy_expr(context, decl->var.init_expr);
+	Expr *copy = copy_expr(decl->var.init_expr);
 	if (!sema_analyse_expr(context, to, copy)) return false;
 	expr_replace(expr, copy);
 	return true;

@@ -4,11 +4,11 @@ C3 is a C-like language trying to be "an incremental improvement over C" rather 
 C3 owes a lot to the ideas of the [C2 language](http://c2lang.org): to iterate on top of C without trying to be a 
 whole new language.
 
-C3 tries to be an alternative in the the C/C++ niche: fast and close to the metal.
+C3 tries to be an alternative in the C/C++ niche: fast and close to the metal.
 
 ### Design Principles
 - Procedural "get things done"-type of language.
-- Try to stay close to C - only change where truly needed.
+- Try to stay close to C - only change what's really necessary.
 - C ABI compatibility and excellent C integration.
 - Learning C3 should be easy for a C programmer.
 - Data is inert.
@@ -31,12 +31,12 @@ func void main()
 
 - No mandatory header files
 - New semantic macro system
-- Generic modules
-- Module based
-- Subarrays (slices) and vararrays built in
+- Module based name spacing
+- Subarrays (slices) and dynamic arrays built in
 - Compile time reflection
 - Enhanced compile time execution
-- "Result" based zero overhead error handling
+- Generics based on generic modules
+- "Result"-based zero overhead error handling
 - Defer
 - Value methods
 - Associated enum data
@@ -53,6 +53,8 @@ developer of Judge0.
 Design work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have any suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue] (https://github.com/c3lang/c3c/issues) or discuss 
 C3 on its dedicated Discord: https://discord.gg/qN76R87
 
+The compiler should compile on Linux and MacOS, but needs some development love to 
+work on Windows. Also, parts of the code is still rough and needs to be made solid.
 
 #### Todo / done
 
@@ -85,39 +87,41 @@ C3 on its dedicated Discord: https://discord.gg/qN76R87
 - [x] `typeof`
 - [x] 2s complement wrapping operators
 - [x] Labelled break / continue
-- [x] `next` statement
+- [x] `nextcase` statement
 - [x] Expression blocks
 - [x] Do-without-while
 - [x] Foreach statement
+- [x] Generic modules
+- [x] Distinct types
+- [x] Built-in linking
+- [x] CT only macros evaluating to constants
+- [x] range initializers e.g. `{ [1..2] = 2 }`
+- [ ] Anonymous structs
+- [ ] Complete C ABI conformance *in progress*
+- [ ] Debug info *in progress*
+- [ ] Virtual type  
+- [ ] Enum associated data support  
+- [ ] Windows support
 - [ ] All attributes
 - [ ] Associative array literals
 - [ ] CT type constants
 - [ ] Reflection methods
-- [ ] Anonymous structs
-- [x] Distinct types
 - [ ] LTO/ThinLTO setup
-- [x] Built-in linking
 - [ ] `global` / `shared` for globals 
 - [ ] Complex macros
-- [x] CT only macros evaluating to constants
 - [ ] Escape macros
 - [ ] Implicit capturing macros
 - [ ] Trailing body macros
 - [ ] Subarray initializers
-- [x] range initializers e.g. `{ [1..2] = 2 }`
 - [ ] Bitstructs
 - [ ] `asm` section
 - [ ] `$switch`
 - [ ] `$for`
 - [ ] Pre-post conditions
 - [ ] Stdlib inclusion
-- [ ] Generic modules
 - [ ] String functions
-- [ ] Vararrays e.g. `int[*]`
 - [ ] Compile time incremental arrays
-- [ ] Complete C ABI conformance *in progress*
-- [ ] Generic functions
-- [ ] Debug info *in progress*
+- [ ] Vararrays e.g. `int[*]`
 - [ ] Simd vector types
 - [ ] Complex types
 
@@ -125,8 +129,9 @@ C3 on its dedicated Discord: https://discord.gg/qN76R87
 
 - If you wish to contribute with ideas, please file issues on the c3docs: https://github.com/c3lang/c3docs instead of the compiler.
 - Discuss the language on discord to help iron out syntax.
-- Stdlib work will soon start, do you want to help out building the C3 std lib?
-- Do you want to do real compiler work? Everyone is welcome to contribute.
+- Interested in contributing to the stdlib? Please get in touch on Discord.
+- Are you a Windows dev? Please help make the compiler work on Windows!
+- Install instructions for other Linux and Unix variants are appreciated.
 
 #### Installing on Ubuntu
 

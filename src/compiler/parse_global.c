@@ -975,6 +975,38 @@ bool parse_next_is_decl(Context *context)
 	}
 }
 
+bool parse_next_is_type(Context *context)
+{
+	TokenType next_tok = context->next_tok.type;
+	switch (context->tok.type)
+	{
+		case TOKEN_VOID:
+		case TOKEN_CHAR:
+		case TOKEN_BOOL:
+		case TOKEN_ICHAR:
+		case TOKEN_DOUBLE:
+		case TOKEN_FLOAT:
+		case TOKEN_INT:
+		case TOKEN_ISIZE:
+		case TOKEN_LONG:
+		case TOKEN_SHORT:
+		case TOKEN_UINT:
+		case TOKEN_ULONG:
+		case TOKEN_USHORT:
+		case TOKEN_USIZE:
+		case TOKEN_QUAD:
+		case TOKEN_TYPE_IDENT:
+		case TOKEN_CT_TYPE_IDENT:
+		case TOKEN_ERR:
+		case TOKEN_TYPEID:
+			return true;
+		case TOKEN_IDENT:
+			if (next_tok != TOKEN_SCOPE) return false;
+			return context_next_is_type_with_path_prefix(context);
+		default:
+			return false;
+	}
+}
 
 
 bool parse_next_is_case_type(Context *context)
@@ -1431,53 +1463,127 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 }
 
 /**
- * define_decl ::= DEFINE path? (IDENT | TYPE_IDENT | CONST_IDENT) '(' expr (',' expr)* ')' as (IDENT | TYPE_IDENT | CONST_IDENT)
+ * define_parameters ::= '(' expr (',' expr)* ')'
+ *
+ * @return NULL if parsing failed, otherwise a list of Expr*
  */
-static inline Decl *parse_define(Context *context, Visibility visibility)
+static inline Expr **parse_parameterized_define(Context *context, Visibility visibility)
 {
-	if (context->next_tok.type == TOKEN_CT_TYPE_IDENT || context->next_tok.type == TOKEN_CT_IDENT)
-	{
-		SEMA_TOKEN_ERROR(context->next_tok, "Compile time variables cannot be defined at the global level.");
-		return poisoned_decl;
-	}
-	TokenId first = context->tok.id;
-	advance_and_verify(context, TOKEN_DEFINE);
-	bool had_error = false;
-	Path *path = parse_path_prefix(context, &had_error);
-	if (had_error) return poisoned_decl;
-	if (!token_is_symbol(context->tok.type))
-	{
-		SEMA_TOKEN_ERROR(context->tok, "Expected an identifier here.");
-		return poisoned_decl;
-	}
-	TokenId name = context->tok.id;
-	advance(context);
-	CONSUME_OR(TOKEN_LPAREN, poisoned_decl);
+	CONSUME_OR(TOKEN_LPAREN, NULL);
 	Expr **exprs = NULL;
 	while (!try_consume(context, TOKEN_RPAREN))
 	{
-		Expr *expr = TRY_EXPR_OR(parse_constant_expr(context), poisoned_decl);
+		Expr *expr = TRY_EXPR_OR(parse_constant_expr(context), NULL);
 		vec_add(exprs, expr);
 		if (context->tok.type != TOKEN_RPAREN)
 		{
-			TRY_CONSUME_OR(TOKEN_COMMA, "Expected ',' after argument.", poisoned_decl);
+			TRY_CONSUME_OR(TOKEN_COMMA, "Expected ',' after argument.", NULL);
 		}
 	}
-	TRY_CONSUME_OR(TOKEN_AS, "Expected 'as' after generic declaration.", poisoned_decl);
+	return exprs;
+}
+
+/**
+ * func_define ::= failable_type opt_parameter_type_list
+ */
+static inline bool parse_func_define(Context *context, Decl *decl, Visibility visibility)
+{
+	decl->define_decl.define_kind = DEFINE_FUNC;
+	advance_and_verify(context, TOKEN_FUNC);
+	TypeInfo *type_info = TRY_TYPE_OR(parse_type(context), false);
+	if (try_consume(context, TOKEN_BANG))
+	{
+		decl->define_decl.function_signature.failable = true;
+	}
+	decl->define_decl.function_signature.rtype = type_info;
+	if (!parse_opt_parameter_type_list(context, visibility, &(decl->typedef_decl.function_signature), true))
+	{
+		return false;
+	}
+	return true;
+}
+
+/**
+ * define_decl ::= DEFINE path? (IDENT | TYPE_IDENT | CONST_IDENT) define_parameters? as (IDENT | TYPE_IDENT | CONST_IDENT)
+ */
+static inline Decl *parse_define(Context *context, Visibility visibility)
+{
+	advance_and_verify(context, TOKEN_DEFINE);
+	Decl *decl = decl_new(DECL_DEFINE, context->tok.id, visibility);
+	if (try_consume(context, TOKEN_FUNC))
+	{
+		if (!parse_func_define(context, decl, visibility)) return poisoned_decl;
+	}
+	else if (parse_next_is_type(context))
+	{
+		decl->define_decl.define_kind = DEFINE_TYPE_ALIAS;
+		decl->define_decl.type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+	}
+	else if (TOKEN_IS(TOKEN_IDENT) || TOKEN_IS(TOKEN_CONST_IDENT))
+	{
+		decl->define_decl.path = NULL;
+		if (context->next_tok.type == TOKEN_SCOPE)
+		{
+			bool error;
+			decl->define_decl.path = parse_path_prefix(context, &error);
+			if (error) return poisoned_decl;
+		}
+		decl->define_decl.identifier = context->tok.id;
+		if (try_consume(context, TOKEN_CONST_IDENT) || try_consume(context, TOKEN_IDENT))
+		{
+			decl->define_decl.define_kind = DEFINE_IDENT_ALIAS;
+		}
+		else
+		{
+			SEMA_TOKEN_ERROR(context->tok, "Expected an identifier, constant or type.");
+			return poisoned_decl;
+		}
+	}
+	else
+	{
+		SEMA_TOKEN_ERROR(context->tok, "Expected a constant, type or identifier here.");
+		return poisoned_decl;
+	}
+
+	Expr **exprs = NULL;
+	if (TOKEN_IS(TOKEN_LPAREN))
+	{
+		exprs = parse_parameterized_define(context, visibility);
+		if (!exprs) return poisoned_decl;
+		TRY_CONSUME_OR(TOKEN_AS, "Expected 'as' after the generic declaration, did you forget it", poisoned_decl);
+		decl->define_decl.is_parameterized = true;
+		decl->define_decl.params = exprs;
+	}
+	else
+	{
+		TRY_CONSUME_OR(TOKEN_AS, "Expected 'as' after the name, did you forget it?", poisoned_decl);
+	}
+
+	// Parse optional "distinct"
+	if (context->tok.type == TOKEN_IDENT && TOKSTR(context->tok) == kw_distinct)
+	{
+		if (decl->define_decl.define_kind != DEFINE_TYPE_ALIAS || decl->define_decl.is_parameterized)
+		{
+			SEMA_TOKID_ERROR(context->tok.id, "'distinct' can only be used for regular types.");
+			return poisoned_decl;
+		}
+		advance(context);
+		decl->define_decl.define_kind = DEFINE_DISTINCT_TYPE;
+	}
+
+	decl->name = TOKSTR(context->tok);
+	decl->name_token = context->tok.id;
+
 	if (!token_is_symbol(context->tok.type))
 	{
 		SEMA_TOKEN_ERROR(context->tok, "The aliased name must follow after 'as'.");
 		return poisoned_decl;
 	}
-	Decl *decl = decl_new(DECL_DEFINE, context->tok.id, visibility);
-	decl->define_decl.path = path;
-	decl->define_decl.params = exprs;
-	decl->define_decl.name = name;
-	decl->span = (SourceSpan){ first, context->tok.id };
-	advance(context);
 
-	TRY_CONSUME_EOS_OR(poisoned_decl);
+	advance(context);
+	CONSUME_OR(TOKEN_EOS, poisoned_decl);
 	return decl;
+
 }
 
 
@@ -1569,7 +1675,6 @@ static inline bool parse_func_typedef(Context *context, Decl *decl, Visibility v
 		return false;
 	}
 	return true;
-
 }
 
 /**

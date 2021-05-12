@@ -19,6 +19,7 @@ void context_add_intrinsic(Context *context, const char *name)
 void sema_analysis_pass_process_imports(Module *module)
 {
 	DEBUG_LOG("Pass: Importing dependencies for files in module '%s'.", module->name->module);
+
 	unsigned import_count = 0;
 	VECEACH(module->contexts, index)
 	{
@@ -144,28 +145,32 @@ static inline bool sema_analyse_top_level_if(Context *context, Decl *ct_if)
 }
 
 
-void sema_analysis_pass_conditional_compilation(Context *context)
+void sema_analysis_pass_conditional_compilation(Module *module)
 {
-	// We never look at conditional compilation.
-	if (context->module->parameters) return;
 
-	DEBUG_LOG("Pass: Top level conditionals %s", context->file->name);
-	for (unsigned i = 0; i < vec_size(context->ct_ifs); i++)
+	DEBUG_LOG("Pass: Top level conditionals %s", module->name->module);
+	VECEACH(module->contexts, index)
 	{
-		// Also handle switch!
-		sema_analyse_top_level_if(context, context->ct_ifs[i]);
+		Context *context = module->contexts[index];
+		for (unsigned i = 0; i < vec_size(context->ct_ifs); i++)
+		{
+			// Also handle switch!
+			sema_analyse_top_level_if(context, context->ct_ifs[i]);
+		}
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
-void sema_analysis_pass_ct_assert(Context *context)
+void sema_analysis_pass_ct_assert(Module *module)
 {
-	if (context->module->parameters) return;
-
-	DEBUG_LOG("Pass: $assert checks %s", context->file->name);
-	VECEACH(context->ct_asserts, i)
+	DEBUG_LOG("Pass: $assert checks %s", module->name->module);
+	VECEACH(module->contexts, index)
 	{
-		sema_analyse_ct_assert_stmt(context, context->ct_asserts[i]);
+		Context *context = module->contexts[index];
+		VECEACH(context->ct_asserts, i)
+		{
+			sema_analyse_ct_assert_stmt(context, context->ct_asserts[i]);
+		}
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
@@ -177,62 +182,68 @@ static inline bool analyse_func_body(Context *context, Decl *decl)
 	return true;
 }
 
-void sema_analysis_pass_decls(Context *context)
+void sema_analysis_pass_decls(Module *module)
 {
-	if (context->module->parameters) return;
+	DEBUG_LOG("Pass: Decl analysis %s", module->name->module);
 
-	DEBUG_LOG("Pass: Decl analysis %s", context->file->name);
-	context->current_scope = &global_context.scopes[0];
-	context->current_scope->scope_id = 0;
-	context->last_local = &global_context.locals[0];
-	VECEACH(context->enums, i)
+	VECEACH(module->contexts, index)
 	{
-		sema_analyse_decl(context, context->enums[i]);
-	}
-	VECEACH(context->types, i)
-	{
-		sema_analyse_decl(context, context->types[i]);
-	}
-	VECEACH(context->macros, i)
-	{
-		sema_analyse_decl(context, context->macros[i]);
-	}
-	VECEACH(context->generics, i)
-	{
-		sema_analyse_decl(context, context->generics[i]);
-	}
-	VECEACH(context->methods, i)
-	{
-		sema_analyse_decl(context, context->methods[i]);
-	}
-	VECEACH(context->vars, i)
-	{
-		sema_analyse_decl(context, context->vars[i]);
-	}
-	VECEACH(context->functions, i)
-	{
-		sema_analyse_decl(context, context->functions[i]);
-	}
-	VECEACH(context->generic_defines, i)
-	{
-		sema_analyse_decl(context, context->generic_defines[i]);
+		Context *context = module->contexts[index];
+		context->current_scope = &global_context.scopes[0];
+		context->current_scope->scope_id = 0;
+		context->last_local = &global_context.locals[0];
+		VECEACH(context->enums, i)
+		{
+			sema_analyse_decl(context, context->enums[i]);
+		}
+		VECEACH(context->types, i)
+		{
+			sema_analyse_decl(context, context->types[i]);
+		}
+		VECEACH(context->macros, i)
+		{
+			sema_analyse_decl(context, context->macros[i]);
+		}
+		VECEACH(context->generics, i)
+		{
+			sema_analyse_decl(context, context->generics[i]);
+		}
+		VECEACH(context->methods, i)
+		{
+			sema_analyse_decl(context, context->methods[i]);
+		}
+		VECEACH(context->vars, i)
+		{
+			sema_analyse_decl(context, context->vars[i]);
+		}
+		VECEACH(context->functions, i)
+		{
+			sema_analyse_decl(context, context->functions[i]);
+		}
+		VECEACH(context->generic_defines, i)
+		{
+			sema_analyse_decl(context, context->generic_defines[i]);
+		}
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
-void sema_analysis_pass_functions(Context *context)
+void sema_analysis_pass_functions(Module *module)
 {
-	DEBUG_LOG("Pass: Function analysis %s", context->file->name);
+	DEBUG_LOG("Pass: Function analysis %s", module->name->module);
 
-	if (context->module->parameters) return;
+	VECEACH(module->contexts, index)
+	{
+		Context *context = module->contexts[index];
+		VECEACH(context->methods, i)
+		{
+			analyse_func_body(context, context->methods[i]);
+		}
+		VECEACH(context->functions, i)
+		{
+			analyse_func_body(context, context->functions[i]);
+		}
 
-	VECEACH(context->methods, i)
-	{
-		analyse_func_body(context, context->methods[i]);
-	}
-	VECEACH(context->functions, i)
-	{
-		analyse_func_body(context, context->functions[i]);
 	}
 
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);

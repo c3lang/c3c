@@ -2424,6 +2424,7 @@ static void llvm_emit_fp_intrinsic_expr(GenContext *c, unsigned intrinsic_id, BE
 void gencontext_emit_call_intrinsic_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
+	function_decl = decl_flatten(function_decl);
 	if (function_decl->name == kw___round)
 	{
 		llvm_emit_fp_intrinsic_expr(c, intrinsic_id_rint, be_value, expr);
@@ -2634,6 +2635,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	{
 		// 3. Call a regular function.
 		Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
+		function_decl = decl_flatten(function_decl);
 
 		// 3a. This may be an intrinsic, if so generate an intrinsic call instead.
 		if (function_decl->func.is_builtin)

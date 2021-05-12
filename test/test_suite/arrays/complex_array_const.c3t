@@ -15,7 +15,7 @@ Connection[3] link
 
 // #expect: test.ll
 
-@.str = private constant [6 x i8] c"link1\00"
-@.str.1 = private constant [6 x i8] c"link2\00"
-@.str.2 = private constant [6 x i8] c"link3\00"
-@link = protected global [3 x %test.Connection] [%test.Connection { i64 1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str, i32 0, i32 0), i64 10 }, %test.Connection { i64 2, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.1, i32 0, i32 0), i64 20 }, %test.Connection { i64 3, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.2, i32 0, i32 0), i64 30 }], align 16
+@.str = private constant [6 x i8] c"link1\00", align 1
+@.str.1 = private constant [6 x i8] c"link2\00", align 1
+@.str.2 = private constant [6 x i8] c"link3\00", align 1
+@test.link = protected global [3 x %test.Connection] [%test.Connection { i64 1, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str, i32 0, i32 0), i64 10 }, %test.Connection { i64 2, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.1, i32 0, i32 0), i64 20 }, %test.Connection { i64 3, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.2, i32 0, i32 0), i64 30 }], align 16
