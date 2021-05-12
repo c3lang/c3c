@@ -372,7 +372,7 @@ static void gencontext_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
-	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->name);
+	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->external_name);
 	llvm_set_alignment(decl->backend_ref, alignment);
 	if (decl->visibility != VISIBLE_EXTERN)
 	{
@@ -403,6 +403,7 @@ static void gencontext_emit_global_variable_init(GenContext *c, Decl *decl)
 		decl->backend_ref = LLVMConstBitCast(decl->backend_ref, llvm_get_ptr_type(c, decl->type));
 	}
 	LLVMReplaceAllUsesWith(old, decl->backend_ref);
+	LLVMDeleteGlobal(old);
 
 	// Should we set linkage here?
 	if (llvm_use_debug(c))
@@ -750,6 +751,7 @@ void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type 
 }
 void llvm_value_set_decl_address(BEValue *value, Decl *decl)
 {
+	decl = decl_flatten(decl);
 	llvm_value_set_address(value, decl_ref(decl), decl->type);
 	value->alignment = decl->alignment;
 
@@ -943,6 +945,7 @@ const char *llvm_codegen(void *context)
 
 void *llvm_gen(Module *module)
 {
+	if (!vec_size(module->contexts)) return NULL;
 	assert(intrinsics_setup);
 	GenContext *gen_context = calloc(sizeof(GenContext), 1);
 	gencontext_init(gen_context, module);

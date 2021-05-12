@@ -429,11 +429,30 @@ typedef struct
 	Path *path; // For redefinition
 } GenericDecl;
 
+typedef enum
+{
+	DEFINE_FUNC,
+	DEFINE_DISTINCT_TYPE,
+	DEFINE_TYPE_ALIAS,
+	DEFINE_IDENT_ALIAS,
+} DefineType;
+
 typedef struct
 {
-	Path *path;
+	DefineType define_kind: 5;
+	bool is_parameterized : 1;
+	union
+	{
+		FunctionSignature function_signature;
+		TypeInfo *type_info;
+		struct
+		{
+			Path *path;
+			TokenId identifier;
+		};
+		Decl *alias;
+	};
 	Expr **params;
-	TokenId name;
 } DefineDecl;
 
 typedef struct
@@ -1144,6 +1163,7 @@ typedef struct _Module
 	bool is_c_library : 1;
 	bool is_exported : 1;
 	bool is_generic : 1;
+	AnalysisStage stage : 6;
 
 	Ast **files; // Asts
 
@@ -1480,7 +1500,7 @@ const char *llvm_codegen(void *context);
 void *llvm_gen(Module *module);
 void llvm_codegen_setup();
 
-void header_gen(Context *context);
+void header_gen(Module *module);
 
 void global_context_add_type(Type *type);
 Decl *compiler_find_symbol(const char *name);
@@ -1511,6 +1531,14 @@ static inline bool decl_ok(Decl *decl) { return !decl || decl->decl_kind != DECL
 static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
 static inline bool decl_is_struct_type(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
+static inline Decl *decl_flatten(Decl *decl)
+{
+	if (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
+	{
+		return decl->define_decl.alias;
+	}
+	return decl;
+}
 
 #pragma mark --- Diag functions
 
@@ -1596,10 +1624,11 @@ const char *resolve_status_to_string(ResolveStatus status);
 
 void sema_analysis_pass_process_imports(Module *module);
 void sema_analysis_pass_register_globals(Module *module);
-void sema_analysis_pass_conditional_compilation(Context *context);
-void sema_analysis_pass_decls(Context *context);
-void sema_analysis_pass_ct_assert(Context *context);
-void sema_analysis_pass_functions(Context *context);
+void sema_analysis_pass_conditional_compilation(Module *module);
+void sema_analysis_pass_decls(Module *module);
+void sema_analysis_pass_ct_assert(Module *module);
+void sema_analysis_pass_functions(Module *module);
+void sema_analyze_stage(Module *module, AnalysisStage stage);
 
 bool sema_add_member(Context *context, Decl *decl);
 bool sema_add_local(Context *context, Decl *decl);
@@ -1890,7 +1919,7 @@ static inline Type *type_flatten_distinct(Type *type)
 	type = type->canonical;
 	while (type->type_kind == TYPE_DISTINCT)
 	{
-		type = type->decl->distinct_decl.base_type->canonical;
+		type = type->decl->define_decl.type_info->type->canonical;
 	}
 	return type;
 }
@@ -1999,23 +2028,23 @@ static inline bool type_is_promotable_float(Type *type)
 	return type_is_float(type->canonical) && type->builtin.bytesize < type_double->builtin.bytesize;
 }
 
-#define MACRO_COPY_DECL(x) x = copy_decl(context, x)
-#define MACRO_COPY_DECL_LIST(x) x = copy_decl_list(context, x)
-#define MACRO_COPY_EXPR(x) x = copy_expr(context, x)
-#define MACRO_COPY_TYPE(x) x = copy_type_info(context, x)
-#define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(context, x)
-#define MACRO_COPY_EXPR_LIST(x) x = copy_expr_list(context, x)
-#define MACRO_COPY_AST_LIST(x) x = copy_ast_list(context, x)
-#define MACRO_COPY_AST(x) x = copy_ast(context, x)
+#define MACRO_COPY_DECL(x) x = copy_decl(x)
+#define MACRO_COPY_DECL_LIST(x) x = copy_decl_list(x)
+#define MACRO_COPY_EXPR(x) x = copy_expr(x)
+#define MACRO_COPY_TYPE(x) x = copy_type_info(x)
+#define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(x)
+#define MACRO_COPY_EXPR_LIST(x) x = copy_expr_list(x)
+#define MACRO_COPY_AST_LIST(x) x = copy_ast_list(x)
+#define MACRO_COPY_AST(x) x = copy_ast(x)
 
-Expr **copy_expr_list(Context *context, Expr **expr_list);
-Expr *copy_expr(Context *context, Expr *source_expr);
-Ast *copy_ast(Context *context, Ast *source);
-Ast **copy_ast_list(Context *context, Ast **to_copy);
-Decl *decl_copy_local_from_macro(Context *context, Decl *to_copy);
-Decl *copy_decl(Context *context, Decl *decl);
-Decl **copy_decl_list(Context *context, Decl **decl_list);
-TypeInfo *copy_type_info(Context *context, TypeInfo *source);
+Expr **copy_expr_list(Expr **expr_list);
+Expr *copy_expr(Expr *source_expr);
+Ast *copy_ast(Ast *source);
+Ast **copy_ast_list(Ast **to_copy);
+Decl *decl_copy_local_from_macro(Decl *to_copy);
+Decl *copy_decl(Decl *decl);
+Decl **copy_decl_list(Decl **decl_list);
+TypeInfo *copy_type_info(TypeInfo *source);
 
 /**
  * Minimum alignment, values are either offsets or alignments.

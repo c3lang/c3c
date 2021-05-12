@@ -723,6 +723,11 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 			return type;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_CNAME:
+			if (context->module->is_generic)
+			{
+				SEMA_TOKID_ERROR(attr->name, "'cname' attributes are not allowed in generic modules.");
+				return false;
+			}
 			if (!attr->expr)
 			{
 				SEMA_TOKID_ERROR(attr->name, "'%s' requires a string argument, e.g. %s(\"foo\").", TOKSTR(attr->name), TOKSTR(attr->name));
@@ -1031,14 +1036,100 @@ static bool sema_analyse_plain_define(Context *c, Decl *decl, Decl *symbol)
 	TODO
 }
 
+static Context *copy_context(Module *module, Context *c)
+{
+	Context *copy = context_create(c->file);
+	copy->imports = copy_decl_list(c->imports);
+	copy->global_decls = copy_decl_list(c->global_decls);
+	copy->module = module;
+	assert(!c->functions && !c->methods && !c->enums && !c->ct_ifs && !c->types && !c->interfaces && !c->external_symbol_list);
+	return copy;
+}
+
 static Module *sema_instantiate_module(Context *context, Module *module, Path *path, Expr **parms)
 {
 	Module *new_module = compiler_find_or_create_module(path, NULL);
-	new_module->functions = copy_decl_list(context, module->functions);
-	TODO
+	new_module->is_generic = true;
+	Context **contexts = module->contexts;
+	VECEACH(contexts, i)
+	{
+		vec_add(new_module->contexts, copy_context(new_module, contexts[i]));
+	}
+	Context *first_context = new_module->contexts[0];
+	VECEACH(module->parameters, i)
+	{
+		TokenId param = module->parameters[i];
+		Decl *decl = decl_new_with_type(param, DECL_TYPEDEF, VISIBLE_PUBLIC);
+		decl->resolve_status = RESOLVE_DONE;
+		Expr *type_info_expr = parms[i];
+		assert(type_info_expr->expr_kind == EXPR_TYPEINFO);
+		assert(type_info_expr->type_expr->resolve_status == RESOLVE_DONE);
+		decl->typedef_decl.type_info = type_info_expr->type_expr;
+		decl->type->name = decl->name;
+		decl->type->canonical = type_info_expr->type_expr->type->canonical;
+		vec_add(first_context->global_decls, decl);
+	}
+	return new_module;
 }
-static bool sema_analyse_parameterized_define(Context *c, Decl *decl, Module *module)
+
+static Decl *sema_analyse_parameterized_define(Context *c, Decl *decl)
 {
+	TokenId define_ident;;
+	TypeInfo *define_type;
+	if (decl->define_decl.define_kind == DEFINE_TYPE_ALIAS)
+	{
+		define_type = decl->define_decl.type_info;
+	}
+	else
+	{
+		define_ident = decl->define_decl.identifier;
+	}
+	Path *decl_path;
+	bool mismatch = false;
+	const char *name;
+	SourceSpan mismatch_span = INVALID_RANGE;
+	switch (decl->define_decl.define_kind)
+	{
+		case DEFINE_IDENT_ALIAS:
+			decl_path = decl->define_decl.path;
+			name = TOKSTR(define_ident);
+			break;
+		case DEFINE_TYPE_ALIAS:
+			mismatch_span = define_type->span;
+			decl_path = define_type->unresolved.path;
+			name = TOKSTR(define_type->unresolved.name_loc);
+			mismatch = define_type->kind != TYPE_INFO_IDENTIFIER;
+			break;
+		default:
+			UNREACHABLE
+	}
+	if (mismatch)
+	{
+		sema_error_range(mismatch_span, "A variable, type or constant was expected here.");
+		return poisoned_decl;
+	}
+	if (!decl_path)
+	{
+		sema_error_range(mismatch_span, "Parameterization requires the full path, please add it.");
+		return poisoned_decl;
+	}
+	Decl *import_found = NULL;
+	VECEACH(c->imports, i)
+	{
+		Decl *import = c->imports[i];
+		if (decl_path->module == import->import.path->module)
+		{
+			import_found = import;
+			break;
+		}
+	}
+	if (!import_found)
+	{
+		sema_error_range(mismatch_span, "It was not possible to find a matching module, did you use the full path?");
+		return poisoned_decl;
+	}
+
+	Module *module = import_found->module;
 	Expr **params = decl->define_decl.params;
 	unsigned parameter_count = vec_size(module->parameters);
 	assert(parameter_count > 0);
@@ -1046,81 +1137,119 @@ static bool sema_analyse_parameterized_define(Context *c, Decl *decl, Module *mo
 	{
 		sema_error_range((SourceSpan) { params[0]->span.loc, VECLAST(params)->span.end_loc }, "The generic module expected %d arguments, but you only supplied %d, did you make a mistake?",
 		           parameter_count, vec_size(decl->define_decl.params));
-		return false;
+		return poisoned_decl;
 	}
-	char *param_path = global_context.scratch_buffer;
-	memcpy(param_path, module->name->module, module->name->len);
-	unsigned offset = module->name->len;
-	param_path[offset++] = '(';
+	scratch_buffer_clear();
+	scratch_buffer_append_len(module->name->module, module->name->len);
+	scratch_buffer_append_char('.');
 	VECEACH(decl->define_decl.params, i)
 	{
 		Expr *expr = decl->define_decl.params[i];
 		if (expr->expr_kind != EXPR_TYPEINFO)
 		{
 			SEMA_ERROR(expr, "A generic module can only take plain types as arguments.");
-			return false;
+			return poisoned_decl;
 		}
-		if (!sema_resolve_type_info(c, expr->type_expr)) return false;
-		if (i != 0) param_path[offset++] = ',';
+		if (!sema_resolve_type_info(c, expr->type_expr)) return poisoned_decl;
+		if (i != 0) scratch_buffer_append_char('.');
 		const char *type_name = expr->type_expr->type->canonical->name;
-		unsigned len = strlen(type_name);
-		memcpy(param_path + offset, type_name, len);
-		offset += len;
+		scratch_buffer_append(type_name);
 	}
-	param_path[offset++] = ')';
-	param_path[offset] = '\0';
 	TokenType ident_type = TOKEN_IDENT;
-	const char *path_string = symtab_add(param_path, offset, fnv1a(param_path, offset), &ident_type);
+	const char *res = scratch_buffer_to_string();
+	size_t len = global_context.scratch_buffer_len;
+	const char *path_string = symtab_add(res, len, fnv1a(res, len), &ident_type);
 	Module *instantiated_module = global_context_find_module(path_string);
 	if (!instantiated_module)
 	{
 		Path *path = CALLOCS(Path);
 		path->module = path_string;
 		path->span = module->name->span;
-		path->len = offset;
+		path->len = len;
 		instantiated_module = sema_instantiate_module(c, module, path, decl->define_decl.params);
-		TODO
+		sema_analyze_stage(instantiated_module, c->module->stage - 1);
 	}
-	TODO
+	Decl *symbol = module_find_symbol(instantiated_module, name);
+	if (!symbol)
+	{
+		SEMA_ERROR(decl, "Identifier '%s' could not be found.", name);
+		return poisoned_decl;
+	}
+	if (symbol->visibility <= VISIBLE_MODULE && !import_found->import.private)
+	{
+		SEMA_TOKID_ERROR(decl->name_token, "'%s' is not visible from this module.", symbol->name);
+		return poisoned_decl;
+	}
+	context_register_external_symbol(c, symbol);
+	return symbol;
 }
+static void decl_define_type(Decl *decl, Type *actual_type)
+{
+	Type *type = type_new(TYPE_TYPEDEF, decl->name);
+	type->decl = decl;
+	type->canonical = actual_type->canonical;
+	decl->type = type;
+}
+
 static inline bool sema_analyse_define(Context *c, Decl *decl)
 {
-	Path *path = decl->define_decl.path;
-	if (path)
+	Decl *symbol;
+	if (decl->define_decl.is_parameterized)
 	{
-		VECEACH(c->imports, i)
+		symbol = TRY_DECL_OR(sema_analyse_parameterized_define(c, decl), poisoned_decl);
+	}
+	else
+	{
+		switch (decl->define_decl.define_kind)
 		{
-			Decl *import = c->imports[i];
-			if (path->module == import->import.path->module)
+			case DEFINE_FUNC:
 			{
-				return sema_analyse_parameterized_define(c, decl, import->module);
+				Type *func_type = sema_analyse_function_signature(c, &decl->define_decl.function_signature, false);
+				if (!func_type) return false;
+				decl_define_type(decl, type_get_ptr(func_type));
+				return true;
+			}
+			case DEFINE_TYPE_ALIAS:
+				if (!sema_resolve_type_info(c, decl->define_decl.type_info)) return false;
+				decl_define_type(decl, decl->define_decl.type_info->type);
+				return true;
+			case DEFINE_DISTINCT_TYPE:
+			{
+				if (!sema_resolve_type_info(c, decl->define_decl.type_info)) return false;
+				Type *type = type_new(TYPE_DISTINCT, decl->name);
+				type->decl = decl;
+				type->canonical = type;
+				decl->type = type;
+				return true;
+			}
+			case DEFINE_IDENT_ALIAS:
+			{
+				Decl *ambiguous_decl = NULL;
+				Decl *private_symbol = NULL;
+				symbol = sema_resolve_symbol(c,
+				                             TOKSTR(decl->define_decl.identifier),
+				                             decl->define_decl.path,
+				                             &ambiguous_decl,
+				                             &private_symbol);
+				if (!symbol) TODO;
+				break;
 			}
 		}
 	}
-	Decl *ambiguous_decl = NULL;
-	Decl *private_decl = NULL;
-	Decl *symbol = sema_resolve_symbol(c, TOKSTR(decl->define_decl.name), decl->define_decl.path, &ambiguous_decl, &private_decl);
-	if (!symbol)
+	switch (decl->define_decl.define_kind)
 	{
-		if (private_decl)
-		{
-			SEMA_TOKID_ERROR(decl->define_decl.name, "'%s' is not visible from this module.", private_decl->name);
-		}
-		else if (ambiguous_decl)
-		{
-			SEMA_TOKID_ERROR(decl->define_decl.name, "The name '%s' ambiguous, please add a path.", ambiguous_decl->name);
-		}
-		else
-		{
-			SEMA_TOKID_ERROR(decl->define_decl.name, "Identifier '%s' could not be found.", TOKSTR(decl->define_decl.name));
-		}
-		return false;
+		case DEFINE_FUNC:
+		case DEFINE_DISTINCT_TYPE:
+			UNREACHABLE
+		case DEFINE_TYPE_ALIAS:
+			decl_define_type(decl, symbol->type);
+			break;
+		case DEFINE_IDENT_ALIAS:
+			decl->type = symbol->type;
+			decl->define_decl.alias = symbol;
+			break;
 	}
-	if (vec_size(decl->define_decl.params) > 0)
-	{
-		sema_error_range((SourceSpan) { decl->define_decl.params[0]->span.loc, VECLAST(decl->define_decl.params)->span.end_loc }, "Using 'define' with arguments is only for generic modules, did you add arguments by accident?");
-	}
-	return sema_analyse_plain_define(c, decl, symbol);
+	return true;
 }
 
 

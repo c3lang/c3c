@@ -576,6 +576,7 @@ AbiType *x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *source
 
 AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_type, unsigned source_offset)
 {
+	type = type_flatten(type);
 	switch (type->type_kind)
 	{
 		case TYPE_U64:

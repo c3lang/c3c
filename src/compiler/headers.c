@@ -239,8 +239,10 @@ static void header_gen_var(FILE *file, Context *c, Decl *decl)
 	fprintf(file, "/* vars */\n");
 }
 
-void header_gen(Context *context)
+void header_gen(Module *module)
 {
+	TODO
+	Context *context = module->contexts[0];
 	const char *filename = strcat_arena(context->file->name, ".h");
 	FILE *file = fopen(filename, "w");
 	OUTPUT("#include <stdint.h>\n");

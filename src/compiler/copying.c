@@ -1,27 +1,27 @@
 #include "compiler_internal.h"
 
-Expr **copy_expr_list(Context *context, Expr **expr_list)
+Expr **copy_expr_list(Expr **expr_list)
 {
 	Expr **result = NULL;
 	VECEACH(expr_list, i)
 	{
-		vec_add(result, copy_expr(context, expr_list[i]));
+		vec_add(result, copy_expr(expr_list[i]));
 	}
 	return result;
 }
 
-static inline Decl *decl_copy_label_from_macro(Context *context, Decl *to_copy, Ast *ast)
+static inline Decl *decl_copy_label_from_macro(Decl *to_copy, Ast *ast)
 {
 	if (!to_copy) return NULL;
-	to_copy = decl_copy_local_from_macro(context, to_copy);
+	to_copy = decl_copy_local_from_macro(to_copy);
 	to_copy->label.parent = astid(ast);
 	return to_copy;
 }
 
 
-static inline void copy_flow(Context *context, Ast *ast)
+static inline void copy_flow(Ast *ast)
 {
-	ast->flow.label = decl_copy_label_from_macro(context, ast->flow.label, ast);
+	ast->flow.label = decl_copy_label_from_macro(ast->flow.label, ast);
 }
 
 static TypeInfo** type_info_copy_list_from_macro(Context *context, TypeInfo **to_copy)
@@ -29,13 +29,13 @@ static TypeInfo** type_info_copy_list_from_macro(Context *context, TypeInfo **to
 	TypeInfo **result = NULL;
 	VECEACH(to_copy, i)
 	{
-		vec_add(result, copy_type_info(context, to_copy[i]));
+		vec_add(result, copy_type_info(to_copy[i]));
 	}
 	return result;
 }
 
 
-static DesignatorElement** macro_copy_designator_list(Context *context, DesignatorElement **list)
+static DesignatorElement **macro_copy_designator_list(DesignatorElement **list)
 {
 	DesignatorElement **result = NULL;
 	VECEACH(list, i)
@@ -63,7 +63,7 @@ static DesignatorElement** macro_copy_designator_list(Context *context, Designat
 }
 
 
-Expr *copy_expr(Context *context, Expr *source_expr)
+Expr *copy_expr(Expr *source_expr)
 {
 	if (!source_expr) return NULL;
 	Expr *expr = COPY(source_expr);
@@ -82,7 +82,7 @@ Expr *copy_expr(Context *context, Expr *source_expr)
 			// TODO
 			return expr;
 		case EXPR_DESIGNATOR:
-			expr->designator_expr.path = macro_copy_designator_list(context, expr->designator_expr.path);
+			expr->designator_expr.path = macro_copy_designator_list(expr->designator_expr.path);
 			MACRO_COPY_EXPR(expr->designator_expr.value);
 			return expr;
 		case EXPR_TYPEINFO:
@@ -191,7 +191,7 @@ Expr *copy_expr(Context *context, Expr *source_expr)
 	UNREACHABLE
 }
 
-Ast *copy_ast(Context *context, Ast *source)
+Ast *copy_ast(Ast *source)
 {
 	if (!source) return NULL;
 	Ast *ast = COPY(source);
@@ -237,7 +237,7 @@ Ast *copy_ast(Context *context, Ast *source)
 			}
 			return ast;
 		case AST_CATCH_STMT:
-			copy_flow(context, ast);
+			copy_flow(ast);
 			if (ast->catch_stmt.has_err_var)
 			{
 				MACRO_COPY_DECL(ast->catch_stmt.err_var);
@@ -296,14 +296,14 @@ Ast *copy_ast(Context *context, Ast *source)
 			MACRO_COPY_AST(ast->case_stmt.body);
 			return ast;
 		case AST_DEFINE_STMT:
-			ast->define_stmt = copy_decl(context, ast->define_stmt);
+			ast->define_stmt = copy_decl(ast->define_stmt);
 			return ast;
 		case AST_DEFER_STMT:
 			assert(!ast->defer_stmt.prev_defer);
 			MACRO_COPY_AST(ast->defer_stmt.body);
 			return ast;
 		case AST_DO_STMT:
-			copy_flow(context, ast);
+			copy_flow(ast);
 			MACRO_COPY_AST(ast->do_stmt.body);
 			MACRO_COPY_EXPR(ast->do_stmt.expr);
 			return ast;
@@ -311,21 +311,21 @@ Ast *copy_ast(Context *context, Ast *source)
 			MACRO_COPY_EXPR(ast->expr_stmt);
 			return ast;
 		case AST_FOR_STMT:
-			copy_flow(context, ast);
+			copy_flow(ast);
 			MACRO_COPY_EXPR(ast->for_stmt.cond);
 			MACRO_COPY_EXPR(ast->for_stmt.incr);
 			MACRO_COPY_AST(ast->for_stmt.body);
 			MACRO_COPY_EXPR(ast->for_stmt.init);
 			return ast;
 		case AST_FOREACH_STMT:
-			copy_flow(context, ast);
+			copy_flow(ast);
 			MACRO_COPY_DECL(ast->foreach_stmt.index);
 			MACRO_COPY_DECL(ast->foreach_stmt.variable);
 			MACRO_COPY_EXPR(ast->foreach_stmt.enumeration);
 			MACRO_COPY_AST(ast->for_stmt.body);
 			return ast;
 		case AST_IF_STMT:
-			copy_flow(context, ast);
+			copy_flow(ast);
 			MACRO_COPY_EXPR(ast->if_stmt.cond);
 			MACRO_COPY_AST(ast->if_stmt.else_body);
 			MACRO_COPY_AST(ast->if_stmt.then_body);
@@ -340,7 +340,7 @@ Ast *copy_ast(Context *context, Ast *source)
 			MACRO_COPY_EXPR(ast->return_stmt.expr);
 			return ast;
 		case AST_SWITCH_STMT:
-			copy_flow(context, ast);
+			copy_flow(ast);
 			MACRO_COPY_EXPR(ast->switch_stmt.cond);
 			MACRO_COPY_AST_LIST(ast->switch_stmt.cases);
 			return ast;
@@ -354,7 +354,7 @@ Ast *copy_ast(Context *context, Ast *source)
 			TODO
 			return ast;
 		case AST_WHILE_STMT:
-			copy_flow(context, ast);
+			copy_flow(ast);
 			MACRO_COPY_EXPR(ast->while_stmt.cond);
 			MACRO_COPY_AST(ast->while_stmt.body);
 			return ast;
@@ -366,27 +366,27 @@ Ast *copy_ast(Context *context, Ast *source)
 }
 
 
-Ast** copy_ast_list(Context *context, Ast **to_copy)
+Ast **copy_ast_list(Ast **to_copy)
 {
 	Ast **result = NULL;
 	VECEACH(to_copy, i)
 	{
-		vec_add(result, copy_ast(context, to_copy[i]));
+		vec_add(result, copy_ast(to_copy[i]));
 	}
 	return result;
 }
 
-Decl** copy_decl_list(Context *context, Decl **to_copy)
+Decl **copy_decl_list(Decl **decl_list)
 {
 	Decl **result = NULL;
-	VECEACH(to_copy, i)
+	VECEACH(decl_list, i)
 	{
-		vec_add(result, copy_decl(context, to_copy[i]));
+		vec_add(result, copy_decl(decl_list[i]));
 	}
 	return result;
 }
 
-Decl *decl_copy_local_from_macro(Context *context, Decl *to_copy)
+Decl *decl_copy_local_from_macro(Decl *to_copy)
 {
 	if (!to_copy) return NULL;
 	assert(to_copy->decl_kind == DECL_VAR);
@@ -396,8 +396,7 @@ Decl *decl_copy_local_from_macro(Context *context, Decl *to_copy)
 	return copy;
 }
 
-
-TypeInfo *copy_type_info(Context *context, TypeInfo *source)
+TypeInfo *copy_type_info(TypeInfo *source)
 {
 	if (!source) return NULL;
 	TypeInfo *copy = malloc_arena(sizeof(TypeInfo));
@@ -410,63 +409,92 @@ TypeInfo *copy_type_info(Context *context, TypeInfo *source)
 			return copy;
 		case TYPE_INFO_EXPRESSION:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
-			copy->unresolved_type_expr = copy_expr(context, source->unresolved_type_expr);
+			copy->unresolved_type_expr = copy_expr(source->unresolved_type_expr);
 			return copy;
 		case TYPE_INFO_ARRAY:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
-			copy->array.len = copy_expr(context, source->array.len);
-			copy->array.base = copy_type_info(context, source->array.base);
+			copy->array.len = copy_expr(source->array.len);
+			copy->array.base = copy_type_info(source->array.base);
 			return copy;
 		case TYPE_INFO_INC_ARRAY:
 		case TYPE_INFO_INFERRED_ARRAY:
 		case TYPE_INFO_VARARRAY:
 		case TYPE_INFO_SUBARRAY:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
-			copy->array.base = copy_type_info(context, source->array.base);
+			copy->array.base = copy_type_info(source->array.base);
 			return copy;
 		case TYPE_INFO_POINTER:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
-			copy->pointer = copy_type_info(context, source->pointer);
+			copy->pointer = copy_type_info(source->pointer);
 			return copy;
 	}
 	UNREACHABLE
 }
 
-static void copy_function_signature_deep(Context *context, FunctionSignature *signature)
+static void copy_function_signature_deep(FunctionSignature *signature)
 {
 	MACRO_COPY_DECL_LIST(signature->params);
 	MACRO_COPY_TYPE(signature->rtype);
 	assert(!signature->failable_abi_info);
 	assert(!signature->ret_abi_info);
 }
-Decl *copy_decl(Context *context, Decl *decl)
+void copy_decl_type(Decl *decl)
+{
+	Type *type = decl->type;
+	Type *copy = type_new(type->type_kind, type->name);
+	*copy = *type;
+	copy->type_cache = NULL;
+	copy->decl = decl;
+	copy->canonical = copy;
+	decl->type = copy;
+}
+
+static Attr **copy_attributes(Attr** attr_list)
+{
+	if (!attr_list) return attr_list;
+	Attr** list = NULL;
+	VECEACH(attr_list, i)
+	{
+		Attr *attribute = attr_list[i];
+		Attr *copy = MALLOC(sizeof(Attr));
+		*copy = *attribute;
+		MACRO_COPY_EXPR(copy->expr);
+		vec_add(list, copy);
+	}
+	return list;
+}
+Decl *copy_decl(Decl *decl)
 {
 	if (!decl) return NULL;
 	Decl *copy = COPY(decl);
 	MACRO_COPY_AST(copy->docs);
-	// Copy attributes? Yes!
+	copy->attributes = copy_attributes(copy->attributes);
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:
 			break;
 		case DECL_UNION:
 		case DECL_STRUCT:
+		case DECL_ERR:
+			copy_decl_type(copy);
 			MACRO_COPY_DECL_LIST(copy->strukt.members);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
 		case DECL_ENUM:
+			copy_decl_type(copy);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			MACRO_COPY_DECL_LIST(copy->enums.parameters);
 			MACRO_COPY_TYPE(copy->enums.type_info);
 			MACRO_COPY_DECL_LIST(copy->enums.values);
 			break;
 		case DECL_INTERFACE:
+			copy_decl_type(copy);
 			MACRO_COPY_DECL_LIST(copy->interface_decl.functions);
 			break;
 		case DECL_FUNC:
 			MACRO_COPY_TYPE(copy->func.type_parent);
 			copy->func.annotations = NULL;
-			copy_function_signature_deep(context, &copy->func.function_signature);
+			copy_function_signature_deep(&copy->func.function_signature);
 			MACRO_COPY_AST(copy->func.body);
 			break;
 		case DECL_VAR:
@@ -490,7 +518,7 @@ Decl *copy_decl(Context *context, Decl *decl)
 		case DECL_TYPEDEF:
 			if (copy->typedef_decl.is_func)
 			{
-				copy_function_signature_deep(context, &copy->typedef_decl.function_signature);
+				copy_function_signature_deep(&copy->typedef_decl.function_signature);
 				break;
 			}
 			MACRO_COPY_TYPE(copy->typedef_decl.type_info);
@@ -499,24 +527,54 @@ Decl *copy_decl(Context *context, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->distinct_decl.methods);
 			if (copy->distinct_decl.typedef_decl.is_func)
 			{
-				copy_function_signature_deep(context, &copy->distinct_decl.typedef_decl.function_signature);
+				copy_function_signature_deep(&copy->distinct_decl.typedef_decl.function_signature);
 				break;
 			}
 			MACRO_COPY_TYPE(copy->distinct_decl.typedef_decl.type_info);
 			break;
-		case DECL_ERR:
-		case DECL_ARRAY_VALUE:
-		case DECL_IMPORT:
-		case DECL_MACRO:
-		case DECL_GENERIC:
 		case DECL_CT_IF:
+			MACRO_COPY_EXPR(decl->ct_if_decl.expr);
+			MACRO_COPY_DECL(decl->ct_if_decl.elif);
+			MACRO_COPY_DECL_LIST(decl->ct_if_decl.then);
+			break;
 		case DECL_CT_ELSE:
+			MACRO_COPY_DECL_LIST(decl->ct_else_decl);
+			break;
 		case DECL_CT_ELIF:
+			MACRO_COPY_EXPR(decl->ct_elif_decl.expr);
+			MACRO_COPY_DECL(decl->ct_elif_decl.elif);
+			MACRO_COPY_DECL_LIST(decl->ct_elif_decl.then);
+			break;
+		case DECL_IMPORT:
+			break;
+		case DECL_ARRAY_VALUE:
+			TODO
+		case DECL_MACRO:
+			MACRO_COPY_DECL_LIST(decl->macro_decl.parameters);
+			MACRO_COPY_AST(decl->macro_decl.body);
+			MACRO_COPY_TYPE(decl->macro_decl.rtype);
+			break;
+		case DECL_GENERIC:
+			TODO
 		case DECL_CT_SWITCH:
 		case DECL_CT_CASE:
 		case DECL_ATTRIBUTE:
-		case DECL_DEFINE:
 			TODO
+		case DECL_DEFINE:
+			MACRO_COPY_EXPR_LIST(decl->define_decl.params);
+			switch (decl->define_decl.define_kind)
+			{
+				case DEFINE_FUNC:
+					copy_function_signature_deep(&decl->define_decl.function_signature);
+					break;
+				case DEFINE_DISTINCT_TYPE:
+				case DEFINE_TYPE_ALIAS:
+					MACRO_COPY_TYPE(decl->define_decl.type_info);
+					break;
+				case DEFINE_IDENT_ALIAS:
+					break;
+			}
+			break;
 	}
 	return copy;
 }

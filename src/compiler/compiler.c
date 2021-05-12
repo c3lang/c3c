@@ -109,6 +109,48 @@ void* compile_on_pthread(void *gencontext)
 	return (void *)llvm_codegen(gencontext);
 }
 #endif
+
+void sema_analyze_stage(Module *module, AnalysisStage stage)
+{
+	while (module->stage < stage)
+	{
+		module->stage++;
+		switch (module->stage)
+		{
+			case ANALYSIS_NOT_BEGUN:
+				UNREACHABLE
+			case ANALYSIS_IMPORTS:
+				sema_analysis_pass_process_imports(module);
+				break;
+			case ANALYSIS_REGISTER_GLOBALS:
+				sema_analysis_pass_register_globals(module);
+				break;
+			case ANALYSIS_CONDITIONAL_COMPILATION:
+				sema_analysis_pass_conditional_compilation(module);
+				break;
+			case ANALYSIS_DECLS:
+				sema_analysis_pass_decls(module);
+				break;
+			case ANALYSIS_CT_ASSERT:
+				sema_analysis_pass_ct_assert(module);
+				break;
+			case ANALYSIS_FUNCTIONS:
+				sema_analysis_pass_functions(module);
+				break;
+		}
+		if (global_context.errors_found) return;
+	}
+}
+
+static void analyze_to_stage(AnalysisStage stage)
+{
+	for (unsigned i = 0; i < vec_size(global_context.module_list); i++)
+	{
+		sema_analyze_stage(global_context.module_list[i], stage);
+	}
+	halt_on_error();
+}
+
 void compiler_compile(void)
 {
 	Context **contexts = NULL;
@@ -139,62 +181,22 @@ void compiler_compile(void)
 		error_exit("No source files to compile.");
 	}
 	assert(contexts);
+	for (AnalysisStage stage = ANALYSIS_NOT_BEGUN + 1; stage <= ANALYSIS_LAST; stage++)
+	{
+		analyze_to_stage(stage);
+	}
+
 	Module **modules = global_context.module_list;
-
 	unsigned module_count = vec_size(modules);
-	for (unsigned i = 0; i < module_count; i++)
-	{
-		sema_analysis_pass_process_imports(modules[i]);
-	}
-
-	halt_on_error();
-
-	for (unsigned i = 0; i < module_count; i++)
-	{
-		sema_analysis_pass_register_globals(modules[i]);
-	}
-
-	halt_on_error();
-
-	for (unsigned i = 0; i < source_count; i++)
-	{
-		sema_analysis_pass_conditional_compilation(contexts[i]);
-	}
-
-	halt_on_error();
-
-	for (unsigned i = 0; i < source_count; i++)
-	{
-		sema_analysis_pass_decls(contexts[i]);
-	}
-
-	halt_on_error();
-
-	for (unsigned i = 0; i < source_count; i++)
-	{
-		sema_analysis_pass_ct_assert(contexts[i]);
-	}
-
-	halt_on_error();
-
-	for (unsigned i = 0; i < source_count; i++)
-	{
-		sema_analysis_pass_functions(contexts[i]);
-	}
-
-	halt_on_error();
 
 	if (active_target.output_headers)
 	{
-		for (unsigned i = 0; i < source_count; i++)
+		for (unsigned i = 0; i < module_count; i++)
 		{
-			Context *context = contexts[i];
-			if (context->module->parameters) break;
-			header_gen(context);
+			header_gen(modules[i]);
 		}
 		return;
 	}
-
 
 	llvm_codegen_setup();
 
@@ -202,11 +204,6 @@ void compiler_compile(void)
 
 	for (unsigned i = 0; i < module_count; i++)
 	{
-		if (!modules[i]->contexts)
-		{
-			gen_contexts[i] = NULL;
-			continue;
-		}
 		gen_contexts[i] = llvm_gen(modules[i]);
 	}
 
@@ -241,7 +238,7 @@ void compiler_compile(void)
 		if (!gen_contexts[i]) continue;
 		pthread_create(&threads[i], NULL, &compile_on_pthread, gen_contexts[i]);
 	}
-	for (unsigned i = 0; i < source_count; i++)
+	for (unsigned i = 0; i < module_count; i++)
 	{
 		void *file_name;
 		pthread_join(threads[i], &file_name);
@@ -392,6 +389,7 @@ Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters)
 	// Set up the module.
 	module = CALLOCS(Module);
 	module->name = module_name;
+	module->stage = ANALYSIS_NOT_BEGUN;
 	module->parameters = parameters;
 	stable_init(&module->symbols, 0x10000);
 	stable_set(&global_context.modules, module_name->module, module);
