@@ -19,3 +19,8 @@ jobs:
           mkdir build && cd build
           cmake -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=Debug ..
           cmake --build .
+          cd ..
+          rm -rf build
+          mkdir build && cd build
+          cmake -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=Release ..
+          cmake --build .

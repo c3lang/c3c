@@ -231,6 +231,11 @@ void compiler_compile(void)
 	bool create_exe = !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST);
 
 	size_t output_file_count = vec_size(gen_contexts);
+	if (!output_file_count)
+	{
+		error_exit("No output files found.");
+	}
+
 	const char **obj_files = malloc(sizeof(char*) * output_file_count);
 
 #if USE_PTHREAD
