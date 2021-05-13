@@ -269,6 +269,38 @@ static void parse_option(BuildOptions *options)
 				return;
 			}
 			FAIL_WITH_ERR("Unknown debug argument -%s.", &current_arg[1]);
+		case 'f':
+			if (match_shortopt("fpie"))
+			{
+				options->pie = PIE_SMALL;
+				return;
+			}
+			if (match_shortopt("fPIE"))
+			{
+				options->pie = PIE_BIG;
+				return;
+			}
+			if (match_shortopt("fno-pie"))
+			{
+				options->pie = PIE_NONE;
+				return;
+			}
+			if (match_shortopt("fpic"))
+			{
+				options->pic = PIC_SMALL;
+				return;
+			}
+			if (match_shortopt("fPIC"))
+			{
+				options->pic = PIC_BIG;
+				return;
+			}
+			if (match_shortopt("fno-pic"))
+			{
+				options->pic = PIC_NONE;
+				return;
+			}
+			FAIL_WITH_ERR("Unknown argument -%s.", &current_arg[1]);
 		case 'h':
 			break;
 		case 'O':
@@ -421,6 +453,8 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.debug_info_override = DEBUG_INFO_NOT_SET,
 		.safe_mode = -1,
 		.command = COMMAND_MISSING,
+		.pie = PIE_DEFAULT,
+		.pic = PIC_DEFAULT,
 		.files = NULL
 	};
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)

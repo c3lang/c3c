@@ -173,6 +173,8 @@ typedef struct BuildOptions_
 	unsigned version;
 	CompilerCommand command;
 	CompileOption compile_option;
+	PieGeneration pie;
+	PicGeneration pic;
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
 	OptimizationSetting optimization_setting_override;
 	DebugInfo debug_info_override;
@@ -182,7 +184,6 @@ typedef struct BuildOptions_
 	bool emit_bitcode;
 	bool test_mode;
 } BuildOptions;
-
 
 
 
