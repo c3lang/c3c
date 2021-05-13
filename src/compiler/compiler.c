@@ -5,7 +5,7 @@
 #include "compiler_internal.h"
 #include <unistd.h>
 
-#if PLATFORM_POSIX
+#if __APPLE__
 #include <pthread.h>
 #define USE_PTHREAD 1
 #else
@@ -232,11 +232,14 @@ void compiler_compile(void)
 	const char **obj_files = NULL;
 
 #if USE_PTHREAD
-	pthread_t *threads = malloc(module_count * sizeof(threads));
+	pthread_t *threads = malloc(module_count * sizeof(pthread_t));
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		if (!gen_contexts[i]) continue;
-		pthread_create(&threads[i], NULL, &compile_on_pthread, gen_contexts[i]);
+		if (pthread_create(&threads[i], NULL, &compile_on_pthread, gen_contexts[i]))
+		{
+			error_exit("Failed to spawn compiler thread.");
+		}
 	}
 	for (unsigned i = 0; i < module_count; i++)
 	{
