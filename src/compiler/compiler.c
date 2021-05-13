@@ -5,7 +5,7 @@
 #include "compiler_internal.h"
 #include <unistd.h>
 
-#if __APPLE__
+#if PLATFORM_POSIX
 #include <pthread.h>
 #define USE_PTHREAD 1
 #else
@@ -200,11 +200,12 @@ void compiler_compile(void)
 
 	llvm_codegen_setup();
 
-	void **gen_contexts = malloc(module_count * sizeof(void *));
+	void **gen_contexts = NULL;
 
 	for (unsigned i = 0; i < module_count; i++)
 	{
-		gen_contexts[i] = llvm_gen(modules[i]);
+		void *result = llvm_gen(modules[i]);
+		if (result) vec_add(gen_contexts, result);
 	}
 
 
@@ -229,33 +230,31 @@ void compiler_compile(void)
 
 	bool create_exe = !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST);
 
-	const char **obj_files = NULL;
+	size_t output_file_count = vec_size(gen_contexts);
+	const char **obj_files = malloc(sizeof(char*) * output_file_count);
 
 #if USE_PTHREAD
-	pthread_t *threads = malloc(module_count * sizeof(pthread_t));
-	for (unsigned i = 0; i < module_count; i++)
+	pthread_t *threads = malloc(output_file_count * sizeof(pthread_t));
+	for (unsigned i = 0; i < output_file_count; i++)
 	{
-		if (!gen_contexts[i]) continue;
 		if (pthread_create(&threads[i], NULL, &compile_on_pthread, gen_contexts[i]))
 		{
 			error_exit("Failed to spawn compiler thread.");
 		}
 	}
-	for (unsigned i = 0; i < module_count; i++)
+	for (unsigned i = 0; i < output_file_count; i++)
 	{
-		if (!gen_contexts[i]) continue;
 		void *file_name;
 		pthread_join(threads[i], &file_name);
 		assert(file_name || !create_exe);
-		vec_add(obj_files, file_name);
+		obj_files[i] = file_name;
 	}
 #else
-	for (unsigned i = 0; i < module_count; i++)
+	for (unsigned i = 0; i < output_file_count; i++)
 	{
-		if (!gen_contexts[i]) continue;
 		const char *file_name = llvm_codegen(gen_contexts[i]);
 		assert(file_name || !create_exe);
-		vec_add(obj_files, file_name);
+		obj_files[i] = file_name;
 	}
 #endif
 
@@ -263,7 +262,7 @@ void compiler_compile(void)
 	{
 		if (active_target.arch_os_target == ARCH_OS_TARGET_DEFAULT)
 		{
-			platform_linker(active_target.name, obj_files, vec_size(obj_files));
+			platform_linker(active_target.name, obj_files, output_file_count);
 		}
 		else
 		{
