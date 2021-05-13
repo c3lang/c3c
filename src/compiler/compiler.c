@@ -243,6 +243,7 @@ void compiler_compile(void)
 	}
 	for (unsigned i = 0; i < module_count; i++)
 	{
+		if (!gen_contexts[i]) continue;
 		void *file_name;
 		pthread_join(threads[i], &file_name);
 		assert(file_name || !create_exe);
