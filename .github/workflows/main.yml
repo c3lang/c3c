@@ -9,18 +9,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build_type: [Release, Debug]
+        
     steps:
       - uses: actions/checkout@v1
-      - name: (Linux) Download LLVM
+      - name: (Ubuntu) Download LLVM
         run: |
           sudo apt-get install zlib1g zlib1g-dev clang-11 libllvm11 llvm-11 llvm-11-dev llvm-11-runtime liblld-11-dev liblld-11
-      - name: Build
+          
+      - name: CMake
         run: |
           mkdir build && cd build
-          cmake -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=Debug ..
-          cmake --build .
-          cd ..
-          rm -rf build
-          mkdir build && cd build
-          cmake -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=Release ..
+          cmake .. -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build .
