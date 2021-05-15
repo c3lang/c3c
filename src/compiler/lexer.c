@@ -31,7 +31,7 @@ static inline char peek(Lexer *lexer)
 // Look at the prev character in the buffer.
 static inline char prev(Lexer *lexer)
 {
-	return lexer->current[lexer->index--];
+	return lexer->current[lexer->index - 1];
 }
 
 // Backtrack the buffer read one step.
@@ -51,7 +51,7 @@ void lexer_store_line_end(Lexer *lexer)
 // Peek one character ahead.
 static inline char peek_next(Lexer *lexer)
 {
-	return lexer->current[1];
+	return lexer->current[lexer->index + 1];
 }
 
 // Return the current character and step one character forward.
