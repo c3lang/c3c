@@ -5,7 +5,6 @@
 #include "compiler_tests/tests.h"
 #include "utils/lib.h"
 
-static int version = 102;
 int main(int argc, const char *argv[])
 {
 	// First setup memory
@@ -13,7 +12,7 @@ int main(int argc, const char *argv[])
 
 
 
-	DEBUG_LOG("Version: %d", version);
+	DEBUG_LOG("Version: %s", COMPILER_VERSION);
 
 
 	// Parse arguments.

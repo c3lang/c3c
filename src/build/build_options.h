@@ -9,6 +9,8 @@
 #define MAX_LIB_DIRS 1024
 #define MAX_FILES 2048
 
+#define COMPILER_VERSION "A218"
+
 typedef enum
 {
 	COMMAND_MISSING = 0,

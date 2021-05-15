@@ -4,7 +4,8 @@
 
 #include "llvm_codegen_internal.h"
 
-
+const char* llvm_version = LLVM_VERSION_STRING;
+const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
 
 static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 {
