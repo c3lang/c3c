@@ -10,16 +10,15 @@
 #include <stdbool.h>
 #include <string.h>
 #include <utils/lib.h>
-
-
-
-
+#include "../utils/whereami.h"
 
 
 static int arg_index;
 static int arg_count;
 static const char** args;
 static const char* current_arg;
+extern const char* llvm_version;
+extern const char* llvm_target;
 
 char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[X86_FREEBSD] = "x86_freebsd",
@@ -69,6 +68,7 @@ static void usage(void)
 	OUTPUT("  --template <template> - Use a different template: \"lib\", \"staticlib\" or a path.");
 	OUTPUT("  --about               - Prints a short description of C3.");
 	OUTPUT("  --symtab <value>      - Sets the preferred symtab size.");
+	OUTPUT("  -V --version          - Print version information.");
 	OUTPUT("  -E                    - Lex only.");
 	OUTPUT("  -P                    - Only parse and output the AST as S-expressions.");
 	OUTPUT("  -O0                   - Optimizations off.");
@@ -248,10 +248,25 @@ static void print_all_targets(void)
 	}
 }
 
+static void print_version(void)
+{
+	OUTPUT("C3 Compiler Version:   Pre-alpha %s", COMPILER_VERSION);
+	OUTPUT("Installed directory:   %s", find_executable_path());
+	OUTPUT("LLVM version:          %s", llvm_version);
+	OUTPUT("LLVM default target:   %s", llvm_target);
+}
+
 static void parse_option(BuildOptions *options)
 {
 	switch (current_arg[1])
 	{
+		case 'V':
+			if (match_shortopt("V"))
+			{
+				print_version();
+				exit(EXIT_SUCCESS);
+			}
+			break;
 		case 'g':
 			if (match_shortopt("gline-tables-only"))
 			{
@@ -352,6 +367,11 @@ static void parse_option(BuildOptions *options)
 			options->compile_option = COMPILE_LEX_PARSE_ONLY;
 			return;
 		case '-':
+			if (match_longopt("version"))
+			{
+				print_version();
+				exit(EXIT_SUCCESS);
+			}
 			if (match_longopt("about"))
 			{
 				OUTPUT("The C3 Compiler");

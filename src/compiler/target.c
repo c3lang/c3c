@@ -1083,7 +1083,7 @@ void target_setup(BuildTarget *target)
 
 	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
 	{
-		platform_target.target_triple = LLVMGetDefaultTargetTriple();
+		platform_target.target_triple = LLVM_DEFAULT_TARGET_TRIPLE;
 	}
 	else
 	{
