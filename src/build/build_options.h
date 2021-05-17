@@ -9,7 +9,7 @@
 #define MAX_LIB_DIRS 1024
 #define MAX_FILES 2048
 
-#define COMPILER_VERSION "A218"
+#define COMPILER_VERSION "A219"
 
 typedef enum
 {

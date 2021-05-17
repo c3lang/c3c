@@ -152,13 +152,18 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 	// Ensure we are on a branch that is non empty.
 	if (!llvm_emit_check_block_branch(c)) return;
 
-	bool in_expression_block = c->expr_block_exit != NULL;
+	bool in_expression_block = c->in_block > 0;
 
 	PUSH_ERROR();
 
 	LLVMBasicBlockRef error_return_block = NULL;
 	LLVMValueRef error_out = NULL;
-	if (!in_expression_block && c->cur_func_decl->func.function_signature.failable)
+	if (in_expression_block)
+	{
+		c->error_var = c->block_error_var;
+		c->catch_block = c->block_failable_exit;
+	}
+	else if (c->cur_func_decl->func.function_signature.failable)
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
 		error_out = llvm_emit_alloca_aligned(c, type_error, "reterr");
@@ -179,13 +184,13 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 	llvm_emit_defer(c, ast->return_stmt.defer, 0);
 
 	// Are we in an expression block?
-	if (c->expr_block_exit)
+	if (in_expression_block)
 	{
 		if (c->return_out)
 		{
 			llvm_store_bevalue_aligned(c, c->return_out, &return_value, 0);
 		}
-		gencontext_emit_jmp(c, c->expr_block_exit);
+		gencontext_emit_jmp(c, c->block_return_exit);
 		return;
 	}
 

@@ -383,7 +383,8 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context->context, context->function, "entry");
 	context->current_block = entry;
 	context->current_block_is_target = true;
-	context->expr_block_exit = NULL;
+	context->block_return_exit = NULL;
+	context->in_block = 0;
 	context->builder = LLVMCreateBuilderInContext(context->context);
 	LLVMPositionBuilderAtEnd(context->builder, entry);
 

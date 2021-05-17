@@ -1205,7 +1205,7 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 		switch (other_kind)
 		{
 			case TYPE_FXX:
-				return kind <= TYPE_IXX ? type_double : other_num;
+				return kind <= TYPE_IXX ? type_double : num_type;
 			case TYPE_F16:
 			case TYPE_F32:
 			case TYPE_F64:
