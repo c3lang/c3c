@@ -2976,23 +2976,32 @@ static inline void gencontext_emit_expression_list_expr(GenContext *context, BEV
 	}
 }
 
-
-static inline void gencontext_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr)
+static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value, Type *type, Ast **stmts)
 {
+
 	LLVMValueRef old_ret_out = context->return_out;
-	LLVMBasicBlockRef saved_expr_block = context->expr_block_exit;
+	LLVMBasicBlockRef saved_block_return_exit = context->block_return_exit;
+	LLVMBasicBlockRef saved_block_failable_exit = context->block_failable_exit;
+	LLVMValueRef saved_block_error = context->block_error_var;
+	context->in_block++;
 
 	LLVMBasicBlockRef expr_block = llvm_basic_block_new(context, "expr_block.exit");
-	context->expr_block_exit = expr_block;
+	context->block_return_exit = expr_block;
 
 	LLVMValueRef return_out = NULL;
-	if (expr->type != type_void)
-	{
-		return_out = llvm_emit_alloca_aligned(context, expr->type, "blockret");
-	}
-	context->return_out = return_out;
+	LLVMValueRef error_out = context->error_var;
+	LLVMBasicBlockRef error_block = context->catch_block;
 
-	Ast **stmts = expr->expr_block.stmts;
+	if (type != type_void)
+	{
+		return_out = llvm_emit_alloca_aligned(context, type, "blockret");
+	}
+	context->block_error_var = error_out;
+	context->block_failable_exit = error_block;
+	context->return_out = return_out;
+	context->error_var = NULL;
+	context->catch_block = NULL;
+
 	VECEACH(stmts, i)
 	{
 		llvm_emit_stmt(context, stmts[i]);
@@ -3003,11 +3012,16 @@ static inline void gencontext_emit_expr_block(GenContext *context, BEValue *be_v
 	llvm_emit_block(context, expr_block);
 
 	context->return_out = old_ret_out;
-	context->expr_block_exit = saved_expr_block;
+	context->catch_block = error_block;
+	context->error_var = error_out;
+	context->block_return_exit = saved_block_return_exit;
+	context->block_failable_exit = saved_block_failable_exit;
+	context->block_error_var = saved_block_error;
+	context->in_block--;
 
 	if (return_out)
 	{
-		llvm_value_set_address(be_value, return_out, expr->type);
+		llvm_value_set_address(be_value, return_out, type);
 	}
 	else
 	{
@@ -3015,22 +3029,13 @@ static inline void gencontext_emit_expr_block(GenContext *context, BEValue *be_v
 	}
 }
 
-static inline void gencontext_emit_macro_block(GenContext *context, BEValue *be_value, Expr *expr)
+static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr)
 {
-	LLVMValueRef old_ret_out = context->return_out;
-	LLVMBasicBlockRef saved_expr_block = context->expr_block_exit;
+	llvm_emit_return_block(context, be_value, expr->type, expr->expr_block.stmts);
+}
 
-	LLVMBasicBlockRef expr_block = llvm_basic_block_new(context, "expr_block.exit");
-	context->expr_block_exit = expr_block;
-
-	LLVMValueRef return_out = NULL;
-	if (expr->type != type_void)
-	{
-		return_out = llvm_emit_alloca_aligned(context, expr->type, "blockret");
-	}
-	context->return_out = return_out;
-
-	Ast **stmts = expr->macro_block.stmts;
+static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value, Expr *expr)
+{
 	VECEACH(expr->macro_block.params, i)
 	{
 		// In case we have a constant, we never do an emit. The value is already folded.
@@ -3062,30 +3067,10 @@ static inline void gencontext_emit_macro_block(GenContext *context, BEValue *be_
 		llvm_emit_and_set_decl_alloca(context, decl);
 		BEValue value;
 		llvm_emit_expr(context, &value, expr->macro_block.args[i]);
-		printf("TODO: unoptimized use of BEValue\n");
-		llvm_emit_store(context, decl, llvm_value_rvalue_store(context, &value));
+		llvm_store_aligned_decl(context, decl, llvm_value_rvalue_store(context, &value));
 	}
 
-	VECEACH(stmts, i)
-	{
-		llvm_emit_stmt(context, stmts[i]);
-	}
-	llvm_emit_br(context, expr_block);
-
-	// Emit the exit block.
-	llvm_emit_block(context, expr_block);
-
-	context->return_out = old_ret_out;
-	context->expr_block_exit = saved_expr_block;
-
-	if (return_out)
-	{
-		llvm_value_set_address(be_value, return_out, expr->type);
-	}
-	else
-	{
-		llvm_value_set(be_value, NULL, type_void);
-	}
+	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.stmts);
 }
 
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id, LLVMTypeRef *types, unsigned type_count,
@@ -3214,7 +3199,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			gencontext_emit_else_expr(c, value, expr);
 			return;
 		case EXPR_MACRO_BLOCK:
-			gencontext_emit_macro_block(c, value, expr);
+			llvm_emit_macro_block(c, value, expr);
 			return;
 		case EXPR_COMPOUND_LITERAL:
 			UNREACHABLE
@@ -3222,7 +3207,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_initializer_list_expr(c, value, expr);
 			return;
 		case EXPR_EXPR_BLOCK:
-			gencontext_emit_expr_block(c, value, expr);
+			llvm_emit_expr_block(c, value, expr);
 			return;
 		case EXPR_SCOPED_EXPR:
 			gencontext_emit_scoped_expr(c, value, expr);

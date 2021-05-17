@@ -549,6 +549,7 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 	                                 expr->identifier_expr.path,
 	                                 &ambiguous_decl,
 	                                 &private_symbol);
+	if (!decl_ok(decl)) return false;
 	if (!decl && !expr->identifier_expr.path && to)
 	{
 		if (find_possible_inferred_identifier(to, expr)) return true;
@@ -3598,11 +3599,6 @@ static bool sema_expr_analyse_div(Context *context, Type *to, Expr *expr, Expr *
 				}
 				break;
 			case ALL_FLOATS:
-				if (right->const_expr.f == 0)
-				{
-					SEMA_ERROR(right, "This expression evaluates to zero and division by zero is not allowed.");
-					return false;
-				}
 				break;
 			default:
 				UNREACHABLE
