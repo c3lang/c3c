@@ -36,6 +36,7 @@ static SymTab symtab;
 
 const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
+const char *kw_std;
 const char *kw_align;
 const char *kw_alignof;
 const char *kw_distinct;
@@ -113,6 +114,7 @@ void symtab_init(uint32_t capacity)
 	kw___round = KW_DEF("__round");
 	kw___sqrt = KW_DEF("__sqrt");
 	kw___trunc = KW_DEF("__trunc");
+	kw_std = KW_DEF("std");
 
 	attribute_list[ATTRIBUTE_INLINE] = kw_inline;
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");

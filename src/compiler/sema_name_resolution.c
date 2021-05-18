@@ -34,12 +34,19 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 	Decl *decl = NULL;
 	bool path_found = false;
 
+	// 0. std module special handling.
+	if (path->module == global_context.std_module_path.module)
+	{
+		return module_find_symbol(&global_context.std_module, symbol);
+	}
+
 	// 1. Do we match our own path?
 	if (matches_subpath(context->module->name, path))
 	{
 		// 2. If so just get the symbol.
 		return module_find_symbol(context->module, symbol);
 	}
+
 	// 3. Loop over imports.
 	VECEACH(context->imports, i)
 	{

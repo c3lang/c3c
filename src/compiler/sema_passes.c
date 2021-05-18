@@ -29,6 +29,7 @@ void sema_analysis_pass_process_imports(Module *module)
 
 		// 2. Loop through imports
 		unsigned imports = vec_size(context->imports);
+
 		for (unsigned i = 0; i < imports; i++)
 		{
 			// 3. Begin analysis

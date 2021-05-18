@@ -151,6 +151,38 @@ static void analyze_to_stage(AnalysisStage stage)
 	halt_on_error();
 }
 
+static void add_global_define(const char *name, Expr *value)
+{
+	Decl *dec = decl_calloc();
+	TokenType type = TOKEN_CONST_IDENT;
+	const char *unique_name = symtab_add(name, strlen(name), fnv1a(name, strlen(name)), &type);
+	dec->name = unique_name;
+	dec->module = &global_context.std_module;
+	dec->visibility = VISIBLE_PUBLIC;
+	dec->decl_kind = DECL_VAR;
+	dec->var.kind = VARDECL_CONST;
+	dec->var.constant = true;
+	dec->var.type_info = NULL;
+	dec->var.init_expr = value;
+	dec->type = value->type;
+	dec->resolve_status = RESOLVE_DONE;
+	decl_set_external_name(dec);
+	compiler_register_public_symbol(dec);
+	stable_set(&dec->module->public_symbols, dec->name, dec);
+	stable_set(&dec->module->symbols, dec->name, dec);
+}
+
+static void add_global_define_int(const char *name, uint64_t int_value)
+{
+	Expr *value = expr_new(EXPR_CONST, INVALID_RANGE);
+	value->const_expr.kind = TYPE_IXX;
+	value->original_type = type_compint;
+	expr_const_set_int(&value->const_expr, int_value, TYPE_IXX);
+	value->type = type_compint;
+	value->resolve_status = RESOLVE_DONE;
+	add_global_define(name, value);
+}
+
 void compiler_compile(void)
 {
 	Context **contexts = NULL;
@@ -175,6 +207,12 @@ void compiler_compile(void)
 		vec_add(contexts, context);
 		if (!parse_file(context)) continue;
 	}
+
+	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_RANGE, .len = strlen(kw_std) };
+	global_context.std_module = (Module){ .name = &global_context.std_module_path };
+	global_context.std_module.stage = ANALYSIS_LAST;
+	stable_init(&global_context.std_module.symbols, 0x10000);
+
 	unsigned source_count = vec_size(contexts);
 	if (!source_count)
 	{

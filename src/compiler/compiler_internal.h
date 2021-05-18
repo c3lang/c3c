@@ -1307,6 +1307,8 @@ typedef struct
 	Decl* locals[MAX_LOCALS];
 	DynamicScope scopes[MAX_SCOPE_DEPTH];
 	STable scratch_table;
+	Module std_module;
+	Path std_module_path;
 } GlobalContext;
 
 
@@ -1413,6 +1415,7 @@ extern Type *type_virtual, *type_virtual_generic;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
+extern const char *kw_std;
 extern const char *kw_align;
 extern const char *kw_alignof;
 extern const char *kw_distinct;
