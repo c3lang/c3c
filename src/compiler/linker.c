@@ -173,7 +173,7 @@ const char *concat_string_parts(const char **args)
 void platform_linker(const char *output_file, const char **files, unsigned file_count)
 {
 	const char **parts = NULL;
-	vec_add(parts, "cc");
+	vec_add(parts, "clang-11");
 	vec_add(parts, "-lm");
 	vec_add(parts, "-o");
 	vec_add(parts, output_file);

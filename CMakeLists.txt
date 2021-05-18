@@ -13,6 +13,9 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 message(STATUS "Libraries located in: ${LLVM_LIBRARY_DIRS}")
 
+message(STATUS, "Using C compiler in: {CMAKE_C_COMPILER}")
+message(STATUS, "Using CXX compiler in: {CMAKE_CXX_COMPILER}")
+
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 

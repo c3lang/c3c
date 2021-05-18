@@ -144,7 +144,7 @@ work on Windows. Also, parts of the code is still rough and needs to be made sol
 5. Enter the C3C directory `cd c3c`.
 6. Create a build directory `mkdir build`
 7. Change directory to the build directory `cd build`
-8. Set up CMake build for debug: `cmake -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=Debug ..`
+8. Set up CMake build for debug: `cmake -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_C_COMPILER=clang-11 -DCMAKE_CXX_COMPILER=clang++-11 -DCMAKE_BUILD_TYPE=Debug ..`
 9. Build: `cmake --build .`
 
 You should now have a `c3c` executable.
