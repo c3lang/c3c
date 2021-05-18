@@ -5,11 +5,12 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "../utils/common.h"
+#include "../version.h"
 
 #define MAX_LIB_DIRS 1024
 #define MAX_FILES 2048
 
-#define COMPILER_VERSION "A219"
+
 
 typedef enum
 {

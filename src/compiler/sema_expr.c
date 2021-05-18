@@ -1384,7 +1384,14 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			}
 			FALLTHROUGH;
 		case EXPR_TYPEINFO:
-			SEMA_ERROR(expr, "A type cannot be followed by (), did you mean to use ({})?");
+			if (func_expr->type_expr->resolve_status == RESOLVE_DONE)
+			{
+				SEMA_ERROR(expr, "A type cannot be followed by (), if you intended a cast, use (type)(expression).");
+			}
+			else
+			{
+				SEMA_ERROR(expr, "A type cannot be followed by (), did you mean to use ({})?");
+			}
 			return false;
 		default:
 			SEMA_ERROR(expr, "This value cannot be invoked, did you accidentally add ()?");
@@ -2919,7 +2926,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 			break;
 	}
 	// Fix error on compound literals
-	SEMA_ERROR(expr, "Cannot assign expression to '%s'.", type_to_error_string(to));
+	SEMA_ERROR(expr, "'%s' cannot use compound literal initialization, did you intend to use a cast?", type_to_error_string(to));
 	return false;
 }
 
