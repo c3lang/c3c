@@ -25,13 +25,13 @@ struct BazTwo
 func void test()
 {
     Foo x;
-    Bar y = cast(x as Bar);
+    Bar y = (Bar)(x);
 
     Baz z;
-    int[2] w = cast(z as int[2]);
-    z = cast(w as Baz);
-    BazTwo v = cast(z as BazTwo);
-    v = cast(w as BazTwo);
-    z = cast(v as Baz);
-    w = cast(v as int[2]);
+    int[2] w = (int[2])(z);
+    z = (Baz)(w);
+    BazTwo v = (BazTwo)(z);
+    v = (BazTwo)(w);
+    z = (Baz)(v);
+    w = (int[2])(v);
 }

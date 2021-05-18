@@ -359,7 +359,7 @@ func Value Value.getFromTop(Value* th, AintIdx idx)
  */
 func AuintIdx Value.getTop(Value* th)
 {
-	return cast(stkSz(th) as AuintIdx);
+	return (AuintIdx)(stkSz(th));
 }
 
 /**

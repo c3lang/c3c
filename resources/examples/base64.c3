@@ -96,13 +96,13 @@ public func int! decode(char[] in, char* out)
             case 1:
                 out[j++] += c >> 4 & 0x3;
                 // if not last char with padding
-                if (i < (in.len() - 3) || in[cast(in.len() as long) - 2] != PAD)
+                if (i < (in.len() - 3) || in[(long)(in.len()) - 2] != PAD)
                 {
                     out[j] = (c & 0xF) << 4;
                 }
             case 2:
                 out[j++] += c >> 2 & 0xF;
-                if (i < (in.len() - 2) || in[cast(in.len() as long) - 1] != PAD)
+                if (i < (in.len() - 2) || in[(long)(in.len()) - 1] != PAD)
                 {
                     out[j] = (c & 0x3) << 6;
                 }

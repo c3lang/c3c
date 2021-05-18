@@ -26,7 +26,7 @@ typedef Union3[3] as distinct UnionArr;
 func void test(int x)
 {
     Union s = { .y = 2.0 };
-    Foo f2 = cast(s as Foo);
+    Foo f2 = (Foo)(s);
     Foo f3 = { .x = 1 };
     Union2 s2 = { .f = { .y = 1 } };
     Union2 s3 = { .bar.x.y = 3.0 };

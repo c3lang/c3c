@@ -3,13 +3,13 @@ typedef int as Number32;
 
 func void test1()
 {
-    int a = cast(10 as ichar);
-    int b = cast(200 as ichar);
-    int c = cast(200 as int);
-    ichar d = cast(200 as int);     // #error: Cannot implicitly cast 'int' to 'ichar'.
+    int a = (ichar)(10);
+    int b = (ichar)(200);
+    int c = (int)(200);
+    ichar d = (int)(200);     // #error: Cannot implicitly cast 'int' to 'ichar'.
 }
 
 func void test2()
 {
-    char  e = cast(200 as Number32);   // #error: Cannot implicitly cast 'Number32' (int) to 'char'.
+    char  e = (Number32)(200);   // #error: Cannot implicitly cast 'Number32' (int) to 'char'.
 }

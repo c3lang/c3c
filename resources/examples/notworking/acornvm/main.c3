@@ -46,7 +46,7 @@ func Value new_compiler(Value th, Value *dest, Value src, Value url)
 	comp.whileBegIp = -1;
 	comp.forcelocal = false;
 
-	return @cast(*dest as Value);
+	return (Value)(*dest);
 }
 
 /* Method to compile an Acorn method. Parameters:

@@ -19,7 +19,7 @@ func void* gcrealloc(Value th, void *block, Auint osize, Auint nsize)
 	assert((realosize == 0) == (block == nil));
 
 	// Allocate/free/resize the memory block
-	Value newblock = cast(frealloc(block as nsize) as Value);
+	Value newblock = (Value)(frealloc(block as nsize));
 
     $if (defined(MEMORYLOG))
     {
@@ -38,7 +38,7 @@ func void* gcrealloc(Value th, void *block, Auint osize, Auint nsize)
 	{
 		// realloc cannot fail when shrinking a block
 		gcfull(th, 1);  // try to free some memory...
-		newblock = cast(frealloc(block as nsize) as Value);  // try again
+		newblock = (Value)(frealloc(block as nsize));  // try again
 		if (newblock == nil)
 		{
 		    logSevere("Out of memory trying allocate or grow a memory block.");
@@ -55,7 +55,7 @@ func void* gcreallocv(Value th, void* block, Auint osize, Auint nsize, Auint esi
 {
 	// Ensure we are not asking for more memory than available in address space
 	// If we do not do this, calculating the needed memory will overflow
-	if (nsize + 1 > ~(cast(0 as Auint)) / esize)
+	if (nsize + 1 > ~((Auint)(0)) / esize)
 	{
 	    logSevere("Out of memory trying to ask for more memory than address space has.");
 	}

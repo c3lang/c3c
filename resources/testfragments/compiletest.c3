@@ -86,7 +86,7 @@ func int boo()
 	de++;
 	de = de << 1;
 	de = de >> 1;
-	de = de ^ cast(byte as 1);
+	de = de ^ (byte)(1);
 	de = de & 1;
 	de = de | 1;
 	if (de > 100 || de < 10 || de <= 1000 || de >= 1921 || de == 100 || de != 2)
@@ -174,11 +174,11 @@ func void test()
 	int eokfe = boo();
 	int i = -1;
 	bool dwf = !2.0;
-	ushort b = ~cast(byte as 0);
+	ushort b = ~(byte)(0);
 	int j as k;
 	int l as m = 0;
 	int o = 0, p = 3;
-	short f = cast(byte as cast(int as-2));
+	short f = (char)((int)(-2));
 	//int doek = ~2;
 	return;
 }

@@ -20,20 +20,20 @@ typedef func void(Enum) as Func;
 
 func void test1(Enum e)
 {
-    bool a = cast(e as bool);
-    char b = cast(e as char);
-    uint c = cast(e as uint);
-    float d = cast(e as float);
-    uint* f = cast(e as uint*);         // #error: cast 'Enum' to 'uint*'
+    bool a = (bool)(e);
+    char b = (char)(e);
+    uint c = (uint)(e);
+    float d = (float)(e);
+    uint* f = (uint*)(e);         // #error: cast 'Enum' to 'uint*'
 }
 
 func void test2(Enum e)
 {
-    Struct* g = cast(e as Struct*);     // #error: cast 'Enum' to 'Struct*'
+    Struct* g = (Struct*)(e);     // #error: cast 'Enum' to 'Struct*'
 }
 
 func void test3(Enum e)
 {
-    EnumB h = cast(e as EnumB);
-    Func i = cast(e as Func);           // #error: cast 'Enum' to 'Func'
+    EnumB h = (EnumB)(e);
+    Func i = (Func)(e);           // #error: cast 'Enum' to 'Func'
 }

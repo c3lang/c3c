@@ -7,7 +7,7 @@ func int foo1()
 
   w_cnt += *pp;
 
-  return cast(w_cnt as int);
+  return (int)(w_cnt);
 }
 
 extern func void test2(int, double, float);
@@ -29,7 +29,7 @@ func int trys(ichar* s, int x)
     else
     {
     }
-    return asa + cast(val as int);
+    return asa + (int)(val);
 }
 
 struct InternalFPF

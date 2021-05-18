@@ -51,7 +51,7 @@ func void GameBoard.evolve(GameBoard *board)
 		        }
 		    }
 		    if (board.world[x + y * board.w]) n--;
-            board.temp[x + y * board.w] = cast(n == 3 || (n == 2 && board.world[x + y * board.w]) as char);
+            board.temp[x + y * board.w] = (char)(n == 3 || (n == 2 && board.world[x + y * board.w]));
 	    }
 	}
 	for (int i = 0; i < board.w * board.h; i++)

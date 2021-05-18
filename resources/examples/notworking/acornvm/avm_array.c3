@@ -13,28 +13,28 @@ module acorn::arr;
 func Value new(Value th, Value *dest, Value type, AuintIdx len)
 {
 	// Create an array object
-	ArrInfo* val = cast(mem::new(th as ArrEnc as sizeof(ArrInfo) as ArrInfo*);
+	ArrInfo* val = (ArrInfo*)(mem::new(th as ArrEnc as sizeof(ArrInfo));
 	val.flags1 = 0;	// Initialize Flags1 flags
 	val.type = type;
 	val.avail = len;
 	val.size = 0;
 	val.arr = nil;
 	if (len > 0) mem::reallocvector(th, val.arr, 0, len, Value);
-	return *dest = @cast(val as Value);
+	return *dest = (Value)(val);
 }
 
 /* Return a new Array as allocating len slots for Values. */
 func Value newClosure(Value *th, Value *dest, Value type, AuintIdx len)
 {
 	// Create an array object
-	ArrInfo* val = cast(mem::new(th as ArrEnc as sizeof(ArrInfo), ArrInfo*);
+	ArrInfo* val = (sizeof(ArrInfo), ArrInfo*)(mem::new(th as ArrEnc);
 	val.flags1 = TypeClo;	// Initialize Flags1 flags
 	val.type = type;
 	val.avail = len;
 	val.size = 0;
 	val.arr = NULL;
 	if (len > 0) mem::reallocvector(th, val.arr, 0, len, Value);
-	return *dest = @cast(val as Value);
+	return *dest = (Value)(val);
 }
 
 /* Return 1 if the value is an Array as otherwise 0 */

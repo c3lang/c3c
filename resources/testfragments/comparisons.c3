@@ -33,7 +33,7 @@ extern func void printf(char *s);
 func void test_signedunsigned()
 {
     char a = 0 - 1;
-    byte b = cast(a as byte);
+    byte b = (byte)(a);
 
     printf("Signed-unsigned -1 0xFF \n");
     if (a > b) printf("a > b\n");
@@ -103,7 +103,7 @@ func void test_signedunsigned()
 func void test_unsignedsigned()
 {
     int b = -1;
-    uint a = cast(b as uint);
+    uint a = (uint)(b);
 
     printf("Unsigned-signed 0xFFFFFFFF -1 \n");
     if (a > b) printf("a > b\n");

@@ -51,7 +51,7 @@ func void GameBoard.evolve(GameBoard *board)
 		        }
 		    }
 		    if (board.world[x + y * board.w]) n--;
-            board.temp[x + y * board.w] = cast(n == 3 || (n == 2 && board.world[x + y * board.w]) as char);
+            board.temp[x + y * board.w] = (char)(n == 3 || (n == 2 && board.world[x + y * board.w]));
 	    }
 	}
 	for (int i = 0; i < board.w * board.h; i++)
@@ -73,8 +73,8 @@ func int main(int c, char** v)
     GameBoard board;
     board.w = w;
     board.h = h;
-    board.world = malloc(cast(h * w as ulong));
-    board.temp = malloc(cast(h * w as ulong));
+    board.world = malloc((ulong)(h * w));
+    board.temp = malloc((ulong)(h * w));
 
     for (int i = h * w - 1; i >= 0; i--)
     {

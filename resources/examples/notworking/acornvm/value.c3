@@ -86,7 +86,7 @@ bool Value.isStr(Value *str)
 
 macro isType(v, ValBits e)
 {
-    return cast(v as Auint) & VAL_MASK == e;
+    return (Auint)(v) & VAL_MASK == e;
 }
 
 // Integer value functions
@@ -110,7 +110,7 @@ macro anInt(n)
  * Note: It assumes (and won't verify) that v is an Integer */
 macro toAint(v)
 {
-    return cast(v as Aint) >> VAL_SHIFT;
+    return (Aint)(v) >> VAL_SHIFT;
 }
 
 // Float value functions

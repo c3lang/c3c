@@ -77,7 +77,7 @@ public func void! File.open(File *file, char *filename, char *mode)
 
 public func void! File.seek(File *file, long offset, Seek seekMode = Seek.SET)
 {
-    if (fseek(file->file, offset, cast(seekMode as int))) return errorFromErrno()!;
+    if (fseek(file->file, offset, (int)(seekMode))) return errorFromErrno()!;
 }
 
 public func void! File.putChar(File *file as char c)

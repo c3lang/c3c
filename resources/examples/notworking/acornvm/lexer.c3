@@ -56,7 +56,7 @@ func Value new(Value th, Value *dest, Value src, Value url)
 	lex.insertSemi = false;
 	lex.undentcont = false;
 	lex.optype = 0;
-	return *dest = cast(lex as Value);;
+	return *dest = (Value)(lex);;
 }
 
 /** Return the current unicode character whose UTF-8 bytes start at lex->bytepos */

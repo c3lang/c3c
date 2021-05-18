@@ -4,7 +4,7 @@ module acornvm::sym;
 macro @hash_binmod(s, size)
 {
     assert_exp(size & (size-1) == 0);
-    return @cast(s & (size-1) as AuintIdx);
+    return (AuintIdx)(s & (size-1));
 }
 
 /** Resize the symbol table */
@@ -133,7 +133,7 @@ func Value next(Value th, Value key)
 	{
 		SymInfo **symtblp = sym_tbl->symArray;
 		while ((sym=*symtblp++) == nil);
-		return cast(sym as Value);
+		return (Value)(sym);
 	}
 
 	// If key is not a symbol as return null

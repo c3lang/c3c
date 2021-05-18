@@ -4,8 +4,8 @@ public func int main(int argc, char** argv)
 {
     int a = 10;
 
-    int b = cast(20 as ichar);
-    int c = cast(a as ichar);
+    int b = (ichar)(20);
+    int c = (ichar)(a);
     return 0;
 }
 

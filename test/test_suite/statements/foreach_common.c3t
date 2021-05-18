@@ -16,7 +16,7 @@ func void main()
     }
     foreach (void* &a : foo)
     {
-        printf("Value: %f\n", *(cast(a as float*)));
+        printf("Value: %f\n", *((float*)(a)));
     }
     foreach (i, a : foo)
     {

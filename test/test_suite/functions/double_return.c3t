@@ -3,7 +3,7 @@ module double_return;
 func int test(bool pos, bool color)
 {
   return 0;
-  return cast(pos && color as int);
+  return (int)(pos && color);
 }
 
 // #expect: double_return.ll

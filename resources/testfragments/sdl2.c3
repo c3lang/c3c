@@ -78,7 +78,7 @@ func bool initX()
 	}
 
 	//Create window
-	gWindow = createWindow( "SDL from C3", WINDOWPOS_UNDEFINED_MASK, WINDOWPOS_UNDEFINED_MASK, SCREEN_WIDTH, SCREEN_HEIGHT, cast(SDLWindowFlags.SHOWN as uint));
+	gWindow = createWindow( "SDL from C3", WINDOWPOS_UNDEFINED_MASK, WINDOWPOS_UNDEFINED_MASK, SCREEN_WIDTH, SCREEN_HEIGHT, (uint)(SDLWindowFlags.SHOWN));
 	if (!gWindow) exit(-1);
 	//Get window surface
 	gScreenSurface = getWindowSurface(gWindow);

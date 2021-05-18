@@ -8,6 +8,6 @@ union Xu
 func Xu foo()
 {
     Xu a;
-    a.b = cast(123 as void*);
+    a.b = (void*)(123);
     return a;
 }

@@ -115,8 +115,7 @@ public Allocator main_allocator = { &system_malloc_function, null };
 
 public macro malloc($Type)
 {
-    // TODO: return cast(_malloc($Type.sizeof) as $Type*);
-    return cast(mem::alloc($Type.sizeof) as $Type*);
+    return ($Type*)(mem::alloc($Type.sizeof));
 }
 public func void* alloc(usize size, usize elements = 1) @inline
 {

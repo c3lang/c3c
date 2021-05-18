@@ -5,5 +5,5 @@ struct Struct
 
 func void test1()
 {
-    int a = cast(200 as Struct);    // #error: Cannot cast 'compint' to 'Struct'
+    int a = (Struct)(200);    // #error: Cannot cast 'compint' to 'Struct'
 }

@@ -9,7 +9,7 @@ func int test1()
     Foo y = 3;
     y = x + y;
     int z = 4;
-    y += cast(z as Foo);
+    y += (Foo)(z);
     y = y << z;
     y = y >> z;
     y = y + y;
@@ -25,5 +25,5 @@ func int test1()
     bool a4 = y == y;
     y = y == 1 ? 1 : y;
     y = y < (y + 1) ? 1 : y;
-    return cast(y as int);
+    return (int)(y);
 }

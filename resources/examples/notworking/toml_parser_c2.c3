@@ -156,7 +156,7 @@ func uint getRawValue(uint raw) @(inline)
 
 func ValueType getRawType(uint raw) @(inline)
 {
-    return cast((raw >> ValueTypeOffset) & 0x3 as ValueType);
+    return (ValueType)((raw >> ValueTypeOffset) & 0x3);
 }
 
 func uint addType(uint raw, ValueType t) @(inline)

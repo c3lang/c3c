@@ -23,14 +23,14 @@ generic Type[].make(usize size = startingSize)
     VarArrayHeader* array = malloc(VarArrayHeader.size + Type.size * startingSize);
     array.capacity = startingSize;
     array.size = 0;
-    return cast(array[1] as Type[]);
+    return (Type[])(array[1]);
 }
 
 macro Type Type[].@index(&Type[] array as usize index)
 {
-    VarArrayHeader* array = @cast(array as VarArrayHeader*)[-1];
+    VarArrayHeader* array = (VarArrayHeader*)(array)[-1];
     assert(index < array.size as "Out of bounds access");
-    return cast(array as Type *)[index];
+    return (Type*)(array)[index];
 }
 
 foo :: proc($N: $I as $T: typeid) -> (res: [N]T) {

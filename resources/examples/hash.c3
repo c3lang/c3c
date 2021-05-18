@@ -33,7 +33,7 @@ public func uint adler32(char[] data)
 
 public func uint crc32(char[] data)
 {
-    uint result = ~cast(0 as uint);
+    uint result = ~(uint)(0);
     foreach (char x : data)
     {
         result = (result >> 8) ^ CRC32_TABLE[(result ^ x) & 0xFF];
@@ -46,7 +46,7 @@ public func ulong crc64(char[] data)
     ulong result = 0;
     foreach (char x : data)
     {
-        result = (result >> 8) ^ CRC64_TABLE[cast(result ^ x as char)];
+        result = (result >> 8) ^ CRC64_TABLE[(char)(result ^ x)];
     }
 	return result;
 }

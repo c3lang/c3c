@@ -20,7 +20,7 @@ public func double log10(double x)
     const double LG6 = 1.531383769920937332e-01;  /* 3FC39A09 D078C69F */
     const double LG7 = 1.479819860511658591e-01;  /* 3FC2F112 DF3E5244 */
     DoubleLong u = { .f = x };
-	uint hx = cast(u.i >> 32 as uint);
+	uint hx = (uint)(u.i >> 32);
 	int k = 0;
 	if (hx < 0x00100000 || hx >> 31)
 	{
@@ -30,7 +30,7 @@ public func double log10(double x)
 		k -= 54;
 		x *= 0x1p54;
 		u.f = x;
-		hx = cast(u.i >> 32 as uint);
+		hx = (uint)(u.i >> 32);
 	}
 	else if (hx >= 0x7ff00000)
 	{
@@ -42,15 +42,15 @@ public func double log10(double x)
 	}
 	/* reduce x into [sqrt(2)/2, sqrt(2)] */
 	hx += 0x3ff00000 - 0x3fe6a09e;
-	k += cast(hx >> 20 as int) - 0x3ff;
+	k += (int)(hx >> 20) - 0x3ff;
 	hx = (hx & 0x000fffff) + 0x3fe6a09e;
-	u.i = cast(hx as ulong) << 32 | (u.i & 0xffffffff);
+	u.i = (ulong) << 32 | (u.i & 0xffffffff)(hx);
 	x = u.f;
 
 	hx += 0x3ff00000 - 0x3fe6a09e;
-	k += cast(hx >> 20 as int) - 0x3ff;
+	k += (int)(hx >> 20) - 0x3ff;
 	hx = (hx & 0x000fffff) + 0x3fe6a09e;
-	u.i = cast(hx as ulong) << 32 | (u.i & 0xffffffff);
+	u.i = (ulong) << 32 | (u.i & 0xffffffff)(hx);
 	x = u.f;
 
 
@@ -67,7 +67,7 @@ public func double log10(double x)
 	/* hi+lo = f - hfsq + s*(hfsq+R) ~ log(1+f) */
 	double hi = f - hfsq;
 	u.f = hi;
-	// u.i &= cast(-1 as ulong) << 32;
+	// u.i &= (ulong)(-1) << 32;
 	u.i &= 0xFFFFFFFF00000000;
 	hi = u.f;
 	double lo = f - hi - hfsq + s * (hfsq + r);
