@@ -1091,7 +1091,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_CT_IDENT:
 		case TOKEN_STRING:
 		case TOKEN_REAL:
-		case TOKEN_CAST:
 		case TOKEN_FALSE:
 		case TOKEN_NULL:
 		case TOKEN_TRUE:
