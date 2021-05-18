@@ -32,3 +32,4 @@ func void test2()
     Baz x;
     BazTwo z = cast(x as BazTwo); // #error: Cannot cast 'Baz' to 'BazTwo'
 }
+

@@ -1,7 +1,7 @@
 
 func void test7()
 {
-    double x = 1.2 / 0; // #error: division by zero is not allowed
+    double x = 1.2 / 0; // This is ok! NaN
 }
 
 func void test8()
