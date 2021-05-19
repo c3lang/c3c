@@ -1,0 +1,36 @@
+// #target: x64_darwin
+
+module unionx64;
+
+union Foo
+{
+    long a;
+    char[12] b;
+}
+extern func void hello2(Foo f);
+
+func void hello(Foo f)
+{
+    hello2(f);
+}
+
+// #expect: unionx64.ll
+
+%unionx64.Foo = type { i64, [8 x i8] }
+
+declare void @hello2(i64, i64) #0
+
+define void @unionx64.hello(i64 %0, i64 %1)
+
+  %f = alloca %unionx64.Foo, align 8
+  %pair = bitcast %unionx64.Foo* %f to { i64, i64 }*
+  %lo = getelementptr inbounds { i64, i64 }, { i64, i64 }* %pair, i32 0, i32 0
+  store i64 %0, i64* %lo, align 8
+  %hi = getelementptr inbounds { i64, i64 }, { i64, i64 }* %pair, i32 0, i32 1
+  store i64 %1, i64* %hi, align 8
+  %casttemp = bitcast %unionx64.Foo* %f to { i64, i64 }*
+  %lo1 = getelementptr inbounds { i64, i64 }, { i64, i64 }* %casttemp, i32 0, i32 0
+  %lo2 = load i64, i64* %lo1, align 8
+  %hi3 = getelementptr inbounds { i64, i64 }, { i64, i64 }* %casttemp, i32 0, i32 1
+  %hi4 = load i64, i64* %hi3, align 8
+  call void @hello2(i64 %lo2, i64 %hi4)

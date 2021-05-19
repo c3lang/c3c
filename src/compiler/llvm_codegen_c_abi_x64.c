@@ -307,7 +307,7 @@ void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64
 		X64Class field_lo;
 		X64Class field_hi;
 		x64_classify(element, offset, &field_lo, &field_hi, named_arg);
-		offset_base += element_size;
+		offset += element_size;
 		*lo_class = x64_merge(*lo_class, field_lo);
 		*hi_class = x64_merge(*hi_class, field_hi);
 		if (*lo_class == CLASS_MEMORY || *hi_class == CLASS_MEMORY) break;

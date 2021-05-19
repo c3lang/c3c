@@ -1616,7 +1616,7 @@ Decl *module_find_symbol(Module *module, const char *symbol);
 
 bool parse_file(Context *context);
 Path *path_create_from_string(const char *string, size_t len, SourceSpan span);
-Path *path_find_parent_path(Context *context, Path *path);
+Path *path_find_parent_path(Path *path);
 
 const char *resolve_status_to_string(ResolveStatus status);
 

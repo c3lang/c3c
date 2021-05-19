@@ -419,17 +419,7 @@ Module *global_context_find_module(const char *name)
 Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters)
 {
 	Module *module = global_context_find_module(module_name->module);
-	if (module)
-	{
-		// We might have gotten an auto-generated module, if so
-		// update the path here.
-		if (module->name->span.loc.index == INVALID_TOKEN_ID.index && module_name->span.loc.index != INVALID_TOKEN_ID.index)
-		{
-			module->name = module_name;
-			module->parameters = parameters;
-		}
-		return module;
-	}
+	if (module) return module;
 
 	DEBUG_LOG("Creating module %s.", module_name->module);
 	// Set up the module.
@@ -448,13 +438,6 @@ Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters)
 		vec_add(global_context.module_list, module);
 	}
 
-	// Now find the possible parent array:
-	Path *parent_path = path_find_parent_path(NULL, module_name);
-	if (parent_path)
-	{
-		// Get the parent
-		compiler_find_or_create_module(parent_path, NULL);
-	}
 	return module;
 }
 

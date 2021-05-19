@@ -23,16 +23,3 @@ Path *path_create_from_string(const char *string, size_t len, SourceSpan span)
 	}
 	return path;
 }
-
-Path *path_find_parent_path(Context *context, Path *path)
-{
-	const char *last_scope_chars = strrchr(path->module, ':');
-	// No parent
-	if (!last_scope_chars) return NULL;
-
-	Path *parent_path = path_create_from_string(path->module, last_scope_chars - path->module - 1, INVALID_RANGE);
-
-	assert(parent_path && "Didn't we pass in a TOKEN_IDENT? That's the only reason this could fail.");
-
-	return parent_path;
-}

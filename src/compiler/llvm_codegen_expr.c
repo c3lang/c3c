@@ -2520,7 +2520,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
 			LLVMTypeRef hi = llvm_abi_type(c, info->direct_pair.hi);
 			LLVMTypeRef struct_type = llvm_get_coerce_type(c, info);
-			LLVMValueRef cast = LLVMBuildBitCast(c->builder, be_value->value, llvm_get_ptr_type(c, type), "casttemp");
+            LLVMValueRef cast = LLVMBuildBitCast(c->builder, be_value->value, LLVMPointerType(struct_type, 0), "casttemp");
 			// Get the lo value.
 			LLVMValueRef lo_ptr = LLVMBuildStructGEP2(c->builder, struct_type, cast, 0, "lo");
 			vec_add(*args, llvm_emit_load_aligned(c, lo, lo_ptr, llvm_abi_alignment(c, lo), "lo"));

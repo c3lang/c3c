@@ -174,6 +174,8 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 			ByteSize largest = 0;
 			Type *largest_type = NULL;
 			Decl **members = type->decl->strukt.members;
+			// Clang: Unions can be here only in degenerative cases - all the fields are same
+			// after flattening. Thus we have to use the "largest" field.
 			VECEACH(members, i)
 			{
 				if (type_size(type) > largest)
