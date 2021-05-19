@@ -1071,7 +1071,7 @@ static inline Type *unify_returns(Context *context, Type *to)
 			SEMA_PREV(context->returns[i - 1], "Previous return was here.");
 			return NULL;
 		}
-		if (to)
+		if (to != type_void)
 		{
 			if (current_expr_was_void)
 			{
