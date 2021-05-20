@@ -24,7 +24,7 @@ static inline void copy_flow(Ast *ast)
 	ast->flow.label = decl_copy_label_from_macro(ast->flow.label, ast);
 }
 
-static TypeInfo** type_info_copy_list_from_macro(Context *context, TypeInfo **to_copy)
+static TypeInfo** type_info_copy_list_from_macro(TypeInfo **to_copy)
 {
 	TypeInfo **result = NULL;
 	VECEACH(to_copy, i)
@@ -561,7 +561,7 @@ Decl *copy_decl(Decl *decl)
 		case DECL_ATTRIBUTE:
 			TODO
 		case DECL_DEFINE:
-			MACRO_COPY_EXPR_LIST(decl->define_decl.params);
+			MACRO_COPY_TYPE_LIST(decl->define_decl.params);
 			switch (decl->define_decl.define_kind)
 			{
 				case DEFINE_FUNC:

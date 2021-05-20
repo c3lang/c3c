@@ -433,7 +433,6 @@ typedef enum
 	TOKEN_SWITCH,
 	TOKEN_TRUE,
 	TOKEN_TRY,
-	TOKEN_TYPEDEF,
 	TOKEN_TYPEOF,
 	TOKEN_UNION,
 	TOKEN_VAR,              // Reserved

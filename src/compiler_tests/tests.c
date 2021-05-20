@@ -61,10 +61,8 @@ static void test_lexer(void)
 	{
 		for (int i = 1; i < TOKEN_EOF; i++)
 		{
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-variable"
 			volatile bool t = lexer_scan_ident_test(&lexer, tokens[i]);
-#pragma clang diagnostic pop
+			(void)t;
 		}
 	}
 

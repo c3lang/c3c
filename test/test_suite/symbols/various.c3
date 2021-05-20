@@ -49,7 +49,7 @@ func void test7()
     int v = array[1];
 }
 
-typedef int as Number;
+define Number = int;
 
 func void test8()
 {

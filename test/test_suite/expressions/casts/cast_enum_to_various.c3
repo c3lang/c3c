@@ -16,7 +16,7 @@ enum EnumB : char
     C, D
 }
 
-typedef func void(Enum) as Func;
+define Func = func void(Enum);
 
 func void test1(Enum e)
 {

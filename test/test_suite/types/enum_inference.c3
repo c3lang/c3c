@@ -13,7 +13,7 @@ enum Inf2 : char
     C = 129,
 }
 
-typedef Inf as BooInf;
+define BooInf = Inf;
 
 
 func void enumInferenceTest()

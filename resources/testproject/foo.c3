@@ -9,7 +9,7 @@ public struct Foo
 
 extern func void printf(char *hello);
 
-local func void ofke()
+func void ofke()
 {}
 
 func void exple() {}

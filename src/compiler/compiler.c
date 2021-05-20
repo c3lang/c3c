@@ -12,6 +12,9 @@
 #define USE_PTHREAD 0
 #endif
 
+#define MAX_OUTPUT_FILES 100000000
+#define MAX_MODULES 10000000
+
 GlobalContext global_context;
 BuildTarget active_target;
 
@@ -227,6 +230,15 @@ void compiler_compile(void)
 	Module **modules = global_context.module_list;
 	unsigned module_count = vec_size(modules);
 
+	if (module_count > MAX_MODULES)
+	{
+		error_exit("Too many modules.");
+	}
+	if (module_count < 1)
+	{
+		error_exit("No module to compile.");
+	}
+
 	if (active_target.output_headers)
 	{
 		for (unsigned i = 0; i < module_count; i++)
@@ -245,7 +257,6 @@ void compiler_compile(void)
 		void *result = llvm_gen(modules[i]);
 		if (result) vec_add(gen_contexts, result);
 	}
-
 
 	printf("-- AST/EXPR INFO -- \n");
 	printf(" * Ast memory use: %llukb\n", (unsigned long long)ast_arena.allocated / 1024);
@@ -269,6 +280,10 @@ void compiler_compile(void)
 	bool create_exe = !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST);
 
 	size_t output_file_count = vec_size(gen_contexts);
+	if (output_file_count > MAX_OUTPUT_FILES)
+	{
+		error_exit("Too many output files.");
+	}
 	if (!output_file_count)
 	{
 		error_exit("No output files found.");

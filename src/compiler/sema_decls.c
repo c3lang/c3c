@@ -1046,7 +1046,7 @@ static Context *copy_context(Module *module, Context *c)
 	return copy;
 }
 
-static Module *sema_instantiate_module(Context *context, Module *module, Path *path, Expr **parms)
+static Module *sema_instantiate_module(Context *context, Module *module, Path *path, TypeInfo **parms)
 {
 	Module *new_module = compiler_find_or_create_module(path, NULL);
 	new_module->is_generic = true;
@@ -1061,12 +1061,11 @@ static Module *sema_instantiate_module(Context *context, Module *module, Path *p
 		TokenId param = module->parameters[i];
 		Decl *decl = decl_new_with_type(param, DECL_TYPEDEF, VISIBLE_PUBLIC);
 		decl->resolve_status = RESOLVE_DONE;
-		Expr *type_info_expr = parms[i];
-		assert(type_info_expr->expr_kind == EXPR_TYPEINFO);
-		assert(type_info_expr->type_expr->resolve_status == RESOLVE_DONE);
-		decl->typedef_decl.type_info = type_info_expr->type_expr;
+		TypeInfo *type_info = parms[i];
+		assert(type_info->resolve_status == RESOLVE_DONE);
+		decl->typedef_decl.type_info = type_info;
 		decl->type->name = decl->name;
-		decl->type->canonical = type_info_expr->type_expr->type->canonical;
+		decl->type->canonical = type_info->type->canonical;
 		vec_add(first_context->global_decls, decl);
 	}
 	return new_module;
@@ -1130,7 +1129,7 @@ static Decl *sema_analyse_parameterized_define(Context *c, Decl *decl)
 	}
 
 	Module *module = import_found->module;
-	Expr **params = decl->define_decl.params;
+	TypeInfo **params = decl->define_decl.params;
 	unsigned parameter_count = vec_size(module->parameters);
 	assert(parameter_count > 0);
 	if (parameter_count != vec_size(params))
@@ -1144,15 +1143,10 @@ static Decl *sema_analyse_parameterized_define(Context *c, Decl *decl)
 	scratch_buffer_append_char('.');
 	VECEACH(decl->define_decl.params, i)
 	{
-		Expr *expr = decl->define_decl.params[i];
-		if (expr->expr_kind != EXPR_TYPEINFO)
-		{
-			SEMA_ERROR(expr, "A generic module can only take plain types as arguments.");
-			return poisoned_decl;
-		}
-		if (!sema_resolve_type_info(c, expr->type_expr)) return poisoned_decl;
+		TypeInfo *type_info = decl->define_decl.params[i];
+		if (!sema_resolve_type_info(c, type_info)) return poisoned_decl;
 		if (i != 0) scratch_buffer_append_char('.');
-		const char *type_name = expr->type_expr->type->canonical->name;
+		const char *type_name = type_info->type->canonical->name;
 		scratch_buffer_append(type_name);
 	}
 	TokenType ident_type = TOKEN_IDENT;

@@ -452,7 +452,7 @@ typedef struct
 		};
 		Decl *alias;
 	};
-	Expr **params;
+	TypeInfo **params;
 } DefineDecl;
 
 typedef struct
@@ -1697,6 +1697,17 @@ bool token_is_type(TokenType type);
 bool token_is_any_type(TokenType type);
 bool token_is_symbol(TokenType type);
 const char *token_type_to_string(TokenType type);
+static inline TokenType advance_token(TokenId *token)
+{
+	TokenType tok;
+	while (1)
+	{
+		token->index += 1;
+		tok = TOKTYPE(*token);
+		if (tok != TOKEN_COMMENT) return tok;
+	}
+}
+
 
 AlignSize type_abi_alignment(Type *type);
 AlignSize type_alloca_alignment(Type *type);

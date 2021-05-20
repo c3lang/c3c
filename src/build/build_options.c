@@ -107,7 +107,7 @@ static const char* check_dir(const char *path)
 	}
 	if (chdir(path) == -1) error_exit("The path \"%s\" does not point to a valid directory.", path);
 	int err = chdir(original_path);
-	assert(!err);
+	if (err) FAIL_WITH_ERR("Failed to change path to %s.", original_path);
 	return path;
 }
 
