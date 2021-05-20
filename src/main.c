@@ -21,8 +21,6 @@ int main(int argc, const char *argv[])
 	// Init the compiler
 	compiler_init(build_options.std_lib_dir);
 
-	BuildTarget build_target = { .name = NULL };
-
 	switch (build_options.command)
 	{
 		case COMMAND_INIT:

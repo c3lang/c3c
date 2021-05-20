@@ -1,6 +1,6 @@
 module test;
 
-typedef int as distinct Foo;
+define Foo = distinct int;
 
 func int test1()
 {

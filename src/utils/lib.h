@@ -288,7 +288,7 @@ static inline _VHeader* _vec_new(size_t element_size, size_t capacity)
 	return header;
 }
 
-static inline unsigned vec_size(const void*vec)
+static inline unsigned vec_size(const void *vec)
 {
 	return vec ? (((_VHeader *)vec) - 1)->size : 0;
 }

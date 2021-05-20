@@ -20,6 +20,7 @@ char *strformat(const char *var, ...)
 	int new_len = vsnprintf(buffer, len + 1, var, list);
 	va_end(list);
 	assert(len == new_len);
+	(void)new_len;
 	return buffer;
 }
 

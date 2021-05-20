@@ -1,4 +1,4 @@
-typedef int[4] as Arr;
+define Arr = int[4];
 
 Arr a = { 3, 4, 5, 6 };
 

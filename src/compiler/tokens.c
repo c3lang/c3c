@@ -250,8 +250,6 @@ const char *token_type_to_string(TokenType type)
 			return "typeid";
 		case TOKEN_TYPEOF:
 			return "typeof";
-		case TOKEN_TYPEDEF:
-			return "typedef";
 		case TOKEN_UNION:
 			return "union";
 		case TOKEN_WHILE:

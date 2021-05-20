@@ -1,5 +1,5 @@
-typedef char as Number8;
-typedef int as Number32;
+define Number8 = char;
+define Number32 = int;
 
 func void test1()
 {

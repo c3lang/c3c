@@ -1,4 +1,4 @@
-typedef int as Number;
+define Number = int;
 
 func void test1()
 {

@@ -8,11 +8,9 @@ enum Enum : uptr
     A, B
 }
 
-typedef func void(int) as Func;
-
-typedef func bool(char*) as FuncOther;
-
-typedef func void(int) as FuncSame;
+define Func = func void(int);
+define FuncOther = func bool(char*);
+define FuncSame = func void(int);
 
 
 func void test1(Func arg)

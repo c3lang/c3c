@@ -781,7 +781,6 @@ static inline bool sema_expr_analyse_intrinsic_fp_invocation(Context *context, E
 
 static inline bool sema_expr_analyse_intrinsic_invocation(Context *context, Expr *expr, Decl *decl, Type *to)
 {
-	unsigned arguments = vec_size(expr->call_expr.arguments);
 	if (decl->name == kw___ceil || decl->name == kw___trunc || decl->name == kw___round || decl->name == kw___sqrt)
 	{
 		return sema_expr_analyse_intrinsic_fp_invocation(context, expr, decl, to);
@@ -3488,6 +3487,7 @@ static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *
 
 		// No need to check the cast we just ensured it was an integer.
 		assert(success && "This should always work");
+		(void)success;
 
 		// 3c. Set the type and other properties.
 		expr_copy_types(expr, left);
@@ -4172,8 +4172,6 @@ static bool sema_take_addr_of(Expr *inner, bool *is_constant)
  */
 static bool sema_expr_analyse_addr(Context *context, Type *to, Expr *expr, Expr *inner)
 {
-	Type *pointee = to ? to->canonical->pointer : NULL;
-
 	// 1. Evaluate the expression
 	REDO:
 	switch (inner->expr_kind)

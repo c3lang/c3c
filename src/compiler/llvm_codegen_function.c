@@ -168,7 +168,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			LLVMValueRef hi_ptr = LLVMBuildStructGEP2(c->builder, struct_type, cast, 1, "hi");
 			// Store it in the struct.
 			AlignSize hi_alignment = MIN(llvm_abi_alignment(c, hi), decl_alignment);
-			llvm_store_aligned(c, hi_ptr, llvm_get_next_param(c, index), decl_alignment);
+			llvm_store_aligned(c, hi_ptr, llvm_get_next_param(c, index), hi_alignment);
 			return;
 		}
 		case ABI_ARG_DIRECT_COERCE:

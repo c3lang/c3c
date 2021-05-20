@@ -22,7 +22,7 @@ public error AllocationFailure
     AllocationFailureKind failureKind;
 }
 
-public typedef func void!(void *data, void** pointer, usize bytes, usize alignment, AllocationKind kind) as AllocatorFunction;
+public define AllocatorFunction = func void!(void *data, void** pointer, usize bytes, usize alignment, AllocationKind kind);
 
 public struct Allocator
 {
