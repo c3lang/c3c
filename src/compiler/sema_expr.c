@@ -1783,6 +1783,28 @@ static void add_members_to_context(Context *context, Decl *decl)
 	}
 }
 
+static Expr *enum_minmax_value(Decl *decl, BinaryOp comparison)
+{
+	assert(decl->decl_kind == DECL_ENUM);
+	bool is_signed = type_is_signed(decl->enums.type_info->type->canonical);
+	Expr *expr = NULL;
+	VECEACH(decl->enums.values, i)
+	{
+		Decl *enum_constant = decl->enums.values[i];
+		Expr *candidate = enum_constant->enum_constant.expr;
+		assert(candidate->expr_kind == EXPR_CONST);
+		if (!expr)
+		{
+			expr = candidate;
+			continue;
+		}
+		if (expr_const_compare(&candidate->const_expr, &expr->const_expr, comparison))
+		{
+			expr = candidate;
+		}
+	}
+	return expr;
+}
 static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, bool was_group)
 {
 	if (!was_group && type_kind_is_derived(parent->type->type_kind))
@@ -1807,12 +1829,12 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 	}
 	if (name == kw_sizeof)
 	{
-		expr_rewrite_to_int_const(expr, type_usize, type_size(canonical));
+		expr_rewrite_to_int_const(expr, type_compint, type_size(canonical));
 		return true;
 	}
 	if (name == kw_alignof)
 	{
-		expr_rewrite_to_int_const(expr, type_usize, type_abi_alignment(canonical));
+		expr_rewrite_to_int_const(expr, type_compint, type_abi_alignment(canonical));
 		return true;
 	}
 	if (name == kw_nameof)
@@ -1845,30 +1867,37 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 				}
 				return true;
 			}
-			if (name == kw_sizeof)
+			if (name == kw_elements)
 			{
-				expr_rewrite_to_int_const(expr, type_usize, type_size(decl->enums.type_info->type));
+				expr_rewrite_to_int_const(expr, type_compint, vec_size(decl->enums.values));
 				return true;
 			}
-			if (name == kw_alignof)
+			if (name == kw_max)
 			{
-				expr_rewrite_to_int_const(expr, type_usize, type_abi_alignment(decl->enums.type_info->type));
+				Expr *max = enum_minmax_value(decl, BINARYOP_GT);
+				if (!max)
+				{
+					expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0);
+					return true;
+				}
+				expr_replace(expr, max);
+				return true;
+			}
+			if (name == kw_min)
+			{
+				Expr *min = enum_minmax_value(decl, BINARYOP_LT);
+				if (!min)
+				{
+					expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0);
+					return true;
+				}
+				expr_replace(expr, min);
 				return true;
 			}
 			break;
 		case DECL_ERR:
 		case DECL_UNION:
 		case DECL_STRUCT:
-			if (name == kw_sizeof)
-			{
-				expr_rewrite_to_int_const(expr, type_usize, type_size(decl->type));
-				return true;
-			}
-			if (name == kw_alignof)
-			{
-				expr_rewrite_to_int_const(expr, type_usize, type_abi_alignment(decl->type));
-				return true;
-			}
 			break;
 		default:
 			UNREACHABLE

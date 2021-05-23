@@ -36,16 +36,18 @@ static SymTab symtab;
 
 const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
-const char *kw_std;
 const char *kw_align;
 const char *kw_alignof;
 const char *kw_distinct;
 const char *kw_ensure;
+const char *kw_elements;
 const char *kw_errors;
 const char *kw_inline;
 const char *kw_kindof;
 const char *kw_len;
 const char *kw_main;
+const char *kw_max;
+const char *kw_min;
 const char *kw_nameof;
 const char *kw_offsetof;
 const char *kw_ordinal;
@@ -55,6 +57,7 @@ const char *kw_qnameof;
 const char *kw_reqparse;
 const char *kw_require;
 const char *kw_sizeof;
+const char *kw_std;
 const char *kw___ceil;
 const char *kw___round;
 const char *kw___sqrt;
@@ -96,12 +99,15 @@ void symtab_init(uint32_t capacity)
 	kw_align = KW_DEF("align");
 	kw_alignof = KW_DEF("alignof");
 	kw_distinct = KW_DEF("distinct");
+	kw_elements = KW_DEF("elements");
 	kw_ensure = KW_DEF("ensure");
 	kw_errors = KW_DEF("errors");
 	kw_inline = KW_DEF("inline");
 	kw_kindof = KW_DEF("kindof");
 	kw_len = KW_DEF("len");
 	kw_main = KW_DEF("main");
+	kw_max = KW_DEF("max");
+	kw_min = KW_DEF("min");
 	kw_nameof = KW_DEF("nameof");
 	kw_offsetof = KW_DEF("offsetof");
 	kw_ordinal = KW_DEF("ordinal");
@@ -110,11 +116,11 @@ void symtab_init(uint32_t capacity)
 	kw_qnameof = KW_DEF("qnameof");
 	kw_require = KW_DEF("required");
 	kw_sizeof = KW_DEF("sizeof");
+	kw_std = KW_DEF("std");
 	kw___ceil = KW_DEF("__ceil");
 	kw___round = KW_DEF("__round");
 	kw___sqrt = KW_DEF("__sqrt");
 	kw___trunc = KW_DEF("__trunc");
-	kw_std = KW_DEF("std");
 
 	attribute_list[ATTRIBUTE_INLINE] = kw_inline;
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
