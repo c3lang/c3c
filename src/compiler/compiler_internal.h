@@ -1406,6 +1406,9 @@ extern Type *type_virtual, *type_virtual_generic;
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
 extern const char *kw_std;
+extern const char *kw_max;
+extern const char *kw_min;
+extern const char *kw_elements;
 extern const char *kw_align;
 extern const char *kw_alignof;
 extern const char *kw_distinct;
