@@ -13,6 +13,7 @@
 #include <errno.h>
 #include "whereami.h"
 
+
 const char* expand_path(const char* path)
 {
 	if (path[0] == '~' && path[1] == '/')

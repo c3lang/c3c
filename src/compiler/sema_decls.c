@@ -3,10 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
-#include "bigint.h"
-
-
-
 
 
 static AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDomain domain);
@@ -1025,16 +1021,6 @@ static inline bool sema_analyse_generic(Context *context, Decl *decl)
 }
 
 
-static bool sema_analyse_plain_define(Context *c, Decl *decl, Decl *symbol)
-{
-	unsigned parameter_count = vec_size(symbol->module->parameters);
-	if (parameter_count > 0)
-	{
-		SEMA_ERROR(decl, "Using 'define' with parameterized modules, requires parameters - did you forget them?");
-		return false;
-	}
-	TODO
-}
 
 static Context *copy_context(Module *module, Context *c)
 {
@@ -1073,16 +1059,6 @@ static Module *sema_instantiate_module(Context *context, Module *module, Path *p
 
 static Decl *sema_analyse_parameterized_define(Context *c, Decl *decl)
 {
-	TokenId define_ident;;
-	TypeInfo *define_type;
-	if (decl->define_decl.define_kind == DEFINE_TYPE_ALIAS)
-	{
-		define_type = decl->define_decl.type_info;
-	}
-	else
-	{
-		define_ident = decl->define_decl.identifier;
-	}
 	Path *decl_path;
 	bool mismatch = false;
 	const char *name;
@@ -1091,14 +1067,17 @@ static Decl *sema_analyse_parameterized_define(Context *c, Decl *decl)
 	{
 		case DEFINE_IDENT_ALIAS:
 			decl_path = decl->define_decl.path;
-			name = TOKSTR(define_ident);
+			name = TOKSTR(decl->define_decl.identifier);
 			break;
 		case DEFINE_TYPE_ALIAS:
+		{
+			TypeInfo *define_type = decl->define_decl.type_info;
 			mismatch_span = define_type->span;
 			decl_path = define_type->unresolved.path;
 			name = TOKSTR(define_type->unresolved.name_loc);
 			mismatch = define_type->kind != TYPE_INFO_IDENTIFIER;
 			break;
+		}
 		default:
 			UNREACHABLE
 	}

@@ -97,7 +97,6 @@ add_executable(c3c
         src/compiler/diagnostics.c
         src/compiler/ast.c
         src/compiler/bigint.c
-        src/compiler/bigint.h
         src/compiler/context.c
         src/compiler/sema_expr.c
         src/compiler/enums.h
@@ -144,18 +143,9 @@ add_executable(c3c
         src/compiler/llvm_codegen_c_abi_riscv.c
         src/compiler/llvm_codegen_c_abi_wasm.c)
 
-target_compile_options(c3c PRIVATE -Wno-unknown-warning-option
-        -Wsign-compare -Wimplicit-int -Werror -Wall
-        -Wempty-body -Wuninitialized -Wcast-function-type -Wclobbered
-        -Wignored-qualifiers -Wimplicit-fallthrough=3 -Wmisleading-indentation
-        -Wold-style-declaration -Woverride-init
-        -Wtype-limits -Wshift-negative-value
-        -Wnested-externs -Wvla -Wno-stringop-overread
-        -Wpointer-arith -Wpacked
-        -Walloc-zero -Wduplicated-cond -Wshadow
-        -Wmissing-field-initializers -Wmissing-parameter-type
-         -Wno-unused-result -Wno-maybe-uninitialized
-        -Wno-unknown-pragmas -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
+target_compile_options(c3c PRIVATE -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
+        -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
+
 
 target_include_directories(c3c PRIVATE
         "${CMAKE_SOURCE_DIR}/src/")

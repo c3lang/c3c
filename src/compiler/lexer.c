@@ -256,6 +256,8 @@ static inline bool parse_multiline_comment(Lexer *lexer)
 				break;
 			case '\0':
 				return add_error_token(lexer, "Missing '*/' to end the multiline comment.");
+			default:
+				break;
 		}
 		next(lexer);
 	}
@@ -290,26 +292,6 @@ static void skip_whitespace(Lexer *lexer, LexMode lex_type)
 
 
 #pragma mark --- Identifier scanning
-
-static inline bool scan_prefixed_ident(Lexer *lexer, TokenType type, TokenType no_ident_type, bool ends_with_bang, const char *start)
-{
-	uint32_t hash = FNV1a(prev(lexer), FNV1_SEED);
-	while (is_alphanum_(peek(lexer)))
-	{
-		hash = FNV1a(next(lexer), hash);
-	}
-	if (ends_with_bang && peek(lexer) == '!')
-	{
-		hash = FNV1a(next(lexer), hash);
-	}
-	uint32_t len = (uint32_t)(lexer->current - lexer->lexing_start);
-	if (len == 1)
-	{
-		return add_token(lexer, no_ident_type, start);
-	}
-	const char* interned = symtab_add(lexer->lexing_start, len, hash, &type);
-	return add_token(lexer, type, interned);
-}
 
 
 // Parses identifiers. Note that this is a bit complicated here since

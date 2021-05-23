@@ -20,7 +20,6 @@ static unsigned os_target_supports_float128(OsType os, ArchType arch);
 static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int);
 static bool os_requires_libc(OsType os);
 
-
 PlatformTarget platform_target = {};
 
 int target_alloca_addr_space()

@@ -4,7 +4,6 @@
 
 #include "compiler_internal.h"
 #include "parser_internal.h"
-#include "bigint.h"
 
 #define BINOP_PREC_REQ_LEN 40
 int BINOP_PREC_REQ[BINOP_PREC_REQ_LEN] = {
@@ -202,11 +201,6 @@ static Expr *parse_macro_ident(Context *context, Expr *left)
 	return macro_ident;
 }
 
-
-static inline Expr* parse_non_assign_expr(Context *context)
-{
-	return parse_precedence(context, PREC_ASSIGNMENT + 1);
-}
 
 /**
  * expression_list
@@ -784,8 +778,8 @@ static Expr *parse_double(Context *context, Expr *left)
 
 static int append_esc_string_token(char *restrict dest, const char *restrict src, size_t *pos)
 {
-	int scanned = 0;
-	uint64_t unicode_char = 0;
+	int scanned;
+	uint64_t unicode_char;
 	switch (src[0])
 	{
 		case 'a':

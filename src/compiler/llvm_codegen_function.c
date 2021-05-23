@@ -4,7 +4,6 @@
 
 
 #include "llvm_codegen_internal.h"
-#include "bigint.h"
 
 static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index);
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);

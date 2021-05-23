@@ -263,7 +263,6 @@ Ast *copy_ast(Ast *source)
 			return ast;
 		case AST_CONTINUE_STMT:
 			TODO
-			return ast;
 		case AST_CT_ASSERT:
 			MACRO_COPY_EXPR(ast->ct_assert_stmt.message);
 			MACRO_COPY_EXPR(ast->ct_assert_stmt.expr);
@@ -333,7 +332,6 @@ Ast *copy_ast(Ast *source)
 		case AST_NEXT_STMT:
 			MACRO_COPY_EXPR(ast->next_stmt.switch_expr);
 			TODO
-			return ast;
 		case AST_NOP_STMT:
 			return ast;
 		case AST_RETURN_STMT:

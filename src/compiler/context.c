@@ -147,7 +147,6 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_LABEL:
 		case DECL_CT_CASE:
 			UNREACHABLE
-			break;
 		case DECL_CT_IF:
 		case DECL_CT_SWITCH:
 			vec_add(context->ct_ifs, decl);
