@@ -58,10 +58,7 @@ void decl_set_external_name(Decl *decl)
 	scratch_buffer_append(decl->module->name->module);
 	scratch_buffer_append(".");
 	scratch_buffer_append(decl->name ?: "anon");
-	TokenType type = TOKEN_INVALID_TOKEN;
-	const char *buffer = scratch_buffer_to_string();
-	size_t len = global_context.scratch_buffer_len;
-	decl->external_name = symtab_add(buffer, len, fnv1a(buffer, len), &type);
+	decl->external_name = scratch_buffer_interned();
 }
 
 Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility)

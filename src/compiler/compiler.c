@@ -501,8 +501,16 @@ void scratch_buffer_append_char(char c)
 	}
 	global_context.scratch_buffer[global_context.scratch_buffer_len++] = c;
 }
+
 char *scratch_buffer_to_string(void)
 {
 	global_context.scratch_buffer[global_context.scratch_buffer_len] = '\0';
 	return global_context.scratch_buffer;
+}
+
+const char *scratch_buffer_interned(void)
+{
+	TokenType type = TOKEN_INVALID_TOKEN;
+	return symtab_add(global_context.scratch_buffer, global_context.scratch_buffer_len,
+	                  fnv1a(global_context.scratch_buffer, global_context.scratch_buffer_len), &type);
 }

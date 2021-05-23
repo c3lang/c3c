@@ -1512,8 +1512,7 @@ void bigint_truncate(BigInt *dst, const BigInt *op, size_t bit_count, bool is_si
 void bigint_incr(BigInt *x);
 size_t bigint_popcount_signed(const BigInt *bi, size_t bit_count);
 size_t bigint_popcount_unsigned(const BigInt *big_int);
-
-void builtin_setup(PlatformTarget *target);
+void type_setup(PlatformTarget *target);
 
 static inline bool builtin_may_negate(Type *canonical)
 {
@@ -1727,6 +1726,7 @@ void scratch_buffer_append(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
 void scratch_buffer_append_char(char c);
 char *scratch_buffer_to_string(void);
+const char *scratch_buffer_interned(void);
 
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 
@@ -1778,6 +1778,7 @@ bool type_is_empty_field(Type *type, bool allow_array);
 static inline bool type_is_float(Type *type);
 bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements);
 bool type_is_int128(Type *type);
+Type *type_find_function_type(FunctionSignature *signature);
 static inline bool type_is_integer(Type *type);
 static inline bool type_is_integer_unsigned(Type *type);
 static inline bool type_is_integer_signed(Type *type);

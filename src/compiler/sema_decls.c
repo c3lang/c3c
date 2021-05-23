@@ -354,16 +354,8 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 
 static inline Type *sema_analyse_function_signature(Context *context, FunctionSignature *signature, bool is_function)
 {
-	char buffer[MAX_FUNCTION_SIGNATURE_SIZE + 200];
-	size_t buffer_write_offset = 0;
 	bool all_ok = true;
 	all_ok = sema_resolve_type_info(context, signature->rtype) && all_ok;
-	if (all_ok)
-	{
-		type_append_signature_name(signature->rtype->type, buffer, &buffer_write_offset);
-		if (signature->failable) buffer[buffer_write_offset++] = '!';
-		buffer[buffer_write_offset++] = '(';
-	}
 	if (vec_size(signature->params) > MAX_PARAMS)
 	{
 		SEMA_ERROR(signature->params[MAX_PARAMS], "Number of params exceeds %d which is unsupported.", MAX_PARAMS);
@@ -386,11 +378,6 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 		}
 		signature->has_default = signature->has_default || has_default;
 		param->resolve_status = RESOLVE_DONE;
-		if (i > 0 && all_ok)
-		{
-			buffer[buffer_write_offset++] = ',';
-		}
-		type_append_signature_name(param->var.type_info->type, buffer, &buffer_write_offset);
 		if (param->name)
 		{
 			Decl *prev = stable_set(names, param->name, param);
@@ -404,31 +391,10 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 			}
 		}
 	}
-	if (signature->variadic)
-	{
-		buffer[buffer_write_offset++] = ',';
-		buffer[buffer_write_offset++] = '.';
-		buffer[buffer_write_offset++] = '.';
-		buffer[buffer_write_offset++] = '.';
-	}
-	buffer[buffer_write_offset++] = ')';
 
 	if (!all_ok) return NULL;
-
-	TokenType type = TOKEN_INVALID_TOKEN;
-	const char *mangled_signature = symtab_add(buffer, buffer_write_offset, fnv1a(buffer, buffer_write_offset), &type);
-	Type *func_type = stable_get(&context->local_symbols, mangled_signature);
 	c_abi_func_create(signature);
-	if (!func_type)
-	{
-		func_type = type_new(TYPE_FUNC, mangled_signature);
-		func_type->canonical = func_type;
-		func_type->func.signature = signature;
-		func_type->func.mangled_function_signature = mangled_signature;
-		stable_set(&context->local_symbols, mangled_signature, func_type);
-	}
-	return func_type;
-
+	return type_find_function_type(signature);
 }
 
 static inline bool sema_analyse_typedef(Context *context, Decl *decl)
@@ -1129,16 +1095,14 @@ static Decl *sema_analyse_parameterized_define(Context *c, Decl *decl)
 		scratch_buffer_append(type_name);
 	}
 	TokenType ident_type = TOKEN_IDENT;
-	const char *res = scratch_buffer_to_string();
-	size_t len = global_context.scratch_buffer_len;
-	const char *path_string = symtab_add(res, len, fnv1a(res, len), &ident_type);
+	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
 	if (!instantiated_module)
 	{
 		Path *path = CALLOCS(Path);
 		path->module = path_string;
 		path->span = module->name->span;
-		path->len = len;
+		path->len = global_context.scratch_buffer_len;
 		instantiated_module = sema_instantiate_module(c, module, path, decl->define_decl.params);
 		sema_analyze_stage(instantiated_module, c->module->stage - 1);
 	}

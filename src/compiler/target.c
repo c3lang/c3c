@@ -1282,5 +1282,5 @@ void target_setup(BuildTarget *target)
 	platform_target.pic_required = arch_os_pic_default_forced(platform_target.arch, platform_target.os);
 
 		// TODO remove
-	builtin_setup(&platform_target);
+	type_setup(&platform_target);
 }

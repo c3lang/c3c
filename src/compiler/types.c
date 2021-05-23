@@ -4,6 +4,7 @@
 
 #include "compiler_internal.h"
 
+static STable function_types;
 static Type t_u0, t_u1, t_i8, t_i16, t_i32, t_i64, t_i128, t_ixx;
 static Type t_u8, t_u16, t_u32, t_u64, t_u128;
 static Type t_f16, t_f32, t_f64, t_f128, t_fxx;
@@ -1043,16 +1044,75 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 }
 
 
-void builtin_setup(PlatformTarget *target)
+static void type_append_name_to_scratch(Type *type)
 {
+	type = type->canonical;
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_TYPEDEF:
+			UNREACHABLE;
+		case TYPE_ERRTYPE:
+		case TYPE_ENUM:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+			scratch_buffer_append(type->decl->external_name);
+			break;
+		default:
+			scratch_buffer_append(type->name);
+			break;
+	}
+}
+
+Type *type_find_function_type(FunctionSignature *signature)
+{
+	scratch_buffer_clear();
+	type_append_name_to_scratch(signature->rtype->type);
+	if (signature->failable) scratch_buffer_append_char('!');
+	scratch_buffer_append_char('(');
+	unsigned elements = vec_size(signature->params);
+	for (unsigned i = 0; i < elements; i++)
+	{
+		if (i > 0)
+		{
+			scratch_buffer_append_char(',');
+		}
+		type_append_name_to_scratch(signature->params[i]->var.type_info->type);
+	}
+	if (signature->variadic && elements > 0)
+	{
+		scratch_buffer_append_char(',');
+	}
+	if (signature->variadic || signature->typed_variadic)
+	{
+		scratch_buffer_append("...");
+	}
+	scratch_buffer_append_char(')');
+	const char *mangled_signature = scratch_buffer_interned();
+	Type *func_type = stable_get(&function_types, mangled_signature);
+	if (!func_type)
+	{
+		func_type = type_new(TYPE_FUNC, mangled_signature);
+		func_type->canonical = func_type;
+		func_type->func.signature = signature;
+		func_type->func.mangled_function_signature = mangled_signature;
+		stable_set(&function_types, mangled_signature, func_type);
+	}
+	return func_type;
+}
+
+
+void type_setup(PlatformTarget *target)
+{
+	stable_init(&function_types, 0x1000);
 
 	/*TODO
  * decl_string = (Decl) { .decl_kind = DECL_BUILTIN, .name.string = "string" };
 	create_type(&decl_string, &type_string);
 	type_string.type_kind = TYPE_STRING;
 */
-#define DEF_TYPE(_name, _shortname, _type, _bits, _align) \
-type_create(#_name, &_shortname, _type, _bits, target->align_ ## _align, target->align_pref_ ## _align)
+#define DEF_TYPE(name_, shortname_, type_, bits_, aligned_) \
+type_create(#name_, &(shortname_), type_, bits_, target->align_ ## aligned_, target->align_pref_ ## aligned_)
 
 	DEF_TYPE(bool, t_u1, TYPE_BOOL, 1, byte);
 	DEF_TYPE(float, t_f32, TYPE_F32, 32, float);
@@ -1162,17 +1222,21 @@ bool type_is_scalar(Type *type)
 bool type_is_subtype(Type *type, Type *possible_subtype)
 {
 	assert(type == type->canonical && possible_subtype == possible_subtype->canonical);
-	if (type == possible_subtype) return true;
-	if (type->type_kind != possible_subtype->type_kind) return false;
-	if (type->decl->decl_kind != DECL_STRUCT) return false;
+	while (1)
+	{
+		if (type == possible_subtype) return true;
+		if (type->type_kind != possible_subtype->type_kind) return false;
+		if (type->decl->decl_kind != DECL_STRUCT) return false;
 
-	if (!possible_subtype->decl->strukt.members) return false;
+		if (!possible_subtype->decl->strukt.members) return false;
 
-	Decl *first_element = possible_subtype->decl->strukt.members[0];
+		Decl *first_element = possible_subtype->decl->strukt.members[0];
 
-	if (first_element->decl_kind != DECL_VAR) return false;
+		if (first_element->decl_kind != DECL_VAR) return false;
 
-	return type_is_subtype(type, first_element->type->canonical);
+		possible_subtype = first_element->type->canonical;
+	}
+
 }
 
 
