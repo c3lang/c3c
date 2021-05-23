@@ -424,6 +424,8 @@ const char *find_executable_path(void)
 			case '\\':
 				path[i + 1] = '\0';
 				return path;
+			default:
+				break;
 		}
 	}
 	path[len] = '\0';

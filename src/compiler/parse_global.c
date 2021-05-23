@@ -247,8 +247,6 @@ static inline Path *parse_module_path(Context *context)
 {
 	assert(TOKEN_IS(TOKEN_IDENT));
 	scratch_buffer_clear();
-	char *scratch_ptr = global_context.scratch_buffer;
-	size_t offset = 0;
 	SourceSpan span = source_span_from_token_id(context->tok.id);
 	scratch_buffer_append_len(TOKSTR(context->tok), TOKLEN(context->tok));
 	TokenId last_token;

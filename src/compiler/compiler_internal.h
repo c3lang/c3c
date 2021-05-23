@@ -1,7 +1,3 @@
-#pragma once
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "bugprone-reserved-identifier"
-
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
@@ -50,16 +46,16 @@ typedef struct
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
 #define MAX_OFFSET ((ArrayIndex)(((uint64_t)2) << 60))
 
-typedef struct _Ast Ast;
-typedef struct _Decl Decl;
-typedef struct _TypeInfo TypeInfo;
-typedef struct _Expr Expr;
-typedef struct _Module Module;
-typedef struct _Type Type;
+typedef struct Ast_ Ast;
+typedef struct Decl_ Decl;
+typedef struct TypeInfo_ TypeInfo;
+typedef struct Expr_ Expr;
+typedef struct Module_ Module;
+typedef struct Type_ Type;
 
 typedef unsigned AstId;
 
-typedef struct _BigInt
+typedef struct BigInt_
 {
 	unsigned digit_count;
 	bool is_negative;
@@ -162,7 +158,7 @@ typedef struct
 
 
 
-typedef struct _Path
+typedef struct Path_
 {
 	SourceSpan span;
 	const char *module;
@@ -198,11 +194,11 @@ typedef struct
 
 typedef struct
 {
-	struct _FunctionSignature *signature;
+	struct FunctionSignature_ *signature;
 	const char *mangled_function_signature;
 } TypeFunc;
 
-struct _Type
+struct Type_
 {
 	TypeKind type_kind : 8;
 	Type *canonical;
@@ -230,7 +226,7 @@ struct _Type
 	};
 };
 
-struct _TypeInfo
+struct TypeInfo_
 {
 	ResolveStatus resolve_status : 2;
 	bool virtual_type : 1;
@@ -278,7 +274,7 @@ typedef struct
 } StructDecl;
 
 
-typedef struct _VarDecl
+typedef struct VarDecl_
 {
 	VarDeclKind kind : 4;
 	bool constant : 1;
@@ -339,7 +335,7 @@ typedef struct
 	TypeInfo *type_info;
 } EnumDecl;
 
-typedef struct _FunctionSignature
+typedef struct FunctionSignature_
 {
 	CallConvention convention : 4;
 	bool variadic : 1;
@@ -418,12 +414,12 @@ typedef struct
 	bool failable : 1;
 	Decl **parameters;
 	TypeInfo *rtype; // May be null!
-	struct _Ast *body;
+	struct Ast_ *body;
 } MacroDecl;
 
 typedef struct
 {
-	struct _Ast **cases;
+	struct Ast_ **cases;
 	Decl **parameters;
 	TypeInfo *rtype; // May be null!
 	Path *path; // For redefinition
@@ -466,7 +462,7 @@ typedef struct
 } LabelDecl;
 
 
-typedef struct _Decl
+typedef struct Decl_
 {
 	const char *name;
 	TokenId name_token;
@@ -734,11 +730,6 @@ typedef struct
 	Decl **params;
 } ExprMacroBlock;
 
-typedef struct
-{
-	Expr *left;
-	Expr *right;
-} ExprRange;
 
 typedef enum
 {
@@ -782,7 +773,7 @@ typedef struct
 } ExprLen;
 
 
-struct _Expr
+struct Expr_
 {
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 3;
@@ -799,7 +790,6 @@ struct _Expr
 		Expr *typeof_expr;
 		TypeInfo *type_expr;
 		ExprConst const_expr;
-		ExprRange range_expr;
 		ExprStructValue struct_value_expr;
 		ExprGuard guard_expr;
 		Expr *trycatch_expr;
@@ -835,7 +825,7 @@ struct _Expr
 
 typedef struct
 {
-	struct _Ast **stmts;
+	struct Ast_ **stmts;
 	DeferList defer_list;
 } AstCompoundStmt;
 
@@ -984,11 +974,11 @@ typedef struct
 } AstCatchStmt;
 
 
-typedef struct _AstCtIfStmt
+typedef struct AstCtIfStmt_
 {
 	Expr *expr;
-	struct _Ast *then;
-	struct _Ast *elif;
+	struct Ast_ *then;
+	struct Ast_ *elif;
 } AstCtIfStmt;
 
 
@@ -1112,7 +1102,7 @@ typedef struct
 	};
 } AstDocDirective;
 
-typedef struct _Ast
+typedef struct Ast_
 {
 	SourceSpan span;
 	AstKind ast_kind : 8;
@@ -1154,7 +1144,7 @@ typedef struct _Ast
 
 
 
-typedef struct _Module
+typedef struct Module_
 {
 	Path *name;
 	TokenId *parameters;
@@ -1170,12 +1160,12 @@ typedef struct _Module
 	Decl** functions;
 	STable symbols;
 	STable public_symbols;
-	struct _Context **contexts;
+	struct Context_ **contexts;
 } Module;
 
 
 
-typedef struct _DynamicScope
+typedef struct DynamicScope_
 {
 	ScopeId scope_id;
 	bool allow_dead_code : 1;
@@ -1222,7 +1212,7 @@ typedef struct
 } Lexer;
 
 
-typedef struct _Context
+typedef struct Context_
 {
 	Path *module_name;
 	File* file;
@@ -1439,7 +1429,7 @@ extern const char *kw___round;
 extern const char *kw___sqrt;
 extern const char *kw___trunc;
 
-#define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id(_token.id))
+#define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id((_token).id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
 
 ARENA_DEF(ast, Ast)
@@ -1470,6 +1460,55 @@ static inline Ast *extend_ast_with_prev_token(Context *context, Ast *ast)
 }
 
 
+typedef enum CmpRes_
+{
+	CMP_LT,
+	CMP_GT,
+	CMP_EQ,
+} CmpRes;
+
+void bigint_init_unsigned(BigInt *big_int, uint64_t value);
+void bigint_init_signed(BigInt *big_int, int64_t value);
+void bigint_init_bigint(BigInt *dest, const BigInt *src);
+void bigint_init_data(BigInt *dest, const uint64_t *digits, unsigned int digit_count, bool is_negative);
+void bigint_negate(BigInt *dest, const BigInt *source);
+size_t bigint_clz(const BigInt *big_int, size_t bit_count);
+size_t bigint_ctz(const BigInt *big_int, size_t bit_count);
+bool bigint_fits_in_bits(const BigInt *big_int, size_t bit_count, bool is_signed);
+void bigint_write_twos_complement(const BigInt *big_int, uint8_t *buf, size_t bit_count, bool is_big_endian);
+void bigint_read_twos_complement(BigInt *dest, const uint8_t *buf, size_t bit_count, bool is_big_endian, bool is_signed);
+void bigint_add(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_add_wrap(BigInt *dest, const BigInt *op1, const BigInt *op2, size_t bit_count, bool is_signed);
+void bigint_sub(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_sub_wrap(BigInt *dest, const BigInt *op1, const BigInt *op2, size_t bit_count, bool is_signed);
+void bigint_mul(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_mul_wrap(BigInt *dest, const BigInt *op1, const BigInt *op2, size_t bit_count, bool is_signed);
+void bigint_rem(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_mod(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_shl(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_shl_int(BigInt *dest, const BigInt *op1, uint64_t shift);
+void bigint_shl_trunc(BigInt *dest, const BigInt *op1, const BigInt *op2, size_t bit_count, bool is_signed);
+void bigint_shr(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_div_floor(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_or(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_and(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_xor(BigInt *dest, const BigInt *op1, const BigInt *op2);
+void bigint_negate_wrap(BigInt *dest, const BigInt *op, size_t bit_count);
+void bigint_not(BigInt *dest, const BigInt *op, size_t bit_count, bool is_signed);
+bool bigint_eql(BigInt a, BigInt b);
+CmpRes bigint_cmp(const BigInt *op1, const BigInt *op2);
+CmpRes bigint_cmp_zero(const BigInt *op);
+uint32_t bigint_hash(BigInt x);
+const char *bigint_to_error_string(const BigInt *bigint, uint64_t base);
+void bigint_print(BigInt *bigint, uint64_t base);
+void bigint_fprint(FILE *file, BigInt *bigint, uint64_t base);
+uint64_t bigint_as_unsigned(const BigInt *bigint);
+int64_t bigint_as_signed(const BigInt *bigint);
+long double bigint_as_float(const BigInt *bigint);
+void bigint_truncate(BigInt *dst, const BigInt *op, size_t bit_count, bool is_signed);
+void bigint_incr(BigInt *x);
+size_t bigint_popcount_signed(const BigInt *bi, size_t bit_count);
+size_t bigint_popcount_unsigned(const BigInt *big_int);
 
 void builtin_setup(PlatformTarget *target);
 
@@ -1548,8 +1587,8 @@ static inline Decl *decl_flatten(Decl *decl)
 
 void diag_verror_range(SourceLocation *location, const char *message, va_list args);
 
-#define EXPR_NEW_EXPR(_kind, _expr) expr_new(_kind, _expr->span)
-#define EXPR_NEW_TOKEN(_kind, _tok) expr_new(_kind, source_span_from_token_id(_tok.id))
+#define EXPR_NEW_EXPR(kind_, expr_) expr_new(kind_, (expr_)->span)
+#define EXPR_NEW_TOKEN(kind_, tok_) expr_new(kind_, source_span_from_token_id((tok_).id))
 Expr *expr_new(ExprKind kind, SourceSpan start);
 static inline bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
 static inline bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
@@ -1692,7 +1731,7 @@ void *llvm_target_machine_create(void);
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
 
-#define TOK2VARSTR(_token) _token.span.length, _token.start
+
 bool token_is_type(TokenType type);
 bool token_is_any_type(TokenType type);
 bool token_is_symbol(TokenType type);
@@ -2078,7 +2117,5 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 #define TRY_TYPE_OR(_type_stmt, _res) ({ TypeInfo* _type = (_type_stmt); if (!type_info_ok(_type)) return _res; _type; })
 #define TRY_TYPE_REAL_OR(_type_stmt, _res) ({ Type* _type = (_type_stmt); if (!type_ok(_type)) return _res; _type; })
 #define TRY_DECL_OR(_decl_stmt, _res) ({ Decl* _decl = (_decl_stmt); if (!decl_ok(_decl)) return _res; _decl; })
-
-#pragma clang diagnostic pop
 
 

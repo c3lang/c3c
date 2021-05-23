@@ -3,9 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
-#include "compiler_internal.h"
-#include "bigint.h"
-
 
 static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 {
@@ -24,7 +21,7 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 	{
 		return type_info_poison(type);
 	}
-	uint64_t len = 0;
+	uint64_t len;
 	switch (type->kind)
 	{
 		case TYPE_INFO_VARARRAY:

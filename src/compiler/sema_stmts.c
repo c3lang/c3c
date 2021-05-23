@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
-#include "bigint.h"
 
 #pragma mark --- Context help functions
 
@@ -258,8 +257,6 @@ static inline bool sema_analyse_decl_expr_list(Context *context, Expr *expr)
 static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_bool)
 {
 	assert(expr->expr_kind == EXPR_DECL_LIST && "Conditional expressions should always be of type EXPR_DECL_LIST");
-
-	size_t size = vec_size(expr->dexpr_list_expr);
 
 	// 1. Analyse the declaration list.
 	if (!sema_analyse_decl_expr_list(context, expr)) return false;

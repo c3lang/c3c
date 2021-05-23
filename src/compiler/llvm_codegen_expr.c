@@ -3,8 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "llvm_codegen_internal.h"
-#include "compiler_internal.h"
-#include "bigint.h"
 
 static void gencontext_emit_unary_expr(GenContext *context, BEValue *value, Expr *expr);
 static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
@@ -123,8 +121,6 @@ llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef rig
 
 static inline void llvm_emit_subscript_addr_base(GenContext *context, BEValue *value, Expr *parent)
 {
-	LLVMValueRef parent_value;
-	Type *type = type_flatten(parent->type);
 	llvm_emit_expr(context, value, parent);
 	llvm_emit_ptr_from_array(context, value);
 }
@@ -275,7 +271,6 @@ static void gencontext_emit_member_addr(GenContext *c, BEValue *value, Decl *par
 		int index = find_member_index(parent, member);
 		assert(index > -1);
 		found = parent->strukt.members[index];
-		const char *name = found->name ? found->name : "anon";
 		switch (parent->type->canonical->type_kind)
 		{
 			case TYPE_UNION:
@@ -604,12 +599,12 @@ static inline void llvm_emit_initialize_reference_temporary_const(GenContext *c,
 	LLVMValueRef value = llvm_emit_const_aggregate(c, expr, &modified);
 
 	// Create a global const.
-	LLVMTypeRef type = modified ? LLVMTypeOf(value) : llvm_get_type(c, expr->type);
+	LLVMTypeRef type = modified ? LLVMTypeOf(value) : llvm_get_type(c, canonical);
 	LLVMValueRef global_copy = LLVMAddGlobal(c->module, type, ".__const");
 	LLVMSetLinkage(global_copy, LLVMPrivateLinkage);
 
 	// Set a nice alignment
-	unsigned alignment = type_alloca_alignment(expr->type);
+	ByteSize alignment = type_alloca_alignment(expr->type);
 	llvm_set_alignment(global_copy, alignment);
 
 	// Set the value and make it constant
@@ -697,7 +692,6 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 			Decl *decl = const_init->type->decl;
 			Decl **members = decl->strukt.members;
 			MemberIndex count = vec_size(members);
-			LLVMValueRef *entries = NULL;
 			for (MemberIndex i = 0; i < count; i++)
 			{
 				BEValue value;
@@ -895,8 +889,6 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 
 	// Clear the memory if not union.
 	if (real_type->type_kind != TYPE_UNION) llvm_emit_memclear(c, ref);
-
-	LLVMValueRef value = ref->value;
 
 	// Now walk through the elements.
 	VECEACH(elements, i)
@@ -1230,7 +1222,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 	llvm_emit_expr(c, &parent_addr_x, parent_expr);
 	llvm_value_addr(c, &parent_addr_x);
 	LLVMValueRef parent_addr = parent_addr_x.value;
-	LLVMValueRef parent_load_value;
+	LLVMValueRef parent_load_value = NULL;
 	LLVMValueRef parent_base;
 	switch (parent_type->type_kind)
 	{
@@ -1260,7 +1252,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 	llvm_emit_expr(c, &start_index, start);
 	llvm_value_rvalue(c, &start_index);
 
-	LLVMValueRef len;
+	LLVMValueRef len = NULL;
 	if (!end || slice->slice_expr.start_from_back || slice->slice_expr.end_from_back || active_target.feature.safe_mode)
 	{
 		switch (parent_type->type_kind)
@@ -1269,6 +1261,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 				len = NULL;
 				break;
 			case TYPE_SUBARRAY:
+				assert(parent_load_value);
 				len = LLVMBuildExtractValue(c->builder, parent_load_value, 1, "");
 				break;
 			case TYPE_ARRAY:
@@ -1292,6 +1285,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 	if (parent_type->type_kind != TYPE_POINTER && active_target.feature.safe_mode)
 	{
 
+		assert(len);
 		LLVMValueRef exceeds_size = llvm_emit_int_comparison(c,
 		                                                     type_usize,
 		                                                     start_type,
@@ -1755,7 +1749,7 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 		return;
 	}
 	bool is_float = type_is_float(lhs_type);
-	LLVMValueRef val;
+	LLVMValueRef val = NULL;
 	switch (binary_op)
 	{
 		case BINARYOP_ERROR:
@@ -1885,6 +1879,7 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 		case BINARYOP_SHL_ASSIGN:
 			UNREACHABLE
 	}
+	assert(val);
 	llvm_value_set(be_value, val, expr->type);
 }
 

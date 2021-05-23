@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
-#include "bigint.h"
 
 /*
  * TODOs
@@ -1416,40 +1415,6 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	return false;
 }
 
-static inline bool sema_expr_analyse_range(Context *context, Type *to, Expr *expr)
-{
-	Expr *left = expr->range_expr.left;
-	Expr *right = expr->range_expr.right;
-	bool success = sema_analyse_expr(context, to, left) & (!right || sema_analyse_expr(context, to, right));
-	if (!success) return expr_poison(expr);
-	Type *left_canonical = left->type->canonical;
-	Type *right_canonical = right ? right->type->canonical : left_canonical;
-	if (!type_is_any_integer(left_canonical))
-	{
-		SEMA_ERROR(left, "Expected an integer value in the range expression.");
-		return false;
-	}
-	if (!type_is_any_integer(right_canonical))
-	{
-		SEMA_ERROR(right, "Expected an integer value in the range expression.");
-		return false;
-	}
-	if (left_canonical != right_canonical)
-	{
-		Type *type = type_find_max_type(left_canonical, right_canonical);
-		if (!cast_implicit(left, type) || !cast_implicit(right, type)) return expr_poison(expr);
-	}
-	if (left->expr_kind == EXPR_CONST && right && right->expr_kind == EXPR_CONST)
-	{
-		if (expr_const_compare(&left->const_expr, &right->const_expr, BINARYOP_GT))
-		{
-			SEMA_ERROR(expr, "Left side of the range is smaller than the right.");
-			return false;
-		}
-	}
-	expr_copy_types(expr, left);
-	return true;
-}
 
 static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_expr, bool end_index, bool from_end)
 {
@@ -2278,7 +2243,6 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 static Type *sema_expr_analyse_designator(Context *context, Type *current, Expr *expr, ArrayIndex *max_index)
 {
 	DesignatorElement **path = expr->designator_expr.path;
-	Expr *value = expr->designator_expr.value;
 
 	// Walk down into this path
 	bool is_constant = true;

@@ -59,16 +59,16 @@ void create_project(BuildOptions *build_options)
 
 	FILE *file = fopen("LICENCE", "a");
 	if (!file) goto ERROR;
-	fclose(file);
+	if (fclose(file)) goto ERROR;
 
 	file = fopen("README.md", "a");
 	if (!file) goto ERROR;
-	fclose(file);
+	if (fclose(file)) goto ERROR;
 
 	file = fopen("project.toml", "a");
 	if (!file) goto ERROR;
-	fprintf(file, TOML, build_options->project_name);
-	fclose(file);
+	(void) fprintf(file, TOML, build_options->project_name);
+	if (fclose(file)) goto ERROR;
 
 	if (mkdir("lib", 0755)) goto ERROR;
 
@@ -78,52 +78,54 @@ void create_project(BuildOptions *build_options)
 
 	if (mkdir("test", 0755)) goto ERROR;
 
-	chdir("test");
+	if (chdir("test")) goto ERROR;
 
 	if (mkdir(build_options->project_name, 0755)) goto ERROR;
 
-	chdir("..");
+	if (chdir("..")) goto ERROR;
 
 	if (mkdir("directives", 0755)) goto ERROR;
 
-	chdir("directives");
+	if (chdir("directives") == -1) goto ERROR;
 
 	file = fopen("about.md", "a");
 	if (!file) goto ERROR;
-	fclose(file);
+	if (fclose(file)) goto ERROR;
 
 	if (mkdir("src", 0755)) goto ERROR;
 
-	chdir("src");
+	if (chdir("src")) goto ERROR;
 
 	file = fopen("index.html", "a");
 	if (!file) goto ERROR;
-	fclose(file);
+	if (fclose(file)) goto ERROR;
 
-	chdir("../..");
+	if (chdir("../..")) goto ERROR;
 
 	if (mkdir("src", 0755)) goto ERROR;
 
-	chdir("src");
+	if (chdir("src")) goto ERROR;
 
 	if (mkdir(build_options->project_name, 0755)) goto ERROR;
 
-	chdir(build_options->project_name);
+	if (chdir(build_options->project_name)) goto ERROR;
 
 	file = fopen("main.c3", "a");
 	if (!file) goto ERROR;
-	fclose(file);
+	if (fclose(file)) goto ERROR;
 
-	chdir("../..");
+	if (chdir("../..")) goto ERROR;
 
-	printf("Project '%s' created.\n", build_options->project_name);
+	(void) printf("Project '%s' created.\n", build_options->project_name);
 	exit(EXIT_SUCCESS);
 
 ERROR:
 	fprintf(stderr, "Err: %s\n", strerror(errno));
 
 	printf("Something went wrong creating the project.");
-	chdir(build_options->path);
-	rmdir(build_options->project_name);
+	if (!chdir(build_options->path))
+	{
+		(void)rmdir(build_options->project_name);
+	}
 	exit(EXIT_FAILURE);
 }

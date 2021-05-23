@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
-#include "bigint.h"
 
 #define CHECK_SI_KIND(_kind) assert(_kind >= TYPE_I8 && _kind <= TYPE_I64)
 #define CHECK_IXX_KIND(_kind) assert(_kind == TYPE_IXX)

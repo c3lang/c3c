@@ -710,17 +710,6 @@ void gencontext_emit_introspection_type(GenContext *context, Decl *decl)
 	}
 }
 
-static inline uint32_t upper_power_of_two(uint32_t v)
-{
-	v--;
-	v |= v >> 1;
-	v |= v >> 2;
-	v |= v >> 4;
-	v |= v >> 8;
-	v |= v >> 16;
-	v++;
-	return v;
-}
 
 void llvm_value_set_bool(BEValue *value, LLVMValueRef llvm_value)
 {

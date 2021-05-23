@@ -457,6 +457,8 @@ bool type_is_homogenous_base_type(Type *type)
 						case 8:
 						case 16:
 							return true;
+						default:
+							break;
 					}
 					FALLTHROUGH;
 				default:

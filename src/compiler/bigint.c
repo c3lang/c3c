@@ -2,8 +2,7 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "bigint.h"
-#include "../utils/lib.h"
+#include "compiler_internal.h"
 #include <inttypes.h>
 
 static inline uint32_t u32_min(uint32_t a, uint32_t b)
@@ -27,7 +26,7 @@ static inline const uint64_t *bigint_ptr(const BigInt *big_int)
 }
 
 
-#define alloc_digits(_digits) ((_digits) ? malloc_arena(sizeof(uint64_t) * (_digits)) : NULL)
+#define ALLOC_DIGITS(_digits) ((_digits) ? malloc_arena(sizeof(uint64_t) * (_digits)) : NULL)
 
 static void normalize(BigInt *big_int)
 {
@@ -81,14 +80,8 @@ static bool bit_at_index(const BigInt *big_int, size_t index)
 
 uint32_t bigint_hash(BigInt x)
 {
-	if (x.digit_count == 0)
-	{
-		return 0;
-	}
-	else
-	{
-		return (uint32_t) bigint_ptr(&x)[0];
-	}
+	if (x.digit_count == 0) return 0;
+	return (uint32_t) bigint_ptr(&x)[0];
 }
 
 static size_t bigint_bits_needed(const BigInt *big_int)
@@ -138,7 +131,7 @@ void bigint_init_bigint(BigInt *dest, const BigInt *src)
 	}
 	dest->is_negative = src->is_negative;
 	dest->digit_count = src->digit_count;
-	dest->digits = alloc_digits(dest->digit_count);
+	dest->digits = ALLOC_DIGITS(dest->digit_count);
 	memcpy(dest->digits, src->digits, sizeof(uint64_t) * dest->digit_count);
 }
 
@@ -268,11 +261,9 @@ static void from_twos_complement(BigInt *dest, const BigInt *src, size_t bit_cou
 
 void bigint_init_data(BigInt *dest, const uint64_t *digits, unsigned int digit_count, bool is_negative)
 {
-	if (digit_count == 0)
-	{
-		return bigint_init_unsigned(dest, 0);
-	}
-	else if (digit_count == 1)
+	if (digit_count == 0) return bigint_init_unsigned(dest, 0);
+
+	if (digit_count == 1)
 	{
 		dest->digit_count = 1;
 		dest->digit = digits[0];
@@ -283,7 +274,7 @@ void bigint_init_data(BigInt *dest, const uint64_t *digits, unsigned int digit_c
 
 	dest->digit_count = digit_count;
 	dest->is_negative = is_negative;
-	dest->digits = alloc_digits(digit_count);
+	dest->digits = ALLOC_DIGITS(digit_count);
 	memcpy(dest->digits, digits, sizeof(uint64_t) * digit_count);
 
 	normalize(dest);
@@ -472,7 +463,7 @@ void bigint_read_twos_complement(BigInt *dest, const uint8_t *buf, size_t bit_co
 	}
 	else
 	{
-		digits = alloc_digits(dest->digit_count);
+		digits = ALLOC_DIGITS(dest->digit_count);
 		dest->digits = digits;
 	}
 
@@ -612,7 +603,7 @@ void bigint_add(BigInt *dest, const BigInt *op1, const BigInt *op2)
 		}
 		unsigned i = 1;
 		uint64_t first_digit = dest->digit;
-		dest->digits = alloc_digits(unsigned_max(op1->digit_count, op2->digit_count) + 1);
+		dest->digits = ALLOC_DIGITS(unsigned_max(op1->digit_count, op2->digit_count) + 1);
 		dest->digits[0] = first_digit;
 
 		for (;;)
@@ -691,7 +682,7 @@ void bigint_add(BigInt *dest, const BigInt *op1, const BigInt *op2)
 		return;
 	}
 	uint64_t first_digit = dest->digit;
-	dest->digits = alloc_digits(bigger_op->digit_count);
+	dest->digits = ALLOC_DIGITS(bigger_op->digit_count);
 	dest->digits[0] = first_digit;
 	unsigned i = 1;
 
@@ -862,7 +853,7 @@ void bigint_mul_wrap(BigInt *dest, const BigInt *op1, const BigInt *op2, size_t 
 	bigint_truncate(dest, &unwrapped, bit_count, is_signed);
 }
 
-unsigned countLeadingZeros(uint32_t val)
+unsigned count_leading_zeros(uint32_t val)
 {
 	if (val == 0) return 32;
 
@@ -897,7 +888,7 @@ static inline uint32_t lo_32(uint64_t val)
 /// from "Art of Computer Programming, Volume 2", section 4.3.1, p. 272. The
 /// variables here have the same names as in the algorithm. Comments explain
 /// the algorithm and any deviation from it.
-static void KnuthDiv(uint32_t *u, uint32_t *v, uint32_t *q, uint32_t *r, unsigned m, unsigned n)
+static void knuth_div(uint32_t *u, uint32_t *v, uint32_t *q, uint32_t *r, unsigned m, unsigned n)
 {
 	assert(u && "Must provide dividend");
 	assert(v && "Must provide divisor");
@@ -916,7 +907,7 @@ static void KnuthDiv(uint32_t *u, uint32_t *v, uint32_t *q, uint32_t *r, unsigne
 	// and v so that its high bits are shifted to the top of v's range without
 	// overflow. Note that this can require an extra word in u so that u must
 	// be of length m+n+1.
-	unsigned shift = countLeadingZeros(v[n - 1]);
+	unsigned shift = count_leading_zeros(v[n - 1]);
 	uint32_t v_carry = 0;
 	uint32_t u_carry = 0;
 	if (shift)
@@ -1060,8 +1051,8 @@ static void bigint_unsigned_division(const BigInt *op1, const BigInt *op2, BigIn
 		return;
 	}
 
-	const uint64_t *LHS = bigint_ptr(op1);
-	const uint64_t *RHS = bigint_ptr(op2);
+	const uint64_t *lhs = bigint_ptr(op1);
+	const uint64_t *rhs = bigint_ptr(op2);
 	unsigned lhsWords = op1->digit_count;
 	unsigned rhsWords = op2->digit_count;
 
@@ -1077,19 +1068,19 @@ static void bigint_unsigned_division(const BigInt *op1, const BigInt *op2, BigIn
 
 	// Allocate space for the temporary values we need either on the stack, if
 	// it will fit, or on the heap if it won't.
-	uint32_t SPACE[128];
+	uint32_t space[128];
 	uint32_t *U = NULL;
 	uint32_t *V = NULL;
 	uint32_t *Q = NULL;
 	uint32_t *R = NULL;
 	if ((Remainder ? 4 : 3) * n + 2 * m + 1 <= 128)
 	{
-		U = &SPACE[0];
-		V = &SPACE[m + n + 1];
-		Q = &SPACE[(m + n + 1) + n];
+		U = &space[0];
+		V = &space[m + n + 1];
+		Q = &space[(m + n + 1) + n];
 		if (Remainder)
 		{
-			R = &SPACE[(m + n + 1) + n + (m + n)];
+			R = &space[(m + n + 1) + n + (m + n)];
 		}
 	}
 	else
@@ -1107,7 +1098,7 @@ static void bigint_unsigned_division(const BigInt *op1, const BigInt *op2, BigIn
 	memset(U, 0, (m + n + 1) * sizeof(uint32_t));
 	for (unsigned i = 0; i < lhsWords; ++i)
 	{
-		uint64_t tmp = LHS[i];
+		uint64_t tmp = lhs[i];
 		U[i * 2] = lo_32(tmp);
 		U[i * 2 + 1] = hi_32(tmp);
 	}
@@ -1117,7 +1108,7 @@ static void bigint_unsigned_division(const BigInt *op1, const BigInt *op2, BigIn
 	memset(V, 0, (n) * sizeof(uint32_t));
 	for (unsigned i = 0; i < rhsWords; ++i)
 	{
-		uint64_t tmp = RHS[i];
+		uint64_t tmp = rhs[i];
 		V[i * 2] = lo_32(tmp);
 		V[i * 2 + 1] = hi_32(tmp);
 	}
@@ -1184,7 +1175,7 @@ static void bigint_unsigned_division(const BigInt *op1, const BigInt *op2, BigIn
 	{
 		// Now we're ready to invoke the Knuth classical divide algorithm. In this
 		// case n > 1.
-		KnuthDiv(U, V, Q, R, m, n);
+		knuth_div(U, V, Q, R, m, n);
 	}
 
 	// If the caller wants the quotient
@@ -1198,7 +1189,7 @@ static void bigint_unsigned_division(const BigInt *op1, const BigInt *op2, BigIn
 		}
 		else
 		{
-			Quotient->digits = alloc_digits(lhsWords);
+			Quotient->digits = ALLOC_DIGITS(lhsWords);
 			for (size_t i = 0; i < lhsWords; i += 1)
 			{
 				Quotient->digits[i] = make_64(Q[i * 2 + 1], Q[i * 2]);
@@ -1217,7 +1208,7 @@ static void bigint_unsigned_division(const BigInt *op1, const BigInt *op2, BigIn
 		}
 		else
 		{
-			Remainder->digits = alloc_digits(rhsWords);
+			Remainder->digits = ALLOC_DIGITS(rhsWords);
 			for (size_t i = 0; i < rhsWords; i += 1)
 			{
 				Remainder->digits[i] = make_64(R[i * 2 + 1], R[i * 2]);
@@ -1428,7 +1419,7 @@ void bigint_or(BigInt *dest, const BigInt *op1, const BigInt *op2)
 			return;
 		}
 		dest->digit_count = unsigned_max(op1->digit_count, op2->digit_count);
-		dest->digits = alloc_digits(dest->digit_count);
+		dest->digits = ALLOC_DIGITS(dest->digit_count);
 		for (size_t i = 0; i < dest->digit_count; i += 1)
 		{
 			uint64_t digit = 0;
@@ -1481,7 +1472,7 @@ void bigint_and(BigInt *dest, const BigInt *op1, const BigInt *op2)
 		}
 
 		dest->digit_count = unsigned_max(op1->digit_count, op2->digit_count);
-		dest->digits = alloc_digits(dest->digit_count);
+		dest->digits = ALLOC_DIGITS(dest->digit_count);
 
 		size_t i = 0;
 		for (; i < op1->digit_count && i < op2->digit_count; i += 1)
@@ -1536,7 +1527,7 @@ void bigint_xor(BigInt *dest, const BigInt *op1, const BigInt *op2)
 			return;
 		}
 		dest->digit_count = unsigned_max(op1->digit_count, op2->digit_count);
-		dest->digits = alloc_digits(dest->digit_count);
+		dest->digits = ALLOC_DIGITS(dest->digit_count);
 		size_t i = 0;
 		for (; i < op1->digit_count && i < op2->digit_count; i += 1)
 		{
@@ -1602,7 +1593,7 @@ void bigint_shl_int(BigInt *dest, const BigInt *op1, uint64_t shift)
 	uint64_t digit_shift_count = shift / 64;
 	uint64_t leftover_shift_count = shift % 64;
 
-	dest->digits = alloc_digits(op1->digit_count + digit_shift_count + 1);
+	dest->digits = ALLOC_DIGITS(op1->digit_count + digit_shift_count + 1);
 	dest->digit_count = digit_shift_count;
 	uint64_t carry = 0;
 	for (size_t i = 0; i < op1->digit_count; i += 1)
@@ -1679,7 +1670,7 @@ void bigint_shr(BigInt *dest, const BigInt *op1, const BigInt *op2)
 	}
 	else
 	{
-		digits = alloc_digits(dest->digit_count);
+		digits = ALLOC_DIGITS(dest->digit_count);
 		dest->digits = digits;
 	}
 
@@ -1759,7 +1750,7 @@ void bigint_not(BigInt *dest, const BigInt *op, size_t bit_count, bool is_signed
 	}
 	dest->digit_count = (unsigned int) ((bit_count + 63) / 64);
 	assert(dest->digit_count >= op->digit_count);
-	dest->digits = alloc_digits(dest->digit_count);
+	dest->digits = ALLOC_DIGITS(dest->digit_count);
 	size_t i = 0;
 	for (; i < op->digit_count; i += 1)
 	{
@@ -1789,26 +1780,12 @@ void bigint_truncate(BigInt *dst, const BigInt *op, size_t bit_count, bool is_si
 
 CmpRes bigint_cmp(const BigInt *op1, const BigInt *op2)
 {
-	if (op1->is_negative && !op2->is_negative)
-	{
-		return CMP_LT;
-	}
-	else if (!op1->is_negative && op2->is_negative)
-	{
-		return CMP_GT;
-	}
-	else if (op1->digit_count > op2->digit_count)
-	{
-		return op1->is_negative ? CMP_LT : CMP_GT;
-	}
-	else if (op2->digit_count > op1->digit_count)
-	{
-		return op1->is_negative ? CMP_GT : CMP_LT;
-	}
-	else if (op1->digit_count == 0)
-	{
-		return CMP_EQ;
-	}
+	if (op1->is_negative && !op2->is_negative) return CMP_LT;
+	if (!op1->is_negative && op2->is_negative) return CMP_GT;
+	if (op1->digit_count > op2->digit_count) return op1->is_negative ? CMP_LT : CMP_GT;
+	if (op2->digit_count > op1->digit_count) return op1->is_negative ? CMP_GT : CMP_LT;
+	if (op1->digit_count == 0) return CMP_EQ;
+
 	const uint64_t *op1_digits = bigint_ptr(op1);
 	const uint64_t *op2_digits = bigint_ptr(op2);
 	for (unsigned i = op1->digit_count - 1;; i--)
@@ -2095,12 +2072,9 @@ int64_t bigint_as_signed(const BigInt *bigint)
 		{
 			return (-((int64_t) (bigint->digit - 1))) - 1;
 		}
-		else
-		{
-			FATAL_ERROR("BigInt does not fit in i64");
-		}
+		FATAL_ERROR("BigInt does not fit in i64");
 	}
-	return bigint->digit;
+	return (int64_t)bigint->digit;
 }
 
 CmpRes bigint_cmp_zero(const BigInt *op)
@@ -2128,7 +2102,7 @@ void bigint_incr(BigInt *x)
 			x->digit -= 1;
 			return;
 		}
-		else if (!x->is_negative && x->digit != UINT64_MAX)
+		if (!x->is_negative && x->digit != UINT64_MAX)
 		{
 			x->digit += 1;
 			return;

@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "llvm_codegen_internal.h"
-#include "bigint.h"
 
 #define LINE_ZERO 0
 

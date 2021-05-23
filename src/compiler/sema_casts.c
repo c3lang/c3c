@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
-#include "bigint.h"
 
 #define FLOAT32_LIMIT 340282346638528859811704183484516925440.0000000000000000
 #define FLOAT64_LIMIT 179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0000000000000000
@@ -28,50 +27,6 @@ static inline bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, T
 	return insert_cast(expr, kind, type);
 }
 
-static bool sema_type_mismatch(Expr *expr, Type *type, CastType cast_type)
-{
-	Type *expr_type = expr->type;
-	if (expr_type == type_typeinfo)
-	{
-		SEMA_ERROR(expr, "A raw type cannot be used in an expression. Add the suffix '.typeid' to use it as a value.");
-		return false;
-	}
-	const char *action = "";
-	switch (cast_type)
-	{
-		case CAST_TYPE_EXPLICIT:
-			action = "cast";
-			break;
-		case CAST_TYPE_IMPLICIT:
-			action = "implicitly cast";
-			break;
-		case CAST_TYPE_OPTIONAL_IMPLICIT:
-			UNREACHABLE
-	}
-	if (expr_type == expr_type->canonical)
-	{
-		if (type->canonical == type)
-		{
-			SEMA_ERROR(expr, "Cannot %s '%s' to '%s'.", action, type_to_error_string(expr_type), type_to_error_string(type));
-		}
-		else
-		{
-			SEMA_ERROR(expr, "Cannot %s '%s' to '%s' ('%s').", action, type_to_error_string(expr_type), type_to_error_string(type), type_to_error_string(type->canonical));
-		}
-	}
-	else
-	{
-		if (type->canonical == type)
-		{
-			SEMA_ERROR(expr, "Cannot %s '%s' (%s) to '%s'.", action, type_to_error_string(expr_type), type_to_error_string(expr_type->canonical), type_to_error_string(type));
-		}
-		else
-		{
-			SEMA_ERROR(expr, "Cannot %s '%s' (%s) to '%s' ('%s').", action, type_to_error_string(expr_type), type_to_error_string(expr_type->canonical), type_to_error_string(type), type_to_error_string(type->canonical));
-		}
-	}
-	return false;
-}
 
 bool pointer_to_integer(Expr *expr, Type *type)
 {
@@ -93,25 +48,6 @@ bool pointer_to_bool(Expr *expr, Type *type)
 	return true;
 }
 
-static inline bool may_implicitly_cast_ptr_to_ptr(Type *current_type, Type *target_type)
-{
-	assert(current_type->canonical == current_type);
-	assert(target_type->canonical == target_type);
-
-	// void* converts freely to and from:
-	if (target_type->pointer == type_void || current_type->pointer == type_void) return true;
-
-	// Pointee is same? Fine!
-	if (target_type->pointer == current_type->pointer) return true;
-
-	// Special case, does it point to an array, then it's okay if the element is the same.
-	if (current_type->pointer->type_kind == TYPE_ARRAY &&
-		target_type->pointer == current_type->pointer->array.base) return true;
-
-	// IMPROVE Vector
-
-	return false;
-}
 
 bool pointer_to_pointer(Expr* expr, Type *type)
 {
