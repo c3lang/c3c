@@ -11,6 +11,12 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 	// Lower enums etc.
 	type = type_lowering(type);
 
+	// Variable array has to be passed indirectly.
+	if (type_is_structlike(type) && type->decl->has_variable_array)
+	{
+		return abi_arg_new_indirect_not_by_val();
+	}
+
 	Type *base = NULL;
 	unsigned elements = 0;
 	if ((is_vector || is_reg) && type_is_homogenous_aggregate(type, &base, &elements))

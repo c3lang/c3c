@@ -152,23 +152,29 @@ static bool x86_should_return_type_in_reg(Type *type)
 	return true;
 }
 
+/**
+ * This code is based on X86_32ABIInfo::classifyReturnType in Clang.
+ * @param call convention used.
+ * @param regs registers available
+ * @param type type of the return.
+ * @return
+ */
 ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 {
-	if (type == type_void)
-	{
-		return abi_arg_ignore();
-	}
-
+	// 1. Lower any type like enum etc.
 	type = type_lowering(type);
+
+	// 2. Void is ignored
+	if (type == type_void) return abi_arg_ignore();
+
+	// 3. In the case of a vector or regcall, a homogenous aggregate
+	//    should be passed directly in a register.
 	Type *base = NULL;
 	unsigned elements = 0;
 	if (call == CALL_CONVENTION_VECTOR || call == CALL_CONVENTION_REGCALL)
 	{
-		// Pass in the normal way.
-		if (type_is_homogenous_aggregate(type, &base, &elements))
-		{
-			return abi_arg_new_direct();
-		}
+		// This aggregate can lower safely
+		if (type_is_homogenous_aggregate(type, &base, &elements)) return abi_arg_new_direct();
 	}
 
 	if (type->type_kind == TYPE_VECTOR)
@@ -195,13 +201,18 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 
 	if (type_is_abi_aggregate(type))
 	{
+		// Structs with variable arrays are always indirect.
+		if (type_is_structlike(type) && type->decl->has_variable_array)
+		{
+			return create_indirect_return_x86(regs);
+		}
 		// If we don't allow small structs in reg:
 		if (!platform_target.x86.return_small_struct_in_reg_abi && type->type_kind == TYPE_COMPLEX)
 		{
 			return create_indirect_return_x86(regs);
 		}
 		// Ignore empty struct/unions
-		if (type_is_empty_union_struct(type, true))
+		if (type_is_empty_record(type, true))
 		{
 			return abi_arg_ignore();
 		}
@@ -482,8 +493,13 @@ static inline ABIArgInfo *x86_classify_aggregate(CallConvention call, Regs *regs
 	// Only called for aggregates.
 	assert(type_is_abi_aggregate(type));
 
+	if (type_is_structlike(type) && type->decl->has_variable_array)
+	{
+		// TODO, check why this should not be by_val
+		return x86_create_indirect_result(regs, type, BY_VAL);
+	}
 	// Ignore empty unions / structs on non-win.
-	if (!platform_target.x86.is_win32_float_struct_abi && type_is_empty_union_struct(type, true))
+	if (!platform_target.x86.is_win32_float_struct_abi && type_is_empty_record(type, true))
 	{
 		return abi_arg_ignore();
 	}
@@ -625,6 +641,11 @@ static ABIArgInfo *x86_classify_argument(CallConvention call, Regs *regs, Type *
 
 void c_abi_func_create_x86(FunctionSignature *signature)
 {
+	// 1. Calculate the registers we have available
+	//    Normal: 0 / 0 (3 on win32 struct ABI)
+	//    Reg:    5 / 8
+	//    Vector: 2 / 6
+	//    Fast:   2 / 3
 	Regs regs = { 0, 0 };
 	switch (signature->convention)
 	{
@@ -634,7 +655,7 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 			{
 				regs.float_regs = 3;
 			}
-			regs.int_regs = platform_target.default_number_regs;
+			regs.int_regs = platform_target.default_number_regs_x86;
 			break;
 		case CALL_CONVENTION_REGCALL:
 			regs.int_regs = 5;
@@ -646,16 +667,20 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 			break;
 		case CALL_CONVENTION_FAST:
 			regs.int_regs = 2;
+			regs.float_regs = 3;
 			break;
 		default:
 			UNREACHABLE
 	}
+	// 3. Special case for MCU:
 	if (platform_target.x86.is_mcu_api)
 	{
 		regs.float_regs = 0;
 		regs.int_regs = 3;
 	}
 
+	// 4. Classify the return type. In the case of failable, we need to classify the failable itself as the
+	//    return type.
 	if (signature->failable)
 	{
 		signature->failable_abi_info = x86_classify_return(signature->convention, &regs, type_error);

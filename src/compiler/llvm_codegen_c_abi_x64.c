@@ -126,16 +126,28 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 }
 
 
+/**
+ * Based on X86_64ABIInfo::classifyRegCallStructTypeImpl in Clang
+ * @param type
+ * @param needed_registers
+ * @return
+ */
 ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *needed_registers)
 {
+	assert(x64_type_is_structure(type));
+
+	// These are all passed in two registers.
 	if (type->type_kind == TYPE_ERR_UNION || type->type_kind == TYPE_SUBARRAY || type->type_kind == TYPE_VIRTUAL || type->type_kind == TYPE_VIRTUAL_ANY)
 	{
 		needed_registers->int_registers += 2;
 		return abi_arg_new_direct();
 	}
 
-	// Union, struct, err type handled =>
-	assert(type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION || type->type_kind == TYPE_ERRTYPE);
+	// Struct, err type handled =>
+	assert(type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_ERRTYPE);
+
+	// Variable array structs are always passed by pointer.
+	if (type->decl->has_variable_array) return x64_indirect_return_result(type);
 
 	Decl **members = type->decl->strukt.members;
 	VECEACH(members, i)
@@ -145,11 +157,13 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 		Registers temp_needed_registers = {};
 		if (x64_type_is_structure(member_type))
 		{
+			// Recursively check the structure.
 			member_info = x64_classify_reg_call_struct_type_check(member_type, &temp_needed_registers);
 		}
 		else
 		{
-			member_info = x64_classify_argument_type(member_type, (unsigned)-1, &temp_needed_registers, NAMED);
+			// Pass as single argument.
+			member_info = x64_classify_argument_type(member_type, ~(0U), &temp_needed_registers, NAMED);
 		}
 		if (abi_arg_is_indirect(member_info))
 		{
@@ -159,20 +173,10 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 		needed_registers->sse_registers += temp_needed_registers.sse_registers;
 		needed_registers->int_registers += temp_needed_registers.int_registers;
 	}
-	// Check this!
+	// Send as direct.
 	return abi_arg_new_direct();
 }
 
-ABIArgInfo *x64_classify_reg_call_struct_type(Type *return_type, Registers *available_registers)
-{
-	Registers needed_registers = {};
-	ABIArgInfo *info = x64_classify_reg_call_struct_type_check(return_type, &needed_registers);
-	if (!try_use_registers(available_registers, &needed_registers))
-	{
-		return x64_indirect_return_result(return_type);
-	}
-	return info;
-}
 
 static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X64Class *hi_class, NamedArgument named);
 
@@ -235,6 +239,9 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 	ByteSize size = type_size(type);
 	// 64 byte max.
 	if (size > 64) return;
+
+	// Variable sized member is passed in memory.
+	if (type->decl->has_variable_array) return;
 
 	// Re-classify
 	*current = CLASS_NO_CLASS;
@@ -573,7 +580,9 @@ AbiType *x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *source
 	return abi_type_new_plain(type_double);
 }
 
-
+/**
+ * Based off X86_64ABIInfo::GetINTEGERTypeAtOffset in Clang
+ */
 AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_type, unsigned source_offset)
 {
 	type = type_flatten(type);
@@ -611,17 +620,18 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 			break;
 		}
 		case TYPE_ERR_UNION:
-			if (offset < 16) return abi_type_new_plain(type_usize);
+			if (offset < 16) return abi_type_new_plain(type_ulong);
 			break;
 		case TYPE_VIRTUAL_ANY:
-			if (offset < 8) return abi_type_new_plain(type_typeid);
+			if (offset < 8) return abi_type_new_plain(type_ulong);
 			if (offset < 16) return abi_type_new_plain(type_voidptr);
 			break;
 		case TYPE_VIRTUAL:
+			// Two pointers.
 			if (offset < 16) return abi_type_new_plain(type_voidptr);
 			break;
 		case TYPE_SUBARRAY:
-			if (offset < 8) return abi_type_new_plain(type_usize);
+			if (offset < 8) return abi_type_new_plain(type_ulong);
 			if (offset < 16) return abi_type_new_plain(type_voidptr);
 			break;
 		case TYPE_ARRAY:
@@ -790,9 +800,19 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 	return abi_arg_new_direct_coerce(result_type);
 }
 
-
+/**
+ * Based off X86_64ABIInfo::classifyArgumentType in Clang.
+ * It completely ignores the x87 type, which C3 does not use.
+ *
+ * @param type the type to classify, it should already have been flattened.
+ * @param free_int_regs
+ * @param needed_registers
+ * @param is_named
+ * @return
+ */
 static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named)
 {
+	assert(type == type_lowering(type));
 	X64Class hi_class;
 	X64Class lo_class;
 	x64_classify(type, 0, &lo_class, &hi_class, is_named);
@@ -804,6 +824,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 	AbiType *result_type = NULL;
 	*needed_registers = (Registers) { 0, 0 };
 
+	// Start by checking the lower class.
 	switch (lo_class)
 	{
 		case CLASS_NO_CLASS:
@@ -819,6 +840,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 			result_type = x64_get_int_type_at_offset(type, 0, type, 0);
 			if (hi_class == CLASS_NO_CLASS && abi_type_is_integer(result_type))
 			{
+				// We might need to promote it if it's too small.
 				if (type_is_promotable_integer(type))
 				{
 					return abi_arg_new_direct_int_ext(type);
@@ -831,6 +853,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 			break;
 	}
 
+	// At this point we know it's not MEMORY, since that's always handled.
 	AbiType *high_part = NULL;
 	switch (hi_class)
 	{
@@ -842,12 +865,12 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 			needed_registers->int_registers++;
 			high_part = x64_get_int_type_at_offset(type, 8, type, 8);
 			// Return directly into high part.
-			assert(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed");
+			assert(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed, this is C++ stuff.");
 			break;
 		case CLASS_SSE:
 			needed_registers->sse_registers++;
 			high_part = x64_get_sse_type_at_offset(type, 8, type, 8);
-			assert(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed");
+			assert(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed, this is C++ stuff");
 			break;
 		case CLASS_SSEUP:
 			assert(lo_class == CLASS_SSE && "Unexpected SSEUp classification.");
@@ -869,11 +892,6 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 		{
 			return abi_arg_new_direct();
 		}
-		if (type_is_integer(type->canonical) && type_is_integer(result_type->type)
-			&& result_type->type->canonical == type->canonical)
-		{
-			return abi_arg_new_direct();
-		}
 	}
 	return abi_arg_new_direct_coerce(result_type);
 }
@@ -882,9 +900,9 @@ bool x64_type_is_structure(Type *type)
 {
 	switch (type->type_kind)
 	{
+		case TYPE_ERR_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ERRTYPE:
-		case TYPE_ERR_UNION:
 		case TYPE_SUBARRAY:
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VIRTUAL:
@@ -897,41 +915,54 @@ bool x64_type_is_structure(Type *type)
 static ABIArgInfo *x64_classify_return_type(Type *ret_type, Registers *registers, bool is_regcall)
 {
 	ret_type = type_lowering(ret_type);
+	// See if we can lower the reg call.
 	if (is_regcall && x64_type_is_structure(ret_type))
 	{
-		return x64_classify_reg_call_struct_type(ret_type, registers);
+		Registers needed_registers = {};
+		ABIArgInfo *info = x64_classify_reg_call_struct_type_check(ret_type, &needed_registers);
+		if (try_use_registers(registers, &needed_registers)) return info;
+		return x64_indirect_return_result(ret_type);
 	}
 	return x64_classify_return(ret_type);
 }
 
-static ABIArgInfo *x64_classify_parameter(Type *type, Registers *available_registers, bool is_regcall)
+/**
+ * This code is based on the loop operations in X86_64ABIInfo::computeInfo in Clang
+ * @param type
+ * @param available_registers to update
+ * @param is_regcall true if this is a regcall
+ * @param named whether this is a named (non-vararg) parameter or not.
+ * @return the calculated ABI
+ */
+static ABIArgInfo *x64_classify_parameter(Type *type, Registers *available_registers, bool is_regcall, NamedArgument named)
 {
-	// TODO check "NAMED"
-	NamedArgument arg = NAMED;
 	Registers needed_registers = {};
 	type = type_lowering(type);
 	ABIArgInfo *info;
 	// If this is a reg call, use the struct type check.
-	if (is_regcall && (type_is_structlike(type) || type->type_kind == TYPE_UNION))
+	if (is_regcall && x64_type_is_structure(type))
 	{
 		info = x64_classify_reg_call_struct_type_check(type, &needed_registers);
 	}
 	else
 	{
-		info = x64_classify_argument_type(type, available_registers->int_registers, &needed_registers, arg);
+		info = x64_classify_argument_type(type, available_registers->int_registers, &needed_registers, named);
 	}
-	if (!try_use_registers(available_registers, &needed_registers))
-	{
-		// use a register?
-		info = x64_indirect_result(type, available_registers->int_registers);
-	}
-	return info;
+	// Check if we can fit in a register, we're golden.
+	if (try_use_registers(available_registers, &needed_registers)) return info;
+
+	// The rest needs to be passed indirectly.
+	return x64_indirect_result(type, available_registers->int_registers);
+
 }
 
 void c_abi_func_create_x64(FunctionSignature *signature)
 {
+	if (signature->use_win64)
+	{
+		return c_abi_func_create_win64(signature);
+	}
 	// TODO 32 bit pointers
-	// TODO allow override to get win64
 	bool is_regcall = signature->convention == CALL_CONVENTION_REGCALL;
 
 	Registers available_registers = {
@@ -948,7 +979,7 @@ void c_abi_func_create_x64(FunctionSignature *signature)
 		}
 		if (signature->rtype->type->type_kind != TYPE_VOID)
 		{
-			signature->ret_abi_info = x64_classify_parameter(type_get_ptr(type_lowering(signature->rtype->type)), &available_registers, is_regcall);
+			signature->ret_abi_info = x64_classify_parameter(type_get_ptr(type_lowering(signature->rtype->type)), &available_registers, is_regcall, NAMED);
 		}
 	}
 	else
@@ -963,6 +994,6 @@ void c_abi_func_create_x64(FunctionSignature *signature)
 	Decl **params = signature->params;
 	VECEACH(params, i)
 	{
-		params[i]->var.abi_info = x64_classify_parameter(params[i]->type, &available_registers, is_regcall);
+		params[i]->var.abi_info = x64_classify_parameter(params[i]->type, &available_registers, is_regcall, NAMED);
 	}
 }

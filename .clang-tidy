@@ -20,6 +20,7 @@ Checks: >
   -readability-named-parameter,
   -readability-magic-numbers,
   -readability-braces-around-statements,
+  -misc-no-recursion,
 
 # Turn all the warnings from the checks above into errors.
 WarningsAsErrors: "*"

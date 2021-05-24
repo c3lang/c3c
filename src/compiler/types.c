@@ -265,23 +265,26 @@ bool type_is_union_struct(Type *type)
 
 bool type_is_empty_field(Type *type, bool allow_array)
 {
-	type = type->canonical;
+	type = type_flatten(type);
 	if (allow_array)
 	{
 		while (type->type_kind == TYPE_ARRAY)
 		{
 			if (type->array.len == 0) return true;
-			type = type->array.base->canonical;
+			type = type_flatten(type->array.base);
 		}
 	}
-	return type_is_union_struct(type) && type_is_empty_union_struct(type, allow_array);
+	return type_is_empty_record(type, allow_array);
 }
 
-bool type_is_empty_union_struct(Type *type, bool allow_array)
+bool type_is_empty_record(Type *type, bool allow_array)
 {
 	if (!type_is_union_struct(type)) return false;
 
-	Decl **members = type->decl->strukt.members;
+	Decl *decl = type->decl;
+	if (decl->has_variable_array) return false;
+
+	Decl **members = decl->strukt.members;
 	VECEACH(members, i)
 	{
 		if (!type_is_empty_field(members[i]->type, allow_array)) return false;
@@ -295,29 +298,36 @@ bool type_is_int128(Type *type)
 	return kind == TYPE_U128 || kind == TYPE_I128;
 }
 
+/**
+ * Based on isSingleElementStruct in Clang
+ */
 Type *type_abi_find_single_struct_element(Type *type)
 {
-	if (!type_is_union_struct(type)) return NULL;
+	if (!type_is_structlike(type)) return NULL;
+
+	// Elements with a variable array? If so no.
+	if (type->decl->has_variable_array) return NULL;
 
 	Type *found = NULL;
 	Decl **members = type->decl->strukt.members;
 	VECEACH(members, i)
 	{
+		Type *field_type = type_flatten(members[i]->type);
+
 		// Ignore empty arrays
-		if (type_is_empty_field(members[i]->type, true)) continue;
+		if (type_is_empty_field(field_type, true)) continue;
 
 		// Already one field found, not single field.
 		if (found) return NULL;
 
-		Type *field_type = members[i]->type->canonical;
-
+		// Flatten single element arrays.
 		while (field_type->type_kind == TYPE_ARRAY)
 		{
 			if (field_type->array.len != 1) break;
 			field_type = field_type->array.base;
 		}
 
-		if (type_is_union_struct(field_type))
+		if (type_is_structlike(field_type))
 		{
 			field_type = type_abi_find_single_struct_element(field_type);
 			if (!field_type) return NULL;
@@ -329,22 +339,6 @@ Type *type_abi_find_single_struct_element(Type *type)
 	return found;
 }
 
-static bool type_is_qpx_vector(Type *type)
-{
-	if (platform_target.abi != ABI_PPC64_SVR4 || !platform_target.ppc64.has_qpx) return false;
-	type = type->canonical;
-	if (type->type_kind != TYPE_VECTOR) return false;
-	if (type->vector.len == 1) return false;
-	switch (type->vector.base->type_kind)
-	{
-		case TYPE_F64:
-			return type_size(type) >= 256 / 8;
-		case TYPE_F32:
-			return type_size(type) <= 128 / 8;
-		default:
-			return false;
-	}
-}
 
 
 bool type_is_abi_aggregate(Type *type)
@@ -401,7 +395,7 @@ bool type_is_homogenous_base_type(Type *type)
 				case TYPE_F64:
 					return !platform_target.ppc64.is_softfp;
 				case TYPE_VECTOR:
-					return type_size(type) == 128 / 8 || type_is_qpx_vector(type);
+					return type_size(type) == 128 / 8;
 				default:
 					return false;
 			}
@@ -481,6 +475,7 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
 		case ABI_PPC64_SVR4:
 			if (type->type_kind == TYPE_F128 && platform_target.float128) return members <= 8;
 			if (type->type_kind == TYPE_VECTOR) return members <= 8;
+			// Use max 8 registers.
 			return ((type_size(type) + 7) / 8) * members <= 8;
 		case ABI_X64:
 		case ABI_WIN64:
@@ -497,17 +492,28 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
 	UNREACHABLE
 }
 
+/**
+ * Calculate whether this is a homogenous aggregate for the ABI.
+ * // Based on bool ABIInfo::isHomogeneousAggregate in Clang
+ * @param type the (flattened) type to check.
+ * @param base the base type of the aggregate
+ * @param elements the elements found
+ * @return true if it is an aggregate, false otherwise.
+ */
 bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 {
 	*elements = 0;
+	RETRY:
 	switch (type->type_kind)
 	{
 		case TYPE_COMPLEX:
+			// Complex types are basically structs with 2 elements.
 			*base = type->complex;
 			*elements = 2;
 			break;
 		case TYPE_DISTINCT:
-			return type_is_homogenous_aggregate(type->decl->distinct_decl.base_type, base, elements);
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
 		case TYPE_FXX:
 		case TYPE_POISONED:
 		case TYPE_IXX:
@@ -521,6 +527,8 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_INFERRED_ARRAY:
 			return false;
 		case TYPE_ERR_UNION:
+			DEBUG_LOG("Should error be passed as homogenous aggregate?");
+			FALLTHROUGH;
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
 			*base = type_iptr->canonical;
@@ -531,27 +539,35 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			*elements = 1;
 			return true;
 		case TYPE_TYPEDEF:
-			return type_is_homogenous_aggregate(type->canonical, base, elements);
+			type = type->canonical;
+			goto RETRY;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
+			if (type->decl->has_variable_array) return false;
 			*elements = 0;
 			{
 				Decl **members = type->decl->strukt.members;
 				VECEACH(members, i)
 				{
 					unsigned member_mult = 1;
-					Type *member_type = members[i]->type->canonical;
+					// Flatten the type.
+					Type *member_type = type_lowering(members[i]->type);
+					// Go down deep into  a nester array.
 					while (member_type->type_kind == TYPE_ARRAY)
 					{
+						// If we find a zero length array, this is not allowed.
 						if (member_type->array.len == 0) return false;
 						member_mult *= member_type->array.len;
 						member_type = member_type->array.base;
 					}
 					unsigned member_members = 0;
-					if (type_is_empty_field(member_type, true)) continue;
+					// Skip any empty record.
+					if (type_is_empty_record(member_type, true)) continue;
 
+					// Check recursively if the field member is homogenous
 					if (!type_is_homogenous_aggregate(member_type, base, &member_members)) return false;
 					member_members *= member_mult;
+					// In the case of a union, grab the bigger set of elements.
 					if (type->type_kind == TYPE_UNION)
 					{
 						*elements = MAX(*elements, member_members);
@@ -562,19 +578,22 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 					}
 				}
 				assert(base);
+				if (!*base) return false;
+
 				// Ensure no padding
 				if (type_size(*base) * *elements != type_size(type)) return false;
 			}
 			goto TYPECHECK;
 		case TYPE_ARRAY:
+			// Empty arrays? Not homogenous.
 			if (type->array.len == 0) return false;
+			// Check the underlying type and multiply by length.
 			if (!type_is_homogenous_aggregate(type->array.base, base, elements)) return false;
 			*elements *= type->array.len;
 			goto TYPECHECK;
 		case TYPE_ENUM:
-			// Lower enum to underlying type
 			type = type->decl->enums.type_info->type;
-			break;
+			goto RETRY;
 		case TYPE_BOOL:
 			// Lower bool to unsigned char
 			type = type_char;
@@ -593,21 +612,25 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			type = type_voidptr;
 			break;
 	}
+	// The common case:
 	*elements = 1;
+	// Is it a valid base type?
 	if (!type_is_homogenous_base_type(type)) return false;
+	// If we don't have a base type yet, set it.
 	if (!*base)
 	{
 		*base = type;
 		// Special handling of non-power-of-2 vectors
 		if (type->type_kind == TYPE_VECTOR)
 		{
-			// Expand to actual size.
+			// Widen the type with elements.
 			unsigned vec_elements = type_size(type) / type_size(type->vector.base);
 			*base = type_get_vector(type->vector.base, vec_elements);
 		}
 	}
 	// One is vector - other isn't => failure
 	if (((*base)->type_kind == TYPE_VECTOR) != (type->type_kind == TYPE_VECTOR)) return false;
+
 	// Size does not match => failure
 	if (type_size(*base) != type_size(type)) return false;
 

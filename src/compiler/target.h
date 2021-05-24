@@ -251,7 +251,7 @@ typedef struct
 	PieGeneration pie : 3;
 	bool pic_required : 1;
 	FloatABI float_abi : 3;
-	unsigned default_number_regs : 8;
+	unsigned default_number_regs_x86 : 8;
 	union
 	{
 		struct

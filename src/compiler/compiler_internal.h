@@ -342,6 +342,7 @@ typedef struct FunctionSignature_
 	bool has_default : 1;
 	bool failable : 1;
 	bool typed_variadic : 1;
+	bool use_win64 : 1;
 	TypeInfo *rtype;
 	struct ABIArgInfo_ *ret_abi_info;
 	struct ABIArgInfo_ *failable_abi_info;
@@ -476,6 +477,7 @@ typedef struct Decl_
 	bool is_opaque : 1;
 	bool needs_additional_pad : 1;
 	bool is_substruct : 1;
+	bool has_variable_array : 1;
 	void *backend_ref;
 	const char *cname;
 	AlignSize alignment;
@@ -1773,7 +1775,7 @@ bool type_is_abi_aggregate(Type *type);
 static inline bool type_is_any_integer(Type *type);
 static inline bool type_is_builtin(TypeKind kind);
 static inline bool type_is_ct(Type *type);
-bool type_is_empty_union_struct(Type *type, bool allow_array);
+bool type_is_empty_record(Type *type, bool allow_array);
 bool type_is_empty_field(Type *type, bool allow_array);
 static inline bool type_is_float(Type *type);
 bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements);
