@@ -91,7 +91,7 @@ work on Windows. Also, parts of the code is still rough and needs to be made sol
 - [x] Expression blocks
 - [x] Do-without-while
 - [x] Foreach statement
-- [x] Generic modules
+- [x] Templates
 - [x] Distinct types
 - [x] Built-in linking
 - [x] CT only macros evaluating to constants

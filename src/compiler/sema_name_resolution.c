@@ -47,14 +47,12 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 		return module_find_symbol(context->module, symbol);
 	}
 
+	Decl **imports = context_get_imports(context);
+	printf("Looking for path: %s\n", path->module);
 	// 3. Loop over imports.
-	VECEACH(context->imports, i)
+	VECEACH(imports, i)
 	{
-		Decl *import = context->imports[i];
-		// 4. Don't look through parameterized modules.
-		if (import->module->parameters) continue;
-
-		// TODO handle partial imports.
+		Decl *import = imports[i];
 
 		// 5. Can we match a subpath?
 		if (path->len > import->import.path->len) continue;
@@ -134,7 +132,7 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 
 	if (context->current_scope)
 	{
-		Decl **first = &global_context.locals[0];
+		Decl **first = &context->locals[0];
 		if (context->macro_nesting) first = context->macro_locals_start;
 		Decl **current = context->last_local - 1;
 		while (current >= first)
@@ -152,6 +150,12 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 	// Search in the module.
 	decl = module_find_symbol(context->module, symbol);
 
+	// Is this a template, in that case we also search the parent module.
+	if (!decl && context->module->template_parent_context)
+	{
+		decl = module_find_symbol(context->module->template_parent_context->module, symbol);
+	}
+
 	if (decl)
 	{
 		context_register_external_symbol(context, decl);
@@ -159,9 +163,10 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 	}
 
 	// Search in imports
-	VECEACH(context->imports, i)
+	Decl **imports = context_get_imports(context);
+	VECEACH(imports, i)
 	{
-		Decl *import = context->imports[i];
+		Decl *import = imports[i];
 		if (!decl_ok(import)) continue;
 		Decl *found = module_find_symbol(import->module, symbol);
 		if (!found) continue;
@@ -187,7 +192,7 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 
 static inline bool sema_append_local(Context *context, Decl *decl)
 {
-	if (context->last_local == &global_context.locals[MAX_LOCALS - 1])
+	if (context->last_local == &context->locals[MAX_LOCALS - 1])
 	{
 		SEMA_ERROR(decl, "Reached the maximum number of locals.");
 		return false;

@@ -190,9 +190,9 @@ void sema_analysis_pass_decls(Module *module)
 	VECEACH(module->contexts, index)
 	{
 		Context *context = module->contexts[index];
-		context->current_scope = &global_context.scopes[0];
+		context->current_scope = &context->scopes[0];
 		context->current_scope->scope_id = 0;
-		context->last_local = &global_context.locals[0];
+		context->last_local = &context->locals[0];
 		VECEACH(context->enums, i)
 		{
 			sema_analyse_decl(context, context->enums[i]);
@@ -200,6 +200,10 @@ void sema_analysis_pass_decls(Module *module)
 		VECEACH(context->types, i)
 		{
 			sema_analyse_decl(context, context->types[i]);
+		}
+		VECEACH(context->templates, i)
+		{
+			sema_analyse_decl(context, context->templates[i]);
 		}
 		VECEACH(context->macros, i)
 		{

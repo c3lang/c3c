@@ -13,8 +13,8 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
 		case DECL_POISONED:
-		case NON_TYPE_DECLS:
 		case DECL_INTERFACE:
+		case NON_TYPE_DECLS:
 			UNREACHABLE
 		case DECL_FUNC:
 		{
@@ -36,7 +36,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_STRUCT:
 		{
 			LLVMTypeRef *types = NULL;
-			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->external_name);
+			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ?: "anon");
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			Decl **members = decl->strukt.members;
@@ -58,7 +58,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		}
 		case DECL_UNION:
 		{
-			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->external_name);
+			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ?: "anon");
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			Decl **members = decl->strukt.members;
@@ -87,7 +87,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 			return llvm_get_type(c, decl->type);
 		case DECL_ERR:
 		{
-			LLVMTypeRef err_type = LLVMStructCreateNamed(c->context, decl->external_name);
+			LLVMTypeRef err_type = LLVMStructCreateNamed(c->context, decl->name);
 			// Avoid recursive issues.
 			decl->type->backend_type = err_type;
 			LLVMTypeRef *types = NULL;

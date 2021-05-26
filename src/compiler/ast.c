@@ -106,6 +106,7 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_CT_SWITCH:
 		case DECL_CT_CASE:
 		case DECL_DEFINE:
+		case DECL_TEMPLATE:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, !name.index ? "anon" : TOKSTR(name));
@@ -782,6 +783,9 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 	if (!decl) return;
 	switch (decl->decl_kind)
 	{
+		case DECL_TEMPLATE:
+			DUMPF("(template %s", decl->name);
+			DUMPEND();
 		case DECL_INTERFACE:
 			DUMPF("(interface %s", decl->name);
 			DUMPDECLS(decl->interface_decl.functions);

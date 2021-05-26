@@ -23,12 +23,12 @@ func int extract_or_test_files()
 
 // #expect: test.ll
 
-%test.UzGlobs = type { i8, [1 x %test.MinInfo], %test.MinInfo* }
-%test.MinInfo = type { i64, i32 }
+%UzGlobs = type { i8, [1 x %MinInfo], %MinInfo* }
+%MinInfo = type { i64, i32 }
 
-@g = external global %test.UzGlobs, align 8
+@g = external global %UzGlobs, align 8
 
 entry:
-  store %test.MinInfo* getelementptr inbounds (%test.UzGlobs, %test.UzGlobs* @g, i32 0, i32 1, i32 0), %test.MinInfo** getelementptr inbounds (%test.UzGlobs, %test.UzGlobs* @g, i32 0, i32 2), align 8
+  store %MinInfo* getelementptr inbounds (%UzGlobs, %UzGlobs* @g, i32 0, i32 1, i32 0), %MinInfo** getelementptr inbounds (%UzGlobs, %UzGlobs* @g, i32 0, i32 2), align 8
   ret i32 0
 }

@@ -22,18 +22,18 @@ func void test()
 
 // #expect: struct_codegen_empty.ll
 
-  %a = alloca %struct_codegen_empty.StructA, align 4
-  %a2 = alloca %struct_codegen_empty.StructA, align 4
-  %b = alloca %struct_codegen_empty.StructB, align 4
-  %b2 = alloca %struct_codegen_empty.StructB, align 4
-  %b3 = alloca %struct_codegen_empty.StructB, align 4
-  %0 = bitcast %struct_codegen_empty.StructA* %a to i8*
+  %a = alloca %StructA, align 4
+  %a2 = alloca %StructA, align 4
+  %b = alloca %StructB, align 4
+  %b2 = alloca %StructB, align 4
+  %b3 = alloca %StructB, align 4
+  %0 = bitcast %StructA* %a to i8*
   call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 4, i1 false)
-  %1 = bitcast %struct_codegen_empty.StructA* %a2 to i8*
+  %1 = bitcast %StructA* %a2 to i8*
   call void @llvm.memset.p0i8.i64(i8* align 4 %1, i8 0, i64 4, i1 false)
-  %2 = bitcast %struct_codegen_empty.StructB* %b to i8*
+  %2 = bitcast %StructB* %b to i8*
   call void @llvm.memset.p0i8.i64(i8* align 4 %2, i8 0, i64 4, i1 false)
-  %3 = bitcast %struct_codegen_empty.StructB* %b2 to i8*
+  %3 = bitcast %StructB* %b2 to i8*
   call void @llvm.memset.p0i8.i64(i8* align 4 %3, i8 0, i64 4, i1 false)
-  %4 = bitcast %struct_codegen_empty.StructB* %b3 to i8*
+  %4 = bitcast %StructB* %b3 to i8*
   call void @llvm.memset.p0i8.i64(i8* align 4 %4, i8 0, i64 4, i1 false)

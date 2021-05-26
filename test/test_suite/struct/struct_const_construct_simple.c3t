@@ -19,15 +19,15 @@ Foo foo8 = FOO7;
 
 // #expect: structo.ll
 
-%structo.Foo = type { i32, i64 }
+%Foo = type { i32, i64 }
 
 @Foo = linkonce_odr constant i8 1
 @structo.x = protected global i64 16, align 8
-@structo.foo1 = protected global %structo.Foo { i32 1, i64 2 }, align 8
-@structo.foo2 = protected global %structo.Foo { i32 2, i64 0 }, align 8
-@structo.foo3 = protected global %structo.Foo { i32 0, i64 3 }, align 8
-@structo.foo4 = protected global %structo.Foo { i32 4, i64 1 }, align 8
-@structo.foo5 = protected global %structo.Foo zeroinitializer, align 8
-@structo.foo6 = protected global %structo.Foo zeroinitializer, align 8
-@structo.FOO7 = protected constant %structo.Foo { i32 1, i64 2 }, align 8
-@structo.foo8 = protected global %structo.Foo { i32 1, i64 2 }, align 8
+@structo.foo1 = protected global %Foo { i32 1, i64 2 }, align 8
+@structo.foo2 = protected global %Foo { i32 2, i64 0 }, align 8
+@structo.foo3 = protected global %Foo { i32 0, i64 3 }, align 8
+@structo.foo4 = protected global %Foo { i32 4, i64 1 }, align 8
+@structo.foo5 = protected global %Foo zeroinitializer, align 8
+@structo.foo6 = protected global %Foo zeroinitializer, align 8
+@structo.FOO7 = protected constant %Foo { i32 1, i64 2 }, align 8
+@structo.foo8 = protected global %Foo { i32 1, i64 2 }, align 8

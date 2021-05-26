@@ -41,7 +41,6 @@ void compiler_init(const char *std_lib_dir)
 	stable_init(&global_context.modules, 64);
 	stable_init(&global_context.scratch_table, 32);
 	global_context.module_list = NULL;
-	global_context.generic_module_list = NULL;
 	stable_init(&global_context.global_symbols, 0x1000);
 	vmem_init(&ast_arena, 4 * 1024);
 	vmem_init(&expr_arena, 4 * 1024);
@@ -431,7 +430,7 @@ Module *global_context_find_module(const char *name)
 	return stable_get(&global_context.modules, name);
 }
 
-Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters)
+Module *compiler_find_or_create_module(Path *module_name)
 {
 	Module *module = global_context_find_module(module_name->module);
 	if (module) return module;
@@ -441,18 +440,9 @@ Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters)
 	module = CALLOCS(Module);
 	module->name = module_name;
 	module->stage = ANALYSIS_NOT_BEGUN;
-	module->parameters = parameters;
 	stable_init(&module->symbols, 0x10000);
 	stable_set(&global_context.modules, module_name->module, module);
-	if (parameters)
-	{
-		vec_add(global_context.generic_module_list, module);
-	}
-	else
-	{
-		vec_add(global_context.module_list, module);
-	}
-
+	vec_add(global_context.module_list, module);
 	return module;
 }
 

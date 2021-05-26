@@ -101,18 +101,18 @@ if.exit:
   ret i32 %add1
 
 
-void @test.setInternalFPFZero(%test.InternalFPF* %0)
-  %dest = alloca %test.InternalFPF*, align 8
-  store %test.InternalFPF* %0, %test.InternalFPF** %dest, align 8
-  %1 = load %test.InternalFPF*, %test.InternalFPF** %dest, align 8
-  %2 = getelementptr inbounds %test.InternalFPF, %test.InternalFPF* %1, i32 0, i32 0
+void @test.setInternalFPFZero(%InternalFPF* %0)
+  %dest = alloca %InternalFPF*, align 8
+  store %InternalFPF* %0, %InternalFPF** %dest, align 8
+  %1 = load %InternalFPF*, %InternalFPF** %dest, align 8
+  %2 = getelementptr inbounds %InternalFPF, %InternalFPF* %1, i32 0, i32 0
   store i8 0, i8* %2, align 8
   ret void
 
-void @test.denormalize(%test.InternalFPF* %0)
+void @test.denormalize(%InternalFPF* %0)
 entry:
-  %ptr = alloca %test.InternalFPF*, align 8
-  store %test.InternalFPF* %0, %test.InternalFPF** %ptr, align 8
-  %1 = load %test.InternalFPF*, %test.InternalFPF** %ptr, align 8
-  call void @test.setInternalFPFZero(%test.InternalFPF* %1)
+  %ptr = alloca %InternalFPF*, align 8
+  store %InternalFPF* %0, %InternalFPF** %ptr, align 8
+  %1 = load %InternalFPF*, %InternalFPF** %ptr, align 8
+  call void @test.setInternalFPFZero(%InternalFPF* %1)
   ret void

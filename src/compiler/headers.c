@@ -230,6 +230,9 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 		case DECL_ERR:
 			header_gen_err(file, indent, decl);
 			return;
+		case DECL_TEMPLATE:
+			// Skipped
+			return;
 	}
 	UNREACHABLE
 }

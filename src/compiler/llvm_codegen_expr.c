@@ -2624,6 +2624,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		// 2b. Set signature, function and function type
 		signature = &function_decl->func.function_signature;
 		func = function_decl->backend_ref;
+		assert(func);
 		func_type = llvm_get_type(c, function_decl->type);
 	}
 	else

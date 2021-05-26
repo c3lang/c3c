@@ -36,8 +36,8 @@ typedef struct
 #define NO_TOKEN ((Token) { .type = TOKEN_INVALID_TOKEN })
 #define INVALID_TOKEN_ID ((TokenId) { UINT32_MAX })
 #define INVALID_RANGE ((SourceSpan){ INVALID_TOKEN_ID, INVALID_TOKEN_ID })
-#define MAX_LOCALS 0xFFFF
-#define MAX_SCOPE_DEPTH 0x1000
+#define MAX_LOCALS 0xFFF
+#define MAX_SCOPE_DEPTH 0x100
 #define MAX_STRING_BUFFER 0x10000
 #define MAX_MACRO_NESTING 1024
 #define MAX_FUNCTION_SIGNATURE_SIZE 2048
@@ -322,6 +322,13 @@ typedef struct
 
 typedef struct
 {
+	struct Context_ *parent_context;
+	TokenId *params;
+	Decl **body;
+} TemplateDecl;
+
+typedef struct
+{
 	Expr *expr;
 	Expr **args;
 	uint64_t ordinal;
@@ -387,6 +394,7 @@ typedef struct
 typedef struct
 {
 	bool is_func : 1;
+	bool is_distinct : 1;
 	union
 	{
 		FunctionSignature function_signature;
@@ -428,28 +436,32 @@ typedef struct
 
 typedef enum
 {
-	DEFINE_FUNC,
-	DEFINE_DISTINCT_TYPE,
-	DEFINE_TYPE_ALIAS,
+	DEFINE_TYPE_TEMPLATE,
 	DEFINE_IDENT_ALIAS,
+	DEFINE_IDENT_TEMPLATE,
 } DefineType;
 
 typedef struct
 {
 	DefineType define_kind: 5;
-	bool is_parameterized : 1;
 	union
 	{
-		FunctionSignature function_signature;
-		TypeInfo *type_info;
 		struct
 		{
-			Path *path;
+			union
+			{
+				Path *path;
+				struct
+				{
+					Path *template_path;
+					TokenId template_name;
+					TypeInfo **template_params;
+				};
+			};
 			TokenId identifier;
 		};
 		Decl *alias;
 	};
-	TypeInfo **params;
 } DefineDecl;
 
 typedef struct
@@ -528,6 +540,7 @@ typedef struct Decl_
 		CtCaseDecl ct_case_decl;
 		Decl** ct_else_decl;
 		Expr *incr_array_decl;
+		TemplateDecl template_decl;
 	};
 } Decl;
 
@@ -1149,12 +1162,11 @@ typedef struct Ast_
 typedef struct Module_
 {
 	Path *name;
-	TokenId *parameters;
 
 	bool is_external : 1;
 	bool is_c_library : 1;
 	bool is_exported : 1;
-	bool is_generic : 1;
+	struct Context_ *template_parent_context;
 	AnalysisStage stage : 6;
 
 	Ast **files; // Asts
@@ -1229,6 +1241,7 @@ typedef struct Context_
 	Decl **macros;
 	Decl **generics;
 	Decl **interfaces;
+	Decl **templates;
 	Decl **methods;
 	Decl **vars;
 	Decl **incr_array;
@@ -1270,6 +1283,8 @@ typedef struct Context_
 		STable external_symbols;
 		Decl **external_symbol_list;
 	};
+	Decl* locals[MAX_LOCALS];
+	DynamicScope scopes[MAX_SCOPE_DEPTH];
 	Lexer lexer;
 	Token tok;
 	TokenId prev_tok;
@@ -1284,7 +1299,6 @@ typedef struct
 {
 	STable modules;
 	Module **module_list;
-	Module **generic_module_list;
 	STable global_symbols;
 	STable qualified_symbols;
 	Type **type;
@@ -1296,8 +1310,6 @@ typedef struct
 	unsigned warnings_found;
 	char scratch_buffer[MAX_STRING_BUFFER];
 	size_t scratch_buffer_len;
-	Decl* locals[MAX_LOCALS];
-	DynamicScope scopes[MAX_SCOPE_DEPTH];
 	STable scratch_table;
 	Module std_module;
 	Path std_module_path;
@@ -1550,7 +1562,7 @@ void header_gen(Module *module);
 
 void global_context_add_type(Type *type);
 Decl *compiler_find_symbol(const char *name);
-Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters);
+Module *compiler_find_or_create_module(Path *module_name);
 Module *global_context_find_module(const char *name);
 void compiler_register_public_symbol(Decl *decl);
 
@@ -1559,8 +1571,10 @@ void context_register_global_decl(Context *context, Decl *decl);
 void context_register_external_symbol(Context *context, Decl *decl);
 bool context_add_import(Context *context, Path *path, Token symbol, Token alias, bool private_import);
 bool context_set_module_from_filename(Context *context);
-bool context_set_module(Context *context, Path *path, TokenId *generic_parameters);
+
+bool context_set_module(Context *context, Path *path);
 void context_print_ast(Context *context, FILE *file);
+Decl **context_get_imports(Context *context);
 
 #pragma mark --- Decl functions
 
@@ -1579,7 +1593,7 @@ static inline bool decl_is_struct_type(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline Decl *decl_flatten(Decl *decl)
 {
-	if (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
+	if (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind != DEFINE_TYPE_TEMPLATE)
 	{
 		return decl->define_decl.alias;
 	}
@@ -1671,6 +1685,7 @@ const char *resolve_status_to_string(ResolveStatus status);
 void sema_analysis_pass_process_imports(Module *module);
 void sema_analysis_pass_register_globals(Module *module);
 void sema_analysis_pass_conditional_compilation(Module *module);
+void sema_analysis_pass_templates(Module *module);
 void sema_analysis_pass_decls(Module *module);
 void sema_analysis_pass_ct_assert(Module *module);
 void sema_analysis_pass_functions(Module *module);
@@ -1978,7 +1993,7 @@ static inline Type *type_flatten_distinct(Type *type)
 	type = type->canonical;
 	while (type->type_kind == TYPE_DISTINCT)
 	{
-		type = type->decl->define_decl.type_info->type->canonical;
+		type = type->decl->distinct_decl.base_type;
 	}
 	return type;
 }

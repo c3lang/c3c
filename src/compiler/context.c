@@ -15,12 +15,12 @@ Context *context_create(File *file)
 }
 
 
-static inline bool create_module_or_check_name(Context *context, Path *module_name, TokenId *parameters)
+static inline bool create_module_or_check_name(Context *context, Path *module_name)
 {
     context->module_name = module_name;
     if (context->module == NULL)
     {
-    	context->module = compiler_find_or_create_module(module_name, parameters);
+    	context->module = compiler_find_or_create_module(module_name);
 	    return true;
     }
 
@@ -55,10 +55,10 @@ bool context_set_module_from_filename(Context *context)
     path->span = INVALID_RANGE;
     path->module = module_name;
     path->len = len;
-    return create_module_or_check_name(context, path, NULL);
+    return create_module_or_check_name(context, path);
 }
 
-bool context_set_module(Context *context, Path *path, TokenId *generic_parameters)
+bool context_set_module(Context *context, Path *path)
 {
     // Note that we allow the illegal name for now, to be able to parse further.
     context->module_name = path;
@@ -68,7 +68,7 @@ bool context_set_module(Context *context, Path *path, TokenId *generic_parameter
         return false;
     }
 
-    return create_module_or_check_name(context, path, generic_parameters);
+    return create_module_or_check_name(context, path);
 }
 
 
@@ -91,6 +91,11 @@ void context_register_global_decl(Context *context, Decl *decl)
 	{
 		case DECL_POISONED:
 			break;
+		case DECL_TEMPLATE:
+			vec_add(context->templates, decl);
+			decl->template_decl.parent_context = context;
+			decl_set_external_name(decl);
+			break;
 		case DECL_INTERFACE:
 			vec_add(context->interfaces, decl);
 			decl_set_external_name(decl);
@@ -107,13 +112,11 @@ void context_register_global_decl(Context *context, Decl *decl)
 			if (decl->func.type_parent)
 			{
 				vec_add(context->methods, decl);
-				// TODO set name
 				return;
 			}
 			else
 			{
 				vec_add(context->functions, decl);
-				decl_set_external_name(decl);
 			}
 			break;
 		case DECL_VAR:
@@ -210,6 +213,13 @@ bool context_add_import(Context *context, Path *path, Token token, Token alias, 
     vec_add(context->imports, import);
 	DEBUG_LOG("Added import %s", path->module);
     return true;
+}
+
+Decl **context_get_imports(Context *context)
+{
+	Context *parent_context = context->module->template_parent_context;
+	if (parent_context) return parent_context->imports;
+	return context->imports;
 }
 
 void context_print_ast(Context *context, FILE *file)

@@ -242,6 +242,8 @@ const char *token_type_to_string(TokenType type)
 			return "struct";
 		case TOKEN_SWITCH:
 			return "switch";
+		case TOKEN_TEMPLATE:
+			return "template";
 		case TOKEN_TRUE:
 			return "true";
 		case TOKEN_TRY:
