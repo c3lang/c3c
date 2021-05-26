@@ -634,10 +634,18 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ERR:
+			VECEACH(decl->methods, i)
+			{
+				llvm_emit_function_decl(context, decl->methods[i]);
+			}
 			llvm_get_type(context, decl->type);
 			// TODO // Fix typeid
 			break;
 		case DECL_ENUM:
+			VECEACH(decl->methods, i)
+			{
+				llvm_emit_function_decl(context, decl->methods[i]);
+			}
 			TODO
 		case NON_TYPE_DECLS:
 		case DECL_INTERFACE:

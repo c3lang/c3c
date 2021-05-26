@@ -1167,6 +1167,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_RBRAPIPE:
 		case TOKEN_BANGBANG:
 		case TOKEN_UNDERSCORE:
+		case TOKEN_TEMPLATE:
 			SEMA_TOKEN_ERROR(context->tok, "Unexpected '%s' found when expecting a statement.", token_type_to_string(context->tok.type));
 			advance(context);
 			return poisoned_ast;

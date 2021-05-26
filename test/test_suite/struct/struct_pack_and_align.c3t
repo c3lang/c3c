@@ -69,34 +69,34 @@ public Foo6 foo6 = { 1, 2, 3 };
 
 // #expect: struct2.ll
 
-%struct2.Foo1 = type <{ i64, i8, [3 x i8] }>
-%struct2.Foo2 = type <{ i8, i64, [3 x i8] }>
-%struct2.Foo3 = type <{ i8, i64, [7 x i8] }>
-%struct2.Foo4 = type <{ i8, i64 }>
-%struct2.Foo5 = type { i32, [12 x i8], i8, [15 x i8] }
-%struct2.Foo6 = type { i32, i16, i16 }
+%Foo1 = type <{ i64, i8, [3 x i8] }>
+%Foo2 = type <{ i8, i64, [3 x i8] }>
+%Foo3 = type <{ i8, i64, [7 x i8] }>
+%Foo4 = type <{ i8, i64 }>
+%Foo5 = type { i32, [12 x i8], i8, [15 x i8] }
+%Foo6 = type { i32, i16, i16 }
 
-@struct2.foo1 = global %struct2.Foo1 <{ i64 1, i8 2, [3 x i8] undef }>, align 4
-@struct2.foo2 = global %struct2.Foo2 <{ i8 1, i64 2, [3 x i8] undef }>, align 4
-@struct2.foo3 = global %struct2.Foo3 <{ i8 1, i64 2, [7 x i8] undef }>, align 8
-@struct2.foo4 = global %struct2.Foo4 <{ i8 1, i64 2 }>, align 1
-@struct2.foo5 = global %struct2.Foo5 { i32 1, [12 x i8] undef, i8 2, [15 x i8] undef }, align 16
-@struct2.foo6 = global %struct2.Foo6 { i32 1, i16 2, i16 3 }, align 1
+@struct2.foo1 = global %Foo1 <{ i64 1, i8 2, [3 x i8] undef }>, align 4
+@struct2.foo2 = global %Foo2 <{ i8 1, i64 2, [3 x i8] undef }>, align 4
+@struct2.foo3 = global %Foo3 <{ i8 1, i64 2, [7 x i8] undef }>, align 8
+@struct2.foo4 = global %Foo4 <{ i8 1, i64 2 }>, align 1
+@struct2.foo5 = global %Foo5 { i32 1, [12 x i8] undef, i8 2, [15 x i8] undef }, align 16
+@struct2.foo6 = global %Foo6 { i32 1, i16 2, i16 3 }, align 1
 
 @struct2.test5
 entry:
   %x = alloca i8, align 1
-  %y = alloca %struct2.Foo5, align 16
+  %y = alloca %Foo5, align 16
   store i8 %0, i8* %x, align 1
-  %1 = bitcast %struct2.Foo5* %y to i8*
+  %1 = bitcast %Foo5* %y to i8*
   call void @llvm.memset.p0i8.i64(i8* align 16 %1, i8 0, i64 32, i1 false)
-  %2 = getelementptr inbounds %struct2.Foo5, %struct2.Foo5* %y, i32 0, i32 2
+  %2 = getelementptr inbounds %Foo5, %Foo5* %y, i32 0, i32 2
   %3 = load i8, i8* %x, align 1
   store i8 %3, i8* %2, align 16
-  %4 = getelementptr inbounds %struct2.Foo5, %struct2.Foo5* %y, i32 0, i32 2
+  %4 = getelementptr inbounds %Foo5, %Foo5* %y, i32 0, i32 2
   %5 = load i8, i8* %4, align 16
   %sisiext = sext i8 %5 to i32
-  %6 = getelementptr inbounds %struct2.Foo5, %struct2.Foo5* %y, i32 0, i32 0
+  %6 = getelementptr inbounds %Foo5, %Foo5* %y, i32 0, i32 0
   %7 = load i32, i32* %6, align 16
   %add = add i32 %sisiext, %7
   ret i32 %add

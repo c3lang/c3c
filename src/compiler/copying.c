@@ -471,6 +471,9 @@ Decl *copy_decl(Decl *decl)
 	{
 		case DECL_POISONED:
 			break;
+		case DECL_TEMPLATE:
+			MACRO_COPY_DECL_LIST(copy->template_decl.body);
+			break;
 		case DECL_UNION:
 		case DECL_STRUCT:
 		case DECL_ERR:
@@ -559,15 +562,11 @@ Decl *copy_decl(Decl *decl)
 		case DECL_ATTRIBUTE:
 			TODO
 		case DECL_DEFINE:
-			MACRO_COPY_TYPE_LIST(decl->define_decl.params);
 			switch (decl->define_decl.define_kind)
 			{
-				case DEFINE_FUNC:
-					copy_function_signature_deep(&decl->define_decl.function_signature);
-					break;
-				case DEFINE_DISTINCT_TYPE:
-				case DEFINE_TYPE_ALIAS:
-					MACRO_COPY_TYPE(decl->define_decl.type_info);
+				case DEFINE_TYPE_TEMPLATE:
+				case DEFINE_IDENT_TEMPLATE:
+					MACRO_COPY_TYPE_LIST(decl->define_decl.template_params);
 					break;
 				case DEFINE_IDENT_ALIAS:
 					break;

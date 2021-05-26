@@ -576,8 +576,23 @@ static inline bool sema_analyse_method(Context *context, Decl *decl)
 			return false;
 		}
 	}
+	scratch_buffer_clear();
+	if (decl->visibility <= VISIBLE_MODULE)
+	{
+		scratch_buffer_append(parent->name);
+		scratch_buffer_append_char('.');
+		scratch_buffer_append(decl->name);
+	}
+	else
+	{
+		scratch_buffer_append(parent->external_name);
+		scratch_buffer_append("__");
+		scratch_buffer_append(decl->name);
+	}
+	decl->external_name = scratch_buffer_interned();
 	DEBUG_LOG("Method '%s.%s' analysed.", parent->name, decl->name);
 	vec_add(parent->methods, decl);
+
 	return true;
 }
 
@@ -685,7 +700,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 			return type;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_CNAME:
-			if (context->module->is_generic)
+			if (context->module->template_parent_context)
 			{
 				SEMA_TOKID_ERROR(attr->name, "'cname' attributes are not allowed in generic modules.");
 				return false;
@@ -722,6 +737,19 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 	if (decl->func.type_parent)
 	{
 		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
+	}
+	else
+	{
+		if (decl->name == kw_main)
+		{
+			if (decl->visibility == VISIBLE_LOCAL)
+			{
+				SEMA_ERROR(decl, "'main' cannot have local visibility.");
+				return false;
+			}
+			decl->visibility = VISIBLE_EXTERN;
+		}
+		decl_set_external_name(decl);
 	}
 	VECEACH(decl->attributes, i)
 	{
@@ -766,15 +794,6 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 			return decl_poison(decl);
 		}
 	}
-	if (decl->name == kw_main)
-	{
-		if (decl->visibility == VISIBLE_LOCAL)
-		{
-			SEMA_ERROR(decl, "'main' cannot have local visibility.");
-			return false;
-		}
-		decl->visibility = VISIBLE_EXTERN;
-	}
 	DEBUG_LOG("Function analysis done.");
 	return true;
 }
@@ -810,6 +829,25 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 			case VARDECL_LOCAL_CT_TYPE:
 			case VARDECL_ALIAS:
 				UNREACHABLE
+		}
+	}
+	return true;
+}
+
+
+static inline bool sema_analyse_template(Context *context, Decl *decl)
+{
+	decl->template_decl.parent_context = context;
+	stable_clear(&global_context.scratch_table);
+	VECEACH(decl->template_decl.params, i)
+	{
+		TokenId *param = &decl->template_decl.params[i];
+		const char *key = TOKSTR(*param);
+		TokenId *ptr = stable_set(&global_context.scratch_table, key, param);
+		if (ptr)
+		{
+			SEMA_TOKID_ERROR(*param, "Duplicate parameter name '%s'.", TOKSTR(*param));
+			return false;
 		}
 	}
 	return true;
@@ -998,19 +1036,20 @@ static Context *copy_context(Module *module, Context *c)
 	return copy;
 }
 
-static Module *sema_instantiate_module(Context *context, Module *module, Path *path, TypeInfo **parms)
+static Module *sema_instantiate_template(Context *context, Decl *template, Path *path, TypeInfo **parms)
 {
-	Module *new_module = compiler_find_or_create_module(path, NULL);
-	new_module->is_generic = true;
-	Context **contexts = module->contexts;
-	VECEACH(contexts, i)
+	DEBUG_LOG("Instantiate template %s", path->module);
+	Module *new_module = compiler_find_or_create_module(path);
+	Context *source_context = template->template_decl.parent_context;
+
+	Context *new_context = context_create(context->file);
+	new_context->module = new_module;
+	new_module->template_parent_context = source_context;
+	new_context->global_decls = copy_decl_list(template->template_decl.body);
+	vec_add(new_module->contexts, new_context);
+	VECEACH(template->template_decl.params, i)
 	{
-		vec_add(new_module->contexts, copy_context(new_module, contexts[i]));
-	}
-	Context *first_context = new_module->contexts[0];
-	VECEACH(module->parameters, i)
-	{
-		TokenId param = module->parameters[i];
+		TokenId param = template->template_decl.params[i];
 		Decl *decl = decl_new_with_type(param, DECL_TYPEDEF, VISIBLE_PUBLIC);
 		decl->resolve_status = RESOLVE_DONE;
 		TypeInfo *type_info = parms[i];
@@ -1018,175 +1057,124 @@ static Module *sema_instantiate_module(Context *context, Module *module, Path *p
 		decl->typedef_decl.type_info = type_info;
 		decl->type->name = decl->name;
 		decl->type->canonical = type_info->type->canonical;
-		vec_add(first_context->global_decls, decl);
+		vec_add(new_context->global_decls, decl);
 	}
 	return new_module;
 }
 
 static Decl *sema_analyse_parameterized_define(Context *c, Decl *decl)
 {
-	Path *decl_path;
-	bool mismatch = false;
-	const char *name;
-	SourceSpan mismatch_span = INVALID_RANGE;
-	switch (decl->define_decl.define_kind)
+	Decl *ambiguous = NULL;
+	Decl *private_decl = NULL;
+	TokenId template_token = decl->define_decl.template_name;
+	const char *template_name = TOKSTR(template_token);
+	DEBUG_LOG("Analyse %s", decl->name);
+	Decl *template_decl = sema_resolve_symbol(c, template_name, decl->define_decl.template_path, &ambiguous, &private_decl);
+	if (!template_decl)
 	{
-		case DEFINE_IDENT_ALIAS:
-			decl_path = decl->define_decl.path;
-			name = TOKSTR(decl->define_decl.identifier);
-			break;
-		case DEFINE_TYPE_ALIAS:
+		if (private_decl && private_decl->decl_kind == DECL_TEMPLATE)
 		{
-			TypeInfo *define_type = decl->define_decl.type_info;
-			mismatch_span = define_type->span;
-			decl_path = define_type->unresolved.path;
-			name = TOKSTR(define_type->unresolved.name_loc);
-			mismatch = define_type->kind != TYPE_INFO_IDENTIFIER;
-			break;
+			SEMA_TOKID_ERROR(template_token, "'%s' is a private template.", private_decl->name);
+			return poisoned_decl;
 		}
-		default:
-			UNREACHABLE
-	}
-	if (mismatch)
-	{
-		sema_error_range(mismatch_span, "A variable, type or constant was expected here.");
+		if (ambiguous)
+		{
+			SEMA_TOKID_ERROR(template_token, "Is an ambiguous symbol, you need to add a path.");
+			return poisoned_decl;
+		}
+		SEMA_TOKID_ERROR(template_token, "Unknown template '%s', did you spell it right?", template_name);
 		return poisoned_decl;
 	}
-	if (!decl_path)
+	if (template_decl->decl_kind != DECL_TEMPLATE)
 	{
-		sema_error_range(mismatch_span, "Parameterization requires the full path, please add it.");
-		return poisoned_decl;
-	}
-	Decl *import_found = NULL;
-	VECEACH(c->imports, i)
-	{
-		Decl *import = c->imports[i];
-		if (decl_path->module == import->import.path->module)
-		{
-			import_found = import;
-			break;
-		}
-	}
-	if (!import_found)
-	{
-		sema_error_range(mismatch_span, "It was not possible to find a matching module, did you use the full path?");
+		SEMA_TOKID_ERROR(template_token, "'%s' is not a template, did you spell it right?", template_name);
 		return poisoned_decl;
 	}
 
-	Module *module = import_found->module;
-	TypeInfo **params = decl->define_decl.params;
-	unsigned parameter_count = vec_size(module->parameters);
+	if (!sema_analyse_decl(template_decl->template_decl.parent_context, template_decl)) return poisoned_decl;
+	TypeInfo **params = decl->define_decl.template_params;
+	unsigned parameter_count = vec_size(template_decl->template_decl.params);
 	assert(parameter_count > 0);
 	if (parameter_count != vec_size(params))
 	{
-		sema_error_range((SourceSpan) { params[0]->span.loc, VECLAST(params)->span.end_loc }, "The generic module expected %d arguments, but you only supplied %d, did you make a mistake?",
-		           parameter_count, vec_size(decl->define_decl.params));
+		sema_error_range((SourceSpan) { params[0]->span.loc, VECLAST(params)->span.end_loc }, "The template expected %d arguments, but you only supplied %d, did you make a mistake?",
+		           parameter_count, vec_size(decl->define_decl.template_params));
 		return poisoned_decl;
 	}
 	scratch_buffer_clear();
-	scratch_buffer_append_len(module->name->module, module->name->len);
-	scratch_buffer_append_char('.');
-	VECEACH(decl->define_decl.params, i)
+	scratch_buffer_append(template_decl->external_name);
+	VECEACH(decl->define_decl.template_params, i)
 	{
-		TypeInfo *type_info = decl->define_decl.params[i];
+		TypeInfo *type_info = decl->define_decl.template_params[i];
 		if (!sema_resolve_type_info(c, type_info)) return poisoned_decl;
-		if (i != 0) scratch_buffer_append_char('.');
+		scratch_buffer_append_char('.');
 		const char *type_name = type_info->type->canonical->name;
 		scratch_buffer_append(type_name);
 	}
-	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
 	if (!instantiated_module)
 	{
 		Path *path = CALLOCS(Path);
 		path->module = path_string;
-		path->span = module->name->span;
+		path->span = decl->span;
 		path->len = global_context.scratch_buffer_len;
-		instantiated_module = sema_instantiate_module(c, module, path, decl->define_decl.params);
-		sema_analyze_stage(instantiated_module, c->module->stage - 1);
+		instantiated_module = sema_instantiate_template(c, template_decl, path, decl->define_decl.template_params);
+		sema_analyze_stage(instantiated_module, c->module->stage);
 	}
+	const char *name = TOKSTR(decl->define_decl.identifier);
 	Decl *symbol = module_find_symbol(instantiated_module, name);
 	if (!symbol)
 	{
-		SEMA_ERROR(decl, "Identifier '%s' could not be found.", name);
+		SEMA_TOKID_ERROR(decl->define_decl.identifier, "Identifier '%s' could not be found.", name);
 		return poisoned_decl;
 	}
-	if (symbol->visibility <= VISIBLE_MODULE && !import_found->import.private)
+	if (symbol->visibility <= VISIBLE_MODULE)
 	{
 		SEMA_TOKID_ERROR(decl->name_token, "'%s' is not visible from this module.", symbol->name);
 		return poisoned_decl;
 	}
+	if (!sema_analyse_decl(template_decl->template_decl.parent_context, symbol)) return poisoned_decl;
+
 	context_register_external_symbol(c, symbol);
 	return symbol;
-}
-static void decl_define_type(Decl *decl, Type *actual_type)
-{
-	Type *type = type_new(TYPE_TYPEDEF, decl->name);
-	type->decl = decl;
-	type->canonical = actual_type->canonical;
-	decl->type = type;
 }
 
 static inline bool sema_analyse_define(Context *c, Decl *decl)
 {
 	Decl *symbol;
-	if (decl->define_decl.is_parameterized)
-	{
-		symbol = TRY_DECL_OR(sema_analyse_parameterized_define(c, decl), poisoned_decl);
-	}
-	else
-	{
-		switch (decl->define_decl.define_kind)
-		{
-			case DEFINE_FUNC:
-			{
-				Type *func_type = sema_analyse_function_signature(c, &decl->define_decl.function_signature, false);
-				if (!func_type) return false;
-				decl_define_type(decl, type_get_ptr(func_type));
-				return true;
-			}
-			case DEFINE_TYPE_ALIAS:
-				if (!sema_resolve_type_info(c, decl->define_decl.type_info)) return false;
-				decl_define_type(decl, decl->define_decl.type_info->type);
-				return true;
-			case DEFINE_DISTINCT_TYPE:
-			{
-				if (!sema_resolve_type_info(c, decl->define_decl.type_info)) return false;
-				Type *type = type_new(TYPE_DISTINCT, decl->name);
-				type->decl = decl;
-				type->canonical = type;
-				decl->type = type;
-				return true;
-			}
-			case DEFINE_IDENT_ALIAS:
-			{
-				Decl *ambiguous_decl = NULL;
-				Decl *private_symbol = NULL;
-				symbol = sema_resolve_symbol(c,
-				                             TOKSTR(decl->define_decl.identifier),
-				                             decl->define_decl.path,
-				                             &ambiguous_decl,
-				                             &private_symbol);
-				if (!symbol) TODO;
-				break;
-			}
-		}
-	}
+	Type *type;
 	switch (decl->define_decl.define_kind)
 	{
-		case DEFINE_FUNC:
-		case DEFINE_DISTINCT_TYPE:
-			UNREACHABLE
-		case DEFINE_TYPE_ALIAS:
-			decl_define_type(decl, symbol->type);
-			break;
-		case DEFINE_IDENT_ALIAS:
+		case DEFINE_TYPE_TEMPLATE:
+			symbol = TRY_DECL_OR(sema_analyse_parameterized_define(c, decl), false);
+			type = type_new(TYPE_TYPEDEF, decl->name);
+			type->decl = decl;
+			type->canonical = symbol->type->canonical;
+			decl->type = type;
+			decl->decl_kind = DECL_TYPEDEF;
+			return true;
+		case DEFINE_IDENT_TEMPLATE:
+			symbol = TRY_DECL_OR(sema_analyse_parameterized_define(c, decl), false);
 			decl->type = symbol->type;
 			decl->define_decl.alias = symbol;
-			break;
+			return true;
+		case DEFINE_IDENT_ALIAS:
+		{
+			Decl *ambiguous_decl = NULL;
+			Decl *private_symbol = NULL;
+			symbol = sema_resolve_symbol(c,
+			                             TOKSTR(decl->define_decl.identifier),
+			                             decl->define_decl.path,
+			                             &ambiguous_decl,
+			                             &private_symbol);
+			if (!symbol) TODO;
+			decl->type = symbol->type;
+			decl->define_decl.alias = symbol;
+			return true;
+		}
 	}
-	return true;
+	UNREACHABLE
 }
 
 
@@ -1235,6 +1223,10 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 	{
 		case DECL_INTERFACE:
 			TODO
+		case DECL_TEMPLATE:
+			if (!sema_analyse_template(context, decl)) return decl_poison(decl);
+			decl_set_external_name(decl);
+			break;
 		case DECL_STRUCT:
 		case DECL_UNION:
 			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
@@ -1242,7 +1234,6 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 			break;
 		case DECL_FUNC:
 			if (!sema_analyse_func(context, decl)) return decl_poison(decl);
-			decl_set_external_name(decl);
 			break;
 		case DECL_MACRO:
 			if (!sema_analyse_macro(context, decl)) return decl_poison(decl);

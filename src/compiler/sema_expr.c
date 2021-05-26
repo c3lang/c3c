@@ -166,6 +166,9 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 
 	switch (decl->decl_kind)
 	{
+		case DECL_TEMPLATE:
+			SEMA_ERROR(expr, "Templates cannot appear inside of expressions.");
+			return expr_poison(expr);
 		case DECL_FUNC:
 			SEMA_ERROR(expr, "Expected function followed by (...) or prefixed by &.");
 			return expr_poison(expr);

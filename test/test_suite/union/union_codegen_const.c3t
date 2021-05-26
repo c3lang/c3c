@@ -14,7 +14,7 @@ Foo i = { .b = 2.3, .a = 23 };
 // #expect: test.ll
 
 @test.f = protected global { i32, [4 x i8] } { i32 23, [4 x i8] undef }, align 8
-@test.g = protected global %test.Foo { double 2.300000e+00 }, align 8
-@test.h = protected global %test.Foo { double 2.300000e+00 }, align 8
+@test.g = protected global %Foo { double 2.300000e+00 }, align 8
+@test.h = protected global %Foo { double 2.300000e+00 }, align 8
 @test.i = protected global { i32, [4 x i8] } { i32 23, [4 x i8] undef }, align 8
 

@@ -20,12 +20,12 @@ func void test()
 // #expect: test.ll
 
 entry:
-%b = alloca %test.UnionB, align 8
-%0 = bitcast %test.UnionB* %b to i32*
+%b = alloca %UnionB, align 8
+%0 = bitcast %UnionB* %b to i32*
 %1 = call i32 @bar()
 store i32 %1, i32* %0, align 4
-%2 = bitcast %test.UnionB* %b to %test.b*
-%3 = bitcast %test.b* %2 to i8*
+%2 = bitcast %UnionB* %b to %b*
+%3 = bitcast %b* %2 to i8*
 call void @llvm.memset.p0i8.i64(i8* align 4 %3, i8 0, i64 4, i1 false)
 ret void
 

@@ -117,6 +117,7 @@ public macro malloc($Type)
 {
     return ($Type*)(mem::alloc($Type.sizeof));
 }
+
 public func void* alloc(usize size, usize elements = 1) @inline
 {
     return _malloc(size * elements);
@@ -126,6 +127,12 @@ public func void* calloc(usize size, usize elements = 1) @inline
 {
     return _calloc(size, elements);
 }
+
+public func void* realloc(void *ptr, usize size) @inline
+{
+    return _realloc(ptr, size);
+}
+
 public func void free(void* ptr) @inline
 {
     _free(ptr);

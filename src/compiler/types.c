@@ -1079,11 +1079,57 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
+		case TYPE_DISTINCT:
 			scratch_buffer_append(type->decl->external_name);
 			break;
-		default:
+		case TYPE_POINTER:
+			type_append_name_to_scratch(type->pointer);
+			scratch_buffer_append_char('*');
+			break;
+		case TYPE_SUBARRAY:
+			type_append_name_to_scratch(type->pointer);
+			scratch_buffer_append("[]");
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+		case TYPE_I128:
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+		case TYPE_U128:
+		case TYPE_F16:
+		case TYPE_F32:
+		case TYPE_F64:
+		case TYPE_F128:
+		case TYPE_TYPEID:
+		case TYPE_ERR_UNION:
+		case TYPE_VIRTUAL_ANY:
+		case TYPE_COMPLEX:
+		case TYPE_VECTOR:
 			scratch_buffer_append(type->name);
 			break;
+		case TYPE_IXX:
+		case TYPE_FXX:
+		case TYPE_STRLIT:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			UNREACHABLE
+			break;
+		case TYPE_FUNC:
+			scratch_buffer_append(type->func.mangled_function_signature);
+			break;
+		case TYPE_ARRAY:
+			TODO
+		case TYPE_VARARRAY:
+			TODO
+		case TYPE_VIRTUAL:
+			scratch_buffer_append("virtual ");
+			scratch_buffer_append(type->decl->name);
 	}
 }
 

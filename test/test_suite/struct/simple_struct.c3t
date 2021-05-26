@@ -10,5 +10,5 @@ struct Foo
 
 // #expect: test.ll
 
-%test.Foo = type { i32, double }
-@test.a = protected global %test.Foo zeroinitializer, align 8
+%Foo = type { i32, double }
+@test.a = protected global %Foo zeroinitializer, align 8
