@@ -1145,7 +1145,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_IMPORT:
 		case TOKEN_MACRO:
 		case TOKEN_MODULE:
-		case TOKEN_PUBLIC:
 		case TOKEN_EXTERN:
 		case TOKEN_STRUCT:
 		case TOKEN_INTERFACE:

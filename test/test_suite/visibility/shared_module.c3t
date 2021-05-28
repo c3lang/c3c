@@ -1,7 +1,7 @@
 // #file: file1.c3
 module baz;
 
-public func void runBar()
+func void runBar()
 {
     visible();
 }
@@ -9,7 +9,7 @@ public func void runBar()
 // #file: file2.c3
 module baz;
 
-func void visible()
+static func void visible()
 {
 
 }

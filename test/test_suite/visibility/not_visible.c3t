@@ -2,7 +2,7 @@
 module baz;
 import bar;
 
-public func void runBar()
+func void runBar()
 {
     bar::notVisible(); // #error: 'notVisible' is not visible from this module.
 }
@@ -10,7 +10,7 @@ public func void runBar()
 // #file: file2.c3
 module bar;
 
-func void notVisible()
+static func void notVisible()
 {
 
 }

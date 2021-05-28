@@ -1,15 +1,15 @@
-const char AA = ~(char)(0);
+static const char AA = ~(char)(0);
 const char BB = 200 ;
-const uint CC = ~(uint)(0);
-const uint DD = FOO;
+static const uint CC = ~(uint)(0);
+static const uint DD = FOO;
 
-const FOO = ~(uint)(0);
+static const FOO = ~(uint)(0);
 
-uint x = AA;
-uint z = CC;
-char w = (char)(FOO);
-ushort v = (ushort)(FOO);
-uint z2 = DD;
+static uint x = AA;
+static uint z = CC;
+static char w = (char)(FOO);
+static ushort v = (ushort)(FOO);
+static uint z2 = DD;
 
 func void test()
 {
@@ -20,7 +20,7 @@ func void test()
 // #expect: constants.ll
 
 @constants.AA = protected constant i8 -1, align 1
-@constants.BB = protected constant i8 -56, align 1
+@constants.BB = constant i8 -56, align 1
 @constants.CC = protected constant i32 -1, align 4
 @constants.DD = protected constant i32 -1, align 4
 @constants.x = protected global i32 255, align 4

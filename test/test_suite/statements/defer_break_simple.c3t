@@ -1,11 +1,11 @@
 module test;
 
-public func void test2() {}
-public func void testA() {}
-public func void testB() {}
-public func void test3() {}
+func void test2() {}
+func void testA() {}
+func void testB() {}
+func void test3() {}
 
-public func int main(int argc)
+func int main(int argc)
 {
 	int a = 0;
     while (a)

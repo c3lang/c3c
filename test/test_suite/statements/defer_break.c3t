@@ -2,19 +2,19 @@ module foo;
 
 extern func void printf(char* message, ...);
 
-public func void defer1() {}
-public func void defer2() {}
-public func void defer3() {}
-public func void defer4() {}
-public func void defer5() {}
-public func void defer6() {}
-public func void defer7() {}
-public func void defer8() {}
-public func void defer9() {}
-public func void defer10() {}
-public func void defer11() {}
+func void defer1() {}
+func void defer2() {}
+func void defer3() {}
+func void defer4() {}
+func void defer5() {}
+func void defer6() {}
+func void defer7() {}
+func void defer8() {}
+func void defer9() {}
+func void defer10() {}
+func void defer11() {}
 
-public func int main(int argc)
+func int main(int argc)
 {
 	int a = 0;
     {

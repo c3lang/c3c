@@ -1,5 +1,5 @@
 
-public func int main()
+func int main()
 {
     do FOO:
     {

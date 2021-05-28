@@ -1,6 +1,6 @@
 module test;
 
-Foo a;
+static Foo a;
 
 struct Foo
 {

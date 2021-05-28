@@ -13,8 +13,8 @@ int myenum_sizeof = MyEnum.sizeof;
 
 // #expect: compile_time.ll
 
-@compile_time.myenum_max = protected global i32 14, align 4
-@compile_time.myenum_min = protected global i32 -5, align 4
-@compile_time.myenum_elements = protected global i32 3, align 4
-@compile_time.myenum_alignof = protected global i32 2, align 4
-@compile_time.myenum_sizeof = protected global i32 2, align 4
+@compile_time.myenum_max = global i32 14, align 4
+@compile_time.myenum_min = global i32 -5, align 4
+@compile_time.myenum_elements = global i32 3, align 4
+@compile_time.myenum_alignof = global i32 2, align 4
+@compile_time.myenum_sizeof = global i32 2, align 4

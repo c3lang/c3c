@@ -1,13 +1,13 @@
 // #file: file1.c3
 module foo;
 
-public int a;
-public int b;
+int a;
+int b;
 
 // #file: file2.c3
 module bar;
-public int a;
-public int b;
+int a;
+int b;
 
 // #file: file3.c3
 
@@ -15,9 +15,9 @@ module baz;
 import foo;
 import bar;
 
-public int a;
+int a;
 
-func void test2()
+static func void test2()
 {
     int c = a;  // This is fine.
     c = foo::b;

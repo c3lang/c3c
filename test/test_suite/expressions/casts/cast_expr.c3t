@@ -1,6 +1,6 @@
 module cast_expr;
 
-public func int main(int argc, char** argv)
+func int main(int argc, char** argv)
 {
     int a = 10;
 

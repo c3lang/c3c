@@ -6,16 +6,16 @@ struct Foo
     long bar;
 }
 
-usize x = Foo.sizeof;
+static usize x = Foo.sizeof;
 
-Foo foo1 = { 1, 2 };
-Foo foo2 = { .foo = 2 };
-Foo foo3 = { .bar = 3 };
-Foo foo4 = { .bar = 4, .foo = 4, .bar = 1 };
-Foo foo5 = {};
-Foo foo6;
-const Foo FOO7 = { 1, 2 };
-Foo foo8 = FOO7;
+static Foo foo1 = { 1, 2 };
+static Foo foo2 = { .foo = 2 };
+static Foo foo3 = { .bar = 3 };
+static Foo foo4 = { .bar = 4, .foo = 4, .bar = 1 };
+static Foo foo5 = {};
+static Foo foo6;
+static const Foo FOO7 = { 1, 2 };
+static Foo foo8 = FOO7;
 
 // #expect: structo.ll
 

@@ -71,7 +71,7 @@ void recover_top_level(Context *context)
 	{
 		switch (context->tok.type)
 		{
-			case TOKEN_PUBLIC:
+			case TOKEN_STATIC:
 			case TOKEN_STRUCT:
 			case TOKEN_INTERFACE:
 			case TOKEN_IMPORT:
@@ -1999,7 +1999,7 @@ static inline Decl *parse_template_declaration(Context *context, Visibility visi
 	Decl **body = NULL;
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
-		Decl *statement = parse_top_level_statement(context);
+		Decl *statement = TRY_DECL_OR(parse_top_level_statement(context), poisoned_decl);
 		vec_add(body, statement);
 	}
 	decl->template_decl.body = body;
@@ -2029,11 +2029,6 @@ static inline Decl *parse_interface_declaration(Context *context, Visibility vis
 
 	while (!TOKEN_IS(TOKEN_RBRACE))
 	{
-		if (TOKEN_IS(TOKEN_PUBLIC))
-		{
-			SEMA_TOKEN_ERROR(context->tok, "Interface functions cannot have visibility.");
-			return poisoned_decl;
-		}
 		if (!TOKEN_IS(TOKEN_FUNC))
 		{
 			SEMA_TOKEN_ERROR(context->tok, "Expected a function here.");
@@ -2052,11 +2047,8 @@ static inline bool check_no_visibility_before(Context *context, Visibility visib
 {
 	switch (visibility)
 	{
-		case VISIBLE_PUBLIC:
-			SEMA_TOKEN_ERROR(context->tok, "Unexpected 'public' before '%.*s'.", TOKLEN(context->tok.id), TOKSTR(context->tok.id));
-			return false;
-		case VISIBLE_LOCAL:
-			SEMA_TOKEN_ERROR(context->tok, "Unexpected 'local' before '%.*s'.", TOKLEN(context->tok.id), TOKSTR(context->tok.id));
+		case VISIBLE_MODULE:
+			SEMA_TOKEN_ERROR(context->tok, "Unexpected 'static' before '%.*s'.", TOKLEN(context->tok.id), TOKSTR(context->tok.id));
 			return false;
 		case VISIBLE_EXTERN:
 			SEMA_TOKEN_ERROR(context->tok, "Unexpected 'extern' before '%.*s'.", TOKLEN(context->tok.id), TOKSTR(context->tok.id));
@@ -2261,11 +2253,11 @@ Decl *parse_top_level_statement(Context *context)
 {
 	Ast *docs = NULL;
 	if (!parse_docs(context, &docs)) return poisoned_decl;
-	Visibility visibility = VISIBLE_MODULE;
+	Visibility visibility = VISIBLE_PUBLIC;
 	switch (context->tok.type)
 	{
-		case TOKEN_PUBLIC:
-			visibility = VISIBLE_PUBLIC;
+		case TOKEN_STATIC:
+			visibility = VISIBLE_MODULE;
 			advance(context);
 			break;
 		case TOKEN_EXTERN:
