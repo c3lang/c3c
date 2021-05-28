@@ -9,7 +9,7 @@ func void test7() {}
 func void test8() {}
 func void test9() {}
 
-public func int main(int argc)
+func int main(int argc)
 {
     defer test1();
     int a = 0;

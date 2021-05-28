@@ -6,7 +6,7 @@ struct Foo
     int x, y;
 }
 
-Foo[10] array;
+static Foo[10] array;
 
 // #expect: test.ll
 

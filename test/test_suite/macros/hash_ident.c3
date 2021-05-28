@@ -4,15 +4,15 @@ macro int cofefe(#a)
     return #a + #a;
 }
 
-int abc = 1;
+static int abc = 1;
 
-public func int xx()
+func int xx()
 {
     abc++;
     return abc;
 }
 
-public func void main()
+func void main()
 {
     define $x = 0;
     int x = 0;

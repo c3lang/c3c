@@ -29,12 +29,12 @@ extern func int _putchar(char c) @cname("putchar");
 
 extern File *__stdinp;
 
-public func int putchar(char c) @inline
+func int putchar(char c) @inline
 {
     return _putchar(c);
 }
 
-public func int print(char *message)
+func int print(char *message)
 {
     char* pointer = message;
     while (*pointer != '\0')
@@ -45,7 +45,7 @@ public func int print(char *message)
     return 1;
 }
 
-public func int println(char *message) @inline
+func int println(char *message) @inline
 {
     return _puts(message);
 }

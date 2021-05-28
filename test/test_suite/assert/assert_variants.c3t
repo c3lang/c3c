@@ -1,10 +1,10 @@
 
-public func int foo()
+func int foo()
 {
     return 1;
 }
 
-public func void test()
+func void test()
 {
     int x = foo();
     int y = foo();

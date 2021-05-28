@@ -1,4 +1,4 @@
-public func int main()
+func int main()
 {
     for (;;);
 

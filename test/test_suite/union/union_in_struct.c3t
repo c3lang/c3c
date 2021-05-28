@@ -23,7 +23,7 @@ func void test(Blend_Map_Entry* foo)
 %Blend_Map_Entry = type { %vals }
 %vals = type { [2 x double], [8 x i8] }
 
-@test.a = protected global { { [5 x float], [4 x i8] } } { { [5 x float], [4 x i8] } { [5 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00, float 5.000000e+00], [4 x i8] undef } }, align 8
-@test.b = protected global %Blend_Map_Entry { %vals { [2 x double] [double 6.000000e+00, double 7.000000e+00], [8 x i8] undef } }, align 8
-@test.c = protected global { { { [2 x float], float, [2 x float] }, [4 x i8] } } { { { [2 x float], float, [2 x float] }, [4 x i8] } { { [2 x float], float, [2 x float] } { [2 x float] zeroinitializer, float 1.000000e+00, [2 x float] zeroinitializer }, [4 x i8] undef } }, align 8
-@test.d = protected global { { [5 x float], [4 x i8] } } { { [5 x float], [4 x i8] } { [5 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00, float 5.000000e+00], [4 x i8] undef } }, align 8
+@test.a = global { { [5 x float], [4 x i8] } } { { [5 x float], [4 x i8] } { [5 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00, float 5.000000e+00], [4 x i8] undef } }, align 8
+@test.b = global %Blend_Map_Entry { %vals { [2 x double] [double 6.000000e+00, double 7.000000e+00], [8 x i8] undef } }, align 8
+@test.c = global { { { [2 x float], float, [2 x float] }, [4 x i8] } } { { { [2 x float], float, [2 x float] }, [4 x i8] } { { [2 x float], float, [2 x float] } { [2 x float] zeroinitializer, float 1.000000e+00, [2 x float] zeroinitializer }, [4 x i8] undef } }, align 8
+@test.d = global { { [5 x float], [4 x i8] } } { { [5 x float], [4 x i8] } { [5 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00, float 5.000000e+00], [4 x i8] undef } }, align 8

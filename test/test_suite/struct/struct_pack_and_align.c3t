@@ -8,7 +8,7 @@ struct Foo1 @packed @align(4)
 }
 
 $assert(Foo1.sizeof == 12);
-public Foo1 foo1 = { 1, 2 };
+Foo1 foo1 = { 1, 2 };
 
 // <{ i8, i64, [3 x i8] }>
 struct Foo2 @packed @align(4)
@@ -18,7 +18,7 @@ struct Foo2 @packed @align(4)
 }
 
 $assert(Foo2.sizeof == 12);
-public Foo2 foo2 = { 1, 2 };
+Foo2 foo2 = { 1, 2 };
 
 // <{ i8, i64, [7 x i8] }>
 struct Foo3 @packed @align(8)
@@ -27,7 +27,7 @@ struct Foo3 @packed @align(8)
     long bar;
 }
 
-public Foo3 foo3 = { 1, 2 };
+Foo3 foo3 = { 1, 2 };
 $assert(Foo3.sizeof == 16);
 
 // <{ i8, i64 }>
@@ -38,7 +38,7 @@ struct Foo4 @packed
 }
 
 $assert(Foo4.sizeof == 9);
-public Foo4 foo4 = { 1, 2 };
+Foo4 foo4 = { 1, 2 };
 
 // { i32, [12 x i8], i8, [15 x i8] }
 struct Foo5
@@ -48,7 +48,7 @@ struct Foo5
 }
 
 $assert(Foo5.sizeof == 32);
-public Foo5 foo5 = { 1, 2 };
+Foo5 foo5 = { 1, 2 };
 
 func int test5(ichar x)
 {
@@ -65,7 +65,7 @@ struct Foo6 @packed
 }
 
 $assert(Foo6.sizeof == 8);
-public Foo6 foo6 = { 1, 2, 3 };
+Foo6 foo6 = { 1, 2, 3 };
 
 // #expect: struct2.ll
 

@@ -5,32 +5,32 @@ extern func void* _realloc(void* ptr, usize bytes) @cname("realloc");
 extern func void* _calloc(usize bytes, usize elements) @cname("calloc");
 extern func void _free(void* ptr) @cname("free");
 
-public enum AllocationKind
+enum AllocationKind
 {
     ALLOC,
     REALLOC,
     FREE,
 }
 
-public enum AllocationFailureKind
+enum AllocationFailureKind
 {
     OUT_OF_MEMORY
 }
 
-public error AllocationFailure
+error AllocationFailure
 {
     AllocationFailureKind failureKind;
 }
 
-public define AllocatorFunction = func void!(void *data, void** pointer, usize bytes, usize alignment, AllocationKind kind);
+define AllocatorFunction = func void!(void *data, void** pointer, usize bytes, usize alignment, AllocationKind kind);
 
-public struct Allocator
+struct Allocator
 {
     AllocatorFunction allocation_function;
     void *data;
 }
 
-public func void! system_malloc_function(void *unused, void** pointer, usize bytes, usize alignment, AllocationKind kind) @inline
+func void! system_malloc_function(void *unused, void** pointer, usize bytes, usize alignment, AllocationKind kind) @inline
 {
     switch (kind)
     {
@@ -52,7 +52,7 @@ public func void! system_malloc_function(void *unused, void** pointer, usize byt
     $unreachable;
 }
 
-public struct RingAllocator
+struct RingAllocator
 {
     char *data;
     usize size;
@@ -60,7 +60,7 @@ public struct RingAllocator
 }
 
 
-public func void* RingAllocator.alloc(RingAllocator *allocator, usize size)
+func void* RingAllocator.alloc(RingAllocator *allocator, usize size)
 {
     if (size > allocator.size) return null;
     // Wraparound? If so, start at the beginning.
@@ -74,7 +74,7 @@ public func void* RingAllocator.alloc(RingAllocator *allocator, usize size)
     return data;
 }
 
-public func void* RingAllocator.realloc(RingAllocator *allocator, void* ptr, usize size)
+func void* RingAllocator.realloc(RingAllocator *allocator, void* ptr, usize size)
 {
     if (size > allocator.size) return null;
     assert(allocator.data >= ptr && ptr < allocator.data + size, "Realloc on other allocator.");
@@ -111,29 +111,29 @@ public func void* RingAllocator.realloc(RingAllocator *allocator, void* ptr, usi
     return allocator.data;
 }
 
-public Allocator main_allocator = { &system_malloc_function, null };
+Allocator main_allocator = { &system_malloc_function, null };
 
-public macro malloc($Type)
+macro malloc($Type)
 {
     return ($Type*)(mem::alloc($Type.sizeof));
 }
 
-public func void* alloc(usize size, usize elements = 1) @inline
+func void* alloc(usize size, usize elements = 1) @inline
 {
     return _malloc(size * elements);
 }
 
-public func void* calloc(usize size, usize elements = 1) @inline
+func void* calloc(usize size, usize elements = 1) @inline
 {
     return _calloc(size, elements);
 }
 
-public func void* realloc(void *ptr, usize size) @inline
+func void* realloc(void *ptr, usize size) @inline
 {
     return _realloc(ptr, size);
 }
 
-public func void free(void* ptr) @inline
+func void free(void* ptr) @inline
 {
     _free(ptr);
 }

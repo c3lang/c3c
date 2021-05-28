@@ -1,12 +1,12 @@
 module std::math;
 
-union DoubleLong
+static union DoubleLong
 {
     double f;
     ulong i;
 }
 
-public func double log10(double x)
+func double log10(double x)
 {
     const double IVLN10HI = 4.34294481878168880939e-01; /* 0x3fdbcb7b, 0x15200000 */
     const double IVLN10LO = 2.50829467116452752298e-11; /* 0x3dbb9438, 0xca9aadd5 */
@@ -108,7 +108,7 @@ func double cos_limited(double x, double y)
 	return w + (((1.0 - w) - hz) + (z*r - x*y));
 }
 
-public func double sin_limited(double x, double y, bool iy)
+static func double sin_limited(double x, double y, bool iy)
 {
     const double S1 = -1.66666666666666324348e-01;  // 0xBFC55555, 0x55555549
     const double S2 = 8.33333333332248946124e-03; // 0x3F811111, 0x1110F8A6
