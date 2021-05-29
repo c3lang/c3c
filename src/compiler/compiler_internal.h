@@ -1277,7 +1277,7 @@ typedef struct Context_
 	};
 	Decl* locals[MAX_LOCALS];
 	DynamicScope scopes[MAX_SCOPE_DEPTH];
-	Lexer lexer;
+	Lexer *lexer;
 	Token tok;
 	TokenId prev_tok;
 	Token next_tok;
@@ -1663,7 +1663,7 @@ static inline TokenType token_type(Token token) { return toktypeptr(token.id.ind
 #define TOKVALID(_tok) (_tok.index != 0)
 Decl *module_find_symbol(Module *module, const char *symbol);
 
-bool parse_file(Context *context);
+bool parse_file(File *file);
 Path *path_create_from_string(const char *string, size_t len, SourceSpan span);
 Path *path_find_parent_path(Path *path);
 
