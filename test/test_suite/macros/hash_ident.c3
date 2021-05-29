@@ -19,6 +19,6 @@ func void main()
     @cofefe(x += 1);
     @cofefe(xx());
     @cofefe($x += 1); // #error: Cannot modify '$x' inside of a runtime scope.
-    @cofefe(y += 1); // #error: Identifier 'y' could not be found.
+    @cofefe(y += 1); // #error: identifier 'y' could not be found
 }
 

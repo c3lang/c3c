@@ -471,9 +471,6 @@ Decl *copy_decl(Decl *decl)
 	{
 		case DECL_POISONED:
 			break;
-		case DECL_TEMPLATE:
-			MACRO_COPY_DECL_LIST(copy->template_decl.body);
-			break;
 		case DECL_UNION:
 		case DECL_STRUCT:
 		case DECL_ERR:
@@ -564,9 +561,9 @@ Decl *copy_decl(Decl *decl)
 		case DECL_DEFINE:
 			switch (decl->define_decl.define_kind)
 			{
-				case DEFINE_TYPE_TEMPLATE:
-				case DEFINE_IDENT_TEMPLATE:
-					MACRO_COPY_TYPE_LIST(decl->define_decl.template_params);
+				case DEFINE_TYPE_GENERIC:
+				case DEFINE_IDENT_GENERIC:
+					MACRO_COPY_TYPE_LIST(decl->define_decl.generic_params);
 					break;
 				case DEFINE_IDENT_ALIAS:
 					break;

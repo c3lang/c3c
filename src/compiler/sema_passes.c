@@ -57,7 +57,7 @@ void sema_analysis_pass_process_imports(Module *module)
 				continue;
 			}
 
-			// 6. Assign the module.
+			// 7. Assign the module.
 			DEBUG_LOG("* Import of %s.", path->module);
 			import->module = import_module;
 			for (unsigned j = 0; j < i; j++)
@@ -89,6 +89,7 @@ void sema_analysis_pass_register_globals(Module *module)
 	VECEACH(module->contexts, index)
 	{
 		Context *context = module->contexts[index];
+		context->module = module;
 		DEBUG_LOG("Processing %s.", context->file->name);
 		Decl **decls = context->global_decls;
 		VECEACH(decls, i)
@@ -200,10 +201,6 @@ void sema_analysis_pass_decls(Module *module)
 		VECEACH(context->types, i)
 		{
 			sema_analyse_decl(context, context->types[i]);
-		}
-		VECEACH(context->templates, i)
-		{
-			sema_analyse_decl(context, context->templates[i]);
 		}
 		VECEACH(context->macros, i)
 		{

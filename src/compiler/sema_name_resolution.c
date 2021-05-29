@@ -26,85 +26,6 @@ static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 	return 0 == memcmp(path_to_check->module + compare_start, path_to_find->module, path_to_find->len);
 }
 
-static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl,
-                                      Decl **private_decl)
-{
-	assert(path && "Expected path.");
-	*ambiguous_other_decl = NULL;
-	Decl *decl = NULL;
-	bool path_found = false;
-
-	// 0. std module special handling.
-	if (path->module == global_context.std_module_path.module)
-	{
-		return module_find_symbol(&global_context.std_module, symbol);
-	}
-
-	// 1. Do we match our own path?
-	if (matches_subpath(context->module->name, path))
-	{
-		// 2. If so just get the symbol.
-		return module_find_symbol(context->module, symbol);
-	}
-
-	Decl **imports = context_get_imports(context);
-	printf("Looking for path: %s\n", path->module);
-	// 3. Loop over imports.
-	VECEACH(imports, i)
-	{
-		Decl *import = imports[i];
-
-		// 5. Can we match a subpath?
-		if (path->len > import->import.path->len) continue;
-		if (!matches_subpath(import->import.path, path)) continue;
-
-		// 6. We have a sub path match at least.
-		path_found = true;
-
-		// 7. Find the symbol
-		Decl *found = module_find_symbol(import->module, symbol);
-
-		// 8. No match, so continue
-		if (!found) continue;
-
-		// 9. If we found something private and we don't import privately?
-		if (found->visibility <= VISIBLE_MODULE && !import->import.private && !decl)
-		{
-			// 10. Register this as a possible private decl.
-			*private_decl = found;
-			continue;
-		}
-
-		// 11. Did we already have a match?
-		if (decl)
-		{
-			// 12. Then set an ambiguous match.
-			*ambiguous_other_decl = found;
-			continue;
-		}
-
-		// 13. We've found a match.
-		decl = found;
-		*private_decl = NULL;
-	}
-	// 14. If we didn't find one.
-	if (!decl)
-	{
-		// 15. If the path wasn't found, then let's say that.
-		if (!path_found)
-		{
-			SEMA_ERROR(path, "Unknown module '%.*s', did you forget to import it?", path->len, path->module);
-			return poisoned_decl;
-		}
-		// 16. Otherwise return null.
-		return NULL;
-	}
-
-	// 17. Store that this external symbol is used and return.
-	context_register_external_symbol(context, decl);
-	return decl;
-}
-
 Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol)
 {
 	if (context->current_scope)
@@ -120,15 +41,75 @@ Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char 
 	return NULL;
 }
 
-Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl,
-                          Decl **private_decl)
+static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl,
+                                      Decl **private_decl, bool *path_found)
 {
-	if (path)
+	assert(path && "Expected path.");
+	*ambiguous_other_decl = NULL;
+	Decl *decl = NULL;
+	*path_found = false;
+
+	// 0. std module special handling.
+	if (path->module == global_context.std_module_path.module)
 	{
-		return sema_resolve_path_symbol(context, symbol, path, ambiguous_other_decl, private_decl);
+		return module_find_symbol(&global_context.std_module, symbol);
 	}
 
-	*ambiguous_other_decl = NULL;
+	// 1. Do we match our own path?
+	if (matches_subpath(context->module->name, path))
+	{
+		// 2. If so just get the symbol.
+		return module_find_symbol(context->module, symbol);
+	}
+
+	// 3. Loop over imports.
+	VECEACH(context->imports, i)
+	{
+		Decl *import = context->imports[i];
+
+		if (import->module->parameters) continue;
+
+		// 4. Can we match a subpath?
+		if (path->len > import->import.path->len) continue;
+		if (!matches_subpath(import->import.path, path)) continue;
+
+		// 5. We have a sub path match at least.
+		*path_found = true;
+
+		// 6. Find the symbol
+		Decl *found = module_find_symbol(import->module, symbol);
+
+		// 7. No match, so continue
+		if (!found) continue;
+
+		// 8. If we found something private and we don't import privately?
+		if (found->visibility <= VISIBLE_MODULE && !import->import.private && !decl)
+		{
+			// 9. Register this as a possible private decl.
+			*private_decl = found;
+			continue;
+		}
+
+		// 10. Did we already have a match?
+		if (decl)
+		{
+			// 11. Then set an ambiguous match.
+			*ambiguous_other_decl = found;
+			continue;
+		}
+
+		// 12. We've found a match.
+		decl = found;
+		*private_decl = NULL;
+	}
+
+	return decl;
+}
+
+static Decl *sema_resolve_no_path_symbol(Context *context, const char *symbol,
+                                         Decl **ambiguous_other_decl, Decl **private_decl)
+{
+	Decl *decl = NULL;
 
 	if (context->current_scope)
 	{
@@ -143,51 +124,224 @@ Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl
 	}
 
 	// Search in file scope.
-	Decl *decl = stable_get(&context->local_symbols, symbol);
+	decl = stable_get(&context->local_symbols, symbol);
 
 	if (decl) return decl;
 
 	// Search in the module.
 	decl = module_find_symbol(context->module, symbol);
 
-	// Is this a template, in that case we also search the parent module.
-	if (!decl && context->module->template_parent_context)
-	{
-		decl = module_find_symbol(context->module->template_parent_context->module, symbol);
-	}
-
-	if (decl)
-	{
-		context_register_external_symbol(context, decl);
-		return decl;
-	}
+	if (decl) return decl;
 
 	// Search in imports
-	Decl **imports = context_get_imports(context);
-	VECEACH(imports, i)
+	VECEACH(context->imports, i)
 	{
-		Decl *import = imports[i];
+		Decl *import = context->imports[i];
 		if (!decl_ok(import)) continue;
+
+		// Skip parameterized modules
+		if (import->module->parameters) continue;
+
 		Decl *found = module_find_symbol(import->module, symbol);
 		if (!found) continue;
 		// If we found something private and we don't import privately?
 		if (found->visibility <= VISIBLE_MODULE && !import->import.private && !decl)
 		{
-			// 10. Register this as a possible private decl.
+			// Register this as a possible private decl.
 			*private_decl = found;
 			continue;
 		}
 		if (decl)
 		{
+			// Register this an ambiguous decl.
 			*ambiguous_other_decl = found;
 			continue;
 		}
+
 		decl = found;
-		*private_decl = found;
+		private_decl = NULL;
 	}
-	if (!decl) return NULL;
-	context_register_external_symbol(context, decl);
 	return decl;
+}
+
+
+static void sema_report_error_on_decl(const char *symbol_str, TokenId symbol, Decl *found, Decl *ambiguous_decl,
+                                      Decl *private_decl)
+{
+	if (!found && private_decl)
+	{
+		SEMA_TOKID_ERROR(symbol, "The %s '%s' is not visible from this module.", decl_to_name(private_decl), symbol_str);
+		return;
+	}
+	if (ambiguous_decl)
+	{
+		assert(found);
+		const char *symbol_type = decl_to_name(found);
+		SEMA_TOKID_ERROR(symbol,
+		                 "The %s '%s' is defined in both '%s' and '%s', please use either %s::%s or %s::%s to resolve the ambiguity.",
+		                 symbol_type,
+		                 symbol_str,
+		                 found->module->name->module,
+		                 ambiguous_decl->module->name->module,
+		                 found->module->name->module,
+		                 symbol_str,
+		                 ambiguous_decl->module->name->module,
+		                 symbol_str);
+		return;
+	}
+	assert(!found);
+	switch (TOKTYPE(symbol))
+	{
+		case TOKEN_TYPE_IDENT:
+			SEMA_TOKID_ERROR(symbol, "The type '%s' could not be found, did you spell it right?", symbol_str);
+			break;
+		case TOKEN_CONST_IDENT:
+			SEMA_TOKID_ERROR(symbol, "The constant '%s' could not be found, did you spell it right?", symbol_str);
+			break;
+		default:
+			SEMA_TOKID_ERROR(symbol, "The identifier '%s' could not be found, did you spell it right?", symbol_str);
+			break;
+	}
+}
+
+static Decl *sema_resolve_symbol(Context *context, TokenId symbol, Path *path, bool report_error)
+{
+	Decl *ambiguous_other_decl = NULL;
+	Decl *private_decl = NULL;
+	bool path_found = false;
+	Decl *decl;
+	const char *symbol_str = TOKSTR(symbol);
+	if (path)
+	{
+		decl = sema_resolve_path_symbol(context, symbol_str, path, &ambiguous_other_decl, &private_decl, &path_found);
+		if (!decl && !path_found && report_error)
+		{
+			SEMA_ERROR(path, "Unknown module '%.*s', did you forget to import it?", path->len, path->module);
+			return poisoned_decl;
+		}
+	}
+	else
+	{
+		decl = sema_resolve_no_path_symbol(context, symbol_str, &ambiguous_other_decl, &private_decl);
+	}
+
+	if (!decl || ambiguous_other_decl)
+	{
+		if (!report_error) return NULL;
+		sema_report_error_on_decl(symbol_str, symbol, decl, ambiguous_other_decl, private_decl);
+		return poisoned_decl;
+	}
+	if (decl->module && decl->module != context->module)
+	{
+		context_register_external_symbol(context, decl);
+	}
+	return decl;
+}
+
+Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *path)
+{
+	Decl *ambiguous_other_decl = NULL;
+	Decl *private_decl = NULL;
+	bool path_found = false;
+	Decl *decl = NULL;
+	const char *symbol_str = TOKSTR(symbol);
+	if (path)
+	{
+		// 3. Loop over imports.
+		VECEACH(context->imports, i)
+		{
+			Decl *import = context->imports[i];
+
+			// Skip any without parameters.
+			if (!import->module->parameters) continue;
+
+			// 5. Can we match a subpath?
+			if (path->len > import->import.path->len) continue;
+			if (!matches_subpath(import->import.path, path)) continue;
+
+			// 6. We have a sub path match at least.
+			path_found = true;
+
+			// 7. Find the symbol
+			Decl *found = module_find_symbol(import->module, symbol_str);
+
+			// 8. No match, so continue
+			if (!found) continue;
+
+			// 9. If we found something private and we don't import privately?
+			if (found->visibility <= VISIBLE_MODULE && !import->import.private && !decl)
+			{
+				// 10. Register this as a possible private decl.
+				private_decl = found;
+				continue;
+			}
+
+			// 11. Did we already have a match?
+			if (decl)
+			{
+				// 12. Then set an ambiguous match.
+				ambiguous_other_decl = found;
+				continue;
+			}
+
+			// 13. We've found a match.
+			decl = found;
+			private_decl = NULL;
+		}
+		// 14. Error report
+		if (!decl || ambiguous_other_decl)
+		{
+			sema_report_error_on_decl(symbol_str, symbol, decl, ambiguous_other_decl, private_decl);
+			return poisoned_decl;
+		}
+		return decl;
+	}
+	// 15. Loop over imports.
+	VECEACH(context->imports, i)
+	{
+		Decl *import = context->imports[i];
+
+		// Skip any without parameters.
+		if (!import->module->parameters) continue;
+
+		// 7. Find the symbol
+		Decl *found = module_find_symbol(import->module, symbol_str);
+
+		// 8. No match, so continue
+		if (!found) continue;
+
+		// 9. If we found something private and we don't import privately?
+		if (found->visibility <= VISIBLE_MODULE && !import->import.private && !decl)
+		{
+			// 10. Register this as a possible private decl.
+			private_decl = found;
+			continue;
+		}
+
+		// 11. Did we already have a match?
+		if (decl)
+		{
+			// 12. Then set an ambiguous match.
+			ambiguous_other_decl = found;
+			continue;
+		}
+
+		// 13. We've found a match.
+		decl = found;
+		private_decl = NULL;
+	}
+	// 14. Error report
+	if (!decl || ambiguous_other_decl)
+	{
+		sema_report_error_on_decl(symbol_str, symbol, decl, ambiguous_other_decl, private_decl);
+		return poisoned_decl;
+	}
+	return decl;
+}
+
+Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, bool handle_error)
+{
+	return sema_resolve_symbol(context, symbol, path, handle_error);
 }
 
 static inline bool sema_append_local(Context *context, Decl *decl)
@@ -209,9 +363,7 @@ bool sema_add_member(Context *context, Decl *decl)
 
 bool sema_add_local(Context *context, Decl *decl)
 {
-	Decl *dummy;
-	Decl *dummy2;
-	Decl *other = sema_resolve_symbol(context, decl->name, NULL, &dummy, &dummy2);
+	Decl *other = sema_resolve_normal_symbol(context, decl->name_token, NULL, false);
 	if (other)
 	{
 		sema_shadow_error(decl, other);
