@@ -940,7 +940,7 @@ static inline Decl *sema_analyse_label(Context *context, Ast *stmt)
 {
 	Decl *ambiguous;
 	Decl *dummy;
-	Decl *target = sema_resolve_symbol(context, stmt->contbreak_stmt.label.name, NULL, &ambiguous, &dummy);
+	Decl *target = sema_resolve_normal_symbol(context, stmt->contbreak_stmt.label.span, NULL, false);
 	if (!target)
 	{
 		SEMA_ERROR(stmt, "Cannot find a labelled statement with the name '%s'.", stmt->contbreak_stmt.label.name);
@@ -1017,9 +1017,7 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 
 	if (statement->next_stmt.label.name)
 	{
-		Decl *ambiguous;
-		Decl *dummy;
-		Decl *target = sema_resolve_symbol(context, statement->next_stmt.label.name, NULL, &ambiguous, &dummy);
+		Decl *target = sema_resolve_normal_symbol(context, statement->next_stmt.label.span, NULL, false);
 		if (!target)
 		{
 			SEMA_ERROR(statement, "Cannot find a switch statement with the name '%s'.", statement->next_stmt.label.name);
@@ -1593,10 +1591,9 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 		{
 			Decl *ambiguous_decl;
 			Decl *dummy;
-			Decl *error_var_decl = sema_resolve_symbol(context,
-			                                           left->identifier_expr.identifier,
-			                                           left->identifier_expr.path,
-			                                           &ambiguous_decl, &dummy);
+			Decl *error_var_decl = sema_resolve_normal_symbol(context,
+			                                                  left->identifier_expr.identifier,
+			                                                  left->identifier_expr.path, false);
 			if (!error_var_decl)
 			{
 				error_var = decl_new_var(left->span.loc, type_info_new_base(type_error, left->span), VARDECL_LOCAL,

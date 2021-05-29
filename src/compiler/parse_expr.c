@@ -186,7 +186,7 @@ static Expr *parse_macro_ident(Context *context, Expr *left)
 	advance_and_verify(context, TOKEN_AT);
 	if (TOKEN_IS(TOKEN_CT_IDENT))
 	{
-		macro_ident->ct_macro_ident_expr.identifier = TOKSTR(context->tok);
+		macro_ident->ct_macro_ident_expr.identifier = context->tok.id;
 		macro_ident->expr_kind = EXPR_MACRO_CT_IDENTIFIER;
 		advance_and_verify(context, TOKEN_CT_IDENT);
 		RANGE_EXTEND_PREV(macro_ident);
@@ -195,7 +195,7 @@ static Expr *parse_macro_ident(Context *context, Expr *left)
 	bool had_error = false;
 	macro_ident->identifier_expr.path = parse_path_prefix(context, &had_error);
 	if (had_error) return poisoned_expr;
-	macro_ident->identifier_expr.identifier = TOKSTR(context->tok);
+	macro_ident->identifier_expr.identifier = context->tok.id;
 	CONSUME_OR(TOKEN_IDENT, poisoned_expr);
 	RANGE_EXTEND_PREV(macro_ident);
 	return macro_ident;
@@ -552,7 +552,7 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 static Expr *parse_identifier_with_path(Context *context, Path *path)
 {
 	Expr *expr = EXPR_NEW_TOKEN(context->tok.type == TOKEN_CONST_IDENT ? EXPR_CONST_IDENTIFIER : EXPR_IDENTIFIER , context->tok);
-	expr->identifier_expr.identifier = TOKSTR(context->tok);
+	expr->identifier_expr.identifier = context->tok.id;
 	expr->identifier_expr.path = path;
 	advance(context);
 	return expr;
@@ -567,7 +567,7 @@ static Expr *parse_ct_ident(Context *context, Expr *left)
 		return poisoned_expr;
 	}
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_IDENT, context->tok);
-	expr->ct_ident_expr.identifier = TOKSTR(context->tok);
+	expr->ct_ident_expr.identifier = context->tok.id;
 	advance(context);
 	return expr;
 }
@@ -576,7 +576,7 @@ static Expr *parse_hash_ident(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_HASH_IDENT, context->tok);
-	expr->ct_ident_expr.identifier = TOKSTR(context->tok);
+	expr->ct_ident_expr.identifier = context->tok.id;
 	advance(context);
 	return expr;
 }

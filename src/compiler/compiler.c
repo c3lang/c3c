@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
+#include "parser_internal.h"
 #include <unistd.h>
 
 #if PLATFORM_POSIX
@@ -41,6 +42,7 @@ void compiler_init(const char *std_lib_dir)
 	stable_init(&global_context.modules, 64);
 	stable_init(&global_context.scratch_table, 32);
 	global_context.module_list = NULL;
+	global_context.generic_module_list = NULL;
 	stable_init(&global_context.global_symbols, 0x1000);
 	vmem_init(&ast_arena, 4 * 1024);
 	vmem_init(&expr_arena, 4 * 1024);
@@ -144,9 +146,73 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 	}
 }
 
+static void register_generic_decls(Module *module, Decl **decls)
+{
+	VECEACH(decls, i)
+	{
+		Decl *decl = decls[i];
+		decl->module = module;
+		switch (decl->decl_kind)
+		{
+			case DECL_POISONED:
+			case DECL_ARRAY_VALUE:
+			case DECL_ENUM_CONSTANT:
+			case DECL_IMPORT:
+			case DECL_LABEL:
+				continue;
+			case DECL_ATTRIBUTE:
+				break;
+			case DECL_CT_CASE:
+				register_generic_decls(module, decl->ct_case_decl.body);
+				continue;
+			case DECL_CT_ELIF:
+				register_generic_decls(module, decl->ct_elif_decl.then);
+				continue;
+			case DECL_CT_ELSE:
+				register_generic_decls(module, decl->ct_else_decl);
+				continue;
+			case DECL_CT_IF:
+				register_generic_decls(module, decl->ct_if_decl.then);
+				continue;
+			case DECL_CT_SWITCH:
+				register_generic_decls(module, decl->ct_switch_decl.cases);
+				continue;
+			case DECL_DEFINE:
+			case DECL_DISTINCT:
+			case DECL_ENUM:
+			case DECL_GENERIC:
+			case DECL_INTERFACE:
+			case DECL_ERR:
+			case DECL_FUNC:
+			case DECL_MACRO:
+			case DECL_STRUCT:
+			case DECL_TYPEDEF:
+			case DECL_UNION:
+			case DECL_VAR:
+				break;
+		}
+		if (decl->visibility > VISIBLE_MODULE)
+		{
+			stable_set(&module->public_symbols, decl->name, decl);
+		}
+		stable_set(&module->symbols, decl->name, decl);
+	}
+
+}
+static void analyze_generic_module(Module *module)
+{
+	assert(module->parameters);
+	// TODO maybe do this analysis: sema_analysis_pass_process_imports(module);
+	VECEACH(module->contexts, index)
+	{
+		Context *context = module->contexts[index];
+		register_generic_decls(module, context->global_decls);
+	}
+}
+
 static void analyze_to_stage(AnalysisStage stage)
 {
-	for (unsigned i = 0; i < vec_size(global_context.module_list); i++)
+	VECEACH(global_context.module_list, i)
 	{
 		sema_analyze_stage(global_context.module_list[i], stage);
 	}
@@ -196,6 +262,8 @@ void compiler_compile(void)
 		vec_add(global_context.sources, strformat("%s/std/runtime.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/builtin.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/io.c3", global_context.lib_dir));
+		vec_add(global_context.sources, strformat("%s/std/list.c3", global_context.lib_dir));
+		vec_add(global_context.sources, strformat("%s/std/linkedlist.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/mem.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/array.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/math.c3", global_context.lib_dir));
@@ -221,6 +289,10 @@ void compiler_compile(void)
 		error_exit("No source files to compile.");
 	}
 	assert(contexts);
+	VECEACH(global_context.generic_module_list, i)
+	{
+		analyze_generic_module(global_context.generic_module_list[i]);
+	}
 	for (AnalysisStage stage = ANALYSIS_NOT_BEGUN + 1; stage <= ANALYSIS_LAST; stage++)
 	{
 		analyze_to_stage(stage);
@@ -430,7 +502,7 @@ Module *global_context_find_module(const char *name)
 	return stable_get(&global_context.modules, name);
 }
 
-Module *compiler_find_or_create_module(Path *module_name)
+Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters)
 {
 	Module *module = global_context_find_module(module_name->module);
 	if (module) return module;
@@ -440,9 +512,18 @@ Module *compiler_find_or_create_module(Path *module_name)
 	module = CALLOCS(Module);
 	module->name = module_name;
 	module->stage = ANALYSIS_NOT_BEGUN;
+	module->parameters = parameters;
 	stable_init(&module->symbols, 0x10000);
 	stable_set(&global_context.modules, module_name->module, module);
-	vec_add(global_context.module_list, module);
+	if (parameters)
+	{
+		vec_add(global_context.generic_module_list, module);
+	}
+	else
+	{
+		vec_add(global_context.module_list, module);
+	}
+
 	return module;
 }
 

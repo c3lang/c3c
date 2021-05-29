@@ -23,5 +23,5 @@ static func void test2()
     c = foo::b;
     c = bar::b;
     c = foo::a;
-    c = b; // #error: Ambiguous symbol 'b' – both defined in foo and bar, please add the module name to resolve the ambiguity
+    c = b; // #error: global variable 'b' is defined in both 'foo' and 'bar', please use either foo::b or bar::b to resolve the ambiguity
 }

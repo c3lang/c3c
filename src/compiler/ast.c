@@ -46,6 +46,85 @@ static TypeInfo poison_type_info = { .kind = TYPE_INFO_POISON };
 Type *poisoned_type = &poison_type;
 TypeInfo *poisoned_type_info = &poison_type_info;
 
+const char *decl_to_name(Decl *decl)
+{
+	switch (decl->decl_kind)
+	{
+		case DECL_POISONED:
+			return "poisoned decl";
+		case DECL_CT_CASE:
+			return "compile time case";
+		case DECL_CT_ELIF:
+			return "compile time else if";
+		case DECL_CT_ELSE:
+			return "compile time else";
+		case DECL_CT_IF:
+			return "compile time if";
+		case DECL_CT_SWITCH:
+			return "compile time switch";
+		case DECL_ARRAY_VALUE:
+			UNREACHABLE;
+		case DECL_IMPORT:
+			return "import";
+		case DECL_LABEL:
+			return "label";
+		case DECL_ATTRIBUTE:
+			return "attribute";
+		case DECL_DEFINE:
+		case DECL_TYPEDEF:
+			return "define";
+		case DECL_DISTINCT:
+			return "distinct type";
+		case DECL_ENUM:
+			return "enum";
+		case DECL_ENUM_CONSTANT:
+			return "enum value";
+		case DECL_ERR:
+			return "error";
+		case DECL_FUNC:
+			return "function";
+		case DECL_GENERIC:
+			return "generic";
+		case DECL_INTERFACE:
+			return "interface";
+		case DECL_MACRO:
+			return "macro";
+		case DECL_STRUCT:
+			return "struct";
+		case DECL_UNION:
+			return "union";
+		case DECL_VAR:
+			switch (decl->var.kind)
+			{
+				case VARDECL_CONST:
+					return "constant";
+				case VARDECL_GLOBAL:
+					return "global variable";
+				case VARDECL_LOCAL:
+					return "variable";
+				case VARDECL_PARAM:
+					return "parameter";
+				case VARDECL_MEMBER:
+					return "member";
+				case VARDECL_PARAM_CT:
+					return "compile time parameter";
+				case VARDECL_PARAM_CT_TYPE:
+					return "compile time type parameter";
+				case VARDECL_PARAM_REF:
+					return "ref parameter";
+				case VARDECL_PARAM_EXPR:
+					return "extpression parameter";
+				case VARDECL_LOCAL_CT:
+					return "compile time variable";
+				case VARDECL_LOCAL_CT_TYPE:
+					return "compile time type variable";
+				case VARDECL_ALIAS:
+					return "alias";
+			}
+			UNREACHABLE
+	}
+	UNREACHABLE
+}
 void decl_set_external_name(Decl *decl)
 {
 	if (decl->visibility == VISIBLE_EXTERN)
@@ -106,7 +185,6 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_CT_SWITCH:
 		case DECL_CT_CASE:
 		case DECL_DEFINE:
-		case DECL_TEMPLATE:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, !name.index ? "anon" : TOKSTR(name));
@@ -551,27 +629,27 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEXPR(expr->failable_expr);
 			DUMPEND();
 		case EXPR_MACRO_IDENTIFIER:
-			DUMPF("(ident @%s", expr->macro_identifier_expr.identifier);
+			DUMPF("(ident @%s", TOKSTR(expr->macro_identifier_expr.identifier));
 			DUMPEXPC(expr);
 			DUMPEND();
 		case EXPR_IDENTIFIER:
-			DUMPF("(ident %s", expr->identifier_expr.identifier);
+			DUMPF("(ident %s", TOKSTR(expr->identifier_expr.identifier));
 			DUMPEXPC(expr);
 			DUMPEND();
 		case EXPR_CT_IDENT:
-			DUMPF("(ctident %s", expr->ct_ident_expr.identifier);
+			DUMPF("(ctident %s", TOKSTR(expr->ct_ident_expr.identifier));
 			DUMPEXPC(expr);
 			DUMPEND();
 		case EXPR_HASH_IDENT:
-			DUMPF("(hashident %s", expr->hash_ident_expr.identifier);
+			DUMPF("(hashident %s", TOKSTR(expr->hash_ident_expr.identifier));
 			DUMPEXPC(expr);
 			DUMPEND();
 		case EXPR_MACRO_CT_IDENTIFIER:
-			DUMPF("(macroctident @%s", expr->ct_ident_expr.identifier);
+			DUMPF("(macroctident @%s", TOKSTR(expr->ct_ident_expr.identifier));
 			DUMPEXPC(expr);
 			DUMPEND();
 		case EXPR_CONST_IDENTIFIER:
-			DUMPF("(ident %s", expr->identifier_expr.identifier);
+			DUMPF("(ident %s", TOKSTR(expr->identifier_expr.identifier));
 			DUMPEXPC(expr);
 			DUMPEND();
 		case EXPR_MACRO_BLOCK:
@@ -783,9 +861,6 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 	if (!decl) return;
 	switch (decl->decl_kind)
 	{
-		case DECL_TEMPLATE:
-			DUMPF("(template %s", decl->name);
-			DUMPEND();
 		case DECL_INTERFACE:
 			DUMPF("(interface %s", decl->name);
 			DUMPDECLS(decl->interface_decl.functions);

@@ -166,9 +166,6 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 
 	switch (decl->decl_kind)
 	{
-		case DECL_TEMPLATE:
-			SEMA_ERROR(expr, "Templates cannot appear inside of expressions.");
-			return expr_poison(expr);
 		case DECL_FUNC:
 			SEMA_ERROR(expr, "Expected function followed by (...) or prefixed by &.");
 			return expr_poison(expr);
@@ -374,8 +371,9 @@ static inline bool sema_expr_analyse_ternary(Context *context, Type *to, Expr *e
 
 
 
-static inline Decl *decl_find_enum_constant(const char *name, Decl *decl)
+static inline Decl *decl_find_enum_constant(TokenId token, Decl *decl)
 {
+	const char *name = TOKSTR(token);
 	VECEACH(decl->enums.values, i)
 	{
 		Decl *enum_constant = decl->enums.values[i];
@@ -387,7 +385,7 @@ static inline Decl *decl_find_enum_constant(const char *name, Decl *decl)
 	return NULL;
 }
 
-static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name, Decl *decl)
+static inline bool sema_expr_analyse_enum_constant(Expr *expr, TokenId name, Decl *decl)
 {
 	Decl *enum_constant = decl_find_enum_constant(name, decl);
 	if (!enum_constant) return false;
@@ -423,12 +421,10 @@ static inline bool sema_expr_analyse_identifier_resolve(Context *context, Type *
 	Decl *private_symbol = NULL;
 	expr->pure = true;
 
-	DEBUG_LOG("Now resolving %s", id_expr->identifier);
-	Decl *decl = sema_resolve_symbol(context,
-	                                 id_expr->identifier,
-	                                 id_expr->path,
-	                                 &ambiguous_decl,
-	                                 &private_symbol);
+	DEBUG_LOG("Now resolving %s", TOKSTR(id_expr->identifier));
+	Decl *decl = sema_resolve_normal_symbol(context,
+	                                        id_expr->identifier,
+	                                        id_expr->path, false);
 	if (!decl && !id_expr->path && to)
 	{
 		if (find_possible_inferred_identifier(to, expr)) return true;
@@ -436,33 +432,13 @@ static inline bool sema_expr_analyse_identifier_resolve(Context *context, Type *
 
 	if (!decl)
 	{
-		if (private_symbol)
-		{
-			SEMA_ERROR(expr, "'%s' is not visible from this module.", id_expr->identifier);
-		}
-		else if (ambiguous_decl)
-		{
-			SEMA_ERROR(expr, "The name '%s' ambiguous, please add a path.", id_expr->identifier);
-		}
-		else
-		{
-			SEMA_ERROR(expr, "'%s' could not be found, did you spell it right?", id_expr->identifier);
-		}
+		decl = sema_resolve_normal_symbol(context, id_expr->identifier, id_expr->path, true);
+		assert(!decl_ok(decl) && "Expected a poisoned decl here.");
 		return false;
 	}
 
 	// Already handled
 	if (!decl_ok(decl)) return false;
-
-	if (ambiguous_decl)
-	{
-		SEMA_ERROR(expr,
-		               "Ambiguous symbol '%s' – both defined in %s and %s, please add the module name to resolve the ambiguity",
-		               id_expr->identifier,
-		               decl->module->name->module,
-		               ambiguous_decl->module->name->module);
-		return false;
-	}
 
 	if (decl->decl_kind == DECL_FUNC && !id_expr->path && decl->module != context->module)
 	{
@@ -545,47 +521,28 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 	Decl *private_symbol = NULL;
 	expr->pure = true;
 
-	DEBUG_LOG("Now resolving %s", expr->identifier_expr.identifier);
-	Decl *decl = sema_resolve_symbol(context,
-	                                 expr->identifier_expr.identifier,
-	                                 expr->identifier_expr.path,
-	                                 &ambiguous_decl,
-	                                 &private_symbol);
+	DEBUG_LOG("Now resolving %s", TOKSTR(expr->identifier_expr.identifier));
+	Decl *decl = sema_resolve_normal_symbol(context,
+	                                        expr->identifier_expr.identifier,
+	                                        expr->identifier_expr.path,
+	                                        false);
 	if (!decl_ok(decl)) return false;
 	if (!decl && !expr->identifier_expr.path && to)
 	{
 		if (find_possible_inferred_identifier(to, expr)) return true;
 	}
-
 	if (!decl)
 	{
-		if (private_symbol)
-		{
-			SEMA_ERROR(expr, "'%s' is not visible from this module.", expr->identifier_expr.identifier);
-		}
-		else if (ambiguous_decl)
-		{
-			SEMA_ERROR(expr, "The name '%s' ambiguous, please add a path.", expr->identifier_expr.identifier);
-		}
-		else
-		{
-			SEMA_ERROR(expr, "Identifier '%s' could not be found.", expr->identifier_expr.identifier);
-		}
+		decl = sema_resolve_normal_symbol(context,
+		                                  expr->identifier_expr.identifier,
+		                                  expr->identifier_expr.path,
+		                                  true);
+		assert(!decl_ok(decl));
 		return false;
 	}
 
 	// Already handled
 	if (!decl_ok(decl)) return false;
-
-	if (ambiguous_decl)
-	{
-		SEMA_ERROR(expr,
-		           "Ambiguous symbol '%s' – both defined in %s and %s, please add the module name to resolve the ambiguity",
-		           expr->identifier_expr.identifier,
-		           decl->module->name->module,
-		           ambiguous_decl->module->name->module);
-		return false;
-	}
 
 	if (decl->decl_kind == DECL_FUNC && !expr->identifier_expr.path && decl->module != context->module)
 	{
@@ -654,23 +611,12 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 
 static inline bool sema_expr_analyse_ct_identifier(Context *context, Expr *expr)
 {
-	Decl *ambiguous_decl = NULL;
-	Decl *private_symbol = NULL;
 	expr->pure = true;
 
-	DEBUG_LOG("Now resolving %s", expr->ct_ident_expr.identifier);
-	Decl *decl = sema_resolve_symbol(context,
-	                                 expr->ct_ident_expr.identifier,
-	                                 NULL,
-	                                 &ambiguous_decl,
-	                                 &private_symbol);
-
-	assert(!ambiguous_decl && !private_symbol);
-	if (!decl)
-	{
-		SEMA_ERROR(expr, "Compile time variable '%s' could not be found.", expr->ct_ident_expr.identifier);
-		return false;
-	}
+	DEBUG_LOG("Now resolving %s", TOKSTR(expr->ct_ident_expr.identifier));
+	Decl *decl = sema_resolve_normal_symbol(context,
+	                                        expr->ct_ident_expr.identifier,
+	                                        NULL, true);
 
 	// Already handled
 	if (!decl_ok(decl))
@@ -691,23 +637,12 @@ static inline bool sema_expr_analyse_ct_identifier(Context *context, Expr *expr)
 
 static inline bool sema_expr_analyse_hash_identifier(Context *context, Type *to, Expr *expr)
 {
-	Decl *ambiguous_decl = NULL;
-	Decl *private_symbol = NULL;
 	expr->pure = true;
 
-	DEBUG_LOG("Now resolving %s", expr->hash_ident_expr.identifier);
-	Decl *decl = sema_resolve_symbol(context,
-	                                 expr->hash_ident_expr.identifier,
-	                                 NULL,
-	                                 &ambiguous_decl,
-	                                 &private_symbol);
-
-	assert(!ambiguous_decl && !private_symbol);
-	if (!decl)
-	{
-		SEMA_ERROR(expr, "Compile time variable '%s' could not be found.", expr->ct_ident_expr.identifier);
-		return false;
-	}
+	DEBUG_LOG("Now resolving %s", TOKSTR(expr->hash_ident_expr.identifier));
+	Decl *decl = sema_resolve_normal_symbol(context,
+	                                        expr->hash_ident_expr.identifier,
+	                                        NULL, true);
 
 	// Already handled
 	if (!decl_ok(decl))
@@ -1863,7 +1798,7 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 		case DECL_ENUM:
 			if (type == TOKEN_CONST_IDENT)
 			{
-				if (!sema_expr_analyse_enum_constant(expr, name, decl))
+				if (!sema_expr_analyse_enum_constant(expr, expr->access_expr.sub_element, decl))
 				{
 					SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
 					return false;
@@ -3020,13 +2955,10 @@ static inline bool sema_expr_analyse_ct_identifier_lvalue(Context *context, Expr
 
 	Decl *ambiguous_decl = NULL;
 	Decl *private_symbol = NULL;
-	DEBUG_LOG("Now resolving %s", expr->ct_ident_expr.identifier);
-	Decl *decl = sema_resolve_symbol(context,
+	DEBUG_LOG("Now resolving %s", TOKSTR(expr->ct_ident_expr.identifier));
+	Decl *decl = sema_resolve_normal_symbol(context,
 	                                 expr->ct_ident_expr.identifier,
-	                                 NULL,
-	                                 &ambiguous_decl,
-	                                 &private_symbol);
-	assert(!ambiguous_decl && !private_symbol);
+	                                 NULL, false);
 
 	// Skip if poisoned.
 	if (!decl_ok(decl)) return false;

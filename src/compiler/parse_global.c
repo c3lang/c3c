@@ -277,9 +277,63 @@ static inline Path *parse_module_path(Context *context)
 
 #pragma mark --- Parse import and module
 
-
 /**
- * module ::= MODULE module_path EOS
+ *
+ * module_param
+ * 		: TYPE_IDENT
+ *		| IDENT
+ *		;
+ *
+ * module_params
+ * 		: module_param
+ * 		| module_params ',' module_param
+ *		;
+ */
+static inline bool parse_optional_module_params(Context *context, TokenId **tokens)
+{
+
+	*tokens = NULL;
+
+	if (!try_consume(context, TOKEN_LESS)) return true;
+
+	if (try_consume(context, TOKEN_GREATER))
+	{
+		SEMA_TOKEN_ERROR(context->tok, "Generic parameter list cannot be empty.");
+		return false;
+	}
+
+	// No params
+	while (1)
+	{
+		switch (context->tok.type)
+		{
+			case TOKEN_TYPE_IDENT:
+				break;
+			case TOKEN_COMMA:
+				SEMA_TOKEN_ERROR(context->tok, "Unexpected ','");
+				return false;
+			case TOKEN_IDENT:
+				SEMA_TOKEN_ERROR(context->tok, "The module parameter must be a type.");
+				return false;
+			case TOKEN_CT_IDENT:
+			case TOKEN_CT_TYPE_IDENT:
+				SEMA_TOKEN_ERROR(context->tok, "The module parameter cannot be a $-prefixed name.");
+				return false;
+			default:
+				SEMA_TOKEN_ERROR(context->tok, "Only generic parameters are allowed here as parameters to the module.");
+				return false;
+		}
+		*tokens = VECADD(*tokens, context->tok.id);
+		advance(context);
+		if (!try_consume(context, TOKEN_COMMA))
+		{
+			return consume(context, TOKEN_GREATER, "Expected '>'.");
+		}
+	}
+
+}
+/**
+ * module ::= MODULE module_path ('(' module_params ')')? EOS
  */
 bool parse_module(Context *context)
 {
@@ -303,12 +357,20 @@ bool parse_module(Context *context)
 		path->len = strlen("INVALID");
 		path->module = "INVALID";
 		path->span = INVALID_RANGE;
-		context_set_module(context, path);
+		context_set_module(context, path, NULL);
 		recover_top_level(context);
 		return false;
 	}
 
-	context_set_module(context, path);
+	// Is this a generic module?
+	TokenId *generic_parameters = NULL;
+	if (!parse_optional_module_params(context, &generic_parameters))
+	{
+		context_set_module(context, path, NULL);
+		recover_top_level(context);
+		return true;
+	}
+	context_set_module(context, path, generic_parameters);
 	TRY_CONSUME_EOS_OR(false);
 	return true;
 }
@@ -1428,7 +1490,7 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
  *
  * @return NULL if parsing failed, otherwise a list of Type*
  */
-static inline TypeInfo **parse_parameterized_define(Context *context)
+static inline TypeInfo **parse_generic_parameters(Context *context)
 {
 	TypeInfo **types = NULL;
 	while (!try_consume(context, TOKEN_GREATER))
@@ -1457,30 +1519,9 @@ static inline bool parse_define_optional_path(Context *context, Path **path)
 }
 
 /**
- * template ::= IDENT '<' TYPE_INDENT (',' TYPE_IDENT)* '>' '::'
- */
-static inline bool parse_define_template(Context *context, Decl *decl)
-{
-	decl->define_decl.template_name = context->tok.id;
-	// These should already be checked.
-	advance_and_verify(context, TOKEN_IDENT);
-	advance_and_verify(context, TOKEN_LESS);
-	if (TOKEN_IS(TOKEN_GREATER))
-	{
-		SEMA_TOKEN_ERROR(context->tok, "Expected at least one type as a parameter.");
-		return false;
-	}
-	TypeInfo **types = parse_parameterized_define(context);
-	if (!types) return false;
-	decl->define_decl.template_params = types;
-	TRY_CONSUME_OR(TOKEN_SCOPE, "Expected a template name.", false);
-	return true;
-}
-/**
- * define_type_body ::= TYPE_IDENT '=' 'distinct'? (func_typedef | type_template | type) ';'
+ * define_type_body ::= TYPE_IDENT '=' 'distinct'? (func_typedef | type generic_params?) ';'
  *
  * func_typedef ::= 'func' failable_type parameter_type_list
- * type_template ::= path? IDENT '<' TYPE_IDENT (',' TYPE_IDENT)+ '>' '::' TYPE_IDENT
  */
 static inline Decl *parse_define_type(Context *context, Visibility visibility)
 {
@@ -1518,58 +1559,45 @@ static inline Decl *parse_define_type(Context *context, Visibility visibility)
 		RANGE_EXTEND_PREV(decl);
 		TRY_CONSUME_EOS_OR(poisoned_decl);
 		return decl;
-
 	}
 
-	// 2. Do we have a regular foo::bar::baz::Type? Then this is a regular typedef.
-	if (token_is_any_type(context->tok.type) || context_next_is_type_with_path_prefix(context))
+	// 2. Now parse the type which we know is here.
+	TypeInfo *type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+
+	// 3. Do we have '<' if so it's a parameterized type e.g. foo::bar::Type<int, double>.
+	if (try_consume(context, TOKEN_LESS))
 	{
-		TypeInfo *type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-		Decl *decl = decl_new_with_type(alias_name, distinct ? DECL_DISTINCT : DECL_TYPEDEF, visibility);
+		TypeInfo **params = parse_generic_parameters(context);
+		if (!params) return poisoned_decl;
+		Decl *decl = decl_new(DECL_DEFINE, alias_name, visibility);
 		decl->span.loc = start;
-		decl->typedef_decl.type_info = type_info;
-		decl->typedef_decl.is_func = false;
-		if (distinct)
-		{
-			decl->distinct_decl.typedef_decl = decl->typedef_decl;
-			decl->type->type_kind = TYPE_DISTINCT;
-			decl->decl_kind = DECL_DISTINCT;
-		}
+		decl->define_decl.define_kind = DEFINE_TYPE_GENERIC;
+		decl->define_decl.type_info = type_info;
+		decl->define_decl.generic_params = params;
 		RANGE_EXTEND_PREV(decl);
 		TRY_CONSUME_EOS_OR(poisoned_decl);
 		return decl;
 	}
 
-	// 3. This must be a template, e.g. define foo::bar::template_name<int, double>::Baz;
-	Decl *decl = decl_new(DECL_DEFINE, alias_name, visibility);
-	if (!parse_define_optional_path(context, &decl->define_decl.template_path)) return poisoned_decl;
-	if (!TOKEN_IS(TOKEN_IDENT))
+	Decl *decl = decl_new_with_type(alias_name, distinct ? DECL_DISTINCT : DECL_TYPEDEF, visibility);
+	decl->span.loc = start;
+	decl->typedef_decl.type_info = type_info;
+	decl->typedef_decl.is_func = false;
+	if (distinct)
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Expected a template name here.");
-		return poisoned_decl;
+		decl->distinct_decl.typedef_decl = decl->typedef_decl;
+		decl->type->type_kind = TYPE_DISTINCT;
+		decl->decl_kind = DECL_DISTINCT;
 	}
-	if (context->next_tok.type != TOKEN_LESS)
-	{
-		SEMA_TOKEN_ERROR(context->tok, "Expected a template definition.");
-		return poisoned_decl;
-	}
-	if (!parse_define_template(context, decl)) return poisoned_decl;
-
-	// 4. We've now read up to the last :: so we just read the type name:
-	TRY_CONSUME_OR(TOKEN_TYPE_IDENT, "Expected the templated type", poisoned_decl);
-	decl->define_decl.identifier = context->prev_tok;
-	decl->define_decl.define_kind = DEFINE_TYPE_TEMPLATE;
+	RANGE_EXTEND_PREV(decl);
 	TRY_CONSUME_EOS_OR(poisoned_decl);
-
 	return decl;
 }
 
 /**
- * define_ident ::= 'define' (IDENT | CONST_IDENT) '=' (identifier_alias | template_identifier)
+ * define_ident ::= 'define' (IDENT | CONST_IDENT) '=' identifier_alias generic_params?
  *
  * identifier_alias ::= path? (IDENT | CONST_IDENT)
- * template_identifier ::= path? IDENT '<' TYPE_IDENT (',' TYPE_IDENT)+ '>' '::' (IDENT | CONST_IDENT)
- *
  */
 static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 {
@@ -1605,17 +1633,7 @@ static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 		if (error) return poisoned_decl;
 	}
 
-	// 6. Is the next part IDENT '<'? If so it's a template name.
-	if (TOKEN_IS(TOKEN_IDENT) && context->next_tok.type == TOKEN_LESS)
-	{
-		decl->define_decl.template_path = path;
-		decl->define_decl.define_kind = DEFINE_IDENT_TEMPLATE;
-		if (!parse_define_template(context, decl)) return poisoned_decl;
-	}
-	else
-	{
-		decl->define_decl.path = path;
-	}
+	decl->define_decl.path = path;
 
 	// 6. Check that the token after the path is of the same type.
 	if (context->tok.type != alias_type)
@@ -1635,6 +1653,13 @@ static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 	decl->define_decl.identifier = context->tok.id;
 	advance(context);
 
+	if (try_consume(context, TOKEN_LESS))
+	{
+		decl->define_decl.define_kind = DEFINE_IDENT_GENERIC;
+		TypeInfo **params = parse_generic_parameters(context);
+		if (!params) return poisoned_decl;
+		decl->define_decl.generic_params = params;
+	}
 	RANGE_EXTEND_PREV(decl);
 	TRY_CONSUME_EOS_OR(poisoned_decl);
 	return decl;
@@ -1975,36 +2000,6 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	return func;
 }
 
-/**
- * template_declaration ::= 'template' IDENT '<' TYPE_IDENT (',' TYPE_IDENT)* '>' template_body
- * template_body = '{' top_level* '}'
- */
-static inline Decl *parse_template_declaration(Context *context, Visibility visibility)
-{
-	advance_and_verify(context, TOKEN_TEMPLATE);
-	TokenId name = context->tok.id;
-	if (!consume_ident(context, "template")) return poisoned_decl;
-	Decl *decl = decl_new(DECL_TEMPLATE, name, visibility);
-	CONSUME_OR(TOKEN_LESS, poisoned_decl);
-	TokenId *params = NULL;
-	while (1)
-	{
-		vec_add(params, context->tok.id);
-		if (!consume_type_name(context, "type")) return poisoned_decl;
-		if (try_consume(context, TOKEN_GREATER)) break;
-		CONSUME_OR(TOKEN_COMMA, poisoned_decl);
-	}
-	decl->template_decl.params = params;
-	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
-	Decl **body = NULL;
-	while (!try_consume(context, TOKEN_RBRACE))
-	{
-		Decl *statement = TRY_DECL_OR(parse_top_level_statement(context), poisoned_decl);
-		vec_add(body, statement);
-	}
-	decl->template_decl.body = body;
-	return decl;
-}
 
 /**
  * interface_declaration ::= INTERFACE TYPE '{' func_decl* '}'
@@ -2319,9 +2314,6 @@ Decl *parse_top_level_statement(Context *context)
 			break;
 		case TOKEN_CONST:
 			decl = TRY_DECL_OR(parse_top_level_const_declaration(context, visibility), poisoned_decl);
-			break;
-		case TOKEN_TEMPLATE:
-			decl = TRY_DECL_OR(parse_template_declaration(context, visibility), poisoned_decl);
 			break;
 		case TOKEN_INTERFACE:
 			decl = TRY_DECL_OR(parse_interface_declaration(context, visibility), poisoned_decl);

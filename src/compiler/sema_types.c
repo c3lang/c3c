@@ -70,45 +70,16 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
 
 static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 {
-	Decl *ambiguous_decl = NULL;
-	Decl *private_decl = NULL;
-	Decl *decl = sema_resolve_symbol(context,
-	                                 TOKSTR(type_info->unresolved.name_loc),
-	                                 type_info->unresolved.path,
-	                                 &ambiguous_decl, &private_decl);
-	if (!decl)
-	{
-		if (private_decl)
-		{
-			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "Type '%s' is not visible from this module.", TOKSTR(type_info->unresolved.name_loc));
-		}
-		else if (ambiguous_decl)
-		{
-			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "The type '%s' ambiguous, please add a path.", TOKSTR(type_info->unresolved.name_loc));
-		}
-		else
-		{
-			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "Unknown type '%s'.", TOKSTR(type_info->unresolved.name_loc));
-		}
-		return type_info_poison(type_info);
-	}
-
+	Decl *decl = sema_resolve_normal_symbol(context,
+	                                        type_info->unresolved.name_loc,
+	                                        type_info->unresolved.path, true);
+	decl = decl_flatten(decl);
 	// Already handled
 	if (!decl_ok(decl))
 	{
 		return type_info_poison(type_info);
 	}
 
-
-	if (ambiguous_decl)
-	{
-		SEMA_TOKID_ERROR(type_info->unresolved.name_loc,
-		                 "Ambiguous type '%s' – both defined in %s and %s, please add the module name to resolve the ambiguity",
-		                 TOKSTR(type_info->unresolved.name_loc),
-		                 decl->module->name->module,
-		                 ambiguous_decl->module->name->module);
-		return type_info_poison(type_info);
-	}
 	switch (decl->decl_kind)
 	{
 		case DECL_STRUCT:
@@ -116,13 +87,13 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_ERR:
 		case DECL_ENUM:
 		case DECL_TYPEDEF:
-		case DECL_DEFINE:
 		case DECL_DISTINCT:
 		case DECL_INTERFACE:
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			DEBUG_LOG("Resolved %s.", TOKSTR(type_info->unresolved.name_loc));
 			return true;
+		case DECL_DEFINE:
 		case DECL_POISONED:
 			return type_info_poison(type_info);
 		case DECL_VAR:
@@ -141,7 +112,6 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_MACRO:
 		case DECL_GENERIC:
 		case DECL_LABEL:
-		case DECL_TEMPLATE:
 			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "This is not a type.");
 			return type_info_poison(type_info);
 		case DECL_CT_ELSE:

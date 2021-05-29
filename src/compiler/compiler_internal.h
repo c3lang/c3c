@@ -322,13 +322,6 @@ typedef struct
 
 typedef struct
 {
-	struct Context_ *parent_context;
-	TokenId *params;
-	Decl **body;
-} TemplateDecl;
-
-typedef struct
-{
 	Expr *expr;
 	Expr **args;
 	uint64_t ordinal;
@@ -436,9 +429,9 @@ typedef struct
 
 typedef enum
 {
-	DEFINE_TYPE_TEMPLATE,
+	DEFINE_TYPE_GENERIC,
 	DEFINE_IDENT_ALIAS,
-	DEFINE_IDENT_TEMPLATE,
+	DEFINE_IDENT_GENERIC,
 } DefineType;
 
 typedef struct
@@ -450,15 +443,14 @@ typedef struct
 		{
 			union
 			{
-				Path *path;
+				TypeInfo *type_info;
 				struct
 				{
-					Path *template_path;
-					TokenId template_name;
-					TypeInfo **template_params;
+					Path *path;
+					TokenId identifier;
 				};
 			};
-			TokenId identifier;
+			TypeInfo **generic_params;
 		};
 		Decl *alias;
 	};
@@ -540,7 +532,6 @@ typedef struct Decl_
 		CtCaseDecl ct_case_decl;
 		Decl** ct_else_decl;
 		Expr *incr_array_decl;
-		TemplateDecl template_decl;
 	};
 } Decl;
 
@@ -702,7 +693,7 @@ typedef struct
 typedef struct
 {
 	Path *path;
-	const char *identifier;
+	TokenId identifier;
 	bool is_ref : 1;
 	bool is_rvalue : 1;
 	Decl *decl;
@@ -710,7 +701,7 @@ typedef struct
 
 typedef struct
 {
-	const char *identifier;
+	TokenId identifier;
 	bool is_ref : 1;
 	bool is_rvalue : 1;
 	Decl *decl;
@@ -1162,11 +1153,12 @@ typedef struct Ast_
 typedef struct Module_
 {
 	Path *name;
+	TokenId *parameters;
 
 	bool is_external : 1;
 	bool is_c_library : 1;
 	bool is_exported : 1;
-	struct Context_ *template_parent_context;
+	bool is_generic : 1;
 	AnalysisStage stage : 6;
 
 	Ast **files; // Asts
@@ -1299,6 +1291,7 @@ typedef struct
 {
 	STable modules;
 	Module **module_list;
+	Module **generic_module_list;
 	STable global_symbols;
 	STable qualified_symbols;
 	Type **type;
@@ -1562,7 +1555,7 @@ void header_gen(Module *module);
 
 void global_context_add_type(Type *type);
 Decl *compiler_find_symbol(const char *name);
-Module *compiler_find_or_create_module(Path *module_name);
+Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters);
 Module *global_context_find_module(const char *name);
 void compiler_register_public_symbol(Decl *decl);
 
@@ -1571,10 +1564,8 @@ void context_register_global_decl(Context *context, Decl *decl);
 void context_register_external_symbol(Context *context, Decl *decl);
 bool context_add_import(Context *context, Path *path, Token symbol, Token alias, bool private_import);
 bool context_set_module_from_filename(Context *context);
-
-bool context_set_module(Context *context, Path *path);
+bool context_set_module(Context *context, Path *path, TokenId *generic_parameters);
 void context_print_ast(Context *context, FILE *file);
-Decl **context_get_imports(Context *context);
 
 #pragma mark --- Decl functions
 
@@ -1585,6 +1576,7 @@ Decl *decl_new_var(TokenId name, TypeInfo *type, VarDeclKind kind, Visibility vi
 #define DECL_NEW_WITH_TYPE(_kind, _vis) decl_new_with_type(context->tok.id, _kind, _vis)
 #define DECL_NEW_VAR(_type, _kind, _vis) decl_new_var(context->tok.id, _type, _kind, _vis)
 void decl_set_external_name(Decl *decl);
+const char *decl_to_name(Decl *decl);
 const char *decl_var_to_string(VarDeclKind kind);
 static inline Decl *decl_raw(Decl *decl);
 static inline bool decl_ok(Decl *decl) { return !decl || decl->decl_kind != DECL_POISONED; }
@@ -1593,7 +1585,7 @@ static inline bool decl_is_struct_type(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline Decl *decl_flatten(Decl *decl)
 {
-	if (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind != DEFINE_TYPE_TEMPLATE)
+	if (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind != DEFINE_TYPE_GENERIC)
 	{
 		return decl->define_decl.alias;
 	}
@@ -1685,7 +1677,6 @@ const char *resolve_status_to_string(ResolveStatus status);
 void sema_analysis_pass_process_imports(Module *module);
 void sema_analysis_pass_register_globals(Module *module);
 void sema_analysis_pass_conditional_compilation(Module *module);
-void sema_analysis_pass_templates(Module *module);
 void sema_analysis_pass_decls(Module *module);
 void sema_analysis_pass_ct_assert(Module *module);
 void sema_analysis_pass_functions(Module *module);
@@ -1705,7 +1696,8 @@ bool sema_analyse_statement(Context *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *left_type, Expr *right, ExprFailableStatus lhs_is_failable);
 
 Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol);
-Decl *sema_resolve_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl, Decl **private_decl);
+Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *path);
+Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, bool handle_error);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
 bool sema_resolve_type_info_maybe_inferred(Context *context, TypeInfo *type_info, bool allow_inferred_type);
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type);
