@@ -1,0 +1,40 @@
+## C3 syntax highlighting support for nano
+## https://github.com/c3lang/c3c
+
+syntax c3 "\.c3$"
+comment "//"
+
+# Default color
+color white ".*"
+
+# Constants
+#color brightred "\<[A-Z_][0-9A-Z_]+\>"
+
+# Function names
+color magenta "\<[A-Za-z_]+\>\("
+color normal "\(|\)"
+
+# @ annotations
+color brightred "@\<[A-Za-z_]+\>"
+
+# Types
+color green "\<(virtual|void|bool|quad|double|float|long|ulong|int|uint|short|ushort|ichar|char|isize|usize|iptr|uptr|iptrdiff|uptrdiff|half)\>"
+
+# Keywords
+color yellow "\<(alias|as|asm|assert|attribute|break|case|catch|const|continue|default|defer|define|do|else|enum|extern|error|false|for|foreach|func|generic|if|import|interface|macro|module|nextcase|null|public|return|static|struct|switch|template|true|try|typeid|typeof|union|while|var|volatile)\>"
+
+# Strings
+color brightblack "\"[^"]*\""
+
+# Everything down from here should stay in the current order
+
+# Comments
+color cyan "//.*"
+color cyan start="/\+" end="\+/"
+color cyan start="/\*" end="\*/"
+
+# Reminders
+color brightwhite,red "\<(FIXME|TODO|XXX)\>"
+
+# Trailing whitespace
+color ,green "[[:space:]]+$"
