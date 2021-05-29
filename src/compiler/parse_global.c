@@ -333,7 +333,7 @@ static inline bool parse_optional_module_params(Context *context, TokenId **toke
 
 }
 /**
- * module ::= MODULE module_path ('(' module_params ')')? EOS
+ * module ::= MODULE module_path ('<' module_params '>')? EOS
  */
 bool parse_module(Context *context)
 {

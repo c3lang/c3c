@@ -21,6 +21,7 @@ static inline bool create_module_or_check_name(Context *context, Path *module_na
     if (context->module == NULL)
     {
     	context->module = compiler_find_or_create_module(module_name, parameters);
+	    vec_add(context->module->contexts, context);
 	    return true;
     }
 
@@ -30,7 +31,9 @@ static inline bool create_module_or_check_name(Context *context, Path *module_na
         return false;
     }
 
-    return true;
+	vec_add(context->module->contexts, context);
+
+	return true;
 }
 
 bool context_set_module_from_filename(Context *context)

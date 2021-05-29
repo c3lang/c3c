@@ -95,9 +95,8 @@ void compiler_parse(void)
 		if (loaded) continue;
 
 		global_context_clear_errors();
-		Context *context = context_create(file);
-		parse_file(context);
-		context_print_ast(context, stdout);
+		parse_file(file);
+		TODO; //context_print_ast(context, stdout);
 	}
 	exit(EXIT_SUCCESS);
 }
@@ -253,8 +252,6 @@ static void add_global_define_int(const char *name, uint64_t int_value)
 
 void compiler_compile(void)
 {
-	Context **contexts = NULL;
-
 	global_context_clear_errors();
 
 	if (global_context.lib_dir)
@@ -268,14 +265,13 @@ void compiler_compile(void)
 		vec_add(global_context.sources, strformat("%s/std/array.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/math.c3", global_context.lib_dir));
 	}
+
 	VECEACH(global_context.sources, i)
 	{
 		bool loaded = false;
 		File *file = source_file_load(global_context.sources[i], &loaded);
 		if (loaded) continue;
-		Context *context = context_create(file);
-		vec_add(contexts, context);
-		if (!parse_file(context)) continue;
+		if (!parse_file(file)) continue;
 	}
 
 	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_RANGE, .len = strlen(kw_std) };
@@ -283,12 +279,10 @@ void compiler_compile(void)
 	global_context.std_module.stage = ANALYSIS_LAST;
 	stable_init(&global_context.std_module.symbols, 0x10000);
 
-	unsigned source_count = vec_size(contexts);
-	if (!source_count)
+	if (!global_context.module_list)
 	{
-		error_exit("No source files to compile.");
+		error_exit("No modules to compile.");
 	}
-	assert(contexts);
 	VECEACH(global_context.generic_module_list, i)
 	{
 		analyze_generic_module(global_context.generic_module_list[i]);

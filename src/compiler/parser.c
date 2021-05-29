@@ -5,7 +5,6 @@
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
-
 #pragma mark --- Parser base methods
 
 /**
@@ -28,7 +27,7 @@ inline void advance(Context *context)
 		}
 		else
 		{
-			context->next_tok = lexer_advance(&context->lexer);
+			context->next_tok = lexer_advance(context->lexer);
 		}
 
 		if (context->next_tok.type == TOKEN_INVALID_TOKEN) continue;
@@ -115,10 +114,26 @@ static inline void parse_translation_unit(Context *context)
 	// Prime everything
 	advance(context);
 	advance(context);
+	NEXT_CONTEXT:
 	if (!parse_module(context)) return;
 	parse_imports(context);
 	while (!TOKEN_IS(TOKEN_EOF))
 	{
+		if (TOKEN_IS(TOKEN_MODULE))
+		{
+			Context *new_context = context_create(context->file);
+			new_context->lexer = context->lexer;
+			new_context->lead_comment = context->lead_comment;
+			new_context->next_lead_comment = context->next_lead_comment;
+			new_context->next_tok = context->next_tok;
+			new_context->tok = context->tok;
+			new_context->prev_tok = context->prev_tok;
+			new_context->next_tok = context->next_tok;
+			new_context->docs_start = context->docs_start;
+			new_context->docs_end = context->docs_end;
+			context = new_context;
+			goto NEXT_CONTEXT;
+		}
 		Decl *decl = parse_top_level_statement(context);
 		if (!decl) continue;
 		if (decl_ok(decl))
@@ -132,14 +147,15 @@ static inline void parse_translation_unit(Context *context)
 	}
 }
 
-bool parse_file(Context *context)
+bool parse_file(File *file)
 {
-	lexer_init_with_file(&context->lexer, context->file);
+	Lexer lexer;
+	lexer_init_with_file(&lexer, file);
 	if (global_context.errors_found) return false;
+	Context *context = context_create(file);
+	context->lexer = &lexer;
 	parse_translation_unit(context);
-	if (!context->module) return false;
-	vec_add(context->module->contexts, context);
-	return true;
+	return !global_context.errors_found;
 }
 
 
