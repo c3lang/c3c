@@ -15,24 +15,39 @@ Context *context_create(File *file)
 }
 
 
-static inline bool create_module_or_check_name(Context *context, Path *module_name, TokenId *parameters)
+static inline bool create_module_or_check_name(Context *context, Path *module_name, TokenId *parameters, bool is_private)
 {
     context->module_name = module_name;
-    if (context->module == NULL)
-    {
-    	context->module = compiler_find_or_create_module(module_name, parameters);
-	    vec_add(context->module->contexts, context);
-	    return true;
-    }
+	if (context->module == NULL)
+	{
+		context->module = compiler_find_or_create_module(module_name, parameters, is_private);
+	}
+	else
+	{
+		if (context->module->name->module != module_name->module)
+		{
+			SEMA_ERROR(module_name,
+			           "Module name here '%s' did not match actual module '%s'.",
+			           module_name->module,
+			           context->module->name->module);
+			return false;
+		}
+	}
 
-    if (context->module->name->module != module_name->module)
+    if (context->module->is_private != is_private)
     {
-    	SEMA_ERROR(module_name, "Module name here '%s' did not match actual module '%s'.", module_name->module, context->module->name->module);
-        return false;
-    }
+    	if (is_private)
+	    {
+		    SEMA_ERROR(module_name, "The module is declared as private here, but was declared as public elsewhere.");
+	    }
+    	else
+	    {
+		    SEMA_ERROR(module_name, "The module is declared as public here, but was declared as private elsewhere.");
+	    }
+	    return false;
 
+    }
 	vec_add(context->module->contexts, context);
-
 	return true;
 }
 
@@ -58,10 +73,10 @@ bool context_set_module_from_filename(Context *context)
     path->span = INVALID_RANGE;
     path->module = module_name;
     path->len = len;
-    return create_module_or_check_name(context, path, NULL);
+    return create_module_or_check_name(context, path, NULL, true);
 }
 
-bool context_set_module(Context *context, Path *path, TokenId *generic_parameters)
+bool context_set_module(Context *context, Path *path, TokenId *generic_parameters, bool is_private)
 {
     // Note that we allow the illegal name for now, to be able to parse further.
     context->module_name = path;
@@ -71,7 +86,7 @@ bool context_set_module(Context *context, Path *path, TokenId *generic_parameter
         return false;
     }
 
-    return create_module_or_check_name(context, path, generic_parameters);
+    return create_module_or_check_name(context, path, generic_parameters, is_private);
 }
 
 

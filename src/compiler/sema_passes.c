@@ -57,12 +57,20 @@ void sema_analysis_pass_process_imports(Module *module)
 				continue;
 			}
 
-			// 7. Assign the module.
+			// 7. Importing private is not allowed.
+			if (import_module->is_private && !import->import.private)
+			{
+				SEMA_ERROR(import, "Importing a private module is not allowed (unless 'import private' is used).");
+				decl_poison(import);
+				continue;
+			}
+
+			// 8. Assign the module.
 			DEBUG_LOG("* Import of %s.", path->module);
 			import->module = import_module;
 			for (unsigned j = 0; j < i; j++)
 			{
-				// 7. We might run into multiple imports of the same package.
+				// 9. We might run into multiple imports of the same package.
 				if (import->module == context->imports[j]->module)
 				{
 					SEMA_ERROR(import, "Module '%s' was imported more than once, please remove the duplicates.", path->module);

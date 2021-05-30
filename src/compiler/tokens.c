@@ -232,6 +232,8 @@ const char *token_type_to_string(TokenType type)
 			return "nextcase";
 		case TOKEN_NULL:
 			return "null";
+		case TOKEN_PRIVATE:
+			return "private";
 		case TOKEN_RETURN:
 			return "return";
 		case TOKEN_STATIC:
@@ -307,7 +309,7 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_DOCS_END:
 			return "*/";
 		case TOKEN_DOCS_DIRECTIVE:
-			return "directive";
+			return "DIRECTIVE";
 		case TOKEN_DOCS_LINE:
 			return "DOCS_LINE";
 

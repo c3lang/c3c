@@ -1,4 +1,4 @@
-module foo ($foo, #bar, Integer);
+module foo <$foo, #bar, Integer>;
 import bar as eok local;
 import bar2 as eok2;
 import bar3 local;
