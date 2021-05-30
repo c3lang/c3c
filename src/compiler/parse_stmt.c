@@ -19,7 +19,6 @@ static inline Ast *parse_declaration_stmt(Context *context)
 {
 	Ast *decl_stmt = AST_NEW_TOKEN(AST_DECLARE_STMT, context->tok);
 	decl_stmt->declare_stmt = TRY_DECL_OR(parse_decl(context), poisoned_ast);
-	decl_stmt->declare_stmt->var.is_static = try_consume(context, TOKEN_STATIC);
 	CONSUME_OR(TOKEN_EOS, poisoned_ast);
 	return decl_stmt;
 }

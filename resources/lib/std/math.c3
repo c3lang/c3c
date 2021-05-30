@@ -1,6 +1,6 @@
 module std::math;
 
-static union DoubleLong
+private union DoubleLong
 {
     double f;
     ulong i;
@@ -108,7 +108,7 @@ func double cos_limited(double x, double y)
 	return w + (((1.0 - w) - hz) + (z*r - x*y));
 }
 
-static func double sin_limited(double x, double y, bool iy)
+private func double sin_limited(double x, double y, bool iy)
 {
     const double S1 = -1.66666666666666324348e-01;  // 0xBFC55555, 0x55555549
     const double S2 = 8.33333333332248946124e-03; // 0x3F811111, 0x1110F8A6

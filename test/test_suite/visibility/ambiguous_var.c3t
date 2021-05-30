@@ -17,7 +17,7 @@ import bar;
 
 int a;
 
-static func void test2()
+private func void test2()
 {
     int c = a;  // This is fine.
     c = foo::b;

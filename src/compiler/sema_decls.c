@@ -700,7 +700,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 			return type;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_CNAME:
-			if (context->module->parameters)
+			if (context->module->is_generic)
 			{
 				SEMA_TOKID_ERROR(attr->name, "'cname' attributes are not allowed in generic modules.");
 				return false;

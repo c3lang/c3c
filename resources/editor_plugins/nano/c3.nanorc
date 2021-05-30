@@ -21,7 +21,7 @@ color brightred "@\<[A-Za-z_]+\>"
 color green "\<(virtual|void|bool|quad|double|float|long|ulong|int|uint|short|ushort|ichar|char|isize|usize|iptr|uptr|iptrdiff|uptrdiff|half)\>"
 
 # Keywords
-color yellow "\<(alias|as|asm|assert|attribute|break|case|catch|const|continue|default|defer|define|do|else|enum|extern|error|false|for|foreach|func|generic|if|import|interface|macro|module|nextcase|null|public|return|static|struct|switch|template|true|try|typeid|typeof|union|while|var|volatile)\>"
+color yellow "\<(alias|as|asm|assert|attribute|break|case|catch|const|continue|default|defer|define|do|else|enum|extern|error|false|for|foreach|func|generic|if|import|interface|macro|module|nextcase|null|private|return|static|struct|switch|template|true|try|typeid|typeof|union|while|var|volatile)\>"
 
 # Strings
 color brightblack "\"[^"]*\""

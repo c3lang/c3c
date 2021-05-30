@@ -67,7 +67,7 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 	{
 		Decl *import = context->imports[i];
 
-		if (import->module->parameters) continue;
+		if (import->module->is_generic) continue;
 
 		// 4. Can we match a subpath?
 		if (path->len > import->import.path->len) continue;
@@ -140,7 +140,7 @@ static Decl *sema_resolve_no_path_symbol(Context *context, const char *symbol,
 		if (!decl_ok(import)) continue;
 
 		// Skip parameterized modules
-		if (import->module->parameters) continue;
+		if (import->module->is_generic) continue;
 
 		Decl *found = module_find_symbol(import->module, symbol);
 		if (!found) continue;
@@ -242,7 +242,6 @@ Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *
 {
 	Decl *ambiguous_other_decl = NULL;
 	Decl *private_decl = NULL;
-	bool path_found = false;
 	Decl *decl = NULL;
 	const char *symbol_str = TOKSTR(symbol);
 	if (path)
@@ -253,14 +252,12 @@ Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *
 			Decl *import = context->imports[i];
 
 			// Skip any without parameters.
-			if (!import->module->parameters) continue;
+			if (!import->module->is_generic) continue;
 
 			// 5. Can we match a subpath?
 			if (path->len > import->import.path->len) continue;
 			if (!matches_subpath(import->import.path, path)) continue;
 
-			// 6. We have a sub path match at least.
-			path_found = true;
 
 			// 7. Find the symbol
 			Decl *found = module_find_symbol(import->module, symbol_str);
@@ -302,7 +299,7 @@ Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *
 		Decl *import = context->imports[i];
 
 		// Skip any without parameters.
-		if (!import->module->parameters) continue;
+		if (!import->module->is_generic) continue;
 
 		// 7. Find the symbol
 		Decl *found = module_find_symbol(import->module, symbol_str);

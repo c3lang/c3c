@@ -1,7 +1,7 @@
 module std::array::linkedlist<Type>;
 import std::mem;
 
-static struct Node
+private struct Node
 {
     Node *next;
     Node *prev;
@@ -20,7 +20,7 @@ func void LinkedList.push(LinkedList *list, Type value)
     list.linkLast(value);
 }
 
-static func void LinkedList.linkFirst(LinkedList *list, Type value)
+private func void LinkedList.linkFirst(LinkedList *list, Type value)
 {
     Node *first = list.first;
     Node *new_node = @mem::malloc(Node);
@@ -37,7 +37,7 @@ static func void LinkedList.linkFirst(LinkedList *list, Type value)
     list.size++;
 }
 
-static func void LinkedList.linkLast(LinkedList *list, Type value)
+private func void LinkedList.linkLast(LinkedList *list, Type value)
 {
     Node *last = list.last;
     Node *new_node = mem::alloc(Node.sizeof);
@@ -84,7 +84,7 @@ func Type LinkedList.get(LinkedList* list, usize index)
 /**
  * @require succ != null
  **/
-static func void LinkedList.linkBefore(LinkedList *list, Node *succ, Type value)
+private func void LinkedList.linkBefore(LinkedList *list, Node *succ, Type value)
 {
     Node* pred = succ.prev;
     Node* new_node = @mem::malloc(Node);
@@ -104,7 +104,7 @@ static func void LinkedList.linkBefore(LinkedList *list, Node *succ, Type value)
 /**
  * @require f == list.first && f != null
  **/
-static func void unlinkFirst(LinkedList* list, Node* f)
+private func void unlinkFirst(LinkedList* list, Node* f)
 {
     Node* next = f.next;
     mem::free(f);
@@ -123,7 +123,7 @@ static func void unlinkFirst(LinkedList* list, Node* f)
 /**
  * @require l == list.last && l != null
  **/
-static func void LinkedList.unlinkLast(LinkedList *list, Node* l)
+private func void LinkedList.unlinkLast(LinkedList *list, Node* l)
 {
     Node* prev = l.prev;
     list.last = prev;
@@ -142,7 +142,7 @@ static func void LinkedList.unlinkLast(LinkedList *list, Node* l)
 /**
  * @require x != null
  **/
-static func void LinkedList.unlink(LinkedList* list, Node* x)
+private func void LinkedList.unlink(LinkedList* list, Node* x)
 {
     Node* next = x.next;
     Node* prev = x.prev;

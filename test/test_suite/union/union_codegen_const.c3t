@@ -6,9 +6,9 @@ union Foo
     double b;
 }
 
-static Foo f = { .a = 23 };
-static Foo g = { .b = 2.3 };
-static Foo h = { .a = 23, .b = 2.3 };
+private Foo f = { .a = 23 };
+private Foo g = { .b = 2.3 };
+private Foo h = { .a = 23, .b = 2.3 };
 Foo i = { .b = 2.3, .a = 23 };
 
 // #expect: test.ll

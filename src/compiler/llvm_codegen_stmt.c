@@ -44,12 +44,25 @@ static LLVMValueRef llvm_emit_decl(GenContext *c, Ast *ast)
 	Decl *decl = ast->declare_stmt;
 
 	LLVMTypeRef alloc_type = llvm_get_type(c, type_lowering(decl->type));
+
+	if (decl->var.is_static)
+	{
+		decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
+		llvm_emit_global_variable_init(c, decl);
+		if (decl->var.failable)
+		{
+			decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_error), decl->name);
+			LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_error)), decl->var.failable_ref);
+		}
+		return decl->backend_ref;
+	}
 	llvm_emit_local_var_alloca(c, decl);
 	if (decl->var.failable)
 	{
 		decl->var.failable_ref = llvm_emit_alloca_aligned(c, type_error, decl->name);
 		LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_error)), decl->var.failable_ref);
 	}
+
 	Expr *init = decl->var.init_expr;
 	if (init)
 	{

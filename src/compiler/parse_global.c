@@ -71,7 +71,7 @@ void recover_top_level(Context *context)
 	{
 		switch (context->tok.type)
 		{
-			case TOKEN_STATIC:
+			case TOKEN_PRIVATE:
 			case TOKEN_STRUCT:
 			case TOKEN_INTERFACE:
 			case TOKEN_IMPORT:
@@ -800,6 +800,8 @@ Decl *parse_decl(Context *context)
 		return parse_const_declaration(context, VISIBLE_LOCAL);
 	}
 
+	bool is_static = try_consume(context, TOKEN_STATIC);
+
 	TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
 
 	bool failable = try_consume(context, TOKEN_BANG);
@@ -811,7 +813,11 @@ Decl *parse_decl(Context *context)
 		return poisoned_decl;
 	}
 	decl->var.failable = failable;
-
+	decl->var.is_static = is_static;
+	if (is_static)
+	{
+		printf("Added static to %s %d\n", decl->name, decl->var.is_static);
+	}
 	return decl;
 }
 
@@ -2239,7 +2245,7 @@ Decl *parse_top_level_statement(Context *context)
 	Visibility visibility = VISIBLE_PUBLIC;
 	switch (context->tok.type)
 	{
-		case TOKEN_STATIC:
+		case TOKEN_PRIVATE:
 			visibility = VISIBLE_MODULE;
 			advance(context);
 			break;
