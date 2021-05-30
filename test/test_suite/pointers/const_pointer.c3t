@@ -2,11 +2,11 @@
 
 module const_pointer;
 
-static double foo = 17;
-static double bar = 12.0;
-static float xx = 12.0;
+private double foo = 17;
+private double bar = 12.0;
+private float xx = 12.0;
 
-static void*[3] data = { &foo, &bar, &xx };
+private void*[3] data = { &foo, &bar, &xx };
 
 // #expect: const_pointer.ll
 

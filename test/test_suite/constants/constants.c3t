@@ -1,15 +1,15 @@
-static const char AA = ~(char)(0);
+private const char AA = ~(char)(0);
 const char BB = 200 ;
-static const uint CC = ~(uint)(0);
-static const uint DD = FOO;
+private const uint CC = ~(uint)(0);
+private const uint DD = FOO;
 
-static const FOO = ~(uint)(0);
+private const FOO = ~(uint)(0);
 
-static uint x = AA;
-static uint z = CC;
-static char w = (char)(FOO);
-static ushort v = (ushort)(FOO);
-static uint z2 = DD;
+private uint x = AA;
+private uint z = CC;
+private char w = (char)(FOO);
+private ushort v = (ushort)(FOO);
+private uint z2 = DD;
 
 func void test()
 {

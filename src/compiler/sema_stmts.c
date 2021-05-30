@@ -508,8 +508,25 @@ static inline bool sema_analyse_local_decl(Context *context, Decl *decl)
 			SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
 			return decl_poison(decl);
 		}
+
 	}
 	EXIT_OK:
+	if (decl->var.is_static)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(context->active_function_for_analysis->name);
+		scratch_buffer_append_char('.');
+		scratch_buffer_append(decl->name);
+		decl->external_name = scratch_buffer_interned();
+	}
+	if (decl->var.init_expr && decl->var.is_static)
+	{
+		if (!expr_is_constant_eval(decl->var.init_expr))
+		{
+			SEMA_ERROR(decl->var.init_expr, "Static variable initialization must be constant.");
+			return false;
+		}
+	}
 	if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 	return true;
 }

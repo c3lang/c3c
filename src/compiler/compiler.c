@@ -200,7 +200,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 }
 static void analyze_generic_module(Module *module)
 {
-	assert(module->parameters);
+	assert(module->parameters && module->is_generic);
 	// TODO maybe do this analysis: sema_analysis_pass_process_imports(module);
 	VECEACH(module->contexts, index)
 	{
@@ -508,6 +508,7 @@ Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters, b
 	module->name = module_name;
 	module->stage = ANALYSIS_NOT_BEGUN;
 	module->parameters = parameters;
+	module->is_generic = vec_size(parameters) > 0;
 	module->is_private = is_private;
 	stable_init(&module->symbols, 0x10000);
 	stable_set(&global_context.modules, module_name->module, module);

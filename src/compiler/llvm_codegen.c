@@ -340,9 +340,9 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			UNREACHABLE
 	}
 }
-static void gencontext_emit_global_variable_init(GenContext *c, Decl *decl)
+void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 {
-	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
+	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST || decl->var.is_static);
 
 	// Skip real constants.
 	if (!decl->type) return;
@@ -475,6 +475,8 @@ void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)
 {
+	assert(!decl->var.is_static);
+	printf("My name %s\n", decl->name);
 	llvm_emit_and_set_decl_alloca(c, decl);
 	if (llvm_use_debug(c))
 	{
@@ -981,7 +983,7 @@ void *llvm_gen(Module *module)
 		}
 		VECEACH(context->vars, i)
 		{
-			gencontext_emit_global_variable_init(gen_context, context->vars[i]);
+			llvm_emit_global_variable_init(gen_context, context->vars[i]);
 		}
 		VECEACH(context->functions, i)
 		{

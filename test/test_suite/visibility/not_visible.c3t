@@ -10,7 +10,7 @@ func void runBar()
 // #file: file2.c3
 module bar;
 
-static func void notVisible()
+private func void notVisible()
 {
 
 }

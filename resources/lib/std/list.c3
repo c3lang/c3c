@@ -8,7 +8,7 @@ struct List
     Type *entries;
 }
 
-static func void List.ensureCapacity(List *list) @inline
+private func void List.ensureCapacity(List *list) @inline
 {
     if (list.capacity == list.size)
     {

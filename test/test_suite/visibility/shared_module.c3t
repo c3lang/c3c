@@ -9,7 +9,7 @@ func void runBar()
 // #file: file2.c3
 module baz;
 
-static func void visible()
+private func void visible()
 {
 
 }

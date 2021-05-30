@@ -1,6 +1,6 @@
 module foo;
 
-static func void hidden()
+private func void hidden()
 {
 }
 

@@ -232,13 +232,14 @@ void llvm_emit_defer(GenContext *c, AstId defer_start, AstId defer_end);
 void llvm_emit_extern_decl(GenContext *context, Decl *decl);
 
 LLVMValueRef llvm_emit_const_aggregate(GenContext *c, Expr *expr, bool *modified);
+void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
+void llvm_emit_global_variable_init(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op);
 
 LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value);
 void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_len);
 LLVMValueRef llvm_emit_load_aligned(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name);
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
-void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, unsigned align, bool bitcast);
 LLVMValueRef llvm_emit_memclear(GenContext *c, BEValue *ref);
 void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len);

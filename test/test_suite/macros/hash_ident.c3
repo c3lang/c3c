@@ -4,7 +4,7 @@ macro int cofefe(#a)
     return #a + #a;
 }
 
-static int abc = 1;
+private int abc = 1;
 
 func int xx()
 {
