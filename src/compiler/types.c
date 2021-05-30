@@ -124,20 +124,6 @@ const char *type_to_error_string(Type *type)
 			return type->name;
 		case TYPE_FUNC:
 			return strcat_arena("func ", type->func.mangled_function_signature);
-		case TYPE_COMPLEX:
-			switch (type->complex->type_kind)
-			{
-				case TYPE_F16:
-					return "complex16";
-				case TYPE_F32:
-					return "complex32";
-				case TYPE_F64:
-					return "complex64";
-				case TYPE_F128:
-					return "complex128";
-				default:
-					UNREACHABLE
-			}
 		case TYPE_VECTOR:
 			asprintf(&buffer, "%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
@@ -208,8 +194,6 @@ ByteSize type_size(Type *type)
 			return type_size(type->decl->distinct_decl.base_type);
 		case TYPE_VECTOR:
 			return type_size(type->vector.base) * type->vector.len;
-		case TYPE_COMPLEX:
-			return type_size(type->complex) * 2;
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
@@ -369,7 +353,6 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_SUBARRAY:
 		case TYPE_ARRAY:
 		case TYPE_ERR_UNION:
-		case TYPE_COMPLEX:
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
 			return true;
@@ -506,11 +489,6 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	RETRY:
 	switch (type->type_kind)
 	{
-		case TYPE_COMPLEX:
-			// Complex types are basically structs with 2 elements.
-			*base = type->complex;
-			*elements = 2;
-			break;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
@@ -676,7 +654,6 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE;
 		case TYPE_VECTOR:
-		case TYPE_COMPLEX:
 			TODO
 		case TYPE_VOID:
 			return 1;
@@ -1108,7 +1085,6 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_ERR_UNION:
 		case TYPE_VIRTUAL_ANY:
-		case TYPE_COMPLEX:
 		case TYPE_VECTOR:
 			scratch_buffer_append(type->name);
 			break;
@@ -1268,7 +1244,6 @@ bool type_is_scalar(Type *type)
 		case TYPE_ERRTYPE:
 		case TYPE_ERR_UNION:
 		case TYPE_VARARRAY:
-		case TYPE_COMPLEX:
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
 			return true;
@@ -1536,9 +1511,6 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_VECTOR:
 			// No implicit conversion between vectors
 			return NULL;
-		case TYPE_COMPLEX:
-			// Implicit conversion or not?
-			TODO;
 	}
 	UNREACHABLE
 }

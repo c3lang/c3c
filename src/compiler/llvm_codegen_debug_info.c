@@ -560,8 +560,6 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_F64:
 		case TYPE_F128:
 			return llvm_debug_simple_type(c, type, DW_ATE_float);
-		case TYPE_COMPLEX:
-			return llvm_debug_simple_type(c, type, DW_ATE_complex_float);
 		case TYPE_VECTOR:
 			return type->backend_debug_type = llvm_debug_vector_type(c, type);
 		case TYPE_VOID:

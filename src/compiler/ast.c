@@ -399,9 +399,6 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 		case TYPE_DISTINCT:
 			DUMPF("(distinct %s)", type->name);
 			return;
-		case TYPE_COMPLEX:
-			DUMP("(type complex");
-			return;
 		case TYPE_VECTOR:
 			DUMP("(type vector");
 			return;

@@ -121,9 +121,7 @@ work on Windows. Also, parts of the code is still rough and needs to be made sol
 - [ ] Stdlib inclusion
 - [ ] String functions
 - [ ] Compile time incremental arrays
-- [ ] Vararrays e.g. `int[*]`
 - [ ] Simd vector types
-- [ ] Complex types
 
 #### What can you help with?
 
