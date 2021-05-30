@@ -222,7 +222,6 @@ struct Type_
 		Type *pointer;
 		// Type[<123>] or Type<[123]>
 		TypeVector vector;
-		Type *complex;
 	};
 };
 

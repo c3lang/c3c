@@ -63,23 +63,6 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		return false;
 	}
 
-	if (type->type_kind == TYPE_COMPLEX)
-	{
-		// Is the first field already occupied?
-		// Then fail because both needs to be available.
-		if (*field1) return false;
-		// If the field doesn't fit a register - bail.
-		Type *element_type = type->complex;
-		unsigned element_size = type_size(element_type);
-		if (element_size > flen) return false;
-		assert(!current_offset && "Expected zero offset");
-		*field1 = abi_type_new_plain(element_type);
-		*field2 = abi_type_new_plain(element_type);
-		*field1_offset = current_offset;
-		*field2_offset = current_offset + element_size;
-		return true;
-	}
-
 	if (type->type_kind == TYPE_ARRAY)
 	{
 		ByteSize array_len = type->array.len;
@@ -176,18 +159,6 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		return abi_arg_new_direct();
 	}
 
-	// Complex types for the hard float ABI must be passed direct rather than
-	// using CoerceAndExpand.
-	if (is_fixed && type->type_kind == TYPE_COMPLEX && *fprs >= 2)
-	{
-		Type *element_type = type->complex;
-		if (type_size(element_type) <= platform_target.riscv.flen)
-		{
-			(*fprs) -= 2;
-			// TODO check that this will expand correctly.
-			return abi_arg_new_direct();
-		}
-	}
 
 	if (is_fixed && platform_target.riscv.flen && (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_ERRTYPE))
 	{
@@ -306,17 +277,10 @@ void c_abi_func_create_riscv(FunctionSignature *signature)
 	// in LLVM IR, relying on the backend lowering code to rewrite the argument
 	// list and pass indirectly on RV32.
 	bool is_ret_indirect = abi_arg_is_indirect(return_abi);
-	if (!is_ret_indirect && type_is_scalar(return_type) && type_size(return_type) > 2 * platform_target.riscv.xlen)
+	if (type_is_scalar(return_type) && type_size(return_type) > 2 * platform_target.riscv.xlen)
 	{
-		if (return_type->type_kind == TYPE_COMPLEX && platform_target.riscv.flen)
-		{
-			is_ret_indirect = type_size(return_type->complex) > platform_target.riscv.flen;
-		}
-		else
-		{
-			// Normal scalar > 2 * XLen, e.g. f128 on RV32
-			is_ret_indirect = true;
-		}
+		// Normal scalar > 2 * XLen, e.g. f128 on RV32
+		is_ret_indirect = true;
 	}
 	// Clang: We must track the number of GPRs used in order to conform to the RISC-V
 	// ABI, as integer scalars passed in registers should have signext/zeroext

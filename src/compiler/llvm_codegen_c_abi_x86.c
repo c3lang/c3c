@@ -130,7 +130,6 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_ERRTYPE:
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VIRTUAL:
-		case TYPE_COMPLEX:
 			return true;
 		case TYPE_ARRAY:
 			// Small arrays <= 8 bytes.
@@ -203,11 +202,6 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 	{
 		// Structs with variable arrays are always indirect.
 		if (type_is_structlike(type) && type->decl->has_variable_array)
-		{
-			return create_indirect_return_x86(regs);
-		}
-		// If we don't allow small structs in reg:
-		if (!platform_target.x86.return_small_struct_in_reg_abi && type->type_kind == TYPE_COMPLEX)
 		{
 			return create_indirect_return_x86(regs);
 		}
@@ -320,13 +314,6 @@ static inline bool x86_can_expand_indirect_aggregate_arg(Type *type)
 			case TYPE_I64:
 			case TYPE_F64:
 				break;
-			case TYPE_COMPLEX:
-			{
-				ByteSize complex_type_size = type_size(member_type->complex);
-				if (complex_type_size != 4 && complex_type_size != 8) return false;
-				size += type_size(member_type);
-				break;
-			}
 			default:
 				return false;
 		}
@@ -630,7 +617,6 @@ static ABIArgInfo *x86_classify_argument(CallConvention call, Regs *regs, Type *
 		case TYPE_VIRTUAL:
 		case TYPE_ARRAY:
 		case TYPE_ERR_UNION:
-		case TYPE_COMPLEX:
 			return x86_classify_aggregate(call, regs, type);
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:

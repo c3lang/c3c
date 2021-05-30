@@ -127,8 +127,6 @@ static void header_print_type(FILE *file, Type *type)
 			break;
 		case TYPE_VECTOR:
 			break;
-		case TYPE_COMPLEX:
-			break;
 	}
 	TODO
 }

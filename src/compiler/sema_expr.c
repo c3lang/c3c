@@ -3936,8 +3936,6 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 						return false;
 					}
 					break;
-				case TYPE_COMPLEX:
-					TODO
 				case TYPE_VECTOR:
 					TODO
 			}
@@ -4258,7 +4256,6 @@ static bool sema_expr_analyse_not(Expr *expr, Expr *inner)
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
-		case TYPE_COMPLEX:
 		case TYPE_BOOL:
 		case TYPE_VECTOR:
 		case ALL_REAL_FLOATS:

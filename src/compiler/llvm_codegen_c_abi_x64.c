@@ -369,48 +369,6 @@ void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X6
 	// Default pass by mem
 }
 
-void x64_classify_complex(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class)
-{
-	Type *element = type->complex;
-	ByteSize element_size = type_size(element);
-	switch (type->type_kind)
-	{
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
-		case TYPE_I64:
-		case TYPE_U8:
-		case TYPE_U16:
-		case TYPE_U32:
-		case TYPE_U64:
-			*current = CLASS_INTEGER;
-			break;
-		case TYPE_I128:
-		case TYPE_U128:
-			*lo_class = *hi_class = CLASS_INTEGER;
-			break;
-		case TYPE_F16:
-			TODO
-		case TYPE_F32:
-			*current = CLASS_SSE;
-			break;
-		case TYPE_F64:
-			*lo_class = *hi_class = CLASS_SSE;
-			break;
-		case TYPE_F128:
-			*current = CLASS_MEMORY;
-			break;
-		default:
-			UNREACHABLE
-	}
-	ByteSize real = offset_base / 8;
-	ByteSize imag = (offset_base + element_size) / 8;
-	// If it crosses boundary, split it.
-	if (*hi_class == CLASS_NO_CLASS && real != imag)
-	{
-		*hi_class = *lo_class;
-	}
-}
 
 Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
 {
@@ -495,9 +453,6 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 			break;
 		case TYPE_VECTOR:
 			x64_classify_vector(type, offset_base, current, lo_class, hi_class, named);
-			break;
-		case TYPE_COMPLEX:
-			x64_classify_complex(type, offset_base, current, lo_class, hi_class);
 			break;
 	}
 }
@@ -663,7 +618,6 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 		case TYPE_F128:
 		case TYPE_UNION:
 		case TYPE_VECTOR:
-		case TYPE_COMPLEX:
 			break;
 	}
 	ByteSize size = type_size(source_type);

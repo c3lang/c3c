@@ -366,8 +366,6 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_SABOOL;
 		case ALL_INTS:
 			return CAST_INTBOOL;
-		case TYPE_COMPLEX:
-			return CAST_CXBOOL;
 		case ALL_FLOATS:
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
@@ -473,8 +471,6 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 			return to_kind == TYPE_POINTER;
 		case TYPE_VECTOR:
 			return type_is_structurally_equivalent(type_get_array(from->vector.base, from->vector.len), to);
-		case TYPE_COMPLEX:
-			return type_is_structurally_equivalent(type_get_array(from->complex, 2), to);
 	}
 	UNREACHABLE
 }
@@ -816,8 +812,6 @@ bool cast(Expr *expr, Type *to_type)
 			if (canonical->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_SAPTR, canonical);
 			break;
 		case TYPE_VECTOR:
-			TODO
-		case TYPE_COMPLEX:
 			TODO
 	}
 	UNREACHABLE

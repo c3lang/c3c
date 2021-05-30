@@ -429,10 +429,6 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		}
 		case TYPE_VECTOR:
 			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->vector.base), any_type->vector.len);
-		case TYPE_COMPLEX:
-			return any_type->backend_type = llvm_get_twostruct(c,
-			                                                   llvm_get_type(c, any_type->complex),
-			                                                   llvm_get_type(c, any_type->complex));
 	}
 	UNREACHABLE;
 }

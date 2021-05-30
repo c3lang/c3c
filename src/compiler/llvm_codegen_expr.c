@@ -349,9 +349,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 		case CAST_VRPTR:
 		case CAST_PTRVR:
 			TODO
-
-		case CAST_CXBOOL:
-			TODO
 		case CAST_XIERR:
 			// TODO Insert zero check.
 			llvm_value_rvalue(c, value);
@@ -2236,17 +2233,6 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				llvm_value_set(be_value, llvm_const_int(c, type, bigint_as_signed(&expr->const_expr.i)), type);
 			}
 			return;
-		case TYPE_COMPLEX:
-		{
-			LLVMTypeRef element_type = llvm_get_type(c, type->complex);
-			LLVMValueRef value = LLVMGetUndef(llvm_get_type(c, type));
-			unsigned id = 0;
-			value = LLVMConstInsertValue(value, LLVMConstReal(element_type, (double)expr->const_expr.complex.r), &id, 1);
-			id++;
-			value = LLVMConstInsertValue(value, LLVMConstReal(element_type, (double)expr->const_expr.complex.i), &id, 1);
-			llvm_value_set(be_value, value, type);
-			return;
-		}
 		case ALL_FLOATS:
 			llvm_value_set(be_value, LLVMConstReal(llvm_get_type(c, type), (double) expr->const_expr.f), type);
 			return;
@@ -2344,7 +2330,6 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 			gencontext_expand_array_to_args(context, param_type, expand_ptr, values);
 			break;
 		case TYPE_UNION:
-		case TYPE_COMPLEX:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
 		case TYPE_VIRTUAL_ANY:

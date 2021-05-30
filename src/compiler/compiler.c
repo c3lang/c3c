@@ -266,13 +266,16 @@ void compiler_compile(void)
 		vec_add(global_context.sources, strformat("%s/std/math.c3", global_context.lib_dir));
 	}
 
+	bool has_error = false;
 	VECEACH(global_context.sources, i)
 	{
 		bool loaded = false;
 		File *file = source_file_load(global_context.sources[i], &loaded);
 		if (loaded) continue;
-		if (!parse_file(file)) continue;
+		if (!parse_file(file)) has_error = true;
 	}
+
+	if (has_error) exit(EXIT_FAILURE);
 
 	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_RANGE, .len = strlen(kw_std) };
 	global_context.std_module = (Module){ .name = &global_context.std_module_path };
