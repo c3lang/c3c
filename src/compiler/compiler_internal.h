@@ -1159,6 +1159,7 @@ typedef struct Module_
 	bool is_c_library : 1;
 	bool is_exported : 1;
 	bool is_generic : 1;
+	bool is_private : 1;
 	AnalysisStage stage : 6;
 
 	Ast **files; // Asts
@@ -1555,7 +1556,7 @@ void header_gen(Module *module);
 
 void global_context_add_type(Type *type);
 Decl *compiler_find_symbol(const char *name);
-Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters);
+Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters, bool is_private);
 Module *global_context_find_module(const char *name);
 void compiler_register_public_symbol(Decl *decl);
 
@@ -1564,7 +1565,7 @@ void context_register_global_decl(Context *context, Decl *decl);
 void context_register_external_symbol(Context *context, Decl *decl);
 bool context_add_import(Context *context, Path *path, Token symbol, Token alias, bool private_import);
 bool context_set_module_from_filename(Context *context);
-bool context_set_module(Context *context, Path *path, TokenId *generic_parameters);
+bool context_set_module(Context *context, Path *path, TokenId *generic_parameters, bool is_private);
 void context_print_ast(Context *context, FILE *file);
 
 #pragma mark --- Decl functions

@@ -281,6 +281,7 @@ void compiler_compile(void)
 
 	if (!global_context.module_list)
 	{
+		if (global_context.errors_found) exit(EXIT_FAILURE);
 		error_exit("No modules to compile.");
 	}
 	VECEACH(global_context.generic_module_list, i)
@@ -496,7 +497,7 @@ Module *global_context_find_module(const char *name)
 	return stable_get(&global_context.modules, name);
 }
 
-Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters)
+Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters, bool is_private)
 {
 	Module *module = global_context_find_module(module_name->module);
 	if (module) return module;
@@ -507,6 +508,7 @@ Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters)
 	module->name = module_name;
 	module->stage = ANALYSIS_NOT_BEGUN;
 	module->parameters = parameters;
+	module->is_private = is_private;
 	stable_init(&module->symbols, 0x10000);
 	stable_set(&global_context.modules, module_name->module, module);
 	if (parameters)

@@ -1018,7 +1018,7 @@ static Context *copy_context(Module *module, Context *c)
 
 static Module *sema_instantiate_module(Context *context, Module *module, Path *path, TypeInfo **parms)
 {
-	Module *new_module = compiler_find_or_create_module(path, NULL);
+	Module *new_module = compiler_find_or_create_module(path, NULL, module->is_private);
 	new_module->is_generic = true;
 	Context **contexts = module->contexts;
 	VECEACH(contexts, i)

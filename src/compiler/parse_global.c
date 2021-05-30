@@ -342,6 +342,8 @@ bool parse_module(Context *context)
 		return context_set_module_from_filename(context);
 	}
 
+	bool is_private = try_consume(context, TOKEN_PRIVATE);
+
 	if (!TOKEN_IS(TOKEN_IDENT))
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Module statement should be followed by the name of the module.");
@@ -357,7 +359,7 @@ bool parse_module(Context *context)
 		path->len = strlen("INVALID");
 		path->module = "INVALID";
 		path->span = INVALID_RANGE;
-		context_set_module(context, path, NULL);
+		context_set_module(context, path, NULL, false);
 		recover_top_level(context);
 		return false;
 	}
@@ -366,11 +368,11 @@ bool parse_module(Context *context)
 	TokenId *generic_parameters = NULL;
 	if (!parse_optional_module_params(context, &generic_parameters))
 	{
-		context_set_module(context, path, NULL);
+		context_set_module(context, path, NULL, is_private);
 		recover_top_level(context);
 		return true;
 	}
-	context_set_module(context, path, generic_parameters);
+	context_set_module(context, path, generic_parameters, is_private);
 	TRY_CONSUME_EOS_OR(false);
 	return true;
 }
@@ -2065,6 +2067,8 @@ static inline bool parse_import(Context *context)
 {
 	advance_and_verify(context, TOKEN_IMPORT);
 
+	bool private = try_consume(context, TOKEN_PRIVATE);
+
 	if (!TOKEN_IS(TOKEN_IDENT))
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Import statement should be followed by the name of the module to import.");
@@ -2072,23 +2076,7 @@ static inline bool parse_import(Context *context)
 	}
 
 	Path *path = parse_module_path(context);
-	if (TOKEN_IS(TOKEN_COLON))
-	{
-		while (1)
-		{
-			if (!parse_specified_import(context, path)) return false;
-			if (!try_consume(context, TOKEN_COMMA)) break;
-		}
-	}
-	else
-	{
-		bool private = try_consume(context, TOKEN_AS);
-		if (private)
-		{
-			CONSUME_OR(TOKEN_MODULE, false);
-		}
-		context_add_import(context, path, NO_TOKEN, NO_TOKEN, private);
-	}
+	context_add_import(context, path, NO_TOKEN, NO_TOKEN, private);
 	TRY_CONSUME_EOS_OR(false);
 	return true;
 }
