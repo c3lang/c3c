@@ -814,10 +814,6 @@ Decl *parse_decl(Context *context)
 	}
 	decl->var.failable = failable;
 	decl->var.is_static = is_static;
-	if (is_static)
-	{
-		printf("Added static to %s %d\n", decl->name, decl->var.is_static);
-	}
 	return decl;
 }
 

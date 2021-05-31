@@ -2494,7 +2494,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 		case ABI_ARG_DIRECT_PAIR:
 		{
 			llvm_value_addr(c, be_value);
-			printf("Handle invalid alignment");
+			printf("TODO: Handle invalid alignment\n");
 			// Here we do the following transform:
 			// struct -> { lo, hi } -> lo, hi
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
