@@ -200,6 +200,7 @@ void sema_analysis_pass_decls(Module *module)
 	{
 		Context *context = module->contexts[index];
 		context->current_scope = &context->scopes[0];
+		assert(context->current_scope->defer_last < 10000000);
 		context->current_scope->scope_id = 0;
 		context->last_local = &context->locals[0];
 		VECEACH(context->enums, i)

@@ -66,7 +66,7 @@ static DesignatorElement **macro_copy_designator_list(DesignatorElement **list)
 Expr *copy_expr(Expr *source_expr)
 {
 	if (!source_expr) return NULL;
-	Expr *expr = COPY(source_expr);
+	Expr *expr = expr_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
 		case EXPR_ENUM_CONSTANT:
@@ -194,7 +194,7 @@ Expr *copy_expr(Expr *source_expr)
 Ast *copy_ast(Ast *source)
 {
 	if (!source) return NULL;
-	Ast *ast = COPY(source);
+	Ast *ast = ast_copy(source);
 	switch (source->ast_kind)
 	{
 		case AST_DOCS:
@@ -388,7 +388,7 @@ Decl *decl_copy_local_from_macro(Decl *to_copy)
 {
 	if (!to_copy) return NULL;
 	assert(to_copy->decl_kind == DECL_VAR);
-	Decl *copy = COPY(to_copy);
+	Decl *copy = decl_copy(to_copy);
 	MACRO_COPY_TYPE(copy->var.type_info);
 	MACRO_COPY_EXPR(copy->var.init_expr);
 	return copy;
@@ -397,8 +397,7 @@ Decl *decl_copy_local_from_macro(Decl *to_copy)
 TypeInfo *copy_type_info(TypeInfo *source)
 {
 	if (!source) return NULL;
-	TypeInfo *copy = malloc_arena(sizeof(TypeInfo));
-	memcpy(copy, source, sizeof(TypeInfo));
+	TypeInfo *copy = type_info_copy(source);
 	switch (source->kind)
 	{
 		case TYPE_INFO_POISON:
@@ -464,7 +463,7 @@ static Attr **copy_attributes(Attr** attr_list)
 Decl *copy_decl(Decl *decl)
 {
 	if (!decl) return NULL;
-	Decl *copy = COPY(decl);
+	Decl *copy = decl_copy(decl);
 	MACRO_COPY_AST(copy->docs);
 	copy->attributes = copy_attributes(copy->attributes);
 	switch (decl->decl_kind)

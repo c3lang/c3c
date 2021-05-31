@@ -227,7 +227,7 @@ struct Type_
 
 struct TypeInfo_
 {
-	ResolveStatus resolve_status : 2;
+	ResolveStatus resolve_status : 3;
 	bool virtual_type : 1;
 	Type *type;
 	TypeInfoKind kind;

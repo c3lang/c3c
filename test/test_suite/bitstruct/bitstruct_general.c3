@@ -20,12 +20,11 @@ bitstruct BitField2 : char
 
 struct Packet
 {
-  bitstruct bitfield : int
+  bitstruct : int
   {
-    int a : 3;
-    int b : 3;
-    int c : 2;
-    int pad : 24;
+    int a : 0..2;
+    int b : 3..5;
+    int c : 5..6;
   }
   int packet_id;
 }
