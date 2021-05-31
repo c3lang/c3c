@@ -26,6 +26,7 @@ void context_push_scope_with_flags(Context *context, ScopeFlags flags)
 	context->current_scope->local_decl_start = context->last_local;
 	context->current_scope->in_defer = previous_defer;
 	context->current_scope->defer_last = parent_defer;
+	assert(parent_defer < 1000000);
 
 	if (flags & (SCOPE_DEFER | SCOPE_EXPR_BLOCK))
 	{
@@ -58,6 +59,7 @@ void context_push_scope_with_label(Context *context, Decl *label)
 static inline void context_pop_defers_to(Context *context, DeferList *list)
 {
 	list->end = context_start_defer(context);
+	assert(context->current_scope->defer_last < 10000000);
 	list->start = context->current_scope->defer_last;
 	context->current_scope->defer_last = list->end;
 }
@@ -105,7 +107,7 @@ static void context_pop_defers_and_replace_ast(Context *context, Ast *ast)
 		return;
 	}
 	assert(ast->ast_kind != AST_COMPOUND_STMT);
-	Ast *replacement = COPY(ast);
+	Ast *replacement = ast_copy(ast);
 	ast->ast_kind = AST_SCOPED_STMT;
 	ast->scoped_stmt.stmt = replacement;
 	ast->scoped_stmt.defers = defers;
@@ -1689,7 +1691,7 @@ EXIT:
 	{
 		if (unwrapped && !statement->flow.has_break && statement->flow.no_exit)
 		{
-			Decl *decl = COPY(unwrapped);
+			Decl *decl = decl_copy(unwrapped);
 			decl->var.kind = VARDECL_ALIAS;
 			decl->var.alias = unwrapped;
 			decl->var.failable = false;
@@ -1727,7 +1729,7 @@ static bool sema_analyse_try_stmt(Context *context, Ast *stmt)
 		if (expr->expr_kind == EXPR_IDENTIFIER)
 		{
 			Decl *var = expr->identifier_expr.decl;
-			Decl *decl = COPY(var);
+			Decl *decl = decl_copy(var);
 			decl->var.kind = VARDECL_ALIAS;
 			decl->var.alias = var;
 			decl->var.failable = false;

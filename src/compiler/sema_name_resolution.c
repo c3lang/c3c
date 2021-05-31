@@ -382,7 +382,7 @@ bool sema_add_local(Context *context, Decl *decl)
 
 bool sema_unwrap_var(Context *context, Decl *decl)
 {
-	Decl *alias = COPY(decl);
+	Decl *alias = decl_copy(decl);
 	alias->var.kind = VARDECL_ALIAS;
 	alias->var.alias = decl;
 	alias->var.failable = false;

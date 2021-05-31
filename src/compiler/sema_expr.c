@@ -4296,7 +4296,7 @@ static inline bool sema_expr_analyse_ct_incdec(Context *context, Expr *expr, Exp
 			return false;
 	}
 
-	Expr *end_value = COPY(start_value);
+	Expr *end_value = expr_copy(start_value);
 
 	// Make the change.
 	BigInt change;

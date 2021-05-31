@@ -1,0 +1,12 @@
+module foo<Type>;
+
+func void abc()
+{
+    int i;
+    defer { i++; }
+}
+
+module tester;
+import foo;
+
+define abc_my = abc<int>;

@@ -1618,7 +1618,7 @@ static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 	TokenType alias_type = context->tok.type;
 	if (alias_type != TOKEN_IDENT && alias_type != TOKEN_CONST_IDENT)
 	{
-		SEMA_TOKEN_ERROR(context->tok, "An regular identifier was expected here.");
+		SEMA_TOKEN_ERROR(context->tok, "An identifier was expected here.");
 		return poisoned_decl;
 	}
 

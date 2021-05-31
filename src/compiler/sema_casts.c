@@ -12,7 +12,7 @@ static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 {
 	assert(expr->resolve_status == RESOLVE_DONE);
 	assert(expr->type);
-	Expr *inner = COPY(expr);
+	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_CAST;
 	expr->cast_expr.kind = kind;
 	expr->cast_expr.expr = inner;
