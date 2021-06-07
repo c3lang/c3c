@@ -14,14 +14,17 @@ color white ".*"
 color magenta "\<[A-Za-z_]+\>\("
 color normal "\(|\)"
 
-# @ annotations
-color brightred "@\<[A-Za-z_]+\>"
-
 # Types
 color green "\<(virtual|void|bool|quad|double|float|long|ulong|int|uint|short|ushort|ichar|char|isize|usize|iptr|uptr|iptrdiff|uptrdiff|half)\>"
 
 # Keywords
 color yellow "\<(alias|as|asm|assert|attribute|break|case|catch|const|continue|default|defer|define|do|else|enum|extern|error|false|for|foreach|func|generic|if|import|interface|macro|module|nextcase|null|private|return|static|struct|switch|true|try|typeid|typeof|union|while|var|volatile)\>"
+
+# $ Statements
+color brightyellow "\$\<(assert|case|default|elif|else|endif|endswitch|for|if|switch|unreachable)\>"
+
+# @ Attributes
+color brightred "@\<[A-Za-z_]+\>"
 
 # Strings
 color brightblack "\"[^"]*\""
