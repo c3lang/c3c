@@ -10,6 +10,27 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 
 static bool sema_analyse_struct_union(Context *context, Decl *decl);
 
+static bool sema_check_unique_parameters(Decl **decls)
+{
+	STable *table = &global_context.scratch_table;
+	stable_clear(table);
+
+	VECEACH(decls, i)
+	{
+		Decl *param = decls[i];
+		if (param->name)
+		{
+			Decl *old = stable_set(table, param->name, param);
+			if (old)
+			{
+				SEMA_ERROR(param, "Parameter name occurred twice, try renaming one of them.");
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 {
 	if (decl->name)
@@ -300,18 +321,32 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 	}
 
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : "anon");
-	if (decl->name) context_push_scope(context);
 	bool success;
-	if (decl->decl_kind == DECL_UNION)
+	if (decl->name)
 	{
-		success = sema_analyse_union_members(context, decl, decl->strukt.members);
+		SCOPE_START
+			if (decl->decl_kind == DECL_UNION)
+			{
+				success = sema_analyse_union_members(context, decl, decl->strukt.members);
+			}
+			else
+			{
+				success = sema_analyse_struct_members(context, decl, decl->strukt.members);
+			}
+		SCOPE_END;
 	}
 	else
 	{
-		success = sema_analyse_struct_members(context, decl, decl->strukt.members);
+		if (decl->decl_kind == DECL_UNION)
+		{
+			success = sema_analyse_union_members(context, decl, decl->strukt.members);
+		}
+		else
+		{
+			success = sema_analyse_struct_members(context, decl, decl->strukt.members);
+		}
 	}
 	DEBUG_LOG("Struct/union size %d, alignment %d.", (int)decl->strukt.size, (int)decl->alignment);
-	if (decl->name) context_pop_scope(context);
 	DEBUG_LOG("Analysis complete.");
 	if (!success) return decl_poison(decl);
 	return decl_ok(decl);
@@ -804,6 +839,7 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 	VECEACH(decl->macro_decl.parameters, i)
 	{
 		Decl *param = decl->macro_decl.parameters[i];
+		param->resolve_status = RESOLVE_RUNNING;
 		assert(param->decl_kind == DECL_VAR);
 		switch (param->var.kind)
 		{
@@ -829,7 +865,37 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 			case VARDECL_ALIAS:
 				UNREACHABLE
 		}
+		param->resolve_status = RESOLVE_DONE;
 	}
+	VECEACH(decl->macro_decl.body_parameters, i)
+	{
+		Decl *param = decl->macro_decl.body_parameters[i];
+		param->resolve_status = RESOLVE_RUNNING;
+		assert(param->decl_kind == DECL_VAR);
+		switch (param->var.kind)
+		{
+			case VARDECL_PARAM:
+				if (param->var.type_info && !sema_resolve_type_info(context, param->var.type_info)) return false;
+				break;
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_REF:
+			case VARDECL_PARAM_CT_TYPE:
+				SEMA_ERROR(param, "Only plain variables are allowed as body parameters.");
+				break;
+			case VARDECL_CONST:
+			case VARDECL_GLOBAL:
+			case VARDECL_LOCAL:
+			case VARDECL_MEMBER:
+			case VARDECL_LOCAL_CT:
+			case VARDECL_LOCAL_CT_TYPE:
+			case VARDECL_ALIAS:
+				UNREACHABLE
+		}
+		param->resolve_status = RESOLVE_DONE;
+	}
+	if (!sema_check_unique_parameters(decl->macro_decl.parameters)) return false;
+	if (!sema_check_unique_parameters(decl->macro_decl.body_parameters)) return false;
 	return true;
 }
 

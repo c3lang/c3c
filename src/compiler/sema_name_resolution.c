@@ -28,15 +28,12 @@ static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 
 Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol)
 {
-	if (context->current_scope)
+	Decl **first = context->active_scope.local_decl_start;
+	Decl **current = context->active_scope.current_local;
+	while (current > first)
 	{
-		Decl **first = context->current_scope->local_decl_start;
-		Decl **current = context->last_local - 1;
-		while (current >= first)
-		{
-			if (current[0]->name == symbol) return current[0];
-			current--;
-		}
+		current--;
+		if (current[0]->name == symbol) return current[0];
 	}
 	return NULL;
 }
@@ -111,11 +108,19 @@ static Decl *sema_resolve_no_path_symbol(Context *context, const char *symbol,
 {
 	Decl *decl = NULL;
 
-	if (context->current_scope)
+	if (context->active_scope.current_local > &context->locals[0])
 	{
 		Decl **first = &context->locals[0];
-		if (context->macro_nesting) first = context->macro_locals_start;
-		Decl **current = context->last_local - 1;
+		Decl **current = context->active_scope.current_local - 1;
+		if (context->macro_scope.macro)
+		{
+			first = context->macro_scope.locals_start;
+			if (context->macro_scope.in_yield)
+			{
+				first = context->macro_scope.yield_symbol_start;
+				current = context->macro_scope.yield_symbol_end - 1;
+			}
+		}
 		while (current >= first)
 		{
 			if (current[0]->name == symbol) return current[0];
@@ -343,13 +348,13 @@ Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, b
 
 static inline bool sema_append_local(Context *context, Decl *decl)
 {
-	if (context->last_local == &context->locals[MAX_LOCALS - 1])
+	if (context->active_scope.current_local == &context->locals[MAX_LOCALS - 1])
 	{
 		SEMA_ERROR(decl, "Reached the maximum number of locals.");
 		return false;
 	}
-	context->last_local[0] = decl;
-	context->last_local++;
+	context->active_scope.current_local[0] = decl;
+	context->active_scope.current_local++;
 	return true;
 }
 

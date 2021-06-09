@@ -199,10 +199,14 @@ void sema_analysis_pass_decls(Module *module)
 	VECEACH(module->contexts, index)
 	{
 		Context *context = module->contexts[index];
-		context->current_scope = &context->scopes[0];
-		assert(context->current_scope->defer_last < 10000000);
-		context->current_scope->scope_id = 0;
-		context->last_local = &context->locals[0];
+		context->active_scope = (DynamicScope)
+				{
+					.depth = 0,
+					.scope_id = 0,
+					.local_decl_start = &context->locals[0],
+					.current_local = &context->locals[0],
+				};
+		context->macro_scope = (MacroScope) {};
 		VECEACH(context->enums, i)
 		{
 			sema_analyse_decl(context, context->enums[i]);

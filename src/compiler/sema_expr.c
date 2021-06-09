@@ -1103,9 +1103,20 @@ static bool sema_check_stmt_compile_time(Context *context, Ast *ast)
 static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, Decl *decl)
 {
 	// TODO failable
-	if (context->macro_nesting >= MAX_MACRO_NESTING)
+	if (context->macro_scope.depth >= MAX_MACRO_NESTING)
 	{
 		SEMA_ERROR(call_expr, "Too deep nesting (more than %d levels) when evaluating this macro.", MAX_MACRO_NESTING);
+		return false;
+	}
+
+	if (decl->has_body_param && !call_expr->call_expr.body)
+	{
+		SEMA_ERROR(call_expr, "Expected call to have a trailing statement, did you forget to add it?");
+		return false;
+	}
+	if (!decl->has_body_param && call_expr->call_expr.body)
+	{
+		SEMA_ERROR(call_expr, "This macro does not support trailing statements, please remove it.");
 		return false;
 	}
 
@@ -1126,7 +1137,7 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 		Decl *param = copy_decl(func_params[i]);
 		vec_add(params, param);
 		assert(param->decl_kind == DECL_VAR);
-		assert(param->resolve_status == RESOLVE_NOT_DONE);
+		assert(param->resolve_status == RESOLVE_DONE);
 		param->resolve_status = RESOLVE_RUNNING;
 		// Maybe there's a type, but in general a macro param may be
 		// typeless.
@@ -1159,10 +1170,9 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 				// #foo
 				// We push a scope here as this will prevent the expression from modifying
 				// compile time variables during evaluation:
-				context_push_scope(context);
-				bool ok = sema_analyse_expr_of_required_type(context, param->type, arg, false);
-				context_pop_scope(context);
-				if (!ok) return false;
+				SCOPE_START
+					if (!sema_analyse_expr_of_required_type(context, param->type, arg, false)) return SCOPE_POP_ERROR();
+				SCOPE_END;
 				break;
 			case VARDECL_PARAM_CT:
 				// $foo
@@ -1194,8 +1204,7 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 		}
 		if (param->type)
 		{
-			TODO
-//			if (!cast_implicit(context, arg, param->type)) return false;
+			if (!cast_implicit(arg, param->type)) return false;
 		}
 		else
 		{
@@ -1205,77 +1214,133 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 		param->resolve_status = RESOLVE_DONE;
 	}
 
-	context->macro_nesting++;
-	context->macro_counter++;
-	Decl **old_macro_locals_start = context->macro_locals_start;
-	context->macro_locals_start = context->last_local;
+	unsigned body_params = vec_size(call_expr->call_expr.body_arguments);
+	unsigned expected_body_params = vec_size(decl->macro_decl.body_parameters);
+	if (expected_body_params > body_params)
+	{
+		SEMA_ERROR(call_expr, "Not enough parameters for the macro body, expected %d.", expected_body_params);
+		return false;
+	}
+	if (expected_body_params < body_params)
+	{
+		SEMA_ERROR(call_expr, "Too many parameters for the macro body, expected %d.", expected_body_params);
+		return false;
+	}
+	for (unsigned i = 0; i < expected_body_params; i++)
+	{
+		Decl *body_param = decl->macro_decl.body_parameters[i];
+		assert(body_param->resolve_status == RESOLVE_DONE);
+		Decl *body_arg = call_expr->call_expr.body_arguments[i];
+		if (!body_arg->var.type_info)
+		{
+			SEMA_ERROR(body_arg, "Expected a type parameter before this variable name.");
+			return false;
+		}
+		if (!sema_resolve_type_info(context, body_arg->var.type_info)) return false;
+		body_arg->type = body_arg->var.type_info->type;
+		if (body_param->var.type_info)
+		{
+			Type *declare_type = body_param->var.type_info->type->canonical;
+			if (declare_type != body_arg->type)
+			{
+				SEMA_ERROR(body_arg->var.type_info, "This parameter should be '%s' but was '%s'",
+				           type_to_error_string(declare_type),
+				           type_quoted_error_string(body_arg->type));
+				return false;
+			}
+		}
+		if (!body_arg->alignment) body_arg->alignment = type_alloca_alignment(body_arg->type);
+	}
+	Decl **first_local = context->macro_scope.macro ? context->macro_scope.locals_start : context->locals;
+	MacroScope old_macro_scope = context->macro_scope;
 
 	bool ok = true;
 
-	Ast *body = copy_ast(decl->macro_decl.body);
+	SCOPE_OUTER_START
 
-	TypeInfo *foo = decl->macro_decl.rtype;
-
-	Ast **saved_returns = context_push_returns(context);
-	context->expected_block_type = foo ? foo->type : to;
-	context_push_scope_with_flags(context, SCOPE_MACRO);
-
-	for (unsigned i = 0; i < num_args; i++)
-	{
-		Decl *param = params[i];
-		sema_add_local(context, param);
-	}
-
-	VECEACH(body->compound_stmt.stmts, i)
-	{
-		if (!sema_analyse_statement(context, body->compound_stmt.stmts[i]))
+		for (unsigned i = 0; i < expected_body_params; i++)
 		{
-			ok = false;
-			goto EXIT;
+			Decl *body_arg = call_expr->call_expr.body_arguments[i];
+			sema_add_local(context, body_arg);
 		}
-	}
 
-	if (!vec_size(context->returns))
-	{
-		if (to)
-		{
-			SEMA_ERROR(decl, "Missing return in macro that evaluates to %s.", type_to_error_string(to));
-			ok = false;
-			goto EXIT;
-		}
-	}
+		context->macro_scope = (MacroScope){
+				.macro = decl,
+				.locals_start = context->active_scope.current_local,
+				.depth = old_macro_scope.depth + 1,
+				.yield_symbol_start = first_local,
+				.yield_body = call_expr->call_expr.body,
+				.yield_symbol_end = context->active_scope.current_local,
+				.yield_args = call_expr->call_expr.body_arguments,
+		};
 
-	Expr *first_return_expr = vec_size(context->returns) ? context->returns[0]->return_stmt.expr : NULL;
-	Type *left_canonical = first_return_expr ? first_return_expr->type->canonical : type_void;
-	// Let's unify the return statements.
-	left_canonical = unify_returns(context, left_canonical);
-	if (!left_canonical)
-	{
-		ok = false;
-		goto EXIT;
-	}
-	expr_set_type(call_expr, left_canonical);
-	if (vec_size(context->returns) == 1)
-	{
-		Expr *result = context->returns[0]->return_stmt.expr;
-		if (result && expr_is_constant_eval(result))
-		{
-			if (sema_check_stmt_compile_time(context, body))
+
+		Ast *body = copy_ast(decl->macro_decl.body);
+		TypeInfo *foo = decl->macro_decl.rtype;
+
+		Ast **saved_returns = context_push_returns(context);
+		context->expected_block_type = foo ? foo->type : to;
+		SCOPE_START_WITH_FLAGS(SCOPE_MACRO);
+
+
+			for (unsigned i = 0; i < num_args; i++)
 			{
-				expr_replace(call_expr, result);
+				Decl *param = params[i];
+				sema_add_local(context, param);
+			}
+
+			VECEACH(body->compound_stmt.stmts, i)
+			{
+				if (!sema_analyse_statement(context, body->compound_stmt.stmts[i]))
+				{
+					ok = false;
+					goto EXIT;
+				}
+			}
+
+			if (!vec_size(context->returns))
+			{
+				if (to)
+				{
+					SEMA_ERROR(decl, "Missing return in macro that evaluates to %s.", type_to_error_string(to));
+					ok = false;
+					goto EXIT;
+				}
+			}
+
+			Expr *first_return_expr = vec_size(context->returns) ? context->returns[0]->return_stmt.expr : NULL;
+			Type *left_canonical = first_return_expr ? first_return_expr->type->canonical : type_void;
+			// Let's unify the return statements.
+			left_canonical = unify_returns(context, left_canonical);
+			if (!left_canonical)
+			{
+				ok = false;
 				goto EXIT;
 			}
-		}
-	}
-	call_expr->expr_kind = EXPR_MACRO_BLOCK;
-	call_expr->macro_block.stmts = body->compound_stmt.stmts;
-	call_expr->macro_block.params = params;
-	call_expr->macro_block.args = args;
-	EXIT:
-	context_pop_scope(context);
-	context_pop_returns(context, saved_returns);
-	context->macro_nesting--;
-	context->macro_locals_start = old_macro_locals_start;
+			expr_set_type(call_expr, left_canonical);
+			if (vec_size(context->returns) == 1)
+			{
+				Expr *result = context->returns[0]->return_stmt.expr;
+				if (result && expr_is_constant_eval(result))
+				{
+					if (sema_check_stmt_compile_time(context, body))
+					{
+						expr_replace(call_expr, result);
+						goto EXIT;
+					}
+				}
+			}
+			call_expr->expr_kind = EXPR_MACRO_BLOCK;
+			call_expr->macro_block.stmts = body->compound_stmt.stmts;
+			call_expr->macro_block.params = params;
+			call_expr->macro_block.args = args;
+
+			EXIT:
+		SCOPE_END;
+		context_pop_returns(context, saved_returns);
+
+	SCOPE_OUTER_END;
+	context->macro_scope = old_macro_scope;
 	return ok;
 }
 
@@ -2042,10 +2107,11 @@ CHECK_DEEPER:
 	}
 
 	Decl *decl = type->decl;
-	context_push_scope(context);
-	add_members_to_context(context, decl);
-	Decl *member = sema_resolve_symbol_in_current_dynamic_scope(context, kw);
-	context_pop_scope(context);
+	Decl *member;
+	SCOPE_START
+		add_members_to_context(context, decl);
+		member = sema_resolve_symbol_in_current_dynamic_scope(context, kw);
+	SCOPE_END;
 
 
 	if (!member)
@@ -2969,7 +3035,7 @@ static inline bool sema_expr_analyse_ct_identifier_lvalue(Context *context, Expr
 		return expr_poison(expr);
 	}
 
-	if ((intptr_t)decl->var.scope < (intptr_t)context->current_scope)
+	if (decl->var.scope_depth < context->active_scope.depth)
 	{
 		SEMA_ERROR(expr, "Cannot modify '%s' inside of a runtime scope.", decl->name);
 		return false;
@@ -4537,7 +4603,7 @@ static inline bool sema_expr_analyse_guard(Context *context, Type *to, Expr *exp
 {
 	Expr *inner = expr->guard_expr.inner;
 	bool success = sema_analyse_expr(context, to, inner);
-	expr->guard_expr.defer = context->current_scope->defer_last;
+	expr->guard_expr.defer = context->active_scope.defer_last;
 	if (!success) return false;
 	expr_copy_types(expr, inner);
 	expr->pure = false;
@@ -4585,36 +4651,36 @@ static inline bool sema_expr_analyse_expr_block(Context *context, Type *to, Expr
 	Type *prev_expected_block_type = context->expected_block_type;
 	Ast **saved_returns = context_push_returns(context);
 	context->expected_block_type = to;
-	context_push_scope_with_flags(context, SCOPE_EXPR_BLOCK);
 
-	VECEACH(expr->expr_block.stmts, i)
-	{
-		if (!sema_analyse_statement(context, expr->expr_block.stmts[i]))
+	SCOPE_START_WITH_FLAGS(SCOPE_EXPR_BLOCK)
+		VECEACH(expr->expr_block.stmts, i)
+		{
+			if (!sema_analyse_statement(context, expr->expr_block.stmts[i]))
+			{
+				success = false;
+				goto EXIT;
+			}
+		}
+
+		if (!context->active_scope.jump_end && to)
+		{
+			SEMA_ERROR(expr, "Expected the block to return with a value of type %s.", type_to_error_string(to));
+			success = false;
+		}
+		if (!vec_size(context->returns)) goto EXIT;
+
+		Expr *first_return_expr = context->returns[0]->return_stmt.expr;
+		Type *left_canonical = first_return_expr ? first_return_expr->type->canonical : type_void;
+		// Let's unify the return statements.
+		left_canonical = unify_returns(context, left_canonical);
+		if (!left_canonical)
 		{
 			success = false;
 			goto EXIT;
 		}
-	}
-
-	if (!context->current_scope->jump_end && to)
-	{
-		SEMA_ERROR(expr, "Expected the block to return with a value of type %s.", type_to_error_string(to));
-		success = false;
-	}
-	if (!vec_size(context->returns)) goto EXIT;
-
-	Expr *first_return_expr = context->returns[0]->return_stmt.expr;
-	Type *left_canonical = first_return_expr ? first_return_expr->type->canonical : type_void;
-	// Let's unify the return statements.
-	left_canonical = unify_returns(context, left_canonical);
-	if (!left_canonical)
-	{
-		success = false;
-		goto EXIT;
-	}
-	expr_set_type(expr, left_canonical);
+		expr_set_type(expr, left_canonical);
 EXIT:
-	context_pop_scope(context);
+	SCOPE_END;
 	context_pop_returns(context, saved_returns);
 	expr->failable = context->expr_failable_return;
 	context->expr_failable_return = saved_expr_failable_return;

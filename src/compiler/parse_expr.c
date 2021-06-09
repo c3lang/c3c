@@ -455,17 +455,37 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	Expr **params = NULL;
 	advance_and_verify(context, TOKEN_LPAREN);
 	bool unsplat = false;
+	Decl **body_args = NULL;
 	if (!TOKEN_IS(TOKEN_RPAREN))
 	{
 		if (!parse_param_list(context, &params, TOKEN_RPAREN, &unsplat)) return poisoned_expr;
 	}
-	TRY_CONSUME_OR(TOKEN_RPAREN, "Expected the ending ')' here", poisoned_expr);
+	if (try_consume(context, TOKEN_EOS) && left->expr_kind == EXPR_MACRO_IDENTIFIER)
+	{
+		if (!parse_macro_argument_declarations(context, VISIBLE_LOCAL, &body_args, false)) return poisoned_expr;
+	}
+	if (!TOKEN_IS(TOKEN_RPAREN))
+	{
+		SEMA_TOKID_ERROR(context->prev_tok, "Expected the ending ')' here.");
+		return poisoned_expr;
+	}
+	advance(context);
 
 	Expr *call = EXPR_NEW_EXPR(EXPR_CALL, left);
 	call->call_expr.function = left;
 	call->call_expr.arguments = params;
 	call->call_expr.unsplat_last = unsplat;
+	call->call_expr.body_arguments = body_args;
 	RANGE_EXTEND_PREV(call);
+	if (body_args && !TOKEN_IS(TOKEN_LBRACE))
+	{
+		SEMA_TOKEN_ERROR(context->tok, "Expected a macro body here.");
+		return poisoned_expr;
+	}
+	if (TOKEN_IS(TOKEN_LBRACE) && left->expr_kind == EXPR_MACRO_IDENTIFIER)
+	{
+		call->call_expr.body = TRY_AST_OR(parse_compound_stmt(context), poisoned_expr);
+	}
 	return call;
 }
 

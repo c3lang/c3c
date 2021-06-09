@@ -9,15 +9,38 @@
 
 int sema_check_comp_time_bool(Context *context, Expr *expr);
 bool sema_analyse_function_body(Context *context, Decl *func);
-void context_pop_scope(Context *context);
-void context_pop_scope_error(Context *context);
-void context_push_scope_with_flags(Context *context, ScopeFlags flags);
-AstId context_start_defer(Context *context);
-static inline void context_push_scope(Context *context)
-{
-	context_push_scope_with_flags(context, SCOPE_NONE);
-}
-#define PUSH_X(ast, X) AstId _old_##X##_defer = context->X##_defer; AstId _old_##X = context->X##_target; context->X##_target = ast ? astid(ast) : 0; context->X##_defer = context->current_scope->defer_last
+#define SCOPE_OUTER_START \
+do {                                  \
+  DynamicScope stored_scope = context->active_scope; \
+  context_change_scope_with_flags(context, SCOPE_NONE);
+#define SCOPE_OUTER_END \
+  assert(context->active_scope.defer_last == context->active_scope.defer_start); \
+  context->active_scope = stored_scope;  \
+  } while(0)
+#define SCOPE_START SCOPE_START_WITH_FLAGS(SCOPE_NONE)
+#define SCOPE_START_WITH_FLAGS(flags) \
+ do {                                  \
+  DynamicScope old_scope = context->active_scope; \
+  context_change_scope_with_flags(context, flags);
+#define SCOPE_START_WITH_LABEL(label) \
+ do {                                  \
+  DynamicScope old_scope = context->active_scope; \
+  context_change_scope_for_label(context, label);
+#define SCOPE_END \
+  assert(context->active_scope.defer_last == context->active_scope.defer_start); \
+  context->active_scope = old_scope;  \
+  } while(0)
+#define SCOPE_POP_ERROR() (context->active_scope = old_scope, false)
+#define SCOPE_ERROR_END_OUTER() \
+  do { context->active_scope = stored_scope; } while(0)
+
+void context_pop_defers_to(Context *context, DeferList *list);
+Expr *context_pop_defers_and_wrap_expr(Context *context, Expr *expr);
+void context_pop_defers_and_replace_ast(Context *context, Ast *ast);
+void context_change_scope_for_label(Context *context, Decl *label);
+void context_change_scope_with_flags(Context *context, ScopeFlags flags);
+
+#define PUSH_X(ast, X) AstId _old_##X##_defer = context->X##_defer; AstId _old_##X = context->X##_target; context->X##_target = ast ? astid(ast) : 0; context->X##_defer = context->active_scope.defer_last
 #define POP_X(X) context->X##_target = _old_##X; context->X##_defer = _old_##X##_defer
 #define PUSH_CONTINUE(ast) PUSH_X(ast, continue)
 #define POP_CONTINUE() POP_X(continue)

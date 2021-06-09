@@ -290,7 +290,7 @@ typedef struct VarDecl_
 	union
 	{
 		void *backend_debug_ref;
-		void *scope;
+		unsigned scope_depth;
 	};
 	union
 	{
@@ -414,6 +414,7 @@ typedef struct
 {
 	bool failable : 1;
 	Decl **parameters;
+	Decl **body_parameters;
 	TypeInfo *rtype; // May be null!
 	struct Ast_ *body;
 } MacroDecl;
@@ -422,6 +423,7 @@ typedef struct
 {
 	struct Ast_ **cases;
 	Decl **parameters;
+	Decl **body_parameters;
 	TypeInfo *rtype; // May be null!
 	Path *path; // For redefinition
 } GenericDecl;
@@ -461,7 +463,7 @@ typedef struct
 	bool next_target : 1;
 	void *break_target;
 	void *continue_target;
-	ScopeId scope_id;
+	AstId scope_defer;
 	AstId parent;
 } LabelDecl;
 
@@ -481,6 +483,7 @@ typedef struct Decl_
 	bool needs_additional_pad : 1;
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
+	bool has_body_param : 1;
 	void *backend_ref;
 	const char *cname;
 	AlignSize alignment;
@@ -593,6 +596,8 @@ typedef struct
 	bool unsplat_last : 1;
 	Expr *function;
 	Expr **arguments;
+	Decl **body_arguments;
+	Ast *body;
 } ExprCall;
 
 typedef struct
@@ -912,7 +917,7 @@ typedef struct
 	{
 		struct
 		{
-			ScopeId scope_id;
+			Ast* scope_defer;
 		};
 		struct
 		{
@@ -963,7 +968,7 @@ typedef struct
 	FlowCommon flow;
 	bool is_switch : 1;
 	bool has_err_var : 1;
-	ScopeId scope_id;
+	Ast* scope_defer;
 	AstId defer;
 	union
 	{
@@ -1081,6 +1086,13 @@ typedef struct
 
 typedef struct
 {
+	Expr **values;
+	Decl **declarations;
+	Ast *ast;
+} AstYieldStmt;
+
+typedef struct
+{
 	DocDirectiveKind kind;
 	union
 	{
@@ -1144,6 +1156,7 @@ typedef struct Ast_
 		AstAssertStmt assert_stmt;
 		Ast **directives;
 		AstDocDirective doc_directive;
+		AstYieldStmt yield_stmt;
 	};
 } Ast;
 
@@ -1178,10 +1191,24 @@ typedef struct DynamicScope_
 	bool jump_end : 1;
 	ScopeFlags flags;
 	Decl **local_decl_start;
+	Decl **current_local;
 	AstId defer_last;
+	AstId defer_start;
 	Ast *in_defer;
+	unsigned depth;
 } DynamicScope;
 
+typedef struct MacroScope_
+{
+	Decl *macro;
+	Decl **locals_start;
+	unsigned depth;
+	Decl **yield_symbol_start;
+	Decl **yield_symbol_end;
+	Decl **yield_args;
+	Ast *yield_body;
+	bool in_yield;
+} MacroScope;
 
 typedef union
 {
@@ -1252,7 +1279,6 @@ typedef struct Context_
 	AstId next_target;
 	Ast *next_switch;
 	AstId next_defer;
-	DynamicScope *current_scope;
 	struct
 	{
 		Type *expected_block_type;
@@ -1264,19 +1290,13 @@ typedef struct Context_
 	Type *rtype;
 	bool failable_return;
 	int in_volatile_section;
-	struct
-	{
-		Decl **macro_locals_start;
-		int macro_counter;
-		int macro_nesting;
-	};
-	Decl **last_local;
+	MacroScope macro_scope;
 	struct {
 		STable external_symbols;
 		Decl **external_symbol_list;
 	};
 	Decl* locals[MAX_LOCALS];
-	DynamicScope scopes[MAX_SCOPE_DEPTH];
+	DynamicScope active_scope;
 	Lexer *lexer;
 	Token tok;
 	TokenId prev_tok;

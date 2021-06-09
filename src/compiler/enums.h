@@ -77,6 +77,7 @@ typedef enum
 	AST_UNREACHABLE_STMT,
 	AST_VOLATILE_STMT,
 	AST_WHILE_STMT,
+	AST_YIELD_STMT,
 	AST_SCOPED_STMT,
 } AstKind;
 
@@ -438,6 +439,7 @@ typedef enum
 	TOKEN_VIRTUAL,
 	TOKEN_VOLATILE,
 	TOKEN_WHILE,
+	TOKEN_YIELD,
 
 	TOKEN_CT_ASSERT,        // $assert
 	TOKEN_CT_CASE,          // $case

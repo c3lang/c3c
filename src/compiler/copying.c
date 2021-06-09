@@ -337,6 +337,9 @@ Ast *copy_ast(Ast *source)
 		case AST_RETURN_STMT:
 			MACRO_COPY_EXPR(ast->return_stmt.expr);
 			return ast;
+		case AST_SCOPED_STMT:
+			MACRO_COPY_AST(ast->scoped_stmt.stmt);
+			return ast;
 		case AST_SWITCH_STMT:
 			copy_flow(ast);
 			MACRO_COPY_EXPR(ast->switch_stmt.cond);
@@ -356,8 +359,8 @@ Ast *copy_ast(Ast *source)
 			MACRO_COPY_EXPR(ast->while_stmt.cond);
 			MACRO_COPY_AST(ast->while_stmt.body);
 			return ast;
-		case AST_SCOPED_STMT:
-			MACRO_COPY_AST(ast->scoped_stmt.stmt);
+		case AST_YIELD_STMT:
+			MACRO_COPY_EXPR_LIST(ast->yield_stmt.values);
 			return ast;
 	}
 	UNREACHABLE;
