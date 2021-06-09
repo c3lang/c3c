@@ -6,11 +6,15 @@
 
 void gencontext_emit_try_stmt(GenContext *context, Ast *pAst);
 
-bool ast_is_empty_compound_stmt(Ast *ast)
+
+static bool ast_is_not_empty(Ast *ast)
 {
-	if (ast->ast_kind != AST_COMPOUND_STMT) return false;
-	return !vec_size(ast->compound_stmt.stmts) && ast->compound_stmt.defer_list.start == ast->compound_stmt.defer_list.end;
+	if (!ast) return false;
+	if (ast->ast_kind != AST_COMPOUND_STMT) return true;
+	if (vec_size(ast->compound_stmt.stmts)) return true;
+	return ast->compound_stmt.defer_list.start != ast->compound_stmt.defer_list.end;
 }
+
 
 void llvm_emit_compound_stmt(GenContext *context, Ast *ast)
 {
@@ -247,13 +251,13 @@ void llvm_emit_if(GenContext *c, Ast *ast)
 	LLVMBasicBlockRef else_block = exit_block;
 
 	// Only generate a target if
-	if (!ast_is_empty_compound_stmt(ast->if_stmt.then_body))
+	if (ast_is_not_empty(ast->if_stmt.then_body))
 	{
 		then_block = llvm_basic_block_new(c, "if.then");
 	}
 
 	// We have an optional else block.
-	if (ast->if_stmt.else_body && !ast_is_empty_compound_stmt(ast->if_stmt.else_body))
+	if (ast_is_not_empty(ast->if_stmt.else_body))
 	{
 		else_block = llvm_basic_block_new(c, "if.else");
 	}
@@ -337,7 +341,7 @@ void gencontext_emit_for_stmt(GenContext *c, Ast *ast)
 	// We have 3 optional parts, which makes this code bit complicated.
 	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "for.exit");
 	LLVMBasicBlockRef inc_block = ast->for_stmt.incr ? llvm_basic_block_new(c, "for.inc") : NULL;
-	LLVMBasicBlockRef body_block = ast->for_stmt.body->compound_stmt.stmts ? llvm_basic_block_new(c, "for.body") : NULL;
+	LLVMBasicBlockRef body_block = ast_is_not_empty(ast->for_stmt.body) ? llvm_basic_block_new(c, "for.body") : NULL;
 	LLVMBasicBlockRef cond_block = ast->for_stmt.cond ? llvm_basic_block_new(c, "for.cond") : NULL;
 
 	// Break is simple it always jumps out.
@@ -1193,6 +1197,26 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 	llvm_emit_block(c, ok_block);
 }
 
+void llvm_emit_yield_stmt(GenContext *c, Ast *ast)
+{
+	Decl **declarations = ast->yield_stmt.declarations;
+	Expr **values = ast->yield_stmt.values;
+	// Create backend refs on demand.
+	foreach(declarations, i)
+	{
+		Decl *decl = declarations[i];
+		if (!decl->backend_ref) llvm_emit_local_var_alloca(c, decl);
+	}
+	// Set the values
+	foreach(values, i)
+	{
+		Expr *expr = values[i];
+		BEValue value;
+		llvm_emit_expr(c, &value, expr);
+		llvm_store_bevalue_aligned(c, declarations[i]->backend_ref, &value, declarations[i]->alignment);
+	}
+	llvm_emit_stmt(c, ast->yield_stmt.ast);
+}
 
 void llvm_emit_stmt(GenContext *c, Ast *ast)
 {
@@ -1205,6 +1229,9 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_POISONED:
 		case AST_DEFINE_STMT:
 			UNREACHABLE
+		case AST_YIELD_STMT:
+			llvm_emit_yield_stmt(c, ast);
+			break;
 		case AST_TRY_STMT:
 			gencontext_emit_try_stmt(c, ast);
 			break;

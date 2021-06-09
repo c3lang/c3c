@@ -252,12 +252,14 @@ const char *token_type_to_string(TokenType type)
 			return "typeof";
 		case TOKEN_UNION:
 			return "union";
-		case TOKEN_WHILE:
-			return "while";
 		case TOKEN_VAR:
 			return "var";
 		case TOKEN_VOLATILE:
 			return "volatile";
+		case TOKEN_WHILE:
+			return "while";
+		case TOKEN_YIELD:
+			return "yield";
 
 		// Named types
 		case TOKEN_VIRTUAL:

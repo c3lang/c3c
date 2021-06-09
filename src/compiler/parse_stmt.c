@@ -680,6 +680,29 @@ static inline Ast *parse_decl_or_expr_stmt(Context *context)
 }
 
 /**
+ * yield_stmt = 'yield' (expr (',' expr)*)? EOS
+ * @param context
+ * @return
+ */
+static inline Ast *parse_yield_stmt(Context *context)
+{
+	Ast *ast = AST_NEW_TOKEN(AST_YIELD_STMT, context->tok);
+	advance_and_verify(context, TOKEN_YIELD);
+	Expr **exprs = NULL;
+	while (!TOKEN_IS(TOKEN_EOS))
+	{
+		if (exprs)
+		{
+			CONSUME_OR(TOKEN_COMMA, poisoned_ast);
+		}
+		Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+		vec_add(exprs, expr);
+	}
+	ast->yield_stmt.values = exprs;
+	RANGE_EXTEND_PREV(ast);
+	return ast;
+}
+/**
  * define_stmt
  *  : define CT_IDENT '=' const_expr EOS
  *  | define CT_TYPE '=' const_expr EOS
@@ -1014,6 +1037,8 @@ Ast *parse_stmt(Context *context)
 			return parse_declaration_stmt(context);
 		case TOKEN_AT:
 			return parse_expr_stmt(context);
+		case TOKEN_YIELD:
+			return parse_yield_stmt(context);
 		case TOKEN_RETURN:
 		{
 			Ast *ast = TRY_AST(parse_return(context));

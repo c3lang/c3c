@@ -1381,13 +1381,15 @@ static inline Ast *parse_generics_statements(Context *context)
 	return ast;
 }
 
-static bool parse_macro_arguments(Context *context, Visibility visibility, Decl ***params_ref)
+bool parse_macro_argument_declarations(Context *context, Visibility visibility, Decl ***params_ref, bool allow_vararg)
 {
-	CONSUME_OR(TOKEN_LPAREN, false);
-	*params_ref = NULL;
 	bool vararg = false;
-	while (!try_consume(context, TOKEN_RPAREN))
+	while (!TOKEN_IS(TOKEN_EOS) && !TOKEN_IS(TOKEN_RPAREN))
 	{
+		if (*params_ref)
+		{
+			TRY_CONSUME(TOKEN_COMMA, false);
+		}
 		TypeInfo *parm_type = NULL;
 		VarDeclKind param_kind;
 		TEST_TYPE:
@@ -1431,14 +1433,14 @@ static bool parse_macro_arguments(Context *context, Visibility visibility, Decl 
 					return false;
 				}
 				// We either have "... var" or "int... var"
-				if (try_consume(context, TOKEN_ELLIPSIS))
+				if (allow_vararg && try_consume(context, TOKEN_ELLIPSIS))
 				{
 					vararg = true;
 				}
 				else
 				{
 					parm_type = TRY_TYPE_OR(parse_type(context), false);
-					if (try_consume(context, TOKEN_ELLIPSIS))
+					if (allow_vararg && try_consume(context, TOKEN_ELLIPSIS))
 					{
 						vararg = true;
 					}
@@ -1449,8 +1451,24 @@ static bool parse_macro_arguments(Context *context, Visibility visibility, Decl 
 		param->var.vararg = vararg;
 		advance(context);
 		vec_add(*params_ref, param);
-		COMMA_RPAREN_OR(false);
+		TokenType current_token = context->tok.type;
 	}
+	return true;
+
+}
+static bool parse_macro_arguments(Context *context, Visibility visibility, Decl ***params_ref, Decl ***body_params, bool *has_trailing_body)
+{
+	CONSUME_OR(TOKEN_LPAREN, false);
+	*params_ref = NULL;
+	*body_params = NULL;
+	*has_trailing_body = false;
+	if (!parse_macro_argument_declarations(context, visibility, params_ref, true)) return false;
+	if (try_consume(context, TOKEN_EOS))
+	{
+		*has_trailing_body = true;
+		if (!parse_macro_argument_declarations(context, visibility, body_params, true)) return false;
+	}
+	TRY_CONSUME(TOKEN_RPAREN, false);
 	return true;
 }
 /**
@@ -1482,7 +1500,9 @@ static inline Decl *parse_generics_declaration(Context *context, Visibility visi
 	decl->generic_decl.path = path;
 	if (!consume_ident(context, "generic function name")) return poisoned_decl;
 	decl->generic_decl.rtype = rtype;
-	if (!parse_macro_arguments(context, visibility, &decl->generic_decl.parameters)) return poisoned_decl;
+	bool trailing_body = false;
+	if (!parse_macro_arguments(context, visibility, &decl->generic_decl.parameters, &decl->generic_decl.body_parameters, &trailing_body)) return poisoned_decl;
+	decl->has_body_param = trailing_body;
 	Ast **cases = NULL;
 	if (!parse_switch_body(context, &cases, TOKEN_CASE, TOKEN_DEFAULT, true)) return poisoned_decl;
 	decl->generic_decl.cases = cases;
@@ -1776,8 +1796,9 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 	}
 
 	TRY_CONSUME_OR(TOKEN_IDENT, "Expected a macro name here.", poisoned_decl);
-
-	if (!parse_macro_arguments(context, visibility, &decl->macro_decl.parameters)) return poisoned_decl;
+	bool trailing_body = false;
+	if (!parse_macro_arguments(context, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_parameters, &trailing_body)) return poisoned_decl;
+	decl->has_body_param = trailing_body;
 	decl->macro_decl.body = TRY_AST_OR(parse_stmt(context), poisoned_decl);
 	return decl;
 }

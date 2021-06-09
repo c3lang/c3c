@@ -1082,6 +1082,10 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 	if (!ast) return;
 	switch (ast->ast_kind)
 	{
+		case AST_YIELD_STMT:
+			DUMP("(yield");
+			printf("Missing data\n");
+			DUMPEND();
 		case AST_CT_ASSERT:
 			DUMP("($assert");
 			DUMPEXPR(ast->ct_assert_stmt.expr);

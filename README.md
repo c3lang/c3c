@@ -96,10 +96,11 @@ work on Windows. Also, parts of the code is still rough and needs to be made sol
 - [x] Built-in linking
 - [x] CT only macros evaluating to constants
 - [x] range initializers e.g. `{ [1..2] = 2 }`
+- [x] Trailing body macros e.g. `@foo(1, 100; int a) { bar(a); };`
 - [ ] Anonymous structs
 - [ ] Complete C ABI conformance *in progress*
 - [ ] Debug info *in progress*
-- [ ] Virtual type  
+- [ ] Virtual type *in progress*
 - [ ] Enum associated data support  
 - [ ] Windows support
 - [ ] All attributes
@@ -111,7 +112,6 @@ work on Windows. Also, parts of the code is still rough and needs to be made sol
 - [ ] Complex macros
 - [ ] Escape macros
 - [ ] Implicit capturing macros
-- [ ] Trailing body macros
 - [ ] Subarray initializers
 - [ ] Bitstructs
 - [ ] `asm` section
@@ -120,7 +120,6 @@ work on Windows. Also, parts of the code is still rough and needs to be made sol
 - [ ] Pre-post conditions
 - [ ] Stdlib inclusion
 - [ ] String functions
-- [ ] Compile time incremental arrays
 - [ ] Simd vector types
 
 #### What can you help with?
