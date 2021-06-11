@@ -60,3 +60,10 @@ void run_arena_allocator_tests(void)
 	printf("-- Test freeing arena - OK.\n");
 	if (was_init) memory_init();
 }
+
+void *cmalloc(size_t size)
+{
+	void *ptr = malloc(size);
+	if (!ptr) error_exit("Failed to malloc %d bytes.", size);
+	return ptr;
+}

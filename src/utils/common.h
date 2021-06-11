@@ -27,3 +27,9 @@
 #define PLATFORM_WINDOWS 0
 #define PLATFORM_POSIX 1
 #endif
+
+#if PLATFORM_POSIX
+#define USE_PTHREAD 1
+#else
+#define USE_PTHREAD 0
+#endif

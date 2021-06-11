@@ -134,6 +134,7 @@ add_executable(c3c
         src/utils/vmem.c
         src/utils/vmem.h
         src/utils/whereami.c
+        src/utils/taskqueue.c
         src/compiler/llvm_codegen_c_abi_x86.c
         src/compiler/c_abi_internal.h
         src/compiler/llvm_codegen_c_abi_x64.c
