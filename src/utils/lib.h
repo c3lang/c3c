@@ -288,6 +288,7 @@ typedef struct
 {
 	unsigned size;
 	unsigned capacity;
+	char data[];
 } VHeader_;
 
 static inline VHeader_* vec_new_(size_t element_size, size_t capacity)
