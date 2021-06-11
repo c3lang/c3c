@@ -6,6 +6,14 @@
 
 #include "common.h"
 
+typedef struct Task_
+{
+	void (*task)(void *arg);
+	void *arg;
+} Task;
+
+typedef void *TaskQueueRef;
+
 const char* expand_path(const char* path);
 const char* find_lib_dir(void);
 char *read_file(const char *path, size_t *return_size);
@@ -13,13 +21,16 @@ int filename_to_module(const char *path, char buffer[MAX_IDENTIFIER_LENGTH + 1])
 void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
 void file_find_top_dir();
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive);
-
+void *cmalloc(size_t size);
 void memory_init(void);
 void *malloc_arena(unsigned long mem);
 void free_arena(void);
 void print_arena_status(void);
-
 void run_arena_allocator_tests(void);
+TaskQueueRef taskqueue_create(int threads);
+void taskqueue_add(TaskQueueRef queue, Task *task);
+void taskqueue_destroy(TaskQueueRef queue);
+void taskqueue_wait_for_completion(TaskQueueRef queue);
 
 #define MALLOC(mem) malloc_arena(mem)
 #define CALLOCS(type) ({ type *__x = malloc_arena(sizeof(type)); memset(__x, 0, sizeof(type)); __x; })
@@ -277,11 +288,11 @@ typedef struct
 {
 	unsigned size;
 	unsigned capacity;
-} _VHeader;
+} VHeader_;
 
-static inline _VHeader* _vec_new(size_t element_size, size_t capacity)
+static inline VHeader_* vec_new_(size_t element_size, size_t capacity)
 {
-	_VHeader *header = malloc_arena(element_size * capacity + sizeof(_VHeader));
+	VHeader_ *header = malloc_arena(element_size * capacity + sizeof(VHeader_));
 	header->size = 0;
 	header->capacity = capacity;
 	return header;
@@ -289,58 +300,63 @@ static inline _VHeader* _vec_new(size_t element_size, size_t capacity)
 
 static inline unsigned vec_size(const void *vec)
 {
-	return vec ? (((_VHeader *)vec) - 1)->size : 0;
+	if (!vec) return 0;
+	const VHeader_ *header = vec;
+	return header[-1].size;
 }
 
-static inline void vec_resize(const void *vec, unsigned new_size)
+static inline void vec_resize(void *vec, unsigned new_size)
 {
-	if (vec)
-	{
-		(((_VHeader *)vec) - 1)->size = new_size;
-	}
+	if (!vec) return;
+	VHeader_ *header = vec;
+	header[-1].size = new_size;
 }
 
-static inline void vec_pop(const void *vec)
+static inline void vec_pop(void *vec)
 {
 	assert(vec);
 	assert(vec_size(vec) > 0);
-	(((_VHeader *)vec) - 1)->size--;
+	VHeader_ *header = vec;
+	header[-1].size--;
 }
-static inline void* _expand(void *vec, size_t element_size)
+static inline void* expand_(void *vec, size_t element_size)
 {
-	if (vec == NULL)
+	VHeader_ *header;
+	if (!vec)
 	{
-		vec = _vec_new(element_size, 16) + 1;
+		header = vec_new_(element_size, 16);
 	}
-	_VHeader *header = ((_VHeader *)vec) - 1;
+	else
+	{
+		header = ((VHeader_ *)vec) - 1;
+	}
 	header->size++;
 	if (header->size == header->capacity)
 	{
-		_VHeader *new_array = _vec_new(element_size, header->capacity << 1U);
-		memcpy(new_array, header, element_size * header->capacity + sizeof(_VHeader));
+		VHeader_ *new_array = vec_new_(element_size, header->capacity << 1U);
+		memcpy(new_array, header, element_size * header->capacity + sizeof(VHeader_));
 		header = new_array;
 		new_array->capacity = header->capacity << 1U;
-		vec = header + 1;
 	}
-	return vec;
+	return &(header[1]);
 }
 
 
 #define CONCAT_INNER(a, b) a ## b
 #define CONCAT(a, b) CONCAT_INNER(a, b)
 #define VECEACH(_vec, _index) \
-	for (unsigned _index = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); _index < CONCAT(__vecsize_, __LINE__); _index++)
+	for (unsigned (_index) = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); (_index) < CONCAT(__vecsize_, __LINE__); (_index)++)
 #define foreach(_vec, _index) \
-	for (unsigned _index = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); _index < CONCAT(__vecsize_, __LINE__); _index++)
+	for (unsigned (_index) = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); (_index) < CONCAT(__vecsize_, __LINE__); (_index)++)
 
 
-#define VECNEW(_type, _capacity) ((_type *)(_vec_new(sizeof(_type), _capacity) + 1))
-#define VECADD(_vec, _value) \
+#define VECNEW(_type, _capacity) ((_type *)(vec_new_(sizeof(_type), _capacity) + 1))
+#define VECADD(vec_, value_) \
 	({ \
-		typeof(_vec) __temp = (typeof(_vec))_expand((_vec), sizeof(typeof(*(_vec)))); \
-		__temp[vec_size(__temp) - 1] = _value; \
-		_vec = __temp; })
-#define vec_add(_vec, _value) do { (_vec) = VECADD((_vec), _value); } while (0)
+		typeof(vec_) __temp = (typeof(vec_))expand_((vec_), sizeof(typeof(*(vec_)))); \
+		__temp[vec_size(__temp) - 1] = value_; \
+		(vec_) = __temp; })
+#define vec_add(_vec, value_) do { (_vec) = VECADD((_vec), value_); } while (0)
 
 #define VECLAST(_vec) ({ unsigned _size = vec_size(_vec); _size ? (_vec)[_size - 1] : NULL; })
 

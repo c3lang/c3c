@@ -79,21 +79,18 @@ static void usage(void)
 	OUTPUT("  --emit-llvm           - Emit LLVM IR as a .ll file per module.");
 	OUTPUT("  --target <target>     - Compile for a particular architecture + OS target.");
 	OUTPUT("  --target-list         - List all architectures the compiler supports.");
+	OUTPUT("  --threads <number>    - Set the number of threads to use for compilation.");
+	OUTPUT("  --safe                - Set mode to 'safe', generating runtime traps on overflows and contract violations.");
+	OUTPUT("  --unsafe              - Set mode to 'unsafe', remove runtime traps.");
 	OUTPUT("");
 	OUTPUT("  -g                    - Emit full debug info.");
 	OUTPUT("  -g0                   - Emit no debug info.");
 	OUTPUT("  -gline-tables-only    - Only emit line tables for debugging.");
 	OUTPUT("");
-	OUTPUT("  -freg-struct-return   - Override default ABI to return small structs in registers.");
-	OUTPUT("  -fpcc-struct-return   - Override default ABI to return small structs on the stack.");
-	OUTPUT("  -fno-memcpy-pass      - Prevents compiler from doing a mem copy pass (for debug).");
 	OUTPUT("  -fpic                 - Generate position independent (PIC) code if suitable.");
 	OUTPUT("  -fno-pic              - Do not generate position independent code.");
 	OUTPUT("  -fPIC                 - Always generate position independent (PIC) code.");
 	OUTPUT("  -fno-PIC              - generate position independent (PIC) code.");
-	OUTPUT("");
-	OUTPUT("  -msoft-float          - Use software floating point.");
-	OUTPUT("  -mno-soft-float       - Prevent use of software floating point.");
 }
 
 
@@ -378,6 +375,15 @@ static void parse_option(BuildOptions *options)
 				OUTPUT("C3 is low level programming language based on C.");
 				exit(EXIT_SUCCESS);
 			}
+			if (match_longopt("threads"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --threads needs a valid integer 1 or higher.");
+				const char *thread_string = next_arg();
+				int threads = atoi(thread_string);
+				if (threads < 1) OUTPUT("Expected a valid integer 1 or higher.");
+				if (threads > MAX_THREADS) OUTPUT("Cannot exceed %d threads.", MAX_THREADS);
+				options->build_threads = threads;
+			}
 			if (match_longopt("target"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --target needs a arch+os definition.");
@@ -472,6 +478,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.optimization_setting_override = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
 		.safe_mode = -1,
+		.build_threads = 16,
 		.command = COMMAND_MISSING,
 		.pie = PIE_DEFAULT,
 		.pic = PIC_DEFAULT,

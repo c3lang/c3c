@@ -5,7 +5,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "vmem.h"
-
 #define ARENA_DEF(name, type) \
 extern Vmem name##_arena; \
 typedef unsigned type##Id; \

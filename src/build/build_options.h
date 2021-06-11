@@ -9,7 +9,7 @@
 
 #define MAX_LIB_DIRS 1024
 #define MAX_FILES 2048
-
+#define MAX_THREADS 0xFFFF
 
 
 typedef enum
@@ -169,6 +169,7 @@ typedef struct BuildOptions_
 	const char* lib_dir[MAX_LIB_DIRS];
 	const char* std_lib_dir;
 	int lib_count;
+	int build_threads;
 	const char** files;
 	const char* project_name;
 	const char* target_select;

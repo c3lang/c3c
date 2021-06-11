@@ -6,15 +6,8 @@
 #include "parser_internal.h"
 #include <unistd.h>
 
-#if PLATFORM_POSIX
-#include <pthread.h>
-#define USE_PTHREAD 1
-#else
-#define USE_PTHREAD 0
-#endif
-
-#define MAX_OUTPUT_FILES 100000000
-#define MAX_MODULES 10000000
+#define MAX_OUTPUT_FILES 1000000
+#define MAX_MODULES 100000
 
 GlobalContext global_context;
 BuildTarget active_target;
@@ -106,12 +99,18 @@ static inline void halt_on_error(void)
 	if (global_context.errors_found > 0) exit(EXIT_FAILURE);
 }
 
-#if USE_PTHREAD
-void* compile_on_pthread(void *gencontext)
+typedef struct CompileData_
 {
-	return (void *)llvm_codegen(gencontext);
+	void *context;
+	const char *object_name;
+	Task task;
+} CompileData;
+
+void thread_compile_task(void *compiledata)
+{
+	CompileData *data = compiledata;
+	data->object_name = llvm_codegen(data->context);
 }
-#endif
 
 void sema_analyze_stage(Module *module, AnalysisStage stage)
 {
@@ -358,32 +357,28 @@ void compiler_compile(void)
 		error_exit("No output files found.");
 	}
 
+	CompileData *compile_data = malloc(sizeof(CompileData) * output_file_count);
 	const char **obj_files = malloc(sizeof(char*) * output_file_count);
 
-#if USE_PTHREAD
-	pthread_t *threads = malloc(output_file_count * sizeof(pthread_t));
+	TaskQueueRef queue = taskqueue_create(16);
+
 	for (unsigned i = 0; i < output_file_count; i++)
 	{
-		if (pthread_create(&threads[i], NULL, &compile_on_pthread, gen_contexts[i]))
-		{
-			error_exit("Failed to spawn compiler thread.");
-		}
+		compile_data[i] = (CompileData) { .context = gen_contexts[i] };
+		compile_data[i].task = (Task) { &thread_compile_task, &compile_data[i] };
+		taskqueue_add(queue, &compile_data[i].task);
 	}
+
+	taskqueue_wait_for_completion(queue);
+	taskqueue_destroy(queue);
+
 	for (unsigned i = 0; i < output_file_count; i++)
 	{
-		void *file_name;
-		pthread_join(threads[i], &file_name);
-		assert(file_name || !create_exe);
-		obj_files[i] = file_name;
+		obj_files[i] = compile_data[i].object_name;
+		assert(obj_files[i] || !create_exe);
 	}
-#else
-	for (unsigned i = 0; i < output_file_count; i++)
-	{
-		const char *file_name = llvm_codegen(gen_contexts[i]);
-		assert(file_name || !create_exe);
-		obj_files[i] = file_name;
-	}
-#endif
+
+	free(compile_data);
 
 	if (create_exe)
 	{
