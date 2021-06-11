@@ -33,3 +33,15 @@
 #else
 #define USE_PTHREAD 0
 #endif
+
+#define IS_GCC 0
+#define IS_CLANG 0
+#ifdef __GNUC__
+#ifdef __clang__
+#undef IS_CLANG
+#define IS_CLANG 1
+#else
+#undef IS_GCC
+#define IS_GCC 1
+#endif
+#endif

@@ -335,7 +335,15 @@ static inline void* expand_(void *vec, size_t element_size)
 	if (header->size == header->capacity)
 	{
 		VHeader_ *new_array = vec_new_(element_size, header->capacity << 1U);
-		memcpy(new_array, header, element_size * header->capacity + sizeof(VHeader_));
+#if IS_GCC
+		// I've yet to figure out why GCC insists that this is trying to copy
+		// 8 bytes over a size zero array.
+		// We use volatile to deoptimize on GCC
+		volatile size_t copy_size = element_size * header->capacity + sizeof(VHeader_);
+#else
+		size_t copy_size = element_size * header->capacity + sizeof(VHeader_);
+#endif
+		memcpy(new_array, header, copy_size);
 		header = new_array;
 		new_array->capacity = header->capacity << 1U;
 	}
