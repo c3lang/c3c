@@ -145,7 +145,7 @@ add_executable(c3c
         src/compiler/llvm_codegen_c_abi_wasm.c)
 
 target_compile_options(c3c PRIVATE -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
-        -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
+        -Wno-unused-function -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter)
 
 
 target_include_directories(c3c PRIVATE
