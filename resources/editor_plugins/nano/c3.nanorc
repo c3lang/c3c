@@ -1,7 +1,7 @@
 ## C3 syntax highlighting support for nano
 ## https://github.com/c3lang/c3c
 
-syntax c3 "\.c3$"
+syntax c3 "\.(c3|c3t)$"
 comment "//"
 
 # Default color
@@ -18,7 +18,7 @@ color normal "\(|\)"
 color green "\<(virtual|void|bool|quad|double|float|long|ulong|int|uint|short|ushort|ichar|char|isize|usize|iptr|uptr|iptrdiff|uptrdiff|half)\>"
 
 # Keywords
-color yellow "\<(alias|as|asm|assert|attribute|break|case|catch|const|continue|default|defer|define|do|else|enum|extern|error|false|for|foreach|func|generic|if|import|interface|macro|module|nextcase|null|private|return|static|struct|switch|true|try|typeid|typeof|union|while|var|volatile)\>"
+color yellow "\<(alias|as|asm|assert|attribute|break|case|catch|const|continue|default|defer|define|do|else|enum|extern|error|false|for|foreach|func|generic|if|import|interface|macro|module|nextcase|null|private|return|static|struct|switch|true|try|typeid|typeof|union|while|var|volatile|yield)\>"
 
 # $ Statements
 color brightyellow "\$\<(assert|case|default|elif|else|endif|endswitch|for|if|switch|unreachable)\>"
