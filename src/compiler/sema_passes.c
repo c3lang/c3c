@@ -87,6 +87,7 @@ void sema_analysis_pass_process_imports(Module *module)
 		context_add_intrinsic(context, kw___ceil);
 		context_add_intrinsic(context, kw___sqrt);
 	}
+	(void)import_count; // workaround for clang 13.0
 	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", import_count, global_context.errors_found);
 }
 
