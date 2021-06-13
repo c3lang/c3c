@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.10)
 project(c3c)
 
 SET(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)

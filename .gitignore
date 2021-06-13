@@ -59,3 +59,4 @@ dkms.conf
 /resources/lex.yy.c
 /resources/y.tab.c
 /resources/y.tab.h
+/bin/

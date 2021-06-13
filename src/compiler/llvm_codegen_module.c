@@ -104,11 +104,14 @@ void gencontext_init_file_emit(GenContext *c, Context *ast)
 		                                                              emission_kind,
 		                                                              dwo_id,
 		                                                              split_debug_inlining,
-		                                                              emit_debug_info_for_profiling,
+		                                                              emit_debug_info_for_profiling
+#if LLVM_VERSION_MAJOR >= 11
+		                                                              ,
 		                                                              sysroot,
 		                                                              strlen(sysroot),
 		                                                              sdk,
 		                                                              strlen(sdk)
+#endif
 		                                                      );
 	}
 }
