@@ -130,9 +130,7 @@ work on Windows. Also, parts of the code is still rough and needs to be made sol
 - Are you a Windows dev? Please help make the compiler work on Windows!
 - Install instructions for other Linux and Unix variants are appreciated.
 
-#### Installing on Ubuntu
-
-(This installation has been tested on 20.10)
+#### Installing on Ubuntu 20.10
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
 2. Install CMake: `sudo apt install cmake`
@@ -147,6 +145,23 @@ work on Windows. Also, parts of the code is still rough and needs to be made sol
 You should now have a `c3c` executable.
 
 You can try it out by running some sample code: `./c3c compile ../resources/examples/hash.c3`
+
+#### Building via Docker
+
+You can build `c3c` using either an Ubuntu 18.04 or 20.04 container:
+
+```
+./build-with-docker.sh 18
+```
+
+Replace `18` with `20` to build through Ubuntu 20.04.
+
+For a release build specify:
+```
+./build-with-docker.sh 20 Release
+```
+
+A `c3c` executable will be found under `bin/`.
 
 #### Installing on OS X using Homebrew
 
