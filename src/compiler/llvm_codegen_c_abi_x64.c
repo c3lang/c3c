@@ -439,7 +439,6 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 			*lo_class = CLASS_SSE;
 			*hi_class = CLASS_SSEUP;
 			break;
-		case TYPE_VARARRAY:
 		case TYPE_POINTER:
 			*current = CLASS_INTEGER;
 			break;
@@ -545,7 +544,6 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 	{
 		case TYPE_U64:
 		case TYPE_I64:
-		case TYPE_VARARRAY:
 		case TYPE_POINTER:
 			if (!offset) return abi_type_new_plain(type);
 			break;

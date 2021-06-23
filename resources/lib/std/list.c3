@@ -112,3 +112,44 @@ func void List.free(List *list)
     list.capacity = 0;
     list.size = 0;
 }
+
+/*
+
+operator for(List *list; index, Type type)
+{
+    $IndexType = typeof(index);
+    $IndexType last_index = ($IndexType)(list.size);
+    for ($IndexType i = 0; i < last_index; i++)
+    {
+        yield(i, list.entries[index]);
+    }
+}
+
+operator for(List *list; index, Type *type)
+{
+    $IndexType = typeof(index);
+    $IndexType last_index = ($IndexType)(list.size);
+    for ($IndexType i = 0; i < last_index; i++)
+    {
+        yield(i, &list.entries[index]);
+    }
+}
+
+operator for(List *list; Type *type)
+{
+    usize size = list.size;
+    for (usize i = 0; i < last_index; i++)
+    {
+        yield(i, &list.entries[index]);
+    }
+}
+*/
+/*
+operator for(List *list; Type type)
+{
+    usize size = list.size;
+    for (usize i = 0; i < last_index; i++)
+    {
+        yield(i, list.entries[index]);
+    }
+}*/

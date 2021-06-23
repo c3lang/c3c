@@ -83,7 +83,7 @@ static LLVMValueRef llvm_emit_decl(GenContext *c, Ast *ast)
 	{
 		Type *type = type_flatten(decl->type);
 		// Normal case, zero init.
-		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER || type->type_kind == TYPE_VARARRAY)
+		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
 		{
 			llvm_emit_store(c, decl, LLVMConstNull(alloc_type));
 		}

@@ -124,7 +124,6 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_BOOL:
 		case TYPE_POINTER:
 		case TYPE_TYPEID:
-		case TYPE_VARARRAY:
 		case TYPE_ERR_UNION:
 		case TYPE_SUBARRAY:
 		case TYPE_ERRTYPE:
@@ -604,7 +603,6 @@ static ABIArgInfo *x86_classify_argument(CallConvention call, Regs *regs, Type *
 		case ALL_FLOATS:
 		case ALL_INTS:
 		case TYPE_BOOL:
-		case TYPE_VARARRAY:
 		case TYPE_POINTER:
 			return x86_classify_primitives(call, regs, type);
 		case TYPE_VECTOR:

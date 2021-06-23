@@ -441,10 +441,6 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 			DUMP("(subarray");
 			DUMPTYPE(type->array.base);
 			DUMPEND();
-		case TYPE_VARARRAY:
-			DUMP("(vararray");
-			DUMPTYPE(type->array.base);
-			DUMPEND();
 		case TYPE_INFERRED_ARRAY:
 			DUMP("(inferred-array");
 			DUMPTYPE(type->array.base);
@@ -525,11 +521,6 @@ void fprint_type_info_recursive(Context *context, FILE *file, TypeInfo *type_inf
 			}
 			DUMPF("(unresolved %s)", TOKSTR(type_info->unresolved.name_loc));
 			break;
-		case TYPE_INFO_VARARRAY:
-			DUMP("(vararray");
-			DUMPTI(type_info->array.base);
-			DUMPE();
-			break;
 		case TYPE_INFO_SUBARRAY:
 			DUMP("(subarray");
 			DUMPTI(type_info->array.base);
@@ -590,6 +581,9 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
+		case EXPR_PLACEHOLDER:
+			DUMP("(placeholder)");
+			return;
 		case EXPR_DESIGNATOR:
 			DUMP("(named param)");
 			return;

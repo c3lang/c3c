@@ -323,19 +323,6 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 		}
 		case TYPE_STRLIT:
 			TODO
-		case TYPE_VARARRAY:
-		{
-			llvm_value_rvalue(c, value);
-			LLVMTypeRef struct_type = value->type->backend_aux_type;
-			LLVMValueRef pointer_addr = LLVMBuildStructGEP2(c->builder, struct_type, value->value, 3, "vararrptr");
-			LLVMTypeRef pointer_type = llvm_get_type(c, type_get_ptr(value->type->array.base));
-			AlignSize alignment = type_abi_alignment(type_voidptr);
-			// We need to pick the worst alignment in case this is packed in an array.
-			if (value->alignment < alignment) alignment = value->alignment;
-			llvm_value_set_address_align(value,
-			                             llvm_emit_load_aligned(c, pointer_type, pointer_addr, 0, "vaptr"), value->type, alignment);
-			return;
-		}
 		default:
 			UNREACHABLE
 	}

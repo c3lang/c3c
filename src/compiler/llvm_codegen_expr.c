@@ -153,8 +153,6 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base(GenContext *c, Typ
 			                             llvm_get_type(c, type->array.base),
 			                             parent_value, &index_value, 1, "sarridx");
 		}
-		case TYPE_VARARRAY:
-			TODO
 		default:
 			UNREACHABLE
 
@@ -209,9 +207,6 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c,
 			                             llvm_get_type(c, type->array.base),
 			                             parent->value, &index->value, 1, "sarridx");
 		}
-		case TYPE_VARARRAY:
-			// TODO insert trap on overflow.
-			TODO
 		case TYPE_STRLIT:
 			// TODO insert trap on overflow.
 			return LLVMBuildInBoundsGEP(c->builder, parent->value, &index->value, 1, "ptridx");
@@ -394,8 +389,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 				value->value = LLVMBuildExtractValue(c->builder, value->value, 0, "");
 			}
 			break;
-		case CAST_VARPTR:
-			break;
 		case CAST_ARRPTR:
 			TODO
 		case CAST_EREU:
@@ -502,10 +495,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			value->value = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "");
 			value->type = to_type;
 			return;
-		case CAST_PTRVAR:
-		case CAST_VARSA:
-		case CAST_VARVAR:
-		case CAST_VARBOOL:
 		case CAST_BOOLBOOL:
 		case CAST_SABOOL:
 			TODO
@@ -1131,33 +1120,6 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 		case TYPE_STRLIT:
 			TODO
 			break;
-		case TYPE_VARARRAY:
-		{
-			llvm_value_rvalue(c, be_value);
-			LLVMValueRef check = LLVMBuildIsNull(c->builder, be_value->value, "checknull");
-			BEValue bool_value;
-			llvm_value_set_bool(&bool_value, check);
-			LLVMBasicBlockRef null_block = llvm_basic_block_new(c, "lennull");
-			LLVMBasicBlockRef non_null_block = llvm_basic_block_new(c, "lennormal");
-			LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "lenend");
-			llvm_emit_cond_br(c, &bool_value, null_block, non_null_block);
-			llvm_emit_block(c, null_block);
-			LLVMValueRef result_null = llvm_get_zero(c, type_usize);
-			llvm_emit_br(c, exit_block);
-			llvm_emit_block(c, non_null_block);
-			LLVMTypeRef struct_type = be_value->type->backend_aux_type;
-			LLVMValueRef len_addr = LLVMBuildStructGEP2(c->builder, struct_type, be_value->value, 0, "");
-			llvm_value_set_address(be_value, len_addr, type_usize);
-			LLVMValueRef result = llvm_value_rvalue_store(c, be_value);
-			llvm_emit_br(c, exit_block);
-			llvm_emit_block(c, exit_block);
-			LLVMValueRef total = LLVMBuildPhi(c->builder, llvm_get_type(c, type_usize), "");
-			LLVMValueRef logic_values[2] = { result_null, result };
-			LLVMBasicBlockRef blocks[2] = { null_block, non_null_block };
-			LLVMAddIncoming(total, logic_values, blocks, 2);
-			llvm_value_set(be_value, total, type_usize);
-			return;
-		}
 		default:
 			UNREACHABLE
 	}
@@ -1233,7 +1195,6 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 		case TYPE_ARRAY:
 			parent_base = parent_addr;
 			break;
-		case TYPE_VARARRAY:
 		case TYPE_STRLIT:
 			TODO
 		default:
@@ -1264,7 +1225,6 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 			case TYPE_ARRAY:
 				len = llvm_const_int(c, type_usize, parent_type->array.len);
 				break;
-			case TYPE_VARARRAY:
 			case TYPE_STRLIT:
 				TODO
 			default:
@@ -2315,7 +2275,6 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_POINTER:
 		case TYPE_ENUM:
 		case TYPE_ERRTYPE:
-		case TYPE_VARARRAY:
 			vec_add(*values, LLVMBuildLoad2(context->builder, llvm_get_type(context, param_type), expand_ptr, "loadexpanded"));
 			return;
 		case TYPE_TYPEDEF:
@@ -2566,8 +2525,6 @@ static void llvm_emit_unpacked_variadic_arg(GenContext *c, Expr *expr, BEValue *
 		case TYPE_SUBARRAY:
 			*subarray = value;
 			return;
-		case TYPE_VARARRAY:
-			TODO
 		default:
 			UNREACHABLE
 	}
@@ -3156,6 +3113,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MACRO_CT_IDENTIFIER:
 		case EXPR_CT_IDENT:
 		case EXPR_HASH_IDENT:
+		case EXPR_PLACEHOLDER:
 			UNREACHABLE
 		case EXPR_UNDEF:
 			// Should never reach this.

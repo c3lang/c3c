@@ -74,6 +74,7 @@ Expr *copy_expr(Expr *source_expr)
 			UNREACHABLE
 		case EXPR_UNDEF:
 			return expr;
+		case EXPR_PLACEHOLDER:
 		case EXPR_CONST_IDENTIFIER:
 		case EXPR_MACRO_IDENTIFIER:
 		case EXPR_CT_IDENT:
@@ -139,6 +140,10 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_EXPR(expr->guard_expr.inner);
 			return expr;
 		case EXPR_CONST:
+			if (type_kind_is_any_integer(expr->const_expr.kind) && expr->const_expr.i.digit_count > 1)
+			{
+				bigint_init_bigint(&expr->const_expr.i, &source_expr->const_expr.i);
+			}
 			return expr;
 		case EXPR_BINARY:
 			MACRO_COPY_EXPR(expr->binary_expr.left);
@@ -418,7 +423,6 @@ TypeInfo *copy_type_info(TypeInfo *source)
 			return copy;
 		case TYPE_INFO_INC_ARRAY:
 		case TYPE_INFO_INFERRED_ARRAY:
-		case TYPE_INFO_VARARRAY:
 		case TYPE_INFO_SUBARRAY:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.base = copy_type_info(source->array.base);

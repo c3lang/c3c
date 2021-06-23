@@ -12,7 +12,7 @@ void sema_shadow_error(Decl *decl, Decl *old)
 
 bool sema_resolve_type_info_maybe_inferred(Context *context, TypeInfo *type_info, bool allow_inferred_type)
 {
-	if (!sema_resolve_type_shallow(context, type_info, allow_inferred_type)) return false;
+	if (!sema_resolve_type_shallow(context, type_info, allow_inferred_type, false)) return false;
 	Type *type = type_info->type;
 	// usize and similar typedefs will not have a decl.
 	if (type->type_kind == TYPE_TYPEDEF && type->decl == NULL) return true;

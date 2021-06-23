@@ -5,55 +5,59 @@
 #include "compiler_internal.h"
 
 static STable function_types;
-static Type t_u0, t_u1, t_i8, t_i16, t_i32, t_i64, t_i128, t_ixx;
-static Type t_u8, t_u16, t_u32, t_u64, t_u128;
-static Type t_f16, t_f32, t_f64, t_f128, t_fxx;
-static Type t_usz, t_isz, t_uptr, t_iptr, t_uptrdiff, t_iptrdiff;
-static Type t_cus, t_cui, t_cul, t_cull;
-static Type t_cs, t_ci, t_cl, t_cll;
-static Type t_voidstar, t_typeid, t_error, t_typeinfo;
-static Type t_str, t_varheader, t_virtual, t_virtual_generic;
+static struct
+{
+	Type u0, u1, i8, i16, i32, i64, i128, ixx;
+	Type u8, u16, u32, u64, u128;
+	Type f16, f32, f64, f128, fxx;
+	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
+	Type t_cus, t_cui, t_cul, t_cull;
+	Type t_cs, t_ci, t_cl, t_cll;
+	Type voidstar, typeid, error, typeinfo;
+	Type str, varheader, virtual, virtual_generic;
 
-Type *type_bool = &t_u1;
-Type *type_void = &t_u0;
-Type *type_voidptr = &t_voidstar;
-Type *type_virtual = &t_virtual;
-Type *type_virtual_generic = &t_virtual_generic;
-Type *type_half = &t_f16;
-Type *type_float = &t_f32;
-Type *type_double = &t_f64;
-Type *type_quad = &t_f128;
-Type *type_typeid = &t_typeid;
-Type *type_typeinfo = &t_typeinfo;
-Type *type_ichar = &t_i8;
-Type *type_short = &t_i16;
-Type *type_int = &t_i32;
-Type *type_long = &t_i64;
-Type *type_i128 = &t_i128;
-Type *type_iptr = &t_iptr;
-Type *type_iptrdiff = &t_iptrdiff;
-Type *type_isize = &t_isz;
-Type *type_char = &t_u8;
-Type *type_ushort = &t_u16;
-Type *type_uint = &t_u32;
-Type *type_ulong = &t_u64;
-Type *type_u128 = &t_u128;
-Type *type_uptr = &t_uptr;
-Type *type_uptrdiff = &t_uptrdiff;
-Type *type_usize = &t_usz;
-Type *type_compint = &t_ixx;
-Type *type_compfloat = &t_fxx;
-Type *type_compstr = &t_str;
-Type *type_c_short = &t_cs;
-Type *type_c_int = &t_ci;
-Type *type_c_long = &t_cl;
-Type *type_c_longlong = &t_cll;
-Type *type_c_ushort = &t_cus;
-Type *type_c_uint = &t_cui;
-Type *type_c_ulong = &t_cul;
-Type *type_c_ulonglong = &t_cull;
-Type *type_error = &t_error;
-Type *type_varheader = &t_varheader;
+} t;
+
+Type *type_bool = &t.u1;
+Type *type_void = &t.u0;
+Type *type_voidptr = &t.voidstar;
+Type *type_virtual = &t.virtual;
+Type *type_virtual_generic = &t.virtual_generic;
+Type *type_half = &t.f16;
+Type *type_float = &t.f32;
+Type *type_double = &t.f64;
+Type *type_quad = &t.f128;
+Type *type_typeid = &t.typeid;
+Type *type_typeinfo = &t.typeinfo;
+Type *type_ichar = &t.i8;
+Type *type_short = &t.i16;
+Type *type_int = &t.i32;
+Type *type_long = &t.i64;
+Type *type_i128 = &t.i128;
+Type *type_iptr = &t.iptr;
+Type *type_iptrdiff = &t.iptrdiff;
+Type *type_isize = &t.isz;
+Type *type_char = &t.u8;
+Type *type_ushort = &t.u16;
+Type *type_uint = &t.u32;
+Type *type_ulong = &t.u64;
+Type *type_u128 = &t.u128;
+Type *type_uptr = &t.uptr;
+Type *type_uptrdiff = &t.uptrdiff;
+Type *type_usize = &t.usz;
+Type *type_compint = &t.ixx;
+Type *type_compfloat = &t.fxx;
+Type *type_compstr = &t.str;
+Type *type_c_short = &t.t_cs;
+Type *type_c_int = &t.t_ci;
+Type *type_c_long = &t.t_cl;
+Type *type_c_longlong = &t.t_cll;
+Type *type_c_ushort = &t.t_cus;
+Type *type_c_uint = &t.t_cui;
+Type *type_c_ulong = &t.t_cul;
+Type *type_c_ulonglong = &t.t_cull;
+Type *type_error = &t.error;
+Type *type_varheader = &t.varheader;
 
 static unsigned size_subarray;
 static unsigned alignment_subarray;
@@ -63,8 +67,7 @@ unsigned alignment_error_code;
 #define PTR_OFFSET 0
 #define INFERRED_ARRAY_OFFSET 1
 #define SUB_ARRAY_OFFSET 2
-#define VAR_ARRAY_OFFSET 3
-#define ARRAY_OFFSET 4
+#define ARRAY_OFFSET 3
 
 Type *type_int_signed_by_bitsize(unsigned bytesize)
 {
@@ -145,9 +148,6 @@ const char *type_to_error_string(Type *type)
 		case TYPE_ARRAY:
 			asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
-		case TYPE_VARARRAY:
-			asprintf(&buffer, "%s[*]", type_to_error_string(type->array.base));
-			return buffer;
 		case TYPE_INFERRED_ARRAY:
 			asprintf(&buffer, "%s[?]", type_to_error_string(type->array.base));
 			return buffer;
@@ -223,8 +223,7 @@ ByteSize type_size(Type *type)
 		case TYPE_STRLIT:
 		case TYPE_FUNC:
 		case TYPE_POINTER:
-		case TYPE_VARARRAY:
-			return t_usz.canonical->builtin.bytesize;
+			return t.usz.canonical->builtin.bytesize;
 		case TYPE_ARRAY:
 			return type_size(type->array.base) * type->array.len;
 		case TYPE_SUBARRAY:
@@ -339,7 +338,6 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_VOID:
 		case ALL_INTS:
 		case TYPE_BOOL:
-		case TYPE_VARARRAY:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
@@ -585,7 +583,6 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_VECTOR:
 			break;
 		case TYPE_POINTER:
-		case TYPE_VARARRAY:
 			// All pointers are the same.
 			type = type_voidptr;
 			break;
@@ -664,7 +661,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_ENUM:
 			return type->decl->enums.type_info->type->canonical->builtin.abi_alignment;
 		case TYPE_ERRTYPE:
-			return t_usz.canonical->builtin.abi_alignment;
+			return t.usz.canonical->builtin.abi_alignment;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return type->decl->alignment;
@@ -680,9 +677,8 @@ AlignSize type_abi_alignment(Type *type)
 			return type_virtual_generic->builtin.abi_alignment;
 		case TYPE_FUNC:
 		case TYPE_POINTER:
-		case TYPE_VARARRAY:
 		case TYPE_STRLIT:
-			return t_usz.canonical->builtin.abi_alignment;
+			return t.usz.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
 			return type_abi_alignment(type->array.base);
 		case TYPE_SUBARRAY:
@@ -778,31 +774,6 @@ static Type *type_generate_inferred_array(Type *arr_type, bool canonical)
 	return arr;
 }
 
-static Type *type_generate_vararray(Type *arr_type, bool canonical)
-{
-	if (canonical) arr_type = arr_type->canonical;
-	if (!arr_type->type_cache)
-	{
-		create_type_cache(arr_type);
-	}
-
-	Type *arr = arr_type->type_cache[VAR_ARRAY_OFFSET];
-	if (arr == NULL)
-	{
-		arr = type_new(TYPE_VARARRAY, strformat("%s[*]", arr_type->name));
-		arr->array.base = arr_type;
-		arr_type->type_cache[VAR_ARRAY_OFFSET] = arr;
-		if (arr_type == arr_type->canonical)
-		{
-			arr->canonical = arr;
-		}
-		else
-		{
-			arr->canonical = type_generate_vararray(arr_type->canonical, true);
-		}
-	}
-	return arr;
-}
 
 
 Type *type_get_ptr(Type *ptr_type)
@@ -818,11 +789,6 @@ Type *type_get_subarray(Type *arr_type)
 Type *type_get_inferred_array(Type *arr_type)
 {
 	return type_generate_inferred_array(arr_type, false);
-}
-
-Type *type_get_vararray(Type *arr_type)
-{
-	return type_generate_vararray(arr_type, false);
 }
 
 static inline bool array_structurally_equivalent_to_struct(Type *array, Type *type)
@@ -940,7 +906,6 @@ Type *type_get_indexed_type(Type *type)
 	{
 		case TYPE_POINTER:
 			return type->pointer;
-		case TYPE_VARARRAY:
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
@@ -1101,8 +1066,6 @@ static void type_append_name_to_scratch(Type *type)
 			break;
 		case TYPE_ARRAY:
 			TODO
-		case TYPE_VARARRAY:
-			TODO
 		case TYPE_VIRTUAL:
 			scratch_buffer_append("virtual ");
 			scratch_buffer_append(type->decl->name);
@@ -1159,61 +1122,61 @@ void type_setup(PlatformTarget *target)
 #define DEF_TYPE(name_, shortname_, type_, bits_, aligned_) \
 type_create(#name_, &(shortname_), type_, bits_, target->align_ ## aligned_, target->align_pref_ ## aligned_)
 
-	DEF_TYPE(bool, t_u1, TYPE_BOOL, 1, byte);
-	DEF_TYPE(float, t_f32, TYPE_F32, 32, float);
-	DEF_TYPE(double, t_f64, TYPE_F64, 64, double);
+	DEF_TYPE(bool, t.u1, TYPE_BOOL, 1, byte);
+	DEF_TYPE(float, t.f32, TYPE_F32, 32, float);
+	DEF_TYPE(double, t.f64, TYPE_F64, 64, double);
 
-	DEF_TYPE(ichar, t_i8, TYPE_I8, 8, byte);
-	DEF_TYPE(short, t_i16, TYPE_I16, 16, short);
-	DEF_TYPE(int, t_i32, TYPE_I32, 32, int);
-	DEF_TYPE(long, t_i64, TYPE_I64, 64, long);
-	DEF_TYPE(i128, t_i128, TYPE_I128, 128, i128);
+	DEF_TYPE(ichar, t.i8, TYPE_I8, 8, byte);
+	DEF_TYPE(short, t.i16, TYPE_I16, 16, short);
+	DEF_TYPE(int, t.i32, TYPE_I32, 32, int);
+	DEF_TYPE(long, t.i64, TYPE_I64, 64, long);
+	DEF_TYPE(i128, t.i128, TYPE_I128, 128, i128);
 
-	DEF_TYPE(char, t_u8, TYPE_U8, 8, byte);
-	DEF_TYPE(ushort, t_u16, TYPE_U16, 16, short);
-	DEF_TYPE(uint, t_u32, TYPE_U32, 32, int);
-	DEF_TYPE(ulong, t_u64, TYPE_U64, 64, long);
-	DEF_TYPE(u128, t_u128, TYPE_U128, 128, i128);
+	DEF_TYPE(char, t.u8, TYPE_U8, 8, byte);
+	DEF_TYPE(ushort, t.u16, TYPE_U16, 16, short);
+	DEF_TYPE(uint, t.u32, TYPE_U32, 32, int);
+	DEF_TYPE(ulong, t.u64, TYPE_U64, 64, long);
+	DEF_TYPE(u128, t.u128, TYPE_U128, 128, i128);
 
-	DEF_TYPE(void, t_u0, TYPE_VOID, 8, byte);
-	DEF_TYPE(string, t_str, TYPE_STRLIT, target->width_pointer, pointer);
+	DEF_TYPE(void, t.u0, TYPE_VOID, 8, byte);
+	DEF_TYPE(string, t.str, TYPE_STRLIT, target->width_pointer, pointer);
 
 #undef DEF_TYPE
 
-	type_create("typeinfo", &t_typeinfo, TYPE_TYPEINFO, 0, 0, 0);
-	type_create("typeid", &t_typeid, TYPE_TYPEID, target->width_pointer, target->align_pref_pointer, target->align_pointer);
-	type_create("void*", &t_voidstar, TYPE_POINTER, target->width_pointer, target->align_pref_pointer, target->align_pointer);
+	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 0, 0, 0);
+	type_create("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pref_pointer, target->align_pointer);
+	type_create("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pref_pointer, target->align_pointer);
 	create_type_cache(type_void);
-	type_void->type_cache[0] = &t_voidstar;
-	t_voidstar.pointer = type_void;
-	type_create("virtual*", &t_virtual, TYPE_VIRTUAL_ANY, target->width_pointer * 2, target->align_pref_pointer, target->align_pointer);
-	type_create("virtual_generic", &t_virtual_generic, TYPE_VIRTUAL, target->width_pointer * 2, target->align_pref_pointer, target->align_pointer);
+	type_void->type_cache[0] = &t.voidstar;
+	t.voidstar.pointer = type_void;
+	type_create("virtual*", &t.virtual, TYPE_VIRTUAL_ANY, target->width_pointer * 2, target->align_pref_pointer, target->align_pointer);
+	type_create("virtual_generic", &t.virtual_generic, TYPE_VIRTUAL, target->width_pointer * 2, target->align_pref_pointer, target->align_pointer);
 
-	type_create("compint", &t_ixx, TYPE_IXX, 0, 0, 0);
-	type_create("compfloat", &t_fxx, TYPE_FXX, 0, 0, 0);
+	type_create("compint", &t.ixx, TYPE_IXX, 0, 0, 0);
+	type_create("compfloat", &t.fxx, TYPE_FXX, 0, 0, 0);
 
-	type_create_alias("usize", &t_usz, type_int_unsigned_by_bitsize(target->width_pointer));
-	type_create_alias("isize", &t_isz, type_int_signed_by_bitsize(target->width_pointer));
+	type_create_alias("usize", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
+	type_create_alias("isize", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
 
-	type_create_alias("uptr", &t_uptr, type_int_unsigned_by_bitsize(target->width_pointer));
-	type_create_alias("iptr", &t_iptr, type_int_signed_by_bitsize(target->width_pointer));
+	type_create_alias("uptr", &t.uptr, type_int_unsigned_by_bitsize(target->width_pointer));
+	type_create_alias("iptr", &t.iptr, type_int_signed_by_bitsize(target->width_pointer));
 
-	type_create_alias("uptrdiff", &t_uptrdiff, type_int_unsigned_by_bitsize(target->width_pointer));
-	type_create_alias("iptrdiff", &t_iptrdiff, type_int_signed_by_bitsize(target->width_pointer));
+	type_create_alias("uptrdiff", &t.uptrdiff, type_int_unsigned_by_bitsize(target->width_pointer));
+	type_create_alias("iptrdiff", &t.iptrdiff, type_int_signed_by_bitsize(target->width_pointer));
 
-	type_create_alias("c_ushort", &t_cus, type_int_unsigned_by_bitsize(target->width_c_short));
-	type_create_alias("c_uint", &t_cui, type_int_unsigned_by_bitsize(target->width_c_int));
-	type_create_alias("c_ulong", &t_cul, type_int_unsigned_by_bitsize(target->width_c_long));
-	type_create_alias("c_ulonglong", &t_cull, type_int_unsigned_by_bitsize(target->width_c_long_long));
+	type_create_alias("c_ushort", &t.t_cus, type_int_unsigned_by_bitsize(target->width_c_short));
+	type_create_alias("c_uint", &t.t_cui, type_int_unsigned_by_bitsize(target->width_c_int));
+	type_create_alias("c_ulong", &t.t_cul, type_int_unsigned_by_bitsize(target->width_c_long));
+	type_create_alias("c_ulonglong", &t.t_cull, type_int_unsigned_by_bitsize(target->width_c_long_long));
 
-	type_create_alias("c_short", &t_cs, type_int_signed_by_bitsize(target->width_c_short));
-	type_create_alias("c_int", &t_ci, type_int_signed_by_bitsize(target->width_c_int));
-	type_create_alias("c_long", &t_cl, type_int_signed_by_bitsize(target->width_c_long));
-	type_create_alias("c_longlong", &t_cll, type_int_signed_by_bitsize(target->width_c_long_long));
+	type_create_alias("c_short", &t.t_cs, type_int_signed_by_bitsize(target->width_c_short));
+	type_create_alias("c_int", &t.t_ci, type_int_signed_by_bitsize(target->width_c_int));
+	type_create_alias("c_long", &t.t_cl, type_int_signed_by_bitsize(target->width_c_long));
+	type_create_alias("c_longlong", &t.t_cll, type_int_signed_by_bitsize(target->width_c_long_long));
 
-	alignment_subarray = MAX(type_abi_alignment(&t_voidstar), type_abi_alignment(t_usz.canonical));
+	alignment_subarray = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
 	size_subarray = alignment_subarray * 2;
-	type_create("error", &t_error, TYPE_ERR_UNION, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
+	type_create("error", &t.error, TYPE_ERR_UNION, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
 }
 
 bool type_is_scalar(Type *type)
@@ -1243,7 +1206,6 @@ bool type_is_scalar(Type *type)
 		case TYPE_ENUM:
 		case TYPE_ERRTYPE:
 		case TYPE_ERR_UNION:
-		case TYPE_VARARRAY:
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
 			return true;
@@ -1368,7 +1330,7 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 {
 	// Subarray and vararray can implicitly convert to a pointer.
-	if (other->type_kind == TYPE_SUBARRAY || other->type_kind == TYPE_VARARRAY)
+	if (other->type_kind == TYPE_SUBARRAY)
 	{
 		Type *max_type = type_find_max_type(type->pointer, other->pointer);
 		if (!max_type) return NULL;
@@ -1402,39 +1364,6 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 	return type_get_ptr(max_type);
 }
 
-/**
- * Find the maximum vararray type. Due to ordering the other type fullfils
- * other->type_kind >= TYPE_VARARRAY
- *
- * @param type
- * @param other
- * @return maximum type or NULL if none is found.
- */
-static inline Type *type_find_max_vararray_type(Type *type, Type *other)
-{
-	assert(other->canonical != type->canonical && "Expected different types");
-	assert(other->type_kind >= type->type_kind && "Expected sorted types");
-	switch (other->type_kind)
-	{
-		case TYPE_VARARRAY:
-			// Because of the stride being different, it's not safe to implictly
-			// convert one vararray to another. However, it is fine if they are both pointers
-			// since the stride is the same.
-			if (type->array.base->type_kind == TYPE_POINTER && other->array.base->type_kind == TYPE_POINTER)
-			{
-				// Jolly nice. Let's create the max from these:
-				Type *max_type = type_find_max_ptr_type(type->array.base, other->array.base);
-				if (max_type == NULL) return NULL;
-				return type_get_array(max_type, 0);
-			}
-			// If it's not a pointer then there's no real way of converting them.
-			return NULL;
-		case TYPE_SUBARRAY:
-			TODO; // Will return the subarray
-		default:
-			UNREACHABLE
-	}
-}
 
 Type *type_find_max_type(Type *type, Type *other)
 {
@@ -1504,8 +1433,6 @@ Type *type_find_max_type(Type *type, Type *other)
 			return NULL;
 		case TYPE_ARRAY:
 			return NULL;
-		case TYPE_VARARRAY:
-			return type_find_max_vararray_type(type, other);
 		case TYPE_SUBARRAY:
 			TODO
 		case TYPE_VECTOR:

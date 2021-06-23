@@ -34,6 +34,7 @@ void compiler_init(const char *std_lib_dir)
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
 	stable_init(&global_context.modules, 64);
 	stable_init(&global_context.scratch_table, 32);
+	stable_init(&global_context.compiler_defines, 512);
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
 	stable_init(&global_context.global_symbols, 0x1000);
@@ -249,8 +250,29 @@ static void add_global_define_int(const char *name, uint64_t int_value)
 	add_global_define(name, value);
 }
 
+static void setup_int_define(const char *id, uint64_t i)
+{
+	TokenType token_type = TOKEN_CONST_IDENT;
+	id = symtab_add(id, strlen(id), fnv1a(id, strlen(id)), &token_type);
+	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
+	expr_const_set_int(&expr->const_expr, i, TYPE_IXX);
+	expr->original_type = expr->type = type_compint;
+	expr->span = INVALID_RANGE;
+	expr->resolve_status = RESOLVE_NOT_DONE;
+	void *previous = stable_set(&global_context.compiler_defines, id, expr);
+	if (previous)
+	{
+		error_exit("Redefined ident %s", id);
+	}
+}
+
 void compiler_compile(void)
 {
+	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short);
+	setup_int_define("C_INT_SIZE", platform_target.width_c_int);
+	setup_int_define("C_LONG_SIZE", platform_target.width_c_long);
+	setup_int_define("C_LONG_LONG_SIZE", platform_target.width_c_long_long);
+
 	global_context_clear_errors();
 
 	if (global_context.lib_dir)

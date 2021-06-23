@@ -114,8 +114,6 @@ static void header_print_type(FILE *file, Type *type)
 			UNREACHABLE
 		case TYPE_ARRAY:
 			break;
-		case TYPE_VARARRAY:
-			break;
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
 			break;

@@ -105,7 +105,7 @@ func void File.error(File *file) @inline
     int err = ferror
 }
 */
-/+
+/*
 
 #define	__SLBF	0x0001		/* line buffered */
 #define	__SNBF	0x0002		/* unbuffered */
@@ -420,4 +420,4 @@ __END_DECLS
 #endif
 
 #endif /* _STDIO_H_ */
-+/
+*/
