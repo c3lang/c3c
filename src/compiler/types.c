@@ -11,8 +11,6 @@ static struct
 	Type u8, u16, u32, u64, u128;
 	Type f16, f32, f64, f128, fxx;
 	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
-	Type t_cus, t_cui, t_cul, t_cull;
-	Type t_cs, t_ci, t_cl, t_cll;
 	Type voidstar, typeid, error, typeinfo;
 	Type str, varheader, virtual, virtual_generic;
 
@@ -48,14 +46,6 @@ Type *type_usize = &t.usz;
 Type *type_compint = &t.ixx;
 Type *type_compfloat = &t.fxx;
 Type *type_compstr = &t.str;
-Type *type_c_short = &t.t_cs;
-Type *type_c_int = &t.t_ci;
-Type *type_c_long = &t.t_cl;
-Type *type_c_longlong = &t.t_cll;
-Type *type_c_ushort = &t.t_cus;
-Type *type_c_uint = &t.t_cui;
-Type *type_c_ulong = &t.t_cul;
-Type *type_c_ulonglong = &t.t_cull;
 Type *type_error = &t.error;
 Type *type_varheader = &t.varheader;
 
@@ -68,6 +58,16 @@ unsigned alignment_error_code;
 #define INFERRED_ARRAY_OFFSET 1
 #define SUB_ARRAY_OFFSET 2
 #define ARRAY_OFFSET 3
+
+Type *type_cint(void)
+{
+	return type_int_signed_by_bitsize(platform_target.width_c_int);
+}
+
+Type *type_cuint(void)
+{
+	return type_int_unsigned_by_bitsize(platform_target.width_c_int);
+}
 
 Type *type_int_signed_by_bitsize(unsigned bytesize)
 {
@@ -1163,16 +1163,6 @@ type_create(#name_, &(shortname_), type_, bits_, target->align_ ## aligned_, tar
 
 	type_create_alias("uptrdiff", &t.uptrdiff, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("iptrdiff", &t.iptrdiff, type_int_signed_by_bitsize(target->width_pointer));
-
-	type_create_alias("c_ushort", &t.t_cus, type_int_unsigned_by_bitsize(target->width_c_short));
-	type_create_alias("c_uint", &t.t_cui, type_int_unsigned_by_bitsize(target->width_c_int));
-	type_create_alias("c_ulong", &t.t_cul, type_int_unsigned_by_bitsize(target->width_c_long));
-	type_create_alias("c_ulonglong", &t.t_cull, type_int_unsigned_by_bitsize(target->width_c_long_long));
-
-	type_create_alias("c_short", &t.t_cs, type_int_signed_by_bitsize(target->width_c_short));
-	type_create_alias("c_int", &t.t_ci, type_int_signed_by_bitsize(target->width_c_int));
-	type_create_alias("c_long", &t.t_cl, type_int_signed_by_bitsize(target->width_c_long));
-	type_create_alias("c_longlong", &t.t_cll, type_int_signed_by_bitsize(target->width_c_long_long));
 
 	alignment_subarray = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
 	size_subarray = alignment_subarray * 2;

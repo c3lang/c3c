@@ -890,16 +890,18 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 				Type *arg_type = arg->type->canonical;
 				if (type_is_ct(arg_type))
 				{
+					// TODO Fix the int conversion.
 					// 12c. Pick double / CInt
-					Type *target_type = type_is_any_integer(arg_type) ? type_c_int->canonical : type_double;
+					Type *target_type = type_is_any_integer(arg_type) ? type_cint() : type_double;
 					if (!cast_implicit(arg, target_type)) return false;
 					arg_type = target_type;
 				}
 				// 12d. Promote any integer or bool to at least CInt
 				if (type_is_promotable_integer(arg_type) || arg_type == type_bool)
 				{
-					cast(arg, type_c_int->canonical);
-					arg_type = type_c_int->canonical;
+					Type *cint = type_cint();
+					cast(arg, cint);
+					arg_type = cint;
 				}
 				// 12e. Promote any float to at least Double
 				if (type_is_promotable_float(arg->type))
@@ -3285,8 +3287,10 @@ static Type *numeric_arithmetic_promotion(Type *type)
 	switch (type->type_kind)
 	{
 		case ALL_SIGNED_INTS:
+			if (type->builtin.bitsize < platform_target.width_c_int) return type_cint();
+			return type;
 		case ALL_UNSIGNED_INTS:
-			if (type->builtin.bitsize < platform_target.width_c_int) return type_c_int->canonical;
+			if (type->builtin.bitsize < platform_target.width_c_int) return type_cuint();
 			return type;
 		case TYPE_F16:
 			// Promote F16 to a real type.

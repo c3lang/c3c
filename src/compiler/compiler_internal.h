@@ -1435,8 +1435,6 @@ extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_iptr, *type_uptr, *type_iptrdiff, *type_uptrdiff;
 extern Type *type_u128, *type_i128;
 extern Type *type_compint, *type_compfloat;
-extern Type *type_c_short, *type_c_int, *type_c_long, *type_c_longlong;
-extern Type *type_c_ushort, *type_c_uint, *type_c_ulong, *type_c_ulonglong;
 extern Type *type_typeid, *type_error, *type_typeinfo, *type_varheader;
 extern Type *type_virtual, *type_virtual_generic;
 
@@ -1810,6 +1808,8 @@ Type *type_get_subarray(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 
 Type *type_get_vector(Type *vector_type, unsigned len);
+Type *type_cint(void);
+Type *type_cuint(void);
 Type *type_int_signed_by_bitsize(unsigned bytesize);
 Type *type_int_unsigned_by_bitsize(unsigned bytesize);
 bool type_is_abi_aggregate(Type *type);
@@ -1878,7 +1878,6 @@ static inline bool type_is_integer(Type *type)
 	assert(type == type->canonical);
 	return type->type_kind >= TYPE_I8 && type->type_kind < TYPE_IXX;
 }
-
 
 static inline bool type_is_any_integer(Type *type)
 {
@@ -2118,7 +2117,7 @@ static inline DeclKind decl_from_token(TokenType type)
 static inline bool type_is_promotable_integer(Type *type)
 {
 	// If we support other architectures, update this.
-	return type_is_integer_kind(type) && type->builtin.bytesize < type_c_int->canonical->builtin.bytesize;
+	return type_is_integer_kind(type) && type->builtin.bitsize < platform_target.width_c_int;
 }
 
 static inline bool type_is_promotable_float(Type *type)
