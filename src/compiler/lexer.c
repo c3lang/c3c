@@ -194,53 +194,6 @@ static inline bool parse_line_comment(Lexer *lexer)
 	return success;
 }
 
-/**
- * Parsing of /+ +/ style comments which may nest.
- **/
-static inline bool parse_nested_comment(Lexer *lexer)
-{
-	next(lexer);
-	int nesting = 1;
-	// /+ style comment
-	while (!reached_end(lexer) && nesting > 0)
-	{
-		switch (peek(lexer))
-		{
-			case '/':
-				if (peek_next(lexer) == '+')
-				{
-					skip(lexer, 2);
-					nesting++;
-					continue;
-				}
-				break;
-			case '+':
-				if (peek_next(lexer) == '/')
-				{
-					skip(lexer, 2);
-					nesting--;
-					continue;
-				}
-				break;
-			case ' ':
-			case '\t':
-			case '\r':
-			case '\f':
-				break;
-			case '\n':
-				lexer_store_line_end(lexer);
-				break;
-			default:
-				break;
-		}
-		next(lexer);
-	}
-	if (nesting > 0)
-	{
-		return add_error_token(lexer, "Missing '#/' to end the nested comment.");
-	}
-	return add_token(lexer, TOKEN_COMMENT, lexer->lexing_start);
-}
 
 /**
  * Parse the common / *  * / style multiline comments
@@ -1064,7 +1017,6 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 			{
 				if (match(lexer, '/')) return parse_line_comment(lexer);
 				if (match(lexer, '*')) return match(lexer, '*') ? parse_doc_comment(lexer) : parse_multiline_comment(lexer);
-				if (match(lexer, '+')) return parse_nested_comment(lexer);
 			}
 			return match(lexer, '=') ? add_token(lexer, TOKEN_DIV_ASSIGN, "/=") : add_token(lexer, TOKEN_DIV, "/");
 		case '*':
