@@ -1,5 +1,5 @@
 module std::builtin;
-/+
+/*
 enum TypeKind
 {
     VOID,
@@ -97,4 +97,4 @@ struct TypeErrorValue
     char* name;
     ulong value;
 }
-+/
+*/

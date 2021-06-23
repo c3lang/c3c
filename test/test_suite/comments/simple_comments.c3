@@ -12,3 +12,4 @@ func void test()
    return;
 }
 
+/* /* nested /* comments! */ !! */ goes here */

@@ -676,6 +676,25 @@ static Expr *parse_else_expr(Context *context, Expr *left)
 	return else_expr;
 }
 
+static Expr *parse_placeholder(Context *context, Expr *left)
+{
+	assert(!left && "Had left hand side");
+	advance_and_verify(context, TOKEN_PLACEHOLDER);
+	Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	CONSUME_OR(TOKEN_RBRACE, poisoned_expr);
+
+	if (expr->expr_kind != EXPR_IDENTIFIER && TOKTYPE(expr->identifier_expr.identifier) != TOKEN_CONST_IDENT)
+	{
+		SEMA_ERROR(expr, "Expected an uppercase identifier that corresponds to a compile time argument.");
+		return poisoned_expr;
+	}
+	ExprPlaceholder placeholder = { .identifier = expr->identifier_expr.identifier, .path = expr->identifier_expr.path };
+	expr->placeholder_expr = placeholder;
+	expr->expr_kind = EXPR_PLACEHOLDER;
+	expr->resolve_status = RESOLVE_NOT_DONE;
+	return expr;
+}
+
 static Expr *parse_integer(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
@@ -1076,6 +1095,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_FALSE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_NULL] = { parse_null, NULL, PREC_NONE },
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
+		[TOKEN_PLACEHOLDER] = { parse_placeholder, NULL, PREC_NONE },
 		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },
 		[TOKEN_AT] = { parse_macro_ident, NULL, PREC_NONE },
 		[TOKEN_STRING] = { parse_string_literal, NULL, PREC_NONE },

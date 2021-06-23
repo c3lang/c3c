@@ -1206,6 +1206,7 @@ void target_setup(BuildTarget *target)
 	platform_target.width_c_long = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_LONG);
 	platform_target.width_c_long_long = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_LONG_LONG);
 
+
 	/**
 	 * x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
 	 * x86-64-v2: (close to Nehalem) CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3

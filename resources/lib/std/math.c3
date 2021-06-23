@@ -130,7 +130,7 @@ private func double sin_limited(double x, double y, bool iy)
 	    return x - ((z * (0.5 * y - v * r) - y) - v * S1);
 	}
 }
-/+
+/*
 public func double cos(double x)
 {
 	double[2] y;
@@ -145,7 +145,7 @@ public func double cos(double x)
 	{
 		if (ix < 0x3e46a09e)
 		{
-		    // |x| < 2**-27 * sqrt(2) */
+		    // |x| < 2**-27 * sqrt(2)
 			/* raise inexact if x!=0 */
 			FORCE_EVAL(x + 0x1p120f);
 			return 1.0;
@@ -167,4 +167,4 @@ public func double cos(double x)
 		    return  sin_limited(y[0], y[1], true);
 	}
 }
-+/
+*/

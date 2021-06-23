@@ -106,6 +106,8 @@ const char *token_type_to_string(TokenType type)
 			return "!=";
 		case TOKEN_OR:
 			return "||";
+		case TOKEN_PLACEHOLDER:
+			return "${";
 		case TOKEN_PLUS_ASSIGN:
 			return "+=";
 		case TOKEN_PLUSPLUS:

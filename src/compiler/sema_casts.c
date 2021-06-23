@@ -360,8 +360,6 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_BOOLBOOL;
 		case TYPE_ERR_UNION:
 			return CAST_EUBOOL;
-		case TYPE_VARARRAY:
-			return CAST_VARBOOL;
 		case TYPE_SUBARRAY:
 			return CAST_SABOOL;
 		case ALL_INTS:
@@ -432,7 +430,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 			return type_is_any_integer(to) || type_is_float(to) || to == type_bool || to_kind == TYPE_ENUM;
 		case TYPE_POINTER:
 			// Allow conversion ptr -> int (min pointer size)/bool/pointer/vararray
-			if ((type_is_integer(to) && type_size(to) >= type_size(type_iptr)) || to == type_bool || to_kind == TYPE_POINTER || to_kind == TYPE_VARARRAY) return true;
+			if ((type_is_integer(to) && type_size(to) >= type_size(type_iptr)) || to == type_bool || to_kind == TYPE_POINTER) return true;
 			// Special subarray conversion: someType[N]* -> someType[]
 			if (to_kind == TYPE_SUBARRAY && from->pointer->type_kind == TYPE_ARRAY && from->pointer->array.base == to->array.base) return true;
 			return false;
@@ -459,13 +457,6 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 		case TYPE_STRLIT:
 			if (to_kind == TYPE_POINTER) return true;
 			if (to_kind == TYPE_SUBARRAY && (to->array.base == type_char || to->array.base == type_ichar)) return true;
-			return false;
-		case TYPE_VARARRAY:
-			if (to_kind == TYPE_POINTER) return true;
-			if (to_kind == TYPE_SUBARRAY || to_kind == TYPE_VARARRAY)
-			{
-				return type_is_structurally_equivalent(from->array.base, from->pointer->array.base);
-			}
 			return false;
 		case TYPE_SUBARRAY:
 			return to_kind == TYPE_POINTER;
@@ -525,7 +516,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 	if (type_is_pointer(to))
 	{
 		// 4a. Assigning a subarray or vararray to a pointer of the same base type is fine
-		if (from->type_kind == TYPE_SUBARRAY || from->type_kind == TYPE_VARARRAY)
+		if (from->type_kind == TYPE_SUBARRAY)
 		{
 			// void* conversion always work.
 			if (to == type_voidptr) return true;
@@ -565,11 +556,6 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 			return from->pointer->type_kind == TYPE_ARRAY && from->pointer->array.base == to->array.base;
 		}
 
-		// 5b. Assign var array int[] = int[*]
-		if (from->type_kind == TYPE_VARARRAY)
-		{
-			return from->array.base == to->array.base;
-		}
 
 		return false;
 	}
@@ -774,7 +760,6 @@ bool cast(Expr *expr, Type *to_type)
 			if (type_is_integer(canonical)) return pointer_to_integer(expr, to_type);
 			if (canonical->type_kind == TYPE_BOOL) return pointer_to_bool(expr, to_type);
 			if (canonical->type_kind == TYPE_POINTER) return pointer_to_pointer(expr, to_type);
-			if (canonical->type_kind == TYPE_VARARRAY) return insert_cast(expr, CAST_PTRVAR, to_type);
 			if (canonical->type_kind == TYPE_SUBARRAY) return insert_cast(expr, CAST_APTSA, to_type);
 			break;
 		case TYPE_VIRTUAL:
@@ -802,11 +787,6 @@ bool cast(Expr *expr, Type *to_type)
 			canonical = type_flatten(canonical);
 			if (canonical->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_STRPTR, to_type);
 			if (canonical->type_kind == TYPE_SUBARRAY) return string_literal_to_subarray(expr, to_type);
-			break;
-		case TYPE_VARARRAY:
-			if (canonical->type_kind == TYPE_SUBARRAY) return insert_cast(expr, CAST_VARSA, to_type);
-			if (canonical->type_kind == TYPE_VARARRAY) return insert_cast(expr, CAST_VARVAR, to_type);
-			if (canonical->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_VARPTR, to_type);
 			break;
 		case TYPE_SUBARRAY:
 			if (canonical->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_SAPTR, canonical);

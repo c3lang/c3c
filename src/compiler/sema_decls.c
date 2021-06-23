@@ -496,7 +496,6 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ARRAY:
-		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
 			break;

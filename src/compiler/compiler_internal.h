@@ -705,6 +705,12 @@ typedef struct
 
 typedef struct
 {
+	Path *path;
+	TokenId identifier;
+} ExprPlaceholder;
+
+typedef struct
+{
 	TokenId identifier;
 	bool is_ref : 1;
 	bool is_rvalue : 1;
@@ -815,6 +821,7 @@ struct Expr_
 		ExprAccess access_expr;
 		ExprDesignator designator_expr;
 		ExprIdentifier identifier_expr;
+		ExprPlaceholder placeholder_expr;
 		ExprIdentifier macro_identifier_expr;
 		ExprIdentifierRaw ct_ident_expr;
 		ExprIdentifierRaw ct_macro_ident_expr;
@@ -1201,6 +1208,8 @@ typedef struct DynamicScope_
 typedef struct MacroScope_
 {
 	Decl *macro;
+	uint32_t inline_line;
+	uint32_t original_inline_line;
 	Decl **locals_start;
 	unsigned depth;
 	Decl **yield_symbol_start;
@@ -1324,6 +1333,7 @@ typedef struct
 	char scratch_buffer[MAX_STRING_BUFFER];
 	size_t scratch_buffer_len;
 	STable scratch_table;
+	STable compiler_defines;
 	Module std_module;
 	Path std_module_path;
 } GlobalContext;
@@ -1458,6 +1468,10 @@ extern const char *kw___ceil;
 extern const char *kw___round;
 extern const char *kw___sqrt;
 extern const char *kw___trunc;
+extern const char *kw_FILE;
+extern const char *kw_FUNC;
+extern const char *kw_LINE;
+extern const char *kw_LINEREAL;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id((_token).id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
@@ -1720,7 +1734,7 @@ Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *
 Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, bool handle_error);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
 bool sema_resolve_type_info_maybe_inferred(Context *context, TypeInfo *type_info, bool allow_inferred_type);
-bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type);
+bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow);
 Type *sema_type_lower_by_size(Type *type, ByteSize element_size);
 
 void sema_error_at_prev_end(Token token, const char *message, ...);
@@ -1794,7 +1808,7 @@ Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_subarray(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
-Type *type_get_vararray(Type *arr_type);
+
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_int_signed_by_bitsize(unsigned bytesize);
 Type *type_int_unsigned_by_bitsize(unsigned bytesize);
@@ -1916,7 +1930,7 @@ static inline bool type_is_ct(Type *type)
 static inline bool type_is_pointer(Type *type)
 {
 	type = type->canonical;
-	return type->type_kind == TYPE_POINTER || type->type_kind == TYPE_VARARRAY;
+	return type->type_kind == TYPE_POINTER;
 }
 
 static inline uint64_t aligned_offset(uint64_t offset, uint64_t alignment)
@@ -2050,7 +2064,6 @@ static inline bool type_kind_is_derived(TypeKind kind)
 	{
 		case TYPE_ARRAY:
 		case TYPE_POINTER:
-		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
 			return true;
 		default:

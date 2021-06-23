@@ -222,6 +222,14 @@ static inline bool parse_nested_comment(Lexer *lexer)
 					continue;
 				}
 				break;
+			case ' ':
+			case '\t':
+			case '\r':
+			case '\f':
+				break;
+			case '\n':
+				lexer_store_line_end(lexer);
+				break;
 			default:
 				break;
 		}
@@ -229,7 +237,7 @@ static inline bool parse_nested_comment(Lexer *lexer)
 	}
 	if (nesting > 0)
 	{
-		return add_error_token(lexer, "Missing '+/' to end the nested comment.");
+		return add_error_token(lexer, "Missing '#/' to end the nested comment.");
 	}
 	return add_token(lexer, TOKEN_COMMENT, lexer->lexing_start);
 }
@@ -240,6 +248,7 @@ static inline bool parse_nested_comment(Lexer *lexer)
 static inline bool parse_multiline_comment(Lexer *lexer)
 {
 	TokenType type = peek(lexer) == '*' && peek_next(lexer) != '/' ? TOKEN_DOC_COMMENT : TOKEN_COMMENT;
+	int nesting = 1;
 	while (1)
 	{
 		switch (peek(lexer))
@@ -248,7 +257,17 @@ static inline bool parse_multiline_comment(Lexer *lexer)
 				if (peek_next(lexer) == '/')
 				{
 					skip(lexer, 2);
-					return add_token(lexer, type, lexer->lexing_start);
+					nesting--;
+					if (nesting == 0) return add_token(lexer, type, lexer->lexing_start);
+					continue;
+				}
+				break;
+			case '/':
+				if (peek_next(lexer) == '*')
+				{
+					skip(lexer, 2);
+					nesting++;
+					continue;
 				}
 				break;
 			case '\n':
@@ -1007,6 +1026,7 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 		case '#':
 			return scan_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH_CONST_IDENT, TOKEN_HASH_TYPE_IDENT, '$');
 		case '$':
+			if (match(lexer, '{')) return add_token(lexer, TOKEN_PLACEHOLDER, "${");
 			return scan_ident(lexer, TOKEN_CT_IDENT, TOKEN_CT_CONST_IDENT, TOKEN_CT_TYPE_IDENT, '$');
 		case ',':
 			return add_token(lexer, TOKEN_COMMA, ",");

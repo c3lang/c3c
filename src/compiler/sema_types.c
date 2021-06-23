@@ -6,7 +6,7 @@
 
 static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 {
-	if (!sema_resolve_type_shallow(context, type_info->pointer, false))
+	if (!sema_resolve_type_shallow(context, type_info->pointer, false, true))
 	{
 		return type_info_poison(type_info);
 	}
@@ -15,18 +15,27 @@ static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 	return true;
 }
 
-static inline bool sema_resolve_array_type(Context *context, TypeInfo *type)
+// TODO cleanup.
+static inline bool sema_resolve_array_type(Context *context, TypeInfo *type, bool shallow)
 {
-	if (!sema_resolve_type_info(context, type->array.base))
+	if (type->kind == TYPE_INFO_SUBARRAY || shallow)
 	{
-		return type_info_poison(type);
+		if (!sema_resolve_type_shallow(context, type->array.base, false, true))
+		{
+			return type_info_poison(type);
+		}
 	}
+	else
+	{
+		if (!sema_resolve_type_info(context, type->array.base))
+		{
+			return type_info_poison(type);
+		}
+	}
+
 	uint64_t len;
 	switch (type->kind)
 	{
-		case TYPE_INFO_VARARRAY:
-			type->type = type_get_vararray(type->array.base->type);
-			break;
 		case TYPE_INFO_SUBARRAY:
 			type->type = type_get_subarray(type->array.base->type);
 			break;
@@ -126,7 +135,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 
 }
 
-bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type)
+bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow)
 {
 	if (type_info->resolve_status == RESOLVE_DONE) return type_info_ok(type_info);
 
@@ -163,9 +172,8 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow
 			}
 			FALLTHROUGH;
 		case TYPE_INFO_SUBARRAY:
-		case TYPE_INFO_VARARRAY:
 		case TYPE_INFO_ARRAY:
-			if (!sema_resolve_array_type(context, type_info)) return false;
+			if (!sema_resolve_array_type(context, type_info, in_shallow)) return false;
 			break;
 		case TYPE_INFO_POINTER:
 			if (!sema_resolve_ptr_type(context, type_info)) return false;

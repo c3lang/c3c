@@ -62,7 +62,10 @@ const char *kw___ceil;
 const char *kw___round;
 const char *kw___sqrt;
 const char *kw___trunc;
-
+const char *kw_FILE;
+const char *kw_FUNC;
+const char *kw_LINE;
+const char *kw_LINEREAL;
 
 void symtab_init(uint32_t capacity)
 {
@@ -121,6 +124,10 @@ void symtab_init(uint32_t capacity)
 	kw___round = KW_DEF("__round");
 	kw___sqrt = KW_DEF("__sqrt");
 	kw___trunc = KW_DEF("__trunc");
+	kw_LINE = KW_DEF("LINE");
+	kw_LINEREAL = KW_DEF("LINEREAL");
+	kw_FILE = KW_DEF("FILE");
+	kw_FUNC = KW_DEF("FUNC");
 
 	attribute_list[ATTRIBUTE_INLINE] = kw_inline;
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");

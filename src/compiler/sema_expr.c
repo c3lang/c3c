@@ -733,7 +733,6 @@ static inline bool expr_may_unpack_as_vararg(Expr *expr, Type *variadic_base_typ
 	{
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
-		case TYPE_VARARRAY:
 			return canonical->array.base == base_type;
 		case TYPE_POINTER:
 			if (canonical->pointer->type_kind == TYPE_ARRAY) return canonical->pointer->array.base == base_type;
@@ -1266,6 +1265,8 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 
 		context->macro_scope = (MacroScope){
 				.macro = decl,
+				.inline_line = TOKLOC(call_expr->span.loc)->line,
+				.original_inline_line = old_macro_scope.depth ? old_macro_scope.original_inline_line : TOKLOC(call_expr->span.loc)->line,
 				.locals_start = context->active_scope.current_local,
 				.depth = old_macro_scope.depth + 1,
 				.yield_symbol_start = first_local,
@@ -1460,7 +1461,6 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 			break;
 		}
 		case TYPE_STRLIT:
-		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
 			// If not from end, just check the negative values.
 			if (!from_end) break;
@@ -2068,7 +2068,6 @@ CHECK_DEEPER:
 	switch (type->type_kind)
 	{
 		case TYPE_SUBARRAY:
-		case TYPE_VARARRAY:
 			if (kw == kw_sizeof)
 			{
 				expr_rewrite_to_int_const(expr, type_usize, type_size(type));
@@ -2916,8 +2915,6 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 		case TYPE_ERRTYPE:
 		case TYPE_INFERRED_ARRAY:
 			return sema_expr_analyse_initializer(context, to, assigned, expr);
-		case TYPE_VARARRAY:
-			TODO
 		default:
 			break;
 	}
@@ -3983,7 +3980,6 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 				case TYPE_ERR_UNION:
 				case TYPE_STRLIT:
 				case TYPE_ARRAY:
-				case TYPE_VARARRAY:
 				case TYPE_SUBARRAY:
 				case TYPE_TYPEID:
 				case TYPE_VIRTUAL_ANY:
@@ -4320,7 +4316,6 @@ static bool sema_expr_analyse_not(Expr *expr, Expr *inner)
 		case TYPE_POINTER:
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
-		case TYPE_VARARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_BOOL:
 		case TYPE_VECTOR:
@@ -4757,6 +4752,55 @@ static inline bool sema_expr_analyse_failable(Context *context, Type *to, Expr *
 	return true;
 }
 
+static inline bool sema_expr_analyse_placeholder(Context *context, Type *to, Expr *expr)
+{
+	const char *string = TOKSTR(expr->placeholder_expr.identifier);
+	if (string == kw_FILE)
+	{
+		expr_rewrite_to_string(expr, context->file->name);
+		return true;
+	}
+	if (string == kw_FUNC)
+	{
+		if (!context->active_function_for_analysis)
+		{
+			expr_rewrite_to_string(expr, "<GLOBAL>");
+			return true;
+		}
+		expr_rewrite_to_string(expr, context->active_function_for_analysis->name);
+		return true;
+	}
+	if (string == kw_LINEREAL)
+	{
+		expr_rewrite_to_int_const(expr, type_compint, TOKLOC(expr->placeholder_expr.identifier)->line);
+		return true;
+	}
+	if (string == kw_LINE)
+	{
+		if (context->macro_scope.depth)
+		{
+			expr_rewrite_to_int_const(expr, type_compint, context->macro_scope.original_inline_line);
+		}
+		else
+		{
+			expr_rewrite_to_int_const(expr, type_compint, TOKLOC(expr->placeholder_expr.identifier)->line);
+		}
+		return true;
+	}
+	Expr *value = stable_get(&global_context.compiler_defines, string);
+	if (!value)
+	{
+		SEMA_ERROR(expr, "The placeholder constant '%s' was not defined, did you mistype or forget to add it?", string);
+		return false;
+	}
+	expr_replace(expr, value);
+	if (expr->expr_kind == EXPR_CONST && type_kind_is_any_integer(expr->const_expr.kind) && value->const_expr.i.digit_count > 1)
+	{
+		bigint_init_bigint(&expr->const_expr.i, &value->const_expr.i);
+	}
+	return true;
+}
+
 
 static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *expr)
 {
@@ -4775,6 +4819,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return sema_expr_analyse_ct_identifier(context, expr);
 		case EXPR_FAILABLE:
 			return sema_expr_analyse_failable(context, to, expr);
+		case EXPR_PLACEHOLDER:
+			return sema_expr_analyse_placeholder(context, to, expr);
 		case EXPR_POISONED:
 			return false;
 		case EXPR_LEN:
