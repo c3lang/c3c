@@ -192,21 +192,10 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
+		case NON_TYPE_DECLS:
+		case DECL_ENUM_CONSTANT:
 		case DECL_POISONED:
 		case DECL_VAR:
-		case DECL_LABEL:
-		case DECL_ENUM_CONSTANT:
-		case DECL_ARRAY_VALUE:
-		case DECL_IMPORT:
-		case DECL_MACRO:
-		case DECL_GENERIC:
-		case DECL_CT_IF:
-		case DECL_CT_ELSE:
-		case DECL_CT_ELIF:
-		case DECL_CT_SWITCH:
-		case DECL_CT_CASE:
-		case DECL_ATTRIBUTE:
-		case DECL_DEFINE:
 		case DECL_INTERFACE:
 			UNREACHABLE
 		case DECL_FUNC:

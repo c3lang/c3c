@@ -532,6 +532,7 @@ typedef struct Decl_
 		CtIfDecl ct_elif_decl;
 		CtSwitchDecl ct_switch_decl;
 		CtCaseDecl ct_case_decl;
+		Ast *ct_assert_decl;
 		Decl** ct_else_decl;
 		Expr *incr_array_decl;
 	};
@@ -1274,7 +1275,7 @@ typedef struct Context_
 	Decl **vars;
 	Decl **incr_array;
 	Decl **ct_ifs;
-	Ast **ct_asserts;
+	Decl **ct_asserts;
 	Decl *active_function_for_analysis;
 	Token *comments;
 	Token *lead_comment;

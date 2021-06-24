@@ -148,7 +148,7 @@ static inline bool sema_analyse_top_level_if(Context *context, Decl *ct_if)
 		else
 		{
 			assert(ct_elif->decl_kind == DECL_CT_ELSE);
-			sema_append_decls(context, ct_elif->ct_elif_decl.then);
+			sema_append_decls(context, ct_elif->ct_else_decl);
 			return true;
 		}
 	}
@@ -180,7 +180,7 @@ void sema_analysis_pass_ct_assert(Module *module)
 		Context *context = module->contexts[index];
 		VECEACH(context->ct_asserts, i)
 		{
-			sema_analyse_ct_assert_stmt(context, context->ct_asserts[i]);
+			sema_analyse_ct_assert_stmt(context, context->ct_asserts[i]->ct_assert_decl);
 		}
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);

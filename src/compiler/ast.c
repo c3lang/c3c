@@ -52,6 +52,8 @@ const char *decl_to_name(Decl *decl)
 	{
 		case DECL_POISONED:
 			return "poisoned decl";
+		case DECL_CT_ASSERT:
+			return "compile time assert";
 		case DECL_CT_CASE:
 			return "compile time case";
 		case DECL_CT_ELIF:
@@ -185,6 +187,7 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_CT_SWITCH:
 		case DECL_CT_CASE:
 		case DECL_DEFINE:
+		case DECL_CT_ASSERT:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, !name.index ? "anon" : TOKSTR(name));
@@ -880,6 +883,9 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 					DUMPDECL(decl->var.alias);
 					break;
 			}
+			DUMPEND();
+		case DECL_CT_ASSERT:
+			DUMP("$assert");
 			DUMPEND();
 		case DECL_DEFINE:
 			DUMPF("(define %s", decl->name);

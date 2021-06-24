@@ -138,6 +138,7 @@ typedef enum
 	DECL_CT_ELSE,
 	DECL_CT_IF,
 	DECL_CT_SWITCH,
+	DECL_CT_ASSERT,
 	DECL_DEFINE,
 	DECL_DISTINCT,
 	DECL_ENUM,
@@ -158,7 +159,7 @@ typedef enum
 #define NON_TYPE_DECLS DECL_ARRAY_VALUE: case DECL_IMPORT: case DECL_MACRO: \
 	case DECL_GENERIC: case DECL_CT_IF: case DECL_CT_ELSE: case DECL_CT_ELIF: \
 	case DECL_CT_SWITCH: case DECL_CT_CASE: case DECL_ATTRIBUTE: case DECL_LABEL: \
-    case DECL_DEFINE
+    case DECL_DEFINE: case DECL_CT_ASSERT
 
 typedef enum
 {
@@ -347,6 +348,7 @@ typedef enum
 	TOKEN_DOUBLE,
 	TOKEN_FLOAT,
 	TOKEN_HALF,
+	TOKEN_I128,
 	TOKEN_ICHAR,
 	TOKEN_INT,
 	TOKEN_IPTR,
@@ -354,6 +356,7 @@ typedef enum
 	TOKEN_ISIZE,
 	TOKEN_LONG,
 	TOKEN_SHORT,
+	TOKEN_U128,
 	TOKEN_UINT,
 	TOKEN_ULONG,
 	TOKEN_UPTR,
@@ -460,6 +463,14 @@ typedef enum
 	TOKEN_LAST = TOKEN_EOF,
 } TokenType;
 
+#define NON_VOID_TYPE_TOKENS \
+  TOKEN_BOOL: case TOKEN_CHAR: case TOKEN_DOUBLE: case TOKEN_FLOAT: \
+  case TOKEN_HALF: case TOKEN_I128: case TOKEN_ICHAR: case TOKEN_INT: \
+  case TOKEN_IPTR: case TOKEN_IPTRDIFF: case TOKEN_ISIZE: case TOKEN_LONG: \
+  case TOKEN_SHORT: case TOKEN_U128: case TOKEN_UINT: case TOKEN_ULONG:  \
+  case TOKEN_UPTR: case TOKEN_UPTRDIFF: case TOKEN_USHORT: case TOKEN_USIZE:  \
+  case TOKEN_QUAD: case TOKEN_TYPEID
+#define TYPE_TOKENS NON_VOID_TYPE_TOKENS: case TOKEN_VOID
 
 // Note that ordering matters here. If ordering is changed,
 // So must type_find_max_type and friends.

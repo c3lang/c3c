@@ -541,6 +541,9 @@ Decl *copy_decl(Decl *decl)
 			MACRO_COPY_DECL(decl->ct_if_decl.elif);
 			MACRO_COPY_DECL_LIST(decl->ct_if_decl.then);
 			break;
+		case DECL_CT_ASSERT:
+			MACRO_COPY_AST(decl->ct_assert_decl);
+			break;
 		case DECL_CT_ELSE:
 			MACRO_COPY_DECL_LIST(decl->ct_else_decl);
 			break;

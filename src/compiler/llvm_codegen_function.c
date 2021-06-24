@@ -617,8 +617,6 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:
-		case DECL_TYPEDEF:
-		case DECL_DISTINCT:
 			UNREACHABLE;
 		case DECL_FUNC:
 			decl->backend_ref = LLVMAddFunction(context->module, decl->cname ?: decl->external_name,
@@ -629,8 +627,6 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 			decl->backend_ref = LLVMAddGlobal(context->module, llvm_get_type(context, decl->type), decl->cname ?: decl->external_name);
 			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
-		case DECL_ENUM_CONSTANT:
-			TODO
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ERR:
@@ -646,9 +642,13 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 			{
 				llvm_emit_function_decl(context, decl->methods[i]);
 			}
-			TODO
+			// TODO // Fix typeid
+			return;
+		case DECL_TYPEDEF:
+		case DECL_DISTINCT:
 		case NON_TYPE_DECLS:
 		case DECL_INTERFACE:
+		case DECL_ENUM_CONSTANT:
 			return;
 	}
 }

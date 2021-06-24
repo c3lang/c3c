@@ -158,6 +158,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_ENUM_CONSTANT:
 			case DECL_IMPORT:
 			case DECL_LABEL:
+			case DECL_CT_ASSERT:
 				continue;
 			case DECL_ATTRIBUTE:
 				break;
@@ -239,22 +240,12 @@ static void add_global_define(const char *name, Expr *value)
 	stable_set(&dec->module->symbols, dec->name, dec);
 }
 
-static void add_global_define_int(const char *name, uint64_t int_value)
-{
-	Expr *value = expr_new(EXPR_CONST, INVALID_RANGE);
-	value->const_expr.kind = TYPE_IXX;
-	value->original_type = type_compint;
-	expr_const_set_int(&value->const_expr, int_value, TYPE_IXX);
-	value->type = type_compint;
-	value->resolve_status = RESOLVE_DONE;
-	add_global_define(name, value);
-}
-
 static void setup_int_define(const char *id, uint64_t i)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, strlen(id), fnv1a(id, strlen(id)), &token_type);
 	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
+	expr->constant = true;
 	expr_const_set_int(&expr->const_expr, i, TYPE_IXX);
 	expr->original_type = expr->type = type_compint;
 	expr->span = INVALID_RANGE;
@@ -266,17 +257,40 @@ static void setup_int_define(const char *id, uint64_t i)
 	}
 }
 
+static void setup_bool_define(const char *id, bool value)
+{
+	TokenType token_type = TOKEN_CONST_IDENT;
+	id = symtab_add(id, strlen(id), fnv1a(id, strlen(id)), &token_type);
+	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
+	expr_const_set_bool(&expr->const_expr, value);
+	expr->original_type = expr->type = type_bool;
+	expr->constant = true;
+	expr->span = INVALID_RANGE;
+	expr->resolve_status = RESOLVE_NOT_DONE;
+	void *previous = stable_set(&global_context.compiler_defines, id, expr);
+	if (previous)
+	{
+		error_exit("Redefined ident %s", id);
+	}
+}
 void compiler_compile(void)
 {
 	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short);
 	setup_int_define("C_INT_SIZE", platform_target.width_c_int);
 	setup_int_define("C_LONG_SIZE", platform_target.width_c_long);
 	setup_int_define("C_LONG_LONG_SIZE", platform_target.width_c_long_long);
+	setup_bool_define("PLATFORM_LITTLE_ENDIAN", platform_target.little_endian);
+	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
+	setup_int_define("COMPILER_OPT_LEVEL", (int)active_target.optimization_level);
+	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (int)active_target.size_optimization_level);
+	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
 
 	global_context_clear_errors();
 
 	if (global_context.lib_dir)
 	{
+		vec_add(global_context.sources, strformat("%s/std/env.c3", global_context.lib_dir));
+		vec_add(global_context.sources, strformat("%s/std/cinterop.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/runtime.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/builtin.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/io.c3", global_context.lib_dir));

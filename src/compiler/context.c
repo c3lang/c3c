@@ -167,6 +167,9 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_CT_SWITCH:
 			vec_add(context->ct_ifs, decl);
 			return;
+		case DECL_CT_ASSERT:
+			vec_add(context->ct_asserts, decl);
+			return;
 	}
 	DEBUG_LOG("Registering symbol '%s'.", decl->name);
 
