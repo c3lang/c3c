@@ -95,27 +95,7 @@ void recover_top_level(Context *context)
 			case TOKEN_CT_FOR:
 			case TOKEN_CT_SWITCH:
 			case TOKEN_FUNC:
-			case TOKEN_VOID:
-			case TOKEN_BOOL:
-			case TOKEN_CHAR:
-			case TOKEN_DOUBLE:
-			case TOKEN_FLOAT:
-			case TOKEN_HALF:
-			case TOKEN_ICHAR:
-			case TOKEN_INT:
-			case TOKEN_IPTR:
-			case TOKEN_IPTRDIFF:
-			case TOKEN_ISIZE:
-			case TOKEN_LONG:
-			case TOKEN_SHORT:
-			case TOKEN_UINT:
-			case TOKEN_ULONG:
-			case TOKEN_UPTR:
-			case TOKEN_UPTRDIFF:
-			case TOKEN_USHORT:
-			case TOKEN_USIZE:
-			case TOKEN_QUAD:
-			case TOKEN_TYPEID:
+			case TYPE_TOKENS:
 				// Only recover if this is in the first col.
 				if (TOKLOC(context->tok)->col == 1) return;
 				advance(context);
@@ -129,30 +109,30 @@ void recover_top_level(Context *context)
 
 #pragma mark --- Parse CT conditional code
 
-static inline bool parse_top_level_block(Context *context, Decl ***decls)
+static inline bool parse_top_level_block(Context *context, Decl ***decls, TokenType end1, TokenType end2, TokenType end3)
 {
-	CONSUME_OR(TOKEN_LBRACE, false);
-	while (!TOKEN_IS(TOKEN_RBRACE) && !TOKEN_IS(TOKEN_EOF))
+	CONSUME_OR(TOKEN_COLON, false);
+	while (!TOKEN_IS(end1) && !TOKEN_IS(end2) && !TOKEN_IS(end3) && !TOKEN_IS(TOKEN_EOF))
 	{
 		Decl *decl = parse_top_level_statement(context);
-		if (decl == NULL) continue;
+		assert(decl);
 		if (decl_ok(decl))
 		{
 			vec_add(*decls, decl);
 		}
 		else
 		{
-			recover_top_level(context);
+			return false;
 		}
 	}
-	CONSUME_OR(TOKEN_RBRACE, false);
 	return true;
 }
 
 /**
- * ct_if_top_level ::= CT_IF const_paren_expr top_level_block
-    	(CT_ELIF const_paren_expr top_level_block)*
+ * ct_if_top_level ::= CT_IF const_paren_expr ':' top_level_block
+    	(CT_ELIF const_paren_expr ':' top_level_block)*
     	(CT_ELSE top_level_block)?
+    	CT_ENDIF
  * @param context
  * @return the declaration if successfully parsed, poisoned_decl otherwise.
  */
@@ -162,7 +142,7 @@ static inline Decl *parse_ct_if_top_level(Context *context)
 	advance_and_verify(context, TOKEN_CT_IF);
 	ct->ct_if_decl.expr = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_decl);
 
-	if (!parse_top_level_block(context, &ct->ct_if_decl.then)) return poisoned_decl;
+	if (!parse_top_level_block(context, &ct->ct_if_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
 
 	CtIfDecl *ct_if_decl = &ct->ct_if_decl;
 	while (TOKEN_IS(TOKEN_CT_ELIF))
@@ -170,7 +150,7 @@ static inline Decl *parse_ct_if_top_level(Context *context)
 		advance_and_verify(context, TOKEN_CT_ELIF);
 		Decl *ct_elif = DECL_NEW(DECL_CT_ELIF, VISIBLE_LOCAL);
 		ct_elif->ct_elif_decl.expr = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_decl);
-		if (!parse_top_level_block(context, &ct_elif->ct_elif_decl.then)) return poisoned_decl;
+		if (!parse_top_level_block(context, &ct_elif->ct_elif_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
 		ct_if_decl->elif = ct_elif;
 		ct_if_decl = &ct_elif->ct_elif_decl;
 	}
@@ -179,8 +159,10 @@ static inline Decl *parse_ct_if_top_level(Context *context)
 		advance_and_verify(context, TOKEN_CT_ELSE);
 		Decl *ct_else = DECL_NEW(DECL_CT_ELSE, VISIBLE_LOCAL);
 		ct_if_decl->elif = ct_else;
-		if (!parse_top_level_block(context, &ct_else->ct_else_decl)) return poisoned_decl;
+		if (!parse_top_level_block(context, &ct_else->ct_else_decl, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF)) return poisoned_decl;
 	}
+	CONSUME_OR(TOKEN_CT_ENDIF, poisoned_decl);
+	CONSUME_OR(TOKEN_EOS, poisoned_decl);
 	return ct;
 }
 
@@ -567,6 +549,9 @@ static inline TypeInfo *parse_base_type(Context *context)
 		case TOKEN_FLOAT:
 			type_found = type_float;
 			break;
+		case TOKEN_I128:
+			type_found = type_i128;
+			break;
 		case TOKEN_ICHAR:
 			type_found = type_ichar;
 			break;
@@ -587,6 +572,9 @@ static inline TypeInfo *parse_base_type(Context *context)
 			break;
 		case TOKEN_SHORT:
 			type_found = type_short;
+			break;
+		case TOKEN_U128:
+			type_found = type_u128;
 			break;
 		case TOKEN_UINT:
 			type_found = type_uint;
@@ -2288,13 +2276,14 @@ Decl *parse_top_level_statement(Context *context)
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
 			{
 				Ast *ast = TRY_AST_OR(parse_ct_assert_stmt(context), false);
-				vec_add(context->ct_asserts, ast);
+				decl = decl_new(DECL_CT_ASSERT, ast->span.loc, visibility);
+				decl->ct_assert_decl = ast;
 				if (docs)
 				{
 					SEMA_ERROR(docs, "Unexpected doc comment before $assert, did you mean to use a regular comment?");
 					return poisoned_decl;
 				}
-				return NULL;
+				return decl;
 			}
 		case TOKEN_CT_IF:
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;

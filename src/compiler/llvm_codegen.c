@@ -788,6 +788,10 @@ LLVMValueRef llvm_value_rvalue_store(GenContext *c, BEValue *value)
 			                              value->alignment ?: type_abi_alignment(value->type),
 			                              "");
 		case BE_BOOLEAN:
+			if (!c->builder)
+			{
+				return LLVMConstZExt(value->value, c->byte_type);
+			}
 			return LLVMBuildZExt(c->builder, value->value, c->byte_type, "");
 	}
 	UNREACHABLE

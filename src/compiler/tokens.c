@@ -280,6 +280,10 @@ const char *token_type_to_string(TokenType type)
 			return "long";
 		case TOKEN_ULONG:
 			return "ulong";
+		case TOKEN_I128:
+			return "i128";
+		case TOKEN_U128:
+			return "u128";
 		case TOKEN_INT:
 			return "int";
 		case TOKEN_UINT:

@@ -210,6 +210,7 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case DECL_CT_SWITCH:
 		case DECL_CT_CASE:
 		case DECL_ATTRIBUTE:
+		case DECL_CT_ASSERT:
 			UNREACHABLE
 		case DECL_DEFINE:
 			TODO

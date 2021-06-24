@@ -994,37 +994,14 @@ Ast *parse_stmt(Context *context)
 			UNREACHABLE
 		case TOKEN_LBRACE:
 			return parse_compound_stmt(context);
-		case TOKEN_HALF:
-		case TOKEN_QUAD:
-			SEMA_TOKEN_ERROR(context->tok, "Type is unsupported by platform.");
-			advance(context);
-			return poisoned_ast;
-		case TOKEN_VOID:
-		case TOKEN_CHAR:
-		case TOKEN_BOOL:
-		case TOKEN_DOUBLE:
-		case TOKEN_FLOAT:
-		case TOKEN_ICHAR:
-		case TOKEN_INT:
-		case TOKEN_ISIZE:
-		case TOKEN_LONG:
-		case TOKEN_SHORT:
-		case TOKEN_UINT:
-		case TOKEN_ULONG:
-		case TOKEN_USHORT:
-		case TOKEN_USIZE:
-		case TOKEN_IPTRDIFF:
-		case TOKEN_UPTRDIFF:
-		case TOKEN_IPTR:
-		case TOKEN_UPTR:
+		case TYPE_TOKENS:
+		case TOKEN_ERR:
 		case TOKEN_VIRTUAL:
-		case TOKEN_TYPEID:
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_HASH_TYPE_IDENT:
 		case TOKEN_HASH_CONST_IDENT:
 		case TOKEN_HASH_IDENT:
 		case TOKEN_TYPE_IDENT:
-		case TOKEN_ERR:
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
 			return parse_decl_or_expr_stmt(context);
