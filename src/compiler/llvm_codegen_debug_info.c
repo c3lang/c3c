@@ -91,7 +91,7 @@ void llvm_emit_debug_global_var(GenContext *c, Decl *global)
 void llvm_emit_debug_function(GenContext *c, Decl *decl)
 {
 	LLVMDIFlags flags = LLVMDIFlagZero;
-	if (!decl->func.body) return;
+	if (!decl->func_decl.body) return;
 	switch (decl->visibility)
 	{
 		case VISIBLE_LOCAL:
@@ -108,7 +108,7 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 			UNREACHABLE
 	}
 	flags |= LLVMDIFlagPrototyped;
-	if (decl->func.attr_noreturn) flags |= LLVMDIFlagNoReturn;
+	if (decl->func_decl.attr_noreturn) flags |= LLVMDIFlagNoReturn;
 
 	SourceLocation *loc = TOKLOC(decl->span.loc);
 	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
@@ -488,7 +488,6 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_FXX:
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_STRLIT:
 			UNREACHABLE

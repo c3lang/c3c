@@ -286,7 +286,7 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
 
 		bool had = false;
-#define SET_ATTR(_X) had = decl->func._X; decl->func._X = true; break
+#define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
 		switch (attribute)
 		{
 			case ATTRIBUTE_CNAME:
@@ -471,7 +471,6 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 		case TYPE_DISTINCT:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 			UNREACHABLE
 			return false;
 		case TYPE_VIRTUAL_ANY:
@@ -589,13 +588,13 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 
 static inline bool sema_analyse_method(Context *context, Decl *decl)
 {
-	TypeInfo *parent_type = decl->func.type_parent;
+	TypeInfo *parent_type = decl->func_decl.type_parent;
 	if (!sema_resolve_type_info(context, parent_type)) return false;
 	if (!type_may_have_sub_elements(parent_type->type))
 	{
 		SEMA_ERROR(decl,
 		               "Methods can not be associated with '%s'",
-		               type_to_error_string(decl->func.type_parent->type));
+		               type_to_error_string(decl->func_decl.type_parent->type));
 		return false;
 	}
 	Decl *parent = parent_type->type->decl;
@@ -764,10 +763,10 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 static inline bool sema_analyse_func(Context *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
-	Type *func_type = sema_analyse_function_signature(context, &decl->func.function_signature, true);
+	Type *func_type = sema_analyse_function_signature(context, &decl->func_decl.function_signature, true);
 	decl->type = func_type;
 	if (!func_type) return decl_poison(decl);
-	if (decl->func.type_parent)
+	if (decl->func_decl.type_parent)
 	{
 		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
 	}
@@ -792,7 +791,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
 
 		bool had = false;
-#define SET_ATTR(_X) had = decl->func._X; decl->func._X = true; break
+#define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
 		switch (attribute)
 		{
 			case ATTRIBUTE_CNAME:
@@ -821,7 +820,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
-		if (decl->func.attr_inline && decl->func.attr_noinline)
+		if (decl->func_decl.attr_inline && decl->func_decl.attr_noinline)
 		{
 			SEMA_TOKID_ERROR(attr->name, "A function cannot be 'inline' and 'noinline' at the same time.");
 			return decl_poison(decl);
@@ -831,10 +830,60 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 	return true;
 }
 
+static bool sema_analyse_macro_method(Context *context, Decl *decl)
+{
+	if (!sema_resolve_type_info(context, decl->macro_decl.type_parent)) return false;
+	Type *parent_type = decl->macro_decl.type_parent->type;
+	if (!type_may_have_sub_elements(parent_type))
+	{
+		SEMA_ERROR(decl->macro_decl.type_parent,
+		           "Methods can not be associated with '%s'",
+		           type_to_error_string(parent_type));
+		return false;
+	}
+	Type *expected_first_element = type_get_ptr(parent_type);
+	if (!vec_size(decl->macro_decl.parameters))
+	{
+		SEMA_ERROR(decl, "Expected at least one parameter - of type %s.", type_quoted_error_string(expected_first_element));
+		return false;
+	}
+	Decl *first_param = decl->macro_decl.parameters[0];
+	if (!first_param->type)
+	{
+		SEMA_ERROR(first_param, "The first parameter must have the explicit type %s.", type_quoted_error_string(expected_first_element));
+		return false;
+	}
+	if (first_param->type->canonical != expected_first_element->canonical)
+	{
+		SEMA_ERROR(first_param, "The first parameter must be of type %s.", expected_first_element);
+		return false;
+	}
+	if (first_param->var.kind != VARDECL_PARAM)
+	{
+		SEMA_ERROR(first_param, "The first parameter must be a regular value parameter.");
+		return false;
+	}
+	Decl *parent = parent_type->decl;
+	VECEACH(parent->methods, i)
+	{
+		Decl *function = parent->methods[i];
+		if (function->name == decl->name)
+		{
+			SEMA_ERROR(decl, "Duplicate name '%s' for macro method.", function->name);
+			SEMA_PREV(function, "Previous definition here.");
+			return false;
+		}
+	}
+	DEBUG_LOG("Macro method '%s.%s' analysed.", parent->name, decl->name);
+	vec_add(parent->methods, decl);
+
+	return true;
+}
+
 static inline bool sema_analyse_macro(Context *context, Decl *decl)
 {
 	TypeInfo *rtype = decl->macro_decl.rtype;
-	if (decl->macro_decl.rtype && !sema_resolve_type_info(context, rtype)) return false;
+	if (decl->macro_decl.rtype && !sema_resolve_type_info(context, rtype)) return decl_poison(decl);
 	VECEACH(decl->macro_decl.parameters, i)
 	{
 		Decl *param = decl->macro_decl.parameters[i];
@@ -846,13 +895,17 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_REF:
-				if (param->var.type_info && !sema_resolve_type_info(context, param->var.type_info)) return false;
+				if (param->var.type_info)
+				{
+					if (!sema_resolve_type_info(context, param->var.type_info)) return decl_poison(decl);
+					param->type = param->var.type_info->type;
+				}
 				break;
 			case VARDECL_PARAM_CT_TYPE:
 				if (param->var.type_info)
 				{
 					SEMA_ERROR(param->var.type_info, "A compile time type parameter cannot have a type itself.");
-					return false;
+					return decl_poison(decl);
 				}
 				break;
 			case VARDECL_CONST:
@@ -874,14 +927,14 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 		switch (param->var.kind)
 		{
 			case VARDECL_PARAM:
-				if (param->var.type_info && !sema_resolve_type_info(context, param->var.type_info)) return false;
+				if (param->var.type_info && !sema_resolve_type_info(context, param->var.type_info)) return decl_poison(decl);
 				break;
 			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_REF:
 			case VARDECL_PARAM_CT_TYPE:
 				SEMA_ERROR(param, "Only plain variables are allowed as body parameters.");
-				break;
+				return decl_poison(decl);
 			case VARDECL_CONST:
 			case VARDECL_GLOBAL:
 			case VARDECL_LOCAL:
@@ -893,8 +946,13 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 		}
 		param->resolve_status = RESOLVE_DONE;
 	}
-	if (!sema_check_unique_parameters(decl->macro_decl.parameters)) return false;
-	if (!sema_check_unique_parameters(decl->macro_decl.body_parameters)) return false;
+	if (!sema_check_unique_parameters(decl->macro_decl.parameters)) return decl_poison(decl);
+	if (!sema_check_unique_parameters(decl->macro_decl.body_parameters)) return decl_poison(decl);
+	if (decl->macro_decl.type_parent)
+	{
+		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);
+	}
+	decl->type = type_void;
 	return true;
 }
 
@@ -921,7 +979,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
 
 		bool had = false;
-#define SET_ATTR(_X) had = decl->func._X; decl->func._X = true; break
+#define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
 		switch (attribute)
 		{
 			case ATTRIBUTE_CNAME:
@@ -1076,7 +1134,7 @@ static Context *copy_context(Module *module, Context *c)
 	copy->imports = copy_decl_list(c->imports);
 	copy->global_decls = copy_decl_list(c->global_decls);
 	copy->module = module;
-	assert(!c->functions && !c->methods && !c->enums && !c->ct_ifs && !c->types && !c->interfaces && !c->external_symbol_list);
+	assert(!c->functions && !c->macro_methods && !c->methods && !c->enums && !c->ct_ifs && !c->types && !c->interfaces && !c->external_symbol_list);
 	return copy;
 }
 
@@ -1169,6 +1227,7 @@ static bool sema_analyse_parameterized_define(Context *c, Decl *decl)
 		instantiated_module = sema_instantiate_module(c, module, path, decl->define_decl.generic_params);
 		sema_analyze_stage(instantiated_module, c->module->stage);
 	}
+	if (global_context.errors_found) return decl_poison(decl);
 	const char *name_str = TOKSTR(name);
 	Decl *symbol = module_find_symbol(instantiated_module, name_str);
 	assert(symbol);

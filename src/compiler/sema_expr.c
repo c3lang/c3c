@@ -121,7 +121,6 @@ static bool expr_is_ltype(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_CONST_IDENTIFIER:
-		case EXPR_MACRO_CT_IDENTIFIER:
 			return false;
 		case EXPR_CT_IDENT:
 			return true;
@@ -416,6 +415,8 @@ static inline bool find_possible_inferred_identifier(Type *to, Expr *expr)
 
 }
 
+// TODO!!!
+/*
 static inline bool sema_expr_analyse_identifier_resolve(Context *context, Type *to, Expr *expr, ExprIdentifier *id_expr)
 {
 	Decl *ambiguous_decl = NULL;
@@ -484,6 +485,7 @@ static inline bool sema_expr_analyse_identifier_resolve(Context *context, Type *
 	DEBUG_LOG("Resolution successful of %s.", decl->name);
 	return true;
 }
+*/
 
 bool expr_is_constant_eval(Expr *expr)
 {
@@ -550,22 +552,6 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 		SEMA_ERROR(expr, "Functions from other modules, must be prefixed with the module name");
 		return false;
 	}
-	if (decl->decl_kind == DECL_MACRO)
-	{
-		if (expr->expr_kind != EXPR_MACRO_IDENTIFIER)
-		{
-			SEMA_ERROR(expr, "Macro expansions must be prefixed with '@', try using '@%s(...)' instead.", decl->name);
-			return false;
-		}
-		expr->identifier_expr.decl = decl;
-		expr_set_type(expr, type_void);
-		return true;
-	}
-	if (expr->expr_kind == EXPR_MACRO_IDENTIFIER)
-	{
-		SEMA_ERROR(expr, "Only macro expansions can be prefixed with '@', please try removing it.", decl->name);
-		return false;
-	}
 	if (decl->resolve_status != RESOLVE_DONE)
 	{
 		if (!sema_analyse_decl(context, decl)) return poisoned_decl;
@@ -607,6 +593,33 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 	expr->pure = true;
 	expr->constant = false;
 	DEBUG_LOG("Resolution successful of %s.", decl->name);
+	return true;
+}
+
+static inline bool sema_expr_analyse_macro_expansion(Context *context, Expr *expr)
+{
+	Expr *inner = expr->macro_expansion_expr.inner;
+	if (!sema_analyse_expr_value(context, NULL, inner)) return false;
+	Decl *decl;
+	switch (inner->expr_kind)
+	{
+		case EXPR_IDENTIFIER:
+			decl = inner->identifier_expr.decl;
+			break;
+		case EXPR_ACCESS:
+			decl = inner->access_expr.ref;
+			break;
+		default:
+			SEMA_ERROR(expr, "Expected a macro identifier here.");
+			return false;
+	}
+	if (decl->decl_kind != DECL_MACRO)
+	{
+		SEMA_ERROR(inner, "Expected a macro identifier here.");
+		return false;
+	}
+	expr->macro_expansion_expr.decl = decl;
+	expr_copy_properties(expr, inner);
 	return true;
 }
 
@@ -745,7 +758,7 @@ static inline bool expr_may_unpack_as_vararg(Expr *expr, Type *variadic_base_typ
 static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionSignature *signature, Expr *expr, Decl *decl, Type *to, Expr *struct_var)
 {
 	// 1. Builtin? We handle that elsewhere.
-	if (decl->func.is_builtin)
+	if (decl->func_decl.is_builtin)
 	{
 		assert(!struct_var);
 		return sema_expr_analyse_intrinsic_invocation(context, expr, decl, to);
@@ -1056,7 +1069,7 @@ static inline Type *unify_returns(Context *context, Type *to)
 static inline bool sema_expr_analyse_func_call(Context *context, Type *to, Expr *expr, Decl *decl, Expr *struct_var)
 {
 	expr->call_expr.is_pointer_call = false;
-	return sema_expr_analyse_func_invocation(context, &decl->func.function_signature, expr, decl, to, struct_var);
+	return sema_expr_analyse_func_invocation(context, &decl->func_decl.function_signature, expr, decl, to, struct_var);
 }
 
 static bool sema_check_stmt_compile_time(Context *context, Ast *ast);
@@ -1102,8 +1115,10 @@ static bool sema_check_stmt_compile_time(Context *context, Ast *ast)
 	}
 }
 
-static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, Decl *decl)
+static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, Expr *struct_var, Decl *decl)
 {
+	assert(decl->decl_kind == DECL_MACRO);
+
 	// TODO failable
 	if (context->macro_scope.depth >= MAX_MACRO_NESTING)
 	{
@@ -1125,15 +1140,27 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 	Expr **args = call_expr->call_expr.arguments;
 	Decl **func_params = decl->macro_decl.parameters;
 
-	unsigned num_args = vec_size(args);
-	if (num_args != vec_size(func_params))
+	unsigned explicit_args = vec_size(args);
+	unsigned total_args = explicit_args;
+	if (struct_var)
+	{
+		total_args++;
+		vec_add(args, NULL);
+		for (unsigned i = explicit_args; i > 0; i--)
+		{
+			args[i] = args[i - 1];
+		}
+		args[0] = struct_var;
+	}
+
+	if (total_args != vec_size(func_params))
 	{
 		// TODO
 		SEMA_ERROR(call_expr, "Mismatch on number of arguments.");
 		return false;
 	}
-	Decl **params = num_args > 0 ? VECNEW(Decl *, num_args) : NULL;
-	for (unsigned i = 0; i < num_args; i++)
+	Decl **params = func_params > 0 ? VECNEW(Decl *, total_args) : NULL;
+	for (unsigned i = 0; i < total_args; i++)
 	{
 		Expr *arg = args[i];
 		Decl *param = copy_decl(func_params[i]);
@@ -1287,7 +1314,7 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 		SCOPE_START_WITH_FLAGS(SCOPE_MACRO);
 
 
-			for (unsigned i = 0; i < num_args; i++)
+			for (unsigned i = 0; i < total_args; i++)
 			{
 				Decl *param = params[i];
 				sema_add_local(context, param);
@@ -1367,7 +1394,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			break;
 		case EXPR_ACCESS:
 			decl = func_expr->access_expr.ref;
-			if (decl->decl_kind == DECL_FUNC)
+			if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
 			{
 				expr->call_expr.is_type_method = true;
 				struct_var = expr_new(EXPR_UNARY, func_expr->access_expr.parent->span);
@@ -1376,10 +1403,14 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 				struct_var->resolve_status = RESOLVE_DONE;
 				assert(func_expr->access_expr.parent->resolve_status == RESOLVE_DONE);
 				expr_set_type(struct_var, type_get_ptr(struct_var->unary_expr.expr->type));
+				if (decl->decl_kind == DECL_MACRO)
+				{
+					return sema_expr_analyse_macro_call(context, to, expr, struct_var, decl);
+				}
 			}
 			break;
-		case EXPR_MACRO_IDENTIFIER:
-			return sema_expr_analyse_macro_call(context, to, expr, func_expr->identifier_expr.decl);
+		case EXPR_MACRO_EXPANSION:
+			return sema_expr_analyse_macro_call(context, to, expr, NULL, func_expr->macro_expansion_expr.decl);
 		case EXPR_LEN:
 			if (func_expr->type == type_void)
 			{
@@ -1410,7 +1441,8 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 		case DECL_FUNC:
 			return sema_expr_analyse_func_call(context, to, expr, decl, struct_var);
 		case DECL_MACRO:
-			UNREACHABLE
+			SEMA_ERROR(expr, "Macro declarations cannot be called without using '@' before the macro name.");
+			return false;
 		case DECL_GENERIC:
 			return sema_expr_analyse_generic_call(context, to, decl, expr);
 		case DECL_POISONED:
@@ -1811,6 +1843,44 @@ static Expr *enum_minmax_value(Decl *decl, BinaryOp comparison)
 	}
 	return expr;
 }
+
+/**
+ * 1. .A -> It is an enum constant.
+ * 2. .foo -> It is a function.
+ * 3. .@foo -> It is a macro.
+ * 4. .#bar -> It is an identifier to resolve as a member or a function
+ * 5. .@#bar -> It is an identifier to resolve as a macro
+ */
+static TokenId sema_expr_resolve_access_child(Expr *child)
+{
+	switch (child->expr_kind)
+	{
+		case EXPR_IDENTIFIER:
+		case EXPR_CONST_IDENTIFIER:
+			// Not allowed obviously.
+			if (child->identifier_expr.path) break;
+			return child->identifier_expr.identifier;
+		case EXPR_HASH_IDENT:
+			TODO
+		case EXPR_MACRO_EXPANSION:
+			child = child->macro_expansion_expr.inner;
+			switch (child->expr_kind)
+			{
+				case EXPR_IDENTIFIER:
+				case EXPR_HASH_IDENT:
+					return sema_expr_resolve_access_child(child);
+				default:
+					SEMA_ERROR(child, "Expected a macro name.");
+					return INVALID_TOKEN_ID;
+			}
+		default:
+			break;
+
+	}
+	SEMA_ERROR(child, "Expected an identifier here.");
+	return INVALID_TOKEN_ID;
+}
+
 static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, bool was_group)
 {
 	if (!was_group && type_kind_is_derived(parent->type->type_kind))
@@ -1823,8 +1893,13 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 	expr->pure = true;
 
 	Type *canonical = parent->type->canonical;
-	TokenType type = TOKTYPE(expr->access_expr.sub_element);
-	const char *name = TOKSTR(expr->access_expr.sub_element);
+	Expr *child = expr->access_expr.child;
+
+	TokenId identifier_token = sema_expr_resolve_access_child(child);
+	if (TOKEN_IS_INVALID(identifier_token)) return false;
+
+	TokenType type = TOKTYPE(identifier_token);
+	const char *name = TOKSTR(identifier_token);
 	if (type == TOKEN_TYPEID)
 	{
 		expr_set_type(expr, type_typeid);
@@ -1866,7 +1941,7 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 		case DECL_ENUM:
 			if (type == TOKEN_CONST_IDENT)
 			{
-				if (!sema_expr_analyse_enum_constant(expr, expr->access_expr.sub_element, decl))
+				if (!sema_expr_analyse_enum_constant(expr, identifier_token, decl))
 				{
 					SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
 					return false;
@@ -1942,13 +2017,18 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 	expr->constant = true;
 	expr->pure = true;
 
-	TokenType type = TOKTYPE(expr->access_expr.sub_element);
-	const char *name = TOKSTR(expr->access_expr.sub_element);
+	Expr *child = expr->access_expr.child;
+
+	TokenId identifier_token = sema_expr_resolve_access_child(child);
+	if (TOKEN_IS_INVALID(identifier_token)) return false;
+	TokenType type = TOKTYPE(identifier_token);
+	const char *name = TOKSTR(identifier_token);
 
 	Decl *ref = parent->access_expr.ref;
+	bool is_macro = child->expr_kind == EXPR_MACRO_EXPANSION;
 
 	bool is_plain_member = ref->decl_kind == DECL_VAR;
-	if (type == TOKEN_TYPEID)
+	if (type == TOKEN_TYPEID && !is_macro)
 	{
 		expr_set_type(expr, type_typeid);
 		expr->expr_kind = EXPR_TYPEID;
@@ -1963,17 +2043,17 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 		expr->resolve_status = RESOLVE_DONE;
 		return true;
 	}
-	if (name == kw_sizeof)
+	if (name == kw_sizeof && !is_macro)
 	{
 		expr_rewrite_to_int_const(expr, type_usize, type_size(ref->type));
 		return true;
 	}
-	if (name == kw_alignof)
+	if (name == kw_alignof && !is_macro)
 	{
 		expr_rewrite_to_int_const(expr, type_usize, type_abi_alignment(ref->type));
 		return true;
 	}
-	if (name == kw_ordinal)
+	if (name == kw_ordinal && !is_macro)
 	{
 		if (ref->decl_kind == DECL_ENUM_CONSTANT)
 		{
@@ -1981,16 +2061,16 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 			return true;
 		}
 	}
-	if (name == kw_nameof)
+	if (name == kw_nameof && !is_macro)
 	{
 		expr_rewrite_to_string(expr, ref->name);
 		return true;
 	}
-	if (name == kw_qnameof)
+	if (name == kw_qnameof && !is_macro)
 	{
 		TODO
 	}
-	if (name == kw_kindof)
+	if (name == kw_kindof && !is_macro)
 	{
 		TODO
 	}
@@ -2001,7 +2081,12 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 	{
 		if (!type_is_structlike(ref->type))
 		{
-			SEMA_ERROR(expr, "'%s' does not have a member or property '%s'", type_to_error_string(ref->type), name);
+			if (is_macro)
+			{
+				SEMA_ERROR(expr, "'%s' does not have a macro '%s'.", type_to_error_string(ref->type), name);
+				return false;
+			}
+			SEMA_ERROR(expr, "'%s' does not have a member or property '%s'.", type_to_error_string(ref->type), name);
 			return false;
 		}
 		// Pretend to be an inline struct.
@@ -2009,11 +2094,24 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 	}
 	VECEACH(ref->methods, i)
 	{
-		Decl *function = ref->methods[i];
-		if (name == function->name)
+		Decl *decl = ref->methods[i];
+		bool is_macro_decl = decl->decl_kind == DECL_MACRO;
+		if (name == decl->name)
 		{
-			expr->access_expr.ref = function;
-			expr_set_type(expr, function->type);
+			if (is_macro != is_macro_decl)
+			{
+				if (is_macro)
+				{
+					SEMA_ERROR(child, "Method '%s' should not be prefixed with '@'.", name);
+				}
+				else
+				{
+					SEMA_ERROR(child, "Macro method '%s' must be prefixed with '@'.", name);
+				}
+				return false;
+			}
+			expr->access_expr.ref = decl;
+			expr_set_type(expr, decl->type);
 			return true;
 		}
 	}
@@ -2022,6 +2120,11 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 		Decl *member = ref->strukt.members[i];
 		if (name == member->name)
 		{
+			if (is_macro)
+			{
+				SEMA_ERROR(child, "member '%s' should not be prefixed with '@'.", name);
+				return false;
+			}
 			expr->expr_kind = EXPR_MEMBER_ACCESS;
 			expr->access_expr.ref = member;
 			expr_set_type(expr, member->type);
@@ -2048,6 +2151,27 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	{
 		return sema_expr_analyse_member_access(context, expr);
 	}
+	bool is_function_or_macro = false;
+	if (parent->expr_kind == EXPR_ACCESS)
+	{
+		is_function_or_macro = parent->access_expr.ref->decl_kind == DECL_FUNC || parent->access_expr.ref->decl_kind == DECL_MACRO;
+	}
+	if (parent->expr_kind == EXPR_IDENTIFIER)
+	{
+		is_function_or_macro = parent->identifier_expr.decl->decl_kind == DECL_FUNC || parent->identifier_expr.decl->decl_kind == DECL_MACRO;
+	}
+
+	if (is_function_or_macro)
+	{
+		SEMA_ERROR(expr->access_expr.child, "No such member or function could be found.");
+		return false;
+	}
+	Expr *child = expr->access_expr.child;
+	bool is_macro = child->expr_kind == EXPR_MACRO_EXPANSION;
+
+	TokenId identifier_token = sema_expr_resolve_access_child(child);
+	if (TOKEN_IS_INVALID(identifier_token)) return false;
+
 	expr->failable = parent->failable;
 
 	assert(expr->expr_kind == EXPR_ACCESS);
@@ -2064,13 +2188,14 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 		insert_access_deref(expr);
 		parent = expr->access_expr.parent;
 	}
-	const char *kw = TOKSTR(expr->access_expr.sub_element);
+	const char *kw = TOKSTR(identifier_token);
 	Expr *current_parent = parent;
 CHECK_DEEPER:
 
 	switch (type->type_kind)
 	{
 		case TYPE_SUBARRAY:
+			if (is_macro) goto NO_MATCH;
 			if (kw == kw_sizeof)
 			{
 				expr_rewrite_to_int_const(expr, type_usize, type_size(type));
@@ -2086,6 +2211,7 @@ CHECK_DEEPER:
 			}
 			goto NO_MATCH;
 		case TYPE_ARRAY:
+			if (is_macro) goto NO_MATCH;
 			if (kw == kw_sizeof)
 			{
 				expr_rewrite_to_int_const(expr, type_usize, type_size(type));
@@ -2104,7 +2230,7 @@ CHECK_DEEPER:
 			break;
 		default:
 		NO_MATCH:
-			SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", TOKSTR(expr->access_expr.sub_element), type_to_error_string(parent_type));
+			SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", TOKSTR(identifier_token), type_to_error_string(parent_type));
 			return false;
 	}
 
@@ -2127,6 +2253,16 @@ CHECK_DEEPER:
 			goto CHECK_DEEPER;
 		}
 		SEMA_ERROR(expr, "There is no field or method '%s.%s'.", decl->name, kw);
+		return false;
+	}
+	if (member->decl_kind == DECL_MACRO && !is_macro)
+	{
+		SEMA_ERROR(expr, "Expected '@' before the macro name.");
+		return false;
+	}
+	if (member->decl_kind != DECL_MACRO && is_macro)
+	{
+		SEMA_ERROR(expr, "'@' should only be placed in front of macro names.");
 		return false;
 	}
 	expr->access_expr.parent = current_parent;
@@ -3971,7 +4107,6 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 					return false;
 				case TYPE_VOID:
 				case TYPE_TYPEINFO:
-				case TYPE_MEMBER:
 				case TYPE_TYPEDEF:
 				case TYPE_DISTINCT:
 				case TYPE_INFERRED_ARRAY:
@@ -4122,10 +4257,9 @@ static bool sema_take_addr_of(Expr *inner, bool *is_constant)
 	switch (inner->expr_kind)
 	{
 		case EXPR_CT_IDENT:
-		case EXPR_MACRO_CT_IDENTIFIER:
 			SEMA_ERROR(inner, "It's not possible to take the address of a compile time value.");
 			return false;
-		case EXPR_MACRO_IDENTIFIER:
+		case EXPR_MACRO_EXPANSION:
 			SEMA_ERROR(inner, "It's not possible to take the address of a macro.");
 			return false;
 		case EXPR_IDENTIFIER:
@@ -4336,7 +4470,6 @@ static bool sema_expr_analyse_not(Expr *expr, Expr *inner)
 		case TYPE_ERRTYPE:
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 			SEMA_ERROR(expr, "Cannot use 'not' on %s", type_to_error_string(inner->type));
 			return false;
 	}
@@ -4819,7 +4952,6 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			UNREACHABLE
 		case EXPR_HASH_IDENT:
 			return sema_expr_analyse_hash_identifier(context, to, expr);
-		case EXPR_MACRO_CT_IDENTIFIER:
 		case EXPR_CT_IDENT:
 			return sema_expr_analyse_ct_identifier(context, expr);
 		case EXPR_FAILABLE:
@@ -4874,9 +5006,10 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return true;
 		case EXPR_TYPEID:
 			return sema_expr_analyse_type(context, expr);
+		case EXPR_MACRO_EXPANSION:
+			return sema_expr_analyse_macro_expansion(context, expr);
 		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:
-		case EXPR_MACRO_IDENTIFIER:
 			return sema_expr_analyse_identifier(context, to, expr);
 		case EXPR_CALL:
 			return sema_expr_analyse_call(context, to, expr);
@@ -4924,6 +5057,18 @@ static inline bool sema_cast_rvalue(Context *context, Type *to, Expr *expr)
 	if (!expr_ok(expr)) return false;
 	switch (expr->expr_kind)
 	{
+		case EXPR_ACCESS:
+			if (expr->access_expr.ref->decl_kind == DECL_FUNC)
+			{
+				SEMA_ERROR(expr, "A function name must be followed by '(' or preceeded by '&'.");
+				return false;
+			}
+			if (expr->access_expr.ref->decl_kind == DECL_MACRO)
+			{
+				SEMA_ERROR(expr, "A macro name must be followed by '('.");
+				return false;
+			}
+			break;
 		case EXPR_MEMBER_ACCESS:
 			if (expr->access_expr.ref->decl_kind == DECL_ENUM_CONSTANT)
 			{
@@ -4946,11 +5091,8 @@ static inline bool sema_cast_rvalue(Context *context, Type *to, Expr *expr)
 			expr->const_expr = expr->expr_enum->enum_constant.expr->const_expr;
 			expr->expr_kind = EXPR_CONST;
 			break;
-		case EXPR_MACRO_CT_IDENTIFIER:
-			SEMA_ERROR(expr, "Expected compile time macro variable '%s' followed by (...).", expr->ct_macro_ident_expr.identifier);
-			return expr_poison(expr);
-		case EXPR_MACRO_IDENTIFIER:
-			SEMA_ERROR(expr, "Expected macro '%s' followed by (...).", expr->macro_identifier_expr.identifier);
+		case EXPR_MACRO_EXPANSION:
+			SEMA_ERROR(expr, "Expected macro followed by (...).", expr->ct_macro_ident_expr.identifier);
 			return expr_poison(expr);
 		case EXPR_CT_IDENT:
 			if (!sema_cast_ct_ident_rvalue(context, to, expr)) return false;

@@ -1768,12 +1768,31 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 	Decl *decl = decl_new(DECL_MACRO, context->tok.id, visibility);
 	decl->macro_decl.rtype = rtype;
 	decl->macro_decl.failable = failable;
-	if (rtype && TOKEN_IS(TOKEN_DOT))
+	if (rtype)
 	{
-		SEMA_ERROR(rtype, "Expected a macro name here.");
-		return poisoned_decl;
+		if (TOKEN_IS(TOKEN_DOT))
+		{
+			if (failable)
+			{
+				SEMA_ERROR(rtype, "Expected a macro name here.");
+				return poisoned_decl;
+			}
+			advance(context);
+			decl->macro_decl.type_parent = rtype;
+			decl->macro_decl.rtype = NULL;
+		}
+		else
+		{
+			if (parse_next_is_type(context))
+			{
+				decl->macro_decl.type_parent = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+				TRY_CONSUME_OR(TOKEN_DOT, "Did you forget a ',' here?", poisoned_decl);
+			}
+		}
 	}
 
+	decl->name_token = context->tok.id;
+	decl->name = TOKSTR(context->tok);
 	TRY_CONSUME_OR(TOKEN_IDENT, "Expected a macro name here.", poisoned_decl);
 	bool trailing_body = false;
 	if (!parse_macro_arguments(context, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_parameters, &trailing_body)) return poisoned_decl;
@@ -1953,8 +1972,8 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 {
 	Decl *func = decl_new(DECL_FUNC, context->next_tok.id, visibility);
 	advance_and_verify(context, TOKEN_FUNC);
-	func->func.function_signature.rtype = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-	func->func.function_signature.failable = try_consume(context, TOKEN_BANG);
+	func->func_decl.function_signature.rtype = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+	func->func_decl.function_signature.failable = try_consume(context, TOKEN_BANG);
 	SourceSpan start = source_span_from_token_id(context->tok.id);
 	bool had_error = false;
 	Path *path = parse_path_prefix(context, &had_error);
@@ -1967,7 +1986,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 		TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER, start);
 		type->unresolved.path = path;
 		type->unresolved.name_loc = context->tok.id;
-		func->func.type_parent = type;
+		func->func_decl.type_parent = type;
 		advance_and_verify(context, TOKEN_TYPE_IDENT);
 
 		TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method declaration.", poisoned_decl);
@@ -1978,7 +1997,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	func->name_token = context->tok.id;
 	advance_and_verify(context, TOKEN_IDENT);
 	RANGE_EXTEND_PREV(func);
-	if (!parse_opt_parameter_type_list(context, visibility, &(func->func.function_signature), is_interface)) return poisoned_decl;
+	if (!parse_opt_parameter_type_list(context, visibility, &(func->func_decl.function_signature), is_interface)) return poisoned_decl;
 
 	if (!parse_attributes(context, func)) return poisoned_decl;
 
@@ -1998,7 +2017,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 
 	TRY_EXPECT_OR(TOKEN_LBRACE, "Expected the beginning of a block with '{'", poisoned_decl);
 
-	func->func.body = TRY_AST_OR(parse_compound_stmt(context), poisoned_decl);
+	func->func_decl.body = TRY_AST_OR(parse_compound_stmt(context), poisoned_decl);
 
 	DEBUG_LOG("Finished parsing function %s", func->name);
 	return func;

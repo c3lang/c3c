@@ -121,8 +121,6 @@ static void header_print_type(FILE *file, Type *type)
 			break;
 		case TYPE_TYPEINFO:
 			break;
-		case TYPE_MEMBER:
-			break;
 		case TYPE_VECTOR:
 			break;
 	}

@@ -130,8 +130,6 @@ const char *type_to_error_string(Type *type)
 		case TYPE_VECTOR:
 			asprintf(&buffer, "%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
-		case TYPE_MEMBER:
-			return "member";
 		case TYPE_TYPEINFO:
 			return "typeinfo";
 		case TYPE_TYPEID:
@@ -196,7 +194,6 @@ ByteSize type_size(Type *type)
 			return type_size(type->vector.base) * type->vector.len;
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE;
 		case TYPE_TYPEDEF:
@@ -355,7 +352,6 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_VIRTUAL_ANY:
 			return true;
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 	}
@@ -495,7 +491,6 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_IXX:
 		case TYPE_VOID:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_TYPEID:
 		case TYPE_FUNC:
 		case TYPE_STRLIT:
@@ -647,7 +642,6 @@ AlignSize type_abi_alignment(Type *type)
 	{
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE;
 		case TYPE_VECTOR:
@@ -1058,7 +1052,6 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_STRLIT:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 			UNREACHABLE
 			break;
 		case TYPE_FUNC:
@@ -1176,7 +1169,6 @@ bool type_is_scalar(Type *type)
 	{
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_VOID:
@@ -1377,7 +1369,6 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
 			return NULL;

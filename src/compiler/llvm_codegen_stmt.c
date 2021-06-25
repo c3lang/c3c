@@ -180,7 +180,7 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 		c->error_var = c->block_error_var;
 		c->catch_block = c->block_failable_exit;
 	}
-	else if (c->cur_func_decl->func.function_signature.failable)
+	else if (c->cur_func_decl->func_decl.function_signature.failable)
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
 		error_out = llvm_emit_alloca_aligned(c, type_error, "reterr");

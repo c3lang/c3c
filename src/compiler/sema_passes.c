@@ -10,7 +10,7 @@ void context_add_intrinsic(Context *context, const char *name)
 	decl->module = context->module;
 	decl->decl_kind = DECL_FUNC;
 	decl->resolve_status = RESOLVE_DONE;
-	decl->func.is_builtin = true;
+	decl->func_decl.is_builtin = true;
 	decl->name = name;
 	Decl *old = stable_set(&context->local_symbols, decl->name, decl);
 	assert(!old);
@@ -188,7 +188,7 @@ void sema_analysis_pass_ct_assert(Module *module)
 
 static inline bool analyse_func_body(Context *context, Decl *decl)
 {
-	if (!decl->func.body) return true;
+	if (!decl->func_decl.body) return true;
 	if (!sema_analyse_function_body(context, decl)) return decl_poison(decl);
 	return true;
 }
@@ -227,6 +227,10 @@ void sema_analysis_pass_decls(Module *module)
 		VECEACH(context->methods, i)
 		{
 			sema_analyse_decl(context, context->methods[i]);
+		}
+		VECEACH(context->macro_methods, i)
+		{
+			sema_analyse_decl(context, context->macro_methods[i]);
 		}
 		VECEACH(context->vars, i)
 		{
