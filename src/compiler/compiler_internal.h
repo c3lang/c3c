@@ -36,6 +36,7 @@ typedef struct
 #define NO_TOKEN ((Token) { .type = TOKEN_INVALID_TOKEN })
 #define INVALID_TOKEN_ID ((TokenId) { UINT32_MAX })
 #define INVALID_RANGE ((SourceSpan){ INVALID_TOKEN_ID, INVALID_TOKEN_ID })
+#define TOKEN_IS_INVALID(_token_id) ((_token_id).index == INVALID_TOKEN_ID.index)
 #define MAX_LOCALS 0xFFF
 #define MAX_SCOPE_DEPTH 0x100
 #define MAX_STRING_BUFFER 0x10000
@@ -415,6 +416,7 @@ typedef struct
 	bool failable : 1;
 	Decl **parameters;
 	Decl **body_parameters;
+	TypeInfo *type_parent; // May be null
 	TypeInfo *rtype; // May be null!
 	struct Ast_ *body;
 } MacroDecl;
@@ -508,7 +510,7 @@ typedef struct Decl_
 	{
 		struct
 		{
-			Decl** methods;
+			Decl **methods;
 			union
 			{
 				// Unions, Errtype and Struct use strukt
@@ -520,7 +522,7 @@ typedef struct Decl_
 		VarDecl var;
 		LabelDecl label;
 		EnumConstantDecl enum_constant;
-		FuncDecl func;
+		FuncDecl func_decl;
 		AttrDecl attr;
 		TypedefDecl typedef_decl;
 		InterfaceDecl interface_decl;
@@ -629,7 +631,7 @@ typedef struct
 	Expr *parent;
 	union
 	{
-		TokenId sub_element;
+		Expr *child;
 		Decl *ref;
 	};
 } ExprAccess;
@@ -717,6 +719,12 @@ typedef struct
 	bool is_rvalue : 1;
 	Decl *decl;
 } ExprIdentifierRaw;
+
+typedef struct
+{
+	Expr *inner;
+	Decl *decl;
+} ExprMacroExpansion;
 
 typedef struct
 {
@@ -826,6 +834,7 @@ struct Expr_
 		ExprIdentifier macro_identifier_expr;
 		ExprIdentifierRaw ct_ident_expr;
 		ExprIdentifierRaw ct_macro_ident_expr;
+		ExprMacroExpansion macro_expansion_expr;
 		ExprIdentifierRaw hash_ident_expr;
 		TypeInfo *typeid_expr;
 		ExprInitializer initializer_expr;
@@ -1272,6 +1281,7 @@ typedef struct Context_
 	Decl **interfaces;
 	Decl **templates;
 	Decl **methods;
+	Decl **macro_methods;
 	Decl **vars;
 	Decl **incr_array;
 	Decl **ct_ifs;

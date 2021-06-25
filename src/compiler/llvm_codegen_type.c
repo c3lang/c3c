@@ -18,15 +18,15 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 			UNREACHABLE
 		case DECL_FUNC:
 		{
-			VECEACH(decl->func.function_signature.params, i)
+			VECEACH(decl->func_decl.function_signature.params, i)
 			{
-				params[i] = llvm_get_type(c, decl->func.function_signature.params[i]->type);
+				params[i] = llvm_get_type(c, decl->func_decl.function_signature.params[i]->type);
 			}
-			unsigned param_size = vec_size(decl->func.function_signature.params);
-			return LLVMFunctionType(llvm_get_type(c, decl->func.function_signature.rtype->type),
+			unsigned param_size = vec_size(decl->func_decl.function_signature.params);
+			return LLVMFunctionType(llvm_get_type(c, decl->func_decl.function_signature.rtype->type),
 			                        params,
 			                        param_size,
-			                        decl->func.function_signature.variadic);
+			                        decl->func_decl.function_signature.variadic);
 
 		}
 		case DECL_TYPEDEF:
@@ -334,7 +334,6 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 	{
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_TYPEID:

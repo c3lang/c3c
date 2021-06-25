@@ -978,12 +978,12 @@ void *llvm_gen(Module *module)
 		VECEACH(context->functions, i)
 		{
 			Decl *decl = context->functions[i];
-			if (decl->func.body) llvm_emit_function_body(gen_context, decl);
+			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
 		}
 		VECEACH(context->methods, i)
 		{
 			Decl *decl = context->methods[i];
-			if (decl->func.body) llvm_emit_function_body(gen_context, decl);
+			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
 		}
 
 		gencontext_end_file_emit(gen_context, context);

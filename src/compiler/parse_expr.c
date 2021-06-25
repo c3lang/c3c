@@ -179,26 +179,16 @@ bool parse_param_list(Context *context, Expr ***result, TokenType param_end, boo
 	}
 }
 
-static Expr *parse_macro_ident(Context *context, Expr *left)
+static Expr *parse_macro_expansion(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *macro_ident = EXPR_NEW_TOKEN(EXPR_MACRO_IDENTIFIER, context->tok);
+	Expr *macro_expression = EXPR_NEW_TOKEN(EXPR_MACRO_EXPANSION, context->tok);
 	advance_and_verify(context, TOKEN_AT);
-	if (TOKEN_IS(TOKEN_CT_IDENT))
-	{
-		macro_ident->ct_macro_ident_expr.identifier = context->tok.id;
-		macro_ident->expr_kind = EXPR_MACRO_CT_IDENTIFIER;
-		advance_and_verify(context, TOKEN_CT_IDENT);
-		RANGE_EXTEND_PREV(macro_ident);
-		return macro_ident;
-	}
-	bool had_error = false;
-	macro_ident->identifier_expr.path = parse_path_prefix(context, &had_error);
-	if (had_error) return poisoned_expr;
-	macro_ident->identifier_expr.identifier = context->tok.id;
-	CONSUME_OR(TOKEN_IDENT, poisoned_expr);
-	RANGE_EXTEND_PREV(macro_ident);
-	return macro_ident;
+	Expr *inner = TRY_EXPR_OR(parse_precedence(context, PREC_MACRO), poisoned_expr);
+	macro_expression->macro_expansion_expr.inner = inner;
+	assert(inner);
+	RANGE_EXTEND_PREV(macro_expression);
+	return macro_expression;
 }
 
 
@@ -460,7 +450,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	{
 		if (!parse_param_list(context, &params, TOKEN_RPAREN, &unsplat)) return poisoned_expr;
 	}
-	if (try_consume(context, TOKEN_EOS) && left->expr_kind == EXPR_MACRO_IDENTIFIER)
+	if (try_consume(context, TOKEN_EOS) && left->expr_kind == EXPR_MACRO_EXPANSION)
 	{
 		if (!parse_macro_argument_declarations(context, VISIBLE_LOCAL, &body_args, false)) return poisoned_expr;
 	}
@@ -482,7 +472,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 		SEMA_TOKEN_ERROR(context->tok, "Expected a macro body here.");
 		return poisoned_expr;
 	}
-	if (TOKEN_IS(TOKEN_LBRACE) && left->expr_kind == EXPR_MACRO_IDENTIFIER)
+	if (TOKEN_IS(TOKEN_LBRACE) && left->expr_kind == EXPR_MACRO_EXPANSION)
 	{
 		call->call_expr.body = TRY_AST_OR(parse_compound_stmt(context), poisoned_expr);
 	}
@@ -555,16 +545,8 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 	advance_and_verify(context, TOKEN_DOT);
 	Expr *access_expr = EXPR_NEW_EXPR(EXPR_ACCESS, left);
 	access_expr->access_expr.parent = left;
-	access_expr->access_expr.sub_element = context->tok.id;
-	if (!try_consume(context, TOKEN_TYPEID))
-	{
-		if (!try_consume(context, TOKEN_CONST_IDENT))
-		{
-			TRY_CONSUME_OR(TOKEN_IDENT, "Expected identifier", poisoned_expr);
-		}
-	}
-	access_expr->span = left->span;
-	access_expr->span.end_loc = access_expr->access_expr.sub_element;
+	access_expr->access_expr.child = TRY_EXPR_OR(parse_precedence(context, PREC_CALL + 1), poisoned_expr);
+	RANGE_EXTEND_PREV(access_expr);
 	return access_expr;
 }
 
@@ -1099,7 +1081,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
 		[TOKEN_PLACEHOLDER] = { parse_placeholder, NULL, PREC_NONE },
 		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },
-		[TOKEN_AT] = { parse_macro_ident, NULL, PREC_NONE },
+		[TOKEN_AT] = { parse_macro_expansion, NULL, PREC_NONE },
 		[TOKEN_STRING] = { parse_string_literal, NULL, PREC_NONE },
 		[TOKEN_REAL] = { parse_double, NULL, PREC_NONE },
 		[TOKEN_OR] = { NULL, parse_binary, PREC_LOGICAL },

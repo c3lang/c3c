@@ -2262,7 +2262,6 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_TYPEID:
 		case TYPE_FUNC:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_DISTINCT:
 		case TYPE_STRLIT:
 		case TYPE_INFERRED_ARRAY:
@@ -2564,7 +2563,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		Decl *function_decl = expr->call_expr.function->access_expr.ref;
 
 		// 2b. Set signature, function and function type
-		signature = &function_decl->func.function_signature;
+		signature = &function_decl->func_decl.function_signature;
 		func = function_decl->backend_ref;
 		assert(func);
 		func_type = llvm_get_type(c, function_decl->type);
@@ -2576,14 +2575,14 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		function_decl = decl_flatten(function_decl);
 
 		// 3a. This may be an intrinsic, if so generate an intrinsic call instead.
-		if (function_decl->func.is_builtin)
+		if (function_decl->func_decl.is_builtin)
 		{
 			gencontext_emit_call_intrinsic_expr(c, be_value, expr);
 			return;
 		}
 
 		// 3b. Set signature, function and function type
-		signature = &function_decl->func.function_signature;
+		signature = &function_decl->func_decl.function_signature;
 		func = function_decl->backend_ref;
 		func_type = llvm_get_type(c, function_decl->type);
 	}
@@ -3004,6 +3003,7 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 		}
 		llvm_emit_and_set_decl_alloca(context, decl);
 		BEValue value;
+
 		llvm_emit_expr(context, &value, expr->macro_block.args[i]);
 		llvm_store_aligned_decl(context, decl, llvm_value_rvalue_store(context, &value));
 	}
@@ -3109,8 +3109,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_DECL_LIST:
 		case EXPR_TYPEINFO:
 		case EXPR_ENUM_CONSTANT:
-		case EXPR_MACRO_IDENTIFIER:
-		case EXPR_MACRO_CT_IDENTIFIER:
+		case EXPR_MACRO_EXPANSION:
 		case EXPR_CT_IDENT:
 		case EXPR_HASH_IDENT:
 		case EXPR_PLACEHOLDER:

@@ -242,7 +242,7 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable)
 {
-	FunctionSignature *signature = &c->cur_func_decl->func.function_signature;
+	FunctionSignature *signature = &c->cur_func_decl->func_decl.function_signature;
 	ABIArgInfo *info = signature->ret_abi_info;
 
 	// If we have a failable it's always the return argument, so we need to copy
@@ -344,12 +344,12 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 
 void llvm_emit_return_implicit(GenContext *c)
 {
-	if (c->cur_func_decl->func.function_signature.rtype->type != type_void)
+	if (c->cur_func_decl->func_decl.function_signature.rtype->type != type_void)
 	{
 		LLVMBuildUnreachable(c->builder);
 		return;
 	}
-	if (!c->cur_func_decl->func.function_signature.failable)
+	if (!c->cur_func_decl->func_decl.function_signature.failable)
 	{
 		llvm_emit_return_abi(c, NULL, NULL);
 		return;
@@ -390,7 +390,7 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 	LLVMValueRef alloca_point = LLVMBuildAlloca(context->builder, LLVMInt32TypeInContext(context->context), "alloca_point");
 	context->alloca_point = alloca_point;
 
-	FunctionSignature *signature = &decl->func.function_signature;
+	FunctionSignature *signature = &decl->func_decl.function_signature;
 	unsigned arg = 0;
 
 	if (emit_debug)
@@ -421,16 +421,16 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 
 
 	// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
-	VECEACH(decl->func.function_signature.params, i)
+	VECEACH(decl->func_decl.function_signature.params, i)
 	{
-		llvm_emit_parameter(context, decl->func.function_signature.params[i], &arg, i);
+		llvm_emit_parameter(context, decl->func_decl.function_signature.params[i], &arg, i);
 	}
 
 	LLVMSetCurrentDebugLocation2(context->builder, NULL);
 
-	VECEACH(decl->func.body->compound_stmt.stmts, i)
+	VECEACH(decl->func_decl.body->compound_stmt.stmts, i)
 	{
-		llvm_emit_stmt(context, decl->func.body->compound_stmt.stmts[i]);
+		llvm_emit_stmt(context, decl->func_decl.body->compound_stmt.stmts[i]);
 	}
 
 	if (context->current_block && !LLVMGetFirstInstruction(context->current_block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(context->current_block)))
@@ -443,8 +443,8 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 	// Insert a return (and defer) if needed.
 	if (context->current_block && !LLVMGetBasicBlockTerminator(context->current_block))
 	{
-		assert(!decl->func.body->compound_stmt.defer_list.end);
-		llvm_emit_defer(context, decl->func.body->compound_stmt.defer_list.start, 0);
+		assert(!decl->func_decl.body->compound_stmt.defer_list.end);
+		llvm_emit_defer(context, decl->func_decl.body->compound_stmt.defer_list.start, 0);
 		llvm_emit_return_implicit(context);
 	}
 
@@ -524,7 +524,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	// Resolve function backend type for function.
 	LLVMValueRef function = LLVMAddFunction(c->module, decl->cname ?: decl->external_name, llvm_get_type(c, decl->type));
 	decl->backend_ref = function;
-	FunctionSignature *signature = &decl->func.function_signature;
+	FunctionSignature *signature = &decl->func_decl.function_signature;
 	FunctionSignature *type_signature = decl->type->func.signature;
 
 	// We only resolve 1 function signature, so we might have functions
@@ -560,15 +560,15 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 		ABIArgInfo *info = param->var.abi_info;
 		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end);
 	}
-	if (decl->func.attr_inline)
+	if (decl->func_decl.attr_inline)
 	{
 		llvm_attribute_add(c, function, attribute_alwaysinline, -1);
 	}
-	if (decl->func.attr_noinline)
+	if (decl->func_decl.attr_noinline)
 	{
 		llvm_attribute_add(c, function, attribute_noinline, -1);
 	}
-	if (decl->func.attr_noreturn)
+	if (decl->func_decl.attr_noreturn)
 	{
 		llvm_attribute_add(c, function, attribute_noreturn, -1);
 	}
@@ -582,7 +582,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	}
 	llvm_attribute_add(c, function, attribute_nounwind, -1);
 
-	if (decl->func.attr_stdcall && (platform_target.os == OS_TYPE_WIN32))
+	if (decl->func_decl.attr_stdcall && (platform_target.os == OS_TYPE_WIN32))
 	{
 		LLVMSetFunctionCallConv(function, LLVMX86StdcallCallConv);
 		LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
@@ -591,16 +591,16 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	switch (decl->visibility)
 	{
 		case VISIBLE_EXTERN:
-			LLVMSetLinkage(function, decl->func.attr_weak ? LLVMExternalWeakLinkage : LLVMExternalLinkage);
+			LLVMSetLinkage(function, decl->func_decl.attr_weak ? LLVMExternalWeakLinkage : LLVMExternalLinkage);
 			LLVMSetVisibility(function, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_PUBLIC:
 		case VISIBLE_MODULE:
-			if (decl->func.attr_weak) LLVMSetLinkage(function, LLVMWeakAnyLinkage);
+			if (decl->func_decl.attr_weak) LLVMSetLinkage(function, LLVMWeakAnyLinkage);
 			LLVMSetVisibility(function, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_LOCAL:
-			LLVMSetLinkage(function, decl->func.attr_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
+			LLVMSetLinkage(function, decl->func_decl.attr_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
 			LLVMSetVisibility(function, LLVMDefaultVisibility);
 			break;;
 	}
@@ -611,6 +611,15 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 }
 
 
+void llvm_emit_methods(GenContext *c, Decl **methods)
+{
+	VECEACH(methods, i)
+	{
+		Decl *decl = methods[i];
+		if (decl->decl_kind == DECL_MACRO) continue;
+		llvm_emit_function_decl(c, decl);
+	}
+}
 
 void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 {
@@ -630,18 +639,12 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ERR:
-			VECEACH(decl->methods, i)
-			{
-				llvm_emit_function_decl(context, decl->methods[i]);
-			}
+			llvm_emit_methods(context, decl->methods);
 			llvm_get_type(context, decl->type);
 			// TODO // Fix typeid
 			break;
 		case DECL_ENUM:
-			VECEACH(decl->methods, i)
-			{
-				llvm_emit_function_decl(context, decl->methods[i]);
-			}
+			llvm_emit_methods(context, decl->methods);
 			// TODO // Fix typeid
 			return;
 		case DECL_TYPEDEF:

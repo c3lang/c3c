@@ -76,11 +76,12 @@ Expr *copy_expr(Expr *source_expr)
 			return expr;
 		case EXPR_PLACEHOLDER:
 		case EXPR_CONST_IDENTIFIER:
-		case EXPR_MACRO_IDENTIFIER:
 		case EXPR_CT_IDENT:
-		case EXPR_MACRO_CT_IDENTIFIER:
 		case EXPR_HASH_IDENT:
 			// TODO
+			return expr;
+		case EXPR_MACRO_EXPANSION:
+			MACRO_COPY_EXPR(expr->macro_expansion_expr.inner);
 			return expr;
 		case EXPR_DESIGNATOR:
 			expr->designator_expr.path = macro_copy_designator_list(expr->designator_expr.path);
@@ -406,6 +407,7 @@ TypeInfo *copy_type_info(TypeInfo *source)
 {
 	if (!source) return NULL;
 	TypeInfo *copy = type_info_copy(source);
+	if (source->resolve_status == RESOLVE_DONE) return copy;
 	switch (source->kind)
 	{
 		case TYPE_INFO_POISON:
@@ -428,7 +430,6 @@ TypeInfo *copy_type_info(TypeInfo *source)
 			copy->array.base = copy_type_info(source->array.base);
 			return copy;
 		case TYPE_INFO_POINTER:
-			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->pointer = copy_type_info(source->pointer);
 			return copy;
 	}
@@ -496,10 +497,10 @@ Decl *copy_decl(Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->interface_decl.functions);
 			break;
 		case DECL_FUNC:
-			MACRO_COPY_TYPE(copy->func.type_parent);
-			copy->func.annotations = NULL;
-			copy_function_signature_deep(&copy->func.function_signature);
-			MACRO_COPY_AST(copy->func.body);
+			MACRO_COPY_TYPE(copy->func_decl.type_parent);
+			copy->func_decl.annotations = NULL;
+			copy_function_signature_deep(&copy->func_decl.function_signature);
+			MACRO_COPY_AST(copy->func_decl.body);
 			break;
 		case DECL_VAR:
 			MACRO_COPY_TYPE(copy->var.type_info);
@@ -557,6 +558,7 @@ Decl *copy_decl(Decl *decl)
 		case DECL_ARRAY_VALUE:
 			TODO
 		case DECL_MACRO:
+			MACRO_COPY_TYPE(decl->macro_decl.type_parent);
 			MACRO_COPY_DECL_LIST(decl->macro_decl.parameters);
 			MACRO_COPY_AST(decl->macro_decl.body);
 			MACRO_COPY_TYPE(decl->macro_decl.rtype);
