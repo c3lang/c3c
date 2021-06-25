@@ -373,7 +373,7 @@ bool sema_add_local(Context *context, Decl *decl)
 		decl_poison(other);
 		return false;
 	}
-	Decl ***vars = &context->active_function_for_analysis->func.annotations->vars;
+	Decl ***vars = &context->active_function_for_analysis->func_decl.annotations->vars;
 	unsigned num_vars = vec_size(*vars);
 	if (num_vars == MAX_LOCALS - 1)
 	{

@@ -1853,7 +1853,7 @@ bool sema_analyse_statement(Context *context, Ast *statement)
 bool sema_analyse_function_body(Context *context, Decl *func)
 {
 	if (!decl_ok(func)) return false;
-	FunctionSignature *signature = &func->func.function_signature;
+	FunctionSignature *signature = &func->func_decl.function_signature;
 	context->active_function_for_analysis = func;
 	context->rtype = signature->rtype->type;
 	context->active_scope = (DynamicScope) {
@@ -1874,7 +1874,7 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	context->next_target = 0;
 	context->next_switch = 0;
 	context->break_target = 0;
-	func->func.annotations = CALLOCS(FuncAnnotations);
+	func->func_decl.annotations = CALLOCS(FuncAnnotations);
 	SCOPE_START
 		assert(context->active_scope.depth == 1);
 		Decl **params = signature->params;
@@ -1882,7 +1882,7 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 		{
 			if (!sema_add_local(context, params[i])) return false;
 		}
-		if (!sema_analyse_compound_statement_no_scope(context, func->func.body)) return false;
+		if (!sema_analyse_compound_statement_no_scope(context, func->func_decl.body)) return false;
 		assert(context->active_scope.depth == 1);
 		if (!context->active_scope.jump_end)
 		{

@@ -194,8 +194,7 @@ typedef enum
 	EXPR_GUARD,
 	EXPR_HASH_IDENT,
 	EXPR_MACRO_BLOCK,
-	EXPR_MACRO_CT_IDENTIFIER,
-	EXPR_MACRO_IDENTIFIER,
+	EXPR_MACRO_EXPANSION,
 	EXPR_MEMBER_ACCESS,
 	EXPR_IDENTIFIER,
 	EXPR_INITIALIZER_LIST,
@@ -242,8 +241,10 @@ typedef enum
 	PREC_BIT,               // ^ | &
 	PREC_SHIFT,             // << >> >>>
 	PREC_MULTIPLICATIVE,    // * / %
-	PREC_UNARY,             // @ ! - + ~ * & prefix ++/--
+	PREC_UNARY,             // ! - + ~ * & prefix ++/--
 	PREC_CALL,              // . () [] postfix ++/--
+	PREC_MACRO,
+	PREC_FIRST = PREC_MACRO
 } Precedence;
 
 typedef enum
@@ -512,11 +513,10 @@ typedef enum
 	TYPE_SUBARRAY,
 	TYPE_INFERRED_ARRAY,
 	TYPE_TYPEINFO,
-	TYPE_MEMBER,
 	TYPE_VECTOR,
 	TYPE_VIRTUAL,
 	TYPE_VIRTUAL_ANY,
-	TYPE_LAST = TYPE_MEMBER
+	TYPE_LAST = TYPE_VIRTUAL_ANY
 } TypeKind;
 
 #define ALL_INTS TYPE_I8: case TYPE_I16: case TYPE_I32: case TYPE_I64: case TYPE_I128: \

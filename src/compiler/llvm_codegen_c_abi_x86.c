@@ -109,7 +109,6 @@ static bool x86_should_return_type_in_reg(Type *type)
 	{
 		case TYPE_VECTOR:
 		case TYPE_POISONED:
-		case TYPE_MEMBER:
 		case TYPE_VOID:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
@@ -617,7 +616,6 @@ static ABIArgInfo *x86_classify_argument(CallConvention call, Regs *regs, Type *
 		case TYPE_ERR_UNION:
 			return x86_classify_aggregate(call, regs, type);
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 			UNREACHABLE
 	}
 	UNREACHABLE

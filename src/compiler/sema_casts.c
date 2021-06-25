@@ -379,7 +379,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_ARRAY:
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_VECTOR:
 			return CAST_ERROR;
 	}
@@ -402,7 +401,6 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_DISTINCT:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
@@ -715,7 +713,6 @@ bool cast(Expr *expr, Type *to_type)
 		case TYPE_VOID:
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
 		case TYPE_DISTINCT:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:

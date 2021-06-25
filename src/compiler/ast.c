@@ -408,9 +408,6 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 		case TYPE_TYPEINFO:
 			DUMP("(type typeinfo)");
 			return;
-		case TYPE_MEMBER:
-			DUMP("(type member)");
-			return;
 		case TYPE_POISONED:
 			DUMP("(type poison)");
 			return;
@@ -622,8 +619,9 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->failable_expr);
 			DUMPEND();
-		case EXPR_MACRO_IDENTIFIER:
-			DUMPF("(ident @%s", TOKSTR(expr->macro_identifier_expr.identifier));
+		case EXPR_MACRO_EXPANSION:
+			DUMP("(macro expansion");
+			DUMPEXPR(expr->macro_expansion_expr.inner);
 			DUMPEXPC(expr);
 			DUMPEND();
 		case EXPR_IDENTIFIER:
@@ -636,10 +634,6 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEND();
 		case EXPR_HASH_IDENT:
 			DUMPF("(hashident %s", TOKSTR(expr->hash_ident_expr.identifier));
-			DUMPEXPC(expr);
-			DUMPEND();
-		case EXPR_MACRO_CT_IDENTIFIER:
-			DUMPF("(macroctident @%s", TOKSTR(expr->ct_ident_expr.identifier));
 			DUMPEXPC(expr);
 			DUMPEND();
 		case EXPR_CONST_IDENTIFIER:
@@ -693,9 +687,10 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEXPR(expr->trycatch_expr);
 			DUMPEND();
 		case EXPR_ACCESS:
-			DUMPF("(access .%s", TOKSTR(expr->access_expr.sub_element));
+			DUMP("(access");
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->access_expr.parent);
+			DUMPEXPR(expr->access_expr.child);
 			DUMPEND();
 		case EXPR_TYPEID:
 			DUMP("(typeid");
@@ -905,16 +900,16 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			DUMPEND();
 		case DECL_FUNC:
 			DUMPF("(func %s", decl->name);
-			if (decl->func.type_parent)
+			if (decl->func_decl.type_parent)
 			{
 				indent++;
 				DUMP("(parent_type");
-				DUMPTI(decl->func.type_parent);
+				DUMPTI(decl->func_decl.type_parent);
 				DUMPE();
 				indent--;
 			}
-			fprint_func_signature(context, file, &decl->func.function_signature, indent + 1);
-			if (decl->func.body) DUMPAST(decl->func.body);
+			fprint_func_signature(context, file, &decl->func_decl.function_signature, indent + 1);
+			if (decl->func_decl.body) DUMPAST(decl->func_decl.body);
 			DUMPEND();
 		case DECL_STRUCT:
 			DUMPF("(struct %s", decl->name ? decl->name : "anon");
