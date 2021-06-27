@@ -599,6 +599,18 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 static inline bool sema_expr_analyse_macro_expansion(Context *context, Expr *expr)
 {
 	Expr *inner = expr->macro_expansion_expr.inner;
+	if (inner->expr_kind == EXPR_IDENTIFIER)
+	{
+		if (!inner->identifier_expr.path && TOKSTR(inner->identifier_expr.identifier) == context->macro_scope.body_param)
+		{
+			expr->expr_kind = EXPR_MACRO_BODY_EXPANSION;
+			expr->body_expansion_expr.ast = NULL;
+			expr->body_expansion_expr.declarations = NULL;
+			expr->resolve_status = RESOLVE_NOT_DONE;
+			expr->type = expr->original_type = type_void;
+			return true;
+		}
+	}
 	if (!sema_analyse_expr_value(context, NULL, inner)) return false;
 	Decl *decl;
 	switch (inner->expr_kind)
@@ -1138,12 +1150,12 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 		return false;
 	}
 
-	if (decl->has_body_param && !call_expr->call_expr.body)
+	if (decl->macro_decl.block_parameter.index && !call_expr->call_expr.body)
 	{
 		SEMA_ERROR(call_expr, "Expected call to have a trailing statement, did you forget to add it?");
 		return false;
 	}
-	if (!decl->has_body_param && call_expr->call_expr.body)
+	if (!decl->macro_decl.block_parameter.index && call_expr->call_expr.body)
 	{
 		SEMA_ERROR(call_expr, "This macro does not support trailing statements, please remove it.");
 		return false;
@@ -1293,6 +1305,7 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 		if (!body_arg->alignment) body_arg->alignment = type_alloca_alignment(body_arg->type);
 	}
 	Decl **first_local = context->macro_scope.macro ? context->macro_scope.locals_start : context->locals;
+
 	MacroScope old_macro_scope = context->macro_scope;
 
 	bool ok = true;
@@ -1306,6 +1319,7 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 		}
 
 		context->macro_scope = (MacroScope){
+				.body_param = decl->macro_decl.block_parameter.index ? TOKSTR(decl->macro_decl.block_parameter) : NULL,
 				.macro = decl,
 				.inline_line = TOKLOC(call_expr->span.loc)->line,
 				.original_inline_line = old_macro_scope.depth ? old_macro_scope.original_inline_line : TOKLOC(call_expr->span.loc)->line,
@@ -1388,6 +1402,47 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 }
 
 
+static bool sema_analyse_body_expansion(Context *context, Expr *call)
+{
+	Decl *macro = context->macro_scope.macro;
+	assert(macro);
+	assert(macro->macro_decl.block_parameter.index);
+
+	ExprCall *call_expr = &call->call_expr;
+	if (vec_size(call_expr->body_arguments))
+	{
+		SEMA_ERROR(call, "Nested expansion is not possible.");
+		return false;
+	}
+	if (call_expr->unsplat_last)
+	{
+		SEMA_ERROR(call, "Expanding parameters is not allowed for macro invocations.");
+		return false;
+	}
+	unsigned expressions = vec_size(call_expr->arguments);
+	if (expressions != vec_size(macro->macro_decl.body_parameters))
+	{
+		SEMA_ERROR(call, "Expected %d parameter(s).", vec_size(macro->macro_decl.body_parameters));
+		return false;
+	}
+	Expr **args = call_expr->arguments;
+	for (unsigned i = 0; i < expressions; i++)
+	{
+		Expr *expr = args[i];
+		Decl *param = context->macro_scope.yield_args[i];
+		if (!sema_analyse_expr(context, param->type, expr)) return false;
+	}
+	assert(call_expr->function->expr_kind == EXPR_MACRO_BODY_EXPANSION);
+	expr_replace(call, call_expr->function);
+	call->body_expansion_expr.values = args;
+	call->body_expansion_expr.declarations = context->macro_scope.yield_args;
+	bool in_yield = context->macro_scope.in_yield;
+	context->macro_scope.in_yield = true;
+	call->body_expansion_expr.ast = copy_ast(context->macro_scope.yield_body);
+	bool success = sema_analyse_statement(context, call->body_expansion_expr.ast);
+	context->macro_scope.in_yield = in_yield;
+	return success;
+}
 
 static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr)
 {
@@ -1396,6 +1451,10 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 
 	Expr *func_expr = expr->call_expr.function;
 	if (!sema_analyse_expr_value(context, NULL, func_expr)) return false;
+	if (func_expr->expr_kind == EXPR_MACRO_BODY_EXPANSION)
+	{
+		return sema_analyse_body_expansion(context, expr);
+	}
 	expr->failable = func_expr->failable;
 	Decl *decl;
 	Expr *struct_var = NULL;
@@ -4961,6 +5020,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_ENUM_CONSTANT:
 		case EXPR_MEMBER_ACCESS:
 		case EXPR_DESIGNATOR:
+		case EXPR_MACRO_BODY_EXPANSION:
 			UNREACHABLE
 		case EXPR_HASH_IDENT:
 			return sema_expr_analyse_hash_identifier(context, to, expr);
@@ -5069,6 +5129,12 @@ static inline bool sema_cast_rvalue(Context *context, Type *to, Expr *expr)
 	if (!expr_ok(expr)) return false;
 	switch (expr->expr_kind)
 	{
+		case EXPR_MACRO_BODY_EXPANSION:
+			if (!expr->body_expansion_expr.ast)
+			{
+				SEMA_ERROR(expr, "'@%s' must be followed by ().", context->macro_scope.body_param);
+				return false;
+			}
 		case EXPR_ACCESS:
 			if (expr->access_expr.ref->decl_kind == DECL_FUNC)
 			{

@@ -581,6 +581,9 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
+		case EXPR_MACRO_BODY_EXPANSION:
+			DUMP("(macro-body-expansion)");
+			return;
 		case EXPR_PLACEHOLDER:
 			DUMP("(placeholder)");
 			return;
@@ -1077,10 +1080,6 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 	if (!ast) return;
 	switch (ast->ast_kind)
 	{
-		case AST_YIELD_STMT:
-			DUMP("(yield");
-			printf("Missing data\n");
-			DUMPEND();
 		case AST_CT_ASSERT:
 			DUMP("($assert");
 			DUMPEXPR(ast->ct_assert_stmt.expr);

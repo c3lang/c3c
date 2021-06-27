@@ -69,6 +69,7 @@ Expr *copy_expr(Expr *source_expr)
 	Expr *expr = expr_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_ENUM_CONSTANT:
 		case EXPR_MEMBER_ACCESS:
 			UNREACHABLE
@@ -364,9 +365,6 @@ Ast *copy_ast(Ast *source)
 			copy_flow(ast);
 			MACRO_COPY_EXPR(ast->while_stmt.cond);
 			MACRO_COPY_AST(ast->while_stmt.body);
-			return ast;
-		case AST_YIELD_STMT:
-			MACRO_COPY_EXPR_LIST(ast->yield_stmt.values);
 			return ast;
 	}
 	UNREACHABLE;

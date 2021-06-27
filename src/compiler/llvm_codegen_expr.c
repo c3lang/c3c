@@ -2225,6 +2225,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 
 static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values);
 
+
 static void gencontext_expand_array_to_args(GenContext *c, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values)
 {
 	LLVMTypeRef element_type = llvm_get_type(c, param_type->array.base);
@@ -3098,6 +3099,26 @@ static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value
 	llvm_emit_initialize_reference(c, value, expr);
 }
 
+static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *body_expr)
+{
+	Decl **declarations = body_expr->body_expansion_expr.declarations;
+	Expr **values = body_expr->body_expansion_expr.values;
+	// Create backend refs on demand.
+	foreach(declarations, i)
+	{
+		Decl *decl = declarations[i];
+		if (!decl->backend_ref) llvm_emit_local_var_alloca(c, decl);
+	}
+	// Set the values
+	foreach(values, i)
+	{
+		Expr *expr = values[i];
+		llvm_emit_expr(c, value, expr);
+		llvm_store_bevalue_aligned(c, declarations[i]->backend_ref, value, declarations[i]->alignment);
+	}
+	llvm_emit_stmt(c, body_expr->body_expansion_expr.ast);
+}
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_LOC(c, expr);
@@ -3156,6 +3177,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_CONST:
 			llvm_emit_const_expr(c, value, expr);
 			return;
+		case EXPR_MACRO_BODY_EXPANSION:
+			llvm_emit_macro_body_expansion(c, value, expr);
+			return;
 		case EXPR_BINARY:
 			gencontext_emit_binary_expr(c, value, expr);
 			return;
@@ -3199,3 +3223,4 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	}
 	UNREACHABLE
 }
+

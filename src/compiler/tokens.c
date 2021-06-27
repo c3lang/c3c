@@ -260,8 +260,6 @@ const char *token_type_to_string(TokenType type)
 			return "volatile";
 		case TOKEN_WHILE:
 			return "while";
-		case TOKEN_YIELD:
-			return "yield";
 
 		// Named types
 		case TOKEN_VIRTUAL:

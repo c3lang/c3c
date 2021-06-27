@@ -1418,12 +1418,12 @@ static inline Decl *parse_top_level_const_declaration(Context *context, Visibili
  *
  * trailing_block_parameter ::= '@' IDENT ( '(' parameters ')' )?
  */
-static bool parse_macro_arguments(Context *context, Visibility visibility, Decl ***params_ref, Decl ***body_params, bool *has_trailing_body)
+static bool parse_macro_arguments(Context *context, Visibility visibility, Decl ***params_ref, Decl ***body_params, TokenId *block_parameter)
 {
 	CONSUME_OR(TOKEN_LPAREN, false);
 	*params_ref = NULL;
 	*body_params = NULL;
-	*has_trailing_body = false;
+	*block_parameter = (TokenId) {};
 	// Parse the regular parameters.
 	if (!parse_parameters(context, visibility, params_ref)) return false;
 
@@ -1431,8 +1431,8 @@ static bool parse_macro_arguments(Context *context, Visibility visibility, Decl 
 	if (try_consume(context, TOKEN_EOS))
 	{
 		// Consume '@' IDENT
-		*has_trailing_body = true;
 		TRY_CONSUME_OR(TOKEN_AT, "Expected a trailing block with the format '@block(...).", false);
+		*block_parameter = context->tok.id;
 		if (!consume_ident(context, "variable name")) return false;
 		TokenId name = context->prev_tok;
 		if (try_consume(context, TOKEN_LPAREN))
@@ -1444,43 +1444,6 @@ static bool parse_macro_arguments(Context *context, Visibility visibility, Decl 
 	}
 	TRY_CONSUME(TOKEN_RPAREN, false);
 	return true;
-}
-/**
- * generics_declaration
- *	: GENERIC opt_path IDENT '(' macro_argument_list ')' '{' generics_body '}'
- *	| GENERIC failable_type opt_path IDENT '(' macro_argument_list ')' '{' generics_body '}'
- *	;
- *
- * opt_path
- *	:
- *	| path
- *	;
- *
- * @param visibility
- * @return
- */
-static inline Decl *parse_generics_declaration(Context *context, Visibility visibility)
-{
-	advance_and_verify(context, TOKEN_GENERIC);
-	TypeInfo *rtype = NULL;
-	if (context_next_is_type_and_not_ident(context))
-	{
-		rtype = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-	}
-	bool had_error;
-	Path *path = parse_path_prefix(context, &had_error);
-	if (had_error) return poisoned_decl;
-	Decl *decl = decl_new(DECL_GENERIC, context->tok.id, visibility);
-	decl->generic_decl.path = path;
-	if (!consume_ident(context, "generic function name")) return poisoned_decl;
-	decl->generic_decl.rtype = rtype;
-	bool trailing_body = false;
-	if (!parse_macro_arguments(context, visibility, &decl->generic_decl.parameters, &decl->generic_decl.body_parameters, &trailing_body)) return poisoned_decl;
-	decl->has_body_param = trailing_body;
-	Ast **cases = NULL;
-	if (!parse_switch_body(context, &cases, TOKEN_CASE, TOKEN_DEFAULT, true)) return poisoned_decl;
-	decl->generic_decl.cases = cases;
-	return decl;
 }
 
 /**
@@ -1767,9 +1730,9 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 	decl->name = TOKSTR(name);
 	decl->name_token = name;
 
-	bool trailing_body = false;
-	if (!parse_macro_arguments(context, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_parameters, &trailing_body)) return poisoned_decl;
-	decl->has_body_param = trailing_body;
+	TokenId block_parameter = {};
+	if (!parse_macro_arguments(context, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_parameters, &block_parameter)) return poisoned_decl;
+	decl->macro_decl.block_parameter = block_parameter;
 	decl->macro_decl.body = TRY_AST_OR(parse_stmt(context), poisoned_decl);
 	return decl;
 }
@@ -2290,7 +2253,7 @@ Decl *parse_top_level_statement(Context *context)
 			decl = TRY_DECL_OR(parse_struct_declaration(context, visibility), poisoned_decl);
 			break;
 		case TOKEN_GENERIC:
-			decl = TRY_DECL_OR(parse_generics_declaration(context, visibility), poisoned_decl);
+			TODO
 			break;
 		case TOKEN_MACRO:
 			decl = TRY_DECL_OR(parse_macro_declaration(context, visibility), poisoned_decl);
