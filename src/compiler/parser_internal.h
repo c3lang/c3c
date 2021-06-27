@@ -52,8 +52,9 @@ bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, Toke
                        bool allow_multiple_values);
 Expr *parse_expression_list(Context *context);
 Decl *parse_decl_after_type(Context *context, TypeInfo *type);
-bool parse_macro_argument_declarations(Context *context, Visibility visibility, Decl ***params_ref, bool allow_vararg);
-bool parse_param_list(Context *context, Expr ***result, TokenType param_end, bool *unsplat);
+
+bool parse_parameters(Context *context, Visibility visibility, Decl ***params_ref);
+bool parse_arg_list(Context *context, Expr ***result, TokenType param_end, bool *unsplat);
 Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *type_info);
 Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info);
 bool parse_next_is_decl(Context *context);

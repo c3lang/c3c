@@ -2,7 +2,7 @@ module test;
 
 extern func int printf(char *, ...);
 
-macro foo(x; y)
+macro foo(x; @body(y))
 {
     yield x;
 }

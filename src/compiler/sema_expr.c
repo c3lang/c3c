@@ -757,7 +757,19 @@ static inline bool expr_may_unpack_as_vararg(Expr *expr, Type *variadic_base_typ
 }
 static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionSignature *signature, Expr *expr, Decl *decl, Type *to, Expr *struct_var)
 {
-	// 1. Builtin? We handle that elsewhere.
+	// 1. Check that we don't have any macro style arguments.
+	if (vec_size(expr->call_expr.body_arguments))
+	{
+		SEMA_ERROR(expr, "Only macro calls may have arguments for a trailing block after ';'.");
+		return false;
+	}
+	if (vec_size(expr->call_expr.body_arguments))
+	{
+		SEMA_ERROR(expr, "Only macro calls may take a trailing block.");
+		return false;
+	}
+
+	// 2. Builtin? We handle that elsewhere.
 	if (decl->func_decl.is_builtin)
 	{
 		assert(!struct_var);
@@ -766,15 +778,15 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 	Decl **func_params = signature->params;
 	Expr **args = expr->call_expr.arguments;
 
-	// 2. If this is a type call, then we have an implicit first argument.
+	// 3. If this is a type call, then we have an implicit first argument.
 	unsigned struct_args = struct_var == NULL ? 0 : 1;
 
-	// 3. There might be unpacking for typed varargs.
+	// 4. There might be unpacking for typed varargs.
 	unsigned num_args = vec_size(args) + struct_args;
 	bool unsplat = expr->call_expr.unsplat_last;
 	if (unsplat)
 	{
-		// 4. Is this *not* a naked vararg or typed vararg? That's an error.
+		// 5. Is this *not* a naked vararg or typed vararg? That's an error.
 		if (!signature->typed_variadic && !signature->variadic)
 		{
 			SEMA_ERROR(VECLAST(expr->call_expr.arguments), "Unpacking is only allowed for functions with variable parameters.");
@@ -782,48 +794,48 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 		}
 	}
 
-	// 4. Zero out all argument slots.
+	// 6. Zero out all argument slots.
 	unsigned func_param_count = vec_size(func_params);
-	// 4a. We need at least as many function locations as we have parameters.
+	// 6a. We need at least as many function locations as we have parameters.
 	unsigned entries_needed = func_param_count > num_args ? func_param_count : num_args;
 	Expr **actual_args = VECNEW(Expr*, entries_needed);
 	for (unsigned i = 0; i < entries_needed; i++) vec_add(actual_args, NULL);
 	memset(actual_args, 0, entries_needed * sizeof(Expr*));
 
-	// 5. We might have a typed variadic call e.g. foo(int, double...)
+	// 7. We might have a typed variadic call e.g. foo(int, double...)
 	//    get that type.
 	Type *variadic_type = NULL;
 	if (signature->typed_variadic)
 	{
-		// 5a. The parameter type is <type>[], so we get the <type>
+		// 7a. The parameter type is <type>[], so we get the <type>
 		assert(func_params[func_param_count - 1]->type->type_kind == TYPE_SUBARRAY);
 		variadic_type = func_params[func_param_count - 1]->type->array.base;
-		// 5b. The last function parameter is implicit, so remove it.
+		// 7b. The last function parameter is implicit, so remove it.
 		func_param_count--;
 	}
 
-	// 6. Loop through the parameters.
+	// 8. Loop through the parameters.
 	bool uses_named_parameters = false;
 	for (unsigned i = 0; i < num_args; i++)
 	{
-		// 7. We might pick up the argument as the type if this is a type
+		// 9. We might pick up the argument as the type if this is a type
 		//    method.
 		bool is_implicit = i < struct_args;
 		Expr *arg = is_implicit ? struct_var : args[i - struct_args];
 
-		// 8. Handle named parameters
+		// 10. Handle named parameters
 		if (arg->expr_kind == EXPR_DESIGNATOR)
 		{
-			// 8a. We have named parameters, that will add some restrictions.
+			// 10a. We have named parameters, that will add some restrictions.
 			uses_named_parameters = true;
 
-			// 8b. Find the location of the parameter.
+			// 10b. Find the location of the parameter.
 			int index = find_index_of_named_parameter(func_params, arg);
 
-			// 8c. If it's not found then this is an error.
+			// 10c. If it's not found then this is an error.
 			if (index < 0) return false;
 
-			// 8d. We might actually be finding the typed vararg at the end,
+			// 10d. We might actually be finding the typed vararg at the end,
 			//     this is an error.
 			if (func_params[index]->var.vararg)
 			{
@@ -831,23 +843,23 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 				return false;
 			}
 
-			// 8e. We might have already set this parameter, that is not allowed.
+			// 10e. We might have already set this parameter, that is not allowed.
 			if (actual_args[index])
 			{
 				SEMA_ERROR(arg, "The parameter '%s' was already set once.", func_params[index]->name);
 				return false;
 			}
 
-			// 8f. Check the parameter
+			// 10f. Check the parameter
 			if (!sema_analyse_expr_of_required_type(context, func_params[index]->type, arg->designator_expr.value, true)) return false;
 
-			// 8g. Set the parameter and update failability.
+			// 10g. Set the parameter and update failability.
 			actual_args[index] = arg->designator_expr.value;
 			expr->failable |= arg->designator_expr.value->failable;
 			continue;
 		}
 
-		// 9. Check for previous use of named parameters, this is not allowed
+		// 11. Check for previous use of named parameters, this is not allowed
 		//     like foo(.a = 1, 3) => error.
 		if (uses_named_parameters)
 		{
@@ -855,27 +867,27 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 			return false;
 		}
 
-		// 10. If we exceed the function parameter count (remember we reduced this by one
+		// 12. If we exceed the function parameter count (remember we reduced this by one
 		//     in the case of typed vararg) we're now in a variadic list.
 		if (i >= func_param_count)
 		{
-			// 11. We might have a typed variadic argument.
+			// 13. We might have a typed variadic argument.
 			if (variadic_type)
 			{
-				// 11a. Look if we did an unsplat
+				// 13a. Look if we did an unsplat
 				if (expr->call_expr.unsplat_last)
 				{
-					// 11b. Is this the last argument, or did we get some before the unpack?
+					// 13b. Is this the last argument, or did we get some before the unpack?
 					if (i < num_args - 1)
 					{
 						SEMA_ERROR(arg, "This looks like a variable argument before an unpacked variable which isn't allowed. Did you add too many arguments?");
 						return false;
 					}
-					// 11c. Analyse the expression. We don't use any type inference here since
+					// 13c. Analyse the expression. We don't use any type inference here since
 					//      foo(...{ 1, 2, 3 }) is a fairly worthless thing.
 					if (!sema_analyse_expr(context, NULL, arg)) return false;
 
-					// 11d. If it is allowed.
+					// 13d. If it is allowed.
 					if (!expr_may_unpack_as_vararg(arg, variadic_type))
 					{
 						SEMA_ERROR(arg, "It's not possible to unpack %s as vararg of type %s",
@@ -886,7 +898,7 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 				}
 				else
 				{
-					// 11e. A simple variadic value:
+					// 13e. A simple variadic value:
 					if (!sema_analyse_expr_of_required_type(context, variadic_type, arg, true)) return false;
 				}
 				// Set the argument at the location.
@@ -894,30 +906,30 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 				expr->failable |= arg->failable;
 				continue;
 			}
-			// 12. We might have a naked variadic argument
+			// 14. We might have a naked variadic argument
 			if (signature->variadic)
 			{
-				// 12a. Analyse the expression.
+				// 14a. Analyse the expression.
 				if (!sema_analyse_expr(context, NULL, arg)) return false;
 
-				// 12b. In the case of a compile time variable we cast to c_int / double.
+				// 14b. In the case of a compile time variable we cast to c_int / double.
 				Type *arg_type = arg->type->canonical;
 				if (type_is_ct(arg_type))
 				{
 					// TODO Fix the int conversion.
-					// 12c. Pick double / CInt
+					// 14c. Pick double / CInt
 					Type *target_type = type_is_any_integer(arg_type) ? type_cint() : type_double;
 					if (!cast_implicit(arg, target_type)) return false;
 					arg_type = target_type;
 				}
-				// 12d. Promote any integer or bool to at least CInt
+				// 14d. Promote any integer or bool to at least CInt
 				if (type_is_promotable_integer(arg_type) || arg_type == type_bool)
 				{
 					Type *cint = type_cint();
 					cast(arg, cint);
 					arg_type = cint;
 				}
-				// 12e. Promote any float to at least Double
+				// 14e. Promote any float to at least Double
 				if (type_is_promotable_float(arg->type))
 				{
 					cast(arg, type_double);
@@ -928,24 +940,24 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 				expr->failable |= arg->failable;
 				continue;
 			}
-			// 13. We have too many parameters...
+			// 15. We have too many parameters...
 			SEMA_ERROR(expr, "Too many parameters for this function.");
 			return false;
 		}
 
-		// 14. Analyse a regular argument.
+		// 16. Analyse a regular argument.
 		if (!sema_analyse_expr_of_required_type(context, func_params[i]->type, arg, true)) return false;
 		expr->failable |= arg->failable;
 		actual_args[i] = arg;
 	}
 
-	// 15. Set default values.
+	// 17. Set default values.
 	for (unsigned i = 0; i < entries_needed; i++)
 	{
-		// 15a. Assigned a value - skip
+		// 17a. Assigned a value - skip
 		if (actual_args[i]) continue;
 
-		// 15b. Set the init expression.
+		// 17b. Set the init expression.
 		if (func_params[i]->var.init_expr)
 		{
 			assert(func_params[i]->var.init_expr->resolve_status == RESOLVE_DONE);
@@ -953,14 +965,14 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 			continue;
 		}
 
-		// 15c. Vararg not set? That's fine.
+		// 17c. Vararg not set? That's fine.
 		if (func_params[i]->var.vararg) continue;
 
-		// 15d. Argument missing, that's bad.
+		// 17d. Argument missing, that's bad.
 		SEMA_ERROR(expr, "Parameter '%s' was not set.", func_params[i]->name);
 		return false;
 	}
-	// 16. Set the type and failable.
+	// 18. Set the type and failable.
 	expr_set_type(expr, signature->rtype->type);
 	expr->call_expr.arguments = actual_args;
 	expr->failable |= signature->failable;

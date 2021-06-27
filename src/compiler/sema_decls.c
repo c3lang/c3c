@@ -357,7 +357,17 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 {
 	*has_default = false;
 	assert(param->decl_kind == DECL_VAR);
-	assert(param->var.kind == VARDECL_PARAM);
+	// We need to check that the parameters are not typeless nor are of any macro parameter kind.
+	if (param->var.kind != VARDECL_PARAM)
+	{
+		SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
+		return false;
+	}
+	if (!param->var.type_info)
+	{
+		SEMA_ERROR(param, "Only typed parameters are allowed for functions.");
+		return false;
+	}
 	if (!sema_resolve_type_info(context, param->var.type_info))
 	{
 		return false;
@@ -387,7 +397,7 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 	return true;
 }
 
-static inline Type *sema_analyse_function_signature(Context *context, FunctionSignature *signature, bool is_function)
+static inline Type *sema_analyse_function_signature(Context *context, FunctionSignature *signature, bool is_real_function)
 {
 	bool all_ok = true;
 	all_ok = sema_resolve_type_info(context, signature->rtype) && all_ok;
@@ -405,7 +415,7 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 		assert(param->resolve_status == RESOLVE_NOT_DONE);
 		param->resolve_status = RESOLVE_RUNNING;
 		bool has_default;
-		if (!sema_analyse_function_param(context, param, is_function, &has_default))
+		if (!sema_analyse_function_param(context, param, is_real_function, &has_default))
 		{
 			decl_poison(param);
 			all_ok = false;

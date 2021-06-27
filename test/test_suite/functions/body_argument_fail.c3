@@ -1,0 +1,5 @@
+func void foo1(int... x;) {} // #error: Expected ')'
+func void foo2(... x;) {} // #error: Expected ')'
+func void foo3(... x;) {} // #error: Expected ')'
+func void foo4(;) {} // #error: Expected ')'
+func void foo5(int x;) {} // #error: Expected ')'

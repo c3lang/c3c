@@ -32,7 +32,6 @@ typedef struct
 
 extern ParseRule rules[TOKEN_EOF + 1];
 
-static Expr *parse_identifier_with_path(Context *context, Path *path);
 
 inline Expr *parse_precedence_with_left_side(Context *context, Expr *left_side, Precedence precedence)
 {
@@ -134,7 +133,7 @@ static bool parse_param_path(Context *context, DesignatorElement ***path)
  *
  * parameter ::= (param_path '=')? expr
  */
-bool parse_param_list(Context *context, Expr ***result, TokenType param_end, bool *unsplat)
+bool parse_arg_list(Context *context, Expr ***result, TokenType param_end, bool *unsplat)
 {
 	*result = NULL;
 	if (unsplat) *unsplat = false;
@@ -179,6 +178,9 @@ bool parse_param_list(Context *context, Expr ***result, TokenType param_end, boo
 	}
 }
 
+/**
+ * macro_expansion ::= '@' non_at_expression
+ */
 static Expr *parse_macro_expansion(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -371,7 +373,7 @@ Expr *parse_initializer_list(Context *context)
 	CONSUME_OR(TOKEN_LBRACE, poisoned_expr);
 	if (!try_consume(context, TOKEN_RBRACE))
 	{
-		if (!parse_param_list(context, &initializer_list->initializer_expr.initializer_expr, TOKEN_RBRACE, NULL)) return poisoned_expr;
+		if (!parse_arg_list(context, &initializer_list->initializer_expr.initializer_expr, TOKEN_RBRACE, NULL)) return poisoned_expr;
 		CONSUME_OR(TOKEN_RBRACE, poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(initializer_list);
@@ -448,11 +450,11 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	Decl **body_args = NULL;
 	if (!TOKEN_IS(TOKEN_RPAREN))
 	{
-		if (!parse_param_list(context, &params, TOKEN_RPAREN, &unsplat)) return poisoned_expr;
+		if (!parse_arg_list(context, &params, TOKEN_RPAREN, &unsplat)) return poisoned_expr;
 	}
-	if (try_consume(context, TOKEN_EOS) && left->expr_kind == EXPR_MACRO_EXPANSION)
+	if (try_consume(context, TOKEN_EOS) && parse_next_is_type(context))
 	{
-		if (!parse_macro_argument_declarations(context, VISIBLE_LOCAL, &body_args, false)) return poisoned_expr;
+		if (!parse_parameters(context, VISIBLE_LOCAL, &body_args)) return poisoned_expr;
 	}
 	if (!TOKEN_IS(TOKEN_RPAREN))
 	{
@@ -472,7 +474,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 		SEMA_TOKEN_ERROR(context->tok, "Expected a macro body here.");
 		return poisoned_expr;
 	}
-	if (TOKEN_IS(TOKEN_LBRACE) && left->expr_kind == EXPR_MACRO_EXPANSION)
+	if (TOKEN_IS(TOKEN_LBRACE))
 	{
 		call->call_expr.body = TRY_AST_OR(parse_compound_stmt(context), poisoned_expr);
 	}
@@ -551,14 +553,6 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 }
 
 
-static Expr *parse_identifier_with_path(Context *context, Path *path)
-{
-	Expr *expr = EXPR_NEW_TOKEN(context->tok.type == TOKEN_CONST_IDENT ? EXPR_CONST_IDENTIFIER : EXPR_IDENTIFIER , context->tok);
-	expr->identifier_expr.identifier = context->tok.id;
-	expr->identifier_expr.path = path;
-	advance(context);
-	return expr;
-}
 
 static Expr *parse_ct_ident(Context *context, Expr *left)
 {
@@ -586,11 +580,14 @@ static Expr *parse_hash_ident(Context *context, Expr *left)
 static Expr *parse_identifier(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	return parse_identifier_with_path(context, NULL);
+	Expr *expr = EXPR_NEW_TOKEN(context->tok.type == TOKEN_CONST_IDENT ? EXPR_CONST_IDENTIFIER : EXPR_IDENTIFIER , context->tok);
+	expr->identifier_expr.identifier = context->tok.id;
+	advance(context);
+	return expr;
 }
 
 
-static Expr *parse_maybe_scope(Context *context, Expr *left)
+static Expr *parse_identifier_starting_expression(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	bool had_error;
@@ -600,7 +597,11 @@ static Expr *parse_maybe_scope(Context *context, Expr *left)
 	{
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
-			return parse_identifier_with_path(context, path);
+		{
+			Expr *expr = parse_identifier(context, NULL);
+			expr->identifier_expr.path = path;
+			return expr;
+		}
 		case TOKEN_TYPE_IDENT:
 			return parse_type_expression_with_path(context, path);
 		default:
@@ -922,11 +923,15 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 		}
 		advance_and_verify(context, TOKEN_STRING);
 	}
-
+	if (len > UINT32_MAX)
+	{
+		SEMA_TOKEN_ERROR(context->tok, "String exceeded max size.");
+		return poisoned_expr;
+	}
 	assert(str);
 	str[len] = '\0';
 	expr_string->const_expr.string.chars = str;
-	expr_string->const_expr.string.len = len;
+	expr_string->const_expr.string.len = (uint32_t)len;
 	expr_set_type(expr_string, type_compstr);
 	expr_string->const_expr.kind = TYPE_STRLIT;
 	return expr_string;
@@ -1001,7 +1006,7 @@ Expr *parse_type_expression_with_path(Context *context, Path *path)
 
 /**
  * function_block
- *  : '({' stmt_list '})'
+ *  : '{|' stmt_list '|}'
  */
 static Expr* parse_expr_block(Context *context, Expr *left)
 {
@@ -1098,7 +1103,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_SHR_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_SHL_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 
-		[TOKEN_IDENT] = { parse_maybe_scope, NULL, PREC_NONE },
+		[TOKEN_IDENT] = { parse_identifier_starting_expression, NULL, PREC_NONE },
 		[TOKEN_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_CT_IDENT] = { parse_ct_ident, NULL, PREC_NONE },
 		[TOKEN_CONST_IDENT] = { parse_identifier, NULL, PREC_NONE },
