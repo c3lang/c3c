@@ -19,6 +19,7 @@ else
 	CMAKE_BUILD_TYPE="$2"
 fi
 
+TAG="$1"
 if [ "$1" = 18 ]; then
 	UBUNTU_VERSION="18.04"
 	DEPS="llvm-10-dev liblld-10-dev libclang-10-dev"
@@ -30,12 +31,12 @@ else
 	exit 2
 fi
 
-cd docker && docker build -t c3c-builder --build-arg UID=$(id -u) --build-arg GID=$(id -g) \
+cd docker && docker build -t c3c-builder:$TAG --build-arg UID=$(id -u) --build-arg GID=$(id -g) \
 	--build-arg DEPS="$DEPS" --build-arg UBUNTU_VERSION="$UBUNTU_VERSION" .
 cd ..
 
-rm -rf build bin
+rm -rf build bin lib
 mkdir -p build bin
 
-exec docker run -ti --rm -v "$PWD":/home/c3c/source -w /home/c3c/source c3c-builder bash -c \
-	"cd build && cmake -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE .. && cmake --build . && mv c3c ../bin/"
+exec docker run -ti --rm -v "$PWD":/home/c3c/source -w /home/c3c/source c3c-builder:$TAG bash -c \
+	"cd build && cmake -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE .. && cmake --build . && mv c3c ../bin/ && mv lib ../lib"
