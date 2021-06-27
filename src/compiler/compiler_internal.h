@@ -419,6 +419,7 @@ typedef struct
 	TypeInfo *type_parent; // May be null
 	TypeInfo *rtype; // May be null!
 	struct Ast_ *body;
+	TokenId block_parameter;
 } MacroDecl;
 
 typedef struct
@@ -485,7 +486,6 @@ typedef struct Decl_
 	bool needs_additional_pad : 1;
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
-	bool has_body_param : 1;
 	void *backend_ref;
 	const char *cname;
 	AlignSize alignment;
@@ -739,6 +739,13 @@ typedef struct
 
 typedef struct
 {
+	Expr **values;
+	Decl **declarations;
+	Ast *ast;
+} ExprBodyExpansion;
+
+typedef struct
+{
 	Expr *expr;
 	DeferList defers;
 } ExprScope;
@@ -837,6 +844,7 @@ struct Expr_
 		ExprMacroExpansion macro_expansion_expr;
 		ExprIdentifierRaw hash_ident_expr;
 		TypeInfo *typeid_expr;
+		ExprBodyExpansion body_expansion_expr;
 		ExprInitializer initializer_expr;
 		Decl *expr_enum;
 		ExprCompoundLiteral expr_compound_literal;
@@ -844,6 +852,7 @@ struct Expr_
 		ExprScope expr_scope;
 		ExprFuncBlock expr_block;
 		ExprMacroBlock macro_block;
+
 		Expr* failable_expr;
 		Ast** dexpr_list_expr;
 	};
@@ -1101,12 +1110,6 @@ typedef struct
 	Expr *expr;
 } AstAssertStmt;
 
-typedef struct
-{
-	Expr **values;
-	Decl **declarations;
-	Ast *ast;
-} AstYieldStmt;
 
 typedef struct
 {
@@ -1173,7 +1176,6 @@ typedef struct Ast_
 		AstAssertStmt assert_stmt;
 		Ast **directives;
 		AstDocDirective doc_directive;
-		AstYieldStmt yield_stmt;
 	};
 } Ast;
 
@@ -1227,6 +1229,7 @@ typedef struct MacroScope_
 	Decl **yield_args;
 	Ast *yield_body;
 	bool in_yield;
+	const char *body_param;
 } MacroScope;
 
 typedef union

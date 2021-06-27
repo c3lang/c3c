@@ -17,14 +17,14 @@ func int Foo.mutate(Foo *foo)
 macro macro_with_body(foo, &x; @body(x, y))
 {
     x = foo.x;
-    yield foo.mutate(), x;
+    @body(foo.mutate(), x);
 }
 
 macro repeat(int times; @body(x))
 {
     for (int i = 0; i < times; i++)
     {
-        yield i + 1;
+       @body(i + 1);
     }
 }
 

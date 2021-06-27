@@ -1712,40 +1712,6 @@ static bool sema_analyse_ct_compound_stmt(Context *context, Ast *statement)
 	return all_ok;
 }
 
-static bool sema_analyse_yield_stmt(Context *context, Ast *stmt)
-{
-	Decl *macro = context->macro_scope.macro;
-	if (!macro)
-	{
-		SEMA_ERROR(stmt, "'yield' can only be used in macros.");
-		return false;
-	}
-
-	if (!macro->has_body_param)
-	{
-		SEMA_ERROR(stmt, "'yield' can only be used in macros that takes trailing bodies, use ';' after the regular parameters.");
-		return false;
-	}
-	unsigned expressions = vec_size(stmt->yield_stmt.values);
-	if (expressions != vec_size(macro->macro_decl.body_parameters))
-	{
-		SEMA_ERROR(stmt, "Expected %d parameter(s) for 'yield'.", vec_size(macro->macro_decl.body_parameters));
-		return false;
-	}
-	for (unsigned i = 0; i < expressions; i++)
-	{
-		Expr *expr = stmt->yield_stmt.values[i];
-		Decl *param = context->macro_scope.yield_args[i];
-		if (!sema_analyse_expr(context, param->type, expr)) return false;
-	}
-	stmt->yield_stmt.declarations = context->macro_scope.yield_args;
-	bool in_yield = context->macro_scope.in_yield;
-	context->macro_scope.in_yield = true;
-	stmt->yield_stmt.ast = copy_ast(context->macro_scope.yield_body);
-	bool success = sema_analyse_statement(context, stmt->yield_stmt.ast);
-	context->macro_scope.in_yield = in_yield;
-	return success;
-}
 
 static inline bool sema_analyse_statement_inner(Context *context, Ast *statement)
 {
@@ -1771,8 +1737,6 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_DOCS:
 		case AST_DOC_DIRECTIVE:
 			UNREACHABLE
-		case AST_YIELD_STMT:
-			return sema_analyse_yield_stmt(context, statement);
 		case AST_ASM_STMT:
 			return sema_analyse_asm_stmt(context, statement);
 		case AST_ASSERT_STMT:

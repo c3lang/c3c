@@ -1197,26 +1197,6 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 	llvm_emit_block(c, ok_block);
 }
 
-void llvm_emit_yield_stmt(GenContext *c, Ast *ast)
-{
-	Decl **declarations = ast->yield_stmt.declarations;
-	Expr **values = ast->yield_stmt.values;
-	// Create backend refs on demand.
-	foreach(declarations, i)
-	{
-		Decl *decl = declarations[i];
-		if (!decl->backend_ref) llvm_emit_local_var_alloca(c, decl);
-	}
-	// Set the values
-	foreach(values, i)
-	{
-		Expr *expr = values[i];
-		BEValue value;
-		llvm_emit_expr(c, &value, expr);
-		llvm_store_bevalue_aligned(c, declarations[i]->backend_ref, &value, declarations[i]->alignment);
-	}
-	llvm_emit_stmt(c, ast->yield_stmt.ast);
-}
 
 void llvm_emit_stmt(GenContext *c, Ast *ast)
 {
@@ -1229,9 +1209,6 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_POISONED:
 		case AST_DEFINE_STMT:
 			UNREACHABLE
-		case AST_YIELD_STMT:
-			llvm_emit_yield_stmt(c, ast);
-			break;
 		case AST_TRY_STMT:
 			gencontext_emit_try_stmt(c, ast);
 			break;

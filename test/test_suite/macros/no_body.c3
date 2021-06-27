@@ -4,7 +4,7 @@ extern func int printf(char *, ...);
 
 macro foo(x; @body(y))
 {
-    yield x;
+    @body(x);
 }
 
 func void test()
@@ -40,10 +40,11 @@ func void test2()
 
 macro foo2(x)
 {
-    yield x; // #error: 'yield' can only be used in macros that takes trailing bodies, use ';' after the regular parameters.
+    @body(x); // #error: The identifier 'body' could not be found, did you spell it right?
 }
 
 func void test4()
 {
     @foo2(10);
 }
+
