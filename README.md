@@ -17,6 +17,7 @@ C3 tries to be an alternative in the C/C++ niche: fast and close to the metal.
 
 ### Example code
 
+Create a `main.c3` file with:
 ```c++
 module hello_world;
 import std::io;
@@ -26,6 +27,15 @@ func void main()
    io::printf("Hello, world!\n");
 }
 ```
+
+Make sure you have the standard libraries at either `../lib/std/` or `/lib/std/`.
+
+Then run
+```sh
+c3c compile main.c3
+```
+
+The generated binary will be called `a.out`.
 
 ### In what ways do C3 differ from C?
 
