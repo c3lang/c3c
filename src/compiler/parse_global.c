@@ -51,7 +51,7 @@ static bool context_next_is_type_and_not_ident(Context *context)
 		if (context->next_tok.type != TOKEN_COLON) return false;
 		return context_next_is_type_with_path_prefix(context);
 	}
-	return true;
+	return token_is_any_type(context->tok.type);
 }
 
 
@@ -986,25 +986,11 @@ bool parse_next_is_type(Context *context)
 	TokenType next_tok = context->next_tok.type;
 	switch (context->tok.type)
 	{
-		case TOKEN_VOID:
-		case TOKEN_CHAR:
-		case TOKEN_BOOL:
-		case TOKEN_ICHAR:
-		case TOKEN_DOUBLE:
-		case TOKEN_FLOAT:
-		case TOKEN_INT:
-		case TOKEN_ISIZE:
-		case TOKEN_LONG:
-		case TOKEN_SHORT:
-		case TOKEN_UINT:
-		case TOKEN_ULONG:
-		case TOKEN_USHORT:
-		case TOKEN_USIZE:
-		case TOKEN_QUAD:
+		case TYPE_TOKENS:
+		case TOKEN_VIRTUAL:
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_ERR:
-		case TOKEN_TYPEID:
 			return true;
 		case TOKEN_IDENT:
 			if (next_tok != TOKEN_SCOPE) return false;
@@ -1020,25 +1006,11 @@ bool parse_next_is_case_type(Context *context)
 	TokenType next_tok = context->next_tok.type;
 	switch (context->tok.type)
 	{
-		case TOKEN_VOID:
-		case TOKEN_BOOL:
-		case TOKEN_CHAR:
-		case TOKEN_DOUBLE:
-		case TOKEN_FLOAT:
-		case TOKEN_ICHAR:
-		case TOKEN_INT:
-		case TOKEN_ISIZE:
-		case TOKEN_LONG:
-		case TOKEN_SHORT:
-		case TOKEN_UINT:
-		case TOKEN_ULONG:
-		case TOKEN_USHORT:
-		case TOKEN_USIZE:
-		case TOKEN_QUAD:
+		case TYPE_TOKENS:
+		case TOKEN_VIRTUAL:
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_ERR:
-		case TOKEN_TYPEID:
 			return (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) |  (next_tok == TOKEN_COMMA) | (next_tok == TOKEN_COLON) | (next_tok == TOKEN_EOS);
 		case TOKEN_IDENT:
 			if (next_tok != TOKEN_SCOPE) return false;
@@ -1152,48 +1124,142 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 }
 
 /**
- *
- * parameter_type_list
- *  : parameter_list
- *  | parameter_list ',' ELLIPSIS
- *  | parameter_list ',' type_expression ELLIPSIS
- *  ;
- *
- * opt_parameter_type_list
- *  : '(' ')'
- *  | '(' parameter_type_list ')'
- *  ;
- *
- * parameter_list
- *  : param_declaration
- *  | parameter_list ',' param_declaration
- *  ;
- *
+ * parameters ::= (parameter (',' parameter)*)?
+ * non_type_ident = IDENT | HASH_IDENT | CT_IDENT
+ * parameter ::= type ELLIPSIS? (non_type_ident ('=' expr))?
+ *             | ELLIPSIS (CT_TYPE_IDENT | non_type_ident ('=' expr)?)?
  */
-static inline bool parse_opt_parameter_type_list(Context *context, Visibility parent_visibility, FunctionSignature *signature, bool is_interface)
+bool parse_parameters(Context *context, Visibility visibility, Decl ***params_ref)
 {
-	CONSUME_OR(TOKEN_LPAREN, false);
-	while (!try_consume(context, TOKEN_RPAREN))
+	Decl** params = NULL;
+	bool var_arg_found = false;
+
+	while (!TOKEN_IS(TOKEN_EOS) && !TOKEN_IS(TOKEN_RPAREN))
 	{
-		if (signature->variadic || signature->typed_variadic)
+		TypeInfo *type = NULL;
+
+		bool ellipsis = try_consume(context, TOKEN_ELLIPSIS);
+
+		// Special case, we might see foo($Type).
+		// there is an ambiguity here, since ($Type) and ($Type x) is potentially possible
+		// to evaluate. However, at the top level we never have global compile time values.
+		// so consequently we need fix this and ignore CT_TYPE_IDENT
+		if (!ellipsis && context_next_is_type_and_not_ident(context) && context->tok.type != TOKEN_CT_TYPE_IDENT )
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Variadic arguments should be the last in a parameter list.");
+			type = TRY_TYPE_OR(parse_type(context), false);
+			ellipsis = try_consume(context, TOKEN_ELLIPSIS);
+		}
+
+		if (ellipsis && var_arg_found)
+		{
+			SEMA_TOKID_ERROR(context->prev_tok, "Only a single vararg parameter is allowed.");
 			return false;
 		}
-		if (try_consume(context, TOKEN_ELLIPSIS))
+
+		VarDeclKind param_kind;
+		TokenId token = context->tok.id;
+		bool no_name = false;
+
+		switch (context->tok.type)
 		{
-			signature->variadic = true;
+			case TOKEN_IDENT:
+				// normal foo
+				param_kind = VARDECL_PARAM;
+				break;
+			case TOKEN_CT_IDENT:
+				// ct_var $foo
+				param_kind = VARDECL_PARAM_CT;
+				break;
+			case TOKEN_AMP:
+				// reference &foo
+				advance(context);
+				token = context->tok.id;
+				if (!TOKEN_IS(TOKEN_IDENT))
+				{
+					SEMA_TOKEN_ERROR(context->tok, "Only normal variables may be passed by reference.");
+					return false;
+				}
+				param_kind = VARDECL_PARAM_REF;
+				break;
+			case TOKEN_HASH_TYPE_IDENT:
+				// #Foo (not allowed)
+				SEMA_TOKEN_ERROR(context->tok, "An unevaluated expression can never be a type, did you mean to use $Type?");
+				return false;
+			case TOKEN_HASH_IDENT:
+				// expression #foo
+				param_kind = VARDECL_PARAM_EXPR;
+				break;
+				// Compile time type $Type
+			case TOKEN_CT_TYPE_IDENT:
+				param_kind = VARDECL_PARAM_CT_TYPE;
+				break;
+			case TOKEN_COMMA:
+			case TOKEN_EOS:
+			case TOKEN_RPAREN:
+				if (!type && !ellipsis)
+				{
+					SEMA_TOKEN_ERROR(context->tok, "Expected a parameter.");
+					return false;
+				}
+				no_name = true;
+				token = context->prev_tok;
+				param_kind = VARDECL_PARAM;
+				break;
+			default:
+				SEMA_TOKEN_ERROR(context->tok, "Expected a parameter.");
+				return false;
+		}
+		Decl *param = decl_new_var(token, type, param_kind, visibility);
+		param->var.type_info = type;
+		if (no_name)
+		{
+			param->name = NULL;
 		}
 		else
 		{
-			if (!parse_param_decl(context, parent_visibility, &(signature->params), false)) return false;
-			signature->typed_variadic = VECLAST(signature->params)->var.vararg;
+			advance(context);
+			if (try_consume(context, TOKEN_EQ))
+			{
+				param->var.init_expr = TRY_EXPR_OR(parse_initializer(context), false);
+			}
 		}
-		if (!try_consume(context, TOKEN_COMMA))
+		var_arg_found |= ellipsis;
+		param->var.vararg = ellipsis;
+		vec_add(params, param);
+		if (!try_consume(context, TOKEN_COMMA)) break;
+	}
+	*params_ref = params;
+	return true;
+}
+
+
+/**
+ *
+ * parameter_type_list ::= '(' parameters ')'
+ */
+static inline bool parse_parameter_list(Context *context, Visibility parent_visibility, FunctionSignature *signature, bool is_interface)
+{
+	CONSUME_OR(TOKEN_LPAREN, false);
+	Decl **decls;
+	if (!parse_parameters(context, parent_visibility, &decls)) return false;
+	if (vec_size(decls))
+	{
+		Decl *last = VECLAST(decls);
+		if (last->var.vararg)
 		{
-			EXPECT_OR(TOKEN_RPAREN, false);
+			if (!last->var.type_info)
+			{
+				vec_resize(decls, vec_size(decls) - 1);
+				signature->variadic = true;
+			}
+			else
+			{
+				signature->typed_variadic = true;
+			}
 		}
 	}
+	signature->params = decls;
+	CONSUME_OR(TOKEN_RPAREN, false);
 	return true;
 }
 
@@ -1346,106 +1412,35 @@ static inline Decl *parse_top_level_const_declaration(Context *context, Visibili
 	return decl;
 }
 
+
 /**
- * Parse statements up to the next '}', 'case' or 'default'
+ * macro_arguments ::= '(' parameters (EOS trailing_block_parameter )? ')'
+ *
+ * trailing_block_parameter ::= '@' IDENT ( '(' parameters ')' )?
  */
-static inline Ast *parse_generics_statements(Context *context)
-{
-	Ast *ast = AST_NEW_TOKEN(AST_COMPOUND_STMT, context->tok);
-	while (!TOKEN_IS(TOKEN_RBRACE) && !TOKEN_IS(TOKEN_CASE) && !TOKEN_IS(TOKEN_DEFAULT))
-	{
-		Ast *stmt = TRY_AST_OR(parse_stmt(context), poisoned_ast);
-		ast->compound_stmt.stmts = VECADD(ast->compound_stmt.stmts, stmt);
-	}
-	return ast;
-}
-
-bool parse_macro_argument_declarations(Context *context, Visibility visibility, Decl ***params_ref, bool allow_vararg)
-{
-	bool vararg = false;
-	while (!TOKEN_IS(TOKEN_EOS) && !TOKEN_IS(TOKEN_RPAREN))
-	{
-		if (*params_ref)
-		{
-			TRY_CONSUME(TOKEN_COMMA, false);
-		}
-		TypeInfo *parm_type = NULL;
-		VarDeclKind param_kind;
-		TEST_TYPE:
-		switch (context->tok.type)
-		{
-			// normal foo
-			case TOKEN_IDENT:
-				param_kind = VARDECL_PARAM;
-				break;
-				// ct_var $foo
-			case TOKEN_CT_IDENT:
-				param_kind = VARDECL_PARAM_CT;
-				break;
-				// reference &foo
-			case TOKEN_AMP:
-				advance(context);
-				if (!TOKEN_IS(TOKEN_IDENT))
-				{
-					SEMA_TOKEN_ERROR(context->tok, "Only normal variables may be passed by reference.");
-					return false;
-				}
-				param_kind = VARDECL_PARAM_REF;
-				break;
-				// #Foo (not allowed)
-			case TOKEN_HASH_TYPE_IDENT:
-				SEMA_TOKEN_ERROR(context->tok, "An unevaluated expression can never be a type, did you mean to use $Type?");
-				return false;
-				// expression #foo
-			case TOKEN_HASH_IDENT:
-				// Note that the HASH_TYPE_IDENT will be an error later on.
-				param_kind = VARDECL_PARAM_EXPR;
-				break;
-				// Compile time type $Type
-			case TOKEN_CT_TYPE_IDENT:
-				param_kind = VARDECL_PARAM_CT_TYPE;
-				break;
-			default:
-				if (parm_type || vararg)
-				{
-					SEMA_TOKEN_ERROR(context->tok, "Expected a macro parameter");
-					return false;
-				}
-				// We either have "... var" or "int... var"
-				if (allow_vararg && try_consume(context, TOKEN_ELLIPSIS))
-				{
-					vararg = true;
-				}
-				else
-				{
-					parm_type = TRY_TYPE_OR(parse_type(context), false);
-					if (allow_vararg && try_consume(context, TOKEN_ELLIPSIS))
-					{
-						vararg = true;
-					}
-				}
-				goto TEST_TYPE;
-		}
-		Decl *param = decl_new_var(context->tok.id, parm_type, param_kind, visibility);
-		param->var.vararg = vararg;
-		advance(context);
-		vec_add(*params_ref, param);
-		TokenType current_token = context->tok.type;
-	}
-	return true;
-
-}
 static bool parse_macro_arguments(Context *context, Visibility visibility, Decl ***params_ref, Decl ***body_params, bool *has_trailing_body)
 {
 	CONSUME_OR(TOKEN_LPAREN, false);
 	*params_ref = NULL;
 	*body_params = NULL;
 	*has_trailing_body = false;
-	if (!parse_macro_argument_declarations(context, visibility, params_ref, true)) return false;
+	// Parse the regular parameters.
+	if (!parse_parameters(context, visibility, params_ref)) return false;
+
+	// Do we have trailing block parameters?
 	if (try_consume(context, TOKEN_EOS))
 	{
+		// Consume '@' IDENT
 		*has_trailing_body = true;
-		if (!parse_macro_argument_declarations(context, visibility, body_params, true)) return false;
+		TRY_CONSUME_OR(TOKEN_AT, "Expected a trailing block with the format '@block(...).", false);
+		if (!consume_ident(context, "variable name")) return false;
+		TokenId name = context->prev_tok;
+		if (try_consume(context, TOKEN_LPAREN))
+		{
+			if (!parse_parameters(context, visibility, body_params)) return false;
+			CONSUME_OR(TOKEN_RPAREN, false);
+		}
+		// TODO use the body param.
 	}
 	TRY_CONSUME(TOKEN_RPAREN, false);
 	return true;
@@ -1555,7 +1550,7 @@ static inline Decl *parse_define_type(Context *context, Visibility visibility)
 		{
 			decl->typedef_decl.function_signature.failable = true;
 		}
-		if (!parse_opt_parameter_type_list(context, decl->visibility, &(decl->typedef_decl.function_signature), true))
+		if (!parse_parameter_list(context, decl->visibility, &(decl->typedef_decl.function_signature), true))
 		{
 			return poisoned_decl;
 		}
@@ -1692,108 +1687,86 @@ static AttributeDomain TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
 		[TOKEN_ERR] = ATTR_ERROR,
 };
 
+
 /**
- * attribute_declaration
- * 		: ATTRIBUTE attribute_domains IDENT ';'
- * 		| ATTRIBUTE attribute_domains IDENT '(' parameter_type_list ')' ';'
- * 		;
- *
- * attribute_domains
- * 		: attribute_domain
- * 		| attribute_domains ',' attribute_domain
- * 		;
- *
- * attribute_domain
- * 		: FUNC
- * 		| VAR
- * 		| ENUM
- * 		| STRUCT
- * 		| UNION
- * 		| TYPEDEF
- * 		| CONST
- * 		| ERROR
- * 		;
- *
- * @param visibility
- * @return Decl*
+ * func_header ::= type '!'? (type '.')? IDENT
+ * macro_header ::= (type '!'?)? (type '.')? IDENT
  */
-static inline Decl *parse_attribute_declaration(Context *context, Visibility visibility)
+static inline bool parse_func_macro_header(Context *context, bool rtype_is_optional, TypeInfo **rtype_ref, bool *failable_ref, TypeInfo **method_type_ref, TokenId *name_ref)
 {
-	advance_and_verify(context, TOKEN_ATTRIBUTE);
-	AttributeDomain domains = 0;
-	AttributeDomain last_domain;
-	last_domain = TOKEN_TO_ATTR[context->tok.type];
-	while (last_domain)
+	TypeInfo *rtype = NULL;
+	TypeInfo *method_type = NULL;
+	bool failable = false;
+
+	// 1. We have a macro with just a name, if so, then we set the name and we're done.
+	if (rtype_is_optional && !context_next_is_type_and_not_ident(context))
 	{
-		advance(context);
-		if ((domains & last_domain) != 0)
+		goto RESULT;
+	}
+
+	// 2. Now we must have a type - either that is the return type or the method type.
+	rtype = TRY_TYPE_OR(parse_type(context), false);
+
+	// 3. We possibly have a failable return at this point.
+	failable = try_consume(context, TOKEN_BANG);
+
+	// 4. We might have a type here, if so then we read it.
+	if (!TOKEN_IS(TOKEN_DOT) && context_next_is_type_and_not_ident(context))
+	{
+		method_type = TRY_TYPE_OR(parse_type(context), false);
+	}
+
+	// 5. If we have a dot here, then we need to interpret this as method function.
+	if (try_consume(context, TOKEN_DOT))
+	{
+		// 5a. What if we don't have a method type?
+		if (!method_type)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "'%s' appeared more than once.", TOKSTR(context->tok.id));
-			continue;
+			// 5b. If the rtype is not optional or the return type was a failable, then this is an error.
+			if (!rtype_is_optional || failable)
+			{
+				SEMA_TOKID_ERROR(context->prev_tok,
+				                 "This looks like you are declaring a method without a return type?");
+				return false;
+			}
+			method_type = rtype;
+			rtype = NULL;
 		}
-		domains |= last_domain;
-		if (!try_consume(context, TOKEN_COMMA)) break;
-		last_domain = TOKEN_TO_ATTR[context->tok.type];
 	}
-	Decl *decl = decl_new(DECL_ATTRIBUTE, context->tok.id, visibility);
-	TRY_CONSUME_OR(TOKEN_IDENT, "Expected an attribute name.", poisoned_decl);
-	if (last_domain == 0)
+	else if (method_type)
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Expected at least one domain for attribute '%s'.", decl->name);
-		return poisoned_decl;
+		// 5d. A method type but no dot is also wrong.
+		SEMA_ERROR(method_type, "There is unexpectedly a type after the return type, did you forget a '.'?");
+		return false;
 	}
-	if (!parse_opt_parameter_type_list(context, visibility, &decl->attr.attr_signature, false)) return poisoned_decl;
-	TRY_CONSUME_EOS_OR(poisoned_decl);
-	return decl;
+	RESULT:
+	TRY_CONSUME_OR(TOKEN_IDENT, "Expected a name here.", false);
+	*failable_ref = failable;
+	*name_ref = context->prev_tok;
+	*rtype_ref = rtype;
+	*method_type_ref = method_type;
+	return true;
 }
 
 
-
 /**
- * macro ::= MACRO (type '!'?)? identifier '!'? '(' macro_params ')' compound_statement
+ * macro ::= macro_header '(' macro_params ')' compound_statement
  */
 static inline Decl *parse_macro_declaration(Context *context, Visibility visibility)
 {
 	advance_and_verify(context, TOKEN_MACRO);
 
-	TypeInfo *rtype = NULL;
-	bool failable = false;
-
-	// 1. Return type?
-	if (context_next_is_type_and_not_ident(context))
-	{
-		rtype = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-		failable = try_consume(context, TOKEN_BANG);
-	}
 	Decl *decl = decl_new(DECL_MACRO, context->tok.id, visibility);
-	decl->macro_decl.rtype = rtype;
-	decl->macro_decl.failable = failable;
-	if (rtype)
-	{
-		if (TOKEN_IS(TOKEN_DOT))
-		{
-			if (failable)
-			{
-				SEMA_ERROR(rtype, "Expected a macro name here.");
-				return poisoned_decl;
-			}
-			advance(context);
-			decl->macro_decl.type_parent = rtype;
-			decl->macro_decl.rtype = NULL;
-		}
-		else
-		{
-			if (parse_next_is_type(context))
-			{
-				decl->macro_decl.type_parent = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-				TRY_CONSUME_OR(TOKEN_DOT, "Did you forget a ',' here?", poisoned_decl);
-			}
-		}
-	}
+	TypeInfo **rtype_ref = &decl->macro_decl.rtype;
+	TypeInfo **method_type_ref = &decl->macro_decl.type_parent;
+	bool failable;
+	TokenId name;
+	if (!parse_func_macro_header(context, true, rtype_ref, &failable, method_type_ref, &name)) return poisoned_decl;
 
-	decl->name_token = context->tok.id;
-	decl->name = TOKSTR(context->tok);
-	TRY_CONSUME_OR(TOKEN_IDENT, "Expected a macro name here.", poisoned_decl);
+	decl->macro_decl.failable = failable;
+	decl->name = TOKSTR(name);
+	decl->name_token = name;
+
 	bool trailing_body = false;
 	if (!parse_macro_arguments(context, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_parameters, &trailing_body)) return poisoned_decl;
 	decl->has_body_param = trailing_body;
@@ -1924,7 +1897,7 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 		if (try_consume(context, TOKEN_LPAREN))
 		{
 			Expr **result = NULL;
-			if (!parse_param_list(context, &result, TOKEN_RPAREN, NULL)) return poisoned_decl;
+			if (!parse_arg_list(context, &result, TOKEN_RPAREN, NULL)) return poisoned_decl;
 			enum_const->enum_constant.args = result;
 			CONSUME_OR(TOKEN_RPAREN, poisoned_decl);
 		}
@@ -1962,7 +1935,6 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
  *
  * func_declaration
  *  	: FUNC failable_type func_name '(' opt_parameter_type_list ')' opt_attributes
- *		| FUNC failable_type func_name '(' opt_parameter_type_list ')' throw_declaration opt_attributes
  *		;
  *
  * @param visibility
@@ -1972,32 +1944,16 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 {
 	Decl *func = decl_new(DECL_FUNC, context->next_tok.id, visibility);
 	advance_and_verify(context, TOKEN_FUNC);
-	func->func_decl.function_signature.rtype = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-	func->func_decl.function_signature.failable = try_consume(context, TOKEN_BANG);
-	SourceSpan start = source_span_from_token_id(context->tok.id);
-	bool had_error = false;
-	Path *path = parse_path_prefix(context, &had_error);
-	if (had_error) return poisoned_decl;
-	if (path || TOKEN_IS(TOKEN_TYPE_IDENT))
-	{
-		// Special case, actually an extension
-		TRY_EXPECT_OR(TOKEN_TYPE_IDENT, "A type was expected after '::'.", poisoned_decl);
-		// TODO span is incorrect
-		TypeInfo *type = type_info_new(TYPE_INFO_IDENTIFIER, start);
-		type->unresolved.path = path;
-		type->unresolved.name_loc = context->tok.id;
-		func->func_decl.type_parent = type;
-		advance_and_verify(context, TOKEN_TYPE_IDENT);
-
-		TRY_CONSUME_OR(TOKEN_DOT, "Expected '.' after the type in a method declaration.", poisoned_decl);
-	}
-
-	EXPECT_IDENT_FOR_OR("function name", poisoned_decl);
-	func->name = TOKSTR(context->tok);
-	func->name_token = context->tok.id;
-	advance_and_verify(context, TOKEN_IDENT);
+	TypeInfo **rtype_ref = &func->func_decl.function_signature.rtype;
+	TypeInfo **method_type_ref = &func->func_decl.type_parent;
+	bool failable;
+	TokenId name;
+	if (!parse_func_macro_header(context, false, rtype_ref, &failable, method_type_ref, &name)) return poisoned_decl;
+	func->func_decl.function_signature.failable = failable;
+	func->name = TOKSTR(name);
+	func->name_token = name;
 	RANGE_EXTEND_PREV(func);
-	if (!parse_opt_parameter_type_list(context, visibility, &(func->func_decl.function_signature), is_interface)) return poisoned_decl;
+	if (!parse_parameter_list(context, visibility, &(func->func_decl.function_signature), is_interface)) return poisoned_decl;
 
 	if (!parse_attributes(context, func)) return poisoned_decl;
 
@@ -2272,6 +2228,7 @@ Decl *parse_top_level_statement(Context *context)
 	}
 
 	Decl *decl;
+	TokenType type = context->tok.type;
 	switch (context->tok.type)
 	{
 		case TOKEN_DOCS_START:
@@ -2286,7 +2243,7 @@ Decl *parse_top_level_statement(Context *context)
 			decl = TRY_DECL_OR(parse_define(context, visibility), poisoned_decl);
 			break;
 		case TOKEN_ATTRIBUTE:
-			decl = TRY_DECL_OR(parse_attribute_declaration(context, visibility), poisoned_decl);
+			TODO
 			break;
 		case TOKEN_FUNC:
 			decl = TRY_DECL_OR(parse_func_definition(context, visibility, false), poisoned_decl);
@@ -2388,6 +2345,7 @@ Decl *parse_top_level_statement(Context *context)
 			decl = TRY_DECL_OR(parse_global_declaration(context, visibility), poisoned_decl);
 			break;
 	}
+	assert(decl);
 	decl->docs = docs;
 	return decl;
 }

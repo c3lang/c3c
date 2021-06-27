@@ -77,7 +77,7 @@ typedef struct
 		struct
 		{
 			char* chars;
-			int len;
+			uint32_t len;
 		} string;
 		Decl *enum_constant;
 		struct

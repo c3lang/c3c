@@ -10,10 +10,7 @@ int main(int argc, const char *argv[])
 	// First setup memory
 	memory_init();
 
-
-
 	DEBUG_LOG("Version: %s", COMPILER_VERSION);
-
 
 	// Parse arguments.
 	BuildOptions build_options = parse_arguments(argc, argv);
@@ -44,7 +41,7 @@ int main(int argc, const char *argv[])
 			compile_file_list(&build_options);
 			break;
 		case COMMAND_MISSING:
-			printf("TODO\n");
+			UNREACHABLE
 	}
 
 
