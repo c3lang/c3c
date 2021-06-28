@@ -1105,7 +1105,6 @@ void target_setup(BuildTarget *target)
 
 	// Create a specific target machine
 	LLVMCodeGenOptLevel level;
-	LLVMRelocMode reloc_mode = LLVMRelocDefault;
 
 	switch (target->optimization_level)
 	{
@@ -1282,8 +1281,6 @@ void target_setup(BuildTarget *target)
 	}
 
 	assert(platform_target.pic != PIC_DEFAULT && platform_target.pie != PIE_DEFAULT && "PIC and PIE must have been set.");
-
-	reloc_mode = LLVMRelocDefault;
 
 	if (active_target.type == TARGET_TYPE_EXECUTABLE)
 	{
