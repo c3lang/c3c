@@ -1,6 +1,6 @@
 module testbaz::zab;
 
-public struct Zab
+struct Zab
 {
     double a;
 }

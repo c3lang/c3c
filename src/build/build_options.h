@@ -206,6 +206,7 @@ typedef struct
 	const char *name;
 	const char *version;
 	const char *langrev;
+	const char **source_dirs;
 	const char **sources;
 	const char **libraries;
 	const char *cpu;

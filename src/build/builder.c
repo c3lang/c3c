@@ -119,7 +119,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options, const
 {
 	*target = (BuildTarget) {
 		.type = TARGET_TYPE_EXECUTABLE,
-		.sources = options->files,
+		.source_dirs = options->files,
 		.name = name,
 		.optimization_level = OPTIMIZATION_DEFAULT,
 		.size_optimization_level = SIZE_OPTIMIZATION_NONE,

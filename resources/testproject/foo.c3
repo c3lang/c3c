@@ -2,19 +2,19 @@ module baz::foo;
 
 import bar;
 
-public struct Foo
+struct Foo
 {
     int a;
 }
 
 extern func void printf(char *hello);
 
-func void ofke()
+private func void ofke()
 {}
 
-func void exple() {}
+private func void exple() {}
 
-public func void test()
+func void test()
 {
     printf("Hello from baz::foo::test()!\n");
 }

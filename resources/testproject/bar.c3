@@ -1,9 +1,9 @@
 module bar;
 
 import baz::foo;
-import testbaz;
+import testbaz::zab;
 
-public func void test()
+func void test()
 {
     Foo x;
     baz::foo::test();

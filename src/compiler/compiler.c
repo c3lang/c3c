@@ -444,9 +444,9 @@ void compiler_compile(void)
 static void target_expand_source_names(BuildTarget *target)
 {
 	const char **files = NULL;
-	VECEACH(target->sources, i)
+	VECEACH(target->source_dirs, i)
 	{
-		const char *name = target->sources[i];
+		const char *name = target->source_dirs[i];
 		size_t name_len = strlen(name);
 		if (name_len < 1) goto INVALID_NAME;
 		if (name[name_len - 1] == '*')
@@ -482,7 +482,7 @@ static void target_expand_source_names(BuildTarget *target)
 
 void compile_target(BuildOptions *options)
 {
-	init_default_build_target(&active_target, options, "foo.out");
+	init_default_build_target(&active_target, options, "a.out");
 	compile();
 }
 
@@ -494,9 +494,9 @@ void compile_file_list(BuildOptions *options)
 
 void compile()
 {
+	target_expand_source_names(&active_target);
 	global_context.sources = active_target.sources;
 	symtab_init(active_target.symtab_size ? active_target.symtab_size : 64 * 1024);
-	target_expand_source_names(&active_target);
 	target_setup(&active_target);
 
 	if (!vec_size(active_target.sources)) error_exit("No files to compile.");

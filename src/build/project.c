@@ -152,7 +152,7 @@ void project_add_target(Project *project, TomlValue *wrapped_table, const char *
 	target->version = get_valid_string(table, "version", type, false);
 	if (!target->version) target->version = "1.0.0";
 	target->langrev = get_valid_string(table, "langrev", type, false);
-	target->sources = get_valid_array(table, "sources", type, true);
+	target->source_dirs = get_valid_array(table, "sources", type, true);
 	target->libraries = get_valid_array(table, "libs", type, false);
 	static const char *debug_infos[3] = {
 			[DEBUG_INFO_FULL] = "full",
