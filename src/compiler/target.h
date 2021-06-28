@@ -237,7 +237,6 @@ typedef struct
 {
 	const char *target_triple;
 	int llvm_opt_level;
-	int llvm_reloc_mode;
 	const char *features;
 	const char *cpu;
 	ArchType arch;

@@ -1052,10 +1052,22 @@ void *llvm_target_machine_create(void)
 		error_exit("Could not create target: %s for triple '%s'", err, platform_target.target_triple);
 		// Usually we would dispose of err, but no need to do it due to exit.
 	}
+	LLVMRelocMode reloc_mode;
+
+	if (platform_target.pic != PIC_NONE)
+	{
+		reloc_mode = LLVMRelocPIC;
+	}
+	else
+	{
+		assert(platform_target.pic == PIC_NONE);
+		reloc_mode = LLVMRelocStatic;
+	}
+
 	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
 	                                       platform_target.cpu ?: "", platform_target.features ?: "",
 	                                       (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
-	                                       (LLVMRelocMode)platform_target.llvm_reloc_mode, LLVMCodeModelDefault);
+	                                       reloc_mode, LLVMCodeModelDefault);
 	if (!result) error_exit("Failed to create target machine.");
 	return result;
 }
@@ -1292,15 +1304,7 @@ void target_setup(BuildTarget *target)
 			DEBUG_LOG("Using PIC");
 			break;
 	}
-	if (platform_target.pic != PIC_NONE)
-	{
-		reloc_mode = LLVMRelocPIC;
-	}
-	else
-	{
-		assert(platform_target.pic == PIC_NONE);
-		reloc_mode = LLVMRelocStatic;
-	}
+
 
 		// TODO remove
 	type_setup(&platform_target);
