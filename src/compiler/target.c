@@ -1131,7 +1131,6 @@ void target_setup(BuildTarget *target)
 	DEBUG_LOG("Feature and CPU not checked.");
 
 	platform_target.llvm_opt_level = (int)level;
-	platform_target.llvm_reloc_mode = (int)reloc_mode;
 	DEBUG_LOG("Triple picked was %s.", platform_target.target_triple);
 
 	LLVMTargetMachineRef machine = llvm_target_machine_create();
