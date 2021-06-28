@@ -24,3 +24,8 @@ jobs:
           mkdir build && cd build
           cmake .. -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build .
+
+      - name: Build testproject
+        run: |
+          cd resources/testproject
+          ../../build/c3c build
