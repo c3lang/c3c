@@ -1273,7 +1273,12 @@ void target_setup(BuildTarget *target)
 	assert(platform_target.pic != PIC_DEFAULT && platform_target.pie != PIE_DEFAULT && "PIC and PIE must have been set.");
 
 	reloc_mode = LLVMRelocDefault;
-	if (platform_target.pic != PIC_NONE || platform_target.pie != PIE_NONE)
+
+	if (active_target.type == TARGET_TYPE_EXECUTABLE)
+	{
+		platform_target.pic = (PicGeneration)platform_target.pie;
+	}
+	if (platform_target.pic != PIC_NONE)
 	{
 		reloc_mode = LLVMRelocPIC;
 	}
