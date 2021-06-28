@@ -1115,26 +1115,6 @@ void target_setup(BuildTarget *target)
 			UNREACHABLE;
 	}
 
-	// Override PIE if needed.
-	if (target->pie != PIE_DEFAULT) platform_target.pie = target->pie;
-	// Override PIC, but only if the platform does not require PIC
-	if (target->pic != PIC_DEFAULT && (target->pic != PIC_NONE || !platform_target.pic_required))
-	{
-		platform_target.pic = target->pic;
-	}
-
-	assert(platform_target.pic != PIC_DEFAULT && platform_target.pie != PIE_DEFAULT && "PIC and PIE must have been set.");
-
-	reloc_mode = LLVMRelocDefault;
-	if (platform_target.pic != PIC_NONE || platform_target.pie != PIE_NONE)
-	{
-		reloc_mode = LLVMRelocPIC;
-	}
-	else
-	{
-		assert(platform_target.pic == PIC_NONE);
-		reloc_mode = LLVMRelocStatic;
-	}
 
 	DEBUG_LOG("Feature and CPU not checked.");
 
@@ -1281,6 +1261,27 @@ void target_setup(BuildTarget *target)
 	platform_target.pic = arch_os_pic_default(platform_target.arch, platform_target.os);
 	platform_target.pie = arch_os_pie_default(platform_target.arch, platform_target.os, platform_target.environment_type);
 	platform_target.pic_required = arch_os_pic_default_forced(platform_target.arch, platform_target.os);
+
+	// Override PIE if needed.
+	if (target->pie != PIE_DEFAULT) platform_target.pie = target->pie;
+	// Override PIC, but only if the platform does not require PIC
+	if (target->pic != PIC_DEFAULT && (target->pic != PIC_NONE || !platform_target.pic_required))
+	{
+		platform_target.pic = target->pic;
+	}
+
+	assert(platform_target.pic != PIC_DEFAULT && platform_target.pie != PIE_DEFAULT && "PIC and PIE must have been set.");
+
+	reloc_mode = LLVMRelocDefault;
+	if (platform_target.pic != PIC_NONE || platform_target.pie != PIE_NONE)
+	{
+		reloc_mode = LLVMRelocPIC;
+	}
+	else
+	{
+		assert(platform_target.pic == PIC_NONE);
+		reloc_mode = LLVMRelocStatic;
+	}
 
 		// TODO remove
 	type_setup(&platform_target);

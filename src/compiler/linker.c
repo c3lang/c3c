@@ -175,6 +175,21 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	const char **parts = NULL;
 	vec_add(parts, "cc");
 	vec_add(parts, "-lm");
+	switch (platform_target.pie)
+	{
+		case PIE_DEFAULT:
+			UNREACHABLE
+		case PIE_NONE:
+			vec_add(parts, "-fno-PIE");
+			vec_add(parts, "-fno-pie");
+			break;
+		case PIE_SMALL:
+			vec_add(parts, "-fpie");
+			break;
+		case PIE_BIG:
+			vec_add(parts, "-fPIE");
+			break;
+	}
 	vec_add(parts, "-o");
 	vec_add(parts, output_file);
 	for (unsigned i = 0; i < file_count; i++)

@@ -84,6 +84,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	if (options->pie != PIE_DEFAULT) target->pie = options->pie;
 	if (options->pic != PIC_DEFAULT) target->pic = options->pic;
+
 	target->emit_llvm = options->emit_llvm;
 	switch (options->compile_option)
 	{
