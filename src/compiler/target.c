@@ -1061,7 +1061,7 @@ void *llvm_target_machine_create(void)
 	else
 	{
 		assert(platform_target.pic == PIC_NONE);
-		reloc_mode = LLVMRelocStatic;
+		reloc_mode = LLVMRelocDynamicNoPic;
 	}
 
 	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
