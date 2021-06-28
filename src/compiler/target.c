@@ -1278,6 +1278,20 @@ void target_setup(BuildTarget *target)
 	{
 		platform_target.pic = (PicGeneration)platform_target.pie;
 	}
+	switch (platform_target.pic)
+	{
+		case PIC_DEFAULT:
+			UNREACHABLE;
+		case PIC_NONE:
+			DEBUG_LOG("Using no-PIC");
+			break;
+		case PIC_SMALL:
+			DEBUG_LOG("Using pic");
+			break;
+		case PIC_BIG:
+			DEBUG_LOG("Using PIC");
+			break;
+	}
 	if (platform_target.pic != PIC_NONE)
 	{
 		reloc_mode = LLVMRelocPIC;
