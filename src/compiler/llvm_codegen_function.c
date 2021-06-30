@@ -522,7 +522,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_FUNC);
 	// Resolve function backend type for function.
-	LLVMValueRef function = LLVMAddFunction(c->module, decl->cname ?: decl->external_name, llvm_get_type(c, decl->type));
+	LLVMValueRef function = LLVMAddFunction(c->module, decl->extname ?: decl->external_name, llvm_get_type(c, decl->type));
 	decl->backend_ref = function;
 	FunctionSignature *signature = &decl->func_decl.function_signature;
 	FunctionSignature *type_signature = decl->type->func.signature;
@@ -628,12 +628,12 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_POISONED:
 			UNREACHABLE;
 		case DECL_FUNC:
-			decl->backend_ref = LLVMAddFunction(context->module, decl->cname ?: decl->external_name,
+			decl->backend_ref = LLVMAddFunction(context->module, decl->extname ?: decl->external_name,
 			                                    llvm_get_type(context, decl->type));
 			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case DECL_VAR:
-			decl->backend_ref = LLVMAddGlobal(context->module, llvm_get_type(context, decl->type), decl->cname ?: decl->external_name);
+			decl->backend_ref = LLVMAddGlobal(context->module, llvm_get_type(context, decl->type), decl->extname ?: decl->external_name);
 			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case DECL_STRUCT:

@@ -289,9 +289,9 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 #define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
 		switch (attribute)
 		{
-			case ATTRIBUTE_CNAME:
-				had = decl->cname != NULL;
-				decl->cname = attr->expr->const_expr.string.chars;
+			case ATTRIBUTE_EXTNAME:
+				had = decl->extname != NULL;
+				decl->extname = attr->expr->const_expr.string.chars;
 				break;
 			case ATTRIBUTE_SECTION:
 				had = decl->section != NULL;
@@ -685,7 +685,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 	}
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
-			[ATTRIBUTE_CNAME] = ~0,
+			[ATTRIBUTE_EXTNAME] = ~0,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION | ATTR_ERROR,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
@@ -741,7 +741,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 			}
 			return type;
 		case ATTRIBUTE_SECTION:
-		case ATTRIBUTE_CNAME:
+		case ATTRIBUTE_EXTNAME:
 			if (context->module->is_generic)
 			{
 				SEMA_TOKID_ERROR(attr->name, "'cname' attributes are not allowed in generic modules.");
@@ -804,9 +804,9 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 #define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
 		switch (attribute)
 		{
-			case ATTRIBUTE_CNAME:
-				had = decl->cname != NULL;
-				decl->cname = attr->expr->const_expr.string.chars;
+			case ATTRIBUTE_EXTNAME:
+				had = decl->extname != NULL;
+				decl->extname = attr->expr->const_expr.string.chars;
 				break;
 			case ATTRIBUTE_SECTION:
 				had = decl->section != NULL;
@@ -992,9 +992,9 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 #define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
 		switch (attribute)
 		{
-			case ATTRIBUTE_CNAME:
-				had = decl->cname != NULL;
-				decl->cname = attr->expr->const_expr.string.chars;
+			case ATTRIBUTE_EXTNAME:
+				had = decl->extname != NULL;
+				decl->extname = attr->expr->const_expr.string.chars;
 				break;
 			case ATTRIBUTE_SECTION:
 				had = decl->section != NULL;

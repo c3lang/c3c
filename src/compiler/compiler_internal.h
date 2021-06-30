@@ -487,7 +487,7 @@ typedef struct Decl_
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
 	void *backend_ref;
-	const char *cname;
+	const char *extname;
 	AlignSize alignment;
 	const char *section;
 	ArrayIndex offset : 32;

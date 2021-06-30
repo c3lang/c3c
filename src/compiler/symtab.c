@@ -136,7 +136,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_ALIGN] = kw_align;
 	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("packed");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("section");
-	attribute_list[ATTRIBUTE_CNAME] = KW_DEF("cname");
+	attribute_list[ATTRIBUTE_EXTNAME] = KW_DEF("extname");
 	attribute_list[ATTRIBUTE_WEAK] = KW_DEF("weak");
 	attribute_list[ATTRIBUTE_OPAQUE] = KW_DEF("opaque");
 }
