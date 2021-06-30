@@ -38,7 +38,7 @@ int filename_to_module(const char *path, char buffer[MAX_IDENTIFIER_LENGTH + 1])
 		if (path[i] == '.') last_dot = i;
 	}
 	int namelen = last_dot - last_slash - 1;
-	if (namelen < 2) return 0;
+	if (namelen < 1) return 0;
 	if (namelen > MAX_IDENTIFIER_LENGTH) namelen = MAX_IDENTIFIER_LENGTH;
 	for (int i = last_slash + 1; i < last_dot; i++)
 	{

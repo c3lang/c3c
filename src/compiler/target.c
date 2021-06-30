@@ -1162,6 +1162,7 @@ void target_setup(BuildTarget *target)
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_RISCV32:
 		case ARCH_TYPE_RISCV64:
+		case ARCH_TYPE_AARCH64:
 			platform_target.max_size_for_return = platform_target.width_pointer * 2 / 8;
 			break;
 		case ARCH_TYPE_PPC64:
