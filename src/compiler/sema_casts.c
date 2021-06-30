@@ -553,8 +553,6 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 		{
 			return from->pointer->type_kind == TYPE_ARRAY && from->pointer->array.base == to->array.base;
 		}
-
-
 		return false;
 	}
 

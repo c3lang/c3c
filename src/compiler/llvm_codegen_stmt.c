@@ -1059,10 +1059,22 @@ static inline void gencontext_emit_assert_stmt(GenContext *c, Ast *ast)
 		LLVMBasicBlockRef on_fail = llvm_basic_block_new(c, "assert_fail");
 		LLVMBasicBlockRef on_ok = llvm_basic_block_new(c, "assert_ok");
 		assert(value.kind == BE_BOOLEAN);
-		llvm_emit_cond_br(c, &value, on_fail, on_ok);
+		llvm_emit_cond_br(c, &value, on_ok, on_fail);
 		llvm_emit_block(c, on_fail);
-		// TODO emit message
+		SourceLocation *loc = TOKLOC(ast->assert_stmt.expr->span.loc);
+		const char *error;
+		if (ast->assert_stmt.message)
+		{
+			error = ast->assert_stmt.message->const_expr.string.chars;
+			error = strformat("Assert violation '%s' on line %d, in file '%s'.", error, loc->line, loc->file->name);
+		}
+		else
+		{
+			error = strformat("Assert violation on line %d, in file '%s'.", loc->line, loc->file->name);
+		}
+		llvm_emit_puts_output(c, error);
 		llvm_emit_call_intrinsic(c, intrinsic_id_trap, NULL, 0, NULL, 0);
+		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
 		return;
 	}
@@ -1071,7 +1083,7 @@ static inline void gencontext_emit_assert_stmt(GenContext *c, Ast *ast)
 
 static inline void gencontext_emit_unreachable_stmt(GenContext *context, Ast *ast)
 {
-	// TODO emit message
+	llvm_emit_puts_output(context, "Unreachable statement reached.");
 	llvm_emit_call_intrinsic(context, intrinsic_id_trap, NULL, 0, NULL, 0);
 	LLVMBuildUnreachable(context->builder);
 	LLVMBasicBlockRef block = llvm_basic_block_new(context, "unreachable_block");

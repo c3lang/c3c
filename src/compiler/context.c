@@ -144,10 +144,10 @@ void context_register_global_decl(Context *context, Decl *decl)
 			vec_add(context->vars, decl);
 			decl_set_external_name(decl);
 			break;
+		case DECL_DISTINCT:
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_TYPEDEF:
-		case DECL_DISTINCT:
 		case DECL_ERR:
 			vec_add(context->types, decl);
 			decl_set_external_name(decl);
@@ -179,7 +179,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 			vec_add(context->ct_asserts, decl);
 			return;
 	}
-	DEBUG_LOG("Registering symbol '%s'.", decl->name);
+	DEBUG_LOG("Registering symbol '%s' in %s.", decl->name, context->module->name->module);
 
 	Decl *old = stable_set(&context->local_symbols, decl->name, decl);
 	if (!old)

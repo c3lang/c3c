@@ -577,6 +577,78 @@ static Expr *parse_hash_ident(Context *context, Expr *left)
 	return expr;
 }
 
+static Expr *parse_ct_call(Context *context, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CALL, context->tok);
+	expr->ct_call_expr.token_type = context->tok.type;
+	advance(context);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
+	Expr *element = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	vec_add(expr->ct_call_expr.arguments, element);
+	if (try_consume(context, TOKEN_COMMA))
+	{
+		if (context->tok.type == TOKEN_IDENT || context->tok.type == TOKEN_LBRACKET)
+		{
+			Expr *idents = EXPR_NEW_TOKEN(EXPR_FLATPATH, context->tok);
+			bool first = true;
+			while (1)
+			{
+				ExprFlatElement flat_element;
+				if (try_consume(context, TOKEN_LBRACKET))
+				{
+					Expr *int_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+					if (int_expr->expr_kind != EXPR_CONST || !type_kind_is_any_integer(int_expr->const_expr.kind))
+					{
+						SEMA_TOKEN_ERROR(context->tok, "Expected an integer index.");
+						return poisoned_expr;
+					}
+					BigInt *value = &int_expr->const_expr.i;
+					BigInt limit;
+					bigint_init_unsigned(&limit, MAX_ARRAYINDEX);
+					if (bigint_cmp(value, &limit) == CMP_GT)
+					{
+						SEMA_ERROR(int_expr, "Array index out of range.");
+						return poisoned_expr;
+					}
+					if (bigint_cmp_zero(value) == CMP_LT)
+					{
+						SEMA_ERROR(int_expr, "Array index must be zero or greater.");
+						return poisoned_expr;
+					}
+					TRY_CONSUME_OR(TOKEN_RBRACKET, "Expected a ']' after the number.", poisoned_expr);
+					flat_element.array = true;
+					flat_element.index = (ArrayIndex)bigint_as_unsigned(value);
+				}
+				else if (try_consume(context, TOKEN_DOT) || first)
+				{
+					TRY_CONSUME_OR(TOKEN_IDENT, "Expected an identifier here.", poisoned_expr);
+					flat_element.array = false;
+					flat_element.ident = TOKSTR(context->prev_tok);
+				}
+				else
+				{
+					SEMA_TOKEN_ERROR(context->tok, "Expected '.' or '[' here.");
+					return poisoned_expr;
+				}
+				first = false;
+				vec_add(idents->flatpath_expr, flat_element);
+				if (TOKEN_IS(TOKEN_RPAREN)) break;
+			}
+			vec_add(expr->ct_call_expr.arguments, idents);
+			RANGE_EXTEND_PREV(expr);
+		}
+		else
+		{
+			Expr *idents = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+			vec_add(expr->ct_call_expr.arguments, idents);
+		}
+	}
+	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
 static Expr *parse_identifier(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -1112,4 +1184,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_HASH_IDENT] = { parse_hash_ident, NULL, PREC_NONE },
 		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier(, NULL, PREC_NONE }
 
+		[TOKEN_CT_SIZEOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE }
 };

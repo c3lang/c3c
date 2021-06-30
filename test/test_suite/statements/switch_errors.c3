@@ -43,7 +43,7 @@ func void test_scope(int i)
             int a = 0;
             break;
         case 2:
-            test_scope(a + 1); // #error: identifier 'a' could not be found, did you spell it right
+            test_scope(a + 1); // #error: 'a' could not be found, did you spell it right
     }
 }
 

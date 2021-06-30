@@ -1762,6 +1762,8 @@ static inline void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, 
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 	expr_const_set_int(&expr_to_rewrite->const_expr, value, type->canonical->type_kind);
 	expr_set_type(expr_to_rewrite, type);
+	expr_to_rewrite->constant = true;
+	expr_to_rewrite->pure = true;
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
 }
 
@@ -1871,6 +1873,17 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 
 static void add_members_to_context(Context *context, Decl *decl)
 {
+	VECEACH(decl->methods, i)
+	{
+		Decl *func = decl->methods[i];
+		sema_add_member(context, func);
+	}
+	while (decl->decl_kind == DECL_DISTINCT)
+	{
+		Type *type = decl->distinct_decl.base_type->canonical;
+		if (!type_is_user_defined(type)) break;
+		decl = type->decl;
+	}
 	if (decl_is_struct_type(decl))
 	{
 		Decl **members = decl->strukt.members;
@@ -1884,11 +1897,6 @@ static void add_members_to_context(Context *context, Decl *decl)
 			}
 			sema_add_member(context, member);
 		}
-	}
-	VECEACH(decl->methods, i)
-	{
-		Decl *func = decl->methods[i];
-		sema_add_member(context, func);
 	}
 }
 
@@ -1952,8 +1960,9 @@ static TokenId sema_expr_resolve_access_child(Expr *child)
 	return INVALID_TOKEN_ID;
 }
 
-static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, bool was_group)
+static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, bool was_group, bool is_macro, TokenId identifier_token)
 {
+	// 1. Foo*.sizeof is not allowed, it must be (Foo*).sizeof
 	if (!was_group && type_kind_is_derived(parent->type->type_kind))
 	{
 		SEMA_ERROR(expr->access_expr.parent, "Array and pointer types must be enclosed in (), did you forget it?");
@@ -1962,15 +1971,9 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 
 	expr->constant = true;
 	expr->pure = true;
-
-	Type *canonical = parent->type->canonical;
-	Expr *child = expr->access_expr.child;
-
-	TokenId identifier_token = sema_expr_resolve_access_child(child);
-	if (TOKEN_IS_INVALID(identifier_token)) return false;
-
 	TokenType type = TOKTYPE(identifier_token);
-	const char *name = TOKSTR(identifier_token);
+
+	// 2. Handle Foo.typeid => return a typeid expression.
 	if (type == TOKEN_TYPEID)
 	{
 		expr_set_type(expr, type_typeid);
@@ -1979,26 +1982,36 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 		expr->resolve_status = RESOLVE_DONE;
 		return true;
 	}
+
+	Type *canonical = parent->type->canonical;
+	const char *name = TOKSTR(identifier_token);
+
+	// Foo.sizeof => return the size in bytes, e.g. 11
 	if (name == kw_sizeof)
 	{
 		expr_rewrite_to_int_const(expr, type_compint, type_size(canonical));
 		return true;
 	}
+
+	// Foo.alignof => return the alignment, e.g. 4
 	if (name == kw_alignof)
 	{
 		expr_rewrite_to_int_const(expr, type_compint, type_abi_alignment(canonical));
 		return true;
 	}
+	// Foo.nameof => return the name, e.g. "Foo"
 	if (name == kw_nameof)
 	{
 		expr_rewrite_to_string(expr, canonical->name);
 		return true;
 	}
+	// Foo.qnameof => return the qualified name, e.g. "mylib::Foo"
 	if (name == kw_qnameof)
 	{
 		expr_rewrite_to_string(expr, type_generate_qname(canonical));
 		return true;
 	}
+	//
 	if (!type_may_have_sub_elements(canonical))
 	{
 		SEMA_ERROR(expr, "'%s' does not have a property '%s'.", type_to_error_string(parent->type), name);
@@ -2081,7 +2094,7 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 	return false;
 }
 
-static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr, bool is_macro, TokenId identifier_token)
 {
 	Expr *parent = expr->access_expr.parent;
 
@@ -2090,20 +2103,17 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 
 	Expr *child = expr->access_expr.child;
 
-	TokenId identifier_token = sema_expr_resolve_access_child(child);
-	if (TOKEN_IS_INVALID(identifier_token)) return false;
 	TokenType type = TOKTYPE(identifier_token);
 	const char *name = TOKSTR(identifier_token);
 
 	Decl *ref = parent->access_expr.ref;
-	bool is_macro = child->expr_kind == EXPR_MACRO_EXPANSION;
 
-	bool is_plain_member = ref->decl_kind == DECL_VAR;
+	bool is_leaf_member_ref = ref->decl_kind == DECL_VAR;
 	if (type == TOKEN_TYPEID && !is_macro)
 	{
 		expr_set_type(expr, type_typeid);
 		expr->expr_kind = EXPR_TYPEID;
-		if (is_plain_member)
+		if (is_leaf_member_ref)
 		{
 			expr->typeid_expr = ref->var.type_info;
 		}
@@ -2116,22 +2126,23 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 	}
 	if (name == kw_sizeof && !is_macro)
 	{
-		expr_rewrite_to_int_const(expr, type_usize, type_size(ref->type));
+		expr_rewrite_to_int_const(expr, type_compint, type_size(ref->type));
 		return true;
 	}
 	if (name == kw_alignof && !is_macro)
 	{
-		expr_rewrite_to_int_const(expr, type_usize, type_abi_alignment(ref->type));
+		expr_rewrite_to_int_const(expr, type_compint, type_abi_alignment(ref->type));
 		return true;
 	}
 	if (name == kw_ordinal && !is_macro)
 	{
 		if (ref->decl_kind == DECL_ENUM_CONSTANT)
 		{
-			expr_rewrite_to_int_const(expr, type_usize, ref->enum_constant.ordinal);
+			expr_rewrite_to_int_const(expr, type_compint, ref->enum_constant.ordinal);
 			return true;
 		}
 	}
+
 	if (name == kw_nameof && !is_macro)
 	{
 		expr_rewrite_to_string(expr, ref->name);
@@ -2139,7 +2150,8 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 	}
 	if (name == kw_qnameof && !is_macro)
 	{
-		TODO
+		expr_rewrite_to_string(expr, ref->external_name ?: ref->name);
+		return true;
 	}
 	if (name == kw_kindof && !is_macro)
 	{
@@ -2148,7 +2160,7 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 	// If we have something like struct Foo { Bar b; int c; struct d { int e; } }
 	// If we are inspecting Foo.c we're done here. Otherwise handle struct d / Bar b case
 	// The same way.
-	if (is_plain_member)
+	if (is_leaf_member_ref)
 	{
 		if (!type_is_structlike(ref->type))
 		{
@@ -2163,6 +2175,7 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 		// Pretend to be an inline struct.
 		ref = ref->type->decl;
 	}
+
 	VECEACH(ref->methods, i)
 	{
 		Decl *decl = ref->methods[i];
@@ -2186,125 +2199,129 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
 			return true;
 		}
 	}
-	VECEACH(ref->strukt.members, i)
+	// We want a distinct to be able to access members.
+	Decl *flat_ref = ref;
+	while (flat_ref->decl_kind == DECL_DISTINCT)
 	{
-		Decl *member = ref->strukt.members[i];
-		if (name == member->name)
-		{
-			if (is_macro)
+		Type *flat_type = flat_ref->distinct_decl.base_type->canonical;
+		if (!type_is_user_defined(flat_type)) break;
+		flat_ref = flat_type->decl;
+	}
+
+	switch (flat_ref->decl_kind)
+	{
+		case DECL_STRUCT:
+		case DECL_UNION:
+		case DECL_ERR:
+			VECEACH(flat_ref->strukt.members, i)
 			{
-				SEMA_ERROR(child, "member '%s' should not be prefixed with '@'.", name);
-				return false;
+				Decl *member = ref->strukt.members[i];
+				if (name == member->name)
+				{
+					if (is_macro)
+					{
+						SEMA_ERROR(child, "member '%s' should not be prefixed with '@'.", name);
+						return false;
+					}
+					expr->expr_kind = EXPR_MEMBER_ACCESS;
+					expr->access_expr.ref = member;
+					expr_set_type(expr, member->type);
+					return true;
+				}
 			}
-			expr->expr_kind = EXPR_MEMBER_ACCESS;
-			expr->access_expr.ref = member;
-			expr_set_type(expr, member->type);
-			return true;
-		}
+		default:
+			break;
 	}
 	SEMA_ERROR(expr, "No function or member '%s.%s' found.", "todo", name);
 	TODO
 	return false;
 }
 
-
+/**
+ * Analyse "x.y"
+ */
 static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 {
 	Expr *parent = expr->access_expr.parent;
 	bool was_group = parent->expr_kind == EXPR_GROUP;
+
+	// 1. Resolve the left hand
 	if (!sema_analyse_expr_value(context, NULL, parent)) return false;
 
-	if (parent->type == type_typeinfo)
-	{
-		return sema_expr_analyse_type_access(expr, parent->type_expr, was_group);
-	}
-	if (parent->expr_kind == EXPR_MEMBER_ACCESS)
-	{
-		return sema_expr_analyse_member_access(context, expr);
-	}
-	bool is_function_or_macro = false;
-	if (parent->expr_kind == EXPR_ACCESS)
-	{
-		is_function_or_macro = parent->access_expr.ref->decl_kind == DECL_FUNC || parent->access_expr.ref->decl_kind == DECL_MACRO;
-	}
-	if (parent->expr_kind == EXPR_IDENTIFIER)
-	{
-		is_function_or_macro = parent->identifier_expr.decl->decl_kind == DECL_FUNC || parent->identifier_expr.decl->decl_kind == DECL_MACRO;
-	}
-
-	if (is_function_or_macro)
-	{
-		SEMA_ERROR(expr->access_expr.child, "No such member or function could be found.");
-		return false;
-	}
+	// 2. The right hand side may be a @ident or ident
 	Expr *child = expr->access_expr.child;
 	bool is_macro = child->expr_kind == EXPR_MACRO_EXPANSION;
 
+	// 3. Find the actual token.
 	TokenId identifier_token = sema_expr_resolve_access_child(child);
 	if (TOKEN_IS_INVALID(identifier_token)) return false;
 
+	// 2. If our left hand side is a type, e.g. MyInt.abc, handle this here.
+	Type *parent_type = parent->type;
+	if (parent->expr_kind == EXPR_TYPEINFO)
+	{
+		return sema_expr_analyse_type_access(expr, parent->type_expr, was_group, is_macro, identifier_token);
+	}
+
+	// 3. The left hand side may already be indexing into a type:
+	//    x.y.z. In this case "x.y" is the parent.
+	if (parent->expr_kind == EXPR_MEMBER_ACCESS)
+	{
+		return sema_expr_analyse_member_access(context, expr, is_macro, identifier_token);
+	}
+
+
+	// 6. Copy failability
 	expr->failable = parent->failable;
 
 	assert(expr->expr_kind == EXPR_ACCESS);
 	assert(parent->resolve_status == RESOLVE_DONE);
 
-	Type *parent_type = parent->type;
-	Type *type = type_flatten(parent_type);
-
+	// 7. Is this a pointer? If so we insert a deref.
+	Type *type = parent_type->canonical;
 	bool is_pointer = type->type_kind == TYPE_POINTER;
 	if (is_pointer)
 	{
-		type = type_flatten(type->pointer);
+		type = type->pointer->canonical;
+		parent_type = type;
 		if (!sema_cast_rvalue(context, NULL, parent)) return false;
 		insert_access_deref(expr);
 		parent = expr->access_expr.parent;
 	}
+
+	// 8. Depending on parent type, we have some hard coded types
 	const char *kw = TOKSTR(identifier_token);
 	Expr *current_parent = parent;
+
+	Type *flat_type = type_flatten(type);
 CHECK_DEEPER:
 
-	switch (type->type_kind)
+	// 9. Fix hard coded function `len` on subarrays and arrays
+	if (!is_macro && kw == kw_len)
 	{
-		case TYPE_SUBARRAY:
-			if (is_macro) goto NO_MATCH;
-			if (kw == kw_sizeof)
-			{
-				expr_rewrite_to_int_const(expr, type_usize, type_size(type));
-				return true;
-			}
-			if (kw == kw_len)
-			{
-				expr->expr_kind = EXPR_LEN;
-				expr->len_expr.inner = parent;
-				expr_set_type(expr, type_void);
-				expr->resolve_status = RESOLVE_DONE;
-				return true;
-			}
-			goto NO_MATCH;
-		case TYPE_ARRAY:
-			if (is_macro) goto NO_MATCH;
-			if (kw == kw_sizeof)
-			{
-				expr_rewrite_to_int_const(expr, type_usize, type_size(type));
-				return true;
-			}
-			if (kw == kw_len)
-			{
-				expr_rewrite_to_int_const(expr, type_usize, type->array.len);
-				return true;
-			}
-			goto NO_MATCH;
-		case TYPE_ENUM:
-		case TYPE_ERRTYPE:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-			break;
-		default:
-		NO_MATCH:
-			SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", TOKSTR(identifier_token), type_to_error_string(parent_type));
-			return false;
+		if (flat_type->type_kind == TYPE_SUBARRAY)
+		{
+			expr->expr_kind = EXPR_LEN;
+			expr->len_expr.inner = parent;
+			expr_set_type(expr, type_void);
+			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		}
+		if (flat_type->type_kind == TYPE_ARRAY)
+		{
+			expr_rewrite_to_int_const(expr, type_usize, type->array.len);
+			return true;
+		}
 	}
 
+	// 9. At this point we may only have distinct, struct, union, error, enum
+	if (!type_may_have_sub_elements(type))
+	{
+		SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(parent_type));
+		return false;
+	}
+
+	// 10. Dump all members and methods into the scope.
 	Decl *decl = type->decl;
 	Decl *member;
 	SCOPE_START
@@ -2312,10 +2329,10 @@ CHECK_DEEPER:
 		member = sema_resolve_symbol_in_current_dynamic_scope(context, kw);
 	SCOPE_END;
 
-
+	// 11. If we didn't find a match...
 	if (!member)
 	{
-		// We have a potential embedded struct check:
+		// 11a. We have a potential embedded struct check:
 		if (type_is_substruct(type))
 		{
 			Expr *embedded_struct = expr_access_inline_member(parent, type->decl);
@@ -2323,23 +2340,29 @@ CHECK_DEEPER:
 			type = embedded_struct->type->canonical;
 			goto CHECK_DEEPER;
 		}
+
+		// 11b. Otherwise we give up.
 		SEMA_ERROR(expr, "There is no field or method '%s.%s'.", decl->name, kw);
 		return false;
 	}
+
+	// 12a. If the member was a macro and it isn't prefixed with `@` then that's an error.
 	if (member->decl_kind == DECL_MACRO && !is_macro)
 	{
 		SEMA_ERROR(expr, "Expected '@' before the macro name.");
 		return false;
 	}
+	// 12b. If the member was *not* a macro but was prefixed with `@` then that's an error.
 	if (member->decl_kind != DECL_MACRO && is_macro)
 	{
 		SEMA_ERROR(expr, "'@' should only be placed in front of macro names.");
 		return false;
 	}
+
+	// 13. Copy properties.
 	expr->access_expr.parent = current_parent;
 	expr->constant = expr->access_expr.parent->constant;
 	expr->pure = expr->access_expr.parent->pure;
-
 	expr_set_type(expr, member->type);
 	expr->access_expr.ref = member;
 	return true;
@@ -3197,10 +3220,29 @@ bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *lef
 	{
 		return sema_expr_analyse_slice_assign(context, expr, left_type, right, lhs_is_failable);
 	}
-	// 1. Evaluate right side to required type.
-	if (!sema_analyse_expr_of_required_type(context, left_type, right, lhs_is_failable != FAILABLE_NO)) return false;
 
-	// 2. Set the result to the type on the right side.
+	// 1. Evaluate right side to required type.
+	if (!sema_analyse_expr(context, left_type, right)) return false;
+	if (right->failable && lhs_is_failable == FAILABLE_NO)
+	{
+		if (!left_type) left_type = right->type;
+		SEMA_ERROR(right, "'%s!' cannot be converted into '%s'.", type_to_error_string(right->type), type_to_error_string(left_type));
+		return false;
+	}
+
+	// 2. Evaluate right hand side, making special concession for inferred arrays.
+	do
+	{
+		if (!left_type) break;
+		if (left_type->canonical->type_kind == TYPE_INFERRED_ARRAY && right->type->canonical->type_kind == TYPE_ARRAY)
+		{
+			if (left_type->canonical->array.base == right->type->canonical->array.base) break;
+		}
+		assert(right->type->canonical->type_kind != TYPE_INFERRED_ARRAY);
+		if (!cast_implicit(right, left_type)) return false;
+	} while (0);
+
+	// 3. Set the result to the type on the right side.
 	if (expr) expr_copy_types(expr, right);
 
 	return true;
@@ -5010,6 +5052,492 @@ static inline bool sema_expr_analyse_placeholder(Context *context, Type *to, Exp
 	return true;
 }
 
+typedef struct MiniLexer_
+{
+	const char *chars;
+	uint32_t index;
+} MiniLexer;
+
+static inline char minilex_next(MiniLexer *lexer)
+{
+	return lexer->chars[lexer->index++];
+}
+
+static inline char minilex_peek(MiniLexer *lexer, int32_t offset)
+{
+	return lexer->chars[lexer->index + offset];
+}
+
+static inline bool minilex_match(MiniLexer *lexer, char c)
+{
+	if (lexer->chars[lexer->index] != c) return false;
+	lexer->index++;
+	return true;
+}
+
+static inline void minilex_skip_whitespace(MiniLexer *lexer)
+{
+	char c;
+	while (1)
+	{
+		c = lexer->chars[lexer->index];
+		if ((c != ' ') && (c != '\t')) break;
+		lexer->index++;
+	}
+}
+
+uint64_t minilex_parse_number(MiniLexer *lexer, uint64_t max)
+{
+	assert(max < UINT64_MAX);
+	ByteSize value = 0;
+	while (is_number(minilex_peek(lexer, 0)))
+	{
+		ByteSize old_value = value;
+		value = value * 10 + minilex_next(lexer) - '0';
+		if (old_value > value || value > max)
+		{
+			return UINT64_MAX;
+		}
+	}
+	return value;
+}
+
+static inline bool sema_analyse_idents_string(Context *context, MiniLexer *lexer, ExprFlatElement **elements_ref)
+{
+	ExprFlatElement *elements = NULL;
+
+	char c;
+	ExprFlatElement element;
+	while (1)
+	{
+		minilex_skip_whitespace(lexer);
+		if (minilex_match(lexer, '['))
+		{
+			minilex_skip_whitespace(lexer);
+			if (!is_number(minilex_peek(lexer, 0))) return false;
+			uint64_t value = minilex_parse_number(lexer, MAX_ARRAYINDEX);
+			if (value == UINT64_MAX) return false;
+			if (!minilex_match(lexer, ']')) return false;
+			element.array = true;
+			element.index = (ArrayIndex)value;
+		}
+		else
+		{
+			scratch_buffer_clear();
+			while (is_alphanum_(minilex_peek(lexer, 0)))
+			{
+				scratch_buffer_append_char(minilex_next(lexer));
+			}
+			if (!global_context.scratch_buffer_len) return false;
+			TokenType token_type;
+			const char *ident = symtab_find(global_context.scratch_buffer,
+			                                global_context.scratch_buffer_len,
+			                                fnv1a(global_context.scratch_buffer, global_context.scratch_buffer_len),
+			                                &token_type);
+			if (!ident || token_type != TOKEN_IDENT) return false;
+			element.array = false;
+			element.ident = ident;
+		}
+		vec_add(elements, element);
+		minilex_skip_whitespace(lexer);
+		if (minilex_match(lexer, '\0')) break;
+		if (!minilex_match(lexer, '.') && minilex_peek(lexer, 0) != '[') return false;
+	}
+	*elements_ref = elements;
+	return true;
+}
+
+static inline bool sema_analyse_identifier_path_string(Context *context, Expr *expr, Decl **decl_ref, Type **type_ref, ExprFlatElement **idents_ref)
+{
+	char *chars = expr->const_expr.string.chars;
+	uint32_t len = expr->const_expr.string.len;
+	if (!len)
+	{
+		SEMA_ERROR(expr, "Expected a name here.");
+		return false;
+	}
+
+	// TODO HANDLE VIRTUAL!
+
+	MiniLexer lexer = { .chars = chars };
+
+	// Do we parse a path?
+	Path *path = NULL;
+
+	// Skip past the start.
+	while (is_lower_(minilex_peek(&lexer, 0))) minilex_next(&lexer);
+
+	minilex_skip_whitespace(&lexer);
+
+	// Yes, parse a path.
+	if (minilex_match(&lexer, ':'))
+	{
+		if (!minilex_match(&lexer, ':')) goto FAIL_PARSE;
+		lexer.index = 0;
+		NEXT_PART:
+		scratch_buffer_clear();
+		minilex_skip_whitespace(&lexer);
+		while (is_lower(minilex_peek(&lexer, 0)))
+		{
+			scratch_buffer_append_char(minilex_next(&lexer));
+		}
+		minilex_skip_whitespace(&lexer);
+
+		if (!(minilex_match(&lexer, ':') && minilex_match(&lexer, ':')))
+		{
+			UNREACHABLE;
+		}
+		uint32_t start_index = lexer.index;
+
+		minilex_skip_whitespace(&lexer);
+
+		while (is_lower_(minilex_peek(&lexer, 0))) minilex_next(&lexer);
+
+		minilex_skip_whitespace(&lexer);
+		if (minilex_match(&lexer, ':'))
+		{
+			if (!minilex_match(&lexer, ':')) goto FAIL_PARSE;
+			scratch_buffer_append_len("::", 2);
+			lexer.index = start_index;
+			goto NEXT_PART;
+		}
+		lexer.index = start_index;
+		path = path_create_from_string(scratch_buffer_to_string(), global_context.scratch_buffer_len, expr->span);
+	}
+	else
+	{
+		lexer.index = 0;
+	}
+
+	scratch_buffer_clear();
+	minilex_skip_whitespace(&lexer);
+	while (is_alphanum_(minilex_peek(&lexer, 0)))
+	{
+		scratch_buffer_append_char(minilex_next(&lexer));
+	}
+	if (!global_context.scratch_buffer_len) goto FAIL;
+	TokenType token_type;
+	const char *symbol = symtab_find(global_context.scratch_buffer,
+	                                 global_context.scratch_buffer_len,
+	                                 fnv1a(global_context.scratch_buffer, global_context.scratch_buffer_len),
+	                                 &token_type);
+	if (!symbol)
+	{
+		SEMA_ERROR(expr, "'%s' could not be found, did you misspell it?", chars);
+		return false;
+	}
+	Type *type = NULL;
+	Decl *decl = NULL;
+	if (token_is_type(token_type))
+	{
+		type = type_from_token(token_type);
+	}
+	else
+	{
+		decl = TRY_DECL_OR(sema_resolve_string_symbol(context, symbol, expr->span, path), false);
+		if (decl->decl_kind == DECL_TYPEDEF)
+		{
+			type = decl->typedef_decl.type_info->type;
+			decl = NULL;
+		}
+	}
+	if (type || decl_is_user_defined_type(decl))
+	{
+		if (decl)
+		{
+			type = decl->type;
+			decl = NULL;
+		}
+		while (1)
+		{
+			minilex_skip_whitespace(&lexer);
+			if (minilex_match(&lexer, '*'))
+			{
+				type = type_get_ptr(type);
+				continue;
+			}
+			if (!minilex_match(&lexer, '[')) break;
+			minilex_skip_whitespace(&lexer);
+			if (minilex_match(&lexer, ']'))
+			{
+				type = type_get_subarray(type);
+				continue;
+			}
+			ByteSize array_size = 0;
+			while (is_number(minilex_peek(&lexer, 0)))
+			{
+				ByteSize old_array_size = array_size;
+				array_size = array_size * 10 + minilex_next(&lexer) - '0';
+				if (old_array_size > array_size || array_size > MAX_ARRAYINDEX)
+				{
+					SEMA_ERROR(expr, "Array index out of bounds.");
+					return false;
+				}
+			}
+			minilex_skip_whitespace(&lexer);
+			if (!minilex_match(&lexer, ']')) goto FAIL_PARSE;
+			type = type_get_array(type, array_size);
+		}
+	}
+
+	minilex_skip_whitespace(&lexer);
+	if (minilex_match(&lexer, '\0')) goto EXIT;
+
+
+	minilex_skip_whitespace(&lexer);
+	if (!minilex_match(&lexer, '.'))
+	{
+		SEMA_ERROR(expr, "A '.' was expected after '%s'.", symbol);
+		return false;
+	}
+
+	if (!sema_analyse_idents_string(context, &lexer, idents_ref))
+	{
+		SEMA_ERROR(expr, "The path to an existing member was expected after '%s', did you make a mistake?", symbol);
+		return false;
+	}
+
+EXIT:
+	*decl_ref = decl;
+	*type_ref = type;
+	return true;
+
+FAIL:
+	SEMA_ERROR(expr, "'%s' is not a known identifier, did you misspell it?", chars);
+	return false;
+
+FAIL_PARSE:
+	SEMA_ERROR(expr, "'%s' could not be parsed as an identifier, did you make a mistake?", chars);
+	return false;
+
+}
+
+
+static inline bool sema_analyse_ct_call_parameters(Context *context, Expr *expr)
+{
+	if (expr->resolve_status == RESOLVE_DONE) return true;
+
+	Expr **elements = expr->ct_call_expr.arguments;
+	unsigned count = vec_size(elements);
+	if (count > 2)
+	{
+		SEMA_ERROR(elements[2], "The function can only take one or two arguments.");
+		return expr_poison(expr);
+	}
+	Expr *first_expr = elements[0];
+	if (!sema_analyse_expr_value(context, NULL, first_expr)) return false;
+	ExprFlatElement *flatpath = NULL;
+	Expr *second_expr = NULL;
+	if (count == 2)
+	{
+		second_expr = elements[1];
+		if (second_expr->expr_kind != EXPR_FLATPATH)
+		{
+			if (!sema_analyse_expr_value(context, NULL, second_expr)) return false;
+			if (second_expr->expr_kind != EXPR_CONST || second_expr->const_expr.kind != TYPE_STRLIT)
+			{
+				SEMA_ERROR(second_expr, "Expected a string here.");
+				return false;
+			}
+			MiniLexer lexer = { .chars = second_expr->const_expr.string.chars };
+			if (!sema_analyse_idents_string(context, &lexer, &flatpath))
+			{
+				SEMA_ERROR(expr, "The path to an existing member was expected, did you make a mistake?");
+				return false;
+			}
+		}
+		else
+		{
+			flatpath = second_expr->flatpath_expr;
+		}
+	}
+	Decl *decl = NULL;
+	Type *type = NULL;
+	if (first_expr->expr_kind == EXPR_CONST && first_expr->const_expr.kind == TYPE_STRLIT)
+	{
+		ExprFlatElement *path_elements = NULL;
+		if (!sema_analyse_identifier_path_string(context, first_expr, &decl, &type, &path_elements)) return false;
+		if (path_elements)
+		{
+			if (flatpath)
+			{
+				SEMA_ERROR(elements[1], "You cannot combine a string with a member path with a separate path here.");
+				return false;
+			}
+			flatpath = path_elements;
+		}
+	}
+	else
+	{
+		switch (first_expr->expr_kind)
+		{
+			case EXPR_IDENTIFIER:
+				decl = first_expr->identifier_expr.decl;
+				break;
+			case EXPR_TYPEINFO:
+				type = first_expr->type_expr->type;
+				break;
+			case EXPR_TYPEOF:
+				type = first_expr->typeof_expr->type;
+				break;
+			default:
+				break;
+		}
+	}
+	if (!type && !decl)
+	{
+		SEMA_ERROR(first_expr, "A type or declaration was expected.");
+		return false;
+	}
+	if (!decl && type_is_user_defined(type)) decl = type->decl;
+	if (decl)
+	{
+		if (!sema_analyse_decl(context, decl)) return false;
+		if (decl)
+		{
+			switch (decl->decl_kind)
+			{
+				case DECL_DISTINCT:
+				case DECL_ENUM:
+				case DECL_ERR:
+				case DECL_FUNC:
+				case DECL_STRUCT:
+				case DECL_TYPEDEF:
+				case DECL_UNION:
+					break;
+				case DECL_VAR:
+					if (decl->type) break;
+					FALLTHROUGH;
+				default:
+					SEMA_ERROR(first_expr, "A type or typed declaration was expected.");
+					return false;
+			}
+		}
+		type = decl->type;
+	}
+	expr->ct_call_expr.flatpath = flatpath;
+	expr->ct_call_expr.decl = decl;
+	expr->ct_call_expr.type = type;
+
+	return true;
+}
+
+static inline bool sema_expr_analyse_ct_sizeof(Context *context, Type *to, Expr *expr)
+{
+	Expr *first = expr->ct_call_expr.arguments[0];
+	if (!sema_analyse_ct_call_parameters(context, expr)) return false;
+	Type *type = expr->ct_call_expr.type->canonical;
+	ExprFlatElement *elements = expr->ct_call_expr.flatpath;
+	VECEACH(elements, i)
+	{
+		ExprFlatElement element = elements[i];
+		type = type_flatten_distinct(type);
+		if (element.array)
+		{
+			if (type->type_kind != TYPE_ARRAY)
+			{
+				SEMA_ERROR(first, "%s is not a fixed size array.", type_quoted_error_string(expr->ct_call_expr.type));
+				return false;
+			}
+			type = type->array.base;
+			continue;
+		}
+		if (!type_is_structlike(type))
+		{
+			if (i == 0)
+			{
+				SEMA_ERROR(first, "%s has no members.", type_quoted_error_string(expr->ct_call_expr.type));
+			}
+			else
+			{
+				SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
+			}
+			return false;
+		}
+		Decl *decl = type->decl;
+		SCOPE_START
+			add_members_to_context(context, type->decl);
+			decl = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
+		SCOPE_END;
+		if (!decl)
+		{
+			SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
+			return false;
+		}
+		type = decl->type;
+	}
+	expr_rewrite_to_int_const(expr, type_compint, type_size(type));
+	return true;
+}
+
+static inline bool sema_expr_analyse_ct_alignof(Context *context, Type *to, Expr *expr)
+{
+	Expr *first = expr->ct_call_expr.arguments[0];
+	if (!sema_analyse_ct_call_parameters(context, expr)) return false;
+	Type *type = expr->ct_call_expr.type->canonical;
+	ExprFlatElement *elements = expr->ct_call_expr.flatpath;
+	AlignSize align = expr->ct_call_expr.decl ? expr->ct_call_expr.decl->alignment : type_abi_alignment(type);
+	VECEACH(elements, i)
+	{
+		ExprFlatElement element = elements[i];
+		type = type_flatten_distinct(type);
+		if (element.array)
+		{
+			if (type->type_kind != TYPE_ARRAY)
+			{
+				SEMA_ERROR(first, "%s is not a fixed size array.", type_quoted_error_string(expr->ct_call_expr.type));
+				return false;
+			}
+			type = type->array.base;
+			ByteSize size = type_size(type);
+			align = (AlignSize)type_min_alignment(size * element.index, align);
+			continue;
+		}
+		if (!type_is_structlike(type))
+		{
+			if (i == 0)
+			{
+				SEMA_ERROR(first, "%s has no members.", type_quoted_error_string(expr->ct_call_expr.type));
+			}
+			else
+			{
+				SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
+			}
+			return false;
+		}
+		Decl *decl = type->decl;
+		SCOPE_START
+			add_members_to_context(context, type->decl);
+			decl = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
+		SCOPE_END;
+		if (!decl)
+		{
+			SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
+			return false;
+		}
+		type = decl->type;
+		align = type_min_alignment(decl->offset, align);
+	}
+
+	expr_rewrite_to_int_const(expr, type_compint, align);
+
+	return true;
+}
+
+static inline bool sema_expr_analyse_ct_call(Context *context, Type *to, Expr *expr)
+{
+	switch (expr->ct_call_expr.token_type)
+	{
+		case TOKEN_CT_SIZEOF:
+			return sema_expr_analyse_ct_sizeof(context, to, expr);
+		case TOKEN_CT_ALIGNOF:
+			return sema_expr_analyse_ct_alignof(context, to, expr);
+		case TOKEN_CT_OFFSETOF:
+			TODO
+		default:
+			UNREACHABLE
+	}
+}
 
 static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *expr)
 {
@@ -5021,7 +5549,10 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_MEMBER_ACCESS:
 		case EXPR_DESIGNATOR:
 		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_FLATPATH:
 			UNREACHABLE
+		case EXPR_CT_CALL:
+			return sema_expr_analyse_ct_call(context, to, expr);
 		case EXPR_HASH_IDENT:
 			return sema_expr_analyse_hash_identifier(context, to, expr);
 		case EXPR_CT_IDENT:

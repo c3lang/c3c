@@ -40,7 +40,7 @@ func void test2()
 
 macro foo2(x)
 {
-    @body(x); // #error: The identifier 'body' could not be found, did you spell it right?
+    @body(x); // #error: 'body' could not be found, did you spell it right?
 }
 
 func void test4()

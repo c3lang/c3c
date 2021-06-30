@@ -376,17 +376,17 @@ static inline bool sema_analyse_local_decl(Context *context, Decl *decl)
 
 		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, decl->var.failable || decl->var.unwrap ? FAILABLE_YES : FAILABLE_NO)) return decl_poison(decl);
 
-		if (decl->type)
-		{
-			expr_set_type(decl->var.init_expr, decl->type);
-		}
-
 		if (type_is_inferred)
 		{
 			Type *right_side_type = init->type->canonical;
 			assert(right_side_type->type_kind == TYPE_ARRAY);
 			decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
 		}
+		else if (decl->type)
+		{
+			expr_set_type(decl->var.init_expr, decl->type);
+		}
+
 
 		if (decl->var.unwrap && !init->failable)
 		{
@@ -1813,6 +1813,46 @@ bool sema_analyse_statement(Context *context, Ast *statement)
 }
 
 
+static bool sema_analyse_requires(Context *context, Ast *docs, Ast ***asserts)
+{
+	if (!docs) return true;
+	Ast **directives = docs->directives;
+	Ast **output = NULL;
+	VECEACH(directives, i)
+	{
+		Ast *directive = directives[i];
+		if (directive->doc_directive.kind != DOC_DIRECTIVE_REQUIRE) continue;
+		Expr *comment = directive->doc_directive.contract.comment;
+		Expr *declexpr = directive->doc_directive.contract.decl_exprs;
+		if (comment)
+		{
+			if (comment->expr_kind != EXPR_CONST || comment->const_expr.kind != TYPE_STRLIT)
+			{
+				SEMA_ERROR(comment, "Expected a string here.");
+				return false;
+			}
+		}
+		assert(declexpr->expr_kind == EXPR_DECL_LIST);
+
+		VECEACH(declexpr->dexpr_list_expr, j)
+		{
+			Ast *ast = declexpr->dexpr_list_expr[j];
+			if (ast->ast_kind != AST_EXPR_STMT)
+			{
+				SEMA_ERROR(ast, "Only expressions are allowed.");
+				return false;
+			}
+			Expr *expr = ast->expr_stmt;
+			if (!sema_analyse_expr_of_required_type(context, type_bool, expr, false)) return false;
+			Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
+			assert->assert_stmt.expr = expr;
+			assert->assert_stmt.message = comment;
+			vec_add(output, assert);
+		}
+	}
+	*asserts = output;
+	return true;
+}
 
 bool sema_analyse_function_body(Context *context, Decl *func)
 {
@@ -1846,6 +1886,8 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 		{
 			if (!sema_add_local(context, params[i])) return false;
 		}
+		Ast **asserts = NULL;
+		if (!sema_analyse_requires(context, func->docs, &asserts)) return false;
 		if (!sema_analyse_compound_statement_no_scope(context, func->func_decl.body)) return false;
 		assert(context->active_scope.depth == 1);
 		if (!context->active_scope.jump_end)
@@ -1857,6 +1899,13 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 				SEMA_ERROR(func, "Missing return statement at the end of the function.");
 				return false;
 			}
+		}
+		if (asserts)
+		{
+			Ast *ast = new_ast(AST_COMPOUND_STMT, func->func_decl.body->span);
+			ast->compound_stmt.stmts = asserts;
+			vec_add(ast->compound_stmt.stmts, func->func_decl.body);
+			func->func_decl.body = ast;
 		}
 	SCOPE_END;
 	return true;

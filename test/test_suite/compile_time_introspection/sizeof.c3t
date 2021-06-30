@@ -1,0 +1,66 @@
+module foo;
+import bar;
+import bar::abc;
+
+long x = $sizeof(Baz);
+short y = $sizeof("Baz");
+int z = $sizeof(bar::Baz);
+int w = $sizeof("bar::Baz");
+int v = $sizeof("bar::abc::Foo");
+int x1 = $sizeof(x);
+int y1 = $sizeof("y");
+int a = $sizeof("Baz.y");
+int b = $sizeof("Deep.a.b");
+int c = $sizeof("Deep.a.b.c");
+int d = $sizeof("Deep[][100]");
+int e = $sizeof("Deep[][100]**[100][]*");
+int a2 = $sizeof("Baz", "y");
+int a3 = $sizeof("Baz", y);
+int a4 = $sizeof(Baz, "y");
+int a5 = $sizeof(Baz, y);
+
+module bar;
+
+struct Deep
+{
+    int x;
+    struct a
+    {
+        struct b
+        {
+            char[5] c;
+        }
+    }
+}
+
+struct Baz
+{
+    int x;
+    char[60] y;
+}
+
+module bar::abc;
+
+struct Foo
+{
+    char x;
+}
+
+// #expect: foo.ll
+
+@foo.x = global i64 64, align 8
+@foo.y = global i16 64, align 2
+@foo.z = global i32 64, align 4
+@foo.w = global i32 64, align 4
+@foo.v = global i32 1, align 4
+@foo.x1 = global i32 8, align 4
+@foo.y1 = global i32 2, align 4
+@foo.a = global i32 60, align 4
+@foo.b = global i32 5, align 4
+@foo.c = global i32 5, align 4
+@foo.d = global i32 1600, align 4
+@foo.e = global i32 8, align 4
+@foo.a2 = global i32 60, align 4
+@foo.a3 = global i32 60, align 4
+@foo.a4 = global i32 60, align 4
+@foo.a5 = global i32 60, align 4

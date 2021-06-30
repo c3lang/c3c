@@ -516,6 +516,7 @@ typedef struct Decl_
 				// Unions, Errtype and Struct use strukt
 				StructDecl strukt;
 				EnumDecl enums;
+				DistinctDecl distinct_decl;
 			};
 		};
 		ImportDecl import;
@@ -526,7 +527,6 @@ typedef struct Decl_
 		AttrDecl attr;
 		TypedefDecl typedef_decl;
 		InterfaceDecl interface_decl;
-		DistinctDecl distinct_decl;
 		MacroDecl macro_decl;
 		GenericDecl generic_decl;
 		DefineDecl define_decl;
@@ -722,6 +722,30 @@ typedef struct
 
 typedef struct
 {
+	bool array : 1;
+	union
+	{
+		ArrayIndex index;
+		const char *ident;
+	};
+} ExprFlatElement;
+
+typedef struct
+{
+	TokenType token_type;
+	union
+	{
+		Expr **arguments;
+		struct {
+			Decl *decl;
+			Type *type;
+			ExprFlatElement *flatpath;
+		};
+	};
+} ExprCtCall;
+
+typedef struct
+{
 	Expr *inner;
 	Decl *decl;
 } ExprMacroExpansion;
@@ -805,6 +829,7 @@ typedef struct
 } ExprLen;
 
 
+
 struct Expr_
 {
 	ExprKind expr_kind : 8;
@@ -826,6 +851,7 @@ struct Expr_
 		ExprGuard guard_expr;
 		Expr *trycatch_expr;
 		ExprElse else_expr;
+		ExprFlatElement *flatpath_expr;
 		ExprSliceAssign slice_assign_expr;
 		ExprBinary binary_expr;
 		ExprTernary ternary_expr;
@@ -840,6 +866,7 @@ struct Expr_
 		ExprPlaceholder placeholder_expr;
 		ExprIdentifier macro_identifier_expr;
 		ExprIdentifierRaw ct_ident_expr;
+		ExprCtCall ct_call_expr;
 		ExprIdentifierRaw ct_macro_ident_expr;
 		ExprMacroExpansion macro_expansion_expr;
 		ExprIdentifierRaw hash_ident_expr;
@@ -1628,6 +1655,7 @@ static inline Decl *decl_raw(Decl *decl);
 static inline bool decl_ok(Decl *decl) { return !decl || decl->decl_kind != DECL_POISONED; }
 static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
 static inline bool decl_is_struct_type(Decl *decl);
+static inline bool decl_is_user_defined_type(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline Decl *decl_flatten(Decl *decl)
 {
@@ -1744,6 +1772,8 @@ bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *lef
 Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol);
 Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *path);
 Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, bool handle_error);
+Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path);
+
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
 bool sema_resolve_type_info_maybe_inferred(Context *context, TypeInfo *type_info, bool allow_inferred_type);
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow);
@@ -1784,7 +1814,7 @@ char *scratch_buffer_to_string(void);
 const char *scratch_buffer_interned(void);
 
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
-
+const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 void *llvm_target_machine_create(void);
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
@@ -1848,6 +1878,7 @@ static inline bool type_is_signed(Type *type);
 static inline bool type_is_structlike(Type *type);
 static inline size_t type_min_alignment(size_t a, size_t b);
 bool type_is_subtype(Type *type, Type *possible_subtype);
+Type *type_from_token(TokenType type);
 bool type_is_union_struct(Type *type);
 bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
@@ -2119,6 +2150,13 @@ static inline bool decl_is_struct_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
 	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_ERR);
+}
+
+static inline bool decl_is_user_defined_type(Decl *decl)
+{
+	DeclKind kind = decl->decl_kind;
+	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_ERR)
+			| (kind == DECL_ENUM) | (kind == DECL_DISTINCT);
 }
 
 static inline DeclKind decl_from_token(TokenType type)

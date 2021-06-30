@@ -531,71 +531,9 @@ static inline TypeInfo *parse_base_type(Context *context)
 			type_info = type_info_new(TYPE_INFO_IDENTIFIER, source_span_from_token_id(context->tok.id));
 			type_info->unresolved.name_loc = context->tok.id;
 			break;
+		case TYPE_TOKENS:
 		case TOKEN_ERR:
-			type_found = type_error;
-			break;
-		case TOKEN_VOID:
-			type_found = type_void;
-			break;
-		case TOKEN_BOOL:
-			type_found = type_bool;
-			break;
-		case TOKEN_CHAR:
-			type_found = type_char;
-			break;
-		case TOKEN_DOUBLE:
-			type_found = type_double;
-			break;
-		case TOKEN_FLOAT:
-			type_found = type_float;
-			break;
-		case TOKEN_I128:
-			type_found = type_i128;
-			break;
-		case TOKEN_ICHAR:
-			type_found = type_ichar;
-			break;
-		case TOKEN_INT:
-			type_found = type_int;
-			break;
-		case TOKEN_IPTR:
-			type_found = type_iptr;
-			break;
-		case TOKEN_IPTRDIFF:
-			type_found = type_iptrdiff;
-			break;
-		case TOKEN_ISIZE:
-			type_found = type_isize;
-			break;
-		case TOKEN_LONG:
-			type_found = type_long;
-			break;
-		case TOKEN_SHORT:
-			type_found = type_short;
-			break;
-		case TOKEN_U128:
-			type_found = type_u128;
-			break;
-		case TOKEN_UINT:
-			type_found = type_uint;
-			break;
-		case TOKEN_ULONG:
-			type_found = type_ulong;
-			break;
-		case TOKEN_UPTR:
-			type_found = type_uptr;
-			break;
-		case TOKEN_UPTRDIFF:
-			type_found = type_uptrdiff;
-			break;
-		case TOKEN_USHORT:
-			type_found = type_ushort;
-			break;
-		case TOKEN_USIZE:
-			type_found = type_usize;
-			break;
-		case TOKEN_TYPEID:
-			type_found = type_typeid;
+			type_found = type_from_token(context->tok.type);
 			break;
 		default:
 			// Special case: "virtual *"
@@ -2128,18 +2066,18 @@ static bool parse_docs(Context *context, Ast **docs)
 		if (directive == kw_ensure)
 		{
 			doc_ast->doc_directive.kind = DOC_DIRECTIVE_ENSURE;
-			if (!parse_doc_contract(context, ast)) return false;
+			if (!parse_doc_contract(context, doc_ast)) return false;
 			goto LINE_END;
 		}
 		if (directive == kw_require)
 		{
 			doc_ast->doc_directive.kind = DOC_DIRECTIVE_REQUIRE;
-			if (!parse_doc_contract(context, ast)) return false;
+			if (!parse_doc_contract(context, doc_ast)) return false;
 			goto LINE_END;
 		}
 		if (directive == kw_errors)
 		{
-			if (!parse_doc_errors(context, ast)) return false;
+			if (!parse_doc_errors(context, doc_ast)) return false;
 			goto LINE_END;
 		}
 		doc_ast->doc_directive.kind = DOC_DIRECTIVE_UNKNOWN;
@@ -2147,9 +2085,11 @@ static bool parse_docs(Context *context, Ast **docs)
 		doc_ast->doc_directive.generic.rest_of_line = parse_doc_opt_rest_of_line(context);
 
 LINE_END:
+		vec_add(ast->directives, doc_ast);
 		if (try_consume(context, TOKEN_DOCS_EOL)) continue;
 		EXPECT_OR(TOKEN_DOCS_END, false);
 	}
+	*docs = ast;
 	return true;
 }
 

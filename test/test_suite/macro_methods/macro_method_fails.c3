@@ -40,7 +40,7 @@ func void test2()
 func void test3()
 {
     An2 a;
-    a.@helloWorld.b; // #error: No such member or function could be found.
+    a.@helloWorld.b; // #error: There is no member or method 'b' on 'void'
 }
 
 func void test4()

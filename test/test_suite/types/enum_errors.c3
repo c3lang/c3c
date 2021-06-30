@@ -1,7 +1,7 @@
 
 enum EnumTestErrorType3 : int
 {
-    A = FOO // #error: constant 'FOO' could not be found, did you spell it
+    A = FOO // #error: 'FOO' could not be found, did you spell it
 }
 
 func int foo()
