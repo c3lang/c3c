@@ -50,7 +50,7 @@ Type *type_error = &t.error;
 Type *type_varheader = &t.varheader;
 
 static unsigned size_subarray;
-static unsigned alignment_subarray;
+static AlignSize alignment_subarray;
 unsigned size_error_code;
 unsigned alignment_error_code;
 
@@ -147,7 +147,7 @@ const char *type_to_error_string(Type *type)
 			asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
 		case TYPE_INFERRED_ARRAY:
-			asprintf(&buffer, "%s[?]", type_to_error_string(type->array.base));
+			asprintf(&buffer, "%s[*]", type_to_error_string(type->array.base));
 			return buffer;
 		case TYPE_SUBARRAY:
 			asprintf(&buffer, "%s[]", type_to_error_string(type->array.base));
@@ -753,7 +753,7 @@ static Type *type_generate_inferred_array(Type *arr_type, bool canonical)
 	Type *arr = arr_type->type_cache[INFERRED_ARRAY_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_INFERRED_ARRAY, strformat("%s[_]", arr_type->name));
+		arr = type_new(TYPE_INFERRED_ARRAY, strformat("%s[*]", arr_type->name));
 		arr->array.base = arr_type;
 		arr_type->type_cache[INFERRED_ARRAY_OFFSET] = arr;
 		if (arr_type == arr_type->canonical)
@@ -887,6 +887,7 @@ bool type_is_user_defined(Type *type)
 		case TYPE_UNION:
 		case TYPE_ERRTYPE:
 		case TYPE_TYPEDEF:
+		case TYPE_DISTINCT:
 			return true;
 		default:
 			return false;
@@ -1227,12 +1228,64 @@ bool type_is_subtype(Type *type, Type *possible_subtype)
 
 }
 
-
+Type *type_from_token(TokenType type)
+{
+	switch (type)
+	{
+		case TOKEN_ERR:
+			return type_error;
+		case TOKEN_VOID:
+			return type_void;
+		case TOKEN_BOOL:
+			return type_bool;
+		case TOKEN_CHAR:
+			return type_char;
+		case TOKEN_DOUBLE:
+			return type_double;
+		case TOKEN_FLOAT:
+			return type_float;
+		case TOKEN_I128:
+			return type_i128;
+		case TOKEN_ICHAR:
+			return type_ichar;
+		case TOKEN_INT:
+			return type_int;
+		case TOKEN_IPTR:
+			return type_iptr;
+		case TOKEN_IPTRDIFF:
+			return type_iptrdiff;
+		case TOKEN_ISIZE:
+			return type_isize;
+		case TOKEN_LONG:
+			return type_long;
+		case TOKEN_SHORT:
+			return type_short;
+		case TOKEN_U128:
+			return type_u128;
+		case TOKEN_UINT:
+			return type_uint;
+		case TOKEN_ULONG:
+			return type_ulong;
+		case TOKEN_UPTR:
+			return type_uptr;
+		case TOKEN_UPTRDIFF:
+			return type_uptrdiff;
+		case TOKEN_USHORT:
+			return type_ushort;
+		case TOKEN_USIZE:
+			return type_usize;
+		case TOKEN_TYPEID:
+			return type_typeid;
+		default:
+			UNREACHABLE
+	}
+}
 bool type_may_have_sub_elements(Type *type)
 {
 	// An alias is not ok.
 	switch (type->type_kind)
 	{
+		case TYPE_DISTINCT:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:

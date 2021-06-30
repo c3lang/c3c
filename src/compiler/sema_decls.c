@@ -123,6 +123,12 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 
 	decl->strukt.union_rep = max_alignment_element;
 
+	// All members share the same alignment
+	VECEACH(members, i)
+	{
+		members[i]->alignment = decl->alignment;
+	}
+
 	if (!max_size)
 	{
 		decl->strukt.size = 0;
@@ -221,6 +227,8 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 				member->padding = align_offset - offset;
 			}
 		}
+
+		member->alignment = member_alignment;
 
 		offset = align_offset;
 		member->offset = offset;
@@ -404,7 +412,7 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 	if (vec_size(signature->params) > MAX_PARAMS)
 	{
 		SEMA_ERROR(signature->params[MAX_PARAMS], "Number of params exceeds %d which is unsupported.", MAX_PARAMS);
-		return false;
+		return NULL;
 	}
 	STable *names = &global_context.scratch_table;
 	stable_clear(names);
@@ -770,6 +778,32 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 
 }
 
+static inline bool sema_analyse_doc_header(Ast *docs, Decl **params, Decl **extra_params)
+{
+	if (!docs) return true;
+	assert(docs->ast_kind == AST_DOCS);
+	Ast **doc_directives = docs->directives;
+	VECEACH(doc_directives, i)
+	{
+		Ast *directive = doc_directives[i];
+		if (directive->doc_directive.kind != DOC_DIRECTIVE_PARAM) continue;
+		TokenId param = directive->doc_directive.param.param;
+		const char *param_name = TOKSTR(param);
+		VECEACH(params, j)
+		{
+			if (params[j]->name == param_name) goto NEXT;
+		}
+		VECEACH(extra_params, j)
+		{
+			if (extra_params[j]->name == param_name) goto NEXT;
+		}
+		SEMA_TOKID_ERROR(param, "There is no parameter '%s', did you misspell it?", param_name);
+		return false;
+		NEXT:
+		continue;
+	}
+	return true;
+}
 static inline bool sema_analyse_func(Context *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
@@ -793,6 +827,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 		}
 		decl_set_external_name(decl);
 	}
+	if (!sema_analyse_doc_header(decl->docs, decl->func_decl.function_signature.params, NULL)) return decl_poison(decl);
 	VECEACH(decl->attributes, i)
 	{
 		Attr *attr = decl->attributes[i];
@@ -958,6 +993,7 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 	}
 	if (!sema_check_unique_parameters(decl->macro_decl.parameters)) return decl_poison(decl);
 	if (!sema_check_unique_parameters(decl->macro_decl.body_parameters)) return decl_poison(decl);
+	if (!sema_analyse_doc_header(decl->docs, decl->macro_decl.parameters, decl->macro_decl.body_parameters)) return decl_poison(decl);
 	if (decl->macro_decl.type_parent)
 	{
 		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);
@@ -1349,6 +1385,7 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 			break;
 		case DECL_DISTINCT:
 			if (!sema_analyse_distinct(context, decl)) return decl_poison(decl);
+			decl_set_external_name(decl);
 			break;
 		case DECL_TYPEDEF:
 			if (!sema_analyse_typedef(context, decl)) return decl_poison(decl);

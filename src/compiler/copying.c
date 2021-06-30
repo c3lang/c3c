@@ -73,7 +73,11 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_ENUM_CONSTANT:
 		case EXPR_MEMBER_ACCESS:
 			UNREACHABLE
+		case EXPR_FLATPATH:
 		case EXPR_UNDEF:
+			return expr;
+		case EXPR_CT_CALL:
+			MACRO_COPY_EXPR_LIST(expr->ct_call_expr.arguments);
 			return expr;
 		case EXPR_PLACEHOLDER:
 		case EXPR_CONST_IDENTIFIER:

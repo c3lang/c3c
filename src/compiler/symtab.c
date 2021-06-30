@@ -117,7 +117,7 @@ void symtab_init(uint32_t capacity)
 	kw_param = KW_DEF("param");
 	kw_pure = KW_DEF("pure");
 	kw_qnameof = KW_DEF("qnameof");
-	kw_require = KW_DEF("required");
+	kw_require = KW_DEF("require");
 	kw_sizeof = KW_DEF("sizeof");
 	kw_std = KW_DEF("std");
 	kw___ceil = KW_DEF("__ceil");
@@ -177,6 +177,14 @@ const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, Toke
 	entry->hash = fnv1hash;
 	entry->type = *type;
 	symtab.count++;
+	return entry->value;
+}
+
+const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type)
+{
+	SymEntry *entry = entry_find(symbol, len, fnv1hash);
+	if (!entry->value) return NULL;
+	*type = entry->type;
 	return entry->value;
 }
 

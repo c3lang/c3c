@@ -197,6 +197,7 @@ typedef enum
 	EXPR_MACRO_EXPANSION,
 	EXPR_MEMBER_ACCESS,
 	EXPR_IDENTIFIER,
+	EXPR_FLATPATH,
 	EXPR_INITIALIZER_LIST,
 	EXPR_LEN,
 	EXPR_PLACEHOLDER,
@@ -212,6 +213,7 @@ typedef enum
 	EXPR_TYPEOF,
 	EXPR_UNARY,
 	EXPR_UNDEF,
+	EXPR_CT_CALL,
 } ExprKind;
 
 typedef enum
@@ -440,6 +442,7 @@ typedef enum
 	TOKEN_VOLATILE,
 	TOKEN_WHILE,
 
+	TOKEN_CT_ALIGNOF,       // $alignof
 	TOKEN_CT_ASSERT,        // $assert
 	TOKEN_CT_CASE,          // $case
 	TOKEN_CT_DEFAULT,       // $default
@@ -449,6 +452,8 @@ typedef enum
 	TOKEN_CT_ENDIF,         // $endif
 	TOKEN_CT_ENDSWITCH,     // $endswitch
 	TOKEN_CT_IF,            // $if
+	TOKEN_CT_OFFSETOF,      // $offsetof
+	TOKEN_CT_SIZEOF,        // $sizeof
 	TOKEN_CT_SWITCH,        // $switch
 	TOKEN_CT_UNREACHABLE,   // $unreachable
 

@@ -319,6 +319,8 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_DOCS_LINE:
 			return "DOCS_LINE";
 
+		case TOKEN_CT_ALIGNOF:
+			return "$alignof";
 		case TOKEN_CT_ASSERT:
 			return "$assert";
 		case TOKEN_CT_CASE:
@@ -337,6 +339,10 @@ const char *token_type_to_string(TokenType type)
 			return "$endswitch";
 		case TOKEN_CT_IF:
 			return "$if";
+		case TOKEN_CT_OFFSETOF:
+			return "$offsetof";
+		case TOKEN_CT_SIZEOF:
+			return "$sizeof";
 		case TOKEN_CT_SWITCH:
 			return "$switch";
 		case TOKEN_CT_UNREACHABLE:

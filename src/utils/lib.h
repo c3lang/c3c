@@ -59,6 +59,11 @@ static inline bool is_lower(char c)
 	return c >= 'a' && c <= 'z';
 }
 
+static inline bool is_lower_(char c)
+{
+	return c == '_' || (c >= 'a' && c <= 'z');
+}
+
 static inline bool is_upper(char c)
 {
 	return c >= 'A' && c <= 'Z';
@@ -267,6 +272,11 @@ static inline bool is_letter(char c)
 		default:
 			return false;
 	}
+}
+
+static inline bool is_number(char c)
+{
+	return c >= '0' && c <= '9';
 }
 
 

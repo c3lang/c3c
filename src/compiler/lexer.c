@@ -677,6 +677,14 @@ static void skip_doc_stars(Lexer *lexer)
 	while (peek(lexer) == '*' && peek_next(lexer) != '/') next(lexer);
 }
 
+static bool end_of_docs_found(Lexer *lexer)
+{
+	int lookahead = 0;
+	// while we see '*' walk forward.
+	while (lexer->current[lookahead] == '*') lookahead++;
+	// And if it doesn't have a '/' at the last position it isn't either.
+	return lexer->current[lookahead] == '/';
+}
 /**
  * OPTIONALLY adds * / token. This allows any number of '*' to preceed it.
  * @param lexer
@@ -732,6 +740,8 @@ static DocEnd parse_doc_remainder(Lexer *lexer)
 			case '*':
 				// Did we find the end of the directives?
 				// If so return control.
+				if (!end_of_docs_found(lexer)) break;
+
 				if (characters_read > 0)
 				{
 					add_token(lexer, TOKEN_DOCS_LINE, 0);

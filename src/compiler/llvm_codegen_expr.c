@@ -3134,6 +3134,8 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_CT_IDENT:
 		case EXPR_HASH_IDENT:
 		case EXPR_PLACEHOLDER:
+		case EXPR_CT_CALL:
+		case EXPR_FLATPATH:
 			UNREACHABLE
 		case EXPR_UNDEF:
 			// Should never reach this.

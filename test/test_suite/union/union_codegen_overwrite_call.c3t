@@ -23,9 +23,9 @@ entry:
 %b = alloca %UnionB, align 8
 %0 = bitcast %UnionB* %b to i32*
 %1 = call i32 @bar()
-store i32 %1, i32* %0, align 4
+store i32 %1, i32* %0, align 8
 %2 = bitcast %UnionB* %b to %b*
 %3 = bitcast %b* %2 to i8*
-call void @llvm.memset.p0i8.i64(i8* align 4 %3, i8 0, i64 4, i1 false)
+call void @llvm.memset.p0i8.i64(i8* align 8 %3, i8 0, i64 4, i1 false)
 ret void
 
