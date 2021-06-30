@@ -73,11 +73,11 @@ enum WindowEventID : cint
 }
 
 
-extern int getNumVideoDrivers() @cname("SDL_GetNumVideoDrivers");
-extern char* getVideoDriver(int index) @cname("SDL_GetVideoDriver");
-extern SdlWindow* createWindowFrom(void* data) @cname("SDL_CreateWindowFrom");
-extern int getWindowDisplayMode(SdlWindow* window, DisplayMode *mode) @cname("SDL_GetWindowDisplayMode");
-extern uint getWindowFlags(SdlWindow* window) @cname("SDL_GetWindowFlags");
+extern int getNumVideoDrivers() @extname("SDL_GetNumVideoDrivers");
+extern char* getVideoDriver(int index) @extname("SDL_GetVideoDriver");
+extern SdlWindow* createWindowFrom(void* data) @extname("SDL_CreateWindowFrom");
+extern int getWindowDisplayMode(SdlWindow* window, DisplayMode *mode) @extname("SDL_GetWindowDisplayMode");
+extern uint getWindowFlags(SdlWindow* window) @extname("SDL_GetWindowFlags");
 
 
 const uint WINDOWPOS_UNDEFINED_MASK = 0x1FFF0000;

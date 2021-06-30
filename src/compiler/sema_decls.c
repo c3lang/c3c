@@ -744,7 +744,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 		case ATTRIBUTE_EXTNAME:
 			if (context->module->is_generic)
 			{
-				SEMA_TOKID_ERROR(attr->name, "'cname' attributes are not allowed in generic modules.");
+				SEMA_TOKID_ERROR(attr->name, "'extname' attributes are not allowed in generic modules.");
 				return false;
 			}
 			if (!attr->expr)

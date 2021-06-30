@@ -363,7 +363,7 @@ typedef struct
 		bool attr_noreturn : 1;
 		bool attr_inline : 1;
 		bool attr_noinline : 1;
-		bool attr_cname : 1;
+		bool attr_extname : 1;
 		bool attr_stdcall : 1;
 	};
 

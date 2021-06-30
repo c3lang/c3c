@@ -1,9 +1,9 @@
 module std::mem;
 
-extern func void* _malloc(usize bytes) @cname("malloc");
-extern func void* _realloc(void* ptr, usize bytes) @cname("realloc");
-extern func void* _calloc(usize bytes, usize elements) @cname("calloc");
-extern func void _free(void* ptr) @cname("free");
+extern func void* _malloc(usize bytes) @extname("malloc");
+extern func void* _realloc(void* ptr, usize bytes) @extname("realloc");
+extern func void* _calloc(usize bytes, usize elements) @extname("calloc");
+extern func void _free(void* ptr) @extname("free");
 
 enum AllocationKind
 {

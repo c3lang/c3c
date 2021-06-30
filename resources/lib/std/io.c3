@@ -23,9 +23,9 @@ struct File
     void *file;
 }
 
-extern func int _puts(char* message) @cname("puts");
+extern func int _puts(char* message) @extname("puts");
 extern func int printf(char* message, ...);
-extern func int _putchar(char c) @cname("putchar");
+extern func int _putchar(char c) @extname("putchar");
 
 extern File *__stdinp;
 

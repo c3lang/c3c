@@ -26,11 +26,11 @@ void* gWindow = null;
 void* gScreenSurface = null;
 
 
-extern func int init(uint flags) @cname("SDL_Init");
-extern func int initSubSystem(uint flags) @cname("SDL_InitSubSystem");
-extern func void quitSubSystem(uint flags) @cname("SDL_QuitSubSystem");
-extern func uint wasInit(uint flags) @cname("SDL_WasInit");
-extern func void quit() @cname("SDL_Quit");
+extern func int init(uint flags) @extname("SDL_Init");
+extern func int initSubSystem(uint flags) @extname("SDL_InitSubSystem");
+extern func void quitSubSystem(uint flags) @extname("SDL_QuitSubSystem");
+extern func uint wasInit(uint flags) @extname("SDL_WasInit");
+extern func void quit() @extname("SDL_Quit");
 
 enum SDLWindowFlags : c_int
 {
@@ -59,8 +59,8 @@ enum SDLWindowFlags : c_int
     VULKAN        = 0x10000000       /**< window usable for Vulkan surface */
 }
 
-extern func void* createWindow(char *title, uint x, uint y, int w, int h, uint flags) @cname("SDL_CreateWindow");
-extern func void* getWindowSurface(void *window) @cname("SDL_GetWindowSurface");
+extern func void* createWindow(char *title, uint x, uint y, int w, int h, uint flags) @extname("SDL_CreateWindow");
+extern func void* getWindowSurface(void *window) @extname("SDL_GetWindowSurface");
 const uint WINDOWPOS_UNDEFINED_MASK = 0x1FFF0000;
 extern func int exit(int code);
 extern func int printf(char *mess, ...);
@@ -96,8 +96,8 @@ func void close()
 	quit();
 }
 
-extern func int pollEvent(SDL_Event *event) @cname("SDL_PollEvent");
-extern func int updateWindowSurface(void *window) @cname("SDL_UpdateWindowSurface");
+extern func int pollEvent(SDL_Event *event) @extname("SDL_PollEvent");
+extern func int updateWindowSurface(void *window) @extname("SDL_UpdateWindowSurface");
 
 enum SDLEventType : uint
 {
