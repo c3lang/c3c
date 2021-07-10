@@ -5524,6 +5524,64 @@ static inline bool sema_expr_analyse_ct_alignof(Context *context, Type *to, Expr
 	return true;
 }
 
+static inline bool sema_expr_analyse_ct_offsetof(Context *context, Type *to, Expr *expr)
+{
+	Expr *first = expr->ct_call_expr.arguments[0];
+	if (!sema_analyse_ct_call_parameters(context, expr)) return false;
+	Type *type = expr->ct_call_expr.type->canonical;
+	ExprFlatElement *elements = expr->ct_call_expr.flatpath;
+	if (!vec_size(elements))
+	{
+		SEMA_ERROR(first, "Expected a path to get the offset of.");
+		return false;
+	}
+	ByteSize offset = 0;
+	VECEACH(elements, i)
+	{
+		ExprFlatElement element = elements[i];
+		type = type_flatten_distinct(type);
+		if (element.array)
+		{
+			if (type->type_kind != TYPE_ARRAY)
+			{
+				SEMA_ERROR(first, "%s is not a fixed size array.", type_quoted_error_string(expr->ct_call_expr.type));
+				return false;
+			}
+			type = type->array.base;
+			offset += type_size(type) * element.index;
+			continue;
+		}
+		if (!type_is_structlike(type))
+		{
+			if (i == 0)
+			{
+				SEMA_ERROR(first, "%s has no members.", type_quoted_error_string(expr->ct_call_expr.type));
+			}
+			else
+			{
+				SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
+			}
+			return false;
+		}
+		Decl *decl = type->decl;
+		SCOPE_START
+			add_members_to_context(context, type->decl);
+			decl = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
+		SCOPE_END;
+		if (!decl)
+		{
+			SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
+			return false;
+		}
+		type = decl->type;
+		offset += decl->offset;
+	}
+
+	expr_rewrite_to_int_const(expr, type_compint, offset);
+
+	return true;
+}
+
 static inline bool sema_expr_analyse_ct_call(Context *context, Type *to, Expr *expr)
 {
 	switch (expr->ct_call_expr.token_type)
@@ -5533,7 +5591,7 @@ static inline bool sema_expr_analyse_ct_call(Context *context, Type *to, Expr *e
 		case TOKEN_CT_ALIGNOF:
 			return sema_expr_analyse_ct_alignof(context, to, expr);
 		case TOKEN_CT_OFFSETOF:
-			TODO
+			return sema_expr_analyse_ct_offsetof(context, to, expr);
 		default:
 			UNREACHABLE
 	}

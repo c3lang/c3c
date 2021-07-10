@@ -1,0 +1,70 @@
+// #target: x64_darwin
+module foo;
+
+int[100] zfe;
+struct Bob
+{
+    Bob[] x;
+    char[100] y;
+    struct w {
+        int z;
+    }
+}
+
+union Ex
+{
+    char[8] c;
+    int[2] y;
+    double z;
+}
+
+struct Br
+{
+    int y;
+    char x;
+}
+struct Ar
+{
+    long z;
+    Br[10] br;
+}
+
+union Foob
+{
+    long a;
+    char[8] c;
+}
+
+
+short y = $offsetof("Bob.y");
+int z = $offsetof("Bob.y");
+int w = $offsetof(Bob, y);
+int x1 = $offsetof("Ex.c[3]");
+int x2 = $offsetof("Ex", y[1]);
+int x4 = $offsetof("Ar.br[1]");
+int x6 = $offsetof(Ar, "br[1].x");
+int x5 = $offsetof("Ar", "br[1]");
+int x7 = $offsetof("Ar", br[2].x);
+int x8 = $offsetof(Ar, br[2]);
+int z0 = $offsetof("Foob.c");
+int z00 = $offsetof("Foob.c[0]");
+int z01 = $offsetof("Foob.c[1]");
+int z02 = $offsetof("Foob.c[5]");
+int z03 = $offsetof("Foob.a");
+
+// #expect: foo.ll
+@foo.y = global i16 16, align 2
+@foo.z = global i32 16, align 4
+@foo.w = global i32 16, align 4
+@foo.x1 = global i32 3, align 4
+@foo.x2 = global i32 4, align 4
+@foo.x4 = global i32 16, align 4
+@foo.x6 = global i32 20, align 4
+@foo.x5 = global i32 16, align 4
+@foo.x7 = global i32 28, align 4
+@foo.x8 = global i32 24, align 4
+@foo.z0 = global i32 0, align 4
+@foo.z00 = global i32 0, align 4
+@foo.z01 = global i32 1, align 4
+@foo.z02 = global i32 5, align 4
+@foo.z03 = global i32 0, align 4
