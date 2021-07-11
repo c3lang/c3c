@@ -492,7 +492,7 @@ static EnvironmentType environment_type_from_llvm_string(StringSlice env)
 		}
 	}
 
-#define STRCASE(_str, _arch) if (slicestrcmp(env, _str) == 0) return _arch;
+#define STRCASE(_str, _arch) if (slicestrcmp(env, _str)) return _arch;
 		STRCASE("gnu", ENV_TYPE_GNU)
 		STRCASE("gnuabin32", ENV_TYPE_GNUABIN32)
 		STRCASE("gnuabi64", ENV_TYPE_GNUABI64)
