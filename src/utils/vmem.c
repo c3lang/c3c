@@ -42,7 +42,7 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 	size_t allocated_after = to_allocate + vmem->allocated;
 #if PLATFORM_WINDOWS
 	size_t blocks_committed = vmem->committed / COMMIT_PAGE_SIZE;
-	size_t end_block = (allocated_after) / COMMIT_PAGE_SIZE;
+	size_t end_block = (allocated_after + COMMIT_PAGE_SIZE - 1) / COMMIT_PAGE_SIZE;  // round up
 	size_t blocks_to_allocate = end_block - blocks_committed;
 	if (blocks_to_allocate > 0)
 	{
