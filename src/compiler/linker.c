@@ -25,7 +25,8 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	{
 		case OS_TYPE_WIN32:
 			// TODO: properly detect if llvm-lld is available
-			return platform_target.x64.is_mingw64;
+			if (!platform_target.x64.is_mingw64) return false;
+			break;
 		case OS_TYPE_MACOSX:
 			add_files(&args, files_to_link, file_count);
 			vec_add(args, "-lSystem");

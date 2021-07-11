@@ -571,7 +571,7 @@ static OsType os_from_llvm_string(StringSlice os_string)
 
 static VendorType vendor_from_llvm_string(StringSlice slice)
 {
-#define STRCASE(_str, _vendor) if (slicestrcmp(slice, _str) == 0) return _vendor;
+#define STRCASE(_str, _vendor) if (slicestrcmp(slice, _str)) return _vendor;
 	STRCASE("apple", VENDOR_APPLE)
 	STRCASE("pc", VENDOR_PC)
 	STRCASE("scei", VENDOR_SCEI)
