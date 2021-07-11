@@ -213,3 +213,19 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 	}
 	closedir(dir);
 }
+
+#if PLATFORM_WINDOWS
+
+char *realpath(const char *path, char *const resolved_path)
+{
+	char *result = NULL == resolved_path ? calloc(PATH_MAX + 1, 1) : resolved_path;
+	if (NULL == result) return NULL;
+	if (!GetFullPathNameA(path, MAX_PATH, result, NULL))
+	{
+		if (NULL == resolved_path) free(result);
+		return NULL;
+	}
+	return result;
+}
+
+#endif

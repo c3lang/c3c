@@ -60,3 +60,43 @@ char *strcat_arena(const char *a, const char *b)
 	buffer[a_len + b_len] = '\0';
 	return buffer;
 }
+
+#if PLATFORM_WINDOWS
+
+int asprintf(char **strp, const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	int res = vasprintf(strp, fmt, args);
+	va_end(args);
+	return res;
+}
+
+int vasnprintf(char **strp, const char *fmt, va_list args)
+{
+	va_list args_copy;
+	va_copy(args_copy, args);
+	int res = vsprintf(NULL, fmt, args);
+	if (res < 0) goto END;
+	char *buf = calloc(res + 1, 1);
+	if (NULL == buf) goto END;
+	sprintf(buf, fmt, args_copy);  // this can't fail, right?
+	*strp = buf;
+	END:
+	va_end(args_copy);
+	return res;
+}
+
+char *strndup(const char *s, size_t n)
+{
+	n = strnlen(s, n);
+	char *t = calloc(n + 1, 1);
+	if (NULL != t)
+	{
+		memcpy(t, s, n);
+		t[n] = '\0';
+	}
+	return t;
+}
+
+#endif
