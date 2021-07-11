@@ -13,6 +13,10 @@
 #include <errno.h>
 #include "whereami.h"
 
+#if PLATFORM_WINDOWS
+#include <windows.h>
+#endif
+
 
 const char* expand_path(const char* path)
 {
@@ -186,7 +190,14 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 		// Doesn't end with .c3
 		if (strncmp(&ent->d_name[namelen - 3], ".c3", 3) != 0)
 		{
-			if (ent->d_type == DT_DIR && ent->d_name[0] != '.' && recursive)
+			bool is_directory;
+#if PLATFORM_WINDOWS
+			struct stat st;
+			is_directory = stat(ent->d_name, &st) == 0 && S_ISDIR(st.st_mode);
+#else
+			is_directory = ent->d_type == DT_DIR;  // is it POSIX-compliant? As
+#endif
+			if (is_directory && ent->d_name[0] != '.' && recursive)
 			{
 				char *new_path = strndup(ent->d_name, namelen);
 				file_add_wildcard_files(files, new_path, recursive);
