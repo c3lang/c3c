@@ -1,5 +1,9 @@
 #include "compiler_internal.h"
 
+#if PLATFORM_WINDOWS
+#include <llvm/Config/llvm-config.h>
+#endif
+
 extern bool llvm_link_elf(const char **args, int arg_count, const char** error_string);
 extern bool llvm_link_macho(const char **args, int arg_count, const char** error_string);
 extern bool llvm_link_coff(const char **args, int arg_count, const char** error_string);
@@ -14,6 +18,60 @@ static void add_files(const char ***args, const char **files_to_link, unsigned f
 	}
 }
 
+static const char *join_strings(const char **args, unsigned count)
+{
+	unsigned size_needed = 1;
+	for (unsigned i = 0; i < count; ++i)
+	{
+		size_needed += strlen(args[i]);
+	}
+	char *output = malloc_arena(size_needed);
+	char *ptr = output;
+	for (unsigned i = 0; i < count; ++i)
+	{
+		unsigned len = strlen(args[i]);
+		memcpy(ptr, args[i], len);
+		ptr += len;
+	}
+	*ptr = '\0';
+	return output;
+}
+
+static void prepare_msys2_clang64_linker_flags(const char ***args, const char **files_to_link, unsigned file_count)
+{
+	const char *root = getenv("MSYSTEM_PREFIX");
+#define add_arg(opt) vec_add(*args, opt)
+	add_arg("-m");
+	add_arg("i386pep");
+	add_arg("-Bdynamic");
+	add_arg(join_strings((const char *[]){root, "\\x86_64-w64-mingw32\\lib\\crt2.o"}, 2));
+	add_arg(join_strings((const char *[]){root, "\\x86_64-w64-mingw32\\lib\\crtbegin.o"}, 2));
+	add_arg(join_strings((const char *[]){"-L", root, "\\x86_64-w64-mingw32\\lib"}, 3));
+	add_arg(join_strings((const char *[]){"-L", root, "\\lib"}, 3));
+	add_arg(join_strings((const char *[]){"-L", root, "\\x86_64-w64-mingw32\\sys-root\\mingw\\lib"}, 3));
+	add_arg(join_strings((const char *[]){"-L", root, "\\lib\\clang\\", LLVM_VERSION_STRING, "\\lib\\windows"}, 5));
+	add_files(args, files_to_link, file_count);
+	add_arg("-lmingw32");
+	add_arg(join_strings((const char *[]){root, "\\lib\\clang\\", LLVM_VERSION_STRING, "\\lib\\windows\\libclang_rt.builtins-x86_64.a"}, 4));
+	add_arg("-lunwind");
+	add_arg("-lmoldname");
+	add_arg("-lmingwex");
+	add_arg("-lmsvcrt");
+	add_arg("-ladvapi32");
+	add_arg("-lshell32");
+	add_arg("-luser32");
+	add_arg("-lkernel32");
+	add_arg("-lmingw32");
+	add_arg(join_strings((const char *[]){root, "\\lib\\clang\\", LLVM_VERSION_STRING, "\\lib\\windows\\libclang_rt.builtins-x86_64.a"}, 4));
+	add_arg("-lunwind");
+	add_arg("-lmoldname");
+	add_arg("-lmingwex");
+	add_arg("-lmsvcrt");
+	add_arg("-lkernel32");
+	add_arg(join_strings((const char *[]){root, "\\x86_64-w64-mingw32\\lib\\crtend.o"}, 2));
+#undef add_arg
+}
+
 static bool link_exe(const char *output_file, const char **files_to_link, unsigned file_count)
 {
 	const char **args = NULL;
@@ -25,7 +83,18 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	{
 		case OS_TYPE_WIN32:
 			// TODO: properly detect if llvm-lld is available
+			// TODO: check if running inside MSYS2, it could be done via getting MSYSTEM environment variable
+			// https://stackoverflow.com/questions/65527286/how-to-check-if-my-program-is-running-on-mingwor-msys-shell-or-on-cmd
 			if (!platform_target.x64.is_mingw64) return false;
+			if (NULL == getenv("MSYSTEM")) return false;
+			if (!strcmp(getenv("MSYSTEM"), "CLANG64") || !strcmp(getenv("MSYSTEM"), "MINGW64"))
+			{
+				prepare_msys2_clang64_linker_flags(&args, files_to_link, file_count);
+			}
+			else
+			{
+				return false;
+			}
 			break;
 		case OS_TYPE_MACOSX:
 			add_files(&args, files_to_link, file_count);
@@ -112,7 +181,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	switch (platform_target.object_format)
 	{
 		case OBJ_FORMAT_COFF:
-			success = llvm_link_coff(args, (int)vec_size(args), &error);
+			success = (platform_target.x64.is_mingw64 ? llvm_link_mingw : llvm_link_coff)(args, (int)vec_size(args), &error);
 			break;
 		case OBJ_FORMAT_ELF:
 			success = llvm_link_elf(args, (int)vec_size(args), &error);
