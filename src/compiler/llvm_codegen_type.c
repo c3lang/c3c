@@ -270,7 +270,8 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 			UNREACHABLE;
 		case ABI_ARG_INDIRECT:
 			vec_add(params, llvm_get_ptr_type(context, real_return_type));
-			FALLTHROUGH;
+			return_type = llvm_get_type(context, type_void);
+			break;
 		case ABI_ARG_EXPAND_COERCE:
 		{
 			LLVMTypeRef lo = llvm_abi_type(context, ret_arg_info->direct_pair.lo);
