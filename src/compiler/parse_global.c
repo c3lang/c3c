@@ -326,11 +326,18 @@ bool parse_module(Context *context)
 
 	bool is_private = try_consume(context, TOKEN_PRIVATE);
 
+	if (TOKEN_IS(TOKEN_STRING))
+	{
+		SEMA_TOKEN_ERROR(context->tok, "'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
+		return false;
+	}
+
 	if (!TOKEN_IS(TOKEN_IDENT))
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Module statement should be followed by the name of the module.");
 		return false;
 	}
+
 
 	Path *path = parse_module_path(context);
 
@@ -1949,6 +1956,11 @@ static inline bool parse_import(Context *context)
 
 	if (!TOKEN_IS(TOKEN_IDENT))
 	{
+		if (TOKEN_IS(TOKEN_STRING))
+		{
+			SEMA_TOKEN_ERROR(context->tok, "An import should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
+			return false;
+		}
 		SEMA_TOKEN_ERROR(context->tok, "Import statement should be followed by the name of the module to import.");
 		return false;
 	}
@@ -2237,6 +2249,9 @@ Decl *parse_top_level_statement(Context *context)
 			{
 				SEMA_TOKEN_ERROR(context->tok, "Compile time constant unexpectedly found.");
 			}
+			return poisoned_decl;
+		case TOKEN_IMPORT:
+			SEMA_TOKEN_ERROR(context->tok, "Imports are only allowed directly after the module declaration.");
 			return poisoned_decl;
 		default:
 			// We could have included all fundamental types above, but do it here instead.
