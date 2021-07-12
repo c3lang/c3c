@@ -1,8 +1,6 @@
 #include "compiler_internal.h"
 
-#if PLATFORM_WINDOWS
-#include <llvm/Config/llvm-config.h>
-#endif
+#include <llvm/Config/llvm-config.h>  // for LLVM_VERSION_STRING
 
 extern bool llvm_link_elf(const char **args, int arg_count, const char** error_string);
 extern bool llvm_link_macho(const char **args, int arg_count, const char** error_string);
@@ -20,24 +18,15 @@ static void add_files(const char ***args, const char **files_to_link, unsigned f
 
 static const char *join_strings(const char **args, unsigned count)
 {
-	unsigned size_needed = 1;
+	char *res = "";
 	for (unsigned i = 0; i < count; ++i)
 	{
-		size_needed += strlen(args[i]);
+		res = strcat_arena(res, args[i]);
 	}
-	char *output = malloc_arena(size_needed);
-	char *ptr = output;
-	for (unsigned i = 0; i < count; ++i)
-	{
-		unsigned len = strlen(args[i]);
-		memcpy(ptr, args[i], len);
-		ptr += len;
-	}
-	*ptr = '\0';
-	return output;
+	return res;
 }
 
-static void prepare_msys2_clang64_linker_flags(const char ***args, const char **files_to_link, unsigned file_count)
+static void prepare_msys2_linker_flags(const char ***args, const char **files_to_link, unsigned file_count)
 {
 	const char *root = getenv("MSYSTEM_PREFIX");
 #define add_arg(opt) vec_add(*args, opt)
@@ -89,7 +78,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			if (NULL == getenv("MSYSTEM")) return false;
 			if (!strcmp(getenv("MSYSTEM"), "CLANG64") || !strcmp(getenv("MSYSTEM"), "MINGW64"))
 			{
-				prepare_msys2_clang64_linker_flags(&args, files_to_link, file_count);
+				prepare_msys2_linker_flags(&args, files_to_link, file_count);
 			}
 			else
 			{
