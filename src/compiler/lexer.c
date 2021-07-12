@@ -397,6 +397,23 @@ static inline bool scan_hex(Lexer *lexer)
 		while (is_digit(peek(lexer))) next(lexer);
 	}
 	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
+	if (is_float)
+	{
+		// IMPROVE
+		// For the float we actually parse things, using strtold
+		// this is not ideal, we should try to use f128 if possible for example.
+		// Possibly we should move to a BigDecimal implementation or at least a soft float 256
+		// implementation for the constants.
+		char *end = NULL;
+		long double fval = strtold(lexer->lexing_start, &end);
+		if (end != lexer->current)
+		{
+			return add_error_token(lexer, "Invalid float value.");
+		}
+		add_generic_token(lexer, TOKEN_REAL);
+		lexer->latest_token_data->value = fval;
+		return true;
+	}
 	return add_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
 }
 
