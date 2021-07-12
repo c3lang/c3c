@@ -235,23 +235,27 @@ static inline Path *parse_module_path(Context *context)
 	assert(TOKEN_IS(TOKEN_IDENT));
 	scratch_buffer_clear();
 	SourceSpan span = source_span_from_token_id(context->tok.id);
-	scratch_buffer_append_len(TOKSTR(context->tok), TOKLEN(context->tok));
-	TokenId last_token;
 	while (1)
 	{
-		last_token = context->tok.id;
+		TokenId last_token = context->tok.id;
+		const char *string = TOKSTR(context->tok);
 		if (!try_consume(context, TOKEN_IDENT))
 		{
 			SEMA_TOKEN_ERROR(context->tok, "Each '::' must be followed by a regular lower case sub module name.");
 			return NULL;
 		}
+		if (string == kw_main)
+		{
+			SEMA_TOKID_ERROR(context->prev_tok, "'main' is not a valid name in a module path, please pick something else.");
+			return NULL;
+		}
+		scratch_buffer_append_len(string, TOKLEN(context->prev_tok));
 		if (!try_consume(context, TOKEN_SCOPE))
 		{
 			span.end_loc = last_token;
 			break;
 		}
 		scratch_buffer_append("::");
-		scratch_buffer_append_len(TOKSTR(context->tok), TOKLEN(context->tok));
 	}
 	return path_create_from_string(scratch_buffer_to_string(), global_context.scratch_buffer_len, span);
 }
@@ -345,8 +349,8 @@ bool parse_module(Context *context)
 	if (!path)
 	{
 		path = CALLOCS(Path);
-		path->len = strlen("INVALID");
-		path->module = "INVALID";
+		path->len = strlen("#invalid");
+		path->module = "#invalid";
 		path->span = INVALID_RANGE;
 		context_set_module(context, path, NULL, false);
 		recover_top_level(context);
