@@ -364,6 +364,31 @@ static bool scan_binary(Lexer *lexer)
 }
 
 /**
+ * Scan the digit after the exponent, e.g +12 or -12 or 12
+ * @param lexer
+ * @return false if lexing failed.
+ */
+static inline bool scan_exponent(Lexer *lexer)
+{
+	// Step past e/E or p/P
+	next(lexer);
+	char c = next(lexer);
+	// Step past +/-
+	if (c == '+' || c == '-') c = next(lexer);
+	// Now we need at least one digit
+	if (!is_digit(c))
+	{
+		if (c == 0) return add_error_token(lexer, "End of file was reached while parsing the exponent.");
+		if (c == '\n' || c == '\r') return add_error_token(lexer, "End of line was reached while parsing the exponent.");
+		if (c < 31 || c > 127) add_error_token(lexer, "An unexpected character was found while parsing the exponent.");
+		return add_error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c);
+	}
+	// Walk through all of the digits.
+	while (is_digit(peek(lexer))) next(lexer);
+	return true;
+}
+
+/**
  * Scan a hex number, including floating point hex numbers of the format 0x31a31ff.21p12. Note that the
  * exponent is written in decimal.
  **/
@@ -389,14 +414,27 @@ static inline bool scan_hex(Lexer *lexer)
 	if (c == 'p' || c == 'P')
 	{
 		is_float = true;
-		next(lexer);
-		char c2 = next(lexer);
-		// The exponent may be prefixed with +/-
-		if (c2 == '+' || c2 == '-') c2 = next(lexer);
-		if (!is_digit(c2)) return add_error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c2);
-		while (is_digit(peek(lexer))) next(lexer);
+		is_float = true;
+		if (!scan_exponent(lexer)) return false;
 	}
 	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
+	if (is_float)
+	{
+		// IMPROVE
+		// For the float we actually parse things, using strtold
+		// this is not ideal, we should try to use f128 if possible for example.
+		// Possibly we should move to a BigDecimal implementation or at least a soft float 256
+		// implementation for the constants.
+		char *end = NULL;
+		long double fval = strtold(lexer->lexing_start, &end);
+		if (end != lexer->current)
+		{
+			return add_error_token(lexer, "Invalid float value.");
+		}
+		add_generic_token(lexer, TOKEN_REAL);
+		lexer->latest_token_data->value = fval;
+		return true;
+	}
 	return add_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
 }
 
@@ -435,15 +473,7 @@ static inline bool scan_dec(Lexer *lexer)
 	if (c == 'e' || c == 'E')
 	{
 		is_float = true;
-		// Step past e/E
-		next(lexer);
-		char c2 = next(lexer);
-		// Step past +/-
-		if (c2 == '+' || c2 == '-') c2 = next(lexer);
-		// Now we need at least one digit
-		if (!is_digit(c2)) return add_error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c2);
-		// Walk through all of the digits.
-		while (is_digit(peek(lexer))) next(lexer);
+		if (!scan_exponent(lexer)) return false;
 	}
 
 	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
