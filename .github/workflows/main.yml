@@ -17,17 +17,18 @@ jobs:
         shell: msys2 {0}
     steps:
       - uses: actions/checkout@v2
+
       - uses: msys2/setup-msys2@v2
         with:
           msystem: CLANG64
           update: true
-          install: git mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain
+          install: git binutils mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain
 
       - name: CMake
         run: |
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -G "MSYS Makefiles"
-          cmake --build .
+          C:\msys64\clang64\bin\cmake.exe .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -G "MinGW Makefiles"
+          C:\msys64\clang64\bin\cmake.exe --build .
       - name: Build testproject
         run: |
           cd resources/testproject
