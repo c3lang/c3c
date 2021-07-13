@@ -27,8 +27,8 @@ jobs:
       - name: CMake
         run: |
           mkdir build && cd build
-          D:\a\_temp\msys\clang64\bin\cmake.exe .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -G "MinGW Makefiles"
-          D:\a\_temp\msys\clang64\bin\cmake.exe --build .
+          /clang64/bin/cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          /clang64/bin/cmake --build .
       - name: Build testproject
         run: |
           cd resources/testproject
@@ -39,13 +39,13 @@ jobs:
     strategy:
       matrix:
         build_type: [Release, Debug]
-        
+
     steps:
       - uses: actions/checkout@v1
       - name: (Ubuntu) Download LLVM
         run: |
           sudo apt-get install zlib1g zlib1g-dev clang-11 libllvm11 llvm-11 llvm-11-dev llvm-11-runtime liblld-11-dev liblld-11
-          
+
       - name: CMake
         run: |
           mkdir build && cd build
