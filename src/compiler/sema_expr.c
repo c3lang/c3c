@@ -4898,7 +4898,13 @@ static inline bool sema_expr_analyse_expr_block(Context *context, Type *to, Expr
 	Ast **saved_returns = context_push_returns(context);
 	context->expected_block_type = to;
 
+
 	SCOPE_START_WITH_FLAGS(SCOPE_EXPR_BLOCK)
+
+		PUSH_CONTINUE(NULL);
+		PUSH_BREAK(NULL);
+		PUSH_NEXT(NULL, NULL);
+
 		VECEACH(expr->expr_block.stmts, i)
 		{
 			if (!sema_analyse_statement(context, expr->expr_block.stmts[i]))
@@ -4925,7 +4931,11 @@ static inline bool sema_expr_analyse_expr_block(Context *context, Type *to, Expr
 			goto EXIT;
 		}
 		expr_set_type(expr, left_canonical);
-EXIT:
+
+	EXIT:
+		POP_BREAKCONT();
+		POP_NEXT();
+
 	SCOPE_END;
 	context_pop_returns(context, saved_returns);
 	expr->failable = context->expr_failable_return;
