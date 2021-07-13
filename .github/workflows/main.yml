@@ -27,8 +27,8 @@ jobs:
       - name: CMake
         run: |
           mkdir build && cd build
-          C:\msys64\clang64\bin\cmake.exe .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -G "MinGW Makefiles"
-          C:\msys64\clang64\bin\cmake.exe --build .
+          /c/msys64/clang64/bin/cmake.exe .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -G "MinGW Makefiles"
+          /c/msys64/clang64/bin/cmake.exe --build .
       - name: Build testproject
         run: |
           cd resources/testproject
