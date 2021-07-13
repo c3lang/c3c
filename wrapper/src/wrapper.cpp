@@ -65,6 +65,9 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 		case COFF:
 			if (lld::coff::link(arg_vector, false, output, output_err)) return true;
 			break;
+		case MINGW:
+			if (lld::mingw::link(arg_vector, false, output, output_err)) return true;
+			break;
 		default:
 			exit(-1);
 	}

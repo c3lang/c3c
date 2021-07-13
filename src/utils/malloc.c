@@ -31,7 +31,7 @@ void *malloc_arena(size_t mem)
 void print_arena_status(void)
 {
 	printf("-- ARENA INFO -- \n");
-	printf(" * Memory used:  %ld Kb\n", arena.allocated / 1024);
+	printf(" * Memory used:  %zu Kb\n", arena.allocated / 1024);
 	printf(" * Allocations: %d\n", allocations_done);
 }
 

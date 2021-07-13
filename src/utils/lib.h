@@ -6,6 +6,10 @@
 
 #include "common.h"
 
+#if PLATFORM_WINDOWS
+#include "direct.h"
+#endif
+
 typedef struct Task_
 {
 	void (*task)(void *arg);
@@ -434,3 +438,18 @@ static inline StringSlice strtoslice(const char *data)
   typeof(_a) __a__ = (_a); \
   typeof(_b) __b__ = (_b); \
   __a__ < __b__ ? __a__ : __b__; })
+
+// Windows-specific code
+
+
+#if PLATFORM_WINDOWS
+
+int asprintf(char **strp, const char *fmt, ...);
+int vasprintf(char **strp, const char *fmt, va_list ap);
+char *strndup(const char *s, size_t len);
+
+char *realpath(const char *path, char *resolved_path);
+
+#define mkdir(name, unused) _mkdir(name)
+
+#endif
