@@ -895,7 +895,7 @@ static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 		}
 		else
 		{
-			SEMA_ERROR(statement, "'break' is not allowed here.");
+			SEMA_ERROR(statement, "There is no valid target for 'break', did you make a mistake?");
 		}
 		return false;
 	}
