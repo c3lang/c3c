@@ -3656,7 +3656,7 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 	}
 
 	// 7. Attempt arithmetic promotion, to promote both to a common type.
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot subtract '%s' from '%s'"))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "There is no implicit conversion available for '%s' - '%s'."))
 	{
 		return false;
 	}
