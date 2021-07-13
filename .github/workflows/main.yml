@@ -21,7 +21,7 @@ jobs:
         with:
           msystem: CLANG64
           update: true
-          install: git cmake mingw-w64-clang-x86_64-toolchain
+          install: git mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain
 
       - name: CMake
         run: |
