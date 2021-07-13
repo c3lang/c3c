@@ -2,12 +2,38 @@ name: CI
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ master, dev, windows_compatibility ]
   pull_request:
     branches: [ master ]
 
 jobs:
-  build:
+  build-msys2-clang:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        build_type: [Release, Debug]
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANG64
+          update: true
+          install: git cmake mingw-w64-clang-x86_64-toolchain
+
+      - name: CMake
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -G "MSYS Makefiles"
+          cmake --build .
+      - name: Build testproject
+        run: |
+          cd resources/testproject
+          ../../build/c3c build
+
+  build-linux:
     runs-on: ubuntu-latest
     strategy:
       matrix:
