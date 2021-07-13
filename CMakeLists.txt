@@ -161,5 +161,12 @@ target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
 #target_link_libraries(c3c m ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
 target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${lld_libs})
 
+if (WIN32)
+    if (CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILE_ID STREQUAL "GNU")
+        target_link_options(c3c PRIVATE -pthread)
+        target_compile_definitions(c3c PRIVATE USE_PTHREAD=1)
+    endif()
+endif()
+
 install(TARGETS c3c DESTINATION bin)
 
