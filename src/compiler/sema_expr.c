@@ -1487,6 +1487,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			{
 				expr_replace(expr, func_expr);
 				expr_set_type(expr, type_usize);
+				expr->original_type = type_compint;
 				return true;
 			}
 			FALLTHROUGH;
@@ -2309,7 +2310,7 @@ CHECK_DEEPER:
 		}
 		if (flat_type->type_kind == TYPE_ARRAY)
 		{
-			expr_rewrite_to_int_const(expr, type_usize, type->array.len);
+			expr_rewrite_to_int_const(expr, type_compint, type->array.len);
 			return true;
 		}
 	}
