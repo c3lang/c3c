@@ -142,7 +142,7 @@ const char *type_to_error_string(Type *type)
 			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
 		case TYPE_STRLIT:
-			return "compile time string";
+			return "string literal";
 		case TYPE_ARRAY:
 			asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
