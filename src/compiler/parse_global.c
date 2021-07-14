@@ -1520,7 +1520,15 @@ static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 	TokenType alias_type = context->tok.type;
 	if (alias_type != TOKEN_IDENT && alias_type != TOKEN_CONST_IDENT)
 	{
-		SEMA_TOKEN_ERROR(context->tok, "An identifier was expected here.");
+		if (token_is_any_type(alias_type))
+		{
+			SEMA_TOKEN_ERROR(context->tok, "'%s' is the name of a built-in type and can't be used as an alias.",
+			                 token_type_to_string(alias_type));
+		}
+		else
+		{
+			SEMA_TOKEN_ERROR(context->tok, "An identifier was expected here.");
+		}
 		return poisoned_decl;
 	}
 
@@ -1529,6 +1537,11 @@ static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 	decl->define_decl.define_kind = DEFINE_IDENT_ALIAS;
 	decl->span.loc = start;
 
+	if (decl->name == kw_main)
+	{
+		SEMA_ERROR(decl, "'main' is reserved and cannot be used as an alias.");
+		return poisoned_decl;
+	}
 	// 4. Advance and consume the '='
 	advance(context);
 	CONSUME_OR(TOKEN_EQ, poisoned_decl);
@@ -1548,14 +1561,17 @@ static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 	// 6. Check that the token after the path is of the same type.
 	if (context->tok.type != alias_type)
 	{
+		if (token_is_any_type(context->tok.type) || context->tok.type == TOKEN_TYPE_IDENT)
+		{
+			SEMA_TOKID_ERROR(decl->name_token, "A type alias must start with an upper case letter and contain at least one lower case letter.");
+			return poisoned_decl;
+		}
 		if (alias_type == TOKEN_CONST_IDENT)
 		{
 			SEMA_TOKEN_ERROR(context->tok, "Expected a constant name here.");
+			return poisoned_decl;
 		}
-		else
-		{
-			SEMA_TOKEN_ERROR(context->tok, "Expected a function or variable name here.");
-		}
+		SEMA_TOKEN_ERROR(context->tok, "Expected a function or variable name here.");
 		return poisoned_decl;
 	}
 

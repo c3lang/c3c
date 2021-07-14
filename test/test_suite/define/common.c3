@@ -13,5 +13,5 @@ define AOFKE = ofek; // #error: Expected a constant name here
 define okfoe = OFKEOK; // #error: Expected a function or variable name here
 define Helo = helo; // #error: A type name was expected here
 define Helo = OFKE; // #error: A type name was expected here
-define helo = Helo; // #error: Expected a function or variable name here
-define HELO = Helo; // #error: Expected a constant name here
+define helo = Helo; // #error: A type alias must start with an upper case letter and contain at least one lower case letter.
+define HELO = Helo; // #error: A type alias must start with an upper case letter and contain at least one lower case letter.

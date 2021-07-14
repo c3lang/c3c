@@ -1340,7 +1340,7 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 		if (type_kind_is_signed(kind))
 		{
 			// 5a. Signed + Unsigned -> Signed
-			return bit_size >= other_bit_size ? num_type : NULL;
+			return bit_size >= other_bit_size ? num_type : type_int_signed_by_bitsize(other_bit_size);
 		}
 		// 5b. Unsigned + Unsigned -> return other_num which is the bigger due to ordering.
 		return other_num;
