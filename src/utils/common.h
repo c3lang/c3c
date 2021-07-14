@@ -28,10 +28,12 @@
 #define PLATFORM_POSIX 1
 #endif
 
+#ifndef USE_PTHREAD
 #if PLATFORM_POSIX
 #define USE_PTHREAD 1
 #else
 #define USE_PTHREAD 0
+#endif
 #endif
 
 #define IS_GCC 0
