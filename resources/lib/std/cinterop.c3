@@ -71,7 +71,8 @@ $endif;
 define CSChar = ichar;
 define CUChar = char;
 
-/*
-define CChar = ${C_CHAR_TYPE};
-define CSChar = ${C_SCHAR_TYPE};
-*/
+$if (${C_CHAR_IS_SIGNED}):
+    define CChar = ichar;
+$else:
+    define CChar = char;
+$endif;

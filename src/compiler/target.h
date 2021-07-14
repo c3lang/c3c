@@ -249,6 +249,7 @@ typedef struct
 	PicGeneration pic : 3;
 	PieGeneration pie : 3;
 	bool pic_required : 1;
+	bool signed_c_char : 1;
 	FloatABI float_abi : 3;
 	unsigned default_number_regs_x86 : 8;
 	union

@@ -279,6 +279,7 @@ void compiler_compile(void)
 	setup_int_define("C_INT_SIZE", platform_target.width_c_int);
 	setup_int_define("C_LONG_SIZE", platform_target.width_c_long);
 	setup_int_define("C_LONG_LONG_SIZE", platform_target.width_c_long_long);
+	setup_bool_define("C_CHAR_IS_SIGNED", platform_target.signed_c_char);
 	setup_bool_define("PLATFORM_LITTLE_ENDIAN", platform_target.little_endian);
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
 	setup_int_define("COMPILER_OPT_LEVEL", (int)active_target.optimization_level);

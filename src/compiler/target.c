@@ -20,6 +20,7 @@ static unsigned os_target_supports_float128(OsType os, ArchType arch);
 static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool is_int);
 static bool os_requires_libc(OsType os);
 
+
 PlatformTarget platform_target = {};
 
 int target_alloca_addr_space()
@@ -205,6 +206,34 @@ static inline bool os_is_apple(OsType os_type)
 {
 	return os_type == OS_TYPE_TVOS || os_type == OS_TYPE_WATCHOS ||
 	       os_type == OS_TYPE_MACOSX || os_type == OS_TYPE_IOS;
+}
+
+static bool os_target_signed_c_char_type(OsType os, ArchType arch)
+{
+	switch (arch)
+	{
+		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_AARCH64_32:
+		case ARCH_TYPE_AARCH64_BE:
+		case ARCH_TYPE_ARM:
+		case ARCH_TYPE_ARMB:
+		case ARCH_TYPE_THUMB:
+		case ARCH_TYPE_THUMBEB:
+			if (os_is_apple(os) || os == OS_TYPE_WIN32) return true;
+			return false;
+		case ARCH_TYPE_PPC:
+		case ARCH_TYPE_PPC64:
+			return os_is_apple(os);
+		case ARCH_TYPE_HEXAGON:
+		case ARCH_TYPE_PPC64LE:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_RISCV64:
+		case ARCH_TYPE_SYSTEMZ:
+		case ARCH_TYPE_XCORE:
+			return false;
+		default:
+			return true;
+	}
 }
 
 static inline void target_setup_arm_abi(void)
@@ -1197,7 +1226,7 @@ void target_setup(BuildTarget *target)
 	platform_target.width_c_int = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_INT);
 	platform_target.width_c_long = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_LONG);
 	platform_target.width_c_long_long = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_LONG_LONG);
-
+	platform_target.signed_c_char = os_target_signed_c_char_type(platform_target.os, platform_target.arch);
 
 	/**
 	 * x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
@@ -1307,3 +1336,4 @@ void target_setup(BuildTarget *target)
 		// TODO remove
 	type_setup(&platform_target);
 }
+
