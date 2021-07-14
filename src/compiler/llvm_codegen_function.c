@@ -502,6 +502,8 @@ static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef functio
 			}
 			if (is_return)
 			{
+				llvm_attribute_add_int(context, function, attribute_align, type_abi_alignment(type_voidptr), 1);
+				// TODO then type attributes are added to LLVM-C, use that for sret.
 				llvm_attribute_add(context, function, attribute_sret, 1);
 			}
 			else

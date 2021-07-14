@@ -20,7 +20,7 @@ func double log10(double x)
     const double LG6 = 1.531383769920937332e-01;  /* 3FC39A09 D078C69F */
     const double LG7 = 1.479819860511658591e-01;  /* 3FC2F112 DF3E5244 */
     DoubleLong u = { .f = x };
-	uint hx = (uint)(u.i >> 32);
+	ulong hx = (uint)(u.i >> 32);
 	int k = 0;
 	if (hx < 0x00100000 || hx >> 31)
 	{

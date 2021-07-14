@@ -11,7 +11,6 @@ enum AllocationKind
     REALLOC,
     FREE,
 }
-
 enum AllocationFailureKind
 {
     OUT_OF_MEMORY
