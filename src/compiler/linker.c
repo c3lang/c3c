@@ -66,6 +66,10 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	const char **args = NULL;
 	vec_add(args, "-o");
 	vec_add(args, output_file);
+	VECEACH(active_target.link_args, i)
+	{
+		vec_add(args, active_target.link_args[i]);
+	}
 	const char *error = NULL;
 
 	switch (platform_target.os)
@@ -235,6 +239,10 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	const char **parts = NULL;
 	vec_add(parts, "cc");
 	vec_add(parts, "-lm");
+	VECEACH(active_target.link_args, i)
+	{
+		vec_add(parts, active_target.link_args[i]);
+	}
 	switch (platform_target.pie)
 	{
 		case PIE_DEFAULT:

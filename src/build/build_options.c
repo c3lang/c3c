@@ -90,7 +90,9 @@ static void usage(void)
 	OUTPUT("  -fpic                 - Generate position independent (PIC) code if suitable.");
 	OUTPUT("  -fno-pic              - Do not generate position independent code.");
 	OUTPUT("  -fPIC                 - Always generate position independent (PIC) code.");
-	OUTPUT("  -fno-PIC              - generate position independent (PIC) code.");
+	OUTPUT("  -fno-PIC              - Generate position independent (PIC) code.");
+	OUTPUT("");
+	OUTPUT("  -z <argument>         - Send the <argument> as a parameter to the linker.");
 }
 
 
@@ -106,6 +108,16 @@ static const char* check_dir(const char *path)
 	int err = chdir(original_path);
 	if (err) FAIL_WITH_ERR("Failed to change path to %s.", original_path);
 	return path;
+}
+
+static const char* check_file(const char *file_path)
+{
+	FILE *file = fopen(file_path, "rb");
+	if (file == NULL)
+	{
+		error_exit("Could not open file \"%s\".\n", file_path);
+	}
+	return file_path;
 }
 
 static inline bool at_end()
@@ -315,6 +327,10 @@ static void parse_option(BuildOptions *options)
 			FAIL_WITH_ERR("Unknown argument -%s.", &current_arg[1]);
 		case 'h':
 			break;
+		case 'z':
+			if (at_end()) error_exit("error: -z needs a value");
+			options->linker_args[options->linker_arg_count++] = next_arg();
+			return;
 		case 'O':
 			if (options->optimization_setting_override != OPT_SETTING_NOT_SET)
 			{

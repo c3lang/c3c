@@ -167,8 +167,10 @@ typedef enum
 typedef struct BuildOptions_
 {
 	const char* lib_dir[MAX_LIB_DIRS];
+	const char* linker_args[MAX_LIB_DIRS];
 	const char* std_lib_dir;
 	int lib_count;
+	int linker_arg_count;
 	int build_threads;
 	const char** files;
 	const char* project_name;
@@ -210,6 +212,7 @@ typedef struct
 	const char **sources;
 	const char **libraries;
 	const char *cpu;
+	const char **link_args;
 	bool run_after_compile : 1;
 	bool test_output : 1;
 	bool output_headers : 1;
