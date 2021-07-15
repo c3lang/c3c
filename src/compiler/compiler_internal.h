@@ -1492,6 +1492,8 @@ extern const char *kw_ensure;
 extern const char *kw_inline;
 extern const char *kw_kindof;
 extern const char *kw_len;
+extern const char *kw_inf;
+extern const char *kw_nan;
 extern const char *kw_main;
 extern const char *kw_nameof;
 extern const char *kw_offsetof;

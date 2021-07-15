@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
-
+#include <math.h>
 /*
  * TODOs
  * - Disallow jumping in and out of an expression block.
@@ -1767,6 +1767,7 @@ static inline void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, 
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
 }
 
+
 static inline void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
 {
 	expr_to_rewrite->expr_kind = EXPR_CONST;
@@ -2010,6 +2011,31 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 	{
 		expr_rewrite_to_string(expr, type_generate_qname(canonical));
 		return true;
+	}
+	if (type_is_float(canonical))
+	{
+		if (name == kw_nan)
+		{
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.kind = canonical->type_kind;
+			expr->const_expr.f = nanl("");
+			expr_set_type(expr, parent->type);
+			expr->constant = true;
+			expr->pure = true;
+			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		}
+		if (name == kw_inf)
+		{
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.kind = parent->type->canonical->type_kind;
+			expr->const_expr.f = HUGE_VALL;
+			expr_set_type(expr, parent->type->canonical);
+			expr->constant = true;
+			expr->pure = true;
+			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		}
 	}
 	//
 	if (!type_may_have_sub_elements(canonical))
