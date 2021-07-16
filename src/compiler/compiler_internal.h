@@ -358,7 +358,7 @@ typedef struct
 {
 	struct
 	{
-		bool is_builtin;
+		bool is_builtin : 1;
 		bool attr_weak : 1;
 		bool attr_noreturn : 1;
 		bool attr_inline : 1;
@@ -1416,6 +1416,7 @@ typedef struct ABIArgInfo_
 		bool by_reg : 1;
 		bool zeroext : 1;
 		bool signext : 1;
+		bool realign : 1;
 	} attributes;
 	union
 	{
@@ -1453,7 +1454,7 @@ typedef struct ABIArgInfo_
 		struct
 		{
 			// We may request a certain alignment of the parameters.
-			AlignSize realignment;
+			AlignSize alignment;
 			Type *by_val_type;
 		} indirect;
 	};
@@ -1492,6 +1493,8 @@ extern const char *kw_ensure;
 extern const char *kw_inline;
 extern const char *kw_kindof;
 extern const char *kw_len;
+extern const char *kw_inf;
+extern const char *kw_nan;
 extern const char *kw_main;
 extern const char *kw_nameof;
 extern const char *kw_offsetof;

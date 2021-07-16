@@ -50,7 +50,7 @@ static ABIArgInfo *x86_create_indirect_result(Regs *regs, Type *type, ByVal by_v
 {
 	if (by_val != BY_VAL)
 	{
-		ABIArgInfo *info = abi_arg_new_indirect_not_by_val();
+		ABIArgInfo *info = abi_arg_new_indirect_not_by_val(type);
 
 		if (regs->int_regs)
 		{
@@ -79,9 +79,9 @@ static ABIArgInfo *x86_create_indirect_result(Regs *regs, Type *type, ByVal by_v
 }
 
 
-ABIArgInfo *create_indirect_return_x86(Regs *regs)
+static ABIArgInfo *create_indirect_return_x86(Type *type, Regs *regs)
 {
-	ABIArgInfo *info = abi_arg_new_indirect_not_by_val();
+	ABIArgInfo *info = abi_arg_new_indirect_not_by_val(type);
 	if (!regs->int_regs) return info;
 	// Consume a register for the return.
 	regs->int_regs--;
@@ -191,7 +191,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 			{
 				return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
 			}
-			return create_indirect_return_x86(regs);
+			return create_indirect_return_x86(type, regs);
 		}
 		return abi_arg_new_direct();
 	}
@@ -201,7 +201,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 		// Structs with variable arrays are always indirect.
 		if (type_is_structlike(type) && type->decl->has_variable_array)
 		{
-			return create_indirect_return_x86(regs);
+			return create_indirect_return_x86(type, regs);
 		}
 		// Ignore empty struct/unions
 		if (type_is_empty_record(type, true))
@@ -229,7 +229,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 			// This is not a single field struct, so we wrap it in an int.
 			return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
 		}
-		return create_indirect_return_x86(regs);
+		return create_indirect_return_x86(type, regs);
 	}
 
 	// Is this small enough to need to be extended?
@@ -239,7 +239,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 	}
 
 	// If we support something like int128, then this is an indirect return.
-	if (type_is_integer(type) && type_size(type) > 8) return create_indirect_return_x86(regs);
+	if (type_is_integer(type) && type_size(type) > 8) return create_indirect_return_x86(type, regs);
 
 	// Otherwise we expect to just pass this nicely in the return.
 	return abi_arg_new_direct();

@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
-
+#include <math.h>
 /*
  * TODOs
  * - Disallow jumping in and out of an expression block.
@@ -265,9 +265,9 @@ static ExprFailableStatus expr_is_failable(Expr *expr)
 static inline bool sema_type_error_on_binop(Expr *expr)
 {
 	const char *c = token_type_to_string(binaryop_to_token(expr->binary_expr.operator));
-	SEMA_ERROR(expr, "%s is not defined in the expression '%s' %s '%s'.",
-	               c, type_to_error_string(expr->binary_expr.left->type),
-	               c, type_to_error_string(expr->binary_expr.right->type));
+	SEMA_ERROR(expr, "%s is not defined in the expression %s %s %s.",
+	               c, type_quoted_error_string(expr->binary_expr.left->type),
+	               c, type_quoted_error_string(expr->binary_expr.right->type));
 	return false;
 }
 
@@ -1767,6 +1767,7 @@ static inline void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, 
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
 }
 
+
 static inline void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
 {
 	expr_to_rewrite->expr_kind = EXPR_CONST;
@@ -2010,6 +2011,31 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 	{
 		expr_rewrite_to_string(expr, type_generate_qname(canonical));
 		return true;
+	}
+	if (type_is_float(canonical))
+	{
+		if (name == kw_nan)
+		{
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.kind = canonical->type_kind;
+			expr->const_expr.f = nanl("");
+			expr_set_type(expr, parent->type);
+			expr->constant = true;
+			expr->pure = true;
+			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		}
+		if (name == kw_inf)
+		{
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.kind = parent->type->canonical->type_kind;
+			expr->const_expr.f = HUGE_VALL;
+			expr_set_type(expr, parent->type->canonical);
+			expr->constant = true;
+			expr->pure = true;
+			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		}
 	}
 	//
 	if (!type_may_have_sub_elements(canonical))
@@ -3560,7 +3586,7 @@ static bool binary_arithmetic_promotion(Context *context, Expr *left, Expr *righ
 		{
 			return sema_type_error_on_binop(parent);
 		}
-		SEMA_ERROR(parent, error_message, type_to_error_string(left_type), type_to_error_string(right_type));
+		SEMA_ERROR(parent, error_message, type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 		return false;
 	}
 	return cast_implicit(left, max) & cast_implicit(right, max);
@@ -3656,7 +3682,7 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 	}
 
 	// 7. Attempt arithmetic promotion, to promote both to a common type.
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "There is no implicit conversion available for '%s' - '%s'."))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "The subtraction %s - %s is not possible."))
 	{
 		return false;
 	}
@@ -3741,7 +3767,7 @@ static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *
 	}
 
 	// 4. Do an binary arithmetic promotion
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot add '%s' to '%s'"))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot do the addition %s + %s."))
 	{
 		return false;
 	}
@@ -3790,7 +3816,7 @@ static bool sema_expr_analyse_mult(Context *context, Type *to, Expr *expr, Expr 
 	Type *right_type = right->type->canonical;
 
 	// 2. Perform promotion to a common type.
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot multiply '%s' by '%s'"))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot multiply %s by %s"))
 	{
 		return false;
 	}
@@ -3833,7 +3859,7 @@ static bool sema_expr_analyse_div(Context *context, Type *to, Expr *expr, Expr *
 	Type *right_type = right->type->canonical;
 
 	// 2. Perform promotion to a common type.
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot divide '%s' by '%s'."))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot divide %s by %s."))
 	{
 		return false;
 	}
@@ -3894,7 +3920,7 @@ static bool sema_expr_analyse_mod(Context *context, Type *to, Expr *expr, Expr *
 	Type *right_type = right->type->canonical;
 
 	// 2. Perform promotion to a common type.
-	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot divide '%s' by '%s'."))
+	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot divide %s by %s."))
 	{
 		return false;
 	}
@@ -3902,7 +3928,7 @@ static bool sema_expr_analyse_mod(Context *context, Type *to, Expr *expr, Expr *
 	// 3. a % 0 is not valid, so detect it.
 	if (is_const(right) && bigint_cmp_zero(&right->const_expr.i) == CMP_EQ)
 	{
-		SEMA_ERROR(expr->binary_expr.right, "Cannot perform % with a constant zero.");
+		SEMA_ERROR(expr->binary_expr.right, "Cannot perform %% with a constant zero.");
 		return false;
 	}
 

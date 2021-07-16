@@ -42,7 +42,7 @@ ABIArgInfo *x64_indirect_return_result(Type *type)
 {
 	if (type_is_abi_aggregate(type))
 	{
-		return abi_arg_new_indirect_not_by_val();
+		return abi_arg_new_indirect_not_by_val(type);
 	}
 	type = type_lowering(type);
 	if (type_is_promotable_integer(type))

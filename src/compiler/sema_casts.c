@@ -615,7 +615,7 @@ bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
 		default:
 			UNREACHABLE
 	}
-	if (expr->const_expr.f < -limit && expr->const_expr.f > limit)
+	if (expr->const_expr.f < -limit || expr->const_expr.f > limit)
 	{
 		SEMA_ERROR(expr, "The value '%Lg' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.f, type_quoted_error_string(to_type));
 		return false;

@@ -131,7 +131,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 		{
 			// A simple memcopy, with alignment respected.
 			LLVMValueRef pointer = llvm_get_next_param(c, index);
-			llvm_emit_memcpy_to_decl(c, decl, pointer, info->indirect.realignment);
+			llvm_emit_memcpy_to_decl(c, decl, pointer, info->indirect.alignment);
 			return;
 		}
 		case ABI_ARG_EXPAND_COERCE:
@@ -274,7 +274,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 	switch (info->kind)
 	{
 		case ABI_ARG_INDIRECT:
-			llvm_store_bevalue_aligned(c, return_out, return_value, info->indirect.realignment);
+			llvm_store_bevalue_aligned(c, return_out, return_value, info->indirect.alignment);
 			llvm_emit_return_value(c, NULL);
 			return;
 		case ABI_ARG_IGNORE:
@@ -496,24 +496,17 @@ static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef functio
 		case ABI_ARG_EXPAND_COERCE:
 			break;
 		case ABI_ARG_INDIRECT:
-			if (info->indirect.realignment)
-			{
-				llvm_attribute_add_int(context, function, attribute_align, info->indirect.realignment, index);
-			}
 			if (is_return)
 			{
-				llvm_attribute_add_int(context, function, attribute_align, type_abi_alignment(type_voidptr), 1);
 				// TODO then type attributes are added to LLVM-C, use that for sret.
 				llvm_attribute_add(context, function, attribute_sret, 1);
+				llvm_attribute_add_int(context, function, attribute_align, info->indirect.alignment, 1);
 			}
 			else
 			{
 				// TODO then type attributes are added to LLVM-C, use that for byval.
 				if (info->indirect.by_val_type) llvm_attribute_add(context, function, attribute_byval, index);
-				if (!info->indirect.realignment)
-				{
-					llvm_attribute_add_int(context, function, attribute_align, type_abi_alignment(info->indirect.by_val_type), index);
-				}
+				llvm_attribute_add_int(context, function, attribute_align, info->indirect.alignment, index);
 			}
 			break;
 

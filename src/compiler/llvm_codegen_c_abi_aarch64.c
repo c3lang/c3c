@@ -76,7 +76,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		return info;
 	}
 
-	return abi_arg_new_indirect_not_by_val();
+	return abi_arg_new_indirect_not_by_val(type);
 }
 
 ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)

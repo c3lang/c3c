@@ -14,7 +14,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 	// Variable array has to be passed indirectly.
 	if (type_is_structlike(type) && type->decl->has_variable_array)
 	{
-		return abi_arg_new_indirect_not_by_val();
+		return abi_arg_new_indirect_not_by_val(type);
 	}
 
 	Type *base = NULL;
@@ -35,7 +35,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 				return abi_arg_new_expand();
 			}
 			// Otherwise use indirect
-			return abi_arg_new_indirect_not_by_val();
+			return abi_arg_new_indirect_not_by_val(type);
 		}
 		if (is_vector)
 		{
@@ -49,7 +49,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 			// HVAs are handled later.
 			if (is_return || (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_VECTOR))
 			{
-				return abi_arg_new_indirect_not_by_val();
+				return abi_arg_new_indirect_not_by_val(type);
 			}
 			// => to main handling.
 		}
@@ -60,7 +60,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 		// Not 1, 2, 4, 8? Pass indirect.
 		if (size > 8 || !is_power_of_two(size))
 		{
-			return abi_arg_new_indirect_not_by_val();
+			return abi_arg_new_indirect_not_by_val(type);
 		}
 		// Coerce to integer.
 		return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
@@ -74,7 +74,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 			case TYPE_U128:
 			case TYPE_I128:
 				// Pass by val since greater than 8 bytes.
-				if (!is_return) return abi_arg_new_indirect_not_by_val();
+				if (!is_return) return abi_arg_new_indirect_not_by_val(type);
 				// Make i128 return in XMM0
 				return abi_arg_new_direct_coerce(abi_type_new_plain(type_get_vector(type_long, 2)));
 			default:
@@ -83,7 +83,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 	}
 	if (size > 8)
 	{
-		return abi_arg_new_indirect_not_by_val();
+		return abi_arg_new_indirect_not_by_val(type);
 	}
 	return abi_arg_new_direct();
 }

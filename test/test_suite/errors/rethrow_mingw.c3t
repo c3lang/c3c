@@ -1,0 +1,44 @@
+// #target: x64_mingw
+
+module rethrow;
+
+func void! test()
+{
+    int! i;
+    i!!;
+}
+
+// #expect: rethrow.ll
+
+define void @rethrow.test(%error_union* sret align 8 %0)
+entry:
+  %i = alloca i32, align 4
+  %i1 = alloca %error_union, align 8
+  %error_var = alloca %error_union, align 8
+  store %error_union zeroinitializer, %error_union* %i1, align 8
+  store i32 0, i32* %i, align 4
+  %err_domain = getelementptr inbounds %error_union, %error_union* %i1, i32 0, i32 0
+  %1 = load i64, i64* %err_domain, align 8
+  %not_err = icmp eq i64 %1, 0
+  br i1 %not_err, label %after_check, label %error
+
+error:
+  %2 = bitcast %error_union* %error_var to i8*
+  %3 = bitcast %error_union* %i1 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %2, i8* align 8 %3, i32 16, i1 false)
+  br label %guard_block
+
+after_check:
+  %4 = load i32, i32* %i, align 4
+  br label %noerr_block
+
+guard_block:
+  %5 = bitcast %error_union* %0 to i8*
+  %6 = bitcast %error_union* %error_var to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %5, i8* align 8 %6, i32 16, i1 false)
+  ret void
+
+noerr_block:
+  store %error_union zeroinitializer, %error_union* %0, align 8
+  ret void
+

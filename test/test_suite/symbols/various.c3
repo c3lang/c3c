@@ -125,7 +125,7 @@ func void test16()
 
 func void test17()
 {
-    int a = "test";             // #error: cast 'compile time string' to 'int'
+    int a = "test";             // #error: cast 'string literal' to 'int'
 }
 
 func void test18()

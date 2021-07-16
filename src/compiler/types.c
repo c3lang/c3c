@@ -142,7 +142,7 @@ const char *type_to_error_string(Type *type)
 			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
 		case TYPE_STRLIT:
-			return "compile time string";
+			return "string literal";
 		case TYPE_ARRAY:
 			asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
@@ -984,7 +984,7 @@ static void type_create(const char *name, Type *location, TypeKind kind, unsigne
 		.builtin.bytesize = (bitsize + 7) / 8,
 		.builtin.bitsize = bitsize,
 		.builtin.abi_alignment = align,
-		.builtin.pref_alignment = pref_align,
+		.builtin.pref_alignment = pref_align ?: align,
 		.name = name,
 		.canonical = location,
 	};
@@ -1138,13 +1138,13 @@ type_create(#name_, &(shortname_), type_, bits_, target->align_ ## aligned_, tar
 #undef DEF_TYPE
 
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 0, 0, 0);
-	type_create("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pref_pointer, target->align_pointer);
-	type_create("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pref_pointer, target->align_pointer);
+	type_create("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer, target->align_pref_pointer);
+	type_create("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer, target->align_pref_pointer);
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t.voidstar;
 	t.voidstar.pointer = type_void;
-	type_create("virtual*", &t.virtual, TYPE_VIRTUAL_ANY, target->width_pointer * 2, target->align_pref_pointer, target->align_pointer);
-	type_create("virtual_generic", &t.virtual_generic, TYPE_VIRTUAL, target->width_pointer * 2, target->align_pref_pointer, target->align_pointer);
+	type_create("virtual*", &t.virtual, TYPE_VIRTUAL_ANY, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
+	type_create("virtual_generic", &t.virtual_generic, TYPE_VIRTUAL, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
 
 	type_create("compint", &t.ixx, TYPE_IXX, 0, 0, 0);
 	type_create("compfloat", &t.fxx, TYPE_FXX, 0, 0, 0);
