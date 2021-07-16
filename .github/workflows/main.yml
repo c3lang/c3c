@@ -44,7 +44,7 @@ jobs:
       - uses: actions/checkout@v1
       - name: (Ubuntu) Download LLVM
         run: |
-          sudo apt-get install zlib1g zlib1g-dev clang-11 libllvm11 llvm-11 llvm-11-dev llvm-11-runtime liblld-11-dev liblld-11
+          sudo apt-get install zlib1g zlib1g-dev clang-11 libllvm11 llvm-11 llvm-11-dev llvm-11-runtime liblld-11-dev liblld-11 python3
 
       - name: CMake
         run: |
@@ -56,3 +56,8 @@ jobs:
         run: |
           cd resources/testproject
           ../../build/c3c build
+
+      - name: run compiler tests
+        run: |
+          cd test
+          python3 src/tester.py ../build/c3c test_suite/
