@@ -416,6 +416,10 @@ const char *find_executable_path(void)
 	char *path = malloc(len + 1);
 	get_executable_path_raw(path, len, NULL);
 	path[len] = '\0';
+	for (int i = 0; i < len; ++i)
+	{
+		if ('\\' == path[i]) path[i] = '/';
+	}
 	for (int i = len - 1; i >= 0; i--)
 	{
 		switch (path[i])
