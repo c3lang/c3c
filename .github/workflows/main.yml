@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ master, dev, windows_compatibility ]
+    branches: [ master, dev, ci_testing ]
   pull_request:
     branches: [ master ]
 
