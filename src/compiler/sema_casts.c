@@ -69,7 +69,7 @@ bool string_literal_to_subarray(Expr* left, Type *type)
 
 static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type)
 {
-	long double f = bigint_as_float(&expr->const_expr.i);
+	Real f = bigint_as_float(&expr->const_expr.i);
 	switch (canonical->type_kind)
 	{
 		case TYPE_F32:
@@ -159,7 +159,7 @@ bool float_to_integer(Expr *expr, Type *canonical, Type *type)
 	if (insert_runtime_cast_unless_const(expr, is_signed ? CAST_FPSI : CAST_FPUI, type)) return true;
 
 	assert(canonical->type_kind >= TYPE_I8 && canonical->type_kind < TYPE_IXX);
-	long double d = expr->const_expr.f;
+	Real d = expr->const_expr.f;
 	BigInt temp;
 	if (is_signed)
 	{
@@ -597,7 +597,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
 {
 	Type *to_type_flat = type_flatten(to_type);
-	long double limit;
+	Real limit;
 	switch (to_type_flat->type_kind)
 	{
 		case TYPE_F16:
@@ -617,7 +617,11 @@ bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
 	}
 	if (expr->const_expr.f < -limit || expr->const_expr.f > limit)
 	{
+#if LONG_DOUBLE
 		SEMA_ERROR(expr, "The value '%Lg' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.f, type_quoted_error_string(to_type));
+#else
+		SEMA_ERROR(expr, "The value '%g' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.f, type_quoted_error_string(to_type));
+#endif
 		return false;
 	}
 	return true;

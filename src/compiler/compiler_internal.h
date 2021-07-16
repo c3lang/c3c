@@ -10,6 +10,19 @@
 #include "enums.h"
 #include "target.h"
 #include "utils/malloc.h"
+#include <float.h>
+
+#if DBL_DIG == LDBL_DIG
+#define LONG_DOUBLE 0
+#else
+#define LONG_DOUBLE 1
+#endif
+
+#if LONG_DOUBLE
+typedef long double Real;
+#else
+typedef double real;
+#endif
 
 #define MAX_ARRAYINDEX INT64_MAX
 typedef uint64_t ByteSize;
@@ -71,7 +84,7 @@ typedef struct
 {
 	union
 	{
-		long double f;
+		Real f;
 		BigInt i;
 		bool b;
 		struct
@@ -82,8 +95,8 @@ typedef struct
 		Decl *enum_constant;
 		struct
 		{
-			long double i;
-			long double r;
+			Real i;
+			Real r;
 		} complex;
 	};
 	// Valid type kinds:
@@ -1262,7 +1275,7 @@ typedef struct MacroScope_
 typedef union
 {
 	const char *string;
-	long double value;
+	Real value;
 	struct
 	{
 		union
@@ -1590,7 +1603,7 @@ void bigint_print(BigInt *bigint, uint64_t base);
 void bigint_fprint(FILE *file, BigInt *bigint, uint64_t base);
 uint64_t bigint_as_unsigned(const BigInt *bigint);
 int64_t bigint_as_signed(const BigInt *bigint);
-long double bigint_as_float(const BigInt *bigint);
+Real bigint_as_float(const BigInt *bigint);
 void bigint_truncate(BigInt *dst, const BigInt *op, size_t bit_count, bool is_signed);
 void bigint_incr(BigInt *x);
 size_t bigint_popcount_signed(const BigInt *bi, size_t bit_count);
@@ -1688,7 +1701,7 @@ static inline void expr_replace(Expr *expr, Expr *replacement)
 void expr_copy_types(Expr *to, Expr *from);
 void expr_copy_properties(Expr *to, Expr *from);
 void expr_const_set_int(ExprConst *expr, uint64_t v, TypeKind kind);
-void expr_const_set_float(ExprConst *expr, long double d, TypeKind kind);
+void expr_const_set_float(ExprConst *expr, Real d, TypeKind kind);
 void expr_const_set_bool(ExprConst *expr, bool b);
 void expr_const_set_null(ExprConst *expr);
 void expr_const_fprint(FILE *__restrict file, ExprConst *expr);
