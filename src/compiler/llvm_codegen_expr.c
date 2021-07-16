@@ -1447,6 +1447,8 @@ static void gencontext_emit_logical_and_or(GenContext *c, BEValue *be_value, Exp
 	llvm_emit_expr(c, be_value, expr->binary_expr.left);
 	llvm_value_rvalue(c, be_value);
 
+	start_block = c->current_block;
+
 	if (op == BINARYOP_AND)
 	{
 		llvm_emit_cond_br(c, be_value, rhs_block, phi_block);
@@ -2048,7 +2050,7 @@ static inline void gencontext_emit_guard_expr(GenContext *c, BEValue *be_value, 
 
 }
 
-static void gencontext_emit_binary_expr(GenContext *context, BEValue *be_value, Expr *expr)
+static void llvm_emit_binary_expr(GenContext *context, BEValue *be_value, Expr *expr)
 {
 	BinaryOp binary_op = expr->binary_expr.operator;
 	if (binary_op > BINARYOP_ASSIGN)
@@ -3183,7 +3185,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_macro_body_expansion(c, value, expr);
 			return;
 		case EXPR_BINARY:
-			gencontext_emit_binary_expr(c, value, expr);
+			llvm_emit_binary_expr(c, value, expr);
 			return;
 		case EXPR_TERNARY:
 			gencontext_emit_ternary_expr(c, value, expr);

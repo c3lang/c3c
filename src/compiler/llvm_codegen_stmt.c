@@ -1005,13 +1005,13 @@ void gencontext_emit_try_stmt(GenContext *c, Ast *ast)
 }
 
 
-static inline void gencontext_emit_assume(GenContext *c, Expr *expr)
+static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 {
 	// 1. Convert x > 0 && y > 2 => llvm.assume(x > 0) + llvm.assume(y > 2)
 	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator == BINARYOP_AND)
 	{
-		gencontext_emit_assume(c, expr->binary_expr.left);
-		gencontext_emit_assume(c, expr->binary_expr.right);
+		llvm_emit_assume(c, expr->binary_expr.left);
+		llvm_emit_assume(c, expr->binary_expr.right);
 		return;
 	}
 
@@ -1025,11 +1025,11 @@ static inline void gencontext_emit_assume(GenContext *c, Expr *expr)
 			Expr *right = inner->binary_expr.right;
 
 			expr->unary_expr.expr = left;
-			gencontext_emit_assume(c, expr);
+			llvm_emit_assume(c, expr);
 
 
 			expr->unary_expr.expr = right;
-			gencontext_emit_assume(c, expr);
+			llvm_emit_assume(c, expr);
 
 			return;
 		}
@@ -1049,7 +1049,7 @@ static inline void gencontext_emit_assume(GenContext *c, Expr *expr)
 
 
 
-static inline void gencontext_emit_assert_stmt(GenContext *c, Ast *ast)
+static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 {
 	if (active_target.feature.safe_mode)
 	{
@@ -1078,7 +1078,7 @@ static inline void gencontext_emit_assert_stmt(GenContext *c, Ast *ast)
 		llvm_emit_block(c, on_ok);
 		return;
 	}
-	gencontext_emit_assume(c, ast->assert_stmt.expr);
+	llvm_emit_assume(c, ast->assert_stmt.expr);
 }
 
 static inline void gencontext_emit_unreachable_stmt(GenContext *context, Ast *ast)
@@ -1275,7 +1275,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_ASM_STMT:
 			TODO
 		case AST_ASSERT_STMT:
-			gencontext_emit_assert_stmt(c, ast);
+			llvm_emit_assert_stmt(c, ast);
 			break;;
 		case AST_CT_ASSERT:
 		case AST_CT_IF_STMT:
