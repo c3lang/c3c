@@ -2179,7 +2179,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	llvm_value_set(value, phi, expr->type);
 }
-static LLVMValueRef llvm_emit_real(LLVMTypeRef type, long double f)
+static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Real f)
 {
 	if (isnan(f))
 	{
@@ -2190,7 +2190,11 @@ static LLVMValueRef llvm_emit_real(LLVMTypeRef type, long double f)
 		return LLVMConstRealOfString(type, f < 0 ? "-inf" : "inf");
 	}
 	scratch_buffer_clear();
+#if LONG_DOUBLE
 	global_context.scratch_buffer_len = sprintf(global_context.scratch_buffer, "%La", f);
+#else
+	global_context.scratch_buffer_len = sprintf(global_context.scratch_buffer, "%a", f);
+#endif
 	return LLVMConstRealOfStringAndSize(type, global_context.scratch_buffer, global_context.scratch_buffer_len);
 }
 

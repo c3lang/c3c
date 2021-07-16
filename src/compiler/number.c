@@ -58,7 +58,11 @@ void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:
-			fprintf(file, "%Lf", expr->f);
+#if LONG_DOUBLE
+			fprintf(file, "%Lg", expr->f);
+#else
+			fprintf(file, "%g", expr->f);
+#endif
 			break;
 		case TYPE_STRLIT:
 			fprintf(file, "%.*s", expr->string.len, expr->string.chars);
@@ -138,7 +142,7 @@ static inline bool compare_ints(const BigInt *left, const BigInt *right, BinaryO
 	}
 }
 
-static inline bool compare_fps(long double left, long double right, BinaryOp op)
+static inline bool compare_fps(Real left, Real right, BinaryOp op)
 {
 	switch (op)
 	{
@@ -252,7 +256,11 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_FXX:
-			asprintf(&buff, "%Lf", expr->f);
+#if LONG_DOUBLE
+			asprintf(&buff, "%Lg", expr->f);
+#else
+			asprintf(&buff, "%g", expr->f);
+#endif
 			return buff;
 		case TYPE_STRLIT:
 			asprintf(&buff, "\"%*.s\"", expr->string.len, expr->string.chars);
@@ -263,7 +271,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 }
 
 
-void expr_const_set_float(ExprConst *expr, long double d, TypeKind kind)
+void expr_const_set_float(ExprConst *expr, Real d, TypeKind kind)
 {
 	switch (kind)
 	{

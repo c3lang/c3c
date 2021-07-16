@@ -428,7 +428,11 @@ static inline bool scan_hex(Lexer *lexer)
 		// implementation for the constants.
 		char *end = NULL;
 		errno = 0;
-		long double fval = strtold(lexer->lexing_start, &end);
+#if LONG_DOUBLE
+		Real fval = strtold(lexer->lexing_start, &end);
+#else
+		real fval = strtod(lexer->lexing_start, &end);
+#endif
 		if (errno == ERANGE)
 		{
 			return add_error_token(lexer, "The float value is out of range.");
@@ -492,7 +496,11 @@ static inline bool scan_dec(Lexer *lexer)
 		// Possibly we should move to a BigDecimal implementation or at least a soft float 256
 		// implementation for the constants.
 		char *end = NULL;
-		long double fval = strtold(lexer->lexing_start, &end);
+#if LONG_DOUBLE
+		Real fval = strtold(lexer->lexing_start, &end);
+#else
+		real fval = strtod(lexer->lexing_start, &end);
+#endif
 		if (end != lexer->current)
 		{
 			return add_error_token(lexer, "Invalid float value.");
