@@ -2183,11 +2183,11 @@ static LLVMValueRef llvm_emit_real(LLVMTypeRef type, long double f)
 {
 	if (isnan(f))
 	{
-		return LLVMConstReal(type, nan(""));
+		return LLVMConstRealOfString(type, "nan");
 	}
 	if (isinf(f))
 	{
-		return LLVMConstReal(type, f < 0 ? -INFINITY : INFINITY);
+		return LLVMConstRealOfString(type, f < 0 ? "-inf" : "inf");
 	}
 	scratch_buffer_clear();
 	global_context.scratch_buffer_len = sprintf(global_context.scratch_buffer, "%La", f);
