@@ -21,7 +21,7 @@
 #if LONG_DOUBLE
 typedef long double Real;
 #else
-typedef double real;
+typedef double Real;
 #endif
 
 #define MAX_ARRAYINDEX INT64_MAX
