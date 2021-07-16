@@ -1,3 +1,4 @@
+// #target: x64_windows
 
 func int foo()
 {

@@ -215,7 +215,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		}
 		if (size > 16 || (size > 8 && !platform_target.int128))
 		{
-			return abi_arg_new_indirect_not_by_val();
+			return abi_arg_new_indirect_not_by_val(type);
 		}
 		return abi_arg_new_direct();
 	}
@@ -238,7 +238,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		info->direct_coerce.elements = 2;
 		return info;
 	}
-	return abi_arg_new_indirect_not_by_val();
+	return abi_arg_new_indirect_not_by_val(type);
 }
 
 static ABIArgInfo *riscv_classify_return(Type *return_type)

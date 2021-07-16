@@ -2399,12 +2399,12 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 		case ABI_ARG_INDIRECT:
 		{
 			// If we want we could optimize for structs by doing it by reference here.
-			unsigned alignment = info->indirect.realignment ?: type_abi_alignment(type);
+			assert(info->indirect.alignment == type_abi_alignment(type) || info->attributes.realign);
 			LLVMValueRef indirect = llvm_emit_alloca(c,
 			                                         llvm_get_type(c, type),
-			                                         alignment,
+			                                         info->indirect.alignment,
 			                                         "indirectarg");
-			llvm_store_bevalue_aligned(c, indirect, be_value, alignment);
+			llvm_store_bevalue_aligned(c, indirect, be_value, info->indirect.alignment);
 			vec_add(*args, indirect);
 			return;
 		}
@@ -2610,14 +2610,15 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	{
 		case ABI_ARG_INDIRECT:
 			// 6a. We can use the stored error var if there is no redirect.
-			if (signature->failable && c->error_var && type_abi_alignment(return_type) < ret_info->indirect.realignment)
+			if (signature->failable && c->error_var && ret_info->attributes.realign)
 			{
 				error_var = c->error_var;
 				vec_add(values, error_var);
 				break;
 			}
 			// 6b. Return true is indirect, in this case we allocate a local, using the desired alignment on the caller side.
-			AlignSize alignment = ret_info->indirect.realignment ? ret_info->indirect.realignment : type_abi_alignment(return_type);
+			assert(ret_info->attributes.realign || ret_info->indirect.alignment == type_abi_alignment(return_type));
+			AlignSize alignment = ret_info->indirect.alignment;
 			llvm_value_set_address_align(be_value, llvm_emit_alloca(c, llvm_get_type(c, return_type), alignment, "sretparam"), return_type, alignment);
 
 			// 6c. Add the pointer to the list of arguments.

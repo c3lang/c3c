@@ -1,3 +1,4 @@
+// #target: x64_darwin
 
 func void! test()
 {
