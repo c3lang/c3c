@@ -12,6 +12,10 @@ int main(int argc, const char *argv[])
 
 	DEBUG_LOG("Version: %s", COMPILER_VERSION);
 
+	DEBUG_LOG("Size of long double: %d", (int)sizeof(long double));
+	char *dummy;
+	DEBUG_LOG("Strtold returns a value of size %d", (int)sizeof(strtold(dummy, &dummy)));
+
 	// Parse arguments.
 	BuildOptions build_options = parse_arguments(argc, argv);
 

@@ -431,7 +431,7 @@ static inline bool scan_hex(Lexer *lexer)
 #if LONG_DOUBLE
 		Real fval = strtold(lexer->lexing_start, &end);
 #else
-		real fval = strtod(lexer->lexing_start, &end);
+		Real fval = strtod(lexer->lexing_start, &end);
 #endif
 		if (errno == ERANGE)
 		{
@@ -499,7 +499,7 @@ static inline bool scan_dec(Lexer *lexer)
 #if LONG_DOUBLE
 		Real fval = strtold(lexer->lexing_start, &end);
 #else
-		real fval = strtod(lexer->lexing_start, &end);
+		Real fval = strtod(lexer->lexing_start, &end);
 #endif
 		if (end != lexer->current)
 		{
