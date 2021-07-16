@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "llvm_codegen_internal.h"
+#include <math.h>
 
 static void gencontext_emit_unary_expr(GenContext *context, BEValue *value, Expr *expr);
 static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
@@ -2178,7 +2179,20 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	llvm_value_set(value, phi, expr->type);
 }
-
+static LLVMValueRef llvm_emit_real(LLVMTypeRef type, long double f)
+{
+	if (isnan(f))
+	{
+		return LLVMConstRealOfString(type, "nan");
+	}
+	if (isinf(f))
+	{
+		return LLVMConstRealOfString(type, f < 0 ? "-inf" : "inf");
+	}
+	scratch_buffer_clear();
+	global_context.scratch_buffer_len = sprintf(global_context.scratch_buffer, "%La", f);
+	return LLVMConstRealOfStringAndSize(type, global_context.scratch_buffer, global_context.scratch_buffer_len);
+}
 
 static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
@@ -2196,7 +2210,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			}
 			return;
 		case ALL_FLOATS:
-			llvm_value_set(be_value, LLVMConstReal(llvm_get_type(c, type), (double) expr->const_expr.f), type);
+			llvm_value_set(be_value, llvm_emit_real(llvm_get_type(c, type), expr->const_expr.f), type);
 			return;
 		case TYPE_POINTER:
 			llvm_value_set(be_value, LLVMConstNull(llvm_get_type(c, type)), type);
