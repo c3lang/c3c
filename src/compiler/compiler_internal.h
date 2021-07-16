@@ -358,7 +358,7 @@ typedef struct
 {
 	struct
 	{
-		bool is_builtin;
+		bool is_builtin : 1;
 		bool attr_weak : 1;
 		bool attr_noreturn : 1;
 		bool attr_inline : 1;
