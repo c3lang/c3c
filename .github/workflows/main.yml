@@ -22,7 +22,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: git binutils mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-llvm
+          install: git binutils mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-llvm mingw-w64-x86_64-python
 
       - name: CMake
         run: |
@@ -38,7 +38,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          python3 src/tester.py ../build/c3c test_suite/
+          python3 src/tester.py ../build/c3c.exe test_suite/
 
   build-msys2-clang:
     runs-on: windows-latest
@@ -55,7 +55,7 @@ jobs:
         with:
           msystem: CLANG64
           update: true
-          install: git binutils mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain
+          install: git binutils mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-python
 
       - name: CMake
         run: |
@@ -70,7 +70,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          python3 src/tester.py ../build/c3c test_suite/
+          python3 src/tester.py ../build/c3c.exe test_suite/
 
   build-linux:
     runs-on: ubuntu-latest
