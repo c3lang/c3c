@@ -5002,22 +5002,21 @@ static inline bool sema_expr_analyse_typeof(Context *context, Expr *expr)
 static inline bool sema_expr_analyse_failable(Context *context, Type *to, Expr *expr)
 {
 	Expr *inner = expr->failable_expr;
+
+	// Syntactic sugar: Foo! => Foo({})!
+	if (inner->expr_kind == EXPR_TYPEINFO)
+	{
+		TypeInfo *type = inner->type_expr;
+		*inner = (Expr) { .expr_kind = EXPR_COMPOUND_LITERAL, .span = inner->span };
+		inner->expr_compound_literal.type_info = type;
+		Expr *initializer_list = expr_new(EXPR_INITIALIZER_LIST, inner->span);
+		initializer_list->initializer_expr.init_type = INITIALIZER_UNKNOWN;
+		inner->expr_compound_literal.initializer = initializer_list;
+	}
+
 	if (!sema_analyse_expr(context, NULL, inner)) return false;
 	expr->pure = inner->pure;
 	expr->constant = inner->constant;
-	if (inner->expr_kind == EXPR_TYPEINFO)
-	{
-		TypeInfo *inner_type_info = inner->type_expr;
-		if (inner_type_info->type->type_kind != TYPE_ERRTYPE)
-		{
-			SEMA_ERROR(inner, "This must be an error type.");
-			return false;
-		}
-		inner->expr_kind = EXPR_COMPOUND_LITERAL;
-		inner->expr_compound_literal.type_info = inner_type_info;
-		inner->expr_compound_literal.initializer = NULL;
-		expr_set_type(inner, inner_type_info->type);
-	}
 	if (inner->failable)
 	{
 		SEMA_ERROR(inner, "The inner expression is already a failable.");
