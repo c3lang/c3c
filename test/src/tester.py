@@ -1,7 +1,7 @@
 #!/usr/bin/python
-import os, sys, shutil, subprocess
+import os, sys, shutil, subprocess, tempfile
 
-TEST_DIR = '/tmp/c3test/'
+TEST_DIR = tempfile.mkdtemp().replace('\\', '/') + '/c3test/'
 
 class Config:
     run_skipped = False
