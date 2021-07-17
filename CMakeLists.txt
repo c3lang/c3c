@@ -165,6 +165,7 @@ if (WIN32)
     if (CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILE_ID STREQUAL "GNU")
         target_link_options(c3c PRIVATE -pthread)
         target_compile_definitions(c3c PRIVATE USE_PTHREAD=1)
+        target_compile_options(c3c PRIVATE -mlong-double-64)
     endif()
 endif()
 

@@ -104,7 +104,7 @@ const char* find_lib_dir(void)
 	struct stat info;
 	char *lib_path = NULL;
 
-	asprintf(&lib_path, "%s../lib/std/", path);
+	asprintf(&lib_path, "%s../lib/std", path);
 	DEBUG_LOG("Checking %s", lib_path);
 	int err = stat(lib_path, &info);
 
@@ -115,7 +115,7 @@ const char* find_lib_dir(void)
 		return lib_path;
 	}
 
-	asprintf(&lib_path, "%slib/std/", path);
+	asprintf(&lib_path, "%slib/std", path);
 	err = stat(lib_path, &info);
 
 	// Found it at ./lib/std
@@ -224,6 +224,10 @@ char *realpath(const char *path, char *const resolved_path)
 	{
 		if (NULL == resolved_path) free(result);
 		return NULL;
+	}
+	for (char *c = result; *c != '\0'; ++c)
+	{
+		if ('\\' == *c) *c = '/';
 	}
 	return result;
 }

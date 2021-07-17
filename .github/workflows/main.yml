@@ -2,11 +2,44 @@ name: CI
 
 on:
   push:
-    branches: [ master, dev, windows_compatibility ]
+    branches: [ master, dev, ci_testing ]
   pull_request:
     branches: [ master ]
 
 jobs:
+  build-msys2-mingw:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        build_type: [Release, Debug]
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: git binutils mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-llvm mingw-w64-x86_64-polly mingw-w64-x86_64-python mingw-w64-x86_64-lld
+
+      - name: CMake
+        run: |
+          mkdir build && cd build
+          cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build .
+
+      - name: Build testproject
+        run: |
+          cd resources/testproject
+          ../../build/c3c build
+
+      - name: run compiler tests
+        run: |
+          cd test
+          python3 src/tester.py ../build/c3c.exe test_suite/
+
   build-msys2-clang:
     runs-on: windows-latest
     strategy:
@@ -22,17 +55,22 @@ jobs:
         with:
           msystem: CLANG64
           update: true
-          install: git binutils mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain
+          install: git binutils mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-python
 
       - name: CMake
         run: |
           mkdir build && cd build
-          /clang64/bin/cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          /clang64/bin/cmake --build .
+          cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build .
       - name: Build testproject
         run: |
           cd resources/testproject
           ../../build/c3c build
+
+      - name: run compiler tests
+        run: |
+          cd test
+          python3 src/tester.py ../build/c3c.exe test_suite/
 
   build-linux:
     runs-on: ubuntu-latest
@@ -44,7 +82,7 @@ jobs:
       - uses: actions/checkout@v1
       - name: (Ubuntu) Download LLVM
         run: |
-          sudo apt-get install zlib1g zlib1g-dev clang-11 libllvm11 llvm-11 llvm-11-dev llvm-11-runtime liblld-11-dev liblld-11
+          sudo apt-get install zlib1g zlib1g-dev clang-11 libllvm11 llvm-11 llvm-11-dev llvm-11-runtime liblld-11-dev liblld-11 python3
 
       - name: CMake
         run: |
@@ -56,3 +94,8 @@ jobs:
         run: |
           cd resources/testproject
           ../../build/c3c build
+
+      - name: run compiler tests
+        run: |
+          cd test
+          python3 src/tester.py ../build/c3c test_suite/
