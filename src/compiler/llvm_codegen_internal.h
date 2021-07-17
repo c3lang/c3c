@@ -338,10 +338,7 @@ static inline bool call_supports_variadic(CallABI abi)
 		case CALL_X86_REG:
 		case CALL_X86_THIS:
 		case CALL_X86_FAST:
-		case CALL_X86_PASCAL:
 		case CALL_X86_VECTOR:
-		case CALL_SPIR_FUNCTION:
-		case CALL_OPENCL_KERNEL:
 			return false;
 		default:
 			return true;
@@ -349,42 +346,26 @@ static inline bool call_supports_variadic(CallABI abi)
 	}
 }
 
-static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi)
+static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi, ArchType arch, OsType os)
 {
 	switch (abi)
 	{
+		case CALL_C:
+			return LLVMCCallConv;
 		case CALL_X86_STD:
 			return LLVMX86StdcallCallConv;
 		case CALL_X86_FAST:
 			return LLVMX86FastcallCallConv;
-		case CALL_X86_PASCAL:
-			return LLVMCCallConv;
 		case CALL_X86_REG:
 			return LLVMX86RegCallCallConv;
 		case CALL_X86_THIS:
 			return LLVMX86ThisCallCallConv;
 		case CALL_X86_VECTOR:
 			return LLVMX86VectorCallCallConv;
-		case CALL_WIN64:
-			return LLVMWin64CallConv;
-		case CALL_X64_SYSV:
-			return LLVMX8664SysVCallConv;
 		case CALL_AAPCS:
 			return LLVMARMAAPCSCallConv;
 		case CALL_AAPCS_VFP:
 			return LLVMARMAAPCSVFPCallConv;
-		case CALL_INTEL_OCL_BICC:
-			return LLVMIntelOCLBICallConv;
-		case CALL_AARCH64_VECTOR:
-			TODO
-		case CALL_SPIR_FUNCTION:
-			return LLVMSPIRFUNCCallConv;
-		case CALL_OPENCL_KERNEL:
-			TODO // Target dependent.
-		case CALL_PRESERVE_ALL:
-			return LLVMPreserveAllCallConv;
-		case CALL_PRESERVE_MOST:
-			return LLVMPreserveMostCallConv;
 		default:
 			return LLVMCCallConv;
 	}

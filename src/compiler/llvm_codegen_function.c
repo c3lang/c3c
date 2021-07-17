@@ -577,11 +577,14 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	}
 	llvm_attribute_add(c, function, attribute_nounwind, -1);
 
-	if (decl->func_decl.attr_stdcall && (platform_target.os == OS_TYPE_WIN32))
+	if (decl->func_decl.function_signature.call_abi == CALL_X86_STD)
 	{
-		LLVMSetFunctionCallConv(function, LLVMX86StdcallCallConv);
-		LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
+		if (platform_target.os == OS_TYPE_WIN32)
+		{
+			LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
+		}
 	}
+	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(decl->func_decl.function_signature.call_abi, platform_target.arch, platform_target.os));
 
 	switch (decl->visibility)
 	{

@@ -156,7 +156,7 @@ static bool x86_should_return_type_in_reg(Type *type)
  * @param type type of the return.
  * @return
  */
-ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
+ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 {
 	// 1. Lower any type like enum etc.
 	type = type_lowering(type);
@@ -168,7 +168,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 	//    should be passed directly in a register.
 	Type *base = NULL;
 	unsigned elements = 0;
-	if (call == CALL_CONVENTION_VECTOR || call == CALL_CONVENTION_REGCALL)
+	if (call == CALL_X86_VECTOR || call == CALL_X86_REG)
 	{
 		// This aggregate can lower safely
 		if (type_is_homogenous_aggregate(type, &base, &elements)) return abi_arg_new_direct();
@@ -246,7 +246,7 @@ ABIArgInfo *x86_classify_return(CallConvention call, Regs *regs, Type *type)
 
 }
 
-static inline bool x86_should_aggregate_use_direct(CallConvention call, Regs *regs, Type *type, bool *needs_padding)
+static inline bool x86_should_aggregate_use_direct(CallABI call, Regs *regs, Type *type, bool *needs_padding)
 {
 	// On Windows, aggregates other than HFAs are never passed in registers, and
 	// they do not consume register slots. Homogenous floating-point aggregates
@@ -261,9 +261,9 @@ static inline bool x86_should_aggregate_use_direct(CallConvention call, Regs *re
 
 	switch (call)
 	{
-		case CALL_CONVENTION_FAST:
-		case CALL_CONVENTION_VECTOR:
-		case CALL_CONVENTION_REGCALL:
+		case CALL_X86_FAST:
+		case CALL_X86_VECTOR:
+		case CALL_X86_REG:
 			if (type_size(type) <= 4 && regs->int_regs)
 			{
 				*needs_padding = true;
@@ -367,7 +367,7 @@ static bool x86_try_use_free_regs(Regs *regs, Type *type)
  * Check if a primitive should be in reg, if so, remove number of free registers.
  * @return true if it should have an inreg attribute, false otherwise.
  */
-static bool x86_try_put_primitive_in_reg(CallConvention call, Regs *regs, Type *type)
+static bool x86_try_put_primitive_in_reg(CallABI call, Regs *regs, Type *type)
 {
 	// 1. Try to use regs for this type,
 	//    regardless whether we succeed or not, this will update
@@ -385,9 +385,9 @@ static bool x86_try_put_primitive_in_reg(CallConvention call, Regs *regs, Type *
 	//    to get an inreg attribute. Investigate!
 	switch (call)
 	{
-		case CALL_CONVENTION_FAST:
-		case CALL_CONVENTION_VECTOR:
-		case CALL_CONVENTION_REGCALL:
+		case CALL_X86_FAST:
+		case CALL_X86_VECTOR:
+		case CALL_X86_REG:
 			if (type_size(type) > 4) return false;
 			return type_is_integer_kind(type) || type_is_pointer(type);
 		default:
@@ -473,7 +473,7 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
  * error type, struct, union, subarray,
  * string, array, error union, complex.
  */
-static inline ABIArgInfo *x86_classify_aggregate(CallConvention call, Regs *regs, Type *type)
+static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type *type)
 {
 	// Only called for aggregates.
 	assert(type_is_abi_aggregate(type));
@@ -527,9 +527,9 @@ static inline ABIArgInfo *x86_classify_aggregate(CallConvention call, Regs *regs
 		// This is padded expansion
 		ABIArgInfo *info = abi_arg_new_expand_padded(type_int);
 
-		bool is_reg_call = call == CALL_CONVENTION_REGCALL;
-		bool is_vec_call = call == CALL_CONVENTION_VECTOR;
-		bool is_fast_call = call == CALL_CONVENTION_FAST;
+		bool is_reg_call = call == CALL_X86_REG;
+		bool is_vec_call = call == CALL_X86_VECTOR;
+		bool is_fast_call = call == CALL_X86_FAST;
 
 		info->expand.padding_by_reg = is_fast_call || is_reg_call || is_vec_call;
 		return info;
@@ -543,7 +543,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallConvention call, Regs *regs
  * @param type
  * @return
  */
-static ABIArgInfo *x86_classify_primitives(CallConvention call, Regs *regs, Type *type)
+static ABIArgInfo *x86_classify_primitives(CallABI call, Regs *regs, Type *type)
 {
 	// f128 i128 u128 on stack.
 	if (type_size(type) > 8) return x86_create_indirect_result(regs, type, BY_VAL_SKIP);
@@ -566,15 +566,15 @@ static ABIArgInfo *x86_classify_primitives(CallConvention call, Regs *regs, Type
 /**
  * Classify an argument to an x86 function.
  */
-static ABIArgInfo *x86_classify_argument(CallConvention call, Regs *regs, Type *type)
+static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 {
 	// FIXME: Set alignment on indirect arguments.
 
 	// We lower all types here first to avoid enums and typedefs.
 	type = type_lowering(type);
 
-	bool is_reg_call = call == CALL_CONVENTION_REGCALL;
-	bool is_vec_call = call == CALL_CONVENTION_VECTOR;
+	bool is_reg_call = call == CALL_X86_REG;
+	bool is_vec_call = call == CALL_X86_VECTOR;
 
 	Type *base = NULL;
 	unsigned elements = 0;
@@ -629,25 +629,24 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 	//    Vector: 2 / 6
 	//    Fast:   2 / 3
 	Regs regs = { 0, 0 };
-	switch (signature->convention)
+	switch (signature->call_abi)
 	{
-		case CALL_CONVENTION_NORMAL:
-		case CALL_CONVENTION_SYSCALL:
+		case CALL_C:
 			if (platform_target.x86.is_win32_float_struct_abi)
 			{
 				regs.float_regs = 3;
 			}
 			regs.int_regs = platform_target.default_number_regs_x86;
 			break;
-		case CALL_CONVENTION_REGCALL:
+		case CALL_X86_REG:
 			regs.int_regs = 5;
 			regs.float_regs = 8;
 			break;
-		case CALL_CONVENTION_VECTOR:
+		case CALL_X86_VECTOR:
 			regs.int_regs = 2;
 			regs.float_regs = 6;
 			break;
-		case CALL_CONVENTION_FAST:
+		case CALL_X86_FAST:
 			regs.int_regs = 2;
 			regs.float_regs = 3;
 			break;
@@ -665,15 +664,15 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 	//    return type.
 	if (signature->failable)
 	{
-		signature->failable_abi_info = x86_classify_return(signature->convention, &regs, type_error);
+		signature->failable_abi_info = x86_classify_return(signature->call_abi, &regs, type_error);
 		if (signature->rtype->type->type_kind != TYPE_VOID)
 		{
-			signature->ret_abi_info = x86_classify_argument(signature->convention, &regs, type_get_ptr(type_lowering(signature->rtype->type)));
+			signature->ret_abi_info = x86_classify_argument(signature->call_abi, &regs, type_get_ptr(type_lowering(signature->rtype->type)));
 		}
 	}
 	else
 	{
-		signature->ret_abi_info = x86_classify_return(signature->convention, &regs, signature->rtype->type);
+		signature->ret_abi_info = x86_classify_return(signature->call_abi, &regs, signature->rtype->type);
 	}
 
 	/*
@@ -687,7 +686,7 @@ void c_abi_func_create_x86(FunctionSignature *signature)
     runVectorCallFirstPass(FI, State);
 	 */
 
-	if (signature->convention == CALL_CONVENTION_VECTOR)
+	if (signature->call_abi == CALL_X86_VECTOR)
 	{
 		FATAL_ERROR("X86 vector call not supported");
 	}
@@ -696,7 +695,7 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 		Decl **params = signature->params;
 		VECEACH(params, i)
 		{
-			params[i]->var.abi_info = x86_classify_argument(signature->convention, &regs, params[i]->type);
+			params[i]->var.abi_info = x86_classify_argument(signature->call_abi, &regs, params[i]->type);
 		}
 	}
 }

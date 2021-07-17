@@ -135,14 +135,22 @@ void symtab_init(uint32_t capacity)
 
 	attribute_list[ATTRIBUTE_INLINE] = kw_inline;
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
-	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("stdcall");
+	attribute_list[ATTRIBUTE_OPAQUE] = KW_DEF("opaque");
 	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("noreturn");
-	attribute_list[ATTRIBUTE_ALIGN] = kw_align;
-	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("packed");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("section");
 	attribute_list[ATTRIBUTE_EXTNAME] = KW_DEF("extname");
 	attribute_list[ATTRIBUTE_WEAK] = KW_DEF("weak");
-	attribute_list[ATTRIBUTE_OPAQUE] = KW_DEF("opaque");
+	attribute_list[ATTRIBUTE_ALIGN] = kw_align;
+	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("packed");
+	attribute_list[ATTRIBUTE_UNUSED] = KW_DEF("unused");
+	attribute_list[ATTRIBUTE_USED] = KW_DEF("used");
+	attribute_list[ATTRIBUTE_NAKED] = KW_DEF("naked");
+	attribute_list[ATTRIBUTE_CDECL] = KW_DEF("cdecl");
+	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("stdcall");
+	attribute_list[ATTRIBUTE_VECCALL] = KW_DEF("veccall");
+	attribute_list[ATTRIBUTE_REGCALL] = KW_DEF("regcall");
+	attribute_list[ATTRIBUTE_FASTCALL] = KW_DEF("fastcall");
+	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("deprecated");
 }
 
 static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t hash)

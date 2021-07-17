@@ -145,13 +145,13 @@ void c_abi_func_create_win64(FunctionSignature *signature)
 	Regs regs = { 0, 0 };
 	bool is_reg_call = false;
 	bool is_vector_call = false;
-	switch (signature->convention)
+	switch (signature->call_abi)
 	{
-		case CALL_CONVENTION_VECTOR:
+		case CALL_X86_VECTOR:
 			regs.float_regs = 4;
 			is_vector_call = true;
 			break;
-		case CALL_CONVENTION_REGCALL:
+		case CALL_X86_REG:
 			regs.float_regs = 16;
 			is_reg_call = true;
 			break;
@@ -174,13 +174,13 @@ void c_abi_func_create_win64(FunctionSignature *signature)
 	}
 
 	// Set up parameter registers.
-	switch (signature->convention)
+	switch (signature->call_abi)
 	{
-		case CALL_CONVENTION_VECTOR:
+		case CALL_X86_VECTOR:
 			regs.float_regs = 6;
 			is_vector_call = true;
 			break;
-		case CALL_CONVENTION_REGCALL:
+		case CALL_X86_REG:
 			regs.float_regs = 16;
 			is_reg_call = true;
 			break;
