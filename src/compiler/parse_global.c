@@ -241,6 +241,16 @@ static inline Path *parse_module_path(Context *context)
 		const char *string = TOKSTR(context->tok);
 		if (!try_consume(context, TOKEN_IDENT))
 		{
+			if (token_is_keyword(context->tok.type))
+			{
+				SEMA_TOKEN_ERROR(context->tok, "The module path cannot contain a reserved keyword, try another name.");
+				return false;
+			}
+			if (token_is_some_ident(context->tok.type))
+			{
+				SEMA_TOKEN_ERROR(context->tok, "The elements of a module path must consist of only lower case letters, 0-9 and '_'.");
+				return false;
+			}
 			SEMA_TOKEN_ERROR(context->tok, "Each '::' must be followed by a regular lower case sub module name.");
 			return NULL;
 		}
@@ -338,7 +348,17 @@ bool parse_module(Context *context)
 
 	if (!TOKEN_IS(TOKEN_IDENT))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Module statement should be followed by the name of the module.");
+		if (token_is_keyword(context->tok.type))
+		{
+			SEMA_TOKEN_ERROR(context->tok, "The module name cannot contain a reserved keyword, try another name.");
+			return false;
+		}
+		if (token_is_some_ident(context->tok.type))
+		{
+			SEMA_TOKEN_ERROR(context->tok, "The module name must consist of only lower case letters, 0-9 and '_'.");
+			return false;
+		}
+		SEMA_TOKEN_ERROR(context->tok, "'module' should be followed by a module name.");
 		return false;
 	}
 

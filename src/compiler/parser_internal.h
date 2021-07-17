@@ -19,7 +19,6 @@
 
 #define CHECK_EXPR(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
-
 #define COMMA_RPAREN_OR(_res) \
 do { if (!try_consume(context, TOKEN_COMMA) && !TOKEN_IS(TOKEN_RPAREN)) { \
 SEMA_TOKEN_ERROR(context->tok, "Expected ',' or ')'"); return _res; } } while(0)
@@ -77,6 +76,26 @@ static inline bool expect(Context *context, TokenType token_type)
 	if (token_type == context->tok.type) return true;
 
 	SEMA_TOKEN_ERROR(context->tok, "Expected '%s'.", token_type_to_string(token_type));
+	return false;
+}
+
+static inline bool token_is_some_ident(TokenType token_type)
+{
+	switch (token_type)
+	{
+		case TOKEN_TYPE_IDENT:
+		case TOKEN_IDENT:
+		case TOKEN_CONST_IDENT:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static inline bool token_is_keyword(TokenType token_type)
+{
+	if (token_type >= TOKEN_VOID && token_type <= TOKEN_TYPEID) return true;
+	if (token_type >= TOKEN_ALIAS && token_type <= TOKEN_WHILE) return true;
 	return false;
 }
 
