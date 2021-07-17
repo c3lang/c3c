@@ -694,6 +694,7 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
 			[ATTRIBUTE_EXTNAME] = ~0,
+			[ATTRIBUTE_DEPRECATED] = ~0,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION | ATTR_ERROR,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
@@ -701,7 +702,14 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 			[ATTRIBUTE_INLINE] = ATTR_FUNC,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC,
 			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION,
-			[ATTRIBUTE_STDCALL] = ATTR_FUNC
+			[ATTRIBUTE_USED] = ~0,
+			[ATTRIBUTE_UNUSED] = ~0,
+			[ATTRIBUTE_NAKED] = ATTR_FUNC,
+			[ATTRIBUTE_CDECL] = ATTR_FUNC,
+			[ATTRIBUTE_STDCALL] = ATTR_FUNC,
+			[ATTRIBUTE_VECCALL] = ATTR_FUNC,
+			[ATTRIBUTE_REGCALL] = ATTR_FUNC,
+			[ATTRIBUTE_FASTCALL] = ATTR_FUNC,
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
@@ -711,7 +719,11 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 	}
 	switch (type)
 	{
+		case ATTRIBUTE_CDECL:
+		case ATTRIBUTE_FASTCALL:
 		case ATTRIBUTE_STDCALL:
+		case ATTRIBUTE_VECCALL:
+		case ATTRIBUTE_REGCALL:
 			return type;
 		case ATTRIBUTE_ALIGN:
 			if (!attr->expr)
@@ -804,6 +816,13 @@ static inline bool sema_analyse_doc_header(Ast *docs, Decl **params, Decl **extr
 	}
 	return true;
 }
+static inline bool sema_update_call_convention(Decl *decl, CallABI abi)
+{
+	bool had = decl->func_decl.function_signature.call_abi > 0;
+	decl->func_decl.function_signature.call_abi = abi;
+	return had;
+}
+
 static inline bool sema_analyse_func(Context *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
@@ -837,6 +856,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 
 		bool had = false;
 #define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
+
 		switch (attribute)
 		{
 			case ATTRIBUTE_EXTNAME:
@@ -852,7 +872,50 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 				decl->alignment = attr->alignment;
 				break;
 			case ATTRIBUTE_NOINLINE: SET_ATTR(attr_noinline);
-			case ATTRIBUTE_STDCALL: SET_ATTR(attr_stdcall);
+			case ATTRIBUTE_STDCALL:
+				if (platform_target.arch == ARCH_TYPE_X86 || platform_target.arch == ARCH_TYPE_X86_64)
+				{
+					had = sema_update_call_convention(decl, CALL_X86_STD);
+				}
+				else if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
+				{
+					had = sema_update_call_convention(decl, CALL_AAPCS);
+				}
+				break;
+			case ATTRIBUTE_CDECL:
+				had = sema_update_call_convention(decl, CALL_C);
+				break;
+			case ATTRIBUTE_VECCALL:
+				switch (platform_target.arch)
+				{
+					case ARCH_TYPE_X86_64:
+					case ARCH_TYPE_X86:
+						had = sema_update_call_convention(decl, CALL_X86_VECTOR);
+						break;
+					case ARCH_TYPE_ARM:
+					case ARCH_TYPE_ARMB:
+					case ARCH_TYPE_AARCH64:
+					case ARCH_TYPE_AARCH64_32:
+					case ARCH_TYPE_AARCH64_BE:
+						had = sema_update_call_convention(decl, CALL_AAPCS_VFP);
+						break;
+					default:
+						break;
+				}
+				break;
+			case ATTRIBUTE_FASTCALL:
+				if (platform_target.arch == ARCH_TYPE_X86)
+				{
+					had = sema_update_call_convention(decl, CALL_X86_FAST);
+				}
+				break;
+			case ATTRIBUTE_REGCALL:
+				had = decl->func_decl.function_signature.call_abi > 0;
+				if (platform_target.arch == ARCH_TYPE_X86)
+				{
+					had = sema_update_call_convention(decl, CALL_X86_REG);
+				}
+				break;
 			case ATTRIBUTE_INLINE: SET_ATTR(attr_inline);
 			case ATTRIBUTE_NORETURN: SET_ATTR(attr_noreturn);
 			case ATTRIBUTE_WEAK: SET_ATTR(attr_weak);

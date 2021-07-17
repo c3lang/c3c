@@ -350,7 +350,7 @@ typedef struct
 
 typedef struct FunctionSignature_
 {
-	CallConvention convention : 4;
+	CallABI call_abi : 4;
 	bool variadic : 1;
 	bool has_default : 1;
 	bool failable : 1;
@@ -377,7 +377,6 @@ typedef struct
 		bool attr_inline : 1;
 		bool attr_noinline : 1;
 		bool attr_extname : 1;
-		bool attr_stdcall : 1;
 	};
 
 	TypeInfo *type_parent;

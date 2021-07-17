@@ -913,7 +913,7 @@ void c_abi_func_create_x64(FunctionSignature *signature)
 		return c_abi_func_create_win64(signature);
 	}
 	// TODO 32 bit pointers
-	bool is_regcall = signature->convention == CALL_CONVENTION_REGCALL;
+	bool is_regcall = signature->call_abi == CALL_X86_REG;
 
 	Registers available_registers = {
 			.int_registers = is_regcall ? 11 : 16,
