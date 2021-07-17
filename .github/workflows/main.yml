@@ -22,7 +22,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: git binutils mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-llvm mingw-w64-x86_64-python
+          install: git binutils mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-llvm mingw-w64-x86_64-polly mingw-w64-x86_64-python
 
       - name: CMake
         run: |
