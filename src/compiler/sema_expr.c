@@ -2018,7 +2018,11 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 		{
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.kind = canonical->type_kind;
+#if LONG_DOUBLE
 			expr->const_expr.f = nanl("");
+#else
+			expr->const_expr.f = nan("");
+#endif
 			expr_set_type(expr, parent->type);
 			expr->constant = true;
 			expr->pure = true;
@@ -2029,7 +2033,7 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 		{
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.kind = parent->type->canonical->type_kind;
-			expr->const_expr.f = HUGE_VALL;
+			expr->const_expr.f = INFINITY;
 			expr_set_type(expr, parent->type->canonical);
 			expr->constant = true;
 			expr->pure = true;
