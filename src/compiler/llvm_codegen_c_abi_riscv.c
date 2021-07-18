@@ -259,7 +259,7 @@ void c_abi_func_create_riscv(FunctionSignature *signature)
 	unsigned gpr = 8;
 	unsigned fpr = 8;
 
-	Type *return_type = signature->failable ? type_error : signature->rtype->type;
+	Type *return_type = signature->failable ? type_anyerr : signature->rtype->type;
 	return_type = type_lowering(return_type);
 	ABIArgInfo *return_abi = riscv_classify_return(return_type);
 	if (signature->failable)

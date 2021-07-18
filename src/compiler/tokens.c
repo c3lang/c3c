@@ -176,6 +176,8 @@ const char *token_type_to_string(TokenType type)
 		// Keywords
 		case TOKEN_ALIAS:
 			return "alias";
+		case TOKEN_ANYERR:
+			return "anyerr";
 		case TOKEN_AS:
 			return "as";
 		case TOKEN_ASM:
@@ -208,8 +210,8 @@ const char *token_type_to_string(TokenType type)
 			return "enum";
 		case TOKEN_EXTERN:
 			return "extern";
-		case TOKEN_ERR:
-			return "error";
+		case TOKEN_ERRTYPE:
+			return "errtype";
 		case TOKEN_FALSE:
 			return "false";
 		case TOKEN_FOR:

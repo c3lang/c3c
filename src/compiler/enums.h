@@ -367,6 +367,7 @@ typedef enum
 	TOKEN_USHORT,
 	TOKEN_USIZE,
 	TOKEN_QUAD,
+	TOKEN_ANYERR,
 	TOKEN_TYPEID,
 
 	// Literals.
@@ -414,7 +415,7 @@ typedef enum
 	TOKEN_DO,
 	TOKEN_ELSE,
 	TOKEN_ENUM,
-	TOKEN_ERR,
+	TOKEN_ERRTYPE,
 	TOKEN_EXTERN,
 	TOKEN_FALSE,
 	TOKEN_FOR,
@@ -474,8 +475,10 @@ typedef enum
   case TOKEN_IPTR: case TOKEN_IPTRDIFF: case TOKEN_ISIZE: case TOKEN_LONG: \
   case TOKEN_SHORT: case TOKEN_U128: case TOKEN_UINT: case TOKEN_ULONG:  \
   case TOKEN_UPTR: case TOKEN_UPTRDIFF: case TOKEN_USHORT: case TOKEN_USIZE:  \
-  case TOKEN_QUAD: case TOKEN_TYPEID
+  case TOKEN_QUAD: case TOKEN_TYPEID: case TOKEN_ANYERR
 #define TYPE_TOKENS NON_VOID_TYPE_TOKENS: case TOKEN_VOID
+#define TYPELIKE_TOKENS TYPE_TOKENS: case TOKEN_TYPE_IDENT: \
+	case TOKEN_CT_TYPE_IDENT: case TOKEN_VIRTUAL
 
 // Note that ordering matters here. If ordering is changed,
 // So must type_find_max_type and friends.

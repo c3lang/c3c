@@ -261,10 +261,10 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			llvm_store_bevalue_aligned(c, c->return_out, return_value, 0);
 		}
 		return_out = c->failable_out;
-		return_type = type_error;
+		return_type = type_anyerr;
 		if (!failable)
 		{
-			llvm_value_set(&no_fail, LLVMConstNull(llvm_get_type(c, type_error)), type_error);
+			llvm_value_set(&no_fail, LLVMConstNull(llvm_get_type(c, type_anyerr)), type_anyerr);
 			failable = &no_fail;
 		}
 		return_value = failable;
@@ -355,7 +355,7 @@ void llvm_emit_return_implicit(GenContext *c)
 		return;
 	}
 	BEValue value;
-	llvm_value_set(&value, LLVMConstNull(llvm_get_type(c, type_error)), type_error);
+	llvm_value_set(&value, LLVMConstNull(llvm_get_type(c, type_anyerr)), type_anyerr);
 	llvm_emit_return_abi(c, NULL, &value);
 }
 

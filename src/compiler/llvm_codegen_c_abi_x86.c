@@ -664,7 +664,7 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 	//    return type.
 	if (signature->failable)
 	{
-		signature->failable_abi_info = x86_classify_return(signature->call_abi, &regs, type_error);
+		signature->failable_abi_info = x86_classify_return(signature->call_abi, &regs, type_anyerr);
 		if (signature->rtype->type->type_kind != TYPE_VOID)
 		{
 			signature->ret_abi_info = x86_classify_argument(signature->call_abi, &regs, type_get_ptr(type_lowering(signature->rtype->type)));

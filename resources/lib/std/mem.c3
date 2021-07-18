@@ -16,7 +16,7 @@ enum AllocationFailureKind
     OUT_OF_MEMORY
 }
 
-error AllocationFailure
+errtype AllocationFailure
 {
     AllocationFailureKind failureKind;
 }

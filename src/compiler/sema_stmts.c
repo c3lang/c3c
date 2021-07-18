@@ -1225,9 +1225,9 @@ static inline bool sema_check_type_case(Context *context, Type *switch_type, Ast
 		SEMA_ERROR(case_stmt, "Unexpected '%s' given case when a normal expression was expected.", type_to_error_string(case_type));
 		return false;
 	}
-	if (switch_type == type_error && case_type->canonical->type_kind != TYPE_ERRTYPE)
+	if (switch_type == type_anyerr && case_type->canonical->type_kind != TYPE_ERRTYPE)
 	{
-		if (case_type->canonical == type_error)
+		if (case_type->canonical == type_anyerr)
 		{
 			SEMA_ERROR(case_stmt, "In a catch, only use specific error types, never 'error'.");
 			return false;
@@ -1508,9 +1508,9 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 				                                                  left->identifier_expr.path, false);
 				if (!error_var_decl)
 				{
-					error_var = decl_new_var(left->span.loc, type_info_new_base(type_error, left->span), VARDECL_LOCAL,
+					error_var = decl_new_var(left->span.loc, type_info_new_base(type_anyerr, left->span), VARDECL_LOCAL,
 					                         VISIBLE_LOCAL);
-					error_var->type = type_error;
+					error_var->type = type_anyerr;
 					Expr *right = catch_expr->binary_expr.right;
 					error_var->var.init_expr = right;
 					error_expr = right;
@@ -1561,7 +1561,7 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 			if (!sema_analyse_switch_body(context,
 			                              statement,
 			                              error_expr->span,
-			                              type_error,
+			                              type_anyerr,
 			                              statement->catch_stmt.cases))
 			{
 				return SCOPE_POP_ERROR();

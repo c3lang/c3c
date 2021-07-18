@@ -971,14 +971,10 @@ Ast *parse_stmt(Context *context)
 			UNREACHABLE
 		case TOKEN_LBRACE:
 			return parse_compound_stmt(context);
-		case TYPE_TOKENS:
-		case TOKEN_ERR:
-		case TOKEN_VIRTUAL:
-		case TOKEN_CT_TYPE_IDENT:
+		case TYPELIKE_TOKENS:
 		case TOKEN_HASH_TYPE_IDENT:
 		case TOKEN_HASH_CONST_IDENT:
 		case TOKEN_HASH_IDENT:
-		case TOKEN_TYPE_IDENT:
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
 			return parse_decl_or_expr_stmt(context);
@@ -1126,6 +1122,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_MODULE:
 		case TOKEN_EXTERN:
 		case TOKEN_STRUCT:
+		case TOKEN_ERRTYPE:
 		case TOKEN_INTERFACE:
 		case TOKEN_UNION:
 		case TOKEN_ATTRIBUTE:

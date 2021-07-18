@@ -60,7 +60,7 @@ void c_abi_func_create_wasm(FunctionSignature *signature)
 {
 	if (signature->failable)
 	{
-		signature->failable_abi_info = wasm_classify_return(type_lowering(type_error));
+		signature->failable_abi_info = wasm_classify_return(type_lowering(type_anyerr));
 	}
 	else
 	{

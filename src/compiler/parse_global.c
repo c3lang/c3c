@@ -81,21 +81,20 @@ void recover_top_level(Context *context)
 			case TOKEN_GENERIC:
 			case TOKEN_ATTRIBUTE:
 			case TOKEN_DEFINE:
+			case TOKEN_ERRTYPE:
 				return;
 			case TOKEN_IDENT: // Incr arrays only
 			case TOKEN_CONST:
 			case TOKEN_ASM:
 			case TOKEN_TYPEOF:
 			case TOKEN_CT_ASSERT:
-			case TOKEN_CT_TYPE_IDENT:
 			case TOKEN_DOCS_START:
-			case TOKEN_TYPE_IDENT:
 			case TOKEN_CT_IDENT:
 			case TOKEN_CT_IF:
 			case TOKEN_CT_FOR:
 			case TOKEN_CT_SWITCH:
 			case TOKEN_FUNC:
-			case TYPE_TOKENS:
+			case TYPELIKE_TOKENS:
 				// Only recover if this is in the first col.
 				if (TOKLOC(context->tok)->col == 1) return;
 				advance(context);
@@ -563,7 +562,6 @@ static inline TypeInfo *parse_base_type(Context *context)
 			type_info->unresolved.name_loc = context->tok.id;
 			break;
 		case TYPE_TOKENS:
-		case TOKEN_ERR:
 			type_found = type_from_token(context->tok.type);
 			break;
 		default:
@@ -921,25 +919,7 @@ bool parse_next_is_decl(Context *context)
 	TokenType next_tok = context->next_tok.type;
 	switch (context->tok.type)
 	{
-		case TOKEN_VOID:
-		case TOKEN_CHAR:
-		case TOKEN_BOOL:
-		case TOKEN_ICHAR:
-		case TOKEN_DOUBLE:
-		case TOKEN_FLOAT:
-		case TOKEN_INT:
-		case TOKEN_ISIZE:
-		case TOKEN_LONG:
-		case TOKEN_SHORT:
-		case TOKEN_UINT:
-		case TOKEN_ULONG:
-		case TOKEN_USHORT:
-		case TOKEN_USIZE:
-		case TOKEN_QUAD:
-		case TOKEN_TYPE_IDENT:
-		case TOKEN_CT_TYPE_IDENT:
-		case TOKEN_ERR:
-		case TOKEN_TYPEID:
+		case TYPELIKE_TOKENS:
 			return (next_tok == TOKEN_BANG) | (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) | (next_tok == TOKEN_IDENT)
 			       | (next_tok == TOKEN_CONST_IDENT);
 		case TOKEN_IDENT:
@@ -955,11 +935,7 @@ bool parse_next_is_type(Context *context)
 	TokenType next_tok = context->next_tok.type;
 	switch (context->tok.type)
 	{
-		case TYPE_TOKENS:
-		case TOKEN_VIRTUAL:
-		case TOKEN_TYPE_IDENT:
-		case TOKEN_CT_TYPE_IDENT:
-		case TOKEN_ERR:
+		case TYPELIKE_TOKENS:
 			return true;
 		case TOKEN_IDENT:
 			if (next_tok != TOKEN_SCOPE) return false;
@@ -975,11 +951,7 @@ bool parse_next_is_case_type(Context *context)
 	TokenType next_tok = context->next_tok.type;
 	switch (context->tok.type)
 	{
-		case TYPE_TOKENS:
-		case TOKEN_VIRTUAL:
-		case TOKEN_TYPE_IDENT:
-		case TOKEN_CT_TYPE_IDENT:
-		case TOKEN_ERR:
+		case TYPELIKE_TOKENS:
 			return (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) |  (next_tok == TOKEN_COMMA) | (next_tok == TOKEN_COLON) | (next_tok == TOKEN_EOS);
 		case TOKEN_IDENT:
 			if (next_tok != TOKEN_SCOPE) return false;
@@ -1632,7 +1604,7 @@ static AttributeDomain TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
 		[TOKEN_UNION] = ATTR_UNION,
 		[TOKEN_CONST] = ATTR_CONST,
 		[TOKEN_DEFINE] = ATTR_TYPEDEF,
-		[TOKEN_ERR] = ATTR_ERROR,
+		[TOKEN_ERRTYPE] = ATTR_ERROR,
 };
 
 
@@ -1725,13 +1697,13 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 
 /**
  * error_declaration
- *		: ERROR TYPE_IDENT ';'
- *		| ERROR TYPE_IDENT '{' error_data '}'
+ *		: ERRTYPE TYPE_IDENT ';'
+ *		| ERRTYPE TYPE_IDENT '{' error_data '}'
  *		;
  */
 static inline Decl *parse_error_declaration(Context *context, Visibility visibility)
 {
-	advance_and_verify(context, TOKEN_ERR);
+	advance_and_verify(context, TOKEN_ERRTYPE);
 
 	Decl *err_decl = decl_new_with_type(context->tok.id, DECL_ERR, visibility);
 
@@ -2253,13 +2225,8 @@ Decl *parse_top_level_statement(Context *context)
 		case TOKEN_ENUM:
 			decl = TRY_DECL_OR(parse_enum_declaration(context, visibility), poisoned_decl);
 			break;
-		case TOKEN_ERR:
+		case TOKEN_ERRTYPE:
 			decl = TRY_DECL_OR(parse_error_declaration(context, visibility), poisoned_decl);
-			break;
-		case TOKEN_CT_TYPE_IDENT:
-		case TOKEN_TYPE_IDENT:
-			// All of these start type
-			decl = TRY_DECL_OR(parse_global_declaration(context, visibility), poisoned_decl);
 			break;
 		case TOKEN_IDENT:
 			if (context->next_tok.type == TOKEN_SCOPE)
@@ -2293,14 +2260,12 @@ Decl *parse_top_level_statement(Context *context)
 		case TOKEN_IMPORT:
 			SEMA_TOKEN_ERROR(context->tok, "Imports are only allowed directly after the module declaration.");
 			return poisoned_decl;
-		default:
-			// We could have included all fundamental types above, but do it here instead.
-			if (!token_is_type(context->tok.type))
-			{
-				SEMA_TOKEN_ERROR(context->tok, "Expected a top level declaration here.");
-				return poisoned_decl;
-			}
+		case TYPELIKE_TOKENS:
 			decl = TRY_DECL_OR(parse_global_declaration(context, visibility), poisoned_decl);
+			break;
+		default:
+			SEMA_TOKEN_ERROR(context->tok, "Expected a top level declaration here.");
+			return poisoned_decl;
 			break;
 	}
 	assert(decl);

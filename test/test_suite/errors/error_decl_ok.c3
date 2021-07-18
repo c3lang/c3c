@@ -1,20 +1,20 @@
 module errors;
 
-error TheError
+errtype TheError
 {
     int a;
 }
 
-error TheError2
+errtype TheError2
 {
     char a;
     char b;
 }
 
-error TheError3
+errtype TheError3
 {
     void *a;
 }
 
-error OtherError;
+errtype OtherError;
 
