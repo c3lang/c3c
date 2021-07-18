@@ -237,11 +237,12 @@ typedef enum
 	PREC_ASSIGNMENT,        // =, *=, /=, %=, +=, etc
 	PREC_TRY_ELSE,          // try and else
 	PREC_TERNARY,           // ?:
-	PREC_LOGICAL,           // && ||
+	PREC_OR,                // ||
+	PREC_AND,               // &&
 	PREC_RELATIONAL,        // < > <= >= == !=
 	PREC_ADDITIVE,          // + -
 	PREC_BIT,               // ^ | &
-	PREC_SHIFT,             // << >> >>>
+	PREC_SHIFT,             // << >>
 	PREC_MULTIPLICATIVE,    // * / %
 	PREC_UNARY,             // ! - + ~ * & prefix ++/--
 	PREC_CALL,              // . () [] postfix ++/--

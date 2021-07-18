@@ -11,6 +11,27 @@
 
 static inline bool sema_cast_rvalue(Context *context, Type *to, Expr *expr);
 
+int BINOP_PREC_REQ[BINARYOP_LAST] =
+{
+		// bitwise operations
+		[BINARYOP_BIT_OR] = 1,
+		[BINARYOP_BIT_XOR] = 1,
+		[BINARYOP_BIT_AND] = 1,
+
+		// comparison operations
+		[BINARYOP_GT] = 2,
+		[BINARYOP_GE] = 2,
+		[BINARYOP_LT] = 2,
+		[BINARYOP_LE] = 2,
+		[BINARYOP_NE] = 2,
+		[BINARYOP_EQ] = 2,
+
+		[BINARYOP_SHR] = 3,
+		[BINARYOP_SHL] = 3,
+
+
+};
+
 
 static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
 {
@@ -4147,7 +4168,7 @@ static bool sema_expr_analyse_shift_assign(Context *context, Expr *expr, Expr *l
 
 static bool sema_expr_analyse_and(Context *context, Expr *expr, Expr *left, Expr *right)
 {
-	if (!sema_analyse_expr(context, type_bool, left) & sema_analyse_expr(context, type_bool, right)) return false;
+	if (!sema_analyse_expr(context, type_bool, left) || !sema_analyse_expr(context, type_bool, right)) return false;
 	if (!cast_implicit(left, type_bool) || !cast_implicit(right, type_bool)) return false;
 
 	expr_set_type(expr, type_bool);
@@ -4705,12 +4726,34 @@ static inline bool sema_expr_analyse_taddr(Context *context, Type *to, Expr *exp
 	return true;
 }
 
+static bool unclear_op_precedence(Expr *left_side, Expr * main_expr, Expr *right_side)
+{
+	int precedence_main = BINOP_PREC_REQ[main_expr->binary_expr.operator];
+	if (left_side->expr_kind == EXPR_BINARY)
+	{
+		int precedence_left = BINOP_PREC_REQ[left_side->binary_expr.operator];
+		return precedence_left && (precedence_left == precedence_main);
+	}
+	if (right_side->expr_kind == EXPR_BINARY)
+	{
+		int precedence_right = BINOP_PREC_REQ[right_side->binary_expr.operator];
+		return precedence_right && (precedence_right == precedence_main);
+	}
+	return false;
+}
 
 static inline bool sema_expr_analyse_binary(Context *context, Type *to, Expr *expr)
 {
 	assert(expr->resolve_status == RESOLVE_RUNNING);
 	Expr *left = expr->binary_expr.left;
 	Expr *right = expr->binary_expr.right;
+
+	// check if both sides have a binary operation where the precedence is unclear. Example: a ^ b | c
+	if (unclear_op_precedence(left, expr, right))
+	{
+		SEMA_ERROR(expr, "You need to add explicit parentheses to clarify precedence.");
+		return expr_poison(expr);
+	}
 	// Don't push down bool conversions for example.
 	if (to && !type_is_numeric(to)) to = NULL;
 	switch (expr->binary_expr.operator)

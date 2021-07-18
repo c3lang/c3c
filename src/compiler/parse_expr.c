@@ -5,21 +5,6 @@
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
-#define BINOP_PREC_REQ_LEN 40
-int BINOP_PREC_REQ[BINOP_PREC_REQ_LEN] = {
-	// bitwise operations
-	[BINARYOP_BIT_OR] = 1,
-	[BINARYOP_BIT_XOR] = 1,
-	[BINARYOP_BIT_AND] = 1,
-	
-	// comparison operations
-	[BINARYOP_GT] = 2,
-	[BINARYOP_GE] = 2,
-	[BINARYOP_LT] = 2,
-	[BINARYOP_LE] = 2,
-	[BINARYOP_NE] = 2,
-	[BINARYOP_EQ] = 2
-};
 
 typedef Expr *(*ParseFn)(Context *context, Expr *);
 
@@ -389,21 +374,6 @@ static Expr *parse_failable(Context *context, Expr *left_side)
 }
 
 
-bool unclear_op_precedence(Expr *left_side, Expr * main_expr, Expr *right_side)
-{
-	int precedence_main = BINOP_PREC_REQ[main_expr->binary_expr.operator];
-	if (left_side->expr_kind == EXPR_BINARY)
-	{
-		int precedence_left = BINOP_PREC_REQ[left_side->binary_expr.operator]; 
-		return precedence_left && (precedence_left == precedence_main);
-	}
-	if (right_side->expr_kind == EXPR_BINARY)
-	{
-		int precedence_right = BINOP_PREC_REQ[right_side->binary_expr.operator];
-		return precedence_right && (precedence_right == precedence_main);
-	}
-	return false;
-}
 
 static Expr *parse_binary(Context *context, Expr *left_side)
 {
@@ -428,12 +398,6 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	expr->binary_expr.operator = binaryop_from_token(operator_type);
 	expr->binary_expr.left = left_side;
 	expr->binary_expr.right = right_side;
-	
-	// check if both sides have a binary operation where the precedence is unclear. Example: a ^ b | c
-	if (unclear_op_precedence(left_side, expr, right_side)) 
-	{
-		SEMA_TOKEN_ERROR(context->tok, "You need to add explicit parentheses.");
-	}
 	
 	expr->span.end_loc = right_side->span.end_loc;
 	return expr;
@@ -1141,8 +1105,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_AT] = { parse_macro_expansion, NULL, PREC_NONE },
 		[TOKEN_STRING] = { parse_string_literal, NULL, PREC_NONE },
 		[TOKEN_REAL] = { parse_double, NULL, PREC_NONE },
-		[TOKEN_OR] = { NULL, parse_binary, PREC_LOGICAL },
-		[TOKEN_AND] = { parse_unary_expr, parse_binary, PREC_LOGICAL },
+		[TOKEN_OR] = { NULL, parse_binary, PREC_OR },
+		[TOKEN_AND] = { parse_unary_expr, parse_binary, PREC_AND },
 		[TOKEN_EQ] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_PLUS_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_MINUS_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
