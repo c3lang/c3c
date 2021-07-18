@@ -227,11 +227,10 @@ static Expr *parse_type_identifier(Context *context, Expr *left)
 static Expr *parse_typeof_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEOF, context->tok);
-	advance_and_verify(context, TOKEN_TYPEOF);
-	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
-	expr->typeof_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
-	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO, context->tok);
+	TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_expr);
+	expr->span = type->span;
+	expr->type_expr = type;
 	return expr;
 }
 
@@ -1129,7 +1128,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },
 		[TOKEN_LBRAPIPE] = { parse_expr_block, NULL, PREC_NONE },
-		[TOKEN_TYPEOF] = { parse_typeof_expr, NULL, PREC_NONE },
 		[TOKEN_TRY] = { parse_try_expr, NULL, PREC_NONE },
 		[TOKEN_CATCH] = { parse_try_expr, NULL, PREC_NONE },
 		[TOKEN_BANGBANG] = { NULL, parse_bangbang_expr, PREC_CALL },
@@ -1187,5 +1185,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 
 		[TOKEN_CT_SIZEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE }
+		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_TYPEOF] = { parse_typeof_expr, NULL, PREC_NONE },
 };

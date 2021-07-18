@@ -1067,7 +1067,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_NULL:
 		case TOKEN_TRUE:
 		case TOKEN_LBRAPIPE:
-		case TOKEN_TYPEOF:
 		case TOKEN_CT_OFFSETOF:
 		case TOKEN_CT_ALIGNOF:
 		case TOKEN_CT_SIZEOF:

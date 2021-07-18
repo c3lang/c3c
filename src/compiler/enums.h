@@ -436,7 +436,6 @@ typedef enum
 	TOKEN_SWITCH,
 	TOKEN_TRUE,
 	TOKEN_TRY,
-	TOKEN_TYPEOF,
 	TOKEN_UNION,
 	TOKEN_VAR,              // Reserved
 	TOKEN_VIRTUAL,
@@ -456,6 +455,7 @@ typedef enum
 	TOKEN_CT_OFFSETOF,      // $offsetof
 	TOKEN_CT_SIZEOF,        // $sizeof
 	TOKEN_CT_SWITCH,        // $switch
+	TOKEN_CT_TYPEOF,        // $typeof
 	TOKEN_CT_UNREACHABLE,   // $unreachable
 
 	TOKEN_DOCS_START,       // /**
@@ -478,7 +478,7 @@ typedef enum
   case TOKEN_QUAD: case TOKEN_TYPEID: case TOKEN_ANYERR
 #define TYPE_TOKENS NON_VOID_TYPE_TOKENS: case TOKEN_VOID
 #define TYPELIKE_TOKENS TYPE_TOKENS: case TOKEN_TYPE_IDENT: \
-	case TOKEN_CT_TYPE_IDENT: case TOKEN_VIRTUAL
+	case TOKEN_CT_TYPE_IDENT: case TOKEN_VIRTUAL: case TOKEN_CT_TYPEOF
 
 // Note that ordering matters here. If ordering is changed,
 // So must type_find_max_type and friends.

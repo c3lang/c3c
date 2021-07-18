@@ -136,6 +136,31 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 
 }
 
+Type *type_by_expr_range(ExprConst *expr)
+{
+	if (expr->kind == TYPE_FXX)
+	{
+		return type_double;
+	}
+	assert(expr->kind == TYPE_IXX);
+	BigInt *b = &expr->i;
+	// 1. Does it fit in a C int? If so, that's the type.
+	Type *type = type_cint();
+	if (!expr_const_will_overflow(expr, type->type_kind)) return type;
+
+	int width_max = platform_target.int128 ? 128 : 64;
+	int current_width = platform_target.width_c_int * 2;
+	while (current_width <= width_max)
+	{
+		type = type_int_signed_by_bitsize(current_width);
+		if (!expr_const_will_overflow(expr, type->type_kind)) return type;
+		type = type_int_unsigned_by_bitsize(current_width);
+		if (!expr_const_will_overflow(expr, type->type_kind)) return type;
+		current_width *= width_max;
+	}
+	return NULL;
+}
+
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow)
 {
 	if (type_info->resolve_status == RESOLVE_DONE) return type_info_ok(type_info);
@@ -160,11 +185,31 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow
 			if (!sema_resolve_type_identifier(context, type_info)) return false;
 			break;
 		case TYPE_INFO_EXPRESSION:
-			if (!sema_analyse_expr(context, NULL, type_info->unresolved_type_expr))
+		{
+			Expr *expr = type_info->unresolved_type_expr;
+			if (!sema_analyse_expr(context, NULL, expr))
 			{
 				return type_info_poison(type_info);
 			}
-			TODO
+			type_info->type = expr->type;
+			switch (type_info->type->type_kind)
+			{
+				case TYPE_FXX:
+				case TYPE_IXX:
+					assert(expr->expr_kind == EXPR_CONST);
+					type_info->type = type_by_expr_range(&expr->const_expr);
+					if (!type_info->type)
+					{
+						SEMA_ERROR(expr, "The expression does not fit any runtime type.");
+						return false;
+					}
+					break;
+				default:
+					break;
+			}
+			type_info->resolve_status = RESOLVE_DONE;
+			return true;
+		}
 		case TYPE_INFO_INFERRED_ARRAY:
 			if (!allow_inferred_type)
 			{

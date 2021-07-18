@@ -252,8 +252,6 @@ const char *token_type_to_string(TokenType type)
 			return "try";
 		case TOKEN_TYPEID:
 			return "typeid";
-		case TOKEN_TYPEOF:
-			return "typeof";
 		case TOKEN_UNION:
 			return "union";
 		case TOKEN_VAR:
@@ -347,6 +345,8 @@ const char *token_type_to_string(TokenType type)
 			return "$sizeof";
 		case TOKEN_CT_SWITCH:
 			return "$switch";
+		case TOKEN_CT_TYPEOF:
+			return "$typeof";
 		case TOKEN_CT_UNREACHABLE:
 			return "$unreachable";
 		case TOKEN_EOF:

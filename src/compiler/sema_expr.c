@@ -5509,6 +5509,7 @@ static inline bool sema_expr_analyse_ct_sizeof(Context *context, Type *to, Expr 
 	return true;
 }
 
+
 static inline bool sema_expr_analyse_ct_alignof(Context *context, Type *to, Expr *expr)
 {
 	Expr *first = expr->ct_call_expr.arguments[0];

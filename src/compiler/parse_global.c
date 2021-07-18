@@ -86,7 +86,6 @@ void recover_top_level(Context *context)
 			case TOKEN_IDENT: // Incr arrays only
 			case TOKEN_CONST:
 			case TOKEN_ASM:
-			case TOKEN_TYPEOF:
 			case TOKEN_CT_ASSERT:
 			case TOKEN_DOCS_START:
 			case TOKEN_CT_IDENT:
@@ -528,6 +527,7 @@ Path *parse_path_prefix(Context *context, bool *had_error)
  *		| ident_scope TYPE_IDENT
  *		| CT_TYPE_IDENT
  *		| VIRTUAL (ident_scope TYPE_IDENT)?
+ *		| CT_TYPEOF '(' expr ')'
  *		;
  *
  * Assume prev_token is the type.
@@ -535,6 +535,15 @@ Path *parse_path_prefix(Context *context, bool *had_error)
  */
 static inline TypeInfo *parse_base_type(Context *context)
 {
+	if (try_consume(context, TOKEN_CT_TYPEOF))
+	{
+		TypeInfo *type_info = type_info_new(TYPE_INFO_EXPRESSION, source_span_from_token_id(context->prev_tok));
+		CONSUME_OR(TOKEN_LPAREN, poisoned_type_info);
+		type_info->unresolved_type_expr = TRY_EXPR_OR(parse_expr(context), poisoned_type_info);
+		CONSUME_OR(TOKEN_RPAREN, poisoned_type_info);
+		RANGE_EXTEND_PREV(type_info);
+		return type_info;
+	}
 	bool virtual = try_consume(context, TOKEN_VIRTUAL);
 	SourceSpan range = source_span_from_token_id(context->tok.id);
 	bool had_error;
@@ -693,7 +702,8 @@ TypeInfo *parse_type_with_base(Context *context, TypeInfo *type_info)
  */
 TypeInfo *parse_type(Context *context)
 {
-	return parse_type_with_base(context, parse_base_type(context));
+	TypeInfo *base = TRY_TYPE_OR(parse_base_type(context), poisoned_type_info);
+	return parse_type_with_base(context, base);
 }
 
 

@@ -352,6 +352,7 @@ bool bigint_fits_in_bits(const BigInt *big_int, size_t bit_count, bool is_signed
 	CmpRes min_cmp = bigint_cmp(big_int, &min_value);
 	CmpRes max_cmp = bigint_cmp(big_int, &max_value);
 
+
 	return (min_cmp == CMP_GT || min_cmp == CMP_EQ) && (max_cmp == CMP_LT || max_cmp == CMP_EQ);
 }
 
