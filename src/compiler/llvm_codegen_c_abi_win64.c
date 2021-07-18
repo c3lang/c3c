@@ -162,7 +162,7 @@ void c_abi_func_create_win64(FunctionSignature *signature)
 
 	if (signature->failable)
 	{
-		signature->failable_abi_info = win64_classify(&regs, type_error, true, is_vector_call, is_reg_call);
+		signature->failable_abi_info = win64_classify(&regs, type_anyerr, true, is_vector_call, is_reg_call);
 		if (signature->rtype->type->type_kind != TYPE_VOID)
 		{
 			signature->ret_abi_info = win64_classify(&regs, type_get_ptr(type_lowering(signature->rtype->type)), false, is_vector_call, is_reg_call);

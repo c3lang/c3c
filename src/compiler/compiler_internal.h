@@ -1489,7 +1489,7 @@ extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_iptr, *type_uptr, *type_iptrdiff, *type_uptrdiff;
 extern Type *type_u128, *type_i128;
 extern Type *type_compint, *type_compfloat;
-extern Type *type_typeid, *type_error, *type_typeinfo, *type_varheader;
+extern Type *type_typeid, *type_anyerr, *type_typeinfo, *type_varheader;
 extern Type *type_virtual, *type_virtual_generic;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];

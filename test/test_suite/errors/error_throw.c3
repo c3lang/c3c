@@ -1,6 +1,6 @@
 module foo;
 
-error Blurg
+errtype Blurg
 {
 }
 

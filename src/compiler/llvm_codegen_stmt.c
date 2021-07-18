@@ -63,7 +63,7 @@ static LLVMValueRef llvm_emit_local_decl(GenContext *c, Ast *ast)
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->external_name);
 			scratch_buffer_append(".f");
-			decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_error), scratch_buffer_to_string());
+			decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_anyerr), scratch_buffer_to_string());
 		}
 		llvm_emit_global_variable_init(c, decl);
 		return decl->backend_ref;
@@ -74,11 +74,11 @@ static LLVMValueRef llvm_emit_local_decl(GenContext *c, Ast *ast)
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->name);
 		scratch_buffer_append(".f");
-		decl->var.failable_ref = llvm_emit_alloca_aligned(c, type_error, scratch_buffer_to_string());
+		decl->var.failable_ref = llvm_emit_alloca_aligned(c, type_anyerr, scratch_buffer_to_string());
 		// Only clear out the result if the assignment isn't a failable.
 		if (!decl->var.init_expr || !decl->var.init_expr->failable)
 		{
-			LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_error)), decl->var.failable_ref);
+			LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_anyerr)), decl->var.failable_ref);
 		}
 	}
 
@@ -198,7 +198,7 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 	else if (c->cur_func_decl->func_decl.function_signature.failable)
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
-		error_out = llvm_emit_alloca_aligned(c, type_error, "reterr");
+		error_out = llvm_emit_alloca_aligned(c, type_anyerr, "reterr");
 		c->error_var = error_out;
 		c->catch_block = error_return_block;
 	}
@@ -239,7 +239,7 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 	{
 		llvm_emit_block(c, error_return_block);
 		BEValue value;
-		llvm_value_set_address(&value, error_out, type_error);
+		llvm_value_set_address(&value, error_out, type_anyerr);
 		llvm_emit_return_abi(c, NULL, &value);
 		c->current_block = NULL;
 	}
@@ -1135,8 +1135,8 @@ void gencontext_emit_catch_stmt(GenContext *c, Ast *ast)
 	if (ast->catch_stmt.has_err_var)
 	{
 		Decl *error_var = ast->catch_stmt.err_var;
-		assert(error_var->type->canonical == type_error);
-		error_result = llvm_emit_alloca_aligned(c, type_error, error_var->name);
+		assert(error_var->type->canonical == type_anyerr);
+		error_result = llvm_emit_alloca_aligned(c, type_anyerr, error_var->name);
 		error_var->backend_ref = error_result;
 		catch_expr = error_var->var.init_expr;
 
@@ -1145,7 +1145,7 @@ void gencontext_emit_catch_stmt(GenContext *c, Ast *ast)
 	{
 		if (ast->catch_stmt.is_switch)
 		{
-			error_result = llvm_emit_alloca_aligned(c, type_error, "catchval");
+			error_result = llvm_emit_alloca_aligned(c, type_anyerr, "catchval");
 		}
 		catch_expr = ast->catch_stmt.catchable;
 	}

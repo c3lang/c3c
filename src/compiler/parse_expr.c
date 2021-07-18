@@ -1120,7 +1120,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_QUAD] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_VOID] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_TYPEID] = { parse_type_identifier, NULL, PREC_NONE },
-		[TOKEN_ERR] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_ANYERR] = { parse_type_identifier, NULL, PREC_NONE },
 
 		[TOKEN_ELSE] = { NULL, parse_else_expr, PREC_TRY_ELSE },
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },

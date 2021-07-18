@@ -402,7 +402,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			}
 			else
 			{
-				value->value = LLVMBuildStructGEP2(c->builder, llvm_get_type(c, type_error), value->value, 0, "");
+				value->value = LLVMBuildStructGEP2(c->builder, llvm_get_type(c, type_anyerr), value->value, 0, "");
 				value->value = llvm_emit_load_aligned(c,
 				                                      llvm_get_type(c, type_usize),
 				                                      value->value,
@@ -2016,7 +2016,7 @@ static inline void gencontext_emit_guard_expr(GenContext *c, BEValue *be_value, 
 	PUSH_ERROR();
 
 	// Set the catch/error var
-	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_error, "error_var");
+	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_anyerr, "error_var");
 
 	c->error_var = error_var;
 	c->catch_block = guard_block;
@@ -2041,7 +2041,7 @@ static inline void gencontext_emit_guard_expr(GenContext *c, BEValue *be_value, 
 	{
 		llvm_emit_defer(c, expr->guard_expr.defer, 0);
 		BEValue value;
-		llvm_value_set_address(&value, error_var, type_error);
+		llvm_value_set_address(&value, error_var, type_anyerr);
 		llvm_emit_return_abi(c, NULL, &value);
 		c->current_block = NULL;
 		c->current_block_is_target = NULL;
@@ -2620,7 +2620,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	if (signature->failable)
 	{
 		ret_info = signature->failable_abi_info;
-		return_type = type_error;
+		return_type = type_anyerr;
 	}
 
 	// 6. Generate data for the return value.
@@ -2880,7 +2880,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		BEValue error_holder = *be_value;
 		if (error_var)
 		{
-			llvm_value_set_address(&error_holder, c->error_var, type_error);
+			llvm_value_set_address(&error_holder, c->error_var, type_anyerr);
 		}
 		// 17b. Generate a boolean switch.
 		llvm_value_set_bool(&no_err, llvm_emit_is_no_error_value(c, &error_holder));
@@ -3077,7 +3077,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 
 	if (failable)
 	{
-		llvm_store_self_aligned(c, failable, llvm_get_zero(c, type_error), type_error);
+		llvm_store_self_aligned(c, failable, llvm_get_zero(c, type_anyerr), type_anyerr);
 	}
 	POP_ERROR();
 

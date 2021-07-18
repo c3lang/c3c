@@ -214,7 +214,7 @@ func Type getMult(Type a)
 }
 Type argh = 234;
 
-error MyErr
+errtype MyErr
 {
     Type x;
 }

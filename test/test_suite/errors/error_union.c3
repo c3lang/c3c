@@ -1,8 +1,8 @@
 module foo;
 
-error Blurg;
+errtype Blurg;
 
 func void main()
 {
-    error foo;
+    anyerr foo;
 }

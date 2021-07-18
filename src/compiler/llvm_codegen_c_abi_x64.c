@@ -922,7 +922,7 @@ void c_abi_func_create_x64(FunctionSignature *signature)
 
 	if (signature->failable)
 	{
-		signature->failable_abi_info = x64_classify_return_type(type_error, &available_registers, is_regcall);
+		signature->failable_abi_info = x64_classify_return_type(type_anyerr, &available_registers, is_regcall);
 		if (abi_arg_is_indirect(signature->failable_abi_info))
 		{
 			available_registers.int_registers--;

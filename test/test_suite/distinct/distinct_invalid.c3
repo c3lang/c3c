@@ -1,4 +1,4 @@
-error Error
+errtype Error
 {}
 
 define Foo1 = distinct Error; // #error: You cannot create a distinct type from an error

@@ -258,7 +258,7 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 
 	LLVMTypeRef return_type = NULL;
 
-	Type *real_return_type = signature->failable ? type_error : signature->rtype->type->canonical;
+	Type *real_return_type = signature->failable ? type_anyerr : signature->rtype->type->canonical;
 	ABIArgInfo *ret_arg_info = signature->failable ? signature->failable_abi_info : signature->ret_abi_info;
 
 	ret_arg_info->param_index_end = 0;

@@ -367,7 +367,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	LLVMValueRef failable_ref = decl->var.failable_ref;
 	if (failable_ref)
 	{
-		llvm_set_alignment(failable_ref, type_alloca_alignment(type_error));
+		llvm_set_alignment(failable_ref, type_alloca_alignment(type_anyerr));
 	}
 	if (decl->var.init_expr && decl->var.init_expr->failable)
 	{
@@ -378,7 +378,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		LLVMSetInitializer(decl->backend_ref, init_value);
 		if (failable_ref)
 		{
-			LLVMSetInitializer(failable_ref, LLVMConstNull(llvm_get_type(c, type_error)));
+			LLVMSetInitializer(failable_ref, LLVMConstNull(llvm_get_type(c, type_anyerr)));
 		}
 	}
 
@@ -771,7 +771,7 @@ void llvm_value_fold_failable(GenContext *c, BEValue *value)
 	{
 		LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after_check");
 		BEValue error_value;
-		llvm_value_set_address(&error_value, value->failable, type_error);
+		llvm_value_set_address(&error_value, value->failable, type_anyerr);
 		BEValue comp;
 		llvm_value_set_bool(&comp, llvm_emit_is_no_error_value(c, &error_value));
 		if (c->error_var)

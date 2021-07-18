@@ -11,7 +11,7 @@ static struct
 	Type u8, u16, u32, u64, u128;
 	Type f16, f32, f64, f128, fxx;
 	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
-	Type voidstar, typeid, error, typeinfo;
+	Type voidstar, typeid, anyerr, typeinfo;
 	Type str, varheader, virtual, virtual_generic;
 
 } t;
@@ -46,7 +46,7 @@ Type *type_usize = &t.usz;
 Type *type_compint = &t.ixx;
 Type *type_compfloat = &t.fxx;
 Type *type_compstr = &t.str;
-Type *type_error = &t.error;
+Type *type_anyerr = &t.anyerr;
 Type *type_varheader = &t.varheader;
 
 static unsigned size_subarray;
@@ -1160,7 +1160,7 @@ type_create(#name_, &(shortname_), type_, bits_, target->align_ ## aligned_, tar
 
 	alignment_subarray = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
 	size_subarray = alignment_subarray * 2;
-	type_create("error", &t.error, TYPE_ERR_UNION, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
+	type_create("anyerr", &t.anyerr, TYPE_ERR_UNION, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
 }
 
 bool type_is_scalar(Type *type)
@@ -1232,8 +1232,8 @@ Type *type_from_token(TokenType type)
 {
 	switch (type)
 	{
-		case TOKEN_ERR:
-			return type_error;
+		case TOKEN_ANYERR:
+			return type_anyerr;
 		case TOKEN_VOID:
 			return type_void;
 		case TOKEN_BOOL:
@@ -1444,7 +1444,7 @@ Type *type_find_max_type(Type *type, Type *other)
 			// some way?
 			return NULL;
 		case TYPE_ERRTYPE:
-			if (other->type_kind == TYPE_ERRTYPE) return type_error;
+			if (other->type_kind == TYPE_ERRTYPE) return type_anyerr;
 			return NULL;
 		case TYPE_FUNC:
 		case TYPE_UNION:
