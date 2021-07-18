@@ -1,0 +1,72 @@
+// #target: x64_darwin
+
+module foo;
+import std::io;
+
+errtype Foo;
+
+define Bar = distinct int;
+
+enum MyEnum
+{
+    A,
+    B
+}
+
+func void Foo.hello(Foo *f)
+{
+    io::println("Hello from Foo");
+}
+
+func void Bar.hello(Bar *b)
+{
+    io::println("Hello from Bar");
+}
+
+func void MyEnum.hello(MyEnum *myenum)
+{
+    io::println("Hello from MyEnum");
+}
+func void main()
+{
+    Foo f;
+    Bar b;
+    MyEnum a = MyEnum.A;
+    f.hello();
+    b.hello();
+    a.hello();
+}
+
+// #expect: foo.ll
+
+define void @foo.Foo__hello(%Foo* %0)
+  %f = alloca %Foo*, align 8
+  store %Foo* %0, %Foo** %f, align 8
+  %1 = call i32 @"std::io.println"(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0))
+  ret void
+
+define void @foo.Bar__hello(i32* %0)
+  %b = alloca i32*, align 8
+  store i32* %0, i32** %b, align 8
+  %1 = call i32 @"std::io.println"(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.1, i32 0, i32 0))
+  ret void
+
+define void @foo.MyEnum__hello(i32* %0)
+  %myenum = alloca i32*, align 8
+  store i32* %0, i32** %myenum, align 8
+  %1 = call i32 @"std::io.println"(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str.2, i32 0, i32 0))
+  ret void
+
+define void @main()
+entry:
+  %f = alloca %Foo, align 8
+  %b = alloca i32, align 4
+  %a = alloca i32, align 4
+  %0 = bitcast %Foo* %f to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %0, i8 0, i64 8, i1 false)
+  store i32 0, i32* %b, align 4
+  store i32 0, i32* %a, align 4
+  call void @foo.Foo__hello(%Foo* %f)
+  call void @foo.Bar__hello(i32* %b)
+  call void @foo.MyEnum__hello(i32* %a)
+  ret void
