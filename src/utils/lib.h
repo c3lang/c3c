@@ -176,7 +176,7 @@ static inline bool is_hex_or_(char c)
 	}
 }
 
-static inline char is_valid_escape(char c)
+static inline signed char is_valid_escape(char c)
 {
 	switch (c)
 	{

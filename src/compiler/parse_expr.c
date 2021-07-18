@@ -873,29 +873,10 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 {
 	int scanned;
 	uint64_t unicode_char;
-	switch (src[0])
+	signed char scanned_char = is_valid_escape(src[0]);
+	if (scanned_char < 0) return -1;
+	switch (scanned_char)
 	{
-		case 'a':
-			dest[(*pos)++] = '\a';
-			return 1;
-		case 'b':
-			dest[(*pos)++] = '\b';
-			return 1;
-		case 'e':
-			dest[(*pos)++] = 0x1b;
-			return 1;
-		case 'f':
-			dest[(*pos)++] = '\f';
-			return 1;
-		case 'n':
-			dest[(*pos)++] = '\n';
-			return 1;
-		case 'r':
-			dest[(*pos)++] = '\r';
-			return 1;
-		case 't':
-			dest[(*pos)++] = '\t';
-			return 1;
 		case 'x':
 		{
 			int h = char_to_nibble(src[1]);
@@ -933,7 +914,7 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 			break;
 		}
 		default:
-			dest[(*pos)++] = src[0];
+			dest[(*pos)++] = scanned_char;
 			return 1;
 	}
 	if (unicode_char < 0x80U)
