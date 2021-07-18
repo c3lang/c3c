@@ -358,13 +358,28 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		init_value = LLVMConstNull(llvm_get_type(c, decl->type));
 	}
 
+
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
 	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->external_name);
 	llvm_set_alignment(decl->backend_ref, alignment);
+
+	LLVMValueRef failable_ref = decl->var.failable_ref;
+	if (failable_ref)
+	{
+		llvm_set_alignment(failable_ref, type_alloca_alignment(type_error));
+	}
+	if (decl->var.init_expr && decl->var.init_expr->failable)
+	{
+		UNREACHABLE
+	}
 	if (decl->visibility != VISIBLE_EXTERN)
 	{
 		LLVMSetInitializer(decl->backend_ref, init_value);
+		if (failable_ref)
+		{
+			LLVMSetInitializer(failable_ref, LLVMConstNull(llvm_get_type(c, type_error)));
+		}
 	}
 
 	LLVMSetGlobalConstant(decl->backend_ref, decl->var.kind == VARDECL_CONST);
@@ -373,16 +388,20 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	{
 		case VISIBLE_MODULE:
 			LLVMSetVisibility(decl->backend_ref, LLVMProtectedVisibility);
+			if (failable_ref) LLVMSetVisibility(failable_ref, LLVMProtectedVisibility);
 			break;
 		case VISIBLE_PUBLIC:
 			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
+			if (failable_ref) LLVMSetVisibility(failable_ref, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_EXTERN:
 			LLVMSetLinkage(decl->backend_ref, LLVMExternalLinkage);
+			if (failable_ref) LLVMSetLinkage(failable_ref, LLVMExternalLinkage);
 			//LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_LOCAL:
 			LLVMSetVisibility(decl->backend_ref, LLVMHiddenVisibility);
+			if (failable_ref) LLVMSetVisibility(failable_ref, LLVMHiddenVisibility);
 			break;
 	}
 

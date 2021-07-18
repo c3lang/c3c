@@ -15,15 +15,15 @@ func void test()
 
 entry:
   %x = alloca [3 x i32], align 4
-  %x1 = alloca %error_union, align 8
+  %x.f = alloca %error_union, align 8
   %g = alloca i32, align 4
   %idx = alloca i64, align 8
   %z = alloca i32, align 4
-  store %error_union zeroinitializer, %error_union* %x1, align 8
+  store %error_union zeroinitializer, %error_union* %x.f, align 8
   %0 = bitcast [3 x i32]* %x to i8*
   call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 12, i1 false)
   store i32 0, i32* %g, align 4
-  %err_domain = getelementptr inbounds %error_union, %error_union* %x1, i32 0, i32 0
+  %err_domain = getelementptr inbounds %error_union, %error_union* %x.f, i32 0, i32 0
   %1 = load i64, i64* %err_domain, align 8
   %not_err = icmp eq i64 %1, 0
   br i1 %not_err, label %after_check, label %foreach.exit
@@ -45,12 +45,12 @@ foreach.body:
   %6 = load i32, i32* %z, align 4
   %add = add i32 %5, %6
   store i32 %add, i32* %g, align 4
-  %err_domain2 = getelementptr inbounds %error_union, %error_union* %x1, i32 0, i32 0
-  %7 = load i64, i64* %err_domain2, align 8
-  %not_err3 = icmp eq i64 %7, 0
-  br i1 %not_err3, label %after_check4, label %voiderr
+  %err_domain1 = getelementptr inbounds %error_union, %error_union* %x.f, i32 0, i32 0
+  %7 = load i64, i64* %err_domain1, align 8
+  %not_err2 = icmp eq i64 %7, 0
+  br i1 %not_err2, label %after_check3, label %voiderr
 
-after_check4:                                     ; preds = %foreach.body
+after_check3:
   %arridx = getelementptr inbounds [3 x i32], [3 x i32]* %x, i64 0, i64 0
   store i32 1, i32* %arridx, align 4
   br label %voiderr

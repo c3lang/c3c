@@ -10,19 +10,19 @@ func void! test()
 
 entry:
   %i = alloca i32, align 4
-  %i1 = alloca %error_union, align 8
+  %i.f = alloca %error_union, align 8
   %error_var = alloca %error_union, align 8
   %coerce = alloca { i64, i64 }, align 8
-  store %error_union zeroinitializer, %error_union* %i1, align 8
+  store %error_union zeroinitializer, %error_union* %i.f, align 8
   store i32 0, i32* %i, align 4
-  %err_domain = getelementptr inbounds %error_union, %error_union* %i1, i32 0, i32 0
+  %err_domain = getelementptr inbounds %error_union, %error_union* %i.f, i32 0, i32 0
   %0 = load i64, i64* %err_domain, align 8
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after_check, label %error
 
 error:
   %1 = bitcast %error_union* %error_var to i8*
-  %2 = bitcast %error_union* %i1 to i8*
+  %2 = bitcast %error_union* %i.f to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %1, i8* align 8 %2, i32 16, i1 false)
   br label %guard_block
 
@@ -38,5 +38,5 @@ guard_block:
 noerr_block:
   %5 = bitcast { i64, i64 }* %coerce to %error_union*
   store %error_union zeroinitializer, %error_union* %5, align 8
-  %coerced2 = load { i64, i64 }, { i64, i64 }* %coerce, align 8
-  ret { i64, i64 } %coerced2
+  %coerced1 = load { i64, i64 }, { i64, i64 }* %coerce, align 8
+  ret { i64, i64 } %coerced1
