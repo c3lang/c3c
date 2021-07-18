@@ -43,28 +43,43 @@ void gencontext_emit_ct_compound_stmt(GenContext *context, Ast *ast)
 	}
 }
 
-static LLVMValueRef llvm_emit_decl(GenContext *c, Ast *ast)
+/**
+ * This emits a local declaration.
+ */
+static LLVMValueRef llvm_emit_local_decl(GenContext *c, Ast *ast)
 {
-	Decl *decl = ast->declare_stmt;
 
+	// 1. Get the declaration and the LLVM type.
+	Decl *decl = ast->declare_stmt;
 	LLVMTypeRef alloc_type = llvm_get_type(c, type_lowering(decl->type));
 
+	// 2. In the case we have a static variable,
+	//    then we essentially treat this as a global.
 	if (decl->var.is_static)
 	{
 		decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
-		llvm_emit_global_variable_init(c, decl);
 		if (decl->var.failable)
 		{
-			decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_error), decl->name);
-			LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_error)), decl->var.failable_ref);
+			scratch_buffer_clear();
+			scratch_buffer_append(decl->external_name);
+			scratch_buffer_append(".f");
+			decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_error), scratch_buffer_to_string());
 		}
+		llvm_emit_global_variable_init(c, decl);
 		return decl->backend_ref;
 	}
 	llvm_emit_local_var_alloca(c, decl);
 	if (decl->var.failable)
 	{
-		decl->var.failable_ref = llvm_emit_alloca_aligned(c, type_error, decl->name);
-		LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_error)), decl->var.failable_ref);
+		scratch_buffer_clear();
+		scratch_buffer_append(decl->name);
+		scratch_buffer_append(".f");
+		decl->var.failable_ref = llvm_emit_alloca_aligned(c, type_error, scratch_buffer_to_string());
+		// Only clear out the result if the assignment isn't a failable.
+		if (!decl->var.init_expr || !decl->var.init_expr->failable)
+		{
+			LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_error)), decl->var.failable_ref);
+		}
 	}
 
 	Expr *init = decl->var.init_expr;
@@ -114,7 +129,7 @@ void gencontext_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr
 		Ast *ast = expr->dexpr_list_expr[i];
 		if (ast->ast_kind == AST_DECLARE_STMT)
 		{
-			llvm_emit_decl(context, ast);
+			llvm_emit_local_decl(context, ast);
 		}
 		else
 		{
@@ -134,7 +149,7 @@ void gencontext_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr
 		case AST_DECLARE_STMT:
 			type = last->declare_stmt->var.type_info->type;
 			{
-				LLVMValueRef decl_value = llvm_emit_decl(context, last);
+				LLVMValueRef decl_value = llvm_emit_local_decl(context, last);
 				if (bool_cast && last->declare_stmt->var.unwrap)
 				{
 					llvm_value_set_bool(be_value, LLVMConstInt(context->bool_type, 1, false));
@@ -985,7 +1000,7 @@ void gencontext_emit_try_stmt(GenContext *c, Ast *ast)
 				llvm_value_rvalue(c, &be_value);
 				break;
 			case AST_DECLARE_STMT:
-				llvm_emit_decl(c, dexpr);
+				llvm_emit_local_decl(c, dexpr);
 				break;
 			default:
 				UNREACHABLE
@@ -1231,7 +1246,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			gencontext_emit_expr_stmt(c, ast);
 			break;
 		case AST_DECLARE_STMT:
-			llvm_emit_decl(c, ast);
+			llvm_emit_local_decl(c, ast);
 			break;
 		case AST_BREAK_STMT:
 			gencontext_emit_break(c, ast);
