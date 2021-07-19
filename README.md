@@ -63,8 +63,15 @@ developer of Judge0.
 Design work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have any suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue](https://github.com/c3lang/c3c/issues) or discuss 
 C3 on its dedicated Discord: https://discord.gg/qN76R87
 
-The compiler should compile on Linux and MacOS, but needs some development love to 
-work on Windows. Also, parts of the code is still rough and needs to be made solid.
+The compiler should compile on Linux, Windows (under Mingw or MSYS2) and MacOS, 
+but needs some install documentation for Windows. 
+
+Due to its ABI compatibility with C, it's possible to mix C and C3 in the same project.
+As a demonstration, vkQuake was compiled with a small portion of the code converted
+to C3 and compiled with the c3c compiler:
+
+[![vkQuake](https://github.com/c3lang/c3c/blob/master/resources/images/vkQuake.png?raw=true)]
+(See https://github.com/c3lang/vkQuake)
 
 #### Todo / done
 
