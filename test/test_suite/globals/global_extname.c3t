@@ -1,0 +1,7 @@
+module foo;
+
+int baz @extname("foobar") = 123;
+
+// #expect: foo.ll
+
+@foobar = global i32 123, align 4

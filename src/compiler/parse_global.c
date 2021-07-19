@@ -837,37 +837,6 @@ static inline bool is_function_start(Context *context)
 	return tok == TOKEN_LPAREN;
 }
 
-/**
- * global_declaration
- * 	: failable_type IDENT ';'
- * 	| failable_type IDENT '=' expression ';'
- * 	| failable_type func_definition
- * 	;
- *
- * @param visibility
- * @return true if parsing succeeded
- */
-static inline Decl *parse_global_declaration(Context *context, Visibility visibility)
-{
-	TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-
-	Decl *decl = decl_new_var(context->tok.id, type, VARDECL_GLOBAL, visibility);
-
-
-	if (TOKEN_IS(TOKEN_CONST_IDENT))
-	{
-		SEMA_TOKEN_ERROR(context->tok, "This looks like a constant variable, did you forget 'const'?");
-		return poisoned_decl;
-	}
-	if (!consume_ident(context, "global variable")) return poisoned_decl;
-
-	if (try_consume(context, TOKEN_EQ))
-	{
-		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
-	}
-	TRY_CONSUME_EOS_OR(poisoned_decl);
-	return decl;
-}
 
 static inline Decl *parse_incremental_array(Context *context)
 {
@@ -1028,6 +997,46 @@ static inline bool parse_attributes(Context *context, Decl *parent_decl)
 }
 
 
+/**
+ * global_declaration
+ * 	: failable_type IDENT ';'
+ * 	| failable_type IDENT '=' expression ';'
+ * 	| failable_type func_definition
+ * 	;
+ *
+ * @param visibility
+ * @return true if parsing succeeded
+ */
+static inline Decl *parse_global_declaration(Context *context, Visibility visibility)
+{
+	TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+
+	Decl *decl = decl_new_var(context->tok.id, type, VARDECL_GLOBAL, visibility);
+
+	if (TOKEN_IS(TOKEN_CONST_IDENT))
+	{
+		SEMA_TOKEN_ERROR(context->tok, "This looks like a constant variable, did you forget 'const'?");
+		return poisoned_decl;
+	}
+
+	if (!try_consume(context, TOKEN_IDENT))
+	{
+		if (token_is_some_ident(context->tok.type))
+		{
+			SEMA_TOKEN_ERROR(context->tok, "I expected a variable name here, but global variables need to start with lower case.");
+			return poisoned_decl;
+		}
+		CONSUME_OR(TOKEN_IDENT, poisoned_decl);
+	}
+
+	if (!parse_attributes(context, decl)) return poisoned_decl;
+	if (try_consume(context, TOKEN_EQ))
+	{
+		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
+	}
+	TRY_CONSUME_EOS_OR(poisoned_decl);
+	return decl;
+}
 
 
 

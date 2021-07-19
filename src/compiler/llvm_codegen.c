@@ -361,7 +361,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
-	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->external_name);
+	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname ?: decl->external_name);
 	llvm_set_alignment(decl->backend_ref, alignment);
 
 	LLVMValueRef failable_ref = decl->var.failable_ref;
@@ -833,7 +833,15 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 
 void llvm_value_rvalue(GenContext *c, BEValue *value)
 {
-	if (value->kind != BE_ADDRESS && value->kind != BE_ADDRESS_FAILABLE) return;
+	if (value->kind != BE_ADDRESS && value->kind != BE_ADDRESS_FAILABLE)
+	{
+		if (value->type->type_kind == TYPE_BOOL && value->kind != BE_BOOLEAN)
+		{
+			value->value = LLVMBuildTrunc(c->builder, value->value, c->bool_type, "");
+			value->kind = BE_BOOLEAN;
+		}
+		return;
+	}
 	llvm_value_fold_failable(c, value);
 	value->value = llvm_emit_load_aligned(c,
 	                                      llvm_get_type(c, value->type),

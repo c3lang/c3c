@@ -2765,7 +2765,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			// 12. Basically void returns or empty structs.
 			//     Here we know we don't have a failable or any return value that can be used.
 			assert(!signature->failable && "Failable should have produced a return value.");
-			*be_value = (BEValue) {};
+			*be_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
 		case ABI_ARG_INDIRECT:
 
@@ -2910,7 +2910,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		// 17g. If void, be_value contents should be skipped.
 		if (!signature->ret_abi_info)
 		{
-			*be_value = (BEValue) {};
+			*be_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
 		}
 
