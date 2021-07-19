@@ -10,6 +10,9 @@
 #include "direct.h"
 #endif
 
+extern bool debug_log;
+extern bool debug_stats;
+
 typedef struct Task_
 {
 	void (*task)(void *arg);

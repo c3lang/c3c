@@ -315,7 +315,7 @@ static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *value,
 static void gencontext_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
 {
 	llvm_value_rvalue(c, value);
-	printf("TODO optimize subarray cast\n");
+	REMINDER("Optimize subarray cast");
 	ByteSize size = from_type->pointer->array.len;
 	LLVMTypeRef subarray_type = llvm_get_type(c, to_type);
 	LLVMValueRef result = LLVMGetUndef(subarray_type);
@@ -2022,7 +2022,7 @@ static inline void gencontext_emit_guard_expr(GenContext *c, BEValue *be_value, 
 	c->catch_block = guard_block;
 
 	llvm_emit_expr(c, be_value, expr->guard_expr.inner);
-	printf("TODO: Passed rvalue on guard, consider semantics.");
+	REMINDER("Passed rvalue on guard, consider semantics.");
 	llvm_value_rvalue(c, be_value);
 
 	// Restore.
@@ -2473,7 +2473,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 		case ABI_ARG_DIRECT_PAIR:
 		{
 			llvm_value_addr(c, be_value);
-			printf("TODO: Handle invalid alignment\n");
+			REMINDER("Handle invalid alignment");
 			// Here we do the following transform:
 			// struct -> { lo, hi } -> lo, hi
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
@@ -2687,7 +2687,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	// 9. Typed varargs
 	if (signature->typed_variadic)
 	{
-		printf("All varargs should be called with non-alias!\n");
+		REMINDER("All varargs should be called with non-alias!");
 		Decl *vararg_param = signature->params[non_variadic_params];
 
 		BEValue subarray;
@@ -2746,7 +2746,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		{
 			Expr *arg_expr = expr->call_expr.arguments[i];
 			llvm_emit_expr(c, be_value, arg_expr);
-			printf("TODO: varargs should be expanded correctly\n");
+			REMINDER("Varargs should be expanded correctly");
 			vec_add(values, llvm_value_rvalue_store(c, be_value));
 		}
 	}
@@ -3099,7 +3099,7 @@ static inline void gencontext_emit_failable(GenContext *context, BEValue *be_val
 	{
 		assert(context->error_var);
 		llvm_emit_expr(context, be_value, fail);
-		printf("TODO // fix failable \n");
+		REMINDER("fix failable");
 		LLVMBuildStore(context->builder, llvm_value_rvalue_store(context, be_value),
 		               llvm_emit_bitcast(context, context->error_var, type_get_ptr(fail->type)));
 	}

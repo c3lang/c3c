@@ -29,6 +29,8 @@ static void global_context_clear_errors(void)
 
 void compiler_init(const char *std_lib_dir)
 {
+	DEBUG_LOG("Version: %s", COMPILER_VERSION);
+
 	// Skip library detection.
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
@@ -363,14 +365,17 @@ void compiler_compile(void)
 		if (result) vec_add(gen_contexts, result);
 	}
 
-	printf("-- AST/EXPR INFO -- \n");
-	printf(" * Ast memory use: %llukb\n", (unsigned long long)ast_arena.allocated / 1024);
-	printf(" * Decl memory use: %llukb\n", (unsigned long long)decl_arena.allocated / 1024);
-	printf(" * Expr memory use: %llukb\n", (unsigned long long)expr_arena.allocated / 1024);
-	printf(" * TypeInfo memory use: %llukb\n", (unsigned long long)type_info_arena.allocated / 1024);
-	printf(" * Token memory use: %llukb\n", (unsigned long long)(toktype_arena.allocated) / 1024);
-	printf(" * Sourceloc memory use: %llukb\n", (unsigned long long)(sourceloc_arena.allocated) / 1024);
-	printf(" * Token data memory use: %llukb\n", (unsigned long long)(tokdata_arena.allocated) / 1024);
+	if (debug_stats)
+	{
+		printf("-- AST/EXPR INFO -- \n");
+		printf(" * Ast memory use: %llukb\n", (unsigned long long)ast_arena.allocated / 1024);
+		printf(" * Decl memory use: %llukb\n", (unsigned long long)decl_arena.allocated / 1024);
+		printf(" * Expr memory use: %llukb\n", (unsigned long long)expr_arena.allocated / 1024);
+		printf(" * TypeInfo memory use: %llukb\n", (unsigned long long)type_info_arena.allocated / 1024);
+		printf(" * Token memory use: %llukb\n", (unsigned long long)(toktype_arena.allocated) / 1024);
+		printf(" * Sourceloc memory use: %llukb\n", (unsigned long long)(sourceloc_arena.allocated) / 1024);
+		printf(" * Token data memory use: %llukb\n", (unsigned long long)(tokdata_arena.allocated) / 1024);
+	}
 
 	ast_arena_free();
 	decl_arena_free();
@@ -379,10 +384,10 @@ void compiler_compile(void)
 	sourceloc_arena_free();
 	tokdata_arena_free();
 
-	print_arena_status();
+	if (debug_stats) print_arena_status();
 
 
-	bool create_exe = !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST);
+	bool create_exe = !active_target.no_link && !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST);
 
 	size_t output_file_count = vec_size(gen_contexts);
 	if (output_file_count > MAX_OUTPUT_FILES)

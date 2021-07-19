@@ -93,6 +93,11 @@ static void usage(void)
 	OUTPUT("  -fno-PIC              - Generate position independent (PIC) code.");
 	OUTPUT("");
 	OUTPUT("  -z <argument>         - Send the <argument> as a parameter to the linker.");
+	OUTPUT("");
+	OUTPUT("  --debug-stats         - Print debug statistics.");
+#ifndef NDEBUG
+	OUTPUT("  --debug-log           - Print debug logging to stdout.");
+#endif
 }
 
 
@@ -193,6 +198,11 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("compile"))
 	{
 		options->command = COMMAND_COMPILE;
+		return;
+	}
+	if (arg_match("compile-only"))
+	{
+		options->command = COMMAND_COMPILE_ONLY;
 		return;
 	}
 	if (arg_match("headers"))
@@ -391,6 +401,17 @@ static void parse_option(BuildOptions *options)
 				OUTPUT("C3 is low level programming language based on C.");
 				exit(EXIT_SUCCESS);
 			}
+			if (match_longopt("debug-log"))
+			{
+				debug_log = true;
+				debug_stats = true;
+				return;
+			}
+			if (match_longopt("debug-stats"))
+			{
+				debug_stats = true;
+				return;
+			}
 			if (match_longopt("threads"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --threads needs a valid integer 1 or higher.");
@@ -399,6 +420,7 @@ static void parse_option(BuildOptions *options)
 				if (threads < 1) OUTPUT("Expected a valid integer 1 or higher.");
 				if (threads > MAX_THREADS) OUTPUT("Cannot exceed %d threads.", MAX_THREADS);
 				options->build_threads = threads;
+				return;
 			}
 			if (match_longopt("target"))
 			{
@@ -528,6 +550,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		}
 		if (build_options.command == COMMAND_COMPILE_RUN
 			|| build_options.command == COMMAND_COMPILE
+			|| build_options.command == COMMAND_COMPILE_ONLY
 			|| build_options.command == COMMAND_GENERATE_HEADERS)
 		{
 			append_file(&build_options);
