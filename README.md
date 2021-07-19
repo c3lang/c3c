@@ -70,8 +70,9 @@ Due to its ABI compatibility with C, it's possible to mix C and C3 in the same p
 As a demonstration, vkQuake was compiled with a small portion of the code converted
 to C3 and compiled with the c3c compiler:
 
-[![vkQuake](https://github.com/c3lang/c3c/blob/master/resources/images/vkQuake.png?raw=true)]
-(See https://github.com/c3lang/vkQuake)
+![vkQuake](https://github.com/c3lang/c3c/blob/master/resources/images/vkQuake.png?raw=true)
+
+(The vkFork is at https://github.com/c3lang/vkQuake)
 
 #### Todo / done
 
