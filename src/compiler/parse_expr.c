@@ -391,7 +391,15 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	}
 	else
 	{
-		right_side = TRY_EXPR_OR(parse_precedence(context, rules[operator_type].precedence + 1), poisoned_expr);
+		// Assignment operators have precedence right -> left.
+		if (rules[operator_type].precedence == PREC_ASSIGNMENT)
+		{
+			right_side = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
+		}
+		else
+		{
+			right_side = TRY_EXPR_OR(parse_precedence(context, rules[operator_type].precedence + 1), poisoned_expr);
+		}
 	}
 
 	Expr *expr = EXPR_NEW_EXPR(EXPR_BINARY, left_side);
