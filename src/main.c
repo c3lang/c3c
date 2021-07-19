@@ -1,20 +1,16 @@
-#include <stdio.h>
 #include "compiler/compiler.h"
 #include "build/build_options.h"
 #include "build/project_creation.h"
 #include "compiler_tests/tests.h"
 #include "utils/lib.h"
 
+bool debug_log = false;
+bool debug_stats = false;
+
 int main(int argc, const char *argv[])
 {
 	// First setup memory
 	memory_init();
-
-	DEBUG_LOG("Version: %s", COMPILER_VERSION);
-
-	DEBUG_LOG("Size of long double: %d", (int)sizeof(long double));
-	char *dummy;
-	DEBUG_LOG("Strtold returns a value of size %d", (int)sizeof(strtold(dummy, &dummy)));
 
 	// Parse arguments.
 	BuildOptions build_options = parse_arguments(argc, argv);
@@ -32,6 +28,7 @@ int main(int argc, const char *argv[])
 			break;
 		case COMMAND_GENERATE_HEADERS:
 		case COMMAND_COMPILE:
+		case COMMAND_COMPILE_ONLY:
 		case COMMAND_COMPILE_RUN:
 			compile_target(&build_options);
 			break;

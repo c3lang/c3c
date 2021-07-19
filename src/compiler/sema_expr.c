@@ -2973,7 +2973,6 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 	{
 		ConstInitializer *const_init = MALLOC(sizeof(ConstInitializer));
 		sema_create_const_initializer(const_init, initializer);
-		debug_dump_const_initializer(const_init, "TOP", 0);
 		initializer->initializer_expr.init_type = INITIALIZER_CONST;
 		initializer->initializer_expr.initializer = const_init;
 		return true;

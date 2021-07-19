@@ -11,7 +11,19 @@ void evprintf(const char *format, va_list list);
 void eprintf(const char *format, ...);
 void error_exit(const char *format, ...) __attribute__((noreturn));
 
-#define FATAL_ERROR(_string, ...) do { error_exit("FATAL ERROR at %s:%d in %s: " _string, __func__, __LINE__, __FILE__, ##__VA_ARGS__); } while(0)
+#ifdef NDEBUG
+#define REMINDER(_string, ...) do {} while (0)
+#define DEBUG_LOG(_string, ...) do {} while(0)
+#else
+#define REMINDER(_string, ...) do { printf("TODO: %s -> in %s @ %s:%d\n", _string, __func__, __FILE__, __LINE__ , ##__VA_ARGS__); } while(0)
+#define DEBUG_LOG(_string, ...) \
+  do {                          \
+    if (!debug_log) break; \
+    printf("-- DEBUG: "); printf(_string, ##__VA_ARGS__); printf("\n"); \
+  } while (0)
+#endif
+
+#define FATAL_ERROR(_string, ...) do { error_exit("FATAL ERROR %s -> in %s @ in %s:%d ", _string, __func__, __FILE__, __LINE__, ##__VA_ARGS__); } while(0)
 
 #define ASSERT(_condition, _string, ...) while (!(_condition)) { FATAL_ERROR(_string, ##__VA_ARGS__); }
 
@@ -22,7 +34,7 @@ void error_exit(const char *format, ...) __attribute__((noreturn));
 #else
 #define FALLTHROUGH ((void)0)
 #endif
-#define TODO FATAL_ERROR("TODO reached", __func__, __LINE__);
+#define TODO FATAL_ERROR("TODO reached");
 
 #define TEST_ASSERT(_condition, _string, ...) while (!(_condition)) { FATAL_ERROR(_string, ##__VA_ARGS__); }
 
@@ -30,11 +42,5 @@ void error_exit(const char *format, ...) __attribute__((noreturn));
  do { long long __tempval1 = _value; long long __tempval2 = _expected; \
     TEST_ASSERT(__tempval1 == __tempval2, "Checking " _string ": expected %lld but was %lld.", __tempval2, __tempval1); } while(0)
 
-
-#ifndef NDEBUG
-#define DEBUG_LOG(_string, ...) printf("-- DEBUG: "); printf(_string, ##__VA_ARGS__); printf("\n")
-#else
-#define DEBUG_LOG(_string, ...)
-#endif
 #define LOG_FUNC DEBUG_LOG("ENTER %s.", __func__);
 

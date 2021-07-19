@@ -16,6 +16,7 @@ typedef enum
 {
 	COMMAND_MISSING = 0,
 	COMMAND_COMPILE,
+	COMMAND_COMPILE_ONLY,
 	COMMAND_GENERATE_HEADERS,
 	COMMAND_INIT,
 	COMMAND_BUILD,
@@ -221,6 +222,7 @@ typedef struct
 	bool parse_only : 1;
 	bool emit_llvm : 1;
 	bool emit_object_files : 1;
+	bool no_link : 1;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
 	DebugInfo debug_info;

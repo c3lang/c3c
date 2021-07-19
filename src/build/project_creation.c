@@ -122,7 +122,7 @@ void create_project(BuildOptions *build_options)
 ERROR:
 	fprintf(stderr, "Err: %s\n", strerror(errno));
 
-	printf("Something went wrong creating the project.");
+	printf("Something went wrong creating the project.\n");
 	if (!chdir(build_options->path))
 	{
 		(void)rmdir(build_options->project_name);

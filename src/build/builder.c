@@ -20,6 +20,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case COMMAND_CLEAN_RUN:
 			target->run_after_compile = true;
 			break;
+		case COMMAND_COMPILE_ONLY:
+			target->no_link = true;
+			target->emit_object_files = true;
+			break;
 		default:
 			target->run_after_compile = false;
 			break;
