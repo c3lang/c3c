@@ -581,6 +581,9 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
+		case EXPR_NOP:
+			DUMP("(nop)");
+			return;
 		case EXPR_FLATPATH:
 			DUMP("(idents)");
 			return;

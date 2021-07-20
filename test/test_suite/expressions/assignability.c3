@@ -31,3 +31,8 @@ func void test21()
     int b = 2;
     a++ = b++;      // #error: Expression is not assignable
 }
+
+func void test22()
+{
+    $Type = int;
+}

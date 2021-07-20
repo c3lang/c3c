@@ -214,6 +214,7 @@ typedef enum
 	EXPR_UNARY,
 	EXPR_UNDEF,
 	EXPR_CT_CALL,
+	EXPR_NOP,
 } ExprKind;
 
 typedef enum

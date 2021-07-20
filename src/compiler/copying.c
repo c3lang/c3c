@@ -75,6 +75,7 @@ Expr *copy_expr(Expr *source_expr)
 			UNREACHABLE
 		case EXPR_FLATPATH:
 		case EXPR_UNDEF:
+		case EXPR_NOP:
 			return expr;
 		case EXPR_CT_CALL:
 			MACRO_COPY_EXPR_LIST(expr->ct_call_expr.arguments);

@@ -115,19 +115,19 @@ to C3 and compiled with the c3c compiler:
 - [x] CT only macros evaluating to constants
 - [x] range initializers e.g. `{ [1..2] = 2 }`
 - [x] Trailing body macros e.g. `@foo(1, 100; int a) { bar(a); };`
+- [x] Complex macros
 - [ ] Anonymous structs
 - [ ] Complete C ABI conformance *in progress*
 - [ ] Debug info *in progress*
 - [ ] Virtual type *in progress*
 - [ ] Enum associated data support  
-- [ ] Windows support
-- [ ] All attributes
+- [ ] Windows support *in progress*
+- [ ] All attributes *in progress*
 - [ ] Associative array literals
 - [ ] CT type constants
 - [ ] Reflection methods
 - [ ] LTO/ThinLTO setup
 - [ ] `global` / `shared` for globals 
-- [ ] Complex macros
 - [ ] Escape macros
 - [ ] Implicit capturing macros
 - [ ] Subarray initializers

@@ -3357,6 +3357,43 @@ static bool sema_expr_analyse_ct_identifier_assign(Context *context, Expr *expr,
 	return true;
 }
 
+static bool sema_expr_analyse_ct_type_identifier_assign(Context *context, Expr *expr, Expr *left, Expr *right)
+{
+	TypeInfo *info = left->type_expr;
+
+	if (info->kind != TYPE_INFO_IDENTIFIER || info->unresolved.path || TOKTYPE(info->unresolved.name_loc) != TOKEN_CT_TYPE_IDENT)
+	{
+		SEMA_ERROR(left, "A type cannot be assigned to.");
+		return false;
+	}
+
+	TokenId token = info->unresolved.name_loc;
+
+	if (!sema_analyse_expr_value(context, NULL, right)) return false;
+
+	if (right->expr_kind != EXPR_TYPEINFO)
+	{
+		SEMA_ERROR(right, "Expected a type here.");
+		return false;
+	}
+
+	Decl *decl = sema_resolve_normal_symbol(context, token, NULL, false);
+
+	if (!decl)
+	{
+		decl = decl_new(DECL_VAR, token, VISIBLE_LOCAL);
+		decl->var.kind = VARDECL_LOCAL_CT_TYPE;
+		if (!sema_add_local(context, decl)) return false;
+	}
+	decl = sema_resolve_normal_symbol(context, token, NULL, true);
+
+	decl->var.init_expr = right;
+
+	expr->expr_kind = EXPR_NOP;
+	expr->type = type_void;
+
+	return true;
+}
 
 /**
  * Analyse a = b
@@ -3371,6 +3408,11 @@ static bool sema_expr_analyse_assign(Context *context, Expr *expr, Expr *left, E
 	if (left->expr_kind == EXPR_CT_IDENT)
 	{
 		return sema_expr_analyse_ct_identifier_assign(context, expr, left, right);
+	}
+
+	if (left->expr_kind == EXPR_TYPEINFO)
+	{
+		return sema_expr_analyse_ct_type_identifier_assign(context, expr, left, right);
 	}
 	if (!sema_analyse_expr_value(context, NULL, left)) return false;
 
@@ -3442,6 +3484,7 @@ static bool sema_expr_analyse_common_assign(Context *context, Expr *expr, Expr *
 	{
 		return sema_expr_analyse_ct_common_assign(context, expr, left);
 	}
+
 	// 1. Analyse left side.
 	if (!sema_analyse_expr_value(context, NULL, left)) return false;
 
@@ -5690,6 +5733,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_DESIGNATOR:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_FLATPATH:
+		case EXPR_NOP:
 			UNREACHABLE
 		case EXPR_CT_CALL:
 			return sema_expr_analyse_ct_call(context, to, expr);

@@ -3177,6 +3177,8 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_CATCH:
 			gencontext_emit_trycatch_expr(c, value, expr);
 			return;
+		case EXPR_NOP:
+			return;
 		case EXPR_ELSE:
 			gencontext_emit_else_expr(c, value, expr);
 			return;
