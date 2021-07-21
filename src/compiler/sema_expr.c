@@ -224,6 +224,7 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 			UNREACHABLE
 		case DECL_IMPORT:
 		case DECL_GENERIC:
+		case DECL_GENFUNC:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
@@ -2380,6 +2381,16 @@ CHECK_DEEPER:
 		member = sema_resolve_symbol_in_current_dynamic_scope(context, kw);
 	SCOPE_END;
 
+	if (!member)
+	{
+		Decl *ambiguous = NULL;
+		Decl *private = NULL;
+		member = sema_resolve_method(context, decl, kw, &ambiguous, &private);
+		if (member)
+		{
+			context_register_external_symbol(context, member);
+		}
+	}
 	// 11. If we didn't find a match...
 	if (!member)
 	{

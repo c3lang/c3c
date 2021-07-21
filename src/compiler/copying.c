@@ -498,6 +498,7 @@ Decl *copy_decl(Decl *decl)
 		case DECL_INTERFACE:
 			copy_decl_type(copy);
 			MACRO_COPY_DECL_LIST(copy->interface_decl.functions);
+			MACRO_COPY_DECL_LIST(copy->interface_decl.members);
 			break;
 		case DECL_FUNC:
 			MACRO_COPY_TYPE(copy->func_decl.type_parent);
@@ -560,6 +561,7 @@ Decl *copy_decl(Decl *decl)
 			break;
 		case DECL_ARRAY_VALUE:
 			TODO
+		case DECL_GENFUNC:
 		case DECL_MACRO:
 			MACRO_COPY_TYPE(decl->macro_decl.type_parent);
 			MACRO_COPY_DECL_LIST(decl->macro_decl.parameters);

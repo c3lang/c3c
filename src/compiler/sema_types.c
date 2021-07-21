@@ -119,6 +119,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
+		case DECL_GENFUNC:
 		case DECL_GENERIC:
 		case DECL_LABEL:
 			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "This is not a type.");

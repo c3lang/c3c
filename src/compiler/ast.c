@@ -87,6 +87,8 @@ const char *decl_to_name(Decl *decl)
 			return "function";
 		case DECL_GENERIC:
 			return "generic";
+		case DECL_GENFUNC:
+			TODO
 		case DECL_INTERFACE:
 			return "interface";
 		case DECL_MACRO:
@@ -178,6 +180,7 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
+		case DECL_GENFUNC:
 		case DECL_GENERIC:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:
@@ -864,6 +867,7 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 	{
 		case DECL_INTERFACE:
 			DUMPF("(interface %s", decl->name);
+			DUMPDECLS(decl->interface_decl.members);
 			DUMPDECLS(decl->interface_decl.functions);
 			DUMPEND();
 		case DECL_VAR:
@@ -901,6 +905,16 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			DUMPF("(label %s", decl->name);
 			DUMPEND();
 		case DECL_MACRO:
+			DUMPF("(macro %s", decl->name);
+			DUMPTI(decl->macro_decl.rtype);
+			indent++;
+			DUMP("(params");
+			DUMPDECLS(decl->macro_decl.parameters);
+			DUMPE();
+			indent--;
+			DUMPAST(decl->macro_decl.body);
+			DUMPEND();
+		case DECL_GENFUNC:
 			DUMPF("(macro %s", decl->name);
 			DUMPTI(decl->macro_decl.rtype);
 			indent++;

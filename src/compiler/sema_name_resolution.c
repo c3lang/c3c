@@ -231,6 +231,72 @@ static Decl *sema_resolve_symbol(Context *context, const char *symbol_str, Sourc
 	return decl;
 }
 
+Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name)
+{
+	Decl **extensions = module->method_extensions;
+	VECEACH(extensions, i)
+	{
+		Decl *extension = extensions[i];
+		if (extension->name != method_name) continue;
+		switch (extension->decl_kind)
+		{
+			case DECL_FUNC:
+				if (extension->func_decl.type_parent->type == type) return extension;
+				break;
+			case DECL_MACRO:
+			case DECL_GENFUNC:
+				if (extension->macro_decl.type_parent->type == type) return extension;
+				break;
+			default:
+				UNREACHABLE
+		}
+	}
+	return NULL;
+}
+
+Decl *sema_resolve_method(Context *context, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
+{
+	// 1. Look at the previously defined ones.
+	VECEACH(type->methods, i)
+	{
+		Decl *func = type->methods[i];
+		if (method_name == func->name) return func;
+	}
+	// 2. Make a module lookup
+	Decl *previously_found = NULL;
+	Type *actual_type = type->type;
+	Decl *private_type = NULL;
+	Decl *result = NULL;
+	VECEACH(context->imports, i)
+	{
+		Decl *import = context->imports[i];
+
+		if (import->module->is_generic) continue;
+
+		Decl *found = sema_find_extension_method_in_module(import->module, actual_type, method_name);
+		if (!found) continue;
+		if (found->visibility <= VISIBLE_MODULE && !import->import.private)
+		{
+			private_type = found;
+			continue;
+		}
+
+		if (result)
+		{
+			*ambiguous_ref = previously_found;
+			*private_ref = NULL;
+			return NULL;
+		}
+		result = found;
+	}
+
+	if (result && private_type)
+	{
+		private_type = NULL;
+	}
+	return result;
+}
+
 Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *path)
 {
 	Decl *ambiguous_other_decl = NULL;

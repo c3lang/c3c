@@ -464,6 +464,43 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 	UNREACHABLE
 }
 
+static bool may_cast_to_virtual(Type *virtual, Type *from)
+{
+	assert(from->canonical == from);
+
+	// 1. We need a pointer, we can't cast from a non pointer.
+	if (from->type_kind != TYPE_POINTER) return false;
+
+	// 2. Virtual* converts to anything, including ints
+	if (virtual->type_kind == TYPE_VIRTUAL_ANY) return true;
+
+	// 3. Get the data.
+	Decl *virtual_decl = virtual->decl;
+	Decl **methods = virtual_decl->interface_decl.functions;
+
+	// 4. No variables nor members? Then this is essentially a virtual*
+	if (!vec_size(methods) && !vec_size(virtual_decl->strukt.members)) return true;
+
+	// 5. Look at the pointer.
+	Type *pointee = from->pointer;
+
+	// 6. Is this an array, if so it doesn't have any functions,
+	//    so we implicitly lower to the first element.
+	if (pointee->type_kind == TYPE_ARRAY)
+	{
+		pointee = pointee->array.base;
+	}
+
+	// Do this: create a function that returns a matching interface method.
+	// store this decl.
+	// Same with looking at members -> store the Decl.
+	// Later, generating the table we provide the decl backend ref and the offset.
+	// Note that matching types should take into account the first element.
+	// Also go recursively into substructs structs
+	// Note that this resolution cannot be cached completely due to the module import lookup
+
+	TODO;
+}
 /**
  * Can the conversion occur implicitly?
  */
@@ -581,8 +618,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 	// 10. Virtual cast
 	if (to->type_kind == TYPE_VIRTUAL)
 	{
-		TODO
-//
+		return may_cast_to_virtual(to, from);
 	}
 
 	// 11. Substruct cast, if the first member is inline, see if we can cast to this member.

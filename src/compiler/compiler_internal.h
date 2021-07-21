@@ -411,6 +411,7 @@ typedef struct
 typedef struct
 {
 	Decl **functions;
+	Decl **members;
 } InterfaceDecl;
 
 typedef struct
@@ -1234,7 +1235,7 @@ typedef struct Module_
 
 	Ast **files; // Asts
 
-	Decl** functions;
+	Decl** method_extensions;
 	STable symbols;
 	STable public_symbols;
 	struct Context_ **contexts;
@@ -1762,6 +1763,7 @@ const char *resolve_status_to_string(ResolveStatus status);
 #define SEMA_TOKID_ERROR(_tok_id, ...) sema_error_range(source_span_from_token_id(_tok_id), __VA_ARGS__)
 #define SEMA_ERROR(_node, ...) sema_error_range((_node)->span, __VA_ARGS__)
 #define SEMA_PREV(_node, ...) sema_prev_at_range3((_node)->span, __VA_ARGS__)
+#define SEMA_TOKID_PREV(_tok_id, ...) sema_prev_at_range3(source_span_from_token_id(_tok_id), __VA_ARGS__)
 
 void sema_analysis_pass_process_imports(Module *module);
 void sema_analysis_pass_register_globals(Module *module);
@@ -1786,6 +1788,8 @@ bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *lef
 
 Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol);
 Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *path);
+Decl *sema_resolve_method(Context *context, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
+Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name);
 Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, bool handle_error);
 Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path);
 

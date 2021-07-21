@@ -602,7 +602,67 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 	return success;
 }
 
+static inline const char *name_by_decl(Decl *method_like)
+{
+	switch (method_like->decl_kind)
+	{
+		case DECL_MACRO:
+			return "macro method";
+		case DECL_FUNC:
+			return "method";
+		case DECL_GENFUNC:
+			return "generic method";
+		default:
+			UNREACHABLE
+	}
+}
+static inline bool sema_add_method_like(Context *context, Type *parent_type, Decl *method_like)
+{
+	assert(parent_type->canonical == parent_type);
+	Decl *parent = parent_type->decl;
+	const char *name = method_like->name;
+	Decl *method = sema_find_extension_method_in_module(context->module, parent_type, name);
+	if (method)
+	{
+		SEMA_TOKID_ERROR(method_like->name_token, "This %s is already defined in this module.", name_by_decl(method_like));
+		SEMA_TOKID_PREV(method->name_token, "The previous definition was here.");
+		return false;
+	}
+	Decl *ambiguous = NULL;
+	Decl *private = NULL;
+	method = sema_resolve_method(context, parent, name, &ambiguous, &private);
+	if (method)
+	{
+		SEMA_TOKID_ERROR(method_like->name_token, "This %s is already defined for '%s'.", name_by_decl(method_like), parent_type->name);
+		SEMA_TOKID_PREV(method->name_token, "The previous definition was here.");
+		return false;
+	}
+	scratch_buffer_clear();
+	if (method_like->visibility <= VISIBLE_MODULE)
+	{
+		scratch_buffer_append(parent->name);
+		scratch_buffer_append_char('.');
+		scratch_buffer_append(method_like->name);
+	}
+	else
+	{
+		scratch_buffer_append(parent->external_name);
+		scratch_buffer_append("__");
+		scratch_buffer_append(method_like->name);
+	}
+	method_like->external_name = scratch_buffer_interned();
+	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method_like->name);
+	if (parent->module == context->module)
+	{
+		vec_add(parent->methods, method_like);
+	}
+	else
+	{
+		vec_add(context->module->method_extensions, method_like);
+	}
+	return true;
 
+}
 
 static inline bool sema_analyse_method(Context *context, Decl *decl)
 {
@@ -611,39 +671,12 @@ static inline bool sema_analyse_method(Context *context, Decl *decl)
 	if (!type_may_have_sub_elements(parent_type->type))
 	{
 		SEMA_ERROR(decl,
-		               "Methods can not be associated with '%s'",
-		               type_to_error_string(decl->func_decl.type_parent->type));
+				   "Methods can not be associated with '%s'",
+		           type_to_error_string(decl->func_decl.type_parent->type));
 		return false;
 	}
-	Decl *parent = parent_type->type->decl;
-	VECEACH(parent->methods, i)
-	{
-		Decl *function = parent->methods[i];
-		if (function->name == decl->name)
-		{
-			SEMA_ERROR(decl, "Duplicate name '%s' for method.", function->name);
-			SEMA_PREV(function, "Previous definition here.");
-			return false;
-		}
-	}
-	scratch_buffer_clear();
-	if (decl->visibility <= VISIBLE_MODULE)
-	{
-		scratch_buffer_append(parent->name);
-		scratch_buffer_append_char('.');
-		scratch_buffer_append(decl->name);
-	}
-	else
-	{
-		scratch_buffer_append(parent->external_name);
-		scratch_buffer_append("__");
-		scratch_buffer_append(decl->name);
-	}
-	decl->external_name = scratch_buffer_interned();
-	DEBUG_LOG("Method '%s.%s' analysed.", parent->name, decl->name);
-	vec_add(parent->methods, decl);
-
-	return true;
+	Type *type = parent_type->type->canonical;
+	return sema_add_method_like(context, type, decl);
 }
 
 static inline AttributeType attribute_by_name(Attr *attr)
@@ -971,21 +1004,7 @@ static bool sema_analyse_macro_method(Context *context, Decl *decl)
 		SEMA_ERROR(first_param, "The first parameter must be a regular value parameter.");
 		return false;
 	}
-	Decl *parent = parent_type->decl;
-	VECEACH(parent->methods, i)
-	{
-		Decl *function = parent->methods[i];
-		if (function->name == decl->name)
-		{
-			SEMA_ERROR(decl, "Duplicate name '%s' for macro method.", function->name);
-			SEMA_PREV(function, "Previous definition here.");
-			return false;
-		}
-	}
-	DEBUG_LOG("Macro method '%s.%s' analysed.", parent->name, decl->name);
-	vec_add(parent->methods, decl);
-
-	return true;
+	return sema_add_method_like(context, parent_type, decl);
 }
 
 static inline bool sema_analyse_macro(Context *context, Decl *decl)
@@ -1439,6 +1458,8 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_FUNC:
 			if (!sema_analyse_func(context, decl)) return decl_poison(decl);
 			break;
+		case DECL_GENFUNC:
+			TODO
 		case DECL_MACRO:
 			if (!sema_analyse_macro(context, decl)) return decl_poison(decl);
 			break;

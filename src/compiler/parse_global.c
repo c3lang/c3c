@@ -48,7 +48,7 @@ static bool context_next_is_type_and_not_ident(Context *context)
 {
 	if (context->tok.type == TOKEN_IDENT)
 	{
-		if (context->next_tok.type != TOKEN_COLON) return false;
+		if (context->next_tok.type != TOKEN_SCOPE) return false;
 		return context_next_is_type_with_path_prefix(context);
 	}
 	return token_is_any_type(context->tok.type);
@@ -1948,7 +1948,7 @@ static inline Decl *parse_interface_declaration(Context *context, Visibility vis
 			return poisoned_decl;
 		}
 		Decl *function = TRY_DECL_OR(parse_func_definition(context, visibility, true), poisoned_decl);
-		vec_add(decl->interface_decl.functions, function);
+		vec_add(decl->methods, function);
 	}
 
 	CONSUME_OR(TOKEN_RBRACE, poisoned_decl);
