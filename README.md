@@ -42,7 +42,7 @@ The generated binary will be called `a.out`.
 - No mandatory header files
 - New semantic macro system
 - Module based name spacing
-- Subarrays (slices) and dynamic arrays built in
+- Subarrays (slices)
 - Compile time reflection
 - Enhanced compile time execution
 - Generics based on generic modules
@@ -50,9 +50,10 @@ The generated binary will be called `a.out`.
 - Defer
 - Value methods
 - Associated enum data
-- Built in strings
+- Built-in hooks for convenient string handling
 - No preprocessor
-- Undefined behaviour trapped on debug by default
+- Less undefined behaviour and runtime checks in "safe" mode
+- Limited operator overloading to enable userland dynamic arrays
 - Optional pre and post conditions
 
 ### Current status
@@ -116,6 +117,7 @@ to C3 and compiled with the c3c compiler:
 - [x] range initializers e.g. `{ [1..2] = 2 }`
 - [x] Trailing body macros e.g. `@foo(1, 100; int a) { bar(a); };`
 - [x] Complex macros
+- [x] CT type constants
 - [ ] Anonymous structs
 - [ ] Complete C ABI conformance *in progress*
 - [ ] Debug info *in progress*
@@ -124,7 +126,6 @@ to C3 and compiled with the c3c compiler:
 - [ ] Windows support *in progress*
 - [ ] All attributes *in progress*
 - [ ] Associative array literals
-- [ ] CT type constants
 - [ ] Reflection methods
 - [ ] LTO/ThinLTO setup
 - [ ] `global` / `shared` for globals 
