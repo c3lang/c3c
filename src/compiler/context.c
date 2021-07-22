@@ -113,9 +113,16 @@ void context_register_global_decl(Context *context, Decl *decl)
 			vec_add(context->interfaces, decl);
 			decl_set_external_name(decl);
 			break;
-		case DECL_GENFUNC:
 		case DECL_GENERIC:
-			vec_add(context->generics, decl);
+			if (decl->macro_decl.type_parent)
+			{
+				vec_add(context->generic_methods, decl);
+				return;
+			}
+			else
+			{
+				vec_add(context->generics, decl);
+			}
 			decl_set_external_name(decl);
 			break;
 		case DECL_MACRO:

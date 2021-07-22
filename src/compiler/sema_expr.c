@@ -192,6 +192,9 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case DECL_MACRO:
 			SEMA_ERROR(expr, "Expected macro followed by (...) or prefixed by '&'.");
 			return expr_poison(expr);
+		case DECL_GENERIC:
+			SEMA_ERROR(expr, "Expected generic followed by (...) or prefixed by '&'.");
+			return expr_poison(expr);
 		case DECL_ENUM_CONSTANT:
 			expr_replace(expr, decl->enum_constant.expr);
 			return true;
@@ -223,8 +226,6 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case DECL_ARRAY_VALUE:
 			UNREACHABLE
 		case DECL_IMPORT:
-		case DECL_GENERIC:
-		case DECL_GENFUNC:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
@@ -232,9 +233,8 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case DECL_CT_CASE:
 		case DECL_ATTRIBUTE:
 		case DECL_CT_ASSERT:
-			UNREACHABLE
 		case DECL_DEFINE:
-			TODO
+			UNREACHABLE
 	}
 	switch (decl->var.kind)
 	{
@@ -1031,22 +1031,6 @@ static inline bool sema_expr_analyse_var_call(Context *context, Type *to, Expr *
 
 }
 
-static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Decl *decl, Expr *expr)
-{
-	Expr **arguments = expr->call_expr.arguments;
-	Decl **parameter_list = decl->generic_decl.parameters;
-	if (vec_size(parameter_list) != vec_size(arguments))
-	{
-		SEMA_ERROR(expr, "Expected %d parameter(s) to the generic function.", vec_size(parameter_list));
-		return false;
-	}
-	VECEACH(arguments, i)
-	{
-		if (!sema_analyse_expr(context, NULL, arguments[i])) return false;
-	}
-
-	TODO
-};
 
 
 
@@ -1239,6 +1223,11 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 			case VARDECL_PARAM:
 				// foo
 				if (!sema_analyse_expr_of_required_type(context, param->type, arg, false)) return false;
+				if (!param->type && !cast_implicitly_to_runtime(arg))
+				{
+					SEMA_ERROR(arg, "Constant cannot implicitly be cast to a real type.");
+					return false;
+				}
 				param->alignment = type_abi_alignment(param->type ? param->type : arg->type);
 				break;
 			case VARDECL_PARAM_EXPR:
@@ -1422,7 +1411,102 @@ static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr
 	context->macro_scope = old_macro_scope;
 	return ok;
 }
+static inline Decl *sema_generate_generic_function(Context *context, Expr *call_expr, Expr *struct_var, Decl *decl, const char *mangled_name)
+{
+	TODO
+	return NULL;
+}
 
+static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Expr *call_expr, Expr *struct_var, Decl *decl)
+{
+	assert(decl->decl_kind == DECL_GENERIC);
+
+	Expr **args = call_expr->call_expr.arguments;
+	Decl **func_params = decl->macro_decl.parameters;
+
+	unsigned explicit_args = vec_size(args);
+	unsigned total_args = explicit_args;
+
+	scratch_buffer_clear();
+	scratch_buffer_append(decl->external_name);
+
+	// TODO revisit name mangling
+	if (struct_var)
+	{
+		total_args++;
+		scratch_buffer_append_char('@');
+		scratch_buffer_append(struct_var->type->canonical->name);
+	}
+
+	if (total_args != vec_size(func_params))
+	{
+		// TODO HANDLE VARARGS
+		SEMA_ERROR(call_expr, "Mismatch on number of arguments.");
+		return false;
+	}
+
+	int offset = total_args - explicit_args;
+	for (unsigned i = 0; i < explicit_args; i++)
+	{
+		Expr *arg = args[i];
+		Decl *param = func_params[i + offset];
+		if (param->decl_kind == VARDECL_PARAM_CT_TYPE)
+		{
+			if (!sema_analyse_expr_value(context, NULL, arg)) return false;
+			if (arg->expr_kind != EXPR_TYPEINFO)
+			{
+				SEMA_ERROR(arg, "A type, like 'int' or 'double' was expected for the parameter '%s'.", param->name);
+				return false;
+			}
+			scratch_buffer_append_char(',');
+			scratch_buffer_append(arg->type_expr->type->canonical->name);
+			continue;
+		}
+		if (param->var.type_info)
+		{
+			if (!sema_analyse_expr_of_required_type(context, param->var.type_info->type, arg, true)) return false;
+		}
+		else
+		{
+			if (!sema_analyse_expr(context, NULL, arg)) return false;
+			if (!cast_implicitly_to_runtime(arg)) return false;
+		}
+		scratch_buffer_append_char(',');
+		scratch_buffer_append(arg->type->canonical->name);
+	}
+	const char *mangled_name = scratch_buffer_interned();
+	Decl **generic_cache = decl->module->generic_cache;
+	Decl *found = NULL;
+	VECEACH(generic_cache, i)
+	{
+		if (generic_cache[i]->external_name == mangled_name)
+		{
+			found = generic_cache[i];
+			break;
+		}
+	}
+	if (!found)
+	{
+		found = sema_generate_generic_function(context, call_expr, struct_var, decl, mangled_name);
+	}
+	// Remove type parameters from call.
+	for (unsigned i = 0; i < explicit_args; i++)
+	{
+		Decl *param = func_params[i + offset];
+		if (param->decl_kind == VARDECL_PARAM_CT_TYPE)
+		{
+			for (unsigned j = i + 1; j < explicit_args; j++)
+			{
+				args[j - 1] = args[j];
+			}
+			explicit_args--;
+			i--;
+		}
+	}
+	vec_resize(args, explicit_args);
+	// Perform the normal func call on the found declaration.
+	return sema_expr_analyse_func_call(context, to, call_expr, found, struct_var);
+}
 
 static bool sema_analyse_body_expansion(Context *context, Expr *call)
 {
@@ -1537,7 +1621,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			SEMA_ERROR(expr, "Macro declarations cannot be called without using '@' before the macro name.");
 			return false;
 		case DECL_GENERIC:
-			return sema_expr_analyse_generic_call(context, to, decl, expr);
+			return sema_expr_analyse_generic_call(context, to, expr, struct_var, decl);
 		case DECL_POISONED:
 			return false;
 		default:

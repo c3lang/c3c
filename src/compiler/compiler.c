@@ -183,7 +183,6 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_DISTINCT:
 			case DECL_ENUM:
 			case DECL_GENERIC:
-			case DECL_GENFUNC:
 			case DECL_INTERFACE:
 			case DECL_ERR:
 			case DECL_FUNC:

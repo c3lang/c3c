@@ -119,7 +119,6 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
-		case DECL_GENFUNC:
 		case DECL_GENERIC:
 		case DECL_LABEL:
 			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "This is not a type.");
@@ -137,30 +136,6 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 
 }
 
-Type *type_by_expr_range(ExprConst *expr)
-{
-	if (expr->kind == TYPE_FXX)
-	{
-		return type_double;
-	}
-	assert(expr->kind == TYPE_IXX);
-	BigInt *b = &expr->i;
-	// 1. Does it fit in a C int? If so, that's the type.
-	Type *type = type_cint();
-	if (!expr_const_will_overflow(expr, type->type_kind)) return type;
-
-	int width_max = platform_target.int128 ? 128 : 64;
-	int current_width = platform_target.width_c_int * 2;
-	while (current_width <= width_max)
-	{
-		type = type_int_signed_by_bitsize(current_width);
-		if (!expr_const_will_overflow(expr, type->type_kind)) return type;
-		type = type_int_unsigned_by_bitsize(current_width);
-		if (!expr_const_will_overflow(expr, type->type_kind)) return type;
-		current_width *= width_max;
-	}
-	return NULL;
-}
 
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow)
 {
@@ -192,22 +167,12 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow
 			{
 				return type_info_poison(type_info);
 			}
-			type_info->type = expr->type;
-			switch (type_info->type->type_kind)
+			if (!cast_implicitly_to_runtime(expr))
 			{
-				case TYPE_FXX:
-				case TYPE_IXX:
-					assert(expr->expr_kind == EXPR_CONST);
-					type_info->type = type_by_expr_range(&expr->const_expr);
-					if (!type_info->type)
-					{
-						SEMA_ERROR(expr, "The expression does not fit any runtime type.");
-						return false;
-					}
-					break;
-				default:
-					break;
+				SEMA_ERROR(expr, "The expression does not fit any runtime type.");
+				return false;
 			}
+			type_info->type = expr->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
 		}

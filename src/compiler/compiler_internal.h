@@ -428,10 +428,10 @@ typedef struct
 {
 	bool failable : 1;
 	Decl **parameters;
-	Decl **body_parameters;
 	TypeInfo *type_parent; // May be null
 	TypeInfo *rtype; // May be null!
 	struct Ast_ *body;
+	Decl **body_parameters;
 	TokenId block_parameter;
 } MacroDecl;
 
@@ -1236,6 +1236,7 @@ typedef struct Module_
 	Ast **files; // Asts
 
 	Decl** method_extensions;
+	Decl** generic_cache;
 	STable symbols;
 	STable public_symbols;
 	struct Context_ **contexts;
@@ -1321,6 +1322,7 @@ typedef struct Context_
 	Decl **functions;
 	Decl **macros;
 	Decl **generics;
+	Decl **generic_methods;
 	Decl **interfaces;
 	Decl **templates;
 	Decl **methods;

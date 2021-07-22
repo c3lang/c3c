@@ -244,7 +244,7 @@ Decl *sema_find_extension_method_in_module(Module *module, Type *type, const cha
 				if (extension->func_decl.type_parent->type == type) return extension;
 				break;
 			case DECL_MACRO:
-			case DECL_GENFUNC:
+			case DECL_GENERIC:
 				if (extension->macro_decl.type_parent->type == type) return extension;
 				break;
 			default:

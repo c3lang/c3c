@@ -87,8 +87,6 @@ const char *decl_to_name(Decl *decl)
 			return "function";
 		case DECL_GENERIC:
 			return "generic";
-		case DECL_GENFUNC:
-			TODO
 		case DECL_INTERFACE:
 			return "interface";
 		case DECL_MACRO:
@@ -180,7 +178,6 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
-		case DECL_GENFUNC:
 		case DECL_GENERIC:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:
@@ -914,8 +911,8 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			indent--;
 			DUMPAST(decl->macro_decl.body);
 			DUMPEND();
-		case DECL_GENFUNC:
-			DUMPF("(macro %s", decl->name);
+		case DECL_GENERIC:
+			DUMPF("(generic %s", decl->name);
 			DUMPTI(decl->macro_decl.rtype);
 			indent++;
 			DUMP("(params");
@@ -962,16 +959,6 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			}
 			DUMPF("(enum-constant %s", decl->name);
 			DUMPEXPR(decl->enum_constant.expr);
-			DUMPEND();
-		case DECL_GENERIC:
-			DUMPF("(generic %s\n", decl->name);
-			indent++;
-			DUMP("(params");
-			DUMPDECLS(decl->generic_decl.parameters);
-			DUMP("(cases");
-			DUMPASTS(decl->generic_decl.cases);
-			DUMPE();
-			indent--;
 			DUMPEND();
 		case DECL_TYPEDEF:
 			DUMPF("(typedef %s", decl->name);

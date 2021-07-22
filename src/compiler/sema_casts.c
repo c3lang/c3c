@@ -330,15 +330,41 @@ bool enum_to_pointer(Expr* expr, Type *from, Type *type)
 	return int_to_pointer(expr, type);
 }
 
+Type *type_by_expr_range(ExprConst *expr)
+{
+	if (expr->kind == TYPE_FXX)
+	{
+		return type_double;
+	}
+	assert(expr->kind == TYPE_IXX);
+	BigInt *b = &expr->i;
+	// 1. Does it fit in a C int? If so, that's the type.
+	Type *type = type_cint();
+	if (!expr_const_will_overflow(expr, type->type_kind)) return type;
+
+	int width_max = platform_target.int128 ? 128 : 64;
+	int current_width = platform_target.width_c_int * 2;
+	while (current_width <= width_max)
+	{
+		type = type_int_signed_by_bitsize(current_width);
+		if (!expr_const_will_overflow(expr, type->type_kind)) return type;
+		type = type_int_unsigned_by_bitsize(current_width);
+		if (!expr_const_will_overflow(expr, type->type_kind)) return type;
+		current_width *= width_max;
+	}
+	return NULL;
+}
+
 bool cast_implicitly_to_runtime(Expr *expr)
 {
 	Type *canonical = expr->type->canonical;
+	Type *type;
 	switch (canonical->type_kind)
 	{
 		case TYPE_IXX:
-			return cast(expr, type_long);
 		case TYPE_FXX:
-			return cast(expr, type_double);
+			type = type_by_expr_range(&expr->const_expr);
+			return type && cast(expr, type);
 		default:
 			return true;
 	}

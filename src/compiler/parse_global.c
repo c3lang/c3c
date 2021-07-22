@@ -1693,9 +1693,10 @@ static inline bool parse_func_macro_header(Context *context, bool rtype_is_optio
  */
 static inline Decl *parse_macro_declaration(Context *context, Visibility visibility)
 {
-	advance_and_verify(context, TOKEN_MACRO);
+	DeclKind kind = try_consume(context, TOKEN_MACRO) ? DECL_MACRO : DECL_GENERIC;
+	if (kind == DECL_GENERIC) advance_and_verify(context, TOKEN_GENERIC);
 
-	Decl *decl = decl_new(DECL_MACRO, context->tok.id, visibility);
+	Decl *decl = decl_new(kind, context->tok.id, visibility);
 	TypeInfo **rtype_ref = &decl->macro_decl.rtype;
 	TypeInfo **method_type_ref = &decl->macro_decl.type_parent;
 	bool failable;
@@ -2236,8 +2237,6 @@ Decl *parse_top_level_statement(Context *context)
 			decl = TRY_DECL_OR(parse_struct_declaration(context, visibility), poisoned_decl);
 			break;
 		case TOKEN_GENERIC:
-			TODO
-			break;
 		case TOKEN_MACRO:
 			decl = TRY_DECL_OR(parse_macro_declaration(context, visibility), poisoned_decl);
 			break;

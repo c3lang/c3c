@@ -610,7 +610,7 @@ static inline const char *name_by_decl(Decl *method_like)
 			return "macro method";
 		case DECL_FUNC:
 			return "method";
-		case DECL_GENFUNC:
+		case DECL_GENERIC:
 			return "generic method";
 		default:
 			UNREACHABLE
@@ -1009,6 +1009,7 @@ static bool sema_analyse_macro_method(Context *context, Decl *decl)
 
 static inline bool sema_analyse_macro(Context *context, Decl *decl)
 {
+	bool is_generic = decl->decl_kind == DECL_GENERIC;
 	TypeInfo *rtype = decl->macro_decl.rtype;
 	if (decl->macro_decl.rtype && !sema_resolve_type_info(context, rtype)) return decl_poison(decl);
 	VECEACH(decl->macro_decl.parameters, i)
@@ -1018,10 +1019,16 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 		assert(param->decl_kind == DECL_VAR);
 		switch (param->var.kind)
 		{
-			case VARDECL_PARAM:
 			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_REF:
+				if (is_generic)
+				{
+					SEMA_ERROR(param, "Only regular parameters and type parameters are allowed for generic functions.");
+					return decl_poison(decl);
+				}
+				FALLTHROUGH;
+			case VARDECL_PARAM:
 				if (param->var.type_info)
 				{
 					if (!sema_resolve_type_info(context, param->var.type_info)) return decl_poison(decl);
@@ -1045,6 +1052,11 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 				UNREACHABLE
 		}
 		param->resolve_status = RESOLVE_DONE;
+	}
+	if (is_generic && vec_size(decl->macro_decl.body_parameters))
+	{
+		SEMA_ERROR(decl->macro_decl.body_parameters[0], "Trailing block syntax is not allowed for generic functions.");
+		return decl_poison(decl);
 	}
 	VECEACH(decl->macro_decl.body_parameters, i)
 	{
@@ -1195,64 +1207,6 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 	}
 }
 
-static inline bool sema_analyse_generic(Context *context, Decl *decl)
-{
-	// 1. If it has a return type, make sure it resolves.
-	if (decl->generic_decl.rtype && !sema_resolve_type_info(context, decl->generic_decl.rtype)) return false;
-
-	unsigned param_count = vec_size(decl->generic_decl.parameters);
-	if (param_count < 1)
-	{
-		SEMA_ERROR(decl, "A generic function needs at least 1 parameter.");
-		return false;
-	}
-	Ast **cases = decl->generic_decl.cases;
-
-	bool default_has_been_found = false;
-	VECEACH(cases, i)
-	{
-		Ast *generic_case = cases[i];
-		if (generic_case->ast_kind == AST_CASE_STMT)
-		{
-			if (!generic_case->case_stmt.is_type)
-			{
-				SEMA_ERROR(generic_case->case_stmt.expr, "Expected a type as the argument.");
-				return false;
-			}
-			if (!generic_case->case_stmt.is_type_list)
-			{
-				TypeInfo **type_infos = VECNEW(TypeInfo *, 2);
-				vec_add(type_infos, generic_case->case_stmt.type_info);
-				generic_case->case_stmt.type_infos = type_infos;
-				generic_case->case_stmt.is_type_list = true;
-			}
-			TypeInfo **type_infos = generic_case->case_stmt.type_infos;
-			unsigned args = vec_size(type_infos);
-			for (unsigned j = 0; j < args; j++)
-			{
-				if (!sema_resolve_type_info(context, type_infos[j])) return false;
-			}
-			if (args != param_count)
-			{
-				if (param_count == 1)
-				{
-					SEMA_ERROR(type_infos[1], "Expected a single type as the argument.");
-					return false;
-				}
-				SEMA_ERROR(type_infos[args - 1], "Expected %d types in the case statement.", param_count);
-				return false;
-			}
-			continue;
-		}
-		assert(generic_case->ast_kind == AST_DEFAULT_STMT);
-		if (default_has_been_found)
-		{
-			SEMA_ERROR(generic_case, "More than one default statement found.");
-			return false;
-		}
-	}
-	return true;
-}
 
 
 
@@ -1458,9 +1412,8 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_FUNC:
 			if (!sema_analyse_func(context, decl)) return decl_poison(decl);
 			break;
-		case DECL_GENFUNC:
-			TODO
 		case DECL_MACRO:
+		case DECL_GENERIC:
 			if (!sema_analyse_macro(context, decl)) return decl_poison(decl);
 			break;
 		case DECL_VAR:
@@ -1481,9 +1434,6 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_ERR:
 			if (!sema_analyse_error(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
-			break;
-		case DECL_GENERIC:
-			if (!sema_analyse_generic(context, decl)) return decl_poison(decl);
 			break;
 		case DECL_DEFINE:
 			if (!sema_analyse_define(context, decl)) return decl_poison(decl);

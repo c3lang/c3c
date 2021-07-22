@@ -561,15 +561,13 @@ Decl *copy_decl(Decl *decl)
 			break;
 		case DECL_ARRAY_VALUE:
 			TODO
-		case DECL_GENFUNC:
+		case DECL_GENERIC:
 		case DECL_MACRO:
 			MACRO_COPY_TYPE(decl->macro_decl.type_parent);
 			MACRO_COPY_DECL_LIST(decl->macro_decl.parameters);
 			MACRO_COPY_AST(decl->macro_decl.body);
 			MACRO_COPY_TYPE(decl->macro_decl.rtype);
 			break;
-		case DECL_GENERIC:
-			TODO
 		case DECL_CT_SWITCH:
 		case DECL_CT_CASE:
 		case DECL_ATTRIBUTE:
