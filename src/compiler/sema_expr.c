@@ -1450,7 +1450,7 @@ static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Ex
 	{
 		Expr *arg = args[i];
 		Decl *param = func_params[i + offset];
-		if (param->decl_kind == VARDECL_PARAM_CT_TYPE)
+		if (param->var.kind == VARDECL_PARAM_CT_TYPE)
 		{
 			if (!sema_analyse_expr_value(context, NULL, arg)) return false;
 			if (arg->expr_kind != EXPR_TYPEINFO)
@@ -1493,7 +1493,7 @@ static inline bool sema_expr_analyse_generic_call(Context *context, Type *to, Ex
 	for (unsigned i = 0; i < explicit_args; i++)
 	{
 		Decl *param = func_params[i + offset];
-		if (param->decl_kind == VARDECL_PARAM_CT_TYPE)
+		if (param->var.kind == VARDECL_PARAM_CT_TYPE)
 		{
 			for (unsigned j = i + 1; j < explicit_args; j++)
 			{
