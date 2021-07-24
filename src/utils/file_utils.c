@@ -191,20 +191,20 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 		// Doesn't end with .c3
 		if (strncmp(&ent->d_name[namelen - 3], ".c3", 3) != 0)
 		{
+			char *new_path = NULL;
+			char *format = path_ends_with_slash ? "%s%s/" : "%s/%s/";
+			if (!asprintf(&new_path, format, path, ent->d_name))
+			{
+				error_exit("Failed to allocate path.");
+			}
 			bool is_directory;
 			struct stat st;
-			is_directory = stat(ent->d_name, &st) == 0 && S_ISDIR(st.st_mode);
+			is_directory = stat(new_path, &st) == 0 && S_ISDIR(st.st_mode);
 			if (is_directory && ent->d_name[0] != '.' && recursive)
 			{
-				char *new_path = NULL;
-				char *format = path_ends_with_slash ? "%s%s/" : "%s/%s/";
-				if (!asprintf(&new_path, format, path, ent->d_name))
-				{
-					error_exit("Failed to allocate path.");
-				}
 				file_add_wildcard_files(files, new_path, recursive);
-				free(new_path);
 			}
+			free(new_path);
 			continue;
 		}
 		char *format = path_ends_with_slash ? "%s%s" : "%s/s";
