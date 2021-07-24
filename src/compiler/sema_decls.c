@@ -727,7 +727,6 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
 			[ATTRIBUTE_EXTNAME] = ~0,
-			[ATTRIBUTE_DEPRECATED] = ~0,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION | ATTR_ERROR,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,

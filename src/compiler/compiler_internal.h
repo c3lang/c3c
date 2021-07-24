@@ -1503,6 +1503,7 @@ extern const char *kw_min;
 extern const char *kw_elements;
 extern const char *kw_align;
 extern const char *kw_alignof;
+extern const char *kw_deprecated;
 extern const char *kw_distinct;
 extern const char *kw_ensure;
 extern const char *kw_inline;
