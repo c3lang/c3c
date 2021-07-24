@@ -177,6 +177,7 @@ void file_find_top_dir()
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive)
 {
 	DIR *dir = opendir(path);
+	bool path_ends_with_slash = path[strlen(path) - 1] == '/';
 	if (!dir)
 	{
 		error_exit("Can't open the directory '%s'. Please check the paths. %s", path, strerror(errno));
@@ -191,25 +192,23 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 		if (strncmp(&ent->d_name[namelen - 3], ".c3", 3) != 0)
 		{
 			bool is_directory;
-#if PLATFORM_WINDOWS
 			struct stat st;
 			is_directory = stat(ent->d_name, &st) == 0 && S_ISDIR(st.st_mode);
-#else
-			is_directory = ent->d_type == DT_DIR;  // is it POSIX-compliant? As
-#endif
 			if (is_directory && ent->d_name[0] != '.' && recursive)
 			{
-				char *new_path = strndup(ent->d_name, namelen);
+				char *new_path = NULL;
+				char *format = path_ends_with_slash ? "%s%s/" : "%s/%s/";
+				if (!asprintf(&new_path, format, path, ent->d_name))
+				{
+					error_exit("Failed to allocate path.");
+				}
 				file_add_wildcard_files(files, new_path, recursive);
 				free(new_path);
 			}
 			continue;
 		}
-
-		char *name = malloc_arena(namelen + 1);
-		memcpy(name, ent->d_name, namelen);
-		name[namelen] = '\0';
-		vec_add(*files, name);
+		char *format = path_ends_with_slash ? "%s%s" : "%s/s";
+		vec_add(*files, strformat(format, path, ent->d_name));
 	}
 	closedir(dir);
 }
