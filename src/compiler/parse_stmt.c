@@ -1070,6 +1070,8 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_CT_OFFSETOF:
 		case TOKEN_CT_ALIGNOF:
 		case TOKEN_CT_SIZEOF:
+		case TOKEN_CT_QNAMEOF:
+		case TOKEN_CT_NAMEOF:
 			return parse_expr_stmt(context);
 		case TOKEN_ASSERT:
 			return parse_assert_stmt(context);

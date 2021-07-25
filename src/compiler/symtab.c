@@ -37,7 +37,6 @@ static SymTab symtab;
 const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
 const char *kw_align;
-const char *kw_alignof;
 const char *kw_deprecated;
 const char *kw_distinct;
 const char *kw_ensure;
@@ -45,21 +44,16 @@ const char *kw_elements;
 const char *kw_errors;
 const char *kw_inf;
 const char *kw_inline;
-const char *kw_kindof;
 const char *kw_len;
 const char *kw_main;
 const char *kw_max;
 const char *kw_min;
 const char *kw_nan;
-const char *kw_nameof;
-const char *kw_offsetof;
 const char *kw_ordinal;
 const char *kw_param;
 const char *kw_pure;
-const char *kw_qnameof;
 const char *kw_reqparse;
 const char *kw_require;
-const char *kw_sizeof;
 const char *kw_std;
 const char *kw___ceil;
 const char *kw___round;
@@ -69,6 +63,9 @@ const char *kw_FILE;
 const char *kw_FUNC;
 const char *kw_LINE;
 const char *kw_LINEREAL;
+const char *kw_default_iterator;
+const char *kw_incr;
+const char *kw_check_assign;
 
 void symtab_init(uint32_t capacity)
 {
@@ -103,7 +100,6 @@ void symtab_init(uint32_t capacity)
 	TokenType type = TOKEN_IDENT;
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
 	kw_align = KW_DEF("align");
-	kw_alignof = KW_DEF("alignof");
 	kw_deprecated = KW_DEF("deprecated");
 	kw_distinct = KW_DEF("distinct");
 	kw_elements = KW_DEF("elements");
@@ -111,20 +107,15 @@ void symtab_init(uint32_t capacity)
 	kw_errors = KW_DEF("errors");
 	kw_inf = KW_DEF("inf");
 	kw_inline = KW_DEF("inline");
-	kw_kindof = KW_DEF("kindof");
 	kw_len = KW_DEF("len");
 	kw_main = KW_DEF("main");
 	kw_max = KW_DEF("max");
 	kw_min = KW_DEF("min");
-	kw_nameof = KW_DEF("nameof");
 	kw_nan = KW_DEF("nan");
-	kw_offsetof = KW_DEF("offsetof");
 	kw_ordinal = KW_DEF("ordinal");
 	kw_param = KW_DEF("param");
 	kw_pure = KW_DEF("pure");
-	kw_qnameof = KW_DEF("qnameof");
 	kw_require = KW_DEF("require");
-	kw_sizeof = KW_DEF("sizeof");
 	kw_std = KW_DEF("std");
 	kw___ceil = KW_DEF("__ceil");
 	kw___round = KW_DEF("__round");
@@ -134,7 +125,9 @@ void symtab_init(uint32_t capacity)
 	kw_LINEREAL = KW_DEF("LINEREAL");
 	kw_FILE = KW_DEF("FILE");
 	kw_FUNC = KW_DEF("FUNC");
-
+	kw_incr = KW_DEF("incr");
+	kw_default_iterator = KW_DEF("default_iterator");
+	kw_check_assign = KW_DEF("check_assign");
 	attribute_list[ATTRIBUTE_INLINE] = kw_inline;
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
 	attribute_list[ATTRIBUTE_OPAQUE] = KW_DEF("opaque");

@@ -6,7 +6,7 @@ struct Foo
     long bar;
 }
 
-private usize x = Foo.sizeof;
+private usize x = $sizeof(Foo);
 
 private Foo foo1 = { 1, 2 };
 private Foo foo2 = { .foo = 2 };

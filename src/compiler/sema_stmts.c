@@ -591,7 +591,43 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 	return success;
 }
 
+static inline bool sema_inline_default_iterator(Context *context, Expr *expr)
+{
+	Type *type = expr->type->canonical;
+	if (!type_may_have_sub_elements(type)) return true;
+	Decl *ambiguous = NULL;
+	Decl *private = NULL;
+	Decl *result = sema_resolve_method(context, type->decl, kw_default_iterator, &ambiguous, &private);
+	if (!result)
+	{
+		SEMA_ERROR(expr, "There are multiple candidates for 'default_iterator' on %s.",
+		           type_quoted_error_string(expr->type));
+		return false;
+	}
 
+	Expr *call = expr_new(EXPR_CALL, expr->span);
+	call->call_expr.arguments = NULL;
+	call->call_expr.body = NULL;
+	call->call_expr.unsplat_last = false;
+	call->call_expr.is_type_method = true;
+	bool success;
+	switch (result->decl_kind)
+	{
+		case DECL_MACRO:
+			success = sema_expr_analyse_macro_call(context, NULL, call, expr, result);
+			break;
+		case DECL_GENERIC:
+		case DECL_FUNC:
+			TODO
+		default:
+			UNREACHABLE
+	}
+	if (success)
+	{
+		expr_replace(expr, call);
+	}
+	return success;
+}
 static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 {
 	// Pull out the relevant data.

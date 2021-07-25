@@ -1502,26 +1502,20 @@ extern const char *kw_max;
 extern const char *kw_min;
 extern const char *kw_elements;
 extern const char *kw_align;
-extern const char *kw_alignof;
 extern const char *kw_deprecated;
 extern const char *kw_distinct;
 extern const char *kw_ensure;
 extern const char *kw_inline;
-extern const char *kw_kindof;
 extern const char *kw_len;
 extern const char *kw_inf;
 extern const char *kw_nan;
 extern const char *kw_main;
-extern const char *kw_nameof;
-extern const char *kw_offsetof;
 extern const char *kw_ordinal;
-extern const char *kw_qnameof;
 extern const char *kw_reqparse;
 extern const char *kw_require;
 extern const char *kw_pure;
 extern const char *kw_param;
 extern const char *kw_errors;
-extern const char *kw_sizeof;
 extern const char *kw___ceil;
 extern const char *kw___round;
 extern const char *kw___sqrt;
@@ -1530,6 +1524,9 @@ extern const char *kw_FILE;
 extern const char *kw_FUNC;
 extern const char *kw_LINE;
 extern const char *kw_LINEREAL;
+extern const char *kw_default_iterator;
+extern const char *kw_incr;
+extern const char *kw_check_assign;
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id((_token).id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
@@ -1711,6 +1708,8 @@ void expr_const_fprint(FILE *__restrict file, ExprConst *expr);
 bool expr_const_int_overflowed(const ExprConst *expr);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
+void expr_insert_addr(Expr *original);
+void expr_insert_deref(Expr *expr);
 bool expr_is_constant_eval(Expr *expr);
 const char *expr_const_to_error_string(const ExprConst *expr);
 static inline void expr_set_type(Expr *expr, Type *type)
@@ -1788,6 +1787,7 @@ bool sema_analyse_decl(Context *context, Decl *decl);
 bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement);
 bool sema_analyse_statement(Context *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *left_type, Expr *right, ExprFailableStatus lhs_is_failable);
+bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, Expr *struct_var, Decl *decl);
 
 Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol);
 Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *path);
@@ -1796,6 +1796,7 @@ Decl *sema_find_extension_method_in_module(Module *module, Type *type, const cha
 Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, bool handle_error);
 Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path);
 
+bool sema_resolve_type(Context *context, Type *type);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
 bool sema_resolve_type_info_maybe_inferred(Context *context, TypeInfo *type_info, bool allow_inferred_type);
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow);

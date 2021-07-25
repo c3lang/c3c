@@ -88,6 +88,48 @@ void expr_copy_types(Expr *to, Expr *from)
 	to->original_type = from->original_type;
 }
 
+void expr_insert_addr(Expr *original)
+{
+	assert(original->resolve_status == RESOLVE_DONE);
+	if (original->expr_kind == EXPR_UNARY && original->unary_expr.operator == UNARYOP_DEREF)
+	{
+		*original = *original->unary_expr.expr;
+		return;
+	}
+	Expr *inner = expr_alloc();
+	*inner = *original;
+	original->expr_kind = EXPR_UNARY;
+	expr_set_type(original, type_get_ptr(inner->type));
+	original->unary_expr.operator = UNARYOP_ADDR;
+	original->unary_expr.expr = inner;
+	original->pure = false;
+	original->constant = false;
+	original->failable = inner->failable;
+}
+
+void expr_insert_deref(Expr *original)
+{
+	assert(original->resolve_status == RESOLVE_DONE);
+	assert(original->type->canonical->type_kind == TYPE_POINTER);
+	if (original->expr_kind == EXPR_UNARY && original->unary_expr.operator == UNARYOP_ADDR)
+	{
+		*original = *original->unary_expr.expr;
+		return;
+	}
+
+	Type *pointee = original->type->type_kind == TYPE_POINTER ? original->type->pointer : original->type->canonical->pointer;
+	Expr *inner = expr_alloc();
+	*inner = *original;
+	original->expr_kind = EXPR_UNARY;
+	expr_set_type(original, pointee);
+	original->unary_expr.operator = UNARYOP_DEREF;
+	original->unary_expr.expr = inner;
+	original->pure = false;
+	original->constant = false;
+	original->failable = inner->failable;
+}
+
+
 static void expr_unify_binary_properties(Expr *expr, Expr *left, Expr *right)
 {
 	expr->pure = left->pure & right->pure;
@@ -1145,7 +1187,7 @@ static bool sema_check_stmt_compile_time(Context *context, Ast *ast)
 	}
 }
 
-static inline bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, Expr *struct_var, Decl *decl)
+bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, Expr *struct_var, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_MACRO);
 
@@ -1574,12 +1616,8 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
 			{
 				expr->call_expr.is_type_method = true;
-				struct_var = expr_new(EXPR_UNARY, func_expr->access_expr.parent->span);
-				struct_var->unary_expr.expr = func_expr->access_expr.parent;
-				struct_var->unary_expr.operator = UNARYOP_ADDR;
-				struct_var->resolve_status = RESOLVE_DONE;
-				assert(func_expr->access_expr.parent->resolve_status == RESOLVE_DONE);
-				expr_set_type(struct_var, type_get_ptr(struct_var->unary_expr.expr->type));
+				expr_insert_addr(func_expr->access_expr.parent);
+				struct_var = func_expr->access_expr.parent;
 				if (decl->decl_kind == DECL_MACRO)
 				{
 					return sema_expr_analyse_macro_call(context, to, expr, struct_var, decl);
@@ -1843,17 +1881,6 @@ static inline bool sema_expr_analyse_slice(Context *context, Expr *expr)
 	return true;
 }
 
-static inline void insert_access_deref(Expr *expr)
-{
-	Expr *deref = expr_new(EXPR_UNARY, expr->span);
-	deref->unary_expr.operator = UNARYOP_DEREF;
-	deref->unary_expr.expr = expr->access_expr.parent;
-	deref->resolve_status = RESOLVE_DONE;
-	assert(expr->access_expr.parent->type->canonical->type_kind == TYPE_POINTER);
-	expr_set_type(deref, expr->access_expr.parent->type->canonical->pointer);
-	deref->failable = expr->access_expr.parent->failable;
-	expr->access_expr.parent = deref;
-}
 
 static inline bool sema_expr_analyse_group(Context *context, Type *to, Expr *expr)
 {
@@ -2093,31 +2120,7 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 	Type *canonical = parent->type->canonical;
 	const char *name = TOKSTR(identifier_token);
 
-	// Foo.sizeof => return the size in bytes, e.g. 11
-	if (name == kw_sizeof)
-	{
-		expr_rewrite_to_int_const(expr, type_compint, type_size(canonical));
-		return true;
-	}
-
-	// Foo.alignof => return the alignment, e.g. 4
-	if (name == kw_alignof)
-	{
-		expr_rewrite_to_int_const(expr, type_compint, type_abi_alignment(canonical));
-		return true;
-	}
-	// Foo.nameof => return the name, e.g. "Foo"
-	if (name == kw_nameof)
-	{
-		expr_rewrite_to_string(expr, canonical->name);
-		return true;
-	}
-	// Foo.qnameof => return the qualified name, e.g. "mylib::Foo"
-	if (name == kw_qnameof)
-	{
-		expr_rewrite_to_string(expr, type_generate_qname(canonical));
-		return true;
-	}
+	// 3. Handle float.nan, double.inf etc
 	if (type_is_float(canonical))
 	{
 		if (name == kw_nan)
@@ -2147,7 +2150,7 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 			return true;
 		}
 	}
-	//
+
 	if (!type_may_have_sub_elements(canonical))
 	{
 		SEMA_ERROR(expr, "'%s' does not have a property '%s'.", type_to_error_string(parent->type), name);
@@ -2199,6 +2202,7 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 		case DECL_ERR:
 		case DECL_UNION:
 		case DECL_STRUCT:
+		case DECL_DISTINCT:
 			break;
 		default:
 			UNREACHABLE
@@ -2215,18 +2219,7 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 			return true;
 		}
 	}
-	VECEACH(decl->strukt.members, i)
-	{
-		Decl *member = decl->strukt.members[i];
-		if (name == member->name)
-		{
-			expr->expr_kind = EXPR_MEMBER_ACCESS;
-			expr->access_expr.ref = member;
-			expr_set_type(expr, member->type);
-			return true;
-		}
-	}
-	SEMA_ERROR(expr, "No function or member '%s.%s' found.", type_to_error_string(parent->type), name);
+	SEMA_ERROR(expr, "No function '%s.%s' found.", type_to_error_string(parent->type), name);
 	return false;
 }
 
@@ -2260,16 +2253,6 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr,
 		expr->resolve_status = RESOLVE_DONE;
 		return true;
 	}
-	if (name == kw_sizeof && !is_macro)
-	{
-		expr_rewrite_to_int_const(expr, type_compint, type_size(ref->type));
-		return true;
-	}
-	if (name == kw_alignof && !is_macro)
-	{
-		expr_rewrite_to_int_const(expr, type_compint, type_abi_alignment(ref->type));
-		return true;
-	}
 	if (name == kw_ordinal && !is_macro)
 	{
 		if (ref->decl_kind == DECL_ENUM_CONSTANT)
@@ -2279,20 +2262,6 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr,
 		}
 	}
 
-	if (name == kw_nameof && !is_macro)
-	{
-		expr_rewrite_to_string(expr, ref->name);
-		return true;
-	}
-	if (name == kw_qnameof && !is_macro)
-	{
-		expr_rewrite_to_string(expr, ref->external_name ?: ref->name);
-		return true;
-	}
-	if (name == kw_kindof && !is_macro)
-	{
-		TODO
-	}
 	// If we have something like struct Foo { Bar b; int c; struct d { int e; } }
 	// If we are inspecting Foo.c we're done here. Otherwise handle struct d / Bar b case
 	// The same way.
@@ -2393,7 +2362,6 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	if (TOKEN_IS_INVALID(identifier_token)) return false;
 
 	// 2. If our left hand side is a type, e.g. MyInt.abc, handle this here.
-	Type *parent_type = parent->type;
 	if (parent->expr_kind == EXPR_TYPEINFO)
 	{
 		return sema_expr_analyse_type_access(expr, parent->type_expr, was_group, is_macro, identifier_token);
@@ -2414,14 +2382,11 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	assert(parent->resolve_status == RESOLVE_DONE);
 
 	// 7. Is this a pointer? If so we insert a deref.
-	Type *type = parent_type->canonical;
-	bool is_pointer = type->type_kind == TYPE_POINTER;
+	bool is_pointer = parent->type->canonical->type_kind == TYPE_POINTER;
 	if (is_pointer)
 	{
-		type = type->pointer->canonical;
-		parent_type = type;
 		if (!sema_cast_rvalue(context, NULL, parent)) return false;
-		insert_access_deref(expr);
+		expr_insert_deref(expr->access_expr.parent);
 		parent = expr->access_expr.parent;
 	}
 
@@ -2429,6 +2394,7 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	const char *kw = TOKSTR(identifier_token);
 	Expr *current_parent = parent;
 
+	Type *type = parent->type->canonical;
 	Type *flat_type = type_flatten(type);
 CHECK_DEEPER:
 
@@ -2445,7 +2411,7 @@ CHECK_DEEPER:
 		}
 		if (flat_type->type_kind == TYPE_ARRAY)
 		{
-			expr_rewrite_to_int_const(expr, type_compint, type->array.len);
+			expr_rewrite_to_int_const(expr, type_compint, flat_type->array.len);
 			return true;
 		}
 	}
@@ -2453,7 +2419,7 @@ CHECK_DEEPER:
 	// 9. At this point we may only have distinct, struct, union, error, enum
 	if (!type_may_have_sub_elements(type))
 	{
-		SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(parent_type));
+		SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(parent->type));
 		return false;
 	}
 
@@ -5689,6 +5655,74 @@ static inline bool sema_expr_analyse_ct_sizeof(Context *context, Type *to, Expr 
 	return true;
 }
 
+static inline bool decl_is_local(Decl *decl)
+{
+	if (decl->decl_kind != DECL_VAR) return false;
+	VarDeclKind kind = decl->var.kind;
+	return kind == VARDECL_PARAM_CT_TYPE
+		|| kind == VARDECL_PARAM
+		|| kind == VARDECL_PARAM_CT
+		|| kind == VARDECL_LOCAL
+		|| kind == VARDECL_LOCAL_CT_TYPE
+		|| kind == VARDECL_LOCAL_CT
+		|| kind == VARDECL_PARAM_REF
+		|| kind == VARDECL_PARAM_EXPR
+		|| kind == VARDECL_MEMBER;
+}
+
+static inline bool sema_expr_analyse_ct_nameof(Context *context, Type *to, Expr *expr)
+{
+	if (expr->resolve_status == RESOLVE_DONE) return true;
+
+	Expr **elements = expr->ct_call_expr.arguments;
+	unsigned count = vec_size(elements);
+	if (count > 1)
+	{
+		SEMA_ERROR(elements[1], "The function only takes one argument.");
+		return expr_poison(expr);
+	}
+	Expr *first_expr = elements[0];
+	if (!sema_analyse_expr_value(context, NULL, first_expr)) return false;
+
+	bool qualified = expr->ct_call_expr.token_type == TOKEN_CT_QNAMEOF;
+
+	if (first_expr->expr_kind == EXPR_TYPEINFO)
+	{
+		Type *type = first_expr->type_expr->type->canonical;
+		if (!sema_resolve_type(context, type)) return false;
+		// TODO type_is_builtin is wrong also this does not cover virtual.
+		if (!qualified || type_is_builtin(type->type_kind))
+		{
+			expr_rewrite_to_string(expr, type->name);
+			return true;
+		}
+		scratch_buffer_clear();
+		scratch_buffer_append(type->decl->module->name->module);
+		scratch_buffer_append("::");
+		scratch_buffer_append(type->name);
+		expr_rewrite_to_string(expr, scratch_buffer_interned());
+		return true;
+	}
+	if (first_expr->expr_kind != EXPR_IDENTIFIER)
+	{
+		SEMA_ERROR(first_expr, "Expected an identifier.");
+		return false;
+	}
+	Decl *decl = first_expr->identifier_expr.decl;
+
+	if (!decl->module || !qualified || decl_is_local(decl))
+	{
+		expr_rewrite_to_string(expr, decl->name);
+		return true;
+	}
+	scratch_buffer_clear();
+	scratch_buffer_append(decl->module->name->module);
+	scratch_buffer_append("::");
+	scratch_buffer_append(decl->name);
+	expr_rewrite_to_string(expr, scratch_buffer_interned());
+	return true;
+}
+
 
 static inline bool sema_expr_analyse_ct_alignof(Context *context, Type *to, Expr *expr)
 {
@@ -5696,7 +5730,9 @@ static inline bool sema_expr_analyse_ct_alignof(Context *context, Type *to, Expr
 	if (!sema_analyse_ct_call_parameters(context, expr)) return false;
 	Type *type = expr->ct_call_expr.type->canonical;
 	ExprFlatElement *elements = expr->ct_call_expr.flatpath;
-	AlignSize align = expr->ct_call_expr.decl ? expr->ct_call_expr.decl->alignment : type_abi_alignment(type);
+
+	Decl *decl = expr->ct_call_expr.decl;
+	AlignSize align = decl && !decl_is_user_defined_type(decl) ? expr->ct_call_expr.decl->alignment : type_abi_alignment(type);
 	VECEACH(elements, i)
 	{
 		ExprFlatElement element = elements[i];
@@ -5743,6 +5779,7 @@ static inline bool sema_expr_analyse_ct_alignof(Context *context, Type *to, Expr
 
 	return true;
 }
+
 
 static inline bool sema_expr_analyse_ct_offsetof(Context *context, Type *to, Expr *expr)
 {
@@ -5812,6 +5849,10 @@ static inline bool sema_expr_analyse_ct_call(Context *context, Type *to, Expr *e
 			return sema_expr_analyse_ct_alignof(context, to, expr);
 		case TOKEN_CT_OFFSETOF:
 			return sema_expr_analyse_ct_offsetof(context, to, expr);
+		case TOKEN_CT_QNAMEOF:
+			return sema_expr_analyse_ct_nameof(context, to, expr);
+		case TOKEN_CT_NAMEOF:
+			return sema_expr_analyse_ct_nameof(context, to, expr);
 		default:
 			UNREACHABLE
 	}
