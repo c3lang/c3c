@@ -137,6 +137,44 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 }
 
 
+bool sema_resolve_type(Context *context, Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_TYPEDEF:
+			return sema_resolve_type(context, type->canonical);
+		case TYPE_POISONED:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case TYPE_TYPEID:
+		case TYPE_VIRTUAL_ANY:
+		case TYPE_ERR_UNION:
+		case TYPE_STRLIT:
+		case TYPE_VECTOR:
+			return true;
+		case TYPE_POINTER:
+			return sema_resolve_type(context, type->pointer);
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_ERRTYPE:
+		case TYPE_DISTINCT:
+			break;
+		case TYPE_ARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_INFERRED_ARRAY:
+			return sema_resolve_type(context, type->array.base);
+		case TYPE_TYPEINFO:
+			TODO
+		case TYPE_VIRTUAL:
+			TODO;
+	}
+	return sema_analyse_decl(context, type->decl);
+}
+
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow)
 {
 	if (type_info->resolve_status == RESOLVE_DONE) return type_info_ok(type_info);

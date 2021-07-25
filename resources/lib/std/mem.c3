@@ -114,7 +114,7 @@ Allocator main_allocator = { &system_malloc_function, null };
 
 macro malloc($Type)
 {
-    return ($Type*)(mem::alloc($Type.sizeof));
+    return ($Type*)(mem::alloc($sizeof($Type)));
 }
 
 func void* alloc(usize size, usize elements = 1) @inline

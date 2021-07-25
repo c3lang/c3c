@@ -40,7 +40,7 @@ private func void LinkedList.linkFirst(LinkedList *list, Type value)
 private func void LinkedList.linkLast(LinkedList *list, Type value)
 {
     Node *last = list.last;
-    Node *new_node = mem::alloc(Node.sizeof);
+    Node *new_node = mem::alloc($sizeof(Node));
     *new_node = { .prev = last, .value = value };
     list.last = new_node;
     if (!last)

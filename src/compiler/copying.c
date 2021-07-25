@@ -333,7 +333,7 @@ Ast *copy_ast(Ast *source)
 			MACRO_COPY_DECL(ast->foreach_stmt.index);
 			MACRO_COPY_DECL(ast->foreach_stmt.variable);
 			MACRO_COPY_EXPR(ast->foreach_stmt.enumeration);
-			MACRO_COPY_AST(ast->for_stmt.body);
+			MACRO_COPY_AST(ast->foreach_stmt.body);
 			return ast;
 		case AST_IF_STMT:
 			copy_flow(ast);

@@ -1139,5 +1139,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_SIZEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_typeof_expr, NULL, PREC_NONE },
 };

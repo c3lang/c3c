@@ -339,8 +339,12 @@ const char *token_type_to_string(TokenType type)
 			return "$endswitch";
 		case TOKEN_CT_IF:
 			return "$if";
+		case TOKEN_CT_NAMEOF:
+			return "$nameof";
 		case TOKEN_CT_OFFSETOF:
 			return "$offsetof";
+		case TOKEN_CT_QNAMEOF:
+			return "$qnameof";
 		case TOKEN_CT_SIZEOF:
 			return "$sizeof";
 		case TOKEN_CT_SWITCH:

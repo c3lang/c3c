@@ -16,7 +16,7 @@ func int Foo.func2(Foo* f, int i)
 
 func void test_unknown_member()
 {
-   int a = Foo.b;               // #error: No function or member 'Foo.b' found.
+   int a = Foo.b;               // #error: No function 'Foo.b' found.
 }
 
 /*
