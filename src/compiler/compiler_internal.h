@@ -348,13 +348,19 @@ typedef struct
 	TypeInfo *type_info;
 } EnumDecl;
 
+typedef enum
+{
+	VARIADIC_NONE,
+	VARIADIC_TYPED,
+	VARIADIC_RAW,
+} Variadic;
+
 typedef struct FunctionSignature_
 {
 	CallABI call_abi : 4;
-	bool variadic : 1;
+	Variadic variadic : 3;
 	bool has_default : 1;
 	bool failable : 1;
-	bool typed_variadic : 1;
 	bool use_win64 : 1;
 	TypeInfo *rtype;
 	struct ABIArgInfo_ *ret_abi_info;

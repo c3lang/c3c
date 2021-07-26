@@ -460,8 +460,4 @@ bool sema_rewrap_var(Context *context, Decl *decl)
 	return sema_append_local(context, decl->var.alias);
 }
 
-bool sema_add_macro_local(Context *context, Decl *decl)
-{
-	return sema_add_local(context, decl);
-}
 

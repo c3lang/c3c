@@ -479,77 +479,6 @@ static inline bool find_possible_inferred_identifier(Type *to, Expr *expr)
 
 }
 
-// TODO!!!
-/*
-static inline bool sema_expr_analyse_identifier_resolve(Context *context, Type *to, Expr *expr, ExprIdentifier *id_expr)
-{
-	Decl *ambiguous_decl = NULL;
-	Decl *private_symbol = NULL;
-	expr->pure = true;
-
-	DEBUG_LOG("Now resolving %s", TOKSTR(id_expr->identifier));
-	Decl *decl = sema_resolve_normal_symbol(context,
-	                                        id_expr->identifier,
-	                                        id_expr->path, false);
-	if (!decl && !id_expr->path && to)
-	{
-		if (find_possible_inferred_identifier(to, expr)) return true;
-	}
-
-	if (!decl)
-	{
-		decl = sema_resolve_normal_symbol(context, id_expr->identifier, id_expr->path, true);
-		assert(!decl_ok(decl) && "Expected a poisoned decl here.");
-		return false;
-	}
-
-	// Already handled
-	if (!decl_ok(decl)) return false;
-
-	if (decl->decl_kind == DECL_FUNC && !id_expr->path && decl->module != context->module)
-	{
-		SEMA_ERROR(expr, "Functions from other modules must be prefixed with the module name, please add '%s' in front.", decl->module->name->module);
-		return false;
-	}
-	if (decl->decl_kind == DECL_MACRO)
-	{
-		if (expr->expr_kind != EXPR_MACRO_IDENTIFIER)
-		{
-			SEMA_ERROR(expr, "Macro expansions must be prefixed with '@', try using '@%s(...)' instead.", decl->name);
-			return false;
-		}
-		id_expr->decl = decl;
-		expr_set_type(expr, type_void);
-		return true;
-	}
-	if (expr->expr_kind == EXPR_MACRO_IDENTIFIER)
-	{
-		SEMA_ERROR(expr, "Only macro expansions can be prefixed with '@', please try to remove it.", decl->name);
-		return false;
-	}
-	if (decl->resolve_status != RESOLVE_DONE)
-	{
-		if (!sema_analyse_decl(context, decl)) return poisoned_decl;
-	}
-	if (decl->decl_kind == DECL_VAR && decl->var.failable)
-	{
-		expr->failable = true;
-	}
-	if (expr->expr_kind == EXPR_CONST_IDENTIFIER)
-	{
-		assert(decl->decl_kind == DECL_VAR);
-		assert(decl->var.kind == VARDECL_CONST);
-		assert(!decl->var.failable);
-	}
-	assert(decl->type);
-	expr->identifier_expr.decl = decl;
-	expr_set_type(expr, decl->type);
-	expr->pure = true;
-	expr->constant = false;
-	DEBUG_LOG("Resolution successful of %s.", decl->name);
-	return true;
-}
-*/
 
 bool expr_is_constant_eval(Expr *expr)
 {
@@ -831,199 +760,174 @@ static inline bool expr_may_unpack_as_vararg(Expr *expr, Type *variadic_base_typ
 			return false;
 	}
 }
-static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionSignature *signature, Expr *expr, Decl *decl, Type *to, Expr *struct_var)
+
+typedef struct
 {
-	// 1. Check that we don't have any macro style arguments.
-	if (vec_size(expr->call_expr.body_arguments))
+	bool macro;
+	TokenId block_parameter;
+	Decl **params;
+	Expr *struct_var;
+	Variadic variadic;
+} CalledDecl;
+
+static inline bool expr_promote_vararg(Context *context, Expr *arg)
+{
+	Type *arg_type = arg->type->canonical;
+	// 1. Is it compile time?
+	if (type_is_ct(arg_type))
 	{
-		SEMA_ERROR(expr, "Only macro calls may have arguments for a trailing block after ';'.");
-		return false;
-	}
-	if (vec_size(expr->call_expr.body_arguments))
-	{
-		SEMA_ERROR(expr, "Only macro calls may take a trailing block.");
-		return false;
+		// TODO Fix the int conversion.
+		// 1. Pick double / CInt
+		Type *target_type = type_is_any_integer(arg_type) ? type_cint() : type_double;
+		return cast_implicit(arg, target_type);
 	}
 
-	// 2. Builtin? We handle that elsewhere.
-	if (decl->func_decl.is_builtin)
+	// 2. Promote any integer or bool to at least CInt
+	if (type_is_promotable_integer(arg_type) || arg_type == type_bool)
 	{
-		assert(!struct_var);
-		return sema_expr_analyse_intrinsic_invocation(context, expr, decl, to);
+		return cast(arg, type_cint());
 	}
-	Decl **func_params = signature->params;
-	Expr **args = expr->call_expr.arguments;
-
-	// 3. If this is a type call, then we have an implicit first argument.
-	unsigned struct_args = struct_var == NULL ? 0 : 1;
-
-	// 4. There might be unpacking for typed varargs.
-	unsigned num_args = vec_size(args) + struct_args;
-	bool unsplat = expr->call_expr.unsplat_last;
-	if (unsplat)
+	// 3. Promote any float to at least double
+	if (type_is_promotable_float(arg->type))
 	{
-		// 5. Is this *not* a naked vararg or typed vararg? That's an error.
-		if (!signature->typed_variadic && !signature->variadic)
+		return cast(arg, type_double);
+	}
+	return true;
+}
+
+static inline bool sema_check_invalid_body_arguments(Context *context, Expr *call, CalledDecl *callee)
+{
+	Decl **body_arguments = call->call_expr.body_arguments;
+	bool has_body_arguments = vec_size(body_arguments) > 0;
+
+	// 1. Check if there are body arguments but no actual block.
+	if (has_body_arguments && !callee->block_parameter.index)
+	{
+		if (callee->macro)
 		{
-			SEMA_ERROR(VECLAST(expr->call_expr.arguments), "Unpacking is only allowed for functions with variable parameters.");
+			SEMA_ERROR(body_arguments[0], "This macro does not support arguments.");
+		}
+		else
+		{
+			SEMA_ERROR(body_arguments[0], "Only macro calls may have body arguments for a trailing block.");
+		}
+		return false;
+	}
+
+	// 2. If there is a body then...
+	if (call->call_expr.body)
+	{
+		// 2a. If not a macro then this is an error.
+		if (!callee->macro)
+		{
+			SEMA_ERROR(call, "Only macro calls may take a trailing block.");
 			return false;
 		}
+		// 2b. If we don't have a block parameter, then this is an error as well
+		if (!callee->block_parameter.index)
+		{
+			SEMA_ERROR(call, "This macro does not support trailing statements, please remove it.");
+			return false;
+		}
+
+		// 2c. This is a macro and it has a block parameter. Everything is fine!
+		return true;
 	}
 
-	// 6. Zero out all argument slots.
-	unsigned func_param_count = vec_size(func_params);
-	// 6a. We need at least as many function locations as we have parameters.
+	// 3. If we don't have a body, then if it has a block parameter this is an error.
+	if (callee->block_parameter.index)
+	{
+		assert(callee->macro);
+		SEMA_ERROR(call, "Expected call to have a trailing statement, did you forget to add it?");
+		return false;
+	}
+
+	// 4. No body and no block parameter, this is fine.
+	return true;
+}
+
+static inline bool sema_expand_call_arguments(Context *context, Expr *call, Decl **params, Expr **args, unsigned func_param_count, bool variadic)
+{
+	unsigned num_args = vec_size(args);
+
+	// 1. We need at least as many function locations as we have parameters.
 	unsigned entries_needed = func_param_count > num_args ? func_param_count : num_args;
 	Expr **actual_args = VECNEW(Expr*, entries_needed);
 	for (unsigned i = 0; i < entries_needed; i++) vec_add(actual_args, NULL);
+	// TODO this should not be needed:
 	memset(actual_args, 0, entries_needed * sizeof(Expr*));
 
-	// 7. We might have a typed variadic call e.g. foo(int, double...)
-	//    get that type.
-	Type *variadic_type = NULL;
-	if (signature->typed_variadic)
-	{
-		// 7a. The parameter type is <type>[], so we get the <type>
-		assert(func_params[func_param_count - 1]->type->type_kind == TYPE_SUBARRAY);
-		variadic_type = func_params[func_param_count - 1]->type->array.base;
-		// 7b. The last function parameter is implicit, so remove it.
-		func_param_count--;
-	}
-
-	// 8. Loop through the parameters.
+	// 2. Loop through the parameters.
 	bool uses_named_parameters = false;
 	for (unsigned i = 0; i < num_args; i++)
 	{
-		// 9. We might pick up the argument as the type if this is a type
-		//    method.
-		bool is_implicit = i < struct_args;
-		Expr *arg = is_implicit ? struct_var : args[i - struct_args];
+		Expr *arg = args[i];
 
-		// 10. Handle named parameters
+		// 3. Handle named parameters
 		if (arg->expr_kind == EXPR_DESIGNATOR)
 		{
-			// 10a. We have named parameters, that will add some restrictions.
+			// 8a. We have named parameters, that will add some restrictions.
 			uses_named_parameters = true;
 
-			// 10b. Find the location of the parameter.
-			int index = find_index_of_named_parameter(func_params, arg);
+			// 8b. Find the location of the parameter.
+			int index = find_index_of_named_parameter(params, arg);
 
-			// 10c. If it's not found then this is an error.
+			// 8c. If it's not found then this is an error.
 			if (index < 0) return false;
 
-			// 10d. We might actually be finding the typed vararg at the end,
+			// 8d. We might actually be finding the typed vararg at the end,
 			//     this is an error.
-			if (func_params[index]->var.vararg)
+			if (params[index]->var.vararg)
 			{
-				SEMA_ERROR(arg, "Vararg parameters may not be named parameters, use normal parameters instead.", func_params[index]->name);
+				SEMA_ERROR(arg, "Vararg parameters may not be named parameters, use normal parameters instead.", params[index]->name);
 				return false;
 			}
 
-			// 10e. We might have already set this parameter, that is not allowed.
+			// 8e. We might have already set this parameter, that is not allowed.
 			if (actual_args[index])
 			{
-				SEMA_ERROR(arg, "The parameter '%s' was already set once.", func_params[index]->name);
+				SEMA_ERROR(arg, "The parameter '%s' was already set.", params[index]->name);
 				return false;
 			}
 
-			// 10f. Check the parameter
-			if (!sema_analyse_expr_of_required_type(context, func_params[index]->type, arg->designator_expr.value, true)) return false;
-
-			// 10g. Set the parameter and update failability.
+			// 8g. Set the parameter and update failability.
 			actual_args[index] = arg->designator_expr.value;
-			expr->failable |= arg->designator_expr.value->failable;
+			call->failable |= arg->designator_expr.value->failable;
 			continue;
 		}
 
-		// 11. Check for previous use of named parameters, this is not allowed
+		// 9. Check for previous use of named parameters, this is not allowed
 		//     like foo(.a = 1, 3) => error.
 		if (uses_named_parameters)
 		{
-			SEMA_ERROR(expr, "A regular parameter cannot follow a named parameter.");
+			SEMA_ERROR(call, "A regular parameter cannot follow a named parameter.");
 			return false;
 		}
 
-		// 12. If we exceed the function parameter count (remember we reduced this by one
+		// 10. If we exceed the function parameter count (remember we reduced this by one
 		//     in the case of typed vararg) we're now in a variadic list.
 		if (i >= func_param_count)
 		{
-			// 13. We might have a typed variadic argument.
-			if (variadic_type)
+			// 11. We might have a typed variadic argument.
+			if (!variadic)
 			{
-				// 13a. Look if we did an unsplat
-				if (expr->call_expr.unsplat_last)
-				{
-					// 13b. Is this the last argument, or did we get some before the unpack?
-					if (i < num_args - 1)
-					{
-						SEMA_ERROR(arg, "This looks like a variable argument before an unpacked variable which isn't allowed. Did you add too many arguments?");
-						return false;
-					}
-					// 13c. Analyse the expression. We don't use any type inference here since
-					//      foo(...{ 1, 2, 3 }) is a fairly worthless thing.
-					if (!sema_analyse_expr(context, NULL, arg)) return false;
-
-					// 13d. If it is allowed.
-					if (!expr_may_unpack_as_vararg(arg, variadic_type))
-					{
-						SEMA_ERROR(arg, "It's not possible to unpack %s as vararg of type %s",
-				            type_quoted_error_string(arg->type),
-				                   type_quoted_error_string(variadic_type));
-						return false;
-					}
-				}
-				else
-				{
-					// 13e. A simple variadic value:
-					if (!sema_analyse_expr_of_required_type(context, variadic_type, arg, true)) return false;
-				}
-				// Set the argument at the location.
-				actual_args[i] = arg;
-				expr->failable |= arg->failable;
-				continue;
+				// 15. We have too many parameters...
+				SEMA_ERROR(arg, "This argument would would exceed the number of parameters, did you add to many arguments?");
+				return false;
 			}
-			// 14. We might have a naked variadic argument
-			if (signature->variadic)
+
+			// 11a. Look if we did an unsplat
+			if (call->call_expr.unsplat_last)
 			{
-				// 14a. Analyse the expression.
-				if (!sema_analyse_expr(context, NULL, arg)) return false;
-
-				// 14b. In the case of a compile time variable we cast to c_int / double.
-				Type *arg_type = arg->type->canonical;
-				if (type_is_ct(arg_type))
+				// 11b. Is this the last argument, or did we get some before the unpack?
+				if (i < num_args - 1)
 				{
-					// TODO Fix the int conversion.
-					// 14c. Pick double / CInt
-					Type *target_type = type_is_any_integer(arg_type) ? type_cint() : type_double;
-					if (!cast_implicit(arg, target_type)) return false;
-					arg_type = target_type;
+					SEMA_ERROR(arg,
+					           "This looks like a variable argument before an unpacked variable which isn't allowed. Did you add too many arguments?");
+					return false;
 				}
-				// 14d. Promote any integer or bool to at least CInt
-				if (type_is_promotable_integer(arg_type) || arg_type == type_bool)
-				{
-					Type *cint = type_cint();
-					cast(arg, cint);
-					arg_type = cint;
-				}
-				// 14e. Promote any float to at least Double
-				if (type_is_promotable_float(arg->type))
-				{
-					cast(arg, type_double);
-					arg_type = type_double;
-				}
-				// Set the argument at the location.
-				actual_args[i] = arg;
-				expr->failable |= arg->failable;
-				continue;
 			}
-			// 15. We have too many parameters...
-			SEMA_ERROR(expr, "Too many parameters for this function.");
-			return false;
 		}
-
-		// 16. Analyse a regular argument.
-		if (!sema_analyse_expr_of_required_type(context, func_params[i]->type, arg, true)) return false;
-		expr->failable |= arg->failable;
 		actual_args[i] = arg;
 	}
 
@@ -1034,24 +938,238 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 		if (actual_args[i]) continue;
 
 		// 17b. Set the init expression.
-		if (func_params[i]->var.init_expr)
+		if (params[i]->var.init_expr)
 		{
-			assert(func_params[i]->var.init_expr->resolve_status == RESOLVE_DONE);
-			actual_args[i] = func_params[i]->var.init_expr;
+			assert(params[i]->var.init_expr->resolve_status == RESOLVE_DONE);
+			actual_args[i] = params[i]->var.init_expr;
 			continue;
 		}
 
 		// 17c. Vararg not set? That's fine.
-		if (func_params[i]->var.vararg) continue;
+		if (params[i]->var.vararg) continue;
 
 		// 17d. Argument missing, that's bad.
-		SEMA_ERROR(expr, "Parameter '%s' was not set.", func_params[i]->name);
+		SEMA_ERROR(call, "The mandatory parameter '%s' was not set, please add it.", params[i]->name);
 		return false;
 	}
-	// 18. Set the type and failable.
+	call->call_expr.arguments = actual_args;
+	return true;
+}
+static inline bool sema_expr_analyse_call_invocation(Context *context, Expr *call, CalledDecl callee)
+{
+	// 1. Check body arguments.
+	if (!sema_check_invalid_body_arguments(context, call, &callee)) return false;
+
+	// 2. Pick out all the arguments and parameters.
+	Expr **args = call->call_expr.arguments;
+	Decl **params = callee.params;
+	unsigned num_args = vec_size(args);
+
+	// 3. If this is a type call, then we have an implicit first argument.
+	if (callee.struct_var)
+	{
+		// 3a. Insert an argument first, by adding null to the end and then moving all arguments
+		//     by one step.
+		vec_add(args, NULL);
+		for (unsigned i = num_args; i > 0; i--)
+		{
+			args[i] = args[i - 1];
+		}
+		// 3b. Then insert the argument.
+		args[0] = callee.struct_var;
+		num_args++;
+		call->call_expr.arguments = args;
+	}
+
+	// 4. Check for unsplat of the last argument.
+	bool unsplat = call->call_expr.unsplat_last;
+	if (unsplat)
+	{
+		// 4a. Is this *not* a variadic function/macro? - Then that's an error.
+		if (callee.variadic == VARIADIC_NONE)
+		{
+			SEMA_ERROR(call->call_expr.arguments[num_args - 1],
+					   "Unpacking is only allowed for %s with variable parameters.",
+					   callee.macro ? "macros" : "functions");
+			return false;
+		}
+	}
+
+	// 5. Zero out all argument slots.
+	unsigned func_param_count = vec_size(params);
+
+	// 6. We might have a typed variadic call e.g. foo(int, double...)
+	//    get that type.
+	Type *variadic_type = NULL;
+	if (callee.variadic == VARIADIC_TYPED)
+	{
+		// 7a. The parameter type is <type>[], so we get the <type>
+		assert(params[func_param_count - 1]->type->type_kind == TYPE_SUBARRAY);
+		variadic_type = params[func_param_count - 1]->type->array.base;
+		// 7b. The last function parameter is implicit so we will pretend it's not there.
+		func_param_count--;
+	}
+
+	if (!sema_expand_call_arguments(context, call, params, args, func_param_count, callee.variadic != VARIADIC_NONE)) return false;
+
+	args = call->call_expr.arguments;
+	num_args = vec_size(args);
+
+	// 7. Loop through the parameters.
+	for (unsigned i = 0; i < num_args; i++)
+	{
+		Expr *arg = args[i];
+
+		// 10. If we exceed the function parameter count (remember we reduced this by one
+		//     in the case of typed vararg) we're now in a variadic list.
+		if (i >= func_param_count)
+		{
+			// 11. We might have a typed variadic argument.
+			if (variadic_type)
+			{
+				// 11a. Look if we did an unsplat
+				if (call->call_expr.unsplat_last)
+				{
+					// 11c. Analyse the expression. We don't use any type inference here since
+					//      foo(...{ 1, 2, 3 }) is a fairly worthless thing.
+					if (!sema_analyse_expr(context, NULL, arg)) return false;
+
+					// 11d. If it is allowed.
+					if (!expr_may_unpack_as_vararg(arg, variadic_type))
+					{
+						SEMA_ERROR(arg, "It's not possible to unpack %s as vararg of type %s",
+						           type_quoted_error_string(arg->type),
+						           type_quoted_error_string(variadic_type));
+						return false;
+					}
+				}
+				else
+				{
+					// 11e. A simple variadic value:
+					if (!sema_analyse_expr_of_required_type(context, variadic_type, arg, true)) return false;
+				}
+				// Set the argument at the location.
+				call->failable |= arg->failable;
+				continue;
+			}
+			// 12. We might have a naked variadic argument
+			if (callee.variadic == VARIADIC_RAW)
+			{
+				// 12a. Analyse the expression.
+				if (!sema_analyse_expr(context, NULL, arg)) return false;
+
+				// 12b. In the case of a compile time variable non macros we cast to c_int / double.
+				if (!callee.macro)
+				{
+					if (!expr_promote_vararg(context, arg)) return false;
+				}
+				// Set the argument at the location.
+				call->failable |= arg->failable;
+				continue;
+			}
+			UNREACHABLE
+		}
+
+		Decl *param = params[i];
+
+		// 16. Analyse a regular argument.
+		switch (param->var.kind)
+		{
+			case VARDECL_PARAM_REF:
+				// &foo
+				if (!sema_analyse_expr_value(context, param->type, arg)) return false;
+				if (param->type && param->type->canonical != arg->type->canonical)
+				{
+					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(param->type));
+					return false;
+				}
+				break;
+			case VARDECL_PARAM:
+				// foo
+				if (!sema_analyse_expr_of_required_type(context, param->type, arg, false)) return false;
+				if (!param->type && !cast_implicitly_to_runtime(arg))
+				{
+					SEMA_ERROR(arg, "Constant cannot implicitly be cast to a real type.");
+					return false;
+				}
+				if (callee.macro)
+				{
+					param->alignment = type_abi_alignment(param->type ? param->type : arg->type);
+				}
+				break;
+			case VARDECL_PARAM_EXPR:
+				// #foo
+				// We push a scope here as this will prevent the expression from modifying
+				// compile time variables during evaluation:
+				assert(callee.macro);
+				SCOPE_START
+					if (!sema_analyse_expr_of_required_type(context, param->type, arg, false)) return SCOPE_POP_ERROR();
+				SCOPE_END;
+				break;
+			case VARDECL_PARAM_CT:
+				// $foo
+				assert(callee.macro);
+				if (!sema_analyse_expr_of_required_type(context, param->type, arg, false)) return false;
+				if (!expr_is_constant_eval(arg))
+				{
+					SEMA_ERROR(arg, "A compile time parameter must always be a constant, did you mistake it for a normal paramter?");
+					return false;
+				}
+				break;
+			case VARDECL_PARAM_CT_TYPE:
+				// $Foo
+				if (!sema_analyse_expr_value(context, NULL, arg)) return false;
+				// TODO check typeof
+				if (arg->expr_kind != EXPR_TYPEINFO)
+				{
+					SEMA_ERROR(arg, "A type, like 'int' or 'double' was expected for the parameter '%s'.", param->name);
+					return false;
+				}
+				break;
+			case VARDECL_CONST:
+			case VARDECL_GLOBAL:
+			case VARDECL_LOCAL:
+			case VARDECL_MEMBER:
+			case VARDECL_LOCAL_CT:
+			case VARDECL_LOCAL_CT_TYPE:
+			case VARDECL_ALIAS:
+				UNREACHABLE
+		}
+		if (param->type)
+		{
+			if (!cast_implicit(arg, param->type)) return false;
+		}
+		else
+		{
+			param->type = arg->type;
+		}
+		call->failable |= arg->failable;
+	}
+
+	call->failable |= call->failable;
+
+	return true;
+}
+static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionSignature *signature, Expr *expr, Decl *decl, Type *to, Expr *struct_var)
+{
+	CalledDecl callee = {
+			.macro = false,
+			.block_parameter = NO_TOKEN_ID,
+			.struct_var = struct_var,
+			.params = signature->params,
+			.variadic = signature->variadic,
+	};
+	if (!sema_expr_analyse_call_invocation(context, expr, callee)) return false;
+
+	// 2. Builtin? We handle that elsewhere.
+	if (decl->func_decl.is_builtin)
+	{
+		assert(!struct_var);
+		return sema_expr_analyse_intrinsic_invocation(context, expr, decl, to);
+	}
+
 	expr_set_type(expr, signature->rtype->type);
-	expr->call_expr.arguments = actual_args;
-	expr->failable |= signature->failable;
+
 	return true;
 }
 
@@ -1198,126 +1316,21 @@ bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, E
 		return false;
 	}
 
-	if (decl->macro_decl.block_parameter.index && !call_expr->call_expr.body)
-	{
-		SEMA_ERROR(call_expr, "Expected call to have a trailing statement, did you forget to add it?");
-		return false;
-	}
-	if (!decl->macro_decl.block_parameter.index && call_expr->call_expr.body)
-	{
-		SEMA_ERROR(call_expr, "This macro does not support trailing statements, please remove it.");
-		return false;
-	}
+	Decl **params = copy_decl_list(decl->macro_decl.parameters);
+	CalledDecl callee = {
+			.macro = true,
+			.block_parameter = decl->macro_decl.block_parameter,
+			.params = params,
+			.struct_var = struct_var
+	};
 
-	Expr **args = call_expr->call_expr.arguments;
+	if (!sema_expr_analyse_call_invocation(context, call_expr, callee)) return false;
 	Decl **func_params = decl->macro_decl.parameters;
-
-	unsigned explicit_args = vec_size(args);
-	unsigned total_args = explicit_args;
-	if (struct_var)
+	Expr **args = call_expr->call_expr.arguments;
+	VECEACH(params, i)
 	{
-		total_args++;
-		vec_add(args, NULL);
-		for (unsigned i = explicit_args; i > 0; i--)
-		{
-			args[i] = args[i - 1];
-		}
-		args[0] = struct_var;
-	}
-
-	if (total_args != vec_size(func_params))
-	{
-		// TODO
-		SEMA_ERROR(call_expr, "Mismatch on number of arguments.");
-		return false;
-	}
-	Decl **params = func_params > 0 ? VECNEW(Decl *, total_args) : NULL;
-	for (unsigned i = 0; i < total_args; i++)
-	{
-		Expr *arg = args[i];
-		Decl *param = copy_decl(func_params[i]);
-		vec_add(params, param);
-		assert(param->decl_kind == DECL_VAR);
-		assert(param->resolve_status == RESOLVE_DONE);
-		param->resolve_status = RESOLVE_RUNNING;
-		// Maybe there's a type, but in general a macro param may be
-		// typeless.
-		// Maybe we should actually do something like:
-		// macro var foo(var a, var $b) to make it more uniform.
-		if (param->var.type_info)
-		{
-			// Resolve it
-			if (!sema_resolve_type_info(context, param->var.type_info)) return false;
-			// And set the type, we're done.
-			param->type = param->var.type_info->type;
-		}
-		switch (param->var.kind)
-		{
-			case VARDECL_PARAM_REF:
-				// &foo
-				if (!sema_analyse_expr_value(context, param->type, arg)) return false;
-				if (param->type && param->type->canonical != arg->type->canonical)
-				{
-					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(param->type));
-					return false;
-				}
-				break;
-			case VARDECL_PARAM:
-				// foo
-				if (!sema_analyse_expr_of_required_type(context, param->type, arg, false)) return false;
-				if (!param->type && !cast_implicitly_to_runtime(arg))
-				{
-					SEMA_ERROR(arg, "Constant cannot implicitly be cast to a real type.");
-					return false;
-				}
-				param->alignment = type_abi_alignment(param->type ? param->type : arg->type);
-				break;
-			case VARDECL_PARAM_EXPR:
-				// #foo
-				// We push a scope here as this will prevent the expression from modifying
-				// compile time variables during evaluation:
-				SCOPE_START
-					if (!sema_analyse_expr_of_required_type(context, param->type, arg, false)) return SCOPE_POP_ERROR();
-				SCOPE_END;
-				break;
-			case VARDECL_PARAM_CT:
-				// $foo
-				if (!sema_analyse_expr_of_required_type(context, param->type, arg, false)) return false;
-				if (!expr_is_constant_eval(arg))
-				{
-					SEMA_ERROR(arg, "A compile time parameter must always be a constant, did you mistake it for a normal paramter?");
-					return false;
-				}
-				break;
-			case VARDECL_PARAM_CT_TYPE:
-				// $Foo
-				if (!sema_analyse_expr_value(context, NULL, arg)) return false;
-				// TODO check typeof
-				if (arg->expr_kind != EXPR_TYPEINFO)
-				{
-					SEMA_ERROR(arg, "A type, like 'int' or 'double' was expected for the parameter '%s'.", param->name);
-					return false;
-				}
-				break;
-			case VARDECL_CONST:
-			case VARDECL_GLOBAL:
-			case VARDECL_LOCAL:
-			case VARDECL_MEMBER:
-			case VARDECL_LOCAL_CT:
-			case VARDECL_LOCAL_CT_TYPE:
-			case VARDECL_ALIAS:
-				UNREACHABLE
-		}
-		if (param->type)
-		{
-			if (!cast_implicit(arg, param->type)) return false;
-		}
-		else
-		{
-			param->type = arg->type;
-		}
-		param->var.init_expr = arg;
-		param->resolve_status = RESOLVE_DONE;
+		Decl *param = params[i];
+		param->var.init_expr = args[i];
 	}
 
 	unsigned body_params = vec_size(call_expr->call_expr.body_arguments);
@@ -1393,7 +1406,7 @@ bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, E
 		SCOPE_START_WITH_FLAGS(SCOPE_MACRO);
 
 
-			for (unsigned i = 0; i < total_args; i++)
+			VECEACH(params, i)
 			{
 				Decl *param = params[i];
 				sema_add_local(context, param);
@@ -1440,6 +1453,7 @@ bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, E
 					}
 				}
 			}
+
 			call_expr->expr_kind = EXPR_MACRO_BLOCK;
 			call_expr->macro_block.stmts = body->compound_stmt.stmts;
 			call_expr->macro_block.params = params;

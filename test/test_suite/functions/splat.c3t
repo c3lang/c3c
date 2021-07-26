@@ -1,0 +1,73 @@
+module splat;
+
+extern func int sum_us(int... x);
+
+func void test()
+{
+    sum_us(1, 2, 3);
+    int[3] x = { 1, 2, 3 };
+    int[] z = &x;
+    sum_us(...x);
+    sum_us(...z);
+    sum_us();
+}
+
+// #expect: splat.ll
+
+ %vararg = alloca %"int[]", align 8
+  %varargslots = alloca [3 x i32], align 4
+  %x = alloca [3 x i32], align 4
+  %z = alloca %"int[]", align 8
+  %vararg3 = alloca %"int[]", align 8
+  %vararg9 = alloca %"int[]", align 8
+  %vararg15 = alloca %"int[]", align 8
+  %0 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 0
+  store i32 1, i32* %0, align 4
+  %1 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 1
+  store i32 2, i32* %1, align 4
+  %2 = getelementptr inbounds [3 x i32], [3 x i32]* %varargslots, i64 0, i64 2
+  store i32 3, i32* %2, align 4
+  %3 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 1
+  store i64 3, i64* %3, align 8
+  %4 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 0
+  %5 = bitcast [3 x i32]* %varargslots to i32*
+  store i32* %5, i32** %4, align 8
+  %casttemp = bitcast %"int[]"* %vararg to { i64, i8* }*
+  %lo = getelementptr inbounds { i64, i8* }, { i64, i8* }* %casttemp, i32 0, i32 0
+  %lo1 = load i64, i64* %lo, align 8
+  %hi = getelementptr inbounds { i64, i8* }, { i64, i8* }* %casttemp, i32 0, i32 1
+  %hi2 = load i8*, i8** %hi, align 8
+  %6 = call i32 @sum_us(i64 %lo1, i8* %hi2)
+  %7 = bitcast [3 x i32]* %x to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %7, i8* align 4 bitcast ([3 x i32]* @.__const to i8*), i32 12, i1 false)
+  %8 = bitcast [3 x i32]* %x to i32*
+  %9 = insertvalue %"int[]" undef, i32* %8, 0
+  %10 = insertvalue %"int[]" %9, i64 3, 1
+  store %"int[]" %10, %"int[]"* %z, align 8
+  %11 = getelementptr inbounds %"int[]", %"int[]"* %vararg3, i32 0, i32 1
+  %12 = getelementptr inbounds %"int[]", %"int[]"* %vararg3, i32 0, i32 0
+  store i64 3, i64* %11, align 8
+  %13 = bitcast [3 x i32]* %x to i32*
+  store i32* %13, i32** %12, align 8
+  %casttemp4 = bitcast %"int[]"* %vararg3 to { i64, i8* }*
+  %lo5 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %casttemp4, i32 0, i32 0
+  %lo6 = load i64, i64* %lo5, align 8
+  %hi7 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %casttemp4, i32 0, i32 1
+  %hi8 = load i8*, i8** %hi7, align 8
+  %14 = call i32 @sum_us(i64 %lo6, i8* %hi8)
+  %15 = getelementptr inbounds %"int[]", %"int[]"* %vararg9, i32 0, i32 1
+  %16 = getelementptr inbounds %"int[]", %"int[]"* %vararg9, i32 0, i32 0
+  %casttemp10 = bitcast %"int[]"* %z to { i64, i8* }*
+  %lo11 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %casttemp10, i32 0, i32 0
+  %lo12 = load i64, i64* %lo11, align 8
+  %hi13 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %casttemp10, i32 0, i32 1
+  %hi14 = load i8*, i8** %hi13, align 8
+  %17 = call i32 @sum_us(i64 %lo12, i8* %hi14)
+  %18 = getelementptr inbounds %"int[]", %"int[]"* %vararg15, i32 0, i32 1
+  store i64 0, i64* %18, align 8
+  %casttemp16 = bitcast %"int[]"* %vararg15 to { i64, i8* }*
+  %lo17 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %casttemp16, i32 0, i32 0
+  %lo18 = load i64, i64* %lo17, align 8
+  %hi19 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %casttemp16, i32 0, i32 1
+  %hi20 = load i8*, i8** %hi19, align 8
+  %19 = call i32 @sum_us(i64 %lo18, i8* %hi20)

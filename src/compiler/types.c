@@ -1081,11 +1081,11 @@ Type *type_find_function_type(FunctionSignature *signature)
 		}
 		type_append_name_to_scratch(signature->params[i]->var.type_info->type);
 	}
-	if (signature->variadic && elements > 0)
+	if (signature->variadic == VARIADIC_RAW && elements > 0)
 	{
 		scratch_buffer_append_char(',');
 	}
-	if (signature->variadic || signature->typed_variadic)
+	if (signature->variadic != VARIADIC_NONE)
 	{
 		scratch_buffer_append("...");
 	}
