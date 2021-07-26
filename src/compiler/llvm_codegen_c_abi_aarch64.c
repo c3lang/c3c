@@ -142,7 +142,7 @@ void c_abi_func_create_aarch64(FunctionSignature *signature)
 {
 	if (signature->failable)
 	{
-		signature->failable_abi_info = aarch64_classify_return_type(signature->rtype->type, signature->variadic);
+		signature->failable_abi_info = aarch64_classify_return_type(signature->rtype->type, signature->variadic == VARIADIC_RAW);
 		if (signature->rtype->type->type_kind != TYPE_VOID)
 		{
 			signature->ret_abi_info = aarch64_classify_argument_type(type_get_ptr(type_lowering(signature->rtype->type)));
@@ -150,7 +150,7 @@ void c_abi_func_create_aarch64(FunctionSignature *signature)
 	}
 	else
 	{
-		signature->ret_abi_info = aarch64_classify_return_type(signature->rtype->type, signature->variadic);
+		signature->ret_abi_info = aarch64_classify_return_type(signature->rtype->type, signature->variadic == VARIADIC_RAW);
 	}
 	Decl **params = signature->params;
 	VECEACH(params, i)

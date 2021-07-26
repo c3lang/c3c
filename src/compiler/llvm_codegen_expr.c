@@ -2670,7 +2670,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	// 8. Add all other arguments.
 	unsigned arguments = vec_size(expr->call_expr.arguments);
 	unsigned non_variadic_params = vec_size(signature->params);
-	if (signature->typed_variadic) non_variadic_params--;
+	if (signature->variadic == VARIADIC_TYPED) non_variadic_params--;
 	assert(arguments >= non_variadic_params);
 	for (unsigned i = 0; i < non_variadic_params; i++)
 	{
@@ -2685,7 +2685,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	}
 
 	// 9. Typed varargs
-	if (signature->typed_variadic)
+	if (signature->variadic == VARIADIC_TYPED)
 	{
 		REMINDER("All varargs should be called with non-alias!");
 		Decl *vararg_param = signature->params[non_variadic_params];
@@ -2695,7 +2695,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		llvm_value_set_address(&subarray, llvm_emit_alloca_aligned(c, vararg_param->type, "vararg"), vararg_param->type);
 
 		// 9a. Special case, empty argument
-		if (arguments == non_variadic_params + 1 && !expr->call_expr.arguments[non_variadic_params])
+		if (arguments == non_variadic_params)
 		{
 			// Just set the size to zero.
 			BEValue len_addr;

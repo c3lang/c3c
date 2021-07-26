@@ -1210,11 +1210,11 @@ static inline bool parse_parameter_list(Context *context, Visibility parent_visi
 			if (!last->var.type_info)
 			{
 				vec_resize(decls, vec_size(decls) - 1);
-				signature->variadic = true;
+				signature->variadic = VARIADIC_RAW;
 			}
 			else
 			{
-				signature->typed_variadic = true;
+				signature->variadic = VARIADIC_TYPED;
 			}
 		}
 	}

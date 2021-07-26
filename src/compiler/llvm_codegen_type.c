@@ -26,7 +26,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 			return LLVMFunctionType(llvm_get_type(c, decl->func_decl.function_signature.rtype->type),
 			                        params,
 			                        param_size,
-			                        decl->func_decl.function_signature.variadic);
+			                        decl->func_decl.function_signature.variadic == VARIADIC_RAW);
 
 		}
 		case DECL_TYPEDEF:
@@ -312,7 +312,7 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 		add_func_type_param(context, signature->params[i]->type, signature->params[i]->var.abi_info, &params);
 	}
 
-	return LLVMFunctionType(return_type, params, vec_size(params), signature->variadic);
+	return LLVMFunctionType(return_type, params, vec_size(params), signature->variadic == VARIADIC_RAW);
 }
 
 
