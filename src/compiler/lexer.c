@@ -606,7 +606,7 @@ static inline bool scan_char(Lexer *lexer)
 		{
 			c = next(lexer);
 			const char *start = lexer->current;
-			char escape = is_valid_escape(c);
+			signed char escape = is_valid_escape(c);
 			if (escape == -1)
 			{
 				lexer->lexing_start = start;
@@ -623,7 +623,7 @@ static inline bool scan_char(Lexer *lexer)
 						// Fix underlining if this is an unfinished escape.
 						return add_error_token(lexer, "Expected a two character hex value after \\x.");
 					}
-					bytes.b[width++] = hex;
+					bytes.b[width++] = (uint8_t)hex;
 					break;
 				}
 				case 'u':
@@ -636,13 +636,13 @@ static inline bool scan_char(Lexer *lexer)
 					}
 					if (platform_target.little_endian)
 					{
-						bytes.b[width++] = hex & 0xFF;
-						bytes.b[width++] = hex >> 8;
+						bytes.b[width++] = (uint8_t)hex & 0xFF;
+						bytes.b[width++] = (uint8_t)(hex >> 8);
 					}
 					else
 					{
-						bytes.b[width++] = hex >> 8;
-						bytes.b[width++] = hex & 0xFF;
+						bytes.b[width++] = (uint8_t)(hex >> 8);
+						bytes.b[width++] = (uint8_t)(hex & 0xFF);
 					}
 					break;
 				}
@@ -656,22 +656,22 @@ static inline bool scan_char(Lexer *lexer)
 					}
 					if (platform_target.little_endian)
 					{
-						bytes.b[width++] = hex & 0xFF;
-						bytes.b[width++] = (hex >> 8) & 0xFF;
-						bytes.b[width++] = (hex >> 16) & 0xFF;
-						bytes.b[width++] = hex >> 24;
+						bytes.b[width++] = (uint8_t)(hex & 0xFF);
+						bytes.b[width++] = (uint8_t)((hex >> 8) & 0xFF);
+						bytes.b[width++] = (uint8_t)((hex >> 16) & 0xFF);
+						bytes.b[width++] = (uint8_t)(hex >> 24);
 					}
 					else
 					{
-						bytes.b[width++] = hex >> 24;
-						bytes.b[width++] = (hex >> 16) & 0xFF;
-						bytes.b[width++] = (hex >> 8) & 0xFF;
-						bytes.b[width++] = hex & 0xFF;
+						bytes.b[width++] = (uint8_t)(hex >> 24);
+						bytes.b[width++] = (uint8_t)((hex >> 16) & 0xFF);
+						bytes.b[width++] = (uint8_t)((hex >> 8) & 0xFF);
+						bytes.b[width++] = (uint8_t)(hex & 0xFF);
 					}
 					break;
 				}
 				default:
-					bytes.b[width++] = escape;
+					bytes.b[width++] = (uint8_t)escape;
 			}
 		}
 	}
