@@ -572,7 +572,7 @@ ArchOsTarget arch_os_target_from_string(const char *target)
 	{
 		if (strcasecmp(arch_os_target[i], target) == 0)
 		{
-			return i;
+			return (ArchOsTarget)i;
 		}
 	}
 	return ARCH_OS_TARGET_DEFAULT;

@@ -271,7 +271,7 @@ static void skip_whitespace(Lexer *lexer, LexMode lex_type)
 // we split identifiers into 2 types + find keywords.
 static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_token, TokenType type_token, char prefix)
 {
-	TokenType type = 0;
+	TokenType type = (TokenType)0;
 	uint32_t hash = FNV1_SEED;
 	if (prefix)
 	{
@@ -414,7 +414,6 @@ static inline bool scan_hex(Lexer *lexer)
 	char c = peek(lexer);
 	if (c == 'p' || c == 'P')
 	{
-		is_float = true;
 		is_float = true;
 		if (!scan_exponent(lexer)) return false;
 	}

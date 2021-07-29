@@ -1752,8 +1752,8 @@ static inline TokenData *tokendata_from_token(Token token) { return tokdataptr(t
 
 #define TOKREAL(T) TOKDATA(T)->value
 
-static inline TokenType tokenid_type(TokenId token) { return toktypeptr(token.index)[0]; }
-static inline TokenType token_type(Token token) { return toktypeptr(token.id.index)[0]; }
+static inline TokenType tokenid_type(TokenId token) { return (TokenType)toktypeptr(token.index)[0]; }
+static inline TokenType token_type(Token token) { return (TokenType)toktypeptr(token.id.index)[0]; }
 #define TOKTYPE(T) _Generic((T), TokenId: tokenid_type, Token: token_type)(T)
 
 #define TOKLEN(T) TOKLOC(T)->length

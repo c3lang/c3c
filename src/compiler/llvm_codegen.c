@@ -1039,6 +1039,12 @@ void llvm_attribute_add(GenContext *context, LLVMValueRef value_to_add_attribute
 	llvm_attribute_add_int(context, value_to_add_attribute_to, attribute_id, 0, index);
 }
 
+void llvm_attribute_add_call(GenContext *context, LLVMValueRef call, unsigned attribute_id, int index, int64_t value)
+{
+	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(context->context, attribute_id, value);
+	LLVMAddCallSiteAttribute(call, index, llvm_attr);
+}
+
 void llvm_attribute_add_range(GenContext *context, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index_start, int index_end)
 {
 	for (int i = index_start; i <= index_end; i++)

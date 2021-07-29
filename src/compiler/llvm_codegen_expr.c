@@ -2712,6 +2712,7 @@ static void llvm_emit_unpacked_variadic_arg(GenContext *c, Expr *expr, BEValue *
 			UNREACHABLE
 	}
 }
+
 void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *function = expr->call_expr.function;
@@ -2791,7 +2792,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	{
 		case ABI_ARG_INDIRECT:
 			// 6a. We can use the stored error var if there is no redirect.
-			if (signature->failable && c->error_var && ret_info->attributes.realign)
+			if (signature->failable && c->error_var && !ret_info->attributes.realign)
 			{
 				error_var = c->error_var;
 				vec_add(values, error_var);
@@ -2931,7 +2932,8 @@ void llvm_emit_call_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			*be_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
 		case ABI_ARG_INDIRECT:
-
+			llvm_attribute_add_call(c, call_value, attribute_sret, 1, 0);
+			llvm_attribute_add_call(c, call_value, attribute_align, 1, ret_info->indirect.alignment);
 			// 13. Indirect, that is passing the result through an out parameter.
 
 			// 13a. In the case of an already present error_var, we don't need to do a load here.

@@ -337,7 +337,6 @@ Type *type_by_expr_range(ExprConst *expr)
 		return type_double;
 	}
 	assert(expr->kind == TYPE_IXX);
-	BigInt *b = &expr->i;
 	// 1. Does it fit in a C int? If so, that's the type.
 	Type *type = type_cint();
 	if (!expr_const_will_overflow(expr, type->type_kind)) return type;

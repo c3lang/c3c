@@ -203,6 +203,7 @@ unsigned llvm_abi_size(GenContext *c, LLVMTypeRef type);
 AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type);
 void llvm_attribute_add_range(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index_start, int index_end);
 void llvm_attribute_add(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index);
+void llvm_attribute_add_call(GenContext *context, LLVMValueRef call, unsigned attribute_id, int index, int64_t value);
 void llvm_attribute_add_string(GenContext *c, LLVMValueRef value_to_add_attribute_to, const char *attribute, const char *value, int index);
 void llvm_attribute_add_int(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, uint64_t val, int index);
 LLVMBasicBlockRef llvm_basic_block_new(GenContext *c, const char *name);

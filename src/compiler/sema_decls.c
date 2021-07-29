@@ -1260,7 +1260,7 @@ static bool sema_analyse_parameterized_define(Context *c, Decl *decl)
 			if (define_type->resolve_status == RESOLVE_DONE && type_is_user_defined(define_type->type))
 			{
 				SEMA_ERROR(define_type, "Expected a user defined type for parameterization.");
-				return poisoned_decl;
+				return decl_poison(decl);
 			}
 			decl_path = define_type->unresolved.path;
 			name = define_type->unresolved.name_loc;
@@ -1291,7 +1291,7 @@ static bool sema_analyse_parameterized_define(Context *c, Decl *decl)
 	VECEACH(decl->define_decl.generic_params, i)
 	{
 		TypeInfo *type_info = decl->define_decl.generic_params[i];
-		if (!sema_resolve_type_info(c, type_info)) return poisoned_decl;
+		if (!sema_resolve_type_info(c, type_info)) return decl_poison(decl);
 		if (i != 0) scratch_buffer_append_char('.');
 		const char *type_name = type_info->type->canonical->name;
 		scratch_buffer_append(type_name);

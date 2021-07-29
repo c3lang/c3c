@@ -1,0 +1,39 @@
+// #target: x64_darwin
+
+struct Abc {
+ long a;
+ long b;
+ long c;
+ long d;
+ long e;
+}
+
+extern func Abc foo1();
+extern func Abc foo2();
+
+func void bar() {
+  Abc dummy1 = foo1();
+  Abc dummy2 = foo2();
+}
+
+// Cleanup for this result, since it's creating an unnecessary sret.
+
+// #expect: test_sret.ll
+
+declare void @foo1(%Abc* sret align 8)
+
+declare void @foo2(%Abc* sret align 8)
+
+  %dummy1 = alloca %Abc, align 8
+  %sretparam = alloca %Abc, align 8
+  %dummy2 = alloca %Abc, align 8
+  %sretparam1 = alloca %Abc, align 8
+  call void @foo1(%Abc* sret align 8 %sretparam)
+  %0 = bitcast %Abc* %dummy1 to i8*
+  %1 = bitcast %Abc* %sretparam to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %0, i8* align 8 %1, i32 40, i1 false)
+  call void @foo2(%Abc* sret align 8 %sretparam1)
+  %2 = bitcast %Abc* %dummy2 to i8*
+  %3 = bitcast %Abc* %sretparam1 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %2, i8* align 8 %3, i32 40, i1 false)
+  ret void

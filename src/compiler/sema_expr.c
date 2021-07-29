@@ -547,7 +547,7 @@ static inline bool sema_expr_analyse_identifier(Context *context, Type *to, Expr
 	}
 	if (decl->resolve_status != RESOLVE_DONE)
 	{
-		if (!sema_analyse_decl(context, decl)) return poisoned_decl;
+		if (!sema_analyse_decl(context, decl)) return decl_poison(decl);
 	}
 	if (decl->decl_kind == DECL_VAR && decl->var.failable)
 	{
