@@ -635,7 +635,7 @@ static inline bool scan_char(Lexer *lexer)
 					}
 					if (platform_target.little_endian)
 					{
-						bytes.b[width++] = (uint8_t)hex & 0xFF;
+						bytes.b[width++] = (uint8_t)(hex & 0xFF);
 						bytes.b[width++] = (uint8_t)(hex >> 8);
 					}
 					else

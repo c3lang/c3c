@@ -31,35 +31,6 @@ const char* expand_path(const char* path)
 	return path;
 }
 
-int filename_to_module(const char *path, char buffer[MAX_IDENTIFIER_LENGTH + 1])
-{
-	int len = (int)strlen(path);
-	int last_slash = 0;
-	int last_dot = -1;
-	for (int i = 0; i < len; i++)
-	{
-		if (path[i] == '/') last_slash = i;
-		if (path[i] == '.') last_dot = i;
-	}
-	int namelen = last_dot - last_slash - 1;
-	if (namelen < 1) return 0;
-	if (namelen > MAX_IDENTIFIER_LENGTH) namelen = MAX_IDENTIFIER_LENGTH;
-	for (int i = last_slash + 1; i < last_dot; i++)
-	{
-		char c = path[i];
-		if (is_letter(c))
-		{
-			c = (char)(is_upper(c) ? c + 'a' - 'A' : c);
-		}
-		else
-		{
-			c = '_';
-		}
-		buffer[i - last_slash - 1] = c;
-	}
-	buffer[namelen] = '\0';
-	return namelen;
-}
 
 
 char *read_file(const char *path, size_t *return_size)

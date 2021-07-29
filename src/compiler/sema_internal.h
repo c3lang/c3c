@@ -30,7 +30,7 @@ do {                                  \
   assert(context->active_scope.defer_last == context->active_scope.defer_start); \
   context->active_scope = old_scope;  \
   } while(0)
-#define SCOPE_POP_ERROR() (context->active_scope = old_scope, false)
+#define SCOPE_POP_ERROR() ((bool)(context->active_scope = old_scope, false))
 #define SCOPE_ERROR_END_OUTER() \
   do { context->active_scope = stored_scope; } while(0)
 

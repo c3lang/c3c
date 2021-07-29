@@ -51,18 +51,49 @@ static inline bool create_module_or_check_name(Context *context, Path *module_na
 	return true;
 }
 
+static bool filename_to_module_in_buffer(const char *path)
+{
+	int len = (int)strlen(path);
+	int last_slash = 0;
+	int last_dot = -1;
+	for (int i = 0; i < len; i++)
+	{
+		if (path[i] == '/') last_slash = i;
+		if (path[i] == '.') last_dot = i;
+	}
+	int namelen = last_dot - last_slash - 1;
+	if (namelen < 1) return false;
+	scratch_buffer_clear();
+	for (int i = last_slash + 1; i < last_dot; i++)
+	{
+		char c = path[i];
+		if (is_letter(c))
+		{
+			c = (char)(is_upper(c) ? c + 'a' - 'A' : c);
+		}
+		else
+		{
+			c = '_';
+		}
+		scratch_buffer_append_char(c);
+	}
+	return true;
+}
+
 bool context_set_module_from_filename(Context *context)
 {
-    char buffer[MAX_IDENTIFIER_LENGTH + 1];
-    int len = filename_to_module(context->file->full_path, buffer);
-    if (!len)
+	if (!filename_to_module_in_buffer(context->file->full_path))
     {
         sema_error(context, "The filename '%s' could not be converted to a valid module name, try using an explicit module name.", context->file->full_path);
         return false;
     }
 
     TokenType type = TOKEN_IDENT;
-    const char *module_name = symtab_add(buffer, (uint32_t) len, fnv1a(buffer, (uint32_t) len), &type);
+	const char *module_name = symtab_add(global_context.scratch_buffer,
+	                                     global_context.scratch_buffer_len,
+	                                     fnv1a(global_context.scratch_buffer, global_context.scratch_buffer_len),
+	                                     &type);
+
     if (type != TOKEN_IDENT)
     {
 	    sema_error(context, "Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
@@ -72,7 +103,7 @@ bool context_set_module_from_filename(Context *context)
     Path *path = CALLOCS(Path);
     path->span = INVALID_RANGE;
     path->module = module_name;
-    path->len = len;
+    path->len = global_context.scratch_buffer_len;
     return create_module_or_check_name(context, path, NULL, true);
 }
 
