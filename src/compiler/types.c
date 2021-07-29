@@ -571,7 +571,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			break;
 		case ALL_SIGNED_INTS:
 			// Lower signed to unsigned
-			type = type_int_unsigned_by_bitsize(type->builtin.bytesize);
+			type = type_int_unsigned_by_bitsize(type->builtin.bitsize);
 			break;
 		case ALL_UNSIGNED_INTS:
 		case ALL_REAL_FLOATS:

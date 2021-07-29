@@ -1,4 +1,5 @@
-// #target: x64_darwin
+// #target: x64_mingw
+module literal_load;
 
 struct Test
 {

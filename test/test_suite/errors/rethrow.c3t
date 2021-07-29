@@ -9,10 +9,12 @@ func void! test()
 // #expect: rethrow.ll
 
 entry:
-  %i = alloca i32, align 4
+ %i = alloca i32, align 4
   %i.f = alloca %error_union, align 8
   %error_var = alloca %error_union, align 8
-  %coerce = alloca { i64, i64 }, align 8
+  %tempcoerce = alloca { i64, i64 }, align 8
+  %tempaddr = alloca %error_union, align 8
+  %tempcoerce1 = alloca { i64, i64 }, align 8
   store %error_union zeroinitializer, %error_union* %i.f, align 8
   store i32 0, i32* %i, align 4
   %err_domain = getelementptr inbounds %error_union, %error_union* %i.f, i32 0, i32 0
@@ -30,13 +32,18 @@ after_check:
   %3 = load i32, i32* %i, align 4
   br label %noerr_block
 
-guard_block:
-  %4 = bitcast %error_union* %error_var to { i64, i64 }*
-  %coerced = load { i64, i64 }, { i64, i64 }* %4, align 8
-  ret { i64, i64 } %coerced
+guard_block:                                      ; preds = %error
+  %4 = bitcast { i64, i64 }* %tempcoerce to i8*
+  %5 = bitcast %error_union* %error_var to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %4, i8* align 8 %5, i32 16, i1 false)
+  %6 = load { i64, i64 }, { i64, i64 }* %tempcoerce, align 8
+  ret { i64, i64 } %6
 
-noerr_block:
-  %5 = bitcast { i64, i64 }* %coerce to %error_union*
-  store %error_union zeroinitializer, %error_union* %5, align 8
-  %coerced1 = load { i64, i64 }, { i64, i64 }* %coerce, align 8
-  ret { i64, i64 } %coerced1
+noerr_block:                                      ; preds = %after_check
+  store %error_union zeroinitializer, %error_union* %tempaddr, align 8
+  %7 = bitcast { i64, i64 }* %tempcoerce1 to i8*
+  %8 = bitcast %error_union* %tempaddr to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %7, i8* align 8 %8, i32 16, i1 false)
+  %9 = load { i64, i64 }, { i64, i64 }* %tempcoerce1, align 8
+  ret { i64, i64 } %9
+}
