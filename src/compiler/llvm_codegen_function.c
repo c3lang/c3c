@@ -178,20 +178,22 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 				llvm_store_aligned_decl(c, decl, llvm_get_next_param(c, index));
 				return;
 			}
-			// Cast to the coerce type.
-			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
 
 			// If we're not flattening, we simply do a store.
 			if (!abi_info_should_flatten(info))
 			{
 				LLVMValueRef param = llvm_get_next_param(c, index);
 				// Store it with the alignment of the decl.
-				llvm_store_aligned(c, cast, param, decl->alignment);
+				llvm_emit_coerce_store(c, decl->backend_ref, decl->alignment, coerce_type, param, llvm_get_type(c, decl->type));
 				return;
 			}
 
 			// In this case we've been flattening the parameter into multiple registers.
 			LLVMTypeRef element_type = llvm_abi_type(c, info->direct_coerce.type);
+
+			// Cast to the coerce type.
+			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
+
 			// Store each expanded parameter.
 			for (unsigned idx = 0; idx < info->direct_coerce.elements; idx++)
 			{
@@ -469,7 +471,7 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index)
 {
 	assert(last_index == index || info->kind == ABI_ARG_DIRECT_PAIR || info->kind == ABI_ARG_IGNORE
-	       || info->kind == ABI_ARG_EXPAND);
+	       || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT_COERCE);
 
 	if (info->attributes.zeroext)
 	{

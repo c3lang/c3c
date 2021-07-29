@@ -58,44 +58,206 @@ static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValu
 	return LLVMBuildAdd(c->builder, left, right, "add");
 }
 
+void llvm_enter_struct_for_coerce(GenContext *c, LLVMValueRef *struct_ptr, LLVMTypeRef *type, ByteSize dest_size)
+{
+	while (1)
+	{
+		if (!LLVMCountStructElementTypes(*type)) return;
+		LLVMTypeRef first_element = LLVMStructGetTypeAtIndex(*type, 0);
+		ByteSize first_element_size = llvm_store_size(c, first_element);
+		// If the size is smaller than the total size and smaller than the destination size
+		// then we're done.
+		if (first_element_size < dest_size && first_element_size < llvm_store_size(c, *type))
+		{
+			return;
+		}
+		LLVMValueRef ref = LLVMBuildStructGEP(c->builder, *struct_ptr, 0, "dive");
+		*struct_ptr = ref;
+		*type = first_element;
+	}
+}
+
+LLVMValueRef llvm_int_resize(GenContext *c, LLVMValueRef value, LLVMTypeRef from, LLVMTypeRef to)
+{
+	if (llvm_store_size(c, from) >= llvm_store_size(c, to))
+	{
+		return LLVMBuildTruncOrBitCast(c->builder, value, to, "trunc");
+	}
+	return LLVMBuildZExt(c->builder, value, to, "ext");
+}
+
+/**
+ * General functionality to convert int <-> int ptr <-> int
+ */
+LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef from, LLVMTypeRef to)
+{
+	// 1. Are they the same?
+	if (from == to) return value;
+
+	// 2. If the source is a pointer, then.
+	bool to_is_pointer = LLVMGetTypeKind(to) == LLVMPointerTypeKind;
+	if (LLVMGetTypeKind(from) == LLVMPointerTypeKind)
+	{
+		// 2a. Destination is a pointer, perform a bitcast.
+		if (to_is_pointer)
+		{
+			return LLVMBuildBitCast(c->builder, value, to, "coerce.val");
+		}
+		// 2b. Otherwise perform ptr -> int
+		from = llvm_get_type(c, type_iptr);
+		value = LLVMBuildPtrToInt(c->builder, value, from, "");
+	}
+
+	// 3. Find the to int type to convert to.
+	LLVMTypeRef to_int_type = to_is_pointer ? llvm_get_type(c, type_iptr) : to;
+
+	// 4. Are int types not matching?
+	if (to_int_type != from)
+	{
+		if (platform_target.little_endian)
+		{
+			// Little-endian targets preserve the low bits. No shifts required.
+			value = LLVMBuildIntCast2(c->builder, value, to_int_type, false, "");
+		}
+		else
+		{
+			// Big endian, preserve the high bits.
+			ByteSize to_size = llvm_abi_size(c, to_int_type);
+			ByteSize from_size = llvm_abi_size(c, from);
+			if (from_size > to_size)
+			{
+				value = LLVMBuildLShr(c->builder, value, LLVMConstInt(from, (from_size - to_size) * 8, false), "");
+				value = LLVMBuildTrunc(c->builder, value, to_int_type, "");
+			}
+			else
+			{
+				value = LLVMBuildZExt(c->builder, value, to_int_type, "");
+				value = LLVMBuildShl(c->builder, value, LLVMConstInt(from, (to_size - from_size) * 8, false), "");
+			}
+		}
+	}
+	if (to_is_pointer)
+	{
+		value = LLVMBuildIntToPtr(c->builder, value, to, "");
+	}
+	return value;
+}
+
 LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value, Type *original_type)
 {
-	LLVMValueRef cast;
-	AlignSize target_alignment = llvm_abi_alignment(c, coerced);
+	assert(original_type->canonical == value->type->canonical);
+	LLVMTypeRef llvm_source_type = llvm_get_type(c, value->type);
+
+	// 1. If the types match then we're done, just load.
+	if (llvm_source_type == coerced)
+	{
+		llvm_value_rvalue_store(c, value);
+		return value->value;
+	}
+
+	// 2. Both are integer types and values, then just truncate / extend
+	if (!llvm_value_is_addr(value)
+		&& LLVMGetTypeKind(coerced) == LLVMIntegerTypeKind
+		&& LLVMGetTypeKind(llvm_source_type) == LLVMIntegerTypeKind)
+	{
+		return llvm_int_resize(c, value->value, llvm_source_type, coerced);
+	}
+
+	// 2. From now on we need th address.
+	llvm_value_addr(c, value);
+	LLVMValueRef addr = value->value;
+
+	ByteSize target_size = llvm_store_size(c, coerced);
+
+	// 3. If this is a struct, we index into it.
+	if (LLVMGetTypeKind(llvm_source_type) == LLVMStructTypeKind)
+	{
+		llvm_enter_struct_for_coerce(c, &addr, &llvm_source_type, target_size);
+	}
+	// --> from now on we only use LLVM types.
+
+	ByteSize source_size = llvm_store_size(c, llvm_source_type);
+
+	LLVMTypeKind source_type_kind = LLVMGetTypeKind(llvm_source_type);
+	LLVMTypeKind coerced_type_kind = LLVMGetTypeKind(coerced);
+
+	if ((coerced_type_kind == LLVMPointerTypeKind || coerced_type_kind == LLVMIntegerTypeKind)
+		&& (source_type_kind == LLVMPointerTypeKind || source_type_kind == LLVMIntegerTypeKind))
+	{
+		LLVMValueRef val = llvm_emit_load_aligned(c, llvm_source_type, addr, value->alignment, "");
+		return llvm_coerce_int_ptr(c, val, llvm_source_type, coerced);
+	}
+
+	// TODO for scalable vectors this is not true.
+	if (source_size > target_size)
+	{
+		LLVMValueRef val = LLVMBuildBitCast(c->builder, addr, LLVMPointerType(coerced, 0), "");
+		return llvm_emit_load_aligned(c, coerced, val, value->alignment, "");
+	}
+
+	// Otherwise, do it through memory.
 	AlignSize max_align = MAX(value->alignment, llvm_abi_alignment(c, coerced));
 
-	// If we are loading something with greater alignment than what we have, we cannot directly memcpy.
-	if (llvm_value_is_addr(value) && value->alignment < target_alignment)
+	LLVMValueRef temp = llvm_emit_alloca(c, coerced, max_align, "tempcoerce");
+	llvm_emit_memcpy(c, temp, max_align, addr, value->alignment, source_size);
+	return llvm_emit_load_aligned(c, coerced, temp, max_align, "");
+}
+
+
+void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignment, LLVMTypeRef coerced, LLVMValueRef value, LLVMTypeRef target_type)
+{
+
+	// 1. Simplest case, the underlying types match.
+	if (coerced == target_type)
 	{
-		// So load it instead.
-		llvm_value_rvalue(c, value);
+		llvm_store_aligned(c, addr, value, alignment);
+		return;
 	}
 
-	// In this case we have something nicely aligned, so we just do a cast.
-	if (llvm_value_is_addr(value))
+	ByteSize src_size = llvm_store_size(c, coerced);
+
+	// 3. Enter into a struct in case the result is a struct.
+	if (LLVMGetTypeKind(target_type) == LLVMStructTypeKind)
 	{
-		cast = LLVMBuildBitCast(c->builder, value->value, LLVMPointerType(coerced, 0), "");
+		llvm_enter_struct_for_coerce(c, &addr, &target_type, src_size);
 	}
-	else
+
+	// 4. If we are going from int/ptr <-> ptr/int
+	LLVMTypeKind source_type_kind = LLVMGetTypeKind(target_type);
+	LLVMTypeKind coerced_type_kind = LLVMGetTypeKind(coerced);
+	if ((coerced_type_kind == LLVMPointerTypeKind || coerced_type_kind == LLVMIntegerTypeKind)
+	    && (source_type_kind == LLVMPointerTypeKind || source_type_kind == LLVMIntegerTypeKind))
 	{
-		cast = llvm_emit_alloca(c, coerced, max_align, "coerce");
-		LLVMValueRef target = LLVMBuildBitCast(c->builder, cast, llvm_get_ptr_type(c, value->type), "");
-		llvm_store_bevalue_aligned(c, target, value, max_align);
+		value = llvm_coerce_int_ptr(c, value, coerced, target_type);
+		llvm_store_aligned(c, addr, value, alignment);
+		return;
 	}
-	return llvm_emit_load_aligned(c, coerced, cast, max_align, "coerced");
+
+	// TODO for scalable vectors this is not true.
+	ByteSize target_size = llvm_store_size(c, target_type);
+	if (src_size <= target_size)
+	{
+		LLVMValueRef val = LLVMBuildBitCast(c->builder, addr, LLVMPointerType(coerced, 0), "");
+		llvm_store_aligned(c, val, value, alignment);
+		return;
+	}
+
+	// Otherwise, do it through memory.
+	AlignSize coerce_align = llvm_abi_alignment(c, coerced);
+	LLVMValueRef temp = llvm_emit_alloca(c, coerced, coerce_align, "tempcoerce");
+	llvm_store_aligned(c, temp, value, coerce_align);
+	llvm_emit_memcpy(c, addr, alignment, temp, coerce_align, target_size);
 }
 
 void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type)
 {
-	unsigned max_align = MAX(llvm_abi_alignment(c, coerced), type_abi_alignment(original_type));
-	LLVMValueRef temp = llvm_emit_alloca(c, coerced, max_align, "coerce_temp");
-	llvm_store_aligned(c, temp, value, max_align);
-	temp = LLVMBuildBitCast(c->builder, temp, llvm_get_type(c, type_get_ptr(original_type)), "");
-	llvm_value_set_address_align(result, temp, original_type, max_align);
+	LLVMTypeRef target_type = llvm_get_type(c, original_type);
+	LLVMValueRef addr = llvm_emit_alloca(c, target_type, type_abi_alignment(original_type), "result");
+	llvm_emit_coerce_store(c, addr, type_abi_alignment(original_type), coerced, value, target_type);
+	llvm_value_set_address(result, addr, original_type);
 }
 
-static inline LLVMValueRef
-llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
+static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
 {
 	if (active_target.feature.trap_on_wrap)
 	{
@@ -2409,6 +2571,7 @@ void gencontext_emit_call_intrinsic_expr(GenContext *c, BEValue *be_value, Expr 
 
 void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, BEValue *be_value, Type *type)
 {
+	assert(be_value->type->canonical == type->canonical);
 	switch (info->kind)
 	{
 		case ABI_ARG_IGNORE:
