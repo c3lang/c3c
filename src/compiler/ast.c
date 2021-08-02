@@ -240,6 +240,21 @@ Decl *decl_new_var(TokenId name, TypeInfo *type, VarDeclKind kind, Visibility vi
 	return decl;
 }
 
+Decl *decl_new_generated_var(const char *name, Type *type, VarDeclKind kind, SourceSpan span)
+{
+	Decl *decl = decl_calloc();
+	decl->decl_kind = DECL_VAR;
+	decl->name_token = NO_TOKEN_ID;
+	decl->span = span;
+	decl->name = name;
+	decl->visibility = VISIBLE_LOCAL;
+	decl->var.kind = kind;
+	decl->type = type;
+	decl->var.type_info = type_info_new_base(type, span);
+	decl->resolve_status = RESOLVE_DONE;
+	return decl;
+}
+
 
 Expr *expr_new(ExprKind kind, SourceSpan start)
 {

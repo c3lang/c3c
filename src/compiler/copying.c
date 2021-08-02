@@ -173,7 +173,10 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_IDENTIFIER:
 			return expr;
 		case EXPR_CALL:
-			MACRO_COPY_EXPR(expr->call_expr.function);
+			if (expr->resolve_status != RESOLVE_DONE || expr->call_expr.is_pointer_call)
+			{
+				MACRO_COPY_EXPR(expr->call_expr.function);
+			}
 			MACRO_COPY_EXPR_LIST(expr->call_expr.arguments);
 			return expr;
 		case EXPR_SUBSCRIPT:
