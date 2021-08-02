@@ -107,6 +107,17 @@ void expr_insert_addr(Expr *original)
 	original->failable = inner->failable;
 }
 
+Expr *expr_variable(Decl *decl)
+{
+	Expr *expr = expr_new(EXPR_IDENTIFIER, decl->span);
+	expr->identifier_expr.decl = decl;
+	expr->pure = true;
+	expr->constant = false;
+	expr->resolve_status = RESOLVE_DONE;
+	expr_set_type(expr, decl->type);
+	return expr;
+}
+
 void expr_insert_deref(Expr *original)
 {
 	assert(original->resolve_status == RESOLVE_DONE);
@@ -979,6 +990,8 @@ static inline bool sema_expr_analyse_call_invocation(Context *context, Expr *cal
 		args[0] = callee.struct_var;
 		num_args++;
 		call->call_expr.arguments = args;
+		call->call_expr.is_type_method = true;
+		assert(!call->call_expr.is_pointer_call);
 	}
 
 	// 4. Check for unsplat of the last argument.
@@ -1305,7 +1318,7 @@ static bool sema_check_stmt_compile_time(Context *context, Ast *ast)
 	}
 }
 
-bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, Expr *struct_var, Decl *decl)
+static bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, Expr *struct_var, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_MACRO);
 
@@ -1606,11 +1619,56 @@ static bool sema_analyse_body_expansion(Context *context, Expr *call)
 	return success;
 }
 
+bool sema_expr_analyse_general_call(Context *context, Type *to, Expr *expr, Decl *decl, Expr *struct_var, bool is_macro)
+{
+	expr->call_expr.is_type_method = struct_var != NULL;
+	switch (decl->decl_kind)
+	{
+		case DECL_MACRO:
+			if (!is_macro)
+			{
+				SEMA_ERROR(expr, "A macro neeeds to be called with a '@' prefix, please add it.");
+				return false;
+			}
+			expr->call_expr.func_ref = decl;
+			return sema_expr_analyse_macro_call(context, to, expr, struct_var, decl);
+		case DECL_VAR:
+			if (is_macro)
+			{
+				SEMA_ERROR(expr, "A function cannot be called with a '@' prefix, please remove it.");
+				return false;
+			}
+			assert(struct_var == NULL);
+			return sema_expr_analyse_var_call(context, to, expr, decl);
+		case DECL_FUNC:
+			if (is_macro)
+			{
+				SEMA_ERROR(expr, "A function cannot be called with a '@' prefix, please remove it.");
+				return false;
+			}
+			expr->call_expr.func_ref = decl;
+			return sema_expr_analyse_func_call(context, to, expr, decl, struct_var);
+		case DECL_GENERIC:
+			if (is_macro)
+			{
+				SEMA_ERROR(expr, "A generic function cannot be called with a '@' prefix, please remove it.");
+				return false;
+			}
+			expr->call_expr.func_ref = decl;
+			return sema_expr_analyse_generic_call(context, to, expr, struct_var, decl);
+		case DECL_POISONED:
+			return false;
+		default:
+			SEMA_ERROR(expr, "This expression cannot be called.");
+			return false;
+	}
+}
+
+
 static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr)
 {
 	expr->constant = false;
 	expr->pure = false;
-
 	Expr *func_expr = expr->call_expr.function;
 	if (!sema_analyse_expr_value(context, NULL, func_expr)) return false;
 	if (func_expr->expr_kind == EXPR_MACRO_BODY_EXPANSION)
@@ -1620,6 +1678,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	expr->failable = func_expr->failable;
 	Decl *decl;
 	Expr *struct_var = NULL;
+	bool macro = false;
 	switch (func_expr->expr_kind)
 	{
 		case EXPR_IDENTIFIER:
@@ -1629,17 +1688,15 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			decl = func_expr->access_expr.ref;
 			if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
 			{
-				expr->call_expr.is_type_method = true;
 				expr_insert_addr(func_expr->access_expr.parent);
 				struct_var = func_expr->access_expr.parent;
-				if (decl->decl_kind == DECL_MACRO)
-				{
-					return sema_expr_analyse_macro_call(context, to, expr, struct_var, decl);
-				}
+				macro = decl->decl_kind == DECL_MACRO;
 			}
 			break;
 		case EXPR_MACRO_EXPANSION:
-			return sema_expr_analyse_macro_call(context, to, expr, NULL, func_expr->macro_expansion_expr.decl);
+			decl = func_expr->macro_expansion_expr.decl;
+			macro = true;
+			break;
 		case EXPR_LEN:
 			if (func_expr->type == type_void)
 			{
@@ -1663,24 +1720,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			return false;
 	}
 	decl = decl_flatten(decl);
-	switch (decl->decl_kind)
-	{
-		case DECL_VAR:
-			return sema_expr_analyse_var_call(context, to, expr, decl);
-		case DECL_FUNC:
-			return sema_expr_analyse_func_call(context, to, expr, decl, struct_var);
-		case DECL_MACRO:
-			SEMA_ERROR(expr, "Macro declarations cannot be called without using '@' before the macro name.");
-			return false;
-		case DECL_GENERIC:
-			return sema_expr_analyse_generic_call(context, to, expr, struct_var, decl);
-		case DECL_POISONED:
-			return false;
-		default:
-			break;
-	}
-	SEMA_ERROR(expr, "The expression cannot be called.");
-	return false;
+	return sema_expr_analyse_general_call(context, to, expr, decl, struct_var, macro);
 }
 
 

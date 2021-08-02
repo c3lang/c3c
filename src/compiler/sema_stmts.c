@@ -591,43 +591,216 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 	return success;
 }
 
-static inline bool sema_inline_default_iterator(Context *context, Expr *expr)
+
+static inline bool sema_inline_default_iterator(Context *context, Expr *expr, Decl *decl)
 {
-	Type *type = expr->type->canonical;
-	if (!type_may_have_sub_elements(type)) return true;
+	Expr *inner = expr_copy(expr);
+	expr_insert_addr(inner);
+	expr->expr_kind = EXPR_CALL;
+	expr->call_expr = (ExprCall) {
+		.is_type_method = true,
+	};
+	return sema_expr_analyse_general_call(context, NULL, expr, decl, inner, decl->decl_kind == DECL_MACRO);
+}
+
+static Decl *find_iterator(Context *context, Expr *enumerator)
+{
+	if (!type_may_have_sub_elements(enumerator->type))
+	{
+		SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
+		return NULL;
+	}
 	Decl *ambiguous = NULL;
 	Decl *private = NULL;
-	Decl *result = sema_resolve_method(context, type->decl, kw_default_iterator, &ambiguous, &private);
-	if (!result)
+	Decl *method = sema_resolve_method(context, enumerator->type->decl, kw_iterator, &ambiguous, &private);
+	if (!decl_ok(method)) return NULL;
+	if (!method)
 	{
-		SEMA_ERROR(expr, "There are multiple candidates for 'default_iterator' on %s.",
-		           type_quoted_error_string(expr->type));
-		return false;
+		if (ambiguous)
+		{
+			SEMA_ERROR(enumerator,
+			           "It's not possible to find a definition for 'iterator' on %s that is not ambiguous.",
+			           type_quoted_error_string(enumerator->type));
+			return NULL;
+		}
+		if (private)
+		{
+			SEMA_ERROR(enumerator,
+			           "It's not possible to find a public definition for 'iterator' with '%s'.",
+			           type_quoted_error_string(enumerator->type));
+			return NULL;
+		}
+		SEMA_ERROR(enumerator,
+		           "This type cannot be iterated over, implement a method or method macro called 'iterator'.",
+		           type_to_error_string(enumerator->type));
+		return NULL;
+	}
+	Decl **parameters;
+	TypeInfo *iterator_type;
+	switch (method->decl_kind)
+	{
+		case DECL_GENERIC:
+			parameters = method->generic_decl.parameters;
+			iterator_type = method->generic_decl.rtype;
+			break;
+		case DECL_MACRO:
+			parameters = method->macro_decl.parameters;
+			iterator_type = method->macro_decl.rtype;
+			break;
+		case DECL_FUNC:
+			parameters = method->func_decl.function_signature.params;
+			iterator_type = method->func_decl.function_signature.rtype;
+			break;
+		default:
+			UNREACHABLE
+	}
+	if (vec_size(parameters) > 1)
+	{
+		SEMA_ERROR(enumerator, "'iterator()' takes parameters and can't be used for 'foreach'.");
+		return NULL;
+	}
+	if (!iterator_type)
+	{
+		SEMA_ERROR(enumerator, "This type has an iterator without a declared result type, this can't be used with 'foreach'.");
+		return NULL;
+	}
+	assert(iterator_type->resolve_status == RESOLVE_DONE);
+	Type *it_type = iterator_type->type->canonical;
+	if (it_type->type_kind != TYPE_STRUCT)
+	{
+		SEMA_ERROR(enumerator, "This type has an implementation of 'iterator()' that doesn't return a struct, so it can't be used with 'foreach'.");
+		return NULL;
+	}
+	return method;
+}
+
+static Decl *find_iterator_next(Context *context, Expr *enumerator)
+{
+	Type *type = enumerator->type->canonical;
+	assert(type->type_kind = TYPE_STRUCT);
+	Decl *ambiguous = NULL;
+	Decl *private = NULL;
+	Decl *method = sema_resolve_method(context, type->decl, kw_next, &ambiguous, &private);
+	if (!decl_ok(method)) return NULL;
+	if (!method)
+	{
+		if (ambiguous)
+		{
+			SEMA_ERROR(enumerator, "The iterator %s has ambiguous 'next' definitions.", type_quoted_error_string(type));
+			return NULL;
+		}
+		if (private)
+		{
+			SEMA_ERROR(enumerator,
+					   "The iterator %s has a private 'next' definition.",
+					   type_quoted_error_string(type));
+			return NULL;
+		}
+		SEMA_ERROR(enumerator,
+				   "The iterator %s is missing a definition for 'next()'.",
+				   type_quoted_error_string(type));
+		return NULL;
+	}
+	Decl **parameters;
+	TypeInfo *rtype;
+	switch (method->decl_kind)
+	{
+		case DECL_GENERIC:
+			parameters = method->generic_decl.parameters;
+			rtype = method->generic_decl.rtype;
+			break;
+		case DECL_MACRO:
+			parameters = method->macro_decl.parameters;
+			rtype = method->macro_decl.rtype;
+			break;
+		case DECL_FUNC:
+			parameters = method->func_decl.function_signature.params;
+			rtype = method->func_decl.function_signature.rtype;
+			break;
+		default:
+			UNREACHABLE
+	}
+	if (vec_size(parameters) != 2)
+	{
+		SEMA_ERROR(enumerator, "An iterator with a 'next()' that take takes %d parameters can't be used for 'foreach', it should have 1.", vec_size(parameters) - 1);
+		return NULL;
+	}
+	if (!rtype)
+	{
+		SEMA_ERROR(enumerator, "This type has an iterator without a declared return type, this can't be used with 'foreach'.");
+		return NULL;
+	}
+	return method;
+}
+
+static bool sema_rewrite_foreach_to_for(Context *context, Ast *statement, Expr *enumerator, Decl *next_method)
+{
+	assert(enumerator->type);
+	REMINDER("Handle foreach by ref, index");
+	Decl *value = statement->foreach_stmt.variable;
+	if (!value->type)
+	{
+		Type *type;
+		if (next_method->decl_kind == DECL_FUNC)
+		{
+			type = next_method->func_decl.function_signature.params[1]->type->pointer;
+		}
+		else
+		{
+			assert(next_method->decl_kind == DECL_MACRO);
+			type = next_method->macro_decl.parameters[1]->type->pointer;
+		}
+		value->var.type_info = type_info_new_base(type, value->span);
+		value->type = type;
 	}
 
-	Expr *call = expr_new(EXPR_CALL, expr->span);
+	Decl *iterator = decl_new_generated_var(".iterator", enumerator->type, VARDECL_LOCAL, enumerator->span);
+	iterator->var.init_expr = enumerator;
+
+	// Generate Foo *value, FooIterator ".iterator" = foo.iterator();
+	Expr *init_expr = expr_new(EXPR_DECL_LIST, enumerator->span);
+	Ast *ast = new_ast(AST_DECLARE_STMT, value->span);
+	ast->declare_stmt = value;
+	vec_add(init_expr->dexpr_list_expr, ast);
+	ast = new_ast(AST_DECLARE_STMT, enumerator->span);
+	ast->declare_stmt = iterator;
+	vec_add(init_expr->dexpr_list_expr, ast);
+	init_expr->resolve_status = RESOLVE_DONE;
+	expr_set_type(init_expr, iterator->type);
+
+	// Generate "next": it.next(&value)
+	Expr *call = expr_new(EXPR_CALL, enumerator->span);
 	call->call_expr.arguments = NULL;
 	call->call_expr.body = NULL;
 	call->call_expr.unsplat_last = false;
 	call->call_expr.is_type_method = true;
-	bool success;
-	switch (result->decl_kind)
-	{
-		case DECL_MACRO:
-			success = sema_expr_analyse_macro_call(context, NULL, call, expr, result);
-			break;
-		case DECL_GENERIC:
-		case DECL_FUNC:
-			TODO
-		default:
-			UNREACHABLE
-	}
-	if (success)
-	{
-		expr_replace(expr, call);
-	}
-	return success;
+
+	Expr *value_access = expr_variable(value);
+	expr_insert_addr(value_access);
+	vec_add(call->call_expr.arguments, value_access);
+
+	Expr *iterator_access = expr_variable(iterator);
+	expr_insert_addr(iterator_access);
+
+	if (!sema_expr_analyse_general_call(context, NULL, call, next_method, iterator_access, next_method->decl_kind == DECL_MACRO)) return false;
+	call->resolve_status = RESOLVE_DONE;
+
+	statement->for_stmt = (AstForStmt){ .init = init_expr,
+										.cond = call,
+										.flow = statement->foreach_stmt.flow,
+										.body = statement->foreach_stmt.body
+	};
+	statement->ast_kind = AST_FOR_STMT;
+	return sema_analyse_for_stmt(context, statement);
+	/*
+
+	Expr *call
+
+	statement->for_stmt.cond
+	statement->for_stmt.init = init_expr;
+	statement*/
 }
+
 static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 {
 	// Pull out the relevant data.
@@ -641,8 +814,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 	// First fold the enumerator expression, removing any () around it.
 	while (enumerator->expr_kind == EXPR_GROUP) enumerator = enumerator->group_expr;
 
-
-	// First analyse the enumerator.
+	bool iterator_based = false;
 
 	// Conditional scope start
 	SCOPE_START_WITH_FLAGS(SCOPE_COND)
@@ -694,19 +866,43 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 			return SCOPE_POP_ERROR();
 		}
 
-		// Check that we can even index this expression.
-		indexed_type = type_get_indexed_type(enumerator->type);
-		if (!indexed_type)
-		{
-			SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type '%s'.", type_to_error_string(enumerator->type));
-			return SCOPE_POP_ERROR();
-		}
-
 		// Pop any possible defers.
 		enumerator = context_pop_defers_and_wrap_expr(context, enumerator);
 
 		// And pop the cond scope.
 	SCOPE_END;
+
+	// Check that we can even index this expression.
+	indexed_type = type_get_indexed_type(enumerator->type);
+	if (!indexed_type || type_flatten_distinct(enumerator->type)->type_kind == TYPE_POINTER)
+	{
+		Type *type = type_flatten_distinct(enumerator->type);
+		Decl *method = find_iterator(context, enumerator);
+		if (!method) return false;
+		if (!sema_inline_default_iterator(context, enumerator, method)) return false;
+		Decl *next_method = find_iterator_next(context, enumerator);
+		if (!next_method) return false;
+		return sema_rewrite_foreach_to_for(context, statement, enumerator, next_method);
+		/*
+		Expr *new_expr = expr_alloc();
+		*new_expr = *enumerator;
+		Expr *iterator = expr_new(EXPR_IDENTIFIER, new_expr->span);
+		iterator->identifier_expr.decl = method;
+		iterator->failable = false;
+		iterator->resolve_status = RESOLVE_DONE;
+		 iterator->type = iterator->original_type = method->type;
+		*enumerator = (Expr) {
+			.span = new_expr->span,
+			.expr_kind = EXPR_CALL,
+			.call_expr = (ExprCall) {
+				.is_type_method = true,
+				.function = iterator,
+			}
+		};
+		if (!sema_expr_analyse_general_call(context, enumerator, method))
+		if (!sema_analyse_expr(context, NULL, enumerator)) return SCOPE_POP_ERROR();*/
+		TODO
+	}
 
 	// Enter foreach scope, to put index + variable into the internal scope.
 	// the foreach may be labelled.

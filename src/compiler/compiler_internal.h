@@ -616,7 +616,11 @@ typedef struct
 	bool is_type_method : 1;
 	bool is_pointer_call : 1;
 	bool unsplat_last : 1;
-	Expr *function;
+	union
+	{
+		Expr *function;
+		Decl *func_ref;
+	};
 	Expr **arguments;
 	Decl **body_arguments;
 	Ast *body;
@@ -1016,6 +1020,7 @@ typedef struct
 	FlowCommon flow;
 	bool index_by_ref : 1;
 	bool value_by_ref : 1;
+	bool iterator : 1;
 	CastKind cast;
 	Decl *index;
 	Decl *variable;
@@ -1512,8 +1517,10 @@ extern const char *kw_deprecated;
 extern const char *kw_distinct;
 extern const char *kw_ensure;
 extern const char *kw_inline;
-extern const char *kw_len;
 extern const char *kw_inf;
+extern const char *kw_iterator;
+extern const char *kw_len;
+extern const char *kw_next;
 extern const char *kw_nan;
 extern const char *kw_main;
 extern const char *kw_ordinal;
@@ -1667,6 +1674,7 @@ void context_print_ast(Context *context, FILE *file);
 Decl *decl_new(DeclKind decl_kind, TokenId name, Visibility visibility);
 Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility);
 Decl *decl_new_var(TokenId name, TypeInfo *type, VarDeclKind kind, Visibility visibility);
+Decl *decl_new_generated_var(const char *name, Type *type, VarDeclKind kind, SourceSpan span);
 #define DECL_NEW(_kind, _vis) decl_new(_kind, context->tok.id, _vis)
 #define DECL_NEW_WITH_TYPE(_kind, _vis) decl_new_with_type(context->tok.id, _kind, _vis)
 #define DECL_NEW_VAR(_type, _kind, _vis) decl_new_var(context->tok.id, _type, _kind, _vis)
@@ -1677,6 +1685,7 @@ static inline Decl *decl_raw(Decl *decl);
 static inline bool decl_ok(Decl *decl) { return !decl || decl->decl_kind != DECL_POISONED; }
 static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
 static inline bool decl_is_struct_type(Decl *decl);
+static inline bool decl_is_callable_type(Decl *decl);
 static inline bool decl_is_user_defined_type(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline Decl *decl_flatten(Decl *decl)
@@ -1716,6 +1725,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
 void expr_insert_addr(Expr *original);
 void expr_insert_deref(Expr *expr);
+Expr *expr_variable(Decl *decl);
 bool expr_is_constant_eval(Expr *expr);
 const char *expr_const_to_error_string(const ExprConst *expr);
 static inline void expr_set_type(Expr *expr, Type *type)
@@ -1793,8 +1803,7 @@ bool sema_analyse_decl(Context *context, Decl *decl);
 bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement);
 bool sema_analyse_statement(Context *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *left_type, Expr *right, ExprFailableStatus lhs_is_failable);
-bool sema_expr_analyse_macro_call(Context *context, Type *to, Expr *call_expr, Expr *struct_var, Decl *decl);
-
+bool sema_expr_analyse_general_call(Context *context, Type *to, Expr *expr, Decl *decl, Expr *struct_var, bool is_macro);
 Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol);
 Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *path);
 Decl *sema_resolve_method(Context *context, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
@@ -2179,6 +2188,12 @@ static inline bool decl_is_struct_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
 	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_ERR);
+}
+
+static inline bool decl_is_callable_type(Decl *decl)
+{
+	DeclKind kind = decl->decl_kind;
+	return (kind == DECL_MACRO) | (kind == DECL_FUNC) | (kind == DECL_GENERIC);
 }
 
 static inline bool decl_is_user_defined_type(Decl *decl)
