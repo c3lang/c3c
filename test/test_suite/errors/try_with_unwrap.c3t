@@ -1,0 +1,79 @@
+
+extern func char*! readLine();
+extern func int atoi(char*);
+
+extern func int printf(char* fmt, ...);
+
+func void main()
+{
+    char*! line = readLine();
+    try (line)
+    {
+        int! val = atoi(line);
+        try (val)
+        {
+            printf("You typed the number %d\n", val);
+            return;
+        }
+    }
+    printf("You didn't type an integer :(\n");
+}
+
+// #expect: try_with_unwrap.ll
+
+ %line = alloca i8*, align 8
+  %line.f = alloca %error_union, align 8
+  %retparam = alloca i8*, align 8
+  %result = alloca %error_union, align 8
+  %val = alloca i32, align 4
+  %val.f = alloca %error_union, align 8
+  %0 = call { i64, i64 } @readLine(i8** %retparam)
+  %1 = bitcast %error_union* %result to { i64, i64 }*
+  store { i64, i64 } %0, { i64, i64 }* %1, align 8
+  %err_domain = getelementptr inbounds %error_union, %error_union* %result, i32 0, i32 0
+  %2 = load i64, i64* %err_domain, align 8
+  %not_err = icmp eq i64 %2, 0
+  br i1 %not_err, label %after_check, label %error
+
+error:
+  %3 = bitcast %error_union* %line.f to i8*
+  %4 = bitcast %error_union* %result to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %3, i8* align 8 %4, i32 16, i1 false)
+  br label %after_assign
+
+after_check:
+  %5 = load i8*, i8** %retparam, align 8
+  store i8* %5, i8** %line, align 8
+  store %error_union zeroinitializer, %error_union* %line.f, align 8
+  br label %after_assign
+
+after_assign:
+  %err_domain1 = getelementptr inbounds %error_union, %error_union* %line.f, i32 0, i32 0
+  %6 = load i64, i64* %err_domain1, align 8
+  %not_err2 = icmp eq i64 %6, 0
+  br i1 %not_err2, label %after_check3, label %after_try7
+
+after_check3:
+  %7 = load i8*, i8** %line, align 8
+  store %error_union zeroinitializer, %error_union* %val.f, align 8
+  %8 = load i8*, i8** %line, align 8
+  %9 = call i32 @atoi(i8* %8)
+  store i32 %9, i32* %val, align 4
+  store %error_union zeroinitializer, %error_union* %val.f, align 8
+  %err_domain4 = getelementptr inbounds %error_union, %error_union* %val.f, i32 0, i32 0
+  %10 = load i64, i64* %err_domain4, align 8
+  %not_err5 = icmp eq i64 %10, 0
+  br i1 %not_err5, label %after_check6, label %after_try
+
+after_check6:
+  %11 = load i32, i32* %val, align 4
+  %12 = load i32, i32* %val, align 4
+  %13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @.str, i32 0, i32 0), i32 %12)
+  ret void
+
+after_try:
+  br label %after_try7
+
+after_try7:
+  %14 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @.str.1, i32 0, i32 0))
+  ret void

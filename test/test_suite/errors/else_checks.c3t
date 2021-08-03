@@ -1,0 +1,136 @@
+// #target: x64_darwin
+
+extern func int! testError();
+
+func void test()
+{
+    double x = (testError() + testError()) else 100;
+    double y = (1 << testError()) else 100;
+    double z = testError() >> 1 else 100;
+    double w = testError() * testError() else 100;
+}
+
+// #expect: else_checks.ll
+
+define void @else_checks.test()
+entry:
+  %x = alloca double, align 8
+  %retparam = alloca i32, align 4
+  %result = alloca %error_union, align 8
+  %retparam1 = alloca i32, align 4
+  %result2 = alloca %error_union, align 8
+  %y = alloca double, align 8
+  %retparam6 = alloca i32, align 4
+  %result7 = alloca %error_union, align 8
+  %z = alloca double, align 8
+  %retparam15 = alloca i32, align 4
+  %result16 = alloca %error_union, align 8
+  %w = alloca double, align 8
+  %retparam24 = alloca i32, align 4
+  %result25 = alloca %error_union, align 8
+  %retparam29 = alloca i32, align 4
+  %result30 = alloca %error_union, align 8
+  %0 = call { i64, i64 } @testError(i32* %retparam)
+  %1 = bitcast %error_union* %result to { i64, i64 }*
+  store { i64, i64 } %0, { i64, i64 }* %1, align 8
+  %err_domain = getelementptr inbounds %error_union, %error_union* %result, i32 0, i32 0
+  %2 = load i64, i64* %err_domain, align 8
+  %not_err = icmp eq i64 %2, 0
+  br i1 %not_err, label %after_check, label %else_block
+
+after_check:
+  %3 = load i32, i32* %retparam, align 4
+  %4 = call { i64, i64 } @testError(i32* %retparam1)
+  %5 = bitcast %error_union* %result2 to { i64, i64 }*
+  store { i64, i64 } %4, { i64, i64 }* %5, align 8
+  %err_domain3 = getelementptr inbounds %error_union, %error_union* %result2, i32 0, i32 0
+  %6 = load i64, i64* %err_domain3, align 8
+  %not_err4 = icmp eq i64 %6, 0
+  br i1 %not_err4, label %after_check5, label %else_block
+
+after_check5:
+  %7 = load i32, i32* %retparam1, align 4
+  %add = add i32 %3, %7
+  br label %phi_block
+
+else_block:
+  br label %phi_block
+
+phi_block:
+  %val = phi i32 [ %add, %after_check5 ], [ 100, %else_block ]
+  %sifp = sitofp i32 %val to double
+  store double %sifp, double* %x, align 8
+  %8 = call { i64, i64 } @testError(i32* %retparam6)
+  %9 = bitcast %error_union* %result7 to { i64, i64 }*
+  store { i64, i64 } %8, { i64, i64 }* %9, align 8
+  %err_domain8 = getelementptr inbounds %error_union, %error_union* %result7, i32 0, i32 0
+  %10 = load i64, i64* %err_domain8, align 8
+  %not_err9 = icmp eq i64 %10, 0
+  br i1 %not_err9, label %after_check10, label %else_block11
+
+after_check10:
+  %11 = load i32, i32* %retparam6, align 4
+  %shl = shl i32 1, %11
+  %12 = freeze i32 %shl
+  br label %phi_block12
+
+else_block11:
+  br label %phi_block12
+
+phi_block12:
+  %val13 = phi i32 [ %12, %after_check10 ], [ 100, %else_block11 ]
+  %sifp14 = sitofp i32 %val13 to double
+  store double %sifp14, double* %y, align 8
+  %13 = call { i64, i64 } @testError(i32* %retparam15)
+  %14 = bitcast %error_union* %result16 to { i64, i64 }*
+  store { i64, i64 } %13, { i64, i64 }* %14, align 8
+  %err_domain17 = getelementptr inbounds %error_union, %error_union* %result16, i32 0, i32 0
+  %15 = load i64, i64* %err_domain17, align 8
+  %not_err18 = icmp eq i64 %15, 0
+  br i1 %not_err18, label %after_check19, label %else_block20
+
+after_check19:
+  %16 = load i32, i32* %retparam15, align 4
+  %ashr = ashr i32 %16, 1
+  %17 = freeze i32 %ashr
+  br label %phi_block21
+
+else_block20:
+  br label %phi_block21
+
+phi_block21:
+  %val22 = phi i32 [ %17, %after_check19 ], [ 100, %else_block20 ]
+  %sifp23 = sitofp i32 %val22 to double
+  store double %sifp23, double* %z, align 8
+  %18 = call { i64, i64 } @testError(i32* %retparam24)
+  %19 = bitcast %error_union* %result25 to { i64, i64 }*
+  store { i64, i64 } %18, { i64, i64 }* %19, align 8
+  %err_domain26 = getelementptr inbounds %error_union, %error_union* %result25, i32 0, i32 0
+  %20 = load i64, i64* %err_domain26, align 8
+  %not_err27 = icmp eq i64 %20, 0
+  br i1 %not_err27, label %after_check28, label %else_block34
+
+after_check28:
+  %21 = load i32, i32* %retparam24, align 4
+  %22 = call { i64, i64 } @testError(i32* %retparam29)
+  %23 = bitcast %error_union* %result30 to { i64, i64 }*
+  store { i64, i64 } %22, { i64, i64 }* %23, align 8
+  %err_domain31 = getelementptr inbounds %error_union, %error_union* %result30, i32 0, i32 0
+  %24 = load i64, i64* %err_domain31, align 8
+  %not_err32 = icmp eq i64 %24, 0
+  br i1 %not_err32, label %after_check33, label %else_block34
+
+after_check33:
+  %25 = load i32, i32* %retparam29, align 4
+  %mul = mul i32 %21, %25
+  br label %phi_block35
+
+else_block34:
+  br label %phi_block35
+
+phi_block35:
+  %val36 = phi i32 [ %mul, %after_check33 ], [ 100, %else_block34 ]
+  %sifp37 = sitofp i32 %val36 to double
+  store double %sifp37, double* %w, align 8
+  ret void
+}
