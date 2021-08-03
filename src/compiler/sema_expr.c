@@ -307,6 +307,7 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case VARDECL_PARAM:
 		case VARDECL_GLOBAL:
 		case VARDECL_LOCAL:
+		case VARDECL_ALIAS:
 			break;
 		case VARDECL_MEMBER:
 			SEMA_ERROR(expr, "Expected '%s' followed by a method call or property.", decl->name);
@@ -318,9 +319,6 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 			TODO
 			break;
 		case VARDECL_LOCAL_CT_TYPE:
-			TODO
-			break;
-		case VARDECL_ALIAS:
 			TODO
 			break;
 	}
@@ -775,6 +773,7 @@ static inline bool expr_may_unpack_as_vararg(Expr *expr, Type *variadic_base_typ
 typedef struct
 {
 	bool macro;
+	bool failable;
 	TokenId block_parameter;
 	Decl **params;
 	Expr *struct_var;
@@ -971,6 +970,8 @@ static inline bool sema_expr_analyse_call_invocation(Context *context, Expr *cal
 	// 1. Check body arguments.
 	if (!sema_check_invalid_body_arguments(context, call, &callee)) return false;
 
+	call->failable = callee.failable;
+
 	// 2. Pick out all the arguments and parameters.
 	Expr **args = call->call_expr.arguments;
 	Decl **params = callee.params;
@@ -1159,7 +1160,6 @@ static inline bool sema_expr_analyse_call_invocation(Context *context, Expr *cal
 		call->failable |= arg->failable;
 	}
 
-	call->failable |= call->failable;
 
 	return true;
 }
@@ -1171,6 +1171,7 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 			.struct_var = struct_var,
 			.params = signature->params,
 			.variadic = signature->variadic,
+			.failable = signature->failable,
 	};
 	if (!sema_expr_analyse_call_invocation(context, expr, callee)) return false;
 
@@ -4930,7 +4931,6 @@ static inline bool sema_expr_analyse_binary(Context *context, Type *to, Expr *ex
 	assert(expr->resolve_status == RESOLVE_RUNNING);
 	Expr *left = expr->binary_expr.left;
 	Expr *right = expr->binary_expr.right;
-
 	// check if both sides have a binary operation where the precedence is unclear. Example: a ^ b | c
 	if (unclear_op_precedence(left, expr, right))
 	{

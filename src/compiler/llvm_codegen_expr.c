@@ -2036,7 +2036,7 @@ void gencontext_emit_trycatch_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error_block");
 	LLVMBasicBlockRef no_err_block = llvm_basic_block_new(c, "noerr_block");
-	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "phi_block");
+	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "phi_trycatch_block");
 
 	// Store catch/error var
 	PUSH_ERROR();
@@ -2046,6 +2046,7 @@ void gencontext_emit_trycatch_expr(GenContext *c, BEValue *value, Expr *expr)
 	c->catch_block = error_block;
 
 	llvm_emit_expr(c, value, expr->trycatch_expr);
+	llvm_value_fold_failable(c, value);
 
 	// Restore.
 	POP_ERROR();
