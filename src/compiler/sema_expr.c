@@ -1621,6 +1621,29 @@ static bool sema_analyse_body_expansion(Context *context, Expr *call)
 
 bool sema_expr_analyse_general_call(Context *context, Type *to, Expr *expr, Decl *decl, Expr *struct_var, bool is_macro)
 {
+	int force_inline = -1;
+	VECEACH(expr->call_expr.attributes, i)
+	{
+		Attr *attr = expr->call_expr.attributes[i];
+		AttributeType attribute = sema_analyse_attribute(context, attr, ATTR_CALL);
+		if (attribute == ATTRIBUTE_NONE) return expr_poison(expr);
+
+		bool had = false;
+		switch (attribute)
+		{
+			case ATTRIBUTE_INLINE:
+			case ATTRIBUTE_NOINLINE:
+				if (decl->decl_kind != DECL_FUNC)
+				{
+					SEMA_TOKID_ERROR(attr->name, "Inline / noinline attribute is only allowed for direct function/method calls");
+					return expr_poison(expr);
+				}
+				force_inline = attribute == ATTRIBUTE_INLINE ? 1 : 0;
+				break;
+			default:
+				UNREACHABLE;
+		}
+	}
 	expr->call_expr.is_type_method = struct_var != NULL;
 	switch (decl->decl_kind)
 	{
@@ -1647,6 +1670,8 @@ bool sema_expr_analyse_general_call(Context *context, Type *to, Expr *expr, Decl
 				return false;
 			}
 			expr->call_expr.func_ref = decl;
+			expr->call_expr.force_inline = force_inline == 1;
+			expr->call_expr.force_noinline = force_inline == 0;
 			return sema_expr_analyse_func_call(context, to, expr, decl, struct_var);
 		case DECL_GENERIC:
 			if (is_macro)
@@ -1670,6 +1695,7 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 	expr->constant = false;
 	expr->pure = false;
 	Expr *func_expr = expr->call_expr.function;
+
 	if (!sema_analyse_expr_value(context, NULL, func_expr)) return false;
 	if (func_expr->expr_kind == EXPR_MACRO_BODY_EXPANSION)
 	{

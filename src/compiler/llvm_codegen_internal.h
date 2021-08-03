@@ -162,6 +162,7 @@ extern unsigned intrinsic_id_lifetime_end;
 
 // LLVM Attributes
 extern unsigned attribute_noinline; // No function inlining
+extern unsigned attribute_optnone; // No optimization
 extern unsigned attribute_alwaysinline; // Force inlining
 extern unsigned attribute_inlinehint; // "Inline possibly"
 extern unsigned attribute_noreturn; // No function return

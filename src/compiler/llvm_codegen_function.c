@@ -557,10 +557,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 		ABIArgInfo *info = param->var.abi_info;
 		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end);
 	}
-	if (decl->func_decl.attr_inline)
-	{
-		llvm_attribute_add(c, function, attribute_alwaysinline, -1);
-	}
+	// We ignore decl->func_decl.attr_inline and place it in every call instead.
 	if (decl->func_decl.attr_noinline)
 	{
 		llvm_attribute_add(c, function, attribute_noinline, -1);
