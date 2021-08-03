@@ -1100,7 +1100,7 @@ static inline bool sema_expr_analyse_call_invocation(Context *context, Expr *cal
 				break;
 			case VARDECL_PARAM:
 				// foo
-				if (!sema_analyse_expr_of_required_type(context, param->type, arg, false)) return false;
+				if (!sema_analyse_expr_of_required_type(context, param->type, arg, true)) return false;
 				if (!param->type && !cast_implicitly_to_runtime(arg))
 				{
 					SEMA_ERROR(arg, "Constant cannot implicitly be cast to a real type.");
@@ -1117,7 +1117,7 @@ static inline bool sema_expr_analyse_call_invocation(Context *context, Expr *cal
 				// compile time variables during evaluation:
 				assert(callee.macro);
 				SCOPE_START
-					if (!sema_analyse_expr_of_required_type(context, param->type, arg, false)) return SCOPE_POP_ERROR();
+					if (!sema_analyse_expr_of_required_type(context, param->type, arg, true)) return SCOPE_POP_ERROR();
 				SCOPE_END;
 				break;
 			case VARDECL_PARAM_CT:
