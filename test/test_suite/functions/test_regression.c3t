@@ -341,9 +341,9 @@ define i32 @test.test1(i32 %0, i32 %1)
   ret i32 %6
 }
 
-declare void @test_virtual3(i64, i8*) #1
+declare void @test_virtual3(i64, i8*)
 
-declare void @test_virtual2(i8*, i8*) #1
+declare void @test_virtual2(i8*, i8*)
 
 define i32 @test.sum_us(i64 %0, i8* %1)
   %x = alloca %"int[]", align 8

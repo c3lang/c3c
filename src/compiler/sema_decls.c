@@ -5,7 +5,6 @@
 #include "sema_internal.h"
 
 
-static AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDomain domain);
 
 
 static bool sema_analyse_struct_union(Context *context, Decl *decl);
@@ -713,10 +712,12 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 			return "error type";
 		case ATTR_TYPEDEF:
 			return "typedef";
+		case ATTR_CALL:
+			return "call";
 	}
 	UNREACHABLE
 }
-static AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDomain domain)
+AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDomain domain)
 {
 	AttributeType type = attribute_by_name(attr);
 	if (type == ATTRIBUTE_NONE)
@@ -726,16 +727,16 @@ static AttributeType sema_analyse_attribute(Context *context, Attr *attr, Attrib
 	}
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
-			[ATTRIBUTE_EXTNAME] = ~0,
+			[ATTRIBUTE_EXTNAME] = ~ATTR_CALL,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION | ATTR_ERROR,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_VAR | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
-			[ATTRIBUTE_INLINE] = ATTR_FUNC,
-			[ATTRIBUTE_NOINLINE] = ATTR_FUNC,
+			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
+			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION,
-			[ATTRIBUTE_USED] = ~0,
-			[ATTRIBUTE_UNUSED] = ~0,
+			[ATTRIBUTE_USED] = ~ATTR_CALL,
+			[ATTRIBUTE_UNUSED] = ~ATTR_CALL,
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,
 			[ATTRIBUTE_CDECL] = ATTR_FUNC,
 			[ATTRIBUTE_STDCALL] = ATTR_FUNC,

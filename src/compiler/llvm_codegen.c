@@ -585,6 +585,7 @@ unsigned intrinsic_id_lifetime_end;
 
 
 unsigned attribute_noinline;
+unsigned attribute_optnone;
 unsigned attribute_alwaysinline;
 unsigned attribute_inlinehint;
 unsigned attribute_noreturn;
@@ -665,6 +666,7 @@ void llvm_codegen_setup()
 	intrinsic_id_umin = lookup_intrinsic("llvm.umin");
 
 	attribute_noinline = lookup_attribute("noinline");
+	attribute_optnone = lookup_attribute("optnone");
 	attribute_alwaysinline = lookup_attribute("alwaysinline");
 	attribute_inlinehint = lookup_attribute("inlinehint");
 	attribute_noreturn = lookup_attribute("noreturn");

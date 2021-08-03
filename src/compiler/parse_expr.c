@@ -449,6 +449,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	{
 		call->call_expr.body = TRY_AST_OR(parse_compound_stmt(context), poisoned_expr);
 	}
+	if (!parse_attributes(context, &call->call_expr.attributes)) return false;
 	return call;
 }
 

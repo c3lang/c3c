@@ -52,3 +52,4 @@ void context_change_scope_with_flags(Context *context, ScopeFlags flags);
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
 
 void c_abi_func_create(FunctionSignature *signature);
+AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDomain domain);

@@ -616,6 +616,8 @@ typedef struct
 	bool is_type_method : 1;
 	bool is_pointer_call : 1;
 	bool unsplat_last : 1;
+	bool force_inline : 1;
+	bool force_noinline : 1;
 	union
 	{
 		Expr *function;
@@ -624,6 +626,7 @@ typedef struct
 	Expr **arguments;
 	Decl **body_arguments;
 	Ast *body;
+	Attr **attributes;
 } ExprCall;
 
 typedef struct

@@ -2720,6 +2720,8 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	LLVMValueRef func;
 	BEValue temp_value;
 
+	bool always_inline = false;
+
 	// 1. Call through a pointer.
 	if (expr->call_expr.is_pointer_call)
 	{
@@ -2745,7 +2747,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	{
 		// 2a. Get the function declaration
 		Decl *function_decl = expr->call_expr.func_ref;
-
+		always_inline = function_decl->func_decl.attr_inline;
 		if (function_decl->func_decl.is_builtin)
 		{
 			gencontext_emit_call_intrinsic_expr(c, result_value, expr);
@@ -2907,7 +2909,17 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	// 10. Create the actual call (remember to emit a loc, because we might have shifted loc emitting the params)
 	EMIT_LOC(c, expr);
 	LLVMValueRef call_value = LLVMBuildCall2(c->builder, func_type, func, values, vec_size(values), "");
-
+	if (expr->call_expr.force_noinline)
+	{
+		llvm_attribute_add_call(c, call_value, attribute_noinline, -1, 0);
+	}
+	else
+	{
+		if (expr->call_expr.force_inline || always_inline)
+		{
+			llvm_attribute_add_call(c, call_value, attribute_alwaysinline, -1, 0);
+		}
+	}
 	// 11. Process the return value.
 	switch (ret_info->kind)
 	{

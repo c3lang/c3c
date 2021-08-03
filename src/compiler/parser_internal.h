@@ -46,6 +46,7 @@ void recover_top_level(Context *context);
 Expr *parse_decl_expr_list(Context *context);
 Ast* parse_compound_stmt(Context *context);
 Ast *parse_jump_stmt_no_eos(Context *context);
+bool parse_attributes(Context *context, Attr ***attributes_ref);
 
 bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, TokenType default_type,
                        bool allow_multiple_values);

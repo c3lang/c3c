@@ -596,6 +596,7 @@ typedef enum
 	ATTR_TYPEDEF = 1 << 7,
 	ATTR_MEMBER = 1 << 8,
 	ATTR_INTERFACE = 1 << 9,
+	ATTR_CALL = 1 << 10,
 } AttributeDomain;
 
 typedef enum

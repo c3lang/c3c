@@ -960,9 +960,9 @@ bool parse_next_is_case_type(Context *context)
  *
  * @return true if parsing succeeded, false if recovery is needed
  */
-static inline bool parse_attributes(Context *context, Decl *parent_decl)
+bool parse_attributes(Context *context, Attr ***attributes_ref)
 {
-	parent_decl->attributes = NULL;
+	*attributes_ref = NULL;
 
 	while (try_consume(context, TOKEN_AT))
 	{
@@ -982,16 +982,16 @@ static inline bool parse_attributes(Context *context, Decl *parent_decl)
 			attr->expr = TRY_EXPR_OR(parse_const_paren_expr(context), false);
 		}
 		const char *name = TOKSTR(attr->name);
-		VECEACH(parent_decl->attributes, i)
+		VECEACH(*attributes_ref, i)
 		{
-			Attr *other_attr = parent_decl->attributes[i];
+			Attr *other_attr = *attributes_ref[i];
 			if (TOKSTR(other_attr->name) == name)
 			{
 				SEMA_TOKID_ERROR(attr->name, "Repeat of attribute '%s' here.", name);
 				return false;
 			}
 		}
-		parent_decl->attributes = VECADD(parent_decl->attributes, attr);
+		*attributes_ref = VECADD(*attributes_ref, attr);
 	}
 	return true;
 }
@@ -1029,7 +1029,7 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
 		CONSUME_OR(TOKEN_IDENT, poisoned_decl);
 	}
 
-	if (!parse_attributes(context, decl)) return poisoned_decl;
+	if (!parse_attributes(context, &decl->attributes)) return poisoned_decl;
 	if (try_consume(context, TOKEN_EQ))
 	{
 		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
@@ -1272,7 +1272,7 @@ bool parse_struct_body(Context *context, Decl *parent)
 				member->span.loc = context->prev_tok;
 				advance_and_verify(context, TOKEN_IDENT);
 			}
-			if (!parse_attributes(context, member)) return false;
+			if (!parse_attributes(context, &member->attributes)) return false;
 			if (!parse_struct_body(context, member))
 			{
 				decl_poison(parent);
@@ -1317,7 +1317,7 @@ bool parse_struct_body(Context *context, Decl *parent)
 				return false;
 			}
 			advance(context);
-			if (!parse_attributes(context, member)) return false;
+			if (!parse_attributes(context, &member->attributes)) return false;
 			if (!try_consume(context, TOKEN_COMMA)) break;
 			if (was_inline)
 			{
@@ -1351,7 +1351,7 @@ static inline Decl *parse_struct_declaration(Context *context, Visibility visibi
 	if (!consume_type_name(context, type_name)) return poisoned_decl;
 	Decl *decl = decl_new_with_type(name, decl_from_token(type), visibility);
 
-	if (!parse_attributes(context, decl))
+	if (!parse_attributes(context, &decl->attributes))
 	{
 		return poisoned_decl;
 	}
@@ -1612,19 +1612,6 @@ static inline Decl *parse_define(Context *context, Visibility visibility)
 	}
 	return parse_define_ident(context, visibility);
 }
-
-
-static AttributeDomain TOKEN_TO_ATTR[TOKEN_EOF + 1]  = {
-		[TOKEN_FUNC] = ATTR_FUNC,
-		[TOKEN_VAR] = ATTR_VAR,
-		[TOKEN_ENUM] = ATTR_ENUM,
-		[TOKEN_STRUCT] = ATTR_STRUCT,
-		[TOKEN_INTERFACE] = ATTR_INTERFACE,
-		[TOKEN_UNION] = ATTR_UNION,
-		[TOKEN_CONST] = ATTR_CONST,
-		[TOKEN_DEFINE] = ATTR_TYPEDEF,
-		[TOKEN_ERRTYPE] = ATTR_ERROR,
-};
 
 
 /**
@@ -1895,7 +1882,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	RANGE_EXTEND_PREV(func);
 	if (!parse_parameter_list(context, visibility, &(func->func_decl.function_signature), is_interface)) return poisoned_decl;
 
-	if (!parse_attributes(context, func)) return poisoned_decl;
+	if (!parse_attributes(context, &func->attributes)) return poisoned_decl;
 
 	// TODO remove
 	is_interface = TOKEN_IS(TOKEN_EOS);
@@ -1934,7 +1921,7 @@ static inline Decl *parse_interface_declaration(Context *context, Visibility vis
 	if (!consume_type_name(context, "interface")) return poisoned_decl;
 	Decl *decl = decl_new_with_type(name, DECL_INTERFACE, visibility);
 
-	if (!parse_attributes(context, decl))
+	if (!parse_attributes(context, &decl->attributes))
 	{
 		return poisoned_decl;
 	}
