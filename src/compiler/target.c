@@ -208,6 +208,22 @@ static inline bool os_is_apple(OsType os_type)
 	       os_type == OS_TYPE_MACOSX || os_type == OS_TYPE_IOS;
 }
 
+static AlignSize os_arch_max_alignment_of_vector(OsType os, ArchType arch)
+{
+	switch (arch)
+	{
+		case ARCH_TYPE_AARCH64:
+			return 128 / 8;
+		case ARCH_TYPE_ARM:
+		case ARCH_TYPE_ARMB:
+			// Only if aapcs and not android
+			REMINDER("Check if AAPCS");
+			return 64 / 8;
+		default:
+			return 0;
+	}
+}
+
 static bool os_target_signed_c_char_type(OsType os, ArchType arch)
 {
 	switch (arch)
@@ -1227,7 +1243,7 @@ void target_setup(BuildTarget *target)
 	platform_target.width_c_long = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_LONG);
 	platform_target.width_c_long_long = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_LONG_LONG);
 	platform_target.signed_c_char = os_target_signed_c_char_type(platform_target.os, platform_target.arch);
-
+	platform_target.align_max_vector = os_arch_max_alignment_of_vector(platform_target.os, platform_target.arch);
 	/**
 	 * x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
 	 * x86-64-v2: (close to Nehalem) CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3

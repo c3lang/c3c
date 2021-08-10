@@ -53,8 +53,8 @@ $else:
 $endif;
 
 $if (C_LONG_LONG_SIZE == 128):
-    define CLongLong = i128;
-    define CULongLong = u128;
+    define CLongLong = int128;
+    define CULongLong = uint128;
 $elif (C_LONG_LONG_SIZE == 64):
     define CLongLong = long;
     define CULongLong = ulong;
