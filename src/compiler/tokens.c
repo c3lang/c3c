@@ -268,8 +268,8 @@ const char *token_type_to_string(TokenType type)
 			return "void";
 		case TOKEN_BOOL:
 			return "bool";
-		case TOKEN_QUAD:
-			return "quad";
+		case TOKEN_FLOAT128:
+			return "float128";
 		case TOKEN_DOUBLE:
 			return "double";
 		case TOKEN_FLOAT:
@@ -278,10 +278,10 @@ const char *token_type_to_string(TokenType type)
 			return "long";
 		case TOKEN_ULONG:
 			return "ulong";
-		case TOKEN_I128:
-			return "i128";
-		case TOKEN_U128:
-			return "u128";
+		case TOKEN_INT128:
+			return "int128";
+		case TOKEN_UINT128:
+			return "uint128";
 		case TOKEN_INT:
 			return "int";
 		case TOKEN_UINT:
@@ -306,8 +306,8 @@ const char *token_type_to_string(TokenType type)
 			return "iptrdiff";
 		case TOKEN_UPTRDIFF:
 			return "uptrdiff";
-		case TOKEN_HALF:
-			return "half";
+		case TOKEN_FLOAT16:
+			return "float16";
 		case TOKEN_DOCS_EOL:
 			return "EOL";
 		case TOKEN_DOCS_START:

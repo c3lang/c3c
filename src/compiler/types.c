@@ -53,6 +53,7 @@ static unsigned size_subarray;
 static AlignSize alignment_subarray;
 unsigned size_error_code;
 unsigned alignment_error_code;
+static AlignSize max_alignment_vector;
 
 #define PTR_OFFSET 0
 #define INFERRED_ARRAY_OFFSET 1
@@ -191,7 +192,15 @@ ByteSize type_size(Type *type)
 		case TYPE_DISTINCT:
 			return type_size(type->decl->distinct_decl.base_type);
 		case TYPE_VECTOR:
-			return type_size(type->vector.base) * type->vector.len;
+		{
+			ByteSize width = type_size(type->vector.base) * type->vector.len;
+			if (width & (width - 1))
+			{
+				ByteSize alignment = next_highest_power_of_2(width);
+				width = aligned_offset(width, alignment);
+			}
+			return width;
+		}
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
 		case TYPE_INFERRED_ARRAY:
@@ -645,7 +654,16 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE;
 		case TYPE_VECTOR:
-			TODO
+		{
+			ByteSize width = type_size(type->vector.base) * type->vector.len;
+			ByteSize alignment = width;
+			if (alignment & (alignment - 1))
+			{
+				alignment = next_highest_power_of_2(alignment);
+			}
+			if (max_alignment_vector && alignment > max_alignment_vector) alignment = max_alignment_vector;
+			return alignment;
+		}
 		case TYPE_VOID:
 			return 1;
 		case TYPE_DISTINCT:
@@ -1107,7 +1125,7 @@ Type *type_find_function_type(FunctionSignature *signature)
 void type_setup(PlatformTarget *target)
 {
 	stable_init(&function_types, 0x1000);
-
+	max_alignment_vector = target->align_max_vector;
 	/*TODO
  * decl_string = (Decl) { .decl_kind = DECL_BUILTIN, .name.string = "string" };
 	create_type(&decl_string, &type_string);
@@ -1244,7 +1262,7 @@ Type *type_from_token(TokenType type)
 			return type_double;
 		case TOKEN_FLOAT:
 			return type_float;
-		case TOKEN_I128:
+		case TOKEN_INT128:
 			return type_i128;
 		case TOKEN_ICHAR:
 			return type_ichar;
@@ -1260,7 +1278,7 @@ Type *type_from_token(TokenType type)
 			return type_long;
 		case TOKEN_SHORT:
 			return type_short;
-		case TOKEN_U128:
+		case TOKEN_UINT128:
 			return type_u128;
 		case TOKEN_UINT:
 			return type_uint;
