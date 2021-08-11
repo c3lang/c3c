@@ -1,4 +1,3 @@
-// #skip
 // #target: x64_darwin
 
 extern func char*! readLine();
@@ -8,7 +7,8 @@ extern func int printf(char* fmt, ...);
 
 func void main()
 {
-    tryx (int val = atoi(readLine()))
+    int val;
+    if (try val = atoi(readLine()))
     {
             printf("You typed the number %d\n", val);
             return;
@@ -18,19 +18,21 @@ func void main()
 
 // #expect: try_with_chained_unwrap.ll
 
+define void @main() #0 {
 entry:
   %val = alloca i32, align 4
   %retparam = alloca i32, align 4
   %retparam1 = alloca i8*, align 8
   %result = alloca %error_union, align 8
   %result2 = alloca %error_union, align 8
+  store i32 0, i32* %val, align 4
   %0 = call { i64, i64 } @readLine(i8** %retparam1)
   %1 = bitcast %error_union* %result to { i64, i64 }*
   store { i64, i64 } %0, { i64, i64 }* %1, align 8
   %err_domain = getelementptr inbounds %error_union, %error_union* %result, i32 0, i32 0
   %2 = load i64, i64* %err_domain, align 8
   %not_err = icmp eq i64 %2, 0
-  br i1 %not_err, label %after_check, label %after_try
+  br i1 %not_err, label %after_check, label %catch_landing
 
 after_check:
   %3 = load i8*, i8** %retparam1, align 8
@@ -40,15 +42,26 @@ after_check:
   %err_domain3 = getelementptr inbounds %error_union, %error_union* %result2, i32 0, i32 0
   %6 = load i64, i64* %err_domain3, align 8
   %not_err4 = icmp eq i64 %6, 0
-  br i1 %not_err4, label %after_check5, label %after_try
+  br i1 %not_err4, label %after_check5, label %catch_landing
 
 after_check5:
   %7 = load i32, i32* %retparam, align 4
   store i32 %7, i32* %val, align 4
+  br label %phi_try_catch
+
+catch_landing:
+  br label %phi_try_catch
+
+phi_try_catch:
+  %val6 = phi i1 [ true, %after_check5 ], [ false, %catch_landing ]
+  br i1 %val6, label %if.then, label %if.exit
+
+if.then:
   %8 = load i32, i32* %val, align 4
   %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @.str, i32 0, i32 0), i32 %8)
   ret void
 
-after_try:
+if.exit:
   %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @.str.1, i32 0, i32 0))
   ret void
+}
