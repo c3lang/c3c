@@ -1,0 +1,109 @@
+// #target: aarch64_linux
+module abi;
+
+struct Vector2 {
+  float x;
+  float y;
+}
+extern func Vector2 vector2_zero() { return Vector2({}); }
+extern func Vector2 vector2_one() { return Vector2({}); }
+extern func Vector2 vector2_add(Vector2 v1, Vector2 v2) { return Vector2({}); }
+extern func Vector2 vector2_add_value(Vector2 v, float add) { return Vector2({}); }
+extern func Vector2 vector2_subtract(Vector2 v1, Vector2 v2) { return Vector2({}); }
+extern func Vector2 vector2_subtract_value(Vector2 v, float sub) { return Vector2({}); }
+
+// #expect: abi.ll
+%Vector2 = type { float, float }
+
+define %Vector2 @vector2_zero()
+entry:
+  %literal = alloca %Vector2, align 4
+  %0 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 8, i1 false)
+  %1 = load %Vector2, %Vector2* %literal, align 4
+  ret %Vector2 %1
+}
+
+define %Vector2 @vector2_one()
+entry:
+  %literal = alloca %Vector2, align 4
+  %0 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 8, i1 false)
+  %1 = load %Vector2, %Vector2* %literal, align 4
+  ret %Vector2 %1
+
+
+define %Vector2 @vector2_add(float %0, float %1, float %2, float %3)
+entry:
+  %v1 = alloca %Vector2, align 4
+  %v2 = alloca %Vector2, align 4
+  %literal = alloca %Vector2, align 4
+  %coerce = bitcast %Vector2* %v1 to { float, float }*
+  %4 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 0
+  store float %0, float* %4, align 4
+  %5 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 1
+  store float %1, float* %5, align 4
+  %coerce1 = bitcast %Vector2* %v2 to { float, float }*
+  %6 = getelementptr inbounds { float, float }, { float, float }* %coerce1, i32 0, i32 0
+  store float %2, float* %6, align 4
+  %7 = getelementptr inbounds { float, float }, { float, float }* %coerce1, i32 0, i32 1
+  store float %3, float* %7, align 4
+  %8 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %8, i8 0, i64 8, i1 false)
+  %9 = load %Vector2, %Vector2* %literal, align 4
+  ret %Vector2 %9
+}
+
+define %Vector2 @vector2_add_value(float %0, float %1, float %2)
+entry:
+  %v = alloca %Vector2, align 4
+  %add = alloca float, align 4
+  %literal = alloca %Vector2, align 4
+  %coerce = bitcast %Vector2* %v to { float, float }*
+  %3 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 0
+  store float %0, float* %3, align 4
+  %4 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 1
+  store float %1, float* %4, align 4
+  store float %2, float* %add, align 4
+  %5 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %5, i8 0, i64 8, i1 false)
+  %6 = load %Vector2, %Vector2* %literal, align 4
+  ret %Vector2 %6
+}
+
+define %Vector2 @vector2_subtract(float %0, float %1, float %2, float %3)
+entry:
+  %v1 = alloca %Vector2, align 4
+  %v2 = alloca %Vector2, align 4
+  %literal = alloca %Vector2, align 4
+  %coerce = bitcast %Vector2* %v1 to { float, float }*
+  %4 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 0
+  store float %0, float* %4, align 4
+  %5 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 1
+  store float %1, float* %5, align 4
+  %coerce1 = bitcast %Vector2* %v2 to { float, float }*
+  %6 = getelementptr inbounds { float, float }, { float, float }* %coerce1, i32 0, i32 0
+  store float %2, float* %6, align 4
+  %7 = getelementptr inbounds { float, float }, { float, float }* %coerce1, i32 0, i32 1
+  store float %3, float* %7, align 4
+  %8 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %8, i8 0, i64 8, i1 false)
+  %9 = load %Vector2, %Vector2* %literal, align 4
+  ret %Vector2 %9
+
+define %Vector2 @vector2_subtract_value(float %0, float %1, float %2)
+entry:
+  %v = alloca %Vector2, align 4
+  %sub = alloca float, align 4
+  %literal = alloca %Vector2, align 4
+  %coerce = bitcast %Vector2* %v to { float, float }*
+  %3 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 0
+  store float %0, float* %3, align 4
+  %4 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 1
+  store float %1, float* %4, align 4
+  store float %2, float* %sub, align 4
+  %5 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %5, i8 0, i64 8, i1 false)
+  %6 = load %Vector2, %Vector2* %literal, align 4
+  ret %Vector2 %6
+}

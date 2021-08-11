@@ -654,14 +654,38 @@ static Expr *parse_identifier_starting_expression(Context *context, Expr *left)
 	}
 }
 
-static Expr *parse_try_expr(Context *context, Expr *left)
+static Expr *parse_try_old_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *try_expr = EXPR_NEW_TOKEN(TOKEN_IS(TOKEN_TRY) ? EXPR_TRY : EXPR_CATCH, context->tok);
+	Expr *try_expr = EXPR_NEW_TOKEN(TOKEN_IS(TOKEN_TRY_OLD) ? EXPR_TRY_OLD : EXPR_CATCH_OLD, context->tok);
 	advance(context);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
 	try_expr->trycatch_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
+	return try_expr;
+}
+
+static Expr *parse_try_expr(Context *context, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	bool try = TOKEN_IS(TOKEN_TRY);
+	Expr *try_expr = EXPR_NEW_TOKEN(EXPR_TRY, context->tok);
+	advance(context);
+	Expr *expr = TRY_EXPR_OR(parse_precedence(context, PREC_UNARY), poisoned_expr);
+	if (try_consume(context, TOKEN_EQ))
+	{
+		Expr *init = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
+		try_expr->expr_kind = EXPR_TRY_ASSIGN;
+		try_expr->try_assign_expr.expr = expr;
+		try_expr->try_assign_expr.is_try = try;
+		try_expr->try_assign_expr.init = init;
+	}
+	else
+	{
+		try_expr->try_expr.expr = expr;
+		try_expr->try_expr.is_try = try;
+	}
+	RANGE_EXTEND_PREV(try_expr);
 	return try_expr;
 }
 
@@ -1075,7 +1099,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_TYPEID] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_ANYERR] = { parse_type_identifier, NULL, PREC_NONE },
 
-		[TOKEN_ELSE] = { NULL, parse_else_expr, PREC_TRY_ELSE },
+		[TOKEN_ELSE] = { NULL, parse_else_expr, PREC_ELSE },
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
@@ -1084,6 +1108,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_LBRAPIPE] = { parse_expr_block, NULL, PREC_NONE },
 		[TOKEN_TRY] = { parse_try_expr, NULL, PREC_NONE },
 		[TOKEN_CATCH] = { parse_try_expr, NULL, PREC_NONE },
+		[TOKEN_TRY_OLD] = { parse_try_old_expr, NULL, PREC_NONE },
+		[TOKEN_CATCH_OLD] = { parse_try_old_expr, NULL, PREC_NONE },
 		[TOKEN_BANGBANG] = { NULL, parse_bangbang_expr, PREC_CALL },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },

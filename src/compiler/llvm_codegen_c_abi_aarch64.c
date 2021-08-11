@@ -117,7 +117,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 	if (type_is_homogenous_aggregate(type, &base, &members) &&
 	    !(platform_target.arch == ARCH_TYPE_AARCH64_32 && variadic))
 	{
-		return abi_arg_ignore();
+		return abi_arg_new_direct();
 	}
 
 	// Aggregates <= in registers

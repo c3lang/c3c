@@ -17,32 +17,32 @@ func void test9()
 
 func void test10()
 {
-    10 = 20;        // #error: Expression is not assignable
+    10 = 20;        // #error: This expression is not assignable
 }
 
 func void test11()
 {
-    '10' = '20';        // #error: Expression is not assignable
+    '10' = '20';        // #error: This expression is not assignable
 }
 
 func void test12()
 {
-    true = false;        // #error: Expression is not assignable
+    true = false;        // #error: This expression is not assignable
 }
 
 func void test13()
 {
-    "a" = "b";        // #error: Expression is not assignable
+    "a" = "b";        // #error: This expression is not assignable
 }
 
 func void test14()
 {
-    1.2 = 1.3;        // #error: Expression is not assignable
+    1.2 = 1.3;        // #error: This expression is not assignable
 }
 
 func void test15()
 {
-    null = null;      // #error: Expression is not assignable
+    null = null;      // #error: This expression is not assignable
 }
 
 func void test16()

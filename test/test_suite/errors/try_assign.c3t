@@ -1,0 +1,149 @@
+// #target: x64_darwin
+
+extern func int! err();
+errtype FooErr { int x; }
+extern func int printf(char* fmt, ...);
+
+func void main()
+{
+    int x = 123;
+    int! z = 234;
+    int! w;
+    int gh = 1;
+    if ((try x = z) && (try gh = w))
+    {
+        printf("Success %d && %d!\n", x, gh);
+    }
+    if (try x = z + w)
+    {
+       printf("Test\n");
+    }
+    anyerr e;
+    if (catch e = z)
+    {
+        printf("Oh noes!\n");
+    }
+}
+
+// #expect: try_assign.ll
+
+entry:
+  %x = alloca i32, align 4
+  %z = alloca i32, align 4
+  %z.f = alloca %error_union, align 8
+  %w = alloca i32, align 4
+  %w.f = alloca %error_union, align 8
+  %gh = alloca i32, align 4
+  %e = alloca %error_union, align 8
+  store i32 123, i32* %x, align 4
+  store %error_union zeroinitializer, %error_union* %z.f, align 8
+  store i32 234, i32* %z, align 4
+  store %error_union zeroinitializer, %error_union* %z.f, align 8
+  store %error_union zeroinitializer, %error_union* %w.f, align 8
+  store i32 0, i32* %w, align 4
+  store i32 1, i32* %gh, align 4
+  %err_domain = getelementptr inbounds %error_union, %error_union* %z.f, i32 0, i32 0
+  %0 = load i64, i64* %err_domain, align 8
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after_check, label %catch_landing
+
+after_check:
+  %1 = load i32, i32* %z, align 4
+  store i32 %1, i32* %x, align 4
+  br label %phi_try_catch
+
+catch_landing:
+  br label %phi_try_catch
+
+phi_try_catch:
+  %val = phi i1 [ true, %after_check ], [ false, %catch_landing ]
+  br i1 %val, label %and.rhs, label %and.phi
+
+and.rhs:
+  %err_domain1 = getelementptr inbounds %error_union, %error_union* %w.f, i32 0, i32 0
+  %2 = load i64, i64* %err_domain1, align 8
+  %not_err2 = icmp eq i64 %2, 0
+  br i1 %not_err2, label %after_check3, label %catch_landing4
+
+after_check3:
+  %3 = load i32, i32* %w, align 4
+  store i32 %3, i32* %gh, align 4
+  br label %phi_try_catch5
+
+catch_landing4:
+  br label %phi_try_catch5
+
+phi_try_catch5:
+  %val6 = phi i1 [ true, %after_check3 ], [ false, %catch_landing4 ]
+  br label %and.phi
+
+and.phi:
+  %val7 = phi i1 [ false, %phi_try_catch ], [ %val6, %phi_try_catch5 ]
+  br i1 %val7, label %if.then, label %if.exit
+
+if.then:
+  %4 = load i32, i32* %x, align 4
+  %5 = load i32, i32* %gh, align 4
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str, i32 0, i32 0), i32 %4, i32 %5)
+  br label %if.exit
+
+if.exit:
+  %err_domain8 = getelementptr inbounds %error_union, %error_union* %z.f, i32 0, i32 0
+  %7 = load i64, i64* %err_domain8, align 8
+  %not_err9 = icmp eq i64 %7, 0
+  br i1 %not_err9, label %after_check10, label %catch_landing14
+
+after_check10:
+  %8 = load i32, i32* %z, align 4
+  %err_domain11 = getelementptr inbounds %error_union, %error_union* %w.f, i32 0, i32 0
+  %9 = load i64, i64* %err_domain11, align 8
+  %not_err12 = icmp eq i64 %9, 0
+  br i1 %not_err12, label %after_check13, label %catch_landing14
+
+after_check13:
+  %10 = load i32, i32* %w, align 4
+  %add = add i32 %8, %10
+  store i32 %add, i32* %x, align 4
+  br label %phi_try_catch15
+
+catch_landing14:
+  br label %phi_try_catch15
+
+phi_try_catch15:
+  %val16 = phi i1 [ true, %after_check13 ], [ false, %catch_landing14 ]
+  br i1 %val16, label %if.then17, label %if.exit18
+
+if.then17:
+  %11 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.1, i32 0, i32 0))
+  br label %if.exit18
+
+if.exit18:
+  %12 = bitcast %error_union* %e to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %12, i8 0, i64 16, i1 false)
+  %err_domain19 = getelementptr inbounds %error_union, %error_union* %z.f, i32 0, i32 0
+  %13 = load i64, i64* %err_domain19, align 8
+  %not_err20 = icmp eq i64 %13, 0
+  br i1 %not_err20, label %after_check21, label %error
+
+error:
+  %14 = bitcast %error_union* %e to i8*
+  %15 = bitcast %error_union* %z.f to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %14, i8* align 8 %15, i32 16, i1 false)
+  br label %catch_landing22
+
+after_check21:
+  br label %phi_try_catch23
+
+catch_landing22:
+  br label %phi_try_catch23
+
+phi_try_catch23:
+  %val24 = phi i1 [ false, %after_check21 ], [ true, %catch_landing22 ]
+  br i1 %val24, label %if.then25, label %if.exit26
+
+if.then25:
+  %16 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.2, i32 0, i32 0))
+  br label %if.exit26
+
+if.exit26:
+  ret void

@@ -7,6 +7,7 @@
 static void fprint_asts_recursive(Context *context, FILE *file, Ast **asts, int indent);
 static void fprint_decl_list(Context *context, FILE *file, Decl **decls, int indent);
 static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int indent);
+static void fprint_expr_list(Context *context, FILE *file, Expr **exprs, int indent);
 
 #define DUMP(text) do { fprintf_indented(file, indent, text); fprintf(file, "\n"); } while(0)
 #define DUMPF(text, ...) do { fprintf_indented(file, indent, text, __VA_ARGS__); fprintf(file, "\n"); } while(0)
@@ -21,6 +22,7 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 #define DUMPTYPE(_type) fprint_type_recursive(context, file, _type, indent + 1)
 #define DUMPDECLS(_decls) fprint_decl_list(context, file, _decls, indent + 1)
 #define DUMPDECL(_decl) fprint_decl_recursive(context, file, _decl, indent + 1)
+#define DUMPEXPRS(_exprs) fprint_expr_list(context, file, _exprs, indent + 1)
 
 Decl *decl_new(DeclKind decl_kind, TokenId name, Visibility visibility)
 {
@@ -596,6 +598,11 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
+		case EXPR_DECL:
+			DUMP("(decl");
+			DUMPEXPC(expr);
+			DUMPDECL(expr->decl_expr);
+			break;
 		case EXPR_NOP:
 			DUMP("(nop)");
 			return;
@@ -639,7 +646,7 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEND();
 		case EXPR_DECL_LIST:
 			DUMP("(decllist");
-			DUMPASTS(expr->dexpr_list_expr);
+			DUMPEXPRS(expr->dexpr_list_expr);
 			DUMPEND();
 		case EXPR_FAILABLE:
 			DUMP("(failable");
@@ -703,15 +710,26 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->post_expr.expr);
 			DUMPEND();
-		case EXPR_CATCH:
+		case EXPR_CATCH_OLD:
 			DUMP("(catch");
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->trycatch_expr);
 			DUMPEND();
-		case EXPR_TRY:
+		case EXPR_TRY_OLD:
 			DUMP("(try");
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->trycatch_expr);
+			DUMPEND();
+		case EXPR_TRY:
+			DUMPF("(try %d", expr->try_expr.is_try);
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->try_expr.expr);
+			DUMPEND();
+		case EXPR_TRY_ASSIGN:
+			DUMPF("(try-assign %d", expr->try_assign_expr.is_try);
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->try_assign_expr.expr);
+			DUMPEXPR(expr->try_assign_expr.init);
 			DUMPEND();
 		case EXPR_ACCESS:
 			DUMP("(access");
@@ -1092,6 +1110,14 @@ static void fprint_decl_list(Context *context, FILE *file, Decl **decls, int ind
 	}
 }
 
+static void fprint_expr_list(Context *context, FILE *file, Expr **exprs, int indent)
+{
+	VECEACH(exprs, i)
+	{
+		fprint_expr_recursive(context, file, exprs[i], indent);
+	}
+}
+
 static void fprint_asts_recursive(Context *context, FILE *file, Ast **asts, int indent)
 {
 	VECEACH(asts, i)
@@ -1117,8 +1143,8 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 			DUMPEND();
 		case AST_TRY_STMT:
 			DUMP("(try");
-			DUMPEXPR(ast->try_stmt.decl_expr);
-			DUMPAST(ast->try_stmt.body);
+			DUMPEXPR(ast->try_old_stmt.decl_expr);
+			DUMPAST(ast->try_old_stmt.body);
 			DUMPEND();
 		case AST_COMPOUND_STMT:
 			if (!ast->compound_stmt.stmts)

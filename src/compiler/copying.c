@@ -77,6 +77,9 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_UNDEF:
 		case EXPR_NOP:
 			return expr;
+		case EXPR_DECL:
+			MACRO_COPY_DECL(expr->decl_expr);
+			return expr;
 		case EXPR_CT_CALL:
 			MACRO_COPY_EXPR_LIST(expr->ct_call_expr.arguments);
 			return expr;
@@ -108,12 +111,19 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_LEN:
 			MACRO_COPY_EXPR(expr->len_expr.inner);
 			return expr;
-		case EXPR_CATCH:
-		case EXPR_TRY:
+		case EXPR_CATCH_OLD:
+		case EXPR_TRY_OLD:
 			MACRO_COPY_EXPR(expr->trycatch_expr);
 			return expr;
+		case EXPR_TRY_ASSIGN:
+			MACRO_COPY_EXPR(expr->try_assign_expr.expr);
+			MACRO_COPY_EXPR(expr->try_assign_expr.init);
+			return expr;
+		case EXPR_TRY:
+			MACRO_COPY_EXPR(expr->try_expr.expr);
+			return expr;
 		case EXPR_DECL_LIST:
-			MACRO_COPY_AST_LIST(expr->dexpr_list_expr);
+			MACRO_COPY_EXPR_LIST(expr->dexpr_list_expr);
 			return expr;
 		case EXPR_FAILABLE:
 			MACRO_COPY_EXPR(expr->failable_expr);
@@ -361,8 +371,8 @@ Ast *copy_ast(Ast *source)
 			MACRO_COPY_AST_LIST(ast->switch_stmt.cases);
 			return ast;
 		case AST_TRY_STMT:
-			MACRO_COPY_EXPR(ast->try_stmt.decl_expr);
-			MACRO_COPY_AST(ast->try_stmt.body);
+			MACRO_COPY_EXPR(ast->try_old_stmt.decl_expr);
+			MACRO_COPY_AST(ast->try_old_stmt.body);
 			return ast;
 		case AST_UNREACHABLE_STMT:
 			return ast;

@@ -46,11 +46,9 @@ void gencontext_emit_ct_compound_stmt(GenContext *context, Ast *ast)
 /**
  * This emits a local declaration.
  */
-static LLVMValueRef llvm_emit_local_decl(GenContext *c, Ast *ast)
+LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 {
-
 	// 1. Get the declaration and the LLVM type.
-	Decl *decl = ast->declare_stmt;
 	LLVMTypeRef alloc_type = llvm_get_type(c, type_lowering(decl->type));
 
 	// 2. In the case we have a static variable,
@@ -115,7 +113,8 @@ void llvm_emit_decl_expr_list_ignore_result(GenContext *context, Expr *expr)
 	assert(expr->expr_kind == EXPR_DECL_LIST);
 	VECEACH(expr->dexpr_list_expr, i)
 	{
-		llvm_emit_stmt(context, expr->dexpr_list_expr[i]);
+		BEValue value;
+		llvm_emit_expr(context, &value, expr->dexpr_list_expr[i]);
 	}
 }
 
@@ -126,40 +125,22 @@ void gencontext_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr
 	ByteSize last_index = size - 1;
 	for (ByteSize i = 0; i < last_index; i++)
 	{
-		Ast *ast = expr->dexpr_list_expr[i];
-		if (ast->ast_kind == AST_DECLARE_STMT)
-		{
-			llvm_emit_local_decl(context, ast);
-		}
-		else
-		{
-			assert(ast->ast_kind == AST_EXPR_STMT);
-			BEValue value;
-			llvm_emit_expr(context, &value, ast->expr_stmt);
-		}
+		BEValue value;
+		llvm_emit_expr(context, &value, expr->dexpr_list_expr[i]);
 	}
-	Ast *last = expr->dexpr_list_expr[last_index];
-	Type *type;
-	switch (last->ast_kind)
+	Expr *last = expr->dexpr_list_expr[last_index];
+	Type *type = last->type;
+	llvm_emit_expr(context, be_value, last);
+	if (last->expr_kind == EXPR_DECL)
 	{
-		case AST_EXPR_STMT:
-			type = last->expr_stmt->type;
-			llvm_emit_expr(context, be_value, last->expr_stmt);
-			break;
-		case AST_DECLARE_STMT:
-			type = last->declare_stmt->var.type_info->type;
-			{
-				LLVMValueRef decl_value = llvm_emit_local_decl(context, last);
-				if (bool_cast && last->declare_stmt->var.unwrap)
-				{
-					llvm_value_set_bool(be_value, LLVMConstInt(context->bool_type, 1, false));
-					return;
-				}
-				llvm_value_set_address(be_value, decl_value, type);
-			}
-			break;
-		default:
-			UNREACHABLE
+		type = last->decl_expr->var.type_info->type;
+		LLVMValueRef decl_value = llvm_emit_local_decl(context, last->decl_expr);
+		if (bool_cast && last->decl_expr->var.unwrap)
+		{
+			llvm_value_set_bool(be_value, LLVMConstInt(context->bool_type, 1, false));
+			return;
+		}
+		llvm_value_set_address(be_value, decl_value, type);
 	}
 	if (bool_cast)
 	{
@@ -988,7 +969,8 @@ void gencontext_emit_try_stmt(GenContext *c, Ast *ast)
 	c->catch_block = after_try;
 
 	// Emit the checks, which will create jumps like we want them.
-	Ast **decl_expr = ast->try_stmt.decl_expr->dexpr_list_expr;
+	TODO
+	Ast **decl_expr = NULL; // ast->try_old_stmt.decl_expr->dexpr_list_expr;
 	BEValue be_value;
 	VECEACH(decl_expr, i)
 	{
@@ -1000,7 +982,7 @@ void gencontext_emit_try_stmt(GenContext *c, Ast *ast)
 				llvm_value_rvalue(c, &be_value);
 				break;
 			case AST_DECLARE_STMT:
-				llvm_emit_local_decl(c, dexpr);
+		//TODO		llvm_emit_local_decl(c, dexpr);
 				break;
 			default:
 				UNREACHABLE
@@ -1011,7 +993,7 @@ void gencontext_emit_try_stmt(GenContext *c, Ast *ast)
 	POP_ERROR();
 
 	// Emit the statement
-	llvm_emit_stmt(c, ast->try_stmt.body);
+	llvm_emit_stmt(c, ast->try_old_stmt.body);
 
 	// Jump to after.
 	llvm_emit_br(c, after_try);
@@ -1246,7 +1228,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			gencontext_emit_expr_stmt(c, ast);
 			break;
 		case AST_DECLARE_STMT:
-			llvm_emit_local_decl(c, ast);
+			llvm_emit_local_decl(c, ast->declare_stmt);
 			break;
 		case AST_BREAK_STMT:
 			gencontext_emit_break(c, ast);

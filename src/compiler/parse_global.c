@@ -875,16 +875,14 @@ Expr *parse_decl_expr_list(Context *context)
 		if (parse_next_is_decl(context))
 		{
 			Decl *decl = TRY_DECL_OR(parse_decl(context), poisoned_expr);
-			Ast *stmt = AST_NEW(AST_DECLARE_STMT, decl->span);
-			stmt->declare_stmt = decl;
-			vec_add(decl_expr->dexpr_list_expr, stmt);
+			Expr *expr = expr_new(EXPR_DECL, decl->span);
+			expr->decl_expr = decl;
+			vec_add(decl_expr->dexpr_list_expr, expr);
 		}
 		else
 		{
 			Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
-			Ast *stmt = AST_NEW(AST_EXPR_STMT, expr->span);
-			stmt->expr_stmt = expr;
-			vec_add(decl_expr->dexpr_list_expr, stmt);
+			vec_add(decl_expr->dexpr_list_expr, expr);
 		}
 		if (!try_consume(context, TOKEN_COMMA)) break;
 	}
