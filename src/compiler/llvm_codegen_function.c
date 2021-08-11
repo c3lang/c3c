@@ -435,7 +435,7 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 		llvm_emit_stmt(context, decl->func_decl.body->compound_stmt.stmts[i]);
 	}
 
-	if (context->current_block && !LLVMGetFirstInstruction(context->current_block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(context->current_block)))
+	if (context->current_block && llvm_basic_block_is_unused(context->current_block))
 	{
 		LLVMBasicBlockRef prev_block = LLVMGetPreviousBasicBlock(context->current_block);
 		LLVMDeleteBasicBlock(context->current_block);

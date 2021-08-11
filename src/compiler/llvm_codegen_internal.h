@@ -243,6 +243,7 @@ LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value);
 void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_len);
 LLVMValueRef llvm_emit_load_aligned(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name);
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
+LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, unsigned align, bool bitcast);
 LLVMValueRef llvm_emit_memclear(GenContext *c, BEValue *ref);
 void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len);
@@ -320,10 +321,15 @@ static inline LLVMValueRef llvm_emit_bitcast(GenContext *context, LLVMValueRef v
 
 static inline bool llvm_use_debug(GenContext *context) { return context->debug.builder != NULL; }
 
+static inline bool llvm_basic_block_is_unused(LLVMBasicBlockRef block)
+{
+	return !LLVMGetFirstInstruction(block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(block));
+}
+
 static inline LLVMBasicBlockRef llvm_get_current_block_if_in_use(GenContext *context)
 {
 	LLVMBasicBlockRef block = context->current_block;
-	if (!LLVMGetFirstInstruction(block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(block)))
+	if (llvm_basic_block_is_unused(block))
 	{
 		LLVMDeleteBasicBlock(block);
 		context->current_block = NULL;

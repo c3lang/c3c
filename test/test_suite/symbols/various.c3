@@ -62,7 +62,7 @@ func void test9()
 {
     const char A = 1;
     char b = A;
-    A = b;              // #error: Expression is not assignable
+    A = b;              // #error: This expression is not assignable, did you make
 }
 
 func void test10()

@@ -3415,8 +3415,13 @@ bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *lef
 
 	// 1. Evaluate right side to required type.
 	if (!sema_analyse_expr(context, left_type, right)) return false;
-	if (right->failable && lhs_is_failable == FAILABLE_NO)
+	if (right->failable && lhs_is_failable != FAILABLE_YES)
 	{
+		if (lhs_is_failable == FAILABLE_UNWRAPPED)
+		{
+			SEMA_ERROR(expr->binary_expr.left, "The variable is unwrapped in this context, if you don't want to unwrap it, use () around the variable to suppress unwrapping, like 'catch err = (x)' and 'try (x)'.");
+			return false;
+		}
 		if (!left_type) left_type = right->type;
 		SEMA_ERROR(right, "'%s!' cannot be converted into '%s'.", type_to_error_string(right->type), type_to_error_string(left_type));
 		return false;
@@ -3546,6 +3551,7 @@ static bool sema_expr_analyse_assign(Context *context, Expr *expr, Expr *left, E
 	expr->constant = false;
 	expr->pure = false;
 
+
 	// 1. Evaluate left side
 	if (left->expr_kind == EXPR_CT_IDENT)
 	{
@@ -3556,12 +3562,24 @@ static bool sema_expr_analyse_assign(Context *context, Expr *expr, Expr *left, E
 	{
 		return sema_expr_analyse_ct_type_identifier_assign(context, expr, left, right);
 	}
+
 	if (!sema_analyse_expr_value(context, NULL, left)) return false;
+
+	if (left->expr_kind == EXPR_TRY)
+	{
+		if (expr_is_ltype(left->try_expr.expr))
+		{
+			SEMA_ERROR(left, "This part will be evaluated to a boolean, so if you want to test an assignment, "
+							 "you need to use () around the assignment, like this: '%s (variable = expression)'.",
+							 left->expr_kind == EXPR_TRY ? "try" : "catch");
+			return false;
+		}
+	}
 
 	// 2. Check assignability
 	if (!expr_is_ltype(left))
 	{
-		SEMA_ERROR(left, "Expression is not assignable.");
+		SEMA_ERROR(left, "This expression is not assignable, did you make a mistake?");
 		return false;
 	}
 
@@ -5034,7 +5052,7 @@ static inline bool sema_expr_analyse_post_unary(Context *context, Type *to, Expr
 }
 
 
-static inline bool sema_expr_analyse_try(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_try_old(Context *context, Expr *expr)
 {
 	Expr *inner = expr->trycatch_expr;
 	bool success = sema_analyse_expr(context, NULL, inner);
@@ -5050,7 +5068,99 @@ static inline bool sema_expr_analyse_try(Context *context, Expr *expr)
 	return true;
 }
 
-static inline bool sema_expr_analyse_catch(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_try_assign(Context *context, Expr *expr, bool implicitly_create_variable)
+{
+	expr->constant = false;
+
+	Expr *init = expr->try_assign_expr.init;
+	Expr *lhs = expr->try_assign_expr.expr;
+
+	Type *lhs_type;
+
+	// If we have:
+	// a. In a context where implicit declaration of variables occur
+	// b. The LHS is an identifier without PATH
+	// c. And this variable does not exist in the scope.
+	// Create it (when we know the type)
+	bool create_variable;
+	if (implicitly_create_variable && lhs->expr_kind == EXPR_IDENTIFIER && !lhs->identifier_expr.path
+		&& !sema_resolve_normal_symbol(context, lhs->identifier_expr.identifier, NULL, false))
+	{
+		create_variable = true;
+		lhs_type = NULL;
+	}
+	else
+	{
+		// Otherwise we just analyse it.
+		create_variable = false;
+		if (expr->try_assign_expr.is_try)
+		{
+			if (!sema_analyse_expr_value(context, NULL, lhs)) return false;
+		}
+		else
+		{
+			if (!sema_analyse_expr_of_required_type(context, type_anyerr, lhs, true)) return false;
+		}
+		if (!expr_is_ltype(lhs))
+		{
+			SEMA_ERROR(lhs, "This expression is not assignable, did you make a mistake?");
+			return false;
+		}
+		ExprFailableStatus failable_status = expr_is_failable(lhs);
+		if (failable_status == FAILABLE_YES)
+		{
+			SEMA_ERROR(lhs, "A 'try' assignment is not possible with failable on the left hand side, did you intend 'try (variable = expr)'?");
+			return false;
+		}
+		lhs_type = lhs->type;
+	}
+
+	if (expr->try_assign_expr.is_try)
+	{
+		if (!sema_analyse_expr_of_required_type(context, lhs_type, init, true)) return false;
+	}
+	else
+	{
+		if (!sema_analyse_expr_of_required_type(context, NULL, init, true)) return false;
+	}
+
+	if (!init->failable)
+	{
+		SEMA_ERROR(init, "Expected a failable expression to '%s'.", expr->try_assign_expr.is_try ? "try" : "catch");
+		return false;
+	}
+
+	if (create_variable)
+	{
+		lhs_type = init->type;
+		Decl *decl = decl_new_var(lhs->identifier_expr.identifier, type_info_new_base(lhs_type, lhs->span), VARDECL_LOCAL, VISIBLE_LOCAL);
+		TODO
+		// try_expr->try_expr.implicit_decl = decl;
+		if (!sema_add_local(context, decl)) return false;
+		if (!sema_analyse_expr_value(context, NULL, lhs)) return false;
+	}
+
+	expr->constant = false;
+	expr->pure = init->pure & lhs->pure;
+	expr_set_type(expr, type_bool);
+	return true;
+}
+static inline bool sema_expr_analyse_try(Context *context, Expr *expr)
+{
+	Expr *inner = expr->try_expr.expr;
+	if (!sema_analyse_expr(context, NULL, inner)) return false;
+	expr->pure = inner->pure;
+	expr->constant = false;
+	if (!inner->failable)
+	{
+		SEMA_ERROR(expr->try_expr.expr, "Expected a failable expression to '%s'.", expr->expr_kind == EXPR_TRY ? "try" : "catch");
+		return false;
+	}
+	expr_set_type(expr, type_bool);
+	return true;
+}
+
+static inline bool sema_expr_analyse_catch_old(Context *context, Expr *expr)
 {
 	Expr *inner = expr->trycatch_expr;
 	bool success = sema_analyse_expr(context, NULL, inner);
@@ -5938,6 +6048,14 @@ static inline bool sema_expr_analyse_ct_call(Context *context, Type *to, Expr *e
 	}
 }
 
+static inline bool sema_expr_analyse_decl(Context *context, Type *to, Expr *expr)
+{
+	if (!sema_analyse_local_decl(context, expr->decl_expr)) return false;
+	expr_set_type(expr, expr->decl_expr->type);
+	expr->pure = !expr->decl_expr->var.init_expr || expr->decl_expr->var.init_expr->pure;
+	expr->constant = expr->decl_expr->var.kind == VARDECL_CONST;
+	return true;
+}
 static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *expr)
 {
 	switch (expr->expr_kind)
@@ -5951,6 +6069,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_FLATPATH:
 		case EXPR_NOP:
 			UNREACHABLE
+		case EXPR_DECL:
+			return sema_expr_analyse_decl(context, to, expr);
 		case EXPR_CT_CALL:
 			return sema_expr_analyse_ct_call(context, to, expr);
 		case EXPR_HASH_IDENT:
@@ -5974,10 +6094,14 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return sema_expr_analyse_typeinfo(context, expr);
 		case EXPR_SLICE:
 			return sema_expr_analyse_slice(context, expr);
-		case EXPR_CATCH:
-			return sema_expr_analyse_catch(context, expr);
 		case EXPR_TRY:
 			return sema_expr_analyse_try(context, expr);
+		case EXPR_TRY_ASSIGN:
+			return sema_expr_analyse_try_assign(context, expr, false);
+		case EXPR_CATCH_OLD:
+			return sema_expr_analyse_catch_old(context, expr);
+		case EXPR_TRY_OLD:
+			return sema_expr_analyse_try_old(context, expr);
 		case EXPR_TYPEOF:
 			return sema_expr_analyse_typeof(context, expr);
 		case EXPR_ELSE:

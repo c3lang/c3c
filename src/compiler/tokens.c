@@ -190,6 +190,8 @@ const char *token_type_to_string(TokenType type)
 			return "break";
 		case TOKEN_CASE:
 			return "case";
+		case TOKEN_CATCH_OLD:
+			return "catchx";
 		case TOKEN_CATCH:
 			return "catch";
 		case TOKEN_CONST:
@@ -248,6 +250,8 @@ const char *token_type_to_string(TokenType type)
 			return "switch";
 		case TOKEN_TRUE:
 			return "true";
+		case TOKEN_TRY_OLD:
+			return "tryx";
 		case TOKEN_TRY:
 			return "try";
 		case TOKEN_TYPEID:

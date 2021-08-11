@@ -178,12 +178,13 @@ typedef enum
 	EXPR_MACRO_BODY_EXPANSION,
 	EXPR_CALL,
 	EXPR_CAST,
-	EXPR_CATCH,
+	EXPR_CATCH_OLD,
 	EXPR_COMPOUND_LITERAL,
 	EXPR_CONST,
 	EXPR_CONST_IDENTIFIER,
 	EXPR_CT_IDENT,
 	EXPR_DECL_LIST,
+	EXPR_DECL,
 	EXPR_DESIGNATOR,
 	EXPR_ELSE,
 	EXPR_ENUM_CONSTANT,
@@ -207,7 +208,9 @@ typedef enum
 	EXPR_SLICE_ASSIGN,
 	EXPR_SUBSCRIPT,
 	EXPR_TERNARY,
+	EXPR_TRY_OLD,
 	EXPR_TRY,
+	EXPR_TRY_ASSIGN,
 	EXPR_TYPEID,
 	EXPR_TYPEINFO,
 	EXPR_TYPEOF,
@@ -236,7 +239,7 @@ typedef enum
 {
 	PREC_NONE,
 	PREC_ASSIGNMENT,        // =, *=, /=, %=, +=, etc
-	PREC_TRY_ELSE,          // try and else
+	PREC_ELSE,              // else
 	PREC_TERNARY,           // ?:
 	PREC_OR,                // ||
 	PREC_AND,               // &&
@@ -245,7 +248,7 @@ typedef enum
 	PREC_BIT,               // ^ | &
 	PREC_SHIFT,             // << >>
 	PREC_MULTIPLICATIVE,    // * / %
-	PREC_UNARY,             // ! - + ~ * & prefix ++/--
+	PREC_UNARY,             // ! - + ~ * & prefix ++/-- try catch
 	PREC_CALL,              // . () [] postfix ++/--
 	PREC_MACRO,
 	PREC_FIRST = PREC_MACRO
@@ -408,6 +411,7 @@ typedef enum
 	TOKEN_ATTRIBUTE,
 	TOKEN_BREAK,
 	TOKEN_CASE,
+	TOKEN_CATCH_OLD,
 	TOKEN_CATCH,
 	TOKEN_CONST,
 	TOKEN_CONTINUE,
@@ -437,6 +441,7 @@ typedef enum
 	TOKEN_STRUCT,
 	TOKEN_SWITCH,
 	TOKEN_TRUE,
+	TOKEN_TRY_OLD,
 	TOKEN_TRY,
 	TOKEN_UNION,
 	TOKEN_VAR,              // Reserved

@@ -1,0 +1,110 @@
+// #target: x64_darwin
+module abi;
+
+struct Vector2 {
+  float x;
+  float y;
+}
+extern func Vector2 vector2_zero() { return Vector2({}); }
+extern func Vector2 vector2_one() { return Vector2({}); }
+extern func Vector2 vector2_add(Vector2 v1, Vector2 v2) { return Vector2({}); }
+extern func Vector2 vector2_add_value(Vector2 v, float add) { return Vector2({}); }
+extern func Vector2 vector2_subtract(Vector2 v1, Vector2 v2) { return Vector2({}); }
+extern func Vector2 vector2_subtract_value(Vector2 v, float sub) { return Vector2({}); }
+
+// #expect: abi.ll
+
+%Vector2 = type { float, float }
+
+define <2 x float> @vector2_zero()
+entry:
+  %literal = alloca %Vector2, align 4
+  %tempcoerce = alloca <2 x float>, align 8
+  %0 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 8, i1 false)
+  %1 = bitcast <2 x float>* %tempcoerce to i8*
+  %2 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %1, i8* align 4 %2, i32 8, i1 false)
+  %3 = load <2 x float>, <2 x float>* %tempcoerce, align 8
+  ret <2 x float> %3
+
+define <2 x float> @vector2_one()
+  %literal = alloca %Vector2, align 4
+  %tempcoerce = alloca <2 x float>, align 8
+  %0 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 8, i1 false)
+  %1 = bitcast <2 x float>* %tempcoerce to i8*
+  %2 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %1, i8* align 4 %2, i32 8, i1 false)
+  %3 = load <2 x float>, <2 x float>* %tempcoerce, align 8
+  ret <2 x float> %3
+
+define <2 x float> @vector2_add(<2 x float> %0, <2 x float> %1)
+entry:
+  %v1 = alloca %Vector2, align 4
+  %v2 = alloca %Vector2, align 4
+  %literal = alloca %Vector2, align 4
+  %tempcoerce = alloca <2 x float>, align 8
+  %2 = bitcast %Vector2* %v1 to <2 x float>*
+  store <2 x float> %0, <2 x float>* %2, align 4
+  %3 = bitcast %Vector2* %v2 to <2 x float>*
+  store <2 x float> %1, <2 x float>* %3, align 4
+  %4 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %4, i8 0, i64 8, i1 false)
+  %5 = bitcast <2 x float>* %tempcoerce to i8*
+  %6 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %5, i8* align 4 %6, i32 8, i1 false)
+  %7 = load <2 x float>, <2 x float>* %tempcoerce, align 8
+  ret <2 x float> %7
+}
+
+define <2 x float> @vector2_add_value(<2 x float> %0, float %1) #0 {
+  %v = alloca %Vector2, align 4
+  %add = alloca float, align 4
+  %literal = alloca %Vector2, align 4
+  %tempcoerce = alloca <2 x float>, align 8
+  %2 = bitcast %Vector2* %v to <2 x float>*
+  store <2 x float> %0, <2 x float>* %2, align 4
+  store float %1, float* %add, align 4
+  %3 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %3, i8 0, i64 8, i1 false)
+  %4 = bitcast <2 x float>* %tempcoerce to i8*
+  %5 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %4, i8* align 4 %5, i32 8, i1 false)
+  %6 = load <2 x float>, <2 x float>* %tempcoerce, align 8
+  ret <2 x float> %6
+
+define <2 x float> @vector2_subtract(<2 x float> %0, <2 x float> %1)
+entry:
+  %v1 = alloca %Vector2, align 4
+  %v2 = alloca %Vector2, align 4
+  %literal = alloca %Vector2, align 4
+  %tempcoerce = alloca <2 x float>, align 8
+  %2 = bitcast %Vector2* %v1 to <2 x float>*
+  store <2 x float> %0, <2 x float>* %2, align 4
+  %3 = bitcast %Vector2* %v2 to <2 x float>*
+  store <2 x float> %1, <2 x float>* %3, align 4
+  %4 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %4, i8 0, i64 8, i1 false)
+  %5 = bitcast <2 x float>* %tempcoerce to i8*
+  %6 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %5, i8* align 4 %6, i32 8, i1 false)
+  %7 = load <2 x float>, <2 x float>* %tempcoerce, align 8
+  ret <2 x float> %7
+
+define <2 x float> @vector2_subtract_value(<2 x float> %0, float %1)
+entry:
+  %v = alloca %Vector2, align 4
+  %sub = alloca float, align 4
+  %literal = alloca %Vector2, align 4
+  %tempcoerce = alloca <2 x float>, align 8
+  %2 = bitcast %Vector2* %v to <2 x float>*
+  store <2 x float> %0, <2 x float>* %2, align 4
+  store float %1, float* %sub, align 4
+  %3 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %3, i8 0, i64 8, i1 false)
+  %4 = bitcast <2 x float>* %tempcoerce to i8*
+  %5 = bitcast %Vector2* %literal to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %4, i8* align 4 %5, i32 8, i1 false)
+  %6 = load <2 x float>, <2 x float>* %tempcoerce, align 8
+  ret <2 x float> %6

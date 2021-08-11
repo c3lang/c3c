@@ -231,7 +231,7 @@ static inline Ast *parse_case_stmts(Context *context, TokenType case_type, Token
 static inline Ast* parse_catch_stmt(Context *context)
 {
 	Ast *catch_stmt = AST_NEW_TOKEN(AST_CATCH_STMT, context->tok);
-	advance_and_verify(context, TOKEN_CATCH);
+	advance_and_verify(context, TOKEN_CATCH_OLD);
 
 	catch_stmt->catch_stmt.flow.label = TRY_DECL_OR(parse_optional_label(context, catch_stmt), false);
 
@@ -643,13 +643,14 @@ static inline Ast *parse_expr_stmt(Context *context)
 static inline Ast *parse_try_stmt(Context *context)
 {
 	Ast *stmt = AST_NEW_TOKEN(AST_TRY_STMT, context->tok);
-	advance_and_verify(context, TOKEN_TRY);
+	advance_and_verify(context, TOKEN_TRY_OLD);
 	TRY_CONSUME(TOKEN_LPAREN, "Expected a '(' after 'try'.");
-	stmt->try_stmt.decl_expr = TRY_EXPR_OR(parse_decl_expr_list(context), poisoned_ast);
+	stmt->try_old_stmt.decl_expr = TRY_EXPR_OR(parse_decl_expr_list(context), poisoned_ast);
 	TRY_CONSUME(TOKEN_RPAREN, "Expected a ')' after 'try'.");
-	stmt->try_stmt.body = TRY_AST(parse_stmt(context));
+	stmt->try_old_stmt.body = TRY_AST(parse_stmt(context));
 	return stmt;
 }
+
 
 static inline Ast *parse_decl_or_expr_stmt(Context *context)
 {
@@ -978,7 +979,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
 			return parse_decl_or_expr_stmt(context);
-		case TOKEN_TRY:
+		case TOKEN_TRY_OLD:
 			return parse_try_stmt(context);
 		case TOKEN_DEFINE:
 			return parse_define_stmt(context);
@@ -1006,7 +1007,7 @@ Ast *parse_stmt(Context *context)
 			return parse_for_stmt(context);
 		case TOKEN_FOREACH:
 			return parse_foreach_stmt(context);
-		case TOKEN_CATCH:
+		case TOKEN_CATCH_OLD:
 			return parse_catch_stmt(context);
 		case TOKEN_CONTINUE:
 		{
@@ -1072,6 +1073,8 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_CT_SIZEOF:
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_NAMEOF:
+		case TOKEN_TRY:
+		case TOKEN_CATCH:
 			return parse_expr_stmt(context);
 		case TOKEN_ASSERT:
 			return parse_assert_stmt(context);

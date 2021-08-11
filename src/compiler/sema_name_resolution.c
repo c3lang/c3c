@@ -452,8 +452,8 @@ bool sema_unwrap_var(Context *context, Decl *decl)
 	alias->var.kind = VARDECL_ALIAS;
 	alias->var.alias = decl;
 	alias->var.failable = false;
-	decl->resolve_status = RESOLVE_DONE;
-	return sema_append_local(context, decl);
+	alias->resolve_status = RESOLVE_DONE;
+	return sema_append_local(context, alias);
 }
 
 bool sema_rewrap_var(Context *context, Decl *decl)

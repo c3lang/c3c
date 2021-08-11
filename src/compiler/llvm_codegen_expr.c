@@ -2063,8 +2063,126 @@ void gencontext_emit_trycatch_expr(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_block(c, phi_block);
 
 	LLVMValueRef phi = LLVMBuildPhi(c->builder, llvm_get_type(c, expr->type), "val");
-	LLVMValueRef lhs = llvm_const_int(c, type_bool, expr->expr_kind == EXPR_TRY ? 1 : 0);
-	LLVMValueRef rhs = llvm_const_int(c, type_bool, expr->expr_kind == EXPR_TRY ? 0 : 1);
+	LLVMValueRef lhs = llvm_const_int(c, type_bool, expr->expr_kind == EXPR_TRY_OLD ? 1 : 0);
+	LLVMValueRef rhs = llvm_const_int(c, type_bool, expr->expr_kind == EXPR_TRY_OLD ? 0 : 1);
+
+	LLVMValueRef logic_values[2] = { lhs, rhs };
+	LLVMBasicBlockRef blocks[2] = { no_err_block, error_block };
+	LLVMAddIncoming(phi, logic_values, blocks, 2);
+
+	llvm_value_set(value, phi, expr->type);
+}
+
+void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_value, BEValue *var_addr, BEValue *catch_addr, Expr *rhs)
+{
+	assert(!catch_addr || llvm_value_is_addr(catch_addr));
+	assert(!var_addr || llvm_value_is_addr(var_addr));
+
+	// 1.  Create after try/catch block
+	LLVMBasicBlockRef catch_block = llvm_basic_block_new(c, "catch_landing");
+	LLVMBasicBlockRef phi_catch = llvm_basic_block_new(c, "phi_try_catch");
+
+	// 2. Push the error state.
+	PUSH_ERROR();
+
+	// 3. If we have a catch *and* we want to store it, set the catch variable
+	c->error_var = catch_addr ? catch_addr->value : NULL;
+
+	// 4. After catch we want to end up in the landing, because otherwise we don't know the value for the phi.
+	c->catch_block = catch_block;
+
+	// 5. Emit the init part.
+	llvm_emit_expr(c, be_value, rhs);
+
+	// 6. If we haven't jumped yet, do it here (on error) to the catch block.
+	llvm_value_fold_failable(c, be_value);
+
+	// 7. If we have a variable, then we make the store.
+	if (var_addr)
+	{
+		assert(is_try && "Storing will only happen on try.");
+		llvm_store_bevalue(c, var_addr, be_value);
+	}
+
+	// 8. Restore the error stack.
+	POP_ERROR();
+
+	// 9. Store the success block.
+	LLVMBasicBlockRef success_block = c->current_block;
+
+	// 10. Jump to the phi
+	llvm_emit_br(c, phi_catch);
+
+	// 11. Emit the catch and jump.
+	llvm_emit_block(c, catch_block);
+	llvm_emit_br(c, phi_catch);
+
+	// 12. Emit the phi
+	llvm_emit_block(c, phi_catch);
+
+	// 13. Use a phi to pick true / false.
+	LLVMValueRef phi = LLVMBuildPhi(c->builder, c->bool_type, "val");
+	LLVMValueRef from_try = LLVMConstInt(c->bool_type, is_try ? 1 : 0, false);
+	LLVMValueRef from_catch = LLVMConstInt(c->bool_type, is_try ? 0 : 1, false);
+	LLVMValueRef logic_values[2] = { from_try, from_catch };
+	LLVMBasicBlockRef blocks[2] = { success_block, catch_block };
+	LLVMAddIncoming(phi, logic_values, blocks, 2);
+
+	llvm_value_set_bool(be_value, phi);
+
+}
+
+void llvm_emit_try_assign_expr(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	// Create the variable reference.
+	BEValue addr;
+	llvm_emit_expr(c, &addr, expr->try_assign_expr.expr);
+	assert(llvm_value_is_addr(&addr));
+
+	if (expr->try_assign_expr.is_try)
+	{
+		llvm_emit_try_assign_try_catch(c, true, be_value, &addr, NULL, expr->try_assign_expr.init);
+	}
+	else
+	{
+		llvm_emit_try_assign_try_catch(c, false, be_value, NULL, &addr, expr->try_assign_expr.init);
+	}
+}
+
+void gencontext_emit_try_expr(GenContext *c, BEValue *value, Expr *expr)
+{
+
+	LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error_block");
+	LLVMBasicBlockRef no_err_block = llvm_basic_block_new(c, "noerr_block");
+	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "phi_trycatch_block");
+
+	// Store catch/error var
+	PUSH_ERROR();
+
+	// Set the catch/error var
+	c->error_var = NULL;
+	c->catch_block = error_block;
+
+	llvm_emit_expr(c, value, expr->try_expr.expr);
+	llvm_value_fold_failable(c, value);
+
+	// Restore.
+	POP_ERROR();
+
+	// Emit success and jump to phi.
+	llvm_emit_br(c, no_err_block);
+	llvm_emit_block(c, no_err_block);
+	llvm_emit_br(c, phi_block);
+
+	// Emit error and jump to phi
+	llvm_emit_block(c, error_block);
+	llvm_emit_br(c, phi_block);
+
+	llvm_emit_block(c, phi_block);
+
+	LLVMValueRef phi = LLVMBuildPhi(c->builder, llvm_get_type(c, expr->type), "val");
+	LLVMValueRef lhs = llvm_const_int(c, type_bool, expr->try_expr.is_try ? 1 : 0);
+	LLVMValueRef rhs = llvm_const_int(c, type_bool, expr->try_expr.is_try ? 0 : 1);
 
 	LLVMValueRef logic_values[2] = { lhs, rhs };
 	LLVMBasicBlockRef blocks[2] = { no_err_block, error_block };
@@ -2572,7 +2690,8 @@ void gencontext_emit_call_intrinsic_expr(GenContext *c, BEValue *be_value, Expr 
 
 void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, BEValue *be_value, Type *type)
 {
-	assert(be_value->type->canonical == type->canonical);
+	type = type_lowering(type);
+	assert(be_value->type->canonical == type);
 	switch (info->kind)
 	{
 		case ABI_ARG_IGNORE:
@@ -2921,6 +3040,25 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_attribute_add_call(c, call_value, attribute_alwaysinline, -1, 0);
 		}
 	}
+
+	for (unsigned i = 0; i < non_variadic_params; i++)
+	{
+		Decl *param = signature->params[i];
+		ABIArgInfo *info = param->var.abi_info;
+		switch (info->kind)
+		{
+			case ABI_ARG_INDIRECT:
+				if (info->indirect.by_val_type)
+				{
+					llvm_attribute_add_call(c, call_value, attribute_byval, i + 1, 0);
+				}
+				llvm_attribute_add_call(c, call_value, attribute_align, i + 1, info->indirect.alignment);
+				break;
+			default:
+				break;
+		}
+	}
+
 	// 11. Process the return value.
 	switch (ret_info->kind)
 	{
@@ -3327,6 +3465,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_UNDEF:
 			// Should never reach this.
 			UNREACHABLE
+		case EXPR_DECL:
+			llvm_emit_local_decl(c, expr->decl_expr);
+			return;
 		case EXPR_SLICE_ASSIGN:
 			gencontext_emit_slice_assign(c, value, expr);
 			return;
@@ -3340,7 +3481,13 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			gencontext_emit_failable(c, value, expr);
 			return;
 		case EXPR_TRY:
-		case EXPR_CATCH:
+			gencontext_emit_try_expr(c, value, expr);
+			return;
+		case EXPR_TRY_ASSIGN:
+			llvm_emit_try_assign_expr(c, value, expr);
+			return;
+		case EXPR_TRY_OLD:
+		case EXPR_CATCH_OLD:
 			gencontext_emit_trycatch_expr(c, value, expr);
 			return;
 		case EXPR_NOP:

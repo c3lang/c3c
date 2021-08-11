@@ -1,3 +1,4 @@
+// #skip
 // #target: x64_darwin
 
 extern func char*! readLine();
@@ -7,7 +8,7 @@ extern func int printf(char* fmt, ...);
 
 func void main()
 {
-    try (int val = atoi(readLine()))
+    tryx (int val = atoi(readLine()))
     {
             printf("You typed the number %d\n", val);
             return;

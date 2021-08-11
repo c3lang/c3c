@@ -851,6 +851,19 @@ typedef struct
 
 typedef struct
 {
+	bool is_try;
+	Expr *expr;
+} ExprTryExpr;
+
+typedef struct
+{
+	bool is_try;
+	Expr *expr;
+	Expr *init;
+} ExprTryAssign;
+
+typedef struct
+{
 	Expr *inner;
 } ExprLen;
 
@@ -876,6 +889,7 @@ struct Expr_
 		ExprStructValue struct_value_expr;
 		ExprGuard guard_expr;
 		Expr *trycatch_expr;
+		Decl *decl_expr;
 		ExprElse else_expr;
 		ExprFlatElement *flatpath_expr;
 		ExprSliceAssign slice_assign_expr;
@@ -885,6 +899,8 @@ struct Expr_
 		ExprPostUnary post_expr;
 		ExprCall call_expr;
 		ExprSlice slice_expr;
+		ExprTryExpr try_expr;
+		ExprTryAssign try_assign_expr;
 		ExprSubscript subscript_expr;
 		ExprAccess access_expr;
 		ExprDesignator designator_expr;
@@ -907,7 +923,7 @@ struct Expr_
 		ExprMacroBlock macro_block;
 
 		Expr* failable_expr;
-		Ast** dexpr_list_expr;
+		Expr** dexpr_list_expr;
 	};
 };
 
@@ -1205,7 +1221,8 @@ typedef struct Ast_
 		Ast** ct_compound_stmt;
 		Decl *declare_stmt;             // 8
 		Expr *expr_stmt;                // 8
-		AstTryStmt try_stmt;
+		AstTryStmt try_old_stmt;
+		Ast *try_stmt;
 		Decl *define_stmt;              // 8
 		Ast *volatile_stmt;             // 8
 		AstReturnStmt return_stmt;      // 16
@@ -1803,6 +1820,7 @@ bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr, 
 ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
+bool sema_analyse_local_decl(Context *context, Decl *decl);
 bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement);
 bool sema_analyse_statement(Context *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *left_type, Expr *right, ExprFailableStatus lhs_is_failable);
