@@ -3921,9 +3921,7 @@ static bool sema_expr_analyse_sub(Context *context, Type *to, Expr *expr, Expr *
 	// 8. Handle constant folding.
 	if (both_const(left, right))
 	{
-		expr->expr_kind = EXPR_CONST;
-		expr->const_expr.kind = left_type->type_kind;
-		expr_copy_types(expr, left);
+		expr_replace(expr, left);
 		switch (left_type->type_kind)
 		{
 			case ALL_INTS:
@@ -4002,8 +4000,7 @@ static bool sema_expr_analyse_add(Context *context, Type *to, Expr *expr, Expr *
 	// 5. Handle the "both const" case. We should only see ints and floats at this point.
 	if (both_const(left, right))
 	{
-		expr->expr_kind = EXPR_CONST;
-		expr->const_expr.kind = left->type->canonical->type_kind;
+		expr_replace(expr, left);
 		switch (left->const_expr.kind)
 		{
 			case ALL_INTS:
@@ -4051,8 +4048,7 @@ static bool sema_expr_analyse_mult(Context *context, Type *to, Expr *expr, Expr 
 	// 3. Handle constant folding.
 	if (both_const(left, right))
 	{
-		expr->expr_kind = EXPR_CONST;
-		expr->const_expr.kind = left->type->canonical->type_kind;
+		expr_replace(expr, left);
 
 		switch (left->const_expr.kind)
 		{
@@ -4113,6 +4109,7 @@ static bool sema_expr_analyse_div(Context *context, Type *to, Expr *expr, Expr *
 	// 4. Perform constant folding.
 	if (both_const(left, right))
 	{
+		expr_replace(expr, left);
 		switch (left->const_expr.kind)
 		{
 			case ALL_INTS:
@@ -4124,7 +4121,6 @@ static bool sema_expr_analyse_div(Context *context, Type *to, Expr *expr, Expr *
 			default:
 				UNREACHABLE
 		}
-		expr->expr_kind = EXPR_CONST;
 	}
 
 	// 5. Done.
