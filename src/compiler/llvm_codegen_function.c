@@ -633,14 +633,15 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 			decl->backend_ref = LLVMAddGlobal(context->module, llvm_get_type(context, decl->type), decl->extname ?: decl->external_name);
 			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
+		case DECL_BITSTRUCT:
 		case DECL_STRUCT:
 		case DECL_UNION:
-		case DECL_ERR:
 			llvm_emit_methods(context, decl->methods);
 			llvm_get_type(context, decl->type);
 			// TODO // Fix typeid
 			break;
 		case DECL_ENUM:
+		case DECL_ERRTYPE:
 			llvm_emit_methods(context, decl->methods);
 			// TODO // Fix typeid
 			return;
@@ -649,6 +650,7 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case NON_TYPE_DECLS:
 		case DECL_INTERFACE:
 		case DECL_ENUM_CONSTANT:
+		case DECL_ERRVALUE:
 			return;
 	}
 }

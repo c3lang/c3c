@@ -117,15 +117,16 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_ENUM:
 		case TYPE_STRLIT:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_ERRTYPE:
+		case TYPE_TYPEID:
+		case TYPE_ANYERR:
+		case TYPE_BITSTRUCT:
 			UNREACHABLE
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
 		case TYPE_POINTER:
-		case TYPE_TYPEID:
-		case TYPE_ERR_UNION:
 		case TYPE_SUBARRAY:
-		case TYPE_ERRTYPE:
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VIRTUAL:
 			return true;
@@ -292,10 +293,6 @@ static inline bool x86_can_expand_indirect_aggregate_arg(Type *type)
 	// arguments. If so, we prefer to do the latter to avoid inhibiting
 	// optimizations.
 
-	// Error unions can always be expanded since they are two pointers wide.
-	if (type->canonical->type_kind == TYPE_ERR_UNION) return true;
-
-	if (type->canonical->type_kind == TYPE_ERRTYPE) return true;
 	if (!type_is_union_struct(type)) return false;
 
 	ByteSize size = 0;
@@ -593,11 +590,14 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_TYPEDEF:
 		case TYPE_VOID:
 		case TYPE_ENUM:
+		case TYPE_ANYERR:
+		case TYPE_ERRTYPE:
 		case TYPE_DISTINCT:
 		case TYPE_FUNC:
 		case TYPE_TYPEID:
 		case TYPE_STRLIT:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_BITSTRUCT:
 			UNREACHABLE
 		case ALL_FLOATS:
 		case ALL_INTS:
@@ -606,14 +606,12 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 			return x86_classify_primitives(call, regs, type);
 		case TYPE_VECTOR:
 			return x86_classify_vector(regs, type);
-		case TYPE_ERRTYPE:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_SUBARRAY:
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VIRTUAL:
 		case TYPE_ARRAY:
-		case TYPE_ERR_UNION:
 			return x86_classify_aggregate(call, regs, type);
 		case TYPE_TYPEINFO:
 			UNREACHABLE

@@ -298,14 +298,14 @@ static inline LLVMValueRef gencontext_emit_load(GenContext *c, Type *type, LLVMV
 static inline LLVMValueRef decl_failable_ref(Decl *decl)
 {
 	assert(decl->decl_kind == DECL_VAR);
-	if (decl->var.kind == VARDECL_ALIAS) return decl_failable_ref(decl->var.alias);
+	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_failable_ref(decl->var.alias);
 	if (!decl->var.failable) return NULL;
 	return decl->var.failable_ref;
 }
 
 static inline LLVMValueRef decl_ref(Decl *decl)
 {
-	if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_ALIAS) return decl_ref(decl->var.alias);
+	if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED) return decl_ref(decl->var.alias);
 	return decl->backend_ref;
 }
 

@@ -1,8 +1,10 @@
-
 extern func int printf(char* fmt, ...);
 
 extern func int! err();
-errtype FooErr { int x; }
+errtype FooErr
+{
+    X
+}
 func void test1()
 {
     int! z = 234;
@@ -10,35 +12,16 @@ func void test1()
     {
         int y = z;
         z = 12;
-        z = FooErr({1})!; // #error: The variable is unwrapped in this context
+        z = FooErr.X!; // #error: The variable is unwrapped in this context
     }
 }
 
-func void test2()
-{
-    int! z = 234;
-    if (try z || 1)
-    {
-        z = 12;
-        z = FooErr({1})!;
-    }
-}
-func void test3()
-{
-    int! z = 234;
-    int! w = 123;
-    if (try z || try w)
-    {
-        int y = z; // #error: 'int!' cannot be converted into 'int'
-        y = w;
-    }
-}
 
 func void test4()
 {
     int! z = 234;
     int! w = 123;
-    if (try z && ((try w) && 1))
+    if (try z && try w && 1)
     {
         int y = z;
         y = w;
@@ -49,7 +32,16 @@ func void test5()
 {
     int! z = 234;
     int! w = 123;
-    if (try z && try z)
+    if (try z && try w)
+    {
+        int y = z;
+    }
+}
+func void test5b()
+{
+    int! z = 234;
+    int! w = 123;
+    if (try z && try z) // #error: This variable is already unwrapped, so you cannot use 'try' on it again, please remove the 'try'.
     {
         int y = z;
     }
@@ -83,12 +75,12 @@ func void test8()
 {
     int! z = 234;
     int! w = 123;
-    if (catch z && 1)
+    if (catch z)
     {
     }
     else
     {
-        int y = z; // #error: 'int!' cannot be converted into 'int'
+        int y = z;
     }
 }
 func void test9()

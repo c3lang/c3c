@@ -110,25 +110,25 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 
 void llvm_emit_decl_expr_list_ignore_result(GenContext *context, Expr *expr)
 {
-	assert(expr->expr_kind == EXPR_DECL_LIST);
-	VECEACH(expr->dexpr_list_expr, i)
+	assert(expr->expr_kind == EXPR_COND);
+	VECEACH(expr->cond_expr, i)
 	{
 		BEValue value;
-		llvm_emit_expr(context, &value, expr->dexpr_list_expr[i]);
+		llvm_emit_expr(context, &value, expr->cond_expr[i]);
 	}
 }
 
 void gencontext_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr, bool bool_cast)
 {
-	assert(expr->expr_kind == EXPR_DECL_LIST);
-	ByteSize size = vec_size(expr->dexpr_list_expr);
+	assert(expr->expr_kind == EXPR_COND);
+	ByteSize size = vec_size(expr->cond_expr);
 	ByteSize last_index = size - 1;
 	for (ByteSize i = 0; i < last_index; i++)
 	{
 		BEValue value;
-		llvm_emit_expr(context, &value, expr->dexpr_list_expr[i]);
+		llvm_emit_expr(context, &value, expr->cond_expr[i]);
 	}
-	Expr *last = expr->dexpr_list_expr[last_index];
+	Expr *last = expr->cond_expr[last_index];
 	Type *type = last->type;
 	llvm_emit_expr(context, be_value, last);
 	if (last->expr_kind == EXPR_DECL)

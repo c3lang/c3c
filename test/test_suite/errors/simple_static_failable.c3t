@@ -2,33 +2,26 @@
 
 module foo;
 
-errtype Blurg;
+errtype Blurg
+{
+    Y
+}
 
 func void main()
 {
     static int! x = 120;
-    int! i = Blurg!;
+    int! i = Blurg.Y!;
 }
 
 // #expect: foo.ll
 
-%error_union = type { i64, i64 }
-%Blurg = type { [8 x i8] }
-
-@Blurg = linkonce_odr constant i8 1
-@main.x.f = hidden global %error_union zeroinitializer, align 8
-@main.x = hidden global i32 120, align 4
-
-define void @main()
+define void @main() #0 {
+entry:
   %i = alloca i32, align 4
-  %i.f = alloca %error_union, align 8
-  %literal = alloca %Blurg, align 8
-  %0 = bitcast %Blurg* %literal to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 8 %0, i8 0, i64 8, i1 false)
-  %1 = load %Blurg, %Blurg* %literal, align 8
-  %2 = bitcast %error_union* %i.f to %Blurg*
-  store %Blurg %1, %Blurg* %2, align 1
+  %i.f = alloca i64, align 8
+  store i64 ptrtoint ([1 x i8*]* @"foo.Blurg$elements" to i64), i64* %i.f, align 8
   br label %after_assign
 
-after_assign:
+after_assign:                                     ; preds = %entry
   ret void
+}

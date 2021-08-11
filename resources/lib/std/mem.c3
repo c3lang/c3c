@@ -11,14 +11,10 @@ enum AllocationKind
     REALLOC,
     FREE,
 }
-enum AllocationFailureKind
-{
-    OUT_OF_MEMORY
-}
 
 errtype AllocationFailure
 {
-    AllocationFailureKind failureKind;
+    OUT_OF_MEMORY
 }
 
 define AllocatorFunction = func void!(void *data, void** pointer, usize bytes, usize alignment, AllocationKind kind);
@@ -35,12 +31,12 @@ func void! system_malloc_function(void *unused, void** pointer, usize bytes, usi
     {
         case ALLOC:
             void* data = _malloc(bytes);
-            if (!data) return AllocationFailure({ OUT_OF_MEMORY })!;
+            if (!data) return AllocationFailure.OUT_OF_MEMORY!;
             *pointer = data;
             return;
         case REALLOC:
             void* data = _realloc(*pointer, bytes);
-            if (!data) return AllocationFailure({ OUT_OF_MEMORY })!;
+            if (!data) return AllocationFailure.OUT_OF_MEMORY!;
             *pointer = data;
             return;
         case FREE:

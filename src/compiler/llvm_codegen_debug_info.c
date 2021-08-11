@@ -520,9 +520,12 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_pointer_type(c, type);
 		case TYPE_ENUM:
 			return type->backend_debug_type = llvm_debug_enum_type(c, type, scope);
+		case TYPE_ERRTYPE:
+			return type->backend_debug_type = llvm_debug_enum_type(c, type, scope);
 		case TYPE_FUNC:
 			return type->backend_debug_type = llvm_debug_func_type(c, type);
-		case TYPE_ERRTYPE:
+		case TYPE_BITSTRUCT:
+			TODO
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return type->backend_debug_type = llvm_debug_structlike_type(c, type, scope);
@@ -533,7 +536,8 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_array_type(c, type);
 		case TYPE_SUBARRAY:
 			return type->backend_debug_type = llvm_debug_subarray_type(c, type);
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
+			// TODO
 			return type->backend_debug_type = llvm_debug_errunion_type(c, type);
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:

@@ -279,7 +279,7 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 		case DECL_UNION:
 			domain = ATTR_UNION;
 			break;
-		case DECL_ERR:
+		case DECL_ERRTYPE:
 			domain = ATTR_ERROR;
 			break;
 		default:
@@ -356,6 +356,75 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 	DEBUG_LOG("Struct/union size %d, alignment %d.", (int)decl->strukt.size, (int)decl->alignment);
 	DEBUG_LOG("Analysis complete.");
 	if (!success) return decl_poison(decl);
+	return decl_ok(decl);
+}
+
+static bool sema_analyse_bitstruct(Context *context, Decl *decl)
+{
+	VECEACH(decl->attributes, i)
+	{
+		Attr *attr = decl->attributes[i];
+
+		AttributeType attribute = sema_analyse_attribute(context, attr, ATTR_BITSTRUCT);
+		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
+
+		bool had = false;
+		int overlap = -1;
+#define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
+		switch (attribute)
+		{
+			case ATTRIBUTE_OVERLAP:
+				had = overlap != -1;
+				overlap = 1;
+				break;
+			case ATTRIBUTE_OPAQUE:
+				had = decl->is_opaque;
+				decl->is_opaque = true;
+				break;
+			default:
+				UNREACHABLE
+		}
+#undef SET_ATTR
+		if (had)
+		{
+			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			return decl_poison(decl);
+		}
+	}
+
+	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : "anon");
+	if (!sema_resolve_type_info(context, decl->bitstruct.base_type)) return false;
+	Type *type = decl->bitstruct.base_type->type->canonical;
+	Type *base_type = type->type_kind == TYPE_ARRAY ? type->array.base : type;
+	if (!type_is_integer(base_type))
+	{
+		SEMA_ERROR(decl->bitstruct.base_type, "The type of the bitstruct cannot be %s but must be an integer or an array of integers.",
+		           type_quoted_error_string(decl->bitstruct.base_type->type));
+		return false;
+	}
+	Decl **members = decl->bitstruct.members;
+	bool success = true;
+	SCOPE_START
+		VECEACH(members, i)
+		{
+			Decl *member = members[i];
+			if (!sema_resolve_type_info(context, member->var.type_info))
+			{
+				success = false;
+				continue;
+			}
+			Type *member_type = type_flatten_for_bitstruct(member->var.type_info->type);
+			if (!type_is_integer(member_type) && member_type != type_bool)
+			{
+				SEMA_ERROR(member->var.type_info, "%s is not supported in a bitstruct, only enums, integer and boolean values may be used.",
+				           type_quoted_error_string(member->var.type_info->type));
+				success = false;
+				continue;
+			}
+		}
+	SCOPE_END;
+	if (!success) return decl_poison(decl);
+	TODO
 	return decl_ok(decl);
 }
 
@@ -495,9 +564,9 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 			SEMA_ERROR(decl, "You cannot create a distinct type from a virtual type.");
 			return false;
 		case TYPE_ERRTYPE:
-			SEMA_ERROR(decl, "You cannot create a distinct type from an error.");
+			SEMA_ERROR(decl, "You cannot create a distinct type from an error type.");
 			return false;
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 			SEMA_ERROR(decl, "You cannot create a distinct type from an error union.");
 			return false;
 		case TYPE_VOID:
@@ -509,6 +578,7 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 		case ALL_REAL_FLOATS:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
+		case TYPE_BITSTRUCT:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ARRAY:
@@ -596,6 +666,29 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 		// Update the value
 		bigint_add(&value, &expr->const_expr.i, &add);
 		DEBUG_LOG("* Value: %s", expr_const_to_error_string(&expr->const_expr));
+		enum_value->resolve_status = RESOLVE_DONE;
+	}
+	return success;
+}
+
+static inline bool sema_analyse_error(Context *context, Decl *decl)
+{
+	bool success = true;
+	unsigned enums = vec_size(decl->enums.values);
+
+	for (unsigned i = 0; i < enums; i++)
+	{
+		Decl *enum_value = decl->enums.values[i];
+		enum_value->type = decl->type;
+		DEBUG_LOG("* Checking error value %s.", enum_value->name);
+		enum_value->enum_constant.ordinal = i;
+		DEBUG_LOG("* Ordinal: %d", i);
+		assert(enum_value->resolve_status == RESOLVE_NOT_DONE);
+		assert(enum_value->decl_kind == DECL_ERRVALUE);
+
+		// Start evaluating the constant
+		enum_value->resolve_status = RESOLVE_RUNNING;
+		enum_value->enum_constant.expr = NULL;
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
 	return success;
@@ -692,6 +785,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 {
 	switch (domain)
 	{
+		case ATTR_BITSTRUCT:
+			return "bitstruct";
 		case ATTR_INTERFACE:
 			return "interface";
 		case ATTR_MEMBER:
@@ -729,7 +824,7 @@ AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDoma
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
 			[ATTRIBUTE_EXTNAME] = ~ATTR_CALL,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
-			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION | ATTR_ERROR,
+			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_VAR | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
@@ -743,6 +838,7 @@ AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDoma
 			[ATTRIBUTE_VECCALL] = ATTR_FUNC,
 			[ATTRIBUTE_REGCALL] = ATTR_FUNC,
 			[ATTRIBUTE_FASTCALL] = ATTR_FUNC,
+			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
@@ -1048,7 +1144,9 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 			case VARDECL_MEMBER:
 			case VARDECL_LOCAL_CT:
 			case VARDECL_LOCAL_CT_TYPE:
-			case VARDECL_ALIAS:
+			case VARDECL_UNWRAPPED:
+			case VARDECL_REWRAPPED:
+			case VARDECL_ERASE:
 				UNREACHABLE
 		}
 		param->resolve_status = RESOLVE_DONE;
@@ -1080,7 +1178,9 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 			case VARDECL_MEMBER:
 			case VARDECL_LOCAL_CT:
 			case VARDECL_LOCAL_CT_TYPE:
-			case VARDECL_ALIAS:
+			case VARDECL_UNWRAPPED:
+			case VARDECL_REWRAPPED:
+			case VARDECL_ERASE:
 				UNREACHABLE
 		}
 		param->resolve_status = RESOLVE_DONE;
@@ -1359,31 +1459,6 @@ static inline bool sema_analyse_define(Context *c, Decl *decl)
 }
 
 
-/**
- * Semantic analysis on an error first checks the internals as if it was
- * a struct, then checks that the size is not exceeded and adds padding.
- */
-static inline bool sema_analyse_error(Context *context, Decl *decl)
-{
-	// 1. Step one is to analyze the error as it it was a regular struct.
-	if (!sema_analyse_struct_union(context, decl)) return false;
-
-	// 2. Because an error is always pointer sized, we check so that it isn't exceeded.
-	ByteSize error_full_size = type_size(type_uptr);
-	if (decl->strukt.size > error_full_size)
-	{
-		SEMA_ERROR(decl, "Error type may not exceed pointer size (%d bytes) it was %d bytes.", error_full_size, decl->strukt.size);
-		return false;
-	}
-
-	// 3. If the size is smaller than than pointer sized, we add padding.
-	if (decl->strukt.size < error_full_size)
-	{
-		decl->strukt.padding = error_full_size - decl->strukt.size;
-		decl->strukt.size = error_full_size;
-	}
-	return true;
-}
 
 
 bool sema_analyse_decl(Context *context, Decl *decl)
@@ -1404,6 +1479,10 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 	{
 		case DECL_INTERFACE:
 			TODO
+		case DECL_BITSTRUCT:
+			if (!sema_analyse_bitstruct(context, decl)) return decl_poison(decl);
+			decl_set_external_name(decl);
+			break;
 		case DECL_STRUCT:
 		case DECL_UNION:
 			if (!sema_analyse_struct_union(context, decl)) return decl_poison(decl);
@@ -1431,7 +1510,7 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 			if (!sema_analyse_enum(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
-		case DECL_ERR:
+		case DECL_ERRTYPE:
 			if (!sema_analyse_error(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
@@ -1451,6 +1530,7 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_CT_CASE:
 		case DECL_CT_IF:
 		case DECL_CT_ASSERT:
+		case DECL_ERRVALUE:
 			UNREACHABLE
 	}
 	decl->resolve_status = RESOLVE_DONE;

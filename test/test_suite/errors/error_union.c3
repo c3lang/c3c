@@ -1,6 +1,9 @@
 module foo;
 
-errtype Blurg;
+errtype Blurg
+{
+    X, Y, Z
+}
 
 func void main()
 {

@@ -216,7 +216,8 @@ Type argh = 234;
 
 errtype MyErr
 {
-    Type x;
+    X,
+    Y
 }
 
 enum Hello : int

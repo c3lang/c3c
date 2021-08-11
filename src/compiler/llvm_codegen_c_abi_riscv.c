@@ -160,7 +160,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 	}
 
 
-	if (is_fixed && platform_target.riscv.flen && (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_ERRTYPE))
+	if (is_fixed && platform_target.riscv.flen && type->type_kind == TYPE_STRUCT)
 	{
 		AbiType *field1 = NULL;
 		AbiType *field2 = NULL;

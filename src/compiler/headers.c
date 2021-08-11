@@ -32,6 +32,8 @@ static void header_print_type(FILE *file, Type *type)
 	{
 		case TYPE_POISONED:
 			UNREACHABLE
+		case TYPE_BITSTRUCT:
+			TODO
 		case TYPE_VOID:
 			OUTPUT("void");
 			return;
@@ -90,6 +92,7 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT("*");
 			return;
 		case TYPE_ENUM:
+		case TYPE_ERRTYPE:
 			OUTPUT("enum %s__", type->decl->external_name);
 			return;
 		case TYPE_FUNC:
@@ -103,9 +106,7 @@ static void header_print_type(FILE *file, Type *type)
 		case TYPE_DISTINCT:
 			header_print_type(file, type->decl->distinct_decl.base_type);
 			return;
-		case TYPE_ERRTYPE:
-			break;
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 			break;
 		case TYPE_TYPEDEF:
 			break;
@@ -192,11 +193,13 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 	{
 		case NON_TYPE_DECLS:
 		case DECL_ENUM_CONSTANT:
+		case DECL_ERRVALUE:
 		case DECL_POISONED:
 		case DECL_VAR:
 		case DECL_INTERFACE:
 			UNREACHABLE
 		case DECL_FUNC:
+		case DECL_BITSTRUCT:
 			TODO
 		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
@@ -210,7 +213,7 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 		case DECL_ENUM:
 			header_gen_enum(file, indent, decl);
 			return;
-		case DECL_ERR:
+		case DECL_ERRTYPE:
 			header_gen_err(file, indent, decl);
 			return;
 	}

@@ -23,45 +23,35 @@ entry:
   %val = alloca i32, align 4
   %retparam = alloca i32, align 4
   %retparam1 = alloca i8*, align 8
-  %result = alloca %error_union, align 8
-  %result2 = alloca %error_union, align 8
   store i32 0, i32* %val, align 4
-  %0 = call { i64, i64 } @readLine(i8** %retparam1)
-  %1 = bitcast %error_union* %result to { i64, i64 }*
-  store { i64, i64 } %0, { i64, i64 }* %1, align 8
-  %err_domain = getelementptr inbounds %error_union, %error_union* %result, i32 0, i32 0
-  %2 = load i64, i64* %err_domain, align 8
-  %not_err = icmp eq i64 %2, 0
-  br i1 %not_err, label %after_check, label %catch_landing
+  %0 = call i64 @readLine(i8** %retparam1)
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after.errcheck, label %catch_landing
 
-after_check:
-  %3 = load i8*, i8** %retparam1, align 8
-  %4 = call { i64, i64 } @atoi(i32* %retparam, i8* %3)
-  %5 = bitcast %error_union* %result2 to { i64, i64 }*
-  store { i64, i64 } %4, { i64, i64 }* %5, align 8
-  %err_domain3 = getelementptr inbounds %error_union, %error_union* %result2, i32 0, i32 0
-  %6 = load i64, i64* %err_domain3, align 8
-  %not_err4 = icmp eq i64 %6, 0
-  br i1 %not_err4, label %after_check5, label %catch_landing
+after.errcheck:                                   ; preds = %entry
+  %1 = load i8*, i8** %retparam1, align 8
+  %2 = call i64 @atoi(i32* %retparam, i8* %1)
+  %not_err2 = icmp eq i64 %2, 0
+  br i1 %not_err2, label %after.errcheck3, label %catch_landing
 
-after_check5:
-  %7 = load i32, i32* %retparam, align 4
-  store i32 %7, i32* %val, align 4
+after.errcheck3:                                  ; preds = %after.errcheck
+  %3 = load i32, i32* %retparam, align 4
+  store i32 %3, i32* %val, align 4
   br label %phi_try_catch
 
-catch_landing:
+catch_landing:                                    ; preds = %after.errcheck, %entry
   br label %phi_try_catch
 
-phi_try_catch:
-  %val6 = phi i1 [ true, %after_check5 ], [ false, %catch_landing ]
-  br i1 %val6, label %if.then, label %if.exit
+phi_try_catch:                                    ; preds = %catch_landing, %after.errcheck3
+  %val4 = phi i1 [ true, %after.errcheck3 ], [ false, %catch_landing ]
+  br i1 %val4, label %if.then, label %if.exit
 
-if.then:
-  %8 = load i32, i32* %val, align 4
-  %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @.str, i32 0, i32 0), i32 %8)
+if.then:                                          ; preds = %phi_try_catch
+  %4 = load i32, i32* %val, align 4
+  %5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @.str, i32 0, i32 0), i32 %4)
   ret void
 
-if.exit:
-  %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @.str.1, i32 0, i32 0))
+if.exit:                                          ; preds = %phi_try_catch
+  %6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @.str.1, i32 0, i32 0))
   ret void
 }

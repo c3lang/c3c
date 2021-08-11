@@ -187,7 +187,8 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_TYPEDEF:
-		case DECL_ERR:
+		case DECL_ERRTYPE:
+		case DECL_BITSTRUCT:
 			vec_add(context->types, decl);
 			decl_set_external_name(decl);
 			break;
@@ -202,6 +203,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_ARRAY_VALUE:
 			vec_add(context->incr_array, decl);
 			return;
+		case DECL_ERRVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_CT_ELSE:

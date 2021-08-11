@@ -77,11 +77,25 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_UNDEF:
 		case EXPR_NOP:
 			return expr;
+		case EXPR_TRY_DECL:
+			MACRO_COPY_DECL(expr->try_decl_expr.decl);
+			return expr;
 		case EXPR_DECL:
 			MACRO_COPY_DECL(expr->decl_expr);
 			return expr;
 		case EXPR_CT_CALL:
 			MACRO_COPY_EXPR_LIST(expr->ct_call_expr.arguments);
+			return expr;
+		case EXPR_TRY_UNWRAP:
+			MACRO_COPY_EXPR(expr->try_unwrap_expr.init);
+			MACRO_COPY_TYPE(expr->try_unwrap_expr.type);
+			return expr;
+		case EXPR_TRY_UNWRAP_CHAIN:
+			MACRO_COPY_EXPR_LIST(expr->try_unwrap_chain_expr);
+			return expr;
+		case EXPR_CATCH_UNWRAP:
+			MACRO_COPY_EXPR_LIST(expr->catch_unwrap_expr.exprs);
+			MACRO_COPY_TYPE(expr->catch_unwrap_expr.type);
 			return expr;
 		case EXPR_PLACEHOLDER:
 		case EXPR_CONST_IDENTIFIER:
@@ -111,10 +125,6 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_LEN:
 			MACRO_COPY_EXPR(expr->len_expr.inner);
 			return expr;
-		case EXPR_CATCH_OLD:
-		case EXPR_TRY_OLD:
-			MACRO_COPY_EXPR(expr->trycatch_expr);
-			return expr;
 		case EXPR_TRY_ASSIGN:
 			MACRO_COPY_EXPR(expr->try_assign_expr.expr);
 			MACRO_COPY_EXPR(expr->try_assign_expr.init);
@@ -122,8 +132,8 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_TRY:
 			MACRO_COPY_EXPR(expr->try_expr.expr);
 			return expr;
-		case EXPR_DECL_LIST:
-			MACRO_COPY_EXPR_LIST(expr->dexpr_list_expr);
+		case EXPR_COND:
+			MACRO_COPY_EXPR_LIST(expr->cond_expr);
 			return expr;
 		case EXPR_FAILABLE:
 			MACRO_COPY_EXPR(expr->failable_expr);
@@ -496,12 +506,12 @@ Decl *copy_decl(Decl *decl)
 			break;
 		case DECL_UNION:
 		case DECL_STRUCT:
-		case DECL_ERR:
 			copy_decl_type(copy);
 			MACRO_COPY_DECL_LIST(copy->strukt.members);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
 		case DECL_ENUM:
+			case DECL_ERRTYPE:
 			copy_decl_type(copy);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			MACRO_COPY_DECL_LIST(copy->enums.parameters);
@@ -521,7 +531,7 @@ Decl *copy_decl(Decl *decl)
 			break;
 		case DECL_VAR:
 			MACRO_COPY_TYPE(copy->var.type_info);
-			if (copy->var.kind == VARDECL_ALIAS)
+			if (copy->var.kind == VARDECL_UNWRAPPED)
 			{
 				MACRO_COPY_DECL(copy->var.alias);
 			}
@@ -530,10 +540,17 @@ Decl *copy_decl(Decl *decl)
 				MACRO_COPY_EXPR(copy->var.init_expr);
 			}
 			break;
+		case DECL_BITSTRUCT:
+			TODO
+			break;
 		case DECL_LABEL:
 			TODO
 			break;
 		case DECL_ENUM_CONSTANT:
+			MACRO_COPY_EXPR(copy->enum_constant.expr);
+			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
+			break;
+		case DECL_ERRVALUE:
 			MACRO_COPY_EXPR(copy->enum_constant.expr);
 			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
 			break;

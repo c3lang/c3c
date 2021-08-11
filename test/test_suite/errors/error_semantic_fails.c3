@@ -1,5 +1,5 @@
-errtype TooBig // #error: Error type may not exceed pointer
+errtype Repeater
 {
-    usize a;
-    ichar b;
+    A,
+    A // #error: This enum constant is declared twice.
 }

@@ -27,7 +27,7 @@ void error_exit(const char *format, ...) __attribute__((noreturn));
 
 #define ASSERT(_condition, _string, ...) while (!(_condition)) { FATAL_ERROR(_string, ##__VA_ARGS__); }
 
-#define UNREACHABLE FATAL_ERROR("Cannot reach %s:%d", __func__, __LINE__);
+#define UNREACHABLE FATAL_ERROR("Should be unreachable");
 
 #if defined(__GNUC__) && __GNUC__ >= 7
 #define FALLTHROUGH __attribute__ ((fallthrough))

@@ -2,19 +2,18 @@ module errors;
 
 errtype TheError
 {
-    int a;
+    A
 }
 
 errtype TheError2
 {
-    char a;
-    char b;
+    A,
+    B
 }
 
 errtype TheError3
 {
-    void *a;
+    C, D
 }
 
-errtype OtherError;
 
