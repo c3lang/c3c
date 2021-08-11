@@ -6,73 +6,40 @@
 
 #pragma mark --- Helper functions
 
-static void sema_add_unwraps_from_try(Context *c, Expr *last_expr)
+
+
+static void sema_unwrappable_from_catch_in_else(Context *c, Expr *cond)
 {
-	if (last_expr->expr_kind == EXPR_DECL_LIST)
+	assert(cond->expr_kind == EXPR_COND);
+
+	Expr *last = VECLAST(cond->cond_expr);
+	while (last->expr_kind == EXPR_CAST)
 	{
-		unsigned elements = vec_size(last_expr->dexpr_list_expr);
-		if (!elements) return;
-		last_expr = last_expr->dexpr_list_expr[elements - 1];
+		last = last->cast_expr.expr;
 	}
-	// Flatten group.
-	while (last_expr->expr_kind == EXPR_GROUP) last_expr = last_expr->group_expr;
-	if (last_expr->expr_kind == EXPR_TRY && last_expr->try_expr.is_try &&
-		last_expr->try_expr.expr->expr_kind == EXPR_IDENTIFIER)
+	if (!last || last->expr_kind != EXPR_CATCH_UNWRAP) return;
+
+	Expr **unwrapped = last->catch_unwrap_expr.exprs;
+
+	VECEACH(unwrapped, i)
 	{
-		Decl *var = last_expr->try_expr.expr->identifier_expr.decl;
-		if (var->decl_kind != DECL_VAR || !var->var.failable) return;
-		sema_unwrap_var(c, var);
-		return;
-	}
-	if (last_expr->expr_kind != EXPR_BINARY || last_expr->binary_expr.operator != BINARYOP_AND) return;
-	sema_add_unwraps_from_try(c, last_expr->binary_expr.left);
-	sema_add_unwraps_from_try(c, last_expr->binary_expr.right);
-}
+		Expr *expr = unwrapped[i];
+		if (expr->expr_kind != EXPR_IDENTIFIER) continue;
+		Decl *decl = expr->identifier_expr.decl;
+		if (decl->decl_kind != DECL_VAR) continue;
+		assert(decl->var.failable && "The variable should always be failable at this point.");
 
-static Decl *sema_find_unwrappable_from_catch(Context *c, Expr *last_expr)
-{
-	// 1. Flatten a decl list.
-	if (last_expr->expr_kind == EXPR_DECL_LIST)
-	{
-		unsigned elements = vec_size(last_expr->dexpr_list_expr);
-		if (!elements) return NULL;
-		last_expr = last_expr->dexpr_list_expr[elements - 1];
-	}
+		// 5. Locals and globals may be unwrapped
+		switch (decl->var.kind)
+		{
+			case VARDECL_LOCAL:
+			case VARDECL_GLOBAL:
+				sema_unwrap_var(c, decl);
+				break;
+			default:
+				continue;
+		}
 
-	// Flatten groups on top.
-	while (last_expr->expr_kind == EXPR_GROUP) last_expr = last_expr->group_expr;
-
-	Expr *variable = NULL;
-
-	// 1. Get the variable in "if (check x)"
-	if (last_expr->expr_kind == EXPR_TRY && !last_expr->try_expr.is_try)
-	{
-		variable = last_expr->try_expr.expr;
-	}
-	// 2. Get the variable in "if (check err = x)"
-	if (last_expr->expr_kind == EXPR_TRY_ASSIGN && !last_expr->try_assign_expr.is_try)
-	{
-		variable = last_expr->try_assign_expr.init;
-	}
-
-	// 3. Not found or not identifier -> exit
-	if (!variable || variable->expr_kind != EXPR_IDENTIFIER) return NULL;
-
-	Decl *decl = variable->identifier_expr.decl;
-
-	// 4. Not a var declaration, when could this happen...? Possibly redundant check.
-	if (decl->decl_kind != DECL_VAR) return NULL;
-
-	assert(decl->var.failable && "The variable should always be failable at this point.");
-
-	// 5. Locals and globals may be unwrapped
-	switch (decl->var.kind)
-	{
-		case VARDECL_LOCAL:
-		case VARDECL_GLOBAL:
-			return decl;
-		default:
-			return NULL;
 	}
 }
 
@@ -149,6 +116,297 @@ static inline bool sema_analyse_unreachable_stmt(Context *context)
 	return true;
 }
 
+static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
+{
+	assert(expr->expr_kind == EXPR_TRY_UNWRAP);
+	Expr *ident = expr->try_unwrap_expr.variable;
+	Expr *failable = expr->try_unwrap_expr.init;
+
+	// Case A. Unwrapping a single variable.
+	if (!failable)
+	{
+		if (!sema_analyse_expr(context, NULL, ident)) return false;
+		if (ident->expr_kind != EXPR_IDENTIFIER)
+		{
+			SEMA_ERROR(ident, "Only single identifiers may be unwrapped using 'try var', maybe you wanted 'try (expr)' instead?");
+			return false;
+		}
+		Decl *decl = ident->identifier_expr.decl;
+		if (decl->decl_kind != DECL_VAR)
+		{
+			SEMA_ERROR(ident, "Expected this to be the name of a failable variable, but it isn't. Did you mistype?");
+			return false;
+		}
+		if (!decl->var.failable)
+		{
+			if (decl->var.kind == VARDECL_UNWRAPPED)
+			{
+				SEMA_ERROR(ident, "This variable is already unwrapped, so you cannot use 'try' on it again, please remove the 'try'.");
+				return false;
+			}
+			SEMA_ERROR(ident, "Expected this variable to be a failable, otherwise it can't be used for unwrap, maybe you didn't intend to use 'try'?");
+			return false;
+		}
+		expr->try_unwrap_expr.decl = decl;
+		expr_set_type(expr, type_bool);
+		sema_unwrap_var(context, decl);
+		expr->resolve_status = RESOLVE_DONE;
+		return true;
+	}
+
+	// Case B. We are unwrapping to a variable that may or may not exist.
+	bool implicit_declaration = false;
+	TypeInfo *var_type = expr->try_unwrap_expr.type;
+
+	// 1. Check if we are doing an implicit declaration.
+	if (!var_type && ident->expr_kind == EXPR_IDENTIFIER)
+	{
+		Decl *decl = sema_resolve_normal_symbol(context, ident->identifier_expr.identifier, NULL, false);
+		if (!decl) implicit_declaration = true;
+	}
+
+	// 2. If we have a type for the variable, resolve it.
+	if (var_type && !sema_resolve_type_info(context, var_type)) return false;
+
+	// 3. We interpret this as an assignment to an existing variable.
+	if (!var_type && !implicit_declaration)
+	{
+		// 3a. Resolve the identifier.
+		if (!sema_analyse_expr_value(context, NULL, ident)) return false;
+
+		// 3b. Make sure it's assignable
+		if (!expr_is_ltype(ident))
+		{
+			SEMA_ERROR(ident, "'try' expected an assignable variable or expression here, did you make a mistake?");
+			return false;
+		}
+
+		// 3c. It can't be failable either.
+		if (ident->failable)
+		{
+			if (ident->expr_kind == EXPR_IDENTIFIER)
+			{
+				SEMA_ERROR(ident, "This is a failable variable, you should only have non-failable variables on the left side unless you use 'try' without '='.");
+			}
+			else
+			{
+				SEMA_ERROR(ident, "This is a failable expression, it can't go on the left hand side of a 'try'.");
+			}
+			return false;
+		}
+
+		// 3d. We can now analyse the expression using the variable type.
+		if (!sema_analyse_expr_of_required_type(context, ident->type, failable, true)) return false;
+
+		expr->try_unwrap_expr.assign_existing = true;
+		expr->try_unwrap_expr.lhs = ident;
+	}
+	else
+	{
+		// 4. We are creating a new variable
+
+		// 4a. If we had a variable type, then our expression must be an identifier.
+		if (ident->expr_kind != EXPR_IDENTIFIER)
+		{
+			SEMA_ERROR(ident, "A variable name was expected here.");
+			return false;
+		}
+
+		if (ident->identifier_expr.path)
+		{
+			sema_error_range(ident->identifier_expr.path->span, "The variable may not have a path.");
+			return false;
+		}
+
+		TokenId ident_token = ident->identifier_expr.identifier;
+
+		if (TOKTYPE(ident_token) != TOKEN_IDENT)
+		{
+			SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
+			return false;
+		}
+
+		// 4a. Type may be assigned or inferred.
+		Type *type = var_type ? var_type->type : NULL;
+
+		// 4b. Evaluate the expression
+		if (!sema_analyse_expr_of_required_type(context, type, failable, true)) return false;
+
+		// 4c. Create a type_info if needed.
+		if (!var_type)
+		{
+			var_type = type_info_new_base(failable->type, failable->span);
+		}
+
+		// 4d. A new declaration is created.
+		Decl *decl = decl_new_var(ident_token, var_type, VARDECL_LOCAL, VISIBLE_LOCAL);
+
+		// 4e. Analyse it
+		if (!sema_analyse_local_decl(context, decl)) return false;
+
+		expr->try_unwrap_expr.decl = decl;
+	}
+
+	if (!failable->failable)
+	{
+		SEMA_ERROR(failable, "Expected a failable expression to 'try' here. If it isn't a failable, remove 'try'.");
+		return false;
+	}
+
+	expr->try_unwrap_expr.failable = failable;
+	expr_set_type(expr, type_bool);
+	expr->resolve_status = RESOLVE_DONE;
+	return true;
+}
+static inline bool sema_analyse_try_unwrap_chain(Context *context, Expr *expr)
+{
+	assert(expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
+	VECEACH(expr->try_unwrap_chain_expr, i)
+	{
+		Expr *chain = expr->try_unwrap_chain_expr[i];
+		if (chain->expr_kind == EXPR_TRY_UNWRAP)
+		{
+			if (!sema_analyse_try_unwrap(context, chain)) return false;
+			continue;
+		}
+		if (!sema_analyse_expr_of_required_type(context, type_bool, chain, false)) return false;
+	}
+	expr_set_type(expr, type_bool);
+	expr->resolve_status = RESOLVE_DONE;
+	return true;
+}
+static inline bool sema_analyse_catch_unwrap(Context *context, Expr *expr)
+{
+	Expr *ident = expr->catch_unwrap_expr.variable;
+
+	bool implicit_declaration = false;
+	TypeInfo *type = expr->catch_unwrap_expr.type;
+
+	if (!type && !ident)
+	{
+		expr->catch_unwrap_expr.lhs = NULL;
+		expr->catch_unwrap_expr.decl = NULL;
+		goto RESOLVE_EXPRS;
+	}
+	if (!type && ident->expr_kind == EXPR_IDENTIFIER)
+	{
+		Decl *decl = sema_resolve_normal_symbol(context, ident->identifier_expr.identifier, NULL, false);
+		if (!decl) implicit_declaration = true;
+	}
+
+	if (!type && !implicit_declaration)
+	{
+		if (!sema_analyse_expr_value(context, NULL, ident)) return false;
+
+		if (!expr_is_ltype(ident))
+		{
+			SEMA_ERROR(ident, "'catch' expected an assignable variable or expression here, did you make a mistake?");
+			return false;
+		}
+
+		if (ident->type->canonical != type_anyerr)
+		{
+			SEMA_ERROR(ident, "Expected the variable to have the type %s, not %s.", type_quoted_error_string(type_anyerr),
+					   type_quoted_error_string(type->type));
+			return false;
+		}
+
+		expr->catch_unwrap_expr.lhs = ident;
+		expr->catch_unwrap_expr.decl = NULL;
+	}
+	else
+	{
+		type = type ?: type_info_new_base(type_anyerr, expr->span);
+
+		if (!sema_resolve_type_info(context, type)) return false;
+
+		if (type->type->canonical != type_anyerr)
+		{
+			SEMA_ERROR(type, "Expected the type to be %s, not %s.", type_quoted_error_string(type_anyerr),
+					   type_quoted_error_string(type->type));
+			return false;
+		}
+		if (ident->expr_kind != EXPR_IDENTIFIER)
+		{
+			SEMA_ERROR(ident, "A variable name was expected here.");
+			return false;
+		}
+
+		if (ident->identifier_expr.path)
+		{
+			sema_error_range(ident->identifier_expr.path->span, "The variable may not have a path.");
+			return false;
+		}
+
+		TokenId ident_token = ident->identifier_expr.identifier;
+
+		if (TOKTYPE(ident_token) != TOKEN_IDENT)
+		{
+			SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
+			return false;
+		}
+
+		// 4d. A new declaration is created.
+		Decl *decl = decl_new_var(ident_token, type, VARDECL_LOCAL, VISIBLE_LOCAL);
+		decl->var.init_expr = expr_new(EXPR_UNDEF, decl->span);
+
+		// 4e. Analyse it
+		if (!sema_analyse_local_decl(context, decl)) return false;
+
+		expr->catch_unwrap_expr.decl = decl;
+		expr->catch_unwrap_expr.lhs = NULL;
+	}
+RESOLVE_EXPRS:;
+	Expr **exprs = expr->catch_unwrap_expr.exprs;
+	VECEACH(exprs, i)
+	{
+		Expr *fail = exprs[i];
+		if (!sema_analyse_expr(context, NULL, fail)) return false;
+		if (!fail->failable)
+		{
+			SEMA_ERROR(fail, "This expression is not failable, did you add it by mistake?");
+			return false;
+		}
+	}
+	expr_set_type(expr, type_anyerr);
+	expr->resolve_status = RESOLVE_DONE;
+	return true;
+}
+
+static void sema_remove_unwraps_from_try(Context *c, Expr *cond)
+{
+	assert(cond->expr_kind == EXPR_COND);
+	Expr *last = VECLAST(cond->cond_expr);
+	if (!last || last->expr_kind != EXPR_TRY_UNWRAP_CHAIN) return;
+	Expr **chain = last->try_unwrap_chain_expr;
+	VECEACH(chain, i)
+	{
+		Expr *expr = chain[i];
+		if (expr->expr_kind != EXPR_TRY_UNWRAP) continue;
+		if (expr->try_unwrap_expr.assign_existing) continue;
+		if (expr->try_unwrap_expr.failable)
+		{
+			sema_erase_var(c, expr->try_unwrap_expr.decl);
+		}
+		else
+		{
+			sema_erase_unwrapped(c, expr->try_unwrap_expr.decl);
+		}
+	}
+}
+
+static inline bool sema_analyse_last_cond(Context *context, Expr *expr)
+{
+	switch (expr->expr_kind)
+	{
+		case EXPR_TRY_UNWRAP_CHAIN:
+			return sema_analyse_try_unwrap_chain(context, expr);
+		case EXPR_CATCH_UNWRAP:
+			return sema_analyse_catch_unwrap(context, expr);
+		default:
+			return sema_analyse_expr(context, NULL, expr);
+	}
+}
 /**
  * An decl-expr-list is a list of a mixture of declarations and expressions.
  * The last declaration or expression is propagated. So for example:
@@ -157,11 +415,11 @@ static inline bool sema_analyse_unreachable_stmt(Context *context)
  *
  * In this case the final value is 4.0 and the type is float.
  */
-static inline bool sema_analyse_decl_expr_list(Context *context, Expr *expr)
+static inline bool sema_analyse_cond_list(Context *context, Expr *expr, bool may_unwrap)
 {
-	assert(expr->expr_kind == EXPR_DECL_LIST);
+	assert(expr->expr_kind == EXPR_COND);
 
-	Expr **dexprs = expr->dexpr_list_expr;
+	Expr **dexprs = expr->cond_expr;
 	unsigned entries = vec_size(dexprs);
 
 	// 1. Special case, there are no entries, so the type is void
@@ -172,12 +430,15 @@ static inline bool sema_analyse_decl_expr_list(Context *context, Expr *expr)
 	}
 
 	// 2. Walk through each of our declarations / expressions as if they were regular expressions.
-	for (unsigned i = 0; i < entries; i++)
+	for (unsigned i = 0; i < entries - 1; i++)
 	{
 		if (!sema_analyse_expr(context, NULL, dexprs[i])) return false;
 	}
 
+	if (!sema_analyse_last_cond(context, dexprs[entries - 1])) return false;
+
 	expr_set_type(expr, dexprs[entries - 1]->type);
+	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
 
@@ -195,10 +456,10 @@ static inline bool sema_analyse_decl_expr_list(Context *context, Expr *expr)
  */
 static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_bool)
 {
-	assert(expr->expr_kind == EXPR_DECL_LIST && "Conditional expressions should always be of type EXPR_DECL_LIST");
+	assert(expr->expr_kind == EXPR_COND && "Conditional expressions should always be of type EXPR_DECL_LIST");
 
 	// 1. Analyse the declaration list.
-	if (!sema_analyse_decl_expr_list(context, expr)) return false;
+	if (!sema_analyse_cond_list(context, expr, true)) return false;
 
 	// 2. If we get "void", either through a void call or an empty list,
 	//    signal that.
@@ -210,7 +471,7 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 
 	// 3. We look at the last element (which is guaranteed to exist because
 	//    the type was not void.
-	Expr *last = VECLAST(expr->dexpr_list_expr);
+	Expr *last = VECLAST(expr->cond_expr);
 
 	if (last->expr_kind == EXPR_DECL)
 	{
@@ -284,9 +545,6 @@ static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 
 		// 4. Push break / continue - which is independent of the scope.
 		PUSH_BREAKCONT(statement);
-
-		// 5. Add any try unwraps.
-		sema_add_unwraps_from_try(context, cond);
 
 		// 6. Analyse the statement
 		success = sema_analyse_statement(context, body);
@@ -583,7 +841,7 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 		is_infinite = statement->for_stmt.cond == NULL;
 		if (statement->for_stmt.init)
 		{
-			success = sema_analyse_decl_expr_list(context, statement->for_stmt.init);
+			success = sema_analyse_cond_list(context, statement->for_stmt.init, false);
 		}
 
 		if (success && statement->for_stmt.cond)
@@ -808,13 +1066,13 @@ static bool sema_rewrite_foreach_to_for(Context *context, Ast *statement, Expr *
 	iterator->var.init_expr = enumerator;
 
 	// Generate Foo *value, FooIterator ".iterator" = foo.iterator();
-	Expr *init_expr = expr_new(EXPR_DECL_LIST, enumerator->span);
+	Expr *init_expr = expr_new(EXPR_COND, enumerator->span);
 	Expr *expr = expr_new(EXPR_DECL, value->span);
 	expr->decl_expr = value;
-	vec_add(init_expr->dexpr_list_expr, expr);
+	vec_add(init_expr->cond_expr, expr);
 	expr = expr_new(EXPR_DECL, enumerator->span);
 	expr->decl_expr = iterator;
-	vec_add(init_expr->dexpr_list_expr, expr);
+	vec_add(init_expr->cond_expr, expr);
 	init_expr->resolve_status = RESOLVE_DONE;
 	expr_set_type(init_expr, iterator->type);
 
@@ -1095,8 +1353,6 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 		}
 
 		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
-
-			sema_add_unwraps_from_try(context, statement->if_stmt.cond);
 			success = success && sema_analyse_statement(context, statement->if_stmt.then_body);
 			then_jump = context->active_scope.jump_end;
 
@@ -1106,8 +1362,8 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 		if (statement->if_stmt.else_body)
 		{
 			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
-				Decl *possible_unwrap = sema_find_unwrappable_from_catch(context, statement->if_stmt.cond);
-				if (possible_unwrap) sema_unwrap_var(context, possible_unwrap);
+				sema_remove_unwraps_from_try(context, statement->if_stmt.cond);
+				sema_unwrappable_from_catch_in_else(context, statement->if_stmt.cond);
 				success = success && sema_analyse_statement(context, statement->if_stmt.else_body);
 				else_jump = context->active_scope.jump_end;
 			SCOPE_END;
@@ -1118,8 +1374,7 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 	SCOPE_OUTER_END;
 	if (then_jump)
 	{
-		Decl *possible_unwrap = sema_find_unwrappable_from_catch(context, statement->if_stmt.cond);
-		if (possible_unwrap) sema_unwrap_var(context, possible_unwrap);
+		sema_unwrappable_from_catch_in_else(context, statement->if_stmt.cond);
 	}
 	if (then_jump && else_jump && !statement->flow.has_break)
 	{
@@ -1551,7 +1806,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 	switch (switch_type_flattened->type_kind)
 	{
 		case TYPE_TYPEID:
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 			use_type_id = true;
 			break;
 		case ALL_INTS:
@@ -1735,7 +1990,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 		if (!sema_analyse_cond(context, cond, false)) return false;
 
 
-		Type *switch_type = VECLAST(cond->dexpr_list_expr)->type->canonical;
+		Type *switch_type = VECLAST(cond->cond_expr)->type->canonical;
 		statement->switch_stmt.defer = context->active_scope.defer_last;
 		if (!sema_analyse_switch_body(context, statement, cond->span,
 		                              switch_type->canonical,
@@ -1806,7 +2061,7 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 			const char *error_type = type_to_error_string(error_expr->type);
 			if (error_expr->expr_kind == EXPR_IDENTIFIER
 			    && error_expr->identifier_expr.decl->decl_kind == DECL_VAR
-			    && error_expr->identifier_expr.decl->var.kind == VARDECL_ALIAS)
+			    && error_expr->identifier_expr.decl->var.kind == VARDECL_UNWRAPPED)
 			{
 				SEMA_ERROR(error_expr,
 				           "'%s' is unwrapped to '%s' here, so it cannot be caught.",
@@ -1853,7 +2108,7 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 	if (unwrapped && !statement->flow.has_break && statement->flow.no_exit)
 	{
 		Decl *decl = decl_copy(unwrapped);
-		decl->var.kind = VARDECL_ALIAS;
+		decl->var.kind = VARDECL_UNWRAPPED;
 		decl->var.alias = unwrapped;
 		decl->var.failable = false;
 		sema_unwrap_var(context, decl);
@@ -1864,9 +2119,9 @@ static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
 
 static bool sema_analyse_try_stmt(Context *context, Ast *stmt)
 {
-	assert(stmt->try_old_stmt.decl_expr->expr_kind == EXPR_DECL_LIST);
+	assert(stmt->try_old_stmt.decl_expr->expr_kind == EXPR_COND);
 
-	Expr **dexprs = stmt->try_old_stmt.decl_expr->dexpr_list_expr;
+	Expr **dexprs = stmt->try_old_stmt.decl_expr->cond_expr;
 	TODO
 	/*TODO
 	SCOPE_START
@@ -2109,11 +2364,11 @@ static bool sema_analyse_requires(Context *context, Ast *docs, Ast ***asserts)
 				return false;
 			}
 		}
-		assert(declexpr->expr_kind == EXPR_DECL_LIST);
+		assert(declexpr->expr_kind == EXPR_COND);
 
-		VECEACH(declexpr->dexpr_list_expr, j)
+		VECEACH(declexpr->cond_expr, j)
 		{
-			Expr *expr = declexpr->dexpr_list_expr[j];
+			Expr *expr = declexpr->cond_expr[j];
 			if (expr->expr_kind == EXPR_DECL)
 			{
 				SEMA_ERROR(expr, "Only expressions are allowed.");

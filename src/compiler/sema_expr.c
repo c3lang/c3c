@@ -44,7 +44,6 @@ static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
 }
 
 static inline bool sema_expr_analyse_binary(Context *context, Type *to, Expr *expr);
-static inline bool sema_analyse_expr_value(Context *context, Type *to, Expr *expr);
 static inline bool expr_const_int_valid(Expr *expr, Type *type)
 {
 	if (expr_const_int_overflowed(&expr->const_expr))
@@ -190,7 +189,7 @@ int sema_check_comp_time_bool(Context *context, Expr *expr)
 	return expr->const_expr.b;
 }
 
-static bool expr_is_ltype(Expr *expr)
+bool expr_is_ltype(Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
@@ -213,8 +212,15 @@ static bool expr_is_ltype(Expr *expr)
 				case VARDECL_PARAM_REF:
 					return true;
 				case VARDECL_CONST:
-				default:
+				case VARDECL_MEMBER:
+				case VARDECL_PARAM_CT:
+				case VARDECL_PARAM_CT_TYPE:
+				case VARDECL_PARAM_EXPR:
 					return false;
+				case VARDECL_UNWRAPPED:
+				case VARDECL_ERASE:
+				case VARDECL_REWRAPPED:
+					UNREACHABLE
 			}
 		}
 		case EXPR_UNARY:
@@ -248,6 +254,9 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case DECL_GENERIC:
 			SEMA_ERROR(expr, "Expected generic followed by (...) or prefixed by '&'.");
 			return expr_poison(expr);
+		case DECL_ERRVALUE:
+			SEMA_ERROR(expr, "Did you forget a '!' after '%s'?", decl->name);
+			return expr_poison(expr);
 		case DECL_ENUM_CONSTANT:
 			expr_replace(expr, decl->enum_constant.expr);
 			return true;
@@ -264,6 +273,9 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case DECL_INTERFACE:
 			SEMA_ERROR(expr, "Expected interface followed by '.'.");
 			return expr_poison(expr);
+		case DECL_BITSTRUCT:
+			SEMA_ERROR(expr, "Expected bitstruct followed by (...) or '.'.");
+			return expr_poison(expr);
 		case DECL_STRUCT:
 			SEMA_ERROR(expr, "Expected struct followed by (...) or '.'.");
 			return expr_poison(expr);
@@ -273,8 +285,8 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case DECL_ENUM:
 			SEMA_ERROR(expr, "Expected enum name followed by '.' and an enum value.");
 			return expr_poison(expr);
-		case DECL_ERR:
-			SEMA_ERROR(expr, "Did you forget a '!' after '%s'?", decl->name);
+		case DECL_ERRTYPE:
+			SEMA_ERROR(expr, "Expected errtype name followed by '.' and an error value.");
 			return expr_poison(expr);
 		case DECL_ARRAY_VALUE:
 			UNREACHABLE
@@ -307,7 +319,7 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case VARDECL_PARAM:
 		case VARDECL_GLOBAL:
 		case VARDECL_LOCAL:
-		case VARDECL_ALIAS:
+		case VARDECL_UNWRAPPED:
 			break;
 		case VARDECL_MEMBER:
 			SEMA_ERROR(expr, "Expected '%s' followed by a method call or property.", decl->name);
@@ -321,6 +333,9 @@ static inline bool sema_cast_ident_rvalue(Context *context, Type *to, Expr *expr
 		case VARDECL_LOCAL_CT_TYPE:
 			TODO
 			break;
+		case VARDECL_ERASE:
+		case VARDECL_REWRAPPED:
+			UNREACHABLE
 	}
 	return true;
 }
@@ -330,7 +345,7 @@ static ExprFailableStatus expr_is_failable(Expr *expr)
 	if (expr->expr_kind != EXPR_IDENTIFIER) return FAILABLE_NO;
 	Decl *decl = expr->identifier_expr.decl;
 	if (decl->decl_kind != DECL_VAR) return FAILABLE_NO;
-	if (decl->var.kind == VARDECL_ALIAS && decl->var.alias->var.failable) return FAILABLE_UNWRAPPED;
+	if (decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->var.failable) return FAILABLE_UNWRAPPED;
 	return decl->var.failable ? FAILABLE_YES : FAILABLE_NO;
 }
 
@@ -478,6 +493,7 @@ static inline bool find_possible_inferred_identifier(Type *to, Expr *expr)
 	switch (parent_decl->decl_kind)
 	{
 		case DECL_ENUM:
+		case DECL_ERRTYPE:
 			return sema_expr_analyse_enum_constant(expr, expr->identifier_expr.identifier, parent_decl);
 		case DECL_UNION:
 		case DECL_STRUCT:
@@ -1146,7 +1162,9 @@ static inline bool sema_expr_analyse_call_invocation(Context *context, Expr *cal
 			case VARDECL_MEMBER:
 			case VARDECL_LOCAL_CT:
 			case VARDECL_LOCAL_CT_TYPE:
-			case VARDECL_ALIAS:
+			case VARDECL_UNWRAPPED:
+			case VARDECL_REWRAPPED:
+			case VARDECL_ERASE:
 				UNREACHABLE
 		}
 		if (param->type)
@@ -2280,7 +2298,44 @@ static inline bool sema_expr_analyse_type_access(Expr *expr, TypeInfo *parent, b
 				return true;
 			}
 			break;
-		case DECL_ERR:
+		case DECL_ERRTYPE:
+				if (type == TOKEN_CONST_IDENT)
+				{
+					if (!sema_expr_analyse_enum_constant(expr, identifier_token, decl))
+					{
+						SEMA_ERROR(expr, "'%s' has no error value '%s'.", decl->name, name);
+						return false;
+					}
+					return true;
+				}
+				if (name == kw_elements)
+				{
+					expr_rewrite_to_int_const(expr, type_compint, vec_size(decl->enums.values));
+					return true;
+				}
+				if (name == kw_max)
+				{
+					Expr *max = enum_minmax_value(decl, BINARYOP_GT);
+					if (!max)
+					{
+						expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0);
+						return true;
+					}
+					expr_replace(expr, max);
+					return true;
+				}
+				if (name == kw_min)
+				{
+					Expr *min = enum_minmax_value(decl, BINARYOP_LT);
+					if (!min)
+					{
+						expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0);
+						return true;
+					}
+					expr_replace(expr, min);
+					return true;
+				}
+				break;
 		case DECL_UNION:
 		case DECL_STRUCT:
 		case DECL_DISTINCT:
@@ -2336,7 +2391,7 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr,
 	}
 	if (name == kw_ordinal && !is_macro)
 	{
-		if (ref->decl_kind == DECL_ENUM_CONSTANT)
+		if (ref->decl_kind == DECL_ENUM_CONSTANT || ref->decl_kind == DECL_ERRVALUE)
 		{
 			expr_rewrite_to_int_const(expr, type_compint, ref->enum_constant.ordinal);
 			return true;
@@ -2398,7 +2453,6 @@ static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr,
 	{
 		case DECL_STRUCT:
 		case DECL_UNION:
-		case DECL_ERR:
 			VECEACH(flat_ref->strukt.members, i)
 			{
 				Decl *member = ref->strukt.members[i];
@@ -2976,7 +3030,6 @@ static inline void sema_update_const_initializer_with_designator(
 	switch (const_init->type->type_kind)
 	{
 		case TYPE_STRUCT:
-		case TYPE_ERRTYPE:
 			sema_update_const_initializer_with_designator_struct(const_init, curr, end, value);
 			return;
 		case TYPE_UNION:
@@ -3337,7 +3390,6 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ARRAY:
-		case TYPE_ERRTYPE:
 		case TYPE_INFERRED_ARRAY:
 			return sema_expr_analyse_initializer(context, to, assigned, expr);
 		default:
@@ -3477,7 +3529,7 @@ static inline bool sema_expr_analyse_ct_identifier_lvalue(Context *context, Expr
 
 	if (!decl)
 	{
-		SEMA_ERROR(expr, "The compile time variable '%s' was not defined in this scope.", expr->ct_ident_expr.identifier);
+		SEMA_ERROR(expr, "The compile time variable '%s' was not defined in this scope.", TOKSTR(expr->ct_ident_expr.identifier));
 		return expr_poison(expr);
 	}
 
@@ -3565,16 +3617,6 @@ static bool sema_expr_analyse_assign(Context *context, Expr *expr, Expr *left, E
 
 	if (!sema_analyse_expr_value(context, NULL, left)) return false;
 
-	if (left->expr_kind == EXPR_TRY)
-	{
-		if (expr_is_ltype(left->try_expr.expr))
-		{
-			SEMA_ERROR(left, "This part will be evaluated to a boolean, so if you want to test an assignment, "
-							 "you need to use () around the assignment, like this: '%s (variable = expression)'.",
-							 left->expr_kind == EXPR_TRY ? "try" : "catch");
-			return false;
-		}
-	}
 
 	// 2. Check assignability
 	if (!expr_is_ltype(left))
@@ -4479,13 +4521,14 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 				case TYPE_FUNC:
 				case TYPE_STRUCT:
 				case TYPE_UNION:
-				case TYPE_ERR_UNION:
+				case TYPE_ANYERR:
 				case TYPE_STRLIT:
 				case TYPE_ARRAY:
 				case TYPE_SUBARRAY:
 				case TYPE_TYPEID:
 				case TYPE_VIRTUAL_ANY:
 				case TYPE_VIRTUAL:
+				case TYPE_BITSTRUCT:
 					// Only != and == allowed.
 					goto ERR;
 				case ALL_INTS:
@@ -4590,7 +4633,9 @@ static inline bool sema_take_addr_of_var(Expr *expr, Decl *decl, bool *is_consta
 			// May not be reached due to EXPR_CT_IDENT being handled elsewhere.
 			UNREACHABLE;
 		case VARDECL_MEMBER:
-		case VARDECL_ALIAS:
+		case VARDECL_UNWRAPPED:
+		case VARDECL_REWRAPPED:
+		case VARDECL_ERASE:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -4808,9 +4853,10 @@ static bool sema_expr_analyse_not(Expr *expr, Expr *inner)
 		case TYPE_IXX:
 		case TYPE_FXX:
 		case TYPE_TYPEDEF:
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 		case TYPE_DISTINCT:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_BITSTRUCT:
 			UNREACHABLE
 		case TYPE_FUNC:
 		case TYPE_ARRAY:
@@ -5048,21 +5094,6 @@ static inline bool sema_expr_analyse_post_unary(Context *context, Type *to, Expr
 }
 
 
-static inline bool sema_expr_analyse_try_old(Context *context, Expr *expr)
-{
-	Expr *inner = expr->trycatch_expr;
-	bool success = sema_analyse_expr(context, NULL, inner);
-	expr->pure = inner->pure;
-	expr->constant = false;
-	if (!success) return false;
-	if (!inner->failable)
-	{
-		SEMA_ERROR(expr->trycatch_expr, "Expected a failable expression to 'try'.");
-		return false;
-	}
-	expr_set_type(expr, type_bool);
-	return true;
-}
 
 static inline bool sema_expr_analyse_try_assign(Context *context, Expr *expr, bool implicitly_create_variable)
 {
@@ -5152,26 +5183,9 @@ static inline bool sema_expr_analyse_try(Context *context, Expr *expr)
 		SEMA_ERROR(expr->try_expr.expr, "Expected a failable expression to '%s'.", expr->expr_kind == EXPR_TRY ? "try" : "catch");
 		return false;
 	}
-	expr_set_type(expr, type_bool);
+	expr_set_type(expr, expr->try_expr.is_try ? type_bool : type_anyerr);
 	return true;
 }
-
-static inline bool sema_expr_analyse_catch_old(Context *context, Expr *expr)
-{
-	Expr *inner = expr->trycatch_expr;
-	bool success = sema_analyse_expr(context, NULL, inner);
-	expr->pure = inner->pure;
-	expr->constant = false;
-	if (!success) return false;
-	if (!inner->failable)
-	{
-		SEMA_ERROR(expr->trycatch_expr, "Expected a failable expression to 'catch'.");
-		return false;
-	}
-	expr_set_type(expr, type_bool);
-	return true;
-}
-
 
 static inline bool sema_expr_analyse_else(Context *context, Type *to, Expr *expr)
 {
@@ -5335,16 +5349,6 @@ static inline bool sema_expr_analyse_failable(Context *context, Type *to, Expr *
 {
 	Expr *inner = expr->failable_expr;
 
-	// Syntactic sugar: Foo! => Foo({})!
-	if (inner->expr_kind == EXPR_TYPEINFO)
-	{
-		TypeInfo *type = inner->type_expr;
-		*inner = (Expr) { .expr_kind = EXPR_COMPOUND_LITERAL, .span = inner->span };
-		inner->expr_compound_literal.type_info = type;
-		Expr *initializer_list = expr_new(EXPR_INITIALIZER_LIST, inner->span);
-		initializer_list->initializer_expr.init_type = INITIALIZER_UNKNOWN;
-		inner->expr_compound_literal.initializer = initializer_list;
-	}
 
 	if (!sema_analyse_expr(context, NULL, inner)) return false;
 	expr->pure = inner->pure;
@@ -5359,7 +5363,7 @@ static inline bool sema_expr_analyse_failable(Context *context, Type *to, Expr *
 		SEMA_ERROR(inner, "It looks like you added one too many '!' after the error.");
 		return false;
 	}
-	if (type->type_kind != TYPE_ERRTYPE && type->type_kind != TYPE_ERR_UNION)
+	if (type->type_kind != TYPE_ERRTYPE && type->type_kind != TYPE_ANYERR)
 	{
 		SEMA_ERROR(inner, "You cannot use the '!' operator on expressions of type '%s'", type_to_error_string(type));
 		return false;
@@ -5770,7 +5774,7 @@ static inline bool sema_analyse_ct_call_parameters(Context *context, Expr *expr)
 			{
 				case DECL_DISTINCT:
 				case DECL_ENUM:
-				case DECL_ERR:
+				case DECL_ERRTYPE:
 				case DECL_FUNC:
 				case DECL_STRUCT:
 				case DECL_TYPEDEF:
@@ -6056,7 +6060,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 {
 	switch (expr->expr_kind)
 	{
-		case EXPR_DECL_LIST:
+		case EXPR_COND:
 		case EXPR_UNDEF:
 		case EXPR_ENUM_CONSTANT:
 		case EXPR_MEMBER_ACCESS:
@@ -6064,7 +6068,12 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_FLATPATH:
 		case EXPR_NOP:
+		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_TRY_UNWRAP:
+		case EXPR_CATCH_UNWRAP:
 			UNREACHABLE
+		case EXPR_TRY_DECL:
+			TODO
 		case EXPR_DECL:
 			return sema_expr_analyse_decl(context, to, expr);
 		case EXPR_CT_CALL:
@@ -6094,10 +6103,6 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 			return sema_expr_analyse_try(context, expr);
 		case EXPR_TRY_ASSIGN:
 			return sema_expr_analyse_try_assign(context, expr, false);
-		case EXPR_CATCH_OLD:
-			return sema_expr_analyse_catch_old(context, expr);
-		case EXPR_TRY_OLD:
-			return sema_expr_analyse_try_old(context, expr);
 		case EXPR_TYPEOF:
 			return sema_expr_analyse_typeof(context, expr);
 		case EXPR_ELSE:
@@ -6199,15 +6204,21 @@ static inline bool sema_cast_rvalue(Context *context, Type *to, Expr *expr)
 			}
 			break;
 		case EXPR_MEMBER_ACCESS:
-			if (expr->access_expr.ref->decl_kind == DECL_ENUM_CONSTANT)
+			switch (expr->access_expr.ref->decl_kind)
 			{
-				Type *original_type = expr->access_expr.ref->type;
-				expr_replace(expr, expr->access_expr.ref->enum_constant.expr);
-				expr->original_type = original_type;
-				return true;
+				case DECL_ERRVALUE:
+					return true;
+				case DECL_ENUM_CONSTANT:
+				{
+					Type *original_type = expr->access_expr.ref->type;
+					expr_replace(expr, expr->access_expr.ref->enum_constant.expr);
+					expr->original_type = original_type;
+					return true;
+				}
+				default:
+					SEMA_ERROR(expr, "A member must be followed by '.' plus a property like 'sizeof'.");
+					return false;
 			}
-			SEMA_ERROR(expr, "A member must be followed by '.' plus a property like 'sizeof'.");
-			return false;
 		case EXPR_LEN:
 			if (expr->type != type_void) return true;
 			SEMA_ERROR(expr, "Expected () after 'len' for subarrays.");

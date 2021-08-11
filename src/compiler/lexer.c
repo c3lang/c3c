@@ -633,15 +633,15 @@ static inline bool scan_char(Lexer *lexer)
 						lexer->lexing_start = start;
 						return add_error_token(lexer, "Expected a four character hex value after \\u.");
 					}
-					if (platform_target.little_endian)
+					if (platform_target.big_endian)
 					{
-						bytes.b[width++] = (uint8_t)(hex & 0xFF);
 						bytes.b[width++] = (uint8_t)(hex >> 8);
+						bytes.b[width++] = (uint8_t)(hex & 0xFF);
 					}
 					else
 					{
-						bytes.b[width++] = (uint8_t)(hex >> 8);
 						bytes.b[width++] = (uint8_t)(hex & 0xFF);
+						bytes.b[width++] = (uint8_t)(hex >> 8);
 					}
 					break;
 				}
@@ -653,19 +653,19 @@ static inline bool scan_char(Lexer *lexer)
 						lexer->lexing_start = start;
 						return add_error_token(lexer, "Expected an eight character hex value after \\U.");
 					}
-					if (platform_target.little_endian)
+					if (platform_target.big_endian)
 					{
-						bytes.b[width++] = (uint8_t)(hex & 0xFF);
-						bytes.b[width++] = (uint8_t)((hex >> 8) & 0xFF);
-						bytes.b[width++] = (uint8_t)((hex >> 16) & 0xFF);
 						bytes.b[width++] = (uint8_t)(hex >> 24);
+						bytes.b[width++] = (uint8_t)((hex >> 16) & 0xFF);
+						bytes.b[width++] = (uint8_t)((hex >> 8) & 0xFF);
+						bytes.b[width++] = (uint8_t)(hex & 0xFF);
 					}
 					else
 					{
-						bytes.b[width++] = (uint8_t)(hex >> 24);
-						bytes.b[width++] = (uint8_t)((hex >> 16) & 0xFF);
-						bytes.b[width++] = (uint8_t)((hex >> 8) & 0xFF);
 						bytes.b[width++] = (uint8_t)(hex & 0xFF);
+						bytes.b[width++] = (uint8_t)((hex >> 8) & 0xFF);
+						bytes.b[width++] = (uint8_t)((hex >> 16) & 0xFF);
+						bytes.b[width++] = (uint8_t)(hex >> 24);
 					}
 					break;
 				}

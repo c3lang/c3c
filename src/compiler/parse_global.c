@@ -82,6 +82,7 @@ void recover_top_level(Context *context)
 			case TOKEN_ATTRIBUTE:
 			case TOKEN_DEFINE:
 			case TOKEN_ERRTYPE:
+			case TOKEN_BITSTRUCT:
 				return;
 			case TOKEN_IDENT: // Incr arrays only
 			case TOKEN_CONST:
@@ -425,12 +426,17 @@ static inline bool parse_specified_import(Context *context, Path *path)
 }
 
 
-static inline bool consume_ident(Context *context, const char* name)
+bool consume_ident(Context *context, const char* name)
 {
 	if (try_consume(context, TOKEN_IDENT)) return true;
 	if (TOKEN_IS(TOKEN_TYPE_IDENT) || TOKEN_IS(TOKEN_CONST_IDENT))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "A %s cannot start with a capital letter.", name);
+		SEMA_TOKEN_ERROR(context->tok, "A %s must start with a lower case letter.", name);
+		return false;
+	}
+	if (token_is_keyword(context->tok.type))
+	{
+		SEMA_TOKEN_ERROR(context->tok, "This is a reserved keyword, did you accidentally use it?");
 		return false;
 	}
 	SEMA_TOKEN_ERROR(context->tok, "A %s was expected.", name);
@@ -439,7 +445,7 @@ static inline bool consume_ident(Context *context, const char* name)
 
 static bool consume_type_name(Context *context, const char* type)
 {
-	if (TOKEN_IS(TOKEN_IDENT))
+	if (TOKEN_IS(TOKEN_IDENT) || token_is_keyword(context->tok.type))
 	{
 		SEMA_TOKEN_ERROR(context->tok, "Names of %ss must start with an upper case letter.", type);
 		return false;
@@ -856,39 +862,6 @@ static inline Decl *parse_incremental_array(Context *context)
 
 
 
-/**
- * decl_expr_list
- *  : expression
- *  | declaration
- *  | decl_expr_list ',' expression
- *  | decl_expr_list ',' declaration
- *  ;
- *
- * @return bool
- */
-Expr *parse_decl_expr_list(Context *context)
-{
-	Expr *decl_expr = EXPR_NEW_TOKEN(EXPR_DECL_LIST, context->tok);
-	decl_expr->dexpr_list_expr = NULL;
-	while (1)
-	{
-		if (parse_next_is_decl(context))
-		{
-			Decl *decl = TRY_DECL_OR(parse_decl(context), poisoned_expr);
-			Expr *expr = expr_new(EXPR_DECL, decl->span);
-			expr->decl_expr = decl;
-			vec_add(decl_expr->dexpr_list_expr, expr);
-		}
-		else
-		{
-			Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
-			vec_add(decl_expr->dexpr_list_expr, expr);
-		}
-		if (!try_consume(context, TOKEN_COMMA)) break;
-	}
-	RANGE_EXTEND_PREV(decl_expr);
-	return decl_expr;
-}
 
 
 bool parse_next_is_decl(Context *context)
@@ -897,8 +870,7 @@ bool parse_next_is_decl(Context *context)
 	switch (context->tok.type)
 	{
 		case TYPELIKE_TOKENS:
-			return (next_tok == TOKEN_BANG) | (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) | (next_tok == TOKEN_IDENT)
-			       | (next_tok == TOKEN_CONST_IDENT);
+			return next_tok != TOKEN_DOT && next_tok != TOKEN_LPAREN && next_tok != TOKEN_LBRACE;
 		case TOKEN_IDENT:
 			if (next_tok != TOKEN_SCOPE) return false;
 			return context_next_is_type_with_path_prefix(context);
@@ -1362,6 +1334,70 @@ static inline Decl *parse_struct_declaration(Context *context, Visibility visibi
 	return decl;
 }
 
+/**
+ * body ::= '{' (TYPE IDENT ':' expr '..' expr EOS)* '}'
+ * @param context
+ * @param decl
+ * @return
+ */
+static inline bool parse_bitstruct_body(Context *context, Decl *decl)
+{
+	CONSUME_OR(TOKEN_LBRACE, false);
+
+	while (!try_consume(context, TOKEN_RBRACE))
+	{
+		TypeInfo *type = TRY_TYPE_OR(parse_type(context), false);
+
+		if (!try_consume(context, TOKEN_IDENT))
+		{
+			if (try_consume(context, TOKEN_CONST_IDENT) || try_consume(context, TOKEN_TYPE_IDENT))
+			{
+				SEMA_TOKID_ERROR(context->prev_tok, "Expected a field name with an initial lower case.");
+				return false;
+			}
+			SEMA_TOKEN_ERROR(context->tok, "Expected a field name at this position.");
+			return false;
+		}
+		Decl *member_decl = decl_new_var(context->prev_tok, type, VARDECL_MEMBER, VISIBLE_LOCAL);
+		CONSUME_OR(TOKEN_COLON, false);
+		member_decl->var.start = TRY_EXPR_OR(parse_constant_expr(context), false);
+		CONSUME_OR(TOKEN_DOTDOT, false);
+		member_decl->var.end = TRY_EXPR_OR(parse_constant_expr(context), false);
+		CONSUME_OR(TOKEN_EOS, false);
+		vec_add(decl->bitstruct.members, member_decl);
+	}
+
+	return true;
+}
+/**
+ * bitstruct_declaration = 'bitstruct' IDENT ':' type bitstruct_body
+ */
+static inline Decl *parse_bitstruct_declaration(Context *context, Visibility visibility)
+{
+	advance_and_verify(context, TOKEN_BITSTRUCT);
+
+	TokenId name = context->tok.id;
+
+	if (!consume_type_name(context, "bitstruct")) return poisoned_decl;
+	Decl *decl = decl_new_with_type(name, DECL_BITSTRUCT, visibility);
+
+	CONSUME_OR(TOKEN_COLON, poisoned_decl);
+
+	decl->bitstruct.base_type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+
+	if (!parse_attributes(context, &decl->attributes))
+	{
+		return poisoned_decl;
+	}
+
+	if (!parse_bitstruct_body(context, decl))
+	{
+		return poisoned_decl;
+	}
+
+	return decl;
+
+}
 
 static inline Decl *parse_top_level_const_declaration(Context *context, Visibility visibility)
 {
@@ -1710,29 +1746,53 @@ static inline Decl *parse_error_declaration(Context *context, Visibility visibil
 {
 	advance_and_verify(context, TOKEN_ERRTYPE);
 
-	Decl *err_decl = decl_new_with_type(context->tok.id, DECL_ERR, visibility);
+	Decl *decl = decl_new_with_type(context->tok.id, DECL_ERRTYPE, visibility);
 
 	if (!consume_type_name(context, "error type")) return poisoned_decl;
 
-	if (try_consume(context, TOKEN_LBRACE))
+	TypeInfo *type = NULL;
+
+	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
+
+	decl->enums.type_info = type_info_new_base(type_iptr->canonical, decl->span);
+	while (!try_consume(context, TOKEN_RBRACE))
 	{
-		while (!try_consume(context, TOKEN_RBRACE))
+		Decl *enum_const = DECL_NEW(DECL_ERRVALUE, decl->visibility);
+		const char *name = TOKSTR(context->tok);
+		VECEACH(decl->enums.values, i)
 		{
-			TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
-			if (!TOKEN_IS(TOKEN_IDENT))
+			Decl *other_constant = decl->enums.values[i];
+			if (other_constant->name == name)
 			{
-				SEMA_TOKEN_ERROR(context->tok, "Expected an identifier here.");
-				return poisoned_decl;
+				SEMA_TOKEN_ERROR(context->tok, "This enum constant is declared twice.");
+				SEMA_PREV(other_constant, "The previous declaration was here.");
+				decl_poison(enum_const);
+				break;
 			}
-			Decl *member = decl_new_var(context->tok.id, type, VARDECL_MEMBER, visibility);
-			advance(context);
-			vec_add(err_decl->strukt.members, member);
-			TRY_CONSUME_EOS_OR(poisoned_decl);
 		}
-		return err_decl;
+		if (!consume_const_name(context, "enum constant"))
+		{
+			return poisoned_decl;
+		}
+		if (try_consume(context, TOKEN_LPAREN))
+		{
+			Expr **result = NULL;
+			if (!parse_arg_list(context, &result, TOKEN_RPAREN, NULL)) return poisoned_decl;
+			enum_const->enum_constant.args = result;
+			CONSUME_OR(TOKEN_RPAREN, poisoned_decl);
+		}
+		if (try_consume(context, TOKEN_EQ))
+		{
+			enum_const->enum_constant.expr = TRY_EXPR_OR(parse_expr(context), poisoned_decl);
+		}
+		vec_add(decl->enums.values, enum_const);
+		// Allow trailing ','
+		if (!try_consume(context, TOKEN_COMMA))
+		{
+			EXPECT_OR(TOKEN_RBRACE, poisoned_decl);
+		}
 	}
-	TRY_CONSUME_EOS_OR(poisoned_decl);
-	return err_decl;
+	return decl;
 }
 
 /**
@@ -1797,7 +1857,7 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 		if (!parse_enum_spec(context, &type, &decl->enums.parameters, visibility)) return poisoned_decl;
 	}
 
-	CONSUME_OR(TOKEN_LBRACE, false);
+	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
 	while (!try_consume(context, TOKEN_RBRACE))
@@ -2056,7 +2116,7 @@ static inline bool parse_doc_errors(Context *context, Ast *docs)
 
 static inline bool parse_doc_contract(Context *context, Ast *docs)
 {
-	docs->doc_directive.contract.decl_exprs = TRY_EXPR_OR(parse_decl_expr_list(context), false);
+	docs->doc_directive.contract.decl_exprs = TRY_EXPR_OR(parse_cond(context), false);
 	if (try_consume(context, TOKEN_COLON))
 	{
 		docs->doc_directive.contract.comment = TRY_EXPR_OR(parse_expr(context), false);
@@ -2210,6 +2270,9 @@ Decl *parse_top_level_statement(Context *context)
 				SEMA_ERROR(docs, "Unexpected doc comment before $switch, did you mean to use a regular comment?");
 				return poisoned_decl;
 			}
+			break;
+		case TOKEN_BITSTRUCT:
+			decl = TRY_DECL_OR(parse_bitstruct_declaration(context, visibility), poisoned_decl);
 			break;
 		case TOKEN_CONST:
 			decl = TRY_DECL_OR(parse_top_level_const_declaration(context, visibility), poisoned_decl);

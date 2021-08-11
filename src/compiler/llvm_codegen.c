@@ -684,9 +684,9 @@ void llvm_codegen_setup()
 	intrinsics_setup = true;
 }
 
-void gencontext_emit_introspection_type(GenContext *context, Decl *decl)
+void gencontext_emit_introspection_type(GenContext *c, Decl *decl)
 {
-	llvm_get_type(context, decl->type);
+	llvm_get_type(c, decl->type);
 	if (decl_is_struct_type(decl))
 	{
 		Decl **decls = decl->strukt.members;
@@ -695,14 +695,31 @@ void gencontext_emit_introspection_type(GenContext *context, Decl *decl)
 			Decl *member_decl = decls[i];
 			if (decl_is_struct_type(member_decl))
 			{
-				gencontext_emit_introspection_type(context, member_decl);
+				gencontext_emit_introspection_type(c, member_decl);
 			}
 		}
 	}
-	LLVMValueRef global_name = LLVMAddGlobal(context->module, llvm_get_type(context, type_char), decl->name ? decl->name : "anon");
+	if (decl_is_enum_kind(decl))
+	{
+		unsigned elements = vec_size(decl->enums.values);
+		LLVMTypeRef element_type = llvm_get_type(c, type_voidptr);
+		LLVMTypeRef elements_type = LLVMArrayType(element_type, elements);
+		scratch_buffer_clear();
+		scratch_buffer_append(decl->external_name);
+		scratch_buffer_append("$elements");
+		LLVMValueRef enum_elements = LLVMAddGlobal(c->module, elements_type, scratch_buffer_to_string());
+		LLVMSetGlobalConstant(enum_elements, 1);
+		LLVMSetInitializer(enum_elements, LLVMConstNull(elements_type));
+		for (unsigned i = 0; i < elements; i++)
+		{
+			LLVMValueRef index[2] = { llvm_const_int(c, type_usize, i) };
+			decl->enums.values[i]->backend_ref = LLVMConstInBoundsGEP(enum_elements, index, 1);
+		}
+	}
+	LLVMValueRef global_name = LLVMAddGlobal(c->module, llvm_get_type(c, type_char), decl->name ? decl->name : "anon");
 	LLVMSetGlobalConstant(global_name, 1);
-	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(context, type_char), 1, false));
-	decl->type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(context, type_typeid));
+	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
+	decl->type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
 
 	switch (decl->visibility)
 	{
@@ -730,10 +747,12 @@ void llvm_value_set_bool(BEValue *value, LLVMValueRef llvm_value)
 
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 {
+	type = type_flatten(type);
+	assert(llvm_value || type == type_void);
 	value->value = llvm_value;
 	value->alignment = type_abi_alignment(type);
 	value->kind = BE_VALUE;
-	value->type = type_flatten(type);
+	value->type = type;
 }
 
 bool llvm_value_is_const(BEValue *value)
@@ -768,7 +787,6 @@ void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type)
 
 void llvm_value_fold_failable(GenContext *c, BEValue *value)
 {
-
 	if (value->kind == BE_ADDRESS_FAILABLE)
 	{
 		LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after_check");
@@ -860,7 +878,7 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 }
 
 
-static void gencontext_emit_type_decls(GenContext *context, Decl *decl)
+static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
@@ -878,17 +896,19 @@ static void gencontext_emit_type_decls(GenContext *context, Decl *decl)
 			// TODO
 			break;
 		case DECL_ENUM_CONSTANT:
+		case DECL_ERRVALUE:
 			// TODO
 			break;;
 		case DECL_STRUCT:
 		case DECL_UNION:
-		case DECL_ERR:
+		case DECL_ENUM:
+		case DECL_ERRTYPE:
+		case DECL_BITSTRUCT:
 			gencontext_emit_introspection_type(context, decl);
 			break;
 		case DECL_INTERFACE:
 			// TODO
 			break;
-		case DECL_ENUM:
 			// TODO
 			break;
 		case NON_TYPE_DECLS:
@@ -982,7 +1002,7 @@ void *llvm_gen(Module *module)
 		}
 		VECEACH(context->types, i)
 		{
-			gencontext_emit_type_decls(gen_context, context->types[i]);
+			llvm_emit_type_decls(gen_context, context->types[i]);
 		}
 		VECEACH(context->functions, i)
 		{
@@ -1084,6 +1104,7 @@ void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue
 	{
 		case BE_BOOLEAN:
 			value->value = LLVMBuildZExt(c->builder, value->value, c->byte_type, "");
+			value->kind = BE_VALUE;
 			FALLTHROUGH;
 		case BE_VALUE:
 			llvm_store_aligned(c, destination, value->value, alignment ?: type_abi_alignment(value->type));

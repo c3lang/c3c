@@ -149,6 +149,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_VECCALL] = KW_DEF("veccall");
 	attribute_list[ATTRIBUTE_REGCALL] = KW_DEF("regcall");
 	attribute_list[ATTRIBUTE_FASTCALL] = KW_DEF("fastcall");
+	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("overlap");
 }
 
 static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t hash)

@@ -186,6 +186,8 @@ const char *token_type_to_string(TokenType type)
 			return "assert";
 		case TOKEN_ATTRIBUTE:
 			return "attribute";
+		case TOKEN_BITSTRUCT:
+			return "bitstruct";
 		case TOKEN_BREAK:
 			return "break";
 		case TOKEN_CASE:
@@ -385,4 +387,10 @@ bool token_is_type(TokenType type)
 bool token_is_any_type(TokenType type)
 {
 	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT || type == TOKEN_VIRTUAL;
+}
+
+bool token_is_ident_keyword(TokenType type)
+{
+	if (token_is_type(type)) return true;
+	return type >= TOKEN_ALIAS && type <= TOKEN_WHILE;
 }

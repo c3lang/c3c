@@ -92,8 +92,9 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 	switch (decl->decl_kind)
 	{
 		case DECL_STRUCT:
+		case DECL_BITSTRUCT:
 		case DECL_UNION:
-		case DECL_ERR:
+		case DECL_ERRTYPE:
 		case DECL_ENUM:
 		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
@@ -115,6 +116,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 			}
 			FALLTHROUGH;
 		case DECL_FUNC:
+		case DECL_ERRVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
@@ -150,18 +152,19 @@ bool sema_resolve_type(Context *context, Type *type)
 		case TYPE_BOOL:
 		case TYPE_TYPEID:
 		case TYPE_VIRTUAL_ANY:
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 		case TYPE_STRLIT:
 		case TYPE_VECTOR:
 			return true;
 		case TYPE_POINTER:
 			return sema_resolve_type(context, type->pointer);
+		case TYPE_BITSTRUCT:
+		case TYPE_DISTINCT:
 		case TYPE_ENUM:
+		case TYPE_ERRTYPE:
 		case TYPE_FUNC:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ERRTYPE:
-		case TYPE_DISTINCT:
 			break;
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:

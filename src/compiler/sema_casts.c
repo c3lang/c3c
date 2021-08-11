@@ -383,7 +383,7 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_VRBOOL;
 		case TYPE_BOOL:
 			return CAST_BOOLBOOL;
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 			return CAST_EUBOOL;
 		case TYPE_SUBARRAY:
 			return CAST_SABOOL;
@@ -393,18 +393,20 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
 			return CAST_PTRBOOL;
+		case TYPE_ERRTYPE:
+			return CAST_ERBOOL;
 		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_STRLIT:
-		case TYPE_ERRTYPE:
 		case TYPE_ENUM:
 		case TYPE_FUNC:
 		case TYPE_ARRAY:
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
 		case TYPE_VECTOR:
+		case TYPE_BITSTRUCT:
 			return CAST_ERROR;
 	}
 	UNREACHABLE
@@ -436,9 +438,11 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 		case TYPE_BOOL:
 			// May convert to any integer / distinct integer / float, no enums
 			return type_is_integer(to) || type_is_float(to);
-		case TYPE_ERR_UNION:
-			// May convert to a bool, or an error type.
-			return to == type_bool || to_kind == TYPE_ERRTYPE;
+		case TYPE_BITSTRUCT:
+			return false;
+		case TYPE_ANYERR:
+			// May convert to a bool, an error type or an integer
+			return to == type_bool || to_kind == TYPE_ERRTYPE || type_is_integer(to);
 		case TYPE_IXX:
 		case ALL_SIGNED_INTS:
 		case ALL_UNSIGNED_INTS:
@@ -461,8 +465,8 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 		case TYPE_VIRTUAL:
 			return to_kind == TYPE_POINTER;
 		case TYPE_ERRTYPE:
-			// Allow only MyError.A -> error
-			return to->type_kind == TYPE_ERR_UNION;
+			// Allow MyError.A -> error, to an integer or to bool
+			return to->type_kind == TYPE_ANYERR || type_is_any_integer(to) || to == type_bool;
 		case TYPE_ARRAY:
 			if (to_kind == TYPE_VECTOR)
 			{
@@ -551,6 +555,8 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 		}
 		return false;
 	}
+
+	if (to == type_anyerr && from->type_kind == TYPE_ERRTYPE) return true;
 
 	// 3. Handle ints
 	if (type_is_integer(to))
@@ -780,14 +786,17 @@ bool cast(Expr *expr, Type *to_type)
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
 			UNREACHABLE
+		case TYPE_BITSTRUCT:
+			UNREACHABLE
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.
 			if (type_is_integer(canonical)) return bool_to_int(expr, canonical, to_type);
 			if (type_is_float(canonical)) return bool_to_float(expr, canonical, to_type);
 			break;
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 			if (canonical->type_kind == TYPE_BOOL) return insert_cast(expr, CAST_EUBOOL, to_type);
 			if (canonical->type_kind == TYPE_ERRTYPE) return insert_cast(expr, CAST_EUER, to_type);
+			if (type_is_integer(canonical)) return insert_cast(expr, CAST_EUINT, to_type);
 			break;
 		case TYPE_IXX:
 			if (type_is_integer(canonical)) return int_literal_to_int(expr, canonical, to_type);
@@ -833,7 +842,9 @@ bool cast(Expr *expr, Type *to_type)
 			if (canonical->type_kind == TYPE_POINTER) return enum_to_pointer(expr, from_type, to_type);
 			break;
 		case TYPE_ERRTYPE:
-			if (canonical->type_kind == TYPE_ERR_UNION) return insert_cast(expr, CAST_EREU, to_type);
+			if (canonical->type_kind == TYPE_ANYERR) return insert_cast(expr, CAST_EREU, to_type);
+			if (canonical == type_bool) return insert_cast(expr, CAST_ERBOOL, to_type);
+			if (type_is_integer(to_type)) return insert_cast(expr, CAST_ERINT, to_type);
 			break;
 		case TYPE_STRUCT:
 		case TYPE_UNION:

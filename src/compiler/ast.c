@@ -52,6 +52,8 @@ const char *decl_to_name(Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
+		case DECL_BITSTRUCT:
+			return "bitstruct";
 		case DECL_POISONED:
 			return "poisoned decl";
 		case DECL_CT_ASSERT:
@@ -83,8 +85,10 @@ const char *decl_to_name(Decl *decl)
 			return "enum";
 		case DECL_ENUM_CONSTANT:
 			return "enum value";
-		case DECL_ERR:
-			return "error";
+		case DECL_ERRVALUE:
+			return "err value";
+		case DECL_ERRTYPE:
+			return "errtype";
 		case DECL_FUNC:
 			return "function";
 		case DECL_GENERIC:
@@ -100,6 +104,9 @@ const char *decl_to_name(Decl *decl)
 		case DECL_VAR:
 			switch (decl->var.kind)
 			{
+				case VARDECL_ERASE:
+				case VARDECL_REWRAPPED:
+					UNREACHABLE
 				case VARDECL_CONST:
 					return "constant";
 				case VARDECL_GLOBAL:
@@ -122,8 +129,8 @@ const char *decl_to_name(Decl *decl)
 					return "compile time variable";
 				case VARDECL_LOCAL_CT_TYPE:
 					return "compile time type variable";
-				case VARDECL_ALIAS:
-					return "alias";
+				case VARDECL_UNWRAPPED:
+					return "unwrapped";
 			}
 			UNREACHABLE
 	}
@@ -162,7 +169,7 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_STRUCT:
 			kind = TYPE_STRUCT;
 			break;
-		case DECL_ERR:
+		case DECL_ERRTYPE:
 			kind = TYPE_ERRTYPE;
 			break;
 		case DECL_ENUM:
@@ -174,9 +181,13 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_TYPEDEF:
 			kind = TYPE_TYPEDEF;
 			break;
+		case DECL_BITSTRUCT:
+			kind = TYPE_BITSTRUCT;
+			break;
 		case DECL_POISONED:
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
+		case DECL_ERRVALUE:
 		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
@@ -213,7 +224,7 @@ const char *decl_var_to_string(VarDeclKind kind)
 			return "member";
 		case VARDECL_PARAM:
 			return "param";
-		case VARDECL_ALIAS:
+		case VARDECL_UNWRAPPED:
 			return "alias";
 		case VARDECL_PARAM_CT:
 			return "$param";
@@ -227,6 +238,9 @@ const char *decl_var_to_string(VarDeclKind kind)
 			return "$local";
 		case VARDECL_LOCAL_CT_TYPE:
 			return "$Local";
+		case VARDECL_REWRAPPED:
+		case VARDECL_ERASE:
+			UNREACHABLE
 	}
 	UNREACHABLE
 }
@@ -416,6 +430,12 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 	}
 	switch (type->type_kind)
 	{
+		case TYPE_BITSTRUCT:
+			DUMP("(bitstruct");
+			return;
+		case TYPE_ERRTYPE:
+			DUMPF("(errtype %s)", type->name);
+			return;
 		case TYPE_DISTINCT:
 			DUMPF("(distinct %s)", type->name);
 			return;
@@ -442,9 +462,6 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 			return;
 		case TYPE_ENUM:
 			DUMPF("(enum %s)", type->name);
-			return;
-		case TYPE_ERRTYPE:
-			DUMPF("(errtype %s)", type->name);
 			return;
 		case TYPE_TYPEDEF:
 			DUMPF("(typedef %s", type->name);
@@ -488,7 +505,7 @@ void fprint_type_recursive(Context *context, FILE *file, Type *type, int indent)
 		case TYPE_STRLIT:
 			DUMP("(ct string)");
 			return;
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 			DUMP("(any-error)");
 			return;
 	}
@@ -603,6 +620,26 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEXPC(expr);
 			DUMPDECL(expr->decl_expr);
 			break;
+		case EXPR_TRY_UNWRAP_CHAIN:
+			DUMP("(try-unwrap-chain");
+			DUMPEXPC(expr);
+			DUMPEXPRS(expr->try_unwrap_chain_expr);
+			break;
+		case EXPR_CATCH_UNWRAP:
+			DUMP("(catch-unwrap");
+			DUMPEXPC(expr);
+			DUMPEXPRS(expr->catch_unwrap_expr.exprs);
+			break;
+		case EXPR_TRY_UNWRAP:
+			DUMP("(try-unwrap");
+			DUMPEXPC(expr);
+			DUMPEXPR(expr->try_unwrap_expr.init);
+			break;
+		case EXPR_TRY_DECL:
+			DUMP("(try-decl");
+			DUMPEXPC(expr);
+			DUMPDECL(expr->try_decl_expr.decl);
+			break;
 		case EXPR_NOP:
 			DUMP("(nop)");
 			return;
@@ -644,9 +681,9 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->len_expr.inner);
 			DUMPEND();
-		case EXPR_DECL_LIST:
+		case EXPR_COND:
 			DUMP("(decllist");
-			DUMPEXPRS(expr->dexpr_list_expr);
+			DUMPEXPRS(expr->cond_expr);
 			DUMPEND();
 		case EXPR_FAILABLE:
 			DUMP("(failable");
@@ -709,16 +746,6 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPF("(postunary %s", token_type_to_string(postunaryop_to_token(expr->post_expr.operator)));
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->post_expr.expr);
-			DUMPEND();
-		case EXPR_CATCH_OLD:
-			DUMP("(catch");
-			DUMPEXPC(expr);
-			DUMPEXPR(expr->trycatch_expr);
-			DUMPEND();
-		case EXPR_TRY_OLD:
-			DUMP("(try");
-			DUMPEXPC(expr);
-			DUMPEXPR(expr->trycatch_expr);
 			DUMPEND();
 		case EXPR_TRY:
 			DUMPF("(try %d", expr->try_expr.is_try);
@@ -895,6 +922,9 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 	if (!decl) return;
 	switch (decl->decl_kind)
 	{
+		case DECL_BITSTRUCT:
+			DUMP("(bitstruct)");
+			return;
 		case DECL_INTERFACE:
 			DUMPF("(interface %s", decl->name);
 			DUMPDECLS(decl->interface_decl.members);
@@ -920,9 +950,12 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 				case VARDECL_LOCAL_CT_TYPE:
 					DUMPTI(decl->var.type_info);
 					break;
-				case VARDECL_ALIAS:
+				case VARDECL_UNWRAPPED:
 					DUMPDECL(decl->var.alias);
 					break;
+				case VARDECL_ERASE:
+				case VARDECL_REWRAPPED:
+					UNREACHABLE
 			}
 			DUMPEND();
 		case DECL_CT_ASSERT:
@@ -980,14 +1013,24 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			DUMPTI(decl->enums.type_info);
 			DUMPDECLS(decl->enums.values);
 			DUMPEND();
-		case DECL_ERR:
-			DUMPF("(error %s", decl->name);
-			DUMPDECLS(decl->strukt.members);
+		case DECL_ERRTYPE:
+			DUMPF("(errtype %s", decl->name);
+			DUMPTI(decl->enums.type_info);
+			DUMPDECLS(decl->enums.values);
 			DUMPEND();
 		case DECL_ENUM_CONSTANT:
 			if (!decl->enum_constant.expr)
 			{
 				DUMPF("(enum-constant %s)", decl->name);
+				return;
+			}
+			DUMPF("(enum-constant %s", decl->name);
+			DUMPEXPR(decl->enum_constant.expr);
+			DUMPEND();
+		case DECL_ERRVALUE:
+			DUMPF("(errvalue %s)", decl->name);
+			if (!decl->enum_constant.expr)
+			{
 				return;
 			}
 			DUMPF("(enum-constant %s", decl->name);

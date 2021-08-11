@@ -9,8 +9,8 @@ static ArchType arch_from_llvm_string(StringSlice string);
 static EnvironmentType environment_type_from_llvm_string(StringSlice string);
 static bool arch_is_supported(ArchType arch);
 static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type);
-static unsigned os_target_alignment_of_int(OsType os, ArchType arch, int bits);
-static unsigned os_target_alignment_of_float(OsType os, ArchType arch, int bits);
+static AlignData os_target_alignment_of_int(OsType os, ArchType arch, int bits);
+static AlignData os_target_alignment_of_float(OsType os, ArchType arch, int bits);
 static OsType os_from_llvm_string(StringSlice string);
 static VendorType vendor_from_llvm_string(StringSlice string);
 static ObjectFormatType object_format_from_os(OsType os);
@@ -208,20 +208,60 @@ static inline bool os_is_apple(OsType os_type)
 	       os_type == OS_TYPE_MACOSX || os_type == OS_TYPE_IOS;
 }
 
-static AlignSize os_arch_max_alignment_of_vector(OsType os, ArchType arch)
+static AlignSize os_arch_max_alignment_of_vector(OsType os, ArchType arch, EnvironmentType type, ARMVariant variant)
 {
 	switch (arch)
 	{
 		case ARCH_TYPE_AARCH64:
-			return 128 / 8;
+			// aarch64 uses 128 bits.
+			// See Clang: AArch64TargetInfo::AArch64TargetInfo
+			return 16;
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_ARMB:
-			// Only if aapcs and not android
-			REMINDER("Check if AAPCS");
-			return 64 / 8;
+			if (type == ENV_TYPE_ANDROID) return 0;
+			switch (variant)
+			{
+				case ARM_AAPCS:
+				case ARM_AAPCS_LINUX:
+					return 8; // AAPCS (not AAPCS16!) uses 64 bits
+				case ARM_AAPCS16:
+				case ARM_APCS_GNU:
+					break;
+			}
+			break;
+		case ARCH_TYPE_X86:
+			if (os == OS_TYPE_WIN32) /* COFF */
+			{
+				return 8192;
+			}
+			if (os_is_apple(os))
+			{
+				// With AVX512 - 512, AVX - 256 otherwise AVX - 128
+				return 256;
+			}
+			break;
 		default:
-			return 0;
+			break;
 	}
+	// No max alignment default.
+	return 0;
+}
+
+static AlignSize os_arch_max_alignment_of_tls(OsType os, ArchType arch, EnvironmentType type)
+{
+	switch (arch)
+	{
+		case ARCH_TYPE_X86:
+			if (os == OS_TYPE_WIN32) /* COFF */
+			{
+				return 8192;
+			}
+			break;
+		default:
+			break;
+	}
+	// No max alignment default.
+	return 0;
 }
 
 static bool os_target_signed_c_char_type(OsType os, ArchType arch)
@@ -397,6 +437,18 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	if (platform_target.os == OS_TYPE_LINUX || platform_target.os == OS_TYPE_NETBSD)
 	{
 		platform_target.x64.pass_int128_vector_in_mem = true;
+	}
+	switch (platform_target.x64.avx_level)
+	{
+		case AVX_NONE:
+			platform_target.x64.align_simd_default = 128;
+			break;
+		case AVX:
+			platform_target.x64.align_simd_default = 256;
+			break;
+		case AVX_512:
+			platform_target.x64.align_simd_default = 512;
+			break;
 	}
 }
 
@@ -684,7 +736,10 @@ static unsigned os_target_supports_float16(OsType os, ArchType arch)
 	{
 		case ARCH_TYPE_AARCH64:
 			return true;
+		case ARCH_TYPE_ARM:
+			// Supported on fullfp16 and mve.fp in Clang
 		default:
+			// Supported by AMDGPU
 			return false;
 	}
 }
@@ -845,7 +900,17 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 
 }
 
-static unsigned os_target_alignment_of_int(OsType os, ArchType arch, int bits)
+typedef enum {
+	MACHO_MANGLING,
+	ELF_MANGLING,
+	MIPS_MANGLING,
+	WIN86_MANGLING,
+	WIN_MANGLING,
+	XCOFF_MANGLING
+} Mangling;
+
+
+static AlignData os_target_alignment_of_int(OsType os, ArchType arch, int bits)
 {
 	switch (arch)
 	{
@@ -854,36 +919,34 @@ static unsigned os_target_alignment_of_int(OsType os, ArchType arch, int bits)
 			UNREACHABLE
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_THUMB:
-			if ((os_is_apple(os) || os == OS_TYPE_NETBSD) && bits > 32) return 4;
-			return bits > 64 ? 8 : bits / 8;
 		case ARCH_TYPE_ARMB:
 		case ARCH_TYPE_THUMBEB:
-			if (os == OS_TYPE_NETBSD && bits > 32) return 4;
-			return bits > 64 ? 8 : bits / 8;
+			if ((os_is_apple(os) || os == OS_TYPE_NETBSD) && bits > 32) return (AlignData) { 32, MIN(64, bits) };
+			return (AlignData) { MIN(64, bits), MIN(64, bits) };
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_RISCV32:
 		case ARCH_TYPE_X86_64:
-		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
-			return bits > 64 ? 8 : bits / 8;
-			return bits > 32 ? 4 : bits / 8;
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_WASM32:
+			return (AlignData) { MIN(64, bits), MIN(64, bits) };
+		case ARCH_TYPE_RISCV64:
+			return (AlignData) { bits, bits };
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
-		case ARCH_TYPE_RISCV64:
-			return bits / 8;
+			if (bits < 32 && !os_is_apple(os) && os != OS_TYPE_WIN32) return (AlignData){ bits, 32 };
+			return (AlignData) { bits, bits };
 		case ARCH_TYPE_X86:
-			if (bits >= 64)
-			{
-				return (os == OS_TYPE_WIN32 || os == OS_TYPE_NACL) ? 8 : 4;
-			}
-			return bits / 8;
+			if (bits < 32) return (AlignData) { bits, bits };
+			if (os == OS_TYPE_ELFIAMCU) return (AlignData) { 32, 32 };
+			if (os == OS_TYPE_WIN32 || os == OS_TYPE_NACL) return (AlignData) { 64, 64 };
+			return (AlignData) { 32, 64 };
 	}
 	UNREACHABLE
 }
 
-static unsigned arch_little_endian(ArchType arch)
+static unsigned arch_big_endian(ArchType arch)
 {
 	switch (arch)
 	{
@@ -898,53 +961,21 @@ static unsigned arch_little_endian(ArchType arch)
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
-			return true;
-		case ARCH_TYPE_ARMB:
-		case ARCH_TYPE_THUMBEB:
-		case ARCH_TYPE_AARCH64_BE:
-		case ARCH_TYPE_PPC64:
-		case ARCH_TYPE_PPC:
 			return false;
-		case ARCH_UNSUPPORTED:
-			UNREACHABLE
-	}
-	UNREACHABLE
-}
-
-static unsigned os_target_pref_alignment_of_int(OsType os, ArchType arch, int bits)
-{
-	switch (arch)
-	{
-		case ARCH_TYPE_UNKNOWN:
-		case ARCH_UNSUPPORTED:
-			UNREACHABLE
-		case ARCH_TYPE_X86:
-			if (os == OS_TYPE_ELFIAMCU && bits > 32) return 4;
-			return bits > 64 ? 8 : bits / 8;
-		case ARCH_TYPE_AARCH64:
-			if (bits < 32 && !os_is_apple(os) && os != OS_TYPE_WIN32) return 4;
-			return bits / 8;
-		case ARCH_TYPE_AARCH64_BE:
-			return bits < 32 ? 4 : bits / 8;
-		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_ARMB:
-		case ARCH_TYPE_PPC:
-		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_PPC64:
-		case ARCH_TYPE_RISCV32:
-		case ARCH_TYPE_THUMB:
 		case ARCH_TYPE_THUMBEB:
-		case ARCH_TYPE_X86_64:
-		case ARCH_TYPE_WASM32:
-		case ARCH_TYPE_WASM64:
-			return bits < 64 ? bits / 8 : 8;
-		case ARCH_TYPE_RISCV64:
-			return bits / 8;
+		case ARCH_TYPE_AARCH64_BE:
+		case ARCH_TYPE_PPC64:
+		case ARCH_TYPE_PPC:
+			return true;
+		case ARCH_UNSUPPORTED:
+			UNREACHABLE
 	}
 	UNREACHABLE
 }
 
-static unsigned os_target_alignment_of_float(OsType os, ArchType arch, int bits)
+
+static AlignData os_target_alignment_of_float(OsType os, ArchType arch, int bits)
 {
 	switch (arch)
 	{
@@ -952,12 +983,12 @@ static unsigned os_target_alignment_of_float(OsType os, ArchType arch, int bits)
 		case ARCH_UNSUPPORTED:
 			UNREACHABLE
 		case ARCH_TYPE_X86:
-			if (os == OS_TYPE_ELFIAMCU && bits >= 32) return 4;
+			if (os == OS_TYPE_ELFIAMCU && bits >= 32) return (AlignData) { 32, 32 };
 			if (os == OS_TYPE_WIN32 || os == OS_TYPE_NACL)
 			{
-				return bits / 8;
+				return (AlignData) { bits, bits };
 			}
-			return bits == 64 ? 4 : bits / 8;
+			return (AlignData) { MIN(32, bits), bits };
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
 		case ARCH_TYPE_PPC64:
@@ -967,24 +998,19 @@ static unsigned os_target_alignment_of_float(OsType os, ArchType arch, int bits)
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
-			return bits / 8;
+			return (AlignData) { bits , bits };
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_THUMB:
-			if ((os_is_apple(os) || os == OS_TYPE_NETBSD) && bits == 64)
-			{
-				return 4;
-			}
-			return bits / 8;
 		case ARCH_TYPE_THUMBEB:
 		case ARCH_TYPE_ARMB:
-			if (os == OS_TYPE_NETBSD && bits == 64)
+			if ((os_is_apple(os) || os == OS_TYPE_NETBSD) && bits == 64)
 			{
-				return 4;
+				return (AlignData) { 32, bits };
 			}
-			return bits / 8;
+			return (AlignData) { bits , bits };
 		case ARCH_TYPE_X86_64:
-			if (bits == 128 && os == OS_TYPE_ELFIAMCU) return 4;
-			return bits / 8;
+			if (bits == 128 && os == OS_TYPE_ELFIAMCU) return (AlignData) { 32, 32 };
+			return (AlignData) { bits , bits };
 	}
 	UNREACHABLE
 }
@@ -1100,6 +1126,7 @@ static unsigned os_target_pref_alignment_of_float(OsType os, ArchType arch, int 
 	}
 	UNREACHABLE
 }
+
 
 void *llvm_target_machine_create(void)
 {
@@ -1218,28 +1245,13 @@ void target_setup(BuildTarget *target)
 	platform_target.environment_type = environment_type_from_llvm_string(target_triple_string);
 
 	platform_target.float_abi = false;
-	platform_target.little_endian = arch_little_endian(platform_target.arch);
+	// TLS should not be supported for:
+	// ARM Cygwin
+	// NVPTX
+	platform_target.tls_supported = true;
+	platform_target.big_endian = arch_big_endian(platform_target.arch);
 	platform_target.width_pointer = arch_pointer_bit_width(platform_target.os, platform_target.arch);
 	platform_target.alloca_address_space = 0;
-
-	// Todo PIC or no PIC depending on architecture.
-	switch (platform_target.arch)
-	{
-		case ARCH_TYPE_X86_64:
-		case ARCH_TYPE_X86:
-		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_ARM:
-		case ARCH_TYPE_RISCV32:
-		case ARCH_TYPE_RISCV64:
-		case ARCH_TYPE_AARCH64:
-			platform_target.max_size_for_return = platform_target.width_pointer * 2 / 8;
-			break;
-		case ARCH_TYPE_PPC64:
-			platform_target.max_size_for_return = 0;
-			break;
-		default:
-			FATAL_ERROR("Unsupported architecture.");
-	}
 
 	platform_target.object_format = object_format_from_os(platform_target.os);
 
@@ -1250,23 +1262,20 @@ void target_setup(BuildTarget *target)
 	platform_target.vec64i = os_target_supports_vec(platform_target.os, platform_target.arch, 64, true);
 	platform_target.float128 = os_target_supports_float128(platform_target.os, platform_target.arch);
 	platform_target.float16 = os_target_supports_float16(platform_target.os, platform_target.arch);
-	platform_target.align_byte = os_target_alignment_of_int(platform_target.os, platform_target.arch, 8);
-	platform_target.align_short = os_target_alignment_of_int(platform_target.os, platform_target.arch, 16);
-	platform_target.align_int = os_target_alignment_of_int(platform_target.os, platform_target.arch, 32);
-	platform_target.align_long = os_target_alignment_of_int(platform_target.os, platform_target.arch, 64);
-	platform_target.align_i128 = os_target_alignment_of_int(platform_target.os, platform_target.arch, 128);
-	platform_target.align_half = os_target_alignment_of_float(platform_target.os, platform_target.arch, 16);
-	platform_target.align_float = os_target_alignment_of_float(platform_target.os, platform_target.arch, 32);
-	platform_target.align_double = os_target_alignment_of_float(platform_target.os, platform_target.arch, 64);
-	platform_target.align_f128 = os_target_alignment_of_float(platform_target.os, platform_target.arch, 128);
-	platform_target.align_int = os_target_alignment_of_int(platform_target.os, platform_target.arch, 32);
-	platform_target.align_pointer = platform_target.width_pointer / 8;
+	for (BitSizes i = BITS8; i < BITSIZES_LEN; i++)
+	{
+		unsigned bits = 8 << (i - 1);
+		platform_target.integers[i] = os_target_alignment_of_int(platform_target.os, platform_target.arch, bits);
+		platform_target.floats[i] = os_target_alignment_of_float(platform_target.os, platform_target.arch, bits);
+	}
+	platform_target.integers[BIT1] = platform_target.integers[BITS8];
+
+	platform_target.align_pointer = (AlignData) { platform_target.width_pointer, platform_target.width_pointer };
 	platform_target.width_c_short = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_SHORT);
 	platform_target.width_c_int = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_INT);
 	platform_target.width_c_long = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_LONG);
 	platform_target.width_c_long_long = os_target_c_type_bits(platform_target.os, platform_target.arch, CTYPE_LONG_LONG);
 	platform_target.signed_c_char = os_target_signed_c_char_type(platform_target.os, platform_target.arch);
-	platform_target.align_max_vector = os_arch_max_alignment_of_vector(platform_target.os, platform_target.arch);
 	/**
 	 * x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
 	 * x86-64-v2: (close to Nehalem) CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3
@@ -1336,7 +1345,10 @@ void target_setup(BuildTarget *target)
 			platform_target.abi = ABI_UNKNOWN;
 			break;
 	}
-
+	platform_target.align_max_vector = os_arch_max_alignment_of_vector(platform_target.os, platform_target.arch, platform_target.environment_type, platform_target.arm.variant);
+	platform_target.align_max_tls = os_arch_max_alignment_of_tls(platform_target.os,
+	                                                             platform_target.arch,
+	                                                             platform_target.environment_type);
 	platform_target.pic = arch_os_pic_default(platform_target.arch, platform_target.os);
 	platform_target.pie = arch_os_pie_default(platform_target.arch, platform_target.os, platform_target.environment_type);
 	platform_target.pic_required = arch_os_pic_default_forced(platform_target.arch, platform_target.os);

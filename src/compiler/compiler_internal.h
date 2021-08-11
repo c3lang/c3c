@@ -287,6 +287,12 @@ typedef struct
 } StructDecl;
 
 
+typedef struct
+{
+	TypeInfo *base_type;
+	Decl **members;
+} BitStructDecl;
+
 typedef struct VarDecl_
 {
 	VarDeclKind kind : 4;
@@ -305,11 +311,13 @@ typedef struct VarDecl_
 	{
 		void *backend_debug_ref;
 		unsigned scope_depth;
+		Expr *start;
 	};
 	union
 	{
 		void *failable_ref;
 		struct ABIArgInfo_ *abi_info;
+		Expr *end;
 	};
 } VarDecl;
 
@@ -536,6 +544,7 @@ typedef struct Decl_
 				StructDecl strukt;
 				EnumDecl enums;
 				DistinctDecl distinct_decl;
+				BitStructDecl bitstruct;
 			};
 		};
 		ImportDecl import;
@@ -857,10 +866,57 @@ typedef struct
 
 typedef struct
 {
-	bool is_try;
+	bool is_try : 1;
 	Expr *expr;
 	Expr *init;
 } ExprTryAssign;
+
+typedef struct
+{
+	bool is_try : 1;
+	Decl *decl;
+} ExprTryDecl;
+
+typedef struct
+{
+	union
+	{
+		struct
+		{
+			Expr *variable;
+			TypeInfo *type;
+		};
+		struct
+		{
+			Decl *decl;
+			Expr *lhs;
+		};
+	};
+	Expr **exprs;
+} ExprCatchUnwrap;
+
+typedef struct
+{
+	union
+	{
+		struct
+		{
+			Expr *variable;
+			TypeInfo *type;
+			Expr *init;
+		};
+		struct
+		{
+			bool assign_existing : 1;
+			Expr *failable;
+			union
+			{
+				Decl *decl;
+				Expr *lhs;
+			};
+		};
+	};
+} ExprTryUnwrap;
 
 typedef struct
 {
@@ -896,11 +952,15 @@ struct Expr_
 		ExprBinary binary_expr;
 		ExprTernary ternary_expr;
 		ExprUnary unary_expr;
+		Expr** try_unwrap_chain_expr;
 		ExprPostUnary post_expr;
+		ExprTryUnwrap try_unwrap_expr;
 		ExprCall call_expr;
 		ExprSlice slice_expr;
 		ExprTryExpr try_expr;
 		ExprTryAssign try_assign_expr;
+		ExprTryDecl try_decl_expr;
+		ExprCatchUnwrap catch_unwrap_expr;
 		ExprSubscript subscript_expr;
 		ExprAccess access_expr;
 		ExprDesignator designator_expr;
@@ -923,7 +983,7 @@ struct Expr_
 		ExprMacroBlock macro_block;
 
 		Expr* failable_expr;
-		Expr** dexpr_list_expr;
+		Expr** cond_expr;
 	};
 };
 
@@ -1348,6 +1408,7 @@ typedef struct Context_
 	STable local_symbols;
 	Decl **global_decls;
 	Decl **enums;
+	Decl **errtypes;
 	Decl **types;
 	Decl **generic_defines;
 	Decl **functions;
@@ -1708,6 +1769,29 @@ static inline bool decl_is_struct_type(Decl *decl);
 static inline bool decl_is_callable_type(Decl *decl);
 static inline bool decl_is_user_defined_type(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
+static inline bool decl_var_is_assignable(Decl *decl)
+{
+	switch (decl->var.kind)
+	{
+		case VARDECL_GLOBAL:
+		case VARDECL_LOCAL:
+		case VARDECL_PARAM:
+		case VARDECL_PARAM_CT:
+		case VARDECL_PARAM_CT_TYPE:
+		case VARDECL_PARAM_REF:
+		case VARDECL_LOCAL_CT:
+		case VARDECL_LOCAL_CT_TYPE:
+		case VARDECL_UNWRAPPED:
+			return true;
+		case VARDECL_CONST:
+		case VARDECL_MEMBER:
+		case VARDECL_PARAM_EXPR:
+			return false;
+		case VARDECL_REWRAPPED:
+		case VARDECL_ERASE:
+			UNREACHABLE
+	}
+}
 static inline Decl *decl_flatten(Decl *decl)
 {
 	if (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind != DEFINE_TYPE_GENERIC)
@@ -1815,7 +1899,8 @@ bool sema_add_member(Context *context, Decl *decl);
 bool sema_add_local(Context *context, Decl *decl);
 bool sema_unwrap_var(Context *context, Decl *decl);
 bool sema_rewrap_var(Context *context, Decl *decl);
-
+bool sema_erase_var(Context *context, Decl *decl);
+bool sema_erase_unwrapped(Context *context, Decl *decl);
 bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr, bool may_be_failable);
 ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
@@ -1882,6 +1967,8 @@ int target_alloca_addr_space();
 bool token_is_type(TokenType type);
 bool token_is_any_type(TokenType type);
 bool token_is_symbol(TokenType type);
+bool token_is_ident_keyword(TokenType token_type);
+bool token_is_ct_ident_keyword(TokenType token_type);
 const char *token_type_to_string(TokenType type);
 static inline TokenType advance_token(TokenId *token)
 {
@@ -2116,6 +2203,21 @@ static inline void advance_and_verify(Context *context, TokenType token_type)
 	advance(context);
 }
 
+static inline Type *type_flatten_for_bitstruct(Type *type)
+{
+	type = type->canonical;
+	RETRY:
+	while (type->type_kind == TYPE_DISTINCT)
+	{
+		type = type->decl->distinct_decl.base_type;
+	}
+	if (type->type_kind == TYPE_ENUM)
+	{
+		type = type->decl->enums.type_info->type->canonical;
+		goto RETRY;
+	}
+	return type;
+}
 
 static inline Type *type_flatten_distinct(Type *type)
 {
@@ -2141,6 +2243,10 @@ static inline Type *type_flatten(Type *type)
 		{
 			type = type->decl->enums.type_info->type;
 			continue;
+		}
+		if (type->type_kind == TYPE_ANYERR || type->type_kind == TYPE_ERRTYPE)
+		{
+			type = type_iptr->canonical;
 		}
 		return type;
 	}
@@ -2181,7 +2287,6 @@ static inline bool type_is_structlike(Type *type)
 	{
 		case TYPE_UNION:
 		case TYPE_STRUCT:
-		case TYPE_ERRTYPE:
 			return true;
 		default:
 			return false;
@@ -2193,22 +2298,30 @@ static inline Type *type_lowering(Type *type)
 {
 	Type *canonical = type_flatten(type);
 	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
-	if (canonical->type_kind == TYPE_TYPEID) return type_usize->canonical;
+	if (canonical->type_kind == TYPE_TYPEID) return type_iptr->canonical;
+	if (canonical->type_kind == TYPE_ERRTYPE) return type_iptr->canonical;
+	if (canonical->type_kind == TYPE_BITSTRUCT) return type_lowering(canonical->decl->bitstruct.base_type->type);
 	return canonical;
 }
 
 static inline Decl *decl_raw(Decl *decl)
 {
-	if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_ALIAS) return decl;
+	if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_UNWRAPPED) return decl;
 	decl = decl->var.alias;
-	assert(decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_ALIAS);
+	assert(decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_UNWRAPPED);
 	return decl;
 }
 
 static inline bool decl_is_struct_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
-	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_ERR);
+	return (kind == DECL_UNION) | (kind == DECL_STRUCT);
+}
+
+static inline bool decl_is_enum_kind(Decl *decl)
+{
+	DeclKind kind = decl->decl_kind;
+	return (kind == DECL_ENUM) | (kind == DECL_ERRTYPE);
 }
 
 static inline bool decl_is_callable_type(Decl *decl)
@@ -2220,7 +2333,7 @@ static inline bool decl_is_callable_type(Decl *decl)
 static inline bool decl_is_user_defined_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
-	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_ERR)
+	return (kind == DECL_UNION) | (kind == DECL_STRUCT)
 			| (kind == DECL_ENUM) | (kind == DECL_DISTINCT);
 }
 

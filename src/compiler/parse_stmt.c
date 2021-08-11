@@ -277,7 +277,7 @@ static inline Ast* parse_while_stmt(Context *context)
 	while_ast->while_stmt.flow.label = TRY_DECL_OR(parse_optional_label(context, while_ast), poisoned_ast);
 
 	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
-	while_ast->while_stmt.cond = TRY_EXPR_OR(parse_decl_expr_list(context), poisoned_ast);
+	while_ast->while_stmt.cond = TRY_EXPR_OR(parse_cond(context), poisoned_ast);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
 	while_ast->while_stmt.body = TRY_AST(parse_stmt(context));
 	return while_ast;
@@ -308,7 +308,7 @@ static inline Ast* parse_if_stmt(Context *context)
 	advance_and_verify(context, TOKEN_IF);
 	if_ast->if_stmt.flow.label = TRY_DECL_OR(parse_optional_label(context, if_ast), poisoned_ast);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
-	if_ast->if_stmt.cond = TRY_EXPR_OR(parse_decl_expr_list(context), poisoned_ast);
+	if_ast->if_stmt.cond = TRY_EXPR_OR(parse_cond(context), poisoned_ast);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
 	Ast *stmt = TRY_AST(parse_stmt(context));
 	if_ast->if_stmt.then_body = stmt;
@@ -436,7 +436,7 @@ static inline Ast* parse_switch_stmt(Context *context)
 	advance_and_verify(context, TOKEN_SWITCH);
 	switch_ast->switch_stmt.flow.label = TRY_DECL_OR(parse_optional_label(context, switch_ast), poisoned_ast);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
-	switch_ast->switch_stmt.cond = TRY_EXPR_OR(parse_decl_expr_list(context), poisoned_ast);
+	switch_ast->switch_stmt.cond = TRY_EXPR_OR(parse_cond(context), poisoned_ast);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
 
 	if (!parse_switch_body(context, &switch_ast->switch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT, false)) return poisoned_ast;
@@ -463,7 +463,7 @@ static inline Ast* parse_for_stmt(Context *context)
 
 	if (!TOKEN_IS(TOKEN_EOS))
 	{
-		ast->for_stmt.init = TRY_EXPR_OR(parse_decl_expr_list(context), poisoned_ast);
+		ast->for_stmt.init = TRY_EXPR_OR(parse_cond(context), poisoned_ast);
 	}
 	else
 	{
@@ -645,7 +645,7 @@ static inline Ast *parse_try_stmt(Context *context)
 	Ast *stmt = AST_NEW_TOKEN(AST_TRY_STMT, context->tok);
 	advance_and_verify(context, TOKEN_TRY_OLD);
 	TRY_CONSUME(TOKEN_LPAREN, "Expected a '(' after 'try'.");
-	stmt->try_old_stmt.decl_expr = TRY_EXPR_OR(parse_decl_expr_list(context), poisoned_ast);
+	stmt->try_old_stmt.decl_expr = TRY_EXPR_OR(parse_cond(context), poisoned_ast);
 	TRY_CONSUME(TOKEN_RPAREN, "Expected a ')' after 'try'.");
 	stmt->try_old_stmt.body = TRY_AST(parse_stmt(context));
 	return stmt;
@@ -1148,6 +1148,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_UNDERSCORE:
 		case TOKEN_PRIVATE:
 		case TOKEN_PLACEHOLDER:
+		case TOKEN_BITSTRUCT:
 			SEMA_TOKEN_ERROR(context->tok, "Unexpected '%s' found when expecting a statement.", token_type_to_string(context->tok.type));
 			advance(context);
 			return poisoned_ast;

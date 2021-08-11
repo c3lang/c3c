@@ -236,6 +236,24 @@ typedef enum
 
 typedef struct
 {
+	unsigned align;
+	unsigned pref_align;
+} AlignData;
+
+typedef enum
+{
+	BIT1,
+	BITS8,
+	BITS16,
+	BITS32,
+	BITS64,
+	BITS128,
+	BITS256,
+	BITSIZES_LEN
+} BitSizes;
+
+typedef struct
+{
 	const char *target_triple;
 	int llvm_opt_level;
 	const char *features;
@@ -247,6 +265,8 @@ typedef struct
 	ObjectFormatType object_format;
 	int alloca_address_space;
 	ABI abi;
+	AlignData integers[BITSIZES_LEN];
+	AlignData floats[BITSIZES_LEN];
 	PicGeneration pic : 3;
 	PieGeneration pie : 3;
 	bool pic_required : 1;
@@ -266,6 +286,7 @@ typedef struct
 		} x86;
 		struct
 		{
+			unsigned align_simd_default : 16;
 			AVXLevel avx_level : 3;
 			bool no_mmx : 1;
 			bool no_sse : 1;
@@ -314,7 +335,7 @@ typedef struct
 			bool has_vector : 1;
 		} systemz;
 	};
-	bool little_endian;
+	bool big_endian;
 	bool tls_supported;
 	bool asm_supported;
 	bool float128;
@@ -324,34 +345,9 @@ typedef struct
 	bool vec128f;
 	bool vec64f;
 	bool int128;
-	unsigned align_pref_pointer;
-	unsigned align_pref_byte;
-	unsigned align_pref_short;
-	unsigned align_pref_int;
-	unsigned align_pref_long;
-	unsigned align_pref_i128;
-	unsigned align_pref_half;
-	unsigned align_pref_float;
-	unsigned align_pref_double;
-	unsigned align_pref_f128;
-	unsigned align_pointer;
-	unsigned align_byte;
-	unsigned align_short;
-	unsigned align_int;
-	unsigned align_long;
-	unsigned align_i128;
-	unsigned align_half;
-	unsigned align_float;
-	unsigned align_double;
-	unsigned align_f128;
-	unsigned align_c_long_double;
-	unsigned align_c_int;
-	unsigned align_c_long;
-	unsigned align_c_long_long;
-	unsigned align_simd_default;
+	AlignData align_pointer;
 	unsigned align_max_vector;
-	unsigned align_global_min;
-	unsigned align_new;
+	unsigned align_max_tls;
 	unsigned align_large_array;
 	unsigned width_pointer;
 	unsigned width_c_short;
@@ -366,8 +362,8 @@ typedef struct
 	unsigned sse_reg_param_max;
 	unsigned builtin_ms_valist;
 	unsigned aarch64sve_types;
-	unsigned max_size_for_return;
 	char *platform_name;
+	// MinGlobalAlign is used by Clang for SystemZ and Lanai targets.
 
 } PlatformTarget;
 

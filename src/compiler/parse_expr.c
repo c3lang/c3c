@@ -59,6 +59,162 @@ static inline Expr *parse_expr_or_initializer_list(Context *context)
 	return parse_expr(context);
 }
 
+static inline bool next_is_try_unwrap(Context *context)
+{
+	return tok_is(context, TOKEN_TRY) && context->next_tok.type != TOKEN_LPAREN;
+}
+
+static inline bool next_is_catch_unwrap(Context *context)
+{
+	return tok_is(context, TOKEN_CATCH) && context->next_tok.type != TOKEN_LPAREN;
+}
+
+static inline Expr *parse_for_try_expr(Context *context)
+{
+	return parse_precedence(context, PREC_AND + 1);
+}
+
+/**
+ * catch_unwrap ::= CATCH IDENT | (type? IDENT '=' (expr | '(' expr (',' expr) ')'))
+ */
+static inline Expr *parse_catch_unwrap(Context *context)
+{
+	advance_and_verify(context, TOKEN_CATCH);
+	Expr *expr = expr_new(EXPR_CATCH_UNWRAP, source_span_from_token_id(context->prev_tok));
+	expr->catch_unwrap_expr.type = parse_next_is_decl(context) ? TRY_TYPE_OR(parse_type(context), poisoned_expr) : NULL;
+	expr->catch_unwrap_expr.variable = TRY_EXPR_OR(parse_for_try_expr(context), poisoned_expr);
+	if (!try_consume(context, TOKEN_EQ))
+	{
+		if (expr->catch_unwrap_expr.type)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "Expected a '=' here.");
+			return poisoned_expr;
+		}
+		vec_add(expr->catch_unwrap_expr.exprs, expr->catch_unwrap_expr.variable);
+		expr->catch_unwrap_expr.variable = NULL;
+		RANGE_EXTEND_PREV(expr);
+		return expr;
+	}
+	if (try_consume(context, TOKEN_LPAREN))
+	{
+		do
+		{
+			Expr *init_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+			vec_add(expr->catch_unwrap_expr.exprs, init_expr);
+		} while (try_consume(context, TOKEN_COMMA));
+		CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
+	}
+	else
+	{
+		Expr *init_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+		vec_add(expr->catch_unwrap_expr.exprs, init_expr);
+	}
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+/**
+ * try_unwrap ::= TRY (IDENT | type? IDENT '=' non_and_expr)
+ */
+static inline Expr *parse_try_unwrap(Context *context)
+{
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_TRY_UNWRAP, context->tok);
+	advance_and_verify(context, TOKEN_TRY);
+	if (parse_next_is_decl(context))
+	{
+		expr->try_unwrap_expr.type = TRY_TYPE_OR(parse_type(context), poisoned_expr);
+	}
+	expr->try_unwrap_expr.variable = TRY_EXPR_OR(parse_for_try_expr(context), poisoned_expr);
+	if (expr->try_unwrap_expr.type && expr->try_unwrap_expr.variable->expr_kind != EXPR_IDENTIFIER)
+	{
+		SEMA_ERROR(expr->try_unwrap_expr.variable, "Expected a variable name after the type.");
+		return poisoned_expr;
+	}
+	if (try_consume(context, TOKEN_EQ))
+	{
+		expr->try_unwrap_expr.init = TRY_EXPR_OR(parse_for_try_expr(context), poisoned_expr);
+	}
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+/**
+ * try_unwrap_chain ::= try_unwrap ('&&' (try_unwrap | non_and_expr))*
+ * try_unwrap ::= TRY (IDENT | type? IDENT '=' non_and_expr)
+ */
+static inline Expr *parse_try_unwrap_chain(Context *context)
+{
+	Expr **unwraps = NULL;
+	Expr *first_unwrap = TRY_EXPR_OR(parse_try_unwrap(context), poisoned_expr);
+	vec_add(unwraps, first_unwrap);
+	while (try_consume(context, TOKEN_AND))
+	{
+		if (next_is_try_unwrap(context))
+		{
+			Expr *expr = TRY_EXPR_OR(parse_try_unwrap(context), poisoned_expr);
+			vec_add(unwraps, expr);
+			continue;
+		}
+		Expr *next_unwrap = TRY_EXPR_OR(parse_for_try_expr(context), poisoned_expr);
+		vec_add(unwraps, next_unwrap);
+	}
+	Expr *try_unwrap_chain = EXPR_NEW_EXPR(EXPR_TRY_UNWRAP_CHAIN, first_unwrap);
+	try_unwrap_chain->try_unwrap_chain_expr = unwraps;
+	RANGE_EXTEND_PREV(try_unwrap_chain);
+	return try_unwrap_chain;
+}
+
+/**
+ * cond_list ::= ((expr | decl-expr) COMMA)* (expr | decl-expr | try_unwrap_chain | catch_unwrap )
+ *
+ * @return bool
+ */
+Expr *parse_cond(Context *context)
+{
+	Expr *decl_expr = EXPR_NEW_TOKEN(EXPR_COND, context->tok);
+	decl_expr->cond_expr = NULL;
+	while (1)
+	{
+		if (next_is_try_unwrap(context))
+		{
+			Expr *try_unwrap = TRY_EXPR_OR(parse_try_unwrap_chain(context), poisoned_expr);
+			vec_add(decl_expr->cond_expr, try_unwrap);
+			if (tok_is(context, TOKEN_COMMA))
+			{
+				SEMA_ERROR(try_unwrap, "The 'try' must be placed last, can you change it?");
+				return poisoned_expr;
+			}
+			break;
+		}
+		if (next_is_catch_unwrap(context))
+		{
+			Expr *catch_unwrap = TRY_EXPR_OR(parse_catch_unwrap(context), poisoned_expr);
+			vec_add(decl_expr->cond_expr, catch_unwrap);
+			if (tok_is(context, TOKEN_COMMA))
+			{
+				SEMA_ERROR(catch_unwrap, "The 'catch' must be placed last, can you change it?");
+				return poisoned_expr;
+			}
+			break;
+		}
+		if (parse_next_is_decl(context))
+		{
+			Decl *decl = TRY_DECL_OR(parse_decl(context), poisoned_expr);
+			Expr *expr = expr_new(EXPR_DECL, decl->span);
+			expr->decl_expr = decl;
+			vec_add(decl_expr->cond_expr, expr);
+		}
+		else
+		{
+			Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+			vec_add(decl_expr->cond_expr, expr);
+		}
+		if (!try_consume(context, TOKEN_COMMA)) break;
+	}
+	RANGE_EXTEND_PREV(decl_expr);
+	return decl_expr;
+}
+
 inline Expr* parse_expr(Context *context)
 {
 	return parse_precedence(context, PREC_ASSIGNMENT);
@@ -654,37 +810,30 @@ static Expr *parse_identifier_starting_expression(Context *context, Expr *left)
 	}
 }
 
-static Expr *parse_try_old_expr(Context *context, Expr *left)
-{
-	assert(!left && "Unexpected left hand side");
-	Expr *try_expr = EXPR_NEW_TOKEN(TOKEN_IS(TOKEN_TRY_OLD) ? EXPR_TRY_OLD : EXPR_CATCH_OLD, context->tok);
-	advance(context);
-	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
-	try_expr->trycatch_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
-	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
-	return try_expr;
-}
+
 
 static Expr *parse_try_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	bool try = TOKEN_IS(TOKEN_TRY);
-	Expr *try_expr = EXPR_NEW_TOKEN(EXPR_TRY, context->tok);
+	bool is_try = TOKEN_IS(TOKEN_TRY);
 	advance(context);
-	Expr *expr = TRY_EXPR_OR(parse_precedence(context, PREC_UNARY), poisoned_expr);
-	if (try_consume(context, TOKEN_EQ))
+	Expr *try_expr = expr_new(EXPR_TRY, source_span_from_token_id(context->prev_tok));
+	if (!try_consume(context, TOKEN_LPAREN))
 	{
-		Expr *init = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
-		try_expr->expr_kind = EXPR_TRY_ASSIGN;
-		try_expr->try_assign_expr.expr = expr;
-		try_expr->try_assign_expr.is_try = try;
-		try_expr->try_assign_expr.init = init;
+		if (is_try)
+		{
+			SEMA_ERROR(try_expr, "An unwrapping 'try' can only occur as the last element of a conditional, did you want 'try(expr)'?");
+			return poisoned_expr;
+		}
+		else
+		{
+			SEMA_ERROR(try_expr, "An unwrapping 'catch' can only occur as the last element of a conditional, did you want 'catch(expr)'?");
+			return poisoned_expr;
+		}
 	}
-	else
-	{
-		try_expr->try_expr.expr = expr;
-		try_expr->try_expr.is_try = try;
-	}
+	try_expr->try_expr.expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	try_expr->try_expr.is_try = is_try;
+	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(try_expr);
 	return try_expr;
 }
@@ -1108,8 +1257,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_LBRAPIPE] = { parse_expr_block, NULL, PREC_NONE },
 		[TOKEN_TRY] = { parse_try_expr, NULL, PREC_NONE },
 		[TOKEN_CATCH] = { parse_try_expr, NULL, PREC_NONE },
-		[TOKEN_TRY_OLD] = { parse_try_old_expr, NULL, PREC_NONE },
-		[TOKEN_CATCH_OLD] = { parse_try_old_expr, NULL, PREC_NONE },
 		[TOKEN_BANGBANG] = { NULL, parse_bangbang_expr, PREC_CALL },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },

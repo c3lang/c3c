@@ -12,10 +12,13 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 	{
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
+		case DECL_ERRVALUE:
 		case DECL_POISONED:
 		case DECL_INTERFACE:
 		case NON_TYPE_DECLS:
 			UNREACHABLE
+		case DECL_BITSTRUCT:
+			return llvm_get_type(c, decl->bitstruct.base_type->type);
 		case DECL_FUNC:
 		{
 			VECEACH(decl->func_decl.function_signature.params, i)
@@ -85,31 +88,8 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		}
 		case DECL_ENUM:
 			return llvm_get_type(c, decl->type);
-		case DECL_ERR:
-		{
-			LLVMTypeRef err_type = LLVMStructCreateNamed(c->context, decl->name);
-			// Avoid recursive issues.
-			decl->type->backend_type = err_type;
-			LLVMTypeRef *types = NULL;
-			unsigned size = 0;
-			VECEACH(decl->strukt.members, i)
-			{
-				Type *type = decl->strukt.members[i]->type->canonical;
-				unsigned alignment = type_abi_alignment(type);
-				if (size % alignment != 0)
-				{
-					size += alignment - size % alignment;
-				}
-				size += type_size(type);
-				vec_add(types, llvm_get_type(c, type));
-			}
-			if (decl->strukt.padding)
-			{
-				vec_add(types, llvm_const_padding_type(c, decl->strukt.padding));
-			}
-			LLVMStructSetBody(err_type, types, vec_size(types), false);
-			return err_type;
-		}
+		case DECL_ERRTYPE:
+			return llvm_get_type(c, type_iptr);
 	}
 	UNREACHABLE
 }
@@ -159,15 +139,9 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 			return;
 		}
 		case TYPE_ENUM:
-			param_expand(context, params_ref, type_lowering(type));
-			return;
-		case TYPE_ERR_UNION:
-			param_expand(context, params_ref, type_usize->canonical);
-			param_expand(context, params_ref, type_usize->canonical);
-			return;
+		case TYPE_ANYERR:
 		case TYPE_ERRTYPE:
-			// TODO
-			param_expand(context, params_ref, type_usize->canonical);
+			param_expand(context, params_ref, type_lowering(type));
 			return;
 		case TYPE_UNION:
 		{
@@ -338,23 +312,18 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_TYPEID:
-			return any_type->backend_type = LLVMIntTypeInContext(c->context, any_type->builtin.bitsize);
+		case TYPE_ANYERR:
+		case TYPE_ERRTYPE:
+			return any_type->backend_type = llvm_get_type(c, type_iptr);
 		case TYPE_TYPEDEF:
 			return any_type->backend_type = llvm_get_type(c, any_type->canonical);
 		case TYPE_DISTINCT:
 			return any_type->backend_type = llvm_get_type(c, any_type->decl->distinct_decl.base_type);
 		case TYPE_ENUM:
 			return any_type->backend_type = llvm_get_type(c, any_type->decl->enums.type_info->type->canonical);
-		case TYPE_ERR_UNION:
-		{
-			LLVMTypeRef elements[2] = { llvm_get_type(c, type_usize->canonical), llvm_get_type(c, type_usize->canonical) };
-			LLVMTypeRef strukt = LLVMStructCreateNamed(c->context, "error_union");
-			LLVMStructSetBody(strukt, elements, 2, false);
-			return any_type->backend_type = strukt;
-		}
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ERRTYPE:
+		case TYPE_BITSTRUCT:
 			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
 		case TYPE_FUNC:
 			return any_type->backend_type = llvm_func_type(c, any_type);

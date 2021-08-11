@@ -114,6 +114,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_POISONED:
 			return "poisoned";
 		case TYPE_ENUM:
+		case TYPE_ERRTYPE:
 		case TYPE_TYPEDEF:
 		case TYPE_STRUCT:
 		case TYPE_VOID:
@@ -121,10 +122,11 @@ const char *type_to_error_string(Type *type)
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_UNION:
-		case TYPE_ERRTYPE:
 		case TYPE_DISTINCT:
+		case TYPE_BITSTRUCT:
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VIRTUAL:
+		case TYPE_ANYERR:
 			return type->name;
 		case TYPE_FUNC:
 			return strcat_arena("func ", type->func.mangled_function_signature);
@@ -153,8 +155,6 @@ const char *type_to_error_string(Type *type)
 		case TYPE_SUBARRAY:
 			asprintf(&buffer, "%s[]", type_to_error_string(type->array.base));
 			return buffer;
-		case TYPE_ERR_UNION:
-			return "error";
 	}
 	UNREACHABLE
 }
@@ -189,6 +189,8 @@ ByteSize type_size(Type *type)
 {
 	switch (type->type_kind)
 	{
+		case TYPE_BITSTRUCT:
+			return type_size(type->decl->bitstruct.base_type->type);
 		case TYPE_DISTINCT:
 			return type_size(type->decl->distinct_decl.base_type);
 		case TYPE_VECTOR:
@@ -207,10 +209,10 @@ ByteSize type_size(Type *type)
 			UNREACHABLE;
 		case TYPE_TYPEDEF:
 			return type_size(type->canonical);
-		case TYPE_ENUM:
-			return type->decl->enums.type_info->type->canonical->builtin.bytesize;
 		case TYPE_ERRTYPE:
 			return type_size(type_usize->canonical);
+		case TYPE_ENUM:
+			return type->decl->enums.type_info->type->canonical->builtin.bytesize;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
@@ -221,7 +223,7 @@ ByteSize type_size(Type *type)
 		case TYPE_TYPEID:
 		case ALL_INTS:
 		case ALL_FLOATS:
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 		case TYPE_VIRTUAL_ANY:
 			return type->builtin.bytesize;
 		case TYPE_VIRTUAL:
@@ -340,6 +342,8 @@ bool type_is_abi_aggregate(Type *type)
 			return type_is_abi_aggregate(type->decl->distinct_decl.base_type);
 		case TYPE_TYPEDEF:
 			return type_is_abi_aggregate(type->canonical);
+		case TYPE_BITSTRUCT:
+			return type_is_abi_aggregate(type->decl->bitstruct.base_type->type);
 		case ALL_FLOATS:
 		case TYPE_VOID:
 		case ALL_INTS:
@@ -350,13 +354,13 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_FUNC:
 		case TYPE_STRLIT:
 		case TYPE_VECTOR:
-			return false;
+		case TYPE_ANYERR:
 		case TYPE_ERRTYPE:
+			return false;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_SUBARRAY:
 		case TYPE_ARRAY:
-		case TYPE_ERR_UNION:
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
 			return true;
@@ -495,6 +499,9 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
+		case TYPE_BITSTRUCT:
+			type = type->decl->bitstruct.base_type->type;
+			goto RETRY;
 		case TYPE_FXX:
 		case TYPE_POISONED:
 		case TYPE_IXX:
@@ -506,18 +513,15 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
 			return false;
-		case TYPE_ERR_UNION:
-			DEBUG_LOG("Should error be passed as homogenous aggregate?");
-			FALLTHROUGH;
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
 			*base = type_iptr->canonical;
 			*elements = 2;
 			return true;
+		case TYPE_ANYERR:
 		case TYPE_ERRTYPE:
-			*base = type_iptr->canonical;
-			*elements = 1;
-			return true;
+			type = type_iptr;
+			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
@@ -653,6 +657,8 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_TYPEINFO:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE;
+		case TYPE_BITSTRUCT:
+			return type_abi_alignment(type->decl->bitstruct.base_type->type);
 		case TYPE_VECTOR:
 		{
 			ByteSize width = type_size(type->vector.base) * type->vector.len;
@@ -673,7 +679,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_ENUM:
 			return type->decl->enums.type_info->type->canonical->builtin.abi_alignment;
 		case TYPE_ERRTYPE:
-			return t.usz.canonical->builtin.abi_alignment;
+			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return type->decl->alignment;
@@ -682,15 +688,15 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
-		case TYPE_ERR_UNION:
 		case TYPE_VIRTUAL_ANY:
+		case TYPE_ANYERR:
 			return type->builtin.abi_alignment;
 		case TYPE_VIRTUAL:
 			return type_virtual_generic->builtin.abi_alignment;
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_STRLIT:
-			return t.usz.canonical->builtin.abi_alignment;
+			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
 			return type_abi_alignment(type->array.base);
 		case TYPE_SUBARRAY:
@@ -997,15 +1003,35 @@ Type *type_get_vector(Type *vector_type, unsigned len)
 static void type_create(const char *name, Type *location, TypeKind kind, unsigned bitsize,
                         unsigned align, unsigned pref_align)
 {
+	assert(align);
+	unsigned byte_size = (bitsize + 7) / 8;
 	*location = (Type) {
 		.type_kind = kind,
-		.builtin.bytesize = (bitsize + 7) / 8,
+		.builtin.bytesize = byte_size,
 		.builtin.bitsize = bitsize,
 		.builtin.abi_alignment = align,
 		.builtin.pref_alignment = pref_align ?: align,
 		.name = name,
 		.canonical = location,
 	};
+	location->name = name;
+	location->canonical = location;
+	global_context_add_type(location);
+}
+
+static void type_init(const char *name, Type *location, TypeKind kind, unsigned bitsize, AlignData align)
+{
+	assert(align.align);
+	unsigned byte_size = (bitsize + 7) / 8;
+	*location = (Type) {
+		.type_kind = kind,
+		.builtin.bytesize = byte_size,
+		.builtin.bitsize = bitsize,
+		.builtin.abi_alignment = align.align / 8,
+		.builtin.pref_alignment = (align.pref_align ?: align.align) / 8,
+		.name = name,
+		.canonical = location,
+		};
 	location->name = name;
 	location->canonical = location;
 	global_context_add_type(location);
@@ -1035,6 +1061,7 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_DISTINCT:
+		case TYPE_BITSTRUCT:
 			scratch_buffer_append(type->decl->external_name);
 			break;
 		case TYPE_POINTER:
@@ -1061,7 +1088,7 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_F64:
 		case TYPE_F128:
 		case TYPE_TYPEID:
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VECTOR:
 			scratch_buffer_append(type->name);
@@ -1121,51 +1148,59 @@ Type *type_find_function_type(FunctionSignature *signature)
 	return func_type;
 }
 
+static inline void type_init_int(const char *name, Type *type, TypeKind kind, BitSizes bits)
+{
+	int actual_bits = bits ? 8 << (bits - 1) : 1;
+	type_init(name, type, kind, actual_bits, platform_target.integers[bits]);
+}
+
+static inline void type_create_float(const char *name, Type *type, TypeKind kind, BitSizes bits)
+{
+	int actual_bits = bits ? 8 << (bits - 1) : 1;
+	type_init(name, type, kind, actual_bits, platform_target.floats[bits]);
+}
 
 void type_setup(PlatformTarget *target)
 {
 	stable_init(&function_types, 0x1000);
 	max_alignment_vector = target->align_max_vector;
-	/*TODO
- * decl_string = (Decl) { .decl_kind = DECL_BUILTIN, .name.string = "string" };
-	create_type(&decl_string, &type_string);
-	type_string.type_kind = TYPE_STRING;
-*/
-#define DEF_TYPE(name_, shortname_, type_, bits_, aligned_) \
-type_create(#name_, &(shortname_), type_, bits_, target->align_ ## aligned_, target->align_pref_ ## aligned_)
 
-	DEF_TYPE(bool, t.u1, TYPE_BOOL, 1, byte);
-	DEF_TYPE(float, t.f32, TYPE_F32, 32, float);
-	DEF_TYPE(double, t.f64, TYPE_F64, 64, double);
+	type_create_float("float16", &t.f16, TYPE_F16, BITS16);
+	type_create_float("float", &t.f32, TYPE_F32, BITS32);
+	type_create_float("double", &t.f64, TYPE_F64, BITS64);
+	type_create_float("float128", &t.f128, TYPE_F128, BITS128);
 
-	DEF_TYPE(ichar, t.i8, TYPE_I8, 8, byte);
-	DEF_TYPE(short, t.i16, TYPE_I16, 16, short);
-	DEF_TYPE(int, t.i32, TYPE_I32, 32, int);
-	DEF_TYPE(long, t.i64, TYPE_I64, 64, long);
-	DEF_TYPE(i128, t.i128, TYPE_I128, 128, i128);
 
-	DEF_TYPE(char, t.u8, TYPE_U8, 8, byte);
-	DEF_TYPE(ushort, t.u16, TYPE_U16, 16, short);
-	DEF_TYPE(uint, t.u32, TYPE_U32, 32, int);
-	DEF_TYPE(ulong, t.u64, TYPE_U64, 64, long);
-	DEF_TYPE(u128, t.u128, TYPE_U128, 128, i128);
+	type_init_int("ichar", &t.i8, TYPE_I8, BITS8);
+	type_init_int("short", &t.i16, TYPE_I16, BITS16);
+	type_init_int("int", &t.i32, TYPE_I32, BITS32);
+	type_init_int("long", &t.i64, TYPE_I64, BITS64);
+	type_init_int("int128", &t.i128, TYPE_I128, BITS128);
 
-	DEF_TYPE(void, t.u0, TYPE_VOID, 8, byte);
-	DEF_TYPE(string, t.str, TYPE_STRLIT, target->width_pointer, pointer);
+	type_init_int("bool", &t.u1, TYPE_BOOL, BITS8);
+	type_init_int("char", &t.u8, TYPE_U8, BITS8);
+	type_init_int("ushort", &t.u16, TYPE_U16, BITS16);
+	type_init_int("uint", &t.u32, TYPE_U32, BITS32);
+	type_init_int("ulong", &t.u64, TYPE_U64, BITS64);
+	type_init_int("uint128", &t.u128, TYPE_U128, BITS128);
 
-#undef DEF_TYPE
+	type_init_int("void", &t.u0, TYPE_VOID, BITS8);
 
-	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 0, 0, 0);
-	type_create("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer, target->align_pref_pointer);
-	type_create("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer, target->align_pref_pointer);
+	type_init("string", &t.str, TYPE_STRLIT, target->width_pointer, target->align_pointer);
+
+
+	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
+	type_init("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer);
+
+	type_init("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer);
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t.voidstar;
 	t.voidstar.pointer = type_void;
-	type_create("virtual*", &t.virtual, TYPE_VIRTUAL_ANY, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
-	type_create("virtual_generic", &t.virtual_generic, TYPE_VIRTUAL, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
+	type_init("virtual*", &t.virtual, TYPE_VIRTUAL_ANY, target->width_pointer * 2, target->align_pointer);
+	type_init("virtual_generic", &t.virtual_generic, TYPE_VIRTUAL, target->width_pointer * 2, target->align_pointer);
 
-	type_create("compint", &t.ixx, TYPE_IXX, 0, 0, 0);
-	type_create("compfloat", &t.fxx, TYPE_FXX, 0, 0, 0);
+	type_create("compint", &t.ixx, TYPE_IXX, 1, 1, 1);
+	type_create("compfloat", &t.fxx, TYPE_FXX, 1, 1, 1);
 
 	type_create_alias("usize", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("isize", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
@@ -1178,7 +1213,7 @@ type_create(#name_, &(shortname_), type_, bits_, target->align_ ## aligned_, tar
 
 	alignment_subarray = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
 	size_subarray = alignment_subarray * 2;
-	type_create("anyerr", &t.anyerr, TYPE_ERR_UNION, target->width_pointer * 2, target->align_pointer, target->align_pref_pointer);
+	type_init("anyerr", &t.anyerr, TYPE_ANYERR, target->width_pointer, target->align_pointer);
 }
 
 bool type_is_scalar(Type *type)
@@ -1206,10 +1241,13 @@ bool type_is_scalar(Type *type)
 		case TYPE_POINTER:
 		case TYPE_ENUM:
 		case TYPE_ERRTYPE:
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
 			return true;
+		case TYPE_BITSTRUCT:
+			type = type->decl->bitstruct.base_type->type;
+			goto RETRY;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
@@ -1442,6 +1480,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_TYPEINFO:
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
+		case TYPE_BITSTRUCT:
 			return NULL;
 		case TYPE_IXX:
 			if (other->type_kind == TYPE_DISTINCT && type_is_numeric(other->decl->distinct_decl.base_type)) return other;
@@ -1466,7 +1505,7 @@ Type *type_find_max_type(Type *type, Type *other)
 			return NULL;
 		case TYPE_FUNC:
 		case TYPE_UNION:
-		case TYPE_ERR_UNION:
+		case TYPE_ANYERR:
 		case TYPE_TYPEID:
 		case TYPE_STRUCT:
 			TODO

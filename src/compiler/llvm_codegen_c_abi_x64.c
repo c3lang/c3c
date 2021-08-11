@@ -137,14 +137,14 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 	assert(x64_type_is_structure(type));
 
 	// These are all passed in two registers.
-	if (type->type_kind == TYPE_ERR_UNION || type->type_kind == TYPE_SUBARRAY || type->type_kind == TYPE_VIRTUAL || type->type_kind == TYPE_VIRTUAL_ANY)
+	if (type->type_kind == TYPE_SUBARRAY || type->type_kind == TYPE_VIRTUAL || type->type_kind == TYPE_VIRTUAL_ANY)
 	{
 		needed_registers->int_registers += 2;
 		return abi_arg_new_direct();
 	}
 
 	// Struct, err type handled =>
-	assert(type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_ERRTYPE);
+	assert(type->type_kind == TYPE_STRUCT);
 
 	// Variable array structs are always passed by pointer.
 	if (type->decl->has_variable_array) return x64_indirect_return_result(type);
@@ -404,13 +404,15 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 		case TYPE_DISTINCT:
 		case TYPE_STRLIT:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_ANYERR:
+		case TYPE_ERRTYPE:
+		case TYPE_BITSTRUCT:
 			UNREACHABLE
 		case TYPE_VOID:
 			*current = CLASS_NO_CLASS;
 			break;
 		case TYPE_I128:
 		case TYPE_U128:
-		case TYPE_ERR_UNION:
 		case TYPE_SUBARRAY:
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
@@ -443,7 +445,6 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 			break;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ERRTYPE:
 			x64_classify_struct_union(type, offset_base, current, lo_class, hi_class, named);
 			break;
 		case TYPE_ARRAY:
@@ -477,7 +478,7 @@ bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
 		// No overlap
 		return true;
 	}
-	if (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_ERRTYPE || type->type_kind == TYPE_UNION)
+	if (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION)
 	{
 		Decl **members = type->decl->strukt.members;
 		VECEACH(members, i)
@@ -499,7 +500,7 @@ bool x64_contains_float_at_offset(Type *type, unsigned offset)
 	if (offset == 0 && type->type_kind == TYPE_F32) return true;
 
 	// If this is a struct, recurse into the field at the specified offset.
-	if (type->type_kind == TYPE_ERRTYPE || type->type_kind == TYPE_STRUCT)
+	if (type->type_kind == TYPE_STRUCT)
 	{
 		Decl *member = x64_get_member_at_offset(type->decl, offset);
 		offset -= member->offset;
@@ -562,7 +563,6 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 			}
 			break;
 		case TYPE_STRUCT:
-		case TYPE_ERRTYPE:
 		{
 			Decl *member = x64_get_member_at_offset(type->decl, offset);
 			if (member)
@@ -571,9 +571,6 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 			}
 			break;
 		}
-		case TYPE_ERR_UNION:
-			if (offset < 16) return abi_type_new_plain(type_ulong);
-			break;
 		case TYPE_VIRTUAL_ANY:
 			if (offset < 8) return abi_type_new_plain(type_ulong);
 			if (offset < 16) return abi_type_new_plain(type_voidptr);
@@ -605,6 +602,9 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 		case TYPE_DISTINCT:
 		case TYPE_STRLIT:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_ANYERR:
+		case TYPE_ERRTYPE:
+		case TYPE_BITSTRUCT:
 			UNREACHABLE
 		case TYPE_I128:
 		case TYPE_U128:
@@ -850,9 +850,7 @@ bool x64_type_is_structure(Type *type)
 {
 	switch (type->type_kind)
 	{
-		case TYPE_ERR_UNION:
 		case TYPE_STRUCT:
-		case TYPE_ERRTYPE:
 		case TYPE_SUBARRAY:
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VIRTUAL:

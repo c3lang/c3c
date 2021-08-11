@@ -158,6 +158,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_POISONED:
 			case DECL_ARRAY_VALUE:
 			case DECL_ENUM_CONSTANT:
+			case DECL_ERRVALUE:
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_CT_ASSERT:
@@ -184,13 +185,14 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_ENUM:
 			case DECL_GENERIC:
 			case DECL_INTERFACE:
-			case DECL_ERR:
+			case DECL_ERRTYPE:
 			case DECL_FUNC:
 			case DECL_MACRO:
 			case DECL_STRUCT:
 			case DECL_TYPEDEF:
 			case DECL_UNION:
 			case DECL_VAR:
+			case DECL_BITSTRUCT:
 				break;
 		}
 		if (decl->visibility > VISIBLE_MODULE)
@@ -282,7 +284,7 @@ void compiler_compile(void)
 	setup_int_define("C_LONG_SIZE", platform_target.width_c_long);
 	setup_int_define("C_LONG_LONG_SIZE", platform_target.width_c_long_long);
 	setup_bool_define("C_CHAR_IS_SIGNED", platform_target.signed_c_char);
-	setup_bool_define("PLATFORM_LITTLE_ENDIAN", platform_target.little_endian);
+	setup_bool_define("PLATFORM_BIG_ENDIAN", platform_target.big_endian);
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
 	setup_int_define("COMPILER_OPT_LEVEL", (int)active_target.optimization_level);
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (int)active_target.size_optimization_level);

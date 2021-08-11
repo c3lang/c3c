@@ -15,10 +15,8 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_
 
 LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value)
 {
-	assert(value->kind == BE_ADDRESS);
-	LLVMValueRef val = LLVMBuildStructGEP2(c->builder, llvm_get_type(c, value->type), value->value, 0, "err_domain");
-	LLVMValueRef domain = llvm_emit_load_aligned(c, llvm_get_type(c, type_uptr), val, value->alignment, "");
-	return LLVMBuildICmp(c->builder, LLVMIntEQ, domain, llvm_get_zero(c, type_uptr), "not_err");
+	llvm_value_rvalue(c, value);
+	return LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, type_anyerr), "not_err");
 }
 
 LLVMTypeRef llvm_const_padding_type(GenContext *c, ByteSize size)
@@ -114,12 +112,7 @@ LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef 
 	// 4. Are int types not matching?
 	if (to_int_type != from)
 	{
-		if (platform_target.little_endian)
-		{
-			// Little-endian targets preserve the low bits. No shifts required.
-			value = LLVMBuildIntCast2(c->builder, value, to_int_type, false, "");
-		}
-		else
+		if (platform_target.big_endian)
 		{
 			// Big endian, preserve the high bits.
 			ByteSize to_size = llvm_abi_size(c, to_int_type);
@@ -134,6 +127,11 @@ LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef 
 				value = LLVMBuildZExt(c->builder, value, to_int_type, "");
 				value = LLVMBuildShl(c->builder, value, LLVMConstInt(from, (to_size - from_size) * 8, false), "");
 			}
+		}
+		else
+		{
+			// Little-endian targets preserve the low bits. No shifts required.
+			value = LLVMBuildIntCast2(c->builder, value, to_int_type, false, "");
 		}
 	}
 	if (to_is_pointer)
@@ -435,7 +433,6 @@ static void gencontext_emit_member_addr(GenContext *c, BEValue *value, Decl *par
 				llvm_value_addr(c, value);
 				llvm_value_set_address_align(value, llvm_emit_bitcast(c, value->value, type_get_ptr(found->type)), found->type, value->alignment);
 				break;
-			case TYPE_ERRTYPE:
 			case TYPE_STRUCT:
 				llvm_value_struct_gep(c, value, value, index);
 				break;
@@ -503,6 +500,9 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 
 	switch (cast_kind)
 	{
+		case CAST_ERBOOL:
+		case CAST_EUINT:
+		case CAST_ERINT:
 		case CAST_VRBOOL:
 		case CAST_VRPTR:
 		case CAST_PTRVR:
@@ -2033,7 +2033,8 @@ static void gencontext_emit_typeid(GenContext *context, BEValue *be_value, Expr 
 
 void gencontext_emit_trycatch_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-
+	TODO
+/*
 	LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error_block");
 	LLVMBasicBlockRef no_err_block = llvm_basic_block_new(c, "noerr_block");
 	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "phi_trycatch_block");
@@ -2071,6 +2072,7 @@ void gencontext_emit_trycatch_expr(GenContext *c, BEValue *value, Expr *expr)
 	LLVMAddIncoming(phi, logic_values, blocks, 2);
 
 	llvm_value_set(value, phi, expr->type);
+ */
 }
 
 void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_value, BEValue *var_addr, BEValue *catch_addr, Expr *rhs)
@@ -2149,7 +2151,7 @@ void llvm_emit_try_assign_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	}
 }
 
-void gencontext_emit_try_expr(GenContext *c, BEValue *value, Expr *expr)
+void llvm_emit_try_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 
 	LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error_block");
@@ -2567,6 +2569,10 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_DISTINCT:
 		case TYPE_STRLIT:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_ENUM:
+		case TYPE_ERRTYPE:
+		case TYPE_ANYERR:
+		case TYPE_BITSTRUCT:
 			UNREACHABLE
 			break;
 		case TYPE_BOOL:
@@ -2574,15 +2580,11 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case ALL_UNSIGNED_INTS:
 		case ALL_REAL_FLOATS:
 		case TYPE_POINTER:
-		case TYPE_ENUM:
-		case TYPE_ERRTYPE:
 			vec_add(*values, LLVMBuildLoad2(context->builder, llvm_get_type(context, param_type), expand_ptr, "loadexpanded"));
 			return;
 		case TYPE_TYPEDEF:
 			param_type = param_type->canonical;
 			goto REDO;
-		case TYPE_ERR_UNION:
-			TODO
 		case TYPE_STRUCT:
 			gencontext_expand_struct_to_args(context, param_type, expand_ptr, values);
 			break;
@@ -3191,7 +3193,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 		// 17c. If we have an error var, or we aren't interested in the error variable
 		//      - then it's straightforward. We just jump to the catch block.
-		LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after_check");
+		LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after.errcheck");
 		if (error_var || !c->error_var)
 		{
 			llvm_emit_cond_br(c, &no_err, after_block, c->catch_block);
@@ -3311,7 +3313,9 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 			case VARDECL_MEMBER:
 			case VARDECL_LOCAL_CT:
 			case VARDECL_LOCAL_CT_TYPE:
-			case VARDECL_ALIAS:
+			case VARDECL_UNWRAPPED:
+			case VARDECL_REWRAPPED:
+			case VARDECL_ERASE:
 				UNREACHABLE
 			case VARDECL_PARAM_REF:
 			{
@@ -3444,15 +3448,137 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 	llvm_emit_stmt(c, body_expr->body_expansion_expr.ast);
 }
 
+void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr)
+{
+	if (!expr->try_unwrap_expr.failable)
+	{
+		LLVMValueRef fail_ref = decl_failable_ref(expr->try_unwrap_expr.decl);
+		LLVMValueRef errv = llvm_emit_load_aligned(c, llvm_get_type(c, type_anyerr), fail_ref, 0, "load.err");
+		LLVMValueRef result = LLVMBuildICmp(c->builder, LLVMIntEQ, errv, llvm_get_zero(c, type_anyerr), "result");
+		llvm_value_set_bool(value, result);
+		return;
+	}
+	BEValue addr;
+	if (expr->try_unwrap_expr.assign_existing)
+	{
+		llvm_emit_expr(c, &addr, expr->try_unwrap_expr.lhs);
+	}
+	else
+	{
+		llvm_emit_local_decl(c, expr->try_unwrap_expr.decl);
+		llvm_value_set_decl_address(&addr, expr->try_unwrap_expr.decl);
+	}
+	assert(llvm_value_is_addr(&addr));
+	llvm_emit_try_assign_try_catch(c, true, value, &addr, NULL, expr->try_unwrap_expr.failable);
+}
+
+void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
+{
+	BEValue addr;
+	if (expr->catch_unwrap_expr.lhs)
+	{
+		llvm_emit_expr(c, &addr, expr->catch_unwrap_expr.lhs);
+	}
+	else if (expr->catch_unwrap_expr.decl)
+	{
+		llvm_emit_local_decl(c, expr->catch_unwrap_expr.decl);
+		llvm_value_set_decl_address(&addr, expr->catch_unwrap_expr.decl);
+	}
+	else
+	{
+		LLVMValueRef temp_err = llvm_emit_alloca_aligned(c, type_anyerr, "temp_err");
+		llvm_value_set_address(&addr, temp_err, type_anyerr);
+	}
+
+	PUSH_ERROR();
+
+	LLVMBasicBlockRef catch_block = llvm_basic_block_new(c, "end_block");
+
+	c->error_var = addr.value;
+	c->catch_block = catch_block;
+
+	VECEACH(expr->catch_unwrap_expr.exprs, i)
+	{
+		BEValue val;
+		LLVMBasicBlockRef block = llvm_basic_block_new(c, "testblock");
+		llvm_emit_br(c, block);
+		llvm_emit_block(c, block);
+		llvm_emit_expr(c, &val, expr->catch_unwrap_expr.exprs[i]);
+		llvm_value_fold_failable(c, &val);
+	}
+
+	POP_ERROR();
+
+	llvm_store_bevalue_raw(c, &addr, llvm_get_zero(c, type_anyerr));
+	llvm_emit_br(c, catch_block);
+	llvm_emit_block(c, catch_block);
+	llvm_value_rvalue(c, &addr);
+	llvm_value_set(value, addr.value, type_anyerr);
+}
+
+void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
+{
+	Expr **exprs = expr->try_unwrap_chain_expr;
+	unsigned elements = vec_size(exprs);
+	assert(elements > 0);
+
+	LLVMBasicBlockRef next_block = NULL;
+	LLVMBasicBlockRef end_block = llvm_basic_block_new(c, "end_chain");
+	LLVMBasicBlockRef fail_block = llvm_basic_block_new(c, "fail_chain");
+
+	if (elements == 1)
+	{
+		llvm_emit_expr(c, value, exprs[0]);
+		assert(llvm_value_is_bool(value));
+		return;
+	}
+	else
+	{
+		for (unsigned i = 0; i < elements; i++)
+		{
+			if (next_block)
+			{
+				llvm_emit_br(c, next_block);
+				llvm_emit_block(c, next_block);
+			}
+			next_block = llvm_basic_block_new(c, "chain_next");
+			Expr *link = exprs[i];
+			BEValue res;
+			llvm_emit_expr(c, &res, link);
+			assert(llvm_value_is_bool(&res));
+			llvm_emit_cond_br(c, &res, next_block, fail_block);
+		}
+		llvm_emit_block(c, next_block);
+		llvm_emit_br(c, end_block);
+		llvm_emit_block(c, fail_block);
+		llvm_emit_br(c, end_block);
+	}
+
+	// Finally set up our phi
+	llvm_emit_block(c, end_block);
+	LLVMValueRef chain_result = LLVMBuildPhi(c->builder, c->bool_type, "chain.phi");
+	LLVMValueRef logic_values[2] = { LLVMConstInt(c->bool_type, 1, 0), LLVMConstNull(c->bool_type) };
+	LLVMBasicBlockRef blocks[2] = { next_block, fail_block };
+	LLVMAddIncoming(chain_result, logic_values, blocks, 2);
+
+	llvm_value_set_bool(value, chain_result);
+
+}
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_LOC(c, expr);
 	switch (expr->expr_kind)
 	{
-		case EXPR_DESIGNATOR:
 		case EXPR_MEMBER_ACCESS:
+			assert(expr->access_expr.ref->decl_kind == DECL_ERRVALUE);
+			llvm_value_set(value,
+						   LLVMBuildPtrToInt(c->builder, expr->access_expr.ref->backend_ref, llvm_get_type(c, type_anyerr), ""),
+						   type_anyerr);
+			return;
+		case EXPR_DESIGNATOR:
 		case EXPR_POISONED:
-		case EXPR_DECL_LIST:
+		case EXPR_COND:
 		case EXPR_TYPEINFO:
 		case EXPR_ENUM_CONSTANT:
 		case EXPR_MACRO_EXPANSION:
@@ -3461,7 +3587,17 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_PLACEHOLDER:
 		case EXPR_CT_CALL:
 		case EXPR_FLATPATH:
+		case EXPR_TRY_DECL:
 			UNREACHABLE
+		case EXPR_TRY_UNWRAP_CHAIN:
+			llvm_emit_try_unwrap_chain(c, value, expr);
+			return;
+		case EXPR_TRY_UNWRAP:
+			llvm_emit_try_unwrap(c, value, expr);
+			return;
+		case EXPR_CATCH_UNWRAP:
+			llvm_emit_catch_unwrap(c, value, expr);
+			return;
 		case EXPR_UNDEF:
 			// Should never reach this.
 			UNREACHABLE
@@ -3481,14 +3617,10 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			gencontext_emit_failable(c, value, expr);
 			return;
 		case EXPR_TRY:
-			gencontext_emit_try_expr(c, value, expr);
+			llvm_emit_try_expr(c, value, expr);
 			return;
 		case EXPR_TRY_ASSIGN:
 			llvm_emit_try_assign_expr(c, value, expr);
-			return;
-		case EXPR_TRY_OLD:
-		case EXPR_CATCH_OLD:
-			gencontext_emit_trycatch_expr(c, value, expr);
 			return;
 		case EXPR_NOP:
 			return;

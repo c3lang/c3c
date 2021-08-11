@@ -123,10 +123,23 @@ static Decl *sema_resolve_no_path_symbol(Context *context, const char *symbol,
 		}
 		while (current >= first)
 		{
-			if (current[0]->name == symbol) return current[0];
+			if (current[0]->name == symbol) 
+			{
+				// We patch special behaviour here.
+				if (current[0]->decl_kind == DECL_VAR)
+				{
+					VarDeclKind kind = current[0]->var.kind;
+
+					// In this case, we erase the value from parent scopes, so it isn't visible here.
+					if (kind == VARDECL_ERASE) goto JUMP_ERASED;
+					if (kind == VARDECL_REWRAPPED) return current[0]->var.alias;
+				}
+				return current[0];
+			}
 			current--;
 		}
 	}
+	JUMP_ERASED:
 
 	// Search in file scope.
 	decl = stable_get(&context->local_symbols, symbol);
@@ -449,7 +462,7 @@ bool sema_add_local(Context *context, Decl *decl)
 bool sema_unwrap_var(Context *context, Decl *decl)
 {
 	Decl *alias = decl_copy(decl);
-	alias->var.kind = VARDECL_ALIAS;
+	alias->var.kind = VARDECL_UNWRAPPED;
 	alias->var.alias = decl;
 	alias->var.failable = false;
 	alias->resolve_status = RESOLVE_DONE;
@@ -458,8 +471,26 @@ bool sema_unwrap_var(Context *context, Decl *decl)
 
 bool sema_rewrap_var(Context *context, Decl *decl)
 {
-	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_ALIAS && decl->var.alias->var.failable);
+	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->var.failable);
 	return sema_append_local(context, decl->var.alias);
 }
 
+bool sema_erase_var(Context *context, Decl *decl)
+{
+	Decl *erased = decl_copy(decl);
+	erased->var.kind = VARDECL_ERASE;
+	erased->resolve_status = RESOLVE_DONE;
+	return sema_append_local(context, erased);
+}
 
+
+bool sema_erase_unwrapped(Context *context, Decl *decl)
+{
+	assert(decl->var.failable);
+	Decl *rewrapped = decl_copy(decl);
+	rewrapped->var.kind = VARDECL_REWRAPPED;
+	rewrapped->var.alias = decl;
+	rewrapped->var.failable = true;
+	rewrapped->resolve_status = RESOLVE_DONE;
+	return sema_append_local(context, rewrapped);
+}
