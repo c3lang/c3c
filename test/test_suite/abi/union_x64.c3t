@@ -1,4 +1,4 @@
-// #target: x64_darwin
+// #target: x86_64-darwin
 
 module unionx64;
 
