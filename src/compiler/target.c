@@ -399,6 +399,7 @@ static inline void target_setup_x64_abi(void)
 static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[X86_FREEBSD] = "i386-unknown-freebsd",
 		[X86_OPENBSD] = "i386-unknown-openbsd",
+		[X86_MCU] = "i386-pc-elfiamcu",
 		[X86_ELF] = "i386-unknown-elf",
 		[X86_WINDOWS] = "i386-pc-win32",
 		[X86_LINUX] = "i386-unknown-linux",

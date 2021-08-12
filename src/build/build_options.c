@@ -23,6 +23,7 @@ extern const char* llvm_target;
 char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[X86_FREEBSD] = "x86-freebsd",
 		[X86_OPENBSD] = "x86-openbsd",
+		[X86_MCU] = "x86-mcu",
 		[X86_ELF] = "x86-elf",
 		[X86_WINDOWS] = "x86-windows",
 		[X86_LINUX] = "x86-linux",
