@@ -1123,7 +1123,7 @@ void *llvm_target_machine_create(void)
 		if (platform_target.x64.no_mmx) scratch_buffer_append("-mmx,");
 	}
 	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
-	                                       platform_target.cpu ?: "", scratch_buffer_to_string(),
+	                                       platform_target.cpu ?: "", strdup(scratch_buffer_to_string()),
 	                                       (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
 	                                       reloc_mode, LLVMCodeModelDefault);
 	if (!result) error_exit("Failed to create target machine.");
