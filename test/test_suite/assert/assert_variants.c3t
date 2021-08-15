@@ -1,4 +1,4 @@
-// #target: x86_64-windows
+// #target: x64-windows
 
 func int foo()
 {

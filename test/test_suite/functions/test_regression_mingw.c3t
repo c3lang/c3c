@@ -1,4 +1,4 @@
-// #target: x86_64-mingw
+// #target: x64-mingw
 
 module test;
 import test2;
