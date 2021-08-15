@@ -197,6 +197,9 @@ void project_add_target(Project *project, TomlValue *wrapped_table, const char *
 	// Use the fact that they correspond to 0, 1, -1
 	target->feature.struct_return = get_valid_bool(table, "stack-struct-return", type, STRUCT_RETURN_DEFAULT);
 	target->feature.soft_float = get_valid_bool(table, "soft-float", type, SOFT_FLOAT_DEFAULT);
+	target->feature.no_avx = get_valid_bool(table, "no-avx", type, false);
+	target->feature.no_sse = get_valid_bool(table, "no-sse", type, false);
+	target->feature.no_mmx = get_valid_bool(table, "no-mmx", type, false);
 }
 
 static void project_add_targets(Project *project, TomlTable *table, const char *type, const char *type_key, TargetType target_type)

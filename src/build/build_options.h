@@ -237,6 +237,9 @@ typedef struct
 		bool no_memcpy_pass : 1;
 		bool trap_on_wrap : 1;
 		bool safe_mode : 1;
+		bool no_sse : 1;
+		bool no_mmx : 1;
+		bool no_avx : 1;
 	} feature;
 } BuildTarget;
 

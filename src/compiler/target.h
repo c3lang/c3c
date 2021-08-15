@@ -266,6 +266,9 @@ typedef struct
 		struct
 		{
 			AVXLevel avx_level : 3;
+			bool no_mmx : 1;
+			bool no_sse : 1;
+			bool soft_float : 1;
 			bool is_win64 : 1;
 			bool is_mingw64 : 1;
 			bool pass_int128_vector_in_mem : 1;

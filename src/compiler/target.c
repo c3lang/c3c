@@ -381,11 +381,15 @@ static inline void target_setup_x86_abi(BuildTarget *target)
 }
 
 
-static inline void target_setup_x64_abi(void)
+static inline void target_setup_x64_abi(BuildTarget *target)
 {
 	platform_target.abi = ABI_X64;
 	platform_target.x64.avx_level = AVX;
 	platform_target.x64.is_win64 = platform_target.os == OS_TYPE_WIN32;
+	if (target->feature.no_avx) platform_target.x64.avx_level = AVX_NONE;
+	if (target->feature.no_mmx) platform_target.x64.no_mmx = true;
+	if (target->feature.no_sse) platform_target.x64.no_sse = true;
+	if (target->feature.soft_float) platform_target.x64.soft_float = true;
 	if (platform_target.environment_type == ENV_TYPE_GNU)
 	{
 		platform_target.x64.is_mingw64 = platform_target.x64.is_win64;
@@ -1110,8 +1114,16 @@ void *llvm_target_machine_create(void)
 		reloc_mode = LLVMRelocDynamicNoPic;
 	}
 
+	scratch_buffer_clear();
+	if (platform_target.arch == ARCH_TYPE_X86_64)
+	{
+		if (platform_target.x64.avx_level == AVX_NONE) scratch_buffer_append("-avx,");
+		if (platform_target.x64.no_sse) scratch_buffer_append("-sse,");
+		if (platform_target.x64.soft_float) scratch_buffer_append("+soft-float,");
+		if (platform_target.x64.no_mmx) scratch_buffer_append("-mmx,");
+	}
 	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
-	                                       platform_target.cpu ?: "", platform_target.features ?: "",
+	                                       platform_target.cpu ?: "", scratch_buffer_to_string(),
 	                                       (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
 	                                       reloc_mode, LLVMCodeModelDefault);
 	if (!result) error_exit("Failed to create target machine.");
@@ -1301,7 +1313,7 @@ void target_setup(BuildTarget *target)
 			target_setup_x86_abi(target);
 			break;
 		case ARCH_TYPE_X86_64:
-			target_setup_x64_abi();
+			target_setup_x64_abi(target);
 			platform_target.x64.avx_level = 0; /* TODO */
 			if (platform_target.os == OS_TYPE_WIN32)
 			{
