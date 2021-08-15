@@ -612,6 +612,7 @@ static OsType os_from_llvm_string(StringSlice os_string)
 	STRCASE("hurd", OS_TYPE_HURD)
 	STRCASE("wasi", OS_TYPE_WASI)
 	STRCASE("emscripten", OS_TYPE_EMSCRIPTEN)
+	STRCASE("elf", OS_TYPE_NONE)
 	return OS_TYPE_UNKNOWN;
 #undef STRCASE
 }
@@ -733,6 +734,7 @@ static ObjectFormatType object_format_from_os(OsType os)
 			return OBJ_FORMAT_UNSUPPORTED;
 		case OS_TYPE_LINUX:
 		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_FREE_BSD:
@@ -787,6 +789,7 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 			break;
 		case OS_TYPE_MACOSX:
 		case OS_TYPE_LINUX:
+		case OS_TYPE_NONE:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
@@ -1005,6 +1008,7 @@ static PicGeneration arch_os_pic_default(ArchType arch, OsType os)
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_LINUX:
+		case OS_TYPE_NONE:
 		case OS_TYPE_NETBSD:
 			switch (arch)
 			{
@@ -1031,6 +1035,7 @@ static bool arch_os_pic_default_forced(ArchType arch, OsType os)
 		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
+		case OS_TYPE_NONE:
 			return false;
 		case OS_UNSUPPORTED:
 			UNREACHABLE
@@ -1054,6 +1059,8 @@ static PieGeneration arch_os_pie_default(ArchType arch, OsType os, EnvironmentTy
 			return PIE_SMALL;
 		case OS_TYPE_LINUX:
 			return env == ENV_TYPE_MUSLEABI || env == ENV_TYPE_MUSLEABIHF || env == ENV_TYPE_ANDROID ? PIE_SMALL : PIE_NONE;
+		case OS_TYPE_NONE:
+			return PIE_NONE;
 		case OS_UNSUPPORTED:
 			UNREACHABLE
 	}
