@@ -8,4 +8,3 @@ warnings = ["no-unused"]
 sources = ["./**"]
 # libraries to use
 libs = []
-soft-float = true
