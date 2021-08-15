@@ -322,7 +322,7 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			return;
 		}
 		case TYPE_STRLIT:
-			TODO
+			return;
 		default:
 			UNREACHABLE
 	}
