@@ -1,4 +1,4 @@
-// #target: aarch64_linux
+// #target: aarch64-linux
 module splat;
 
 extern func int sum_us(int... x);

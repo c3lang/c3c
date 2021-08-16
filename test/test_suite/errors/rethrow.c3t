@@ -1,4 +1,4 @@
-// #target: x64_darwin
+// #target: x64-darwin
 
 func void! test()
 {

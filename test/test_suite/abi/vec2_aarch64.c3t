@@ -1,4 +1,4 @@
-// #target: aarch64_linux
+// #target: aarch64-linux
 module abi;
 
 struct Vector2 {
