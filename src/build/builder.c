@@ -48,28 +48,35 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case OPT_SETTING_O0:
 			target->optimization_level = OPTIMIZATION_NONE;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
+			target->feature.safe_mode = true;
 			break;
 		case OPT_SETTING_O1:
 			target->optimization_level = OPTIMIZATION_LESS;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
+			target->feature.safe_mode = false;
 			break;
 		case OPT_SETTING_O2:
 			target->optimization_level = OPTIMIZATION_DEFAULT;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
+			target->feature.safe_mode = false;
 			break;
 		case OPT_SETTING_O3:
 			target->optimization_level = OPTIMIZATION_AGGRESSIVE;
 			target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
+			target->feature.safe_mode = false;
 			break;
 		case OPT_SETTING_OSMALL:
 			target->optimization_level = OPTIMIZATION_DEFAULT;
 			target->size_optimization_level = SIZE_OPTIMIZATION_SMALL;
+			target->feature.safe_mode = false;
 			break;
 		case OPT_SETTING_OTINY:
 			target->optimization_level = OPTIMIZATION_DEFAULT;
 			target->size_optimization_level = SIZE_OPTIMIZATION_TINY;
+			target->feature.safe_mode = false;
 			break;
 		case OPT_SETTING_NOT_SET:
+			target->feature.safe_mode = true;
 			break;
 		default:
 			UNREACHABLE

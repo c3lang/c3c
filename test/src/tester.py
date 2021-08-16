@@ -126,7 +126,7 @@ class Issues:
 
         self.current_file.close()
         print("- " + self.sourcefile.filepath + ":", end="")
-        self.compile("--test compile " + self.current_file.filepath)
+        self.compile("--test --fast compile " + self.current_file.filepath)
         if not self.has_errors:
             self.conf.numsuccess += 1
             print(" Passed.")
@@ -191,7 +191,7 @@ class Issues:
                 files_to_compile += " " + file.filepath
 
 
-        self.compile("--test compile " + files_to_compile)
+        self.compile("--test --fast compile " + files_to_compile)
         if self.has_errors: return
 
         for file in self.files:
