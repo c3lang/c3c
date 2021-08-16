@@ -1,4 +1,4 @@
-// #target: x64_mingw
+// #target: x64-mingw
 module literal_load;
 
 struct Test

@@ -406,11 +406,13 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[X86_MCU] = "i386-pc-elfiamcu",
 		[X86_WINDOWS] = "i386-pc-win32",
 		[X86_LINUX] = "i386-unknown-linux",
+		[X86_ELF] = "i386-unknown-elf",
 		[X64_DARWIN] = "x86_64-apple-darwin-1",
 		[X64_LINUX] = "x86_64-unknown-linux-gnu",
 		[X64_WINDOWS] = "x86_64-pc-windows-msvc",
 		[X64_WINDOWS_GNU] = "x86_64-pc-windows-gnu",
 		[X64_NETBSD] = "x86_64-unknown-netbsd",
+		[X64_ELF] = "x86_64-unknown-elf",
 		[AARCH64_LINUX] = "aarch64-unknown-linux-gnu",
 		[AARCH64_DARWIN] = "aarch64-apple-darwin",
 		[RISCV32_LINUX] = "riscv32-unknown-linux",
@@ -614,6 +616,7 @@ static OsType os_from_llvm_string(StringSlice os_string)
 	STRCASE("hurd", OS_TYPE_HURD)
 	STRCASE("wasi", OS_TYPE_WASI)
 	STRCASE("emscripten", OS_TYPE_EMSCRIPTEN)
+	STRCASE("elf", OS_TYPE_NONE)
 	return OS_TYPE_UNKNOWN;
 #undef STRCASE
 }
@@ -735,6 +738,7 @@ static ObjectFormatType object_format_from_os(OsType os)
 			return OBJ_FORMAT_UNSUPPORTED;
 		case OS_TYPE_LINUX:
 		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_FREE_BSD:
@@ -789,6 +793,7 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 			break;
 		case OS_TYPE_MACOSX:
 		case OS_TYPE_LINUX:
+		case OS_TYPE_NONE:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
@@ -1005,6 +1010,7 @@ static PicGeneration arch_os_pic_default(ArchType arch, OsType os)
 		case OS_TYPE_WASI:
 			return PIC_NONE;
 		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
@@ -1029,6 +1035,7 @@ static bool arch_os_pic_default_forced(ArchType arch, OsType os)
 			return arch == ARCH_TYPE_AARCH64 || arch == ARCH_TYPE_X86_64;
 		case OS_TYPE_WASI:
 		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
@@ -1045,6 +1052,7 @@ static PieGeneration arch_os_pie_default(ArchType arch, OsType os, EnvironmentTy
 	switch (os)
 	{
 		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
 			return PIE_NONE;
 		case OS_TYPE_OPENBSD:
 			return PIE_SMALL;

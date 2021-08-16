@@ -83,6 +83,7 @@ typedef enum
 typedef enum
 {
 	OS_TYPE_UNKNOWN,
+	OS_TYPE_NONE,
 	OS_TYPE_ANANAS,
 	OS_TYPE_CLOUD_ABI,
 	OS_TYPE_DRAGON_FLY,

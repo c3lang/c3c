@@ -1,4 +1,4 @@
-// #target: x64_darwin
+// #target: x64-darwin
 
 extern func char*! readLine();
 extern func int! atoi(char*);
