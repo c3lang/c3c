@@ -81,7 +81,7 @@ static void usage(void)
 	OUTPUT("  --target-list         - List all architectures the compiler supports.");
 	OUTPUT("  --threads <number>    - Set the number of threads to use for compilation.");
 	OUTPUT("  --safe                - Set mode to 'safe', generating runtime traps on overflows and contract violations.");
-	OUTPUT("  --unsafe              - Set mode to 'unsafe', remove runtime traps.");
+	OUTPUT("  --fast                - Set mode to 'fast', removes runtime traps.");
 	OUTPUT("");
 	OUTPUT("  -g                    - Emit full debug info.");
 	OUTPUT("  -g0                   - Emit no debug info.");
@@ -480,7 +480,7 @@ static void parse_option(BuildOptions *options)
 				options->safe_mode = 1;
 				return;
 			}
-			if (match_longopt("unsafe"))
+			if (match_longopt("fast"))
 			{
 				options->safe_mode = 0;
 				return;

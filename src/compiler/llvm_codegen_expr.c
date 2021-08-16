@@ -10,7 +10,7 @@ static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *e
 static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
 static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue *addr, BEValue *after, BEValue *before, Expr *expr, int diff);
 static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr);
-static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c, BEValue *parent, BEValue *index);
+static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c, BEValue *parent, BEValue *index, SourceLocation *loc);
 static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_t offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
 
 LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value)
@@ -33,7 +33,7 @@ LLVMValueRef llvm_emit_const_padding(GenContext *c, ByteSize size)
 	return LLVMGetUndef(llvm_const_padding_type(c, size));
 }
 
-static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
+static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocation *loc)
 {
 	if (active_target.feature.trap_on_wrap)
 	{
@@ -51,7 +51,7 @@ static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValu
 		}
 		LLVMValueRef result = LLVMBuildExtractValue(c->builder, add_res, 0, "");
 		LLVMValueRef ok = LLVMBuildExtractValue(c->builder, add_res, 1, "");
-		llvm_emit_panic_on_true(c, ok, "Addition overflow");
+		llvm_emit_panic_on_true(c, ok, "Addition overflow", loc);
 		return result;
 	}
 
@@ -257,7 +257,7 @@ void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTy
 	llvm_value_set_address(result, addr, original_type);
 }
 
-static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
+static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocation *loc)
 {
 	if (active_target.feature.trap_on_wrap)
 	{
@@ -275,7 +275,7 @@ static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValu
 		}
 		LLVMValueRef result = LLVMBuildExtractValue(c->builder, add_res, 0, "");
 		LLVMValueRef ok = LLVMBuildExtractValue(c->builder, add_res, 1, "");
-		llvm_emit_panic_on_true(c, ok, "Subtraction overflow");
+		llvm_emit_panic_on_true(c, ok, "Subtraction overflow", loc);
 		return result;
 	}
 
@@ -288,7 +288,7 @@ static inline void llvm_emit_subscript_addr_base(GenContext *context, BEValue *v
 	llvm_emit_ptr_from_array(context, value);
 }
 
-static inline LLVMValueRef llvm_emit_subscript_addr_with_base(GenContext *c, Type *parent_type, LLVMValueRef parent_value, LLVMValueRef index_value)
+static inline LLVMValueRef llvm_emit_subscript_addr_with_base(GenContext *c, Type *parent_type, LLVMValueRef parent_value, LLVMValueRef index_value, SourceLocation *loc)
 {
 	Type *type = parent_type;
 	switch (type->type_kind)
@@ -322,22 +322,22 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base(GenContext *c, Typ
 	}
 }
 
-static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValueRef array_max_index)
+static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValueRef array_max_index, SourceLocation *loc)
 {
 	// Negative values are not allowed.
 	if (type_is_signed(index->type))
 	{
 		LLVMValueRef index_negative = llvm_emit_int_comparison(c, index->type, index->type, index->value,
 														 llvm_get_zero(c, index->type), BINARYOP_LT);
-		llvm_emit_panic_on_true(c, index_negative, "Negative array indexing");
+		llvm_emit_panic_on_true(c, index_negative, "Negative array indexing", loc);
 	}
 	LLVMValueRef exceeds_max_index = llvm_emit_int_comparison(c, index->type, index->type,
 	                                                          index->value, array_max_index,
 	                                                          BINARYOP_GE);
-	llvm_emit_panic_on_true(c, exceeds_max_index, "Array index out of bounds");
+	llvm_emit_panic_on_true(c, exceeds_max_index, "Array index out of bounds", loc);
 }
 
-static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c, BEValue *parent, BEValue *index)
+static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c, BEValue *parent, BEValue *index, SourceLocation *loc)
 {
 	assert(llvm_value_is_addr(parent));
 	Type *type = type_flatten(parent->type);
@@ -349,7 +349,7 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c,
 		{
 			if (active_target.feature.safe_mode)
 			{
-				llvm_emit_array_bounds_check(c, index, llvm_const_int(c, index->type, type->array.len));
+				llvm_emit_array_bounds_check(c, index, llvm_const_int(c, index->type, type->array.len), loc);
 			}
 			LLVMValueRef zero = llvm_get_zero(c, index->type);
 			LLVMValueRef indices[2] = {
@@ -398,7 +398,7 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	llvm_value_rvalue(c, &index);
 
 	// TODO set alignment
-	llvm_value_set_address(value, llvm_emit_subscript_addr_with_base_new(c, &ref, &index), expr->type);
+	llvm_value_set_address(value, llvm_emit_subscript_addr_with_base_new(c, &ref, &index, TOKLOC(expr->subscript_expr.index->span.loc)), expr->type);
 }
 
 
@@ -1131,8 +1131,8 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue
 			LLVMTypeRef llvm_type = llvm_get_type(c, type);
 			LLVMValueRef diff_value = LLVMConstInt(llvm_type, 1, false);
 			after_value = diff > 0
-					? llvm_emit_add_int(c, type, value.value, diff_value)
-					: llvm_emit_sub_int(c, type, value.value, diff_value);
+					? llvm_emit_add_int(c, type, value.value, diff_value, TOKLOC(expr->span.loc))
+					: llvm_emit_sub_int(c, type, value.value, diff_value, TOKLOC(expr->span.loc));
 			break;
 		}
 		default:
@@ -1234,7 +1234,7 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 				                                                 &type_to_use, 1, args, 2);
 				value->value = LLVMBuildExtractValue(c->builder, call_res, 0, "");
 				LLVMValueRef ok = LLVMBuildExtractValue(c->builder, call_res, 1, "");
-				llvm_emit_panic_on_true(c, ok, "Signed negation overflow");
+				llvm_emit_panic_on_true(c, ok, "Signed negation overflow", TOKLOC(expr->span.loc));
 				return;
 			}
 			value->value = LLVMBuildNeg(c->builder, value->value, "neg");
@@ -1300,20 +1300,20 @@ static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef valu
 
 	LLVMValueRef zero = llvm_const_int(c, expr->type, 0);
 	LLVMValueRef ok = LLVMBuildICmp(c->builder, LLVMIntSLT, value, zero, "underflow");
-	llvm_emit_panic_on_true(c, ok, error);
+	llvm_emit_panic_on_true(c, ok, error, TOKLOC(expr->span.loc));
 }
 
-static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, const char *error)
+static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, const char *error, SourceLocation *loc)
 {
 	if (!active_target.feature.safe_mode) return;
 
 	LLVMValueRef zero = llvm_get_zero(c, type);
 	LLVMValueRef ok = type_is_any_integer(type) ? LLVMBuildICmp(c->builder, LLVMIntEQ, value, zero, "zero") : LLVMBuildFCmp(c->builder, LLVMRealUEQ, value, zero, "zero");
-	llvm_emit_panic_on_true(c, ok, error);
+	llvm_emit_panic_on_true(c, ok, error, loc);
 }
 
 
-static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type *type, const char *error)
+static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type *type, const char *error, SourceLocation *loc)
 {
 	if (!active_target.feature.safe_mode) return;
 	unsigned type_bit_size = type_size(type) * 8;
@@ -1321,14 +1321,14 @@ static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type
 	if (type_is_unsigned(type))
 	{
 		LLVMValueRef equal_or_greater = LLVMBuildICmp(c->builder, LLVMIntUGE, value, max, "shift_exceeds");
-		llvm_emit_panic_on_true(c, equal_or_greater, error);
+		llvm_emit_panic_on_true(c, equal_or_greater, error, loc);
 		return;
 	}
 	LLVMValueRef zero = llvm_const_int(c, type, 0);
 	LLVMValueRef negative = LLVMBuildICmp(c->builder, LLVMIntSLT, value, zero, "shift_underflow");
-	llvm_emit_panic_on_true(c, negative, error);
+	llvm_emit_panic_on_true(c, negative, error, loc);
 	LLVMValueRef equal_or_greater = LLVMBuildICmp(c->builder, LLVMIntSGE, value, max, "shift_exceeds");
-	llvm_emit_panic_on_true(c, equal_or_greater, error);
+	llvm_emit_panic_on_true(c, equal_or_greater, error, loc);
 }
 
 static void
@@ -1398,7 +1398,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 	// Walk from end if it is slice from the back.
 	if (slice->slice_expr.start_from_back)
 	{
-		start_index.value = llvm_emit_sub_int(c, start_type, len, start_index.value);
+		start_index.value = llvm_emit_sub_int(c, start_type, len, start_index.value, TOKLOC(slice->span.loc));
 	}
 
 	// Check that index does not extend beyond the length.
@@ -1412,7 +1412,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 		                                                     start_index.value,
 		                                                     len,
 		                                                     BINARYOP_GE);
-		llvm_emit_panic_on_true(c, exceeds_size, "Index exceeds array length.");
+		llvm_emit_panic_on_true(c, exceeds_size, "Index exceeds array length.", TOKLOC(slice->span.loc));
 	}
 
 	// Insert trap for negative start offset for non pointers.
@@ -1434,7 +1434,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 		// Reverse if it is "from back"
 		if (slice->slice_expr.end_from_back)
 		{
-			end_index.value = llvm_emit_sub_int(c, end_type, len, end_index.value);
+			end_index.value = llvm_emit_sub_int(c, end_type, len, end_index.value, TOKLOC(slice->span.loc));
 			llvm_value_rvalue(c, &end_index);
 		}
 
@@ -1447,7 +1447,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 			                                               start_index.value,
 			                                               end_index.value,
 			                                               BINARYOP_GT);
-			llvm_emit_panic_on_true(c, excess, "Negative size");
+			llvm_emit_panic_on_true(c, excess, "Negative size", TOKLOC(slice->span.loc));
 
 			if (len)
 			{
@@ -1457,7 +1457,7 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 				                                                     len,
 				                                                     end_index.value,
 				                                                     BINARYOP_LT);
-				llvm_emit_panic_on_true(c, exceeds_size, "Size exceeds index");
+				llvm_emit_panic_on_true(c, exceeds_size, "Size exceeds index", TOKLOC(slice->span.loc));
 			}
 		}
 	}
@@ -1575,13 +1575,13 @@ static void gencontext_emit_slice_assign(GenContext *c, BEValue *be_value, Expr 
 	// Emit the assign.
 	llvm_emit_block(c, assign_block);
 	// Reuse this calculation
-	LLVMValueRef target = llvm_emit_subscript_addr_with_base(c, parent_type, parent_base, offset);
+	LLVMValueRef target = llvm_emit_subscript_addr_with_base(c, parent_type, parent_base, offset, TOKLOC(expr->span.loc));
 	// And store the value.
 	// TODO correct alignment.
 	llvm_store_bevalue_aligned(c, target, be_value, 0);
 
 	// Create the new offset
-	LLVMValueRef next_offset = llvm_emit_add_int(c, start_type, offset, llvm_const_int(c, start_type, 1));
+	LLVMValueRef next_offset = llvm_emit_add_int(c, start_type, offset, llvm_const_int(c, start_type, 1), TOKLOC(expr->span.loc));
 
 	// And jump back
 	llvm_emit_br(c, cond_block);
@@ -1797,7 +1797,7 @@ static LLVMValueRef llvm_emit_ptr_comparison(GenContext *c, LLVMValueRef lhs_val
 
 }
 
-static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left, LLVMValueRef right)
+static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left, LLVMValueRef right, SourceLocation *loc)
 {
 	LLVMTypeRef left_type = LLVMTypeOf(left);
 	LLVMTypeRef right_type = LLVMTypeOf(right);
@@ -1809,7 +1809,7 @@ static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left
 	return LLVMBuildZExt(c->builder, right, left_type, "");
 }
 
-static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right)
+static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocation *loc)
 {
 	if (active_target.feature.trap_on_wrap)
 	{
@@ -1826,7 +1826,7 @@ static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMVal
 		                                                 2);
 		LLVMValueRef val = LLVMBuildExtractValue(c->builder, call_res, 0, "mul");
 		LLVMValueRef ok = LLVMBuildExtractValue(c->builder, call_res, 1, "");
-		llvm_emit_panic_on_true(c, ok, "Integer multiplication overflow");
+		llvm_emit_panic_on_true(c, ok, "Integer multiplication overflow", loc);
 		return val;
 	}
 	return LLVMBuildMul(c->builder, left, right, "mul");
@@ -1882,7 +1882,7 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 				val = LLVMBuildFMul(c->builder, lhs_value, rhs_value, "fmul");
 				break;
 			}
-			val = llvm_emit_mult_int(c, lhs_type, lhs_value, rhs_value);
+			val = llvm_emit_mult_int(c, lhs_type, lhs_value, rhs_value, TOKLOC(expr->span.loc));
 			break;
 		case BINARYOP_SUB:
 			if (lhs_type->type_kind == TYPE_POINTER)
@@ -1904,7 +1904,7 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 				val = LLVMBuildFSub(c->builder, lhs_value, rhs_value, "fsub");
 				break;
 			}
-			val = llvm_emit_sub_int(c, lhs_type, lhs_value, rhs_value);
+			val = llvm_emit_sub_int(c, lhs_type, lhs_value, rhs_value, TOKLOC(expr->span.loc));
 			break;
 		case BINARYOP_ADD:
 			if (lhs_type->type_kind == TYPE_POINTER)
@@ -1918,10 +1918,10 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 				val = LLVMBuildFAdd(c->builder, lhs_value, rhs_value, "fadd");
 				break;
 			}
-			val = llvm_emit_add_int(c, lhs_type, lhs_value, rhs_value);
+			val = llvm_emit_add_int(c, lhs_type, lhs_value, rhs_value, TOKLOC(expr->span.loc));
 			break;
 		case BINARYOP_DIV:
-			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero");
+			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero", TOKLOC(expr->span.loc));
 			if (is_float)
 			{
 				val = LLVMBuildFDiv(c->builder, lhs_value, rhs_value, "fdiv");
@@ -1932,22 +1932,22 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 			      : LLVMBuildSDiv(c->builder, lhs_value, rhs_value, "sdiv");
 			break;
 		case BINARYOP_MOD:
-			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero");
+			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero", TOKLOC(expr->span.loc));
 			val = type_is_unsigned(lhs_type)
 			      ? LLVMBuildURem(c->builder, lhs_value, rhs_value, "umod")
 			      : LLVMBuildSRem(c->builder, lhs_value, rhs_value, "smod");
 			break;
 		case BINARYOP_SHR:
-			rhs_value = llvm_fixup_shift_rhs(c, lhs_value, rhs_value);
-			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.");
+			rhs_value = llvm_fixup_shift_rhs(c, lhs_value, rhs_value, TOKLOC(expr->span.loc));
+			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.", TOKLOC(expr->span.loc));
 			val = type_is_unsigned(lhs_type)
 			      ? LLVMBuildLShr(c->builder, lhs_value, rhs_value, "lshr")
 			      : LLVMBuildAShr(c->builder, lhs_value, rhs_value, "ashr");
 			val = LLVMBuildFreeze(c->builder, val, "");
 			break;
 		case BINARYOP_SHL:
-			rhs_value = llvm_fixup_shift_rhs(c, lhs_value, rhs_value);
-			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.");
+			rhs_value = llvm_fixup_shift_rhs(c, lhs_value, rhs_value, TOKLOC(expr->span.loc));
+			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.", TOKLOC(expr->span.loc));
 			val = LLVMBuildShl(c->builder, lhs_value, rhs_value, "shl");
 			val = LLVMBuildFreeze(c->builder, val, "");
 			break;
