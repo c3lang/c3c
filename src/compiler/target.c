@@ -614,6 +614,7 @@ static OsType os_from_llvm_string(StringSlice os_string)
 	STRCASE("hurd", OS_TYPE_HURD)
 	STRCASE("wasi", OS_TYPE_WASI)
 	STRCASE("emscripten", OS_TYPE_EMSCRIPTEN)
+	STRCASE("elf", OS_TYPE_NONE)
 	return OS_TYPE_UNKNOWN;
 #undef STRCASE
 }
@@ -735,6 +736,7 @@ static ObjectFormatType object_format_from_os(OsType os)
 			return OBJ_FORMAT_UNSUPPORTED;
 		case OS_TYPE_LINUX:
 		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_FREE_BSD:
@@ -789,6 +791,7 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 			break;
 		case OS_TYPE_MACOSX:
 		case OS_TYPE_LINUX:
+		case OS_TYPE_NONE:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
@@ -1005,6 +1008,7 @@ static PicGeneration arch_os_pic_default(ArchType arch, OsType os)
 		case OS_TYPE_WASI:
 			return PIC_NONE;
 		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
@@ -1029,6 +1033,7 @@ static bool arch_os_pic_default_forced(ArchType arch, OsType os)
 			return arch == ARCH_TYPE_AARCH64 || arch == ARCH_TYPE_X86_64;
 		case OS_TYPE_WASI:
 		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
@@ -1045,6 +1050,7 @@ static PieGeneration arch_os_pie_default(ArchType arch, OsType os, EnvironmentTy
 	switch (os)
 	{
 		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
 			return PIE_NONE;
 		case OS_TYPE_OPENBSD:
 			return PIE_SMALL;
