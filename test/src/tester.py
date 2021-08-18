@@ -158,6 +158,8 @@ class Issues:
         if (line.startswith("warning:")):
             print("TODO" + line)
             exit(-1)
+        elif (line.startswith("target:")):
+            self.arch = line[7:].strip()
         elif (line.startswith("error:")):
             line = line[6:].strip()
             self.errors[self.current_file.filename + ":%d" % (self.line + self.current_file.line_offset)] = line

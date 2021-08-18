@@ -362,6 +362,10 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
 	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname ?: decl->external_name);
+	if (decl->section)
+	{
+		LLVMSetSection(decl->backend_ref, decl->section);
+	}
 	llvm_set_alignment(decl->backend_ref, alignment);
 
 	LLVMValueRef failable_ref = decl->var.failable_ref;
