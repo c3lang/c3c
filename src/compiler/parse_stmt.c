@@ -832,22 +832,6 @@ static Ast *parse_volatile_stmt(Context *context)
 	return ast;
 }
 
-static inline bool is_valid_try_statement(TokenType type)
-{
-	switch (type)
-	{
-		case TOKEN_SWITCH:
-		case TOKEN_IF:
-		case TOKEN_FOR:
-		case TOKEN_WHILE:
-		case TOKEN_DO:
-		case TOKEN_RETURN:
-		case TOKEN_LBRACE:
-			return true;
-		default:
-			return false;
-	}
-}
 
 
 
@@ -930,10 +914,10 @@ static inline Ast *parse_assert_stmt(Context *context)
 	Ast *ast = AST_NEW_TOKEN(AST_ASSERT_STMT, context->tok);
 	advance_and_verify(context, TOKEN_ASSERT);
 	TRY_CONSUME_OR(TOKEN_LPAREN, "'assert' needs a '(' here, did you forget it?", poisoned_ast);
-	ast->ct_assert_stmt.expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+	ast->assert_stmt.expr = TRY_EXPR_OR(parse_assert_expr(context), poisoned_ast);
 	if (try_consume(context, TOKEN_COMMA))
 	{
-		ast->ct_assert_stmt.message = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+		ast->assert_stmt.message = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
 	}
 	TRY_CONSUME_OR(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
 	TRY_CONSUME_EOS();

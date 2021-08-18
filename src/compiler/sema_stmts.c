@@ -2204,8 +2204,8 @@ bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
 
 bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 {
-	Expr *expr = statement->ct_assert_stmt.expr;
-	Expr *message = statement->ct_assert_stmt.message;
+	Expr *expr = statement->assert_stmt.expr;
+	Expr *message = statement->assert_stmt.message;
 	if (message)
 	{
 		if (!sema_analyse_expr(context, type_compstr, message)) return false;
@@ -2214,7 +2214,14 @@ bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 			SEMA_ERROR(message, "Expected a string as the error message.");
 		}
 	}
-	if (!sema_analyse_expr_of_required_type(context, type_bool, expr, false)) return false;
+	if (expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN)
+	{
+		if (!sema_analyse_try_unwrap_chain(context, expr)) return false;
+	}
+	else
+	{
+		if (!sema_analyse_expr_of_required_type(context, type_bool, expr, false)) return false;
+	}
 	return true;
 }
 
