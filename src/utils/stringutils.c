@@ -42,6 +42,23 @@ StringSlice strnexttok(StringSlice *slice, char separator)
 	return result;
 }
 
+void slicetrim(StringSlice *slice)
+{
+	size_t i;
+	for (i = 0; i < slice->len; i++)
+	{
+		if (slice->ptr[i] != ' ') break;
+	}
+	slice->ptr += i;
+	slice->len -= i;
+	for (i = slice->len; i > 0; i--)
+	{
+		if (slice->ptr[i - 1] != ' ') break;
+	}
+	slice->len = i;
+}
+
+
 char *strcopy(const char *start, size_t len)
 {
 	char *buffer = malloc_arena(len + 1);

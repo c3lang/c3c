@@ -430,6 +430,7 @@ static inline StringSlice strtoslice(const char *data)
 {
 	return (StringSlice) { data, strlen(data) };
 }
+void slicetrim(StringSlice *slice);
 
 #define MAX(_a, _b) ({ \
   typeof(_a) __a__ = (_a); \

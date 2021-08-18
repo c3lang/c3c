@@ -9,6 +9,46 @@
 
 static bool sema_analyse_struct_union(Context *context, Decl *decl);
 
+static bool sema_check_section(Context *context, Decl *decl, Attr *attr)
+{
+	const char *section_string = attr->expr->const_expr.string.chars;
+	decl->section = section_string;
+	// No restrictions except for MACH-O
+	if (platform_target.object_format != OBJ_FORMAT_MACHO)
+	{
+		return true;
+	}
+	scratch_buffer_clear();
+	StringSlice slice = strtoslice(section_string);
+	StringSlice segment = strnexttok(&slice, ',');
+	StringSlice section = strnexttok(&slice, ',');
+	StringSlice attrs = strnexttok(&slice, ',');
+	StringSlice stub_size_str = strnexttok(&slice, ',');
+
+	if (slice.len)
+	{
+		SEMA_ERROR(attr->expr, "Too many parts to the Mach-o section description.");
+	}
+	slicetrim(&segment);
+	if (segment.len == 0)
+	{
+		SEMA_ERROR(attr->expr, "The segment is missing, did you type it correctly?");
+		return false;
+	}
+	slicetrim(&section);
+	if (section.len == 0)
+	{
+		SEMA_ERROR(attr->expr, "Mach-o requires 'segment,section' as the format, did you type it correctly?");
+		return false;
+	}
+	if (section.len > 16)
+	{
+		SEMA_ERROR(attr->expr, "Mach-o requires the section to be at the most 16 characters, can you shorten it?");
+		return false;
+	}
+	// TODO improve checking
+	return true;
+}
 static bool sema_check_unique_parameters(Decl **decls)
 {
 	STable *table = &global_context.scratch_table;
@@ -299,10 +339,6 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 			case ATTRIBUTE_EXTNAME:
 				had = decl->extname != NULL;
 				decl->extname = attr->expr->const_expr.string.chars;
-				break;
-			case ATTRIBUTE_SECTION:
-				had = decl->section != NULL;
-				decl->section = attr->expr->const_expr.string.chars;
 				break;
 			case ATTRIBUTE_ALIGN:
 				had = decl->alignment != 0;
@@ -994,7 +1030,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 				break;
 			case ATTRIBUTE_SECTION:
 				had = decl->section != NULL;
-				decl->section = attr->expr->const_expr.string.chars;
+				if (!sema_check_section(context, decl, attr)) return decl_poison(decl);
 				break;
 			case ATTRIBUTE_ALIGN:
 				had = decl->alignment != 0;
@@ -1228,7 +1264,7 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 				break;
 			case ATTRIBUTE_SECTION:
 				had = decl->section != NULL;
-				decl->section = attr->expr->const_expr.string.chars;
+				if (!sema_check_section(context, decl, attr)) return decl_poison(decl);
 				break;
 			case ATTRIBUTE_ALIGN:
 				had = decl->alignment != 0;
