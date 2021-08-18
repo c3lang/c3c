@@ -164,6 +164,14 @@ static inline Expr *parse_try_unwrap_chain(Context *context)
 	return try_unwrap_chain;
 }
 
+Expr *parse_assert_expr(Context *context)
+{
+	if (next_is_try_unwrap(context))
+	{
+		return parse_try_unwrap_chain(context);
+	}
+	return parse_expr(context);
+}
 /**
  * cond_list ::= ((expr | decl-expr) COMMA)* (expr | decl-expr | try_unwrap_chain | catch_unwrap )
  *

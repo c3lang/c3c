@@ -46,6 +46,7 @@ void parse_imports(Context *context);
 Decl *parse_decl(Context *context);
 void recover_top_level(Context *context);
 Expr *parse_cond(Context *context);
+Expr *parse_assert_expr(Context *context);
 Ast* parse_compound_stmt(Context *context);
 Ast *parse_jump_stmt_no_eos(Context *context);
 bool parse_attributes(Context *context, Attr ***attributes_ref);
