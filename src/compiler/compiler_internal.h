@@ -98,6 +98,11 @@ typedef struct
 			Real i;
 			Real r;
 		} complex;
+		struct
+		{
+			const char *ptr;
+			uint64_t len;
+		} bytes;
 	};
 	// Valid type kinds:
 	// bool, ints, floats, string
@@ -924,7 +929,6 @@ typedef struct
 } ExprLen;
 
 
-
 struct Expr_
 {
 	ExprKind expr_kind : 8;
@@ -1368,6 +1372,11 @@ typedef union
 {
 	const char *string;
 	Real value;
+	struct
+	{
+		bool is_base64 : 1;
+		uint64_t len : 63;
+	};
 	struct
 	{
 		union
@@ -1905,7 +1914,7 @@ bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr, 
 ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
-bool sema_analyse_local_decl(Context *context, Decl *decl);
+bool sema_analyse_var_decl(Context *context, Decl *decl);
 bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement);
 bool sema_analyse_statement(Context *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *left_type, Expr *right, ExprFailableStatus lhs_is_failable);

@@ -615,6 +615,9 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 	if (!expr) return;
 	switch (expr->expr_kind)
 	{
+		case EXPR_BYTES:
+			DUMP("(bytes");
+			break;
 		case EXPR_DECL:
 			DUMP("(decl");
 			DUMPEXPC(expr);
@@ -1111,9 +1114,13 @@ void fprint_decl_recursive(Context *context, FILE *file, Decl *decl, int indent)
 			{
 				DUMPI("(func)");
 			}
-			if (decl->attr.domains & ATTR_VAR)
+			if (decl->attr.domains & ATTR_GLOBAL)
 			{
-				DUMPI("(var)");
+				DUMPI("(global)");
+			}
+			if (decl->attr.domains & ATTR_LOCAL)
+			{
+				DUMPI("(local)");
 			}
 			if (decl->attr.domains & ATTR_ENUM)
 			{

@@ -293,7 +293,17 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 	// Skip real constants.
 	if (!decl->type) return;
 
-	decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
+	if (decl->type != type_void)
+	{
+		decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
+	}
+	if (decl->var.failable)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(decl->external_name);
+		scratch_buffer_append(".f");
+		decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_anyerr), scratch_buffer_to_string());
+	}
 }
 
 
@@ -479,6 +489,10 @@ LLVMValueRef llvm_emit_alloca_aligned(GenContext *c, Type *type, const char *nam
 
 void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 {
+	if (decl->type == type_void)
+	{
+		return;
+	}
 	LLVMTypeRef type = llvm_get_type(c, decl->type);
 	decl->backend_ref = llvm_emit_alloca(c, type, decl->alignment, decl->name ?: "anon");
 }
@@ -1137,6 +1151,7 @@ void llvm_store_bevalue_dest_aligned(GenContext *c, LLVMValueRef destination, BE
 
 void llvm_store_bevalue(GenContext *c, BEValue *destination, BEValue *value)
 {
+	if (value->type == type_void) return;
 	assert(llvm_value_is_addr(destination));
 	llvm_store_bevalue_aligned(c, destination->value, value, destination->alignment);
 }

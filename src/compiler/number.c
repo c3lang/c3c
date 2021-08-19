@@ -67,6 +67,9 @@ void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
 		case TYPE_STRLIT:
 			fprintf(file, "%.*s", expr->string.len, expr->string.chars);
 			break;
+		case TYPE_ARRAY:
+			fprintf(file, "[byte data]");
+			break;
 		default:
 			UNREACHABLE
 	}
@@ -187,7 +190,20 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 				is_eq = true;
 				break;
 			}
-			is_eq = strncmp(left->string.chars, right->string.chars, left->string.len);
+			is_eq = !strncmp(left->string.chars, right->string.chars, left->string.len);
+			break;
+		case TYPE_ARRAY:
+			if (left->bytes.len != right->bytes.len)
+			{
+				is_eq = false;
+				break;
+			}
+			if (right->bytes.ptr == left->bytes.ptr)
+			{
+				is_eq = true;
+				break;
+			}
+			is_eq = !memcmp(left->bytes.ptr, right->bytes.ptr, left->bytes.len);
 			break;
 		default:
 			UNREACHABLE
@@ -265,6 +281,8 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case TYPE_STRLIT:
 			asprintf(&buff, "\"%*.s\"", expr->string.len, expr->string.chars);
 			return buff;
+		case TYPE_ARRAY:
+			return "<binary data>";
 		default:
 			UNREACHABLE
 	}

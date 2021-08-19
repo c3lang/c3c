@@ -655,7 +655,6 @@ AlignSize type_abi_alignment(Type *type)
 	{
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
-		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE;
 		case TYPE_BITSTRUCT:
 			return type_abi_alignment(type->decl->bitstruct.base_type->type);
@@ -698,6 +697,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_STRLIT:
 			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
 			return type_abi_alignment(type->array.base);
 		case TYPE_SUBARRAY:
 			return alignment_subarray;

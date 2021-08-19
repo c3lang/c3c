@@ -1,0 +1,13 @@
+char[*] foob = x"a0";
+char[*] fooz = x"00aabbccddeeff";
+char[*] fooy = x"dead beef";
+char[*] foow = x"4549234d e d";
+char[*] foo64 = b64"SGVsbG8gV29ybGQ=";
+
+// #expect: byte_literals.ll
+
+@.bytes = private constant [1 x i8] c"\A0", align 1
+@.bytes.5 = private constant [7 x i8] c"\00\AA\BB\CC\DD\EE\FF", align 1
+@.bytes.6 = private constant [4 x i8] c"\DE\AD\BE\EF", align 1
+@.bytes.7 = private constant [5 x i8] c"EI#M\ED", align 1
+@.bytes.8 = private constant [11 x i8] c"Hello World", align 1

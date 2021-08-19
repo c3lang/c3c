@@ -981,13 +981,18 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
 {
 	TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
 
+	bool failable = try_consume(context, TOKEN_BANG);
+
 	Decl *decl = decl_new_var(context->tok.id, type, VARDECL_GLOBAL, visibility);
+
+	decl->var.failable = failable;
 
 	if (TOKEN_IS(TOKEN_CONST_IDENT))
 	{
 		SEMA_TOKEN_ERROR(context->tok, "This looks like a constant variable, did you forget 'const'?");
 		return poisoned_decl;
 	}
+
 
 	if (!try_consume(context, TOKEN_IDENT))
 	{
@@ -996,7 +1001,8 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
 			SEMA_TOKEN_ERROR(context->tok, "I expected a variable name here, but global variables need to start with lower case.");
 			return poisoned_decl;
 		}
-		CONSUME_OR(TOKEN_IDENT, poisoned_decl);
+		SEMA_TOKEN_ERROR(context->tok, "The name of a global variable was expected here");
+		return poisoned_decl;
 	}
 
 	if (!parse_attributes(context, &decl->attributes)) return poisoned_decl;
