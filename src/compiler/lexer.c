@@ -709,6 +709,100 @@ static inline bool scan_string(Lexer *lexer)
 	return add_token(lexer, TOKEN_STRING, lexer->lexing_start);
 }
 
+static inline bool scan_hex_array(Lexer *lexer)
+{
+	char start_char = next(lexer); // Step past ' or "
+	const char *hexdata = lexer->current;
+	char c;
+	uint64_t len = 0;
+	while (1)
+	{
+		c = next(lexer);
+		if (c == start_char) break;
+		if (c == 0)
+		{
+			lexer->lexing_start = lexer->current - 1;
+			return add_error_token(lexer, "The hex string seems to be missing a terminating '%c'", start_char);
+		}
+		if (is_hex(c))
+		{
+			len++;
+			continue;
+		}
+		if (!is_whitespace(c))
+		{
+			lexer->lexing_start = hexdata - 1;
+			lexer->current = hexdata;
+			return add_error_token(lexer,
+			                       "'%c' isn't a valid hexadecimal digit, all digits should be a-z, A-Z and 0-9.",
+			                       c);
+		}
+	}
+	if (len % 2)
+	{
+		return add_error_token(lexer, "The hexadecimal string is not an even length, did you miss a digit somewhere?");
+	}
+	if (!add_token(lexer, TOKEN_BYTES, lexer->lexing_start)) return false;
+	lexer->latest_token_data->is_base64 = false;
+	lexer->latest_token_data->len = len / 2;
+	return true;
+}
+
+static inline bool scan_base64(Lexer *lexer)
+{
+	next(lexer); // Step past 6
+	next(lexer); // Step past 4
+	char start_char = next(lexer); // Step past ' or "
+	const char *b64data = lexer->current;
+	char c;
+	unsigned end_len = 0;
+	uint64_t len = 0;
+	while (1)
+	{
+		c = next(lexer);
+		if (c == start_char) break;
+		if (c == 0)
+		{
+			lexer->lexing_start = lexer->current - 1;
+			return add_error_token(lexer, "The base64 string seems to be missing a terminating '%c'", start_char);
+		}
+		if (is_base64(c))
+		{
+			if (end_len)
+			{
+				lexer->lexing_start = lexer->current - 1;
+				return add_error_token(lexer, "'%c' can't be placed after an ending '='", c);
+			}
+			len++;
+			continue;
+		}
+		if (c == '=')
+		{
+			if (end_len > 3)
+			{
+				lexer->lexing_start = b64data - 1;
+				lexer->current = b64data;
+				return add_error_token(lexer, "There cannot be more than 3 '=' at the end of a base64 string.", c);
+			}
+			end_len++;
+			continue;
+		}
+		if (!is_whitespace(c))
+		{
+			lexer->lexing_start = b64data - 1;
+			lexer->current = b64data;
+			return add_error_token(lexer, "'%c' is not a valid base64 character.", c);
+		}
+	}
+	uint64_t decoded_len = (3 * len - end_len) / 4;
+	if (!add_token(lexer, TOKEN_BYTES, lexer->lexing_start)) return false;
+	lexer->latest_token_data->is_base64 = true;
+	lexer->latest_token_data->len = decoded_len;
+	return true;
+}
+
+
+
 #pragma mark --- Lexer doc lexing
 
 /**
@@ -1116,7 +1210,17 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 			if (match(lexer, '-')) return add_token(lexer, TOKEN_MINUSMINUS, "--");
 			if (match(lexer, '=')) return add_token(lexer, TOKEN_MINUS_ASSIGN, "-=");
 			return add_token(lexer, TOKEN_MINUS, "-");
+		case 'b':
+			if (peek(lexer) == '6' && peek_next(lexer) == '4' && (lexer->current[2] == '\'' || lexer->current[2] == '"'))
+			{
+				return scan_base64(lexer);
+			}
+			FALLTHROUGH;
 		default:
+			if (c == 'x' && (peek(lexer) == '"' || peek(lexer) == '\''))
+			{
+				return scan_hex_array(lexer);
+			}
 			if (is_alphanum_(c))
 			{
 				backtrack(lexer);

@@ -2486,6 +2486,22 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	Type *type = type_reduced_from_expr(expr)->canonical;
 	switch (expr->const_expr.kind)
 	{
+		case TYPE_ARRAY:
+			assert(type->array.base == type_char);
+			{
+				LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.bytes.len), ".bytes");
+				LLVMSetLinkage(global_name, LLVMPrivateLinkage);
+				LLVMSetGlobalConstant(global_name, 1);
+
+				LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context,
+																		 expr->const_expr.bytes.ptr,
+																		 expr->const_expr.bytes.len,
+																		 1));
+				llvm_set_alignment(global_name, 1);
+				global_name = LLVMConstBitCast(global_name, LLVMPointerType(llvm_get_type(c, type_char), 0));
+				llvm_value_set(be_value, global_name, type);
+				return;
+			}
 		case ALL_INTS:
 			if (type_is_unsigned(type))
 			{
@@ -3623,6 +3639,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_try_assign_expr(c, value, expr);
 			return;
 		case EXPR_NOP:
+		case EXPR_BYTES:
 			return;
 		case EXPR_ELSE:
 			gencontext_emit_else_expr(c, value, expr);

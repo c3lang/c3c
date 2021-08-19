@@ -180,6 +180,7 @@ typedef enum
 	EXPR_POISONED,
 	EXPR_ACCESS,
 	EXPR_BINARY,
+	EXPR_BYTES,
 	EXPR_MACRO_BODY_EXPANSION,
 	EXPR_CALL,
 	EXPR_CAST,
@@ -406,6 +407,7 @@ typedef enum
 	TOKEN_INTEGER,          // 123 0x23 0b10010 0o327
 	TOKEN_CHAR_LITERAL,        // 'a' 'FO' 'BARS' '\u1232'
 	TOKEN_REAL,             // 0x23.2p-2a 43.23e23
+	TOKEN_BYTES,            // Base64 or Hex
 
 	TOKEN_COMMENT,          // Comment
 	TOKEN_DOC_COMMENT,      // Doc Comment
@@ -603,17 +605,18 @@ typedef enum
 typedef enum
 {
 	ATTR_FUNC = 1 << 0,
-	ATTR_VAR = 1 << 1,
-	ATTR_ENUM = 1 << 2,
-	ATTR_STRUCT = 1 << 3,
-	ATTR_UNION = 1 << 4,
-	ATTR_CONST = 1 << 5,
-	ATTR_ERROR = 1 << 6,
-	ATTR_TYPEDEF = 1 << 7,
-	ATTR_MEMBER = 1 << 8,
-	ATTR_INTERFACE = 1 << 9,
-	ATTR_CALL = 1 << 10,
-	ATTR_BITSTRUCT = 1 << 11,
+	ATTR_GLOBAL = 1 << 1,
+	ATTR_LOCAL = 1 << 2,
+	ATTR_ENUM = 1 << 3,
+	ATTR_STRUCT = 1 << 4,
+	ATTR_UNION = 1 << 5,
+	ATTR_CONST = 1 << 6,
+	ATTR_ERROR = 1 << 7,
+	ATTR_TYPEDEF = 1 << 8,
+	ATTR_MEMBER = 1 << 9,
+	ATTR_INTERFACE = 1 << 10,
+	ATTR_CALL = 1 << 11,
+	ATTR_BITSTRUCT = 1 << 12,
 } AttributeDomain;
 
 typedef enum

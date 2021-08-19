@@ -980,6 +980,111 @@ static Expr *parse_integer(Context *context, Expr *left)
 	return expr_int;
 }
 
+/**
+ * Parse hex, skipping over invalid characters.
+ * @param result_pointer ref to place to put the data
+ * @param data start pointer
+ * @param end end pointer
+ */
+static void parse_hex(char **result_pointer, const char *data, const char *end)
+{
+	char *data_current = *result_pointer;
+	assert(data_current);
+	while (data < end)
+	{
+		int val;
+		int val2;
+		while ((val = char_to_nibble(*(data++))) < 0) if (data == end) goto DONE;
+		while ((val2 = char_to_nibble(*(data++))) < 0);
+
+		*(data_current++) = (val << 4) | val2;
+	}
+	DONE:
+	*result_pointer = data_current;
+}
+
+/**
+ * Slow base64 -> sextet
+ */
+static char base64_to_sextet(char c)
+{
+	if (c >= 'A' && c <= 'Z') return c - 'A';
+	if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+	if (c >= '0' && c <= '9') return c - '0' + 52;
+	if (c == '+') return 62;
+	if (c == '/') return 63;
+	if (c == '=') return 0;
+	return -1;
+}
+/**
+ * Parse hex, skipping over invalid characters.
+ * @param result_pointer ref to place to put the data
+ * @param data start pointer
+ * @param end end pointer
+ */
+static void parse_base64(char **result_pointer, char *result_pointer_end, const char *data, const char *end)
+{
+	char *data_current = *result_pointer;
+	assert(data_current);
+	while (data < end)
+	{
+		int val;
+		int val2;
+		int val3;
+		int val4;
+		while ((val = base64_to_sextet(*(data++))) < 0) if (data == end) goto DONE;
+		while ((val2 = base64_to_sextet(*(data++))) < 0);
+		while ((val3 = base64_to_sextet(*(data++))) < 0);
+		while ((val4 = base64_to_sextet(*(data++))) < 0);
+		uint32_t triplet = (val << 3 * 6) + (val2 << 2 * 6) + (val3 << 6) + val4;
+		if (data_current < result_pointer_end) *(data_current++) = (triplet >> 16) & 0xFF;
+		if (data_current < result_pointer_end) *(data_current++) = (triplet >> 8) & 0xFF;
+		if (data_current < result_pointer_end) *(data_current++) = triplet & 0xFF;
+	}
+	DONE:
+	*result_pointer = data_current;
+}
+
+static Expr *parse_bytes_expr(Context *context, Expr *left)
+{
+	assert(!left && "Had left hand side");
+	TokenId tok = context->tok.id;
+	uint64_t len = 0;
+	while (TOKTYPE(tok) == TOKEN_BYTES)
+	{
+		len += TOKDATA(tok)->len;
+		tok.index++;
+	}
+	char *data = len > 0 ? malloc_arena(len) : NULL;
+	char *data_current = data;
+
+	Expr *expr_bytes = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
+	while (context->tok.type == TOKEN_BYTES)
+	{
+		TokenData *token_data = tokendata_from_token(context->tok);
+		SourceLocation *loc = TOKLOC(context->tok);
+		if (token_data->is_base64)
+		{
+			const char *base64data =  &loc->file->contents[loc->start] + 4;
+			const char *end = base64data + loc->length - 1;
+			parse_base64(&data_current, data_current + token_data->len, base64data, end);
+		}
+		else
+		{
+			const char *hexdata =  &loc->file->contents[loc->start] + 2;
+			const char *end = hexdata + loc->length - 1;
+			parse_hex(&data_current, hexdata, end);
+		}
+		advance(context);
+	}
+	expr_bytes->const_expr.bytes.ptr = data;
+	expr_bytes->const_expr.bytes.len = len;
+	expr_bytes->const_expr.kind = TYPE_ARRAY;
+	expr_set_type(expr_bytes, type_get_array(type_char, len));
+	assert(data + len == data_current);
+	return expr_bytes;
+}
+
 static Expr *parse_char_lit(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
@@ -1274,6 +1379,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_STAR] = { parse_unary_expr, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_DOT] = { NULL, parse_access_expr, PREC_CALL },
 		[TOKEN_BANG] = { parse_unary_expr, parse_failable, PREC_UNARY },
+		[TOKEN_BYTES] = { parse_bytes_expr, NULL, PREC_NONE },
 		[TOKEN_BIT_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
 		[TOKEN_BIT_XOR] = { NULL, parse_binary, PREC_BIT },
 		[TOKEN_BIT_OR] = { NULL, parse_binary, PREC_BIT },

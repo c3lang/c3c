@@ -227,7 +227,7 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 		for (unsigned j = 0; j < count; j++)
 		{
 			Attr *attribute = attributes[j];
-			if (!sema_analyse_attribute(context, attribute, ATTR_VAR)) return false;
+			if (!sema_analyse_attribute(context, attribute, ATTR_GLOBAL)) return false;
 			if (TOKSTR(attribute->name) == kw_align)
 			{
 				member_alignment = attribute->alignment;
@@ -821,6 +821,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 {
 	switch (domain)
 	{
+		case ATTR_LOCAL:
+			return "local variable";
 		case ATTR_BITSTRUCT:
 			return "bitstruct";
 		case ATTR_INTERFACE:
@@ -829,8 +831,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 			return "member";
 		case ATTR_FUNC:
 			return "function";
-		case ATTR_VAR:
-			return "variable";
+		case ATTR_GLOBAL:
+			return "global variable";
 		case ATTR_ENUM:
 			return "enum";
 		case ATTR_STRUCT:
@@ -857,12 +859,12 @@ AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDoma
 		return ATTRIBUTE_NONE;
 	}
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
-			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
+			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_EXTNAME] = ~ATTR_CALL,
-			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_VAR,
+			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
-			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_VAR | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
+			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION,
@@ -1233,20 +1235,22 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 }
 
 
-
-static inline bool sema_analyse_global(Context *context, Decl *decl)
+bool sema_analyse_attributes_for_var(Context *context, Decl *decl)
 {
-	if (decl->var.type_info)
+
+	AttributeDomain domain;
+	switch (decl->var.kind)
 	{
-		if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, decl->var.init_expr != NULL)) return false;
-		decl->type = decl->var.type_info->type;
+		case VARDECL_CONST:
+			domain = ATTR_CONST;
+			break;
+		case VARDECL_GLOBAL:
+			domain = ATTR_GLOBAL;
+			break;
+		default:
+			domain = ATTR_LOCAL;
+			break;
 	}
-
-	// We expect a constant to actually be parsed correctly so that it has a value, so
-	// this should always be true.
-	assert(decl->type || decl->var.kind == VARDECL_CONST);
-
-	AttributeDomain domain = decl->var.kind == VARDECL_CONST ? ATTR_CONST : ATTR_FUNC;
 	VECEACH(decl->attributes, i)
 	{
 		Attr *attr = decl->attributes[i];
@@ -1270,7 +1274,8 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 				had = decl->alignment != 0;
 				decl->alignment = attr->alignment;
 				break;
-			case ATTRIBUTE_WEAK: SET_ATTR(attr_weak);
+			case ATTRIBUTE_WEAK:
+				SET_ATTR(attr_weak);
 			default:
 				UNREACHABLE
 		}
@@ -1281,25 +1286,116 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 			return decl_poison(decl);
 		}
 	}
+	return true;
+}
 
-	// If we already have the type resolved then we can pretend to be done,
-	// this will help in case we otherwise would get circular references.
-	if (decl->type)
+/**
+ * Analyse a regular global or local declaration, e.g. int x = 123
+ */
+bool sema_analyse_var_decl(Context *context, Decl *decl)
+{
+	assert(decl->decl_kind == DECL_VAR && "Unexpected declaration type");
+
+	// We expect a constant to actually be parsed correctly so that it has a value, so
+	// this should always be true.
+	assert(decl->var.type_info || decl->var.kind == VARDECL_CONST);
+
+	bool is_global = decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST;
+
+	if (!sema_analyse_attributes_for_var(context, decl)) return false;
+
+	// TODO unify with global decl analysis
+	if (is_global)
 	{
-		decl->resolve_status = RESOLVE_DONE;
-		if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
+
+	}
+	else
+	{
+		// Add a local to the current context, will throw error on shadowing.
+		if (!sema_add_local(context, decl)) return decl_poison(decl);
 	}
 
-	// Check the initializer.
-	if (decl->var.init_expr && decl->type)
+	// 1. Local constants: const int FOO = 123.
+	if (decl->var.kind == VARDECL_CONST)
 	{
+		Expr *init_expr = decl->var.init_expr;
+		// 1a. We require an init expression.
+		if (!init_expr)
+		{
+			SEMA_ERROR(decl, "Constants need to have an initial value.");
+			return false;
+		}
+		// 1b. We require defined constants
+		if (init_expr->expr_kind == EXPR_UNDEF)
+		{
+			SEMA_ERROR(decl, "Constants cannot be undefined.");
+			return false;
+		}
+		if (!decl->var.type_info)
+		{
+			if (!sema_analyse_expr(context, NULL, init_expr)) return false;
+			decl->type = init_expr->type;
+			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
+
+			// Skip further evaluation.
+			goto EXIT_OK;
+		}
+	}
+
+	if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, decl->var.init_expr != NULL)) return decl_poison(decl);
+	decl->type = decl->var.type_info->type;
+
+	if (decl->var.is_static)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(context->active_function_for_analysis->name);
+		scratch_buffer_append_char('.');
+		scratch_buffer_append(decl->name);
+		decl->external_name = scratch_buffer_interned();
+	}
+
+	if (decl->var.init_expr)
+	{
+		bool type_is_inferred = decl->type->type_kind == TYPE_INFERRED_ARRAY;
+		Expr *init = decl->var.init_expr;
+
+		// Handle explicit undef
+		if (init->expr_kind == EXPR_UNDEF)
+		{
+			if (type_is_inferred)
+			{
+				SEMA_ERROR(decl->var.type_info, "Size of the array cannot be inferred with explicit undef.");
+				return false;
+			}
+			goto EXIT_OK;
+		}
+
+		if (!type_is_inferred)
+		{
+			// Pre resolve to avoid problem with recursive definitions.
+			decl->resolve_status = RESOLVE_DONE;
+			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
+		}
+		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, decl->var.failable || decl->var.unwrap ? FAILABLE_YES : FAILABLE_NO)) return decl_poison(decl);
+
+		if (type_is_inferred)
+		{
+			Type *right_side_type = init->type->canonical;
+			assert(right_side_type->type_kind == TYPE_ARRAY);
+			decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
+		}
+		else if (decl->type)
+		{
+			expr_set_type(decl->var.init_expr, decl->type);
+		}
+
 		Expr *init_expr = decl->var.init_expr;
 
 		// 1. Check type.
 		if (!sema_analyse_expr_of_required_type(context, decl->type, init_expr, false)) return false;
 
 		// 2. Check const-ness
-		if (!init_expr->constant)
+		if ((is_global || decl->var.is_static) && !init_expr->constant)
 		{
 			// 3. Special case is when the init expression is the reference
 			// to a constant global structure.
@@ -1322,27 +1418,19 @@ static inline bool sema_analyse_global(Context *context, Decl *decl)
 				return false;
 			}
 		}
-
-		if (decl->type->type_kind == TYPE_INFERRED_ARRAY)
+		else
 		{
-			assert(init_expr->type->canonical->type_kind == TYPE_ARRAY);
-			decl->type = type_get_array(decl->type->array.base, init_expr->type->canonical->array.len);
+			if (decl->var.unwrap && !init->failable)
+			{
+				SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
+				return decl_poison(decl);
+			}
 		}
 	}
-
-	switch (decl->var.kind)
-	{
-		case VARDECL_CONST:
-			assert(decl->var.init_expr);
-			return true;
-		case VARDECL_GLOBAL:
-			return true;
-		default:
-			eprintf("Decl %s %d\n", decl->name, decl->var.kind);
-			UNREACHABLE
-	}
+	EXIT_OK:
+	if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
+	return true;
 }
-
 
 
 
@@ -1532,7 +1620,7 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 			if (!sema_analyse_macro(context, decl)) return decl_poison(decl);
 			break;
 		case DECL_VAR:
-			if (!sema_analyse_global(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_var_decl(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
 		case DECL_DISTINCT:

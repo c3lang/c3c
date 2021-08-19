@@ -4581,17 +4581,22 @@ static bool sema_expr_analyse_deref(Context *context, Expr *expr, Expr *inner)
 	// 1. Check that we have a pointer, or dereference is not allowed.
 	if (canonical->type_kind != TYPE_POINTER)
 	{
-		SEMA_ERROR(inner, "Cannot dereference a value of type '%s'", type_to_error_string(inner->type));
+		SEMA_ERROR(inner, "Cannot dereference a value of type '%s', it must be a pointer.", type_to_error_string(inner->type));
+		return false;
+	}
+	if (canonical->pointer == type_void)
+	{
+		SEMA_ERROR(inner, "A 'void*' cannot be dereferenced, you need to first cast it to a concrete type.");
 		return false;
 	}
 	// 2. This could be a constant, in which case it is a null which is an error.
 	if (inner->expr_kind == EXPR_CONST)
 	{
-		SEMA_ERROR(inner, "Dereferencing null is not allowed.");
+		SEMA_ERROR(inner, "Dereferencing null is not allowed, did you do it by mistake?");
 		return false;
 	}
 	// 3. Now the type might not be a pointer because of a typedef,
-	//    otherwise we need to use the the canonical representation.
+	//    otherwise we need to use the canonical representation.
 	Type *deref_type = inner->type->type_kind != TYPE_POINTER ? inner->type : canonical;
 
 	// 4. And... set the type.
@@ -4608,11 +4613,30 @@ static inline bool sema_take_addr_of_var(Expr *expr, Decl *decl, bool *is_consta
 	switch (decl->var.kind)
 	{
 		case VARDECL_GLOBAL:
+			if (decl->type == type_void)
+			{
+				SEMA_ERROR(expr, "You cannot take the address of a global of type '%s'.",
+						   decl->var.failable ? "void!" : "void");
+				return false;
+			}
 			*is_constant = true;
 			return true;
 		case VARDECL_LOCAL:
+			if (decl->type == type_void)
+			{
+				SEMA_ERROR(expr, "You cannot take the address of a variable with type '%s'.",
+						   decl->var.failable ? "void!" : "void");
+				return false;
+			}
+			return true;
 		case VARDECL_PARAM:
 		case VARDECL_PARAM_REF:
+			if (decl->type == type_void)
+			{
+				SEMA_ERROR(expr, "You cannot take the address of a parameter with type '%s'.",
+						   decl->var.failable ? "void!" : "void");
+				return false;
+			}
 			return true;
 		case VARDECL_CONST:
 			*is_constant = true;
@@ -4622,6 +4646,7 @@ static inline bool sema_take_addr_of_var(Expr *expr, Decl *decl, bool *is_consta
 				SEMA_PREV(decl, "The constant was defined here.");
 				return false;
 			}
+			assert(decl->type != type_void);
 			return true;
 		case VARDECL_PARAM_EXPR:
 			SEMA_ERROR(expr, "It is not possible to take the address of a captured expression, but you can use && to take a reference to the temporary value.");
@@ -4639,6 +4664,7 @@ static inline bool sema_take_addr_of_var(Expr *expr, Decl *decl, bool *is_consta
 			UNREACHABLE
 	}
 	UNREACHABLE
+
 }
 
 static inline bool sema_take_addr_of_ident(Expr *inner, bool *is_constant)
@@ -4835,6 +4861,9 @@ static bool sema_expr_analyse_not(Expr *expr, Expr *inner)
 				break;
 			case TYPE_STRLIT:
 				expr->const_expr.b = !inner->const_expr.string.len;
+				break;
+			case TYPE_ARRAY:
+				expr->const_expr.b = !inner->const_expr.bytes.len;
 				break;
 			case TYPE_ERRTYPE:
 			case TYPE_ENUM:
@@ -6050,7 +6079,7 @@ static inline bool sema_expr_analyse_ct_call(Context *context, Type *to, Expr *e
 
 static inline bool sema_expr_analyse_decl(Context *context, Type *to, Expr *expr)
 {
-	if (!sema_analyse_local_decl(context, expr->decl_expr)) return false;
+	if (!sema_analyse_var_decl(context, expr->decl_expr)) return false;
 	expr_set_type(expr, expr->decl_expr->type);
 	expr->pure = !expr->decl_expr->var.init_expr || expr->decl_expr->var.init_expr->pure;
 	expr->constant = expr->decl_expr->var.kind == VARDECL_CONST;
@@ -6114,6 +6143,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_GUARD:
 			return sema_expr_analyse_guard(context, to, expr);
 		case EXPR_CONST:
+		case EXPR_BYTES:
 			return sema_expr_analyse_const(to, expr);
 		case EXPR_BINARY:
 			if (!sema_expr_analyse_binary(context, to, expr)) return false;

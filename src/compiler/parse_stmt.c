@@ -1059,6 +1059,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_TRY:
 		case TOKEN_CATCH:
+		case TOKEN_BYTES:
 			return parse_expr_stmt(context);
 		case TOKEN_ASSERT:
 			return parse_assert_stmt(context);

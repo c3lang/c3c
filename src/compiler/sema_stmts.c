@@ -242,7 +242,7 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 		Decl *decl = decl_new_var(ident_token, var_type, VARDECL_LOCAL, VISIBLE_LOCAL);
 
 		// 4e. Analyse it
-		if (!sema_analyse_local_decl(context, decl)) return false;
+		if (!sema_analyse_var_decl(context, decl)) return false;
 
 		expr->try_unwrap_expr.decl = decl;
 	}
@@ -351,7 +351,7 @@ static inline bool sema_analyse_catch_unwrap(Context *context, Expr *expr)
 		decl->var.init_expr = expr_new(EXPR_UNDEF, decl->span);
 
 		// 4e. Analyse it
-		if (!sema_analyse_local_decl(context, decl)) return false;
+		if (!sema_analyse_var_decl(context, decl)) return false;
 
 		expr->catch_unwrap_expr.decl = decl;
 		expr->catch_unwrap_expr.lhs = NULL;

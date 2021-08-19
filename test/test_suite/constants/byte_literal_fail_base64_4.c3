@@ -1,0 +1,1 @@
+char[*] foo64 = b64"SGVsbG8gV29ybGQ====";
