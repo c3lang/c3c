@@ -154,6 +154,22 @@ static bool add_error_token(Lexer *lexer, const char *message, ...)
 	return false;
 }
 
+static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, const char *message, ...)
+{
+	va_list list;
+	va_start(list, message);
+	SourceLocation location = { .file = lexer->current_file,
+								.start = loc - lexer->file_begin,
+								.line = lexer->current_line,
+								.length = len,
+								.col = (uint32_t)(loc - lexer->line_start) + 1,
+								};
+	sema_verror_range(&location, message, list);
+	va_end(list);
+	add_generic_token(lexer, TOKEN_INVALID_TOKEN);
+	return false;
+
+}
 // Add a new regular token.
 static bool add_token(Lexer *lexer, TokenType type, const char *string)
 {
@@ -690,23 +706,399 @@ static inline bool scan_char(Lexer *lexer)
 	return true;
 }
 
-
-static inline bool scan_string(Lexer *lexer)
+static inline void skip_first_line_if_empty(Lexer *lexer)
 {
-	char c;
-	while ((c = next(lexer)) != '"')
+	// Start at the current token.
+	const char *current = lexer->current;
+	while (1)
 	{
-		if (c == '\\' && peek(lexer) == '"')
+		switch (*(current++))
+		{
+			case '\n':
+				// Line end? then we jump to the first token after line end.
+				lexer->current = current - 1;
+				lexer_store_line_end(lexer);
+				lexer->current++;
+				return;
+			case ' ':
+			case '\t':
+			case '\r':
+			case '\f':
+				// Counts as whitespace.
+				break;
+			default:
+				// Non whitespace -> no skip.
+				return;
+		}
+	}
+}
+
+static int append_esc_string_token(char *restrict dest, const char *restrict src, size_t *pos)
+{
+	int scanned;
+	uint64_t unicode_char;
+	signed char scanned_char = is_valid_escape(src[0]);
+	if (scanned_char < 0) return -1;
+	switch (scanned_char)
+	{
+		case 'x':
+		{
+			int h = char_to_nibble(src[1]);
+			int l = char_to_nibble(src[2]);
+			if (h < 0 || l < 0) return -1;
+			unicode_char = ((unsigned) h << 4U) + l;
+			scanned = 3;
+			break;
+		}
+		case 'u':
+		{
+			int x1 = char_to_nibble(src[1]);
+			int x2 = char_to_nibble(src[2]);
+			int x3 = char_to_nibble(src[3]);
+			int x4 = char_to_nibble(src[4]);
+			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0) return -1;
+			unicode_char = ((unsigned) x1 << 12U) + ((unsigned) x2 << 8U) + ((unsigned) x3 << 4U) + x4;
+			scanned = 5;
+			break;
+		}
+		case 'U':
+		{
+			int x1 = char_to_nibble(src[1]);
+			int x2 = char_to_nibble(src[2]);
+			int x3 = char_to_nibble(src[3]);
+			int x4 = char_to_nibble(src[4]);
+			int x5 = char_to_nibble(src[5]);
+			int x6 = char_to_nibble(src[6]);
+			int x7 = char_to_nibble(src[7]);
+			int x8 = char_to_nibble(src[8]);
+			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0 || x5 < 0 || x6 < 0 || x7 < 0 || x8 < 0) return -1;
+			unicode_char = ((unsigned) x1 << 28U) + ((unsigned) x2 << 24U) + ((unsigned) x3 << 20U) + ((unsigned) x4 << 16U) +
+					((unsigned) x5 << 12U) + ((unsigned) x6 << 8U) + ((unsigned) x7 << 4U) + x8;
+			scanned = 9;
+			break;
+		}
+		default:
+			dest[(*pos)++] = scanned_char;
+			return 1;
+	}
+	if (unicode_char < 0x80U)
+	{
+		dest[(*pos)++] = (char)unicode_char;
+	}
+	else if (unicode_char < 0x800U)
+	{
+		dest[(*pos)++] = (char)(0xC0U | (unicode_char >> 6U));
+		dest[(*pos)++] = (char)(0x80U | (unicode_char & 0x3FU));
+	}
+	else if (unicode_char < 0x10000U)
+	{
+		dest[(*pos)++] = (char)(0xE0U | (unicode_char >> 12U));
+		dest[(*pos)++] = (char)(0x80U | ((unicode_char >> 6U) & 0x3FU));
+		dest[(*pos)++] = (char)(0x80U | (unicode_char & 0x3FU));
+	}
+	else
+	{
+		dest[(*pos)++] = (char)(0xF0U | (unicode_char >> 18U));
+		dest[(*pos)++] = (char)(0x80U | ((unicode_char >> 12U) & 0x3FU));
+		dest[(*pos)++] = (char)(0x80U | ((unicode_char >> 6U) & 0x3FU));
+		dest[(*pos)++] = (char)(0x80U | (unicode_char & 0x3FU));
+	}
+	return scanned;
+}
+
+
+static inline size_t scan_multiline_indent(const char *current, const char **end_ref, int32_t *min_indent_ref)
+{
+	// 3. Initial scan.
+	char c;
+	bool multi_line = false;
+	int32_t current_indent = 0;
+	int32_t min_indent = INT32_MAX;
+	size_t len = 0;
+	while ((c = (current++)[0]) != '\0')
+	{
+		if (c == '"' && current[0] == '"' && current[1] == '"') break;
+		// 1. If we've only seen whitespace so far
+		if (current_indent >= 0)
+		{
+			// 2. More whitespace, so increase indent
+			if (is_whitespace(c))
+			{
+				current_indent++;
+			}
+			else
+			{
+				// 3. Otherwise, update if smaller before
+				if (current_indent < min_indent) min_indent = current_indent;
+				// 4. And disable further tracking.
+				current_indent = -1;
+			}
+			// 5. Just continue if escape, this makes
+			//    escape automatically track as non-whitespace
+			if (c == '\\') continue;
+		}
+		// 6. On new line, set multi_line to true and reset indent.
+		if (c == '\n')
+		{
+			multi_line = true;
+			current_indent = 0;
+		}
+		// 7. Increase our conservative estimate of the length
+		//    which does not properly take into account indent
+		//    and escapes.
+		len++;
+	}
+
+	// 8. If we ended on EOF
+	if (c == '\0')
+	{
+		*end_ref = current;
+		*min_indent_ref = 0;
+		return len;
+	}
+	// 8. We're stopping at the second '"' so we need to back up 1
+	current -= 1;
+
+	// 10. We have four cases:
+	//     a. Single row -> no action
+	//     b. Characters on same line before ending chars -> no action
+	//     c. No space or characters before the ending chars
+	//     d. Space before the ending chars
+
+	// 14. This will handle c & d
+	if (multi_line && current_indent >= 0)
+	{
+		// Just walk back until '\n' is found.
+		while (current[0] != '\n') current--;
+	}
+
+	*end_ref = current;
+	*min_indent_ref = min_indent == INT32_MAX ? 0 : min_indent;
+	return len;
+}
+
+bool scan_consume_end_of_multiline(Lexer *lexer, bool error_on_eof)
+{
+	int consume_end = 3;
+	while (consume_end > 0)
+	{
+		char c = next(lexer);
+		if (c == '\0')
+		{
+			if (!error_on_eof) return false;
+			return add_error_token_at(lexer, lexer->current - 1, 1, "The multi-line string unexpectedly ended. "
+																 "Did you forget a '\"\"\"' somewhere?");
+		}
+		if (c == '"') consume_end--;
+	}
+	return true;
+}
+
+/**
+ * Scan a multi-line string between """ ... """
+ * - Remove initial newline & space on the first """
+ *   if the text does not start on the first row.
+ * - Remove space before the last """ if the text
+ *   does not end on the last row.
+ * - Remove last trailing \n
+ * - Skip \r
+ *
+ * @param lexer
+ * @return
+ */
+static inline bool scan_multiline_string(Lexer *lexer)
+{
+	// 1. Step past '""'
+	next(lexer);
+	next(lexer);
+
+	// 2. See if the first line only has space and line end.
+	skip_first_line_if_empty(lexer);
+
+	// 3. Perform a scan to determine actual start and end of what we want
+	//    to parse
+	const char *end;
+	int32_t min_indent;
+	size_t len = scan_multiline_indent(lexer->current, &end, &min_indent);
+
+	// Allocate result
+	char *destination = malloc_arena(len + 1);
+
+	int line = 0;
+	char c;
+	len = 0;
+	while (lexer->current < end)
+	{
+		c = peek(lexer);
+
+		// We ignore \r
+		if (c == '\r')
 		{
 			next(lexer);
 			continue;
 		}
-		if (reached_end(lexer))
+
+		// Ok, we reached the end of line
+		// update the line end and store it in the resulting buffer.
+		if (c == '\n')
 		{
-			return add_error_token(lexer, "Reached the end looking for '\"'. Did you forget it?");
+			lexer_store_line_end(lexer);
+			next(lexer);
+			destination[len++] = c;
+			line = 0;
+			continue;
+		}
+
+		// By now it's safe to advance one step.
+		next(lexer);
+		line++;
+
+		// We reached EOF, or escape + end of file.
+		if (c == '\0' || (c == '\\' && peek(lexer) == '\0'))
+		{
+			return add_error_token_at(lexer, lexer->current - 1, 1, "The multi-line string unexpectedly ended. "
+			                                                     "Did you forget a '\"\"\"' somewhere?");
+		}
+
+		// An escape sequence was reached.
+		if (c == '\\')
+		{
+			// Handle the empty escape: we simply skip.
+			if (peek(lexer) == '|')
+			{
+				next(lexer);
+				continue;
+			}
+			int scanned = append_esc_string_token(destination, lexer->current, &len);
+			if (scanned < 0)
+			{
+				add_error_token_at(lexer, lexer->current - 1, 2, "Invalid escape in string.");
+				scan_consume_end_of_multiline(lexer, false);
+				return false;
+			}
+			lexer->current += scanned;
+			continue;
+		}
+		// Now first we skip any empty space if line has not been reached.
+		if (line <= min_indent)
+		{
+			assert(is_whitespace(c));
+			continue;
+		}
+		destination[len++] = c;
+	}
+	if (!scan_consume_end_of_multiline(lexer, true)) return false;
+	destination[len] = 0;
+	add_token(lexer, TOKEN_STRING, destination);
+	lexer->latest_token_data->strlen = len;
+	return true;
+}
+
+static inline void consume_to_end_quote(Lexer *lexer)
+{
+	char c;
+	while ((c = peek(lexer)) != '\0' && c != '"')
+	{
+		if (c == '\n')
+		{
+			lexer_store_line_end(lexer);
+		}
+		next(lexer);
+	}
+}
+
+static inline bool scan_string(Lexer *lexer)
+{
+	if (peek(lexer) == '"' && peek_next(lexer) == '"')
+	{
+		return scan_multiline_string(lexer);
+	}
+	char c;
+	const char *current = lexer->current;
+	while ((c = *(current++)) != '"' && c != '\n' && c != '\0')
+	{
+		if (c == '\\' && *current == '"')
+		{
+			current++;
+			continue;
 		}
 	}
-	return add_token(lexer, TOKEN_STRING, lexer->lexing_start);
+	const char *end = current - 1;
+	char *destination = malloc_arena(end - lexer->current + 1);
+	size_t len = 0;
+	while (lexer->current < end)
+	{
+		c = next(lexer);
+		if (c == '\0' || (c == '\\' && peek(lexer) == '\0'))
+		{
+			add_error_token_at(lexer, lexer->current - 1, 1, "The end of the file was reached "
+			                                                 "while parsing the string. "
+			                                                 "Did you forget (or accidentally add) a '\"' somewhere?");
+			consume_to_end_quote(lexer);
+			return false;
+		}
+		if (c == '\n' || (c == '\\' && peek(lexer) == '\n'))
+		{
+			add_error_token_at(lexer, lexer->current - 1, 1, "The end of the line was reached "
+			                                                 "while parsing the string. "
+			                                                 "Did you forget (or accidentally add) a '\"' somewhere?");
+			lexer->current--;
+			consume_to_end_quote(lexer);
+			return false;
+		}
+		if (c == '\\')
+		{
+			int scanned = append_esc_string_token(destination, lexer->current, &len);
+			if (scanned < 0)
+			{
+				add_error_token_at(lexer, lexer->current - 1, 2, "Invalid escape in string.");
+				consume_to_end_quote(lexer);
+				return false;
+			}
+			lexer->current += scanned;
+			continue;
+		}
+		destination[len++] = c;
+	}
+	// Skip the `"`
+	next(lexer);
+	destination[len] = 0;
+	add_token(lexer, TOKEN_STRING, destination);
+	lexer->latest_token_data->strlen = len;
+	return true;
+}
+
+static inline bool scan_raw_string(Lexer *lexer)
+{
+	char c;
+	while ((c = next(lexer)) != '`' || peek(lexer) == '`')
+	{
+		if (c == '`') next(lexer);
+		if (reached_end(lexer))
+		{
+			return add_error_token_at(lexer, lexer->lexing_start , 1, "Reached the end of the file looking for "
+																	  "the end of the raw string that starts "
+																	  "here. Did you forget a '`' somewhere?");
+		}
+	}
+	const char *current = lexer->lexing_start + 1;
+	const char *end = lexer->current - 1;
+	size_t len = end - current;
+	char *destination = malloc_arena(len + 1);
+	len = 0;
+	while (current < end)
+	{
+		c = *(current++);
+		if (c == '`' && current[0] == '`')
+		{
+			current++;
+		}
+		destination[len++] = c;
+	}
+	destination[len] = 0;
+	add_token(lexer, TOKEN_STRING, destination);
+	lexer->latest_token_data->strlen = len;
+	return true;
 }
 
 static inline bool scan_hex_array(Lexer *lexer)
@@ -1121,6 +1513,8 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 			return add_token(lexer, TOKEN_AT, "@");
 		case '\'':
 			return scan_char(lexer);
+		case '`':
+			return scan_raw_string(lexer);
 		case '"':
 			return scan_string(lexer);
 		case '#':

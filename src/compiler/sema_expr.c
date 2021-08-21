@@ -5553,7 +5553,7 @@ static inline bool sema_analyse_idents_string(Context *context, MiniLexer *lexer
 
 static inline bool sema_analyse_identifier_path_string(Context *context, Expr *expr, Decl **decl_ref, Type **type_ref, ExprFlatElement **idents_ref)
 {
-	char *chars = expr->const_expr.string.chars;
+	const char *chars = expr->const_expr.string.chars;
 	uint32_t len = expr->const_expr.string.len;
 	if (!len)
 	{

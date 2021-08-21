@@ -89,7 +89,7 @@ typedef struct
 		bool b;
 		struct
 		{
-			char* chars;
+			const char *chars;
 			uint32_t len;
 		} string;
 		Decl *enum_constant;
@@ -1370,7 +1370,11 @@ typedef struct MacroScope_
 
 typedef union
 {
-	const char *string;
+	struct
+	{
+		const char *string;
+		size_t strlen;
+	};
 	Real value;
 	struct
 	{

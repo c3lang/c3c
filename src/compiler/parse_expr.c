@@ -1207,40 +1207,31 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	expr_set_type(expr_string, type_compstr);
 
-	char *str = NULL;
-	size_t len = 0;
+	TokenData *data = TOKDATA(context->tok);
+	const char *str = data->string;
+	size_t len = data->strlen;
+	advance_and_verify(context, TOKEN_STRING);
 
+	// This is wasteful for adding many tokens together
+	// and can be optimized.
 	while (TOKEN_IS(TOKEN_STRING))
 	{
-		char *new_string = malloc_arena(len + TOKLEN(context->tok));
-		if (str) memcpy(new_string, str, len);
-		const char *sourcestr = TOKSTR(context->tok);
-		str = new_string;
-		for (unsigned i = 1; i < TOKLEN(context->tok) - 1; i++)
-		{
-			if (sourcestr[i] == '\\')
-			{
-				i++;
-				int scanned = append_esc_string_token(str, sourcestr + i, &len) - 1;
-				if (scanned < -1)
-				{
-					SEMA_TOKEN_ERROR(context->tok, "Invalid escape in string.");
-					return poisoned_expr;
-				}
-				i += scanned;
-				continue;
-			}
-			str[len++] = sourcestr[i];
-		}
+		data = TOKDATA(context->tok);
+		char *buffer = malloc_arena(len + data->strlen + 1);
+		memcpy(buffer, str, len);
+		memcpy(buffer + len, data->string, data->strlen);
+		len += data->strlen;
+		buffer[len] = '\0';
+		str = buffer;
 		advance_and_verify(context, TOKEN_STRING);
 	}
+
 	if (len > UINT32_MAX)
 	{
 		SEMA_TOKEN_ERROR(context->tok, "String exceeded max size.");
 		return poisoned_expr;
 	}
 	assert(str);
-	str[len] = '\0';
 	expr_string->const_expr.string.chars = str;
 	expr_string->const_expr.string.len = (uint32_t)len;
 	expr_set_type(expr_string, type_compstr);

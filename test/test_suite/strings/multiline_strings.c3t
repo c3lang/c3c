@@ -1,0 +1,57 @@
+
+char *message0 = """
+    hello
+      world   \x45
+    where is "quoted"
+   total
+""";
+
+char *message1 = """
+         \|    hello
+         \|  world   \x45
+         \|  where is "quoted"
+         \|    total
+""";
+
+char *messages = """
+         \s    hello
+         \s  world   \x45
+         \s  where is "quoted"
+         \s    total
+""";
+
+char *message2 = `
+  ``oh`` superman
+    where are you now?
+`;
+
+char *message3 = "Hfo\u0044ke";
+char *message4 = "\x64\x6f\x63\x75\x6d\x65\x6e\x74";
+
+char *message00 = """
+    hello
+""";
+
+char *message01 = """
+    hello""";
+
+char *message02 = """ """;
+
+char *message03 = """
+   hello
+  """;
+
+// #expect: multiline_strings.ll
+
+
+@.str = private constant [45 x i8] c" hello\0A   world   E\0A where is \22quoted\22\0Atotal\00", align 1
+@.str.10 = private constant [52 x i8] c"    hello\0A  world   E\0A  where is \22quoted\22\0A    total\00", align 1
+@.str.11 = private constant [56 x i8] c"     hello\0A   world   E\0A   where is \22quoted\22\0A     total\00", align 1
+@.str.12 = private constant [41 x i8] c"\0A  `oh` superman\0A    where are you now?\0A\00", align 1
+@.str.13 = private constant [7 x i8] c"HfoDke\00", align 1
+@.str.14 = private constant [9 x i8] c"document\00", align 1
+
+@.str.15 = private constant [6 x i8] c"hello\00", align 1
+@.str.16 = private constant [6 x i8] c"hello\00", align 1
+@.str.17 = private constant [2 x i8] c" \00", align 1
+@.str.18 = private constant [6 x i8] c"hello\00", align 1
