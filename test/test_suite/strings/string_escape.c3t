@@ -1,14 +1,14 @@
 func void main()
 {
-    char *s = "Hello\0 world!";
+    char *s = "Hello\0 world!" " now";
 }
 
 // #expect: string_escape.ll
 
-@.str = private constant [14 x i8] c"Hello\00 world!\00", align 1
+@.str = private constant [18 x i8] c"Hello\00 world! now\00", align 1
 
 define void @main()
 entry:
   %s = alloca i8*, align 8
-  store i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str, i32 0, i32 0), i8** %s, align 8
+  store i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i8** %s, align 8
   ret void

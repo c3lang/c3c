@@ -358,7 +358,6 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		else
 		{
 			BEValue value;
-			assert(decl->var.init_expr->expr_kind == EXPR_CONST);
 			llvm_emit_expr(c, &value, decl->var.init_expr);
 			init_value = llvm_value_rvalue_store(c, &value);
 		}

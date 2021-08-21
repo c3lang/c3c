@@ -1,6 +1,6 @@
 char[*] foob = x"a0";
 char[*] fooz = x"00aabbccddeeff";
-char[*] fooy = x"dead beef";
+char[*] fooy = x'dead beef';
 char[*] foow = x"4549234d e d";
 char[*] foo64 = b64"SGVsbG8gV29ybGQ=";
 
