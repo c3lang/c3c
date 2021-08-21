@@ -349,17 +349,28 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	ByteSize alignment = type_alloca_alignment(decl->type);
 
-	if (decl->var.init_expr)
+	Expr *init_expr = decl->var.init_expr;
+	if (init_expr)
 	{
-		if (decl->var.init_expr->expr_kind == EXPR_INITIALIZER_LIST)
+		if (init_expr->expr_kind == EXPR_INITIALIZER_LIST)
 		{
-			init_value = llvm_emit_const_aggregate(c, decl->var.init_expr, &modified);
+			init_value = llvm_emit_const_aggregate(c, init_expr, &modified);
 		}
 		else
 		{
 			BEValue value;
-			llvm_emit_expr(c, &value, decl->var.init_expr);
-			init_value = llvm_value_rvalue_store(c, &value);
+			if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.kind == TYPE_ARRAY)
+			{
+				init_value = LLVMConstStringInContext(c->context,
+													  init_expr->const_expr.bytes.ptr,
+													  init_expr->const_expr.bytes.len,
+													  1);
+			}
+			else
+			{
+				llvm_emit_expr(c, &value, decl->var.init_expr);
+				init_value = llvm_value_rvalue_store(c, &value);
+			}
 		}
 	}
 	else

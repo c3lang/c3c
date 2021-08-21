@@ -2499,7 +2499,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 																		 1));
 				llvm_set_alignment(global_name, 1);
 				global_name = LLVMConstBitCast(global_name, LLVMPointerType(llvm_get_type(c, type_char), 0));
-				llvm_value_set(be_value, global_name, type);
+				llvm_value_set_address(be_value, global_name, type);
 				return;
 			}
 		case ALL_INTS:
