@@ -468,6 +468,7 @@ typedef enum
 	TOKEN_CT_ELSE,          // $else
 	TOKEN_CT_ENDIF,         // $endif
 	TOKEN_CT_ENDSWITCH,     // $endswitch
+	TOKEN_CT_EXTNAMEOF,     // $extnameof
 	TOKEN_CT_IF,            // $if
 	TOKEN_CT_NAMEOF,        // $nameof
 	TOKEN_CT_OFFSETOF,      // $offsetof
