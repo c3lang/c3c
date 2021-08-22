@@ -628,6 +628,7 @@ unsigned attribute_zext;
 unsigned attribute_sext;
 unsigned attribute_byval;
 unsigned attribute_inreg;
+unsigned attribute_naked;
 
 void llvm_codegen_setup()
 {
@@ -709,6 +710,7 @@ void llvm_codegen_setup()
 	attribute_align = lookup_attribute("align");
 	attribute_byval = lookup_attribute("byval");
 	attribute_inreg = lookup_attribute("inreg");
+	attribute_naked = lookup_attribute("naked");
 	intrinsics_setup = true;
 }
 

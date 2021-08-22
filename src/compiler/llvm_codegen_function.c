@@ -422,10 +422,13 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 	}
 
 
-	// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
-	VECEACH(decl->func_decl.function_signature.params, i)
+	if (!decl->func_decl.attr_naked)
 	{
-		llvm_emit_parameter(context, decl->func_decl.function_signature.params[i], &arg, i);
+		// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
+		VECEACH(decl->func_decl.function_signature.params, i)
+		{
+			llvm_emit_parameter(context, decl->func_decl.function_signature.params[i], &arg, i);
+		}
 	}
 
 	LLVMSetCurrentDebugLocation2(context->builder, NULL);
@@ -575,7 +578,10 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 		LLVMSetSection(function, decl->section);
 	}
 	llvm_attribute_add(c, function, attribute_nounwind, -1);
-
+	if (decl->func_decl.attr_naked)
+	{
+		llvm_attribute_add(c, function, attribute_naked, -1);
+	}
 	if (decl->func_decl.function_signature.call_abi == CALL_X86_STD)
 	{
 		if (platform_target.os == OS_TYPE_WIN32)

@@ -1086,6 +1086,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 			case ATTRIBUTE_INLINE: SET_ATTR(attr_inline);
 			case ATTRIBUTE_NORETURN: SET_ATTR(attr_noreturn);
 			case ATTRIBUTE_WEAK: SET_ATTR(attr_weak);
+			case ATTRIBUTE_NAKED: SET_ATTR(attr_naked);
 			default:
 				UNREACHABLE
 		}
