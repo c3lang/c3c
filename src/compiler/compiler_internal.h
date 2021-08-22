@@ -2264,6 +2264,7 @@ static inline Type *type_flatten(Type *type)
 		return type;
 	}
 }
+
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_TYPEID; }
 static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind < TYPE_U8; }
 static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind < TYPE_IXX; }

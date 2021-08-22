@@ -5903,14 +5903,49 @@ static inline bool sema_expr_analyse_ct_nameof(Context *context, Type *to, Expr 
 	Expr *first_expr = elements[0];
 	if (!sema_analyse_expr_value(context, NULL, first_expr)) return false;
 
-	bool qualified = expr->ct_call_expr.token_type == TOKEN_CT_QNAMEOF;
+	TokenType name_type = expr->ct_call_expr.token_type;
 
-	if (first_expr->expr_kind == EXPR_TYPEINFO)
+	Decl *decl = NULL;
+	Type *type = NULL;
+	if (first_expr->expr_kind == EXPR_CONST && first_expr->const_expr.kind == TYPE_STRLIT)
 	{
-		Type *type = first_expr->type_expr->type->canonical;
+		ExprFlatElement *path_elements = NULL;
+		if (!sema_analyse_identifier_path_string(context, first_expr, &decl, &type, &path_elements)) return false;
+		if (path_elements)
+		{
+			SEMA_ERROR(first_expr, "You cannot take the name of sub elements by string name.");
+			return false;
+		}
+	}
+	else if (first_expr->expr_kind == EXPR_TYPEINFO)
+	{
+		type = first_expr->type_expr->type->canonical;
+	}
+	else
+	{
+		if (first_expr->expr_kind != EXPR_IDENTIFIER)
+		{
+			SEMA_ERROR(first_expr, "Expected an identifier or a string.");
+			return false;
+		}
+		decl = first_expr->identifier_expr.decl;
+	}
+	if (type)
+	{
 		if (!sema_resolve_type(context, type)) return false;
+
 		// TODO type_is_builtin is wrong also this does not cover virtual.
-		if (!qualified || type_is_builtin(type->type_kind))
+		if (name_type == TOKEN_CT_EXTNAMEOF)
+		{
+			if (!type_is_user_defined(type))
+			{
+				SEMA_ERROR(first_expr, "Only user defined types have an external name.");
+				return false;
+			}
+			expr_rewrite_to_string(expr, type->decl->extname ?: type->decl->external_name);
+			return true;
+		}
+		if (name_type == TOKEN_CT_NAMEOF || type_is_builtin(type->type_kind))
 		{
 			expr_rewrite_to_string(expr, type->name);
 			return true;
@@ -5922,14 +5957,22 @@ static inline bool sema_expr_analyse_ct_nameof(Context *context, Type *to, Expr 
 		expr_rewrite_to_string(expr, scratch_buffer_interned());
 		return true;
 	}
-	if (first_expr->expr_kind != EXPR_IDENTIFIER)
-	{
-		SEMA_ERROR(first_expr, "Expected an identifier.");
-		return false;
-	}
-	Decl *decl = first_expr->identifier_expr.decl;
 
-	if (!decl->module || !qualified || decl_is_local(decl))
+	assert(decl);
+
+	if (!sema_analyse_decl(context, decl)) return false;
+
+	if (name_type == TOKEN_CT_EXTNAMEOF)
+	{
+		if (!decl->external_name)
+		{
+			SEMA_ERROR(first_expr, "'%s' does not have an external name.", decl->name);
+			return false;
+		}
+		expr_rewrite_to_string(expr, decl->extname ?: decl->external_name);
+		return true;
+	}
+	if (!decl->module || name_type == TOKEN_CT_NAMEOF || decl_is_local(decl))
 	{
 		expr_rewrite_to_string(expr, decl->name);
 		return true;
@@ -6069,8 +6112,8 @@ static inline bool sema_expr_analyse_ct_call(Context *context, Type *to, Expr *e
 		case TOKEN_CT_OFFSETOF:
 			return sema_expr_analyse_ct_offsetof(context, to, expr);
 		case TOKEN_CT_QNAMEOF:
-			return sema_expr_analyse_ct_nameof(context, to, expr);
 		case TOKEN_CT_NAMEOF:
+		case TOKEN_CT_EXTNAMEOF:
 			return sema_expr_analyse_ct_nameof(context, to, expr);
 		default:
 			UNREACHABLE

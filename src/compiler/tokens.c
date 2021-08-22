@@ -345,6 +345,8 @@ const char *token_type_to_string(TokenType type)
 			return "$endif";
 		case TOKEN_CT_ENDSWITCH:
 			return "$endswitch";
+		case TOKEN_CT_EXTNAMEOF:
+			return "$extnameof";
 		case TOKEN_CT_IF:
 			return "$if";
 		case TOKEN_CT_NAMEOF:
