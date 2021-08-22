@@ -1,0 +1,15 @@
+// #target: x64-darwin
+
+func void test(int i) @naked
+{
+
+}
+
+// #expect: naked_function.ll
+
+define void @naked_function.test(i32 %0) #0 {
+entry:
+  ret void
+}
+
+attributes #0 = { naked nounwind }

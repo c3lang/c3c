@@ -2426,16 +2426,32 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 		}
 		Ast **asserts = NULL;
 		if (!sema_analyse_requires(context, func->docs, &asserts)) return false;
-		if (!sema_analyse_compound_statement_no_scope(context, func->func_decl.body)) return false;
-		assert(context->active_scope.depth == 1);
-		if (!context->active_scope.jump_end)
+		if (func->func_decl.attr_naked)
 		{
-			Type *canonical_rtype = signature->rtype->type->canonical;
-			if (canonical_rtype != type_void)
+			Ast **stmts = func->func_decl.body->compound_stmt.stmts;
+			VECEACH(stmts, i)
 			{
-				// IMPROVE better pointer to end.
-				SEMA_ERROR(func, "Missing return statement at the end of the function.");
-				return false;
+				if (stmts[i]->ast_kind != AST_ASM_STMT)
+				{
+					SEMA_ERROR(stmts[i], "Only asm statements are allowed inside of a naked function.");
+					return false;
+				}
+			}
+			asserts = NULL;
+		}
+		else
+		{
+			if (!sema_analyse_compound_statement_no_scope(context, func->func_decl.body)) return false;
+			assert(context->active_scope.depth == 1);
+			if (!context->active_scope.jump_end)
+			{
+				Type *canonical_rtype = signature->rtype->type->canonical;
+				if (canonical_rtype != type_void)
+				{
+					// IMPROVE better pointer to end.
+					SEMA_ERROR(func, "Missing return statement at the end of the function.");
+					return false;
+				}
 			}
 		}
 		if (asserts)

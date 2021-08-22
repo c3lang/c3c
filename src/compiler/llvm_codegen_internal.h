@@ -177,6 +177,7 @@ extern unsigned attribute_zext; // zero extend
 extern unsigned attribute_sext; // sign extend
 extern unsigned attribute_byval; // ByVal (param)
 extern unsigned attribute_inreg; // inreg (param)
+extern unsigned attribute_naked; // naked function
 
 void gencontext_begin_module(GenContext *c);
 void gencontext_init_file_emit(GenContext *c, Context *ast);
