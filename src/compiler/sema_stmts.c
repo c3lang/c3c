@@ -1303,6 +1303,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 }
 
 
+static bool sema_analyse_switch_stmt(Context *context, Ast *statement);
 
 static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 {
@@ -1318,13 +1319,17 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 
 	Expr *cond = statement->if_stmt.cond;
 	SCOPE_OUTER_START
-		success = sema_analyse_cond(context, cond, true);
+		bool cast_to_bool = statement->if_stmt.then_body->ast_kind != AST_IF_CATCH_SWITCH_STMT;
+		success = sema_analyse_cond(context, cond, cast_to_bool);
+
+		Ast *then = statement->if_stmt.then_body;
+		bool then_has_braces = then->ast_kind == AST_COMPOUND_STMT || then->ast_kind == AST_IF_CATCH_SWITCH_STMT;
+
 		if (statement->if_stmt.else_body)
 		{
-			if (statement->if_stmt.then_body->ast_kind != AST_COMPOUND_STMT)
+			if (!then_has_braces)
 			{
-				SEMA_ERROR(statement->if_stmt.then_body,
-				           "if-statements with an 'else' must use '{ }' even around a single statement.");
+				SEMA_ERROR(then, "if-statements with an 'else' must use '{ }' even around a single statement.");
 				success = false;
 			}
 			if (success && statement->if_stmt.else_body->ast_kind != AST_COMPOUND_STMT &&
@@ -1335,7 +1340,7 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 				success = false;
 			}
 		}
-		if (success && statement->if_stmt.then_body->ast_kind != AST_COMPOUND_STMT && statement->if_stmt.then_body->ast_kind != AST_IF_CATCH_SWITCH_STMT)
+		if (success && !then_has_braces)
 		{
 			SourceLocation *end_of_cond = TOKLOC(cond->span.end_loc);
 			SourceLocation *start_of_then = TOKLOC(statement->if_stmt.then_body->span.loc);
@@ -1348,15 +1353,28 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 		}
 		if (context->active_scope.jump_end && !context->active_scope.allow_dead_code)
 		{
-			SEMA_ERROR(statement->if_stmt.then_body, "This code can never be executed.");
+			SEMA_ERROR(then, "This code can never be executed.");
 			success = false;
 		}
 
-		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
-			success = success && sema_analyse_statement(context, statement->if_stmt.then_body);
-			then_jump = context->active_scope.jump_end;
-
-		SCOPE_END;
+		if (then->ast_kind == AST_IF_CATCH_SWITCH_STMT)
+		{
+			Decl *label = statement->if_stmt.flow.label;
+			then->switch_stmt.flow.label = label;
+			statement->if_stmt.flow.label = NULL;
+			if (label) label->label.parent = astid(then);
+			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
+				success = success && sema_analyse_switch_stmt(context, then);
+				then_jump = context->active_scope.jump_end;
+			SCOPE_END;
+		}
+		else
+		{
+			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
+				success = success && sema_analyse_statement(context, then);
+				then_jump = context->active_scope.jump_end;
+			SCOPE_END;
+		}
 
 		else_jump = false;
 		if (statement->if_stmt.else_body)
@@ -1391,7 +1409,7 @@ static bool sema_analyse_asm_stmt(Context *context, Ast *stmt)
 {
 	if (!sema_analyse_expr(context, NULL, stmt->asm_stmt.body)) return false;
 	if (stmt->asm_stmt.body->expr_kind != EXPR_CONST
-		|| stmt->asm_stmt.body->const_expr.kind != TYPE_STRLIT)
+		|| stmt->asm_stmt.body->const_expr.const_kind != CONST_STRING)
 	{
 		SEMA_ERROR(stmt->asm_stmt.body, "The asm statement requires a constant string here.");
 		return false;
@@ -1468,12 +1486,12 @@ static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 	return true;
 }
 
-static bool sema_analyse_next_stmt(Context *context, Ast *statement)
+static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 {
 	context->active_scope.jump_end = true;
 	if (!context->next_target && !statement->next_stmt.label.name)
 	{
-		SEMA_ERROR(statement, "'next' is not allowed here.");
+		SEMA_ERROR(statement, "'nextcase' is not allowed here.");
 		return false;
 	}
 	Ast *parent = context->next_switch;
@@ -1493,16 +1511,16 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 		}
 		parent = astptr(target->label.parent);
 		AstKind kind = parent->ast_kind;
-		if (kind != AST_SWITCH_STMT)
+		if (kind != AST_SWITCH_STMT && kind != AST_IF_CATCH_SWITCH_STMT)
 		{
-			SEMA_TOKID_ERROR(statement->next_stmt.label.span, "Expected the label to match a 'switch' or 'catch' statement.");
+			SEMA_TOKID_ERROR(statement->next_stmt.label.span, "Expected the label to match a 'switch' or 'if-catch' statement.");
 			return false;
 		}
 		bool defer_mismatch = false;
 		defer_mismatch = context->active_scope.in_defer != parent->switch_stmt.scope_defer;
 		if (defer_mismatch)
 		{
-			SEMA_ERROR(statement, "This 'next' would jump out of a defer which is not allowed.");
+			SEMA_ERROR(statement, "This 'nextcase' would jump out of a defer which is not allowed.");
 			return false;
 		}
 		assert(statement->next_stmt.target);
@@ -1515,7 +1533,7 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 	{
 		if (!context->next_target)
 		{
-			SEMA_ERROR(statement, "Unexpected 'next' statement outside of a switch.");
+			SEMA_ERROR(statement, "Unexpected 'nextcase' statement outside of a switch.");
 			return false;
 		}
 		statement->next_stmt.case_switch_stmt = context->next_target;
@@ -1529,13 +1547,14 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 		statement->next_stmt.defers.end = parent->switch_stmt.defer;
 		if (parent->switch_stmt.cond->type->canonical != type_typeid)
 		{
-			SEMA_ERROR(statement, "Unexpected 'type' in as an 'next' destination.");
+			SEMA_ERROR(statement, "Unexpected 'type' in as an 'nextcase' destination.");
 			SEMA_PREV(statement, "The 'switch' here uses expected a type '%s'.", type_to_error_string(parent->switch_stmt.cond->type));
 			return false;
 		}
 		cases = parent->switch_stmt.cases;
 
 		Ast *default_stmt = NULL;
+		Type *type = statement->next_stmt.type_info->type->canonical;
 		VECEACH(cases, i)
 		{
 			Ast *case_stmt = cases[i];
@@ -1544,7 +1563,8 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 				default_stmt = case_stmt;
 				break;
 			}
-			if (case_stmt->case_stmt.type_info->type->canonical == statement->next_stmt.type_info->type->canonical)
+			Expr *expr = case_stmt->case_stmt.expr;
+			if (expr->expr_kind == EXPR_CONST && expr->const_expr.typeid == type)
 			{
 				statement->next_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
@@ -1559,15 +1579,11 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 		return false;
 	}
 
-	if (parent->ast_kind != AST_SWITCH_STMT)
-	{
-		SEMA_ERROR(statement, "The 'next' expected a type.");
-	}
 	Expr *target = statement->next_stmt.target;
 
-	if (!sema_analyse_expr(context, parent->switch_stmt.cond->type, target)) return false;
+	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? parent->switch_stmt.cond->type : type_anyerr;
 
-	if (!cast_implicit(target, parent->switch_stmt.cond->type)) return false;
+	if (!sema_analyse_expr_of_required_type(context, expected_type, target, false)) return false;
 
 	if (target->expr_kind == EXPR_CONST)
 	{
@@ -1687,22 +1703,13 @@ static bool sema_analyse_ct_if_stmt(Context *context, Ast *statement)
  *
  * @return true if the analysis succeeds.
  */
-static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_stmt)
+static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_stmt, bool *is_const)
 {
 	assert(to_type);
 	Expr *case_expr = case_stmt->case_stmt.expr;
 
-	// TODO string switch.
-
 	// 1. Try to do implicit conversion to the correct type.
 	if (!sema_analyse_expr(context, to_type, case_expr)) return false;
-
-	// 2. Skip continued analysis if it's not constant.
-	if (case_expr->expr_kind != EXPR_CONST)
-	{
-		SEMA_ERROR(case_expr, "A case value must always be constant at compile time.");
-		return false;
-	}
 
 	Type *case_type = case_expr->original_type->canonical;
 	Type *to_type_canonical = to_type->canonical;
@@ -1737,46 +1744,38 @@ static inline bool sema_analyse_compound_statement_no_scope(Context *context, As
 	return all_ok;
 }
 
-static inline bool sema_check_type_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool use_type_id)
+static inline bool sema_check_type_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index)
 {
-	if (!sema_resolve_type_info(context, case_stmt->case_stmt.type_info)) return false;
-	Type *case_type = case_stmt->case_stmt.type_info->type;
-	if (!use_type_id)
+	Expr *expr = case_stmt->case_stmt.expr;
+	if (!sema_analyse_expr_of_required_type(context, type_typeid, expr, false)) return false;
+
+	if (expr->expr_kind == EXPR_CONST)
 	{
-		SEMA_ERROR(case_stmt, "Unexpected '%s' given case when a normal expression was expected.", type_to_error_string(case_type));
-		return false;
-	}
-	if (switch_type == type_anyerr && case_type->canonical->type_kind != TYPE_ERRTYPE)
-	{
-		if (case_type->canonical == type_anyerr)
+		Type *my_type = expr->const_expr.typeid;
+		for (unsigned i = 0; i < index; i++)
 		{
-			SEMA_ERROR(case_stmt, "In a catch, only use specific error types, never 'error'.");
-			return false;
-		}
-		SEMA_ERROR(case_stmt, "Expected an error type here, not '%s'", type_to_error_string(case_type));
-		return false;
-	}
-	for (unsigned i = 0; i < index; i++)
-	{
-		Ast *other = cases[i];
-		if (other->ast_kind == AST_CASE_STMT && other->case_stmt.type_info->type->canonical == case_stmt->case_stmt.type_info->type->canonical)
-		{
-			SEMA_ERROR(case_stmt, "The same type appears more than once.");
-			SEMA_PREV(other, "Here is the case with that type.");
-			return false;
+			Ast *other = cases[i];
+			if (other->ast_kind != AST_CASE_STMT) continue;
+			Expr *other_expr = other->case_stmt.expr;
+			if (other_expr->expr_kind == EXPR_CONST && other_expr->const_expr.typeid == my_type)
+			{
+				SEMA_ERROR(case_stmt, "The same type appears more than once.");
+				SEMA_PREV(other, "Here is the case with that type.");
+				return false;
+			}
 		}
 	}
 	return true;
 }
 
-static inline bool sema_check_value_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool use_type_id)
+static inline bool sema_check_value_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained)
 {
-	if (!sema_analyse_case_expr(context, switch_type, case_stmt)) return false;
+	if (!sema_analyse_case_expr(context, switch_type, case_stmt, if_chained)) return false;
 	Expr *expr = case_stmt->case_stmt.expr;
-	if (use_type_id)
+	if (expr->expr_kind != EXPR_CONST)
 	{
-		SEMA_ERROR(case_stmt, "Unexpected value of type '%s' when expecting a value.", type_to_error_string(expr->type));
-		return false;
+		*if_chained = true;
+		return true;
 	}
 	for (unsigned i = 0; i < index; i++)
 	{
@@ -1794,28 +1793,14 @@ static inline bool sema_check_value_case(Context *context, Type *switch_type, As
 static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases)
 {
 	bool use_type_id = false;
-	Type *switch_type_flattened = type_flatten(switch_type);
-	switch (switch_type_flattened->type_kind)
+	if (!type_is_comparable(switch_type))
 	{
-		case TYPE_TYPEID:
-			use_type_id = true;
-			break;
-		case ALL_INTS:
-			assert(switch_type->type_kind != TYPE_IXX);
-		case TYPE_BOOL:
-		case TYPE_ENUM:
-		case TYPE_ANYERR:
-			break;
-		case TYPE_DISTINCT:
-			UNREACHABLE
-		case TYPE_SUBARRAY:
-			// Allow switching over char[] and String
-			if (switch_type_flattened->array.base->type_kind == TYPE_U8) break;
-			FALLTHROUGH;
-		default:
-			sema_error_range(expr_span, "It is not possible to switch over '%s'.", type_to_error_string(switch_type));
-			return false;
+		sema_error_range(expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
+		return false;
 	}
+	// We need an if chain if this isn't an integer type.
+	bool if_chain = !type_is_any_integer(type_flatten(switch_type));
+
 	Ast *default_case = NULL;
 	assert(context->active_scope.defer_start == context->active_scope.defer_last);
 
@@ -1828,9 +1813,9 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 		switch (stmt->ast_kind)
 		{
 			case AST_CASE_STMT:
-				if (stmt->case_stmt.is_type)
+				if (switch_type->type_kind == TYPE_TYPEID)
 				{
-					if (!sema_check_type_case(context, switch_type, stmt, cases, i, use_type_id))
+					if (!sema_check_type_case(context, switch_type, stmt, cases, i))
 					{
 						success = false;
 						break;;
@@ -1838,7 +1823,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 				}
 				else
 				{
-					if (!sema_check_value_case(context, switch_type, stmt, cases, i, use_type_id))
+					if (!sema_check_value_case(context, switch_type, stmt, cases, i, &if_chain))
 					{
 						success = false;
 						break;
@@ -1876,6 +1861,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 		SCOPE_END;
 	}
 	statement->flow.no_exit = all_jump_end;
+	statement->switch_stmt.if_chain = if_chain;
 	if (!success) return false;
 	return success;
 }
@@ -1897,18 +1883,18 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 			case AST_CASE_STMT:
 				if (use_type_id)
 				{
-					if (!stmt->case_stmt.is_type)
+					Expr *expr = stmt->case_stmt.expr;
+					if (!sema_analyse_expr_value(context, NULL, expr)) return false;
+					if (stmt->case_stmt.expr->expr_kind != EXPR_TYPEINFO)
 					{
 						SEMA_ERROR(stmt, "Unexpectedly encountered a value rather than a type in the $case");
 						return false;
 					}
-					TypeInfo *case_type = stmt->case_stmt.type_info;
-					if (!sema_resolve_type_info(context, case_type)) return false;
-					Type *case_canonical = case_type->type->canonical;
+					Type *case_canonical = expr->type_expr->type->canonical;
 					if (case_canonical == type)
 					{
 						// Is this a better match?
-						if (!match || match->case_stmt.type_info->type->canonical != type)
+						if (!match || match->case_stmt.expr->type_expr->type->canonical != type)
 						{
 							match = stmt;
 						}
@@ -1922,11 +1908,6 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 				}
 				else
 				{
-					if (stmt->case_stmt.is_type)
-					{
-						SEMA_ERROR(stmt, "Unexpectedly encountered a type rather than a value in the $case");
-						return false;
-					}
 					if (!sema_analyse_expr_of_required_type(context,
 					                                        cond->type,
 					                                        stmt->case_stmt.expr,
@@ -1977,7 +1958,6 @@ static bool sema_analyse_ct_switch_stmt(Context *context, Ast *statement)
 static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 {
 	statement->switch_stmt.scope_defer = context->active_scope.in_defer;
-
 
 	SCOPE_START_WITH_LABEL(statement->switch_stmt.flow.label);
 
@@ -2125,6 +2105,7 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_SCOPED_STMT:
 		case AST_DOCS:
 		case AST_DOC_DIRECTIVE:
+		case AST_IF_CATCH_SWITCH_STMT:
 			UNREACHABLE
 		case AST_ASM_STMT:
 			return sema_analyse_asm_stmt(context, statement);
@@ -2169,10 +2150,9 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_RETURN_STMT:
 			return sema_analyse_return_stmt(context, statement);
 		case AST_SWITCH_STMT:
-		case AST_IF_CATCH_SWITCH_STMT:
 			return sema_analyse_switch_stmt(context, statement);
 		case AST_NEXT_STMT:
-			return sema_analyse_next_stmt(context, statement);
+			return sema_analyse_nextcase_stmt(context, statement);
 		case AST_UNREACHABLE_STMT:
 			return sema_analyse_unreachable_stmt(context);
 		case AST_VOLATILE_STMT:
@@ -2212,7 +2192,7 @@ static bool sema_analyse_requires(Context *context, Ast *docs, Ast ***asserts)
 		Expr *declexpr = directive->doc_directive.contract.decl_exprs;
 		if (comment)
 		{
-			if (comment->expr_kind != EXPR_CONST || comment->const_expr.kind != TYPE_STRLIT)
+			if (comment->expr_kind != EXPR_CONST || comment->const_expr.const_kind != CONST_STRING)
 			{
 				SEMA_ERROR(comment, "Expected a string here.");
 				return false;

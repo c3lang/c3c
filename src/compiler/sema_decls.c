@@ -671,7 +671,8 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 			expr_set_type(expr, type);
 			expr->resolve_status = RESOLVE_NOT_DONE;
 			bigint_init_bigint(&expr->const_expr.i, &value);
-			expr->const_expr.kind = TYPE_IXX;
+			expr->const_expr.int_type = TYPE_IXX;
+			expr->const_expr.const_kind = CONST_INTEGER;
 			expr_set_type(expr, type_compint);
 			enum_value->enum_constant.expr = expr;
 		}
@@ -723,8 +724,6 @@ static inline bool sema_analyse_error(Context *context, Decl *decl)
 		assert(enum_value->decl_kind == DECL_ERRVALUE);
 
 		// Start evaluating the constant
-		enum_value->resolve_status = RESOLVE_RUNNING;
-		enum_value->enum_constant.expr = NULL;
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
 	return success;

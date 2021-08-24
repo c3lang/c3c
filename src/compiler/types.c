@@ -649,6 +649,57 @@ Type *type_find_largest_union_element(Type *type)
 	return largest_type;
 }
 
+bool type_is_ordered(Type *type)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case ALL_FLOATS:
+		case ALL_INTS:
+		case TYPE_POINTER:
+		case TYPE_BOOL:
+		case TYPE_ENUM:
+			return true;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_DISTINCT:
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
+		default:
+			return false;
+	}
+}
+
+bool type_is_comparable(Type *type)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_POISONED:
+			UNREACHABLE
+		case TYPE_VOID:
+		case TYPE_UNION:
+		case TYPE_STRUCT:
+		case TYPE_BITSTRUCT:
+			return false;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_SUBARRAY:
+		case TYPE_ARRAY:
+			// Arrays are comparable if elements are
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_DISTINCT:
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
+		default:
+			return true;
+	}
+}
+
 AlignSize type_abi_alignment(Type *type)
 {
 	switch (type->type_kind)
@@ -1336,6 +1387,46 @@ Type *type_from_token(TokenType type)
 			UNREACHABLE
 	}
 }
+
+bool type_may_convert_to_boolean(Type *type)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+			return false;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_DISTINCT:
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_POINTER:
+		case TYPE_VIRTUAL:
+		case TYPE_VIRTUAL_ANY:
+		case TYPE_BOOL:
+		case TYPE_SUBARRAY:
+		case TYPE_ENUM:
+		case TYPE_ANYERR:
+		case TYPE_ERRTYPE:
+		case TYPE_STRLIT:
+			return true;
+		case TYPE_FUNC:
+		case TYPE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_BITSTRUCT:
+		case TYPE_VECTOR:
+		case TYPE_STRUCT:
+		case TYPE_TYPEID:
+		case TYPE_TYPEINFO:
+		case TYPE_UNION:
+		case TYPE_VOID:
+			return false;
+	}
+	UNREACHABLE
+}
 bool type_may_have_sub_elements(Type *type)
 {
 	// An alias is not ok.
@@ -1519,6 +1610,8 @@ Type *type_find_max_type(Type *type, Type *other)
 				if (flatten_other->type_kind == TYPE_SUBARRAY && flatten_other->array.base->type_kind == TYPE_U8) return other;
 				if (flatten_other->type_kind == TYPE_POINTER && flatten_other->pointer->type_kind == TYPE_U8) return other;
 			}
+			if (other->type_kind == TYPE_SUBARRAY && other->array.base->type_kind == TYPE_U8) return other;
+			if (other->type_kind == TYPE_POINTER && other->pointer->type_kind == TYPE_U8) return other;
 			return NULL;
 		case TYPE_DISTINCT:
 			return NULL;

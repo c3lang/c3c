@@ -1,0 +1,233 @@
+// #target: x64-darwin
+
+module mymodule;
+
+extern func void printf(char *, ...);
+
+func void main()
+{
+
+    char[] y = "hodo";
+    char[] z = "hodo";
+    if (y == "hodo")
+    {
+        printf("This works\n");
+    }
+    if (y == z)
+    {
+        printf("This works too\n");
+    }
+    switch (y)
+    {
+        case "mixx":
+            printf("Wut\n");
+        case "hodot":
+            printf("Nope\n");
+        case "hodo":
+            printf("Winning!\n");
+        default:
+            printf("Hodohell\n");
+    }
+
+}
+
+// #expect: mymodule.ll
+
+define void @main() #0 {
+entry:
+  %y = alloca %"char[]", align 8
+  %z = alloca %"char[]", align 8
+  %cmp.idx = alloca i64, align 8
+  %cmp.idx4 = alloca i64, align 8
+  %switch = alloca %"char[]", align 8
+  %cmp.idx17 = alloca i64, align 8
+  %cmp.idx28 = alloca i64, align 8
+  %cmp.idx41 = alloca i64, align 8
+  store %"char[]" { i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str, i32 0, i32 0), i64 4 }, %"char[]"* %y, align 8
+  store %"char[]" { i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.1, i32 0, i32 0), i64 4 }, %"char[]"* %z, align 8
+  %0 = load %"char[]", %"char[]"* %y, align 8
+  %1 = extractvalue %"char[]" %0, 1
+  %2 = extractvalue %"char[]" %0, 0
+  %eq = icmp eq i64 %1, 4
+  br i1 %eq, label %subarray_cmp_values, label %subarray_cmp_exit
+
+subarray_cmp_values:                              ; preds = %entry
+  store i64 0, i64* %cmp.idx, align 8
+  br label %subarray_loop_start
+
+subarray_loop_start:                              ; preds = %subarray_loop_comparison, %subarray_cmp_values
+  %3 = load i64, i64* %cmp.idx, align 8
+  %lt = icmp ult i64 %3, %1
+  br i1 %lt, label %subarray_loop_comparison, label %subarray_cmp_exit
+
+subarray_loop_comparison:                         ; preds = %subarray_loop_start
+  %lhs.ptr = getelementptr inbounds i8, i8* %2, i64 %3
+  %rhs.ptr = getelementptr inbounds i8, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.2, i32 0, i32 0), i64 %3
+  %4 = load i8, i8* %lhs.ptr, align 1
+  %5 = load i8, i8* %rhs.ptr, align 1
+  %eq1 = icmp eq i8 %4, %5
+  %6 = add i64 %3, 1
+  store i64 %6, i64* %cmp.idx, align 8
+  br i1 %eq1, label %subarray_loop_start, label %subarray_cmp_exit
+
+subarray_cmp_exit:                                ; preds = %subarray_loop_comparison, %subarray_loop_start, %entry
+  %subarray_cmp_phi = phi i1 [ true, %subarray_loop_start ], [ false, %entry ], [ false, %subarray_loop_comparison ]
+  br i1 %subarray_cmp_phi, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %subarray_cmp_exit
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.3, i32 0, i32 0))
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then, %subarray_cmp_exit
+  %7 = load %"char[]", %"char[]"* %y, align 8
+  %8 = load %"char[]", %"char[]"* %z, align 8
+  %9 = extractvalue %"char[]" %7, 1
+  %10 = extractvalue %"char[]" %8, 1
+  %11 = extractvalue %"char[]" %7, 0
+  %12 = extractvalue %"char[]" %8, 0
+  %eq2 = icmp eq i64 %9, %10
+  br i1 %eq2, label %subarray_cmp_values3, label %subarray_cmp_exit11
+
+subarray_cmp_values3:                             ; preds = %if.exit
+  store i64 0, i64* %cmp.idx4, align 8
+  br label %subarray_loop_start5
+
+subarray_loop_start5:                             ; preds = %subarray_loop_comparison7, %subarray_cmp_values3
+  %13 = load i64, i64* %cmp.idx4, align 8
+  %lt6 = icmp ult i64 %13, %9
+  br i1 %lt6, label %subarray_loop_comparison7, label %subarray_cmp_exit11
+
+subarray_loop_comparison7:                        ; preds = %subarray_loop_start5
+  %lhs.ptr8 = getelementptr inbounds i8, i8* %11, i64 %13
+  %rhs.ptr9 = getelementptr inbounds i8, i8* %12, i64 %13
+  %14 = load i8, i8* %lhs.ptr8, align 1
+  %15 = load i8, i8* %rhs.ptr9, align 1
+  %eq10 = icmp eq i8 %14, %15
+  %16 = add i64 %13, 1
+  store i64 %16, i64* %cmp.idx4, align 8
+  br i1 %eq10, label %subarray_loop_start5, label %subarray_cmp_exit11
+
+subarray_cmp_exit11:                              ; preds = %subarray_loop_comparison7, %subarray_loop_start5, %if.exit
+  %subarray_cmp_phi12 = phi i1 [ true, %subarray_loop_start5 ], [ false, %if.exit ], [ false, %subarray_loop_comparison7 ]
+  br i1 %subarray_cmp_phi12, label %if.then13, label %if.exit14
+
+if.then13:                                        ; preds = %subarray_cmp_exit11
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str.4, i32 0, i32 0))
+  br label %if.exit14
+
+if.exit14:                                        ; preds = %if.then13, %subarray_cmp_exit11
+  %17 = bitcast %"char[]"* %switch to i8*
+  %18 = bitcast %"char[]"* %y to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %17, i8* align 8 %18, i32 16, i1 false)
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %if.exit14
+  %19 = load %"char[]", %"char[]"* %switch, align 8
+  %20 = extractvalue %"char[]" %19, 1
+  %21 = extractvalue %"char[]" %19, 0
+  %eq15 = icmp eq i64 4, %20
+  br i1 %eq15, label %subarray_cmp_values16, label %subarray_cmp_exit24
+
+subarray_cmp_values16:                            ; preds = %switch.entry
+  store i64 0, i64* %cmp.idx17, align 8
+  br label %subarray_loop_start18
+
+subarray_loop_start18:                            ; preds = %subarray_loop_comparison20, %subarray_cmp_values16
+  %22 = load i64, i64* %cmp.idx17, align 8
+  %lt19 = icmp ult i64 %22, 4
+  br i1 %lt19, label %subarray_loop_comparison20, label %subarray_cmp_exit24
+
+subarray_loop_comparison20:                       ; preds = %subarray_loop_start18
+  %lhs.ptr21 = getelementptr inbounds i8, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.5, i32 0, i32 0), i64 %22
+  %rhs.ptr22 = getelementptr inbounds i8, i8* %21, i64 %22
+  %23 = load i8, i8* %lhs.ptr21, align 1
+  %24 = load i8, i8* %rhs.ptr22, align 1
+  %eq23 = icmp eq i8 %23, %24
+  %25 = add i64 %22, 1
+  store i64 %25, i64* %cmp.idx17, align 8
+  br i1 %eq23, label %subarray_loop_start18, label %subarray_cmp_exit24
+
+subarray_cmp_exit24:                              ; preds = %subarray_loop_comparison20, %subarray_loop_start18, %switch.entry
+  %subarray_cmp_phi25 = phi i1 [ true, %subarray_loop_start18 ], [ false, %switch.entry ], [ false, %subarray_loop_comparison20 ]
+  br i1 %subarray_cmp_phi25, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %subarray_cmp_exit24
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.6, i32 0, i32 0))
+  br label %switch.exit
+
+next_if:                                          ; preds = %subarray_cmp_exit24
+  %26 = extractvalue %"char[]" %19, 1
+  %27 = extractvalue %"char[]" %19, 0
+  %eq26 = icmp eq i64 5, %26
+  br i1 %eq26, label %subarray_cmp_values27, label %subarray_cmp_exit35
+
+subarray_cmp_values27:                            ; preds = %next_if
+  store i64 0, i64* %cmp.idx28, align 8
+  br label %subarray_loop_start29
+
+subarray_loop_start29:                            ; preds = %subarray_loop_comparison31, %subarray_cmp_values27
+  %28 = load i64, i64* %cmp.idx28, align 8
+  %lt30 = icmp ult i64 %28, 5
+  br i1 %lt30, label %subarray_loop_comparison31, label %subarray_cmp_exit35
+
+subarray_loop_comparison31:                       ; preds = %subarray_loop_start29
+  %lhs.ptr32 = getelementptr inbounds i8, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.7, i32 0, i32 0), i64 %28
+  %rhs.ptr33 = getelementptr inbounds i8, i8* %27, i64 %28
+  %29 = load i8, i8* %lhs.ptr32, align 1
+  %30 = load i8, i8* %rhs.ptr33, align 1
+  %eq34 = icmp eq i8 %29, %30
+  %31 = add i64 %28, 1
+  store i64 %31, i64* %cmp.idx28, align 8
+  br i1 %eq34, label %subarray_loop_start29, label %subarray_cmp_exit35
+
+subarray_cmp_exit35:                              ; preds = %subarray_loop_comparison31, %subarray_loop_start29, %next_if
+  %subarray_cmp_phi36 = phi i1 [ true, %subarray_loop_start29 ], [ false, %next_if ], [ false, %subarray_loop_comparison31 ]
+  br i1 %subarray_cmp_phi36, label %switch.case37, label %next_if38
+
+switch.case37:                                    ; preds = %subarray_cmp_exit35
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.8, i32 0, i32 0))
+  br label %switch.exit
+
+next_if38:                                        ; preds = %subarray_cmp_exit35
+  %32 = extractvalue %"char[]" %19, 1
+  %33 = extractvalue %"char[]" %19, 0
+  %eq39 = icmp eq i64 4, %32
+  br i1 %eq39, label %subarray_cmp_values40, label %subarray_cmp_exit48
+
+subarray_cmp_values40:                            ; preds = %next_if38
+  store i64 0, i64* %cmp.idx41, align 8
+  br label %subarray_loop_start42
+
+subarray_loop_start42:                            ; preds = %subarray_loop_comparison44, %subarray_cmp_values40
+  %34 = load i64, i64* %cmp.idx41, align 8
+  %lt43 = icmp ult i64 %34, 4
+  br i1 %lt43, label %subarray_loop_comparison44, label %subarray_cmp_exit48
+
+subarray_loop_comparison44:                       ; preds = %subarray_loop_start42
+  %lhs.ptr45 = getelementptr inbounds i8, i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.9, i32 0, i32 0), i64 %34
+  %rhs.ptr46 = getelementptr inbounds i8, i8* %33, i64 %34
+  %35 = load i8, i8* %lhs.ptr45, align 1
+  %36 = load i8, i8* %rhs.ptr46, align 1
+  %eq47 = icmp eq i8 %35, %36
+  %37 = add i64 %34, 1
+  store i64 %37, i64* %cmp.idx41, align 8
+  br i1 %eq47, label %subarray_loop_start42, label %subarray_cmp_exit48
+
+subarray_cmp_exit48:                              ; preds = %subarray_loop_comparison44, %subarray_loop_start42, %next_if38
+  %subarray_cmp_phi49 = phi i1 [ true, %subarray_loop_start42 ], [ false, %next_if38 ], [ false, %subarray_loop_comparison44 ]
+  br i1 %subarray_cmp_phi49, label %switch.case50, label %next_if51
+
+switch.case50:                                    ; preds = %subarray_cmp_exit48
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.10, i32 0, i32 0))
+  br label %switch.exit
+
+next_if51:                                        ; preds = %subarray_cmp_exit48
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if51
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.11, i32 0, i32 0))
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %switch.case50, %switch.case37, %switch.case
+  ret void
+}
