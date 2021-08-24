@@ -58,6 +58,7 @@ void gencontext_begin_module(GenContext *c)
 	{
 		global_context.type[i]->backend_type = NULL;
 		global_context.type[i]->backend_debug_type = NULL;
+		global_context.type[i]->backend_typeid = NULL;
 	}
 	if (active_target.debug_info != DEBUG_INFO_NONE)
 	{

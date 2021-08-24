@@ -359,7 +359,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		else
 		{
 			BEValue value;
-			if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.kind == TYPE_ARRAY)
+			if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_BYTES)
 			{
 				init_value = LLVMConstStringInContext(c->context,
 													  init_expr->const_expr.bytes.ptr,
@@ -775,6 +775,11 @@ void llvm_value_set_bool(BEValue *value, LLVMValueRef llvm_value)
 	value->type = type_bool;
 }
 
+void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i)
+{
+	llvm_value_set(value, llvm_const_int(c, type, i), type);
+}
+
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 {
 	type = type_lowering(type);
@@ -797,6 +802,7 @@ void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type 
 	value->kind = BE_ADDRESS;
 	value->type = type_lowering(type);
 }
+
 void llvm_value_set_decl_address(BEValue *value, Decl *decl)
 {
 	decl = decl_flatten(decl);
@@ -955,7 +961,10 @@ const char *llvm_codegen(void *context)
 	LLVMPassManagerBuilderSetOptLevel(pass_manager_builder, active_target.optimization_level);
 	LLVMPassManagerBuilderSetSizeLevel(pass_manager_builder, active_target.size_optimization_level);
 	LLVMPassManagerBuilderSetDisableUnrollLoops(pass_manager_builder, active_target.optimization_level == OPTIMIZATION_NONE);
-	LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, get_inlining_threshold());
+	if (active_target.optimization_level != OPTIMIZATION_NONE)
+	{
+		LLVMPassManagerBuilderUseInlinerWithThreshold(pass_manager_builder, get_inlining_threshold());
+	}
 	LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
 	LLVMPassManagerRef function_pass_manager = LLVMCreateFunctionPassManagerForModule(module);
 	LLVMAddAnalysisPasses(c->machine, function_pass_manager);

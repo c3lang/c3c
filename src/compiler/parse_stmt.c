@@ -298,34 +298,15 @@ static bool parse_type_or_expr(Context *context, TypeInfo **type_info, Expr **ex
  * 	| CAST type ':' cast_stmts
  * 	;
  */
-static inline Ast* parse_case_stmt(Context *context, TokenType case_type, TokenType default_type, bool allow_multiple_values)
+static inline Ast *parse_case_stmt(Context *context, TokenType case_type, TokenType default_type)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CASE_STMT, context->tok);
 	advance(context);
-	TypeInfo *type = NULL;
-	Expr *expr = NULL;
-	if (!parse_type_or_expr(context, &type, &expr)) return poisoned_ast;
-	if (type)
+	ast->case_stmt.expr = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+	// Change type -> type.typeid
+	if (ast->case_stmt.expr->expr_kind == EXPR_TYPEINFO)
 	{
-		ast->case_stmt.is_type = true;
-		ast->case_stmt.type_info = type;
-	}
-	else
-	{
-		ast->case_stmt.expr = expr;
-	}
-	if (type && allow_multiple_values && try_consume(context, TOKEN_COMMA))
-	{
-		ast->case_stmt.is_type_list = true;
-		TypeInfo **type_infos = NULL;
-		vec_add(type_infos, type);
-		while (1)
-		{
-			type = TRY_TYPE_OR(parse_type(context), false);
-			vec_add(type_infos, type);
-			if (!try_consume(context, TOKEN_COMMA)) break;
-		}
-		ast->case_stmt.type_infos = type_infos;
+		ast->case_stmt.expr->expr_kind = EXPR_TYPEID;
 	}
 	TRY_CONSUME(TOKEN_COLON, "Missing ':' after case");
 	extend_ast_with_prev_token(context, ast);
@@ -366,7 +347,7 @@ bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, Toke
 		TokenType next = context->tok.type;
 		if (next == case_type)
 		{
-			result = TRY_AST_OR(parse_case_stmt(context, case_type, default_type, allow_multiple_values), false);
+			result = TRY_AST_OR(parse_case_stmt(context, case_type, default_type), false);
 		}
 		else if (next == default_type)
 		{
@@ -832,7 +813,7 @@ static inline Ast* parse_ct_switch_stmt(Context *context)
 		TokenType next = context->tok.type;
 		if (next == TOKEN_CT_CASE)
 		{
-			result = TRY_AST_OR(parse_case_stmt(context, TOKEN_CT_CASE, TOKEN_CT_DEFAULT, true), poisoned_ast);
+			result = TRY_AST_OR(parse_case_stmt(context, TOKEN_CT_CASE, TOKEN_CT_DEFAULT), poisoned_ast);
 		}
 		else if (next == TOKEN_CT_DEFAULT)
 		{
