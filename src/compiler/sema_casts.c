@@ -83,7 +83,8 @@ static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type)
 			break;
 	}
 	expr_set_type(expr, type);
-	expr->const_expr.kind = canonical->type_kind;
+	expr->const_expr.float_type = canonical->type_kind;
+	expr->const_expr.const_kind = CONST_FLOAT;
 }
 
 
@@ -106,7 +107,7 @@ bool bool_to_float(Expr *expr, Type *canonical, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_BOOLFP, type)) return true;
 
-	assert(expr->const_expr.kind == TYPE_BOOL);
+	assert(expr->const_expr.const_kind == CONST_BOOL);
 	expr_const_set_float(&expr->const_expr, expr->const_expr.b ? 1.0 : 0.0, canonical->type_kind);
 	expr_set_type(expr, type);
 	return true;
@@ -171,7 +172,8 @@ bool float_to_integer(Expr *expr, Type *canonical, Type *type)
 		bigint_init_unsigned(&temp, (uint64_t)d);
 		bigint_truncate(&expr->const_expr.i, &temp, canonical->builtin.bitsize, false);
 	}
-	expr->const_expr.kind = canonical->type_kind;
+	expr->const_expr.int_type = canonical->type_kind;
+	expr->const_expr.const_kind = CONST_INTEGER;
 	expr_set_type(expr, type);
 	return true;
 }
@@ -192,7 +194,8 @@ static bool int_literal_to_int(Expr *expr, Type *canonical, Type *type)
 	BigInt temp;
 	bigint_truncate(&temp, &expr->const_expr.i, canonical->builtin.bitsize, is_signed);
 	expr->const_expr.i = temp;
-	expr->const_expr.kind = canonical->type_kind;
+	expr->const_expr.int_type = canonical->type_kind;
+	assert(expr->const_expr.const_kind == CONST_INTEGER);
 	expr_set_type(expr, type);
 	return true;
 }
@@ -215,7 +218,8 @@ static bool int_conversion(Expr *expr, CastKind kind, Type *canonical, Type *typ
 	BigInt temp;
 	bigint_truncate(&temp, &expr->const_expr.i, canonical->builtin.bitsize, kind == CAST_UISI || kind == CAST_SISI);
 	expr->const_expr.i = temp;
-	expr->const_expr.kind = canonical->type_kind;
+	expr->const_expr.int_type = canonical->type_kind;
+	expr->const_expr.const_kind = CONST_INTEGER;
 	expr_set_type(expr, type);
 	return true;
 }
@@ -332,11 +336,11 @@ bool enum_to_pointer(Expr* expr, Type *from, Type *type)
 
 Type *type_by_expr_range(ExprConst *expr)
 {
-	if (expr->kind == TYPE_FXX)
+	if (expr->const_kind == CONST_FLOAT && expr->float_type == TYPE_FXX)
 	{
 		return type_double;
 	}
-	assert(expr->kind == TYPE_IXX);
+	assert(expr->const_kind == CONST_INTEGER && expr->int_type == TYPE_IXX);
 	// 1. Does it fit in a C int? If so, that's the type.
 	Type *type = type_cint();
 	if (!expr_const_will_overflow(expr, type->type_kind)) return type;
@@ -616,10 +620,17 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 	// 5. Handle sub arrays
 	if (to->type_kind == TYPE_SUBARRAY)
 	{
-		// 5a. Assign sized array pointer int[] = int[4]*
+		// 5a. char[] foo = "test"
+		Type *base = to->array.base;
+		if (from->type_kind == TYPE_STRLIT && (base->type_kind == TYPE_I8 || base->type_kind == TYPE_U8))
+		{
+			return true;
+		}
+
+		// 5b. Assign sized array pointer int[] = int[4]*
 		if (type_is_pointer(from))
 		{
-			return from->pointer->type_kind == TYPE_ARRAY && from->pointer->array.base == to->array.base;
+			return from->pointer->type_kind == TYPE_ARRAY && from->pointer->array.base == base;
 		}
 		return false;
 	}
@@ -745,6 +756,30 @@ bool cast_implicit(Expr *expr, Type *to_type)
 	return true;
 }
 
+static bool err_to_anyerr(Expr *expr, Type *to_type)
+{
+	expr->type = to_type;
+	return true;
+}
+
+static bool err_to_bool(Expr *expr, Type *to_type)
+{
+	if (expr->expr_kind == EXPR_CONST)
+	{
+		switch (expr->const_expr.const_kind)
+		{
+			case CONST_INTEGER:
+				return int_literal_to_bool(expr, to_type);
+			case CONST_ERR:
+				expr_const_set_bool(&expr->const_expr, expr->const_expr.err_val != NULL);
+				return true;
+			default:
+				UNREACHABLE
+		}
+	}
+	return insert_cast(expr, CAST_ERBOOL, to_type);
+}
+
 bool cast_implicit_bit_width(Expr *expr, Type *to_type)
 {
 	Type *to_canonical = to_type->canonical;
@@ -842,8 +877,8 @@ bool cast(Expr *expr, Type *to_type)
 			if (canonical->type_kind == TYPE_POINTER) return enum_to_pointer(expr, from_type, to_type);
 			break;
 		case TYPE_ERRTYPE:
-			if (canonical->type_kind == TYPE_ANYERR) return insert_cast(expr, CAST_EREU, to_type);
-			if (canonical == type_bool) return insert_cast(expr, CAST_ERBOOL, to_type);
+			if (canonical->type_kind == TYPE_ANYERR) return err_to_anyerr(expr, to_type);
+			if (canonical == type_bool) return err_to_bool(expr, to_type);
 			if (type_is_integer(to_type)) return insert_cast(expr, CAST_ERINT, to_type);
 			break;
 		case TYPE_STRUCT:

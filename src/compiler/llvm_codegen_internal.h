@@ -192,6 +192,7 @@ bool llvm_value_is_const(BEValue *value);
 void llvm_value_rvalue(GenContext *context, BEValue *value);
 void llvm_value_set_bool(BEValue *value, LLVMValueRef llvm_value);
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type);
+void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i);
 void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type *type, unsigned alignment);
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_decl_address(BEValue *value, Decl *decl);
@@ -237,9 +238,12 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl);
 
 LLVMValueRef llvm_emit_const_aggregate(GenContext *c, Expr *expr, bool *modified);
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
+void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type);
 void llvm_emit_global_variable_init(GenContext *c, Decl *decl);
-LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op);
-
+void llvm_emit_int_comp_zero(GenContext *c, BEValue *result, BEValue *lhs, BinaryOp binary_op);
+void llvm_emit_int_comparison(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op);
+void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op);
+void llvm_emit_comparison(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op);
 LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value);
 void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_len);
 LLVMValueRef llvm_emit_load_aligned(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name);
@@ -252,6 +256,7 @@ void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, un
 void llvm_emit_stmt(GenContext *c, Ast *ast);
 static inline LLVMValueRef llvm_emit_store(GenContext *context, Decl *decl, LLVMValueRef value);
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceLocation *loc);
+void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceLocation *loc);
 void llvm_emit_ptr_from_array(GenContext *c, BEValue *value);
 void llvm_emit_debug_output(GenContext *c, const char *message, const char *file, const char *func, unsigned line);
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable);
@@ -317,6 +322,11 @@ static inline LLVMValueRef llvm_emit_store(GenContext *context, Decl *decl, LLVM
 
 static inline LLVMValueRef llvm_emit_bitcast(GenContext *context, LLVMValueRef value, Type *type)
 {
+	assert(type->type_kind == TYPE_POINTER);
+	if (!context->builder)
+	{
+		return LLVMConstBitCast(value, llvm_get_type(context, type));
+	}
 	return LLVMBuildBitCast(context->builder, value, llvm_get_type(context, type), "");
 }
 
@@ -395,7 +405,7 @@ static inline LLVMValueRef llvm_get_zero(GenContext *c, Type *type)
 
 static inline LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val)
 {
-	type = type->canonical;
+	type = type_lowering(type);
 	assert(type_is_any_integer(type) || type->type_kind == TYPE_BOOL);
 	return LLVMConstInt(llvm_get_type(c, type), val, type_is_integer_signed(type));
 }

@@ -322,17 +322,21 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base(GenContext *c, Typ
 
 static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValueRef array_max_index, SourceLocation *loc)
 {
+	BEValue result;
+	llvm_value_rvalue(c, index);
+
 	// Negative values are not allowed.
 	if (type_is_signed(index->type))
 	{
-		LLVMValueRef index_negative = llvm_emit_int_comparison(c, index->type, index->type, index->value,
-														 llvm_get_zero(c, index->type), BINARYOP_LT);
-		llvm_emit_panic_on_true(c, index_negative, "Negative array indexing", loc);
+		llvm_emit_int_comp(c, &result, index->type, index->type, index->value,
+						   llvm_get_zero(c, index->type), BINARYOP_LT);
+		llvm_emit_panic_if_true(c, &result, "Negative array indexing", loc);
 	}
-	LLVMValueRef exceeds_max_index = llvm_emit_int_comparison(c, index->type, index->type,
-	                                                          index->value, array_max_index,
-	                                                          BINARYOP_GE);
-	llvm_emit_panic_on_true(c, exceeds_max_index, "Array index out of bounds", loc);
+
+	llvm_emit_int_comp(c, &result, index->type, index->type,
+	                   index->value, array_max_index,
+	                   BINARYOP_GE);
+	llvm_emit_panic_if_true(c, &result, "Array index out of bounds", loc);
 }
 
 static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c, BEValue *parent, BEValue *index, SourceLocation *loc)
@@ -462,7 +466,6 @@ static void gencontext_emit_scoped_expr(GenContext *context, BEValue *value, Exp
 
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *value, Expr *expr);
 
-
 /**
  * Here we are converting an array to a subarray.
  * int[] x = &the_array;
@@ -471,16 +474,28 @@ static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *value,
  * @param to_type
  * @param from_type
  */
-static void gencontext_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
+static void llvm_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, Type *to_type)
 {
 	llvm_value_rvalue(c, value);
-	REMINDER("Optimize subarray cast");
-	ByteSize size = from_type->pointer->array.len;
+	ByteSize size = value->type->pointer->array.len;
+	Type *array_type = value->type->pointer->array.base;
 	LLVMTypeRef subarray_type = llvm_get_type(c, to_type);
 	LLVMValueRef result = LLVMGetUndef(subarray_type);
-	value->value = llvm_emit_bitcast(c, value->value, type_get_ptr(from_type->pointer->array.base));
-	result = LLVMBuildInsertValue(c->builder, result, value->value, 0, "");
-	value->value = LLVMBuildInsertValue(c->builder, result, llvm_const_int(c, type_usize, size), 1, "");
+	LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_get_ptr(array_type));
+	LLVMValueRef len = llvm_const_int(c, type_usize, size);
+	value->type = to_type;
+	if (!c->builder)
+	{
+		unsigned id = 0;
+		result = LLVMConstInsertValue(result, pointer, &id, 1);
+		id = 1;
+		value->value = LLVMConstInsertValue(result, len, &id, 1);
+	}
+	else
+	{
+		result = LLVMBuildInsertValue(c->builder, result, pointer, 0, "");
+		value->value = LLVMBuildInsertValue(c->builder, result, len, 1, "");
+	}
 }
 
 
@@ -560,7 +575,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			}
 			break;
 		case CAST_APTSA:
-			gencontext_emit_arr_to_subarray_cast(c, value, to_type, from_type);
+			llvm_emit_arr_to_subarray_cast(c, value, to_type);
 			break;
 		case CAST_SAPTR:
 			if (llvm_value_is_addr(value))
@@ -585,9 +600,12 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			TODO // gencontext_emit_value_bitcast(c, value->value, to_type, from_type);
 		case CAST_ERBOOL:
 		case CAST_EUBOOL:
-			value->value = llvm_emit_int_comparison(c, type_anyerr, type_anyerr, llvm_value_rvalue_store(c, value), llvm_get_zero(c, type_anyerr), BINARYOP_NE);
-			value->kind = BE_BOOLEAN;
+		{
+			BEValue zero;
+			llvm_value_set_int(c, &zero, type_anyerr, 0);
+			llvm_emit_int_comparison(c, value, value, &zero, BINARYOP_NE);
 			break;
+		}
 		case CAST_PTRBOOL:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
@@ -1387,20 +1405,20 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 	llvm_emit_expr(c, &start_index, start);
 	llvm_value_rvalue(c, &start_index);
 
-	LLVMValueRef len = NULL;
+	BEValue len = { .value = NULL };
 	if (!end || slice->slice_expr.start_from_back || slice->slice_expr.end_from_back || active_target.feature.safe_mode)
 	{
 		switch (parent_type->type_kind)
 		{
 			case TYPE_POINTER:
-				len = NULL;
+				len.value = NULL;
 				break;
 			case TYPE_SUBARRAY:
 				assert(parent_load_value);
-				len = LLVMBuildExtractValue(c->builder, parent_load_value, 1, "");
+				llvm_value_set(&len, LLVMBuildExtractValue(c->builder, parent_load_value, 1, ""), type_usize);
 				break;
 			case TYPE_ARRAY:
-				len = llvm_const_int(c, type_usize, parent_type->array.len);
+				llvm_value_set_int(c, &len, type_usize, parent_type->array.len);
 				break;
 			case TYPE_STRLIT:
 				TODO
@@ -1412,21 +1430,17 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 	// Walk from end if it is slice from the back.
 	if (slice->slice_expr.start_from_back)
 	{
-		start_index.value = llvm_emit_sub_int(c, start_type, len, start_index.value, TOKLOC(slice->span.loc));
+		start_index.value = llvm_emit_sub_int(c, start_type, len.value, start_index.value, TOKLOC(slice->span.loc));
 	}
 
 	// Check that index does not extend beyond the length.
 	if (parent_type->type_kind != TYPE_POINTER && active_target.feature.safe_mode)
 	{
 
-		assert(len);
-		LLVMValueRef exceeds_size = llvm_emit_int_comparison(c,
-		                                                     type_usize,
-		                                                     start_type,
-		                                                     start_index.value,
-		                                                     len,
-		                                                     BINARYOP_GE);
-		llvm_emit_panic_on_true(c, exceeds_size, "Index exceeds array length.", TOKLOC(slice->span.loc));
+		assert(len.value);
+		BEValue exceeds_size;
+		llvm_emit_int_comparison(c, &exceeds_size, &start_index, &len, BINARYOP_GE);
+		llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array length.", TOKLOC(slice->span.loc));
 	}
 
 	// Insert trap for negative start offset for non pointers.
@@ -1448,38 +1462,30 @@ llvm_emit_slice_values(GenContext *c, Expr *slice, Type **parent_type_ref, LLVMV
 		// Reverse if it is "from back"
 		if (slice->slice_expr.end_from_back)
 		{
-			end_index.value = llvm_emit_sub_int(c, end_type, len, end_index.value, TOKLOC(slice->span.loc));
+			end_index.value = llvm_emit_sub_int(c, end_type, len.value, end_index.value, TOKLOC(slice->span.loc));
 			llvm_value_rvalue(c, &end_index);
 		}
 
 		// This will trap any bad negative index, so we're fine.
 		if (active_target.feature.safe_mode)
 		{
-			LLVMValueRef excess = llvm_emit_int_comparison(c,
-			                                               start_type,
-			                                               end_type,
-			                                               start_index.value,
-			                                               end_index.value,
-			                                               BINARYOP_GT);
-			llvm_emit_panic_on_true(c, excess, "Negative size", TOKLOC(slice->span.loc));
+			BEValue excess;
+			llvm_emit_int_comparison(c, &excess, &start_index, &end_index, BINARYOP_GT);
+			llvm_emit_panic_if_true(c, &excess, "Negative size", TOKLOC(slice->span.loc));
 
-			if (len)
+			if (len.value)
 			{
-				LLVMValueRef exceeds_size = llvm_emit_int_comparison(c,
-				                                                     type_usize,
-				                                                     end_type,
-				                                                     len,
-				                                                     end_index.value,
-				                                                     BINARYOP_LT);
-				llvm_emit_panic_on_true(c, exceeds_size, "Size exceeds index", TOKLOC(slice->span.loc));
+
+				llvm_emit_int_comparison(c, &excess, &len, &end_index, BINARYOP_LT);
+				llvm_emit_panic_if_true(c, &excess, "Size exceeds index", TOKLOC(slice->span.loc));
 			}
 		}
 	}
 	else
 	{
-		assert(len && "Pointer should never end up here.");
+		assert(len.value && "Pointer should never end up here.");
 		// Otherwise everything is fine and dandy. Our len - 1 is our end index.
-		end_index.value = LLVMBuildSub(c->builder, len, LLVMConstInt(LLVMTypeOf(len), 1, false), "");
+		end_index.value = LLVMBuildSub(c->builder, len.value, LLVMConstInt(LLVMTypeOf(len.value), 1, false), "");
 		end_type = type_usize;
 	}
 
@@ -1578,12 +1584,11 @@ static void gencontext_emit_slice_assign(GenContext *c, BEValue *be_value, Expr 
 	LLVMValueRef offset = LLVMBuildPhi(c->builder, llvm_get_type(c, start_type), "");
 
 	// Check if we're not at the end.
-	LLVMValueRef not_at_end = llvm_emit_int_comparison(c, start_type, end_type, offset, end_index, BINARYOP_LE);
+	BEValue value;
+	llvm_emit_int_comp(c, &value, start_type, end_type, offset, end_index, BINARYOP_LE);
 
 	// If jump to the assign block if we're not at the end index.
-	BEValue value;
 	EMIT_LOC(c, expr);
-	llvm_value_set_bool(&value, not_at_end);
 	llvm_emit_cond_br(c, &value, assign_block, exit_block);
 
 	// Emit the assign.
@@ -1663,10 +1668,20 @@ static void gencontext_emit_logical_and_or(GenContext *c, BEValue *be_value, Exp
 	llvm_value_set_bool(be_value, phi);
 }
 
-
-
-LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op)
+void llvm_emit_int_comp_zero(GenContext *c, BEValue *result, BEValue *lhs, BinaryOp binary_op)
 {
+	BEValue zero;
+	llvm_value_set_int(c, &zero, lhs->type, 0);
+	llvm_emit_int_comparison(c, result, lhs, &zero, binary_op);
+}
+
+void llvm_emit_int_comparison(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
+{
+	llvm_emit_int_comp(c, result, lhs->type, rhs->type, lhs->value, rhs->value, binary_op);
+}
+void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op)
+{
+	assert(type_is_integer(lhs_type));
 	bool lhs_signed = type_is_signed(lhs_type);
 	bool rhs_signed = type_is_signed(rhs_type);
 	if (lhs_signed != rhs_signed)
@@ -1705,23 +1720,32 @@ LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_t
 	{
 		assert(lhs_signed == rhs_signed);
 		// Right and left side are both unsigned.
+		LLVMValueRef value;
 		switch (binary_op)
 		{
 			case BINARYOP_EQ:
-				return LLVMBuildICmp(c->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
+				value = LLVMBuildICmp(c->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
+				break;
 			case BINARYOP_NE:
-				return LLVMBuildICmp(c->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
+				value = LLVMBuildICmp(c->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
+				break;
 			case BINARYOP_GE:
-				return LLVMBuildICmp(c->builder, LLVMIntUGE, lhs_value, rhs_value, "ge");
+				value = LLVMBuildICmp(c->builder, LLVMIntUGE, lhs_value, rhs_value, "ge");
+				break;
 			case BINARYOP_GT:
-				return LLVMBuildICmp(c->builder, LLVMIntUGT, lhs_value, rhs_value, "gt");
+				value = LLVMBuildICmp(c->builder, LLVMIntUGT, lhs_value, rhs_value, "gt");
+				break;
 			case BINARYOP_LE:
-				return LLVMBuildICmp(c->builder, LLVMIntULE, lhs_value, rhs_value, "le");
+				value = LLVMBuildICmp(c->builder, LLVMIntULE, lhs_value, rhs_value, "le");
+				break;
 			case BINARYOP_LT:
-				return LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt");
+				value = LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt");
+				break;
 			default:
 				UNREACHABLE
 		}
+		llvm_value_set_bool(result, value);
+		return;
 	}
 
 	// Left side is signed.
@@ -1752,7 +1776,11 @@ LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_t
 	}
 
 	// If right side is also signed then this is fine.
-	if (rhs_signed) return comp_value;
+	if (rhs_signed)
+	{
+		llvm_value_set_bool(result, comp_value);
+		return;
+	}
 
 	// Otherwise, special handling for left side signed, right side unsigned.
 	LLVMValueRef zero = llvm_get_zero(c, lhs_type);
@@ -1761,54 +1789,70 @@ LLVMValueRef llvm_emit_int_comparison(GenContext *c, Type *lhs_type, Type *rhs_t
 		case BINARYOP_EQ:
 			// Only true if lhs >= 0
 			check_value = LLVMBuildICmp(c->builder, LLVMIntSGE, lhs_value, zero, "check");
-			return LLVMBuildAnd(c->builder, check_value, comp_value, "siui-eq");
+			comp_value = LLVMBuildAnd(c->builder, check_value, comp_value, "siui-eq");
+			break;
 		case BINARYOP_NE:
 			// Always true if lhs < 0
 			check_value = LLVMBuildICmp(c->builder, LLVMIntSLT, lhs_value, zero, "check");
-			return LLVMBuildOr(c->builder, check_value, comp_value, "siui-ne");
+			comp_value = LLVMBuildOr(c->builder, check_value, comp_value, "siui-ne");
+			break;
 		case BINARYOP_GE:
 			// Only true if rhs >= 0 when regarded as a signed integer
 			check_value = LLVMBuildICmp(c->builder, LLVMIntSGE, rhs_value, zero, "check");
-			return LLVMBuildAnd(c->builder, check_value, comp_value, "siui-ge");
+			comp_value = LLVMBuildAnd(c->builder, check_value, comp_value, "siui-ge");
+			break;
 		case BINARYOP_GT:
 			// Only true if rhs >= 0 when regarded as a signed integer
 			check_value = LLVMBuildICmp(c->builder, LLVMIntSGE, rhs_value, zero, "check");
-			return LLVMBuildAnd(c->builder, check_value, comp_value, "siui-gt");
+			comp_value = LLVMBuildAnd(c->builder, check_value, comp_value, "siui-gt");
+			break;
 		case BINARYOP_LE:
 			// Always true if rhs < 0 when regarded as a signed integer
 			check_value = LLVMBuildICmp(c->builder, LLVMIntSLT, rhs_value, zero, "check");
-			return LLVMBuildOr(c->builder, check_value, comp_value, "siui-le");
+			comp_value = LLVMBuildOr(c->builder, check_value, comp_value, "siui-le");
+			break;
 		case BINARYOP_LT:
 			// Always true if rhs < 0 when regarded as a signed integer
 			check_value = LLVMBuildICmp(c->builder, LLVMIntSLT, rhs_value, zero, "check");
-			return LLVMBuildOr(c->builder, check_value, comp_value, "siui-lt");
+			comp_value = LLVMBuildOr(c->builder, check_value, comp_value, "siui-lt");
+			break;
 		default:
 			UNREACHABLE
 	}
-
+	llvm_value_set_bool(result, comp_value);
 }
 
-static LLVMValueRef llvm_emit_ptr_comparison(GenContext *c, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op)
+static void llvm_emit_ptr_comparison(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
+	llvm_value_rvalue(c, lhs);
+	llvm_value_rvalue(c, rhs);
+	LLVMValueRef lhs_value = lhs->value;
+	LLVMValueRef rhs_value = rhs->value;
+	LLVMValueRef val;
 	switch (binary_op)
 	{
 		case BINARYOP_EQ:
-			return LLVMBuildICmp(c->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
+			val = LLVMBuildICmp(c->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
+			break;
 		case BINARYOP_NE:
-			return LLVMBuildICmp(c->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
+			val = LLVMBuildICmp(c->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
+			break;
 		case BINARYOP_GE:
-			return LLVMBuildICmp(c->builder, LLVMIntUGE, lhs_value, rhs_value, "ge");
+			val = LLVMBuildICmp(c->builder, LLVMIntUGE, lhs_value, rhs_value, "ge");
+			break;
 		case BINARYOP_GT:
-			return LLVMBuildICmp(c->builder, LLVMIntUGT, lhs_value, rhs_value, "gt");
+			val = LLVMBuildICmp(c->builder, LLVMIntUGT, lhs_value, rhs_value, "gt");
+			break;
 		case BINARYOP_LE:
-			return LLVMBuildICmp(c->builder, LLVMIntULE, lhs_value, rhs_value, "le");
+			val = LLVMBuildICmp(c->builder, LLVMIntULE, lhs_value, rhs_value, "le");
+			break;
 		case BINARYOP_LT:
-			return LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt");
+			val = LLVMBuildICmp(c->builder, LLVMIntULT, lhs_value, rhs_value, "lt");
+			break;
 		default:
 			UNREACHABLE
 	}
-
-
+	llvm_value_set_bool(result, val);
 }
 
 static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left, LLVMValueRef right, SourceLocation *loc)
@@ -1846,7 +1890,144 @@ static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMVal
 	return LLVMBuildMul(c->builder, left, right, "mul");
 }
 
-static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_addr, BinaryOp binary_op)
+static void llvm_emit_subarray_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
+{
+	bool want_match = binary_op == BINARYOP_EQ;
+
+	Type *array_base_type = type_lowering(lhs->type->array.base);
+	Type *array_base_pointer = type_get_ptr(array_base_type);
+	LLVMTypeRef llvm_base_type = llvm_get_type(c, array_base_type);
+	LLVMTypeRef llvm_pointer_type = llvm_get_type(c, array_base_pointer);
+
+	LLVMBasicBlockRef exit = llvm_basic_block_new(c, "subarray_cmp_exit");
+	LLVMBasicBlockRef value_cmp = llvm_basic_block_new(c, "subarray_cmp_values");
+	LLVMBasicBlockRef loop_begin = llvm_basic_block_new(c, "subarray_loop_start");
+	LLVMBasicBlockRef comparison = llvm_basic_block_new(c, "subarray_loop_comparison");
+	LLVMBasicBlockRef no_match_block;
+	LLVMBasicBlockRef all_match_block;
+	LLVMBasicBlockRef match_fail_block;
+
+	llvm_value_rvalue(c, lhs);
+	llvm_value_rvalue(c, rhs);
+	BEValue lhs_len;
+	BEValue rhs_len;
+	llvm_value_set(&lhs_len, LLVMBuildExtractValue(c->builder, lhs->value, 1, ""), type_usize);
+	llvm_value_set(&rhs_len, LLVMBuildExtractValue(c->builder, rhs->value, 1, ""), type_usize);
+	BEValue lhs_value;
+	BEValue rhs_value;
+	llvm_value_set(&lhs_value, LLVMBuildExtractValue(c->builder, lhs->value, 0, ""), array_base_pointer);
+	llvm_value_set(&rhs_value, LLVMBuildExtractValue(c->builder, rhs->value, 0, ""), array_base_pointer);
+	BEValue len_match;
+	llvm_emit_comparison(c, &len_match, &lhs_len, &rhs_len, BINARYOP_EQ);
+
+	no_match_block = c->current_block;
+	llvm_emit_cond_br(c, &len_match, value_cmp, exit);
+
+	llvm_emit_block(c, value_cmp);
+	BEValue index_var;
+	llvm_value_set_address(&index_var, llvm_emit_alloca_aligned(c, type_usize, "cmp.idx"), type_usize);
+	LLVMValueRef one = llvm_const_int(c, type_usize, 1);
+	llvm_store_bevalue_raw(c, &index_var, llvm_get_zero(c, type_usize));
+	llvm_emit_br(c, loop_begin);
+
+	llvm_emit_block(c, loop_begin);
+	BEValue current_index = index_var;
+	llvm_value_rvalue(c, &current_index);
+	BEValue cmp;
+	llvm_emit_comparison(c, &cmp, &current_index, &lhs_len, BINARYOP_LT);
+	all_match_block = c->current_block;
+	llvm_emit_cond_br(c, &cmp, comparison, exit);
+
+	llvm_emit_block(c, comparison);
+	BEValue lhs_to_compare;
+	BEValue rhs_to_compare;
+	llvm_value_set_address(&lhs_to_compare,
+						   LLVMBuildInBoundsGEP2(c->builder, llvm_base_type, lhs_value.value, &(current_index.value), 1, "lhs.ptr"),
+						   array_base_type);
+	llvm_value_set_address(&rhs_to_compare,
+						   LLVMBuildInBoundsGEP2(c->builder, llvm_base_type, rhs_value.value, &(current_index.value), 1, "rhs.ptr"),
+						   array_base_type);
+	llvm_emit_comparison(c, &cmp, &lhs_to_compare, &rhs_to_compare, BINARYOP_EQ);
+	match_fail_block = c->current_block;
+	llvm_store_bevalue_raw(c, &index_var, LLVMBuildAdd(c->builder, current_index.value, one, ""));
+	llvm_emit_cond_br(c, &cmp, loop_begin, exit);
+	llvm_emit_block(c, exit);
+
+	LLVMValueRef phi = LLVMBuildPhi(c->builder, c->bool_type, "subarray_cmp_phi");
+
+	LLVMValueRef success = LLVMConstInt(c->bool_type, want_match ? 1 : 0, false);
+	LLVMValueRef failure = LLVMConstInt(c->bool_type, want_match ? 0 : 1, false);
+	LLVMValueRef logic_values[3] = { success, failure, failure };
+	LLVMBasicBlockRef blocks[3] = { all_match_block, no_match_block, match_fail_block };
+	LLVMAddIncoming(phi, logic_values, blocks, 3);
+
+	llvm_value_set_bool(be_value, phi);
+
+
+}
+static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
+{
+	llvm_value_rvalue(c, lhs);
+	llvm_value_rvalue(c, rhs);
+	LLVMValueRef lhs_value = lhs->value;
+	LLVMValueRef rhs_value = rhs->value;
+	LLVMValueRef val;
+	switch (binary_op)
+	{
+		case BINARYOP_EQ:
+			// Unordered?
+			val = LLVMBuildFCmp(c->builder, LLVMRealOEQ, lhs_value, rhs_value, "eq");
+			break;
+		case BINARYOP_NE:
+			// Unordered?
+			val = LLVMBuildFCmp(c->builder, LLVMRealONE, lhs_value, rhs_value, "neq");
+			break;
+		case BINARYOP_GE:
+			val = LLVMBuildFCmp(c->builder, LLVMRealOGE, lhs_value, rhs_value, "ge");
+			break;
+		case BINARYOP_GT:
+			val = LLVMBuildFCmp(c->builder, LLVMRealOGT, lhs_value, rhs_value, "gt");
+			break;
+		case BINARYOP_LE:
+			val = LLVMBuildFCmp(c->builder, LLVMRealOLE, lhs_value, rhs_value, "le");
+			break;
+		case BINARYOP_LT:
+			val = LLVMBuildFCmp(c->builder, LLVMRealOLT, lhs_value, rhs_value, "lt");
+			break;
+		default:
+			UNREACHABLE
+	}
+	llvm_value_set_bool(be_value, val);
+}
+
+void llvm_emit_comparison(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
+{
+	assert(binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ);
+	llvm_value_rvalue(c, lhs);
+	llvm_value_rvalue(c, rhs);
+	if (type_is_integer(lhs->type))
+	{
+		llvm_emit_int_comp(c, be_value, lhs->type, rhs->type, lhs->value, rhs->value, binary_op);
+		return;
+	}
+	if (type_is_pointer(lhs->type))
+	{
+		llvm_emit_ptr_comparison(c, be_value, lhs, rhs, binary_op);
+		return;
+	}
+	if (type_is_float(lhs->type))
+	{
+		llvm_emit_float_comp(c, be_value, lhs, rhs, binary_op);
+		return;
+	}
+	if (lhs->type->type_kind == TYPE_SUBARRAY)
+	{
+		llvm_emit_subarray_comp(c, be_value, lhs, rhs, binary_op);
+		return;
+	}
+	TODO
+}
+void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_addr, BinaryOp binary_op)
 {
 
 	if (binary_op == BINARYOP_AND || binary_op == BINARYOP_OR)
@@ -1869,23 +2050,19 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 	llvm_emit_expr(c, &rhs, expr->binary_expr.right);
 	llvm_value_rvalue(c, &rhs);
 
-	Type *lhs_type = type_lowering(lhs.type);
-	Type *rhs_type = type_lowering(rhs.type);
-	LLVMValueRef lhs_value = lhs.value;
-	LLVMValueRef rhs_value = rhs.value;
 	EMIT_LOC(c, expr);
-	if (type_is_integer(lhs_type) && binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
+	if (binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
 	{
-		llvm_value_set_bool(be_value, llvm_emit_int_comparison(c, lhs_type, rhs_type, lhs_value, rhs_value, binary_op));
+		llvm_emit_comparison(c, be_value, &lhs, &rhs, binary_op);
 		return;
 	}
-	if (type_is_pointer(lhs_type) && binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
-	{
-		llvm_value_set_bool(be_value, llvm_emit_ptr_comparison(c, lhs_value, rhs_value, binary_op));
-		return;
-	}
+
+	Type *lhs_type = lhs.type;
+	Type *rhs_type = rhs.type;
 	bool is_float = type_is_float(lhs_type);
 	LLVMValueRef val = NULL;
+	LLVMValueRef lhs_value = lhs.value;
+	LLVMValueRef rhs_value = rhs.value;
 	switch (binary_op)
 	{
 		case BINARYOP_ERROR:
@@ -1975,31 +2152,12 @@ static void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr,
 			val = LLVMBuildXor(c->builder, lhs_value, rhs_value, "xor");
 			break;
 		case BINARYOP_EQ:
-			// Unordered?
-			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealOEQ, lhs_value, rhs_value, "eq"));
-			return;
 		case BINARYOP_NE:
-			// Unordered?
-			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealONE, lhs_value, rhs_value, "neq"));
-			return;
 		case BINARYOP_GE:
-			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealOGE, lhs_value, rhs_value, "ge"));
-			return;
 		case BINARYOP_GT:
-			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealOGT, lhs_value, rhs_value, "gt"));
-			return;
 		case BINARYOP_LE:
-			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealOLE, lhs_value, rhs_value, "le"));
-			return;
 		case BINARYOP_LT:
-			assert(type_is_float(lhs_type));
-			llvm_value_set_bool(be_value, LLVMBuildFCmp(c->builder, LLVMRealOLT, lhs_value, rhs_value, "lt"));
-			return;
+			UNREACHABLE
 		case BINARYOP_AND:
 		case BINARYOP_OR:
 		case BINARYOP_ASSIGN:
@@ -2030,63 +2188,19 @@ static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Ex
 	                       false);
 }
 
-static void gencontext_emit_typeid(GenContext *context, BEValue *be_value, Expr *expr)
+void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type)
 {
 	LLVMValueRef value;
-	if (type_is_builtin(expr->typeid_expr->type->type_kind))
+	if (type_is_builtin(type->type_kind))
 	{
-		value = llvm_const_int(context, type_usize, expr->typeid_expr->type->type_kind);
+		value = llvm_const_int(c, type_usize, type->type_kind);
 	}
 	else
 	{
-		assert(expr->typeid_expr->type->backend_typeid);
-		value = expr->typeid_expr->type->backend_typeid;
+		assert(type->backend_typeid);
+		value = type->backend_typeid;
 	}
-	llvm_value_set(be_value, value, expr->type);
-}
-
-void gencontext_emit_trycatch_expr(GenContext *c, BEValue *value, Expr *expr)
-{
-	TODO
-/*
-	LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error_block");
-	LLVMBasicBlockRef no_err_block = llvm_basic_block_new(c, "noerr_block");
-	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "phi_trycatch_block");
-
-	// Store catch/error var
-	PUSH_ERROR();
-
-	// Set the catch/error var
-	c->error_var = NULL;
-	c->catch_block = error_block;
-
-	llvm_emit_expr(c, value, expr->trycatch_expr);
-	llvm_value_fold_failable(c, value);
-
-	// Restore.
-	POP_ERROR();
-
-	// Emit success and jump to phi.
-	llvm_emit_br(c, no_err_block);
-	llvm_emit_block(c, no_err_block);
-	llvm_emit_br(c, phi_block);
-
-	// Emit error and jump to phi
-	llvm_emit_block(c, error_block);
-	llvm_emit_br(c, phi_block);
-
-	llvm_emit_block(c, phi_block);
-
-	LLVMValueRef phi = LLVMBuildPhi(c->builder, llvm_get_type(c, expr->type), "val");
-	LLVMValueRef lhs = llvm_const_int(c, type_bool, expr->expr_kind == EXPR_TRY_OLD ? 1 : 0);
-	LLVMValueRef rhs = llvm_const_int(c, type_bool, expr->expr_kind == EXPR_TRY_OLD ? 0 : 1);
-
-	LLVMValueRef logic_values[2] = { lhs, rhs };
-	LLVMBasicBlockRef blocks[2] = { no_err_block, error_block };
-	LLVMAddIncoming(phi, logic_values, blocks, 2);
-
-	llvm_value_set(value, phi, expr->type);
- */
+	llvm_value_set(be_value, value, type_typeid);
 }
 
 void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_value, BEValue *var_addr, BEValue *catch_addr, Expr *rhs)
@@ -2498,9 +2612,9 @@ static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Real f)
 static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Type *type = type_reduced_from_expr(expr)->canonical;
-	switch (expr->const_expr.kind)
+	switch (expr->const_expr.const_kind)
 	{
-		case TYPE_ARRAY:
+		case CONST_BYTES:
 			assert(type->array.base == type_char);
 			{
 				LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.bytes.len), ".bytes");
@@ -2516,7 +2630,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				llvm_value_set_address(be_value, global_name, type);
 				return;
 			}
-		case ALL_INTS:
+		case CONST_INTEGER:
 			if (type_is_unsigned(type))
 			{
 				llvm_value_set(be_value, llvm_const_int(c, type, bigint_as_unsigned(&expr->const_expr.i)), type);
@@ -2526,16 +2640,16 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				llvm_value_set(be_value, llvm_const_int(c, type, bigint_as_signed(&expr->const_expr.i)), type);
 			}
 			return;
-		case ALL_FLOATS:
+		case CONST_FLOAT:
 			llvm_value_set(be_value, llvm_emit_real(llvm_get_type(c, type), expr->const_expr.f), type);
 			return;
-		case TYPE_POINTER:
+		case CONST_POINTER:
 			llvm_value_set(be_value, LLVMConstNull(llvm_get_type(c, type)), type);
 			return;
-		case TYPE_BOOL:
+		case CONST_BOOL:
 			llvm_value_set_bool(be_value, LLVMConstInt(c->bool_type, expr->const_expr.b ? 1 : 0, 0));
 			return;
-		case TYPE_STRLIT:
+		case CONST_STRING:
 		{
 			LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.string.len + 1), ".str");
 			LLVMSetLinkage(global_name, LLVMPrivateLinkage);
@@ -2549,8 +2663,34 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			llvm_value_set(be_value, global_name, type);
 			return;
 		}
-		case TYPE_ERRTYPE:
-			TODO
+		case CONST_TYPEID:
+			llvm_emit_typeid(c, be_value, expr->const_expr.typeid);
+			return;
+		case CONST_ERR:
+		{
+			Decl *decl = expr->const_expr.err_val;
+			LLVMValueRef value;
+			if (decl)
+			{
+				value = LLVMBuildPtrToInt(c->builder, decl->backend_ref, llvm_get_type(c, type_anyerr), "");
+			}
+			else
+			{
+				value = llvm_get_zero(c, type_anyerr);
+			}
+			llvm_value_set(be_value, value, type_anyerr);
+			return;
+		}
+		case CONST_ENUM:
+		{
+			Decl *decl = expr->const_expr.enum_val;
+			return llvm_emit_const_expr(c, be_value, expr->const_expr.err_val->enum_constant.expr);
+			assert(decl->decl_kind == DECL_ERRVALUE);
+			llvm_value_set(be_value,
+						   LLVMBuildPtrToInt(c->builder, decl->backend_ref, llvm_get_type(c, type_anyerr), ""),
+						   type_anyerr);
+			return;
+		}
 		default:
 			UNREACHABLE
 	}
@@ -3600,17 +3740,10 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	EMIT_LOC(c, expr);
 	switch (expr->expr_kind)
 	{
-		case EXPR_MEMBER_ACCESS:
-			assert(expr->access_expr.ref->decl_kind == DECL_ERRVALUE);
-			llvm_value_set(value,
-						   LLVMBuildPtrToInt(c->builder, expr->access_expr.ref->backend_ref, llvm_get_type(c, type_anyerr), ""),
-						   type_anyerr);
-			return;
 		case EXPR_DESIGNATOR:
 		case EXPR_POISONED:
 		case EXPR_COND:
 		case EXPR_TYPEINFO:
-		case EXPR_ENUM_CONSTANT:
 		case EXPR_MACRO_EXPANSION:
 		case EXPR_CT_IDENT:
 		case EXPR_HASH_IDENT:
@@ -3693,10 +3826,8 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_GUARD:
 			gencontext_emit_guard_expr(c, value, expr);
 			return;
-		case EXPR_TYPEID:
-			gencontext_emit_typeid(c, value, expr);
-			return;
 		case EXPR_TYPEOF:
+		case EXPR_TYPEID:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE
 		case EXPR_IDENTIFIER:

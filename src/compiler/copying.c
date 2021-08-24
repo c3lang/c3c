@@ -70,8 +70,6 @@ Expr *copy_expr(Expr *source_expr)
 	switch (source_expr->expr_kind)
 	{
 		case EXPR_MACRO_BODY_EXPANSION:
-		case EXPR_ENUM_CONSTANT:
-		case EXPR_MEMBER_ACCESS:
 			UNREACHABLE
 		case EXPR_FLATPATH:
 		case EXPR_UNDEF:
@@ -168,7 +166,7 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_EXPR(expr->guard_expr.inner);
 			return expr;
 		case EXPR_CONST:
-			if (type_kind_is_any_integer(expr->const_expr.kind) && expr->const_expr.i.digit_count > 1)
+			if (expr->const_expr.const_kind == CONST_INTEGER && expr->const_expr.i.digit_count > 1)
 			{
 				bigint_init_bigint(&expr->const_expr.i, &source_expr->const_expr.i);
 			}
@@ -263,14 +261,7 @@ Ast *copy_ast(Ast *source)
 			return ast;
 		case AST_CASE_STMT:
 			MACRO_COPY_AST(ast->case_stmt.body);
-			if (ast->case_stmt.is_type)
-			{
-				MACRO_COPY_TYPE(ast->case_stmt.type_info);
-			}
-			else
-			{
-				MACRO_COPY_EXPR(ast->case_stmt.expr);
-			}
+			MACRO_COPY_EXPR(ast->case_stmt.expr);
 			return ast;
 		case AST_COMPOUND_STMT:
 			MACRO_COPY_AST_LIST(ast->compound_stmt.stmts);

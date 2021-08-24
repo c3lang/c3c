@@ -734,7 +734,7 @@ static Expr *parse_ct_call(Context *context, Expr *left)
 				if (try_consume(context, TOKEN_LBRACKET))
 				{
 					Expr *int_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
-					if (int_expr->expr_kind != EXPR_CONST || !type_kind_is_any_integer(int_expr->const_expr.kind))
+					if (int_expr->expr_kind != EXPR_CONST || int_expr->const_expr.const_kind != CONST_INTEGER)
 					{
 						SEMA_TOKEN_ERROR(context->tok, "Expected an integer index.");
 						return poisoned_expr;
@@ -974,7 +974,8 @@ static Expr *parse_integer(Context *context, Expr *left)
 			}
 			break;
 	}
-	expr_int->const_expr.kind = TYPE_IXX;
+	expr_int->const_expr.const_kind = CONST_INTEGER;
+	expr_int->const_expr.int_type = TYPE_IXX;
 	expr_set_type(expr_int, type_compint);
 	advance(context);
 	return expr_int;
@@ -1079,7 +1080,7 @@ static Expr *parse_bytes_expr(Context *context, Expr *left)
 	}
 	expr_bytes->const_expr.bytes.ptr = data;
 	expr_bytes->const_expr.bytes.len = len;
-	expr_bytes->const_expr.kind = TYPE_ARRAY;
+	expr_bytes->const_expr.const_kind = CONST_BYTES;
 	expr_set_type(expr_bytes, type_get_array(type_char, len));
 	assert(data + len == data_current);
 	return expr_bytes;
@@ -1123,7 +1124,8 @@ static Expr *parse_double(Context *context, Expr *left)
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	number->const_expr.f = TOKREAL(context->tok.id);
 	expr_set_type(number, type_compfloat);
-	number->const_expr.kind = TYPE_FXX;
+	number->const_expr.float_type = TYPE_FXX;
+	number->const_expr.const_kind = CONST_FLOAT;
 	advance(context);
 	return number;
 }
@@ -1235,7 +1237,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 	expr_string->const_expr.string.chars = str;
 	expr_string->const_expr.string.len = (uint32_t)len;
 	expr_set_type(expr_string, type_compstr);
-	expr_string->const_expr.kind = TYPE_STRLIT;
+	expr_string->const_expr.const_kind = CONST_STRING;
 	return expr_string;
 }
 
@@ -1243,7 +1245,7 @@ static Expr *parse_bool(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	number->const_expr = (ExprConst) { .b = TOKEN_IS(TOKEN_TRUE), .kind = TYPE_BOOL };
+	number->const_expr = (ExprConst) { .b = TOKEN_IS(TOKEN_TRUE), .const_kind = CONST_BOOL };
 	expr_set_type(number, type_bool);
 	advance(context);
 	return number;
@@ -1253,7 +1255,7 @@ static Expr *parse_null(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	number->const_expr.kind = TYPE_POINTER;
+	number->const_expr.const_kind = CONST_POINTER;
 	expr_set_type(number, type_voidptr);
 	advance(context);
 	return number;
