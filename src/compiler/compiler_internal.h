@@ -79,34 +79,49 @@ typedef struct BigInt_
 	};
 } BigInt;
 
+typedef enum
+{
+	CONST_FLOAT,
+	CONST_INTEGER,
+	CONST_BOOL,
+	CONST_ENUM,
+	CONST_ERR,
+	CONST_BYTES,
+	CONST_STRING,
+	CONST_POINTER,
+	CONST_TYPEID,
+} ConstKind;
 
 typedef struct
 {
+	ConstKind const_kind;
 	union
 	{
-		Real f;
-		BigInt i;
+		struct
+		{
+			Real f;
+			TypeKind float_type;
+		};
+		struct
+		{
+			BigInt i;
+			TypeKind int_type;
+		};
 		bool b;
 		struct
 		{
 			const char *chars;
 			uint32_t len;
 		} string;
-		Decl *enum_constant;
-		struct
-		{
-			Real i;
-			Real r;
-		} complex;
+		Decl *enum_val;
+		Decl *err_val;
 		struct
 		{
 			const char *ptr;
 			uint64_t len;
 		} bytes;
+		Type *typeid;
 	};
-	// Valid type kinds:
-	// bool, ints, floats, string
-	TypeKind kind;
 } ExprConst;
 
 typedef struct
@@ -1054,14 +1069,7 @@ typedef struct
 
 typedef struct
 {
-	bool is_type;
-	bool is_type_list;
-	union
-	{
-		TypeInfo *type_info;
-		TypeInfo **type_infos;
-		Expr *expr;
-	};
+	Expr *expr;
 	Ast *body;
 	void *backend_block;
 } AstCaseStmt;
@@ -1078,6 +1086,7 @@ typedef struct
 		struct
 		{
 			Ast* scope_defer;
+			bool if_chain;
 		};
 		struct
 		{
@@ -1973,6 +1982,8 @@ AlignSize type_abi_alignment(Type *type);
 AlignSize type_alloca_alignment(Type *type);
 void type_append_signature_name(Type *type, char *dst, size_t *offset);
 static inline bool type_convert_will_trunc(Type *destination, Type *source);
+bool type_is_comparable(Type *type);
+bool type_is_ordered(Type *type);
 Type *type_find_common_ancestor(Type *left, Type *right);
 Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other);
@@ -2022,6 +2033,7 @@ static inline Type *type_reduced_from_expr(Expr *expr);
 ByteSize type_size(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
+bool type_may_convert_to_boolean(Type *type);
 
 static inline TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span);
 static inline TypeInfo *type_info_new_base(Type *type, SourceSpan span);

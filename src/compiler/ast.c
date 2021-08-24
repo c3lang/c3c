@@ -661,14 +661,8 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 		case EXPR_DESIGNATOR:
 			DUMP("(named param)");
 			return;
-		case EXPR_MEMBER_ACCESS:
-			DUMP("(member access)");
-			return;
 		case EXPR_UNDEF:
 			DUMP("(undef)");
-			return;
-		case EXPR_ENUM_CONSTANT:
-			DUMP("(enumconstant)");
 			return;
 		case EXPR_TYPEINFO:
 			DUMP("(typeinfo)");
@@ -1314,14 +1308,7 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 			DUMPEND();
 		case AST_CASE_STMT:
 			DUMP("(case");
-			if (ast->case_stmt.is_type)
-			{
-				DUMPTI(ast->case_stmt.type_info);
-			}
-			else
-			{
-				DUMPEXPR(ast->case_stmt.expr);
-			}
+			DUMPEXPR(ast->case_stmt.expr);
 			DUMPAST(ast->case_stmt.body);
 			DUMPEND();
 	    case AST_DEFER_STMT:

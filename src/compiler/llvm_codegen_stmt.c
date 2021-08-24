@@ -4,6 +4,7 @@
 
 #include "llvm_codegen_internal.h"
 
+static void gencontext_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast);
 
 static bool ast_is_not_empty(Ast *ast)
 {
@@ -116,7 +117,7 @@ void llvm_emit_decl_expr_list_ignore_result(GenContext *context, Expr *expr)
 	}
 }
 
-void gencontext_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr, bool bool_cast)
+void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr, bool bool_cast)
 {
 	assert(expr->expr_kind == EXPR_COND);
 	ByteSize size = vec_size(expr->cond_expr);
@@ -151,7 +152,7 @@ void gencontext_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr
 	}
 }
 
-void gencontext_emit_jmp(GenContext *context, LLVMBasicBlockRef block)
+void llvm_emit_jmp(GenContext *context, LLVMBasicBlockRef block)
 {
 	llvm_emit_br(context, block);
 	LLVMBasicBlockRef post_jump_block = llvm_basic_block_new(context, "jmp");
@@ -201,7 +202,7 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 		{
 			llvm_store_bevalue_aligned(c, c->return_out, &return_value, 0);
 		}
-		gencontext_emit_jmp(c, c->block_return_exit);
+		llvm_emit_jmp(c, c->block_return_exit);
 		return;
 	}
 
@@ -244,8 +245,9 @@ void llvm_emit_if(GenContext *c, Ast *ast)
 	LLVMBasicBlockRef then_block = exit_block;
 	LLVMBasicBlockRef else_block = exit_block;
 
+	Ast *then_body = ast->if_stmt.then_body;
 	// Only generate a target if
-	if (ast_is_not_empty(ast->if_stmt.then_body))
+	if (ast_is_not_empty(then_body))
 	{
 		then_block = llvm_basic_block_new(c, "if.then");
 	}
@@ -267,12 +269,28 @@ void llvm_emit_if(GenContext *c, Ast *ast)
 	}
 
 	BEValue be_value = {};
-	gencontext_emit_decl_expr_list(c, &be_value, ast->if_stmt.cond, true);
+
+	bool exit_in_use = true;
+
+	if (then_body->ast_kind == AST_IF_CATCH_SWITCH_STMT)
+	{
+		llvm_emit_decl_expr_list(c, &be_value, ast->if_stmt.cond, false);
+		llvm_value_rvalue(c, &be_value);
+		BEValue comp;
+		llvm_emit_int_comp_zero(c, &comp, &be_value, BINARYOP_NE);
+		llvm_emit_cond_br(c, &comp, then_block, else_block);
+		llvm_emit_br(c, then_block);
+		llvm_emit_block(c, then_block);
+		gencontext_emit_switch_body(c, &be_value, then_body);
+		llvm_emit_br(c, exit_block);
+		goto EMIT_ELSE;
+	}
+
+	llvm_emit_decl_expr_list(c, &be_value, ast->if_stmt.cond, true);
+
 	llvm_value_rvalue(c, &be_value);
 
 	assert(llvm_value_is_bool(&be_value));
-
-	bool exit_in_use = true;
 
 	if (llvm_value_is_const(&be_value) && then_block != else_block)
 	{
@@ -310,6 +328,7 @@ void llvm_emit_if(GenContext *c, Ast *ast)
 		llvm_emit_br(c, exit_block);
 	}
 
+	EMIT_ELSE:
 	// Emit the 'else' branch if present.
 	if (else_block != exit_block)
 	{
@@ -432,7 +451,7 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 	// Get the length
 	BEValue len;
 	llvm_emit_len_for_expr(c, &len, &enum_value);
-	LLVMValueRef len_value = llvm_value_rvalue_store(c, &len);
+	llvm_value_rvalue(c, &len);
 
 	// We pop the error here.
 	POP_ERROR();
@@ -440,12 +459,13 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 	llvm_emit_ptr_from_array(c, &enum_value);
 
 	// Create the index and optionally the index var
-	LLVMTypeRef real_index_type = llvm_get_type(c, type_isize);
+	LLVMTypeRef real_index_type = llvm_get_type(c, type_usize);
 	BEValue index_var = {};
 	LLVMTypeRef index_type = ast->foreach_stmt.index ? llvm_get_type(c, ast->foreach_stmt.index->type) : NULL;
 	BEValue index = {};
 
 	bool extend_bits = false;
+
 	// In case we have an index, set it up.
 	if (ast->foreach_stmt.index)
 	{
@@ -461,7 +481,7 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 	// then create the address for the internal index and set it to zero.
 	if (index_type != real_index_type)
 	{
-		llvm_value_set_address(&index, llvm_emit_alloca(c, real_index_type, type_abi_alignment(type_isize), "idx"), type_isize);
+		llvm_value_set_address(&index, llvm_emit_alloca(c, real_index_type, type_abi_alignment(type_isize), "idx"), type_usize);
 		llvm_store_bevalue_raw(c, &index, llvm_get_zero(c, index.type));
 	}
 
@@ -484,10 +504,11 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 	// Emit cond
 	llvm_emit_br(c, cond_block);
 	llvm_emit_block(c, cond_block);
-	LLVMValueRef index_value = llvm_value_rvalue_store(c, &index);
-	LLVMValueRef may_loop = llvm_emit_int_comparison(c, type_isize, type_isize, index_value, len_value, BINARYOP_LT);
+
+	BEValue index_value;
+	llvm_value_set(&index_value, llvm_value_rvalue_store(c, &index), type_usize);
 	BEValue b;
-	llvm_value_set_bool(&b, may_loop);
+	llvm_emit_int_comparison(c, &b, &index_value, &len, BINARYOP_LT);
 	llvm_emit_cond_br(c, &b, body_block, exit_block);
 
 	llvm_emit_block(c, body_block);
@@ -496,23 +517,21 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 	if (index_var.value && index.value != index_var.value)
 	{
 		LLVMValueRef stored_value;
-		// Note that the case of index_var being usize and index being isize
-		// does not occur here, since they are considered the same LLVM type.
 		if (extend_bits)
 		{
 			// Note that we zero extend. We never deal in negative indices.
-			stored_value = LLVMBuildZExt(c->builder, index_value, index_type, "");
+			stored_value = LLVMBuildZExt(c->builder, index_value.value, index_type, "");
 		}
 		else
 		{
-			stored_value = LLVMBuildTrunc(c->builder, index_value, index_type, "");
+			stored_value = LLVMBuildTrunc(c->builder, index_value.value, index_type, "");
 		}
 		llvm_store_bevalue_raw(c, &index_var, stored_value);
 	}
 
 	assert(llvm_value_is_addr(&enum_value));
 
-	LLVMValueRef ref_to_element = LLVMBuildInBoundsGEP2(c->builder, actual_type_llvm, enum_value.value, &index_value, 1, "");
+	LLVMValueRef ref_to_element = LLVMBuildInBoundsGEP2(c->builder, actual_type_llvm, enum_value.value, &(index_value.value), 1, "");
 	BEValue result;
 	if (ast->foreach_stmt.value_by_ref)
 	{
@@ -538,9 +557,8 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 	llvm_emit_br(c, inc_block);
 
 	llvm_emit_block(c, inc_block);
-	index_value = llvm_value_rvalue_store(c, &index);
-	index_value = LLVMBuildAdd(c->builder, index_value, llvm_const_int(c, type_isize, 1), "");
-	llvm_store_bevalue_raw(c, &index, index_value);
+	index_value.value = LLVMBuildAdd(c->builder, llvm_value_rvalue_store(c, &index), llvm_const_int(c, type_isize, 1), "");
+	llvm_store_bevalue(c, &index, &index_value);
 
 	// Loop back.
 	llvm_emit_br(c, cond_block);
@@ -571,7 +589,7 @@ void gencontext_emit_while_stmt(GenContext *context, Ast *ast)
 		cond = cond->expr_scope.expr;
 	}
 	BEValue be_value;
-	gencontext_emit_decl_expr_list(context, &be_value, cond, true);
+	llvm_emit_decl_expr_list(context, &be_value, cond, true);
 	llvm_value_rvalue(context, &be_value);
 
 	// If we have a body, conditionally jump to it.
@@ -660,90 +678,53 @@ void gencontext_emit_do_stmt(GenContext *c, Ast *ast)
 
 
 
-void gencontext_emit_if_switch_body(GenContext *context, LLVMValueRef switch_value, Ast **cases)
+static void llvm_emit_switch_body_if_chain(GenContext *c,
+										   Ast **cases,
+										   Ast *default_case,
+										   BEValue *switch_value,
+										   LLVMBasicBlockRef exit_block)
 {
-	ByteSize case_count = vec_size(cases);
-	if (!case_count)
-	{
-		// No body or default is empty, just exit after the value.
-		return;
-	}
-
-	Ast *default_case = NULL;
-	for (unsigned i = 0; i < case_count; i++)
+	LLVMBasicBlockRef next = NULL;
+	VECEACH(cases, i)
 	{
 		Ast *case_stmt = cases[i];
-		if (!case_stmt->case_stmt.expr)
-		{
-			if (case_stmt->case_stmt.body)
-			{
-				case_stmt->case_stmt.backend_block = llvm_basic_block_new(context, "switch.default");
-			}
-			default_case = case_stmt;
-		}
-		else if (case_stmt->case_stmt.body)
-		{
-			case_stmt->case_stmt.backend_block = llvm_basic_block_new(context, "switch.case");
-		}
-	}
-
-
-	LLVMBasicBlockRef exit_block = llvm_basic_block_new(context, "switch.exit");
-
-
-	for (unsigned i = 0; i < case_count; i++)
-	{
-		Ast *case_stmt = cases[i];
+		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
 		if (case_stmt == default_case) continue;
-		LLVMValueRef case_value;
-		LLVMBasicBlockRef case_block = case_stmt->case_stmt.backend_block;
 		BEValue be_value;
-		// TODO handle string.
-		if (case_stmt->case_stmt.is_type)
+		llvm_emit_expr(c, &be_value, case_stmt->case_stmt.expr);
+		llvm_value_rvalue(c, &be_value);
+		BEValue equals;
+		llvm_emit_comparison(c, &equals, &be_value, switch_value, BINARYOP_EQ);
+		next = llvm_basic_block_new(c, "next_if");
+		llvm_emit_cond_br(c, &equals, block, next);
+		if (case_stmt->case_stmt.body)
 		{
-			case_value = case_stmt->case_stmt.type_info->type->backend_typeid;
+			llvm_emit_block(c, block);
+			c->current_block_is_target = true;
+			llvm_emit_stmt(c, case_stmt->case_stmt.body);
+			llvm_emit_br(c, exit_block);
 		}
-		else
-		{
-			llvm_emit_expr(context, &be_value, case_stmt->case_stmt.expr);
-			llvm_value_rvalue(context, &be_value);
-			case_value = be_value.value;
-		}
-		llvm_value_set_bool(&be_value, LLVMBuildICmp(context->builder, LLVMIntNE, switch_value, case_value, ""));
-		LLVMBasicBlockRef next_block = llvm_basic_block_new(context, "");
-		llvm_emit_cond_br(context, &be_value, next_block, case_block);
-		llvm_emit_block(context, next_block);
+		llvm_emit_block(c, next);
 	}
-	if (default_case)
+	if (default_case && default_case->case_stmt.body)
 	{
-		llvm_emit_br(context, default_case->case_stmt.backend_block);
+		llvm_emit_br(c, default_case->case_stmt.backend_block);
+		llvm_emit_block(c, default_case->case_stmt.backend_block);
+		c->current_block_is_target = true;
+		llvm_emit_stmt(c, default_case->case_stmt.body);
+		llvm_emit_br(c, exit_block);
 	}
 	else
 	{
-		llvm_emit_br(context, exit_block);
+		llvm_emit_br(c, exit_block);
 	}
-	for (unsigned i = 0; i < case_count; i++)
-	{
-		Ast *case_stmt = cases[i];
-		LLVMBasicBlockRef case_block = case_stmt->case_stmt.backend_block;
-		llvm_emit_block(context, case_block);
-		if (!case_stmt->case_stmt.body)
-		{
-			llvm_emit_br(context, i == case_count - 1 ? exit_block : cases[i + 1]->case_stmt.backend_block);
-			continue;
-		}
-
-		// IMPORTANT!
-		context->current_block_is_target = true;
-		llvm_emit_stmt(context, case_stmt->case_stmt.body);
-		llvm_emit_br(context, exit_block);
-
-	}
-	llvm_emit_block(context, exit_block);
+	llvm_emit_block(c, exit_block);
+	return;
 }
 
-static void gencontext_emit_switch_body(GenContext *context, BEValue *switch_value, Ast *switch_ast)
+static void gencontext_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast)
 {
+	bool is_if_chain = switch_ast->switch_stmt.if_chain;
 	Ast **cases = switch_ast->switch_stmt.cases;
 	ByteSize case_count = vec_size(cases);
 	if (!case_count)
@@ -760,18 +741,18 @@ static void gencontext_emit_switch_body(GenContext *context, BEValue *switch_val
 		{
 			if (case_stmt->case_stmt.body)
 			{
-				case_stmt->case_stmt.backend_block = llvm_basic_block_new(context, "switch.default");
+				case_stmt->case_stmt.backend_block = llvm_basic_block_new(c, "switch.default");
 			}
 			default_case = case_stmt;
 		}
 		else if (case_stmt->case_stmt.body)
 		{
-			case_stmt->case_stmt.backend_block = llvm_basic_block_new(context, "switch.case");
+			case_stmt->case_stmt.backend_block = llvm_basic_block_new(c, "switch.case");
 		}
 	}
 
-	LLVMBasicBlockRef exit_block = llvm_basic_block_new(context, "switch.exit");
-	LLVMBasicBlockRef switch_block = llvm_basic_block_new(context, "switch.entry");
+	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "switch.exit");
+	LLVMBasicBlockRef switch_block = llvm_basic_block_new(c, "switch.entry");
 	switch_ast->switch_stmt.codegen.retry_block = switch_block;
 	switch_ast->switch_stmt.codegen.exit_block = exit_block;
 
@@ -792,23 +773,30 @@ static void gencontext_emit_switch_body(GenContext *context, BEValue *switch_val
 			next_block = case_stmt->case_stmt.backend_block;
 			continue;
 		}
-
 		case_stmt->case_stmt.backend_block = next_block;
 	}
 
 
-	Type *switch_type = switch_ast->switch_stmt.cond->type;
-	LLVMValueRef switch_var = llvm_emit_alloca_aligned(context, switch_type, "switch");
-	switch_ast->switch_stmt.codegen.retry_var = switch_var;
-	LLVMBuildStore(context->builder, llvm_value_rvalue_store(context, switch_value), switch_var);
+	Type *switch_type = switch_ast->ast_kind == AST_IF_CATCH_SWITCH_STMT ? type_lowering(type_anyerr) : switch_ast->switch_stmt.cond->type;
+	BEValue switch_var;
+	llvm_value_set_address(&switch_var, llvm_emit_alloca_aligned(c, switch_type, "switch"), switch_type);
+	switch_ast->switch_stmt.codegen.retry_var = &switch_var;
+	llvm_store_bevalue(c, &switch_var, switch_value);
 
-	llvm_emit_br(context, switch_block);
-	llvm_emit_block(context, switch_block);
+	llvm_emit_br(c, switch_block);
+	llvm_emit_block(c, switch_block);
 
-	LLVMValueRef switch_load = gencontext_emit_load(context, switch_type, switch_var);
+	BEValue switch_current_val = switch_var;
+	llvm_value_rvalue(c, &switch_current_val);
 
-	LLVMValueRef switch_stmt = LLVMBuildSwitch(context->builder, switch_load, default_case ? default_case->case_stmt.backend_block : exit_block, case_count);
-	context->current_block = NULL;
+	if (is_if_chain)
+	{
+		llvm_emit_switch_body_if_chain(c, cases, default_case, &switch_current_val, exit_block);
+		return;
+	}
+
+	c->current_block = NULL;
+	LLVMValueRef switch_stmt = LLVMBuildSwitch(c->builder, switch_current_val.value, default_case ? default_case->case_stmt.backend_block : exit_block, case_count);
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *case_stmt = cases[i];
@@ -816,37 +804,30 @@ static void gencontext_emit_switch_body(GenContext *context, BEValue *switch_val
 		if (case_stmt != default_case)
 		{
 			LLVMValueRef case_value;
-			if (case_stmt->case_stmt.is_type)
-			{
-				case_value = case_stmt->case_stmt.type_info->type->backend_typeid;
-			}
-			else
-			{
-				BEValue be_value;
-				llvm_emit_expr(context, &be_value, case_stmt->case_stmt.expr);
-				llvm_value_rvalue(context, &be_value);
-				case_value = be_value.value;
-			}
+			BEValue be_value;
+			llvm_emit_expr(c, &be_value, case_stmt->case_stmt.expr);
+			llvm_value_rvalue(c, &be_value);
+			case_value = be_value.value;
 			LLVMAddCase(switch_stmt, case_value, block);
 		}
 
 		// Skip fallthroughs.
 		if (!case_stmt->case_stmt.body) continue;
 
-		llvm_emit_block(context, block);
+		llvm_emit_block(c, block);
 		// IMPORTANT!
-		context->current_block_is_target = true;
+		c->current_block_is_target = true;
 
-		llvm_emit_stmt(context, case_stmt->case_stmt.body);
-		llvm_emit_br(context, exit_block);
+		llvm_emit_stmt(c, case_stmt->case_stmt.body);
+		llvm_emit_br(c, exit_block);
 	}
-	llvm_emit_block(context, exit_block);
+	llvm_emit_block(c, exit_block);
 }
 
 void gencontext_emit_switch(GenContext *context, Ast *ast)
 {
 	BEValue switch_value;
-	gencontext_emit_decl_expr_list(context, &switch_value, ast->switch_stmt.cond, false);
+	llvm_emit_decl_expr_list(context, &switch_value, ast->switch_stmt.cond, false);
 	gencontext_emit_switch_body(context, &switch_value, ast);
 }
 
@@ -890,6 +871,7 @@ void gencontext_emit_break(GenContext *context, Ast *ast)
 		case AST_DO_STMT:
 			jump = jump_target->do_stmt.break_block;
 			break;
+		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_SWITCH_STMT:
 			jump = jump_target->switch_stmt.codegen.exit_block;
 			break;
@@ -899,7 +881,7 @@ void gencontext_emit_break(GenContext *context, Ast *ast)
 		default:
 			UNREACHABLE
 	}
-	gencontext_emit_jmp(context, jump);
+	llvm_emit_jmp(context, jump);
 }
 
 void gencontext_emit_continue(GenContext *context, Ast *ast)
@@ -927,7 +909,7 @@ void gencontext_emit_continue(GenContext *context, Ast *ast)
 		default:
 			UNREACHABLE
 	}
-	gencontext_emit_jmp(context, jump);
+	llvm_emit_jmp(context, jump);
 }
 
 void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
@@ -936,15 +918,14 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 	if (jump_target->ast_kind != AST_SWITCH_STMT)
 	{
 		llvm_emit_defer(context, ast->next_stmt.defers.start, ast->next_stmt.defers.end);
-		gencontext_emit_jmp(context, jump_target->case_stmt.backend_block);
+		llvm_emit_jmp(context, jump_target->case_stmt.backend_block);
 		return;
 	}
 	BEValue be_value;
 	llvm_emit_expr(context, &be_value, ast->next_stmt.switch_expr);
-	LLVMBuildStore(context->builder,
-	               llvm_value_rvalue_store(context, &be_value), jump_target->switch_stmt.codegen.retry_var);
+	llvm_store_bevalue(context, jump_target->switch_stmt.codegen.retry_var, &be_value);
 	llvm_emit_defer(context, ast->next_stmt.defers.start, ast->next_stmt.defers.end);
-	gencontext_emit_jmp(context, jump_target->switch_stmt.codegen.retry_block);
+	llvm_emit_jmp(context, jump_target->switch_stmt.codegen.retry_block);
 }
 
 void gencontext_emit_scoped_stmt(GenContext *context, Ast *ast)
@@ -1228,6 +1209,20 @@ void llvm_emit_debug_output(GenContext *c, const char *message, const char *file
 	LLVMBuildCall(c->builder, assert_func, args, func_index > -1 ? 4 : 3, "");
 
 }
+
+void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceLocation *loc)
+{
+	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
+	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
+	assert(llvm_value_is_bool(value));
+	llvm_emit_cond_br(c, value, panic_block, ok_block);
+	llvm_emit_block(c, panic_block);
+	llvm_emit_debug_output(c, panic_name, loc->file->name, c->cur_func_decl->name, loc->line);
+	llvm_emit_call_intrinsic(c, intrinsic_id_trap, NULL, 0, NULL, 0);
+	llvm_emit_br(c, ok_block);
+	llvm_emit_block(c, ok_block);
+}
+
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceLocation *loc)
 {
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
