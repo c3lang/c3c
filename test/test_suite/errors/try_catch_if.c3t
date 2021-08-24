@@ -82,8 +82,8 @@ after.errcheck:                                   ; preds = %testblock1
 
 end_block:                                        ; preds = %after.errcheck, %error3, %error
   %2 = load i64, i64* %err, align 8
-  %intbool = icmp ne i64 %2, 0
-  br i1 %intbool, label %if.then, label %if.else
+  %neq = icmp ne i64 %2, 0
+  br i1 %neq, label %if.then, label %if.else
 
 if.then:                                          ; preds = %end_block
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.1, i32 0, i32 0))

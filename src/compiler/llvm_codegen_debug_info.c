@@ -373,13 +373,10 @@ static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type)
 
 static LLVMMetadataRef llvm_debug_errunion_type(GenContext *c, Type *type)
 {
-	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, type->name, NULL, NULL, LLVMDIFlagZero);
-	type->backend_debug_type = forward;
-	LLVMMetadataRef elements[2] = {
-			llvm_get_debug_member(c, type_usize, "domain", 0, NULL, forward, LLVMDIFlagZero),
-			llvm_get_debug_member(c, type_usize, "err", 0, NULL, forward, LLVMDIFlagZero)
-	};
-	return llvm_get_debug_struct(c, type, type->name, elements, 2, NULL, NULL, LLVMDIFlagZero);
+	return LLVMDIBuilderCreateTypedef(c->debug.builder,
+									  llvm_get_debug_type(c, type_iptr->canonical),
+									  type->name, strlen(type->name),
+									  NULL, 0, NULL, 0);
 }
 
 static LLVMMetadataRef llvm_debug_array_type(GenContext *c, Type *type)
@@ -537,7 +534,6 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_SUBARRAY:
 			return type->backend_debug_type = llvm_debug_subarray_type(c, type);
 		case TYPE_ANYERR:
-			// TODO
 			return type->backend_debug_type = llvm_debug_errunion_type(c, type);
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:

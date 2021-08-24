@@ -4,8 +4,6 @@
 
 #include "llvm_codegen_internal.h"
 
-void gencontext_emit_try_stmt(GenContext *context, Ast *pAst);
-
 
 static bool ast_is_not_empty(Ast *ast)
 {
@@ -94,7 +92,7 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 	}
 	else
 	{
-		Type *type = type_flatten(decl->type);
+		Type *type = type_lowering(decl->type);
 		// Normal case, zero init.
 		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
 		{
@@ -144,7 +142,7 @@ void gencontext_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr
 	}
 	if (bool_cast)
 	{
-		type = type_flatten(type);
+		type = type_lowering(type);
 		if (type->type_kind != TYPE_BOOL)
 		{
 			CastKind cast = cast_to_bool_kind(type);
@@ -471,7 +469,7 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 	LLVMTypeRef actual_type_llvm = llvm_get_type(c, actual_type);
 
 	llvm_emit_local_var_alloca(c, ast->foreach_stmt.variable);
-	Type *var_type = type_flatten(ast->foreach_stmt.variable->type);
+	Type *var_type = type_lowering(ast->foreach_stmt.variable->type);
 	LLVMTypeRef var_type_llvm = llvm_get_type(c, var_type);
 	BEValue var;
 	llvm_value_set_address(&var, ast->foreach_stmt.variable->backend_ref, var_type);
@@ -955,52 +953,6 @@ void gencontext_emit_scoped_stmt(GenContext *context, Ast *ast)
 	llvm_emit_defer(context, ast->scoped_stmt.defers.start, ast->scoped_stmt.defers.end);
 }
 
-void gencontext_emit_try_stmt(GenContext *c, Ast *ast)
-{
-	// Create after try block
-	LLVMBasicBlockRef after_try = llvm_basic_block_new(c, "after_try");
-	EMIT_LOC(c, ast);
-
-	// Store catch/error var
-	PUSH_ERROR();
-
-	// Set the catch/error var
-	c->error_var = NULL;
-	c->catch_block = after_try;
-
-	// Emit the checks, which will create jumps like we want them.
-	TODO
-	Ast **decl_expr = NULL; // ast->try_old_stmt.decl_expr->dexpr_list_expr;
-	BEValue be_value;
-	VECEACH(decl_expr, i)
-	{
-		Ast *dexpr = decl_expr[i];
-		switch (dexpr->ast_kind)
-		{
-			case AST_EXPR_STMT:
-				llvm_emit_expr(c, &be_value, dexpr->expr_stmt);
-				llvm_value_rvalue(c, &be_value);
-				break;
-			case AST_DECLARE_STMT:
-		//TODO		llvm_emit_local_decl(c, dexpr);
-				break;
-			default:
-				UNREACHABLE
-		}
-	}
-
-	// Restore.
-	POP_ERROR();
-
-	// Emit the statement
-	llvm_emit_stmt(c, ast->try_old_stmt.body);
-
-	// Jump to after.
-	llvm_emit_br(c, after_try);
-	llvm_emit_block(c, after_try);
-
-}
-
 
 static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 {
@@ -1077,6 +1029,41 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 	llvm_emit_assume(c, ast->assert_stmt.expr);
 }
 
+static inline void add_target_clobbers_to_buffer(GenContext *c)
+{
+	switch (platform_target.arch)
+	{
+		case ARCH_TYPE_X86_64:
+		case ARCH_TYPE_X86:
+			scratch_buffer_append("~{dirflag},~{fpsr},~{flags}");
+			break;
+		case ARCH_TYPE_MIPS:
+		case ARCH_TYPE_MIPS64:
+		case ARCH_TYPE_MIPS64EL:
+		case ARCH_TYPE_MIPSEL:
+			// Currently Clang does this
+			scratch_buffer_append("~{$1}");
+			break;
+		default:
+			// In Clang no other platform has automatic clobbers
+			break;
+	}
+}
+static inline void llvm_emit_asm_stmt(GenContext *c, Ast *ast)
+{
+	LLVMTypeRef asm_fn_type = LLVMFunctionType(llvm_get_type(c, type_void), NULL, 0, 0);
+	scratch_buffer_clear();
+	add_target_clobbers_to_buffer(c);
+	LLVMValueRef asm_fn = LLVMGetInlineAsm(asm_fn_type,
+	                                       (char *)ast->asm_stmt.body->const_expr.string.chars,
+	                                       ast->asm_stmt.body->const_expr.string.len,
+	                                       scratch_buffer_to_string(), global_context.scratch_buffer_len,
+	                                       ast->asm_stmt.is_volatile,
+	                                       true,
+	                                       LLVMInlineAsmDialectIntel);
+	LLVMBuildCall2(c->builder, asm_fn_type, asm_fn, NULL, 0, "");
+}
+
 static inline void gencontext_emit_unreachable_stmt(GenContext *context, Ast *ast)
 {
 	SourceLocation *loc = TOKLOC(ast->span.loc);
@@ -1110,67 +1097,6 @@ void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 	llvm_value_rvalue(c, &value);
 }
 
-void gencontext_emit_catch_stmt(GenContext *c, Ast *ast)
-{
-	Expr *catch_expr;
-	LLVMValueRef error_result = NULL;
-	if (ast->catch_stmt.has_err_var)
-	{
-		Decl *error_var = ast->catch_stmt.err_var;
-		assert(error_var->type->canonical == type_anyerr);
-		error_result = llvm_emit_alloca_aligned(c, type_anyerr, error_var->name);
-		error_var->backend_ref = error_result;
-		catch_expr = error_var->var.init_expr;
-
-	}
-	else
-	{
-		if (ast->catch_stmt.is_switch)
-		{
-			error_result = llvm_emit_alloca_aligned(c, type_anyerr, "catchval");
-		}
-		catch_expr = ast->catch_stmt.catchable;
-	}
-
-	// Create catch block.
-	LLVMBasicBlockRef catch_block = llvm_basic_block_new(c, "catch");
-
-	// Store catch/error var
-	PUSH_ERROR();
-
-	// Set the catch/error var
-	c->error_var = error_result;
-	c->catch_block = catch_block;
-
-	// Emit the catch, which will create jumps like we want them.
-	BEValue value;
-	llvm_emit_expr(c, &value, catch_expr);
-	llvm_value_fold_failable(c, &value);
-
-	// Restore.
-	POP_ERROR();
-
-	// Create the bloch after and jump to it.
-	LLVMBasicBlockRef after_catch = llvm_basic_block_new(c, "after_catch");
-	llvm_emit_br(c, after_catch);
-
-	// Emit catch.
-	llvm_emit_block(c, catch_block);
-
-	if (ast->catch_stmt.is_switch)
-	{
-		LLVMValueRef ref = llvm_emit_bitcast(c, error_result, type_get_ptr(type_typeid));
-		gencontext_emit_if_switch_body(c, gencontext_emit_load(c, type_typeid, ref), ast->catch_stmt.cases);
-	}
-	else
-	{
-		llvm_emit_stmt(c, ast->catch_stmt.body);
-	}
-
-	// Jump to after.
-	llvm_emit_br(c, after_catch);
-	llvm_emit_block(c, after_catch);
-}
 static LLVMValueRef llvm_emit_string(GenContext *c, const char *str)
 {
 	LLVMTypeRef char_type = llvm_get_type(c, type_char);
@@ -1327,10 +1253,8 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_DOC_DIRECTIVE:
 		case AST_POISONED:
 		case AST_DEFINE_STMT:
+		case AST_IF_CATCH_SWITCH_STMT:
 			UNREACHABLE
-		case AST_TRY_STMT:
-			gencontext_emit_try_stmt(c, ast);
-			break;
 		case AST_SCOPED_STMT:
 			gencontext_emit_scoped_stmt(c, ast);
 			break;
@@ -1376,11 +1300,9 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_DEFER_STMT:
 		case AST_NOP_STMT:
 			break;
-		case AST_CATCH_STMT:
-			gencontext_emit_catch_stmt(c, ast);
-			break;
 		case AST_ASM_STMT:
-			TODO
+			llvm_emit_asm_stmt(c, ast);
+			break;
 		case AST_ASSERT_STMT:
 			llvm_emit_assert_stmt(c, ast);
 			break;;

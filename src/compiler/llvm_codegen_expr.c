@@ -338,7 +338,7 @@ static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValu
 static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c, BEValue *parent, BEValue *index, SourceLocation *loc)
 {
 	assert(llvm_value_is_addr(parent));
-	Type *type = type_flatten(parent->type);
+	Type *type = type_lowering(parent->type);
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
@@ -450,7 +450,7 @@ static inline void gencontext_emit_access_addr(GenContext *context, BEValue *be_
 	llvm_emit_expr(context, be_value, parent);
 	Decl *member = expr->access_expr.ref;
 
-	gencontext_emit_member_addr(context, be_value, type_flatten(parent->type)->decl, member);
+	gencontext_emit_member_addr(context, be_value, type_lowering(parent->type)->decl, member);
 }
 
 static void gencontext_emit_scoped_expr(GenContext *context, BEValue *value, Expr *expr)
@@ -500,16 +500,39 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 
 	switch (cast_kind)
 	{
-		case CAST_ERBOOL:
 		case CAST_EUINT:
 		case CAST_ERINT:
+			to_type = type_lowering(to_type);
+			from_type = type_lowering(from_type);
+			llvm_value_rvalue(c, value);
+			if (type_convert_will_trunc(to_type, from_type))
+			{
+				value->value = LLVMBuildTrunc(c->builder, value->value, llvm_get_type(c, to_type), "errinttrunc");
+			}
+			else
+			{
+				value->value = type_is_signed(to_type)
+						? LLVMBuildSExt(c->builder, value->value, llvm_get_type(c, to_type), "errsiext")
+						: LLVMBuildZExt(c->builder, value->value, llvm_get_type(c, to_type), "erruiext");
+
+			}
+			break;
 		case CAST_VRBOOL:
 		case CAST_VRPTR:
 		case CAST_PTRVR:
 			TODO
 		case CAST_XIERR:
-			// TODO Insert zero check.
+			to_type = type_lowering(to_type);
+			from_type = type_lowering(from_type);
 			llvm_value_rvalue(c, value);
+			if (type_convert_will_trunc(to_type, from_type))
+			{
+				value->value = LLVMBuildTrunc(c->builder, value->value, llvm_get_type(c, to_type), "interrtrunc");
+			}
+			else
+			{
+				value->value = LLVMBuildZExt(c->builder, value->value, llvm_get_type(c, to_type), "erruiext");
+			}
 			break;
 		case CAST_ERROR:
 			UNREACHABLE
@@ -555,23 +578,14 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 		case CAST_ARRPTR:
 			TODO
 		case CAST_EREU:
+			// This is a no op.
+			assert(type_lowering(to_type) == type_lowering(from_type));
+			break;
 		case CAST_EUER:
 			TODO // gencontext_emit_value_bitcast(c, value->value, to_type, from_type);
+		case CAST_ERBOOL:
 		case CAST_EUBOOL:
-			if (value->kind == BE_VALUE)
-			{
-				value->value = LLVMBuildExtractValue(c->builder, value->value, 0, "");
-			}
-			else
-			{
-				value->value = LLVMBuildStructGEP2(c->builder, llvm_get_type(c, type_anyerr), value->value, 0, "");
-				value->value = llvm_emit_load_aligned(c,
-				                                      llvm_get_type(c, type_usize),
-				                                      value->value,
-				                                      type_abi_alignment(type_usize),
-				                                      "");
-			}
-			value->value = LLVMBuildICmp(c->builder, LLVMIntNE, value->value, llvm_get_zero(c, type_usize), "eubool");
+			value->value = llvm_emit_int_comparison(c, type_anyerr, type_anyerr, llvm_value_rvalue_store(c, value), llvm_get_zero(c, type_anyerr), BINARYOP_NE);
 			value->kind = BE_BOOLEAN;
 			break;
 		case CAST_PTRBOOL:
@@ -874,7 +888,7 @@ static inline void llvm_emit_initialize_reference_const(GenContext *c, BEValue *
 static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *ref, Expr *expr)
 {
 	// Getting ready to initialize, get the real type.
-	Type *real_type = type_flatten(ref->type);
+	Type *real_type = type_lowering(ref->type);
 	Expr **elements = expr->initializer_expr.initializer_expr;
 
 	// Make sure we have an address.
@@ -1029,7 +1043,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_
 static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEValue *ref, Expr *expr)
 {
 	// Getting ready to initialize, get the real type.
-	Type *real_type = type_flatten(ref->type);
+	Type *real_type = type_lowering(ref->type);
 	Expr **elements = expr->initializer_expr.initializer_expr;
 	assert(vec_size(elements));
 
@@ -1245,7 +1259,7 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 			llvm_value_addr(c, value);
 			// Transform to value
 			value->kind = BE_VALUE;
-			value->type = type_flatten(expr->type);
+			value->type = type_lowering(expr->type);
 			return;
 		case UNARYOP_DEREF:
 			llvm_emit_expr(c, value, expr->unary_expr.expr);
@@ -1253,7 +1267,7 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 			llvm_value_rvalue(c, value);
 			// Convert pointer to address
 			value->kind = BE_ADDRESS;
-			value->type = type_flatten(expr->type);
+			value->type = type_lowering(expr->type);
 			return;
 		case UNARYOP_INC:
 			llvm_emit_pre_inc_dec(c, value, expr->unary_expr.expr, 1, false);
@@ -2573,7 +2587,7 @@ static void gencontext_expand_struct_to_args(GenContext *context, Type *param_ty
 static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values)
 {
 	REDO:
-	switch (type_flatten(param_type)->type_kind)
+	switch (type_lowering(param_type)->type_kind)
 	{
 		case TYPE_POISONED:
 		case TYPE_VOID:

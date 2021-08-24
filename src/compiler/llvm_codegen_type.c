@@ -314,7 +314,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_TYPEID:
 		case TYPE_ANYERR:
 		case TYPE_ERRTYPE:
-			return any_type->backend_type = llvm_get_type(c, type_iptr);
+			return any_type->backend_type = llvm_get_type(c, type_iptr->canonical);
 		case TYPE_TYPEDEF:
 			return any_type->backend_type = llvm_get_type(c, any_type->canonical);
 		case TYPE_DISTINCT:

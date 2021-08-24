@@ -1124,25 +1124,6 @@ typedef struct
 	} codegen;
 } AstDeferStmt;
 
-typedef struct
-{
-	FlowCommon flow;
-	bool is_switch : 1;
-	bool has_err_var : 1;
-	Ast* scope_defer;
-	AstId defer;
-	union
-	{
-		Expr *catchable;
-		Decl *err_var;
-	};
-	union
-	{
-		Ast *body;
-		Ast **cases;
-	};
-	void *block;
-} AstCatchStmt;
 
 
 typedef struct AstCtIfStmt_
@@ -1218,12 +1199,6 @@ typedef struct
 
 typedef struct
 {
-	Expr *decl_expr;
-	Ast *body;
-} AstTryStmt;
-
-typedef struct
-{
 	AsmOperand *inputs;
 	AsmOperand *outputs;
 	TokenId **clobbers;
@@ -1236,7 +1211,7 @@ typedef struct
 	bool is_inline : 1;
 	bool is_goto : 1;
 	AsmParams *params;
-	TokenId **instructions;
+	Expr *body;
 } AstAsmStmt;
 
 typedef struct
@@ -1286,7 +1261,6 @@ typedef struct Ast_
 		Ast** ct_compound_stmt;
 		Decl *declare_stmt;             // 8
 		Expr *expr_stmt;                // 8
-		AstTryStmt try_old_stmt;
 		Ast *try_stmt;
 		Decl *define_stmt;              // 8
 		Ast *volatile_stmt;             // 8
@@ -1300,7 +1274,6 @@ typedef struct Ast_
 		AstCtSwitchStmt ct_switch_stmt; // 16
 		AstContinueBreakStmt contbreak_stmt; // 8
 		AstNextStmt next_stmt;              // 16
-		AstCatchStmt catch_stmt;            // 32
 		AstForStmt for_stmt;                // 32
 		AstForeachStmt foreach_stmt;
 		AstCtIfStmt ct_if_stmt;             // 24
@@ -2258,10 +2231,6 @@ static inline Type *type_flatten(Type *type)
 			type = type->decl->enums.type_info->type;
 			continue;
 		}
-		if (type->type_kind == TYPE_ANYERR || type->type_kind == TYPE_ERRTYPE)
-		{
-			type = type_iptr->canonical;
-		}
 		return type;
 	}
 }
@@ -2314,6 +2283,7 @@ static inline Type *type_lowering(Type *type)
 	Type *canonical = type_flatten(type);
 	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
 	if (canonical->type_kind == TYPE_TYPEID) return type_iptr->canonical;
+	if (canonical->type_kind == TYPE_ANYERR) return type_iptr->canonical;
 	if (canonical->type_kind == TYPE_ERRTYPE) return type_iptr->canonical;
 	if (canonical->type_kind == TYPE_BITSTRUCT) return type_lowering(canonical->decl->bitstruct.base_type->type);
 	return canonical;

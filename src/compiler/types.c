@@ -256,13 +256,13 @@ bool type_is_union_struct(Type *type)
 
 bool type_is_empty_field(Type *type, bool allow_array)
 {
-	type = type_flatten(type);
+	type = type_lowering(type);
 	if (allow_array)
 	{
 		while (type->type_kind == TYPE_ARRAY)
 		{
 			if (type->array.len == 0) return true;
-			type = type_flatten(type->array.base);
+			type = type_lowering(type->array.base);
 		}
 	}
 	return type_is_empty_record(type, allow_array);
@@ -303,7 +303,7 @@ Type *type_abi_find_single_struct_element(Type *type)
 	Decl **members = type->decl->strukt.members;
 	VECEACH(members, i)
 	{
-		Type *field_type = type_flatten(members[i]->type);
+		Type *field_type = type_lowering(members[i]->type);
 
 		// Ignore empty arrays
 		if (type_is_empty_field(field_type, true)) continue;
@@ -626,7 +626,7 @@ AlignSize type_alloca_alignment(Type *type)
 {
 	if (platform_target.abi == ABI_X64)
 	{
-		type = type_flatten(type);
+		type = type_lowering(type);
 		if (type->type_kind == TYPE_ARRAY && type_size(type) >= 16) return 16;
 	}
 	return type_abi_alignment(type);

@@ -137,46 +137,22 @@ static inline bool parse_asm_params(Context *context, Ast *asm_ast)
 	TODO
 }
 /**
- * asm { ... }
+ * asm ::= 'asm' '(' string ')'
  * @param context
  * @return
  */
 static inline Ast* parse_asm_stmt(Context *context)
 {
-	TODO
-	/*
 	Ast *ast = AST_NEW_TOKEN(AST_ASM_STMT, context->tok);
 	advance_and_verify(context, TOKEN_ASM);
-	if (try_consume(context, TOKEN_LPAREN))
-	{
-		if (!parse_asm_params(context, ast)) return poisoned_ast;
-	}
-
-	if (!TOKEN_IS(TOKEN_LBRACE))
-	{
-		SEMA_TOKEN_ERROR(context->tok, "Expected '{' to start asm segment.");
-		return poisoned_ast;
-	}
-	context->lexer.current = context->next_tok->span.loc + context->lexer.file_begin;
-	while (1)
-	{
-		TODO
-		//context->tok = lexer_scan_asm(&context->lexer);
-		TokenType type = context->tok.type;
-		if (type == TOKEN_RBRACE || type == TOKEN_EOF) break;
-		context->prev_tok_end = context->token->span.end_loc;
-		vec_add(ast->asm_stmt.instructions, context->token);
-	}
-	if (TOKEN_IS(TOKEN_EOF))
-	{
-		sema_error_at(context->prev_tok_end, "Unexpected end of file while parsing asm, did you forget a '}'?");
-		return poisoned_ast;
-	}
-	assert(TOKEN_IS(TOKEN_RBRACE));
-	//context->tok = lexer_scan_token(&context->lexer);
-	//context->next_tok = lexer_scan_token(&context->lexer);
+	ast->asm_stmt.is_volatile = try_consume(context, TOKEN_VOLATILE);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
+	ast->asm_stmt.body = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
+	ast->asm_stmt.is_volatile = true;
+	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
+	RANGE_EXTEND_PREV(ast);
+	CONSUME_OR(TOKEN_EOS, poisoned_ast);
 	return ast;
-	 */
 }
 
 
@@ -222,36 +198,6 @@ static inline Ast *parse_case_stmts(Context *context, TokenType case_type, Token
 }
 
 
-/**
- * catch_stmt
- * 	: CATCH '(' expression ')' catch_body
- * 	| CATCH '(' expression ')' compound_stmt
- * 	;
- */
-static inline Ast* parse_catch_stmt(Context *context)
-{
-	Ast *catch_stmt = AST_NEW_TOKEN(AST_CATCH_STMT, context->tok);
-	advance_and_verify(context, TOKEN_CATCH_OLD);
-
-	catch_stmt->catch_stmt.flow.label = TRY_DECL_OR(parse_optional_label(context, catch_stmt), false);
-
-	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
-
-	catch_stmt->catch_stmt.catchable = TRY_EXPR_OR(parse_expr(context), poisoned_ast);
-
-	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
-
-	if (TOKEN_IS(TOKEN_LBRACE) && (context->next_tok.type == TOKEN_CASE || context->next_tok.type == TOKEN_DEFAULT))
-	{
-		catch_stmt->catch_stmt.is_switch = true;
-		if (!parse_switch_body(context, &catch_stmt->catch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT, false)) return poisoned_ast;
-		return catch_stmt;
-	}
-
-	catch_stmt->catch_stmt.body = TRY_AST(parse_stmt(context));
-
-	return catch_stmt;
-}
 
 /**
  * defer_stmt
@@ -310,8 +256,19 @@ static inline Ast* parse_if_stmt(Context *context)
 	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
 	if_ast->if_stmt.cond = TRY_EXPR_OR(parse_cond(context), poisoned_ast);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
-	Ast *stmt = TRY_AST(parse_stmt(context));
-	if_ast->if_stmt.then_body = stmt;
+	// Special case, we might have if ( ) { case ... }
+	if (tok_is(context, TOKEN_LBRACE) && (context->next_tok.type == TOKEN_CASE || context->next_tok.type == TOKEN_DEFAULT))
+	{
+		Ast *stmt = AST_NEW_TOKEN(AST_IF_CATCH_SWITCH_STMT, context->tok);
+		Ast **cases = NULL;
+		if (!parse_switch_body(context, &cases, TOKEN_CASE, TOKEN_DEFAULT, true)) return poisoned_ast;
+		stmt->switch_stmt.cases = cases;
+		if_ast->if_stmt.then_body = stmt;
+	}
+	else
+	{
+		if_ast->if_stmt.then_body = TRY_AST(parse_stmt(context));
+	}
 	if (!try_consume(context, TOKEN_ELSE))
 	{
 		return if_ast;
@@ -635,22 +592,6 @@ static inline Ast *parse_expr_stmt(Context *context)
 }
 
 
-/**
- * try_stmt
- *  : try '(' decl_expr ')' statement
- *  ;
- */
-static inline Ast *parse_try_stmt(Context *context)
-{
-	Ast *stmt = AST_NEW_TOKEN(AST_TRY_STMT, context->tok);
-	advance_and_verify(context, TOKEN_TRY_OLD);
-	TRY_CONSUME(TOKEN_LPAREN, "Expected a '(' after 'try'.");
-	stmt->try_old_stmt.decl_expr = TRY_EXPR_OR(parse_cond(context), poisoned_ast);
-	TRY_CONSUME(TOKEN_RPAREN, "Expected a ')' after 'try'.");
-	stmt->try_old_stmt.body = TRY_AST(parse_stmt(context));
-	return stmt;
-}
-
 
 static inline Ast *parse_decl_or_expr_stmt(Context *context)
 {
@@ -963,8 +904,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
 			return parse_decl_or_expr_stmt(context);
-		case TOKEN_TRY_OLD:
-			return parse_try_stmt(context);
 		case TOKEN_DEFINE:
 			return parse_define_stmt(context);
 		case TOKEN_STATIC:   // Static means declaration!
@@ -991,8 +930,6 @@ Ast *parse_stmt(Context *context)
 			return parse_for_stmt(context);
 		case TOKEN_FOREACH:
 			return parse_foreach_stmt(context);
-		case TOKEN_CATCH_OLD:
-			return parse_catch_stmt(context);
 		case TOKEN_CONTINUE:
 		{
 			Ast *ast = TRY_AST(parse_continue(context));

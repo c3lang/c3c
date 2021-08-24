@@ -1191,11 +1191,6 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 			DUMPEXPR(ast->assert_stmt.expr);
 			DUMPEXPR(ast->assert_stmt.message);
 			DUMPEND();
-		case AST_TRY_STMT:
-			DUMP("(try");
-			DUMPEXPR(ast->try_old_stmt.decl_expr);
-			DUMPAST(ast->try_old_stmt.body);
-			DUMPEND();
 		case AST_COMPOUND_STMT:
 			if (!ast->compound_stmt.stmts)
 			{
@@ -1312,6 +1307,11 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 	    	DUMPEXPR(ast->switch_stmt.cond);
 	    	DUMPASTS(ast->switch_stmt.cases);
             DUMPEND();
+		case AST_IF_CATCH_SWITCH_STMT:
+			DUMP("(if-catch-switch");
+			DUMPEXPR(ast->switch_stmt.cond);
+			DUMPASTS(ast->switch_stmt.cases);
+			DUMPEND();
 		case AST_CASE_STMT:
 			DUMP("(case");
 			if (ast->case_stmt.is_type)
@@ -1334,11 +1334,6 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 		case AST_ASM_STMT:
 			DUMP("(asm");
 			// TODO
-			DUMPEND();
-		case AST_CATCH_STMT:
-			DUMP("(catch");
-			DUMPEXPR(ast->catch_stmt.catchable);
-			DUMPAST(ast->catch_stmt.body);
 			DUMPEND();
 		case AST_CT_IF_STMT:
 			DUMP("(ct-if");

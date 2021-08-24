@@ -139,8 +139,8 @@ after_check17:                                    ; preds = %testblock
 
 end_block:                                        ; preds = %after_check17, %error
   %13 = load i64, i64* %e, align 8
-  %intbool = icmp ne i64 %13, 0
-  br i1 %intbool, label %if.then18, label %if.exit19
+  %neq = icmp ne i64 %13, 0
+  br i1 %neq, label %if.then18, label %if.exit19
 
 if.then18:                                        ; preds = %end_block
   %14 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.2, i32 0, i32 0))

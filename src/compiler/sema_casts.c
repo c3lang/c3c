@@ -769,7 +769,7 @@ bool cast_implicit_bit_width(Expr *expr, Type *to_type)
 bool cast(Expr *expr, Type *to_type)
 {
 	Type *from_type = type_flatten(expr->type->canonical);
-	Type *canonical = type_lowering(to_type);
+	Type *canonical = type_flatten(to_type);
 	if (from_type == canonical)
 	{
 		expr_set_type(expr, to_type);

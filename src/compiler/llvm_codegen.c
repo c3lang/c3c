@@ -777,7 +777,7 @@ void llvm_value_set_bool(BEValue *value, LLVMValueRef llvm_value)
 
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 {
-	type = type_flatten(type);
+	type = type_lowering(type);
 	assert(llvm_value || type == type_void);
 	value->value = llvm_value;
 	value->alignment = type_abi_alignment(type);
@@ -795,7 +795,7 @@ void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type 
 	value->value = llvm_value;
 	value->alignment = alignment;
 	value->kind = BE_ADDRESS;
-	value->type = type_flatten(type);
+	value->type = type_lowering(type);
 }
 void llvm_value_set_decl_address(BEValue *value, Decl *decl)
 {
@@ -812,7 +812,7 @@ void llvm_value_set_decl_address(BEValue *value, Decl *decl)
 
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type)
 {
-	llvm_value_set_address_align(value, llvm_value, type_flatten(type), type_abi_alignment(type));
+	llvm_value_set_address_align(value, llvm_value, type_lowering(type), type_abi_alignment(type));
 }
 
 void llvm_value_fold_failable(GenContext *c, BEValue *value)

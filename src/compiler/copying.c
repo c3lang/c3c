@@ -272,25 +272,6 @@ Ast *copy_ast(Ast *source)
 				MACRO_COPY_EXPR(ast->case_stmt.expr);
 			}
 			return ast;
-		case AST_CATCH_STMT:
-			copy_flow(ast);
-			if (ast->catch_stmt.has_err_var)
-			{
-				MACRO_COPY_DECL(ast->catch_stmt.err_var);
-			}
-			else
-			{
-				MACRO_COPY_EXPR(ast->catch_stmt.catchable);
-			}
-			if (ast->catch_stmt.is_switch)
-			{
-				MACRO_COPY_AST_LIST(ast->catch_stmt.cases);
-			}
-			else
-			{
-				MACRO_COPY_AST(ast->catch_stmt.body);
-			}
-			return ast;
 		case AST_COMPOUND_STMT:
 			MACRO_COPY_AST_LIST(ast->compound_stmt.stmts);
 			return ast;
@@ -377,13 +358,10 @@ Ast *copy_ast(Ast *source)
 			MACRO_COPY_AST(ast->scoped_stmt.stmt);
 			return ast;
 		case AST_SWITCH_STMT:
+		case AST_IF_CATCH_SWITCH_STMT:
 			copy_flow(ast);
 			MACRO_COPY_EXPR(ast->switch_stmt.cond);
 			MACRO_COPY_AST_LIST(ast->switch_stmt.cases);
-			return ast;
-		case AST_TRY_STMT:
-			MACRO_COPY_EXPR(ast->try_old_stmt.decl_expr);
-			MACRO_COPY_AST(ast->try_old_stmt.body);
 			return ast;
 		case AST_UNREACHABLE_STMT:
 			return ast;

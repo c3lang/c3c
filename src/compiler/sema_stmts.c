@@ -1335,7 +1335,7 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 				success = false;
 			}
 		}
-		if (success && statement->if_stmt.then_body->ast_kind != AST_COMPOUND_STMT)
+		if (success && statement->if_stmt.then_body->ast_kind != AST_COMPOUND_STMT && statement->if_stmt.then_body->ast_kind != AST_IF_CATCH_SWITCH_STMT)
 		{
 			SourceLocation *end_of_cond = TOKLOC(cond->span.end_loc);
 			SourceLocation *start_of_then = TOKLOC(statement->if_stmt.then_body->span.loc);
@@ -1387,9 +1387,16 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 
 
 
-static bool sema_analyse_asm_stmt(Context *context __unused, Ast *statement __unused)
+static bool sema_analyse_asm_stmt(Context *context, Ast *stmt)
 {
-	TODO
+	if (!sema_analyse_expr(context, NULL, stmt->asm_stmt.body)) return false;
+	if (stmt->asm_stmt.body->expr_kind != EXPR_CONST
+		|| stmt->asm_stmt.body->const_expr.kind != TYPE_STRLIT)
+	{
+		SEMA_ERROR(stmt->asm_stmt.body, "The asm statement requires a constant string here.");
+		return false;
+	}
+	return true;
 }
 
 static inline Decl *sema_analyse_label(Context *context, Ast *stmt)
@@ -1486,20 +1493,13 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 		}
 		parent = astptr(target->label.parent);
 		AstKind kind = parent->ast_kind;
-		if (kind != AST_SWITCH_STMT && kind != AST_CATCH_STMT)
+		if (kind != AST_SWITCH_STMT)
 		{
 			SEMA_TOKID_ERROR(statement->next_stmt.label.span, "Expected the label to match a 'switch' or 'catch' statement.");
 			return false;
 		}
 		bool defer_mismatch = false;
-		if (parent->ast_kind == AST_SWITCH_STMT)
-		{
-			defer_mismatch = context->active_scope.in_defer != parent->switch_stmt.scope_defer;
-		}
-		else
-		{
-			defer_mismatch = context->active_scope.in_defer != parent->catch_stmt.scope_defer;
-		}
+		defer_mismatch = context->active_scope.in_defer != parent->switch_stmt.scope_defer;
 		if (defer_mismatch)
 		{
 			SEMA_ERROR(statement, "This 'next' would jump out of a defer which is not allowed.");
@@ -1526,22 +1526,14 @@ static bool sema_analyse_next_stmt(Context *context, Ast *statement)
 	{
 		if (!sema_resolve_type_info(context, statement->next_stmt.type_info)) return false;
 		Ast **cases;
-		if (parent->ast_kind == AST_SWITCH_STMT)
+		statement->next_stmt.defers.end = parent->switch_stmt.defer;
+		if (parent->switch_stmt.cond->type->canonical != type_typeid)
 		{
-			statement->next_stmt.defers.end = parent->switch_stmt.defer;
-			if (parent->switch_stmt.cond->type->canonical != type_typeid)
-			{
-				SEMA_ERROR(statement, "Unexpected 'type' in as an 'next' destination.");
-				SEMA_PREV(statement, "The 'switch' here uses expected a type '%s'.", type_to_error_string(parent->switch_stmt.cond->type));
-				return false;
-			}
-			cases = parent->switch_stmt.cases;
+			SEMA_ERROR(statement, "Unexpected 'type' in as an 'next' destination.");
+			SEMA_PREV(statement, "The 'switch' here uses expected a type '%s'.", type_to_error_string(parent->switch_stmt.cond->type));
+			return false;
 		}
-		else
-		{
-			statement->next_stmt.defers.end = parent->catch_stmt.defer;
-			cases = parent->catch_stmt.cases;
-		}
+		cases = parent->switch_stmt.cases;
 
 		Ast *default_stmt = NULL;
 		VECEACH(cases, i)
@@ -1806,13 +1798,13 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 	switch (switch_type_flattened->type_kind)
 	{
 		case TYPE_TYPEID:
-		case TYPE_ANYERR:
 			use_type_id = true;
 			break;
 		case ALL_INTS:
 			assert(switch_type->type_kind != TYPE_IXX);
 		case TYPE_BOOL:
 		case TYPE_ENUM:
+		case TYPE_ANYERR:
 			break;
 		case TYPE_DISTINCT:
 			UNREACHABLE
@@ -1985,21 +1977,31 @@ static bool sema_analyse_ct_switch_stmt(Context *context, Ast *statement)
 static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 {
 	statement->switch_stmt.scope_defer = context->active_scope.in_defer;
+
+
 	SCOPE_START_WITH_LABEL(statement->switch_stmt.flow.label);
+
 		Expr *cond = statement->switch_stmt.cond;
-		if (!sema_analyse_cond(context, cond, false)) return false;
+		Type *switch_type;
 
+		if (statement->ast_kind == AST_SWITCH_STMT)
+		{
+			if (!sema_analyse_cond(context, cond, false)) return false;
+			switch_type = VECLAST(cond->cond_expr)->type->canonical;
+		}
+		else
+		{
+			switch_type = type_anyerr;
+		}
 
-		Type *switch_type = VECLAST(cond->cond_expr)->type->canonical;
 		statement->switch_stmt.defer = context->active_scope.defer_last;
-		if (!sema_analyse_switch_body(context, statement, cond->span,
+		if (!sema_analyse_switch_body(context, statement, cond ? cond->span : statement->span,
 		                              switch_type->canonical,
 		                              statement->switch_stmt.cases))
 		{
 			return SCOPE_POP_ERROR();
 		}
 		context_pop_defers_and_replace_ast(context, statement);
-
 	SCOPE_END;
 
 	if (statement->flow.no_exit && !statement->flow.has_break)
@@ -2009,159 +2011,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 	return true;
 }
 
-/**
- * Handle the catch statement
- * @return true if error checking succeeds.
- */
-static bool sema_analyse_catch_stmt(Context *context, Ast *statement)
-{
-	Expr *catch_expr = statement->catch_stmt.catchable;
-	Decl *error_var = NULL;
-	Expr *error_expr = catch_expr;
-	Decl *unwrapped = NULL;
 
-	statement->catch_stmt.scope_defer = context->active_scope.in_defer;
-	SCOPE_START_WITH_LABEL(statement->catch_stmt.flow.label);
-
-		statement->catch_stmt.defer = context->active_scope.defer_last;
-
-		if (catch_expr->expr_kind == EXPR_BINARY && catch_expr->binary_expr.operator == BINARYOP_ASSIGN)
-		{
-			Expr *left = catch_expr->binary_expr.left;
-			if (left->expr_kind == EXPR_IDENTIFIER)
-			{
-				Decl *ambiguous_decl;
-				Decl *dummy;
-				Decl *error_var_decl = sema_resolve_normal_symbol(context,
-				                                                  left->identifier_expr.identifier,
-				                                                  left->identifier_expr.path, false);
-				if (!error_var_decl)
-				{
-					error_var = decl_new_var(left->span.loc, type_info_new_base(type_anyerr, left->span), VARDECL_LOCAL,
-					                         VISIBLE_LOCAL);
-					error_var->type = type_anyerr;
-					Expr *right = catch_expr->binary_expr.right;
-					error_var->var.init_expr = right;
-					error_expr = right;
-					statement->catch_stmt.has_err_var = true;
-					statement->catch_stmt.err_var = error_var;
-				}
-			}
-		}
-
-		if (!sema_analyse_expr(context, NULL, error_expr)) return SCOPE_POP_ERROR();
-
-		if (error_var)
-		{
-			sema_add_local(context, error_var);
-		}
-
-		if (!error_expr->failable)
-		{
-			const char *error_type = type_to_error_string(error_expr->type);
-			if (error_expr->expr_kind == EXPR_IDENTIFIER
-			    && error_expr->identifier_expr.decl->decl_kind == DECL_VAR
-			    && error_expr->identifier_expr.decl->var.kind == VARDECL_UNWRAPPED)
-			{
-				SEMA_ERROR(error_expr,
-				           "'%s' is unwrapped to '%s' here, so it cannot be caught.",
-				           error_expr->identifier_expr.decl->name,
-				           error_type);
-			}
-			else
-			{
-				SEMA_ERROR(error_expr, "Expected a failable '%s!' not '%s'.", error_type, error_type);
-			}
-			return SCOPE_POP_ERROR();
-		}
-
-		if (catch_expr->expr_kind == EXPR_IDENTIFIER)
-		{
-			unwrapped = catch_expr->identifier_expr.decl;
-		}
-		else if (error_var)
-		{
-			Expr *right = catch_expr->binary_expr.right;
-			if (right->expr_kind == EXPR_IDENTIFIER) unwrapped = right->identifier_expr.decl;
-		}
-
-		if (statement->catch_stmt.is_switch)
-		{
-			if (!sema_analyse_switch_body(context,
-			                              statement,
-			                              error_expr->span,
-			                              type_anyerr,
-			                              statement->catch_stmt.cases))
-			{
-				return SCOPE_POP_ERROR();
-			}
-		}
-		else
-		{
-			if (!sema_analyse_statement(context, statement->catch_stmt.body)) return SCOPE_POP_ERROR();
-			if (context->active_scope.jump_end) statement->flow.no_exit = true;
-		}
-		context_pop_defers_and_replace_ast(context, statement);
-
-	SCOPE_END;
-
-	if (unwrapped && !statement->flow.has_break && statement->flow.no_exit)
-	{
-		Decl *decl = decl_copy(unwrapped);
-		decl->var.kind = VARDECL_UNWRAPPED;
-		decl->var.alias = unwrapped;
-		decl->var.failable = false;
-		sema_unwrap_var(context, decl);
-	}
-	return true;
-}
-
-
-static bool sema_analyse_try_stmt(Context *context, Ast *stmt)
-{
-	assert(stmt->try_old_stmt.decl_expr->expr_kind == EXPR_COND);
-
-	Expr **dexprs = stmt->try_old_stmt.decl_expr->cond_expr;
-	TODO
-	/*TODO
-	SCOPE_START
-		unsigned entries = vec_size(dexprs);
-		for (unsigned i = 0; i < entries; i++)
-		{
-			Ast *ast = dexprs[i];
-			if (ast->ast_kind == AST_DECLARE_STMT)
-			{
-				ast->declare_stmt->var.unwrap = true;
-				if (!sema_analyse_statement(context, ast)) return SCOPE_POP_ERROR();
-				continue;
-			}
-
-			if (!sema_analyse_statement(context, ast)) return SCOPE_POP_ERROR();
-
-			Expr *expr = ast->expr_stmt;
-			if (!expr->failable)
-			{
-				SEMA_ERROR(expr, "The expression to 'try' must be failable.");
-				return SCOPE_POP_ERROR();
-			}
-			if (expr->expr_kind == EXPR_IDENTIFIER)
-			{
-				Decl *var = expr->identifier_expr.decl;
-				Decl *decl = decl_copy(var);
-				decl->var.kind = VARDECL_ALIAS;
-				decl->var.alias = var;
-				decl->var.failable = false;
-				sema_unwrap_var(context, decl);
-			}
-		}
-		if (!sema_analyse_statement(context, stmt->try_old_stmt.body))
-		{
-			return SCOPE_POP_ERROR();
-		}
-	SCOPE_END;
-	 */
-	return true;
-}
 
 static bool sema_analyse_volatile_stmt(Context *context, Ast *statement)
 {
@@ -2285,8 +2135,6 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_CASE_STMT:
 			SEMA_ERROR(statement, "Unexpected 'case' outside of switch");
 			return false;
-		case AST_CATCH_STMT:
-			return sema_analyse_catch_stmt(context, statement);
 		case AST_COMPOUND_STMT:
 			return sema_analyse_compound_stmt(context, statement);
 		case AST_CONTINUE_STMT:
@@ -2314,8 +2162,6 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 			return sema_analyse_foreach_stmt(context, statement);
 		case AST_FOR_STMT:
 			return sema_analyse_for_stmt(context, statement);
-		case AST_TRY_STMT:
-			return sema_analyse_try_stmt(context, statement);
 		case AST_IF_STMT:
 			return sema_analyse_if_stmt(context, statement);
 		case AST_NOP_STMT:
@@ -2323,6 +2169,7 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_RETURN_STMT:
 			return sema_analyse_return_stmt(context, statement);
 		case AST_SWITCH_STMT:
+		case AST_IF_CATCH_SWITCH_STMT:
 			return sema_analyse_switch_stmt(context, statement);
 		case AST_NEXT_STMT:
 			return sema_analyse_next_stmt(context, statement);
