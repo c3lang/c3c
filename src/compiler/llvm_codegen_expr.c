@@ -621,6 +621,10 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			value->value =  LLVMBuildFCmp(c->builder, LLVMRealUNE, value->value, llvm_get_zero(c, from_type), "fpbool");
 			value->kind = BE_BOOLEAN;
 			break;
+		case CAST_BOOLBOOL:
+			value->value = LLVMBuildTrunc(c->builder, value->value, c->bool_type, "boolbool");
+			value->kind = BE_BOOLEAN;
+			break;
 		case CAST_BOOLFP:
 			llvm_value_rvalue(c, value);
 			value->value =  LLVMBuildUIToFP(c->builder, value->value, llvm_get_type(c, to_type), "boolfp");
@@ -690,7 +694,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			value->value = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "");
 			value->type = to_type;
 			return;
-		case CAST_BOOLBOOL:
 		case CAST_SABOOL:
 			TODO
 			break;
@@ -2511,6 +2514,7 @@ void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 	{
 		CastKind cast = cast_to_bool_kind(cond_type);
 		llvm_emit_cast(c, cast, value, type_bool, cond_type);
+		assert(value->kind == BE_BOOLEAN);
 	}
 
 	llvm_emit_cond_br(c, value, phi_block, rhs_block);
@@ -2560,7 +2564,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_block(c, lhs_block);
 	BEValue lhs;
 	llvm_emit_expr(c, &lhs, expr->ternary_expr.then_expr);
-	llvm_value_rvalue(c, &lhs);
+	LLVMValueRef lhs_value = llvm_value_rvalue_store(c, &lhs);
 
 	LLVMBasicBlockRef lhs_exit = llvm_get_current_block_if_in_use(c);
 	if (lhs_exit) llvm_emit_br(c, phi_block);
@@ -2568,7 +2572,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_block(c, rhs_block);
 	BEValue rhs;
 	llvm_emit_expr(c, &rhs, expr->ternary_expr.else_expr);
-	llvm_value_rvalue(c, &rhs);
+	LLVMValueRef rhs_value = llvm_value_rvalue_store(c, &rhs);
 
 	LLVMBasicBlockRef rhs_exit = llvm_get_current_block_if_in_use(c);
 	if (rhs_exit) llvm_emit_br(c, phi_block);
@@ -2577,14 +2581,16 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_block(c, phi_block);
 	if (!rhs_exit)
 	{
-		*value = lhs;
+		llvm_value_set(value, lhs_value, lhs.type);
+		return;
 	}
 	if (!lhs_exit)
 	{
-		*value = rhs;
+		llvm_value_set(value, rhs_value, rhs.type);
+		return;
 	}
 	LLVMValueRef phi = LLVMBuildPhi(c->builder, llvm_get_type(c, expr->type), "val");
-	LLVMValueRef logic_values[2] = { lhs.value, rhs.value };
+	LLVMValueRef logic_values[2] = { lhs_value, rhs_value };
 	LLVMBasicBlockRef blocks[2] = { lhs_exit, rhs_exit };
 	LLVMAddIncoming(phi, logic_values, blocks, 2);
 

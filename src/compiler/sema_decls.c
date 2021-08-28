@@ -397,6 +397,7 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 
 static bool sema_analyse_bitstruct(Context *context, Decl *decl)
 {
+	int overlap = -1;
 	VECEACH(decl->attributes, i)
 	{
 		Attr *attr = decl->attributes[i];
@@ -405,12 +406,11 @@ static bool sema_analyse_bitstruct(Context *context, Decl *decl)
 		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
 
 		bool had = false;
-		int overlap = -1;
 #define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
 		switch (attribute)
 		{
 			case ATTRIBUTE_OVERLAP:
-				had = overlap != -1;
+				had = (overlap != -1);
 				overlap = 1;
 				break;
 			case ATTRIBUTE_OPAQUE:
@@ -1304,7 +1304,6 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 
 	if (!sema_analyse_attributes_for_var(context, decl)) return false;
 
-	// TODO unify with global decl analysis
 	if (is_global)
 	{
 

@@ -1574,7 +1574,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_BITSTRUCT:
 			return NULL;
 		case TYPE_IXX:
-			if (other->type_kind == TYPE_DISTINCT && type_is_numeric(other->decl->distinct_decl.base_type)) return other;
+			if (other->type_kind == TYPE_DISTINCT && type_underlying_is_numeric(other)) return other;
 			FALLTHROUGH;
 		case ALL_SIGNED_INTS:
 		case ALL_UNSIGNED_INTS:
