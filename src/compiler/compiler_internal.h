@@ -2015,6 +2015,7 @@ static inline bool type_is_integer_unsigned(Type *type);
 static inline bool type_is_integer_signed(Type *type);
 static inline bool type_is_integer_kind(Type *type);
 static inline bool type_is_numeric(Type *type);
+static inline bool type_underlying_is_numeric(Type *type);
 static inline bool type_is_pointer(Type *type);
 static inline bool type_is_promotable_float(Type *type);
 static inline bool type_is_promotable_integer(Type *type);
@@ -2259,8 +2260,12 @@ bool type_is_scalar(Type *type);
 
 static inline bool type_is_numeric(Type *type)
 {
-	type = type_flatten(type);
 	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_FXX;
+}
+
+static inline bool type_underlying_is_numeric(Type *type)
+{
+	return type_is_numeric(type_flatten(type));
 }
 
 static inline bool type_kind_is_derived(TypeKind kind)

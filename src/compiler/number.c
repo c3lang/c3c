@@ -4,35 +4,6 @@
 
 #include "compiler_internal.h"
 
-#define CHECK_SI_KIND(_kind) assert(_kind >= TYPE_I8 && _kind <= TYPE_I64)
-#define CHECK_IXX_KIND(_kind) assert(_kind == TYPE_IXX)
-#define CHECK_UI_KIND(_kind) assert(_kind >= TYPE_U8 && _kind <= TYPE_U64)
-#define CHECK_INT_KIND(_kind) assert(_kind >= TYPE_I8 && _kind <= TYPE_U64)
-#define CHECK_CONVERSION(_kind) assert(i->kind != _kind && "Unnecessary conversion")
-#define TYPE_MATCH assert(left->kind == right->kind && left != res && right != res)
-
-static uint64_t type_mask[TYPE_U64 + 1] = {
-		[TYPE_U8] = 0xFF,
-		[TYPE_I8] = 0xFF,
-		[TYPE_U16] = 0xFFFF,
-		[TYPE_I16] = 0xFFFF,
-		[TYPE_U32] = 0xFFFFFFFFU,
-		[TYPE_I32] = 0xFFFFFFFFU,
-		[TYPE_U64] = 0xFFFFFFFFFFFFFFFFLLU,
-		[TYPE_I64] = 0xFFFFFFFFFFFFFFFFLLU,
-};
-
-static int type_bits[TYPE_U64 + 1] = {
-		[TYPE_U8] = 8,
-		[TYPE_I8] = 8,
-		[TYPE_U16] = 16,
-		[TYPE_I16] = 16,
-		[TYPE_U32] = 32,
-		[TYPE_I32] = 32,
-		[TYPE_U64] = 64,
-		[TYPE_I64] = 64,
-};
-
 
 void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
 {
@@ -230,7 +201,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 				const ExprConst *right_const = right;
 				if (right->const_kind == CONST_ENUM)
 				{
-					assert(right->enum_val->enum_constant.expr->expr_kind == EXPR_CONST);
+					assert(right->enum_val->enum_constant.expr->expr_kind = EXPR_CONST);
 					right_const = &right->enum_val->enum_constant.expr->const_expr;
 				}
 				return expr_const_compare(&left_const->const_expr, right_const, op);

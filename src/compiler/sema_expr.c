@@ -891,8 +891,6 @@ static inline bool sema_expand_call_arguments(Context *context, Expr *call, Decl
 	unsigned entries_needed = func_param_count > num_args ? func_param_count : num_args;
 	Expr **actual_args = VECNEW(Expr*, entries_needed);
 	for (unsigned i = 0; i < entries_needed; i++) vec_add(actual_args, NULL);
-	// TODO this should not be needed:
-	memset(actual_args, 0, entries_needed * sizeof(Expr*));
 
 	// 2. Loop through the parameters.
 	bool uses_named_parameters = false;
@@ -2035,84 +2033,6 @@ static bool sema_expr_analyse_typeinfo(Context *context, Expr *expr)
 	return true;
 }
 
-/*
-static inline bool sema_expr_analyse_member_access(Context *context, Expr *expr)
-{
-	Type *type = expr->access_expr.parent->type->decl->member_decl.type_info->type;
-	Type *canonical = type->canonical;
-	const char *sub_element = TOKSTR(expr->access_expr.sub_element);
-	if (sub_element == kw_sizeof)
-	{
-		expr_rewrite_to_int_const(expr, type_usize, type_size(canonical));
-		return true;
-	}
-	if (sub_element == kw_offsetof)
-	{
-		TODO // calculate offset.
-	}
-	// Possibly alignof
-	if (!type_may_have_sub_elements(type))
-	{
-		SEMA_ERROR(expr, "'%s' does not have a member '%s'.", type_to_error_string(type), sub_element);
-		return false;
-	}
-	Decl *decl = canonical->decl;
-
-	switch (decl->decl_kind)
-	{
-		case DECL_ENUM:
-			if (TOKTYPE(expr->access_expr.sub_element) == TOKEN_CONST_IDENT)
-			{
-				if (!sema_expr_analyse_enum_constant(expr, sub_element, decl))
-				{
-					SEMA_ERROR(expr,
-					               "'%s' has no enumeration value '%s'.",
-					               decl->name,
-					               sub_element);
-					return false;
-				}
-				return true;
-			}
-			break;
-		case DECL_ERR:
-		case DECL_UNION:
-		case DECL_STRUCT:
-			break;
-		default:
-			UNREACHABLE
-	}
-
-	VECEACH(decl->methods, i)
-	{
-		Decl *function = decl->methods[i];
-		if (sub_element == function->name)
-		{
-			expr->access_expr.ref = function;
-			expr->type = function->type;
-			return true;
-		}
-	}
-
-	if (decl_is_struct_type(decl))
-	{
-		VECEACH(decl->strukt.members, i)
-		{
-			Decl *member = decl->strukt.members[i];
-			if (sub_element == member->name)
-			{
-				expr->access_expr.ref = member;
-				expr->type = member->member_decl.reference_type;
-				return true;
-			}
-		}
-	}
-	SEMA_ERROR(expr,
-	               "No function or member '%s.%s' found.",
-	               type_to_error_string(type),
-	               sub_element);
-	return false;
-}
-*/
 
 
 static void add_members_to_context(Context *context, Decl *decl)
@@ -3635,7 +3555,7 @@ static bool sema_expr_analyse_common_assign(Context *context, Expr *expr, Expr *
 	}
 
 	// 4. In any case, these ops are only defined on numbers.
-	if (!type_is_numeric(left->type))
+	if (!type_underlying_is_numeric(left->type))
 	{
 		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
@@ -3747,7 +3667,7 @@ static bool sema_expr_analyse_add_sub_assign(Context *context, Expr *expr, Expr 
 	if (!cast_implicit(right, left->type)) return false;
 
 	// 9. We expect a numeric type on both left and right
-	if (!type_is_numeric(left->type))
+	if (!type_underlying_is_numeric(left->type))
 	{
 		SEMA_ERROR(left, "Expected a numeric type here.");
 		return false;
@@ -3779,7 +3699,7 @@ static bool binary_arithmetic_promotion(Context *context, Expr *left, Expr *righ
 {
 
 	Type *max = numeric_arithmetic_promotion(type_find_max_type(left_type, right_type));
-	if (!max || !type_is_numeric(max))
+	if (!max || !type_underlying_is_numeric(max))
 	{
 		if (!error_message)
 		{
@@ -4728,7 +4648,7 @@ static bool sema_expr_analyse_bit_not(Context *context, Type *to, Expr *expr, Ex
 	}
 
 	expr_replace(expr, inner);
-	if (expr->const_expr.const_kind == CONST_BOOL)
+	if (expr->const_expr.const_kind == TYPE_BOOL)
 	{
 		expr->const_expr.b = !expr->const_expr.b;
 		return true;
@@ -4862,7 +4782,7 @@ static inline bool sema_expr_analyse_incdec(Context *context, Expr *expr, Expr *
 
 	Type *type = type_flatten(inner->type);
 
-	if (!type_is_numeric(type) && type->type_kind != TYPE_POINTER)
+	if (!type_underlying_is_numeric(type) && type->type_kind != TYPE_POINTER)
 	{
 		SEMA_ERROR(inner, "Expression must be a number or a pointer.");
 		return false;
@@ -4914,7 +4834,7 @@ static inline bool sema_expr_analyse_binary(Context *context, Type *to, Expr *ex
 		return expr_poison(expr);
 	}
 	// Don't push down bool conversions for example.
-	if (to && !type_is_numeric(to)) to = NULL;
+	if (to && !type_underlying_is_numeric(to)) to = NULL;
 	switch (expr->binary_expr.operator)
 	{
 		case BINARYOP_ASSIGN:
@@ -5915,18 +5835,18 @@ static inline bool sema_expr_analyse_ct_alignof(Context *context, Type *to, Expr
 			}
 			return false;
 		}
-		Decl *decl = type->decl;
+		Decl *member;
 		SCOPE_START
 			add_members_to_context(context, type->decl);
-			decl = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
+			member = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
 		SCOPE_END;
-		if (!decl)
+		if (!member)
 		{
 			SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
 			return false;
 		}
-		type = decl->type;
-		align = type_min_alignment(decl->offset, align);
+		type = member->type;
+		align = type_min_alignment(member->offset, align);
 	}
 
 	expr_rewrite_to_int_const(expr, type_compint, align);
