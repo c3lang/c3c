@@ -39,7 +39,7 @@ func void test7(Func arg)
     usize g = (usize)(arg);
     FuncOther k = (FuncOther)(arg);
     FuncSame l = (FuncSame)(arg);
-    FuncOther ke = arg;                         // #error: Cannot implicitly cast 'Func' (func void(int)) to 'FuncOther' (func bool(char*))
+    FuncOther ke = arg;                         // #error: 'Func' (func void(int)) to 'FuncOther' (func bool(char*))
     FuncSame fe = arg;
     Enum j = (Enum)(arg);                 // #error: Cannot cast 'Func' (func void(int)) to 'Enum'.
 }

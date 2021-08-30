@@ -14,12 +14,12 @@ func void b()
 
 func void c()
 {
-    int x = $sizeof("Baz#"); // #error: A '.' was expected after 'Baz'
+    int x = $sizeof("Baz#"); // #error: The path to an existing member was expected after 'Baz', did you make a mistake?
 }
 
 func void c2()
 {
-    int x = $sizeof("#Baz"); // #error: '#Baz' is not a known identifier, did you misspell it?
+    int x = $sizeof("#Baz"); // #error: '#Baz' is not a valid identifier, did you misspell it?
 }
 
 func void d()
@@ -39,7 +39,7 @@ func void f()
 
 func void g()
 {
-    int x = $sizeof("bar::"); // #error: 'bar::' is not a known identifier, did you misspell it?
+    int x = $sizeof("bar::"); // #error: 'bar::' is not a valid identifier, did you misspell it?
 }
 
 func void k()
@@ -62,10 +62,7 @@ func void n()
     int v = $sizeof("Baz.x1"); // #error: The path to an existing member was expected after
 }
 
-func void o()
-{
-    int v = $sizeof("Baz.x", x); // #error: You cannot combine a string with a member path with a separate path here
-}
+
 
 module bar;
 

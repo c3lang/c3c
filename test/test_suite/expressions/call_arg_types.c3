@@ -8,11 +8,11 @@ func void test1()
     test2(c);
 
     int a = 1;
-    test2(a);           // #error: Cannot implicitly cast 'int' to 'ichar'.
-    test2(100 + a);     // #error: Cannot implicitly cast 'int' to 'ichar'.
+    test2(a);           // #error: 'int' to 'ichar'
+    test2(100 + a);     // #error: 'int' to 'ichar'
 
     const int X = 120;
-    test2(X);           // #error: Cannot implicitly cast 'int' to 'ichar'.
+    test2(X);           // #error: 'int' to 'ichar'
 
     test2(100 + 100);   // #error: '200' is out of range for 'ichar'
 }

@@ -38,14 +38,14 @@ union Foob
 
 short y = $offsetof("Bob.y");
 int z = $offsetof("Bob.y");
-int w = $offsetof(Bob, y);
+int w = $offsetof(Bob.y);
 int x1 = $offsetof("Ex.c[3]");
-int x2 = $offsetof("Ex", y[1]);
+int x2 = $offsetof("Ex.y[1]");
 int x4 = $offsetof("Ar.br[1]");
-int x6 = $offsetof(Ar, "br[1].x");
-int x5 = $offsetof("Ar", "br[1]");
-int x7 = $offsetof("Ar", br[2].x);
-int x8 = $offsetof(Ar, br[2]);
+int x6 = $offsetof(Ar.br[1].x);
+int x5 = $offsetof(Ar.br[1]);
+int x7 = $offsetof("Ar.br[2].x");
+int x8 = $offsetof(Ar.br[2]);
 int z0 = $offsetof("Foob.c");
 int z00 = $offsetof("Foob.c[0]");
 int z01 = $offsetof("Foob.c[1]");

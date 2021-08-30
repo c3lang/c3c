@@ -331,6 +331,8 @@ const char *token_type_to_string(TokenType type)
 			return "$case";
 		case TOKEN_CT_DEFAULT:
 			return "$default";
+		case TOKEN_CT_DEFINED:
+			return "$defined";
 		case TOKEN_CT_FOR:
 			return "$for";
 		case TOKEN_CT_ELSE:

@@ -52,7 +52,7 @@ static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, c
 
 void llvm_debug_scope_push(GenContext *context, LLVMMetadataRef debug_scope)
 {
-	VECADD(context->debug.lexical_block_stack, debug_scope);
+	vec_add(context->debug.lexical_block_stack, debug_scope);
 }
 
 void llvm_debug_scope_pop(GenContext *context)
@@ -385,7 +385,7 @@ static LLVMMetadataRef llvm_debug_array_type(GenContext *c, Type *type)
 	Type *current_type = type;
 	while (current_type->canonical->type_kind == TYPE_ARRAY)
 	{
-		VECADD(ranges, LLVMDIBuilderGetOrCreateSubrange(c->debug.builder, 0, current_type->canonical->array.len));
+		vec_add(ranges, LLVMDIBuilderGetOrCreateSubrange(c->debug.builder, 0, current_type->canonical->array.len));
 		current_type = current_type->canonical->array.base;
 	}
 	if (!current_type->backend_debug_type)
@@ -446,7 +446,7 @@ static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type)
 	REMINDER("Handle Recursive Vector type");
 	while (current_type->canonical->type_kind == TYPE_VECTOR)
 	{
-		VECADD(ranges, LLVMDIBuilderGetOrCreateSubrange(c->debug.builder, 0, current_type->canonical->vector.len));
+		vec_add(ranges, LLVMDIBuilderGetOrCreateSubrange(c->debug.builder, 0, current_type->canonical->vector.len));
 		current_type = current_type->canonical->vector.base;
 	}
 	return LLVMDIBuilderCreateVectorType(
@@ -480,13 +480,11 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 	// Consider special handling of UTF8 arrays.
 	switch (type->type_kind)
 	{
-		case TYPE_POISONED:
 		case TYPE_IXX:
 		case TYPE_FXX:
 		case TYPE_TYPEID:
-		case TYPE_TYPEINFO:
-		case TYPE_INFERRED_ARRAY:
 		case TYPE_STRLIT:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_BOOL:
 			return llvm_debug_simple_type(c, type, DW_ATE_boolean);

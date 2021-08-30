@@ -7,9 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void evprintf(const char *format, va_list list);
-void eprintf(const char *format, ...);
-void error_exit(const char *format, ...) __attribute__((noreturn));
 
 #ifdef NDEBUG
 #define REMINDER(_string, ...) do {} while (0)
@@ -34,6 +31,16 @@ void error_exit(const char *format, ...) __attribute__((noreturn));
 #else
 #define FALLTHROUGH ((void)0)
 #endif
+
+
+#if defined(_MSC_VER)
+#define NORETURN __declspec(noreturn)
+#elif defined(__GNUC__)
+#define NORETURN __attribute__((noreturn))
+#else
+#define NORETURN
+#endif
+
 #define TODO FATAL_ERROR("TODO reached");
 
 #define TEST_ASSERT(_condition, _string, ...) while (!(_condition)) { FATAL_ERROR(_string, ##__VA_ARGS__); }
@@ -44,3 +51,6 @@ void error_exit(const char *format, ...) __attribute__((noreturn));
 
 #define LOG_FUNC DEBUG_LOG("ENTER %s.", __func__);
 
+void evprintf(const char *format, va_list list);
+void eprintf(const char *format, ...);
+NORETURN void error_exit(const char *format, ...) ;

@@ -720,66 +720,56 @@ static Expr *parse_ct_call(Context *context, Expr *left)
 	expr->ct_call_expr.token_type = context->tok.type;
 	advance(context);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
-	Expr *element = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
-	vec_add(expr->ct_call_expr.arguments, element);
-	if (try_consume(context, TOKEN_COMMA))
+	Expr *internal = TRY_EXPR_OR(parse_precedence(context, PREC_FIRST + 1), poisoned_expr);
+	ExprFlatElement *flat_path = NULL;
+	if (context->tok.type == TOKEN_DOT || context->tok.type == TOKEN_LBRACKET)
 	{
-		if (context->tok.type == TOKEN_IDENT || context->tok.type == TOKEN_LBRACKET)
+		while (1)
 		{
-			Expr *idents = EXPR_NEW_TOKEN(EXPR_FLATPATH, context->tok);
-			bool first = true;
-			while (1)
+			ExprFlatElement flat_element;
+			if (try_consume(context, TOKEN_LBRACKET))
 			{
-				ExprFlatElement flat_element;
-				if (try_consume(context, TOKEN_LBRACKET))
+				Expr *int_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+				if (int_expr->expr_kind != EXPR_CONST || int_expr->const_expr.const_kind != CONST_INTEGER)
 				{
-					Expr *int_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
-					if (int_expr->expr_kind != EXPR_CONST || int_expr->const_expr.const_kind != CONST_INTEGER)
-					{
-						SEMA_TOKEN_ERROR(context->tok, "Expected an integer index.");
-						return poisoned_expr;
-					}
-					BigInt *value = &int_expr->const_expr.i;
-					BigInt limit;
-					bigint_init_unsigned(&limit, MAX_ARRAYINDEX);
-					if (bigint_cmp(value, &limit) == CMP_GT)
-					{
-						SEMA_ERROR(int_expr, "Array index out of range.");
-						return poisoned_expr;
-					}
-					if (bigint_cmp_zero(value) == CMP_LT)
-					{
-						SEMA_ERROR(int_expr, "Array index must be zero or greater.");
-						return poisoned_expr;
-					}
-					TRY_CONSUME_OR(TOKEN_RBRACKET, "Expected a ']' after the number.", poisoned_expr);
-					flat_element.array = true;
-					flat_element.index = (ArrayIndex)bigint_as_unsigned(value);
-				}
-				else if (try_consume(context, TOKEN_DOT) || first)
-				{
-					TRY_CONSUME_OR(TOKEN_IDENT, "Expected an identifier here.", poisoned_expr);
-					flat_element.array = false;
-					flat_element.ident = TOKSTR(context->prev_tok);
-				}
-				else
-				{
-					SEMA_TOKEN_ERROR(context->tok, "Expected '.' or '[' here.");
+					SEMA_TOKEN_ERROR(context->tok, "Expected an integer index.");
 					return poisoned_expr;
 				}
-				first = false;
-				vec_add(idents->flatpath_expr, flat_element);
-				if (TOKEN_IS(TOKEN_RPAREN)) break;
+				BigInt *value = &int_expr->const_expr.i;
+				BigInt limit;
+				bigint_init_unsigned(&limit, MAX_ARRAYINDEX);
+				if (bigint_cmp(value, &limit) == CMP_GT)
+				{
+					SEMA_ERROR(int_expr, "Array index out of range.");
+					return poisoned_expr;
+				}
+				if (bigint_cmp_zero(value) == CMP_LT)
+				{
+					SEMA_ERROR(int_expr, "Array index must be zero or greater.");
+					return poisoned_expr;
+				}
+				TRY_CONSUME_OR(TOKEN_RBRACKET, "Expected a ']' after the number.", poisoned_expr);
+				flat_element.array = true;
+				flat_element.index = (ArrayIndex)bigint_as_unsigned(value);
 			}
-			vec_add(expr->ct_call_expr.arguments, idents);
-			RANGE_EXTEND_PREV(expr);
+			else if (try_consume(context, TOKEN_DOT))
+			{
+				TRY_CONSUME_OR(TOKEN_IDENT, "Expected an identifier here.", poisoned_expr);
+				flat_element.array = false;
+				flat_element.ident = TOKSTR(context->prev_tok);
+			}
+			else
+			{
+				SEMA_TOKEN_ERROR(context->tok, "Expected '.' or '[' here.");
+				return poisoned_expr;
+			}
+			vec_add(flat_path, flat_element);
+			if (TOKEN_IS(TOKEN_RPAREN)) break;
 		}
-		else
-		{
-			Expr *idents = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
-			vec_add(expr->ct_call_expr.arguments, idents);
-		}
+		RANGE_EXTEND_PREV(internal);
 	}
+	expr->ct_call_expr.main_var = internal;
+	expr->ct_call_expr.flat_path = flat_path;
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -1419,6 +1409,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 
 		[TOKEN_CT_SIZEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_DEFINED] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },

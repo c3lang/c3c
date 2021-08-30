@@ -318,7 +318,7 @@ static inline bool parse_optional_module_params(Context *context, TokenId **toke
 				SEMA_TOKEN_ERROR(context->tok, "Only generic parameters are allowed here as parameters to the module.");
 				return false;
 		}
-		*tokens = VECADD(*tokens, context->tok.id);
+		vec_add(*tokens, context->tok.id);
 		advance(context);
 		if (!try_consume(context, TOKEN_COMMA))
 		{
@@ -961,7 +961,7 @@ bool parse_attributes(Context *context, Attr ***attributes_ref)
 				return false;
 			}
 		}
-		*attributes_ref = VECADD(*attributes_ref, attr);
+		vec_add(*attributes_ref, attr);
 	}
 	return true;
 }
@@ -1054,7 +1054,7 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 		param->var.init_expr = TRY_EXPR_OR(parse_initializer(context), false);
 	}
 
-	*parameters = VECADD(*parameters, param);
+	vec_add(*parameters, param);
 	RANGE_EXTEND_PREV(param);
 	return true;
 }

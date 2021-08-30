@@ -428,14 +428,14 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 	TypeKind to_kind = to->type_kind;
 	switch (from->type_kind)
 	{
-		case TYPE_INFERRED_ARRAY:
 		case TYPE_POISONED:
+		case TYPE_INFERRED_ARRAY:
 		case TYPE_VOID:
 		case TYPE_TYPEINFO:
 		case TYPE_DISTINCT:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
-			UNREACHABLE
+			return false;
 		case TYPE_TYPEID:
 			// May convert to anything pointer sized or larger, no enums
 			return type_is_pointer_sized_or_more(to);
@@ -454,7 +454,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 			// Allow conversion int/enum -> float/bool/enum int/enum -> pointer is only allowed if the int/enum is pointer sized.
 			if (type_is_integer(to) || type_is_float(to) || to == type_bool || to_kind == TYPE_ENUM) return true;
 			// TODO think about this, maybe we should require a bitcast?
-			if (to_kind == TYPE_POINTER && (from_type == type_compint || type_is_pointer_sized(from_type))) return true;
+			if (to_kind == TYPE_POINTER && (from == type_compint || type_is_pointer_sized(from))) return true;
 			return false;
 		case ALL_FLOATS:
 			// Allow conversion float -> float/int/bool/enum
@@ -478,9 +478,9 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 			}
 			FALLTHROUGH;
 		case TYPE_STRUCT:
-			if (type_is_substruct(from_type))
+			if (type_is_substruct(from))
 			{
-				if (cast_may_explicit(from_type->decl->strukt.members[0]->type, to_type)) return true;
+				if (cast_may_explicit(from->decl->strukt.members[0]->type, to)) return true;
 			}
 			FALLTHROUGH;
 		case TYPE_UNION:
@@ -735,7 +735,14 @@ bool cast_implicit(Expr *expr, Type *to_type)
 	if (expr->type == to_type) return true;
 	if (!cast_may_implicit(expr->original_type, to_type) && !cast_may_implicit(expr->type->canonical, to_type))
 	{
-		SEMA_ERROR(expr, "Cannot implicitly cast %s to %s.", type_quoted_error_string(expr->original_type), type_quoted_error_string(to_type));
+		if (cast_may_explicit(expr->original_type, to_type) || cast_may_implicit(expr->type->canonical, to_type))
+		{
+			SEMA_ERROR(expr, "Implicitly casting %s to %s is not permitted, but you can do an explicit cast using '(<type>)(value)'.", type_quoted_error_string(expr->original_type), type_quoted_error_string(to_type));
+		}
+		else
+		{
+			SEMA_ERROR(expr, "You cannot cast anything %s into %s even with an explicit cast, so this looks like an error.", type_quoted_error_string(expr->original_type), type_quoted_error_string(to_type));
+		}
 		return false;
 	}
 	// Additional checks for compile time values.
@@ -812,14 +819,12 @@ bool cast(Expr *expr, Type *to_type)
 	}
 	switch (from_type->type_kind)
 	{
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_TYPEID:
-		case TYPE_TYPEINFO:
 		case TYPE_DISTINCT:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_BITSTRUCT:
 			UNREACHABLE

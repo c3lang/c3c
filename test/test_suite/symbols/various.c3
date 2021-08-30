@@ -18,7 +18,7 @@ func void test3()
 {
     ichar a = 1;
     int b = 2;
-    ichar c = a + b; // #error: Cannot implicitly cast 'int' to 'ichar'
+    ichar c = a + b; // #error: 'int' to 'ichar'
 }
 
 func void test4()
@@ -54,7 +54,7 @@ define Number = int;
 func void test8()
 {
     Number a = 10;
-    ichar c = a;         // #error: implicitly cast 'Number' (int) to 'ichar'
+    ichar c = a;         // #error: 'Number' (int) to 'ichar'
 }
 
 
@@ -82,19 +82,19 @@ enum Enum : int
 func void test11()
 {
     int a = Enum.A;
-    ichar b = Enum.B;     // #error: Cannot implicitly cast 'Enum' to 'ichar'
+    ichar b = Enum.B;     // #error: 'Enum' to 'ichar'
 }
 
 func void test12()
 {
     float f = 3.14;
-    ichar a = f;         // #error: cast 'float' to 'ichar'
+    ichar a = f;         // #error: 'float' to 'ichar'
 }
 
 func void test13()
 {
     int a = 1;
-    ichar b = a;         // #error: cast 'int' to 'ichar'
+    ichar b = a;         // #error: 'int' to 'ichar'
 }
 
 func void test14()
@@ -107,7 +107,7 @@ func void test15()
 {
     float f = 3.14;
     ichar c = 1;
-    ichar* a = &f;       // #error: cast 'float*' to 'ichar*'
+    ichar* a = &f;       // #error: 'float*' to 'ichar*'
     ichar* b = &c;
 }
 
@@ -117,15 +117,15 @@ func void test16()
     int i = 1;
 
     ichar c = 1 ? 'c' : 'd';
-    ichar d = 1 ? 'c' : i;       // #error: cast 'int' to 'ichar'
-    ichar e = 1 ? i : 0;         // #error: cast 'int' to 'ichar'
-    int g = 1 ? i : f;          // #error: cast 'float' to 'int'
+    ichar d = 1 ? 'c' : i;       // #error: 'int' to 'ichar'
+    ichar e = 1 ? i : 0;         // #error: 'int' to 'ichar'
+    int g = 1 ? i : f;          // #error: 'float' to 'int'
     int a = f ? 1 : 0;
 }
 
 func void test17()
 {
-    int a = "test";             // #error: cast 'string literal' to 'int'
+    int a = "test";             // #error: 'string literal' into 'int'
 }
 
 func void test18()
@@ -157,15 +157,15 @@ func void foo() {}
 
 func void test22()
 {
-    ichar a = foo();             // #error: cast 'void' to 'ichar'
-    short b = foo();            // #error: cast 'void' to 'short'
-    int c = foo();              // #error: cast 'void' to 'int'
-    long d = foo();             // #error: cast 'void' to 'long'
-    char e = foo();             // #error: cast 'void' to 'char'
-    ushort f = foo();           // #error: cast 'void' to 'ushort'
-    uint g = foo();             // #error: cast 'void' to 'uint'
-    ulong h = foo();            // #error: cast 'void' to 'ulong'
-    bool i = foo();             // #error: cast 'void' to 'bool'
+    ichar a = foo();             // #error: 'void' into 'ichar'
+    short b = foo();            // #error: 'void' into 'short'
+    int c = foo();              // #error: 'void' into 'int'
+    long d = foo();             // #error: 'void' into 'long'
+    char e = foo();             // #error: 'void' into 'char'
+    ushort f = foo();           // #error: 'void' into 'ushort'
+    uint g = foo();             // #error: 'void' into 'uint'
+    ulong h = foo();            // #error: 'void' into 'ulong'
+    bool i = foo();             // #error: 'void' into 'bool'
 }
 
 
@@ -175,14 +175,14 @@ func void test23()
 {
     int a = num;
     int b = test::num;
-    char c = test::num;         // #error: cast 'int' to 'char'
+    char c = test::num;         // #error: 'int' to 'char'
 }
 
 int[2][3] b123;
 
 func void test24()
 {
-    int a = b123;  // #error: cast 'int[2][3]' to 'int'
+    int a = b123;  // #error: 'int[2][3]' into 'int'
 }
 
 func void test25()

@@ -400,14 +400,17 @@ static inline void* expand_(void *vec, size_t element_size)
 
 
 #define VECNEW(_type, _capacity) ((_type *)(vec_new_(sizeof(_type), _capacity) + 1))
-#define VECADD(vec_, value_) \
-	({ \
-		typeof(vec_) __temp = (typeof(vec_))expand_((vec_), sizeof(typeof(*(vec_)))); \
-		__temp[vec_size(__temp) - 1] = value_; \
-		(vec_) = __temp; })
-#define vec_add(_vec, value_) do { (_vec) = VECADD((_vec), value_); } while (0)
+#define vec_add(vec_, value_) do { \
+	void *__temp = expand_((vec_), sizeof(*(vec_))); \
+	(vec_) = __temp;           \
+	(vec_)[vec_size(vec_) - 1] = value_; \
+ } while (0)
 
+#if IS_GCC || IS_CLANG
 #define VECLAST(_vec) ({ unsigned _size = vec_size(_vec); _size ? (_vec)[_size - 1] : NULL; })
+#else
+#define VECLAST(_vec) (vec_size(_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)
+#endif
 
 
 static inline bool is_all_upper(const char* string)
@@ -456,6 +459,8 @@ static inline StringSlice strtoslice(const char *data)
 }
 void slicetrim(StringSlice *slice);
 
+#if IS_GCC || IS_CLANG
+
 #define MAX(_a, _b) ({ \
   typeof(_a) __a__ = (_a); \
   typeof(_b) __b__ = (_b); \
@@ -466,6 +471,10 @@ void slicetrim(StringSlice *slice);
   typeof(_b) __b__ = (_b); \
   __a__ < __b__ ? __a__ : __b__; })
 
+#else
+#define MAX(a_, b_) ((a_) > (b_) ? (a_) : (b_))
+#define MIN(a_, b_) ((a_) < (b_) ? (a_) : (b_))
+#endif
 // Windows-specific code
 
 

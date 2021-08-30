@@ -789,14 +789,10 @@ typedef struct
 typedef struct
 {
 	TokenType token_type;
-	union
+	struct
 	{
-		Expr **arguments;
-		struct {
-			Decl *decl;
-			Type *type;
-			ExprFlatElement *flatpath;
-		};
+		Expr *main_var;
+		ExprFlatElement *flat_path;
 	};
 } ExprCtCall;
 
@@ -1271,7 +1267,7 @@ typedef struct Ast_
 		Decl *declare_stmt;             // 8
 		Expr *expr_stmt;                // 8
 		Ast *try_stmt;
-		Decl *define_stmt;              // 8
+		Decl *var_stmt;              // 8
 		Ast *volatile_stmt;             // 8
 		AstReturnStmt return_stmt;      // 16
 		AstWhileStmt while_stmt;        // 24
@@ -1911,7 +1907,7 @@ Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *
 Decl *sema_resolve_method(Context *context, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name);
 Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, bool handle_error);
-Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path);
+Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path, bool report_error);
 
 bool sema_resolve_type(Context *context, Type *type);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);

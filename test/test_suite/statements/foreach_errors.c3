@@ -49,7 +49,7 @@ func void test7()
 
 func void test8()
 {
-    foreach (int a : { z }) foo(); // #error: Cannot implicitly cast 'int[3]' to 'int'
+    foreach (int a : { z }) foo(); // #error: 'int[3]' into 'int'
 }
 
 func void test9()

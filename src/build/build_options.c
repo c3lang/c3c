@@ -163,7 +163,7 @@ void append_file(BuildOptions *build_options)
 		fprintf(stderr, "Max %d files may be specified\n", MAX_FILES);
 		exit(EXIT_FAILURE);
 	}
-	build_options->files = VECADD(build_options->files, current_arg);
+	vec_add(build_options->files, current_arg);
 }
 
 static bool arg_match(const char *candidate)

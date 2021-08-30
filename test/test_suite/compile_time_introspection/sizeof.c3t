@@ -14,10 +14,10 @@ int b = $sizeof("Deep.a.b");
 int c = $sizeof("Deep.a.b.c");
 int d = $sizeof("Deep[][100]");
 int e = $sizeof("Deep[][100]**[100][]*");
-int a2 = $sizeof("Baz", "y");
-int a3 = $sizeof("Baz", y);
-int a4 = $sizeof(Baz, "y");
-int a5 = $sizeof(Baz, y);
+int a2 = $sizeof("Baz.y");
+int a3 = $sizeof(Baz.y);
+int a4 = $sizeof(Baz.y);
+int a5 = $sizeof(Baz.y);
 
 module bar;
 

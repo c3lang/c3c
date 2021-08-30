@@ -603,18 +603,16 @@ static inline Ast *parse_decl_or_expr_stmt(Context *context)
 }
 
 /**
- * define_stmt
- *  : define CT_IDENT '=' const_expr EOS
- *  | define CT_TYPE '=' const_expr EOS
- *  | define CT_IDENT EOS
- *  | define CT_TYPE EOS
+ * var_stmt
+ *  : var CT_IDENT '=' const_expr EOS
+ *  | var CT_TYPE '=' const_expr EOS
  *  ;
  */
-static inline Ast *parse_define_stmt(Context *context)
+static inline Ast *parse_var_stmt(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_DEFINE_STMT, context->tok);
 	TokenId start = context->tok.id;
-	advance_and_verify(context, TOKEN_DEFINE);
+	advance_and_verify(context, TOKEN_VAR);
 	Decl *decl;
 	switch (context->tok.type)
 	{
@@ -639,7 +637,7 @@ static inline Ast *parse_define_stmt(Context *context)
 			return poisoned_ast;
 	}
 	decl->span.loc = start;
-	ast->define_stmt = decl;
+	ast->var_stmt = decl;
 	RANGE_EXTEND_PREV(decl);
 	RANGE_EXTEND_PREV(ast);
 	TRY_CONSUME_EOS();
@@ -885,8 +883,8 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
 			return parse_decl_or_expr_stmt(context);
-		case TOKEN_DEFINE:
-			return parse_define_stmt(context);
+		case TOKEN_VAR:
+			return parse_var_stmt(context);
 		case TOKEN_STATIC:   // Static means declaration!
 		case TOKEN_CONST:   // Const means declaration!
 			return parse_declaration_stmt(context);
@@ -976,6 +974,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_CT_SIZEOF:
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_NAMEOF:
+		case TOKEN_CT_DEFINED:
 		case TOKEN_TRY:
 		case TOKEN_CATCH:
 		case TOKEN_BYTES:
@@ -1034,7 +1033,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_INTERFACE:
 		case TOKEN_UNION:
 		case TOKEN_ATTRIBUTE:
-		case TOKEN_VAR:
+		case TOKEN_DEFINE:
 		case TOKEN_DOCS_START:
 		case TOKEN_DOCS_END:
 		case TOKEN_DOCS_EOL:
@@ -1119,7 +1118,7 @@ Ast* parse_compound_stmt(Context *context)
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
 		Ast *stmt = TRY_AST(parse_stmt(context));
-		ast->compound_stmt.stmts = VECADD(ast->compound_stmt.stmts, stmt);
+		vec_add(ast->compound_stmt.stmts, stmt);
 	}
 	return ast;
 }

@@ -18,7 +18,7 @@ void eprintf(const char *format, ...)
 	va_end(arglist);
 }
 
-void __attribute__((noreturn)) error_exit(const char *format, ...)
+NORETURN void error_exit(const char *format, ...)
 {
 	va_list arglist;
 	va_start(arglist, format);

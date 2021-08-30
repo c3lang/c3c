@@ -393,20 +393,18 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 	type = type_lowering(type);
 	switch (type->type_kind)
 	{
-		case TYPE_POISONED:
 		case TYPE_ENUM:
 		case TYPE_TYPEDEF:
 		case TYPE_FXX:
 		case TYPE_IXX:
 		case TYPE_TYPEID:
 		case TYPE_FUNC:
-		case TYPE_TYPEINFO:
 		case TYPE_DISTINCT:
 		case TYPE_STRLIT:
-		case TYPE_INFERRED_ARRAY:
 		case TYPE_ANYERR:
 		case TYPE_ERRTYPE:
 		case TYPE_BITSTRUCT:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_VOID:
 			*current = CLASS_NO_CLASS;
@@ -590,7 +588,6 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 			ByteSize element_offset = (offset / element_size) * element_size;
 			return x64_get_int_type_at_offset(element, offset - element_offset, source_type, source_offset);
 		}
-		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_FXX:
 		case TYPE_IXX:
@@ -598,13 +595,12 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 		case TYPE_ENUM:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
-		case TYPE_TYPEINFO:
 		case TYPE_DISTINCT:
 		case TYPE_STRLIT:
-		case TYPE_INFERRED_ARRAY:
 		case TYPE_ANYERR:
 		case TYPE_ERRTYPE:
 		case TYPE_BITSTRUCT:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_I128:
 		case TYPE_U128:
