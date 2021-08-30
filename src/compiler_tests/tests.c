@@ -16,7 +16,7 @@ void test_file(void)
 	File file;
 	memset(&file, 0, sizeof(file));
 	file.start_id = 3;
-	VECADD(file.lines, file.start_id);
+	vec_add(file.lines, file.start_id);
 	TEST_ASSERT(source_file_find_position_in_file(&file, 3).line == 1, "Expected first line");
 	TEST_ASSERT(source_file_find_position_in_file(&file, 10).line == 1, "Expected first line");
 	source_file_append_line_end(&file, 9);

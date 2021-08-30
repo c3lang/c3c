@@ -2735,20 +2735,18 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 	REDO:
 	switch (type_lowering(param_type)->type_kind)
 	{
-		case TYPE_POISONED:
 		case TYPE_VOID:
 		case TYPE_IXX:
 		case TYPE_FXX:
 		case TYPE_TYPEID:
 		case TYPE_FUNC:
-		case TYPE_TYPEINFO:
 		case TYPE_DISTINCT:
 		case TYPE_STRLIT:
-		case TYPE_INFERRED_ARRAY:
 		case TYPE_ENUM:
 		case TYPE_ERRTYPE:
 		case TYPE_ANYERR:
 		case TYPE_BITSTRUCT:
+		case CT_TYPES:
 			UNREACHABLE
 			break;
 		case TYPE_BOOL:
@@ -3756,7 +3754,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_PLACEHOLDER:
 		case EXPR_CT_CALL:
 		case EXPR_FLATPATH:
-		case EXPR_TRY_DECL:
 			UNREACHABLE
 		case EXPR_TRY_UNWRAP_CHAIN:
 			llvm_emit_try_unwrap_chain(c, value, expr);

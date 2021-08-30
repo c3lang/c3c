@@ -215,7 +215,6 @@ typedef enum
 	EXPR_TRY_UNWRAP,
 	EXPR_TRY_UNWRAP_CHAIN,
 	EXPR_TRY_ASSIGN,
-	EXPR_TRY_DECL,
 	EXPR_TYPEID,
 	EXPR_TYPEINFO,
 	EXPR_TYPEOF,
@@ -458,6 +457,7 @@ typedef enum
 	TOKEN_CT_ASSERT,        // $assert
 	TOKEN_CT_CASE,          // $case
 	TOKEN_CT_DEFAULT,       // $default
+	TOKEN_CT_DEFINED,       // $defined
 	TOKEN_CT_FOR,           // $for
 	TOKEN_CT_ELIF,          // $elif
 	TOKEN_CT_ELSE,          // $else
@@ -542,6 +542,7 @@ typedef enum
 	TYPE_LAST = TYPE_VIRTUAL_ANY
 } TypeKind;
 
+#define CT_TYPES TYPE_TYPEINFO: case TYPE_INFERRED_ARRAY: case TYPE_POISONED
 #define ALL_INTS TYPE_I8: case TYPE_I16: case TYPE_I32: case TYPE_I64: case TYPE_I128: \
 case TYPE_U8: case TYPE_U16: case TYPE_U32: case TYPE_U64: case TYPE_U128: case TYPE_IXX
 #define ALL_SIGNED_INTS TYPE_I8: case TYPE_I16: case TYPE_I32: case TYPE_I64: case TYPE_I128

@@ -76,14 +76,11 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_NOP:
 		case EXPR_BYTES:
 			return expr;
-		case EXPR_TRY_DECL:
-			MACRO_COPY_DECL(expr->try_decl_expr.decl);
-			return expr;
 		case EXPR_DECL:
 			MACRO_COPY_DECL(expr->decl_expr);
 			return expr;
 		case EXPR_CT_CALL:
-			MACRO_COPY_EXPR_LIST(expr->ct_call_expr.arguments);
+			MACRO_COPY_EXPR(expr->ct_call_expr.main_var);
 			return expr;
 		case EXPR_TRY_UNWRAP:
 			MACRO_COPY_EXPR(expr->try_unwrap_expr.init);
@@ -303,7 +300,7 @@ Ast *copy_ast(Ast *source)
 			MACRO_COPY_AST(ast->case_stmt.body);
 			return ast;
 		case AST_DEFINE_STMT:
-			ast->define_stmt = copy_decl(ast->define_stmt);
+			ast->var_stmt = copy_decl(ast->var_stmt);
 			return ast;
 		case AST_DEFER_STMT:
 			assert(!ast->defer_stmt.prev_defer);

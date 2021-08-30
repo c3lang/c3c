@@ -18,7 +18,7 @@ func void test_other_enum()
             break;
         case B:
             break;
-        case Bar.B: // #error: Cannot implicitly cast 'Bar' to 'Foo'
+        case Bar.B: // #error: 'Bar' to 'Foo'
             break;
     }
 }

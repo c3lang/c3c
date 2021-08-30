@@ -13,7 +13,6 @@ static struct
 	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
 	Type voidstar, typeid, anyerr, typeinfo;
 	Type str, varheader, virtual, virtual_generic;
-
 } t;
 
 Type *type_bool = &t.u1;
@@ -1037,7 +1036,7 @@ static Type *type_create_array(Type *element_type, uint64_t len, bool vector, bo
 	{
 		vec_arr->canonical = type_create_array(element_type, len, vector, true);
 	}
-	VECADD(element_type->type_cache, vec_arr);
+	vec_add(element_type->type_cache, vec_arr);
 	return vec_arr;
 }
 
@@ -1272,9 +1271,7 @@ bool type_is_scalar(Type *type)
 	RETRY:
 	switch (type->type_kind)
 	{
-		case TYPE_POISONED:
-		case TYPE_TYPEINFO:
-		case TYPE_INFERRED_ARRAY:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_FUNC:

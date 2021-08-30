@@ -5327,6 +5327,7 @@ static inline bool sema_analyse_idents_string(Context *context, MiniLexer *lexer
 	while (1)
 	{
 		minilex_skip_whitespace(lexer);
+		if (minilex_match(lexer, '\0')) break;
 		if (minilex_match(lexer, '['))
 		{
 			minilex_skip_whitespace(lexer);
@@ -5336,8 +5337,10 @@ static inline bool sema_analyse_idents_string(Context *context, MiniLexer *lexer
 			if (!minilex_match(lexer, ']')) return false;
 			element.array = true;
 			element.index = (ArrayIndex)value;
+			vec_add(elements, element);
+			continue;
 		}
-		else
+		if (minilex_match(lexer, '.'))
 		{
 			scratch_buffer_clear();
 			while (is_alphanum_(minilex_peek(lexer, 0)))
@@ -5353,27 +5356,24 @@ static inline bool sema_analyse_idents_string(Context *context, MiniLexer *lexer
 			if (!ident || token_type != TOKEN_IDENT) return false;
 			element.array = false;
 			element.ident = ident;
+			vec_add(elements, element);
+			continue;
 		}
-		vec_add(elements, element);
-		minilex_skip_whitespace(lexer);
-		if (minilex_match(lexer, '\0')) break;
-		if (!minilex_match(lexer, '.') && minilex_peek(lexer, 0) != '[') return false;
+		return false;
 	}
 	*elements_ref = elements;
 	return true;
 }
 
-static inline bool sema_analyse_identifier_path_string(Context *context, Expr *expr, Decl **decl_ref, Type **type_ref, ExprFlatElement **idents_ref)
+static inline bool sema_analyse_identifier_path_string(Context *context, SourceSpan span, Expr *expr, Decl **decl_ref, Type **type_ref, ExprFlatElement **idents_ref, bool report_missing)
 {
 	const char *chars = expr->const_expr.string.chars;
 	uint32_t len = expr->const_expr.string.len;
 	if (!len)
 	{
-		SEMA_ERROR(expr, "Expected a name here.");
+		sema_error_range(span, "Expected a name here.");
 		return false;
 	}
-
-	// TODO HANDLE VIRTUAL!
 
 	MiniLexer lexer = { .chars = chars };
 
@@ -5419,6 +5419,7 @@ static inline bool sema_analyse_identifier_path_string(Context *context, Expr *e
 		}
 		lexer.index = start_index;
 		path = path_create_from_string(scratch_buffer_to_string(), global_context.scratch_buffer_len, expr->span);
+		if (!path) return false;
 	}
 	else
 	{
@@ -5431,7 +5432,11 @@ static inline bool sema_analyse_identifier_path_string(Context *context, Expr *e
 	{
 		scratch_buffer_append_char(minilex_next(&lexer));
 	}
-	if (!global_context.scratch_buffer_len) goto FAIL;
+	if (!global_context.scratch_buffer_len)
+	{
+		sema_error_range(span, "'%s' is not a valid identifier, did you misspell it?", chars);
+		return false;
+	}
 	TokenType token_type;
 	const char *symbol = symtab_find(global_context.scratch_buffer,
 	                                 global_context.scratch_buffer_len,
@@ -5439,8 +5444,12 @@ static inline bool sema_analyse_identifier_path_string(Context *context, Expr *e
 	                                 &token_type);
 	if (!symbol)
 	{
-		SEMA_ERROR(expr, "'%s' could not be found, did you misspell it?", chars);
-		return false;
+		if (report_missing)
+		{
+			sema_error_range(span, "'%s' could not be found, did you misspell it?", chars);
+			return false;
+		}
+		return true;
 	}
 	Type *type = NULL;
 	Decl *decl = NULL;
@@ -5450,7 +5459,9 @@ static inline bool sema_analyse_identifier_path_string(Context *context, Expr *e
 	}
 	else
 	{
-		decl = TRY_DECL_OR(sema_resolve_string_symbol(context, symbol, expr->span, path), false);
+		decl = TRY_DECL_OR(sema_resolve_string_symbol(context, symbol, expr->span, path, report_missing), report_missing);
+		if (!decl) return true;
+		if (!sema_analyse_decl(context, decl)) return false;
 		if (decl->decl_kind == DECL_TYPEDEF)
 		{
 			type = decl->typedef_decl.type_info->type;
@@ -5486,7 +5497,7 @@ static inline bool sema_analyse_identifier_path_string(Context *context, Expr *e
 				array_size = array_size * 10 + minilex_next(&lexer) - '0';
 				if (old_array_size > array_size || array_size > MAX_ARRAYINDEX)
 				{
-					SEMA_ERROR(expr, "Array index out of bounds.");
+					sema_error_range(span, "Array index out of bounds.");
 					return false;
 				}
 			}
@@ -5496,31 +5507,23 @@ static inline bool sema_analyse_identifier_path_string(Context *context, Expr *e
 		}
 	}
 
-	minilex_skip_whitespace(&lexer);
-	if (minilex_match(&lexer, '\0')) goto EXIT;
-
-
-	minilex_skip_whitespace(&lexer);
-	if (!minilex_match(&lexer, '.'))
-	{
-		SEMA_ERROR(expr, "A '.' was expected after '%s'.", symbol);
-		return false;
-	}
-
 	if (!sema_analyse_idents_string(context, &lexer, idents_ref))
 	{
-		SEMA_ERROR(expr, "The path to an existing member was expected after '%s', did you make a mistake?", symbol);
-		return false;
+		if (report_missing)
+		{
+			sema_error_range(span, "The path to an existing member was expected after '%s', did you make a mistake?", symbol);
+			return false;
+		}
+		else
+		{
+			return true;
+		}
 	}
 
-EXIT:
 	*decl_ref = decl;
 	*type_ref = type;
 	return true;
 
-FAIL:
-	SEMA_ERROR(expr, "'%s' is not a known identifier, did you misspell it?", chars);
-	return false;
 
 FAIL_PARSE:
 	SEMA_ERROR(expr, "'%s' could not be parsed as an identifier, did you make a mistake?", chars);
@@ -5528,163 +5531,6 @@ FAIL_PARSE:
 
 }
 
-
-static inline bool sema_analyse_ct_call_parameters(Context *context, Expr *expr)
-{
-	if (expr->resolve_status == RESOLVE_DONE) return true;
-
-	Expr **elements = expr->ct_call_expr.arguments;
-	unsigned count = vec_size(elements);
-	if (count > 2)
-	{
-		SEMA_ERROR(elements[2], "The function can only take one or two arguments.");
-		return expr_poison(expr);
-	}
-	Expr *first_expr = elements[0];
-	if (!sema_analyse_expr_value(context, NULL, first_expr)) return false;
-	ExprFlatElement *flatpath = NULL;
-	Expr *second_expr = NULL;
-	if (count == 2)
-	{
-		second_expr = elements[1];
-		if (second_expr->expr_kind != EXPR_FLATPATH)
-		{
-			if (!sema_analyse_expr_value(context, NULL, second_expr)) return false;
-			if (second_expr->expr_kind != EXPR_CONST || second_expr->const_expr.const_kind != CONST_STRING)
-			{
-				SEMA_ERROR(second_expr, "Expected a string here.");
-				return false;
-			}
-			MiniLexer lexer = { .chars = second_expr->const_expr.string.chars };
-			if (!sema_analyse_idents_string(context, &lexer, &flatpath))
-			{
-				SEMA_ERROR(expr, "The path to an existing member was expected, did you make a mistake?");
-				return false;
-			}
-		}
-		else
-		{
-			flatpath = second_expr->flatpath_expr;
-		}
-	}
-	Decl *decl = NULL;
-	Type *type = NULL;
-	if (first_expr->expr_kind == EXPR_CONST && first_expr->const_expr.const_kind == CONST_STRING)
-	{
-		ExprFlatElement *path_elements = NULL;
-		if (!sema_analyse_identifier_path_string(context, first_expr, &decl, &type, &path_elements)) return false;
-		if (path_elements)
-		{
-			if (flatpath)
-			{
-				SEMA_ERROR(elements[1], "You cannot combine a string with a member path with a separate path here.");
-				return false;
-			}
-			flatpath = path_elements;
-		}
-	}
-	else
-	{
-		switch (first_expr->expr_kind)
-		{
-			case EXPR_IDENTIFIER:
-				decl = first_expr->identifier_expr.decl;
-				break;
-			case EXPR_TYPEINFO:
-				type = first_expr->type_expr->type;
-				break;
-			case EXPR_TYPEOF:
-				type = first_expr->typeof_expr->type;
-				break;
-			default:
-				break;
-		}
-	}
-	if (!type && !decl)
-	{
-		SEMA_ERROR(first_expr, "A type or declaration was expected.");
-		return false;
-	}
-	if (!decl && type_is_user_defined(type)) decl = type->decl;
-	if (decl)
-	{
-		if (!sema_analyse_decl(context, decl)) return false;
-		if (decl)
-		{
-			switch (decl->decl_kind)
-			{
-				case DECL_DISTINCT:
-				case DECL_ENUM:
-				case DECL_ERRTYPE:
-				case DECL_FUNC:
-				case DECL_STRUCT:
-				case DECL_TYPEDEF:
-				case DECL_UNION:
-					break;
-				case DECL_VAR:
-					if (decl->type) break;
-					FALLTHROUGH;
-				default:
-					SEMA_ERROR(first_expr, "A type or typed declaration was expected.");
-					return false;
-			}
-		}
-		type = decl->type;
-	}
-	expr->ct_call_expr.flatpath = flatpath;
-	expr->ct_call_expr.decl = decl;
-	expr->ct_call_expr.type = type;
-
-	return true;
-}
-
-static inline bool sema_expr_analyse_ct_sizeof(Context *context, Type *to, Expr *expr)
-{
-	Expr *first = expr->ct_call_expr.arguments[0];
-	if (!sema_analyse_ct_call_parameters(context, expr)) return false;
-	Type *type = expr->ct_call_expr.type->canonical;
-	ExprFlatElement *elements = expr->ct_call_expr.flatpath;
-	VECEACH(elements, i)
-	{
-		ExprFlatElement element = elements[i];
-		type = type_flatten_distinct(type);
-		if (element.array)
-		{
-			if (type->type_kind != TYPE_ARRAY)
-			{
-				SEMA_ERROR(first, "%s is not a fixed size array.", type_quoted_error_string(expr->ct_call_expr.type));
-				return false;
-			}
-			type = type->array.base;
-			continue;
-		}
-		if (!type_is_structlike(type))
-		{
-			if (i == 0)
-			{
-				SEMA_ERROR(first, "%s has no members.", type_quoted_error_string(expr->ct_call_expr.type));
-			}
-			else
-			{
-				SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
-			}
-			return false;
-		}
-		Decl *decl = type->decl;
-		SCOPE_START
-			add_members_to_context(context, type->decl);
-			decl = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
-		SCOPE_END;
-		if (!decl)
-		{
-			SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
-			return false;
-		}
-		type = decl->type;
-	}
-	expr_rewrite_to_int_const(expr, type_compint, type_size(type));
-	return true;
-}
 
 static inline bool decl_is_local(Decl *decl)
 {
@@ -5701,148 +5547,94 @@ static inline bool decl_is_local(Decl *decl)
 		|| kind == VARDECL_MEMBER;
 }
 
-static inline bool sema_expr_analyse_ct_nameof(Context *context, Type *to, Expr *expr)
+
+static bool sema_expr_analyse_type_var_path(Context *context, Expr *expr, ExprFlatElement **elements, Type **type_ref,
+                                            Decl **decl_ref)
 {
-	if (expr->resolve_status == RESOLVE_DONE) return true;
-
-	Expr **elements = expr->ct_call_expr.arguments;
-	unsigned count = vec_size(elements);
-	if (count > 1)
-	{
-		SEMA_ERROR(elements[1], "The function only takes one argument.");
-		return expr_poison(expr);
-	}
-	Expr *first_expr = elements[0];
-	if (!sema_analyse_expr_value(context, NULL, first_expr)) return false;
-
-	TokenType name_type = expr->ct_call_expr.token_type;
-
+	if (!sema_analyse_expr_value(context, NULL, expr)) return false;
+	Expr *current = expr;
 	Decl *decl = NULL;
 	Type *type = NULL;
-	if (first_expr->expr_kind == EXPR_CONST && first_expr->const_expr.const_kind == CONST_STRING)
+RETRY:
+	switch (current->expr_kind)
 	{
-		ExprFlatElement *path_elements = NULL;
-		if (!sema_analyse_identifier_path_string(context, first_expr, &decl, &type, &path_elements)) return false;
-		if (path_elements)
-		{
-			SEMA_ERROR(first_expr, "You cannot take the name of sub elements by string name.");
-			return false;
-		}
-	}
-	else if (first_expr->expr_kind == EXPR_TYPEINFO)
-	{
-		type = first_expr->type_expr->type->canonical;
-	}
-	else
-	{
-		if (first_expr->expr_kind != EXPR_IDENTIFIER)
-		{
-			SEMA_ERROR(first_expr, "Expected an identifier or a string.");
-			return false;
-		}
-		decl = first_expr->identifier_expr.decl;
-	}
-	if (type)
-	{
-		if (!sema_resolve_type(context, type)) return false;
-
-		// TODO type_is_builtin is wrong also this does not cover virtual.
-		if (name_type == TOKEN_CT_EXTNAMEOF)
-		{
-			if (!type_is_user_defined(type))
+		case EXPR_CT_IDENT:
+			current = current->identifier_expr.decl->var.init_expr;
+			goto RETRY;
+		case EXPR_CONST_IDENTIFIER:
+		case EXPR_IDENTIFIER:
+			decl = current->identifier_expr.decl;
+			break;
+		case EXPR_TYPEINFO:
+			type = current->type_expr->type;
+			break;
+		case EXPR_CONST:
+			if (expr->const_expr.const_kind == CONST_STRING)
 			{
-				SEMA_ERROR(first_expr, "Only user defined types have an external name.");
-				return false;
+				if (!sema_analyse_identifier_path_string(context, expr->span, current, &decl, &type, elements, true)) return false;
+				break;
 			}
-			expr_rewrite_to_string(expr, type->decl->extname ?: type->decl->external_name);
-			return true;
-		}
-		if (name_type == TOKEN_CT_NAMEOF || type_is_builtin(type->type_kind))
-		{
-			expr_rewrite_to_string(expr, type->name);
-			return true;
-		}
-		scratch_buffer_clear();
-		scratch_buffer_append(type->decl->module->name->module);
-		scratch_buffer_append("::");
-		scratch_buffer_append(type->name);
-		expr_rewrite_to_string(expr, scratch_buffer_interned());
-		return true;
-	}
-
-	assert(decl);
-
-	if (!sema_analyse_decl(context, decl)) return false;
-
-	if (name_type == TOKEN_CT_EXTNAMEOF)
-	{
-		if (!decl->external_name)
-		{
-			SEMA_ERROR(first_expr, "'%s' does not have an external name.", decl->name);
+			FALLTHROUGH;
+		default:
+			SEMA_ERROR(expr, "A type or a variable was expected here.");
 			return false;
-		}
-		expr_rewrite_to_string(expr, decl->extname ?: decl->external_name);
-		return true;
 	}
-	if (!decl->module || name_type == TOKEN_CT_NAMEOF || decl_is_local(decl))
+	if (decl)
 	{
-		expr_rewrite_to_string(expr, decl->name);
-		return true;
+		if (!sema_analyse_decl(context, decl)) return false;
+		type = decl->type;
 	}
-	scratch_buffer_clear();
-	scratch_buffer_append(decl->module->name->module);
-	scratch_buffer_append("::");
-	scratch_buffer_append(decl->name);
-	expr_rewrite_to_string(expr, scratch_buffer_interned());
+	*decl_ref = decl;
+	*type_ref = type;
 	return true;
 }
 
-
 static inline bool sema_expr_analyse_ct_alignof(Context *context, Type *to, Expr *expr)
 {
-	Expr *first = expr->ct_call_expr.arguments[0];
-	if (!sema_analyse_ct_call_parameters(context, expr)) return false;
-	Type *type = expr->ct_call_expr.type->canonical;
-	ExprFlatElement *elements = expr->ct_call_expr.flatpath;
+	Expr *main_var = expr->ct_call_expr.main_var;
+	Type *type = NULL;
+	Decl *decl = NULL;
+	ExprFlatElement *path = expr->ct_call_expr.flat_path;
 
-	Decl *decl = expr->ct_call_expr.decl;
-	AlignSize align = decl && !decl_is_user_defined_type(decl) ? expr->ct_call_expr.decl->alignment : type_abi_alignment(type);
-	VECEACH(elements, i)
+	if (!sema_expr_analyse_type_var_path(context, main_var, &path, &type, &decl)) return false;
+
+	AlignSize align = decl && !decl_is_user_defined_type(decl) ? decl->alignment : type_abi_alignment(type);
+	VECEACH(path, i)
 	{
-		ExprFlatElement element = elements[i];
-		type = type_flatten_distinct(type);
+		ExprFlatElement element = path[i];
+		Type *actual_type = type_flatten_distinct(type);
 		if (element.array)
 		{
-			if (type->type_kind != TYPE_ARRAY)
+			if (actual_type->type_kind != TYPE_ARRAY)
 			{
-				SEMA_ERROR(first, "%s is not a fixed size array.", type_quoted_error_string(expr->ct_call_expr.type));
+				SEMA_ERROR(expr, "It's possible to index into a non fixed size array.");
 				return false;
 			}
-			type = type->array.base;
+			type = actual_type->array.base;
 			ByteSize size = type_size(type);
 			align = (AlignSize)type_min_alignment(size * element.index, align);
 			continue;
 		}
-		if (!type_is_structlike(type))
+		if (!type_is_structlike(actual_type))
 		{
 			if (i == 0)
 			{
-				SEMA_ERROR(first, "%s has no members.", type_quoted_error_string(expr->ct_call_expr.type));
+				SEMA_ERROR(main_var, "%s has no members.", type_quoted_error_string(type));
 			}
 			else
 			{
-				SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
+				SEMA_ERROR(expr, "There is no such member in %s.", type_quoted_error_string(type));
 			}
 			return false;
 		}
 		Decl *member;
 		SCOPE_START
-			add_members_to_context(context, type->decl);
+			add_members_to_context(context, actual_type->decl);
 			member = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
 		SCOPE_END;
 		if (!member)
 		{
-			SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
+			SEMA_ERROR(expr, "There is no such member in %s.", type_quoted_error_string(type));
 			return false;
 		}
 		type = member->type;
@@ -5854,58 +5646,379 @@ static inline bool sema_expr_analyse_ct_alignof(Context *context, Type *to, Expr
 	return true;
 }
 
-
-static inline bool sema_expr_analyse_ct_offsetof(Context *context, Type *to, Expr *expr)
+static inline bool sema_expr_analyse_ct_sizeof(Context *context, Type *to, Expr *expr)
 {
-	Expr *first = expr->ct_call_expr.arguments[0];
-	if (!sema_analyse_ct_call_parameters(context, expr)) return false;
-	Type *type = expr->ct_call_expr.type->canonical;
-	ExprFlatElement *elements = expr->ct_call_expr.flatpath;
-	if (!vec_size(elements))
+	Expr *main_var = expr->ct_call_expr.main_var;
+	Type *type = NULL;
+	Decl *decl = NULL;
+	ExprFlatElement *path = expr->ct_call_expr.flat_path;
+	if (!sema_expr_analyse_type_var_path(context, main_var, &path, &type, &decl)) return false;
+
+	if (!type) return false;
+
+	VECEACH(path, i)
 	{
-		SEMA_ERROR(first, "Expected a path to get the offset of.");
-		return false;
-	}
-	ByteSize offset = 0;
-	VECEACH(elements, i)
-	{
-		ExprFlatElement element = elements[i];
-		type = type_flatten_distinct(type);
+		ExprFlatElement element = path[i];
+		Type *actual_type = type_flatten_distinct(type);
 		if (element.array)
 		{
-			if (type->type_kind != TYPE_ARRAY)
+			if (actual_type->type_kind != TYPE_ARRAY)
 			{
-				SEMA_ERROR(first, "%s is not a fixed size array.", type_quoted_error_string(expr->ct_call_expr.type));
+				SEMA_ERROR(expr, "It's possible to index into a non fixed size array.");
 				return false;
 			}
-			type = type->array.base;
-			offset += type_size(type) * element.index;
+			type = actual_type->array.base;
 			continue;
 		}
-		if (!type_is_structlike(type))
+		if (!type_is_structlike(actual_type))
 		{
 			if (i == 0)
 			{
-				SEMA_ERROR(first, "%s has no members.", type_quoted_error_string(expr->ct_call_expr.type));
+				SEMA_ERROR(main_var, "%s has no members.", type_quoted_error_string(type));
 			}
 			else
 			{
-				SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
+				SEMA_ERROR(expr, "There is no such member in %s.", type_quoted_error_string(type));
 			}
 			return false;
 		}
-		Decl *decl = type->decl;
+		Decl *member;
 		SCOPE_START
-			add_members_to_context(context, type->decl);
-			decl = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
+			add_members_to_context(context, actual_type->decl);
+			member = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
 		SCOPE_END;
-		if (!decl)
+		if (!member)
 		{
-			SEMA_ERROR(first, "There is no such member in %s.", type_quoted_error_string(expr->ct_call_expr.type));
+			SEMA_ERROR(expr, "There is no such member in %s.", type_quoted_error_string(type));
 			return false;
 		}
-		type = decl->type;
-		offset += decl->offset;
+		type = member->type;
+	}
+
+	expr_rewrite_to_int_const(expr, type_compint, type_size(type));
+	return true;
+}
+
+static inline bool sema_expr_analyse_ct_nameof(Context *context, Type *to, Expr *expr)
+{
+
+	Expr *main_var = expr->ct_call_expr.main_var;
+	Type *type = NULL;
+	Decl *decl = NULL;
+	ExprFlatElement *path = expr->ct_call_expr.flat_path;
+	if (!sema_expr_analyse_type_var_path(context, main_var, &path, &type, &decl)) return false;
+
+	TokenType name_type = expr->ct_call_expr.token_type;
+
+	if (vec_size(path))
+	{
+		SEMA_ERROR(main_var, "You can only take the name of types and variables, not their sub elements.");
+		return false;
+	}
+
+	if (decl)
+	{
+		if (name_type == TOKEN_CT_EXTNAMEOF)
+		{
+			if (!decl->external_name)
+			{
+				SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
+				return false;
+			}
+			expr_rewrite_to_string(expr, decl->extname ?: decl->external_name);
+			return true;
+		}
+		if (!decl->module || name_type == TOKEN_CT_NAMEOF || decl_is_local(decl))
+		{
+			expr_rewrite_to_string(expr, decl->name);
+			return true;
+		}
+		scratch_buffer_clear();
+		scratch_buffer_append(decl->module->name->module);
+		scratch_buffer_append("::");
+		scratch_buffer_append(decl->name);
+		expr_rewrite_to_string(expr, scratch_buffer_interned());
+		return true;
+	}
+
+	assert(type);
+	if (name_type == TOKEN_CT_EXTNAMEOF)
+	{
+		if (!type_is_user_defined(type))
+		{
+			SEMA_ERROR(main_var, "Only user defined types have an external name.");
+			return false;
+		}
+		expr_rewrite_to_string(expr, type->decl->extname ?: type->decl->external_name);
+		return true;
+	}
+
+	// TODO type_is_builtin is wrong also this does not cover virtual.
+	if (name_type == TOKEN_CT_NAMEOF || type_is_builtin(type->type_kind))
+	{
+		expr_rewrite_to_string(expr, type->name);
+		return true;
+	}
+	scratch_buffer_clear();
+	scratch_buffer_append(type->decl->module->name->module);
+	scratch_buffer_append("::");
+	scratch_buffer_append(type->name);
+	expr_rewrite_to_string(expr, scratch_buffer_interned());
+	return true;
+}
+
+static inline bool sema_expr_resolve_maybe_identifier(Context *c, Expr *expr, Decl **decl_ref, Type **type_ref, ExprFlatElement **flatpath)
+{
+	switch (expr->expr_kind)
+	{
+		case EXPR_CONST_IDENTIFIER:
+		case EXPR_IDENTIFIER:
+			*decl_ref = TRY_DECL_OR(sema_resolve_normal_symbol(c, expr->identifier_expr.identifier, expr->identifier_expr.path, false), false);
+			return true;
+		case EXPR_TYPEINFO:
+			if (expr->resolve_status == RESOLVE_DONE)
+			{
+				*type_ref = expr->type_expr->type;
+				return true;
+			}
+			if (expr->type_expr->kind != TYPE_INFO_IDENTIFIER)
+			{
+				SEMA_ERROR(expr, "Expected a plain type name here.");
+				return false;
+			}
+			*decl_ref = TRY_DECL_OR(sema_resolve_normal_symbol(c,
+			                                                   expr->type_expr->unresolved.name_loc,
+			                                                   expr->type_expr->unresolved.path,
+			                                                   false), false);
+			return true;
+		case EXPR_CONST:
+			switch (expr->const_expr.const_kind)
+			{
+				case CONST_STRING:
+					return sema_analyse_identifier_path_string(c, expr->span, expr, decl_ref, type_ref, flatpath, false);
+				case CONST_ERR:
+				case CONST_ENUM:
+					// This should not be possible, they should only be found after analysing access.
+					UNREACHABLE
+				default:
+					SEMA_ERROR(expr, "You can only do $define on identifiers and types.");
+					break;
+			}
+		case EXPR_ACCESS:
+			TODO // This will handle enum and errs
+		default:
+			return false;
+	}
+
+}
+
+static inline Type *sema_expr_check_type_exists(Context *context, TypeInfo *type_info)
+{
+	if (type_info->resolve_status == RESOLVE_DONE)
+	{
+		return type_info->type;
+	}
+	switch (type_info->kind)
+	{
+		case TYPE_INFO_POISON:
+			return poisoned_type;
+		case TYPE_INFO_ARRAY:
+		{
+			// If it's an array, make sure we can resolve the length
+			Expr *len = type_info->array.len;
+			if (!sema_analyse_expr(context, type_usize, len)) return false;
+			if (len->expr_kind != EXPR_CONST || !type_is_any_integer(len->type->canonical))
+			{
+				SEMA_ERROR(len, "Expected a constant integer value here.");
+				return poisoned_type;
+			}
+			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
+			if (!type) return NULL;
+			if (!type_ok(type)) return type;
+			return type_get_array(type, bigint_as_unsigned(&len->const_expr.i));
+		}
+		case TYPE_INFO_IDENTIFIER:
+		{
+			Decl *decl = sema_resolve_normal_symbol(context, type_info->unresolved.name_loc, type_info->unresolved.path, false);
+			if (!decl) return NULL;
+			if (!decl_ok(decl)) return poisoned_type;
+			return decl->type->canonical;
+		}
+			break;
+		case TYPE_INFO_EXPRESSION:
+			if (!sema_resolve_type_info(context, type_info)) return poisoned_type;
+			return type_info->type;
+		case TYPE_INFO_SUBARRAY:
+		{
+			// If it's an array, make sure we can resolve the length
+			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
+			if (!type) return NULL;
+			if (!type_ok(type)) return type;
+			return type_get_subarray(type);
+		}
+		case TYPE_INFO_INC_ARRAY:
+			TODO
+		case TYPE_INFO_INFERRED_ARRAY:
+		{
+			// If it's an array, make sure we can resolve the length
+			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
+			if (!type) return NULL;
+			if (!type_ok(type)) return type;
+			return type_get_inferred_array(type);
+		}
+		case TYPE_INFO_POINTER:
+		{
+			// If it's an array, make sure we can resolve the length
+			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
+			if (!type) return NULL;
+			if (!type_ok(type)) return type;
+			return type_get_ptr(type);
+		}
+	}
+	UNREACHABLE
+}
+static inline bool sema_expr_analyse_ct_defined(Context *context, Expr *expr)
+{
+	if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
+
+	Expr *main_var = expr->ct_call_expr.main_var;
+	Type *type = NULL;
+	Decl *decl = NULL;
+	ExprFlatElement *path = expr->ct_call_expr.flat_path;
+	switch (main_var->expr_kind)
+	{
+		case EXPR_CONST_IDENTIFIER:
+		case EXPR_IDENTIFIER:
+			// 2. An identifier does a lookup
+			decl = sema_resolve_normal_symbol(context, main_var->identifier_expr.identifier, main_var->identifier_expr.path, false);
+			// 2a. If it failed, then error
+			if (!decl_ok(decl)) return false;
+			// 2b. If it's missing, goto not defined
+			if (!decl) goto NOT_DEFINED;
+			type = decl->type;
+			break;
+		case EXPR_TYPEINFO:
+		{
+			type = sema_expr_check_type_exists(context, main_var->type_expr);
+			if (!type) goto NOT_DEFINED;
+			if (!type_ok(type)) return false;
+			break;
+		}
+		default:
+			if (!sema_analyse_expr_value(context, NULL, main_var)) return false;
+			if (main_var->expr_kind == EXPR_TYPEINFO)
+			{
+				type = expr->type_expr->type;
+				break;
+			}
+			if (main_var->expr_kind != EXPR_CONST || main_var->const_expr.const_kind != CONST_STRING)
+			{
+				SEMA_ERROR(main_var, "A constant string containing an identifier or type was expected here.");
+				return false;
+			}
+			if (!sema_analyse_identifier_path_string(context,
+			                                         expr->span,
+			                                         main_var,
+			                                         &decl,
+			                                         &type,
+			                                         &path,
+			                                         true))
+			{
+				return false;
+			}
+			break;
+	}
+
+	VECEACH(path, i)
+	{
+		ExprFlatElement element = path[i];
+		Type *actual_type = type_flatten_distinct(type);
+		if (element.array)
+		{
+			if (actual_type->type_kind != TYPE_ARRAY)
+			{
+				SEMA_ERROR(expr, "It's possible to index into a non fixed size array.");
+				return false;
+			}
+			type = actual_type->array.base;
+			continue;
+		}
+		if (!type_is_structlike(actual_type)) goto NOT_DEFINED;
+		Decl *member;
+		SCOPE_START
+			add_members_to_context(context, actual_type->decl);
+			member = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
+		SCOPE_END;
+		if (!member) goto NOT_DEFINED;
+		type = member->type;
+	}
+
+	expr_set_type(expr, type_bool);
+	expr->expr_kind = EXPR_CONST;
+	expr_const_set_bool(&expr->const_expr, true);
+	return true;
+
+NOT_DEFINED:
+	expr_set_type(expr, type_bool);
+	expr->expr_kind = EXPR_CONST;
+	expr_const_set_bool(&expr->const_expr, false);
+	return true;
+}
+
+
+static inline bool sema_expr_analyse_ct_offsetof(Context *context, Type *to, Expr *expr)
+{
+	Expr *main_var = expr->ct_call_expr.main_var;
+	Type *type = NULL;
+	Decl *decl = NULL;
+	ExprFlatElement *path = expr->ct_call_expr.flat_path;
+	if (!sema_expr_analyse_type_var_path(context, main_var, &path, &type, &decl)) return false;
+	if (!vec_size(path))
+	{
+		SEMA_ERROR(expr, "Expected a path to get the offset of.");
+		return false;
+	}
+
+	ByteSize offset = 0;
+	VECEACH(path, i)
+	{
+		ExprFlatElement element = path[i];
+		Type *actual_type = type_flatten_distinct(type);
+		if (element.array)
+		{
+			if (actual_type->type_kind != TYPE_ARRAY)
+			{
+				SEMA_ERROR(expr, "It's possible to index into a non fixed size array.");
+				return false;
+			}
+			type = actual_type->array.base;
+			offset += type_size(type) * element.index;
+			continue;
+		}
+		if (!type_is_structlike(actual_type))
+		{
+			if (i == 0)
+			{
+				SEMA_ERROR(main_var, "%s has no members.", type_quoted_error_string(type));
+			}
+			else
+			{
+				SEMA_ERROR(expr, "There is no such member in %s.", type_quoted_error_string(type));
+			}
+			return false;
+		}
+		Decl *member;
+		SCOPE_START
+			add_members_to_context(context, actual_type->decl);
+			member = sema_resolve_symbol_in_current_dynamic_scope(context, element.ident);
+		SCOPE_END;
+		if (!member)
+		{
+			SEMA_ERROR(expr, "There is no such member in %s.", type_quoted_error_string(type));
+			return false;
+		}
+		type = member->type;
+		offset += member->offset;
 	}
 
 	expr_rewrite_to_int_const(expr, type_compint, offset);
@@ -5917,6 +6030,8 @@ static inline bool sema_expr_analyse_ct_call(Context *context, Type *to, Expr *e
 {
 	switch (expr->ct_call_expr.token_type)
 	{
+		case TOKEN_CT_DEFINED:
+			return sema_expr_analyse_ct_defined(context, expr);
 		case TOKEN_CT_SIZEOF:
 			return sema_expr_analyse_ct_sizeof(context, to, expr);
 		case TOKEN_CT_ALIGNOF:
@@ -5954,8 +6069,6 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_TRY_UNWRAP:
 		case EXPR_CATCH_UNWRAP:
 			UNREACHABLE
-		case EXPR_TRY_DECL:
-			TODO
 		case EXPR_DECL:
 			return sema_expr_analyse_decl(context, to, expr);
 		case EXPR_CT_CALL:

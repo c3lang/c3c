@@ -638,11 +638,6 @@ void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent)
 			DUMPEXPC(expr);
 			DUMPEXPR(expr->try_unwrap_expr.init);
 			break;
-		case EXPR_TRY_DECL:
-			DUMP("(try-decl");
-			DUMPEXPC(expr);
-			DUMPDECL(expr->try_decl_expr.decl);
-			break;
 		case EXPR_NOP:
 			DUMP("(nop)");
 			return;
@@ -1212,7 +1207,7 @@ static void fprint_ast_recursive(Context *context, FILE *file, Ast *ast, int ind
 			DUMPEND();
 		case AST_DEFINE_STMT:
 			DUMP("(define");
-			DUMPDECL(ast->define_stmt);
+			DUMPDECL(ast->var_stmt);
 			DUMPEND();
 		case AST_DECLARE_STMT:
 			DUMP("(declare");

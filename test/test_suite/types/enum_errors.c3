@@ -12,6 +12,6 @@ func int foo()
 enum State
 {
     A = foo(),      // #error: Expected a constant expression for enum
-    B = "hello",    // #error: Cannot implicitly cast 'string literal' to 'int'
-    C = true,       // #error: Cannot implicitly cast 'bool' to 'int'
+    B = "hello",    // #error: 'string literal' into 'int'
+    C = true,       // #error: 'bool' to 'int'
 }

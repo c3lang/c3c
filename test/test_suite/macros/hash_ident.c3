@@ -14,7 +14,7 @@ func int xx()
 
 func void main()
 {
-    define $x = 0;
+    var $x = 0;
     int x = 0;
     @cofefe(x += 1);
     @cofefe(xx());

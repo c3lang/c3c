@@ -1,15 +1,14 @@
 // TODO string str = "hello";
-//char* str2 = "hello";
-
-//char[] str3 = "hello";
+char* str2 = "hello";
+char[] str3 = "hello";
 
 
 int[2] a1 = { 1, 2 };
 
-int[2] a2 = 30;   // #error: Cannot implicitly cast 'compint' to 'int[2]'
+int[2] a2 = 30;   // #error: 'compint' into 'int[2]'
 // TODO int[2] a3 = a1;
 
-// i8[] a;   // @error{definition of variable with array type needs an explicit size or an initializer}
+ichar[*] a; // #error: Inferred array types can only be used in declarations with initializers
 
 ichar ca = 0;
 ichar cb = 1;

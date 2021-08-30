@@ -531,7 +531,7 @@ void global_context_add_type(Type *type)
 {
 	DEBUG_LOG("Created type %s.", type->name);
 	assert(type_ok(type));
-	VECADD(global_context.type, type);
+	vec_add(global_context.type, type);
 }
 
 Module *global_context_find_module(const char *name)

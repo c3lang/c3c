@@ -307,9 +307,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 	}
 	switch (any_type->type_kind)
 	{
-		case TYPE_POISONED:
-		case TYPE_TYPEINFO:
-		case TYPE_INFERRED_ARRAY:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_TYPEID:
 		case TYPE_ANYERR:

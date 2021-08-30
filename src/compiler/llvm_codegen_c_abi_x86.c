@@ -586,7 +586,6 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 
 	switch (type->type_kind)
 	{
-		case TYPE_POISONED:
 		case TYPE_TYPEDEF:
 		case TYPE_VOID:
 		case TYPE_ENUM:
@@ -595,9 +594,9 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_DISTINCT:
 		case TYPE_FUNC:
 		case TYPE_TYPEID:
-		case TYPE_STRLIT:
-		case TYPE_INFERRED_ARRAY:
 		case TYPE_BITSTRUCT:
+		case TYPE_STRLIT:
+		case CT_TYPES:
 			UNREACHABLE
 		case ALL_FLOATS:
 		case ALL_INTS:
@@ -613,8 +612,6 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_VIRTUAL:
 		case TYPE_ARRAY:
 			return x86_classify_aggregate(call, regs, type);
-		case TYPE_TYPEINFO:
-			UNREACHABLE
 	}
 	UNREACHABLE
 }

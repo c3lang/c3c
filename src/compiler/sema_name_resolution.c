@@ -220,10 +220,14 @@ static Decl *sema_resolve_symbol(Context *context, const char *symbol_str, Sourc
 	if (path)
 	{
 		decl = sema_resolve_path_symbol(context, symbol_str, path, &ambiguous_other_decl, &private_decl, &path_found);
-		if (!decl && !path_found && report_error)
+		if (!decl && !path_found)
 		{
-			SEMA_ERROR(path, "Unknown module '%.*s', did you forget to import it?", path->len, path->module);
-			return poisoned_decl;
+			if (report_error)
+			{
+				SEMA_ERROR(path, "Unknown module '%.*s', did you forget to import it?", path->len, path->module);
+				return poisoned_decl;
+			}
+			return NULL;
 		}
 	}
 	else
@@ -413,9 +417,9 @@ Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, b
 	return sema_resolve_symbol(context, TOKSTR(symbol), source_span_from_token_id(symbol), path, handle_error);
 }
 
-Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path)
+Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path, bool report_error)
 {
-	return sema_resolve_symbol(context, symbol, span, path, true);
+	return sema_resolve_symbol(context, symbol, span, path, report_error);
 }
 
 static inline bool sema_append_local(Context *context, Decl *decl)

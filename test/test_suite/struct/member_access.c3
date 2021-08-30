@@ -71,7 +71,7 @@ struct Aa1
 func void test_conversion_struct()
 {
     Aa1 a1;
-    int aa = a1.bb;    // #error: Cannot implicitly cast 'bb' to 'int'
+    int aa = a1.bb;    // #error: 'bb' into 'int'
 }
 
 struct Struct
