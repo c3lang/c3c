@@ -1203,7 +1203,7 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 	if (!sema_expr_analyse_call_invocation(context, expr, callee)) return false;
 
 	// 2. Builtin? We handle that elsewhere.
-	if (decl->func_decl.is_builtin)
+	if (decl && decl->func_decl.is_builtin)
 	{
 		assert(!struct_var);
 		return sema_expr_analyse_intrinsic_invocation(context, expr, decl, to);
@@ -1227,7 +1227,7 @@ static inline bool sema_expr_analyse_var_call(Context *context, Type *to, Expr *
 	return sema_expr_analyse_func_invocation(context,
 	                                         func_ptr_type->pointer->func.signature,
 	                                         expr,
-	                                         func_ptr_type->decl,
+	                                         NULL,
 	                                         to, NULL);
 
 }
