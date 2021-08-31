@@ -81,8 +81,15 @@ static inline Expr *parse_catch_unwrap(Context *context)
 {
 	advance_and_verify(context, TOKEN_CATCH);
 	Expr *expr = expr_new(EXPR_CATCH_UNWRAP, source_span_from_token_id(context->prev_tok));
-	expr->catch_unwrap_expr.type = parse_next_is_decl(context) ? TRY_TYPE_OR(parse_type(context), poisoned_expr) : NULL;
-	expr->catch_unwrap_expr.variable = TRY_EXPR_OR(parse_for_try_expr(context), poisoned_expr);
+	if (parse_next_is_decl(context))
+	{
+		ASSIGN_TYPE_ELSE(expr->catch_unwrap_expr.type, parse_type(context), poisoned_expr);
+	}
+	else
+	{
+		expr->catch_unwrap_expr.type = NULL;
+	}
+	ASSIGN_EXPR_ELSE(expr->catch_unwrap_expr.variable, parse_for_try_expr(context), poisoned_expr);
 	if (!try_consume(context, TOKEN_EQ))
 	{
 		if (expr->catch_unwrap_expr.type)
@@ -99,14 +106,14 @@ static inline Expr *parse_catch_unwrap(Context *context)
 	{
 		do
 		{
-			Expr *init_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+			ASSIGN_EXPR_ELSE(Expr *init_expr, parse_expr(context), poisoned_expr);
 			vec_add(expr->catch_unwrap_expr.exprs, init_expr);
 		} while (try_consume(context, TOKEN_COMMA));
 		CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	}
 	else
 	{
-		Expr *init_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+		ASSIGN_EXPR_ELSE(Expr *init_expr, parse_expr(context), poisoned_expr);
 		vec_add(expr->catch_unwrap_expr.exprs, init_expr);
 	}
 	RANGE_EXTEND_PREV(expr);
@@ -122,9 +129,9 @@ static inline Expr *parse_try_unwrap(Context *context)
 	advance_and_verify(context, TOKEN_TRY);
 	if (parse_next_is_decl(context))
 	{
-		expr->try_unwrap_expr.type = TRY_TYPE_OR(parse_type(context), poisoned_expr);
+		ASSIGN_TYPE_ELSE(expr->try_unwrap_expr.type, parse_type(context), poisoned_expr);
 	}
-	expr->try_unwrap_expr.variable = TRY_EXPR_OR(parse_for_try_expr(context), poisoned_expr);
+	ASSIGN_EXPR_ELSE(expr->try_unwrap_expr.variable, parse_for_try_expr(context), poisoned_expr);
 	if (expr->try_unwrap_expr.type && expr->try_unwrap_expr.variable->expr_kind != EXPR_IDENTIFIER)
 	{
 		SEMA_ERROR(expr->try_unwrap_expr.variable, "Expected a variable name after the type.");
@@ -132,7 +139,7 @@ static inline Expr *parse_try_unwrap(Context *context)
 	}
 	if (try_consume(context, TOKEN_EQ))
 	{
-		expr->try_unwrap_expr.init = TRY_EXPR_OR(parse_for_try_expr(context), poisoned_expr);
+		ASSIGN_EXPR_ELSE(expr->try_unwrap_expr.init, parse_for_try_expr(context), poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -145,17 +152,17 @@ static inline Expr *parse_try_unwrap(Context *context)
 static inline Expr *parse_try_unwrap_chain(Context *context)
 {
 	Expr **unwraps = NULL;
-	Expr *first_unwrap = TRY_EXPR_OR(parse_try_unwrap(context), poisoned_expr);
+ASSIGN_EXPR_ELSE(Expr *first_unwrap , parse_try_unwrap(context),  poisoned_expr);
 	vec_add(unwraps, first_unwrap);
 	while (try_consume(context, TOKEN_AND))
 	{
 		if (next_is_try_unwrap(context))
 		{
-			Expr *expr = TRY_EXPR_OR(parse_try_unwrap(context), poisoned_expr);
+			ASSIGN_EXPR_ELSE(Expr *expr, parse_try_unwrap(context), poisoned_expr);
 			vec_add(unwraps, expr);
 			continue;
 		}
-		Expr *next_unwrap = TRY_EXPR_OR(parse_for_try_expr(context), poisoned_expr);
+		ASSIGN_EXPR_ELSE(Expr *next_unwrap, parse_for_try_expr(context), poisoned_expr);
 		vec_add(unwraps, next_unwrap);
 	}
 	Expr *try_unwrap_chain = EXPR_NEW_EXPR(EXPR_TRY_UNWRAP_CHAIN, first_unwrap);
@@ -185,7 +192,7 @@ Expr *parse_cond(Context *context)
 	{
 		if (next_is_try_unwrap(context))
 		{
-			Expr *try_unwrap = TRY_EXPR_OR(parse_try_unwrap_chain(context), poisoned_expr);
+			ASSIGN_EXPR_ELSE(Expr *try_unwrap, parse_try_unwrap_chain(context), poisoned_expr);
 			vec_add(decl_expr->cond_expr, try_unwrap);
 			if (tok_is(context, TOKEN_COMMA))
 			{
@@ -196,7 +203,7 @@ Expr *parse_cond(Context *context)
 		}
 		if (next_is_catch_unwrap(context))
 		{
-			Expr *catch_unwrap = TRY_EXPR_OR(parse_catch_unwrap(context), poisoned_expr);
+			ASSIGN_EXPR_ELSE(Expr *catch_unwrap, parse_catch_unwrap(context), poisoned_expr);
 			vec_add(decl_expr->cond_expr, catch_unwrap);
 			if (tok_is(context, TOKEN_COMMA))
 			{
@@ -207,14 +214,14 @@ Expr *parse_cond(Context *context)
 		}
 		if (parse_next_is_decl(context))
 		{
-			Decl *decl = TRY_DECL_OR(parse_decl(context), poisoned_expr);
+			ASSIGN_DECL_ELSE(Decl *decl, parse_decl(context), poisoned_expr);
 			Expr *expr = expr_new(EXPR_DECL, decl->span);
 			expr->decl_expr = decl;
 			vec_add(decl_expr->cond_expr, expr);
 		}
 		else
 		{
-			Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+			ASSIGN_EXPR_ELSE(Expr *expr, parse_expr(context), poisoned_expr);
 			vec_add(decl_expr->cond_expr, expr);
 		}
 		if (!try_consume(context, TOKEN_COMMA)) break;
@@ -251,11 +258,12 @@ static bool parse_param_path(Context *context, DesignatorElement ***path)
 			DesignatorElement *element = CALLOCS(DesignatorElement);
 			element->kind = DESIGNATOR_ARRAY;
 			advance_and_verify(context, TOKEN_LBRACKET);
-			element->index_expr = TRY_EXPR_OR(parse_expr(context), false);
+			ASSIGN_EXPR_ELSE(element->index_expr, parse_expr(context), false);
+
 			// Possible range
 			if (try_consume(context, TOKEN_DOTDOT))
 			{
-				element->index_end_expr = TRY_EXPR_OR(parse_expr(context), false);
+				ASSIGN_EXPR_ELSE(element->index_end_expr, parse_expr(context), false);
 				element->kind = DESIGNATOR_RANGE;
 			}
 			CONSUME_OR(TOKEN_RBRACKET, false);
@@ -303,7 +311,7 @@ bool parse_arg_list(Context *context, Expr ***result, TokenType param_end, bool 
 			CONSUME_OR(TOKEN_EQ, false);
 
 			// Now parse the rest
-			expr->designator_expr.value = TRY_EXPR_OR(parse_expr_or_initializer_list(context), false);
+			ASSIGN_EXPR_ELSE(expr->designator_expr.value, parse_expr_or_initializer_list(context), false);
 		}
 		else
 		{
@@ -311,7 +319,7 @@ bool parse_arg_list(Context *context, Expr ***result, TokenType param_end, bool 
 			{
 				*unsplat = try_consume(context, TOKEN_ELLIPSIS);
 			}
-			expr = TRY_EXPR_OR(parse_expr_or_initializer_list(context), false);
+			ASSIGN_EXPR_ELSE(expr, parse_expr_or_initializer_list(context), false);
 		}
 		vec_add(*result, expr);
 		if (!try_consume(context, TOKEN_COMMA))
@@ -335,7 +343,7 @@ static Expr *parse_macro_expansion(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *macro_expression = EXPR_NEW_TOKEN(EXPR_MACRO_EXPANSION, context->tok);
 	advance_and_verify(context, TOKEN_AT);
-	Expr *inner = TRY_EXPR_OR(parse_precedence(context, PREC_MACRO), poisoned_expr);
+	ASSIGN_EXPR_ELSE(Expr *inner, parse_precedence(context, PREC_MACRO), poisoned_expr);
 	macro_expression->macro_expansion_expr.inner = inner;
 	assert(inner);
 	RANGE_EXTEND_PREV(macro_expression);
@@ -356,7 +364,7 @@ Expr *parse_expression_list(Context *context)
 	while (1)
 	{
 		Expr *expr = NULL;
-		expr = TRY_EXPR_OR(parse_expr_or_initializer_list(context), poisoned_expr);
+		ASSIGN_EXPR_ELSE(expr, parse_expr_or_initializer_list(context), poisoned_expr);
 		vec_add(expr_list->expression_list, expr);
 		if (!try_consume(context, TOKEN_COMMA)) break;
 	}
@@ -377,7 +385,7 @@ static Expr *parse_typeof_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO, context->tok);
-	TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_expr);
+	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_type(context), poisoned_expr);
 	expr->span = type->span;
 	expr->type_expr = type;
 	return expr;
@@ -432,12 +440,12 @@ static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 	else
 	{
 		advance_and_verify(context, TOKEN_QUESTION);
-		Expr *true_expr = TRY_EXPR_OR(parse_precedence(context, PREC_TERNARY + 1), poisoned_expr);
+		ASSIGN_EXPR_ELSE(Expr *true_expr, parse_precedence(context, PREC_TERNARY + 1), poisoned_expr);
 		expr_ternary->ternary_expr.then_expr = true_expr;
 		CONSUME_OR(TOKEN_COLON, poisoned_expr);
 	}
 
-	Expr *false_expr = TRY_EXPR_OR(parse_precedence(context, PREC_TERNARY + 1), poisoned_expr);
+	ASSIGN_EXPR_ELSE(Expr *false_expr, parse_precedence(context, PREC_TERNARY + 1), poisoned_expr);
 	expr_ternary->ternary_expr.else_expr = false_expr;
 	RANGE_EXTEND_PREV(expr_ternary);
 	return expr_ternary;
@@ -453,7 +461,7 @@ static Expr *parse_grouping_expr(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_GROUP, context->tok);
 	advance_and_verify(context, TOKEN_LPAREN);
-	expr->group_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	ASSIGN_EXPR_ELSE(expr->group_expr, parse_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	if (expr->group_expr->expr_kind == EXPR_TYPEINFO && try_consume(context, TOKEN_LPAREN))
 	{
@@ -463,7 +471,7 @@ static Expr *parse_grouping_expr(Context *context, Expr *left)
 			SEMA_TOKEN_ERROR(context->tok, "Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
 			return poisoned_expr;
 		}
-		Expr *cast_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+		ASSIGN_EXPR_ELSE(Expr *cast_expr, parse_expr(context), poisoned_expr);
 		CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 		expr->expr_kind = EXPR_CAST;
 		expr->cast_expr.type_info = info;
@@ -551,18 +559,18 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	Expr *right_side;
 	if (TOKEN_IS(TOKEN_LBRACE) && operator_type == TOKEN_EQ)
 	{
-		right_side = TRY_EXPR_OR(parse_initializer_list(context), poisoned_expr);
+		ASSIGN_EXPR_ELSE(right_side, parse_initializer_list(context), poisoned_expr);
 	}
 	else
 	{
 		// Assignment operators have precedence right -> left.
 		if (rules[operator_type].precedence == PREC_ASSIGNMENT)
 		{
-			right_side = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
+			ASSIGN_EXPR_ELSE(right_side, parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
 		}
 		else
 		{
-			right_side = TRY_EXPR_OR(parse_precedence(context, rules[operator_type].precedence + 1), poisoned_expr);
+			ASSIGN_EXPR_ELSE(right_side, parse_precedence(context, rules[operator_type].precedence + 1), poisoned_expr);
 		}
 	}
 
@@ -611,7 +619,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	}
 	if (TOKEN_IS(TOKEN_LBRACE))
 	{
-		call->call_expr.body = TRY_AST_OR(parse_compound_stmt(context), poisoned_expr);
+		ASSIGN_AST_ELSE(call->call_expr.body, parse_compound_stmt(context), poisoned_expr);
 	}
 	if (!parse_attributes(context, &call->call_expr.attributes)) return false;
 	return call;
@@ -636,7 +644,7 @@ static Expr *parse_subscript_expr(Context *context, Expr *left)
 	{
 		// Might be ^ prefix
 		from_back = try_consume(context, TOKEN_BIT_XOR);
-		index = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+		ASSIGN_EXPR_ELSE(index, parse_expr(context), poisoned_expr);
 	}
 	else
 	{
@@ -652,7 +660,7 @@ static Expr *parse_subscript_expr(Context *context, Expr *left)
 		if (!TOKEN_IS(TOKEN_RBRACKET))
 		{
 			end_from_back = try_consume(context, TOKEN_BIT_XOR);
-			end = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+			ASSIGN_EXPR_ELSE(end, parse_expr(context), poisoned_expr);
 		}
 	}
 	CONSUME_OR(TOKEN_RBRACKET, poisoned_expr);
@@ -683,7 +691,7 @@ static Expr *parse_access_expr(Context *context, Expr *left)
 	advance_and_verify(context, TOKEN_DOT);
 	Expr *access_expr = EXPR_NEW_EXPR(EXPR_ACCESS, left);
 	access_expr->access_expr.parent = left;
-	access_expr->access_expr.child = TRY_EXPR_OR(parse_precedence(context, PREC_CALL + 1), poisoned_expr);
+	ASSIGN_EXPR_ELSE(access_expr->access_expr.child, parse_precedence(context, PREC_CALL + 1), poisoned_expr);
 	RANGE_EXTEND_PREV(access_expr);
 	return access_expr;
 }
@@ -720,7 +728,7 @@ static Expr *parse_ct_call(Context *context, Expr *left)
 	expr->ct_call_expr.token_type = context->tok.type;
 	advance(context);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
-	Expr *internal = TRY_EXPR_OR(parse_precedence(context, PREC_FIRST + 1), poisoned_expr);
+	ASSIGN_EXPR_ELSE(Expr *internal, parse_precedence(context, PREC_FIRST + 1), poisoned_expr);
 	ExprFlatElement *flat_path = NULL;
 	if (context->tok.type == TOKEN_DOT || context->tok.type == TOKEN_LBRACKET)
 	{
@@ -729,7 +737,7 @@ static Expr *parse_ct_call(Context *context, Expr *left)
 			ExprFlatElement flat_element;
 			if (try_consume(context, TOKEN_LBRACKET))
 			{
-				Expr *int_expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+				ASSIGN_EXPR_ELSE(Expr *int_expr, parse_expr(context), poisoned_expr);
 				if (int_expr->expr_kind != EXPR_CONST || int_expr->const_expr.const_kind != CONST_INTEGER)
 				{
 					SEMA_TOKEN_ERROR(context->tok, "Expected an integer index.");
@@ -829,7 +837,7 @@ static Expr *parse_try_expr(Context *context, Expr *left)
 			return poisoned_expr;
 		}
 	}
-	try_expr->try_expr.expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	ASSIGN_EXPR_ELSE(try_expr->try_expr.expr, parse_expr(context), poisoned_expr);
 	try_expr->try_expr.is_try = is_try;
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(try_expr);
@@ -857,7 +865,7 @@ static Expr *parse_else_expr(Context *context, Expr *left)
 		case TOKEN_CONTINUE:
 		case TOKEN_NEXTCASE:
 		{
-			Ast *ast = TRY_AST_OR(parse_jump_stmt_no_eos(context), poisoned_expr);
+			ASSIGN_AST_ELSE(Ast *ast, parse_jump_stmt_no_eos(context), poisoned_expr);
 			else_expr->else_expr.is_jump = true;
 			else_expr->else_expr.else_stmt = ast;
 			if (!TOKEN_IS(TOKEN_EOS))
@@ -868,8 +876,10 @@ static Expr *parse_else_expr(Context *context, Expr *left)
 			break;
 		}
 		default:
-			else_expr->else_expr.else_expr = TRY_EXPR_OR(parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
+		{
+			ASSIGN_EXPR_ELSE(else_expr->else_expr.else_expr, parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
 			break;
+		}
 	}
 	return else_expr;
 }
@@ -878,7 +888,7 @@ static Expr *parse_placeholder(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	advance_and_verify(context, TOKEN_PLACEHOLDER);
-	Expr *expr = TRY_EXPR_OR(parse_expr(context), poisoned_expr);
+	ASSIGN_EXPR_ELSE(Expr *expr, parse_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RBRACE, poisoned_expr);
 
 	if (expr->expr_kind != EXPR_IDENTIFIER && TOKTYPE(expr->identifier_expr.identifier) != TOKEN_CONST_IDENT)
@@ -1256,7 +1266,7 @@ Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *ty
 	advance_and_verify(context, TOKEN_LPAREN);
 	Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type_info->span);
 	expr->expr_compound_literal.type_info = type_info;
-	expr->expr_compound_literal.initializer = TRY_EXPR_OR(parse_initializer_list(context), poisoned_expr);
+	ASSIGN_EXPR_ELSE(expr->expr_compound_literal.initializer, parse_initializer_list(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -1280,11 +1290,11 @@ Expr *parse_type_expression_with_path(Context *context, Path *path)
 		type->unresolved.name_loc = context->tok.id;
 		advance_and_verify(context, TOKEN_TYPE_IDENT);
 		RANGE_EXTEND_PREV(type);
-		type = TRY_TYPE_OR(parse_type_with_base(context, type), poisoned_expr);
+		ASSIGN_TYPE_ELSE(type, parse_type_with_base(context, type), poisoned_expr);
 	}
 	else
 	{
-		type = TRY_TYPE_OR(parse_type(context), poisoned_expr);
+		ASSIGN_TYPE_ELSE(type, parse_type(context), poisoned_expr);
 	}
 	if (!type->virtual_type && TOKEN_IS(TOKEN_LPAREN) && context->next_tok.type == TOKEN_LBRACE)
 	{

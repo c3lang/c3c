@@ -139,7 +139,7 @@ static inline Decl *parse_ct_if_top_level(Context *context)
 {
 	Decl *ct = DECL_NEW(DECL_CT_IF, VISIBLE_LOCAL);
 	advance_and_verify(context, TOKEN_CT_IF);
-	ct->ct_if_decl.expr = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_decl);
+	ASSIGN_EXPR_ELSE(ct->ct_if_decl.expr, parse_const_paren_expr(context), poisoned_decl);
 
 	if (!parse_top_level_block(context, &ct->ct_if_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
 
@@ -148,7 +148,8 @@ static inline Decl *parse_ct_if_top_level(Context *context)
 	{
 		advance_and_verify(context, TOKEN_CT_ELIF);
 		Decl *ct_elif = DECL_NEW(DECL_CT_ELIF, VISIBLE_LOCAL);
-		ct_elif->ct_elif_decl.expr = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_decl);
+		ASSIGN_EXPR_ELSE(ct_elif->ct_elif_decl.expr, parse_const_paren_expr(context), poisoned_decl);
+
 		if (!parse_top_level_block(context, &ct_elif->ct_elif_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
 		ct_if_decl->elif = ct_elif;
 		ct_if_decl = &ct_elif->ct_elif_decl;
@@ -183,7 +184,7 @@ static inline Decl *parse_ct_case(Context *context)
 		case TOKEN_CT_CASE:
 			decl = DECL_NEW(DECL_CT_CASE, VISIBLE_LOCAL);
 			advance(context);
-			decl->ct_case_decl.type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+			ASSIGN_TYPE_ELSE(decl->ct_case_decl.type, parse_type(context), poisoned_decl);
 			break;
 		default:
 			SEMA_TOKEN_ERROR(context->tok, "Expected a $case or $default statement here.");
@@ -194,7 +195,7 @@ static inline Decl *parse_ct_case(Context *context)
 	{
 		TokenType type = context->tok.type;
 		if (type == TOKEN_CT_DEFAULT || type == TOKEN_CT_CASE || type == TOKEN_LBRACE) break;
-		Decl *stmt = TRY_DECL_OR(parse_top_level_statement(context), poisoned_decl);
+		ASSIGN_DECL_ELSE(Decl *stmt, parse_top_level_statement(context), poisoned_decl);
 		vec_add(decl->ct_case_decl.body, stmt);
 	}
 	return decl;
@@ -209,12 +210,12 @@ static inline Decl *parse_ct_switch_top_level(Context *context)
 {
 	Decl *ct = DECL_NEW(DECL_CT_SWITCH, VISIBLE_LOCAL);
 	advance_and_verify(context, TOKEN_CT_SWITCH);
-	ct->ct_switch_decl.expr = TRY_EXPR_OR(parse_const_paren_expr(context), poisoned_decl);
+	ASSIGN_EXPR_ELSE(ct->ct_switch_decl.expr, parse_const_paren_expr(context), poisoned_decl);
 
 	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
-		Decl *result = TRY_DECL_OR(parse_ct_case(context), poisoned_decl);
+		ASSIGN_DECL_ELSE(Decl *result, parse_ct_case(context), poisoned_decl);
 		vec_add(ct->ct_switch_decl.cases, result);
 	}
 	return ct;
@@ -545,7 +546,7 @@ static inline TypeInfo *parse_base_type(Context *context)
 	{
 		TypeInfo *type_info = type_info_new(TYPE_INFO_EXPRESSION, source_span_from_token_id(context->prev_tok));
 		CONSUME_OR(TOKEN_LPAREN, poisoned_type_info);
-		type_info->unresolved_type_expr = TRY_EXPR_OR(parse_expr(context), poisoned_type_info);
+		ASSIGN_EXPR_ELSE(type_info->unresolved_type_expr, parse_expr(context), poisoned_type_info);
 		CONSUME_OR(TOKEN_RPAREN, poisoned_type_info);
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
@@ -656,7 +657,7 @@ static inline TypeInfo *parse_array_type_index(Context *context, TypeInfo *type)
 	}
 	TypeInfo *array = type_info_new(TYPE_INFO_ARRAY, type->span);
 	array->array.base = type;
-	array->array.len = TRY_EXPR_OR(parse_expr(context), poisoned_type_info);
+	ASSIGN_EXPR_ELSE(array->array.len, parse_expr(context), poisoned_type_info);
 	CONSUME_OR(TOKEN_RBRACKET, poisoned_type_info);
 	RANGE_EXTEND_PREV(array);
 	return array;
@@ -708,7 +709,7 @@ TypeInfo *parse_type_with_base(Context *context, TypeInfo *type_info)
  */
 TypeInfo *parse_type(Context *context)
 {
-	TypeInfo *base = TRY_TYPE_OR(parse_base_type(context), poisoned_type_info);
+	ASSIGN_TYPE_ELSE(TypeInfo *base, parse_base_type(context), poisoned_type_info);
 	return parse_type_with_base(context, base);
 }
 
@@ -744,7 +745,7 @@ Decl *parse_decl_after_type(Context *context, TypeInfo *type)
 			return poisoned_decl;
 		}
 		advance_and_verify(context, TOKEN_EQ);
-		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
+		ASSIGN_EXPR_ELSE(decl->var.init_expr, parse_initializer(context), poisoned_decl);
 	}
 	return decl;
 }
@@ -764,11 +765,11 @@ Decl *parse_decl(Context *context)
 
 	bool is_static = try_consume(context, TOKEN_STATIC);
 
-	TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_type(context), poisoned_decl);
 
 	bool failable = try_consume(context, TOKEN_BANG);
 
-	Decl *decl = TRY_DECL_OR(parse_decl_after_type(context, type), poisoned_decl);
+	ASSIGN_DECL_ELSE(Decl *decl, parse_decl_after_type(context, type), poisoned_decl);
 	if (failable && decl->var.unwrap)
 	{
 		SEMA_ERROR(decl, "You cannot use unwrap with a failable variable.");
@@ -795,7 +796,7 @@ static Decl *parse_const_declaration(Context *context, Visibility visibility)
 
 	if (parse_next_is_decl(context))
 	{
-		decl->var.type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+		ASSIGN_TYPE_ELSE(decl->var.type_info, parse_type(context), poisoned_decl);
 	}
 	decl->name = TOKSTR(context->tok);
 	decl->name_token = context->tok.id;
@@ -803,7 +804,7 @@ static Decl *parse_const_declaration(Context *context, Visibility visibility)
 
 	CONSUME_OR(TOKEN_EQ, poisoned_decl);
 
-	decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
+	ASSIGN_EXPR_ELSE(decl->var.init_expr, parse_initializer(context), poisoned_decl);
 
 	return decl;
 }
@@ -855,7 +856,7 @@ static inline Decl *parse_incremental_array(Context *context)
 		return poisoned_decl;
 	}
 	Decl *decl = decl_new(DECL_ARRAY_VALUE, name.id, VISIBLE_LOCAL);
-	decl->incr_array_decl = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
+	ASSIGN_EXPR_ELSE(decl->incr_array_decl, parse_initializer(context), poisoned_decl);
 	TRY_CONSUME_EOS_OR(poisoned_decl);
 	return decl;
 }
@@ -949,7 +950,7 @@ bool parse_attributes(Context *context, Attr ***attributes_ref)
 
 		if (TOKEN_IS(TOKEN_LPAREN))
 		{
-			attr->expr = TRY_EXPR_OR(parse_const_paren_expr(context), false);
+			ASSIGN_EXPR_ELSE(attr->expr, parse_const_paren_expr(context), false);
 		}
 		const char *name = TOKSTR(attr->name);
 		VECEACH(*attributes_ref, i)
@@ -979,7 +980,7 @@ bool parse_attributes(Context *context, Attr ***attributes_ref)
  */
 static inline Decl *parse_global_declaration(Context *context, Visibility visibility)
 {
-	TypeInfo *type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_type(context), poisoned_decl);
 
 	bool failable = try_consume(context, TOKEN_BANG);
 
@@ -1008,7 +1009,7 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
 	if (!parse_attributes(context, &decl->attributes)) return poisoned_decl;
 	if (try_consume(context, TOKEN_EQ))
 	{
-		decl->var.init_expr = TRY_EXPR_OR(parse_initializer(context), poisoned_decl);
+		ASSIGN_EXPR_ELSE(decl->var.init_expr, parse_initializer(context), poisoned_decl);
 	}
 	TRY_CONSUME_EOS_OR(poisoned_decl);
 	return decl;
@@ -1023,7 +1024,7 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
 static inline bool parse_param_decl(Context *context, Visibility parent_visibility, Decl*** parameters, bool require_name)
 {
 	TokenId first = context->tok.id;
-	TypeInfo *type = TRY_TYPE_OR(parse_type(context), false);
+	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_type(context), false);
 	bool vararg = try_consume(context, TOKEN_ELLIPSIS);
 	Decl *param = decl_new_var(context->tok.id, type, VARDECL_PARAM, parent_visibility);
 	param->span = (SourceSpan) { first, context->tok.id };
@@ -1051,7 +1052,7 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 	}
 	if (name && try_consume(context, TOKEN_EQ))
 	{
-		param->var.init_expr = TRY_EXPR_OR(parse_initializer(context), false);
+		ASSIGN_EXPR_ELSE(param->var.init_expr, parse_initializer(context), false);
 	}
 
 	vec_add(*parameters, param);
@@ -1082,7 +1083,7 @@ bool parse_parameters(Context *context, Visibility visibility, Decl ***params_re
 		// so consequently we need fix this and ignore CT_TYPE_IDENT
 		if (!ellipsis && context_next_is_type_and_not_ident(context) && context->tok.type != TOKEN_CT_TYPE_IDENT )
 		{
-			type = TRY_TYPE_OR(parse_type(context), false);
+			ASSIGN_TYPE_ELSE(type, parse_type(context), false);
 			ellipsis = try_consume(context, TOKEN_ELLIPSIS);
 		}
 
@@ -1156,7 +1157,7 @@ bool parse_parameters(Context *context, Visibility visibility, Decl ***params_re
 			advance(context);
 			if (try_consume(context, TOKEN_EQ))
 			{
-				param->var.init_expr = TRY_EXPR_OR(parse_initializer(context), false);
+				ASSIGN_EXPR_ELSE(param->var.init_expr, parse_initializer(context), false);
 			}
 		}
 		var_arg_found |= ellipsis;
@@ -1280,7 +1281,8 @@ bool parse_struct_body(Context *context, Decl *parent)
 			was_inline = true;
 			advance(context);
 		}
-		TypeInfo *type = TRY_TYPE_OR(parse_type(context), false);
+		ASSIGN_TYPE_ELSE(TypeInfo *type, parse_type(context), false);
+
 		while (1)
 		{
 			EXPECT_OR(TOKEN_IDENT, false);
@@ -1352,7 +1354,7 @@ static inline bool parse_bitstruct_body(Context *context, Decl *decl)
 
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
-		TypeInfo *type = TRY_TYPE_OR(parse_type(context), false);
+		ASSIGN_TYPE_ELSE(TypeInfo *type, parse_type(context), false);
 
 		if (!try_consume(context, TOKEN_IDENT))
 		{
@@ -1366,9 +1368,9 @@ static inline bool parse_bitstruct_body(Context *context, Decl *decl)
 		}
 		Decl *member_decl = decl_new_var(context->prev_tok, type, VARDECL_MEMBER, VISIBLE_LOCAL);
 		CONSUME_OR(TOKEN_COLON, false);
-		member_decl->var.start = TRY_EXPR_OR(parse_constant_expr(context), false);
+		ASSIGN_EXPR_ELSE(member_decl->var.start, parse_constant_expr(context), false);
 		CONSUME_OR(TOKEN_DOTDOT, false);
-		member_decl->var.end = TRY_EXPR_OR(parse_constant_expr(context), false);
+		ASSIGN_EXPR_ELSE(member_decl->var.end, parse_constant_expr(context), false);
 		CONSUME_OR(TOKEN_EOS, false);
 		vec_add(decl->bitstruct.members, member_decl);
 	}
@@ -1389,7 +1391,7 @@ static inline Decl *parse_bitstruct_declaration(Context *context, Visibility vis
 
 	CONSUME_OR(TOKEN_COLON, poisoned_decl);
 
-	decl->bitstruct.base_type = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+	ASSIGN_TYPE_ELSE(decl->bitstruct.base_type, parse_type(context), poisoned_decl);
 
 	if (!parse_attributes(context, &decl->attributes))
 	{
@@ -1407,7 +1409,7 @@ static inline Decl *parse_bitstruct_declaration(Context *context, Visibility vis
 
 static inline Decl *parse_top_level_const_declaration(Context *context, Visibility visibility)
 {
-	Decl *decl = TRY_DECL_OR(parse_const_declaration(context, visibility), poisoned_decl);
+	ASSIGN_DECL_ELSE(Decl *decl, parse_const_declaration(context, visibility), poisoned_decl);
 	TRY_CONSUME_EOS_OR(poisoned_decl);
 	return decl;
 }
@@ -1456,8 +1458,8 @@ static inline TypeInfo **parse_generic_parameters(Context *context)
 	TypeInfo **types = NULL;
 	while (!try_consume(context, TOKEN_GREATER))
 	{
-		TypeInfo *expr = TRY_TYPE_OR(parse_type(context), NULL);
-		vec_add(types, expr);
+		ASSIGN_TYPE_ELSE(TypeInfo *type_info, parse_type(context), NULL);
+		vec_add(types, type_info);
 		if (context->tok.type != TOKEN_RPAREN && context->tok.type != TOKEN_GREATER)
 		{
 			TRY_CONSUME_OR(TOKEN_COMMA, "Expected ',' after argument.", NULL);
@@ -1507,7 +1509,7 @@ static inline Decl *parse_define_type(Context *context, Visibility visibility)
 		decl->span.loc = start;
 		decl->typedef_decl.is_func = true;
 		decl->typedef_decl.is_distinct = distinct;
-		TypeInfo *type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+		ASSIGN_TYPE_ELSE(TypeInfo *type_info, parse_type(context), poisoned_decl);
 		decl->typedef_decl.function_signature.rtype = type_info;
 		if (try_consume(context, TOKEN_BANG))
 		{
@@ -1523,7 +1525,7 @@ static inline Decl *parse_define_type(Context *context, Visibility visibility)
 	}
 
 	// 2. Now parse the type which we know is here.
-	TypeInfo *type_info = TRY_TYPE_OR(parse_type(context), poisoned_decl);
+	ASSIGN_TYPE_ELSE(TypeInfo *type_info, parse_type(context), poisoned_decl);
 
 	// 3. Do we have '<' if so it's a parameterized type e.g. foo::bar::Type<int, double>.
 	if (try_consume(context, TOKEN_LESS))
@@ -1671,7 +1673,7 @@ static inline bool parse_func_macro_header(Context *context, bool rtype_is_optio
 	}
 
 	// 2. Now we must have a type - either that is the return type or the method type.
-	rtype = TRY_TYPE_OR(parse_type(context), false);
+	ASSIGN_TYPE_ELSE(rtype, parse_type(context), false);
 
 	// 3. We possibly have a failable return at this point.
 	failable = try_consume(context, TOKEN_BANG);
@@ -1679,7 +1681,7 @@ static inline bool parse_func_macro_header(Context *context, bool rtype_is_optio
 	// 4. We might have a type here, if so then we read it.
 	if (!TOKEN_IS(TOKEN_DOT) && context_next_is_type_and_not_ident(context))
 	{
-		method_type = TRY_TYPE_OR(parse_type(context), false);
+		ASSIGN_TYPE_ELSE(method_type, parse_type(context), false);
 	}
 
 	// 5. If we have a dot here, then we need to interpret this as method function.
@@ -1737,7 +1739,7 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 	TokenId block_parameter = {};
 	if (!parse_macro_arguments(context, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_parameters, &block_parameter)) return poisoned_decl;
 	decl->macro_decl.block_parameter = block_parameter;
-	decl->macro_decl.body = TRY_AST_OR(parse_stmt(context), poisoned_decl);
+	ASSIGN_AST_ELSE(decl->macro_decl.body, parse_stmt(context), poisoned_decl);
 	return decl;
 }
 
@@ -1789,7 +1791,7 @@ static inline Decl *parse_error_declaration(Context *context, Visibility visibil
 		}
 		if (try_consume(context, TOKEN_EQ))
 		{
-			enum_const->enum_constant.expr = TRY_EXPR_OR(parse_expr(context), poisoned_decl);
+			ASSIGN_EXPR_ELSE(enum_const->enum_constant.expr, parse_expr(context), poisoned_decl);
 		}
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','
@@ -1809,7 +1811,9 @@ static inline Decl *parse_error_declaration(Context *context, Visibility visibil
  */
 static inline bool parse_enum_spec(Context *context, TypeInfo **type_ref, Decl*** parameters_ref, Visibility parent_visibility)
 {
-	*type_ref = TRY_TYPE_OR(parse_type(context), false);
+
+	ASSIGN_TYPE_ELSE(*type_ref, parse_type(context), false);
+
 	if (!try_consume(context, TOKEN_LPAREN)) return true;
 	while (!try_consume(context, TOKEN_RPAREN))
 	{
@@ -1894,7 +1898,7 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 		}
 		if (try_consume(context, TOKEN_EQ))
 		{
-			enum_const->enum_constant.expr = TRY_EXPR_OR(parse_expr(context), poisoned_decl);
+			ASSIGN_EXPR_ELSE(enum_const->enum_constant.expr, parse_expr(context), poisoned_decl);
 		}
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','
@@ -1964,7 +1968,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 
 	TRY_EXPECT_OR(TOKEN_LBRACE, "Expected the beginning of a block with '{'", poisoned_decl);
 
-	func->func_decl.body = TRY_AST_OR(parse_compound_stmt(context), poisoned_decl);
+	ASSIGN_AST_ELSE(func->func_decl.body, parse_compound_stmt(context), poisoned_decl);
 
 	DEBUG_LOG("Finished parsing function %s", func->name);
 	return func;
@@ -1999,7 +2003,7 @@ static inline Decl *parse_interface_declaration(Context *context, Visibility vis
 			SEMA_TOKEN_ERROR(context->tok, "Expected a function here.");
 			return poisoned_decl;
 		}
-		Decl *function = TRY_DECL_OR(parse_func_definition(context, visibility, true), poisoned_decl);
+		ASSIGN_DECL_ELSE(Decl *function, parse_func_definition(context, visibility, true), poisoned_decl);
 		vec_add(decl->methods, function);
 	}
 
@@ -2122,10 +2126,11 @@ static inline bool parse_doc_errors(Context *context, Ast *docs)
 
 static inline bool parse_doc_contract(Context *context, Ast *docs)
 {
-	docs->doc_directive.contract.decl_exprs = TRY_EXPR_OR(parse_cond(context), false);
+	ASSIGN_EXPR_ELSE(docs->doc_directive.contract.decl_exprs, parse_cond(context), false);
+
 	if (try_consume(context, TOKEN_COLON))
 	{
-		docs->doc_directive.contract.comment = TRY_EXPR_OR(parse_expr(context), false);
+		ASSIGN_EXPR_ELSE(docs->doc_directive.contract.comment, parse_expr(context), false);
 	}
 	return true;
 }
@@ -2238,18 +2243,22 @@ Decl *parse_top_level_statement(Context *context)
 			SEMA_TOKEN_ERROR(context->tok, "There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
 		case TOKEN_DEFINE:
-			decl = TRY_DECL_OR(parse_define(context, visibility), poisoned_decl);
+		{
+			ASSIGN_DECL_ELSE(decl, parse_define(context, visibility), poisoned_decl);
 			break;
+		}
 		case TOKEN_ATTRIBUTE:
 			TODO
 			break;
 		case TOKEN_FUNC:
-			decl = TRY_DECL_OR(parse_func_definition(context, visibility, false), poisoned_decl);
+		{
+			ASSIGN_DECL_ELSE(decl, parse_func_definition(context, visibility, false), poisoned_decl);
 			break;
+		}
 		case TOKEN_CT_ASSERT:
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
 			{
-				Ast *ast = TRY_AST_OR(parse_ct_assert_stmt(context), false);
+				ASSIGN_AST_ELSE(Ast *ast, parse_ct_assert_stmt(context), false);
 				decl = decl_new(DECL_CT_ASSERT, ast->span.loc, visibility);
 				decl->ct_assert_decl = ast;
 				if (docs)
@@ -2260,54 +2269,72 @@ Decl *parse_top_level_statement(Context *context)
 				return decl;
 			}
 		case TOKEN_CT_IF:
+		{
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
-			decl = TRY_DECL_OR(parse_ct_if_top_level(context), poisoned_decl);
+			ASSIGN_DECL_ELSE(decl, parse_ct_if_top_level(context), poisoned_decl);
 			if (docs)
 			{
 				SEMA_ERROR(docs, "Unexpected doc comment before $if, did you mean to use a regular comment?");
 				return poisoned_decl;
 			}
 			break;
+		}
 		case TOKEN_CT_SWITCH:
+		{
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
-			decl = TRY_DECL_OR(parse_ct_switch_top_level(context), poisoned_decl);
+			ASSIGN_DECL_ELSE(decl, parse_ct_switch_top_level(context), poisoned_decl);
 			if (docs)
 			{
 				SEMA_ERROR(docs, "Unexpected doc comment before $switch, did you mean to use a regular comment?");
 				return poisoned_decl;
 			}
 			break;
+		}
 		case TOKEN_BITSTRUCT:
-			decl = TRY_DECL_OR(parse_bitstruct_declaration(context, visibility), poisoned_decl);
+		{
+			ASSIGN_DECL_ELSE(decl, parse_bitstruct_declaration(context, visibility), poisoned_decl);
 			break;
+		}
 		case TOKEN_CONST:
-			decl = TRY_DECL_OR(parse_top_level_const_declaration(context, visibility), poisoned_decl);
+		{
+			ASSIGN_DECL_ELSE(decl, parse_top_level_const_declaration(context, visibility), poisoned_decl);
 			break;
+		}
 		case TOKEN_INTERFACE:
-			decl = TRY_DECL_OR(parse_interface_declaration(context, visibility), poisoned_decl);
+		{
+			ASSIGN_DECL_ELSE(decl, parse_interface_declaration(context, visibility), poisoned_decl);
 			break;
+		}
 		case TOKEN_STRUCT:
 		case TOKEN_UNION:
-			decl = TRY_DECL_OR(parse_struct_declaration(context, visibility), poisoned_decl);
+		{
+			ASSIGN_DECL_ELSE(decl, parse_struct_declaration(context, visibility), poisoned_decl);
 			break;
+		}
 		case TOKEN_GENERIC:
 		case TOKEN_MACRO:
-			decl = TRY_DECL_OR(parse_macro_declaration(context, visibility), poisoned_decl);
+		{
+			ASSIGN_DECL_ELSE(decl, parse_macro_declaration(context, visibility), poisoned_decl);
 			break;
+		}
 		case TOKEN_ENUM:
-			decl = TRY_DECL_OR(parse_enum_declaration(context, visibility), poisoned_decl);
+		{
+			ASSIGN_DECL_ELSE(decl, parse_enum_declaration(context, visibility), poisoned_decl);
 			break;
+		}
 		case TOKEN_ERRTYPE:
-			decl = TRY_DECL_OR(parse_error_declaration(context, visibility), poisoned_decl);
+		{
+			ASSIGN_DECL_ELSE(decl, parse_error_declaration(context, visibility), poisoned_decl);
 			break;
+		}
 		case TOKEN_IDENT:
 			if (context->next_tok.type == TOKEN_SCOPE)
 			{
-				decl = TRY_DECL_OR(parse_global_declaration(context, visibility), poisoned_decl);
+				ASSIGN_DECL_ELSE(decl, parse_global_declaration(context, visibility), poisoned_decl);
 				break;
 			}
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
-			decl = TRY_DECL_OR(parse_incremental_array(context), poisoned_decl);
+			ASSIGN_DECL_ELSE(decl, parse_incremental_array(context), poisoned_decl);
 			if (docs)
 			{
 				SEMA_ERROR(docs,
@@ -2333,8 +2360,10 @@ Decl *parse_top_level_statement(Context *context)
 			SEMA_TOKEN_ERROR(context->tok, "Imports are only allowed directly after the module declaration.");
 			return poisoned_decl;
 		case TYPELIKE_TOKENS:
-			decl = TRY_DECL_OR(parse_global_declaration(context, visibility), poisoned_decl);
+		{
+			ASSIGN_DECL_ELSE(decl, parse_global_declaration(context, visibility), poisoned_decl);
 			break;
+		}
 		default:
 			SEMA_TOKEN_ERROR(context->tok, "Expected a top level declaration here.");
 			return poisoned_decl;

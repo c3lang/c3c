@@ -5461,7 +5461,7 @@ static inline bool sema_analyse_identifier_path_string(Context *context, SourceS
 	}
 	else
 	{
-		decl = TRY_DECL_OR(sema_resolve_string_symbol(context, symbol, expr->span, path, report_missing), report_missing);
+		ASSIGN_DECL_ELSE(decl, sema_resolve_string_symbol(context, symbol, expr->span, path, report_missing), false);
 		if (!decl) return true;
 		if (!sema_analyse_decl(context, decl)) return false;
 		if (decl->decl_kind == DECL_TYPEDEF)
@@ -5775,8 +5775,10 @@ static inline bool sema_expr_resolve_maybe_identifier(Context *c, Expr *expr, De
 	{
 		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:
-			*decl_ref = TRY_DECL_OR(sema_resolve_normal_symbol(c, expr->identifier_expr.identifier, expr->identifier_expr.path, false), false);
+		{
+			ASSIGN_DECL_ELSE(*decl_ref, sema_resolve_normal_symbol(c, expr->identifier_expr.identifier, expr->identifier_expr.path, false), false);
 			return true;
+		}
 		case EXPR_TYPEINFO:
 			if (expr->resolve_status == RESOLVE_DONE)
 			{
@@ -5788,10 +5790,8 @@ static inline bool sema_expr_resolve_maybe_identifier(Context *c, Expr *expr, De
 				SEMA_ERROR(expr, "Expected a plain type name here.");
 				return false;
 			}
-			*decl_ref = TRY_DECL_OR(sema_resolve_normal_symbol(c,
-			                                                   expr->type_expr->unresolved.name_loc,
-			                                                   expr->type_expr->unresolved.path,
-			                                                   false), false);
+			ASSIGN_DECL_ELSE(*decl_ref, sema_resolve_normal_symbol(c, expr->type_expr->unresolved.name_loc,
+																   expr->type_expr->unresolved.path, false), false);
 			return true;
 		case EXPR_CONST:
 			switch (expr->const_expr.const_kind)

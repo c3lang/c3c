@@ -15,7 +15,6 @@
 #define TRY_CONSUME_EOS() TRY_CONSUME_EOS_OR(poisoned_ast)
 #define RETURN_AFTER_EOS(_ast) extend_ast_with_prev_token(context, ast); TRY_CONSUME_EOS_OR(poisoned_ast); return _ast
 
-#define TRY_AST(_ast_stmt) TRY_AST_OR(_ast_stmt, poisoned_ast)
 
 #define CHECK_EXPR(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
@@ -122,7 +121,7 @@ static inline bool expect_ident(Context *context, const char* name)
 static inline Expr *parse_const_paren_expr(Context *context)
 {
 	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
-	Expr *expr = TRY_EXPR_OR(parse_constant_expr(context), poisoned_expr);
+	ASSIGN_EXPR_ELSE(Expr *expr, parse_constant_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	return expr;
 }

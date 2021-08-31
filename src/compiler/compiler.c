@@ -8,7 +8,6 @@
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
-
 GlobalContext global_context;
 BuildTarget active_target;
 
