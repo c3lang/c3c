@@ -1,5 +1,9 @@
 module std::io;
 
+errtype IoError
+{
+    FILE_NOT_FOUND
+}
 /*
 extern File *stdin @cname(__stdinp);
 extern File *stdout @cname(__stdoutp);

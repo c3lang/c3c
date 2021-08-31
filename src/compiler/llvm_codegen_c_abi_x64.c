@@ -578,8 +578,8 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 			if (offset < 16) return abi_type_new_plain(type_voidptr);
 			break;
 		case TYPE_SUBARRAY:
-			if (offset < 8) return abi_type_new_plain(type_ulong);
-			if (offset < 16) return abi_type_new_plain(type_voidptr);
+			if (offset < 8) return abi_type_new_plain(type_voidptr);
+			if (offset < 16) return abi_type_new_plain(type_ulong);
 			break;
 		case TYPE_ARRAY:
 		{

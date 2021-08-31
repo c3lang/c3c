@@ -2240,43 +2240,45 @@ static inline bool sema_expr_analyse_type_access(Context *context, Expr *expr, T
 			}
 			break;
 		case DECL_ERRTYPE:
-				if (type == TOKEN_CONST_IDENT)
+			context_register_external_symbol(context, decl);
+
+			if (type == TOKEN_CONST_IDENT)
+			{
+				if (!sema_expr_analyse_enum_constant(expr, identifier_token, decl))
 				{
-					if (!sema_expr_analyse_enum_constant(expr, identifier_token, decl))
-					{
-						SEMA_ERROR(expr, "'%s' has no error value '%s'.", decl->name, name);
-						return false;
-					}
+					SEMA_ERROR(expr, "'%s' has no error value '%s'.", decl->name, name);
+					return false;
+				}
+				return true;
+			}
+			if (name == kw_elements)
+			{
+				expr_rewrite_to_int_const(expr, type_compint, vec_size(decl->enums.values));
+				return true;
+			}
+			if (name == kw_max)
+			{
+				Expr *max = enum_minmax_value(decl, BINARYOP_GT);
+				if (!max)
+				{
+					expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0);
 					return true;
 				}
-				if (name == kw_elements)
+				expr_replace(expr, max);
+				return true;
+			}
+			if (name == kw_min)
+			{
+				Expr *min = enum_minmax_value(decl, BINARYOP_LT);
+				if (!min)
 				{
-					expr_rewrite_to_int_const(expr, type_compint, vec_size(decl->enums.values));
+					expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0);
 					return true;
 				}
-				if (name == kw_max)
-				{
-					Expr *max = enum_minmax_value(decl, BINARYOP_GT);
-					if (!max)
-					{
-						expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0);
-						return true;
-					}
-					expr_replace(expr, max);
-					return true;
-				}
-				if (name == kw_min)
-				{
-					Expr *min = enum_minmax_value(decl, BINARYOP_LT);
-					if (!min)
-					{
-						expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0);
-						return true;
-					}
-					expr_replace(expr, min);
-					return true;
-				}
-				break;
+				expr_replace(expr, min);
+				return true;
+			}
+			break;
 		case DECL_UNION:
 		case DECL_STRUCT:
 		case DECL_DISTINCT:

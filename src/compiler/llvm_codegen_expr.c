@@ -578,12 +578,10 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			llvm_emit_arr_to_subarray_cast(c, value, to_type);
 			break;
 		case CAST_SAPTR:
+			llvm_value_fold_failable(c, value);
 			if (llvm_value_is_addr(value))
 			{
-				llvm_value_fold_failable(c, value);
-				value->value = llvm_emit_load_aligned(c, llvm_get_type(c, to_type),
-				                                      LLVMBuildStructGEP(c->builder, value->value, 0, ""),
-				                                      value->alignment, "");
+				value->value = LLVMBuildStructGEP(c->builder, value->value, 0, "");
 			}
 			else
 			{
@@ -2675,6 +2673,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_ERR:
 		{
 			Decl *decl = expr->const_expr.err_val;
+
 			LLVMValueRef value;
 			if (decl)
 			{
@@ -2796,9 +2795,9 @@ void llvm_emit_subarray_pointer(GenContext *c, BEValue *subarray, BEValue *point
 {
 	llvm_value_addr(c, subarray);
 	unsigned alignment = 0;
-	LLVMValueRef len_addr = llvm_emit_struct_gep_raw(c, subarray->value, llvm_get_type(c, subarray->type), 0, subarray->alignment,
-	                                                 0, &alignment);
-	llvm_value_set_address_align(pointer, len_addr, type_get_ptr(subarray->type->array.base), alignment);
+	LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c, subarray->value, llvm_get_type(c, subarray->type), 0, subarray->alignment,
+	                                                     0, &alignment);
+	llvm_value_set_address_align(pointer, pointer_addr, type_get_ptr(subarray->type->array.base), alignment);
 
 }
 

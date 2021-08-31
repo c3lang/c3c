@@ -714,6 +714,29 @@ void llvm_codegen_setup()
 	intrinsics_setup = true;
 }
 
+static void llvm_set_linkage(GenContext *c, Decl *decl, LLVMValueRef value)
+{
+	if (decl->module != c->code_module)
+	{
+		LLVMSetLinkage(value, LLVMLinkOnceODRLinkage);
+		LLVMSetVisibility(value, LLVMDefaultVisibility);
+		return;
+	}
+	switch (decl->visibility)
+	{
+		case VISIBLE_MODULE:
+		case VISIBLE_PUBLIC:
+			LLVMSetLinkage(value, LLVMLinkOnceODRLinkage);
+			LLVMSetVisibility(value, LLVMDefaultVisibility);
+			break;
+		case VISIBLE_EXTERN:
+		case VISIBLE_LOCAL:
+			LLVMSetVisibility(value, LLVMHiddenVisibility);
+			LLVMSetLinkage(value, LLVMLinkerPrivateLinkage);
+			break;
+	}
+
+}
 void gencontext_emit_introspection_type(GenContext *c, Decl *decl)
 {
 	llvm_get_type(c, decl->type);
@@ -739,6 +762,7 @@ void gencontext_emit_introspection_type(GenContext *c, Decl *decl)
 		scratch_buffer_append("$elements");
 		LLVMValueRef enum_elements = LLVMAddGlobal(c->module, elements_type, scratch_buffer_to_string());
 		LLVMSetGlobalConstant(enum_elements, 1);
+		llvm_set_linkage(c, decl, enum_elements);
 		LLVMSetInitializer(enum_elements, LLVMConstNull(elements_type));
 		for (unsigned i = 0; i < elements; i++)
 		{
@@ -750,20 +774,8 @@ void gencontext_emit_introspection_type(GenContext *c, Decl *decl)
 	LLVMSetGlobalConstant(global_name, 1);
 	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
 	decl->type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+	llvm_set_linkage(c, decl, global_name);
 
-	switch (decl->visibility)
-	{
-		case VISIBLE_MODULE:
-		case VISIBLE_PUBLIC:
-			LLVMSetLinkage(global_name, LLVMLinkOnceODRLinkage);
-			LLVMSetVisibility(global_name, LLVMDefaultVisibility);
-			break;
-		case VISIBLE_EXTERN:
-		case VISIBLE_LOCAL:
-			LLVMSetVisibility(global_name, LLVMHiddenVisibility);
-			LLVMSetLinkage(global_name, LLVMLinkerPrivateLinkage);
-			break;
-	}
 }
 
 

@@ -134,3 +134,27 @@ func void test_missing_no_cases(Baz x)
             break;
     }
 }
+
+errtype MathError
+{
+    DIVISION_BY_ZERO
+}
+
+// Rethrowing an error uses "!!" suffix
+func void! testMayError()
+{
+}
+
+func void main()
+{
+    // Handle the error
+    switch (catch err = testMayError()) // #error: Catch unwrapping is only allowed
+    {
+        case MathError.DIVISION_BY_ZERO:
+            io::printf("Division by zero\n");
+            return;
+        default:
+            io::printf("Unexpected error!");
+            return;
+    }
+}

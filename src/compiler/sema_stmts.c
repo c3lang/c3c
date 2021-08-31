@@ -395,13 +395,23 @@ static void sema_remove_unwraps_from_try(Context *c, Expr *cond)
 	}
 }
 
-static inline bool sema_analyse_last_cond(Context *context, Expr *expr)
+static inline bool sema_analyse_last_cond(Context *context, Expr *expr, bool may_unwrap)
 {
 	switch (expr->expr_kind)
 	{
 		case EXPR_TRY_UNWRAP_CHAIN:
+			if (!may_unwrap)
+			{
+				SEMA_ERROR(expr, "Try unwrapping is only allowed inside of a 'while' or 'if' conditional.");
+				return false;
+			}
 			return sema_analyse_try_unwrap_chain(context, expr);
 		case EXPR_CATCH_UNWRAP:
+			if (!may_unwrap)
+			{
+				SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe catch(...) will do what you need?");
+				return false;
+			}
 			return sema_analyse_catch_unwrap(context, expr);
 		default:
 			return sema_analyse_expr(context, NULL, expr);
@@ -435,7 +445,7 @@ static inline bool sema_analyse_cond_list(Context *context, Expr *expr, bool may
 		if (!sema_analyse_expr(context, NULL, dexprs[i])) return false;
 	}
 
-	if (!sema_analyse_last_cond(context, dexprs[entries - 1])) return false;
+	if (!sema_analyse_last_cond(context, dexprs[entries - 1], may_unwrap)) return false;
 
 	expr_set_type(expr, dexprs[entries - 1]->type);
 	expr->resolve_status = RESOLVE_DONE;
@@ -454,12 +464,12 @@ static inline bool sema_analyse_cond_list(Context *context, Expr *expr, bool may
  * @param cast_to_bool if the result is to be cast to bool after
  * @return true if it passes analysis.
  */
-static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_bool)
+static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_bool, bool may_unwrap)
 {
 	assert(expr->expr_kind == EXPR_COND && "Conditional expressions should always be of type EXPR_DECL_LIST");
 
 	// 1. Analyse the declaration list.
-	if (!sema_analyse_cond_list(context, expr, true)) return false;
+	if (!sema_analyse_cond_list(context, expr, may_unwrap)) return false;
 
 	// 2. If we get "void", either through a void call or an empty list,
 	//    signal that.
@@ -537,7 +547,7 @@ static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 	SCOPE_START_WITH_LABEL(statement->while_stmt.flow.label)
 
 		// 2. Analyze the condition
-		if (!sema_analyse_cond(context, cond, true))
+		if (!sema_analyse_cond(context, cond, true, true))
 		{
 			// 2a. In case of error, pop context and exit.
 			return SCOPE_POP_ERROR();
@@ -1320,7 +1330,7 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 	Expr *cond = statement->if_stmt.cond;
 	SCOPE_OUTER_START
 		bool cast_to_bool = statement->if_stmt.then_body->ast_kind != AST_IF_CATCH_SWITCH_STMT;
-		success = sema_analyse_cond(context, cond, cast_to_bool);
+		success = sema_analyse_cond(context, cond, cast_to_bool, true);
 
 		Ast *then = statement->if_stmt.then_body;
 		bool then_has_braces = then->ast_kind == AST_COMPOUND_STMT || then->ast_kind == AST_IF_CATCH_SWITCH_STMT;
@@ -1966,7 +1976,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 
 		if (statement->ast_kind == AST_SWITCH_STMT)
 		{
-			if (!sema_analyse_cond(context, cond, false)) return false;
+			if (!sema_analyse_cond(context, cond, false, false)) return false;
 			switch_type = VECLAST(cond->cond_expr)->type->canonical;
 		}
 		else
