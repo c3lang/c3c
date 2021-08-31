@@ -107,7 +107,7 @@ void taskqueue_destroy(TaskQueueRef queue_ref)
 #else
 
 void taskqueue_destroy(TaskQueueRef queue_ref)
-{ 0 }
+{ }
 
 void taskqueue_add(TaskQueueRef queue_ref, Task *task)
 {
