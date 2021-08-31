@@ -47,7 +47,7 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 	if (blocks_to_allocate > 0)
 	{
 		size_t to_commit = blocks_to_allocate * COMMIT_PAGE_SIZE;
-		void *res = VirtualAlloc(vmem->ptr + vmem->committed, to_commit, MEM_COMMIT, PAGE_READWRITE);
+		void *res = VirtualAlloc(((char*)vmem->ptr) + vmem->committed, to_commit, MEM_COMMIT, PAGE_READWRITE);
 		if (!res) FATAL_ERROR("Failed to allocate more memory.");
 		vmem->committed += to_commit;
 	}
