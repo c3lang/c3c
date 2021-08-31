@@ -45,7 +45,7 @@ func int print(char *message)
     return 1;
 }
 
-func int println(char *message) @inline
+func int println(char *message = "") @inline
 {
     return _puts(message);
 }

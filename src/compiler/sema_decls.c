@@ -498,7 +498,9 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 	{
 		Expr *expr = param->var.init_expr;
 		if (!sema_analyse_expr_of_required_type(context, param->type, expr, false)) return false;
-		if (expr->expr_kind != EXPR_CONST)
+		Expr *inner = expr;
+		while (inner->expr_kind == EXPR_CAST) inner = expr->cast_expr.expr;
+		if (inner->expr_kind != EXPR_CONST)
 		{
 			SEMA_ERROR(expr, "Only constant expressions may be used as default values.");
 			return false;
