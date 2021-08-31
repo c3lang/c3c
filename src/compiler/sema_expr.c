@@ -2923,11 +2923,11 @@ static void debug_dump_const_initializer(ConstInitializer *init, const char *nam
 	for (unsigned i = 0; i < indent; i++) printf("  ");
 	if (name)
 	{
-		printf("%s : %s", name, init->type->name ?: "WTF");
+		printf("%s : %s", name, init->type->name ? init->type->name : "WTF");
 	}
 	else
 	{
-		printf("%s", init->type->name ?: "WTF");
+		printf("%s", init->type->name ? init->type->name : "WTF");
 	}
 	switch (init->kind)
 	{
@@ -5727,7 +5727,7 @@ static inline bool sema_expr_analyse_ct_nameof(Context *context, Type *to, Expr 
 				SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
 				return false;
 			}
-			expr_rewrite_to_string(expr, decl->extname ?: decl->external_name);
+			expr_rewrite_to_string(expr, decl->extname ? decl->extname : decl->external_name);
 			return true;
 		}
 		if (!decl->module || name_type == TOKEN_CT_NAMEOF || decl_is_local(decl))
@@ -5751,7 +5751,7 @@ static inline bool sema_expr_analyse_ct_nameof(Context *context, Type *to, Expr 
 			SEMA_ERROR(main_var, "Only user defined types have an external name.");
 			return false;
 		}
-		expr_rewrite_to_string(expr, type->decl->extname ?: type->decl->external_name);
+		expr_rewrite_to_string(expr, type->decl->extname ? type->decl->extname : type->decl->external_name);
 		return true;
 	}
 

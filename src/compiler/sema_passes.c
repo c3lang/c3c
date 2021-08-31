@@ -207,7 +207,7 @@ void sema_analysis_pass_decls(Module *module)
 					.local_decl_start = &context->locals[0],
 					.current_local = &context->locals[0],
 				};
-		context->macro_scope = (MacroScope) {};
+		context->macro_scope = (MacroScope) { 0 };
 		VECEACH(context->enums, i)
 		{
 			sema_analyse_decl(context, context->enums[i]);

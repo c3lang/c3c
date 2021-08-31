@@ -147,7 +147,7 @@ void decl_set_external_name(Decl *decl)
 	scratch_buffer_clear();
 	scratch_buffer_append(decl->module->name->module);
 	scratch_buffer_append(".");
-	scratch_buffer_append(decl->name ?: "anon");
+	scratch_buffer_append(decl->name ? decl->name : "anon");
 	decl->external_name = scratch_buffer_interned();
 }
 

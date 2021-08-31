@@ -16,7 +16,7 @@ typedef struct
 	File **files;
 } SourceFiles;
 
-SourceFiles source_files = {};
+SourceFiles source_files = { 0 };
 
 File *source_file_load(const char *filename, bool *already_loaded)
 {

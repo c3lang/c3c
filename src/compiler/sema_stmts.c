@@ -316,7 +316,7 @@ static inline bool sema_analyse_catch_unwrap(Context *context, Expr *expr)
 	}
 	else
 	{
-		type = type ?: type_info_new_base(type_anyerr, expr->span);
+		type = type ? type : type_info_new_base(type_anyerr, expr->span);
 
 		if (!sema_resolve_type_info(context, type)) return false;
 
@@ -2241,7 +2241,7 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 			.local_decl_start = &context->locals[0],
 			.current_local = &context->locals[0]
 	};
-	context->macro_scope = (MacroScope) {};
+	context->macro_scope = (MacroScope) { 0 };
 	context->failable_return = signature->failable;
 
 	// Clear returns

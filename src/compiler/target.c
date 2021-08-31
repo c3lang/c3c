@@ -21,7 +21,7 @@ static unsigned os_target_supports_vec(OsType os, ArchType arch, int bits, bool 
 static bool os_requires_libc(OsType os);
 
 
-PlatformTarget platform_target = {};
+PlatformTarget platform_target = { 0 };
 
 int target_alloca_addr_space()
 {
@@ -1161,7 +1161,7 @@ void *llvm_target_machine_create(void)
 	size_t len = strlen(features);
 	if (len > 0) features[len - 1] = 0;
 	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
-	                                       platform_target.cpu ?: "", features,
+										   platform_target.cpu ? platform_target.cpu : "", features,
 	                                       (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
 	                                       reloc_mode, LLVMCodeModelDefault);
 	if (!result) error_exit("Failed to create target machine.");

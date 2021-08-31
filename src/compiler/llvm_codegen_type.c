@@ -39,7 +39,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_STRUCT:
 		{
 			LLVMTypeRef *types = NULL;
-			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ?: "anon");
+			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ? decl->name : "anon");
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			Decl **members = decl->strukt.members;
@@ -61,7 +61,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		}
 		case DECL_UNION:
 		{
-			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ?: "anon");
+			LLVMTypeRef type = LLVMStructCreateNamed(c->context, decl->name ? decl->name : "anon");
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			Decl **members = decl->strukt.members;
@@ -270,7 +270,8 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 		}
 		case ABI_ARG_DIRECT_COERCE:
 			assert(!abi_info_should_flatten(ret_arg_info));
-			return_type = llvm_get_coerce_type(context, ret_arg_info) ?: llvm_get_type(context, real_return_type);
+			return_type = llvm_get_coerce_type(context, ret_arg_info);
+			if (!return_type) return_type = llvm_get_type(context, real_return_type);
 			break;
 	}
 

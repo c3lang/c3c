@@ -184,7 +184,7 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 	}
 
 	bool has_return_value = ast->return_stmt.expr != NULL;
-	BEValue return_value = {};
+	BEValue return_value = { 0 };
 	if (has_return_value)
 	{
 		llvm_emit_expr(c, &return_value, ast->return_stmt.expr);
@@ -268,7 +268,7 @@ void llvm_emit_if(GenContext *c, Ast *ast)
 		label->label.break_target = exit_block;
 	}
 
-	BEValue be_value = {};
+	BEValue be_value = { 0 };
 
 	bool exit_in_use = true;
 
@@ -460,9 +460,9 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 
 	// Create the index and optionally the index var
 	LLVMTypeRef real_index_type = llvm_get_type(c, type_usize);
-	BEValue index_var = {};
+	BEValue index_var = { 0 };
 	LLVMTypeRef index_type = ast->foreach_stmt.index ? llvm_get_type(c, ast->foreach_stmt.index->type) : NULL;
-	BEValue index = {};
+	BEValue index = { 0 };
 
 	bool extend_bits = false;
 
@@ -651,7 +651,7 @@ void gencontext_emit_do_stmt(GenContext *c, Ast *ast)
 	{
 		llvm_emit_br(c, cond_block);
 		llvm_emit_block(c, cond_block);
-		BEValue be_value = {};
+		BEValue be_value = { 0 };
 		llvm_emit_expr(c, &be_value, do_expr);
 		llvm_value_rvalue(c, &be_value);
 		if (llvm_value_is_const(&be_value))

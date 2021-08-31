@@ -331,7 +331,7 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 		SourceLocation *member_loc = TOKLOC(member->span.loc);
 		LLVMMetadataRef debug_info = llvm_get_debug_member(c,
 		                                                   member->type,
-		                                                   member->name ?: "",
+		                                                   member->name ? member->name : "",
 		                                                   member->offset,
 		                                                   member_loc,
 		                                                   forward,
@@ -344,7 +344,8 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 	{
 		real = LLVMDIBuilderCreateUnionType(c->debug.builder,
 		                                    scope,
-		                                    type->decl->name ?: "", type->decl->name ? TOKLEN(type->decl->name_token) : 0,
+		                                    type->decl->name ? type->decl->name : "",
+		                                    type->decl->name ? TOKLEN(type->decl->name_token) : 0,
 		                                    c->debug.file, location->line, type_size(type) * 8,
 		                                    type_abi_alignment(type) * 8,
 		                                    LLVMDIFlagZero,

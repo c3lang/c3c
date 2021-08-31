@@ -522,7 +522,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_FUNC);
 	// Resolve function backend type for function.
-	LLVMValueRef function = LLVMAddFunction(c->module, decl->extname ?: decl->external_name, llvm_get_type(c, decl->type));
+	LLVMValueRef function = LLVMAddFunction(c->module, decl->extname ? decl->extname : decl->external_name, llvm_get_type(c, decl->type));
 	decl->backend_ref = function;
 	FunctionSignature *signature = &decl->func_decl.function_signature;
 	FunctionSignature *type_signature = decl->type->func.signature;
@@ -546,7 +546,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 		signature->params = params;
 	}
 
-	ABIArgInfo *ret_abi_info = signature->failable_abi_info ?: signature->ret_abi_info;
+	ABIArgInfo *ret_abi_info = signature->failable_abi_info ? signature->failable_abi_info : signature->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0);
 	Decl **params = signature->params;
 	if (signature->failable_abi_info && signature->ret_abi_info)
@@ -631,12 +631,12 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_POISONED:
 			UNREACHABLE;
 		case DECL_FUNC:
-			decl->backend_ref = LLVMAddFunction(context->module, decl->extname ?: decl->external_name,
+			decl->backend_ref = LLVMAddFunction(context->module, decl->extname ? decl->extname : decl->external_name,
 			                                    llvm_get_type(context, decl->type));
 			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case DECL_VAR:
-			decl->backend_ref = LLVMAddGlobal(context->module, llvm_get_type(context, decl->type), decl->extname ?: decl->external_name);
+			decl->backend_ref = LLVMAddGlobal(context->module, llvm_get_type(context, decl->type), decl->extname ? decl->extname : decl->external_name);
 			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case DECL_BITSTRUCT:

@@ -381,7 +381,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
-	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname ?: decl->external_name);
+	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname ? decl->extname : decl->external_name);
 	if (decl->section)
 	{
 		LLVMSetSection(decl->backend_ref, decl->section);
@@ -504,7 +504,7 @@ void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 		return;
 	}
 	LLVMTypeRef type = llvm_get_type(c, decl->type);
-	decl->backend_ref = llvm_emit_alloca(c, type, decl->alignment, decl->name ?: "anon");
+	decl->backend_ref = llvm_emit_alloca(c, type, decl->alignment, decl->name ? decl->name : "anon");
 }
 
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)
@@ -872,7 +872,7 @@ LLVMValueRef llvm_value_rvalue_store(GenContext *c, BEValue *value)
 			return llvm_emit_load_aligned(c,
 			                              llvm_get_type(c, value->type),
 			                              value->value,
-			                              value->alignment ?: type_abi_alignment(value->type),
+			                              value->alignment ? value->alignment : type_abi_alignment(value->type),
 			                              "");
 		case BE_BOOLEAN:
 			if (!c->builder)
@@ -914,7 +914,7 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 	value->value = llvm_emit_load_aligned(c,
 	                                      llvm_get_type(c, value->type),
 	                                      value->value,
-	                                      value->alignment ?: type_abi_alignment(value->type),
+	                                      value->alignment ? value->alignment : type_abi_alignment(value->type),
 	                                      "");
 	if (value->type->type_kind == TYPE_BOOL)
 	{
@@ -1158,7 +1158,7 @@ void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue
 			value->kind = BE_VALUE;
 			FALLTHROUGH;
 		case BE_VALUE:
-			llvm_store_aligned(c, destination, value->value, alignment ?: type_abi_alignment(value->type));
+			llvm_store_aligned(c, destination, value->value, alignment ? alignment : type_abi_alignment(value->type));
 			return;
 		case BE_ADDRESS_FAILABLE:
 			UNREACHABLE
@@ -1169,8 +1169,8 @@ void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue
 			LLVMValueRef copy_size = llvm_const_int(c, size <= UINT32_MAX ? type_uint : type_usize, size);
 			destination = LLVMBuildBitCast(c->builder, destination, llvm_get_ptr_type(c, type_char), "");
 			LLVMValueRef source = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, type_char), "");
-			LLVMBuildMemCpy(c->builder, destination, alignment ?: type_abi_alignment(value->type),
-			                source, value->alignment ?: type_abi_alignment(value->type), copy_size);
+			LLVMBuildMemCpy(c->builder, destination, alignment ? alignment : type_abi_alignment(value->type),
+							source, value->alignment ? value->alignment : type_abi_alignment(value->type), copy_size);
 			return;
 		}
 	}
@@ -1231,7 +1231,7 @@ void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, un
 LLVMValueRef llvm_emit_load_aligned(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name)
 {
 	LLVMValueRef value = LLVMBuildLoad2(c->builder, type, pointer, name);
-	llvm_set_alignment(value, alignment ?: llvm_abi_alignment(c, type));
+	llvm_set_alignment(value, alignment ? alignment : llvm_abi_alignment(c, type));
 	return value;
 }
 

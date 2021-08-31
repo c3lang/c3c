@@ -154,7 +154,7 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 	{
 		Type *member_type = type_lowering(members[i]->type->canonical);
 		ABIArgInfo *member_info;
-		Registers temp_needed_registers = {};
+		Registers temp_needed_registers = { 0, 0 };
 		if (x64_type_is_structure(member_type))
 		{
 			// Recursively check the structure.
@@ -167,7 +167,7 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 		}
 		if (abi_arg_is_indirect(member_info))
 		{
-			*needed_registers = (Registers) {};
+			*needed_registers = (Registers) { 0, 0 };
 			return x64_indirect_return_result(type);
 		}
 		needed_registers->sse_registers += temp_needed_registers.sse_registers;
@@ -862,7 +862,7 @@ static ABIArgInfo *x64_classify_return_type(Type *ret_type, Registers *registers
 	// See if we can lower the reg call.
 	if (is_regcall && x64_type_is_structure(ret_type))
 	{
-		Registers needed_registers = {};
+		Registers needed_registers = { 0, 0 };
 		ABIArgInfo *info = x64_classify_reg_call_struct_type_check(ret_type, &needed_registers);
 		if (try_use_registers(registers, &needed_registers)) return info;
 		return x64_indirect_return_result(ret_type);
@@ -880,7 +880,7 @@ static ABIArgInfo *x64_classify_return_type(Type *ret_type, Registers *registers
  */
 static ABIArgInfo *x64_classify_parameter(Type *type, Registers *available_registers, bool is_regcall, NamedArgument named)
 {
-	Registers needed_registers = {};
+	Registers needed_registers = { 0, 0 };
 	type = type_lowering(type);
 	ABIArgInfo *info;
 	// If this is a reg call, use the struct type check.

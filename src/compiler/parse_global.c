@@ -1425,7 +1425,7 @@ static bool parse_macro_arguments(Context *context, Visibility visibility, Decl 
 	CONSUME_OR(TOKEN_LPAREN, false);
 	*params_ref = NULL;
 	*body_params = NULL;
-	*block_parameter = (TokenId) {};
+	*block_parameter = (TokenId) { 0 };
 	// Parse the regular parameters.
 	if (!parse_parameters(context, visibility, params_ref)) return false;
 
@@ -1736,7 +1736,7 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 	decl->name = TOKSTR(name);
 	decl->name_token = name;
 
-	TokenId block_parameter = {};
+	TokenId block_parameter = NO_TOKEN_ID;
 	if (!parse_macro_arguments(context, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_parameters, &block_parameter)) return poisoned_decl;
 	decl->macro_decl.block_parameter = block_parameter;
 	ASSIGN_AST_ELSE(decl->macro_decl.body, parse_stmt(context), poisoned_decl);

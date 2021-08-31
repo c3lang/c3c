@@ -3102,7 +3102,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 	// 7. We might have a failable indirect return and a normal return.
 	//    In this case we need to add it by hand.
-	BEValue synthetic_return_param = {};
+	BEValue synthetic_return_param = { 0 };
 	if (signature->failable && signature->ret_abi_info)
 	{
 		// 7b. Create the address to hold the return.

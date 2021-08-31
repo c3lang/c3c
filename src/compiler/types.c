@@ -1060,7 +1060,7 @@ static void type_create(const char *name, Type *location, TypeKind kind, unsigne
 		.builtin.bytesize = byte_size,
 		.builtin.bitsize = bitsize,
 		.builtin.abi_alignment = align,
-		.builtin.pref_alignment = pref_align ?: align,
+		.builtin.pref_alignment = pref_align ? pref_align : align,
 		.name = name,
 		.canonical = location,
 	};
@@ -1078,7 +1078,7 @@ static void type_init(const char *name, Type *location, TypeKind kind, unsigned 
 		.builtin.bytesize = byte_size,
 		.builtin.bitsize = bitsize,
 		.builtin.abi_alignment = align.align / 8,
-		.builtin.pref_alignment = (align.pref_align ?: align.align) / 8,
+		.builtin.pref_alignment = (align.pref_align ? align.pref_align : align.align) / 8,
 		.name = name,
 		.canonical = location,
 		};
