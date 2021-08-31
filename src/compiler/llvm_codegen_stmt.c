@@ -1041,7 +1041,11 @@ static inline void llvm_emit_asm_stmt(GenContext *c, Ast *ast)
 	                                       scratch_buffer_to_string(), global_context.scratch_buffer_len,
 	                                       ast->asm_stmt.is_volatile,
 	                                       true,
-	                                       LLVMInlineAsmDialectIntel);
+	                                       LLVMInlineAsmDialectIntel
+#if LLVM_VERSION_MAJOR > 12
+											, /* can throw */ false
+#endif
+	                                       );
 	LLVMBuildCall2(c->builder, asm_fn_type, asm_fn, NULL, 0, "");
 }
 
