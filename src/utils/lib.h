@@ -38,8 +38,15 @@ void taskqueue_add(TaskQueueRef queue, Task *task);
 void taskqueue_destroy(TaskQueueRef queue);
 void taskqueue_wait_for_completion(TaskQueueRef queue);
 
+static inline void *calloc_arena(size_t size)
+{
+	void *ptr = malloc_arena(size);
+	memset(ptr, 0, size);
+	return ptr;
+}
+
 #define MALLOC(mem) malloc_arena(mem)
-#define CALLOCS(type) ({ type *__x = malloc_arena(sizeof(type)); memset(__x, 0, sizeof(type)); __x; })
+#define CALLOCS(type) calloc_arena(sizeof(type))
 
 static inline bool is_power_of_two(uint64_t x)
 {
