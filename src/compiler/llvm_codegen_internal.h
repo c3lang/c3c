@@ -236,8 +236,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
 void llvm_emit_defer(GenContext *c, AstId defer_start, AstId defer_end);
 void llvm_emit_extern_decl(GenContext *context, Decl *decl);
-
-LLVMValueRef llvm_emit_const_aggregate(GenContext *c, Expr *expr, bool *modified);
+LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init, bool *modified);
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type);
 void llvm_emit_global_variable_init(GenContext *c, Decl *decl);

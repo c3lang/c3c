@@ -155,6 +155,8 @@ bool sema_resolve_type(Context *context, Type *type)
 		case TYPE_ANYERR:
 		case TYPE_STRLIT:
 		case TYPE_VECTOR:
+		case TYPE_TYPEINFO:
+		case TYPE_UNTYPED_LIST:
 			return true;
 		case TYPE_POINTER:
 			return sema_resolve_type(context, type->pointer);
@@ -170,8 +172,6 @@ bool sema_resolve_type(Context *context, Type *type)
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
 			return sema_resolve_type(context, type->array.base);
-		case TYPE_TYPEINFO:
-			TODO
 		case TYPE_VIRTUAL:
 			TODO;
 	}

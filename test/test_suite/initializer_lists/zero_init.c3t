@@ -1,0 +1,51 @@
+// #target: x64-darwin
+
+union Baz
+{
+    int x;
+    double y;
+}
+struct Bar
+{
+    int x;
+    int y;
+}
+func int test()
+{
+    int[1] azz = {};
+    int[*] a = {};
+    Bar b = {};
+    Baz z = {};
+    int[] sub = {};
+    Bar[] foo = {};
+    Baz[3] baz = {};
+    return 1;
+}
+
+// #expect: zero_init.ll
+
+define i32 @zero_init.test() #0 {
+entry:
+  %azz = alloca [1 x i32], align 4
+  %a = alloca [0 x i32], align 4
+  %b = alloca %Bar, align 4
+  %z = alloca %Baz, align 8
+  %sub = alloca %"int[]", align 8
+  %foo = alloca %"Bar[]", align 8
+  %baz = alloca [3 x %Baz], align 16
+  %0 = bitcast [1 x i32]* %azz to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 4, i1 false)
+  %1 = bitcast [0 x i32]* %a to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %1, i8 0, i64 0, i1 false)
+  %2 = bitcast %Bar* %b to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 4 %2, i8 0, i64 8, i1 false)
+  %3 = bitcast %Baz* %z to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %3, i8 0, i64 8, i1 false)
+  %4 = bitcast %"int[]"* %sub to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %4, i8 0, i64 16, i1 false)
+  %5 = bitcast %"Bar[]"* %foo to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %5, i8 0, i64 16, i1 false)
+  %6 = bitcast [3 x %Baz]* %baz to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 16 %6, i8 0, i64 24, i1 false)
+  ret i32 1
+}

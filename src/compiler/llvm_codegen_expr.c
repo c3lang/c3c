@@ -12,7 +12,7 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue
 static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr);
 static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c, BEValue *parent, BEValue *index, SourceLocation *loc);
 static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_t offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
-
+static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value)
 {
 	llvm_value_rvalue(c, value);
@@ -693,7 +693,18 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			value->type = to_type;
 			return;
 		case CAST_SABOOL:
-			TODO
+			llvm_value_fold_failable(c, value);
+			if (llvm_value_is_addr(value))
+			{
+				value->value = LLVMBuildStructGEP(c->builder, value->value, 1, "");
+			}
+			else
+			{
+				value->value = LLVMBuildExtractValue(c->builder, value->value, 1, "");
+			}
+			value->type = type_usize->canonical;
+			llvm_value_rvalue(c, value);
+			llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
 			break;
 	}
 	value->type = to_type;
@@ -778,7 +789,8 @@ static inline void llvm_emit_initialize_reference_temporary_const(GenContext *c,
 
 	Type *canonical = expr->type->canonical;
 
-	LLVMValueRef value = llvm_emit_const_aggregate(c, expr, &modified);
+	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST);
+	LLVMValueRef value = llvm_emit_const_initializer(c, expr->const_expr.list, &modified);
 
 	// Create a global const.
 	LLVMTypeRef type = modified ? LLVMTypeOf(value) : llvm_get_type(c, canonical);
@@ -895,7 +907,8 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 }
 static inline void llvm_emit_initialize_reference_const(GenContext *c, BEValue *ref, Expr *expr)
 {
-	ConstInitializer *initializer = expr->initializer_expr.initializer;
+	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST);
+	ConstInitializer *initializer = expr->const_expr.list;
 
 	// Make sure we have an address.
 	llvm_value_addr(c, ref);
@@ -908,7 +921,7 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 {
 	// Getting ready to initialize, get the real type.
 	Type *real_type = type_lowering(ref->type);
-	Expr **elements = expr->initializer_expr.initializer_expr;
+	Expr **elements = expr->initializer_list;
 
 	// Make sure we have an address.
 	llvm_value_addr(c, ref);
@@ -957,7 +970,12 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 			llvm_value_set_address_align(&pointer, value, element->type, ref->alignment);
 		}
 		// If this is an initializer, we want to actually run the initialization recursively.
-		if (element->expr_kind == EXPR_INITIALIZER_LIST)
+		if (element->expr_kind == EXPR_CONST && element->const_expr.const_kind == CONST_LIST)
+		{
+			llvm_emit_const_initialize_reference(c, &pointer, element);
+			continue;
+		}
+		if (expr_is_init_list(element))
 		{
 			llvm_emit_initialize_reference(c, &pointer, element);
 			continue;
@@ -1008,7 +1026,12 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, uint64_
 			llvm_store_bevalue(c, ref, emitted_value);
 			return;
 		}
-		if (expr->expr_kind == EXPR_INITIALIZER_LIST)
+		if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+		{
+			llvm_emit_const_initialize_reference(c, ref, expr);
+			return;
+		}
+		if (expr_is_init_list(expr))
 		{
 			llvm_emit_initialize_reference(c, ref, expr);
 			return;
@@ -1063,7 +1086,7 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 {
 	// Getting ready to initialize, get the real type.
 	Type *real_type = type_lowering(ref->type);
-	Expr **elements = expr->initializer_expr.initializer_expr;
+	Expr **elements = expr->designated_init_list;
 	assert(vec_size(elements));
 
 	// Make sure we have an address.
@@ -1082,6 +1105,29 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 }
 
 /**
+ * Initialize a constant aggregate type.
+ */
+static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr)
+{
+	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST);
+	ConstInitializer *initializer = expr->const_expr.list;
+	if (initializer->kind == CONST_INIT_ZERO)
+	{
+		// In case of a zero, optimize.
+		llvm_emit_memclear(c, ref);
+		return;
+	}
+	// In case of small const initializers, or full arrays - use copy.
+	if (initializer->kind == CONST_INIT_ARRAY_FULL || type_size(expr->type) <= 32)
+	{
+		llvm_emit_initialize_reference_temporary_const(c, ref, expr);
+		return;
+	}
+	llvm_emit_initialize_reference_const(c, ref, expr);
+	return;
+}
+
+/**
  * Initialize an aggregate type.
  *
  * There are three methods:
@@ -1092,34 +1138,12 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
  */
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr)
 {
-	// In the case of a const, we have some optimizations:
-	if (expr->initializer_expr.init_type == INITIALIZER_CONST)
+	switch (expr->expr_kind)
 	{
-		ConstInitializer *initializer = expr->initializer_expr.initializer;
-		if (initializer->kind == CONST_INIT_ZERO)
-		{
-			// In case of a zero, optimize.
-			llvm_emit_memclear(c, ref);
-			return;
-		}
-		// In case of small const initializers, or full arrays - use copy.
-		if (initializer->kind == CONST_INIT_ARRAY_FULL || type_size(expr->type) <= 32)
-		{
-			llvm_emit_initialize_reference_temporary_const(c, ref, expr);
-			return;
-		}
-	}
-
-	switch (expr->initializer_expr.init_type)
-	{
-		case INITIALIZER_CONST:
-			// Just clear memory
-			llvm_emit_initialize_reference_const(c, ref, expr);
-			break;
-		case INITIALIZER_NORMAL:
+		case EXPR_INITIALIZER_LIST:
 			llvm_emit_initialize_reference_list(c, ref, expr);
 			break;
-		case INITIALIZER_DESIGNATED:
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			llvm_emit_initialize_reference_designated(c, ref, expr);
 			break;
 		default:
@@ -2613,6 +2637,12 @@ static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Real f)
 	return LLVMConstRealOfStringAndSize(type, global_context.scratch_buffer, global_context.scratch_buffer_len);
 }
 
+static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_value_set_address(value, llvm_emit_alloca_aligned(c, expr->type, "literal"), expr->type);
+	llvm_emit_initialize_reference_const(c, value, expr);
+}
+
 static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Type *type = type_reduced_from_expr(expr)->canonical;
@@ -2643,6 +2673,9 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			{
 				llvm_value_set(be_value, llvm_const_int(c, type, bigint_as_signed(&expr->const_expr.i)), type);
 			}
+			return;
+		case CONST_LIST:
+			llvm_emit_const_initializer_list_expr(c, be_value, expr);
 			return;
 		case CONST_FLOAT:
 			llvm_value_set(be_value, llvm_emit_real(llvm_get_type(c, type), expr->const_expr.f), type);
@@ -3545,7 +3578,12 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	}
 	BEValue value;
 	if (expr->expr_kind == EXPR_COMPOUND_LITERAL) expr = expr->expr_compound_literal.initializer;
-	if (expr->expr_kind == EXPR_INITIALIZER_LIST)
+	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+	{
+		llvm_emit_const_initialize_reference(c, ref, expr);
+		value = *ref;
+	}
+	else if (expr_is_init_list(expr))
 	{
 		llvm_emit_initialize_reference(c, ref, expr);
 		value = *ref;
@@ -3594,6 +3632,7 @@ static inline void gencontext_emit_failable(GenContext *context, BEValue *be_val
 	}
 	llvm_value_set(be_value, LLVMGetUndef(llvm_get_type(context, expr->type)), expr->type);
 }
+
 
 static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr)
 {
@@ -3799,6 +3838,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_COMPOUND_LITERAL:
 			UNREACHABLE
 		case EXPR_INITIALIZER_LIST:
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			llvm_emit_initializer_list_expr(c, value, expr);
 			return;
 		case EXPR_EXPR_BLOCK:

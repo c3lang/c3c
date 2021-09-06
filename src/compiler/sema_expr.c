@@ -9,6 +9,12 @@
  * - Disallow jumping in and out of an expression block.
  */
 
+static inline void expr_set_as_const_list(Expr *expr, ConstInitializer *list)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->const_expr.const_kind = CONST_LIST;
+	expr->const_expr.list = list;
+}
 static inline bool sema_cast_rvalue(Context *context, Type *to, Expr *expr);
 
 int BINOP_PREC_REQ[BINARYOP_LAST] =
@@ -527,20 +533,21 @@ bool expr_is_constant_eval(Expr *expr)
 			return expr_is_constant_eval(expr->expr_compound_literal.initializer);
 		case EXPR_INITIALIZER_LIST:
 		{
-			Expr** init_exprs = expr->initializer_expr.initializer_expr;
-			switch (expr->initializer_expr.init_type)
+			Expr** init_exprs = expr->initializer_list;
+			VECEACH(init_exprs, i)
 			{
-				case INITIALIZER_NORMAL:
-				{
-					VECEACH(init_exprs, i)
-					{
-						if (!expr_is_constant_eval(init_exprs[i])) return false;
-					}
-					return true;
-				}
-				default:
-					return false;
+				if (!expr_is_constant_eval(init_exprs[i])) return false;
 			}
+			return true;
+		}
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
+		{
+			Expr** init_exprs = expr->designated_init_list;
+			VECEACH(init_exprs, i)
+			{
+				if (!expr_is_constant_eval(init_exprs[i])) return false;
+			}
+			return true;
 		}
 		default:
 			return false;
@@ -2635,10 +2642,10 @@ static void sema_create_const_initializer_value(ConstInitializer *const_init, Ex
 {
 	// Possibly this is already a const initializers, in that case
 	// overwrite what is inside, eg [1] = { .a = 1 }
-	if (value->expr_kind == EXPR_INITIALIZER_LIST && value->initializer_expr.init_type == INITIALIZER_CONST)
+	if (value->expr_kind == EXPR_CONST && value->const_expr.const_kind == CONST_LIST)
 	{
-		*const_init = *value->initializer_expr.initializer;
-		value->initializer_expr.initializer = const_init;
+		*const_init = *value->const_expr.list;
+		value->const_expr.list = const_init;
 		return;
 	}
 	const_init->init_value = value;
@@ -2648,7 +2655,8 @@ static void sema_create_const_initializer_value(ConstInitializer *const_init, Ex
 
 static bool is_empty_initializer_list(Expr *value)
 {
-	return value->initializer_expr.init_type == INITIALIZER_CONST && value->initializer_expr.initializer->kind == CONST_INIT_ZERO;
+	return value->expr_kind == EXPR_CONST && value->const_expr.const_kind == CONST_LIST
+			&& value->const_expr.list->kind == CONST_INIT_ZERO;
 }
 static void sema_create_const_initializer(ConstInitializer *const_init, Expr *initializer);
 
@@ -2908,7 +2916,7 @@ static void sema_create_const_initializer(ConstInitializer *const_init, Expr *in
 	const_init->type = type_flatten(initializer->type);
 
 	// Loop through the initializers.
-	Expr **init_expressions = initializer->initializer_expr.initializer_expr;
+	Expr **init_expressions = initializer->initializer_list;
 	VECEACH(init_expressions, i)
 	{
 		Expr *expr = init_expressions[i];
@@ -2918,80 +2926,9 @@ static void sema_create_const_initializer(ConstInitializer *const_init, Expr *in
 	}
 }
 
-static void debug_dump_const_initializer(ConstInitializer *init, const char *name, unsigned indent)
-{
-	for (unsigned i = 0; i < indent; i++) printf("  ");
-	if (name)
-	{
-		printf("%s : %s", name, init->type->name ? init->type->name : "WTF");
-	}
-	else
-	{
-		printf("%s", init->type->name ? init->type->name : "WTF");
-	}
-	switch (init->kind)
-	{
-		case CONST_INIT_ZERO:
-			printf(" = 0\n");
-			return;
-		case CONST_INIT_UNION:
-		{
-			printf(" ->\n");
-			Decl** members = init->type->decl->strukt.members;
-			debug_dump_const_initializer(init->init_union.element, members[init->init_union.index]->name, indent + 1);
-			return;
-		}
-		case CONST_INIT_STRUCT:
-		{
-			printf(" ->\n");
-			Decl** members = init->type->decl->strukt.members;
-			unsigned member_count = vec_size(members);
-			for (unsigned i = 0; i < member_count; i++)
-			{
-				debug_dump_const_initializer(init->init_struct[i], members[i]->name, indent + 1);
-			}
-			return;
-		}
-		case CONST_INIT_ARRAY_VALUE:
-		{
-			printf(" [%llu] ->\n", (unsigned long long)init->init_array_value.index);
-			debug_dump_const_initializer(init->init_array_value.element, "", indent + 1);
-			return;
-		}
-		case CONST_INIT_VALUE:
-		{
-			assert(init->init_value->expr_kind == EXPR_CONST);
-			printf("  = ");
-			expr_const_fprint(stdout, &init->init_value->const_expr);
-			puts("");
-			return;
-		}
-		case CONST_INIT_ARRAY:
-			printf(" [//] ->\n");
-			{
-				VECEACH(init->init_array.elements, i)
-				{
-					debug_dump_const_initializer(init->init_array.elements[i], NULL, indent + 1);
-				}
-			}
-			return;
-		case CONST_INIT_ARRAY_FULL:
-			printf(" [: ->\n");
-			{
-				VECEACH(init->init_array_full, i)
-				{
-					debug_dump_const_initializer(init->init_array_full[i], NULL, indent + 1);
-				}
-			}
-			return;
-
-	}
-	UNREACHABLE
-}
-
 static bool sema_expr_analyse_designated_initializer(Context *context, Type *assigned, Expr *initializer)
 {
-	Expr **init_expressions = initializer->initializer_expr.initializer_expr;
+	Expr **init_expressions = initializer->designated_init_list;
 	Type *original = assigned->canonical;
 	bool is_structlike = type_is_structlike(assigned->canonical);
 
@@ -3020,11 +2957,9 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 	{
 		ConstInitializer *const_init = MALLOC(sizeof(ConstInitializer));
 		sema_create_const_initializer(const_init, initializer);
-		initializer->initializer_expr.init_type = INITIALIZER_CONST;
-		initializer->initializer_expr.initializer = const_init;
+		expr_set_as_const_list(initializer, const_init);
 		return true;
 	}
-	initializer->initializer_expr.init_type = INITIALIZER_DESIGNATED;
 	return true;
 }
 
@@ -3037,9 +2972,8 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 	initializer->pure = true;
 	initializer->constant = true;
 
-	Expr **elements = initializer->initializer_expr.initializer_expr;
+	Expr **elements = initializer->initializer_list;
 	Decl **members = assigned->strukt.members;
-	initializer->initializer_expr.init_type = INITIALIZER_NORMAL;
 	unsigned size = vec_size(elements);
 	unsigned expected_members = vec_size(members);
 
@@ -3093,10 +3027,9 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 		VECEACH(elements, i)
 		{
 			Expr *expr = elements[i];
-			if (expr->expr_kind == EXPR_INITIALIZER_LIST)
+			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
 			{
-				assert(expr->constant);
-				inits[i] = expr->initializer_expr.initializer;
+				inits[i] = expr->const_expr.list;
 				continue;
 			}
 			ConstInitializer *element_init = MALLOC(sizeof(ConstInitializer));
@@ -3104,8 +3037,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 			inits[i] = element_init;
 		}
 		const_init->init_struct = inits;
-		initializer->initializer_expr.init_type = INITIALIZER_CONST;
-		initializer->initializer_expr.initializer = const_init;
+		expr_set_as_const_list(initializer, const_init);
 	}
 
 	// 7. Done!
@@ -3122,14 +3054,11 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 	initializer->pure = true;
 	initializer->constant = true;
 
-	Expr **elements = initializer->initializer_expr.initializer_expr;
-
-	assert((assigned->type_kind == TYPE_ARRAY) && "The other types are not done yet.");
+	Expr **elements = initializer->initializer_list;
 
 	Type *inner_type = type_get_indexed_type(assigned);
 	assert(inner_type);
 
-	initializer->initializer_expr.init_type = INITIALIZER_NORMAL;
 	unsigned size = vec_size(elements);
 	unsigned expected_members = assigned->array.len;
 	if (assigned->type_kind != TYPE_ARRAY) expected_members = size;
@@ -3171,10 +3100,9 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 		VECEACH(elements, i)
 		{
 			Expr *expr = elements[i];
-			if (expr->expr_kind == EXPR_INITIALIZER_LIST)
+			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
 			{
-				assert(expr->constant);
-				inits[i] = expr->initializer_expr.initializer;
+				inits[i] = expr->const_expr.list;
 				continue;
 			}
 			ConstInitializer *element_init = MALLOC(sizeof(ConstInitializer));
@@ -3182,17 +3110,58 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 			inits[i] = element_init;
 		}
 		const_init->init_array_full = inits;
-		initializer->initializer_expr.init_type = INITIALIZER_CONST;
-		initializer->initializer_expr.initializer = const_init;
+		expr_set_as_const_list(initializer, const_init);
 	}
 
 	// 7. Done!
 	return true;
 }
 
+static inline bool sema_expr_analyse_untyped_initializer(Context *context, Expr *initializer)
+{
+	initializer->pure = true;
+	initializer->constant = true;
+
+	Expr **elements = initializer->initializer_list;
+
+	unsigned size = vec_size(elements);
+
+	Type *element_type = NULL;
+	bool no_common_elements = false;
+	VECEACH(elements, i)
+	{
+		Expr *element = elements[i];
+		if (!sema_analyse_expr(context, NULL, element)) return false;
+		initializer->failable |= element->failable;
+		initializer->pure &= element->pure;
+		initializer->constant &= element->constant;
+		if (no_common_elements) continue;
+		if (element_type == NULL)
+		{
+			element_type = element->type;
+			continue;
+		}
+		element_type = type_find_max_type(element->type, element_type);
+		if (!element_type) no_common_elements = true;
+	}
+	TODO
+}
+
 static inline bool sema_expr_analyse_initializer(Context *context, Type *external_type, Type *assigned, Expr *expr)
 {
-	Expr **init_expressions = expr->initializer_expr.initializer_expr;
+	// Note at this point this we either have
+	// EXPR_DESIGNATED_INITIALIZER_LIST
+	// or EXPR_INITIALIZER_LIST
+
+	if (expr->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
+	{
+		expr_set_type(expr, external_type);
+		return sema_expr_analyse_designated_initializer(context, assigned, expr);
+	}
+
+	assert(expr->expr_kind == EXPR_INITIALIZER_LIST);
+
+	Expr **init_expressions = expr->initializer_list;
 
 	unsigned init_expression_count = vec_size(init_expressions);
 
@@ -3200,32 +3169,26 @@ static inline bool sema_expr_analyse_initializer(Context *context, Type *externa
 	if (init_expression_count == 0)
 	{
 		external_type = sema_type_lower_by_size(external_type, 0);
-		assigned = sema_type_lower_by_size(assigned, 0);
 		expr_set_type(expr, external_type);
 		ConstInitializer *initializer = CALLOCS(ConstInitializer);
 		initializer->kind = CONST_INIT_ZERO;
 		initializer->type = type_flatten(expr->type);
-		expr->initializer_expr.init_type = INITIALIZER_CONST;
-		expr->initializer_expr.initializer = initializer;
+		expr_set_as_const_list(expr, initializer);
 		expr->constant = true;
 		expr->pure = true;
 		return true;
-	}
-
-	// 2. Check if we might have a designated initializer
-	//    this means that in this case we're actually not resolving macros here.
-	if (init_expressions[0]->expr_kind == EXPR_DESIGNATOR)
-	{
-		expr_set_type(expr, external_type);
-		return sema_expr_analyse_designated_initializer(context, assigned, expr);
 	}
 
 	external_type = sema_type_lower_by_size(external_type, init_expression_count);
 	assigned = sema_type_lower_by_size(assigned, init_expression_count);
 	expr_set_type(expr, external_type);
 
+	if (external_type == type_complist)
+	{
+		return sema_expr_analyse_untyped_initializer(context, expr);
+	}
 	// 3. Otherwise use the plain initializer.
-	if (assigned->type_kind == TYPE_ARRAY || assigned->type_kind == TYPE_INFERRED_ARRAY)
+	if (assigned->type_kind == TYPE_UNTYPED_LIST || assigned->type_kind == TYPE_ARRAY || assigned->type_kind == TYPE_INFERRED_ARRAY || assigned->type_kind == TYPE_SUBARRAY)
 	{
 		return sema_expr_analyse_array_plain_initializer(context, assigned, expr);
 	}
@@ -3235,6 +3198,10 @@ static inline bool sema_expr_analyse_initializer(Context *context, Type *externa
 
 static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to, Expr *expr)
 {
+	if (!to)
+	{
+		return sema_expr_analyse_initializer(context, type_complist, type_complist, expr);
+	}
 	assert(to);
 	Type *assigned = type_flatten(to);
 	switch (assigned->type_kind)
@@ -3243,6 +3210,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 		case TYPE_UNION:
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_SUBARRAY:
 			return sema_expr_analyse_initializer(context, to, assigned, expr);
 		default:
 			break;
@@ -4672,52 +4640,21 @@ static bool sema_expr_analyse_bit_not(Context *context, Type *to, Expr *expr, Ex
 
 static bool sema_expr_analyse_not(Expr *expr, Expr *inner)
 {
-	if (!type_may_convert_to_boolean(inner->type))
+	if (!cast_may_implicit(inner->type, type_bool))
 	{
-		SEMA_ERROR(expr, "The use of '!' on %s is not allowed as it can't be converted to a boolean valure.", type_quoted_error_string(inner->type));
+		SEMA_ERROR(expr, "The use of '!' on %s is not allowed as it can't be converted to a boolean value.", type_quoted_error_string(inner->type));
 		return false;
 	}
+	if (!cast_implicit(inner, type_bool)) return false;
 	expr_copy_properties(expr, inner);
 	expr_set_type(expr, type_bool);
 
 	if (inner->expr_kind == EXPR_CONST)
 	{
+		assert(inner->const_expr.const_kind == CONST_BOOL);
 		expr->const_expr.const_kind = CONST_BOOL;
 		expr->expr_kind = EXPR_CONST;
-		switch (inner->const_expr.const_kind)
-		{
-			case CONST_INTEGER:
-				expr->const_expr.b = bigint_cmp_zero(&inner->const_expr.i) == CMP_EQ;
-				return true;
-			case CONST_BOOL:
-				expr->const_expr.b = !inner->const_expr.b;
-				return true;
-			case CONST_FLOAT:
-				expr->const_expr.b = inner->const_expr.f == 0.0;
-				return true;
-			case CONST_STRING:
-				expr->const_expr.b = !inner->const_expr.string.len;
-				return true;
-			case CONST_BYTES:
-				expr->const_expr.b = !inner->const_expr.bytes.len;
-				return true;
-			case CONST_POINTER:
-				expr->const_expr.b = true;
-				return true;
-			case CONST_ERR:
-				expr->const_expr.b = inner->const_expr.err_val == NULL;
-				return true;
-			case CONST_ENUM:
-			{
-				Expr *value = inner->const_expr.enum_val->enum_constant.expr;
-				assert(value->expr_kind == EXPR_CONST && value->const_expr.const_kind == CONST_INTEGER);
-				expr->const_expr.b = bigint_cmp_zero(&value->const_expr.i) == CMP_EQ;
-				return true;
-			}
-			case CONST_TYPEID:
-				UNREACHABLE
-		}
-		UNREACHABLE
+		expr->const_expr.b = !inner->const_expr.b;
 	}
 	return true;
 }
@@ -4907,7 +4844,7 @@ static inline bool sema_expr_analyse_unary(Context *context, Type *to, Expr *exp
 			if (!sema_analyse_expr(context, to, inner)) return false;
 			return sema_expr_analyse_bit_not(context, to, expr, inner);
 		case UNARYOP_NOT:
-			if (!sema_analyse_expr(context, NULL, inner)) return false;
+			if (!sema_analyse_expr(context, type_bool, inner)) return false;
 			return sema_expr_analyse_not(expr, inner);
 		case UNARYOP_DEC:
 		case UNARYOP_INC:
@@ -6146,6 +6083,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Type *to, Expr *
 		case EXPR_ACCESS:
 			return sema_expr_analyse_access(context, expr);
 		case EXPR_INITIALIZER_LIST:
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			return sema_expr_analyse_initializer_list(context, to, expr);
 		case EXPR_CAST:
 			return sema_expr_analyse_cast(context, to, expr);
@@ -6245,24 +6183,62 @@ bool sema_analyse_expr_value(Context *context, Type *to, Expr *expr)
 
 ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size)
 {
-	assert(initializer->expr_kind == EXPR_INITIALIZER_LIST);
-	Expr **initializers = initializer->initializer_expr.initializer_expr;
-	*may_be_array = true;
-	*is_const_size = true;
-	unsigned element_count = vec_size(initializers);
-	// If it's empty or the first element is not a designator, we assume an array list
-	// with that many elements.
-	if (!element_count || initializers[0]->expr_kind != EXPR_DESIGNATOR) return element_count;
+	if (initializer->expr_kind == EXPR_CONST)
+	{
+		assert(initializer->const_expr.const_kind == CONST_LIST);
+		ConstInitializer *init = initializer->const_expr.list;
+		Type *type = type_lowering(initializer->type);
+		*is_const_size = true;
+		switch (init->kind)
+		{
+			case CONST_INIT_ZERO:
+				if (type->type_kind == TYPE_ARRAY)
+				{
+					*may_be_array = true;
+					return type->array.len;
+				}
+				if (type->type_kind == TYPE_SUBARRAY)
+				{
+					*may_be_array = true;
+					return 0;
+				}
+				*may_be_array = false;
+				return 0;
+			case CONST_INIT_ARRAY:
+				*may_be_array = true;
+				return VECLAST(init->init_array.elements)->init_array_value.index + 1;
+			case CONST_INIT_ARRAY_FULL:
+				*may_be_array = true;
+				return vec_size(init->init_array_full);
+			case CONST_INIT_ARRAY_VALUE:
+				UNREACHABLE;
+			case CONST_INIT_STRUCT:
+			case CONST_INIT_UNION:
+			case CONST_INIT_VALUE:
+				*may_be_array = false;
+				return 0;
+		}
+		UNREACHABLE
+	}
+	switch (initializer->expr_kind)
+	{
+		case EXPR_INITIALIZER_LIST:
+			*may_be_array = true;
+			*is_const_size = true;
+			return vec_size(initializer->initializer_list);
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
+			break;
+		default:
+			UNREACHABLE
+	}
+	Expr **initializers = initializer->designated_init_list;
 	ArrayIndex size = 0;
 	// Otherwise we assume everything's a designator.
 	VECEACH(initializers, i)
 	{
 		Expr *sub_initializer = initializers[i];
-		if (sub_initializer->expr_kind != EXPR_DESIGNATOR)
-		{
-			// Simply messed up: a mix of designators and regular ones.
-			return -1;
-		}
+		assert(sub_initializer->expr_kind == EXPR_DESIGNATOR);
+
 		DesignatorElement *element = sub_initializer->designator_expr.path[0];
 		switch (element->kind)
 		{

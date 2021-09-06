@@ -11,8 +11,8 @@ static struct
 	Type u8, u16, u32, u64, u128;
 	Type f16, f32, f64, f128, fxx;
 	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
-	Type voidstar, typeid, anyerr, typeinfo;
-	Type str, varheader, virtual, virtual_generic;
+	Type voidstar, typeid, anyerr, typeinfo, ctlist;
+	Type str, virtual, virtual_generic;
 } t;
 
 Type *type_bool = &t.u1;
@@ -46,7 +46,7 @@ Type *type_compint = &t.ixx;
 Type *type_compfloat = &t.fxx;
 Type *type_compstr = &t.str;
 Type *type_anyerr = &t.anyerr;
-Type *type_varheader = &t.varheader;
+Type *type_complist = &t.ctlist;
 
 static unsigned size_subarray;
 static AlignSize alignment_subarray;
@@ -126,6 +126,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VIRTUAL:
 		case TYPE_ANYERR:
+		case TYPE_UNTYPED_LIST:
 			return type->name;
 		case TYPE_FUNC:
 			return strcat_arena("func ", type->func.mangled_function_signature);
@@ -202,9 +203,7 @@ ByteSize type_size(Type *type)
 			}
 			return width;
 		}
-		case TYPE_POISONED:
-		case TYPE_TYPEINFO:
-		case TYPE_INFERRED_ARRAY:
+		case CT_TYPES:
 			UNREACHABLE;
 		case TYPE_TYPEDEF:
 			return type_size(type->canonical);
@@ -365,6 +364,7 @@ bool type_is_abi_aggregate(Type *type)
 			return true;
 		case TYPE_TYPEINFO:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_UNTYPED_LIST:
 			UNREACHABLE
 	}
 	UNREACHABLE
@@ -502,15 +502,13 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			type = type->decl->bitstruct.base_type->type;
 			goto RETRY;
 		case TYPE_FXX:
-		case TYPE_POISONED:
 		case TYPE_IXX:
 		case TYPE_VOID:
-		case TYPE_TYPEINFO:
 		case TYPE_TYPEID:
 		case TYPE_FUNC:
 		case TYPE_STRLIT:
 		case TYPE_SUBARRAY:
-		case TYPE_INFERRED_ARRAY:
+		case CT_TYPES:
 			return false;
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
@@ -705,6 +703,7 @@ AlignSize type_abi_alignment(Type *type)
 	{
 		case TYPE_POISONED:
 		case TYPE_TYPEINFO:
+		case TYPE_UNTYPED_LIST:
 			UNREACHABLE;
 		case TYPE_BITSTRUCT:
 			return type_abi_alignment(type->decl->bitstruct.base_type->type);
@@ -992,7 +991,6 @@ Type *type_get_indexed_type(Type *type)
 	}
 }
 
-
 static Type *type_create_array(Type *element_type, uint64_t len, bool vector, bool canonical)
 {
 	if (canonical) element_type = element_type->canonical;
@@ -1146,6 +1144,7 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_IXX:
 		case TYPE_FXX:
 		case TYPE_STRLIT:
+		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_TYPEINFO:
 			UNREACHABLE
@@ -1240,6 +1239,7 @@ void type_setup(PlatformTarget *target)
 
 
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
+	type_create("complist", &t.ctlist, TYPE_UNTYPED_LIST, 1, 1, 1);
 	type_init("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer);
 
 	type_init("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer);
@@ -1409,6 +1409,7 @@ bool type_may_convert_to_boolean(Type *type)
 		case TYPE_ANYERR:
 		case TYPE_ERRTYPE:
 		case TYPE_STRLIT:
+		case TYPE_UNTYPED_LIST:
 			return true;
 		case TYPE_FUNC:
 		case TYPE_ARRAY:
@@ -1596,6 +1597,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_ANYERR:
 		case TYPE_TYPEID:
 		case TYPE_STRUCT:
+		case TYPE_UNTYPED_LIST:
 			TODO
 		case TYPE_TYPEDEF:
 			UNREACHABLE

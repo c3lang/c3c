@@ -411,6 +411,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_TYPEINFO:
 		case TYPE_VECTOR:
 		case TYPE_BITSTRUCT:
+		case TYPE_UNTYPED_LIST:
 			return CAST_ERROR;
 	}
 	UNREACHABLE
@@ -493,6 +494,9 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 			return to_kind == TYPE_POINTER;
 		case TYPE_VECTOR:
 			return type_is_structurally_equivalent(type_get_array(from->vector.base, from->vector.len), to);
+		case TYPE_UNTYPED_LIST:
+			REMINDER("Look at untyped list explicit conversions");
+			return false;
 	}
 	UNREACHABLE
 }
@@ -808,6 +812,32 @@ bool cast_implicit_bit_width(Expr *expr, Type *to_type)
 	return cast_implicit(expr, to_type);
 }
 
+static inline bool subarray_to_bool(Expr *expr)
+{
+	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+	{
+		ConstInitializer *list = expr->const_expr.list;
+		switch (list->kind)
+		{
+			case CONST_INIT_ZERO:
+				expr_const_set_bool(&expr->const_expr, false);
+				return true;
+			case CONST_INIT_ARRAY:
+				expr_const_set_bool(&expr->const_expr, vec_size(list->init_array.elements) > 0);
+				return true;
+			case CONST_INIT_ARRAY_FULL:
+				expr_const_set_bool(&expr->const_expr, vec_size(list->init_array_full) > 0);
+				return true;
+			case CONST_INIT_STRUCT:
+			case CONST_INIT_UNION:
+			case CONST_INIT_VALUE:
+			case CONST_INIT_ARRAY_VALUE:
+				break;
+		}
+	}
+	return insert_cast(expr, CAST_SABOOL, type_bool);
+}
+
 bool cast(Expr *expr, Type *to_type)
 {
 	Type *from_type = type_flatten(expr->type->canonical);
@@ -901,6 +931,7 @@ bool cast(Expr *expr, Type *to_type)
 			break;
 		case TYPE_SUBARRAY:
 			if (canonical->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_SAPTR, canonical);
+			if (canonical->type_kind == TYPE_BOOL) return subarray_to_bool(expr);
 			break;
 		case TYPE_VECTOR:
 			TODO

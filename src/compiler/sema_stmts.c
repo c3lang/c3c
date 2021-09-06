@@ -1141,7 +1141,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 		Type *inferred_type = NULL;
 
 		// We may have an initializer list, in this case we rely on an inferred type.
-		if (enumerator->expr_kind == EXPR_INITIALIZER_LIST)
+		if (expr_is_init_list(enumerator) || (enumerator->expr_kind == EXPR_CONST && enumerator->const_expr.const_kind == CONST_LIST))
 		{
 			bool may_be_array;
 			bool is_const_size;

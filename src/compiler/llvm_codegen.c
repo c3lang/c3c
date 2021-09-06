@@ -241,7 +241,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 
 static LLVMValueRef llvm_emit_const_initializer_simple(GenContext *c, Expr *expr, bool *modified)
 {
-	Expr **elements = expr->initializer_expr.initializer_expr;
+	Expr **elements = expr->initializer_list;
 	unsigned element_count = vec_size(elements);
 	LLVMValueRef* values = malloc_arena(element_count * sizeof(LLVMValueRef));
 	Type *expr_type = expr->type->canonical;
@@ -271,20 +271,6 @@ static LLVMValueRef llvm_emit_const_initializer_simple(GenContext *c, Expr *expr
 	return LLVMConstNamedStruct(llvm_get_type(c, expr_type), values, element_count);
 }
 
-LLVMValueRef llvm_emit_const_aggregate(GenContext *c, Expr *expr, bool *modified)
-{
-	switch (expr->initializer_expr.init_type)
-	{
-		case INITIALIZER_UNKNOWN:
-		case INITIALIZER_DESIGNATED:
-			UNREACHABLE
-		case INITIALIZER_CONST:
-			return llvm_emit_const_initializer(c, expr->initializer_expr.initializer, modified);
-		case INITIALIZER_NORMAL:
-			return llvm_emit_const_initializer_simple(c, expr, modified);
-	}
-	UNREACHABLE
-}
 
 static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl)
 {
@@ -352,9 +338,9 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	Expr *init_expr = decl->var.init_expr;
 	if (init_expr)
 	{
-		if (init_expr->expr_kind == EXPR_INITIALIZER_LIST)
+		if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_LIST)
 		{
-			init_value = llvm_emit_const_aggregate(c, init_expr, &modified);
+			init_value = llvm_emit_const_initializer(c, init_expr->const_expr.list, &modified);
 		}
 		else
 		{

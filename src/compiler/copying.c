@@ -206,7 +206,10 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_EXPR(expr->access_expr.parent);
 			return expr;
 		case EXPR_INITIALIZER_LIST:
-			MACRO_COPY_EXPR_LIST(expr->initializer_expr.initializer_expr);
+			MACRO_COPY_EXPR_LIST(expr->initializer_list);
+			return expr;
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
+			MACRO_COPY_EXPR_LIST(expr->designated_init_list);
 			return expr;
 		case EXPR_EXPRESSION_LIST:
 			MACRO_COPY_EXPR_LIST(expr->expression_list);

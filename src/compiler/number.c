@@ -5,46 +5,6 @@
 #include "compiler_internal.h"
 
 
-void expr_const_fprint(FILE *__restrict file, ExprConst *expr)
-{
-	switch (expr->const_kind)
-	{
-		case CONST_POINTER:
-			fprintf(file, "null");
-			break;
-		case CONST_BOOL:
-			fprintf(file, expr->b ? "true" : "false");
-			break;
-		case CONST_INTEGER:
-			bigint_fprint(file, &expr->i, 10);
-			break;
-		case CONST_FLOAT:
-#if LONG_DOUBLE
-			fprintf(file, "%Lg", expr->f);
-#else
-			fprintf(file, "%g", expr->f);
-#endif
-			break;
-		case CONST_STRING:
-			fprintf(file, "%.*s", expr->string.len, expr->string.chars);
-			break;
-		case CONST_BYTES:
-			fprintf(file, "[byte data]");
-			break;
-		case CONST_ENUM:
-			fprintf(file, "%s", expr->enum_val->name);
-			break;
-		case CONST_ERR:
-			fprintf(file, "%s", expr->err_val->name);
-			break;
-		case CONST_TYPEID:
-			fprintf(file, "%s", expr->typeid->name);
-			break;
-
-	}
-
-}
-
 void expr_const_set_int(ExprConst *expr, uint64_t v, TypeKind kind)
 {
 	if (type_kind_is_signed(kind))
@@ -293,6 +253,8 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 			return expr->err_val->name;
 		case CONST_TYPEID:
 			return expr->typeid->name;
+		case CONST_LIST:
+			return "constant list";
 	}
 	UNREACHABLE
 }

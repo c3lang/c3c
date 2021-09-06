@@ -30,7 +30,7 @@ static void header_print_type(FILE *file, Type *type)
 {
 	switch (type->type_kind)
 	{
-		case TYPE_POISONED:
+		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_BITSTRUCT:
 			TODO
@@ -111,7 +111,6 @@ static void header_print_type(FILE *file, Type *type)
 		case TYPE_TYPEDEF:
 			break;
 		case TYPE_STRLIT:
-		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
 		case TYPE_ARRAY:
 			break;
@@ -119,8 +118,6 @@ static void header_print_type(FILE *file, Type *type)
 		case TYPE_VIRTUAL_ANY:
 			break;
 		case TYPE_SUBARRAY:
-			break;
-		case TYPE_TYPEINFO:
 			break;
 		case TYPE_VECTOR:
 			break;

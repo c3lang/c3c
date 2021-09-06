@@ -79,18 +79,49 @@ typedef struct BigInt_
 	};
 } BigInt;
 
+
 typedef enum
 {
-	CONST_FLOAT,
-	CONST_INTEGER,
-	CONST_BOOL,
-	CONST_ENUM,
-	CONST_ERR,
-	CONST_BYTES,
-	CONST_STRING,
-	CONST_POINTER,
-	CONST_TYPEID,
-} ConstKind;
+	CONST_INIT_ZERO,
+	CONST_INIT_STRUCT,
+	CONST_INIT_UNION,
+	CONST_INIT_VALUE,
+	CONST_INIT_ARRAY,
+	CONST_INIT_ARRAY_FULL,
+	CONST_INIT_ARRAY_VALUE,
+	} ConstInitType;
+
+
+typedef struct ConstInitializer_
+{
+	ConstInitType kind;
+	// Type initialized
+	Type *type;
+	union
+	{
+		struct ConstInitializer_ **init_struct;
+		Expr *init_value;
+		struct
+		{
+			struct ConstInitializer_ *element;
+			MemberIndex index;
+		} init_union;
+		struct
+		{
+			struct ConstInitializer_ **elements;
+		} init_array;
+		struct ConstInitializer_ **init_array_full;
+		struct
+		{
+			struct ConstInitializer_ *element;
+			ArrayIndex index;
+		} init_array_value;
+	};
+} ConstInitializer;
+
+
+
+
 
 typedef struct
 {
@@ -121,6 +152,7 @@ typedef struct
 			uint64_t len;
 		} bytes;
 		Type *typeid;
+		ConstInitializer *list;
 	};
 } ExprConst;
 
@@ -708,45 +740,6 @@ typedef struct DesignatorElement_
 	ArrayIndex index_end;
 } DesignatorElement;
 
-typedef enum
-{
-	CONST_INIT_ZERO,
-	CONST_INIT_STRUCT,
-	CONST_INIT_UNION,
-	CONST_INIT_VALUE,
-	CONST_INIT_ARRAY,
-	CONST_INIT_ARRAY_FULL,
-	CONST_INIT_ARRAY_VALUE,
-} ConstInitType;
-
-
-typedef struct ConstInitializer_
-{
-	ConstInitType kind;
-	// Type initialized
-	Type *type;
-	union
-	{
-		struct ConstInitializer_ **init_struct;
-		Expr *init_value;
-		struct
-		{
-			struct ConstInitializer_ *element;
-			MemberIndex index;
-		} init_union;
-		struct
-		{
-			struct ConstInitializer_ **elements;
-		} init_array;
-		struct ConstInitializer_ **init_array_full;
-		struct
-		{
-			struct ConstInitializer_ *element;
-			ArrayIndex index;
-		} init_array_value;
-	};
-} ConstInitializer;
-
 typedef struct
 {
 	DesignatorElement **path;
@@ -839,23 +832,6 @@ typedef struct
 } ExprMacroBlock;
 
 
-typedef enum
-{
-	INITIALIZER_UNKNOWN,
-	INITIALIZER_DESIGNATED,
-	INITIALIZER_NORMAL,
-	INITIALIZER_CONST,
-} InitializerType;
-
-typedef struct
-{
-	InitializerType init_type;
-	union
-	{
-		Expr** initializer_expr;
-		ConstInitializer *initializer;
-	};
-} ExprInitializer;
 
 typedef struct
 {
@@ -990,10 +966,11 @@ struct Expr_
 		ExprIdentifierRaw hash_ident_expr;
 		TypeInfo *typeid_expr;
 		ExprBodyExpansion body_expansion_expr;
-		ExprInitializer initializer_expr;
 		Decl *expr_enum;
 		ExprCompoundLiteral expr_compound_literal;
 		Expr** expression_list;
+		Expr** initializer_list;
+		Expr** designated_init_list;
 		ExprScope expr_scope;
 		ExprFuncBlock expr_block;
 		ExprMacroBlock macro_block;
@@ -1576,8 +1553,9 @@ extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_iptr, *type_uptr, *type_iptrdiff, *type_uptrdiff;
 extern Type *type_u128, *type_i128;
 extern Type *type_compint, *type_compfloat;
-extern Type *type_typeid, *type_anyerr, *type_typeinfo, *type_varheader;
+extern Type *type_typeid, *type_anyerr, *type_typeinfo;
 extern Type *type_virtual, *type_virtual_generic;
+extern Type *type_complist;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 
@@ -1740,7 +1718,6 @@ void context_register_external_symbol(Context *context, Decl *decl);
 bool context_add_import(Context *context, Path *path, Token symbol, Token alias, bool private_import);
 bool context_set_module_from_filename(Context *context);
 bool context_set_module(Context *context, Path *path, TokenId *generic_parameters, bool is_private);
-void context_print_ast(Context *context, FILE *file);
 
 #pragma mark --- Decl functions
 
@@ -1753,7 +1730,7 @@ Decl *decl_new_generated_var(const char *name, Type *type, VarDeclKind kind, Sou
 #define DECL_NEW_VAR(_type, _kind, _vis) decl_new_var(context->tok.id, _type, _kind, _vis)
 void decl_set_external_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
-const char *decl_var_to_string(VarDeclKind kind);
+
 static inline Decl *decl_raw(Decl *decl);
 static inline bool decl_ok(Decl *decl) { return !decl || decl->decl_kind != DECL_POISONED; }
 static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
@@ -1815,7 +1792,7 @@ void expr_const_set_int(ExprConst *expr, uint64_t v, TypeKind kind);
 void expr_const_set_float(ExprConst *expr, Real d, TypeKind kind);
 void expr_const_set_bool(ExprConst *expr, bool b);
 void expr_const_set_null(ExprConst *expr);
-void expr_const_fprint(FILE *__restrict file, ExprConst *expr);
+
 bool expr_const_int_overflowed(const ExprConst *expr);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
@@ -1824,16 +1801,17 @@ void expr_insert_deref(Expr *expr);
 Expr *expr_variable(Decl *decl);
 bool expr_is_constant_eval(Expr *expr);
 const char *expr_const_to_error_string(const ExprConst *expr);
+static inline bool expr_is_init_list(Expr *expr)
+{
+	ExprKind kind = expr->expr_kind;
+	return kind == EXPR_DESIGNATED_INITIALIZER_LIST || kind == EXPR_INITIALIZER_LIST;
+}
 static inline void expr_set_type(Expr *expr, Type *type)
 {
 	assert(type);
 	expr->type = type;
 	expr->original_type = type;
 }
-
-void fprint_decl(Context *context, FILE *file, Decl *dec);
-void fprint_type_info_recursive(Context *context, FILE *file, TypeInfo *type_info, int indent);
-void fprint_expr_recursive(Context *context, FILE *file, Expr *expr, int indent);
 
 
 #pragma mark --- Lexer functions
@@ -1870,8 +1848,6 @@ Decl *module_find_symbol(Module *module, const char *symbol);
 bool parse_file(File *file);
 Path *path_create_from_string(const char *string, size_t len, SourceSpan span);
 Path *path_find_parent_path(Path *path);
-
-const char *resolve_status_to_string(ResolveStatus status);
 
 #define SEMA_TOKEN_ERROR(_tok, ...) sema_error_range(source_span_from_token_id(_tok.id), __VA_ARGS__)
 #define SEMA_TOKID_ERROR(_tok_id, ...) sema_error_range(source_span_from_token_id(_tok_id), __VA_ARGS__)
@@ -2176,9 +2152,7 @@ static inline bool type_convert_will_trunc(Type *destination, Type *source)
 
 
 UnaryOp unaryop_from_token(TokenType type);
-TokenType unaryop_to_token(UnaryOp type);
 PostUnaryOp post_unaryop_from_token(TokenType type);
-TokenType postunaryop_to_token(PostUnaryOp type);
 BinaryOp binaryop_from_token(TokenType type);
 BinaryOp binaryop_assign_base_op(BinaryOp assign_binary_op);
 TokenType binaryop_to_token(BinaryOp type);
