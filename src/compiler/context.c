@@ -61,8 +61,8 @@ static bool filename_to_module_in_buffer(const char *path)
 		if (path[i] == '/') last_slash = i;
 		if (path[i] == '.') last_dot = i;
 	}
-	int namelen = last_dot - last_slash - 1;
-	if (namelen < 1) return false;
+	int name_len = last_dot - last_slash - 1;
+	if (name_len < 1) return false;
 	scratch_buffer_clear();
 	for (int i = last_slash + 1; i < last_dot; i++)
 	{
@@ -280,30 +280,3 @@ bool context_add_import(Context *context, Path *path, Token token, Token alias, 
     return true;
 }
 
-void context_print_ast(Context *context, FILE *file)
-{
-	VECEACH(context->enums, i)
-	{
-		fprint_decl(context, file, context->enums[i]);
-	}
-	VECEACH(context->global_decls, i)
-	{
-		fprint_decl(context, file, context->global_decls[i]);
-	}
-	VECEACH(context->vars, i)
-	{
-		fprint_decl(context, file, context->vars[i]);
-	}
-	VECEACH(context->types, i)
-	{
-		fprint_decl(context, file, context->types[i]);
-	}
-	VECEACH(context->functions, i)
-	{
-		fprint_decl(context, file, context->functions[i]);
-	}
-	VECEACH(context->ct_ifs, i)
-	{
-		fprint_decl(context, file, context->ct_ifs[i]);
-	}
-}

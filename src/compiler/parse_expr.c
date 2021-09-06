@@ -50,12 +50,8 @@ static Expr *parse_precedence(Context *context, Precedence precedence)
 	return parse_precedence_with_left_side(context, left_side, precedence);
 }
 
-static inline Expr *parse_expr_or_initializer_list(Context *context)
+Expr *parse_expr_or_initializer_list(Context *context)
 {
-	if (TOKEN_IS(TOKEN_LBRACE))
-	{
-		return parse_initializer_list(context);
-	}
 	return parse_expr(context);
 }
 
@@ -501,10 +497,6 @@ Expr *parse_initializer(Context *context)
 		advance(context);
 		return expr;
 	}
-	if (TOKEN_IS(TOKEN_LBRACE))
-	{
-		return parse_initializer_list(context);
-	}
 	return parse_expr(context);
 }
 
@@ -522,15 +514,47 @@ Expr *parse_initializer(Context *context)
  * @param elements
  * @return
  */
-Expr *parse_initializer_list(Context *context)
+Expr *parse_initializer_list(Context *context, Expr *left)
 {
+	assert(!left && "Unexpected left hand side");
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST, context->tok);
-	initializer_list->initializer_expr.init_type = INITIALIZER_UNKNOWN;
-	CONSUME_OR(TOKEN_LBRACE, poisoned_expr);
+	advance_and_verify(context, TOKEN_LBRACE);
 	if (!try_consume(context, TOKEN_RBRACE))
 	{
-		if (!parse_arg_list(context, &initializer_list->initializer_expr.initializer_expr, TOKEN_RBRACE, NULL)) return poisoned_expr;
+		Expr **exprs = NULL;
+		if (!parse_arg_list(context, &exprs, TOKEN_RBRACE, NULL)) return poisoned_expr;
+		int designated = -1;
+		VECEACH(exprs, i)
+		{
+			Expr *expr = exprs[i];
+			if (expr->expr_kind == EXPR_DESIGNATOR)
+			{
+				if (designated == 0)
+				{
+					SEMA_ERROR(expr, "Designated initialization with '[] = ...' and '.param = ...' cannot be mixed with normal initialization.");
+					return poisoned_expr;
+				}
+				designated = 1;
+				continue;
+			}
+			if (designated == 1)
+			{
+				SEMA_ERROR(expr, "Normal initialization cannot be mixed with designated initialization.");
+				return poisoned_expr;
+			}
+			designated = 0;
+		}
 		CONSUME_OR(TOKEN_RBRACE, poisoned_expr);
+		RANGE_EXTEND_PREV(initializer_list);
+		if (designated == 1)
+		{
+			initializer_list->designated_init_list = exprs;
+			initializer_list->expr_kind = EXPR_DESIGNATED_INITIALIZER_LIST;
+		}
+		else
+		{
+			initializer_list->initializer_list = exprs;
+		}
 	}
 	RANGE_EXTEND_PREV(initializer_list);
 	return initializer_list;
@@ -557,21 +581,14 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	advance(context);
 
 	Expr *right_side;
-	if (TOKEN_IS(TOKEN_LBRACE) && operator_type == TOKEN_EQ)
+	// Assignment operators have precedence right -> left.
+	if (rules[operator_type].precedence == PREC_ASSIGNMENT)
 	{
-		ASSIGN_EXPR_ELSE(right_side, parse_initializer_list(context), poisoned_expr);
+		ASSIGN_EXPR_ELSE(right_side, parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
 	}
 	else
 	{
-		// Assignment operators have precedence right -> left.
-		if (rules[operator_type].precedence == PREC_ASSIGNMENT)
-		{
-			ASSIGN_EXPR_ELSE(right_side, parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
-		}
-		else
-		{
-			ASSIGN_EXPR_ELSE(right_side, parse_precedence(context, rules[operator_type].precedence + 1), poisoned_expr);
-		}
+		ASSIGN_EXPR_ELSE(right_side, parse_precedence(context, rules[operator_type].precedence + 1), poisoned_expr);
 	}
 
 	Expr *expr = EXPR_NEW_EXPR(EXPR_BINARY, left_side);
@@ -1265,7 +1282,8 @@ Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *ty
 {
 	Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type_info->span);
 	expr->expr_compound_literal.type_info = type_info;
-	ASSIGN_EXPR_ELSE(expr->expr_compound_literal.initializer, parse_initializer_list(context), poisoned_expr);
+	EXPECT_OR(TOKEN_LBRACE, poisoned_expr);
+	ASSIGN_EXPR_ELSE(expr->expr_compound_literal.initializer, parse_initializer_list(context, NULL), poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
@@ -1423,4 +1441,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_typeof_expr, NULL, PREC_NONE },
+
+		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
 };

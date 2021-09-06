@@ -586,15 +586,13 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 	decl->distinct_decl.base_type = base;
 	switch (base->type_kind)
 	{
-		case TYPE_POISONED:
 		case TYPE_STRLIT:
 		case TYPE_IXX:
 		case TYPE_FXX:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_TYPEINFO:
+		case CT_TYPES:
 			UNREACHABLE
 			return false;
 		case TYPE_VIRTUAL_ANY:

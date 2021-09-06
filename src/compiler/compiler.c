@@ -91,7 +91,6 @@ void compiler_parse(void)
 
 		global_context_clear_errors();
 		parse_file(file);
-		TODO; //context_print_ast(context, stdout);
 	}
 	exit(EXIT_SUCCESS);
 }

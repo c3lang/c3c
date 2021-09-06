@@ -52,8 +52,3 @@ func void test8()
     foreach (int a : { z }) foo(); // #error: 'int[3]' into 'int'
 }
 
-func void test9()
-{
-    foreach (int a : { [2] = 1 }) foo();
-    foreach (int a : { [2] = 2, 1 }) foo(); // #error: The initializer mixes designated initialization with array initialization
-}

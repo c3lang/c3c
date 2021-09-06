@@ -1,0 +1,27 @@
+// #skip
+
+union Baz
+{
+    int x;
+    double y;
+}
+struct Bar
+{
+    int x;
+    int y;
+}
+
+func int test()
+{
+    Baz ffe = { .x = 1 };
+    int[1] azz = {};
+    int[*] a = {};
+    var $foo = { 1, 2, 3 };
+    bool x = ! int[] { 1, 2, 3 };
+    Bar b = {};
+    Baz z = {};
+    int[] sub = {};
+    Bar[] foo = {};
+    Baz[3] baz = {};
+    return 1;
+}
