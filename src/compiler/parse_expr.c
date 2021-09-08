@@ -1263,11 +1263,9 @@ static Expr *parse_null(Context *context, Expr *left)
 
 Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *type_info)
 {
-	advance_and_verify(context, TOKEN_LPAREN);
 	Expr *expr = expr_new(EXPR_COMPOUND_LITERAL, type_info->span);
 	expr->expr_compound_literal.type_info = type_info;
 	ASSIGN_EXPR_ELSE(expr->expr_compound_literal.initializer, parse_initializer_list(context), poisoned_expr);
-	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
@@ -1296,7 +1294,7 @@ Expr *parse_type_expression_with_path(Context *context, Path *path)
 	{
 		ASSIGN_TYPE_ELSE(type, parse_type(context), poisoned_expr);
 	}
-	if (!type->virtual_type && TOKEN_IS(TOKEN_LPAREN) && context->next_tok.type == TOKEN_LBRACE)
+	if (!type->virtual_type && TOKEN_IS(TOKEN_LBRACE))
 	{
 		return parse_type_compound_literal_expr_after_type(context, type);
 	}

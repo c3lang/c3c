@@ -13,7 +13,7 @@ struct FooIterator
 }
 func FooIterator Foo.iterator(Foo *f)
 {
-    return FooIterator({0, f});
+    return FooIterator {0, f};
 }
 
 func bool FooIterator.next(FooIterator *it, int *value)

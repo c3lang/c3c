@@ -48,7 +48,7 @@ func void test5()
 struct Test6
 {}
 
-func TestIterator6 Test6.iterator(Test6* x) { return TestIterator6({}); }
+func TestIterator6 Test6.iterator(Test6* x) { return TestIterator6{}; }
 
 struct TestIterator6
 {}
@@ -62,7 +62,7 @@ func void test6()
 struct Test7
 {}
 
-func TestIterator7 Test7.iterator(Test7* x) { return TestIterator7({}); }
+func TestIterator7 Test7.iterator(Test7* x) { return TestIterator7{}; }
 
 struct TestIterator7
 {}

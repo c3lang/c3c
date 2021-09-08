@@ -5,12 +5,12 @@ struct Vector2 {
   float x;
   float y;
 }
-extern func Vector2 vector2_zero() { return Vector2({}); }
-extern func Vector2 vector2_one() { return Vector2({}); }
-extern func Vector2 vector2_add(Vector2 v1, Vector2 v2) { return Vector2({}); }
-extern func Vector2 vector2_add_value(Vector2 v, float add) { return Vector2({}); }
-extern func Vector2 vector2_subtract(Vector2 v1, Vector2 v2) { return Vector2({}); }
-extern func Vector2 vector2_subtract_value(Vector2 v, float sub) { return Vector2({}); }
+extern func Vector2 vector2_zero() { return Vector2 {}; }
+extern func Vector2 vector2_one() { return Vector2 {}; }
+extern func Vector2 vector2_add(Vector2 v1, Vector2 v2) { return Vector2 {}; }
+extern func Vector2 vector2_add_value(Vector2 v, float add) { return Vector2 {}; }
+extern func Vector2 vector2_subtract(Vector2 v1, Vector2 v2) { return Vector2 {}; }
+extern func Vector2 vector2_subtract_value(Vector2 v, float sub) { return Vector2 {}; }
 
 // #expect: abi.ll
 

@@ -7,5 +7,5 @@ func void test4()
 
 func void test5()
 {
-    Foo x = (Foo)(Foo({32}));
+    Foo x = (Foo)(Foo{32});
 }
