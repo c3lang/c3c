@@ -1,12 +1,11 @@
 module base64;
 // Based on the C2 version.
 
-error InvalidCharacter
-{
-    int index;
-    char c;
-}
 
+errtype DecodingError
+{
+    INVALID_CHARACTER
+}
 const char[64] LUT_ENC = {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
     'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
@@ -43,7 +42,7 @@ const char PAD = '=';
 const char FIRST = '+';
 const char LAST = 'z';
 
-public func void encode(char[] in, char *out)
+func void encode(char[] in, char *out)
 {
 	int j = 0;
     char c = LUT_ENC[1];
@@ -77,7 +76,7 @@ public func void encode(char[] in, char *out)
 }
 
 
-public func int! decode(char[] in, char* out)
+func int! decode(char[] in, char* out, int* invalid_char_index = null)
 {
     int j = 0;
 
@@ -87,7 +86,12 @@ public func int! decode(char[] in, char* out)
         if (value == PAD) return j;
 
         char c = LUT_DEC[in[i]];
-        if (c == ERR) return InvalidCharacter({i, value})!;
+        if (c == ERR)
+        {
+            if (invalid_char_index) *invalid_char_index = i;
+            return DecodingError.INVALID_CHARACTER!;
+        }
+
 
         switch (i % 4)
         {
@@ -116,13 +120,15 @@ public func int! decode(char[] in, char* out)
 
 extern func void printf(char *fmt, ...);
 
-public func void main()
+func void main()
 {
     char *helloworld = "Hello World\n";
     char[1000] buffer;
     encode(helloworld[0..12], &buffer);
     printf("Result: %s\n", &buffer);
     char *to_decode = "aGVsbG8gd29ybGRcMA==";
+    char[*] result = b64"aGVsbG8gd29ybGRcMA==";
     decode(to_decode[0..19], &buffer);
     printf("Result: %s\n", &buffer);
+    printf("Result direct: %.*s\n", 13, &result);
 }

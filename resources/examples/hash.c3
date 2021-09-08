@@ -6,7 +6,7 @@ module hash;
 
 extern func void printf(char*, ...);
 
-public func void main()
+func void main()
 {
     char* y = "Hello World!";
     printf("Adler32 of %s is %x\n", y, adler32(y[0..11]));
@@ -18,7 +18,7 @@ public func void main()
     printf("FNV64a of %s is %llx\n", y, fnv64a(y[0..11]));
 }
 
-public func uint adler32(char[] data)
+func uint adler32(char[] data)
 {
     const uint ADLER_CONST = 65521;
     uint a = 1;
@@ -31,7 +31,7 @@ public func uint adler32(char[] data)
     return (b << 16) | a;
 }
 
-public func uint crc32(char[] data)
+func uint crc32(char[] data)
 {
     uint result = ~(uint)(0);
     foreach (char x : data)
@@ -41,7 +41,7 @@ public func uint crc32(char[] data)
 	return ~result;
 }
 
-public func ulong crc64(char[] data)
+func ulong crc64(char[] data)
 {
     ulong result = 0;
     foreach (char x : data)
@@ -52,7 +52,7 @@ public func ulong crc64(char[] data)
 }
 
 
-public func uint fnv32(char[] data)
+func uint fnv32(char[] data)
 {
     uint h = 0x811c9dc5;
     foreach (char x : data)
@@ -62,7 +62,7 @@ public func uint fnv32(char[] data)
     return h;
 }
 
-public func ulong fnv64(char[] data)
+func ulong fnv64(char[] data)
 {
     ulong h = 0xcbf29ce484222325;
     foreach (char x : data)
@@ -72,7 +72,7 @@ public func ulong fnv64(char[] data)
     return h;
 }
 
-public func uint fnv32a(char[] data)
+func uint fnv32a(char[] data)
 {
     uint h = 0x811c9dc5;
     foreach (char x : data)
@@ -82,7 +82,7 @@ public func uint fnv32a(char[] data)
     return h;
 }
 
-public func ulong fnv64a(char[] data)
+func ulong fnv64a(char[] data)
 {
     ulong h = 0xcbf29ce484222325;
     foreach (char x : data)
@@ -92,7 +92,7 @@ public func ulong fnv64a(char[] data)
     return h;
 }
 
-const uint[256] CRC32_TABLE = {
+private const uint[256] CRC32_TABLE = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba,
 	0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
 	0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
@@ -159,7 +159,7 @@ const uint[256] CRC32_TABLE = {
 	0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d,
 };
 
-const ulong[256] CRC64_TABLE = {
+private const ulong[256] CRC64_TABLE = {
     0x0000000000000000, 0x7ad870c830358979,
     0xf5b0e190606b12f2, 0x8f689158505e9b8b,
     0xc038e5739841b68f, 0xbae095bba8743ff6,
