@@ -57,7 +57,7 @@ const LINELEN = 60;
 // slowest character-at-a-time output
 func void repeat_fasta(char[] seq, int n)
 {
-    usize len = seq.len();
+    usize len = seq.len;
     int i = void;
     for (i = 0; i < n; i++)
     {
@@ -69,8 +69,8 @@ func void repeat_fasta(char[] seq, int n)
 
 func void random_fasta(char[] symb, double[] probability, int n)
 {
-    assert(symb.len() == probability.len());
-    int len = (int)(probability.len());
+    assert(symb.len == probability.len);
+    int len = probability.len;
     int i = void;
     for (i = 0; i < n; i++)
     {

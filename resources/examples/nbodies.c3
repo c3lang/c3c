@@ -15,7 +15,7 @@ struct Planet
 
 func void advance(Planet[] bodies) @noinline
 {
-    usize nbodies = bodies.len();
+    usize nbodies = bodies.len;
     foreach (i, Planet* &b : bodies)
     {
         for (usize j = i + 1; j < nbodies; j++)
@@ -45,7 +45,7 @@ func void advance(Planet[] bodies) @noinline
 func double energy(Planet[] bodies)
 {
     double e;
-    usize nbodies = bodies.len();
+    usize nbodies = bodies.len;
 
     foreach (i, Planet* &b : bodies)
     {

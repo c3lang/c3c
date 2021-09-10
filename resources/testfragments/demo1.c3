@@ -101,7 +101,7 @@ func void testArrays()
     {
         printf("index[%d]: %d\n", i, a);
     }
-    printf("Length is a runtime value: %d\n", y.len());
+    printf("Length is a runtime value: %d\n", y.len);
     puts("Getting a slice from the beginning to an offset of the end---");
     y = x[..^2]; // Same as x[0..^2]
     foreach (i, a : y)

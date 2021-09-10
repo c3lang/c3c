@@ -4,8 +4,8 @@ func int levenshtein(String s, String t)
 {
     // if either string is empty, difference is inserting all chars
     // from the other
-    if (!s.len()) return t.len();
-    if (!t.len()) return s.len();
+    if (!s.len) return t.len;
+    if (!t.len) return s.len;
 
     // if last letters are the same, the difference is whatever is
     // required to edit the rest of the strings

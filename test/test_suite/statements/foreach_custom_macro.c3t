@@ -16,7 +16,7 @@ macro FooIterator Foo.iterator(Foo *f)
 
 macro bool FooIterator.next(FooIterator *it, int *value)
 {
-    if (it.index == it.f.x.len()) return false;
+    if (it.index == it.f.x.len) return false;
     *value = it.f.x[it.index++];
     return true;
 }

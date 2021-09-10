@@ -26,9 +26,9 @@ struct TopoList
 public func void sort(InputPair[] pairs, uint elements)
 {
     printf(.x = "fe");
-    InputPair[] result = @array::make(InputPair, pairs.len());
+    InputPair[] result = @array::make(InputPair, pairs.len);
     TopoList* top = mem::calloc(TopoList.sizeof, elements);
-    for (int i = 0; i < pairs.len(); i++)
+    for (int i = 0; i < pairs.len; i++)
     {
         InputPair pair = pairs[i];
         assert(pair.value >= 0 && pair.value < elements);

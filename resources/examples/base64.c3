@@ -46,7 +46,7 @@ func void encode(char[] in, char *out)
 {
 	int j = 0;
     char c = LUT_ENC[1];
-    for (int i = 0; i < in.len(); i++)
+    for (int i = 0; i < in.len; i++)
 	{
         switch (i % 3)
         {
@@ -61,7 +61,7 @@ func void encode(char[] in, char *out)
 	}
 
     // move back
-    usize last = in.len() - 1;
+    usize last = in.len - 1;
     // check the last and add padding
     switch (last % 3)
     {
@@ -80,7 +80,7 @@ func int! decode(char[] in, char* out, int* invalid_char_index = null)
 {
     int j = 0;
 
-    for (int i = 0; i < in.len(); i++)
+    for (int i = 0; i < in.len; i++)
     {
         char value = in[i];
         if (value == PAD) return j;
@@ -100,13 +100,13 @@ func int! decode(char[] in, char* out, int* invalid_char_index = null)
             case 1:
                 out[j++] += c >> 4 & 0x3;
                 // if not last char with padding
-                if (i < (in.len() - 3) || in[(long)(in.len()) - 2] != PAD)
+                if (i < (in.len - 3) || in[(long)(in.len) - 2] != PAD)
                 {
                     out[j] = (c & 0xF) << 4;
                 }
             case 2:
                 out[j++] += c >> 2 & 0xF;
-                if (i < (in.len() - 2) || in[(long)(in.len()) - 1] != PAD)
+                if (i < (in.len - 2) || in[(long)(in.len) - 1] != PAD)
                 {
                     out[j] = (c & 0x3) << 6;
                 }

@@ -86,7 +86,7 @@ define Argh2 = func int(double, Bobo);
 func int sum_us(int... x)
 {
     int sum = 0;
-    if (x.len() == 0) return 0;
+    if (x.len == 0) return 0;
     sum += x[0] + sum_us(...x[1..^1]);
     return sum;
 }
@@ -96,7 +96,7 @@ define Frob = long;
 func int sumd(int[] x)
 {
     int sum = 0;
-    for (int i = 0; i < x.len(); i++) sum += x[i];
+    for (int i = 0; i < x.len; i++) sum += x[i];
     return sum;
 }
 

@@ -1758,14 +1758,6 @@ static inline bool sema_expr_analyse_call(Context *context, Type *to, Expr *expr
 			decl = func_expr->macro_expansion_expr.decl;
 			macro = true;
 			break;
-		case EXPR_LEN:
-			if (func_expr->type == type_void)
-			{
-				expr_replace(expr, func_expr);
-				expr_set_type(expr, type_usize);
-				return true;
-			}
-			FALLTHROUGH;
 		case EXPR_TYPEINFO:
 			if (func_expr->type_expr->resolve_status == RESOLVE_DONE)
 			{
@@ -2399,7 +2391,8 @@ CHECK_DEEPER:
 		{
 			expr->expr_kind = EXPR_LEN;
 			expr->len_expr.inner = parent;
-			expr_set_type(expr, type_void);
+			expr->original_type = type_compint;
+			expr->type = type_usize;
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
 		}
@@ -6139,10 +6132,6 @@ static inline bool sema_cast_rvalue(Context *context, Type *to, Expr *expr)
 				return false;
 			}
 			break;
-		case EXPR_LEN:
-			if (expr->type != type_void) return true;
-			SEMA_ERROR(expr, "Expected () after 'len' for subarrays.");
-			return false;
 		case EXPR_TYPEINFO:
 			SEMA_ERROR(expr, "A type must be followed by either (...) or '.'.");
 			return false;
