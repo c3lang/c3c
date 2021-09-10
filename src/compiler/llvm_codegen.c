@@ -94,6 +94,10 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			ConstInitializer **elements = const_init->init_array_full;
 			ArrayIndex size = array_type->array.len;
+			if (array_type->type_kind == TYPE_SUBARRAY)
+			{
+				size = vec_size(elements);
+			}
 			assert(size > 0);
 			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
 			for (ArrayIndex i = 0; i < size; i++)

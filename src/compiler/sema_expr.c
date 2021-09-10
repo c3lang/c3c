@@ -3096,18 +3096,18 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 		ConstInitializer *const_init = CALLOCS(ConstInitializer);
 		const_init->kind = CONST_INIT_ARRAY_FULL;
 		const_init->type = type_flatten(initializer->type);
-		ConstInitializer **inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
+		ConstInitializer **inits = VECNEW(ConstInitializer*, vec_size(elements));
 		VECEACH(elements, i)
 		{
 			Expr *expr = elements[i];
 			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
 			{
-				inits[i] = expr->const_expr.list;
+				vec_add(inits, expr->const_expr.list);
 				continue;
 			}
 			ConstInitializer *element_init = MALLOC(sizeof(ConstInitializer));
 			sema_create_const_initializer_value(element_init, expr);
-			inits[i] = element_init;
+			vec_add(inits, element_init);
 		}
 		const_init->init_array_full = inits;
 		expr_set_as_const_list(initializer, const_init);
