@@ -200,7 +200,7 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_EXPR(expr->subscript_expr.index);
 			return expr;
 		case EXPR_GROUP:
-			MACRO_COPY_EXPR(expr->group_expr->group_expr);
+			MACRO_COPY_EXPR(expr->group_expr);
 			return expr;
 		case EXPR_ACCESS:
 			MACRO_COPY_EXPR(expr->access_expr.parent);
@@ -512,7 +512,6 @@ Decl *copy_decl(Decl *decl)
 			break;
 		case DECL_BITSTRUCT:
 			TODO
-			break;
 		case DECL_LABEL:
 			TODO
 			break;

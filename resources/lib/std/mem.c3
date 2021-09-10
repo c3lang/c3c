@@ -113,9 +113,9 @@ macro malloc($Type)
     return ($Type*)(mem::alloc($sizeof($Type)));
 }
 
-func void* alloc(usize size, usize elements = 1) @inline
+func void* alloc(usize size, usize count = 1) @inline
 {
-    return _malloc(size * elements);
+    return _malloc(size * count);
 }
 
 func void* calloc(usize size, usize elements = 1) @inline

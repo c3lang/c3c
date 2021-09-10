@@ -213,7 +213,7 @@ LLVMBasicBlockRef llvm_basic_block_new(GenContext *c, const char *name);
 static inline LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val);
 LLVMValueRef llvm_emit_const_padding(GenContext *c, ByteSize size);
 LLVMTypeRef llvm_const_padding_type(GenContext *c, ByteSize size);
-LLVMValueRef llvm_emit_alloca(GenContext *context, LLVMTypeRef type, unsigned alignment, const char *name);
+LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name);
 LLVMValueRef llvm_emit_alloca_aligned(GenContext *c, Type *type, const char *name);
 BEValue llvm_emit_assign_expr(GenContext *context, BEValue *ref, Expr *expr, LLVMValueRef failable);
 static inline LLVMValueRef llvm_emit_bitcast(GenContext *context, LLVMValueRef value, Type *type);

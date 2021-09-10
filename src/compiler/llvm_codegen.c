@@ -467,14 +467,15 @@ void gencontext_print_llvm_ir(GenContext *context)
 }
 
 
-LLVMValueRef llvm_emit_alloca(GenContext *context, LLVMTypeRef type, unsigned alignment, const char *name)
+LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
 {
 	assert(alignment > 0);
-	LLVMBasicBlockRef current_block = LLVMGetInsertBlock(context->builder);
-	LLVMPositionBuilderBefore(context->builder, context->alloca_point);
-	LLVMValueRef alloca = LLVMBuildAlloca(context->builder, type, name);
+	LLVMBasicBlockRef current_block = LLVMGetInsertBlock(c->builder);
+	LLVMPositionBuilderBefore(c->builder, c->alloca_point);
+	assert(LLVMGetTypeContext(type) == c->context);
+	LLVMValueRef alloca = LLVMBuildAlloca(c->builder, type, name);
 	llvm_set_alignment(alloca, alignment);
-	LLVMPositionBuilderAtEnd(context->builder, current_block);
+	LLVMPositionBuilderAtEnd(c->builder, current_block);
 	return alloca;
 }
 
@@ -1217,6 +1218,7 @@ void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, un
 LLVMValueRef llvm_emit_load_aligned(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name)
 {
 	LLVMValueRef value = LLVMBuildLoad2(c->builder, type, pointer, name);
+	assert(LLVMGetTypeContext(type) == c->context);
 	llvm_set_alignment(value, alignment ? alignment : llvm_abi_alignment(c, type));
 	return value;
 }

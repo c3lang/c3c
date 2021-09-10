@@ -1,0 +1,67 @@
+module spectralnorm;
+import std::mem;
+import std::array;
+
+extern func int atoi(char *s);
+extern func int printf(char *s, ...);
+extern func double sqrt(double);
+
+double[] temparr;
+
+func double eval_A(int i, int j)
+{
+	return 1.0 / ((i + j) * (i + j + 1) / 2 + i + 1);
+}
+
+func void eval_A_times_u(double[] u, double[] au)
+{
+	foreach (i, &val : au)
+	{
+		*val = 0;
+	    foreach (j, uval : u)
+		{
+		    *val += eval_A((int)(i), (int)(j)) * uval;
+		 }
+	}
+}
+
+func void eval_At_times_u(double[] u, double[] au)
+{
+	foreach (i, &val : au)
+	{
+		*val = 0;
+	    foreach (j, uval : u)
+		{
+		    *val += eval_A((int)(j), (int)(i)) * uval;
+		 }
+	}
+}
+
+func void eval_AtA_times_u(double[] u, double[] atau) @noinline
+{
+	eval_A_times_u(u, temparr);
+	eval_At_times_u(temparr, atau);
+}
+
+func int main(int argc, char **argv)
+{
+	int n = (argc == 2) ? atoi(argv[1]) : 2000;
+	temparr = @array::make(double, n);
+    double[] u = @array::make(double, n);
+    double[] v = @array::make(double, n);
+    foreach(&uval : u) *uval = 1;
+	for (int i = 0; i < 10; i++)
+	{
+		eval_AtA_times_u(u, v);
+		eval_AtA_times_u(v, u);
+	}
+    double vBv;
+    double vv;
+    foreach (i, vval : v)
+    {
+		vBv += u[i] * vval;
+		vv += vval * vval;
+    }
+	printf("%0.9f\n", sqrt(vBv / vv));
+	return 0;
+}
