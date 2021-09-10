@@ -572,17 +572,41 @@ void gencontext_emit_while_stmt(GenContext *context, Ast *ast)
 	// First, emit all inits.
 	LLVMBasicBlockRef exit_block = llvm_basic_block_new(context, "while.exit");
 	LLVMBasicBlockRef begin_block = llvm_basic_block_new(context, "while.begin");
-	LLVMBasicBlockRef body_block = ast->while_stmt.body->compound_stmt.stmts ? llvm_basic_block_new(context,
-	                                                                                                  "while.body") : NULL;
+	LLVMBasicBlockRef body_block = ast->while_stmt.body->compound_stmt.stmts ? llvm_basic_block_new(context,																										"while.body") : NULL;
 
 	ast->while_stmt.continue_block = begin_block;
 	ast->while_stmt.break_block = exit_block;
 
+	Expr *cond = ast->while_stmt.cond;
+
+	bool is_infinite_loop = false;
+
+	// Is this while (false) or while (true)
+	if (cond->expr_kind == EXPR_COND && vec_size(cond->cond_expr) == 1)
+	{
+		Expr *expr = cond->cond_expr[0];
+		if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_BOOL)
+		{
+			is_infinite_loop = expr->const_expr.b;
+			// This is a NOP
+			if (!is_infinite_loop) return;
+			assert(body_block);
+		}
+	}
+
+	DeferList defers = { 0, 0 };
+
 	// Emit cond
 	llvm_emit_br(context, begin_block);
+
+	if (is_infinite_loop)
+	{
+		body_block = begin_block;
+		goto EMIT_BODY;
+	}
+
 	llvm_emit_block(context, begin_block);
-	DeferList defers = { 0, 0 };
-	Expr *cond = ast->while_stmt.cond;
+
 	if (cond->expr_kind == EXPR_SCOPED_EXPR)
 	{
 		defers = cond->expr_scope.defers;
@@ -606,6 +630,7 @@ void gencontext_emit_while_stmt(GenContext *context, Ast *ast)
 		llvm_emit_cond_br(context, &be_value, begin_block, exit_block);
 	}
 
+EMIT_BODY:
 	if (body_block)
 	{
 		llvm_emit_block(context, body_block);

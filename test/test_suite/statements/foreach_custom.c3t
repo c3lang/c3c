@@ -132,13 +132,7 @@ for.body:
   br label %while.begin
 
 while.begin:
-  br i1 true, label %while.body, label %while.exit
-
-while.body:
   br label %for.exit
-
-while.exit:
-  br label %for.cond
 
 for.exit:
   ret void

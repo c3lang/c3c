@@ -39,7 +39,6 @@ extern func int printf(char *fmt, ...);
 // #expect: foo.ll
 
 define void @main()
-entry:
   %i = alloca [3 x i32], align 4
   %x = alloca %Foo, align 8
   %f = alloca i32, align 4
@@ -69,13 +68,13 @@ entry:
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %8, i8* align 8 %9, i32 16, i1 false)
   br label %expr_block.exit
 
-expr_block.exit:
+expr_block.exit:                                  ; preds = %entry
   %10 = bitcast %FooIterator* %.iterator to i8*
   %11 = bitcast %FooIterator* %blockret to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %10, i8* align 8 %11, i32 16, i1 false)
   br label %for.cond
 
-for.cond:
+for.cond:                                         ; preds = %expr_block.exit
   store %FooIterator* %.iterator, %FooIterator** %it, align 8
   store i32* %f, i32** %value, align 8
   %12 = load %FooIterator*, %FooIterator** %it, align 8
@@ -90,11 +89,11 @@ for.cond:
   %eq = icmp eq i64 %14, %19
   br i1 %eq, label %if.then, label %if.exit
 
-if.then:
+if.then:                                          ; preds = %for.cond
   store i8 0, i8* %blockret2, align 1
   br label %expr_block.exit3
 
-if.exit:
+if.exit:                                          ; preds = %for.cond
   %20 = load i32*, i32** %value, align 8
   %21 = load %FooIterator*, %FooIterator** %it, align 8
   %22 = getelementptr inbounds %FooIterator, %FooIterator* %21, i32 0, i32 1
@@ -113,25 +112,19 @@ if.exit:
   store i8 1, i8* %blockret2, align 1
   br label %expr_block.exit3
 
-expr_block.exit3:
+expr_block.exit3:                                 ; preds = %if.exit, %if.then
   %29 = load i8, i8* %blockret2, align 1
   %30 = trunc i8 %29 to i1
   br i1 %30, label %for.body, label %for.exit
 
-for.body:
+for.body:                                         ; preds = %expr_block.exit3
   %31 = load i32, i32* %f, align 4
   %32 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %31)
   br label %while.begin
 
-while.begin:
-  br i1 true, label %while.body, label %while.exit
-
-while.body:
+while.begin:                                      ; preds = %for.body
   br label %for.exit
 
-while.exit:
-  br label %for.cond
-
-for.exit:
+for.exit:                                         ; preds = %while.begin, %expr_block.exit3
   ret void
 }
