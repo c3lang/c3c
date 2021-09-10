@@ -782,7 +782,7 @@ static LLVMValueRef llvm_recursive_set_const_value(GenContext *context, Designat
 }
 
 
-static inline void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, Expr *expr)
+void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, Expr *expr)
 {
 	bool modified = false;
 	// First create the constant value.

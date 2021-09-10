@@ -240,6 +240,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type);
 void llvm_emit_global_variable_init(GenContext *c, Decl *decl);
+void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, Expr *expr);
 void llvm_emit_int_comp_zero(GenContext *c, BEValue *result, BEValue *lhs, BinaryOp binary_op);
 void llvm_emit_int_comparison(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op);
 void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op);

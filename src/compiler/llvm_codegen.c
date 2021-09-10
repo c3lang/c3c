@@ -344,7 +344,47 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	{
 		if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_LIST)
 		{
-			init_value = llvm_emit_const_initializer(c, init_expr->const_expr.list, &modified);
+			ConstInitializer *list = init_expr->const_expr.list;
+			init_value = llvm_emit_const_initializer(c, list, &modified);
+			Type *type = type_lowering(init_expr->type);
+			if (type->type_kind == TYPE_SUBARRAY)
+			{
+				LLVMTypeRef const_type = LLVMTypeOf(init_value);
+				LLVMValueRef global_copy = LLVMAddGlobal(c->module, const_type, ".__const");
+				LLVMSetLinkage(global_copy, LLVMPrivateLinkage);
+
+				// Set a nice alignment
+				Type *ptr = type_get_ptr(type);
+				llvm_set_alignment(global_copy, type_alloca_alignment(ptr));
+
+				// Set the value and make it constant
+				LLVMSetInitializer(global_copy, init_value);
+				LLVMSetGlobalConstant(global_copy, true);
+
+				LLVMValueRef value = LLVMConstBitCast(global_copy, llvm_get_type(c, ptr));
+				ByteSize size;
+				switch (list->kind)
+				{
+					case CONST_INIT_ZERO:
+						size = 0;
+						break;
+					case CONST_INIT_ARRAY:
+						size = VECLAST(list->init_array.elements)->init_array_value.index + 1;
+						break;
+					case CONST_INIT_ARRAY_FULL:
+						size = vec_size(list->init_array_full);
+						break;
+					default:
+						UNREACHABLE
+				}
+				LLVMTypeRef subarray_type = llvm_get_type(c, type);
+				LLVMValueRef result = LLVMGetUndef(subarray_type);
+				LLVMValueRef len = llvm_const_int(c, type_usize, size);
+				unsigned id = 0;
+				result = LLVMConstInsertValue(result, value, &id, 1);
+				id = 1;
+				init_value = LLVMConstInsertValue(result, len, &id, 1);
+			}
 		}
 		else
 		{
