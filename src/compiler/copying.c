@@ -74,7 +74,6 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_FLATPATH:
 		case EXPR_UNDEF:
 		case EXPR_NOP:
-		case EXPR_BYTES:
 			return expr;
 		case EXPR_DECL:
 			MACRO_COPY_DECL(expr->decl_expr);

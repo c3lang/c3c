@@ -18,7 +18,7 @@ func Event test(int x)
   %x = alloca i32, align 4
   %foo = alloca %Event, align 4
   %bar = alloca %Event, align 4
-  %tempaddr = alloca %Event, align 4
+  %taddr = alloca %Event, align 4
   store i32 %0, i32* %x, align 4
   %1 = bitcast %Event* %foo to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %1, i8* align 4 bitcast (%Event* @.__const to i8*), i32 4, i1 false)
@@ -38,8 +38,8 @@ cond.rhs:
 
 cond.phi:
   %val = phi %Event [ %4, %cond.lhs ], [ %5, %cond.rhs ]
-  store %Event %val, %Event* %tempaddr, align 4
-  %dive = getelementptr inbounds %Event, %Event* %tempaddr, i32 0, i32 0
+  store %Event %val, %Event* %taddr, align 4
+  %dive = getelementptr inbounds %Event, %Event* %taddr, i32 0, i32 0
   %6 = load i32, i32* %dive, align 4
   %7 = zext i32 %6 to i64
   ret i64 %7

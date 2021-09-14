@@ -653,8 +653,6 @@ typedef struct
 	Expr *left;
 	Expr *right;
 	BinaryOp operator;
-	bool left_maybe : 1;
-	bool right_maybe : 1;
 } ExprBinary;
 
 typedef struct
@@ -923,7 +921,6 @@ struct Expr_
 	ResolveStatus resolve_status : 3;
 	bool failable : 1;
 	bool pure : 1;
-	bool constant : 1;
 	SourceSpan span;
 	Type *type;
 	Type *original_type;
@@ -1796,10 +1793,18 @@ void expr_const_set_null(ExprConst *expr);
 bool expr_const_int_overflowed(const ExprConst *expr);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
+ByteSize expr_const_list_size(const ConstInitializer *list);
+
 void expr_insert_addr(Expr *original);
 void expr_insert_deref(Expr *expr);
 Expr *expr_variable(Decl *decl);
-bool expr_is_constant_eval(Expr *expr);
+typedef enum
+{
+	CONSTANT_EVAL_ANY,
+	CONSTANT_EVAL_FOLDABLE,
+	CONSTANT_EVAL_NO_LINKTIME,
+} ConstantEvalKind;
+bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
 const char *expr_const_to_error_string(const ExprConst *expr);
 static inline bool expr_is_init_list(Expr *expr)
 {

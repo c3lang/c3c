@@ -236,7 +236,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
 void llvm_emit_defer(GenContext *c, AstId defer_start, AstId defer_end);
 void llvm_emit_extern_decl(GenContext *context, Decl *decl);
-LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init, bool *modified);
+LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init);
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type);
 void llvm_emit_global_variable_init(GenContext *c, Decl *decl);
@@ -250,6 +250,7 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 LLVMValueRef llvm_emit_load_aligned(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name);
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl);
+LLVMValueRef llvm_emit_aggregate_value(GenContext *c, Type *type, ...);
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, unsigned align, bool bitcast);
 LLVMValueRef llvm_emit_memclear(GenContext *c, BEValue *ref);
 void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len);
@@ -324,11 +325,14 @@ static inline LLVMValueRef llvm_emit_store(GenContext *context, Decl *decl, LLVM
 static inline LLVMValueRef llvm_emit_bitcast(GenContext *context, LLVMValueRef value, Type *type)
 {
 	assert(type->type_kind == TYPE_POINTER);
-	if (!context->builder)
+	LLVMTypeRef result_type = llvm_get_type(context, type);
+	if (result_type == LLVMTypeOf(value)) return value;
+	if (LLVMIsConstant(value))
 	{
-		return LLVMConstBitCast(value, llvm_get_type(context, type));
+		return LLVMConstBitCast(value, result_type);
 	}
-	return LLVMBuildBitCast(context->builder, value, llvm_get_type(context, type), "");
+	assert(context->builder);
+	return LLVMBuildBitCast(context->builder, value, result_type, "");
 }
 
 static inline bool llvm_use_debug(GenContext *context) { return context->debug.builder != NULL; }

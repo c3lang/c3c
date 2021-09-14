@@ -1394,28 +1394,9 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 		if (!sema_analyse_expr_of_required_type(context, decl->type, init_expr, false)) return false;
 
 		// 2. Check const-ness
-		if ((is_global || decl->var.is_static) && !init_expr->constant)
+		if ((is_global || decl->var.is_static) && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_ANY))
 		{
-			// 3. Special case is when the init expression is the reference
-			// to a constant global structure.
-			if (init_expr->expr_kind == EXPR_CONST_IDENTIFIER)
-			{
-				// 4. If so we copy the init expression, which should always be constant.
-				*init_expr = *init_expr->identifier_expr.decl->var.init_expr;
-				assert(init_expr->constant);
-			}
-			else
-			{
-				if (init_expr->expr_kind == EXPR_CAST)
-				{
-					SEMA_ERROR(init_expr, "The expression may not be a non constant cast.");
-				}
-				else
-				{
-					SEMA_ERROR(init_expr, "The expression must be a constant value.");
-				}
-				return false;
-			}
+			SEMA_ERROR(init_expr, "The expression must be a constant value.");
 		}
 		else
 		{

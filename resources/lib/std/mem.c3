@@ -25,6 +25,11 @@ struct Allocator
     void *data;
 }
 
+func void copy(char* dst, char* src, usize size)
+{
+    for (usize i = 0; i < size; i++) dst[i] = src[i];
+}
+
 func void! system_malloc_function(void *unused, void** pointer, usize bytes, usize alignment, AllocationKind kind) @inline
 {
     switch (kind)
@@ -45,6 +50,37 @@ func void! system_malloc_function(void *unused, void** pointer, usize bytes, usi
             return;
     }
     $unreachable;
+}
+
+
+struct SlotAllocator
+{
+    void* pages;
+    usize page_size;
+    usize page_count;
+    usize bitmask;
+    usize current_page;
+}
+
+func void*! SlotAllocator.alloc(SlotAllocator *allocator, usize size)
+{
+    void* active_page = (char*)(allocator.pages) + allocator.current_page * allocator.page_size;
+    void** page_pointer = (void**)(active_page);
+    if (*page_pointer)
+    {
+        mem::free(*page_pointer);
+        *page_pointer = null;
+    }
+    if (size > allocator.page_size - $sizeof(page_pointer))
+    {
+        void* mem = mem::_malloc(size);
+        if (!mem) return AllocationFailure.OUT_OF_MEMORY!;
+        *page_pointer = mem;
+        allocator.current_page = (allocator.current_page + 1) & (allocator.bitmask);
+        return mem;
+    }
+    allocator.current_page = (allocator.current_page + 1) & (allocator.bitmask);
+    return &page_pointer[1];
 }
 
 struct RingAllocator
@@ -131,4 +167,24 @@ func void* realloc(void *ptr, usize size) @inline
 func void free(void* ptr) @inline
 {
     _free(ptr);
+}
+
+
+const TEMP_BLOCK_SIZE = 1024;
+const TEMP_PAGES = 64;
+
+private char[TEMP_BLOCK_SIZE * TEMP_PAGES] allocator_static_storage;
+private void*[TEMP_PAGES] allocator_static_page_storage;
+
+SlotAllocator default_allocator = {
+    .pages = &allocator_static_storage,
+    .page_size = TEMP_BLOCK_SIZE,
+    .page_count = TEMP_PAGES,
+    .bitmask = TEMP_PAGES - 1,
+    .current_page = 0,
+};
+
+func void*! talloc(usize size)
+{
+    return default_allocator.alloc(size);
 }

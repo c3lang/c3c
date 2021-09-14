@@ -54,6 +54,8 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 	//    then we essentially treat this as a global.
 	if (decl->var.is_static)
 	{
+		void *builder = c->builder;
+		c->builder = NULL;
 		decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
 		if (decl->var.failable)
 		{
@@ -63,6 +65,7 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 			decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_anyerr), scratch_buffer_to_string());
 		}
 		llvm_emit_global_variable_init(c, decl);
+		c->builder = builder;
 		return decl->backend_ref;
 	}
 	llvm_emit_local_var_alloca(c, decl);

@@ -441,10 +441,12 @@ bool sema_add_member(Context *context, Decl *decl)
 
 bool sema_add_local(Context *context, Decl *decl)
 {
+	decl->module = context->module;
 	// Ignore synthetic locals.
 	if (decl->name_token.index == NO_TOKEN_ID.index) return true;
 	Decl *other = sema_resolve_normal_symbol(context, decl->name_token, NULL, false);
-	if (other)
+	assert(!other || other->module);
+	if (other && other->module == context->module)
 	{
 		sema_shadow_error(decl, other);
 		decl_poison(decl);
