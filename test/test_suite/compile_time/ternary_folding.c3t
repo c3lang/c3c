@@ -1,0 +1,25 @@
+// #target: x64-darwin
+
+int foo = 2.2 ? 1 : 2;
+double bar = false ? 1.0 : 2;
+bool baz = 1 ? false : true;
+
+func void test()
+{
+    int x = 1 ? 0 : test2();
+}
+
+func int test2() { return 3; }
+
+// #expect: ternary_folding.ll
+
+@ternary_folding.foo = global i32 1, align 4
+@ternary_folding.bar = global double 2.000000e+00, align 8
+@ternary_folding.baz = global i8 0, align 1
+
+define void @ternary_folding.test() #0 {
+entry:
+  %x = alloca i32, align 4
+  store i32 0, i32* %x, align 4
+  ret void
+}

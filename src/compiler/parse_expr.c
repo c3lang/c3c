@@ -667,7 +667,6 @@ static Expr *parse_subscript_expr(Context *context, Expr *left)
 	{
 		index = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 		expr_set_type(index, type_uint);
-		index->constant = true;
 		index->resolve_status = RESOLVE_DONE;
 		expr_const_set_int(&index->const_expr, 0, type_uint->type_kind);
 	}

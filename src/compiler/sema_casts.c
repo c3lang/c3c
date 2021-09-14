@@ -679,25 +679,28 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
 {
 	Type *to_type_flat = type_flatten(to_type);
-	Real limit;
+	Real hi_limit;
+	Real lo_limit;
 	switch (to_type_flat->type_kind)
 	{
 		case TYPE_F16:
-			limit = FLOAT16_LIMIT;
+			lo_limit = hi_limit = FLOAT16_LIMIT;
 			break;
 		case TYPE_F32:
-			limit = FLOAT32_LIMIT;
+			lo_limit = hi_limit = FLOAT32_LIMIT;
 			break;
 		case TYPE_F64:
-			limit = FLOAT64_LIMIT;
+			lo_limit = hi_limit = FLOAT64_LIMIT;
 			break;
 		case TYPE_F128:
 			// Assume this to be true
 			return true;
+		case TYPE_BOOL:
+			return true;
 		default:
 			UNREACHABLE
 	}
-	if (expr->const_expr.f < -limit || expr->const_expr.f > limit)
+	if (expr->const_expr.f < -lo_limit || expr->const_expr.f > hi_limit)
 	{
 #if LONG_DOUBLE
 		SEMA_ERROR(expr, "The value '%Lg' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.f, type_quoted_error_string(to_type));

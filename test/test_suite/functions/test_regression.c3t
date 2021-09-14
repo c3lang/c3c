@@ -355,7 +355,7 @@ entry:
   %x = alloca %"int[]", align 8
   %sum = alloca i32, align 4
   %vararg = alloca %"int[]", align 8
-  %tempaddr = alloca %"int[]", align 8
+  %taddr = alloca %"int[]", align 8
   %pair = bitcast %"int[]"* %x to { i8*, i64 }*
   %lo = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 0
   store i8* %0, i8** %lo, align 8
@@ -387,8 +387,8 @@ if.exit:                                          ; preds = %entry
   %10 = insertvalue %"int[]" %9, i64 %size, 1
   %11 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 1
   %12 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 0
-  store %"int[]" %10, %"int[]"* %tempaddr, align 8
-  %casttemp = bitcast %"int[]"* %tempaddr to { i8*, i64 }*
+  store %"int[]" %10, %"int[]"* %taddr, align 8
+  %casttemp = bitcast %"int[]"* %taddr to { i8*, i64 }*
   %lo1 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %casttemp, i32 0, i32 0
   %lo2 = load i8*, i8** %lo1, align 8
   %hi3 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %casttemp, i32 0, i32 1

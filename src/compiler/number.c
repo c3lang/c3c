@@ -277,5 +277,20 @@ void expr_const_set_float(ExprConst *expr, Real d, TypeKind kind)
 	expr->float_type = kind;
 }
 
+ByteSize expr_const_list_size(const ConstInitializer *list)
+{
+	switch (list->kind)
+	{
+		case CONST_INIT_ZERO:
+			return 0;
+		case CONST_INIT_ARRAY:
+			return VECLAST(list->init_array.elements)->init_array_value.index + 1;
+		case CONST_INIT_ARRAY_FULL:
+			return vec_size(list->init_array_full);
+		default:
+			UNREACHABLE
+	}
+}
+
 
 

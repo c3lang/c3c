@@ -724,7 +724,7 @@ bool sema_analyse_local_decl(Context *context, Decl *decl)
 	}
 	if (decl->var.init_expr && decl->var.is_static)
 	{
-		if (!expr_is_constant_eval(decl->var.init_expr))
+		if (!expr_is_constant_eval(decl->var.init_expr, CONSTANT_EVAL_ANY))
 		{
 			SEMA_ERROR(decl->var.init_expr, "Static variable initialization must be constant.");
 			return false;
@@ -762,9 +762,9 @@ static inline bool sema_analyse_define_stmt(Context *context, Ast *statement)
 				if (decl->var.init_expr)
 				{
 					if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr, false)) return false;
-					if (decl->var.init_expr->expr_kind != EXPR_CONST)
+					if (!expr_is_constant_eval(decl->var.init_expr, CONSTANT_EVAL_ANY))
 					{
-						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression here.");
+						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression assigned to %s.", decl->name);
 						return false;
 					}
 				}
@@ -776,12 +776,13 @@ static inline bool sema_analyse_define_stmt(Context *context, Ast *statement)
 			}
 			else
 			{
-				if (decl->var.init_expr)
+				Expr *init = decl->var.init_expr;
+				if (init)
 				{
-					if (!sema_analyse_expr(context, NULL, decl->var.init_expr)) return false;
-					if (decl->var.init_expr->expr_kind != EXPR_CONST)
+					if (!sema_analyse_expr(context, NULL, init)) return false;
+					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
 					{
-						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression here.");
+						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression assigned to %s.", decl->name);
 						return false;
 					}
 					decl->type = decl->var.init_expr->type;

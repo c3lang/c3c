@@ -24,6 +24,15 @@ func int test()
 
 // #expect: zero_init.ll
 
+%Bar = type { i32, i32 }
+%Baz = type { double }
+%"int[]" = type { i32*, i64 }
+%"Bar[]" = type { %Bar*, i64 }
+
+@Baz = linkonce_odr constant i8 1
+@Bar = linkonce_odr constant i8 1
+
+; Function Attrs: nounwind
 define i32 @zero_init.test() #0 {
 entry:
   %azz = alloca [1 x i32], align 4
@@ -31,7 +40,9 @@ entry:
   %b = alloca %Bar, align 4
   %z = alloca %Baz, align 8
   %sub = alloca %"int[]", align 8
+  %literal = alloca [0 x i32], align 4
   %foo = alloca %"Bar[]", align 8
+  %literal1 = alloca [0 x %Bar], align 4
   %baz = alloca [3 x %Baz], align 16
   %0 = bitcast [1 x i32]* %azz to i8*
   call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 4, i1 false)
@@ -41,11 +52,17 @@ entry:
   call void @llvm.memset.p0i8.i64(i8* align 4 %2, i8 0, i64 8, i1 false)
   %3 = bitcast %Baz* %z to i8*
   call void @llvm.memset.p0i8.i64(i8* align 8 %3, i8 0, i64 8, i1 false)
-  %4 = bitcast %"int[]"* %sub to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 8 %4, i8 0, i64 16, i1 false)
-  %5 = bitcast %"Bar[]"* %foo to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 8 %5, i8 0, i64 16, i1 false)
-  %6 = bitcast [3 x %Baz]* %baz to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 16 %6, i8 0, i64 24, i1 false)
+  store [0 x i32] zeroinitializer, [0 x i32]* %literal, align 4
+  %4 = bitcast [0 x i32]* %literal to i32*
+  %5 = insertvalue %"int[]" undef, i32* %4, 0
+  %6 = insertvalue %"int[]" %5, i64 0, 1
+  store %"int[]" %6, %"int[]"* %sub, align 8
+  store [0 x %Bar] zeroinitializer, [0 x %Bar]* %literal1, align 4
+  %7 = bitcast [0 x %Bar]* %literal1 to %Bar*
+  %8 = insertvalue %"Bar[]" undef, %Bar* %7, 0
+  %9 = insertvalue %"Bar[]" %8, i64 0, 1
+  store %"Bar[]" %9, %"Bar[]"* %foo, align 8
+  %10 = bitcast [3 x %Baz]* %baz to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 16 %10, i8 0, i64 24, i1 false)
   ret i32 1
 }
