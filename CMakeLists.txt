@@ -62,6 +62,9 @@ find_library(LLD_ELF NAMES lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS})
 find_library(LLD_DRIVER NAMES lldDriver.a liblldDriver.a PATHS ${LLVM_LIBRARY_DIRS})
 find_library(LLD_READER_WRITER NAMES lldReaderWriter.a liblldReaderWriter.a PATHS ${LLVM_LIBRARY_DIRS})
 find_library(LLD_MACHO NAMES lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS})
+if("${LLVM_PACKAGE_VERSION}" VERSION_GREATER 13)
+    find_library(LLD_MACHOOLD NAMES lldMachOOld.a liblldMachOOld.a PATHS ${LLVM_LIBRARY_DIRS})
+endif()
 find_library(LLD_YAML NAMES lldYAML.a liblldYAML.a PATHS ${LLVM_LIBRARY_DIRS})
 
 set(lld_libs
@@ -76,6 +79,9 @@ set(lld_libs
         ${LLD_YAML}
         ${LLD_CORE}
         )
+if("${LLVM_PACKAGE_VERSION}" VERSION_GREATER 13)
+    list(APPEND lld_libs ${LLD_MACHOOLD})
+endif()
 add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
 
 add_executable(c3c
