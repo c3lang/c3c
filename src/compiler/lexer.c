@@ -1569,6 +1569,7 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 			                                                                                    TOKEN_BIT_XOR,
 			                                                                                    "^");
 		case '?':
+			if (match(lexer, '?')) return add_token(lexer, TOKEN_QUESTQUEST, "??");
 			return match(lexer, ':') ? add_token(lexer, TOKEN_ELVIS, "?:") : add_token(lexer, TOKEN_QUESTION, "?");
 		case '<':
 			if (match(lexer, '<'))

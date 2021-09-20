@@ -1028,6 +1028,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_ALIAS:
 		case TOKEN_AS:
 		case TOKEN_ELSE:
+		case TOKEN_QUESTQUEST:
 		case TOKEN_ENUM:
 		case TOKEN_FUNC:
 		case TOKEN_GENERIC:
