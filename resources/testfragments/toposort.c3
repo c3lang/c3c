@@ -23,11 +23,10 @@ struct TopoList
 }
 
 
-public func void sort(InputPair[] pairs, uint elements)
+func void sort(InputPair[] pairs, uint elements)
 {
-    printf(.x = "fe");
     InputPair[] result = @array::make(InputPair, pairs.len);
-    TopoList* top = mem::calloc(TopoList.sizeof, elements);
+    TopoList* top = @array::make(TopoList, elements);
     for (int i = 0; i < pairs.len; i++)
     {
         InputPair pair = pairs[i];
@@ -71,7 +70,7 @@ public func void sort(InputPair[] pairs, uint elements)
     }
 }
 
-public func void main()
+func void main()
 {
     InputPair[10] pairs = {
         { 9, 2 },

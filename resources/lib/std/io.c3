@@ -1,4 +1,6 @@
 module std::io;
+import std::mem;
+import libc;
 
 errtype IoError
 {
@@ -54,6 +56,21 @@ func int println(char *message = "") @inline
     return _puts(message);
 }
 
+
+func void! File.open(File* file, char[] filename, char[] mode)
+{
+    char* filename_copy = mem::talloc(filename.len + 1)!!;
+
+    char* mode_copy = mem::talloc(mode.len + 1)!!;
+
+    mem::copy(filename_copy, (char*)(filename), filename.len);
+    mem::copy(mode_copy, (char*)(mode), mode.len);
+    filename_copy[filename.len] = 0;
+    mode_copy[filename.len] = 0;
+    file.file = libc::fopen(filename_copy, mode_copy);
+    if (!file.file) return IoError.FILE_NOT_FOUND!;
+}
+
 /*
 
 enum Seek
@@ -73,11 +90,6 @@ func FileError errorFromErrno()
     return FileError { };
 }
 
-public func void! File.open(File *file, char *filename, char *mode)
-{
-    file.file = fopen(filename, mode);
-    if (!file.file) return errorFromErrno()!;
-}
 
 public func void! File.seek(File *file, long offset, Seek seekMode = Seek.SET)
 {

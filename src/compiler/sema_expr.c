@@ -1107,7 +1107,7 @@ static inline bool sema_check_invalid_body_arguments(Context *context, Expr *cal
 	return true;
 }
 
-static inline bool sema_expand_call_arguments(Context *context, Expr *call, Decl **params, Expr **args, unsigned func_param_count, bool variadic)
+static inline bool sema_expand_call_arguments(Context *context, CalledDecl *callee, Expr *call, Decl **params, Expr **args, unsigned func_param_count, bool variadic)
 {
 	unsigned num_args = vec_size(args);
 
@@ -1197,10 +1197,18 @@ static inline bool sema_expand_call_arguments(Context *context, Expr *call, Decl
 		if (actual_args[i]) continue;
 
 		// 17b. Set the init expression.
-		if (params[i]->var.init_expr)
+		Expr *init_expr = params[i]->var.init_expr;
+		if (init_expr)
 		{
-			assert(params[i]->var.init_expr->resolve_status == RESOLVE_DONE);
-			actual_args[i] = params[i]->var.init_expr;
+			if (callee->macro)
+			{
+				actual_args[i] = copy_expr(init_expr);
+			}
+			else
+			{
+				assert(init_expr->resolve_status == RESOLVE_DONE);
+				actual_args[i] = init_expr;
+			}
 			continue;
 		}
 
@@ -1273,7 +1281,7 @@ static inline bool sema_expr_analyse_call_invocation(Context *context, Expr *cal
 		func_param_count--;
 	}
 
-	if (!sema_expand_call_arguments(context, call, params, args, func_param_count, callee.variadic != VARIADIC_NONE)) return false;
+	if (!sema_expand_call_arguments(context, &callee, call, params, args, func_param_count, callee.variadic != VARIADIC_NONE)) return false;
 
 	args = call->call_expr.arguments;
 	num_args = vec_size(args);

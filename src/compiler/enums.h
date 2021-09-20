@@ -358,6 +358,7 @@ typedef enum
 	TOKEN_PLUS_ASSIGN,      // +=
 	TOKEN_PLUSPLUS,         // ++
 	TOKEN_RBRAPIPE,         // |}
+	TOKEN_QUESTQUEST,       // ??
 	TOKEN_SCOPE,            // ::
 	TOKEN_SHL,              // <<
 	TOKEN_SHR,              // >>

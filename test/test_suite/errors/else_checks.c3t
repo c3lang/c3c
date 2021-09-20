@@ -4,13 +4,14 @@ extern func int! testError();
 
 func void test()
 {
-    double x = (testError() + testError()) else 100;
-    double y = (1 << testError()) else 100;
-    double z = testError() >> 1 else 100;
-    double w = testError() * testError() else 100;
+
+    double x = (testError() + testError()) ?? 100;
+    double y = (1 << testError()) ?? 100;
+    double z = testError() >> 1 ?? 100;
+    double w = testError() * testError() ?? 100;
 }
 
-// #expect: else_checks.ll
+/* #expect: else_checks.ll
 
 ; Function Attrs: nounwind
 declare i64 @testError(i32*) #0

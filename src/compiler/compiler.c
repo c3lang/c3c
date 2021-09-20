@@ -300,8 +300,8 @@ void compiler_compile(void)
 		vec_add(global_context.sources, strformat("%s/std/mem.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/array.c3", global_context.lib_dir));
 		vec_add(global_context.sources, strformat("%s/std/math.c3", global_context.lib_dir));
+		vec_add(global_context.sources, strformat("%s/std/libc.c3", global_context.lib_dir));
 	}
-
 	bool has_error = false;
 	VECEACH(global_context.sources, i)
 	{

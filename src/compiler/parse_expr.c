@@ -872,7 +872,10 @@ static Expr *parse_bangbang_expr(Context *context, Expr *left)
 static Expr *parse_else_expr(Context *context, Expr *left)
 {
 	Expr *else_expr = EXPR_NEW_TOKEN(EXPR_ELSE, context->tok);
-	advance_and_verify(context, TOKEN_ELSE);
+	if (!try_consume(context, TOKEN_ELSE))
+	{
+		advance_and_verify(context, TOKEN_QUESTQUEST);
+	}
 	else_expr->else_expr.expr = left;
 	switch (context->tok.type)
 	{
@@ -1371,6 +1374,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 
 		[TOKEN_ELSE] = { NULL, parse_else_expr, PREC_ELSE },
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
+		[TOKEN_QUESTQUEST] = { NULL, parse_else_expr, PREC_ELSE},
 		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },

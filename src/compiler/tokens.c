@@ -112,6 +112,8 @@ const char *token_type_to_string(TokenType type)
 			return "+=";
 		case TOKEN_PLUSPLUS:
 			return "++";
+		case TOKEN_QUESTQUEST:
+			return "??";
 		case TOKEN_RBRAPIPE:
 			return "|}";
 		case TOKEN_SCOPE:

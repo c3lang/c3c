@@ -170,7 +170,7 @@ class Issues:
         lines = len(self.sourcefile.content)
         while self.line < lines:
             line = self.sourcefile.content[self.line].strip()
-            if line.startswith("// #"):
+            if line.startswith("// #") or line.startswith("/* #"):
                 self.parse_header_directive(line)
                 self.line += 1
                 continue
