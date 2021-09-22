@@ -1,4 +1,5 @@
 module fasta;
+import libc;
 
 const IM = 139968;
 const IA = 3877;
@@ -22,9 +23,6 @@ private char[] alu =
   "AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC"
   "AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
 
-extern func int atoi(char *s);
-extern func int printf(char *s, ...);
-extern func void putchar(int c);
 
 char[] iub = "acgtBDHKMNRSVWY";
 double[] iub_p = {
@@ -61,10 +59,10 @@ func void repeat_fasta(char[] seq, int n)
 	int i = void;
 	for (i = 0; i < n; i++)
 	{
-		putchar(seq[i % len]);
-		if (i % LINELEN == LINELEN - 1) putchar('\n');
+		libc::putchar(seq[i % len]);
+		if (i % LINELEN == LINELEN - 1) libc::putchar('\n');
 	}
-	if (i % LINELEN != 0) putchar('\n');
+	if (i % LINELEN != 0) libc::putchar('\n');
 }
 
 func void random_fasta(char[] symb, double[] probability, int n)
@@ -82,24 +80,24 @@ func void random_fasta(char[] symb, double[] probability, int n)
 			v -= probability[j];
 			if (v < 0) break;
 		}
-		putchar(symb[j]);
-		if (i % LINELEN == LINELEN - 1) putchar('\n');
+		libc::putchar(symb[j]);
+		if (i % LINELEN == LINELEN - 1) libc::putchar('\n');
 	}
-	if (i % LINELEN != 0) putchar('\n');
+	if (i % LINELEN != 0) libc::putchar('\n');
 }
 
 func void main(int argc, char **argv)
 {
 	int n = 1000;
-	if (argc > 1) n = atoi(argv[1]);
+	if (argc > 1) n = libc::atoi(argv[1]);
 
-	printf(">ONE Homo sapiens alu\n");
+	libc::printf(">ONE Homo sapiens alu\n");
 	repeat_fasta(alu, n * 2);
 
-	printf(">TWO IUB ambiguity codes\n");
+	libc::printf(">TWO IUB ambiguity codes\n");
 	random_fasta(iub, iub_p, n * 3);
 
-	printf(">THREE Homo sapiens frequency\n");
+	libc::printf(">THREE Homo sapiens frequency\n");
 	random_fasta(homosapiens, homosapiens_p, n * 5);
 
 }

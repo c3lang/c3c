@@ -1146,6 +1146,7 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 	bool is_generic = decl->decl_kind == DECL_GENERIC;
 	TypeInfo *rtype = decl->macro_decl.rtype;
 	if (decl->macro_decl.rtype && !sema_resolve_type_info(context, rtype)) return decl_poison(decl);
+	decl->macro_decl.context = context;
 	VECEACH(decl->macro_decl.parameters, i)
 	{
 		Decl *param = decl->macro_decl.parameters[i];

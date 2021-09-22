@@ -22,6 +22,7 @@ struct LongDivResult
 define TerminateFunction = func void();
 define CompareFunction = func int(void*, void*);
 extern func double atof(char* str);
+extern func int atoi(char* str);
 extern func long atol(char* str);
 extern func double strtod(char* str, char** endptr);
 extern func long strtol(char* str, char** endptr, int base);

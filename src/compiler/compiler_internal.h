@@ -500,6 +500,7 @@ typedef struct
 	struct Ast_ *body;
 	Decl **body_parameters;
 	TokenId block_parameter;
+	struct Context_ *context;
 } MacroDecl;
 
 typedef struct
