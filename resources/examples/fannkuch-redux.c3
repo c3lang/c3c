@@ -1,4 +1,6 @@
 module fannkuch;
+import std::array;
+import libc;
 import std::mem;
 
 macro int max(int a, int b)
@@ -8,11 +10,11 @@ macro int max(int a, int b)
 
 func int fannkuchredux(int n)
 {
-    int* perm = mem::alloc($sizeof(int), n);
-    int* perm1 = mem::alloc($sizeof(int), n);
-    int* count = mem::alloc($sizeof(int), n);
-    int maxFlipsCount;
-    int permCount;
+    int* perm = @array::make(int, n);
+    int* perm1 = @array::make(int, n);
+    int* count = @array::make(int, n);
+    int max_flips_count;
+    int perm_count;
     int checksum;
 
     for (int i = 0; i < n; i++) perm1[i] = i;
@@ -25,7 +27,7 @@ func int fannkuchredux(int n)
 
         for (int i = 0; i < n; i++) perm[i] = perm1[i];
 
-        int flipsCount = 0;
+        int flips_count = 0;
         int k;
 
         while (!((k = perm[0]) == 0))
@@ -37,19 +39,19 @@ func int fannkuchredux(int n)
                 perm[i] = perm[k - i];
                 perm[k - i] = temp;
             }
-            flipsCount++;
+            flips_count++;
         }
 
-        maxFlipsCount = @max(maxFlipsCount, flipsCount);
-        checksum += permCount % 2 == 0 ? flipsCount : -flipsCount;
+        max_flips_count = @max(max_flips_count, flips_count);
+        checksum += perm_count % 2 == 0 ? flips_count : -flips_count;
 
         /* Use incremental change to generate another permutation */
         while (1)
         {
             if (r == n)
             {
-                printf("%d\n", checksum);
-                return maxFlipsCount;
+                libc::printf("%d\n", checksum);
+                return max_flips_count;
             }
 
             int perm0 = perm1[0];
@@ -65,17 +67,14 @@ func int fannkuchredux(int n)
             if (count[r] > 0) break;
             r++;
         }
-        permCount++;
+        perm_count++;
     }
     return 0;
 }
 
-extern func int atoi(char *s);
-extern func int printf(char *s, ...);
-
 func int main(int argc, char** argv)
 {
-    int n = argc > 1 ? atoi(argv[1]) : 7;
-    printf("Pfannkuchen(%d) = %d\n", n, fannkuchredux(n));
+    int n = argc > 1 ? libc::atoi(argv[1]) : 7;
+    libc::printf("Pfannkuchen(%d) = %d\n", n, fannkuchredux(n));
     return 0;
 }

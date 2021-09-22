@@ -52,17 +52,19 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 		return module_find_symbol(&global_context.std_module, symbol);
 	}
 
+	Context *real_context = context->macro_scope.macro ? context->macro_scope.macro->macro_decl.context : context;
+
 	// 1. Do we match our own path?
-	if (matches_subpath(context->module->name, path))
+	if (matches_subpath(real_context->module->name, path))
 	{
 		// 2. If so just get the symbol.
-		return module_find_symbol(context->module, symbol);
+		return module_find_symbol(real_context->module, symbol);
 	}
 
 	// 3. Loop over imports.
-	VECEACH(context->imports, i)
+	VECEACH(real_context->imports, i)
 	{
-		Decl *import = context->imports[i];
+		Decl *import = real_context->imports[i];
 
 		if (import->module->is_generic) continue;
 
@@ -139,22 +141,25 @@ static Decl *sema_resolve_no_path_symbol(Context *context, const char *symbol,
 			current--;
 		}
 	}
-	JUMP_ERASED:
+	JUMP_ERASED:;
+
+	Context *real_context = context->macro_scope.macro ? context->macro_scope.macro->macro_decl.context : context;
 
 	// Search in file scope.
-	decl = stable_get(&context->local_symbols, symbol);
+	decl = stable_get(&real_context->local_symbols, symbol);
 
 	if (decl) return decl;
 
+
 	// Search in the module.
-	decl = module_find_symbol(context->module, symbol);
+	decl = module_find_symbol(real_context->module, symbol);
 
 	if (decl) return decl;
 
 	// Search in imports
-	VECEACH(context->imports, i)
+	VECEACH(real_context->imports, i)
 	{
-		Decl *import = context->imports[i];
+		Decl *import = real_context->imports[i];
 		if (!decl_ok(import)) continue;
 
 		// Skip parameterized modules

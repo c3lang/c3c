@@ -178,6 +178,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_CT_SWITCH:
 				register_generic_decls(module, decl->ct_switch_decl.cases);
 				continue;
+			case DECL_MACRO:
 			case DECL_DEFINE:
 			case DECL_DISTINCT:
 			case DECL_ENUM:
@@ -185,7 +186,6 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_INTERFACE:
 			case DECL_ERRTYPE:
 			case DECL_FUNC:
-			case DECL_MACRO:
 			case DECL_STRUCT:
 			case DECL_TYPEDEF:
 			case DECL_UNION:
@@ -290,17 +290,7 @@ void compiler_compile(void)
 
 	if (global_context.lib_dir)
 	{
-		vec_add(global_context.sources, strformat("%s/std/env.c3", global_context.lib_dir));
-		vec_add(global_context.sources, strformat("%s/std/cinterop.c3", global_context.lib_dir));
-		vec_add(global_context.sources, strformat("%s/std/runtime.c3", global_context.lib_dir));
-		vec_add(global_context.sources, strformat("%s/std/builtin.c3", global_context.lib_dir));
-		vec_add(global_context.sources, strformat("%s/std/io.c3", global_context.lib_dir));
-		vec_add(global_context.sources, strformat("%s/std/list.c3", global_context.lib_dir));
-		vec_add(global_context.sources, strformat("%s/std/linkedlist.c3", global_context.lib_dir));
-		vec_add(global_context.sources, strformat("%s/std/mem.c3", global_context.lib_dir));
-		vec_add(global_context.sources, strformat("%s/std/array.c3", global_context.lib_dir));
-		vec_add(global_context.sources, strformat("%s/std/math.c3", global_context.lib_dir));
-		vec_add(global_context.sources, strformat("%s/std/libc.c3", global_context.lib_dir));
+		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true);
 	}
 	bool has_error = false;
 	VECEACH(global_context.sources, i)

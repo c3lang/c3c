@@ -157,7 +157,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 	while ((ent = readdir(dir)))
 	{
 		size_t namelen = strlen(ent->d_name);
-		if (namelen < 4) continue;
+		if (namelen < 3) continue;
 
 		// Doesn't end with .c3
 		if (strncmp(&ent->d_name[namelen - 3], ".c3", 3) != 0)
