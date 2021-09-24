@@ -6,10 +6,11 @@
 #include "common.h"
 #include "errors.h"
 #include "lib.h"
+#ifndef _MSC_VER
 #include <libgen.h>
-#include <dirent.h>
-#include <limits.h>
 #include <unistd.h>
+#endif
+#include <dirent.h>
 #include <errno.h>
 #include "whereami.h"
 

@@ -4,7 +4,9 @@
 
 #include "compiler_internal.h"
 #include "parser_internal.h"
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
@@ -224,7 +226,7 @@ static void analyze_to_stage(AnalysisStage stage)
 static void add_global_define(const char *name, Expr *value)
 {
 	Decl *dec = decl_calloc();
-	TokenType type = TOKEN_CONST_IDENT;
+	C3TokenType type = TOKEN_CONST_IDENT;
 	const char *unique_name = symtab_add(name, strlen(name), fnv1a(name, strlen(name)), &type);
 	dec->name = unique_name;
 	dec->module = &global_context.std_module;
@@ -244,7 +246,7 @@ static void add_global_define(const char *name, Expr *value)
 
 static void setup_int_define(const char *id, uint64_t i)
 {
-	TokenType token_type = TOKEN_CONST_IDENT;
+	C3TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, strlen(id), fnv1a(id, strlen(id)), &token_type);
 	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
 	expr_const_set_int(&expr->const_expr, i, TYPE_IXX);
@@ -260,7 +262,7 @@ static void setup_int_define(const char *id, uint64_t i)
 
 static void setup_bool_define(const char *id, bool value)
 {
-	TokenType token_type = TOKEN_CONST_IDENT;
+	C3TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, strlen(id), fnv1a(id, strlen(id)), &token_type);
 	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
 	expr_const_set_bool(&expr->const_expr, value);
@@ -606,7 +608,7 @@ char *scratch_buffer_to_string(void)
 
 const char *scratch_buffer_interned(void)
 {
-	TokenType type = TOKEN_INVALID_TOKEN;
+	C3TokenType type = TOKEN_INVALID_TOKEN;
 	return symtab_add(global_context.scratch_buffer, global_context.scratch_buffer_len,
 	                  fnv1a(global_context.scratch_buffer, global_context.scratch_buffer_len), &type);
 }

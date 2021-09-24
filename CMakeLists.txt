@@ -53,21 +53,20 @@ llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 
 file(COPY ${CMAKE_SOURCE_DIR}/resources/lib DESTINATION ${CMAKE_BINARY_DIR})
 
-find_library(LLD_COFF NAMES lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS})
-find_library(LLD_COMMON NAMES lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS})
-find_library(LLD_CORE NAMES lldCore.a liblldCore.a PATHS ${LLVM_LIBRARY_DIRS})
-find_library(LLD_WASM NAMES lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS})
-find_library(LLD_MINGW NAMES lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS})
-find_library(LLD_ELF NAMES lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS})
-find_library(LLD_DRIVER NAMES lldDriver.a liblldDriver.a PATHS ${LLVM_LIBRARY_DIRS})
-find_library(LLD_READER_WRITER NAMES lldReaderWriter.a liblldReaderWriter.a PATHS ${LLVM_LIBRARY_DIRS})
-find_library(LLD_MACHO NAMES lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS})
-if("${LLVM_PACKAGE_VERSION}" VERSION_GREATER 13)
-    find_library(LLD_MACHOOLD NAMES lldMachOOld.a liblldMachOOld.a PATHS ${LLVM_LIBRARY_DIRS})
-endif()
-find_library(LLD_YAML NAMES lldYAML.a liblldYAML.a PATHS ${LLVM_LIBRARY_DIRS})
+# These don't seem to be reliable on windows.
+if(UNIX)
+    find_library(LLD_COFF NAMES lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLD_COMMON NAMES lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLD_CORE NAMES lldCore.a liblldCore.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLD_WASM NAMES lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLD_MINGW NAMES lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLD_ELF NAMES lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLD_DRIVER NAMES lldDriver.a liblldDriver.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLD_READER_WRITER NAMES lldReaderWriter.a liblldReaderWriter.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLD_MACHO NAMES lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLD_YAML NAMES lldYAML.a liblldYAML.a PATHS ${LLVM_LIBRARY_DIRS})
 
-set(lld_libs
+    set(lld_libs
         ${LLD_COFF}
         ${LLD_COMMON}
         ${LLD_WASM}
@@ -79,8 +78,6 @@ set(lld_libs
         ${LLD_YAML}
         ${LLD_CORE}
         )
-if("${LLVM_PACKAGE_VERSION}" VERSION_GREATER 13)
-    list(APPEND lld_libs ${LLD_MACHOOLD})
 endif()
 add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
 
@@ -150,9 +147,10 @@ add_executable(c3c
         src/compiler/llvm_codegen_c_abi_riscv.c
         src/compiler/llvm_codegen_c_abi_wasm.c)
 
-target_compile_options(c3c PRIVATE -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
-        -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
-
+if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(c3c PRIVATE -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
+            -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
+endif()
 
 target_include_directories(c3c PRIVATE
         "${CMAKE_SOURCE_DIR}/src/")
@@ -163,9 +161,14 @@ target_include_directories(c3c_wrappers PRIVATE
 
 message(STATUS "Found LLD ${lld_libs}")
 
-target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
-#target_link_libraries(c3c m ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
-target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${lld_libs})
+if(UNIX)
+    target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${lld_libs})
+else()
+    # todo: maybe get this from llvm-config somehow? it should be in LLVM_DIR\..\..\..\bin I think.
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:C:\\llvm\\llvm\\build\\Release\\lib")
+    target_link_libraries(c3c ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF
+                            lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
+endif()
 
 if (WIN32)
     if (CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILE_ID STREQUAL "GNU")

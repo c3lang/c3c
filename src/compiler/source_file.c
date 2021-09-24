@@ -3,7 +3,12 @@
 // a copy of which can be found in the LICENSE file.
 
 #include <sys/stat.h>
+#ifdef _MSC_VER
+// For MAX_PATH, which seems to be the windows equivalent to limits.h's PATH_MAX.
+#include <windows.h>
+#else
 #include <limits.h>
+#endif
 #include "compiler_internal.h"
 #include "../build/build_options.h"
 
@@ -23,7 +28,11 @@ File *source_file_load(const char *filename, bool *already_loaded)
 	if (already_loaded) *already_loaded = false;
 	if (!source_files.files) source_files.files = VECNEW(File *, LEXER_FILES_START_CAPACITY);
 
-	char *full_path = malloc_arena(PATH_MAX + 1);
+#ifdef _MSC_VER
+	char* full_path = malloc_arena(MAX_PATH + 1);
+#else
+	char* full_path = malloc_arena(PATH_MAX + 1);
+#endif
 	if (!realpath(filename, full_path))
 	{
 		error_exit("Failed to resolve %s", filename);

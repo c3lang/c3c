@@ -4,7 +4,10 @@
 
 #include "compiler_internal.h"
 
-
+#if defined(_MSC_VER)
+// This isn't standard apparently, so MSVC doesn't have it built in...
+typedef long long int ssize_t;
+#endif
 
 static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 {

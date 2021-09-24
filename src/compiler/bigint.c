@@ -860,7 +860,7 @@ unsigned count_leading_zeros(uint32_t val)
 
 #if defined(_MSC_VER)
 	unsigned long Index;
-    _BitScanReverse(&Index, Val);
+    _BitScanReverse(&Index, val);
     return Index ^ 31;
 #else
 	return __builtin_clz(val);

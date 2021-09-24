@@ -11,7 +11,7 @@
 typedef struct _SymEntry
 {
 	const char *value;
-	TokenType type;
+	C3TokenType type;
 	uint32_t key_len;
 	uint32_t hash;
 } SymEntry;
@@ -92,14 +92,14 @@ void symtab_init(uint32_t capacity)
 			if ((name[0] != '@' && name[0] != '$') || !is_lower(name[1])) continue;
 		}
 		uint32_t len = (uint32_t)strlen(name);
-		TokenType type = (TokenType)i;
+		C3TokenType type = (C3TokenType)i;
 		const char* interned = symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type);
-		assert(type == (TokenType)i);
+		assert(type == (C3TokenType)i);
 		assert(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 	}
 
 	// Init some constant idents
-	TokenType type = TOKEN_IDENT;
+	C3TokenType type = TOKEN_IDENT;
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
 	kw_align = KW_DEF("align");
 	kw_deprecated = KW_DEF("deprecated");
@@ -167,7 +167,7 @@ static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t h
 	}
 }
 
-const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type)
+const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, C3TokenType *type)
 {
 	if (symtab.count + 1 > symtab.capacity * TABLE_MAX_LOAD)
 	{
@@ -191,7 +191,7 @@ const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, Toke
 	return entry->value;
 }
 
-const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type)
+const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, C3TokenType *type)
 {
 	SymEntry *entry = entry_find(symbol, len, fnv1hash);
 	if (!entry->value) return NULL;
