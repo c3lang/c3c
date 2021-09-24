@@ -4,8 +4,9 @@
 
 #include <sys/stat.h>
 #ifdef _MSC_VER
-// From minwindef.h
-#define PATH_MAX 260
+#include <windows.h>
+#define PATH_MAX MAX_PATH
+#undef TokenType // conflicting TokenType from winnt.h
 #else
 #include <limits.h>
 #endif
