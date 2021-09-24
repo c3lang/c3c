@@ -6,7 +6,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 #include <stdbool.h>
 #include <string.h>
 #include <utils/lib.h>
