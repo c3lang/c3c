@@ -78,7 +78,7 @@ inline void advance(Context *context)
 
 }
 
-bool try_consume(Context *context, C3TokenType type)
+bool try_consume(Context *context, TokenType type)
 {
 	if (context->tok.type == type)
 	{
@@ -88,7 +88,7 @@ bool try_consume(Context *context, C3TokenType type)
 	return false;
 }
 
-bool consume(Context *context, C3TokenType type, const char *message, ...)
+bool consume(Context *context, TokenType type, const char *message, ...)
 {
 	if (try_consume(context, type))
 	{

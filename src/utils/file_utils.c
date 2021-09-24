@@ -7,17 +7,18 @@
 #include "errors.h"
 #include "lib.h"
 #ifndef _MSC_VER
-#include <libgen.h>
+//#include <libgen.h>
 #include <unistd.h>
 #endif
 #include <dirent.h>
 #include <errno.h>
 #include "whereami.h"
 
+#include <filesystem>
+
 #if PLATFORM_WINDOWS
 #include <windows.h>
 #endif
-
 
 const char* expand_path(const char* path)
 {

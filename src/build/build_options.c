@@ -8,6 +8,9 @@
 #include <assert.h>
 #ifndef _MSC_VER
 #include <unistd.h>
+#else
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
 #endif
 #include <stdbool.h>
 #include <string.h>

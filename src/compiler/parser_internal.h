@@ -49,13 +49,13 @@ Ast* parse_compound_stmt(Context *context);
 Ast *parse_jump_stmt_no_eos(Context *context);
 bool parse_attributes(Context *context, Attr ***attributes_ref);
 
-bool parse_switch_body(Context *context, Ast ***cases, C3TokenType case_type, C3TokenType default_type,
+bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, TokenType default_type,
                        bool allow_multiple_values);
 Expr *parse_expression_list(Context *context);
 Decl *parse_decl_after_type(Context *context, TypeInfo *type);
 
 bool parse_parameters(Context *context, Visibility visibility, Decl ***params_ref);
-bool parse_arg_list(Context *context, Expr ***result, C3TokenType param_end, bool *unsplat);
+bool parse_arg_list(Context *context, Expr ***result, TokenType param_end, bool *unsplat);
 Expr *parse_type_compound_literal_expr_after_type(Context *context, TypeInfo *type_info);
 Expr *parse_type_access_expr_after_type(Context *context, TypeInfo *type_info);
 bool parse_next_is_decl(Context *context);
@@ -63,17 +63,17 @@ bool parse_next_is_case_type(Context *context);
 bool parse_next_is_type(Context *context);
 bool parse_module(Context *context);
 Decl *parse_define_compile_time_variable(Context *context, bool global);
-bool try_consume(Context *context, C3TokenType type);
-bool consume(Context *context, C3TokenType type, const char *message, ...);
+bool try_consume(Context *context, TokenType type);
+bool consume(Context *context, TokenType type, const char *message, ...);
 bool consume_const_name(Context *context, const char* type);
 Expr *parse_precedence_with_left_side(Context *context, Expr *left_side, Precedence precedence);
 
-static inline bool tok_is(Context *context, C3TokenType type)
+static inline bool tok_is(Context *context, TokenType type)
 {
 	return context->tok.type == type;
 }
 
-static inline bool expect(Context *context, C3TokenType token_type)
+static inline bool expect(Context *context, TokenType token_type)
 {
 	if (token_type == context->tok.type) return true;
 
@@ -81,7 +81,7 @@ static inline bool expect(Context *context, C3TokenType token_type)
 	return false;
 }
 
-static inline bool token_is_some_ident(C3TokenType token_type)
+static inline bool token_is_some_ident(TokenType token_type)
 {
 	switch (token_type)
 	{
@@ -94,7 +94,7 @@ static inline bool token_is_some_ident(C3TokenType token_type)
 	}
 }
 
-static inline bool token_is_keyword(C3TokenType token_type)
+static inline bool token_is_keyword(TokenType token_type)
 {
 	if (token_type >= TOKEN_VOID && token_type <= TOKEN_TYPEID) return true;
 	if (token_type >= TOKEN_ALIAS && token_type <= TOKEN_WHILE) return true;

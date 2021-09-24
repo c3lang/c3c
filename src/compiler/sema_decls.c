@@ -1502,7 +1502,7 @@ static bool sema_analyse_parameterized_define(Context *c, Decl *decl)
 		const char *type_name = type_info->type->canonical->name;
 		scratch_buffer_append(type_name);
 	}
-	C3TokenType ident_type = TOKEN_IDENT;
+	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
 	if (!instantiated_module)

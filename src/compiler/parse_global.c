@@ -22,7 +22,7 @@ static bool context_next_is_type_with_path_prefix(Context *context)
 	TokenId current = context->next_tok.id;
 	while (1)
 	{
-		C3TokenType tok;
+		TokenType tok;
 
 		// 1. Step past the '::' and any following comment (doc comments are not allowed here!)
 		tok = advance_token(&current);
@@ -108,7 +108,7 @@ void recover_top_level(Context *context)
 
 #pragma mark --- Parse CT conditional code
 
-static inline bool parse_top_level_block(Context *context, Decl ***decls, C3TokenType end1, C3TokenType end2, C3TokenType end3)
+static inline bool parse_top_level_block(Context *context, Decl ***decls, TokenType end1, TokenType end2, TokenType end3)
 {
 	CONSUME_OR(TOKEN_COLON, false);
 	while (!TOKEN_IS(end1) && !TOKEN_IS(end2) && !TOKEN_IS(end3) && !TOKEN_IS(TOKEN_EOF))
@@ -193,7 +193,7 @@ static inline Decl *parse_ct_case(Context *context)
 	TRY_CONSUME_OR(TOKEN_COLON, "Expected ':' here.", poisoned_decl);
 	while (1)
 	{
-		C3TokenType type = context->tok.type;
+		TokenType type = context->tok.type;
 		if (type == TOKEN_CT_DEFAULT || type == TOKEN_CT_CASE || type == TOKEN_LBRACE) break;
 		ASSIGN_DECL_ELSE(Decl *stmt, parse_top_level_statement(context), poisoned_decl);
 		vec_add(decl->ct_case_decl.body, stmt);
@@ -499,7 +499,7 @@ Path *parse_path_prefix(Context *context, bool *had_error)
 		advance(context); advance(context);
 	}
 
-	C3TokenType type = TOKEN_IDENT;
+	TokenType type = TOKEN_IDENT;
 	path->span.end_loc = last_token;
 	path->module = symtab_add(scratch_ptr, offset, fnv1a(scratch_ptr, offset), &type);
 	if (type != TOKEN_IDENT)
@@ -827,7 +827,7 @@ static inline bool is_function_start(Context *context)
 		if (context->next_tok.type == TOKEN_LPAREN) return true;
 	}
 	TokenId current = context->tok.id;
-	C3TokenType tok = TOKTYPE(current);
+	TokenType tok = TOKTYPE(current);
 	while (1)
 	{
 		if (tok != TOKEN_IDENT) break;
@@ -867,7 +867,7 @@ static inline Decl *parse_incremental_array(Context *context)
 
 bool parse_next_is_decl(Context *context)
 {
-	C3TokenType next_tok = context->next_tok.type;
+	TokenType next_tok = context->next_tok.type;
 	switch (context->tok.type)
 	{
 		case TYPELIKE_TOKENS:
@@ -882,7 +882,7 @@ bool parse_next_is_decl(Context *context)
 
 bool parse_next_is_type(Context *context)
 {
-	C3TokenType next_tok = context->next_tok.type;
+	TokenType next_tok = context->next_tok.type;
 	switch (context->tok.type)
 	{
 		case TYPELIKE_TOKENS:
@@ -898,7 +898,7 @@ bool parse_next_is_type(Context *context)
 
 bool parse_next_is_case_type(Context *context)
 {
-	C3TokenType next_tok = context->next_tok.type;
+	TokenType next_tok = context->next_tok.type;
 	switch (context->tok.type)
 	{
 		case TYPELIKE_TOKENS:
@@ -1231,7 +1231,7 @@ bool parse_struct_body(Context *context, Decl *parent)
 	MemberIndex index = 0;
 	while (!TOKEN_IS(TOKEN_RBRACE))
 	{
-		C3TokenType token_type = context->tok.type;
+		TokenType token_type = context->tok.type;
 		if (token_type == TOKEN_STRUCT || token_type == TOKEN_UNION)
 		{
 			DeclKind decl_kind = decl_from_token(token_type);
@@ -1319,7 +1319,7 @@ bool parse_struct_body(Context *context, Decl *parent)
  */
 static inline Decl *parse_struct_declaration(Context *context, Visibility visibility)
 {
-	C3TokenType type = context->tok.type;
+	TokenType type = context->tok.type;
 
 	advance(context);
 	const char* type_name = struct_union_name_from_token(type);
@@ -1570,7 +1570,7 @@ static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
-	C3TokenType alias_type = context->tok.type;
+	TokenType alias_type = context->tok.type;
 	if (alias_type != TOKEN_IDENT && alias_type != TOKEN_CONST_IDENT)
 	{
 		if (token_is_any_type(alias_type))
@@ -2231,7 +2231,7 @@ Decl *parse_top_level_statement(Context *context)
 	}
 
 	Decl *decl;
-	C3TokenType type = context->tok.type;
+	TokenType type = context->tok.type;
 	switch (context->tok.type)
 	{
 		case TOKEN_DOCS_START:
