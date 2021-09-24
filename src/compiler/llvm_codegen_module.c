@@ -22,8 +22,7 @@ void gencontext_begin_module(GenContext *c)
 	}
 	const char *result = scratch_buffer_to_string();
 	c->ir_filename = strformat("%s.ll", result);
-	// TODO filename should depend on platform.
-	c->object_filename = strformat("%s.o", result);
+	c->object_filename = strformat("%s%s", result, DEFAULT_OBJ_FILE_EXT);
 
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();

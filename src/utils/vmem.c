@@ -2,13 +2,14 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
+
 #include "vmem.h"
 
 #if PLATFORM_POSIX
 #include <sys/mman.h>
 #endif
 
-#if PLATFORM_WINDOWS
+#if defined(WIN32)
 #include <Windows.h>
 #define COMMIT_PAGE_SIZE 0x10000
 #endif

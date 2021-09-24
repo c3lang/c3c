@@ -2,6 +2,10 @@
 
 #include <llvm/Config/llvm-config.h>  // for LLVM_VERSION_STRING
 
+#ifdef PLATFORM_WINDOWS
+#include "utils/find_msvc.h"
+#endif
+
 extern bool llvm_link_elf(const char **args, int arg_count, const char** error_string);
 extern bool llvm_link_macho(const char **args, int arg_count, const char** error_string);
 extern bool llvm_link_coff(const char **args, int arg_count, const char** error_string);
@@ -64,8 +68,19 @@ static void prepare_msys2_linker_flags(const char ***args, const char **files_to
 static bool link_exe(const char *output_file, const char **files_to_link, unsigned file_count)
 {
 	const char **args = NULL;
-	vec_add(args, "-o");
-	vec_add(args, output_file);
+#ifdef _MSC_VER
+	if (platform_target.os == OS_TYPE_WIN32)
+	{
+		vec_add(args, join_strings((const char* []) {"/out:", output_file}, 2));
+	}
+	else
+	{
+#endif
+		vec_add(args, "-o");
+		vec_add(args, output_file);
+#ifdef _MSC_VER
+	}
+#endif
 	VECEACH(active_target.link_args, i)
 	{
 		vec_add(args, active_target.link_args[i]);
@@ -78,16 +93,43 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			// TODO: properly detect if llvm-lld is available
 			// TODO: check if running inside MSYS2, it could be done via getting MSYSTEM environment variable
 			// https://stackoverflow.com/questions/65527286/how-to-check-if-my-program-is-running-on-mingwor-msys-shell-or-on-cmd
-			if (!platform_target.x64.is_mingw64) return false;
-			if (NULL == getenv("MSYSTEM")) return false;
-			if (!strcmp(getenv("MSYSTEM"), "CLANG64") || !strcmp(getenv("MSYSTEM"), "MINGW64"))
+			if (NULL == getenv("MSYSTEM"))
 			{
-				prepare_msys2_linker_flags(&args, files_to_link, file_count);
+				// "native" windows
+
+
+				// find paths to library directories.
+				// ex:
+				// C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\lib\\x64
+				// C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\atlmfc\\lib\\x64
+				// C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\ucrt\\x64
+				// C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\um\\x64
+#ifdef _MSC_VER
+				PathPair msvc_paths = get_latest_available_vs_path();
+				PathPair windows_kit_paths = find_winkit_path();
+				vec_add(args, join_strings((const char* []) { "-libpath:C:", msvc_paths.first }, 2));
+				vec_add(args, join_strings((const char* []) { "-libpath:C:", msvc_paths.second }, 2));
+				vec_add(args, join_strings((const char* []) { "-libpath:C:", windows_kit_paths.first }, 2));
+				vec_add(args, join_strings((const char* []) { "-libpath:C:", windows_kit_paths.second }, 2));
+
+				vec_add(args, "-defaultlib:libcmt");
+				vec_add(args, "-nologo");
+				add_files(&args, files_to_link, file_count);
+#else
+				error_exit("ERROR - c3c must be compiled with MSVC to target x64-windows\n");
+#endif
 			}
 			else
 			{
-				return false;
-			}
+				if (!strcmp(getenv("MSYSTEM"), "CLANG64") || !strcmp(getenv("MSYSTEM"), "MINGW64"))
+				{
+					prepare_msys2_linker_flags(&args, files_to_link, file_count);
+				}
+				else
+				{
+					return false;
+				}
+			}			
 			break;
 		case OS_TYPE_MACOSX:
 			add_files(&args, files_to_link, file_count);

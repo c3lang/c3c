@@ -104,6 +104,21 @@ int vasnprintf(char **strp, const char *fmt, va_list args)
 	return res;
 }
 
+int vasprintf(char** ret, const char* fmt, va_list args) {
+	int length = _vsnprintf(NULL, 0, fmt, args);
+	if (length < 0) { // check if _vsnprintf failed
+		return -1;
+	}
+	*ret = malloc(length + 1);
+	if (!*ret) { // check if malloc failed
+		return -1;
+	}
+	// Write String 
+	_vsnprintf(*ret, length + 1, fmt, args);
+	(*ret)[length] = '\0'; // make sure there is a null terminator
+	return length;
+}
+
 char *strndup(const char *s, size_t n)
 {
 	n = strnlen(s, n);

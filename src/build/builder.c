@@ -1,8 +1,11 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
-
+#ifndef _MSC_VER
 #include <dirent.h>
+#else
+#include "utils/dirent.h"
+#endif
 #include "build_internal.h"
 #include "build_options.h"
 
@@ -92,6 +95,16 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->arch_os_target_override != ARCH_OS_TARGET_DEFAULT)
 	{
 		target->arch_os_target = options->arch_os_target_override;
+	}
+#ifndef _MSC_VER
+#define _MSC_VER 0
+#endif
+	else if (_MSC_VER)
+	{
+		// The current handling of ARCH_OS_TARGET_DEFAULT works on unix, but not on windows.
+		// to deal with this, simply default to x64-windows (unless using mingw).
+		// ARCH_OS_TARGET_DEFAULT could be handled in a more cross-platform manner later on.
+		target->arch_os_target = X64_WINDOWS;
 	}
 	if (options->pie != PIE_DEFAULT) target->pie = options->pie;
 	if (options->pic != PIC_DEFAULT) target->pic = options->pic;

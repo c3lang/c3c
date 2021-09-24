@@ -60,3 +60,8 @@ dkms.conf
 /resources/y.tab.c
 /resources/y.tab.h
 /bin/
+
+#visual studio files
+.vs/
+.vscode/
+out/

@@ -4,7 +4,9 @@
 
 #include "compiler_internal.h"
 #include "parser_internal.h"
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
@@ -483,7 +485,7 @@ static void target_expand_source_names(BuildTarget *target)
 
 void compile_target(BuildOptions *options)
 {
-	init_default_build_target(&active_target, options, "a.out");
+	init_default_build_target(&active_target, options, DEFAULT_EXE);
 	compile();
 }
 

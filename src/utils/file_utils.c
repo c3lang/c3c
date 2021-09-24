@@ -6,16 +6,63 @@
 #include "common.h"
 #include "errors.h"
 #include "lib.h"
+
+#if PLATFORM_WINDOWS
+
+#include <windows.h>
+
+#endif
+
+#ifndef _MSC_VER
 #include <libgen.h>
+#include <unistd.h>
 #include <dirent.h>
 #include <limits.h>
-#include <unistd.h>
+#else
+#include "utils/dirent.h"
+#define PATH_MAX 260
+
+// dirname and basename on windows
+#include "win_dirname_basename.h"
+
+// copied from https://github.com/kindkaktus/libconfig/commit/d6222551c5c01c326abc99627e151d549e0f0958
+#ifndef S_ISDIR
+#define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
+#endif
+// copied from https://stackoverflow.com/questions/11238918/s-isreg-macro-undefined
+#if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#endif
+
+#endif
+
 #include <errno.h>
 #include "whereami.h"
 
 #if PLATFORM_WINDOWS
-#include <windows.h>
+
+
+/**
+ * remove C: drive prefix (C:, D:, etc.) from a path. THIS WON'T WORK WITH D:, ETC.
+ * If that is an issue, I think dirent will have to be replaced or the dirent
+ * port in use will have to be replaced.
+ */
+char* strip_drive_prefix(char* path) {
+	if ((*path == 'c' || *path == 'C') && path[1] == ':') {
+		return path + 2; // remove first two characters
+	}
+	else if (path[1] == ':' && (path[2] == '/' || path[2] == '\\')) { // I don't *think* a relative path can start with '[char]:/' ? right?
+		// nothing can be done about this currently
+		error_exit("Illegal path %s - absolute path must start with /, \\, c:, or C: (file a github issue if this is a problem)");
+	}
+	else {
+		// path is ok
+		return path;
+	}
+}
+
 #endif
+
 
 
 const char* expand_path(const char* path)
@@ -147,7 +194,11 @@ void file_find_top_dir()
 
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive)
 {
-	DIR *dir = opendir(path);
+#ifdef _MSC_VER
+	DIR *dir = opendir(strip_drive_prefix(path));
+#else
+	DIR* dir = opendir(path);
+#endif
 	bool path_ends_with_slash = path[strlen(path) - 1] == '/';
 	if (!dir)
 	{
