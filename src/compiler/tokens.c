@@ -4,7 +4,7 @@
 
 #include "compiler_internal.h"
 
-const char *token_type_to_string(TokenType type)
+const char *token_type_to_string(C3TokenType type)
 {
 	switch (type)
 	{
@@ -370,7 +370,7 @@ const char *token_type_to_string(TokenType type)
 	UNREACHABLE
 }
 
-bool token_is_symbol(TokenType type)
+bool token_is_symbol(C3TokenType type)
 {
 	switch (type)
 	{
@@ -383,17 +383,17 @@ bool token_is_symbol(TokenType type)
 	}
 }
 
-bool token_is_type(TokenType type)
+bool token_is_type(C3TokenType type)
 {
 	return type >= TOKEN_VOID && type <= TOKEN_TYPEID;
 }
 
-bool token_is_any_type(TokenType type)
+bool token_is_any_type(C3TokenType type)
 {
 	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT || type == TOKEN_VIRTUAL;
 }
 
-bool token_is_ident_keyword(TokenType type)
+bool token_is_ident_keyword(C3TokenType type)
 {
 	if (token_is_type(type)) return true;
 	return type >= TOKEN_ALIAS && type <= TOKEN_WHILE;

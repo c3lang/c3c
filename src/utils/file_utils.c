@@ -7,7 +7,7 @@
 #include "errors.h"
 #include "lib.h"
 #ifndef _MSC_VER
-//#include <libgen.h>
+#include <libgen.h>
 #include <unistd.h>
 #endif
 #include <dirent.h>
