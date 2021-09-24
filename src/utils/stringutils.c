@@ -89,7 +89,9 @@ int asprintf(char **strp, const char *fmt, ...)
 	return res;
 }
 
-int vasnprintf(char **strp, const char *fmt, va_list args)
+// I think this was supposed to be vasprintf? it was previously vasnprintf,
+// but this seems to make more sense and it compiles now.
+int vasprintf(char **strp, const char *fmt, va_list args)
 {
 	va_list args_copy;
 	va_copy(args_copy, args);
