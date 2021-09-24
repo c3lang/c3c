@@ -4,6 +4,10 @@
 
 // Code based off Gregory Pakosz's whereami.
 
+#if defined(WIN32)
+#include <windows.h>
+#endif
+
 #include "whereami.h"
 
 #include <stdlib.h>
@@ -32,7 +36,6 @@
 #pragma warning(push, 3)
 #endif
 
-#include <windows.h>
 #include <intrin.h>
 
 #if defined(_MSC_VER)

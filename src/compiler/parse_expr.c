@@ -226,12 +226,14 @@ Expr *parse_cond(Context *context)
 	return decl_expr;
 }
 
-inline Expr* parse_expr(Context *context)
+// These used to be explicitly inlined, but that seems to lead to confusing MSVC linker errors.
+// They are probably still inlined by the compiler, though I haven't checked.
+Expr* parse_expr(Context *context)
 {
 	return parse_precedence(context, PREC_ASSIGNMENT);
 }
 
-inline Expr* parse_constant_expr(Context *context)
+Expr* parse_constant_expr(Context *context)
 {
 	return parse_precedence(context, PREC_TERNARY);
 }

@@ -6,7 +6,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 #include <string.h>
 #include "project_creation.h"
 #include "build_options.h"

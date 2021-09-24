@@ -45,7 +45,6 @@ int main(int argc, const char *argv[])
 			UNREACHABLE
 	}
 
-
 	print_arena_status();
 	free_arena();
 	return 0;

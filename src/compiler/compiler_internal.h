@@ -30,6 +30,13 @@ typedef int32_t ScopeId;
 #define DEFAULT_EXE "a.out"
 #endif
 
+#if PLATFORM_WINDOWS
+#define DEFAULT_OBJ_FILE_EXT ".obj"
+#else
+#define DEFAULT_OBJ_FILE_EXT ".o"
+#endif
+
+
 typedef uint32_t SourceLoc;
 typedef struct
 {
@@ -554,9 +561,9 @@ typedef struct Decl_
 	SourceSpan span;
 	const char *external_name;
 	Ast *docs;
-	DeclKind decl_kind : 6;
-	Visibility visibility : 2;
-	ResolveStatus resolve_status : 2;
+	DeclKind decl_kind : 7;
+	Visibility visibility : 3;
+	ResolveStatus resolve_status : 3;
 	bool is_packed : 1;
 	bool is_opaque : 1;
 	bool needs_additional_pad : 1;
