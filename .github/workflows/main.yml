@@ -77,17 +77,23 @@ jobs:
     strategy:
       matrix:
         build_type: [Release, Debug]
-
+        version: [11, 12, 13, 14]
+    env:
+      CC: clang-${{ matrix.version }}
+      CXX: clang++-${{ matrix.version }}
     steps:
-      - uses: actions/checkout@v1
-      - name: (Ubuntu) Download LLVM
+      - uses: actions/checkout@v2
+
+      - name: Install Clang ${{ matrix.version }}
         run: |
-          sudo apt-get install zlib1g zlib1g-dev clang-11 libllvm11 llvm-11 llvm-11-dev llvm-11-runtime liblld-11-dev liblld-11 python3
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x ./llvm.sh
+          sudo ./llvm.sh ${{ matrix.version }}
 
       - name: CMake
         run: |
           mkdir build && cd build
-          cmake .. -DLLVM_DIR=/usr/lib/llvm-11/cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake .. -DLLVM_DIR=/usr/lib/llvm-${{ matrix.version }}/cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build .
 
       - name: Build testproject
