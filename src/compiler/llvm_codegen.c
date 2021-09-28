@@ -94,7 +94,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			ConstInitializer **elements = const_init->init_array_full;
-			assert(array_type->type_kind == TYPE_ARRAY);
+			assert(array_type->type_kind == TYPE_ARRAY || array_type->type_kind == TYPE_VECTOR);
 			ArrayIndex size = array_type->array.len;
 			assert(size > 0);
 			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
@@ -103,6 +103,10 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				LLVMValueRef element = llvm_emit_const_initializer(c, elements[i]);
 				if (element_type_llvm != LLVMTypeOf(element)) was_modified = true;
 				vec_add(parts, element);
+			}
+			if (array_type->type_kind == TYPE_VECTOR)
+			{
+				return LLVMConstVector(parts, vec_size(parts));
 			}
 			if (was_modified)
 			{
@@ -277,6 +281,7 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			value->kind = BE_ADDRESS;
 			return;
 		case TYPE_ARRAY:
+		case TYPE_VECTOR:
 			return;
 		case TYPE_SUBARRAY:
 		{

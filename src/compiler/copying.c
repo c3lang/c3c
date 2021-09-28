@@ -413,6 +413,7 @@ TypeInfo *copy_type_info(TypeInfo *source)
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->unresolved_type_expr = copy_expr(source->unresolved_type_expr);
 			return copy;
+		case TYPE_INFO_VECTOR:
 		case TYPE_INFO_ARRAY:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.len = copy_expr(source->array.len);

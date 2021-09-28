@@ -1892,6 +1892,7 @@ Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, b
 Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path, bool report_error);
 
 bool sema_resolve_type(Context *context, Type *type);
+bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArrayIndex *len_ref);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
 bool sema_resolve_type_info_maybe_inferred(Context *context, TypeInfo *type_info, bool allow_inferred_type);
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow);
@@ -1967,6 +1968,7 @@ Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other);
 Type *type_abi_find_single_struct_element(Type *type);
 const char *type_generate_qname(Type *type);
+bool type_is_valid_for_vector(Type *type);
 Type *type_get_array(Type *arr_type, ByteSize len);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
@@ -1976,7 +1978,7 @@ Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_cint(void);
 Type *type_cuint(void);
-Type *type_int_signed_by_bitsize(unsigned bytesize);
+Type *type_int_signed_by_bitsize(unsigned bitsize);
 Type *type_int_unsigned_by_bitsize(unsigned bytesize);
 bool type_is_abi_aggregate(Type *type);
 static inline bool type_is_any_integer(Type *type);
@@ -2006,6 +2008,7 @@ bool type_is_union_struct(Type *type);
 bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
 static inline Type *type_lowering(Type *type);
+static inline bool type_is_vector(Type *type) { return type_lowering(type)->type_kind == TYPE_VECTOR; };
 bool type_may_have_sub_elements(Type *type);
 static inline bool type_ok(Type *type);
 static inline Type *type_reduced_from_expr(Expr *expr);
@@ -2041,6 +2044,7 @@ static inline bool type_is_pointer_sized(Type *type)
 {
 	return type_is_integer(type) && type_size(type) == type_size(type_iptr);
 }
+
 
 static inline bool type_is_integer(Type *type)
 {
@@ -2224,6 +2228,12 @@ static inline Type *type_flatten(Type *type)
 	}
 }
 
+static Type *type_vector_type(Type *type)
+{
+	Type *flatten = type_flatten(type);
+	return flatten->type_kind == TYPE_VECTOR ? flatten->vector.base : NULL;
+}
+
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_TYPEID; }
 static inline bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind < TYPE_U8; }
 static inline bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind < TYPE_IXX; }
@@ -2232,11 +2242,13 @@ static inline bool type_is_signed(Type *type) { return type->type_kind >= TYPE_I
 static inline bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind < TYPE_IXX; }
 static inline bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 static inline bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
+
 bool type_is_scalar(Type *type);
 
 static inline bool type_is_numeric(Type *type)
 {
-	return type->type_kind >= TYPE_I8 && type->type_kind <= TYPE_FXX;
+	TypeKind kind = type->type_kind;
+	return (kind >= TYPE_I8 && kind <= TYPE_FXX) || kind == TYPE_VECTOR;
 }
 
 static inline bool type_underlying_is_numeric(Type *type)

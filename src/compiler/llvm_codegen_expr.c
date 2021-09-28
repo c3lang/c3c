@@ -19,6 +19,16 @@ LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value)
 	return LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, type_anyerr), "not_err");
 }
 
+void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type)
+{
+	vector_type = type_flatten(vector_type);
+	ByteSize width = vector_type->vector.len;
+	ByteSize element_size = type_size(vector_type->vector.base);
+	Type *result_type = type_get_vector(type_int_signed_by_bitsize(element_size * 8), width);
+	val = LLVMBuildSExt(c->builder, val, llvm_get_type(c, result_type), "");
+	llvm_value_set(be_value, val, result_type);
+}
+
 
 LLVMValueRef llvm_emit_aggregate_value(GenContext *c, Type *type, ...)
 {
@@ -383,6 +393,7 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c,
 		case TYPE_POINTER:
 			return LLVMBuildInBoundsGEP(c->builder, parent->value, &index->value, 1, "ptridx");
 		case TYPE_ARRAY:
+		case TYPE_VECTOR:
 		{
 			if (active_target.feature.safe_mode)
 			{
@@ -416,12 +427,36 @@ static inline LLVMValueRef llvm_emit_subscript_addr_with_base_new(GenContext *c,
 	}
 }
 
+static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->subscript_expr.expr);
+	llvm_value_rvalue(c, value);
+	Type *element = value->type->array.base;
+	LLVMValueRef vector = value->value;
+	llvm_emit_expr(c, value, expr->subscript_expr.index);
+	llvm_value_rvalue(c, value);
+	LLVMValueRef index = value->value;
+	if (LLVMIsAConstant(index) && LLVMIsAConstant(vector))
+	{
+		llvm_value_set(value, LLVMConstExtractElement(vector, index), element);
+	}
+	else
+	{
+		llvm_value_set(value, LLVMBuildExtractElement(c->builder, vector, index, ""), element);
+	}
+}
+
 /**
  * Expand foo[123] or someCall()[n] or some such.
  * Evaluation order is left to right.
  */
 static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr *expr)
 {
+	if (type_lowering(expr->subscript_expr.expr->type)->type_kind == TYPE_VECTOR)
+	{
+		llvm_emit_vector_subscript(c, value, expr);
+		return;
+	}
 	BEValue ref;
 	// First, get thing being subscripted.
 	llvm_emit_subscript_addr_base(c, &ref, expr->subscript_expr.expr);
@@ -1142,8 +1177,10 @@ static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *
 {
 	assert(expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST);
 	ConstInitializer *initializer = expr->const_expr.list;
+	assert(!type_is_vector(initializer->type) && "Vectors should be handled elsewhere.");
 	if (initializer->kind == CONST_INIT_ZERO)
 	{
+		REMINDER("Optimize this for few elements");
 		// In case of a zero, optimize.
 		llvm_emit_memclear(c, ref);
 		return;
@@ -1732,9 +1769,19 @@ void llvm_emit_int_comparison(GenContext *c, BEValue *result, BEValue *lhs, BEVa
 }
 void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op)
 {
-	assert(type_is_integer(lhs_type));
-	bool lhs_signed = type_is_signed(lhs_type);
-	bool rhs_signed = type_is_signed(rhs_type);
+	bool lhs_signed, rhs_signed;
+	Type *vector_type = type_vector_type(lhs_type);
+	if (vector_type)
+	{
+		lhs_signed = type_is_signed(vector_type);
+		rhs_signed = type_is_signed(type_vector_type(rhs_type));
+	}
+	else
+	{
+		assert(type_is_integer(lhs_type));
+		lhs_signed = type_is_signed(lhs_type);
+		rhs_signed = type_is_signed(rhs_type);
+	}
 	if (lhs_signed != rhs_signed)
 	{
 		// Swap sides if needed.
@@ -1795,6 +1842,11 @@ void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rh
 			default:
 				UNREACHABLE
 		}
+		if (vector_type)
+		{
+			llvm_convert_vector_comparison(c, result, value, lhs_type);
+			return;
+		}
 		llvm_value_set_bool(result, value);
 		return;
 	}
@@ -1829,6 +1881,11 @@ void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rh
 	// If right side is also signed then this is fine.
 	if (rhs_signed)
 	{
+		if (vector_type)
+		{
+			llvm_convert_vector_comparison(c, result, comp_value, lhs_type);
+			return;
+		}
 		llvm_value_set_bool(result, comp_value);
 		return;
 	}
@@ -1869,6 +1926,11 @@ void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rh
 			break;
 		default:
 			UNREACHABLE
+	}
+	if (vector_type)
+	{
+		llvm_convert_vector_comparison(c, result, comp_value, lhs_type);
+		return;
 	}
 	llvm_value_set_bool(result, comp_value);
 }
@@ -2016,7 +2078,7 @@ static void llvm_emit_subarray_comp(GenContext *c, BEValue *be_value, BEValue *l
 
 
 }
-static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
+static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, Type *vector_type)
 {
 	llvm_value_rvalue(c, lhs);
 	llvm_value_rvalue(c, rhs);
@@ -2048,6 +2110,11 @@ static void llvm_emit_float_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 		default:
 			UNREACHABLE
 	}
+	if (vector_type)
+	{
+		llvm_convert_vector_comparison(c, be_value, val, vector_type);
+		return;
+	}
 	llvm_value_set_bool(be_value, val);
 }
 
@@ -2068,7 +2135,7 @@ void llvm_emit_comparison(GenContext *c, BEValue *be_value, BEValue *lhs, BEValu
 	}
 	if (type_is_float(lhs->type))
 	{
-		llvm_emit_float_comp(c, be_value, lhs, rhs, binary_op);
+		llvm_emit_float_comp(c, be_value, lhs, rhs, binary_op, NULL);
 		return;
 	}
 	if (lhs->type->type_kind == TYPE_SUBARRAY)
@@ -2076,9 +2143,22 @@ void llvm_emit_comparison(GenContext *c, BEValue *be_value, BEValue *lhs, BEValu
 		llvm_emit_subarray_comp(c, be_value, lhs, rhs, binary_op);
 		return;
 	}
+	if (lhs->type->type_kind == TYPE_VECTOR)
+	{
+		Type *type = type_vector_type(lhs->type);
+		if (type_is_float(type))
+		{
+			llvm_emit_float_comp(c, be_value, lhs, rhs, binary_op, lhs->type);
+		}
+		else
+		{
+			llvm_emit_int_comp(c, be_value, lhs->type, rhs->type, lhs->value, rhs->value, binary_op);
+		}
+		return;
+	}
 	TODO
 }
-void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_addr, BinaryOp binary_op)
+void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op)
 {
 
 	if (binary_op == BINARYOP_AND || binary_op == BINARYOP_OR)
@@ -2087,9 +2167,9 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 		return;
 	}
 	BEValue lhs;
-	if (lhs_addr)
+	if (lhs_loaded)
 	{
-		lhs = *lhs_addr;
+		lhs = *lhs_loaded;
 	}
 	else
 	{
@@ -2110,7 +2190,8 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 
 	Type *lhs_type = lhs.type;
 	Type *rhs_type = rhs.type;
-	bool is_float = type_is_float(lhs_type);
+	Type *vector_type = lhs_type->type_kind == TYPE_VECTOR ? lhs_type->vector.base : NULL;
+	bool is_float = type_is_float(lhs_type) || (vector_type && type_is_float(vector_type));
 	LLVMValueRef val = NULL;
 	LLVMValueRef lhs_value = lhs.value;
 	LLVMValueRef rhs_value = rhs.value;
@@ -2532,34 +2613,78 @@ static inline void gencontext_emit_guard_expr(GenContext *c, BEValue *be_value, 
 
 }
 
-static void llvm_emit_binary_expr(GenContext *context, BEValue *be_value, Expr *expr)
+static bool expr_is_vector_index(Expr *expr)
+{
+	return expr->expr_kind == EXPR_SUBSCRIPT
+		&& type_lowering(expr->subscript_expr.expr->type)->type_kind == TYPE_VECTOR;
+}
+
+static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	Expr *left = expr->binary_expr.left;
+	BinaryOp binary_op = expr->binary_expr.operator;
+	BEValue addr;
+	BEValue index;
+
+	// Emit the variable
+	llvm_emit_expr(c, &addr, left->subscript_expr.expr);
+	llvm_value_addr(c, &addr);
+	LLVMValueRef vector_value = llvm_value_rvalue_store(c, &addr);
+
+	// Emit the index
+	llvm_emit_expr(c, &index, left->subscript_expr.index);
+	LLVMValueRef index_val = llvm_value_rvalue_store(c, &index);
+
+	if (binary_op > BINARYOP_ASSIGN)
+	{
+		BinaryOp base_op = binaryop_assign_base_op(binary_op);
+		assert(base_op != BINARYOP_ERROR);
+		BEValue lhs;
+		llvm_value_set(&lhs, LLVMBuildExtractElement(c->builder, vector_value, index_val, "elem"), expr->type);
+		gencontext_emit_binary(c, be_value, expr, &lhs, base_op);
+	}
+	else
+	{
+		llvm_emit_expr(c, be_value, expr->binary_expr.right);
+	}
+
+	LLVMValueRef new_value = LLVMBuildInsertElement(c->builder, vector_value, llvm_value_rvalue_store(c, be_value), index_val, "elemset");
+	llvm_store_bevalue_raw(c, &addr, new_value);
+}
+
+static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	BinaryOp binary_op = expr->binary_expr.operator;
+	if (binary_op >= BINARYOP_ASSIGN && expr_is_vector_index(expr->binary_expr.left))
+	{
+		llvm_emit_vector_assign_expr(c, be_value, expr);
+		return;
+	}
 	if (binary_op > BINARYOP_ASSIGN)
 	{
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
 		assert(base_op != BINARYOP_ERROR);
 		BEValue addr;
-		llvm_emit_expr(context, &addr, expr->binary_expr.left);
-		llvm_value_addr(context, &addr);
-		gencontext_emit_binary(context, be_value, expr, &addr, base_op);
-		llvm_store_bevalue(context, &addr, be_value);
+		llvm_emit_expr(c, &addr, expr->binary_expr.left);
+		llvm_value_addr(c, &addr);
+		gencontext_emit_binary(c, be_value, expr, &addr, base_op);
+		llvm_store_bevalue(c, &addr, be_value);
 		return;
 	}
 	if (binary_op == BINARYOP_ASSIGN)
 	{
-		llvm_emit_expr(context, be_value, expr->binary_expr.left);
+		llvm_emit_expr(c, be_value, expr->binary_expr.left);
 		assert(llvm_value_is_addr(be_value));
 		LLVMValueRef failable_ref = NULL;
 		if (expr->binary_expr.left->expr_kind == EXPR_IDENTIFIER)
 		{
 			failable_ref = decl_failable_ref(expr->binary_expr.left->identifier_expr.decl);
 		}
-		*be_value = llvm_emit_assign_expr(context, be_value, expr->binary_expr.right, failable_ref);
+		*be_value = llvm_emit_assign_expr(c, be_value, expr->binary_expr.right, failable_ref);
 		return;
 	}
 
-	gencontext_emit_binary(context, be_value, expr, NULL, binary_op);
+	gencontext_emit_binary(c, be_value, expr, NULL, binary_op);
 }
 
 void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
@@ -2684,7 +2809,7 @@ static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Real f)
 
 static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	if (!c->builder)
+	if (!c->builder || type_is_vector(expr->type))
 	{
 		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.list), expr->type);
 		return;
@@ -3627,7 +3752,12 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		}
 	}
 	BEValue value;
-	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+	if (type_is_vector(expr->type))
+	{
+		llvm_emit_expr(c, &value, expr);
+		llvm_store_bevalue(c, ref, &value);
+	}
+	else if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
 	{
 		llvm_emit_const_initialize_reference(c, ref, expr);
 		value = *ref;
@@ -3682,9 +3812,86 @@ static inline void gencontext_emit_failable(GenContext *context, BEValue *be_val
 	llvm_value_set(be_value, LLVMGetUndef(llvm_get_type(context, expr->type)), expr->type);
 }
 
+static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, ArrayIndex index, bool *is_const)
+{
+	LLVMValueRef index_value = llvm_const_int(c, type_usize, index);
+	if (*is_const && LLVMIsConstant(value))
+	{
+		return LLVMConstInsertElement(vector, value, index_value);
+	}
+	else
+	{
+		*is_const = false;
+		return LLVMBuildInsertElement(c->builder, vector, value, index_value, "");
+	}
+
+}
+static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr)
+{
+	Type *type = type_lowering(expr->type);
+	Type *element_type = type->vector.base;
+
+	LLVMTypeRef llvm_type = llvm_get_type(c, type);
+
+	BEValue val;
+	LLVMValueRef vec_value;
+
+	bool is_const = true;
+	if (expr->expr_kind == EXPR_INITIALIZER_LIST)
+	{
+		vec_value = LLVMGetUndef(llvm_type);
+		Expr **elements = expr->initializer_list;
+
+		// Now walk through the elements.
+		VECEACH(elements, i)
+		{
+			Expr *element = elements[i];
+			llvm_emit_expr(c, &val, element);
+			llvm_value_rvalue(c, &val);
+			vec_value = llvm_update_vector(c, vec_value, val.value, i, &is_const);
+		}
+	}
+	else
+	{
+		vec_value = LLVMConstNull(llvm_type);
+		Expr **elements = expr->designated_init_list;
+
+		VECEACH(elements, i)
+		{
+			Expr *designator = elements[i];
+			assert(vec_size(designator->designator_expr.path) == 1);
+			DesignatorElement *element = designator->designator_expr.path[0];
+			llvm_emit_expr(c, &val, designator->designator_expr.value);
+			llvm_value_rvalue(c, &val);
+			switch (element->kind)
+			{
+				case DESIGNATOR_ARRAY:
+				{
+					vec_value = llvm_update_vector(c, vec_value, val.value, element->index, &is_const);
+					break;
+				}
+				case DESIGNATOR_RANGE:
+					for (ArrayIndex idx = element->index; idx <= element->index_end; idx++)
+					{
+						vec_value = llvm_update_vector(c, vec_value, val.value, idx, &is_const);
+					}
+					break;
+				case DESIGNATOR_FIELD:
+				default:
+					UNREACHABLE
+			}
+		}
+	}
+	llvm_value_set(value, vec_value, type);
+}
 
 static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr)
 {
+	if (type_is_vector(expr->type))
+	{
+		llvm_emit_vector_initializer_list(c, value, expr);
+		return;
+	}
 	llvm_value_set_address(value, llvm_emit_alloca_aligned(c, expr->type, "literal"), expr->type);
 	llvm_emit_initialize_reference(c, value, expr);
 }

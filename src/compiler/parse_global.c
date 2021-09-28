@@ -664,6 +664,27 @@ static inline TypeInfo *parse_array_type_index(Context *context, TypeInfo *type)
 }
 
 /**
+ * vector_type_index
+ *		: '[<' constant_expression '>]'
+ *		;
+ *
+ * @param type the type to wrap, may not be poisoned.
+ * @return type (poisoned if fails)
+ */
+static inline TypeInfo *parse_vector_type_index(Context *context, TypeInfo *type)
+{
+	assert(type_info_ok(type));
+
+	advance_and_verify(context, TOKEN_LVEC);
+	TypeInfo *vector = type_info_new(TYPE_INFO_VECTOR, type->span);
+	vector->array.base = type;
+	ASSIGN_EXPR_ELSE(vector->array.len, parse_expr(context), poisoned_type_info);
+	CONSUME_OR(TOKEN_RVEC, poisoned_type_info);
+	RANGE_EXTEND_PREV(vector);
+	return vector;
+}
+
+/**
  * type
  * 		: base_type
  *		| type '*'
@@ -678,6 +699,9 @@ TypeInfo *parse_type_with_base(Context *context, TypeInfo *type_info)
 	{
 		switch (context->tok.type)
 		{
+			case TOKEN_LVEC:
+				type_info = parse_vector_type_index(context, type_info);
+				break;
 			case TOKEN_LBRACKET:
 				type_info = parse_array_type_index(context, type_info);
 				break;
