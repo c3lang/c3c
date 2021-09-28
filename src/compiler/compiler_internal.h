@@ -1672,15 +1672,22 @@ size_t bigint_popcount_signed(const BigInt *bi, size_t bit_count);
 size_t bigint_popcount_unsigned(const BigInt *big_int);
 void type_setup(PlatformTarget *target);
 
-static inline bool builtin_may_negate(Type *canonical)
+static inline bool type_may_negate(Type *type)
 {
-	assert(canonical->canonical == canonical);
-	switch (canonical->type_kind)
+	RETRY:
+	switch (type->type_kind)
 	{
 		case ALL_FLOATS:
 		case ALL_SIGNED_INTS:
+		case TYPE_VECTOR:
 		case TYPE_IXX:
 			return true;
+		case TYPE_DISTINCT:
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
 		default:
 			return false;
 	}
@@ -1976,6 +1983,7 @@ Type *type_get_subarray(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 
 Type *type_get_vector(Type *vector_type, unsigned len);
+Type *type_get_vector_bool(Type *original_type);
 Type *type_cint(void);
 Type *type_cuint(void);
 Type *type_int_signed_by_bitsize(unsigned bitsize);

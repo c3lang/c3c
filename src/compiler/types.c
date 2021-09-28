@@ -1063,6 +1063,13 @@ bool type_is_valid_for_vector(Type *type)
 	}
 }
 
+Type *type_get_vector_bool(Type *original_type)
+{
+	Type *type = type_flatten(original_type);
+	ByteSize size = type_size(type->vector.base);
+	return type_get_vector(type_int_signed_by_bitsize(size * 8), original_type->vector.len);
+}
+
 Type *type_get_vector(Type *vector_type, unsigned len)
 {
 	return type_create_array(vector_type, len, true, false);

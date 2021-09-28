@@ -9,6 +9,7 @@
  * - Disallow jumping in and out of an expression block.
  */
 
+
 static inline void expr_set_as_const_list(Expr *expr, ConstInitializer *list)
 {
 	expr->expr_kind = EXPR_CONST;
@@ -4688,8 +4689,7 @@ DONE:
 	// 8a. Except for vector, set to signed type with the correct size.
 	if (left_type->type_kind == TYPE_VECTOR)
 	{
-		ByteSize size = type_size(left_type->vector.base);
-		expr_set_type(expr, type_get_vector(type_int_signed_by_bitsize(size * 8), left_type->vector.len));
+		expr_set_type(expr, type_get_vector_bool(left_type));
 		return true;
 	}
 	expr_set_type(expr, type_bool);
@@ -4886,8 +4886,7 @@ static bool sema_expr_analyse_addr(Context *context, Type *to, Expr *expr, Expr 
 
 static bool sema_expr_analyse_neg(Context *context, Type *to, Expr *expr, Expr *inner)
 {
-	Type *canonical = inner->type->canonical;
-	if (!builtin_may_negate(canonical))
+	if (!type_may_negate(inner->type))
 	{
 		SEMA_ERROR(expr, "Cannot negate %s.", type_to_error_string(inner->type));
 		return false;
@@ -4937,9 +4936,13 @@ static bool sema_expr_analyse_bit_not(Context *context, Type *to, Expr *expr, Ex
 	}
 	if (!type_is_any_integer(canonical) && canonical != type_bool)
 	{
+		Type *vector_type = type_vector_type(canonical);
+		if (type_is_any_integer(vector_type) || vector_type == type_bool) goto VALID_VEC;
 		SEMA_ERROR(expr, "Cannot bit negate '%s'.", type_to_error_string(inner->type));
 		return false;
 	}
+
+VALID_VEC:
 	// The simple case, non-const.
 	if (inner->expr_kind != EXPR_CONST)
 	{
@@ -4970,6 +4973,12 @@ static bool sema_expr_analyse_bit_not(Context *context, Type *to, Expr *expr, Ex
 
 static bool sema_expr_analyse_not(Expr *expr, Expr *inner)
 {
+	if (type_is_vector(inner->type))
+	{
+		expr_copy_properties(expr, inner);
+		expr_set_type(expr, type_get_vector_bool(inner->type));
+		return true;
+	}
 	if (!cast_may_implicit(inner->type, type_bool))
 	{
 		SEMA_ERROR(expr, "The use of '!' on %s is not allowed as it can't be converted to a boolean value.", type_quoted_error_string(inner->type));

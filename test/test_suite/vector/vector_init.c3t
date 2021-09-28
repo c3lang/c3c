@@ -1,3 +1,4 @@
+// #target: x64-darwin
 int[<4>] baz = { 1, 4, 5, 7 };
 
 func void main()
