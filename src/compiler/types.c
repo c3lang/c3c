@@ -69,16 +69,16 @@ Type *type_cuint(void)
 	return type_int_unsigned_by_bitsize(platform_target.width_c_int);
 }
 
-Type *type_int_signed_by_bitsize(unsigned bytesize)
+Type *type_int_signed_by_bitsize(unsigned bitsize)
 {
-	switch (bytesize)
+	switch (bitsize)
 	{
 		case 8: return type_ichar;
 		case 16: return type_short;
 		case 32: return type_int;
 		case 64: return type_long;
 		case 128: return type_i128;
-		default: FATAL_ERROR("Illegal bitsize %d", bytesize);
+		default: FATAL_ERROR("Illegal bitsize %d", bitsize);
 	}
 }
 Type *type_int_unsigned_by_bitsize(unsigned bytesize)
@@ -656,6 +656,7 @@ bool type_is_ordered(Type *type)
 		case TYPE_POINTER:
 		case TYPE_BOOL:
 		case TYPE_ENUM:
+		case TYPE_VECTOR:
 			return true;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -977,6 +978,7 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_VECTOR:
 			return type->array.base;
 		case TYPE_STRLIT:
 			return type_char;
@@ -1041,6 +1043,24 @@ static Type *type_create_array(Type *element_type, uint64_t len, bool vector, bo
 Type *type_get_array(Type *arr_type, ByteSize len)
 {
 	return type_create_array(arr_type, len, false, false);
+}
+
+bool type_is_valid_for_vector(Type *type)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case ALL_SIGNED_INTS:
+		case ALL_UNSIGNED_INTS:
+		case ALL_REAL_FLOATS:
+		case TYPE_BOOL:
+			return true;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		default:
+			return false;
+	}
 }
 
 Type *type_get_vector(Type *vector_type, unsigned len)

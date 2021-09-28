@@ -1060,6 +1060,8 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_PRIVATE:
 		case TOKEN_PLACEHOLDER:
 		case TOKEN_BITSTRUCT:
+		case TOKEN_LVEC:
+		case TOKEN_RVEC:
 			SEMA_TOKEN_ERROR(context->tok, "Unexpected '%s' found when expecting a statement.", token_type_to_string(context->tok.type));
 			advance(context);
 			return poisoned_ast;

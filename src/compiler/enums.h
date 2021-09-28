@@ -294,6 +294,7 @@ typedef enum
 	TYPE_INFO_IDENTIFIER,
 	TYPE_INFO_EXPRESSION,
 	TYPE_INFO_ARRAY,
+	TYPE_INFO_VECTOR,
 	TYPE_INFO_INC_ARRAY,
 	TYPE_INFO_INFERRED_ARRAY,
 	TYPE_INFO_SUBARRAY,
@@ -348,6 +349,7 @@ typedef enum
 	TOKEN_GREATER_EQ,       // >=
 	TOKEN_LESS_EQ,          // <=
 	TOKEN_LBRAPIPE,         // {|
+	TOKEN_LVEC,             // [<
 	TOKEN_MINUS_ASSIGN,     // -=
 	TOKEN_MINUSMINUS,       // --
 	TOKEN_MOD_ASSIGN,       // %=
@@ -358,6 +360,7 @@ typedef enum
 	TOKEN_PLUS_ASSIGN,      // +=
 	TOKEN_PLUSPLUS,         // ++
 	TOKEN_RBRAPIPE,         // |}
+	TOKEN_RVEC,             // >]
 	TOKEN_QUESTQUEST,       // ??
 	TOKEN_SCOPE,            // ::
 	TOKEN_SHL,              // <<

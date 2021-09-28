@@ -1535,6 +1535,7 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 		case ')':
 			return add_token(lexer, TOKEN_RPAREN, ")");
 		case '[':
+			if (match(lexer, '<')) return add_token(lexer, TOKEN_LVEC, "[<");
 			return add_token(lexer, TOKEN_LBRACKET, "[");
 		case ']':
 			return add_token(lexer, TOKEN_RBRACKET, "]");
@@ -1584,6 +1585,7 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 				if (match(lexer, '=')) return add_token(lexer, TOKEN_SHR_ASSIGN, ">>=");
 				return add_token(lexer, TOKEN_SHR, ">>");
 			}
+			if (match(lexer, ']')) return add_token(lexer, TOKEN_RVEC, ">]");
 			return match(lexer, '=') ? add_token(lexer, TOKEN_GREATER_EQ, ">=") : add_token(lexer, TOKEN_GREATER, ">");
 		case '%':
 			return match(lexer, '=') ? add_token(lexer, TOKEN_MOD_ASSIGN, "%=") : add_token(lexer, TOKEN_MOD, "%");

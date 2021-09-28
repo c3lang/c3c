@@ -15,6 +15,58 @@ static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 	return true;
 }
 
+bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArrayIndex *len_ref)
+{
+	Expr *len_expr = type_info->array.len;
+	if (!sema_analyse_expr(context, type_usize, len_expr)) return type_info_poison(type_info);
+
+	if (len_expr->expr_kind != EXPR_CONST)
+	{
+		SEMA_ERROR(len_expr, "Expected a constant value as size.");
+		return type_info_poison(type_info);
+	}
+	if (!type_is_any_integer(len_expr->type->canonical))
+	{
+		SEMA_ERROR(len_expr, "Expected an integer size.");
+		return type_info_poison(type_info);
+	}
+	BigInt *big_len = &len_expr->const_expr.i;
+	bool is_vector = type_info->kind == TYPE_INFO_VECTOR;
+	switch (bigint_cmp_zero(big_len))
+	{
+		case CMP_LT:
+			SEMA_ERROR(len_expr,
+					   is_vector ? "A vector may not have a negative width." :
+					   "An array may not have a negative size.");
+			return type_info_poison(type_info);
+		case CMP_EQ:
+			if (is_vector)
+			{
+				SEMA_ERROR(len_expr, "A vector may not have a zero width.");
+				return type_info_poison(type_info);
+			}
+			break;
+		case CMP_GT:
+			break;
+	}
+	BigInt max;
+	bigint_init_unsigned(&max, is_vector ? MAX_VECTOR_WIDTH : MAX_ARRAY_SIZE);
+	if (bigint_cmp(big_len, &max) == CMP_GT)
+	{
+		if (is_vector)
+		{
+			SEMA_ERROR(len_expr, "A vector may not exceed %d in width.", MAX_VECTOR_WIDTH);
+		}
+		else
+		{
+			SEMA_ERROR(len_expr, "The array size may not exceed %lld.", MAX_ARRAY_SIZE);
+		}
+		return type_info_poison(type_info);
+	}
+	*len_ref = bigint_as_signed(big_len);
+	return true;
+}
+
 // TODO cleanup.
 static inline bool sema_resolve_array_type(Context *context, TypeInfo *type, bool shallow)
 {
@@ -33,7 +85,6 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type, boo
 		}
 	}
 
-	uint64_t len;
 	switch (type->kind)
 	{
 		case TYPE_INFO_SUBARRAY:
@@ -42,32 +93,20 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type, boo
 		case TYPE_INFO_INFERRED_ARRAY:
 			type->type = type_get_inferred_array(type->array.base->type);
 			break;
-		case TYPE_INFO_ARRAY:
-			if (!sema_analyse_expr(context, type_usize, type->array.len)) return type_info_poison(type);
-			if (type->array.len->expr_kind != EXPR_CONST)
-			{
-				SEMA_ERROR(type->array.len, "Expected a constant value as array size.");
-				return type_info_poison(type);
-			}
-			if (!type_is_any_integer(type->array.len->type->canonical))
-			{
-				SEMA_ERROR(type->array.len, "Expected an integer size.");
-				return type_info_poison(type);
-			}
-			if (bigint_cmp_zero(&type->array.len->const_expr.i) == CMP_LT)
-			{
-				SEMA_ERROR(type->array.len, "An array may not have a negative size.");
-				return type_info_poison(type);
-			}
-			if (!bigint_fits_in_bits(&type->array.len->const_expr.i, 64, true))
-			{
-				SEMA_ERROR(type->array.len, "An array length may not exceed the max of an 64 bit signed int.");
-				return type_info_poison(type);
-			}
-
-			len = bigint_as_unsigned(&type->array.len->const_expr.i);
-			type->type = type_get_array(type->array.base->type, len);
+		case TYPE_INFO_VECTOR:
+		{
+			ArrayIndex width;
+			if (!sema_resolve_array_like_len(context, type, &width)) return type_info_poison(type);
+			type->type = type_get_vector(type->array.base->type, width);
 			break;
+		}
+		case TYPE_INFO_ARRAY:
+		{
+			ArrayIndex size;
+			if (!sema_resolve_array_like_len(context, type, &size)) return type_info_poison(type);
+			type->type = type_get_array(type->array.base->type, size);
+			break;
+		}
 		default:
 			UNREACHABLE
 	}
@@ -226,6 +265,7 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow
 			FALLTHROUGH;
 		case TYPE_INFO_SUBARRAY:
 		case TYPE_INFO_ARRAY:
+		case TYPE_INFO_VECTOR:
 			if (!sema_resolve_array_type(context, type_info, in_shallow)) return false;
 			break;
 		case TYPE_INFO_POINTER:
