@@ -1,3 +1,4 @@
+// #target: x64-darwin
 import libc;
 
 func void testf()

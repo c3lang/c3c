@@ -465,7 +465,8 @@ static void target_expand_source_names(BuildTarget *target)
 			goto INVALID_NAME;
 		}
 		if (name_len < 4) goto INVALID_NAME;
-		if (strcmp(&name[name_len - 3], ".c3") != 0) goto INVALID_NAME;
+		if (strcmp(&name[name_len - 3], ".c3") != 0 &&
+		    (name_len < 5 || strcmp(&name[name_len - 4], ".c3t") != 0)) goto INVALID_NAME;
 		vec_add(files, name);
 		continue;
 		INVALID_NAME:

@@ -21,10 +21,7 @@ LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value)
 
 void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type)
 {
-	vector_type = type_flatten(vector_type);
-	ByteSize width = vector_type->vector.len;
-	ByteSize element_size = type_size(vector_type->vector.base);
-	Type *result_type = type_get_vector(type_int_signed_by_bitsize(element_size * 8), width);
+	Type *result_type = type_get_vector_bool(vector_type);
 	val = LLVMBuildSExt(c->builder, val, llvm_get_type(c, result_type), "");
 	llvm_value_set(be_value, val, result_type);
 }
@@ -1260,6 +1257,37 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue
 					: llvm_emit_sub_int(c, type, value.value, diff_value, TOKLOC(expr->span.loc));
 			break;
 		}
+		case TYPE_VECTOR:
+		{
+			Type *element = type->vector.base;
+			LLVMValueRef diff_value;
+			bool is_integer = type_is_integer(element);
+			if (is_integer)
+			{
+				diff_value = LLVMConstInt(llvm_get_type(c, element), 1, false);
+			}
+			else
+			{
+				diff_value = LLVMConstReal(llvm_get_type(c, element), diff);
+			}
+			ArrayIndex width = type->vector.len;
+			LLVMValueRef val = LLVMGetUndef(llvm_get_type(c, type));
+			for (ArrayIndex i = 0; i < width; i++)
+			{
+				val = LLVMConstInsertElement(val, diff_value, llvm_const_int(c, type_usize, i));
+			}
+			if (is_integer)
+			{
+				after_value = diff > 0
+						? llvm_emit_add_int(c, type, value.value, val, TOKLOC(expr->span.loc))
+						: llvm_emit_sub_int(c, type, value.value, val, TOKLOC(expr->span.loc));
+			}
+			else
+			{
+				after_value = LLVMBuildFAdd(c->builder, value.value, val, "fincdec");
+			}
+			break;
+		}
 		default:
 			UNREACHABLE
 	}
@@ -1315,6 +1343,22 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 		case UNARYOP_NOT:
 			llvm_emit_expr(c, value, inner);
 			llvm_value_rvalue(c, value);
+			if (type_is_vector(type))
+			{
+				Type *vec_type = type_vector_type(type);
+				if (type_is_float(vec_type))
+				{
+					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUNE, value->value, llvm_get_zero(c, type), "not");
+				}
+				else
+				{
+					llvm_value = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, type), "not");
+				}
+				Type *res_type = type_get_vector_bool(type);
+				llvm_value = LLVMBuildSExt(c->builder, llvm_value, llvm_get_type(c, res_type), "");
+				llvm_value_set(value, llvm_value, res_type);
+				return;
+			}
 			if (type_is_float(type))
 			{
 				llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUNE, value->value, llvm_get_zero(c, type), "not");
