@@ -1,8 +1,11 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
-
+#ifndef _MSC_VER
 #include <dirent.h>
+#else
+#include "utils/dirent.h"
+#endif
 #include "build_internal.h"
 #include "build_options.h"
 

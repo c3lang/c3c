@@ -6,11 +6,29 @@
 #include "common.h"
 #include "errors.h"
 #include "lib.h"
+
 #ifndef _MSC_VER
 #include <libgen.h>
 #include <unistd.h>
-#endif
 #include <dirent.h>
+#else
+#include "utils/dirent.h"
+#define PATH_MAX NTFS_MAX_PATH
+
+// dirname and basename on windows
+#include "win_dirname_basename.h"
+
+// copied from https://github.com/kindkaktus/libconfig/commit/d6222551c5c01c326abc99627e151d549e0f0958
+#ifndef S_ISDIR
+#define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
+#endif
+// copied from https://stackoverflow.com/questions/11238918/s-isreg-macro-undefined
+#if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#endif
+
+#endif
+
 #include <errno.h>
 #include "whereami.h"
 
