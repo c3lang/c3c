@@ -288,7 +288,7 @@ static bool parse_param_path(Context *context, DesignatorElement ***path)
  *
  * parameter ::= (param_path '=')? expr
  */
-bool parse_arg_list(Context *context, Expr ***result, C3TokenType param_end, bool *unsplat)
+bool parse_arg_list(Context *context, Expr ***result, _TokenType param_end, bool *unsplat)
 {
 	*result = NULL;
 	if (unsplat) *unsplat = false;
@@ -394,7 +394,7 @@ static Expr *parse_unary_expr(Context *context, Expr *left)
 {
 	assert(!left && "Did not expect a left hand side!");
 
-	C3TokenType operator_type = context->tok.type;
+	_TokenType operator_type = context->tok.type;
 
 	Expr *unary = EXPR_NEW_TOKEN(EXPR_UNARY, context->tok);
 	unary->unary_expr.operator = unaryop_from_token(operator_type);
@@ -578,7 +578,7 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	assert(left_side && expr_ok(left_side));
 
 	// Remember the operator.
-	C3TokenType operator_type = context->tok.type;
+	_TokenType operator_type = context->tok.type;
 
 	advance(context);
 

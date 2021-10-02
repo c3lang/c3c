@@ -2,6 +2,13 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
+#if PLATFORM_WINDOWS
+
+#include <windows.h>
+#undef TokenType
+
+#endif
+
 #include <sys/stat.h>
 #include "common.h"
 #include "errors.h"
@@ -35,8 +42,30 @@
 #include <filesystem>
 
 #if PLATFORM_WINDOWS
-#include <windows.h>
+
+
+/**
+ * remove C: drive prefix (C:, D:, etc.) from a path. THIS WON'T WORK WITH D:, ETC.
+ * If that is an issue, I think dirent will have to be replaced or the dirent
+ * port in use will have to be replaced.
+ */
+char* strip_drive_prefix(char* path) {
+	if ((*path == 'c' || *path == 'C') && path[1] == ':') {
+		return path + 2; // remove first two characters
+	}
+	else if (path[1] == ':' && (path[2] == '/' || path[2] == '\\')) { // I don't *think* a relative path can start with '[char]:/' ? right?
+		// nothing can be done about this currently
+		error_exit("Illegal path %s - absolute path must start with /, \\, c:, or C: (file a github issue if this is a problem)");
+	}
+	else {
+		// path is ok
+		return path;
+	}
+}
+
 #endif
+
+
 
 const char* expand_path(const char* path)
 {
@@ -59,7 +88,7 @@ char *read_file(const char *path, size_t *return_size)
 
 	if (file == NULL)
 	{
-		error_exit("Could not open file \"%s\".\n", path);
+		error_exit("(file_utils) Could not open file \"%s\".\n", path);
 	}
 
 	fseek(file, 0L, SEEK_END);
@@ -131,6 +160,7 @@ void path_get_dir_and_filename_from_full(const char *full_path, char **filename,
 
 	strcpy(path, full_path);
 	*dir_path = strdup(dirname(path));
+	printf("dir_filename called with %s\n filename %s\n dirname %s\n", full_path, *filename, *dir_path);
 }
 
 
@@ -167,7 +197,11 @@ void file_find_top_dir()
 
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive)
 {
-	DIR *dir = opendir(path);
+#ifdef _MSC_VER
+	DIR *dir = opendir(strip_drive_prefix(path));
+#else
+	DIR* dir = opendir(path);
+#endif
 	bool path_ends_with_slash = path[strlen(path) - 1] == '/';
 	if (!dir)
 	{

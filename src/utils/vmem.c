@@ -2,17 +2,17 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
+#if defined(WIN32)
+#include <Windows.h>
+#undef TokenType
+#define COMMIT_PAGE_SIZE 0x10000
+#endif
+
 #include "vmem.h"
 
 #if PLATFORM_POSIX
 #include <sys/mman.h>
 #endif
-
-#if PLATFORM_WINDOWS
-#include <Windows.h>
-#define COMMIT_PAGE_SIZE 0x10000
-#endif
-
 
 static inline void mmap_init(Vmem *vmem, size_t size)
 {

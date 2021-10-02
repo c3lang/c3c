@@ -4,9 +4,10 @@
 
 #include "compiler_internal.h"
 
-const char *token_type_to_string(C3TokenType type)
+const char *token_type_to_string(_TokenType type)
 {
-	switch (type)
+	unsigned char t = (unsigned char)type;
+	switch (t)
 	{
 		case TOKEN_INVALID_TOKEN:
 			return "INVALID_TOKEN";
@@ -367,10 +368,11 @@ const char *token_type_to_string(C3TokenType type)
 			return "EOF";
 
 	}
+	printf("unknown token type %d\n%d\n", t, sizeof(t));
 	UNREACHABLE
 }
 
-bool token_is_symbol(C3TokenType type)
+bool token_is_symbol(_TokenType type)
 {
 	switch (type)
 	{
@@ -383,17 +385,17 @@ bool token_is_symbol(C3TokenType type)
 	}
 }
 
-bool token_is_type(C3TokenType type)
+bool token_is_type(_TokenType type)
 {
 	return type >= TOKEN_VOID && type <= TOKEN_TYPEID;
 }
 
-bool token_is_any_type(C3TokenType type)
+bool token_is_any_type(_TokenType type)
 {
 	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT || type == TOKEN_VIRTUAL;
 }
 
-bool token_is_ident_keyword(C3TokenType type)
+bool token_is_ident_keyword(_TokenType type)
 {
 	if (token_is_type(type)) return true;
 	return type >= TOKEN_ALIAS && type <= TOKEN_WHILE;

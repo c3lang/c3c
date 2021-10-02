@@ -90,7 +90,7 @@ static inline bool match(Lexer *lexer, char expected)
  * This call is doing the basic allocation, with other functions
  * filling out additional information.
  **/
-static inline void add_generic_token(Lexer *lexer, C3TokenType type)
+static inline void add_generic_token(Lexer *lexer, _TokenType type)
 {
 	// Allocate source location, type, data for the token
 	// each of these use their own arena,
@@ -171,7 +171,7 @@ static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, cons
 
 }
 // Add a new regular token.
-static bool add_token(Lexer *lexer, C3TokenType type, const char *string)
+static bool add_token(Lexer *lexer, _TokenType type, const char *string)
 {
 	add_generic_token(lexer, type);
 	lexer->latest_token_data->string = string;
@@ -193,7 +193,7 @@ static inline bool parse_line_comment(Lexer *lexer)
 	// Skip forward to the end.
 
 	/// is a doc line comment.
-	C3TokenType comment_type = match(lexer, '/') ? TOKEN_DOC_COMMENT : TOKEN_COMMENT;
+	_TokenType comment_type = match(lexer, '/') ? TOKEN_DOC_COMMENT : TOKEN_COMMENT;
 
 	while (!reached_end(lexer) && peek(lexer) != '\n')
 	{
@@ -217,7 +217,7 @@ static inline bool parse_line_comment(Lexer *lexer)
  **/
 static inline bool parse_multiline_comment(Lexer *lexer)
 {
-	C3TokenType type = peek(lexer) == '*' && peek_next(lexer) != '/' ? TOKEN_DOC_COMMENT : TOKEN_COMMENT;
+	_TokenType type = peek(lexer) == '*' && peek_next(lexer) != '/' ? TOKEN_DOC_COMMENT : TOKEN_COMMENT;
 	int nesting = 1;
 	while (1)
 	{
@@ -285,9 +285,9 @@ static void skip_whitespace(Lexer *lexer, LexMode lex_type)
 
 // Parses identifiers. Note that this is a bit complicated here since
 // we split identifiers into 2 types + find keywords.
-static inline bool scan_ident(Lexer *lexer, C3TokenType normal, C3TokenType const_token, C3TokenType type_token, char prefix)
+static inline bool scan_ident(Lexer *lexer, _TokenType normal, _TokenType const_token, _TokenType type_token, char prefix)
 {
-	C3TokenType type = (C3TokenType)0;
+	_TokenType type = (_TokenType)0;
 	uint32_t hash = FNV1_SEED;
 	if (prefix)
 	{
@@ -347,6 +347,9 @@ static inline bool scan_ident(Lexer *lexer, C3TokenType normal, C3TokenType cons
 		add_error_token(lexer, "An identifier may not consist of only '_' characters.");
 	}
 	const char* interned_string = symtab_add(lexer->lexing_start, len, hash, &type);
+	if (type == -123) {
+		printf("type -123 in scan_ident");
+	}
 	return add_token(lexer, type, interned_string);
 }
 
@@ -1486,7 +1489,7 @@ static bool parse_doc_comment(Lexer *lexer)
 
 Token lexer_advance(Lexer *lexer)
 {
-	Token token = { .id.index = lexer->lexer_index, .type = (C3TokenType)*toktypeptr(lexer->lexer_index) };
+	Token token = { .id.index = lexer->lexer_index, .type = (_TokenType)*toktypeptr(lexer->lexer_index) };
 	lexer->lexer_index++;
 	return token;
 }

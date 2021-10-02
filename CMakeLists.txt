@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
+#TODO remove this
+set (CMAKE_USER_MAKE_RULES_OVERRIDE "${CMAKE_CURRENT_LIST_DIR}/WinCompilerOptions.cmake")
 project(c3c)
 
 SET(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
@@ -161,13 +163,17 @@ target_include_directories(c3c_wrappers PRIVATE
 
 message(STATUS "Found LLD ${lld_libs}")
 
+
+
 if(UNIX)
     target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${lld_libs})
 else()
     # todo: maybe get this from llvm-config somehow? it should be in LLVM_DIR\..\..\..\bin I think.
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:C:\\llvm\\llvm\\build\\Release\\lib")
-    target_link_libraries(c3c ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF
-                            lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
+    target_link_libraries(c3c debug ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
+    target_link_libraries(c3c optimized ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
+    add_compile_options("/J")
+    target_compile_options(c3c PRIVATE "/J")
 endif()
 
 if (WIN32)
@@ -175,6 +181,8 @@ if (WIN32)
         target_link_options(c3c PRIVATE -pthread)
         target_compile_definitions(c3c PRIVATE USE_PTHREAD=1)
         target_compile_options(c3c PRIVATE -mlong-double-64)
+    else()
+        # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /J") # default unsigned char with MSVC
     endif()
 endif()
 

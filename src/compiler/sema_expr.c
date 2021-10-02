@@ -2393,7 +2393,7 @@ static inline bool sema_expr_analyse_type_access(Context *context, Expr *expr, T
 	}
 
 	expr->pure = true;
-	C3TokenType type = TOKTYPE(identifier_token);
+	_TokenType type = TOKTYPE(identifier_token);
 
 	// 2. Handle Foo.typeid => return a typeid expression.
 	if (type == TOKEN_TYPEID)
@@ -5557,7 +5557,7 @@ static inline bool sema_analyse_idents_string(Context *context, MiniLexer *lexer
 				scratch_buffer_append_char(minilex_next(lexer));
 			}
 			if (!global_context.scratch_buffer_len) return false;
-			C3TokenType token_type;
+			_TokenType token_type;
 			const char *ident = symtab_find(global_context.scratch_buffer,
 			                                global_context.scratch_buffer_len,
 			                                fnv1a(global_context.scratch_buffer, global_context.scratch_buffer_len),
@@ -5646,7 +5646,7 @@ static inline bool sema_analyse_identifier_path_string(Context *context, SourceS
 		sema_error_range(span, "'%s' is not a valid identifier, did you misspell it?", chars);
 		return false;
 	}
-	C3TokenType token_type;
+	_TokenType token_type;
 	const char *symbol = symtab_find(global_context.scratch_buffer,
 	                                 global_context.scratch_buffer_len,
 	                                 fnv1a(global_context.scratch_buffer, global_context.scratch_buffer_len),
@@ -5917,7 +5917,7 @@ static inline bool sema_expr_analyse_ct_nameof(Context *context, Type *to, Expr 
 	ExprFlatElement *path = expr->ct_call_expr.flat_path;
 	if (!sema_expr_analyse_type_var_path(context, main_var, &path, &type, &decl)) return false;
 
-	C3TokenType name_type = expr->ct_call_expr.token_type;
+	_TokenType name_type = expr->ct_call_expr.token_type;
 
 	if (vec_size(path))
 	{

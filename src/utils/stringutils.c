@@ -89,9 +89,7 @@ int asprintf(char **strp, const char *fmt, ...)
 	return res;
 }
 
-// I think this was supposed to be vasprintf? it was previously vasnprintf,
-// but this seems to make more sense and it compiles now.
-int vasprintf(char **strp, const char *fmt, va_list args)
+int vasnprintf(char **strp, const char *fmt, va_list args)
 {
 	va_list args_copy;
 	va_copy(args_copy, args);
@@ -104,6 +102,21 @@ int vasprintf(char **strp, const char *fmt, va_list args)
 	END:
 	va_end(args_copy);
 	return res;
+}
+
+int vasprintf(char** ret, const char* fmt, va_list args) {
+	int length = _vsnprintf(NULL, 0, fmt, args);
+	if (length < 0) { // check if _vsnprintf failed
+		return -1;
+	}
+	*ret = malloc(length + 1);
+	if (!*ret) { // check if malloc failed
+		return -1;
+	}
+	// Write String 
+	_vsnprintf(*ret, length + 1, fmt, args);
+	(*ret)[length] = '\0'; // make sure there is a null terminator
+	return length;
 }
 
 char *strndup(const char *s, size_t n)

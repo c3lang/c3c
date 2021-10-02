@@ -300,6 +300,8 @@ typedef enum
 	TYPE_INFO_POINTER,
 } TypeInfoKind;
 
+#undef TokenType
+
 typedef enum
 {
 	TOKEN_INVALID_TOKEN = 0,
@@ -497,7 +499,8 @@ typedef enum
 	TOKEN_EOF,              // \n - SHOULD ALWAYS BE THE LAST TOKEN.
 
 	TOKEN_LAST = TOKEN_EOF,
-} C3TokenType;
+	//_BOGUS_TOK = -1UL,
+} _TokenType;
 
 #define NON_VOID_TYPE_TOKENS \
   TOKEN_BOOL: case TOKEN_CHAR: case TOKEN_DOUBLE: case TOKEN_FLOAT: \

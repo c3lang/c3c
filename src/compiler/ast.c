@@ -300,26 +300,26 @@ PostUnaryOp post_unary_op[TOKEN_LAST + 1] = {
 
 
 
-BinaryOp binaryop_from_token(C3TokenType type)
+BinaryOp binaryop_from_token(_TokenType type)
 {
 	return binary_op[type];
 }
 
-C3TokenType binaryop_to_token(BinaryOp type)
+_TokenType binaryop_to_token(BinaryOp type)
 {
 	for (unsigned i = 0; i <= TOKEN_LAST; i++)
 	{
-		if (binary_op[i] == type) return (C3TokenType)i;
+		if (binary_op[i] == type) return (_TokenType)i;
 	}
 	return TOKEN_INVALID_TOKEN;
 }
 
-UnaryOp unaryop_from_token(C3TokenType type)
+UnaryOp unaryop_from_token(_TokenType type)
 {
 	return unary_op[type];
 }
 
-PostUnaryOp post_unaryop_from_token(C3TokenType type)
+PostUnaryOp post_unaryop_from_token(_TokenType type)
 {
 	return post_unary_op[type];
 }
