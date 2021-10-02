@@ -57,7 +57,11 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 			if (lld::elf::link(arg_vector, false, output, output_err)) return true;
 			break;
 		case MACHO:
-			if (lld::mach_o::link(arg_vector, false, output, output_err)) return true;
+			#if LLVM_VERSION_MAJOR > 13
+				if (lld::macho::link(arg_vector, false, output, output_err)) return true;
+			#else
+				if (lld::mach_o::link(arg_vector, false, output, output_err)) return true;
+			#endif
 			break;
 		case WASM:
 			if (lld::wasm::link(arg_vector, false, output, output_err)) return true;

@@ -639,6 +639,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 		return false;
 	}
 
+
 	// 7. In the case of distinct types, we allow implicit conversion from literal types.
 	if (to->type_kind == TYPE_DISTINCT)
 	{

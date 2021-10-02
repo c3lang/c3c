@@ -118,6 +118,8 @@ to C3 and compiled with the c3c compiler:
 - [x] Trailing body macros e.g. `@foo(1, 100; int a) { bar(a); };`
 - [x] Complex macros
 - [x] CT type constants
+- [x] Simd vector types *partly implemented*
+- [x] Subarray initializers
 - [ ] Anonymous structs
 - [ ] Complete C ABI conformance *in progress*
 - [ ] Debug info *in progress*
@@ -131,7 +133,6 @@ to C3 and compiled with the c3c compiler:
 - [ ] `global` / `shared` for globals 
 - [ ] Escape macros
 - [ ] Implicit capturing macros
-- [ ] Subarray initializers
 - [ ] Bitstructs
 - [ ] `asm` section
 - [ ] `$switch`
@@ -139,7 +140,6 @@ to C3 and compiled with the c3c compiler:
 - [ ] Pre-post conditions
 - [ ] Stdlib inclusion
 - [ ] String functions
-- [ ] Simd vector types
 
 #### What can you help with?
 

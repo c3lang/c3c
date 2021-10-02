@@ -9,6 +9,7 @@
  * - Disallow jumping in and out of an expression block.
  */
 
+
 static inline void expr_set_as_const_list(Expr *expr, ConstInitializer *list)
 {
 	expr->expr_kind = EXPR_CONST;
@@ -75,9 +76,17 @@ static inline bool both_const(Expr *left, Expr *right)
 	return left->expr_kind == EXPR_CONST && right->expr_kind == EXPR_CONST;
 }
 
-static inline bool both_any_integer(Expr *left, Expr *right)
+
+
+static inline bool both_any_integer_or_integer_vector(Expr *left, Expr *right)
 {
-	return type_is_any_integer(type_flatten(left->type)) && type_is_any_integer(type_flatten(right->type));
+	Type *flatten_left = type_flatten(left->type);
+	Type *flatten_right = type_flatten(right->type);
+	if (type_is_any_integer(flatten_left) && type_is_any_integer(flatten_right)) return true;
+
+	if (flatten_left->type_kind != TYPE_VECTOR || flatten_right->type_kind != TYPE_VECTOR) return false;
+
+	return type_is_any_integer(flatten_left->vector.base) && type_is_any_integer(flatten_right->vector.base);
 }
 
 void expr_copy_properties(Expr *to, Expr *from)
@@ -2022,8 +2031,10 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 			assert(!from_end);
 			return true;
 		case TYPE_ARRAY:
+		case TYPE_VECTOR:
 		{
 			int64_t len = (int64_t)type->array.len;
+			bool is_vector = type->type_kind == TYPE_VECTOR;
 			if (from_end)
 			{
 				index = len - index;
@@ -2031,12 +2042,17 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 			// Checking end can only be done for arrays.
 			if (end_index && index >= len)
 			{
-				SEMA_ERROR(index_expr, "Array end index out of bounds, was %lld, exceeding array length %lld.", (long long)index, (long long)len);
+				SEMA_ERROR(index_expr,
+						   is_vector ? "End index out of bounds, was %lld, exceeding vector width %lld."
+						   : "Array end index out of bounds, was %lld, exceeding array length %lld.",
+						   (long long)index, (long long)len);
 				return false;
 			}
 			if (!end_index && index >= len)
 			{
-				SEMA_ERROR(index_expr, "Array index out of bounds, was %lld, exceeding max array index %lld.", (long long)index, (long long)len - 1);
+				SEMA_ERROR(index_expr,
+						   is_vector ? "Index out of bounds, was %lld, exceeding max vector width %lld."
+						   : "Array index out of bounds, was %lld, exceeding max array index %lld.", (long long)index, (long long)len - 1);
 				return false;
 			}
 			break;
@@ -2798,11 +2814,25 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 	DesignatorElement *element = elements[*curr_index];
 	if (element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE)
 	{
-		if (type_lowered->type_kind != TYPE_ARRAY && type_lowered->type_kind != TYPE_INFERRED_ARRAY)
+		ByteSize len;
+		Type *base;
+		switch (type_lowered->type_kind)
 		{
-			return NULL;
+			case TYPE_INFERRED_ARRAY:
+				len = MAX_ARRAYINDEX;
+				base = type_lowered->array.base;
+				break;
+			case TYPE_ARRAY:
+				len = type_lowered->array.len;
+				base = type_lowered->array.base;
+				break;
+			case TYPE_VECTOR:
+				len = type_lowered->vector.len;
+				base = type_lowered->vector.base;
+				break;
+			default:
+				return NULL;
 		}
-		ByteSize len = type_lowered->type_kind == TYPE_INFERRED_ARRAY ? MAX_ARRAYINDEX : type_lowered->array.len;
 		ArrayIndex index = sema_analyse_designator_index(context, element->index_expr);
 		if (index < 0)
 		{
@@ -2841,7 +2871,7 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 			element->index_end = end_index;
 			if (max_index && *max_index < end_index) *max_index = end_index;
 		}
-		return type_lowered->array.base;
+		return base;
 	}
 	assert(element->kind == DESIGNATOR_FIELD);
 	if (!type_is_structlike(type_lowered))
@@ -3297,7 +3327,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 
 	unsigned size = vec_size(elements);
 	unsigned expected_members = assigned->array.len;
-	if (assigned->type_kind != TYPE_ARRAY) expected_members = size;
+	if (assigned->type_kind != TYPE_ARRAY && assigned->type_kind != TYPE_VECTOR) expected_members = size;
 
 	assert(size > 0 && "We should already have handled the size == 0 case.");
 	if (expected_members == 0)
@@ -3425,7 +3455,11 @@ static inline bool sema_expr_analyse_initializer(Context *context, Type *externa
 		return sema_expr_analyse_untyped_initializer(context, expr);
 	}
 	// 3. Otherwise use the plain initializer.
-	if (assigned->type_kind == TYPE_UNTYPED_LIST || assigned->type_kind == TYPE_ARRAY || assigned->type_kind == TYPE_INFERRED_ARRAY || assigned->type_kind == TYPE_SUBARRAY)
+	if (assigned->type_kind == TYPE_UNTYPED_LIST ||
+		assigned->type_kind == TYPE_ARRAY ||
+		assigned->type_kind == TYPE_INFERRED_ARRAY ||
+		assigned->type_kind == TYPE_SUBARRAY ||
+		assigned->type_kind == TYPE_VECTOR)
 	{
 		return sema_expr_analyse_array_plain_initializer(context, assigned, expr);
 	}
@@ -3447,6 +3481,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 		case TYPE_UNION:
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_VECTOR:
 			return sema_expr_analyse_initializer(context, to, assigned, expr);
 		case TYPE_SUBARRAY:
 		{
@@ -4319,7 +4354,7 @@ static bool sema_expr_analyse_bit(Context *context, Type *to, Expr *expr, Expr *
 	if (!sema_expr_analyse_binary_sub_expr(context, to, left, right)) return false;
 
 	// 2. Check that both are integers.
-	if (!both_any_integer(left, right))
+	if (!both_any_integer_or_integer_vector(left, right))
 	{
 		return sema_type_error_on_binop(expr);
 	}
@@ -4372,7 +4407,7 @@ static bool sema_expr_analyse_shift(Context *context, Type *to, Expr *expr, Expr
 	if (!sema_analyse_expr(context, NULL, right)) return false;
 
 	// 3. Only integers may be shifted.
-	if (!both_any_integer(left, right))
+	if (!both_any_integer_or_integer_vector(left, right))
 	{
 		return sema_type_error_on_binop(expr);
 	}
@@ -4473,7 +4508,7 @@ static bool sema_expr_analyse_shift_assign(Context *context, Expr *expr, Expr *l
 	}
 
 	// 3. Only integers may be shifted.
-	if (!both_any_integer(left, right)) return sema_type_error_on_binop(expr);
+	if (!both_any_integer_or_integer_vector(left, right)) return sema_type_error_on_binop(expr);
 
 	// 4. For a constant right hand side we will make a series of checks.
 	if (is_const(right))
@@ -4580,50 +4615,65 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 	{
 		// 2a. Resize so that both sides have the same bit width. This will always work.
 		cast_to_max_bit_size(context, left, right, left_type, right_type);
+		goto DONE;
 	}
-	else
+
+	if (left_type->type_kind == TYPE_VECTOR && right_type->type_kind == TYPE_VECTOR)
 	{
-		// 3. In the normal case, treat this as a binary op, finding the max type.
-		Type *max = type_find_max_type(left->type->canonical, right->type->canonical);
-
-		// 4. If no common type, then that's an error:
-		if (!max)
+		if (left_type->vector.len == right_type->vector.len)
 		{
-			SEMA_ERROR(expr, "'%s' and '%s' are different types and cannot be compared.",
-			               type_to_error_string(left->type), type_to_error_string(right->type));
-			return false;
-		};
+			Type *left_vec = type_vector_type(left_type);
+			Type *right_vec = type_vector_type(right_type);
+			if (left_vec == right_vec) goto DONE;
+			if (type_size(left_vec) != type_size(right_vec)) goto DONE;
+			if (type_is_integer(left_vec) && type_is_integer(right_vec)) goto DONE;
+		}
+		SEMA_ERROR(expr, "Vector types '%s' and '%s' cannot be compared.",
+				   type_to_error_string(left->type), type_to_error_string(right->type));
+		return false;
+	}
 
-		if (!type_is_comparable(max))
+	// 3. In the normal case, treat this as a binary op, finding the max type.
+	Type *max = type_find_max_type(left->type->canonical, right->type->canonical);
+
+	// 4. If no common type, then that's an error:
+	if (!max)
+	{
+		SEMA_ERROR(expr, "'%s' and '%s' are different types and cannot be compared.",
+				   type_to_error_string(left->type), type_to_error_string(right->type));
+		return false;
+	}
+
+	if (!type_is_comparable(max))
+	{
+		SEMA_ERROR(expr, "%s does not support comparisons, you need to manually implement a comparison if you need it.",
+				   type_quoted_error_string(left->type));
+		return false;
+	}
+	if (!is_equality_type_op)
+	{
+		if (!type_is_ordered(max))
 		{
-			SEMA_ERROR(expr, "%s does not support comparisons, you need to manually implement a comparison if you need it.",
+			SEMA_ERROR(expr, "%s can only be compared using '!=' and '==' it cannot be ordered, did you make a mistake?",
 					   type_quoted_error_string(left->type));
 			return false;
 		}
-		if (!is_equality_type_op)
+		if (type_flatten(max)->type_kind == TYPE_POINTER)
 		{
-			if (!type_is_ordered(max))
+			// Only comparisons between the same type is allowed. Subtypes not allowed.
+			if (left_type != right_type && left_type != type_voidptr && right_type != type_voidptr)
 			{
-				SEMA_ERROR(expr, "%s can only be compared using '!=' and '==' it cannot be ordered, did you make a mistake?",
-						   type_quoted_error_string(left->type));
+				SEMA_ERROR(expr, "You are not allowed to compare pointers of different types, "
+								 "if you need to do, first convert all pointers to void*.");
 				return false;
 			}
-			if (type_flatten(max)->type_kind == TYPE_POINTER)
-			{
-				// Only comparisons between the same type is allowed. Subtypes not allowed.
-				if (left_type != right_type && left_type != type_voidptr && right_type != type_voidptr)
-				{
-					SEMA_ERROR(expr, "You are not allowed to compare pointers of different types, "
-									 "if you need to do, first convert all pointers to void*.");
-					return false;
-				}
-			}
 		}
-
-		// 6. Do the implicit cast.
-		if (!cast_implicit(left, max)) goto ERR;
-		if (!cast_implicit(right, max)) goto ERR;
 	}
+
+	// 6. Do the implicit cast.
+	if (!cast_implicit(left, max)) goto ERR;
+	if (!cast_implicit(right, max)) goto ERR;
+DONE:
 
 	// 7. Do constant folding.
 	if (both_const(left, right))
@@ -4635,6 +4685,13 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 
 	// 8. Set the type to bool
 	expr_unify_binary_properties(expr, left, right);
+
+	// 8a. Except for vector, set to signed type with the correct size.
+	if (left_type->type_kind == TYPE_VECTOR)
+	{
+		expr_set_type(expr, type_get_vector_bool(left_type));
+		return true;
+	}
 	expr_set_type(expr, type_bool);
 	return true;
 
@@ -4829,8 +4886,7 @@ static bool sema_expr_analyse_addr(Context *context, Type *to, Expr *expr, Expr 
 
 static bool sema_expr_analyse_neg(Context *context, Type *to, Expr *expr, Expr *inner)
 {
-	Type *canonical = inner->type->canonical;
-	if (!builtin_may_negate(canonical))
+	if (!type_may_negate(inner->type))
 	{
 		SEMA_ERROR(expr, "Cannot negate %s.", type_to_error_string(inner->type));
 		return false;
@@ -4880,9 +4936,13 @@ static bool sema_expr_analyse_bit_not(Context *context, Type *to, Expr *expr, Ex
 	}
 	if (!type_is_any_integer(canonical) && canonical != type_bool)
 	{
+		Type *vector_type = type_vector_type(canonical);
+		if (type_is_any_integer(vector_type) || vector_type == type_bool) goto VALID_VEC;
 		SEMA_ERROR(expr, "Cannot bit negate '%s'.", type_to_error_string(inner->type));
 		return false;
 	}
+
+VALID_VEC:
 	// The simple case, non-const.
 	if (inner->expr_kind != EXPR_CONST)
 	{
@@ -4913,6 +4973,12 @@ static bool sema_expr_analyse_bit_not(Context *context, Type *to, Expr *expr, Ex
 
 static bool sema_expr_analyse_not(Expr *expr, Expr *inner)
 {
+	if (type_is_vector(inner->type))
+	{
+		expr_copy_properties(expr, inner);
+		expr_set_type(expr, type_get_vector_bool(inner->type));
+		return true;
+	}
 	if (!cast_may_implicit(inner->type, type_bool))
 	{
 		SEMA_ERROR(expr, "The use of '!' on %s is not allowed as it can't be converted to a boolean value.", type_quoted_error_string(inner->type));
@@ -6021,7 +6087,8 @@ static inline bool sema_expr_resolve_maybe_identifier(Context *c, Expr *expr, De
 
 }
 
-static inline Type *sema_expr_check_type_exists(Context *context, TypeInfo *type_info)
+
+static Type *sema_expr_check_type_exists(Context *context, TypeInfo *type_info)
 {
 	if (type_info->resolve_status == RESOLVE_DONE)
 	{
@@ -6031,20 +6098,30 @@ static inline Type *sema_expr_check_type_exists(Context *context, TypeInfo *type
 	{
 		case TYPE_INFO_POISON:
 			return poisoned_type;
-		case TYPE_INFO_ARRAY:
+		case TYPE_INFO_VECTOR:
 		{
-			// If it's an array, make sure we can resolve the length
-			Expr *len = type_info->array.len;
-			if (!sema_analyse_expr(context, type_usize, len)) return false;
-			if (len->expr_kind != EXPR_CONST || !type_is_any_integer(len->type->canonical))
-			{
-				SEMA_ERROR(len, "Expected a constant integer value here.");
-				return poisoned_type;
-			}
+			ArrayIndex size;
+			if (!sema_resolve_array_like_len(context, type_info, &size)) return poisoned_type;
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
-			return type_get_array(type, bigint_as_unsigned(&len->const_expr.i));
+			if (!type_is_valid_for_vector(type))
+			{
+				SEMA_ERROR(type_info->array.base,
+						   "%s cannot be vectorized. Only integers, floats and booleans are allowed.",
+				           type_quoted_error_string(type));
+				return poisoned_type;
+			}
+			return type_get_vector(type, size);
+		}
+		case TYPE_INFO_ARRAY:
+		{
+			ArrayIndex size;
+			if (!sema_resolve_array_like_len(context, type_info, &size)) return poisoned_type;
+			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
+			if (!type) return NULL;
+			if (!type_ok(type)) return type;
+			return type_get_array(type, size);
 		}
 		case TYPE_INFO_IDENTIFIER:
 		{

@@ -39,8 +39,6 @@
 #include <errno.h>
 #include "whereami.h"
 
-#include <filesystem>
-
 #if PLATFORM_WINDOWS
 
 

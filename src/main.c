@@ -17,7 +17,7 @@ int main(int argc, const char *argv[])
 	char* tmp = argv[0];
 	argv = (char*[]){"c3c", "compile-only", "../../../resources/hw.c3", "-E"};
 	argv[0] = tmp;
-	argc = 3;
+	argc = 4;
 
 	// Parse arguments.
 	BuildOptions build_options = parse_arguments(argc, argv);
