@@ -502,7 +502,6 @@ typedef enum
 	TOKEN_EOF,              // \n - SHOULD ALWAYS BE THE LAST TOKEN.
 
 	TOKEN_LAST = TOKEN_EOF,
-	//_BOGUS_TOK = -1UL,
 } _TokenType;
 
 #define NON_VOID_TYPE_TOKENS \

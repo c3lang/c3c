@@ -198,7 +198,7 @@ typedef struct
 typedef struct
 {
 	TokenId id;
-	_TokenType type : 8;
+	_TokenType type : 16;
 } Token;
 
 

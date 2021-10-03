@@ -875,7 +875,7 @@ Ast *parse_ct_assert_stmt(Context *context)
 
 Ast *parse_stmt(Context *context)
 {
-	switch ((unsigned int)context->tok.type)
+	switch (context->tok.type)
 	{
 		case TOKEN_ASM_STRING:
 		case TOKEN_ASM_CONSTRAINT:
@@ -1079,7 +1079,6 @@ Ast *parse_stmt(Context *context)
 			SEMA_TOKID_ERROR(context->tok.id, "Reached the end of the file when expecting a statement.");
 			return poisoned_ast;
 	}
-	printf("problematic token type %x %x %d %lu %d %d\n", context->tok.type, (unsigned int) context->tok.type, TOKEN_EOF, sizeof(_TokenType), TOKEN_RETURN, ((signed char) -123) == ((unsigned char) 133));
 	UNREACHABLE
 }
 
