@@ -949,7 +949,7 @@ static inline bool sema_expr_analyse_hash_identifier(Context *context, Type *to,
 
 static inline bool sema_expr_analyse_binary_sub_expr(Context *context, Type *to, Expr *left, Expr *right)
 {
-	return sema_analyse_expr(context, to, left) & sema_analyse_expr(context, to, right);
+	return sema_analyse_expr(context, to, left) && sema_analyse_expr(context, to, right);
 }
 
 static inline int find_index_of_named_parameter(Decl **func_params, Expr *expr)
@@ -3956,7 +3956,7 @@ static bool binary_arithmetic_promotion(Context *context, Expr *left, Expr *righ
 		SEMA_ERROR(parent, error_message, type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 		return false;
 	}
-	return cast_implicit(left, max) & cast_implicit(right, max);
+	return cast_implicit(left, max) && cast_implicit(right, max);
 }
 
 static bool sema_check_int_type_fit(Expr *expr, Type *target_type)
