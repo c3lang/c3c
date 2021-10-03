@@ -4,8 +4,14 @@
 
 #include <sys/stat.h>
 #ifdef _MSC_VER
-#include <windows.h>
-#define PATH_MAX MAX_PATH
+
+// Copied from dirent.h (may be the wrong value, works for now)
+#ifndef NTFS_MAX_PATH
+#define NTFS_MAX_PATH 32768
+#endif /* NTFS_MAX_PATH */
+
+#define PATH_MAX NTFS_MAX_PATH
+
 #undef TokenType // conflicting TokenType from winnt.h
 #else
 #include <limits.h>

@@ -1359,7 +1359,7 @@ bool type_is_subtype(Type *type, Type *possible_subtype)
 
 }
 
-Type *type_from_token(_TokenType type)
+Type *type_from_token(TokenType type)
 {
 	switch (type)
 	{

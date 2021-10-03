@@ -13,7 +13,7 @@ Path *path_create_from_string(const char *string, size_t len, SourceSpan span)
 {
 	Path *path = CALLOCS(Path);
 	path->span = span;
-	_TokenType type = TOKEN_IDENT;
+	TokenType type = TOKEN_IDENT;
 	path->module = symtab_add(string, len, fnv1a(string, len), &type);
 	path->len = len;
 	if (type != TOKEN_IDENT)

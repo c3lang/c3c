@@ -180,12 +180,12 @@ static inline Ast* parse_do_stmt(Context *context)
 	return do_ast;
 }
 
-static inline bool token_type_ends_case(_TokenType type, _TokenType case_type, _TokenType default_type)
+static inline bool token_type_ends_case(TokenType type, TokenType case_type, TokenType default_type)
 {
 	return type == case_type || type == default_type || type == TOKEN_RBRACE || type == TOKEN_CT_ENDSWITCH;
 }
 
-static inline Ast *parse_case_stmts(Context *context, _TokenType case_type, _TokenType default_type)
+static inline Ast *parse_case_stmts(Context *context, TokenType case_type, TokenType default_type)
 {
 	if (token_type_ends_case(context->tok.type, case_type, default_type)) return NULL;
 	Ast *compound = AST_NEW_TOKEN(AST_COMPOUND_STMT, context->tok);
@@ -299,7 +299,7 @@ static bool parse_type_or_expr(Context *context, TypeInfo **type_info, Expr **ex
  * 	| CAST type ':' cast_stmts
  * 	;
  */
-static inline Ast *parse_case_stmt(Context *context, _TokenType case_type, _TokenType default_type)
+static inline Ast *parse_case_stmt(Context *context, TokenType case_type, TokenType default_type)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CASE_STMT, context->tok);
 	advance(context);
@@ -319,7 +319,7 @@ static inline Ast *parse_case_stmt(Context *context, _TokenType case_type, _Toke
  * default_stmt
  *  : DEFAULT ':' case_stmts
  */
-static inline Ast *parse_default_stmt(Context *context, _TokenType case_type, _TokenType default_type)
+static inline Ast *parse_default_stmt(Context *context, TokenType case_type, TokenType default_type)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_DEFAULT_STMT, context->tok);
 	advance(context);
@@ -338,14 +338,14 @@ static inline Ast *parse_default_stmt(Context *context, _TokenType case_type, _T
  *  | default_stmt switch body
  *  ;
  */
-bool parse_switch_body(Context *context, Ast ***cases, _TokenType case_type, _TokenType default_type,
+bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, TokenType default_type,
                        bool allow_multiple_values)
 {
 	CONSUME_OR(TOKEN_LBRACE, false);
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
 		Ast *result;
-		_TokenType next = context->tok.type;
+		TokenType next = context->tok.type;
 		if (next == case_type)
 		{
 			ASSIGN_AST_ELSE(result, parse_case_stmt(context, case_type, default_type), false);
@@ -651,7 +651,7 @@ static inline Ast* parse_ct_compound_stmt(Context *context)
 	Ast *stmts = AST_NEW_TOKEN(AST_CT_COMPOUND_STMT, context->tok);
 	while (1)
 	{
-		_TokenType token = context->tok.type;
+		TokenType token = context->tok.type;
 		if (token == TOKEN_CT_ELSE || token == TOKEN_CT_ELIF || token == TOKEN_CT_ENDIF) break;
 		ASSIGN_AST_ELSE(Ast *stmt, parse_stmt(context), poisoned_ast);
 		vec_add(stmts->ct_compound_stmt, stmt);
@@ -813,7 +813,7 @@ static inline Ast* parse_ct_switch_stmt(Context *context)
 	while (!try_consume(context, TOKEN_CT_ENDSWITCH))
 	{
 		Ast *result;
-		_TokenType next = context->tok.type;
+		TokenType next = context->tok.type;
 		if (next == TOKEN_CT_CASE)
 		{
 			ASSIGN_AST_ELSE(result, parse_case_stmt(context, TOKEN_CT_CASE, TOKEN_CT_DEFAULT), poisoned_ast);

@@ -198,7 +198,7 @@ typedef struct
 typedef struct
 {
 	TokenId id;
-	_TokenType type : 16;
+	TokenType type : 16;
 } Token;
 
 
@@ -790,7 +790,7 @@ typedef struct
 
 typedef struct
 {
-	_TokenType token_type;
+	TokenType token_type;
 	struct
 	{
 		Expr *main_var;
@@ -1753,7 +1753,7 @@ static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; de
 static inline bool decl_is_struct_type(Decl *decl);
 static inline bool decl_is_callable_type(Decl *decl);
 static inline bool decl_is_user_defined_type(Decl *decl);
-static inline DeclKind decl_from_token(_TokenType type);
+static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_var_is_assignable(Decl *decl)
 {
 	switch (decl->var.kind)
@@ -1860,8 +1860,8 @@ static inline TokenData *tokendata_from_token(Token token) { return tokdataptr(t
 
 #define TOKREAL(T) TOKDATA(T)->value
 
-static inline _TokenType tokenid_type(TokenId token) { return (_TokenType)toktypeptr(token.index)[0]; }
-static inline _TokenType token_type(Token token) { return (_TokenType)toktypeptr(token.id.index)[0]; }
+static inline TokenType tokenid_type(TokenId token) { return (TokenType)toktypeptr(token.index)[0]; }
+static inline TokenType token_type(Token token) { return (TokenType)toktypeptr(token.id.index)[0]; }
 #define TOKTYPE(T) _Generic((T), TokenId: tokenid_type, Token: token_type)(T)
 
 #define TOKLEN(T) TOKLOC(T)->length
@@ -1950,22 +1950,22 @@ void scratch_buffer_append_char(char c);
 char *scratch_buffer_to_string(void);
 const char *scratch_buffer_interned(void);
 
-const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, _TokenType *type);
-const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, _TokenType *type);
+const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
+const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 void *llvm_target_machine_create(void);
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
 
 
-bool token_is_type(_TokenType type);
-bool token_is_any_type(_TokenType type);
-bool token_is_symbol(_TokenType type);
-bool token_is_ident_keyword(_TokenType token_type);
-bool token_is_ct_ident_keyword(_TokenType token_type);
-const char *token_type_to_string(_TokenType type);
-static inline _TokenType advance_token(TokenId *token)
+bool token_is_type(TokenType type);
+bool token_is_any_type(TokenType type);
+bool token_is_symbol(TokenType type);
+bool token_is_ident_keyword(TokenType token_type);
+bool token_is_ct_ident_keyword(TokenType token_type);
+const char *token_type_to_string(TokenType type);
+static inline TokenType advance_token(TokenId *token)
 {
-	_TokenType tok;
+	TokenType tok;
 	while (1)
 	{
 		token->index += 1;
@@ -2022,7 +2022,7 @@ static inline bool type_is_signed(Type *type);
 static inline bool type_is_structlike(Type *type);
 static inline size_t type_min_alignment(size_t a, size_t b);
 bool type_is_subtype(Type *type, Type *possible_subtype);
-Type *type_from_token(_TokenType type);
+Type *type_from_token(TokenType type);
 bool type_is_union_struct(Type *type);
 bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
@@ -2180,14 +2180,14 @@ static inline bool type_convert_will_trunc(Type *destination, Type *source)
 }
 
 
-UnaryOp unaryop_from_token(_TokenType type);
-PostUnaryOp post_unaryop_from_token(_TokenType type);
-BinaryOp binaryop_from_token(_TokenType type);
+UnaryOp unaryop_from_token(TokenType type);
+PostUnaryOp post_unaryop_from_token(TokenType type);
+BinaryOp binaryop_from_token(TokenType type);
 BinaryOp binaryop_assign_base_op(BinaryOp assign_binary_op);
-_TokenType binaryop_to_token(BinaryOp type);
+TokenType binaryop_to_token(BinaryOp type);
 
 
-static inline const char* struct_union_name_from_token(_TokenType type)
+static inline const char* struct_union_name_from_token(TokenType type)
 {
 	return type == TOKEN_STRUCT ? "struct" : "union";
 }
@@ -2196,7 +2196,7 @@ static inline const char* struct_union_name_from_token(_TokenType type)
 void advance(Context *context);
 
 // Useful sanity check function.
-static inline void advance_and_verify(Context *context, _TokenType token_type)
+static inline void advance_and_verify(Context *context, TokenType token_type)
 {
 	assert(context->tok.type == token_type);
 	advance(context);
@@ -2346,7 +2346,7 @@ static inline bool decl_is_user_defined_type(Decl *decl)
 			| (kind == DECL_ENUM) | (kind == DECL_DISTINCT);
 }
 
-static inline DeclKind decl_from_token(_TokenType type)
+static inline DeclKind decl_from_token(TokenType type)
 {
 	if (type == TOKEN_STRUCT) return DECL_STRUCT;
 	if (type == TOKEN_UNION) return DECL_UNION;
