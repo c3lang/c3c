@@ -164,8 +164,6 @@ target_include_directories(c3c_wrappers PRIVATE
 
 message(STATUS "Found LLD ${lld_libs}")
 
-
-
 if(UNIX)
     target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${lld_libs})
 else()
@@ -173,8 +171,6 @@ else()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:C:\\llvm\\llvm\\build\\Release\\lib")
     target_link_libraries(c3c debug ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
     target_link_libraries(c3c optimized ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
-    add_compile_options("/J")
-    target_compile_options(c3c PRIVATE "/J")
 endif()
 
 if (WIN32)

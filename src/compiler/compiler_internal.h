@@ -447,6 +447,13 @@ typedef struct
 		bool attr_noinline : 1;
 		bool attr_extname : 1;
 		bool attr_naked : 1;
+		//bool is_builtin; // It seems like the :1s aren't a problem, but
+		//bool attr_weak;  // in case they are I'm going to leave this here...
+		//bool attr_noreturn;
+		//bool attr_inline;
+		//bool attr_noinline;
+		//bool attr_extname;
+		//bool attr_naked;
 	};
 
 	TypeInfo *type_parent;
@@ -562,9 +569,9 @@ typedef struct Decl_
 	SourceSpan span;
 	const char *external_name;
 	Ast *docs;
-	DeclKind decl_kind : 6;
-	Visibility visibility : 2;
-	ResolveStatus resolve_status : 2;
+	DeclKind decl_kind : 7;
+	Visibility visibility : 3;
+	ResolveStatus resolve_status : 3;
 	bool is_packed : 1;
 	bool is_opaque : 1;
 	bool needs_additional_pad : 1;

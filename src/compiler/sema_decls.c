@@ -993,7 +993,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
 	Type *func_type = sema_analyse_function_signature(context, &decl->func_decl.function_signature, true);
-	decl->func_decl.attr_inline = false;	// DEBUG
+	
 	decl->type = func_type;
 	if (!func_type) return decl_poison(decl);
 	if (decl->func_decl.type_parent)
