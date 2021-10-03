@@ -195,7 +195,7 @@ typedef struct
 typedef struct
 {
 	TokenId id;
-	TokenType type : 8;
+	TokenType type : 16;
 } Token;
 
 
@@ -1593,10 +1593,11 @@ extern const char *kw_check_assign;
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id((_token).id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
 
+typedef unsigned char TokenTypeChar;
 ARENA_DEF(ast, Ast)
 ARENA_DEF(expr, Expr)
 ARENA_DEF(sourceloc, SourceLocation)
-ARENA_DEF(toktype, char)
+ARENA_DEF(toktype, TokenTypeChar)
 ARENA_DEF(tokdata, TokenData)
 ARENA_DEF(decl, Decl)
 ARENA_DEF(type_info, TypeInfo)

@@ -1486,7 +1486,7 @@ static bool parse_doc_comment(Lexer *lexer)
 
 Token lexer_advance(Lexer *lexer)
 {
-	Token token = { .id.index = lexer->lexer_index, .type = (TokenType)*toktypeptr(lexer->lexer_index) };
+	Token token = { .id.index = lexer->lexer_index, .type = (TokenType)(*toktypeptr(lexer->lexer_index)) };
 	lexer->lexer_index++;
 	return token;
 }
