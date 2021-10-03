@@ -158,7 +158,6 @@ void path_get_dir_and_filename_from_full(const char *full_path, char **filename,
 
 	strcpy(path, full_path);
 	*dir_path = strdup(dirname(path));
-	printf("dir_filename called with %s\n filename %s\n dirname %s\n", full_path, *filename, *dir_path);
 }
 
 

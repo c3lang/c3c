@@ -16,10 +16,10 @@ int main(int argc, const char *argv[])
 
 	// TODO: REMOVE THIS !!!!!!
 	// this code is a workaround for it being difficult to set command line parameters.
-	char* tmp = argv[0];
+	/*char* tmp = argv[0];
 	argv = (char*[]){"c3c", "compile-only", "../../../resources/hw.c3", "-E"};
 	argv[0] = tmp;
-	argc = 3;
+	argc = 3;*/
 
 	// Parse arguments.
 	BuildOptions build_options = parse_arguments(argc, argv);
