@@ -6,7 +6,6 @@
 
 #if defined(WIN32)
 #include <windows.h>
-#undef TokenType
 #endif
 
 #include "whereami.h"

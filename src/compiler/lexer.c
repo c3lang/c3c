@@ -347,9 +347,6 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 		add_error_token(lexer, "An identifier may not consist of only '_' characters.");
 	}
 	const char* interned_string = symtab_add(lexer->lexing_start, len, hash, &type);
-	if (type == -123) {
-		printf("type -123 in scan_ident");
-	}
 	return add_token(lexer, type, interned_string);
 }
 

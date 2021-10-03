@@ -10,17 +10,6 @@
       "cmakeCommandArgs": "-DLLVM_DIR=C:\\llvm\\llvm\\build\\lib\\cmake\\llvm -DCMAKE_CXX_FLAGS:STRING=\"${CMAKE_CXX_FLAGS} /J\"",
       "buildCommandArgs": "-v",
       "ctestCommandArgs": ""
-    },
-    {
-      "name": "build-debug",
-      "generator": "Ninja",
-      "configurationType": "RelWithDebInfo",
-      "buildRoot": "${projectDir}\\out\\build\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "-DLLVM_DIR=C:\\llvm\\llvm\\build\\lib\\cmake\\llvm",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ]
     }
   ]
 }

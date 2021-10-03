@@ -4,7 +4,6 @@
 
 #if defined(WIN32)
 #include <Windows.h>
-#undef TokenType
 #define COMMIT_PAGE_SIZE 0x10000
 #endif
 

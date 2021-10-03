@@ -38,7 +38,6 @@ extern "C" {
 #include <errno.h>
 
 #include <Windows.h>
-#undef TokenType
 
 #include <Shlwapi.h>
 
@@ -274,7 +273,6 @@ extern "C" {
 		hFindFile = FindFirstFileW(wname, &w32fd);
 		if (INVALID_HANDLE_VALUE == hFindFile)
 		{
-			printf("invalid handle value!\n");
 			__seterrno(ENOENT);
 			return NULL;
 		}
@@ -353,7 +351,6 @@ extern "C" {
 
 	static DIR* opendir(const char* name)
 	{
-		printf("trying to open dir %s\n", name);
 		DIR* dirp = NULL;
 		wchar_t* wname = __get_buffer();
 		int size = 0;

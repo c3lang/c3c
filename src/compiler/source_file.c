@@ -12,7 +12,6 @@
 
 #define PATH_MAX NTFS_MAX_PATH
 
-#undef TokenType // conflicting TokenType from winnt.h
 #else
 #include <limits.h>
 #endif

@@ -6,8 +6,7 @@
 
 const char *token_type_to_string(TokenType type)
 {
-	unsigned char t = (unsigned char)type;
-	switch (t)
+	switch (type)
 	{
 		case TOKEN_INVALID_TOKEN:
 			return "INVALID_TOKEN";
@@ -372,7 +371,6 @@ const char *token_type_to_string(TokenType type)
 			return "EOF";
 
 	}
-	printf("unknown token type %d\n%d\n", t, sizeof(t));
 	UNREACHABLE
 }
 

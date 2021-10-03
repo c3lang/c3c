@@ -301,8 +301,6 @@ typedef enum
 	TYPE_INFO_POINTER,
 } TypeInfoKind;
 
-#undef TokenType
-
 typedef enum
 {
 	TOKEN_INVALID_TOKEN = 0,

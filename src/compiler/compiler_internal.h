@@ -2,9 +2,6 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#ifndef COMPILER_INTERNAL_H_
-#define COMPILER_INTERNAL_H_
-
 #include "../utils/common.h"
 #include "../utils/errors.h"
 #include "../utils/lib.h"
@@ -2403,5 +2400,3 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 #define ASSIGN_EXPR_ELSE(_assign, _expr_stmt, _res) Expr* TEMP(_expr) = (_expr_stmt); if (!expr_ok(TEMP(_expr))) return _res; _assign = TEMP(_expr)
 #define ASSIGN_TYPE_ELSE(_assign, _type_stmt, _res) TypeInfo* TEMP(_type) = (_type_stmt); if (!type_info_ok(TEMP(_type))) return _res; _assign = TEMP(_type)
 #define ASSIGN_DECL_ELSE(_assign, _decl_stmt, _res) Decl* TEMP(_decl) = (_decl_stmt); if (!decl_ok(TEMP(_decl))) return _res; _assign = TEMP(_decl)
-
-#endif // COMPILER_INTERNAL_H_

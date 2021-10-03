@@ -5,7 +5,6 @@
 #if PLATFORM_WINDOWS
 
 #include <windows.h>
-#undef TokenType
 
 #endif
 
@@ -86,7 +85,7 @@ char *read_file(const char *path, size_t *return_size)
 
 	if (file == NULL)
 	{
-		error_exit("(file_utils) Could not open file \"%s\".\n", path);
+		error_exit("Could not open file \"%s\".\n", path);
 	}
 
 	fseek(file, 0L, SEEK_END);
