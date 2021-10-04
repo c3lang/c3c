@@ -2,21 +2,22 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
+#include <sys/stat.h>
+#include "common.h"
+#include "errors.h"
+#include "lib.h"
+
 #if PLATFORM_WINDOWS
 
 #include <windows.h>
 
 #endif
 
-#include <sys/stat.h>
-#include "common.h"
-#include "errors.h"
-#include "lib.h"
-
 #ifndef _MSC_VER
 #include <libgen.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <limits.h>
 #else
 #include "utils/dirent.h"
 #define PATH_MAX NTFS_MAX_PATH

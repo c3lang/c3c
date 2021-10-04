@@ -55,6 +55,7 @@ file(COPY ${CMAKE_SOURCE_DIR}/resources/lib DESTINATION ${CMAKE_BINARY_DIR})
 
 # These don't seem to be reliable on windows.
 if(UNIX)
+    message(STATUS "using find_library")
     find_library(LLD_COFF NAMES lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_COMMON NAMES lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_CORE NAMES lldCore.a liblldCore.a PATHS ${LLVM_LIBRARY_DIRS})
@@ -65,7 +66,7 @@ if(UNIX)
     find_library(LLD_READER_WRITER NAMES lldReaderWriter.a liblldReaderWriter.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_MACHO NAMES lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_YAML NAMES lldYAML.a liblldYAML.a PATHS ${LLVM_LIBRARY_DIRS})
-find_library(LLD_YAML NAMES lldYAML.a liblldYAML.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLD_YAML NAMES lldYAML.a liblldYAML.a PATHS ${LLVM_LIBRARY_DIRS})
 
     set(lld_libs
         ${LLD_COFF}
@@ -79,6 +80,7 @@ find_library(LLD_YAML NAMES lldYAML.a liblldYAML.a PATHS ${LLVM_LIBRARY_DIRS})
         ${LLD_YAML}
         ${LLD_CORE}
         )
+    message(STATUS "linking to llvm libs ${llvm_libs} ${lld_libs}")
 endif()
 add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
 
@@ -149,6 +151,7 @@ add_executable(c3c
         src/compiler/llvm_codegen_c_abi_wasm.c)
 
 if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    message(STATUS "using gcc/clang warning switches")
     target_compile_options(c3c PRIVATE -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
             -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 endif()
@@ -163,6 +166,8 @@ target_include_directories(c3c_wrappers PRIVATE
 message(STATUS "Found LLD ${lld_libs}")
 
 if(UNIX)
+    message(STATUS "adding unix link params")
+    target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
     target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${lld_libs})
 else()
     # todo: maybe get this from llvm-config somehow? it should be in LLVM_DIR\..\..\..\bin I think.
