@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-// TODO I made this super quickly so they probably have some bugs from cases I didn't think of.
-// A better implementaion of these functions may be necessary.
+// TODO I made these super quickly so they probably have some bugs from cases I didn't think of.
+// A better implementation of these functions may be necessary.
 
-char* basename(char* path) {
+char* basename(char* path)
+{
 	size_t len = strlen(path);
 	size_t lastSlash = 0;
 	for (size_t i = len - 2; i > 0; i--) {
@@ -29,7 +30,8 @@ char* basename(char* path) {
 	return newStr;
 }
 
-char* dirname(char* path) {
+char* dirname(char* path)
+{
 	size_t len = strlen(path);
 	size_t lastSlash = 0;
 	for (size_t i = len - 2; i > 0; i--) {
