@@ -96,6 +96,13 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->arch_os_target = options->arch_os_target_override;
 	}
+	else if (PLATFORM_WINDOWS) {
+		// The current handling of ARCH_OS_TARGET_DEFAULT works on unix, but not on windows.
+		// to deal with this, simply default to x86-windows.
+		// TODO: Once x64-windows works, this should probably use that. Alternatively, 
+		// ARCH_OS_TARGET_DEFAULT could be handled in a more cross-platform manner later on.
+		target->arch_os_target = X86_WINDOWS;
+	}
 	if (options->pie != PIE_DEFAULT) target->pie = options->pie;
 	if (options->pic != PIC_DEFAULT) target->pic = options->pic;
 
