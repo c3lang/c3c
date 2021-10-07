@@ -1753,7 +1753,7 @@ static void gencontext_emit_logical_and_or(GenContext *c, BEValue *be_value, Exp
 	// For vector implementation.
 
 	// Set up basic blocks, following Cone
-	LLVMBasicBlockRef start_block = LLVMGetInsertBlock(c->builder);
+	LLVMBasicBlockRef start_block;
 	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, op == BINARYOP_AND ? "and.phi" : "or.phi");
 	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, op == BINARYOP_AND ? "and.rhs" : "or.rhs");
 
