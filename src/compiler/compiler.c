@@ -479,7 +479,7 @@ static void target_expand_source_names(BuildTarget *target)
 
 void compile_target(BuildOptions *options)
 {
-	init_default_build_target(&active_target, options, "a.out");
+	init_default_build_target(&active_target, options, DEFAULT_EXE);
 	compile();
 }
 

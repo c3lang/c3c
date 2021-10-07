@@ -39,6 +39,13 @@ typedef int32_t ScopeId;
 #define DEFAULT_EXE "a.out"
 #endif
 
+#if PLATFORM_WINDOWS
+#define DEFAULT_OBJ_FILE_EXT ".obj"
+#else
+#define DEFAULT_OBJ_FILE_EXT ".o"
+#endif
+
+
 typedef uint32_t SourceLoc;
 typedef struct
 {
