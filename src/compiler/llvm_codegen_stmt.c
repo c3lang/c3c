@@ -48,7 +48,8 @@ void gencontext_emit_ct_compound_stmt(GenContext *context, Ast *ast)
 LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 {
 	// 1. Get the declaration and the LLVM type.
-	LLVMTypeRef alloc_type = llvm_get_type(c, type_lowering(decl->type));
+	Type *var_type = type_lowering(type_no_fail(decl->type));
+	LLVMTypeRef alloc_type = llvm_get_type(c, var_type);
 
 	// 2. In the case we have a static variable,
 	//    then we essentially treat this as a global.
@@ -56,8 +57,8 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 	{
 		void *builder = c->builder;
 		c->builder = NULL;
-		decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
-		if (decl->var.failable)
+		decl->backend_ref = LLVMAddGlobal(c->module, alloc_type, "tempglobal");
+		if (IS_FAILABLE(decl))
 		{
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->external_name);
@@ -69,14 +70,14 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		return decl->backend_ref;
 	}
 	llvm_emit_local_var_alloca(c, decl);
-	if (decl->var.failable)
+	if (IS_FAILABLE(decl))
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->name);
 		scratch_buffer_append(".f");
 		decl->var.failable_ref = llvm_emit_alloca_aligned(c, type_anyerr, scratch_buffer_to_string());
 		// Only clear out the result if the assignment isn't a failable.
-		if (!decl->var.init_expr || !decl->var.init_expr->failable)
+		if (!decl->var.init_expr || !IS_FAILABLE(decl->var.init_expr))
 		{
 			LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_anyerr)), decl->var.failable_ref);
 		}
@@ -178,7 +179,7 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 		c->error_var = c->block_error_var;
 		c->catch_block = c->block_failable_exit;
 	}
-	else if (c->cur_func_decl->func_decl.function_signature.failable)
+	else if (IS_FAILABLE(c->cur_func_decl->func_decl.function_signature.rtype))
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
 		error_out = llvm_emit_alloca_aligned(c, type_anyerr, "reterr");
@@ -962,6 +963,96 @@ void gencontext_emit_scoped_stmt(GenContext *context, Ast *ast)
 	llvm_emit_defer(context, ast->scoped_stmt.defers.start, ast->scoped_stmt.defers.end);
 }
 
+static bool expr_is_pure(Expr *expr)
+{
+	if (!expr) return true;
+	switch (expr->expr_kind)
+	{
+		case EXPR_CONST:
+		case EXPR_CONST_IDENTIFIER:
+		case EXPR_IDENTIFIER:
+		case EXPR_NOP:
+			return true;
+		case EXPR_BINARY:
+			if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return false;
+			return expr_is_pure(expr->binary_expr.right) && expr_is_pure(expr->binary_expr.left);
+		case EXPR_UNARY:
+			switch (expr->unary_expr.operator)
+			{
+				case UNARYOP_INC:
+				case UNARYOP_DEC:
+				case UNARYOP_TADDR:
+					return false;
+				default:
+					return expr_is_pure(expr->unary_expr.expr);
+			}
+			break;
+		case EXPR_ACCESS:
+			return expr_is_pure(expr->access_expr.parent);
+		case EXPR_POISONED:
+		case EXPR_CT_IDENT:
+		case EXPR_TYPEID:
+		case EXPR_CT_CALL:
+		case EXPR_TYPEOF:
+			UNREACHABLE
+		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_CALL:
+		case EXPR_CATCH_UNWRAP:
+		case EXPR_COMPOUND_LITERAL:
+		case EXPR_COND:
+		case EXPR_DESIGNATOR:
+		case EXPR_DECL:
+		case EXPR_ELSE:
+		case EXPR_EXPR_BLOCK:
+		case EXPR_FAILABLE:
+		case EXPR_GUARD:
+		case EXPR_HASH_IDENT:
+		case EXPR_MACRO_BLOCK:
+		case EXPR_MACRO_EXPANSION:
+		case EXPR_FLATPATH:
+		case EXPR_INITIALIZER_LIST:
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
+		case EXPR_PLACEHOLDER:
+		case EXPR_POST_UNARY:
+		case EXPR_SCOPED_EXPR:
+		case EXPR_SLICE_ASSIGN:
+		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_TRY_ASSIGN:
+		case EXPR_UNDEF:
+		case EXPR_TYPEINFO:
+			return false;
+		case EXPR_CAST:
+			return expr_is_pure(expr->cast_expr.expr);
+		case EXPR_EXPRESSION_LIST:
+		{
+			VECEACH(expr->expression_list, i)
+			{
+				if (!expr_is_pure(expr->expression_list[i])) return false;
+			}
+			return true;
+		}
+			break;
+		case EXPR_GROUP:
+			return expr_is_pure(expr->group_expr);
+		case EXPR_LEN:
+			return expr_is_pure(expr->len_expr.inner);
+		case EXPR_SLICE:
+			return expr_is_pure(expr->slice_expr.expr)
+			       && expr_is_pure(expr->slice_expr.start)
+			       && expr_is_pure(expr->slice_expr.end);
+		case EXPR_SUBSCRIPT:
+			return expr_is_pure(expr->subscript_expr.expr)
+			       && expr_is_pure(expr->subscript_expr.index);
+		case EXPR_TERNARY:
+			return expr_is_pure(expr->ternary_expr.cond)
+			       && expr_is_pure(expr->ternary_expr.else_expr)
+			       && expr_is_pure(expr->ternary_expr.then_expr);
+		case EXPR_TRY:
+			return expr_is_pure(expr->try_expr.expr);
+	}
+	UNREACHABLE
+}
 
 static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 {
@@ -994,7 +1085,7 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 	}
 
 	// 3. Check if pure, if so we emit the assume.
-	if (expr->pure)
+	if (expr_is_pure(expr))
 	{
 		BEValue value;
 		llvm_emit_expr(c, &value, expr);
@@ -1092,7 +1183,7 @@ static inline void gencontext_emit_unreachable_stmt(GenContext *context, Ast *as
 void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 {
 	BEValue value;
-	if (ast->expr_stmt->failable)
+	if (IS_FAILABLE(ast->expr_stmt))
 	{
 		PUSH_ERROR();
 		LLVMBasicBlockRef discard_fail = llvm_basic_block_new(c, "voiderr");
@@ -1279,7 +1370,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_DOCS:
 		case AST_DOC_DIRECTIVE:
 		case AST_POISONED:
-		case AST_DEFINE_STMT:
+		case AST_VAR_STMT:
 		case AST_IF_CATCH_SWITCH_STMT:
 			UNREACHABLE
 		case AST_SCOPED_STMT:

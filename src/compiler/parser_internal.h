@@ -37,6 +37,7 @@ Expr *parse_expr(Context *context);
 bool consume_ident(Context *context, const char* name);
 Expr *parse_try_expr_after_try(Context *context, bool is_try);
 TypeInfo *parse_type(Context *context);
+TypeInfo *parse_failable_type(Context *context);
 TypeInfo *parse_type_with_base(Context *context, TypeInfo *type_info);
 Expr* parse_constant_expr(Context *context);
 Expr *parse_initializer(Context *context);

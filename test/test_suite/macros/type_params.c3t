@@ -1,0 +1,66 @@
+// #target: x64-darwin
+macro foo($Foo)
+{
+    $Foo a;
+    return a;
+}
+
+define Bar = short;
+func void test()
+{
+    int x = @foo(int);
+    var $Foo = double;
+    double d = @foo($Foo);
+    double d2 = @foo($typeof(d));
+    short z = @foo(Bar);
+}
+
+
+/* #expect: type_params.ll
+
+  %x = alloca i32, align 4
+  %blockret = alloca i32, align 4
+  %a = alloca i32, align 4
+  %d = alloca double, align 8
+  %blockret1 = alloca double, align 8
+  %a2 = alloca double, align 8
+  %d2 = alloca double, align 8
+  %blockret4 = alloca double, align 8
+  %a5 = alloca double, align 8
+  %z = alloca i16, align 2
+  %blockret7 = alloca i16, align 2
+  %a8 = alloca i16, align 2
+  store i32 0, i32* %a, align 4
+  %0 = load i32, i32* %a, align 4
+  store i32 %0, i32* %blockret, align 4
+  br label %expr_block.exit
+
+expr_block.exit:                                  ; preds = %entry
+  %1 = load i32, i32* %blockret, align 4
+  store i32 %1, i32* %x, align 4
+  store double 0.000000e+00, double* %a2, align 8
+  %2 = load double, double* %a2, align 8
+  store double %2, double* %blockret1, align 8
+  br label %expr_block.exit3
+
+expr_block.exit3:                                 ; preds = %expr_block.exit
+  %3 = load double, double* %blockret1, align 8
+  store double %3, double* %d, align 8
+  store double 0.000000e+00, double* %a5, align 8
+  %4 = load double, double* %a5, align 8
+  store double %4, double* %blockret4, align 8
+  br label %expr_block.exit6
+
+expr_block.exit6:                                 ; preds = %expr_block.exit3
+  %5 = load double, double* %blockret4, align 8
+  store double %5, double* %d2, align 8
+  store i16 0, i16* %a8, align 2
+  %6 = load i16, i16* %a8, align 2
+  store i16 %6, i16* %blockret7, align 2
+  br label %expr_block.exit9
+
+expr_block.exit9:                                 ; preds = %expr_block.exit6
+  %7 = load i16, i16* %blockret7, align 2
+  store i16 %7, i16* %z, align 2
+  ret void
+}

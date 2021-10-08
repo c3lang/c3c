@@ -250,12 +250,14 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 	// If we have a failable it's always the return argument, so we need to copy
 	// the return value into the return value holder.
 	LLVMValueRef return_out = c->return_out;
+	bool is_failable = IS_FAILABLE(signature->rtype);
 	Type *return_type = signature->rtype->type;
+	if (is_failable) return_type = return_type->failable;
 
 	BEValue no_fail;
 
 	// In this case we use the failable as the actual return.
-	if (signature->failable)
+	if (is_failable)
 	{
 		if (return_value && return_value->value)
 		{
@@ -346,18 +348,19 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 
 void llvm_emit_return_implicit(GenContext *c)
 {
-	if (c->cur_func_decl->func_decl.function_signature.rtype->type != type_void)
+	Type *rtype_real = c->cur_func_decl->func_decl.function_signature.rtype->type;
+	if (type_lowering(type_no_fail(rtype_real)) != type_void)
 	{
 		LLVMBuildUnreachable(c->builder);
 		return;
 	}
-	if (!c->cur_func_decl->func_decl.function_signature.failable)
+	if (rtype_real->type_kind == TYPE_FAILABLE)
 	{
 		llvm_emit_return_abi(c, NULL, NULL);
 		return;
 	}
 	BEValue value;
-	llvm_value_set(&value, LLVMConstNull(llvm_get_type(c, type_anyerr)), type_anyerr);
+	llvm_value_set(&value, llvm_get_zero(c, type_anyerr), type_anyerr);
 	llvm_emit_return_abi(c, NULL, &value);
 }
 
@@ -400,7 +403,8 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 		llvm_debug_scope_push(context, context->debug.function);
 	}
 
-	if (signature->failable && signature->failable_abi_info->kind == ABI_ARG_INDIRECT)
+	bool is_failable = IS_FAILABLE(signature->rtype);
+	if (is_failable && signature->failable_abi_info->kind == ABI_ARG_INDIRECT)
 	{
 		context->failable_out = LLVMGetParam(context->function, arg++);
 	}
@@ -415,7 +419,7 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 	else
 	{
 		context->return_out = NULL;
-		if (signature->ret_abi_info && signature->failable)
+		if (signature->ret_abi_info && is_failable)
 		{
 			context->return_out = LLVMGetParam(context->function, arg++);
 		}

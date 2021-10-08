@@ -50,7 +50,6 @@ entry:
   %a.f = alloca i64, align 8
   %err = alloca i64, align 8
   %retparam = alloca i32, align 4
-  store i64 0, i64* %a.f, align 8
   store i32 123, i32* %a, align 4
   store i64 0, i64* %a.f, align 8
   br label %testblock

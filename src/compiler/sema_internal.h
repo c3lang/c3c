@@ -54,5 +54,5 @@ void context_change_scope_with_flags(Context *context, ScopeFlags flags);
 void c_abi_func_create(FunctionSignature *signature);
 AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDomain domain);
 bool expr_is_ltype(Expr *expr);
-bool sema_analyse_expr_value(Context *context, Type *to, Expr *expr);
 
+bool sema_analyse_expr_lvalue(Context *context, Expr *expr);

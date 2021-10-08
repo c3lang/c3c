@@ -88,6 +88,6 @@ func void test10()
     }
     else
     {
-        int g = a; // #error: 'int!' cannot be converted into 'int'
+        int g = a; // #error: 'int!' cannot be converted to 'int'
     }
 }

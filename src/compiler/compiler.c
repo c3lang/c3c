@@ -242,13 +242,19 @@ static void add_global_define(const char *name, Expr *value)
 	stable_set(&dec->module->symbols, dec->name, dec);
 }
 
-static void setup_int_define(const char *id, uint64_t i)
+static void setup_int_define(const char *id, uint64_t i, Type *type)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, strlen(id), fnv1a(id, strlen(id)), &token_type);
 	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
-	expr_const_set_int(&expr->const_expr, i, TYPE_IXX);
-	expr->original_type = expr->type = type_compint;
+	assert(type_is_integer(type));
+	expr_const_set_int(&expr->const_expr, i, type->type_kind);
+	if (expr_const_will_overflow(&expr->const_expr, type->type_kind))
+	{
+		error_exit("Integer define %s overflow.", id);
+	}
+	expr->type = type;
+	expr->const_expr.narrowable = true;
 	expr->span = INVALID_RANGE;
 	expr->resolve_status = RESOLVE_NOT_DONE;
 	void *previous = stable_set(&global_context.compiler_defines, id, expr);
@@ -264,7 +270,7 @@ static void setup_bool_define(const char *id, bool value)
 	id = symtab_add(id, strlen(id), fnv1a(id, strlen(id)), &token_type);
 	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
 	expr_const_set_bool(&expr->const_expr, value);
-	expr->original_type = expr->type = type_bool;
+	expr->type = type_bool;
 	expr->span = INVALID_RANGE;
 	expr->resolve_status = RESOLVE_NOT_DONE;
 	void *previous = stable_set(&global_context.compiler_defines, id, expr);
@@ -275,15 +281,15 @@ static void setup_bool_define(const char *id, bool value)
 }
 void compiler_compile(void)
 {
-	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short);
-	setup_int_define("C_INT_SIZE", platform_target.width_c_int);
-	setup_int_define("C_LONG_SIZE", platform_target.width_c_long);
-	setup_int_define("C_LONG_LONG_SIZE", platform_target.width_c_long_long);
+	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short, type_long);
+	setup_int_define("C_INT_SIZE", platform_target.width_c_int, type_long);
+	setup_int_define("C_LONG_SIZE", platform_target.width_c_long, type_long);
+	setup_int_define("C_LONG_LONG_SIZE", platform_target.width_c_long_long, type_long);
 	setup_bool_define("C_CHAR_IS_SIGNED", platform_target.signed_c_char);
 	setup_bool_define("PLATFORM_BIG_ENDIAN", platform_target.big_endian);
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
-	setup_int_define("COMPILER_OPT_LEVEL", (int)active_target.optimization_level);
-	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (int)active_target.size_optimization_level);
+	setup_int_define("COMPILER_OPT_LEVEL", (int)active_target.optimization_level, type_int);
+	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (int)active_target.size_optimization_level, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
 
 	global_context_clear_errors();

@@ -259,10 +259,12 @@ void c_abi_func_create_riscv(FunctionSignature *signature)
 	unsigned gpr = 8;
 	unsigned fpr = 8;
 
-	Type *return_type = signature->failable ? type_anyerr : signature->rtype->type;
+	bool failable = IS_FAILABLE(signature->rtype);
+	Type *rtype = abi_rtype(signature);
+	Type *return_type = abi_returntype(signature);
 	return_type = type_lowering(return_type);
 	ABIArgInfo *return_abi = riscv_classify_return(return_type);
-	if (signature->failable)
+	if (failable)
 	{
 		signature->failable_abi_info = return_abi;
 	}
@@ -291,9 +293,9 @@ void c_abi_func_create_riscv(FunctionSignature *signature)
 	unsigned arg_fprs_left = platform_target.riscv.flen ? fpr : 0;
 
 	// If we have a failable, then the return type is a parameter.
-	if (signature->failable && signature->rtype->type->type_kind != TYPE_VOID)
+	if (IS_FAILABLE(signature->rtype) && rtype != type_void)
 	{
-		signature->ret_abi_info = riscv_classify_argument_type(type_get_ptr(type_lowering(signature->rtype->type)),
+		signature->ret_abi_info = riscv_classify_argument_type(type_get_ptr(type_lowering(rtype)),
 														 true, &arg_gprs_left, &arg_fprs_left);
 	}
 

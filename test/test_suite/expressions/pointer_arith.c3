@@ -14,5 +14,5 @@ func void test1(ichar* cp)
 func void test2(ichar* cp)
 {
     cp + 1;
-    cp * 1.0; // #error: Cannot multiply 'ichar*' by 'compfloat'
+    cp * 1.0; // #error: 'ichar*' by 'double'
 }

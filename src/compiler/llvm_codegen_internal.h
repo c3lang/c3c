@@ -307,7 +307,7 @@ static inline LLVMValueRef decl_failable_ref(Decl *decl)
 {
 	assert(decl->decl_kind == DECL_VAR);
 	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_failable_ref(decl->var.alias);
-	if (!decl->var.failable) return NULL;
+	if (decl->type->type_kind != TYPE_FAILABLE) return NULL;
 	return decl->var.failable_ref;
 }
 
@@ -411,7 +411,7 @@ static inline LLVMValueRef llvm_get_zero(GenContext *c, Type *type)
 static inline LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val)
 {
 	type = type_lowering(type);
-	assert(type_is_any_integer(type) || type->type_kind == TYPE_BOOL);
+	assert(type_is_integer(type) || type->type_kind == TYPE_BOOL);
 	return LLVMConstInt(llvm_get_type(c, type), val, type_is_integer_signed(type));
 }
 
@@ -438,3 +438,4 @@ static inline bool abi_info_should_flatten(ABIArgInfo *info)
 {
 	return info->kind == ABI_ARG_DIRECT_COERCE && info->direct_coerce.elements > 1U && !info->direct_coerce.prevent_flatten;
 }
+

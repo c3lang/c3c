@@ -12,7 +12,7 @@ static struct
 	Type f16, f32, f64, f128, fxx;
 	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
 	Type voidstar, typeid, anyerr, typeinfo, ctlist;
-	Type str, virtual, virtual_generic;
+	Type str, virtual, virtual_generic, anyfail;
 } t;
 
 Type *type_bool = &t.u1;
@@ -47,6 +47,7 @@ Type *type_compfloat = &t.fxx;
 Type *type_compstr = &t.str;
 Type *type_anyerr = &t.anyerr;
 Type *type_complist = &t.ctlist;
+Type *type_anyfail = &t.anyfail;
 
 static unsigned size_subarray;
 static AlignSize alignment_subarray;
@@ -57,7 +58,8 @@ static AlignSize max_alignment_vector;
 #define PTR_OFFSET 0
 #define INFERRED_ARRAY_OFFSET 1
 #define SUB_ARRAY_OFFSET 2
-#define ARRAY_OFFSET 3
+#define FAILABLE_OFFSET 3
+#define ARRAY_OFFSET 4
 
 Type *type_cint(void)
 {
@@ -144,6 +146,10 @@ const char *type_to_error_string(Type *type)
 			}
 			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
 			return buffer;
+		case TYPE_FAILABLE:
+			if (!type->failable) return "void!";
+			asprintf(&buffer, "%s!", type_to_error_string(type->failable));
+			return buffer;
 		case TYPE_STRLIT:
 			return "string literal";
 		case TYPE_ARRAY:
@@ -187,12 +193,15 @@ void type_append_signature_name(Type *type, char *dst, size_t *offset)
 
 ByteSize type_size(Type *type)
 {
+RETRY:
 	switch (type->type_kind)
 	{
 		case TYPE_BITSTRUCT:
-			return type_size(type->decl->bitstruct.base_type->type);
+			type = type->decl->bitstruct.base_type->type;
+			goto RETRY;
 		case TYPE_DISTINCT:
-			return type_size(type->decl->distinct_decl.base_type);
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
 		case TYPE_VECTOR:
 		{
 			ByteSize width = type_size(type->vector.base) * type->vector.len;
@@ -205,10 +214,16 @@ ByteSize type_size(Type *type)
 		}
 		case CT_TYPES:
 			UNREACHABLE;
+		case TYPE_FAILABLE:
+			type = type->failable;
+			if (!type) return 1;
+			goto RETRY;
 		case TYPE_TYPEDEF:
-			return type_size(type->canonical);
+			type = type->canonical;
+			goto RETRY;
 		case TYPE_ERRTYPE:
-			return type_size(type_usize->canonical);
+			type = type_iptr->canonical;
+			goto RETRY;
 		case TYPE_ENUM:
 			return type->decl->enums.type_info->type->canonical->builtin.bytesize;
 		case TYPE_STRUCT:
@@ -229,7 +244,7 @@ ByteSize type_size(Type *type)
 		case TYPE_STRLIT:
 		case TYPE_FUNC:
 		case TYPE_POINTER:
-			return t.usz.canonical->builtin.bytesize;
+			return t.iptr.canonical->builtin.bytesize;
 		case TYPE_ARRAY:
 			return type_size(type->array.base) * type->array.len;
 		case TYPE_SUBARRAY:
@@ -332,16 +347,22 @@ Type *type_abi_find_single_struct_element(Type *type)
 
 bool type_is_abi_aggregate(Type *type)
 {
+	RETRY:
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
 			return false;
+		case TYPE_FAILABLE:
+			type = type->failable;
+			if (!type) return false;
+			goto RETRY;
 		case TYPE_DISTINCT:
-			return type_is_abi_aggregate(type->decl->distinct_decl.base_type);
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
 		case TYPE_TYPEDEF:
-			return type_is_abi_aggregate(type->canonical);
+			type = type->canonical;
+			goto RETRY;
 		case TYPE_BITSTRUCT:
-			return type_is_abi_aggregate(type->decl->bitstruct.base_type->type);
 		case ALL_FLOATS:
 		case TYPE_VOID:
 		case ALL_INTS:
@@ -495,14 +516,16 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	RETRY:
 	switch (type->type_kind)
 	{
+		case TYPE_FAILABLE:
+			type = type->failable;
+			if (!type) return false;
+			goto RETRY;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
 		case TYPE_BITSTRUCT:
 			type = type->decl->bitstruct.base_type->type;
 			goto RETRY;
-		case TYPE_FXX:
-		case TYPE_IXX:
 		case TYPE_VOID:
 		case TYPE_TYPEID:
 		case TYPE_FUNC:
@@ -584,7 +607,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			type = type_int_unsigned_by_bitsize(type->builtin.bitsize);
 			break;
 		case ALL_UNSIGNED_INTS:
-		case ALL_REAL_FLOATS:
+		case ALL_FLOATS:
 		case TYPE_VECTOR:
 			break;
 		case TYPE_POINTER:
@@ -700,6 +723,7 @@ bool type_is_comparable(Type *type)
 
 AlignSize type_abi_alignment(Type *type)
 {
+	RETRY:
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
@@ -707,7 +731,8 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_UNTYPED_LIST:
 			UNREACHABLE;
 		case TYPE_BITSTRUCT:
-			return type_abi_alignment(type->decl->bitstruct.base_type->type);
+			type = type->decl->bitstruct.base_type->type;
+			goto RETRY;
 		case TYPE_VECTOR:
 		{
 			ByteSize width = type_size(type->vector.base) * type->vector.len;
@@ -721,10 +746,16 @@ AlignSize type_abi_alignment(Type *type)
 		}
 		case TYPE_VOID:
 			return 1;
+		case TYPE_FAILABLE:
+			type = type->failable;
+			if (!type) return 1;
+			goto RETRY;
 		case TYPE_DISTINCT:
-			return type_abi_alignment(type->decl->distinct_decl.base_type);
+			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
 		case TYPE_TYPEDEF:
-			return type_abi_alignment(type->canonical);
+			type = type->canonical;
+			goto RETRY;
 		case TYPE_ENUM:
 			return type->decl->enums.type_info->type->canonical->builtin.abi_alignment;
 		case TYPE_ERRTYPE:
@@ -732,8 +763,6 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return type->decl->alignment;
-		case TYPE_TYPEID:
-			return type_abi_alignment(type_usize);
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
@@ -745,10 +774,12 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 		case TYPE_STRLIT:
+		case TYPE_TYPEID:
 			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
-			return type_abi_alignment(type->array.base);
+			type = type->array.base;
+			goto RETRY;
 		case TYPE_SUBARRAY:
 			return alignment_subarray;
 	}
@@ -789,6 +820,30 @@ static Type *type_generate_ptr(Type *ptr_type, bool canonical)
 	return ptr;
 }
 
+static Type *type_generate_failable(Type *failable_type, bool canonical)
+{
+	if (canonical) failable_type = failable_type->canonical;
+	if (!failable_type->type_cache)
+	{
+		create_type_cache(failable_type);
+	}
+	Type *failable = failable_type->type_cache[FAILABLE_OFFSET];
+	if (failable == NULL)
+	{
+		failable = type_new(TYPE_FAILABLE, strformat("%s!", failable_type->name));
+		failable->pointer = failable_type;
+		failable_type->type_cache[FAILABLE_OFFSET] = failable;
+		if (failable_type == failable_type->canonical)
+		{
+			failable->canonical = failable;
+		}
+		else
+		{
+			failable->canonical = type_generate_failable(failable_type->canonical, true);
+		}
+	}
+	return failable;
+}
 
 static Type *type_generate_subarray(Type *arr_type, bool canonical)
 {
@@ -843,10 +898,26 @@ static Type *type_generate_inferred_array(Type *arr_type, bool canonical)
 }
 
 
+Type *type_get_ptr_recurse(Type *ptr_type)
+{
+	if (ptr_type->type_kind == TYPE_FAILABLE)
+	{
+		ptr_type = ptr_type->failable;
+		return type_get_failable(type_get_ptr(ptr_type));
+	}
+	return type_get_ptr(ptr_type);
 
+}
 Type *type_get_ptr(Type *ptr_type)
 {
+	assert(ptr_type->type_kind != TYPE_FAILABLE);
 	return type_generate_ptr(ptr_type, false);
+}
+
+Type *type_get_failable(Type *failable_type)
+{
+	assert(failable_type->type_kind != TYPE_FAILABLE);
+	return type_generate_failable(failable_type, false);
 }
 
 Type *type_get_subarray(Type *arr_type)
@@ -1050,9 +1121,8 @@ bool type_is_valid_for_vector(Type *type)
 	RETRY:
 	switch (type->type_kind)
 	{
-		case ALL_SIGNED_INTS:
-		case ALL_UNSIGNED_INTS:
-		case ALL_REAL_FLOATS:
+		case ALL_INTS:
+		case ALL_FLOATS:
 		case TYPE_BOOL:
 			return true;
 		case TYPE_TYPEDEF:
@@ -1143,6 +1213,17 @@ static void type_append_name_to_scratch(Type *type)
 			type_append_name_to_scratch(type->pointer);
 			scratch_buffer_append_char('*');
 			break;
+		case TYPE_FAILABLE:
+			if (type->failable)
+			{
+				type_append_name_to_scratch(type->failable);
+			}
+			else
+			{
+				scratch_buffer_append("void");
+			}
+			scratch_buffer_append_char('!');
+			break;
 		case TYPE_SUBARRAY:
 			type_append_name_to_scratch(type->pointer);
 			scratch_buffer_append("[]");
@@ -1168,8 +1249,6 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_VECTOR:
 			scratch_buffer_append(type->name);
 			break;
-		case TYPE_IXX:
-		case TYPE_FXX:
 		case TYPE_STRLIT:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
@@ -1191,7 +1270,6 @@ Type *type_find_function_type(FunctionSignature *signature)
 {
 	scratch_buffer_clear();
 	type_append_name_to_scratch(signature->rtype->type);
-	if (signature->failable) scratch_buffer_append_char('!');
 	scratch_buffer_append_char('(');
 	unsigned elements = vec_size(signature->params);
 	for (unsigned i = 0; i < elements; i++)
@@ -1267,6 +1345,7 @@ void type_setup(PlatformTarget *target)
 
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
 	type_create("complist", &t.ctlist, TYPE_UNTYPED_LIST, 1, 1, 1);
+	t.anyfail = (Type){ .type_kind = TYPE_FAILABLE, .failable = type_void };
 	type_init("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer);
 
 	type_init("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer);
@@ -1276,8 +1355,6 @@ void type_setup(PlatformTarget *target)
 	type_init("virtual*", &t.virtual, TYPE_VIRTUAL_ANY, target->width_pointer * 2, target->align_pointer);
 	type_init("virtual_generic", &t.virtual_generic, TYPE_VIRTUAL, target->width_pointer * 2, target->align_pointer);
 
-	type_create("compint", &t.ixx, TYPE_IXX, 1, 1, 1);
-	type_create("compfloat", &t.fxx, TYPE_FXX, 1, 1, 1);
 
 	type_create_alias("usize", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("isize", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
@@ -1293,6 +1370,33 @@ void type_setup(PlatformTarget *target)
 	type_init("anyerr", &t.anyerr, TYPE_ANYERR, target->width_pointer, target->align_pointer);
 }
 
+int type_kind_bitsize(TypeKind kind)
+{
+	switch (kind)
+	{
+		case TYPE_I8:
+		case TYPE_U8:
+			return 8;
+		case TYPE_I16:
+		case TYPE_U16:
+		case TYPE_F16:
+			return 16;
+		case TYPE_I32:
+		case TYPE_U32:
+		case TYPE_F32:
+			return 32;
+		case TYPE_I64:
+		case TYPE_U64:
+		case TYPE_F64:
+			return 64;
+		case TYPE_I128:
+		case TYPE_U128:
+		case TYPE_F128:
+			return 128;
+		default:
+			UNREACHABLE;
+	}
+}
 bool type_is_scalar(Type *type)
 {
 	RETRY:
@@ -1325,6 +1429,10 @@ bool type_is_scalar(Type *type)
 			goto RETRY;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
+			goto RETRY;
+		case TYPE_FAILABLE:
+			type = type->failable;
+			if (!type) return false;
 			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -1412,46 +1520,6 @@ Type *type_from_token(TokenType type)
 	}
 }
 
-bool type_may_convert_to_boolean(Type *type)
-{
-	RETRY:
-	switch (type->type_kind)
-	{
-		case TYPE_POISONED:
-			return false;
-		case TYPE_TYPEDEF:
-			type = type->canonical;
-			goto RETRY;
-		case TYPE_DISTINCT:
-			type = type->decl->distinct_decl.base_type;
-			goto RETRY;
-		case ALL_INTS:
-		case ALL_FLOATS:
-		case TYPE_POINTER:
-		case TYPE_VIRTUAL:
-		case TYPE_VIRTUAL_ANY:
-		case TYPE_BOOL:
-		case TYPE_SUBARRAY:
-		case TYPE_ENUM:
-		case TYPE_ANYERR:
-		case TYPE_ERRTYPE:
-		case TYPE_STRLIT:
-		case TYPE_UNTYPED_LIST:
-			return true;
-		case TYPE_FUNC:
-		case TYPE_ARRAY:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_BITSTRUCT:
-		case TYPE_VECTOR:
-		case TYPE_STRUCT:
-		case TYPE_TYPEID:
-		case TYPE_TYPEINFO:
-		case TYPE_UNION:
-		case TYPE_VOID:
-			return false;
-	}
-	UNREACHABLE
-}
 bool type_may_have_sub_elements(Type *type)
 {
 	// An alias is not ok.
@@ -1476,15 +1544,13 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 	assert(kind != other_kind);
 
 	// 1. The only conversions need to happen if the other type is a number.
-	if (other_kind < TYPE_I8 || other_kind > TYPE_FXX) return NULL;
+	if (other_kind < TYPE_INTEGER_FIRST || other_kind > TYPE_FLOAT_LAST) return NULL;
 
 	// 2. First check the float case.
-	if (other_kind >= TYPE_F16 && other_kind <= TYPE_FXX)
+	if (other_kind >= TYPE_FLOAT_FIRST && other_kind <= TYPE_FLOAT_LAST)
 	{
 		switch (other_kind)
 		{
-			case TYPE_FXX:
-				return kind <= TYPE_IXX ? type_double : num_type;
 			case TYPE_F16:
 			case TYPE_F32:
 			case TYPE_F64:
@@ -1498,9 +1564,6 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 
 	// Handle integer <=> integer conversions.
 	assert(type_kind_is_any_integer(other_kind) && type_is_integer(num_type));
-
-	// 3. If the other type is IXX, return the current type.
-	if (other_kind == TYPE_IXX) return num_type;
 
 	// 4. Check the bit sizes.
 	unsigned other_bit_size = other_num->builtin.bitsize;
@@ -1574,8 +1637,20 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 
 Type *type_find_max_type(Type *type, Type *other)
 {
-	assert(type->canonical == type);
-	assert(other->canonical == other);
+	if (type == type_anyfail)
+	{
+		return type_get_opt_fail(other, true);
+	}
+	if (other == type_anyfail)
+	{
+		return type_get_failable(type);
+	}
+
+	type = type->canonical;
+	other = other->canonical;
+
+	assert(type->type_kind != TYPE_FAILABLE && other->type_kind != TYPE_FAILABLE);
+
 	if (type == other) return type;
 
 	// Sort types
@@ -1590,6 +1665,7 @@ Type *type_find_max_type(Type *type, Type *other)
 	{
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_POISONED:
+		case TYPE_FAILABLE:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_BOOL:
@@ -1598,17 +1674,12 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_BITSTRUCT:
 			return NULL;
-		case TYPE_IXX:
+		case ALL_INTS:
 			if (other->type_kind == TYPE_DISTINCT && type_underlying_is_numeric(other)) return other;
-			FALLTHROUGH;
-		case ALL_SIGNED_INTS:
-		case ALL_UNSIGNED_INTS:
 			if (other->type_kind == TYPE_ENUM) return type_find_max_type(type, other->decl->enums.type_info->type->canonical);
 			return type_find_max_num_type(type, other);
-		case TYPE_FXX:
+		case ALL_FLOATS:
 			if (other->type_kind == TYPE_DISTINCT && type_is_float(other->decl->distinct_decl.base_type)) return other;
-			FALLTHROUGH;
-		case ALL_REAL_FLOATS:
 			return type_find_max_num_type(type, other);
 		case TYPE_POINTER:
 			return type_find_max_ptr_type(type, other);
@@ -1664,7 +1735,7 @@ Type *type_find_common_ancestor(Type *left, Type *right)
 	if (left->type_kind == TYPE_POINTER)
 	{
 		Type *common = type_find_common_ancestor(left->pointer, right->pointer);
-		return common ? type_generate_ptr(common, true) : NULL;
+		return common ? type_get_ptr(common) : NULL;
 	}
 	if (left->type_kind != TYPE_STRUCT) return NULL;
 

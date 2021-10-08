@@ -148,7 +148,7 @@ switch.case10:                                    ; preds = %next_if8
   br label %switch.case13
 
 next_if11:                                        ; preds = %next_if8
-  %eq12 = icmp eq i64 16, %4
+  %eq12 = icmp eq i64 15, %4
   br i1 %eq12, label %switch.case13, label %next_if14
 
 switch.case13:                                    ; preds = %next_if11, %switch.case10

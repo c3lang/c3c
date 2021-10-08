@@ -289,9 +289,7 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 	VECEACH(enums, i)
 	{
 		Decl *enum_constant = enums[i];
-		uint64_t val = is_unsigned
-				? bigint_as_unsigned(&enum_constant->enum_constant.expr->const_expr.i)
-				: (uint64_t)bigint_as_signed(&enum_constant->enum_constant.expr->const_expr.i);
+		uint64_t val = int_to_u64(enum_constant->enum_constant.expr->const_expr.ixx);
 		LLVMMetadataRef debug_info = LLVMDIBuilderCreateEnumerator(
 				c->debug.builder,
 				enum_constant->name, TOKLEN(enum_constant->name_token),
@@ -481,11 +479,12 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 	// Consider special handling of UTF8 arrays.
 	switch (type->type_kind)
 	{
-		case TYPE_IXX:
-		case TYPE_FXX:
 		case TYPE_TYPEID:
 		case TYPE_STRLIT:
 		case CT_TYPES:
+			UNREACHABLE
+		case TYPE_FAILABLE:
+			// If this is reachable then we're not doing the proper lowering.
 			UNREACHABLE
 		case TYPE_BOOL:
 			return llvm_debug_simple_type(c, type, DW_ATE_boolean);

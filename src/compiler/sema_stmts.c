@@ -27,7 +27,7 @@ static void sema_unwrappable_from_catch_in_else(Context *c, Expr *cond)
 		if (expr->expr_kind != EXPR_IDENTIFIER) continue;
 		Decl *decl = expr->identifier_expr.decl;
 		if (decl->decl_kind != DECL_VAR) continue;
-		assert(decl->var.failable && "The variable should always be failable at this point.");
+		assert(decl->type->type_kind == TYPE_FAILABLE && "The variable should always be failable at this point.");
 
 		// 5. Locals and globals may be unwrapped
 		switch (decl->var.kind)
@@ -54,10 +54,10 @@ static inline bool sema_analyse_block_return_stmt(Context *context, Ast *stateme
 	context->active_scope.jump_end = true;
 	if (statement->return_stmt.expr)
 	{
-		if (!sema_analyse_expr_of_required_type(context,
-	                                           context->expected_block_type,
-	                                           statement->return_stmt.expr, true)) return false;
-		context->expr_failable_return |= statement->return_stmt.expr->failable;
+		if (!sema_analyse_expr(context, statement->return_stmt.expr))
+		{
+			return false;
+		}
 	}
 	vec_add(context->returns, statement);
 	return true;
@@ -94,7 +94,7 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 	// 2. First handle the plain return.
 	if (return_expr == NULL)
 	{
-		if (expected_rtype->canonical != type_void)
+		if (type_no_fail(expected_rtype)->canonical != type_void)
 		{
 			SEMA_ERROR(statement, "Expected to return a result of type %s.", type_to_error_string(expected_rtype));
 			return false;
@@ -103,9 +103,9 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 	}
 
 	// 3. Evaluate the return value to be the expected return type.
-	if (!sema_analyse_expr_of_required_type(context, expected_rtype, return_expr, context->failable_return)) return false;
+	if (!sema_analyse_expr_of_required_type(context, expected_rtype, return_expr)) return false;
 
-	assert(statement->return_stmt.expr->type->canonical == expected_rtype->canonical);
+	assert(type_no_fail(statement->return_stmt.expr->type)->canonical == type_no_fail(expected_rtype)->canonical);
 
 	return true;
 }
@@ -125,7 +125,7 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 	// Case A. Unwrapping a single variable.
 	if (!failable)
 	{
-		if (!sema_analyse_expr(context, NULL, ident)) return false;
+		if (!sema_analyse_expr(context, ident)) return false;
 		if (ident->expr_kind != EXPR_IDENTIFIER)
 		{
 			SEMA_ERROR(ident, "Only single identifiers may be unwrapped using 'try var', maybe you wanted 'try (expr)' instead?");
@@ -137,7 +137,7 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 			SEMA_ERROR(ident, "Expected this to be the name of a failable variable, but it isn't. Did you mistype?");
 			return false;
 		}
-		if (!decl->var.failable)
+		if (!IS_FAILABLE(decl))
 		{
 			if (decl->var.kind == VARDECL_UNWRAPPED)
 			{
@@ -148,7 +148,7 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 			return false;
 		}
 		expr->try_unwrap_expr.decl = decl;
-		expr_set_type(expr, type_bool);
+		expr->type = type_bool;
 		sema_unwrap_var(context, decl);
 		expr->resolve_status = RESOLVE_DONE;
 		return true;
@@ -166,13 +166,21 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 	}
 
 	// 2. If we have a type for the variable, resolve it.
-	if (var_type && !sema_resolve_type_info(context, var_type)) return false;
+	if (var_type)
+	{
+		if (!sema_resolve_type_info(context, var_type)) return false;
+		if (IS_FAILABLE(var_type))
+		{
+			SEMA_ERROR(var_type, "Only non-failable types may be used as types for 'try', please remove the '!'.");
+			return false;
+		}
+	}
 
 	// 3. We interpret this as an assignment to an existing variable.
 	if (!var_type && !implicit_declaration)
 	{
 		// 3a. Resolve the identifier.
-		if (!sema_analyse_expr_value(context, NULL, ident)) return false;
+		if (!sema_analyse_expr_lvalue(context, ident)) return false;
 
 		// 3b. Make sure it's assignable
 		if (!expr_is_ltype(ident))
@@ -182,7 +190,7 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 		}
 
 		// 3c. It can't be failable either.
-		if (ident->failable)
+		if (IS_FAILABLE(ident))
 		{
 			if (ident->expr_kind == EXPR_IDENTIFIER)
 			{
@@ -196,7 +204,15 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 		}
 
 		// 3d. We can now analyse the expression using the variable type.
-		if (!sema_analyse_expr_of_required_type(context, ident->type, failable, true)) return false;
+		if (!sema_analyse_expr(context, failable)) return false;
+
+		if (!IS_FAILABLE(failable))
+		{
+			SEMA_ERROR(failable, "Expected a failable expression to 'try' here. If it isn't a failable, remove 'try'.");
+			return false;
+		}
+
+		if (!cast_implicit_ignore_failable(failable, ident->type)) return false;
 
 		expr->try_unwrap_expr.assign_existing = true;
 		expr->try_unwrap_expr.lhs = ident;
@@ -226,16 +242,24 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 			return false;
 		}
 
-		// 4a. Type may be assigned or inferred.
-		Type *type = var_type ? var_type->type : NULL;
-
 		// 4b. Evaluate the expression
-		if (!sema_analyse_expr_of_required_type(context, type, failable, true)) return false;
+		if (!sema_analyse_expr(context, failable)) return false;
+
+		if (!IS_FAILABLE(failable))
+		{
+			SEMA_ERROR(failable, "Expected a failable expression to 'try' here. If it isn't a failable, remove 'try'.");
+			return false;
+		}
+
+		if (var_type)
+		{
+			if (!cast_implicit_ignore_failable(failable, var_type->type)) return false;
+		}
 
 		// 4c. Create a type_info if needed.
 		if (!var_type)
 		{
-			var_type = type_info_new_base(failable->type, failable->span);
+			var_type = type_info_new_base(failable->type->failable, failable->span);
 		}
 
 		// 4d. A new declaration is created.
@@ -247,14 +271,8 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 		expr->try_unwrap_expr.decl = decl;
 	}
 
-	if (!failable->failable)
-	{
-		SEMA_ERROR(failable, "Expected a failable expression to 'try' here. If it isn't a failable, remove 'try'.");
-		return false;
-	}
-
 	expr->try_unwrap_expr.failable = failable;
-	expr_set_type(expr, type_bool);
+	expr->type = type_bool;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -269,9 +287,9 @@ static inline bool sema_analyse_try_unwrap_chain(Context *context, Expr *expr)
 			if (!sema_analyse_try_unwrap(context, chain)) return false;
 			continue;
 		}
-		if (!sema_analyse_expr_of_required_type(context, type_bool, chain, false)) return false;
+		if (!sema_analyse_cond_expr(context, chain)) return false;
 	}
-	expr_set_type(expr, type_bool);
+	expr->type = type_bool;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -296,7 +314,7 @@ static inline bool sema_analyse_catch_unwrap(Context *context, Expr *expr)
 
 	if (!type && !implicit_declaration)
 	{
-		if (!sema_analyse_expr_value(context, NULL, ident)) return false;
+		if (!sema_analyse_expr_lvalue(context, ident)) return false;
 
 		if (!expr_is_ltype(ident))
 		{
@@ -361,14 +379,14 @@ RESOLVE_EXPRS:;
 	VECEACH(exprs, i)
 	{
 		Expr *fail = exprs[i];
-		if (!sema_analyse_expr(context, NULL, fail)) return false;
-		if (!fail->failable)
+		if (!sema_analyse_expr(context, fail)) return false;
+		if (fail->type->type_kind != TYPE_FAILABLE)
 		{
 			SEMA_ERROR(fail, "This expression is not failable, did you add it by mistake?");
 			return false;
 		}
 	}
-	expr_set_type(expr, type_anyerr);
+	expr->type = type_anyerr;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -414,7 +432,7 @@ static inline bool sema_analyse_last_cond(Context *context, Expr *expr, bool may
 			}
 			return sema_analyse_catch_unwrap(context, expr);
 		default:
-			return sema_analyse_expr(context, NULL, expr);
+			return sema_analyse_expr(context, expr);
 	}
 }
 /**
@@ -435,19 +453,19 @@ static inline bool sema_analyse_cond_list(Context *context, Expr *expr, bool may
 	// 1. Special case, there are no entries, so the type is void
 	if (entries == 0)
 	{
-		expr_set_type(expr, type_void);
+		expr->type = type_void;
 		return true;
 	}
 
 	// 2. Walk through each of our declarations / expressions as if they were regular expressions.
 	for (unsigned i = 0; i < entries - 1; i++)
 	{
-		if (!sema_analyse_expr(context, NULL, dexprs[i])) return false;
+		if (!sema_analyse_expr(context, dexprs[i])) return false;
 	}
 
 	if (!sema_analyse_last_cond(context, dexprs[entries - 1], may_unwrap)) return false;
 
-	expr_set_type(expr, dexprs[entries - 1]->type);
+	expr->type = dexprs[entries - 1]->type;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -495,11 +513,12 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 			return false;
 		}
 		// 3e. Expect that it isn't a failable
-		if (init->failable && !decl->var.unwrap)
+		if (IS_FAILABLE(init) && !decl->var.unwrap)
 		{
-			SEMA_ERROR(last, "'%s!' cannot be converted into '%s'.",
-					   type_to_error_string(last->type),
-					   cast_to_bool ? "bool" : type_to_error_string(init->type));
+			SEMA_ERROR(last, "%s cannot be converted to %s.",
+					   type_quoted_error_string(last->type),
+					   cast_to_bool ? "'bool'" : type_quoted_error_string(init->type));
+			return false;
 		}
 		// TODO document
 		if (!decl->var.unwrap && cast_to_bool && cast_to_bool_kind(decl->var.type_info->type) == CAST_ERROR)
@@ -510,11 +529,12 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 		return true;
 	}
 	// 3a. Check for failables in case of an expression.
-	if (last->failable)
+	if (IS_FAILABLE(last))
 	{
-		SEMA_ERROR(last, "'%s!' cannot be converted into '%s'.",
-				   type_to_error_string(last->type),
-				   cast_to_bool ? "bool" : type_to_error_string(last->type));
+		SEMA_ERROR(last, "%s cannot be converted to %s.",
+				   type_quoted_error_string(last->type),
+				   cast_to_bool ? "'bool'" : type_quoted_error_string(type_no_fail(last->type)));
+		return false;
 	}
 	// 3b. Cast to bool if that is needed
 	if (cast_to_bool)
@@ -618,7 +638,7 @@ static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 	SCOPE_START
 
 		// 10. Try to evaluate and implicitly cast to boolean.
-		if (!sema_analyse_expr_of_required_type(context, type_bool, expr, false))
+		if (!sema_analyse_cond_expr(context, expr))
 		{
 			// 10a. On failure, pop and return false.
 			return SCOPE_POP_ERROR();
@@ -669,7 +689,7 @@ bool sema_analyse_local_decl(Context *context, Decl *decl)
 		}
 		if (!decl->var.type_info)
 		{
-			if (!sema_analyse_expr(context, NULL, init_expr)) return false;
+			if (!sema_analyse_expr(context, init_expr)) return false;
 			decl->type = init_expr->type;
 			// Skip further evaluation.
 			goto EXIT_OK;
@@ -692,7 +712,7 @@ bool sema_analyse_local_decl(Context *context, Decl *decl)
 			goto EXIT_OK;
 		}
 
-		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, decl->var.failable || decl->var.unwrap ? FAILABLE_YES : FAILABLE_NO)) return decl_poison(decl);
+		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false)) return decl_poison(decl);
 
 		if (type_is_inferred)
 		{
@@ -700,18 +720,13 @@ bool sema_analyse_local_decl(Context *context, Decl *decl)
 			assert(right_side_type->type_kind == TYPE_ARRAY);
 			decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
 		}
-		else if (decl->type)
-		{
-			expr_set_type(decl->var.init_expr, decl->type);
-		}
 
-
-		if (decl->var.unwrap && !init->failable)
+		if (decl->var.unwrap && init->type->type_kind != TYPE_FAILABLE)
 		{
 			SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
 			return decl_poison(decl);
 		}
-
+		if (init->expr_kind == EXPR_CONST) init->const_expr.narrowable = false;
 	}
 	EXIT_OK:
 	if (decl->var.is_static)
@@ -739,15 +754,37 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 	return sema_analyse_local_decl(context, statement->declare_stmt);
 }
 
-static inline bool sema_analyse_define_stmt(Context *context, Ast *statement)
+/**
+ * Check "var $foo = ... " and "var $Foo = ..."
+ */
+static inline bool sema_analyse_var_stmt(Context *context, Ast *statement)
 {
-	Decl *decl = statement->declare_stmt;
+	// 1. Pick the declaration.
+	Decl *decl = statement->var_stmt;
+
+	// 2. Convert it to a NOP early
 	statement->ast_kind = AST_NOP_STMT;
+
 	assert(decl->decl_kind == DECL_VAR);
 	switch (decl->var.kind)
 	{
 		case VARDECL_LOCAL_CT_TYPE:
-			if (decl->var.type_info && !sema_resolve_type_info(context, decl->var.type_info)) return false;
+			// Locally declared compile time type.
+			if (decl->var.type_info)
+			{
+				SEMA_ERROR(decl->var.type_info, "Compile time type variables may not have a type.");
+				return false;
+			}
+			Expr *init = decl->var.init_expr;
+			if (init)
+			{
+				if (!sema_analyse_expr_lvalue(context, init)) return false;
+				if (init->expr_kind != EXPR_TYPEINFO)
+				{
+					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
+					return false;
+				}
+			}
 			break;
 		case VARDECL_LOCAL_CT:
 			if (decl->var.type_info && !sema_resolve_type_info(context, decl->var.type_info)) return false;
@@ -761,7 +798,7 @@ static inline bool sema_analyse_define_stmt(Context *context, Ast *statement)
 				}
 				if (decl->var.init_expr)
 				{
-					if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr, false)) return false;
+					if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr)) return false;
 					if (!expr_is_constant_eval(decl->var.init_expr, CONSTANT_EVAL_ANY))
 					{
 						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression assigned to %s.", decl->name);
@@ -779,7 +816,7 @@ static inline bool sema_analyse_define_stmt(Context *context, Ast *statement)
 				Expr *init = decl->var.init_expr;
 				if (init)
 				{
-					if (!sema_analyse_expr(context, NULL, init)) return false;
+					if (!sema_analyse_expr(context, init)) return false;
 					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
 					{
 						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression assigned to %s.", decl->name);
@@ -803,7 +840,7 @@ static inline bool sema_analyse_define_stmt(Context *context, Ast *statement)
 
 static inline bool sema_analyse_expr_stmt(Context *context, Ast *statement)
 {
-	if (!sema_analyse_expr(context, NULL, statement->expr_stmt)) return false;
+	if (!sema_analyse_expr(context, statement->expr_stmt)) return false;
 	return true;
 }
 
@@ -860,7 +897,7 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 			// Conditional scope start
 			SCOPE_START
 				Expr *cond = statement->for_stmt.cond;
-				success = sema_analyse_expr_of_required_type(context, type_bool, cond, false);
+				success = sema_analyse_cond_expr(context, cond);
 				statement->for_stmt.cond = context_pop_defers_and_wrap_expr(context, cond);
 				// If this is const true, then set this to infinite and remove the expression.
 				if (statement->for_stmt.cond->expr_kind == EXPR_CONST && statement->for_stmt.cond->const_expr.b)
@@ -876,7 +913,7 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 			// Incr scope start
 			SCOPE_START
 				Expr *incr = statement->for_stmt.incr;
-				success = sema_analyse_expr(context, NULL, incr);
+				success = sema_analyse_expr(context, incr);
 				statement->for_stmt.incr = context_pop_defers_and_wrap_expr(context, incr);
 				// Incr scope end
 			SCOPE_END;
@@ -919,7 +956,8 @@ static inline bool sema_inline_default_iterator(Context *context, Expr *expr, De
 	expr->call_expr = (ExprCall) {
 		.is_type_method = true,
 	};
-	return sema_expr_analyse_general_call(context, NULL, expr, decl, inner, decl->decl_kind == DECL_MACRO);
+	REMINDER("Failability");
+	return sema_expr_analyse_general_call(context, expr, decl, inner, decl->decl_kind == DECL_MACRO, false);
 }
 
 static Decl *find_iterator(Context *context, Expr *enumerator)
@@ -1085,7 +1123,7 @@ static bool sema_rewrite_foreach_to_for(Context *context, Ast *statement, Expr *
 	expr->decl_expr = iterator;
 	vec_add(init_expr->cond_expr, expr);
 	init_expr->resolve_status = RESOLVE_DONE;
-	expr_set_type(init_expr, iterator->type);
+	init_expr->type = iterator->type;
 
 	// Generate "next": it.next(&value)
 	Expr *call = expr_new(EXPR_CALL, enumerator->span);
@@ -1101,7 +1139,12 @@ static bool sema_rewrite_foreach_to_for(Context *context, Ast *statement, Expr *
 	Expr *iterator_access = expr_variable(iterator);
 	expr_insert_addr(iterator_access);
 
-	if (!sema_expr_analyse_general_call(context, NULL, call, next_method, iterator_access, next_method->decl_kind == DECL_MACRO)) return false;
+	REMINDER("Failability");
+	if (!sema_expr_analyse_general_call(context,
+	                                    call,
+	                                    next_method,
+	                                    iterator_access,
+	                                    next_method->decl_kind == DECL_MACRO, false)) return false;
 	call->resolve_status = RESOLVE_DONE;
 
 	statement->for_stmt = (AstForStmt){ .init = init_expr,
@@ -1179,7 +1222,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 		}
 
 		// because we don't want the index + variable to move into the internal scope
-		if (!sema_analyse_expr(context, inferred_type, enumerator))
+		if (!sema_analyse_inferred_expr(context, inferred_type, enumerator))
 		{
 			// Exit early here, because semantic checking might be messed up otherwise.
 			return SCOPE_POP_ERROR();
@@ -1242,17 +1285,18 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 			// Analyse the declaration.
 			if (!sema_analyse_local_decl(context, index)) return SCOPE_POP_ERROR();
 
+			if (index->type->type_kind == TYPE_FAILABLE)
+			{
+				SEMA_ERROR(index->var.type_info, "The index may not be a failable.");
+				return SCOPE_POP_ERROR();
+			}
+
 			// Make sure that the index is an integer.
 			if (!type_is_integer(type_flatten(index->type)))
 			{
 				SEMA_ERROR(index->var.type_info,
 				           "Index must be an integer type, '%s' is not valid.",
 				           type_to_error_string(index->type));
-				return SCOPE_POP_ERROR();
-			}
-			if (index->var.failable)
-			{
-				SEMA_ERROR(index->var.type_info, "The index may not be a failable.");
 				return SCOPE_POP_ERROR();
 			}
 		}
@@ -1272,7 +1316,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 		// Analyse the value declaration.
 		if (!sema_analyse_local_decl(context, var)) return SCOPE_POP_ERROR();
 
-		if (var->var.failable)
+		if (IS_FAILABLE(var))
 		{
 			SEMA_ERROR(var->var.type_info, "The variable may not be a failable.");
 			return SCOPE_POP_ERROR();
@@ -1287,7 +1331,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 		{
 			// This is hackish, replace when cast is refactored.
 			Expr dummy = { .resolve_status = RESOLVE_DONE, .span = { var->var.type_info->span.loc,
-			                                                         var->span.end_loc }, .expr_kind = EXPR_IDENTIFIER, .type = expected_var_type, .original_type = expected_var_type };
+			                                                         var->span.end_loc }, .expr_kind = EXPR_IDENTIFIER, .type = expected_var_type };
 			if (!cast_implicit(&dummy, var->type)) return SCOPE_POP_ERROR();
 
 			assert(dummy.expr_kind == EXPR_CAST);
@@ -1418,7 +1462,7 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 
 static bool sema_analyse_asm_stmt(Context *context, Ast *stmt)
 {
-	if (!sema_analyse_expr(context, NULL, stmt->asm_stmt.body)) return false;
+	if (!sema_analyse_expr(context, stmt->asm_stmt.body)) return false;
 	if (stmt->asm_stmt.body->expr_kind != EXPR_CONST
 		|| stmt->asm_stmt.body->const_expr.const_kind != CONST_STRING)
 	{
@@ -1594,7 +1638,7 @@ static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 
 	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? parent->switch_stmt.cond->type : type_anyerr;
 
-	if (!sema_analyse_expr_of_required_type(context, expected_type, target, false)) return false;
+	if (!sema_analyse_expr_of_required_type(context, expected_type, target)) return false;
 
 	if (target->expr_kind == EXPR_CONST)
 	{
@@ -1720,9 +1764,9 @@ static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_st
 	Expr *case_expr = case_stmt->case_stmt.expr;
 
 	// 1. Try to do implicit conversion to the correct type.
-	if (!sema_analyse_expr(context, to_type, case_expr)) return false;
+	if (!sema_analyse_inferred_expr(context, to_type, case_expr)) return false;
 
-	Type *case_type = case_expr->original_type->canonical;
+	Type *case_type = case_expr->type->canonical;
 	Type *to_type_canonical = to_type->canonical;
 
 	// 3. If we already have the same type we're done.
@@ -1730,7 +1774,7 @@ static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_st
 
 	// 4. Otherwise check if we have an enum receiving type and a number on
 	//    in the case. In that case we do an implicit conversion.
-	if (to_type_canonical->type_kind == TYPE_ENUM && type_is_any_integer(case_type))
+	if (to_type_canonical->type_kind == TYPE_ENUM && type_is_integer(case_type))
 	{
 		return cast(case_expr, to_type);
 	}
@@ -1758,7 +1802,7 @@ static inline bool sema_analyse_compound_statement_no_scope(Context *context, As
 static inline bool sema_check_type_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index)
 {
 	Expr *expr = case_stmt->case_stmt.expr;
-	if (!sema_analyse_expr_of_required_type(context, type_typeid, expr, false)) return false;
+	if (!sema_analyse_expr_of_required_type(context, type_typeid, expr)) return false;
 
 	if (expr->expr_kind == EXPR_CONST)
 	{
@@ -1810,7 +1854,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 		return false;
 	}
 	// We need an if chain if this isn't an integer type.
-	bool if_chain = !type_is_any_integer(type_flatten(switch_type));
+	bool if_chain = !type_is_integer(type_flatten(switch_type));
 
 	Ast *default_case = NULL;
 	assert(context->active_scope.defer_start == context->active_scope.defer_last);
@@ -1895,7 +1939,7 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 				if (use_type_id)
 				{
 					Expr *expr = stmt->case_stmt.expr;
-					if (!sema_analyse_expr_value(context, NULL, expr)) return false;
+					if (!sema_analyse_expr_lvalue(context, expr)) return false;
 					if (stmt->case_stmt.expr->expr_kind != EXPR_TYPEINFO)
 					{
 						SEMA_ERROR(stmt, "Unexpectedly encountered a value rather than a type in the $case");
@@ -1921,8 +1965,7 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 				{
 					if (!sema_analyse_expr_of_required_type(context,
 					                                        cond->type,
-					                                        stmt->case_stmt.expr,
-					                                        false))
+					                                        stmt->case_stmt.expr))
 					{
 						return false;
 					}
@@ -1956,7 +1999,7 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 static bool sema_analyse_ct_switch_stmt(Context *context, Ast *statement)
 {
 	Expr *cond = statement->ct_switch_stmt.cond;
-	if (!sema_analyse_expr(context, NULL, cond)) return false;
+	if (!sema_analyse_expr(context, cond)) return false;
 	if (cond->expr_kind != EXPR_CONST && cond->expr_kind != EXPR_TYPEID)
 	{
 		SEMA_ERROR(cond, "A compile time $switch must be over a constant value.");
@@ -2018,7 +2061,7 @@ bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
 	Expr *message = statement->ct_assert_stmt.message;
 	if (message)
 	{
-		if (!sema_analyse_expr(context, type_compstr, message)) return false;
+		if (!sema_analyse_expr(context, message)) return false;
 		if (message->type->type_kind != TYPE_STRLIT)
 		{
 			SEMA_ERROR(message, "Expected a string as the error message.");
@@ -2049,7 +2092,7 @@ bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 	Expr *message = statement->assert_stmt.message;
 	if (message)
 	{
-		if (!sema_analyse_expr(context, type_compstr, message)) return false;
+		if (!sema_analyse_expr(context, message)) return false;
 		if (message->type->type_kind != TYPE_STRLIT)
 		{
 			SEMA_ERROR(message, "Expected a string as the error message.");
@@ -2061,7 +2104,7 @@ bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 	}
 	else
 	{
-		if (!sema_analyse_expr_of_required_type(context, type_bool, expr, false)) return false;
+		if (!sema_analyse_assigned_expr(context, type_bool, expr, false)) return false;
 	}
 	return true;
 }
@@ -2144,8 +2187,8 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 			return false;
 		case AST_DEFER_STMT:
 			return sema_analyse_defer_stmt(context, statement);
-		case AST_DEFINE_STMT:
-			return sema_analyse_define_stmt(context, statement);
+		case AST_VAR_STMT:
+			return sema_analyse_var_stmt(context, statement);
 		case AST_DO_STMT:
 			return sema_analyse_do_stmt(context, statement);
 		case AST_EXPR_STMT:
@@ -2219,7 +2262,7 @@ static bool sema_analyse_requires(Context *context, Ast *docs, Ast ***asserts)
 				SEMA_ERROR(expr, "Only expressions are allowed.");
 				return false;
 			}
-			if (!sema_analyse_expr_of_required_type(context, type_bool, expr, false)) return false;
+			if (!sema_analyse_cond_expr(context, expr)) return false;
 			Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
 			assert->assert_stmt.expr = expr;
 			assert->assert_stmt.message = comment;
@@ -2243,12 +2286,10 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 			.current_local = &context->locals[0]
 	};
 	context->macro_scope = (MacroScope) { 0 };
-	context->failable_return = signature->failable;
 
 	// Clear returns
 	vec_resize(context->returns, 0);
 	context->scope_id = 0;
-	context->expected_block_type = NULL;
 	context->in_volatile_section = 0;
 	context->continue_target = 0;
 	context->next_target = 0;
@@ -2283,11 +2324,11 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 			assert(context->active_scope.depth == 1);
 			if (!context->active_scope.jump_end)
 			{
-				Type *canonical_rtype = signature->rtype->type->canonical;
+				Type *canonical_rtype = type_no_fail(signature->rtype->type)->canonical;
 				if (canonical_rtype != type_void)
 				{
 					// IMPROVE better pointer to end.
-					SEMA_ERROR(func, "Missing return statement at the end of the function.");
+					SEMA_TOKID_ERROR(func->name_token, "Missing return statement at the end of the function.");
 					return false;
 				}
 			}

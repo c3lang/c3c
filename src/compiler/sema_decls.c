@@ -497,7 +497,7 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 	if (param->var.init_expr)
 	{
 		Expr *expr = param->var.init_expr;
-		if (!sema_analyse_expr_of_required_type(context, param->type, expr, false)) return false;
+		if (!sema_analyse_assigned_expr(context, param->type, expr, false)) return false;
 		Expr *inner = expr;
 		while (inner->expr_kind == EXPR_CAST) inner = expr->cast_expr.expr;
 		if (inner->expr_kind != EXPR_CONST)
@@ -587,13 +587,14 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 	switch (base->type_kind)
 	{
 		case TYPE_STRLIT:
-		case TYPE_IXX:
-		case TYPE_FXX:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 		case CT_TYPES:
 			UNREACHABLE
+			return false;
+		case TYPE_FAILABLE:
+			SEMA_ERROR(decl, "You cannot create a distinct type from a failable.");
 			return false;
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VIRTUAL:
@@ -609,9 +610,8 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 		case TYPE_TYPEID:
 			SEMA_ERROR(decl, "Cannot create a distinct type from %s.", type_quoted_error_string(base));
 		case TYPE_BOOL:
-		case ALL_SIGNED_INTS:
-		case ALL_UNSIGNED_INTS:
-		case ALL_REAL_FLOATS:
+		case ALL_INTS:
+		case ALL_FLOATS:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
 		case TYPE_BITSTRUCT:
@@ -644,10 +644,7 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 	DEBUG_LOG("* Enum type resolved to %s.", type->name);
 	bool success = true;
 	unsigned enums = vec_size(decl->enums.values);
-	BigInt value;
-	BigInt add;
-	bigint_init_unsigned(&add, 1);
-	bigint_init_unsigned(&value, 0);
+	Int128 value = { 0, 0 };
 
 	for (unsigned i = 0; i < enums; i++)
 	{
@@ -668,23 +665,24 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 		if (!expr)
 		{
 			expr = expr_new(EXPR_CONST, source_span_from_token_id(enum_value->name_token));
-			expr_set_type(expr, type);
+			expr->type = type;
 			expr->resolve_status = RESOLVE_NOT_DONE;
-			bigint_init_bigint(&expr->const_expr.i, &value);
-			expr->const_expr.int_type = TYPE_IXX;
+			REMINDER("Do range check");
+			expr->const_expr.ixx = (Int) { value, canonical->type_kind };
 			expr->const_expr.const_kind = CONST_INTEGER;
-			expr_set_type(expr, type_compint);
+			expr->const_expr.narrowable = true;
+			expr->type = canonical;
 			enum_value->enum_constant.expr = expr;
 		}
 
 		// We try to convert to the desired type.
-		if (!sema_analyse_expr_of_required_type(context, type, expr, false))
+		if (!sema_analyse_expr_of_required_type(context, type, expr))
 		{
 			success = false;
 			enum_value->resolve_status = RESOLVE_DONE;
 			decl_poison(enum_value);
 			// Reset!
-			bigint_init_unsigned(&value, 0);
+			value = (Int128) { 0, 0 };
 			continue;
 		}
 
@@ -701,7 +699,7 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 		}
 
 		// Update the value
-		bigint_add(&value, &expr->const_expr.i, &add);
+		value = i128_add64(value, 1);
 		DEBUG_LOG("* Value: %s", expr_const_to_error_string(&expr->const_expr));
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
@@ -897,26 +895,24 @@ AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDoma
 				SEMA_TOKID_ERROR(attr->name, "'align' requires an power-of-2 argument, e.g. align(8).");
 				return ATTRIBUTE_NONE;
 			}
-			if (!sema_analyse_expr(context, type_usize, attr->expr)) return false;
-			if (attr->expr->expr_kind != EXPR_CONST || !type_is_any_integer(attr->expr->type->canonical))
+			if (!sema_analyse_expr(context, attr->expr)) return false;
+			if (attr->expr->expr_kind != EXPR_CONST || !type_is_integer(attr->expr->type->canonical))
 			{
 				SEMA_ERROR(attr->expr, "Expected a constant integer value as argument.");
 				return ATTRIBUTE_NONE;
 			}
 			{
-				BigInt comp;
-				bigint_init_unsigned(&comp, MAX_ALIGNMENT);
-				if (bigint_cmp(&attr->expr->const_expr.i, &comp) == CMP_GT)
+				if (int_ucomp(attr->expr->const_expr.ixx, MAX_ALIGNMENT, BINARYOP_GT))
 				{
 					SEMA_ERROR(attr->expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
 					return ATTRIBUTE_NONE;
 				}
-				if (bigint_cmp_zero(&attr->expr->const_expr.i) != CMP_GT)
+				if (int_ucomp(attr->expr->const_expr.ixx, 0, BINARYOP_LE))
 				{
 					SEMA_ERROR(attr->expr, "Alignment must be greater than zero.");
 					return ATTRIBUTE_NONE;
 				}
-				uint64_t align = bigint_as_unsigned(&attr->expr->const_expr.i);
+				uint64_t align = int_to_u64(attr->expr->const_expr.ixx);
 				if (!is_power_of_two(align))
 				{
 					SEMA_ERROR(attr->expr, "Alignment must be a power of two.");
@@ -938,7 +934,7 @@ AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDoma
 				SEMA_TOKID_ERROR(attr->name, "'%s' requires a string argument, e.g. %s(\"foo\").", TOKSTR(attr->name), TOKSTR(attr->name));
 				return ATTRIBUTE_NONE;
 			}
-			if (!sema_analyse_expr(context, NULL, attr->expr)) return false;
+			if (!sema_analyse_expr(context, attr->expr)) return false;
 			if (attr->expr->expr_kind != EXPR_CONST || attr->expr->type->canonical != type_compstr)
 			{
 				SEMA_ERROR(attr->expr, "Expected a constant string value as argument.");
@@ -1333,7 +1329,7 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 		}
 		if (!decl->var.type_info)
 		{
-			if (!sema_analyse_expr(context, NULL, init_expr)) return false;
+			if (!sema_analyse_expr(context, init_expr)) return false;
 			decl->type = init_expr->type;
 			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 
@@ -1358,7 +1354,6 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 	{
 		bool type_is_inferred = decl->type->type_kind == TYPE_INFERRED_ARRAY;
 		Expr *init = decl->var.init_expr;
-
 		// Handle explicit undef
 		if (init->expr_kind == EXPR_UNDEF)
 		{
@@ -1376,7 +1371,8 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 			decl->resolve_status = RESOLVE_DONE;
 			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
 		}
-		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, decl->var.failable || decl->var.unwrap ? FAILABLE_YES : FAILABLE_NO)) return decl_poison(decl);
+
+		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false)) return decl_poison(decl);
 
 		if (type_is_inferred)
 		{
@@ -1386,13 +1382,13 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 		}
 		else if (decl->type)
 		{
-			expr_set_type(decl->var.init_expr, decl->type);
+			decl->var.init_expr->type = decl->type;
 		}
 
 		Expr *init_expr = decl->var.init_expr;
 
 		// 1. Check type.
-		if (!sema_analyse_expr_of_required_type(context, decl->type, init_expr, false)) return false;
+		if (!sema_analyse_assigned_expr(context, decl->type, init_expr, false)) return false;
 
 		// 2. Check const-ness
 		if ((is_global || decl->var.is_static) && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_ANY))
@@ -1401,12 +1397,13 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 		}
 		else
 		{
-			if (decl->var.unwrap && !init->failable)
+			if (decl->var.unwrap && init->type->type_kind != TYPE_FAILABLE)
 			{
 				SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
 				return decl_poison(decl);
 			}
 		}
+		if (init_expr->expr_kind == EXPR_CONST) init_expr->const_expr.narrowable = false;
 	}
 	EXIT_OK:
 	if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);

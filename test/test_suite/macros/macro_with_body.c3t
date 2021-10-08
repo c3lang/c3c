@@ -43,7 +43,7 @@ func void main()
 
 }
 
-// #expect: withbody.ll
+/* #expect: withbody.ll
 
 define i32 @withbody.Foo__mutate(%Foo* %0)
 entry:

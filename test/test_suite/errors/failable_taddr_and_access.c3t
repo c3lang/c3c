@@ -1,0 +1,124 @@
+// #target: x64-darwin
+
+module test;
+struct Foo
+{
+    int x, y;
+}
+
+errtype MyErr
+{
+    FOO
+}
+
+extern func int printf(char *c, ...);
+
+func void main()
+{
+    int! z = 2;
+    Foo*! w = &&Foo{ z, 0 };
+    printf("%d\n", w.x);
+    z = MyErr.FOO!;
+    w = &&Foo{ z, 0 };
+    printf("Not visible: %d\n", w.x);
+}
+
+/* #expect: test.ll
+
+%Foo = type { i32, i32 }
+
+@Foo = linkonce_odr constant i8 1
+@"test.MyErr$elements" = linkonce_odr constant [1 x i8*] zeroinitializer
+@MyErr = linkonce_odr constant i8 1
+@.str = private constant [4 x i8] c"%d\0A\00", align 1
+@.str.1 = private constant [17 x i8] c"Not visible: %d\0A\00", align 1
+
+; Function Attrs: nounwind
+declare i32 @printf(i8*, ...) #0
+
+; Function Attrs: nounwind
+define void @main() #0 {
+entry:
+  %z = alloca i32, align 4
+  %z.f = alloca i64, align 8
+  %w = alloca %Foo*, align 8
+  %w.f = alloca i64, align 8
+  %literal = alloca %Foo, align 4
+  %literal5 = alloca %Foo, align 4
+  store i64 0, i64* %z.f, align 8
+  store i32 2, i32* %z, align 4
+  store i64 0, i64* %z.f, align 8
+  %0 = getelementptr inbounds %Foo, %Foo* %literal, i32 0, i32 0
+  %1 = load i64, i64* %z.f, align 8
+  %not_err = icmp eq i64 %1, 0
+  br i1 %not_err, label %after_check, label %error
+
+error:                                            ; preds = %entry
+  store i64 %1, i64* %w.f, align 8
+  br label %after_assign
+
+after_check:                                      ; preds = %entry
+  %2 = load i32, i32* %z, align 4
+  store i32 %2, i32* %0, align 4
+  %3 = getelementptr inbounds %Foo, %Foo* %literal, i32 0, i32 1
+  store i32 0, i32* %3, align 4
+  store %Foo* %literal, %Foo** %w, align 8
+  store i64 0, i64* %w.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %after_check, %error
+  %4 = load i64, i64* %w.f, align 8
+  %not_err1 = icmp eq i64 %4, 0
+  br i1 %not_err1, label %after_check2, label %voiderr
+
+after_check2:                                     ; preds = %after_assign
+  %5 = load %Foo*, %Foo** %w, align 8
+  %6 = getelementptr inbounds %Foo, %Foo* %5, i32 0, i32 0
+  %7 = load i32, i32* %6, align 8
+  %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %7)
+  br label %voiderr
+
+voiderr:                                          ; preds = %after_check2, %after_assign
+  store i64 ptrtoint ([1 x i8*]* @"test.MyErr$elements" to i64), i64* %z.f, align 8
+  br label %after_assign3
+
+after_assign3:                                    ; preds = %voiderr
+  br label %voiderr4
+
+voiderr4:                                         ; preds = %after_assign3
+  %9 = getelementptr inbounds %Foo, %Foo* %literal5, i32 0, i32 0
+  %10 = load i64, i64* %z.f, align 8
+  %not_err6 = icmp eq i64 %10, 0
+  br i1 %not_err6, label %after_check8, label %error7
+
+error7:                                           ; preds = %voiderr4
+  store i64 %10, i64* %w.f, align 8
+  br label %after_assign9
+
+after_check8:                                     ; preds = %voiderr4
+  %11 = load i32, i32* %z, align 4
+  store i32 %11, i32* %9, align 4
+  %12 = getelementptr inbounds %Foo, %Foo* %literal5, i32 0, i32 1
+  store i32 0, i32* %12, align 4
+  store %Foo* %literal5, %Foo** %w, align 8
+  store i64 0, i64* %w.f, align 8
+  br label %after_assign9
+
+after_assign9:                                    ; preds = %after_check8, %error7
+  br label %voiderr10
+
+voiderr10:                                        ; preds = %after_assign9
+  %13 = load i64, i64* %w.f, align 8
+  %not_err11 = icmp eq i64 %13, 0
+  br i1 %not_err11, label %after_check12, label %voiderr13
+
+after_check12:                                    ; preds = %voiderr10
+  %14 = load %Foo*, %Foo** %w, align 8
+  %15 = getelementptr inbounds %Foo, %Foo* %14, i32 0, i32 0
+  %16 = load i32, i32* %15, align 8
+  %17 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @.str.1, i32 0, i32 0), i32 %16)
+  br label %voiderr13
+
+voiderr13:                                        ; preds = %after_check12, %voiderr10
+  ret void
+}

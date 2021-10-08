@@ -4,7 +4,7 @@ func void test1()
 {
     char a = 1;
     int b = 2;
-    char c = b > a ? 1 : 0;
+    char c = b > a ? 1u8 : 0u8;
 }
 
 // #expect: comparison_widening.ll

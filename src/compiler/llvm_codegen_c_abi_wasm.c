@@ -58,19 +58,21 @@ static ABIArgInfo *wasm_classify_return(Type *type)
 
 void c_abi_func_create_wasm(FunctionSignature *signature)
 {
-	if (signature->failable)
+	Type *rtype = abi_rtype(signature);
+	Type *return_type = abi_returntype(signature);
+	if (IS_FAILABLE(signature->rtype))
 	{
 		signature->failable_abi_info = wasm_classify_return(type_lowering(type_anyerr));
 	}
 	else
 	{
-		signature->ret_abi_info = wasm_classify_return(type_lowering(signature->rtype->type));
+		signature->ret_abi_info = wasm_classify_return(type_lowering(rtype));
 	}
 
 	// If we have a failable, then the return type is a parameter.
-	if (signature->failable && signature->rtype->type->type_kind != TYPE_VOID)
+	if (IS_FAILABLE(signature->rtype) && rtype->type_kind != TYPE_VOID)
 	{
-		signature->ret_abi_info = wasm_classify_argument_type(type_get_ptr(type_lowering(signature->rtype->type)));
+		signature->ret_abi_info = wasm_classify_argument_type(type_get_ptr(type_lowering(rtype)));
 	}
 
 	Decl **params = signature->params;

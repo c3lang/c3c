@@ -232,8 +232,11 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 
 	LLVMTypeRef return_type = NULL;
 
-	Type *real_return_type = signature->failable ? type_anyerr : signature->rtype->type->canonical;
-	ABIArgInfo *ret_arg_info = signature->failable ? signature->failable_abi_info : signature->ret_abi_info;
+	Type *rtype = signature->rtype->type;
+	bool is_failable = rtype->type_kind == TYPE_FAILABLE;
+	if (is_failable) rtype = rtype->failable;
+	Type *real_return_type = is_failable ? type_anyerr : rtype;
+	ABIArgInfo *ret_arg_info = is_failable ? signature->failable_abi_info : signature->ret_abi_info;
 
 	ret_arg_info->param_index_end = 0;
 	ret_arg_info->param_index_start = 0;
@@ -276,9 +279,9 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 	}
 
 	// If it's failable and it's not void (meaning ret_abi_info will be NULL)
-	if (signature->failable && signature->ret_abi_info)
+	if (is_failable && signature->ret_abi_info)
 	{
-		add_func_type_param(context, type_get_ptr(signature->rtype->type), signature->ret_abi_info, &params);
+		add_func_type_param(context, type_get_ptr(rtype), signature->ret_abi_info, &params);
 	}
 
 	// Add in all of the required arguments.
@@ -310,6 +313,9 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 	{
 		case CT_TYPES:
 			UNREACHABLE
+		case TYPE_FAILABLE:
+			// If this is reachable, then we're not doing the proper lowering.
+			UNREACHABLE
 		case TYPE_TYPEID:
 		case TYPE_ANYERR:
 		case TYPE_ERRTYPE:
@@ -329,7 +335,6 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_VOID:
 			return any_type->backend_type = LLVMVoidTypeInContext(c->context);
 		case TYPE_F64:
-		case TYPE_FXX:
 			return any_type->backend_type = LLVMDoubleTypeInContext(c->context);
 		case TYPE_F16:
 			return any_type->backend_type = LLVMHalfTypeInContext(c->context);
@@ -340,8 +345,6 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case ALL_SIGNED_INTS:
 		case ALL_UNSIGNED_INTS:
 			return any_type->backend_type = LLVMIntTypeInContext(c->context, any_type->builtin.bitsize);
-		case TYPE_IXX:
-			return any_type->backend_type = LLVMIntTypeInContext(c->context, 32U);
 		case TYPE_BOOL:
 			return any_type->backend_type = LLVMIntTypeInContext(c->context, 8U);
 		case TYPE_POINTER:

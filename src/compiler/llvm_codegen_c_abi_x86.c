@@ -92,7 +92,7 @@ static ABIArgInfo *create_indirect_return_x86(Type *type, Regs *regs)
 
 static bool x86_should_return_type_in_reg(Type *type)
 {
-	type = type->canonical;
+	assert(type->canonical == type);
 	unsigned size = type_size(type);
 	if (size > 8) return false;
 
@@ -119,6 +119,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_ANYERR:
 		case TYPE_BITSTRUCT:
 		case CT_TYPES:
+		case TYPE_FAILABLE:
 			UNREACHABLE
 		case ALL_INTS:
 		case ALL_FLOATS:
@@ -384,7 +385,7 @@ static bool x86_try_put_primitive_in_reg(CallABI call, Regs *regs, Type *type)
 		case CALL_X86_VECTOR:
 		case CALL_X86_REG:
 			if (type_size(type) > 4) return false;
-			return type_is_integer_kind(type) || type_is_pointer(type);
+			return type_is_integer_or_bool_kind(type) || type_is_pointer(type);
 		default:
 			return true;
 	}
@@ -594,6 +595,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_TYPEID:
 		case TYPE_BITSTRUCT:
 		case TYPE_STRLIT:
+		case TYPE_FAILABLE:
 		case CT_TYPES:
 			UNREACHABLE
 		case ALL_FLOATS:
@@ -655,17 +657,18 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 
 	// 4. Classify the return type. In the case of failable, we need to classify the failable itself as the
 	//    return type.
-	if (signature->failable)
+	Type *rtype = abi_rtype(signature);
+	if (IS_FAILABLE(signature->rtype))
 	{
 		signature->failable_abi_info = x86_classify_return(signature->call_abi, &regs, type_anyerr);
-		if (signature->rtype->type->type_kind != TYPE_VOID)
+		if (rtype->type_kind != TYPE_VOID)
 		{
-			signature->ret_abi_info = x86_classify_argument(signature->call_abi, &regs, type_get_ptr(type_lowering(signature->rtype->type)));
+			signature->ret_abi_info = x86_classify_argument(signature->call_abi, &regs, type_get_ptr(type_lowering(rtype)));
 		}
 	}
 	else
 	{
-		signature->ret_abi_info = x86_classify_return(signature->call_abi, &regs, signature->rtype->type);
+		signature->ret_abi_info = x86_classify_return(signature->call_abi, &regs, rtype);
 	}
 
 	/*

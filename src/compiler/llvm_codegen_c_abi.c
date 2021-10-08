@@ -237,3 +237,4 @@ ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
 	// No, then do a direct pass.
 	return abi_arg_new_direct();
 }
+
