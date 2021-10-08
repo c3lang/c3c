@@ -162,10 +162,6 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_EXPR(expr->guard_expr.inner);
 			return expr;
 		case EXPR_CONST:
-			if (expr->const_expr.const_kind == CONST_INTEGER && expr->const_expr.i.digit_count > 1)
-			{
-				bigint_init_bigint(&expr->const_expr.i, &source_expr->const_expr.i);
-			}
 			return expr;
 		case EXPR_BINARY:
 			MACRO_COPY_EXPR(expr->binary_expr.left);
@@ -177,10 +173,8 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_EXPR(expr->ternary_expr.else_expr);
 			return expr;
 		case EXPR_UNARY:
-			MACRO_COPY_EXPR(expr->unary_expr.expr);
-			return expr;
 		case EXPR_POST_UNARY:
-			MACRO_COPY_EXPR(expr->post_expr.expr);
+			MACRO_COPY_EXPR(expr->unary_expr.expr);
 			return expr;
 		case EXPR_TYPEID:
 			MACRO_COPY_TYPE(expr->typeid_expr);
@@ -301,7 +295,7 @@ Ast *copy_ast(Ast *source)
 		case AST_DEFAULT_STMT:
 			MACRO_COPY_AST(ast->case_stmt.body);
 			return ast;
-		case AST_DEFINE_STMT:
+		case AST_VAR_STMT:
 			ast->var_stmt = copy_decl(ast->var_stmt);
 			return ast;
 		case AST_DEFER_STMT:

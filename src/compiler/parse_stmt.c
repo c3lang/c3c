@@ -439,9 +439,8 @@ static inline bool parse_foreach_var(Context *context, Ast *foreach)
 	// If we don't get foreach (foo ... or foreach (*foo ... then a type is expected.
 	if (!TOKEN_IS(TOKEN_IDENT) && !TOKEN_IS(TOKEN_AMP))
 	{
-		ASSIGN_TYPE_ELSE(type, parse_type(context), false);
+		ASSIGN_TYPE_ELSE(type, parse_failable_type(context), false);
 
-		failable = try_consume(context, TOKEN_BANG);
 		// Add the failable to the type for nicer error reporting.
 		RANGE_EXTEND_PREV(type);
 	}
@@ -460,7 +459,6 @@ static inline bool parse_foreach_var(Context *context, Ast *foreach)
 		return false;
 	}
 	Decl *var = decl_new_var(context->prev_tok, type, VARDECL_LOCAL, VISIBLE_LOCAL);
-	var->var.failable = failable;
 	foreach->foreach_stmt.variable = var;
 	return true;
 }
@@ -586,14 +584,13 @@ static inline Ast *parse_decl_or_expr_stmt(Context *context)
 	// If so we need to unwrap this.
 	if (expr->expr_kind == EXPR_FAILABLE && expr->failable_expr->expr_kind == EXPR_TYPEINFO)
 	{
-		failable = true;
+		UNREACHABLE
 		expr_replace(expr, expr->failable_expr);
 	}
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
 		ast->ast_kind = AST_DECLARE_STMT;
 		ASSIGN_DECL_ELSE(ast->declare_stmt, parse_decl_after_type(context, expr->type_expr), poisoned_ast);
-		ast->declare_stmt->var.failable = failable;
 	}
 	else
 	{
@@ -612,7 +609,7 @@ static inline Ast *parse_decl_or_expr_stmt(Context *context)
  */
 static inline Ast *parse_var_stmt(Context *context)
 {
-	Ast *ast = AST_NEW_TOKEN(AST_DEFINE_STMT, context->tok);
+	Ast *ast = AST_NEW_TOKEN(AST_VAR_STMT, context->tok);
 	TokenId start = context->tok.id;
 	advance_and_verify(context, TOKEN_VAR);
 	Decl *decl;
@@ -631,7 +628,7 @@ static inline Ast *parse_var_stmt(Context *context)
 			advance(context);
 			if (try_consume(context, TOKEN_EQ))
 			{
-				ASSIGN_TYPE_ELSE(decl->var.type_info, parse_type(context), poisoned_ast);
+				ASSIGN_EXPR_ELSE(decl->var.init_expr, parse_expr(context), poisoned_ast);
 			}
 			break;
 		default:

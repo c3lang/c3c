@@ -737,6 +737,23 @@ TypeInfo *parse_type(Context *context)
 	return parse_type_with_base(context, base);
 }
 
+TypeInfo *parse_failable_type(Context *context)
+{
+	ASSIGN_TYPE_ELSE(TypeInfo *info, parse_base_type(context), poisoned_type_info);
+	ASSIGN_TYPE_ELSE(info, parse_type_with_base(context, info), poisoned_type_info);
+	if (try_consume(context, TOKEN_BANG))
+	{
+		assert(!info->failable);
+		info->failable = true;
+		if (info->resolve_status == RESOLVE_DONE)
+		{
+			info->type = type_get_failable(info->type);
+		}
+		RANGE_EXTEND_PREV(info);
+	}
+	return info;
+}
+
 
 #pragma mark --- Decl parsing
 
@@ -754,13 +771,13 @@ Decl *parse_decl_after_type(Context *context, TypeInfo *type)
 		return poisoned_decl;
 	}
 
-
 	EXPECT_IDENT_FOR_OR("variable name", poisoned_decl);
 
 	TokenId name = context->tok.id;
 	advance(context);
 
 	Decl *decl = decl_new_var(name, type, VARDECL_LOCAL, VISIBLE_LOCAL);
+	if (!parse_attributes(context, &decl->attributes)) return poisoned_decl;
 	if (TOKEN_IS(TOKEN_EQ))
 	{
 		if (!decl)
@@ -789,17 +806,14 @@ Decl *parse_decl(Context *context)
 
 	bool is_static = try_consume(context, TOKEN_STATIC);
 
-	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_type(context), poisoned_decl);
-
-	bool failable = try_consume(context, TOKEN_BANG);
+	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_failable_type(context), poisoned_decl);
 
 	ASSIGN_DECL_ELSE(Decl *decl, parse_decl_after_type(context, type), poisoned_decl);
-	if (failable && decl->var.unwrap)
+	if (type->failable && decl->var.unwrap)
 	{
 		SEMA_ERROR(decl, "You cannot use unwrap with a failable variable.");
 		return poisoned_decl;
 	}
-	decl->var.failable = failable;
 	decl->var.is_static = is_static;
 	return decl;
 }
@@ -1004,13 +1018,9 @@ bool parse_attributes(Context *context, Attr ***attributes_ref)
  */
 static inline Decl *parse_global_declaration(Context *context, Visibility visibility)
 {
-	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_type(context), poisoned_decl);
-
-	bool failable = try_consume(context, TOKEN_BANG);
+	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_failable_type(context), poisoned_decl);
 
 	Decl *decl = decl_new_var(context->tok.id, type, VARDECL_GLOBAL, visibility);
-
-	decl->var.failable = failable;
 
 	if (TOKEN_IS(TOKEN_CONST_IDENT))
 	{
@@ -1533,12 +1543,8 @@ static inline Decl *parse_define_type(Context *context, Visibility visibility)
 		decl->span.loc = start;
 		decl->typedef_decl.is_func = true;
 		decl->typedef_decl.is_distinct = distinct;
-		ASSIGN_TYPE_ELSE(TypeInfo *type_info, parse_type(context), poisoned_decl);
+		ASSIGN_TYPE_ELSE(TypeInfo *type_info, parse_failable_type(context), poisoned_decl);
 		decl->typedef_decl.function_signature.rtype = type_info;
-		if (try_consume(context, TOKEN_BANG))
-		{
-			decl->typedef_decl.function_signature.failable = true;
-		}
 		if (!parse_parameter_list(context, decl->visibility, &(decl->typedef_decl.function_signature), true))
 		{
 			return poisoned_decl;
@@ -1684,11 +1690,12 @@ static inline Decl *parse_define(Context *context, Visibility visibility)
  * func_header ::= type '!'? (type '.')? IDENT
  * macro_header ::= (type '!'?)? (type '.')? IDENT
  */
-static inline bool parse_func_macro_header(Context *context, bool rtype_is_optional, TypeInfo **rtype_ref, bool *failable_ref, TypeInfo **method_type_ref, TokenId *name_ref)
+static inline bool
+parse_func_macro_header(Context *context, bool rtype_is_optional, TypeInfo **rtype_ref, TypeInfo **method_type_ref,
+                        TokenId *name_ref)
 {
 	TypeInfo *rtype = NULL;
 	TypeInfo *method_type = NULL;
-	bool failable = false;
 
 	// 1. We have a macro with just a name, if so, then we set the name and we're done.
 	if (rtype_is_optional && !context_next_is_type_and_not_ident(context))
@@ -1697,10 +1704,7 @@ static inline bool parse_func_macro_header(Context *context, bool rtype_is_optio
 	}
 
 	// 2. Now we must have a type - either that is the return type or the method type.
-	ASSIGN_TYPE_ELSE(rtype, parse_type(context), false);
-
-	// 3. We possibly have a failable return at this point.
-	failable = try_consume(context, TOKEN_BANG);
+	ASSIGN_TYPE_ELSE(rtype, parse_failable_type(context), false);
 
 	// 4. We might have a type here, if so then we read it.
 	if (!TOKEN_IS(TOKEN_DOT) && context_next_is_type_and_not_ident(context))
@@ -1715,7 +1719,7 @@ static inline bool parse_func_macro_header(Context *context, bool rtype_is_optio
 		if (!method_type)
 		{
 			// 5b. If the rtype is not optional or the return type was a failable, then this is an error.
-			if (!rtype_is_optional || failable)
+			if (!rtype_is_optional || rtype->failable)
 			{
 				SEMA_TOKID_ERROR(context->prev_tok,
 				                 "This looks like you are declaring a method without a return type?");
@@ -1733,7 +1737,6 @@ static inline bool parse_func_macro_header(Context *context, bool rtype_is_optio
 	}
 	RESULT:
 	TRY_CONSUME_OR(TOKEN_IDENT, "Expected a name here.", false);
-	*failable_ref = failable;
 	*name_ref = context->prev_tok;
 	*rtype_ref = rtype;
 	*method_type_ref = method_type;
@@ -1752,11 +1755,9 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 	Decl *decl = decl_new(kind, context->tok.id, visibility);
 	TypeInfo **rtype_ref = &decl->macro_decl.rtype;
 	TypeInfo **method_type_ref = &decl->macro_decl.type_parent;
-	bool failable;
 	TokenId name;
-	if (!parse_func_macro_header(context, true, rtype_ref, &failable, method_type_ref, &name)) return poisoned_decl;
+	if (!parse_func_macro_header(context, true, rtype_ref, method_type_ref, &name)) return poisoned_decl;
 
-	decl->macro_decl.failable = failable;
 	decl->name = TOKSTR(name);
 	decl->name_token = name;
 
@@ -1965,10 +1966,8 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	advance_and_verify(context, TOKEN_FUNC);
 	TypeInfo **rtype_ref = &func->func_decl.function_signature.rtype;
 	TypeInfo **method_type_ref = &func->func_decl.type_parent;
-	bool failable;
 	TokenId name;
-	if (!parse_func_macro_header(context, false, rtype_ref, &failable, method_type_ref, &name)) return poisoned_decl;
-	func->func_decl.function_signature.failable = failable;
+	if (!parse_func_macro_header(context, false, rtype_ref, method_type_ref, &name)) return poisoned_decl;
 	func->name = TOKSTR(name);
 	func->name_token = name;
 	RANGE_EXTEND_PREV(func);
@@ -2397,3 +2396,4 @@ Decl *parse_top_level_statement(Context *context)
 	decl->docs = docs;
 	return decl;
 }
+

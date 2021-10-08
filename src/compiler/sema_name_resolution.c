@@ -475,14 +475,14 @@ bool sema_unwrap_var(Context *context, Decl *decl)
 	Decl *alias = decl_copy(decl);
 	alias->var.kind = VARDECL_UNWRAPPED;
 	alias->var.alias = decl;
-	alias->var.failable = false;
+	alias->type = alias->type->failable;
 	alias->resolve_status = RESOLVE_DONE;
 	return sema_append_local(context, alias);
 }
 
 bool sema_rewrap_var(Context *context, Decl *decl)
 {
-	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->var.failable);
+	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_FAILABLE);
 	return sema_append_local(context, decl->var.alias);
 }
 
@@ -497,11 +497,11 @@ bool sema_erase_var(Context *context, Decl *decl)
 
 bool sema_erase_unwrapped(Context *context, Decl *decl)
 {
-	assert(decl->var.failable);
+	assert(IS_FAILABLE(decl));
 	Decl *rewrapped = decl_copy(decl);
 	rewrapped->var.kind = VARDECL_REWRAPPED;
 	rewrapped->var.alias = decl;
-	rewrapped->var.failable = true;
+	rewrapped->type = decl->type;
 	rewrapped->resolve_status = RESOLVE_DONE;
 	return sema_append_local(context, rewrapped);
 }

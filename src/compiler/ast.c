@@ -223,7 +223,7 @@ Expr *expr_new(ExprKind kind, SourceSpan start)
 	Expr *expr = expr_calloc();
 	expr->expr_kind = kind;
 	expr->span = start;
-	expr->type = expr->original_type = NULL;
+	expr->type = NULL;
 	return expr;
 }
 
@@ -293,10 +293,6 @@ UnaryOp unary_op[TOKEN_LAST + 1] = {
 };
 
 
-PostUnaryOp post_unary_op[TOKEN_LAST + 1] = {
-		[TOKEN_PLUSPLUS] = POSTUNARYOP_INC,
-		[TOKEN_MINUSMINUS] = POSTUNARYOP_DEC,
-};
 
 
 
@@ -317,11 +313,6 @@ TokenType binaryop_to_token(BinaryOp type)
 UnaryOp unaryop_from_token(TokenType type)
 {
 	return unary_op[type];
-}
-
-PostUnaryOp post_unaryop_from_token(TokenType type)
-{
-	return post_unary_op[type];
 }
 
 static Ast poison_ast = { .ast_kind = AST_POISONED };

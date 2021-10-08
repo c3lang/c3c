@@ -140,7 +140,7 @@ func void main()
     }
     list.free();
 
-    printf("Min %d Max %d Elements: %d\n", MyEnum.min, MyEnum.max, MyEnum.elements);
+    printf("Min %d Max %d Elements: %d\n", MyEnum.min, MyEnum.max, (int)(MyEnum.elements));
 
     int max = MyEnum.max;
     int min = MyEnum.min;
@@ -358,7 +358,7 @@ entry:
   store i32 0, i32* %sum, align 4
   %len = getelementptr inbounds %"int[]", %"int[]"* %x, i32 0, i32 1
   %3 = load i64, i64* %len, align 8
-  %eq = icmp eq i64 %3, 0
+  %eq = icmp eq i64 0, %3
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:

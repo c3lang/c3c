@@ -1,3 +1,4 @@
+// #target: x64-darwin
 
 char *message0 = """
     hello

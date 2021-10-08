@@ -410,8 +410,8 @@ static Expr *parse_post_unary(Context *context, Expr *left)
 {
 	assert(expr_ok(left));
 	Expr *unary = EXPR_NEW_TOKEN(EXPR_POST_UNARY, context->tok);
-	unary->post_expr.expr = left;
-	unary->post_expr.operator = post_unaryop_from_token(context->tok.type);
+	unary->unary_expr.expr = left;
+	unary->unary_expr.operator = unaryop_from_token(context->tok.type);
 	unary->span.loc = left->span.loc;
 	advance(context);
 	return unary;
@@ -666,7 +666,7 @@ static Expr *parse_subscript_expr(Context *context, Expr *left)
 	else
 	{
 		index = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-		expr_set_type(index, type_uint);
+		index->type = type_uint;
 		index->resolve_status = RESOLVE_DONE;
 		expr_const_set_int(&index->const_expr, 0, type_uint->type_kind);
 	}
@@ -759,22 +759,20 @@ static Expr *parse_ct_call(Context *context, Expr *left)
 					SEMA_TOKEN_ERROR(context->tok, "Expected an integer index.");
 					return poisoned_expr;
 				}
-				BigInt *value = &int_expr->const_expr.i;
-				BigInt limit;
-				bigint_init_unsigned(&limit, MAX_ARRAYINDEX);
-				if (bigint_cmp(value, &limit) == CMP_GT)
+				Int value = int_expr->const_expr.ixx;
+				if (!int_fits(value, TYPE_I64))
 				{
 					SEMA_ERROR(int_expr, "Array index out of range.");
 					return poisoned_expr;
 				}
-				if (bigint_cmp_zero(value) == CMP_LT)
+				if (int_is_neg(value))
 				{
 					SEMA_ERROR(int_expr, "Array index must be zero or greater.");
 					return poisoned_expr;
 				}
 				TRY_CONSUME_OR(TOKEN_RBRACKET, "Expected a ']' after the number.", poisoned_expr);
 				flat_element.array = true;
-				flat_element.index = (ArrayIndex)bigint_as_unsigned(value);
+				flat_element.index = value.i.low;
 			}
 			else if (try_consume(context, TOKEN_DOT))
 			{
@@ -922,6 +920,18 @@ static Expr *parse_placeholder(Context *context, Expr *left)
 	return expr;
 }
 
+static int read_num_type(const char *string, const char *end)
+{
+	REMINDER("Limit num type reader");
+	int i = 0;
+	while (string < end)
+	{
+		i *= 10;
+		i += *(string++) - '0';
+	}
+	return i;
+}
+
 static Expr *parse_integer(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
@@ -929,73 +939,178 @@ static Expr *parse_integer(Context *context, Expr *left)
 	const char *string = TOKSTR(context->tok);
 	const char *end = string + TOKLEN(context->tok);
 
-	BigInt *i = &expr_int->const_expr.i;
-	bigint_init_unsigned(i, 0);
-	BigInt diff;
-	bigint_init_unsigned(&diff, 0);
-	BigInt ten;
-	bigint_init_unsigned(&ten, 10);
-	BigInt res;
+	Int128 i = { 0, 0 };
+	bool is_unsigned = false;
+	uint64_t type_bits = 0;
+	int hex_characters = 0;
+	int oct_characters = 0;
+	int binary_characters = 0;
+	bool wrapped = false;
+	uint64_t max;
 	switch (TOKLEN(context->tok) > 2 ? string[1] : '0')
 	{
 		case 'x':
 			string += 2;
+			is_unsigned = true;
+			max = UINT64_MAX >> 4;
 			while (string < end)
 			{
 				char c = *(string++);
+				if (c == 'u' || c == 'U')
+				{
+					type_bits = read_num_type(string, end);
+					break;
+				}
+				if (c == 'i' || c == 'I')
+				{
+					is_unsigned = false;
+					type_bits = read_num_type(string, end);
+					break;
+				}
 				if (c == '_') continue;
-				bigint_shl_int(&res, i, 4);
-				if (c < 'A')
-				{
-					bigint_init_unsigned(&diff, c - '0');
-				}
-				else if (c < 'a')
-				{
-					bigint_init_unsigned(&diff, c - 'A' + 10);
-				}
-				else
-				{
-					bigint_init_unsigned(&diff, c - 'a' + 10);
-				}
-				bigint_add(i, &res, &diff);
+				if (i.high > max) wrapped = true;
+				i = i128_shl64(i, 4);
+				i = i128_add64(i, hex_nibble(c));
+				hex_characters++;
 			}
 			break;
 		case 'o':
 			string += 2;
+			is_unsigned = true;
+			max = UINT64_MAX >> 3;
 			while (string < end)
 			{
 				char c = *(string++);
+				if (c == 'i' || c == 'I')
+				{
+					is_unsigned = false;
+					type_bits = read_num_type(string, end);
+					break;
+				}
+				if (c == 'u' || c == 'U')
+				{
+					type_bits = read_num_type(string, end);
+					break;
+				}
 				if (c == '_') continue;
-				bigint_shl_int(&res, i, 4);
-				bigint_init_unsigned(&diff, c - '0');
-				bigint_add(i, &res, &diff);
+				if (i.high > max) wrapped = true;
+				i = i128_shl64(i, 3);
+				i = i128_add64(i, c - '0');
+				oct_characters++;
 			}
 			break;
 		case 'b':
 			string += 2;
+			max = UINT64_MAX >> 1;
 			while (string < end)
 			{
 				char c = *(string++);
 				if (c == '_') continue;
-				bigint_shl_int(&res, i, 1);
-				bigint_init_unsigned(&diff, c - '0');
-				bigint_add(i, &res, &diff);
+				binary_characters++;
+				if (i.high > max) wrapped = true;
+				i = i128_shl64(i, 1);
+				i = i128_add64(i, c - '0');
 			}
 			break;
 		default:
 			while (string < end)
 			{
 				char c = *(string++);
+				if (c == 'i' || c == 'I')
+				{
+					is_unsigned = false;
+					type_bits = read_num_type(string, end);
+					break;
+				}
+				if (c == 'u' || c == 'U')
+				{
+					is_unsigned = true;
+					type_bits = read_num_type(string, end);
+					break;
+				}
 				if (c == '_') continue;
-				bigint_mul(&res, i, &ten);
-				bigint_init_unsigned(&diff, c - '0');
-				bigint_add(i, &res, &diff);
+				uint64_t old_top = i.high;
+				i = i128_mult64(i, 10);
+				i = i128_add64(i, c - '0');
+				if (!wrapped && old_top > i.high) wrapped = true;
 			}
 			break;
 	}
+	if (wrapped)
+	{
+		SEMA_TOKEN_ERROR(context->tok, "Integer size exceeded 128 bits, max 128 bits are supported.");
+		return poisoned_expr;
+	}
 	expr_int->const_expr.const_kind = CONST_INTEGER;
-	expr_int->const_expr.int_type = TYPE_IXX;
-	expr_set_type(expr_int, type_compint);
+	Type *type = is_unsigned ? type_cuint() : type_cint();
+	expr_int->const_expr.narrowable = !type_bits;
+	if (type_bits)
+	{
+		if (!is_power_of_two(type_bits) || type_bits > 128)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "Integer width should be 8, 16, 32, 64 or 128.");
+			return poisoned_expr;
+		}
+	}
+	else
+	{
+		if (hex_characters)
+		{
+			type_bits = 4 * hex_characters;
+			if (type_bits > 128)
+			{
+				SEMA_TOKEN_ERROR(context->tok, "%d hex digits indicates a bit width over 128, which is not supported.", hex_characters);
+				return poisoned_expr;
+			}
+		}
+		if (oct_characters)
+		{
+			type_bits = 3 * oct_characters;
+			if (type_bits > 128)
+			{
+				SEMA_TOKEN_ERROR(context->tok, "%d octal digits indicates a bit width over 128, which is not supported.", oct_characters);
+				return poisoned_expr;
+			}
+		}
+		if (binary_characters)
+		{
+			type_bits = binary_characters;
+			if (type_bits > 128)
+			{
+				SEMA_TOKEN_ERROR(context->tok, "%d binary digits indicates a bit width over 128, which is not supported.", binary_characters);
+				return poisoned_expr;
+			}
+		}
+		if (type_bits && !is_power_of_two(type_bits)) type_bits = next_highest_power_of_2(type_bits);
+	}
+	if (!type_bits)
+	{
+		type_bits = type_size(type) * 8;
+	}
+	if (type_bits)
+	{
+		type = is_unsigned ? type_int_unsigned_by_bitsize(type_bits) : type_int_signed_by_bitsize(type_bits);
+	}
+	expr_int->const_expr.ixx = (Int) { i, type->type_kind };
+	if (!int_fits(expr_int->const_expr.ixx, type->type_kind))
+	{
+		int radix = 10;
+		if (hex_characters) radix = 16;
+		if (oct_characters) radix = 8;
+		if (binary_characters) radix = 2;
+		if (type_bits)
+		{
+			SEMA_TOKEN_ERROR(context->tok, "'%s' does not fit in a '%c%d' literal.",
+							 i128_to_string(i, radix, true), is_unsigned ? 'u' : 'i', type_bits);
+		}
+		else
+		{
+			SEMA_TOKEN_ERROR(context->tok, "'%s' does not fit in an %s literal.",
+			                 i128_to_string(i, radix, true), is_unsigned ? "unsigned int" : "int");
+		}
+		return poisoned_expr;
+	}
+	expr_int->type = type;
 	advance(context);
 	return expr_int;
 }
@@ -1100,7 +1215,8 @@ static Expr *parse_bytes_expr(Context *context, Expr *left)
 	expr_bytes->const_expr.bytes.ptr = data;
 	expr_bytes->const_expr.bytes.len = len;
 	expr_bytes->const_expr.const_kind = CONST_BYTES;
-	expr_set_type(expr_bytes, type_get_array(type_char, len));
+	Type *type = type_get_array(type_char, len);
+	expr_bytes->type = type;
 	assert(data + len == data_current);
 	return expr_bytes;
 }
@@ -1109,24 +1225,25 @@ static Expr *parse_char_lit(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
+	expr_int->const_expr.narrowable = true;
 	TokenData *data = tokendata_from_id(context->tok.id);
 	switch (data->width)
 	{
 		case 1:
-			expr_const_set_int(&expr_int->const_expr, data->char_lit.u8, TYPE_IXX);
-			expr_set_type(expr_int, type_compint);
+			expr_const_set_int(&expr_int->const_expr, data->char_lit.u8, TYPE_U8);
+			expr_int->type = type_char;
 			break;
 		case 2:
-			expr_const_set_int(&expr_int->const_expr, data->char_lit.u16, TYPE_IXX);
-			expr_set_type(expr_int, type_compint);
+			expr_const_set_int(&expr_int->const_expr, data->char_lit.u16, TYPE_U16);
+			expr_int->type = type_ushort;
 			break;
 		case 4:
-			expr_const_set_int(&expr_int->const_expr, data->char_lit.u32, TYPE_IXX);
-			expr_set_type(expr_int, type_compint);
+			expr_const_set_int(&expr_int->const_expr, data->char_lit.u32, TYPE_U32);
+			expr_int->type = type_uint;
 			break;
 		case 8:
 			expr_const_set_int(&expr_int->const_expr, data->char_lit.u64, TYPE_U64);
-			expr_set_type(expr_int, type_compint);
+			expr_int->type = type_ulong;
 			break;
 		default:
 			UNREACHABLE
@@ -1141,10 +1258,26 @@ static Expr *parse_double(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	number->const_expr.f = TOKREAL(context->tok.id);
-	expr_set_type(number, type_compfloat);
-	number->const_expr.float_type = TYPE_FXX;
+	number->const_expr.fxx = TOKREAL(context->tok.id);
+	switch (number->const_expr.fxx.type)
+	{
+		case TYPE_F128:
+			number->type = type_quad;
+			break;
+		case TYPE_F64:
+			number->type = type_double;
+			break;
+		case TYPE_F32:
+			number->type = type_float;
+			break;
+		case TYPE_F16:
+			number->type = type_half;
+			break;
+		default:
+			UNREACHABLE
+	}
 	number->const_expr.const_kind = CONST_FLOAT;
+	number->const_expr.narrowable = true;
 	advance(context);
 	return number;
 }
@@ -1226,7 +1359,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	expr_set_type(expr_string, type_compstr);
+	expr_string->type = type_compstr;
 
 	TokenData *data = TOKDATA(context->tok);
 	const char *str = data->string;
@@ -1255,7 +1388,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 	assert(str);
 	expr_string->const_expr.string.chars = str;
 	expr_string->const_expr.string.len = (uint32_t)len;
-	expr_set_type(expr_string, type_compstr);
+	expr_string->type = type_compstr;
 	expr_string->const_expr.const_kind = CONST_STRING;
 	return expr_string;
 }
@@ -1265,7 +1398,7 @@ static Expr *parse_bool(Context *context, Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	number->const_expr = (ExprConst) { .b = TOKEN_IS(TOKEN_TRUE), .const_kind = CONST_BOOL };
-	expr_set_type(number, type_bool);
+	number->type = type_bool;
 	advance(context);
 	return number;
 }
@@ -1275,7 +1408,7 @@ static Expr *parse_null(Context *context, Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	number->const_expr.const_kind = CONST_POINTER;
-	expr_set_type(number, type_voidptr);
+	number->type = type_voidptr;
 	advance(context);
 	return number;
 }
@@ -1309,10 +1442,11 @@ Expr *parse_type_expression_with_path(Context *context, Path *path)
 		advance_and_verify(context, TOKEN_TYPE_IDENT);
 		RANGE_EXTEND_PREV(type);
 		ASSIGN_TYPE_ELSE(type, parse_type_with_base(context, type), poisoned_expr);
+		type->failable = try_consume(context, TOKEN_BANG);
 	}
 	else
 	{
-		ASSIGN_TYPE_ELSE(type, parse_type(context), poisoned_expr);
+		ASSIGN_TYPE_ELSE(type, parse_failable_type(context), poisoned_expr);
 	}
 	if (!type->virtual_type && TOKEN_IS(TOKEN_LBRACE))
 	{

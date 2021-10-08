@@ -1,4 +1,4 @@
 $ cat .gitattributes
-* text=auto
+* text=lf
 *.c3 linguist-language=C
 *.c3t linguist-language=C

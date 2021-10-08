@@ -18,40 +18,34 @@ static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArrayIndex *len_ref)
 {
 	Expr *len_expr = type_info->array.len;
-	if (!sema_analyse_expr(context, type_usize, len_expr)) return type_info_poison(type_info);
+	if (!sema_analyse_expr(context, len_expr)) return type_info_poison(type_info);
 
 	if (len_expr->expr_kind != EXPR_CONST)
 	{
 		SEMA_ERROR(len_expr, "Expected a constant value as size.");
 		return type_info_poison(type_info);
 	}
-	if (!type_is_any_integer(len_expr->type->canonical))
+	if (!type_is_integer(len_expr->type->canonical))
 	{
 		SEMA_ERROR(len_expr, "Expected an integer size.");
 		return type_info_poison(type_info);
 	}
-	BigInt *big_len = &len_expr->const_expr.i;
+
 	bool is_vector = type_info->kind == TYPE_INFO_VECTOR;
-	switch (bigint_cmp_zero(big_len))
+	Int len = len_expr->const_expr.ixx;
+	if (int_is_neg(len))
 	{
-		case CMP_LT:
-			SEMA_ERROR(len_expr,
-					   is_vector ? "A vector may not have a negative width." :
-					   "An array may not have a negative size.");
-			return type_info_poison(type_info);
-		case CMP_EQ:
-			if (is_vector)
-			{
-				SEMA_ERROR(len_expr, "A vector may not have a zero width.");
-				return type_info_poison(type_info);
-			}
-			break;
-		case CMP_GT:
-			break;
+		SEMA_ERROR(len_expr,
+				   is_vector ? "A vector may not have a negative width." :
+				   "An array may not have a negative size.");
+		return type_info_poison(type_info);
 	}
-	BigInt max;
-	bigint_init_unsigned(&max, is_vector ? MAX_VECTOR_WIDTH : MAX_ARRAY_SIZE);
-	if (bigint_cmp(big_len, &max) == CMP_GT)
+	if (is_vector && int_is_zero(len))
+	{
+		SEMA_ERROR(len_expr, "A vector may not have a zero width.");
+		return type_info_poison(type_info);
+	}
+	if (int_icomp(len, is_vector ? MAX_VECTOR_WIDTH : MAX_ARRAY_SIZE, BINARYOP_GT))
 	{
 		if (is_vector)
 		{
@@ -63,7 +57,7 @@ bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArrayInd
 		}
 		return type_info_poison(type_info);
 	}
-	*len_ref = bigint_as_signed(big_len);
+	*len_ref = len.i.low;
 	return true;
 }
 
@@ -148,6 +142,11 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_VAR:
 			if (decl->var.kind == VARDECL_PARAM_CT_TYPE || decl->var.kind == VARDECL_LOCAL_CT_TYPE)
 			{
+				if (!decl->var.init_expr)
+				{
+					SEMA_ERROR(type_info, "The variable '%s' is not defined yet.", decl->name);
+					return false;
+				}
 				assert(decl->var.init_expr->expr_kind == EXPR_TYPEINFO);
 				assert(decl->var.init_expr->resolve_status == RESOLVE_DONE);
 				*type_info = *decl->var.init_expr->type_expr;
@@ -213,6 +212,8 @@ bool sema_resolve_type(Context *context, Type *type)
 			return sema_resolve_type(context, type->array.base);
 		case TYPE_VIRTUAL:
 			TODO;
+		case TYPE_FAILABLE:
+			return sema_resolve_type(context, type->failable);
 	}
 	return sema_analyse_decl(context, type->decl);
 }
@@ -243,17 +244,13 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow
 		case TYPE_INFO_EXPRESSION:
 		{
 			Expr *expr = type_info->unresolved_type_expr;
-			if (!sema_analyse_expr(context, NULL, expr))
+			if (!sema_analyse_expr(context, expr))
 			{
 				return type_info_poison(type_info);
 			}
-			if (!cast_implicitly_to_runtime(expr))
-			{
-				SEMA_ERROR(expr, "The expression does not fit any runtime type.");
-				return false;
-			}
 			type_info->type = expr->type;
 			type_info->resolve_status = RESOLVE_DONE;
+			assert(!type_info->failable);
 			return true;
 		}
 		case TYPE_INFO_INFERRED_ARRAY:
@@ -271,6 +268,10 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow
 		case TYPE_INFO_POINTER:
 			if (!sema_resolve_ptr_type(context, type_info)) return false;
 			break;
+	}
+	if (type_info->failable)
+	{
+		type_info->type = type_get_failable(type_info->type);
 	}
 	return true;
 }

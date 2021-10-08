@@ -262,7 +262,7 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 	{
 		decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
 	}
-	if (decl->var.failable)
+	if (IS_FAILABLE(decl))
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->external_name);
@@ -312,7 +312,8 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	LLVMValueRef init_value;
 
-	ByteSize alignment = type_alloca_alignment(decl->type);
+	Type *var_type = type_lowering(decl->type);
+	ByteSize alignment = type_alloca_alignment(var_type);
 
 	Expr *init_expr = decl->var.init_expr;
 	if (init_expr)
@@ -341,7 +342,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 	else
 	{
-		init_value = LLVMConstNull(llvm_get_type(c, decl->type));
+		init_value = LLVMConstNull(llvm_get_type(c, var_type));
 	}
 
 
@@ -359,7 +360,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	{
 		llvm_set_alignment(failable_ref, type_alloca_alignment(type_anyerr));
 	}
-	if (decl->var.init_expr && decl->var.init_expr->failable)
+	if (init_expr && IS_FAILABLE(init_expr) && init_expr->expr_kind == EXPR_FAILABLE)
 	{
 		UNREACHABLE
 	}
@@ -395,9 +396,9 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 			break;
 	}
 
-	if (init_value && LLVMTypeOf(init_value) != llvm_get_type(c, decl->type))
+	if (init_value && LLVMTypeOf(init_value) != llvm_get_type(c, var_type))
 	{
-		decl->backend_ref = LLVMConstBitCast(decl->backend_ref, llvm_get_ptr_type(c, decl->type));
+		decl->backend_ref = LLVMConstBitCast(decl->backend_ref, llvm_get_ptr_type(c, var_type));
 	}
 	LLVMReplaceAllUsesWith(old, decl->backend_ref);
 	LLVMDeleteGlobal(old);
@@ -467,12 +468,9 @@ LLVMValueRef llvm_emit_alloca_aligned(GenContext *c, Type *type, const char *nam
 
 void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 {
-	if (decl->type == type_void)
-	{
-		return;
-	}
-	LLVMTypeRef type = llvm_get_type(c, decl->type);
-	decl->backend_ref = llvm_emit_alloca(c, type, decl->alignment, decl->name ? decl->name : "anon");
+	Type *type = type_lowering(decl->type);
+	if (type == type_void) return;
+	decl->backend_ref = llvm_emit_alloca(c, llvm_get_type(c, type), decl->alignment, decl->name ? decl->name : "anon");
 }
 
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)
@@ -789,7 +787,7 @@ void llvm_value_set_decl_address(BEValue *value, Decl *decl)
 	llvm_value_set_address(value, decl_ref(decl), decl->type);
 	value->alignment = decl->alignment;
 
-	if (decl->decl_kind == DECL_VAR && decl->var.failable)
+	if (decl->decl_kind == DECL_VAR && IS_FAILABLE(decl))
 	{
 		value->kind = BE_ADDRESS_FAILABLE;
 		value->failable = decl->var.failable_ref;

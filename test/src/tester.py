@@ -294,6 +294,7 @@ def main():
     else:
         print("Error: Invalid path to tests: " + filepath)
         usage()
-    print("Found %d tests: %d / %d passed (%d skipped)." % (conf.numtests, conf.numsuccess, conf.numtests - conf.numskipped, conf.numskipped))
+
+    print("Found %d tests: %.1f%% (%d / %d) passed (%d skipped)." % (conf.numtests, 100 * conf.numsuccess / max(1, conf.numtests - conf.numskipped), conf.numsuccess, conf.numtests - conf.numskipped, conf.numskipped))
 
 main()

@@ -5,7 +5,7 @@ char[] str3 = "hello";
 
 int[2] a1 = { 1, 2 };
 
-int[2] a2 = 30;   // #error: 'compint' into 'int[2]'
+int[2] a2 = 30;   // #error: 'int' into 'int[2]'
 // TODO int[2] a3 = a1;
 
 ichar[*] a; // #error: Inferred array types can only be used in declarations with initializers

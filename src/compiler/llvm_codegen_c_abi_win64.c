@@ -160,17 +160,18 @@ void c_abi_func_create_win64(FunctionSignature *signature)
 			break;
 	}
 
-	if (signature->failable)
+	Type *rtype = abi_rtype(signature);
+	if (IS_FAILABLE(signature->rtype))
 	{
 		signature->failable_abi_info = win64_classify(&regs, type_anyerr, true, is_vector_call, is_reg_call);
-		if (signature->rtype->type->type_kind != TYPE_VOID)
+		if (rtype->type_kind != TYPE_VOID)
 		{
-			signature->ret_abi_info = win64_classify(&regs, type_get_ptr(type_lowering(signature->rtype->type)), false, is_vector_call, is_reg_call);
+			signature->ret_abi_info = win64_classify(&regs, type_get_ptr(type_lowering(rtype)), false, is_vector_call, is_reg_call);
 		}
 	}
 	else
 	{
-		signature->ret_abi_info = win64_classify(&regs, signature->rtype->type, true, is_vector_call, is_reg_call);
+		signature->ret_abi_info = win64_classify(&regs, rtype, true, is_vector_call, is_reg_call);
 	}
 
 	// Set up parameter registers.

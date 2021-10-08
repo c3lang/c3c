@@ -50,7 +50,7 @@ const DOUBLE_MIN_10_EXP = -307;
 const DOUBLE_MAX_EXP = 1024;
 const DOUBLE_MIN_EXP = -1021;
 const DOUBLE_EPSILON = 2.22044604925031308085e-16;
-
+/*
 const QUAD_MAX = 1.18973149535723176508575932662800702e+4932;
 const QUAD_MIN = 3.36210314311209350626267781732175260e-4932;
 const QUAD_DENORM_MIN = 6.47517511943802511092443895822764655e-4966;
@@ -62,7 +62,7 @@ const QUAD_MIN_10_EXP = -4931;
 const QUAD_MAX_EXP = 16384;
 const QUAD_MIN_EXP = -16481;
 const QUAD_EPSILON = 1.92592994438723585305597794258492732e-34;
-
+*/
 private union DoubleLong
 {
     double f;
@@ -107,13 +107,13 @@ func double log10(double x)
 	hx += 0x3ff00000 - 0x3fe6a09e;
 	k += (int)(hx >> 20) - 0x3ff;
 	hx = (hx & 0x000fffff) + 0x3fe6a09e;
-	u.i = (ulong)(hx << 32) | (u.i & 0xffffffff);
+	u.i = (ulong)(hx << 32) | (u.i & 0xffffffffu64);
 	x = u.f;
 
 	hx += 0x3ff00000 - 0x3fe6a09e;
 	k += (int)(hx >> 20) - 0x3ff;
 	hx = (hx & 0x000fffff) + 0x3fe6a09e;
-	u.i = (ulong)(hx << 32) | (u.i & 0xffffffff);
+	u.i = (ulong)(hx << 32) | (u.i & 0xffffffffu64);
 	x = u.f;
 
 
@@ -131,7 +131,7 @@ func double log10(double x)
 	double hi = f - hfsq;
 	u.f = hi;
 	// u.i &= (ulong)(-1) << 32;
-	u.i &= 0xFFFFFFFF00000000;
+	u.i &= 0xFFFFFFFF00000000u64;
 	hi = u.f;
 	double lo = f - hi - hfsq + s * (hfsq + r);
 
