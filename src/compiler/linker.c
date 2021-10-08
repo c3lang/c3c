@@ -64,8 +64,19 @@ static void prepare_msys2_linker_flags(const char ***args, const char **files_to
 static bool link_exe(const char *output_file, const char **files_to_link, unsigned file_count)
 {
 	const char **args = NULL;
-	vec_add(args, "-o");
-	vec_add(args, output_file);
+#ifdef _MSC_VER
+	if (platform_target.os == OS_TYPE_WIN32)
+	{
+		vec_add(args, join_strings((const char* []) {"/out:", output_file}, 2));
+	}
+	else
+	{
+#endif
+		vec_add(args, "-o");
+		vec_add(args, output_file);
+#ifdef _MSC_VER
+	}
+#endif
 	VECEACH(active_target.link_args, i)
 	{
 		vec_add(args, active_target.link_args[i]);
@@ -78,16 +89,38 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			// TODO: properly detect if llvm-lld is available
 			// TODO: check if running inside MSYS2, it could be done via getting MSYSTEM environment variable
 			// https://stackoverflow.com/questions/65527286/how-to-check-if-my-program-is-running-on-mingwor-msys-shell-or-on-cmd
-			if (!platform_target.x64.is_mingw64) return false;
-			if (NULL == getenv("MSYSTEM")) return false;
-			if (!strcmp(getenv("MSYSTEM"), "CLANG64") || !strcmp(getenv("MSYSTEM"), "MINGW64"))
+			//if (!platform_target.x64.is_mingw64) return false;
+			if (NULL == getenv("MSYSTEM"))
 			{
-				prepare_msys2_linker_flags(&args, files_to_link, file_count);
+				// "native" windows
+
+				// TODO these really should autodetect the path!!!
+				vec_add(args, "-libpath:\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\lib\\x64\"");
+				vec_add(args, "-libpath:\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\atlmfc\\lib\\x64\"");
+				vec_add(args, "-libpath:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\ucrt\\x64\"");
+				vec_add(args, "-libpath:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\um\\x64\"");
+				vec_add(args, "-libpath:\"C:\\Program Files\\LLVM\\lib\\clang\\12.0.1\\lib\\windows\"");
+				vec_add(args, "-defaultlib:libcmt");
+				vec_add(args, "-nologo");
+				add_files(&args, files_to_link, file_count);
+				//vec_add(args, "libcmt.lib");
+
+				puts("linker args:");
+				VECEACH(args, i) {
+					printf("%s \n", args[i]);
+				}
 			}
 			else
 			{
-				return false;
-			}
+				if (!strcmp(getenv("MSYSTEM"), "CLANG64") || !strcmp(getenv("MSYSTEM"), "MINGW64"))
+				{
+					prepare_msys2_linker_flags(&args, files_to_link, file_count);
+				}
+				else
+				{
+					return false;
+				}
+			}			
 			break;
 		case OS_TYPE_MACOSX:
 			add_files(&args, files_to_link, file_count);
@@ -190,7 +223,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	}
 	if (!success)
 	{
-		error_exit("Failed to create an executable: %s", error);
+		error_exit("Failed to create an executable:\n%s", error);
 	}
 	return true;
 }
@@ -208,6 +241,7 @@ bool obj_format_linking_supported(ObjectFormatType format_type)
 		case OBJ_FORMAT_ELF:
 		case OBJ_FORMAT_MACHO:
 		case OBJ_FORMAT_WASM:
+			puts("has obj format linking support");
 			return true;
 	}
 	UNREACHABLE
