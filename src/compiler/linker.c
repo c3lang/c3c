@@ -103,7 +103,6 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 				vec_add(args, "-defaultlib:libcmt");
 				vec_add(args, "-nologo");
 				add_files(&args, files_to_link, file_count);
-				//vec_add(args, "libcmt.lib");
 
 				puts("linker args:");
 				VECEACH(args, i) {
