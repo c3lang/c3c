@@ -89,7 +89,6 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			// TODO: properly detect if llvm-lld is available
 			// TODO: check if running inside MSYS2, it could be done via getting MSYSTEM environment variable
 			// https://stackoverflow.com/questions/65527286/how-to-check-if-my-program-is-running-on-mingwor-msys-shell-or-on-cmd
-			//if (!platform_target.x64.is_mingw64) return false;
 			if (NULL == getenv("MSYSTEM"))
 			{
 				// "native" windows
@@ -217,7 +216,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	}
 	if (!success)
 	{
-		error_exit("Failed to create an executable:\n%s", error);
+		error_exit("Failed to create an executable: %s", error);
 	}
 	return true;
 }

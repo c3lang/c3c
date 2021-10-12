@@ -9,15 +9,19 @@ char* basename(char* path)
 {
 	size_t len = strlen(path);
 	size_t lastSlash = 0;
-	for (size_t i = len - 2; i > 0; i--) {
-		if (path[i] == '\\' || path[i] == '/') {
-			if (i == len) {
+	for (size_t i = len - 2; i > 0; i--)
+	{
+		if (path[i] == '\\' || path[i] == '/')
+		{
+			if (i == len)
+			{
 				continue;
 			}
 			lastSlash = i;
 			break;
 		}
-		if (i == 0) {
+		if (i == 0)
+		{
 			// according to `man 3 basename` if there is no /, the original path should be returned
 			char* newStr = (char*)malloc(len);
 			strcpy(newStr, path);
@@ -34,15 +38,19 @@ char* dirname(char* path)
 {
 	size_t len = strlen(path);
 	size_t lastSlash = 0;
-	for (size_t i = len - 2; i > 0; i--) {
-		if (path[i] == '\\' || path[i] == '/') {
-			if (i == len) {
+	for (size_t i = len - 2; i > 0; i--)
+	{
+		if (path[i] == '\\' || path[i] == '/')
+		{
+			if (i == len)
+			{
 				continue;
 			}
 			lastSlash = i;
 			break;
 		}
-		if (i == 0) {
+		if (i == 0)
+		{
 			// according to `man 3 basename` if there is no /, "." should be returned
 			char* newStr = (char*)malloc(2);
 			strcpy(newStr, ".");
