@@ -95,19 +95,14 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 				// "native" windows
 
 				// TODO these really should autodetect the path!!!
-				vec_add(args, "-libpath:\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\lib\\x64\"");
-				vec_add(args, "-libpath:\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\atlmfc\\lib\\x64\"");
-				vec_add(args, "-libpath:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\ucrt\\x64\"");
-				vec_add(args, "-libpath:\"C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\um\\x64\"");
-				vec_add(args, "-libpath:\"C:\\Program Files\\LLVM\\lib\\clang\\12.0.1\\lib\\windows\"");
+				vec_add(args, "-libpath:C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\lib\\x64");
+				vec_add(args, "-libpath:C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\atlmfc\\lib\\x64");
+				vec_add(args, "-libpath:C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\ucrt\\x64");
+				vec_add(args, "-libpath:C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\um\\x64");
+				vec_add(args, "-libpath:C:\\Program Files\\LLVM\\lib\\clang\\12.0.1\\lib\\windows");
 				vec_add(args, "-defaultlib:libcmt");
 				vec_add(args, "-nologo");
 				add_files(&args, files_to_link, file_count);
-
-				puts("linker args:");
-				VECEACH(args, i) {
-					printf("%s \n", args[i]);
-				}
 			}
 			else
 			{
@@ -240,7 +235,6 @@ bool obj_format_linking_supported(ObjectFormatType format_type)
 		case OBJ_FORMAT_ELF:
 		case OBJ_FORMAT_MACHO:
 		case OBJ_FORMAT_WASM:
-			puts("has obj format linking support");
 			return true;
 	}
 	UNREACHABLE
