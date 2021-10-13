@@ -20,7 +20,7 @@
 #include <limits.h>
 #else
 #include "utils/dirent.h"
-#define PATH_MAX NTFS_MAX_PATH
+#define PATH_MAX 260
 
 // dirname and basename on windows
 #include "win_dirname_basename.h"
