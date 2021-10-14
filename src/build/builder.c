@@ -96,10 +96,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->arch_os_target = options->arch_os_target_override;
 	}
-	else if (PLATFORM_WINDOWS)
+	else if (_MSC_VER)
 	{
 		// The current handling of ARCH_OS_TARGET_DEFAULT works on unix, but not on windows.
-		// to deal with this, simply default to x64-windows.
+		// to deal with this, simply default to x64-windows (unless using mingw).
 		// ARCH_OS_TARGET_DEFAULT could be handled in a more cross-platform manner later on.
 		target->arch_os_target = X64_WINDOWS;
 	}
