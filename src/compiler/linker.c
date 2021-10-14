@@ -104,6 +104,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 				// C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\atlmfc\\lib\\x64
 				// C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\ucrt\\x64
 				// C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\um\\x64
+#ifdef _MSC_VER
 				PathPair msvc_paths = get_latest_available_vs_path();
 				PathPair windows_kit_paths = find_winkit_path();
 				vec_add(args, join_strings((const char* []) { "-libpath:C:", msvc_paths.first }, 2));
@@ -114,6 +115,9 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 				vec_add(args, "-defaultlib:libcmt");
 				vec_add(args, "-nologo");
 				add_files(&args, files_to_link, file_count);
+#else
+				error_exit("ERROR - c3c must be compiled with MSVC to target x64-windows\n");
+#endif
 			}
 			else
 			{

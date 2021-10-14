@@ -1,15 +1,14 @@
 #include "utils/common.h"
-#ifdef PLATFORM_WINDOWS
+#ifdef _MSC_VER
 
 #include "utils/find_msvc.h"
 
 #include <stdio.h>
 
-#include "dirent.h"
+#include "utils/dirent.h"
 
 #define MSVC_BASE_PATH "/Program Files (x86)/Microsoft Visual Studio/"
 #define WINKIT_BASE_PATH "/Program Files (x86)/Windows Kits/"
-
 
 
 int is_numeric(const struct dirent* ent) {
@@ -20,8 +19,7 @@ char* get_highest_ver(char* directory, int (*filter)(const struct dirent*)) {
     struct dirent** files;
     int num_files = scandir(directory, &files, filter, versionsort);
     if (num_files < 0) {
-        fprintf(stderr, "error: %s\n : %s\n", strerror(errno), directory);
-        exit(2);
+        error_exit("ERROR - Failed to autodetect MSVC libpaths\n");
     }
     char* path_ret = (char*)malloc(260);
     strcpy_s(path_ret, 260, files[num_files - 1]->d_name);
@@ -78,4 +76,4 @@ PathPair find_winkit_path() {
     return ret;
 }
 
-#endif //defined(PLATFORM_WINDOWS)
+#endif //defined(_MSC_VER)
