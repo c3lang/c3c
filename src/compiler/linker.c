@@ -2,6 +2,10 @@
 
 #include <llvm/Config/llvm-config.h>  // for LLVM_VERSION_STRING
 
+#ifdef PLATFORM_WINDOWS
+#include "utils/find_msvc.h"
+#endif
+
 extern bool llvm_link_elf(const char **args, int arg_count, const char** error_string);
 extern bool llvm_link_macho(const char **args, int arg_count, const char** error_string);
 extern bool llvm_link_coff(const char **args, int arg_count, const char** error_string);
@@ -93,12 +97,20 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			{
 				// "native" windows
 
-				// TODO these really should autodetect the path!!!
-				vec_add(args, "-libpath:C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\lib\\x64");
-				vec_add(args, "-libpath:C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\atlmfc\\lib\\x64");
-				vec_add(args, "-libpath:C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\ucrt\\x64");
-				vec_add(args, "-libpath:C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\um\\x64");
-				vec_add(args, "-libpath:C:\\Program Files\\LLVM\\lib\\clang\\12.0.1\\lib\\windows");
+
+				// find paths to library directories.
+				// ex:
+				// C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\lib\\x64
+				// C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\atlmfc\\lib\\x64
+				// C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\ucrt\\x64
+				// C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\um\\x64
+				PathPair msvc_paths = get_latest_available_vs_path();
+				PathPair windows_kit_paths = find_winkit_path();
+				vec_add(args, join_strings((const char* []) { "-libpath:C:", msvc_paths.first }, 2));
+				vec_add(args, join_strings((const char* []) { "-libpath:C:", msvc_paths.second }, 2));
+				vec_add(args, join_strings((const char* []) { "-libpath:C:", windows_kit_paths.first }, 2));
+				vec_add(args, join_strings((const char* []) { "-libpath:C:", windows_kit_paths.second }, 2));
+
 				vec_add(args, "-defaultlib:libcmt");
 				vec_add(args, "-nologo");
 				add_files(&args, files_to_link, file_count);

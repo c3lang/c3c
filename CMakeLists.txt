@@ -113,6 +113,7 @@ add_executable(c3c
         src/compiler/module.c
         src/compiler/llvm_codegen.c
         src/utils/stringutils.c
+        src/utils/find_msvc.c
         src/compiler/dwarf.h
         src/compiler/copying.c
         src/compiler/llvm_codegen_stmt.c
