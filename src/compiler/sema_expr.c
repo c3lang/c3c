@@ -4586,8 +4586,8 @@ static void cast_to_max_bit_size(Context *context, Expr *left, Expr *right, Type
 		return;
 	}
 	Type *to = right->type->type_kind < TYPE_U8
-	           ? type_int_signed_by_bitsize(bit_size_right)
-	           : type_int_unsigned_by_bitsize(bit_size_right);
+	           ? type_int_signed_by_bitsize(bit_size_left)
+	           : type_int_unsigned_by_bitsize(bit_size_left);
 	bool success = cast_implicit(right, to);
 	assert(success);
 }
