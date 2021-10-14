@@ -96,6 +96,9 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->arch_os_target = options->arch_os_target_override;
 	}
+#ifndef _MSC_VER
+#define _MSC_VER 0
+#endif
 	else if (_MSC_VER)
 	{
 		// The current handling of ARCH_OS_TARGET_DEFAULT works on unix, but not on windows.
