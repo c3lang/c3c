@@ -70,7 +70,7 @@ char *strip_drive_prefix(char *path)
 static inline bool is_path_separator(char c)
 {
 #if PLATFORM_WINDOWS
-	return c == '/' || c == '\';
+	return c == '/' || c == '\\';
 #else
 	return c == '/';
 #endif
