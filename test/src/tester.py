@@ -22,7 +22,7 @@ class TargetFile:
         self.is_target = is_target
         self.line_offset = line_offset
         if is_target:
-            self.file = open(filepath, mode="w")
+            self.file = open(filepath, mode="wb")
         else:
             self.expected_lines = []
             self.file = None
