@@ -14,10 +14,12 @@
 #endif
 
 #ifndef _MSC_VER
+
 #include <libgen.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <limits.h>
+
 #else
 #include "utils/dirent.h"
 #define PATH_MAX 260
@@ -47,25 +49,28 @@
  * If that is an issue, I think dirent will have to be replaced or the dirent
  * port in use will have to be replaced.
  */
-char* strip_drive_prefix(char* path) {
-	if ((*path == 'c' || *path == 'C') && path[1] == ':') {
+char *strip_drive_prefix(char *path)
+{
+	if ((*path == 'c' || *path == 'C') && path[1] == ':')
+	{
 		return path + 2; // remove first two characters
 	}
-	else if (path[1] == ':' && (path[2] == '/' || path[2] == '\\')) { // I don't *think* a relative path can start with '[char]:/' ? right?
+
+	if (path[1] == ':' && (path[2] == '/' || path[2] == '\\'))
+	{ // I don't *think* a relative path can start with '[char]:/' ? right?
 		// nothing can be done about this currently
-		error_exit("Illegal path %s - absolute path must start with /, \\, c:, or C: (file a github issue if this is a problem)");
+		error_exit("Illegal path %s - absolute path must start with /, \\, "
+				   "c:, or C: (file a github issue if this is a problem)");
 	}
-	else {
-		// path is ok
-		return path;
-	}
+
+	// path is ok
+	return path;
 }
 
 #endif
 
 
-
-const char* expand_path(const char* path)
+const char *expand_path(const char *path)
 {
 	if (path[0] == '~' && path[1] == '/')
 	{
@@ -77,7 +82,6 @@ const char* expand_path(const char* path)
 	}
 	return path;
 }
-
 
 
 char *read_file(const char *path, size_t *return_size)
@@ -112,7 +116,7 @@ char *read_file(const char *path, size_t *return_size)
 	return buffer;
 }
 
-const char* find_lib_dir(void)
+const char *find_lib_dir(void)
 {
 
 	const char *path = find_executable_path();
@@ -188,7 +192,8 @@ void file_find_top_dir()
 		char new_path[PATH_MAX + 1];
 		getcwd(new_path, PATH_MAX);
 		if (strcmp(new_path, start_path) != 0) continue;
-		error_exit("The root build directory containing %s could not be found. Did you use the correct directory?", PROJECT_TOML);
+		error_exit("The root build directory containing %s could not be found. Did you use the correct directory?",
+		           PROJECT_TOML);
 	}
 }
 
@@ -197,7 +202,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 #ifdef _MSC_VER
 	DIR *dir = opendir(strip_drive_prefix(path));
 #else
-	DIR* dir = opendir(path);
+	DIR *dir = opendir(path);
 #endif
 	bool path_ends_with_slash = path[strlen(path) - 1] == '/';
 	if (!dir)

@@ -21,6 +21,7 @@ char *messages = """
          \s    total
 """;
 
+// This will depend on platform source file line endings
 char *message2 = `
   ``oh`` superman
     where are you now?
