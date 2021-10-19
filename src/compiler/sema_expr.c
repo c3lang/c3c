@@ -1631,18 +1631,42 @@ static bool sema_expr_analyse_macro_call(Context *context, Expr *call_expr, Expr
 				}
 			}
 
-			Type *sum_returns = unify_returns(context);
-			if (!sum_returns)
-			{
-				ok = false;
-				goto EXIT;
-			}
 			if (rtype)
 			{
-				assert(type_no_fail(rtype)->canonical == type_no_fail(sum_returns)->canonical);
-				sum_returns = rtype;
+				VECEACH(context->returns, i)
+				{
+					Ast *return_stmt = context->returns[i];
+					Expr *ret_expr = return_stmt->return_stmt.expr;
+					if (!ret_expr)
+					{
+						if (rtype == type_void) continue;
+						SEMA_ERROR(return_stmt, "Expected returning a value of type %s.", type_quoted_error_string(rtype));
+						ok = false;
+						goto EXIT;
+					}
+					Type *type = ret_expr->type;
+					if (!cast_may_implicit(type, rtype))
+					{
+						SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
+						           type_quoted_error_string(type));
+						ok = false;
+						goto EXIT;
+					}
+					bool success = cast_implicit_ignore_failable(ret_expr, rtype);
+					assert(success);
+				}
+				call_expr->type = type_get_opt_fail(rtype, failable);
 			}
-			call_expr->type = type_get_opt_fail(sum_returns, failable);
+			else
+			{
+				Type *sum_returns = unify_returns(context);
+				if (!sum_returns)
+				{
+					ok = false;
+					goto EXIT;
+				}
+				call_expr->type = type_get_opt_fail(sum_returns, failable);
+			}
 			if (vec_size(context->returns) == 1)
 			{
 				Expr *result = context->returns[0]->return_stmt.expr;
