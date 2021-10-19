@@ -300,7 +300,7 @@ entry:
   ret i32 %3
 }
 
-define i32 @test.helo(double %0, %Bobo* byval align 8 %1) #0 {
+define i32 @test.helo(double %0, %Bobo* byval(%Bobo) align 8 %1) #0 {
 entry:
   %d = alloca double, align 8
   %b = alloca %Bobo, align 4
@@ -319,7 +319,7 @@ entry:
   %7 = bitcast %Bobo* %indirectarg to i8*
   %8 = bitcast %Bobo* %c to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %7, i8* align 4 %8, i32 20, i1 false)
-  %9 = call i32 @test.helo(double 1.000000e+00, %Bobo* byval align 8 %indirectarg)
+  %9 = call i32 @test.helo(double 1.000000e+00, %Bobo* byval(%Bobo) align 8 %indirectarg)
   ret i32 1
 }
 

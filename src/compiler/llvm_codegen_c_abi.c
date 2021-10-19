@@ -91,7 +91,8 @@ ABIArgInfo *abi_arg_new_indirect_realigned(AlignSize alignment, Type *by_val_typ
 	info->indirect.alignment = alignment;
 	assert(info->indirect.alignment);
 	info->attributes.realign = true;
-	info->indirect.by_val_type = by_val_type;
+	info->indirect.type = by_val_type;
+	info->attributes.by_val = true;
 	return info;
 }
 
@@ -99,7 +100,8 @@ ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type)
 {
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT);
 	info->indirect.alignment = type_abi_alignment(by_val_type);
-	info->indirect.by_val_type = by_val_type;
+	info->indirect.type = by_val_type;
+	info->attributes.by_val = true;
 	assert(info->indirect.alignment);
 	return info;
 }
@@ -109,7 +111,8 @@ ABIArgInfo *abi_arg_new_indirect_not_by_val(Type *type)
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_INDIRECT);
 	info->indirect.alignment = type_abi_alignment(type);
 	assert(info->indirect.alignment);
-	info->indirect.by_val_type = NULL;
+	info->indirect.type = type;
+	info->attributes.by_val = false;
 	return info;
 }
 
