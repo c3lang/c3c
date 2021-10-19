@@ -35,7 +35,8 @@ class TargetFile:
 
     def write(self, line):
         if self.file:
-            self.file.write(line + "\n")
+            self.file.write(bytearray(line, "utf-8"))
+            self.file.write(b"\n")
         else:
             self.expected_lines.append(line)
 
