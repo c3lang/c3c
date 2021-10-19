@@ -24,8 +24,6 @@
 #include "utils/dirent.h"
 #define PATH_MAX 260
 
-// dirname and basename on windows
-#include "win_dirname_basename.h"
 
 // copied from https://github.com/kindkaktus/libconfig/commit/d6222551c5c01c326abc99627e151d549e0f0958
 #ifndef S_ISDIR
@@ -68,6 +66,66 @@ char *strip_drive_prefix(char *path)
 }
 
 #endif
+
+static inline bool is_path_separator(char c)
+{
+#if PLATFORM_WINDOWS
+	return c == '/' || c == '\';
+#else
+	return c == '/';
+#endif
+}
+
+/**
+ * Split a file into path + filename, allocating memory for them and returning them in
+ * the out params
+ * 'foo' => '.' / 'foo'
+ * '/' => false
+ * '.' => false
+ * '..' => false
+ * 'bar/' => false
+ *
+ * @param path the path to extract the filename from.
+ * @param filename_ptr the pointer to return the filename in.
+ * @param directory_ptr the pointer to return the directory in.
+ * @return false if only a directory could be found, true otherwise
+ */
+bool filenamesplit(const char *path, char** filename_ptr, char** directory_ptr)
+{
+	size_t len = strlen(path);
+	if (len == 0) return false;
+	size_t found_at = (size_t)-1;
+	for (size_t i = len - 1; i > 0; i--)
+	{
+		if (is_path_separator(path[i]))
+		{
+			found_at = i;
+			break;
+		}
+	}
+	size_t file_len = (found_at != ((size_t)-1)) ? len - found_at - 1 : len;
+	if (file_len == 1 && path[0] == '.') return false;
+	if (file_len == 2 && path[0] == '.' && path[1] == '.') return false;
+	if (!file_len) return false;
+	*filename_ptr = strdup(&path[len - file_len]);
+	if (file_len < len)
+	{
+		size_t dir_len = len - file_len;
+		char *dir = malloc(dir_len + 1);
+		memcpy(dir, path, dir_len - 1);
+		dir[dir_len] = 0;
+		*directory_ptr = dir;
+	}
+	else
+	{
+		char *dir = malloc(2);
+		dir[0] = '.';
+		dir[1] = 0;
+		*directory_ptr = dir;
+	}
+	return true;
+}
+
 
 
 const char *expand_path(const char *path)
@@ -153,15 +211,10 @@ const char *find_lib_dir(void)
 
 void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path)
 {
-	char path[1024];
-	size_t path_len = strlen(full_path);
-	if (path_len >= sizeof(path)) error_exit("Path %s too long.", full_path);
-
-	strcpy(path, full_path);
-	*filename = strdup(basename(path));
-
-	strcpy(path, full_path);
-	*dir_path = strdup(dirname(path));
+	if (!filenamesplit(full_path, filename, dir_path))
+	{
+		error_exit("The filename could not be extracted from '%s'.", full_path);
+	}
 }
 
 

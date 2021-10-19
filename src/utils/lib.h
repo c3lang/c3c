@@ -21,6 +21,7 @@ typedef struct Task_
 
 typedef void *TaskQueueRef;
 
+bool filenamesplit(const char *path, char** filename_ptr, char** directory_ptr);
 const char* expand_path(const char* path);
 const char* find_lib_dir(void);
 char *read_file(const char *path, size_t *return_size);
