@@ -1483,6 +1483,7 @@ typedef struct ABIArgInfo_
 		bool zeroext : 1;
 		bool signext : 1;
 		bool realign : 1;
+		bool by_val : 1;
 	} attributes;
 	union
 	{
@@ -1521,7 +1522,7 @@ typedef struct ABIArgInfo_
 		{
 			// We may request a certain alignment of the parameters.
 			AlignSize alignment;
-			Type *by_val_type;
+			Type *type;
 		} indirect;
 	};
 

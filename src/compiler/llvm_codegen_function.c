@@ -507,14 +507,13 @@ static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef functio
 		case ABI_ARG_INDIRECT:
 			if (is_return)
 			{
-				// TODO then type attributes are added to LLVM-C, use that for sret.
-				llvm_attribute_add(context, function, attribute_sret, 1);
+				assert(info->indirect.type);
+				llvm_attribute_add_type(context, function, attribute_sret, llvm_get_type(context, info->indirect.type), 1);
 				llvm_attribute_add_int(context, function, attribute_align, info->indirect.alignment, 1);
 			}
 			else
 			{
-				// TODO then type attributes are added to LLVM-C, use that for byval.
-				if (info->indirect.by_val_type) llvm_attribute_add(context, function, attribute_byval, index);
+				if (info->attributes.by_val) llvm_attribute_add_type(context, function, attribute_byval, llvm_get_type(context, info->indirect.type), index);
 				llvm_attribute_add_int(context, function, attribute_align, info->indirect.alignment, index);
 			}
 			break;

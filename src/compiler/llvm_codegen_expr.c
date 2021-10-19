@@ -3561,9 +3561,9 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		switch (info->kind)
 		{
 			case ABI_ARG_INDIRECT:
-				if (info->indirect.by_val_type)
+				if (info->attributes.by_val)
 				{
-					llvm_attribute_add_call(c, call_value, attribute_byval, i + 1, 0);
+					llvm_attribute_add_call_type(c, call_value, attribute_byval, i + 1, llvm_get_type(c, info->indirect.type));
 				}
 				llvm_attribute_add_call(c, call_value, attribute_align, i + 1, info->indirect.alignment);
 				break;
@@ -3584,7 +3584,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
 		case ABI_ARG_INDIRECT:
-			llvm_attribute_add_call(c, call_value, attribute_sret, 1, 0);
+			llvm_attribute_add_call_type(c, call_value, attribute_sret, 1, llvm_get_type(c, ret_info->indirect.type));
 			llvm_attribute_add_call(c, call_value, attribute_align, 1, ret_info->indirect.alignment);
 			// 13. Indirect, that is passing the result through an out parameter.
 
