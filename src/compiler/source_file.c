@@ -29,11 +29,8 @@ File *source_file_load(const char *filename, bool *already_loaded)
 	if (already_loaded) *already_loaded = false;
 	if (!source_files.files) source_files.files = VECNEW(File *, LEXER_FILES_START_CAPACITY);
 
-#ifdef _MSC_VER
-	char* full_path = malloc_arena(MAX_PATH + 1);
-#else
 	char* full_path = malloc_arena(PATH_MAX + 1);
-#endif
+
 	if (!realpath(filename, full_path))
 	{
 		error_exit("Failed to resolve %s", filename);
