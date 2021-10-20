@@ -1921,14 +1921,86 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 	return success;
 }
 
+static bool sema_analyse_ct_switch_body_type(Context *context, Ast *statement)
+{
+	Expr *cond = statement->ct_switch_stmt.cond;
+	assert(cond->type == type_typeid);
+	Type *switch_type = cond->const_expr.typeid->canonical;
+	Ast **cases = statement->ct_switch_stmt.body;
+	unsigned case_count = vec_size(cases);
+	Ast *match = NULL;
+	Ast *default_case = NULL;
+	Type *matched_type = NULL;
+	for (unsigned i = 0; i < case_count; i++)
+	{
+		Ast *stmt = cases[i];
+		switch (stmt->ast_kind)
+		{
+			case AST_CASE_STMT:
+			{
+				Expr *expr = stmt->case_stmt.expr;
+				if (!sema_analyse_expr(context, expr)) return false;
+				if (expr->expr_kind != EXPR_CONST)
+				{
+					SEMA_ERROR(expr, "The $case must have a constant expression.");
+					return false;
+				}
+				if (expr->type != type_typeid)
+				{
+					SEMA_ERROR(stmt, "A type is expected here not %s.", type_quoted_error_string(expr->type));
+					return false;
+				}
+				Type *canonical = expr->const_expr.typeid->canonical;
+				// Check that it is unique.
+				for (unsigned j = 0; j < i; j++)
+				{
+					Ast *other_stmt = cases[j];
+					if (other_stmt->ast_kind == AST_DEFAULT_STMT) continue;
+					Type *other_type = other_stmt->case_stmt.expr->const_expr.typeid->canonical;
+					if (other_type == canonical)
+					{
+						SEMA_ERROR(stmt, "The type %s appears more than once.", type_quoted_error_string(other_type));
+						SEMA_PREV(cases[j]->case_stmt.expr, "The previous $case was here.");
+						return false;
+					}
+				}
+				if (canonical != switch_type) continue;
+				assert(!match);
+				match = stmt;
+				continue;
+			}
+			case AST_DEFAULT_STMT:
+				if (default_case)
+				{
+					SEMA_ERROR(stmt, "More than one $default is not allowed.");
+					SEMA_PREV(default_case, "The previous $default was here.");
+					return false;
+				}
+				default_case = stmt;
+				continue;
+			default:
+				UNREACHABLE;
+		}
+	}
+	if (!match) match = default_case;
+	if (!match)
+	{
+		statement->ast_kind = AST_NOP_STMT;
+		return true;
+	}
+	match = match->case_stmt.body;
+	if (!sema_analyse_statement(context, match)) return false;
+	*statement = *match;
+	return true;
+
+}
 static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 {
 	Expr *cond = statement->ct_switch_stmt.cond;
-	bool use_type_id = cond->expr_kind == EXPR_TYPEID;
-	Type *type = use_type_id ? cond->typeid_expr->type->canonical : NULL;
+	bool use_type_id = cond->type == type_typeid;
+	Type *type = cond->type;
 	Ast **cases = statement->ct_switch_stmt.body;
 	unsigned case_count = vec_size(cases);
-
 	Ast *match = NULL;
 	for (unsigned i = 0; i < case_count; i++)
 	{
@@ -1936,45 +2008,21 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 		switch (stmt->ast_kind)
 		{
 			case AST_CASE_STMT:
-				if (use_type_id)
+			{
+				Expr *expr = stmt->case_stmt.expr;
+				if (sema_analyse_inferred_expr(context, type, expr)) return false;
+				if (!cast_implicit(expr, type)) return false;
+				if (expr->expr_kind != EXPR_CONST)
 				{
-					Expr *expr = stmt->case_stmt.expr;
-					if (!sema_analyse_expr_lvalue(context, expr)) return false;
-					if (stmt->case_stmt.expr->expr_kind != EXPR_TYPEINFO)
-					{
-						SEMA_ERROR(stmt, "Unexpectedly encountered a value rather than a type in the $case");
-						return false;
-					}
-					Type *case_canonical = expr->type_expr->type->canonical;
-					if (case_canonical == type)
-					{
-						// Is this a better match?
-						if (!match || match->case_stmt.expr->type_expr->type->canonical != type)
-						{
-							match = stmt;
-						}
-					}
-					// TODO only do suptyping when explicit
-					/*
-					else if (!match && type_is_subtype(case_canonical, type))
-					{
-						match = stmt;
-					}*/
+					SEMA_ERROR(expr, "The $case must have a constant expression.");
+					return false;
 				}
-				else
+				if (!match && expr_const_compare(&stmt->case_stmt.expr->const_expr, &cond->const_expr, BINARYOP_EQ))
 				{
-					if (!sema_analyse_expr_of_required_type(context,
-					                                        cond->type,
-					                                        stmt->case_stmt.expr))
-					{
-						return false;
-					}
-					if (!match && expr_const_compare(&stmt->case_stmt.expr->const_expr, &cond->const_expr, BINARYOP_EQ))
-					{
-						match = stmt;
-					}
+					match = stmt;
 				}
 				break;
+			}
 			case AST_DEFAULT_STMT:
 				if (!match) match = stmt;
 				break;
@@ -2000,12 +2048,15 @@ static bool sema_analyse_ct_switch_stmt(Context *context, Ast *statement)
 {
 	Expr *cond = statement->ct_switch_stmt.cond;
 	if (!sema_analyse_expr(context, cond)) return false;
-	if (cond->expr_kind != EXPR_CONST && cond->expr_kind != EXPR_TYPEID)
+	if (cond->expr_kind != EXPR_CONST)
 	{
 		SEMA_ERROR(cond, "A compile time $switch must be over a constant value.");
 		return false;
 	}
-
+	if (cond->type == type_typeid)
+	{
+		return sema_analyse_ct_switch_body_type(context, statement);
+	}
 	return sema_analyse_ct_switch_body(context, statement);
 }
 

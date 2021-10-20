@@ -94,6 +94,7 @@ void recover_top_level(Context *context)
 			case TOKEN_CT_FOR:
 			case TOKEN_CT_SWITCH:
 			case TOKEN_FUNC:
+			case TOKEN_FN:
 			case TYPELIKE_TOKENS:
 				// Only recover if this is in the first col.
 				if (TOKLOC(context->tok)->col == 1) return;
@@ -1537,7 +1538,7 @@ static inline Decl *parse_define_type(Context *context, Visibility visibility)
 	}
 
 	// 1. Did we have `func`? In that case it's a function pointer.
-	if (try_consume(context, TOKEN_FUNC))
+	if (try_consume(context, TOKEN_FUNC) || try_consume(context, TOKEN_FN))
 	{
 		Decl *decl = decl_new_with_type(alias_name, DECL_TYPEDEF, visibility);
 		decl->span.loc = start;
@@ -1963,7 +1964,14 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 static inline Decl *parse_func_definition(Context *context, Visibility visibility, bool is_interface)
 {
 	Decl *func = decl_new(DECL_FUNC, context->next_tok.id, visibility);
-	advance_and_verify(context, TOKEN_FUNC);
+	if (TOKEN_IS(TOKEN_FUNC))
+	{
+		advance_and_verify(context, TOKEN_FUNC);
+	}
+	else
+	{
+		advance_and_verify(context, TOKEN_FN);
+	}
 	TypeInfo **rtype_ref = &func->func_decl.function_signature.rtype;
 	TypeInfo **method_type_ref = &func->func_decl.type_parent;
 	TokenId name;
@@ -2021,7 +2029,7 @@ static inline Decl *parse_interface_declaration(Context *context, Visibility vis
 
 	while (!TOKEN_IS(TOKEN_RBRACE))
 	{
-		if (!TOKEN_IS(TOKEN_FUNC))
+		if (!TOKEN_IS(TOKEN_FUNC) && !TOKEN_IS(TOKEN_FN))
 		{
 			SEMA_TOKEN_ERROR(context->tok, "Expected a function here.");
 			return poisoned_decl;
@@ -2274,6 +2282,7 @@ Decl *parse_top_level_statement(Context *context)
 			TODO
 			break;
 		case TOKEN_FUNC:
+		case TOKEN_FN:
 		{
 			ASSIGN_DECL_ELSE(decl, parse_func_definition(context, visibility, false), poisoned_decl);
 			break;

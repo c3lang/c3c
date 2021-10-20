@@ -1028,6 +1028,7 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_QUESTQUEST:
 		case TOKEN_ENUM:
 		case TOKEN_FUNC:
+		case TOKEN_FN:
 		case TOKEN_GENERIC:
 		case TOKEN_IMPORT:
 		case TOKEN_MACRO:
