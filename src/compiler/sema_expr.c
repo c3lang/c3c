@@ -4448,6 +4448,57 @@ static void cast_to_max_bit_size(Context *context, Expr *left, Expr *right, Type
 	assert(success);
 }
 
+static bool sema_is_unsigned_always_false_comparison(Context *context, Expr *expr, Expr *left, Expr *right)
+{
+	if (context->macro_scope.macro) return true;
+	if (!is_const(left) && !is_const(right)) return true;
+	if (!type_is_integer(left->type)) return true;
+	if (is_const(left) && type_is_unsigned(type_flatten_distinct(right->type)))
+	{
+		if (int_is_neg(left->const_expr.ixx))
+		{
+			SEMA_ERROR(left, "Comparing an unsigned value with a negative constant is only allowed inside of macros.");
+			return false;
+		}
+		if (!int_is_zero(left->const_expr.ixx)) return true;
+		switch (expr->binary_expr.operator)
+		{
+			case BINARYOP_GT:
+				SEMA_ERROR(left, "Comparing '0 > unsigned expression' can never be true, and is only allowed inside of macro expansions.");
+				return false;
+			case BINARYOP_GE:
+				SEMA_ERROR(left,
+				           "Comparing '0 >= unsigned expression' is the same as 0 == expr and is a common bug, "
+						   "so is only allowed inside of macro expansions.");
+				return false;
+			default:
+				return true;
+		}
+	}
+	if (!is_const(right) || !type_is_unsigned(type_flatten_distinct(left->type))) return true;
+	if (int_is_neg(right->const_expr.ixx))
+	{
+		SEMA_ERROR(right, "Comparing an unsigned value with a negative constant is only allowed inside of macros.");
+		return false;
+	}
+	if (!int_is_zero(right->const_expr.ixx)) return true;
+	switch (expr->binary_expr.operator)
+	{
+		case BINARYOP_LT:
+			SEMA_ERROR(right,
+			           "Comparing 'unsigned expression < 0' can never be true, and is only allowed inside of macro expansions.");
+			return false;
+		case BINARYOP_LE:
+			SEMA_ERROR(right,
+					   "Comparing 'unsigned expression <= 0' is the same as expr == 0 and is a common bug, "
+			           "so is only allowed inside of macro expansions.");
+			return false;
+		default:
+			return true;
+	}
+
+}
+
 /**
  * Analyze a == b, a != b, a > b, a < b, a >= b, a <= b
  * @return
@@ -4538,6 +4589,10 @@ DONE:
 		expr->const_expr.b = expr_const_compare(&left->const_expr, &right->const_expr, expr->binary_expr.operator);
 		expr->const_expr.const_kind = CONST_BOOL;
 		expr->expr_kind = EXPR_CONST;
+	}
+	else
+	{
+		if (!sema_is_unsigned_always_false_comparison(context, expr, left, right)) return false;
 	}
 
 	// 8. Set the type to bool
