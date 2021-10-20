@@ -120,12 +120,13 @@ to C3 and compiled with the c3c compiler:
 - [x] CT type constants
 - [x] Simd vector types *partly implemented*
 - [x] Subarray initializers
+- [x] `$switch`
+- [x] Windows support
 - [ ] Anonymous structs
 - [ ] Complete C ABI conformance *in progress*
 - [ ] Debug info *in progress*
 - [ ] Virtual type *in progress*
 - [ ] Enum associated data support  
-- [ ] Windows support *in progress*
 - [ ] All attributes *in progress*
 - [ ] Associative array literals
 - [ ] Reflection methods
@@ -134,8 +135,7 @@ to C3 and compiled with the c3c compiler:
 - [ ] Escape macros
 - [ ] Implicit capturing macros
 - [ ] Bitstructs
-- [ ] `asm` section
-- [ ] `$switch`
+- [ ] `asm` section *in progress*
 - [ ] `$for`
 - [ ] Pre-post conditions
 - [ ] Stdlib inclusion
