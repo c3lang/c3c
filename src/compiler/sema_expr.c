@@ -4409,13 +4409,14 @@ static bool sema_expr_analyse_and_or(Context *context, Expr *expr, Expr *left, E
 
 	if (expr_both_const(left, right))
 	{
-		expr_replace(expr, left);
 		if (expr->binary_expr.operator == BINARYOP_AND)
 		{
+			expr_replace(expr, left);
 			expr->const_expr.b &= right->const_expr.b;
 		}
 		else
 		{
+			expr_replace(expr, left);
 			expr->const_expr.b |= right->const_expr.b;
 		}
 	}

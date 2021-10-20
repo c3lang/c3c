@@ -1996,6 +1996,8 @@ void scratch_buffer_clear(void);
 void scratch_buffer_append(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
 void scratch_buffer_append_char(char c);
+void scratch_buffer_append_signed_int(int64_t i);
+void scratch_buffer_append_unsigned_int(uint64_t i);
 char *scratch_buffer_to_string(void);
 const char *scratch_buffer_interned(void);
 

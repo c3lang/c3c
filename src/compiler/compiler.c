@@ -598,6 +598,26 @@ void scratch_buffer_append(const char *string)
 	scratch_buffer_append_len(string, strlen(string));
 }
 
+void scratch_buffer_append_signed_int(int64_t i)
+{
+	int len_needed = sprintf(&global_context.scratch_buffer[global_context.scratch_buffer_len], "%lld", (long long)i);
+	if (global_context.scratch_buffer_len + len_needed > MAX_STRING_BUFFER - 1)
+	{
+		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
+	}
+	global_context.scratch_buffer_len += len_needed;
+}
+
+void scratch_buffer_append_unsigned_int(uint64_t i)
+{
+	int len_needed = sprintf(&global_context.scratch_buffer[global_context.scratch_buffer_len], "%llu", (unsigned long long)i);
+	if (global_context.scratch_buffer_len + len_needed > MAX_STRING_BUFFER - 1)
+	{
+		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
+	}
+	global_context.scratch_buffer_len += len_needed;
+}
+
 void scratch_buffer_append_char(char c)
 {
 	if (global_context.scratch_buffer_len + 1 > MAX_STRING_BUFFER - 1)

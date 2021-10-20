@@ -1259,7 +1259,11 @@ static void type_append_name_to_scratch(Type *type)
 			scratch_buffer_append(type->func.mangled_function_signature);
 			break;
 		case TYPE_ARRAY:
-			TODO
+			type_append_name_to_scratch(type->array.base);
+			scratch_buffer_append_char('[');
+			scratch_buffer_append_signed_int(type->array.len);
+			scratch_buffer_append_char(']');
+			break;
 		case TYPE_VIRTUAL:
 			scratch_buffer_append("virtual ");
 			scratch_buffer_append(type->decl->name);
