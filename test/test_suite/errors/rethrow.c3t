@@ -3,7 +3,7 @@
 func void! test()
 {
     int! i;
-    i!!;
+    i?;
 }
 
 // #expect: rethrow.ll

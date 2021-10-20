@@ -1002,10 +1002,10 @@ static bool expr_is_pure(Expr *expr)
 		case EXPR_COND:
 		case EXPR_DESIGNATOR:
 		case EXPR_DECL:
-		case EXPR_ELSE:
+		case EXPR_OR_ERROR:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_FAILABLE:
-		case EXPR_GUARD:
+		case EXPR_RETHROW:
 		case EXPR_HASH_IDENT:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_MACRO_EXPANSION:
@@ -1021,6 +1021,7 @@ static bool expr_is_pure(Expr *expr)
 		case EXPR_TRY_ASSIGN:
 		case EXPR_UNDEF:
 		case EXPR_TYPEINFO:
+		case EXPR_FORCE_UNWRAP:
 			return false;
 		case EXPR_CAST:
 			return expr_is_pure(expr->cast_expr.expr);

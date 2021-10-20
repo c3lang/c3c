@@ -190,12 +190,13 @@ typedef enum
 	EXPR_COND,
 	EXPR_DECL,
 	EXPR_DESIGNATOR,
-	EXPR_ELSE,
+	EXPR_OR_ERROR,
 	EXPR_EXPR_BLOCK,
 	EXPR_EXPRESSION_LIST,
 	EXPR_FAILABLE,
 	EXPR_GROUP,
-	EXPR_GUARD,
+	EXPR_RETHROW,
+	EXPR_FORCE_UNWRAP,
 	EXPR_HASH_IDENT,
 	EXPR_MACRO_BLOCK,
 	EXPR_MACRO_EXPANSION,
@@ -251,7 +252,7 @@ typedef enum
 {
 	PREC_NONE,
 	PREC_ASSIGNMENT,        // =, *=, /=, %=, +=, etc
-	PREC_ELSE,              // else
+	PREC_OR_ERROR,              // else
 	PREC_TERNARY,           // ?:
 	PREC_OR,                // ||
 	PREC_AND,               // &&

@@ -2607,7 +2607,7 @@ static inline void gencontext_emit_else_jump_expr(GenContext *c, BEValue *be_val
 	c->catch_block = else_block;
 
 
-	llvm_emit_expr(c, be_value, expr->else_expr.expr);
+	llvm_emit_expr(c, be_value, expr->or_error_expr.expr);
 	llvm_value_rvalue(c, be_value);
 
 	// Restore.
@@ -2618,16 +2618,16 @@ static inline void gencontext_emit_else_jump_expr(GenContext *c, BEValue *be_val
 
 	// Emit else
 	llvm_emit_block(c, else_block);
-	llvm_emit_stmt(c, expr->else_expr.else_stmt);
+	llvm_emit_stmt(c, expr->or_error_expr.or_error_stmt);
 	llvm_emit_br(c, no_err_block);
 
 	llvm_emit_block(c, no_err_block);
 }
 
 
-static void gencontext_emit_else_expr(GenContext *c, BEValue *be_value, Expr *expr)
+static void gencontext_emit_or_error(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	if (expr->else_expr.is_jump)
+	if (expr->or_error_expr.is_jump)
 	{
 		gencontext_emit_else_jump_expr(c, be_value, expr);
 		return;
@@ -2643,7 +2643,7 @@ static void gencontext_emit_else_expr(GenContext *c, BEValue *be_value, Expr *ex
 	c->catch_block = else_block;
 
 	BEValue normal_value;
-	llvm_emit_expr(c, &normal_value, expr->else_expr.expr);
+	llvm_emit_expr(c, &normal_value, expr->or_error_expr.expr);
 	llvm_value_rvalue(c, &normal_value);
 
 	// Restore.
@@ -2658,7 +2658,7 @@ static void gencontext_emit_else_expr(GenContext *c, BEValue *be_value, Expr *ex
 	llvm_emit_block(c, else_block);
 
 	BEValue else_value;
-	llvm_emit_expr(c, &else_value, expr->else_expr.else_expr);
+	llvm_emit_expr(c, &else_value, expr->or_error_expr.or_error_expr);
 	llvm_value_rvalue(c, &else_value);
 
 	LLVMBasicBlockRef else_block_exit = llvm_get_current_block_if_in_use(c);
@@ -2689,9 +2689,9 @@ static void gencontext_emit_else_expr(GenContext *c, BEValue *be_value, Expr *ex
 }
 
 /**
- * This is the foo!! instruction.
+ * This is the foo? instruction.
  */
-static inline void gencontext_emit_guard_expr(GenContext *c, BEValue *be_value, Expr *expr)
+static inline void gencontext_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	LLVMBasicBlockRef guard_block = llvm_basic_block_new(c, "guard_block");
 	LLVMBasicBlockRef no_err_block = llvm_basic_block_new(c, "noerr_block");
@@ -2705,7 +2705,7 @@ static inline void gencontext_emit_guard_expr(GenContext *c, BEValue *be_value, 
 	c->error_var = error_var;
 	c->catch_block = guard_block;
 
-	llvm_emit_expr(c, be_value, expr->guard_expr.inner);
+	llvm_emit_expr(c, be_value, expr->rethrow_expr.inner);
 	REMINDER("Passed rvalue on guard, consider semantics.");
 	llvm_value_rvalue(c, be_value);
 
@@ -2723,10 +2723,57 @@ static inline void gencontext_emit_guard_expr(GenContext *c, BEValue *be_value, 
 	// Ensure we are on a branch that is non empty.
 	if (llvm_emit_check_block_branch(c))
 	{
-		llvm_emit_defer(c, expr->guard_expr.defer, 0);
+		llvm_emit_defer(c, expr->rethrow_expr.defer, 0);
 		BEValue value;
 		llvm_value_set_address(&value, error_var, type_anyerr);
 		llvm_emit_return_abi(c, NULL, &value);
+		c->current_block = NULL;
+		c->current_block_is_target = NULL;
+	}
+
+	llvm_emit_block(c, no_err_block);
+
+}
+
+/**
+ * This is the foo? instruction.
+ */
+static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic_block");
+	LLVMBasicBlockRef no_err_block = llvm_basic_block_new(c, "noerr_block");
+
+	// Store catch/error var
+	PUSH_ERROR();
+
+	// Set the catch/error var
+	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_anyerr, "error_var");
+
+	c->error_var = error_var;
+	c->catch_block = panic_block;
+
+	llvm_emit_expr(c, be_value, expr->force_unwrap_expr);
+	llvm_value_rvalue(c, be_value);
+
+	// Restore.
+	POP_ERROR();
+
+	// Emit success and to end.
+	llvm_emit_br(c, no_err_block);
+
+	POP_ERROR();
+
+	// Emit panic
+	llvm_emit_block(c, panic_block);
+
+	// Ensure we are on a branch that is non-empty.
+	if (llvm_emit_check_block_branch(c))
+	{
+		// TODO, we should add info about the error.
+		SourceLocation *loc = TOKLOC(expr->span.loc);
+		llvm_emit_debug_output(c, "Runtime error force unwrap!", loc->file->name, c->cur_func_decl->external_name, loc->line);
+		llvm_emit_call_intrinsic(c, intrinsic_id_trap, NULL, 0, NULL, 0);
+		LLVMBuildUnreachable(c->builder);
 		c->current_block = NULL;
 		c->current_block_is_target = NULL;
 	}
@@ -4218,8 +4265,8 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_NOP:
 			llvm_value_set(value, NULL, type_void);
 			return;
-		case EXPR_ELSE:
-			gencontext_emit_else_expr(c, value, expr);
+		case EXPR_OR_ERROR:
+			gencontext_emit_or_error(c, value, expr);
 			return;
 		case EXPR_MACRO_BLOCK:
 			llvm_emit_macro_block(c, value, expr);
@@ -4254,8 +4301,11 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_POST_UNARY:
 			llvm_emit_post_unary_expr(c, value, expr);
 			return;
-		case EXPR_GUARD:
-			gencontext_emit_guard_expr(c, value, expr);
+		case EXPR_FORCE_UNWRAP:
+			llvm_emit_force_unwrap_expr(c, value, expr);
+			return;
+		case EXPR_RETHROW:
+			gencontext_emit_rethrow_expr(c, value, expr);
 			return;
 		case EXPR_TYPEOF:
 		case EXPR_TYPEID:

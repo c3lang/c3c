@@ -256,9 +256,9 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_DESIGNATOR:
 			expr = expr->designator_expr.value;
 			goto RETRY;
-		case EXPR_ELSE:
-			if (expr->else_expr.is_jump) return false;
-			assert(!expr_is_constant_eval(expr->else_expr.expr, eval_kind));
+		case EXPR_OR_ERROR:
+			if (expr->or_error_expr.is_jump) return false;
+			assert(!expr_is_constant_eval(expr->or_error_expr.expr, eval_kind));
 			return false;
 		case EXPR_EXPR_BLOCK:
 		case EXPR_DECL:
@@ -273,7 +273,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_IDENTIFIER:
-		case EXPR_GUARD:
+		case EXPR_RETHROW:
 		case EXPR_UNDEF:
 			return false;
 		case EXPR_EXPRESSION_LIST:
@@ -302,6 +302,9 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_TERNARY:
 			assert(!expr_is_constant_eval(expr->ternary_expr.cond, eval_kind));
 			return false;
+		case EXPR_FORCE_UNWRAP:
+			expr = expr->force_unwrap_expr;
+			goto RETRY;
 		case EXPR_TRY:
 			expr = expr->try_expr.expr;
 			goto RETRY;
@@ -5208,28 +5211,28 @@ static inline bool sema_expr_analyse_try(Context *context, Expr *expr)
 	return true;
 }
 
-static inline bool sema_expr_analyse_else(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_or_error(Context *context, Expr *expr)
 {
-	Expr *inner = expr->else_expr.expr;
+	Expr *inner = expr->or_error_expr.expr;
 	bool success = sema_analyse_expr(context, inner);
 
 	if (!success) return false;
 	Type *type = inner->type;
 	if (type->type_kind != TYPE_FAILABLE)
 	{
-		SEMA_ERROR(inner, "No failable to 'else' in the expression, please remove the 'else'.");
+		SEMA_ERROR(inner, "No failable to use '\?\?' with, please remove the '\?\?'.");
 		return false;
 	}
 	type = type->failable;
-	if (expr->else_expr.is_jump)
+	if (expr->or_error_expr.is_jump)
 	{
-		if (!sema_analyse_statement(context, expr->else_expr.else_stmt)) return false;
+		if (!sema_analyse_statement(context, expr->or_error_expr.or_error_stmt)) return false;
 		expr->type = inner->type;
 		return true;
 	}
 
 	// First we analyse the "else" and try to implictly cast.
-	Expr *else_expr = expr->else_expr.else_expr;
+	Expr *else_expr = expr->or_error_expr.or_error_expr;
 	if (!sema_analyse_expr(context, else_expr)) return false;
 	// Here we might need to insert casts.
 	Type *else_type = else_expr->type;
@@ -5253,11 +5256,11 @@ static inline bool sema_expr_analyse_else(Context *context, Expr *expr)
 	return true;
 }
 
-static inline bool sema_expr_analyse_guard(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_rethrow(Context *context, Expr *expr)
 {
-	Expr *inner = expr->guard_expr.inner;
+	Expr *inner = expr->rethrow_expr.inner;
 	if (!sema_analyse_expr(context, inner)) return false;
-	expr->guard_expr.defer = context->active_scope.defer_last;
+	expr->rethrow_expr.defer = context->active_scope.defer_last;
 	if (inner->type == type_anyfail)
 	{
 		SEMA_ERROR(expr, "This expression will always throw, which isn't allowed.");
@@ -5267,7 +5270,7 @@ static inline bool sema_expr_analyse_guard(Context *context, Expr *expr)
 
 	if (!IS_FAILABLE(inner))
 	{
-		SEMA_ERROR(expr, "No failable to rethrow before '!!' in the expression, please remove '!!'.");
+		SEMA_ERROR(expr, "No failable to rethrow before '?' in the expression, please remove '?'.");
 		return false;
 	}
 
@@ -5280,6 +5283,24 @@ static inline bool sema_expr_analyse_guard(Context *context, Expr *expr)
 	return true;
 }
 
+
+static inline bool sema_expr_analyse_force_unwrap(Context *context, Expr *expr)
+{
+	Expr *inner = expr->force_unwrap_expr;
+	if (!sema_analyse_expr(context, inner)) return false;
+	if (inner->type == type_anyfail)
+	{
+		SEMA_ERROR(expr, "This expression will always throw, which isn't allowed.");
+		return false;
+	}
+	expr->type = type_no_fail(inner->type);
+	if (!IS_FAILABLE(inner))
+	{
+		SEMA_ERROR(expr, "No failable to rethrow before '!!' in the expression, please remove '!!'.");
+		return false;
+	}
+	return true;
+}
 
 
 
@@ -6284,20 +6305,22 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 			return sema_resolve_type_info(context, expr->type_expr);
 		case EXPR_SLICE:
 			return sema_expr_analyse_slice(context, expr);
+		case EXPR_FORCE_UNWRAP:
+			return sema_expr_analyse_force_unwrap(context, expr);
 		case EXPR_TRY:
 			return sema_expr_analyse_try(context, expr);
 		case EXPR_TRY_ASSIGN:
 			return sema_expr_analyse_try_assign(context, expr, false);
 		case EXPR_TYPEOF:
 			return sema_expr_analyse_typeof(context, expr);
-		case EXPR_ELSE:
-			return sema_expr_analyse_else(context, expr);
+		case EXPR_OR_ERROR:
+			return sema_expr_analyse_or_error(context, expr);
 		case EXPR_COMPOUND_LITERAL:
 			return sema_expr_analyse_compound_literal(context, expr);
 		case EXPR_EXPR_BLOCK:
 			return sema_expr_analyse_expr_block(context, expr);
-		case EXPR_GUARD:
-			return sema_expr_analyse_guard(context, expr);
+		case EXPR_RETHROW:
+			return sema_expr_analyse_rethrow(context, expr);
 		case EXPR_CONST:
 			return true;
 		case EXPR_BINARY:

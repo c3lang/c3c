@@ -75,6 +75,9 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_UNDEF:
 		case EXPR_NOP:
 			return expr;
+		case EXPR_FORCE_UNWRAP:
+			MACRO_COPY_EXPR(expr->force_unwrap_expr);
+			return expr;
 		case EXPR_DECL:
 			MACRO_COPY_DECL(expr->decl_expr);
 			return expr;
@@ -133,15 +136,15 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_FAILABLE:
 			MACRO_COPY_EXPR(expr->failable_expr);
 			return expr;
-		case EXPR_ELSE:
-			MACRO_COPY_EXPR(expr->else_expr.expr);
-			if (expr->else_expr.is_jump)
+		case EXPR_OR_ERROR:
+			MACRO_COPY_EXPR(expr->or_error_expr.expr);
+			if (expr->or_error_expr.is_jump)
 			{
-				MACRO_COPY_EXPR(expr->else_expr.else_expr);
+				MACRO_COPY_EXPR(expr->or_error_expr.or_error_expr);
 			}
 			else
 			{
-				MACRO_COPY_AST(expr->else_expr.else_stmt);
+				MACRO_COPY_AST(expr->or_error_expr.or_error_stmt);
 			}
 			return expr;
 		case EXPR_MACRO_BLOCK:
@@ -158,8 +161,8 @@ Expr *copy_expr(Expr *source_expr)
 			return expr;
 		case EXPR_POISONED:
 			return source_expr;
-		case EXPR_GUARD:
-			MACRO_COPY_EXPR(expr->guard_expr.inner);
+		case EXPR_RETHROW:
+			MACRO_COPY_EXPR(expr->rethrow_expr.inner);
 			return expr;
 		case EXPR_CONST:
 			return expr;

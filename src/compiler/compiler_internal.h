@@ -632,10 +632,10 @@ typedef struct
 	Expr *expr;
 	union
 	{
-		Expr *else_expr;
-		Ast *else_stmt;
+		Expr *or_error_expr;
+		Ast *or_error_stmt;
 	};
-} ExprElse;
+} ExprOrError;
 
 
 typedef struct
@@ -927,10 +927,10 @@ struct Expr_
 		TypeInfo *type_expr;
 		ExprConst const_expr;
 		ExprStructValue struct_value_expr;
-		ExprGuard guard_expr;
+		ExprGuard rethrow_expr;
 		Expr *trycatch_expr;
 		Decl *decl_expr;
-		ExprElse else_expr;
+		ExprOrError or_error_expr;
 		ExprFlatElement *flatpath_expr;
 		ExprSliceAssign slice_assign_expr;
 		ExprBinary binary_expr;
@@ -938,6 +938,7 @@ struct Expr_
 		ExprUnary unary_expr;
 		Expr** try_unwrap_chain_expr;
 		ExprTryUnwrap try_unwrap_expr;
+		Expr* force_unwrap_expr;
 		ExprCall call_expr;
 		ExprSlice slice_expr;
 		ExprTryExpr try_expr;

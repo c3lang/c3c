@@ -793,19 +793,21 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_SUBSCRIPT:
 			if (type_size(expr->type) > type_size(type)) return expr;
 			return NULL;
-		case EXPR_ELSE:
+		case EXPR_OR_ERROR:
 		{
-			Expr *res = recursive_may_narrow_float(expr->else_expr.expr, type);
+			Expr *res = recursive_may_narrow_float(expr->or_error_expr.expr, type);
 			if (res) return res;
-			if (expr->else_expr.is_jump) return NULL;
-			return recursive_may_narrow_float(expr->else_expr.else_expr, type);
+			if (expr->or_error_expr.is_jump) return NULL;
+			return recursive_may_narrow_float(expr->or_error_expr.or_error_expr, type);
 		}
 		case EXPR_EXPRESSION_LIST:
 			return recursive_may_narrow_float(VECLAST(expr->expression_list), type);
 		case EXPR_GROUP:
 			return recursive_may_narrow_float(expr->group_expr, type);
-		case EXPR_GUARD:
-			return recursive_may_narrow_float(expr->guard_expr.inner, type);
+		case EXPR_FORCE_UNWRAP:
+			return recursive_may_narrow_float(expr->force_unwrap_expr, type);
+		case EXPR_RETHROW:
+			return recursive_may_narrow_float(expr->rethrow_expr.inner, type);
 		case EXPR_TERNARY:
 		{
 			Expr *res = recursive_may_narrow_float(expr->ternary_expr.then_expr ? expr->ternary_expr.then_expr
@@ -949,19 +951,21 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_LEN:
 			if (type_size(type) < type_size(type_cint())) return expr;
 			return NULL;
-		case EXPR_ELSE:
+		case EXPR_OR_ERROR:
 		{
-			Expr *res = recursive_may_narrow_int(expr->else_expr.expr, type);
+			Expr *res = recursive_may_narrow_int(expr->or_error_expr.expr, type);
 			if (res) return res;
-			if (expr->else_expr.is_jump) return NULL;
-			return recursive_may_narrow_int(expr->else_expr.else_expr, type);
+			if (expr->or_error_expr.is_jump) return NULL;
+			return recursive_may_narrow_int(expr->or_error_expr.or_error_expr, type);
 		}
+		case EXPR_FORCE_UNWRAP:
+			return recursive_may_narrow_int(expr->force_unwrap_expr, type);
 		case EXPR_EXPRESSION_LIST:
 			return recursive_may_narrow_int(VECLAST(expr->expression_list), type);
 		case EXPR_GROUP:
 			return recursive_may_narrow_int(expr->group_expr, type);
-		case EXPR_GUARD:
-			return recursive_may_narrow_int(expr->guard_expr.inner, type);
+		case EXPR_RETHROW:
+			return recursive_may_narrow_int(expr->rethrow_expr.inner, type);
 		case EXPR_TERNARY:
 		{
 			Expr *res = recursive_may_narrow_int(expr->ternary_expr.then_expr ? expr->ternary_expr.then_expr

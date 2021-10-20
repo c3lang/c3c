@@ -7,6 +7,7 @@
 
 
 typedef Expr *(*ParseFn)(Context *context, Expr *);
+static Expr *parse_rethrow_expr(Context *context, Expr *left);
 
 typedef struct
 {
@@ -20,10 +21,22 @@ extern ParseRule rules[TOKEN_EOF + 1];
 
 inline Expr *parse_precedence_with_left_side(Context *context, Expr *left_side, Precedence precedence)
 {
-	while (precedence <= rules[context->tok.type].precedence)
+	while (1)
 	{
+		Precedence token_precedence = rules[context->tok.type].precedence;
+		bool special_question = false;
+		if (context->tok.type == TOKEN_QUESTION)
+		{
+			ParseRule rule = rules[context->next_tok.type];
+			if (!rule.prefix)
+			{
+				token_precedence = PREC_CALL;
+				special_question = true;
+			}
+		}
+		if (precedence > token_precedence) break;
 		if (!expr_ok(left_side)) return left_side;
-		ParseFn infix_rule = rules[context->tok.type].infix;
+		ParseFn infix_rule = special_question ? &parse_rethrow_expr : rules[context->tok.type].infix;
 		if (!infix_rule)
 		{
 			SEMA_TOKEN_ERROR(context->tok, "An expression was expected.");
@@ -860,23 +873,32 @@ static Expr *parse_try_expr(Context *context, Expr *left)
 	return try_expr;
 }
 
-static Expr *parse_bangbang_expr(Context *context, Expr *left)
+static Expr *parse_rethrow_expr(Context *context, Expr *left)
 {
-	Expr *guard_expr = EXPR_NEW_EXPR(EXPR_GUARD, left);
-	advance_and_verify(context, TOKEN_BANGBANG);
-	guard_expr->guard_expr.inner = left;
-	RANGE_EXTEND_PREV(guard_expr);
-	return guard_expr;
+	Expr *rethrow_expr = EXPR_NEW_EXPR(EXPR_RETHROW, left);
+	advance(context);
+	rethrow_expr->rethrow_expr.inner = left;
+	RANGE_EXTEND_PREV(rethrow_expr);
+	return rethrow_expr;
 }
 
-static Expr *parse_else_expr(Context *context, Expr *left)
+static Expr *parse_force_unwrap_expr(Context *context, Expr *left)
 {
-	Expr *else_expr = EXPR_NEW_TOKEN(EXPR_ELSE, context->tok);
+	Expr *force_unwrap_expr = EXPR_NEW_EXPR(EXPR_FORCE_UNWRAP, left);
+	advance(context);
+	force_unwrap_expr->force_unwrap_expr = left;
+	RANGE_EXTEND_PREV(force_unwrap_expr);
+	return force_unwrap_expr;
+}
+
+static Expr *parse_or_error_expr(Context *context, Expr *left)
+{
+	Expr *else_expr = EXPR_NEW_TOKEN(EXPR_OR_ERROR, context->tok);
 	if (!try_consume(context, TOKEN_ELSE))
 	{
 		advance_and_verify(context, TOKEN_QUESTQUEST);
 	}
-	else_expr->else_expr.expr = left;
+	else_expr->or_error_expr.expr = left;
 	switch (context->tok.type)
 	{
 		case TOKEN_RETURN:
@@ -885,8 +907,8 @@ static Expr *parse_else_expr(Context *context, Expr *left)
 		case TOKEN_NEXTCASE:
 		{
 			ASSIGN_AST_ELSE(Ast *ast, parse_jump_stmt_no_eos(context), poisoned_expr);
-			else_expr->else_expr.is_jump = true;
-			else_expr->else_expr.else_stmt = ast;
+			else_expr->or_error_expr.is_jump = true;
+			else_expr->or_error_expr.or_error_stmt = ast;
 			if (!TOKEN_IS(TOKEN_EOS))
 			{
 				SEMA_ERROR(ast, "An else jump statement must end with a ';'");
@@ -896,7 +918,7 @@ static Expr *parse_else_expr(Context *context, Expr *left)
 		}
 		default:
 		{
-			ASSIGN_EXPR_ELSE(else_expr->else_expr.else_expr, parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
+			ASSIGN_EXPR_ELSE(else_expr->or_error_expr.or_error_expr, parse_precedence(context, PREC_ASSIGNMENT), poisoned_expr);
 			break;
 		}
 	}
@@ -1508,9 +1530,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_TYPEID] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_ANYERR] = { parse_type_identifier, NULL, PREC_NONE },
 
-		[TOKEN_ELSE] = { NULL, parse_else_expr, PREC_ELSE },
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
-		[TOKEN_QUESTQUEST] = { NULL, parse_else_expr, PREC_ELSE},
+		[TOKEN_QUESTQUEST] = { NULL, parse_or_error_expr, PREC_OR_ERROR},
 		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
@@ -1518,7 +1539,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_LBRAPIPE] = { parse_expr_block, NULL, PREC_NONE },
 		[TOKEN_TRY] = { parse_try_expr, NULL, PREC_NONE },
 		[TOKEN_CATCH] = { parse_try_expr, NULL, PREC_NONE },
-		[TOKEN_BANGBANG] = { NULL, parse_bangbang_expr, PREC_CALL },
+		[TOKEN_BANGBANG] = { NULL, parse_force_unwrap_expr, PREC_CALL },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
 		[TOKEN_PLUS] = { NULL, parse_binary, PREC_ADDITIVE },

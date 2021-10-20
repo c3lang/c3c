@@ -17,10 +17,10 @@ func double! divide(int a, int b)
 
 }
 
-// Rethrowing an error uses "!!" suffix
+// Rethrowing an error uses "?" suffix
 func void! testMayError()
 {
-    divide(foo(), bar())!!;
+    divide(foo(), bar())?;
 }
 
 func void main()
