@@ -207,7 +207,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case CONST_ERR:
 			return expr->err_val->name;
 		case CONST_TYPEID:
-			return expr->typeid->name;
+			return type_to_error_string(expr->typeid);
 		case CONST_LIST:
 			return "constant list";
 	}

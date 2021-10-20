@@ -15,7 +15,7 @@ fn void test1()
     $switch (int.typeid):
         $case int:
             return;
-        $case int: // #error: The type 'int' appears more than once
+        $case int: // #error: 'int' appears more than once
             return;
         $default:
             return;
@@ -31,7 +31,7 @@ fn void test2()
             return;
         $case Bar:
             return;
-        $case Foo: // #error: The type 'int' appears more than once
+        $case Foo: // #error: 'int' appears more than once
             return;
         $default:
             return;
@@ -43,7 +43,7 @@ fn void test3()
     $switch (int.typeid):
         $case int:
             return;
-        $case 123: // #error: A type is expected here not 'int'
+        $case 123: // #error: A type was expected here not 'int'
             return;
         $default:
             return;
