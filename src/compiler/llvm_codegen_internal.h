@@ -254,7 +254,7 @@ void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_aggregate_value(GenContext *c, Type *type, ...);
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, unsigned align, bool bitcast);
-LLVMValueRef llvm_emit_memclear(GenContext *c, BEValue *ref);
+void llvm_emit_memclear(GenContext *c, BEValue *ref);
 void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len);
 void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, unsigned source_alignment);
 void llvm_emit_stmt(GenContext *c, Ast *ast);
@@ -266,6 +266,7 @@ void llvm_emit_debug_output(GenContext *c, const char *message, const char *file
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable);
 void llvm_emit_return_implicit(GenContext *c);
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index, unsigned struct_alignment, unsigned offset, unsigned *alignment);
+LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, unsigned array_alignment, unsigned *alignment);
 void llvm_emit_subarray_len(GenContext *context, BEValue *subarray, BEValue *len);
 void llvm_emit_subarray_pointer(GenContext *context, BEValue *subarray, BEValue *pointer);
 LLVMValueRef llvm_get_next_param(GenContext *context, unsigned *index);

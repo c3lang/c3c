@@ -64,11 +64,25 @@ LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint
 
 }
 
-LLVMValueRef llvm_emit_memclear(GenContext *c, BEValue *ref)
+void llvm_emit_memclear(GenContext *c, BEValue *ref)
 {
-	// TODO avoid bitcast on those that do not need them.
 	llvm_value_addr(c, ref);
-	return llvm_emit_memclear_size_align(c, ref->value, type_size(ref->type), ref->alignment, true);
+	Type *type = ref->type;
+	if (!type_is_abi_aggregate(type))
+	{
+		llvm_store_bevalue_raw(c, ref, llvm_get_zero(c, type));
+		return;
+	}
+	Type *single_type = type_abi_find_single_struct_element(type);
+
+	if (single_type && !type_is_abi_aggregate(single_type))
+	{
+		BEValue element;
+		llvm_value_set_address_align(&element, llvm_emit_bitcast(c, ref->value, type_get_ptr(single_type)), single_type, ref->alignment);
+		llvm_emit_memclear(c, &element);
+		return;
+	}
+	llvm_emit_memclear_size_align(c, ref->value, type_size(ref->type), ref->alignment, true);
 }
 
 LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, IndexDiff diff, bool *modified)

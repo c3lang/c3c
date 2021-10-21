@@ -1,10 +1,9 @@
 
-// TODO
-//const int CONSTANT = 1;
-//int[CONSTANT] a;
+const int CONSTANT = 1;
+int[CONSTANT] a2;
 
-//const bool B = true;
-//i32[B] c;      // @error{size of array has non-integer type 'bool'}
+const bool B = true;
+int[B] c2;      // #error: Expected an integer size.
 
 int non_constant = 10;
 int[non_constant] b;        // #error: Expected a constant value as

@@ -476,7 +476,6 @@ static inline bool scan_hex(Lexer *lexer)
 		if (!scan_exponent(lexer)) return false;
 	}
 	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
-	// TODO this does not currently work.
 	if (!scan_number_suffix(lexer, &is_float)) return false;
 	if (is_float)
 	{
@@ -537,7 +536,6 @@ static inline bool scan_dec(Lexer *lexer)
 	}
 
 	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
-	// TODO this does not currently work.
 	if (!scan_number_suffix(lexer, &is_float)) return false;
 	if (is_float)
 	{

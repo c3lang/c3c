@@ -93,6 +93,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 	}
 	UNREACHABLE
 }
+
 static inline LLVMTypeRef llvm_type_from_ptr(GenContext *context, Type *type)
 {
 	if (type->canonical != type)
@@ -105,6 +106,7 @@ static inline LLVMTypeRef llvm_type_from_ptr(GenContext *context, Type *type)
 	}
 	return type->backend_type = LLVMPointerType(llvm_get_type(context, type->pointer), /** TODO **/0);
 }
+
 
 static inline LLVMTypeRef llvm_type_from_array(GenContext *context, Type *type)
 {

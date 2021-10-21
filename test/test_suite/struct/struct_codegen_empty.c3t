@@ -27,13 +27,14 @@ func void test()
   %b = alloca %StructB, align 4
   %b2 = alloca %StructB, align 4
   %b3 = alloca %StructB, align 4
-  %0 = bitcast %StructA* %a to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 4, i1 false)
-  %1 = bitcast %StructA* %a2 to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 4 %1, i8 0, i64 4, i1 false)
-  %2 = bitcast %StructB* %b to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 4 %2, i8 0, i64 4, i1 false)
-  %3 = bitcast %StructB* %b2 to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 4 %3, i8 0, i64 4, i1 false)
-  %4 = bitcast %StructB* %b3 to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 4 %4, i8 0, i64 4, i1 false)
+  %0 = bitcast %StructA* %a to i32*
+  store i32 0, i32* %0, align 4
+  %1 = bitcast %StructA* %a2 to i32*
+  store i32 0, i32* %1, align 4
+  %2 = bitcast %StructB* %b to i32*
+  store i32 0, i32* %2, align 4
+  %3 = bitcast %StructB* %b2 to i32*
+  store i32 0, i32* %3, align 4
+  %4 = bitcast %StructB* %b3 to i32*
+  store i32 0, i32* %4, align 4
+  ret void

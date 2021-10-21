@@ -98,8 +98,8 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_PLACEHOLDER:
 		case EXPR_CONST_IDENTIFIER:
 		case EXPR_CT_IDENT:
+		case EXPR_IDENTIFIER:
 		case EXPR_HASH_IDENT:
-			// TODO
 			return expr;
 		case EXPR_MACRO_EXPANSION:
 			MACRO_COPY_EXPR(expr->macro_expansion_expr.inner);
@@ -181,8 +181,6 @@ Expr *copy_expr(Expr *source_expr)
 			return expr;
 		case EXPR_TYPEID:
 			MACRO_COPY_TYPE(expr->typeid_expr);
-			return expr;
-		case EXPR_IDENTIFIER:
 			return expr;
 		case EXPR_CALL:
 			if (expr->resolve_status != RESOLVE_DONE || expr->call_expr.is_pointer_call)

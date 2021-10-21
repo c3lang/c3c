@@ -95,6 +95,13 @@ static char *err_invalid_float_width = "The float width is not valid, it must be
 static char *err_float_out_of_range = "The float value is out of range.";
 static char *err_float_format_invalid = "The float format is invalid.";
 
+/**
+ * This parses a float from a string. Unfortunately it is limited to parsing doubles as of now.
+ *
+ * @param string
+ * @param error
+ * @return the resulting Float, with type = TYPE_POISONED on error.
+ */
 Float float_from_string(const char *string, char **error)
 {
 	const char *index = string;
@@ -180,6 +187,13 @@ Float float_from_string(const char *string, char **error)
 	return (Float){ d, kind };
 }
 
+/**
+ * This parses a float from hex. Unfortunately it is limited to parsing doubles as of now.
+ *
+ * @param string
+ * @param error
+ * @return the resulting Float, with type = TYPE_POISONED on error.
+ */
 Float float_from_hex(const char *string, char **error)
 {
 	const char *index = string + 2;

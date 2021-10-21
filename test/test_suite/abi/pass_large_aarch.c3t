@@ -17,7 +17,7 @@ func void example()
     pass_large(l);
 }
 
-// #expect: pass_large.ll
+/* #expect: pass_large.ll
 
 define void @pass_large.example()
 entry:

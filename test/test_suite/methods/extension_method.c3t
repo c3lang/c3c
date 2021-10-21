@@ -31,7 +31,7 @@ declare void @foo.Bar__test(%Bar*)
 define void @main()
 entry:
   %bar = alloca %Bar, align 4
-  %0 = bitcast %Bar* %bar to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 4, i1 false)
+  %0 = bitcast %Bar* %bar to i32*
+  store i32 0, i32* %0, align 4
   call void @foo.Bar__test(%Bar* %bar)
   ret void

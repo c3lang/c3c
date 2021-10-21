@@ -3163,8 +3163,23 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index, unsigned struct_alignment, unsigned offset, unsigned *alignment)
 {
 	*alignment = type_min_alignment(offset, struct_alignment);
-	LLVMValueRef addr = LLVMBuildStructGEP2(context->builder, struct_type, ptr, index, "");
-	return addr;
+	if (LLVMIsConstant(ptr))
+	{
+		LLVMValueRef idx[2] = { llvm_get_zero(context, type_int), llvm_const_int(context, type_int, index) };
+		return LLVMConstInBoundsGEP(ptr, idx, 2);
+	}
+	return LLVMBuildStructGEP2(context->builder, struct_type, ptr, index, "");
+}
+
+LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, unsigned array_alignment, unsigned *alignment)
+{
+	*alignment = type_min_alignment(llvm_store_size(c, LLVMGetElementType(array_type)), array_alignment);
+	LLVMValueRef idx[2] = { llvm_get_zero(c, type_int), llvm_const_int(c, type_int, index) };
+	if (LLVMIsConstant(ptr))
+	{
+		return LLVMConstInBoundsGEP(ptr, idx, 2);
+	}
+	return LLVMBuildInBoundsGEP2(c->builder, array_type, ptr, idx, 2, "");
 }
 
 void llvm_emit_subarray_len(GenContext *c, BEValue *subarray, BEValue *len)

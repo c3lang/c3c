@@ -17,15 +17,15 @@ func Test creator()
 
 // #expect: literal_load.ll
 
-  %literal = alloca %Test, align 4
-  %literal1 = alloca %Test, align 4
-  %0 = bitcast %Test* %literal to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 4, i1 false)
-  %dive = getelementptr inbounds %Test, %Test* %literal, i32 0, i32 0
-  %1 = load i32, i32* %dive, align 4
-  call void @blorg(i32 %1)
-  %2 = bitcast %Test* %literal1 to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 4 %2, i8 0, i64 4, i1 false)
-  %dive2 = getelementptr inbounds %Test, %Test* %literal1, i32 0, i32 0
-  %3 = load i32, i32* %dive2, align 4
-  ret i32 %3
+    %literal = alloca %Test, align 4
+    %literal1 = alloca %Test, align 4
+    %0 = bitcast %Test* %literal to i32*
+    store i32 0, i32* %0, align 4
+    %dive = getelementptr inbounds %Test, %Test* %literal, i32 0, i32 0
+    %1 = load i32, i32* %dive, align 4
+    call void @blorg(i32 %1)
+    %2 = bitcast %Test* %literal1 to i32*
+    store i32 0, i32* %2, align 4
+    %dive2 = getelementptr inbounds %Test, %Test* %literal1, i32 0, i32 0
+    %3 = load i32, i32* %dive2, align 4
+    ret i32 %3

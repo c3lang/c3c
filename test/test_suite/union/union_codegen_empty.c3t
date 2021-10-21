@@ -25,21 +25,22 @@ func void test()
 
 // #expect: union_codegen_empty.ll
 
-%a = alloca %UnionA, align 4
-%a2 = alloca %UnionA, align 4
-%b = alloca %UnionB, align 8
-%b2 = alloca %UnionB, align 8
-%b3 = alloca %UnionB, align 8
-%b4 = alloca %UnionB, align 8
-%0 = bitcast %UnionA* %a to i8*
-call void @llvm.memset.p0i8.i64(i8* align 4 %0, i8 0, i64 4, i1 false)
-%1 = bitcast %UnionA* %a2 to i8*
-call void @llvm.memset.p0i8.i64(i8* align 4 %1, i8 0, i64 4, i1 false)
-%2 = bitcast %UnionB* %b to i8*
-call void @llvm.memset.p0i8.i64(i8* align 8 %2, i8 0, i64 8, i1 false)
- %3 = bitcast %UnionB* %b2 to i8*
-call void @llvm.memset.p0i8.i64(i8* align 8 %3, i8 0, i64 8, i1 false)
-%4 = bitcast %UnionB* %b3 to i8*
-call void @llvm.memset.p0i8.i64(i8* align 8 %4, i8 0, i64 8, i1 false)
-%5 = bitcast %UnionB* %b4 to i8*
-call void @llvm.memset.p0i8.i64(i8* align 8 %5, i8 0, i64 8, i1 false)
+  %a = alloca %UnionA, align 4
+  %a2 = alloca %UnionA, align 4
+  %b = alloca %UnionB, align 8
+  %b2 = alloca %UnionB, align 8
+  %b3 = alloca %UnionB, align 8
+  %b4 = alloca %UnionB, align 8
+  %0 = bitcast %UnionA* %a to i32*
+  store i32 0, i32* %0, align 4
+  %1 = bitcast %UnionA* %a2 to i32*
+  store i32 0, i32* %1, align 4
+  %2 = bitcast %UnionB* %b to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %2, i8 0, i64 8, i1 false)
+  %3 = bitcast %UnionB* %b2 to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %3, i8 0, i64 8, i1 false)
+  %4 = bitcast %UnionB* %b3 to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %4, i8 0, i64 8, i1 false)
+  %5 = bitcast %UnionB* %b4 to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %5, i8 0, i64 8, i1 false)
+  ret void

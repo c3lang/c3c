@@ -105,7 +105,9 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		}
 		else
 		{
-			llvm_emit_memclear_size_align(c, decl->backend_ref, type_size(decl->type), decl->alignment, true);
+			BEValue value;
+			llvm_value_set_decl_address(&value, decl);
+			llvm_emit_memclear(c, &value);
 		}
 	}
 	return decl->backend_ref;
