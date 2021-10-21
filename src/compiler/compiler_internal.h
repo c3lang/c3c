@@ -292,6 +292,8 @@ struct Type_
 		TypeVector vector;
 		// Failable
 		Type *failable;
+		// Bitstruct
+		Type *bitstruct;
 	};
 };
 
@@ -1764,7 +1766,7 @@ bool cast_implicit(Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type);
 
 bool cast_may_implicit(Type *from_type, Type *to_type);
-bool cast_may_explicit(Type *from_type, Type *to_type);
+bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability);
 bool cast_implicit_bit_width(Expr *expr, Type *to_type);
 
 CastKind cast_to_bool_kind(Type *type);
@@ -2269,6 +2271,26 @@ static inline Type *type_flatten_for_bitstruct(Type *type)
 	return type;
 }
 
+static inline Type *type_flatten_distinct_failable(Type *type)
+{
+	while (1)
+	{
+		switch (type->type_kind)
+		{
+			case TYPE_TYPEDEF:
+				type = type->canonical;
+				continue;
+			case TYPE_FAILABLE:
+				type = type->failable;
+				continue;
+			case TYPE_DISTINCT:
+				type = type->decl->distinct_decl.base_type;
+				continue;
+			default:
+				return type;
+		}
+	}
+}
 static inline Type *type_flatten_distinct(Type *type)
 {
 	type = type->canonical;

@@ -3484,7 +3484,7 @@ static inline bool sema_expr_analyse_cast(Context *context, Expr *expr)
 
 	Type *target_type = expr->cast_expr.type_info->type;
 	Type *inner_no_fail = type_no_fail(inner->type);
-	if (!cast_may_explicit(inner_no_fail, target_type))
+	if (!cast_may_explicit(inner_no_fail, target_type, false))
 	{
 		if (inner->expr_kind == EXPR_CONST && type_is_integer(inner_no_fail->canonical) && target_type->canonical->type_kind == TYPE_POINTER)
 		{

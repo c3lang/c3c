@@ -47,95 +47,6 @@ static inline void parse_optional_label_target(Context *context, Label *label)
 	}
 }
 
-static inline bool parse_asm_param(Context *context, AsmOperand **list)
-{
-	TODO
-	/*
-	AsmOperand operand;
-	// Reset parser
-	context->lexer.current = context->token->span.loc + context->lexer.file_begin;
-	operand.constraints = lexer_scan_asm_constraint(&context->lexer);
-	if (operand.constraints.type == TOKEN_INVALID_TOKEN) return false;
-
-	// Restore state
-	TODO
-	//context->tok = lexer_scan_token(&context->lexer);
-	//context->next_tok = lexer_scan_token(&context->lexer);
-
-	operand.expr = TRY_EXPR_OR(parse_expr(context), false);
-
-	if (try_consume(context, TOKEN_AS))
-	{
-		EXPECT_OR(TOKEN_IDENT, false);
-		//operand.alias = context->tok;
-		advance(context);
-	}
-	vec_add(*list, operand);
-	return true;*/
-}
-
-static inline bool parse_asm_paramlist(Context *context, AsmOperand **list)
-{
-	if (TOKEN_IS(TOKEN_EOS) || TOKEN_IS(TOKEN_RPAREN)) return true;
-	while (1)
-	{
-		if (!parse_asm_param(context, list)) return false;
-		if (TOKEN_IS(TOKEN_EOS) || TOKEN_IS(TOKEN_RPAREN)) return true;
-		CONSUME_OR(TOKEN_COMMA, false);
-	}
-}
-
-static inline bool parse_asm_params(Context *context, Ast *asm_ast)
-{
-	/*
-	// Might be empty.
-	if (try_consume(context, TOKEN_RPAREN)) return true;
-
-	AsmParams *params = malloc_arena(sizeof(AsmParams));
-	asm_ast->asm_stmt.params = params;
-
-	// Parse outputs
-	if (!parse_asm_paramlist(context, &params->inputs)) return false;
-
-	// Might not have any more params
-	if (try_consume(context, TOKEN_RPAREN)) return true;
-
-	// Consume the ';'
-	advance_and_verify(context, TOKEN_EOS);
-
-	// Parse inputs
-	if (!parse_asm_paramlist(context, &params->inputs)) return false;
-
-	// Might not have any more params
-	if (try_consume(context, TOKEN_RPAREN)) return true;
-
-	while (1)
-	{
-		EXPECT_OR(TOKEN_IDENT, false);
-		vec_add(params->clobbers, context->token);
-		if (!try_consume(context, TOKEN_COMMA)) break;
-	}
-
-	// Might not have any more params
-	if (try_consume(context, TOKEN_RPAREN)) return true;
-
-	// Consume the ';'
-	CONSUME_OR(TOKEN_EOS, false);
-
-	while (1)
-	{
-		EXPECT_OR(TOKEN_IDENT, false);
-		vec_add(params->labels, context->token);
-		if (!try_consume(context, TOKEN_COMMA)) break;
-	}
-
-	// Consume the ')'
-	CONSUME_OR(TOKEN_RPAREN, false);
-
-	return true;
-	 */
-	TODO
-}
 /**
  * asm ::= 'asm' '(' string ')'
  * @param context
@@ -1073,7 +984,6 @@ Ast *parse_stmt(Context *context)
 			advance(context);
 			return AST_NEW_TOKEN(AST_NOP_STMT, context->tok);
 		case TOKEN_EOF:
-			// TODO
 			SEMA_TOKID_ERROR(context->tok.id, "Reached the end of the file when expecting a statement.");
 			return poisoned_ast;
 	}

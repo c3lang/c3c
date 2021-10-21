@@ -213,11 +213,7 @@ TomlTable *toml_load_file(FILE *file, TomlErr *err);
 
 TomlTable *toml_load_filename(TOML_CONST char *filename, TomlErr *err);
 
-/* TODO: implement dump functions
-char *toml_dump_string(TOML_CONST TomlTable *self, TomlErr *err);
-TomlString *toml_dump_nstring(TOML_CONST TomlTable *self, TomlErr *err);
-void toml_dump_file(TOML_CONST TomlTable *self, FILE *file, TomlErr *err);
-*/
+
 
 #ifdef __cplusplus
 }

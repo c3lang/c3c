@@ -4,6 +4,9 @@
 
 #include "compiler_internal.h"
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "ConstantFunctionResult"
+
 #define FLOAT32_LIMIT 340282346638528859811704183484516925440.0000000000000000
 #define FLOAT64_LIMIT 179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0000000000000000
 #define FLOAT16_LIMIT 65504
@@ -285,7 +288,7 @@ static bool int_to_int(Expr *left, Type *from_canonical, Type *canonical, Type *
 
 static Type *enum_lowering(Expr* expr, Type *from)
 {
-	if (expr->const_expr.const_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM)
+	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM)
 	{
 		expr_replace(expr, expr->const_expr.enum_val->enum_constant.expr);
 		assert(!IS_FAILABLE(expr));
@@ -310,16 +313,13 @@ static bool enum_to_float(Expr* expr, Type *from, Type *canonical, Type *type)
 
 bool enum_to_bool(Expr* expr, Type *from, Type *type)
 {
-	Type *result = enum_lowering(expr, from);
+	enum_lowering(expr, from);
 	return integer_to_bool(expr, type);
 }
 
 bool enum_to_pointer(Expr* expr, Type *from, Type *type)
 {
-	Type *enum_type = from->decl->enums.type_info->type;
-	Type *enum_type_canonical = type_flatten(enum_type);
-	// TODO can be inlined if enums are constants
-	insert_cast(expr, CAST_ENUMLOW, enum_type_canonical);
+	enum_lowering(expr, from);
 	return int_to_pointer(expr, type);
 }
 
@@ -368,29 +368,28 @@ CastKind cast_to_bool_kind(Type *type)
 	UNREACHABLE
 }
 
-bool cast_may_explicit(Type *from_type, Type *to_type)
+bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability)
 {
-	Type *from = from_type;
-	Type *to = to_type;
 
+	// 1. failable -> non-failable can't be cast unless we ignore failability.
 	if (from_type->type_kind == TYPE_FAILABLE && to_type->type_kind != TYPE_FAILABLE)
 	{
-		return false;
-	}
-	if (to_type->type_kind == TYPE_FAILABLE)
-	{
-		return cast_may_explicit(type_no_fail(from_type), to_type->failable);
+		if (!ignore_failability) return false;
 	}
 
-	// 1. We flatten the distinct types, since they should be freely convertible
-	from = type_flatten_distinct(from);
-	to = type_flatten_distinct(to);
+	// 2. Remove failability and flatten distinct
+	from_type = type_no_fail(from_type);
+	to_type = type_no_fail(to_type);
+
+	// 3. We flatten the distinct types, since they should be freely convertible
+	from_type = type_flatten_distinct_failable(from_type);
+	to_type = type_flatten_distinct_failable(to_type);
 
 	// 2. Same underlying type, always ok
-	if (from == to) return true;
+	if (from_type == to_type) return true;
 
-	TypeKind to_kind = to->type_kind;
-	switch (from->type_kind)
+	TypeKind to_kind = to_type->type_kind;
+	switch (from_type->type_kind)
 	{
 		case TYPE_DISTINCT:
 		case TYPE_TYPEDEF:
@@ -404,60 +403,65 @@ bool cast_may_explicit(Type *from_type, Type *to_type)
 			return false;
 		case TYPE_TYPEID:
 			// May convert to anything pointer sized or larger, no enums
-			return type_is_pointer_sized_or_more(to);
+			return type_is_pointer_sized_or_more(to_type);
 		case TYPE_BOOL:
 			// May convert to any integer / distinct integer / float, no enums
-			return type_is_integer(to) || type_is_float(to);
+			return type_is_integer(to_type) || type_is_float(to_type);
 		case TYPE_BITSTRUCT:
-			return false;
+			// A bitstruct can convert to:
+			// 1. An int of the same length
+			// 2. An integer array of the same length
+			if (type_size(to_type) != type_size(from_type)) return false;
+			if (type_is_integer(to_type)) return true;
+			return to_type->type_kind == TYPE_ARRAY && type_is_integer(to_type->array.base);
 		case TYPE_ANYERR:
 			// May convert to a bool, an error type or an integer
-			return to == type_bool || to_kind == TYPE_ERRTYPE || type_is_integer(to);
+			return to_type == type_bool || to_kind == TYPE_ERRTYPE || type_is_integer(to_type);
 		case ALL_SIGNED_INTS:
 		case ALL_UNSIGNED_INTS:
 		case TYPE_ENUM:
 			// Allow conversion int/enum -> float/bool/enum int/enum -> pointer is only allowed if the int/enum is pointer sized.
-			if (type_is_integer(to) || type_is_float(to) || to == type_bool || to_kind == TYPE_ENUM) return true;
+			if (type_is_integer(to_type) || type_is_float(to_type) || to_type == type_bool || to_kind == TYPE_ENUM) return true;
 			// TODO think about this, maybe we should require a bitcast?
-			if (to_kind == TYPE_POINTER && type_is_pointer_sized(from)) return true;
+			if (to_kind == TYPE_POINTER && type_is_pointer_sized(from_type)) return true;
 			return false;
 		case ALL_FLOATS:
 			// Allow conversion float -> float/int/bool/enum
-			return type_is_integer(to) || type_is_float(to) || to == type_bool || to_kind == TYPE_ENUM;
+			return type_is_integer(to_type) || type_is_float(to_type) || to_type == type_bool || to_kind == TYPE_ENUM;
 		case TYPE_POINTER:
 			// Allow conversion ptr -> int (min pointer size)/bool/pointer/vararray
-			if ((type_is_integer(to) && type_size(to) >= type_size(type_iptr)) || to == type_bool || to_kind == TYPE_POINTER) return true;
+			if ((type_is_integer(to_type) && type_size(to_type) >= type_size(type_iptr)) || to_type == type_bool || to_kind == TYPE_POINTER) return true;
 			// Special subarray conversion: someType[N]* -> someType[]
-			if (to_kind == TYPE_SUBARRAY && from->pointer->type_kind == TYPE_ARRAY && from->pointer->array.base == to->array.base) return true;
+			if (to_kind == TYPE_SUBARRAY && from_type->pointer->type_kind == TYPE_ARRAY && from_type->pointer->array.base == to_type->array.base) return true;
 			return false;
 		case TYPE_VIRTUAL_ANY:
 		case TYPE_VIRTUAL:
 			return to_kind == TYPE_POINTER;
 		case TYPE_ERRTYPE:
 			// Allow MyError.A -> error, to an integer or to bool
-			return to->type_kind == TYPE_ANYERR || type_is_integer(to) || to == type_bool;
+			return to_type->type_kind == TYPE_ANYERR || type_is_integer(to_type) || to_type == type_bool;
 		case TYPE_ARRAY:
 			if (to_kind == TYPE_VECTOR)
 			{
-				return to->array.len == from->vector.len && to->array.base == from->array.base;
+				return to_type->array.len == from_type->vector.len && to_type->array.base == from_type->array.base;
 			}
 			FALLTHROUGH;
 		case TYPE_STRUCT:
-			if (type_is_substruct(from))
+			if (type_is_substruct(from_type))
 			{
-				if (cast_may_explicit(from->decl->strukt.members[0]->type, to)) return true;
+				if (cast_may_explicit(from_type->decl->strukt.members[0]->type, to_type, false)) return true;
 			}
 			FALLTHROUGH;
 		case TYPE_UNION:
-			return type_is_structurally_equivalent(from, to);
+			return type_is_structurally_equivalent(from_type, to_type);
 		case TYPE_STRLIT:
 			if (to_kind == TYPE_POINTER) return true;
-			if (to_kind == TYPE_SUBARRAY && (to->array.base == type_char || to->array.base == type_ichar)) return true;
+			if (to_kind == TYPE_SUBARRAY && (to_type->array.base == type_char || to_type->array.base == type_ichar)) return true;
 			return false;
 		case TYPE_SUBARRAY:
 			return to_kind == TYPE_POINTER;
 		case TYPE_VECTOR:
-			return type_is_structurally_equivalent(type_get_array(from->vector.base, from->vector.len), to);
+			return type_is_structurally_equivalent(type_get_array(from_type->vector.base, from_type->vector.len), to_type);
 		case TYPE_UNTYPED_LIST:
 			REMINDER("Look at untyped list explicit conversions");
 			return false;
@@ -1063,7 +1067,7 @@ bool cast_implicit(Expr *expr, Type *to_type)
 	if (expr_canonical == to_canonical) return true;
 	if (!cast_may_implicit(expr_canonical, to_canonical))
 	{
-		if (!cast_may_explicit(expr_canonical, to_canonical))
+		if (!cast_may_explicit(expr_canonical, to_canonical, false))
 		{
 			if (expr_canonical->type_kind == TYPE_FAILABLE && to_canonical->type_kind != TYPE_FAILABLE)
 			{
@@ -1323,3 +1327,5 @@ bool cast(Expr *expr, Type *to_type)
 	}
 	UNREACHABLE
 }
+
+#pragma clang diagnostic pop
