@@ -3483,9 +3483,10 @@ static inline bool sema_expr_analyse_cast(Context *context, Expr *expr)
 	if (!sema_analyse_expr(context, inner) || !success) return false;
 
 	Type *target_type = expr->cast_expr.type_info->type;
-	if (!cast_may_explicit(inner->type, target_type))
+	Type *inner_no_fail = type_no_fail(inner->type);
+	if (!cast_may_explicit(inner_no_fail, target_type))
 	{
-		if (inner->expr_kind == EXPR_CONST && type_is_integer(inner->type->canonical) && target_type->canonical->type_kind == TYPE_POINTER)
+		if (inner->expr_kind == EXPR_CONST && type_is_integer(inner_no_fail->canonical) && target_type->canonical->type_kind == TYPE_POINTER)
 		{
 			goto OK;
 		}
@@ -3493,7 +3494,7 @@ static inline bool sema_expr_analyse_cast(Context *context, Expr *expr)
 		return false;
 	}
 	OK:
-	cast(inner, target_type);
+	cast(inner, type_get_opt_fail(target_type, IS_FAILABLE(inner)));
 	expr_replace(expr, inner);
 	return true;
 }

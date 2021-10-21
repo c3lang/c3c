@@ -283,37 +283,34 @@ static bool int_to_int(Expr *left, Type *from_canonical, Type *canonical, Type *
 	}
 }
 
+static Type *enum_lowering(Expr* expr, Type *from)
+{
+	if (expr->const_expr.const_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM)
+	{
+		expr_replace(expr, expr->const_expr.enum_val->enum_constant.expr);
+		assert(!IS_FAILABLE(expr));
+		return expr->type;
+	}
+	Type *result = from->decl->enums.type_info->type;
+	insert_cast(expr, CAST_ENUMLOW, type_get_opt_fail(result, IS_FAILABLE(expr)));
+	return result;
+}
+
 static bool enum_to_integer(Expr* expr, Type *from, Type *canonical, Type *type)
 {
-	Type *enum_type = from->decl->enums.type_info->type;
-	Type *enum_type_canonical = type_flatten(enum_type);
-	// 1. If the underlying type is the same, this is just setting the type.
-	if (canonical == enum_type_canonical)
-	{
-		expr->type = type;
-		return true;
-	}
-	// 2. Dispatch to the right cast:
-	// TODO can be inlined if enums are constants
-	insert_cast(expr, CAST_ENUMLOW, enum_type_canonical);
-	return int_to_int(expr, enum_type_canonical, canonical, type);
+	Type *result = enum_lowering(expr, from);
+	return int_to_int(expr, result->canonical, canonical, type);
 }
 
 static bool enum_to_float(Expr* expr, Type *from, Type *canonical, Type *type)
 {
-	Type *enum_type = from->decl->enums.type_info->type;
-	Type *enum_type_canonical = type_flatten(enum_type);
-	// TODO can be inlined if enums are constants
-	insert_cast(expr, CAST_ENUMLOW, enum_type_canonical);
-	return int_to_float(expr, type_is_unsigned(enum_type_canonical) ? CAST_UIFP : CAST_SIFP, canonical, type);
+	Type *result = enum_lowering(expr, from);
+	return int_to_float(expr, type_is_unsigned(result->canonical) ? CAST_UIFP : CAST_SIFP, canonical, type);
 }
 
 bool enum_to_bool(Expr* expr, Type *from, Type *type)
 {
-	Type *enum_type = from->decl->enums.type_info->type;
-	Type *enum_type_canonical = type_flatten(enum_type);
-	// TODO can be inlined if enums are constants
-	insert_cast(expr, CAST_ENUMLOW, enum_type_canonical);
+	Type *result = enum_lowering(expr, from);
 	return integer_to_bool(expr, type);
 }
 
@@ -1222,11 +1219,18 @@ static inline bool subarray_to_bool(Expr *expr)
 
 bool cast(Expr *expr, Type *to_type)
 {
-	Type *from_type = type_flatten(expr->type->canonical);
+	Type *from_type = type_flatten_distinct(expr->type->canonical);
+	bool from_is_failable = false;
+	if (from_type->type_kind == TYPE_FAILABLE)
+	{
+		from_type = from_type->failable;
+		from_is_failable = true;
+	}
+
 	Type *to = type_flatten(to_type);
 	if (from_type == to)
 	{
-		if (!IS_FAILABLE(expr) && to_type->type_kind == TYPE_FAILABLE)
+		if (!from_is_failable && to_type->type_kind == TYPE_FAILABLE)
 		{
 			to_type = type_no_fail(to_type);
 		}
