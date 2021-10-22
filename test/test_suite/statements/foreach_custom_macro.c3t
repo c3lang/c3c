@@ -38,7 +38,8 @@ extern func int printf(char *fmt, ...);
 
 // #expect: foo.ll
 
-define void @main()
+define void @main() #0 {
+entry:
   %i = alloca [3 x i32], align 4
   %x = alloca %Foo, align 8
   %f = alloca i32, align 4
@@ -84,9 +85,9 @@ for.cond:                                         ; preds = %expr_block.exit
   %16 = getelementptr inbounds %FooIterator, %FooIterator* %15, i32 0, i32 1
   %17 = load %Foo*, %Foo** %16, align 8
   %18 = getelementptr inbounds %Foo, %Foo* %17, i32 0, i32 0
-  %len = getelementptr inbounds %"int[]", %"int[]"* %18, i32 0, i32 1
-  %19 = load i64, i64* %len, align 8
-  %eq = icmp eq i64 %14, %19
+  %19 = getelementptr inbounds %"int[]", %"int[]"* %18, i32 0, i32 1
+  %20 = load i64, i64* %19, align 8
+  %eq = icmp eq i64 %14, %20
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %for.cond
@@ -94,32 +95,32 @@ if.then:                                          ; preds = %for.cond
   br label %expr_block.exit3
 
 if.exit:                                          ; preds = %for.cond
-  %20 = load i32*, i32** %value, align 8
-  %21 = load %FooIterator*, %FooIterator** %it, align 8
-  %22 = getelementptr inbounds %FooIterator, %FooIterator* %21, i32 0, i32 1
-  %23 = load %Foo*, %Foo** %22, align 8
-  %24 = getelementptr inbounds %Foo, %Foo* %23, i32 0, i32 0
-  %subarrayptr = getelementptr inbounds %"int[]", %"int[]"* %24, i32 0, i32 0
-  %saptr = load i32*, i32** %subarrayptr, align 8
-  %25 = load %FooIterator*, %FooIterator** %it, align 8
-  %26 = getelementptr inbounds %FooIterator, %FooIterator* %25, i32 0, i32 0
-  %27 = load i64, i64* %26, align 8
-  %add = add i64 %27, 1
-  store i64 %add, i64* %26, align 8
-  %sarridx = getelementptr inbounds i32, i32* %saptr, i64 %27
-  %28 = load i32, i32* %sarridx, align 4
-  store i32 %28, i32* %20, align 8
+  %21 = load i32*, i32** %value, align 8
+  %22 = load %FooIterator*, %FooIterator** %it, align 8
+  %23 = getelementptr inbounds %FooIterator, %FooIterator* %22, i32 0, i32 1
+  %24 = load %Foo*, %Foo** %23, align 8
+  %25 = getelementptr inbounds %Foo, %Foo* %24, i32 0, i32 0
+  %26 = getelementptr inbounds %"int[]", %"int[]"* %25, i32 0, i32 0
+  %27 = load i32*, i32** %26, align 8
+  %28 = load %FooIterator*, %FooIterator** %it, align 8
+  %29 = getelementptr inbounds %FooIterator, %FooIterator* %28, i32 0, i32 0
+  %30 = load i64, i64* %29, align 8
+  %add = add i64 %30, 1
+  store i64 %add, i64* %29, align 8
+  %ptroffset = getelementptr inbounds i32, i32* %27, i64 %30
+  %31 = load i32, i32* %ptroffset, align 4
+  store i32 %31, i32* %21, align 8
   store i8 1, i8* %blockret2, align 1
   br label %expr_block.exit3
 
 expr_block.exit3:                                 ; preds = %if.exit, %if.then
-  %29 = load i8, i8* %blockret2, align 1
-  %30 = trunc i8 %29 to i1
-  br i1 %30, label %for.body, label %for.exit
+  %32 = load i8, i8* %blockret2, align 1
+  %33 = trunc i8 %32 to i1
+  br i1 %33, label %for.body, label %for.exit
 
 for.body:                                         ; preds = %expr_block.exit3
-  %31 = load i32, i32* %f, align 4
-  %32 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %31)
+  %34 = load i32, i32* %f, align 4
+  %35 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %34)
   br label %while.begin
 
 while.begin:                                      ; preds = %for.body

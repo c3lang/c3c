@@ -103,7 +103,7 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 	}
 
 	// 3. Evaluate the return value to be the expected return type.
-	if (!sema_analyse_expr_of_required_type(context, expected_rtype, return_expr)) return false;
+	if (!sema_analyse_expr_rhs(context, expected_rtype, return_expr, type_is_failable(expected_rtype))) return false;
 
 	assert(type_no_fail(statement->return_stmt.expr->type)->canonical == type_no_fail(expected_rtype)->canonical);
 
@@ -212,7 +212,7 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 			return false;
 		}
 
-		if (!cast_implicit_ignore_failable(failable, ident->type)) return false;
+		if (!cast_implicit(failable, ident->type)) return false;
 
 		expr->try_unwrap_expr.assign_existing = true;
 		expr->try_unwrap_expr.lhs = ident;
@@ -253,7 +253,7 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 
 		if (var_type)
 		{
-			if (!cast_implicit_ignore_failable(failable, var_type->type)) return false;
+			if (!cast_implicit(failable, var_type->type)) return false;
 		}
 
 		// 4c. Create a type_info if needed.
@@ -266,7 +266,7 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 		Decl *decl = decl_new_var(ident_token, var_type, VARDECL_LOCAL, VISIBLE_LOCAL);
 
 		// 4e. Analyse it
-		if (!sema_analyse_var_decl(context, decl)) return false;
+		if (!sema_analyse_var_decl(context, decl, true)) return false;
 
 		expr->try_unwrap_expr.decl = decl;
 	}
@@ -369,7 +369,7 @@ static inline bool sema_analyse_catch_unwrap(Context *context, Expr *expr)
 		decl->var.init_expr = expr_new(EXPR_UNDEF, decl->span);
 
 		// 4e. Analyse it
-		if (!sema_analyse_var_decl(context, decl)) return false;
+		if (!sema_analyse_var_decl(context, decl, true)) return false;
 
 		expr->catch_unwrap_expr.decl = decl;
 		expr->catch_unwrap_expr.lhs = NULL;
@@ -380,7 +380,7 @@ RESOLVE_EXPRS:;
 	{
 		Expr *fail = exprs[i];
 		if (!sema_analyse_expr(context, fail)) return false;
-		if (fail->type->type_kind != TYPE_FAILABLE)
+		if (!type_is_failable(fail->type))
 		{
 			SEMA_ERROR(fail, "This expression is not failable, did you add it by mistake?");
 			return false;
@@ -515,9 +515,7 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 		// 3e. Expect that it isn't a failable
 		if (IS_FAILABLE(init) && !decl->var.unwrap)
 		{
-			SEMA_ERROR(last, "%s cannot be converted to %s.",
-					   type_quoted_error_string(last->type),
-					   cast_to_bool ? "'bool'" : type_quoted_error_string(init->type));
+			return sema_failed_cast(last, last->type, cast_to_bool ? type_bool : init->type);
 			return false;
 		}
 		// TODO document
@@ -531,9 +529,7 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 	// 3a. Check for failables in case of an expression.
 	if (IS_FAILABLE(last))
 	{
-		SEMA_ERROR(last, "%s cannot be converted to %s.",
-				   type_quoted_error_string(last->type),
-				   cast_to_bool ? "'bool'" : type_quoted_error_string(type_no_fail(last->type)));
+		sema_failed_cast(last, last->type, cast_to_bool ? type_bool : type_no_fail(last->type));
 		return false;
 	}
 	// 3b. Cast to bool if that is needed
@@ -660,98 +656,9 @@ static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 }
 
 
-/**
- * Analyse a regular local declaration, e.g. int x = 123
- */
-bool sema_analyse_local_decl(Context *context, Decl *decl)
-{
-	assert(decl->decl_kind == DECL_VAR && "Unexpected declaration type");
-
-	// TODO unify with global decl analysis
-	// Add a local to the current context, will throw error on shadowing.
-	if (!sema_add_local(context, decl)) return decl_poison(decl);
-
-	// 1. Local constants: const int FOO = 123.
-	if (decl->var.kind == VARDECL_CONST)
-	{
-		Expr *init_expr = decl->var.init_expr;
-		// 1a. We require an init expression.
-		if (!init_expr)
-		{
-			SEMA_ERROR(decl, "Constants need to have an initial value.");
-			return false;
-		}
-		// 1b. We require defined constants
-		if (init_expr->expr_kind == EXPR_UNDEF)
-		{
-			SEMA_ERROR(decl, "Constants cannot be undefined.");
-			return false;
-		}
-		if (!decl->var.type_info)
-		{
-			if (!sema_analyse_expr(context, init_expr)) return false;
-			decl->type = init_expr->type;
-			// Skip further evaluation.
-			goto EXIT_OK;
-		}
-	}
-	if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, decl->var.init_expr != NULL)) return decl_poison(decl);
-	decl->type = decl->var.type_info->type;
-	if (decl->var.init_expr)
-	{
-		bool type_is_inferred = decl->type->type_kind == TYPE_INFERRED_ARRAY;
-		Expr *init = decl->var.init_expr;
-		// Handle explicit undef
-		if (init->expr_kind == EXPR_UNDEF)
-		{
-			if (type_is_inferred)
-			{
-				SEMA_ERROR(decl->var.type_info, "Size of the array cannot be inferred with explicit undef.");
-				return false;
-			}
-			goto EXIT_OK;
-		}
-
-		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false)) return decl_poison(decl);
-
-		if (type_is_inferred)
-		{
-			Type *right_side_type = init->type->canonical;
-			assert(right_side_type->type_kind == TYPE_ARRAY);
-			decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
-		}
-
-		if (decl->var.unwrap && init->type->type_kind != TYPE_FAILABLE)
-		{
-			SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
-			return decl_poison(decl);
-		}
-		if (init->expr_kind == EXPR_CONST) init->const_expr.narrowable = false;
-	}
-	EXIT_OK:
-	if (decl->var.is_static)
-	{
-		scratch_buffer_clear();
-		scratch_buffer_append(context->active_function_for_analysis->name);
-		scratch_buffer_append_char('.');
-		scratch_buffer_append(decl->name);
-		decl->external_name = scratch_buffer_interned();
-	}
-	if (decl->var.init_expr && decl->var.is_static)
-	{
-		if (!expr_is_constant_eval(decl->var.init_expr, CONSTANT_EVAL_ANY))
-		{
-			SEMA_ERROR(decl->var.init_expr, "Static variable initialization must be constant.");
-			return false;
-		}
-	}
-	if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
-	return true;
-}
-
 static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 {
-	return sema_analyse_local_decl(context, statement->declare_stmt);
+	return sema_analyse_var_decl(context, statement->declare_stmt, true);
 }
 
 /**
@@ -798,7 +705,7 @@ static inline bool sema_analyse_var_stmt(Context *context, Ast *statement)
 				}
 				if (decl->var.init_expr)
 				{
-					if (!sema_analyse_expr_of_required_type(context, decl->type, decl->var.init_expr)) return false;
+					if (!sema_analyse_expr_rhs(context, decl->type, decl->var.init_expr, false)) return false;
 					if (!expr_is_constant_eval(decl->var.init_expr, CONSTANT_EVAL_ANY))
 					{
 						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression assigned to %s.", decl->name);
@@ -1174,7 +1081,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 	Type *indexed_type;
 
 	// First fold the enumerator expression, removing any () around it.
-	while (enumerator->expr_kind == EXPR_GROUP) enumerator = enumerator->group_expr;
+	while (enumerator->expr_kind == EXPR_GROUP) enumerator = enumerator->inner_expr;
 
 	bool iterator_based = false;
 
@@ -1283,9 +1190,9 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 				index->var.type_info = type_info_new_base(type_isize, index->span);
 			}
 			// Analyse the declaration.
-			if (!sema_analyse_local_decl(context, index)) return SCOPE_POP_ERROR();
+			if (!sema_analyse_var_decl(context, index, true)) return SCOPE_POP_ERROR();
 
-			if (index->type->type_kind == TYPE_FAILABLE)
+			if (type_is_failable(index->type))
 			{
 				SEMA_ERROR(index->var.type_info, "The index may not be a failable.");
 				return SCOPE_POP_ERROR();
@@ -1314,7 +1221,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 		}
 
 		// Analyse the value declaration.
-		if (!sema_analyse_local_decl(context, var)) return SCOPE_POP_ERROR();
+		if (!sema_analyse_var_decl(context, var, true)) return SCOPE_POP_ERROR();
 
 		if (IS_FAILABLE(var))
 		{
@@ -1333,7 +1240,11 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 			Expr dummy = { .resolve_status = RESOLVE_DONE, .span = { var->var.type_info->span.loc,
 			                                                         var->span.end_loc }, .expr_kind = EXPR_IDENTIFIER, .type = expected_var_type };
 			if (!cast_implicit(&dummy, var->type)) return SCOPE_POP_ERROR();
-
+			if (IS_FAILABLE(&dummy))
+			{
+				SEMA_ERROR(var, "The variable may not be failable.");
+				return false;
+			}
 			assert(dummy.expr_kind == EXPR_CAST);
 			statement->foreach_stmt.cast = dummy.cast_expr.kind;
 		}
@@ -1638,7 +1549,7 @@ static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 
 	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? parent->switch_stmt.cond->type : type_anyerr;
 
-	if (!sema_analyse_expr_of_required_type(context, expected_type, target)) return false;
+	if (!sema_analyse_expr_rhs(context, expected_type, target, false)) return false;
 
 	if (target->expr_kind == EXPR_CONST)
 	{
@@ -1753,35 +1664,6 @@ static bool sema_analyse_ct_if_stmt(Context *context, Ast *statement)
 	}
 }
 
-/**
- * Cast the case expression to the switch type and ensure it is constant.
- *
- * @return true if the analysis succeeds.
- */
-static bool sema_analyse_case_expr(Context *context, Type* to_type, Ast *case_stmt, bool *is_const)
-{
-	assert(to_type);
-	Expr *case_expr = case_stmt->case_stmt.expr;
-
-	// 1. Try to do implicit conversion to the correct type.
-	if (!sema_analyse_inferred_expr(context, to_type, case_expr)) return false;
-
-	Type *case_type = case_expr->type->canonical;
-	Type *to_type_canonical = to_type->canonical;
-
-	// 3. If we already have the same type we're done.
-	if (to_type_canonical == case_type) return true;
-
-	// 4. Otherwise check if we have an enum receiving type and a number on
-	//    in the case. In that case we do an implicit conversion.
-	if (to_type_canonical->type_kind == TYPE_ENUM && type_is_integer(case_type))
-	{
-		return cast(case_expr, to_type);
-	}
-
-	return cast_implicit(case_expr, to_type);
-}
-
 
 static inline bool sema_analyse_compound_statement_no_scope(Context *context, Ast *compound_statement)
 {
@@ -1802,7 +1684,7 @@ static inline bool sema_analyse_compound_statement_no_scope(Context *context, As
 static inline bool sema_check_type_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index)
 {
 	Expr *expr = case_stmt->case_stmt.expr;
-	if (!sema_analyse_expr_of_required_type(context, type_typeid, expr)) return false;
+	if (!sema_analyse_expr_rhs(context, type_typeid, expr, false)) return false;
 
 	if (expr->expr_kind == EXPR_CONST)
 	{
@@ -1825,8 +1707,12 @@ static inline bool sema_check_type_case(Context *context, Type *switch_type, Ast
 
 static inline bool sema_check_value_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained)
 {
-	if (!sema_analyse_case_expr(context, switch_type, case_stmt, if_chained)) return false;
+	assert(switch_type);
 	Expr *expr = case_stmt->case_stmt.expr;
+
+	// 1. Try to do implicit conversion to the correct type.
+	if (!sema_analyse_expr_rhs(context, switch_type, expr, false)) return false;
+
 	if (expr->expr_kind != EXPR_CONST)
 	{
 		*if_chained = true;
@@ -1950,8 +1836,7 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 				}
 				else
 				{
-					if (!sema_analyse_inferred_expr(context, type, expr)) return false;
-					if (!cast_implicit(expr, type)) return false;
+					if (!sema_analyse_expr_rhs(context, type, expr, false)) return false;
 				}
 				if (expr->expr_kind != EXPR_CONST)
 				{
@@ -2117,7 +2002,7 @@ bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 	}
 	else
 	{
-		if (!sema_analyse_assigned_expr(context, type_bool, expr, false)) return false;
+		if (!sema_analyse_cond_expr(context, expr)) return false;
 	}
 	return true;
 }

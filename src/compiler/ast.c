@@ -217,6 +217,63 @@ Decl *decl_new_generated_var(const char *name, Type *type, VarDeclKind kind, Sou
 	return decl;
 }
 
+bool expr_is_simple(Expr *expr)
+{
+	RETRY:
+	switch (expr->expr_kind)
+	{
+		case EXPR_GROUP:
+			expr = expr->inner_expr;
+			goto RETRY;
+		case EXPR_OR_ERROR:
+		case EXPR_TERNARY:
+			return false;
+		case EXPR_RETHROW:
+			expr = expr->rethrow_expr.inner;
+			goto RETRY;
+		default:
+			return true;
+		case EXPR_BINARY:
+			switch (expr->binary_expr.operator)
+			{
+				case BINARYOP_AND:
+				case BINARYOP_OR:
+				case BINARYOP_GT:
+				case BINARYOP_GE:
+				case BINARYOP_LT:
+				case BINARYOP_LE:
+				case BINARYOP_NE:
+				case BINARYOP_EQ:
+				case BINARYOP_ASSIGN:
+				case BINARYOP_ADD_ASSIGN:
+				case BINARYOP_BIT_AND_ASSIGN:
+				case BINARYOP_BIT_OR_ASSIGN:
+				case BINARYOP_BIT_XOR_ASSIGN:
+				case BINARYOP_DIV_ASSIGN:
+				case BINARYOP_MOD_ASSIGN:
+				case BINARYOP_MULT_ASSIGN:
+				case BINARYOP_SHR_ASSIGN:
+				case BINARYOP_SHL_ASSIGN:
+				case BINARYOP_SUB_ASSIGN:
+					return true;
+				default:
+					return false;
+			}
+			UNREACHABLE
+		case EXPR_UNARY:
+			switch (expr->unary_expr.operator)
+			{
+				case UNARYOP_NEG:
+				case UNARYOP_BITNEG:
+					return false;
+				default:
+					return true;
+			}
+			UNREACHABLE
+	}
+	UNREACHABLE
+}
+
 
 Expr *expr_new(ExprKind kind, SourceSpan start)
 {

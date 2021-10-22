@@ -300,15 +300,11 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 		case TYPE_SUBARRAY:
 		{
 			// TODO insert trap on overflow.
-			LLVMTypeRef subarray_type = llvm_get_type(c, value->type);
 			assert(value->kind == BE_ADDRESS);
-			LLVMValueRef pointer_addr = LLVMBuildStructGEP2(c->builder, subarray_type, value->value, 0, "subarrayptr");
-			LLVMTypeRef pointer_type = llvm_get_type(c, type_get_ptr(value->type->array.base));
-			AlignSize alignment = type_abi_alignment(type_voidptr);
-			// We need to pick the worst alignment in case this is packed in an array.
-			if (value->alignment < alignment) alignment = value->alignment;
-			llvm_value_set_address_align(value,
-			                             llvm_emit_load_aligned(c, pointer_type, pointer_addr, 0, "saptr"), value->type, alignment);
+			BEValue member;
+			llvm_emit_subarray_pointer(c, value, &member);
+			llvm_value_rvalue(c, &member);
+			llvm_value_set_address_align(value, member.value, type_get_ptr(value->type->array.base), type_abi_alignment(value->type->array.base));
 			return;
 		}
 		case TYPE_STRLIT:
@@ -744,10 +740,11 @@ void gencontext_emit_introspection_type(GenContext *c, Decl *decl)
 		LLVMSetGlobalConstant(enum_elements, 1);
 		llvm_set_linkage(c, decl, enum_elements);
 		LLVMSetInitializer(enum_elements, LLVMConstNull(elements_type));
+		AlignSize alignment = type_alloca_alignment(type_voidptr);
 		for (unsigned i = 0; i < elements; i++)
 		{
-			LLVMValueRef index[2] = { llvm_const_int(c, type_usize, i) };
-			decl->enums.values[i]->backend_ref = LLVMConstInBoundsGEP(enum_elements, index, 1);
+			AlignSize store_align;
+			decl->enums.values[i]->backend_ref = llvm_emit_array_gep_raw(c, enum_elements, elements_type, i, alignment, &store_align);
 		}
 	}
 	LLVMValueRef global_name = LLVMAddGlobal(c->module, llvm_get_type(c, type_char), decl->name ? decl->name : "anon");
@@ -849,9 +846,7 @@ LLVMValueRef llvm_value_rvalue_store(GenContext *c, BEValue *value)
 		case BE_ADDRESS_FAILABLE:
 			UNREACHABLE
 		case BE_ADDRESS:
-			return llvm_emit_load_aligned(c,
-			                              llvm_get_type(c, value->type),
-			                              value->value,
+			return llvm_emit_load_aligned(c, llvm_get_type(c, value->type), value->value,
 			                              value->alignment ? value->alignment : type_abi_alignment(value->type),
 			                              "");
 		case BE_BOOLEAN:

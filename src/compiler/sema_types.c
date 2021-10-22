@@ -195,6 +195,7 @@ bool sema_resolve_type(Context *context, Type *type)
 		case TYPE_VECTOR:
 		case TYPE_TYPEINFO:
 		case TYPE_UNTYPED_LIST:
+		case TYPE_FAILABLE_ANY:
 			return true;
 		case TYPE_POINTER:
 			return sema_resolve_type(context, type->pointer);

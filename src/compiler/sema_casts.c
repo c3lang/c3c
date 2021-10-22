@@ -24,6 +24,12 @@ static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 	return true;
 }
 
+bool sema_failed_cast(Expr *expr, Type *from, Type *to)
+{
+	SEMA_ERROR(expr, "The cast %s to %s is not allowed.", type_quoted_error_string(from), type_quoted_error_string(to));
+	return false;
+}
+
 static inline bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type)
 {
 	if (expr->expr_kind == EXPR_CONST) return false;
@@ -118,6 +124,18 @@ bool bool_to_float(Expr *expr, Type *canonical, Type *type)
 	expr_const_set_float(&expr->const_expr, expr->const_expr.b ? 1.0 : 0.0, canonical->type_kind);
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	return true;
+}
+
+/**
+ * Cast bool to float.
+ */
+bool voidfail_to_error(Expr *expr, Type *canonical, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_CATCH;
+	expr->inner_expr = inner;
+	expr->type = type;
 	return true;
 }
 
@@ -231,14 +249,6 @@ static bool int_to_float(Expr *expr, CastKind kind, Type *canonical, Type *type)
 	return true;
 }
 
-
-static bool int_literal_to_float(Expr *expr, Type *canonical, Type *type)
-{
-	assert(type_is_float(canonical));
-	assert(expr->expr_kind == EXPR_CONST);
-	const_int_to_fp_cast(expr, canonical, type);
-	return true;
-}
 
 /**
  * Convert a compile time into to a boolean.
@@ -363,17 +373,23 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE:
+		case TYPE_FAILABLE_ANY:
 			return CAST_ERROR;
 	}
 	UNREACHABLE
 }
 
-bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability)
+bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, bool is_const)
 {
-
 	// 1. failable -> non-failable can't be cast unless we ignore failability.
-	if (from_type->type_kind == TYPE_FAILABLE && to_type->type_kind != TYPE_FAILABLE)
+	// *or* we're converting a void! to an error code
+	if (type_is_failable(from_type) && !type_is_failable(to_type))
 	{
+		if (from_type->failable == type_void || !from_type->failable)
+		{
+			// void! x; anyerr y = (anyerr)(x);
+			if (to_type->type_kind == TYPE_ERRTYPE || to_type->type_kind == TYPE_ANYERR) return true;
+		}
 		if (!ignore_failability) return false;
 	}
 
@@ -388,9 +404,17 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability)
 	// 2. Same underlying type, always ok
 	if (from_type == to_type) return true;
 
+	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
+	{
+		if (from_type->type_kind == TYPE_ARRAY && type_flatten_distinct(from_type->array.base) == type_flatten_distinct(to_type->array.base)) return true;
+		return false;
+	}
+
 	TypeKind to_kind = to_type->type_kind;
 	switch (from_type->type_kind)
 	{
+		case TYPE_FAILABLE_ANY:
+			return true;
 		case TYPE_DISTINCT:
 		case TYPE_TYPEDEF:
 		case TYPE_FAILABLE:
@@ -419,6 +443,9 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability)
 			return to_type == type_bool || to_kind == TYPE_ERRTYPE || type_is_integer(to_type);
 		case ALL_SIGNED_INTS:
 		case ALL_UNSIGNED_INTS:
+			// We don't have to match pointer size if it's a constant.
+			if (to_kind == TYPE_POINTER && is_const) return true;
+			FALLTHROUGH;
 		case TYPE_ENUM:
 			// Allow conversion int/enum -> float/bool/enum int/enum -> pointer is only allowed if the int/enum is pointer sized.
 			if (type_is_integer(to_type) || type_is_float(to_type) || to_type == type_bool || to_kind == TYPE_ENUM) return true;
@@ -449,7 +476,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability)
 		case TYPE_STRUCT:
 			if (type_is_substruct(from_type))
 			{
-				if (cast_may_explicit(from_type->decl->strukt.members[0]->type, to_type, false)) return true;
+				if (cast_may_explicit(from_type->decl->strukt.members[0]->type, to_type, false, false)) return true;
 			}
 			FALLTHROUGH;
 		case TYPE_UNION:
@@ -506,27 +533,35 @@ static bool may_cast_to_virtual(Type *virtual, Type *from)
 
 	TODO;
 }
+
+bool type_may_convert_to_anyerr(Type *type)
+{
+	if (type_is_failable_any(type)) return true;
+	if (!type_is_failable_type(type)) return false;
+	return type->failable->canonical == type_void;
+}
 /**
  * Can the conversion occur implicitly?
  */
-bool cast_may_implicit(Type *from_type, Type *to_type)
+bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool failable_allowed)
 {
-	if (from_type == type_anyfail)
-	{
-		return to_type->type_kind == TYPE_FAILABLE;
-	}
-
-	Type *from = from_type->canonical;
 	Type *to = to_type->canonical;
 
-	// 1. Same canonical type - we're fine.
-	if (from == to) return true;
+	// 1. First handle void! => any error
+	if (to == type_anyerr && type_may_convert_to_anyerr(from_type)) return true;
 
-	if (from->type_kind == TYPE_FAILABLE && to->type_kind != TYPE_FAILABLE) return false;
-	if (to->type_kind == TYPE_FAILABLE)
+	// 2. any! => may implicitly to convert to any.
+	if (type_is_failable_any(from_type)) return failable_allowed;
+
+	Type *from = from_type->canonical;
+	if (type_is_failable_type(from_type))
 	{
-		return cast_may_implicit(type_no_fail(from), type_no_fail(to));
+		if (!failable_allowed) return false;
+		from = from_type->failable->canonical;
 	}
+
+	// 4. Same canonical type - we're fine.
+	if (from == to) return true;
 
 	// 2. Handle floats
 	if (type_is_float(to))
@@ -534,11 +569,13 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 		// 2a. Any integer may convert to a float.
 		if (type_is_integer(from)) return true;
 
-		// 2b. Any narrower float or FXX may convert to a float.
+		// 2b. Any narrower float
 		if (type_is_float(from))
 		{
-			// This works because the type_size of FXX = 0
-			return type_size(to) >= type_size(from);
+			ByteSize to_size = type_size(to);
+			ByteSize from_size = type_size(from);
+			if (to_size == from_size) return true;
+			return to_size > from_size && is_simple_expr;
 		}
 		return false;
 	}
@@ -557,7 +594,10 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 		// 3a. Any narrower int may convert to a wider or same int, regardless of signedness.
 		if (type_is_integer(from))
 		{
-			return type_size(to) >= type_size(from);
+			ByteSize to_size = type_size(to);
+			ByteSize from_size = type_size(from);
+			if (to_size == from_size) return true;
+			return to_size > from_size && is_simple_expr;
 		}
 		return false;
 	}
@@ -597,6 +637,12 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 		return false;
 	}
 
+	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
+	{
+		if (from_type->type_kind == TYPE_ARRAY && type_flatten_distinct(from_type->array.base) == type_flatten_distinct(to_type->array.base)) return true;
+		return false;
+	}
+
 	// 5. Handle sub arrays
 	if (to->type_kind == TYPE_SUBARRAY)
 	{
@@ -621,7 +667,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 	{
 		if (from->type_kind == TYPE_STRLIT)
 		{
-			return cast_may_implicit(from, type_flatten(to));
+			return cast_may_implicit(from, type_flatten(to), is_simple_expr, failable_allowed);
 		}
 	}
 
@@ -647,7 +693,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type)
 	// 11. Substruct cast, if the first member is inline, see if we can cast to this member.
 	if (type_is_substruct(from))
 	{
-		return cast_may_implicit(from->decl->strukt.members[0]->type, to);
+		return cast_may_implicit(from->decl->strukt.members[0]->type, to, is_simple_expr, failable_allowed);
 	}
 
 	return false;
@@ -804,9 +850,8 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_EXPRESSION_LIST:
 			return recursive_may_narrow_float(VECLAST(expr->expression_list), type);
 		case EXPR_GROUP:
-			return recursive_may_narrow_float(expr->group_expr, type);
 		case EXPR_FORCE_UNWRAP:
-			return recursive_may_narrow_float(expr->force_unwrap_expr, type);
+			return recursive_may_narrow_float(expr->inner_expr, type);
 		case EXPR_RETHROW:
 			return recursive_may_narrow_float(expr->rethrow_expr.inner, type);
 		case EXPR_TERNARY:
@@ -843,25 +888,22 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_PLACEHOLDER:
 		case EXPR_TYPEID:
 		case EXPR_TYPEINFO:
-		case EXPR_TYPEOF:
 		case EXPR_UNDEF:
 		case EXPR_CT_CALL:
 		case EXPR_NOP:
 		case EXPR_LEN:
+		case EXPR_CATCH:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_float(expr->unary_expr.expr, type);
 		case EXPR_SCOPED_EXPR:
 			return recursive_may_narrow_float(expr->expr_scope.expr, type);
 		case EXPR_TRY:
-			assert(expr->try_expr.is_try);
-			return recursive_may_narrow_float(expr->try_expr.expr, type);
+			return recursive_may_narrow_float(expr->inner_expr, type);
 		case EXPR_TRY_UNWRAP:
 			TODO
 		case EXPR_TRY_UNWRAP_CHAIN:
 			TODO
-		case EXPR_TRY_ASSIGN:
-			return recursive_may_narrow_float(expr->try_assign_expr.expr, type);
 		case EXPR_UNARY:
 		{
 			switch (expr->unary_expr.operator)
@@ -959,12 +1001,8 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 			if (expr->or_error_expr.is_jump) return NULL;
 			return recursive_may_narrow_int(expr->or_error_expr.or_error_expr, type);
 		}
-		case EXPR_FORCE_UNWRAP:
-			return recursive_may_narrow_int(expr->force_unwrap_expr, type);
 		case EXPR_EXPRESSION_LIST:
 			return recursive_may_narrow_int(VECLAST(expr->expression_list), type);
-		case EXPR_GROUP:
-			return recursive_may_narrow_int(expr->group_expr, type);
 		case EXPR_RETHROW:
 			return recursive_may_narrow_int(expr->rethrow_expr.inner, type);
 		case EXPR_TERNARY:
@@ -1001,7 +1039,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_PLACEHOLDER:
 		case EXPR_TYPEID:
 		case EXPR_TYPEINFO:
-		case EXPR_TYPEOF:
 		case EXPR_UNDEF:
 		case EXPR_CT_CALL:
 		case EXPR_NOP:
@@ -1011,14 +1048,14 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_SCOPED_EXPR:
 			return recursive_may_narrow_int(expr->expr_scope.expr, type);
 		case EXPR_TRY:
-			assert(expr->try_expr.is_try);
-			return recursive_may_narrow_int(expr->try_expr.expr, type);
+		case EXPR_CATCH:
+		case EXPR_GROUP:
+		case EXPR_FORCE_UNWRAP:
+			return recursive_may_narrow_int(expr->inner_expr, type);
 		case EXPR_TRY_UNWRAP:
 			TODO
 		case EXPR_TRY_UNWRAP_CHAIN:
 			TODO
-		case EXPR_TRY_ASSIGN:
-			return recursive_may_narrow_int(expr->try_assign_expr.expr, type);
 		case EXPR_UNARY:
 		{
 			switch (expr->unary_expr.operator)
@@ -1039,35 +1076,18 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 	}
 	UNREACHABLE
 }
-bool cast_implicit_ignore_failable(Expr *expr, Type *to_type)
-{
-	if (expr->type->type_kind == TYPE_FAILABLE && to_type->type_kind != TYPE_FAILABLE)
-	{
-		to_type = type_get_failable(to_type);
-	}
-	return cast_implicit(expr, to_type);
-}
 
 bool cast_implicit(Expr *expr, Type *to_type)
 {
+	assert(!type_is_failable(to_type));
 	Type *expr_type = expr->type;
-	if (expr_type == type_anyfail)
-	{
-		if (to_type->type_kind != TYPE_FAILABLE)
-		{
-			SEMA_ERROR(expr, "Cannot cast %s to a non-failable type %s.", type_quoted_error_string(expr_type),
-			           type_quoted_error_string(to_type));
-			return false;
-		}
-		expr->type = to_type;
-		return true;
-	}
 	Type *expr_canonical = expr_type->canonical;
 	Type *to_canonical = to_type->canonical;
 	if (expr_canonical == to_canonical) return true;
-	if (!cast_may_implicit(expr_canonical, to_canonical))
+	bool is_simple = expr_is_simple(expr);
+	if (!cast_may_implicit(expr_canonical, to_canonical, is_simple, true))
 	{
-		if (!cast_may_explicit(expr_canonical, to_canonical, false))
+		if (!cast_may_explicit(expr_canonical, to_canonical, false, expr->expr_kind == EXPR_CONST))
 		{
 			if (expr_canonical->type_kind == TYPE_FAILABLE && to_canonical->type_kind != TYPE_FAILABLE)
 			{
@@ -1077,7 +1097,8 @@ bool cast_implicit(Expr *expr, Type *to_type)
 			SEMA_ERROR(expr, "You cannot cast %s into %s even with an explicit cast, so this looks like an error.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
 			return false;
 		}
-		if (expr->expr_kind == EXPR_CONST && expr->const_expr.narrowable)
+		bool is_narrowing = type_size(expr_canonical) >= type_size(to_canonical);
+		if (expr->expr_kind == EXPR_CONST && expr->const_expr.narrowable && is_narrowing)
 		{
 			Type *expr_flatten = type_flatten_distinct(expr_canonical);
 			Type *to_flatten = type_flatten_distinct(to_canonical);
@@ -1104,9 +1125,8 @@ bool cast_implicit(Expr *expr, Type *to_type)
 				goto OK;
 			}
 		}
-		if (type_is_integer(expr_canonical) && type_is_integer(to_canonical))
+		if (type_is_integer(expr_canonical) && type_is_integer(to_canonical) && is_narrowing)
 		{
-			assert(type_size(expr_canonical) > type_size(to_canonical));
 			Expr *problem = recursive_may_narrow_int(expr, to_canonical);
 			if (problem)
 			{
@@ -1116,7 +1136,7 @@ bool cast_implicit(Expr *expr, Type *to_type)
 			}
 			goto OK;
 		}
-		if (type_is_float(expr_canonical) && type_is_float(to_canonical))
+		if (type_is_float(expr_canonical) && type_is_float(to_canonical) && is_narrowing)
 		{
 			Expr *problem = recursive_may_narrow_float(expr, to_canonical);
 			if (problem)
@@ -1221,39 +1241,24 @@ static inline bool subarray_to_bool(Expr *expr)
 	return insert_cast(expr, CAST_SABOOL, type_bool);
 }
 
-bool cast(Expr *expr, Type *to_type)
+static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type, bool from_is_failable)
 {
-	Type *from_type = type_flatten_distinct(expr->type->canonical);
-	bool from_is_failable = false;
-	if (from_type->type_kind == TYPE_FAILABLE)
-	{
-		from_type = from_type->failable;
-		from_is_failable = true;
-	}
-
-	Type *to = type_flatten(to_type);
-	if (from_type == to)
-	{
-		if (!from_is_failable && to_type->type_kind == TYPE_FAILABLE)
-		{
-			to_type = type_no_fail(to_type);
-		}
-		expr->type = to_type;
-		if (expr->expr_kind == EXPR_CONST) expr->const_expr.narrowable = false;
-		return true;
-	}
 	switch (from_type->type_kind)
 	{
+		case TYPE_FAILABLE_ANY:
+			UNREACHABLE
 		case TYPE_VOID:
+			UNREACHABLE
 		case TYPE_TYPEID:
 		case TYPE_DISTINCT:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
 		case CT_TYPES:
-		case TYPE_FAILABLE:
 			UNREACHABLE
 		case TYPE_BITSTRUCT:
 			UNREACHABLE
+		case TYPE_FAILABLE:
+			TODO
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.
 			if (type_is_integer(to)) return bool_to_int(expr, to, to_type);
@@ -1303,7 +1308,7 @@ bool cast(Expr *expr, Type *to_type)
 		case TYPE_ERRTYPE:
 			if (to->type_kind == TYPE_ANYERR) return err_to_anyerr(expr, to_type);
 			if (to == type_bool) return err_to_bool(expr, to_type);
-			if (type_is_integer(to_type)) return insert_cast(expr, CAST_ERINT, to_type);
+			if (type_is_integer(to)) return insert_cast(expr, CAST_ERINT, to_type);
 			break;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -1326,6 +1331,50 @@ bool cast(Expr *expr, Type *to_type)
 			TODO
 	}
 	UNREACHABLE
+}
+bool cast(Expr *expr, Type *to_type)
+{
+	assert(!type_is_failable(to_type));
+	Type *from_type = expr->type;
+	bool from_is_failable = false;
+	Type *to = type_flatten(to_type);
+
+	// Special case *! => error
+	if (to == type_anyerr || to->type_kind == TYPE_ERRTYPE)
+	{
+		if (type_is_failable(from_type)) return voidfail_to_error(expr, to, to_type);
+	}
+
+	if (type_is_failable_any(from_type))
+	{
+		expr->type = type_get_failable(to_type);
+		return true;
+	}
+
+	if (type_is_failable_type(from_type))
+	{
+		from_type = from_type->failable;
+		from_is_failable = true;
+	}
+	from_type = type_flatten_distinct(from_type);
+	if (to_type->type_kind == TYPE_INFERRED_ARRAY)
+	{
+		to_type = from_type;
+		to = type_flatten(from_type);
+	}
+	if (from_type == to)
+	{
+		expr->type = type_get_opt_fail(to_type, from_is_failable);
+		if (expr->expr_kind == EXPR_CONST) expr->const_expr.narrowable = false;
+		return true;
+	}
+	if (!cast_inner(expr, from_type, to, to_type, from_is_failable)) return false;
+	Type *result_type = expr->type;
+	if (from_is_failable && !type_is_failable(result_type))
+	{
+		expr->type = type_get_failable(result_type);
+	}
+	return true;
 }
 
 #pragma clang diagnostic pop

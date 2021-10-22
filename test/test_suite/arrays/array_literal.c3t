@@ -24,6 +24,6 @@ entry:
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %1, i8* align 16 bitcast ([30 x double]* @.__const to i8*), i32 240, i1 false)
   %2 = load i32, i32* %x, align 4
   %uiuiext = zext i32 %2 to i64
-  %arridx = getelementptr inbounds [30 x double], [30 x double]* %student_t, i64 0, i64 %uiuiext
-  %3 = load double, double* %arridx, align 8
-  ret double %3
+  %3 = getelementptr inbounds [30 x double], [30 x double]* %student_t, i64 0, i64 %uiuiext
+  %4 = load double, double* %3, align 8
+  ret double %4

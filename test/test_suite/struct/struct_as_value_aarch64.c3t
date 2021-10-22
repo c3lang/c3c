@@ -28,18 +28,19 @@ func Event test(int x)
   %intbool = icmp ne i32 %3, 0
   br i1 %intbool, label %cond.lhs, label %cond.rhs
 
-cond.lhs:
+cond.lhs:                                         ; preds = %entry
   %4 = load %Event, %Event* %foo, align 4
   br label %cond.phi
 
-cond.rhs:
+cond.rhs:                                         ; preds = %entry
   %5 = load %Event, %Event* %bar, align 4
   br label %cond.phi
 
-cond.phi:
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %val = phi %Event [ %4, %cond.lhs ], [ %5, %cond.rhs ]
   store %Event %val, %Event* %taddr, align 4
-  %dive = getelementptr inbounds %Event, %Event* %taddr, i32 0, i32 0
-  %6 = load i32, i32* %dive, align 4
-  %7 = zext i32 %6 to i64
-  ret i64 %7
+  %6 = getelementptr inbounds %Event, %Event* %taddr, i32 0, i32 0
+  %7 = load i32, i32* %6, align 4
+  %8 = zext i32 %7 to i64
+  ret i64 %8
+}

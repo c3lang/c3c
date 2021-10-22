@@ -21,17 +21,17 @@ func void test1(Func arg)
 
 func void test2(Func arg)
 {
-    ichar b = (ichar)(arg);               // #error: Cannot cast 'Func' (func void(int)) to 'ichar'.
+    ichar b = (ichar)(arg);               // #error: 'Func' (func void(int)) to 'ichar'
 }
 
 func void test3(Func arg)
 {
-    uint c = (uint)(arg);                 // #error: Cannot cast 'Func' (func void(int)) to 'uint'.
+    uint c = (uint)(arg);                 // #error: 'Func' (func void(int)) to 'uint'
 }
 
 func void test4(Func arg)
 {
-    float d = (float)(arg);               // #error: Cannot cast 'Func' (func void(int)) to 'float'.
+    float d = (float)(arg);               // #error: 'Func' (func void(int)) to 'float'
 }
 
 func void test7(Func arg)
@@ -41,5 +41,5 @@ func void test7(Func arg)
     FuncSame l = (FuncSame)(arg);
     FuncOther ke = arg;                         // #error: 'Func' (func void(int)) to 'FuncOther' (func bool(char*))
     FuncSame fe = arg;
-    Enum j = (Enum)(arg);                 // #error: Cannot cast 'Func' (func void(int)) to 'Enum'.
+    Enum j = (Enum)(arg);                 // #error: 'Func' (func void(int)) to 'Enum'
 }

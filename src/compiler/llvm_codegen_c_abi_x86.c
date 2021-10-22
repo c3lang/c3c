@@ -120,6 +120,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_BITSTRUCT:
 		case CT_TYPES:
 		case TYPE_FAILABLE:
+		case TYPE_FAILABLE_ANY:
 			UNREACHABLE
 		case ALL_INTS:
 		case ALL_FLOATS:
@@ -596,6 +597,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_STRLIT:
 		case TYPE_FAILABLE:
+		case TYPE_FAILABLE_ANY:
 		case CT_TYPES:
 			UNREACHABLE
 		case ALL_FLOATS:

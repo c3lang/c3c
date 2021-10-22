@@ -493,10 +493,10 @@ static inline Ast *parse_decl_or_expr_stmt(Context *context)
 	bool failable = false;
 	// We might be parsing "int!"
 	// If so we need to unwrap this.
-	if (expr->expr_kind == EXPR_FAILABLE && expr->failable_expr->expr_kind == EXPR_TYPEINFO)
+	if (expr->expr_kind == EXPR_FAILABLE && expr->inner_expr->expr_kind == EXPR_TYPEINFO)
 	{
 		UNREACHABLE
-		expr_replace(expr, expr->failable_expr);
+		expr_replace(expr, expr->inner_expr);
 	}
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{

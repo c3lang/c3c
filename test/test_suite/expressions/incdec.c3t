@@ -18,11 +18,11 @@ func void test(int* foo)
   %z = alloca float, align 4
   store i32* %0, i32** %foo
   %1 = load i32*, i32** %foo, align 8
-  %ptrincdec = getelementptr i32, i32* %1, i8 1
-  store i32* %ptrincdec, i32** %foo, align 8
+  %ptroffset = getelementptr i32, i32* %1, i8 1
+  store i32* %ptroffset, i32** %foo, align 8
   %2 = load i32*, i32** %foo, align 8
-  %ptrincdec1 = getelementptr i32, i32* %2, i8 -1
-  store i32* %ptrincdec1, i32** %foo, align 8
+  %ptroffset1 = getelementptr i32, i32* %2, i8 -1
+  store i32* %ptroffset1, i32** %foo, align 8
   store i32 10, i32* %y, align 4
   %3 = load i32, i32* %y, align 4
   %add = add i32 %3, 1

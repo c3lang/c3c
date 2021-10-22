@@ -42,8 +42,6 @@ Type *type_u128 = &t.u128;
 Type *type_uptr = &t.uptr;
 Type *type_uptrdiff = &t.uptrdiff;
 Type *type_usize = &t.usz;
-Type *type_compint = &t.ixx;
-Type *type_compfloat = &t.fxx;
 Type *type_compstr = &t.str;
 Type *type_anyerr = &t.anyerr;
 Type *type_complist = &t.ctlist;
@@ -51,8 +49,6 @@ Type *type_anyfail = &t.anyfail;
 
 static unsigned size_subarray;
 static AlignSize alignment_subarray;
-unsigned size_error_code;
-unsigned alignment_error_code;
 static AlignSize max_alignment_vector;
 
 #define PTR_OFFSET 0
@@ -139,6 +135,8 @@ const char *type_to_error_string(Type *type)
 			return "typeinfo";
 		case TYPE_TYPEID:
 			return "typeid";
+		case TYPE_FAILABLE_ANY:
+			return "void!";
 		case TYPE_POINTER:
 			if (type->pointer->type_kind == TYPE_FUNC)
 			{
@@ -216,7 +214,6 @@ RETRY:
 			UNREACHABLE;
 		case TYPE_FAILABLE:
 			type = type->failable;
-			if (!type) return 1;
 			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -231,6 +228,7 @@ RETRY:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
 			return type->decl->strukt.size;
 		case TYPE_VOID:
+		case TYPE_FAILABLE_ANY:
 			return 1;
 		case TYPE_BOOL:
 		case TYPE_TYPEID:
@@ -354,7 +352,6 @@ bool type_is_abi_aggregate(Type *type)
 			return false;
 		case TYPE_FAILABLE:
 			type = type->failable;
-			if (!type) return false;
 			goto RETRY;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
@@ -365,6 +362,7 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_BITSTRUCT:
 		case ALL_FLOATS:
 		case TYPE_VOID:
+		case TYPE_FAILABLE_ANY:
 		case ALL_INTS:
 		case TYPE_BOOL:
 		case TYPE_TYPEID:
@@ -518,7 +516,6 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	{
 		case TYPE_FAILABLE:
 			type = type->failable;
-			if (!type) return false;
 			goto RETRY;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
@@ -532,6 +529,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_STRLIT:
 		case TYPE_SUBARRAY:
 		case CT_TYPES:
+		case TYPE_FAILABLE_ANY:
 			return false;
 		case TYPE_VIRTUAL:
 		case TYPE_VIRTUAL_ANY:
@@ -745,10 +743,10 @@ AlignSize type_abi_alignment(Type *type)
 			return alignment;
 		}
 		case TYPE_VOID:
+		case TYPE_FAILABLE_ANY:
 			return 1;
 		case TYPE_FAILABLE:
 			type = type->failable;
-			if (!type) return 1;
 			goto RETRY;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
@@ -900,6 +898,7 @@ static Type *type_generate_inferred_array(Type *arr_type, bool canonical)
 
 Type *type_get_ptr_recurse(Type *ptr_type)
 {
+	assert(ptr_type->type_kind != TYPE_FAILABLE_ANY);
 	if (ptr_type->type_kind == TYPE_FAILABLE)
 	{
 		ptr_type = ptr_type->failable;
@@ -910,13 +909,13 @@ Type *type_get_ptr_recurse(Type *ptr_type)
 }
 Type *type_get_ptr(Type *ptr_type)
 {
-	assert(ptr_type->type_kind != TYPE_FAILABLE);
+	assert(!type_is_failable(ptr_type));
 	return type_generate_ptr(ptr_type, false);
 }
 
 Type *type_get_failable(Type *failable_type)
 {
-	assert(failable_type->type_kind != TYPE_FAILABLE);
+	assert(!type_is_failable(failable_type));
 	return type_generate_failable(failable_type, false);
 }
 
@@ -966,8 +965,6 @@ bool type_is_structurally_equivalent(Type *type1, Type *type2)
 	type2 = type_flatten(type2);
 
 	if (type1 == type2) return true;
-
-	if (type_size(type1) != type_size(type2)) return false;
 
 	// If the other type is a union, we check against every member
 	// noting that there is only structural equivalence if it fills out the
@@ -1213,6 +1210,9 @@ static void type_append_name_to_scratch(Type *type)
 			type_append_name_to_scratch(type->pointer);
 			scratch_buffer_append_char('*');
 			break;
+		case TYPE_FAILABLE_ANY:
+			scratch_buffer_append("void!");
+			break;
 		case TYPE_FAILABLE:
 			if (type->failable)
 			{
@@ -1349,7 +1349,7 @@ void type_setup(PlatformTarget *target)
 
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
 	type_create("complist", &t.ctlist, TYPE_UNTYPED_LIST, 1, 1, 1);
-	t.anyfail = (Type){ .type_kind = TYPE_FAILABLE, .failable = type_void };
+	type_create("void!", &t.anyfail, TYPE_FAILABLE_ANY, 1, 1, 1);
 	type_init("typeid", &t.typeid, TYPE_TYPEID, target->width_pointer, target->align_pointer);
 
 	type_init("void*", &t.voidstar, TYPE_POINTER, target->width_pointer, target->align_pointer);
@@ -1415,6 +1415,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
+		case TYPE_FAILABLE_ANY:
 			return false;
 		case TYPE_BOOL:
 		case ALL_INTS:
@@ -1653,7 +1654,7 @@ Type *type_find_max_type(Type *type, Type *other)
 	type = type->canonical;
 	other = other->canonical;
 
-	assert(type->type_kind != TYPE_FAILABLE && other->type_kind != TYPE_FAILABLE);
+	assert(!type_is_failable(type) && !type_is_failable(other));
 
 	if (type == other) return type;
 
@@ -1670,6 +1671,7 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_POISONED:
 		case TYPE_FAILABLE:
+		case TYPE_FAILABLE_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_BOOL:

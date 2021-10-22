@@ -472,11 +472,11 @@ static Expr *parse_grouping_expr(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_GROUP, context->tok);
 	advance_and_verify(context, TOKEN_LPAREN);
-	ASSIGN_EXPR_ELSE(expr->group_expr, parse_expr(context), poisoned_expr);
+	ASSIGN_EXPR_ELSE(expr->inner_expr, parse_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
-	if (expr->group_expr->expr_kind == EXPR_TYPEINFO && try_consume(context, TOKEN_LPAREN))
+	if (expr->inner_expr->expr_kind == EXPR_TYPEINFO && try_consume(context, TOKEN_LPAREN))
 	{
-		TypeInfo *info = expr->group_expr->type_expr;
+		TypeInfo *info = expr->inner_expr->type_expr;
 		if (TOKEN_IS(TOKEN_LBRACE) && info->resolve_status != RESOLVE_DONE)
 		{
 			SEMA_TOKEN_ERROR(context->tok, "Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
@@ -579,7 +579,7 @@ static Expr *parse_failable(Context *context, Expr *left_side)
 {
 	Expr *failable = expr_new(EXPR_FAILABLE, left_side->span);
 	advance_and_verify(context, TOKEN_BANG);
-	failable->failable_expr = left_side;
+	failable->inner_expr = left_side;
 	RANGE_EXTEND_PREV(failable);
 	return failable;
 }
@@ -852,7 +852,7 @@ static Expr *parse_try_expr(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	bool is_try = TOKEN_IS(TOKEN_TRY);
 	advance(context);
-	Expr *try_expr = expr_new(EXPR_TRY, source_span_from_token_id(context->prev_tok));
+	Expr *try_expr = expr_new(is_try ? EXPR_TRY : EXPR_CATCH, source_span_from_token_id(context->prev_tok));
 	if (!try_consume(context, TOKEN_LPAREN))
 	{
 		if (is_try)
@@ -866,8 +866,7 @@ static Expr *parse_try_expr(Context *context, Expr *left)
 			return poisoned_expr;
 		}
 	}
-	ASSIGN_EXPR_ELSE(try_expr->try_expr.expr, parse_expr(context), poisoned_expr);
-	try_expr->try_expr.is_try = is_try;
+	ASSIGN_EXPR_ELSE(try_expr->inner_expr, parse_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
 	RANGE_EXTEND_PREV(try_expr);
 	return try_expr;
@@ -886,7 +885,7 @@ static Expr *parse_force_unwrap_expr(Context *context, Expr *left)
 {
 	Expr *force_unwrap_expr = EXPR_NEW_EXPR(EXPR_FORCE_UNWRAP, left);
 	advance(context);
-	force_unwrap_expr->force_unwrap_expr = left;
+	force_unwrap_expr->inner_expr = left;
 	RANGE_EXTEND_PREV(force_unwrap_expr);
 	return force_unwrap_expr;
 }

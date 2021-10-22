@@ -17,35 +17,44 @@ func void test()
   store i32 0, i32* %g, align 4
   store i64 0, i64* %idx, align 8
   br label %foreach.cond
-foreach.cond:
+
+foreach.cond:                                     ; preds = %foreach.inc, %entry
   %1 = load i64, i64* %idx, align 8
   %lt = icmp ult i64 %1, 3
   br i1 %lt, label %foreach.body, label %foreach.exit
 
-foreach.body:
-  %2 = getelementptr inbounds i32, [3 x i32]* %x, i64 %1
-  %3 = load i32, i32* %2, align 4
-  store i32 %3, i32* %z, align 4
-  %4 = load i32, i32* %z, align 4
-  %gt = icmp sgt i32 %4, 0
+foreach.body:                                     ; preds = %foreach.cond
+  %ptroffset = getelementptr inbounds i32, [3 x i32]* %x, i64 %1
+  %2 = load i32, i32* %ptroffset, align 4
+  store i32 %2, i32* %z, align 4
+  %3 = load i32, i32* %z, align 4
+  %gt = icmp sgt i32 %3, 0
   br i1 %gt, label %if.then, label %if.exit
-if.then:
+
+if.then:                                          ; preds = %foreach.body
   br label %foreach.exit
-if.exit:
-  %5 = load i32, i32* %z, align 4
-  %eq = icmp eq i32 %5, 1
+
+if.exit:                                          ; preds = %foreach.body
+  %4 = load i32, i32* %z, align 4
+  %eq = icmp eq i32 %4, 1
   br i1 %eq, label %if.then1, label %if.exit2
-if.then1:
+
+if.then1:                                         ; preds = %if.exit
   br label %foreach.inc
-if.exit2:
-  %6 = load i32, i32* %g, align 4
-  %7 = load i32, i32* %z, align 4
-  %add = add i32 %6, %7
+
+if.exit2:                                         ; preds = %if.exit
+  %5 = load i32, i32* %g, align 4
+  %6 = load i32, i32* %z, align 4
+  %add = add i32 %5, %6
   store i32 %add, i32* %g, align 4
   br label %foreach.inc
-foreach.inc:
-  %8 = load i64, i64* %idx, align 8
-  %9 = add i64 %8, 1
-  store i64 %9, i64* %idx, align 8
+
+foreach.inc:                                      ; preds = %if.exit2, %if.then1
+  %7 = load i64, i64* %idx, align 8
+  %8 = add i64 %7, 1
+  store i64 %8, i64* %idx, align 8
   br label %foreach.cond
-foreach.exit:
+
+foreach.exit:                                     ; preds = %if.then, %foreach.cond
+  ret void
+}
