@@ -58,7 +58,8 @@ entry:
   ret { i64, %Foo* } %6
 }
 
-define zeroext i8 @foo.FooIterator__next(%FooIterator* %0, i32* %1)
+; Function Attrs: nounwind
+define zeroext i8 @foo.FooIterator__next(%FooIterator* %0, i32* %1) #0 {
 entry:
   %it = alloca %FooIterator*, align 8
   %value = alloca i32*, align 8
@@ -71,34 +72,35 @@ entry:
   %6 = getelementptr inbounds %FooIterator, %FooIterator* %5, i32 0, i32 1
   %7 = load %Foo*, %Foo** %6, align 8
   %8 = getelementptr inbounds %Foo, %Foo* %7, i32 0, i32 0
-  %len = getelementptr inbounds %"int[]", %"int[]"* %8, i32 0, i32 1
-  %9 = load i64, i64* %len, align 8
-  %eq = icmp eq i64 %4, %9
+  %9 = getelementptr inbounds %"int[]", %"int[]"* %8, i32 0, i32 1
+  %10 = load i64, i64* %9, align 8
+  %eq = icmp eq i64 %4, %10
   br i1 %eq, label %if.then, label %if.exit
 
-if.then:
+if.then:                                          ; preds = %entry
   ret i8 0
 
-if.exit:
-  %10 = load i32*, i32** %value, align 8
-  %11 = load %FooIterator*, %FooIterator** %it, align 8
-  %12 = getelementptr inbounds %FooIterator, %FooIterator* %11, i32 0, i32 1
-  %13 = load %Foo*, %Foo** %12, align 8
-  %14 = getelementptr inbounds %Foo, %Foo* %13, i32 0, i32 0
-  %subarrayptr = getelementptr inbounds %"int[]", %"int[]"* %14, i32 0, i32 0
-  %saptr = load i32*, i32** %subarrayptr, align 8
-  %15 = load %FooIterator*, %FooIterator** %it, align 8
-  %16 = getelementptr inbounds %FooIterator, %FooIterator* %15, i32 0, i32 0
-  %17 = load i64, i64* %16, align 8
-  %add = add i64 %17, 1
-  store i64 %add, i64* %16, align 8
-  %sarridx = getelementptr inbounds i32, i32* %saptr, i64 %17
-  %18 = load i32, i32* %sarridx, align 4
-  store i32 %18, i32* %10, align 8
+if.exit:                                          ; preds = %entry
+  %11 = load i32*, i32** %value, align 8
+  %12 = load %FooIterator*, %FooIterator** %it, align 8
+  %13 = getelementptr inbounds %FooIterator, %FooIterator* %12, i32 0, i32 1
+  %14 = load %Foo*, %Foo** %13, align 8
+  %15 = getelementptr inbounds %Foo, %Foo* %14, i32 0, i32 0
+  %16 = getelementptr inbounds %"int[]", %"int[]"* %15, i32 0, i32 0
+  %17 = load i32*, i32** %16, align 8
+  %18 = load %FooIterator*, %FooIterator** %it, align 8
+  %19 = getelementptr inbounds %FooIterator, %FooIterator* %18, i32 0, i32 0
+  %20 = load i64, i64* %19, align 8
+  %add = add i64 %20, 1
+  store i64 %add, i64* %19, align 8
+  %ptroffset = getelementptr inbounds i32, i32* %17, i64 %20
+  %21 = load i32, i32* %ptroffset, align 4
+  store i32 %21, i32* %11, align 8
   ret i8 1
 }
 
-define void @main()
+; Function Attrs: nounwind
+define void @main() #0 {
 entry:
   %i = alloca [3 x i32], align 4
   %x = alloca %Foo, align 8
@@ -121,19 +123,19 @@ entry:
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %7, i8* align 8 %8, i32 16, i1 false)
   br label %for.cond
 
-for.cond:
+for.cond:                                         ; preds = %entry
   %9 = call i8 @foo.FooIterator__next(%FooIterator* %.iterator, i32* %f)
   %10 = trunc i8 %9 to i1
   br i1 %10, label %for.body, label %for.exit
 
-for.body:
+for.body:                                         ; preds = %for.cond
   %11 = load i32, i32* %f, align 4
   %12 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %11)
   br label %while.begin
 
-while.begin:
+while.begin:                                      ; preds = %for.body
   br label %for.exit
 
-for.exit:
+for.exit:                                         ; preds = %while.begin, %for.cond
   ret void
 }

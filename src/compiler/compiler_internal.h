@@ -465,11 +465,6 @@ typedef struct
 
 typedef struct
 {
-	Decl *import;
-} AliasDecl;
-
-typedef struct
-{
 	bool is_func : 1;
 	bool is_distinct : 1;
 	union
@@ -631,6 +626,7 @@ typedef struct Decl_
 typedef struct
 {
 	bool is_jump : 1;
+	bool widen : 1;
 	Expr *expr;
 	union
 	{
@@ -651,19 +647,22 @@ typedef struct
 	Expr *cond;
 	Expr *then_expr; // May be null for elvis!
 	Expr *else_expr;
+	bool widen : 1;
 } ExprTernary;
 
 typedef struct
 {
 	Expr *left;
 	Expr *right;
-	BinaryOp operator;
+	BinaryOp operator : 8;
+	bool widen : 1;
 } ExprBinary;
 
 typedef struct
 {
 	Expr* expr;
-	UnaryOp operator;
+	UnaryOp operator : 8;
+	bool widen : 1;
 } ExprUnary;
 
 
@@ -747,8 +746,6 @@ typedef struct
 {
 	Path *path;
 	TokenId identifier;
-	bool is_ref : 1;
-	bool is_rvalue : 1;
 	Decl *decl;
 } ExprIdentifier;
 
@@ -849,18 +846,6 @@ typedef struct
 	AstId defer;
 } ExprGuard;
 
-typedef struct
-{
-	bool is_try;
-	Expr *expr;
-} ExprTryExpr;
-
-typedef struct
-{
-	bool is_try : 1;
-	Expr *expr;
-	Expr *init;
-} ExprTryAssign;
 
 typedef struct
 {
@@ -922,37 +907,28 @@ struct Expr_
 	SourceSpan span;
 	Type *type;
 	union {
-		Expr *group_expr;
 		ExprLen len_expr;
 		ExprCast cast_expr;
-		Expr *typeof_expr;
 		TypeInfo *type_expr;
 		ExprConst const_expr;
-		ExprStructValue struct_value_expr;
 		ExprGuard rethrow_expr;
-		Expr *trycatch_expr;
 		Decl *decl_expr;
 		ExprOrError or_error_expr;
-		ExprFlatElement *flatpath_expr;
 		ExprSliceAssign slice_assign_expr;
 		ExprBinary binary_expr;
 		ExprTernary ternary_expr;
 		ExprUnary unary_expr;
 		Expr** try_unwrap_chain_expr;
 		ExprTryUnwrap try_unwrap_expr;
-		Expr* force_unwrap_expr;
 		ExprCall call_expr;
 		ExprSlice slice_expr;
-		ExprTryExpr try_expr;
-		ExprTryAssign try_assign_expr;
-		ExprTryDecl try_decl_expr;
+		Expr *inner_expr;
 		ExprCatchUnwrap catch_unwrap_expr;
 		ExprSubscript subscript_expr;
 		ExprAccess access_expr;
 		ExprDesignator designator_expr;
 		ExprIdentifier identifier_expr;
 		ExprPlaceholder placeholder_expr;
-		ExprIdentifier macro_identifier_expr;
 		ExprIdentifierRaw ct_ident_expr;
 		ExprCtCall ct_call_expr;
 		ExprIdentifierRaw ct_macro_ident_expr;
@@ -960,7 +936,6 @@ struct Expr_
 		ExprIdentifierRaw hash_ident_expr;
 		TypeInfo *typeid_expr;
 		ExprBodyExpansion body_expansion_expr;
-		Decl *expr_enum;
 		ExprCompoundLiteral expr_compound_literal;
 		Expr** expression_list;
 		Expr** initializer_list;
@@ -968,8 +943,6 @@ struct Expr_
 		ExprScope expr_scope;
 		ExprFuncBlock expr_block;
 		ExprMacroBlock macro_block;
-
-		Expr* failable_expr;
 		Expr** cond_expr;
 	};
 };
@@ -1237,7 +1210,6 @@ typedef struct Ast_
 		Ast** ct_compound_stmt;
 		Decl *declare_stmt;             // 8
 		Expr *expr_stmt;                // 8
-		Ast *try_stmt;
 		Decl *var_stmt;              // 8
 		Ast *volatile_stmt;             // 8
 		AstReturnStmt return_stmt;      // 16
@@ -1625,33 +1597,6 @@ typedef enum CmpRes_
 	CMP_GT = 1,
 } CmpRes;
 
-typedef enum
-{
-	FLOAT_NAN,
-	FLOAT_INFINITY,
-	FLOAT_NORMAL,
-	FLOAT_ZERO
-} FloatCategory;
-
-typedef enum
-{
-	ROUNDING_TOWARD_ZERO,
-	ROUNDING_NEAREST_TIES_TO_EVEN,
-	ROUNDING_TOWARD_POSITIVE,
-	ROUNDING_TOWARD_NEGATIVE,
-	ROUNDING_NEAREST_TIES_TO_AWAY
-} FloatRounding;
-
-typedef struct FloatXX
-{
-	union
-	{
-		double f64;
-		float f32;
-	};
-	TypeKind type;
-} FloatXX;
-
 void type_setup(PlatformTarget *target);
 Float float_add(Float op1, Float op2);
 Float float_sub(Float op1, Float op2);
@@ -1761,12 +1706,12 @@ static inline bool type_may_negate(Type *type)
 }
 
 
-bool cast_implicit_ignore_failable(Expr *expr, Type *to_type);
 bool cast_implicit(Expr *expr, Type *to_type);
 bool cast(Expr *expr, Type *to_type);
 
-bool cast_may_implicit(Type *from_type, Type *to_type);
-bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability);
+bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool failable_allowed);
+
+bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, bool is_const);
 bool cast_implicit_bit_width(Expr *expr, Type *to_type);
 
 CastKind cast_to_bool_kind(Type *type);
@@ -1849,6 +1794,7 @@ void diag_verror_range(SourceLocation *location, const char *message, va_list ar
 #define EXPR_NEW_EXPR(kind_, expr_) expr_new(kind_, (expr_)->span)
 #define EXPR_NEW_TOKEN(kind_, tok_) expr_new(kind_, source_span_from_token_id((tok_).id))
 Expr *expr_new(ExprKind kind, SourceSpan start);
+bool expr_is_simple(Expr *expr);
 static inline bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
 static inline bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
 static inline void expr_replace(Expr *expr, Expr *replacement)
@@ -1934,6 +1880,7 @@ void sema_analysis_pass_ct_assert(Module *module);
 void sema_analysis_pass_functions(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);
 
+bool sema_failed_cast(Expr *expr, Type *from, Type *to);
 bool sema_add_member(Context *context, Decl *decl);
 bool sema_add_local(Context *context, Decl *decl);
 bool sema_unwrap_var(Context *context, Decl *decl);
@@ -1941,14 +1888,14 @@ bool sema_rewrap_var(Context *context, Decl *decl);
 bool sema_erase_var(Context *context, Decl *decl);
 bool sema_erase_unwrapped(Context *context, Decl *decl);
 bool sema_analyse_cond_expr(Context *context, Expr *expr);
-bool sema_analyse_assigned_expr(Context *context, Type *to, Expr *expr, bool may_be_failable);
 
-bool sema_analyse_expr_of_required_type(Context *context, Type *to, Expr *expr);
+bool sema_analyse_expr_rhs(Context *context, Type *to, Expr *expr, bool allow_failable);
 ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(Context *context, Expr *expr);
 bool sema_analyse_inferred_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
-bool sema_analyse_var_decl(Context *context, Decl *decl);
+
+bool sema_analyse_var_decl(Context *context, Decl *decl, bool local);
 bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement);
 bool sema_analyse_statement(Context *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped_var);
@@ -2107,7 +2054,10 @@ static inline Type *type_reduced_from_expr(Expr *expr)
 
 static inline Type *type_no_fail(Type *type)
 {
-	return type && type->type_kind == TYPE_FAILABLE ? type->failable : type;
+	if (!type) return NULL;
+	if (type->type_kind == TYPE_FAILABLE) return type->failable;
+	if (type->type_kind == TYPE_FAILABLE_ANY) return type_void;
+	return type;
 }
 
 static inline bool type_is_pointer_sized_or_more(Type *type)
@@ -2124,8 +2074,11 @@ static inline bool type_is_pointer_sized(Type *type)
  TypeKind k_ = (t_)->type_kind; \
  if (k_ == TYPE_TYPEDEF) k_ = (t_)->canonical->type_kind;
 
-#define IS_FAILABLE(element_) ((element_)->type->type_kind == TYPE_FAILABLE)
-#define TYPE_IS_FAILABLE(type_) (type_->type_kind == TYPE_FAILABLE)
+#define IS_FAILABLE(element_) (type_is_failable((element_)->type))
+#define type_is_failable(type_) ((type_)->type_kind == TYPE_FAILABLE || (type_)->canonical->type_kind == TYPE_FAILABLE_ANY)
+#define type_is_failable_type(type_) ((type_)->type_kind == TYPE_FAILABLE)
+#define type_is_failable_any(type_) ((type_)->canonical->type_kind == TYPE_FAILABLE_ANY)
+#define type_is_void(type_) (type_->canonical->type_kind == TYPE_VOID)
 
 static inline Type *type_with_added_failability(Expr *expr, bool add_failable)
 {
@@ -2143,13 +2096,13 @@ static inline Type *type_get_opt_fail(Type *type, bool add_failable)
 static inline bool type_is_integer(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind >= TYPE_INTEGER_FIRST && type->type_kind <= TYPE_INTEGER_LAST;
+	return kind >= TYPE_INTEGER_FIRST && kind <= TYPE_INTEGER_LAST;
 }
 
 static inline bool type_is_integer_signed(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind >= TYPE_INT_FIRST && type->type_kind <= TYPE_INT_LAST;
+	return kind >= TYPE_INT_FIRST && kind <= TYPE_INT_LAST;
 }
 
 static inline bool type_is_integer_or_bool_kind(Type *type)
@@ -2161,7 +2114,7 @@ static inline bool type_is_integer_or_bool_kind(Type *type)
 static inline bool type_is_integer_unsigned(Type *type)
 {
 	DECL_TYPE_KIND_REAL(kind, type);
-	return kind >= TYPE_UINT_FIRST && type->type_kind <= TYPE_UINT_LAST;
+	return kind >= TYPE_UINT_FIRST && kind <= TYPE_UINT_LAST;
 }
 
 static inline bool type_info_poison(TypeInfo *type)
@@ -2319,8 +2272,11 @@ static inline Type *type_flatten(Type *type)
 		if (type->type_kind == TYPE_FAILABLE)
 		{
 			type = type->failable;
-			if (!type) type = type_void;
 			continue;
+		}
+		if (type->type_kind == TYPE_FAILABLE_ANY)
+		{
+			return type_void;
 		}
 		return type;
 	}

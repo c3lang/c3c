@@ -480,10 +480,8 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 		SEMA_ERROR(param, "Only typed parameters are allowed for functions.");
 		return false;
 	}
-	if (!sema_resolve_type_info(context, param->var.type_info))
-	{
-		return false;
-	}
+	if (!sema_resolve_type_info(context, param->var.type_info)) return false;
+
 	if (param->var.vararg)
 	{
 		param->var.type_info->type = type_get_subarray(param->var.type_info->type);
@@ -497,10 +495,14 @@ static inline bool sema_analyse_function_param(Context *context, Decl *param, bo
 	if (param->var.init_expr)
 	{
 		Expr *expr = param->var.init_expr;
-		if (!sema_analyse_assigned_expr(context, param->type, expr, false)) return false;
-		Expr *inner = expr;
-		while (inner->expr_kind == EXPR_CAST) inner = expr->cast_expr.expr;
-		if (inner->expr_kind != EXPR_CONST)
+
+		if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return false;
+		if (IS_FAILABLE(expr))
+		{
+			SEMA_ERROR(expr, "Default arguments may not be failable.");
+			return false;
+		}
+		if (!expr_is_constant_eval(expr, CONSTANT_EVAL_ANY))
 		{
 			SEMA_ERROR(expr, "Only constant expressions may be used as default values.");
 			return false;
@@ -593,6 +595,7 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 		case CT_TYPES:
 			UNREACHABLE
 			return false;
+		case TYPE_FAILABLE_ANY:
 		case TYPE_FAILABLE:
 			SEMA_ERROR(decl, "You cannot create a distinct type from a failable.");
 			return false;
@@ -676,7 +679,7 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 		}
 
 		// We try to convert to the desired type.
-		if (!sema_analyse_expr_of_required_type(context, type, expr))
+		if (!sema_analyse_expr_rhs(context, type, expr, false))
 		{
 			success = false;
 			enum_value->resolve_status = RESOLVE_DONE;
@@ -988,28 +991,7 @@ static inline bool sema_update_call_convention(Decl *decl, CallABI abi)
 static inline bool sema_analyse_func(Context *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
-	Type *func_type = sema_analyse_function_signature(context, &decl->func_decl.function_signature, true);
-	
-	decl->type = func_type;
-	if (!func_type) return decl_poison(decl);
-	if (decl->func_decl.type_parent)
-	{
-		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
-	}
-	else
-	{
-		if (decl->name == kw_main)
-		{
-			if (decl->visibility == VISIBLE_LOCAL)
-			{
-				SEMA_ERROR(decl, "'main' cannot have local visibility.");
-				return false;
-			}
-			decl->visibility = VISIBLE_EXTERN;
-		}
-		decl_set_external_name(decl);
-	}
-	if (!sema_analyse_doc_header(decl->docs, decl->func_decl.function_signature.params, NULL)) return decl_poison(decl);
+
 	VECEACH(decl->attributes, i)
 	{
 		Attr *attr = decl->attributes[i];
@@ -1067,14 +1049,14 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 				}
 				break;
 			case ATTRIBUTE_FASTCALL:
-				if (platform_target.arch == ARCH_TYPE_X86)
+				if (platform_target.arch == ARCH_TYPE_X86 || (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
 				{
 					had = sema_update_call_convention(decl, CALL_X86_FAST);
 				}
 				break;
 			case ATTRIBUTE_REGCALL:
 				had = decl->func_decl.function_signature.call_abi > 0;
-				if (platform_target.arch == ARCH_TYPE_X86)
+				if (platform_target.arch == ARCH_TYPE_X86 || (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
 				{
 					had = sema_update_call_convention(decl, CALL_X86_REG);
 				}
@@ -1098,6 +1080,29 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 			return decl_poison(decl);
 		}
 	}
+
+	Type *func_type = sema_analyse_function_signature(context, &decl->func_decl.function_signature, true);
+	
+	decl->type = func_type;
+	if (!func_type) return decl_poison(decl);
+	if (decl->func_decl.type_parent)
+	{
+		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
+	}
+	else
+	{
+		if (decl->name == kw_main)
+		{
+			if (decl->visibility == VISIBLE_LOCAL)
+			{
+				SEMA_ERROR(decl, "'main' cannot have local visibility.");
+				return false;
+			}
+			decl->visibility = VISIBLE_EXTERN;
+		}
+		decl_set_external_name(decl);
+	}
+	if (!sema_analyse_doc_header(decl->docs, decl->func_decl.function_signature.params, NULL)) return decl_poison(decl);
 	DEBUG_LOG("Function analysis done.");
 	return true;
 }
@@ -1287,10 +1292,27 @@ bool sema_analyse_attributes_for_var(Context *context, Decl *decl)
 	return true;
 }
 
+bool sema_analyse_decl_type(Context *context, Type *type, SourceSpan span)
+{
+	if (type == type_void)
+	{
+		sema_error_range(span, "The use of 'void' as a variable type is not permitted.");
+		return false;
+	}
+
+	if (!type_is_failable(type)) return true;
+	if (type_is_failable_any(type) || type_flatten_distinct(type->failable) == type_void)
+	{
+		sema_error_range(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
+		                 type_quoted_error_string(type_anyerr));
+		return false;
+	}
+	return true;
+}
 /**
  * Analyse a regular global or local declaration, e.g. int x = 123
  */
-bool sema_analyse_var_decl(Context *context, Decl *decl)
+bool sema_analyse_var_decl(Context *context, Decl *decl, bool local)
 {
 	assert(decl->decl_kind == DECL_VAR && "Unexpected declaration type");
 
@@ -1298,7 +1320,7 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 	// this should always be true.
 	assert(decl->var.type_info || decl->var.kind == VARDECL_CONST);
 
-	bool is_global = decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST;
+	bool is_global = decl->var.kind == VARDECL_GLOBAL || !local;
 
 	if (!sema_analyse_attributes_for_var(context, decl)) return false;
 
@@ -1333,15 +1355,16 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 			if (!sema_analyse_expr(context, init_expr)) return false;
 			decl->type = init_expr->type;
 			if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);
-
+			if (!sema_analyse_decl_type(context, decl->type, init_expr->span)) return false;
 			// Skip further evaluation.
 			goto EXIT_OK;
 		}
 	}
 
 	if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, decl->var.init_expr != NULL)) return decl_poison(decl);
-	decl->type = decl->var.type_info->type;
 
+	decl->type = decl->var.type_info->type;
+	if (!sema_analyse_decl_type(context, decl->type, decl->var.type_info->span)) return false;
 	if (decl->var.is_static)
 	{
 		scratch_buffer_clear();
@@ -1381,15 +1404,8 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 			assert(right_side_type->type_kind == TYPE_ARRAY);
 			decl->type = type_get_array(decl->type->array.base, right_side_type->array.len);
 		}
-		else if (decl->type)
-		{
-			decl->var.init_expr->type = decl->type;
-		}
 
 		Expr *init_expr = decl->var.init_expr;
-
-		// 1. Check type.
-		if (!sema_analyse_assigned_expr(context, decl->type, init_expr, false)) return false;
 
 		// 2. Check const-ness
 		if ((is_global || decl->var.is_static) && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_ANY))
@@ -1398,7 +1414,7 @@ bool sema_analyse_var_decl(Context *context, Decl *decl)
 		}
 		else
 		{
-			if (decl->var.unwrap && init->type->type_kind != TYPE_FAILABLE)
+			if (decl->var.unwrap && IS_FAILABLE(init))
 			{
 				SEMA_ERROR(decl->var.init_expr, "A failable expression was expected here.");
 				return decl_poison(decl);
@@ -1534,13 +1550,6 @@ static bool sema_analyse_parameterized_define(Context *c, Decl *decl)
 			UNREACHABLE
 	}
 }
-static void decl_define_type(Decl *decl, Type *actual_type)
-{
-	Type *type = type_new(TYPE_TYPEDEF, decl->name);
-	type->decl = decl;
-	type->canonical = actual_type->canonical;
-	decl->type = type;
-}
 
 static inline bool sema_analyse_define(Context *c, Decl *decl)
 {
@@ -1599,7 +1608,7 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 			if (!sema_analyse_macro(context, decl)) return decl_poison(decl);
 			break;
 		case DECL_VAR:
-			if (!sema_analyse_var_decl(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_var_decl(context, decl, false)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
 		case DECL_DISTINCT:

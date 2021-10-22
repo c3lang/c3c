@@ -115,12 +115,12 @@ for.cond:                                         ; preds = %for.inc, %entry
 for.body:                                         ; preds = %for.cond
   %6 = load i16*, i16** %to, align 8
   %7 = load i64, i64* %i, align 8
-  %ptridx = getelementptr inbounds i16, i16* %6, i64 %7
+  %ptroffset = getelementptr inbounds i16, i16* %6, i64 %7
   %8 = load i16*, i16** %b, align 8
   %9 = load i64, i64* %i, align 8
-  %ptridx3 = getelementptr inbounds i16, i16* %8, i64 %9
-  %10 = load i16, i16* %ptridx3, align 2
-  store i16 %10, i16* %ptridx, align 2
+  %ptroffset3 = getelementptr inbounds i16, i16* %8, i64 %9
+  %10 = load i16, i16* %ptroffset3, align 2
+  store i16 %10, i16* %ptroffset, align 2
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
@@ -168,12 +168,12 @@ for.cond:                                         ; preds = %for.inc, %entry
 for.body:                                         ; preds = %for.cond
   %3 = load i8*, i8** %to, align 8
   %4 = load i64, i64* %i, align 8
-  %ptridx = getelementptr inbounds i8, i8* %3, i64 %4
+  %ptroffset = getelementptr inbounds i8, i8* %3, i64 %4
   %5 = load i8*, i8** %b, align 8
   %6 = load i64, i64* %i, align 8
-  %ptridx3 = getelementptr inbounds i8, i8* %5, i64 %6
-  %7 = load i8, i8* %ptridx3, align 1
-  store i8 %7, i8* %ptridx, align 1
+  %ptroffset3 = getelementptr inbounds i8, i8* %5, i64 %6
+  %7 = load i8, i8* %ptroffset3, align 1
+  store i8 %7, i8* %ptroffset, align 1
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
@@ -246,12 +246,12 @@ for.cond:                                         ; preds = %for.inc, %entry
 for.body:                                         ; preds = %for.cond
   %2 = load i32*, i32** %to, align 8
   %3 = load i64, i64* %i1, align 8
-  %ptridx = getelementptr inbounds i32, i32* %2, i64 %3
+  %ptroffset = getelementptr inbounds i32, i32* %2, i64 %3
   %4 = load i32*, i32** %b, align 8
   %5 = load i64, i64* %i1, align 8
-  %ptridx2 = getelementptr inbounds i32, i32* %4, i64 %5
-  %6 = load i32, i32* %ptridx2, align 4
-  store i32 %6, i32* %ptridx, align 4
+  %ptroffset2 = getelementptr inbounds i32, i32* %4, i64 %5
+  %6 = load i32, i32* %ptroffset2, align 4
+  store i32 %6, i32* %ptroffset, align 4
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
@@ -284,12 +284,12 @@ for.cond10:                                       ; preds = %for.inc15, %expr_bl
 for.body12:                                       ; preds = %for.cond10
   %12 = load i32*, i32** %to7, align 8
   %13 = load i64, i64* %i9, align 8
-  %ptridx13 = getelementptr inbounds i32, i32* %12, i64 %13
+  %ptroffset13 = getelementptr inbounds i32, i32* %12, i64 %13
   %14 = load i32*, i32** %b6, align 8
   %15 = load i64, i64* %i9, align 8
-  %ptridx14 = getelementptr inbounds i32, i32* %14, i64 %15
-  %16 = load i32, i32* %ptridx14, align 4
-  store i32 %16, i32* %ptridx13, align 4
+  %ptroffset14 = getelementptr inbounds i32, i32* %14, i64 %15
+  %16 = load i32, i32* %ptroffset14, align 4
+  store i32 %16, i32* %ptroffset13, align 4
   br label %for.inc15
 
 for.inc15:                                        ; preds = %for.body12
@@ -329,12 +329,12 @@ for.cond27:                                       ; preds = %for.inc32, %expr_bl
 for.body29:                                       ; preds = %for.cond27
   %25 = load i64*, i64** %to25, align 8
   %26 = load i64, i64* %i26, align 8
-  %ptridx30 = getelementptr inbounds i64, i64* %25, i64 %26
+  %ptroffset30 = getelementptr inbounds i64, i64* %25, i64 %26
   %27 = load i64*, i64** %b23, align 8
   %28 = load i64, i64* %i26, align 8
-  %ptridx31 = getelementptr inbounds i64, i64* %27, i64 %28
-  %29 = load i64, i64* %ptridx31, align 8
-  store i64 %29, i64* %ptridx30, align 8
+  %ptroffset31 = getelementptr inbounds i64, i64* %27, i64 %28
+  %29 = load i64, i64* %ptroffset31, align 8
+  store i64 %29, i64* %ptroffset30, align 8
   br label %for.inc32
 
 for.inc32:                                        ; preds = %for.body29
@@ -368,12 +368,12 @@ for.cond44:                                       ; preds = %for.inc49, %expr_bl
 for.body46:                                       ; preds = %for.cond44
   %35 = load i64*, i64** %to41, align 8
   %36 = load i64, i64* %i43, align 8
-  %ptridx47 = getelementptr inbounds i64, i64* %35, i64 %36
+  %ptroffset47 = getelementptr inbounds i64, i64* %35, i64 %36
   %37 = load i64*, i64** %b39, align 8
   %38 = load i64, i64* %i43, align 8
-  %ptridx48 = getelementptr inbounds i64, i64* %37, i64 %38
-  %39 = load i64, i64* %ptridx48, align 8
-  store i64 %39, i64* %ptridx47, align 8
+  %ptroffset48 = getelementptr inbounds i64, i64* %37, i64 %38
+  %39 = load i64, i64* %ptroffset48, align 8
+  store i64 %39, i64* %ptroffset47, align 8
   br label %for.inc49
 
 for.inc49:                                        ; preds = %for.body46

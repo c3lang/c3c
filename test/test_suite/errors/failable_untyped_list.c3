@@ -14,7 +14,7 @@ extern func int printf(char *c, ...);
 func void main()
 {
     int! z = 2;
-    Foo*! w = &&{ z, 0 }; // #error: casting 'int[2]*' to 'Foo*' is not permitted
+    Foo*! w = &&{ z, 0 }; // #error: A failable 'int[2]*!' cannot be converted to 'Foo*'
 }
 
 func void test()

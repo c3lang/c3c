@@ -25,11 +25,11 @@ struct BazTwo
 func void test1()
 {
     Foo x;
-    Bar z = (Baz)(x); // #error: Cannot cast 'Foo' to 'Baz'
+    Bar z = (Baz)(x); // #error: cast 'Foo' to 'Baz'
 }
 func void test2()
 {
     Baz x;
-    BazTwo z = (BazTwo)(x); // #error: Cannot cast 'Baz' to 'BazTwo'
+    BazTwo z = (BazTwo)(x); // #error: cast 'Baz' to 'BazTwo'
 }
 

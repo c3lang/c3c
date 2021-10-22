@@ -537,7 +537,7 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 
 	assert(llvm_value_is_addr(&enum_value));
 
-	LLVMValueRef ref_to_element = LLVMBuildInBoundsGEP2(c->builder, actual_type_llvm, enum_value.value, &(index_value.value), 1, "");
+	LLVMValueRef ref_to_element = llvm_emit_pointer_inbounds_gep_raw(c, actual_type_llvm, enum_value.value, index_value.value);
 	BEValue result;
 	if (ast->foreach_stmt.value_by_ref)
 	{
@@ -995,7 +995,6 @@ static bool expr_is_pure(Expr *expr)
 		case EXPR_CT_IDENT:
 		case EXPR_TYPEID:
 		case EXPR_CT_CALL:
-		case EXPR_TYPEOF:
 			UNREACHABLE
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_CALL:
@@ -1020,7 +1019,6 @@ static bool expr_is_pure(Expr *expr)
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
-		case EXPR_TRY_ASSIGN:
 		case EXPR_UNDEF:
 		case EXPR_TYPEINFO:
 		case EXPR_FORCE_UNWRAP:
@@ -1036,8 +1034,6 @@ static bool expr_is_pure(Expr *expr)
 			return true;
 		}
 			break;
-		case EXPR_GROUP:
-			return expr_is_pure(expr->group_expr);
 		case EXPR_LEN:
 			return expr_is_pure(expr->len_expr.inner);
 		case EXPR_SLICE:
@@ -1052,7 +1048,9 @@ static bool expr_is_pure(Expr *expr)
 			       && expr_is_pure(expr->ternary_expr.else_expr)
 			       && expr_is_pure(expr->ternary_expr.then_expr);
 		case EXPR_TRY:
-			return expr_is_pure(expr->try_expr.expr);
+		case EXPR_GROUP:
+		case EXPR_CATCH:
+				return expr_is_pure(expr->inner_expr);
 	}
 	UNREACHABLE
 }
@@ -1208,12 +1206,15 @@ static LLVMValueRef llvm_emit_string(GenContext *c, const char *str)
 {
 	LLVMTypeRef char_type = llvm_get_type(c, type_char);
 	unsigned len = strlen(str);
-	LLVMValueRef global_string = LLVMAddGlobal(c->module, LLVMArrayType(char_type, len + 1), "");
+	LLVMTypeRef char_array_type = LLVMArrayType(char_type, len + 1);
+	LLVMValueRef global_string = LLVMAddGlobal(c->module, char_array_type, "");
 	LLVMSetLinkage(global_string, LLVMInternalLinkage);
 	LLVMSetGlobalConstant(global_string, 1);
 	LLVMSetInitializer(global_string, LLVMConstStringInContext(c->context, str, len, 0));
-	LLVMValueRef zero = llvm_get_zero(c, type_usize);
-	LLVMValueRef string = LLVMBuildInBoundsGEP2(c->builder, LLVMTypeOf(global_string), global_string, &zero, 1, "");
+	AlignSize alignment;
+	// TODO alignment
+	LLVMValueRef string = llvm_emit_array_gep_raw(c, global_string, char_array_type, 0,
+	                                              1, &alignment);
 	return LLVMBuildBitCast(c->builder, string, LLVMPointerType(char_type, 0), "");
 }
 void llvm_emit_debug_output(GenContext *c, const char *message, const char *file, const char *func, unsigned line)

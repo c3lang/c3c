@@ -5,5 +5,5 @@ struct Struct
 
 func void test1()
 {
-    int a = (Struct)(200);    // #error: Cannot cast 'int' to 'Struct'
+    int a = (Struct)(200);    // #error: 'int' to 'Struct'
 }

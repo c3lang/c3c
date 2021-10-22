@@ -75,9 +75,6 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_UNDEF:
 		case EXPR_NOP:
 			return expr;
-		case EXPR_FORCE_UNWRAP:
-			MACRO_COPY_EXPR(expr->force_unwrap_expr);
-			return expr;
 		case EXPR_DECL:
 			MACRO_COPY_DECL(expr->decl_expr);
 			return expr;
@@ -123,18 +120,15 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_LEN:
 			MACRO_COPY_EXPR(expr->len_expr.inner);
 			return expr;
-		case EXPR_TRY_ASSIGN:
-			MACRO_COPY_EXPR(expr->try_assign_expr.expr);
-			MACRO_COPY_EXPR(expr->try_assign_expr.init);
-			return expr;
+		case EXPR_FORCE_UNWRAP:
 		case EXPR_TRY:
-			MACRO_COPY_EXPR(expr->try_expr.expr);
+		case EXPR_CATCH:
+		case EXPR_FAILABLE:
+		case EXPR_GROUP:
+			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
 		case EXPR_COND:
 			MACRO_COPY_EXPR_LIST(expr->cond_expr);
-			return expr;
-		case EXPR_FAILABLE:
-			MACRO_COPY_EXPR(expr->failable_expr);
 			return expr;
 		case EXPR_OR_ERROR:
 			MACRO_COPY_EXPR(expr->or_error_expr.expr);
@@ -149,9 +143,6 @@ Expr *copy_expr(Expr *source_expr)
 			return expr;
 		case EXPR_MACRO_BLOCK:
 			UNREACHABLE
-		case EXPR_TYPEOF:
-			MACRO_COPY_EXPR(expr->typeof_expr);
-			return expr;
 		case EXPR_COMPOUND_LITERAL:
 			MACRO_COPY_EXPR(expr->expr_compound_literal.initializer);
 			MACRO_COPY_TYPE(expr->expr_compound_literal.type_info);
@@ -192,9 +183,6 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_SUBSCRIPT:
 			MACRO_COPY_EXPR(expr->subscript_expr.expr);
 			MACRO_COPY_EXPR(expr->subscript_expr.index);
-			return expr;
-		case EXPR_GROUP:
-			MACRO_COPY_EXPR(expr->group_expr);
 			return expr;
 		case EXPR_ACCESS:
 			MACRO_COPY_EXPR(expr->access_expr.parent);

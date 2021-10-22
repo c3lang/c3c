@@ -34,7 +34,7 @@ func void enumInferenceTest()
             return;
         case B:
             return;
-        case 111:
+        case (Inf2)(111):
             x1 += 1;
             return;
         default:

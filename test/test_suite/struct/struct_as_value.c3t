@@ -46,7 +46,7 @@ func Event test(int x)
  cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
    %val = phi %Event [ %4, %cond.lhs ], [ %5, %cond.rhs ]
    store %Event %val, %Event* %taddr, align 4
-   %dive = getelementptr inbounds %Event, %Event* %taddr, i32 0, i32 0
-   %6 = load i32, i32* %dive, align 4
-   ret i32 %6
+   %6 = getelementptr inbounds %Event, %Event* %taddr, i32 0, i32 0
+   %7 = load i32, i32* %6, align 4
+   ret i32 %7
  }

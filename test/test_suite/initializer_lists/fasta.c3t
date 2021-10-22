@@ -164,37 +164,37 @@ entry:
   %len = alloca i64, align 8
   %i = alloca i32, align 4
   %pair = bitcast %"char[]"* %seq to { i8*, i64 }*
-  %lo = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 0
-  store i8* %0, i8** %lo, align 8
-  %hi = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 1
-  store i64 %1, i64* %hi, align 8
+  %3 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 0
+  store i8* %0, i8** %3, align 8
+  %4 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 1
+  store i64 %1, i64* %4, align 8
   store i32 %2, i32* %n, align 4
-  %len1 = getelementptr inbounds %"char[]", %"char[]"* %seq, i32 0, i32 1
-  %3 = load i64, i64* %len1, align 8
-  store i64 %3, i64* %len, align 8
+  %5 = getelementptr inbounds %"char[]", %"char[]"* %seq, i32 0, i32 1
+  %6 = load i64, i64* %5, align 8
+  store i64 %6, i64* %len, align 8
   store i32 0, i32* %i, align 4
   br label %for.cond
 
 for.cond:                                         ; preds = %for.inc, %entry
-  %4 = load i32, i32* %i, align 4
-  %5 = load i32, i32* %n, align 4
-  %lt = icmp slt i32 %4, %5
+  %7 = load i32, i32* %i, align 4
+  %8 = load i32, i32* %n, align 4
+  %lt = icmp slt i32 %7, %8
   br i1 %lt, label %for.body, label %for.exit
 
 for.body:                                         ; preds = %for.cond
-  %subarrayptr = getelementptr inbounds %"char[]", %"char[]"* %seq, i32 0, i32 0
-  %saptr = load i8*, i8** %subarrayptr, align 8
-  %6 = load i32, i32* %i, align 4
-  %sisiext = sext i32 %6 to i64
-  %7 = load i64, i64* %len, align 8
-  %smod = srem i64 %sisiext, %7
-  %sarridx = getelementptr inbounds i8, i8* %saptr, i64 %smod
-  %8 = load i8, i8* %sarridx, align 1
-  %uisiext = zext i8 %8 to i32
+  %9 = getelementptr inbounds %"char[]", %"char[]"* %seq, i32 0, i32 0
+  %10 = load i8*, i8** %9, align 8
+  %11 = load i32, i32* %i, align 4
+  %sisiext = sext i32 %11 to i64
+  %12 = load i64, i64* %len, align 8
+  %smod = srem i64 %sisiext, %12
+  %ptroffset = getelementptr inbounds i8, i8* %10, i64 %smod
+  %13 = load i8, i8* %ptroffset, align 1
+  %uisiext = zext i8 %13 to i32
   call void @putchar(i32 %uisiext)
-  %9 = load i32, i32* %i, align 4
-  %smod2 = srem i32 %9, 60
-  %eq = icmp eq i32 %smod2, 59
+  %14 = load i32, i32* %i, align 4
+  %smod1 = srem i32 %14, 60
+  %eq = icmp eq i32 %smod1, 59
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %for.body
@@ -205,22 +205,22 @@ if.exit:                                          ; preds = %if.then, %for.body
   br label %for.inc
 
 for.inc:                                          ; preds = %if.exit
-  %10 = load i32, i32* %i, align 4
-  %add = add i32 %10, 1
+  %15 = load i32, i32* %i, align 4
+  %add = add i32 %15, 1
   store i32 %add, i32* %i, align 4
   br label %for.cond
 
 for.exit:                                         ; preds = %for.cond
-  %11 = load i32, i32* %i, align 4
-  %smod3 = srem i32 %11, 60
-  %neq = icmp ne i32 %smod3, 0
-  br i1 %neq, label %if.then4, label %if.exit5
+  %16 = load i32, i32* %i, align 4
+  %smod2 = srem i32 %16, 60
+  %neq = icmp ne i32 %smod2, 0
+  br i1 %neq, label %if.then3, label %if.exit4
 
-if.then4:                                         ; preds = %for.exit
+if.then3:                                         ; preds = %for.exit
   call void @putchar(i32 10)
-  br label %if.exit5
+  br label %if.exit4
 
-if.exit5:                                         ; preds = %if.then4, %for.exit
+if.exit4:                                         ; preds = %if.then3, %for.exit
   ret void
 }
 
@@ -230,118 +230,118 @@ entry:
   %symb = alloca %"char[]", align 8
   %probability = alloca %"double[]", align 8
   %n = alloca i32, align 4
-  %len5 = alloca i32, align 4
+  %len = alloca i32, align 4
   %i = alloca i32, align 4
   %v = alloca double, align 8
   %j = alloca i32, align 4
   %pair = bitcast %"char[]"* %symb to { i8*, i64 }*
-  %lo = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 0
-  store i8* %0, i8** %lo, align 8
-  %hi = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 1
-  store i64 %1, i64* %hi, align 8
+  %5 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 0
+  store i8* %0, i8** %5, align 8
+  %6 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 1
+  store i64 %1, i64* %6, align 8
   %pair1 = bitcast %"double[]"* %probability to { i8*, i64 }*
-  %lo2 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair1, i32 0, i32 0
-  store i8* %2, i8** %lo2, align 8
-  %hi3 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair1, i32 0, i32 1
-  store i64 %3, i64* %hi3, align 8
+  %7 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair1, i32 0, i32 0
+  store i8* %2, i8** %7, align 8
+  %8 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair1, i32 0, i32 1
+  store i64 %3, i64* %8, align 8
   store i32 %4, i32* %n, align 4
-  %len = getelementptr inbounds %"char[]", %"char[]"* %symb, i32 0, i32 1
-  %5 = load i64, i64* %len, align 8
-  %len4 = getelementptr inbounds %"double[]", %"double[]"* %probability, i32 0, i32 1
-  %6 = load i64, i64* %len4, align 8
-  %eq = icmp eq i64 %5, %6
+  %9 = getelementptr inbounds %"char[]", %"char[]"* %symb, i32 0, i32 1
+  %10 = load i64, i64* %9, align 8
+  %11 = getelementptr inbounds %"double[]", %"double[]"* %probability, i32 0, i32 1
+  %12 = load i64, i64* %11, align 8
+  %eq = icmp eq i64 %10, %12
   call void @llvm.assume(i1 %eq)
-  %len6 = getelementptr inbounds %"double[]", %"double[]"* %probability, i32 0, i32 1
-  %7 = load i64, i64* %len6, align 8
-  %uisitrunc = trunc i64 %7 to i32
-  store i32 %uisitrunc, i32* %len5, align 4
+  %13 = getelementptr inbounds %"double[]", %"double[]"* %probability, i32 0, i32 1
+  %14 = load i64, i64* %13, align 8
+  %uisitrunc = trunc i64 %14 to i32
+  store i32 %uisitrunc, i32* %len, align 4
   store i32 0, i32* %i, align 4
   br label %for.cond
 
-for.cond:                                         ; preds = %for.inc18, %entry
-  %8 = load i32, i32* %i, align 4
-  %9 = load i32, i32* %n, align 4
-  %lt = icmp slt i32 %8, %9
-  br i1 %lt, label %for.body, label %for.exit20
+for.cond:                                         ; preds = %for.inc11, %entry
+  %15 = load i32, i32* %i, align 4
+  %16 = load i32, i32* %n, align 4
+  %lt = icmp slt i32 %15, %16
+  br i1 %lt, label %for.body, label %for.exit13
 
 for.body:                                         ; preds = %for.cond
-  %10 = call float @fasta.fasta_rand(float 1.000000e+00)
-  %fpfpext = fpext float %10 to double
+  %17 = call float @fasta.fasta_rand(float 1.000000e+00)
+  %fpfpext = fpext float %17 to double
   store double %fpfpext, double* %v, align 8
   store i32 0, i32* %j, align 4
-  br label %for.cond7
+  br label %for.cond2
 
-for.cond7:                                        ; preds = %for.inc, %for.body
-  %11 = load i32, i32* %j, align 4
-  %12 = load i32, i32* %len5, align 4
-  %sub = sub i32 %12, 1
-  %lt8 = icmp slt i32 %11, %sub
-  br i1 %lt8, label %for.body9, label %for.exit
+for.cond2:                                        ; preds = %for.inc, %for.body
+  %18 = load i32, i32* %j, align 4
+  %19 = load i32, i32* %len, align 4
+  %sub = sub i32 %19, 1
+  %lt3 = icmp slt i32 %18, %sub
+  br i1 %lt3, label %for.body4, label %for.exit
 
-for.body9:                                        ; preds = %for.cond7
-  %13 = load double, double* %v, align 8
-  %subarrayptr = getelementptr inbounds %"double[]", %"double[]"* %probability, i32 0, i32 0
-  %saptr = load double*, double** %subarrayptr, align 8
-  %14 = load i32, i32* %j, align 4
-  %sisiext = sext i32 %14 to i64
-  %sarridx = getelementptr inbounds double, double* %saptr, i64 %sisiext
-  %15 = load double, double* %sarridx, align 8
-  %fsub = fsub double %13, %15
+for.body4:                                        ; preds = %for.cond2
+  %20 = load double, double* %v, align 8
+  %21 = getelementptr inbounds %"double[]", %"double[]"* %probability, i32 0, i32 0
+  %22 = load double*, double** %21, align 8
+  %23 = load i32, i32* %j, align 4
+  %sisiext = sext i32 %23 to i64
+  %ptroffset = getelementptr inbounds double, double* %22, i64 %sisiext
+  %24 = load double, double* %ptroffset, align 8
+  %fsub = fsub double %20, %24
   store double %fsub, double* %v, align 8
-  %16 = load double, double* %v, align 8
-  %lt10 = fcmp olt double %16, 0.000000e+00
-  br i1 %lt10, label %if.then, label %if.exit
+  %25 = load double, double* %v, align 8
+  %lt5 = fcmp olt double %25, 0.000000e+00
+  br i1 %lt5, label %if.then, label %if.exit
 
-if.then:                                          ; preds = %for.body9
+if.then:                                          ; preds = %for.body4
   br label %for.exit
 
-if.exit:                                          ; preds = %for.body9
+if.exit:                                          ; preds = %for.body4
   br label %for.inc
 
 for.inc:                                          ; preds = %if.exit
-  %17 = load i32, i32* %j, align 4
-  %add = add i32 %17, 1
+  %26 = load i32, i32* %j, align 4
+  %add = add i32 %26, 1
   store i32 %add, i32* %j, align 4
-  br label %for.cond7
+  br label %for.cond2
 
-for.exit:                                         ; preds = %if.then, %for.cond7
-  %subarrayptr11 = getelementptr inbounds %"char[]", %"char[]"* %symb, i32 0, i32 0
-  %saptr12 = load i8*, i8** %subarrayptr11, align 8
-  %18 = load i32, i32* %j, align 4
-  %sisiext13 = sext i32 %18 to i64
-  %sarridx14 = getelementptr inbounds i8, i8* %saptr12, i64 %sisiext13
-  %19 = load i8, i8* %sarridx14, align 1
-  %uisiext = zext i8 %19 to i32
+for.exit:                                         ; preds = %if.then, %for.cond2
+  %27 = getelementptr inbounds %"char[]", %"char[]"* %symb, i32 0, i32 0
+  %28 = load i8*, i8** %27, align 8
+  %29 = load i32, i32* %j, align 4
+  %sisiext6 = sext i32 %29 to i64
+  %ptroffset7 = getelementptr inbounds i8, i8* %28, i64 %sisiext6
+  %30 = load i8, i8* %ptroffset7, align 1
+  %uisiext = zext i8 %30 to i32
   call void @putchar(i32 %uisiext)
-  %20 = load i32, i32* %i, align 4
-  %smod = srem i32 %20, 60
-  %eq15 = icmp eq i32 %smod, 59
-  br i1 %eq15, label %if.then16, label %if.exit17
+  %31 = load i32, i32* %i, align 4
+  %smod = srem i32 %31, 60
+  %eq8 = icmp eq i32 %smod, 59
+  br i1 %eq8, label %if.then9, label %if.exit10
 
-if.then16:                                        ; preds = %for.exit
+if.then9:                                         ; preds = %for.exit
   call void @putchar(i32 10)
-  br label %if.exit17
+  br label %if.exit10
 
-if.exit17:                                        ; preds = %if.then16, %for.exit
-  br label %for.inc18
+if.exit10:                                        ; preds = %if.then9, %for.exit
+  br label %for.inc11
 
-for.inc18:                                        ; preds = %if.exit17
-  %21 = load i32, i32* %i, align 4
-  %add19 = add i32 %21, 1
-  store i32 %add19, i32* %i, align 4
+for.inc11:                                        ; preds = %if.exit10
+  %32 = load i32, i32* %i, align 4
+  %add12 = add i32 %32, 1
+  store i32 %add12, i32* %i, align 4
   br label %for.cond
 
-for.exit20:                                       ; preds = %for.cond
-  %22 = load i32, i32* %i, align 4
-  %smod21 = srem i32 %22, 60
-  %neq = icmp ne i32 %smod21, 0
-  br i1 %neq, label %if.then22, label %if.exit23
+for.exit13:                                       ; preds = %for.cond
+  %33 = load i32, i32* %i, align 4
+  %smod14 = srem i32 %33, 60
+  %neq = icmp ne i32 %smod14, 0
+  br i1 %neq, label %if.then15, label %if.exit16
 
-if.then22:                                        ; preds = %for.exit20
+if.then15:                                        ; preds = %for.exit13
   call void @putchar(i32 10)
-  br label %if.exit23
+  br label %if.exit16
 
-if.exit23:                                        ; preds = %if.then22, %for.exit20
+if.exit16:                                        ; preds = %if.then15, %for.exit13
   ret void
 }
 
@@ -360,8 +360,8 @@ entry:
 
 if.then:                                          ; preds = %entry
   %3 = load i8**, i8*** %argv, align 8
-  %ptridx = getelementptr inbounds i8*, i8** %3, i64 1
-  %4 = load i8*, i8** %ptridx, align 8
+  %ptroffset = getelementptr inbounds i8*, i8** %3, i64 1
+  %4 = load i8*, i8** %ptroffset, align 8
   %5 = call i32 @atoi(i8* %4)
   store i32 %5, i32* %n, align 4
   br label %if.exit

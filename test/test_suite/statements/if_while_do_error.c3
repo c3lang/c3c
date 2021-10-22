@@ -3,7 +3,7 @@ module test;
 func void test1()
 {
     bool! x = 0;
-    if (x) // #error: 'bool!' cannot be converted to 'bool'
+    if (x) // #error: 'bool!' to 'bool'
     {
         x = 100;
     }
@@ -12,7 +12,7 @@ func void test1()
 func void test2()
 {
     bool! x = 0;
-    while (x) // #error: 'bool!' cannot be converted to 'bool'
+    while (x) // #error: 'bool!' to 'bool'
     {
         x = false;
     }
@@ -30,5 +30,5 @@ func void test3()
     {
         x = !x;
     }
-    while (x); // #error: 'bool!' cannot be converted to 'bool'
+    while (x); // #error: A failable 'bool!' cannot be implicitly converted to a regular boolean value
 }

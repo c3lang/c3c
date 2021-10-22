@@ -22,6 +22,7 @@
 #include "dwarf.h"
 
 
+#define SLICE_MAX_UNROLL 4
 
 typedef enum
 {
@@ -265,8 +266,15 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value);
 void llvm_emit_debug_output(GenContext *c, const char *message, const char *file, const char *func, unsigned line);
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable);
 void llvm_emit_return_implicit(GenContext *c);
-LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index, unsigned struct_alignment, unsigned offset, unsigned *alignment);
-LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, unsigned array_alignment, unsigned *alignment);
+void llvm_emit_struct_member_ref(GenContext *c, BEValue *struct_ref, BEValue *member_ref, unsigned member_id);
+LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index,
+                                      unsigned struct_alignment, AlignSize *alignment);
+LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, AlignSize array_alignment, AlignSize *alignment);
+LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, LLVMValueRef index, AlignSize array_alignment, AlignSize *alignment);
+LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset);
+
+LLVMValueRef llvm_emit_pointer_inbounds_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset);
+
 void llvm_emit_subarray_len(GenContext *context, BEValue *subarray, BEValue *len);
 void llvm_emit_subarray_pointer(GenContext *context, BEValue *subarray, BEValue *pointer);
 LLVMValueRef llvm_get_next_param(GenContext *context, unsigned *index);

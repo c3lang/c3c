@@ -28,9 +28,9 @@ func void test_check_nums()
     Foo f = A;
     switch (f)
     {
-        case 2:
+        case (Foo)(2):
             break;
-        case 0:
+        case (Foo)(0):
             break;
     }
 }
@@ -66,7 +66,7 @@ func void test_duplicate_case2(Foo i)
     {
         case A:
             break;
-        case 2:
+        case (Foo)(2):
             break;
         case A:     // #error: same case value appears
             break;
@@ -79,7 +79,7 @@ func void test_duplicate_case3(Foo i)
     {
         case A:
             break;
-        case 0:     // #error: same case value appears
+        case (Foo)(0):     // #error: same case value appears
             break;
     }
 }
