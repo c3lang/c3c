@@ -111,6 +111,13 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 
 extern "C" {
 
+	LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal)
+	{
+		llvm::Constant *Val = llvm::unwrap<llvm::Constant>(ConstantVal);
+		const llvm::APInt& i = Val->getUniqueInteger();
+		return llvm::wrap(llvm::Constant::getIntegerValue(Val->getType(), i.byteSwap()));
+	}
+
 	LLVMValueRef LLVMConstGEP2(LLVMTypeRef Ty, LLVMValueRef ConstantVal,
 							   LLVMValueRef *ConstantIndices, unsigned NumIndices) {
 		llvm::ArrayRef<llvm::Constant *> IdxList(llvm::unwrap<llvm::Constant>(ConstantIndices, NumIndices),

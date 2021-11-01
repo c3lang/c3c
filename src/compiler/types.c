@@ -1535,6 +1535,7 @@ bool type_may_have_sub_elements(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
 		case TYPE_ERRTYPE:
+		case TYPE_BITSTRUCT:
 			return true;
 		default:
 			return false;

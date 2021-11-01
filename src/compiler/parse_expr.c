@@ -1104,6 +1104,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 				return poisoned_expr;
 			}
 		}
+		if (type_bits && type_bits < 8) type_bits = 8;
 		if (type_bits && !is_power_of_two(type_bits)) type_bits = next_highest_power_of_2(type_bits);
 	}
 	if (!type_bits)

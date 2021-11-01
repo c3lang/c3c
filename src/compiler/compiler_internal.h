@@ -350,6 +350,10 @@ typedef struct
 {
 	TypeInfo *base_type;
 	Decl **members;
+	bool msb0 : 1;
+	bool big_endian : 1;
+	bool little_endian : 1;
+	bool overlap : 1;
 } BitStructDecl;
 
 typedef struct VarDecl_
@@ -370,12 +374,14 @@ typedef struct VarDecl_
 		void *backend_debug_ref;
 		unsigned scope_depth;
 		Expr *start;
+		int start_bit;
 	};
 	union
 	{
 		void *failable_ref;
 		struct ABIArgInfo_ *abi_info;
 		Expr *end;
+		int end_bit;
 	};
 } VarDecl;
 
@@ -1613,6 +1619,7 @@ uint64_t int_to_u64(Int op);
 int64_t int_to_i64(Int op);
 bool int_is_zero(Int op);
 bool int_fits(Int op1, TypeKind kind);
+Int int_rightmost_bits(Int op, unsigned to_bits, TypeKind result_type);
 Int int_conv(Int op, TypeKind to_type);
 Int int_div(Int op1, Int op2);
 Int int_mul(Int op1, Int op2);
@@ -2381,7 +2388,7 @@ static inline bool decl_is_callable_type(Decl *decl)
 static inline bool decl_is_user_defined_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
-	return (kind == DECL_UNION) | (kind == DECL_STRUCT)
+	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_BITSTRUCT)
 			| (kind == DECL_ENUM) | (kind == DECL_DISTINCT);
 }
 
@@ -2389,6 +2396,7 @@ static inline DeclKind decl_from_token(TokenType type)
 {
 	if (type == TOKEN_STRUCT) return DECL_STRUCT;
 	if (type == TOKEN_UNION) return DECL_UNION;
+	if (type == TOKEN_BITSTRUCT) return DECL_BITSTRUCT;
 	UNREACHABLE
 }
 

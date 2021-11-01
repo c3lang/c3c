@@ -217,6 +217,10 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 		}
 		case CONST_INIT_STRUCT:
 		{
+			if (const_init->type->type_kind == TYPE_BITSTRUCT)
+			{
+				return llvm_emit_const_bitstruct(c, const_init);
+			}
 			Decl *decl = const_init->type->decl;
 			Decl **members = decl->strukt.members;
 			MemberIndex count = vec_size(members);
@@ -530,6 +534,7 @@ static bool intrinsics_setup = false;
 unsigned intrinsic_id_trap;
 unsigned intrinsic_id_assume;
 
+unsigned intrinsic_id_bswap;
 unsigned intrinsic_id_ssub_overflow;
 unsigned intrinsic_id_ssub_sat;
 unsigned intrinsic_id_usub_overflow;
@@ -611,6 +616,8 @@ void llvm_codegen_setup()
 	assert(intrinsics_setup == false);
 	intrinsic_id_trap = lookup_intrinsic("llvm.trap");
 	intrinsic_id_assume = lookup_intrinsic("llvm.assume");
+
+	intrinsic_id_bswap = lookup_intrinsic("llvm.bswap");
 
 	intrinsic_id_lifetime_start = lookup_intrinsic("llvm.lifetime.start");
 	intrinsic_id_lifetime_end = lookup_intrinsic("llvm.lifetime.end");
@@ -850,7 +857,7 @@ LLVMValueRef llvm_value_rvalue_store(GenContext *c, BEValue *value)
 			                              value->alignment ? value->alignment : type_abi_alignment(value->type),
 			                              "");
 		case BE_BOOLEAN:
-			if (!c->builder)
+			if (LLVMIsConstant(value->value))
 			{
 				return LLVMConstZExt(value->value, c->byte_type);
 			}
@@ -1141,6 +1148,10 @@ void llvm_attribute_add_string(GenContext *context, LLVMValueRef value_to_add_at
 	LLVMAddAttributeAtIndex(value_to_add_attribute_to, index, llvm_attr);
 }
 
+unsigned llvm_bitsize(GenContext *c, LLVMTypeRef type)
+{
+	return LLVMSizeOfTypeInBits(c->target_data, type);
+}
 unsigned llvm_abi_size(GenContext *c, LLVMTypeRef type)
 {
 	return LLVMABISizeOfType(c->target_data, type);

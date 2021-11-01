@@ -262,6 +262,12 @@ static inline int hex_nibble(char c)
 	return conv[(unsigned char)c];
 }
 
+static inline char nibble_hex(int c)
+{
+	static const char *conv = "0123456789ABCDEF";
+	return conv[c];
+}
+
 static inline bool is_whitespace(char c)
 {
 	switch (c)

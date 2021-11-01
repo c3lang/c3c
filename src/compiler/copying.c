@@ -158,6 +158,7 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_CONST:
 			return expr;
 		case EXPR_BINARY:
+		case EXPR_BITASSIGN:
 			MACRO_COPY_EXPR(expr->binary_expr.left);
 			MACRO_COPY_EXPR(expr->binary_expr.right);
 			return expr;
@@ -184,6 +185,7 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_EXPR(expr->subscript_expr.expr);
 			MACRO_COPY_EXPR(expr->subscript_expr.index);
 			return expr;
+		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			MACRO_COPY_EXPR(expr->access_expr.parent);
 			return expr;
@@ -463,6 +465,8 @@ Decl *copy_decl(Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->strukt.members);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
+		case DECL_BITSTRUCT:
+			UNREACHABLE
 		case DECL_ENUM:
 			case DECL_ERRTYPE:
 			copy_decl_type(copy);
@@ -493,8 +497,6 @@ Decl *copy_decl(Decl *decl)
 				MACRO_COPY_EXPR(copy->var.init_expr);
 			}
 			break;
-		case DECL_BITSTRUCT:
-			TODO
 		case DECL_LABEL:
 			TODO
 			break;
