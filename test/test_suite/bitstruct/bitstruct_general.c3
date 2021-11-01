@@ -1,21 +1,21 @@
-// #skip
+// #target: x64-darwin
 
 module foo;
 
 
 bitstruct BitField
-{
-  int a : 3;
-  int b : 3;
-  int c : 2;
+{// #error: followed by bitstruct type
+  int a : 0..2;
+  int b : 4..6;
+  int c : 7..8;
 }
 
 
 bitstruct BitField2 : char
 {
-  int a : 3;
-  int b : 3;
-  int c : 2;
+  int a : 0..2;
+  int b : 4..6;
+  int c : 7..8;
 }
 
 struct Packet
@@ -31,17 +31,16 @@ struct Packet
 
 bitstruct BitField3 : char[3]
 {
-  int a : 3;
-  int b : 6;
-  int c : 10;
-  int d : 5;
+  int a : 0..2;
+  int b : 3..8;
+  int c : 9..18;
+  int d : 19..23;
 }
 
-bitstruct BitField3 : char[3] @aligned
+bitstruct BitField4 : char[3] @aligned
 {
-  int a : 3;
-  int b : 5;
-  int c : 8;
-  int d : 5;
-  void  : 5;
+  int a : 0..2;
+  int b : 3..7;
+  int c : 8..15;
+  int d : 16..19;
 }

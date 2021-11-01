@@ -1,0 +1,1146 @@
+// #target: x64-darwin
+
+module foo;
+
+bitstruct BitField : long
+{
+  int a : 0..2;
+  int b : 3..8;
+  int c : 9..18;
+  bool d : 19;
+  bool e : 20;
+}
+
+bitstruct BitField2 : char[3]
+{
+  int a : 0..2;
+  int b : 3..8;
+  int c : 9..18;
+  bool d : 19;
+  bool e : 20;
+}
+
+bitstruct BitField3 : char[3]
+{
+  int a : 1..3;
+  int b : 4..9;
+  int c : 10..19;
+  bool d : 20;
+  bool e : 21;
+}
+
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+    test1();
+    test2();
+    test3();
+}
+fn void test1()
+{
+    BitField xx = { 2, 3, 15, true, false };
+    xx.a = 3;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.a -= 1;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b *= 2;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b ^= 4;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b |= 4;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b <<= 1;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b >>= 1;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b /= 2;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b %= 2;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.e = true;
+    printf("%d\n", xx.e);
+    xx.e = false;
+    printf("%d\n", xx.e);
+}
+
+fn void test2()
+{
+    BitField2 xx = { 2, 3, 15, false, false };
+    xx.a = 3;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.a -= 1;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b *= 2;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b ^= 4;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b |= 4;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b <<= 1;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b >>= 1;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b /= 2;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b %= 2;
+    printf("%d, %d\n", xx.a, xx.b);
+    printf("..%d\n", xx.e);
+    xx.e = true;
+    printf("%d\n", xx.e);
+    xx.e = false;
+    printf("%d\n", xx.e);
+}
+
+fn void test3()
+{
+    BitField3 xx = { 2, 3, 15, false, false };
+    xx.a = 3;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.a -= 1;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b *= 2;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b ^= 4;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b |= 4;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b <<= 1;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b >>= 1;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b /= 2;
+    printf("%d, %d\n", xx.a, xx.b);
+    xx.b %= 2;
+    printf("%d, %d\n", xx.a, xx.b);
+    printf("..%d\n", xx.e);
+    xx.e = true;
+    printf("%d\n", xx.e);
+    xx.e = false;
+    printf("%d\n", xx.e);
+}
+
+/* #expect: foo.ll
+
+define void @main() #0 {
+entry:
+  call void @foo.test1()
+  call void @foo.test2()
+  call void @foo.test3()
+  ret void
+}
+
+; Function Attrs: nounwind
+define void @foo.test1() #0 {
+entry:
+  %xx = alloca i64, align 8
+  store i64 531994, i64* %xx, align 8
+  %0 = load i64, i64* %xx, align 8
+  %1 = and i64 %0, -8
+  %2 = or i64 %1, 3
+  store i64 %2, i64* %xx, align 8
+  %3 = load i64, i64* %xx, align 8
+  %4 = shl i64 %3, 61
+  %5 = ashr i64 %4, 61
+  %6 = trunc i64 %5 to i32
+  %7 = load i64, i64* %xx, align 8
+  %8 = shl i64 %7, 55
+  %9 = ashr i64 %8, 58
+  %10 = trunc i64 %9 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str, i32 0, i32 0), i32 %6, i32 %10)
+  %11 = load i64, i64* %xx, align 8
+  %12 = shl i64 %11, 61
+  %13 = ashr i64 %12, 61
+  %14 = trunc i64 %13 to i32
+  %sub = sub i32 %14, 1
+  %15 = load i64, i64* %xx, align 8
+  %16 = zext i32 %sub to i64
+  %17 = and i64 %16, 7
+  %18 = and i64 %15, -8
+  %19 = or i64 %18, %17
+  store i64 %19, i64* %xx, align 8
+  %20 = load i64, i64* %xx, align 8
+  %21 = shl i64 %20, 61
+  %22 = ashr i64 %21, 61
+  %23 = trunc i64 %22 to i32
+  %24 = load i64, i64* %xx, align 8
+  %25 = shl i64 %24, 55
+  %26 = ashr i64 %25, 58
+  %27 = trunc i64 %26 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.1, i32 0, i32 0), i32 %23, i32 %27)
+  %28 = load i64, i64* %xx, align 8
+  %29 = shl i64 %28, 55
+  %30 = ashr i64 %29, 58
+  %31 = trunc i64 %30 to i32
+  %mul = mul i32 %31, 2
+  %32 = load i64, i64* %xx, align 8
+  %33 = zext i32 %mul to i64
+  %34 = shl i64 %33, 3
+  %35 = and i64 %34, 504
+  %36 = and i64 %32, -505
+  %37 = or i64 %36, %35
+  store i64 %37, i64* %xx, align 8
+  %38 = load i64, i64* %xx, align 8
+  %39 = shl i64 %38, 61
+  %40 = ashr i64 %39, 61
+  %41 = trunc i64 %40 to i32
+  %42 = load i64, i64* %xx, align 8
+  %43 = shl i64 %42, 55
+  %44 = ashr i64 %43, 58
+  %45 = trunc i64 %44 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.2, i32 0, i32 0), i32 %41, i32 %45)
+  %46 = load i64, i64* %xx, align 8
+  %47 = shl i64 %46, 55
+  %48 = ashr i64 %47, 58
+  %49 = trunc i64 %48 to i32
+  %xor = xor i32 %49, 4
+  %50 = load i64, i64* %xx, align 8
+  %51 = zext i32 %xor to i64
+  %52 = shl i64 %51, 3
+  %53 = and i64 %52, 504
+  %54 = and i64 %50, -505
+  %55 = or i64 %54, %53
+  store i64 %55, i64* %xx, align 8
+  %56 = load i64, i64* %xx, align 8
+  %57 = shl i64 %56, 61
+  %58 = ashr i64 %57, 61
+  %59 = trunc i64 %58 to i32
+  %60 = load i64, i64* %xx, align 8
+  %61 = shl i64 %60, 55
+  %62 = ashr i64 %61, 58
+  %63 = trunc i64 %62 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.3, i32 0, i32 0), i32 %59, i32 %63)
+  %64 = load i64, i64* %xx, align 8
+  %65 = shl i64 %64, 55
+  %66 = ashr i64 %65, 58
+  %67 = trunc i64 %66 to i32
+  %or = or i32 %67, 4
+  %68 = load i64, i64* %xx, align 8
+  %69 = zext i32 %or to i64
+  %70 = shl i64 %69, 3
+  %71 = and i64 %70, 504
+  %72 = and i64 %68, -505
+  %73 = or i64 %72, %71
+  store i64 %73, i64* %xx, align 8
+  %74 = load i64, i64* %xx, align 8
+  %75 = shl i64 %74, 61
+  %76 = ashr i64 %75, 61
+  %77 = trunc i64 %76 to i32
+  %78 = load i64, i64* %xx, align 8
+  %79 = shl i64 %78, 55
+  %80 = ashr i64 %79, 58
+  %81 = trunc i64 %80 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.4, i32 0, i32 0), i32 %77, i32 %81)
+  %82 = load i64, i64* %xx, align 8
+  %83 = shl i64 %82, 55
+  %84 = ashr i64 %83, 58
+  %85 = trunc i64 %84 to i32
+  %shl = shl i32 %85, 1
+  %86 = freeze i32 %shl
+  %87 = load i64, i64* %xx, align 8
+  %88 = zext i32 %86 to i64
+  %89 = shl i64 %88, 3
+  %90 = and i64 %89, 504
+  %91 = and i64 %87, -505
+  %92 = or i64 %91, %90
+  store i64 %92, i64* %xx, align 8
+  %93 = load i64, i64* %xx, align 8
+  %94 = shl i64 %93, 61
+  %95 = ashr i64 %94, 61
+  %96 = trunc i64 %95 to i32
+  %97 = load i64, i64* %xx, align 8
+  %98 = shl i64 %97, 55
+  %99 = ashr i64 %98, 58
+  %100 = trunc i64 %99 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.5, i32 0, i32 0), i32 %96, i32 %100)
+  %101 = load i64, i64* %xx, align 8
+  %102 = shl i64 %101, 55
+  %103 = ashr i64 %102, 58
+  %104 = trunc i64 %103 to i32
+  %ashr = ashr i32 %104, 1
+  %105 = freeze i32 %ashr
+  %106 = load i64, i64* %xx, align 8
+  %107 = zext i32 %105 to i64
+  %108 = shl i64 %107, 3
+  %109 = and i64 %108, 504
+  %110 = and i64 %106, -505
+  %111 = or i64 %110, %109
+  store i64 %111, i64* %xx, align 8
+  %112 = load i64, i64* %xx, align 8
+  %113 = shl i64 %112, 61
+  %114 = ashr i64 %113, 61
+  %115 = trunc i64 %114 to i32
+  %116 = load i64, i64* %xx, align 8
+  %117 = shl i64 %116, 55
+  %118 = ashr i64 %117, 58
+  %119 = trunc i64 %118 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.6, i32 0, i32 0), i32 %115, i32 %119)
+  %120 = load i64, i64* %xx, align 8
+  %121 = shl i64 %120, 55
+  %122 = ashr i64 %121, 58
+  %123 = trunc i64 %122 to i32
+  %sdiv = sdiv i32 %123, 2
+  %124 = load i64, i64* %xx, align 8
+  %125 = zext i32 %sdiv to i64
+  %126 = shl i64 %125, 3
+  %127 = and i64 %126, 504
+  %128 = and i64 %124, -505
+  %129 = or i64 %128, %127
+  store i64 %129, i64* %xx, align 8
+  %130 = load i64, i64* %xx, align 8
+  %131 = shl i64 %130, 61
+  %132 = ashr i64 %131, 61
+  %133 = trunc i64 %132 to i32
+  %134 = load i64, i64* %xx, align 8
+  %135 = shl i64 %134, 55
+  %136 = ashr i64 %135, 58
+  %137 = trunc i64 %136 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.7, i32 0, i32 0), i32 %133, i32 %137)
+  %138 = load i64, i64* %xx, align 8
+  %139 = shl i64 %138, 55
+  %140 = ashr i64 %139, 58
+  %141 = trunc i64 %140 to i32
+  %smod = srem i32 %141, 2
+  %142 = load i64, i64* %xx, align 8
+  %143 = zext i32 %smod to i64
+  %144 = shl i64 %143, 3
+  %145 = and i64 %144, 504
+  %146 = and i64 %142, -505
+  %147 = or i64 %146, %145
+  store i64 %147, i64* %xx, align 8
+  %148 = load i64, i64* %xx, align 8
+  %149 = shl i64 %148, 61
+  %150 = ashr i64 %149, 61
+  %151 = trunc i64 %150 to i32
+  %152 = load i64, i64* %xx, align 8
+  %153 = shl i64 %152, 55
+  %154 = ashr i64 %153, 58
+  %155 = trunc i64 %154 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.8, i32 0, i32 0), i32 %151, i32 %155)
+  %156 = load i64, i64* %xx, align 8
+  %157 = and i64 %156, -1048577
+  %158 = or i64 %157, 1048576
+  store i64 %158, i64* %xx, align 8
+  %159 = load i64, i64* %xx, align 8
+  %160 = lshr i64 %159, 20
+  %161 = trunc i64 %160 to i8
+  %162 = trunc i8 %161 to i1
+  %boolsi = zext i1 %162 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.9, i32 0, i32 0), i32 %boolsi)
+  %163 = load i64, i64* %xx, align 8
+  %164 = and i64 %163, -1048577
+  store i64 %164, i64* %xx, align 8
+  %165 = load i64, i64* %xx, align 8
+  %166 = lshr i64 %165, 20
+  %167 = trunc i64 %166 to i8
+  %168 = trunc i8 %167 to i1
+  %boolsi1 = zext i1 %168 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.10, i32 0, i32 0), i32 %boolsi1)
+  ret void
+}
+
+; Function Attrs: nounwind
+define void @foo.test2() #0 {
+entry:
+  %xx = alloca [3 x i8], align 1
+  store [3 x i8] c"\1A\1E\00", [3 x i8]* %xx, align 1
+  %0 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %1 = load i8, i8* %0, align 1
+  %2 = and i8 %1, -8
+  %3 = or i8 %2, 3
+  store i8 %3, i8* %0, align 1
+  %4 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %5 = load i8, i8* %4, align 1
+  %6 = zext i8 %5 to i32
+  %7 = shl i32 %6, 29
+  %8 = ashr i32 %7, 29
+  %9 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %10 = load i8, i8* %9, align 1
+  %11 = zext i8 %10 to i32
+  %12 = lshr i32 %11, 3
+  %13 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %14 = load i8, i8* %13, align 1
+  %15 = zext i8 %14 to i32
+  %16 = shl i32 %15, 5
+  %17 = or i32 %16, %12
+  %18 = shl i32 %17, 26
+  %19 = ashr i32 %18, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.11, i32 0, i32 0), i32 %8, i32 %19)
+  %20 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %21 = load i8, i8* %20, align 1
+  %22 = zext i8 %21 to i32
+  %23 = shl i32 %22, 29
+  %24 = ashr i32 %23, 29
+  %sub = sub i32 %24, 1
+  %25 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %26 = trunc i32 %sub to i8
+  %27 = and i8 %26, 7
+  %28 = load i8, i8* %25, align 1
+  %29 = and i8 %28, -8
+  %30 = or i8 %29, %27
+  store i8 %30, i8* %25, align 1
+  %31 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %32 = load i8, i8* %31, align 1
+  %33 = zext i8 %32 to i32
+  %34 = shl i32 %33, 29
+  %35 = ashr i32 %34, 29
+  %36 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %37 = load i8, i8* %36, align 1
+  %38 = zext i8 %37 to i32
+  %39 = lshr i32 %38, 3
+  %40 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %41 = load i8, i8* %40, align 1
+  %42 = zext i8 %41 to i32
+  %43 = shl i32 %42, 5
+  %44 = or i32 %43, %39
+  %45 = shl i32 %44, 26
+  %46 = ashr i32 %45, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.12, i32 0, i32 0), i32 %35, i32 %46)
+  %47 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %48 = load i8, i8* %47, align 1
+  %49 = zext i8 %48 to i32
+  %50 = lshr i32 %49, 3
+  %51 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %52 = load i8, i8* %51, align 1
+  %53 = zext i8 %52 to i32
+  %54 = shl i32 %53, 5
+  %55 = or i32 %54, %50
+  %56 = shl i32 %55, 26
+  %57 = ashr i32 %56, 26
+  %mul = mul i32 %57, 2
+  %58 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %59 = shl i32 %mul, 3
+  %60 = trunc i32 %59 to i8
+  %61 = load i8, i8* %58, align 1
+  %62 = and i8 %61, 7
+  %63 = or i8 %62, %60
+  store i8 %63, i8* %58, align 1
+  %64 = lshr i32 %mul, 5
+  %65 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %66 = trunc i32 %64 to i8
+  %67 = and i8 %66, 1
+  %68 = load i8, i8* %65, align 1
+  %69 = and i8 %68, -2
+  %70 = or i8 %69, %67
+  store i8 %70, i8* %65, align 1
+  %71 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %72 = load i8, i8* %71, align 1
+  %73 = zext i8 %72 to i32
+  %74 = shl i32 %73, 29
+  %75 = ashr i32 %74, 29
+  %76 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %77 = load i8, i8* %76, align 1
+  %78 = zext i8 %77 to i32
+  %79 = lshr i32 %78, 3
+  %80 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %81 = load i8, i8* %80, align 1
+  %82 = zext i8 %81 to i32
+  %83 = shl i32 %82, 5
+  %84 = or i32 %83, %79
+  %85 = shl i32 %84, 26
+  %86 = ashr i32 %85, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.13, i32 0, i32 0), i32 %75, i32 %86)
+  %87 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %88 = load i8, i8* %87, align 1
+  %89 = zext i8 %88 to i32
+  %90 = lshr i32 %89, 3
+  %91 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %92 = load i8, i8* %91, align 1
+  %93 = zext i8 %92 to i32
+  %94 = shl i32 %93, 5
+  %95 = or i32 %94, %90
+  %96 = shl i32 %95, 26
+  %97 = ashr i32 %96, 26
+  %xor = xor i32 %97, 4
+  %98 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %99 = shl i32 %xor, 3
+  %100 = trunc i32 %99 to i8
+  %101 = load i8, i8* %98, align 1
+  %102 = and i8 %101, 7
+  %103 = or i8 %102, %100
+  store i8 %103, i8* %98, align 1
+  %104 = lshr i32 %xor, 5
+  %105 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %106 = trunc i32 %104 to i8
+  %107 = and i8 %106, 1
+  %108 = load i8, i8* %105, align 1
+  %109 = and i8 %108, -2
+  %110 = or i8 %109, %107
+  store i8 %110, i8* %105, align 1
+  %111 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %112 = load i8, i8* %111, align 1
+  %113 = zext i8 %112 to i32
+  %114 = shl i32 %113, 29
+  %115 = ashr i32 %114, 29
+  %116 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %117 = load i8, i8* %116, align 1
+  %118 = zext i8 %117 to i32
+  %119 = lshr i32 %118, 3
+  %120 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %121 = load i8, i8* %120, align 1
+  %122 = zext i8 %121 to i32
+  %123 = shl i32 %122, 5
+  %124 = or i32 %123, %119
+  %125 = shl i32 %124, 26
+  %126 = ashr i32 %125, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.14, i32 0, i32 0), i32 %115, i32 %126)
+  %127 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %128 = load i8, i8* %127, align 1
+  %129 = zext i8 %128 to i32
+  %130 = lshr i32 %129, 3
+  %131 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %132 = load i8, i8* %131, align 1
+  %133 = zext i8 %132 to i32
+  %134 = shl i32 %133, 5
+  %135 = or i32 %134, %130
+  %136 = shl i32 %135, 26
+  %137 = ashr i32 %136, 26
+  %or = or i32 %137, 4
+  %138 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %139 = shl i32 %or, 3
+  %140 = trunc i32 %139 to i8
+  %141 = load i8, i8* %138, align 1
+  %142 = and i8 %141, 7
+  %143 = or i8 %142, %140
+  store i8 %143, i8* %138, align 1
+  %144 = lshr i32 %or, 5
+  %145 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %146 = trunc i32 %144 to i8
+  %147 = and i8 %146, 1
+  %148 = load i8, i8* %145, align 1
+  %149 = and i8 %148, -2
+  %150 = or i8 %149, %147
+  store i8 %150, i8* %145, align 1
+  %151 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %152 = load i8, i8* %151, align 1
+  %153 = zext i8 %152 to i32
+  %154 = shl i32 %153, 29
+  %155 = ashr i32 %154, 29
+  %156 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %157 = load i8, i8* %156, align 1
+  %158 = zext i8 %157 to i32
+  %159 = lshr i32 %158, 3
+  %160 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %161 = load i8, i8* %160, align 1
+  %162 = zext i8 %161 to i32
+  %163 = shl i32 %162, 5
+  %164 = or i32 %163, %159
+  %165 = shl i32 %164, 26
+  %166 = ashr i32 %165, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.15, i32 0, i32 0), i32 %155, i32 %166)
+  %167 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %168 = load i8, i8* %167, align 1
+  %169 = zext i8 %168 to i32
+  %170 = lshr i32 %169, 3
+  %171 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %172 = load i8, i8* %171, align 1
+  %173 = zext i8 %172 to i32
+  %174 = shl i32 %173, 5
+  %175 = or i32 %174, %170
+  %176 = shl i32 %175, 26
+  %177 = ashr i32 %176, 26
+  %shl = shl i32 %177, 1
+  %178 = freeze i32 %shl
+  %179 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %180 = shl i32 %178, 3
+  %181 = trunc i32 %180 to i8
+  %182 = load i8, i8* %179, align 1
+  %183 = and i8 %182, 7
+  %184 = or i8 %183, %181
+  store i8 %184, i8* %179, align 1
+  %185 = lshr i32 %178, 5
+  %186 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %187 = trunc i32 %185 to i8
+  %188 = and i8 %187, 1
+  %189 = load i8, i8* %186, align 1
+  %190 = and i8 %189, -2
+  %191 = or i8 %190, %188
+  store i8 %191, i8* %186, align 1
+  %192 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %193 = load i8, i8* %192, align 1
+  %194 = zext i8 %193 to i32
+  %195 = shl i32 %194, 29
+  %196 = ashr i32 %195, 29
+  %197 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %198 = load i8, i8* %197, align 1
+  %199 = zext i8 %198 to i32
+  %200 = lshr i32 %199, 3
+  %201 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %202 = load i8, i8* %201, align 1
+  %203 = zext i8 %202 to i32
+  %204 = shl i32 %203, 5
+  %205 = or i32 %204, %200
+  %206 = shl i32 %205, 26
+  %207 = ashr i32 %206, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.16, i32 0, i32 0), i32 %196, i32 %207)
+  %208 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %209 = load i8, i8* %208, align 1
+  %210 = zext i8 %209 to i32
+  %211 = lshr i32 %210, 3
+  %212 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %213 = load i8, i8* %212, align 1
+  %214 = zext i8 %213 to i32
+  %215 = shl i32 %214, 5
+  %216 = or i32 %215, %211
+  %217 = shl i32 %216, 26
+  %218 = ashr i32 %217, 26
+  %ashr = ashr i32 %218, 1
+  %219 = freeze i32 %ashr
+  %220 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %221 = shl i32 %219, 3
+  %222 = trunc i32 %221 to i8
+  %223 = load i8, i8* %220, align 1
+  %224 = and i8 %223, 7
+  %225 = or i8 %224, %222
+  store i8 %225, i8* %220, align 1
+  %226 = lshr i32 %219, 5
+  %227 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %228 = trunc i32 %226 to i8
+  %229 = and i8 %228, 1
+  %230 = load i8, i8* %227, align 1
+  %231 = and i8 %230, -2
+  %232 = or i8 %231, %229
+  store i8 %232, i8* %227, align 1
+  %233 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %234 = load i8, i8* %233, align 1
+  %235 = zext i8 %234 to i32
+  %236 = shl i32 %235, 29
+  %237 = ashr i32 %236, 29
+  %238 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %239 = load i8, i8* %238, align 1
+  %240 = zext i8 %239 to i32
+  %241 = lshr i32 %240, 3
+  %242 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %243 = load i8, i8* %242, align 1
+  %244 = zext i8 %243 to i32
+  %245 = shl i32 %244, 5
+  %246 = or i32 %245, %241
+  %247 = shl i32 %246, 26
+  %248 = ashr i32 %247, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.17, i32 0, i32 0), i32 %237, i32 %248)
+  %249 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %250 = load i8, i8* %249, align 1
+  %251 = zext i8 %250 to i32
+  %252 = lshr i32 %251, 3
+  %253 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %254 = load i8, i8* %253, align 1
+  %255 = zext i8 %254 to i32
+  %256 = shl i32 %255, 5
+  %257 = or i32 %256, %252
+  %258 = shl i32 %257, 26
+  %259 = ashr i32 %258, 26
+  %sdiv = sdiv i32 %259, 2
+  %260 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %261 = shl i32 %sdiv, 3
+  %262 = trunc i32 %261 to i8
+  %263 = load i8, i8* %260, align 1
+  %264 = and i8 %263, 7
+  %265 = or i8 %264, %262
+  store i8 %265, i8* %260, align 1
+  %266 = lshr i32 %sdiv, 5
+  %267 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %268 = trunc i32 %266 to i8
+  %269 = and i8 %268, 1
+  %270 = load i8, i8* %267, align 1
+  %271 = and i8 %270, -2
+  %272 = or i8 %271, %269
+  store i8 %272, i8* %267, align 1
+  %273 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %274 = load i8, i8* %273, align 1
+  %275 = zext i8 %274 to i32
+  %276 = shl i32 %275, 29
+  %277 = ashr i32 %276, 29
+  %278 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %279 = load i8, i8* %278, align 1
+  %280 = zext i8 %279 to i32
+  %281 = lshr i32 %280, 3
+  %282 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %283 = load i8, i8* %282, align 1
+  %284 = zext i8 %283 to i32
+  %285 = shl i32 %284, 5
+  %286 = or i32 %285, %281
+  %287 = shl i32 %286, 26
+  %288 = ashr i32 %287, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.18, i32 0, i32 0), i32 %277, i32 %288)
+  %289 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %290 = load i8, i8* %289, align 1
+  %291 = zext i8 %290 to i32
+  %292 = lshr i32 %291, 3
+  %293 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %294 = load i8, i8* %293, align 1
+  %295 = zext i8 %294 to i32
+  %296 = shl i32 %295, 5
+  %297 = or i32 %296, %292
+  %298 = shl i32 %297, 26
+  %299 = ashr i32 %298, 26
+  %smod = srem i32 %299, 2
+  %300 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %301 = shl i32 %smod, 3
+  %302 = trunc i32 %301 to i8
+  %303 = load i8, i8* %300, align 1
+  %304 = and i8 %303, 7
+  %305 = or i8 %304, %302
+  store i8 %305, i8* %300, align 1
+  %306 = lshr i32 %smod, 5
+  %307 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %308 = trunc i32 %306 to i8
+  %309 = and i8 %308, 1
+  %310 = load i8, i8* %307, align 1
+  %311 = and i8 %310, -2
+  %312 = or i8 %311, %309
+  store i8 %312, i8* %307, align 1
+  %313 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %314 = load i8, i8* %313, align 1
+  %315 = zext i8 %314 to i32
+  %316 = shl i32 %315, 29
+  %317 = ashr i32 %316, 29
+  %318 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %319 = load i8, i8* %318, align 1
+  %320 = zext i8 %319 to i32
+  %321 = lshr i32 %320, 3
+  %322 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %323 = load i8, i8* %322, align 1
+  %324 = zext i8 %323 to i32
+  %325 = shl i32 %324, 5
+  %326 = or i32 %325, %321
+  %327 = shl i32 %326, 26
+  %328 = ashr i32 %327, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.19, i32 0, i32 0), i32 %317, i32 %328)
+  %329 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %330 = load i8, i8* %329, align 1
+  %331 = lshr i8 %330, 4
+  %332 = trunc i8 %331 to i1
+  %boolsi = zext i1 %332 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.20, i32 0, i32 0), i32 %boolsi)
+  %333 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %334 = load i8, i8* %333, align 1
+  %335 = and i8 %334, -17
+  %336 = or i8 %335, 16
+  store i8 %336, i8* %333, align 1
+  %337 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %338 = load i8, i8* %337, align 1
+  %339 = lshr i8 %338, 4
+  %340 = trunc i8 %339 to i1
+  %boolsi1 = zext i1 %340 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.21, i32 0, i32 0), i32 %boolsi1)
+  %341 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %342 = load i8, i8* %341, align 1
+  %343 = and i8 %342, -17
+  store i8 %343, i8* %341, align 1
+  %344 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %345 = load i8, i8* %344, align 1
+  %346 = lshr i8 %345, 4
+  %347 = trunc i8 %346 to i1
+  %boolsi2 = zext i1 %347 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.22, i32 0, i32 0), i32 %boolsi2)
+  ret void
+}
+
+; Function Attrs: nounwind
+define void @foo.test3() #0 {
+entry:
+  %xx = alloca [3 x i8], align 1
+  store [3 x i8] c"4<\00", [3 x i8]* %xx, align 1
+  %0 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %1 = load i8, i8* %0, align 1
+  %2 = and i8 %1, -15
+  %3 = or i8 %2, 6
+  store i8 %3, i8* %0, align 1
+  %4 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %5 = load i8, i8* %4, align 1
+  %6 = zext i8 %5 to i32
+  %7 = lshr i32 %6, 1
+  %8 = shl i32 %7, 29
+  %9 = ashr i32 %8, 29
+  %10 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %11 = load i8, i8* %10, align 1
+  %12 = zext i8 %11 to i32
+  %13 = lshr i32 %12, 4
+  %14 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %15 = load i8, i8* %14, align 1
+  %16 = zext i8 %15 to i32
+  %17 = shl i32 %16, 4
+  %18 = or i32 %17, %13
+  %19 = shl i32 %18, 26
+  %20 = ashr i32 %19, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.23, i32 0, i32 0), i32 %9, i32 %20)
+  %21 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %22 = load i8, i8* %21, align 1
+  %23 = zext i8 %22 to i32
+  %24 = lshr i32 %23, 1
+  %25 = shl i32 %24, 29
+  %26 = ashr i32 %25, 29
+  %sub = sub i32 %26, 1
+  %27 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %28 = shl i32 %sub, 1
+  %29 = trunc i32 %28 to i8
+  %30 = and i8 %29, 15
+  %31 = load i8, i8* %27, align 1
+  %32 = and i8 %31, -15
+  %33 = or i8 %32, %30
+  store i8 %33, i8* %27, align 1
+  %34 = lshr i32 %sub, 7
+  %35 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %36 = load i8, i8* %35, align 1
+  %37 = zext i8 %36 to i32
+  %38 = lshr i32 %37, 1
+  %39 = shl i32 %38, 29
+  %40 = ashr i32 %39, 29
+  %41 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %42 = load i8, i8* %41, align 1
+  %43 = zext i8 %42 to i32
+  %44 = lshr i32 %43, 4
+  %45 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %46 = load i8, i8* %45, align 1
+  %47 = zext i8 %46 to i32
+  %48 = shl i32 %47, 4
+  %49 = or i32 %48, %44
+  %50 = shl i32 %49, 26
+  %51 = ashr i32 %50, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.24, i32 0, i32 0), i32 %40, i32 %51)
+  %52 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %53 = load i8, i8* %52, align 1
+  %54 = zext i8 %53 to i32
+  %55 = lshr i32 %54, 4
+  %56 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %57 = load i8, i8* %56, align 1
+  %58 = zext i8 %57 to i32
+  %59 = shl i32 %58, 4
+  %60 = or i32 %59, %55
+  %61 = shl i32 %60, 26
+  %62 = ashr i32 %61, 26
+  %mul = mul i32 %62, 2
+  %63 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %64 = shl i32 %mul, 4
+  %65 = trunc i32 %64 to i8
+  %66 = load i8, i8* %63, align 1
+  %67 = and i8 %66, 15
+  %68 = or i8 %67, %65
+  store i8 %68, i8* %63, align 1
+  %69 = lshr i32 %mul, 4
+  %70 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %71 = trunc i32 %69 to i8
+  %72 = and i8 %71, 3
+  %73 = load i8, i8* %70, align 1
+  %74 = and i8 %73, -4
+  %75 = or i8 %74, %72
+  store i8 %75, i8* %70, align 1
+  %76 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %77 = load i8, i8* %76, align 1
+  %78 = zext i8 %77 to i32
+  %79 = lshr i32 %78, 1
+  %80 = shl i32 %79, 29
+  %81 = ashr i32 %80, 29
+  %82 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %83 = load i8, i8* %82, align 1
+  %84 = zext i8 %83 to i32
+  %85 = lshr i32 %84, 4
+  %86 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %87 = load i8, i8* %86, align 1
+  %88 = zext i8 %87 to i32
+  %89 = shl i32 %88, 4
+  %90 = or i32 %89, %85
+  %91 = shl i32 %90, 26
+  %92 = ashr i32 %91, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.25, i32 0, i32 0), i32 %81, i32 %92)
+  %93 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %94 = load i8, i8* %93, align 1
+  %95 = zext i8 %94 to i32
+  %96 = lshr i32 %95, 4
+  %97 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %98 = load i8, i8* %97, align 1
+  %99 = zext i8 %98 to i32
+  %100 = shl i32 %99, 4
+  %101 = or i32 %100, %96
+  %102 = shl i32 %101, 26
+  %103 = ashr i32 %102, 26
+  %xor = xor i32 %103, 4
+  %104 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %105 = shl i32 %xor, 4
+  %106 = trunc i32 %105 to i8
+  %107 = load i8, i8* %104, align 1
+  %108 = and i8 %107, 15
+  %109 = or i8 %108, %106
+  store i8 %109, i8* %104, align 1
+  %110 = lshr i32 %xor, 4
+  %111 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %112 = trunc i32 %110 to i8
+  %113 = and i8 %112, 3
+  %114 = load i8, i8* %111, align 1
+  %115 = and i8 %114, -4
+  %116 = or i8 %115, %113
+  store i8 %116, i8* %111, align 1
+  %117 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %118 = load i8, i8* %117, align 1
+  %119 = zext i8 %118 to i32
+  %120 = lshr i32 %119, 1
+  %121 = shl i32 %120, 29
+  %122 = ashr i32 %121, 29
+  %123 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %124 = load i8, i8* %123, align 1
+  %125 = zext i8 %124 to i32
+  %126 = lshr i32 %125, 4
+  %127 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %128 = load i8, i8* %127, align 1
+  %129 = zext i8 %128 to i32
+  %130 = shl i32 %129, 4
+  %131 = or i32 %130, %126
+  %132 = shl i32 %131, 26
+  %133 = ashr i32 %132, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.26, i32 0, i32 0), i32 %122, i32 %133)
+  %134 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %135 = load i8, i8* %134, align 1
+  %136 = zext i8 %135 to i32
+  %137 = lshr i32 %136, 4
+  %138 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %139 = load i8, i8* %138, align 1
+  %140 = zext i8 %139 to i32
+  %141 = shl i32 %140, 4
+  %142 = or i32 %141, %137
+  %143 = shl i32 %142, 26
+  %144 = ashr i32 %143, 26
+  %or = or i32 %144, 4
+  %145 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %146 = shl i32 %or, 4
+  %147 = trunc i32 %146 to i8
+  %148 = load i8, i8* %145, align 1
+  %149 = and i8 %148, 15
+  %150 = or i8 %149, %147
+  store i8 %150, i8* %145, align 1
+  %151 = lshr i32 %or, 4
+  %152 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %153 = trunc i32 %151 to i8
+  %154 = and i8 %153, 3
+  %155 = load i8, i8* %152, align 1
+  %156 = and i8 %155, -4
+  %157 = or i8 %156, %154
+  store i8 %157, i8* %152, align 1
+  %158 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %159 = load i8, i8* %158, align 1
+  %160 = zext i8 %159 to i32
+  %161 = lshr i32 %160, 1
+  %162 = shl i32 %161, 29
+  %163 = ashr i32 %162, 29
+  %164 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %165 = load i8, i8* %164, align 1
+  %166 = zext i8 %165 to i32
+  %167 = lshr i32 %166, 4
+  %168 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %169 = load i8, i8* %168, align 1
+  %170 = zext i8 %169 to i32
+  %171 = shl i32 %170, 4
+  %172 = or i32 %171, %167
+  %173 = shl i32 %172, 26
+  %174 = ashr i32 %173, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.27, i32 0, i32 0), i32 %163, i32 %174)
+  %175 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %176 = load i8, i8* %175, align 1
+  %177 = zext i8 %176 to i32
+  %178 = lshr i32 %177, 4
+  %179 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %180 = load i8, i8* %179, align 1
+  %181 = zext i8 %180 to i32
+  %182 = shl i32 %181, 4
+  %183 = or i32 %182, %178
+  %184 = shl i32 %183, 26
+  %185 = ashr i32 %184, 26
+  %shl = shl i32 %185, 1
+  %186 = freeze i32 %shl
+  %187 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %188 = shl i32 %186, 4
+  %189 = trunc i32 %188 to i8
+  %190 = load i8, i8* %187, align 1
+  %191 = and i8 %190, 15
+  %192 = or i8 %191, %189
+  store i8 %192, i8* %187, align 1
+  %193 = lshr i32 %186, 4
+  %194 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %195 = trunc i32 %193 to i8
+  %196 = and i8 %195, 3
+  %197 = load i8, i8* %194, align 1
+  %198 = and i8 %197, -4
+  %199 = or i8 %198, %196
+  store i8 %199, i8* %194, align 1
+  %200 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %201 = load i8, i8* %200, align 1
+  %202 = zext i8 %201 to i32
+  %203 = lshr i32 %202, 1
+  %204 = shl i32 %203, 29
+  %205 = ashr i32 %204, 29
+  %206 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %207 = load i8, i8* %206, align 1
+  %208 = zext i8 %207 to i32
+  %209 = lshr i32 %208, 4
+  %210 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %211 = load i8, i8* %210, align 1
+  %212 = zext i8 %211 to i32
+  %213 = shl i32 %212, 4
+  %214 = or i32 %213, %209
+  %215 = shl i32 %214, 26
+  %216 = ashr i32 %215, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.28, i32 0, i32 0), i32 %205, i32 %216)
+  %217 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %218 = load i8, i8* %217, align 1
+  %219 = zext i8 %218 to i32
+  %220 = lshr i32 %219, 4
+  %221 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %222 = load i8, i8* %221, align 1
+  %223 = zext i8 %222 to i32
+  %224 = shl i32 %223, 4
+  %225 = or i32 %224, %220
+  %226 = shl i32 %225, 26
+  %227 = ashr i32 %226, 26
+  %ashr = ashr i32 %227, 1
+  %228 = freeze i32 %ashr
+  %229 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %230 = shl i32 %228, 4
+  %231 = trunc i32 %230 to i8
+  %232 = load i8, i8* %229, align 1
+  %233 = and i8 %232, 15
+  %234 = or i8 %233, %231
+  store i8 %234, i8* %229, align 1
+  %235 = lshr i32 %228, 4
+  %236 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %237 = trunc i32 %235 to i8
+  %238 = and i8 %237, 3
+  %239 = load i8, i8* %236, align 1
+  %240 = and i8 %239, -4
+  %241 = or i8 %240, %238
+  store i8 %241, i8* %236, align 1
+  %242 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %243 = load i8, i8* %242, align 1
+  %244 = zext i8 %243 to i32
+  %245 = lshr i32 %244, 1
+  %246 = shl i32 %245, 29
+  %247 = ashr i32 %246, 29
+  %248 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %249 = load i8, i8* %248, align 1
+  %250 = zext i8 %249 to i32
+  %251 = lshr i32 %250, 4
+  %252 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %253 = load i8, i8* %252, align 1
+  %254 = zext i8 %253 to i32
+  %255 = shl i32 %254, 4
+  %256 = or i32 %255, %251
+  %257 = shl i32 %256, 26
+  %258 = ashr i32 %257, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.29, i32 0, i32 0), i32 %247, i32 %258)
+  %259 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %260 = load i8, i8* %259, align 1
+  %261 = zext i8 %260 to i32
+  %262 = lshr i32 %261, 4
+  %263 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %264 = load i8, i8* %263, align 1
+  %265 = zext i8 %264 to i32
+  %266 = shl i32 %265, 4
+  %267 = or i32 %266, %262
+  %268 = shl i32 %267, 26
+  %269 = ashr i32 %268, 26
+  %sdiv = sdiv i32 %269, 2
+  %270 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %271 = shl i32 %sdiv, 4
+  %272 = trunc i32 %271 to i8
+  %273 = load i8, i8* %270, align 1
+  %274 = and i8 %273, 15
+  %275 = or i8 %274, %272
+  store i8 %275, i8* %270, align 1
+  %276 = lshr i32 %sdiv, 4
+  %277 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %278 = trunc i32 %276 to i8
+  %279 = and i8 %278, 3
+  %280 = load i8, i8* %277, align 1
+  %281 = and i8 %280, -4
+  %282 = or i8 %281, %279
+  store i8 %282, i8* %277, align 1
+  %283 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %284 = load i8, i8* %283, align 1
+  %285 = zext i8 %284 to i32
+  %286 = lshr i32 %285, 1
+  %287 = shl i32 %286, 29
+  %288 = ashr i32 %287, 29
+  %289 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %290 = load i8, i8* %289, align 1
+  %291 = zext i8 %290 to i32
+  %292 = lshr i32 %291, 4
+  %293 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %294 = load i8, i8* %293, align 1
+  %295 = zext i8 %294 to i32
+  %296 = shl i32 %295, 4
+  %297 = or i32 %296, %292
+  %298 = shl i32 %297, 26
+  %299 = ashr i32 %298, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.30, i32 0, i32 0), i32 %288, i32 %299)
+  %300 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %301 = load i8, i8* %300, align 1
+  %302 = zext i8 %301 to i32
+  %303 = lshr i32 %302, 4
+  %304 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %305 = load i8, i8* %304, align 1
+  %306 = zext i8 %305 to i32
+  %307 = shl i32 %306, 4
+  %308 = or i32 %307, %303
+  %309 = shl i32 %308, 26
+  %310 = ashr i32 %309, 26
+  %smod = srem i32 %310, 2
+  %311 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %312 = shl i32 %smod, 4
+  %313 = trunc i32 %312 to i8
+  %314 = load i8, i8* %311, align 1
+  %315 = and i8 %314, 15
+  %316 = or i8 %315, %313
+  store i8 %316, i8* %311, align 1
+  %317 = lshr i32 %smod, 4
+  %318 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %319 = trunc i32 %317 to i8
+  %320 = and i8 %319, 3
+  %321 = load i8, i8* %318, align 1
+  %322 = and i8 %321, -4
+  %323 = or i8 %322, %320
+  store i8 %323, i8* %318, align 1
+  %324 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %325 = load i8, i8* %324, align 1
+  %326 = zext i8 %325 to i32
+  %327 = lshr i32 %326, 1
+  %328 = shl i32 %327, 29
+  %329 = ashr i32 %328, 29
+  %330 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %331 = load i8, i8* %330, align 1
+  %332 = zext i8 %331 to i32
+  %333 = lshr i32 %332, 4
+  %334 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %335 = load i8, i8* %334, align 1
+  %336 = zext i8 %335 to i32
+  %337 = shl i32 %336, 4
+  %338 = or i32 %337, %333
+  %339 = shl i32 %338, 26
+  %340 = ashr i32 %339, 26
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.31, i32 0, i32 0), i32 %329, i32 %340)
+  %341 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %342 = load i8, i8* %341, align 1
+  %343 = lshr i8 %342, 5
+  %344 = trunc i8 %343 to i1
+  %boolsi = zext i1 %344 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.32, i32 0, i32 0), i32 %boolsi)
+  %345 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %346 = load i8, i8* %345, align 1
+  %347 = and i8 %346, -33
+  %348 = or i8 %347, 32
+  store i8 %348, i8* %345, align 1
+  %349 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %350 = load i8, i8* %349, align 1
+  %351 = lshr i8 %350, 5
+  %352 = trunc i8 %351 to i1
+  %boolsi1 = zext i1 %352 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.33, i32 0, i32 0), i32 %boolsi1)
+  %353 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %354 = load i8, i8* %353, align 1
+  %355 = and i8 %354, -33
+  store i8 %355, i8* %353, align 1
+  %356 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %357 = load i8, i8* %356, align 1
+  %358 = lshr i8 %357, 5
+  %359 = trunc i8 %358 to i1
+  %boolsi2 = zext i1 %359 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.34, i32 0, i32 0), i32 %boolsi2)
+  ret void
+}

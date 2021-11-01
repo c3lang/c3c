@@ -1,0 +1,71 @@
+// #target: x64-darwin
+
+module foo;
+
+bitstruct BitField : char[3]
+{
+  int a : 0..2;
+  int b : 3..8;
+  int c : 9..18;
+  bool d : 19;
+  bool e : 20;
+}
+
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+    BitField xx = { 2, 3, 15, true, false };
+    BitField xy = { 2, 3, 15, false, true };
+    printf("%x, %x, %x, %d, %d\n", xx.a, xx.b, xx.c, xx.d, xx.e);
+}
+
+
+/* #expect: foo.ll
+
+define void @main() #0 {
+entry:
+  %xx = alloca [3 x i8], align 1
+  %xy = alloca [3 x i8], align 1
+  store [3 x i8] c"\1A\1E\08", [3 x i8]* %xx, align 1
+  store [3 x i8] c"\1A\1E\10", [3 x i8]* %xy, align 1
+  %0 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %1 = load i8, i8* %0, align 1
+  %2 = zext i8 %1 to i32
+  %3 = shl i32 %2, 29
+  %4 = ashr i32 %3, 29
+  %5 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %6 = load i8, i8* %5, align 1
+  %7 = zext i8 %6 to i32
+  %8 = lshr i32 %7, 3
+  %9 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %10 = load i8, i8* %9, align 1
+  %11 = zext i8 %10 to i32
+  %12 = shl i32 %11, 5
+  %13 = or i32 %12, %8
+  %14 = shl i32 %13, 26
+  %15 = ashr i32 %14, 26
+  %16 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %17 = load i8, i8* %16, align 1
+  %18 = zext i8 %17 to i32
+  %19 = lshr i32 %18, 1
+  %20 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %21 = load i8, i8* %20, align 1
+  %22 = zext i8 %21 to i32
+  %23 = shl i32 %22, 7
+  %24 = or i32 %23, %19
+  %25 = shl i32 %24, 22
+  %26 = ashr i32 %25, 22
+  %27 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %28 = load i8, i8* %27, align 1
+  %29 = lshr i8 %28, 3
+  %30 = trunc i8 %29 to i1
+  %boolsi = zext i1 %30 to i32
+  %31 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %32 = load i8, i8* %31, align 1
+  %33 = lshr i8 %32, 4
+  %34 = trunc i8 %33 to i1
+  %boolsi1 = zext i1 %34 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.str, i32 0, i32 0), i32 %4, i32 %15, i32 %26, i32 %boolsi, i32 %boolsi1)
+  ret void
+}

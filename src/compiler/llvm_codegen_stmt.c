@@ -975,6 +975,8 @@ static bool expr_is_pure(Expr *expr)
 		case EXPR_IDENTIFIER:
 		case EXPR_NOP:
 			return true;
+		case EXPR_BITASSIGN:
+			return false;
 		case EXPR_BINARY:
 			if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return false;
 			return expr_is_pure(expr->binary_expr.right) && expr_is_pure(expr->binary_expr.left);
@@ -989,6 +991,7 @@ static bool expr_is_pure(Expr *expr)
 					return expr_is_pure(expr->unary_expr.expr);
 			}
 			break;
+		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			return expr_is_pure(expr->access_expr.parent);
 		case EXPR_POISONED:

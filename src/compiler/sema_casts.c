@@ -779,6 +779,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 	switch (expr->expr_kind)
 	{
 		case EXPR_BINARY:
+		case EXPR_BITASSIGN:
 			switch (expr->binary_expr.operator)
 			{
 				case BINARYOP_ERROR:
@@ -824,6 +825,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_CALL:
 		case EXPR_POISONED:
+		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 		case EXPR_CATCH_UNWRAP:
 		case EXPR_COMPOUND_LITERAL:
@@ -929,6 +931,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 {
 	switch (expr->expr_kind)
 	{
+		case EXPR_BITASSIGN:
 		case EXPR_BINARY:
 			switch (expr->binary_expr.operator)
 			{
@@ -975,6 +978,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_CALL:
 		case EXPR_POISONED:
+		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 		case EXPR_CATCH_UNWRAP:
 		case EXPR_COMPOUND_LITERAL:

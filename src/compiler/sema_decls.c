@@ -94,6 +94,7 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 			return true;
 		case DECL_STRUCT:
 		case DECL_UNION:
+		case DECL_BITSTRUCT:
 			return sema_analyse_decl(context, decl);
 		default:
 			UNREACHABLE
@@ -395,9 +396,99 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 	return decl_ok(decl);
 }
 
+static inline bool sema_analyse_bitstruct_member(Context *context, Decl *decl, unsigned index, bool allow_overlap)
+{
+	Decl **members = decl->strukt.members;
+	Decl *member = members[index];
+	if (!sema_resolve_type_info(context, member->var.type_info)) return false;
+	Type *member_type = type_flatten_for_bitstruct(member->var.type_info->type);
+	member->type = member->var.type_info->type;
+	if (!type_is_integer(member_type) && member_type != type_bool)
+	{
+		SEMA_ERROR(member->var.type_info, "%s is not supported in a bitstruct, only enums, integer and boolean values may be used.",
+				   type_quoted_error_string(member->var.type_info->type));
+		return false;
+	}
+	int bits = type_size(decl->bitstruct.base_type->type) * 8;
+	Int max_bits = (Int) { .type = TYPE_I64, .i = { .low =  bits } };
+	Expr *start = member->var.start;
+	Expr *end = member->var.end;
+	if (!sema_analyse_expr(context, start)) return false;
+	int start_bit;
+	int end_bit;
+	if (start->expr_kind != EXPR_CONST || !type_is_integer(start->type) || int_is_neg(start->const_expr.ixx))
+	{
+		SEMA_ERROR(start, "This must be a constant non-negative integer value.");
+		return false;
+	}
+	if (int_comp(start->const_expr.ixx, max_bits, BINARYOP_GE))
+	{
+		SEMA_ERROR(start, "Expected at the most a bit index of %d\n", bits - 1);
+		return false;
+	}
+	end_bit = start_bit = start->const_expr.ixx.i.low;
+	if (end)
+	{
+		if (!sema_analyse_expr(context, start)) return false;
+		if (end->expr_kind != EXPR_CONST || !type_is_integer(end->type) || int_is_neg(end->const_expr.ixx))
+		{
+			SEMA_ERROR(end, "This must be a constant non-negative integer value.");
+			return false;
+		}
+		if (int_comp(end->const_expr.ixx, max_bits, BINARYOP_GE))
+		{
+			SEMA_ERROR(end, "Expected at the most a bit index of %d.", bits - 1);
+			return false;
+		}
+		end_bit = end->const_expr.ixx.i.low;
+	}
+	else
+	{
+		if (member_type->type_kind != TYPE_BOOL)
+		{
+			SEMA_ERROR(member, "Only booleans may use non-range indices, try using %d..%d instead.", start_bit, start_bit);
+			return false;
+		}
+	}
+	if (start_bit > end_bit)
+	{
+		SEMA_ERROR(start, "The start bit must be smaller than the end bit index.");
+		return false;
+	}
+	int bitsize_type = member_type == type_bool ? 1 : type_size(member_type) * 8;
+	int bits_available = end_bit + 1 - start_bit;
+	if (bitsize_type < bits_available)
+	{
+		SEMA_ERROR(member, "The bit width of %s (%d) is less than the assigned bits (%d), try reducing the range.",
+		           type_quoted_error_string(member->type), bitsize_type, bits_available);
+		return false;
+	}
+	member->var.start_bit = start_bit;
+	member->var.end_bit = end_bit;
+	for (unsigned i = 0; i < index; i++)
+	{
+		Decl *other_member = members[i];
+		if (member->name == other_member->name)
+		{
+			SEMA_ERROR(member, "Duplicate members with the name '%s'.", member->name);
+			SEMA_PREV(other_member, "The other member was declared here.");
+			return false;
+		}
+		if (allow_overlap) continue;
+		// Check for overlap.
+		if ((start_bit >= other_member->var.start_bit || end_bit >= other_member->var.start_bit)
+			&& start_bit <= other_member->var.end_bit)
+		{
+			SEMA_ERROR(member, "Overlapping members, please use '@overlap' if this is intended.");
+			SEMA_PREV(other_member, "The other member was declared here.");
+			return false;
+		}
+	}
+	return true;
+}
+
 static bool sema_analyse_bitstruct(Context *context, Decl *decl)
 {
-	int overlap = -1;
 	VECEACH(decl->attributes, i)
 	{
 		Attr *attr = decl->attributes[i];
@@ -406,17 +497,30 @@ static bool sema_analyse_bitstruct(Context *context, Decl *decl)
 		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
 
 		bool had = false;
-#define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
+#define SET_ATTR(_X) had = decl->bitstruct._X; decl->bitstruct._X = true; break
 		switch (attribute)
 		{
 			case ATTRIBUTE_OVERLAP:
-				had = (overlap != -1);
-				overlap = 1;
+				SET_ATTR(overlap);
 				break;
 			case ATTRIBUTE_OPAQUE:
 				had = decl->is_opaque;
 				decl->is_opaque = true;
 				break;
+			case ATTRIBUTE_BIGENDIAN:
+				if (decl->bitstruct.little_endian)
+				{
+					SEMA_TOKID_ERROR(attr->name, "Attribute cannot be combined with @littleendian");
+					return decl_poison(decl);
+				}
+				SET_ATTR(big_endian);
+			case ATTRIBUTE_LITTLEENDIAN:
+				if (decl->bitstruct.big_endian)
+				{
+					SEMA_TOKID_ERROR(attr->name, "Attribute cannot be combined with @bigendian");
+					return decl_poison(decl);
+				}
+				SET_ATTR(little_endian);
 			default:
 				UNREACHABLE
 		}
@@ -443,24 +547,14 @@ static bool sema_analyse_bitstruct(Context *context, Decl *decl)
 	SCOPE_START
 		VECEACH(members, i)
 		{
-			Decl *member = members[i];
-			if (!sema_resolve_type_info(context, member->var.type_info))
+			if (!sema_analyse_bitstruct_member(context, decl, i, decl->bitstruct.overlap))
 			{
 				success = false;
-				continue;
-			}
-			Type *member_type = type_flatten_for_bitstruct(member->var.type_info->type);
-			if (!type_is_integer(member_type) && member_type != type_bool)
-			{
-				SEMA_ERROR(member->var.type_info, "%s is not supported in a bitstruct, only enums, integer and boolean values may be used.",
-				           type_quoted_error_string(member->var.type_info->type));
-				success = false;
-				continue;
+				break;
 			}
 		}
 	SCOPE_END;
 	if (!success) return decl_poison(decl);
-	TODO
 	return decl_ok(decl);
 }
 
@@ -867,7 +961,9 @@ AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDoma
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
-			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION | ATTR_BITSTRUCT,
+			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
+			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_USED] = ~ATTR_CALL,
 			[ATTRIBUTE_UNUSED] = ~ATTR_CALL,
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,

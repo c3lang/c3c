@@ -3,6 +3,7 @@
 
 static Decl *parse_const_declaration(Context *context, Visibility visibility);
 static inline Decl *parse_func_definition(Context *context, Visibility visibility, bool is_interface);
+static inline bool parse_bitstruct_body(Context *context, Decl *decl);
 
 static bool context_next_is_path_prefix_start(Context *context)
 {
@@ -1267,7 +1268,7 @@ bool parse_struct_body(Context *context, Decl *parent)
 	while (!TOKEN_IS(TOKEN_RBRACE))
 	{
 		TokenType token_type = context->tok.type;
-		if (token_type == TOKEN_STRUCT || token_type == TOKEN_UNION)
+		if (token_type == TOKEN_STRUCT || token_type == TOKEN_UNION || token_type == TOKEN_BITSTRUCT)
 		{
 			DeclKind decl_kind = decl_from_token(token_type);
 			Decl *member;
@@ -1284,11 +1285,16 @@ bool parse_struct_body(Context *context, Decl *parent)
 				member->span.loc = context->prev_tok;
 				advance_and_verify(context, TOKEN_IDENT);
 			}
-			if (!parse_attributes(context, &member->attributes)) return false;
-			if (!parse_struct_body(context, member))
+			if (decl_kind == DECL_BITSTRUCT)
 			{
-				decl_poison(parent);
-				return false;
+				TRY_CONSUME_OR(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", poisoned_decl);
+				ASSIGN_TYPE_ELSE(member->bitstruct.base_type, parse_type(context), poisoned_decl);
+				if (!parse_bitstruct_body(context, member)) return decl_poison(parent);
+			}
+			else
+			{
+				if (!parse_attributes(context, &member->attributes)) return false;
+				if (!parse_struct_body(context, member)) return decl_poison(parent);
 			}
 			vec_add(parent->strukt.members, member);
 			index++;
@@ -1404,8 +1410,14 @@ static inline bool parse_bitstruct_body(Context *context, Decl *decl)
 		Decl *member_decl = decl_new_var(context->prev_tok, type, VARDECL_MEMBER, VISIBLE_LOCAL);
 		CONSUME_OR(TOKEN_COLON, false);
 		ASSIGN_EXPR_ELSE(member_decl->var.start, parse_constant_expr(context), false);
-		CONSUME_OR(TOKEN_DOTDOT, false);
-		ASSIGN_EXPR_ELSE(member_decl->var.end, parse_constant_expr(context), false);
+		if (try_consume(context, TOKEN_DOTDOT))
+		{
+			ASSIGN_EXPR_ELSE(member_decl->var.end, parse_constant_expr(context), false);
+		}
+		else
+		{
+			member_decl->var.end = NULL;
+		}
 		CONSUME_OR(TOKEN_EOS, false);
 		vec_add(decl->bitstruct.members, member_decl);
 	}
@@ -1424,7 +1436,7 @@ static inline Decl *parse_bitstruct_declaration(Context *context, Visibility vis
 	if (!consume_type_name(context, "bitstruct")) return poisoned_decl;
 	Decl *decl = decl_new_with_type(name, DECL_BITSTRUCT, visibility);
 
-	CONSUME_OR(TOKEN_COLON, poisoned_decl);
+	TRY_CONSUME_OR(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", poisoned_decl);
 
 	ASSIGN_TYPE_ELSE(decl->bitstruct.base_type, parse_type(context), poisoned_decl);
 

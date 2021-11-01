@@ -1,0 +1,92 @@
+// #target: x64-darwin
+
+module foo;
+
+bitstruct BitFieldCross : char[3]
+{
+    uint d : 0..4;
+    int a : 5..22;
+    uint c : 23..23;
+}
+
+bitstruct BitFieldCrossU : char[3]
+{
+    uint d : 0..4;
+    uint a : 5..22;
+    uint c : 23..23;
+}
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+    BitFieldCross xx = { 0, -177, 0 };
+    printf("%d\n", xx.a);
+    xx = { 0xff, -177, 0xff };
+    printf("%d\n", xx.a);
+    BitFieldCrossU xxu = { 0xff, 0x12345678, 0xff };
+    printf("%x\n", xxu.a);
+
+}
+
+/* #expect: foo.ll
+
+define void @main() #0 {
+entry:
+  %xx = alloca [3 x i8], align 1
+  %xxu = alloca [3 x i8], align 1
+  store [3 x i8] c"\E0\E9\7F", [3 x i8]* %xx, align 1
+  %0 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %1 = load i8, i8* %0, align 1
+  %2 = zext i8 %1 to i32
+  %3 = lshr i32 %2, 5
+  %4 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %5 = load i8, i8* %4, align 1
+  %6 = zext i8 %5 to i32
+  %7 = shl i32 %6, 3
+  %8 = or i32 %7, %3
+  %9 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %10 = load i8, i8* %9, align 1
+  %11 = zext i8 %10 to i32
+  %12 = shl i32 %11, 11
+  %13 = or i32 %12, %8
+  %14 = shl i32 %13, 14
+  %15 = ashr i32 %14, 14
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %15)
+  store [3 x i8] c"\FF\E9\FF", [3 x i8]* %xx, align 1
+  %16 = load [3 x i8], [3 x i8]* %xx, align 1
+  %17 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
+  %18 = load i8, i8* %17, align 1
+  %19 = zext i8 %18 to i32
+  %20 = lshr i32 %19, 5
+  %21 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 1
+  %22 = load i8, i8* %21, align 1
+  %23 = zext i8 %22 to i32
+  %24 = shl i32 %23, 3
+  %25 = or i32 %24, %20
+  %26 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 2
+  %27 = load i8, i8* %26, align 1
+  %28 = zext i8 %27 to i32
+  %29 = shl i32 %28, 11
+  %30 = or i32 %29, %25
+  %31 = shl i32 %30, 14
+  %32 = ashr i32 %31, 14
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 %32)
+  store [3 x i8] c"\1F\CF\8A", [3 x i8]* %xxu, align 1
+  %33 = getelementptr inbounds [3 x i8], [3 x i8]* %xxu, i64 0, i64 0
+  %34 = load i8, i8* %33, align 1
+  %35 = zext i8 %34 to i32
+  %36 = lshr i32 %35, 5
+  %37 = getelementptr inbounds [3 x i8], [3 x i8]* %xxu, i64 0, i64 1
+  %38 = load i8, i8* %37, align 1
+  %39 = zext i8 %38 to i32
+  %40 = shl i32 %39, 3
+  %41 = or i32 %40, %36
+  %42 = getelementptr inbounds [3 x i8], [3 x i8]* %xxu, i64 0, i64 2
+  %43 = load i8, i8* %42, align 1
+  %44 = zext i8 %43 to i32
+  %45 = shl i32 %44, 11
+  %46 = or i32 %45, %41
+  %47 = and i32 262143, %46
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0), i32 %47)
+  ret void
+}

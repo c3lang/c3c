@@ -240,9 +240,12 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 	RETRY:
 	switch (expr->expr_kind)
 	{
+		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			expr = expr->access_expr.parent;
 			goto RETRY;
+		case EXPR_BITASSIGN:
+			return false;
 		case EXPR_BINARY:
 			return expr_binary_is_constant_eval(expr, eval_kind);
 		case EXPR_CAST:
@@ -445,6 +448,7 @@ bool expr_is_ltype(Expr *expr)
 		}
 		case EXPR_UNARY:
 			return expr->unary_expr.operator == UNARYOP_DEREF;
+		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			return expr_is_ltype(expr->access_expr.parent);
 		case EXPR_GROUP:
@@ -712,6 +716,7 @@ static inline bool find_possible_inferred_identifier(Type *to, Expr *expr)
 			return sema_expr_analyse_enum_constant(expr, expr->identifier_expr.identifier, parent_decl);
 		case DECL_UNION:
 		case DECL_STRUCT:
+		case DECL_BITSTRUCT:
 			return false;
 		default:
 			UNREACHABLE
@@ -2303,7 +2308,7 @@ static void add_members_to_context(Context *context, Decl *decl)
 		if (!type_is_user_defined(type)) break;
 		decl = type->decl;
 	}
-	if (decl_is_struct_type(decl))
+	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
 	{
 		Decl **members = decl->strukt.members;
 		VECEACH(members, i)
@@ -2529,6 +2534,7 @@ static inline bool sema_expr_analyse_type_access(Context *context, Expr *expr, T
 		case DECL_UNION:
 		case DECL_STRUCT:
 		case DECL_DISTINCT:
+		case DECL_BITSTRUCT:
 			break;
 		default:
 			UNREACHABLE
@@ -2559,7 +2565,7 @@ static inline bool sema_expr_analyse_type_access(Context *context, Expr *expr, T
 		return false;
 	}
 
-	if (member->decl_kind == DECL_UNION || member->decl_kind == DECL_STRUCT)
+	if (member->decl_kind == DECL_UNION || member->decl_kind == DECL_STRUCT || member->decl_kind == DECL_BITSTRUCT)
 	{
 		expr->expr_kind = EXPR_TYPEINFO;
 		expr->type_expr->type = member->type;
@@ -2606,7 +2612,6 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	{
 		return sema_expr_analyse_type_access(context, expr, parent->type_expr, was_group, is_macro, identifier_token);
 	}
-
 
 	// 6. Copy failability
 	bool failable = IS_FAILABLE(parent);
@@ -2702,6 +2707,12 @@ CHECK_DEEPER:
 	{
 		SEMA_ERROR(expr, "'@' should only be placed in front of macro names.");
 		return false;
+	}
+
+	// Transform bitstruct access to expr_bitaccess.
+	if (decl->decl_kind == DECL_BITSTRUCT)
+	{
+		expr->expr_kind = EXPR_BITACCESS;
 	}
 
 	// 13. Copy properties.
@@ -3463,6 +3474,7 @@ static inline bool sema_expr_analyse_initializer_list(Context *context, Type *to
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ARRAY:
+		case TYPE_BITSTRUCT:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_VECTOR:
 			return sema_expr_analyse_initializer(context, to, assigned, expr);
@@ -3698,6 +3710,10 @@ static bool sema_expr_analyse_assign(Context *context, Expr *expr, Expr *left, E
 	{
 		return sema_rewrap_var(context, left->identifier_expr.decl);
 	}
+	if (left->expr_kind == EXPR_BITACCESS)
+	{
+		expr->expr_kind = EXPR_BITASSIGN;
+	}
 	return true;
 }
 
@@ -3824,6 +3840,10 @@ static bool sema_expr_analyse_common_assign(Context *context, Expr *expr, Expr *
 		}
 	}
 
+	if (left->expr_kind == EXPR_BITACCESS)
+	{
+		expr->expr_kind = EXPR_BITASSIGN;
+	}
 	// 7. Assign type
 	expr->type = left->type;
 	return true;
@@ -3892,6 +3912,10 @@ static bool sema_expr_analyse_add_sub_assign(Context *context, Expr *expr, Expr 
 		return false;
 	}
 	REMINDER("Check if can remove");
+	if (left->expr_kind == EXPR_BITACCESS)
+	{
+		expr->expr_kind = EXPR_BITASSIGN;
+	}
 	expr->type = type_get_opt_fail(expr->type, failable);
 	return true;
 }
@@ -4423,6 +4447,10 @@ static bool sema_expr_analyse_shift_assign(Context *context, Expr *expr, Expr *l
 
 	// 5. Set the type using the lhs side.
 
+	if (left->expr_kind == EXPR_BITACCESS)
+	{
+		expr->expr_kind = EXPR_BITASSIGN;
+	}
 	expr->type = type_get_opt_fail(left->type, failable);
 	return true;
 }
@@ -4773,6 +4801,9 @@ static bool sema_take_addr_of(Expr *inner)
 		case EXPR_TYPEINFO:
 			SEMA_ERROR(inner, "It is not possible to take the address of a type.");
 			return false;
+		case EXPR_BITACCESS:
+			SEMA_ERROR(inner, "You cannot take the address of a bitstruct member.");
+			return false;
 		default:
 			break;
 	}
@@ -5049,6 +5080,10 @@ static bool unclear_op_precedence(Expr *left_side, Expr * main_expr, Expr *right
 	return false;
 }
 
+static inline bool sema_expr_analyse_bitassign(Context *context, Expr *expr)
+{
+	TODO
+}
 static inline bool sema_expr_analyse_binary(Context *context, Expr *expr)
 {
 	assert(expr->resolve_status == RESOLVE_RUNNING);
@@ -6235,6 +6270,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 			return sema_expr_analyse_rethrow(context, expr);
 		case EXPR_CONST:
 			return true;
+		case EXPR_BITASSIGN:
+			return sema_expr_analyse_bitassign(context, expr);
 		case EXPR_BINARY:
 			return sema_expr_analyse_binary(context, expr);
 		case EXPR_TERNARY:
@@ -6255,6 +6292,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 			return sema_expr_analyse_subscript(context, expr);
 		case EXPR_GROUP:
 			return sema_expr_analyse_group(context, expr);
+		case EXPR_BITACCESS:
+			UNREACHABLE
 		case EXPR_ACCESS:
 			return sema_expr_analyse_access(context, expr);
 		case EXPR_INITIALIZER_LIST:
