@@ -19,11 +19,11 @@ extern fn void printf(char*, ...);
 
 fn void main()
 {
-    BitFieldCross xx = { 0, -177, 0 };
+    BitFieldCross xx = { 0, -17, 0 };
     printf("%d\n", xx.a);
-    xx = { 0xff, -177, 0xff };
+    xx = { 0x1f, -17, 1 };
     printf("%d\n", xx.a);
-    BitFieldCrossU xxu = { 0xff, 0x12345678, 0xff };
+    BitFieldCrossU xxu = { 0x1f, 0x15678, 1 };
     printf("%x\n", xxu.a);
 
 }
@@ -34,7 +34,7 @@ define void @main() #0 {
 entry:
   %xx = alloca [3 x i8], align 1
   %xxu = alloca [3 x i8], align 1
-  store [3 x i8] c"\E0\E9\7F", [3 x i8]* %xx, align 1
+  store [3 x i8] c"\E0\FD\7F", [3 x i8]* %xx, align 1
   %0 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %1 = load i8, i8* %0, align 1
   %2 = zext i8 %1 to i32
@@ -52,7 +52,7 @@ entry:
   %14 = shl i32 %13, 14
   %15 = ashr i32 %14, 14
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %15)
-  store [3 x i8] c"\FF\E9\FF", [3 x i8]* %xx, align 1
+  store [3 x i8] c"\FF\FD\FF", [3 x i8]* %xx, align 1
   %16 = load [3 x i8], [3 x i8]* %xx, align 1
   %17 = getelementptr inbounds [3 x i8], [3 x i8]* %xx, i64 0, i64 0
   %18 = load i8, i8* %17, align 1
@@ -71,7 +71,7 @@ entry:
   %31 = shl i32 %30, 14
   %32 = ashr i32 %31, 14
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 %32)
-  store [3 x i8] c"\1F\CF\8A", [3 x i8]* %xxu, align 1
+  store [3 x i8] c"\1F\CF\AA", [3 x i8]* %xxu, align 1
   %33 = getelementptr inbounds [3 x i8], [3 x i8]* %xxu, i64 0, i64 0
   %34 = load i8, i8* %33, align 1
   %35 = zext i8 %34 to i32

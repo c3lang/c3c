@@ -166,10 +166,11 @@ LLVMValueRef llvm_const_high_bitmask(LLVMTypeRef type, int type_bits, int high_b
 	return LLVMConstNot(LLVMConstLShr(LLVMConstAllOnes(type), LLVMConstInt(type, high_bits, 0)));
 }
 
-LLVMValueRef llvm_mask_low_bits(GenContext *c, LLVMValueRef value, int type_bits, int low_bits)
+LLVMValueRef llvm_mask_low_bits(GenContext *c, LLVMValueRef value, int low_bits)
 {
 	LLVMTypeRef type = LLVMTypeOf(value);
 	if (low_bits < 1) return LLVMConstNull(type);
+	int type_bits = llvm_bitsize(c, type);
 	if (type_bits <= low_bits) return value;
 	LLVMValueRef mask = LLVMConstLShr(LLVMConstAllOnes(type), LLVMConstInt(type, type_bits - low_bits, 0));
 	if (LLVMIsConstant(value))
@@ -703,7 +704,7 @@ static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_v
 	}
 	else
 	{
-		res = llvm_mask_low_bits(c, res, bitsize, end - start + 1);
+		res = llvm_mask_low_bits(c, res, end - start + 1);
 	}
 	llvm_value_set(be_value, res, member_type);
 }
@@ -759,19 +760,8 @@ static inline void llvm_extract_bitvalue(GenContext *c, BEValue *be_value, Expr 
 			value = LLVMBuildLShr(c->builder, value, LLVMConstInt(container_type, start, 0), "");
 		}
 		int bits_needed = end - start + 1;
-		if (bits_needed < container_bit_size && bits_needed > 1)
-		{
-			LLVMValueRef mask = LLVMConstLShr(LLVMConstAllOnes(container_type), LLVMConstInt(container_type, container_bit_size - bits_needed - 1, 0));
-			value = LLVMBuildAnd(c->builder, value, mask, "");
-		}
-		if (member_type_size < container_bit_size)
-		{
-			value = LLVMBuildTrunc(c->builder, value, llvm_get_type(c, member_type), "");
-		}
-		else if (member_type_size > container_bit_size)
-		{
-			value = LLVMBuildZExt(c->builder, value, llvm_get_type(c, member_type), "");
-		}
+		value = llvm_mask_low_bits(c, value, bits_needed);
+		value = llvm_zext_trunc(c, value, llvm_get_type(c, member_type));
 	}
 	llvm_value_set(be_value, value, member_type);
 }
@@ -932,7 +922,6 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 
 	// Now we might need to truncate or widen the value to insert:
 	LLVMValueRef value = llvm_value_rvalue_store(c, be_value);
-	int value_bitsize = type_size(be_value->type) * 8;
 	value = llvm_zext_trunc(c, value, struct_type);
 	// Shift to the correct location.
 	value = llvm_emit_shl(c, value, start_bit);
@@ -1007,6 +996,18 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 
 	switch (cast_kind)
 	{
+		case CAST_BSARRY:
+			llvm_value_addr(c, value);
+			value->value = llvm_emit_bitcast(c, value->value, type_get_ptr(to_type));
+			value->type = to_type;
+			llvm_value_rvalue(c, value);
+			return;
+		case CAST_BSINT:
+			llvm_value_addr(c, value);
+			value->value = llvm_emit_bitcast(c, value->value, type_get_ptr(to_type));
+			value->type = to_type;
+			llvm_value_rvalue(c, value);
+			return;
 		case CAST_EUINT:
 		case CAST_ERINT:
 			to_type = type_lowering(to_type);
@@ -1624,7 +1625,7 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 		int start_byte = start_bit / 8;
 		int end_byte = end_bit / 8;
 		ByteSize member_type_bitsize = type_size(member_type) * 8;
-		value = llvm_mask_low_bits(c, value, member_type_bitsize, bit_size);
+		value = llvm_mask_low_bits(c, value, bit_size);
 		if (big_endian && bit_size > 8)
 		{
 			value = llvm_bswap_non_integral(c, value, bit_size);
@@ -1643,7 +1644,7 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 			}
 			if (j == end_byte)
 			{
-				to_or = llvm_mask_low_bits(c, to_or, member_type_bitsize, end_bit % 8 + 1);
+				to_or = llvm_mask_low_bits(c, to_or, end_bit % 8 + 1);
 			}
 			if (member_type_bitsize > 8) to_or = LLVMConstTrunc(to_or, c->byte_type);
 			LLVMValueRef current_value = llvm_emit_extract_value(c, data, j);

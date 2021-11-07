@@ -82,6 +82,8 @@ typedef enum
 
 typedef enum
 {
+	CAST_BSARRY,
+	CAST_BSINT,
 	CAST_ERROR,
 	CAST_ERBOOL,
 	CAST_EUBOOL,

@@ -11,6 +11,8 @@
 #define FLOAT64_LIMIT 179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0000000000000000
 #define FLOAT16_LIMIT 65504
 
+static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type);
+
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 {
 	assert(expr->resolve_status == RESOLVE_DONE);
@@ -1260,7 +1262,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type, boo
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_BITSTRUCT:
-			UNREACHABLE
+			return bitstruct_cast(expr, from_type, to, to_type);
 		case TYPE_FAILABLE:
 			TODO
 		case TYPE_BOOL:
@@ -1336,6 +1338,30 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type, boo
 	}
 	UNREACHABLE
 }
+
+static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type)
+{
+	Type *base_type = type_flatten_distinct(from_type->decl->bitstruct.base_type->type);
+	assert(type_size(to) == type_size(base_type));
+	if (type_is_integer(base_type) && type_is_integer(to))
+	{
+		expr->type = to_type;
+		return true;
+	}
+	if (base_type->type_kind == TYPE_ARRAY && to->type_kind == TYPE_ARRAY)
+	{
+		expr->type = to_type;
+		return true;
+	}
+	if (type_is_integer(base_type))
+	{
+		assert(to->type_kind == TYPE_ARRAY);
+		return insert_cast(expr, CAST_BSARRY, to_type);
+	}
+	assert(base_type->type_kind == TYPE_ARRAY);
+	return insert_cast(expr, CAST_BSINT, to_type);
+}
+
 bool cast(Expr *expr, Type *to_type)
 {
 	assert(!type_is_failable(to_type));

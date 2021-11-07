@@ -57,13 +57,13 @@ bitstruct BitFieldCross : char[5]
     uint a : 5..22;
 }
 
-BitField c = { 2, 4, 5 };
+BitField c = { 2, -1, 1 };
 
 extern fn void printf(char*, ...);
 
 fn void main()
 {
-    BitField b = { 5, -3, 1 };
+    BitField b = { 3, -1, 1 };
     BitFieldI c1 = { 5, 0, 0 };
     BitFieldI c2 = { 0, 3, 0 };
     BitFieldI c3 = { 0, 0, 9 };
@@ -73,8 +73,8 @@ fn void main()
     BitFieldI c7 = { 0, 0, 5 };
 
     BitField3 e1 = { 3, 1, 3, 4 };
-    BitField3 e2 = { 4, 1, 3, 4 };
-    BitField3 e3 = { 5, 1, 3, 4 };
+    BitField3 e2 = { 1, 1, 3, 4 };
+    BitField3 e3 = { 2, 1, 3, 4 };
     BitField d = { };
 
     printf("%d\n", e1.a);
@@ -83,11 +83,11 @@ fn void main()
 
     BitField3u z1 = { 3, 1, 3, 4 };
     BitField3u z2 = { 4, 1, 3, 4 };
-    BitField3u z3 = { 9, 1, 3, 4 };
+    BitField3u z3 = { 7, 1, 3, 4 };
     printf("%u\n", z1.a);
     printf("%u\n", z2.a);
     printf("%u\n", z3.a);
-    BitFieldCross xx = { 0x12345678 };
+    BitFieldCross xx = { 0x1238 };
     printf("%x\n", xx.a);
 }
 
@@ -111,7 +111,7 @@ entry:
   %z2 = alloca [3 x i8], align 1
   %z3 = alloca [3 x i8], align 1
   %xx = alloca [5 x i8], align 1
-  store i8 85, i8* %b, align 1
+  store i8 115, i8* %b, align 1
   store i16 5, i16* %c1, align 2
   store i16 96, i16* %c2, align 2
   store i16 18432, i16* %c3, align 2
@@ -120,8 +120,8 @@ entry:
   store i16 5, i16* %c6, align 2
   store i16 10240, i16* %c7, align 2
   store [3 x i8] c"\0B\06 ", [3 x i8]* %e1, align 1
-  store [3 x i8] c"\0C\06 ", [3 x i8]* %e2, align 1
-  store [3 x i8] c"\0D\06 ", [3 x i8]* %e3, align 1
+  store [3 x i8] c"\09\06 ", [3 x i8]* %e2, align 1
+  store [3 x i8] c"\0A\06 ", [3 x i8]* %e3, align 1
   store i8 0, i8* %d, align 1
   %0 = getelementptr inbounds [3 x i8], [3 x i8]* %e1, i64 0, i64 0
   %1 = load i8, i8* %0, align 1
@@ -143,7 +143,7 @@ entry:
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0), i32 %14)
   store [3 x i8] c"\0B\06 ", [3 x i8]* %z1, align 1
   store [3 x i8] c"\0C\06 ", [3 x i8]* %z2, align 1
-  store [3 x i8] c"\09\06 ", [3 x i8]* %z3, align 1
+  store [3 x i8] c"\0F\06 ", [3 x i8]* %z3, align 1
   %15 = getelementptr inbounds [3 x i8], [3 x i8]* %z1, i64 0, i64 0
   %16 = load i8, i8* %15, align 1
   %17 = zext i8 %16 to i32
@@ -159,7 +159,7 @@ entry:
   %25 = zext i8 %24 to i32
   %26 = and i32 7, %25
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.5, i32 0, i32 0), i32 %26)
-  store [5 x i8] c"\00\CF\0A\00\00", [5 x i8]* %xx, align 1
+  store [5 x i8] c"\00G\02\00\00", [5 x i8]* %xx, align 1
   %27 = getelementptr inbounds [5 x i8], [5 x i8]* %xx, i64 0, i64 0
   %28 = load i8, i8* %27, align 1
   %29 = zext i8 %28 to i32
