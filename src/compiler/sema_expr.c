@@ -152,6 +152,8 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 	{
 		case CAST_VFTOERR:
 		case CAST_ERROR:
+		case CAST_BSINT:
+		case CAST_BSARRY:
 			return false;
 		case CAST_ERBOOL:
 		case CAST_EUBOOL:
@@ -235,6 +237,38 @@ static inline bool expr_list_is_constant_eval(Expr **exprs, ConstantEvalKind eva
 	return true;
 }
 
+static bool sema_bit_assignment_check(Expr *right, Decl *member)
+{
+	if (right->expr_kind != EXPR_CONST || !type_is_integer(right->type)) return true;
+
+	int bits = member->var.end_bit - member->var.start_bit + 1;
+
+	if (bits >= type_size(right->type) * 8 || int_is_zero(right->const_expr.ixx)) return true;
+
+	// Check that we're not assigning consts that will be cut.
+
+	TypeKind kind = right->const_expr.ixx.type;
+	Int128 i = right->const_expr.ixx.i;
+	int bits_used;
+	if (type_kind_is_signed(kind))
+	{
+		if (i128_is_neg(i))
+		{
+			i = i128_neg(i);
+			i = i128_sub64(i, 1);
+		}
+		bits_used = 1 + 128 - i128_clz(&i);
+	}
+	else
+	{
+		bits_used = 128 - i128_clz(&i);
+	}
+	if (bits_used <= bits) return true;
+
+	SEMA_ERROR(right,
+			   "This constant would be truncated if stored in the bitstruct, do you need a wider bit range?");
+	return false;
+}
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 {
 	RETRY:
@@ -1414,16 +1448,14 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 	return true;
 }
 
-static inline bool sema_expr_analyse_var_call(Context *context, Expr *expr, Decl *var_decl, bool failable)
+static inline bool sema_expr_analyse_var_call(Context *context, Expr *expr, Type *func_ptr_type, bool failable)
 {
-	Type *func_ptr_type = var_decl->type->canonical;
 	if (func_ptr_type->type_kind != TYPE_POINTER || func_ptr_type->pointer->type_kind != TYPE_FUNC)
 	{
-		SEMA_ERROR(expr, "Only macros, functions and function pointers maybe invoked, this is of type '%s'.", type_to_error_string(var_decl->type));
+		SEMA_ERROR(expr, "Only macros, functions and function pointers maybe invoked, this is of type '%s'.", type_to_error_string(func_ptr_type));
 		return false;
 	}
 	expr->call_expr.is_pointer_call = true;
-	failable |= IS_FAILABLE(var_decl);
 	return sema_expr_analyse_func_invocation(context,
 	                                         func_ptr_type->pointer->func.signature,
 	                                         expr,
@@ -1891,6 +1923,10 @@ bool sema_expr_analyse_general_call(Context *context, Expr *expr, Decl *decl, Ex
 		}
 	}
 	expr->call_expr.is_type_method = struct_var != NULL;
+	if (decl == NULL)
+	{
+		return sema_expr_analyse_var_call(context, expr, type_flatten_distinct_failable(expr->call_expr.function->type), failable);
+	}
 	switch (decl->decl_kind)
 	{
 		case DECL_MACRO:
@@ -1908,7 +1944,7 @@ bool sema_expr_analyse_general_call(Context *context, Expr *expr, Decl *decl, Ex
 				return false;
 			}
 			assert(struct_var == NULL);
-			return sema_expr_analyse_var_call(context, expr, decl, failable);
+			return sema_expr_analyse_var_call(context, expr, decl->type->canonical, failable || IS_FAILABLE(decl));
 		case DECL_FUNC:
 			if (is_macro)
 			{
@@ -1978,10 +2014,19 @@ static inline bool sema_expr_analyse_call(Context *context, Expr *expr)
 			}
 			return false;
 		default:
+		{
+			Type *type = type_flatten_distinct(func_expr->type);
+			if (type->type_kind == TYPE_POINTER && type->pointer->type_kind == TYPE_FUNC)
+			{
+				decl = NULL;
+				break;
+			}
 			SEMA_ERROR(expr, "This value cannot be invoked, did you accidentally add ()?");
 			return false;
+
+		}
 	}
-	decl = decl_flatten(decl);
+	decl = decl ? decl_flatten(decl) : NULL;
 	return sema_expr_analyse_general_call(context, expr, decl, struct_var, macro, failable);
 }
 
@@ -2739,7 +2784,7 @@ static Decl *sema_resolve_element_for_name(Decl** decls, DesignatorElement **ele
 		}
 		if (!decl->name)
 		{
-			assert(type_is_structlike(decl->type));
+			assert(type_is_structlike(decl->type) || decl->decl_kind == DECL_BITSTRUCT);
 			// Anonymous struct
 			Decl *found = sema_resolve_element_for_name(decl->strukt.members, elements, index);
 			// No match, continue...
@@ -2800,25 +2845,25 @@ static int64_t sema_analyse_designator_index(Context *context, Expr *index)
 
 static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index)
 {
-	Type *type_lowered = type_lowering(type);
+	Type *type_flattened = type_flatten(type);
 	DesignatorElement *element = elements[*curr_index];
 	if (element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE)
 	{
 		ByteSize len;
 		Type *base;
-		switch (type_lowered->type_kind)
+		switch (type_flattened->type_kind)
 		{
 			case TYPE_INFERRED_ARRAY:
 				len = MAX_ARRAYINDEX;
-				base = type_lowered->array.base;
+				base = type_flattened->array.base;
 				break;
 			case TYPE_ARRAY:
-				len = type_lowered->array.len;
-				base = type_lowered->array.base;
+				len = type_flattened->array.len;
+				base = type_flattened->array.base;
 				break;
 			case TYPE_VECTOR:
-				len = type_lowered->vector.len;
-				base = type_lowered->vector.base;
+				len = type_flattened->vector.len;
+				base = type_flattened->vector.base;
 				break;
 			default:
 				return NULL;
@@ -2864,11 +2909,11 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 		return base;
 	}
 	assert(element->kind == DESIGNATOR_FIELD);
-	if (!type_is_structlike(type_lowered))
+	if (!type_is_structlike(type_flattened) && type_flattened->type_kind != TYPE_BITSTRUCT)
 	{
 		return NULL;
 	}
-	Decl *member = sema_resolve_element_for_name(type_lowered->decl->strukt.members, elements, curr_index);
+	Decl *member = sema_resolve_element_for_name(type_flattened->decl->strukt.members, elements, curr_index);
 	if (!member) return NULL;
 	return member->type;
 }
@@ -3150,6 +3195,7 @@ static inline void sema_update_const_initializer_with_designator(
 	switch (const_init->type->type_kind)
 	{
 		case TYPE_STRUCT:
+		case TYPE_BITSTRUCT:
 			sema_update_const_initializer_with_designator_struct(const_init, curr, end, value);
 			return;
 		case TYPE_UNION:
@@ -3247,6 +3293,15 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 
 	bool failable = false;
 
+	bool is_bitstruct = assigned->decl_kind == DECL_BITSTRUCT;
+	if (is_bitstruct && assigned->bitstruct.overlap)
+	{
+		if (vec_size(assigned->strukt.members) > 1 && vec_size(elements) > 1)
+		{
+			SEMA_ERROR(elements[0], "Bitstructs with @overlap must use designated initialization.");
+			return false;
+		}
+	}
 	// 3. Loop through all elements.
 	VECEACH(elements, i)
 	{
@@ -3261,6 +3316,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 		}
 		// 5. We know the required type, so resolve the expression.
 		if (!sema_analyse_expr_rhs(context, members[i]->type, element, true)) return false;
+		if (is_bitstruct && !sema_bit_assignment_check(element, members[i])) return false;
 		failable = failable || IS_FAILABLE(element);
 	}
 	assert(initializer->type);
@@ -3712,6 +3768,7 @@ static bool sema_expr_analyse_assign(Context *context, Expr *expr, Expr *left, E
 	}
 	if (left->expr_kind == EXPR_BITACCESS)
 	{
+		if (!sema_bit_assignment_check(right, left->access_expr.ref)) return false;
 		expr->expr_kind = EXPR_BITASSIGN;
 	}
 	return true;

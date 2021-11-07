@@ -323,18 +323,20 @@ entry:
   store i64 %158, i64* %xx, align 8
   %159 = load i64, i64* %xx, align 8
   %160 = lshr i64 %159, 20
-  %161 = trunc i64 %160 to i8
-  %162 = trunc i8 %161 to i1
-  %boolsi = zext i1 %162 to i32
+  %161 = and i64 1, %160
+  %162 = trunc i64 %161 to i8
+  %163 = trunc i8 %162 to i1
+  %boolsi = zext i1 %163 to i32
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.9, i32 0, i32 0), i32 %boolsi)
-  %163 = load i64, i64* %xx, align 8
-  %164 = and i64 %163, -1048577
-  store i64 %164, i64* %xx, align 8
-  %165 = load i64, i64* %xx, align 8
-  %166 = lshr i64 %165, 20
-  %167 = trunc i64 %166 to i8
-  %168 = trunc i8 %167 to i1
-  %boolsi1 = zext i1 %168 to i32
+  %164 = load i64, i64* %xx, align 8
+  %165 = and i64 %164, -1048577
+  store i64 %165, i64* %xx, align 8
+  %166 = load i64, i64* %xx, align 8
+  %167 = lshr i64 %166, 20
+  %168 = and i64 1, %167
+  %169 = trunc i64 %168 to i8
+  %170 = trunc i8 %169 to i1
+  %boolsi1 = zext i1 %170 to i32
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.10, i32 0, i32 0), i32 %boolsi1)
   ret void
 }
