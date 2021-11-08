@@ -12,7 +12,7 @@ class Config:
 
 class File:
     def __init__(self, filepath):
-        with open(filepath) as reader:
+        with open(filepath, encoding='utf8') as reader:
             self.content = reader.read().splitlines()
         self.filepath = filepath
         self.filename = os.path.basename(filepath)
