@@ -1406,7 +1406,7 @@ static inline bool parse_bitstruct_body(Context *context, Decl *decl)
 			SEMA_TOKEN_ERROR(context->tok, "Expected a field name at this position.");
 			return false;
 		}
-		Decl *member_decl = decl_new_var(context->prev_tok, type, VARDECL_MEMBER, VISIBLE_LOCAL);
+		Decl *member_decl = decl_new_var(context->prev_tok, type, VARDECL_BITMEMBER, VISIBLE_LOCAL);
 		CONSUME_OR(TOKEN_COLON, false);
 		ASSIGN_EXPR_ELSE(member_decl->var.start, parse_constant_expr(context), false);
 		if (try_consume(context, TOKEN_DOTDOT))

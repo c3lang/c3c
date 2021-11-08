@@ -601,6 +601,36 @@ static void gencontext_emit_member_addr(GenContext *c, BEValue *value, Decl *par
 	} while (found != member);
 }
 
+static void llvm_emit_bitstruct_member(GenContext *c, BEValue *value, Decl *parent, Decl *member)
+{
+	assert(member->resolve_status == RESOLVE_DONE);
+	Decl *found = NULL;
+	do
+	{
+		int index = find_member_index(parent, member);
+		assert(index > -1);
+		found = parent->strukt.members[index];
+		switch (parent->type->canonical->type_kind)
+		{
+			case TYPE_UNION:
+				llvm_value_addr(c, value);
+				llvm_value_set_address_align(value,
+				                             llvm_emit_bitcast(c, value->value, type_get_ptr(found->type)),
+				                             found->type,
+				                             value->alignment);
+				break;
+			case TYPE_STRUCT:
+				llvm_value_struct_gep(c, value, value, index);
+				break;
+			case TYPE_BITSTRUCT:
+				break;
+			default:
+				UNREACHABLE
+		}
+		parent = found;
+	} while (found != member);
+}
+
 static LLVMValueRef llvm_emit_bswap(GenContext *c, LLVMValueRef value)
 {
 	if (LLVMIsConstant(value))
@@ -937,8 +967,10 @@ static inline void llvm_emit_bitaccess(GenContext *c, BEValue *be_value, Expr *e
 	Expr *parent = expr->access_expr.parent;
 	llvm_emit_expr(c, be_value, parent);
 
+	Decl *member = expr->access_expr.ref;
 	assert(be_value && be_value->type);
 
+	llvm_emit_bitstruct_member(c, be_value, type_flatten(parent->type)->decl, member);
 	llvm_extract_bitvalue(c, be_value, parent, expr->access_expr.ref);
 }
 
@@ -4502,6 +4534,7 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 			case VARDECL_UNWRAPPED:
 			case VARDECL_REWRAPPED:
 			case VARDECL_ERASE:
+			case VARDECL_BITMEMBER:
 				UNREACHABLE
 			case VARDECL_PARAM_REF:
 			{

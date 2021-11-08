@@ -1681,6 +1681,47 @@ void lexer_init_with_file(Lexer *lexer, File *file)
 	lexer->current_line = 1;
 	lexer->line_start = lexer->current;
 	lexer->lexer_index = file->token_start_id;
+	const unsigned char *check = (const unsigned char *)lexer->current;
+	unsigned c;
+	int balance = 0;
+	while ((c = *(check++)) != '\0')
+	{
+		if (c != 0xE2) continue;
+		unsigned char type = check[1];
+		switch (check[0])
+		{
+			case 0x80:
+				if (type == 0xAC)
+				{
+					balance--;
+					if (balance < 0) goto DONE;
+				}
+				if (type >= 0xAA && type <= 0xAE)
+				{
+					balance++;
+				}
+				break;
+			case 0x81:
+				if (type >= 0xA6 && type <= 0xA8)
+				{
+					balance++;
+				}
+				else if (type == 0xA9)
+				{
+					balance--;
+					if (balance < 0) goto DONE;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+DONE:
+	if (balance != 0)
+	{
+		add_error_token(lexer, "Invalid encoding - Unbalanced bidirectional markers.");
+		return;
+	}
 	while(1)
 	{
 		if (!lexer_scan_token_inner(lexer, LEX_NORMAL))
