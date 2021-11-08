@@ -344,9 +344,8 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_DISTINCT:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
-		case TYPE_VIRTUAL_ANY:
-		case TYPE_VIRTUAL:
-			return CAST_VRBOOL;
+		case TYPE_ANY:
+			TODO
 		case TYPE_BOOL:
 			return CAST_BOOLBOOL;
 		case TYPE_ANYERR:
@@ -463,8 +462,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 			// Special subarray conversion: someType[N]* -> someType[]
 			if (to_kind == TYPE_SUBARRAY && from_type->pointer->type_kind == TYPE_ARRAY && from_type->pointer->array.base == to_type->array.base) return true;
 			return false;
-		case TYPE_VIRTUAL_ANY:
-		case TYPE_VIRTUAL:
+		case TYPE_ANY:
 			return to_kind == TYPE_POINTER;
 		case TYPE_ERRTYPE:
 			// Allow MyError.A -> error, to an integer or to bool
@@ -506,7 +504,7 @@ static bool may_cast_to_virtual(Type *virtual, Type *from)
 	if (from->type_kind != TYPE_POINTER) return false;
 
 	// 2. Virtual* converts to anything, including ints
-	if (virtual->type_kind == TYPE_VIRTUAL_ANY) return true;
+	if (virtual->type_kind == TYPE_ANY) return true;
 
 	// 3. Get the data.
 	Decl *virtual_decl = virtual->decl;
@@ -680,17 +678,12 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 		return cast_to_bool_kind(from) != CAST_ERROR;
 	}
 
-	// 9. Virtual any cast
-	if (to->type_kind == TYPE_VIRTUAL_ANY)
+	// 9. Any cast
+	if (to->type_kind == TYPE_ANY)
 	{
 		return from_type->type_kind == TYPE_POINTER;
 	}
 
-	// 10. Virtual cast
-	if (to->type_kind == TYPE_VIRTUAL)
-	{
-		return may_cast_to_virtual(to, from);
-	}
 
 	// 11. Substruct cast, if the first member is inline, see if we can cast to this member.
 	if (type_is_substruct(from))
@@ -1301,9 +1294,8 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type, boo
 			if (to->type_kind == TYPE_POINTER) return pointer_to_pointer(expr, to_type);
 			if (to->type_kind == TYPE_SUBARRAY) return insert_cast(expr, CAST_APTSA, to_type);
 			break;
-		case TYPE_VIRTUAL:
-		case TYPE_VIRTUAL_ANY:
-			if (to->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_VRPTR, to_type);
+		case TYPE_ANY:
+			if (to->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_ANYPTR, to_type);
 			break;
 		case TYPE_ENUM:
 			if (type_is_integer(to)) return enum_to_integer(expr, from_type, to, to_type);

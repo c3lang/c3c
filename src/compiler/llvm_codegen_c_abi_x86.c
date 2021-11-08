@@ -127,8 +127,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_BOOL:
 		case TYPE_POINTER:
 		case TYPE_SUBARRAY:
-		case TYPE_VIRTUAL_ANY:
-		case TYPE_VIRTUAL:
+		case TYPE_ANY:
 			return true;
 		case TYPE_ARRAY:
 			// Small arrays <= 8 bytes.
@@ -610,8 +609,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_SUBARRAY:
-		case TYPE_VIRTUAL_ANY:
-		case TYPE_VIRTUAL:
+		case TYPE_ANY:
 		case TYPE_ARRAY:
 			return x86_classify_aggregate(call, regs, type);
 	}

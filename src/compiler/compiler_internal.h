@@ -1356,7 +1356,6 @@ typedef struct Context_
 	Decl **macros;
 	Decl **generics;
 	Decl **generic_methods;
-	Decl **interfaces;
 	Decl **templates;
 	Decl **methods;
 	Decl **macro_methods;
@@ -1525,7 +1524,7 @@ extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_iptr, *type_uptr, *type_iptrdiff, *type_uptrdiff;
 extern Type *type_u128, *type_i128;
 extern Type *type_typeid, *type_anyerr, *type_typeinfo;
-extern Type *type_virtual, *type_virtual_generic;
+extern Type *type_any;
 extern Type *type_complist;
 extern Type *type_anyfail;
 
@@ -2008,12 +2007,9 @@ Type *type_cint(void);
 Type *type_cuint(void);
 Type *type_int_signed_by_bitsize(unsigned bitsize);
 Type *type_int_unsigned_by_bitsize(unsigned bytesize);
-bool type_is_abi_aggregate(Type *type);
 static inline bool type_is_builtin(TypeKind kind);
-bool type_is_empty_record(Type *type, bool allow_array);
-bool type_is_empty_field(Type *type, bool allow_array);
+bool type_is_abi_aggregate(Type *type);
 static inline bool type_is_float(Type *type);
-bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements);
 bool type_is_int128(Type *type);
 Type *type_find_function_type(FunctionSignature *signature);
 static inline bool type_is_integer(Type *type);
@@ -2033,11 +2029,10 @@ Type *type_from_token(TokenType type);
 bool type_is_union_struct(Type *type);
 bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
-static inline Type *type_lowering(Type *type);
-static inline bool type_is_vector(Type *type) { return type_lowering(type)->type_kind == TYPE_VECTOR; };
+static inline Type *type_flatten(Type *type);
+static inline bool type_is_vector(Type *type) { return type_flatten(type)->type_kind == TYPE_VECTOR; };
 bool type_may_have_sub_elements(Type *type);
 static inline bool type_ok(Type *type);
-static inline Type *type_reduced_from_expr(Expr *expr);
 ByteSize type_size(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
@@ -2054,10 +2049,7 @@ static inline bool type_kind_is_derived(TypeKind kind);
 
 
 // ---- static inline function implementations.
-static inline Type *type_reduced_from_expr(Expr *expr)
-{
-	return type_lowering(expr->type);
-}
+
 
 static inline Type *type_no_fail(Type *type)
 {
@@ -2344,16 +2336,6 @@ static inline bool type_is_structlike(Type *type)
 	}
 }
 
-static inline Type *type_lowering(Type *type)
-{
-	Type *canonical = type_flatten(type);
-	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
-	if (canonical->type_kind == TYPE_TYPEID) return type_iptr->canonical;
-	if (canonical->type_kind == TYPE_ANYERR) return type_iptr->canonical;
-	if (canonical->type_kind == TYPE_ERRTYPE) return type_iptr->canonical;
-	if (canonical->type_kind == TYPE_BITSTRUCT) return type_lowering(canonical->decl->bitstruct.base_type->type);
-	return canonical;
-}
 
 static inline Decl *decl_raw(Decl *decl)
 {

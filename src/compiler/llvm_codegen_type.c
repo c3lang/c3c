@@ -14,7 +14,6 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_ENUM_CONSTANT:
 		case DECL_ERRVALUE:
 		case DECL_POISONED:
-		case DECL_INTERFACE:
 		case NON_TYPE_DECLS:
 			UNREACHABLE
 		case DECL_BITSTRUCT:
@@ -365,7 +364,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			LLVMStructSetBody(array_type, types, 2, false);
 			return any_type->backend_type = array_type;
 		}
-		case TYPE_VIRTUAL_ANY:
+		case TYPE_ANY:
 		{
 			LLVMTypeRef pointer_type = llvm_get_type(c, type_voidptr);
 			LLVMTypeRef type_type = llvm_get_type(c, type_typeid);
@@ -374,21 +373,6 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			LLVMStructSetBody(virtual_type, types, 2, false);
 			return any_type->backend_type = virtual_type;
 		}
-		case TYPE_VIRTUAL:
-			// Copy off the generic type.
-			if (any_type != type_virtual_generic)
-			{
-				return any_type->backend_type = llvm_get_type(c, type_virtual_generic);
-			}
-			else
-			{
-				LLVMTypeRef pointer_type = llvm_get_type(c, type_voidptr);
-				LLVMTypeRef type_type = llvm_get_type(c, type_typeid);
-				LLVMTypeRef virtual_type = LLVMStructCreateNamed(c->context, "virtual$");
-				LLVMTypeRef types[2] = { pointer_type, type_type };
-				LLVMStructSetBody(virtual_type, types, 2, false);
-				return any_type->backend_type = virtual_type;
-			}
 		case TYPE_VECTOR:
 			return any_type->backend_type = LLVMVectorType(llvm_get_type(c, any_type->vector.base), any_type->vector.len);
 	}

@@ -137,7 +137,7 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 	assert(x64_type_is_structure(type));
 
 	// These are all passed in two registers.
-	if (type->type_kind == TYPE_SUBARRAY || type->type_kind == TYPE_VIRTUAL || type->type_kind == TYPE_VIRTUAL_ANY)
+	if (type->type_kind == TYPE_SUBARRAY || type->type_kind == TYPE_ANY)
 	{
 		needed_registers->int_registers += 2;
 		return abi_arg_new_direct();
@@ -412,8 +412,7 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 		case TYPE_I128:
 		case TYPE_U128:
 		case TYPE_SUBARRAY:
-		case TYPE_VIRTUAL:
-		case TYPE_VIRTUAL_ANY:
+		case TYPE_ANY:
 			*lo_class = CLASS_INTEGER;
 			*hi_class = CLASS_INTEGER;
 			break;
@@ -569,12 +568,8 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 			}
 			break;
 		}
-		case TYPE_VIRTUAL_ANY:
+		case TYPE_ANY:
 			if (offset < 8) return abi_type_new_plain(type_ulong);
-			if (offset < 16) return abi_type_new_plain(type_voidptr);
-			break;
-		case TYPE_VIRTUAL:
-			// Two pointers.
 			if (offset < 16) return abi_type_new_plain(type_voidptr);
 			break;
 		case TYPE_SUBARRAY:
@@ -848,8 +843,7 @@ bool x64_type_is_structure(Type *type)
 	{
 		case TYPE_STRUCT:
 		case TYPE_SUBARRAY:
-		case TYPE_VIRTUAL_ANY:
-		case TYPE_VIRTUAL:
+		case TYPE_ANY:
 			return true;
 		default:
 			return false;

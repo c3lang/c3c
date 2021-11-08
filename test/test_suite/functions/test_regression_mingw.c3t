@@ -66,15 +66,6 @@ func int Foo2.mutate(Foo2 *foo)
 }
 
 
-extern func void test_virtual3(virtual* y);
-
-interface Baz
-{
-    func void open();
-    func int close();
-}
-
-extern func void test_virtual2(virtual Baz* z);
 
 define oopsInt = test2::argh<int>;
 define oopsDouble = test2::argh<int>;
@@ -254,8 +245,6 @@ func Type getValue(Blob blob)
 %Node = type { %Node*, %Node*, i32 }
 %Foo2 = type { i32 }
 %Bobo = type { i16, float, i16, i16, float, i16 }
-%"virtual*" = type { i8*, i64 }
-%"virtual$" = type { i8*, i64 }
 %"int[]" = type { i32*, i64 }
 %Foo = type { i32, i32 }
 
@@ -472,11 +461,7 @@ if.exit:                                          ; preds = %entry
   ret i32 %6
 }
 
-; Function Attrs: nounwind
-declare void @test_virtual3(%"virtual*"* align 8) #0
 
-; Function Attrs: nounwind
-declare void @test_virtual2(%"virtual$"* align 8) #0
 
 ; Function Attrs: nounwind
 define i32 @test.sum_us(%"int[]"* align 8 %0) #0 {

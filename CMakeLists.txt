@@ -149,6 +149,7 @@ add_executable(c3c
         src/compiler/llvm_codegen_c_abi_win64.c
         src/compiler/llvm_codegen_c_abi_aarch64.c
         src/compiler/headers.c
+        src/compiler/codegen_general.c
         src/compiler/llvm_codegen_c_abi_riscv.c
         src/compiler/llvm_codegen_c_abi_wasm.c)
 

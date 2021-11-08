@@ -693,16 +693,13 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 		case TYPE_FAILABLE:
 			SEMA_ERROR(decl, "You cannot create a distinct type from a failable.");
 			return false;
-		case TYPE_VIRTUAL_ANY:
-		case TYPE_VIRTUAL:
-			SEMA_ERROR(decl, "You cannot create a distinct type from a virtual type.");
-			return false;
 		case TYPE_ERRTYPE:
 			SEMA_ERROR(decl, "You cannot create a distinct type from an error type.");
 			return false;
 		case TYPE_ANYERR:
 			SEMA_ERROR(decl, "You cannot create a distinct type from an error union.");
 			return false;
+			case TYPE_ANY:
 		case TYPE_VOID:
 		case TYPE_TYPEID:
 			SEMA_ERROR(decl, "Cannot create a distinct type from %s.", type_quoted_error_string(base));
@@ -1531,7 +1528,7 @@ static Context *copy_context(Module *module, Context *c)
 	copy->imports = copy_decl_list(c->imports);
 	copy->global_decls = copy_decl_list(c->global_decls);
 	copy->module = module;
-	assert(!c->functions && !c->macro_methods && !c->methods && !c->enums && !c->ct_ifs && !c->types && !c->interfaces && !c->external_symbol_list);
+	assert(!c->functions && !c->macro_methods && !c->methods && !c->enums && !c->ct_ifs && !c->types && !c->external_symbol_list);
 	return copy;
 }
 
@@ -1685,8 +1682,6 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 	decl->module = context->module;
 	switch (decl->decl_kind)
 	{
-		case DECL_INTERFACE:
-			TODO
 		case DECL_BITSTRUCT:
 			if (!sema_analyse_bitstruct(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);

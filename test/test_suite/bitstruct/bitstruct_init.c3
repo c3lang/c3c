@@ -1,4 +1,4 @@
-// #target
+// #skip
 module foo;
 
 bitstruct Foo : uint

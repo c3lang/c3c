@@ -6,6 +6,7 @@
 #include <math.h>
 
 void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op);
+static void llvm_emit_any_pointer(GenContext *c, BEValue *any, BEValue *pointer);
 static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr);
 static void gencontext_emit_unary_expr(GenContext *context, BEValue *value, Expr *expr);
 static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
@@ -996,6 +997,18 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 
 	switch (cast_kind)
 	{
+		case CAST_PTRANY:
+		{
+			llvm_value_rvalue(c, value);
+			ByteSize size = value->type->pointer->array.len;
+			Type *array_type = value->type->pointer->array.base;
+			LLVMTypeRef any = llvm_get_type(c, to_type);
+			LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_voidptr);
+			BEValue typeid;
+			llvm_emit_typeid(c, &typeid, from_type->pointer);
+			llvm_value_set(value, llvm_emit_aggregate_value(c, to_type, pointer, typeid.value, NULL), to_type);
+			return;
+		}
 		case CAST_BSARRY:
 			llvm_value_addr(c, value);
 			value->value = llvm_emit_bitcast(c, value->value, type_get_ptr(to_type));
@@ -1025,12 +1038,17 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 
 			}
 			break;
-		case CAST_VFTOERR:
-			TODO
-		case CAST_VRBOOL:
-		case CAST_VRPTR:
-		case CAST_PTRVR:
-			TODO
+		case CAST_ANYPTR:
+			llvm_value_fold_failable(c, value);
+			if (llvm_value_is_addr(value))
+			{
+				llvm_emit_any_pointer(c, value, value);
+			}
+			else
+			{
+				value->value = LLVMBuildExtractValue(c->builder, value->value, 0, "");
+			}
+			break;
 		case CAST_XIERR:
 			to_type = type_lowering(to_type);
 			from_type = type_lowering(from_type);
@@ -3709,8 +3727,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_UNION:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
-		case TYPE_VIRTUAL_ANY:
-		case TYPE_VIRTUAL:
+		case TYPE_ANY:
 			TODO
 			break;
 	}
@@ -3804,6 +3821,19 @@ void llvm_emit_subarray_pointer(GenContext *c, BEValue *subarray, BEValue *point
 	                                                     subarray->alignment,
 	                                                     &alignment);
 	llvm_value_set_address_align(pointer, pointer_addr, type_get_ptr(subarray->type->array.base), alignment);
+}
+
+static void llvm_emit_any_pointer(GenContext *c, BEValue *any, BEValue *pointer)
+{
+	llvm_value_addr(c, any);
+	AlignSize alignment = 0;
+	LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
+														 any->value,
+														 llvm_get_type(c, type_voidptr),
+														 0,
+														 any->alignment,
+														 &alignment);
+	llvm_value_set_address_align(pointer, pointer_addr, type_voidptr, alignment);
 }
 
 void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_pointer, unsigned index)

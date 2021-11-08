@@ -74,8 +74,6 @@ const char *decl_to_name(Decl *decl)
 			return "function";
 		case DECL_GENERIC:
 			return "generic";
-		case DECL_INTERFACE:
-			return "interface";
 		case DECL_MACRO:
 			return "macro";
 		case DECL_STRUCT:
@@ -138,9 +136,6 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 	TypeKind kind = TYPE_POISONED;
 	switch (decl_type)
 	{
-		case DECL_INTERFACE:
-			kind = TYPE_VIRTUAL;
-			break;
 		case DECL_FUNC:
 			kind = TYPE_FUNC;
 			break;

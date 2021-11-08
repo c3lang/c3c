@@ -131,7 +131,6 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_ENUM:
 		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
-		case DECL_INTERFACE:
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			DEBUG_LOG("Resolved %s.", TOKSTR(type_info->unresolved.name_loc));
@@ -189,7 +188,7 @@ bool sema_resolve_type(Context *context, Type *type)
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case TYPE_TYPEID:
-		case TYPE_VIRTUAL_ANY:
+		case TYPE_ANY:
 		case TYPE_ANYERR:
 		case TYPE_STRLIT:
 		case TYPE_VECTOR:
@@ -211,8 +210,6 @@ bool sema_resolve_type(Context *context, Type *type)
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
 			return sema_resolve_type(context, type->array.base);
-		case TYPE_VIRTUAL:
-			TODO;
 		case TYPE_FAILABLE:
 			return sema_resolve_type(context, type->failable);
 	}

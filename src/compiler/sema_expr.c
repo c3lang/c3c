@@ -150,11 +150,11 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 {
 	switch (expr->cast_expr.kind)
 	{
-		case CAST_VFTOERR:
 		case CAST_ERROR:
 		case CAST_BSINT:
 		case CAST_BSARRY:
 			return false;
+		case CAST_ANYPTR:
 		case CAST_ERBOOL:
 		case CAST_EUBOOL:
 		case CAST_EUER:
@@ -183,9 +183,7 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case CAST_SAPTR:
 		case CAST_SABOOL:
 		case CAST_STST:
-		case CAST_VRPTR:
-		case CAST_PTRVR:
-		case CAST_VRBOOL:
+		case CAST_PTRANY:
 		case CAST_ENUMLOW:
 			if (eval_kind == CONSTANT_EVAL_FOLDABLE) return false;
 			return expr_is_constant_eval(expr->cast_expr.expr, eval_kind);
@@ -526,9 +524,6 @@ static inline bool sema_cast_ident_rvalue(Context *context, Expr *expr)
 			return expr_poison(expr);
 		case DECL_LABEL:
 			SEMA_ERROR(expr, "Did you intend to use the label '%s' here?", decl->name);
-			return expr_poison(expr);
-		case DECL_INTERFACE:
-			SEMA_ERROR(expr, "Expected interface followed by '.'.");
 			return expr_poison(expr);
 		case DECL_BITSTRUCT:
 			SEMA_ERROR(expr, "Expected bitstruct followed by (...) or '.'.");
@@ -6478,7 +6473,7 @@ ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initial
 	{
 		assert(initializer->const_expr.const_kind == CONST_LIST);
 		ConstInitializer *init = initializer->const_expr.list;
-		Type *type = type_lowering(initializer->type);
+		Type *type = type_flatten(initializer->type);
 		*is_const_size = true;
 		switch (init->kind)
 		{

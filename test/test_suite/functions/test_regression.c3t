@@ -65,17 +65,6 @@ func int Foo2.mutate(Foo2 *foo)
     return ++foo.x;
 }
 
-
-extern func void test_virtual3(virtual* y);
-
-interface Baz
-{
-    func void open();
-    func int close();
-}
-
-extern func void test_virtual2(virtual Baz* z);
-
 define oopsInt = test2::argh<int>;
 define oopsDouble = test2::argh<int>;
 define Argh = func int(double, Bobo);
@@ -351,12 +340,6 @@ if.exit:                                          ; preds = %entry
   %6 = load i32, i32* %a, align 4
   ret i32 %6
 }
-
-; Function Attrs: nounwind
-declare void @test_virtual3(i64, i8*) #0
-
-; Function Attrs: nounwind
-declare void @test_virtual2(i8*, i8*) #0
 
 ; Function Attrs: nounwind
 define i32 @test.sum_us(i8* %0, i64 %1) #0 {

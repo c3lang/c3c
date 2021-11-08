@@ -22,7 +22,7 @@ Create a `main.c3` file with:
 module hello_world;
 import std::io;
 
-func void main()
+fn void main()
 {
    io::printf("Hello, world!\n");
 }
@@ -125,7 +125,6 @@ to C3 and compiled with the c3c compiler:
 - [ ] Anonymous structs
 - [ ] Complete C ABI conformance *in progress*
 - [ ] Debug info *in progress*
-- [ ] Virtual type *in progress*
 - [ ] Enum associated data support  
 - [ ] All attributes *in progress*
 - [ ] Associative array literals

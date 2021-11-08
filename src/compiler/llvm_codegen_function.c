@@ -663,7 +663,6 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
 		case NON_TYPE_DECLS:
-		case DECL_INTERFACE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_ERRVALUE:
 			return;
