@@ -1,4 +1,3 @@
-// #skip
 module foo;
 
 bitstruct Foo : uint
@@ -33,7 +32,7 @@ fn void testNested()
     Bar2 b3 = { 1, 3 };
     Bar2 b4 = { .x = 123, .z = 3 };
     Bar2 b5 = { .x = 123, .z = 4 };  // #error: would be truncated
-    Bar2 b6 = { 1, 3 }; // #error: would be truncated
+    Bar2 b6 = { 1, 4 }; // #error: would be truncated
     Bar b7 = { 3, { 4 } }; // #error: would be truncated
     Bar b8 = { .x = 3, .baz.x = 4 }; // #error: would be truncated
 

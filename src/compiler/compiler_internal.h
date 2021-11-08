@@ -1774,6 +1774,7 @@ static inline bool decl_var_is_assignable(Decl *decl)
 		case VARDECL_LOCAL_CT_TYPE:
 		case VARDECL_UNWRAPPED:
 			return true;
+		case VARDECL_BITMEMBER:
 		case VARDECL_CONST:
 		case VARDECL_MEMBER:
 		case VARDECL_PARAM_EXPR:

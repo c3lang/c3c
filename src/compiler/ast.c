@@ -95,6 +95,7 @@ const char *decl_to_name(Decl *decl)
 				case VARDECL_PARAM:
 					return "parameter";
 				case VARDECL_MEMBER:
+				case VARDECL_BITMEMBER:
 					return "member";
 				case VARDECL_PARAM_CT:
 					return "compile time parameter";

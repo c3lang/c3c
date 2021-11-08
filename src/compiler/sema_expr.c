@@ -129,6 +129,7 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr, ConstantEvalKind
 					return decl->var.is_static;
 				case VARDECL_PARAM:
 				case VARDECL_MEMBER:
+				case VARDECL_BITMEMBER:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
 				case VARDECL_PARAM_REF:
@@ -468,6 +469,7 @@ bool expr_is_ltype(Expr *expr)
 					return true;
 				case VARDECL_CONST:
 				case VARDECL_MEMBER:
+				case VARDECL_BITMEMBER:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
 				case VARDECL_PARAM_EXPR:
@@ -582,6 +584,7 @@ static inline bool sema_cast_ident_rvalue(Context *context, Expr *expr)
 		case VARDECL_LOCAL:
 		case VARDECL_UNWRAPPED:
 			return true;
+		case VARDECL_BITMEMBER:
 		case VARDECL_MEMBER:
 			SEMA_ERROR(expr, "Expected '%s' followed by a method call or property.", decl->name);
 			return expr_poison(expr);
@@ -1406,6 +1409,7 @@ static inline bool sema_expr_analyse_call_invocation(Context *context, Expr *cal
 			case VARDECL_GLOBAL:
 			case VARDECL_LOCAL:
 			case VARDECL_MEMBER:
+			case VARDECL_BITMEMBER:
 			case VARDECL_LOCAL_CT:
 			case VARDECL_LOCAL_CT_TYPE:
 			case VARDECL_UNWRAPPED:
@@ -2750,7 +2754,7 @@ CHECK_DEEPER:
 	}
 
 	// Transform bitstruct access to expr_bitaccess.
-	if (decl->decl_kind == DECL_BITSTRUCT)
+	if (member->var.kind == VARDECL_BITMEMBER)
 	{
 		expr->expr_kind = EXPR_BITACCESS;
 	}
@@ -2759,6 +2763,7 @@ CHECK_DEEPER:
 	expr->access_expr.parent = current_parent;
 	expr->type = type_get_opt_fail(member->type, failable);
 	expr->access_expr.ref = member;
+
 	return true;
 }
 
@@ -2838,12 +2843,13 @@ static int64_t sema_analyse_designator_index(Context *context, Expr *index)
 	return index_val;
 }
 
-static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index)
+static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr)
 {
 	Type *type_flattened = type_flatten(type);
 	DesignatorElement *element = elements[*curr_index];
 	if (element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE)
 	{
+		*member_ptr = NULL;
 		ByteSize len;
 		Type *base;
 		switch (type_flattened->type_kind)
@@ -2909,26 +2915,30 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 		return NULL;
 	}
 	Decl *member = sema_resolve_element_for_name(type_flattened->decl->strukt.members, elements, curr_index);
+	*member_ptr = member;
 	if (!member) return NULL;
 	return member->type;
 }
 
-static Type *sema_expr_analyse_designator(Context *context, Type *current, Expr *expr, ArrayIndex *max_index)
+static Type *sema_expr_analyse_designator(Context *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr)
 {
 	DesignatorElement **path = expr->designator_expr.path;
 
 	// Walk down into this path
 	bool is_constant = true;
 	bool did_report_error = false;
+	*member_ptr = NULL;
 	for (unsigned i = 0; i < vec_size(path); i++)
 	{
-		Type *new_current = sema_find_type_of_element(context, current, path, &i, &is_constant, &did_report_error, i == 0 ? max_index : NULL);
+		Decl *member_found;
+		Type *new_current = sema_find_type_of_element(context, current, path, &i, &is_constant, &did_report_error, i == 0 ? max_index : NULL, &member_found);
 		if (!new_current)
 		{
 			if (!did_report_error) SEMA_ERROR(expr, "This is not a valid member of '%s'.", type_to_error_string(current));
 			return NULL;
 		}
 		current = new_current;
+		*member_ptr = member_found;
 	}
 	return current;
 }
@@ -3231,17 +3241,23 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 {
 	Expr **init_expressions = initializer->designated_init_list;
 	Type *original = assigned->canonical;
-	bool is_structlike = type_is_structlike(assigned->canonical);
-
+	bool is_bitstruct = original->type_kind == TYPE_BITSTRUCT;
+	bool is_structlike = type_is_structlike(original) || is_bitstruct;
 	ArrayIndex max_index = -1;
 	bool failable = false;
 	VECEACH(init_expressions, i)
 	{
 		Expr *expr = init_expressions[i];
-		Type *result = sema_expr_analyse_designator(context, original, expr, &max_index);
+		Decl *member;
+		Type *result = sema_expr_analyse_designator(context, original, expr, &max_index, &member);
 		if (!result) return false;
 		Expr *value = expr->designator_expr.value;
 		if (!sema_analyse_expr_rhs(context, result, value, true)) return false;
+		DesignatorElement *element = VECLAST(expr->designator_expr.path);
+		if (member && member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER)
+		{
+			if (!sema_bit_assignment_check(value, member)) return false;
+		}
 		failable = failable || IS_FAILABLE(value);
 		expr->resolve_status = RESOLVE_DONE;
 	}
@@ -3261,6 +3277,32 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 	return true;
 }
 
+static int decl_count_elements(Decl *structlike)
+{
+	int elements = 0;
+	Decl **members = structlike->strukt.members;
+	VECEACH(members, i)
+	{
+		Decl *member = members[i];
+		if (member->decl_kind != DECL_VAR && !member->name)
+		{
+			elements += decl_count_elements(member);
+			continue;
+		}
+		elements++;
+	}
+	return elements;
+}
+
+static inline void not_enough_elements(Expr *initializer, int element)
+{
+	if (element == 0)
+	{
+		SEMA_ERROR(initializer, "The initializer is missing elements.");
+		return;
+	}
+	SEMA_ERROR(initializer->initializer_list[element - 1], "Too few elements in initializer, there should be elements after this one.");
+}
 /**
  * Perform analysis for a plain initializer, that is one initializing all fields.
  * @return true if analysis succeeds.
@@ -3298,31 +3340,76 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 		}
 	}
 	// 3. Loop through all elements.
-	VECEACH(elements, i)
+	int max_loop = MAX(size, expected_members);
+	for (unsigned i = 0; i < max_loop; i++)
 	{
 		// 4. Check if we exceeded the list of elements in the struct/union.
 		//    This way we can check the other elements which might help the
 		//    user pinpoint where they put the double elements.
-		Expr *element = elements[i];
 		if (i >= expected_members)
 		{
-			SEMA_ERROR(element, "Too many elements in initializer, expected only %d.", expected_members);
+			assert(i < size);
+			SEMA_ERROR(elements[i], "Too many elements in initializer, expected only %d.", expected_members);
 			return false;
 		}
-		// 5. We know the required type, so resolve the expression.
+		// 5. We might have anonymous members
+		Decl *member = members[i];
+		if (member->decl_kind != DECL_VAR && !member->name)
+		{
+			int sub_element_count = decl_count_elements(members[i]);
+			if (!sub_element_count)
+			{
+				vec_add(initializer->initializer_list, NULL);
+				for (int j = size - 1; j > i; j--)
+				{
+					initializer->initializer_list[j] = initializer->initializer_list[j - 1];
+				}
+				Expr *new_initializer = expr_new(EXPR_INITIALIZER_LIST, initializer->span);
+				ConstInitializer *empty = CALLOCS(ConstInitializer);
+				empty->kind = CONST_INIT_ZERO;
+				empty->type = member->type;
+				expr_set_as_const_list(new_initializer, empty);
+				initializer->initializer_list[i] = new_initializer;
+				size += 1;
+				continue;
+			}
+			if (i >= size)
+			{
+				not_enough_elements(initializer, i);
+				return false;
+			}
+			Expr *new_initializer = expr_new(EXPR_INITIALIZER_LIST, elements[i]->span);
+			int max_index_to_copy = MIN(i + sub_element_count, size);
+			for (int j = i; j < max_index_to_copy; j++)
+			{
+				vec_add(new_initializer->initializer_list, elements[j]);
+			}
+			int reduce_by = max_index_to_copy - i - 1;
+			size -= reduce_by;
+			max_loop = MAX(size, expected_members);
+			assert(size <= vec_size(initializer->initializer_list));
+			vec_resize(initializer->initializer_list, size);
+			elements = initializer->initializer_list;
+			elements[i] = new_initializer;
+		}
+		if (i >= size)
+		{
+			not_enough_elements(initializer, i);
+		}
+		Expr *element = elements[i];
+		// 6. We know the required type, so resolve the expression.
 		if (!sema_analyse_expr_rhs(context, members[i]->type, element, true)) return false;
-		if (is_bitstruct && !sema_bit_assignment_check(element, members[i])) return false;
+		if (member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER)
+		{
+			if (!sema_bit_assignment_check(element, members[i])) return false;
+		}
 		failable = failable || IS_FAILABLE(element);
 	}
 	assert(initializer->type);
 	if (failable) initializer->type = type_get_failable(initializer->type);
 
 	// 6. There's the case of too few values as well. Mark the last field as wrong.
-	if (expected_members > size)
-	{
-		SEMA_ERROR(elements[size - 1], "Too few elements in initializer, there should be elements after this one.");
-		return false;
-	}
+	assert(expected_members <= size);
 
 	if (expr_is_constant_eval(initializer, CONSTANT_EVAL_ANY))
 	{
@@ -3348,6 +3435,8 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 
 	// 7. Done!
 	return true;
+
+
 }
 
 
@@ -4798,6 +4887,7 @@ static inline bool sema_take_addr_of_var(Expr *expr, Decl *decl)
 			// May not be reached due to EXPR_CT_IDENT being handled elsewhere.
 			UNREACHABLE;
 		case VARDECL_MEMBER:
+		case VARDECL_BITMEMBER:
 		case VARDECL_UNWRAPPED:
 		case VARDECL_REWRAPPED:
 		case VARDECL_ERASE:
@@ -5792,6 +5882,7 @@ static inline bool decl_is_local(Decl *decl)
 		|| kind == VARDECL_LOCAL_CT
 		|| kind == VARDECL_PARAM_REF
 		|| kind == VARDECL_PARAM_EXPR
+	    || kind == VARDECL_BITMEMBER
 		|| kind == VARDECL_MEMBER;
 }
 

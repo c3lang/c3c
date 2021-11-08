@@ -484,6 +484,7 @@ static inline bool sema_analyse_bitstruct_member(Context *context, Decl *decl, u
 			return false;
 		}
 	}
+	member->resolve_status = RESOLVE_DONE;
 	return true;
 }
 
@@ -1276,6 +1277,7 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 			case VARDECL_GLOBAL:
 			case VARDECL_LOCAL:
 			case VARDECL_MEMBER:
+			case VARDECL_BITMEMBER:
 			case VARDECL_LOCAL_CT:
 			case VARDECL_LOCAL_CT_TYPE:
 			case VARDECL_UNWRAPPED:
@@ -1310,6 +1312,7 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 			case VARDECL_GLOBAL:
 			case VARDECL_LOCAL:
 			case VARDECL_MEMBER:
+			case VARDECL_BITMEMBER:
 			case VARDECL_LOCAL_CT:
 			case VARDECL_LOCAL_CT_TYPE:
 			case VARDECL_UNWRAPPED:
