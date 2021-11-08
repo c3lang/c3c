@@ -950,11 +950,6 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_BITSTRUCT:
 			gencontext_emit_introspection_type(context, decl);
 			break;
-		case DECL_INTERFACE:
-			// TODO
-			break;
-			// TODO
-			break;
 		case NON_TYPE_DECLS:
 			UNREACHABLE
 	}

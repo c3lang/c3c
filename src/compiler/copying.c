@@ -475,11 +475,6 @@ Decl *copy_decl(Decl *decl)
 			MACRO_COPY_TYPE(copy->enums.type_info);
 			MACRO_COPY_DECL_LIST(copy->enums.values);
 			break;
-		case DECL_INTERFACE:
-			copy_decl_type(copy);
-			MACRO_COPY_DECL_LIST(copy->interface_decl.functions);
-			MACRO_COPY_DECL_LIST(copy->interface_decl.members);
-			break;
 		case DECL_FUNC:
 			MACRO_COPY_TYPE(copy->func_decl.type_parent);
 			copy->func_decl.annotations = NULL;

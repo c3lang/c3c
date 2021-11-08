@@ -369,6 +369,17 @@ static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type)
 	return llvm_get_debug_struct(c, type, type->name, elements, 2, NULL, NULL, LLVMDIFlagZero);
 }
 
+static LLVMMetadataRef llvm_debug_any_type(GenContext *c, Type *type)
+{
+	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, type->name, NULL, NULL, LLVMDIFlagZero);
+	type->backend_debug_type = forward;
+
+	LLVMMetadataRef elements[2] = {
+			llvm_get_debug_member(c, type_void, "ptr", 0, NULL, forward, LLVMDIFlagZero),
+			llvm_get_debug_member(c, type_typeid, "type", 0, NULL, forward, LLVMDIFlagZero)
+	};
+	return llvm_get_debug_struct(c, type, type->name, elements, 2, NULL, NULL, LLVMDIFlagZero);
+}
 
 static LLVMMetadataRef llvm_debug_errunion_type(GenContext *c, Type *type)
 {
@@ -521,7 +532,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_FUNC:
 			return type->backend_debug_type = llvm_debug_func_type(c, type);
 		case TYPE_BITSTRUCT:
-			TODO
+			UNREACHABLE
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return type->backend_debug_type = llvm_debug_structlike_type(c, type, scope);
@@ -534,9 +545,8 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 			return type->backend_debug_type = llvm_debug_subarray_type(c, type);
 		case TYPE_ANYERR:
 			return type->backend_debug_type = llvm_debug_errunion_type(c, type);
-		case TYPE_VIRTUAL:
-		case TYPE_VIRTUAL_ANY:
-			TODO
+		case TYPE_ANY:
+			return type->backend_debug_type = llvm_debug_any_type(c, type);
 	}
 	UNREACHABLE
 }

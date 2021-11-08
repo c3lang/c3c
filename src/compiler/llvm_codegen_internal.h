@@ -4,7 +4,7 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "compiler_internal.h"
+#include "codegen_internal.h"
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/ExecutionEngine.h>
@@ -448,6 +448,7 @@ void llvm_set_error_exit_and_value(GenContext *c, LLVMBasicBlockRef block, LLVMV
 #define POP_ERROR() \
  c->catch_block = _old_catch; \
  c->error_var = _old_error_var
+
 
 static inline bool abi_info_should_flatten(ABIArgInfo *info);
 

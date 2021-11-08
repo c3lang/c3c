@@ -116,9 +116,8 @@ static void header_print_type(FILE *file, Type *type)
 			UNREACHABLE
 		case TYPE_ARRAY:
 			break;
-		case TYPE_VIRTUAL:
-		case TYPE_VIRTUAL_ANY:
-			break;
+		case TYPE_ANY:
+			TODO
 		case TYPE_SUBARRAY:
 			break;
 		case TYPE_VECTOR:
@@ -195,7 +194,6 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 		case DECL_ERRVALUE:
 		case DECL_POISONED:
 		case DECL_VAR:
-		case DECL_INTERFACE:
 			UNREACHABLE
 		case DECL_FUNC:
 		case DECL_BITSTRUCT:
@@ -234,7 +232,7 @@ void header_gen(Module *module)
 	OUTPUT("#ifndef __c3__\n");
 	OUTPUT("#define __c3__\n");
 	OUTPUT("typedef ");
-	header_print_type(file, type_lowering(type_typeid));
+	header_print_type(file, type_flatten(type_typeid));
 	OUTPUT(" c3typeid_t;\n");
 	OUTPUT("#endif\n");
 	VECEACH(context->types, i)

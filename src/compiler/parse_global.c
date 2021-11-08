@@ -74,7 +74,6 @@ void recover_top_level(Context *context)
 		{
 			case TOKEN_PRIVATE:
 			case TOKEN_STRUCT:
-			case TOKEN_INTERFACE:
 			case TOKEN_IMPORT:
 			case TOKEN_UNION:
 			case TOKEN_EXTERN:
@@ -589,7 +588,7 @@ static inline TypeInfo *parse_base_type(Context *context)
 				type_info = type_info_new(TYPE_INFO_IDENTIFIER, source_span_from_token_id(context->prev_tok));
 				advance(context);
 				type_info->resolve_status = RESOLVE_DONE;
-				type_info->type = type_virtual;
+				type_info->type = type_any;
 				type_info->virtual_type = true;
 				RANGE_EXTEND_PREV(type_info);
 				return type_info;
@@ -2018,43 +2017,6 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 }
 
 
-/**
- * interface_declaration ::= INTERFACE TYPE '{' func_decl* '}'
- *
- * @param visibility
- */
-static inline Decl *parse_interface_declaration(Context *context, Visibility visibility)
-{
-	advance_and_verify(context, TOKEN_INTERFACE);
-
-	TokenId name = context->tok.id;
-
-	if (!consume_type_name(context, "interface")) return poisoned_decl;
-	Decl *decl = decl_new_with_type(name, DECL_INTERFACE, visibility);
-
-	if (!parse_attributes(context, &decl->attributes))
-	{
-		return poisoned_decl;
-	}
-
-	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
-
-	while (!TOKEN_IS(TOKEN_RBRACE))
-	{
-		if (!TOKEN_IS(TOKEN_FUNC) && !TOKEN_IS(TOKEN_FN))
-		{
-			SEMA_TOKEN_ERROR(context->tok, "Expected a function here.");
-			return poisoned_decl;
-		}
-		ASSIGN_DECL_ELSE(Decl *function, parse_func_definition(context, visibility, true), poisoned_decl);
-		vec_add(decl->methods, function);
-	}
-
-	CONSUME_OR(TOKEN_RBRACE, poisoned_decl);
-	DEBUG_LOG("Parsed interface %s completely.", TOKSTR(name));
-	return decl;
-}
-
 static inline bool check_no_visibility_before(Context *context, Visibility visibility)
 {
 	switch (visibility)
@@ -2342,11 +2304,6 @@ Decl *parse_top_level_statement(Context *context)
 		case TOKEN_CONST:
 		{
 			ASSIGN_DECL_ELSE(decl, parse_top_level_const_declaration(context, visibility), poisoned_decl);
-			break;
-		}
-		case TOKEN_INTERFACE:
-		{
-			ASSIGN_DECL_ELSE(decl, parse_interface_declaration(context, visibility), poisoned_decl);
 			break;
 		}
 		case TOKEN_STRUCT:
