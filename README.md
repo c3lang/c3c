@@ -122,6 +122,7 @@ to C3 and compiled with the c3c compiler:
 - [x] Subarray initializers
 - [x] `$switch`
 - [x] Windows support
+- [x] Bitstructs
 - [ ] Anonymous structs
 - [ ] Complete C ABI conformance *in progress*
 - [ ] Debug info *in progress*
@@ -133,7 +134,6 @@ to C3 and compiled with the c3c compiler:
 - [ ] `global` / `shared` for globals 
 - [ ] Escape macros
 - [ ] Implicit capturing macros
-- [ ] Bitstructs
 - [ ] `asm` section *in progress*
 - [ ] `$for`
 - [ ] Pre-post conditions
