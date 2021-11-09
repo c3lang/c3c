@@ -111,7 +111,12 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 
 extern "C" {
 
-#ifndef LLVMCreateTypeAttribute
+#if LLVM_VERSION_MAJOR < 13
+#if _MSC_VER
+	__declspec(selectany)
+#else
+	__attribute__((weak))
+#endif
 	LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
 											 LLVMTypeRef type_ref)
 	{
