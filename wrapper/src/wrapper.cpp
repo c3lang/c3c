@@ -111,6 +111,15 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 
 extern "C" {
 
+#ifndef LLVMCreateTypeAttribute
+	LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
+											 LLVMTypeRef type_ref)
+	{
+		auto &Ctx = *llvm::unwrap(C);
+		auto AttrKind = (llvm::Attribute::AttrKind)KindID;
+		return wrap(llvm::Attribute::get(Ctx, AttrKind, llvm::unwrap(type_ref)));
+	}
+#endif
 	LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal)
 	{
 		llvm::Constant *Val = llvm::unwrap<llvm::Constant>(ConstantVal);

@@ -1100,11 +1100,7 @@ void llvm_attribute_add_int(GenContext *context, LLVMValueRef value_to_add_attri
 
 void llvm_attribute_add_type(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, LLVMTypeRef type, int index)
 {
-#if LLVM_VERSION_MAJOR < 13
-	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(c->context, attribute_id, 0);
-#else
 	LLVMAttributeRef llvm_attr = LLVMCreateTypeAttribute(c->context, attribute_id, type);
-#endif
 	LLVMAddAttributeAtIndex(value_to_add_attribute_to, index, llvm_attr);
 }
 
@@ -1115,11 +1111,7 @@ void llvm_attribute_add(GenContext *context, LLVMValueRef value_to_add_attribute
 
 void llvm_attribute_add_call_type(GenContext *c, LLVMValueRef call, unsigned attribute_id, int index, LLVMTypeRef type)
 {
-#if LLVM_VERSION_MAJOR < 13
-	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(c->context, attribute_id, 0);
-#else
 	LLVMAttributeRef llvm_attr = LLVMCreateTypeAttribute(c->context, attribute_id, type);
-#endif
 	LLVMAddCallSiteAttribute(call, index, llvm_attr);
 }
 

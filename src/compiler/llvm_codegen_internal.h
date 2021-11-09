@@ -187,6 +187,10 @@ void gencontext_end_file_emit(GenContext *c, Context *ast);
 void gencontext_end_module(GenContext *context);
 
 LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal);
+#ifndef LLVMCreateTypeAttribute
+LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
+										 LLVMTypeRef type_ref);
+#endif
 
 // BE value
 void llvm_value_addr(GenContext *c, BEValue *value);
