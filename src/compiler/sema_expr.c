@@ -2321,6 +2321,7 @@ static inline void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, 
 	expr_const_set_int(&expr_to_rewrite->const_expr, value, type->canonical->type_kind);
 	expr_to_rewrite->type = type;
 	expr_to_rewrite->const_expr.narrowable = narrowable;
+	expr_to_rewrite->const_expr.is_hex = false;
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
 }
 

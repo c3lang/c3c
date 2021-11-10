@@ -1,0 +1,22 @@
+// #target: x64-darwin
+module foo;
+
+int aa = 'ä';
+int x = 'ABCD';
+uint y = 'Helo';
+ushort z = '\x31\x32';
+int d = '\u0031';
+char b = '\x40';
+uint abc = '\U133222AB';
+uint foo = '謝';
+
+/* #expect: foo.ll
+
+@foo.aa = global i32 228, align 4
+@foo.x = global i32 1094861636, align 4
+@foo.y = global i32 1214606447, align 4
+@foo.z = global i16 12594, align 2
+@foo.d = global i32 49, align 4
+@foo.b = global i8 64, align 1
+@foo.abc = global i32 322052779, align 4
+@foo.foo = global i32 35613, align 4

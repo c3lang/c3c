@@ -12,6 +12,7 @@
 #define FLOAT16_LIMIT 65504
 
 static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type);
+static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
 
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 {
@@ -47,6 +48,7 @@ bool pointer_to_integer(Expr *expr, Type *type)
 	expr_const_set_int(&expr->const_expr, 0, TYPE_POINTER);
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	return true;
 }
 
@@ -58,6 +60,7 @@ bool pointer_to_bool(Expr *expr, Type *type)
 	expr->const_expr.b = false;
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	return true;
 }
 
@@ -69,6 +72,7 @@ bool pointer_to_pointer(Expr* expr, Type *type)
 	// Must have been a null
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	return true;
 }
 
@@ -99,6 +103,7 @@ static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type)
 	expr->type = type;
 	expr->const_expr.const_kind = CONST_FLOAT;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 }
 
 
@@ -111,6 +116,7 @@ bool bool_to_int(Expr *expr, Type *canonical, Type *type)
 	expr_const_set_int(&expr->const_expr, expr->const_expr.b ? 1 : 0, canonical->type_kind);
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	return true;
 }
 
@@ -126,6 +132,7 @@ bool bool_to_float(Expr *expr, Type *canonical, Type *type)
 	expr_const_set_float(&expr->const_expr, expr->const_expr.b ? 1.0 : 0.0, canonical->type_kind);
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	return true;
 }
 
@@ -152,6 +159,7 @@ bool integer_to_bool(Expr *expr, Type *type)
 	expr_const_set_bool(&expr->const_expr, !int_is_zero(expr->const_expr.ixx));
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	return true;
 }
 
@@ -165,6 +173,7 @@ bool float_to_bool(Expr *expr, Type *type)
 	expr_const_set_bool(&expr->const_expr, expr->const_expr.fxx.f != 0.0);
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	return true;
 }
 
@@ -178,6 +187,7 @@ static bool float_to_float(Expr* expr, Type *canonical, Type *type)
 
 	expr_const_set_float(&expr->const_expr, expr->const_expr.fxx.f, canonical->type_kind);
 	expr->type = type;
+	expr->const_expr.is_hex = false;
 	expr->const_expr.narrowable = false;
 	return true;
 }
@@ -196,6 +206,7 @@ bool float_to_integer(Expr *expr, Type *canonical, Type *type)
 	expr->const_expr.const_kind = CONST_INTEGER;
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	return true;
 }
 
@@ -215,6 +226,7 @@ static bool int_literal_to_int(Expr *expr, Type *canonical, Type *type)
 	assert(expr->const_expr.const_kind == CONST_INTEGER);
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	return true;
 }
 
@@ -237,6 +249,7 @@ static bool int_conversion(Expr *expr, CastKind kind, Type *canonical, Type *typ
 	expr->const_expr.const_kind = CONST_INTEGER;
 	expr->type = type;
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	return true;
 }
 
@@ -260,6 +273,7 @@ static bool int_literal_to_bool(Expr *expr, Type *type)
 	assert(expr->expr_kind == EXPR_CONST);
 	expr_const_set_bool(&expr->const_expr, !int_is_zero(expr->const_expr.ixx));
 	expr->const_expr.narrowable = false;
+	expr->const_expr.is_hex = false;
 	expr->type = type;
 	return true;
 }
@@ -762,8 +776,7 @@ bool may_convert_int_const_implicit(Expr *expr, Type *to_type)
 	Type *to_type_flat = type_flatten(to_type);
 	if (expr_const_will_overflow(&expr->const_expr, to_type_flat->type_kind))
 	{
-		SEMA_ERROR(expr, "The value '%s' is out of range for %s, it can be truncated with an explicit cast.",
-		           int_to_str(expr->const_expr.ixx, 10), type_quoted_error_string(to_type));
+		sema_error_const_int_out_of_range(expr, expr, to_type);
 		return false;
 	}
 	return true;
@@ -1076,6 +1089,18 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 	UNREACHABLE
 }
 
+static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type)
+{
+	assert(expr->expr_kind == EXPR_CONST);
+	if (expr->const_expr.is_character)
+	{
+		SEMA_ERROR(problem, "The unicode character U+%04x cannot fit in a %s.", (uint32_t)expr->const_expr.ixx.i.low, type_quoted_error_string(to_type));
+		return;
+	}
+	const char *error_value = expr->const_expr.is_hex ? int_to_str(expr->const_expr.ixx, 16) : expr_const_to_error_string(&expr->const_expr);
+	SEMA_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", error_value,
+			   type_quoted_error_string(to_type));
+}
 bool cast_implicit(Expr *expr, Type *to_type)
 {
 	assert(!type_is_failable(to_type));
@@ -1106,8 +1131,7 @@ bool cast_implicit(Expr *expr, Type *to_type)
 				Expr *problem = recursive_may_narrow_int(expr, to_canonical);
 				if (problem)
 				{
-					SEMA_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", expr_const_to_error_string(&expr->const_expr),
-							   type_quoted_error_string(to_type));
+					sema_error_const_int_out_of_range(expr, problem, to_type);
 					return false;
 				}
 				goto OK;
@@ -1387,7 +1411,11 @@ bool cast(Expr *expr, Type *to_type)
 	if (from_type == to)
 	{
 		expr->type = type_get_opt_fail(to_type, from_is_failable);
-		if (expr->expr_kind == EXPR_CONST) expr->const_expr.narrowable = false;
+		if (expr->expr_kind == EXPR_CONST)
+		{
+			expr->const_expr.narrowable = false;
+			expr->const_expr.is_hex = false;
+		}
 		return true;
 	}
 	if (!cast_inner(expr, from_type, to, to_type, from_is_failable)) return false;

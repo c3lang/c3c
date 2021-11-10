@@ -1065,6 +1065,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 		return poisoned_expr;
 	}
 	expr_int->const_expr.const_kind = CONST_INTEGER;
+	expr_int->const_expr.is_hex = hex_characters > 0;
 	Type *type = is_unsigned ? type_cuint() : type_cint();
 	expr_int->const_expr.narrowable = !type_bits;
 	if (type_bits)
@@ -1107,6 +1108,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 		if (type_bits && type_bits < 8) type_bits = 8;
 		if (type_bits && !is_power_of_two(type_bits)) type_bits = next_highest_power_of_2(type_bits);
 	}
+	if (type_bits) expr_int->const_expr.is_hex = false;
 	if (!type_bits)
 	{
 		type_bits = type_size(type) * 8;
@@ -1249,28 +1251,31 @@ static Expr *parse_char_lit(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	expr_int->const_expr.narrowable = true;
+	expr_int->const_expr.is_character = true;
 	TokenData *data = tokendata_from_id(context->tok.id);
 	switch (data->width)
 	{
 		case 1:
-			expr_const_set_int(&expr_int->const_expr, data->char_lit.u8, TYPE_U8);
+			expr_const_set_int(&expr_int->const_expr, data->char_value, TYPE_U8);
 			expr_int->type = type_char;
 			break;
 		case 2:
-			expr_const_set_int(&expr_int->const_expr, data->char_lit.u16, TYPE_U16);
+			expr_const_set_int(&expr_int->const_expr, data->char_value, TYPE_U16);
 			expr_int->type = type_ushort;
 			break;
 		case 4:
-			expr_const_set_int(&expr_int->const_expr, data->char_lit.u32, TYPE_U32);
+			expr_const_set_int(&expr_int->const_expr, data->char_value, TYPE_U32);
 			expr_int->type = type_uint;
 			break;
 		case 8:
-			expr_const_set_int(&expr_int->const_expr, data->char_lit.u64, TYPE_U64);
+			expr_const_set_int(&expr_int->const_expr, data->char_value, TYPE_U64);
 			expr_int->type = type_ulong;
 			break;
 		default:
-			UNREACHABLE
+			expr_const_set_int(&expr_int->const_expr, data->char_value, TYPE_U64);
+			expr_int->type = type_long;
+			expr_int->const_expr.narrowable = true;
+			break;
 	}
 
 	advance(context);
