@@ -1516,7 +1516,11 @@ bool sema_analyse_var_decl(Context *context, Decl *decl, bool local)
 				return decl_poison(decl);
 			}
 		}
-		if (init_expr->expr_kind == EXPR_CONST) init_expr->const_expr.narrowable = false;
+		if (init_expr->expr_kind == EXPR_CONST)
+		{
+			init_expr->const_expr.narrowable = false;
+			init_expr->const_expr.is_hex = false;
+		}
 	}
 	EXIT_OK:
 	if (!decl->alignment) decl->alignment = type_alloca_alignment(decl->type);

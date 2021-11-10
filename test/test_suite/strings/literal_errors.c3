@@ -10,4 +10,5 @@ char zab = '\Uaokdokok'; // #error: Expected an eight
 char zab = '\Uaokdooekfoekfekfkeofkekok'; // #error: Expected an eight
 char eofk = '\UaUfko'; // #error: Expected an eight
 
-char foo = ' // #error: Character literal did not terminate
+char foo = ' // #error: The character literal did not terminate
+

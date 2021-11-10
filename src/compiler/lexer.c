@@ -620,32 +620,101 @@ static inline int64_t scan_hex_literal(Lexer *lexer, int positions)
 	return hex;
 }
 
+static inline int64_t scan_utf8(Lexer *lexer, unsigned char c)
+{
+	int utf8_bytes;
+	uint64_t result;
+	if (c < 0xc0) goto ERROR;
+	if (c <= 0xdf)
+	{
+		result = 0x1f & c;
+		utf8_bytes = 2;
+	}
+	else if (c <= 0xef)
+	{
+		result = 0xf & c;
+		utf8_bytes = 3;
+	}
+	else if (c <= 0xf7)
+	{
+		utf8_bytes = 4;
+		result = 0x7 & c;
+	}
+	else if (c <= 0xfb)
+	{
+		utf8_bytes = 5;
+		result = 0x3 & c;
+	}
+	else if (c <= 0xfd)
+	{
+		utf8_bytes = 6;
+		result = 0x1 & c;
+	}
+	else
+	{
+		goto ERROR;
+	}
+	for (int i = 1; i < utf8_bytes; i++)
+	{
+		result <<= 6U;
+		if (peek(lexer) == '\0') return 0xFFFD;
+		c = (unsigned char)next(lexer);
+		if ((c & 0xc0) != 0x80)
+		{
+			goto ERROR;
+		}
+		result += c & 0x3f;
+	}
+	return result;
+ERROR:
+	add_error_token(lexer, "Invalid UTF-8 sequence.");
+	return -1;
+}
 static inline bool scan_char(Lexer *lexer)
 {
 	int width = 0;
-	char c;
-	union
-	{
-		uint8_t u8;
-		uint16_t u16;
-		uint32_t u32;
-		uint64_t u64;
-		uint8_t b[8];
-	} bytes;
+	uint8_t c;
+	uint64_t b = 0;
+	char has_unicode_escape = 0;
+	bool has_unicode = false;
 	while ((c = next(lexer)) != '\'')
 	{
+		if (has_unicode_escape)
+		{
+			return add_error_token(lexer, "Character literals with '\\%c' can only contain one character.", has_unicode_escape);
+		}
+		if (has_unicode)
+		{
+			return add_error_token(lexer, "A character literal may not contain multiple unicode characters.");
+		}
 		if (c == '\0')
 		{
-			return add_error_token(lexer, "Character literal did not terminate.");
+			return add_error_token(lexer, "The character literal did not terminate.");
 		}
 		if (width > 7)
 		{
 			width++;
 			continue;
 		}
+		if (c >= 0x80)
+		{
+			if (width != 0)
+			{
+				return add_error_token(lexer, "A multi-character character literal may not contain unicode characters.");
+			}
+			int64_t utf8 = scan_utf8(lexer, c);
+			if (utf8 < 0) return false;
+			has_unicode = true;
+			b += utf8;
+			width = -1;
+			continue;
+		}
 		if (c != '\\')
 		{
-			bytes.b[width++] = c;
+			width++;
+			b <<= 8U;
+			b += (uint8_t)c;
+			continue;
 		}
 		if (c == '\\')
 		{
@@ -668,55 +737,51 @@ static inline bool scan_char(Lexer *lexer)
 						// Fix underlining if this is an unfinished escape.
 						return add_error_token(lexer, "Expected a two character hex value after \\x.");
 					}
-					bytes.b[width++] = (uint8_t)hex;
+					width++;
+					b <<= 8U;
+					b += hex;
 					break;
 				}
 				case 'u':
 				{
+					if (width)
+					{
+						return add_error_token(lexer, "Unicode escapes are not allowed in a multi-character literal.");
+					}
 					int64_t hex = scan_hex_literal(lexer, 4);
 					if (hex < 0)
 					{
 						lexer->lexing_start = start;
 						return add_error_token(lexer, "Expected a four character hex value after \\u.");
 					}
-					if (platform_target.big_endian)
-					{
-						bytes.b[width++] = (uint8_t)(hex >> 8);
-						bytes.b[width++] = (uint8_t)(hex & 0xFF);
-					}
-					else
-					{
-						bytes.b[width++] = (uint8_t)(hex & 0xFF);
-						bytes.b[width++] = (uint8_t)(hex >> 8);
-					}
+					b <<= 16U;
+					b += hex;
+					width = -1;
+					has_unicode_escape = 'u';
 					break;
 				}
 				case 'U':
 				{
+					if (width)
+					{
+						return add_error_token(lexer, "Unicode escapes are not allowed in a multi-character literal.");
+					}
 					int64_t hex = scan_hex_literal(lexer, 8);
 					if (hex < 0)
 					{
 						lexer->lexing_start = start;
 						return add_error_token(lexer, "Expected an eight character hex value after \\U.");
 					}
-					if (platform_target.big_endian)
-					{
-						bytes.b[width++] = (uint8_t)(hex >> 24);
-						bytes.b[width++] = (uint8_t)((hex >> 16) & 0xFF);
-						bytes.b[width++] = (uint8_t)((hex >> 8) & 0xFF);
-						bytes.b[width++] = (uint8_t)(hex & 0xFF);
-					}
-					else
-					{
-						bytes.b[width++] = (uint8_t)(hex & 0xFF);
-						bytes.b[width++] = (uint8_t)((hex >> 8) & 0xFF);
-						bytes.b[width++] = (uint8_t)((hex >> 16) & 0xFF);
-						bytes.b[width++] = (uint8_t)(hex >> 24);
-					}
+					width = -1;
+					b <<= 32U;
+					b += hex;
+					has_unicode_escape = 'U';
 					break;
 				}
 				default:
-					bytes.b[width++] = (uint8_t)escape;
+					width++;
+					b <<= 8U;
+					b += (uint8_t)escape;
 			}
 		}
 	}
@@ -727,12 +792,12 @@ static inline bool scan_char(Lexer *lexer)
 	}
 	if (width > 2 && width != 4 && width != 8)
 	{
-		add_error_token(lexer, "Character literals may only be 1, 2 or 8 characters wide.");
+		add_error_token(lexer, "Character literals may only be 1, 2, 4 or 8 characters wide.");
 	}
 
 	add_generic_token(lexer, TOKEN_CHAR_LITERAL);
-	lexer->latest_token_data->char_lit.u64 = bytes.u64;
-	lexer->latest_token_data->width = (char)width;
+	lexer->latest_token_data->char_value = b;
+	lexer->latest_token_data->width = width < 0 ? 0 : (char)width;
 	return true;
 }
 

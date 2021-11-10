@@ -1032,8 +1032,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 		case CAST_PTRANY:
 		{
 			llvm_value_rvalue(c, value);
-			ByteSize size = value->type->pointer->array.len;
-			Type *array_type = value->type->pointer->array.base;
 			LLVMTypeRef any = llvm_get_type(c, to_type);
 			LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_voidptr);
 			BEValue typeid;
@@ -1083,7 +1081,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			break;
 		case CAST_XIERR:
 			to_type = type_lowering(to_type);
-			from_type = type_lowering(from_type);
 			llvm_value_rvalue(c, value);
 			value->value = llvm_zext_trunc(c, value->value, llvm_get_type(c, to_type));
 			break;
@@ -2725,7 +2722,6 @@ static void llvm_emit_subarray_comp(GenContext *c, BEValue *be_value, BEValue *l
 	Type *array_base_type = type_lowering(lhs->type->array.base);
 	Type *array_base_pointer = type_get_ptr(array_base_type);
 	LLVMTypeRef llvm_base_type = llvm_get_type(c, array_base_type);
-	LLVMTypeRef llvm_pointer_type = llvm_get_type(c, array_base_pointer);
 
 	LLVMBasicBlockRef exit = llvm_basic_block_new(c, "subarray_cmp_exit");
 	LLVMBasicBlockRef value_cmp = llvm_basic_block_new(c, "subarray_cmp_values");
@@ -3444,12 +3440,12 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	if (binary_op == BINARYOP_ASSIGN)
 	{
 		Expr *left = expr->binary_expr.left;
-		llvm_emit_expr(c, be_value, expr->binary_expr.left);
+		llvm_emit_expr(c, be_value, left);
 		assert(llvm_value_is_addr(be_value));
 		LLVMValueRef failable_ref = NULL;
 		if (expr->binary_expr.left->expr_kind == EXPR_IDENTIFIER)
 		{
-			failable_ref = decl_failable_ref(expr->binary_expr.left->identifier_expr.decl);
+			failable_ref = decl_failable_ref(left->identifier_expr.decl);
 		}
 		*be_value = llvm_emit_assign_expr(c, be_value, expr->binary_expr.right, failable_ref);
 		return;

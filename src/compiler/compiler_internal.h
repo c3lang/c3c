@@ -136,6 +136,8 @@ typedef struct
 {
 	ConstKind const_kind : 8;
 	bool narrowable : 1;
+	bool is_character : 1;
+	bool is_hex : 1;
 	union
 	{
 		Float fxx;
@@ -1311,14 +1313,7 @@ typedef union
 	};
 	struct
 	{
-		union
-		{
-			uint8_t b[8];
-			uint8_t u8;
-			uint16_t u16;
-			uint32_t u32;
-			uint64_t u64;
-		} char_lit;
+		uint64_t char_value;
 		char width;
 	};
 } TokenData;
