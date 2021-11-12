@@ -273,6 +273,8 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 	RETRY:
 	switch (expr->expr_kind)
 	{
+		case EXPR_BUILTIN:
+			return false;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			expr = expr->access_expr.parent;
@@ -6374,6 +6376,8 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 			if (!sema_analyse_var_decl(context, expr->decl_expr, true)) return false;
 			expr->type = expr->decl_expr->type;
 			return true;
+		case EXPR_BUILTIN:
+			TODO
 		case EXPR_CT_CALL:
 			return sema_expr_analyse_ct_call(context, expr);
 		case EXPR_HASH_IDENT:

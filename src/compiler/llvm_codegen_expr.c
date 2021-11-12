@@ -4898,6 +4898,8 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_UNDEF:
 			// Should never reach this.
 			UNREACHABLE
+		case EXPR_BUILTIN:
+			TODO
 		case EXPR_DECL:
 			llvm_emit_local_decl(c, expr->decl_expr);
 			return;

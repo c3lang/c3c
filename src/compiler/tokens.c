@@ -80,6 +80,8 @@ const char *token_type_to_string(TokenType type)
 			return "|=";
 		case TOKEN_BIT_XOR_ASSIGN:
 			return "^=";
+		case TOKEN_BUILTIN:
+			return "$$";
 		case TOKEN_DIV_ASSIGN:
 			return "/=";
 		case TOKEN_DOTDOT:

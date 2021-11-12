@@ -903,6 +903,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_NOP:
 		case EXPR_LEN:
 		case EXPR_CATCH:
+		case EXPR_BUILTIN:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_float(expr->unary_expr.expr, type);
@@ -1054,6 +1055,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_UNDEF:
 		case EXPR_CT_CALL:
 		case EXPR_NOP:
+		case EXPR_BUILTIN:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_int(expr->unary_expr.expr, type);

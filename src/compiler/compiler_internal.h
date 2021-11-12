@@ -908,6 +908,10 @@ typedef struct
 } ExprLen;
 
 
+typedef struct
+{
+	Token identifier;
+} ExprBuiltin;
 struct Expr_
 {
 	ExprKind expr_kind : 8;
@@ -952,6 +956,7 @@ struct Expr_
 		ExprFuncBlock expr_block;
 		ExprMacroBlock macro_block;
 		Expr** cond_expr;
+		ExprBuiltin builtin_expr;
 	};
 };
 
@@ -1313,7 +1318,7 @@ typedef union
 	};
 	struct
 	{
-		uint64_t char_value;
+		Int128 char_value;
 		char width;
 	};
 } TokenData;

@@ -173,6 +173,7 @@ typedef enum
 	EXPR_BITACCESS,
 	EXPR_BITASSIGN,
 	EXPR_BINARY,
+	EXPR_BUILTIN,
 	EXPR_MACRO_BODY_EXPANSION,
 	EXPR_CALL,
 	EXPR_CAST,
@@ -332,6 +333,7 @@ typedef enum
 	TOKEN_BIT_XOR_ASSIGN,   // ^=
 	TOKEN_DIV_ASSIGN,       // /=
 	TOKEN_DOTDOT,           // ..
+	TOKEN_BUILTIN,          // $$
 	TOKEN_ELVIS,            // ?:
 	TOKEN_EQEQ,             // ==
 	TOKEN_GREATER_EQ,       // >=

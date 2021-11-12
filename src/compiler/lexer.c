@@ -670,135 +670,140 @@ ERROR:
 	add_error_token(lexer, "Invalid UTF-8 sequence.");
 	return -1;
 }
+
+/**
+ * Rules:
+ * 1. If ASCII or \xAB, accept up to 8 characters (16 with Int128 support), size is char, ushort, uint, ulong, UInt128
+ * 2. If UTF8, accept 1 UTF character, size is ushort normally, ulong on wide UTF characters, no additional characters accepted.
+ * 3. If \uABCD, convert to 16 bits, size is ushort, no additional characters accepted.
+ * 4. If \U01234567, convert to 32 bits, size is uint, no additional characters accepted.
+ *
+ * @param lexer
+ * @return
+ */
 static inline bool scan_char(Lexer *lexer)
 {
-	int width = 0;
-	uint8_t c;
-	uint64_t b = 0;
-	char has_unicode_escape = 0;
-	bool has_unicode = false;
-	while ((c = next(lexer)) != '\'')
-	{
-		if (has_unicode_escape)
-		{
-			return add_error_token(lexer, "Character literals with '\\%c' can only contain one character.", has_unicode_escape);
-		}
-		if (has_unicode)
-		{
-			return add_error_token(lexer, "A character literal may not contain multiple unicode characters.");
-		}
-		if (c == '\0')
-		{
-			return add_error_token(lexer, "The character literal did not terminate.");
-		}
-		if (width > 7)
-		{
-			width++;
-			continue;
-		}
-		if (c >= 0x80)
-		{
-			if (width != 0)
-			{
-				return add_error_token(lexer, "A multi-character character literal may not contain unicode characters.");
-			}
-			int64_t utf8 = scan_utf8(lexer, c);
-			if (utf8 < 0) return false;
-			has_unicode = true;
-			b += utf8;
-			width = -1;
-			continue;
-		}
-		if (c != '\\')
-		{
-			width++;
-			b <<= 8U;
-			b += (uint8_t)c;
-			continue;
-		}
-		if (c == '\\')
-		{
-			c = next(lexer);
-			const char *start = lexer->current;
-			signed char escape = is_valid_escape(c);
-			if (escape == -1)
-			{
-				lexer->lexing_start = start;
-				return add_error_token(lexer, "Invalid escape sequence '\\%c'.", c);
-			}
-			switch (escape)
-			{
-				case 'x':
-				{
-					int64_t hex = scan_hex_literal(lexer, 2);
-					if (hex < 0)
-					{
-						lexer->lexing_start = start;
-						// Fix underlining if this is an unfinished escape.
-						return add_error_token(lexer, "Expected a two character hex value after \\x.");
-					}
-					width++;
-					b <<= 8U;
-					b += hex;
-					break;
-				}
-				case 'u':
-				{
-					if (width)
-					{
-						return add_error_token(lexer, "Unicode escapes are not allowed in a multi-character literal.");
-					}
-					int64_t hex = scan_hex_literal(lexer, 4);
-					if (hex < 0)
-					{
-						lexer->lexing_start = start;
-						return add_error_token(lexer, "Expected a four character hex value after \\u.");
-					}
-					b <<= 16U;
-					b += hex;
-					width = -1;
-					has_unicode_escape = 'u';
-					break;
-				}
-				case 'U':
-				{
-					if (width)
-					{
-						return add_error_token(lexer, "Unicode escapes are not allowed in a multi-character literal.");
-					}
-					int64_t hex = scan_hex_literal(lexer, 8);
-					if (hex < 0)
-					{
-						lexer->lexing_start = start;
-						return add_error_token(lexer, "Expected an eight character hex value after \\U.");
-					}
-					width = -1;
-					b <<= 32U;
-					b += hex;
-					has_unicode_escape = 'U';
-					break;
-				}
-				default:
-					width++;
-					b <<= 8U;
-					b += (uint8_t)escape;
-			}
-		}
-	}
 
-	if (width == 0)
+	// Handle the problem with zero size character literal first.
+	if (match(lexer, '\''))
 	{
 		return add_error_token(lexer, "The character literal was empty.");
 	}
-	if (width > 2 && width != 4 && width != 8)
+
+	int width = 0;
+	char c;
+	Int128 b = {};
+
+	while ((c = next(lexer)) != '\'')
 	{
-		add_error_token(lexer, "Character literals may only be 1, 2, 4 or 8 characters wide.");
+		// End of file may occur:
+		if (c == '\0') return add_error_token(lexer, "The character literal did not terminate.");
+		// We might exceed the width that we allow.
+		if (width > 15) return add_error_token(lexer, "The character literal exceeds 16 characters.");
+		// Handle (expected) utf-8 characters.
+		if ((unsigned)c >= (unsigned)0x80)
+		{
+			if (width != 0) goto UNICODE_IN_MULTI;
+			const char *start = lexer->current;
+			int64_t utf8 = scan_utf8(lexer, c);
+			if (utf8 < 0) return false;
+			if (!match(lexer, '\''))
+			{
+				if (peek(lexer) == '\0') continue;
+				lexer->lexing_start = start;
+				return add_error_token(lexer, "Unicode character literals may only contain one character, "
+											  "please remove the additional ones or use all ASCII.");
+			}
+			b.low = utf8;
+			width = utf8 > 0xffff ? 4 : 2;
+			goto DONE;
+		}
+		// Parse the escape code
+		signed char escape = ' ';
+		const char *start = lexer->current;
+		if (c == '\\')
+		{
+			assert(c == '\\');
+			c = next(lexer);
+			escape = is_valid_escape(c);
+			if (escape == -1)
+			{
+				lexer->lexing_start = start - 1;
+				return add_error_token(lexer, "Invalid escape sequence '\\%c'.", c);
+			}
+		}
+		switch (escape)
+		{
+			case 'x':
+			{
+				int64_t hex = scan_hex_literal(lexer, 2);
+				if (hex < 0)
+				{
+					lexer->lexing_start = start - 1;
+					// Fix underlining if this is an unfinished escape.
+					return add_error_token(lexer, "Expected a two character hex value after \\x.");
+				}
+				// We can now reassign c and use the default code.
+				c = hex;
+				break;
+			}
+			case 'u':
+			case 'U':
+			{
+				// First check that we don't have any characters previous to this one.
+				if (width != 0) goto UNICODE_IN_MULTI;
+				int bytes = escape == 'U' ? 4 : 2;
+				int64_t hex = scan_hex_literal(lexer, bytes * 2);
+				// The hex parsing may have failed, lacking more hex chars.
+				if (hex < 0)
+				{
+					lexer->lexing_start = start - 1;
+					return add_error_token(lexer, "Expected %s character hex value after \\%c.",
+										   escape == 'u' ? "a four" : "an eight", escape);
+				}
+				// If we don't see the end here, then something is wrong.
+				if (!match(lexer, '\''))
+				{
+					// It may be the end of the line, if so use the default handling by invoking "continue"
+					if (peek(lexer) == '\0') continue;
+					// Otherwise step forward and mark it as an error.
+					next(lexer);
+					lexer->lexing_start = lexer->current - 1;
+					return add_error_token(lexer,
+					                       "Character literals with '\\%c' can only contain one character, please remove this one.",
+					                       escape);
+				}
+				// Assign the value and go to DONE.
+				b.low = hex;
+				width = bytes;
+				goto DONE;
+			}
+			case ' ':
+				// No escape, a regular character.
+				break;
+			default:
+				c = (unsigned char)escape;
+				break;
+		}
+		// Default handling here:
+		width++;
+		b = i128_shl64(b, 8);
+		b = i128_add64(b, (unsigned char)c);
 	}
 
+	assert(width > 0 && width <= 16);
+	if (width > 8 && !platform_target.int128)
+	{
+		return add_error_token(lexer, "Character literal exceeded 8 characters.");
+	}
+DONE:
 	add_generic_token(lexer, TOKEN_CHAR_LITERAL);
 	lexer->latest_token_data->char_value = b;
-	lexer->latest_token_data->width = width < 0 ? 0 : (char)width;
+	lexer->latest_token_data->width = (char)width;
 	return true;
+
+UNICODE_IN_MULTI:
+	return add_error_token(lexer, "A multi-character literal may not contain unicode characters.");
 }
 
 static inline void skip_first_line_if_empty(Lexer *lexer)
@@ -1616,6 +1621,15 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 			return scan_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH_CONST_IDENT, TOKEN_HASH_TYPE_IDENT, '$');
 		case '$':
 			if (match(lexer, '{')) return add_token(lexer, TOKEN_PLACEHOLDER, "${");
+			if (match(lexer, '$'))
+			{
+				if (is_letter(peek(lexer)))
+				{
+					add_token(lexer, TOKEN_BUILTIN, "$$");
+					return scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST_IDENT, TOKEN_TYPE_IDENT, 0);
+				}
+				return add_error_token(lexer, "Expected a letter after $$.");
+			}
 			return scan_ident(lexer, TOKEN_CT_IDENT, TOKEN_CT_CONST_IDENT, TOKEN_CT_TYPE_IDENT, '$');
 		case ',':
 			return add_token(lexer, TOKEN_COMMA, ",");
