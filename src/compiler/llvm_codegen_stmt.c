@@ -970,6 +970,8 @@ static bool expr_is_pure(Expr *expr)
 	if (!expr) return true;
 	switch (expr->expr_kind)
 	{
+		case EXPR_BUILTIN:
+			TODO
 		case EXPR_CONST:
 		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:

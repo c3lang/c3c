@@ -924,6 +924,16 @@ static Expr *parse_or_error_expr(Context *context, Expr *left)
 	return else_expr;
 }
 
+static Expr *parse_builtin(Context *context, Expr *left)
+{
+	assert(!left && "Had left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_BUILTIN, context->tok);
+	advance_and_verify(context, TOKEN_BUILTIN);
+	expr->builtin_expr.identifier = context->tok;
+	CONSUME_OR(TOKEN_IDENT, poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
 static Expr *parse_placeholder(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
@@ -1253,31 +1263,36 @@ static Expr *parse_char_lit(Context *context, Expr *left)
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
 	expr_int->const_expr.is_character = true;
 	TokenData *data = tokendata_from_id(context->tok.id);
+	expr_int->const_expr.ixx.i = data->char_value;
+	expr_int->const_expr.narrowable = true;
+	expr_int->const_expr.const_kind = CONST_INTEGER;
 	switch (data->width)
 	{
 		case 1:
-			expr_const_set_int(&expr_int->const_expr, data->char_value, TYPE_U8);
 			expr_int->type = type_char;
+			expr_int->const_expr.ixx.type = TYPE_U8;
 			break;
 		case 2:
-			expr_const_set_int(&expr_int->const_expr, data->char_value, TYPE_U16);
 			expr_int->type = type_ushort;
+			expr_int->const_expr.ixx.type = TYPE_U16;
 			break;
+		case 3:
 		case 4:
-			expr_const_set_int(&expr_int->const_expr, data->char_value, TYPE_U32);
 			expr_int->type = type_uint;
+			expr_int->const_expr.ixx.type = TYPE_U32;
 			break;
+		case 5:
+		case 6:
+		case 7:
 		case 8:
-			expr_const_set_int(&expr_int->const_expr, data->char_value, TYPE_U64);
 			expr_int->type = type_ulong;
+			expr_int->const_expr.ixx.type = TYPE_U64;
 			break;
 		default:
-			expr_const_set_int(&expr_int->const_expr, data->char_value, TYPE_U64);
-			expr_int->type = type_long;
-			expr_int->const_expr.narrowable = true;
+			expr_int->type = type_u128;
+			expr_int->const_expr.ixx.type = TYPE_U128;
 			break;
 	}
-
 	advance(context);
 	return expr_int;
 }
@@ -1571,6 +1586,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_NULL] = { parse_null, NULL, PREC_NONE },
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
 		[TOKEN_PLACEHOLDER] = { parse_placeholder, NULL, PREC_NONE },
+		[TOKEN_BUILTIN] = { parse_builtin, NULL, PREC_NONE },
 		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },
 		[TOKEN_AT] = { parse_macro_expansion, NULL, PREC_NONE },
 		[TOKEN_STRING] = { parse_string_literal, NULL, PREC_NONE },
