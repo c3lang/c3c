@@ -40,8 +40,8 @@ struct Stack
 
 // The type methods offers dot syntax calls,
 // so this function can either be called 
-// Stack.push(&stack, ...) or
-// stack.push(...)
+// Stack.push(&my_stack, ...) or
+// my_stack.push(...)
 fn void Stack.push(Stack* this, Type element)
 {
     if (this.capacity == this.size)
