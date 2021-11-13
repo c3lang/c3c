@@ -26,7 +26,7 @@ whole new language.
 
 The following code shows generic modules (more examples can be found at http://www.c3-lang.org/examples/) 
 
-```c
+```c++
 module stack <Type>;
 import std::mem;
 
@@ -37,6 +37,10 @@ struct Stack
     Type* elems;
 }
 
+// The type methods offers dot syntax calls,
+// so this function can either be called 
+// Stack.push(&stack, ...) or
+// stack.push(...)
 fn void Stack.push(Stack* this, Type element)
 {
     if (this.capacity == this.size)
@@ -61,7 +65,7 @@ fn bool Stack.empty(Stack* this)
 
 Testing it out:
 
-```c
+```cpp
 import stack;
 
 // Define our new types
@@ -77,7 +81,10 @@ fn void test()
     IntStack stack;
     // Note that C3 uses zero initialization by default
     // so the above is equivalent to IntStack stack = {};
+    
     stack.push(1);
+    // The above can also be written IntStack.push(&stack, 1); 
+    
     stack.push(2);
     
     // Prints pop: 2
