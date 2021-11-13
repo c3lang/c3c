@@ -80,8 +80,8 @@ define DoubleStack = Stack<double>;
 // have an parameterization of Stack<int>) so it would
 // be same as declaring IntStack2 an alias of IntStack
 
-// How to import an external function
-// here it is libc's printf:
+// Importing an external C function is straightforward
+// here is an example of importing libc's printf:
 extern fn int printf(char* format, ...);
 
 fn void test()
