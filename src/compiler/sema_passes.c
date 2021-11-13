@@ -4,17 +4,6 @@
 
 #include "sema_internal.h"
 
-void context_add_intrinsic(Context *context, const char *name)
-{
-	Decl *decl = decl_calloc();
-	decl->module = context->module;
-	decl->decl_kind = DECL_FUNC;
-	decl->resolve_status = RESOLVE_DONE;
-	decl->func_decl.is_builtin = true;
-	decl->name = name;
-	Decl *old = stable_set(&context->local_symbols, decl->name, decl);
-	assert(!old);
-}
 
 void sema_analysis_pass_process_imports(Module *module)
 {
@@ -81,11 +70,6 @@ void sema_analysis_pass_process_imports(Module *module)
 			}
 		}
 		import_count += imports;
-		// TODO probably remove this:
-		context_add_intrinsic(context, kw___round);
-		context_add_intrinsic(context, kw___trunc);
-		context_add_intrinsic(context, kw___ceil);
-		context_add_intrinsic(context, kw___sqrt);
 	}
 	(void)import_count; // workaround for clang 13.0
 	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", import_count, global_context.errors_found);

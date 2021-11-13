@@ -117,7 +117,6 @@ extern unsigned intrinsic_id_umul_overflow;
 extern unsigned intrinsic_id_trap;
 extern unsigned intrinsic_id_bswap;
 extern unsigned intrinsic_id_assume;
-extern unsigned intrinsic_id_fmuladd;
 extern unsigned intrinsic_id_rint;
 extern unsigned intrinsic_id_trunc;
 extern unsigned intrinsic_id_ceil;
@@ -136,6 +135,7 @@ extern unsigned intrinsic_id_cos;
 extern unsigned intrinsic_id_exp;
 extern unsigned intrinsic_id_exp2;
 extern unsigned intrinsic_id_log;
+extern unsigned intrinsic_id_log2;
 extern unsigned intrinsic_id_log10;
 extern unsigned intrinsic_id_fabs;
 extern unsigned intrinsic_id_fma;
@@ -306,12 +306,12 @@ bool llvm_emit_check_block_branch(GenContext *context);
 
 
 unsigned llvm_store_size(GenContext *c, LLVMTypeRef type);
-void llvm_store_bevalue(GenContext *c, BEValue *destination, BEValue *value);
+LLVMValueRef llvm_store_bevalue(GenContext *c, BEValue *destination, BEValue *value);
 void llvm_store_bevalue_raw(GenContext *c, BEValue *destination, LLVMValueRef raw_value);
 void llvm_store_bevalue_dest_aligned(GenContext *c, LLVMValueRef destination, BEValue *value);
-void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment);
+LLVMValueRef llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment);
 void llvm_store_self_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, Type *type);
-void llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment);
+LLVMValueRef llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment);
 void llvm_store_aligned_decl(GenContext *context, Decl *decl, LLVMValueRef value);
 
 LLVMTypeRef llvm_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef hi);

@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
-#include "errno.h"
 
 typedef enum
 {
@@ -1626,6 +1625,7 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 				if (is_letter(peek(lexer)))
 				{
 					add_token(lexer, TOKEN_BUILTIN, "$$");
+					lexer->lexing_start = lexer->current;
 					return scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST_IDENT, TOKEN_TYPE_IDENT, 0);
 				}
 				return add_error_token(lexer, "Expected a letter after $$.");

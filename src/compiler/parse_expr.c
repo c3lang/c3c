@@ -893,10 +893,7 @@ static Expr *parse_force_unwrap_expr(Context *context, Expr *left)
 static Expr *parse_or_error_expr(Context *context, Expr *left)
 {
 	Expr *else_expr = EXPR_NEW_TOKEN(EXPR_OR_ERROR, context->tok);
-	if (!try_consume(context, TOKEN_ELSE))
-	{
-		advance_and_verify(context, TOKEN_QUESTQUEST);
-	}
+	advance_and_verify(context, TOKEN_QUESTQUEST);
 	else_expr->or_error_expr.expr = left;
 	switch (context->tok.type)
 	{
@@ -1612,7 +1609,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_CONST_IDENT] = { parse_ct_ident, NULL, PREC_NONE },
 		[TOKEN_CT_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_HASH_IDENT] = { parse_hash_ident, NULL, PREC_NONE },
-		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier(, NULL, PREC_NONE }
+		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE }
 
 		[TOKEN_CT_SIZEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },

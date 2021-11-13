@@ -35,6 +35,7 @@ typedef struct _Entry
 static SymTab symtab;
 
 const char *attribute_list[NUMBER_OF_ATTRIBUTES];
+const char *builtin_list[NUMBER_OF_BUILTINS];
 
 const char *kw_align;
 const char *kw_deprecated;
@@ -68,6 +69,21 @@ const char *kw_LINEREAL;
 const char *kw_default_iterator;
 const char *kw_incr;
 const char *kw_check_assign;
+const char *kw_builtin_ceil;
+const char *kw_builtin_trunc;
+const char *kw_builtin_sqrt;
+const char *kw_builtin_cos;
+const char *kw_builtin_sin;
+const char *kw_builtin_log;
+const char *kw_builtin_log2;
+const char *kw_builtin_log10;
+const char *kw_builtin_max;
+const char *kw_builtin_min;
+const char *kw_builtin_pow;
+const char *kw_builtin_exp;
+const char *kw_builtin_fabs;
+const char *kw_builtin_fma;
+const char *kw_builtin_cmpxchg;
 
 void symtab_init(uint32_t capacity)
 {
@@ -132,6 +148,29 @@ void symtab_init(uint32_t capacity)
 	kw_incr = KW_DEF("incr");
 	kw_default_iterator = KW_DEF("default_iterator");
 	kw_check_assign = KW_DEF("check_assign");
+
+	builtin_list[BUILTIN_CEIL] = KW_DEF("ceil");
+	builtin_list[BUILTIN_TRUNC] = KW_DEF("trunc");
+	builtin_list[BUILTIN_SIN] = KW_DEF("sin");
+	builtin_list[BUILTIN_COS] = KW_DEF("cos");
+	builtin_list[BUILTIN_LOG] = KW_DEF("log");
+	builtin_list[BUILTIN_LOG2] = KW_DEF("log2");
+	builtin_list[BUILTIN_LOG10] = KW_DEF("log10");
+	builtin_list[BUILTIN_SQRT] = KW_DEF("sqrt");
+	builtin_list[BUILTIN_POW] = KW_DEF("pow");
+	builtin_list[BUILTIN_EXP] = KW_DEF("exp");
+	builtin_list[BUILTIN_MAX] = KW_DEF("max");
+	builtin_list[BUILTIN_MIN] = KW_DEF("min");
+	builtin_list[BUILTIN_FMA] = KW_DEF("fma");
+	builtin_list[BUILTIN_FABS] = KW_DEF("fabs");
+	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");
+	builtin_list[BUILTIN_VOLATILE_LOAD] = KW_DEF("volatile_load");
+
+	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
+	{
+		assert(builtin_list[i] && "Missing builtin");
+	}
+
 	attribute_list[ATTRIBUTE_INLINE] = kw_inline;
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
 	attribute_list[ATTRIBUTE_OPAQUE] = KW_DEF("opaque");
@@ -152,6 +191,12 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_REGCALL] = KW_DEF("regcall");
 	attribute_list[ATTRIBUTE_FASTCALL] = KW_DEF("fastcall");
 	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("overlap");
+
+	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
+	{
+		assert(attribute_list[i] && "Missing attributes");
+	}
+
 }
 
 static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t hash)

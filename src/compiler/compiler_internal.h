@@ -450,7 +450,6 @@ typedef struct
 {
 	struct
 	{
-		bool is_builtin : 1;
 		bool attr_weak : 1;
 		bool attr_noreturn : 1;
 		bool attr_inline : 1;
@@ -684,6 +683,7 @@ typedef struct
 	bool unsplat_last : 1;
 	bool force_inline : 1;
 	bool force_noinline : 1;
+	bool is_builtin : 1;
 	union
 	{
 		Expr *function;
@@ -911,6 +911,7 @@ typedef struct
 typedef struct
 {
 	Token identifier;
+	BuiltinFunction builtin;
 } ExprBuiltin;
 struct Expr_
 {
@@ -1529,7 +1530,7 @@ extern Type *type_complist;
 extern Type *type_anyfail;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
-
+extern const char *builtin_list[NUMBER_OF_BUILTINS];
 extern const char *kw_std;
 extern const char *kw_max;
 extern const char *kw_min;
@@ -1562,6 +1563,22 @@ extern const char *kw_LINEREAL;
 extern const char *kw_default_iterator;
 extern const char *kw_incr;
 extern const char *kw_check_assign;
+extern const char *kw_builtin_ceil;
+extern const char *kw_builtin_trunc;
+extern const char *kw_builtin_sqrt;
+extern const char *kw_builtin_cos;
+extern const char *kw_builtin_sin;
+extern const char *kw_builtin_log;
+extern const char *kw_builtin_log2;
+extern const char *kw_builtin_log10;
+extern const char *kw_builtin_max;
+extern const char *kw_builtin_min;
+extern const char *kw_builtin_pow;
+extern const char *kw_builtin_exp;
+extern const char *kw_builtin_fabs;
+extern const char *kw_builtin_fma;
+extern const char *kw_builtin_cmpxchg;
+
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id((_token).id))
 #define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
@@ -2032,6 +2049,7 @@ bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
 static inline Type *type_flatten(Type *type);
 static inline bool type_is_vector(Type *type) { return type_flatten(type)->type_kind == TYPE_VECTOR; };
+bool type_is_float_or_float_vector(Type *type);
 bool type_may_have_sub_elements(Type *type);
 static inline bool type_ok(Type *type);
 ByteSize type_size(Type *type);
