@@ -6,6 +6,9 @@ aims to be fast and close to the metal.
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
+![vkQuake](https://github.com/c3lang/c3c/blob/master/resources/images/vkQuake.png?raw=true)
+
+Thanks to full ABI compatibility with C, it's possible to mix C and C3 in the same project with no effort. As a demonstration, vkQuake was compiled with a small portion of the code converted to C3 and compiled with the c3c compiler. (The fork can be found at https://github.com/c3lang/vkQuake)
 
 ### Design Principles
 - Procedural "get things done"-type of language.
@@ -76,13 +79,7 @@ or discuss C3 on its dedicated Discord: [https://discord.gg/qN76R87](https://dis
 The compiler should compile on Linux, Windows (under MSVC, Mingw or MSYS2) and MacOS, 
 but needs some install documentation for Windows. 
 
-Due to its ABI compatibility with C, it's possible to mix C and C3 in the same project.
-As a demonstration, vkQuake was compiled with a small portion of the code converted
-to C3 and compiled with the c3c compiler:
 
-![vkQuake](https://github.com/c3lang/c3c/blob/master/resources/images/vkQuake.png?raw=true)
-
-(The vkFork is at https://github.com/c3lang/vkQuake)
 
 #### What can you help with?
 
