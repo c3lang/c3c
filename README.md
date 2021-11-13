@@ -1,10 +1,11 @@
 # C3 Language
 
-C3 is a C-like language trying to be "an incremental improvement over C" rather than a whole new language. 
-C3 owes a lot to the ideas of the [C2 language](http://c2lang.org): to iterate on top of C without trying to be a 
-whole new language.
+C3 is a C-like language striving to be an evolution of C, rather than a 
+completely new language. As an alternative in the C/C++ niche it
+aims to be fast and close to the metal.
 
-C3 tries to be an alternative in the C/C++ niche: fast and close to the metal.
+The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
+
 
 ### Design Principles
 - Procedural "get things done"-type of language.
@@ -15,7 +16,12 @@ C3 tries to be an alternative in the C/C++ niche: fast and close to the metal.
 - Avoid "big ideas" & the "more is better" fallacy.
 - Introduce some higher level conveniences where the value is great.
 
+C3 owes its inspiration to the [C2 language](http://c2lang.org): to iterate on top of C without trying to be a
+whole new language.
+
 ### Example code
+
+The following code shows some of the syntactic changes from C.
 
 Create a `main.c3` file with:
 ```c++
@@ -24,7 +30,7 @@ import std::io;
 
 fn void main()
 {
-   io::printf("Hello, world!\n");
+   io::println("Hello, world!");
 }
 ```
 
@@ -36,6 +42,7 @@ c3c compile main.c3
 ```
 
 The generated binary will be called `a.out`.
+
 
 ### In what ways do C3 differ from C?
 
@@ -50,7 +57,6 @@ The generated binary will be called `a.out`.
 - Defer
 - Value methods
 - Associated enum data
-- Built-in hooks for convenient string handling
 - No preprocessor
 - Less undefined behaviour and runtime checks in "safe" mode
 - Limited operator overloading to enable userland dynamic arrays
@@ -61,10 +67,13 @@ The generated binary will be called `a.out`.
 It's possible to try out the current C3 compiler in the browser: https://ide.judge0.com/ – this is courtesy of the
 developer of Judge0. 
 
-Design work is still being done in the design draft here: https://c3lang.github.io/c3docs/. If you have any suggestions, send a mail to [christoffer@aegik.com](mailto:christoffer@aegik.com), [file an issue](https://github.com/c3lang/c3c/issues) or discuss 
-C3 on its dedicated Discord: https://discord.gg/qN76R87
+Design work on C3 is mostly done, but there are some areas that are unfinished, such
+as inline asm. Follow the issues [here](https://github.com/c3lang/c3c/issues).
 
-The compiler should compile on Linux, Windows (under Mingw or MSYS2) and MacOS, 
+If you have any suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues) 
+or discuss C3 on its dedicated Discord: [https://discord.gg/qN76R87](https://discord.gg/qN76R87).
+
+The compiler should compile on Linux, Windows (under MSVC, Mingw or MSYS2) and MacOS, 
 but needs some install documentation for Windows. 
 
 Due to its ABI compatibility with C, it's possible to mix C and C3 in the same project.
@@ -75,78 +84,18 @@ to C3 and compiled with the c3c compiler:
 
 (The vkFork is at https://github.com/c3lang/vkQuake)
 
-#### Todo / done
-
-- [x] For/while/do
-- [x] `if`/ternary
-- [x] Structs
-- [x] Union
-- [x] Enums
-- [x] Value methods
-- [x] Compound literals
-- [x] Designated initalizers
-- [x] Slicing syntax
-- [x] Arrays and subarrays
-- [x] Modules
-- [x] `$unreachable`
-- [x] Compile time assert with `$assert`
-- [x] Compiler guiding `assert` 
-- [x] C code calling by declaring methods `extern`
-- [x] Compile time variables
-- [x] Basic macros
-- [x] 4cc, 8cc, 2cc
-- [x] Enum type inference in switch/assignment
-- [x] Integer type inference
-- [x] Error type
-- [x] Failable error handling
-- [x] `try` for conditional execution
-- [x] `catch` for error handling
-- [x] Implicit unwrap after `catch`
-- [x] `sizeof`
-- [x] `typeof`
-- [x] 2s complement wrapping operators
-- [x] Labelled break / continue
-- [x] `nextcase` statement
-- [x] Expression blocks
-- [x] Do-without-while
-- [x] Foreach statement
-- [x] Templates
-- [x] Distinct types
-- [x] Built-in linking
-- [x] CT only macros evaluating to constants
-- [x] range initializers e.g. `{ [1..2] = 2 }`
-- [x] Trailing body macros e.g. `@foo(1, 100; int a) { bar(a); };`
-- [x] Complex macros
-- [x] CT type constants
-- [x] Simd vector types *partly implemented*
-- [x] Subarray initializers
-- [x] `$switch`
-- [x] Windows support
-- [x] Bitstructs
-- [ ] Anonymous structs
-- [ ] Complete C ABI conformance *in progress*
-- [ ] Debug info *in progress*
-- [ ] Enum associated data support  
-- [ ] All attributes *in progress*
-- [ ] Associative array literals
-- [ ] Reflection methods
-- [ ] LTO/ThinLTO setup
-- [ ] `global` / `shared` for globals 
-- [ ] Escape macros
-- [ ] Implicit capturing macros
-- [ ] `asm` section *in progress*
-- [ ] `$for`
-- [ ] Pre-post conditions
-- [ ] Stdlib inclusion
-- [ ] String functions
-
 #### What can you help with?
 
-- If you wish to contribute with ideas, please file issues on the c3docs: https://github.com/c3lang/c3docs instead of the compiler.
-- Discuss the language on discord to help iron out syntax.
+- If you wish to contribute with ideas, please file issues or discuss on Discord.
 - Interested in contributing to the stdlib? Please get in touch on Discord.
-- Are you a Windows dev? Please help make the compiler work on Windows!
+- Are you a Windows dev and know your way around Github CI? Please help us get MSVC CI working!
 - Install instructions for other Linux and Unix variants are appreciated.
+- Would you like to contribute bindings to some library? It would be nice to have support for SDL, Raylib and more.
+- Build something with C3 and show it off and give feedback. The language is still open for significant tweaks.
+- Start work on the C -> C3 converter which takes C code and does a "best effort" to translate it to C3. The first version only needs to work on C headers.
+- Do you have some specific area you have deep knowledge of and could help make C3 even better at doing? File or comment on issues.
+
+### Installing
 
 #### Installing on Ubuntu 20.10
 
