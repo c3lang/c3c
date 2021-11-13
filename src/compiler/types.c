@@ -255,6 +255,13 @@ const char *type_generate_qname(Type *type)
 }
 
 
+bool type_is_float_or_float_vector(Type *type)
+{
+	type = type_flatten(type);
+	if (type->type_kind == TYPE_VECTOR) type = type->vector.base;
+	TypeKind kind = type->type_kind;
+	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
+}
 
 bool type_is_union_struct(Type *type)
 {

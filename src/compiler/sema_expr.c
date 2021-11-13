@@ -1015,14 +1015,6 @@ static inline bool sema_expr_analyse_intrinsic_fp_invocation(Context *context, E
 
 }
 
-static inline bool sema_expr_analyse_intrinsic_invocation(Context *context, Expr *expr, Decl *decl, bool *failable)
-{
-	if (decl->name == kw___ceil || decl->name == kw___trunc || decl->name == kw___round || decl->name == kw___sqrt)
-	{
-		return sema_expr_analyse_intrinsic_fp_invocation(context, expr, decl, failable);
-	}
-	UNREACHABLE
-}
 
 static inline bool expr_may_unpack_as_vararg(Expr *expr, Type *variadic_base_type)
 {
@@ -1434,13 +1426,6 @@ static inline bool sema_expr_analyse_func_invocation(Context *context, FunctionS
 			.variadic = signature->variadic,
 	};
 	if (!sema_expr_analyse_call_invocation(context, expr, callee, &failable)) return false;
-
-	// 2. Builtin? We handle that elsewhere.
-	if (decl && decl->func_decl.is_builtin)
-	{
-		assert(!struct_var);
-		return sema_expr_analyse_intrinsic_invocation(context, expr, decl, &failable);
-	}
 
 	Type *rtype = signature->rtype->type;
 
@@ -1973,6 +1958,168 @@ bool sema_expr_analyse_general_call(Context *context, Expr *expr, Decl *decl, Ex
 }
 
 
+
+static inline unsigned builtin_expected_args(BuiltinFunction func)
+{
+	switch (func)
+	{
+		case BUILTIN_CEIL:
+		case BUILTIN_TRUNC:
+		case BUILTIN_SQRT:
+		case BUILTIN_COS:
+		case BUILTIN_SIN:
+		case BUILTIN_EXP:
+		case BUILTIN_LOG:
+		case BUILTIN_LOG2:
+		case BUILTIN_LOG10:
+		case BUILTIN_FABS:
+		case BUILTIN_VOLATILE_LOAD:
+			return 1;
+		case BUILTIN_POW:
+		case BUILTIN_MAX:
+		case BUILTIN_MIN:
+		case BUILTIN_VOLATILE_STORE:
+			return 2;
+		case BUILTIN_FMA:
+			return 3;
+		case BUILTIN_NONE:
+			UNREACHABLE
+	}
+	UNREACHABLE
+}
+static inline bool sema_expr_analyse_builtin_call(Context *context, Expr *expr)
+{
+	expr->call_expr.is_builtin = true;
+	BuiltinFunction func = expr->call_expr.function->builtin_expr.builtin;
+	unsigned expected_args = builtin_expected_args(func);
+	Expr **args = expr->call_expr.arguments;
+	unsigned arg_count = vec_size(args);
+
+	// 1. Handle arg count, so at least we know that is ok.
+	if (expected_args != arg_count)
+	{
+		if (arg_count == 0)
+		{
+			SEMA_ERROR(expr, "Expected %d arguments to builtin.\n", expected_args);
+			return false;
+		}
+		if (arg_count < expected_args)
+		{
+			SEMA_ERROR(args[arg_count - 1], "Expected more arguments after this one.");
+			return false;
+		}
+		SEMA_ERROR(args[expected_args], "Too many arguments.");
+		return false;
+	}
+
+	bool failable = false;
+
+	// 2. We can now check all the arguments, since they in general work on the
+	//    exact type size, we don't do any forced promotion.
+	for (unsigned i = 0; i < arg_count; i++)
+	{
+		if (!sema_analyse_expr(context, args[i])) return false;
+		failable = failable || type_is_failable(args[i]->type);
+	}
+
+	Type *rtype = NULL;
+	switch (func)
+	{
+		case BUILTIN_CEIL:
+		case BUILTIN_TRUNC:
+		case BUILTIN_SQRT:
+		case BUILTIN_COS:
+		case BUILTIN_SIN:
+		case BUILTIN_POW:
+		case BUILTIN_EXP:
+		case BUILTIN_FABS:
+		case BUILTIN_LOG:
+		case BUILTIN_LOG2:
+		case BUILTIN_LOG10:
+			if (type_is_float_or_float_vector(args[0]->type))
+			{
+				rtype = args[0]->type;
+				break;
+			}
+			SEMA_ERROR(args[0], "Expected a floating point or floating point array.");
+			return false;
+		case BUILTIN_MAX:
+		case BUILTIN_MIN:
+			if (!type_is_float_or_float_vector(args[0]->type))
+			{
+				SEMA_ERROR(args[0], "Expected a floating point or floating point array.");
+				return false;
+			}
+			if (!type_is_float_or_float_vector(args[1]->type))
+			{
+				SEMA_ERROR(args[1], "Expected a floating point or floating point array.");
+				return false;
+			}
+			if (type_flatten(args[0]->type) != type_flatten(args[1]->type))
+			{
+				SEMA_ERROR(args[1], "Expected an expression of type %s.", type_quoted_error_string(args[0]->type));
+				return false;
+			}
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_FMA:
+			if (!type_is_float_or_float_vector(args[0]->type))
+			{
+				SEMA_ERROR(args[0], "Expected a floating point or floating point array.");
+				return false;
+			}
+			if (!type_is_float_or_float_vector(args[1]->type))
+			{
+				SEMA_ERROR(args[1], "Expected a floating point or floating point array.");
+				return false;
+			}
+			if (!type_is_float_or_float_vector(args[2]->type))
+			{
+				SEMA_ERROR(args[2], "Expected a floating point or floating point array.");
+				return false;
+			}
+			if (type_flatten(args[0]->type) != type_flatten(args[1]->type))
+			{
+				SEMA_ERROR(args[1], "Expected an expression of type %s.", type_quoted_error_string(args[0]->type));
+				return false;
+			}
+			if (type_flatten(args[0]->type) != type_flatten(args[2]->type))
+			{
+				SEMA_ERROR(args[2], "Expected an expression of type %s.", type_quoted_error_string(args[0]->type));
+				return false;
+			}
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_VOLATILE_LOAD:
+		{
+			Type *type = type_flatten(args[0]->type);
+			if (!type_is_pointer(type))
+			{
+				SEMA_ERROR(args[0], "Expected a pointer.");
+				return false;
+			}
+			rtype = type->pointer;
+			break;
+		}
+		case BUILTIN_VOLATILE_STORE:
+		{
+			Type *type = type_flatten(args[0]->type);
+			if (!type_is_pointer(type))
+			{
+				SEMA_ERROR(args[0], "Expected a pointer.");
+				return false;
+			}
+			rtype = type->pointer;
+			if (!cast_implicit(args[1], rtype)) return false;
+			break;
+		}
+		case BUILTIN_NONE:
+			UNREACHABLE
+	}
+	expr->type = type_get_opt_fail(rtype, failable);
+	return true;
+}
+
 static inline bool sema_expr_analyse_call(Context *context, Expr *expr)
 {
 	Expr *func_expr = expr->call_expr.function;
@@ -1988,6 +2135,8 @@ static inline bool sema_expr_analyse_call(Context *context, Expr *expr)
 	bool macro = false;
 	switch (func_expr->expr_kind)
 	{
+		case EXPR_BUILTIN:
+			return sema_expr_analyse_builtin_call(context, expr);
 		case EXPR_IDENTIFIER:
 			decl = func_expr->identifier_expr.decl;
 			break;
@@ -6357,6 +6506,30 @@ static inline bool sema_expr_analyse_ct_call(Context *context, Expr *expr)
 	}
 }
 
+static inline BuiltinFunction builtin_by_name(const char *name)
+{
+	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
+	{
+		if (builtin_list[i] == name) return (BuiltinFunction)i;
+	}
+	return BUILTIN_NONE;
+}
+
+static inline bool sema_expr_analyse_builtin(Context *context, Expr *expr)
+{
+	const char *builtin_char = TOKSTR(expr->builtin_expr.identifier);
+
+	BuiltinFunction func = builtin_by_name(builtin_char);
+
+	if (func == BUILTIN_NONE)
+	{
+		SEMA_TOKEN_ERROR(expr->builtin_expr.identifier, "Unsupported builtin '%s'.", builtin_char);
+		return false;
+	}
+
+	expr->builtin_expr.builtin = func;
+	return true;
+}
 
 static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 {
@@ -6377,7 +6550,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 			expr->type = expr->decl_expr->type;
 			return true;
 		case EXPR_BUILTIN:
-			TODO
+			return sema_expr_analyse_builtin(context, expr);
 		case EXPR_CT_CALL:
 			return sema_expr_analyse_ct_call(context, expr);
 		case EXPR_HASH_IDENT:

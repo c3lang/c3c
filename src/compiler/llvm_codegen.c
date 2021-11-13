@@ -547,7 +547,6 @@ unsigned intrinsic_id_smul_overflow;
 unsigned intrinsic_id_umul_overflow;
 unsigned intrinsic_id_sshl_sat;
 unsigned intrinsic_id_ushl_sat;
-unsigned intrinsic_id_fmuladd;
 unsigned intrinsic_id_rint;
 unsigned intrinsic_id_trunc;
 unsigned intrinsic_id_ceil;
@@ -566,6 +565,7 @@ unsigned intrinsic_id_cos;
 unsigned intrinsic_id_exp;
 unsigned intrinsic_id_exp2;
 unsigned intrinsic_id_log;
+unsigned intrinsic_id_log2;
 unsigned intrinsic_id_log10;
 unsigned intrinsic_id_fabs;
 unsigned intrinsic_id_fma;
@@ -654,6 +654,7 @@ void llvm_codegen_setup()
 	intrinsic_id_exp = lookup_intrinsic("llvm.exp");
 	intrinsic_id_exp2 = lookup_intrinsic("llvm.exp2");
 	intrinsic_id_log = lookup_intrinsic("llvm.log");
+	intrinsic_id_log2 = lookup_intrinsic("llvm.log2");
 	intrinsic_id_log10 = lookup_intrinsic("llvm.log10");
 	intrinsic_id_fabs = lookup_intrinsic("llvm.fabs");
 	intrinsic_id_fma = lookup_intrinsic("llvm.fma");
@@ -1149,7 +1150,7 @@ AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type)
 	return (AlignSize)LLVMABIAlignmentOfType(c->target_data, type);
 }
 
-void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
+LLVMValueRef llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
 {
 	// If we have an address but not an aggregate, do a load.
 	llvm_value_fold_failable(c, value);
@@ -1165,8 +1166,7 @@ void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue
 			value->kind = BE_VALUE;
 			FALLTHROUGH;
 		case BE_VALUE:
-			llvm_store_aligned(c, destination, value->value, alignment ? alignment : type_abi_alignment(value->type));
-			return;
+			return llvm_store_aligned(c, destination, value->value, alignment ? alignment : type_abi_alignment(value->type));
 		case BE_ADDRESS_FAILABLE:
 			UNREACHABLE
 		case BE_ADDRESS:
@@ -1176,9 +1176,13 @@ void llvm_store_bevalue_aligned(GenContext *c, LLVMValueRef destination, BEValue
 			LLVMValueRef copy_size = llvm_const_int(c, size <= UINT32_MAX ? type_uint : type_usize, size);
 			destination = LLVMBuildBitCast(c->builder, destination, llvm_get_ptr_type(c, type_char), "");
 			LLVMValueRef source = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, type_char), "");
-			LLVMBuildMemCpy(c->builder, destination, alignment ? alignment : type_abi_alignment(value->type),
-							source, value->alignment ? value->alignment : type_abi_alignment(value->type), copy_size);
-			return;
+			LLVMValueRef copy = LLVMBuildMemCpy(c->builder,
+			                                    destination,
+			                                    alignment ? alignment : type_abi_alignment(value->type),
+			                                    source,
+			                                    value->alignment ? value->alignment : type_abi_alignment(value->type),
+			                                    copy_size);
+			return copy;
 		}
 	}
 	UNREACHABLE
@@ -1189,11 +1193,11 @@ void llvm_store_bevalue_dest_aligned(GenContext *c, LLVMValueRef destination, BE
 	llvm_store_bevalue_aligned(c, destination, value, LLVMGetAlignment(destination));
 }
 
-void llvm_store_bevalue(GenContext *c, BEValue *destination, BEValue *value)
+LLVMValueRef llvm_store_bevalue(GenContext *c, BEValue *destination, BEValue *value)
 {
-	if (value->type == type_void) return;
+	if (value->type == type_void) return NULL;
 	assert(llvm_value_is_addr(destination));
-	llvm_store_bevalue_aligned(c, destination->value, value, destination->alignment);
+	return llvm_store_bevalue_aligned(c, destination->value, value, destination->alignment);
 }
 
 void llvm_store_bevalue_raw(GenContext *c, BEValue *destination, LLVMValueRef raw_value)
@@ -1207,10 +1211,11 @@ void llvm_store_self_aligned(GenContext *context, LLVMValueRef pointer, LLVMValu
 	llvm_store_aligned(context, pointer, value, type_abi_alignment(type));
 }
 
-void llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
+LLVMValueRef llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
 {
 	LLVMValueRef ref = LLVMBuildStore(context->builder, value, pointer);
 	if (alignment) llvm_set_alignment(ref, alignment);
+	return ref;
 }
 
 void llvm_store_aligned_decl(GenContext *context, Decl *decl, LLVMValueRef value)

@@ -5,6 +5,16 @@ extern func void* _realloc(void* ptr, usize bytes) @extname("realloc");
 extern func void* _calloc(usize bytes, usize elements) @extname("calloc");
 extern func void _free(void* ptr) @extname("free");
 
+macro volatile_load(&x)
+{
+    return $$volatile_load(&x);
+}
+
+macro volatile_store(&x, y)
+{
+    return $$volatile_store(&x, y);
+}
+
 enum AllocationKind
 {
     ALLOC,

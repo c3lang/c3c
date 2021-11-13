@@ -3889,41 +3889,22 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 	element->alignment = alignment;
 }
 
-static void llvm_emit_fp_intrinsic_expr(GenContext *c, unsigned intrinsic_id, BEValue *be_value, Expr *expr)
+static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic_id, BEValue *be_value, Expr *expr)
 {
 	unsigned arguments = vec_size(expr->call_expr.arguments);
-	llvm_emit_expr(c, be_value, expr->call_expr.arguments[0]);
-	llvm_value_rvalue(c, be_value);
-	LLVMTypeRef call_type = llvm_get_type(c, be_value->type);
-	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id, &call_type, 1, &be_value->value, 1);
-	be_value->value = result;
+	assert(arguments < 5 && "Only has room for 4");
+	LLVMValueRef arg_results[4];
+	for (unsigned i = 0; i < arguments; i++)
+	{
+		llvm_emit_expr(c, be_value, expr->call_expr.arguments[0]);
+		llvm_value_rvalue(c, be_value);
+		arg_results[i] = be_value->value;
+	}
+	LLVMTypeRef call_type = llvm_get_type(c, expr->type);
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id, &call_type, 1, arg_results, arguments);
+	llvm_value_set(be_value, result, expr->type);
 }
-void gencontext_emit_call_intrinsic_expr(GenContext *c, BEValue *be_value, Expr *expr)
-{
-	Decl *function_decl = expr->call_expr.function->identifier_expr.decl;
-	function_decl = decl_flatten(function_decl);
-	if (function_decl->name == kw___round)
-	{
-		llvm_emit_fp_intrinsic_expr(c, intrinsic_id_rint, be_value, expr);
-		return;
-	}
-	if (function_decl->name == kw___sqrt)
-	{
-		llvm_emit_fp_intrinsic_expr(c, intrinsic_id_sqrt, be_value, expr);
-		return;
-	}
-	if (function_decl->name == kw___trunc)
-	{
-		llvm_emit_fp_intrinsic_expr(c, intrinsic_id_trunc, be_value, expr);
-		return;
-	}
-	if (function_decl->name == kw___ceil)
-	{
-		llvm_emit_fp_intrinsic_expr(c, intrinsic_id_ceil, be_value, expr);
-		return;
-	}
-	UNREACHABLE
-}
+
 
 void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, BEValue *be_value, Type *type)
 {
@@ -4059,8 +4040,83 @@ static void llvm_emit_unpacked_variadic_arg(GenContext *c, Expr *expr, BEValue *
 	}
 }
 
+unsigned llvm_get_intrinsic(BuiltinFunction func)
+{
+	switch (func)
+	{
+		case BUILTIN_NONE:
+			UNREACHABLE
+		case BUILTIN_CEIL: return intrinsic_id_ceil;
+		case BUILTIN_TRUNC: return intrinsic_id_trunc;
+		case BUILTIN_SQRT: return intrinsic_id_sqrt;
+		case BUILTIN_COS: return intrinsic_id_cos;
+		case BUILTIN_SIN: return intrinsic_id_sin;
+		case BUILTIN_LOG: return intrinsic_id_log;
+		case BUILTIN_LOG10: return intrinsic_id_log10;
+		case BUILTIN_MAX: return intrinsic_id_maxnum;
+		case BUILTIN_MIN: return intrinsic_id_minnum;
+		case BUILTIN_FABS: return intrinsic_id_fabs;
+		case BUILTIN_FMA: return intrinsic_id_fma;
+		case BUILTIN_LOG2: return intrinsic_id_log2;
+		case BUILTIN_POW: return intrinsic_id_pow;
+		case BUILTIN_EXP: return intrinsic_id_exp;
+		case BUILTIN_VOLATILE_STORE:
+		case BUILTIN_VOLATILE_LOAD:
+			UNREACHABLE
+	}
+	UNREACHABLE
+}
+
+LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity)
+{
+	switch (atomicity)
+	{
+		case ATOMIC_NONE: return LLVMAtomicOrderingNotAtomic;
+		case ATOMIC_UNORDERED: return LLVMAtomicOrderingUnordered;
+		case ATOMIC_RELAXED: return LLVMAtomicOrderingMonotonic;
+		case ATOMIC_ACQUIRE: return LLVMAtomicOrderingAcquire;
+		case ATOMIC_RELEASE: return LLVMAtomicOrderingRelease;
+		case ATOMIC_ACQUIRE_RELEASE: return LLVMAtomicOrderingAcquireRelease;
+		case ATOMIC_SEQ_CONSISTENT: return LLVMAtomicOrderingSequentiallyConsistent;
+	}
+	UNREACHABLE
+}
+
+void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
+{
+	BuiltinFunction func = expr->call_expr.function->builtin_expr.builtin;
+	if (func == BUILTIN_VOLATILE_STORE)
+	{
+		BEValue value;
+		llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
+		llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
+		llvm_value_rvalue(c, &value);
+		value.kind = BE_ADDRESS;
+		BEValue store_value = *result_value;
+		LLVMValueRef store = llvm_store_bevalue(c, &value, &store_value);
+		if (store) LLVMSetVolatile(store, true);
+		return;
+	}
+	if (func == BUILTIN_VOLATILE_LOAD)
+	{
+		llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
+		llvm_value_rvalue(c, result_value);
+		result_value->kind = BE_ADDRESS;
+		result_value->type = type_lowering(result_value->type->pointer);
+		llvm_value_rvalue(c, result_value);
+		LLVMSetVolatile(result_value->value, true);
+		return;
+	}
+	llvm_emit_intrinsic_expr(c, llvm_get_intrinsic(func), result_value, expr);
+}
+
 void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 {
+	if (expr->call_expr.is_builtin)
+	{
+		llvm_emit_builtin_call(c, result_value, expr);
+		return;
+	}
 	FunctionSignature *signature;
 	LLVMTypeRef func_type;
 	LLVMValueRef func;
@@ -4092,13 +4148,9 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	else
 	{
 		// 2a. Get the function declaration
+
 		Decl *function_decl = expr->call_expr.func_ref;
 		always_inline = function_decl->func_decl.attr_inline;
-		if (function_decl->func_decl.is_builtin)
-		{
-			gencontext_emit_call_intrinsic_expr(c, result_value, expr);
-			return;
-		}
 
 		// 2b. Set signature, function and function type
 		signature = &function_decl->func_decl.function_signature;

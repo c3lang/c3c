@@ -280,7 +280,6 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 {
 	const char **parts = NULL;
 	vec_add(parts, "cc");
-	vec_add(parts, "-lm");
 	VECEACH(active_target.link_args, i)
 	{
 		vec_add(parts, active_target.link_args[i]);
@@ -306,6 +305,7 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	{
 		vec_add(parts, files[i]);
 	}
+	vec_add(parts, "-lm");
 	const char *output = concat_string_parts(parts);
 	if (system(output) != 0)
 	{

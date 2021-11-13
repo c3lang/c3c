@@ -909,6 +909,7 @@ static inline AttributeType attribute_by_name(Attr *attr)
 	return ATTRIBUTE_NONE;
 }
 
+
 static const char *attribute_domain_to_string(AttributeDomain domain)
 {
 	switch (domain)
