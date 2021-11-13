@@ -24,28 +24,75 @@ whole new language.
 
 ### Example code
 
-The following code shows some of the syntactic changes from C.
+The following code shows generic modules (more examples can be found at http://www.c3-lang.org/examples/) 
 
-Create a `main.c3` file with:
-```c++
-module hello_world;
-import std::io;
+```c
+module stack <Type>;
+import std::mem;
 
-fn void main()
+struct Stack
 {
-   io::println("Hello, world!");
+    usize capacity;
+    usize size;
+    Type* elems;
+}
+
+fn void Stack.push(Stack* this, Type element)
+{
+    if (this.capacity == this.size)
+    {
+        this.capacity *= 2;
+        this.elems = mem::realloc(this.elems, $sizeof(Type) * this.capacity);
+    }
+    this.elems[this.size++] = element;
+}
+
+fn Type Stack.pop(Stack* this)
+{
+    assert(this.size > 0);
+    return this.elems[--this.size];
+}
+
+fn bool Stack.empty(Stack* this)
+{
+    return !this.size;
 }
 ```
 
-Make sure you have the standard libraries at either `../lib/std/` or `/lib/std/`.
+Testing it out:
 
-Then run
-```sh
-c3c compile main.c3
+```c
+import stack;
+
+// Define our new types
+define IntStack = Stack<int>;
+define DoubleStack = Stack<double>;
+
+// How to import an external function
+// here it is libc's printf:
+extern fn int printf(char* format, ...);
+
+fn void test()
+{
+    IntStack stack;
+    // Note that C3 uses zero initialization by default
+    // so the above is equivalent to IntStack stack = {};
+    stack.push(1);
+    stack.push(2);
+    
+    // Prints pop: 2
+    printf("pop: %d\n", stack.pop());
+    // Prints pop: 1
+    printf("pop: %d\n", stack.pop());
+    
+    DoubleStack dstack;
+    dstack.push(2.3);
+    dstack.push(3.141);
+    dstack.push(1.1235);
+    // Prints pop: 1.1235
+    printf("pop: %f\n", dstack.pop());
+}
 ```
-
-The generated binary will be called `a.out`.
-
 
 ### In what ways do C3 differ from C?
 
@@ -137,3 +184,25 @@ A `c3c` executable will be found under `bin/`.
 7. Change directory to the build directory `cd build`
 8. Set up CMake build for debug: `cmake ..`
 9. Build: `cmake --build .`
+
+#### Getting started with a "hello world"
+
+Create a `main.c3` file with:
+```c++
+module hello_world;
+import std::io;
+
+fn void main()
+{
+   io::println("Hello, world!");
+}
+```
+
+Make sure you have the standard libraries at either `../lib/std/` or `/lib/std/`.
+
+Then run
+```sh
+c3c compile main.c3
+```
+
+The generated binary will be called `a.out`.
