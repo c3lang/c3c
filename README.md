@@ -24,10 +24,11 @@ whole new language.
 
 ### Example code
 
-The following code shows generic modules (more examples can be found at http://www.c3-lang.org/examples/) 
+The following code shows generic modules (more examples can be found at http://www.c3-lang.org/examples/). 
 
 ```c++
 module stack <Type>;
+// Above: the parameterized type is applied to the entire module.
 import std::mem;
 
 struct Stack
@@ -68,9 +69,16 @@ Testing it out:
 ```cpp
 import stack;
 
-// Define our new types
+// Define our new types, the first will implicitly create 
+// a complete copy of the entire Stack module with "Type" set to "int"
 define IntStack = Stack<int>;
+// The second creates another copy with "Type" set to "double"
 define DoubleStack = Stack<double>;
+
+// If we had added "define IntStack2 = Stack<int>"
+// no additional copy would have been made (since we already
+// have an parameterization of Stack<int>) so it would
+// be same as declaring IntStack2 an alias of IntStack
 
 // How to import an external function
 // here it is libc's printf:
