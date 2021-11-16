@@ -11,8 +11,8 @@ struct Foo
     int z;
 }
 
-Foo foo1 = { .a = 3, .z = 4 };
-Foo foo2 = { .b = 3, .z = 4 };
+global Foo foo1 = { .a = 3, .z = 4 };
+global Foo foo2 = { .b = 3, .z = 4 };
 
 struct Blend_Map_Entry
 {
@@ -22,12 +22,12 @@ struct Blend_Map_Entry
   }
 }
 
-Blend_Map_Entry a = { .vals = { .colour = { 1, 2, 3, 4, 5 } } };
-Blend_Map_Entry b = { .vals = { .point_Slope = { 6, 7 } } };
-Blend_Map_Entry c = { .vals.colour[2] = 1 };
-Blend_Map_Entry d = { .vals.colour = { 1, 2, 3, 4, 5 } };
+global Blend_Map_Entry a = { .vals = { .colour = { 1, 2, 3, 4, 5 } } };
+global Blend_Map_Entry b = { .vals = { .point_Slope = { 6, 7 } } };
+global Blend_Map_Entry c = { .vals.colour[2] = 1 };
+global Blend_Map_Entry d = { .vals.colour = { 1, 2, 3, 4, 5 } };
 
-func void test(Blend_Map_Entry* foo)
+fn void test(Blend_Map_Entry* foo)
 {
 }
 

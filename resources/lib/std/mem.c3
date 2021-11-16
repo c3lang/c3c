@@ -1,9 +1,9 @@
 module std::mem;
 
-extern func void* _malloc(usize bytes) @extname("malloc");
-extern func void* _realloc(void* ptr, usize bytes) @extname("realloc");
-extern func void* _calloc(usize bytes, usize elements) @extname("calloc");
-extern func void _free(void* ptr) @extname("free");
+extern fn void* _malloc(usize bytes) @extname("malloc");
+extern fn void* _realloc(void* ptr, usize bytes) @extname("realloc");
+extern fn void* _calloc(usize bytes, usize elements) @extname("calloc");
+extern fn void _free(void* ptr) @extname("free");
 
 macro volatile_load(&x)
 {
@@ -27,7 +27,7 @@ errtype AllocationFailure
     OUT_OF_MEMORY
 }
 
-define AllocatorFunction = func void!(void *data, void** pointer, usize bytes, usize alignment, AllocationKind kind);
+define AllocatorFunction = fn void!(void *data, void** pointer, usize bytes, usize alignment, AllocationKind kind);
 
 struct Allocator
 {
@@ -35,12 +35,12 @@ struct Allocator
     void *data;
 }
 
-func void copy(char* dst, char* src, usize size)
+fn void copy(char* dst, char* src, usize size)
 {
     for (usize i = 0; i < size; i++) dst[i] = src[i];
 }
 
-func void! system_malloc_function(void *unused, void** pointer, usize bytes, usize alignment, AllocationKind kind) @inline
+fn void! system_malloc_function(void *unused, void** pointer, usize bytes, usize alignment, AllocationKind kind) @inline
 {
     switch (kind)
     {
@@ -72,7 +72,7 @@ struct SlotAllocator
     usize current_page;
 }
 
-func void*! SlotAllocator.alloc(SlotAllocator *allocator, usize size)
+fn void*! SlotAllocator.alloc(SlotAllocator *allocator, usize size)
 {
     void* active_page = (char*)(allocator.pages) + allocator.current_page * allocator.page_size;
     void** page_pointer = (void**)(active_page);
@@ -101,7 +101,7 @@ struct RingAllocator
 }
 
 
-func void* RingAllocator.alloc(RingAllocator *allocator, usize size)
+fn void* RingAllocator.alloc(RingAllocator *allocator, usize size)
 {
     if (size > allocator.size) return null;
     // Wraparound? If so, start at the beginning.
@@ -115,7 +115,7 @@ func void* RingAllocator.alloc(RingAllocator *allocator, usize size)
     return data;
 }
 
-func void* RingAllocator.realloc(RingAllocator *allocator, void* ptr, usize size)
+fn void* RingAllocator.realloc(RingAllocator *allocator, void* ptr, usize size)
 {
     if (size > allocator.size) return null;
     assert(allocator.data >= ptr && ptr < allocator.data + size, "Realloc on other allocator.");
@@ -159,22 +159,22 @@ macro malloc($Type)
     return ($Type*)(mem::alloc($sizeof($Type)));
 }
 
-func void* alloc(usize size, usize count = 1) @inline
+fn void* alloc(usize size, usize count = 1) @inline
 {
     return _malloc(size * count);
 }
 
-func void* calloc(usize size, usize elements = 1) @inline
+fn void* calloc(usize size, usize elements = 1) @inline
 {
     return _calloc(size, elements);
 }
 
-func void* realloc(void *ptr, usize size) @inline
+fn void* realloc(void *ptr, usize size) @inline
 {
     return _realloc(ptr, size);
 }
 
-func void free(void* ptr) @inline
+fn void free(void* ptr) @inline
 {
     _free(ptr);
 }
@@ -194,7 +194,7 @@ SlotAllocator default_allocator = {
     .current_page = 0,
 };
 
-func void*! talloc(usize size)
+fn void*! talloc(usize size)
 {
     return default_allocator.alloc(size);
 }

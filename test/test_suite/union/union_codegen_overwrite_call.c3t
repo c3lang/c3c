@@ -10,9 +10,9 @@ union UnionB
     double d;
 }
 
-extern func int bar();
+extern fn int bar();
 
-func void test()
+fn void test()
 {
     UnionB b = { .c = bar(), .b = {} };
 }

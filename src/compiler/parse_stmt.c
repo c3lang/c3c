@@ -800,6 +800,7 @@ Ast *parse_stmt(Context *context)
 			return parse_decl_or_expr_stmt(context);
 		case TOKEN_VAR:
 			return parse_var_stmt(context);
+		case TOKEN_GLOBAL: // Global means declaration!
 		case TOKEN_STATIC:   // Static means declaration!
 		case TOKEN_CONST:   // Const means declaration!
 			return parse_declaration_stmt(context);

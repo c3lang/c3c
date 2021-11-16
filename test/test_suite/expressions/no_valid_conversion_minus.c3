@@ -1,7 +1,7 @@
 struct Foo
 {}
 
-func int main()
+fn int main()
 {
     int a = 0;
     Foo f;

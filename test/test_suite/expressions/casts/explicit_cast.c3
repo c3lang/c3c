@@ -1,7 +1,7 @@
 define Number8 = char;
 define Number32 = int;
 
-func void test1()
+fn void test1()
 {
     int a = (ichar)(10);
     int b = (ichar)(200);
@@ -9,7 +9,7 @@ func void test1()
     ichar d = (int)(200);     // #error: 'int' to 'ichar'
 }
 
-func void test2()
+fn void test2()
 {
     char  e = (Number32)(200);   // #error: 'Number32' (int) to 'char'
 }

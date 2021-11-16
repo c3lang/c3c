@@ -1,11 +1,11 @@
 module chained;
 
-func int foo()
+fn int foo()
 {
     return 1;
 }
 
-func void test()
+fn void test()
 {
     int x = foo();
     int y = foo();

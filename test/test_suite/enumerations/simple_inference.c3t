@@ -6,7 +6,7 @@ enum HelloEnum
     WORLD,
     ELLOWORLD,
 }
-func void test()
+fn void test()
 {
     HelloEnum h = WORLD;
     h = ELLOWORLD;

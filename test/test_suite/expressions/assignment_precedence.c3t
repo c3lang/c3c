@@ -1,6 +1,6 @@
 module prec;
 
-func void test()
+fn void test()
 {
     int i = 1;
     int j = 2;

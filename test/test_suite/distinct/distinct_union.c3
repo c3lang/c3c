@@ -23,7 +23,7 @@ define Union3 = distinct Union2;
 
 define UnionArr = distinct Union3[3];
 
-func void test(int x)
+fn void test(int x)
 {
     Union s = { .y = 2.0 };
     Foo f2 = (Foo)(s);

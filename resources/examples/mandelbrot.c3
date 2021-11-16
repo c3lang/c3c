@@ -1,10 +1,10 @@
 module mandelbrot;
 
-extern func int atoi(char *s);
-extern func int printf(char *s, ...);
-extern func void putchar(int c);
+extern fn int atoi(char *s);
+extern fn int printf(char *s, ...);
+extern fn void putchar(int c);
 
-func void main(int argc, char **argv)
+fn void main(int argc, char **argv)
 {
 	int w = atoi(argv[1]);
 	int h = w;

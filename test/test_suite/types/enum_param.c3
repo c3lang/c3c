@@ -3,10 +3,10 @@ enum Foo
     A, B
 }
 
-func void test(Foo f)
+fn void test(Foo f)
 {}
 
-func void test2()
+fn void test2()
 {
     test(Foo.A);
 }

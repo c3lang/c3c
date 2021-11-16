@@ -1,9 +1,9 @@
 // #target: x64-darwin
 module splat;
 
-extern func int sum_us(int... x);
+extern fn int sum_us(int... x);
 
-func void test()
+fn void test()
 {
     sum_us(1, 2, 3);
     int[3] x = { 1, 2, 3 };

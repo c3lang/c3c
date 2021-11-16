@@ -1,6 +1,6 @@
 module foo<Type>;
 
-func void abc()
+fn void abc()
 {
     int i;
     defer { i++; }

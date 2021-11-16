@@ -15,12 +15,12 @@ struct LinkedList
     Node *last;
 }
 
-func void LinkedList.push(LinkedList *list, Type value)
+fn void LinkedList.push(LinkedList *list, Type value)
 {
     list.linkLast(value);
 }
 
-private func void LinkedList.linkFirst(LinkedList *list, Type value)
+private fn void LinkedList.linkFirst(LinkedList *list, Type value)
 {
     Node *first = list.first;
     Node *new_node = @mem::malloc(Node);
@@ -37,7 +37,7 @@ private func void LinkedList.linkFirst(LinkedList *list, Type value)
     list.size++;
 }
 
-private func void LinkedList.linkLast(LinkedList *list, Type value)
+private fn void LinkedList.linkLast(LinkedList *list, Type value)
 {
     Node *last = list.last;
     Node *new_node = mem::alloc($sizeof(Node));
@@ -54,7 +54,7 @@ private func void LinkedList.linkLast(LinkedList *list, Type value)
     list.size++;
 }
 
-func void LinkedList.free(LinkedList *list)
+fn void LinkedList.free(LinkedList *list)
 {
     for (Node* node = list.first; node != null;)
     {
@@ -67,12 +67,12 @@ func void LinkedList.free(LinkedList *list)
     list.size = 0;
 }
 
-func usize LinkedList.len(LinkedList* list) @inline
+fn usize LinkedList.len(LinkedList* list) @inline
 {
     return list.size;
 }
 
-func Type LinkedList.get(LinkedList* list, usize index)
+fn Type LinkedList.get(LinkedList* list, usize index)
 {
     Node* node = list.first;
     while (index--)
@@ -84,7 +84,7 @@ func Type LinkedList.get(LinkedList* list, usize index)
 /**
  * @require succ != null
  **/
-private func void LinkedList.linkBefore(LinkedList *list, Node *succ, Type value)
+private fn void LinkedList.linkBefore(LinkedList *list, Node *succ, Type value)
 {
     Node* pred = succ.prev;
     Node* new_node = @mem::malloc(Node);
@@ -104,7 +104,7 @@ private func void LinkedList.linkBefore(LinkedList *list, Node *succ, Type value
 /**
  * @require f == list.first && f != null
  **/
-private func void unlinkFirst(LinkedList* list, Node* f)
+private fn void unlinkFirst(LinkedList* list, Node* f)
 {
     Node* next = f.next;
     mem::free(f);
@@ -123,7 +123,7 @@ private func void unlinkFirst(LinkedList* list, Node* f)
 /**
  * @require l == list.last && l != null
  **/
-private func void LinkedList.unlinkLast(LinkedList *list, Node* l)
+private fn void LinkedList.unlinkLast(LinkedList *list, Node* l)
 {
     Node* prev = l.prev;
     list.last = prev;
@@ -142,7 +142,7 @@ private func void LinkedList.unlinkLast(LinkedList *list, Node* l)
 /**
  * @require x != null
  **/
-private func void LinkedList.unlink(LinkedList* list, Node* x)
+private fn void LinkedList.unlink(LinkedList* list, Node* x)
 {
     Node* next = x.next;
     Node* prev = x.prev;

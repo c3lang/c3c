@@ -13,7 +13,7 @@ struct Planet
   double mass;
 }
 
-func void advance(Planet[] bodies) @noinline
+fn void advance(Planet[] bodies) @noinline
 {
     usize nbodies = bodies.len;
     foreach (i, Planet* &b : bodies)
@@ -42,7 +42,7 @@ func void advance(Planet[] bodies) @noinline
     }
 }
 
-func double energy(Planet[] bodies)
+fn double energy(Planet[] bodies)
 {
     double e;
     usize nbodies = bodies.len;
@@ -63,7 +63,7 @@ func double energy(Planet[] bodies)
     return e;
 }
 
-func void offset_momentum(Planet[] bodies)
+fn void offset_momentum(Planet[] bodies)
 {
     double px;
     double py;
@@ -128,7 +128,7 @@ Planet[*] planet_bodies = {
  *
  * When all advances done, rescale bodies back to obtain correct energy.
  */
-func void scale_bodies(Planet[] bodies, double scale)
+fn void scale_bodies(Planet[] bodies, double scale)
 {
     foreach (&b : bodies)
     {
@@ -139,11 +139,11 @@ func void scale_bodies(Planet[] bodies, double scale)
     }
 }
 
-extern func int atoi(char *s);
-extern func int printf(char *s, ...);
-extern func double sqrt(double);
+extern fn int atoi(char *s);
+extern fn int printf(char *s, ...);
+extern fn double sqrt(double);
 
-func int main(int argc, char ** argv)
+fn int main(int argc, char ** argv)
 {
     int n = atoi(argv[1]);
 

@@ -3,7 +3,7 @@ macro void hello($bar)
     $bar;
 }
 const FOO = 1 + 2;
-func void test()
+fn void test()
 {
     var $Foo = int;
     var $Bar = $Foo;

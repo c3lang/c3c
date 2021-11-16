@@ -1,5 +1,5 @@
 
-extern func void printf(char* c, ...);
+extern fn void printf(char* c, ...);
 
 struct ExtraSimple
 {
@@ -27,7 +27,7 @@ struct ExtraSimple
 }
 
 
-func void testSimple()
+fn void testSimple()
 {
     ExtraSimple a = { .c.j = 3.3 };
     a.c.j = 3.4;

@@ -1,13 +1,13 @@
 module foo;
 
-private func void hidden()
+private fn void hidden()
 {
 }
 
 module bar;
 import foo;
 
-func void test()
+fn void test()
 {
     foo::hidden(); // #error: The function 'hidden' is not visible from this module.
 }
@@ -15,7 +15,7 @@ func void test()
 module baz;
 import private foo;
 
-func void test()
+fn void test()
 {
     foo::hidden();
 }

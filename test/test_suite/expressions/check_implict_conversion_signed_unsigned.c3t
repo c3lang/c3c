@@ -1,6 +1,6 @@
 module check;
 
-func int main()
+fn int main()
 {
     int a = 0;
     ulong b = 3;

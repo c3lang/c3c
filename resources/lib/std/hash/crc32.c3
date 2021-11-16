@@ -5,17 +5,17 @@ struct Crc32
     uint result;
 }
 
-func void Crc32.init(Crc32* this, uint seed = 0)
+fn void Crc32.init(Crc32* this, uint seed = 0)
 {
     this.result = ~seed;
 }
 
-func void Crc32.updatec(Crc32* this, char c)
+fn void Crc32.updatec(Crc32* this, char c)
 {
     this.result = (this.result >> 8) ^ CRC32_TABLE[(this.result ^ c) & 0xFF];
 }
 
-func void Crc32.update(Crc32* this, char[] data)
+fn void Crc32.update(Crc32* this, char[] data)
 {
     uint result = this.result;
     foreach (char x : data)
@@ -25,12 +25,12 @@ func void Crc32.update(Crc32* this, char[] data)
     this.result = result;
 }
 
-func uint Crc32.final(Crc32* this)
+fn uint Crc32.final(Crc32* this)
 {
     return ~this.result;
 }
 
-func uint encode(char[] data)
+fn uint encode(char[] data)
 {
     uint result = ~(uint)(0);
     foreach (char x : data)

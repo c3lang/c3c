@@ -18,7 +18,7 @@ struct Struct2
 }
 Foo f = { 1, 1.0 };
 
-func void test(int x)
+fn void test(int x)
 {
     Struct s = { 1, 2.0 };
     Foo f2 = (Foo)(s);

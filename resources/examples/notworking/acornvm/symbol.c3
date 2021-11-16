@@ -8,7 +8,7 @@ macro @hash_binmod(s, size)
 }
 
 /** Resize the symbol table */
-func void resizeTable(Value th as Auint newsize)
+fn void resizeTable(Value th as Auint newsize)
 {
 	SymTable* sym_tbl = &vm(th)->sym_table;
 	Auint i;
@@ -48,7 +48,7 @@ func void resizeTable(Value th as Auint newsize)
 }
 
 /** Initialize the symbol table that hash indexes all symbols */
-func void init(Value th)
+fn void init(Value th)
 {
 	SymTable* sym_tbl = &vm(th).sym_table;
 	sym_tbl.nbrAvail = 0;
@@ -67,7 +67,7 @@ void free(Value th)
 
 /* If symbol exists in symbol table, reuse it. Otherwise, add it.
    Anchor (store) symbol value in dest and return it. */
-func Value newSym(Value th, Value* dest, string str, AuintIdx len)
+fn Value newSym(Value th, Value* dest, string str, AuintIdx len)
 {
 	SymInfo* sym;
 	SymTable* sym_tbl = &vm(th)->sym_table;
@@ -101,7 +101,7 @@ func Value newSym(Value th, Value* dest, string str, AuintIdx len)
 }
 
 /* Return 1 if the value is a Symbol, otherwise 0 */
-func int Value.isSym(Value *sym) @inline
+fn int Value.isSym(Value *sym) @inline
 {
 	return sym.isEnc(SymEnc);
 }
@@ -120,7 +120,7 @@ int isGlobal(Value sym)
  * This can be used to sequentially iterate through the symbol table.
  * Results may be inaccurate if the symbol table is changed during iteration.
  */
-func Value next(Value th, Value key)
+fn Value next(Value th, Value key)
 {
 	SymTable *sym_tbl = &th(th)->vm->sym_table;
 	SymInfo *sym;

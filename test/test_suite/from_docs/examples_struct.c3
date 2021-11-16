@@ -1,4 +1,4 @@
-define Callback = func int(char c);
+define Callback = fn int(char c);
 struct Person {}
 struct Company {}
 enum Status : int

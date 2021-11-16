@@ -1,20 +1,20 @@
 module foo;
 
-extern func void printf(char* message, ...);
+extern fn void printf(char* message, ...);
 
-func void defer1() {}
-func void defer2() {}
-func void defer3() {}
-func void defer4() {}
-func void defer5() {}
-func void defer6() {}
-func void defer7() {}
-func void defer8() {}
-func void defer9() {}
-func void defer10() {}
-func void defer11() {}
+fn void defer1() {}
+fn void defer2() {}
+fn void defer3() {}
+fn void defer4() {}
+fn void defer5() {}
+fn void defer6() {}
+fn void defer7() {}
+fn void defer8() {}
+fn void defer9() {}
+fn void defer10() {}
+fn void defer11() {}
 
-func int main(int argc)
+fn int main(int argc)
 {
 	int a = 0;
     {

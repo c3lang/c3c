@@ -26,11 +26,11 @@ void* gWindow = null;
 void* gScreenSurface = null;
 
 
-extern func int init(uint flags) @extname("SDL_Init");
-extern func int initSubSystem(uint flags) @extname("SDL_InitSubSystem");
-extern func void quitSubSystem(uint flags) @extname("SDL_QuitSubSystem");
-extern func uint wasInit(uint flags) @extname("SDL_WasInit");
-extern func void quit() @extname("SDL_Quit");
+extern fn int init(uint flags) @extname("SDL_Init");
+extern fn int initSubSystem(uint flags) @extname("SDL_InitSubSystem");
+extern fn void quitSubSystem(uint flags) @extname("SDL_QuitSubSystem");
+extern fn uint wasInit(uint flags) @extname("SDL_WasInit");
+extern fn void quit() @extname("SDL_Quit");
 
 enum SDLWindowFlags : c_int
 {
@@ -59,13 +59,13 @@ enum SDLWindowFlags : c_int
     VULKAN        = 0x10000000       /**< window usable for Vulkan surface */
 }
 
-extern func void* createWindow(char *title, uint x, uint y, int w, int h, uint flags) @extname("SDL_CreateWindow");
-extern func void* getWindowSurface(void *window) @extname("SDL_GetWindowSurface");
+extern fn void* createWindow(char *title, uint x, uint y, int w, int h, uint flags) @extname("SDL_CreateWindow");
+extern fn void* getWindowSurface(void *window) @extname("SDL_GetWindowSurface");
 const uint WINDOWPOS_UNDEFINED_MASK = 0x1FFF0000;
-extern func int exit(int code);
-extern func int printf(char *mess, ...);
+extern fn int exit(int code);
+extern fn int printf(char *mess, ...);
 
-func bool initX()
+fn bool initX()
 {
 	//Initialization flag
 	bool success = true;
@@ -86,7 +86,7 @@ func bool initX()
 }
 
 
-func void close()
+fn void close()
 {
 	//Destroy window
 //	SDL_DestroyWindow( gWindow );
@@ -96,8 +96,8 @@ func void close()
 	quit();
 }
 
-extern func int pollEvent(SDL_Event *event) @extname("SDL_PollEvent");
-extern func int updateWindowSurface(void *window) @extname("SDL_UpdateWindowSurface");
+extern fn int pollEvent(SDL_Event *event) @extname("SDL_PollEvent");
+extern fn int updateWindowSurface(void *window) @extname("SDL_UpdateWindowSurface");
 
 enum SDLEventType : uint
 {
@@ -223,7 +223,7 @@ union SDL_Event
 
 const uint SDL_QUIT = 0x100;
 
-func int main(int argc, char** args)
+fn int main(int argc, char** args)
 {
 	initX();
 	//Main loop flag

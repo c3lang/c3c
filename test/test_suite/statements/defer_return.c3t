@@ -1,15 +1,15 @@
 module test;
-func void test1() {}
-func void test2() {}
-func void test3() {}
-func void test4() {}
-func void test5() {}
-func void test6() {}
-func void test7() {}
-func void test8() {}
-func void test9() {}
+fn void test1() {}
+fn void test2() {}
+fn void test3() {}
+fn void test4() {}
+fn void test5() {}
+fn void test6() {}
+fn void test7() {}
+fn void test8() {}
+fn void test9() {}
 
-func int main(int argc)
+fn int main(int argc)
 {
     defer test1();
     int a = 0;

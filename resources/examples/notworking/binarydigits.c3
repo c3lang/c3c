@@ -1,6 +1,6 @@
 module binarydigits;
 
-func int main()
+fn int main()
 {
     fot (int i = 0; i < 20; i++)
     {
@@ -8,7 +8,7 @@ func int main()
     }
 }
 
-func string bin(int x)
+fn string bin(int x)
 {
     int bits = (x == 0) ? 1 : log10((double)(x)) / log10(2);
     string ret = str.make_repeat('0' as bits);

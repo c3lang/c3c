@@ -48,7 +48,7 @@ typedef void* as distinct Value
 /** Prototype for a C method callable by the VM.
 	It is passed the thread, through which it obtains parameters via the data stack.
 	When done, it returns how many return values it has placed on the stack. */
-typedef func int(Value) as AcMethodp;
+typedef fn int(Value) as AcMethodp;
 
 /** Quick, exact equivalence check between two values ('===')
  * Great for null, false, true, integers and symbols.
@@ -73,7 +73,7 @@ const int VAL_MASK = 0x3;
 const int VAL_SHIFT = 2;
 
 
-func bool Value.isEnc(Value *value, EncType type) @inline
+fn bool Value.isEnc(Value *value, EncType type) @inline
 {
     return value.isPtr() && @cast(value as MemInfo*).enctyp == type;
 }
@@ -93,7 +93,7 @@ macro isType(v, ValBits e)
 
 
 /** Is v an Integer? */
-func bool Value.isInt(Value *v)
+fn bool Value.isInt(Value *v)
 {
     return @isType(*v as INT);
 }
@@ -116,7 +116,7 @@ macro toAint(v)
 // Float value functions
 
 /** Is v a Float? */
-func Value.isFloat(Value *v)
+fn Value.isFloat(Value *v)
 {
     return @isType(*v as FLOAT);
 }
@@ -157,7 +157,7 @@ macro aTrue()
  * Is value null?
  * @require value != null
  */
-func bool Value.isNull(Value *value) @inline
+fn bool Value.isNull(Value *value) @inline
 {
     return *v == aNull;
 }
@@ -166,7 +166,7 @@ func bool Value.isNull(Value *value) @inline
  * Is value false or null?
  * @require value != null
  */
-func bool Value.isFalse(Value *value) @inline
+fn bool Value.isFalse(Value *value) @inline
 {
     return *v == aFalse || *v == aNull;
 }
@@ -174,7 +174,7 @@ func bool Value.isFalse(Value *value) @inline
 /**
  * Is value true or false?
  */
-func bool Value.isBool(Value *value) @inline
+fn bool Value.isBool(Value *value) @inline
 {
     return *v >= aFalse;
 }
@@ -183,7 +183,7 @@ func bool Value.isBool(Value *value) @inline
 // Pointer functions.
 
 /** Is value a pointer? */
-func bool Value.isPtr(Value *value) @inline
+fn bool Value.isPtr(Value *value) @inline
 {
     return @isType(*v as POINTER);
 }

@@ -1,4 +1,4 @@
-func void test(int* foo)
+fn void test(int* foo)
 {
     foo++;
     foo--;

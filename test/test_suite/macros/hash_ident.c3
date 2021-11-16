@@ -6,13 +6,13 @@ macro int cofefe(#a)
 
 private int abc = 1;
 
-func int xx()
+fn int xx()
 {
     abc++;
     return abc;
 }
 
-func void main()
+fn void main()
 {
     var $x = 0;
     int x = 0;

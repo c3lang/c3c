@@ -42,7 +42,7 @@ const char PAD = '=';
 const char FIRST = '+';
 const char LAST = 'z';
 
-func void encode(char[] in, char *out)
+fn void encode(char[] in, char *out)
 {
 	int j = 0;
     char c = LUT_ENC[1];
@@ -76,7 +76,7 @@ func void encode(char[] in, char *out)
 }
 
 
-func int! decode(char[] in, char* out, int* invalid_char_index = null)
+fn int! decode(char[] in, char* out, int* invalid_char_index = null)
 {
     int j = 0;
 
@@ -118,9 +118,9 @@ func int! decode(char[] in, char* out, int* invalid_char_index = null)
     return j;
 }
 
-extern func void printf(char *fmt, ...);
+extern fn void printf(char *fmt, ...);
 
-func void main()
+fn void main()
 {
     char *helloworld = "Hello World\n";
     char[1000] buffer;

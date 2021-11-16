@@ -1,10 +1,10 @@
 // #target: x64-darwin
 
-extern func int! err();
+extern fn int! err();
 errtype FooErr { QBERT }
-extern func int printf(char* fmt, ...);
+extern fn int printf(char* fmt, ...);
 
-func void main()
+fn void main()
 {
     int x = 123;
     int! z = 234;

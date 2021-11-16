@@ -7,7 +7,7 @@ module comments;
  Multiline span style
  */
 
-func void test()
+fn void test()
 {
    return;
 }

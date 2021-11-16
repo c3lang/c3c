@@ -26,21 +26,21 @@ enum MyEnum
     B
 }
 
-func void Foo.hello(Foo *f)
+fn void Foo.hello(Foo *f)
 {
     io::println("Hello from Foo");
 }
 
-func void Bar.hello(Bar *b)
+fn void Bar.hello(Bar *b)
 {
     io::println("Hello from Bar");
 }
 
-func void MyEnum.hello(MyEnum *myenum)
+fn void MyEnum.hello(MyEnum *myenum)
 {
     io::println("Hello from MyEnum");
 }
-func void main()
+fn void main()
 {
     Foo f = Foo.X;
     Foo ef = Foo.Y;

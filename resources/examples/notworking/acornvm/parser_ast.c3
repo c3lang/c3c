@@ -16,19 +16,19 @@ import acorn::arr;
  * **********************/
 
 /** Append a value to AST segment - growing as needed */
-func void addValue(Value th, Value astseg, Value val) @inline
+fn void addValue(Value th, Value astseg, Value val) @inline
 {
     arr::add(th, astseg, val);
 }
 
 /** Get a value within the AST segment */
-func Value get(Value th, Value astseg, AuintIdx idx) @inline
+fn Value get(Value th, Value astseg, AuintIdx idx) @inline
 {
     return arr::get(th, astseg, idx);
 }
 
 /** Set a value within the AST segment */
-func void set(Value th, Value astseg, AuintIdx idx, Value val)
+fn void set(Value th, Value astseg, AuintIdx idx, Value val)
 {
     arr::set(th, astseg, idx, val);
 }
@@ -123,7 +123,7 @@ void popNew(Value th, Value oldseg, Value newseg)
 }
 
 /** Return true if ast segment can be assigned a value: variable or settable property/method */
-func bool isLval(Value th, Value astseg)
+fn bool isLval(Value th, Value astseg)
 {
 	if (!astseg.isArr()) return false;
 	Value op = get(th, astseg, 0);

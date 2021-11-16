@@ -2,7 +2,7 @@ module test;
 
 define Int2 = distinct int;
 
-func void test()
+fn void test()
 {
     Int2 a = 1;
     a = a + 1;

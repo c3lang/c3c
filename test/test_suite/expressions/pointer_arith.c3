@@ -1,4 +1,4 @@
-func void test1(ichar* cp)
+fn void test1(ichar* cp)
 {
     int a = 10;
 
@@ -11,7 +11,7 @@ func void test1(ichar* cp)
     ichar* cp4 = cp - a;
     cp2 - cp3;
 }
-func void test2(ichar* cp)
+fn void test2(ichar* cp)
 {
     cp + 1;
     cp * 1.0; // #error: 'ichar*' by 'double'

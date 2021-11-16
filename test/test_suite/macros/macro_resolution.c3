@@ -1,16 +1,16 @@
 module foo;
 import bar;
-func void run()
+fn void run()
 {
     @bar::test();
 }
 
-func void run2()
+fn void run2()
 {
     @bar::test2();
 }
 
-func void tester() {}
+fn void tester() {}
 
 module bar;
 macro test()

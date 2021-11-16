@@ -1,6 +1,6 @@
 // #target: x64-darwin
 
-func void! test()
+fn void! test()
 {
     int! i;
     i?;

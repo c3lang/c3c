@@ -246,11 +246,11 @@ contexts [] {
    decls : context
    {
       : pattern {
-         regex       \= (func\s+)($${__SCOPE})?($${__USERTYPE})?($${__BUILTIN_TYPE})?(\s+$${__IDENT})
+         regex       \= (fn\s+)($${__SCOPE})?($${__USERTYPE})?($${__BUILTIN_TYPE})?(\s+$${__IDENT})
          styles []   = .declare, .text, .text, .type, .type_builtin, .function_decl;
       }
       : pattern {
-         regex       \= (func\s+)($${__SCOPE})?($${__USERTYPE})?($${__BUILTIN_TYPE})?(\s+$${__IDENT})
+         regex       \= (fn\s+)($${__SCOPE})?($${__USERTYPE})?($${__BUILTIN_TYPE})?(\s+$${__IDENT})
          styles []   = .declare, .text, .text, .type, .type_builtin, .function_decl;
       }
       : pattern {
@@ -289,7 +289,7 @@ main : context {
 
    : include "top_level";
    : pattern {
-      regex          \= (define|extern|if|module|import|func|struct|while|do|return|union|errtype)
+      regex          \= (define|extern|if|module|import|fn|struct|while|do|return|union|errtype)
       styles []       = .keyword;
    }
 

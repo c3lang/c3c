@@ -1,4 +1,4 @@
-func void test()
+fn void test()
 {
     int f;
     int* x = &(((f)));
@@ -7,7 +7,7 @@ func void test()
 }
 
 
-func void test2()
+fn void test2()
 {
     int f;
     var $foo;
@@ -20,24 +20,24 @@ macro int hello()
     return he;
 }
 
-func void test3()
+fn void test3()
 {
     int* x = &@hello();    // #error: To take the address of a temporary value, use '&&' instead of '&'
 }
 
-func void test3b()
+fn void test3b()
 {
     int* x = &hello;    // #error: It is not possible to take the address of a macro.
 }
 
 const X = 2;
 const int XX = 3;
-func void test4()
+fn void test4()
 {
     int* w = &XX;
 }
 
-func void test5()
+fn void test5()
 {
     int* z = &X;    // #error: The constant is not typed, either type it or use && to take the reference to a temporary.
 }
@@ -50,7 +50,7 @@ struct Foo
 
 define heh = he;
 
-func void test6()
+fn void test6()
 {
     int* hee = &heh;
     Foo h;
@@ -66,7 +66,7 @@ errtype Err { FOO }
 union Un { int x; }
 enum MyEnum { BAR }
 
-func void test7()
+fn void test7()
 {
     &Baz; // #error: It is not possible to take the address of a type.
     &Bar; // #error: It is not possible to take the address of a type.

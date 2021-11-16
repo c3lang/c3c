@@ -1,10 +1,10 @@
 
-func void test1() {}
-func void test2() {}
-func void test3() {}
-func void test4() {}
+fn void test1() {}
+fn void test2() {}
+fn void test3() {}
+fn void test4() {}
 
-func void test()
+fn void test()
 {
     defer
     {
@@ -15,7 +15,7 @@ func void test()
     test4();
 }
 
-func void test_line()
+fn void test_line()
 {
     defer defer test1();
 }

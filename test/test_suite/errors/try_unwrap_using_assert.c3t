@@ -1,9 +1,9 @@
 // #target: x64-darwin
 module test;
 
-extern func int! maybe();
+extern fn int! maybe();
 
-func int tester(int n)
+fn int tester(int n)
 {
     int! num = maybe();
     assert(try num, "Hello");

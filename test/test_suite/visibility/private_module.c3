@@ -1,6 +1,6 @@
 module private foo;
 
-func void hidden()
+fn void hidden()
 {
 }
 
@@ -11,7 +11,7 @@ import foo; // #error: Importing a private module is not allowed (unless 'import
 module baz;
 import private foo;
 
-func void test()
+fn void test()
 {
     foo::hidden();
 }

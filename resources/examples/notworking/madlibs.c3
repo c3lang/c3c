@@ -1,7 +1,7 @@
 module madlibs;
 import regex, stdio;
 
-func void main()
+fn void main()
 {
     println("Enter a story template, terminated by an empty line:");
     String story = "";

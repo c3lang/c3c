@@ -1,4 +1,4 @@
-func void test1()
+fn void test1()
 {
 
     int! a;
@@ -7,7 +7,7 @@ func void test1()
     if (try int &a = a) {} // #error: Expected a variable name after the type.
 }
 
-func void test2()
+fn void test2()
 {
     int! a;
     int b;

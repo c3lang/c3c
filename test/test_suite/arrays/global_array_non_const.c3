@@ -8,7 +8,7 @@ int[B] c2;      // #error: Expected an integer size.
 int non_constant = 10;
 int[non_constant] b;        // #error: Expected a constant value as
 
-func int foo()
+fn int foo()
 {
     return 10;
 }

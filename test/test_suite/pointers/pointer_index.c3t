@@ -1,6 +1,6 @@
 module pointer_index;
 
-func void test1(int* x)
+fn void test1(int* x)
 {
     int a = x[0];
     int b = *x;
@@ -8,14 +8,14 @@ func void test1(int* x)
     int d = x[-1];
 }
 
-func void test2(char* x)
+fn void test2(char* x)
 {
     char a = x[0];
     char b = *x;
     char c = x[1];
 }
 
-func void test3(long* x)
+fn void test3(long* x)
 {
     long a = x[0];
     long b = *x;

@@ -2,7 +2,7 @@ module test;
 
 define Foo = distinct int;
 
-func int test1()
+fn int test1()
 {
     Foo x = 1;
     x += 2;

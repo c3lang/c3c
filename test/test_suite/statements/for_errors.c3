@@ -1,6 +1,6 @@
-func void foo() {}
+fn void foo() {}
 
-func int main()
+fn int main()
 {
     for (; foo() ; ) {}      // #error: 'void' into 'bool'
     return 0;

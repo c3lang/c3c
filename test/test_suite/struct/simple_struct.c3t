@@ -1,6 +1,6 @@
 module test;
 
-private Foo a;
+private global Foo a;
 
 struct Foo
 {

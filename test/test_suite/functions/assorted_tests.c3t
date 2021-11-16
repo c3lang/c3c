@@ -1,6 +1,6 @@
 module test;
 
-func int foo1()
+fn int foo1()
 {
   char *pp = void;
   uint w_cnt = void;
@@ -10,14 +10,14 @@ func int foo1()
   return (int)(w_cnt);
 }
 
-extern func void test2(int, double, float);
+extern fn void test2(int, double, float);
 
-func void foo2(int x)
+fn void foo2(int x)
 {
     test2(x, x ? 1.0 : 12.5, 1.0);
 }
 
-func int trys(ichar* s, int x)
+fn int trys(ichar* s, int x)
 {
     int asa = void;
     double val = void;
@@ -37,12 +37,12 @@ struct InternalFPF
     char type;
 }
 
-func void setInternalFPFZero(InternalFPF* dest) @noinline
+fn void setInternalFPFZero(InternalFPF* dest) @noinline
 {
     dest.type = 0;
 }
 
-func void denormalize(InternalFPF* ptr)
+fn void denormalize(InternalFPF* ptr)
 {
     setInternalFPFZero(ptr);
 }

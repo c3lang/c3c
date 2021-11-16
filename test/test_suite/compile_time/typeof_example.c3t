@@ -1,4 +1,4 @@
-extern func void printf(char *, ...);
+extern fn void printf(char *, ...);
 
 macro bitcast($Target, value)
 {
@@ -7,7 +7,7 @@ macro bitcast($Target, value)
     return *result;
 }
 
-func void main()
+fn void main()
 {
     float f = 100;
     int i = @bitcast(int, f);

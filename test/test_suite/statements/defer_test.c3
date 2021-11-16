@@ -1,4 +1,4 @@
-func void test()
+fn void test()
 {
     int i = 0;
     defer

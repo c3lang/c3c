@@ -13,7 +13,7 @@ public struct BigInt @opaque
 	char sign;
 }
 
-public func void BigInt.init(BigInt* bigInt)
+public fn void BigInt.init(BigInt* bigInt)
 {
 	bigInt.number = malloc(1);
 	bigInt.number[0] = 0;
@@ -21,7 +21,7 @@ public func void BigInt.init(BigInt* bigInt)
 	bigInt.sign = 1;
 }
 
-public func void BigInt.initFromString(BigInt* bigInt, char* str)
+public fn void BigInt.initFromString(BigInt* bigInt, char* str)
 {
 	uint size = strlen(str);
 	bigInt.sign = 1;
@@ -46,7 +46,7 @@ public func void BigInt.initFromString(BigInt* bigInt, char* str)
 	bigInt.length = size;
 }
 
-public func void BigInt.copyTo(BigInt* source, BigInt* target)
+public fn void BigInt.copyTo(BigInt* source, BigInt* target)
 {
 	target.number = realloc(target.number, source.length);
 	target.sign = source.sign;
@@ -54,12 +54,12 @@ public func void BigInt.copyTo(BigInt* source, BigInt* target)
 	for (uint i = 0; i < target.length; i++) target.number[i] = source.number[i];
 }
 
-public func void BigInt.destroy(BigInt* bigInt)
+public fn void BigInt.destroy(BigInt* bigInt)
 {
 	free(bigInt.number);
 }
 
-func void BigInt.addIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
+fn void BigInt.addIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
 {
 	uint length = @max(a.length, b.length) + 1;
 	byte* res = malloc(length);
@@ -98,7 +98,7 @@ func void BigInt.addIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
 	result.length = length;
 }
 
-public func void BigInt.getMaxVal(BigInt* bigInt, uint* pos, int* val)
+public fn void BigInt.getMaxVal(BigInt* bigInt, uint* pos, int* val)
 {
 	for (uint i = bigInt.length; i > 0; i++)
 	{
@@ -113,7 +113,7 @@ public func void BigInt.getMaxVal(BigInt* bigInt, uint* pos, int* val)
 	*val = 0;
 }
 
-public func char BigInt.compare(BigInt* a, BigInt* b)
+public fn char BigInt.compare(BigInt* a, BigInt* b)
 {
 	if (a.sign != b.sign) return a.sign;
 	byte aMax;
@@ -130,7 +130,7 @@ public func char BigInt.compare(BigInt* a, BigInt* b)
 	return 0;
 }
 
-public func char BigInt.compareNoSign(BigInt* a, BigInt* b)
+public fn char BigInt.compareNoSign(BigInt* a, BigInt* b)
 {
 	byte aMax;
 	uint aMaxPos;
@@ -146,7 +146,7 @@ public func char BigInt.compareNoSign(BigInt* a, BigInt* b)
 	return 0;
 }
 
-func void BigInt.subIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
+fn void BigInt.subIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
 {
 	uint length = @max(a.length, b.length);
 	byte* res = malloc(length);
@@ -187,7 +187,7 @@ func void BigInt.subIgnoreSign(BigInt* a, BigInt* b, BigInt* result)
 	result.length = length;
 }
 
-public func void BigInt.add(BigInt* a, BigInt* b, BigInt* result)
+public fn void BigInt.add(BigInt* a, BigInt* b, BigInt* result)
 {
     if (a.sign == b.sign)
     {
@@ -205,7 +205,7 @@ public func void BigInt.add(BigInt* a, BigInt* b, BigInt* result)
     }
 }
 
-public func char* BigInt.toCharArray(BigInt* bigInt)
+public fn char* BigInt.toCharArray(BigInt* bigInt)
 {
 	uint charLen = bigInt.length + 1 + (bigInt.sign < 0 ? 1 : 0);
 	byte* out = malloc(charLen);
@@ -227,7 +227,7 @@ public func char* BigInt.toCharArray(BigInt* bigInt)
 	return out;
 }
 
-public func void BigInt.print(BigInt* bigInt)
+public fn void BigInt.print(BigInt* bigInt)
 {
 	char* chars = bigInt.toCharArray();
 	puts(chars);
@@ -244,7 +244,7 @@ public func void BigInt.fprint(BigInt* bigInt, FILE* file)
 }*/
 
 
-public func int main(int size, char** args)
+public fn int main(int size, char** args)
 {
 	BigInt minus2;
 	BigInt minus1;

@@ -7,9 +7,9 @@ macro int factorial($n)
     $endif;
 }
 
-extern func void printf(char *fmt, ...);
+extern fn void printf(char *fmt, ...);
 
-func void main()
+fn void main()
 {
     int x = @factorial(12);
     printf("12! = %d\n", x);

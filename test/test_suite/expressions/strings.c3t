@@ -1,6 +1,6 @@
 module test;
 
-func char* foo()
+fn char* foo()
 {
   return "*** Word \"%s\" on line %d is not";
 }

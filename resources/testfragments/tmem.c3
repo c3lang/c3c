@@ -10,7 +10,7 @@ struct String
     char* ptr;
 }
 
-func void String.init(String *s, char[] c)
+fn void String.init(String *s, char[] c)
 {
     s.capacity = c.len + 16;
     s.ptr = mem::_malloc(s.capacity);
@@ -18,7 +18,7 @@ func void String.init(String *s, char[] c)
     mem::copy(s.ptr, (char*)(c), c.len);
 }
 
-func char* String.zstr(String *s)
+fn char* String.zstr(String *s)
 {
     char* c = mem::_malloc(s.len + 1);
     mem::copy(c, s.ptr, s.len);
@@ -26,7 +26,7 @@ func char* String.zstr(String *s)
     return c;
 }
 
-func void String.appendc(String *s, char c)
+fn void String.appendc(String *s, char c)
 {
     if (s.capacity == s.len)
     {
@@ -38,7 +38,7 @@ func void String.appendc(String *s, char c)
     s.ptr[s.len++] = c;
 }
 
-func void String.append(String *s, char[] other_string)
+fn void String.append(String *s, char[] other_string)
 {
     if (s.capacity < s.len + other_string.len)
     {
@@ -55,7 +55,7 @@ func void String.append(String *s, char[] other_string)
     s.len += other_string.len;
 }
 
-func void String.concat(String *s, String* other_string)
+fn void String.concat(String *s, String* other_string)
 {
     if (s.capacity < s.len + other_string.len)
     {
@@ -72,7 +72,7 @@ func void String.concat(String *s, String* other_string)
     s.len += other_string.len;
 }
 
-func void main()
+fn void main()
 {
     String s;
     s.init("Hello");

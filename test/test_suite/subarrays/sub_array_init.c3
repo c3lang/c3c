@@ -1,4 +1,4 @@
-func void test2()
+fn void test2()
 {
     int[2] a = { 1, 2 };
 

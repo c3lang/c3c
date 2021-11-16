@@ -1,7 +1,7 @@
 module foo;
 import std::io;
 
-func void main()
+fn void main()
 {
     int i = 0;
     int j = i ^ i | i; // #error: You need to add explicit parentheses to clarify precedence.

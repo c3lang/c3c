@@ -29,7 +29,7 @@ int genAddUrlLit(CompInfo *comp, Value val) {
 }
 
 /* Add a method literal and return its index */
-func int CompInfo.genAddMethodLit(CompInfo *comp, Value val)
+fn int CompInfo.genAddMethodLit(CompInfo *comp, Value val)
 {
 	BMethodInfo* f = comp.method;
 	mem_growvector(comp->th, f->lits, f->nbrlits, f->litsz, Value, INT_MAX);
@@ -50,7 +50,7 @@ int findBlockVar(Value th, Value locvars, Value varnm)
 }
 
 /* Look for local variable. Returns idx if found, -1 otherwise. */
-func int CompInfo.findLocalVar(CompInfo *comp, Value varnm) throws SearchError
+fn int CompInfo.findLocalVar(CompInfo *comp, Value varnm) throws SearchError
 {
 	assert(varnm.isSym());
 
@@ -72,7 +72,7 @@ func int CompInfo.findLocalVar(CompInfo *comp, Value varnm) throws SearchError
 }
 
 /* Look for closure variable. Returns idx if found, -1 otherwise. */
-func int CompInfo.findClosureVar(CompInfo *comp, Value varnm)
+fn int CompInfo.findClosureVar(CompInfo *comp, Value varnm)
 {
 	assert(varnm.isSym());
 
@@ -112,7 +112,7 @@ void CompInfo.declareLocal(CompInfo *comp, Value varnm)
 
 /** Create and return new Closure AST segment
 	Modifies comp->clovarseg and -> newcloseg */
-func Value parseNewClo(CompInfo* comp, Value astseg)
+fn Value parseNewClo(CompInfo* comp, Value astseg)
 {
 	Value th = comp->th;
 	// ('Closure', clovars, ('callprop', Closure, New, getmethod, setmethod))
@@ -289,7 +289,7 @@ void parseValue(CompInfo* comp, Value astseg)
 }
 
 /** Add a list of parameters to a AST propseg */
-func void CompInfo.parseParams(CompInfo* comp, Value propseg, const char *closeparen)
+fn void CompInfo.parseParams(CompInfo* comp, Value propseg, const char *closeparen)
 {
 	bool saveforcelocal = comp->forcelocal;
 	comp->forcelocal = false;
@@ -434,7 +434,7 @@ void parsePrefixExp(CompInfo* comp, Value astseg) {
 }
 
 /** Parse the '**' operator */
-func void CompInfo.parsePowerExp(CompInfo* comp, Value astseg)
+fn void CompInfo.parsePowerExp(CompInfo* comp, Value astseg)
 {
 	Value th = comp.th;
 	comp.parsePrefixExp(astseg);
@@ -448,7 +448,7 @@ func void CompInfo.parsePowerExp(CompInfo* comp, Value astseg)
 }
 
 /** Parse the '*', '/' or '%' binary operator */
-func void CompInfo.parseMultDivExp(CompInfo* comp inline, Value astseg)
+fn void CompInfo.parseMultDivExp(CompInfo* comp inline, Value astseg)
 {
 	Value th = comp.th;
 	parsePowerExp(astseg);
@@ -461,7 +461,7 @@ func void CompInfo.parseMultDivExp(CompInfo* comp inline, Value astseg)
 }
 
 /** Parse the '+' or '-' binary operator */
-func void CompInfo.parseAddSubExp(CompInfo* comp, Value astseg)
+fn void CompInfo.parseAddSubExp(CompInfo* comp, Value astseg)
 {
 	Value th = comp.th;
 	comp.parseMultDivExp(astseg);
@@ -474,7 +474,7 @@ func void CompInfo.parseAddSubExp(CompInfo* comp, Value astseg)
 }
 
 /** Parse the range .. constructor operator */
-func void CompInfo.parseRangeExp(CompInfo* comp, Value astseg)
+fn void CompInfo.parseRangeExp(CompInfo* comp, Value astseg)
 {
 	Value th = comp.th;
 	comp.parseAddSubExp(astseg);
@@ -494,7 +494,7 @@ func void CompInfo.parseRangeExp(CompInfo* comp, Value astseg)
 }
 
 /** Parse the comparison operators */
-func void CompInfo.parseCompExp(CompInfo* comp, Value astseg) {
+fn void CompInfo.parseCompExp(CompInfo* comp, Value astseg) {
 	Value th = comp.th;
 	comp.parseRangeExp(astseg);
 	Value op = comp.lex->token;
@@ -514,7 +514,7 @@ func void CompInfo.parseCompExp(CompInfo* comp, Value astseg) {
 }
 
 /* Parse 'not' conditional logic operator */
-func void CompInfo.parseNotExp(CompInfo* comp, Value astseg)
+fn void CompInfo.parseNotExp(CompInfo* comp, Value astseg)
 {
 	Value th = comp.th;
 	bool takenot = false;
@@ -530,13 +530,13 @@ func void CompInfo.parseNotExp(CompInfo* comp, Value astseg)
 	}
 }
 
-func bool CompInfo.matchNext(CompInfo *comp, string s) @inline
+fn bool CompInfo.matchNext(CompInfo *comp, string s) @inline
 {
     return comp.lex.matchNext(s);
 }
 
 /* Parse 'and' conditional logic operator */
-func void CompInfo.parseAndExp(CompInfo* comp, Value astseg)
+fn void CompInfo.parseAndExp(CompInfo* comp, Value astseg)
 {
 	Value th = comp.th;
 	comp.parseNotExp(astseg);

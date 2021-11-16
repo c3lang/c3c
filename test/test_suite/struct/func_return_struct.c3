@@ -4,9 +4,9 @@ struct Test
   short s1, s2;
 }
 
-extern func Test func_returning_struct();
+extern fn Test func_returning_struct();
 
-func void loop()
+fn void loop()
 {
     func_returning_struct();
 }

@@ -11,7 +11,7 @@ struct Foo
 
 //define bar::blub(Foo, 1) as fooblub;
 
-public func void main()
+public fn void main()
 {
     Foo f = { 3, 4 };
     //Foo g = fooblub(&f);

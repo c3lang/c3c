@@ -2,7 +2,7 @@ module acornvm::compiler;
 
 
 /* Return a new CompInfo value, compiler state for an Acorn method */
-func Value new_compiler(Value th, Value *dest, Value src, Value url)
+fn Value new_compiler(Value th, Value *dest, Value src, Value url)
 {
 	CompInfo *comp;
 
@@ -53,7 +53,7 @@ func Value new_compiler(Value th, Value *dest, Value src, Value url)
    - pgmsrc: CompInfo or Text string containing the program source
    - baseurl: a symbol or null
    It returns the compiled byte-code method. */
-func int acn_newmethod(Value th)
+fn int acn_newmethod(Value th)
 {
 	// Retrieve pgmsrc and baseurl from parameters
 	Value pgmsrc as baseurl;

@@ -1,11 +1,11 @@
-extern func int printf(char* fmt, ...);
+extern fn int printf(char* fmt, ...);
 
-extern func int! err();
+extern fn int! err();
 errtype FooErr
 {
     X
 }
-func void test1()
+fn void test1()
 {
     int! z = 234;
     if (try z)
@@ -17,7 +17,7 @@ func void test1()
 }
 
 
-func void test4()
+fn void test4()
 {
     int! z = 234;
     int! w = 123;
@@ -28,7 +28,7 @@ func void test4()
     }
 }
 
-func void test5()
+fn void test5()
 {
     int! z = 234;
     int! w = 123;
@@ -37,7 +37,7 @@ func void test5()
         int y = z;
     }
 }
-func void test5b()
+fn void test5b()
 {
     int! z = 234;
     int! w = 123;
@@ -47,7 +47,7 @@ func void test5b()
     }
 }
 
-func void test6()
+fn void test6()
 {
     int! z = 234;
     int! w = 123;
@@ -58,7 +58,7 @@ func void test6()
     }
 }
 
-func void test7()
+fn void test7()
 {
     int! z = 234;
     int! w = 123;
@@ -71,7 +71,7 @@ func void test7()
     }
 }
 
-func void test8()
+fn void test8()
 {
     int! z = 234;
     int! w = 123;
@@ -83,7 +83,7 @@ func void test8()
         int y = z;
     }
 }
-func void test9()
+fn void test9()
 {
     int! z = 234;
     int! w = 123;

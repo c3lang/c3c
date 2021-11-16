@@ -2,18 +2,18 @@ module spectralnorm;
 import std::mem;
 import std::array;
 
-extern func int atoi(char *s);
-extern func int printf(char *s, ...);
-extern func double sqrt(double);
+extern fn int atoi(char *s);
+extern fn int printf(char *s, ...);
+extern fn double sqrt(double);
 
 double[] temparr;
 
-func double eval_A(int i, int j)
+fn double eval_A(int i, int j)
 {
 	return 1.0 / ((i + j) * (i + j + 1) / 2 + i + 1);
 }
 
-func void eval_A_times_u(double[] u, double[] au)
+fn void eval_A_times_u(double[] u, double[] au)
 {
 	foreach (i, &val : au)
 	{
@@ -25,7 +25,7 @@ func void eval_A_times_u(double[] u, double[] au)
 	}
 }
 
-func void eval_At_times_u(double[] u, double[] au)
+fn void eval_At_times_u(double[] u, double[] au)
 {
 	foreach (i, &val : au)
 	{
@@ -37,13 +37,13 @@ func void eval_At_times_u(double[] u, double[] au)
 	}
 }
 
-func void eval_AtA_times_u(double[] u, double[] atau) @noinline
+fn void eval_AtA_times_u(double[] u, double[] atau) @noinline
 {
 	eval_A_times_u(u, temparr);
 	eval_At_times_u(temparr, atau);
 }
 
-func int main(int argc, char **argv)
+fn int main(int argc, char **argv)
 {
 	int n = (argc == 2) ? atoi(argv[1]) : 2000;
 	temparr = @array::make(double, n);

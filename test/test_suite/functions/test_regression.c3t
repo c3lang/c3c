@@ -7,15 +7,15 @@ import std::array::linkedlist;
 import hello_world;
 
 
-extern func int printf(char *, ...);
+extern fn int printf(char *, ...);
 
-func void helloWorld()
+fn void helloWorld()
 {
     printf("helloWorld!\n");
 }
-func int test_static()
+fn int test_static()
 {
-    static int x = 1;
+    global int x = 1;
     x++;
     printf("Test static %d\n", x);
     return x;
@@ -33,7 +33,7 @@ union Foor
 }
 
 
-func int helo(double d, Bobo b)
+fn int helo(double d, Bobo b)
 {
     int[3] de = { 1, 2, 3 };
     Bobo c = b;
@@ -42,7 +42,7 @@ func int helo(double d, Bobo b)
 }
 
 
-func int test1(int a, int b)
+fn int test1(int a, int b)
 {
     a = a >> b;
     if (b > 128) return -1;
@@ -54,12 +54,12 @@ struct Foo2
     int x;
 }
 
-func void Foo2.printme(Foo2 *foo)
+fn void Foo2.printme(Foo2 *foo)
 {
     printf("Foo is: %d\n", foo.x);
 }
 
-func int Foo2.mutate(Foo2 *foo)
+fn int Foo2.mutate(Foo2 *foo)
 {
     printf("Mutating");
     return ++foo.x;
@@ -67,12 +67,12 @@ func int Foo2.mutate(Foo2 *foo)
 
 define oopsInt = test2::argh<int>;
 define oopsDouble = test2::argh<int>;
-define Argh = func int(double, Bobo);
-define Argh2 = func int(double, Bobo);
+define Argh = fn int(double, Bobo);
+define Argh2 = fn int(double, Bobo);
 
 
 
-func int sum_us(int... x)
+fn int sum_us(int... x)
 {
     int sum = 0;
     if (x.len == 0) return 0;
@@ -82,7 +82,7 @@ func int sum_us(int... x)
 
 define Frob = long;
 
-func int sumd(int[] x)
+fn int sumd(int[] x)
 {
     int sum = 0;
     for (int i = 0; i < x.len; i++) sum += x[i];
@@ -113,7 +113,7 @@ enum MyEnum : int
 }
 
 
-func void main()
+fn void main()
 {
     test_static();
     test_static();
@@ -174,10 +174,10 @@ func void main()
 module hello_world;
 import foo;
 
-extern func int printf(char *, ...);
+extern fn int printf(char *, ...);
 define doubleMult = check<double>;
 
-func void hello()
+fn void hello()
 {
     printf("Hello baby\n");
     printf("Mult %f\n", doubleMult(11.1));
@@ -185,7 +185,7 @@ func void hello()
 
 module foo <Type>;
 
-func Type check(Type i)
+fn Type check(Type i)
 {
     return i * i;
 }
@@ -197,11 +197,11 @@ struct Blob
     Type a;
 }
 
-func Type getMult(Type a)
+fn Type getMult(Type a)
 {
     return a * a;
 }
-Type argh = 234;
+global Type argh = 234;
 
 errtype MyErr
 {
@@ -224,12 +224,12 @@ define Bye = Hello;
 define wat = wut;
 define byebye = hello;
 
-func int hello()
+fn int hello()
 {
     return 1;
 }
 
-func Type getValue(Blob blob)
+fn Type getValue(Blob blob)
 {
     return blob.a;
 }

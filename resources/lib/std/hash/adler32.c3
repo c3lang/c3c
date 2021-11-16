@@ -8,18 +8,18 @@ struct Adler32
     uint b;
 }
 
-func void Adler32.init(Adler32 *this)
+fn void Adler32.init(Adler32 *this)
 {
     *this = { 1, 0 };
 }
 
-func void Adler32.updatec(Adler32* this, char c)
+fn void Adler32.updatec(Adler32* this, char c)
 {
     this.a = (this.a + c) % ADLER_CONST;
     this.b = (this.b + this.a) % ADLER_CONST;
 }
 
-func void Adler32.update(Adler32* this, char[] data)
+fn void Adler32.update(Adler32* this, char[] data)
 {
     uint a = this.a;
     uint b = this.b;
@@ -31,12 +31,12 @@ func void Adler32.update(Adler32* this, char[] data)
     *this = { a, b };
 }
 
-func uint Adler32.final(Adler32* this)
+fn uint Adler32.final(Adler32* this)
 {
     return (this.b << 16) | this.a;
 }
 
-func uint encode(char[] data)
+fn uint encode(char[] data)
 {
     uint a = 1;
     uint b = 0;

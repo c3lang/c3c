@@ -1,10 +1,10 @@
 module test;
 
 
-extern func int printf(char*, ...);
-extern func int foo();
+extern fn int printf(char*, ...);
+extern fn int foo();
 
-func int main()
+fn int main()
 {
   while (foo())
   {

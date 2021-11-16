@@ -1,13 +1,13 @@
 // #target: x64-darwin
 module mymodule;
 
-extern func void printf(char *, ...);
+extern fn void printf(char *, ...);
 
 struct Foo { }
 
 int b;
 
-func void main()
+fn void main()
 {
     printf("%s\n", $qnameof(Foo));
     printf("%s\n", $qnameof("Foo"));

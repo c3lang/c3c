@@ -1,6 +1,6 @@
 module mymodule;
 
-extern func void printf(char *, ...);
+extern fn void printf(char *, ...);
 
 errtype HelloErr
 {
@@ -12,7 +12,7 @@ errtype ByeErr
     BAZ
 }
 
-func void test()
+fn void test()
 {
     int! x = ByeErr.BAR!;
 
@@ -50,7 +50,7 @@ func void test()
             printf("None of the above\n");
     }
 }
-func void main()
+fn void main()
 {
     test();
     printf("Hello!\n");

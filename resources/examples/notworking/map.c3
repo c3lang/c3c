@@ -15,13 +15,13 @@ public struct Map
     uint mod;
 }
 
-public func Map* Map.init(Map *map)
+public fn Map* Map.init(Map *map)
 {
     *map = { };
     return map;
 }
 
-public func Type* Map.valueForKey(Map *map, Key key)
+public fn Type* Map.valueForKey(Map *map, Key key)
 {
     if (!map.map) return nil;
     usize hash = key.hash();
@@ -36,7 +36,7 @@ public func Type* Map.valueForKey(Map *map, Key key)
     return nil;
 }
 
-public func Type *Map.setValueForKey(Map *map, Key key, Type *value)
+public fn Type *Map.setValueForKey(Map *map, Key key, Type *value)
 {
     if (!map.map)
     {
@@ -71,12 +71,12 @@ public func Type *Map.setValueForKey(Map *map, Key key, Type *value)
     }
 }
 
-public func usize Map.size(Vector *vector)
+public fn usize Map.size(Vector *vector)
 {
     return vector.array.size;
 }
 
-public func void Map.removeLast(Vector *vector)
+public fn void Map.removeLast(Vector *vector)
 {
     vector.array.pop();
 }

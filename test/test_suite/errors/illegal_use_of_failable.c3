@@ -1,4 +1,4 @@
-func void syntaxErrors()
+fn void syntaxErrors()
 {
     int! i = 0;
     while (i + 1) {} // #error: 'int!' to 'bool'

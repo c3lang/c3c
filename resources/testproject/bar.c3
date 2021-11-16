@@ -3,7 +3,7 @@ module bar;
 import baz::foo;
 import testbaz::zab;
 
-func void test()
+fn void test()
 {
     Foo x;
     baz::foo::test();

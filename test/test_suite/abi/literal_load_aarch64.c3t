@@ -8,9 +8,9 @@ struct Test
 
 Test foo = {};
 
-extern func void blorg(Test t);
+extern fn void blorg(Test t);
 
-func Test creator()
+fn Test creator()
 {
     blorg(Test{});
     return Test{};

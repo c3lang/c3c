@@ -1847,6 +1847,7 @@ static bool sema_analyse_body_expansion(Context *context, Expr *call)
 	assert(macro);
 	assert(macro->macro_decl.block_parameter.index);
 
+	// TODO handle named arguments
 	ExprCall *call_expr = &call->call_expr;
 	if (vec_size(call_expr->body_arguments))
 	{

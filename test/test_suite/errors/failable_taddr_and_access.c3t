@@ -11,9 +11,9 @@ errtype MyErr
     FOO
 }
 
-extern func int printf(char *c, ...);
+extern fn int printf(char *c, ...);
 
-func void main()
+fn void main()
 {
     int! z = 2;
     Foo*! w = &&Foo{ z, 0 };

@@ -25,7 +25,7 @@ import acorn::sym;
    ***************************************/
 
 /** Size of the method's stack area: base to top */
-func AintIdx stkSz(Value th) @inline
+fn AintIdx stkSz(Value th) @inline
 {
     return th(th).stk_top - th(th).curmethod.begin;
 }
@@ -35,7 +35,7 @@ func AintIdx stkSz(Value th) @inline
 
 /** Point to current method's stack value at position i.
  * For a method: i=0 is self, i=1 is first parameter, etc. */
-func void Value.at(Value* th, AintIdx i) @inline
+fn void Value.at(Value* th, AintIdx i) @inline
 {
     @assert_exp(i >= 0 && i < stkSz(th), "invalid stack index");
     return &th(*th).curmethod.begin[i];
@@ -47,20 +47,20 @@ func void Value.at(Value* th, AintIdx i) @inline
 
 /* Retrieve the stack value at the index. Be sure 0<= idx < top.
  * Good for getting method's parameters: 0=self, 1=parm 1, etc. */
-func Value Value.getLocal(Value *th, AintIdx idx)
+fn Value Value.getLocal(Value *th, AintIdx idx)
 {
 	return *th.at(idx);
 }
 
 /* Put the value on the stack at the designated position. Be sure 0<= idx < top. */
-func void Value.setLocal(Value th, AintIdx idx, Value val)
+fn void Value.setLocal(Value th, AintIdx idx, Value val)
 {
 	*th.at(idx) = val;
 	mem::markChk(th, th, val);
 }
 
 /* Copy the stack value at fromidx into toidx */
-func void Value.copyLocal(Value* th, AintIdx toidx, AintIdx fromidx)
+fn void Value.copyLocal(Value* th, AintIdx toidx, AintIdx fromidx)
 {
 	*th.at(toidx) = *th.at(fromidx);
 }
@@ -69,7 +69,7 @@ func void Value.copyLocal(Value* th, AintIdx toidx, AintIdx fromidx)
  * Remove the value at index (shifting down all values above it to top)
  * @require stkSz(th) > 0
  */
-func void Value.deleteLocal(Value* th, AintIdx idx)
+fn void Value.deleteLocal(Value* th, AintIdx idx)
 {
 	Value* p = th.at(idx);
 	memmove(p, p + 1, sizeof(Value)*(stkSz(th) - idx - 1));
@@ -80,7 +80,7 @@ func void Value.deleteLocal(Value* th, AintIdx idx)
  * Insert the popped value into index (shifting up all values above it)
  * @require stkSz(th) > 0
  */
-func void Value.insertLocal(Value *th, AintIdx idx)
+fn void Value.insertLocal(Value *th, AintIdx idx)
 {
 	Value *p = th.at(idx);
 	Value val = *(th(*th).stk_top - 1);
@@ -94,7 +94,7 @@ func void Value.insertLocal(Value *th, AintIdx idx)
    ***************************************/
 
 /* Push a value on the stack's top */
-func Value Value.pushValue(Value* th, Value val)
+fn Value Value.pushValue(Value* th, Value val)
 {
 	stkCanIncTop(th); /* Check if there is room */
 	*th(*th).stk_top++ = val;
@@ -103,14 +103,14 @@ func Value Value.pushValue(Value* th, Value val)
 }
 
 /* Push and return the corresponding Symbol value for a 0-terminated c-string */
-func Value Value.pushSym(Value* th, string str)
+fn Value Value.pushSym(Value* th, string str)
 {
 	stkCanIncTop(th); /* Check if there is room */
 	return sym::newSym(*th, th(*th).stk_top++, str);
 }
 
 /* Push and return the corresponding Symbol value for a byte sequence of specified length */
-func Value Value.pushSyml(Value th, string str)
+fn Value Value.pushSyml(Value th, string str)
 {
 	stkCanIncTop(th); /* Check if there is room */
 	return sym::newSym(*th, th(*th).stk_top++, str);
@@ -319,7 +319,7 @@ void popSetActProp(Value th, AintIdx selfidx, const char *mbrnm) {
 }
 
 /* Push a copy of a stack's value at index onto the stack's top */
-func Value Value.pushLocal(Value* th, AintIdx idx)
+fn Value Value.pushLocal(Value* th, AintIdx idx)
 {
 	stkCanIncTop(th); /* Check if there is room */
 	return *th(*th).stk_top++ = th.getLocal(idx);
@@ -329,7 +329,7 @@ func Value Value.pushLocal(Value* th, AintIdx idx)
  * Pop a value off the top of the stack
  * @require stkSz(th) > 0
  */
-func Value Value.popValue()
+fn Value Value.popValue()
 {
 	return *--th(*th).stk_top;
 }
@@ -338,7 +338,7 @@ func Value Value.popValue()
  * Pops the top value and writes it at idx. Often used to set return value
  * @require stkSz(th) > 0, idx >= 0, idx < stkSz(th) - 1
  */
-func void Value.popLocal(Value* th, AintIdx idx)
+fn void Value.popLocal(Value* th, AintIdx idx)
 {
 	th.setLocal(idx, *(th(*th).stk_top - 1));
 	// Pop after value is safely in Global
@@ -349,7 +349,7 @@ func void Value.popLocal(Value* th, AintIdx idx)
  * Retrieve the stack value at the index from top. Be sure 0<= idx < top.
  * @require idx >= 0, idx < stkSz(th)
  */
-func Value Value.getFromTop(Value* th, AintIdx idx)
+fn Value Value.getFromTop(Value* th, AintIdx idx)
 {
 	return *th.at(stkSz(th) - idx - 1);
 }
@@ -357,7 +357,7 @@ func Value Value.getFromTop(Value* th, AintIdx idx)
 /**
  * Return number of values on the current method's stack
  */
-func AuintIdx Value.getTop(Value* th)
+fn AuintIdx Value.getTop(Value* th)
 {
 	return (AuintIdx)(stkSz(th));
 }
@@ -367,7 +367,7 @@ func AuintIdx Value.getTop(Value* th)
  * This can shrink the stack or grow it (padding with 'null's).
  * A negative index removes that number of values off the top.
  */
-func void Value.setTop(Value* th as AintIdx idx)
+fn void Value.setTop(Value* th as AintIdx idx)
 {
     // TODO
 	Value *base = th(*th).curmethod.begin;
@@ -395,7 +395,7 @@ func void Value.setTop(Value* th as AintIdx idx)
  * Push and return the symbolically-named global variable's value
  * @require vm(*th).global.isTbl()
  **/
-func Value Value.pushGloVar(Value* th, string var)
+fn Value Value.pushGloVar(Value* th, string var)
 {
     // Check if there is room
 	stkCanIncTop(th);
@@ -408,7 +408,7 @@ func Value Value.pushGloVar(Value* th, string var)
  * Alter the symbolically-named global variable to have the value popped off the local stack
  * @require stkSz(th) > 0, vm(th).global.isTbl()
  **/
-func void Value.popGloVar(Value* th, string var)
+fn void Value.popGloVar(Value* th, string var)
 {
     // Check if there is room
 	stkCanIncTop(th);
@@ -428,7 +428,7 @@ Value pushGlobal(Value th)
  * Internal function to re-allocate stack's size
  * @require newsize <= STACK_MAXSIZE || newsize == STACK_ERRORSIZE
  **/
-func void realloc(Value th, int newsize)
+fn void realloc(Value th, int newsize)
 {
     // Incremental GC before memory allocation events
 	mem::gccheck(th);

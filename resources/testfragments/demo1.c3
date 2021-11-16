@@ -1,8 +1,8 @@
 module demo1;
 
 // Use C functions directly.
-extern func int printf(char *, ...);
-extern func void puts(char *);
+extern fn int printf(char *, ...);
+extern fn void puts(char *);
 
 struct Foo
 {
@@ -10,7 +10,7 @@ struct Foo
     int b;
 }
 
-func Foo createFoo(int a, int b = 10)
+fn Foo createFoo(int a, int b = 10)
 {
     // Compound initializer
     return Foo({a, b});
@@ -23,7 +23,7 @@ struct Bar
 }
 
 
-func void testStruct()
+fn void testStruct()
 {
     // Default arguments
     Foo foo = createFoo(100);
@@ -47,17 +47,17 @@ func void testStruct()
 
 }
 
-func int Bar.add(Bar* b)
+fn int Bar.add(Bar* b)
 {
     return b.x + b.y;
 }
 
-func int Foo.mult(Foo* f)
+fn int Foo.mult(Foo* f)
 {
     return f.a * f.b;
 }
 
-func void printArray(int[] array)
+fn void printArray(int[] array)
 {
     printf("[");
     foreach (i, a : array)
@@ -69,7 +69,7 @@ func void printArray(int[] array)
 }
 
 
-func void testArrays()
+fn void testArrays()
 {
     int[5] x = { [0] = 100, [1..2] = 4 };
     puts("Testing arrays---");
@@ -118,7 +118,7 @@ func void testArrays()
     printf("Pointer to array: %p\nPointer to slice: %p\nPointer to first element of slice: %p\n", z, &y, &y[0]);
 }
 
-func void testExpressionBlocks()
+fn void testExpressionBlocks()
 {
     int x = {|
         int j = 0;
@@ -144,7 +144,7 @@ func void testExpressionBlocks()
     }
 }
 
-func void main()
+fn void main()
 {
     testStruct();
     testArrays();

@@ -1,4 +1,4 @@
-func void test()
+fn void test()
 {
     float a;
     float b;

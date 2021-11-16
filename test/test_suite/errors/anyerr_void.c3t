@@ -14,7 +14,7 @@ fn void! errorThing2()
 }
 
 extern fn void printf(char*, ...);
-func void main()
+fn void main()
 {
     anyerr z = errorThing();
     printf("Z;   %llx\n", (iptr)(z));

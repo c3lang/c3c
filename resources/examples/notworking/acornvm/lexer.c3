@@ -11,7 +11,7 @@ module acorn::lex;
 /**
  * Crude algorithm for determining if character is a Unicode letter
  */
-func bool isualpha(Auchar c) @inline
+fn bool isualpha(Auchar c) @inline
 {
     return c > 0xA0 || isalpha(c);
 }
@@ -20,7 +20,7 @@ func bool isualpha(Auchar c) @inline
 /**
  * Algorithm for determining if character is a digit 0-9
  */
-func bool isudigit(Auchar c) @inline
+fn bool isudigit(Auchar c) @inline
 {
     return c >= '0' && c <= '9';
 }
@@ -28,7 +28,7 @@ func bool isudigit(Auchar c) @inline
 /**
  * Return a new LexInfo value, lexer context for a source program
  */
-func Value new(Value th, Value *dest, Value src, Value url)
+fn Value new(Value th, Value *dest, Value src, Value url)
 {
 	LexInfo *lex;
 
@@ -60,7 +60,7 @@ func Value new(Value th, Value *dest, Value src, Value url)
 }
 
 /** Return the current unicode character whose UTF-8 bytes start at lex->bytepos */
-func Auchar LexInfo.thischar(LexInfo* lex)
+fn Auchar LexInfo.thischar(LexInfo* lex)
 {
 	byte *src = &toStr(lex.source)[lex.bytepos];
 	int nbytes;
@@ -83,7 +83,7 @@ func Auchar LexInfo.thischar(LexInfo* lex)
 }
 
 /** Return the current unicode character whose UTF-8 bytes start at lex->bytepos */
-func Auchar LexInfo.nextchar(LexInfo* lex)
+fn Auchar LexInfo.nextchar(LexInfo* lex)
 {
 	const char *src = &toStr(lex->source)[lex->bytepos];
 	int nbytes;
@@ -114,7 +114,7 @@ func Auchar LexInfo.nextchar(LexInfo* lex)
 }
 
 /** Skip lex->bytepos past the unicode character whose UTF-8 bytes start at lex->bytepos */
-func void LexInfo.skipchar(LexInfo* lex)
+fn void LexInfo.skipchar(LexInfo* lex)
 {
 	const char *src = &toStr(lex->source)[lex->bytepos];
 	int nbytes;
@@ -137,7 +137,7 @@ func void LexInfo.skipchar(LexInfo* lex)
 
 /** Scan past non-tokenized white space.
  * Handle line indentation and continuation */
-func bool LexInfo.scanWhite(LexInfo *lex)
+fn bool LexInfo.scanWhite(LexInfo *lex)
 {
 	Value th = lex.th;	// for vmlit
 
@@ -628,7 +628,7 @@ bool lexScanOp(LexInfo *lex) {
 }
 
 /* Get the next token */
-func void LexInfo.getNextToken(LexInfo *lex)
+fn void LexInfo.getNextToken(LexInfo *lex)
 {
 
 	// Scan until we find a token

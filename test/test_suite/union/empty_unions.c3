@@ -20,7 +20,7 @@ union Xe
   }
 }
 
-func Xe foo(Xe a)
+fn Xe foo(Xe a)
 {
   a.c = 123;
   a.a = 39249;

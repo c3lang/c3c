@@ -1,19 +1,19 @@
 
-extern func void printf(char* message, ...);
+extern fn void printf(char* message, ...);
 
-public func void defer1() {}
-public func void defer2() {}
-public func void defer3() {}
-public func void defer4() {}
-public func void defer5() {}
-public func void defer6() {}
-public func void defer7() {}
-public func void defer8() {}
-public func void defer9() {}
-public func void defer10() {}
-public func void defer11() {}
+public fn void defer1() {}
+public fn void defer2() {}
+public fn void defer3() {}
+public fn void defer4() {}
+public fn void defer5() {}
+public fn void defer6() {}
+public fn void defer7() {}
+public fn void defer8() {}
+public fn void defer9() {}
+public fn void defer10() {}
+public fn void defer11() {}
 
-public func int main(int argc)
+public fn int main(int argc)
 {
 	int a = 0;
     {

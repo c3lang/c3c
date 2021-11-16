@@ -3,7 +3,7 @@ macro foo4(;@body)
     @body; // #error: must be followed by ()
 }
 
-func void test()
+fn void test()
 {
     @foo4()
     {

@@ -1,9 +1,9 @@
 module test;
 
-extern func void foo();
+extern fn void foo();
 int[3] z;
 
-func void test1()
+fn void test1()
 {
     int x;
     foreach (a : x) // #error: It's not possible to enumerate an expression of type 'int'.
@@ -12,42 +12,42 @@ func void test1()
     }
 }
 
-func void test2()
+fn void test2()
 {
     foreach (a : z) foo();
     foreach (i, a : z) foo();
     foreach (double i, a : z); // #error: Index must be an integer type, 'double' is not valid.
 }
 
-func void test3()
+fn void test3()
 {
     foreach (&a : z) foo();
     foreach (&i, &a : z) foo(); // #error: The index cannot be held by reference, did you accidentally add a '&'?
 }
 
-func void test4()
+fn void test4()
 {
     foreach (&a : z) foo();
     foreach (&i, a : z) foo(); // #error: The index cannot be held by reference, did you accidentally add a '&'?
 }
 
-func void test5()
+fn void test5()
 {
     foreach (int! y : z) foo(); // #error: The variable may not be a failable.
 }
 
-func void test6()
+fn void test6()
 {
     foreach (int! i, y : z) foo(); // #error: The index may not be a failable.
 }
 
-func void test7()
+fn void test7()
 {
     foreach (int a : { 1, 2, 3 }) foo();
     foreach (a : { 1, 2, 3 }) foo(); // #error: Add the type of your variable here if you want to iterate over
 }
 
-func void test8()
+fn void test8()
 {
     foreach (int a : { z }) foo(); // #error: 'int[3]' into 'int'
 }

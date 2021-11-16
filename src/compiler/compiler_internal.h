@@ -365,6 +365,7 @@ typedef struct VarDecl_
 	bool unwrap : 1;
 	bool vararg : 1;
 	bool is_static : 1;
+	bool is_threadglobal : 1;
 	TypeInfo *type_info;
 	union
 	{

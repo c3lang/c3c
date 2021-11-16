@@ -16,7 +16,7 @@ enum Inf2 : char
 define BooInf = Inf;
 
 
-func void enumInferenceTest()
+fn void enumInferenceTest()
 {
     Inf x = Inf.A;
     x = BooInf.B;

@@ -1,6 +1,6 @@
 module foo;
 import bar;
-func void run()
+fn void run()
 {
     @bar::test();
 }
@@ -10,4 +10,4 @@ import baz;
 macro test() { baz::test(); }
 
 module baz;
-func void test() {}
+fn void test() {}

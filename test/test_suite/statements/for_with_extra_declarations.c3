@@ -1,4 +1,4 @@
-func void test()
+fn void test()
 {
     int j;
     for (int i = 0; i < 10; i++)

@@ -2,7 +2,7 @@
 
 module mymodule;
 
-extern func void printf(char *, ...);
+extern fn void printf(char *, ...);
 
 struct Foo
 {
@@ -13,7 +13,7 @@ struct Foo
         int j;
     }
 }
-func void main()
+fn void main()
 {
     int x = 0;
     var $counter = 0;

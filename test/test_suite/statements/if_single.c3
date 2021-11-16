@@ -1,4 +1,4 @@
-func void test()
+fn void test()
 {
     int x = 0;
     if (x < 0) x++;

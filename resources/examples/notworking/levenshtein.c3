@@ -1,6 +1,6 @@
 module levenshtein;
 
-func int levenshtein(String s, String t)
+fn int levenshtein(String s, String t)
 {
     // if either string is empty, difference is inserting all chars
     // from the other

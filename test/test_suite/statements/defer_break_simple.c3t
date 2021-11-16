@@ -1,11 +1,11 @@
 module test;
 
-func void test2() {}
-func void testA() {}
-func void testB() {}
-func void test3() {}
+fn void test2() {}
+fn void testA() {}
+fn void testB() {}
+fn void test3() {}
 
-func int main(int argc)
+fn int main(int argc)
 {
 	int a = 0;
     while (a)

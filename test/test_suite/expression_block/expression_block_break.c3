@@ -1,8 +1,8 @@
 module fe;
 import std::io;
-extern func int printf(char *str, ...);
+extern fn int printf(char *str, ...);
 
-func int main()
+fn int main()
 {
     while(true)
     {

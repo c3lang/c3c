@@ -7,14 +7,14 @@ struct Foo
     int a;
 }
 
-extern func void printf(char *hello);
+extern fn void printf(char *hello);
 
-private func void ofke()
+private fn void ofke()
 {}
 
-private func void exple() {}
+private fn void exple() {}
 
-func void test()
+fn void test()
 {
     printf("Hello from baz::foo::test()!\n");
 }

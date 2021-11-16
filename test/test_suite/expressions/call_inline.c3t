@@ -1,22 +1,22 @@
 module inlineme;
 import std::io;
 
-func void test1() @inline
+fn void test1() @inline
 {
     io::println("Inline!");
 }
 
-func void test2() @noinline
+fn void test2() @noinline
 {
     io::println("No inline!");
 }
 
-func void test3()
+fn void test3()
 {
     io::println("Plain");
 }
 
-func void main()
+fn void main()
 {
     test1() @inline;
     test2() @inline;

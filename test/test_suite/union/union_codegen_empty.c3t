@@ -13,7 +13,7 @@ union UnionB
     double d;
 }
 
-func void test()
+fn void test()
 {
     UnionA a = {};
     UnionA a2;
