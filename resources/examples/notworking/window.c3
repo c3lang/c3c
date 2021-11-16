@@ -3,7 +3,7 @@ import gtk;
 const string CLICK_ME = "Click Me";
 uint counter = 0;
 
-func void clickedme(GtkButton *o, void *d)
+fn void clickedme(GtkButton *o, void *d)
 {
     (GtkLabel*)(d).set_text(string.format("You clicked me %d times", ++counter));
 }

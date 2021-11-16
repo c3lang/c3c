@@ -7,10 +7,10 @@ errtype MathError
     DIVISION_BY_ZERO
 }
 
-func int foo() { return 123; }
-func int bar() { return 0; }
+fn int foo() { return 123; }
+fn int bar() { return 0; }
 
-func double! divide(int a, int b)
+fn double! divide(int a, int b)
 {
     if (b == 0) return MathError.DIVISION_BY_ZERO!;
     return (double)(a) / (double)(b);
@@ -18,12 +18,12 @@ func double! divide(int a, int b)
 }
 
 // Rethrowing an error uses "?" suffix
-func void! testMayError()
+fn void! testMayError()
 {
     divide(foo(), bar())?;
 }
 
-func void main()
+fn void main()
 {
     // ratio has a failable type.
     double! ratio = divide(foo(), bar());

@@ -18,7 +18,7 @@ const uint MaxDepth = 8;
 
 $if (DEBUG_NODES):
 
-func void Blocks.dump(Blocks* b)
+fn void Blocks.dump(Blocks* b)
 {
     printf("Nodes (%u/%u)  (%u bytes)\n", b.nodeCount, b.maxNodes, b.nodeCount * sizeof(Node));
     for (uint i = 0; i < b.nodeCount; i++)
@@ -82,7 +82,7 @@ $endif;
 /**
  * @ensure const(a), const(b)
  */
-func bool same(char* a, char* b)
+fn bool same(char* a, char* b)
 {
     uint i = 0;
     while (a[i] == b[i])
@@ -110,7 +110,7 @@ struct Parser
 /**
  * @ensure const(input)
  */
-func void! Parser.parse(Parser* p, char* input, char* diagMsg, Blocks* blocks)
+fn void! Parser.parse(Parser* p, char* input, char* diagMsg, Blocks* blocks)
 {
     p.tokenizer.init(input);
     p.tok.init();
@@ -127,7 +127,7 @@ func void! Parser.parse(Parser* p, char* input, char* diagMsg, Blocks* blocks)
     try p.parseTopLevel();
 }
 
-func void! Parser.parseTopLevel(Parser* p)
+fn void! Parser.parseTopLevel(Parser* p)
 {
     // key = value
     // | [[array]]
@@ -149,22 +149,22 @@ func void! Parser.parseTopLevel(Parser* p)
     }
 }
 
-func uint getRawValue(uint raw) @(inline)
+fn uint getRawValue(uint raw) @(inline)
 {
      return raw & ~RawValueMask;
 }
 
-func ValueType getRawType(uint raw) @(inline)
+fn ValueType getRawType(uint raw) @(inline)
 {
     return (ValueType)((raw >> ValueTypeOffset) & 0x3);
 }
 
-func uint addType(uint raw, ValueType t) @(inline)
+fn uint addType(uint raw, ValueType t) @(inline)
 {
     return raw | (t << ValueTypeOffset);
 }
 
-func void! Parser.parseKeyValue(Parser* p)
+fn void! Parser.parseKeyValue(Parser* p)
 {
     //printf("parseKeyValue()\n");
     char[MaxText] key;
@@ -187,7 +187,7 @@ func void! Parser.parseKeyValue(Parser* p)
     p.lastChild[p.numParents] = node;
 }
 
-func void! Parser.parseTable(Parser* p)
+fn void! Parser.parseTable(Parser* p)
 {
     //printf("parseTable()\n");
     try p.consumeToken();
@@ -211,7 +211,7 @@ func void! Parser.parseTable(Parser* p)
     p.expectAndConsume(TokenKind.Rbrace);
 }
 
-func void Parser.parseTableArray(Parser* p)
+fn void Parser.parseTableArray(Parser* p)
 {
     //printf("parseTableArray()\n");
     p.consumeToken();
@@ -234,7 +234,7 @@ func void Parser.parseTableArray(Parser* p)
     p.expectAndConsume(TokenKind.Rbrace2);
 }
 
-func u32 Parser.parseValue(Parser* p) {
+fn u32 Parser.parseValue(Parser* p) {
     //printf("parseValue()\n");
     u32 value = 0;
     switch (p.tok.kind) {
@@ -266,7 +266,7 @@ func u32 Parser.parseValue(Parser* p) {
     return value;
 }
 
-func u32 Parser.parseArrayValues(Parser* p) {
+fn u32 Parser.parseArrayValues(Parser* p) {
     //printf("parseArrayValues()\n");
     p.consumeToken();
     u32 value = p.parseValue() | ValueIsArray;
@@ -280,7 +280,7 @@ func u32 Parser.parseArrayValues(Parser* p) {
     return value;
 }
 
-func u32 Parser.addTable(Parser* p, const char* name, u32 depth, bool isTop, NodeKind kind) {
+fn u32 Parser.addTable(Parser* p, const char* name, u32 depth, bool isTop, NodeKind kind) {
     //printf("addTable %s\n", name);
     Blocks* blocks = p.blocks;
     if (!isTop && p.numParents > depth && same(blocks.getName(p.parents[depth]), name)) {
@@ -342,18 +342,18 @@ func u32 Parser.addTable(Parser* p, const char* name, u32 depth, bool isTop, Nod
     return 0;
 }
 
-func Location! Parser.consumeToken(Parser* p)
+fn Location! Parser.consumeToken(Parser* p)
 {
     Location prev = p.tok.loc;
     try p.tokenizer.lex(&p.tok);
     return prev;
 }
 
-func Token* Parser.nextToken(Parser* p) {
+fn Token* Parser.nextToken(Parser* p) {
     return p.tokenizer.lookahead();
 }
 
-func void! Parser.expectAndConsume(Parser* p, TokenKind k) {
+fn void! Parser.expectAndConsume(Parser* p, TokenKind k) {
     if (p.tok.isNot(k))
     {
         sprintf(p.errorMsg, "expected '%s' at %s", token2str(k), p.tok.loc.str());
@@ -362,7 +362,7 @@ func void! Parser.expectAndConsume(Parser* p, TokenKind k) {
     try p.consumeToken();
 }
 
-func void Parser.expect(Parser* p, TokenKind k)
+fn void Parser.expect(Parser* p, TokenKind k)
 {
     if (p.tok.isNot(k))
     {
@@ -379,7 +379,7 @@ public struct TomlReader @opaque
     Blocks* blocks;
 }
 
-public func TomlReader* new_toml()
+public fn TomlReader* new_toml()
 {
     TomlReader* r = @malloc(TomlReader);
     r.blocks = @malloc(Blocks);
@@ -387,21 +387,21 @@ public func TomlReader* new_toml()
     return r;
 }
 
-public func void TomlReader.destroy(TomlReader* r)
+public fn void TomlReader.destroy(TomlReader* r)
 {
     r.blocks.destroy();
     free(r.blocks);
     free(r);
 }
 
-public func const char* TomlReader.getMsg(const TomlReader* r)
+public fn const char* TomlReader.getMsg(const TomlReader* r)
 {
     return r.message;
 }
 
 error EmptyFileError;
 
-public func void! TomlReader.parse(TomlReader* r, string filename)
+public fn void! TomlReader.parse(TomlReader* r, string filename)
 {
     Reader file;
 
@@ -427,7 +427,7 @@ $endif
 // --------------------------------------------------------------
 // Getters+iters
 
-func const Node* Reader.findNode(const Reader* r, const char* key)
+fn const Node* Reader.findNode(const Reader* r, const char* key)
 {
     char[MaxText] name;
     const char* cp = key;
@@ -459,7 +459,7 @@ func const Node* Reader.findNode(const Reader* r, const char* key)
     return nil;
 }
 
-public func const char* Reader.getValue(const Reader* r, const char* key) {
+public fn const char* Reader.getValue(const Reader* r, const char* key) {
     const Node* node = r.findNode(key);
     if (!node) return nil;
     if (getKind(node.nameOffset) != NodeKind.Value) return nil;
@@ -468,7 +468,7 @@ public func const char* Reader.getValue(const Reader* r, const char* key) {
     return &r.blocks.values[getRawValue(node.rawValue)];
 }
 
-public func bool Reader.getNumber(const Reader* r, const char* key, u32* result) {
+public fn bool Reader.getNumber(const Reader* r, const char* key, u32* result) {
     const Node* node = r.findNode(key);
     if (!node) return false;
     if (getKind(node.nameOffset) != NodeKind.Value) return false;
@@ -478,7 +478,7 @@ public func bool Reader.getNumber(const Reader* r, const char* key, u32* result)
     return true;
 }
 
-public func bool Reader.getBool(const Reader* r, const char* key, bool* result) {
+public fn bool Reader.getBool(const Reader* r, const char* key, bool* result) {
     const Node* node = r.findNode(key);
     if (!node) return false;
     if (getKind(node.nameOffset) != NodeKind.Value) return false;
@@ -493,18 +493,18 @@ public type NodeIter struct {
     const Node* node;
 }
 
-public func bool NodeIter.done(const NodeIter* i) {
+public fn bool NodeIter.done(const NodeIter* i) {
     return i.node == nil;
 }
 
-public func void NodeIter.next(NodeIter* i) {
+public fn void NodeIter.next(NodeIter* i) {
     if (i.node == nil) return;
     u32 next = i.node.nextNode;
     if (next == 0) i.node = nil;
     else i.node = &i.blocks.nodes[next];
 }
 
-public func const char* NodeIter.getValue(const NodeIter* i, const char* key) {
+public fn const char* NodeIter.getValue(const NodeIter* i, const char* key) {
     const Node* child = i.blocks.findNode(key, i.node);
     if (!child) return nil;
     if (getKind(child.nameOffset) != NodeKind.Value) return nil;
@@ -513,7 +513,7 @@ public func const char* NodeIter.getValue(const NodeIter* i, const char* key) {
     return &i.blocks.values[getRawValue(child.rawValue)];
 }
 
-public func bool NodeIter.getNumber(const NodeIter* i, const char* key, u32* result) {
+public fn bool NodeIter.getNumber(const NodeIter* i, const char* key, u32* result) {
     const Node* child = i.blocks.findNode(key, i.node);
     if (!child) return false;
     if (getKind(child.nameOffset) != NodeKind.Value) return false;
@@ -523,7 +523,7 @@ public func bool NodeIter.getNumber(const NodeIter* i, const char* key, u32* res
     return true;
 }
 
-public func bool NodeIter.getBool(const NodeIter* i, const char* key, bool* result) {
+public fn bool NodeIter.getBool(const NodeIter* i, const char* key, bool* result) {
     const Node* child = i.blocks.findNode(key, i.node);
     if (!child) return false;
     if (getKind(child.nameOffset) != NodeKind.Value) return false;
@@ -533,7 +533,7 @@ public func bool NodeIter.getBool(const NodeIter* i, const char* key, bool* resu
     return true;
 }
 
-public func NodeIter Reader.getNodeIter(const Reader* r, const char* key) {
+public fn NodeIter Reader.getNodeIter(const Reader* r, const char* key) {
     const Node* node = r.findNode(key);
     if (node && getKind(node.nameOffset) == NodeKind.TableArray) {
         node = &r.blocks.nodes[node.child];
@@ -548,26 +548,26 @@ public type ValueIter struct {
     bool isArray;
 }
 
-func ValueIter ValueIter.create(const char* values, bool isArray) {
+fn ValueIter ValueIter.create(const char* values, bool isArray) {
     ValueIter iter = { values, isArray }
     return iter;
 }
 
-public func bool ValueIter.done(const ValueIter* i) {
+public fn bool ValueIter.done(const ValueIter* i) {
     return i.values[0] == 0;
 }
 
-public func void ValueIter.next(ValueIter* i) {
+public fn void ValueIter.next(ValueIter* i) {
     if (i.values[0] == 0) return;
     while (i.values[0] != 0) i.values++;
     if (i.isArray) i.values++;    // skip 0-terminator
 }
 
-public func const char* ValueIter.getValue(const ValueIter* i) {
+public fn const char* ValueIter.getValue(const ValueIter* i) {
     return i.values;
 }
 
-public func ValueIter Reader.getValueIter(const Reader* r, const char* key) {
+public fn ValueIter Reader.getValueIter(const Reader* r, const char* key) {
     const Node* node = r.findNode(key);
     if (node) {
         switch (getKind(node.nameOffset)) {
@@ -608,7 +608,7 @@ const u32 ValueIsArray = (1 << 31);
 const u32 ValueTypeOffset = 29;
 const u32 RawValueMask = (0x7 << 29);
 
-func const char* type2str(ValueType t) {
+fn const char* type2str(ValueType t) {
     switch (t) {
     case ValueType.Text:    return "T";
     case ValueType.Number:  return "N";
@@ -643,7 +643,7 @@ public type Blocks struct {
     u32 valuesSize;
 } @(opaque)
 
-func void Blocks.init(Blocks* b) {
+fn void Blocks.init(Blocks* b) {
     memset(b, 0, sizeof(Blocks));
     b.nodes = calloc(MaxNodes, sizeof(Node));
 
@@ -662,13 +662,13 @@ func void Blocks.init(Blocks* b) {
     memset(b.namesCache, 0, sizeof(u32)*NamesCacheSize);
 }
 
-func void Blocks.destroy(Blocks* b) {
+fn void Blocks.destroy(Blocks* b) {
     free(b.values);
     free(b.names);
     free(b.nodes);
 }
 
-func u32 Blocks.searchNameCache(Blocks* b, const char* name) {
+fn u32 Blocks.searchNameCache(Blocks* b, const char* name) {
     for (u32 i=0; i<NamesCacheSize; ++i) {
         u32 off = b.namesCache[i];
         if (off && same(&b.names[off], name)) return off;
@@ -676,12 +676,12 @@ func u32 Blocks.searchNameCache(Blocks* b, const char* name) {
     return 0;
 }
 
-func const char* Blocks.getName(const Blocks* b, const Node* node) {
+fn const char* Blocks.getName(const Blocks* b, const Node* node) {
     return &b.names[getValue(node.nameOffset)];
 }
 
 
-func u32 Blocks.addNode(Blocks* b, const char* name, NodeKind k) {
+fn u32 Blocks.addNode(Blocks* b, const char* name, NodeKind k) {
     if (b.nodeCount == MaxNodes) {
         // TODO jmp?
         printf("node limit reached\n");
@@ -712,7 +712,7 @@ func u32 Blocks.addNode(Blocks* b, const char* name, NodeKind k) {
     return off;
 }
 
-func u32 Blocks.addValue(Blocks* b, const char* value) {
+fn u32 Blocks.addValue(Blocks* b, const char* value) {
     if (value[0] == 0) return 0;
     u32 off = b.valuesOffset;
     u32 len = cast<u32>(strlen(value)) + 1;
@@ -721,12 +721,12 @@ func u32 Blocks.addValue(Blocks* b, const char* value) {
     return off;
 }
 
-func void Blocks.addNull(Blocks* b) {
+fn void Blocks.addNull(Blocks* b) {
     b.values[b.valuesOffset] = 0;
     b.valuesOffset++;
 }
 
-func Node* Blocks.findNode(const Blocks* b, const char* name, const Node* parent) {
+fn Node* Blocks.findNode(const Blocks* b, const char* name, const Node* parent) {
     if (b.nodeCount == 0) return nil;
     Node* node = &b.nodes[0];
     if (parent) {
@@ -746,14 +746,14 @@ func Node* Blocks.findNode(const Blocks* b, const char* name, const Node* parent
 
 const u32 NodeKindOffset = 29;
 
-func u32 addKind(u32 value, NodeKind k) @(inline) {
+fn u32 addKind(u32 value, NodeKind k) @(inline) {
     return value | (k << NodeKindOffset);
 }
 
-func NodeKind getKind(u32 value) @(inline) {
+fn NodeKind getKind(u32 value) @(inline) {
     return cast<NodeKind>(value >> NodeKindOffset);
 }
 
-func u32 getValue(u32 value) @(inline) {
+fn u32 getValue(u32 value) @(inline) {
     return value & ~(0x7 << NodeKindOffset);
 }

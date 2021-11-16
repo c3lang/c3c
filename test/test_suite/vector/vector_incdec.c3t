@@ -1,7 +1,7 @@
 // #target: x64-darwin
 import libc;
 
-func void testf()
+fn void testf()
 {
     float[<4>] y = { 1, 2, 3, 4 };
     float[<4>] z = { 2, 2, 2, -100 };
@@ -15,7 +15,7 @@ func void testf()
     libc::printf("Dec %f %f %f %f\n", y[0], y[1], y[2], y[3]);
 }
 
-func void testi()
+fn void testi()
 {
     int[<4>] y = { 1, 2, 3, 4 };
     int[<4>] z = { 2, 2, 2, -100 };
@@ -30,7 +30,7 @@ func void testi()
     libc::printf("Original %d %d %d %d\n", w[0], w[1], w[2], w[3]);
 }
 
-func void main()
+fn void main()
 {
     testf();
     testi();

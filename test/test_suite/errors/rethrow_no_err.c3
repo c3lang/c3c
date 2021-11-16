@@ -1,5 +1,5 @@
 
-func void test()
+fn void test()
 {
     test()?; // #error: No failable to rethrow before '?' in the expression, please remove '?'
     int i = 0;
@@ -9,7 +9,7 @@ func void test()
     if ((j?)?) return; // #error: This expression implicitly returns with a failable result, but the function
 }
 
-func void! test2()
+fn void! test2()
 {
     int! j = 0;
     if (j?) return;

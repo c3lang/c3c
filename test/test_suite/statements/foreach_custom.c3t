@@ -11,19 +11,19 @@ struct FooIterator
     usize index;
     Foo *f;
 }
-func FooIterator Foo.iterator(Foo *f)
+fn FooIterator Foo.iterator(Foo *f)
 {
     return FooIterator {0, f};
 }
 
-func bool FooIterator.next(FooIterator *it, int *value)
+fn bool FooIterator.next(FooIterator *it, int *value)
 {
     if (it.index == it.f.x.len) return false;
     *value = it.f.x[it.index++];
     return true;
 }
 
-func void main()
+fn void main()
 {
     int[*] i = { 1, 3, 10 };
     Foo x = { &i };
@@ -36,7 +36,7 @@ func void main()
     }
 }
 
-extern func int printf(char *fmt, ...);
+extern fn int printf(char *fmt, ...);
 
 // #expect: foo.ll
 

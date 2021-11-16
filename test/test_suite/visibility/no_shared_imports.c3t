@@ -1,7 +1,7 @@
 // #file: file1.c3
 module baz;
 
-func void runBar()
+fn void runBar()
 {
     visible();
     bar::barFunc(); // #error: Unknown module 'bar'
@@ -11,7 +11,7 @@ func void runBar()
 module baz;
 import bar;
 
-private func void visible()
+private fn void visible()
 {
     bar::barFunc();
 }
@@ -19,5 +19,5 @@ private func void visible()
 // #file: file3.c3
 module bar;
 
-func void barFunc()
+fn void barFunc()
 {}

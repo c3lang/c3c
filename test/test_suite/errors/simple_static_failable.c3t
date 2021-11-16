@@ -7,7 +7,7 @@ errtype Blurg
     Y
 }
 
-func void main()
+fn void main()
 {
     static int! x = 120;
     int! i = Blurg.Y!;

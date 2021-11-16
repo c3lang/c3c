@@ -1,6 +1,6 @@
 // #target: x64-darwin
 
-func void test(int i) @naked
+fn void test(int i) @naked
 {
 
 }

@@ -23,7 +23,7 @@ module abc;
 import foo;
 import baz;
 
-func void main()
+fn void main()
 {
     Bar bar;
     bar.test();

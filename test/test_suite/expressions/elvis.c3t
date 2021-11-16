@@ -1,15 +1,15 @@
-func int* elvis(int *x, int *y)
+fn int* elvis(int *x, int *y)
 {
     return x ?: y;
 }
 
 
-func int* elvis2(int *x, int *y)
+fn int* elvis2(int *x, int *y)
 {
     return x ?: (y ?: x);
 }
 
-func bool elvis3(bool x, bool y)
+fn bool elvis3(bool x, bool y)
 {
     return x ?: y;
 }

@@ -11,13 +11,13 @@ struct Bar
     int y;
 }
 
-func int test()
+fn int test()
 {
     Baz ffe = { .x = 1 };
     int[1] azz = {};
     int[*] a = {};
     var $foo = { 11, 22, 33 };
-    static int foo1 = $foo[1];
+    global int foo1 = $foo[1];
     int foo2 = $foo[2];
     var $foos = { "Hello!" };
     char* str = $foos[0];

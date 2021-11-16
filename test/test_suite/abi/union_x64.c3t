@@ -7,9 +7,9 @@ union Foo
     long a;
     char[12] b;
 }
-extern func void hello2(Foo f);
+extern fn void hello2(Foo f);
 
-func void hello(Foo f)
+fn void hello(Foo f)
 {
     hello2(f);
 }

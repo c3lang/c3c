@@ -6,7 +6,7 @@ macro foo(y)
     return y * y;
 }
 
-func void main()
+fn void main()
 {
     io::printf("%d\n", @foo(10));
 }

@@ -255,7 +255,7 @@ macro memcpy_Auint(i, val)
  * - The main thread is started up, initializing its global namespace.
  * - All core types are progressively loaded, establishing the default types for
  *   each encoding. This includes the resource types and Acorn compiler. */
-func Value new(void)
+fn Value new(void)
 {
 	logInfo(AVM_RELEASE " started.");
 
@@ -352,7 +352,7 @@ float vmEndTimer(int64_t starttime)
 }
 $else
 {
-func int64_t vmStartTimer()
+fn int64_t vmStartTimer()
 {
 	TimeVal start;
 	start.gettimeofday();

@@ -5,7 +5,7 @@ errtype Blurg
     X, Y, Z
 }
 
-func void main()
+fn void main()
 {
     anyerr foo;
 }

@@ -1,8 +1,8 @@
 // #target: x64-darwin
 
-extern func void printf(char *, ...);
+extern fn void printf(char *, ...);
 
-func void main()
+fn void main()
 {
 
     bool b = true;

@@ -1,5 +1,5 @@
 
-func int main()
+fn int main()
 {
     do FOO:
     {
@@ -12,7 +12,7 @@ func int main()
 }
 
 
-func void test1()
+fn void test1()
 {
     do FOO:
     {

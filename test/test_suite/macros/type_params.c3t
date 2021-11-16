@@ -6,7 +6,7 @@ macro foo($Foo)
 }
 
 define Bar = short;
-func void test()
+fn void test()
 {
     int x = @foo(int);
     var $Foo = double;

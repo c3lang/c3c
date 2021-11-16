@@ -1,7 +1,7 @@
 // #target: x64-darwin
 import libc;
 
-func void testf()
+fn void testf()
 {
     float[<4>] y = { 1, 2, 3, 4 };
     float[<4>] z = { 2, 2, 2, -100 };
@@ -17,12 +17,12 @@ func void testf()
     libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
 }
 
-func void testb()
+fn void testb()
 {
     bool[<4>] d = { true, false, true, true };
 }
 
-func void testi()
+fn void testi()
 {
     int[<4>] y = { 1, 2, 3, 4 };
     int[<4>] z = { 2, 2, 2, -100 };
@@ -45,7 +45,7 @@ func void testi()
     libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
 }
 
-func void main()
+fn void main()
 {
     testf();
     testi();

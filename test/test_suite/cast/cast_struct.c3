@@ -22,7 +22,7 @@ struct BazTwo
     int e;
 }
 
-func void test()
+fn void test()
 {
     Foo x;
     Bar y = (Bar)(x);

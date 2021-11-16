@@ -8,9 +8,9 @@ struct Large
     void*[8] pointers;
 }
 
-extern func void pass_large(Large large);
+extern fn void pass_large(Large large);
 
-func void example()
+fn void example()
 {
     Large l = {};
     pass_large(l);

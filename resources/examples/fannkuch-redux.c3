@@ -8,7 +8,7 @@ macro int max(int a, int b)
     return a > b ? a : b;
 }
 
-func int fannkuchredux(int n)
+fn int fannkuchredux(int n)
 {
     int* perm = @array::make(int, n);
     int* perm1 = @array::make(int, n);
@@ -72,7 +72,7 @@ func int fannkuchredux(int n)
     return 0;
 }
 
-func int main(int argc, char** argv)
+fn int main(int argc, char** argv)
 {
     int n = argc > 1 ? libc::atoi(argv[1]) : 7;
     libc::printf("Pfannkuchen(%d) = %d\n", n, fannkuchredux(n));

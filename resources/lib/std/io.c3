@@ -29,18 +29,18 @@ struct File
     void *file;
 }
 
-extern func int _puts(char* message) @extname("puts");
-extern func int printf(char* message, ...);
-extern func int _putchar(char c) @extname("putchar");
+extern fn int _puts(char* message) @extname("puts");
+extern fn int printf(char* message, ...);
+extern fn int _putchar(char c) @extname("putchar");
 
 extern File *__stdinp;
 
-func int putchar(char c) @inline
+fn int putchar(char c) @inline
 {
     return _putchar(c);
 }
 
-func int print(char *message)
+fn int print(char *message)
 {
     char* pointer = message;
     while (*pointer != '\0')
@@ -51,13 +51,13 @@ func int print(char *message)
     return 1;
 }
 
-func int println(char *message = "") @inline
+fn int println(char *message = "") @inline
 {
     return _puts(message);
 }
 
 
-func void! File.open(File* file, char[] filename, char[] mode)
+fn void! File.open(File* file, char[] filename, char[] mode)
 {
     char* filename_copy = mem::talloc(filename.len + 1)!!;
 

@@ -1,15 +1,15 @@
 // #target: x64-darwin
 
-int foo = 2.2 ? 1 : 2;
-double bar = false ? 1.0 : 2;
-bool baz = 1 ? false : true;
+global int foo = 2.2 ? 1 : 2;
+global double bar = false ? 1.0 : 2;
+global bool baz = 1 ? false : true;
 
-func void test()
+fn void test()
 {
     int x = 1 ? 0 : test2();
 }
 
-func int test2() { return 3; }
+fn int test2() { return 3; }
 
 // #expect: ternary_folding.ll
 

@@ -1,4 +1,4 @@
-func void main()
+fn void main()
 {
     char *s = "Hello\0 world!" " now";
 }

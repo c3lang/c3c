@@ -9,7 +9,7 @@ enum Bar
     B
 }
 
-func void test_other_enum()
+fn void test_other_enum()
 {
     Foo f = A;
     switch (f)
@@ -23,7 +23,7 @@ func void test_other_enum()
     }
 }
 
-func void test_check_nums()
+fn void test_check_nums()
 {
     Foo f = A;
     switch (f)
@@ -35,7 +35,7 @@ func void test_check_nums()
     }
 }
 
-func void test_scope(int i)
+fn void test_scope(int i)
 {
     switch (i)
     {
@@ -47,7 +47,7 @@ func void test_scope(int i)
     }
 }
 
-func void test_duplicate_case(int i)
+fn void test_duplicate_case(int i)
 {
     switch (i)
     {
@@ -60,7 +60,7 @@ func void test_duplicate_case(int i)
     }
 }
 
-func void test_duplicate_case2(Foo i)
+fn void test_duplicate_case2(Foo i)
 {
     switch (i)
     {
@@ -73,7 +73,7 @@ func void test_duplicate_case2(Foo i)
     }
 }
 
-func void test_duplicate_case3(Foo i)
+fn void test_duplicate_case3(Foo i)
 {
     switch (i)
     {
@@ -89,14 +89,14 @@ enum Baz
     A, B, C, D
 }
 
-func void test_missing_all_cases(Baz x)
+fn void test_missing_all_cases(Baz x)
 {
     switch (x) // -error: 4 enumeration values not handled in switch: A, B, C, ...
     {
     }
 }
 
-func void test_missing_some_cases(Baz x)
+fn void test_missing_some_cases(Baz x)
 {
     switch (x) // -error: 4 enumeration B, C and D not handled in switch
     {
@@ -105,7 +105,7 @@ func void test_missing_some_cases(Baz x)
     }
 }
 
-func void test_missing_some_cases2(Baz x)
+fn void test_missing_some_cases2(Baz x)
 {
     switch (x) // -error: 4 enumeration B and D not handled in switch
     {
@@ -115,7 +115,7 @@ func void test_missing_some_cases2(Baz x)
     }
 }
 
-func void test_missing_some_cases3(Baz x)
+fn void test_missing_some_cases3(Baz x)
 {
     switch (x) // -error: 4 enumeration B and D not handled in switch
     {
@@ -126,7 +126,7 @@ func void test_missing_some_cases3(Baz x)
     }
 }
 
-func void test_missing_no_cases(Baz x)
+fn void test_missing_no_cases(Baz x)
 {
     switch (x)
     {
@@ -141,11 +141,11 @@ errtype MathError
 }
 
 // Rethrowing an error uses "!!" suffix
-func void! testMayError()
+fn void! testMayError()
 {
 }
 
-func void main()
+fn void main()
 {
     // Handle the error
     switch (catch err = testMayError()) // #error: Catch unwrapping is only allowed

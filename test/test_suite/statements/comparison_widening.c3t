@@ -1,6 +1,6 @@
 // #target: x64-darwin
 
-func void test1()
+fn void test1()
 {
     char a = 1;
     int b = 2;

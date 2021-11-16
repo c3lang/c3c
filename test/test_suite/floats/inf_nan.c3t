@@ -1,6 +1,6 @@
 module fe;
 
-func void main()
+fn void main()
 {
     float z = float.inf + 100;
     double z2 = double.inf;

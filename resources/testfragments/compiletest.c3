@@ -5,7 +5,7 @@ int bob = 'HELO';
 
 typedef Foo* as Bob;
 
-func void testdefer(int x)
+fn void testdefer(int x)
 {
     defer printf("A");
     defer
@@ -67,7 +67,7 @@ struct Simple
 	int i;
 	double j;
 }
-func int boo()
+fn int boo()
 {
 	Zed zfe;
 	Simple s = { 1 };
@@ -148,11 +148,11 @@ func int boo()
 	return 1;
 }
 
-func int helo(int i)
+fn int helo(int i)
 {
 	return i + 1;
 }
-func void while_test()
+fn void while_test()
 {
 
 	int a = 10;
@@ -164,7 +164,7 @@ func void while_test()
 	}
 }
 
-func void test()
+fn void test()
 {
 	int a = 10;
 	while (1)
@@ -183,7 +183,7 @@ func void test()
 	return;
 }
 
-func void main()
+fn void main()
 {
 	helo(2);
 	printf("Helo\n");

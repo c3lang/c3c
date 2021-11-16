@@ -1,6 +1,6 @@
 module test;
 
-func void test1()
+fn void test1()
 {
     bool! x = 0;
     if (x) // #error: 'bool!' to 'bool'
@@ -9,7 +9,7 @@ func void test1()
     }
 }
 
-func void test2()
+fn void test2()
 {
     bool! x = 0;
     while (x) // #error: 'bool!' to 'bool'
@@ -18,7 +18,7 @@ func void test2()
     }
 }
 
-func void test3()
+fn void test3()
 {
     bool! x = 0;
     double y = 1;

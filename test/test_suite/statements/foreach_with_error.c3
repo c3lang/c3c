@@ -1,6 +1,6 @@
 module test;
 
-func void test()
+fn void test()
 {
     int[3]! x;
     int g;

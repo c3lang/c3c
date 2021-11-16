@@ -2,7 +2,7 @@ module for_test;
 
 
 
-func int test1()
+fn int test1()
 {
     for (int x = 0;;)
     {
@@ -10,7 +10,7 @@ func int test1()
     return 0;
 }
 
-func int test2()
+fn int test2()
 {
     for (int x = 0; 1 ;)
     {
@@ -18,7 +18,7 @@ func int test2()
     return 0;
 }
 
-func int test3()
+fn int test3()
 {
     for (; 1 ;2)
     {

@@ -34,7 +34,7 @@ struct Point
 }
 
 
-func void tester()
+fn void tester()
 {
     Multi m;
     m.a = 1;
@@ -68,7 +68,7 @@ struct Aa1
     }
 }
 
-func void test_conversion_struct()
+fn void test_conversion_struct()
 {
     Aa1 a1;
     int aa = a1.bb;    // #error: 'bb' into 'int'
@@ -79,7 +79,7 @@ struct Struct
     int a;
 }
 
-func void myfunc()
+fn void myfunc()
 {
     Struct s;
     s.b = 10;       // #error: There is no field or method 'Struct.b'

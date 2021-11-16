@@ -16,9 +16,9 @@ enum EnumB : char
     C, D
 }
 
-define Func = func void(Enum);
+define Func = fn void(Enum);
 
-func void test1(Enum e)
+fn void test1(Enum e)
 {
     bool a = (bool)(e);
     char b = (char)(e);
@@ -27,12 +27,12 @@ func void test1(Enum e)
     uint* f = (uint*)(e);         // #error: cast 'Enum' to 'uint*'
 }
 
-func void test2(Enum e)
+fn void test2(Enum e)
 {
     Struct* g = (Struct*)(e);     // #error: cast 'Enum' to 'Struct*'
 }
 
-func void test3(Enum e)
+fn void test3(Enum e)
 {
     EnumB h = (EnumB)(e);
     Func i = (Func)(e);           // #error: cast 'Enum' to 'Func'

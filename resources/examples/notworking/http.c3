@@ -1,6 +1,6 @@
 import curl;
 
-func int main(void)
+fn int main(void)
 {
     Curl curl;
 

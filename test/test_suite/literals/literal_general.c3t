@@ -1,14 +1,14 @@
 // #target: x64-darwin
 module foo;
 
-int aa = 'ä';
-int x = 'ABCD';
-uint y = 'Helo';
-ushort z = '\x31\x32';
-int d = '\u0031';
-char b = '\x40';
-uint abc = '\U133222AB';
-uint foo = '謝';
+global int aa = 'ä';
+global int x = 'ABCD';
+global uint y = 'Helo';
+global ushort z = '\x31\x32';
+global int d = '\u0031';
+global char b = '\x40';
+global uint abc = '\U133222AB';
+global uint foo = '謝';
 
 /* #expect: foo.ll
 

@@ -1,4 +1,4 @@
-func int testReturnSwitch()
+fn int testReturnSwitch()
 {
     int i = 0;
     switch (i)

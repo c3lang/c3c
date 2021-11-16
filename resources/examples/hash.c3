@@ -5,7 +5,7 @@ import libc;
 // The code below should not be considered *correct*
 // They are merely done to illustrate the language syntax.
 
-func void main()
+fn void main()
 {
     char[] y = "Hello World!";
     libc::printf("Adler32 of %s is %x, expected 1c49043e\n", (char*)(y), adler32(y));
@@ -17,7 +17,7 @@ func void main()
     libc::printf("FNV64a of %s is %llx, expected 8c0ec8d1fb9e6e32\n", (char*)(y), fnv64a(y));
 }
 
-func uint adler32(char[] data)
+fn uint adler32(char[] data)
 {
     const uint ADLER_CONST = 65521;
     uint a = 1;
@@ -30,7 +30,7 @@ func uint adler32(char[] data)
     return (b << 16) | a;
 }
 
-func uint crc32(char[] data)
+fn uint crc32(char[] data)
 {
     uint result = ~(uint)(0);
     foreach (char x : data)
@@ -40,7 +40,7 @@ func uint crc32(char[] data)
 	return ~result;
 }
 
-func ulong crc64(char[] data)
+fn ulong crc64(char[] data)
 {
     ulong result = (ulong)(0);
     foreach (char x : data)
@@ -51,7 +51,7 @@ func ulong crc64(char[] data)
 }
 
 
-func uint fnv32(char[] data)
+fn uint fnv32(char[] data)
 {
     uint h = 0x811c9dc5;
     foreach (char x : data)
@@ -61,7 +61,7 @@ func uint fnv32(char[] data)
     return h;
 }
 
-func ulong fnv64(char[] data)
+fn ulong fnv64(char[] data)
 {
     ulong h = 0xcbf29ce484222325;
     foreach (char x : data)
@@ -71,7 +71,7 @@ func ulong fnv64(char[] data)
     return h;
 }
 
-func uint fnv32a(char[] data)
+fn uint fnv32a(char[] data)
 {
     uint h = 0x811c9dc5;
     foreach (char x : data)
@@ -81,7 +81,7 @@ func uint fnv32a(char[] data)
     return h;
 }
 
-func ulong fnv64a(char[] data)
+fn ulong fnv64a(char[] data)
 {
     ulong h = 0xcbf29ce484222325;
     foreach (char x : data)

@@ -1,12 +1,12 @@
 module game_of_life;
 
-extern func void printf(char *fmt, ...);
-extern func int atoi(char *val);
+extern fn void printf(char *fmt, ...);
+extern fn int atoi(char *val);
 extern void *__stdoutp;
-extern func void fflush(void *std);
-extern func int rand();
-extern func void* malloc(usize size);
-extern func void usleep(int time);
+extern fn void fflush(void *std);
+extern fn int rand();
+extern fn void* malloc(usize size);
+extern fn void usleep(int time);
 
 
 struct GameBoard
@@ -17,7 +17,7 @@ struct GameBoard
     char* temp;
 }
 
-func void GameBoard.show(GameBoard *board)
+fn void GameBoard.show(GameBoard *board)
 {
 
 	printf("\e[H");
@@ -34,7 +34,7 @@ func void GameBoard.show(GameBoard *board)
 	fflush(__stdoutp);
 }
 
-func void GameBoard.evolve(GameBoard *board)
+fn void GameBoard.evolve(GameBoard *board)
 {
 	for (int y = 0; y < board.h; y++)
 	{
@@ -61,7 +61,7 @@ func void GameBoard.evolve(GameBoard *board)
 }
 
 
-func int main(int c, char** v)
+fn int main(int c, char** v)
 {
 	int w = 0;
 	int h = 0;

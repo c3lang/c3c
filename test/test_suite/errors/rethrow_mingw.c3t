@@ -2,7 +2,7 @@
 
 module rethrow;
 
-func void! test()
+fn void! test()
 {
     int! i;
     i?;

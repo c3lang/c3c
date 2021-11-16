@@ -1,9 +1,9 @@
 module antiprime;
 import std::io;
 
-extern func int printf(char* message, ...);
+extern fn int printf(char* message, ...);
 
-func int countDivisors(int n)
+fn int countDivisors(int n)
 {
     if (n < 2) return 1;
     int count = 2;
@@ -14,7 +14,7 @@ func int countDivisors(int n)
     return count;
 }
 
-func int main()
+fn int main()
 {
     int maxDiv;
     int count;

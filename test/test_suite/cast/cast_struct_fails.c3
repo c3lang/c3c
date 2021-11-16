@@ -22,12 +22,12 @@ struct BazTwo
     int e;
 }
 
-func void test1()
+fn void test1()
 {
     Foo x;
     Bar z = (Baz)(x); // #error: cast 'Foo' to 'Baz'
 }
-func void test2()
+fn void test2()
 {
     Baz x;
     BazTwo z = (BazTwo)(x); // #error: cast 'Baz' to 'BazTwo'

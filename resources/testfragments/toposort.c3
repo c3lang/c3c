@@ -2,7 +2,7 @@ module topologicalsort;
 import std::mem;
 import std::array;
 
-extern func void printf(char* x, ...);
+extern fn void printf(char* x, ...);
 
 struct InputPair
 {
@@ -23,7 +23,7 @@ struct TopoList
 }
 
 
-func void sort(InputPair[] pairs, uint elements)
+fn void sort(InputPair[] pairs, uint elements)
 {
     InputPair[] result = @array::make(InputPair, pairs.len);
     TopoList* top = @array::make(TopoList, elements);
@@ -70,7 +70,7 @@ func void sort(InputPair[] pairs, uint elements)
     }
 }
 
-func void main()
+fn void main()
 {
     InputPair[10] pairs = {
         { 9, 2 },

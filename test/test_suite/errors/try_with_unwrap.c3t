@@ -1,10 +1,10 @@
 // #target: x64-darwin
-extern func char*! readLine();
-extern func int! atoi(char*);
+extern fn char*! readLine();
+extern fn int! atoi(char*);
 
-extern func int printf(char* fmt, ...);
+extern fn int printf(char* fmt, ...);
 
-func void main()
+fn void main()
 {
     char*! line = readLine();
     if (try line)

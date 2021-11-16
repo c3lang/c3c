@@ -1,4 +1,4 @@
-func void test1()
+fn void test1()
 {
     bool x = $defined(1); // #error: constant string containing an identifier or type was expected
 }
@@ -6,13 +6,13 @@ func void test1()
 struct Foo
 {}
 
-func void test2()
+fn void test2()
 {
     $assert($defined(int[1]));
     bool x = $defined(int[y]); // #error: 'y' could not be found, did you spell it right?
 }
 
-func void test3()
+fn void test3()
 {
     $assert($defined(Foo[1]));
     $assert($defined(Foo*));

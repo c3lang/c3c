@@ -25,13 +25,13 @@ enum TokenKind : char (String name)
     ERROR("error"),
 }
 
-func void Location.init(Location* l, uint line = 0, uint col = 0)
+fn void Location.init(Location* l, uint line = 0, uint col = 0)
 {
     l.line = line;
     l.column = col;
 }
 
-func string Location.str(Location* l)
+fn string Location.str(Location* l)
 {
     static char[32] msg;
     sprintf(msg, "line %u:%u", l.line, l.column);
@@ -50,7 +50,7 @@ struct Token
     }
 }
 
-func void Token.init(Token* t)
+fn void Token.init(Token* t)
 {
     t.loc.init(0, 0);
     t.kind = TokenKind.EOF;
@@ -58,28 +58,28 @@ func void Token.init(Token* t)
     t.number = 0;
 }
 
-func void Token.clear(Token* t)
+fn void Token.clear(Token* t)
 {
     t.text = nil;
     t.number = 0;
 }
 
-func void Token.setLocation(Token* t, Location l)
+fn void Token.setLocation(Token* t, Location l)
 {
     t.loc = l;
 }
 
-func bool Token.is(Token* t, TokenKind k)
+fn bool Token.is(Token* t, TokenKind k)
 {
     return t.kind == k;
 }
 
-func bool Token.isNot(Token* t, TokenKind k)
+fn bool Token.isNot(Token* t, TokenKind k)
 {
     return t.kind != k;
 }
 
-func string Token.getName(Token* t)
+fn string Token.getName(Token* t)
 {
     return t.kind.name;
 }
@@ -94,7 +94,7 @@ struct Tokenizer
     bool haveNext;
 }
 
-func void Tokenizer.init(Tokenizer* t, char* input)
+fn void Tokenizer.init(Tokenizer* t, char* input)
 {
     t.dataStart = input;
     t.current = input;
@@ -109,7 +109,7 @@ error LexError
     string error_message;
 }
 
-func void! Tokenizer.lex(Tokenizer* t, Token* result)
+fn void! Tokenizer.lex(Tokenizer* t, Token* result)
 {
     if (t.haveNext)
     {
@@ -221,7 +221,7 @@ func void! Tokenizer.lex(Tokenizer* t, Token* result)
     }
 }
 
-func Token*! Tokenizer.lookahead(Tokenizer* t)
+fn Token*! Tokenizer.lookahead(Tokenizer* t)
 {
     if (!t.haveNext)
     {
@@ -231,13 +231,13 @@ func Token*! Tokenizer.lookahead(Tokenizer* t)
     return &t.nextToken;
 }
 
-func void Tokenizer.advance(Tokenizer* t, uint amount)
+fn void Tokenizer.advance(Tokenizer* t, uint amount)
 {
     t.loc.column += amount;
     t.current += amount;
 }
 
-func void Tokenizer.parseComment(Tokenizer* t)
+fn void Tokenizer.parseComment(Tokenizer* t)
 {
     while (1)
     {
@@ -258,7 +258,7 @@ func void Tokenizer.parseComment(Tokenizer* t)
     }
 }
 
-func void Tokenizer.parseText(Tokenizer* t, Token* result)
+fn void Tokenizer.parseText(Tokenizer* t, Token* result)
 {
     // TODO handle literal strings ' .. ' -> no escaping
     // TODO handle escape chars for normal strings " .. \" \r \n "
@@ -277,7 +277,7 @@ func void Tokenizer.parseText(Tokenizer* t, Token* result)
     t.advance(1);
 }
 
-func void! Tokenizer.parseMultiText(Tokenizer* t, Token* result)
+fn void! Tokenizer.parseMultiText(Tokenizer* t, Token* result)
 {
     t.advance(3);
     if (t.current[0] == '\n')
@@ -317,7 +317,7 @@ func void! Tokenizer.parseMultiText(Tokenizer* t, Token* result)
     t.advance(3);
 }
 
-func void Tokenizer.parseNumber(Tokenizer* t, Token* result)
+fn void Tokenizer.parseNumber(Tokenizer* t, Token* result)
 {
     // TODO handle prefix +/-
     // handle hexadecimal/ocal/binary number
@@ -333,7 +333,7 @@ func void Tokenizer.parseNumber(Tokenizer* t, Token* result)
     }
 }
 
-func bool isKeyChar(u8 c)
+fn bool isKeyChar(u8 c)
 {
     if (c >= 128) return true;
     if (isalpha(c)) return true;
@@ -342,7 +342,7 @@ func bool isKeyChar(u8 c)
     return false;
 }
 
-func void Tokenizer.parseKey(Tokenizer* t, Token* result)
+fn void Tokenizer.parseKey(Tokenizer* t, Token* result)
 {
     char* start = t.current;
     while (t.current[0] && isKeyChar((char)(t.current[0]))) t.current++;

@@ -1,8 +1,8 @@
 module varargs;
 
-extern func void printf(char* c, ...);
+extern fn void printf(char* c, ...);
 
-func void test()
+fn void test()
 {
   printf("%d\n", true);
   printf("%d\n", 123);

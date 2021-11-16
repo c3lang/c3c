@@ -5,7 +5,7 @@ errtype Blurg
     Z
 }
 
-func void main()
+fn void main()
 {
     int! i = Blurg.Z!;
     int! j = Blurg.Z!;

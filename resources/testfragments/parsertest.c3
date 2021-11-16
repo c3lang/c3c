@@ -68,7 +68,7 @@ error Errors
 	OTHER_ERROR
 }
 
-func Foom test(int a)
+fn Foom test(int a)
 {
 	while (int x = 0, int y = 3; int y = foo())
 	{
@@ -85,7 +85,7 @@ func Foom test(int a)
 	return 1 + 2;
 }
 
-func boo::Bar zab::Baz.sd(die::Eij i) throws Zab // , sij:Zig
+fn boo::Bar zab::Baz.sd(die::Eij i) throws Zab // , sij:Zig
 {
 	float a = 0, b = 3, double c = 1, d;
 	int i = 0;
@@ -111,20 +111,20 @@ generic boor2(i)
 
 $if ($e > 0)
 {
-    func void foo() {}
+    fn void foo() {}
 }
 $elif ($e < 0)
 {
-    func void foo() { printf("HELO"); }
+    fn void foo() { printf("HELO"); }
 }
 $else
 {
-    func void foo() { printf("OLEH"); }
+    fn void foo() { printf("OLEH"); }
 }
 
 $if ($e > 0)
 {
-    func void foo() {}
+    fn void foo() {}
 }
 
 $if ($b > 0)
@@ -151,7 +151,7 @@ generic boofer2(i, g, eok)
 
 
 
-func void hello() throws Errors
+fn void hello() throws Errors
 {
 	int i, j;
 	throw FOO;
@@ -229,11 +229,11 @@ func void hello() throws Errors
 }
 
 typedef Foo* as Bar;
-typedef func void(int, Foo*) as Zoo;
+typedef fn void(int, Foo*) as Zoo;
 
 
 
-func void test2()
+fn void test2()
 {
 	return;
 }

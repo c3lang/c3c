@@ -13,16 +13,16 @@ struct Bar
 }
 
 
-func void test()
+fn void test()
 {
     Bar[] b = { { 1, 2 } };
-    static Bar[] c = { { 1, 2 } };
+    global Bar[] c = { { 1, 2 } };
     io::printf("%d %d\n", b[0].y, c[0].y);
     b[0].y += 1;
     c[0].y += 1;
 
 }
-func int main()
+fn int main()
 {
     test();
     test();

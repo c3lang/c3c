@@ -8,33 +8,33 @@ enum Enum : uptr
     A, B
 }
 
-define Func = func void(int);
-define FuncOther = func bool(char*);
-define FuncSame = func void(int);
+define Func = fn void(int);
+define FuncOther = fn bool(char*);
+define FuncSame = fn void(int);
 
 
-func void test1(Func arg)
+fn void test1(Func arg)
 {
     bool a = (bool)(arg);
     bool b = arg;
 }
 
-func void test2(Func arg)
+fn void test2(Func arg)
 {
     ichar b = (ichar)(arg);               // #error: 'Func' (func void(int)) to 'ichar'
 }
 
-func void test3(Func arg)
+fn void test3(Func arg)
 {
     uint c = (uint)(arg);                 // #error: 'Func' (func void(int)) to 'uint'
 }
 
-func void test4(Func arg)
+fn void test4(Func arg)
 {
     float d = (float)(arg);               // #error: 'Func' (func void(int)) to 'float'
 }
 
-func void test7(Func arg)
+fn void test7(Func arg)
 {
     usize g = (usize)(arg);
     FuncOther k = (FuncOther)(arg);

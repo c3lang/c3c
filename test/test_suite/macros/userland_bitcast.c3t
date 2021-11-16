@@ -37,7 +37,7 @@ macro testbitcast(expr, $Type)
     return x;
 }
 
-extern func void printf(char*, ...);
+extern fn void printf(char*, ...);
 
 struct Foo
 {
@@ -48,19 +48,19 @@ struct Foo
     short e;
 }
 
-func ulong testFoo(short x)
+fn ulong testFoo(short x)
 {
     Foo z;
     z.a = x;
     return @testbitcast(z, ulong);
 }
 
-func char[4] test(float x)
+fn char[4] test(float x)
 {
     return @testbitcast(x, char[4]);
 }
 
-func void main()
+fn void main()
 {
     float f = 12.353;
     int i = @testbitcast(f, int);

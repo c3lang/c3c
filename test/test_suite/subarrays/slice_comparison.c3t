@@ -2,9 +2,9 @@
 
 module mymodule;
 
-extern func void printf(char *, ...);
+extern fn void printf(char *, ...);
 
-func void main()
+fn void main()
 {
 
     char[] y = "hodo";

@@ -11,9 +11,9 @@ macro foo(int x)
     return MyErr.TEST!;
 }
 
-extern func void printf(char*, ...);
+extern fn void printf(char*, ...);
 
-func void main()
+fn void main()
 {
     int! a = @foo(1);
 

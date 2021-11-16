@@ -1,6 +1,6 @@
 import std::io;
 
-extern func int printf(char* message, ...);
+extern fn int printf(char* message, ...);
 
 macro void swap(&a, &b)
 {
@@ -9,7 +9,7 @@ macro void swap(&a, &b)
     b = temp;
 }
 
-func void main()
+fn void main()
 {
     int x = 1;
     int y = 2;

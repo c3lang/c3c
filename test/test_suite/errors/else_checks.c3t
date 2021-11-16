@@ -1,8 +1,8 @@
 // #target: x64-darwin
 
-extern func int! testError();
+extern fn int! testError();
 
-func void test()
+fn void test()
 {
 
     double x = (testError() + testError()) ?? 100;

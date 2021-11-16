@@ -2,7 +2,7 @@
 module baz;
 import bar;
 
-func void runBar()
+fn void runBar()
 {
     bar::visible();
 }
@@ -10,7 +10,7 @@ func void runBar()
 // #file: file2.c3
 module bar;
 
-func void visible()
+fn void visible()
 {
 
 }

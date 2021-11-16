@@ -2,14 +2,14 @@
 
 import libc;
 
-func void testf()
+fn void testf()
 {
     float[<4>] y = { 0, 2, 3, 0 };
     int[<4>] w = !y;
     libc::printf("Notf %d %d %d %d\n", w[0], w[1], w[2], w[3]);
 }
 
-func void testi()
+fn void testi()
 {
     int[<4>] y = { 1, 2, 3, 4 };
     int[<4>] z = { 2, 3, 13, -100 };
@@ -30,7 +30,7 @@ func void testi()
     libc::printf("Not %d %d %d %d\n", w[0], w[1], w[2], w[3]);
 }
 
-func void main()
+fn void main()
 {
     testf();
     testi();

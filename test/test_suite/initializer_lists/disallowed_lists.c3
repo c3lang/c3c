@@ -1,4 +1,4 @@
-func void test()
+fn void test()
 {
     char* hello = "123";
     char[] a = { '1', '2', '3' };

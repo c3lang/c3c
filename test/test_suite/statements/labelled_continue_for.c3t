@@ -1,9 +1,9 @@
-func void errored()
+fn void errored()
 {}
 
-func void test() {}
+fn void test() {}
 
-func void testBreak()
+fn void testBreak()
 {
     for FOO: (int i = 0; i < 10; i++)
     {

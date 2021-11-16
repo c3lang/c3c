@@ -1,4 +1,4 @@
-func int testReturnWithConditional()
+fn int testReturnWithConditional()
 {
     int i = 0;
     if (i > 0)

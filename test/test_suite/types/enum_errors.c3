@@ -4,7 +4,7 @@ enum EnumTestErrorType3 : int
     A = FOO // #error: 'FOO' could not be found, did you spell it
 }
 
-func int foo()
+fn int foo()
 {
     return 10;
 }

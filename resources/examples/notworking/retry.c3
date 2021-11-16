@@ -13,7 +13,7 @@ public macro retry(#function, int retries = 3)
     return e!;
 }
 
-func void main()
+fn void main()
 {
     int! result = @retry(eventually_succeed());
 }

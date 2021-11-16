@@ -13,9 +13,9 @@ struct UzGlobs
     MinInfo* pInfo;
 }
 
-extern UzGlobs g;
+extern global UzGlobs g;
 
-func int extract_or_test_files()
+fn int extract_or_test_files()
 {
     g.pInfo = &g.info;
     return 0;

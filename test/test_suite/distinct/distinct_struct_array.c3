@@ -11,7 +11,7 @@ struct Struct
 define Struct2 = distinct Struct;
 define StructArr = distinct Struct2[3];
 
-func void test(int x)
+fn void test(int x)
 {
     StructArr z = { { .x = 1 }, { .y = x }, { 1, 2 }};
     usize len = z.len;

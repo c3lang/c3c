@@ -1,7 +1,7 @@
 // #target: x64-darwin
 module reassign;
 
-func void test()
+fn void test()
 {
     var $Foo = double;
     $Foo = int;

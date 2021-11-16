@@ -6,15 +6,15 @@ const IA = 3877;
 const IC = 29573;
 const SEED = 42;
 
-uint seed = SEED;
+global uint seed = SEED;
 
-func float fasta_rand(float max)
+fn float fasta_rand(float max)
 {
 	seed = (seed * IA + IC) % IM;
 	return max * seed / IM;
 }
 
-private char[] alu =
+private global char[] alu =
   "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG"
   "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA"
   "CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT"
@@ -24,8 +24,8 @@ private char[] alu =
   "AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
 
 
-char[] iub = "acgtBDHKMNRSVWY";
-double[] iub_p = {
+global char[] iub = "acgtBDHKMNRSVWY";
+global double[] iub_p = {
   0.27,
   0.12,
   0.12,
@@ -42,8 +42,8 @@ double[] iub_p = {
   0.02,
   0.02 };
 
-char[] homosapiens = "acgt";
-double[] homosapiens_p = {
+global char[] homosapiens = "acgt";
+global double[] homosapiens_p = {
   0.3029549426680,
   0.1979883004921,
   0.1975473066391,
@@ -53,7 +53,7 @@ double[] homosapiens_p = {
 const LINELEN = 60;
 
 // slowest character-at-a-time output
-func void repeat_fasta(char[] seq, int n)
+fn void repeat_fasta(char[] seq, int n)
 {
 	usize len = seq.len;
 	int i = void;
@@ -65,7 +65,7 @@ func void repeat_fasta(char[] seq, int n)
 	if (i % LINELEN != 0) libc::putchar('\n');
 }
 
-func void random_fasta(char[] symb, double[] probability, int n)
+fn void random_fasta(char[] symb, double[] probability, int n)
 {
 	assert(symb.len == probability.len);
 	int len = probability.len;
@@ -86,7 +86,7 @@ func void random_fasta(char[] symb, double[] probability, int n)
 	if (i % LINELEN != 0) libc::putchar('\n');
 }
 
-func void main(int argc, char **argv)
+fn void main(int argc, char **argv)
 {
 	int n = 1000;
 	if (argc > 1) n = libc::atoi(argv[1]);

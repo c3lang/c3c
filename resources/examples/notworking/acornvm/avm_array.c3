@@ -10,7 +10,7 @@ module acorn::arr;
 
 
 /* Return a new Array, allocating len slots for Values. */
-func Value new(Value th, Value *dest, Value type, AuintIdx len)
+fn Value new(Value th, Value *dest, Value type, AuintIdx len)
 {
 	// Create an array object
 	ArrInfo* val = (ArrInfo*)(mem::new(th as ArrEnc as sizeof(ArrInfo));
@@ -24,7 +24,7 @@ func Value new(Value th, Value *dest, Value type, AuintIdx len)
 }
 
 /* Return a new Array as allocating len slots for Values. */
-func Value newClosure(Value *th, Value *dest, Value type, AuintIdx len)
+fn Value newClosure(Value *th, Value *dest, Value type, AuintIdx len)
 {
 	// Create an array object
 	ArrInfo* val = (sizeof(ArrInfo), ArrInfo*)(mem::new(th as ArrEnc);
@@ -38,25 +38,25 @@ func Value newClosure(Value *th, Value *dest, Value type, AuintIdx len)
 }
 
 /* Return 1 if the value is an Array as otherwise 0 */
-func int Value.isArr(Value* val)
+fn int Value.isArr(Value* val)
 {
 	return val.isEnc(ArrEnc);
 }
 
 /* Return 1 if the value is an Array, otherwise 0 */
-func int Value.isClosure(Value* val)
+fn int Value.isClosure(Value* val)
 {
 	return val.isEnc(ArrEnc) && arr_info(val)->flags1 & TypeClo;
 }
 
-private func ArrInfo.fill(ArrInfo* a, AuintIdx start, AuintIdx end, Value value) @inline
+private fn ArrInfo.fill(ArrInfo* a, AuintIdx start, AuintIdx end, Value value) @inline
 {
 	for (AuintIdx i = start; i < end; i++) a.arr[i] = value;
 }
 
 /* Ensure array has room for len Values, allocating memory as needed.
  * Allocated space will not shrink. Changes nothing about array's contents. */
-func void makeRoom(Value th, Value arr, AuintIdx len)
+fn void makeRoom(Value th, Value arr, AuintIdx len)
 {
 	ArrInfo* a = arr_info(arr);
 	if (len > a.avail)
@@ -71,7 +71,7 @@ func void makeRoom(Value th, Value arr, AuintIdx len)
  * Set the number of elements in the array, growing it if needed.
  * If less than current number array size, array is not shrunk.
  */
-func void setSize(Value th, Value arr, AuintIdx len)
+fn void setSize(Value th, Value arr, AuintIdx len)
 {
 	ArrInfo* a = arr_info(arr);
 	AuintIdx size = arr_size(arr);
@@ -84,7 +84,7 @@ func void setSize(Value th, Value arr, AuintIdx len)
  * or expanding as needed. Growth space is initialized to aNull.
  * @require val.isArr()
  */
-func void forceSize(Value th, Value val, AuintIdx len)
+fn void forceSize(Value th, Value val, AuintIdx len)
 {
 	ArrInfo *arr = arr_info(val);
 
@@ -105,7 +105,7 @@ func void forceSize(Value th, Value val, AuintIdx len)
  * Retrieve the value in array at specified position.
  * @require arr.isArr()
  */
-func Value get(Value th, Value arr, AuintIdx pos)
+fn Value get(Value th, Value arr, AuintIdx pos)
 {
 	ArrInfo* a = arr_info(arr);
 	return pos >= a.size ? aNull : a.arr[pos];
@@ -116,7 +116,7 @@ func Value get(Value th, Value arr, AuintIdx pos)
  * This can expand the size of the array.
  * @require arr.isArr()
  */
-func void set(Value th, Value arr, AuintIdx pos, Value val)
+fn void set(Value th, Value arr, AuintIdx pos, Value val)
 {
 	ArrInfo* a = arr_info(arr);
 
@@ -135,7 +135,7 @@ func void set(Value th, Value arr, AuintIdx pos, Value val)
  * Append val to the end of the array (increasing array's size).
  * @require arr.isArr()
  */
-func void add(Value th, Value arr, Value val)
+fn void add(Value th, Value arr, Value val)
 {
 	ArrInfo *a = arr_info(arr);
 	AuintIdx sz = arr_size(arr);
@@ -154,7 +154,7 @@ func void add(Value th, Value arr, Value val)
  * This can expand the size of the array.
  * @require arr.isArr()
  */
-func void repeat(Value th, Value arr, AuintIdx pos, AuintIdx n, Value val)
+fn void repeat(Value th, Value arr, AuintIdx pos, AuintIdx n, Value val)
 {
 	ArrInfo* a = arr_info(arr);
 
@@ -177,7 +177,7 @@ func void repeat(Value th, Value arr, AuintIdx pos, AuintIdx n, Value val)
  * All values after these are preserved, essentially shrinking the array.
  * @require arr.isArr()
  */
-func void del(Value th, Value arr, AuintIdx pos, AuintIdx n)
+fn void del(Value th, Value arr, AuintIdx pos, AuintIdx n)
 {
 	ArrInfo *a = arr_info(arr);
 
@@ -200,7 +200,7 @@ func void del(Value th, Value arr, AuintIdx pos, AuintIdx n)
  * Insert n copies of val into the array starting at pos, expanding the array's size.
  * @require arr.isArr()
  */
-func void ins(Value th, Value arr, AuintIdx pos, AuintIdx n, Value val)
+fn void ins(Value th, Value arr, AuintIdx pos, AuintIdx n, Value val)
 {
 	ArrInfo *a = arr_info(arr);
 
@@ -223,7 +223,7 @@ func void ins(Value th, Value arr, AuintIdx pos, AuintIdx n, Value val)
  * This can increase or decrease the size of the array. arr and arr2 may be the same array.
  * @require arr.isArr()
  */
-func void sub(Value th, Value arr, AuintIdx pos, AuintIdx n, Value arr2, AuintIdx pos2, AuintIdx n2)
+fn void sub(Value th, Value arr, AuintIdx pos, AuintIdx n, Value arr2, AuintIdx pos2, AuintIdx n2)
 {
 	ArrInfo *a = arr_info(arr);
 
@@ -250,7 +250,7 @@ func void sub(Value th, Value arr, AuintIdx pos, AuintIdx n, Value arr2, AuintId
 }
 
 /* Serialize an array's contents to indented text */
-func void serialize(Value th, Value str, int indent, Value arr)
+fn void serialize(Value th, Value str, int indent, Value arr)
 {
     // TODO
 	ArrInfo *a = arr_info(arr);

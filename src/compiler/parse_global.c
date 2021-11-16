@@ -73,16 +73,13 @@ void recover_top_level(Context *context)
 		switch (context->tok.type)
 		{
 			case TOKEN_PRIVATE:
-			case TOKEN_STRUCT:
 			case TOKEN_IMPORT:
-			case TOKEN_UNION:
 			case TOKEN_EXTERN:
 			case TOKEN_ENUM:
 			case TOKEN_GENERIC:
 			case TOKEN_ATTRIBUTE:
 			case TOKEN_DEFINE:
 			case TOKEN_ERRTYPE:
-			case TOKEN_BITSTRUCT:
 				return;
 			case TOKEN_IDENT: // Incr arrays only
 			case TOKEN_CONST:
@@ -95,6 +92,9 @@ void recover_top_level(Context *context)
 			case TOKEN_CT_SWITCH:
 			case TOKEN_FUNC:
 			case TOKEN_FN:
+			case TOKEN_STRUCT:
+			case TOKEN_UNION:
+			case TOKEN_BITSTRUCT:
 			case TYPELIKE_TOKENS:
 				// Only recover if this is in the first col.
 				if (TOKLOC(context->tok)->col == 1) return;
@@ -805,7 +805,8 @@ Decl *parse_decl(Context *context)
 		return parse_const_declaration(context, VISIBLE_LOCAL);
 	}
 
-	bool is_static = try_consume(context, TOKEN_STATIC);
+	bool is_threadglobal = try_consume(context, TOKEN_GLOBAL);
+	bool is_static = !is_threadglobal && try_consume(context, TOKEN_STATIC);
 
 	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_failable_type(context), poisoned_decl);
 
@@ -815,7 +816,8 @@ Decl *parse_decl(Context *context)
 		SEMA_ERROR(decl, "You cannot use unwrap with a failable variable.");
 		return poisoned_decl;
 	}
-	decl->var.is_static = is_static;
+	decl->var.is_static = is_static || is_threadglobal;
+	decl->var.is_threadglobal = is_threadglobal;
 	return decl;
 }
 
@@ -1009,9 +1011,9 @@ bool parse_attributes(Context *context, Attr ***attributes_ref)
 
 /**
  * global_declaration
- * 	: failable_type IDENT ';'
- * 	| failable_type IDENT '=' expression ';'
- * 	| failable_type func_definition
+ * 	: global? failable_type IDENT ';'
+ * 	| global? failable_type IDENT '=' expression ';'
+ * 	| global? failable_type func_definition
  * 	;
  *
  * @param visibility
@@ -1019,9 +1021,13 @@ bool parse_attributes(Context *context, Attr ***attributes_ref)
  */
 static inline Decl *parse_global_declaration(Context *context, Visibility visibility)
 {
+	bool thread_global = try_consume(context, TOKEN_GLOBAL);
+
 	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_failable_type(context), poisoned_decl);
 
 	Decl *decl = decl_new_var(context->tok.id, type, VARDECL_GLOBAL, visibility);
+
+	decl->var.is_threadglobal = thread_global;
 
 	if (TOKEN_IS(TOKEN_CONST_IDENT))
 	{
@@ -2360,6 +2366,7 @@ Decl *parse_top_level_statement(Context *context)
 		case TOKEN_IMPORT:
 			SEMA_TOKEN_ERROR(context->tok, "Imports are only allowed directly after the module declaration.");
 			return poisoned_decl;
+		case TOKEN_GLOBAL:
 		case TYPELIKE_TOKENS:
 		{
 			ASSIGN_DECL_ELSE(decl, parse_global_declaration(context, visibility), poisoned_decl);

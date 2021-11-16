@@ -1,8 +1,8 @@
 module helloworld;
 
-extern func void printf(char *str, ...);
+extern fn void printf(char *str, ...);
 
-func void main()
+fn void main()
 {
     printf("Hello World!\n");
 }

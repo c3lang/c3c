@@ -7,12 +7,12 @@ macro foo(a, b)
     return a(b);
 }
 
-func int square(int x)
+fn int square(int x)
 {
     return x * x;
 }
 
-func int test()
+fn int test()
 {
     int a = 2;
     int b = 3;

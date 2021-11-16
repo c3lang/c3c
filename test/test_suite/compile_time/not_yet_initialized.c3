@@ -4,13 +4,13 @@ macro foo($Foo)
     return a;
 }
 
-func void test1()
+fn void test1()
 {
     var $Bar;
     @foo($Bar); // #error: '$Bar' is not defined yet
 }
 
-func void test2()
+fn void test2()
 {
     var $Bar;
     $Bar z; // #error: '$Bar' is not defined yet

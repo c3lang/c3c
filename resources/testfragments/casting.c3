@@ -6,7 +6,7 @@ struct Pixmap
     int bpp;
 }
 
-func void readpgm(char* name, Pixmap* p)
+fn void readpgm(char* name, Pixmap* p)
 {
     /* ... */
     pnm_readpaminit(fp, &inpam);
@@ -28,7 +28,7 @@ func void readpgm(char* name, Pixmap* p)
     }
 }
 
-func void getComm(uint len, char* src)
+fn void getComm(uint len, char* src)
 {
     uint size;
     size = len - 2;
@@ -36,7 +36,7 @@ func void getComm(uint len, char* src)
     memcpy(comm, src, size);
 }
 
-func uint* decode_fh(uint* p, SvcFh* fhp)
+fn uint* decode_fh(uint* p, SvcFh* fhp)
 {
     int size;
     fh_init(fhp, NFS3_FHSIZE);

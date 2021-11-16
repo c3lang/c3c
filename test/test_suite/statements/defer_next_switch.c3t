@@ -1,11 +1,11 @@
 
-func void test1()
+fn void test1()
 {}
 
-func void test2()
+fn void test2()
 {}
 
-func void test(int i)
+fn void test(int i)
 {
     bool b = true;
     switch (i)

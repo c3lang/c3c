@@ -1,11 +1,11 @@
 module qnametest;
 
-extern func int printf(char *, ...);
+extern fn int printf(char *, ...);
 int x;
 
 struct Blob { int z; int f; }
 
-func void main()
+fn void main()
 {
     int help;
     printf("printf: %s\n", $nameof(printf));

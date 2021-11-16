@@ -1,7 +1,7 @@
 // #target: x64-darwin
 module array_literal;
 
-func double test(uint x)
+fn double test(uint x)
 {
   double[30] student_t = { 0.0 , 12.706 , 4.303 , 3.182 , 2.776 , 2.571 ,
                                2.447 , 2.365 , 2.306 , 2.262 , 2.228 ,

@@ -1,13 +1,13 @@
 // #target: x64-darwin
 
-func int hello(int x)
+fn int hello(int x)
 {
     return x + 1;
 }
 
-extern func int printf(char *c, ...);
+extern fn int printf(char *c, ...);
 
-func int! tester()
+fn int! tester()
 {
     printf("In tester\n");
     return 222;
@@ -17,7 +17,7 @@ errtype Foo
 {
     A
 }
-func void test1()
+fn void test1()
 {
     int! a = 11;
     if (try int b = a && try int c = tester())
@@ -26,12 +26,12 @@ func void test1()
         printf("%d\n", c);
     }
 }
-func void main()
+fn void main()
 {
     test1();
 }
 
-func void test2()
+fn void test2()
 {
     int! a;
     if (try int b = a && hello(b))

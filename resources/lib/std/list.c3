@@ -8,7 +8,7 @@ struct List
     Type *entries;
 }
 
-private func void List.ensureCapacity(List *list) @inline
+private fn void List.ensureCapacity(List *list) @inline
 {
     if (list.capacity == list.size)
     {
@@ -17,12 +17,12 @@ private func void List.ensureCapacity(List *list) @inline
     }
 }
 
-func void List.push(List *list, Type element) @inline
+fn void List.push(List *list, Type element) @inline
 {
     list.append(element);
 }
 
-func void List.append(List *list, Type element)
+fn void List.append(List *list, Type element)
 {
     list.ensureCapacity();
     list.entries[list.size++] = element;
@@ -31,7 +31,7 @@ func void List.append(List *list, Type element)
 /**
  * @require list.size > 0
  */
-func Type List.pop(List *list)
+fn Type List.pop(List *list)
 {
     return list.entries[--list.size];
 }
@@ -39,14 +39,14 @@ func Type List.pop(List *list)
 /**
  * @require list.size > 0
  */
-func Type List.popFirst(List *list)
+fn Type List.popFirst(List *list)
 {
     Type value = list.entries[0];
     list.removeAt(0);
     return value;
 }
 
-func void List.removeAt(List *list, usize index)
+fn void List.removeAt(List *list, usize index)
 {
     for (usize i = index + 1; i < list.size; i++)
     {
@@ -55,12 +55,12 @@ func void List.removeAt(List *list, usize index)
     list.size--;
 }
 
-func void List.pushFront(List *list, Type type) @inline
+fn void List.pushFront(List *list, Type type) @inline
 {
     list.insertAt(0, type);
 }
 
-func void List.insertAt(List *list, usize index, Type type)
+fn void List.insertAt(List *list, usize index, Type type)
 {
     list.ensureCapacity();
     for (usize i = list.size; i > index; i--)
@@ -71,42 +71,42 @@ func void List.insertAt(List *list, usize index, Type type)
     list.entries[index] = type;
 }
 
-func void List.removeLast(List *list)
+fn void List.removeLast(List *list)
 {
     list.size--;
 }
 
-func void List.removeFirst(List *list)
+fn void List.removeFirst(List *list)
 {
     list.removeAt(0);
 }
 
-func Type* List.first(List *list)
+fn Type* List.first(List *list)
 {
     return list.size ? &list.entries[0] : null;
 }
 
-func Type* List.last(List *list)
+fn Type* List.last(List *list)
 {
     return list.size ? &list.entries[list.size - 1] : null;
 }
 
-func bool List.isEmpty(List *list)
+fn bool List.isEmpty(List *list)
 {
     return list.size;
 }
 
-func usize List.len(List *list)
+fn usize List.len(List *list)
 {
     return list.size;
 }
 
-func Type List.get(List *list, usize index)
+fn Type List.get(List *list, usize index)
 {
     return list.entries[index];
 }
 
-func void List.free(List *list)
+fn void List.free(List *list)
 {
     mem::free(list.entries);
     list.capacity = 0;

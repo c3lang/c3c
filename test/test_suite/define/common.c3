@@ -7,8 +7,8 @@ define FooInt = Foo<int>;
 define A_CONST_INT = A_CONST<int>;
 
 define standard_foo<int> = ofke; // #error: Expected '='
-define func foo = fef; // #error: An identifier was expected here.
-define feokfe = func void(int); // #error: Expected a function or variable name here
+define fn foo = fef; // #error: An identifier was expected here.
+define feokfe = fn void(int); // #error: Expected a function or variable name here
 define AOFKE = ofek; // #error: Expected a constant name here
 define okfoe = OFKEOK; // #error: Expected a function or variable name here
 define Helo = helo; // #error: A type name was expected here

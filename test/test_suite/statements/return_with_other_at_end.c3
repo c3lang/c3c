@@ -1,4 +1,4 @@
-func int testReturnWithOtherAtEnd()
+fn int testReturnWithOtherAtEnd()
 {
     int i = 0;
     return i;

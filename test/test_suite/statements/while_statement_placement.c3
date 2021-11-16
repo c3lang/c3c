@@ -1,4 +1,4 @@
-func void test1()
+fn void test1()
 {
     int a;
     while (1) a++;

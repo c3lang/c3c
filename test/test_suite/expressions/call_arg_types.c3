@@ -1,7 +1,7 @@
-func void test2(ichar a)
+fn void test2(ichar a)
 {}
 
-func void test1()
+fn void test1()
 {
     test2(100);
     ichar c = 1;

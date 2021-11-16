@@ -1,4 +1,4 @@
-func int main()
+fn int main()
 {
     for (;;);
 

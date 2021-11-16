@@ -236,6 +236,8 @@ const char *token_type_to_string(TokenType type)
 			return "func";
 		case TOKEN_GENERIC:
 			return "generic";
+		case TOKEN_GLOBAL:
+			return "global";
 		case TOKEN_IF:
 			return "if";
 		case TOKEN_IMPORT:

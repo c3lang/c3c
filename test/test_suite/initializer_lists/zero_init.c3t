@@ -10,7 +10,7 @@ struct Bar
     int x;
     int y;
 }
-func int test()
+fn int test()
 {
     int[1] azz = {};
     int[*] a = {};

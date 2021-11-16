@@ -2,7 +2,7 @@
 module defer1;
 import std::io;
 
-func void test(int x)
+fn void test(int x)
 {
     defer io::println();
     defer io::print("A");
@@ -14,7 +14,7 @@ func void test(int x)
     io::print("!");
 }
 
-func void main()
+fn void main()
 {
     test(1); // Prints "A"
     test(0); // Prints "BA"

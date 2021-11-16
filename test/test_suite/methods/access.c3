@@ -1,4 +1,4 @@
-extern func void printf(...);
+extern fn void printf(...);
 
 struct An1
 {
@@ -10,25 +10,25 @@ struct An3
     An2 y;
 }
 
-define AnCall = func void();
+define AnCall = fn void();
 
 struct An2
 {
     AnCall t;
 }
 
-func void An2.helloWorld(An2 *an2)
+fn void An2.helloWorld(An2 *an2)
 {
     printf("An2 hello\n");
 }
 
-func void check()
+fn void check()
 {
     printf("Checking\n");
 }
 
 
-func void main()
+fn void main()
 {
     An1 an;
     an.x.y.helloWorld();

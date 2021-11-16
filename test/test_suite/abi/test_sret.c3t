@@ -8,10 +8,10 @@ struct Abc {
  long e;
 }
 
-extern func Abc foo1();
-extern func Abc foo2();
+extern fn Abc foo1();
+extern fn Abc foo2();
 
-func void bar() {
+fn void bar() {
   Abc dummy1 = foo1();
   Abc dummy2 = foo2();
 }

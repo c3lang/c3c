@@ -2,16 +2,16 @@
 
 module test;
 
-extern func void printf(char*, ...);
+extern fn void printf(char*, ...);
 
-func void main()
+fn void main()
 {
     test();
     test2();
     test3();
 }
 
-func void test()
+fn void test()
 {
     int f = 3;
     int* x = &(((f)));
@@ -21,7 +21,7 @@ func void test()
 
 
 const int XX = 314;
-func void test2()
+fn void test2()
 {
     int* w = &XX;
     printf("w = %d (314)\n", *w);
@@ -32,7 +32,7 @@ struct Foo
     int x;
     int y;
 }
-func void test3()
+fn void test3()
 {
     Foo h = { 345, 555 };
     int* zx = &h.x;

@@ -11,7 +11,7 @@ struct StructB
     }
 }
 
-func void test()
+fn void test()
 {
     StructA a = {};
     StructA a2;

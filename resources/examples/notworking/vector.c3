@@ -5,42 +5,42 @@ public struct Vector
     Type[] array;
 }
 
-public func void Vector.init()
+public fn void Vector.init()
 {
     array = nil;
 }
 
-public func void Vector.add(Vector *vector, Type type)
+public fn void Vector.add(Vector *vector, Type type)
 {
     vector.array += type;
 }
 
-public func usize Vector.size(Vector *vector)
+public fn usize Vector.size(Vector *vector)
 {
     return vector.array.size;
 }
 
-public func void Vector.removeLast(Vector *vector)
+public fn void Vector.removeLast(Vector *vector)
 {
     vector.array.pop();
 }
 
-public func void Vector.removefirst(Vector *vector)
+public fn void Vector.removefirst(Vector *vector)
 {
     vector.array.removeAt(0);
 }
 
-public func void Type *Vector.first(Vector *vector)
+public fn void Type *Vector.first(Vector *vector)
 {
     return &vector.array.first;
 }
 
-public func void Type *Vector.last(Vector *vector)
+public fn void Type *Vector.last(Vector *vector)
 {
     return &vector.array.last();
 }
 
-public func bool Vector.empty(Vector *vector)
+public fn bool Vector.empty(Vector *vector)
 {
     return !vector.array.size;
 }

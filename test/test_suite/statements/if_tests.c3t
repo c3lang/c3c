@@ -1,6 +1,6 @@
 module iftest;
 
-func void test1(int x)
+fn void test1(int x)
 {
     if (x > 0)
     {
@@ -10,7 +10,7 @@ func void test1(int x)
     {}
 }
 
-func void test2(int x)
+fn void test2(int x)
 {
     if (x > 0)
     {
@@ -19,7 +19,7 @@ func void test2(int x)
     {}
 }
 
-func void test3(int x)
+fn void test3(int x)
 {
     if (x > 0)
     {}

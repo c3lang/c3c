@@ -1,7 +1,7 @@
 module array_casts;
 
 
-func void test()
+fn void test()
 {
     int[3] x;
     int *y = &x;

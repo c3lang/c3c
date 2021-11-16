@@ -1,10 +1,10 @@
 module foo;
 
-extern func void printf(char *hello, ...);
+extern fn void printf(char *hello, ...);
 
 error MyError;
 error YourError;
-func void main()
+fn void main()
 {
     int! i = 1;
     catch (i)

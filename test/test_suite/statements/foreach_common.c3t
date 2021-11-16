@@ -1,8 +1,8 @@
 module test;
 
-extern func void printf(char*, ...);
+extern fn void printf(char*, ...);
 
-func void main()
+fn void main()
 {
     float[3] foo = { 2, 4.5, 8 };
     foreach (a : foo)

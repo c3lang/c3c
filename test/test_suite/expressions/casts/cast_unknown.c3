@@ -1,6 +1,6 @@
 define Number = int;
 
-func void test1()
+fn void test1()
 {
     int a = 10;
 
@@ -9,12 +9,12 @@ func void test1()
     int c = (Foo)(a);         // #error: 'Foo' could not be found
 }
 
-func void test2()
+fn void test2()
 {
     int d = (Number)(bar);;    // #error: 'bar' could not be found
 }
 
-func void test3()
+fn void test3()
 {
     int e = (Bar)( // #error: 'Bar' could not be found
         faa);             // #error:  'faa' could not be found

@@ -1,10 +1,10 @@
-func void test()
+fn void test()
 {
     int! a;
     int b;
     if (try int b = a) {} // #error: 'b' would shadow a previous declaration.
 }
-func void test2()
+fn void test2()
 {
     int! a;
     int b;
@@ -14,7 +14,7 @@ func void test2()
 
 const int BAZ = 1;
 
-func void test3()
+fn void test3()
 {
 
     int! a;
@@ -23,7 +23,7 @@ func void test3()
 }
 
 
-func void test4()
+fn void test4()
 {
 
     int! a;
@@ -31,7 +31,7 @@ func void test4()
     if (try b = 1) {} // #error: Expected a failable expression to 'try' here. If it isn't a failable, remove 'try'
 }
 
-func void test5()
+fn void test5()
 {
 
     int! a;
@@ -39,7 +39,7 @@ func void test5()
     if (try a = a) {} // #error: This is a failable variable, you should only have non-failable variables on the left side unless you use 'try' without '='
 }
 
-func void test6()
+fn void test6()
 {
 
     int! a;
@@ -49,7 +49,7 @@ func void test6()
 }
 
 
-func void test7()
+fn void test7()
 {
     int! a;
     int b;
@@ -57,7 +57,7 @@ func void test7()
     if (try foo::z = a) {} // #error: The variable may not have a path.
 }
 
-func void test8()
+fn void test8()
 {
     int! a;
     int b;
@@ -66,7 +66,7 @@ func void test8()
     if (try c = a && try c = a) { c++; }
 }
 
-func void test9()
+fn void test9()
 {
     int! a = 11;
     if (try z = a)
@@ -79,7 +79,7 @@ func void test9()
     }
 }
 
-func void test10()
+fn void test10()
 {
     int! a = 11;
     if (try a)

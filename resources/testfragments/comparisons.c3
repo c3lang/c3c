@@ -1,6 +1,6 @@
 module comparisons;
 
-func void test_signed()
+fn void test_signed()
 {
     int a = 0;
     int b = 1;
@@ -14,7 +14,7 @@ func void test_signed()
 
 }
 
-func void test_unsigned()
+fn void test_unsigned()
 {
     uint a = 0;
     uint b = 1;
@@ -28,9 +28,9 @@ func void test_unsigned()
 
 }
 
-extern func void printf(char *s);
+extern fn void printf(char *s);
 
-func void test_signedunsigned()
+fn void test_signedunsigned()
 {
     char a = 0 - 1;
     byte b = (byte)(a);
@@ -100,7 +100,7 @@ func void test_signedunsigned()
 
 }
 
-func void test_unsignedsigned()
+fn void test_unsignedsigned()
 {
     int b = -1;
     uint a = (uint)(b);
@@ -170,7 +170,7 @@ func void test_unsignedsigned()
 
 }
 
-func void main()
+fn void main()
 {
     test_signedunsigned();
     test_unsignedsigned();

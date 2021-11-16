@@ -7,7 +7,7 @@ struct Point
     int y;
 }
 
-func void test1()
+fn void test1()
 {
     Point p = { 5, 6 };
 }

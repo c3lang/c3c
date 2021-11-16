@@ -1,16 +1,16 @@
 // #target: x64-darwin
 
 module demo;
-define Callback = func int(char* text, int value);
+define Callback = fn int(char* text, int value);
 
-func int my_callback(char* text, int value)
+fn int my_callback(char* text, int value)
 {
     return 0;
 }
 
 Callback cb = &my_callback;
 
-func void main()
+fn void main()
 {
     int result = cb("demo", 123);
     // ..

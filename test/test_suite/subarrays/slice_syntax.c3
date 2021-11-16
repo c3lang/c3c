@@ -1,4 +1,4 @@
-func void test()
+fn void test()
 {
     int[6] feok2 = { 1, 8, 100, 293, 23982, 34};
     int[] feok = &feok2;

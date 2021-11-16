@@ -1,9 +1,9 @@
 module numbers;
 
-double a = 0x1.1p+1;
-double b = -12.3e-12;
-double c = 0x1.1p-1;
-double d = 12.3e+12;
+global double a = 0x1.1p+1;
+global double b = -12.3e-12;
+global double c = 0x1.1p-1;
+global double d = 12.3e+12;
 
 // #expect: numbers.ll
 

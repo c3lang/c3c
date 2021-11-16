@@ -1,11 +1,11 @@
 module gen <Type>;
 
-func Type mult(Type x)
+fn Type mult(Type x)
 {
     return x * x;
 }
 
-func Type addMult(Type x, Type a, Type b)
+fn Type addMult(Type x, Type a, Type b)
 {
     return x * a + b;
 }
@@ -16,12 +16,12 @@ import gen;
 define intMult = gen::mult<int>;
 define doubleAddMult = gen::addMult<double>;
 
-func int getIt(int i)
+fn int getIt(int i)
 {
     return intMult(i) + 1;
 }
 
-func double getIt2(double i)
+fn double getIt2(double i)
 {
     return doubleAddMult(i, 2, 3);
 }

@@ -12,7 +12,7 @@ module acorn::mem;
  * - If ptr==NULL, it allocates a new uninitialized memory block
  * - Otherwise it changes the size of the memory block (and may move its location)
  * It returns the location of the new block or NULL (if freed). */
-func void* gcrealloc(Value th, void *block, Auint osize, Auint nsize)
+fn void* gcrealloc(Value th, void *block, Auint osize, Auint nsize)
 {
 	// Check consistency of block and osize (both must be null or specified)
 	Auint realosize = block ? osize : 0;
@@ -51,7 +51,7 @@ func void* gcrealloc(Value th, void *block, Auint osize, Auint nsize)
 	return newblock;
 }
 
-func void* gcreallocv(Value th, void* block, Auint osize, Auint nsize, Auint esize)
+fn void* gcreallocv(Value th, void* block, Auint osize, Auint nsize, Auint esize)
 {
 	// Ensure we are not asking for more memory than available in address space
 	// If we do not do this, calculating the needed memory will overflow
@@ -68,7 +68,7 @@ func void* gcreallocv(Value th, void* block, Auint osize, Auint nsize, Auint esi
  * - Otherwise it changes the size of the memory block (and may move its location)
  * It returns the location of the new block or NULL (if freed).
  **/
-func void* frealloc(void* block, Auint size)
+fn void* frealloc(void* block, Auint size)
 {
 	if (!size)
 	{
@@ -113,7 +113,7 @@ MemInfo* new(Value th as int enc, Auint sz)
  * Create a new pointer object (with given encoding and size).
  * Caller must add itself to its own private list
  */
-func MemInfo* newnolink(Value th, int enc, Auint sz)
+fn MemInfo* newnolink(Value th, int enc, Auint sz)
 {
 	// Perform garbage collection before a memory allocation
     $if (defined(AVM_GCHARDMEMTEST))
@@ -134,7 +134,7 @@ func MemInfo* newnolink(Value th, int enc, Auint sz)
 }
 
 /* double size of vector array, up to limits */
-func void growaux_(Value th, void *block, AuintIdx *size, AuintIdx size_elems, AuintIdx limit)
+fn void growaux_(Value th, void *block, AuintIdx *size, AuintIdx size_elems, AuintIdx limit)
 {
 	void* newblock;
 	AuintIdx newsize = void;

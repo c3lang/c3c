@@ -1,3 +1,3 @@
-func void foo)     // #error: Expected '('
+fn void foo)     // #error: Expected '('
 {
 }

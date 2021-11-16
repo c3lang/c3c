@@ -6,7 +6,7 @@ macro frab(x)
     return 0.0;
 }
 
-func void test2()
+fn void test2()
 {
     @frab(1);
     @frab(0);

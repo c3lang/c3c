@@ -1,6 +1,6 @@
 module test;
 
-func int foo()
+fn int foo()
 {
     int x = 0;
     int y;

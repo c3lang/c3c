@@ -1,6 +1,6 @@
 module simple_float_sub_neg;
 
-func double test(double a, double b, double c, double d)
+fn double test(double a, double b, double c, double d)
 {
   return -(a-b) - (c-d);
 }
