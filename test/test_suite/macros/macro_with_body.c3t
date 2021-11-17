@@ -83,20 +83,17 @@ define void @main()
   %6 = load i32, i32* %x, align 4
   %7 = load i32, i32* %dy, align 4
   %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str, i32 0, i32 0), i32 %6, i32 %7)
-  br label %expr_block.exit
-
-expr_block.exit:
   store i32 10, i32* %times, align 4
   store i32 0, i32* %i, align 4
   br label %for.cond
 
-for.cond:
+for.cond:                                         ; preds = %for.inc, %entry
   %9 = load i32, i32* %i, align 4
   %10 = load i32, i32* %times, align 4
   %lt = icmp slt i32 %9, %10
   br i1 %lt, label %for.body, label %for.exit
 
-for.body:
+for.body:                                         ; preds = %for.cond
   %11 = load i32, i32* %i, align 4
   %add = add i32 %11, 1
   store i32 %add, i32* %loop, align 4
@@ -104,14 +101,12 @@ for.body:
   %13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), i32 %12)
   br label %for.inc
 
-for.inc:
+for.inc:                                          ; preds = %for.body
   %14 = load i32, i32* %i, align 4
   %add1 = add i32 %14, 1
   store i32 %add1, i32* %i, align 4
   br label %for.cond
 
-for.exit:
-  br label %expr_block.exit2
-
-expr_block.exit2:
+for.exit:                                         ; preds = %for.cond
   ret void
+}

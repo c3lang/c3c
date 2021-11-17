@@ -4509,6 +4509,14 @@ static inline void gencontext_emit_expression_list_expr(GenContext *context, BEV
 
 static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value, Type *type, Ast **stmts)
 {
+	// First case - an empty block
+	unsigned count = vec_size(stmts);
+	if (!count)
+	{
+		llvm_value_set(be_value, NULL, type_void);
+		return;
+	}
+
 	Type *type_lowered = type_lowering(type);
 	LLVMValueRef old_ret_out = context->return_out;
 	LLVMBasicBlockRef saved_block_return_exit = context->block_return_exit;
@@ -4533,22 +4541,64 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 	context->error_var = NULL;
 	context->catch_block = NULL;
 
-	VECEACH(stmts, i)
+	// Process all but the last statement.
+	for (unsigned i = 0; i < count - 1; i++)
 	{
 		llvm_emit_stmt(context, stmts[i]);
 	}
+
+	Ast *last_stmt = stmts[count - 1];
+
+	do
+	{
+		// Do we have more than one exit?
+		// Then follow the normal path.
+		if (!llvm_basic_block_is_unused(expr_block)) break;
+
+		// Do we have a void function? That's the only
+		// possible case if the last statement isn't return.
+		if (last_stmt->ast_kind != AST_RETURN_STMT) break;
+
+		// Defers? In that case we also use the default behaviour.
+		// We might optimize this later.
+		if (last_stmt->return_stmt.defer) break;
+
+		Expr *ret_expr = last_stmt->return_stmt.expr;
+
+		// If this is a void return, we can just skip here!
+		if (!ret_expr)
+		{
+			llvm_value_set(be_value, NULL, type_void);
+			goto DONE;
+		}
+
+		// Failable? Then we use the normal path
+		if (IS_FAILABLE(ret_expr)) break;
+
+		// Optimization, emit directly to value
+		llvm_emit_expr(context, be_value, ret_expr);
+		// And remove the alloca
+		LLVMInstructionRemoveFromParent(context->return_out);
+		goto DONE;
+
+	} while (0);
+
+	// Emit the last statement
+	llvm_emit_stmt(context, last_stmt);
+
+	// In the case of a void with no return, then this may be true.
+	if (llvm_basic_block_is_unused(expr_block))
+	{
+		// Skip the expr block.
+		assert(!context->return_out);
+		llvm_value_set(be_value, NULL, type_void);
+		goto DONE;
+	}
+
 	llvm_emit_br(context, expr_block);
 
 	// Emit the exit block.
 	llvm_emit_block(context, expr_block);
-
-	context->return_out = old_ret_out;
-	context->catch_block = error_block;
-	context->error_var = error_out;
-	context->block_return_exit = saved_block_return_exit;
-	context->block_failable_exit = saved_block_failable_exit;
-	context->block_error_var = saved_block_error;
-	context->in_block--;
 
 	if (return_out)
 	{
@@ -4558,6 +4608,16 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 	{
 		llvm_value_set(be_value, NULL, type_void);
 	}
+
+DONE:
+	context->return_out = old_ret_out;
+	context->catch_block = error_block;
+	context->error_var = error_out;
+	context->block_return_exit = saved_block_return_exit;
+	context->block_failable_exit = saved_block_failable_exit;
+	context->block_error_var = saved_block_error;
+	context->in_block--;
+
 }
 
 static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr)
