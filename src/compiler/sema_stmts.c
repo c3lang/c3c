@@ -6,7 +6,7 @@
 
 #pragma mark --- Helper functions
 
-
+static bool sema_analyse_compound_stmt(Context *context, Ast *statement);
 
 static void sema_unwrappable_from_catch_in_else(Context *c, Expr *cond)
 {
@@ -1984,6 +1984,51 @@ bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
 	return true;
 }
 
+static inline bool sema_analyse_scoping_stmt(Context *context, Ast *statement)
+{
+	Expr **exprs = statement->scoping_stmt.scoped->expression_list;
+	unsigned scoped_count = vec_size(exprs);
+	Ast **stmts = 0;
+	for (unsigned i = 0; i < scoped_count; i++)
+	{
+		Expr *expr = exprs[i];
+		if (!sema_analyse_expr_lvalue(context, expr)) return false;
+		if (!expr_is_ltype(expr))
+		{
+			SEMA_ERROR(expr, "Expected an assignable value.");
+			return false;
+		}
+		if (!expr_is_pure(expr))
+		{
+			SEMA_ERROR(expr, "A value with side effects (e.g. function calls) is not allowed here.");
+			return false;
+		}
+		Decl *new_decl = decl_new_generated_var(".scope", expr->type, VARDECL_LOCAL, expr->span);
+		new_decl->var.init_expr = expr;
+		Ast *declare = new_ast(AST_DECLARE_STMT, expr->span);
+		declare->declare_stmt = new_decl;
+		vec_add(stmts, declare);
+		Ast *defer_restore = new_ast(AST_DEFER_STMT, expr->span);
+
+		Expr *restore_expr = expr_new(EXPR_BINARY, expr->span);
+		Expr *rhs = expr_new(EXPR_IDENTIFIER, expr->span);
+		rhs->resolve_status = RESOLVE_DONE;
+		rhs->identifier_expr.decl = new_decl;
+		rhs->type = expr->type;
+
+		restore_expr->binary_expr = (ExprBinary) { .left = MACRO_COPY_EXPR(expr), .right = rhs, .operator = BINARYOP_ASSIGN };
+		Ast *restore_stmt = new_ast(AST_EXPR_STMT, expr->span);
+		restore_stmt->expr_stmt = restore_expr;
+
+		defer_restore->defer_stmt.body = restore_stmt;
+		vec_add(stmts, defer_restore);
+	}
+	vec_add(stmts, statement->scoping_stmt.stmt);
+	statement->ast_kind = AST_COMPOUND_STMT;
+	statement->compound_stmt = (AstCompoundStmt) { .stmts = stmts };
+	return sema_analyse_compound_stmt(context, statement);
+}
+
 bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 {
 	Expr *expr = statement->assert_stmt.expr;
@@ -2059,6 +2104,8 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 		case AST_DOC_DIRECTIVE:
 		case AST_IF_CATCH_SWITCH_STMT:
 			UNREACHABLE
+		case AST_SCOPING_STMT:
+			return sema_analyse_scoping_stmt(context, statement);
 		case AST_ASM_STMT:
 			return sema_analyse_asm_stmt(context, statement);
 		case AST_ASSERT_STMT:

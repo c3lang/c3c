@@ -8,6 +8,8 @@
 
 Ast *parse_unreachable_stmt(Context *context);
 
+Ast *parse_scoping_stmt(Context *context);
+
 #pragma mark --- Internal functions
 
 
@@ -798,6 +800,8 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
 			return parse_decl_or_expr_stmt(context);
+		case TOKEN_SCOPING:
+			return parse_scoping_stmt(context);
 		case TOKEN_VAR:
 			return parse_var_stmt(context);
 		case TOKEN_TLOCAL: // Global means declaration!
@@ -989,6 +993,17 @@ Ast *parse_stmt(Context *context)
 			return poisoned_ast;
 	}
 	UNREACHABLE
+}
+
+Ast *parse_scoping_stmt(Context *context)
+{
+	Ast *ast = AST_NEW_TOKEN(AST_SCOPING_STMT, context->tok);
+	advance_and_verify(context, TOKEN_SCOPING);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
+	ASSIGN_EXPR_ELSE(ast->scoping_stmt.scoped, parse_expression_list(context), poisoned_ast);
+	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
+	ASSIGN_AST_ELSE(ast->scoping_stmt.stmt, parse_compound_stmt(context), poisoned_ast);
+	return ast;
 }
 
 Ast *parse_unreachable_stmt(Context *context)

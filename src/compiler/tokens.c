@@ -252,6 +252,8 @@ const char *token_type_to_string(TokenType type)
 			return "private";
 		case TOKEN_RETURN:
 			return "return";
+		case TOKEN_SCOPING:
+			return "scoping";
 		case TOKEN_STATIC:
 			return "static";
 		case TOKEN_STRUCT:

@@ -1180,6 +1180,11 @@ typedef struct
 
 typedef struct
 {
+	Expr *scoped;
+	Ast *stmt;
+} AstScopingStmt;
+typedef struct
+{
 	Expr *message;
 	Expr *expr;
 } AstAssertStmt;
@@ -1244,6 +1249,7 @@ typedef struct Ast_
 		Ast *ct_else_stmt;                  // 8
 		AstCtForStmt ct_for_stmt;           // 64
 		AstScopedStmt scoped_stmt;          // 16
+		AstScopingStmt scoping_stmt;
 		AstAssertStmt ct_assert_stmt;
 		AstAssertStmt assert_stmt;
 		Ast **directives;
@@ -1820,6 +1826,7 @@ void diag_verror_range(SourceLocation *location, const char *message, va_list ar
 #define EXPR_NEW_TOKEN(kind_, tok_) expr_new(kind_, source_span_from_token_id((tok_).id))
 Expr *expr_new(ExprKind kind, SourceSpan start);
 bool expr_is_simple(Expr *expr);
+bool expr_is_pure(Expr *expr);
 static inline bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
 static inline bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
 static inline void expr_replace(Expr *expr, Expr *replacement)

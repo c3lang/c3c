@@ -965,100 +965,6 @@ void gencontext_emit_scoped_stmt(GenContext *context, Ast *ast)
 	llvm_emit_defer(context, ast->scoped_stmt.defers.start, ast->scoped_stmt.defers.end);
 }
 
-static bool expr_is_pure(Expr *expr)
-{
-	if (!expr) return true;
-	switch (expr->expr_kind)
-	{
-		case EXPR_BUILTIN:
-			TODO
-		case EXPR_CONST:
-		case EXPR_CONST_IDENTIFIER:
-		case EXPR_IDENTIFIER:
-		case EXPR_NOP:
-			return true;
-		case EXPR_BITASSIGN:
-			return false;
-		case EXPR_BINARY:
-			if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return false;
-			return expr_is_pure(expr->binary_expr.right) && expr_is_pure(expr->binary_expr.left);
-		case EXPR_UNARY:
-			switch (expr->unary_expr.operator)
-			{
-				case UNARYOP_INC:
-				case UNARYOP_DEC:
-				case UNARYOP_TADDR:
-					return false;
-				default:
-					return expr_is_pure(expr->unary_expr.expr);
-			}
-			break;
-		case EXPR_BITACCESS:
-		case EXPR_ACCESS:
-			return expr_is_pure(expr->access_expr.parent);
-		case EXPR_POISONED:
-		case EXPR_CT_IDENT:
-		case EXPR_TYPEID:
-		case EXPR_CT_CALL:
-			UNREACHABLE
-		case EXPR_MACRO_BODY_EXPANSION:
-		case EXPR_CALL:
-		case EXPR_CATCH_UNWRAP:
-		case EXPR_COMPOUND_LITERAL:
-		case EXPR_COND:
-		case EXPR_DESIGNATOR:
-		case EXPR_DECL:
-		case EXPR_OR_ERROR:
-		case EXPR_EXPR_BLOCK:
-		case EXPR_FAILABLE:
-		case EXPR_RETHROW:
-		case EXPR_HASH_IDENT:
-		case EXPR_MACRO_BLOCK:
-		case EXPR_MACRO_EXPANSION:
-		case EXPR_FLATPATH:
-		case EXPR_INITIALIZER_LIST:
-		case EXPR_DESIGNATED_INITIALIZER_LIST:
-		case EXPR_PLACEHOLDER:
-		case EXPR_POST_UNARY:
-		case EXPR_SCOPED_EXPR:
-		case EXPR_SLICE_ASSIGN:
-		case EXPR_TRY_UNWRAP:
-		case EXPR_TRY_UNWRAP_CHAIN:
-		case EXPR_UNDEF:
-		case EXPR_TYPEINFO:
-		case EXPR_FORCE_UNWRAP:
-			return false;
-		case EXPR_CAST:
-			return expr_is_pure(expr->cast_expr.expr);
-		case EXPR_EXPRESSION_LIST:
-		{
-			VECEACH(expr->expression_list, i)
-			{
-				if (!expr_is_pure(expr->expression_list[i])) return false;
-			}
-			return true;
-		}
-			break;
-		case EXPR_LEN:
-			return expr_is_pure(expr->len_expr.inner);
-		case EXPR_SLICE:
-			return expr_is_pure(expr->slice_expr.expr)
-			       && expr_is_pure(expr->slice_expr.start)
-			       && expr_is_pure(expr->slice_expr.end);
-		case EXPR_SUBSCRIPT:
-			return expr_is_pure(expr->subscript_expr.expr)
-			       && expr_is_pure(expr->subscript_expr.index);
-		case EXPR_TERNARY:
-			return expr_is_pure(expr->ternary_expr.cond)
-			       && expr_is_pure(expr->ternary_expr.else_expr)
-			       && expr_is_pure(expr->ternary_expr.then_expr);
-		case EXPR_TRY:
-		case EXPR_GROUP:
-		case EXPR_CATCH:
-				return expr_is_pure(expr->inner_expr);
-	}
-	UNREACHABLE
-}
 
 static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 {
@@ -1381,6 +1287,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_POISONED:
 		case AST_VAR_STMT:
 		case AST_IF_CATCH_SWITCH_STMT:
+		case AST_SCOPING_STMT:
 			UNREACHABLE
 		case AST_SCOPED_STMT:
 			gencontext_emit_scoped_stmt(c, ast);

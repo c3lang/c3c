@@ -3800,8 +3800,6 @@ static inline bool sema_expr_analyse_expr_list(Context *context, Expr *expr)
 {
 	bool success = true;
 	ByteSize last = vec_size(expr->expression_list) - 1;
-	bool constant = true;
-	bool pure = true;
 	VECEACH(expr->expression_list, i)
 	{
 		Expr *checked_expr = expr->expression_list[i];
