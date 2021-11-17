@@ -2871,11 +2871,13 @@ CHECK_DEEPER:
 		Decl *ambiguous = NULL;
 		Decl *private = NULL;
 		member = sema_resolve_method(context, decl, kw, &ambiguous, &private);
-		if (member)
-		{
-			context_register_external_symbol(context, member);
-		}
 	}
+
+	if (member && member->decl_kind == DECL_FUNC)
+	{
+		context_register_external_symbol(context, member);
+	}
+
 	// 11. If we didn't find a match...
 	if (!member)
 	{

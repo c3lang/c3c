@@ -240,9 +240,9 @@ fn Type getValue(Blob blob)
 
 %Blob = type { i32 }
 %Blob.0 = type { double }
-%List = type { i64, i64, i32* }
 %LinkedList = type { i64, %Node*, %Node* }
 %Node = type { %Node*, %Node*, i32 }
+%List = type { i64, i64, i32* }
 %Foo2 = type { i32 }
 %Bobo = type { i16, float, i16, i16, float, i16 }
 %"int[]" = type { i32*, i64 }
@@ -288,82 +288,27 @@ declare i32 @test2.int.getMult(i32)
 
 declare double @test2.double.getMult(double)
 
-; Function Attrs: nounwind
-declare void @List.ensureCapacity(%List*) #0
-
-; Function Attrs: nounwind
-declare void @"std::array::list.int.List__push"(%List*, i32) #0
-
-; Function Attrs: nounwind
-declare void @"std::array::list.int.List__append"(%List*, i32) #0
-
-; Function Attrs: nounwind
-declare i32 @"std::array::list.int.List__pop"(%List*) #0
-
-; Function Attrs: nounwind
-declare i32 @"std::array::list.int.List__popFirst"(%List*) #0
-
-; Function Attrs: nounwind
-declare void @"std::array::list.int.List__removeAt"(%List*, i64) #0
-
-; Function Attrs: nounwind
-declare void @"std::array::list.int.List__pushFront"(%List*, i32) #0
-
-; Function Attrs: nounwind
-declare void @"std::array::list.int.List__insertAt"(%List*, i64, i32) #0
-
-; Function Attrs: nounwind
-declare void @"std::array::list.int.List__removeLast"(%List*) #0
-
-; Function Attrs: nounwind
-declare void @"std::array::list.int.List__removeFirst"(%List*) #0
-
-; Function Attrs: nounwind
-declare i32* @"std::array::list.int.List__first"(%List*) #0
-
-; Function Attrs: nounwind
-declare i32* @"std::array::list.int.List__last"(%List*) #0
-
-; Function Attrs: nounwind
-declare zeroext i8 @"std::array::list.int.List__isEmpty"(%List*) #0
-
-; Function Attrs: nounwind
-declare i64 @"std::array::list.int.List__len"(%List*) #0
-
-; Function Attrs: nounwind
-declare i32 @"std::array::list.int.List__get"(%List*, i64) #0
-
-; Function Attrs: nounwind
-declare void @"std::array::list.int.List__free"(%List*) #0
-
-; Function Attrs: nounwind
-declare void @"std::array::linkedlist.int.LinkedList__push"(%LinkedList*, i32) #0
-
-; Function Attrs: nounwind
-declare void @LinkedList.linkFirst(%LinkedList*, i32) #0
-
-; Function Attrs: nounwind
-declare void @LinkedList.linkLast(%LinkedList*, i32) #0
-
-; Function Attrs: nounwind
-declare void @"std::array::linkedlist.int.LinkedList__free"(%LinkedList*) #0
-
-; Function Attrs: nounwind
-declare i64 @"std::array::linkedlist.int.LinkedList__len"(%LinkedList*) #0
-
-; Function Attrs: nounwind
-declare i32 @"std::array::linkedlist.int.LinkedList__get"(%LinkedList*, i64) #0
-
-; Function Attrs: nounwind
-declare void @LinkedList.linkBefore(%LinkedList*, %Node*, i32) #0
-
-; Function Attrs: nounwind
-declare void @LinkedList.unlinkLast(%LinkedList*, %Node*) #0
-
-; Function Attrs: nounwind
-declare void @LinkedList.unlink(%LinkedList*, %Node*) #0
-
 declare void @hello_world.hello()
+
+declare void @"std::array::linkedlist.int.LinkedList__push"(%LinkedList*, i32)
+
+declare i64 @"std::array::linkedlist.int.LinkedList__len"(%LinkedList*)
+
+declare i32 @"std::array::linkedlist.int.LinkedList__get"(%LinkedList*, i64)
+
+declare void @"std::array::linkedlist.int.LinkedList__free"(%LinkedList*)
+
+declare void @"std::array::list.int.List__append"(%List*, i32)
+
+declare void @"std::array::list.int.List__push"(%List*, i32)
+
+declare void @"std::array::list.int.List__insertAt"(%List*, i64, i32)
+
+declare i64 @"std::array::list.int.List__len"(%List*)
+
+declare i32 @"std::array::list.int.List__get"(%List*, i64)
+
+declare void @"std::array::list.int.List__free"(%List*)
 
 ; Function Attrs: nounwind
 define void @test.Foo2__printme(%Foo2* %0) #0 {
@@ -460,8 +405,6 @@ if.exit:                                          ; preds = %entry
   %6 = load i32, i32* %a, align 4
   ret i32 %6
 }
-
-
 
 ; Function Attrs: nounwind
 define i32 @test.sum_us(%"int[]"* align 8 %0) #0 {

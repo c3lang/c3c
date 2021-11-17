@@ -648,16 +648,13 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_BITSTRUCT:
 		case DECL_STRUCT:
 		case DECL_UNION:
-			llvm_emit_methods(context, decl->methods);
 			llvm_get_type(context, decl->type);
 			// TODO // Fix typeid
 			break;
 		case DECL_ENUM:
-			llvm_emit_methods(context, decl->methods);
 			break;
 		case DECL_ERRTYPE:
 			gencontext_emit_introspection_type(context, decl);
-			llvm_emit_methods(context, decl->methods);
 			// TODO // Fix typeid
 			return;
 		case DECL_TYPEDEF:

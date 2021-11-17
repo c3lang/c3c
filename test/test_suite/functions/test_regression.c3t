@@ -238,9 +238,9 @@ fn Type getValue(Blob blob)
 
 %Blob = type { i32 }
 %Blob.0 = type { double }
-%List = type { i64, i64, i32* }
 %LinkedList = type { i64, %Node*, %Node* }
 %Node = type { %Node*, %Node*, i32 }
+%List = type { i64, i64, i32* }
 %Foo2 = type { i32 }
 %Bobo = type { i16, float, i16, i16, float, i16 }
 %"int[]" = type { i32*, i64 }
