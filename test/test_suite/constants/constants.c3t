@@ -5,11 +5,11 @@ private const uint DD = FOO;
 
 private const FOO = ~(uint)(0);
 
-private global uint x = AA;
-private global uint z = CC;
-private global char w = (char)(FOO);
-private global ushort v = (ushort)(FOO);
-private global uint z2 = DD;
+private uint x = AA;
+private uint z = CC;
+private char w = (char)(FOO);
+private ushort v = (ushort)(FOO);
+private uint z2 = DD;
 
 fn void test()
 {

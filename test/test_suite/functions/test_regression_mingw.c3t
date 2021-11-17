@@ -15,7 +15,7 @@ fn void helloWorld()
 }
 fn int test_static()
 {
-    global int x = 1;
+    static int x = 1;
     x++;
     printf("Test static %d\n", x);
     return x;
@@ -203,7 +203,7 @@ fn Type getMult(Type a)
 {
     return a * a;
 }
-global Type argh = 234;
+Type argh = 234;
 
 errtype MyErr
 {

@@ -6,16 +6,16 @@ struct Foo
     long bar;
 }
 
-private global usize x = $sizeof(Foo);
+private usize x = $sizeof(Foo);
 
-private global Foo foo1 = { 1, 2 };
-private global Foo foo2 = { .foo = 2 };
-private global Foo foo3 = { .bar = 3 };
-private global Foo foo4 = { .bar = 4, .foo = 4, .bar = 1 };
-private global Foo foo5 = {};
-private global Foo foo6;
+private Foo foo1 = { 1, 2 };
+private Foo foo2 = { .foo = 2 };
+private Foo foo3 = { .bar = 3 };
+private Foo foo4 = { .bar = 4, .foo = 4, .bar = 1 };
+private Foo foo5 = {};
+private Foo foo6;
 private const Foo FOO7 = { 1, 2 };
-private global Foo foo8 = FOO7;
+private Foo foo8 = FOO7;
 
 // #expect: structo.ll
 

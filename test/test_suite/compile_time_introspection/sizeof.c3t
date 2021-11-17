@@ -2,22 +2,22 @@ module foo;
 import bar;
 import bar::abc;
 
-global long x = $sizeof(Baz);
-global short y = $sizeof("Baz");
-global int z = $sizeof(bar::Baz);
-global int w = $sizeof("bar::Baz");
-global int v = $sizeof("bar::abc::Foo");
-global int x1 = $sizeof(x);
-global int y1 = $sizeof("y");
-global int a = $sizeof("Baz.y");
-global int b = $sizeof("Deep.a.b");
-global int c = $sizeof("Deep.a.b.c");
-global int d = $sizeof("Deep[][100]");
-global int e = $sizeof("Deep[][100]**[100][]*");
-global int a2 = $sizeof("Baz.y");
-global int a3 = $sizeof(Baz.y);
-global int a4 = $sizeof(Baz.y);
-global int a5 = $sizeof(Baz.y);
+long x = $sizeof(Baz);
+short y = $sizeof("Baz");
+int z = $sizeof(bar::Baz);
+int w = $sizeof("bar::Baz");
+int v = $sizeof("bar::abc::Foo");
+int x1 = $sizeof(x);
+int y1 = $sizeof("y");
+int a = $sizeof("Baz.y");
+int b = $sizeof("Deep.a.b");
+int c = $sizeof("Deep.a.b.c");
+int d = $sizeof("Deep[][100]");
+int e = $sizeof("Deep[][100]**[100][]*");
+int a2 = $sizeof("Baz.y");
+int a3 = $sizeof(Baz.y);
+int a4 = $sizeof(Baz.y);
+int a5 = $sizeof(Baz.y);
 
 module bar;
 

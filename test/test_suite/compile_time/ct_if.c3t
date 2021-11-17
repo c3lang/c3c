@@ -4,7 +4,7 @@ $else:
     $elif (0):
     $elif (0):
     $else:
-        global int x = 1;
+        int x = 1;
     $endif;
 $endif;
 
@@ -18,7 +18,7 @@ $endif;
 
 $if (1):
 $assert(true);
-global int d = 5;
+int d = 5;
 $elif (0):
 $assert(false);
 $else:
@@ -29,7 +29,7 @@ $if (0):
 $assert(true);
 $elif (1):
 $assert(true);
-global int c = 5;
+int c = 5;
 $else:
 $assert(false);
 $endif;
@@ -38,7 +38,7 @@ $if (0):
 $assert(true);
 $elif (1):
 $assert(true);
-global int b = 4;
+int b = 4;
 $elif (0):
 $assert(false);
 $else:
@@ -51,7 +51,7 @@ $elif (0):
 $assert(false);
 $elif (1):
 $assert(true);
-global int a = 3;
+int a = 3;
 $else:
 $assert(false);
 $endif;

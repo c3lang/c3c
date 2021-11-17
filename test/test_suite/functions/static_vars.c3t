@@ -3,15 +3,15 @@ module foo;
 fn int test()
 {
     static int x = 1;
-    global int y = 2;
+    tlocal int y = 2;
     x++;
     return x;
 }
 
 // #expect: foo.ll
 
-@test.x = hidden thread_local global i32 1, align 4
-@test.y = hidden global i32 2, align 4
+@test.x = hidden global i32 1, align 4
+@test.y = hidden thread_local global i32 2, align 4
 
 define i32 @foo.test()
 

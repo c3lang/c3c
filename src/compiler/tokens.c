@@ -236,8 +236,6 @@ const char *token_type_to_string(TokenType type)
 			return "func";
 		case TOKEN_GENERIC:
 			return "generic";
-		case TOKEN_GLOBAL:
-			return "global";
 		case TOKEN_IF:
 			return "if";
 		case TOKEN_IMPORT:
@@ -260,6 +258,8 @@ const char *token_type_to_string(TokenType type)
 			return "struct";
 		case TOKEN_SWITCH:
 			return "switch";
+		case TOKEN_TLOCAL:
+			return "tlocal";
 		case TOKEN_TRUE:
 			return "true";
 		case TOKEN_TRY:

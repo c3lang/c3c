@@ -363,8 +363,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
 	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname ? decl->extname : decl->external_name);
-	bool thread_local = !decl->var.is_threadglobal && decl->var.kind != VARDECL_CONST;
-	LLVMSetThreadLocal(decl->backend_ref, thread_local);
+	LLVMSetThreadLocal(decl->backend_ref, decl->var.is_threadlocal);
 	if (decl->section)
 	{
 		LLVMSetSection(decl->backend_ref, decl->section);
@@ -375,7 +374,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	if (failable_ref)
 	{
 		llvm_set_alignment(failable_ref, type_alloca_alignment(type_anyerr));
-		LLVMSetThreadLocal(failable_ref, thread_local);
+		LLVMSetThreadLocal(failable_ref, decl->var.is_threadlocal);
 	}
 	if (init_expr && IS_FAILABLE(init_expr) && init_expr->expr_kind == EXPR_FAILABLE)
 	{

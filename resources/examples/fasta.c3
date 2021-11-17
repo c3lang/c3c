@@ -6,7 +6,7 @@ const IA = 3877;
 const IC = 29573;
 const SEED = 42;
 
-global uint seed = SEED;
+uint seed = SEED;
 
 fn float fasta_rand(float max)
 {
@@ -14,7 +14,7 @@ fn float fasta_rand(float max)
 	return max * seed / IM;
 }
 
-private global char[] alu =
+private char[] alu =
   "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG"
   "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA"
   "CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT"
@@ -24,8 +24,8 @@ private global char[] alu =
   "AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
 
 
-global char[] iub = "acgtBDHKMNRSVWY";
-global double[] iub_p = {
+char[] iub = "acgtBDHKMNRSVWY";
+double[] iub_p = {
   0.27,
   0.12,
   0.12,
@@ -42,8 +42,8 @@ global double[] iub_p = {
   0.02,
   0.02 };
 
-global char[] homosapiens = "acgt";
-global double[] homosapiens_p = {
+char[] homosapiens = "acgt";
+double[] homosapiens_p = {
   0.3029549426680,
   0.1979883004921,
   0.1975473066391,

@@ -1,6 +1,6 @@
 module foo;
 
-global int baz @extname("foobar") = 123;
+int baz @extname("foobar") = 123;
 
 // #expect: foo.ll
 

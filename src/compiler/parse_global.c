@@ -805,8 +805,8 @@ Decl *parse_decl(Context *context)
 		return parse_const_declaration(context, VISIBLE_LOCAL);
 	}
 
-	bool is_threadglobal = try_consume(context, TOKEN_GLOBAL);
-	bool is_static = !is_threadglobal && try_consume(context, TOKEN_STATIC);
+	bool is_threadlocal = try_consume(context, TOKEN_TLOCAL);
+	bool is_static = !is_threadlocal && try_consume(context, TOKEN_STATIC);
 
 	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_failable_type(context), poisoned_decl);
 
@@ -816,8 +816,8 @@ Decl *parse_decl(Context *context)
 		SEMA_ERROR(decl, "You cannot use unwrap with a failable variable.");
 		return poisoned_decl;
 	}
-	decl->var.is_static = is_static || is_threadglobal;
-	decl->var.is_threadglobal = is_threadglobal;
+	decl->var.is_static = is_static || is_threadlocal;
+	decl->var.is_threadlocal = is_threadlocal;
 	return decl;
 }
 
@@ -1021,13 +1021,13 @@ bool parse_attributes(Context *context, Attr ***attributes_ref)
  */
 static inline Decl *parse_global_declaration(Context *context, Visibility visibility)
 {
-	bool thread_global = try_consume(context, TOKEN_GLOBAL);
+	bool threadlocal = try_consume(context, TOKEN_TLOCAL);
 
 	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_failable_type(context), poisoned_decl);
 
 	Decl *decl = decl_new_var(context->tok.id, type, VARDECL_GLOBAL, visibility);
 
-	decl->var.is_threadglobal = thread_global;
+	decl->var.is_threadlocal = threadlocal;
 
 	if (TOKEN_IS(TOKEN_CONST_IDENT))
 	{
@@ -2366,7 +2366,7 @@ Decl *parse_top_level_statement(Context *context)
 		case TOKEN_IMPORT:
 			SEMA_TOKEN_ERROR(context->tok, "Imports are only allowed directly after the module declaration.");
 			return poisoned_decl;
-		case TOKEN_GLOBAL:
+		case TOKEN_TLOCAL:
 		case TYPELIKE_TOKENS:
 		{
 			ASSIGN_DECL_ELSE(decl, parse_global_declaration(context, visibility), poisoned_decl);

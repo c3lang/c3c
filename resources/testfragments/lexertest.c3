@@ -1,6 +1,6 @@
 module foo;
 
-const int GLOBAL = 0;
+const int = 0;
 
 struct Boo
 {

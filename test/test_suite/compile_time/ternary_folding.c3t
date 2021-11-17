@@ -1,8 +1,8 @@
 // #target: x64-darwin
 
-global int foo = 2.2 ? 1 : 2;
-global double bar = false ? 1.0 : 2;
-global bool baz = 1 ? false : true;
+int foo = 2.2 ? 1 : 2;
+double bar = false ? 1.0 : 2;
+bool baz = 1 ? false : true;
 
 fn void test()
 {

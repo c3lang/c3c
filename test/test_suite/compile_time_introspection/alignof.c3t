@@ -1,7 +1,7 @@
 // #target: x64-darwin
 module foo;
 
-global int[100] zfe;
+int[100] zfe;
 struct Bob
 {
     Bob[] x;
@@ -37,29 +37,29 @@ union Foob
 Ar izzy;
 
 
-global long x = $alignof(zfe);
-global short y = $alignof("Bob.y");
-global int z = $alignof("Bob.y");
-global int w = $alignof(Bob.y);
-global int v = $alignof(v);
-global int x1 = $alignof("Ex.c");
-global int x2 = $alignof(Ex.y);
-global int x3 = $alignof(char[8]);
-global int x4 = $alignof("Ar.br[1]");
-global int x5 = $alignof(Ar.br[1]);
-global int x6 = $alignof(Ar.br[1]);
-global int x7 = $alignof(Ar.br[1]);
-global int x8 = $alignof(Ar.br[2]);
-global int x9 = $alignof("izzy.br[1]");
-global int x10 = $alignof("izzy.br[1]");
-global int x11 = $alignof(izzy.br[1]);
-global int z0 = $alignof("Foob.c");
-global int z00 = $alignof("Foob.c[0]");
-global int z01 = $alignof("Foob.c[1]");
-global int z02 = $alignof("Foob.c[2]");
-global int z03 = $alignof("Foob.c[3]");
-global int z04 = $alignof("Foob.c[4]");
-global int z05 = $alignof("Foob.c[5]");
+long x = $alignof(zfe);
+short y = $alignof("Bob.y");
+int z = $alignof("Bob.y");
+int w = $alignof(Bob.y);
+int v = $alignof(v);
+int x1 = $alignof("Ex.c");
+int x2 = $alignof(Ex.y);
+int x3 = $alignof(char[8]);
+int x4 = $alignof("Ar.br[1]");
+int x5 = $alignof(Ar.br[1]);
+int x6 = $alignof(Ar.br[1]);
+int x7 = $alignof(Ar.br[1]);
+int x8 = $alignof(Ar.br[2]);
+int x9 = $alignof("izzy.br[1]");
+int x10 = $alignof("izzy.br[1]");
+int x11 = $alignof(izzy.br[1]);
+int z0 = $alignof("Foob.c");
+int z00 = $alignof("Foob.c[0]");
+int z01 = $alignof("Foob.c[1]");
+int z02 = $alignof("Foob.c[2]");
+int z03 = $alignof("Foob.c[3]");
+int z04 = $alignof("Foob.c[4]");
+int z05 = $alignof("Foob.c[5]");
 
 
 

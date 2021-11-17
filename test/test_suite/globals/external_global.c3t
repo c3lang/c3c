@@ -13,7 +13,7 @@ struct UzGlobs
     MinInfo* pInfo;
 }
 
-extern global UzGlobs g;
+extern UzGlobs g;
 
 fn int extract_or_test_files()
 {

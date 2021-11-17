@@ -388,11 +388,11 @@ fn void Value.setTop(Value* th as AintIdx idx)
 }
 
 /* ****************************************
-   GLOBAL VARIABLE ACCESS
+   VARIABLE ACCESS
    ***************************************/
 
 /**
- * Push and return the symbolically-named global variable's value
+ * Push and return the symbolically-named variable's value
  * @require vm(*th).global.isTbl()
  **/
 fn Value Value.pushGloVar(Value* th, string var)
@@ -405,7 +405,7 @@ fn Value Value.pushGloVar(Value* th, string var)
 }
 
 /**
- * Alter the symbolically-named global variable to have the value popped off the local stack
+ * Alter the symbolically-named variable to have the value popped off the local stack
  * @require stkSz(th) > 0, vm(th).global.isTbl()
  **/
 fn void Value.popGloVar(Value* th, string var)
@@ -417,7 +417,7 @@ fn void Value.popGloVar(Value* th, string var)
 	th(*th).stk_top -= 2; // Pop key & value after value is safely in Global
 }
 
-/* Push the value of the current process thread's global variable table. */
+/* Push the value of the current process thread's variable table. */
 Value pushGlobal(Value th)
 {
 	stkCanIncTop(th); /* Check if there is room */

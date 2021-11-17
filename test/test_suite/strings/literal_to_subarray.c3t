@@ -1,6 +1,6 @@
 // #target: x64-darwin
 
-global char[] y = "hello";
+char[] y = "hello";
 
 fn void test()
 {

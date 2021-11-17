@@ -13,7 +13,7 @@ void core_init(Value th); // Initialize all core types
  *   different encoding types.
  * - The symbol table, which is shared across everywhere
  * - The main thread, which is the recursive root for garbage collection.
- *   The thread manages the global namespace, including all registered
+ *   The thread manages the namespace, including all registered
  *   core types (including the Acorn compiler and resource types).
  *
  * See newVm() for more detailed information on VM initialization.
@@ -34,12 +34,12 @@ struct VmInfo
 	ulong pcgrng_state;		    //!< PCG random-number generator state
 	ulong pcgrng_inc;	    	//!< PCG random-number generator inc value
 
-	Value global;				//!< VM's "built in" Global hash table
+	Value global;				//!< VM's "built in" hash table
 
 	Value main_thread;			//!< VM's main thread
 	ThreadInfo main_thr;        //!< State space for main thread
 
-	SymTable sym_table;	        //!< global symbol table
+	SymTable sym_table;	        //!< symbol table
 	AuintIdx hashseed;			//!< randomized seed for hashing strings
 	Value literals;				//!< array of all built-in symbol and type literals
 	Value stdidx;				//!< Table to convert std symbol to index
@@ -252,7 +252,7 @@ macro memcpy_Auint(i, val)
  *   and which to discard.
  * - All value encodings are initialized next, including the single symbol table
  *   used across the VM.
- * - The main thread is started up, initializing its global namespace.
+ * - The main thread is started up, initializing its namespace.
  * - All core types are progressively loaded, establishing the default types for
  *   each encoding. This includes the resource types and Acorn compiler. */
 fn Value new(void)
@@ -290,13 +290,13 @@ fn Value new(void)
 	memcpy_Auint(3, &newVM)		// public function
 	vm->hashseed = tblCalcStrHash(seedstr, sizeof(seedstr), (AuintIdx) timehash);
 
-	// Initialize vm-wide symbol table, global table and literals
+	// Initialize vm-wide symbol table, table and literals
 	sym_init(th); // Initialize hash table for symbols
-	newTbl(th, &vm->global, aNull, GLOBAL_NEWSIZE); // Create global hash table
+	newTbl(th, &vm->global, aNull, GLOBAL_NEWSIZE); // Create hash table
 	mem_markChk(th, vm, vm->global);
 	vm_litinit(th); // Load reserved and standard symbols into literal list
-	core_init(th); // Load up global table and literal list with core types
-	setType(th, vm->global, vmlit(TypeIndexm)); // Fix up type info for global table
+	core_init(th); // Load up table and literal list with core types
+	setType(th, vm->global, vmlit(TypeIndexm)); // Fix up type info for table
 
 	// Initialize byte-code standard methods and the Acorn compiler
 	vm_stdinit(th);

@@ -691,7 +691,7 @@ static inline bool scan_char(Lexer *lexer)
 
 	int width = 0;
 	char c;
-	Int128 b = {};
+	Int128 b = { 0, 0 };
 
 	while ((c = next(lexer)) != '\'')
 	{

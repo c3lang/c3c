@@ -1,15 +1,15 @@
 // #file: file1.c3
 module test;
 
-global char a = ' ';
-global char b = '\r';
-global char c = '\t';
-global char d = '\n';
-global char e = '\0';
-global char f = '\'';
-global char g = '"';
-global char h = '\\';
-global char i = '\e';
+char a = ' ';
+char b = '\r';
+char c = '\t';
+char d = '\n';
+char e = '\0';
+char f = '\'';
+char g = '"';
+char h = '\\';
+char i = '\e';
 
 // #expect: test.ll
 

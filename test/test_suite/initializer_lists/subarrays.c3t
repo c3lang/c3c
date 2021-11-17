@@ -14,9 +14,9 @@ struct Bar
 }
 
 
-global Bar[] arrbar = { { 3, 4 }, { 8, 9 }};
-global int[] xd = { 1, 2 };
-global int* fofeo = &&(int[2]{ 3, 4 });
+Bar[] arrbar = { { 3, 4 }, { 8, 9 }};
+int[] xd = { 1, 2 };
+int* fofeo = &&(int[2]{ 3, 4 });
 
 fn int main()
 {

@@ -1,5 +1,5 @@
 // #target: x64-darwin
-global int[<4>] baz = { 1, 4, 5, 7 };
+int[<4>] baz = { 1, 4, 5, 7 };
 
 fn void main()
 {

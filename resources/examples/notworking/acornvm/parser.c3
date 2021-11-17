@@ -143,7 +143,7 @@ void parseValue(CompInfo* comp, Value astseg)
 		astAddSeg2(th, astseg, vmlit(SYM_EXT), anInt(genAddUrlLit(comp, comp->lex->token)));
 		lexGetNextToken(comp->lex);
 	}
-	// Local or global variable / name token
+	// Local or variable / name token
 	else if (comp->lex->toktype == Name_Token) {
 		Value symnm = pushValue(th, comp->lex->token);
 		lexGetNextToken(comp->lex);
@@ -240,7 +240,7 @@ void parseValue(CompInfo* comp, Value astseg)
 					Value symnm = comp->lex->token;
 					const char first = (toStr(symnm))[0];
 					if (first=='$' || (first>='A' && first<='Z'))
-						lexLog(comp->lex, "A global name may not be a closure variable");
+						lexLog(comp->lex, "A name may not be a closure variable");
 					arrAdd(th, comp->clovarseg, symnm);
 					lexGetNextToken(comp->lex);
 
@@ -985,7 +985,7 @@ void parseProgram(CompInfo* comp) {
 				Value symnm = comp->lex->token;
 				const char first = (toStr(symnm))[0];
 				if (first=='$' || (first>='A' && first<='Z'))
-					lexLog(comp->lex, "A global name may not be a method parameter");
+					lexLog(comp->lex, "A name may not be a method parameter");
 				else {
 					if (findLocalVar(comp, symnm)==-1) {
 						arrAdd(th, comp->locvarseg, symnm);

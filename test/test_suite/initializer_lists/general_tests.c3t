@@ -17,7 +17,7 @@ fn int test()
     int[1] azz = {};
     int[*] a = {};
     var $foo = { 11, 22, 33 };
-    global int foo1 = $foo[1];
+    static int foo1 = $foo[1];
     int foo2 = $foo[2];
     var $foos = { "Hello!" };
     char* str = $foos[0];

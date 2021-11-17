@@ -6,10 +6,10 @@ union Foo
     double b;
 }
 
-private global Foo f = { .a = 23 };
-private global Foo g = { .b = 2.3 };
-private global Foo h = { .a = 23, .b = 2.3 };
-global Foo i = { .b = 2.3, .a = 23 };
+private Foo f = { .a = 23 };
+private Foo g = { .b = 2.3 };
+private Foo h = { .a = 23, .b = 2.3 };
+Foo i = { .b = 2.3, .a = 23 };
 
 // #expect: test.ll
 

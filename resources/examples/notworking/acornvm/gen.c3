@@ -381,7 +381,7 @@ void genAssign(CompInfo *comp, Value lval, Value rval) {
 	if (opcode)
 		genDoProp(comp, lval, opcode, rval, 1);
 	else {
-		// Handle parallel, local, closure, global variable assignments where rval is loaded first
+		// Handle parallel, local, closure, variable assignments where rval is loaded first
 		int nlvals = lvalop==vmlit(SymComma)? arr_size(lval)-1 : 1;
 		bool varrvals = false;
 		AuintIdx rvalreg;
@@ -445,7 +445,7 @@ void genAssign(CompInfo *comp, Value lval, Value rval) {
 				genAddInstr(comp, BCINS_ABC(OpLoadReg, localreg, rvalreg, 0));
 			else if ((localreg = findClosureVar(comp, symnm))!=-1)
 				genAddInstr(comp, BCINS_ABC(OpSetClosure, localreg, rvalreg, 0));
-		// Load into a global variable
+		// Load into a variable
 		} else if (vmlit(SymGlobal) == lvalop)
 			genAddInstr(comp, BCINS_ABx(OpSetGlobal, rvalreg, genAddLit(comp, astGet(th, lval, 1))));
 	}
