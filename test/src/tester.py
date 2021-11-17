@@ -52,6 +52,7 @@ class Issues:
         self.error_message = "unknown"
         self.skip = False
         self.cur = 0
+        self.debuginfo = False
         self.arch = None
         self.current_file = None
         self.files = []
@@ -103,9 +104,12 @@ class Issues:
     def compile(self, args):
         os.chdir(TEST_DIR)
         target = ""
+        debug = ""
         if (self.arch):
             target = " --target " + self.arch
-        code = subprocess.run(self.conf.compiler + target + ' -O0 ' + args, universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if (self.debuginfo):
+            debug = "-g "
+        code = subprocess.run(self.conf.compiler + target + ' -O0 ' + debug + args, universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir(self.conf.cwd)
         if code.returncode != 0 and code.returncode != 1:
             self.set_failed()
@@ -134,6 +138,9 @@ class Issues:
 
     def parse_header_directive(self, line):
         line = line[4:].strip()
+        if (line.startswith("debuginfo:")):
+            self.debuginfo = line[10:].strip() == "yes"
+            return
         if (line.startswith("target:")):
             self.arch = line[7:].strip()
             return

@@ -216,6 +216,10 @@ Ast *copy_ast(Ast *source)
 	Ast *ast = ast_copy(source);
 	switch (source->ast_kind)
 	{
+		case AST_SCOPING_STMT:
+			MACRO_COPY_EXPR(ast->scoping_stmt.scoped);
+			MACRO_COPY_AST(ast->scoping_stmt.stmt);
+			return ast;
 		case AST_DOCS:
 			MACRO_COPY_AST_LIST(ast->directives);
 			return ast;
