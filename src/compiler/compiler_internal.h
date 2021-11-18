@@ -524,6 +524,7 @@ typedef enum
 	DEFINE_TYPE_GENERIC,
 	DEFINE_IDENT_ALIAS,
 	DEFINE_IDENT_GENERIC,
+	DEFINE_ATTRIBUTE,
 } DefineType;
 
 typedef struct
@@ -531,6 +532,11 @@ typedef struct
 	DefineType define_kind: 5;
 	union
 	{
+		struct
+		{
+			Decl **params;
+			Attr **attrs;
+		} attributes;
 		struct
 		{
 			union
@@ -625,7 +631,6 @@ typedef struct Decl_
 		CtCaseDecl ct_case_decl;
 		Ast *ct_assert_decl;
 		Decl** ct_else_decl;
-		Expr *incr_array_decl;
 	};
 } Decl;
 
@@ -1174,7 +1179,6 @@ typedef struct
 	bool is_volatile : 1;
 	bool is_inline : 1;
 	bool is_goto : 1;
-	AsmParams *params;
 	Expr *body;
 } AstAsmStmt;
 
@@ -1368,7 +1372,6 @@ typedef struct Context_
 	Decl **methods;
 	Decl **macro_methods;
 	Decl **vars;
-	Decl **incr_array;
 	Decl **ct_ifs;
 	Decl **ct_asserts;
 	Decl *active_function_for_analysis;
@@ -1393,7 +1396,6 @@ typedef struct Context_
 		Ast **returns_cache;
 	};
 	Type *rtype;
-	int in_volatile_section;
 	MacroScope macro_scope;
 	struct {
 		STable external_symbols;

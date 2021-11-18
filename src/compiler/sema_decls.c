@@ -1587,6 +1587,8 @@ static bool sema_analyse_parameterized_define(Context *c, Decl *decl)
 			name = define_type->unresolved.name_loc;
 			break;
 		}
+		case DEFINE_ATTRIBUTE:
+			TODO
 		default:
 			UNREACHABLE
 	}
@@ -1647,6 +1649,8 @@ static bool sema_analyse_parameterized_define(Context *c, Decl *decl)
 			type->canonical = symbol->type->canonical;
 			return true;
 		}
+		case DEFINE_ATTRIBUTE:
+			TODO
 		default:
 			UNREACHABLE
 	}
@@ -1733,7 +1737,6 @@ bool sema_analyse_decl(Context *context, Decl *decl)
 		case DECL_POISONED:
 		case DECL_IMPORT:
 		case DECL_ENUM_CONSTANT:
-		case DECL_ARRAY_VALUE:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
 		case DECL_LABEL:

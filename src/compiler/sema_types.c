@@ -155,17 +155,16 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_FUNC:
 		case DECL_ERRVALUE:
 		case DECL_ENUM_CONSTANT:
-		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
 		case DECL_GENERIC:
 		case DECL_LABEL:
+		case DECL_ATTRIBUTE:
 			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "This is not a type.");
 			return type_info_poison(type_info);
 		case DECL_CT_ELSE:
 		case DECL_CT_IF:
 		case DECL_CT_ELIF:
-		case DECL_ATTRIBUTE:
 		case DECL_CT_SWITCH:
 		case DECL_CT_CASE:
 		case DECL_CT_ASSERT:
@@ -234,7 +233,6 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow
 	switch (type_info->kind)
 	{
 		case TYPE_INFO_POISON:
-		case TYPE_INFO_INC_ARRAY:
 			UNREACHABLE
 		case TYPE_INFO_IDENTIFIER:
 			if (!sema_resolve_type_identifier(context, type_info)) return false;

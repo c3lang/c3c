@@ -268,7 +268,7 @@ fn Type getValue(Blob blob)
 @.str.9 = private constant [10 x i8] c"b was %f\0A\00", align 1
 @.str.10 = private constant [17 x i8] c"Mult int was %d\0A\00", align 1
 @.str.11 = private constant [20 x i8] c"Mult double was %f\0A\00", align 1
-@.__const.12 = private constant [4 x i32] [i32 1, i32 2, i32 3, i32 3], align 4
+@.__const.12 = private constant [4 x i32] [i32 1, i32 2, i32 3, i32 3], align 16
 @.str.13 = private constant [22 x i8] c"1Vararg4unsplatA: %d\0A\00", align 1
 @.str.14 = private constant [4 x i8] c"%d\0A\00", align 1
 @.__const.15 = private constant [3 x i32] [i32 1, i32 2, i32 3], align 4
@@ -512,7 +512,7 @@ entry:
   %tempcoerce = alloca i64, align 8
   %ddx = alloca %Foo, align 4
   %fro = alloca i32, align 4
-  %x = alloca [4 x i32], align 4
+  %x = alloca [4 x i32], align 16
   %vararg = alloca %"int[]", align 8
   %indirectarg = alloca %"int[]", align 8
   %z = alloca %"int[]", align 8
@@ -522,7 +522,7 @@ entry:
   %vararg13 = alloca %"int[]", align 8
   %indirectarg14 = alloca %"int[]", align 8
   %vararg15 = alloca %"int[]", align 8
-  %varargslots = alloca [4 x i32], align 4
+  %varargslots = alloca [4 x i32], align 16
   %indirectarg16 = alloca %"int[]", align 8
   %vararg17 = alloca %"int[]", align 8
   %varargslots18 = alloca [1 x i32], align 4
@@ -628,7 +628,7 @@ for.exit9:                                        ; preds = %for.cond2
   call void @llvm.memset.p0i8.i64(i8* align 4 %37, i8 0, i64 8, i1 false)
   store i32 3, i32* %fro, align 4
   %38 = bitcast [4 x i32]* %x to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %38, i8* align 4 bitcast ([4 x i32]* @.__const.12 to i8*), i32 16, i1 false)
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %38, i8* align 16 bitcast ([4 x i32]* @.__const.12 to i8*), i32 16, i1 false)
   %39 = load i32, i32* %fro, align 4
   %40 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 1
   %41 = getelementptr inbounds %"int[]", %"int[]"* %vararg, i32 0, i32 0

@@ -49,8 +49,6 @@ const char *decl_to_name(Decl *decl)
 			return "compile time if";
 		case DECL_CT_SWITCH:
 			return "compile time switch";
-		case DECL_ARRAY_VALUE:
-			UNREACHABLE;
 		case DECL_IMPORT:
 			return "import";
 		case DECL_LABEL:
@@ -165,7 +163,6 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
 		case DECL_ERRVALUE:
-		case DECL_ARRAY_VALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
 		case DECL_GENERIC:

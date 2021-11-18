@@ -304,5 +304,8 @@ def main():
         usage()
 
     print("Found %d tests: %.1f%% (%d / %d) passed (%d skipped)." % (conf.numtests, 100 * conf.numsuccess / max(1, conf.numtests - conf.numskipped), conf.numsuccess, conf.numtests - conf.numskipped, conf.numskipped))
+    if (conf.numsuccess != conf.numtests - conf.numskipped):
+        exit(-1)
+    exit(0)
 
 main()

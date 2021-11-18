@@ -1129,6 +1129,8 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			// This is a no op.
 			assert(type_lowering(to_type) == type_lowering(from_type));
 			break;
+		case CAST_VECARR:
+			TODO
 		case CAST_EUER:
 			TODO // gencontext_emit_value_bitcast(c, value->value, to_type, from_type);
 		case CAST_ERBOOL:

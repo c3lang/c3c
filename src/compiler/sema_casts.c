@@ -358,8 +358,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_DISTINCT:
 		case TYPE_INFERRED_ARRAY:
 			UNREACHABLE
-		case TYPE_ANY:
-			TODO
 		case TYPE_BOOL:
 			return CAST_BOOLBOOL;
 		case TYPE_ANYERR:
@@ -388,6 +386,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FAILABLE:
+		case TYPE_ANY:
 		case TYPE_FAILABLE_ANY:
 			return CAST_ERROR;
 	}
@@ -508,44 +507,6 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 			return false;
 	}
 	UNREACHABLE
-}
-
-static bool may_cast_to_virtual(Type *virtual, Type *from)
-{
-	assert(from->canonical == from);
-
-	// 1. We need a pointer, we can't cast from a non pointer.
-	if (from->type_kind != TYPE_POINTER) return false;
-
-	// 2. Virtual* converts to anything, including ints
-	if (virtual->type_kind == TYPE_ANY) return true;
-
-	// 3. Get the data.
-	Decl *virtual_decl = virtual->decl;
-	Decl **methods = virtual_decl->interface_decl.functions;
-
-	// 4. No variables nor members? Then this is essentially a virtual*
-	if (!vec_size(methods) && !vec_size(virtual_decl->strukt.members)) return true;
-
-	// 5. Look at the pointer.
-	Type *pointee = from->pointer;
-
-	// 6. Is this an array, if so it doesn't have any functions,
-	//    so we implicitly lower to the first element.
-	if (pointee->type_kind == TYPE_ARRAY)
-	{
-		pointee = pointee->array.base;
-	}
-
-	// Do this: create a function that returns a matching interface method.
-	// store this decl.
-	// Same with looking at members -> store the Decl.
-	// Later, generating the table we provide the decl backend ref and the offset.
-	// Note that matching types should take into account the first element.
-	// Also go recursively into substructs structs
-	// Note that this resolution cannot be cached completely due to the module import lookup
-
-	TODO;
 }
 
 bool type_may_convert_to_anyerr(Type *type)
@@ -904,6 +865,8 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_LEN:
 		case EXPR_CATCH:
 		case EXPR_BUILTIN:
+		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY_UNWRAP_CHAIN:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_float(expr->unary_expr.expr, type);
@@ -911,10 +874,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 			return recursive_may_narrow_float(expr->expr_scope.expr, type);
 		case EXPR_TRY:
 			return recursive_may_narrow_float(expr->inner_expr, type);
-		case EXPR_TRY_UNWRAP:
-			TODO
-		case EXPR_TRY_UNWRAP_CHAIN:
-			TODO
 		case EXPR_UNARY:
 		{
 			switch (expr->unary_expr.operator)
@@ -1056,6 +1015,8 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_CT_CALL:
 		case EXPR_NOP:
 		case EXPR_BUILTIN:
+		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY_UNWRAP_CHAIN:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_int(expr->unary_expr.expr, type);
@@ -1066,10 +1027,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_GROUP:
 		case EXPR_FORCE_UNWRAP:
 			return recursive_may_narrow_int(expr->inner_expr, type);
-		case EXPR_TRY_UNWRAP:
-			TODO
-		case EXPR_TRY_UNWRAP_CHAIN:
-			TODO
 		case EXPR_UNARY:
 		{
 			switch (expr->unary_expr.operator)
@@ -1266,11 +1223,12 @@ static inline bool subarray_to_bool(Expr *expr)
 	return insert_cast(expr, CAST_SABOOL, type_bool);
 }
 
-static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type, bool from_is_failable)
+static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 {
 	switch (from_type->type_kind)
 	{
 		case TYPE_FAILABLE_ANY:
+		case TYPE_FAILABLE:
 			UNREACHABLE
 		case TYPE_VOID:
 			UNREACHABLE
@@ -1282,8 +1240,6 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type, boo
 			UNREACHABLE
 		case TYPE_BITSTRUCT:
 			return bitstruct_cast(expr, from_type, to, to_type);
-		case TYPE_FAILABLE:
-			TODO
 		case TYPE_BOOL:
 			// Bool may convert into integers and floats but only explicitly.
 			if (type_is_integer(to)) return bool_to_int(expr, to, to_type);
@@ -1352,7 +1308,8 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type, boo
 			if (to->type_kind == TYPE_BOOL) return subarray_to_bool(expr);
 			break;
 		case TYPE_VECTOR:
-			TODO
+			if (to->type_kind == TYPE_ARRAY) return insert_cast(expr, CAST_VECARR, to);
+			break;
 	}
 	UNREACHABLE
 }
@@ -1420,7 +1377,9 @@ bool cast(Expr *expr, Type *to_type)
 		}
 		return true;
 	}
-	if (!cast_inner(expr, from_type, to, to_type, from_is_failable)) return false;
+	bool result = cast_inner(expr, from_type, to, to_type);
+	assert(result == true);
+
 	Type *result_type = expr->type;
 	if (from_is_failable && !type_is_failable(result_type))
 	{

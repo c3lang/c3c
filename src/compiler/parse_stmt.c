@@ -58,7 +58,7 @@ static inline Ast* parse_asm_stmt(Context *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_ASM_STMT, context->tok);
 	advance_and_verify(context, TOKEN_ASM);
-	ast->asm_stmt.is_volatile = try_consume(context, TOKEN_VOLATILE);
+	// TODO use attributes, like volatile
 	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
 	ASSIGN_EXPR_ELSE(ast->asm_stmt.body, parse_expr(context), poisoned_ast);
 	ast->asm_stmt.is_volatile = true;
@@ -655,16 +655,6 @@ static inline Ast *parse_return(Context *context)
 
 
 
-/**
- * volatile_stmt
- *  : VOLATILE compound_stmt
- */
-static Ast *parse_volatile_stmt(Context *context)
-{
-	Ast *ast = AST_NEW_TOKEN(AST_VOLATILE_STMT, context->tok);
-	ASSIGN_AST_ELSE(ast->volatile_stmt, parse_compound_stmt(context), poisoned_ast);
-	return ast;
-}
 
 
 
@@ -862,8 +852,6 @@ Ast *parse_stmt(Context *context)
 			return parse_ct_switch_stmt(context);
 		case TOKEN_CT_FOR:
 			return parse_ct_for_stmt(context);
-		case TOKEN_VOLATILE:
-			return parse_volatile_stmt(context);
 		case TOKEN_CT_UNREACHABLE:
 			return parse_unreachable_stmt(context);
 		case TOKEN_STAR:
@@ -954,7 +942,6 @@ Ast *parse_stmt(Context *context)
 		case TOKEN_STRUCT:
 		case TOKEN_ERRTYPE:
 		case TOKEN_UNION:
-		case TOKEN_ATTRIBUTE:
 		case TOKEN_DEFINE:
 		case TOKEN_DOCS_START:
 		case TOKEN_DOCS_END:

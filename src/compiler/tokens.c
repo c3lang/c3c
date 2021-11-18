@@ -194,8 +194,6 @@ const char *token_type_to_string(TokenType type)
 			return "asm";
 		case TOKEN_ASSERT:
 			return "assert";
-		case TOKEN_ATTRIBUTE:
-			return "attribute";
 		case TOKEN_BITSTRUCT:
 			return "bitstruct";
 		case TOKEN_BREAK:
@@ -272,8 +270,6 @@ const char *token_type_to_string(TokenType type)
 			return "union";
 		case TOKEN_VAR:
 			return "var";
-		case TOKEN_VOLATILE:
-			return "volatile";
 		case TOKEN_WHILE:
 			return "while";
 
