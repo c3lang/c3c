@@ -1,3 +1,4 @@
+// #target: x64-darwin
 module test;
 
 extern fn void printf(char*, ...);

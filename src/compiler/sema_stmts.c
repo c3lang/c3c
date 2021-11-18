@@ -1945,13 +1945,6 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 
 
 
-static bool sema_analyse_volatile_stmt(Context *context, Ast *statement)
-{
-	context->in_volatile_section++;
-	bool result = sema_analyse_statement(context, statement->volatile_stmt);
-	context->in_volatile_section--;
-	return result;
-}
 
 bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
 {
@@ -2154,8 +2147,6 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 			return sema_analyse_nextcase_stmt(context, statement);
 		case AST_UNREACHABLE_STMT:
 			return sema_analyse_unreachable_stmt(context);
-		case AST_VOLATILE_STMT:
-			return sema_analyse_volatile_stmt(context, statement);
 		case AST_WHILE_STMT:
 			return sema_analyse_while_stmt(context, statement);
 		case AST_CT_SWITCH_STMT:
@@ -2235,7 +2226,6 @@ bool sema_analyse_function_body(Context *context, Decl *func)
 	// Clear returns
 	vec_resize(context->returns, 0);
 	context->scope_id = 0;
-	context->in_volatile_section = 0;
 	context->continue_target = 0;
 	context->next_target = 0;
 	context->next_switch = 0;

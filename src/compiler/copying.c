@@ -13,7 +13,7 @@ Expr **copy_expr_list(Expr **expr_list)
 static inline Decl *decl_copy_label_from_macro(Decl *to_copy, Ast *ast)
 {
 	if (!to_copy) return NULL;
-	to_copy = decl_copy_local_from_macro(to_copy);
+	to_copy = copy_decl(to_copy);
 	to_copy->label.parent = astid(ast);
 	return to_copy;
 }
@@ -241,12 +241,14 @@ Ast *copy_ast(Ast *source)
 		case AST_POISONED:
 			return ast;
 		case AST_ASM_STMT:
-			TODO
+			MACRO_COPY_EXPR(ast->asm_stmt.body);
+			return ast;
 		case AST_ASSERT_STMT:
 			MACRO_COPY_EXPR(ast->ct_assert_stmt.expr);
 			MACRO_COPY_EXPR(ast->ct_assert_stmt.message);
 			return ast;
 		case AST_BREAK_STMT:
+		case AST_CONTINUE_STMT:
 			return ast;
 		case AST_CASE_STMT:
 			MACRO_COPY_AST(ast->case_stmt.body);
@@ -258,8 +260,6 @@ Ast *copy_ast(Ast *source)
 		case AST_CT_COMPOUND_STMT:
 			MACRO_COPY_AST_LIST(ast->ct_compound_stmt);
 			return ast;
-		case AST_CONTINUE_STMT:
-			TODO
 		case AST_CT_ASSERT:
 			MACRO_COPY_EXPR(ast->ct_assert_stmt.message);
 			MACRO_COPY_EXPR(ast->ct_assert_stmt.expr);
@@ -327,8 +327,15 @@ Ast *copy_ast(Ast *source)
 			MACRO_COPY_AST(ast->if_stmt.then_body);
 			return ast;
 		case AST_NEXT_STMT:
-			MACRO_COPY_EXPR(ast->next_stmt.switch_expr);
-			TODO
+			if (ast->next_stmt.is_type)
+			{
+				MACRO_COPY_TYPE(ast->next_stmt.type_info);
+			}
+			else
+			{
+				MACRO_COPY_EXPR(ast->next_stmt.target);
+			}
+			return ast;
 		case AST_NOP_STMT:
 			return ast;
 		case AST_RETURN_STMT:
@@ -344,9 +351,6 @@ Ast *copy_ast(Ast *source)
 			MACRO_COPY_AST_LIST(ast->switch_stmt.cases);
 			return ast;
 		case AST_UNREACHABLE_STMT:
-			return ast;
-		case AST_VOLATILE_STMT:
-			TODO
 			return ast;
 		case AST_WHILE_STMT:
 			copy_flow(ast);
@@ -409,7 +413,6 @@ TypeInfo *copy_type_info(TypeInfo *source)
 			copy->array.len = copy_expr(source->array.len);
 			copy->array.base = copy_type_info(source->array.base);
 			return copy;
-		case TYPE_INFO_INC_ARRAY:
 		case TYPE_INFO_INFERRED_ARRAY:
 		case TYPE_INFO_SUBARRAY:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
@@ -498,8 +501,8 @@ Decl *copy_decl(Decl *decl)
 			}
 			break;
 		case DECL_LABEL:
-			TODO
-			break;
+			// Note that the ast id should be patched by the parent.
+			return copy;
 		case DECL_ENUM_CONSTANT:
 			MACRO_COPY_EXPR(copy->enum_constant.expr);
 			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
@@ -543,8 +546,6 @@ Decl *copy_decl(Decl *decl)
 			break;
 		case DECL_IMPORT:
 			break;
-		case DECL_ARRAY_VALUE:
-			TODO
 		case DECL_GENERIC:
 		case DECL_MACRO:
 			MACRO_COPY_TYPE(decl->macro_decl.type_parent);
@@ -564,6 +565,10 @@ Decl *copy_decl(Decl *decl)
 					MACRO_COPY_TYPE_LIST(decl->define_decl.generic_params);
 					break;
 				case DEFINE_IDENT_ALIAS:
+					break;
+				case DEFINE_ATTRIBUTE:
+					decl->define_decl.attributes.attrs = copy_attributes(decl->define_decl.attributes.attrs);
+					MACRO_COPY_DECL_LIST(decl->define_decl.attributes.params);
 					break;
 			}
 			break;

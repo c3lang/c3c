@@ -174,36 +174,47 @@ char *read_file(const char *path, size_t *return_size)
 	return buffer;
 }
 
-const char *find_lib_dir(void)
+static inline const char *lib_find(const char *exe_path, const char *rel_path)
 {
-
-	const char *path = find_executable_path();
-
-	DEBUG_LOG("Detected executable path at %s", path);
-
 	struct stat info;
 	char *lib_path = NULL;
-
-	asprintf(&lib_path, "%s../lib/std", path);
+	asprintf(&lib_path, "%s%sstd", exe_path, rel_path);
 	DEBUG_LOG("Checking %s", lib_path);
 	int err = stat(lib_path, &info);
 
-	// Found it at ../lib/std
-	if (!err && S_ISDIR(info.st_mode))
-	{
-		asprintf(&lib_path, "%s../lib/", path);
-		return lib_path;
-	}
+	// Not a dir or had error?
+	if (err || !S_ISDIR(info.st_mode)) return NULL;
 
-	asprintf(&lib_path, "%slib/std", path);
-	err = stat(lib_path, &info);
+	char *check_path = NULL;
+	asprintf(&check_path, "%s/libc.c3", lib_path);
+	DEBUG_LOG("Potential lib found, sanity check for libc...");
+	err = stat(check_path, &info);
+	if (err || !S_ISREG(info.st_mode)) return NULL;
 
-	// Found it at ./lib/std
-	if (!err && S_ISDIR(info.st_mode))
+	asprintf(&lib_path, "%s%s", exe_path, rel_path);
+	DEBUG_LOG("Library path found at %s", lib_path);
+	return lib_path;
+}
+
+const char *find_lib_dir(void)
+{
+
+	char *path = find_executable_path();
+
+	DEBUG_LOG("Detected executable path at %s", path);
+
+	size_t strlen_path = strlen(path);
+	// Remove any last path slash
+	if (strlen_path > 1 && (path[strlen_path - 1] == '/' || path[strlen_path - 1] == '\\'))
 	{
-		asprintf(&lib_path, "%slib/", path);
-		return lib_path;
+		path[strlen_path - 1] = '\0';
 	}
+	const char *lib_path;
+	if ((lib_path = lib_find(path, "/../lib/"))) return lib_path;
+	if ((lib_path = lib_find(path, "/lib/"))) return lib_path;
+	if ((lib_path = lib_find(path, "/"))) return lib_path;
+	if ((lib_path = lib_find(path, "/../"))) return lib_path;
+	if ((lib_path = lib_find(path, "/../../lib/"))) return lib_path;
 
 	DEBUG_LOG("Could not find the standard library /lib/std/");
 	return NULL;
@@ -272,14 +283,19 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 		if (strncmp(&ent->d_name[namelen - 3], ".c3", 3) != 0)
 		{
 			char *new_path = NULL;
-			char *format = path_ends_with_slash ? "%s%s/" : "%s/%s/";
+			char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
 			if (!asprintf(&new_path, format, path, ent->d_name))
 			{
 				error_exit("Failed to allocate path.");
 			}
 			bool is_directory;
 			struct stat st;
-			is_directory = stat(new_path, &st) == 0 && S_ISDIR(st.st_mode);
+			if (stat(new_path, &st))
+			{
+				DEBUG_LOG("Failed to stat %s", new_path);
+				continue;
+			}
+			is_directory = S_ISDIR(st.st_mode);
 			if (is_directory && ent->d_name[0] != '.' && recursive)
 			{
 				file_add_wildcard_files(files, new_path, recursive);
@@ -287,7 +303,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 			free(new_path);
 			continue;
 		}
-		char *format = path_ends_with_slash ? "%s%s" : "%s/s";
+		char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
 		vec_add(*files, strformat(format, path, ent->d_name));
 	}
 	closedir(dir);

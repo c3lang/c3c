@@ -186,6 +186,7 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case CAST_STST:
 		case CAST_PTRANY:
 		case CAST_ENUMLOW:
+		case CAST_VECARR:
 			if (eval_kind == CONSTANT_EVAL_FOLDABLE) return false;
 			return expr_is_constant_eval(expr->cast_expr.expr, eval_kind);
 		case CAST_EUINT:
@@ -544,8 +545,6 @@ static inline bool sema_cast_ident_rvalue(Context *context, Expr *expr)
 		case DECL_ERRTYPE:
 			SEMA_ERROR(expr, "Expected errtype name followed by '.' and an error value.");
 			return expr_poison(expr);
-		case DECL_ARRAY_VALUE:
-			UNREACHABLE
 		case DECL_IMPORT:
 		case DECL_CT_IF:
 		case DECL_CT_ELSE:
@@ -1175,7 +1174,7 @@ static inline bool sema_expand_call_arguments(Context *context, CalledDecl *call
 			if (!variadic)
 			{
 				// 15. We have too many parameters...
-				SEMA_ERROR(arg, "This argument would would exceed the number of parameters, did you add to many arguments?");
+				SEMA_ERROR(arg, "This argument would would exceed the number of parameters, did you add too many arguments?");
 				return false;
 			}
 
@@ -6314,8 +6313,6 @@ static Type *sema_expr_check_type_exists(Context *context, TypeInfo *type_info)
 			if (!type_ok(type)) return type;
 			return type_get_subarray(type);
 		}
-		case TYPE_INFO_INC_ARRAY:
-			TODO
 		case TYPE_INFO_INFERRED_ARRAY:
 		{
 			// If it's an array, make sure we can resolve the length

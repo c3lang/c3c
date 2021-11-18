@@ -77,7 +77,6 @@ void recover_top_level(Context *context)
 			case TOKEN_EXTERN:
 			case TOKEN_ENUM:
 			case TOKEN_GENERIC:
-			case TOKEN_ATTRIBUTE:
 			case TOKEN_DEFINE:
 			case TOKEN_ERRTYPE:
 				return;
@@ -620,7 +619,6 @@ static inline TypeInfo *parse_base_type(Context *context)
  * array_type_index
  *		: '[' constant_expression ']'
  *		| '[' ']'
- *		| '[' '+' ']'
  *		| '[' '*' ']'
  *		;
  *
@@ -632,14 +630,6 @@ static inline TypeInfo *parse_array_type_index(Context *context, TypeInfo *type)
 	assert(type_info_ok(type));
 
 	advance_and_verify(context, TOKEN_LBRACKET);
-	if (try_consume(context, TOKEN_PLUS))
-	{
-		CONSUME_OR(TOKEN_RBRACKET, poisoned_type_info);
-		TypeInfo *incr_array = type_info_new(TYPE_INFO_INC_ARRAY, type->span);
-		incr_array->array.base = type;
-		RANGE_EXTEND_PREV(incr_array);
-		return incr_array;
-	}
 	if (try_consume(context, TOKEN_STAR))
 	{
 		CONSUME_OR(TOKEN_RBRACKET, poisoned_type_info);
@@ -884,26 +874,6 @@ static inline bool is_function_start(Context *context)
 	tok = advance_token(&current);
 	return tok == TOKEN_LPAREN;
 }
-
-
-static inline Decl *parse_incremental_array(Context *context)
-{
-	Token name = context->tok;
-	advance_and_verify(context, TOKEN_IDENT);
-
-	if (!try_consume(context, TOKEN_PLUS_ASSIGN))
-	{
-		SEMA_TOKEN_ERROR(name, "Did you miss a declaration before the variable name?");
-		return poisoned_decl;
-	}
-	Decl *decl = decl_new(DECL_ARRAY_VALUE, name.id, VISIBLE_LOCAL);
-	ASSIGN_EXPR_ELSE(decl->incr_array_decl, parse_initializer(context), poisoned_decl);
-	TRY_CONSUME_EOS_OR(poisoned_decl);
-	return decl;
-}
-
-
-
 
 
 bool parse_next_is_decl(Context *context)
@@ -1691,11 +1661,67 @@ static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 	TRY_CONSUME_EOS_OR(poisoned_decl);
 	return decl;
 }
+
+/**
+ * define_attribute ::= 'define' '@' IDENT '(' parameter_list ')' ('=' (void | attribute_list))?
+ */
+static inline Decl *parse_define_attribute(Context  *context, Visibility visibility)
+{
+	// 1. Store the beginning of the define.
+	TokenId start = context->tok.id;
+	advance_and_verify(context, TOKEN_DEFINE);
+
+	advance_and_verify(context, TOKEN_AT);
+
+	TokenType alias_type = context->tok.type;
+	if (alias_type != TOKEN_TYPE_IDENT)
+	{
+		if (token_is_some_ident(alias_type) || token_is_keyword(alias_type))
+		{
+			SEMA_TOKEN_ERROR(context->tok, "A user defined attribute must start with an uppercase character, followed by at least one lower case.");
+			return false;
+		}
+		SEMA_TOKEN_ERROR(context->tok, "The attribute name was expected here.");
+		return false;
+	}
+	Decl *decl = decl_new(DECL_DEFINE, context->tok.id, visibility);
+	advance_and_verify(context, TOKEN_TYPE_IDENT);
+
+	Decl **parameters = NULL;
+	if (try_consume(context, TOKEN_LPAREN))
+	{
+		if (!parse_parameters(context, visibility, &parameters)) return false;
+		CONSUME_OR(TOKEN_RPAREN, poisoned_decl);
+	}
+
+	Attr **attributes = NULL;
+	if (try_consume(context, TOKEN_EQ))
+	{
+		if (try_consume(context, TOKEN_VOID))
+		{
+			if (!parse_attributes(context, &attributes)) return false;
+		}
+	}
+
+	decl->define_decl.define_kind = DEFINE_ATTRIBUTE;
+	decl->define_decl.attributes.attrs = attributes;
+	decl->define_decl.attributes.params = parameters;
+	// 3. Set up the define.
+	decl->span.loc = start;
+	RANGE_EXTEND_PREV(decl);
+	return decl;
+}
+
 /**
  * define_decl ::= DEFINE define_type_body |
  */
 static inline Decl *parse_define(Context *context, Visibility visibility)
 {
+	if (context->next_tok.type == TOKEN_AT)
+	{
+		// define @foo = @inline, @noreturn
+		return parse_define_attribute(context, visibility);
+	}
 	if (context->next_tok.type == TOKEN_TYPE_IDENT)
 	{
 		return parse_define_type(context, visibility);
@@ -2258,9 +2284,6 @@ Decl *parse_top_level_statement(Context *context)
 			ASSIGN_DECL_ELSE(decl, parse_define(context, visibility), poisoned_decl);
 			break;
 		}
-		case TOKEN_ATTRIBUTE:
-			TODO
-			break;
 		case TOKEN_FUNC:
 		case TOKEN_FN:
 		{
@@ -2335,20 +2358,7 @@ Decl *parse_top_level_statement(Context *context)
 			break;
 		}
 		case TOKEN_IDENT:
-			if (context->next_tok.type == TOKEN_SCOPE)
-			{
-				ASSIGN_DECL_ELSE(decl, parse_global_declaration(context, visibility), poisoned_decl);
-				break;
-			}
-			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
-			ASSIGN_DECL_ELSE(decl, parse_incremental_array(context), poisoned_decl);
-			if (docs)
-			{
-				SEMA_ERROR(docs,
-				           "Unexpected doc comment before incremental array, did you mean to use a regular comment?");
-				return poisoned_decl;
-			}
-			break;
+			return parse_global_declaration(context, visibility);
 		case TOKEN_EOF:
 			SEMA_TOKID_ERROR(context->prev_tok, "Expected a top level declaration");
 			return poisoned_decl;

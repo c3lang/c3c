@@ -156,7 +156,6 @@ static void register_generic_decls(Module *module, Decl **decls)
 		switch (decl->decl_kind)
 		{
 			case DECL_POISONED:
-			case DECL_ARRAY_VALUE:
 			case DECL_ENUM_CONSTANT:
 			case DECL_ERRVALUE:
 			case DECL_IMPORT:

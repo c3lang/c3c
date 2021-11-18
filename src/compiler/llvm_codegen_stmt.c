@@ -1355,8 +1355,6 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_UNREACHABLE_STMT:
 			gencontext_emit_unreachable_stmt(c, ast);
 			break;
-		case AST_VOLATILE_STMT:
-			TODO
 	}
 }
 

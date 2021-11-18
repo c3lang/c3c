@@ -1,3 +1,4 @@
+// #target: x64-mingw
 module test;
 
 extern fn void printf(char*, ...);

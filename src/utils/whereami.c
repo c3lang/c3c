@@ -413,9 +413,10 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 
 #endif
 
-const char *find_executable_path(void)
+char *find_executable_path(void)
 {
 	int len = get_executable_path_raw(NULL, 0, NULL);
+	if (len < 0) return "";
 	char *path = malloc(len + 1);
 	get_executable_path_raw(path, len, NULL);
 	path[len] = '\0';

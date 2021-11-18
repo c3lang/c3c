@@ -33,7 +33,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build
+          ../../build/c3c build --debug-log
 
       - name: run compiler tests
         run: |
@@ -65,7 +65,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build
+          ../../build/c3c build --debug-log
 
       - name: run compiler tests
         run: |
@@ -93,7 +93,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build
+          ../../build/c3c build --debug-log
 
       - name: run compiler tests
         run: |
