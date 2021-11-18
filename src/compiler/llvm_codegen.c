@@ -82,6 +82,35 @@ void llvm_emit_memclear(GenContext *c, BEValue *ref)
 		llvm_emit_memclear(c, &element);
 		return;
 	}
+	if (type_size(type) <= 16)
+	{
+		if (type->type_kind == TYPE_STRUCT)
+		{
+			Decl *decl = type->decl;
+			Decl **members = decl->strukt.members;
+			VECEACH(members, i)
+			{
+				if (!type_size(members[i]->type)) continue;
+				BEValue member_ref;
+				llvm_emit_struct_member_ref(c, ref, &member_ref, i);
+				llvm_emit_memclear(c, &member_ref);
+			}
+			return;
+		}
+		if (type->type_kind == TYPE_ARRAY)
+		{
+			LLVMTypeRef array_type = llvm_get_type(c, type);
+			for (unsigned i = 0; i < type->array.len; i++)
+			{
+				AlignSize align;
+				LLVMValueRef element_ptr = llvm_emit_array_gep_raw(c, ref->value, array_type, i, ref->alignment, &align);
+				BEValue be_value;
+				llvm_value_set_address_align(&be_value, element_ptr, type->array.base, align);
+				llvm_emit_memclear(c, &be_value);
+			}
+			return;
+		}
+	}
 	llvm_emit_memclear_size_align(c, ref->value, type_size(ref->type), ref->alignment, true);
 }
 

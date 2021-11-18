@@ -428,7 +428,6 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 			*current = CLASS_INTEGER;
 			break;
 		case TYPE_F16:
-			TODO
 		case TYPE_F32:
 		case TYPE_F64:
 			*current = CLASS_SSE;
