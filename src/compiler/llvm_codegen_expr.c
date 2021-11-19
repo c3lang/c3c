@@ -1781,7 +1781,6 @@ static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *
 	}
 	if (initializer->kind == CONST_INIT_ZERO)
 	{
-		REMINDER("Optimize this for few elements");
 		// In case of a zero, optimize.
 		llvm_emit_memclear(c, ref);
 		return;
@@ -4738,27 +4737,31 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 
 
 
-static inline void gencontext_emit_failable(GenContext *context, BEValue *be_value, Expr *expr)
+static inline void llvm_emit_failable(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *fail = expr->inner_expr;
-	if (context->error_var)
+	// If there is an error value, assign to it.
+	if (c->error_var)
 	{
-		assert(context->error_var);
-		llvm_emit_expr(context, be_value, fail);
-		REMINDER("fix failable");
-		LLVMBuildStore(context->builder, llvm_value_rvalue_store(context, be_value),
-		               llvm_emit_bitcast(context, context->error_var, type_get_ptr(fail->type)));
+		assert(c->error_var);
+		llvm_emit_expr(c, be_value, fail);
+		llvm_store_bevalue_dest_aligned(c, c->error_var, be_value);
 	}
-	llvm_emit_br(context, context->catch_block);
-	LLVMBasicBlockRef ignored_block = llvm_basic_block_new(context, "postfailed");
-	llvm_emit_block(context, ignored_block);
+	// Branch to the catch
+	llvm_emit_br(c, c->catch_block);
+	// Create an empty block
+	LLVMBasicBlockRef ignored_block = llvm_basic_block_new(c, "postfailed");
+	llvm_emit_block(c, ignored_block);
+
+	// Finally we need to replace the result with something undefined here.
+	// It will be optimized away.
 	Type *type = type_no_fail(expr->type);
 	if (type->canonical == type_void)
 	{
 		llvm_value_set(be_value, NULL, type_void);
 		return;
 	}
-	llvm_value_set(be_value, LLVMGetUndef(llvm_get_type(context, type)), type);
+	llvm_value_set(be_value, LLVMGetUndef(llvm_get_type(c, type)), type);
 }
 
 static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, ArrayIndex index, bool *is_const)
@@ -5027,7 +5030,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_len(c, value, expr);
 			return;
 		case EXPR_FAILABLE:
-			gencontext_emit_failable(c, value, expr);
+			llvm_emit_failable(c, value, expr);
 			return;
 		case EXPR_TRY:
 			llvm_emit_try_expr(c, value, expr);

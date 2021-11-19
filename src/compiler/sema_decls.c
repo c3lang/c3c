@@ -741,9 +741,10 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 	unsigned enums = vec_size(decl->enums.values);
 	Int128 value = { 0, 0 };
 
+	Decl **enum_values = decl->enums.values;
 	for (unsigned i = 0; i < enums; i++)
 	{
-		Decl *enum_value = decl->enums.values[i];
+		Decl *enum_value = enum_values[i];
 		enum_value->type = decl->type;
 		DEBUG_LOG("* Checking enum constant %s.", enum_value->name);
 		enum_value->enum_constant.ordinal = i;
@@ -762,8 +763,15 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 			expr = expr_new(EXPR_CONST, source_span_from_token_id(enum_value->name_token));
 			expr->type = type;
 			expr->resolve_status = RESOLVE_NOT_DONE;
-			REMINDER("Do range check");
 			expr->const_expr.ixx = (Int) { value, canonical->type_kind };
+			if (expr_const_will_overflow(&expr->const_expr, canonical->type_kind))
+			{
+				SEMA_ERROR(enum_value,
+				           "The enum value would implicitly be %s which does not fit in %s.",
+				           i128_to_string(value, 10, type_is_signed(canonical)),
+				           type_quoted_error_string(type));
+				return false;
+			}
 			expr->const_expr.const_kind = CONST_INTEGER;
 			expr->const_expr.narrowable = true;
 			expr->type = canonical;
@@ -794,7 +802,7 @@ static inline bool sema_analyse_enum(Context *context, Decl *decl)
 		}
 
 		// Update the value
-		value = i128_add64(value, 1);
+		value = i128_add64(expr->const_expr.ixx.i, 1);
 		DEBUG_LOG("* Value: %s", expr_const_to_error_string(&expr->const_expr));
 		enum_value->resolve_status = RESOLVE_DONE;
 	}

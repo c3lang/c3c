@@ -952,11 +952,12 @@ static Expr *parse_placeholder(Context *context, Expr *left)
 
 static int read_num_type(const char *string, const char *end)
 {
-	REMINDER("Limit num type reader");
 	int i = 0;
+	if (string[0] == '0') return -1;
 	while (string < end)
 	{
 		i *= 10;
+		if (i > 1024) return i;
 		i += *(string++) - '0';
 	}
 	return i;
@@ -1079,7 +1080,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 	{
 		if (!is_power_of_two(type_bits) || type_bits > 128)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Integer width should be 8, 16, 32, 64 or 128.");
+			SEMA_TOKEN_ERROR(context->tok, "Integer type suffix should be i8, i16, i32, i64 or i128.");
 			return poisoned_expr;
 		}
 	}

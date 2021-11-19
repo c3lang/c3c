@@ -767,16 +767,18 @@ Int int_conv(Int op, TypeKind to_type)
 		}
 		// Extending from a signed to unsigned
 		int shift = 128 - to_bitsize;
-		// Cut off the top.
+		// Cut off the top of the signed bits
+		// 11101 -> 11010 -> 01101
 		return (Int){ i128_lshr64(i128_shl64(op.i, shift), shift), to_type };
 	}
+	// The other case is cutting down bits.
 	int shift = 128 - to_bitsize;
-	// Cut off the top.
-	if (from_signed)
+	Int128 without_top_bits = i128_lshr64(i128_shl64(op.i, shift), shift);
+	if (to_signed)
 	{
-		return (Int){ i128_ashr64(i128_shl64(op.i, shift), shift), to_type };
+		return (Int){ i128_ashr64(i128_shl64(without_top_bits, shift), shift), to_type };
 	}
-	return (Int){ i128_lshr64(i128_shl64(op.i, shift), shift), to_type };
+	return (Int) { without_top_bits, to_type };
 }
 
 Int int_div(Int op1, Int op2)
