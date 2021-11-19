@@ -4687,6 +4687,17 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	{
 		if (IS_FAILABLE(expr))
 		{
+			if (expr->expr_kind == EXPR_FAILABLE)
+			{
+				c->error_var = NULL;
+				c->catch_block = NULL;
+				BEValue result;
+				llvm_emit_expr(c, &result, expr->inner_expr);
+				llvm_store_bevalue_dest_aligned(c, failable, &result);
+				llvm_value_set(&result, LLVMGetUndef(llvm_get_type(c, ref->type)), ref->type);
+				POP_ERROR();
+				return result;
+			}
 			assign_block = llvm_basic_block_new(c, "after_assign");
 			c->error_var = failable;
 			c->catch_block = assign_block;

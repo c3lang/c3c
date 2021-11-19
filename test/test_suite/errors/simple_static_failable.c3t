@@ -20,8 +20,5 @@ entry:
   %i = alloca i32, align 4
   %i.f = alloca i64, align 8
   store i64 ptrtoint ([1 x i8*]* @"foo.Blurg$elements" to i64), i64* %i.f, align 8
-  br label %after_assign
-
-after_assign:                                     ; preds = %entry
   ret void
 }

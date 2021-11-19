@@ -71,13 +71,10 @@ entry:
   %zy = alloca i32, align 4
   %switch17 = alloca i32, align 4
   store i64 ptrtoint ([2 x i8*]* @"mymodule.ByeErr$elements" to i64), i64* %x.f, align 8
-  br label %after_assign
-
-after_assign:                                     ; preds = %entry
   store i64 5, i64* %z, align 8
   br label %testblock
 
-testblock:                                        ; preds = %after_assign
+testblock:                                        ; preds = %entry
   %0 = load i64, i64* %x.f, align 8
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after_check, label %error

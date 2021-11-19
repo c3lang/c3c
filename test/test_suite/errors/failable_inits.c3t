@@ -38,18 +38,15 @@ entry:
   %y = alloca %Bar, align 4
   %error_var = alloca i64, align 8
   store i64 ptrtoint ([2 x i8*]* @"test.Foo$elements" to i64), i64* %x.f, align 8
-  br label %after_assign
-
-after_assign:                                     ; preds = %entry
   %0 = load i64, i64* %x.f, align 8
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after_check, label %error
 
-error:                                            ; preds = %after_assign
+error:                                            ; preds = %entry
   store i64 %0, i64* %error_var, align 8
   br label %guard_block
 
-after_check:                                      ; preds = %after_assign
+after_check:                                      ; preds = %entry
   br label %noerr_block
 
 guard_block:                                      ; preds = %error
@@ -115,3 +112,6 @@ after.errcheck2:                                  ; preds = %voiderr
 voiderr3:                                         ; preds = %after.errcheck2, %voiderr
   ret void
 }
+
+; Function Attrs: argmemonly nofree nounwind willreturn
+declare void @llvm.memcpy.p0i8.p0i8.i32(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i32, i1 immarg) #1
