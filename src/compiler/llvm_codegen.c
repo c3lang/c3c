@@ -868,6 +868,7 @@ void llvm_value_fold_failable(GenContext *c, BEValue *value)
 		}
 		else
 		{
+			assert(c->catch_block);
 			llvm_emit_cond_br(c, &comp, after_block, c->catch_block);
 		}
 		llvm_emit_block(c, after_block);

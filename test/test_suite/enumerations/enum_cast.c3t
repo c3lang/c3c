@@ -49,10 +49,8 @@ entry:
   store i32 %uisiext, i32* %z2, align 4
   store float 3.000000e+00, float* %d, align 4
   store i8 1, i8* %hello, align 1
-  store i64 0, i64* %xf.f, align 8
   store i8 100, i8* %xf, align 1
   store i64 0, i64* %xf.f, align 8
-  store i64 0, i64* %e.f, align 8
   %2 = load i8, i8* %x, align 1
   %uifp = uitofp i8 %2 to float
   store float %uifp, float* %e, align 4

@@ -453,7 +453,6 @@ static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type)
 {
 	LLVMMetadataRef *ranges = NULL;
 	Type *current_type = type;
-	REMINDER("Handle Recursive Vector type");
 	while (current_type->canonical->type_kind == TYPE_VECTOR)
 	{
 		vec_add(ranges, LLVMDIBuilderGetOrCreateSubrange(c->debug.builder, 0, current_type->canonical->vector.len));

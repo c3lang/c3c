@@ -8,27 +8,27 @@ fn void! test()
 
 // #expect: rethrow.ll
 
-  %i = alloca i32, align 4
-  %i.f = alloca i64, align 8
-  %error_var = alloca i64, align 8
-  store i64 0, i64* %i.f, align 8
-  store i32 0, i32* %i, align 4
-  %0 = load i64, i64* %i.f, align 8
-  %not_err = icmp eq i64 %0, 0
-  br i1 %not_err, label %after_check, label %error
+    %i = alloca i32, align 4
+    %i.f = alloca i64, align 8
+    %error_var = alloca i64, align 8
+    store i64 0, i64* %i.f, align 8
+    store i32 0, i32* %i, align 4
+    %0 = load i64, i64* %i.f, align 8
+    %not_err = icmp eq i64 %0, 0
+    br i1 %not_err, label %after_check, label %error
 
-error:                                            ; preds = %entry
-  store i64 %0, i64* %error_var, align 8
-  br label %guard_block
+  error:                                            ; preds = %entry
+    store i64 %0, i64* %error_var, align 8
+    br label %guard_block
 
-after_check:                                      ; preds = %entry
-  %1 = load i32, i32* %i, align 4
-  br label %noerr_block
+  after_check:                                      ; preds = %entry
+    br label %noerr_block
 
-guard_block:                                      ; preds = %error
-  %2 = load i64, i64* %error_var, align 8
-  ret i64 %2
+  guard_block:                                      ; preds = %error
+    %1 = load i64, i64* %error_var, align 8
+    ret i64 %1
 
-noerr_block:                                      ; preds = %after_check
-  ret i64 0
-}
+  noerr_block:                                      ; preds = %after_check
+    %2 = load i32, i32* %i, align 4
+    ret i64 0
+  }

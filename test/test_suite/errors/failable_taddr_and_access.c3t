@@ -45,7 +45,6 @@ entry:
   %w.f = alloca i64, align 8
   %literal = alloca %Foo, align 4
   %literal5 = alloca %Foo, align 4
-  store i64 0, i64* %z.f, align 8
   store i32 2, i32* %z, align 4
   store i64 0, i64* %z.f, align 8
   %0 = getelementptr inbounds %Foo, %Foo* %literal, i32 0, i32 0

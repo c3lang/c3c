@@ -37,7 +37,6 @@ entry:
   %gh = alloca i32, align 4
   %e = alloca i64, align 8
   store i32 123, i32* %x, align 4
-  store i64 0, i64* %z.f, align 8
   store i32 234, i32* %z, align 4
   store i64 0, i64* %z.f, align 8
   store i64 0, i64* %w.f, align 8

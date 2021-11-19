@@ -70,6 +70,7 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		return decl->backend_ref;
 	}
 	llvm_emit_local_var_alloca(c, decl);
+	Expr *init = decl->var.init_expr;
 	if (IS_FAILABLE(decl))
 	{
 		scratch_buffer_clear();
@@ -77,13 +78,8 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		scratch_buffer_append(".f");
 		decl->var.failable_ref = llvm_emit_alloca_aligned(c, type_anyerr, scratch_buffer_to_string());
 		// Only clear out the result if the assignment isn't a failable.
-		if (!decl->var.init_expr || !IS_FAILABLE(decl->var.init_expr))
-		{
-			LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_anyerr)), decl->var.failable_ref);
-		}
 	}
 
-	Expr *init = decl->var.init_expr;
 	if (init)
 	{
 		// If we don't have undef, then make an assign.
@@ -91,12 +87,18 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		{
 			BEValue value;
 			llvm_value_set_decl_address(&value, decl);
+			value.kind = BE_ADDRESS;
 			llvm_emit_assign_expr(c, &value, decl->var.init_expr, decl->var.failable_ref);
 		}
 		// TODO trap on undef in debug mode.
 	}
 	else
 	{
+		if (decl->var.failable_ref)
+		{
+			LLVMBuildStore(c->builder, LLVMConstNull(llvm_get_type(c, type_anyerr)), decl->var.failable_ref);
+		}
+
 		Type *type = type_lowering(decl->type);
 		// Normal case, zero init.
 		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
@@ -107,6 +109,7 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		{
 			BEValue value;
 			llvm_value_set_decl_address(&value, decl);
+			value.kind = BE_ADDRESS;
 			llvm_emit_memclear(c, &value);
 		}
 	}

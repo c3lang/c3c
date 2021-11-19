@@ -3289,7 +3289,7 @@ static void gencontext_emit_or_error(GenContext *c, BEValue *be_value, Expr *exp
 /**
  * This is the foo? instruction.
  */
-static inline void gencontext_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr *expr)
+static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	LLVMBasicBlockRef guard_block = llvm_basic_block_new(c, "guard_block");
 	LLVMBasicBlockRef no_err_block = llvm_basic_block_new(c, "noerr_block");
@@ -3304,16 +3304,14 @@ static inline void gencontext_emit_rethrow_expr(GenContext *c, BEValue *be_value
 	c->catch_block = guard_block;
 
 	llvm_emit_expr(c, be_value, expr->rethrow_expr.inner);
-	REMINDER("Passed rvalue on guard, consider semantics.");
-	llvm_value_rvalue(c, be_value);
+	// Fold the failable.
+	llvm_value_fold_failable(c, be_value);
 
 	// Restore.
 	POP_ERROR();
 
 	// Emit success and to end.
 	llvm_emit_br(c, no_err_block);
-
-	POP_ERROR();
 
 	// Emit else
 	llvm_emit_block(c, guard_block);
@@ -3447,6 +3445,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		if (expr->binary_expr.left->expr_kind == EXPR_IDENTIFIER)
 		{
 			failable_ref = decl_failable_ref(left->identifier_expr.decl);
+			be_value->kind = BE_ADDRESS;
 		}
 		*be_value = llvm_emit_assign_expr(c, be_value, expr->binary_expr.right, failable_ref);
 		return;
@@ -5084,7 +5083,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_force_unwrap_expr(c, value, expr);
 			return;
 		case EXPR_RETHROW:
-			gencontext_emit_rethrow_expr(c, value, expr);
+			llvm_emit_rethrow_expr(c, value, expr);
 			return;
 		case EXPR_TYPEID:
 		case EXPR_GROUP:
