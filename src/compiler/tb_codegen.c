@@ -1,6 +1,7 @@
 #include "codegen_internal.h"
 
 #if TB_BACKEND
+
 #include <tb.h>
 
 typedef struct
@@ -50,21 +51,50 @@ static inline bool tinybackend_value_is_bool(BEValue *value)
 
 static TB_DataType tinybackend_get_type(Type *type)
 {
+	type = type_lowering(type);
+	int elements = 1;
+	if (type->type_kind == TYPE_VECTOR)
+	{
+		elements = type->vector.len;
+		type = type->vector.base;
+	}
 	switch (type->type_kind)
 	{
 		case TYPE_U8:
 		case TYPE_I8:
-			return TB_TYPE_I8(1);
+			return TB_TYPE_I8(elements);
 		case TYPE_U16:
 		case TYPE_I16:
-			return TB_TYPE_I16(1);
+			return TB_TYPE_I16(elements);
 		case TYPE_U32:
 		case TYPE_I32:
-			return TB_TYPE_I32(1);
+			return TB_TYPE_I32(elements);
 		case TYPE_U64:
 		case TYPE_I64:
-			return TB_TYPE_I64(1);
+			return TB_TYPE_I64(elements);
+		case TYPE_POINTER:
+			assert(elements == 1);
+			return TB_TYPE_PTR();
+		case TYPE_I128:
+		case TYPE_U128:
+			return TB_TYPE_I128(elements);
+		case TYPE_BOOL:
+			return TB_TYPE_BOOL(elements);
+		case TYPE_F64:
+			return TB_TYPE_F64(elements);
+		case TYPE_F32:
+			return TB_TYPE_F32(elements);
+		case TYPE_VOID:
+			assert(elements == 1);
+			return TB_TYPE_VOID();
+		case TYPE_F16:
+			TODO
+		case TYPE_F128:
+			TODO
+		case TYPE_VECTOR:
+			UNREACHABLE
 		default:
+			// Structs? Unions?
 			TODO
 	}
 }
@@ -76,8 +106,7 @@ static inline TB_Register decl_ref(Decl *decl)
 	return (TB_Register)((uintptr_t)decl->backend_ref);
 }
 
-TB_Register
-tinybackend_emit_load_aligned(GenContext *c, TB_DataType dt, TB_Register pointer, AlignSize alignment, const char *name)
+TB_Register tinybackend_emit_load_aligned(GenContext *c, TB_DataType dt, TB_Register pointer, AlignSize alignment)
 {
 	TB_Register value = tb_inst_load(c->function, dt, pointer, alignment);
 	return value;
@@ -96,8 +125,7 @@ void tinybackend_store_bevalue(GenContext *c, TB_DataType type, BEValue *destina
 		value->value = tinybackend_emit_load_aligned(c,
 		                                             tinybackend_get_type(value->type),
 		                                             value->value,
-		                                             value->alignment,
-		                                             "");
+		                                             value->alignment);
 		value->kind = BE_VALUE;
 	}
 
@@ -291,8 +319,7 @@ void tinybackend_value_rvalue(GenContext *c, BEValue *value)
 	value->value = tinybackend_emit_load_aligned(c,
 	                                             tinybackend_get_type(value->type),
 	                                             value->value,
-	                                             value->alignment ? value->alignment : type_abi_alignment(value->type),
-	                                             "");
+	                                             value->alignment ? value->alignment : type_abi_alignment(value->type));
 
 	if (value->type->type_kind == TYPE_BOOL)
 	{
