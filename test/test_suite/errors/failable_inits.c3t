@@ -1,3 +1,5 @@
+// #target: x64-darwin
+
 module test;
 import std::io;
 errtype Foo
@@ -112,6 +114,3 @@ after.errcheck2:                                  ; preds = %voiderr
 voiderr3:                                         ; preds = %after.errcheck2, %voiderr
   ret void
 }
-
-; Function Attrs: argmemonly nofree nounwind willreturn
-declare void @llvm.memcpy.p0i8.p0i8.i32(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i32, i1 immarg) #1
