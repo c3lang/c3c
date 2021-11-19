@@ -11,6 +11,13 @@
 #define MAX_FILES 2048
 #define MAX_THREADS 0xFFFF
 
+#define TB_BACKEND 0
+
+typedef enum
+{
+	BACKEND_LLVM,
+	BACKEND_TB
+} CompilerBackend;
 
 typedef enum
 {
@@ -180,6 +187,7 @@ typedef struct BuildOptions_
 	const char* target_select;
 	const char* path;
 	unsigned version;
+	CompilerBackend backend;
 	CompilerCommand command;
 	CompileOption compile_option;
 	PieGeneration pie;
@@ -231,6 +239,7 @@ typedef struct
 	PieGeneration pie;
 	PicGeneration pic;
 	ArchOsTarget arch_os_target;
+	CompilerBackend backend;
 	uint32_t symtab_size;
 	struct
 	{

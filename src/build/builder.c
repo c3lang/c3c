@@ -45,6 +45,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			break;
 	}
 
+	target->backend = options->backend;
+
 	// Copy optimization levels.
 	switch (options->optimization_setting_override)
 	{

@@ -109,10 +109,16 @@ typedef struct CompileData_
 	Task task;
 } CompileData;
 
-void thread_compile_task(void *compiledata)
+void thread_compile_task_llvm(void *compiledata)
 {
 	CompileData *data = compiledata;
 	data->object_name = llvm_codegen(data->context);
+}
+
+void thread_compile_task_tb(void *compiledata)
+{
+	CompileData *data = compiledata;
+	data->object_name = tinybackend_codegen(data->context);
 }
 
 void sema_analyze_stage(Module *module, AnalysisStage stage)
@@ -279,6 +285,7 @@ static void setup_bool_define(const char *id, bool value)
 		error_exit("Redefined ident %s", id);
 	}
 }
+
 void compiler_compile(void)
 {
 	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short, type_long);
@@ -349,15 +356,32 @@ void compiler_compile(void)
 		return;
 	}
 
-	llvm_codegen_setup();
-
 	void **gen_contexts = NULL;
+	void (*task)(void *arg);
 
-	for (unsigned i = 0; i < module_count; i++)
+	switch (active_target.backend)
 	{
-		void *result = llvm_gen(modules[i]);
-		if (result) vec_add(gen_contexts, result);
+		case BACKEND_LLVM:
+			llvm_codegen_setup();
+			for (unsigned i = 0; i < module_count; i++)
+			{
+				void *result = llvm_gen(modules[i]);
+				if (result) vec_add(gen_contexts, result);
+			}
+			task = &thread_compile_task_llvm;
+			break;
+		case BACKEND_TB:
+			tinybackend_codegen_setup();
+			for (unsigned i = 0; i < module_count; i++)
+			{
+				void *result = tinybackend_gen(modules[i]);
+				if (result) vec_add(gen_contexts, result);
+			}
+			task = &thread_compile_task_tb;
+			break;
 	}
+
+
 
 	if (debug_stats)
 	{
@@ -398,10 +422,11 @@ void compiler_compile(void)
 
 	TaskQueueRef queue = taskqueue_create(16);
 
+
 	for (unsigned i = 0; i < output_file_count; i++)
 	{
 		compile_data[i] = (CompileData) { .context = gen_contexts[i] };
-		compile_data[i].task = (Task) { &thread_compile_task, &compile_data[i] };
+		compile_data[i].task = (Task) { task, &compile_data[i] };
 		taskqueue_add(queue, &compile_data[i].task);
 	}
 

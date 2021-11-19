@@ -111,6 +111,7 @@ add_executable(c3c
         src/compiler/compiler.h
         src/compiler/types.c
         src/compiler/module.c
+        src/compiler/tb_codegen.c
         src/compiler/llvm_codegen.c
         src/utils/stringutils.c
         src/utils/find_msvc.c
@@ -161,6 +162,9 @@ endif()
 
 target_include_directories(c3c PRIVATE
         "${CMAKE_SOURCE_DIR}/src/")
+
+target_include_directories(c3c PRIVATE
+        "${CMAKE_SOURCE_DIR}/tb/")
 
 target_include_directories(c3c_wrappers PRIVATE
         "${CMAKE_SOURCE_DIR}/wrapper/src/")

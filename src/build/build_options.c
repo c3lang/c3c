@@ -69,6 +69,7 @@ static void usage(void)
 	OUTPUT("  headers <file1> [<file2> ...]      Analyse files and generate C headers for public methods.");
 	OUTPUT("");
 	OUTPUT("Options:");
+	OUTPUT("  --tinybackend         - Use the TinyBackend for compilation.");
 	OUTPUT("  --stdlib <dir>        - Use this directory as the C3 standard library path.");
 	OUTPUT("  --lib <dir>           - Use this directory as the C3 library path.");
 	OUTPUT("  --path <dir>          - Use this as the base directory for the current command.");
@@ -397,6 +398,15 @@ static void parse_option(BuildOptions *options)
 			options->compile_option = COMPILE_LEX_PARSE_ONLY;
 			return;
 		case '-':
+			if (match_longopt("tinybackend"))
+			{
+#if TB_BACKEND
+				options->backend = BACKEND_TB;
+				return;
+#else
+				error_exit("error: The TinyBackend is not supported on this platform.");
+#endif
+			}
 			if (match_longopt("version"))
 			{
 				print_version();
@@ -527,6 +537,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.command = COMMAND_MISSING,
 		.pie = PIE_DEFAULT,
 		.pic = PIC_DEFAULT,
+		.backend = BACKEND_LLVM,
 		.files = NULL
 	};
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)

@@ -1752,6 +1752,10 @@ const char *llvm_codegen(void *context);
 void *llvm_gen(Module *module);
 void llvm_codegen_setup();
 
+const char *tinybackend_codegen(void *context);
+void *tinybackend_gen(Module *module);
+void tinybackend_codegen_setup();
+
 void header_gen(Module *module);
 
 void global_context_add_type(Type *type);
