@@ -7,9 +7,7 @@
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "ConstantFunctionResult"
 
-#define FLOAT32_LIMIT 340282346638528859811704183484516925440.0000000000000000
-#define FLOAT64_LIMIT 179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0000000000000000
-#define FLOAT16_LIMIT 65504
+
 
 static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type);
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
@@ -671,29 +669,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 
 bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
 {
-	Type *to_type_flat = type_flatten(to_type);
-	Real hi_limit;
-	Real lo_limit;
-	switch (to_type_flat->type_kind)
-	{
-		case TYPE_F16:
-			lo_limit = hi_limit = FLOAT16_LIMIT;
-			break;
-		case TYPE_F32:
-			lo_limit = hi_limit = FLOAT32_LIMIT;
-			break;
-		case TYPE_F64:
-			lo_limit = hi_limit = FLOAT64_LIMIT;
-			break;
-		case TYPE_F128:
-			// Assume this to be true
-			return true;
-		case TYPE_BOOL:
-			return true;
-		default:
-			UNREACHABLE
-	}
-	if (expr->const_expr.fxx.f < -lo_limit || expr->const_expr.fxx.f > hi_limit)
+	if (!float_const_fits_type(&expr->const_expr, type_flatten(to_type)->type_kind))
 	{
 #if LONG_DOUBLE
 		SEMA_ERROR(expr, "The value '%Lg' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.fxx.f, type_quoted_error_string(to_type));
@@ -705,32 +681,6 @@ bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
 	return true;
 }
 
-bool float_const_fits_type(Expr *expr, Type *to_type)
-{
-	Type *to_type_flat = type_flatten(to_type);
-	Real hi_limit;
-	Real lo_limit;
-	switch (to_type_flat->type_kind)
-	{
-		case TYPE_F16:
-			lo_limit = hi_limit = FLOAT16_LIMIT;
-			break;
-		case TYPE_F32:
-			lo_limit = hi_limit = FLOAT32_LIMIT;
-			break;
-		case TYPE_F64:
-			lo_limit = hi_limit = FLOAT64_LIMIT;
-			break;
-		case TYPE_F128:
-			// Assume this to be true
-			return true;
-		case TYPE_BOOL:
-			return true;
-		default:
-			UNREACHABLE
-	}
-	return expr->const_expr.fxx.f >= -lo_limit && expr->const_expr.fxx.f <= hi_limit;
-}
 
 bool may_convert_int_const_implicit(Expr *expr, Type *to_type)
 {
@@ -844,7 +794,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 				return type_size(expr->type) > type_size(type) ? expr : NULL;
 			}
 			assert(expr->const_expr.const_kind == CONST_FLOAT);
-			if (!float_const_fits_type(expr, type_flatten(type)))
+			if (!float_const_fits_type(&expr->const_expr, type_flatten(type)->type_kind))
 			{
 				return expr;
 			}
@@ -1290,9 +1240,12 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to == type_bool) return err_to_bool(expr, to_type);
 			if (type_is_integer(to)) return insert_cast(expr, CAST_ERINT, to_type);
 			break;
+		case TYPE_ARRAY:
+			if (to->type_kind == TYPE_VECTOR) return insert_cast(expr, CAST_ARRVEC, to_type);
+			FALLTHROUGH;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ARRAY:
+
 			if (to->type_kind == TYPE_ARRAY || to->type_kind == TYPE_STRUCT || to->type_kind == TYPE_UNION)
 			{
 				return insert_cast(expr, CAST_STST, to_type);

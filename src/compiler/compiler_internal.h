@@ -1867,6 +1867,7 @@ static inline bool expr_is_init_list(Expr *expr)
 	ExprKind kind = expr->expr_kind;
 	return kind == EXPR_DESIGNATED_INITIALIZER_LIST || kind == EXPR_INITIALIZER_LIST;
 }
+bool float_const_fits_type(const ExprConst *expr_const, TypeKind kind);
 
 
 #pragma mark --- Lexer functions

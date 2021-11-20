@@ -34,6 +34,18 @@ static inline LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef a
 	}
 }
 
+static inline LLVMValueRef llvm_emit_extract_element(GenContext *c, LLVMValueRef vector, unsigned index)
+{
+	if (LLVMIsConstant(vector))
+	{
+		return LLVMConstExtractElement(vector, llvm_const_int(c, type_usize, index));
+	}
+	else
+	{
+		return LLVMBuildExtractElement(c->builder, vector, llvm_const_int(c, type_usize, index), "");
+	}
+}
+
 static inline LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, unsigned index)
 {
 	if (LLVMIsConstant(agg) && LLVMIsConstant(new_value))
@@ -1021,6 +1033,43 @@ LLVMValueRef gencontext_emit_value_bitcast(GenContext *context, LLVMValueRef val
 	return gencontext_emit_load(context, to_type, ptr_cast);
 }
 
+void llvm_emit_vector_to_array_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
+{
+	llvm_value_rvalue(c, value);
+	LLVMTypeRef array_type = llvm_get_type(c, to_type);
+	LLVMValueRef array = LLVMGetUndef(array_type);
+	bool is_const = LLVMIsConstant(value->value);
+	for (unsigned i = 0; i < to_type->array.len; i++)
+	{
+		LLVMValueRef element = llvm_emit_extract_element(c, value->value, i);
+		if (is_const)
+		{
+			array = LLVMConstInsertValue(array, element, &i, 1);
+			continue;
+		}
+		array = LLVMBuildInsertValue(c->builder, array, element, i, "");
+	}
+	llvm_value_set(value, array, to_type);
+}
+
+void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
+{
+	llvm_value_rvalue(c, value);
+	LLVMTypeRef vector_type = llvm_get_type(c, to_type);
+	LLVMValueRef vector = LLVMGetUndef(vector_type);
+	bool is_const = LLVMIsConstant(value->value);
+	for (unsigned i = 0; i < to_type->vector.len; i++)
+	{
+		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
+		if (is_const)
+		{
+			vector = LLVMConstInsertElement(vector, element, llvm_const_int(c, type_usize, i));
+			continue;
+		}
+		vector = LLVMBuildInsertElement(c->builder, vector, element, llvm_const_int(c, type_usize, i), "");
+	}
+	llvm_value_set(value, vector, to_type);
+}
 
 void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_type, Type *from_type)
 {
@@ -1029,6 +1078,9 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 
 	switch (cast_kind)
 	{
+		case CAST_ARRVEC:
+			llvm_emit_array_to_vector_cast(c, value, to_type, from_type);
+			return;
 		case CAST_PTRANY:
 		{
 			llvm_value_rvalue(c, value);
@@ -1130,7 +1182,8 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			assert(type_lowering(to_type) == type_lowering(from_type));
 			break;
 		case CAST_VECARR:
-			TODO
+			llvm_emit_vector_to_array_cast(c, value, to_type, from_type);
+			break;
 		case CAST_EUER:
 			TODO // gencontext_emit_value_bitcast(c, value->value, to_type, from_type);
 		case CAST_ERBOOL:

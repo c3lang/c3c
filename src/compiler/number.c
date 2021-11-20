@@ -4,6 +4,9 @@
 
 #include "compiler_internal.h"
 
+#define FLOAT32_LIMIT 340282346638528859811704183484516925440.0000000000000000
+#define FLOAT64_LIMIT 179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0000000000000000
+#define FLOAT16_LIMIT 65504
 
 void expr_const_set_int(ExprConst *expr, uint64_t v, TypeKind kind)
 {
@@ -160,6 +163,32 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 	return (op == BINARYOP_EQ) && is_eq;
 }
 
+bool float_const_fits_type(const ExprConst *expr_const, TypeKind kind)
+{
+	Real hi_limit;
+	Real lo_limit;
+	switch (kind)
+	{
+		case TYPE_F16:
+			lo_limit = hi_limit = FLOAT16_LIMIT;
+			break;
+		case TYPE_F32:
+			lo_limit = hi_limit = FLOAT32_LIMIT;
+			break;
+		case TYPE_F64:
+			lo_limit = hi_limit = FLOAT64_LIMIT;
+			break;
+		case TYPE_F128:
+			// Assume this to be true
+			return true;
+		case TYPE_BOOL:
+			return true;
+		default:
+			UNREACHABLE
+	}
+	return expr_const->fxx.f >= -lo_limit && expr_const->fxx.f <= hi_limit;
+}
+
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 {
 	switch (kind)
@@ -167,11 +196,10 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 		case ALL_INTS:
 			return !int_fits(expr->ixx, kind);
 		case TYPE_F16:
-			REMINDER("Check f16 narrowing");
-			FALLTHROUGH;
 		case TYPE_F32:
 		case TYPE_F64:
 		case TYPE_F128:
+			return !float_const_fits_type(expr, kind);
 		case TYPE_BOOL:
 			return false;
 		default:

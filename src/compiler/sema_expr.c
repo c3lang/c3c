@@ -187,6 +187,7 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case CAST_PTRANY:
 		case CAST_ENUMLOW:
 		case CAST_VECARR:
+		case CAST_ARRVEC:
 			if (eval_kind == CONSTANT_EVAL_FOLDABLE) return false;
 			return expr_is_constant_eval(expr->cast_expr.expr, eval_kind);
 		case CAST_EUINT:
