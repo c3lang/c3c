@@ -157,7 +157,7 @@ add_executable(c3c
 if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     message(STATUS "using gcc/clang warning switches")
     target_compile_options(c3c PRIVATE -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
-            -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
+            -Wimplicit-int-conversion -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 endif()
 
 target_include_directories(c3c PRIVATE

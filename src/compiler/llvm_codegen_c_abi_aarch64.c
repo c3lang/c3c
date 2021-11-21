@@ -48,7 +48,8 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	if (type_is_homogenous_aggregate(type, &base, &members))
 	{
 		ABIArgInfo *info = abi_arg_new_direct_coerce(abi_type_new_plain(base));
-		info->direct_coerce.elements = members;
+		assert(members < 128);
+		info->direct_coerce.elements = (uint8_t)members;
 		return info;
 	}
 
@@ -72,7 +73,8 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		// We use a pair of i64 for 16-byte aggregate with 8-byte alignment.
 		// For aggregates with 16-byte alignment, we use i128.
 		ABIArgInfo *info = abi_arg_new_direct_coerce(abi_type_new_int_bits(alignment * 8));
-		info->direct_coerce.elements = size / alignment;
+		assert(size / alignment < 128);
+		info->direct_coerce.elements = (uint8_t)(size / alignment);
 		return info;
 	}
 

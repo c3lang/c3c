@@ -30,7 +30,7 @@ void file_find_top_dir();
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive);
 void *cmalloc(size_t size);
 void memory_init(void);
-void *malloc_arena(unsigned long mem);
+void *malloc_arena(size_t mem);
 void free_arena(void);
 void print_arena_status(void);
 void run_arena_allocator_tests(void);
@@ -358,9 +358,10 @@ typedef struct
 
 static inline VHeader_* vec_new_(size_t element_size, size_t capacity)
 {
+	assert(capacity < UINT32_MAX);
 	VHeader_ *header = malloc_arena(element_size * capacity + sizeof(VHeader_));
 	header->size = 0;
-	header->capacity = capacity;
+	header->capacity = (unsigned)capacity;
 	return header;
 }
 

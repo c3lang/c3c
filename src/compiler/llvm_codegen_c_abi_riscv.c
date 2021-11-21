@@ -37,7 +37,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 	bool is_int = type_is_integer(type);
 	bool is_float = type_is_float(type);
 	unsigned flen = platform_target.riscv.flen;
-	unsigned size = type_size(type);
+	ByteSize size = type_size(type);
 	if (is_int || is_float)
 	{
 		if (is_int && size > platform_target.riscv.xlen) return false;
@@ -67,7 +67,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 	{
 		ByteSize array_len = type->array.len;
 		Type *element_type = type->array.base;
-		unsigned element_size = type_size(element_type);
+		ByteSize element_size = type_size(element_type);
 		for (ByteSize i = 0; i < array_len; i++)
 		{
 			if (!riscv_detect_fpcc_struct_internal(element_type,
@@ -76,7 +76,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 			                                       field1_offset,
 			                                       field2,
 			                                       field2_offset)) return false;
-			current_offset += element_size;
+			current_offset += (unsigned)element_size;
 		}
 		return true;
 	}
@@ -91,7 +91,7 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		{
 			Decl *member = members[i];
 			if (!riscv_detect_fpcc_struct_internal(member->type,
-			                                       current_offset + member->offset,
+												   (unsigned)(current_offset + member->offset),
 			                                       field1,
 			                                       field1_offset,
 			                                       field2,

@@ -238,10 +238,10 @@ typedef struct Path_
 
 typedef struct
 {
-	unsigned char bitsize;
-	unsigned char bytesize;
-	unsigned char abi_alignment;
-	unsigned char pref_alignment;
+	unsigned bitsize : 8;
+	unsigned bytesize : 8;
+	unsigned abi_alignment : 8;
+	unsigned pref_alignment : 8;
 }  TypeBuiltin;
 
 typedef struct
@@ -1505,7 +1505,7 @@ typedef struct ABIArgInfo_
 		struct
 		{
 			AbiType *type;
-			uint8_t elements : 3;
+			uint8_t elements : 7;
 			bool prevent_flatten : 1;
 		} direct_coerce;
 		struct
@@ -1771,7 +1771,7 @@ bool context_add_import(Context *context, Path *path, Token symbol, Token alias,
 bool context_set_module_from_filename(Context *context);
 bool context_set_module(Context *context, Path *path, TokenId *generic_parameters, bool is_private);
 
-#pragma mark --- Decl functions
+// --- Decl functions
 
 Decl *decl_new(DeclKind decl_kind, TokenId name, Visibility visibility);
 Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility);
@@ -1823,7 +1823,7 @@ static inline Decl *decl_flatten(Decl *decl)
 	return decl;
 }
 
-#pragma mark --- Diag functions
+// --- Diag functions
 
 
 void diag_verror_range(SourceLocation *location, const char *message, va_list args);
@@ -1870,7 +1870,7 @@ static inline bool expr_is_init_list(Expr *expr)
 bool float_const_fits_type(const ExprConst *expr_const, TypeKind kind);
 
 
-#pragma mark --- Lexer functions
+// --- Lexer functions
 
 
 Token lexer_advance(Lexer *lexer);
@@ -2164,7 +2164,7 @@ static inline bool type_is_pointer(Type *type)
 	return kind == TYPE_POINTER;
 }
 
-static inline uint64_t aligned_offset(uint64_t offset, uint64_t alignment)
+static inline ByteSize aligned_offset(uint64_t offset, uint64_t alignment)
 {
 	return ((offset + alignment - 1) / alignment) * alignment;
 }

@@ -956,61 +956,61 @@ void toml_encode_unicode_scalar(TomlString *result, TomlParser *parser, int n, T
 
     if (scalar <= 0x7ff)
     {
-        toml_string_append_char(result, 0xc0 | (scalar >> 6), &err);
+        toml_string_append_char(result, (char)(0xc0 | (scalar >> 6)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | (scalar & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | (scalar & 0x3f)), &err);
         goto cleanup;
     }
 
     if (scalar <= 0xffff)
     {
-        toml_string_append_char(result, 0xe0 | (scalar >> 12), &err);
+        toml_string_append_char(result, (char)(0xe0 | (scalar >> 12)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | ((scalar >> 6) & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | ((scalar >> 6) & 0x3f)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | (scalar & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | (scalar & 0x3f)), &err);
         goto cleanup;
     }
 
     if (scalar <= 0x1fffff)
     {
-        toml_string_append_char(result, 0xf0 | (scalar >> 18), &err);
+        toml_string_append_char(result, (char)(0xf0 | (scalar >> 18)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | ((scalar >> 12) & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | ((scalar >> 12) & 0x3f)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | ((scalar >> 6) & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | ((scalar >> 6) & 0x3f)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | (scalar & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | (scalar & 0x3f)), &err);
         goto cleanup;
     }
 
     if (scalar <= 0x3ffffff)
     {
-        toml_string_append_char(result, 0xf8 | (scalar >> 24), &err);
+    	toml_string_append_char(result, (char)(0xf8 | (scalar >> 24)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | ((scalar >> 18) & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | ((scalar >> 18) & 0x3f)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | ((scalar >> 12) & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | ((scalar >> 12) & 0x3f)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | ((scalar >> 6) & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | ((scalar >> 6) & 0x3f)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | (scalar & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | (scalar & 0x3f)), &err);
         goto cleanup;
     }
 
     if (scalar <= 0x7fffffff)
     {
-        toml_string_append_char(result, 0xfc | (scalar >> 30), &err);
+    	toml_string_append_char(result, (char)(0xfc | (scalar >> 30)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | ((scalar >> 24) & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | ((scalar >> 24) & 0x3f)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | ((scalar >> 18) & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | ((scalar >> 18) & 0x3f)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | ((scalar >> 12) & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | ((scalar >> 12) & 0x3f)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | ((scalar >> 6) & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | ((scalar >> 6) & 0x3f)), &err);
         if (err.code != TOML_OK) goto cleanup;
-        toml_string_append_char(result, 0x80 | (scalar & 0x3f), &err);
+        toml_string_append_char(result, (char)(0x80 | (scalar & 0x3f)), &err);
         goto cleanup;
     }
 

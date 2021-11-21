@@ -100,7 +100,7 @@ static inline void add_generic_token(Lexer *lexer, TokenType type)
 	SourceLocation *location = sourceloc_alloc();
 	unsigned char *token_type = (unsigned char *)toktype_alloc();
 	TokenData *data = tokdata_alloc();
-	*token_type = type;
+	*token_type = (unsigned char)type;
 
 	// Set the location.
 	location->file = lexer->current_file;
@@ -743,7 +743,7 @@ static inline bool scan_char(Lexer *lexer)
 					return add_error_token(lexer, "Expected a two character hex value after \\x.");
 				}
 				// We can now reassign c and use the default code.
-				c = hex;
+				c = (char)hex;
 				break;
 			}
 			case 'u':

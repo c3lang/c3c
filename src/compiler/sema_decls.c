@@ -185,7 +185,7 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 	// padding.
 	if (size > rep_size)
 	{
-		decl->strukt.padding = size - rep_size;
+		decl->strukt.padding = (int16_t)(size - rep_size);
 	}
 
 	decl->strukt.size = size;
@@ -291,7 +291,7 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 	// in this case we need an additional padding
 	if (size > aligned_offset(offset, natural_alignment))
 	{
-		decl->strukt.padding = size - offset;
+		decl->strukt.padding = (int16_t)(size - offset);
 	}
 
 	// If the size is smaller the naturally aligned struct, then it is also unaligned
@@ -302,7 +302,7 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 	if (is_unaligned && size > offset)
 	{
 		assert(!decl->strukt.padding);
-		decl->strukt.padding = size - offset;
+		decl->strukt.padding = (int16_t)(size - offset);
 	}
 	decl->is_packed = is_unaligned;
 	decl->strukt.size = size;

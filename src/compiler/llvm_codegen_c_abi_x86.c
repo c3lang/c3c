@@ -503,7 +503,8 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 		// but we do not generate this struct immediately here.
 		unsigned size_in_regs = (size + 3) / 4;
 		ABIArgInfo *info = abi_arg_new_direct_coerce(abi_type_new_int_bits(32));
-		info->direct_coerce.elements = size_in_regs;
+		assert(size_in_regs < 8);
+		info->direct_coerce.elements = (uint8_t)size_in_regs;
 		// Not in reg on MCU
 		if (!platform_target.x86.is_mcu_api) info->attributes.by_reg = true;
 		return info;

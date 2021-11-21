@@ -1166,7 +1166,7 @@ static void parse_hex(char **result_pointer, const char *data, const char *end)
 		while ((val = char_to_nibble(*(data++))) < 0) if (data == end) goto DONE;
 		while ((val2 = char_to_nibble(*(data++))) < 0);
 
-		*(data_current++) = (val << 4) | val2;
+		*(data_current++) = (char)((val << 4) | val2);
 	}
 	DONE:
 	*result_pointer = data_current;
