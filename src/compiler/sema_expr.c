@@ -242,7 +242,7 @@ static bool sema_bit_assignment_check(Expr *right, Decl *member)
 {
 	if (right->expr_kind != EXPR_CONST || !type_is_integer(right->type)) return true;
 
-	int bits = member->var.end_bit - member->var.start_bit + 1;
+	unsigned bits = member->var.end_bit - member->var.start_bit + 1;
 
 	if (bits >= type_size(right->type) * 8 || int_is_zero(right->const_expr.ixx)) return true;
 
@@ -258,11 +258,11 @@ static bool sema_bit_assignment_check(Expr *right, Decl *member)
 			i = i128_neg(i);
 			i = i128_sub64(i, 1);
 		}
-		bits_used = 1 + 128 - i128_clz(&i);
+		bits_used = (int) (1 + 128 - i128_clz(&i));
 	}
 	else
 	{
-		bits_used = 128 - i128_clz(&i);
+		bits_used = (int) (128 - i128_clz(&i));
 	}
 	if (bits_used <= bits) return true;
 
@@ -1779,7 +1779,7 @@ static inline bool sema_expr_analyse_generic_call(Context *context, Expr *call_e
 		return false;
 	}
 
-	int offset = total_args - explicit_args;
+	unsigned offset = total_args - explicit_args;
 	for (unsigned i = 0; i < explicit_args; i++)
 	{
 		Expr *arg = args[i];
@@ -2198,7 +2198,7 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 		SEMA_ERROR(index_expr, "Negative numbers are not allowed when indexing from the end.");
 		return false;
 	}
-	ArrayIndex idx = index.i.low;
+	MemberIndex idx = (MemberIndex)index.i.low;
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
@@ -2207,7 +2207,7 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:
 		{
-			int64_t len = (int64_t)type->array.len;
+			MemberIndex len = (MemberIndex)type->array.len;
 			bool is_vector = type->type_kind == TYPE_VECTOR;
 			if (from_end)
 			{
@@ -2483,7 +2483,7 @@ static inline void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *str
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 	expr_to_rewrite->const_expr.const_kind = CONST_STRING;
 	expr_to_rewrite->const_expr.string.chars = (char *)string;
-	expr_to_rewrite->const_expr.string.len = (int)strlen(string);
+	expr_to_rewrite->const_expr.string.len = (uint32_t)strlen(string);
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
 	expr_to_rewrite->type = type_compstr;
 }
@@ -2934,7 +2934,7 @@ static Decl *sema_resolve_element_for_name(Decl** decls, DesignatorElement **ele
 		// The simple case, we have a match.
 		if (decl->name == name)
 		{
-			element->index = i;
+			element->index = (MemberIndex)i;
 			return decl;
 		}
 		if (!decl->name)
@@ -2957,7 +2957,7 @@ static Decl *sema_resolve_element_for_name(Decl** decls, DesignatorElement **ele
 			// Create our anon field.
 			DesignatorElement *anon_element = CALLOCS(DesignatorElement);
 			anon_element->kind = DESIGNATOR_FIELD;
-			anon_element->index = i;
+			anon_element->index = (MemberIndex)i;
 			elements[old_index] = anon_element;
 			// Advance
 			(*index)++;
@@ -2967,7 +2967,7 @@ static Decl *sema_resolve_element_for_name(Decl** decls, DesignatorElement **ele
 	return NULL;
 }
 
-static int64_t sema_analyse_designator_index(Context *context, Expr *index)
+static MemberIndex sema_analyse_designator_index(Context *context, Expr *index)
 {
 	if (!sema_analyse_expr_lvalue(context, index))
 	{
@@ -2984,9 +2984,9 @@ static int64_t sema_analyse_designator_index(Context *context, Expr *index)
 		SEMA_ERROR(index, "The index must be a constant value.");
 		return -1;
 	}
-	if (!int_fits(index->const_expr.ixx, TYPE_I64))
+	if (!int_fits(index->const_expr.ixx, TYPE_I32))
 	{
-		SEMA_ERROR(index, "The value of the index does not fit in a long.");
+		SEMA_ERROR(index, "The value of the index does not fit in an int.");
 		return -1;
 	}
 	int64_t index_val = int_to_i64(index->const_expr.ixx);
@@ -2995,10 +2995,10 @@ static int64_t sema_analyse_designator_index(Context *context, Expr *index)
 		SEMA_ERROR(index, "Negative index values is not allowed.");
 		return -1;
 	}
-	return index_val;
+	return (MemberIndex)index_val;
 }
 
-static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr)
+static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorElement **elements, unsigned *curr_index, bool *is_constant, bool *did_report_error, MemberIndex *max_index, Decl **member_ptr)
 {
 	Type *type_flattened = type_flatten(type);
 	DesignatorElement *element = elements[*curr_index];
@@ -3024,13 +3024,13 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 			default:
 				return NULL;
 		}
-		ArrayIndex index = sema_analyse_designator_index(context, element->index_expr);
+		MemberIndex index = sema_analyse_designator_index(context, element->index_expr);
 		if (index < 0)
 		{
 			*did_report_error = true;
 			return NULL;
 		}
-		if (index >= (ArrayIndex)len)
+		if (index >= (MemberIndex)len)
 		{
 			SEMA_ERROR(element->index_expr, "The index may must be less than the array length (which was %llu).", (unsigned long long)len);
 			*did_report_error = true;
@@ -3041,7 +3041,7 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 		if (max_index && *max_index < index) *max_index = index;
 		if (element->kind == DESIGNATOR_RANGE)
 		{
-			int64_t end_index = sema_analyse_designator_index(context, element->index_end_expr);
+			MemberIndex end_index = sema_analyse_designator_index(context, element->index_end_expr);
 			if (end_index < 0)
 			{
 				*did_report_error = true;
@@ -3053,7 +3053,7 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 				*did_report_error = true;
 				return NULL;
 			}
-			if (end_index > (ArrayIndex)len)
+			if (end_index > (MemberIndex)len)
 			{
 				*did_report_error = true;
 				SEMA_ERROR(element->index_expr, "The index may must be less than the array length (which was %llu).", (unsigned long long)len);
@@ -3075,7 +3075,7 @@ static Type *sema_find_type_of_element(Context *context, Type *type, DesignatorE
 	return member->type;
 }
 
-static Type *sema_expr_analyse_designator(Context *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr)
+static Type *sema_expr_analyse_designator(Context *context, Type *current, Expr *expr, MemberIndex *max_index, Decl **member_ptr)
 {
 	DesignatorElement **path = expr->designator_expr.path;
 
@@ -3255,8 +3255,8 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
                                                                        Expr *value)
 {
 	DesignatorElement *element = curr[0];
-	ArrayIndex low_index = element->index;
-	ArrayIndex high_index = element->kind == DESIGNATOR_RANGE ? element->index_end : element->index;
+	MemberIndex low_index = element->index;
+	MemberIndex high_index = element->kind == DESIGNATOR_RANGE ? element->index_end : element->index;
 	assert(element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE);
 
 	// Expand zero into array.
@@ -3275,9 +3275,9 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 
 	unsigned array_count = vec_size(array_elements);
 
-	ArrayIndex insert_index = 0;
+	MemberIndex insert_index = 0;
 
-	for (ArrayIndex index = low_index; index <= high_index; index++)
+	for (MemberIndex index = low_index; index <= high_index; index++)
 	{
 		// Walk to the insert point or until we reached the end of the array.
 		while (insert_index < array_count && array_elements[insert_index]->init_array_value.index < index)
@@ -3398,7 +3398,7 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 	Type *original = assigned->canonical;
 	bool is_bitstruct = original->type_kind == TYPE_BITSTRUCT;
 	bool is_structlike = type_is_structlike(original) || is_bitstruct;
-	ArrayIndex max_index = -1;
+	MemberIndex max_index = -1;
 	bool failable = false;
 	VECEACH(init_expressions, i)
 	{
@@ -3419,7 +3419,7 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 
 	if (!is_structlike && initializer->type->type_kind == TYPE_INFERRED_ARRAY)
 	{
-		initializer->type = sema_type_lower_by_size(initializer->type, max_index + 1);
+		initializer->type = sema_type_lower_by_size(initializer->type, (ArraySize)(max_index + 1));
 	}
 
 	if (expr_is_constant_eval(initializer, CONSTANT_EVAL_ANY))
@@ -3466,8 +3466,8 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 {
 	Expr **elements = initializer->initializer_list;
 	Decl **members = assigned->strukt.members;
-	unsigned size = vec_size(elements);
-	unsigned expected_members = vec_size(members);
+	MemberIndex size = (MemberIndex)vec_size(elements);
+	MemberIndex expected_members = (MemberIndex)vec_size(members);
 
 	// 1. For struct number of members must be the same as the size of the struct.
 	//    Since we already handled the case with an empty initializer before going here
@@ -3495,8 +3495,8 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 		}
 	}
 	// 3. Loop through all elements.
-	int max_loop = MAX(size, expected_members);
-	for (unsigned i = 0; i < max_loop; i++)
+	MemberIndex max_loop = MAX(size, expected_members);
+	for (MemberIndex i = 0; i < max_loop; i++)
 	{
 		// 4. Check if we exceeded the list of elements in the struct/union.
 		//    This way we can check the other elements which might help the
@@ -3515,7 +3515,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 			if (!sub_element_count)
 			{
 				vec_add(initializer->initializer_list, NULL);
-				for (int j = size - 1; j > i; j--)
+				for (int j = (int)(size - 1); j > i; j--)
 				{
 					initializer->initializer_list[j] = initializer->initializer_list[j - 1];
 				}
@@ -3530,7 +3530,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 			}
 			if (i >= size)
 			{
-				not_enough_elements(initializer, i);
+				not_enough_elements(initializer, (int)i);
 				return false;
 			}
 			Expr *new_initializer = expr_new(EXPR_INITIALIZER_LIST, elements[i]->span);
@@ -3543,7 +3543,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 			size -= reduce_by;
 			max_loop = MAX(size, expected_members);
 			assert(size <= vec_size(initializer->initializer_list));
-			vec_resize(initializer->initializer_list, size);
+			vec_resize(initializer->initializer_list, (unsigned)size);
 			elements = initializer->initializer_list;
 			elements[i] = new_initializer;
 		}
@@ -4776,8 +4776,8 @@ static bool sema_expr_analyse_and_or(Context *context, Expr *expr, Expr *left, E
 
 static void cast_to_max_bit_size(Context *context, Expr *left, Expr *right, Type *left_type, Type *right_type)
 {
-	int bit_size_left = left_type->builtin.bitsize;
-	int bit_size_right = right_type->builtin.bitsize;
+	unsigned bit_size_left = left_type->builtin.bitsize;
+	unsigned bit_size_right = right_type->builtin.bitsize;
 	assert(bit_size_left && bit_size_right);
 	if (bit_size_left == bit_size_right) return;
 	if (bit_size_left < bit_size_right)
@@ -5772,7 +5772,7 @@ static inline char minilex_next(MiniLexer *lexer)
 
 static inline char minilex_peek(MiniLexer *lexer, int32_t offset)
 {
-	return lexer->chars[lexer->index + offset];
+	return lexer->chars[lexer->index + (uint32_t)offset];
 }
 
 static inline bool minilex_match(MiniLexer *lexer, char c)
@@ -5796,11 +5796,11 @@ static inline void minilex_skip_whitespace(MiniLexer *lexer)
 uint64_t minilex_parse_number(MiniLexer *lexer, uint64_t max)
 {
 	assert(max < UINT64_MAX);
-	ByteSize value = 0;
+	uint64_t value = 0;
 	while (is_number(minilex_peek(lexer, 0)))
 	{
-		ByteSize old_value = value;
-		value = value * 10 + minilex_next(lexer) - '0';
+		uint64_t old_value = value;
+		value = value * 10 + (uint64_t)minilex_next(lexer) - '0';
 		if (old_value > value || value > max)
 		{
 			return UINT64_MAX;
@@ -5827,7 +5827,7 @@ static inline bool sema_analyse_idents_string(Context *context, MiniLexer *lexer
 			if (value == UINT64_MAX) return false;
 			if (!minilex_match(lexer, ']')) return false;
 			element.array = true;
-			element.index = (ArrayIndex)value;
+			element.index = (MemberIndex)value;
 			vec_add(elements, element);
 			continue;
 		}
@@ -5981,11 +5981,11 @@ static inline bool sema_analyse_identifier_path_string(Context *context, SourceS
 				type = type_get_subarray(type);
 				continue;
 			}
-			ByteSize array_size = 0;
+			ArraySize array_size = 0;
 			while (is_number(minilex_peek(&lexer, 0)))
 			{
 				ByteSize old_array_size = array_size;
-				array_size = array_size * 10 + minilex_next(&lexer) - '0';
+				array_size = array_size * 10 + (ArraySize)minilex_next(&lexer) - '0';
 				if (old_array_size > array_size || array_size > MAX_ARRAYINDEX)
 				{
 					sema_error_range(span, "Array index out of bounds.");
@@ -6103,8 +6103,8 @@ static inline bool sema_expr_analyse_ct_alignof(Context *context, Expr *expr)
 				return false;
 			}
 			type = actual_type->array.base;
-			ByteSize size = type_size(type);
-			align = (AlignSize)type_min_alignment(size * element.index, align);
+			TypeSize size = type_size(type);
+			align = type_min_alignment(size * (AlignSize)element.index, align);
 			continue;
 		}
 		if (!type_is_structlike(actual_type))
@@ -6272,7 +6272,7 @@ static Type *sema_expr_check_type_exists(Context *context, TypeInfo *type_info)
 			return poisoned_type;
 		case TYPE_INFO_VECTOR:
 		{
-			ArrayIndex size;
+			ArraySize size;
 			if (!sema_resolve_array_like_len(context, type_info, &size)) return poisoned_type;
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
@@ -6288,7 +6288,7 @@ static Type *sema_expr_check_type_exists(Context *context, TypeInfo *type_info)
 		}
 		case TYPE_INFO_ARRAY:
 		{
-			ArrayIndex size;
+			ArraySize size;
 			if (!sema_resolve_array_like_len(context, type_info, &size)) return poisoned_type;
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
@@ -6450,7 +6450,7 @@ static inline bool sema_expr_analyse_ct_offsetof(Context *context, Expr *expr)
 				return false;
 			}
 			type = actual_type->array.base;
-			offset += type_size(type) * element.index;
+			offset += type_size(type) * (ArraySize)element.index;
 			continue;
 		}
 		if (!type_is_structlike(actual_type))
@@ -6735,7 +6735,7 @@ bool sema_analyse_expr_lvalue(Context *context, Expr *expr)
 	}
 }
 
-ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size)
+MemberIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size)
 {
 	if (initializer->expr_kind == EXPR_CONST)
 	{
@@ -6749,7 +6749,7 @@ ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initial
 				if (type->type_kind == TYPE_ARRAY)
 				{
 					*may_be_array = true;
-					return type->array.len;
+					return (MemberIndex)type->array.len;
 				}
 				if (type->type_kind == TYPE_SUBARRAY)
 				{
@@ -6763,7 +6763,7 @@ ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initial
 				return VECLAST(init->init_array.elements)->init_array_value.index + 1;
 			case CONST_INIT_ARRAY_FULL:
 				*may_be_array = true;
-				return vec_size(init->init_array_full);
+				return (MemberIndex)vec_size(init->init_array_full);
 			case CONST_INIT_ARRAY_VALUE:
 				UNREACHABLE;
 			case CONST_INIT_STRUCT:
@@ -6779,14 +6779,14 @@ ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initial
 		case EXPR_INITIALIZER_LIST:
 			*may_be_array = true;
 			*is_const_size = true;
-			return vec_size(initializer->initializer_list);
+			return (MemberIndex)vec_size(initializer->initializer_list);
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			break;
 		default:
 			UNREACHABLE
 	}
 	Expr **initializers = initializer->designated_init_list;
-	ArrayIndex size = 0;
+	MemberIndex size = 0;
 	// Otherwise we assume everything's a designator.
 	VECEACH(initializers, i)
 	{
@@ -6802,7 +6802,7 @@ ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initial
 				return -1;
 			case DESIGNATOR_ARRAY:
 			{
-				ArrayIndex index = sema_analyse_designator_index(context, element->index_expr);
+				MemberIndex index = sema_analyse_designator_index(context, element->index_expr);
 				if (index < 0 || element->index_expr->expr_kind != EXPR_CONST)
 				{
 					*is_const_size = false;
@@ -6813,7 +6813,7 @@ ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initial
 			}
 			case DESIGNATOR_RANGE:
 			{
-				ArrayIndex index = sema_analyse_designator_index(context, element->index_end_expr);
+				MemberIndex index = sema_analyse_designator_index(context, element->index_end_expr);
 				if (index < 0 || element->index_end_expr->expr_kind != EXPR_CONST)
 				{
 					*is_const_size = false;

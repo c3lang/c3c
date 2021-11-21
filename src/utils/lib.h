@@ -351,28 +351,29 @@ static inline uint32_t fnv1a(const char *key, uint32_t len)
 
 typedef struct
 {
-	unsigned size;
-	unsigned capacity;
+	uint32_t size;
+	uint32_t capacity;
 	char data[];
 } VHeader_;
 
 static inline VHeader_* vec_new_(size_t element_size, size_t capacity)
 {
 	assert(capacity < UINT32_MAX);
+	assert(element_size < UINT32_MAX / 100);
 	VHeader_ *header = malloc_arena(element_size * capacity + sizeof(VHeader_));
 	header->size = 0;
-	header->capacity = (unsigned)capacity;
+	header->capacity = (uint32_t)capacity;
 	return header;
 }
 
-static inline unsigned vec_size(const void *vec)
+static inline uint32_t vec_size(const void *vec)
 {
 	if (!vec) return 0;
 	const VHeader_ *header = vec;
 	return header[-1].size;
 }
 
-static inline void vec_resize(void *vec, unsigned new_size)
+static inline void vec_resize(void *vec, uint32_t new_size)
 {
 	if (!vec) return;
 	VHeader_ *header = vec;

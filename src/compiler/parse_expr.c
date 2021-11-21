@@ -787,7 +787,7 @@ static Expr *parse_ct_call(Context *context, Expr *left)
 				}
 				TRY_CONSUME_OR(TOKEN_RBRACKET, "Expected a ']' after the number.", poisoned_expr);
 				flat_element.array = true;
-				flat_element.index = value.i.low;
+				flat_element.index = (MemberIndex) value.i.low;
 			}
 			else if (try_consume(context, TOKEN_DOT))
 			{
@@ -972,7 +972,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 
 	Int128 i = { 0, 0 };
 	bool is_unsigned = false;
-	uint64_t type_bits = 0;
+	int type_bits = 0;
 	int hex_characters = 0;
 	int oct_characters = 0;
 	int binary_characters = 0;
@@ -1001,7 +1001,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 				if (c == '_') continue;
 				if (i.high > max) wrapped = true;
 				i = i128_shl64(i, 4);
-				i = i128_add64(i, hex_nibble(c));
+				i = i128_add64(i, (uint64_t) hex_nibble(c));
 				hex_characters++;
 			}
 			break;
@@ -1026,7 +1026,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 				if (c == '_') continue;
 				if (i.high > max) wrapped = true;
 				i = i128_shl64(i, 3);
-				i = i128_add64(i, c - '0');
+				i = i128_add64(i, (uint64_t)(c - '0'));
 				oct_characters++;
 			}
 			break;
@@ -1040,7 +1040,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 				binary_characters++;
 				if (i.high > max) wrapped = true;
 				i = i128_shl64(i, 1);
-				i = i128_add64(i, c - '0');
+				i = i128_add64(i, (uint64_t)(c - '0'));
 			}
 			break;
 		default:
@@ -1062,7 +1062,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 				if (c == '_') continue;
 				uint64_t old_top = i.high;
 				i = i128_mult64(i, 10);
-				i = i128_add64(i, c - '0');
+				i = i128_add64(i, (uint64_t)(c - '0'));
 				if (!wrapped && old_top > i.high) wrapped = true;
 			}
 			break;
@@ -1078,7 +1078,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 	expr_int->const_expr.narrowable = !type_bits;
 	if (type_bits)
 	{
-		if (!is_power_of_two(type_bits) || type_bits > 128)
+		if (type_bits < 0 || !is_power_of_two((uint64_t)type_bits) || type_bits > 128)
 		{
 			SEMA_TOKEN_ERROR(context->tok, "Integer type suffix should be i8, i16, i32, i64 or i128.");
 			return poisoned_expr;
@@ -1114,28 +1114,28 @@ static Expr *parse_integer(Context *context, Expr *left)
 			}
 		}
 		if (type_bits && type_bits < 8) type_bits = 8;
-		if (type_bits && !is_power_of_two(type_bits)) type_bits = next_highest_power_of_2(type_bits);
+		if (type_bits && !is_power_of_two((uint64_t)type_bits)) type_bits = (int)next_highest_power_of_2((uint32_t)type_bits);
 	}
 	if (type_bits) expr_int->const_expr.is_hex = false;
 	if (!type_bits)
 	{
-		type_bits = type_size(type) * 8;
+		type_bits = (int)type_size(type) * 8;
 	}
 	if (type_bits)
 	{
-		type = is_unsigned ? type_int_unsigned_by_bitsize(type_bits) : type_int_signed_by_bitsize(type_bits);
+		type = is_unsigned ? type_int_unsigned_by_bitsize((unsigned)type_bits) : type_int_signed_by_bitsize((unsigned)type_bits);
 	}
 	expr_int->const_expr.ixx = (Int) { i, type->type_kind };
 	if (!int_fits(expr_int->const_expr.ixx, type->type_kind))
 	{
-		int radix = 10;
+		unsigned radix = 10;
 		if (hex_characters) radix = 16;
 		if (oct_characters) radix = 8;
 		if (binary_characters) radix = 2;
 		if (type_bits)
 		{
 			SEMA_TOKEN_ERROR(context->tok, "'%s' does not fit in a '%c%d' literal.",
-							 i128_to_string(i, radix, true), is_unsigned ? 'u' : 'i', type_bits);
+			                 i128_to_string(i, radix, true), is_unsigned ? 'u' : 'i', type_bits);
 		}
 		else
 		{
@@ -1205,10 +1205,10 @@ static void parse_base64(char **result_pointer, char *result_pointer_end, const 
 		while ((val2 = base64_to_sextet(*(data++))) < 0);
 		while ((val3 = base64_to_sextet(*(data++))) < 0);
 		while ((val4 = base64_to_sextet(*(data++))) < 0);
-		uint32_t triplet = (val << 3 * 6) + (val2 << 2 * 6) + (val3 << 6) + val4;
-		if (data_current < result_pointer_end) *(data_current++) = (triplet >> 16) & 0xFF;
-		if (data_current < result_pointer_end) *(data_current++) = (triplet >> 8) & 0xFF;
-		if (data_current < result_pointer_end) *(data_current++) = triplet & 0xFF;
+		uint32_t triplet = (uint32_t)((val << 3 * 6) + (val2 << 2 * 6) + (val3 << 6) + val4);
+		if (data_current < result_pointer_end) *(data_current++) = (char)((triplet >> 16) & 0xFF);
+		if (data_current < result_pointer_end) *(data_current++) = (char)((triplet >> 8) & 0xFF);
+		if (data_current < result_pointer_end) *(data_current++) = (char)(triplet & 0xFF);
 	}
 	DONE:
 	*result_pointer = data_current;
@@ -1218,7 +1218,7 @@ static Expr *parse_bytes_expr(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	TokenId tok = context->tok.id;
-	uint64_t len = 0;
+	ArraySize len = 0;
 	while (TOKTYPE(tok) == TOKEN_BYTES)
 	{
 		len += TOKDATA(tok)->len;
@@ -1337,7 +1337,7 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 			int h = char_to_nibble(src[1]);
 			int l = char_to_nibble(src[2]);
 			if (h < 0 || l < 0) return -1;
-			unicode_char = ((unsigned) h << 4U) + l;
+			unicode_char = ((unsigned) h << 4U) + (unsigned)l;
 			scanned = 3;
 			break;
 		}
@@ -1348,7 +1348,7 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 			int x3 = char_to_nibble(src[3]);
 			int x4 = char_to_nibble(src[4]);
 			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0) return -1;
-			unicode_char = ((unsigned) x1 << 12U) + ((unsigned) x2 << 8U) + ((unsigned) x3 << 4U) + x4;
+			unicode_char = ((unsigned) x1 << 12U) + ((unsigned) x2 << 8U) + ((unsigned) x3 << 4U) + (unsigned)x4;
 			scanned = 5;
 			break;
 		}
@@ -1364,7 +1364,7 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 			int x8 = char_to_nibble(src[8]);
 			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0 || x5 < 0 || x6 < 0 || x7 < 0 || x8 < 0) return -1;
 			unicode_char = ((unsigned) x1 << 28U) + ((unsigned) x2 << 24U) + ((unsigned) x3 << 20U) + ((unsigned) x4 << 16U) +
-			               ((unsigned) x5 << 12U) + ((unsigned) x6 << 8U) + ((unsigned) x7 << 4U) + x8;
+			               ((unsigned) x5 << 12U) + ((unsigned) x6 << 8U) + ((unsigned) x7 << 4U) + (unsigned)x8;
 			scanned = 9;
 			break;
 		}

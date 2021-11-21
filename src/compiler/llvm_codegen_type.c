@@ -114,7 +114,7 @@ static inline LLVMTypeRef llvm_type_from_array(GenContext *context, Type *type)
 		return type->backend_type = llvm_get_type(context, type->canonical);
 	}
 
-	return type->backend_type = LLVMArrayType(llvm_get_type(context, type->array.base), type->array.len);
+	return type->backend_type = LLVMArrayType(llvm_get_type(context, type->array.base), (unsigned)type->array.len);
 }
 
 
@@ -125,7 +125,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 		case TYPE_TYPEDEF:
 			UNREACHABLE
 		case TYPE_ARRAY:
-			for (ByteSize i = type->array.len; i > 0; i--)
+			for (ArraySize i = type->array.len; i > 0; i--)
 			{
 				param_expand(context, params_ref, type->array.base);
 			}
@@ -173,7 +173,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 
 static inline void add_func_type_param(GenContext *context, Type *param_type, ABIArgInfo *arg_info, LLVMTypeRef **params)
 {
-	arg_info->param_index_start = vec_size(*params);
+	arg_info->param_index_start = (MemberIndex)vec_size(*params);
 	switch (arg_info->kind)
 	{
 		case ABI_ARG_IGNORE:
@@ -223,7 +223,7 @@ static inline void add_func_type_param(GenContext *context, Type *param_type, AB
 			vec_add(*params, llvm_abi_type(context, arg_info->direct_pair.hi));
 			break;
 	}
-	arg_info->param_index_end = vec_size(*params);
+	arg_info->param_index_end = (MemberIndex)vec_size(*params);
 }
 
 LLVMTypeRef llvm_func_type(GenContext *context, Type *type)

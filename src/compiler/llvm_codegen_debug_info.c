@@ -23,7 +23,7 @@ static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, c
 	                                                     loc ? c->debug.file : NULL,
 	                                                     loc ? loc->line : 0,
 	                                                     type_size(type) * 8,
-	                                                     type_abi_alignment(type) * 8,
+	                                                     (uint32_t)(type_abi_alignment(type) * 8),
 	                                                     flags, NULL,
 	                                                     elements, element_count,
 	                                                     c->debug.runtime_version,
@@ -45,7 +45,7 @@ static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, c
 			loc ? c->debug.file : NULL,
 			loc ? loc->line : 0,
 			type_size(type) * 8,
-			type_abi_alignment(type) * 8,
+			(uint32_t)(type_abi_alignment(type) * 8),
 			offset * 8, flags, llvm_get_debug_type_internal(c, type, scope));
 }
 
@@ -250,7 +250,7 @@ static LLVMMetadataRef llvm_debug_simple_type(GenContext *context, Type *type, i
 	                                                               type->name,
 	                                                               strlen(type->name),
 	                                                               type->builtin.bitsize,
-	                                                               dwarf_code, 0);
+	                                                               (LLVMDWARFTypeEncoding)dwarf_code, 0);
 
 }
 
@@ -293,7 +293,7 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 		LLVMMetadataRef debug_info = LLVMDIBuilderCreateEnumerator(
 				c->debug.builder,
 				enum_constant->name, TOKLEN(enum_constant->name_token),
-				val,
+				(int64_t)val,
 				is_unsigned);
 		vec_add(elements, debug_info);
 	}

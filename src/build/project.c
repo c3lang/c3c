@@ -67,7 +67,7 @@ static int get_valid_string_setting(TomlTable *table, const char *key, const cha
 	{
 		for (int i = 0; i < count; i++)
 		{
-			unsigned str_len = strlen(values[i]);
+			unsigned str_len = (unsigned) strlen(values[i]);
 			if (str_len != value->value.string->len) continue;
 			if (memcmp(values[i], value->value.string->str, str_len) == 0) return i + first_result;
 		}
@@ -179,7 +179,7 @@ void project_add_target(Project *project, TomlValue *wrapped_table, const char *
 		{
 			error_exit("Error reading %s: %s symtab may not exceed %d.", PROJECT_TOML, type, MAX_SYMTAB_SIZE);
 		}
-		target->symtab_size = symtab_size;
+		target->symtab_size = (uint32_t)symtab_size;
 	}
 	const char *cpu = get_valid_string(table, "cpu", type, false);
 	target->cpu = cpu ? cpu : "generic";

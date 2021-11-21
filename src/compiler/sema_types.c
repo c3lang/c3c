@@ -15,7 +15,7 @@ static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 	return true;
 }
 
-bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArrayIndex *len_ref)
+bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArraySize *len_ref)
 {
 	Expr *len_expr = type_info->array.len;
 	if (!sema_analyse_expr(context, len_expr)) return type_info_poison(type_info);
@@ -57,7 +57,7 @@ bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArrayInd
 		}
 		return type_info_poison(type_info);
 	}
-	*len_ref = len.i.low;
+	*len_ref = (ArraySize)len.i.low;
 	return true;
 }
 
@@ -89,14 +89,14 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type, boo
 			break;
 		case TYPE_INFO_VECTOR:
 		{
-			ArrayIndex width;
+			ArraySize width;
 			if (!sema_resolve_array_like_len(context, type, &width)) return type_info_poison(type);
 			type->type = type_get_vector(type->array.base->type, width);
 			break;
 		}
 		case TYPE_INFO_ARRAY:
 		{
-			ArrayIndex size;
+			ArraySize size;
 			if (!sema_resolve_array_like_len(context, type, &size)) return type_info_poison(type);
 			type->type = type_get_array(type->array.base->type, size);
 			break;
@@ -272,7 +272,7 @@ bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow
 	return true;
 }
 
-Type *sema_type_lower_by_size(Type *type, ByteSize element_size)
+Type *sema_type_lower_by_size(Type *type, ArraySize element_size)
 {
 	if (type->type_kind != TYPE_INFERRED_ARRAY) return type;
 

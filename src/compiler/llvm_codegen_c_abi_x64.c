@@ -70,7 +70,7 @@ static bool x64_type_is_illegal_vector(Type *type)
 {
 	// Only check vectors.
 	if (type->type_kind != TYPE_VECTOR) return false;
-	unsigned size = type_size(type);
+	ByteSize size = type_size(type);
 	// Less than 64 bits or larger than the avx native size => not allowed.
 	if (size <= 8 || size > x64_native_vector_size_for_avx()) return true;
 	// If we pass i128 in mem, then check for that.
@@ -112,7 +112,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 	// (if 'onstack' appears, change this code)
 	if (!free_int_regs)
 	{
-		unsigned size = type_size(type);
+		ByteSize size = type_size(type);
 		if (align <= 8 && size <= 8)
 		{
 			return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
@@ -377,7 +377,7 @@ Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
 	Decl *last_match = NULL;
 	VECEACH(members, i)
 	{
-		if (members[i]->offset > (ArrayIndex)offset) break;
+		if (members[i]->offset > (MemberIndex)offset) break;
 		last_match = members[i];
 	}
 	assert(last_match);
@@ -457,16 +457,16 @@ bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
 	// If the bytes being queried are off the end of the type, there is no user
 	// data hiding here.  This handles analysis of builtins, vectors and other
 	// types that don't contain interesting padding.
-	ByteSize size = type_size(type);
+	TypeSize size = type_size(type);
 	if (size <= start) return true;
 	if (type->type_kind == TYPE_ARRAY)
 	{
 		// Check each field to see if the field overlaps with the queried range.
-		ByteSize element_size = type_size(type->array.base);
+		TypeSize element_size = type_size(type->array.base);
 		for (unsigned i = 0; i < type->array.len; i++)
 		{
 			// If the field is after the span we care about, then we're done..
-			ByteSize offset = i * element_size;
+			TypeSize offset = i * element_size;
 			if (offset >= end) break;
 			unsigned element_start = offset < start ? start - offset : 0;
 			if (!x64_bits_contain_no_user_data(type->array.base, element_start, end - offset)) return false;
@@ -578,8 +578,8 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 		case TYPE_ARRAY:
 		{
 			Type *element = type->array.base;
-			ByteSize element_size = type_size(element);
-			ByteSize element_offset = (offset / element_size) * element_size;
+			TypeSize element_size = type_size(element);
+			TypeSize element_offset = (offset / element_size) * element_size;
 			return x64_get_int_type_at_offset(element, offset - element_offset, source_type, source_offset);
 		}
 		case TYPE_VOID:
@@ -648,7 +648,7 @@ static AbiType *x64_get_byte_vector_type(Type *type)
 
 static ABIArgInfo *x64_get_argument_pair_return(AbiType *low_type, AbiType *high_type)
 {
-	unsigned low_size = abi_type_size(low_type);
+	TypeSize low_size = abi_type_size(low_type);
 	unsigned hi_start = aligned_offset(low_size, abi_type_abi_alignment(high_type));
 	assert(hi_start == 8 && "Expected aligned with C-style structs.");
 	return abi_arg_new_direct_pair(low_type, high_type);

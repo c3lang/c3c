@@ -14,9 +14,9 @@ char *strformat(const char *var, ...)
 	va_start(list, var);
 	int len = vsnprintf(NULL, 0, var, list);
 	va_end(list);
-	if (len == 0) return "";
+	if (len < 1) return "";
 	va_start(list, var);
-	char *buffer = malloc_arena(len + 1);
+	char *buffer = malloc_arena((uint32_t)len + 1);
 	int new_len = vsnprintf(buffer, len + 1, var, list);
 	va_end(list);
 	assert(len == new_len);
@@ -69,8 +69,8 @@ char *strcopy(const char *start, size_t len)
 
 char *strcat_arena(const char *a, const char *b)
 {
-	unsigned a_len = strlen(a);
-	unsigned b_len = strlen(b);
+	unsigned a_len = (unsigned)strlen(a);
+	unsigned b_len = (unsigned)strlen(b);
 	char *buffer = malloc_arena(a_len + b_len + 1);
 	memcpy(buffer, a, a_len);
 	memcpy(buffer + a_len, b, b_len);

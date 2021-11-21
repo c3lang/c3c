@@ -267,7 +267,7 @@ const char *concat_string_parts(const char **args)
 	char *ptr = output;
 	VECEACH(args, i)
 	{
-		unsigned len = strlen(args[i]);
+		unsigned len = (unsigned)strlen(args[i]);
 		memcpy(ptr, args[i], len);
 		ptr += len;
 		*(ptr++) = ' ';

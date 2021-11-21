@@ -103,7 +103,7 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 
 static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **members)
 {
-	ByteSize max_size = 0;
+	AlignSize max_size = 0;
 	MemberIndex max_alignment_element = 0;
 	AlignSize max_alignment = 0;
 
@@ -127,18 +127,18 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 
 		AlignSize member_alignment = type_abi_alignment(member->type);
 		ByteSize member_size = type_size(member->type);
-
+		assert(member_size <= MAX_TYPE_SIZE);
 		// Update max alignment
 		if (member_alignment > max_alignment)
 		{
 			max_alignment = member_alignment;
-			max_alignment_element = i;
+			max_alignment_element = (MemberIndex)i;
 		}
 		// Update max size
 		if (member_size > max_size)
 		{
 			//max_size_element = i;
-			max_size = member_size;
+			max_size = (AlignSize)member_size;
 			// If this is bigger than the previous with max
 			// alignment, pick this as the maximum size field.
 			if (max_alignment_element != (MemberIndex)i && max_alignment == member_alignment)
@@ -177,15 +177,15 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 	}
 
 	// The actual size might be larger than the max size due to alignment.
-	unsigned size = aligned_offset(max_size, decl->alignment);
+	AlignSize size = aligned_offset(max_size, decl->alignment);
 
-	unsigned rep_size = type_size(members[max_alignment_element]->type);
+	ByteSize rep_size = type_size(members[max_alignment_element]->type);
 
 	// If the actual size is bigger than the real size, add
 	// padding.
 	if (size > rep_size)
 	{
-		decl->strukt.padding = (int16_t)(size - rep_size);
+		decl->strukt.padding = (AlignSize)(size - rep_size);
 	}
 
 	decl->strukt.size = size;
@@ -198,8 +198,8 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 	// Default alignment is 1 even if the it is empty.
 	AlignSize natural_alignment = 1;
 	bool is_unaligned = false;
-	ByteSize size = 0;
-	ByteSize offset = 0;
+	AlignSize size = 0;
+	AlignSize offset = 0;
 	bool is_packed = decl->is_packed;
 	VECEACH(members, i)
 	{
@@ -291,7 +291,7 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 	// in this case we need an additional padding
 	if (size > aligned_offset(offset, natural_alignment))
 	{
-		decl->strukt.padding = (int16_t)(size - offset);
+		decl->strukt.padding = (AlignSize)(size - offset);
 	}
 
 	// If the size is smaller the naturally aligned struct, then it is also unaligned
@@ -302,7 +302,7 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 	if (is_unaligned && size > offset)
 	{
 		assert(!decl->strukt.padding);
-		decl->strukt.padding = (int16_t)(size - offset);
+		decl->strukt.padding = (AlignSize)(size - offset);
 	}
 	decl->is_packed = is_unaligned;
 	decl->strukt.size = size;
@@ -409,13 +409,13 @@ static inline bool sema_analyse_bitstruct_member(Context *context, Decl *decl, u
 				   type_quoted_error_string(member->var.type_info->type));
 		return false;
 	}
-	int bits = type_size(decl->bitstruct.base_type->type) * 8;
+	BitSize bits = type_size(decl->bitstruct.base_type->type) * 8;
 	Int max_bits = (Int) { .type = TYPE_I64, .i = { .low =  bits } };
 	Expr *start = member->var.start;
 	Expr *end = member->var.end;
 	if (!sema_analyse_expr(context, start)) return false;
-	int start_bit;
-	int end_bit;
+	unsigned start_bit;
+	unsigned end_bit;
 	if (start->expr_kind != EXPR_CONST || !type_is_integer(start->type) || int_is_neg(start->const_expr.ixx))
 	{
 		SEMA_ERROR(start, "This must be a constant non-negative integer value.");
@@ -426,7 +426,7 @@ static inline bool sema_analyse_bitstruct_member(Context *context, Decl *decl, u
 		SEMA_ERROR(start, "Expected at the most a bit index of %d\n", bits - 1);
 		return false;
 	}
-	end_bit = start_bit = start->const_expr.ixx.i.low;
+	end_bit = start_bit = (unsigned)start->const_expr.ixx.i.low;
 	if (end)
 	{
 		if (!sema_analyse_expr(context, start)) return false;
@@ -440,7 +440,7 @@ static inline bool sema_analyse_bitstruct_member(Context *context, Decl *decl, u
 			SEMA_ERROR(end, "Expected at the most a bit index of %d.", bits - 1);
 			return false;
 		}
-		end_bit = end->const_expr.ixx.i.low;
+		end_bit = (unsigned)end->const_expr.ixx.i.low;
 	}
 	else
 	{
@@ -455,12 +455,12 @@ static inline bool sema_analyse_bitstruct_member(Context *context, Decl *decl, u
 		SEMA_ERROR(start, "The start bit must be smaller than the end bit index.");
 		return false;
 	}
-	int bitsize_type = member_type == type_bool ? 1 : type_size(member_type) * 8;
-	int bits_available = end_bit + 1 - start_bit;
+	TypeSize bitsize_type = member_type == type_bool ? 1 : type_size(member_type) * 8;
+	TypeSize bits_available = end_bit + 1 - start_bit;
 	if (bitsize_type < bits_available)
 	{
 		SEMA_ERROR(member, "The bit width of %s (%d) is less than the assigned bits (%d), try reducing the range.",
-		           type_quoted_error_string(member->type), bitsize_type, bits_available);
+		           type_quoted_error_string(member->type), (int)bitsize_type, (int)bits_available);
 		return false;
 	}
 	member->var.start_bit = start_bit;
@@ -961,7 +961,7 @@ AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDoma
 	}
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
-			[ATTRIBUTE_EXTNAME] = ~ATTR_CALL,
+			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~ATTR_CALL,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
@@ -971,8 +971,8 @@ AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDoma
 			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION | ATTR_BITSTRUCT,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
-			[ATTRIBUTE_USED] = ~ATTR_CALL,
-			[ATTRIBUTE_UNUSED] = ~ATTR_CALL,
+			[ATTRIBUTE_USED] = (AttributeDomain)~ATTR_CALL,
+			[ATTRIBUTE_UNUSED] = (AttributeDomain)~ATTR_CALL,
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,
 			[ATTRIBUTE_CDECL] = ATTR_FUNC,
 			[ATTRIBUTE_STDCALL] = ATTR_FUNC,
@@ -1025,7 +1025,7 @@ AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDoma
 					return ATTRIBUTE_NONE;
 				}
 
-				attr->alignment = align;
+				attr->alignment = (AlignSize)align;
 			}
 			return type;
 		case ATTRIBUTE_SECTION:

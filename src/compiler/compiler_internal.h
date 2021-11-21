@@ -15,13 +15,15 @@
 
 typedef double Real;
 
-#define MAX_ARRAYINDEX INT64_MAX
+#define MAX_ARRAYINDEX INT32_MAX
 typedef uint64_t ByteSize;
-typedef int64_t ArrayIndex;
-typedef int64_t IndexDiff;
+typedef uint32_t TypeSize;
+typedef int32_t IndexDiff;
 typedef int32_t MemberIndex;
-typedef int32_t AlignSize;
+typedef uint32_t AlignSize;
 typedef int32_t ScopeId;
+typedef uint32_t ArraySize;
+typedef uint64_t BitSize;
 
 
 #if PLATFORM_WINDOWS
@@ -55,7 +57,8 @@ typedef struct
 #define MAX_FUNCTION_SIGNATURE_SIZE 2048
 #define MAX_PARAMS 512
 #define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
-#define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
+#define MAX_ALIGNMENT ((MemberIndex)(((uint64_t)2) << 28))
+#define MAX_TYPE_SIZE UINT32_MAX
 #define MAX_OFFSET ((ArrayIndex)(((uint64_t)2) << 60))
 
 typedef struct Ast_ Ast;
@@ -123,7 +126,7 @@ typedef struct ConstInitializer_
 		struct
 		{
 			struct ConstInitializer_ *element;
-			ArrayIndex index;
+			MemberIndex index;
 		} init_array_value;
 	};
 } ConstInitializer;
@@ -153,7 +156,7 @@ typedef struct
 		struct
 		{
 			const char *ptr;
-			uint64_t len;
+			TypeSize len;
 		} bytes;
 		Type *typeid;
 		ConstInitializer *list;
@@ -183,7 +186,7 @@ typedef struct
 	SourceLoc end_id;
 	SourceLoc *lines;
 	SourceLoc current_line_start;
-	unsigned token_start_id;
+	uint32_t token_start_id;
 } File;
 
 typedef struct
@@ -253,13 +256,13 @@ typedef struct
 typedef struct
 {
 	Type *base;
-	ByteSize len;
+	TypeSize len;
 } TypeArray;
 
 typedef struct
 {
 	Type *base;
-	ByteSize len;
+	TypeSize len;
 } TypeVector;
 
 typedef struct
@@ -341,10 +344,10 @@ typedef struct
 
 typedef struct
 {
-	uint64_t size;
+	TypeSize size;
 	Decl **members;
 	MemberIndex union_rep;
-	int16_t padding;
+	AlignSize padding : 16;
 } StructDecl;
 
 
@@ -377,14 +380,14 @@ typedef struct VarDecl_
 		void *backend_debug_ref;
 		unsigned scope_depth;
 		Expr *start;
-		int start_bit;
+		unsigned start_bit;
 	};
 	union
 	{
 		void *failable_ref;
 		struct ABIArgInfo_ *abi_info;
 		Expr *end;
-		int end_bit;
+		unsigned end_bit;
 	};
 } VarDecl;
 
@@ -584,8 +587,8 @@ typedef struct Decl_
 	const char *extname;
 	AlignSize alignment;
 	const char *section;
-	ArrayIndex offset : 32;
-	ArrayIndex padding : 32;
+	AlignSize offset : 32;
+	AlignSize padding : 32;
 	/*	bool is_exported : 1;
 	bool is_used : 1;
 	bool is_used_public : 1;
@@ -746,8 +749,8 @@ typedef struct DesignatorElement_
 			Expr *index_end_expr;
 		};
 	};
-	ArrayIndex index;
-	ArrayIndex index_end;
+	MemberIndex index;
+	MemberIndex index_end;
 } DesignatorElement;
 
 typedef struct
@@ -782,7 +785,7 @@ typedef struct
 	bool array : 1;
 	union
 	{
-		ArrayIndex index;
+		MemberIndex index;
 		const char *ident;
 	};
 } ExprFlatElement;
@@ -1428,7 +1431,7 @@ typedef struct
 	unsigned errors_found;
 	unsigned warnings_found;
 	char scratch_buffer[MAX_STRING_BUFFER];
-	size_t scratch_buffer_len;
+	uint32_t scratch_buffer_len;
 	STable scratch_table;
 	STable compiler_defines;
 	Module std_module;
@@ -1849,7 +1852,7 @@ void expr_const_set_null(ExprConst *expr);
 
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
-ByteSize expr_const_list_size(const ConstInitializer *list);
+ArraySize expr_const_list_size(const ConstInitializer *list);
 
 void expr_insert_addr(Expr *original);
 void expr_insert_deref(Expr *expr);
@@ -1902,7 +1905,7 @@ static inline TokenType token_type(Token token) { return (TokenType)toktypeptr(t
 Decl *module_find_symbol(Module *module, const char *symbol);
 
 bool parse_file(File *file);
-Path *path_create_from_string(const char *string, size_t len, SourceSpan span);
+Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span);
 Path *path_find_parent_path(Path *path);
 
 #define SEMA_TOKEN_ERROR(_tok, ...) sema_error_range(source_span_from_token_id(_tok.id), __VA_ARGS__)
@@ -1929,7 +1932,7 @@ bool sema_erase_unwrapped(Context *context, Decl *decl);
 bool sema_analyse_cond_expr(Context *context, Expr *expr);
 
 bool sema_analyse_expr_rhs(Context *context, Type *to, Expr *expr, bool allow_failable);
-ArrayIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
+MemberIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(Context *context, Expr *expr);
 bool sema_analyse_inferred_expr(Context *context, Type *to, Expr *expr);
 bool sema_analyse_decl(Context *context, Decl *decl);
@@ -1948,11 +1951,11 @@ Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, b
 Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path, bool report_error);
 
 bool sema_resolve_type(Context *context, Type *type);
-bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArrayIndex *len_ref);
+bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArraySize *len_ref);
 bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
 bool sema_resolve_type_info_maybe_inferred(Context *context, TypeInfo *type_info, bool allow_inferred_type);
 bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow);
-Type *sema_type_lower_by_size(Type *type, ByteSize element_size);
+Type *sema_type_lower_by_size(Type *type, ArraySize element_size);
 
 void sema_error_at_prev_end(Token token, const char *message, ...);
 
@@ -2027,7 +2030,7 @@ Type *type_find_max_type(Type *type, Type *other);
 Type *type_abi_find_single_struct_element(Type *type);
 const char *type_generate_qname(Type *type);
 bool type_is_valid_for_vector(Type *type);
-Type *type_get_array(Type *arr_type, ByteSize len);
+Type *type_get_array(Type *arr_type, ArraySize len);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_ptr_recurse(Type *ptr_type);
@@ -2056,7 +2059,7 @@ static inline bool type_is_promotable_float(Type *type);
 static inline bool type_is_promotable_integer(Type *type);
 static inline bool type_is_signed(Type *type);
 static inline bool type_is_structlike(Type *type);
-static inline size_t type_min_alignment(size_t a, size_t b);
+static inline AlignSize type_min_alignment(AlignSize a, AlignSize b);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 Type *type_from_token(TokenType type);
 bool type_is_union_struct(Type *type);
@@ -2067,7 +2070,7 @@ static inline bool type_is_vector(Type *type) { return type_flatten(type)->type_
 bool type_is_float_or_float_vector(Type *type);
 bool type_may_have_sub_elements(Type *type);
 static inline bool type_ok(Type *type);
-ByteSize type_size(Type *type);
+TypeSize type_size(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
 
@@ -2164,7 +2167,7 @@ static inline bool type_is_pointer(Type *type)
 	return kind == TYPE_POINTER;
 }
 
-static inline ByteSize aligned_offset(uint64_t offset, uint64_t alignment)
+static inline AlignSize aligned_offset(AlignSize offset, AlignSize alignment)
 {
 	return ((offset + alignment - 1) / alignment) * alignment;
 }
@@ -2450,7 +2453,7 @@ TypeInfo *copy_type_info(TypeInfo *source);
  * Minimum alignment, values are either offsets or alignments.
  * @return
  */
-static inline size_t type_min_alignment(size_t a, size_t b)
+static inline AlignSize type_min_alignment(AlignSize a, AlignSize b)
 {
 	return (a | b) & (1 + ~(a | b));
 }

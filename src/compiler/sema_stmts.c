@@ -1096,7 +1096,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 		{
 			bool may_be_array;
 			bool is_const_size;
-			ArrayIndex size = sema_get_initializer_const_array_size(context, enumerator, &may_be_array, &is_const_size);
+			MemberIndex size = sema_get_initializer_const_array_size(context, enumerator, &may_be_array, &is_const_size);
 			if (!may_be_array)
 			{
 				SEMA_ERROR(enumerator,
@@ -1125,7 +1125,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 			// First infer the type of the variable.
 			if (!sema_resolve_type_info(context, variable_type_info)) return false;
 			// And create the inferred type:
-			inferred_type = type_get_array(var->var.type_info->type, size);
+			inferred_type = type_get_array(var->var.type_info->type, (ArraySize)size);
 		}
 
 		// because we don't want the index + variable to move into the internal scope
@@ -1815,8 +1815,8 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 	ExprConst *switch_expr_const = &cond->const_expr;
 	Ast **cases = statement->ct_switch_stmt.body;
 	unsigned case_count = vec_size(cases);
-	int matched_case = case_count;
-	int default_case = case_count;
+	int matched_case = (int)case_count;
+	int default_case = (int)case_count;
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *stmt = cases[i];
@@ -1858,7 +1858,7 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 				}
 				if (expr_const_compare(switch_expr_const, const_expr, BINARYOP_EQ))
 				{
-					matched_case = i;
+					matched_case = (int) i;
 				}
 				break;
 			}
@@ -1869,7 +1869,7 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 					SEMA_PREV(cases[default_case], "The previous $default was here.");
 					return false;
 				}
-				default_case = i;
+				default_case = (int)i;
 				continue;
 			default:
 				UNREACHABLE;

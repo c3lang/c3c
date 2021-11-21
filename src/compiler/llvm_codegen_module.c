@@ -34,13 +34,13 @@ void gencontext_begin_module(GenContext *c)
 	if (active_target.pic == PIC_BIG || active_target.pic == PIC_SMALL)
 	{
 		static const char *pic_level = "PIC Level";
-		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, active_target.pic, false));
+		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)active_target.pic, false));
 		LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pic_level, strlen(pic_level), setting);
 	}
 	if (active_target.pie == PIE_BIG || active_target.pie == PIE_SMALL)
 	{
 		static const char *pie_level = "PIE Level";
-		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, active_target.pie, false));
+		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)active_target.pie, false));
 		LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
 	}
 

@@ -78,7 +78,7 @@ SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc)
 {
 	assert(file->start_id <= loc);
 
-	size_t lines = vec_size(file->lines);
+	unsigned lines = vec_size(file->lines);
 	unsigned low = 0;
 	unsigned high = lines;
 	while (1)

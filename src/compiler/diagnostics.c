@@ -34,7 +34,7 @@ static void print_error2(SourceLocation *location, const char *message, PrintTyp
 	}
 	static const int LINES_SHOWN = 4;
 
-	unsigned max_line_length = (int)round(log10(location->line)) + 1;
+	unsigned max_line_length = (unsigned)round(log10(location->line)) + 1;
 
 	char number_buffer[20];
 	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);

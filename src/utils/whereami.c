@@ -417,7 +417,7 @@ char *find_executable_path(void)
 {
 	int len = get_executable_path_raw(NULL, 0, NULL);
 	if (len < 0) return "";
-	char *path = malloc(len + 1);
+	char *path = malloc((unsigned)len + 1);
 	get_executable_path_raw(path, len, NULL);
 	path[len] = '\0';
 	for (int i = 0; i < len; ++i)

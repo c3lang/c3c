@@ -90,8 +90,8 @@ bool context_set_module_from_filename(Context *context)
 
     TokenType type = TOKEN_IDENT;
 	const char *module_name = symtab_add(global_context.scratch_buffer,
-	                                     global_context.scratch_buffer_len,
-	                                     fnv1a(global_context.scratch_buffer, global_context.scratch_buffer_len),
+										 global_context.scratch_buffer_len,
+	                                     fnv1a(global_context.scratch_buffer, (uint32_t) global_context.scratch_buffer_len),
 	                                     &type);
 
     if (type != TOKEN_IDENT)

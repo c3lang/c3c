@@ -9,8 +9,8 @@ static ArchType arch_from_llvm_string(StringSlice string);
 static EnvironmentType environment_type_from_llvm_string(StringSlice string);
 static bool arch_is_supported(ArchType arch);
 static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type);
-static AlignData os_target_alignment_of_int(OsType os, ArchType arch, int bits);
-static AlignData os_target_alignment_of_float(OsType os, ArchType arch, int bits);
+static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t bits);
+static AlignData os_target_alignment_of_float(OsType os, ArchType arch, uint32_t bits);
 static OsType os_from_llvm_string(StringSlice string);
 static VendorType vendor_from_llvm_string(StringSlice string);
 static ObjectFormatType object_format_from_os(OsType os);
@@ -30,11 +30,11 @@ int target_alloca_addr_space()
 
 static void type_dump(LLVMTargetDataRef llvm_target_data, LLVMTypeRef type)
 {
-	unsigned size = LLVMSizeOfTypeInBits(llvm_target_data, type);
+	unsigned long long size = LLVMSizeOfTypeInBits(llvm_target_data, type);
 	unsigned abialign = LLVMABIAlignmentOfType(llvm_target_data, type) * 8;
 	unsigned prefalign = LLVMPreferredAlignmentOfType(llvm_target_data, type) * 8;
 
-	printf(" | %-3d  %-3d %-3d", size, abialign, prefalign);
+	printf(" | %-3llu  %-3d %-3d", size, abialign, prefalign);
 }
 
 
@@ -910,7 +910,7 @@ typedef enum {
 } Mangling;
 
 
-static AlignData os_target_alignment_of_int(OsType os, ArchType arch, int bits)
+static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t bits)
 {
 	switch (arch)
 	{
@@ -921,8 +921,8 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, int bits)
 		case ARCH_TYPE_THUMB:
 		case ARCH_TYPE_ARMB:
 		case ARCH_TYPE_THUMBEB:
-			if ((os_is_apple(os) || os == OS_TYPE_NETBSD) && bits > 32) return (AlignData) { 32, MIN(64, bits) };
-			return (AlignData) { MIN(64, bits), MIN(64, bits) };
+			if ((os_is_apple(os) || os == OS_TYPE_NETBSD) && bits > 32) return (AlignData) { 32, MIN(64u, bits) };
+			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64LE:
@@ -930,7 +930,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, int bits)
 		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_RISCV32:
 		case ARCH_TYPE_WASM32:
-			return (AlignData) { MIN(64, bits), MIN(64, bits) };
+			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 		case ARCH_TYPE_RISCV64:
 			return (AlignData) { bits, bits };
 		case ARCH_TYPE_AARCH64:
@@ -975,7 +975,7 @@ static unsigned arch_big_endian(ArchType arch)
 }
 
 
-static AlignData os_target_alignment_of_float(OsType os, ArchType arch, int bits)
+static AlignData os_target_alignment_of_float(OsType os, ArchType arch, uint32_t bits)
 {
 	switch (arch)
 	{
@@ -988,7 +988,7 @@ static AlignData os_target_alignment_of_float(OsType os, ArchType arch, int bits
 			{
 				return (AlignData) { bits, bits };
 			}
-			return (AlignData) { MIN(32, bits), bits };
+			return (AlignData) { MIN(32u, bits), bits };
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
 		case ARCH_TYPE_PPC64:
@@ -1096,7 +1096,7 @@ static PieGeneration arch_os_pie_default(ArchType arch, OsType os, EnvironmentTy
 	UNREACHABLE
 }
 
-static unsigned os_target_pref_alignment_of_float(OsType os, ArchType arch, int bits)
+static AlignSize os_target_pref_alignment_of_float(OsType os, ArchType arch, uint32_t bits)
 {
 	switch (arch)
 	{
@@ -1264,7 +1264,7 @@ void target_setup(BuildTarget *target)
 	platform_target.float16 = os_target_supports_float16(platform_target.os, platform_target.arch);
 	for (BitSizes i = BITS8; i < BITSIZES_LEN; i++)
 	{
-		unsigned bits = 8 << (i - 1);
+		unsigned bits = (unsigned) (8 << (i - 1));
 		platform_target.integers[i] = os_target_alignment_of_int(platform_target.os, platform_target.arch, bits);
 		platform_target.floats[i] = os_target_alignment_of_float(platform_target.os, platform_target.arch, bits);
 	}

@@ -188,7 +188,7 @@ void type_append_signature_name(Type *type, char *dst, size_t *offset)
 
 
 
-ByteSize type_size(Type *type)
+TypeSize type_size(Type *type)
 {
 RETRY:
 	switch (type->type_kind)
@@ -201,11 +201,11 @@ RETRY:
 			goto RETRY;
 		case TYPE_VECTOR:
 		{
-			ByteSize width = type_size(type->vector.base) * type->vector.len;
+			TypeSize width = type_size(type->vector.base) * type->vector.len;
 			if (width & (width - 1))
 			{
-				ByteSize alignment = next_highest_power_of_2(width);
-				width = aligned_offset(width, alignment);
+				AlignSize alignment = next_highest_power_of_2((uint32_t) width);
+				width = aligned_offset((AlignSize)width, alignment);
 			}
 			return width;
 		}
@@ -412,11 +412,11 @@ AlignSize type_abi_alignment(Type *type)
 			goto RETRY;
 		case TYPE_VECTOR:
 		{
-			ByteSize width = type_size(type->vector.base) * type->vector.len;
-			ByteSize alignment = width;
+			ByteSize width = type_size(type->vector.base) * (uint32_t)type->vector.len;
+			AlignSize alignment = (AlignSize)(int32_t)width;
 			if (alignment & (alignment - 1))
 			{
-				alignment = next_highest_power_of_2(alignment);
+				alignment = (AlignSize)next_highest_power_of_2((uint32_t)alignment);
 			}
 			if (max_alignment_vector && alignment > max_alignment_vector) alignment = max_alignment_vector;
 			return alignment;
@@ -610,7 +610,7 @@ static inline bool array_structurally_equivalent_to_struct(Type *array, Type *ty
 {
 	assert(array->type_kind == TYPE_ARRAY);
 
-	ByteSize len = array->array.len;
+	MemberIndex len = (MemberIndex)array->array.len;
 	if (!len) return type_size(type) == 0;
 
 	Type *base = array->array.base;
@@ -624,7 +624,7 @@ static inline bool array_structurally_equivalent_to_struct(Type *array, Type *ty
 	Decl **members = type->decl->strukt.members;
 
 	// For structs / errors, all members must match.
-	ArrayIndex  offset = 0;
+	MemberIndex  offset = 0;
 	AlignSize align_size = type_abi_alignment(array);
 	Type *array_base = array->array.base;
 	VECEACH(members, i)
@@ -738,7 +738,7 @@ Type *type_get_indexed_type(Type *type)
 	}
 }
 
-static Type *type_create_array(Type *element_type, uint64_t len, bool vector, bool canonical)
+static Type *type_create_array(Type *element_type, ArraySize len, bool vector, bool canonical)
 {
 	if (canonical) element_type = element_type->canonical;
 	if (!element_type->type_cache)
@@ -763,13 +763,13 @@ static Type *type_create_array(Type *element_type, uint64_t len, bool vector, bo
 	Type *vec_arr;
 	if (vector)
 	{
-		vec_arr = type_new(TYPE_VECTOR, strformat("%s[<%llu>]", element_type->name, len));
+		vec_arr = type_new(TYPE_VECTOR, strformat("%s[<%u>]", element_type->name, len));
 		vec_arr->vector.base = element_type;
 		vec_arr->vector.len = len;
 	}
 	else
 	{
-		vec_arr = type_new(TYPE_ARRAY, strformat("%s[%llu]", element_type->name, len));
+		vec_arr = type_new(TYPE_ARRAY, strformat("%s[%u]", element_type->name, len));
 		vec_arr->array.base = element_type;
 		vec_arr->array.len = len;
 	}
@@ -785,7 +785,7 @@ static Type *type_create_array(Type *element_type, uint64_t len, bool vector, bo
 	return vec_arr;
 }
 
-Type *type_get_array(Type *arr_type, ByteSize len)
+Type *type_get_array(Type *arr_type, ArraySize len)
 {
 	return type_create_array(arr_type, len, false, false);
 }
@@ -811,7 +811,7 @@ Type *type_get_vector_bool(Type *original_type)
 {
 	Type *type = type_flatten(original_type);
 	ByteSize size = type_size(type->vector.base);
-	return type_get_vector(type_int_signed_by_bitsize(size * 8), original_type->vector.len);
+	return type_get_vector(type_int_signed_by_bitsize((unsigned)size * 8), (unsigned)original_type->vector.len);
 }
 
 Type *type_get_vector(Type *vector_type, unsigned len)
@@ -982,20 +982,20 @@ Type *type_find_function_type(FunctionSignature *signature)
 
 static inline void type_init_int(const char *name, Type *type, TypeKind kind, BitSizes bits)
 {
-	int actual_bits = bits ? 8 << (bits - 1) : 1;
+	unsigned actual_bits = bits ? (unsigned int)(8 << (bits - 1)) : 1;
 	type_init(name, type, kind, actual_bits, platform_target.integers[bits]);
 }
 
 static inline void type_create_float(const char *name, Type *type, TypeKind kind, BitSizes bits)
 {
-	int actual_bits = bits ? 8 << (bits - 1) : 1;
+	unsigned actual_bits = bits ? (unsigned int)(8 << (bits - 1)) : 1;
 	type_init(name, type, kind, actual_bits, platform_target.floats[bits]);
 }
 
 void type_setup(PlatformTarget *target)
 {
 	stable_init(&function_types, 0x1000);
-	max_alignment_vector = target->align_max_vector;
+	max_alignment_vector = (AlignSize)target->align_max_vector;
 
 	type_create_float("float16", &t.f16, TYPE_F16, BITS16);
 	type_create_float("float", &t.f32, TYPE_F32, BITS32);
@@ -1043,7 +1043,7 @@ void type_setup(PlatformTarget *target)
 	type_create_alias("iptrdiff", &t.iptrdiff, type_int_signed_by_bitsize(target->width_pointer));
 
 	alignment_subarray = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
-	size_subarray = alignment_subarray * 2;
+	size_subarray = (unsigned)(alignment_subarray * 2);
 	type_init("anyerr", &t.anyerr, TYPE_ANYERR, target->width_pointer, target->align_pointer);
 }
 

@@ -48,7 +48,7 @@ int toml_vasprintf(char **str, TOML_CONST char *format, va_list args)
         return size;
     }
 
-    *str = malloc(size + 1);
+    *str = malloc((unsigned)size + 1);
     if (*str == NULL)
     {
         return -1;
@@ -929,7 +929,7 @@ void toml_encode_unicode_scalar(TomlString *result, TomlParser *parser, int n, T
         char ch = *parser->ptr;
         if (isxdigit(ch))
         {
-            scalar = scalar * 16 + toml_hex_char_to_int(ch);
+            scalar = scalar * 16 + (unsigned)toml_hex_char_to_int(ch);
             toml_move_next(parser);
         }
         else

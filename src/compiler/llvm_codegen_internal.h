@@ -201,7 +201,7 @@ void llvm_value_rvalue(GenContext *context, BEValue *value);
 void llvm_value_set_bool(BEValue *value, LLVMValueRef llvm_value);
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i);
-void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type *type, unsigned alignment);
+void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment);
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_decl_address(BEValue *value, Decl *decl);
 void llvm_value_fold_failable(GenContext *c, BEValue *value);
@@ -210,8 +210,8 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 LLVMValueRef llvm_value_rvalue_store(GenContext *c, BEValue *value);
 
 LLVMTypeRef llvm_abi_type(GenContext *c, AbiType *type);
-unsigned llvm_abi_size(GenContext *c, LLVMTypeRef type);
-unsigned llvm_bitsize(GenContext *c, LLVMTypeRef type);
+TypeSize llvm_abi_size(GenContext *c, LLVMTypeRef type);
+BitSize llvm_bitsize(GenContext *c, LLVMTypeRef type);
 AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type);
 void llvm_attribute_add_range(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index_start, int index_end);
 void llvm_attribute_add(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index);
@@ -222,8 +222,8 @@ void llvm_attribute_add_type(GenContext *c, LLVMValueRef value_to_add_attribute_
 void llvm_attribute_add_int(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, uint64_t val, int index);
 LLVMBasicBlockRef llvm_basic_block_new(GenContext *c, const char *name);
 static inline LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val);
-LLVMValueRef llvm_emit_const_padding(GenContext *c, ByteSize size);
-LLVMTypeRef llvm_const_padding_type(GenContext *c, ByteSize size);
+LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size);
+LLVMTypeRef llvm_const_padding_type(GenContext *c, TypeSize size);
 LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name);
 LLVMValueRef llvm_emit_alloca_aligned(GenContext *c, Type *type, const char *name);
 void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl);
@@ -263,7 +263,7 @@ LLVMValueRef llvm_emit_load_aligned(GenContext *c, LLVMTypeRef type, LLVMValueRe
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl);
 LLVMValueRef llvm_emit_aggregate_value(GenContext *c, Type *type, ...);
-LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, unsigned align, bool bitcast);
+LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, AlignSize align, bool bitcast);
 void llvm_emit_memclear(GenContext *c, BEValue *ref);
 void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len);
 void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, unsigned source_alignment);
@@ -305,7 +305,7 @@ LLVMMetadataRef llvm_debug_current_scope(GenContext *context);
 bool llvm_emit_check_block_branch(GenContext *context);
 
 
-unsigned llvm_store_size(GenContext *c, LLVMTypeRef type);
+TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type);
 LLVMValueRef llvm_store_bevalue(GenContext *c, BEValue *destination, BEValue *value);
 void llvm_store_bevalue_raw(GenContext *c, BEValue *destination, LLVMValueRef raw_value);
 void llvm_store_bevalue_dest_aligned(GenContext *c, LLVMValueRef destination, BEValue *value);
@@ -439,7 +439,7 @@ static inline LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t va
 static inline void llvm_set_alignment(LLVMValueRef alloca, AlignSize alignment)
 {
 	assert(alignment > 0);
-	LLVMSetAlignment(alloca, alignment);
+	LLVMSetAlignment(alloca, (unsigned)alignment);
 }
 void llvm_set_error_exit(GenContext *c, LLVMBasicBlockRef block);
 void llvm_set_error_exit_and_value(GenContext *c, LLVMBasicBlockRef block, LLVMValueRef value);

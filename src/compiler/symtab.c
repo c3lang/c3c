@@ -101,7 +101,7 @@ void symtab_init(uint32_t capacity)
 	// Add keywords.
 	for (int i = 0; i < TOKEN_LAST; i++)
 	{
-		const char* name = token_type_to_string(i);
+		const char* name = token_type_to_string((TokenType)i);
 		// Skip non-keywords
 		if (!is_lower(name[0]))
 		{

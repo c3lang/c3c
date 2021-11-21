@@ -26,11 +26,12 @@ AbiType *abi_type_new_plain(Type *type)
 	return abi_type;
 }
 
-AbiType *abi_type_new_int_bits(unsigned bits)
+AbiType *abi_type_new_int_bits(ByteSize bits)
 {
+	assert(bits < UINT32_MAX);
 	AbiType *abi_type = CALLOCS(AbiType);
 	abi_type->kind = ABI_TYPE_INT_BITS;
-	abi_type->int_bits = bits;
+	abi_type->int_bits = (uint32_t)bits;
 	return abi_type;
 }
 
@@ -44,7 +45,7 @@ bool abi_type_is_float(AbiType *type)
 	return type->kind != ABI_TYPE_INT_BITS && type_is_float(type->type);
 }
 
-ByteSize abi_type_size(AbiType *type)
+TypeSize abi_type_size(AbiType *type)
 {
 	switch (type->kind)
 	{
@@ -56,7 +57,7 @@ ByteSize abi_type_size(AbiType *type)
 	UNREACHABLE;
 }
 
-ByteSize abi_type_abi_alignment(AbiType *type)
+AlignSize abi_type_abi_alignment(AbiType *type)
 {
 	switch (type->kind)
 	{

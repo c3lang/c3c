@@ -231,7 +231,7 @@ static void add_global_define(const char *name, Expr *value)
 {
 	Decl *dec = decl_calloc();
 	TokenType type = TOKEN_CONST_IDENT;
-	const char *unique_name = symtab_add(name, strlen(name), fnv1a(name, strlen(name)), &type);
+	const char *unique_name = symtab_add(name, (uint32_t)strlen(name), fnv1a(name, (uint32_t)strlen(name)), &type);
 	dec->name = unique_name;
 	dec->module = &global_context.std_module;
 	dec->visibility = VISIBLE_PUBLIC;
@@ -251,7 +251,7 @@ static void add_global_define(const char *name, Expr *value)
 static void setup_int_define(const char *id, uint64_t i, Type *type)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
-	id = symtab_add(id, strlen(id), fnv1a(id, strlen(id)), &token_type);
+	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
 	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
 	assert(type_is_integer(type));
 	expr_const_set_int(&expr->const_expr, i, type->type_kind);
@@ -273,7 +273,7 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 static void setup_bool_define(const char *id, bool value)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
-	id = symtab_add(id, strlen(id), fnv1a(id, strlen(id)), &token_type);
+	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
 	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
 	expr_const_set_bool(&expr->const_expr, value);
 	expr->type = type_bool;
@@ -295,8 +295,8 @@ void compiler_compile(void)
 	setup_bool_define("C_CHAR_IS_SIGNED", platform_target.signed_c_char);
 	setup_bool_define("PLATFORM_BIG_ENDIAN", platform_target.big_endian);
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
-	setup_int_define("COMPILER_OPT_LEVEL", (int)active_target.optimization_level, type_int);
-	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (int)active_target.size_optimization_level, type_int);
+	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)active_target.optimization_level, type_int);
+	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.size_optimization_level, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
 
 	global_context_clear_errors();
@@ -316,7 +316,7 @@ void compiler_compile(void)
 
 	if (has_error) exit(EXIT_FAILURE);
 
-	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_RANGE, .len = strlen(kw_std) };
+	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_RANGE, .len = (uint32_t) strlen(kw_std) };
 	global_context.std_module = (Module){ .name = &global_context.std_module_path };
 	global_context.std_module.stage = ANALYSIS_LAST;
 	stable_init(&global_context.std_module.symbols, 0x10000);
@@ -407,7 +407,7 @@ void compiler_compile(void)
 
 	bool create_exe = !active_target.no_link && !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST);
 
-	size_t output_file_count = vec_size(gen_contexts);
+	uint32_t output_file_count = vec_size(gen_contexts);
 	if (output_file_count > MAX_OUTPUT_FILES)
 	{
 		error_exit("Too many output files.");
@@ -623,7 +623,7 @@ void scratch_buffer_append(const char *string)
 
 void scratch_buffer_append_signed_int(int64_t i)
 {
-	int len_needed = sprintf(&global_context.scratch_buffer[global_context.scratch_buffer_len], "%lld", (long long)i);
+	uint32_t len_needed = (uint32_t)sprintf(&global_context.scratch_buffer[global_context.scratch_buffer_len], "%lld", (long long)i);
 	if (global_context.scratch_buffer_len + len_needed > MAX_STRING_BUFFER - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
@@ -633,7 +633,7 @@ void scratch_buffer_append_signed_int(int64_t i)
 
 void scratch_buffer_append_unsigned_int(uint64_t i)
 {
-	int len_needed = sprintf(&global_context.scratch_buffer[global_context.scratch_buffer_len], "%llu", (unsigned long long)i);
+	uint32_t len_needed = (uint32_t)sprintf(&global_context.scratch_buffer[global_context.scratch_buffer_len], "%llu", (unsigned long long)i);
 	if (global_context.scratch_buffer_len + len_needed > MAX_STRING_BUFFER - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);

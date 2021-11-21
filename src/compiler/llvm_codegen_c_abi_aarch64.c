@@ -26,7 +26,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		return aarch64_coerce_illegal_vector(type);
 	}
 
-	ByteSize size = type_size(type);
+	TypeSize size = type_size(type);
 
 	if (!type_is_abi_aggregate(type))
 	{
@@ -92,7 +92,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 		return aarch64_coerce_illegal_vector(type);
 	}
 
-	ByteSize size = type_size(type);
+	TypeSize size = type_size(type);
 
 	// Large vectors by mem.
 	if (type->type_kind == TYPE_VECTOR && size > 16)

@@ -499,7 +499,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		case TYPE_SUBARRAY:
 			return to_kind == TYPE_POINTER;
 		case TYPE_VECTOR:
-			return type_is_structurally_equivalent(type_get_array(from_type->vector.base, from_type->vector.len), to_type);
+			return type_is_structurally_equivalent(type_get_array(from_type->vector.base, (uint32_t)from_type->vector.len), to_type);
 		case TYPE_UNTYPED_LIST:
 			REMINDER("Look at untyped list explicit conversions");
 			return false;
@@ -1136,11 +1136,11 @@ bool cast_implicit_bit_width(Expr *expr, Type *to_type)
 		{
 			if (type_is_unsigned(from_canonical))
 			{
-				to_type = type_int_unsigned_by_bitsize(type_size(to_canonical) * 8);
+				to_type = type_int_unsigned_by_bitsize((uint32_t)type_size(to_canonical) * 8);
 			}
 			else
 			{
-				to_type = type_int_signed_by_bitsize(type_size(to_canonical) * 8);
+				to_type = type_int_signed_by_bitsize((uint32_t)type_size(to_canonical) * 8);
 			}
 		}
 	}

@@ -9,7 +9,7 @@ Decl *module_find_symbol(Module *module, const char *symbol)
 	return stable_get(&module->symbols, symbol);
 }
 
-Path *path_create_from_string(const char *string, size_t len, SourceSpan span)
+Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 {
 	Path *path = CALLOCS(Path);
 	path->span = span;

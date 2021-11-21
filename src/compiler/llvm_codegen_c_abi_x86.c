@@ -93,7 +93,7 @@ static ABIArgInfo *create_indirect_return_x86(Type *type, Regs *regs)
 static bool x86_should_return_type_in_reg(Type *type)
 {
 	assert(type->canonical == type);
-	unsigned size = type_size(type);
+	ByteSize size = type_size(type);
 	if (size > 8) return false;
 
 	// Require power of two for everything except mcu.
@@ -179,7 +179,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 		// On Darwin, vectors may be returned in registers.
 		if (platform_target.x86.is_darwin_vector_abi)
 		{
-			unsigned size = type_size(type);
+			ByteSize size = type_size(type);
 			if (size == 16)
 			{
 				// Special case, convert 128 bit vector to two 64 bit elements.
@@ -320,13 +320,13 @@ static bool x86_try_use_free_regs(Regs *regs, Type *type)
 	// 1. Floats are not passed in regs on soft floats.
 	if (!platform_target.x86.use_soft_float && type_is_float(type)) return false;
 
-	unsigned size = type_size(type);
+	ByteSize size = type_size(type);
 
 	// 2. If the type is empty, don't use a register.
 	if (!size) return false;
 
 	// 3. Calculate the number of registers.
-	unsigned size_in_regs = (size + 3) / 4;
+	ByteSize size_in_regs = (size + 3) / 4;
 
 	// 4. The MCU psABI allows passing parameters in-reg even if there are
 	//    earlier parameters that are passed on the stack. Also,
@@ -431,7 +431,7 @@ static inline ABIArgInfo *x86_classify_homogenous_aggregate(Regs *regs, Type *ty
 
 static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 {
-	unsigned size = type_size(type);
+	ByteSize size = type_size(type);
 
 	// On Windows, vectors are passed directly if registers are available, or
 	// indirectly if not. This avoids the need to align argument memory. Pass

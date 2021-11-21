@@ -45,7 +45,7 @@ void lexer_store_line_end(Lexer *lexer)
 {
 	lexer->current_line++;
 	lexer->line_start = lexer->current + 1;
-	source_file_append_line_end(lexer->current_file, lexer->current_file->start_id + lexer->current - lexer->file_begin);
+	source_file_append_line_end(lexer->current_file, (SourceLoc)(lexer->current_file->start_id + lexer->current - lexer->file_begin));
 }
 
 // Peek one character ahead.
@@ -104,7 +104,7 @@ static inline void add_generic_token(Lexer *lexer, TokenType type)
 
 	// Set the location.
 	location->file = lexer->current_file;
-	location->start = lexer->lexing_start - lexer->file_begin;
+	location->start = (uint32_t)(lexer->lexing_start - lexer->file_begin);
 
 	// Calculate the column
 	if (lexer->lexing_start < lexer->line_start)
@@ -129,11 +129,11 @@ static inline void add_generic_token(Lexer *lexer, TokenType type)
 		// The simple case, where the parsing started on the current line.
 		location->line = lexer->current_line;
 		// Col is simple difference.
-		location->col = (unsigned)(lexer->lexing_start - lexer->line_start) + 1;
+		location->col = (unsigned) (lexer->lexing_start - lexer->line_start) + 1;
 		// Start is offset to file begin.
-		location->start = lexer->lexing_start - lexer->file_begin;
+		location->start = (SourceLoc) (lexer->lexing_start - lexer->file_begin);
 		// Length is diff between current and start.
-		location->length = lexer->current - lexer->lexing_start;
+		location->length = (SourceLoc) (lexer->current - lexer->lexing_start);
 	}
 	// Return pointers to the data and the location,
 	// these maybe be used to fill in data.
@@ -158,10 +158,10 @@ static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, cons
 	va_list list;
 	va_start(list, message);
 	SourceLocation location = { .file = lexer->current_file,
-								.start = loc - lexer->file_begin,
+								.start = (uint32_t) (loc - lexer->file_begin),
 								.line = lexer->current_line,
 								.length = len,
-								.col = (uint32_t)(loc - lexer->line_start) + 1,
+								.col = (uint32_t) (loc - lexer->line_start) + 1,
 								};
 	sema_verror_range(&location, message, list);
 	va_end(list);
@@ -339,7 +339,7 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 		hash = FNV1a(next(lexer), hash);
 	}
 	EXIT:;
-	uint32_t len = lexer->current - lexer->lexing_start;
+	uint32_t len = (uint32_t)(lexer->current - lexer->lexing_start);
 	if (!type)
 	{
 		if (!prefix && len == 1) return add_token(lexer, TOKEN_UNDERSCORE, "_");
@@ -664,7 +664,7 @@ static inline int64_t scan_utf8(Lexer *lexer, unsigned char c)
 		}
 		result += c & 0x3f;
 	}
-	return result;
+	return (int64_t)result;
 ERROR:
 	add_error_token(lexer, "Invalid UTF-8 sequence.");
 	return -1;
@@ -704,7 +704,7 @@ static inline bool scan_char(Lexer *lexer)
 		{
 			if (width != 0) goto UNICODE_IN_MULTI;
 			const char *start = lexer->current;
-			int64_t utf8 = scan_utf8(lexer, c);
+			int64_t utf8 = scan_utf8(lexer, (unsigned char)c);
 			if (utf8 < 0) return false;
 			if (!match(lexer, '\''))
 			{
@@ -713,7 +713,7 @@ static inline bool scan_char(Lexer *lexer)
 				return add_error_token(lexer, "Unicode character literals may only contain one character, "
 											  "please remove the additional ones or use all ASCII.");
 			}
-			b.low = utf8;
+			b.low = (uint64_t) utf8;
 			width = utf8 > 0xffff ? 4 : 2;
 			goto DONE;
 		}
@@ -773,7 +773,7 @@ static inline bool scan_char(Lexer *lexer)
 					                       escape);
 				}
 				// Assign the value and go to DONE.
-				b.low = hex;
+				b.low = (uint64_t) hex;
 				width = bytes;
 				goto DONE;
 			}
@@ -781,7 +781,7 @@ static inline bool scan_char(Lexer *lexer)
 				// No escape, a regular character.
 				break;
 			default:
-				c = (unsigned char)escape;
+				c = (signed char)escape;
 				break;
 		}
 		// Default handling here:
@@ -845,7 +845,7 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 			int h = char_to_nibble(src[1]);
 			int l = char_to_nibble(src[2]);
 			if (h < 0 || l < 0) return -1;
-			unicode_char = ((unsigned) h << 4U) + l;
+			unicode_char = ((unsigned) h << 4U) + (unsigned)l;
 			scanned = 3;
 			break;
 		}
@@ -856,7 +856,7 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 			int x3 = char_to_nibble(src[3]);
 			int x4 = char_to_nibble(src[4]);
 			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0) return -1;
-			unicode_char = ((unsigned) x1 << 12U) + ((unsigned) x2 << 8U) + ((unsigned) x3 << 4U) + x4;
+			unicode_char = ((unsigned) x1 << 12U) + ((unsigned) x2 << 8U) + ((unsigned) x3 << 4U) + (unsigned)x4;
 			scanned = 5;
 			break;
 		}
@@ -872,7 +872,7 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 			int x8 = char_to_nibble(src[8]);
 			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0 || x5 < 0 || x6 < 0 || x7 < 0 || x8 < 0) return -1;
 			unicode_char = ((unsigned) x1 << 28U) + ((unsigned) x2 << 24U) + ((unsigned) x3 << 20U) + ((unsigned) x4 << 16U) +
-					((unsigned) x5 << 12U) + ((unsigned) x6 << 8U) + ((unsigned) x7 << 4U) + x8;
+					((unsigned) x5 << 12U) + ((unsigned) x6 << 8U) + ((unsigned) x7 << 4U) + (unsigned)x8;
 			scanned = 9;
 			break;
 		}
@@ -1123,7 +1123,7 @@ static inline bool scan_string(Lexer *lexer)
 		}
 	}
 	const char *end = current - 1;
-	char *destination = malloc_arena(end - lexer->current + 1);
+	char *destination = malloc_arena((size_t)(end - lexer->current + 1));
 	size_t len = 0;
 	while (lexer->current < end)
 	{
@@ -1182,7 +1182,7 @@ static inline bool scan_raw_string(Lexer *lexer)
 	}
 	const char *current = lexer->lexing_start + 1;
 	const char *end = lexer->current - 1;
-	size_t len = end - current;
+	size_t len = (size_t)(end - current);
 	char *destination = malloc_arena(len + 1);
 	len = 0;
 	while (current < end)
@@ -1752,7 +1752,7 @@ File* lexer_current_file(Lexer *lexer)
 
 void lexer_init_with_file(Lexer *lexer, File *file)
 {
-	file->token_start_id = toktype_arena.allocated;
+	file->token_start_id = (uint32_t) toktype_arena.allocated;
 	lexer->current_file = file;
 	lexer->file_begin = lexer->current_file->contents;
 	lexer->lexing_start = lexer->file_begin;

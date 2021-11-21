@@ -52,7 +52,7 @@ TaskQueueRef taskqueue_create(int threads)
 {
 	assert(threads > 0);
 	TaskQueue *queue = CALLOCS(TaskQueue);
-	queue->threads = malloc_arena(sizeof(pthread_t) * threads);
+	queue->threads = malloc_arena(sizeof(pthread_t) * (unsigned)threads);
 	queue->thread_count = threads;
 	if (pthread_mutex_init(&queue->lock, NULL)) error_exit("Failed to set up mutex");
 	if (pthread_cond_init(&queue->notify, NULL)) error_exit("Failed to set up cond");

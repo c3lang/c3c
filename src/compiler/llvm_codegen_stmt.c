@@ -760,7 +760,7 @@ static void gencontext_emit_switch_body(GenContext *c, BEValue *switch_value, As
 {
 	bool is_if_chain = switch_ast->switch_stmt.if_chain;
 	Ast **cases = switch_ast->switch_stmt.cases;
-	ByteSize case_count = vec_size(cases);
+	ArraySize case_count = vec_size(cases);
 	if (!case_count)
 	{
 		// No body or default is empty, just exit after the value.
@@ -1119,7 +1119,7 @@ void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 static LLVMValueRef llvm_emit_string(GenContext *c, const char *str)
 {
 	LLVMTypeRef char_type = llvm_get_type(c, type_char);
-	unsigned len = strlen(str);
+	unsigned len = (unsigned)strlen(str);
 	LLVMTypeRef char_array_type = LLVMArrayType(char_type, len + 1);
 	LLVMValueRef global_string = LLVMAddGlobal(c->module, char_array_type, "");
 	LLVMSetLinkage(global_string, LLVMInternalLinkage);

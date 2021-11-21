@@ -54,7 +54,7 @@ char *i128_to_string(Int128 op, uint64_t base, bool is_signed)
 		*(loc++) = digits[rem.low];
 		op = i128_udiv(op, base_div);
 	} while (!i128_is_zero(op));
-	char *res = malloc(loc - buffer + 2);
+	char *res = malloc((size_t)(loc - buffer + 2));
 	char *c = res;
 	if (add_minus) *(c++) = '-';
 	while (loc > buffer)
@@ -67,7 +67,7 @@ char *i128_to_string(Int128 op, uint64_t base, bool is_signed)
 
 char *int_to_str(Int i, int radix)
 {
-	return i128_to_string(i.i, radix, type_kind_is_signed(i.type));
+	return i128_to_string(i.i, (uint64_t)radix, type_kind_is_signed(i.type));
 }
 
 
@@ -88,7 +88,7 @@ Int128 i128_from_str(const char *str)
 	Int128 x = { 0, 0 };
 	while ((c = *(str++)) != 0)
 	{
-		x = i128_add64(i128_mult64(x, 10), c - '0');
+		x = i128_add64(i128_mult64(x, 10), (uint64_t)(c - '0'));
 	}
 	return x;
 }
@@ -100,7 +100,7 @@ Int128 i128_from_strl(const char *str, const char *end)
 	while (str != end)
 	{
 		c = *(str++);
-		x = i128_add64(i128_mult64(x, 10), c - '0');
+		x = i128_add64(i128_mult64(x, 10), (uint64_t) (c - '0'));
 	}
 	return x;
 }
@@ -112,7 +112,7 @@ Int128 i128_from_hexstrl(const char *str, const char *end)
 	while (str != end)
 	{
 		c = *(str++);
-		x = i128_add64(i128_shl64(x, 4), hex_nibble(c));
+		x = i128_add64(i128_shl64(x, 4), (uint64_t)hex_nibble(c));
 	}
 	return x;
 }
@@ -150,7 +150,7 @@ Int128 i128_extend(Int128 op, TypeKind type)
 {
 	int bits = type_kind_bitsize(type);
 	if (bits == 128) return op;
-	int shift = 128 - bits;
+	uint64_t shift = 128 - (uint64_t)bits;
 	op = i128_shl64(op, shift);
 	bool is_signed = type_kind_is_signed(type);
 	if (is_signed)
@@ -291,7 +291,7 @@ Int128 i128_lshr64(Int128 op1, uint64_t amount)
 
 Int128 i128_from_float_signed(Real d)
 {
-	return (Int128){ 0, (int64_t)d };
+	return (Int128){ 0, (uint64_t)((int64_t)d) };
 }
 
 Int128 i128_from_float_unsigned(Real d)
@@ -325,8 +325,8 @@ Int128 i128_ashr64(Int128 op1, uint64_t amount)
 	if (!ISNEG(op1.high)) return i128_lshr64(op1, amount);
 	if (amount > 127) return (Int128){ UINT64_MAX, UINT64_MAX };
 	if (amount == 64) return (Int128){ UINT64_MAX, op1.high };
-	if (amount > 64) return (Int128){ UINT64_MAX, ((int64_t)op1.high) >> (amount - 64) };
-	return (Int128){ ((int64_t)op1.high) >> amount, op1.low >> amount | (op1.high << (64 - amount)) };
+	if (amount > 64) return (Int128){ UINT64_MAX, (uint64_t)(((int64_t)op1.high) >> (amount - 64)) };
+	return (Int128){ (uint64_t)(((int64_t)op1.high) >> amount), op1.low >> amount | (op1.high << (64 - amount)) };
 }
 
 Int128 i128_ashr(Int128 op1, Int128 op2)
@@ -337,7 +337,7 @@ Int128 i128_ashr(Int128 op1, Int128 op2)
 
 Int128 i128_add_swrap64(Int128 op1, int64_t op2, bool *wrapped)
 {
-	Int128 res = i128_add64(op1, op2);
+	Int128 res = i128_add64(op1, (uint64_t) op2);
 	bool is_less = i128_scomp(res, op1) == CMP_LT;
 	*wrapped = op2 < 0 ? !is_less : is_less;
 	return res;
@@ -467,17 +467,17 @@ uint32_t i128_clz(const Int128 *op)
 
 int i128_lsb(const Int128 *op)
 {
-	return 127 - i128_ctz(op);
+	return (int)(127 - i128_ctz(op));
 }
 
 int i128_msb(const Int128 *op)
 {
-	return 127 - i128_clz(op);
+	return (int)(127 - i128_clz(op));
 }
 
 Real i128_to_float(Int128 op)
 {
-	return (Real)op.low + (Real)ldexp(op.high, 64);
+	return (Real)op.low + (Real)ldexp((double)op.high, 64);
 }
 
 Real i128_to_float_signed(Int128 op)
@@ -486,19 +486,19 @@ Real i128_to_float_signed(Int128 op)
 	{
 		return -i128_to_float_signed(i128_neg(op));
 	}
-	return (Real)op.low + (Real)ldexp(op.high, 64);
+	return (Real)op.low + (Real)ldexp((double)op.high, 64);
 }
 
 void i128_udivrem(Int128 op1, Int128 op2, Int128 *div, Int128 *rem)
 {
 	*div = (Int128){ 0, 0 };
-	int32_t shift = i128_clz(&op2) - i128_clz(&op1);
+	int32_t shift = (int32_t)(i128_clz(&op2) - i128_clz(&op1));
 	if (shift < 0)
 	{
 		*rem = op1;
 		return;
 	}
-	op2 = i128_shl64(op2, shift);
+	op2 = i128_shl64(op2, (uint64_t)shift);
 	do
 	{
 		*div = i128_shl64(*div, 1);
@@ -544,7 +544,7 @@ Int128 i128_srem(Int128 op1, Int128 op2)
 
 Int128 i128_from_signed(int64_t i)
 {
-	return (Int128){ i < 0 ? UINT64_MAX : 0, i };
+	return (Int128){ i < 0 ? UINT64_MAX : 0, (uint64_t)i };
 }
 
 Int128 i128_from_unsigned(uint64_t i)
@@ -713,7 +713,7 @@ uint64_t int_to_u64(Int op)
 
 int64_t int_to_i64(Int op)
 {
-	return op.i.low;
+	return (int64_t)op.i.low;
 }
 
 bool int_is_zero(Int op)
@@ -766,13 +766,13 @@ Int int_conv(Int op, TypeKind to_type)
 			return (Int){ op.i, to_type };
 		}
 		// Extending from a signed to unsigned
-		int shift = 128 - to_bitsize;
+		uint64_t shift = (uint64_t)(128 - to_bitsize);
 		// Cut off the top of the signed bits
 		// 11101 -> 11010 -> 01101
 		return (Int){ i128_lshr64(i128_shl64(op.i, shift), shift), to_type };
 	}
 	// The other case is cutting down bits.
-	int shift = 128 - to_bitsize;
+	uint64_t shift = (uint64_t)(128 - to_bitsize);
 	Int128 without_top_bits = i128_lshr64(i128_shl64(op.i, shift), shift);
 	if (to_signed)
 	{
@@ -892,7 +892,7 @@ Int128 i128_from_double(double x)
 	if (x >= ldexp(1, 64))
 	{
 		uint64_t hi = (uint64_t)ldexp(x, -64);
-		uint64_t lo = (uint64_t)(x - ldexp(hi, 64));
+		uint64_t lo = (uint64_t)(x - ldexp((double)hi, 64));
 		return (Int128){ hi, lo };
 	}
 	return i128_from_int((uint64_t)x);
@@ -900,5 +900,5 @@ Int128 i128_from_double(double x)
 
 Int128 i128_from_double_signed(double x)
 {
-	return x < 0 ? i128_neg(i128_from_signed(-x)) : i128_from_int(x);
+	return x < 0 ? i128_neg(i128_from_signed((int64_t)-x)) : i128_from_int((uint64_t)x);
 }

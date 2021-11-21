@@ -27,12 +27,12 @@ ABIArgInfo *abi_arg_new_indirect_realigned(AlignSize alignment, Type *by_val_typ
 ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type);
 ABIArgInfo *abi_arg_new_indirect_not_by_val(Type *type);
 
-ByteSize abi_type_abi_alignment(AbiType *type);
+AlignSize abi_type_abi_alignment(AbiType *type);
 bool abi_type_is_integer(AbiType *type);
 bool abi_type_is_float(AbiType *type);
 AbiType *abi_type_new_plain(Type *type);
-AbiType *abi_type_new_int_bits(unsigned bits);
-ByteSize abi_type_size(AbiType *type);
+AbiType *abi_type_new_int_bits(ByteSize bits);
+TypeSize abi_type_size(AbiType *type);
 
 typedef struct
 {
