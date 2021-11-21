@@ -1235,7 +1235,7 @@ static inline bool scan_hex_array(Lexer *lexer)
 	}
 	if (!add_token(lexer, TOKEN_BYTES, lexer->lexing_start)) return false;
 	lexer->latest_token_data->is_base64 = false;
-	lexer->latest_token_data->len = len / 2;
+	lexer->latest_token_data->len = (uint64_t)len / 2;
 	return true;
 }
 
