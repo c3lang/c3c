@@ -10,7 +10,7 @@ Ast *parse_unreachable_stmt(Context *context);
 
 Ast *parse_scoping_stmt(Context *context);
 
-#pragma mark --- Internal functions
+// --- Internal functions
 
 
 /**
@@ -750,7 +750,7 @@ static inline Ast *parse_assert_stmt(Context *context)
 	return ast;
 }
 
-#pragma mark --- External functions
+// --- External functions
 
 /**
  * ct_assert_stmt ::= CT_ASSERT '(' constant_expression (',' constant_expression) ')' ';'

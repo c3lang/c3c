@@ -4,7 +4,7 @@
 
 #include "sema_internal.h"
 
-#pragma mark --- Helper functions
+// --- Helper functions
 
 static bool sema_analyse_compound_stmt(Context *context, Ast *statement);
 
@@ -44,7 +44,7 @@ static void sema_unwrappable_from_catch_in_else(Context *c, Expr *cond)
 }
 
 
-#pragma mark --- Sema analyse stmts
+// --- Sema analyse stmts
 
 
 

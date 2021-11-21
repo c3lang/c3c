@@ -18,7 +18,7 @@ typedef enum
 	DOC_END_ERROR,
 } DocEnd;
 
-#pragma mark --- Lexing general methods.
+// --- Lexing general methods.
 
 static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode);
 
@@ -82,7 +82,7 @@ static inline bool match(Lexer *lexer, char expected)
 	return true;
 }
 
-#pragma mark --- Token creation
+// --- Token creation
 
 /**
  * Allocate data for a token, including source location.
@@ -179,7 +179,7 @@ static bool add_token(Lexer *lexer, TokenType type, const char *string)
 
 
 
-#pragma mark --- Comment parsing
+// --- Comment parsing
 
 /**
  * Parsing of the "//" line comment,
@@ -279,7 +279,7 @@ static void skip_whitespace(Lexer *lexer, LexMode lex_type)
 
 
 
-#pragma mark --- Identifier scanning
+// --- Identifier scanning
 
 
 // Parses identifiers. Note that this is a bit complicated here since
@@ -349,7 +349,7 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 	return add_token(lexer, type, interned_string);
 }
 
-#pragma mark --- Number scanning
+// --- Number scanning
 
 static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 {
@@ -592,7 +592,7 @@ static inline bool scan_digit(Lexer *lexer)
 	return scan_dec(lexer);
 }
 
-#pragma mark --- Character & string scan
+// --- Character & string scan
 
 static inline int64_t scan_hex_literal(Lexer *lexer, int positions)
 {
@@ -1294,7 +1294,7 @@ static inline bool scan_base64(Lexer *lexer)
 
 
 
-#pragma mark --- Lexer doc lexing
+// --- Lexer doc lexing
 
 /**
  * Skip any stars until we either have no more * or we find '* /'
@@ -1580,7 +1580,7 @@ static bool parse_doc_comment(Lexer *lexer)
 	}
 }
 
-#pragma mark --- Lexer public functions
+// --- Lexer public functions
 
 
 Token lexer_advance(Lexer *lexer)

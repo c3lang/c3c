@@ -5,7 +5,7 @@
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
-#pragma mark --- Parser base methods
+// --- Parser base methods
 
 /**
  * Advance to the next non-comment token.
@@ -103,7 +103,7 @@ bool consume(Context *context, TokenType type, const char *message, ...)
 }
 
 
-#pragma mark --- Extern functions
+// --- Extern functions
 
 /**
  * module? imports top_level_statement*

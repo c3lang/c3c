@@ -106,7 +106,7 @@ void recover_top_level(Context *context)
 	}
 }
 
-#pragma mark --- Parse CT conditional code
+// --- Parse CT conditional code
 
 static inline bool parse_top_level_block(Context *context, Decl ***decls, TokenType end1, TokenType end2, TokenType end3)
 {
@@ -222,7 +222,7 @@ static inline Decl *parse_ct_switch_top_level(Context *context)
 }
 
 
-#pragma mark --- Parse paths
+// --- Parse paths
 
 /**
  * module_path ::= IDENT (SCOPE IDENT)*
@@ -271,7 +271,7 @@ static inline Path *parse_module_path(Context *context)
 }
 
 
-#pragma mark --- Parse import and module
+// --- Parse import and module
 
 /**
  *
@@ -514,7 +514,7 @@ Path *parse_path_prefix(Context *context, bool *had_error)
 	return path;
 }
 
-#pragma mark --- Type parsing
+// --- Type parsing
 
 /**
  * base_type
@@ -746,7 +746,7 @@ TypeInfo *parse_failable_type(Context *context)
 }
 
 
-#pragma mark --- Decl parsing
+// --- Decl parsing
 
 /**
  * Parse ident ('=' expr)?
@@ -924,7 +924,7 @@ bool parse_next_is_case_type(Context *context)
 
 
 
-#pragma mark --- Parse parameters & throws & attributes
+// --- Parse parameters & throws & attributes
 
 
 /**
@@ -1211,7 +1211,7 @@ static inline bool parse_parameter_list(Context *context, Visibility parent_visi
 	return true;
 }
 
-#pragma mark --- Parse types
+// --- Parse types
 
 
 /**
@@ -1979,7 +1979,7 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 	return decl;
 }
 
-#pragma mark --- Parse function
+// --- Parse function
 
 
 
