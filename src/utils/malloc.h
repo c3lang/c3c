@@ -15,5 +15,5 @@ static inline type *name##_calloc(void) { \
 	memset(ptr, 0, sizeof(type)); \
 	return ptr; } \
 static inline type *name##ptr(type ## Id id) { return ((type *)name##_arena.ptr) + id; } \
-static inline type##Id name##id(type *ptr) { return (unsigned) { ptr - ((type *)name##_arena.ptr) }; } \
+static inline type##Id name##id(type *ptr) { return (unsigned) (ptr - ((type *)name##_arena.ptr)); } \
 static inline type *name##_copy(type *ptr) { type *x = name##_alloc(); memcpy(x, ptr, sizeof(type)); return x; }
