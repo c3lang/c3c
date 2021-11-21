@@ -478,7 +478,7 @@ Path *parse_path_prefix(Context *context, bool *had_error)
 	if (!TOKEN_IS(TOKEN_IDENT) || context->next_tok.type != TOKEN_SCOPE) return NULL;
 
 	char *scratch_ptr = global_context.scratch_buffer;
-	size_t offset = 0;
+	uint32_t offset = 0;
 
 	Path *path = CALLOCS(Path);
 	path->span = source_span_from_token_id(context->tok.id);
