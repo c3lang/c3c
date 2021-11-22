@@ -52,17 +52,17 @@ foreach.cond:                                     ; preds = %foreach.inc, %entry
   br i1 %lt, label %foreach.body, label %foreach.exit
 
 foreach.body:                                     ; preds = %foreach.cond
-  %ptroffset = getelementptr inbounds i32, [10 x i32]* %y, i64 %10
-  %11 = load i32, i32* %ptroffset, align 4
-  store i32 %11, i32* %v, align 4
-  %12 = load i32, i32* %v, align 4
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %12)
+  %11 = getelementptr inbounds [10 x i32], [10 x i32]* %y, i64 0, i64 %10
+  %12 = load i32, i32* %11, align 4
+  store i32 %12, i32* %v, align 4
+  %13 = load i32, i32* %v, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %13)
   br label %foreach.inc
 
 foreach.inc:                                      ; preds = %foreach.body
-  %13 = load i64, i64* %idx, align 8
-  %14 = add i64 %13, 1
-  store i64 %14, i64* %idx, align 8
+  %14 = load i64, i64* %idx, align 8
+  %15 = add i64 %14, 1
+  store i64 %15, i64* %idx, align 8
   br label %foreach.cond
 
 foreach.exit:                                     ; preds = %foreach.cond

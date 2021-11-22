@@ -540,7 +540,17 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 
 	assert(llvm_value_is_addr(&enum_value));
 
-	LLVMValueRef ref_to_element = llvm_emit_pointer_inbounds_gep_raw(c, actual_type_llvm, enum_value.value, index_value.value);
+	LLVMValueRef ref_to_element;
+	AlignSize align;
+	if (enum_value.type->type_kind == TYPE_ARRAY || enum_value.type->type_kind == TYPE_VECTOR)
+	{
+		ref_to_element = llvm_emit_array_gep_raw_index(c, enum_value.value,
+		                                               llvm_get_type(c, enum_value.type), index_value.value, index_value.alignment, &align);
+	}
+	else
+	{
+		ref_to_element = llvm_emit_pointer_inbounds_gep_raw(c, actual_type_llvm, enum_value.value, index_value.value);
+	}
 	BEValue result;
 	if (ast->foreach_stmt.value_by_ref)
 	{

@@ -169,7 +169,7 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 			c->debug.function,
 			name,
 			strlen(name),
-			index,
+			index + 1,
 			c->debug.file,
 			loc->line,
 			llvm_get_debug_type(c, parameter->type),
