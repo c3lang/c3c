@@ -520,7 +520,7 @@ Decl *copy_decl(Decl *decl)
 			MACRO_COPY_TYPE(copy->typedef_decl.type_info);
 			break;
 		case DECL_DISTINCT:
-			MACRO_COPY_DECL_LIST(copy->distinct_decl.methods);
+			MACRO_COPY_DECL_LIST(copy->methods);
 			if (copy->distinct_decl.typedef_decl.is_func)
 			{
 				copy_function_signature_deep(&copy->distinct_decl.typedef_decl.function_signature);
