@@ -345,6 +345,17 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			UNREACHABLE
 	}
 }
+
+void llvm_set_internal_linkage(LLVMValueRef alloc)
+{
+	LLVMSetLinkage(alloc, LLVMInternalLinkage);
+	LLVMSetVisibility(alloc, LLVMDefaultVisibility);
+}
+void llvm_set_private_linkage(LLVMValueRef alloc)
+{
+	LLVMSetLinkage(alloc, LLVMPrivateLinkage);
+	LLVMSetVisibility(alloc, LLVMDefaultVisibility);
+}
 void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST || decl->var.is_static);
@@ -913,8 +924,7 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 		LLVMValueRef val = llvm_value_rvalue_store(c, value);
 		LLVMValueRef ref = LLVMAddGlobal(c->module, LLVMTypeOf(val), ".taddr");
 		llvm_set_alignment(ref, llvm_abi_alignment(c, LLVMTypeOf(val)));
-		LLVMSetLinkage(ref, LLVMPrivateLinkage);
-		LLVMSetVisibility(ref, LLVMHiddenVisibility);
+		llvm_set_private_linkage(ref);
 		LLVMSetInitializer(ref, val);
 		llvm_emit_bitcast(c, ref, type_get_ptr(value->type));
 		llvm_value_set_address(value, ref, value->type);

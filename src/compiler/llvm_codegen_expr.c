@@ -1396,7 +1396,7 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 	// Create a global const.
 	LLVMTypeRef type = LLVMTypeOf(value);
 	LLVMValueRef global_copy = LLVMAddGlobal(c->module, type, ".__const");
-	LLVMSetLinkage(global_copy, LLVMPrivateLinkage);
+	llvm_set_private_linkage(global_copy);
 
 	// Set a nice alignment
 	AlignSize alignment = type_alloca_alignment(expr->type);
@@ -3652,7 +3652,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			assert(type->array.base == type_char);
 			{
 				LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.bytes.len), ".bytes");
-				LLVMSetLinkage(global_name, LLVMPrivateLinkage);
+				llvm_set_private_linkage(global_name);
 				LLVMSetGlobalConstant(global_name, 1);
 
 				LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context,
@@ -3699,7 +3699,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_STRING:
 		{
 			LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.string.len + 1), ".str");
-			LLVMSetLinkage(global_name, LLVMPrivateLinkage);
+			llvm_set_private_linkage(global_name);
 			LLVMSetGlobalConstant(global_name, 1);
 			LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context,
 			                                                         expr->const_expr.string.chars,
@@ -4636,7 +4636,7 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 		// Optimization, emit directly to value
 		llvm_emit_expr(context, be_value, ret_expr);
 		// And remove the alloca
-		LLVMInstructionRemoveFromParent(context->return_out);
+		LLVMInstructionEraseFromParent(context->return_out);
 		goto DONE;
 
 	} while (0);

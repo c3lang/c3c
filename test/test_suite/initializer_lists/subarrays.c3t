@@ -52,11 +52,11 @@ fn int main()
 
 @Baz = linkonce_odr constant i8 1
 @Bar = linkonce_odr constant i8 1
-@.taddr = private hidden global [2 x %Bar] [%Bar { i32 3, i32 4 }, %Bar { i32 8, i32 9 }], align 4
+@.taddr = private global [2 x %Bar] [%Bar { i32 3, i32 4 }, %Bar { i32 8, i32 9 }], align 4
 @subarrays.arrbar = global %"Bar[]" { %Bar* getelementptr inbounds ([2 x %Bar], [2 x %Bar]* @.taddr, i32 0, i32 0), i64 2 }, align 8
-@.taddr.3 = private hidden global [2 x i32] [i32 1, i32 2], align 4
+@.taddr.3 = private global [2 x i32] [i32 1, i32 2], align 4
 @subarrays.xd = global %"int[]" { i32* getelementptr inbounds ([2 x i32], [2 x i32]* @.taddr.3, i32 0, i32 0), i64 2 }, align 8
-@.taddr.4 = private hidden global [2 x i32] [i32 3, i32 4], align 4
+@.taddr.4 = private global [2 x i32] [i32 3, i32 4], align 4
 @subarrays.fofeo = global i32* getelementptr inbounds ([2 x i32], [2 x i32]* @.taddr.4, i32 0, i32 0), align 8
 @.str = private constant [4 x i8] c"%d\0A\00", align 1
 @.str.5 = private constant [7 x i8] c"Start:\00", align 1

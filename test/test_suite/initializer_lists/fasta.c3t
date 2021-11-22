@@ -118,11 +118,11 @@ fn void main(int argc, char **argv)
 @fasta.alu = protected global %"char[]" { i8* getelementptr inbounds ([288 x i8], [288 x i8]* @.str, i32 0, i32 0), i64 287 }, align 8
 @.str.11 = private constant [16 x i8] c"acgtBDHKMNRSVWY\00", align 1
 @fasta.iub = global %"char[]" { i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str.11, i32 0, i32 0), i64 15 }, align 8
-@.taddr = private hidden global [15 x double] [double 2.700000e-01, double 1.200000e-01, double 1.200000e-01, double 2.700000e-01, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02], align 8
+@.taddr = private global [15 x double] [double 2.700000e-01, double 1.200000e-01, double 1.200000e-01, double 2.700000e-01, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02], align 8
 @fasta.iub_p = global %"double[]" { double* getelementptr inbounds ([15 x double], [15 x double]* @.taddr, i32 0, i32 0), i64 15 }, align 8
 @.str.12 = private constant [5 x i8] c"acgt\00", align 1
 @fasta.homosapiens = global %"char[]" { i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.12, i32 0, i32 0), i64 4 }, align 8
-@.taddr.13 = private hidden global [4 x double] [double 0x3FD3639D20BAEB5B, double 0x3FC957AE3DCD561B, double 0x3FC9493AEAB6C2BF, double 0x3FD34BEE4B030838], align 8
+@.taddr.13 = private global [4 x double] [double 0x3FD3639D20BAEB5B, double 0x3FC957AE3DCD561B, double 0x3FC9493AEAB6C2BF, double 0x3FD34BEE4B030838], align 8
 @fasta.homosapiens_p = global %"double[]" { double* getelementptr inbounds ([4 x double], [4 x double]* @.taddr.13, i32 0, i32 0), i64 4 }, align 8
 @fasta.LINELEN = constant i32 60, align 4
 @.str.14 = private constant [23 x i8] c">ONE Homo sapiens alu\0A\00", align 1

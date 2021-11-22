@@ -1122,7 +1122,7 @@ static LLVMValueRef llvm_emit_string(GenContext *c, const char *str)
 	unsigned len = (unsigned)strlen(str);
 	LLVMTypeRef char_array_type = LLVMArrayType(char_type, len + 1);
 	LLVMValueRef global_string = LLVMAddGlobal(c->module, char_array_type, "");
-	LLVMSetLinkage(global_string, LLVMInternalLinkage);
+	llvm_set_internal_linkage(global_string);
 	LLVMSetGlobalConstant(global_string, 1);
 	LLVMSetInitializer(global_string, LLVMConstStringInContext(c->context, str, len, 0));
 	AlignSize alignment;

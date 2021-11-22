@@ -37,7 +37,7 @@ fn int main()
 
 @Baz = linkonce_odr constant i8 1
 @Bar = linkonce_odr constant i8 1
-@.taddr = private hidden global [1 x %Bar] [%Bar { i32 1, i32 2 }], align 4
+@.taddr = private global [1 x %Bar] [%Bar { i32 1, i32 2 }], align 4
 @test.c = hidden global %"Bar[]" { %Bar* getelementptr inbounds ([1 x %Bar], [1 x %Bar]* @.taddr, i32 0, i32 0), i64 1 }, align 8
 @.str = private constant [7 x i8] c"%d %d\0A\00", align 1
 
