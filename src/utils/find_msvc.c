@@ -9,6 +9,7 @@
 #include "utils/dirent.h"
 
 #define MSVC_BASE_PATH "/Program Files (x86)/Microsoft Visual Studio/"
+#define MSVC_22_BASE_PATH "/Program Files/Microsoft Visual Studio/"
 #define WINKIT_BASE_PATH "/Program Files (x86)/Windows Kits/"
 
 
@@ -23,9 +24,12 @@ char *get_highest_ver(char *directory, int (*filter)(const struct dirent *))
 	int num_files = scandir(directory, &files, filter, versionsort);
 	if (num_files < 0)
 	{
-		error_exit("ERROR - Failed to autodetect MSVC libpaths\n");
+		return NULL;
 	}
 	char *path_ret = (char *)malloc(260);
+	if (path_ret == NULL)
+		error_exit("ERROR - malloc failed in get_highest_ver\n"); // visual studio doesn't like not checking this
+
 	strcpy_s(path_ret, 260, files[num_files - 1]->d_name);
 	for (int i = 0; i < num_files; i++) free(files[i]);
 	free(files);
@@ -39,12 +43,33 @@ PathPair get_latest_available_vs_path()
 {
 	char ver_name[16] = "";
 
-	char *highest_ver = get_highest_ver(MSVC_BASE_PATH, is_numeric);
-	strncpy_s(ver_name, 16, highest_ver, 4);
-	free(highest_ver);
-
+	char *highest_ver;
 	char newpath[260];
-	snprintf(newpath, 260, "%s%s/BuildTools/VC/Tools/MSVC/", MSVC_BASE_PATH, ver_name);
+	// check x64 path first, then x86, if neither then exit
+	highest_ver = get_highest_ver(MSVC_22_BASE_PATH, is_numeric);
+	if (highest_ver == NULL)
+	{
+		//old code for older visual studio versions
+		highest_ver = get_highest_ver(MSVC_BASE_PATH, is_numeric);
+		if (highest_ver == NULL)
+		{
+			error_exit("ERROR - Failed to autodetect MSVC libpaths\n");
+		}
+		strncpy_s(ver_name, 16, highest_ver, 4);
+
+		snprintf(newpath, 260, "%s%s/BuildTools/VC/Tools/MSVC/", MSVC_BASE_PATH, ver_name);
+	}
+	else
+	{
+		strncpy_s(ver_name, 16, highest_ver, 4);
+
+		// This is probably going to break when VS2022 comes out of preview.
+		// I don't know what the file structure will look like then, so I'm just
+		// going to leave this as is for now.
+		// TODO: deal with non-preview path
+		snprintf(newpath, 260, "%s%s/Preview/VC/Tools/MSVC/", MSVC_22_BASE_PATH, ver_name);		
+	}
+	free(highest_ver);
 
 	highest_ver = get_highest_ver(newpath, NULL);
 	strcat_s(newpath, 260, highest_ver);
