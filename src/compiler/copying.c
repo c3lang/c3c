@@ -183,6 +183,7 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_EXPR_LIST(expr->call_expr.arguments);
 			return expr;
 		case EXPR_SUBSCRIPT:
+		case EXPR_SUBSCRIPT_ADDR:
 			MACRO_COPY_EXPR(expr->subscript_expr.expr);
 			MACRO_COPY_EXPR(expr->subscript_expr.index);
 			return expr;

@@ -14,7 +14,7 @@ struct An2
 
 extern fn void printf(char *string);
 
-macro void An2.helloWorld(An2 *an2)
+macro void An2.helloWorld(An2 &an2)
 {
     printf("An2 hello\n");
 }

@@ -56,6 +56,7 @@ file(COPY ${CMAKE_SOURCE_DIR}/resources/lib DESTINATION ${CMAKE_BINARY_DIR})
 # These don't seem to be reliable on windows.
 if(UNIX)
     message(STATUS "using find_library")
+    find_library(TB_LIB NAMES tinybackend.a PATHS ${CMAKE_SOURCE_DIR}/resources/tblib)
     find_library(LLD_COFF NAMES lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_COMMON NAMES lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_CORE NAMES lldCore.a liblldCore.a PATHS ${LLVM_LIBRARY_DIRS})
@@ -175,7 +176,7 @@ message(STATUS "Found LLD ${lld_libs}")
 if(UNIX)
     message(STATUS "adding unix link params")
     target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
-    target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${lld_libs})
+    target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${TB_LIB} ${lld_libs})
 else()
     # todo: maybe get this from llvm-config somehow? it should be in LLVM_DIR\..\..\..\bin I think.
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:C:\\llvm\\llvm\\build\\Release\\lib") # needed for lldCommon.lib

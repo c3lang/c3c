@@ -844,6 +844,130 @@ static inline const char *name_by_decl(Decl *method_like)
 			UNREACHABLE
 	}
 }
+
+
+static inline void find_operator_parameters(Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr)
+{
+	switch (method->decl_kind)
+	{
+		case DECL_GENERIC:
+			*params_ptr = method->generic_decl.parameters;
+			*rtype_ptr = method->generic_decl.rtype;
+			break;
+		case DECL_MACRO:
+			*params_ptr = method->macro_decl.parameters;
+			*rtype_ptr = method->macro_decl.rtype;
+			break;
+		case DECL_FUNC:
+			*params_ptr = method->func_decl.function_signature.params;
+			*rtype_ptr = method->func_decl.function_signature.rtype;
+			break;
+		default:
+			UNREACHABLE
+	}
+
+}
+
+
+static bool sema_analyse_operator_common(Context *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters)
+{
+	find_operator_parameters(method, rtype_ptr, params_ptr);
+	Decl **params = *params_ptr;
+	uint32_t param_count = vec_size(params);
+	if (param_count > parameters)
+	{
+		SEMA_ERROR(params[parameters], "Too many parameters, '%s' expects only %u.", method->name, (unsigned)parameters);
+		return false;
+	}
+	if (param_count < parameters)
+	{
+		SEMA_TOKID_ERROR(method->name_token, "Not enough parameters, '%s' requires %u.", method->name, (unsigned)parameters);
+		return false;
+	}
+
+	if (*rtype_ptr == NULL)
+	{
+		SEMA_TOKID_ERROR(method->name_token, "The return value must be explicitly typed for '%s'.", method->name);
+		return false;
+	}
+	VECEACH(params, i)
+	{
+		Decl *param = params[i];
+		if (!params[i]->var.type_info)
+		{
+			SEMA_TOKID_ERROR(param->name_token, "All parameters must be explicitly typed for '%s'.", method->name);
+			return false;
+		}
+	}
+	return true;
+}
+
+Decl *sema_find_operator(Context *context, Expr *expr, const char *kw)
+{
+	Decl *ambiguous = NULL;
+	Decl *private = NULL;
+	Decl *method = type_may_have_sub_elements(expr->type) ? sema_resolve_method(context, expr->type->decl, kw, &ambiguous, &private) : NULL;
+	if (!decl_ok(method)) return NULL;
+	if (!method)
+	{
+		if (ambiguous)
+		{
+			SEMA_ERROR(expr,
+					   "It's not possible to find a definition for '%s' on %s that is not ambiguous.",
+					   kw, type_quoted_error_string(expr->type));
+			return NULL;
+		}
+		if (private)
+		{
+			SEMA_ERROR(expr,
+					   "It's not possible to find a public definition for '%s' with '%s'.",
+					   kw, type_quoted_error_string(expr->type));
+			return NULL;
+		}
+		return NULL;
+	}
+	return method;
+}
+
+static inline bool sema_analyse_operator_element_at(Context *context, Decl *method)
+{
+	TypeInfo *rtype;
+	Decl **params;
+	if (!sema_analyse_operator_common(context, method, &rtype, &params, 2)) return false;
+	if (rtype->type->canonical == type_void)
+	{
+		SEMA_ERROR(rtype, "The return type cannot be 'void'.");
+		return false;
+	}
+	return true;
+}
+
+static inline bool sema_analyse_operator_len(Context *context, Decl *method)
+{
+	TypeInfo *rtype;
+	Decl **params;
+	if (!sema_analyse_operator_common(context, method, &rtype, &params, 1)) return false;
+	if (!type_is_integer(rtype->type))
+	{
+		SEMA_ERROR(rtype, "The return type must be an integer type.");
+		return false;
+	}
+	return true;
+}
+
+static bool sema_check_operator_method_validity(Context *context, Decl *method)
+{
+	if (method->name == kw_operator_element_at || method->name == kw_operator_element_at_ref)
+	{
+		return sema_analyse_operator_element_at(context, method);
+	}
+	if (method->name == kw_operator_len)
+	{
+		return sema_analyse_operator_len(context, method);
+	}
+	return true;
+}
+
 static inline bool sema_add_method_like(Context *context, Type *parent_type, Decl *method_like)
 {
 	assert(parent_type->canonical == parent_type);
@@ -865,6 +989,7 @@ static inline bool sema_add_method_like(Context *context, Type *parent_type, Dec
 		SEMA_TOKID_PREV(method->name_token, "The previous definition was here.");
 		return false;
 	}
+	if (!sema_check_operator_method_validity(context, method_like)) return false;
 	scratch_buffer_clear();
 	if (method_like->visibility <= VISIBLE_MODULE)
 	{
@@ -1221,26 +1346,20 @@ static bool sema_analyse_macro_method(Context *context, Decl *decl)
 		           type_to_error_string(parent_type));
 		return false;
 	}
-	Type *expected_first_element = type_get_ptr(parent_type);
 	if (!vec_size(decl->macro_decl.parameters))
 	{
-		SEMA_ERROR(decl, "Expected at least one parameter - of type %s.", type_quoted_error_string(expected_first_element));
+		SEMA_ERROR(decl, "Expected at least one parameter - of type &%s.", type_to_error_string(parent_type));
 		return false;
 	}
 	Decl *first_param = decl->macro_decl.parameters[0];
-	if (!first_param->type)
+	if (!first_param->type || first_param->type->canonical != parent_type->canonical)
 	{
-		SEMA_ERROR(first_param, "The first parameter must have the explicit type %s.", type_quoted_error_string(expected_first_element));
+		SEMA_ERROR(first_param, "The first parameter must be &%s.", type_to_error_string(parent_type));
 		return false;
 	}
-	if (first_param->type->canonical != expected_first_element->canonical)
+	if (first_param->var.kind != VARDECL_PARAM_REF)
 	{
-		SEMA_ERROR(first_param, "The first parameter must be of type %s.", expected_first_element);
-		return false;
-	}
-	if (first_param->var.kind != VARDECL_PARAM)
-	{
-		SEMA_ERROR(first_param, "The first parameter must be a regular value parameter.");
+		SEMA_ERROR(first_param, "The first parameter must be a ref (&) parameter.");
 		return false;
 	}
 	return sema_add_method_like(context, parent_type, decl);

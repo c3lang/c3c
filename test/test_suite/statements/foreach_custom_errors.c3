@@ -1,3 +1,4 @@
+// #skip
 fn void test1()
 {
     int x;

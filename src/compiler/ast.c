@@ -291,6 +291,7 @@ bool expr_is_pure(Expr *expr)
 			       && expr_is_pure(expr->slice_expr.start)
 			       && expr_is_pure(expr->slice_expr.end);
 		case EXPR_SUBSCRIPT:
+		case EXPR_SUBSCRIPT_ADDR:
 			return expr_is_pure(expr->subscript_expr.expr)
 			       && expr_is_pure(expr->subscript_expr.index);
 		case EXPR_TERNARY:
