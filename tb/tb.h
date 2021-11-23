@@ -13,8 +13,12 @@
 #ifndef _TINYBACKEND_H_
 #define _TINYBACKEND_H_
 
-// Windows likes it's secure functions, i kinda do too
-// but only sometimes and this isn't one of them
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+	// Windows likes it's secure functions, i kinda do too
+	// but only sometimes and this isn't one of them
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #endif
@@ -74,7 +78,7 @@ typedef enum TB_ArithmaticBehavior {
 	// no signed wrap
 	TB_ASSUME_NSW,
 	// no unsigned wrap
-    TB_ASSUME_NUW,
+	TB_ASSUME_NUW,
 
 	// Wrapping will allow the integer to safely wrap.
 	TB_CAN_WRAP,
@@ -99,7 +103,7 @@ typedef enum TB_System {
 	TB_SYSTEM_WINDOWS,
 	TB_SYSTEM_LINUX,
 
-    // TODO(NeGate): Actually implement these lol
+	// TODO(NeGate): Actually implement these lol
 	TB_SYSTEM_MACOS,
 	TB_SYSTEM_ANDROID
 } TB_System;
@@ -128,7 +132,7 @@ typedef enum TB_OptLevel {
 	// MEM2REG
 	// LOOP_UNROLL
 	TB_OPT_SPEED,
-} TB_OptLevel;
+	} TB_OptLevel;
 
 enum {
 	TB_VOID,
@@ -142,7 +146,7 @@ enum {
 	// NOTE(NeGate): consider support for multiple address spaces
 	TB_PTR,
 
-    TB_MAX_TYPES
+	TB_MAX_TYPES
 };
 
 #define TB_IS_INTEGER_TYPE(x) ((x) >= TB_I8 && (x) <= TB_I128)
@@ -193,11 +197,13 @@ typedef struct TB_SwitchEntry {
 	TB_Label value;
 } TB_SwitchEntry;
 
+typedef int TB_Register;
+typedef int TB_Reg; // short-hand
+
 typedef int TB_FileID;
 typedef int TB_ExternalID;
 typedef struct TB_Module TB_Module;
 typedef struct TB_Function TB_Function;
-typedef int32_t TB_Register;
 typedef struct TB_FunctionOutput TB_FunctionOutput;
 
 // *******************************
@@ -222,7 +228,12 @@ typedef struct TB_FunctionOutput TB_FunctionOutput;
 // *******************************
 TB_API void tb_get_constraints(TB_Arch target_arch, const TB_FeatureSet* features, TB_FeatureConstraints* constraints);
 
-TB_API TB_Module* tb_module_create(TB_Arch target_arch, TB_System target_system, const TB_FeatureSet* features, int optimization_level, int max_threads);
+TB_API TB_Module* tb_module_create(TB_Arch target_arch, TB_System target_system, const TB_FeatureSet* features, int optimization_level, int max_threads, bool preserve_ir_after_submit);
+// preserve_ir_after_submit means that after the tb_module_compile_func(...) you can
+// still access the IR, this comes at a higher overall memory usage cost since the
+// IR is kept in memory for the lifetime of the compile but this is not an issue when
+// debugging.
+
 TB_API bool tb_module_compile_func(TB_Module* m, TB_Function* f);
 TB_API size_t tb_DEBUG_module_get_full_node_count(TB_Module* m);
 TB_API void tb_module_destroy(TB_Module* m);
@@ -303,6 +314,9 @@ TB_API TB_Register tb_inst_cmp_fle(TB_Function* f, TB_DataType dt, TB_Register a
 TB_API TB_Register tb_inst_cmp_fgt(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
 TB_API TB_Register tb_inst_cmp_fge(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
 
+TB_API TB_Label tb_inst_new_label_id(TB_Function* f);
+// Gives you a reference to a local label, doesn't place it anywhere.
+
 TB_API TB_Register tb_inst_phi2(TB_Function* f, TB_DataType dt, TB_Label a_label, TB_Register a, TB_Label b_label, TB_Register b);
 TB_API TB_Register tb_inst_label(TB_Function* f, TB_Label id);
 TB_API void tb_inst_goto(TB_Function* f, TB_Label id);
@@ -310,6 +324,9 @@ TB_API TB_Register tb_inst_if(TB_Function* f, TB_Register cond, TB_Label if_true
 TB_API void tb_inst_switch(TB_Function* f, TB_DataType dt, TB_Register key, TB_Label default_label, size_t entry_count, const TB_SwitchEntry* entries);
 TB_API void tb_inst_ret(TB_Function* f, TB_DataType dt, TB_Register value);
 
-TB_API void tb_function_print(TB_Function* f);
+TB_API void tb_function_print(TB_Function* f, FILE* out);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _TINYBACKEND_H_ */

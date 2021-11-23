@@ -632,7 +632,7 @@ static void tinybackend_emit_function_body(GenContext *c, Decl *decl)
 		tinybackend_emit_stmt(c, decl->func_decl.body->compound_stmt.stmts[i]);
 	}
 
-	tb_function_print(c->function);
+	tb_function_print(c->function, stdout);
 }
 
 static void tinybackend_gen_context(GenContext *c)
@@ -660,7 +660,7 @@ void *tinybackend_gen(Module *module)
 	c->code_module = module;
 
 	// TODO identify target architecture
-	c->module = tb_module_create(TB_ARCH_X86_64, TB_SYSTEM_LINUX, &c->features, TB_OPT_O0, 1);
+	c->module = tb_module_create(TB_ARCH_X86_64, TB_SYSTEM_LINUX, &c->features, TB_OPT_O0, 1, false);
 
 	tinybackend_gen_context(c);
 

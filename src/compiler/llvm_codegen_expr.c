@@ -550,7 +550,8 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
  */
 static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr *expr)
 {
-	if (type_lowering(expr->subscript_expr.expr->type)->type_kind == TYPE_VECTOR)
+	bool is_value = expr->expr_kind == EXPR_SUBSCRIPT;
+	if (is_value && type_lowering(expr->subscript_expr.expr->type)->type_kind == TYPE_VECTOR)
 	{
 		llvm_emit_vector_subscript(c, value, expr);
 		return;
@@ -568,6 +569,13 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	llvm_value_rvalue(c, &index);
 
 	llvm_emit_subscript_addr_with_base(c, value, &ref, &index, TOKLOC(expr->subscript_expr.index->span.loc));
+	if (!is_value)
+	{
+		assert(llvm_value_is_addr(value));
+		llvm_value_fold_failable(c, value);
+		value->kind = BE_VALUE;
+		value->type = type_get_ptr(value->type);
+	}
 }
 
 
@@ -5163,6 +5171,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_value_set_decl_address(value, expr->identifier_expr.decl);
 			return;
 		case EXPR_SUBSCRIPT:
+		case EXPR_SUBSCRIPT_ADDR:
 			gencontext_emit_subscript(c, value, expr);
 			return;
 		case EXPR_ACCESS:

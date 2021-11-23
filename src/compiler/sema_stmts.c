@@ -720,11 +720,11 @@ static inline bool sema_analyse_var_stmt(Context *context, Ast *statement)
 			}
 			else
 			{
-				Expr *init = decl->var.init_expr;
-				if (init)
+				Expr *decl_init = decl->var.init_expr;
+				if (decl_init)
 				{
-					if (!sema_analyse_expr(context, init)) return false;
-					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
+					if (!sema_analyse_expr(context, decl_init)) return false;
+					if (!expr_is_constant_eval(decl_init, CONSTANT_EVAL_ANY))
 					{
 						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression assigned to %s.", decl->name);
 						return false;
