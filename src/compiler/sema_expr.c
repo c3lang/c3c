@@ -80,6 +80,17 @@ static inline bool both_any_integer_or_integer_vector(Expr *left, Expr *right)
 	return type_is_integer(flatten_left->vector.base) && type_is_integer(flatten_right->vector.base);
 }
 
+Expr *expr_generate_decl(Decl *decl, Expr *assign)
+{
+	assert(decl->decl_kind == DECL_VAR);
+	assert(decl->var.init_expr == NULL);
+	Expr *expr_decl = expr_new(EXPR_DECL, decl->span);
+	expr_decl->decl_expr = decl;
+	if (!assign) assign = expr_new(EXPR_UNDEF, decl->span);
+	decl->var.init_expr = assign;
+	return expr_decl;
+}
+
 void expr_insert_addr(Expr *original)
 {
 	assert(original->resolve_status == RESOLVE_DONE);
@@ -98,11 +109,19 @@ void expr_insert_addr(Expr *original)
 
 Expr *expr_variable(Decl *decl)
 {
+	if (decl->resolve_status == RESOLVE_DONE)
+	{
+		Expr *expr = expr_new(EXPR_IDENTIFIER, decl->span);
+		expr->identifier_expr.decl = decl;
+		expr->resolve_status = RESOLVE_DONE;
+		expr->type = decl->type;
+		return expr;
+	}
 	Expr *expr = expr_new(EXPR_IDENTIFIER, decl->span);
-	expr->identifier_expr.decl = decl;
-	expr->resolve_status = RESOLVE_DONE;
-	expr->type = decl->type;
+	expr->identifier_expr.identifier = decl->name_token;
+	expr->resolve_status = RESOLVE_NOT_DONE;
 	return expr;
+
 }
 
 static inline bool expr_unary_addr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
@@ -387,26 +406,30 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 
 void expr_insert_deref(Expr *original)
 {
-	assert(original->resolve_status == RESOLVE_DONE);
-	Type *no_fail = type_no_fail(original->type);
-	assert(no_fail->canonical->type_kind == TYPE_POINTER);
-
-	// 1. Assume *(&x) => x
+	// Assume *(&x) => x
 	if (original->expr_kind == EXPR_UNARY && original->unary_expr.operator == UNARYOP_ADDR)
 	{
 		*original = *original->unary_expr.expr;
 		return;
 	}
 
-	// 2. Only fold to the canonical type if it wasn't a pointer.
-	Type *pointee = no_fail->type_kind == TYPE_POINTER ? no_fail->pointer : no_fail->canonical->pointer;
-
-	// 3. Allocate our new and create our new inner, and overwrite the original.
+	// Allocate our new and create our new inner, and overwrite the original.
 	Expr *inner = expr_copy(original);
 	original->expr_kind = EXPR_UNARY;
-	original->type = type_get_opt_fail(pointee, IS_FAILABLE(inner));
+	original->type = NULL;
 	original->unary_expr.operator = UNARYOP_DEREF;
 	original->unary_expr.expr = inner;
+
+	// In the case the original is already resolved, we want to resolve the deref as well.
+	if (original->resolve_status == RESOLVE_DONE)
+	{
+		Type *no_fail  = type_no_fail(inner->type);
+		assert(no_fail->canonical->type_kind == TYPE_POINTER);
+
+		// Only fold to the canonical type if it wasn't a pointer.
+		Type *pointee = no_fail->type_kind == TYPE_POINTER ? no_fail->pointer : no_fail->canonical->pointer;
+		original->type = type_get_opt_fail(pointee, IS_FAILABLE(inner));
+	}
 }
 
 
@@ -1559,7 +1582,7 @@ static bool sema_check_stmt_compile_time(Context *context, Ast *ast)
 	}
 }
 
-static bool sema_expr_analyse_macro_call(Context *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable)
+bool sema_expr_analyse_macro_call(Context *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable)
 {
 	assert(decl->decl_kind == DECL_MACRO);
 
@@ -2499,7 +2522,7 @@ static inline bool sema_expr_analyse_group(Context *context, Expr *expr)
 }
 
 
-static inline void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value, bool narrowable)
+void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value, bool narrowable)
 {
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 	expr_const_set_int(&expr_to_rewrite->const_expr, value, type->canonical->type_kind);

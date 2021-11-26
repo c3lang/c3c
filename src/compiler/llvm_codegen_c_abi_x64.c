@@ -309,7 +309,7 @@ void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64
 	}
 
 	ByteSize offset = offset_base;
-	for (ByteSize i = 0; i < type->array.len; i++)
+	for (ArraySize i = 0; i < type->array.len; i++)
 	{
 		X64Class field_lo;
 		X64Class field_hi;

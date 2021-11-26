@@ -52,10 +52,10 @@ static inline bool tinybackend_value_is_bool(BEValue *value)
 static TB_DataType tinybackend_get_type(Type *type)
 {
 	type = type_lowering(type);
-	int elements = 1;
+	uint8_t elements = 1;
 	if (type->type_kind == TYPE_VECTOR)
 	{
-		elements = type->vector.len;
+		elements = (uint8_t)type->vector.len;
 		type = type->vector.base;
 	}
 	switch (type->type_kind)
@@ -155,7 +155,7 @@ void tinybackend_store_bevalue(GenContext *c, TB_DataType type, BEValue *destina
 			tb_inst_memcpy(c->function,
 			               destination->value,
 			               value->value, copy_size,
-			               value->alignment ? value->alignment : type_abi_alignment(value->type));
+			               value->alignment ? (int)value->alignment : (int)type_abi_alignment(value->type));
 			return;
 		}
 		default:
@@ -271,7 +271,7 @@ static void tinybackend_emit_member_addr(GenContext *c, BEValue *value, Decl *pa
 				break;
 			case TYPE_STRUCT:
 			{
-				TB_Register ref = tb_inst_member_access(c->function, value->value, found->offset);
+				TB_Register ref = tb_inst_member_access(c->function, value->value, (int32_t)found->offset);
 
 				tinybackend_value_set_address(value, ref, member->type);
 				value->alignment = found->alignment;
@@ -557,7 +557,7 @@ static TB_Register tinybackend_emit_local_decl(GenContext *c, Decl *decl)
 	}
 
 	TB_DataType dt = tinybackend_get_type(decl->type);
-	ByteSize size = type_size(decl->type);
+	TypeSize size = type_size(decl->type);
 	AlignSize align = decl->alignment;
 
 	TB_Register reg = tb_inst_local(c->function, size, align);
