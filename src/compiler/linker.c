@@ -86,6 +86,8 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 		vec_add(args, active_target.link_args[i]);
 	}
 	const char *error = NULL;
+	// This isn't used in most cases, but its contents should get freed after linking.
+	WindowsLinkPathsUTF8 windows_paths = {0};
 
 	switch (platform_target.os)
 	{
@@ -105,12 +107,11 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 				// C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\ucrt\\x64
 				// C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\um\\x64
 #ifdef _MSC_VER
-				PathPair msvc_paths = get_latest_available_vs_path();
-				PathPair windows_kit_paths = find_winkit_path();
-				vec_add(args, join_strings((const char* []) { "-libpath:C:", msvc_paths.first }, 2));
-				vec_add(args, join_strings((const char* []) { "-libpath:C:", msvc_paths.second }, 2));
-				vec_add(args, join_strings((const char* []) { "-libpath:C:", windows_kit_paths.first }, 2));
-				vec_add(args, join_strings((const char* []) { "-libpath:C:", windows_kit_paths.second }, 2));
+				windows_paths = get_windows_link_paths();
+				vec_add(args, join_strings((const char* []) { "-libpath:", windows_paths.windows_sdk_um_library_path }, 2));
+				vec_add(args, join_strings((const char* []) { "-libpath:", windows_paths.windows_sdk_ucrt_library_path }, 2));
+				vec_add(args, join_strings((const char* []) { "-libpath:", windows_paths.vs_library_path }, 2));
+				//free_windows_link_paths(&windows_paths);
 
 				vec_add(args, "-defaultlib:libcmt");
 				vec_add(args, "-nologo");
@@ -217,6 +218,9 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	{
 		case OBJ_FORMAT_COFF:
 			success = (platform_target.x64.is_mingw64 ? llvm_link_mingw : llvm_link_coff)(args, (int)vec_size(args), &error);
+			if (windows_paths.windows_sdk_um_library_path) {
+				free_windows_link_paths(&windows_paths);
+			}
 			break;
 		case OBJ_FORMAT_ELF:
 			success = llvm_link_elf(args, (int)vec_size(args), &error);

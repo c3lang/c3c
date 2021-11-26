@@ -1,9 +1,10 @@
 #pragma once
 
 typedef struct {
-    char first[260];
-    char second[260];
-} PathPair;
+    char* windows_sdk_um_library_path;
+    char* windows_sdk_ucrt_library_path;
+    char* vs_library_path;
+} WindowsLinkPathsUTF8;
 
-PathPair get_latest_available_vs_path();
-PathPair find_winkit_path();
+WindowsLinkPathsUTF8 get_windows_link_paths();
+void free_windows_link_paths(WindowsLinkPathsUTF8* obj);
