@@ -1,3 +1,4 @@
+// #target: x64-darwin
 module test;
 
 extern fn void printf(char*, ...);
@@ -36,176 +37,185 @@ fn void main()
 
 entry:
   %foo = alloca [3 x float], align 4
-  %idx = alloca i64, align 8
+  %"__idx$" = alloca i64, align 8
   %a = alloca float, align 4
-  %idx1 = alloca i64, align 8
-  %a2 = alloca float*, align 8
-  %idx9 = alloca i64, align 8
-  %a10 = alloca i8*, align 8
+  %"__idx$1" = alloca i64, align 8
+  %a5 = alloca float*, align 8
+  %"__idx$10" = alloca i64, align 8
+  %a14 = alloca i8*, align 8
+  %"__idx$20" = alloca i64, align 8
   %i = alloca i64, align 8
-  %a18 = alloca float, align 4
-  %i25 = alloca i8, align 1
-  %idx26 = alloca i64, align 8
-  %a27 = alloca double, align 8
-  %idx34 = alloca i64, align 8
-  %a35 = alloca double, align 8
+  %a24 = alloca float, align 4
+  %"__idx$29" = alloca i64, align 8
+  %i33 = alloca i8, align 1
+  %a34 = alloca double, align 8
+  %"__idx$39" = alloca i64, align 8
+  %a43 = alloca double, align 8
   %0 = bitcast [3 x float]* %foo to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %0, i8* align 4 bitcast ([3 x float]* @.__const to i8*), i32 12, i1 false)
-  store i64 0, i64* %idx, align 8
-  br label %foreach.cond
+  store i64 0, i64* %"__idx$", align 8
+  br label %for.cond
 
-foreach.cond:                                     ; preds = %foreach.inc, %entry
-  %1 = load i64, i64* %idx, align 8
-  %lt = icmp ult i64 %1, 3
-  br i1 %lt, label %foreach.body, label %foreach.exit
+for.cond:                                         ; preds = %for.inc, %entry
+  %1 = load i64, i64* %"__idx$", align 8
+  %gt = icmp ugt i64 3, %1
+  br i1 %gt, label %for.body, label %for.exit
 
-foreach.body:                                     ; preds = %foreach.cond
-  %2 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %1
-  %3 = load float, float* %2, align 4
-  store float %3, float* %a, align 4
-  %4 = load float, float* %a, align 4
-  %fpfpext = fpext float %4 to double
+for.body:                                         ; preds = %for.cond
+  %2 = load i64, i64* %"__idx$", align 8
+  %3 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %2
+  %4 = load float, float* %3, align 4
+  store float %4, float* %a, align 4
+  %5 = load float, float* %a, align 4
+  %fpfpext = fpext float %5 to double
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str, i32 0, i32 0), double %fpfpext)
-  br label %foreach.inc
+  br label %for.inc
 
-foreach.inc:                                      ; preds = %foreach.body
-  %5 = load i64, i64* %idx, align 8
-  %6 = add i64 %5, 1
-  store i64 %6, i64* %idx, align 8
-  br label %foreach.cond
+for.inc:                                          ; preds = %for.body
+  %6 = load i64, i64* %"__idx$", align 8
+  %add = add i64 %6, 1
+  store i64 %add, i64* %"__idx$", align 8
+  br label %for.cond
 
-foreach.exit:                                     ; preds = %foreach.cond
-  store i64 0, i64* %idx1, align 8
-  br label %foreach.cond3
+for.exit:                                         ; preds = %for.cond
+  store i64 0, i64* %"__idx$1", align 8
+  br label %for.cond2
 
-foreach.cond3:                                    ; preds = %foreach.inc7, %foreach.exit
-  %7 = load i64, i64* %idx1, align 8
-  %lt4 = icmp ult i64 %7, 3
-  br i1 %lt4, label %foreach.body5, label %foreach.exit8
+for.cond2:                                        ; preds = %for.inc7, %for.exit
+  %7 = load i64, i64* %"__idx$1", align 8
+  %gt3 = icmp ugt i64 3, %7
+  br i1 %gt3, label %for.body4, label %for.exit9
 
-foreach.body5:                                    ; preds = %foreach.cond3
-  %8 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %7
-  store float* %8, float** %a2, align 8
-  %9 = load float*, float** %a2, align 8
-  %10 = load float, float* %9, align 8
-  %fmul = fmul float %10, 2.000000e+00
-  store float %fmul, float* %9, align 8
-  %11 = load float*, float** %a2, align 8
-  %12 = load float, float* %11, align 8
-  %fpfpext6 = fpext float %12 to double
+for.body4:                                        ; preds = %for.cond2
+  %8 = load i64, i64* %"__idx$1", align 8
+  %9 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %8
+  store float* %9, float** %a5, align 8
+  %10 = load float*, float** %a5, align 8
+  %11 = load float, float* %10, align 8
+  %fmul = fmul float %11, 2.000000e+00
+  store float %fmul, float* %10, align 8
+  %12 = load float*, float** %a5, align 8
+  %13 = load float, float* %12, align 8
+  %fpfpext6 = fpext float %13 to double
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), double %fpfpext6)
-  br label %foreach.inc7
+  br label %for.inc7
 
-foreach.inc7:                                     ; preds = %foreach.body5
-  %13 = load i64, i64* %idx1, align 8
-  %14 = add i64 %13, 1
-  store i64 %14, i64* %idx1, align 8
-  br label %foreach.cond3
+for.inc7:                                         ; preds = %for.body4
+  %14 = load i64, i64* %"__idx$1", align 8
+  %add8 = add i64 %14, 1
+  store i64 %add8, i64* %"__idx$1", align 8
+  br label %for.cond2
 
-foreach.exit8:                                    ; preds = %foreach.cond3
-  store i64 0, i64* %idx9, align 8
-  br label %foreach.cond11
+for.exit9:                                        ; preds = %for.cond2
+  store i64 0, i64* %"__idx$10", align 8
+  br label %for.cond11
 
-foreach.cond11:                                   ; preds = %foreach.inc16, %foreach.exit8
-  %15 = load i64, i64* %idx9, align 8
-  %lt12 = icmp ult i64 %15, 3
-  br i1 %lt12, label %foreach.body13, label %foreach.exit17
+for.cond11:                                       ; preds = %for.inc17, %for.exit9
+  %15 = load i64, i64* %"__idx$10", align 8
+  %gt12 = icmp ugt i64 3, %15
+  br i1 %gt12, label %for.body13, label %for.exit19
 
-foreach.body13:                                   ; preds = %foreach.cond11
-  %16 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %15
-  %ptrptr = bitcast float* %16 to i8*
-  store i8* %ptrptr, i8** %a10, align 8
-  %17 = load i8*, i8** %a10, align 8
-  %ptrptr14 = bitcast i8* %17 to float*
-  %18 = load float, float* %ptrptr14, align 8
-  %fpfpext15 = fpext float %18 to double
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.2, i32 0, i32 0), double %fpfpext15)
-  br label %foreach.inc16
+for.body13:                                       ; preds = %for.cond11
+  %16 = load i64, i64* %"__idx$10", align 8
+  %17 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %16
+  %ptrptr = bitcast float* %17 to i8*
+  store i8* %ptrptr, i8** %a14, align 8
+  %18 = load i8*, i8** %a14, align 8
+  %ptrptr15 = bitcast i8* %18 to float*
+  %19 = load float, float* %ptrptr15, align 8
+  %fpfpext16 = fpext float %19 to double
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.2, i32 0, i32 0), double %fpfpext16)
+  br label %for.inc17
 
-foreach.inc16:                                    ; preds = %foreach.body13
-  %19 = load i64, i64* %idx9, align 8
-  %20 = add i64 %19, 1
-  store i64 %20, i64* %idx9, align 8
-  br label %foreach.cond11
+for.inc17:                                        ; preds = %for.body13
+  %20 = load i64, i64* %"__idx$10", align 8
+  %add18 = add i64 %20, 1
+  store i64 %add18, i64* %"__idx$10", align 8
+  br label %for.cond11
 
-foreach.exit17:                                   ; preds = %foreach.cond11
-  store i64 0, i64* %i, align 8
-  br label %foreach.cond19
+for.exit19:                                       ; preds = %for.cond11
+  store i64 0, i64* %"__idx$20", align 8
+  br label %for.cond21
 
-foreach.cond19:                                   ; preds = %foreach.inc23, %foreach.exit17
-  %21 = load i64, i64* %i, align 8
-  %lt20 = icmp ult i64 %21, 3
-  br i1 %lt20, label %foreach.body21, label %foreach.exit24
+for.cond21:                                       ; preds = %for.inc26, %for.exit19
+  %21 = load i64, i64* %"__idx$20", align 8
+  %gt22 = icmp ugt i64 3, %21
+  br i1 %gt22, label %for.body23, label %for.exit28
 
-foreach.body21:                                   ; preds = %foreach.cond19
-  %22 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %21
-  %23 = load float, float* %22, align 4
-  store float %23, float* %a18, align 4
-  %24 = load i64, i64* %i, align 8
-  %25 = load float, float* %a18, align 4
-  %fpfpext22 = fpext float %25 to double
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.3, i32 0, i32 0), i64 %24, double %fpfpext22)
-  br label %foreach.inc23
-
-foreach.inc23:                                    ; preds = %foreach.body21
+for.body23:                                       ; preds = %for.cond21
+  %22 = load i64, i64* %"__idx$20", align 8
+  store i64 %22, i64* %i, align 8
+  %23 = load i64, i64* %"__idx$20", align 8
+  %24 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %23
+  %25 = load float, float* %24, align 4
+  store float %25, float* %a24, align 4
   %26 = load i64, i64* %i, align 8
-  %27 = add i64 %26, 1
-  store i64 %27, i64* %i, align 8
-  br label %foreach.cond19
+  %27 = load float, float* %a24, align 4
+  %fpfpext25 = fpext float %27 to double
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.3, i32 0, i32 0), i64 %26, double %fpfpext25)
+  br label %for.inc26
 
-foreach.exit24:                                   ; preds = %foreach.cond19
-  store i8 0, i8* %i25, align 1
-  store i64 0, i64* %idx26, align 8
-  br label %foreach.cond28
+for.inc26:                                        ; preds = %for.body23
+  %28 = load i64, i64* %"__idx$20", align 8
+  %add27 = add i64 %28, 1
+  store i64 %add27, i64* %"__idx$20", align 8
+  br label %for.cond21
 
-foreach.cond28:                                   ; preds = %foreach.inc32, %foreach.exit24
-  %28 = load i64, i64* %idx26, align 8
-  %lt29 = icmp ult i64 %28, 3
-  br i1 %lt29, label %foreach.body30, label %foreach.exit33
+for.exit28:                                       ; preds = %for.cond21
+  store i64 0, i64* %"__idx$29", align 8
+  br label %for.cond30
 
-foreach.body30:                                   ; preds = %foreach.cond28
-  %29 = trunc i64 %28 to i8
-  store i8 %29, i8* %i25, align 1
-  %30 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %28
-  %31 = load float, float* %30, align 4
-  %fpfpext31 = fpext float %31 to double
-  store double %fpfpext31, double* %a27, align 8
-  %32 = load i8, i8* %i25, align 1
-  %uisiext = zext i8 %32 to i32
-  %33 = load double, double* %a27, align 8
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str.4, i32 0, i32 0), i32 %uisiext, double %33)
-  br label %foreach.inc32
+for.cond30:                                       ; preds = %for.inc36, %for.exit28
+  %29 = load i64, i64* %"__idx$29", align 8
+  %gt31 = icmp ugt i64 3, %29
+  br i1 %gt31, label %for.body32, label %for.exit38
 
-foreach.inc32:                                    ; preds = %foreach.body30
-  %34 = load i64, i64* %idx26, align 8
-  %35 = add i64 %34, 1
-  store i64 %35, i64* %idx26, align 8
-  br label %foreach.cond28
+for.body32:                                       ; preds = %for.cond30
+  %30 = load i64, i64* %"__idx$29", align 8
+  %uiuitrunc = trunc i64 %30 to i8
+  store i8 %uiuitrunc, i8* %i33, align 1
+  %31 = load i64, i64* %"__idx$29", align 8
+  %32 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %31
+  %33 = load float, float* %32, align 4
+  %fpfpext35 = fpext float %33 to double
+  store double %fpfpext35, double* %a34, align 8
+  %34 = load i8, i8* %i33, align 1
+  %uisiext = zext i8 %34 to i32
+  %35 = load double, double* %a34, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str.4, i32 0, i32 0), i32 %uisiext, double %35)
+  br label %for.inc36
 
-foreach.exit33:                                   ; preds = %foreach.cond28
-  store i64 0, i64* %idx34, align 8
-  br label %foreach.cond36
+for.inc36:                                        ; preds = %for.body32
+  %36 = load i64, i64* %"__idx$29", align 8
+  %add37 = add i64 %36, 1
+  store i64 %add37, i64* %"__idx$29", align 8
+  br label %for.cond30
 
-foreach.cond36:                                   ; preds = %foreach.inc40, %foreach.exit33
-  %36 = load i64, i64* %idx34, align 8
-  %lt37 = icmp ult i64 %36, 3
-  br i1 %lt37, label %foreach.body38, label %foreach.exit41
+for.exit38:                                       ; preds = %for.cond30
+  store i64 0, i64* %"__idx$39", align 8
+  br label %for.cond40
 
-foreach.body38:                                   ; preds = %foreach.cond36
-  %37 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %36
-  %38 = load float, float* %37, align 4
-  %fpfpext39 = fpext float %38 to double
-  store double %fpfpext39, double* %a35, align 8
-  %39 = load double, double* %a35, align 8
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.5, i32 0, i32 0), double %39)
-  br label %foreach.inc40
+for.cond40:                                       ; preds = %for.inc45, %for.exit38
+  %37 = load i64, i64* %"__idx$39", align 8
+  %gt41 = icmp ugt i64 3, %37
+  br i1 %gt41, label %for.body42, label %for.exit47
 
-foreach.inc40:                                    ; preds = %foreach.body38
-  %40 = load i64, i64* %idx34, align 8
-  %41 = add i64 %40, 1
-  store i64 %41, i64* %idx34, align 8
-  br label %foreach.cond36
+for.body42:                                       ; preds = %for.cond40
+  %38 = load i64, i64* %"__idx$39", align 8
+  %39 = getelementptr inbounds [3 x float], [3 x float]* %foo, i64 0, i64 %38
+  %40 = load float, float* %39, align 4
+  %fpfpext44 = fpext float %40 to double
+  store double %fpfpext44, double* %a43, align 8
+  %41 = load double, double* %a43, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.5, i32 0, i32 0), double %41)
+  br label %for.inc45
 
-foreach.exit41:                                   ; preds = %foreach.cond36
+for.inc45:                                        ; preds = %for.body42
+  %42 = load i64, i64* %"__idx$39", align 8
+  %add46 = add i64 %42, 1
+  store i64 %add46, i64* %"__idx$39", align 8
+  br label %for.cond40
+
+for.exit47:                                       ; preds = %for.cond40
   ret void
 }

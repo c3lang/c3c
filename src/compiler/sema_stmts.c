@@ -997,77 +997,18 @@ static Decl *find_iterator_next(Context *context, Expr *enumerator)
 	return method;
 }
 
-static bool sema_rewrite_foreach_to_for(Context *context, Ast *statement, Expr *enumerator, Decl *next_method)
+static Expr *sema_insert_method_macro_call(Context *context, SourceSpan span, Decl *macro_decl, Expr *parent, Expr **arguments)
 {
-	assert(enumerator->type);
-	REMINDER("Handle foreach by ref, index");
-	Decl *value = statement->foreach_stmt.variable;
-	if (!value->type)
-	{
-		Type *type;
-		if (next_method->decl_kind == DECL_FUNC)
-		{
-			type = next_method->func_decl.function_signature.params[1]->type->pointer;
-		}
-		else
-		{
-			assert(next_method->decl_kind == DECL_MACRO);
-			type = next_method->macro_decl.parameters[1]->type->pointer;
-		}
-		value->var.type_info = type_info_new_base(type, value->span);
-		value->type = type;
-	}
-
-	Decl *iterator = decl_new_generated_var(".iterator", enumerator->type, VARDECL_LOCAL, enumerator->span);
-	iterator->var.init_expr = enumerator;
-
-	// Generate Foo *value, FooIterator ".iterator" = foo.iterator();
-	Expr *init_expr = expr_new(EXPR_COND, enumerator->span);
-	Expr *expr = expr_new(EXPR_DECL, value->span);
-	expr->decl_expr = value;
-	vec_add(init_expr->cond_expr, expr);
-	expr = expr_new(EXPR_DECL, enumerator->span);
-	expr->decl_expr = iterator;
-	vec_add(init_expr->cond_expr, expr);
-	init_expr->resolve_status = RESOLVE_DONE;
-	init_expr->type = iterator->type;
-
-	// Generate "next": it.next(&value)
-	Expr *call = expr_new(EXPR_CALL, enumerator->span);
-	call->call_expr.arguments = NULL;
-	call->call_expr.body = NULL;
-	call->call_expr.unsplat_last = false;
-	call->call_expr.is_type_method = true;
-
-	Expr *value_access = expr_variable(value);
-	expr_insert_addr(value_access);
-	vec_add(call->call_expr.arguments, value_access);
-
-	Expr *iterator_access = expr_variable(iterator);
-	expr_insert_addr(iterator_access);
-
-	REMINDER("Failability");
-	if (!sema_expr_analyse_general_call(context,
-	                                    call,
-	                                    next_method,
-	                                    iterator_access,
-	                                    next_method->decl_kind == DECL_MACRO, false)) return false;
-	call->resolve_status = RESOLVE_DONE;
-
-	statement->for_stmt = (AstForStmt){ .init = init_expr,
-										.cond = call,
-										.flow = statement->foreach_stmt.flow,
-										.body = statement->foreach_stmt.body
-	};
-	statement->ast_kind = AST_FOR_STMT;
-	return sema_analyse_for_stmt(context, statement);
-	/*
-
-	Expr *call
-
-	statement->for_stmt.cond
-	statement->for_stmt.init = init_expr;
-	statement*/
+	Expr *len_call = expr_new(EXPR_CALL, span);
+	len_call->resolve_status = RESOLVE_RUNNING;
+	len_call->call_expr.func_ref = macro_decl;
+	len_call->call_expr.arguments = arguments;
+	len_call->call_expr.body = NULL;
+	len_call->call_expr.unsplat_last = false;
+	len_call->call_expr.is_type_method = true;
+	if (!sema_expr_analyse_macro_call(context, len_call, parent, macro_decl, false)) return poisoned_expr;
+	len_call->resolve_status = RESOLVE_DONE;
+	return len_call;
 }
 
 static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
@@ -1077,8 +1018,11 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 	Decl *var = statement->foreach_stmt.variable;
 	Expr *enumerator = statement->foreach_stmt.enumeration;
 	Ast *body = statement->foreach_stmt.body;
+	Ast **stmts = NULL;
+	Expr **expressions = NULL;
+
+	bool value_by_ref = statement->foreach_stmt.value_by_ref;
 	bool success = true;
-	Type *indexed_type;
 
 	// First fold the enumerator expression, removing any () around it.
 	while (enumerator->expr_kind == EXPR_GROUP) enumerator = enumerator->inner_expr;
@@ -1141,130 +1085,238 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 		// And pop the cond scope.
 	SCOPE_END;
 
-	// Check that we can even index this expression.
-	indexed_type = type_get_indexed_type(enumerator->type);
-	if (!indexed_type || type_flatten_distinct(enumerator->type)->type_kind == TYPE_POINTER)
+	if (IS_FAILABLE(enumerator))
 	{
-		Type *type = type_flatten_distinct(enumerator->type);
-		Decl *method = find_iterator(context, enumerator);
-		if (!method) return false;
-		if (!sema_inline_default_iterator(context, enumerator, method)) return false;
-		Decl *next_method = find_iterator_next(context, enumerator);
-		if (!next_method) return false;
-		return sema_rewrite_foreach_to_for(context, statement, enumerator, next_method);
-		/*
-		Expr *new_expr = expr_alloc();
-		*new_expr = *enumerator;
-		Expr *iterator = expr_new(EXPR_IDENTIFIER, new_expr->span);
-		iterator->identifier_expr.decl = method;
-		iterator->failable = false;
-		iterator->resolve_status = RESOLVE_DONE;
-		 iterator->type = iterator->original_type = method->type;
-		*enumerator = (Expr) {
-			.span = new_expr->span,
-			.expr_kind = EXPR_CALL,
-			.call_expr = (ExprCall) {
-				.is_type_method = true,
-				.function = iterator,
-			}
-		};
-		if (!sema_expr_analyse_general_call(context, enumerator, method))
-		if (!sema_analyse_expr(context, NULL, enumerator)) return SCOPE_POP_ERROR();*/
-		TODO
+		SEMA_ERROR(enumerator, "The expression may not be failable.");
+		return false;
 	}
 
-	// Enter foreach scope, to put index + variable into the internal scope.
-	// the foreach may be labelled.
-	SCOPE_START_WITH_LABEL(statement->foreach_stmt.flow.label)
+	if (statement->foreach_stmt.index_by_ref)
+	{
+		SEMA_ERROR(index, "The index cannot be held by reference, did you accidentally add a '&'?");
+		return false;
+	}
 
-		if (index)
+	// Insert a single deref as needed.
+	Type *flattened_type = enumerator->type->canonical;
+	if (flattened_type->type_kind == TYPE_POINTER)
+	{
+		// Something like Foo** will not be dereferenced, only Foo*
+		if (flattened_type->pointer->type_kind == TYPE_POINTER)
 		{
-			if (statement->foreach_stmt.index_by_ref)
-			{
-				SEMA_ERROR(index, "The index cannot be held by reference, did you accidentally add a '&'?");
-				return SCOPE_POP_ERROR();
-			}
-			// Set type to isize if missing.
-			if (!index->var.type_info)
-			{
-				index->var.type_info = type_info_new_base(type_isize, index->span);
-			}
-			// Analyse the declaration.
-			if (!sema_analyse_var_decl(context, index, true)) return SCOPE_POP_ERROR();
-
-			if (type_is_failable(index->type))
-			{
-				SEMA_ERROR(index->var.type_info, "The index may not be a failable.");
-				return SCOPE_POP_ERROR();
-			}
-
-			// Make sure that the index is an integer.
-			if (!type_is_integer(type_flatten(index->type)))
-			{
-				SEMA_ERROR(index->var.type_info,
-				           "Index must be an integer type, '%s' is not valid.",
-				           type_to_error_string(index->type));
-				return SCOPE_POP_ERROR();
-			}
+			SEMA_ERROR(enumerator, "It is not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
+			return false;
 		}
+		expr_insert_deref(enumerator);
+	}
 
-		// Find the expected type for the value.
-		Type *expected_var_type = indexed_type;
+	// At this point we should have dereferenced any pointer or bailed.
+	assert(!type_is_pointer(enumerator->type));
 
-		// If by ref, then the pointer.
-		if (statement->foreach_stmt.value_by_ref) expected_var_type = type_get_ptr(expected_var_type);
+	// Check that we can even index this expression.
 
-		// If we type infer, then the expected type is the same as the indexed type.
-		if (!var->var.type_info)
+	Type *value_type = type_get_indexed_type(enumerator->type);
+	if (value_type && value_by_ref) value_type = type_get_ptr(value_type);
+
+	Decl *len = NULL;
+	Decl *index_macro = NULL;
+	Type *index_type = type_usize;
+
+	if (!value_type)
+	{
+		len = sema_find_operator(context, enumerator, kw_operator_len);
+		Decl *by_val = sema_find_operator(context, enumerator, kw_operator_element_at);
+		Decl *by_ref = sema_find_operator(context, enumerator, kw_operator_element_at_ref);
+		if (!len || (!by_val && !by_ref))
 		{
-			var->var.type_info = type_info_new_base(expected_var_type, var->span);
+			SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
+			return false;
 		}
-
-		// Analyse the value declaration.
-		if (!sema_analyse_var_decl(context, var, true)) return SCOPE_POP_ERROR();
-
-		if (IS_FAILABLE(var))
+		if (!by_ref && value_by_ref)
 		{
-			SEMA_ERROR(var->var.type_info, "The variable may not be a failable.");
-			return SCOPE_POP_ERROR();
+			SEMA_ERROR(enumerator, "%s does not support 'foreach' with the value by reference.", type_quoted_error_string(enumerator->type));
+			return false;
 		}
-		// TODO consider failables.
+		index_macro = value_by_ref ? by_ref : by_val;
+		index_type = index_macro->macro_decl.parameters[1]->type;
+		value_type = index_macro->macro_decl.rtype->type;
+	}
 
-		// We may have an implicit cast happening.
-		statement->foreach_stmt.cast = CAST_ERROR;
 
-		// If the type is different, attempt an implicit cast.
-		if (var->type != expected_var_type)
+	// Set up the value, assigning the type as needed.
+	// Element *value = void
+	Decl *value = statement->foreach_stmt.variable;
+	if (!value->var.type_info)
+	{
+		value->var.type_info = type_info_new_base(value_type, value->span);
+	}
+	if (!sema_resolve_type_info(context, value->var.type_info)) return false;
+
+	if (type_is_failable(value->var.type_info->type))
+	{
+		SEMA_ERROR(value->var.type_info, "The variable may not be a failable.");
+		return false;
+	}
+
+	// Set up the optional index parameter
+	Decl *index_decl = statement->foreach_stmt.index;
+	Type *index_var_type = NULL;
+	if (index_decl)
+	{
+		if (!index_decl->var.type_info) index_decl->var.type_info = type_info_new_base(index_type, enumerator->span);
+		if (!sema_resolve_type_info(context, index_decl->var.type_info)) return false;
+		index_var_type = index_decl->var.type_info->type;
+		if (type_is_failable(index_var_type))
 		{
-			// This is hackish, replace when cast is refactored.
-			Expr dummy = { .resolve_status = RESOLVE_DONE, .span = { var->var.type_info->span.loc,
-			                                                         var->span.end_loc }, .expr_kind = EXPR_IDENTIFIER, .type = expected_var_type };
-			if (!cast_implicit(&dummy, var->type)) return SCOPE_POP_ERROR();
-			if (IS_FAILABLE(&dummy))
-			{
-				SEMA_ERROR(var, "The variable may not be failable.");
-				return false;
-			}
-			assert(dummy.expr_kind == EXPR_CAST);
-			statement->foreach_stmt.cast = dummy.cast_expr.kind;
+			SEMA_ERROR(index_decl->var.type_info, "The index may not be a failable.");
+			return false;
 		}
+		if (!type_is_integer(type_flatten(index_var_type)))
+		{
+			SEMA_ERROR(index->var.type_info,
+					   "Index must be an integer type, '%s' is not valid.",
+					   type_to_error_string(index_var_type));
+			return false;
+		}
+	}
 
-		// Push the statement on the break/continue stack.
-		PUSH_BREAKCONT(statement);
+	// IndexType __idx$ = 0
+	Decl *idx_decl = decl_new_generated_var("__idx$", index_type, VARDECL_LOCAL, index_decl ? index_decl->span : enumerator->span);
+	Expr *idx_init = expr_new(EXPR_CONST, idx_decl->span);
+	expr_rewrite_to_int_const(idx_init, index_type, 0, true);
+	vec_add(expressions, expr_generate_decl(idx_decl, idx_init));
 
-		success = sema_analyse_statement(context, body);
-		statement->foreach_stmt.flow.no_exit = context->active_scope.jump_end;
+	// We either have "foreach (x : some_var)" or "foreach (x : some_call())"
+	// So we grab the former by address (implicit &) and the latter as the value.
+	assert(enumerator->resolve_status == RESOLVE_DONE);
+	bool is_addr = false;
+	bool is_variable = false;
+	if (expr_is_ltype(enumerator))
+	{
+		if (enumerator->expr_kind == EXPR_IDENTIFIER)
+		{
+			is_variable = true;
+		}
+		else
+		{
+			is_addr = true;
+			expr_insert_addr(enumerator);
+		}
+	}
 
-		// Pop the stack.
-		POP_BREAKCONT();
+	Decl *temp = NULL;
+	if (is_variable)
+	{
+		temp = enumerator->identifier_expr.decl;
+	}
+	else
+	{
+		// Store either "Foo* __enum$ = &some_var;" or "Foo __enum$ = some_call()"
+		temp = decl_new_generated_var("__enum$", enumerator->type, VARDECL_LOCAL, enumerator->span);
+		vec_add(expressions, expr_generate_decl(temp, enumerator));
+	}
 
-		// End foreach scope
-		context_pop_defers_and_replace_ast(context, body);
+	// Create @__enum$.len() or @(*__enum$).len()
+	Expr *enum_val = expr_variable(temp);
+	if (is_addr) expr_insert_deref(enum_val);
+	Type *enumerator_type = type_flatten(enum_val->type);
+	Expr *len_call;
+	ArraySize array_len = 0;
+	if (len)
+	{
+		ASSIGN_EXPR_ELSE(len_call, sema_insert_method_macro_call(context, enumerator->span, len, enum_val, NULL), false);
+	}
+	else
+	{
+		if (enumerator_type->type_kind == TYPE_ARRAY)
+		{
+			array_len = enumerator_type->array.len;
+			len_call = NULL;
+		}
+		else
+		{
+			len_call = expr_new(EXPR_LEN, enumerator->span);
+			if (!sema_analyse_expr(context, enum_val)) return false;
+			len_call->len_expr.inner = enum_val;
+			len_call->resolve_status = RESOLVE_DONE;
+			len_call->type = type_isize;
+		}
+	}
 
-	SCOPE_END;
+	// IndexType __len$ = (IndexType)(@__enum$.len())
+	Decl *len_decl = NULL;
+	if (len_call)
+	{
+		len_decl = decl_new_generated_var("__len$", idx_init->type, VARDECL_LOCAL, enumerator->span);
+		if (!cast_implicit(len_call, idx_init->type)) return false;
+		vec_add(expressions, expr_generate_decl(len_decl, len_call));
+	}
 
-	return success;
 
+	// Add all declarations to the init
+	Expr *init_expr = expr_new(EXPR_COND, value->span);
+	init_expr->cond_expr = expressions;
+
+	// Create __idx$ < __len$
+	Expr *binary = expr_new(EXPR_BINARY, idx_decl->span);
+	binary->binary_expr.operator = BINARYOP_LT;
+	binary->binary_expr.left = expr_variable(idx_decl);
+	if (len_decl)
+	{
+		binary->binary_expr.right = expr_variable(len_decl);
+	}
+	else
+	{
+		Expr *rhs = expr_new(EXPR_CONST, enumerator->span);
+		expr_rewrite_to_int_const(rhs, type_isize, array_len, true);
+		binary->binary_expr.right = rhs;
+	}
+
+	// Create __idx$++
+	Expr *inc = expr_new(EXPR_UNARY, idx_decl->span);
+	inc->unary_expr.expr = expr_variable(idx_decl);
+	inc->unary_expr.operator = UNARYOP_INC;
+
+	// Create IndexType index = __idx$++
+	if (index_decl)
+	{
+		Ast *declare_ast = new_ast(AST_DECLARE_STMT, value->span);
+		declare_ast->declare_stmt = index_decl;
+		Expr *load_idx = expr_variable(idx_decl);
+		if (!cast(load_idx, index_var_type)) return false;
+		index_decl->var.init_expr = load_idx;
+		vec_add(stmts, declare_ast);
+	}
+
+	// Create value = (*__$enum)[__idx$]
+	Ast *value_declare_ast = new_ast(AST_DECLARE_STMT, value->span);
+	value_declare_ast->declare_stmt = value;
+
+	Expr *subscript = expr_new(EXPR_SUBSCRIPT, value->span);
+	enum_val = expr_variable(temp);
+	if (is_addr) expr_insert_deref(enum_val);
+	subscript->subscript_expr.expr = enum_val;
+	subscript->subscript_expr.index = expr_variable(idx_decl);
+	if (value_by_ref)
+	{
+		Expr *addr = expr_new(EXPR_UNARY, subscript->span);
+		addr->unary_expr.operator = UNARYOP_ADDR;
+		addr->unary_expr.expr = subscript;
+		subscript = addr;
+	}
+	value->var.init_expr = subscript;
+	vec_add(stmts, value_declare_ast);
+	vec_add(stmts, body);
+	Ast *compound_stmt = new_ast(AST_COMPOUND_STMT, body->span);
+	compound_stmt->compound_stmt.stmts = stmts;
+	statement->for_stmt = (AstForStmt){ .init = init_expr,
+										.cond = binary,
+										.incr = inc,
+										.flow = statement->foreach_stmt.flow,
+										.body = compound_stmt
+	};
+	statement->ast_kind = AST_FOR_STMT;
+	return sema_analyse_for_stmt(context, statement);
 
 }
 

@@ -256,13 +256,13 @@ typedef struct
 typedef struct
 {
 	Type *base;
-	TypeSize len;
+	ArraySize len;
 } TypeArray;
 
 typedef struct
 {
 	Type *base;
-	TypeSize len;
+	ArraySize len;
 } TypeVector;
 
 typedef struct
@@ -1856,6 +1856,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
 ArraySize expr_const_list_size(const ConstInitializer *list);
 
+Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
 void expr_insert_deref(Expr *expr);
 Expr *expr_variable(Decl *decl);

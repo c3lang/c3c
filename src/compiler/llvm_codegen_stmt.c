@@ -444,147 +444,6 @@ void gencontext_emit_for_stmt(GenContext *c, Ast *ast)
 	llvm_emit_block(c, exit_block);
 }
 
-static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
-{
-	// First we generate an exit.
-	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "foreach.exit");
-
-	PUSH_ERROR();
-
-	llvm_set_error_exit(c, exit_block);
-
-	// First evaluate the enumerated collection
-	BEValue enum_value;
-	llvm_emit_expr(c, &enum_value, ast->foreach_stmt.enumeration);
-
-	// Get the length
-	BEValue len;
-	llvm_emit_len_for_expr(c, &len, &enum_value);
-	llvm_value_rvalue(c, &len);
-
-	// We pop the error here.
-	POP_ERROR();
-
-	llvm_emit_ptr_from_array(c, &enum_value);
-
-	// Create the index and optionally the index var
-	LLVMTypeRef real_index_type = llvm_get_type(c, type_usize);
-	BEValue index_var = { 0 };
-	LLVMTypeRef index_type = ast->foreach_stmt.index ? llvm_get_type(c, ast->foreach_stmt.index->type) : NULL;
-	BEValue index = { 0 };
-
-	bool extend_bits = false;
-
-	// In case we have an index, set it up.
-	if (ast->foreach_stmt.index)
-	{
-		llvm_emit_local_var_alloca(c, ast->foreach_stmt.index);
-		llvm_value_set_address(&index_var, ast->foreach_stmt.index->backend_ref, ast->foreach_stmt.index->type);
-		// And set it to zero.
-		llvm_store_bevalue_raw(c, &index_var, llvm_get_zero(c, index_var.type));
-		index = index_var;
-		extend_bits = type_size(index_var.type) > type_size(type_isize);
-	}
-
-	// If types don't match (either index has a different type or it doesn't exist)
-	// then create the address for the internal index and set it to zero.
-	if (index_type != real_index_type)
-	{
-		llvm_value_set_address(&index, llvm_emit_alloca(c, real_index_type, type_abi_alignment(type_isize), "idx"), type_usize);
-		llvm_store_bevalue_raw(c, &index, llvm_get_zero(c, index.type));
-	}
-
-	Type *actual_type = type_get_indexed_type(ast->foreach_stmt.enumeration->type);
-	LLVMTypeRef actual_type_llvm = llvm_get_type(c, actual_type);
-
-	llvm_emit_local_var_alloca(c, ast->foreach_stmt.variable);
-	Type *var_type = type_lowering(ast->foreach_stmt.variable->type);
-	LLVMTypeRef var_type_llvm = llvm_get_type(c, var_type);
-	BEValue var;
-	llvm_value_set_address(&var, ast->foreach_stmt.variable->backend_ref, var_type);
-
-	LLVMBasicBlockRef inc_block = llvm_basic_block_new(c, "foreach.inc");
-	LLVMBasicBlockRef body_block = llvm_basic_block_new(c, "foreach.body");
-	LLVMBasicBlockRef cond_block = llvm_basic_block_new(c, "foreach.cond");
-
-	ast->foreach_stmt.continue_block = inc_block;
-	ast->foreach_stmt.exit_block = exit_block;
-
-	// Emit cond
-	llvm_emit_br(c, cond_block);
-	llvm_emit_block(c, cond_block);
-
-	BEValue index_value;
-	llvm_value_set(&index_value, llvm_value_rvalue_store(c, &index), type_usize);
-	BEValue b;
-	llvm_emit_int_comparison(c, &b, &index_value, &len, BINARYOP_LT);
-	llvm_emit_cond_br(c, &b, body_block, exit_block);
-
-	llvm_emit_block(c, body_block);
-
-	// In the case where we have an index that is smaller, we need to do a cast.
-	if (index_var.value && index.value != index_var.value)
-	{
-		LLVMValueRef stored_value;
-		if (extend_bits)
-		{
-			// Note that we zero extend. We never deal in negative indices.
-			stored_value = LLVMBuildZExt(c->builder, index_value.value, index_type, "");
-		}
-		else
-		{
-			stored_value = LLVMBuildTrunc(c->builder, index_value.value, index_type, "");
-		}
-		llvm_store_bevalue_raw(c, &index_var, stored_value);
-	}
-
-	assert(llvm_value_is_addr(&enum_value));
-
-	LLVMValueRef ref_to_element;
-	AlignSize align;
-	if (enum_value.type->type_kind == TYPE_ARRAY || enum_value.type->type_kind == TYPE_VECTOR)
-	{
-		ref_to_element = llvm_emit_array_gep_raw_index(c, enum_value.value,
-		                                               llvm_get_type(c, enum_value.type), index_value.value, index_value.alignment, &align);
-	}
-	else
-	{
-		ref_to_element = llvm_emit_pointer_inbounds_gep_raw(c, actual_type_llvm, enum_value.value, index_value.value);
-	}
-	BEValue result;
-	if (ast->foreach_stmt.value_by_ref)
-	{
-		llvm_value_set(&result, ref_to_element, type_get_ptr(actual_type));
-		LLVMTypeRef pointer_llvm = llvm_get_ptr_type(c, actual_type);
-		if (pointer_llvm != var_type_llvm)
-		{
-			llvm_emit_cast(c, ast->foreach_stmt.cast, &result, var_type, result.type);
-		}
-	}
-	else
-	{
-		llvm_value_set_address(&result, ref_to_element, actual_type);
-		if (var_type_llvm != actual_type_llvm)
-		{
-			llvm_emit_cast(c, ast->foreach_stmt.cast, &result, var_type, actual_type);
-		}
-	}
-	llvm_store_bevalue(c, &var, &result);
-
-	llvm_emit_stmt(c, ast->foreach_stmt.body);
-
-	llvm_emit_br(c, inc_block);
-
-	llvm_emit_block(c, inc_block);
-	index_value.value = LLVMBuildAdd(c->builder, llvm_value_rvalue_store(c, &index), llvm_const_int(c, type_isize, 1), "");
-	llvm_store_bevalue(c, &index, &index_value);
-
-	// Loop back.
-	llvm_emit_br(c, cond_block);
-
-	// And insert exit block
-	llvm_emit_block(c, exit_block);
-}
 
 void gencontext_emit_while_stmt(GenContext *context, Ast *ast)
 {
@@ -1301,6 +1160,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_VAR_STMT:
 		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_SCOPING_STMT:
+		case AST_FOREACH_STMT:
 			UNREACHABLE
 		case AST_SCOPED_STMT:
 			gencontext_emit_scoped_stmt(c, ast);
@@ -1331,9 +1191,6 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			break;
 		case AST_FOR_STMT:
 			gencontext_emit_for_stmt(c, ast);
-			break;
-		case AST_FOREACH_STMT:
-			llvm_emit_foreach_stmt(c, ast);
 			break;
 		case AST_WHILE_STMT:
 			gencontext_emit_while_stmt(c, ast);
