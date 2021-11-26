@@ -540,7 +540,17 @@ static void llvm_emit_foreach_stmt(GenContext *c, Ast *ast)
 
 	assert(llvm_value_is_addr(&enum_value));
 
-	LLVMValueRef ref_to_element = llvm_emit_pointer_inbounds_gep_raw(c, actual_type_llvm, enum_value.value, index_value.value);
+	LLVMValueRef ref_to_element;
+	AlignSize align;
+	if (enum_value.type->type_kind == TYPE_ARRAY || enum_value.type->type_kind == TYPE_VECTOR)
+	{
+		ref_to_element = llvm_emit_array_gep_raw_index(c, enum_value.value,
+		                                               llvm_get_type(c, enum_value.type), index_value.value, index_value.alignment, &align);
+	}
+	else
+	{
+		ref_to_element = llvm_emit_pointer_inbounds_gep_raw(c, actual_type_llvm, enum_value.value, index_value.value);
+	}
 	BEValue result;
 	if (ast->foreach_stmt.value_by_ref)
 	{
@@ -1122,7 +1132,7 @@ static LLVMValueRef llvm_emit_string(GenContext *c, const char *str)
 	unsigned len = (unsigned)strlen(str);
 	LLVMTypeRef char_array_type = LLVMArrayType(char_type, len + 1);
 	LLVMValueRef global_string = LLVMAddGlobal(c->module, char_array_type, "");
-	LLVMSetLinkage(global_string, LLVMInternalLinkage);
+	llvm_set_internal_linkage(global_string);
 	LLVMSetGlobalConstant(global_string, 1);
 	LLVMSetInitializer(global_string, LLVMConstStringInContext(c->context, str, len, 0));
 	AlignSize alignment;

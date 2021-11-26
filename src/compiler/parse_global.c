@@ -1566,7 +1566,8 @@ static inline Decl *parse_define_type(Context *context, Visibility visibility)
 	decl->typedef_decl.is_func = false;
 	if (distinct)
 	{
-		decl->distinct_decl.typedef_decl = decl->typedef_decl;
+		TypedefDecl typedef_decl = decl->typedef_decl; // Ensure value semantics.
+		decl->distinct_decl.typedef_decl = typedef_decl;
 		decl->type->type_kind = TYPE_DISTINCT;
 		decl->decl_kind = DECL_DISTINCT;
 	}

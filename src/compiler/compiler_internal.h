@@ -499,7 +499,6 @@ typedef struct
 		TypedefDecl typedef_decl;
 		Type *base_type;
 	};
-	Decl** methods;
 } DistinctDecl;
 
 typedef struct
