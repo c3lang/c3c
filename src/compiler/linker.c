@@ -111,7 +111,6 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 				vec_add(args, join_strings((const char* []) { "-libpath:", windows_paths.windows_sdk_um_library_path }, 2));
 				vec_add(args, join_strings((const char* []) { "-libpath:", windows_paths.windows_sdk_ucrt_library_path }, 2));
 				vec_add(args, join_strings((const char* []) { "-libpath:", windows_paths.vs_library_path }, 2));
-				//free_windows_link_paths(&windows_paths);
 
 				vec_add(args, "-defaultlib:libcmt");
 				vec_add(args, "-nologo");
@@ -218,9 +217,12 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	{
 		case OBJ_FORMAT_COFF:
 			success = (platform_target.x64.is_mingw64 ? llvm_link_mingw : llvm_link_coff)(args, (int)vec_size(args), &error);
+			// This is only defined if compiling with MSVC
+#ifdef _MSC_VER
 			if (windows_paths.windows_sdk_um_library_path) {
 				free_windows_link_paths(&windows_paths);
 			}
+#endif
 			break;
 		case OBJ_FORMAT_ELF:
 			success = llvm_link_elf(args, (int)vec_size(args), &error);
