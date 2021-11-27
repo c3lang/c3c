@@ -315,7 +315,7 @@ static inline Ast* parse_for_stmt(Context *context)
 
 	if (!TOKEN_IS(TOKEN_EOS))
 	{
-		ASSIGN_EXPR_ELSE(ast->for_stmt.init, parse_cond(context), poisoned_ast);
+		ASSIGN_EXPR_ELSE(ast->for_stmt.init, parse_expression_list(context, true), poisoned_ast);
 	}
 	else
 	{
@@ -326,14 +326,14 @@ static inline Ast* parse_for_stmt(Context *context)
 
 	if (!TOKEN_IS(TOKEN_EOS))
 	{
-		ASSIGN_EXPR_ELSE(ast->for_stmt.cond, parse_expr(context), poisoned_ast);
+		ASSIGN_EXPR_ELSE(ast->for_stmt.cond, parse_cond(context), poisoned_ast);
 	}
 
 	CONSUME_OR(TOKEN_EOS, poisoned_ast);
 
 	if (!TOKEN_IS(TOKEN_RPAREN))
 	{
-		ast->for_stmt.incr = parse_expression_list(context);
+		ast->for_stmt.incr = parse_expression_list(context, false);
 	}
 
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
@@ -987,7 +987,7 @@ Ast *parse_scoping_stmt(Context *context)
 	Ast *ast = AST_NEW_TOKEN(AST_SCOPING_STMT, context->tok);
 	advance_and_verify(context, TOKEN_SCOPING);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
-	ASSIGN_EXPR_ELSE(ast->scoping_stmt.scoped, parse_expression_list(context), poisoned_ast);
+	ASSIGN_EXPR_ELSE(ast->scoping_stmt.scoped, parse_expression_list(context, false), poisoned_ast);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
 	ASSIGN_AST_ELSE(ast->scoping_stmt.stmt, parse_compound_stmt(context), poisoned_ast);
 	return ast;

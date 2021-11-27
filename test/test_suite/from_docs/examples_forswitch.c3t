@@ -87,35 +87,31 @@ fn void demo_enum(Height h)
             io::println("C");
     }
 }
-// #expect: examples.ll
+/* #expect: examples.ll
+
 
 define void @examples.example_for() #0 {
 entry:
   %i = alloca i32, align 4
   store i32 0, i32* %i, align 4
-  br label %for.cond
+  br label %loop.cond
 
-for.cond:                                         ; preds = %for.inc, %entry
+loop.cond:                                        ; preds = %loop.body, %entry
   %0 = load i32, i32* %i, align 4
   %lt = icmp slt i32 %0, 10
-  br i1 %lt, label %for.body, label %for.exit
+  br i1 %lt, label %loop.body, label %loop.exit
 
-for.body:                                         ; preds = %for.cond
+loop.body:                                        ; preds = %loop.cond
   %1 = load i32, i32* %i, align 4
   %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %1)
-  br label %for.inc
-
-for.inc:                                          ; preds = %for.body
   %3 = load i32, i32* %i, align 4
   %add = add i32 %3, 1
   store i32 %add, i32* %i, align 4
-  br label %for.cond
+  br label %loop.cond
 
-for.exit:                                         ; preds = %for.cond
-  br label %infiniteloop
-
-infiniteloop:                                     ; preds = %infiniteloop, %for.exit
-  br label %infiniteloop
+loop.exit:                                        ; preds = %loop.cond
+  call void @__assert_rtn(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @0, i64 0, i64 0), i8* getelementptr inbounds ([22 x i8], [22 x i8]* @1, i64 0, i64 0), i32 14, i8* getelementptr inbounds ([20 x i8], [20 x i8]* @2, i64 0, i64 0))
+  unreachable
 }
 
 ; Function Attrs: nounwind

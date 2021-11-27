@@ -529,7 +529,12 @@ static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_
 	// 3a. Check for failables in case of an expression.
 	if (IS_FAILABLE(last))
 	{
-		sema_failed_cast(last, last->type, cast_to_bool ? type_bool : type_no_fail(last->type));
+		if (!cast_to_bool || cast_may_implicit(type_no_fail(last->type), type_bool, false, false))
+		{
+			SEMA_ERROR(last, "The expression may not be a failable, but was %s.", type_quoted_error_string(last->type));
+			return false;
+		}
+		sema_failed_cast(last, type_no_fail(last->type), type_bool);
 		return false;
 	}
 	// 3b. Cast to bool if that is needed
@@ -590,7 +595,14 @@ static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 
 	// 10. Pop the while scope.
 	SCOPE_END;
-
+	statement->ast_kind = AST_FOR_STMT;
+	AstForStmt for_stmt = {
+			.cond = cond,
+			.flow = statement->while_stmt.flow,
+			.incr = NULL,
+			.body = statement->while_stmt.body,
+	};
+	statement->for_stmt = for_stmt;
 	return success;
 }
 
@@ -628,7 +640,10 @@ static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 	if (!success) return false;
 
 	// 8. Handle the do { } expression
-	if (!statement->do_stmt.expr) return true;
+	if (!statement->do_stmt.expr)
+	{
+		goto END;
+	}
 
 	// 9. We next handle the while test. This is its own scope.
 	SCOPE_START
@@ -652,6 +667,18 @@ static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
 		// Unless there is a break, this won't ever exit.
 		context->active_scope.jump_end = !statement->do_stmt.flow.has_break;
 	}
+
+END:;
+	FlowCommon flow = statement->do_stmt.flow;
+	flow.skip_first = true;
+	statement->ast_kind = AST_FOR_STMT;
+	AstForStmt for_stmt = {
+			.cond = expr,
+			.flow = flow,
+			.incr = NULL,
+			.body = body,
+			};
+	statement->for_stmt = for_stmt;
 	return true;
 }
 
@@ -796,7 +823,7 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 		is_infinite = statement->for_stmt.cond == NULL;
 		if (statement->for_stmt.init)
 		{
-			success = sema_analyse_cond_list(context, statement->for_stmt.init, false);
+			success = sema_analyse_expr(context, statement->for_stmt.init);
 		}
 
 		if (success && statement->for_stmt.cond)
@@ -804,7 +831,14 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 			// Conditional scope start
 			SCOPE_START
 				Expr *cond = statement->for_stmt.cond;
-				success = sema_analyse_cond_expr(context, cond);
+				if (cond->expr_kind == EXPR_COND)
+				{
+					success = sema_analyse_cond(context, cond, true, true);
+				}
+				else
+				{
+					success = sema_analyse_cond_expr(context, cond);
+				}
 				statement->for_stmt.cond = context_pop_defers_and_wrap_expr(context, cond);
 				// If this is const true, then set this to infinite and remove the expression.
 				if (statement->for_stmt.cond->expr_kind == EXPR_CONST && statement->for_stmt.cond->const_expr.b)
@@ -1254,8 +1288,8 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 
 
 	// Add all declarations to the init
-	Expr *init_expr = expr_new(EXPR_COND, value->span);
-	init_expr->cond_expr = expressions;
+	Expr *init_expr = expr_new(EXPR_EXPRESSION_LIST, value->span);
+	init_expr->expression_list = expressions;
 
 	// Create __idx$ < __len$
 	Expr *binary = expr_new(EXPR_BINARY, idx_decl->span);

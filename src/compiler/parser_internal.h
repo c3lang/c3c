@@ -47,7 +47,7 @@ bool parse_attributes(Context *context, Attr ***attributes_ref);
 
 bool parse_switch_body(Context *context, Ast ***cases, TokenType case_type, TokenType default_type,
                        bool allow_multiple_values);
-Expr *parse_expression_list(Context *context);
+Expr *parse_expression_list(Context *context, bool allow_decls);
 Decl *parse_decl_after_type(Context *context, TypeInfo *type);
 
 bool parse_parameters(Context *context, Visibility visibility, Decl ***params_ref);

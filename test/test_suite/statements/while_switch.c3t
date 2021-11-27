@@ -1,5 +1,5 @@
+// #target: x64-darwin
 module test;
-
 
 extern fn int printf(char*, ...);
 extern fn int foo();
@@ -28,24 +28,28 @@ fn int main()
    return 0;
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
 
-@.str = private constant [2 x i8] c"3\00"
-@.str.1 = private constant [2 x i8] c"4\00"
+@.str = private constant [2 x i8] c"3\00", align 1
+@.str.1 = private constant [2 x i8] c"4\00", align 1
 
+define i32 @main() #0 {
 entry:
   %switch = alloca i32, align 4
-  br label %while.begin
-while.begin:
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %switch.exit, %entry
   %0 = call i32 @foo()
   %intbool = icmp ne i32 %0, 0
-  br i1 %intbool, label %while.body, label %while.exit
-while.body:
+  br i1 %intbool, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
   %1 = call i32 @foo()
   store i32 %1, i32* %switch, align 4
   br label %switch.entry
-switch.entry:
+
+switch.entry:                                     ; preds = %loop.body
   %2 = load i32, i32* %switch, align 4
   switch i32 %2, label %switch.default [
     i32 0, label %switch.case
@@ -56,16 +60,22 @@ switch.entry:
     i32 5, label %switch.default
     i32 6, label %switch.default
   ]
-switch.case:
+
+switch.case:                                      ; preds = %switch.entry, %switch.entry, %switch.entry, %switch.entry
   %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str, i32 0, i32 0))
   br label %switch.case1
-switch.case1:
+
+switch.case1:                                     ; preds = %switch.entry, %switch.case
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i32 0, i32 0))
   br label %switch.default
-switch.default:
+
+switch.default:                                   ; preds = %switch.entry, %switch.entry, %switch.case1, %switch.entry
   br label %switch.exit
-switch.exit:
-  br label %while.begin
-while.exit:
+
+switch.exit:                                      ; preds = %switch.default
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
   ret i32 0
+}
 

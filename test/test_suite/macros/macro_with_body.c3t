@@ -45,7 +45,8 @@ fn void main()
 
 /* #expect: withbody.ll
 
-define i32 @withbody.Foo__mutate(%Foo* %0)
+
+define i32 @withbody.Foo__mutate(%Foo* %0) #0 {
 entry:
   %foo = alloca %Foo*, align 8
   store %Foo* %0, %Foo** %foo, align 8
@@ -57,9 +58,10 @@ entry:
   store i32 %add, i32* %3, align 8
   %mul = mul i32 10, %add
   ret i32 %mul
+}
 
-
-define void @main()
+define void @main() #0 {
+entry:
   %f = alloca %Foo, align 4
   %y = alloca i32, align 4
   %foo = alloca %Foo, align 4
@@ -85,28 +87,25 @@ define void @main()
   %8 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str, i32 0, i32 0), i32 %6, i32 %7)
   store i32 10, i32* %times, align 4
   store i32 0, i32* %i, align 4
-  br label %for.cond
+  br label %loop.cond
 
-for.cond:                                         ; preds = %for.inc, %entry
+loop.cond:                                        ; preds = %loop.body, %entry
   %9 = load i32, i32* %i, align 4
   %10 = load i32, i32* %times, align 4
   %lt = icmp slt i32 %9, %10
-  br i1 %lt, label %for.body, label %for.exit
+  br i1 %lt, label %loop.body, label %loop.exit
 
-for.body:                                         ; preds = %for.cond
+loop.body:                                        ; preds = %loop.cond
   %11 = load i32, i32* %i, align 4
   %add = add i32 %11, 1
   store i32 %add, i32* %loop, align 4
   %12 = load i32, i32* %loop, align 4
   %13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), i32 %12)
-  br label %for.inc
-
-for.inc:                                          ; preds = %for.body
   %14 = load i32, i32* %i, align 4
   %add1 = add i32 %14, 1
   store i32 %add1, i32* %i, align 4
-  br label %for.cond
+  br label %loop.cond
 
-for.exit:                                         ; preds = %for.cond
+loop.exit:                                        ; preds = %loop.cond
   ret void
 }

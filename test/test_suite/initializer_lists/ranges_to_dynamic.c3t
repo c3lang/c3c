@@ -44,28 +44,25 @@ entry:
   %9 = getelementptr inbounds [10 x i32], [10 x i32]* %y, i64 0, i64 8
   store i32 %7, i32* %9, align 4
   store i64 0, i64* %"__idx$", align 8
-  br label %for.cond
+  br label %loop.cond
 
-for.cond:                                         ; preds = %for.inc, %entry
+loop.cond:                                        ; preds = %loop.body, %entry
   %10 = load i64, i64* %"__idx$", align 8
   %gt = icmp ugt i64 10, %10
-  br i1 %gt, label %for.body, label %for.exit
+  br i1 %gt, label %loop.body, label %loop.exit
 
-for.body:                                         ; preds = %for.cond
+loop.body:                                        ; preds = %loop.cond
   %11 = load i64, i64* %"__idx$", align 8
   %12 = getelementptr inbounds [10 x i32], [10 x i32]* %y, i64 0, i64 %11
   %13 = load i32, i32* %12, align 4
   store i32 %13, i32* %v, align 4
   %14 = load i32, i32* %v, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %14)
-  br label %for.inc
-
-for.inc:                                          ; preds = %for.body
   %15 = load i64, i64* %"__idx$", align 8
   %add = add i64 %15, 1
   store i64 %add, i64* %"__idx$", align 8
-  br label %for.cond
+  br label %loop.cond
 
-for.exit:                                         ; preds = %for.cond
+loop.exit:                                        ; preds = %loop.cond
   ret void
 }

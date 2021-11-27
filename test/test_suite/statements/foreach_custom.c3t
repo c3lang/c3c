@@ -54,15 +54,13 @@ entry:
   %6 = getelementptr inbounds %"int[]", %"int[]"* %5, i32 0, i32 1
   %7 = load i64, i64* %6, align 8
   store i64 %7, i64* %"__len$", align 8
-  br label %for.cond
-
-for.cond:                                         ; preds = %entry
+  br label %loop.cond
+loop.cond:                                        ; preds = %entry
   %8 = load i64, i64* %"__idx$", align 8
   %9 = load i64, i64* %"__len$", align 8
   %lt = icmp ult i64 %8, %9
-  br i1 %lt, label %for.body, label %for.exit
-
-for.body:                                         ; preds = %for.cond
+  br i1 %lt, label %loop.body, label %loop.exit
+loop.body:                                        ; preds = %loop.cond
   %10 = load i64, i64* %"__idx$", align 8
   store i64 %10, i64* %index, align 8
   %11 = getelementptr inbounds %Foo, %Foo* %x, i32 0, i32 0
@@ -74,11 +72,9 @@ for.body:                                         ; preds = %for.cond
   store i32 %15, i32* %f, align 4
   %16 = load i32, i32* %f, align 4
   %17 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %16)
-  br label %while.begin
-
-while.begin:                                      ; preds = %for.body
-  br label %for.exit
-
-for.exit:                                         ; preds = %while.begin, %for.cond
+  br label %loop.body1
+loop.body1:                                       ; preds = %loop.body
+  br label %loop.exit
+loop.exit:                                        ; preds = %loop.body1, %loop.cond
   ret void
 }
