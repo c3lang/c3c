@@ -105,7 +105,8 @@ fn void main(int argc, char **argv)
 
 }
 
-// #expect: fasta.ll
+/* #expect: fasta.ll
+
 %"char[]" = type { i8*, i64 }
 %"double[]" = type { double*, i64 }
 
@@ -173,15 +174,15 @@ entry:
   %6 = load i64, i64* %5, align 8
   store i64 %6, i64* %len, align 8
   store i32 0, i32* %i, align 4
-  br label %for.cond
+  br label %loop.cond
 
-for.cond:                                         ; preds = %for.inc, %entry
+loop.cond:                                        ; preds = %if.exit, %entry
   %7 = load i32, i32* %i, align 4
   %8 = load i32, i32* %n, align 4
   %lt = icmp slt i32 %7, %8
-  br i1 %lt, label %for.body, label %for.exit
+  br i1 %lt, label %loop.body, label %loop.exit
 
-for.body:                                         ; preds = %for.cond
+loop.body:                                        ; preds = %loop.cond
   %9 = getelementptr inbounds %"char[]", %"char[]"* %seq, i32 0, i32 0
   %10 = load i8*, i8** %9, align 8
   %11 = load i32, i32* %i, align 4
@@ -197,30 +198,27 @@ for.body:                                         ; preds = %for.cond
   %eq = icmp eq i32 %smod1, 59
   br i1 %eq, label %if.then, label %if.exit
 
-if.then:                                          ; preds = %for.body
+if.then:                                          ; preds = %loop.body
   call void @putchar(i32 10)
   br label %if.exit
 
-if.exit:                                          ; preds = %if.then, %for.body
-  br label %for.inc
-
-for.inc:                                          ; preds = %if.exit
+if.exit:                                          ; preds = %if.then, %loop.body
   %15 = load i32, i32* %i, align 4
   %add = add i32 %15, 1
   store i32 %add, i32* %i, align 4
-  br label %for.cond
+  br label %loop.cond
 
-for.exit:                                         ; preds = %for.cond
+loop.exit:                                        ; preds = %loop.cond
   %16 = load i32, i32* %i, align 4
   %smod2 = srem i32 %16, 60
   %neq = icmp ne i32 %smod2, 0
   br i1 %neq, label %if.then3, label %if.exit4
 
-if.then3:                                         ; preds = %for.exit
+if.then3:                                         ; preds = %loop.exit
   call void @putchar(i32 10)
   br label %if.exit4
 
-if.exit4:                                         ; preds = %if.then3, %for.exit
+if.exit4:                                         ; preds = %if.then3, %loop.exit
   ret void
 }
 
@@ -256,29 +254,29 @@ entry:
   %uisitrunc = trunc i64 %14 to i32
   store i32 %uisitrunc, i32* %len, align 4
   store i32 0, i32* %i, align 4
-  br label %for.cond
+  br label %loop.cond
 
-for.cond:                                         ; preds = %for.inc11, %entry
+loop.cond:                                        ; preds = %if.exit10, %entry
   %15 = load i32, i32* %i, align 4
   %16 = load i32, i32* %n, align 4
   %lt = icmp slt i32 %15, %16
-  br i1 %lt, label %for.body, label %for.exit13
+  br i1 %lt, label %loop.body, label %loop.exit12
 
-for.body:                                         ; preds = %for.cond
+loop.body:                                        ; preds = %loop.cond
   %17 = call float @fasta.fasta_rand(float 1.000000e+00)
   %fpfpext = fpext float %17 to double
   store double %fpfpext, double* %v, align 8
   store i32 0, i32* %j, align 4
-  br label %for.cond2
+  br label %loop.cond2
 
-for.cond2:                                        ; preds = %for.inc, %for.body
+loop.cond2:                                       ; preds = %if.exit, %loop.body
   %18 = load i32, i32* %j, align 4
   %19 = load i32, i32* %len, align 4
   %sub = sub i32 %19, 1
   %lt3 = icmp slt i32 %18, %sub
-  br i1 %lt3, label %for.body4, label %for.exit
+  br i1 %lt3, label %loop.body4, label %loop.exit
 
-for.body4:                                        ; preds = %for.cond2
+loop.body4:                                       ; preds = %loop.cond2
   %20 = load double, double* %v, align 8
   %21 = getelementptr inbounds %"double[]", %"double[]"* %probability, i32 0, i32 0
   %22 = load double*, double** %21, align 8
@@ -292,19 +290,16 @@ for.body4:                                        ; preds = %for.cond2
   %lt5 = fcmp olt double %25, 0.000000e+00
   br i1 %lt5, label %if.then, label %if.exit
 
-if.then:                                          ; preds = %for.body4
-  br label %for.exit
+if.then:                                          ; preds = %loop.body4
+  br label %loop.exit
 
-if.exit:                                          ; preds = %for.body4
-  br label %for.inc
-
-for.inc:                                          ; preds = %if.exit
+if.exit:                                          ; preds = %loop.body4
   %26 = load i32, i32* %j, align 4
   %add = add i32 %26, 1
   store i32 %add, i32* %j, align 4
-  br label %for.cond2
+  br label %loop.cond2
 
-for.exit:                                         ; preds = %if.then, %for.cond2
+loop.exit:                                        ; preds = %if.then, %loop.cond2
   %27 = getelementptr inbounds %"char[]", %"char[]"* %symb, i32 0, i32 0
   %28 = load i8*, i8** %27, align 8
   %29 = load i32, i32* %j, align 4
@@ -318,30 +313,27 @@ for.exit:                                         ; preds = %if.then, %for.cond2
   %eq8 = icmp eq i32 %smod, 59
   br i1 %eq8, label %if.then9, label %if.exit10
 
-if.then9:                                         ; preds = %for.exit
+if.then9:                                         ; preds = %loop.exit
   call void @putchar(i32 10)
   br label %if.exit10
 
-if.exit10:                                        ; preds = %if.then9, %for.exit
-  br label %for.inc11
-
-for.inc11:                                        ; preds = %if.exit10
+if.exit10:                                        ; preds = %if.then9, %loop.exit
   %32 = load i32, i32* %i, align 4
-  %add12 = add i32 %32, 1
-  store i32 %add12, i32* %i, align 4
-  br label %for.cond
+  %add11 = add i32 %32, 1
+  store i32 %add11, i32* %i, align 4
+  br label %loop.cond
 
-for.exit13:                                       ; preds = %for.cond
+loop.exit12:                                      ; preds = %loop.cond
   %33 = load i32, i32* %i, align 4
-  %smod14 = srem i32 %33, 60
-  %neq = icmp ne i32 %smod14, 0
-  br i1 %neq, label %if.then15, label %if.exit16
+  %smod13 = srem i32 %33, 60
+  %neq = icmp ne i32 %smod13, 0
+  br i1 %neq, label %if.then14, label %if.exit15
 
-if.then15:                                        ; preds = %for.exit13
+if.then14:                                        ; preds = %loop.exit12
   call void @putchar(i32 10)
-  br label %if.exit16
+  br label %if.exit15
 
-if.exit16:                                        ; preds = %if.then15, %for.exit13
+if.exit15:                                        ; preds = %if.then14, %loop.exit12
   ret void
 }
 

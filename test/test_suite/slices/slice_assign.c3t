@@ -44,28 +44,27 @@ entry:
   %7 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 7
   store i32 52, i32* %7, align 4
   store i64 0, i64* %"__idx$", align 8
-  br label %for.cond
-for.cond:                                         ; preds = %for.inc, %entry
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.body, %entry
   %8 = load i64, i64* %"__idx$", align 8
   %gt = icmp ugt i64 8, %8
-  br i1 %gt, label %for.body, label %for.exit
-for.body:                                         ; preds = %for.cond
+  br i1 %gt, label %loop.body, label %loop.exit
+loop.body:                                        ; preds = %loop.cond
   %9 = load i64, i64* %"__idx$", align 8
   %10 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 %9
   %11 = load i32, i32* %10, align 4
   store i32 %11, i32* %i, align 4
   %12 = load i32, i32* %i, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %12)
-  br label %for.inc
-for.inc:                                          ; preds = %for.body
   %13 = load i64, i64* %"__idx$", align 8
   %add = add i64 %13, 1
   store i64 %add, i64* %"__idx$", align 8
-  br label %for.cond
-for.exit:                                         ; preds = %for.cond
+  br label %loop.cond
+loop.exit:                                        ; preds = %loop.cond
   br label %cond
-cond:                                             ; preds = %assign, %for.exit
-  %14 = phi i64 [ 0, %for.exit ], [ %add1, %assign ]
+cond:                                             ; preds = %assign, %loop.exit
+  %14 = phi i64 [ 0, %loop.exit ], [ %add1, %assign ]
   %le = icmp sle i64 %14, 7
   br i1 %le, label %assign, label %exit
 assign:                                           ; preds = %cond

@@ -1,3 +1,4 @@
+// #target: x64-darwin
 fn void errored()
 {}
 
@@ -20,16 +21,51 @@ fn void testBreak()
     }
 }
 
-// #expect: labelled_continue_for.ll
+/* #expect: labelled_continue_for.ll
 
-for.cond:
 
+define void @labelled_continue_for.testBreak() #0 {
+entry:
+  %i = alloca i32, align 4
+  %j = alloca i32, align 4
+  %k = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %loop.cond
+loop.cond:                                        ; preds = %loop.inc, %entry
+  %0 = load i32, i32* %i, align 4
+  %lt = icmp slt i32 %0, 10
+  br i1 %lt, label %loop.body, label %loop.exit9
+loop.body:                                        ; preds = %loop.cond
+  store i32 0, i32* %j, align 4
+  br label %loop.cond1
+loop.cond1:                                       ; preds = %loop.exit, %loop.body
+  %1 = load i32, i32* %j, align 4
+  %lt2 = icmp slt i32 %1, 10
+  br i1 %lt2, label %loop.body3, label %loop.exit7
+loop.body3:                                       ; preds = %loop.cond1
+  store i32 0, i32* %k, align 4
+  br label %loop.cond4
+loop.cond4:                                       ; preds = %loop.body3
+  %2 = load i32, i32* %k, align 4
+  %lt5 = icmp slt i32 %2, 10
+  br i1 %lt5, label %loop.body6, label %loop.exit
+loop.body6:                                       ; preds = %loop.cond4
   call void @labelled_continue_for.test()
-  br label %for.inc8
-
-for.inc8:
-  %4 = load i32, i32* %i
-  %add9 = add i32 %4, 1
-  store i32 %add9, i32* %i
-  br label %for.cond
-
+  br label %loop.inc
+loop.exit:                                        ; preds = %loop.cond4
+  call void @labelled_continue_for.errored()
+  %3 = load i32, i32* %j, align 4
+  %add = add i32 %3, 1
+  store i32 %add, i32* %j, align 4
+  br label %loop.cond1
+loop.exit7:                                       ; preds = %loop.cond1
+  call void @labelled_continue_for.errored()
+  br label %loop.inc
+loop.inc:                                         ; preds = %loop.exit7, %loop.body6
+  %4 = load i32, i32* %i, align 4
+  %add8 = add i32 %4, 1
+  store i32 %add8, i32* %i, align 4
+  br label %loop.cond
+loop.exit9:                                       ; preds = %loop.cond
+  ret void
+}

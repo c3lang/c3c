@@ -188,6 +188,7 @@ Expr *parse_assert_expr(Context *context)
 	}
 	return parse_expr(context);
 }
+
 /**
  * cond_list ::= ((expr | decl-expr) COMMA)* (expr | decl-expr | try_unwrap_chain | catch_unwrap )
  *
@@ -369,13 +370,27 @@ static Expr *parse_macro_expansion(Context *context, Expr *left)
  *	;
  * @return Ast *
  */
-Expr *parse_expression_list(Context *context)
+Expr *parse_expression_list(Context *context, bool allow_decl)
 {
 	Expr *expr_list = EXPR_NEW_TOKEN(EXPR_EXPRESSION_LIST, context->tok);
 	while (1)
 	{
-		Expr *expr = NULL;
-		ASSIGN_EXPR_ELSE(expr, parse_expr_or_initializer_list(context), poisoned_expr);
+		Expr *expr;
+		if (parse_next_is_decl(context))
+		{
+			ASSIGN_DECL_ELSE(Decl *decl, parse_decl(context), poisoned_expr);
+			if (!allow_decl)
+			{
+				SEMA_TOKEN_ERROR(context->tok, "This looks like a declaration, which isn't allowed here.");
+				return poisoned_expr;
+			}
+			expr = expr_new(EXPR_DECL, decl->span);
+			expr->decl_expr = decl;
+		}
+		else
+		{
+			ASSIGN_EXPR_ELSE(expr, parse_expr(context), poisoned_expr);
+		}
 		vec_add(expr_list->expression_list, expr);
 		if (!try_consume(context, TOKEN_COMMA)) break;
 	}

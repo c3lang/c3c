@@ -987,6 +987,7 @@ typedef struct
 {
 	bool has_break : 1;
 	bool no_exit : 1;
+	bool skip_first : 1;
 	Decl *label;
 } FlowCommon;
 
