@@ -175,7 +175,6 @@ target_include_directories(c3c_wrappers PRIVATE
 message(STATUS "Found LLD ${lld_libs}")
 
 if(UNIX)
-    message(STATUS "adding unix link params")
     target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
     target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${lld_libs})
 #    target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${TB_LIB} ${lld_libs})
@@ -184,8 +183,8 @@ else()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:C:\\llvm\\llvm\\build\\Release\\lib") # needed for lldCommon.lib
     #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:${LLVM_LIBPATH}") # This doesn't seem to work for some reason
     message(STATUS "${LLVM_LIBPATH}")
-    target_link_libraries(c3c debug ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
-    target_link_libraries(c3c optimized ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
+    target_link_libraries(c3c debug ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML Advapi32)
+    target_link_libraries(c3c optimized ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML Advapi32)
 endif()
 
 if (WIN32)
