@@ -222,6 +222,10 @@ static inline Ast *parse_case_stmt(Context *context, TokenType case_type, TokenT
 	{
 		ast->case_stmt.expr->expr_kind = EXPR_TYPEID;
 	}
+	if (try_consume(context, TOKEN_DOTDOT))
+	{
+		ASSIGN_EXPR_ELSE(ast->case_stmt.to_expr, parse_expr(context), poisoned_ast);
+	}
 	TRY_CONSUME(TOKEN_COLON, "Missing ':' after case");
 	extend_ast_with_prev_token(context, ast);
 	ASSIGN_AST_ELSE(ast->case_stmt.body, parse_case_stmts(context, case_type, default_type), poisoned_ast);
@@ -449,11 +453,11 @@ static inline Ast* parse_next(Context *context)
 		if (type)
 		{
 			ast->next_stmt.is_type = true;
-			ast->next_stmt.type_info = type;
+			ast->next_stmt.expr_or_type_info = type;
 		}
 		else
 		{
-			ast->next_stmt.target = expr;
+			ast->next_stmt.expr_or_type_info = expr;
 		}
 	}
 	return ast;

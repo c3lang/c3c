@@ -1541,13 +1541,21 @@ static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 {
 	context->active_scope.jump_end = true;
-	if (!context->next_target && !statement->next_stmt.label.name)
+
+	if (!context->next_target && !statement->next_stmt.label.name && !statement->next_stmt.expr_or_type_info)
 	{
-		SEMA_ERROR(statement, "'nextcase' is not allowed here.");
+		if (context->next_switch)
+		{
+			SEMA_ERROR(statement, "A plain 'nextcase' is not allowed on the last case.");
+		}
+		else
+		{
+			SEMA_ERROR(statement, "'nextcase' can only be used inside of a switch.");
+		}
 		return false;
 	}
-	Ast *parent = context->next_switch;
 
+	Ast *parent = context->next_switch;
 	if (statement->next_stmt.label.name)
 	{
 		Decl *target = sema_resolve_normal_symbol(context, statement->next_stmt.label.span, NULL, false);
@@ -1575,26 +1583,24 @@ static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 			SEMA_ERROR(statement, "This 'nextcase' would jump out of a defer which is not allowed.");
 			return false;
 		}
-		assert(statement->next_stmt.target);
+		assert(statement->next_stmt.expr_or_type_info);
 	}
 
 	statement->next_stmt.defers.start = context->active_scope.defer_last;
 	statement->next_stmt.defers.end = parent->switch_stmt.defer;
+
 	// Plain next.
-	if (!statement->next_stmt.target)
+	if (!statement->next_stmt.expr_or_type_info)
 	{
-		if (!context->next_target)
-		{
-			SEMA_ERROR(statement, "Unexpected 'nextcase' statement outside of a switch.");
-			return false;
-		}
+		assert(context->next_target);
 		statement->next_stmt.case_switch_stmt = context->next_target;
 		return true;
 	}
 
 	if (statement->next_stmt.is_type)
 	{
-		if (!sema_resolve_type_info(context, statement->next_stmt.type_info)) return false;
+		TypeInfo *type_info = statement->next_stmt.expr_or_type_info;
+		if (!sema_resolve_type_info(context, type_info)) return false;
 		Ast **cases;
 		statement->next_stmt.defers.end = parent->switch_stmt.defer;
 		if (parent->switch_stmt.cond->type->canonical != type_typeid)
@@ -1606,7 +1612,7 @@ static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 		cases = parent->switch_stmt.cases;
 
 		Ast *default_stmt = NULL;
-		Type *type = statement->next_stmt.type_info->type->canonical;
+		Type *type = type_info->type->canonical;
 		VECEACH(cases, i)
 		{
 			Ast *case_stmt = cases[i];
@@ -1627,11 +1633,11 @@ static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 			statement->next_stmt.case_switch_stmt = astid(default_stmt);
 			return true;
 		}
-		SEMA_ERROR(statement->next_stmt.type_info, "There is no case for type '%s'.", type_to_error_string(statement->next_stmt.type_info->type));
+		SEMA_ERROR(type_info, "There is no case for type '%s'.", type_to_error_string(type_info->type));
 		return false;
 	}
 
-	Expr *target = statement->next_stmt.target;
+	Expr *target = statement->next_stmt.expr_or_type_info;
 
 	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? parent->switch_stmt.cond->type : type_anyerr;
 
@@ -1649,7 +1655,10 @@ static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 				default_stmt = case_stmt;
 				break;
 			}
-			if (expr_const_compare(&target->const_expr, &case_stmt->case_stmt.expr->const_expr, BINARYOP_EQ))
+			ExprConst *const_expr = &case_stmt->case_stmt.expr->const_expr;
+			ExprConst *to_const_expr = case_stmt->case_stmt.to_expr ? &case_stmt->case_stmt.to_expr->const_expr : const_expr;
+			if (expr_const_compare(&target->const_expr, const_expr, BINARYOP_GE) &&
+				expr_const_compare(&target->const_expr, to_const_expr, BINARYOP_LE))
 			{
 				statement->next_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
@@ -1660,7 +1669,7 @@ static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 			statement->next_stmt.case_switch_stmt = astid(default_stmt);
 			return true;
 		}
-		SEMA_ERROR(statement, "The 'next' needs to jump to an exact case statement.");
+		SEMA_ERROR(statement, "'nextcase' needs to jump to an exact case statement.");
 		return false;
 	}
 
@@ -1791,23 +1800,55 @@ static inline bool sema_check_type_case(Context *context, Type *switch_type, Ast
 	return true;
 }
 
-static inline bool sema_check_value_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained)
+static inline ExprConst *flatten_enum_const(Expr *expr)
+{
+	ExprConst *const_expr = &expr->const_expr;
+	if (const_expr->const_kind == CONST_ENUM)
+	{
+		const_expr->const_kind = CONST_INTEGER;
+		Decl *enum_val = const_expr->enum_val;
+		Expr *enum_expr = enum_val->enum_constant.expr;
+		assert(enum_expr->expr_kind == EXPR_CONST);
+		ExprConst *enum_const = &enum_expr->const_expr;
+		assert(enum_const->const_kind == CONST_INTEGER);
+		*const_expr = *enum_const;
+	}
+	return const_expr;
+}
+static inline bool sema_check_value_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged)
 {
 	assert(switch_type);
 	Expr *expr = case_stmt->case_stmt.expr;
+	Expr *to_expr = case_stmt->case_stmt.to_expr;
 
 	// 1. Try to do implicit conversion to the correct type.
 	if (!sema_analyse_expr_rhs(context, switch_type, expr, false)) return false;
+	if (to_expr && !sema_analyse_expr_rhs(context, switch_type, to_expr, false)) return false;
 
-	if (expr->expr_kind != EXPR_CONST)
+	if (expr->expr_kind != EXPR_CONST || (to_expr && to_expr->expr_kind != EXPR_CONST))
 	{
 		*if_chained = true;
 		return true;
 	}
+	ExprConst *const_expr = flatten_enum_const(expr);
+	ExprConst *to_const_expr = to_expr ? flatten_enum_const(to_expr) : const_expr;
+
+	if (!*max_ranged && type_is_integer(expr->type) && to_const_expr != const_expr)
+	{
+		Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
+		Int128 max_range = { .low = 256 };
+		if (i128_comp(range, max_range, type_i128) == CMP_GT)
+		{
+			*max_ranged = true;
+		}
+	}
 	for (unsigned i = 0; i < index; i++)
 	{
 		Ast *other = cases[i];
-		if (other->ast_kind == AST_CASE_STMT && expr_const_compare(&other->case_stmt.expr->const_expr, &expr->const_expr, BINARYOP_EQ))
+		if (other->ast_kind != AST_CASE_STMT) continue;
+		ExprConst *other_const = &other->case_stmt.expr->const_expr;
+		ExprConst *other_to_const = other->case_stmt.to_expr ? &other->case_stmt.to_expr->const_expr : other_const;
+		if (expr_const_compare(const_expr, other_to_const, BINARYOP_LE) && expr_const_compare(to_const_expr, other_const, BINARYOP_GE))
 		{
 			SEMA_ERROR(case_stmt, "The same case value appears more than once.");
 			SEMA_PREV(other, "Here is the previous use of that value.");
@@ -1834,9 +1875,12 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 	bool exhaustive = false;
 	unsigned case_count = vec_size(cases);
 	bool success = true;
+	bool max_ranged = false;
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *stmt = cases[i];
+		Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
+		PUSH_NEXT(next, statement);
 		switch (stmt->ast_kind)
 		{
 			case AST_CASE_STMT:
@@ -1850,7 +1894,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 				}
 				else
 				{
-					if (!sema_check_value_case(context, switch_type, stmt, cases, i, &if_chain))
+					if (!sema_check_value_case(context, switch_type, stmt, cases, i, &if_chain, &max_ranged))
 					{
 						success = false;
 						break;
@@ -1870,6 +1914,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 			default:
 				UNREACHABLE;
 		}
+		POP_NEXT();
 	}
 
 	bool all_jump_end = exhaustive;
@@ -1888,7 +1933,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 		SCOPE_END;
 	}
 	statement->flow.no_exit = all_jump_end;
-	statement->switch_stmt.if_chain = if_chain;
+	statement->switch_stmt.if_chain = if_chain || max_ranged;
 	if (!success) return false;
 	return success;
 }
@@ -1911,6 +1956,7 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 			case AST_CASE_STMT:
 			{
 				Expr *expr = stmt->case_stmt.expr;
+				Expr *to_expr = stmt->case_stmt.to_expr;
 				if (is_type)
 				{
 					if (!sema_analyse_expr(context, expr)) return false;
@@ -1923,26 +1969,40 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 				else
 				{
 					if (!sema_analyse_expr_rhs(context, type, expr, false)) return false;
+					if (to_expr && !sema_analyse_expr_rhs(context, type, to_expr, false)) return false;
 				}
 				if (expr->expr_kind != EXPR_CONST)
 				{
 					SEMA_ERROR(expr, "The $case must have a constant expression.");
 					return false;
 				}
+				if (to_expr && to_expr->expr_kind != EXPR_CONST)
+				{
+					SEMA_ERROR(to_expr, "The $case must have a constant expression.");
+					return false;
+				}
 				ExprConst *const_expr = &expr->const_expr;
+				ExprConst *const_to_expr = to_expr ? &to_expr->const_expr : const_expr;
+				if (to_expr && expr_const_compare(const_expr, const_to_expr, BINARYOP_GT))
+				{
+					SEMA_ERROR(to_expr, "The end of a range must be less or equal to the beginning.");
+					return false;
+				}
 				// Check that it is unique.
 				for (unsigned j = 0; j < i; j++)
 				{
 					Ast *other_stmt = cases[j];
 					if (other_stmt->ast_kind == AST_DEFAULT_STMT) continue;
-					if (expr_const_compare(&expr->const_expr, &other_stmt->case_stmt.expr->const_expr, BINARYOP_EQ))
+					ExprConst *other_const = &other_stmt->case_stmt.expr->const_expr;
+					ExprConst *other_const_to = other_stmt->case_stmt.to_expr ? &other_stmt->case_stmt.to_expr->const_expr : other_const;
+					if (expr_const_compare(const_expr, other_const_to, BINARYOP_LE) && expr_const_compare(const_to_expr, other_const, BINARYOP_GE))
 					{
-						SEMA_ERROR(stmt, "'%s' appears more than once.", expr_const_to_error_string(&expr->const_expr));
+						SEMA_ERROR(stmt, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
 						SEMA_PREV(cases[j]->case_stmt.expr, "The previous $case was here.");
 						return false;
 					}
 				}
-				if (expr_const_compare(switch_expr_const, const_expr, BINARYOP_EQ))
+				if (expr_const_compare(switch_expr_const, const_expr, BINARYOP_GE) && expr_const_compare(switch_expr_const, const_to_expr, BINARYOP_LE))
 				{
 					matched_case = (int) i;
 				}

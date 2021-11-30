@@ -254,6 +254,7 @@ Ast *copy_ast(Ast *source)
 		case AST_CASE_STMT:
 			MACRO_COPY_AST(ast->case_stmt.body);
 			MACRO_COPY_EXPR(ast->case_stmt.expr);
+			MACRO_COPY_EXPR(ast->case_stmt.to_expr);
 			return ast;
 		case AST_COMPOUND_STMT:
 			MACRO_COPY_AST_LIST(ast->compound_stmt.stmts);
@@ -330,11 +331,11 @@ Ast *copy_ast(Ast *source)
 		case AST_NEXT_STMT:
 			if (ast->next_stmt.is_type)
 			{
-				MACRO_COPY_TYPE(ast->next_stmt.type_info);
+				MACRO_COPY_TYPE(ast->next_stmt.expr_or_type_info);
 			}
 			else
 			{
-				MACRO_COPY_EXPR(ast->next_stmt.target);
+				MACRO_COPY_EXPR(ast->next_stmt.expr_or_type_info);
 			}
 			return ast;
 		case AST_NOP_STMT:

@@ -101,7 +101,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 		{
 			return abi_arg_new_direct_int_ext(type);
 		}
-		// No change, just put it on the stack.
+		// No change, just put it on the stack
 		return abi_arg_new_direct();
 	}
 
@@ -370,7 +370,7 @@ void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X6
 }
 
 
-Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
+static Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
 {
 	if (type_size(decl->type) <= offset) return NULL;
 	Decl **members = decl->strukt.members;

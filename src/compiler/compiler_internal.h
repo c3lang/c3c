@@ -1033,6 +1033,7 @@ typedef struct
 typedef struct
 {
 	Expr *expr;
+	Expr *to_expr;
 	Ast *body;
 	void *backend_block;
 } AstCaseStmt;
@@ -1147,11 +1148,7 @@ typedef struct
 		{
 			Label label;
 			bool is_type;
-			union
-			{
-				Expr *target;
-				TypeInfo *type_info;
-			};
+			void *expr_or_type_info;
 		};
 		struct
 		{

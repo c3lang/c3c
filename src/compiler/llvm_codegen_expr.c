@@ -2531,7 +2531,7 @@ void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rh
 	}
 	else
 	{
-		assert(type_is_integer(lhs_type));
+		assert(type_is_integer_or_bool_kind(lhs_type));
 		lhs_signed = type_is_signed(lhs_type);
 		rhs_signed = type_is_signed(rhs_type);
 	}
@@ -2901,7 +2901,7 @@ void llvm_emit_comparison(GenContext *c, BEValue *be_value, BEValue *lhs, BEValu
 	assert(binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ);
 	llvm_value_rvalue(c, lhs);
 	llvm_value_rvalue(c, rhs);
-	if (type_is_integer(lhs->type))
+	if (type_is_integer_or_bool_kind(lhs->type))
 	{
 		llvm_emit_int_comp(c, be_value, lhs->type, rhs->type, lhs->value, rhs->value, binary_op);
 		return;
