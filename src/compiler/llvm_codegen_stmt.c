@@ -590,7 +590,22 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		llvm_emit_expr(c, &be_value, case_stmt->case_stmt.expr);
 		llvm_value_rvalue(c, &be_value);
 		BEValue equals;
-		llvm_emit_comparison(c, &equals, &be_value, switch_value, BINARYOP_EQ);
+		Expr *to_expr = case_stmt->case_stmt.to_expr;
+		if (to_expr)
+		{
+			BEValue to_value;
+			llvm_emit_expr(c, &to_value, to_expr);
+			llvm_value_rvalue(c, &to_value);
+			BEValue le;
+			llvm_emit_comparison(c, &le, &be_value, switch_value, BINARYOP_LE);
+			BEValue ge;
+			llvm_emit_comparison(c, &ge, &to_value, switch_value, BINARYOP_GE);
+			llvm_value_set_bool(&equals, LLVMBuildAnd(c->builder, le.value, ge.value, ""));
+		}
+		else
+		{
+			llvm_emit_comparison(c, &equals, &be_value, switch_value, BINARYOP_EQ);
+		}
 		next = llvm_basic_block_new(c, "next_if");
 		llvm_emit_cond_br(c, &equals, block, next);
 		if (case_stmt->case_stmt.body)
@@ -701,10 +716,25 @@ static void gencontext_emit_switch_body(GenContext *c, BEValue *switch_value, As
 		{
 			LLVMValueRef case_value;
 			BEValue be_value;
+			Expr *from = case_stmt->case_stmt.expr;
+			assert(from->expr_kind == EXPR_CONST);
 			llvm_emit_expr(c, &be_value, case_stmt->case_stmt.expr);
 			llvm_value_rvalue(c, &be_value);
 			case_value = be_value.value;
 			LLVMAddCase(switch_stmt, case_value, block);
+			Expr *to = case_stmt->case_stmt.to_expr;
+			if (to)
+			{
+				BEValue to_value;
+				llvm_emit_expr(c, &to_value, case_stmt->case_stmt.to_expr);
+				assert(LLVMIsAConstant(to_value.value));
+				LLVMValueRef one = llvm_const_int(c, to_value.type, 1);
+				while (LLVMConstIntGetZExtValue(LLVMConstICmp(LLVMIntEQ, to_value.value, case_value)) != 1)
+				{
+					case_value = LLVMConstAdd(case_value, one);
+					LLVMAddCase(switch_stmt, case_value, block);
+				}
+			}
 		}
 
 		// Skip fallthroughs.
