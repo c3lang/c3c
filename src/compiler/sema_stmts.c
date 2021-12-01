@@ -1836,7 +1836,7 @@ static inline bool sema_check_value_case(Context *context, Type *switch_type, As
 	if (!*max_ranged && type_is_integer(expr->type) && to_const_expr != const_expr)
 	{
 		Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
-		Int128 max_range = { .low = 256 };
+		Int128 max_range = { .low = active_target.switchrange_max_size };
 		if (i128_comp(range, max_range, type_i128) == CMP_GT)
 		{
 			*max_ranged = true;

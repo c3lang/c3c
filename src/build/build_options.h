@@ -241,6 +241,7 @@ typedef struct
 	ArchOsTarget arch_os_target;
 	CompilerBackend backend;
 	uint32_t symtab_size;
+	uint32_t switchrange_max_size;
 	struct
 	{
 		SoftFloat soft_float : 3;

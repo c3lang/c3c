@@ -633,6 +633,80 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 	return;
 }
 
+static void llvm_emit_switch_jump_table(GenContext *c,
+                                        Ast **cases,
+                                        Ast *default_case,
+                                        BEValue *switch_value,
+                                        LLVMBasicBlockRef exit_block)
+{
+#ifdef jump_table_done
+	c->current_block = NULL;
+	unsigned case_count = vec_size(cases);
+	Int min = { .type = TYPE_VOID };
+	Int max = { .type = TYPE_VOID };
+	for (unsigned i = 0; i < case_count; i++)
+	{
+		Ast *case_ast = cases[i];
+		Expr *from = case_ast->case_stmt.expr;
+		Expr *to = case_ast->case_stmt.to_expr;
+		assert(type_is_integer(from->type) && from->expr_kind == EXPR_CONST);
+		Int value = from->const_expr.ixx;
+		Int to_value = to ? to->const_expr.ixx : value;
+		if (min.type == TYPE_VOID)
+		{
+			min = value;
+			max = to_value;
+		}
+		else if (int_comp(value, min, BINARYOP_LT))
+		{
+			min = value;
+		}
+		else if (int_comp(to_value, max, BINARYOP_GT))
+		{
+			max = to_value;
+		}
+	}
+	switch_value->value = LLVMBuildSub(c->builder, switch_value->value, llvm_const_int(c, switch_value->type, min.i.low), "");
+	max = int_sub(max, min);
+	Type *create_array = type_get_array(type_voidptr, max.i.low);
+	LLVMTypeRef llvm_array_type = llvm_get_type(c, create_array);
+	AlignSize alignment = type_alloca_alignment(switch_value->type);
+	LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, "");
+	BEValue array_value;
+	llvm_value_set_address(&array_value, array_ref, create_array);
+	for (int i = 0; i < max.i.low; i++)
+	{
+		AlignSize align;
+		LLVMValueRef ptr = llvm_emit_array_gep_raw(c, array_ref, llvm_array_type, i, alignment, &align);
+
+	}
+	for (unsigned i = 0; i < case_count; i++)
+	{
+		Ast *case_stmt = cases[i];
+		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
+		if (case_stmt != default_case)
+		{
+			LLVMValueRef case_value;
+			BEValue be_value;
+			llvm_emit_expr(c, &be_value, case_stmt->case_stmt.expr);
+			llvm_value_rvalue(c, &be_value);
+			case_value = be_value.value;
+		}
+
+		// Skip fallthroughs.
+		if (!case_stmt->case_stmt.body) continue;
+
+		llvm_emit_block(c, block);
+		// IMPORTANT!
+		c->current_block_is_target = true;
+
+		llvm_emit_stmt(c, case_stmt->case_stmt.body);
+		llvm_emit_br(c, exit_block);
+	}
+	llvm_emit_block(c, exit_block);
+ #endif
+}
+
 static void gencontext_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast)
 {
 	bool is_if_chain = switch_ast->switch_stmt.if_chain;
