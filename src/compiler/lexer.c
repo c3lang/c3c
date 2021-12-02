@@ -662,7 +662,11 @@ static inline bool scan_char(Lexer *lexer)
 	while ((c = next(lexer)) != '\'')
 	{
 		// End of file may occur:
-		if (c == '\0') return add_error_token(lexer, "The character literal did not terminate.");
+		if (c == '\0')
+		{
+			backtrack(lexer);
+			return add_error_token(lexer, "The character literal did not terminate.");
+		}
 		// We might exceed the width that we allow.
 		if (width > 15) return add_error_token(lexer, "The character literal exceeds 16 characters.");
 		// Handle (expected) utf-8 characters.
@@ -917,6 +921,7 @@ static inline size_t scan_multiline_indent(const char *current, const char **end
 	// 8. If we ended on EOF
 	if (c == '\0')
 	{
+		current--;
 		*end_ref = current;
 		*min_indent_ref = 0;
 		return len;
@@ -950,6 +955,7 @@ bool scan_consume_end_of_multiline(Lexer *lexer, bool error_on_eof)
 		char c = next(lexer);
 		if (c == '\0')
 		{
+			backtrack(lexer);
 			if (!error_on_eof) return false;
 			return add_error_token_at(lexer, lexer->current - 1, 1, "The multi-line string unexpectedly ended. "
 																 "Did you forget a '\"\"\"' somewhere?");
