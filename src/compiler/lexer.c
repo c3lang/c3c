@@ -1084,10 +1084,15 @@ static inline bool scan_string(Lexer *lexer)
 	{
 		return scan_multiline_string(lexer);
 	}
-	char c;
+	char c = 0;
 	const char *current = lexer->current;
-	while ((c = *(current++)) != '"' && c != '\n' && c != '\0')
+	while ((c = *(current++)) != '"')
 	{
+		if (c == '\n' || c == '\0')
+		{
+			current++;
+			break;
+		}
 		if (c == '\\' && *current == '"')
 		{
 			current++;
@@ -1102,6 +1107,7 @@ static inline bool scan_string(Lexer *lexer)
 		c = next(lexer);
 		if (c == '\0' || (c == '\\' && peek(lexer) == '\0'))
 		{
+			if (c == '\0') backtrack(lexer);
 			add_error_token_at(lexer, lexer->current - 1, 1, "The end of the file was reached "
 			                                                 "while parsing the string. "
 			                                                 "Did you forget (or accidentally add) a '\"' somewhere?");
