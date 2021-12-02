@@ -59,7 +59,6 @@ typedef struct
 #define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_ALIGNMENT ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_TYPE_SIZE UINT32_MAX
-#define MAX_OFFSET ((ArrayIndex)(((uint64_t)2) << 60))
 
 typedef struct Ast_ Ast;
 typedef struct Decl_ Decl;
@@ -1594,7 +1593,6 @@ extern const char *kw_builtin_cmpxchg;
 
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id((_token).id))
-#define AST_NEW(_kind, _loc) new_ast(_kind, _loc)
 
 typedef unsigned char TokenTypeChar;
 ARENA_DEF(ast, Ast)
@@ -1903,7 +1901,6 @@ static inline TokenType token_type(Token token) { return (TokenType)toktypeptr(t
 
 #define TOKLEN(T) TOKLOC(T)->length
 
-#define TOKVALID(_tok) (_tok.index != 0)
 Decl *module_find_symbol(Module *module, const char *symbol);
 
 bool parse_file(File *file);

@@ -167,6 +167,7 @@ char *read_file(const char *path, size_t *return_size)
 	{
 		error_exit("Failed to read file \"%s\".\n", path);
 	}
+	assert(bytes_read == file_size);
 
 	buffer[bytes_read] = '\0';
 

@@ -237,7 +237,6 @@ bool expr_is_pure(Expr *expr)
 				default:
 					return expr_is_pure(expr->unary_expr.expr);
 			}
-			break;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			return expr_is_pure(expr->access_expr.parent);
@@ -276,14 +275,11 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CAST:
 			return expr_is_pure(expr->cast_expr.expr);
 		case EXPR_EXPRESSION_LIST:
-		{
 			VECEACH(expr->expression_list, i)
 			{
 				if (!expr_is_pure(expr->expression_list[i])) return false;
 			}
 			return true;
-		}
-			break;
 		case EXPR_LEN:
 			return expr_is_pure(expr->len_expr.inner);
 		case EXPR_SLICE:

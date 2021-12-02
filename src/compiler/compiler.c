@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
-#include "parser_internal.h"
 #ifndef _MSC_VER
 #include <unistd.h>
 #endif
@@ -358,7 +357,7 @@ void compiler_compile(void)
 	}
 
 	void **gen_contexts = NULL;
-	void (*task)(void *arg);
+	void (*task)(void *);
 
 	switch (active_target.backend)
 	{

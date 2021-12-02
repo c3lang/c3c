@@ -325,7 +325,7 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 				break;
 			case '0': case '1': case '2': case '3': case '4':
 			case '5': case '6': case '7': case '8': case '9':
-				if (!type) return add_error_token(lexer, "A letter must preceed any digit");
+				if (!type) return add_error_token(lexer, "A letter must precede any digit");
 			case '_':
 				break;
 			default:
@@ -476,24 +476,7 @@ static inline bool scan_hex(Lexer *lexer)
 	}
 	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
 	if (!scan_number_suffix(lexer, &is_float)) return false;
-	if (is_float)
-	{
-		// IMPROVE
-		// For the float we actually parse things, using strtold
-		// this is not ideal, we should try to use f128 if possible for example.
-		// Possibly we should move to a BigDecimal implementation or at least a soft float 256
-		// implementation for the constants.
-		char *err = NULL;
-		Float f = float_from_hex(lexer->lexing_start, &err);
-		if (f.type == TYPE_POISONED)
-		{
-			return add_error_token(lexer, err);
-		}
-		add_generic_token(lexer, TOKEN_REAL);
-		lexer->latest_token_data->value = f;
-		return true;
-	}
-	return add_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
+	return add_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
 }
 
 /**
@@ -536,24 +519,7 @@ static inline bool scan_dec(Lexer *lexer)
 
 	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
 	if (!scan_number_suffix(lexer, &is_float)) return false;
-	if (is_float)
-	{
-		// IMPROVE
-		// For the float we actually parse things, using strtold
-		// this is not ideal, we should try to use f128 if possible for example.
-		// Possibly we should move to a BigDecimal implementation or at least a soft float 256
-		// implementation for the constants.
-		char *err = NULL;
-		Float f = float_from_string(lexer->lexing_start, &err);
-		if (f.type == TYPE_POISONED)
-		{
-			return add_error_token(lexer, err);
-		}
-		add_generic_token(lexer, TOKEN_REAL);
-		lexer->latest_token_data->value = f;
-		return true;
-	}
-	return add_token(lexer, TOKEN_INTEGER, lexer->lexing_start);
+	return add_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
 }
 
 /**

@@ -1314,8 +1314,17 @@ static Expr *parse_char_lit(Context *context, Expr *left)
 static Expr *parse_double(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
+	char *err;
 	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	number->const_expr.fxx = TOKREAL(context->tok.id);
+	const char *original = TOKSTR(context->tok);
+	bool is_hex = original[0] == '0' && original[1] == 'x';
+	Float f = is_hex ? float_from_hex(original, &err) : float_from_string(original, &err);
+	if (f.type == TYPE_POISONED)
+	{
+		SEMA_TOKEN_ERROR(context->tok, err);
+		return poisoned_expr;
+	}
+	number->const_expr.fxx = f;
 	switch (number->const_expr.fxx.type)
 	{
 		case TYPE_F128:
