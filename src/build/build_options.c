@@ -48,7 +48,7 @@ char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
 #define OUTPUT(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__)
-#define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(); exit(EXIT_FAILURE); } while (0)
+#define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(); exit_compiler(EXIT_FAILURE); } while (0)
 
 static void usage(void)
 {
@@ -167,7 +167,7 @@ void append_file(BuildOptions *build_options)
 	if (vec_size(build_options->files) == MAX_FILES)
 	{
 		fprintf(stderr, "Max %d files may be specified\n", MAX_FILES);
-		exit(EXIT_FAILURE);
+		exit_compiler(EXIT_FAILURE);
 	}
 	vec_add(build_options->files, current_arg);
 }
@@ -291,7 +291,7 @@ static void parse_option(BuildOptions *options)
 			if (match_shortopt("V"))
 			{
 				print_version();
-				exit(EXIT_SUCCESS);
+				exit_compiler(-1000);
 			}
 			break;
 		case 'g':
@@ -410,13 +410,13 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("version"))
 			{
 				print_version();
-				exit(EXIT_SUCCESS);
+				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			if (match_longopt("about"))
 			{
 				OUTPUT("The C3 Compiler");
 				OUTPUT("C3 is low level programming language based on C.");
-				exit(EXIT_SUCCESS);
+				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			if (match_longopt("debug-log"))
 			{
@@ -456,12 +456,12 @@ static void parse_option(BuildOptions *options)
 				{
 					EOUTPUT("   %s", arch_os_target[i]);
 				}
-				exit(EXIT_FAILURE);
+				exit_compiler(EXIT_FAILURE);
 			}
 			if (match_longopt("target-list"))
 			{
 				print_all_targets();
-				exit(EXIT_SUCCESS);
+				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			if (match_longopt("emit-llvm"))
 			{
@@ -523,7 +523,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	if (argc < 2)
 	{
 		usage();
-		exit(EXIT_SUCCESS);
+		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 
 	BuildOptions build_options = {

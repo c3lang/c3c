@@ -5,13 +5,19 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "common.h"
+#include "setjmp.h"
 
 #if PLATFORM_WINDOWS
 #include "direct.h"
 #endif
 
+#define COMPILER_SUCCESS_EXIT -1000
+extern jmp_buf on_err_jump;
+
 extern bool debug_log;
 extern bool debug_stats;
+
+NORETURN void exit_compiler(int exit_value);
 
 typedef struct Task_
 {
@@ -30,6 +36,7 @@ void file_find_top_dir();
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive);
 void *cmalloc(size_t size);
 void memory_init(void);
+void memory_release();
 void *malloc_arena(size_t mem);
 void free_arena(void);
 void print_arena_status(void);

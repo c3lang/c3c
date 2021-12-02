@@ -215,11 +215,11 @@ static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValu
 		LLVMValueRef add_res;
 		if (type_is_unsigned(type))
 		{
-			add_res = llvm_emit_call_intrinsic(c, intrinsic_id_uadd_overflow, &type_to_use, 1, args, 2);
+			add_res = llvm_emit_call_intrinsic(c, intrinsic_id.uadd_overflow, &type_to_use, 1, args, 2);
 		}
 		else
 		{
-			add_res = llvm_emit_call_intrinsic(c, intrinsic_id_sadd_overflow, &type_to_use, 1, args, 2);
+			add_res = llvm_emit_call_intrinsic(c, intrinsic_id.sadd_overflow, &type_to_use, 1, args, 2);
 		}
 		LLVMValueRef result = LLVMBuildExtractValue(c->builder, add_res, 0, "");
 		LLVMValueRef ok = LLVMBuildExtractValue(c->builder, add_res, 1, "");
@@ -442,11 +442,11 @@ static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValu
 		LLVMValueRef add_res;
 		if (type_is_unsigned(type))
 		{
-			add_res = llvm_emit_call_intrinsic(c, intrinsic_id_usub_overflow, &type_to_use, 1, args, 2);
+			add_res = llvm_emit_call_intrinsic(c, intrinsic_id.usub_overflow, &type_to_use, 1, args, 2);
 		}
 		else
 		{
-			add_res = llvm_emit_call_intrinsic(c, intrinsic_id_ssub_overflow, &type_to_use, 1, args, 2);
+			add_res = llvm_emit_call_intrinsic(c, intrinsic_id.ssub_overflow, &type_to_use, 1, args, 2);
 		}
 		LLVMValueRef result = LLVMBuildExtractValue(c->builder, add_res, 0, "");
 		LLVMValueRef ok = LLVMBuildExtractValue(c->builder, add_res, 1, "");
@@ -659,7 +659,7 @@ static LLVMValueRef llvm_emit_bswap(GenContext *c, LLVMValueRef value)
 		return LLVMConstBswap(value);
 	}
 	LLVMTypeRef type = LLVMTypeOf(value);
-	return llvm_emit_call_intrinsic(c, intrinsic_id_bswap, &type, 1, &value, 1);
+	return llvm_emit_call_intrinsic(c, intrinsic_id.bswap, &type, 1, &value, 1);
 }
 
 
@@ -2082,7 +2082,7 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 				LLVMValueRef zero = llvm_get_zero(c, expr->unary_expr.expr->type);
 				LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
 				LLVMValueRef args[2] = { zero, value->value };
-				LLVMValueRef call_res = llvm_emit_call_intrinsic(c, intrinsic_id_ssub_overflow,
+				LLVMValueRef call_res = llvm_emit_call_intrinsic(c, intrinsic_id.ssub_overflow,
 				                                                 &type_to_use, 1, args, 2);
 				value->value = LLVMBuildExtractValue(c->builder, call_res, 0, "");
 				LLVMValueRef ok = LLVMBuildExtractValue(c->builder, call_res, 1, "");
@@ -2766,8 +2766,8 @@ static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMVal
 		LLVMTypeRef type_to_use = llvm_get_type(c, type);
 		LLVMValueRef args[2] = { left, right };
 		LLVMTypeRef types[2] = { type_to_use, type_to_use };
-		unsigned operation = type_is_integer_unsigned(type) ? intrinsic_id_umul_overflow
-		                                                    : intrinsic_id_smul_overflow;
+		unsigned operation = type_is_integer_unsigned(type) ? intrinsic_id.umul_overflow
+				: intrinsic_id.smul_overflow;
 		LLVMValueRef call_res = llvm_emit_call_intrinsic(c,
 		                                                 operation,
 		                                                 types,
@@ -3434,7 +3434,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		// TODO, we should add info about the error.
 		SourceLocation *loc = TOKLOC(expr->span.loc);
 		llvm_emit_debug_output(c, "Runtime error force unwrap!", loc->file->name, c->cur_func_decl->external_name, loc->line);
-		llvm_emit_call_intrinsic(c, intrinsic_id_trap, NULL, 0, NULL, 0);
+		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 		LLVMBuildUnreachable(c->builder);
 		c->current_block = NULL;
 		c->current_block_is_target = NULL;
@@ -3955,7 +3955,7 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 	element->alignment = alignment;
 }
 
-static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic_id, BEValue *be_value, Expr *expr)
+static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic, BEValue *be_value, Expr *expr)
 {
 	unsigned arguments = vec_size(expr->call_expr.arguments);
 	assert(arguments < 5 && "Only has room for 4");
@@ -3967,7 +3967,7 @@ static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic_id, BEVal
 		arg_results[i] = be_value->value;
 	}
 	LLVMTypeRef call_type = llvm_get_type(c, expr->type);
-	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic_id, &call_type, 1, arg_results, arguments);
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, &call_type, 1, arg_results, arguments);
 	llvm_value_set(be_value, result, expr->type);
 }
 
@@ -4112,20 +4112,34 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 	{
 		case BUILTIN_NONE:
 			UNREACHABLE
-		case BUILTIN_CEIL: return intrinsic_id_ceil;
-		case BUILTIN_TRUNC: return intrinsic_id_trunc;
-		case BUILTIN_SQRT: return intrinsic_id_sqrt;
-		case BUILTIN_COS: return intrinsic_id_cos;
-		case BUILTIN_SIN: return intrinsic_id_sin;
-		case BUILTIN_LOG: return intrinsic_id_log;
-		case BUILTIN_LOG10: return intrinsic_id_log10;
-		case BUILTIN_MAX: return intrinsic_id_maxnum;
-		case BUILTIN_MIN: return intrinsic_id_minnum;
-		case BUILTIN_FABS: return intrinsic_id_fabs;
-		case BUILTIN_FMA: return intrinsic_id_fma;
-		case BUILTIN_LOG2: return intrinsic_id_log2;
-		case BUILTIN_POW: return intrinsic_id_pow;
-		case BUILTIN_EXP: return intrinsic_id_exp;
+		case BUILTIN_CEIL:
+			return intrinsic_id.ceil;
+		case BUILTIN_TRUNC:
+			return intrinsic_id.trunc;
+		case BUILTIN_SQRT:
+			return intrinsic_id.sqrt;
+		case BUILTIN_COS:
+			return intrinsic_id.cos;
+		case BUILTIN_SIN:
+			return intrinsic_id.sin;
+		case BUILTIN_LOG:
+			return intrinsic_id.log;
+		case BUILTIN_LOG10:
+			return intrinsic_id.log10;
+		case BUILTIN_MAX:
+			return intrinsic_id.maxnum;
+		case BUILTIN_MIN:
+			return intrinsic_id.minnum;
+		case BUILTIN_FABS:
+			return intrinsic_id.fabs;
+		case BUILTIN_FMA:
+			return intrinsic_id.fma;
+		case BUILTIN_LOG2:
+			return intrinsic_id.log2;
+		case BUILTIN_POW:
+			return intrinsic_id.pow;
+		case BUILTIN_EXP:
+			return intrinsic_id.exp;
 		case BUILTIN_VOLATILE_STORE:
 		case BUILTIN_VOLATILE_LOAD:
 			UNREACHABLE
@@ -4374,13 +4388,13 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	}
 	if (expr->call_expr.force_noinline)
 	{
-		llvm_attribute_add_call(c, call_value, attribute_noinline, -1, 0);
+		llvm_attribute_add_call(c, call_value, attribute_id.noinline, -1, 0);
 	}
 	else
 	{
 		if (expr->call_expr.force_inline || always_inline)
 		{
-			llvm_attribute_add_call(c, call_value, attribute_alwaysinline, -1, 0);
+			llvm_attribute_add_call(c, call_value, attribute_id.alwaysinline, -1, 0);
 		}
 	}
 
@@ -4393,9 +4407,9 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			case ABI_ARG_INDIRECT:
 				if (info->attributes.by_val)
 				{
-					llvm_attribute_add_call_type(c, call_value, attribute_byval, (int)i + 1, llvm_get_type(c, info->indirect.type));
+					llvm_attribute_add_call_type(c, call_value, attribute_id.byval, (int)i + 1, llvm_get_type(c, info->indirect.type));
 				}
-				llvm_attribute_add_call(c, call_value, attribute_align, (int)i + 1, info->indirect.alignment);
+				llvm_attribute_add_call(c, call_value, attribute_id.align, (int)i + 1, info->indirect.alignment);
 				break;
 			default:
 				break;
@@ -4414,8 +4428,8 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
 		case ABI_ARG_INDIRECT:
-			llvm_attribute_add_call_type(c, call_value, attribute_sret, 1, llvm_get_type(c, ret_info->indirect.type));
-			llvm_attribute_add_call(c, call_value, attribute_align, 1, ret_info->indirect.alignment);
+			llvm_attribute_add_call_type(c, call_value, attribute_id.sret, 1, llvm_get_type(c, ret_info->indirect.type));
+			llvm_attribute_add_call(c, call_value, attribute_id.align, 1, ret_info->indirect.alignment);
 			// 13. Indirect, that is passing the result through an out parameter.
 
 			// 13a. In the case of an already present error_var, we don't need to do a load here.
@@ -4734,11 +4748,11 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.stmts);
 }
 
-LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic_id, LLVMTypeRef *types, unsigned type_count,
+LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count,
                                       LLVMValueRef *values, unsigned arg_count)
 {
-	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(context->module, intrinsic_id, types, type_count);
-	LLVMTypeRef type = LLVMIntrinsicGetType(context->context, intrinsic_id, types, arg_count);
+	LLVMValueRef decl = LLVMGetIntrinsicDeclaration(context->module, intrinsic, types, type_count);
+	LLVMTypeRef type = LLVMIntrinsicGetType(context->context, intrinsic, types, arg_count);
 	return LLVMBuildCall2(context->builder, type, decl, values, arg_count, "");
 }
 

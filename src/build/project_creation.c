@@ -40,21 +40,21 @@ void create_project(BuildOptions *build_options)
 		if (!is_alphanum_(c))
 		{
 			fprintf(stderr, "'%s' is not a valid project name.\n", build_options->project_name);
-			exit(EXIT_FAILURE);
+			exit_compiler(EXIT_FAILURE);
 		}
 	}
 
 	if (chdir(build_options->path))
 	{
 		fprintf(stderr, "Can't open path %s\n", build_options->path);
-		exit(EXIT_FAILURE);
+		exit_compiler(EXIT_FAILURE);
 	}
 
 	int error = mkdir(build_options->project_name, 0755);
 	if (error)
 	{
 		fprintf(stderr, "Could not create directory %s: %s\n", build_options->project_name, strerror(errno));
-		exit(EXIT_FAILURE);
+		exit_compiler(EXIT_FAILURE);
 	}
 
 	if (chdir(build_options->project_name)) goto ERROR;
@@ -119,7 +119,7 @@ void create_project(BuildOptions *build_options)
 	if (chdir("../..")) goto ERROR;
 
 	(void) printf("Project '%s' created.\n", build_options->project_name);
-	exit(EXIT_SUCCESS);
+	exit_compiler(EXIT_SUCCESS);
 
 ERROR:
 	fprintf(stderr, "Err: %s\n", strerror(errno));
@@ -129,5 +129,5 @@ ERROR:
 	{
 		(void)rmdir(build_options->project_name);
 	}
-	exit(EXIT_FAILURE);
+	exit_compiler(EXIT_FAILURE);
 }

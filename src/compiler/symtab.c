@@ -91,10 +91,6 @@ const char *kw_builtin_cmpxchg;
 void symtab_init(uint32_t capacity)
 {
 	assert (is_power_of_two(capacity) && "Must be a power of two");
-	if (symtab.capacity != 0)
-	{
-		free(symtab.entries);
-	}
 	size_t size = capacity *sizeof(SymEntry);
 	symtab.entries = MALLOC(size);
 	memset(symtab.entries, 0, size);
