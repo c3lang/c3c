@@ -1144,13 +1144,14 @@ static inline bool scan_raw_string(Lexer *lexer)
 	char c;
 	while ((c = next(lexer)) != '`' || peek(lexer) == '`')
 	{
-		if (c == '`') next(lexer);
-		if (reached_end(lexer))
+		if (c == '\0')
 		{
+			backtrack(lexer);
 			return add_error_token_at(lexer, lexer->lexing_start , 1, "Reached the end of the file looking for "
 																	  "the end of the raw string that starts "
 																	  "here. Did you forget a '`' somewhere?");
 		}
+		if (c == '`') next(lexer);
 	}
 	const char *current = lexer->lexing_start + 1;
 	const char *end = lexer->current - 1;
