@@ -32,6 +32,7 @@ void compiler_init(const char *std_lib_dir)
 {
 	DEBUG_LOG("Version: %s", COMPILER_VERSION);
 
+	global_context = (GlobalContext ){ .in_panic_mode = false };
 	// Skip library detection.
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
@@ -80,7 +81,7 @@ static void compiler_lex(void)
 		}
 		printf("\n");
 	}
-	exit(EXIT_SUCCESS);
+	exit_compiler(COMPILER_SUCCESS_EXIT);
 }
 
 void compiler_parse(void)
@@ -94,12 +95,12 @@ void compiler_parse(void)
 		global_context_clear_errors();
 		parse_file(file);
 	}
-	exit(EXIT_SUCCESS);
+	exit_compiler(COMPILER_SUCCESS_EXIT);
 }
 
 static inline void halt_on_error(void)
 {
-	if (global_context.errors_found > 0) exit(EXIT_FAILURE);
+	if (global_context.errors_found > 0) exit_compiler(EXIT_FAILURE);
 }
 
 typedef struct CompileData_
@@ -314,7 +315,7 @@ void compiler_compile(void)
 		if (!parse_file(file)) has_error = true;
 	}
 
-	if (has_error) exit(EXIT_FAILURE);
+	if (has_error) exit_compiler(EXIT_FAILURE);
 
 	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_RANGE, .len = (uint32_t) strlen(kw_std) };
 	global_context.std_module = (Module){ .name = &global_context.std_module_path };
@@ -323,7 +324,7 @@ void compiler_compile(void)
 
 	if (!global_context.module_list)
 	{
-		if (global_context.errors_found) exit(EXIT_FAILURE);
+		if (global_context.errors_found) exit_compiler(EXIT_FAILURE);
 		error_exit("No modules to compile.");
 	}
 	VECEACH(global_context.generic_module_list, i)
@@ -462,8 +463,8 @@ void compiler_compile(void)
 		}
 	}
 
-	free_arena();
-	exit(EXIT_SUCCESS);
+	memory_release();
+	exit_compiler(COMPILER_SUCCESS_EXIT);
 }
 
 static void target_expand_source_names(BuildTarget *target)

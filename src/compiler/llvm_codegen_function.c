@@ -487,17 +487,17 @@ static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef functio
 	{
 		// Direct only
 		assert(index == last_index);
-		llvm_attribute_add(context, function, attribute_zext, index);
+		llvm_attribute_add(context, function, attribute_id.zext, index);
 	}
 	if (info->attributes.signext)
 	{
 		// Direct only
 		assert(index == last_index);
-		llvm_attribute_add(context, function, attribute_sext, index);
+		llvm_attribute_add(context, function, attribute_id.sext, index);
 	}
 	if (info->attributes.by_reg)
 	{
-		llvm_attribute_add_range(context, function, attribute_inreg, index, last_index);
+		llvm_attribute_add_range(context, function, attribute_id.inreg, index, last_index);
 	}
 	switch (info->kind)
 	{
@@ -511,13 +511,13 @@ static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef functio
 			if (is_return)
 			{
 				assert(info->indirect.type);
-				llvm_attribute_add_type(context, function, attribute_sret, llvm_get_type(context, info->indirect.type), 1);
-				llvm_attribute_add_int(context, function, attribute_align, info->indirect.alignment, 1);
+				llvm_attribute_add_type(context, function, attribute_id.sret, llvm_get_type(context, info->indirect.type), 1);
+				llvm_attribute_add_int(context, function, attribute_id.align, info->indirect.alignment, 1);
 			}
 			else
 			{
-				if (info->attributes.by_val) llvm_attribute_add_type(context, function, attribute_byval, llvm_get_type(context, info->indirect.type), index);
-				llvm_attribute_add_int(context, function, attribute_align, info->indirect.alignment, index);
+				if (info->attributes.by_val) llvm_attribute_add_type(context, function, attribute_id.byval, llvm_get_type(context, info->indirect.type), index);
+				llvm_attribute_add_int(context, function, attribute_id.align, info->indirect.alignment, index);
 			}
 			break;
 
@@ -569,11 +569,11 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	// We ignore decl->func_decl.attr_inline and place it in every call instead.
 	if (decl->func_decl.attr_noinline)
 	{
-		llvm_attribute_add(c, function, attribute_noinline, -1);
+		llvm_attribute_add(c, function, attribute_id.noinline, -1);
 	}
 	if (decl->func_decl.attr_noreturn)
 	{
-		llvm_attribute_add(c, function, attribute_noreturn, -1);
+		llvm_attribute_add(c, function, attribute_id.noreturn, -1);
 	}
 	if (decl->alignment)
 	{
@@ -583,10 +583,10 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	{
 		LLVMSetSection(function, decl->section);
 	}
-	llvm_attribute_add(c, function, attribute_nounwind, -1);
+	llvm_attribute_add(c, function, attribute_id.nounwind, -1);
 	if (decl->func_decl.attr_naked)
 	{
-		llvm_attribute_add(c, function, attribute_naked, -1);
+		llvm_attribute_add(c, function, attribute_id.naked, -1);
 	}
 	if (decl->func_decl.function_signature.call_abi == CALL_X86_STD)
 	{

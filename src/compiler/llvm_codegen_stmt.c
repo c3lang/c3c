@@ -966,7 +966,7 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 		llvm_value_rvalue(c, &value);
 		assert(value.kind == BE_BOOLEAN);
 		EMIT_LOC(c, expr);
-		llvm_emit_call_intrinsic(c, intrinsic_id_assume, NULL, 0, &(value.value), 1);
+		llvm_emit_call_intrinsic(c, intrinsic_id.assume, NULL, 0, &(value.value), 1);
 	}
 }
 
@@ -995,7 +995,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 			error = "Assert violation";
 		}
 		llvm_emit_debug_output(c, error, loc->file->name, c->cur_func_decl->name, loc->line);
-		llvm_emit_call_intrinsic(c, intrinsic_id_trap, NULL, 0, NULL, 0);
+		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
 		return;
@@ -1046,7 +1046,7 @@ static inline void gencontext_emit_unreachable_stmt(GenContext *context, Ast *as
 {
 	SourceLocation *loc = TOKLOC(ast->span.loc);
 	llvm_emit_debug_output(context, "Unreachable statement reached.", loc->file->name, context->cur_func_decl->external_name, loc->line);
-	llvm_emit_call_intrinsic(context, intrinsic_id_trap, NULL, 0, NULL, 0);
+	llvm_emit_call_intrinsic(context, intrinsic_id.trap, NULL, 0, NULL, 0);
 	LLVMBuildUnreachable(context->builder);
 	LLVMBasicBlockRef block = llvm_basic_block_new(context, "unreachable_block");
 	context->current_block = NULL;
@@ -1218,7 +1218,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	llvm_emit_cond_br(c, value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
 	llvm_emit_debug_output(c, panic_name, loc->file->name, c->cur_func_decl->name, loc->line);
-	llvm_emit_call_intrinsic(c, intrinsic_id_trap, NULL, 0, NULL, 0);
+	llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }
@@ -1232,7 +1232,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 	llvm_emit_cond_br(c, &be_value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
 	llvm_emit_debug_output(c, panic_name, loc->file->name, c->cur_func_decl->name, loc->line);
-	llvm_emit_call_intrinsic(c, intrinsic_id_trap, NULL, 0, NULL, 0);
+	llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }

@@ -76,6 +76,7 @@ void *vmem_alloc(Vmem *vmem, size_t alloc)
 
 void vmem_free(Vmem *vmem)
 {
+	if (!vmem->ptr) return;
 #if PLATFORM_WINDOWS
 	VirtualFree(vmem->ptr, 0, MEM_RELEASE);
 #elif PLATFORM_POSIX

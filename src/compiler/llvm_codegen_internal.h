@@ -102,84 +102,93 @@ typedef struct
 } GenContext;
 
 // LLVM Intrinsics
-extern unsigned intrinsic_id_sadd_overflow;
-extern unsigned intrinsic_id_sadd_sat;
-extern unsigned intrinsic_id_uadd_overflow;
-extern unsigned intrinsic_id_uadd_sat;
-extern unsigned intrinsic_id_ssub_overflow;
-extern unsigned intrinsic_id_ssub_sat;
-extern unsigned intrinsic_id_usub_overflow;
-extern unsigned intrinsic_id_usub_sat;
-extern unsigned intrinsic_id_sshl_sat;
-extern unsigned intrinsic_id_ushl_sat;
-extern unsigned intrinsic_id_smul_overflow;
-extern unsigned intrinsic_id_umul_overflow;
-extern unsigned intrinsic_id_trap;
-extern unsigned intrinsic_id_bswap;
-extern unsigned intrinsic_id_assume;
-extern unsigned intrinsic_id_rint;
-extern unsigned intrinsic_id_trunc;
-extern unsigned intrinsic_id_ceil;
-extern unsigned intrinsic_id_sqrt;
-extern unsigned intrinsic_id_nearbyint;
-extern unsigned intrinsic_id_roundeven;
-extern unsigned intrinsic_in_lround;
-extern unsigned intrinsic_in_llround;
-extern unsigned intrinsic_in_lrint;
-extern unsigned intrinsic_in_llrint;
-extern unsigned intrinsic_id_floor;
-extern unsigned intrinsic_id_powi;
-extern unsigned intrinsic_id_pow;
-extern unsigned intrinsic_id_sin;
-extern unsigned intrinsic_id_cos;
-extern unsigned intrinsic_id_exp;
-extern unsigned intrinsic_id_exp2;
-extern unsigned intrinsic_id_log;
-extern unsigned intrinsic_id_log2;
-extern unsigned intrinsic_id_log10;
-extern unsigned intrinsic_id_fabs;
-extern unsigned intrinsic_id_fma;
-extern unsigned intrinsic_id_copysign;
-extern unsigned intrinsic_id_minnum;
-extern unsigned intrinsic_id_maxnum;
-extern unsigned intrinsic_id_minimum;
-extern unsigned intrinsic_id_maximum;
-extern unsigned intrinsic_id_smax;
-extern unsigned intrinsic_id_smin;
-extern unsigned intrinsic_id_umax;
-extern unsigned intrinsic_id_umin;
-extern unsigned intrinsic_id_abs;
-extern unsigned intrinsic_id_fshl;
-extern unsigned intrinsic_id_fshr;
-extern unsigned intrinsic_id_bitreverse;
-extern unsigned intrinsic_id_bswap;
-extern unsigned intrinsic_id_ctpop;
-extern unsigned intrinsic_id_ctlz;
-extern unsigned intrinsic_id_cttz;
-extern unsigned intrinsic_id_convert_from_fp16;
-extern unsigned intrinsic_id_convert_to_fp16;
-extern unsigned intrinsic_id_lifetime_start;
-extern unsigned intrinsic_id_lifetime_end;
 
+typedef struct
+{
+	unsigned sadd_overflow;
+	unsigned sadd_sat;
+	unsigned uadd_overflow;
+	unsigned uadd_sat;
+	unsigned ssub_overflow;
+	unsigned ssub_sat;
+	unsigned usub_overflow;
+	unsigned usub_sat;
+	unsigned sshl_sat;
+	unsigned ushl_sat;
+	unsigned smul_overflow;
+	unsigned umul_overflow;
+	unsigned trap;
+	unsigned bswap;
+	unsigned assume;
+	unsigned rint;
+	unsigned trunc;
+	unsigned ceil;
+	unsigned sqrt;
+	unsigned nearbyint;
+	unsigned roundeven;
+	unsigned lround;
+	unsigned llround;
+	unsigned lrint;
+	unsigned llrint;
+	unsigned floor;
+	unsigned powi;
+	unsigned pow;
+	unsigned sin;
+	unsigned cos;
+	unsigned exp;
+	unsigned exp2;
+	unsigned log;
+	unsigned log2;
+	unsigned log10;
+	unsigned fabs;
+	unsigned fma;
+	unsigned copysign;
+	unsigned minnum;
+	unsigned maxnum;
+	unsigned minimum;
+	unsigned maximum;
+	unsigned smax;
+	unsigned smin;
+	unsigned umax;
+	unsigned umin;
+	unsigned abs;
+	unsigned fshl;
+	unsigned fshr;
+	unsigned bitreverse;
+	unsigned ctpop;
+	unsigned ctlz;
+	unsigned cttz;
+	unsigned convert_from_fp16;
+	unsigned convert_to_fp16;
+	unsigned lifetime_start;
+	unsigned lifetime_end;
+} LLVMIntrinsics;
 
+extern LLVMIntrinsics intrinsic_id;
+
+typedef struct
+{
+	unsigned noinline; // No function inlining
+	unsigned optnone; // No optimization
+	unsigned alwaysinline; // Force inlining
+	unsigned inlinehint; // "Inline possibly"
+	unsigned noreturn; // No function return
+	unsigned nounwind; // No exceptions
+	unsigned writeonly; // No writes on pointer
+	unsigned readonly; // No reads on pointer
+	unsigned sret; // struct return pointer
+	unsigned align; // align
+	unsigned noalias; // noalias (pointer)
+	unsigned zext; // zero extend
+	unsigned sext; // sign extend
+	unsigned byval; // ByVal (param)
+	unsigned inreg; // inreg (param)
+	unsigned naked; // naked function
+	
+} LLVMAttributes;
+
+extern LLVMAttributes attribute_id;
 // LLVM Attributes
-extern unsigned attribute_noinline; // No function inlining
-extern unsigned attribute_optnone; // No optimization
-extern unsigned attribute_alwaysinline; // Force inlining
-extern unsigned attribute_inlinehint; // "Inline possibly"
-extern unsigned attribute_noreturn; // No function return
-extern unsigned attribute_nounwind; // No exceptions
-extern unsigned attribute_writeonly; // No writes on pointer
-extern unsigned attribute_readonly; // No reads on pointer
-extern unsigned attribute_optnone; // Disable optimization.
-extern unsigned attribute_sret; // struct return pointer
-extern unsigned attribute_align; // align
-extern unsigned attribute_noalias; // noalias (pointer)
-extern unsigned attribute_zext; // zero extend
-extern unsigned attribute_sext; // sign extend
-extern unsigned attribute_byval; // ByVal (param)
-extern unsigned attribute_inreg; // inreg (param)
-extern unsigned attribute_naked; // naked function
 
 void gencontext_begin_module(GenContext *c);
 void gencontext_init_file_emit(GenContext *c, Context *ast);
@@ -213,13 +222,13 @@ LLVMTypeRef llvm_abi_type(GenContext *c, AbiType *type);
 TypeSize llvm_abi_size(GenContext *c, LLVMTypeRef type);
 BitSize llvm_bitsize(GenContext *c, LLVMTypeRef type);
 AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type);
-void llvm_attribute_add_range(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index_start, int index_end);
-void llvm_attribute_add(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, int index);
-void llvm_attribute_add_call(GenContext *context, LLVMValueRef call, unsigned attribute_id, int index, int64_t value);
-void llvm_attribute_add_call_type(GenContext *c, LLVMValueRef call, unsigned attribute_id, int index, LLVMTypeRef type);
+void llvm_attribute_add_range(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, int index_start, int index_end);
+void llvm_attribute_add(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, int index);
+void llvm_attribute_add_call(GenContext *context, LLVMValueRef call, unsigned attribute, int index, int64_t value);
+void llvm_attribute_add_call_type(GenContext *c, LLVMValueRef call, unsigned attribute, int index, LLVMTypeRef type);
 void llvm_attribute_add_string(GenContext *c, LLVMValueRef value_to_add_attribute_to, const char *attribute, const char *value, int index);
-void llvm_attribute_add_type(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, LLVMTypeRef type, int index);
-void llvm_attribute_add_int(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute_id, uint64_t val, int index);
+void llvm_attribute_add_type(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, LLVMTypeRef type, int index);
+void llvm_attribute_add_int(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, uint64_t val, int index);
 LLVMBasicBlockRef llvm_basic_block_new(GenContext *c, const char *name);
 static inline LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val);
 LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size);
@@ -238,7 +247,7 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 void llvm_emit_function_body(GenContext *context, Decl *decl);
 void llvm_emit_function_decl(GenContext *c, Decl *decl);
 void gencontext_emit_introspection_type(GenContext *c, Decl *decl);
-LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic_id, LLVMTypeRef *types, unsigned type_count, LLVMValueRef *values, unsigned arg_count);
+LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count, LLVMValueRef *values, unsigned arg_count);
 void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_type, Type *from_type);
 void llvm_emit_cond_br(GenContext *context, BEValue *value, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block);
 void llvm_emit_debug_function(GenContext *c, Decl *decl);

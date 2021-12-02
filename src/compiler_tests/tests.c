@@ -192,5 +192,5 @@ void compiler_tests(void)
 	test128();
 	run_arena_allocator_tests();
 
-	exit(0);
+	exit_compiler(COMPILER_SUCCESS_EXIT);
 }

@@ -1423,6 +1423,7 @@ typedef struct
 	Type **type;
 	const char *lib_dir;
 	const char **sources;
+	File **loaded_sources;
 	bool in_panic_mode : 1;
 	bool in_test_mode : 1;
 	unsigned errors_found;

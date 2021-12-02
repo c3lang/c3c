@@ -17,17 +17,10 @@ static const size_t LEXER_FILES_START_CAPACITY = 128;
 
 File pseudo_file;
 
-typedef struct
-{
-	File **files;
-} SourceFiles;
-
-SourceFiles source_files = { 0 };
-
 File *source_file_load(const char *filename, bool *already_loaded)
 {
 	if (already_loaded) *already_loaded = false;
-	if (!source_files.files) source_files.files = VECNEW(File *, LEXER_FILES_START_CAPACITY);
+	if (!global_context.loaded_sources) global_context.loaded_sources = VECNEW(File*, LEXER_FILES_START_CAPACITY);
 
 	char* full_path = malloc_arena(PATH_MAX + 1);
 
@@ -36,15 +29,15 @@ File *source_file_load(const char *filename, bool *already_loaded)
 		error_exit("Failed to resolve %s", filename);
 	}
 
-	VECEACH(source_files.files, index)
+	VECEACH(global_context.loaded_sources, index)
 	{
-		if (strcmp(source_files.files[index]->full_path, full_path) == 0)
+		if (strcmp(global_context.loaded_sources[index]->full_path, full_path) == 0)
 		{
 			*already_loaded = true;
-			return source_files.files[index];
+			return global_context.loaded_sources[index];
 		}
 	}
-	if (vec_size(source_files.files) == MAX_FILES)
+	if (vec_size(global_context.loaded_sources) == MAX_FILES)
 	{
 		error_exit("Exceeded max number of files %d", MAX_FILES);
 	}
@@ -54,7 +47,7 @@ File *source_file_load(const char *filename, bool *already_loaded)
 	File *file = CALLOCS(File);
 
 	file->full_path = full_path;
-	file->start_id = vec_size(source_files.files) ? VECLAST(source_files.files)->end_id : 0;
+	file->start_id = vec_size(global_context.loaded_sources) ? VECLAST(global_context.loaded_sources)->end_id : 0;
 	file->current_line_start = file->start_id;
 	file->contents = source_text;
 	ASSERT(file->start_id + size < UINT32_MAX, "Total files loaded exceeded %d bytes", UINT32_MAX);
@@ -63,7 +56,7 @@ File *source_file_load(const char *filename, bool *already_loaded)
 	file->lines = VECNEW(SourceLoc, pre_allocated_lines < 16 ? 16 : pre_allocated_lines);
 	vec_add(file->lines, file->start_id);
 	path_get_dir_and_filename_from_full(file->full_path, &file->name, &file->dir_path);
-	vec_add(source_files.files, file);
+	vec_add(global_context.loaded_sources, file);
 	return file;
 }
 

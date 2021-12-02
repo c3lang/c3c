@@ -18,6 +18,11 @@ void memory_init(void)
 	allocations_done = 0;
 }
 
+void memory_release()
+{
+	vmem_free(&arena);
+}
+
 // Simple bump allocator with buckets.
 void *malloc_arena(size_t mem)
 {
@@ -46,7 +51,7 @@ void run_arena_allocator_tests(void)
 	printf("Begin arena allocator testing.\n");
 	bool was_init = arena.ptr != NULL;
 	if (!was_init) memory_init();
-	free_arena();
+	memory_release();
 	memory_init();
 	ASSERT(malloc_arena(10) != malloc_arena(10), "Expected different values...");
 	printf("-- Tested basic allocation - OK.\n");
