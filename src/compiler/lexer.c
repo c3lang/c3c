@@ -388,8 +388,11 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
  */
 static bool scan_oct(Lexer *lexer)
 {
-	char o = next(lexer); // Skip the o
-	if (!is_oct(next(lexer))) return add_error_token(lexer, "An expression starting with '0%c' would expect to be followed by octal numbers (0-7).", o);
+	if (!is_oct(next(lexer)))
+	{
+		backtrack(lexer);
+		return add_error_token_at(lexer, lexer->current, 1, "An expression starting with '0o' should be followed by octal numbers (0-7).");
+	}
 	while (is_oct_or_(peek(lexer))) next(lexer);
 	bool is_float = false;
 	if (!scan_number_suffix(lexer, &is_float)) return false;
@@ -405,11 +408,10 @@ static bool scan_oct(Lexer *lexer)
  **/
 static bool scan_binary(Lexer *lexer)
 {
-	next(lexer); // Skip the b
 	if (!is_binary(next(lexer)))
 	{
-		return add_error_token(lexer, "An expression starting with '0b' would expect a sequence of zeroes and ones, "
-		                   "did you try to write a hex value but forgot the '0x'?");
+		backtrack(lexer);
+		return add_error_token_at(lexer, lexer->current, 1, "An expression starting with '0b' should be followed by binary digits (0-1).");
 	}
 	while (is_binary_or_(peek(lexer))) next(lexer);
 	bool is_float = false;
@@ -454,8 +456,8 @@ static inline bool scan_hex(Lexer *lexer)
 {
 	if (!is_hex(next(lexer)))
 	{
-		return add_error_token(lexer, "'0x' starts a hexadecimal number, "
-					 "but it was followed by '%c' which is not part of a hexadecimal number.", prev(lexer));
+		backtrack(lexer);
+		return add_error_token_at(lexer, lexer->current, 1, "'0x' starts a hexadecimal number, so the next character should be 0-9, a-f or A-F.");
 	}
 	while (is_hex_or_(peek(lexer))) next(lexer);
 	bool is_float = false;
