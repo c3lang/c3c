@@ -438,7 +438,11 @@ static inline bool scan_exponent(Lexer *lexer)
 	// Now we need at least one digit
 	if (!is_digit(c))
 	{
-		if (c == 0) return add_error_token(lexer, "End of file was reached while parsing the exponent.");
+		if (c == 0)
+		{
+			backtrack(lexer);
+			return add_error_token(lexer, "End of file was reached while parsing the exponent.");
+		}
 		if (c == '\n' || c == '\r') return add_error_token(lexer, "End of line was reached while parsing the exponent.");
 		if (c < 31 || c > 127) add_error_token(lexer, "An unexpected character was found while parsing the exponent.");
 		return add_error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c);
