@@ -826,8 +826,9 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 		case 'x':
 		{
 			int h = char_to_nibble(src[1]);
+			if (h < 0) return -1;
 			int l = char_to_nibble(src[2]);
-			if (h < 0 || l < 0) return -1;
+			if (l < 0) return -1;
 			unicode_char = ((unsigned) h << 4U) + (unsigned)l;
 			scanned = 3;
 			break;
@@ -835,10 +836,13 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 		case 'u':
 		{
 			int x1 = char_to_nibble(src[1]);
+			if (x1 < 0) return -1;
 			int x2 = char_to_nibble(src[2]);
+			if (x2 < 0) return -1;
 			int x3 = char_to_nibble(src[3]);
+			if (x3 < 0) return -1;
 			int x4 = char_to_nibble(src[4]);
-			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0) return -1;
+			if (x4 < 0) return -1;
 			unicode_char = ((unsigned) x1 << 12U) + ((unsigned) x2 << 8U) + ((unsigned) x3 << 4U) + (unsigned)x4;
 			scanned = 5;
 			break;
@@ -846,14 +850,21 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 		case 'U':
 		{
 			int x1 = char_to_nibble(src[1]);
+			if (x1 < 0) return -1;
 			int x2 = char_to_nibble(src[2]);
+			if (x2 < 0) return -1;
 			int x3 = char_to_nibble(src[3]);
+			if (x3 < 0) return -1;
 			int x4 = char_to_nibble(src[4]);
+			if (x4 < 0) return -1;
 			int x5 = char_to_nibble(src[5]);
+			if (x5 < 0) return -1;
 			int x6 = char_to_nibble(src[6]);
+			if (x6 < 0) return -1;
 			int x7 = char_to_nibble(src[7]);
+			if (x7 < 0) return -1;
 			int x8 = char_to_nibble(src[8]);
-			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0 || x5 < 0 || x6 < 0 || x7 < 0 || x8 < 0) return -1;
+			if (x8 < 0) return -1;
 			unicode_char = ((unsigned) x1 << 28U) + ((unsigned) x2 << 24U) + ((unsigned) x3 << 20U) + ((unsigned) x4 << 16U) +
 					((unsigned) x5 << 12U) + ((unsigned) x6 << 8U) + ((unsigned) x7 << 4U) + (unsigned)x8;
 			scanned = 9;
