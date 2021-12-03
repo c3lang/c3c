@@ -1202,6 +1202,7 @@ static inline bool scan_hex_array(Lexer *lexer)
 		if (c == start_char) break;
 		if (c == 0)
 		{
+			backtrack(lexer);
 			lexer->lexing_start = lexer->current - 1;
 			return add_error_token(lexer, "The hex string seems to be missing a terminating '%c'", start_char);
 		}
@@ -1244,6 +1245,7 @@ static inline bool scan_base64(Lexer *lexer)
 		if (c == start_char) break;
 		if (c == 0)
 		{
+			backtrack(lexer);
 			lexer->lexing_start = lexer->current - 1;
 			return add_error_token(lexer, "The base64 string seems to be missing a terminating '%c'", start_char);
 		}
