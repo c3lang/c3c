@@ -24,7 +24,7 @@ static inline void expr_set_as_const_list(Expr *expr, ConstInitializer *list)
 	expr->const_expr.list = list;
 }
 
-int BINOP_PREC_REQ[BINARYOP_LAST] =
+int BINOP_PREC_REQ[BINARYOP_LAST + 1] =
 {
 		// bitwise operations
 		[BINARYOP_BIT_OR] = 1,
