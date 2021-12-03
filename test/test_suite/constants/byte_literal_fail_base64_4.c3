@@ -1,1 +1,1 @@
-char[*] foo64 = b64"SGVsbG8gV29ybGQ====";
+char[*] foo64 = b64"SGVsbG8gV29ybGQ==="; // #error: There cannot be more than

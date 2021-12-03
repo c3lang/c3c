@@ -1259,21 +1259,48 @@ static inline bool scan_base64(Lexer *lexer)
 		}
 		if (c == '=')
 		{
-			if (end_len > 3)
+			if (end_len > 1)
 			{
-				lexer->lexing_start = b64data - 1;
-				lexer->current = b64data;
-				return add_error_token(lexer, "There cannot be more than 3 '=' at the end of a base64 string.", c);
+				return add_error_token_at(lexer, lexer->current - 1, 1, "There cannot be more than 2 '=' at the end of a base64 string.", c);
 			}
 			end_len++;
 			continue;
 		}
 		if (!is_whitespace(c))
 		{
-			lexer->lexing_start = b64data - 1;
-			lexer->current = b64data;
-			return add_error_token(lexer, "'%c' is not a valid base64 character.", c);
+			if (c < ' ' || c > 127)
+			{
+				return add_error_token_at(lexer, lexer->current - 1, 1, "A valid base64 character was expected here.");
+			}
+			return add_error_token_at(lexer, lexer->current - 1, 1, "'%c' is not a valid base64 character.", c);
 		}
+	}
+	if (!end_len && len % 4 != 0)
+	{
+		switch (len % 4)
+		{
+			case 0:
+			case 1:
+				// Invalid
+				break;
+			case 2:
+				end_len = 2;
+				break;
+			case 3:
+				end_len = 1;
+				break;
+			default:
+				UNREACHABLE
+		}
+		if (len % 4 == 3)
+		{
+			end_len = 1;
+		}
+	}
+	if ((len + end_len) % 4 != 0)
+	{
+		return add_error_token(lexer, "Base64 strings must either be padded to multiple of 4, or if unpadded "
+									  "- only need 1 or 2 bytes of extra padding.");
 	}
 	uint64_t decoded_len = (3 * len - end_len) / 4;
 	if (!add_token(lexer, TOKEN_BYTES, lexer->lexing_start)) return false;
