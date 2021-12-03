@@ -573,20 +573,12 @@ static inline int64_t scan_hex_literal(Lexer *lexer, int positions)
 	for (int j = 0; j < positions; j++)
 	{
 		hex <<= 4U;
-		int i = char_to_nibble(next(lexer));
+		int i = char_to_nibble(peek(lexer));
 		if (i < 0)
 		{
-			if (lexer->current[-1] == '\'')
-			{
-				backtrack(lexer);
-				return -1;
-			}
-			while (lexer->current[0] != '\'' && lexer->current[0] != '\0' && ++j < positions)
-			{
-				next(lexer);
-			}
 			return -1;
 		}
+		next(lexer);
 		hex += i;
 	}
 	return hex;
