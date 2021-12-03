@@ -267,10 +267,11 @@ static void skip_whitespace(Lexer *lexer, LexMode lex_type)
 				FALLTHROUGH;
 			case ' ':
 			case '\t':
-			case '\r':
 			case '\f':
 				next(lexer);
 				break;
+			case '\r':
+				UNREACHABLE
 			default:
 				return;
 		}
@@ -443,7 +444,7 @@ static inline bool scan_exponent(Lexer *lexer)
 			backtrack(lexer);
 			return add_error_token(lexer, "End of file was reached while parsing the exponent.");
 		}
-		if (c == '\n' || c == '\r') return add_error_token(lexer, "End of line was reached while parsing the exponent.");
+		if (c == '\n') return add_error_token(lexer, "End of line was reached while parsing the exponent.");
 		if (c < 31 || c > 127) add_error_token(lexer, "An unexpected character was found while parsing the exponent.");
 		return add_error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c);
 	}
@@ -802,10 +803,11 @@ static inline void skip_first_line_if_empty(Lexer *lexer)
 				return;
 			case ' ':
 			case '\t':
-			case '\r':
 			case '\f':
 				// Counts as whitespace.
 				break;
+			case '\r':
+				UNREACHABLE
 			default:
 				// Non whitespace -> no skip.
 				return;
@@ -904,7 +906,7 @@ static inline size_t scan_multiline_indent(const char *current, const char **end
 			// 2. More whitespace, so increase indent
 			if (is_whitespace(c))
 			{
-				current_indent++;
+				if (c == ' ' || c == '\t') current_indent++;
 			}
 			else
 			{
@@ -1012,13 +1014,6 @@ static inline bool scan_multiline_string(Lexer *lexer)
 	while (lexer->current < end)
 	{
 		c = peek(lexer);
-
-		// We ignore \r
-		if (c == '\r')
-		{
-			next(lexer);
-			continue;
-		}
 
 		// Ok, we reached the end of line
 		// update the line end and store it in the resulting buffer.

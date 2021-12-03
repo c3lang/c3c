@@ -282,8 +282,9 @@ static inline bool is_whitespace(char c)
 		case ' ':
 		case '\t':
 		case '\n':
-		case '\r':
 			return true;
+		case '\r':
+			UNREACHABLE
 		default:
 			return false;
 	}

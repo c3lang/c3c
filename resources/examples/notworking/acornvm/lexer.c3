@@ -160,9 +160,10 @@ fn bool LexInfo.scanWhite(LexInfo *lex)
 		// Skip past spaces and tabs
 		case ' ':
 		case '\t':
-		case '\r':
 			lex_skipchar(lex);
 			break;
+		case '\r':
+		    UNREACHABLE
 
 		// Skip past new line
 		case '\n':

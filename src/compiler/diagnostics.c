@@ -67,15 +67,15 @@ static void print_error2(SourceLocation *location, const char *message, PrintTyp
 	{
 		eprintf(" ");
 	}
+
 	for (unsigned i = 1; i < location->col; i++)
 	{
-		if (start[i] == '\t')
+		switch (start[i])
 		{
-			eprintf("\t");
-		}
-		else
-		{
-			eprintf(" ");
+			case '\t':
+				eprintf("\t");
+			default:
+				eprintf(" ");
 		}
 	}
 	for (uint32_t i = 0; i < location->length; i++)

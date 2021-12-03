@@ -170,7 +170,23 @@ char *read_file(const char *path, size_t *return_size)
 	assert(bytes_read == file_size);
 
 	buffer[bytes_read] = '\0';
-
+	// Filter '\r' early.
+	size_t offset = 0;
+	for (size_t i = 0; i < file_size - offset; i++)
+	{
+		char c = buffer[i + offset];
+		if (c == '\r')
+		{
+			offset++;
+			i--;
+			continue;
+		}
+		if (offset)
+		{
+			buffer[i] = c;
+		}
+	}
+	buffer[bytes_read - offset] = '\0';
 	fclose(file);
 	return buffer;
 }
