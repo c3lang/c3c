@@ -67,7 +67,7 @@ static void print_error2(SourceLocation *location, const char *message, PrintTyp
 	{
 		eprintf(" ");
 	}
-	for (unsigned i = 0; i < location->col - 1; i++)
+	for (unsigned i = 1; i < location->col; i++)
 	{
 		if (start[i] == '\t')
 		{
