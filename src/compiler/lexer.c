@@ -703,8 +703,13 @@ static inline bool scan_char(Lexer *lexer)
 			escape = is_valid_escape(c);
 			if (escape == -1)
 			{
+				backtrack(lexer);
 				lexer->lexing_start = start - 1;
-				return add_error_token(lexer, "Invalid escape sequence '\\%c'.", c);
+				if (c > ' ' && c <= 127)
+				{
+					return add_error_token(lexer, "Invalid escape sequence '\\%c'.", c);
+				}
+				return add_error_token_at(lexer, start, 1, "An escape sequence was expected after '\\'.");
 			}
 		}
 		switch (escape)
