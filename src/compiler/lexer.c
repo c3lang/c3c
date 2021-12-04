@@ -1783,6 +1783,8 @@ void lexer_init_with_file(Lexer *lexer, File *file)
 	while ((c = *(check++)) != '\0')
 	{
 		if (c != 0xE2) continue;
+		unsigned char next = check[0];
+		if (next == 0) break;
 		unsigned char type = check[1];
 		switch (check[0])
 		{
