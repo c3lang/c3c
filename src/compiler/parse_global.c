@@ -1466,7 +1466,7 @@ static bool parse_macro_arguments(Context *context, Visibility visibility, Decl 
 		}
 		// TODO use the body param.
 	}
-	TRY_CONSUME(TOKEN_RPAREN, false);
+	CONSUME_OR(TOKEN_RPAREN, false);
 	return true;
 }
 
