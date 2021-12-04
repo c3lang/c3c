@@ -2294,7 +2294,7 @@ Decl *parse_top_level_statement(Context *context)
 		case TOKEN_CT_ASSERT:
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
 			{
-				ASSIGN_AST_ELSE(Ast *ast, parse_ct_assert_stmt(context), false);
+				ASSIGN_AST_ELSE(Ast *ast, parse_ct_assert_stmt(context), poisoned_decl);
 				decl = decl_new(DECL_CT_ASSERT, ast->span.loc, visibility);
 				decl->ct_assert_decl = ast;
 				if (docs)
