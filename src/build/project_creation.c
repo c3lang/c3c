@@ -119,7 +119,7 @@ void create_project(BuildOptions *build_options)
 	if (chdir("../..")) goto ERROR;
 
 	(void) printf("Project '%s' created.\n", build_options->project_name);
-	exit_compiler(EXIT_SUCCESS);
+	exit_compiler(COMPILER_SUCCESS_EXIT);
 
 ERROR:
 	fprintf(stderr, "Err: %s\n", strerror(errno));
