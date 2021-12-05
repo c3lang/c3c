@@ -188,6 +188,8 @@ const char *token_type_to_string(TokenType type)
 			return "alias";
 		case TOKEN_ANYERR:
 			return "anyerr";
+		case TOKEN_FAULT:
+			return "fault";
 		case TOKEN_AS:
 			return "as";
 		case TOKEN_ASM:
@@ -274,10 +276,10 @@ const char *token_type_to_string(TokenType type)
 			return "while";
 
 		// Named types
-		case TOKEN_VIRTUAL:
-			return "virtual";
 		case TOKEN_VOID:
 			return "void";
+		case TOKEN_VARIANT:
+			return "variant";
 		case TOKEN_BOOL:
 			return "bool";
 		case TOKEN_FLOAT128:
@@ -396,7 +398,7 @@ bool token_is_type(TokenType type)
 
 bool token_is_any_type(TokenType type)
 {
-	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT || type == TOKEN_VIRTUAL;
+	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT;
 }
 
 bool token_is_ident_keyword(TokenType type)

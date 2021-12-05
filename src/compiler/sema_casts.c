@@ -818,6 +818,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_SUBSCRIPT_ADDR:
+		case EXPR_TYPEOFANY:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_float(expr->unary_expr.expr, type);
@@ -969,6 +970,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_SUBSCRIPT_ADDR:
+		case EXPR_TYPEOFANY:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_int(expr->unary_expr.expr, type);
@@ -1027,6 +1029,11 @@ bool cast_implicit(Expr *expr, Type *to_type)
 			if (expr_canonical->type_kind == TYPE_FAILABLE && to_canonical->type_kind != TYPE_FAILABLE)
 			{
 				SEMA_ERROR(expr, "A failable %s cannot be converted to %s.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
+				return false;
+			}
+			if (to_canonical->type_kind == TYPE_ANY)
+			{
+				SEMA_ERROR(expr, "You can only convert pointers to 'variant', take the address of this expression first.");
 				return false;
 			}
 			SEMA_ERROR(expr, "You cannot cast %s into %s even with an explicit cast, so this looks like an error.", type_quoted_error_string(expr->type), type_quoted_error_string(to_type));
@@ -1227,6 +1234,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to->type_kind == TYPE_BOOL) return pointer_to_bool(expr, to_type);
 			if (to->type_kind == TYPE_POINTER) return pointer_to_pointer(expr, to_type);
 			if (to->type_kind == TYPE_SUBARRAY) return insert_cast(expr, CAST_APTSA, to_type);
+			if (to->type_kind == TYPE_ANY) return insert_cast(expr, CAST_PTRANY, to_type);
 			break;
 		case TYPE_ANY:
 			if (to->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_ANYPTR, to_type);

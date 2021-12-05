@@ -122,9 +122,8 @@ const char *type_to_error_string(Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_ANYERR:
 		case TYPE_UNTYPED_LIST:
-			return type->name;
 		case TYPE_ANY:
-			return "any";
+			return type->name;
 		case TYPE_FUNC:
 			return strcat_arena("func ", type->func.mangled_function_signature);
 		case TYPE_VECTOR:
@@ -1030,8 +1029,7 @@ void type_setup(PlatformTarget *target)
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t.voidstar;
 	t.voidstar.pointer = type_void;
-	type_init("any", &t.any, TYPE_ANY, target->width_pointer * 2, target->align_pointer);
-
+	type_init("variant", &t.any, TYPE_ANY, target->width_pointer * 2, target->align_pointer);
 
 	type_create_alias("usize", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("isize", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
@@ -1148,6 +1146,9 @@ Type *type_from_token(TokenType type)
 {
 	switch (type)
 	{
+		case TOKEN_VARIANT:
+			return type_any;
+		case TOKEN_FAULT:
 		case TOKEN_ANYERR:
 			return type_anyerr;
 		case TOKEN_VOID:
