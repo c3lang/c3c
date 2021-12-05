@@ -1107,6 +1107,11 @@ bool cast_implicit(Expr *expr, Type *to_type)
 		}
 	}
 	cast(expr, to_type);
+	// Allow narrowing after widening
+	if (type_is_numeric(to_type) && expr->expr_kind == EXPR_CONST && type_size(expr_canonical) < type_size(to_canonical))
+	{
+		expr->const_expr.narrowable = true;
+	}
 	if (expr->expr_kind == EXPR_CAST) expr->cast_expr.implicit = true;
 	return true;
 }

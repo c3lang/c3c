@@ -117,7 +117,7 @@ fn void test16()
     int i = 1;
 
     ichar c = 1 ? 'c' : 'd';
-    ichar d = 1 ? 'c' : i;       // #error: 'int' to 'ichar'
+    ichar d = 1 ? 'c' : i;
     ichar e = 1 ? i : 0;         // #error: 'int' to 'ichar'
     int g = 1 ? i : f;          // #error: 'float' to 'int'
     int a = f ? 1 : 0;
