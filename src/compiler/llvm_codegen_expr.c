@@ -3099,16 +3099,76 @@ static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Ex
 	                       false);
 }
 
+void llvm_emit_derived_backend_type(GenContext *c, Type *type)
+{
+	llvm_get_type(c, type);
+	LLVMValueRef global_name = LLVMAddGlobal(c->module, llvm_get_type(c, type_char), type->name);
+	LLVMSetGlobalConstant(global_name, 1);
+	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
+	type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+	Decl *origin = NULL;
+	Type *original_type = type;
+	while (!origin)
+	{
+		switch (original_type->type_kind)
+		{
+			case TYPE_FAILABLE:
+				original_type = type->failable;
+				continue;
+			case TYPE_VECTOR:
+				original_type = type->vector.base;
+				continue;
+			case TYPE_ARRAY:
+			case TYPE_SUBARRAY:
+				original_type = original_type->array.base;
+				continue;
+			case TYPE_POINTER:
+				original_type = original_type->pointer;
+				continue;
+			case TYPE_ENUM:
+			case TYPE_FUNC:
+			case TYPE_STRUCT:
+			case TYPE_UNION:
+			case TYPE_BITSTRUCT:
+			case TYPE_ERRTYPE:
+			case TYPE_DISTINCT:
+				origin = type->decl;
+				continue;
+			case TYPE_TYPEDEF:
+				original_type = original_type->canonical;
+				continue;
+			case TYPE_STRLIT:
+			case TYPE_INFERRED_ARRAY:
+			case TYPE_UNTYPED_LIST:
+			case TYPE_FAILABLE_ANY:
+			case TYPE_TYPEINFO:
+				UNREACHABLE
+			default:
+				goto PRIMITIVE;
+		}
+	}
+	llvm_set_linkage(c, origin, global_name);
+	return;
+
+	PRIMITIVE:
+	LLVMSetLinkage(global_name, LLVMWeakAnyLinkage);
+	LLVMSetVisibility(global_name, LLVMDefaultVisibility);
+}
+
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type)
 {
 	LLVMValueRef value;
+	type = type->canonical;
 	if (type_is_builtin(type->type_kind))
 	{
 		value = llvm_const_int(c, type_usize, type->type_kind);
 	}
 	else
 	{
-		assert(type->backend_typeid);
+		if (!type->backend_typeid)
+		{
+			llvm_emit_derived_backend_type(c, type);
+		}
 		value = type->backend_typeid;
 	}
 	llvm_value_set(be_value, value, type_typeid);
@@ -3395,6 +3455,27 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 
 	llvm_emit_block(c, no_err_block);
 
+}
+
+static inline void llvm_emit_typeofany(GenContext *c, BEValue *be_value, Expr *expr)
+{
+	llvm_emit_expr(c, be_value, expr->inner_expr);
+	llvm_value_fold_failable(c, be_value);
+	if (llvm_value_is_addr(be_value))
+	{
+		AlignSize alignment = 0;
+		LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
+															 be_value->value,
+															 llvm_get_type(c, type_any),
+															 1,
+															 be_value->alignment,
+															 &alignment);
+		llvm_value_set_address_align(be_value, pointer_addr, type_typeid, alignment);
+	}
+	else
+	{
+		llvm_value_set(be_value, LLVMBuildExtractValue(c->builder, be_value->value, 1, ""), type_typeid);
+	}
 }
 
 /**
@@ -5175,6 +5256,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_RETHROW:
 			llvm_emit_rethrow_expr(c, value, expr);
+			return;
+		case EXPR_TYPEOFANY:
+			llvm_emit_typeofany(c, value, expr);
 			return;
 		case EXPR_TYPEID:
 		case EXPR_GROUP:

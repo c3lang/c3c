@@ -551,7 +551,6 @@ static inline TypeInfo *parse_base_type(Context *context)
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
-	bool virtual = try_consume(context, TOKEN_VIRTUAL);
 	SourceSpan range = source_span_from_token_id(context->tok.id);
 	bool had_error;
 	Path *path = parse_path_prefix(context, &had_error);
@@ -561,9 +560,7 @@ static inline TypeInfo *parse_base_type(Context *context)
 		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER, range);
 		type_info->unresolved.path = path;
 		type_info->unresolved.name_loc = context->tok.id;
-		type_info->virtual_type = virtual;
 		if (!consume_type_name(context, "type")) return poisoned_type_info;
-		if (virtual) TRY_CONSUME_OR(TOKEN_STAR, "Expected '*' after virtual name.", poisoned_type_info);
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
@@ -581,36 +578,18 @@ static inline TypeInfo *parse_base_type(Context *context)
 			type_found = type_from_token(context->tok.type);
 			break;
 		default:
-			// Special case: "virtual *"
-			if (virtual && context->tok.type == TOKEN_STAR)
-			{
-				type_info = type_info_new(TYPE_INFO_IDENTIFIER, source_span_from_token_id(context->prev_tok));
-				advance(context);
-				type_info->resolve_status = RESOLVE_DONE;
-				type_info->type = type_any;
-				type_info->virtual_type = true;
-				RANGE_EXTEND_PREV(type_info);
-				return type_info;
-			}
 			SEMA_TOKEN_ERROR(context->tok, "A type name was expected here.");
 			return poisoned_type_info;
 	}
 	if (type_found)
 	{
-		if (virtual)
-		{
-			SEMA_TOKEN_ERROR(context->tok, "Expected an interface name.");
-			advance(context);
-			return poisoned_type_info;
-		}
 		assert(!type_info);
 		type_info = type_info_new(TYPE_INFO_IDENTIFIER, source_span_from_token_id(context->tok.id));
 		type_info->resolve_status = RESOLVE_DONE;
 		type_info->type = type_found;
 	}
-	type_info->virtual_type = virtual;
+	assert(type_info);
 	advance(context);
-	if (virtual) TRY_CONSUME_OR(TOKEN_STAR, "Expected '*' after virtual name.", poisoned_type_info);
 	RANGE_EXTEND_PREV(type_info);
 	return type_info;
 }

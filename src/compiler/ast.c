@@ -280,6 +280,8 @@ bool expr_is_pure(Expr *expr)
 				if (!expr_is_pure(expr->expression_list[i])) return false;
 			}
 			return true;
+		case EXPR_TYPEOFANY:
+			return expr_is_pure(expr->inner_expr);
 		case EXPR_LEN:
 			return expr_is_pure(expr->len_expr.inner);
 		case EXPR_SLICE:

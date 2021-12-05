@@ -349,6 +349,10 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_LEN:
 			expr = expr->len_expr.inner;
 			goto RETRY;
+		case EXPR_TYPEOFANY:
+			if (eval_kind != CONSTANT_EVAL_ANY) return false;
+			expr = expr->inner_expr;
+			goto RETRY;
 		case EXPR_SLICE:
 			if (expr->slice_expr.start && !expr_is_constant_eval(expr->slice_expr.start, CONSTANT_EVAL_FOLDABLE)) return false;
 			if (expr->slice_expr.end && !expr_is_constant_eval(expr->slice_expr.end, CONSTANT_EVAL_FOLDABLE)) return false;
@@ -2881,16 +2885,30 @@ static inline bool sema_expr_analyse_access(Context *context, Expr *expr)
 	}
 
 	// 8. Depending on parent type, we have some hard coded types
-	const char *kw = TOKSTR(identifier_token);
+	TokenType token_type = TOKTYPE(identifier_token);
 	Expr *current_parent = parent;
 
 	Type *type = type_no_fail(parent->type)->canonical;
 	Type *flat_type = type_flatten(type);
+	if (!is_macro && token_type == TOKEN_TYPEID && flat_type->type_kind == TYPE_ANY)
+	{
+		expr->expr_kind = EXPR_TYPEOFANY;
+		expr->inner_expr = parent;
+		expr->type = type_typeid;
+		return true;
+	}
+	const char *kw = TOKSTR(identifier_token);
+
 CHECK_DEEPER:
 
 	// 9. Fix hard coded function `len` on subarrays and arrays
 	if (!is_macro && kw == kw_len)
 	{
+		if (flat_type->type_kind == TYPE_STRLIT)
+		{
+			expr_rewrite_to_int_const(expr, type_isize, parent->const_expr.string.len, true);
+			return true;
+		}
 		if (flat_type->type_kind == TYPE_SUBARRAY)
 		{
 			expr->expr_kind = EXPR_LEN;
@@ -5985,7 +6003,7 @@ static inline bool sema_analyse_identifier_path_string(Context *context, SourceS
 	}
 	if (!global_context.scratch_buffer_len)
 	{
-		sema_error_range(span, "'%s' is not a valid identifier, did you misspell it?", chars);
+		sema_error_range(span, "A valid identifier was expected here, did you want to take the length of a string literal? If so use '.len'.", chars);
 		return false;
 	}
 	TokenType token_type;
@@ -6624,6 +6642,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 			return false;
 		case EXPR_LEN:
 		case EXPR_SLICE_ASSIGN:
+		case EXPR_TYPEOFANY:
 			// Created during semantic analysis
 			UNREACHABLE
 		case EXPR_MACRO_BLOCK:

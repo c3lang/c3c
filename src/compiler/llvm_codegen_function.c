@@ -654,7 +654,7 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_ENUM:
 			break;
 		case DECL_ERRTYPE:
-			gencontext_emit_introspection_type(context, decl);
+			llvm_emit_introspection_type_from_decl(context, decl);
 			// TODO // Fix typeid
 			return;
 		case DECL_TYPEDEF:

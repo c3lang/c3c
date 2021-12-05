@@ -19,7 +19,7 @@ fn void c()
 
 fn void c2()
 {
-    int x = $sizeof("#Baz"); // #error: '#Baz' is not a valid identifier, did you misspell it?
+    int x = $sizeof("#Baz"); // #error: A valid identifier was expected here, did you want to take the length of a string literal? If so use '.len'.
 }
 
 fn void d()
@@ -29,7 +29,7 @@ fn void d()
 
 fn void e()
 {
-    int x = $sizeof(bar::Baze); // #error: 'Baze' could not be found, did you spell it right
+    int x = $sizeof(bar::Baze); // #error:
 }
 
 fn void f()
@@ -39,7 +39,7 @@ fn void f()
 
 fn void g()
 {
-    int x = $sizeof("bar::"); // #error: 'bar::' is not a valid identifier, did you misspell it?
+    int x = $sizeof("bar::"); // #error: A valid identifier was expected here, did you want to take the length of a string literal? If so use '.len'.
 }
 
 fn void k()

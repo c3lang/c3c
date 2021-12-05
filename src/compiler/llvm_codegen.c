@@ -663,7 +663,7 @@ void llvm_codegen_setup()
 	intrinsics_setup = true;
 }
 
-static void llvm_set_linkage(GenContext *c, Decl *decl, LLVMValueRef value)
+void llvm_set_linkage(GenContext *c, Decl *decl, LLVMValueRef value)
 {
 	if (decl->module != c->code_module)
 	{
@@ -686,7 +686,7 @@ static void llvm_set_linkage(GenContext *c, Decl *decl, LLVMValueRef value)
 	}
 
 }
-void gencontext_emit_introspection_type(GenContext *c, Decl *decl)
+void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl)
 {
 	llvm_get_type(c, decl->type);
 	if (decl_is_struct_type(decl))
@@ -697,7 +697,7 @@ void gencontext_emit_introspection_type(GenContext *c, Decl *decl)
 			Decl *member_decl = decls[i];
 			if (decl_is_struct_type(member_decl))
 			{
-				gencontext_emit_introspection_type(c, member_decl);
+				llvm_emit_introspection_type_from_decl(c, member_decl);
 			}
 		}
 	}
@@ -725,7 +725,6 @@ void gencontext_emit_introspection_type(GenContext *c, Decl *decl)
 	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
 	decl->type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
 	llvm_set_linkage(c, decl, global_name);
-
 }
 
 
@@ -856,7 +855,7 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 	else
 	{
 		LLVMValueRef temp = llvm_emit_alloca_aligned(c, value->type, "taddr");
-		llvm_store_self_aligned(c, temp, value->value, value->type);
+		llvm_store_bevalue_dest_aligned(c, temp, value);
 		llvm_value_set_address(value, temp, value->type);
 	}
 }
@@ -914,7 +913,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_ENUM:
 		case DECL_ERRTYPE:
 		case DECL_BITSTRUCT:
-			gencontext_emit_introspection_type(context, decl);
+			llvm_emit_introspection_type_from_decl(context, decl);
 			break;
 		case NON_TYPE_DECLS:
 			UNREACHABLE

@@ -1514,7 +1514,7 @@ Expr *parse_type_expression_with_path(Context *context, Path *path)
 	{
 		ASSIGN_TYPE_ELSE(type, parse_failable_type(context), poisoned_expr);
 	}
-	if (!type->virtual_type && TOKEN_IS(TOKEN_LBRACE))
+	if (TOKEN_IS(TOKEN_LBRACE))
 	{
 		return parse_type_compound_literal_expr_after_type(context, type);
 	}
@@ -1546,7 +1546,6 @@ static Expr* parse_expr_block(Context *context, Expr *left)
 }
 
 ParseRule rules[TOKEN_EOF + 1] = {
-		[TOKEN_VIRTUAL] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_BOOL] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_CHAR] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_ICHAR] = { parse_type_identifier, NULL, PREC_NONE },
@@ -1571,6 +1570,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_VOID] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_TYPEID] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_ANYERR] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_FAULT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_VARIANT] = { parse_type_identifier, NULL, PREC_NONE },
 
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_QUESTQUEST] = { NULL, parse_or_error_expr, PREC_OR_ERROR},

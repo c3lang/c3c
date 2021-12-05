@@ -1,0 +1,338 @@
+// #target: x64-darwin
+module foo;
+extern fn void printf(char*, ...);
+
+fn void test(variant x)
+{
+    switch (x.typeid)
+    {
+        case int:
+            printf("Was int\n");
+        case double:
+            printf("Was double\n");
+        case variant:
+            printf("Was variant\n");
+        case int*:
+            printf("Was int*\n");
+        default:
+            printf("Unknown type\n");
+    }
+}
+
+fn void test_all(variant... y)
+{
+    foreach (element : y)
+    {
+        test(element);
+    }
+}
+
+fn void main()
+{
+    variant x = &&1;
+    int z;
+    variant y = &z;
+    typeid g = y.typeid;
+    typeid h = x.typeid;
+    if (y.typeid == int.typeid)
+    {
+        printf("y int match\n");
+    }
+    if (x.typeid == int.typeid)
+    {
+        printf("x int match\n");
+    }
+    y = &&1.0;
+    x = &x;
+    if (y.typeid == int.typeid)
+    {
+        printf("y int match\n");
+    }
+    if (x.typeid == int.typeid)
+    {
+        printf("x int match\n");
+    }
+    test(x);
+    test(&&1.0);
+    test(&&1);
+    test(&&true);
+    printf("----\n");
+    int* df = null;
+    test_all(x, x, &&1.0, &x, &df);
+}
+
+/* #expect: foo.ll
+
+
+%variant = type { i8*, i64 }
+%"variant[]" = type { %variant*, i64 }
+
+@"int*" = weak constant i8 1
+
+define void @foo.test(i64 %0, i8* %1) #0 {
+entry:
+  %x = alloca %variant, align 8
+  %switch = alloca i64, align 8
+  %pair = bitcast %variant* %x to { i64, i8* }*
+  %2 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %pair, i32 0, i32 0
+  store i64 %0, i64* %2, align 8
+  %3 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %pair, i32 0, i32 1
+  store i8* %1, i8** %3, align 8
+  %4 = getelementptr inbounds %variant, %variant* %x, i32 0, i32 1
+  %5 = load i64, i64* %4, align 8
+  store i64 %5, i64* %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %6 = load i64, i64* %switch, align 8
+  %eq = icmp eq i64 5, %6
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str, i32 0, i32 0))
+  br label %switch.exit
+
+next_if:                                          ; preds = %switch.entry
+  %eq1 = icmp eq i64 15, %6
+  br i1 %eq1, label %switch.case2, label %next_if3
+
+switch.case2:                                     ; preds = %next_if
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.1, i32 0, i32 0))
+  br label %switch.exit
+
+next_if3:                                         ; preds = %next_if
+  %eq4 = icmp eq i64 17, %6
+  br i1 %eq4, label %switch.case5, label %next_if6
+
+switch.case5:                                     ; preds = %next_if3
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.2, i32 0, i32 0))
+  br label %switch.exit
+
+next_if6:                                         ; preds = %next_if3
+  %eq7 = icmp eq i64 ptrtoint (i8* @"int*" to i64), %6
+  br i1 %eq7, label %switch.case8, label %next_if9
+
+switch.case8:                                     ; preds = %next_if6
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.3, i32 0, i32 0))
+  br label %switch.exit
+
+next_if9:                                         ; preds = %next_if6
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if9
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.4, i32 0, i32 0))
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %switch.case8, %switch.case5, %switch.case2, %switch.case
+  ret void
+}
+
+; Function Attrs: nounwind
+define void @foo.test_all(i8* %0, i64 %1) #0 {
+entry:
+  %y = alloca %"variant[]", align 8
+  %"__idx$" = alloca i64, align 8
+  %"__len$" = alloca i64, align 8
+  %element = alloca %variant, align 8
+  %pair = bitcast %"variant[]"* %y to { i8*, i64 }*
+  %2 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 0
+  store i8* %0, i8** %2, align 8
+  %3 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 1
+  store i64 %1, i64* %3, align 8
+  store i64 0, i64* %"__idx$", align 8
+  %4 = getelementptr inbounds %"variant[]", %"variant[]"* %y, i32 0, i32 1
+  %5 = load i64, i64* %4, align 8
+  store i64 %5, i64* %"__len$", align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.body, %entry
+  %6 = load i64, i64* %"__idx$", align 8
+  %7 = load i64, i64* %"__len$", align 8
+  %lt = icmp ult i64 %6, %7
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %8 = getelementptr inbounds %"variant[]", %"variant[]"* %y, i32 0, i32 0
+  %9 = load %variant*, %variant** %8, align 8
+  %10 = load i64, i64* %"__idx$", align 8
+  %ptroffset = getelementptr inbounds %variant, %variant* %9, i64 %10
+  %11 = bitcast %variant* %element to i8*
+  %12 = bitcast %variant* %ptroffset to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %11, i8* align 8 %12, i32 16, i1 false)
+  %13 = bitcast %variant* %element to { i64, i8* }*
+  %14 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %13, i32 0, i32 0
+  %lo = load i64, i64* %14, align 8
+  %15 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %13, i32 0, i32 1
+  %hi = load i8*, i8** %15, align 8
+  call void @foo.test(i64 %lo, i8* %hi)
+  %16 = load i64, i64* %"__idx$", align 8
+  %add = add i64 %16, 1
+  store i64 %add, i64* %"__idx$", align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret void
+}
+
+; Function Attrs: nounwind
+define void @main() #0 {
+entry:
+  %x = alloca %variant, align 8
+  %taddr = alloca i32, align 4
+  %z = alloca i32, align 4
+  %y = alloca %variant, align 8
+  %g = alloca i64, align 8
+  %h = alloca i64, align 8
+  %taddr4 = alloca double, align 8
+  %taddr11 = alloca double, align 8
+  %taddr12 = alloca %variant, align 8
+  %taddr15 = alloca i32, align 4
+  %taddr16 = alloca %variant, align 8
+  %taddr19 = alloca i8, align 1
+  %taddr20 = alloca %variant, align 8
+  %df = alloca i32*, align 8
+  %vararg = alloca %"variant[]", align 8
+  %varargslots = alloca [5 x %variant], align 16
+  %taddr23 = alloca double, align 8
+  store i32 1, i32* %taddr, align 4
+  %0 = bitcast i32* %taddr to i8*
+  %1 = insertvalue %variant undef, i8* %0, 0
+  %2 = insertvalue %variant %1, i64 5, 1
+  store %variant %2, %variant* %x, align 8
+  store i32 0, i32* %z, align 4
+  %3 = bitcast i32* %z to i8*
+  %4 = insertvalue %variant undef, i8* %3, 0
+  %5 = insertvalue %variant %4, i64 5, 1
+  store %variant %5, %variant* %y, align 8
+  %6 = getelementptr inbounds %variant, %variant* %y, i32 0, i32 1
+  %7 = load i64, i64* %6, align 8
+  store i64 %7, i64* %g, align 8
+  %8 = getelementptr inbounds %variant, %variant* %x, i32 0, i32 1
+  %9 = load i64, i64* %8, align 8
+  store i64 %9, i64* %h, align 8
+  %10 = getelementptr inbounds %variant, %variant* %y, i32 0, i32 1
+  %11 = load i64, i64* %10, align 8
+  %eq = icmp eq i64 %11, 5
+  br i1 %eq, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.5, i32 0, i32 0))
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then, %entry
+  %12 = getelementptr inbounds %variant, %variant* %x, i32 0, i32 1
+  %13 = load i64, i64* %12, align 8
+  %eq1 = icmp eq i64 %13, 5
+  br i1 %eq1, label %if.then2, label %if.exit3
+
+if.then2:                                         ; preds = %if.exit
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.6, i32 0, i32 0))
+  br label %if.exit3
+
+if.exit3:                                         ; preds = %if.then2, %if.exit
+  store double 1.000000e+00, double* %taddr4, align 8
+  %14 = bitcast double* %taddr4 to i8*
+  %15 = insertvalue %variant undef, i8* %14, 0
+  %16 = insertvalue %variant %15, i64 15, 1
+  store %variant %16, %variant* %y, align 8
+  %17 = bitcast %variant* %x to i8*
+  %18 = insertvalue %variant undef, i8* %17, 0
+  %19 = insertvalue %variant %18, i64 17, 1
+  store %variant %19, %variant* %x, align 8
+  %20 = getelementptr inbounds %variant, %variant* %y, i32 0, i32 1
+  %21 = load i64, i64* %20, align 8
+  %eq5 = icmp eq i64 %21, 5
+  br i1 %eq5, label %if.then6, label %if.exit7
+
+if.then6:                                         ; preds = %if.exit3
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.7, i32 0, i32 0))
+  br label %if.exit7
+
+if.exit7:                                         ; preds = %if.then6, %if.exit3
+  %22 = getelementptr inbounds %variant, %variant* %x, i32 0, i32 1
+  %23 = load i64, i64* %22, align 8
+  %eq8 = icmp eq i64 %23, 5
+  br i1 %eq8, label %if.then9, label %if.exit10
+
+if.then9:                                         ; preds = %if.exit7
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.8, i32 0, i32 0))
+  br label %if.exit10
+
+if.exit10:                                        ; preds = %if.then9, %if.exit7
+  %24 = bitcast %variant* %x to { i64, i8* }*
+  %25 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %24, i32 0, i32 0
+  %lo = load i64, i64* %25, align 8
+  %26 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %24, i32 0, i32 1
+  %hi = load i8*, i8** %26, align 8
+  call void @foo.test(i64 %lo, i8* %hi)
+  store double 1.000000e+00, double* %taddr11, align 8
+  %27 = bitcast double* %taddr11 to i8*
+  %28 = insertvalue %variant undef, i8* %27, 0
+  %29 = insertvalue %variant %28, i64 15, 1
+  store %variant %29, %variant* %taddr12, align 8
+  %30 = bitcast %variant* %taddr12 to { i64, i8* }*
+  %31 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %30, i32 0, i32 0
+  %lo13 = load i64, i64* %31, align 8
+  %32 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %30, i32 0, i32 1
+  %hi14 = load i8*, i8** %32, align 8
+  call void @foo.test(i64 %lo13, i8* %hi14)
+  store i32 1, i32* %taddr15, align 4
+  %33 = bitcast i32* %taddr15 to i8*
+  %34 = insertvalue %variant undef, i8* %33, 0
+  %35 = insertvalue %variant %34, i64 5, 1
+  store %variant %35, %variant* %taddr16, align 8
+  %36 = bitcast %variant* %taddr16 to { i64, i8* }*
+  %37 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %36, i32 0, i32 0
+  %lo17 = load i64, i64* %37, align 8
+  %38 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %36, i32 0, i32 1
+  %hi18 = load i8*, i8** %38, align 8
+  call void @foo.test(i64 %lo17, i8* %hi18)
+  store i8 1, i8* %taddr19, align 1
+  %39 = insertvalue %variant undef, i8* %taddr19, 0
+  %40 = insertvalue %variant %39, i64 2, 1
+  store %variant %40, %variant* %taddr20, align 8
+  %41 = bitcast %variant* %taddr20 to { i64, i8* }*
+  %42 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %41, i32 0, i32 0
+  %lo21 = load i64, i64* %42, align 8
+  %43 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %41, i32 0, i32 1
+  %hi22 = load i8*, i8** %43, align 8
+  call void @foo.test(i64 %lo21, i8* %hi22)
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.9, i32 0, i32 0))
+  store i32* null, i32** %df, align 8
+  %44 = getelementptr inbounds [5 x %variant], [5 x %variant]* %varargslots, i64 0, i64 0
+  %45 = bitcast %variant* %44 to i8*
+  %46 = bitcast %variant* %x to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %45, i8* align 8 %46, i32 16, i1 false)
+  %47 = getelementptr inbounds [5 x %variant], [5 x %variant]* %varargslots, i64 0, i64 1
+  %48 = bitcast %variant* %47 to i8*
+  %49 = bitcast %variant* %x to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %48, i8* align 8 %49, i32 16, i1 false)
+  store double 1.000000e+00, double* %taddr23, align 8
+  %50 = bitcast double* %taddr23 to i8*
+  %51 = insertvalue %variant undef, i8* %50, 0
+  %52 = insertvalue %variant %51, i64 15, 1
+  %53 = getelementptr inbounds [5 x %variant], [5 x %variant]* %varargslots, i64 0, i64 2
+  store %variant %52, %variant* %53, align 16
+  %54 = bitcast %variant* %x to i8*
+  %55 = insertvalue %variant undef, i8* %54, 0
+  %56 = insertvalue %variant %55, i64 17, 1
+  %57 = getelementptr inbounds [5 x %variant], [5 x %variant]* %varargslots, i64 0, i64 3
+  store %variant %56, %variant* %57, align 16
+  %58 = bitcast i32** %df to i8*
+  %59 = insertvalue %variant undef, i8* %58, 0
+  %60 = insertvalue %variant %59, i64 ptrtoint (i8* @"int*" to i64), 1
+  %61 = getelementptr inbounds [5 x %variant], [5 x %variant]* %varargslots, i64 0, i64 4
+  store %variant %60, %variant* %61, align 16
+  %62 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 1
+  store i64 5, i64* %62, align 8
+  %63 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 0
+  %64 = bitcast [5 x %variant]* %varargslots to %variant*
+  store %variant* %64, %variant** %63, align 8
+  %65 = bitcast %"variant[]"* %vararg to { i8*, i64 }*
+  %66 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %65, i32 0, i32 0
+  %lo24 = load i8*, i8** %66, align 8
+  %67 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %65, i32 0, i32 1
+  %hi25 = load i64, i64* %67, align 8
+  call void @foo.test_all(i8* %lo24, i64 %hi25)
+  ret void
+}
