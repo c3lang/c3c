@@ -1,0 +1,23 @@
+// #target: x64-darwin
+module foo;
+
+char[8192] stack;
+char* x = &stack[0] + 1000;
+
+fn void test()
+{
+    static char[2] y;
+    static char* z = &y[1];
+}
+
+/* #expect: foo.ll
+
+@foo.stack = global [8192 x i8] zeroinitializer, align 16
+@foo.x = global i8* getelementptr inbounds ([8192 x i8], [8192 x i8]* @foo.stack, i64 0, i64 1000), align 8
+@test.y = hidden global [2 x i8] zeroinitializer, align 1
+@test.z = hidden global i8* getelementptr inbounds ([2 x i8], [2 x i8]* @test.y, i64 0, i64 1), align 8
+; Function Attrs: nounwind
+define void @foo.test() #0 {
+entry:
+  ret void
+}

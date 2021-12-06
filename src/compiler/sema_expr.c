@@ -332,10 +332,22 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_SCOPED_EXPR:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_MACRO_BLOCK:
-		case EXPR_IDENTIFIER:
 		case EXPR_RETHROW:
 		case EXPR_UNDEF:
 			return false;
+		case EXPR_IDENTIFIER:
+			if (expr->identifier_expr.decl->decl_kind != DECL_VAR) return true;
+			switch (expr->identifier_expr.decl->var.kind)
+			{
+				case VARDECL_CONST:
+				case VARDECL_PARAM_CT_TYPE:
+				case VARDECL_LOCAL_CT_TYPE:
+				case VARDECL_LOCAL_CT:
+				case VARDECL_PARAM_CT:
+					return true;
+				default:
+					return false;
+			}
 		case EXPR_EXPRESSION_LIST:
 			return expr_list_is_constant_eval(expr->expression_list, eval_kind);
 		case EXPR_FAILABLE:
@@ -358,10 +370,32 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			if (expr->slice_expr.end && !expr_is_constant_eval(expr->slice_expr.end, CONSTANT_EVAL_FOLDABLE)) return false;
 			return expr_is_constant_eval(expr->slice_expr.expr, eval_kind);
 		case EXPR_SUBSCRIPT:
-		case EXPR_SUBSCRIPT_ADDR:
 			if (!expr_is_constant_eval(expr->subscript_expr.index, eval_kind)) return false;
 			expr = expr->subscript_expr.expr;
 			goto RETRY;
+		case EXPR_SUBSCRIPT_ADDR:
+			if (!expr_is_constant_eval(expr->subscript_expr.index, eval_kind)) return false;
+			expr = expr->subscript_expr.expr;
+			if (expr->expr_kind == EXPR_IDENTIFIER)
+			{
+				Decl *decl = expr->identifier_expr.decl;
+				if (decl->decl_kind == DECL_VAR)
+				{
+					switch (decl->var.kind)
+					{
+						case VARDECL_CONST:
+						case VARDECL_GLOBAL:
+							break;
+						case VARDECL_LOCAL:
+							if (decl->var.is_static) break;
+						default:
+							return false;
+					}
+					return eval_kind != CONSTANT_EVAL_FOLDABLE;
+				}
+			}
+			goto RETRY;
+
 		case EXPR_TERNARY:
 			assert(!expr_is_constant_eval(expr->ternary_expr.cond, eval_kind));
 			return false;
