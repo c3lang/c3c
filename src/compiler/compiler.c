@@ -452,7 +452,7 @@ void compiler_compile(void)
 			if (!obj_format_linking_supported(platform_target.object_format) || !linker(active_target.name, obj_files,
 			                                                                            output_file_count))
 			{
-				printf("No linking is performed due to missing linker support.");
+				printf("No linking is performed due to missing linker support.\n");
 				active_target.run_after_compile = false;
 			}
 		}
