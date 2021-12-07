@@ -12,7 +12,7 @@
 #define REMINDER(_string, ...) do {} while (0)
 #define DEBUG_LOG(_string, ...) do {} while(0)
 #else
-#define REMINDER(_string, ...) do { printf("TODO: %s -> in %s @ %s:%d\n", _string, __func__, __FILE__, __LINE__ , ##__VA_ARGS__); } while(0)
+#define REMINDER(_string, ...) do { if (!debug_log) break; printf("TODO: %s -> in %s @ %s:%d\n", _string, __func__, __FILE__, __LINE__ , ##__VA_ARGS__); } while(0)
 #define DEBUG_LOG(_string, ...) \
   do {                          \
     if (!debug_log) break; \
