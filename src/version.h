@@ -1,1 +1,1 @@
-#define COMPILER_VERSION "PRE.4"
+#define COMPILER_VERSION "PRE.5"

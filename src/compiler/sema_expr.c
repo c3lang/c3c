@@ -24,6 +24,21 @@ static inline void expr_set_as_const_list(Expr *expr, ConstInitializer *list)
 	expr->const_expr.list = list;
 }
 
+static bool sema_decay_array_pointers(Expr *expr)
+{
+	Type *expr_type = expr->type->canonical;
+	if (expr_type->type_kind != TYPE_POINTER) return true;
+	switch (expr_type->pointer->type_kind)
+	{
+		case TYPE_ARRAY:
+			return cast_implicit(expr, type_get_ptr(expr_type->pointer->array.base));
+		case TYPE_VECTOR:
+			return cast_implicit(expr, type_get_ptr(expr_type->pointer->vector.base));
+		default:
+			return true;
+	}
+}
+
 int BINOP_PREC_REQ[BINARYOP_LAST + 1] =
 {
 		// bitwise operations
@@ -2245,6 +2260,22 @@ static inline bool sema_expr_analyse_call(Context *context, Expr *expr)
 	return sema_expr_analyse_general_call(context, expr, decl, struct_var, macro, failable);
 }
 
+static void sema_deref_array_pointers(Expr *expr)
+{
+	Type *expr_type = expr->type->canonical;
+	if (expr_type->type_kind == TYPE_POINTER)
+	{
+		switch (expr_type->pointer->type_kind)
+		{
+			case TYPE_ARRAY:
+			case TYPE_VECTOR:
+				expr_insert_deref(expr);
+				break;
+			default:
+				break;
+		}
+	}
+}
 
 static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_expr, bool end_index, bool from_end)
 {
@@ -2342,6 +2373,7 @@ static inline bool sema_expr_analyse_subscript(Context *context, Expr *expr, boo
 	// 1. Evaluate the expression to index.
 	Expr *subscripted = expr->subscript_expr.expr;
 	if (!sema_analyse_expr_lvalue(context, subscripted)) return false;
+	sema_deref_array_pointers(subscripted);
 
 	// 2. Evaluate the index.
 	Expr *index = expr->subscript_expr.index;
@@ -2351,6 +2383,7 @@ static inline bool sema_expr_analyse_subscript(Context *context, Expr *expr, boo
 	bool failable = IS_FAILABLE(subscripted);
 
 	Type *underlying_type = type_flatten(subscripted->type);
+
 	Type *current_type = underlying_type;
 	Expr *current_expr = subscripted;
 
@@ -4314,6 +4347,9 @@ static bool sema_expr_analyse_add_sub_assign(Context *context, Expr *expr, Expr 
 	if (left_type_canonical->type_kind == TYPE_POINTER)
 	{
 
+		if (!sema_decay_array_pointers(left)) return false;
+		expr->type = left->type;
+
 		// 7. Finally, check that the right side is indeed an integer.
 		if (!type_is_integer(right->type->canonical))
 		{
@@ -4430,9 +4466,15 @@ static bool sema_expr_analyse_sub(Context *context, Expr *expr, Expr *left, Expr
 	// 2. Handle the ptr - x and ptr - other_pointer
 	if (left_type->type_kind == TYPE_POINTER)
 	{
+		if (!sema_decay_array_pointers(left)) return false;
+		left_type = type_no_fail(left->type)->canonical;
+
 		// 3. ptr - other pointer
 		if (right_type->type_kind == TYPE_POINTER)
 		{
+			if (!sema_decay_array_pointers(right)) return false;
+			right_type = type_no_fail(right->type)->canonical;
+
 			// 3a. Require that both types are the same.
 			unify_voidptr(left, right, &left_type, &right_type);
 			if (left_type != right_type)
@@ -4544,6 +4586,8 @@ static bool sema_expr_analyse_add(Context *context, Expr *expr, Expr *left, Expr
 	//    so check if we want to do the normal pointer add special handling.
 	if (left_type->type_kind == TYPE_POINTER)
 	{
+		if (!sema_decay_array_pointers(left)) return false;
+
 		// 3a. Check that the other side is an integer of some sort.
 		if (!type_is_integer(right_type))
 		{
@@ -5045,6 +5089,7 @@ static bool sema_expr_analyse_comp(Context *context, Expr *expr, Expr *left, Exp
 		}
 		if (type_flatten(max)->type_kind == TYPE_POINTER)
 		{
+
 			// Only comparisons between the same type is allowed. Subtypes not allowed.
 			if (left_type != right_type && left_type != type_voidptr && right_type != type_voidptr)
 			{
@@ -5474,6 +5519,8 @@ static inline bool sema_expr_analyse_incdec(Context *context, Expr *expr)
 		SEMA_ERROR(inner, "The expression must be a number or a pointer.");
 		return false;
 	}
+
+	if (!sema_decay_array_pointers(inner)) return false;
 
 	// 6. Done, the result is same as the inner type.
 	expr->type = inner->type;
