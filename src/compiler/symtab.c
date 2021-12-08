@@ -57,6 +57,7 @@ const char *kw_next;
 const char *kw_nan;
 const char *kw_ordinal;
 const char *kw_param;
+const char *kw_ptr;
 const char *kw_pure;
 const char *kw_reqparse;
 const char *kw_require;
@@ -136,6 +137,7 @@ void symtab_init(uint32_t capacity)
 	kw_next = KW_DEF("next");
 	kw_ordinal = KW_DEF("ordinal");
 	kw_param = KW_DEF("param");
+	kw_ptr = KW_DEF("ptr");
 	kw_pure = KW_DEF("pure");
 	kw_require = KW_DEF("require");
 	kw_std = KW_DEF("std");

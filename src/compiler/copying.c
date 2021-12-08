@@ -127,6 +127,7 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_FAILABLE:
 		case EXPR_GROUP:
 		case EXPR_TYPEOFANY:
+		case EXPR_PTR:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
 		case EXPR_COND:

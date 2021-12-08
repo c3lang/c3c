@@ -402,6 +402,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_TRY:
 		case EXPR_CATCH:
+		case EXPR_PTR:
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_TYPEID:
@@ -2954,6 +2955,27 @@ CHECK_DEEPER:
 		if (flat_type->type_kind == TYPE_ARRAY)
 		{
 			expr_rewrite_to_int_const(expr, type_isize, flat_type->array.len, true);
+			return true;
+		}
+	}
+
+	// Hard coded ptr on subarrays and variant
+	if (!is_macro && kw == kw_ptr)
+	{
+		if (flat_type->type_kind == TYPE_SUBARRAY)
+		{
+			expr->expr_kind = EXPR_PTR;
+			expr->inner_expr = parent;
+			expr->type = type_get_ptr(flat_type->array.base);
+			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		}
+		if (flat_type->type_kind == TYPE_ANY)
+		{
+			expr->expr_kind = EXPR_PTR;
+			expr->inner_expr = parent;
+			expr->type = type_voidptr;
+			expr->resolve_status = RESOLVE_DONE;
 			return true;
 		}
 	}
@@ -6655,6 +6677,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_CATCH_UNWRAP:
+		case EXPR_PTR:
 			UNREACHABLE
 		case EXPR_DECL:
 			if (!sema_analyse_var_decl(context, expr->decl_expr, true)) return false;

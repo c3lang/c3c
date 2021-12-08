@@ -1539,6 +1539,7 @@ extern Type *type_anyfail;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *builtin_list[NUMBER_OF_BUILTINS];
+
 extern const char *kw_std;
 extern const char *kw_max;
 extern const char *kw_min;
@@ -1562,6 +1563,7 @@ extern const char *kw_reqparse;
 extern const char *kw_require;
 extern const char *kw_pure;
 extern const char *kw_param;
+extern const char *kw_ptr;
 extern const char *kw_errors;
 extern const char *kw___ceil;
 extern const char *kw___round;

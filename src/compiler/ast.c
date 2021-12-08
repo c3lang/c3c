@@ -221,6 +221,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:
 		case EXPR_NOP:
+		case EXPR_PTR:
 			return true;
 		case EXPR_BITASSIGN:
 			return false;

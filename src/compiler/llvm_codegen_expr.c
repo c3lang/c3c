@@ -1133,14 +1133,14 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			}
 			break;
 		case CAST_ANYPTR:
-			llvm_value_fold_failable(c, value);
+			llvm_emit_any_pointer(c, value, value);
 			if (llvm_value_is_addr(value))
 			{
-				llvm_emit_any_pointer(c, value, value);
+				value->value = LLVMBuildBitCast(c->builder, value->value, llvm_get_ptr_type(c, to_type), "");
 			}
 			else
 			{
-				value->value = LLVMBuildExtractValue(c->builder, value->value, 0, "");
+				value->value = LLVMBuildBitCast(c->builder, value->value, llvm_get_type(c, to_type), "");
 			}
 			break;
 		case CAST_XIERR:
@@ -1177,15 +1177,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			llvm_emit_arr_to_subarray_cast(c, value, to_type);
 			break;
 		case CAST_SAPTR:
-			llvm_value_fold_failable(c, value);
-			if (llvm_value_is_addr(value))
-			{
-				llvm_emit_subarray_pointer(c, value, value);
-			}
-			else
-			{
-				value->value = LLVMBuildExtractValue(c->builder, value->value, 0, "");
-			}
+			llvm_emit_subarray_pointer(c, value, value);
 			break;
 		case CAST_ARRPTR:
 			TODO
@@ -3836,6 +3828,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values, AlignSize alignment);
 
 
+
 static void llvm_expand_array_to_args(GenContext *c, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef **values, AlignSize alignment)
 {
 	LLVMTypeRef array_type = llvm_get_type(c, param_type);
@@ -3985,30 +3978,33 @@ void llvm_emit_subarray_len(GenContext *c, BEValue *subarray, BEValue *len)
 	llvm_value_set_address_align(len, len_addr, type_usize, alignment);
 }
 
-void llvm_emit_subarray_pointer(GenContext *c, BEValue *subarray, BEValue *pointer)
+void llvm_emit_subarray_pointer(GenContext *c, BEValue *value, BEValue *pointer)
 {
-	llvm_value_addr(c, subarray);
-	AlignSize alignment = 0;
-	LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
-	                                                     subarray->value,
-	                                                     llvm_get_type(c, subarray->type),
-	                                                     0,
-	                                                     subarray->alignment,
-	                                                     &alignment);
-	llvm_value_set_address_align(pointer, pointer_addr, type_get_ptr(subarray->type->array.base), alignment);
+	assert(value->type->type_kind == TYPE_SUBARRAY);
+	Type *ptr_type = type_get_ptr(value->type->array.base);
+	if (value->kind == BE_ADDRESS)
+	{
+		AlignSize alignment;
+		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, value->value, llvm_get_type(c, value->type), 0, value->alignment, &alignment);
+		llvm_value_set_address_align(pointer, ptr, ptr_type, alignment);
+		return;
+	}
+	LLVMValueRef ptr = llvm_emit_extract_value(c, value->value, 0);
+	llvm_value_set(pointer, ptr, ptr_type);
 }
 
-static void llvm_emit_any_pointer(GenContext *c, BEValue *any, BEValue *pointer)
+static void llvm_emit_any_pointer(GenContext *c, BEValue *value, BEValue *pointer)
 {
-	llvm_value_addr(c, any);
-	AlignSize alignment = 0;
-	LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
-														 any->value,
-														 llvm_get_type(c, type_voidptr),
-														 0,
-														 any->alignment,
-														 &alignment);
-	llvm_value_set_address_align(pointer, pointer_addr, type_voidptr, alignment);
+	llvm_value_fold_failable(c, value);
+	if (value->kind == BE_ADDRESS)
+	{
+		AlignSize alignment;
+		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, value->value, llvm_get_type(c, value->type), 0, value->alignment, &alignment);
+		llvm_value_set_address_align(pointer, ptr, type_voidptr, alignment);
+		return;
+	}
+	LLVMValueRef ptr = llvm_emit_extract_value(c, value->value, 0);
+	llvm_value_set(pointer, ptr, type_voidptr);
 }
 
 void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_pointer, unsigned index)
@@ -5109,6 +5105,18 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_set(value, addr.value, type_anyerr);
 }
 
+static inline void llvm_emit_ptr(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->inner_expr);
+	if (value->type == type_any)
+	{
+		llvm_emit_any_pointer(c, value, value);
+		return;
+	}
+	assert(value->type->type_kind == TYPE_SUBARRAY);
+	llvm_emit_subarray_pointer(c, value, value);
+}
+
 void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 {
 	Expr **exprs = expr->try_unwrap_chain_expr;
@@ -5186,6 +5194,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_UNDEF:
 			// Should never reach this.
 			UNREACHABLE
+		case EXPR_PTR:
+			llvm_emit_ptr(c, value, expr);
+			return;
 		case EXPR_BUILTIN:
 			TODO
 		case EXPR_DECL:
@@ -5290,4 +5301,5 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	}
 	UNREACHABLE
 }
+
 
