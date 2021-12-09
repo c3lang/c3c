@@ -452,6 +452,7 @@ bool sema_add_local(Context *context, Decl *decl)
 	decl->module = context->module;
 	// Ignore synthetic locals.
 	if (decl->name_token.index == NO_TOKEN_ID.index) return true;
+	if (decl->decl_kind == DECL_VAR && decl->var.shadow) goto ADD_VAR;
 	Decl *other = sema_resolve_normal_symbol(context, decl->name_token, NULL, false);
 	assert(!other || other->module);
 	if (other && other->module == context->module)
@@ -461,6 +462,7 @@ bool sema_add_local(Context *context, Decl *decl)
 		decl_poison(other);
 		return false;
 	}
+ADD_VAR:;
 	Decl ***vars = &context->active_function_for_analysis->func_decl.annotations->vars;
 	unsigned num_vars = vec_size(*vars);
 	if (num_vars == MAX_LOCALS - 1)

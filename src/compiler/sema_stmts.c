@@ -1858,10 +1858,10 @@ static inline bool sema_check_value_case(Context *context, Type *switch_type, As
 	return true;
 }
 
-static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases)
+static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, Decl *switch_decl)
 {
 	bool use_type_id = false;
-	if (!type_is_comparable(switch_type))
+	if (!type_is_comparable(switch_type) && switch_type != type_any)
 	{
 		sema_error_range(expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
 		return false;
@@ -1876,6 +1876,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 	unsigned case_count = vec_size(cases);
 	bool success = true;
 	bool max_ranged = false;
+	bool type_switch = switch_type == type_typeid;
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *stmt = cases[i];
@@ -1884,7 +1885,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 		switch (stmt->ast_kind)
 		{
 			case AST_CASE_STMT:
-				if (switch_type->type_kind == TYPE_TYPEID)
+				if (type_switch)
 				{
 					if (!sema_check_type_case(context, switch_type, stmt, cases, i))
 					{
@@ -1926,6 +1927,20 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 			Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
 			PUSH_NEXT(next, statement);
 			Ast *body = stmt->case_stmt.body;
+			if (stmt->ast_kind == AST_CASE_STMT && body && type_switch && switch_decl && stmt->case_stmt.expr->expr_kind == EXPR_CONST)
+			{
+				Type *type = type_get_ptr(stmt->case_stmt.expr->const_expr.typeid);
+				Decl *alias = decl_new_var(switch_decl->name_token,
+										   type_info_new_base(type, stmt->case_stmt.expr->span),
+										   VARDECL_LOCAL, VISIBLE_LOCAL);
+				Expr *ident_converted = expr_variable(switch_decl);
+				if (!cast(ident_converted, type)) return false;
+				alias->var.init_expr = ident_converted;
+				alias->var.shadow = true;
+				Ast *decl_ast = new_ast(AST_DECLARE_STMT, alias->span);
+				decl_ast->declare_stmt = alias;
+				vec_insert_first(body->compound_stmt.stmts, decl_ast);
+			}
 			success = success && (!body || sema_analyse_compound_statement_no_scope(context, body));
 			POP_BREAK();
 			POP_NEXT();
@@ -2062,10 +2077,29 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 		Expr *cond = statement->switch_stmt.cond;
 		Type *switch_type;
 
+		Decl *last_decl = NULL;
 		if (statement->ast_kind == AST_SWITCH_STMT)
 		{
 			if (!sema_analyse_cond(context, cond, false, false)) return false;
-			switch_type = VECLAST(cond->cond_expr)->type->canonical;
+			Expr *last = VECLAST(cond->cond_expr);
+			switch_type = last->type->canonical;
+			if (switch_type == type_any)
+			{
+				if (last->expr_kind == EXPR_DECL)
+				{
+					last_decl = last->decl_expr;
+				}
+				else if (last->expr_kind == EXPR_IDENTIFIER)
+				{
+					last_decl = last->identifier_expr.decl;
+				}
+				Expr *inner = expr_copy(last);
+				last->type = type_typeid;
+				last->expr_kind = EXPR_TYPEOFANY;
+				last->inner_expr = inner;
+				switch_type = type_typeid;
+				cond->type = type_typeid;
+			}
 		}
 		else
 		{
@@ -2075,7 +2109,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 		statement->switch_stmt.defer = context->active_scope.defer_last;
 		if (!sema_analyse_switch_body(context, statement, cond ? cond->span : statement->span,
 		                              switch_type->canonical,
-		                              statement->switch_stmt.cases))
+		                              statement->switch_stmt.cases, last_decl))
 		{
 			return SCOPE_POP_ERROR();
 		}

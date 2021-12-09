@@ -1,0 +1,33 @@
+// #target: x64-darwin
+module foo;
+
+extern fn void printf(char*, ...);
+
+fn void test(variant z)
+{
+    switch (z)
+    {
+        case int:
+            printf("int: %d\n", *z);
+            *z = 3;
+        case double:
+            printf("double %f\n", *z);
+        default:
+            printf("Unknown type.\n");
+    }
+    if (z.typeid == int.typeid)
+    {
+        printf("int: %d\n", *(int*)(z));
+    }
+}
+fn int main()
+{
+    test(&&123.0);
+    test(&&1);
+    test(&&true);
+    return 0;
+}
+
+/* expect: foo.ll
+
+foekf

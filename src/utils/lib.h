@@ -387,7 +387,6 @@ static inline void vec_resize(void *vec, uint32_t new_size)
 	VHeader_ *header = vec;
 	header[-1].size = new_size;
 }
-
 static inline void vec_pop(void *vec)
 {
 	assert(vec);
@@ -439,6 +438,14 @@ static inline void* expand_(void *vec, size_t element_size)
 	void *__temp = expand_((vec_), sizeof(*(vec_))); \
 	(vec_) = __temp;           \
 	(vec_)[vec_size(vec_) - 1] = value_; \
+ } while (0)
+
+#define vec_insert_first(vec_, value_) do { \
+ void *__temp = expand_((vec_), sizeof(*(vec_))); \
+ (vec_) = __temp;                           \
+ unsigned __xsize = vec_size(vec_); \
+ for (unsigned __x = __xsize - 1; __x > 0; __x--) (vec_)[__x] = (vec_)[__x - 1]; \
+ (vec_)[0] = value_;       \
  } while (0)
 
 #if IS_GCC || IS_CLANG
