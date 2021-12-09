@@ -285,7 +285,7 @@ const char *concat_string_parts(const char **args)
 void platform_linker(const char *output_file, const char **files, unsigned file_count)
 {
 	const char **parts = NULL;
-	vec_add(parts, "cc");
+	vec_add(parts, active_target.cc);
 	VECEACH(active_target.link_args, i)
 	{
 		vec_add(parts, active_target.link_args[i]);
@@ -319,6 +319,38 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	}
 	printf("Program linked to executable '%s'.\n", output_file);
 }
+
+void platform_compiler(const char **files, unsigned file_count)
+{
+	const char **parts = NULL;
+	vec_add(parts, active_target.cc);
+	switch (platform_target.pie)
+	{
+		case PIE_DEFAULT:
+			UNREACHABLE
+		case PIE_NONE:
+			vec_add(parts, "-fno-PIE");
+			vec_add(parts, "-fno-pie");
+			break;
+		case PIE_SMALL:
+			vec_add(parts, "-fpie");
+			break;
+		case PIE_BIG:
+			vec_add(parts, "-fPIE");
+			break;
+	}
+	vec_add(parts, "-c");
+	for (unsigned i = 0; i < file_count; i++)
+	{
+		vec_add(parts, files[i]);
+	}
+	const char *output = concat_string_parts(parts);
+	if (system(output) != 0)
+	{
+		error_exit("Failed to compile c sources using command '%s'.\n", output);
+	}
+}
+
 bool linker(const char *output_file, const char **files, unsigned file_count)
 {
 	return link_exe(output_file, files, file_count);

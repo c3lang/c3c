@@ -242,6 +242,9 @@ typedef struct
 	CompilerBackend backend;
 	uint32_t symtab_size;
 	uint32_t switchrange_max_size;
+	const char *cc;
+	const char **csource_dirs;
+	const char **csources;
 	struct
 	{
 		SoftFloat soft_float : 3;

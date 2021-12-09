@@ -33,7 +33,7 @@ const char* find_lib_dir(void);
 char *read_file(const char *path, size_t *return_size);
 void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
 void file_find_top_dir();
-void file_add_wildcard_files(const char ***files, const char *path, bool recursive);
+void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char *suffix1, const char *suffix2);
 void *cmalloc(size_t size);
 void memory_init(void);
 void memory_release();

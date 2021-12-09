@@ -303,7 +303,7 @@ void compiler_compile(void)
 
 	if (global_context.lib_dir)
 	{
-		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true);
+		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true, ".c3", ".c3i");
 	}
 	bool has_error = false;
 	VECEACH(global_context.sources, i)
@@ -417,8 +417,28 @@ void compiler_compile(void)
 		error_exit("No output files found.");
 	}
 
+	unsigned cfiles = vec_size(active_target.csources);
 	CompileData *compile_data = malloc(sizeof(CompileData) * output_file_count);
-	const char **obj_files = malloc(sizeof(char*) * output_file_count);
+	const char **obj_files = malloc(sizeof(char*) * (output_file_count + cfiles));
+
+	if (cfiles)
+	{
+		platform_compiler(active_target.csources, cfiles);
+		for (int i = 0; i < cfiles; i++)
+		{
+			char *filename = NULL;
+			char *dir = NULL;
+			bool split_worked = filenamesplit(active_target.csources[i], &filename, &dir);
+			assert(split_worked);
+			free(dir);
+			size_t len = strlen(filename);
+			// .c -> .o (quick hack to fix the name on linux)
+			filename[len - 1] = 'o';
+			obj_files[output_file_count + i] = filename;
+		}
+
+	}
+
 
 	TaskQueueRef queue = taskqueue_create(16);
 
@@ -439,6 +459,7 @@ void compiler_compile(void)
 		assert(obj_files[i] || !create_exe);
 	}
 
+	output_file_count += cfiles;
 	free(compile_data);
 
 	if (create_exe)
@@ -466,12 +487,14 @@ void compiler_compile(void)
 	exit_compiler(COMPILER_SUCCESS_EXIT);
 }
 
-static void target_expand_source_names(BuildTarget *target)
+static const char **target_expand_source_names(const char** dirs, const char *suffix1, const char *suffix2, bool error_on_mismatch)
 {
 	const char **files = NULL;
-	VECEACH(target->source_dirs, i)
+	size_t len1 = strlen(suffix1);
+	size_t len2 = strlen(suffix2);
+	VECEACH(dirs, i)
 	{
-		const char *name = target->source_dirs[i];
+		const char *name = dirs[i];
 		size_t name_len = strlen(name);
 		if (name_len < 1) goto INVALID_NAME;
 		if (name[name_len - 1] == '*')
@@ -480,7 +503,7 @@ static void target_expand_source_names(BuildTarget *target)
 			{
 				char *path = strdup(name);
 				path[name_len - 1] = '\0';
-				file_add_wildcard_files(&files, path, false);
+				file_add_wildcard_files(&files, path, false, suffix1, suffix2);
 				free(path);
 				continue;
 			}
@@ -489,21 +512,22 @@ static void target_expand_source_names(BuildTarget *target)
 			{
 				char *path = strdup(name);
 				path[name_len - 2] = '\0';
-				file_add_wildcard_files(&files, path, true);
+				file_add_wildcard_files(&files, path, true, suffix1, suffix2);
 				free(path);
 				continue;
 			}
 			goto INVALID_NAME;
 		}
 		if (name_len < 4) goto INVALID_NAME;
-		if (strcmp(&name[name_len - 3], ".c3") != 0 &&
-		    (name_len < 5 || strcmp(&name[name_len - 4], ".c3t") != 0)) goto INVALID_NAME;
+		if (strcmp(&name[name_len - len1], suffix1) != 0 &&
+		    (name_len < 5 || strcmp(&name[name_len - len2], suffix2) != 0)) goto INVALID_NAME;
 		vec_add(files, name);
 		continue;
 		INVALID_NAME:
-		error_exit("File names must end with .c3 or they cannot be compiled: '%s' is invalid.", name);
+		if (!error_on_mismatch) continue;
+		error_exit("File names must end with %s or they cannot be compiled: '%s' is invalid.", name, suffix1);
 	}
-	target->sources = files;
+	return files;
 }
 
 void compile_target(BuildOptions *options)
@@ -520,7 +544,11 @@ void compile_file_list(BuildOptions *options)
 
 void compile()
 {
-	target_expand_source_names(&active_target);
+	active_target.sources = target_expand_source_names(active_target.source_dirs, ".c3", ".c3t", true);
+	if (active_target.csource_dirs)
+	{
+		active_target.csources = target_expand_source_names(active_target.csource_dirs, ".c", ".c", false);
+	}
 	global_context.sources = active_target.sources;
 	symtab_init(active_target.symtab_size ? active_target.symtab_size : 64 * 1024);
 	target_setup(&active_target);

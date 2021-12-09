@@ -134,10 +134,8 @@ void project_add_target(Project *project, TomlValue *wrapped_table, const char *
 	target->arch_os_target = ARCH_OS_TARGET_DEFAULT;
 	target->debug_info = DEBUG_INFO_NONE;
 	target->symtab_size = DEFAULT_SYMTAB_SIZE;
-
 	vec_add(project->targets, target);
 	TomlTable *table = wrapped_table->value.table;
-
 	target->name = get_valid_string(table, "name", type, true);
 	VECEACH(project->targets, i)
 	{
@@ -148,6 +146,10 @@ void project_add_target(Project *project, TomlValue *wrapped_table, const char *
 			error_exit("More %s contained more than one target with the name %s. Please make all target names unique.", PROJECT_TOML, target->name);
 		}
 	}
+	target->cc = get_valid_string(table, "cc", type, false);
+	if (!target->cc) target->cc = "cc";
+	target->csource_dirs = get_valid_array(table, "csources", type, false);
+
 	type = strformat("%s %s", type, target->name);
 	target->version = get_valid_string(table, "version", type, false);
 	if (!target->version) target->version = "1.0.0";

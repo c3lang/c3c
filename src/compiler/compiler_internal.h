@@ -2462,6 +2462,7 @@ static inline AlignSize type_min_alignment(AlignSize a, AlignSize b)
 bool obj_format_linking_supported(ObjectFormatType format_type);
 bool linker(const char *output_file, const char **files, unsigned file_count);
 void platform_linker(const char *output_file, const char **files, unsigned file_count);
+void platform_compiler(const char **files, unsigned file_count);
 
 #define CAT(a,b) CAT2(a,b) // force expand
 #define CAT2(a,b) a##b // actually concatenate

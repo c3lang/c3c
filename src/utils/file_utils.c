@@ -278,7 +278,7 @@ void file_find_top_dir()
 	}
 }
 
-void file_add_wildcard_files(const char ***files, const char *path, bool recursive)
+void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char *suffix1, const char *suffix2)
 {
 #ifdef _MSC_VER
 	DIR *dir = opendir(strip_drive_prefix(path));
@@ -291,13 +291,15 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 		error_exit("Can't open the directory '%s'. Please check the paths. %s", path, strerror(errno));
 	}
 	struct dirent *ent;
+	size_t len1 = strlen(suffix1);
+	size_t len2 = strlen(suffix2);
 	while ((ent = readdir(dir)))
 	{
 		size_t namelen = strlen(ent->d_name);
 		if (namelen < 3) continue;
 
 		// Doesn't end with .c3
-		if (strncmp(&ent->d_name[namelen - 3], ".c3", 3) != 0)
+		if (strncmp(&ent->d_name[namelen - len1], suffix1, len1) != 0 && strncmp(&ent->d_name[namelen - len2], suffix2, len2) != 0)
 		{
 			char *new_path = NULL;
 			char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
@@ -315,7 +317,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 			is_directory = S_ISDIR(st.st_mode);
 			if (is_directory && ent->d_name[0] != '.' && recursive)
 			{
-				file_add_wildcard_files(files, new_path, recursive);
+				file_add_wildcard_files(files, new_path, recursive, suffix1, suffix2);
 			}
 			free(new_path);
 			continue;

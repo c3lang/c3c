@@ -8,3 +8,7 @@ warnings = ["no-unused"]
 sources = ["./**"]
 # libraries to use
 libs = []
+# c compiler
+cc = "cc"
+# c sources
+csources = ["./csource/**"]
