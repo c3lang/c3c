@@ -514,11 +514,6 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 				llvm_value_set_address_align(result, ptr, type->array.base, type_abi_alignment(type->array.base));
 			}
 			return;
-		case TYPE_STRLIT:
-			// TODO insert trap on overflow.
-			llvm_value_set_address_align(result, llvm_emit_pointer_inbounds_gep_raw(c, llvm_get_type(c, type_char), parent->value, index->value),
-										 type_char, type_abi_alignment(type_char));
-			return;
 		default:
 			UNREACHABLE
 
@@ -2131,9 +2126,6 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 		case TYPE_ARRAY:
 			llvm_value_set(be_value, llvm_const_int(c, type_usize, expr_to_len->type->array.len), type_usize);
 			break;
-		case TYPE_STRLIT:
-			TODO
-			break;
 		default:
 			UNREACHABLE
 	}
@@ -2206,8 +2198,6 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		case TYPE_ARRAY:
 			parent_base = parent_addr;
 			break;
-		case TYPE_STRLIT:
-			TODO
 		default:
 			UNREACHABLE
 	}
@@ -2236,8 +2226,6 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 			case TYPE_ARRAY:
 				llvm_value_set_int(c, &len, type_usize, parent_type->array.len);
 				break;
-			case TYPE_STRLIT:
-				TODO
 			default:
 				UNREACHABLE
 		}
@@ -3129,7 +3117,6 @@ void llvm_emit_derived_backend_type(GenContext *c, Type *type)
 			case TYPE_TYPEDEF:
 				original_type = original_type->canonical;
 				continue;
-			case TYPE_STRLIT:
 			case TYPE_INFERRED_ARRAY:
 			case TYPE_UNTYPED_LIST:
 			case TYPE_FAILABLE_ANY:
@@ -3787,7 +3774,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			                                                         expr->const_expr.string.len,
 			                                                         0));
 			llvm_set_alignment(global_name, 1);
-			global_name = LLVMConstBitCast(global_name, LLVMPointerType(llvm_get_type(c, type_char), 0));
+			global_name = LLVMConstBitCast(global_name, llvm_get_ptr_type(c, type_get_array(type_char, expr->const_expr.string.len)));
 			llvm_value_set(be_value, global_name, type);
 			return;
 		}
@@ -3867,7 +3854,6 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_TYPEID:
 		case TYPE_FUNC:
 		case TYPE_DISTINCT:
-		case TYPE_STRLIT:
 		case TYPE_ENUM:
 		case TYPE_ERRTYPE:
 		case TYPE_ANYERR:

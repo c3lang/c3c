@@ -112,8 +112,6 @@ static void header_print_type(FILE *file, Type *type)
 			break;
 		case TYPE_TYPEDEF:
 			break;
-		case TYPE_STRLIT:
-			UNREACHABLE
 		case TYPE_ARRAY:
 			break;
 		case TYPE_ANY:

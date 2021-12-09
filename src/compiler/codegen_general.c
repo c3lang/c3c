@@ -210,7 +210,6 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_VOID:
 		case TYPE_TYPEID:
 		case TYPE_FUNC:
-		case TYPE_STRLIT:
 		case TYPE_SUBARRAY:
 		case CT_TYPES:
 		case TYPE_FAILABLE_ANY:

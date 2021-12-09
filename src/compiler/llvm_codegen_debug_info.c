@@ -495,7 +495,6 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 	switch (type->type_kind)
 	{
 		case TYPE_TYPEID:
-		case TYPE_STRLIT:
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_FAILABLE:

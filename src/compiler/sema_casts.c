@@ -67,6 +67,10 @@ bool pointer_to_pointer(Expr* expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_PTRPTR, type)) return true;
 
+	if (expr->const_expr.const_kind == CONST_STRING)
+	{
+		return insert_cast(expr, CAST_PTRPTR, type);
+	}
 	// Must have been a null
 	expr->type = type;
 	expr->const_expr.narrowable = false;
@@ -374,7 +378,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_VOID:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_STRLIT:
 		case TYPE_ENUM:
 		case TYPE_FUNC:
 		case TYPE_ARRAY:
@@ -492,10 +495,6 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 			FALLTHROUGH;
 		case TYPE_UNION:
 			return type_is_structurally_equivalent(from_type, to_type);
-		case TYPE_STRLIT:
-			if (to_kind == TYPE_POINTER) return true;
-			if (to_kind == TYPE_SUBARRAY && (to_type->array.base == type_char || to_type->array.base == type_ichar)) return true;
-			return false;
 		case TYPE_SUBARRAY:
 			return to_kind == TYPE_POINTER;
 		case TYPE_VECTOR:
@@ -604,9 +603,6 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 			return type_is_subtype(to->pointer, from->pointer);
 		}
 
-		// 4c. Assigning a compile time string to char* is fine. TODO fix correct later
-		if (from->type_kind == TYPE_STRLIT && to->pointer == type_char) return true;
-
 		return false;
 	}
 
@@ -621,10 +617,6 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 	{
 		// 5a. char[] foo = "test"
 		Type *base = to->array.base;
-		if (from->type_kind == TYPE_STRLIT && (base->type_kind == TYPE_I8 || base->type_kind == TYPE_U8))
-		{
-			return true;
-		}
 
 		// 5b. Assign sized array pointer int[] = int[4]*
 		if (type_is_pointer(from))
@@ -634,15 +626,6 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 		return false;
 	}
 
-
-	// 7. In the case of distinct types, we allow implicit conversion from literal types.
-	if (to->type_kind == TYPE_DISTINCT)
-	{
-		if (from->type_kind == TYPE_STRLIT)
-		{
-			return cast_may_implicit(from, type_flatten(to), is_simple_expr, failable_allowed);
-		}
-	}
 
 
 	// 8. Check if we may cast this to bool. It is safe for many types.
@@ -1016,12 +999,30 @@ static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *t
 	SEMA_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", error_value,
 			   type_quoted_error_string(to_type));
 }
+
+static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_canonical, Type *to_canonical)
+{
+	if (expr->expr_kind != EXPR_CONST || expr->const_expr.const_kind != CONST_STRING) return false;
+	if (expr_canonical->type_kind != TYPE_POINTER) return false;
+	if (to_canonical->type_kind != TYPE_ARRAY && to_canonical->type_kind != TYPE_INFERRED_ARRAY) return false;
+	if (to_canonical->array.base != type_char) return false;
+	Type *pointer = expr_canonical->pointer;
+	if (pointer->type_kind != TYPE_ARRAY) return false;
+	if (pointer->array.base != type_char) return false;
+	expr_insert_deref(expr);
+	return true;
+}
 bool cast_implicit(Expr *expr, Type *to_type)
 {
 	assert(!type_is_failable(to_type));
 	Type *expr_type = expr->type;
 	Type *expr_canonical = expr_type->canonical;
 	Type *to_canonical = to_type->canonical;
+	if (cast_maybe_string_lit_to_char_array(expr, expr_canonical, to_canonical))
+	{
+		expr_type = expr->type;
+		expr_canonical = expr_type->canonical;
+	}
 	if (expr_canonical == to_canonical) return true;
 	bool is_simple = expr_is_simple(expr);
 	if (!cast_may_implicit(expr_canonical, to_canonical, is_simple, true))
@@ -1267,11 +1268,6 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			{
 				return insert_cast(expr, CAST_STST, to_type);
 			} // Starting in a little while...
-			break;
-		case TYPE_STRLIT:
-			to = type_flatten(to);
-			if (to->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_STRPTR, to_type);
-			if (to->type_kind == TYPE_SUBARRAY) return string_literal_to_subarray(expr, to_type);
 			break;
 		case TYPE_SUBARRAY:
 			if (to->type_kind == TYPE_POINTER) return insert_cast(expr, CAST_SAPTR, to);

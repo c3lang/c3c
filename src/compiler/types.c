@@ -12,7 +12,7 @@ static struct
 	Type f16, f32, f64, f128, fxx;
 	Type usz, isz, uptr, iptr, uptrdiff, iptrdiff;
 	Type voidstar, typeid, anyerr, typeinfo, ctlist;
-	Type str, any, anyfail;
+	Type any, anyfail;
 } t;
 
 Type *type_bool = &t.u1;
@@ -41,7 +41,6 @@ Type *type_u128 = &t.u128;
 Type *type_uptr = &t.uptr;
 Type *type_uptrdiff = &t.uptrdiff;
 Type *type_usize = &t.usz;
-Type *type_compstr = &t.str;
 Type *type_anyerr = &t.anyerr;
 Type *type_complist = &t.ctlist;
 Type *type_anyfail = &t.anyfail;
@@ -146,8 +145,6 @@ const char *type_to_error_string(Type *type)
 			if (!type->failable) return "void!";
 			asprintf(&buffer, "%s!", type_to_error_string(type->failable));
 			return buffer;
-		case TYPE_STRLIT:
-			return "string literal";
 		case TYPE_ARRAY:
 			asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
@@ -235,7 +232,6 @@ RETRY:
 		case TYPE_ANYERR:
 		case TYPE_ANY:
 			return type->builtin.bytesize;
-		case TYPE_STRLIT:
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 			return t.iptr.canonical->builtin.bytesize;
@@ -306,7 +302,6 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_POINTER:
 		case TYPE_ENUM:
 		case TYPE_FUNC:
-		case TYPE_STRLIT:
 		case TYPE_VECTOR:
 		case TYPE_ANYERR:
 		case TYPE_ERRTYPE:
@@ -447,7 +442,6 @@ AlignSize type_abi_alignment(Type *type)
 			return type->builtin.abi_alignment;
 		case TYPE_FUNC:
 		case TYPE_POINTER:
-		case TYPE_STRLIT:
 		case TYPE_TYPEID:
 			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
@@ -724,8 +718,6 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_VECTOR:
 			return type->array.base;
-		case TYPE_STRLIT:
-			return type_char;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct_decl.base_type;
 			goto RETRY;
@@ -925,7 +917,6 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_VECTOR:
 			scratch_buffer_append(type->name);
 			break;
-		case TYPE_STRLIT:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_TYPEINFO:
@@ -1017,7 +1008,6 @@ void type_setup(PlatformTarget *target)
 
 	type_init_int("void", &t.u0, TYPE_VOID, BITS8);
 
-	type_init("string", &t.str, TYPE_STRLIT, target->width_pointer, target->align_pointer);
 
 
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
@@ -1092,7 +1082,6 @@ bool type_is_scalar(Type *type)
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
-		case TYPE_STRLIT:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
@@ -1314,6 +1303,20 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 }
 
 
+Type *type_decay_array_pointer(Type *type)
+{
+	assert(type->type_kind == TYPE_POINTER);
+	Type *ptr = type->pointer;
+	switch (ptr->type_kind)
+	{
+		case TYPE_ARRAY:
+			return type_get_ptr(ptr->array.base->canonical);
+		case TYPE_VECTOR:
+			return type_get_ptr(ptr->vector.base->canonical);
+		default:
+			return type;
+	}
+}
 Type *type_find_max_type(Type *type, Type *other)
 {
 	if (type == type_anyfail)
@@ -1361,6 +1364,28 @@ Type *type_find_max_type(Type *type, Type *other)
 			if (other->type_kind == TYPE_DISTINCT && type_is_float(other->decl->distinct_decl.base_type)) return other;
 			return type_find_max_num_type(type, other);
 		case TYPE_POINTER:
+			if (type->pointer->type_kind == TYPE_ARRAY)
+			{
+				Type *array_base = type->pointer->array.base->canonical;
+				if (other->type_kind == TYPE_SUBARRAY &&
+					array_base == other->array.base->canonical)
+				{
+					return other;
+				}
+			}
+			if (type->pointer->type_kind == TYPE_VECTOR)
+			{
+				Type *vector_base = type->pointer->vector.base->canonical;
+				if (other->type_kind == TYPE_SUBARRAY && vector_base == other->array.base->canonical)
+				{
+					return other;
+				}
+			}
+			// We need to decay the pointer
+			type = type_decay_array_pointer(type);
+			// And possibly the other pointer as well
+			if (other->type_kind == TYPE_POINTER) other = type_decay_array_pointer(other);
+
 			return type_find_max_ptr_type(type, other);
 		case TYPE_ENUM:
 			// IMPROVE: should there be implicit conversion between one enum and the other in
@@ -1378,17 +1403,6 @@ Type *type_find_max_type(Type *type, Type *other)
 			TODO
 		case TYPE_TYPEDEF:
 			UNREACHABLE
-		case TYPE_STRLIT:
-			if (other->type_kind == TYPE_DISTINCT)
-			{
-				// In this case we only react to the flattened type.
-				Type *flatten_other = type_flatten(other);
-				if (flatten_other->type_kind == TYPE_SUBARRAY && flatten_other->array.base->type_kind == TYPE_U8) return other;
-				if (flatten_other->type_kind == TYPE_POINTER && flatten_other->pointer->type_kind == TYPE_U8) return other;
-			}
-			if (other->type_kind == TYPE_SUBARRAY && other->array.base->type_kind == TYPE_U8) return other;
-			if (other->type_kind == TYPE_POINTER && other->pointer->type_kind == TYPE_U8) return other;
-			return NULL;
 		case TYPE_DISTINCT:
 			return NULL;
 		case TYPE_ARRAY:

@@ -113,7 +113,6 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 		case TYPE_ENUM:
-		case TYPE_STRLIT:
 		case TYPE_ERRTYPE:
 		case TYPE_TYPEID:
 		case TYPE_ANYERR:
@@ -595,7 +594,6 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 		case TYPE_FUNC:
 		case TYPE_TYPEID:
 		case TYPE_BITSTRUCT:
-		case TYPE_STRLIT:
 		case TYPE_FAILABLE:
 		case TYPE_FAILABLE_ANY:
 		case CT_TYPES:

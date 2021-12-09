@@ -193,7 +193,6 @@ bool sema_resolve_type(Context *context, Type *type)
 		case TYPE_TYPEID:
 		case TYPE_ANY:
 		case TYPE_ANYERR:
-		case TYPE_STRLIT:
 		case TYPE_VECTOR:
 		case TYPE_TYPEINFO:
 		case TYPE_UNTYPED_LIST:

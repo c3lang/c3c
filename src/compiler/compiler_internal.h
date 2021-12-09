@@ -148,7 +148,7 @@ typedef struct
 		struct
 		{
 			const char *chars;
-			uint32_t len;
+			ArraySize len;
 		} string;
 		Decl *enum_val;
 		Decl *err_val;
@@ -1526,7 +1526,7 @@ extern Type *poisoned_type;
 extern TypeInfo *poisoned_type_info;
 
 
-extern Type *type_bool, *type_void, *type_compstr, *type_voidptr;
+extern Type *type_bool, *type_void, *type_voidptr;
 extern Type *type_half, *type_float, *type_double, *type_quad;
 extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isize;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;

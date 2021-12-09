@@ -1,0 +1,24 @@
+// #target: x64-darwin
+module foo;
+
+fn void main()
+{
+    char[2] x = "ab";
+    char[*] y = "abc";
+}
+
+/* #expect: foo.ll
+
+@.str = private constant [3 x i8] c"ab\00", align 1
+@.str.1 = private constant [4 x i8] c"abc\00", align 1
+
+define void @main() #0 {
+entry:
+  %x = alloca [2 x i8], align 1
+  %y = alloca [3 x i8], align 1
+  %0 = bitcast [2 x i8]* %x to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 1 %0, i8* align 8 getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), i32 2, i1 false)
+  %1 = bitcast [3 x i8]* %y to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 1 %1, i8* align 8 getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 3, i1 false)
+  ret void
+}

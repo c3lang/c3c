@@ -12,6 +12,6 @@ fn int foo()
 enum State
 {
     A = foo(),      // #error: Expected a constant expression for enum
-    B = "hello",    // #error: 'string literal' into 'int'
+    B = "hello",    // #error: 'char[5]*' into 'int'
     C = true,       // #error: 'bool' to 'int'
 }

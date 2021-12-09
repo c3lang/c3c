@@ -125,7 +125,7 @@ fn void test16()
 
 fn void test17()
 {
-    int a = "test";             // #error: 'string literal' into 'int'
+    int a = "test";             // #error: 'char[4]*' into 'int'
 }
 
 fn void test18()

@@ -2326,7 +2326,6 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 			}
 			break;
 		}
-		case TYPE_STRLIT:
 		case TYPE_SUBARRAY:
 			// If not from end, just check the negative values.
 			if (!from_end) break;
@@ -2610,9 +2609,10 @@ static inline void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *str
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 	expr_to_rewrite->const_expr.const_kind = CONST_STRING;
 	expr_to_rewrite->const_expr.string.chars = (char *)string;
-	expr_to_rewrite->const_expr.string.len = (uint32_t)strlen(string);
+	ArraySize len = (ArraySize)strlen(string);
+	expr_to_rewrite->const_expr.string.len = len;
 	expr_to_rewrite->resolve_status = RESOLVE_DONE;
-	expr_to_rewrite->type = type_compstr;
+	expr_to_rewrite->type = type_get_ptr(type_get_array(type_char, len));
 }
 
 
@@ -2972,11 +2972,6 @@ CHECK_DEEPER:
 	// 9. Fix hard coded function `len` on subarrays and arrays
 	if (!is_macro && kw == kw_len)
 	{
-		if (flat_type->type_kind == TYPE_STRLIT)
-		{
-			expr_rewrite_to_int_const(expr, type_isize, parent->const_expr.string.len, true);
-			return true;
-		}
 		if (flat_type->type_kind == TYPE_SUBARRAY)
 		{
 			expr->expr_kind = EXPR_LEN;

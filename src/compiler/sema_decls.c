@@ -683,7 +683,6 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 	decl->distinct_decl.base_type = base;
 	switch (base->type_kind)
 	{
-		case TYPE_STRLIT:
 		case TYPE_FUNC:
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
@@ -1166,7 +1165,7 @@ AttributeType sema_analyse_attribute(Context *context, Attr *attr, AttributeDoma
 				return ATTRIBUTE_NONE;
 			}
 			if (!sema_analyse_expr(context, attr->expr)) return false;
-			if (attr->expr->expr_kind != EXPR_CONST || attr->expr->type->canonical != type_compstr)
+			if (attr->expr->expr_kind != EXPR_CONST || attr->expr->const_expr.const_kind != CONST_STRING)
 			{
 				SEMA_ERROR(attr->expr, "Expected a constant string value as argument.");
 				return ATTRIBUTE_NONE;

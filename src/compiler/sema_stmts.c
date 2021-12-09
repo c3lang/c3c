@@ -2099,7 +2099,7 @@ bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
 	if (message)
 	{
 		if (!sema_analyse_expr(context, message)) return false;
-		if (message->type->type_kind != TYPE_STRLIT)
+		if (message->expr_kind != EXPR_CONST || message->const_expr.const_kind != CONST_STRING)
 		{
 			SEMA_ERROR(message, "Expected a string as the error message.");
 		}
@@ -2175,7 +2175,7 @@ bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 	if (message)
 	{
 		if (!sema_analyse_expr(context, message)) return false;
-		if (message->type->type_kind != TYPE_STRLIT)
+		if (message->expr_kind != EXPR_CONST || message->const_expr.const_kind != CONST_STRING)
 		{
 			SEMA_ERROR(message, "Expected a string as the error message.");
 		}

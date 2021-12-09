@@ -339,8 +339,6 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			llvm_value_set_address_align(value, member.value, type_get_ptr(value->type->array.base), type_abi_alignment(value->type->array.base));
 			return;
 		}
-		case TYPE_STRLIT:
-			return;
 		default:
 			UNREACHABLE
 	}
