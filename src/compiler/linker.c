@@ -285,7 +285,7 @@ const char *concat_string_parts(const char **args)
 void platform_linker(const char *output_file, const char **files, unsigned file_count)
 {
 	const char **parts = NULL;
-	vec_add(parts, active_target.cc);
+	vec_add(parts, active_target.cc ? active_target.cc : "cc");
 	VECEACH(active_target.link_args, i)
 	{
 		vec_add(parts, active_target.link_args[i]);
