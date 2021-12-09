@@ -3914,7 +3914,7 @@ LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVM
 {
 	*alignment = type_min_alignment(llvm_store_size(c, LLVMGetElementType(array_type)), array_alignment);
 	LLVMValueRef idx[2] = { LLVMConstNull(LLVMTypeOf(index)), index };
-	if (LLVMIsConstant(ptr))
+	if (LLVMIsConstant(ptr) && LLVMIsConstant(index))
 	{
 		return LLVMConstInBoundsGEP2(array_type, ptr, idx, 2);
 	}
