@@ -243,6 +243,7 @@ static inline bool parse_multiline_comment(Lexer *lexer)
 				lexer_store_line_end(lexer);
 				break;
 			case '\0':
+				if (type != TOKEN_DOC_COMMENT) return add_token(lexer, type, lexer->lexing_start);
 				return add_error_token(lexer, "Missing '*/' to end the multiline comment.");
 			default:
 				break;
