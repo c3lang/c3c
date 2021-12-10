@@ -423,7 +423,7 @@ void compiler_compile(void)
 
 	if (cfiles)
 	{
-		platform_compiler(active_target.csources, cfiles);
+		platform_compiler(active_target.csources, cfiles, active_target.cflags);
 		for (int i = 0; i < cfiles; i++)
 		{
 			char *filename = NULL;
