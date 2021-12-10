@@ -148,6 +148,7 @@ void project_add_target(Project *project, TomlValue *wrapped_table, const char *
 	}
 	target->cc = get_valid_string(table, "cc", type, false);
 	if (!target->cc) target->cc = "cc";
+	target->cflags = get_valid_string(table, "cflags", type, false);
 	target->csource_dirs = get_valid_array(table, "csources", type, false);
 
 	type = strformat("%s %s", type, target->name);

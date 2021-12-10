@@ -320,26 +320,38 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	printf("Program linked to executable '%s'.\n", output_file);
 }
 
-void platform_compiler(const char **files, unsigned file_count)
+void platform_compiler(const char **files, unsigned file_count, const char* flags)
 {
 	const char **parts = NULL;
 	vec_add(parts, active_target.cc);
-	switch (platform_target.pie)
+
+	const bool pie_set =
+		flags != NULL               &&
+		( strstr(flags, "-fno-PIE") || // This is a weird case, but probably don't set PIE if
+		  strstr(flags, "-fno-pie") || // it is being set in user defined cflags.
+		  strstr(flags, "-fpie")    ||
+		  strstr(flags, "-fPIE")    ); // strcasestr is apparently nonstandard >:(
+	if (!pie_set)
 	{
-		case PIE_DEFAULT:
-			UNREACHABLE
-		case PIE_NONE:
-			vec_add(parts, "-fno-PIE");
-			vec_add(parts, "-fno-pie");
-			break;
-		case PIE_SMALL:
-			vec_add(parts, "-fpie");
-			break;
-		case PIE_BIG:
-			vec_add(parts, "-fPIE");
-			break;
+		switch (platform_target.pie)
+		{
+			case PIE_DEFAULT:
+				UNREACHABLE
+			case PIE_NONE:
+				vec_add(parts, "-fno-PIE");
+				vec_add(parts, "-fno-pie");
+				break;
+			case PIE_SMALL:
+				vec_add(parts, "-fpie");
+				break;
+			case PIE_BIG:
+				vec_add(parts, "-fPIE");
+				break;
+		}
 	}
+	
 	vec_add(parts, "-c");
+	if (flags) vec_add(parts, flags);
 	for (unsigned i = 0; i < file_count; i++)
 	{
 		vec_add(parts, files[i]);

@@ -243,6 +243,7 @@ typedef struct
 	uint32_t symtab_size;
 	uint32_t switchrange_max_size;
 	const char *cc;
+	const char *cflags;
 	const char **csource_dirs;
 	const char **csources;
 	struct
