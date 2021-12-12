@@ -8,6 +8,13 @@
 
 static bool sema_analyse_compound_stmt(Context *context, Ast *statement);
 
+typedef enum
+{
+	COND_TYPE_UNWRAP_BOOL,
+	COND_TYPE_UNWRAP,
+	COND_TYPE_EVALTYPE_VALUE,
+} CondType;
+
 static void sema_unwrappable_from_catch_in_else(Context *c, Expr *cond)
 {
 	assert(cond->expr_kind == EXPR_COND);
@@ -276,18 +283,25 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
-static inline bool sema_analyse_try_unwrap_chain(Context *context, Expr *expr)
+
+
+static inline bool sema_analyse_try_unwrap_chain(Context *context, Expr *expr, CondType cond_type)
 {
+	assert(cond_type == COND_TYPE_UNWRAP_BOOL || cond_type == COND_TYPE_UNWRAP);
+
 	assert(expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
+	Expr **chain = expr->try_unwrap_chain_expr;
+	unsigned elements = vec_size(chain);
+
 	VECEACH(expr->try_unwrap_chain_expr, i)
 	{
-		Expr *chain = expr->try_unwrap_chain_expr[i];
-		if (chain->expr_kind == EXPR_TRY_UNWRAP)
+		Expr *chain_element = chain[i];
+		if (chain_element->expr_kind == EXPR_TRY_UNWRAP)
 		{
-			if (!sema_analyse_try_unwrap(context, chain)) return false;
+			if (!sema_analyse_try_unwrap(context, chain_element)) return false;
 			continue;
 		}
-		if (!sema_analyse_cond_expr(context, chain)) return false;
+		if (!sema_analyse_cond_expr(context, chain_element)) return false;
 	}
 	expr->type = type_bool;
 	expr->resolve_status = RESOLVE_DONE;
@@ -413,27 +427,81 @@ static void sema_remove_unwraps_from_try(Context *c, Expr *cond)
 	}
 }
 
-static inline bool sema_analyse_last_cond(Context *context, Expr *expr, bool may_unwrap)
+static inline bool sema_analyse_last_cond(Context *context, Expr *expr, CondType cond_type)
 {
 	switch (expr->expr_kind)
 	{
 		case EXPR_TRY_UNWRAP_CHAIN:
-			if (!may_unwrap)
+			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
 			{
 				SEMA_ERROR(expr, "Try unwrapping is only allowed inside of a 'while' or 'if' conditional.");
 				return false;
 			}
-			return sema_analyse_try_unwrap_chain(context, expr);
+			return sema_analyse_try_unwrap_chain(context, expr, cond_type);
 		case EXPR_CATCH_UNWRAP:
-			if (!may_unwrap)
+			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
 			{
 				SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe catch(...) will do what you need?");
 				return false;
 			}
 			return sema_analyse_catch_unwrap(context, expr);
 		default:
-			return sema_analyse_expr(context, expr);
+			break;
 	}
+
+	if (cond_type != COND_TYPE_EVALTYPE_VALUE) goto NORMAL_EXPR;
+
+	// Now we're analysing the last expression in a switch.
+	// Case 1: switch (var = variant_expr)
+	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator == BINARYOP_ASSIGN)
+	{
+		// No variable on the lhs? Then it can't be a variant unwrap.
+		Expr *left = expr->binary_expr.left;
+		if (left->resolve_status ==  RESOLVE_DONE || left->expr_kind != EXPR_IDENTIFIER || left->identifier_expr.path) goto NORMAL_EXPR;
+
+		// Does the identifier exist in the parent scope?
+		// then again it can't be a variant unwrap.
+		Decl *decl_for_ident = sema_resolve_normal_symbol(context, left->identifier_expr.identifier, NULL, false);
+		if (decl_for_ident) goto NORMAL_EXPR;
+
+		Expr *right = expr->binary_expr.right;
+		bool is_deref = right->expr_kind == EXPR_UNARY && right->unary_expr.operator == UNARYOP_DEREF;
+		if (is_deref) right = right->unary_expr.expr;
+		if (!sema_analyse_expr_rhs(context, NULL, right, false)) return false;
+		if (right->type == type_get_ptr(type_any) && is_deref)
+		{
+			is_deref = false;
+			right = expr->binary_expr.right;
+			if (!sema_analyse_expr_rhs(context, NULL, right, false)) return false;
+		}
+		if (right->type != type_any) goto NORMAL_EXPR;
+		// Found an expansion here
+		expr->expr_kind = EXPR_VARIANTSWITCH;
+		expr->variant_switch.new_ident = left->identifier_expr.identifier;
+		expr->variant_switch.variant_expr = right;
+		expr->variant_switch.is_deref = is_deref;
+		expr->variant_switch.is_assign = true;
+		expr->resolve_status = RESOLVE_DONE;
+		expr->type = type_typeid;
+		return true;
+	}
+	if (!sema_analyse_expr(context, expr)) return false;
+	if (expr->type != type_any) return true;
+	if (expr->expr_kind == EXPR_IDENTIFIER)
+	{
+		Decl *decl = expr->identifier_expr.decl;
+		expr->expr_kind = EXPR_VARIANTSWITCH;
+		expr->variant_switch.is_deref = false;
+		expr->variant_switch.is_assign = false;
+		expr->variant_switch.variable = decl;
+		expr->type = type_typeid;
+		expr->resolve_status = RESOLVE_DONE;
+		return true;
+	}
+	return true;
+
+NORMAL_EXPR:
+	return sema_analyse_expr(context, expr);
 }
 /**
  * An decl-expr-list is a list of a mixture of declarations and expressions.
@@ -443,7 +511,7 @@ static inline bool sema_analyse_last_cond(Context *context, Expr *expr, bool may
  *
  * In this case the final value is 4.0 and the type is float.
  */
-static inline bool sema_analyse_cond_list(Context *context, Expr *expr, bool may_unwrap)
+static inline bool sema_analyse_cond_list(Context *context, Expr *expr, CondType cond_type)
 {
 	assert(expr->expr_kind == EXPR_COND);
 
@@ -463,12 +531,13 @@ static inline bool sema_analyse_cond_list(Context *context, Expr *expr, bool may
 		if (!sema_analyse_expr(context, dexprs[i])) return false;
 	}
 
-	if (!sema_analyse_last_cond(context, dexprs[entries - 1], may_unwrap)) return false;
+	if (!sema_analyse_last_cond(context, dexprs[entries - 1], cond_type)) return false;
 
 	expr->type = dexprs[entries - 1]->type;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
+
 
 /**
  * Analyse a conditional expression:
@@ -482,12 +551,13 @@ static inline bool sema_analyse_cond_list(Context *context, Expr *expr, bool may
  * @param cast_to_bool if the result is to be cast to bool after
  * @return true if it passes analysis.
  */
-static inline bool sema_analyse_cond(Context *context, Expr *expr, bool cast_to_bool, bool may_unwrap)
+static inline bool sema_analyse_cond(Context *context, Expr *expr, CondType cond_type)
 {
+	bool cast_to_bool = cond_type == COND_TYPE_UNWRAP_BOOL;
 	assert(expr->expr_kind == EXPR_COND && "Conditional expressions should always be of type EXPR_DECL_LIST");
 
 	// 1. Analyse the declaration list.
-	if (!sema_analyse_cond_list(context, expr, may_unwrap)) return false;
+	if (!sema_analyse_cond_list(context, expr, cond_type)) return false;
 
 	// 2. If we get "void", either through a void call or an empty list,
 	//    signal that.
@@ -568,7 +638,7 @@ static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 	SCOPE_START_WITH_LABEL(statement->while_stmt.flow.label)
 
 		// 2. Analyze the condition
-		if (!sema_analyse_cond(context, cond, true, true))
+		if (!sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL))
 		{
 			// 2a. In case of error, pop context and exit.
 			return SCOPE_POP_ERROR();
@@ -833,7 +903,7 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 				Expr *cond = statement->for_stmt.cond;
 				if (cond->expr_kind == EXPR_COND)
 				{
-					success = sema_analyse_cond(context, cond, true, true);
+					success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL);
 				}
 				else
 				{
@@ -1371,8 +1441,9 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 
 	Expr *cond = statement->if_stmt.cond;
 	SCOPE_OUTER_START
-		bool cast_to_bool = statement->if_stmt.then_body->ast_kind != AST_IF_CATCH_SWITCH_STMT;
-		success = sema_analyse_cond(context, cond, cast_to_bool, true);
+		CondType cond_type = statement->if_stmt.then_body->ast_kind == AST_IF_CATCH_SWITCH_STMT
+		                     ? COND_TYPE_UNWRAP : COND_TYPE_UNWRAP_BOOL;
+		success = sema_analyse_cond(context, cond, cond_type);
 
 		Ast *then = statement->if_stmt.then_body;
 		bool then_has_braces = then->ast_kind == AST_COMPOUND_STMT || then->ast_kind == AST_IF_CATCH_SWITCH_STMT;
@@ -1858,10 +1929,10 @@ static inline bool sema_check_value_case(Context *context, Type *switch_type, As
 	return true;
 }
 
-static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, Decl *switch_decl)
+static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprVariantSwitch *variant, Decl *var_holder)
 {
 	bool use_type_id = false;
-	if (!type_is_comparable(switch_type) && switch_type != type_any)
+	if (!type_is_comparable(switch_type))
 	{
 		sema_error_range(expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
 		return false;
@@ -1927,19 +1998,41 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 			Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
 			PUSH_NEXT(next, statement);
 			Ast *body = stmt->case_stmt.body;
-			if (stmt->ast_kind == AST_CASE_STMT && body && type_switch && switch_decl && stmt->case_stmt.expr->expr_kind == EXPR_CONST)
+			if (stmt->ast_kind == AST_CASE_STMT && body && type_switch && var_holder && stmt->case_stmt.expr->expr_kind == EXPR_CONST)
 			{
-				Type *type = type_get_ptr(stmt->case_stmt.expr->const_expr.typeid);
-				Decl *alias = decl_new_var(switch_decl->name_token,
-										   type_info_new_base(type, stmt->case_stmt.expr->span),
-										   VARDECL_LOCAL, VISIBLE_LOCAL);
-				Expr *ident_converted = expr_variable(switch_decl);
-				if (!cast(ident_converted, type)) return false;
-				alias->var.init_expr = ident_converted;
-				alias->var.shadow = true;
-				Ast *decl_ast = new_ast(AST_DECLARE_STMT, alias->span);
-				decl_ast->declare_stmt = alias;
-				vec_insert_first(body->compound_stmt.stmts, decl_ast);
+				if (variant->is_assign)
+				{
+					Type *real_type = type_get_ptr(stmt->case_stmt.expr->const_expr.typeid);
+					TokenId name = variant->new_ident;
+					Decl *new_var = decl_new_var(name,
+												 type_info_new_base(variant->is_deref
+					                             ? real_type->pointer : real_type, source_span_from_token_id(name)),
+					                             VARDECL_LOCAL, VISIBLE_LOCAL);
+					Expr *var_result = expr_variable(var_holder);
+					if (!cast(var_result, real_type)) return false;
+					if (variant->is_deref)
+					{
+						expr_insert_deref(var_result);
+					}
+					new_var->var.init_expr = var_result;
+					Ast *decl_ast = new_ast(AST_DECLARE_STMT, new_var->span);
+					decl_ast->declare_stmt = new_var;
+					vec_insert_first(body->compound_stmt.stmts, decl_ast);
+				}
+				else
+				{
+					Type *type = type_get_ptr(stmt->case_stmt.expr->const_expr.typeid);
+					Decl *alias = decl_new_var(var_holder->name_token,
+											   type_info_new_base(type, stmt->case_stmt.expr->span),
+											   VARDECL_LOCAL, VISIBLE_LOCAL);
+					Expr *ident_converted = expr_variable(var_holder);
+					if (!cast(ident_converted, type)) return false;
+					alias->var.init_expr = ident_converted;
+					alias->var.shadow = true;
+					Ast *decl_ast = new_ast(AST_DECLARE_STMT, alias->span);
+					decl_ast->declare_stmt = alias;
+					vec_insert_first(body->compound_stmt.stmts, decl_ast);
+				}
 			}
 			success = success && (!body || sema_analyse_compound_statement_no_scope(context, body));
 			POP_BREAK();
@@ -2077,29 +2170,42 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 		Expr *cond = statement->switch_stmt.cond;
 		Type *switch_type;
 
-		Decl *last_decl = NULL;
+		ExprVariantSwitch var_switch;
+		Decl *variant_decl = NULL;
 		if (statement->ast_kind == AST_SWITCH_STMT)
 		{
-			if (!sema_analyse_cond(context, cond, false, false)) return false;
+			if (!sema_analyse_cond(context, cond, COND_TYPE_EVALTYPE_VALUE)) return false;
 			Expr *last = VECLAST(cond->cond_expr);
 			switch_type = last->type->canonical;
-			if (switch_type == type_any)
+			if (last->expr_kind == EXPR_VARIANTSWITCH)
 			{
-				if (last->expr_kind == EXPR_DECL)
+				var_switch = last->variant_switch;
+
+
+				Expr *inner;
+				if (var_switch.is_assign)
 				{
-					last_decl = last->decl_expr;
+					inner = expr_new(EXPR_DECL, last->span);
+					variant_decl = decl_new_generated_var(".variant", type_any, VARDECL_LOCAL, last->span);
+					variant_decl->var.init_expr = var_switch.variant_expr;
+					inner->decl_expr = variant_decl;
+					if (!sema_analyse_expr(context, inner)) return false;
 				}
-				else if (last->expr_kind == EXPR_IDENTIFIER)
+				else
 				{
-					last_decl = last->identifier_expr.decl;
+					inner = expr_new(EXPR_IDENTIFIER, last->span);
+					variant_decl = var_switch.variable;
+					inner->identifier_expr.decl = variant_decl;
+					inner->type = type_any;
+					inner->resolve_status = RESOLVE_DONE;
 				}
-				Expr *inner = expr_copy(last);
 				last->type = type_typeid;
 				last->expr_kind = EXPR_TYPEOFANY;
 				last->inner_expr = inner;
 				switch_type = type_typeid;
 				cond->type = type_typeid;
 			}
+
 		}
 		else
 		{
@@ -2109,7 +2215,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 		statement->switch_stmt.defer = context->active_scope.defer_last;
 		if (!sema_analyse_switch_body(context, statement, cond ? cond->span : statement->span,
 		                              switch_type->canonical,
-		                              statement->switch_stmt.cases, last_decl))
+		                              statement->switch_stmt.cases, variant_decl ? &var_switch : NULL, variant_decl))
 		{
 			return SCOPE_POP_ERROR();
 		}
@@ -2216,7 +2322,7 @@ bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 	}
 	if (expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN)
 	{
-		if (!sema_analyse_try_unwrap_chain(context, expr)) return false;
+		if (!sema_analyse_try_unwrap_chain(context, expr, COND_TYPE_UNWRAP_BOOL)) return false;
 	}
 	else
 	{

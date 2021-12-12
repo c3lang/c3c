@@ -316,6 +316,8 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_ACCESS:
 			expr = expr->access_expr.parent;
 			goto RETRY;
+		case EXPR_VARIANTSWITCH:
+			return false;
 		case EXPR_BITASSIGN:
 			return false;
 		case EXPR_BINARY:
@@ -6720,6 +6722,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 		case EXPR_TRY_UNWRAP:
 		case EXPR_CATCH_UNWRAP:
 		case EXPR_PTR:
+		case EXPR_VARIANTSWITCH:
 			UNREACHABLE
 		case EXPR_DECL:
 			if (!sema_analyse_var_decl(context, expr->decl_expr, true)) return false;

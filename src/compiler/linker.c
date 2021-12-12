@@ -3,14 +3,16 @@
 #include <llvm/Config/llvm-config.h>  // for LLVM_VERSION_STRING
 
 #ifdef PLATFORM_WINDOWS
+
 #include "utils/find_msvc.h"
+
 #endif
 
-extern bool llvm_link_elf(const char **args, int arg_count, const char** error_string);
-extern bool llvm_link_macho(const char **args, int arg_count, const char** error_string);
-extern bool llvm_link_coff(const char **args, int arg_count, const char** error_string);
-extern bool llvm_link_wasm(const char **args, int arg_count, const char** error_string);
-extern bool llvm_link_mingw(const char **args, int arg_count, const char** error_string);
+extern bool llvm_link_elf(const char **args, int arg_count, const char **error_string);
+extern bool llvm_link_macho(const char **args, int arg_count, const char **error_string);
+extern bool llvm_link_coff(const char **args, int arg_count, const char **error_string);
+extern bool llvm_link_wasm(const char **args, int arg_count, const char **error_string);
+extern bool llvm_link_mingw(const char **args, int arg_count, const char **error_string);
 
 static void add_files(const char ***args, const char **files_to_link, unsigned file_count)
 {
@@ -37,15 +39,16 @@ static void prepare_msys2_linker_flags(const char ***args, const char **files_to
 	add_arg("-m");
 	add_arg("i386pep");
 	add_arg("-Bdynamic");
-	add_arg(join_strings((const char *[]){root, "\\x86_64-w64-mingw32\\lib\\crt2.o"}, 2));
-	add_arg(join_strings((const char *[]){root, "\\x86_64-w64-mingw32\\lib\\crtbegin.o"}, 2));
-	add_arg(join_strings((const char *[]){"-L", root, "\\x86_64-w64-mingw32\\lib"}, 3));
-	add_arg(join_strings((const char *[]){"-L", root, "\\lib"}, 3));
-	add_arg(join_strings((const char *[]){"-L", root, "\\x86_64-w64-mingw32\\sys-root\\mingw\\lib"}, 3));
-	add_arg(join_strings((const char *[]){"-L", root, "\\lib\\clang\\", LLVM_VERSION_STRING, "\\lib\\windows"}, 5));
+	add_arg(join_strings((const char *[]){ root, "\\x86_64-w64-mingw32\\lib\\crt2.o" }, 2));
+	add_arg(join_strings((const char *[]){ root, "\\x86_64-w64-mingw32\\lib\\crtbegin.o" }, 2));
+	add_arg(join_strings((const char *[]){ "-L", root, "\\x86_64-w64-mingw32\\lib" }, 3));
+	add_arg(join_strings((const char *[]){ "-L", root, "\\lib" }, 3));
+	add_arg(join_strings((const char *[]){ "-L", root, "\\x86_64-w64-mingw32\\sys-root\\mingw\\lib" }, 3));
+	add_arg(join_strings((const char *[]){ "-L", root, "\\lib\\clang\\", LLVM_VERSION_STRING, "\\lib\\windows" }, 5));
 	add_files(args, files_to_link, file_count);
 	add_arg("-lmingw32");
-	add_arg(join_strings((const char *[]){root, "\\lib\\clang\\", LLVM_VERSION_STRING, "\\lib\\windows\\libclang_rt.builtins-x86_64.a"}, 4));
+	add_arg(join_strings((const char *[]){ root, "\\lib\\clang\\", LLVM_VERSION_STRING,
+	                                       "\\lib\\windows\\libclang_rt.builtins-x86_64.a" }, 4));
 	add_arg("-lunwind");
 	add_arg("-lmoldname");
 	add_arg("-lmingwex");
@@ -55,13 +58,14 @@ static void prepare_msys2_linker_flags(const char ***args, const char **files_to
 	add_arg("-luser32");
 	add_arg("-lkernel32");
 	add_arg("-lmingw32");
-	add_arg(join_strings((const char *[]){root, "\\lib\\clang\\", LLVM_VERSION_STRING, "\\lib\\windows\\libclang_rt.builtins-x86_64.a"}, 4));
+	add_arg(join_strings((const char *[]){ root, "\\lib\\clang\\", LLVM_VERSION_STRING,
+	                                       "\\lib\\windows\\libclang_rt.builtins-x86_64.a" }, 4));
 	add_arg("-lunwind");
 	add_arg("-lmoldname");
 	add_arg("-lmingwex");
 	add_arg("-lmsvcrt");
 	add_arg("-lkernel32");
-	add_arg(join_strings((const char *[]){root, "\\x86_64-w64-mingw32\\lib\\crtend.o"}, 2));
+	add_arg(join_strings((const char *[]){ root, "\\x86_64-w64-mingw32\\lib\\crtend.o" }, 2));
 #undef add_arg
 }
 
@@ -76,8 +80,8 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	else
 	{
 #endif
-		vec_add(args, "-o");
-		vec_add(args, output_file);
+	vec_add(args, "-o");
+	vec_add(args, output_file);
 #ifdef _MSC_VER
 	}
 #endif
@@ -87,7 +91,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	}
 	const char *error = NULL;
 	// This isn't used in most cases, but its contents should get freed after linking.
-	WindowsLinkPathsUTF8 windows_paths = {0};
+	WindowsLinkPathsUTF8 windows_paths = { 0 };
 
 	switch (platform_target.os)
 	{
@@ -129,7 +133,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 				{
 					return false;
 				}
-			}			
+			}
 			break;
 		case OS_TYPE_MACOSX:
 			add_files(&args, files_to_link, file_count);
@@ -216,7 +220,14 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	switch (platform_target.object_format)
 	{
 		case OBJ_FORMAT_COFF:
-			success = (platform_target.x64.is_mingw64 ? llvm_link_mingw : llvm_link_coff)(args, (int)vec_size(args), &error);
+			if (platform_target.x64.is_mingw64)
+			{
+				success = llvm_link_mingw(args, (int)vec_size(args), &error);
+			}
+			else
+			{
+				success = llvm_link_coff(args, (int)vec_size(args), &error);
+			}
 			// This is only defined if compiling with MSVC
 #ifdef _MSC_VER
 			if (windows_paths.windows_sdk_um_library_path) {
@@ -320,17 +331,17 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	printf("Program linked to executable '%s'.\n", output_file);
 }
 
-void platform_compiler(const char **files, unsigned file_count, const char* flags)
+void platform_compiler(const char **files, unsigned file_count, const char *flags)
 {
 	const char **parts = NULL;
 	vec_add(parts, active_target.cc);
 
 	const bool pie_set =
-		flags != NULL               &&
-		( strstr(flags, "-fno-PIE") || // This is a weird case, but probably don't set PIE if
-		  strstr(flags, "-fno-pie") || // it is being set in user defined cflags.
-		  strstr(flags, "-fpie")    ||
-		  strstr(flags, "-fPIE")    ); // strcasestr is apparently nonstandard >:(
+			flags != NULL &&
+			(strstr(flags, "-fno-PIE") || // This is a weird case, but probably don't set PIE if
+			 strstr(flags, "-fno-pie") || // it is being set in user defined cflags.
+			 strstr(flags, "-fpie") ||
+			 strstr(flags, "-fPIE")); // strcasestr is apparently nonstandard >:(
 	if (!pie_set)
 	{
 		switch (platform_target.pie)
@@ -349,7 +360,7 @@ void platform_compiler(const char **files, unsigned file_count, const char* flag
 				break;
 		}
 	}
-	
+
 	vec_add(parts, "-c");
 	if (flags) vec_add(parts, flags);
 	for (unsigned i = 0; i < file_count; i++)

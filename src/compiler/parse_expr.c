@@ -161,7 +161,7 @@ static inline Expr *parse_try_unwrap(Context *context)
 static inline Expr *parse_try_unwrap_chain(Context *context)
 {
 	Expr **unwraps = NULL;
-ASSIGN_EXPR_ELSE(Expr *first_unwrap , parse_try_unwrap(context),  poisoned_expr);
+	ASSIGN_EXPR_ELSE(Expr *first_unwrap , parse_try_unwrap(context),  poisoned_expr);
 	vec_add(unwraps, first_unwrap);
 	while (try_consume(context, TOKEN_AND))
 	{

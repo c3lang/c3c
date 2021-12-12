@@ -920,6 +920,22 @@ typedef struct
 	Token identifier;
 	BuiltinFunction builtin;
 } ExprBuiltin;
+
+typedef struct
+{
+	bool is_assign : 1;
+	bool is_deref : 1;
+	union
+	{
+		struct
+		{
+			TokenId new_ident;
+			Expr *variant_expr;
+		};
+		Decl *variable;
+	};
+} ExprVariantSwitch;
+
 struct Expr_
 {
 	ExprKind expr_kind : 8;
@@ -927,6 +943,7 @@ struct Expr_
 	SourceSpan span;
 	Type *type;
 	union {
+		ExprVariantSwitch variant_switch;
 		ExprLen len_expr;
 		ExprCast cast_expr;
 		TypeInfo *type_expr;

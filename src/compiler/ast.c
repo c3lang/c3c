@@ -225,6 +225,8 @@ bool expr_is_pure(Expr *expr)
 			return true;
 		case EXPR_BITASSIGN:
 			return false;
+		case EXPR_VARIANTSWITCH:
+			return false;
 		case EXPR_BINARY:
 			if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return false;
 			return expr_is_pure(expr->binary_expr.right) && expr_is_pure(expr->binary_expr.left);

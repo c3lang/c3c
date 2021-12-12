@@ -1,0 +1,360 @@
+// #target: x64-darwin
+module foo;
+
+extern fn void printf(char*, ...);
+
+fn void test(variant z)
+{
+    switch (z)
+    {
+        case int:
+            printf("int: %d\n", *z);
+        case double:
+            printf("double %f\n", *z);
+        default:
+            printf("Unknown type.\n");
+    }
+}
+fn void test2(variant y)
+{
+    switch (z = y)
+    {
+        case int:
+            y = &&12;
+            printf("int: %d\n", *z);
+        case double:
+            printf("double %f\n", *z);
+        default:
+            printf("Unknown type.\n");
+    }
+}
+
+fn void test3(variant y)
+{
+    switch (z = *y)
+    {
+        case int:
+            printf("int: %d\n", z);
+        case double:
+            printf("double %f\n", z);
+        default:
+            printf("Unknown type.\n");
+    }
+}
+
+fn int main()
+{
+    test(&&123.0);
+    test(&&1);
+    test(&&true);
+    test2(&&123.5);
+    test2(&&1);
+    test2(&&true);
+    test3(&&124.0);
+    test3(&&2);
+    test3(&&true);
+    return 0;
+}
+
+/* #expect: foo.ll
+
+define void @foo.test(i64 %0, i8* %1) #0 {
+entry:
+  %z = alloca %variant, align 8
+  %switch = alloca i64, align 8
+  %z1 = alloca i32*, align 8
+  %z4 = alloca double*, align 8
+  %pair = bitcast %variant* %z to { i64, i8* }*
+  %2 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %pair, i32 0, i32 0
+  store i64 %0, i64* %2, align 8
+  %3 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %pair, i32 0, i32 1
+  store i8* %1, i8** %3, align 8
+  %4 = getelementptr inbounds %variant, %variant* %z, i32 0, i32 1
+  %5 = load i64, i64* %4, align 8
+  store i64 %5, i64* %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %6 = load i64, i64* %switch, align 8
+  %eq = icmp eq i64 5, %6
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  %7 = getelementptr inbounds %variant, %variant* %z, i32 0, i32 0
+  %8 = bitcast i8** %7 to i32**
+  %9 = load i32*, i32** %8, align 8
+  store i32* %9, i32** %z1, align 8
+  %10 = load i32*, i32** %z1, align 8
+  %11 = load i32, i32* %10, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str, i32 0, i32 0), i32 %11)
+  br label %switch.exit
+
+next_if:                                          ; preds = %switch.entry
+  %eq2 = icmp eq i64 15, %6
+  br i1 %eq2, label %switch.case3, label %next_if5
+
+switch.case3:                                     ; preds = %next_if
+  %12 = getelementptr inbounds %variant, %variant* %z, i32 0, i32 0
+  %13 = bitcast i8** %12 to double**
+  %14 = load double*, double** %13, align 8
+  store double* %14, double** %z4, align 8
+  %15 = load double*, double** %z4, align 8
+  %16 = load double, double* %15, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), double %16)
+  br label %switch.exit
+
+next_if5:                                         ; preds = %next_if
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if5
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.2, i32 0, i32 0))
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %switch.case3, %switch.case
+  ret void
+}
+
+define void @foo.test2(i64 %0, i8* %1) #0 {
+entry:
+  %y = alloca %variant, align 8
+  %.variant = alloca %variant, align 8
+  %switch = alloca i64, align 8
+  %z = alloca i32*, align 8
+  %taddr = alloca i32, align 4
+  %z3 = alloca double*, align 8
+  %pair = bitcast %variant* %y to { i64, i8* }*
+  %2 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %pair, i32 0, i32 0
+  store i64 %0, i64* %2, align 8
+  %3 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %pair, i32 0, i32 1
+  store i8* %1, i8** %3, align 8
+  %4 = bitcast %variant* %.variant to i8*
+  %5 = bitcast %variant* %y to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %4, i8* align 8 %5, i32 16, i1 false)
+  %6 = getelementptr inbounds %variant, %variant* %.variant, i32 0, i32 1
+  %7 = load i64, i64* %6, align 8
+  store i64 %7, i64* %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %8 = load i64, i64* %switch, align 8
+  %eq = icmp eq i64 5, %8
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  %9 = getelementptr inbounds %variant, %variant* %.variant, i32 0, i32 0
+  %10 = bitcast i8** %9 to i32**
+  %11 = load i32*, i32** %10, align 8
+  store i32* %11, i32** %z, align 8
+  store i32 12, i32* %taddr, align 4
+  %12 = bitcast i32* %taddr to i8*
+  %13 = insertvalue %variant undef, i8* %12, 0
+  %14 = insertvalue %variant %13, i64 5, 1
+  store %variant %14, %variant* %y, align 8
+  %15 = load i32*, i32** %z, align 8
+  %16 = load i32, i32* %15, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.3, i32 0, i32 0), i32 %16)
+  br label %switch.exit
+
+next_if:                                          ; preds = %switch.entry
+  %eq1 = icmp eq i64 15, %8
+  br i1 %eq1, label %switch.case2, label %next_if4
+
+switch.case2:                                     ; preds = %next_if
+  %17 = getelementptr inbounds %variant, %variant* %.variant, i32 0, i32 0
+  %18 = bitcast i8** %17 to double**
+  %19 = load double*, double** %18, align 8
+  store double* %19, double** %z3, align 8
+  %20 = load double*, double** %z3, align 8
+  %21 = load double, double* %20, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.4, i32 0, i32 0), double %21)
+  br label %switch.exit
+
+next_if4:                                         ; preds = %next_if
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.5, i32 0, i32 0))
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %switch.case2, %switch.case
+  ret void
+}
+
+define void @foo.test3(i64 %0, i8* %1) #0 {
+entry:
+  %y = alloca %variant, align 8
+  %.variant = alloca %variant, align 8
+  %switch = alloca i64, align 8
+  %z = alloca i32, align 4
+  %z3 = alloca double, align 8
+  %pair = bitcast %variant* %y to { i64, i8* }*
+  %2 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %pair, i32 0, i32 0
+  store i64 %0, i64* %2, align 8
+  %3 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %pair, i32 0, i32 1
+  store i8* %1, i8** %3, align 8
+  %4 = bitcast %variant* %.variant to i8*
+  %5 = bitcast %variant* %y to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %4, i8* align 8 %5, i32 16, i1 false)
+  %6 = getelementptr inbounds %variant, %variant* %.variant, i32 0, i32 1
+  %7 = load i64, i64* %6, align 8
+  store i64 %7, i64* %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %8 = load i64, i64* %switch, align 8
+  %eq = icmp eq i64 5, %8
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  %9 = getelementptr inbounds %variant, %variant* %.variant, i32 0, i32 0
+  %10 = bitcast i8** %9 to i32**
+  %11 = load i32*, i32** %10, align 8
+  %12 = load i32, i32* %11, align 8
+  store i32 %12, i32* %z, align 4
+  %13 = load i32, i32* %z, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.6, i32 0, i32 0), i32 %13)
+  br label %switch.exit
+
+next_if:                                          ; preds = %switch.entry
+  %eq1 = icmp eq i64 15, %8
+  br i1 %eq1, label %switch.case2, label %next_if4
+
+switch.case2:                                     ; preds = %next_if
+  %14 = getelementptr inbounds %variant, %variant* %.variant, i32 0, i32 0
+  %15 = bitcast i8** %14 to double**
+  %16 = load double*, double** %15, align 8
+  %17 = load double, double* %16, align 8
+  store double %17, double* %z3, align 8
+  %18 = load double, double* %z3, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.7, i32 0, i32 0), double %18)
+  br label %switch.exit
+
+next_if4:                                         ; preds = %next_if
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.8, i32 0, i32 0))
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %switch.case2, %switch.case
+  ret void
+}
+
+define i32 @main() #0 {
+entry:
+  %taddr = alloca double, align 8
+  %taddr1 = alloca %variant, align 8
+  %taddr2 = alloca i32, align 4
+  %taddr3 = alloca %variant, align 8
+  %taddr6 = alloca i8, align 1
+  %taddr7 = alloca %variant, align 8
+  %taddr10 = alloca double, align 8
+  %taddr11 = alloca %variant, align 8
+  %taddr14 = alloca i32, align 4
+  %taddr15 = alloca %variant, align 8
+  %taddr18 = alloca i8, align 1
+  %taddr19 = alloca %variant, align 8
+  %taddr22 = alloca double, align 8
+  %taddr23 = alloca %variant, align 8
+  %taddr26 = alloca i32, align 4
+  %taddr27 = alloca %variant, align 8
+  %taddr30 = alloca i8, align 1
+  %taddr31 = alloca %variant, align 8
+  store double 1.230000e+02, double* %taddr, align 8
+  %0 = bitcast double* %taddr to i8*
+  %1 = insertvalue %variant undef, i8* %0, 0
+  %2 = insertvalue %variant %1, i64 15, 1
+  store %variant %2, %variant* %taddr1, align 8
+  %3 = bitcast %variant* %taddr1 to { i64, i8* }*
+  %4 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %3, i32 0, i32 0
+  %lo = load i64, i64* %4, align 8
+  %5 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %3, i32 0, i32 1
+  %hi = load i8*, i8** %5, align 8
+  call void @foo.test(i64 %lo, i8* %hi)
+  store i32 1, i32* %taddr2, align 4
+  %6 = bitcast i32* %taddr2 to i8*
+  %7 = insertvalue %variant undef, i8* %6, 0
+  %8 = insertvalue %variant %7, i64 5, 1
+  store %variant %8, %variant* %taddr3, align 8
+  %9 = bitcast %variant* %taddr3 to { i64, i8* }*
+  %10 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %9, i32 0, i32 0
+  %lo4 = load i64, i64* %10, align 8
+  %11 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %9, i32 0, i32 1
+  %hi5 = load i8*, i8** %11, align 8
+  call void @foo.test(i64 %lo4, i8* %hi5)
+  store i8 1, i8* %taddr6, align 1
+  %12 = insertvalue %variant undef, i8* %taddr6, 0
+  %13 = insertvalue %variant %12, i64 2, 1
+  store %variant %13, %variant* %taddr7, align 8
+  %14 = bitcast %variant* %taddr7 to { i64, i8* }*
+  %15 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %14, i32 0, i32 0
+  %lo8 = load i64, i64* %15, align 8
+  %16 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %14, i32 0, i32 1
+  %hi9 = load i8*, i8** %16, align 8
+  call void @foo.test(i64 %lo8, i8* %hi9)
+  store double 1.235000e+02, double* %taddr10, align 8
+  %17 = bitcast double* %taddr10 to i8*
+  %18 = insertvalue %variant undef, i8* %17, 0
+  %19 = insertvalue %variant %18, i64 15, 1
+  store %variant %19, %variant* %taddr11, align 8
+  %20 = bitcast %variant* %taddr11 to { i64, i8* }*
+  %21 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %20, i32 0, i32 0
+  %lo12 = load i64, i64* %21, align 8
+  %22 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %20, i32 0, i32 1
+  %hi13 = load i8*, i8** %22, align 8
+  call void @foo.test2(i64 %lo12, i8* %hi13)
+  store i32 1, i32* %taddr14, align 4
+  %23 = bitcast i32* %taddr14 to i8*
+  %24 = insertvalue %variant undef, i8* %23, 0
+  %25 = insertvalue %variant %24, i64 5, 1
+  store %variant %25, %variant* %taddr15, align 8
+  %26 = bitcast %variant* %taddr15 to { i64, i8* }*
+  %27 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %26, i32 0, i32 0
+  %lo16 = load i64, i64* %27, align 8
+  %28 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %26, i32 0, i32 1
+  %hi17 = load i8*, i8** %28, align 8
+  call void @foo.test2(i64 %lo16, i8* %hi17)
+  store i8 1, i8* %taddr18, align 1
+  %29 = insertvalue %variant undef, i8* %taddr18, 0
+  %30 = insertvalue %variant %29, i64 2, 1
+  store %variant %30, %variant* %taddr19, align 8
+  %31 = bitcast %variant* %taddr19 to { i64, i8* }*
+  %32 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %31, i32 0, i32 0
+  %lo20 = load i64, i64* %32, align 8
+  %33 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %31, i32 0, i32 1
+  %hi21 = load i8*, i8** %33, align 8
+  call void @foo.test2(i64 %lo20, i8* %hi21)
+  store double 1.240000e+02, double* %taddr22, align 8
+  %34 = bitcast double* %taddr22 to i8*
+  %35 = insertvalue %variant undef, i8* %34, 0
+  %36 = insertvalue %variant %35, i64 15, 1
+  store %variant %36, %variant* %taddr23, align 8
+  %37 = bitcast %variant* %taddr23 to { i64, i8* }*
+  %38 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %37, i32 0, i32 0
+  %lo24 = load i64, i64* %38, align 8
+  %39 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %37, i32 0, i32 1
+  %hi25 = load i8*, i8** %39, align 8
+  call void @foo.test3(i64 %lo24, i8* %hi25)
+  store i32 2, i32* %taddr26, align 4
+  %40 = bitcast i32* %taddr26 to i8*
+  %41 = insertvalue %variant undef, i8* %40, 0
+  %42 = insertvalue %variant %41, i64 5, 1
+  store %variant %42, %variant* %taddr27, align 8
+  %43 = bitcast %variant* %taddr27 to { i64, i8* }*
+  %44 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %43, i32 0, i32 0
+  %lo28 = load i64, i64* %44, align 8
+  %45 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %43, i32 0, i32 1
+  %hi29 = load i8*, i8** %45, align 8
+  call void @foo.test3(i64 %lo28, i8* %hi29)
+  store i8 1, i8* %taddr30, align 1
+  %46 = insertvalue %variant undef, i8* %taddr30, 0
+  %47 = insertvalue %variant %46, i64 2, 1
+  store %variant %47, %variant* %taddr31, align 8
+  %48 = bitcast %variant* %taddr31 to { i64, i8* }*
+  %49 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %48, i32 0, i32 0
+  %lo32 = load i64, i64* %49, align 8
+  %50 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %48, i32 0, i32 1
+  %hi33 = load i8*, i8** %50, align 8
+  call void @foo.test3(i64 %lo32, i8* %hi33)
+  ret i32 0
+}

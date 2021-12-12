@@ -5167,6 +5167,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_PLACEHOLDER:
 		case EXPR_CT_CALL:
 		case EXPR_FLATPATH:
+		case EXPR_VARIANTSWITCH:
 			UNREACHABLE
 		case EXPR_TRY_UNWRAP_CHAIN:
 			llvm_emit_try_unwrap_chain(c, value, expr);
@@ -5187,6 +5188,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			TODO
 		case EXPR_DECL:
 			llvm_emit_local_decl(c, expr->decl_expr);
+			llvm_value_set_decl_address(value, expr->decl_expr);
 			return;
 		case EXPR_SLICE_ASSIGN:
 			llvm_emit_slice_assign(c, value, expr);
