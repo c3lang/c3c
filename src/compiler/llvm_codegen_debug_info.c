@@ -543,6 +543,7 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_TYPEDEF:
 			return type->backend_debug_type = llvm_debug_typedef_type(c, type);
 		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
 			return type->backend_debug_type = llvm_debug_array_type(c, type);
 		case TYPE_SUBARRAY:
 			return type->backend_debug_type = llvm_debug_subarray_type(c, type);

@@ -4,7 +4,9 @@ fn void test1()
 }
 
 struct Foo
-{}
+{
+    int x;
+}
 
 fn void test2()
 {

@@ -352,6 +352,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_POINTER:
 			return any_type->backend_type = llvm_type_from_ptr(c, any_type);
 		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
 			return any_type->backend_type = llvm_type_from_array(c, any_type);
 		case TYPE_SUBARRAY:
 		{

@@ -10,6 +10,7 @@ struct An3
 
 struct An2
 {
+    int z;
 }
 
 extern fn void printf(char *string);

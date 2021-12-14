@@ -100,7 +100,7 @@ typedef enum
 	CONST_INIT_ARRAY,
 	CONST_INIT_ARRAY_FULL,
 	CONST_INIT_ARRAY_VALUE,
-	} ConstInitType;
+} ConstInitType;
 
 
 typedef struct ConstInitializer_
@@ -2054,6 +2054,7 @@ Type *type_get_ptr(Type *ptr_type);
 Type *type_get_ptr_recurse(Type *ptr_type);
 Type *type_get_subarray(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
+Type *type_get_flexible_array(Type *arr_type);
 Type *type_get_failable(Type *failable_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);

@@ -1,7 +1,5 @@
 module test;
 
-struct Empty {}
-union Foo {}
 union Qu
 {
     Qu *x;

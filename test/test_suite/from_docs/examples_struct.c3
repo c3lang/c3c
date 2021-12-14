@@ -1,6 +1,6 @@
 define Callback = fn int(char c);
-struct Person {}
-struct Company {}
+struct Person { int i; }
+struct Company { int j; }
 enum Status : int
 {
     IDLE,

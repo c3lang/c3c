@@ -2299,6 +2299,7 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
+		case TYPE_FLEXIBLE_ARRAY:
 			assert(!from_end);
 			return true;
 		case TYPE_ARRAY:

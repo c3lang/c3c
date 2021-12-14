@@ -83,19 +83,30 @@ static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 		}
 		if (decl->name) sema_add_member(context, decl);
 	}
+
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
 			assert(decl->var.kind == VARDECL_MEMBER);
 			decl->resolve_status = RESOLVE_RUNNING;
-			if (!sema_resolve_type_info(context, decl->var.type_info)) return decl_poison(decl);
+			if (!sema_resolve_type_info_maybe_inferred(context, decl->var.type_info, true)) return decl_poison(decl);
 			decl->type = decl->var.type_info->type;
 			decl->resolve_status = RESOLVE_DONE;
+			Type *member_type = type_flatten_distinct(decl->type);
+			if (member_type->type_kind == TYPE_ARRAY)
+			{
+				if (member_type->array.len == 0)
+				{
+					SEMA_ERROR(decl, "Zero length arrays are not valid members.");
+					return false;
+				}
+			}
 			return true;
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_BITSTRUCT:
-			return sema_analyse_decl(context, decl);
+			if (!sema_analyse_decl(context, decl)) return false;
+			return true;
 		default:
 			UNREACHABLE
 	}
@@ -107,6 +118,7 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 	MemberIndex max_alignment_element = 0;
 	AlignSize max_alignment = 0;
 
+	bool has_named_parameter = false;
 	VECEACH(members, i)
 	{
 		Decl *member = members[i];
@@ -124,7 +136,11 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 			}
 			continue;
 		}
-
+		if (member->type->type_kind == TYPE_INFERRED_ARRAY)
+		{
+			SEMA_ERROR(member, "Flexible array members not allowed in unions.");
+			return false;
+		}
 		AlignSize member_alignment = type_abi_alignment(member->type);
 		ByteSize member_size = type_size(member->type);
 		assert(member_size <= MAX_TYPE_SIZE);
@@ -195,13 +211,14 @@ static bool sema_analyse_union_members(Context *context, Decl *decl, Decl **memb
 
 static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **members)
 {
-	// Default alignment is 1 even if the it is empty.
+	// Default alignment is 1 even if it is empty.
 	AlignSize natural_alignment = 1;
 	bool is_unaligned = false;
 	AlignSize size = 0;
 	AlignSize offset = 0;
 	bool is_packed = decl->is_packed;
-	VECEACH(members, i)
+	unsigned member_count = vec_size(members);
+	for (unsigned i = 0; i < member_count; i++)
 	{
 		Decl *member = decl->strukt.members[i];
 		if (!decl_ok(member))
@@ -217,6 +234,31 @@ static bool sema_analyse_struct_members(Context *context, Decl *decl, Decl **mem
 				continue;
 			}
 			continue;
+		}
+		Type *member_type = type_flatten_distinct(member->type);
+		if (member_type->type_kind == TYPE_STRUCT && member_type->decl->has_variable_array)
+		{
+			if (i != member_count - 1)
+			{
+				SEMA_ERROR(member, "A struct member with a flexible array must be the last element.");
+				return false;
+			}
+			decl->has_variable_array = true;
+		}
+		if (member_type->type_kind == TYPE_INFERRED_ARRAY)
+		{
+			if (i != member_count - 1)
+			{
+				SEMA_ERROR(member, "The flexible array member must be the last element.");
+				return false;
+			}
+			if (i == 0)
+			{
+				SEMA_ERROR(member, "The flexible array member cannot be the only element.");
+				return false;
+			}
+			member->type = type_get_flexible_array(member->type->array.base);
+			decl->has_variable_array = true;
 		}
 
 		if (!decl_ok(decl)) return false;
@@ -366,6 +408,12 @@ static bool sema_analyse_struct_union(Context *context, Decl *decl)
 
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : "anon");
 	bool success;
+	Decl **members = decl->strukt.members;
+	if (!vec_size(members))
+	{
+		SEMA_ERROR(decl, decl->decl_kind == DECL_UNION ? "Zero sized unions are not permitted." : "Zero sized structs are not permitted.");
+		return false;
+	}
 	if (decl->name)
 	{
 		SCOPE_START
@@ -663,7 +711,13 @@ static inline bool sema_analyse_typedef(Context *context, Decl *decl)
 		return true;
 	}
 	if (!sema_resolve_type_info(context, decl->typedef_decl.type_info)) return false;
-	decl->type->canonical = decl->typedef_decl.type_info->type->canonical;
+	Type *type = decl->typedef_decl.type_info->type->canonical;
+	if (type == type_anyerr || type == type_any)
+	{
+		SEMA_ERROR(decl->typedef_decl.type_info, "%s may not be aliased.", type_quoted_error_string(type));
+		return false;
+	}
+	decl->type->canonical = type;
 	// Do we need anything else?
 	return true;
 }
@@ -687,6 +741,7 @@ static inline bool sema_analyse_distinct(Context *context, Decl *decl)
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 		case CT_TYPES:
+		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 			return false;
 		case TYPE_FAILABLE_ANY:

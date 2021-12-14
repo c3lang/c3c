@@ -78,7 +78,15 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type, boo
 			return type_info_poison(type);
 		}
 	}
-
+	Type *distinct_base = type_flatten_distinct(type->array.base->type);
+	if (distinct_base->type_kind == TYPE_STRUCT)
+	{
+		if (distinct_base->decl->has_variable_array)
+		{
+			SEMA_ERROR(type, "Arrays of structs with flexible array members is not allowed.");
+			return type_info_poison(type);
+		}
+	}
 	switch (type->kind)
 	{
 		case TYPE_INFO_SUBARRAY:
@@ -105,6 +113,7 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type, boo
 			UNREACHABLE
 	}
 	assert(!type->array.len || type->array.len->expr_kind == EXPR_CONST);
+	if (type->array.base)
 	type->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -211,6 +220,7 @@ bool sema_resolve_type(Context *context, Type *type)
 		case TYPE_ARRAY:
 		case TYPE_SUBARRAY:
 		case TYPE_INFERRED_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
 			return sema_resolve_type(context, type->array.base);
 		case TYPE_FAILABLE:
 			return sema_resolve_type(context, type->failable);

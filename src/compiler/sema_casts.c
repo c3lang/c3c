@@ -389,6 +389,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_FAILABLE:
 		case TYPE_ANY:
 		case TYPE_FAILABLE_ANY:
+		case TYPE_FLEXIBLE_ARRAY:
 			return CAST_ERROR;
 	}
 	UNREACHABLE
@@ -481,6 +482,8 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		case TYPE_ERRTYPE:
 			// Allow MyError.A -> error, to an integer or to bool
 			return to_type->type_kind == TYPE_ANYERR || type_is_integer(to_type) || to_type == type_bool;
+		case TYPE_FLEXIBLE_ARRAY:
+			return false;
 		case TYPE_ARRAY:
 			if (to_kind == TYPE_VECTOR)
 			{
@@ -1260,6 +1263,8 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to == type_bool) return err_to_bool(expr, to_type);
 			if (type_is_integer(to)) return insert_cast(expr, CAST_ERINT, to_type);
 			break;
+		case TYPE_FLEXIBLE_ARRAY:
+			return false;
 		case TYPE_ARRAY:
 			if (to->type_kind == TYPE_VECTOR) return insert_cast(expr, CAST_ARRVEC, to_type);
 			FALLTHROUGH;

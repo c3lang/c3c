@@ -268,6 +268,8 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 				if (type_size(*base) * *elements != type_size(type)) return false;
 			}
 			goto TYPECHECK;
+		case TYPE_FLEXIBLE_ARRAY:
+			return false;
 		case TYPE_ARRAY:
 			// Empty arrays? Not homogenous.
 			if (type->array.len == 0) return false;

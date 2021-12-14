@@ -328,6 +328,7 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 			return;
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:
+		case TYPE_FLEXIBLE_ARRAY:
 			return;
 		case TYPE_SUBARRAY:
 		{

@@ -26,7 +26,3 @@ struct VarArrayHeader
 
 }
 
-struct VarArrayContainer
-{
-
-}

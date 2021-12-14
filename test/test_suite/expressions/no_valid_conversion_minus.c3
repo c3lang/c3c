@@ -1,5 +1,5 @@
 struct Foo
-{}
+{ int j; }
 
 fn int main()
 {

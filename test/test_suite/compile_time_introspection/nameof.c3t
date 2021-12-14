@@ -3,7 +3,7 @@ module mymodule;
 
 extern fn void printf(char *, ...);
 
-struct Foo { }
+struct Foo { int y; }
 
 int b;
 

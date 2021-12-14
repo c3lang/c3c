@@ -442,6 +442,7 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 		case TYPE_UNION:
 			x64_classify_struct_union(type, offset_base, current, lo_class, hi_class, named);
 			break;
+		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_ARRAY:
 			x64_classify_array(type, offset_base, current, lo_class, hi_class, named);
 			break;
@@ -574,6 +575,8 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 			if (offset < 8) return abi_type_new_plain(type_voidptr);
 			if (offset < 16) return abi_type_new_plain(type_ulong);
 			break;
+		case TYPE_FLEXIBLE_ARRAY:
+			UNREACHABLE
 		case TYPE_ARRAY:
 		{
 			Type *element = type->array.base;
