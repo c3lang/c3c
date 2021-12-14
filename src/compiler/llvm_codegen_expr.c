@@ -3840,7 +3840,6 @@ static void llvm_expand_struct_to_args(GenContext *context, Type *param_type, LL
 	VECEACH(members, i)
 	{
 		Type *member_type = members[i]->type;
-		if (type_is_empty_field(member_type, true)) continue;
 		AlignSize load_align;
 		LLVMValueRef member_ptr = llvm_emit_struct_gep_raw(context,
 		                                                   expand_ptr,

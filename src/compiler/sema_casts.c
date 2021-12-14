@@ -580,7 +580,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 	// 4. Handle pointers
 	if (type_is_pointer(to))
 	{
-		// 4a. Assigning a subarray or vararray to a pointer of the same base type is fine
+		// 4a. Assigning a subarray to a pointer of the same base type is fine
 		if (from->type_kind == TYPE_SUBARRAY)
 		{
 			// void* conversion always work.
@@ -599,7 +599,10 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 			// Special handling of int* = int[4]*
 			if (from->pointer->type_kind == TYPE_ARRAY)
 			{
-				if (type_is_subtype(to->pointer, from->pointer->array.base)) return true;
+				if (type_is_subtype(to->pointer, from->pointer->array.base))
+				{
+					return true;
+				}
 			}
 
 			// Use subtype matching

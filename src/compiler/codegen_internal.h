@@ -1,8 +1,5 @@
 #include "compiler_internal.h"
 
-bool type_is_empty_field(Type *type, bool allow_array);
-bool type_is_empty_record(Type *type, bool allow_array);
-bool type_is_empty_field(Type *type, bool allow_array);
 bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements);
 static inline Type *type_reduced_from_expr(Expr *expr);
 

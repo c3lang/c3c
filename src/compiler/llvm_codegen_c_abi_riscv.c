@@ -83,7 +83,6 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 
 	if (type_is_structlike(type))
 	{
-		if (type_is_empty_record(type, true)) return true;
 		// Unions aren't eligible unless they're empty (which is caught above).
 		if (type->type_kind == TYPE_UNION) return false;
 		Decl **members = type->decl->strukt.members;
@@ -146,9 +145,6 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 	assert(type == type->canonical);
 
 	unsigned xlen = platform_target.riscv.xlen;
-
-	// Ignore empty structs/unions.
-	if (type_is_empty_record(type, true)) return abi_arg_ignore();
 
 	ByteSize size = type_size(type);
 

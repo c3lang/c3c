@@ -2322,6 +2322,11 @@ static bool expr_check_index_in_range(Context *context, Type *type, Expr *index_
 			}
 			if (!end_index && idx >= len)
 			{
+				if (len == 0)
+				{
+					SEMA_ERROR(index_expr, "Cannot index into a zero size array.");
+					return false;
+				}
 				SEMA_ERROR(index_expr,
 						   is_vector ? "Index out of bounds, was %lld, exceeding max vector width %lld."
 						   : "Array index out of bounds, was %lld, exceeding max array index %lld.", (long long)idx, (long long)len - 1);
