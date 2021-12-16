@@ -452,6 +452,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_MACRO_EXPANSION:
 		case EXPR_PLACEHOLDER:
 		case EXPR_POISONED:
+		case EXPR_ARGV_TO_SUBARRAY:
 			UNREACHABLE
 		case EXPR_NOP:
 			return true;
@@ -6730,6 +6731,9 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 		case EXPR_PTR:
 		case EXPR_VARIANTSWITCH:
 			UNREACHABLE
+		case EXPR_ARGV_TO_SUBARRAY:
+			expr->type = type_get_subarray(type_get_subarray(type_char));
+			return true;
 		case EXPR_DECL:
 			if (!sema_analyse_var_decl(context, expr->decl_expr, true)) return false;
 			expr->type = expr->decl_expr->type;

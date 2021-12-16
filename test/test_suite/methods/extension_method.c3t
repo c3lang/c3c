@@ -18,20 +18,21 @@ module abc;
 import foo;
 import baz;
 
-fn void main()
+fn int main()
 {
     Bar bar;
     bar.test();
+    return 0;
 }
 
 // #expect: abc.ll
 
 declare void @foo.Bar__test(%Bar*)
 
-define void @main()
+define i32 @main()
 entry:
   %bar = alloca %Bar, align 4
   %0 = bitcast %Bar* %bar to i32*
   store i32 0, i32* %0, align 4
   call void @foo.Bar__test(%Bar* %bar)
-  ret void
+  ret i32 0

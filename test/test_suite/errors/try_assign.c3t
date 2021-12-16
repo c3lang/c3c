@@ -27,7 +27,7 @@ fn void main()
 
 // #expect: try_assign.ll
 
-define void @main() #0 {
+define void @try_assign.main() #0 {
 entry:
   %x = alloca i32, align 4
   %z = alloca i32, align 4

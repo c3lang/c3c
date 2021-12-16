@@ -37,7 +37,7 @@ fn void main()
 declare i32 @printf(i8*, ...) #0
 
 ; Function Attrs: nounwind
-define void @main() #0 {
+define void @test.main() #0 {
 entry:
   %z = alloca i32, align 4
   %z.f = alloca i64, align 8

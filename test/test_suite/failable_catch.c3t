@@ -13,7 +13,7 @@ macro foo(int x)
 
 extern fn void printf(char*, ...);
 
-fn void main()
+fn int main()
 {
     int! a = @foo(1);
 
@@ -25,11 +25,12 @@ fn void main()
     if (catch(c)) printf("c had error\n");
     c = 3;
     printf("c = %d\n", c);
+    return 0;
 }
 
 // #expect: failable_catch.ll
 
-define void @main() #0 {
+define i32 @main() #0 {
 entry:
   %a = alloca i32, align 4
    %a.f = alloca i64, align 8
@@ -171,5 +172,5 @@ entry:
    br label %voiderr27
 
  voiderr27:                                        ; preds = %after_check26, %if.exit24
-   ret void
+   ret i32 0
  }

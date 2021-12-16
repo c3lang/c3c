@@ -61,7 +61,7 @@ fn void main()
 
 // #expect: mymodule.ll
 
-define void @main() #0 {
+define void @mymodule.main() #0 {
 entry:
   %x = alloca i32, align 4
   %y = alloca i32, align 4

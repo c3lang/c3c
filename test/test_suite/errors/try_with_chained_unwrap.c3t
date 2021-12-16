@@ -18,7 +18,7 @@ fn void main()
 
 // #expect: try_with_chained_unwrap.ll
 
-define void @main() #0 {
+define void @try_with_chained_unwrap.main() #0 {
 entry:
   %val = alloca i32, align 4
   %retparam = alloca i32, align 4

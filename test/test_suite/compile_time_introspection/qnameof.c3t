@@ -40,7 +40,7 @@ fn void main()
 @.str.16 = private constant [15 x i8] c"Blob**[3]: %s\0A\00", align 1
 @.str.17 = private constant [10 x i8] c"Blob**[3]\00", align 1
 
-define void @main()
+define void @qnametest.main()
   %help = alloca i32, align 4
   store i32 0, i32* %help, align 4
   %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str, i32 0, i32 0), [6 x i8]* bitcast ([7 x i8]* @.str.1 to [6 x i8]*))

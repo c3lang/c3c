@@ -224,6 +224,10 @@ void sema_analysis_pass_decls(Module *module)
 		{
 			sema_analyse_decl(context, context->functions[i]);
 		}
+		if (context->main_function)
+		{
+			sema_analyse_decl(context, context->main_function);
+		}
 		VECEACH(context->generic_defines, i)
 		{
 			sema_analyse_decl(context, context->generic_defines[i]);
@@ -247,6 +251,7 @@ void sema_analysis_pass_functions(Module *module)
 		{
 			analyse_func_body(context, context->functions[i]);
 		}
+		if (context->main_function) analyse_func_body(context, context->main_function);
 
 	}
 

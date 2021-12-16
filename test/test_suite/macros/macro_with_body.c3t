@@ -60,7 +60,7 @@ entry:
   ret i32 %mul
 }
 
-define void @main() #0 {
+define void @withbody.main() #0 {
 entry:
   %f = alloca %Foo, align 4
   %y = alloca i32, align 4

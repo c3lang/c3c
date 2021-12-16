@@ -34,7 +34,7 @@ extern fn int printf(char *fmt, ...);
 // #expect: foo.ll
 
 ; Function Attrs: nounwind
-define void @main() #0 {
+define void @foo.main() #0 {
 entry:
   %i = alloca [3 x i32], align 4
   %x = alloca %Foo, align 8

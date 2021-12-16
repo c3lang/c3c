@@ -122,7 +122,7 @@ fn void test3()
 
 /* #expect: foo.ll
 
-define void @main() #0 {
+define void @foo.main() #0 {
 entry:
   call void @foo.test1()
   call void @foo.test2()

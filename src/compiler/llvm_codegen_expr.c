@@ -5159,6 +5159,87 @@ void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 
 }
 
+static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Expr *expr)
+{
+	BEValue argc_value;
+	BEValue argv_value;
+	llvm_value_set_decl_address(&argc_value, expr->argv_expr.argc);
+	llvm_value_set_decl_address(&argv_value, expr->argv_expr.argv);
+	llvm_value_rvalue(c, &argc_value);
+	llvm_value_rvalue(c, &argv_value);
+	LLVMValueRef argv_ptr = argv_value.value;
+	LLVMValueRef count = argc_value.value;
+	Type *arg_array_type = type_get_subarray(type_char);
+	AlignSize alignment = type_alloca_alignment(type_get_array(arg_array_type, 1));
+	LLVMTypeRef arg_array_elem_type = llvm_get_type(c, arg_array_type);
+	LLVMValueRef arg_array = LLVMBuildArrayAlloca(c->builder, arg_array_elem_type, count, "argarray");
+	LLVMSetAlignment(arg_array, alignment);
+
+	// Store the addresses.
+	LLVMTypeRef temp_type = llvm_get_type(c, expr->type);
+	LLVMTypeRef loop_type = llvm_get_type(c, type_usize);
+	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
+	LLVMValueRef size = llvm_zext_trunc(c, count, loop_type);
+	LLVMValueRef result = LLVMGetUndef(temp_type);
+	result = LLVMBuildInsertValue(c->builder, result, size, 1, "");
+	result = LLVMBuildInsertValue(c->builder, result, arg_array, 0, "");
+	llvm_value_set(value, result, expr->type);
+
+	// Check if zero:
+	BEValue cond;
+	llvm_value_set_bool(&cond, LLVMBuildICmp(c->builder, LLVMIntEQ, count, llvm_get_zero(c, argc_value.type), ""));
+	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "exit_loop");
+	LLVMBasicBlockRef pre_loop_block = llvm_basic_block_new(c, "pre_loop");
+
+	// Jump to exit if zero
+	llvm_emit_cond_br(c, &cond, exit_block, pre_loop_block);
+
+	// Now we create the pre loop block
+	llvm_emit_block(c, pre_loop_block);
+	LLVMBasicBlockRef body_block = llvm_basic_block_new(c, "body_loop");
+	LLVMValueRef zero = LLVMConstNull(loop_type);
+
+	// Jump to the first entry
+	llvm_emit_br(c, body_block);
+	llvm_emit_block(c, body_block);
+	LLVMValueRef index_var = LLVMBuildPhi(c->builder, loop_type, "");
+
+	// Find the current substring
+	LLVMValueRef index = LLVMBuildInBoundsGEP2(c->builder, arg_array_elem_type, arg_array, &index_var, 1, "indexfe");
+	LLVMValueRef pointer_to_arg = LLVMBuildInBoundsGEP2(c->builder, char_ptr_type, argv_ptr, &index_var, 1, "");
+
+	// Get the char* to the argument
+	LLVMValueRef pointer_value = llvm_emit_load_aligned(c, llvm_get_ptr_type(c, type_char), pointer_to_arg,
+	                                                    type_abi_alignment(type_get_ptr(type_char)), "");
+	AlignSize index_align;
+
+	// Get strlen to calculate length
+	LLVMValueRef strlen = LLVMGetNamedFunction(c->module, "strlen");
+	LLVMTypeRef strlen_type = LLVMFunctionType(loop_type, &char_ptr_type, 1, false);
+	if (!strlen)
+	{
+		strlen = LLVMAddFunction(c->module, "strlen", strlen_type);
+	}
+	LLVMValueRef len = LLVMBuildCall2(c->builder, strlen_type, strlen, &pointer_value, 1, "");
+
+	// We first set the pointer
+	AlignSize align = type_abi_alignment(arg_array_type);
+	LLVMValueRef ptr_loc = llvm_emit_struct_gep_raw(c, index, arg_array_elem_type, 0, align, &index_align);
+	llvm_store_aligned(c, ptr_loc, pointer_value, index_align);
+	// Then the length
+	LLVMValueRef len_loc = llvm_emit_struct_gep_raw(c, index, arg_array_elem_type, 1, align, &index_align);
+	llvm_store_aligned(c, len_loc, len, index_align);
+
+	// Add index
+	LLVMValueRef index_plus = LLVMBuildNUWAdd(c->builder, index_var, llvm_const_int(c, type_usize, 1), "");
+	llvm_value_set_bool(&cond, LLVMBuildICmp(c->builder, LLVMIntULT, index_plus, size, ""));
+	llvm_emit_cond_br(c, &cond, body_block, exit_block);
+	LLVMValueRef values[2] = { index_plus, zero };
+	LLVMBasicBlockRef blocks[2] = { body_block, pre_loop_block };
+	LLVMAddIncoming(index_var, values, blocks, 2);
+	llvm_emit_block(c, exit_block);
+}
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_LOC(c, expr);
@@ -5176,6 +5257,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_FLATPATH:
 		case EXPR_VARIANTSWITCH:
 			UNREACHABLE
+		case EXPR_ARGV_TO_SUBARRAY:
+			llvm_emit_argv_to_subarray(c, value, expr);
+			return;
 		case EXPR_TRY_UNWRAP_CHAIN:
 			llvm_emit_try_unwrap_chain(c, value, expr);
 			return;

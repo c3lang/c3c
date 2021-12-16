@@ -182,8 +182,7 @@ entry:
   ret void
 }
 
-; Function Attrs: nounwind
-define void @main() #0 {
+define void @vector_incdec.main() #0 {
 entry:
   call void @vector_incdec.testf()
   call void @vector_incdec.testi()

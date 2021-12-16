@@ -105,7 +105,7 @@ noerr_block:                                      ; preds = %after.errcheck
   ret i64 0
 }
 
-define void @main() #0 {
+define void @demo.main() #0 {
 entry:
   %ratio = alloca double, align 8
   %ratio.f = alloca i64, align 8

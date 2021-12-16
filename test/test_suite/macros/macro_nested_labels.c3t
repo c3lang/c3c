@@ -28,7 +28,7 @@ fn void main()
 
 /* #expect: test.ll
 
-define void @main() #0 {
+define void @test.main() #0 {
 entry:
   %ab = alloca i32, align 4
   %x = alloca i32, align 4

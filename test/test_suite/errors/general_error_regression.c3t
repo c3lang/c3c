@@ -95,7 +95,7 @@ entry:
   ret void
 }
 
-define void @main() #0 {
+define void @foo.main() #0 {
 entry:
   %f = alloca i64, align 8
   %ef = alloca i64, align 8

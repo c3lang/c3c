@@ -88,6 +88,9 @@ const char *kw_builtin_exp;
 const char *kw_builtin_fabs;
 const char *kw_builtin_fma;
 const char *kw_builtin_cmpxchg;
+const char *kw_argc;
+const char *kw_argv;
+const char *kw_mainstub;;
 
 void symtab_init(uint32_t capacity)
 {
@@ -152,6 +155,10 @@ void symtab_init(uint32_t capacity)
 	kw_incr = KW_DEF("incr");
 	kw_default_iterator = KW_DEF("default_iterator");
 	kw_check_assign = KW_DEF("check_assign");
+
+	kw_argc = KW_DEF("_$argc");
+	kw_argv = KW_DEF("_$argv");
+	kw_mainstub = KW_DEF("_$mainstub");
 
 	builtin_list[BUILTIN_CEIL] = KW_DEF("ceil");
 	builtin_list[BUILTIN_TRUNC] = KW_DEF("trunc");

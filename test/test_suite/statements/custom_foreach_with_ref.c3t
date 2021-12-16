@@ -133,7 +133,7 @@ entry:
   ret %Foo* %1
 }
 ; Function Attrs: nounwind
-define void @main() #0 {
+define void @foo.main() #0 {
 entry:
   %x = alloca %Foo, align 4
   %a = alloca i32, align 4

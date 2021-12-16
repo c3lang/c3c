@@ -71,6 +71,7 @@ Expr *copy_expr(Expr *source_expr)
 	{
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_VARIANTSWITCH:
+		case EXPR_ARGV_TO_SUBARRAY:
 			UNREACHABLE
 		case EXPR_FLATPATH:
 		case EXPR_UNDEF:

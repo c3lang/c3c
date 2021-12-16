@@ -107,11 +107,3 @@ entry:
   store [4 x i8]* %12, [4 x i8]** %y2, align 8
   ret void
 }
-
-; Function Attrs: nounwind
-define void @main() #0 {
-entry:
-  call void @foo.test()
-  call void @foo.test2()
-  ret void
-}

@@ -19,10 +19,10 @@ fn void main()
 /* #expect: test.ll
 
 @.str = private constant [4 x i8] c"%d\0A\00", align 1
-; Function Attrs: nounwind
+
 declare void @printf(i8*, ...) #0
-; Function Attrs: nounwind
-define void @main() #0 {
+
+define void @test.main() #0 {
 entry:
   %x = alloca [8 x i32], align 16
   %"__idx$" = alloca i64, align 8
@@ -50,6 +50,7 @@ loop.cond:                                        ; preds = %loop.body, %entry
   %8 = load i64, i64* %"__idx$", align 8
   %gt = icmp ugt i64 8, %8
   br i1 %gt, label %loop.body, label %loop.exit
+
 loop.body:                                        ; preds = %loop.cond
   %9 = load i64, i64* %"__idx$", align 8
   %10 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 %9
@@ -61,17 +62,31 @@ loop.body:                                        ; preds = %loop.cond
   %add = add i64 %13, 1
   store i64 %add, i64* %"__idx$", align 8
   br label %loop.cond
+
 loop.exit:                                        ; preds = %loop.cond
   br label %cond
+
 cond:                                             ; preds = %assign, %loop.exit
   %14 = phi i64 [ 0, %loop.exit ], [ %add1, %assign ]
   %le = icmp sle i64 %14, 7
   br i1 %le, label %assign, label %exit
+
 assign:                                           ; preds = %cond
   %15 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 %14
   store i32 123, i32* %15, align 4
   %add1 = add i64 %14, 1
   br label %cond
+
 exit:                                             ; preds = %cond
   ret void
+}
+
+define i32 @main(i32 %0, i8** %1) #0 {
+entry:
+  %"_$argv" = alloca i32, align 4
+  %"_$argc" = alloca i8**, align 8
+  store i32 %0, i32* %"_$argv", align 4
+  store i8** %1, i8*** %"_$argc", align 8
+  call void @test.main()
+  ret i32 0
 }
