@@ -175,7 +175,7 @@ loop.exit:                                        ; preds = %loop.cond
 }
 
 ; Function Attrs: nounwind
-define void @main() #0 {
+define void @foo.main() #0 {
 entry:
   %x = alloca %variant, align 8
   %taddr = alloca i32, align 4

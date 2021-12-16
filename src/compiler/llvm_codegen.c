@@ -1014,6 +1014,7 @@ void *llvm_gen(Module *module)
 		{
 			llvm_emit_function_decl(gen_context, context->functions[i]);
 		}
+		if (context->main_function) llvm_emit_function_decl(gen_context, context->main_function);
 	}
 
 	VECEACH(module->contexts, j)
@@ -1035,6 +1036,8 @@ void *llvm_gen(Module *module)
 			Decl *decl = context->functions[i];
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
 		}
+		if (context->main_function) llvm_emit_function_body(gen_context, context->main_function);
+
 		VECEACH(context->methods, i)
 		{
 			Decl *decl = context->methods[i];

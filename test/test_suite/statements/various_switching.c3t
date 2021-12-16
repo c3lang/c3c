@@ -200,7 +200,7 @@ switch.exit26:                                    ; preds = %switch.default25, %
 }
 
 ; Function Attrs: nounwind
-define void @main() #0 {
+define void @mymodule.main() #0 {
 entry:
   call void @mymodule.test()
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.8, i32 0, i32 0))

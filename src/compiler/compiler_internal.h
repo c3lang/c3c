@@ -936,6 +936,12 @@ typedef struct
 	};
 } ExprVariantSwitch;
 
+typedef struct
+{
+	Decl *argc;
+	Decl *argv;
+} ExprArgv;
+
 struct Expr_
 {
 	ExprKind expr_kind : 8;
@@ -948,6 +954,7 @@ struct Expr_
 		ExprCast cast_expr;
 		TypeInfo *type_expr;
 		ExprConst const_expr;
+		ExprArgv argv_expr;
 		ExprGuard rethrow_expr;
 		Decl *decl_expr;
 		ExprOrError or_error_expr;
@@ -1381,6 +1388,7 @@ typedef struct Context_
 	Decl **types;
 	Decl **generic_defines;
 	Decl **functions;
+	Decl *main_function;
 	Decl **macros;
 	Decl **generics;
 	Decl **generic_methods;
@@ -1609,6 +1617,10 @@ extern const char *kw_builtin_exp;
 extern const char *kw_builtin_fabs;
 extern const char *kw_builtin_fma;
 extern const char *kw_builtin_cmpxchg;
+extern const char *kw_argc;
+extern const char *kw_argv;
+extern const char *kw_mainstub;
+
 
 
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id((_token).id))

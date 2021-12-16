@@ -1270,6 +1270,139 @@ static inline bool sema_update_call_convention(Decl *decl, CallABI abi)
 	return had;
 }
 
+static inline bool sema_analyse_main_function(Context *context, Decl *decl)
+{
+	if (decl == context->main_function) return true;
+
+	if (decl->visibility == VISIBLE_LOCAL)
+	{
+		SEMA_ERROR(decl, "A main function may not have local visibility.");
+		return false;
+	}
+	FunctionSignature *signature = &decl->func_decl.function_signature;
+	Type *rtype = type_flatten_distinct(signature->rtype->type);
+	bool is_int_return = true;
+	bool is_err_return = false;
+	if (rtype->type_kind == TYPE_FAILABLE_ANY) is_err_return = true;
+	if (!is_err_return && type_is_failable(rtype))
+	{
+		if (rtype->failable->type_kind != TYPE_VOID)
+		{
+			SEMA_ERROR(signature->rtype, "The return type of 'main' cannot be a failable, unless it is 'void!'.");
+			return false;
+		}
+		is_int_return = false;
+		is_err_return = true;
+	}
+	if (rtype->type_kind == TYPE_VOID) is_int_return = false;
+
+	if (type_is_integer(rtype) && rtype != type_cint())
+	{
+		SEMA_ERROR(signature->rtype, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint()));
+		return false;
+	}
+	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
+	Decl **params = signature->params;
+	unsigned param_count = vec_size(params);
+	bool subarray_param = false;
+	bool cparam = false;
+	switch (param_count)
+	{
+		case 0:
+			// This is the default style already set
+			break;
+		case 1:
+			if (type_flatten_distinct(params[0]->type) != type_get_subarray(type_get_subarray(type_char)))
+			{
+				SEMA_ERROR(params[0], "Expected a parameter of type 'char[][]'");
+				return false;
+			}
+			subarray_param = true;
+			break;
+		case 2:
+			if (type_flatten_distinct(params[0]->type) != type_cint())
+			{
+				SEMA_ERROR(params[0], "Expected a parameter of type %s for a C-style main.", type_quoted_error_string(type_cint()));
+				return false;
+			}
+			if (type_flatten_distinct(params[1]->type) != type_get_ptr(type_get_ptr(type_char)))
+			{
+				SEMA_ERROR(params[1], "Expected a parameter of type 'char**' for a C-style main.");
+				return false;
+			}
+			cparam = true;
+			break;
+		default:
+			SEMA_ERROR(params[0], "Expected zero, 1 or 2 parameters for main.");
+			return false;
+	}
+	if (!subarray_param && is_int_return)
+	{
+		// Int return is pass-through at the moment.
+		decl->visibility = VISIBLE_EXTERN;
+		return true;
+	}
+	Decl *function = decl_new(DECL_FUNC, decl->name_token, VISIBLE_EXTERN);
+	function->name = kw_mainstub;
+	function->extname = kw_main;
+	function->func_decl.function_signature.rtype = type_info_new_base(type_cint(), decl->span);
+	Decl *param1 = decl_new_generated_var(kw_argv, type_cint(), VARDECL_PARAM, decl->span);
+	Decl *param2 = decl_new_generated_var(kw_argc, type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
+	Decl **main_params = NULL;
+	vec_add(main_params, param1);
+	vec_add(main_params, param2);
+	function->func_decl.function_signature.params = main_params;
+	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
+	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
+	Expr *call = expr_new(EXPR_CALL, decl->span);
+	call->call_expr.function = expr_variable(decl);
+	if (subarray_param)
+	{
+		Expr *subarray = expr_new(EXPR_ARGV_TO_SUBARRAY, decl->span);
+		subarray->argv_expr.argc = param1;
+		subarray->argv_expr.argv = param2;
+		vec_add(call->call_expr.arguments, subarray);
+	}
+	else if (cparam)
+	{
+		vec_add(call->call_expr.arguments, expr_variable(param1));
+		vec_add(call->call_expr.arguments, expr_variable(param2));
+	}
+	// Unresolve them or the params cannot be resolved later.
+	param1->resolve_status = RESOLVE_NOT_DONE;
+	param2->resolve_status = RESOLVE_NOT_DONE;
+	if (is_int_return)
+	{
+		ret_stmt->return_stmt.expr = call;
+	}
+	else if (is_err_return)
+	{
+		Expr *try_expr = expr_new(EXPR_TRY, decl->span);
+		try_expr->inner_expr = call;
+		Expr *not_expr = expr_new(EXPR_UNARY, decl->span);
+		not_expr->unary_expr.expr = try_expr;
+		not_expr->unary_expr.operator = UNARYOP_NOT;
+		Expr *cast_expr = expr_new(EXPR_CAST, decl->span);
+		cast_expr->cast_expr.expr = not_expr;
+		cast_expr->cast_expr.type_info = type_info_new_base(type_cint(), decl->span);
+		ret_stmt->return_stmt.expr = cast_expr;
+	}
+	else
+	{
+		Ast *stmt = new_ast(AST_EXPR_STMT, decl->span);
+		stmt->expr_stmt = call;
+		vec_add(body->compound_stmt.stmts, stmt);
+		Expr *c = expr_new(EXPR_CONST, decl->span);
+		c->type = type_cint();
+		expr_const_set_int(&c->const_expr, 0, c->type->type_kind);
+		c->resolve_status = RESOLVE_DONE;
+		ret_stmt->expr_stmt = c;
+	}
+	vec_add(body->compound_stmt.stmts, ret_stmt);
+	function->func_decl.body = body;
+	context->main_function = function;
+	return true;
+}
 static inline bool sema_analyse_func(Context *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
@@ -1375,12 +1508,7 @@ static inline bool sema_analyse_func(Context *context, Decl *decl)
 	{
 		if (decl->name == kw_main)
 		{
-			if (decl->visibility == VISIBLE_LOCAL)
-			{
-				SEMA_ERROR(decl, "'main' cannot have local visibility.");
-				return false;
-			}
-			decl->visibility = VISIBLE_EXTERN;
+			if (!sema_analyse_main_function(context, decl)) return decl_poison(decl);
 		}
 		decl_set_external_name(decl);
 	}

@@ -94,7 +94,7 @@ noerr_block:                                      ; preds = %after_check
 }
 
 ; Function Attrs: nounwind
-define void @main() #0 {
+define void @test.main() #0 {
 entry:
   %0 = call i64 @test.test1()
   %not_err = icmp eq i64 %0, 0

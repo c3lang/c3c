@@ -223,6 +223,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_NOP:
 		case EXPR_PTR:
 			return true;
+		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_BITASSIGN:
 			return false;
 		case EXPR_VARIANTSWITCH:

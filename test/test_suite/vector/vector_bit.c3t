@@ -153,11 +153,3 @@ entry:
   %66 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @.str.6, i32 0, i32 0), i32 %59, i32 %61, i32 %63, i32 %65)
   ret void
 }
-
-; Function Attrs: nounwind
-define void @main() #0 {
-entry:
-  call void @vector_bit.testf()
-  call void @vector_bit.testi()
-  ret void
-}

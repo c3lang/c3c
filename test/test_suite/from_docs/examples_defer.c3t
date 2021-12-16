@@ -80,7 +80,7 @@ exit10:                                           ; preds = %exit9
 }
 
 ; Function Attrs: nounwind
-define void @main() #0 {
+define void @defer1.main() #0 {
 entry:
   call void @defer1.test(i32 1)
   call void @defer1.test(i32 0)

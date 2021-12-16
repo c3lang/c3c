@@ -40,7 +40,7 @@ fn void main()
 @.str = private constant [4 x i8] c"%d\0A\00", align 1
 @.str.1 = private constant [8 x i8] c"%d, %d\0A\00", align 1
 
-define void @main() #0 {
+define void @foo.main() #0 {
 entry:
   %i = alloca i32, align 4
   store i32 10, i32* %i, align 4

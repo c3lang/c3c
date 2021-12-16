@@ -6,7 +6,7 @@ fn void testA() {}
 fn void testB() {}
 fn void test3() {}
 
-fn int main(int argc)
+fn int main(int argc, char** argv)
 {
 	int a = 0;
     while (a)
@@ -26,49 +26,42 @@ fn int main(int argc)
 // #expect: test.ll
 
 
-define i32 @main(i32 %0) #0 {
+define i32 @main(i32 %0, i8** %1) #0 {
 entry:
   %argc = alloca i32, align 4
+  %argv = alloca i8**, align 8
   %a = alloca i32, align 4
   store i32 %0, i32* %argc, align 4
+  store i8** %1, i8*** %argv, align 8
   store i32 0, i32* %a, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %exit3, %entry
-  %1 = load i32, i32* %a, align 4
-  %intbool = icmp ne i32 %1, 0
+  %2 = load i32, i32* %a, align 4
+  %intbool = icmp ne i32 %2, 0
   br i1 %intbool, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
-  %2 = load i32, i32* %argc, align 4
-  %eq = icmp eq i32 %2, 1
+  %3 = load i32, i32* %argc, align 4
+  %eq = icmp eq i32 %3, 1
   br i1 %eq, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %loop.body
   call void @test.testA()
   call void @test.testB()
   br label %exit
-
 exit:                                             ; preds = %if.then
   call void @test.test2()
   br label %exit1
-
 exit1:                                            ; preds = %exit
   br label %loop.exit
-
 if.exit:                                          ; preds = %loop.body
   call void @test.test3()
   call void @test.testA()
   call void @test.testB()
   br label %exit2
-
 exit2:                                            ; preds = %if.exit
   call void @test.test2()
   br label %exit3
-
 exit3:                                            ; preds = %exit2
   br label %loop.cond
-
 loop.exit:                                        ; preds = %exit1, %loop.cond
   ret i32 0
 }

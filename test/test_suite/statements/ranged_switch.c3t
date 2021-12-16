@@ -48,7 +48,7 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @main() #0 {
+define void @foo.main() #0 {
 entry:
   %i = alloca i32, align 4
   %switch = alloca i32, align 4

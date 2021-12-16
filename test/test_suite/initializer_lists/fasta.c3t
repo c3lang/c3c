@@ -338,7 +338,7 @@ if.exit15:                                        ; preds = %if.then14, %loop.ex
 }
 
 ; Function Attrs: nounwind
-define void @main(i32 %0, i8** %1) #0 {
+define void @fasta.main(i32 %0, i8** %1) #0 {
 entry:
   %argc = alloca i32, align 4
   %argv = alloca i8**, align 8
@@ -382,4 +382,16 @@ if.exit:                                          ; preds = %if.then, %entry
   %mul10 = mul i32 %11, 5
   call void @fasta.random_fasta(i8* %lo6, i64 %hi7, i8* %lo8, i64 %hi9, i32 %mul10)
   ret void
+}
+
+define i32 @main(i32 %0, i8** %1) #0 {
+entry:
+  %"_$argv" = alloca i32, align 4
+  %"_$argc" = alloca i8**, align 8
+  store i32 %0, i32* %"_$argv", align 4
+  store i8** %1, i8*** %"_$argc", align 8
+  %2 = load i32, i32* %"_$argv", align 4
+  %3 = load i8**, i8*** %"_$argc", align 8
+  call void @fasta.main(i32 %2, i8** %3)
+  ret i32 0
 }

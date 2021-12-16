@@ -278,12 +278,3 @@ entry:
   %91 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.12, i32 0, i32 0), i32 %84, i32 %86, i32 %88, i32 %90)
   ret void
 }
-
-; Function Attrs: nounwind
-define void @main() #0 {
-entry:
-  call void @vector_ops.testf()
-  call void @vector_ops.testi()
-  call void @vector_ops.testb()
-  ret void
-}

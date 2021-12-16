@@ -23,7 +23,7 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @main() #0 {
+define void @foo.main() #0 {
 entry:
   %xx = alloca [3 x i8], align 1
   %xy = alloca [3 x i8], align 1

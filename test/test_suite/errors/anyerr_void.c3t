@@ -52,7 +52,7 @@ entry:
 declare void @printf(i8*, ...) #0
 
 ; Function Attrs: nounwind
-define void @main() #0 {
+define void @anyerr_void.main() #0 {
 entry:
   %z = alloca i64, align 8
   %error_var = alloca i64, align 8

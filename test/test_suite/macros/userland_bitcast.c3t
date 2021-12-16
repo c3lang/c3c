@@ -186,7 +186,7 @@ loop.exit:                                        ; preds = %loop.cond
 }
 
 ; Function Attrs: nounwind
-define void @main() #0 {
+define void @userland_bitcast.main() #0 {
 entry:
   %f = alloca float, align 4
   %i = alloca i32, align 4

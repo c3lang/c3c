@@ -15,7 +15,7 @@ fn void main()
 
 // #expect: ternary_bool.ll
 
-define void @main() #0 {
+define void @ternary_bool.main() #0 {
 entry:
   %b = alloca i8, align 1
   %c = alloca i8*, align 8

@@ -33,7 +33,7 @@ fn void main()
 
 // #expect: mymodule.ll
 
-define void @main() #0 {
+define void @mymodule.main() #0 {
 entry:
   %y = alloca %"char[]", align 8
   %z = alloca %"char[]", align 8

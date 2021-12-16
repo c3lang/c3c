@@ -93,7 +93,7 @@ fn void main()
 
 /* #expect: foo.ll
 
-define void @main() #0 {
+define void @foo.main() #0 {
 entry:
   %b = alloca i8, align 1
   %c1 = alloca i16, align 2

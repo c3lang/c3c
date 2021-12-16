@@ -11,9 +11,10 @@ fn void test(Foo x) @regcall
 {
 }
 
-fn void main()
+fn int main()
 {
     test(Foo { });
+    return 0;
 }
 
 /* #expect: test.ll
@@ -38,7 +39,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-define void @main() #0 {
+define i32 @main() #0 {
 entry:
   %literal = alloca %Foo, align 4
   %0 = getelementptr inbounds %Foo, %Foo* %literal, i32 0, i32 0
@@ -52,5 +53,5 @@ entry:
   %5 = getelementptr inbounds [2 x float], [2 x float]* %3, i64 0, i64 1
   %loadexpanded1 = load float, float* %5, align 4
   call x86_regcallcc void @test.test(float %loadexpanded, float %loadexpanded1)
-  ret void
+  ret i32 0
 }

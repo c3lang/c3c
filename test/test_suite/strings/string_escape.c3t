@@ -7,8 +7,19 @@ fn void main()
 
 @.str = private constant [18 x i8] c"Hello\00 world! now\00", align 1
 
-define void @main()
+define void @string_escape.main() #0 {
 entry:
   %s = alloca i8*, align 8
   store i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i8** %s, align 8
   ret void
+}
+
+define i32 @main(i32 %0, i8** %1) #0 {
+entry:
+  %"_$argv" = alloca i32, align 4
+  %"_$argc" = alloca i8**, align 8
+  store i32 %0, i32* %"_$argv", align 4
+  store i8** %1, i8*** %"_$argc", align 8
+  call void @string_escape.main()
+  ret i32 0
+}
