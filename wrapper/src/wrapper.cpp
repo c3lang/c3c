@@ -131,7 +131,7 @@ extern "C" {
 		const llvm::APInt& i = Val->getUniqueInteger();
 		return llvm::wrap(llvm::Constant::getIntegerValue(Val->getType(), i.byteSwap()));
 	}
-
+#if LLVM_VERSION_MAJOR < 14
 	LLVMValueRef LLVMConstGEP2(LLVMTypeRef Ty, LLVMValueRef ConstantVal,
 							   LLVMValueRef *ConstantIndices, unsigned NumIndices) {
 		llvm::ArrayRef<llvm::Constant *> IdxList(llvm::unwrap<llvm::Constant>(ConstantIndices, NumIndices),
@@ -149,6 +149,7 @@ extern "C" {
 		llvm::Constant *Val = llvm::unwrap<llvm::Constant>(ConstantVal);
 		return wrap(llvm::ConstantExpr::getInBoundsGetElementPtr(llvm::unwrap(Ty), Val, IdxList));
 	}
+#endif
 
 bool llvm_link_elf(const char **args, int arg_count, const char** error_string)
 {
