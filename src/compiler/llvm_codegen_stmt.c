@@ -1143,48 +1143,49 @@ void llvm_emit_debug_output(GenContext *c, const char *message, const char *file
 			func_index = 3;
 			break;
 	}
+
+	LLVMTypeRef type;
+	LLVMTypeRef void_type = LLVMVoidTypeInContext(c->context);
+	switch (platform_target.os)
+	{
+		case OS_TYPE_WIN32:
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_DRAGON_FLY:
+		{
+			LLVMTypeRef args[3] = { char_ptr_type, char_ptr_type, cint_type };
+			type = LLVMFunctionType(void_type, args, 3, false);
+			break;
+		}
+		case OS_DARWIN_TYPES:
+		case OS_TYPE_LINUX:
+		case OS_TYPE_SOLARIS:
+		{
+			LLVMTypeRef args[4] = { char_ptr_type, char_ptr_type, cint_type, char_ptr_type };
+			type = LLVMFunctionType(void_type, args, 4, false);
+			break;
+		}
+		case OS_TYPE_OPENBSD:
+		{
+			LLVMTypeRef args[4] = { char_ptr_type, cint_type, char_ptr_type, char_ptr_type };
+			type = LLVMFunctionType(void_type, args, 4, false);
+			break;
+		}
+		case OS_TYPE_NETBSD:
+		{
+			LLVMTypeRef args[3] = { char_ptr_type, cint_type, char_ptr_type };
+			type = LLVMFunctionType(void_type, args, 3, false);
+			break;
+		}
+		default:
+		{
+			LLVMTypeRef args[3] = { char_ptr_type, char_ptr_type, cint_type };
+			type = LLVMFunctionType(void_type, args, 3, false);
+			break;
+		}
+	}
 	LLVMValueRef assert_func = LLVMGetNamedFunction(c->module, name);
 	if (!assert_func)
 	{
-		LLVMTypeRef type;
-		LLVMTypeRef void_type = LLVMVoidTypeInContext(c->context);
-		switch (platform_target.os)
-		{
-			case OS_TYPE_WIN32:
-			case OS_TYPE_FREE_BSD:
-			case OS_TYPE_DRAGON_FLY:
-			{
-				LLVMTypeRef args[3] = { char_ptr_type, char_ptr_type, cint_type };
-				type = LLVMFunctionType(void_type, args, 3, false);
-				break;
-			}
-			case OS_DARWIN_TYPES:
-			case OS_TYPE_LINUX:
-			case OS_TYPE_SOLARIS:
-			{
-				LLVMTypeRef args[4] = { char_ptr_type, char_ptr_type, cint_type, char_ptr_type };
-				type = LLVMFunctionType(void_type, args, 4, false);
-				break;
-			}
-			case OS_TYPE_OPENBSD:
-			{
-				LLVMTypeRef args[4] = { char_ptr_type, cint_type, char_ptr_type, char_ptr_type };
-				type = LLVMFunctionType(void_type, args, 4, false);
-				break;
-			}
-			case OS_TYPE_NETBSD:
-			{
-				LLVMTypeRef args[3] = { char_ptr_type, cint_type, char_ptr_type };
-				type = LLVMFunctionType(void_type, args, 3, false);
-				break;
-			}
-			default:
-			{
-				LLVMTypeRef args[3] = { char_ptr_type, char_ptr_type, cint_type };
-				type = LLVMFunctionType(void_type, args, 3, false);
-				break;
-			}
-		}
 		assert_func = LLVMAddFunction(c->module, name, type);
 	}
 
@@ -1206,7 +1207,7 @@ void llvm_emit_debug_output(GenContext *c, const char *message, const char *file
 	args[expr_index] = llvm_emit_string(c, message);
 	args[line_index] = llvm_const_int(c, type_cint(), line);
 
-	LLVMBuildCall(c->builder, assert_func, args, func_index > -1 ? 4 : 3, "");
+	LLVMBuildCall2(c->builder, type, assert_func, args, func_index > -1 ? 4 : 3, "");
 
 }
 
