@@ -79,7 +79,7 @@ jobs:
         build_type: [Release, Debug]
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: (Ubuntu) Download LLVM
         run: |
           sudo apt-get install zlib1g zlib1g-dev clang-12 libllvm12 llvm-12 llvm-12-dev llvm-12-runtime liblld-12-dev liblld-12 python3
