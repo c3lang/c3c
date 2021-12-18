@@ -15,10 +15,10 @@ color magenta "\<[A-Za-z_]+\>\("
 color normal "\(|\)"
 
 # Types
-color green "\<(virtual|anyerr|void|bool|quad|double|float|long|ulong|int|uint|short|ushort|ichar|char|isize|usize|iptr|uptr|iptrdiff|uptrdiff|half)\>"
+color green "\<(anyerr|void|bool|quad|double|float|long|ulong|int|uint|short|ushort|ichar|char|isize|usize|iptr|uptr|iptrdiff|uptrdiff|half)\>"
 
 # Keywords
-color yellow "\<(alias|as|asm|assert|attribute|break|case|catch|const|continue|default|defer|define|do|else|enum|extern|errtype|false|for|foreach|fn|generic|if|import|interface|macro|module|nextcase|null|private|return|static|struct|switch|true|try|typeid|typeof|union|while|var|volatile|yield)\>"
+color yellow "\<(alias|as|asm|assert|attribute|break|case|catch|const|continue|default|defer|define|do|else|enum|extern|errtype|false|for|foreach|fn|generic|if|import|macro|module|nextcase|null|private|return|static|struct|switch|true|try|typeid|typeof|union|while|var|volatile|yield)\>"
 
 # $ Statements
 color brightyellow "\$\<(assert|case|default|elif|else|endif|endswitch|for|if|switch|unreachable)\>"
