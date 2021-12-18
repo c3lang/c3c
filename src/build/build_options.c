@@ -79,6 +79,7 @@ static void usage(void)
 	OUTPUT("  -V --version          - Print version information.");
 	OUTPUT("  -E                    - Lex only.");
 	OUTPUT("  -P                    - Only parse and output the AST as S-expressions.");
+	OUTPUT("  -o                    - Set the output binary file name.");
 	OUTPUT("  -O0                   - Optimizations off.");
 	OUTPUT("  -O1                   - Simple optimizations only.");
 	OUTPUT("  -O2                   - Default optimization level.");
@@ -348,6 +349,10 @@ static void parse_option(BuildOptions *options)
 		case 'z':
 			if (at_end()) error_exit("error: -z needs a value");
 			options->linker_args[options->linker_arg_count++] = next_arg();
+			return;
+		case 'o':
+			if (at_end()) error_exit("error: -o needs a value");
+			options->output_name=next_arg();
 			return;
 		case 'O':
 			if (options->optimization_setting_override != OPT_SETTING_NOT_SET)

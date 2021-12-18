@@ -183,6 +183,7 @@ typedef struct BuildOptions_
 	int linker_arg_count;
 	int build_threads;
 	const char** files;
+	const char* output_name;
 	const char* project_name;
 	const char* target_select;
 	const char* path;
