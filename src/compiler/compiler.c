@@ -532,7 +532,8 @@ static const char **target_expand_source_names(const char** dirs, const char *su
 
 void compile_target(BuildOptions *options)
 {
-	init_default_build_target(&active_target, options, DEFAULT_EXE);
+	if(options->output_name == NULL) options->output_name = DEFAULT_EXE;
+	init_default_build_target(&active_target, options, options->output_name);
 	compile();
 }
 
