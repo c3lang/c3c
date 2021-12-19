@@ -67,7 +67,6 @@ int main_real(int argc, const char *argv[])
 			UNREACHABLE
 	}
 
-	print_arena_status();
 	memory_release();
 	return 0;
 }

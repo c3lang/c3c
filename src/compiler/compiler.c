@@ -370,6 +370,8 @@ void compiler_compile(void)
 		return;
 	}
 
+	if (active_target.check_only) return;
+
 	void **gen_contexts = NULL;
 	void (*task)(void *);
 

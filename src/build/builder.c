@@ -127,6 +127,9 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case COMPILE_LEX_PARSE_ONLY:
 			target->parse_only = true;
 			break;
+		case COMPILE_LEX_PARSE_CHECK_ONLY:
+			target->check_only = true;
+			break;
 		case COMPILE_OUTPUT_HEADERS:
 			target->output_headers = true;
 			target->run_after_compile = false;

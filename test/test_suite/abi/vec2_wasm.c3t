@@ -13,9 +13,6 @@ extern fn Vector2 vector2_subtract(Vector2 v1, Vector2 v2) { return Vector2 {}; 
 extern fn Vector2 vector2_subtract_value(Vector2 v, float sub) { return Vector2 {}; }
 
 // #expect: abi.ll
-; ModuleID = 'abi'
-source_filename = "abi"
-target datalayout = "e-m:e-p:32:32-i64:64-n32:64-S128-ni:1:10:20"
 target triple = "wasm32-unknown-unknown"
 
 %Vector2 = type { float, float }

@@ -7,7 +7,7 @@
 #include "utils/lib.h"
 #include "utils/toml.h"
 #include "build_options.h"
-#define DEFAULT_SYMTAB_SIZE (64 * 1024)
+#define DEFAULT_SYMTAB_SIZE (256 * 1024)
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
 
 typedef struct

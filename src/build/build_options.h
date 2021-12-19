@@ -78,6 +78,7 @@ typedef enum
 	COMPILE_NORMAL,
 	COMPILE_LEX_ONLY,
 	COMPILE_LEX_PARSE_ONLY,
+	COMPILE_LEX_PARSE_CHECK_ONLY,
 	COMPILE_OUTPUT_HEADERS,
 	COMPILE_OUTPUT_AST,
 } CompileOption;
@@ -231,6 +232,7 @@ typedef struct
 	bool output_ast : 1;
 	bool lex_only : 1;
 	bool parse_only : 1;
+	bool check_only : 1;
 	bool emit_llvm : 1;
 	bool emit_object_files : 1;
 	bool no_link : 1;
