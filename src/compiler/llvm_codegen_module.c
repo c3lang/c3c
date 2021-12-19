@@ -4,6 +4,18 @@
 
 #include "llvm_codegen_internal.h"
 
+const char *get_object_extension(void)
+{
+	switch (active_target.arch_os_target)
+	{
+		case X64_WINDOWS:
+		case X86_WINDOWS:
+		case X64_WINDOWS_GNU:
+			return ".obj";
+		default:
+			return ".o";
+	}
+}
 
 void gencontext_begin_module(GenContext *c)
 {
@@ -22,7 +34,7 @@ void gencontext_begin_module(GenContext *c)
 	}
 	const char *result = scratch_buffer_to_string();
 	c->ir_filename = strformat("%s.ll", result);
-	c->object_filename = strformat("%s%s", result, DEFAULT_OBJ_FILE_EXT);
+	c->object_filename = strformat("%s%s", result, get_object_extension());
 
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();

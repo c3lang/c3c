@@ -351,8 +351,8 @@ static void parse_option(BuildOptions *options)
 			options->linker_args[options->linker_arg_count++] = next_arg();
 			return;
 		case 'o':
-			if (at_end()) error_exit("error: -o needs a value");
-			options->output_name=next_arg();
+			if (at_end()) error_exit("error: -o needs a name");
+			options->output_name = next_arg();
 			return;
 		case 'O':
 			if (options->optimization_setting_override != OPT_SETTING_NOT_SET)

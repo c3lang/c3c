@@ -145,12 +145,12 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 }
 
-void init_default_build_target(BuildTarget *target, BuildOptions *options, const char *name)
+void init_default_build_target(BuildTarget *target, BuildOptions *options)
 {
 	*target = (BuildTarget) {
 		.type = TARGET_TYPE_EXECUTABLE,
 		.source_dirs = options->files,
-		.name = name,
+		.name = options->output_name,
 		.optimization_level = OPTIMIZATION_DEFAULT,
 		.size_optimization_level = SIZE_OPTIMIZATION_NONE,
 		.symtab_size = DEFAULT_SYMTAB_SIZE,

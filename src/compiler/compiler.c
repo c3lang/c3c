@@ -270,6 +270,20 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 	}
 }
 
+static const char *active_target_name(void)
+{
+	if (active_target.name) return active_target.name;
+	switch (active_target.arch_os_target)
+	{
+		case X86_WINDOWS:
+		case X64_WINDOWS:
+		case X64_WINDOWS_GNU:
+			return "a.exe";
+		default:
+			return "a.out";
+	}
+}
+
 static void setup_bool_define(const char *id, bool value)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
@@ -464,13 +478,14 @@ void compiler_compile(void)
 
 	if (create_exe)
 	{
+		const char *output_name = active_target_name();
 		if (active_target.arch_os_target == ARCH_OS_TARGET_DEFAULT)
 		{
-			platform_linker(active_target.name, obj_files, output_file_count);
+			platform_linker(output_name, obj_files, output_file_count);
 		}
 		else
 		{
-			if (!obj_format_linking_supported(platform_target.object_format) || !linker(active_target.name, obj_files,
+			if (!obj_format_linking_supported(platform_target.object_format) || !linker(output_name, obj_files,
 			                                                                            output_file_count))
 			{
 				printf("No linking is performed due to missing linker support.\n");
@@ -479,7 +494,7 @@ void compiler_compile(void)
 		}
 		if (active_target.run_after_compile)
 		{
-			system(strformat("./%s", active_target.name));
+			system(strformat("./%s", output_name));
 		}
 	}
 
@@ -532,8 +547,7 @@ static const char **target_expand_source_names(const char** dirs, const char *su
 
 void compile_target(BuildOptions *options)
 {
-	if(options->output_name == NULL) options->output_name = DEFAULT_EXE;
-	init_default_build_target(&active_target, options, options->output_name);
+	init_default_build_target(&active_target, options);
 	compile();
 }
 
