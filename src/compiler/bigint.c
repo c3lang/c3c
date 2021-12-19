@@ -54,7 +54,7 @@ char *i128_to_string(Int128 op, uint64_t base, bool is_signed)
 		*(loc++) = digits[rem.low];
 		op = i128_udiv(op, base_div);
 	} while (!i128_is_zero(op));
-	char *res = malloc((size_t)(loc - buffer + 2));
+	char *res = malloc_arena((size_t)(loc - buffer + 2));
 	char *c = res;
 	if (add_minus) *(c++) = '-';
 	while (loc > buffer)

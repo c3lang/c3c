@@ -7,6 +7,7 @@
 #include <string.h>
 #include <assert.h>
 #include "toml.h"
+#include "lib.h"
 
 #if (defined(_MSC_VER) && _MSC_VER < 1800) || defined(_ADI_COMPILER)
 #define va_copy(a, b) ((a) = (b))
@@ -15,7 +16,7 @@
 char *toml_strdup(TOML_CONST char *str)
 {
     size_t len = strlen(str) + 1;
-    void *new = malloc(len);
+    void *new = cmalloc(len);
     if (new == NULL)
     {
         return NULL;
@@ -26,7 +27,7 @@ char *toml_strdup(TOML_CONST char *str)
 
 char *toml_strndup(TOML_CONST char *str, size_t n)
 {
-    char *result = malloc(n + 1);
+    char *result = cmalloc(n + 1);
     if (result == NULL)
     {
         return NULL;
@@ -164,7 +165,7 @@ static inline size_t toml_roundup_pow_of_two_size_t(size_t x)
 
 TomlString *toml_string_new(TomlErr *error)
 {
-    TomlString *self = malloc(sizeof(TomlString));
+    TomlString *self = cmalloc(sizeof(TomlString));
     if (self == NULL)
     {
         toml_set_err_literal(error, TOML_ERR_NOMEM, "out of memory");
@@ -337,7 +338,7 @@ struct _TomlTable
 
 TomlTable *toml_table_new(TomlErr *err)
 {
-    TomlTable *self = malloc(sizeof(TomlTable));
+    TomlTable *self = cmalloc(sizeof(TomlTable));
     if (self == NULL)
     {
         toml_set_err_literal(err, TOML_ERR_NOMEM, "out of memory");
@@ -472,7 +473,7 @@ struct _TomlTableIter
 
 TomlTableIter *toml_table_iter_new(TomlTable *table, TomlErr *error)
 {
-    TomlTableIter *self = malloc(sizeof(TomlTableIter));
+    TomlTableIter *self = cmalloc(sizeof(TomlTableIter));
     if (self == NULL)
     {
         toml_set_err_literal(error, TOML_ERR_NOMEM, "out of memory");
@@ -513,7 +514,7 @@ void toml_table_iter_next(TomlTableIter *self)
 
 TomlArray *toml_array_new(TomlErr *error)
 {
-    TomlArray *self = malloc(sizeof(TomlArray));
+    TomlArray *self = cmalloc(sizeof(TomlArray));
     if (self == NULL)
     {
         toml_set_err_literal(error, TOML_ERR_NOMEM, "out of memory");
@@ -572,7 +573,7 @@ TomlValue *toml_value_new(TomlType type, TomlErr *error)
 {
     TomlErr err = TOML_ERR_INIT;
 
-    TomlValue *self = malloc(sizeof(TomlValue));
+    TomlValue *self = cmalloc(sizeof(TomlValue));
     if (self == NULL)
     {
         toml_set_err_literal(&err, TOML_ERR_NOMEM, "out of memory");
@@ -601,7 +602,7 @@ TomlValue *toml_value_new(TomlType type, TomlErr *error)
             self->value.boolean = TOML_FALSE;
             break;
         case TOML_DATETIME:
-            self->value.datetime = calloc(1, sizeof(TomlDateTime));
+            self->value.datetime = ccalloc(1, sizeof(TomlDateTime));
             if (self->value.datetime == NULL)
             {
                 toml_set_err(error, TOML_ERR_NOMEM, "out of memory");
@@ -618,7 +619,7 @@ TomlValue *toml_value_new_string(TOML_CONST char *str, TomlErr *error)
 {
     TomlErr err = TOML_ERR_INIT;
 
-    TomlValue *self = malloc(sizeof(TomlValue));
+    TomlValue *self = cmalloc(sizeof(TomlValue));
     if (self == NULL)
     {
         toml_set_err_literal(&err, TOML_ERR_NOMEM, "out of memory");
@@ -644,7 +645,7 @@ TomlValue *toml_value_new_nstring(TOML_CONST char *str, size_t len, TomlErr *err
 {
     TomlErr err = TOML_ERR_INIT;
 
-    TomlValue *self = malloc(sizeof(TomlValue));
+    TomlValue *self = cmalloc(sizeof(TomlValue));
     if (self == NULL)
     {
         toml_set_err_literal(&err, TOML_ERR_NOMEM, "out of memory");
@@ -670,7 +671,7 @@ TomlValue *toml_value_new_table(TomlErr *error)
 {
     TomlErr err = TOML_ERR_INIT;
 
-    TomlValue *self = malloc(sizeof(TomlValue));
+    TomlValue *self = cmalloc(sizeof(TomlValue));
     if (self == NULL)
     {
         toml_set_err_literal(&err, TOML_ERR_NOMEM, "out of memory");
@@ -696,7 +697,7 @@ TomlValue *toml_value_new_array(TomlErr *error)
 {
     TomlErr err = TOML_ERR_INIT;
 
-    TomlValue *self = malloc(sizeof(TomlValue));
+    TomlValue *self = cmalloc(sizeof(TomlValue));
     if (self == NULL)
     {
         toml_set_err_literal(&err, TOML_ERR_NOMEM, "out of memory");
@@ -727,7 +728,7 @@ TomlValue *toml_value_new_integer(long integer, TomlErr *error)
 {
     TomlErr err = TOML_ERR_INIT;
 
-    TomlValue *self = malloc(sizeof(TomlValue));
+    TomlValue *self = cmalloc(sizeof(TomlValue));
     if (self == NULL)
     {
         toml_set_err_literal(&err, TOML_ERR_NOMEM, "out of memory");
@@ -746,7 +747,7 @@ TomlValue *toml_value_new_float(double float_, TomlErr *error)
 {
     TomlErr err = TOML_ERR_INIT;
 
-    TomlValue *self = malloc(sizeof(TomlValue));
+    TomlValue *self = cmalloc(sizeof(TomlValue));
     if (self == NULL)
     {
         toml_set_err_literal(&err, TOML_ERR_NOMEM, "out of memory");
@@ -770,7 +771,7 @@ TomlValue *toml_value_new_boolean(int boolean, TomlErr *error)
 {
     TomlErr err = TOML_ERR_INIT;
 
-    TomlValue *self = malloc(sizeof(TomlValue));
+    TomlValue *self = cmalloc(sizeof(TomlValue));
     if (self == NULL)
     {
         toml_set_err_literal(&err, TOML_ERR_NOMEM, "out of memory");
@@ -822,7 +823,7 @@ typedef struct _TomlParser
 
 TomlParser *toml_parser_new(TOML_CONST char *str, size_t len, TomlErr *error)
 {
-    TomlParser *self = malloc(sizeof(TomlParser));
+    TomlParser *self = cmalloc(sizeof(TomlParser));
     if (self == NULL)
     {
         toml_set_err_literal(error, TOML_OK, "out of memory");

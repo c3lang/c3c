@@ -33,9 +33,9 @@ WindowsLinkPathsUTF8 get_windows_link_paths() {
   // note: WideCharToMultiByte doesn't seem to do null termination.
   // I'm wary of manually adding a null terminator, so hopefully this is reliable.
   // This wouldn't be a problem if windows used UTF-8 like the rest of the world >:(
-  out.windows_sdk_um_library_path = (char*)calloc(MAX_PATH, 1);
-  out.windows_sdk_ucrt_library_path = (char*)calloc(MAX_PATH, 1);
-  out.vs_library_path = (char*)calloc(MAX_PATH, 1);
+  out.windows_sdk_um_library_path = (char*)ccalloc(MAX_PATH, 1);
+  out.windows_sdk_ucrt_library_path = (char*)ccalloc(MAX_PATH, 1);
+  out.vs_library_path = (char*)ccalloc(MAX_PATH, 1);
 
   int um_len = wcslen(paths.windows_sdk_um_library_path);
   WideCharToMultiByte(
@@ -246,7 +246,7 @@ wchar_t* find_windows_kit_root_with_key(HKEY key, wchar_t* version) {
   if (rc != 0)  return NULL;
 
   DWORD length = required_length + 2;  // The +2 is for the maybe optional zero later on. Probably we are over-allocating.
-  wchar_t* value = (wchar_t*)malloc(length);
+  wchar_t* value = (wchar_t*)cmalloc(length);
   if (!value) return NULL;
 
   rc = RegQueryValueExW(key, version, NULL, NULL, (LPBYTE)value, &required_length);  // We know that version is zero-terminated...
@@ -423,7 +423,7 @@ bool find_visual_studio_2017_by_fighting_through_microsoft_craziness(Find_Result
     }
 
     size_t version_length = (size_t)(tools_file_size.QuadPart + 1);  // Warning: This multiplication by 2 presumes there is no variable-length encoding in the wchars (wacky characters in the file could betray this expectation).
-    wchar_t* version = (wchar_t*)malloc(version_length * 2);
+    wchar_t* version = (wchar_t*)cmalloc(version_length * 2);
 
     wchar_t* read_result = fgetws(version, version_length, f);
     fclose(f);
@@ -502,7 +502,7 @@ void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result* res
       continue;
     }
 
-    wchar_t* buffer = (wchar_t*)malloc(cb_data);
+    wchar_t* buffer = (wchar_t*)cmalloc(cb_data);
     if (!buffer)  return;
 
     rc = RegQueryValueExW(vs7_key, v, NULL, NULL, (LPBYTE)buffer, &cb_data);

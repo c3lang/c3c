@@ -35,6 +35,7 @@ void path_get_dir_and_filename_from_full(const char *full_path, char **filename,
 void file_find_top_dir();
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char *suffix1, const char *suffix2);
 void *cmalloc(size_t size);
+void *ccalloc(size_t size, size_t elements);
 void memory_init(void);
 void memory_release();
 void *malloc_arena(size_t mem);

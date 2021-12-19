@@ -656,7 +656,7 @@ static void tinybackend_gen_context(GenContext *c)
 // Generate context per module (single threaded)
 void *tinybackend_gen(Module *module)
 {
-	GenContext *c = calloc(sizeof(GenContext), 1);
+	GenContext *c = ccalloc(sizeof(GenContext), 1);
 	c->code_module = module;
 
 	// TODO identify target architecture

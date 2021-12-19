@@ -434,8 +434,8 @@ void compiler_compile(void)
 	}
 
 	unsigned cfiles = vec_size(active_target.csources);
-	CompileData *compile_data = malloc(sizeof(CompileData) * output_file_count);
-	const char **obj_files = malloc(sizeof(char*) * (output_file_count + cfiles));
+	CompileData *compile_data = cmalloc(sizeof(CompileData) * output_file_count);
+	const char **obj_files = cmalloc(sizeof(char*) * (output_file_count + cfiles));
 
 	if (cfiles)
 	{
@@ -444,9 +444,8 @@ void compiler_compile(void)
 		{
 			char *filename = NULL;
 			char *dir = NULL;
-			bool split_worked = filenamesplit(active_target.csources[i], &filename, &dir);
+			bool split_worked = filenamesplit(active_target.csources[i], &filename, NULL);
 			assert(split_worked);
-			free(dir);
 			size_t len = strlen(filename);
 			// .c -> .o (quick hack to fix the name on linux)
 			filename[len - 1] = 'o';

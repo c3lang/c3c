@@ -72,3 +72,10 @@ void *cmalloc(size_t size)
 	if (!ptr) error_exit("Failed to malloc %d bytes.", size);
 	return ptr;
 }
+
+void *ccalloc(size_t size, size_t elements)
+{
+	void *ptr = calloc(size, elements);
+	if (!ptr) error_exit("Failed to calloc %d bytes.", size * elements);
+	return ptr;
+}

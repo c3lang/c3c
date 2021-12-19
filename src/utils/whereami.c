@@ -214,6 +214,7 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 #include <string.h>
 #include <dlfcn.h>
 
+#include "lib.h"
 
 static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 {
@@ -228,7 +229,7 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 		uint32_t size = (uint32_t) sizeof(buffer1);
 		if (_NSGetExecutablePath(path, &size) == -1)
 		{
-			path = (char *) malloc(size);
+			path = (char *) cmalloc(size);
 			if (!_NSGetExecutablePath(path, &size))
 			{
 				break;

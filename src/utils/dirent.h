@@ -373,7 +373,7 @@ static _WDIR *_wopendir(const wchar_t *dirname)
 	}
 
 	/* Allocate new _WDIR structure */
-	_WDIR *dirp = (_WDIR*) malloc(sizeof(struct _WDIR));
+	_WDIR *dirp = (_WDIR*) cmalloc(sizeof(struct _WDIR));
 	if (!dirp)
 		return NULL;
 
@@ -397,7 +397,7 @@ static _WDIR *_wopendir(const wchar_t *dirname)
 #endif
 
 	/* Allocate room for absolute directory name and search pattern */
-	dirp->patt = (wchar_t*) malloc(sizeof(wchar_t) * n + 16);
+	dirp->patt = (wchar_t*) cmalloc(sizeof(wchar_t) * n + 16);
 	if (dirp->patt == NULL)
 		goto exit_closedir;
 
@@ -640,7 +640,7 @@ static DIR *opendir(const char *dirname)
 	}
 
 	/* Allocate memory for DIR structure */
-	struct DIR *dirp = (DIR*) malloc(sizeof(struct DIR));
+	struct DIR *dirp = (DIR*) cmalloc(sizeof(struct DIR));
 	if (!dirp)
 		return NULL;
 
@@ -810,7 +810,7 @@ static int scandir(
 	while (1) {
 		/* Allocate room for a temporary directory entry */
 		if (!tmp) {
-			tmp = (struct dirent*) malloc(sizeof(struct dirent));
+			tmp = (struct dirent*) cmalloc(sizeof(struct dirent));
 			if (!tmp)
 				goto exit_failure;
 		}

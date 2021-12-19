@@ -984,7 +984,7 @@ void *llvm_gen(Module *module)
 {
 	if (!vec_size(module->contexts)) return NULL;
 	assert(intrinsics_setup);
-	GenContext *gen_context = calloc(sizeof(GenContext), 1);
+	GenContext *gen_context = cmalloc(sizeof(GenContext));
 	gencontext_init(gen_context, module);
 	gencontext_begin_module(gen_context);
 

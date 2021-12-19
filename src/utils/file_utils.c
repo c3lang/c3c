@@ -107,21 +107,18 @@ bool filenamesplit(const char *path, char** filename_ptr, char** directory_ptr)
 	if (file_len == 1 && path[0] == '.') return false;
 	if (file_len == 2 && path[0] == '.' && path[1] == '.') return false;
 	if (!file_len) return false;
-	*filename_ptr = strdup(&path[len - file_len]);
+	*filename_ptr = strcopy(&path[len - file_len], file_len);
+	if (!directory_ptr) return true;
 	if (file_len < len)
 	{
 		size_t dir_len = len - file_len;
-		char *dir = malloc(dir_len + 1);
-		memcpy(dir, path, dir_len - 1);
-		dir[dir_len] = 0;
-		*directory_ptr = dir;
+		*directory_ptr = strcopy(path, dir_len - 1);
 	}
 	else
 	{
-		char *dir = malloc(2);
-		dir[0] = '.';
-		dir[1] = 0;
-		*directory_ptr = dir;
+		*directory_ptr = malloc_arena(2);
+		(*directory_ptr)[0] = '.';
+		(*directory_ptr)[1] = 0;
 	}
 	return true;
 }
@@ -156,7 +153,7 @@ char *read_file(const char *path, size_t *return_size)
 	*return_size = file_size;
 	rewind(file);
 
-	char *buffer = (char *)malloc(file_size + 1);
+	char *buffer = (char *)malloc_arena(file_size + 1);
 	if (buffer == NULL)
 	{
 		error_exit("Not enough memory to read \"%s\".\n", path);
@@ -332,7 +329,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 
 char *realpath(const char *path, char *const resolved_path)
 {
-	char *result = NULL == resolved_path ? calloc(PATH_MAX + 1, 1) : resolved_path;
+	char *result = NULL == resolved_path ? ccalloc(PATH_MAX + 1, 1) : resolved_path;
 	if (NULL == result) return NULL;
 	if (!GetFullPathNameA(path, MAX_PATH, result, NULL))
 	{

@@ -95,7 +95,7 @@ int vasnprintf(char **strp, const char *fmt, va_list args)
 	va_copy(args_copy, args);
 	int res = vsprintf(NULL, fmt, args);
 	if (res < 0) goto END;
-	char *buf = calloc(res + 1, 1);
+	char *buf = ccalloc(res + 1, 1);
 	if (NULL == buf) goto END;
 	sprintf(buf, fmt, args_copy);  // this can't fail, right?
 	*strp = buf;
@@ -109,7 +109,7 @@ int vasprintf(char** ret, const char* fmt, va_list args) {
 	if (length < 0) { // check if _vsnprintf failed
 		return -1;
 	}
-	*ret = malloc(length + 1);
+	*ret = cmalloc(length + 1);
 	if (!*ret) { // check if malloc failed
 		return -1;
 	}
@@ -122,7 +122,7 @@ int vasprintf(char** ret, const char* fmt, va_list args) {
 char *strndup(const char *s, size_t n)
 {
 	n = strnlen(s, n);
-	char *t = calloc(n + 1, 1);
+	char *t = ccalloc(n + 1, 1);
 	if (NULL != t)
 	{
 		memcpy(t, s, n);
