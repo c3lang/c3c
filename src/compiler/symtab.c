@@ -221,7 +221,7 @@ static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t h
 		{
 			return entry;
 		}
-		index = (index + 1) % (symtab.capacity - 1);
+		index = (index + 1) & (symtab.capacity - 1);
 	}
 }
 
@@ -309,7 +309,7 @@ void *stable_set(STable *table, const char *key, void *value)
 	assert(value && "Cannot insert NULL");
 	if (table->count + 1 > table->capacity * TABLE_MAX_LOAD)
 	{
-		ASSERT(table->capacity < MAX_HASH_SIZE, "Table size too large, exceeded %d", MAX_HASH_SIZE);
+		ASSERT(table->capacity < MAX_HASH_SIZE, "Table size too large, exceeded max hash size");
 
 		uint32_t new_capacity = table->capacity ? (table->capacity << 1u) : 16u;
 		SEntry *new_data = MALLOC(new_capacity * sizeof(SEntry));

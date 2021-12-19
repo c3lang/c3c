@@ -932,10 +932,10 @@ static void type_append_name_to_scratch(Type *type)
 			scratch_buffer_append_char('!');
 			break;
 		case TYPE_SUBARRAY:
-			type_append_name_to_scratch(type->pointer);
+			type_append_name_to_scratch(type->array.base);
 			scratch_buffer_append("[]");
 		case TYPE_FLEXIBLE_ARRAY:
-			type_append_name_to_scratch(type->pointer);
+			type_append_name_to_scratch(type->array.base);
 			scratch_buffer_append("[*]");
 		case TYPE_VOID:
 		case TYPE_BOOL:

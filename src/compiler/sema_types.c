@@ -138,12 +138,12 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 		case DECL_UNION:
 		case DECL_ERRTYPE:
 		case DECL_ENUM:
-		case DECL_TYPEDEF:
-		case DECL_DISTINCT:
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			DEBUG_LOG("Resolved %s.", TOKSTR(type_info->unresolved.name_loc));
 			return true;
+		case DECL_TYPEDEF:
+		case DECL_DISTINCT:
 		case DECL_DEFINE:
 			if (!sema_analyse_decl(context, decl)) return type_info_poison(type_info);
 			type_info->type = decl->type;

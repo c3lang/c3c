@@ -170,7 +170,7 @@ static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, cons
 
 }
 // Add a new regular token.
-static bool add_token(Lexer *lexer, TokenType type, const char *string)
+static inline bool add_token(Lexer *lexer, TokenType type, const char *string)
 {
 	add_generic_token(lexer, type);
 	lexer->latest_token_data->string = string;
