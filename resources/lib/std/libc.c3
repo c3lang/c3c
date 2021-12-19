@@ -90,6 +90,12 @@ const int EOF = -1;
 const int FOPEN_MAX = 20;
 const int FILENAME_MAX = 1024;
 
+$if (${C_LONG_SIZE} == 64):
+define SeekIndex = long;
+$else:
+define SeekIndex = int;
+$endif;
+
 extern fn int fclose(CFile stream);
 extern fn void clearerr(CFile stream);
 extern fn int feof(CFile stream);
@@ -99,9 +105,9 @@ extern fn int fgetpos(CFile stream, Fpos* pos);
 extern fn CFile fopen(char* filename, char* mode);
 extern fn usize fread(void* ptr, usize size, usize nmemb, CFile stream);
 extern fn CFile freopen(char* filename, char* mode, CFile stream);
-extern fn int fseek(CFile stream, long offset, int whence);
+extern fn int fseek(CFile stream, SeekIndex offset, int whence);
 extern fn int fsetpos(CFile stream, Fpos* pos);
-extern fn long ftell(CFile stream);
+extern fn SeekIndex ftell(CFile stream);
 extern fn usize fwrite(void* ptr, usize size, usize nmemb, CFile stream);
 extern fn int remove(char* filename);
 extern fn int rename(char* old_name, char* new_name);
@@ -130,6 +136,12 @@ extern fn void perror(char* str);
 
 // time.h
 
+$if (${C_LONG_SIZE} == 64):
+define TimeOffset = long;
+$else:
+define TimeOffset = int;
+$endif;
+
 struct Tm
 {
 	int	tm_sec;		/* seconds after the minute [0-60] */
@@ -141,7 +153,7 @@ struct Tm
 	int	tm_wday;	/* days since Sunday [0-6] */
 	int	tm_yday;	/* days since January 1 [0-365] */
 	int	tm_isdst;	/* Daylight Savings Time flag */
-	long tm_gmtoff;	/* offset from UTC in seconds */
+	TimeOffset tm_gmtoff;	/* offset from UTC in seconds */
     char *tm_zone;	/* timezone abbreviation */
 }
 
