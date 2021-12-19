@@ -1140,7 +1140,7 @@ void llvm_emit_debug_output(GenContext *c, const char *message, const char *file
 			expr_index = 0;
 			file_index = 1;
 			line_index = 2;
-			func_index = 3;
+			func_index = -1;
 			break;
 	}
 

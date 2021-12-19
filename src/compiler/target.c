@@ -483,6 +483,8 @@ static bool arch_is_supported(ArchType arch)
 {
 	switch (arch)
 	{
+		case ARCH_TYPE_WASM32:
+		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_X86_64:
 		case ARCH_TYPE_AARCH64:
 			return true;

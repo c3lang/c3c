@@ -224,7 +224,7 @@ void c_abi_func_create(FunctionSignature *signature)
 ABIArgInfo *c_abi_classify_return_type_default(Type *type)
 {
 	if (type->type_kind == TYPE_VOID) return abi_arg_ignore();
-	return c_abi_classify_return_type_default(type);
+	return c_abi_classify_argument_type_default(type);
 }
 
 ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
