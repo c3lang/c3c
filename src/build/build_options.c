@@ -80,7 +80,7 @@ static void usage(void)
 	OUTPUT("  -E                    - Lex only.");
 	OUTPUT("  -P                    - Only parse and output the AST as S-expressions.");
 	OUTPUT("  -C                    - Only lex, parse and check.");
-	OUTPUT("  -o                    - Set the output binary file name.");
+	OUTPUT("  -o <file>             - Write output to <file>.");
 	OUTPUT("  -O0                   - Optimizations off.");
 	OUTPUT("  -O1                   - Simple optimizations only.");
 	OUTPUT("  -O2                   - Default optimization level.");
