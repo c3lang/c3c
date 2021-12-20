@@ -1100,7 +1100,7 @@ void llvm_emit_debug_output(GenContext *c, const char *message, const char *file
 	int expr_index;
 	int func_index = -1;
 	OsType os = platform_target.os;
-	if (platform_target.arch == WASM32 || platform_target.arch == WASM64) os = OS_TYPE_WASI;
+	if (platform_target.arch == ARCH_TYPE_WASM32 || platform_target.arch == ARCH_TYPE_WASM64) os = OS_TYPE_WASI;
 	switch (os)
 	{
 		case OS_TYPE_WIN32:
