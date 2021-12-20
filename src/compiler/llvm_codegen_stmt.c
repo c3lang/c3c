@@ -1149,7 +1149,7 @@ void llvm_emit_debug_output(GenContext *c, const char *message, const char *file
 
 	LLVMTypeRef type;
 	LLVMTypeRef void_type = LLVMVoidTypeInContext(c->context);
-	switch (platform_target.os)
+	switch (os)
 	{
 		case OS_TYPE_WIN32:
 		case OS_TYPE_FREE_BSD:
