@@ -4792,8 +4792,9 @@ static bool sema_expr_analyse_bit(Context *context, Expr *expr, Expr *left, Expr
 	// 3. Do constant folding if both sides are constant.
 	if (expr_both_const(left, right))
 	{
+		BinaryOp op = expr->binary_expr.operator;
 		expr_replace(expr, left);
-		switch (expr->binary_expr.operator)
+		switch (op)
 		{
 			case BINARYOP_BIT_AND:
 				expr->const_expr.ixx = int_and(left->const_expr.ixx, right->const_expr.ixx);
@@ -4857,8 +4858,9 @@ static bool sema_expr_analyse_shift(Context *context, Expr *expr, Expr *left, Ex
 		// 5. Fold constant expressions.
 		if (IS_CONST(left))
 		{
+			bool shr = expr->binary_expr.operator == BINARYOP_SHR;
 			expr_replace(expr, left);
-			if (expr->binary_expr.operator == BINARYOP_SHR)
+			if (shr)
 			{
 				expr->const_expr.ixx = int_shr64(left->const_expr.ixx, right->const_expr.ixx.i.low);
 			}

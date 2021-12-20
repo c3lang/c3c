@@ -1,0 +1,18 @@
+// #target: x64-darwin
+module foo;
+
+int x1 = 2 ^ 4;
+int x2 = 2 | 4;
+int x3 = 2 & 4;
+int y1 = 4 << 2;
+int y2 = 4 >> 2;
+int y3 = ~4;
+
+/* #expect: foo.ll
+
+@foo.x1 = global i32 6, align 4
+@foo.x2 = global i32 6, align 4
+@foo.x3 = global i32 0, align 4
+@foo.y1 = global i32 16, align 4
+@foo.y2 = global i32 1, align 4
+@foo.y3 = global i32 -5, align 4
