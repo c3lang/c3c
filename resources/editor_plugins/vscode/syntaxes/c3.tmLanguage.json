@@ -1,0 +1,150 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "C3",
+	"patterns": [
+		{ "include": "#keywords"  },
+		{ "include": "#comments"  },
+		{ "include": "#strings"   },
+		{ "include": "#numbers"   },
+		{ "include": "#types"     },
+		{ "include": "#support"   },
+		{ "include": "#operators" }
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [
+				{
+					"name": "keyword",
+					"match": "\\b(extern|break|case|const|continue|default)\\b"
+				},
+				{
+					"name": "keyword",
+					"match": "\\b(do|else|for|goto|if|return|null)\\b"
+				},
+				{
+					"name": "keyword",
+					"match": "\\b(define|local|errtype|module|as|import)\\b"
+				},
+				{
+					"name": "keyword",
+					"match": "\\b(generic|switch|typedef|volatile)\\b"
+				},
+				{
+					"name": "keyword",
+					"match": "\\b(while|fn|nil|next|in|$for|$case)\\b"
+				},
+				{
+					"name": "keyword",
+					"match": "\\b(%switch|$default|$if|$elif|$else)\\b"
+				},
+				{
+					"name": "keyword",
+					"match": "\\b(true|false)\\b"
+				}
+			]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line",
+					"begin": "//",
+					"end": "$"
+				},
+				{
+					"name": "comment.block",
+					"begin": "/\\*",
+					"end": "\\*/"
+				}
+			]
+		},
+		"strings": {
+			"patterns": [
+				{
+					"name": "string.quoted.double",
+					"patterns": [ {"include": "#stringcontent"} ],
+					"begin": "\"",
+					"end": "\""
+				},
+				{
+					"name": "string.quoted.double",
+					"patterns": [ {"include": "#stringcontent"} ],
+					"begin": "b64\"",
+					"end": "\""
+				},
+				{
+					"name": "string.quoted.double",
+					"patterns": [ {"include": "#stringcontent"} ],
+					"begin": "x\"",
+					"end": "\""
+				},
+				{
+					"name": "string.quoted.single",
+					"patterns": [ {"include": "#stringcontent"} ],
+					"begin": "'",
+					"end": "'"
+				},
+				{
+					"name": "string.quoted.single",
+					"patterns": [ {"include": "#stringcontent"} ],
+					"begin": "b64'",
+					"end": "'"
+				},
+				{
+					"name": "string.quoted.single",
+					"patterns": [ {"include": "#stringcontent"} ],
+					"begin": "x'",
+					"end": "'"
+				}
+			]
+		},
+		"stringcontent": {
+			"patterns": [
+			  {
+				"name": "constant.character.escape",
+				"match": "\\\\([nrt'\"\\\\]|(x[0-9a-fA-F]{2})|(u\\{[0-9a-fA-F]+\\}))"
+			  },
+			  {
+				"name": "invalid.illegal.unrecognized-string-escape",
+				"match": "\\\\."
+			  }
+			]
+		  },
+		"numbers": {
+			"patterns": [
+				{
+					"name": "constant.numeric",
+					"match": "\\b[0-9]\\.[0-9]+\\b"
+				},
+				{
+					"name": "constant.numeric",
+					"match": "\\b[0-9]+\\b"
+				},
+				{
+					"name": "constant.numeric",
+					"match": "\\b0x[a-fA-F0-9_]+\\b"
+				},
+				{
+					"name": "constant.numeric",
+					"match": "\\b0o[0-7_]+\\b"
+				},
+				{
+					"name": "constant.numeric",
+					"match": "\\b0b[01_]+\\b"
+				}
+			]
+		},
+		"types": {
+			"name": "storage.type",
+			"match": "\\b(double|usize|type|Type|bool|char|enum|float|int|uint|long|ulong|short|ushort|struct|void)\\b"
+		},
+		"support": {
+			"name": "support.function.builtin",
+			"match": "\\$[_a-zA-Z][_a-zA-Z0-9]*"
+		},
+		"operators": {
+			"name": "keyword.operator",
+			"match": "(\\+|-|\\.|%|&|\\||=|<|>|!|\\^|\\*|/|::)=?"
+		}
+	},
+	"scopeName": "source.c3"
+}
