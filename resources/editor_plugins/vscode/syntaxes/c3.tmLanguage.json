@@ -19,7 +19,7 @@
 				},
 				{
 					"name": "keyword",
-					"match": "\\b(do|else|for|goto|if|return|null)\\b"
+					"match": "\\b(do|else|for|goto|if|return|null|macro)\\b"
 				},
 				{
 					"name": "keyword",
@@ -27,7 +27,7 @@
 				},
 				{
 					"name": "keyword",
-					"match": "\\b(generic|switch|typedef|volatile)\\b"
+					"match": "\\b(generic|switch|typedef|volatile|private)\\b"
 				},
 				{
 					"name": "keyword",
@@ -138,12 +138,20 @@
 			"match": "\\b(double|usize|type|Type|bool|char|enum|float|int|uint|long|ulong|short|ushort|struct|void)\\b"
 		},
 		"support": {
-			"name": "support.function.builtin",
-			"match": "\\$[_a-zA-Z][_a-zA-Z0-9]*"
+			"patterns": [
+				{
+					"name": "support.function.builtin",
+					"match": "\\$[_a-zA-Z][_a-zA-Z0-9]*"
+				},
+				{
+					"name": "support.function.macro",
+					"match": "@[_a-zA-Z][_a-zA-Z0-9]*"
+				}
+			]
 		},
 		"operators": {
 			"name": "keyword.operator",
-			"match": "(\\+|-|\\.|%|&|\\||=|<|>|!|\\^|\\*|/|::)=?"
+			"match": "(\\+|-|\\.|%|&|\\|(?!})|=|<|>|!|\\^|\\*|/|::)=?"
 		}
 	},
 	"scopeName": "source.c3"
