@@ -1,0 +1,25 @@
+{
+    "name": "c3-vscode",
+    "displayName": "c3-vscode",
+    "description": "C3 Language Support for VSCode",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.63.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "c3",
+            "aliases": ["C3", "c3"],
+            "extensions": ["c3"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "c3",
+            "scopeName": "source.c3",
+            "path": "./syntaxes/c3.tmLanguage.json"
+        }]
+    }
+}
