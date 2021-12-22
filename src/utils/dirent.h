@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <ctype.h>
+#include "lib.h"
 
 /* Indicates that d_type field is available in dirent structure */
 #define _DIRENT_HAVE_D_TYPE
