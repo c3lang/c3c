@@ -642,6 +642,22 @@ static inline bool sema_cast_ident_rvalue(Context *context, Expr *expr)
 	switch (decl->var.kind)
 	{
 		case VARDECL_CONST:
+		case VARDECL_GLOBAL:
+		case VARDECL_LOCAL:
+		case VARDECL_LOCAL_CT:
+		case VARDECL_LOCAL_CT_TYPE:
+			if (decl->var.init_expr && decl->var.init_expr->resolve_status != RESOLVE_DONE)
+			{
+				SEMA_ERROR(expr, "This looks like the initialization of the variable was circular.");
+				return false;
+			}
+			break;
+		default:
+			break;
+	}
+	switch (decl->var.kind)
+	{
+		case VARDECL_CONST:
 			if (!expr_is_constant_eval(decl->var.init_expr, CONSTANT_EVAL_ANY))
 			{
 				UNREACHABLE
@@ -7118,7 +7134,8 @@ bool sema_analyse_inferred_expr(Context *context, Type *infer_type, Expr *expr)
 			if (!sema_analyse_expr_dispatch(context, expr)) return expr_poison(expr);
 			break;
 	}
+	if (!sema_cast_rvalue(context, expr)) return false;
 	expr->resolve_status = RESOLVE_DONE;
-	return sema_cast_rvalue(context, expr);
+	return true;
 }
 
