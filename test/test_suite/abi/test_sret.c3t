@@ -20,9 +20,9 @@ fn void bar() {
 
 // #expect: test_sret.ll
 
-declare void @foo1(%Abc* sret(%Abc) align 8)
+declare void @foo1(%Abc* noalias sret(%Abc) align 8)
 
-declare void @foo2(%Abc* sret(%Abc) align 8)
+declare void @foo2(%Abc* noalias sret(%Abc) align 8)
 
   %dummy1 = alloca %Abc, align 8
   %sretparam = alloca %Abc, align 8

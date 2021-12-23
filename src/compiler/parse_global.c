@@ -2249,7 +2249,7 @@ Decl *parse_top_level_statement(Context *context)
 
 	Decl *decl;
 	TokenType type = context->tok.type;
-	switch (context->tok.type)
+	switch (type)
 	{
 		case TOKEN_DOCS_START:
 			if (context->docs_start.index == INVALID_TOKEN_ID.index)

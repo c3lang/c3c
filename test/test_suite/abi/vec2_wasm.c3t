@@ -17,7 +17,7 @@ target triple = "wasm32-unknown-unknown"
 
 %Vector2 = type { float, float }
 
-define void @vector2_zero(%Vector2* sret(%Vector2) align 4 %0) #0 {
+define void @vector2_zero(%Vector2* noalias sret(%Vector2) align 4 %0) #0 {
 entry:
   %literal = alloca %Vector2, align 4
   %1 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
@@ -30,7 +30,7 @@ entry:
   ret void
 }
 
-define void @vector2_one(%Vector2* sret(%Vector2) align 4 %0) #0 {
+define void @vector2_one(%Vector2* noalias sret(%Vector2) align 4 %0) #0 {
 entry:
   %literal = alloca %Vector2, align 4
   %1 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
@@ -43,7 +43,7 @@ entry:
   ret void
 }
 
-define void @vector2_add(%Vector2* sret(%Vector2) align 4 %0, %Vector2* byval(%Vector2) align 4 %1, %Vector2* byval(%Vector2) align 4 %2) #0 {
+define void @vector2_add(%Vector2* noalias sret(%Vector2) align 4 %0, %Vector2* byval(%Vector2) align 4 %1, %Vector2* byval(%Vector2) align 4 %2) #0 {
 entry:
   %v1 = alloca %Vector2, align 4
   %v2 = alloca %Vector2, align 4
@@ -64,7 +64,7 @@ entry:
   ret void
 }
 
-define void @vector2_add_value(%Vector2* sret(%Vector2) align 4 %0, %Vector2* byval(%Vector2) align 4 %1, float %2) #0 {
+define void @vector2_add_value(%Vector2* noalias sret(%Vector2) align 4 %0, %Vector2* byval(%Vector2) align 4 %1, float %2) #0 {
 entry:
   %v = alloca %Vector2, align 4
   %add = alloca float, align 4
@@ -83,7 +83,7 @@ entry:
   ret void
 }
 
-define void @vector2_subtract(%Vector2* sret(%Vector2) align 4 %0, %Vector2* byval(%Vector2) align 4 %1, %Vector2* byval(%Vector2) align 4 %2) #0 {
+define void @vector2_subtract(%Vector2* noalias sret(%Vector2) align 4 %0, %Vector2* byval(%Vector2) align 4 %1, %Vector2* byval(%Vector2) align 4 %2) #0 {
 entry:
   %v1 = alloca %Vector2, align 4
   %v2 = alloca %Vector2, align 4
@@ -104,7 +104,7 @@ entry:
   ret void
 }
 
-define void @vector2_subtract_value(%Vector2* sret(%Vector2) align 4 %0, %Vector2* byval(%Vector2) align 4 %1, float %2) #0 {
+define void @vector2_subtract_value(%Vector2* noalias sret(%Vector2) align 4 %0, %Vector2* byval(%Vector2) align 4 %1, float %2) #0 {
 entry:
   %v = alloca %Vector2, align 4
   %sub = alloca float, align 4

@@ -104,7 +104,7 @@ fn void main()
 ; Function Attrs: nounwind
 declare void @printf(i8*, ...) #0
 ; Function Attrs: nounwind
-define void @foo.getFields([5 x i32]* sret([5 x i32]) align 4 %0) #0 {
+define void @foo.getFields([5 x i32]* noalias sret([5 x i32]) align 4 %0) #0 {
 entry:
   %literal = alloca [5 x i32], align 16
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str, i32 0, i32 0))
@@ -123,7 +123,6 @@ entry:
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %6, i8* align 4 %7, i32 20, i1 false)
   ret void
 }
-; Function Attrs: nounwind
 define %Foo* @foo.call(%Foo* %0) #0 {
 entry:
   %f = alloca %Foo*, align 8
@@ -132,7 +131,6 @@ entry:
   %1 = load %Foo*, %Foo** %f, align 8
   ret %Foo* %1
 }
-; Function Attrs: nounwind
 define void @foo.main() #0 {
 entry:
   %x = alloca %Foo, align 4
@@ -235,15 +233,18 @@ loop.body:                                        ; preds = %loop.cond
   %add = add i32 %25, 1
   store i32 %add, i32* %"__idx$", align 4
   br label %loop.cond
+
 loop.exit:                                        ; preds = %loop.cond
   store i32 0, i32* %"__idx$7", align 4
   store i32 3, i32* %"__len$8", align 4
   br label %loop.cond9
+
 loop.cond9:                                       ; preds = %loop.body11, %loop.exit
   %26 = load i32, i32* %"__idx$7", align 4
   %27 = load i32, i32* %"__len$8", align 4
   %lt10 = icmp slt i32 %26, %27
   br i1 %lt10, label %loop.body11, label %loop.exit18
+
 loop.body11:                                      ; preds = %loop.cond9
   %28 = load i32, i32* %"__idx$7", align 4
   store i32 %28, i32* %i12, align 4
@@ -266,15 +267,18 @@ loop.body11:                                      ; preds = %loop.cond9
   %add17 = add i32 %38, 1
   store i32 %add17, i32* %"__idx$7", align 4
   br label %loop.cond9
+
 loop.exit18:                                      ; preds = %loop.cond9
   store i32 0, i32* %"__idx$19", align 4
   store i32 3, i32* %"__len$20", align 4
   br label %loop.cond21
+
 loop.cond21:                                      ; preds = %loop.body23, %loop.exit18
   %39 = load i32, i32* %"__idx$19", align 4
   %40 = load i32, i32* %"__len$20", align 4
   %lt22 = icmp slt i32 %39, %40
   br i1 %lt22, label %loop.body23, label %loop.exit29
+
 loop.body23:                                      ; preds = %loop.cond21
   %41 = load i32, i32* %"__idx$19", align 4
   store i32 %41, i32* %i24, align 4
@@ -293,15 +297,18 @@ loop.body23:                                      ; preds = %loop.cond21
   %add28 = add i32 %49, 1
   store i32 %add28, i32* %"__idx$19", align 4
   br label %loop.cond21
+
 loop.exit29:                                      ; preds = %loop.cond21
   store i32 0, i32* %"__idx$30", align 4
   store i32 3, i32* %"__len$31", align 4
   br label %loop.cond32
+
 loop.cond32:                                      ; preds = %loop.body34, %loop.exit29
   %50 = load i32, i32* %"__idx$30", align 4
   %51 = load i32, i32* %"__len$31", align 4
   %lt33 = icmp slt i32 %50, %51
   br i1 %lt33, label %loop.body34, label %loop.exit40
+
 loop.body34:                                      ; preds = %loop.cond32
   %52 = load i32, i32* %"__idx$30", align 4
   store i32 %52, i32* %i35, align 4
@@ -320,15 +327,18 @@ loop.body34:                                      ; preds = %loop.cond32
   %add39 = add i32 %60, 1
   store i32 %add39, i32* %"__idx$30", align 4
   br label %loop.cond32
+
 loop.exit40:                                      ; preds = %loop.cond32
   store i32 0, i32* %"__idx$41", align 4
   store i32 3, i32* %"__len$42", align 4
   br label %loop.cond43
+
 loop.cond43:                                      ; preds = %loop.body45, %loop.exit40
   %61 = load i32, i32* %"__idx$41", align 4
   %62 = load i32, i32* %"__len$42", align 4
   %lt44 = icmp slt i32 %61, %62
   br i1 %lt44, label %loop.body45, label %loop.exit52
+
 loop.body45:                                      ; preds = %loop.cond43
   %63 = load i32, i32* %"__idx$41", align 4
   store i32 %63, i32* %i46, align 4
@@ -350,15 +360,18 @@ loop.body45:                                      ; preds = %loop.cond43
   %add51 = add i32 %72, 1
   store i32 %add51, i32* %"__idx$41", align 4
   br label %loop.cond43
+
 loop.exit52:                                      ; preds = %loop.cond43
   store i64 0, i64* %"__idx$53", align 8
   %73 = bitcast [5 x i32]* %"__enum$54" to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %73, i8* align 16 bitcast ([5 x i32]* @.__const.8 to i8*), i32 20, i1 false)
   br label %loop.cond55
+
 loop.cond55:                                      ; preds = %loop.body56, %loop.exit52
   %74 = load i64, i64* %"__idx$53", align 8
   %gt = icmp ugt i64 5, %74
   br i1 %gt, label %loop.body56, label %loop.exit61
+
 loop.body56:                                      ; preds = %loop.cond55
   %75 = load i64, i64* %"__idx$53", align 8
   store i64 %75, i64* %i57, align 8
@@ -376,6 +389,7 @@ loop.body56:                                      ; preds = %loop.cond55
   %add60 = add i64 %82, 1
   store i64 %add60, i64* %"__idx$53", align 8
   br label %loop.cond55
+
 loop.exit61:                                      ; preds = %loop.cond55
   store i64 0, i64* %"__idx$62", align 8
   call void @foo.getFields([5 x i32]* sret([5 x i32]) align 4 %sretparam)
@@ -383,10 +397,12 @@ loop.exit61:                                      ; preds = %loop.cond55
   %84 = bitcast [5 x i32]* %sretparam to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 16 %83, i8* align 4 %84, i32 20, i1 false)
   br label %loop.cond64
+
 loop.cond64:                                      ; preds = %loop.body66, %loop.exit61
   %85 = load i64, i64* %"__idx$62", align 8
   %gt65 = icmp ugt i64 5, %85
   br i1 %gt65, label %loop.body66, label %loop.exit70
+
 loop.body66:                                      ; preds = %loop.cond64
   %86 = load i64, i64* %"__idx$62", align 8
   store i64 %86, i64* %i67, align 8
@@ -401,15 +417,18 @@ loop.body66:                                      ; preds = %loop.cond64
   %add69 = add i64 %92, 1
   store i64 %add69, i64* %"__idx$62", align 8
   br label %loop.cond64
+
 loop.exit70:                                      ; preds = %loop.cond64
   store i64 0, i64* %"__idx$71", align 8
   call void @foo.getFields([5 x i32]* sret([5 x i32]) align 4 %sretparam73)
   store [5 x i32]* %sretparam73, [5 x i32]** %"__enum$72", align 8
   br label %loop.cond74
+
 loop.cond74:                                      ; preds = %loop.body76, %loop.exit70
   %93 = load i64, i64* %"__idx$71", align 8
   %gt75 = icmp ugt i64 5, %93
   br i1 %gt75, label %loop.body76, label %loop.exit80
+
 loop.body76:                                      ; preds = %loop.cond74
   %94 = load i64, i64* %"__idx$71", align 8
   store i64 %94, i64* %i77, align 8
@@ -425,6 +444,7 @@ loop.body76:                                      ; preds = %loop.cond74
   %add79 = add i64 %101, 1
   store i64 %add79, i64* %"__idx$71", align 8
   br label %loop.cond74
+
 loop.exit80:                                      ; preds = %loop.cond74
   store i32 0, i32* %a81, align 4
   %102 = getelementptr inbounds %Foo, %Foo* %x, i32 0, i32 0

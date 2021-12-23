@@ -5,7 +5,7 @@
 
 #include "llvm_codegen_internal.h"
 
-static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index);
+static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index);
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
 static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsigned *index);
@@ -478,7 +478,7 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 	context->function = prev_function;
 }
 
-static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index)
+static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index)
 {
 	assert(last_index == index || info->kind == ABI_ARG_DIRECT_PAIR || info->kind == ABI_ARG_IGNORE
 	       || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT_COERCE);
@@ -487,17 +487,17 @@ static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef functio
 	{
 		// Direct only
 		assert(index == last_index);
-		llvm_attribute_add(context, function, attribute_id.zext, index);
+		llvm_attribute_add(c, function, attribute_id.zext, index);
 	}
 	if (info->attributes.signext)
 	{
 		// Direct only
 		assert(index == last_index);
-		llvm_attribute_add(context, function, attribute_id.sext, index);
+		llvm_attribute_add(c, function, attribute_id.sext, index);
 	}
 	if (info->attributes.by_reg)
 	{
-		llvm_attribute_add_range(context, function, attribute_id.inreg, index, last_index);
+		llvm_attribute_add_range(c, function, attribute_id.inreg, index, last_index);
 	}
 	switch (info->kind)
 	{
@@ -511,13 +511,14 @@ static void llvm_emit_param_attributes(GenContext *context, LLVMValueRef functio
 			if (is_return)
 			{
 				assert(info->indirect.type);
-				llvm_attribute_add_type(context, function, attribute_id.sret, llvm_get_type(context, info->indirect.type), 1);
-				llvm_attribute_add_int(context, function, attribute_id.align, info->indirect.alignment, 1);
+				llvm_attribute_add_type(c, function, attribute_id.sret, llvm_get_type(c, info->indirect.type), 1);
+				llvm_attribute_add(c, function, attribute_id.noalias, 1);
+				llvm_attribute_add_int(c, function, attribute_id.align, info->indirect.alignment, 1);
 			}
 			else
 			{
-				if (info->attributes.by_val) llvm_attribute_add_type(context, function, attribute_id.byval, llvm_get_type(context, info->indirect.type), index);
-				llvm_attribute_add_int(context, function, attribute_id.align, info->indirect.alignment, index);
+				if (info->attributes.by_val) llvm_attribute_add_type(c, function, attribute_id.byval, llvm_get_type(c, info->indirect.type), index);
+				llvm_attribute_add_int(c, function, attribute_id.align, info->indirect.alignment, index);
 			}
 			break;
 
