@@ -183,7 +183,7 @@ void sema_error_at_prev_end(Token token, const char *message, ...)
 void sema_error(Context *context, const char *message, ...)
 {
 	global_context.errors_found++;
-	File *file = lexer_current_file(context->lexer);
+	File *file = context->file;
 	va_list list;
 	va_start(list, message);
 	eprintf("(%s:0) Error: ", file->name);

@@ -69,14 +69,16 @@ static void compiler_lex(void)
 		bool loaded = false;
 		File *file = source_file_load(global_context.sources[i], &loaded);
 		if (loaded) continue;
-		Lexer lexer;
-		lexer_init_with_file(&lexer, file);
+		Lexer lexer = { .file = file };
+		lexer_lex_file(&lexer);
 		printf("# %s\n", file->full_path);
+		uint32_t index = lexer.token_start_id;
 		while (1)
 		{
-			Token token = lexer_advance(&lexer);
-			printf("%s ", token_type_to_string(token.type));
-			if (token.type == TOKEN_EOF) break;
+			TokenType token_type = (TokenType)(*toktypeptr(index));
+			index++;
+			printf("%s ", token_type_to_string(token_type));
+			if (token_type == TOKEN_EOF) break;
 		}
 		printf("\n");
 	}

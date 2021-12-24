@@ -7,7 +7,7 @@ static inline bool parse_bitstruct_body(Context *context, Decl *decl);
 
 static bool context_next_is_path_prefix_start(Context *context)
 {
-	return context->tok.type == TOKEN_IDENT && context->next_tok.type == TOKEN_SCOPE;
+	return context->lex.tok.type == TOKEN_IDENT && context->lex.next_tok.type == TOKEN_SCOPE;
 }
 
 /**
@@ -20,7 +20,7 @@ static bool context_next_is_type_with_path_prefix(Context *context)
 	// We assume it's called after "foo::" parsing.
 	if (!context_next_is_path_prefix_start(context)) return false;
 
-	TokenId current = context->next_tok.id;
+	TokenId current = context->lex.next_tok.id;
 	while (1)
 	{
 		TokenType tok;
@@ -47,12 +47,12 @@ static bool context_next_is_type_with_path_prefix(Context *context)
 
 static bool context_next_is_type_and_not_ident(Context *context)
 {
-	if (context->tok.type == TOKEN_IDENT)
+	if (context->lex.tok.type == TOKEN_IDENT)
 	{
-		if (context->next_tok.type != TOKEN_SCOPE) return false;
+		if (context->lex.next_tok.type != TOKEN_SCOPE) return false;
 		return context_next_is_type_with_path_prefix(context);
 	}
-	return token_is_any_type(context->tok.type);
+	return token_is_any_type(context->lex.tok.type);
 }
 
 
@@ -70,7 +70,7 @@ void recover_top_level(Context *context)
 	advance(context);
 	while (!TOKEN_IS(TOKEN_EOF))
 	{
-		switch (context->tok.type)
+		switch (context->lex.tok.type)
 		{
 			case TOKEN_PRIVATE:
 			case TOKEN_IMPORT:
@@ -96,7 +96,7 @@ void recover_top_level(Context *context)
 			case TOKEN_BITSTRUCT:
 			case TYPELIKE_TOKENS:
 				// Only recover if this is in the first col.
-				if (TOKLOC(context->tok)->col == 1) return;
+				if (TOKLOC(context->lex.tok)->col == 1) return;
 				advance(context);
 				break;
 			default:
@@ -175,7 +175,7 @@ static inline Decl *parse_ct_if_top_level(Context *context)
 static inline Decl *parse_ct_case(Context *context)
 {
 	Decl *decl;
-	switch (context->tok.type)
+	switch (context->lex.tok.type)
 	{
 		case TOKEN_CT_DEFAULT:
 			advance(context);
@@ -187,13 +187,13 @@ static inline Decl *parse_ct_case(Context *context)
 			ASSIGN_TYPE_ELSE(decl->ct_case_decl.type, parse_type(context), poisoned_decl);
 			break;
 		default:
-			SEMA_TOKEN_ERROR(context->tok, "Expected a $case or $default statement here.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Expected a $case or $default statement here.");
 			return poisoned_decl;
 	}
 	TRY_CONSUME_OR(TOKEN_COLON, "Expected ':' here.", poisoned_decl);
 	while (1)
 	{
-		TokenType type = context->tok.type;
+		TokenType type = context->lex.tok.type;
 		if (type == TOKEN_CT_DEFAULT || type == TOKEN_CT_CASE || type == TOKEN_LBRACE) break;
 		ASSIGN_DECL_ELSE(Decl *stmt, parse_top_level_statement(context), poisoned_decl);
 		vec_add(decl->ct_case_decl.body, stmt);
@@ -234,32 +234,32 @@ static inline Path *parse_module_path(Context *context)
 {
 	assert(TOKEN_IS(TOKEN_IDENT));
 	scratch_buffer_clear();
-	SourceSpan span = source_span_from_token_id(context->tok.id);
+	SourceSpan span = source_span_from_token_id(context->lex.tok.id);
 	while (1)
 	{
-		TokenId last_token = context->tok.id;
-		const char *string = TOKSTR(context->tok);
+		TokenId last_token = context->lex.tok.id;
+		const char *string = TOKSTR(context->lex.tok);
 		if (!try_consume(context, TOKEN_IDENT))
 		{
-			if (token_is_keyword(context->tok.type))
+			if (token_is_keyword(context->lex.tok.type))
 			{
-				SEMA_TOKEN_ERROR(context->tok, "The module path cannot contain a reserved keyword, try another name.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "The module path cannot contain a reserved keyword, try another name.");
 				return false;
 			}
-			if (token_is_some_ident(context->tok.type))
+			if (token_is_some_ident(context->lex.tok.type))
 			{
-				SEMA_TOKEN_ERROR(context->tok, "The elements of a module path must consist of only lower case letters, 0-9 and '_'.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "The elements of a module path must consist of only lower case letters, 0-9 and '_'.");
 				return false;
 			}
-			SEMA_TOKEN_ERROR(context->tok, "Each '::' must be followed by a regular lower case sub module name.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Each '::' must be followed by a regular lower case sub module name.");
 			return NULL;
 		}
 		if (string == kw_main)
 		{
-			SEMA_TOKID_ERROR(context->prev_tok, "'main' is not a valid name in a module path, please pick something else.");
+			SEMA_TOKID_ERROR(context->lex.prev_tok, "'main' is not a valid name in a module path, please pick something else.");
 			return NULL;
 		}
-		scratch_buffer_append_len(string, TOKLEN(context->prev_tok));
+		scratch_buffer_append_len(string, TOKLEN(context->lex.prev_tok));
 		if (!try_consume(context, TOKEN_SCOPE))
 		{
 			span.end_loc = last_token;
@@ -294,32 +294,32 @@ static inline bool parse_optional_module_params(Context *context, TokenId **toke
 
 	if (try_consume(context, TOKEN_GREATER))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Generic parameter list cannot be empty.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "Generic parameter list cannot be empty.");
 		return false;
 	}
 
 	// No params
 	while (1)
 	{
-		switch (context->tok.type)
+		switch (context->lex.tok.type)
 		{
 			case TOKEN_TYPE_IDENT:
 				break;
 			case TOKEN_COMMA:
-				SEMA_TOKEN_ERROR(context->tok, "Unexpected ','");
+				SEMA_TOKEN_ERROR(context->lex.tok, "Unexpected ','");
 				return false;
 			case TOKEN_IDENT:
-				SEMA_TOKEN_ERROR(context->tok, "The module parameter must be a type.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "The module parameter must be a type.");
 				return false;
 			case TOKEN_CT_IDENT:
 			case TOKEN_CT_TYPE_IDENT:
-				SEMA_TOKEN_ERROR(context->tok, "The module parameter cannot be a $-prefixed name.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "The module parameter cannot be a $-prefixed name.");
 				return false;
 			default:
-				SEMA_TOKEN_ERROR(context->tok, "Only generic parameters are allowed here as parameters to the module.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "Only generic parameters are allowed here as parameters to the module.");
 				return false;
 		}
-		vec_add(*tokens, context->tok.id);
+		vec_add(*tokens, context->lex.tok.id);
 		advance(context);
 		if (!try_consume(context, TOKEN_COMMA))
 		{
@@ -342,23 +342,23 @@ bool parse_module(Context *context)
 
 	if (TOKEN_IS(TOKEN_STRING))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
+		SEMA_TOKEN_ERROR(context->lex.tok, "'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
 		return false;
 	}
 
 	if (!TOKEN_IS(TOKEN_IDENT))
 	{
-		if (token_is_keyword(context->tok.type))
+		if (token_is_keyword(context->lex.tok.type))
 		{
-			SEMA_TOKEN_ERROR(context->tok, "The module name cannot contain a reserved keyword, try another name.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "The module name cannot contain a reserved keyword, try another name.");
 			return false;
 		}
-		if (token_is_some_ident(context->tok.type))
+		if (token_is_some_ident(context->lex.tok.type))
 		{
-			SEMA_TOKEN_ERROR(context->tok, "The module name must consist of only lower case letters, 0-9 and '_'.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "The module name must consist of only lower case letters, 0-9 and '_'.");
 			return false;
 		}
-		SEMA_TOKEN_ERROR(context->tok, "'module' should be followed by a module name.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "'module' should be followed by a module name.");
 		return false;
 	}
 
@@ -399,29 +399,29 @@ bool parse_module(Context *context)
  */
 static inline bool parse_specified_import(Context *context, Path *path)
 {
-	if (!token_is_symbol(context->tok.type))
+	if (!token_is_symbol(context->lex.tok.type))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Expected a symbol name here, the syntax is 'import <module> : <symbol>'.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "Expected a symbol name here, the syntax is 'import <module> : <symbol>'.");
 		return false;
 	}
-	Token symbol = context->tok;
+	Token symbol = context->lex.tok;
 	advance(context);
 	// Alias?
 	if (!try_consume(context, TOKEN_AS))
 	{
 		return context_add_import(context, path, symbol, NO_TOKEN, false);
 	}
-	if (context->tok.type != symbol.type)
+	if (context->lex.tok.type != symbol.type)
 	{
-		if (!token_is_symbol(context->tok.type))
+		if (!token_is_symbol(context->lex.tok.type))
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Expected a symbol name here, the syntax is 'import <module> : <symbol> AS <alias>'.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Expected a symbol name here, the syntax is 'import <module> : <symbol> AS <alias>'.");
 			return false;
 		}
-		SEMA_TOKEN_ERROR(context->tok, "Expected the alias be the same type of name as the symbol aliased.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "Expected the alias be the same type of name as the symbol aliased.");
 		return false;
 	}
-	Token alias = context->tok;
+	Token alias = context->lex.tok;
 	advance(context);
 	return context_add_import(context, path, symbol, alias, false);
 }
@@ -432,28 +432,28 @@ bool consume_ident(Context *context, const char* name)
 	if (try_consume(context, TOKEN_IDENT)) return true;
 	if (TOKEN_IS(TOKEN_TYPE_IDENT) || TOKEN_IS(TOKEN_CONST_IDENT))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "A %s must start with a lower case letter.", name);
+		SEMA_TOKEN_ERROR(context->lex.tok, "A %s must start with a lower case letter.", name);
 		return false;
 	}
-	if (token_is_keyword(context->tok.type))
+	if (token_is_keyword(context->lex.tok.type))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "This is a reserved keyword, did you accidentally use it?");
+		SEMA_TOKEN_ERROR(context->lex.tok, "This is a reserved keyword, did you accidentally use it?");
 		return false;
 	}
-	SEMA_TOKEN_ERROR(context->tok, "A %s was expected.", name);
+	SEMA_TOKEN_ERROR(context->lex.tok, "A %s was expected.", name);
 	return false;
 }
 
 static bool consume_type_name(Context *context, const char* type)
 {
-	if (TOKEN_IS(TOKEN_IDENT) || token_is_keyword(context->tok.type))
+	if (TOKEN_IS(TOKEN_IDENT) || token_is_keyword(context->lex.tok.type))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Names of %ss must start with an upper case letter.", type);
+		SEMA_TOKEN_ERROR(context->lex.tok, "Names of %ss must start with an upper case letter.", type);
 		return false;
 	}
 	if (TOKEN_IS(TOKEN_CONST_IDENT))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Names of %ss cannot be all upper case.", type);
+		SEMA_TOKEN_ERROR(context->lex.tok, "Names of %ss cannot be all upper case.", type);
 		return false;
 	}
 	if (!consume(context, TOKEN_TYPE_IDENT, "'%s' should be followed by the name of the %s.", type, type)) return false;
@@ -464,7 +464,7 @@ bool consume_const_name(Context *context, const char* type)
 {
 	if (TOKEN_IS(TOKEN_IDENT) || TOKEN_IS(TOKEN_TYPE_IDENT))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Names of %ss must be all upper case.", type);
+		SEMA_TOKEN_ERROR(context->lex.tok, "Names of %ss must be all upper case.", type);
 		return false;
 	}
 	if (!consume(context, TOKEN_CONST_IDENT, "The constant name was expected here, did you forget it?")) return false;
@@ -475,26 +475,26 @@ bool consume_const_name(Context *context, const char* type)
 Path *parse_path_prefix(Context *context, bool *had_error)
 {
 	*had_error = false;
-	if (!TOKEN_IS(TOKEN_IDENT) || context->next_tok.type != TOKEN_SCOPE) return NULL;
+	if (!TOKEN_IS(TOKEN_IDENT) || context->lex.next_tok.type != TOKEN_SCOPE) return NULL;
 
 	char *scratch_ptr = global_context.scratch_buffer;
 	uint32_t offset = 0;
 
 	Path *path = CALLOCS(Path);
-	path->span = source_span_from_token_id(context->tok.id);
-	unsigned len = TOKLEN(context->tok);
-	memcpy(scratch_ptr, TOKSTR(context->tok.id), len);
+	path->span = source_span_from_token_id(context->lex.tok.id);
+	unsigned len = TOKLEN(context->lex.tok);
+	memcpy(scratch_ptr, TOKSTR(context->lex.tok.id), len);
 	offset += len;
-	TokenId last_token = context->tok.id;
+	TokenId last_token = context->lex.tok.id;
 	advance(context);
 	advance(context);
-	while (TOKEN_IS(TOKEN_IDENT) && context->next_tok.type == TOKEN_SCOPE)
+	while (TOKEN_IS(TOKEN_IDENT) && context->lex.next_tok.type == TOKEN_SCOPE)
 	{
-		last_token = context->tok.id;
+		last_token = context->lex.tok.id;
 		scratch_ptr[offset++] = ':';
 		scratch_ptr[offset++] = ':';
-		len = TOKLEN(context->tok);
-		memcpy(scratch_ptr + offset, TOKSTR(context->tok.id), len);
+		len = TOKLEN(context->lex.tok);
+		memcpy(scratch_ptr + offset, TOKSTR(context->lex.tok.id), len);
 		offset += len;
 		advance(context); advance(context);
 	}
@@ -544,14 +544,14 @@ static inline TypeInfo *parse_base_type(Context *context)
 {
 	if (try_consume(context, TOKEN_CT_TYPEOF))
 	{
-		TypeInfo *type_info = type_info_new(TYPE_INFO_EXPRESSION, source_span_from_token_id(context->prev_tok));
+		TypeInfo *type_info = type_info_new(TYPE_INFO_EXPRESSION, source_span_from_token_id(context->lex.prev_tok));
 		CONSUME_OR(TOKEN_LPAREN, poisoned_type_info);
 		ASSIGN_EXPR_ELSE(type_info->unresolved_type_expr, parse_expr(context), poisoned_type_info);
 		CONSUME_OR(TOKEN_RPAREN, poisoned_type_info);
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
 	}
-	SourceSpan range = source_span_from_token_id(context->tok.id);
+	SourceSpan range = source_span_from_token_id(context->lex.tok.id);
 	bool had_error;
 	Path *path = parse_path_prefix(context, &had_error);
 	if (had_error) return poisoned_type_info;
@@ -559,7 +559,7 @@ static inline TypeInfo *parse_base_type(Context *context)
 	{
 		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER, range);
 		type_info->unresolved.path = path;
-		type_info->unresolved.name_loc = context->tok.id;
+		type_info->unresolved.name_loc = context->lex.tok.id;
 		if (!consume_type_name(context, "type")) return poisoned_type_info;
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
@@ -567,24 +567,24 @@ static inline TypeInfo *parse_base_type(Context *context)
 
 	TypeInfo *type_info = NULL;
 	Type *type_found = NULL;
-	switch (context->tok.type)
+	switch (context->lex.tok.type)
 	{
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_CT_TYPE_IDENT:
-			type_info = type_info_new(TYPE_INFO_IDENTIFIER, source_span_from_token_id(context->tok.id));
-			type_info->unresolved.name_loc = context->tok.id;
+			type_info = type_info_new(TYPE_INFO_IDENTIFIER, source_span_from_token_id(context->lex.tok.id));
+			type_info->unresolved.name_loc = context->lex.tok.id;
 			break;
 		case TYPE_TOKENS:
-			type_found = type_from_token(context->tok.type);
+			type_found = type_from_token(context->lex.tok.type);
 			break;
 		default:
-			SEMA_TOKEN_ERROR(context->tok, "A type name was expected here.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "A type name was expected here.");
 			return poisoned_type_info;
 	}
 	if (type_found)
 	{
 		assert(!type_info);
-		type_info = type_info_new(TYPE_INFO_IDENTIFIER, source_span_from_token_id(context->tok.id));
+		type_info = type_info_new(TYPE_INFO_IDENTIFIER, source_span_from_token_id(context->lex.tok.id));
 		type_info->resolve_status = RESOLVE_DONE;
 		type_info->type = type_found;
 	}
@@ -667,7 +667,7 @@ TypeInfo *parse_type_with_base(Context *context, TypeInfo *type_info)
 {
 	while (type_info_ok(type_info))
 	{
-		switch (context->tok.type)
+		switch (context->lex.tok.type)
 		{
 			case TOKEN_LVEC:
 				type_info = parse_vector_type_index(context, type_info);
@@ -737,13 +737,13 @@ Decl *parse_decl_after_type(Context *context, TypeInfo *type)
 {
 	if (TOKEN_IS(TOKEN_LPAREN))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Expected '{'.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "Expected '{'.");
 		return poisoned_decl;
 	}
 
 	EXPECT_IDENT_FOR_OR("variable name", poisoned_decl);
 
-	TokenId name = context->tok.id;
+	TokenId name = context->lex.tok.id;
 	advance(context);
 
 	Decl *decl = decl_new_var(name, type, VARDECL_LOCAL, VISIBLE_LOCAL);
@@ -752,7 +752,7 @@ Decl *parse_decl_after_type(Context *context, TypeInfo *type)
 	{
 		if (!decl)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Expected an identifier before '='.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Expected an identifier before '='.");
 			return poisoned_decl;
 		}
 		advance_and_verify(context, TOKEN_EQ);
@@ -802,14 +802,14 @@ static Decl *parse_const_declaration(Context *context, Visibility visibility)
 	advance_and_verify(context, TOKEN_CONST);
 
 	Decl *decl = DECL_NEW_VAR(NULL, VARDECL_CONST, visibility);
-	decl->span.loc = context->prev_tok;
+	decl->span.loc = context->lex.prev_tok;
 
 	if (parse_next_is_decl(context))
 	{
 		ASSIGN_TYPE_ELSE(decl->var.type_info, parse_type(context), poisoned_decl);
 	}
-	decl->name = TOKSTR(context->tok);
-	decl->name_token = context->tok.id;
+	decl->name = TOKSTR(context->lex.tok);
+	decl->name_token = context->lex.tok.id;
 	if (!consume_const_name(context, "const")) return poisoned_decl;
 
 	CONSUME_OR(TOKEN_EQ, poisoned_decl);
@@ -833,10 +833,10 @@ static inline bool is_function_start(Context *context)
 	if (TOKEN_IS(TOKEN_BANG)) return true;
 	if (TOKEN_IS(TOKEN_IDENT))
 	{
-		if (context->next_tok.type == TOKEN_EQEQ || context->next_tok.type == TOKEN_EOS) return false;
-		if (context->next_tok.type == TOKEN_LPAREN) return true;
+		if (context->lex.next_tok.type == TOKEN_EQEQ || context->lex.next_tok.type == TOKEN_EOS) return false;
+		if (context->lex.next_tok.type == TOKEN_LPAREN) return true;
 	}
-	TokenId current = context->tok.id;
+	TokenId current = context->lex.tok.id;
 	TokenType tok = TOKTYPE(current);
 	while (1)
 	{
@@ -857,8 +857,8 @@ static inline bool is_function_start(Context *context)
 
 bool parse_next_is_decl(Context *context)
 {
-	TokenType next_tok = context->next_tok.type;
-	switch (context->tok.type)
+	TokenType next_tok = context->lex.next_tok.type;
+	switch (context->lex.tok.type)
 	{
 		case TYPELIKE_TOKENS:
 			return next_tok != TOKEN_DOT && next_tok != TOKEN_LPAREN && next_tok != TOKEN_LBRACE;
@@ -872,8 +872,8 @@ bool parse_next_is_decl(Context *context)
 
 bool parse_next_is_type(Context *context)
 {
-	TokenType next_tok = context->next_tok.type;
-	switch (context->tok.type)
+	TokenType next_tok = context->lex.next_tok.type;
+	switch (context->lex.tok.type)
 	{
 		case TYPELIKE_TOKENS:
 			return true;
@@ -888,8 +888,8 @@ bool parse_next_is_type(Context *context)
 
 bool parse_next_is_case_type(Context *context)
 {
-	TokenType next_tok = context->next_tok.type;
-	switch (context->tok.type)
+	TokenType next_tok = context->lex.next_tok.type;
+	switch (context->lex.tok.type)
 	{
 		case TYPELIKE_TOKENS:
 			return (next_tok == TOKEN_STAR) | (next_tok == TOKEN_LBRACKET) |  (next_tok == TOKEN_COMMA) | (next_tok == TOKEN_COLON) | (next_tok == TOKEN_EOS);
@@ -933,7 +933,7 @@ bool parse_attributes(Context *context, Attr ***attributes_ref)
 
 		Attr *attr = CALLOCS(Attr);
 
-		attr->name = context->tok.id;
+		attr->name = context->lex.tok.id;
 		attr->path = path;
 
 		TRY_CONSUME_OR(TOKEN_IDENT, "Expected an attribute", false);
@@ -974,25 +974,25 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
 
 	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_failable_type(context), poisoned_decl);
 
-	Decl *decl = decl_new_var(context->tok.id, type, VARDECL_GLOBAL, visibility);
+	Decl *decl = decl_new_var(context->lex.tok.id, type, VARDECL_GLOBAL, visibility);
 
 	decl->var.is_threadlocal = threadlocal;
 
 	if (TOKEN_IS(TOKEN_CONST_IDENT))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "This looks like a constant variable, did you forget 'const'?");
+		SEMA_TOKEN_ERROR(context->lex.tok, "This looks like a constant variable, did you forget 'const'?");
 		return poisoned_decl;
 	}
 
 
 	if (!try_consume(context, TOKEN_IDENT))
 	{
-		if (token_is_some_ident(context->tok.type))
+		if (token_is_some_ident(context->lex.tok.type))
 		{
-			SEMA_TOKEN_ERROR(context->tok, "I expected a variable name here, but global variables need to start with lower case.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "I expected a variable name here, but global variables need to start with lower case.");
 			return poisoned_decl;
 		}
-		SEMA_TOKEN_ERROR(context->tok, "The name of a global variable was expected here");
+		SEMA_TOKEN_ERROR(context->lex.tok, "The name of a global variable was expected here");
 		return poisoned_decl;
 	}
 
@@ -1013,11 +1013,11 @@ static inline Decl *parse_global_declaration(Context *context, Visibility visibi
  */
 static inline bool parse_param_decl(Context *context, Visibility parent_visibility, Decl*** parameters, bool require_name)
 {
-	TokenId first = context->tok.id;
+	TokenId first = context->lex.tok.id;
 	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_type(context), false);
 	bool vararg = try_consume(context, TOKEN_ELLIPSIS);
-	Decl *param = decl_new_var(context->tok.id, type, VARDECL_PARAM, parent_visibility);
-	param->span = (SourceSpan) { first, context->tok.id };
+	Decl *param = decl_new_var(context->lex.tok.id, type, VARDECL_PARAM, parent_visibility);
+	param->span = (SourceSpan) { first, context->lex.tok.id };
 	param->var.vararg = vararg;
 	if (!try_consume(context, TOKEN_IDENT))
 	{
@@ -1031,10 +1031,10 @@ static inline bool parse_param_decl(Context *context, Visibility parent_visibili
 		{
 			if (TOKEN_IS(TOKEN_CT_IDENT))
 			{
-				SEMA_TOKEN_ERROR(context->tok, "Compile time identifiers are only allowed as macro parameters.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "Compile time identifiers are only allowed as macro parameters.");
 				return false;
 			}
-			sema_error_at_prev_end(context->tok, "Unexpected end of the parameter list, did you forget an ')'?");
+			sema_error_at_prev_end(context->lex.tok, "Unexpected end of the parameter list, did you forget an ')'?");
 			return false;
 		}
 		SEMA_ERROR(type, "The parameter must be named.");
@@ -1071,7 +1071,7 @@ bool parse_parameters(Context *context, Visibility visibility, Decl ***params_re
 		// there is an ambiguity here, since ($Type) and ($Type x) is potentially possible
 		// to evaluate. However, at the top level we never have global compile time values.
 		// so consequently we need fix this and ignore CT_TYPE_IDENT
-		if (!ellipsis && context_next_is_type_and_not_ident(context) && context->tok.type != TOKEN_CT_TYPE_IDENT )
+		if (!ellipsis && context_next_is_type_and_not_ident(context) && context->lex.tok.type != TOKEN_CT_TYPE_IDENT )
 		{
 			ASSIGN_TYPE_ELSE(type, parse_type(context), false);
 			ellipsis = try_consume(context, TOKEN_ELLIPSIS);
@@ -1079,15 +1079,15 @@ bool parse_parameters(Context *context, Visibility visibility, Decl ***params_re
 
 		if (ellipsis && var_arg_found)
 		{
-			SEMA_TOKID_ERROR(context->prev_tok, "Only a single vararg parameter is allowed.");
+			SEMA_TOKID_ERROR(context->lex.prev_tok, "Only a single vararg parameter is allowed.");
 			return false;
 		}
 
 		VarDeclKind param_kind;
-		TokenId token = context->tok.id;
+		TokenId token = context->lex.tok.id;
 		bool no_name = false;
 
-		switch (context->tok.type)
+		switch (context->lex.tok.type)
 		{
 			case TOKEN_IDENT:
 				// normal foo
@@ -1100,17 +1100,17 @@ bool parse_parameters(Context *context, Visibility visibility, Decl ***params_re
 			case TOKEN_AMP:
 				// reference &foo
 				advance(context);
-				token = context->tok.id;
+				token = context->lex.tok.id;
 				if (!TOKEN_IS(TOKEN_IDENT))
 				{
-					SEMA_TOKEN_ERROR(context->tok, "Only normal variables may be passed by reference.");
+					SEMA_TOKEN_ERROR(context->lex.tok, "Only normal variables may be passed by reference.");
 					return false;
 				}
 				param_kind = VARDECL_PARAM_REF;
 				break;
 			case TOKEN_HASH_TYPE_IDENT:
 				// #Foo (not allowed)
-				SEMA_TOKEN_ERROR(context->tok, "An unevaluated expression can never be a type, did you mean to use $Type?");
+				SEMA_TOKEN_ERROR(context->lex.tok, "An unevaluated expression can never be a type, did you mean to use $Type?");
 				return false;
 			case TOKEN_HASH_IDENT:
 				// expression #foo
@@ -1125,15 +1125,15 @@ bool parse_parameters(Context *context, Visibility visibility, Decl ***params_re
 			case TOKEN_RPAREN:
 				if (!type && !ellipsis)
 				{
-					SEMA_TOKEN_ERROR(context->tok, "Expected a parameter.");
+					SEMA_TOKEN_ERROR(context->lex.tok, "Expected a parameter.");
 					return false;
 				}
 				no_name = true;
-				token = context->prev_tok;
+				token = context->lex.prev_tok;
 				param_kind = VARDECL_PARAM;
 				break;
 			default:
-				SEMA_TOKEN_ERROR(context->tok, "Expected a parameter.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "Expected a parameter.");
 				return false;
 		}
 		Decl *param = decl_new_var(token, type, param_kind, visibility);
@@ -1221,22 +1221,22 @@ bool parse_struct_body(Context *context, Decl *parent)
 	MemberIndex index = 0;
 	while (!TOKEN_IS(TOKEN_RBRACE))
 	{
-		TokenType token_type = context->tok.type;
+		TokenType token_type = context->lex.tok.type;
 		if (token_type == TOKEN_STRUCT || token_type == TOKEN_UNION || token_type == TOKEN_BITSTRUCT)
 		{
 			DeclKind decl_kind = decl_from_token(token_type);
 			Decl *member;
-			if (context->next_tok.type != TOKEN_IDENT)
+			if (context->lex.next_tok.type != TOKEN_IDENT)
 			{
 				member = decl_new_with_type(NO_TOKEN_ID, decl_kind, parent->visibility);
-				member->span = source_span_from_token_id(context->tok.id);
+				member->span = source_span_from_token_id(context->lex.tok.id);
 				advance(context);
 			}
 			else
 			{
 				advance(context);
-				member = decl_new_with_type(context->tok.id, decl_kind, parent->visibility);
-				member->span.loc = context->prev_tok;
+				member = decl_new_with_type(context->lex.tok.id, decl_kind, parent->visibility);
+				member->span.loc = context->lex.prev_tok;
 				advance_and_verify(context, TOKEN_IDENT);
 			}
 			if (decl_kind == DECL_BITSTRUCT)
@@ -1260,16 +1260,16 @@ bool parse_struct_body(Context *context, Decl *parent)
 			continue;
 		}
 		bool was_inline = false;
-		if (token_type == TOKEN_IDENT && TOKSTR(context->tok) == kw_inline)
+		if (token_type == TOKEN_IDENT && TOKSTR(context->lex.tok) == kw_inline)
 		{
 			if (parent->decl_kind != DECL_STRUCT)
 			{
-				SEMA_TOKEN_ERROR(context->tok, "Only structs may have 'inline' elements, did you make a mistake?");
+				SEMA_TOKEN_ERROR(context->lex.tok, "Only structs may have 'inline' elements, did you make a mistake?");
 				return false;
 			}
 			if (index > 0)
 			{
-				SEMA_TOKID_ERROR(context->prev_tok, "Only the first element may be 'inline', did you order your fields wrong?");
+				SEMA_TOKID_ERROR(context->lex.prev_tok, "Only the first element may be 'inline', did you order your fields wrong?");
 				return false;
 			}
 			parent->is_substruct = true;
@@ -1281,7 +1281,7 @@ bool parse_struct_body(Context *context, Decl *parent)
 		while (1)
 		{
 			EXPECT_OR(TOKEN_IDENT, false);
-			Decl *member = decl_new_var(context->tok.id, type, VARDECL_MEMBER, parent->visibility);
+			Decl *member = decl_new_var(context->lex.tok.id, type, VARDECL_MEMBER, parent->visibility);
 			vec_add(parent->strukt.members, member);
 			index++;
 			if (index > MAX_MEMBERS)
@@ -1314,12 +1314,12 @@ bool parse_struct_body(Context *context, Decl *parent)
  */
 static inline Decl *parse_struct_declaration(Context *context, Visibility visibility)
 {
-	TokenType type = context->tok.type;
+	TokenType type = context->lex.tok.type;
 
 	advance(context);
 	const char* type_name = struct_union_name_from_token(type);
 
-	TokenId name = context->tok.id;
+	TokenId name = context->lex.tok.id;
 
 	if (!consume_type_name(context, type_name)) return poisoned_decl;
 	Decl *decl = decl_new_with_type(name, decl_from_token(type), visibility);
@@ -1355,13 +1355,13 @@ static inline bool parse_bitstruct_body(Context *context, Decl *decl)
 		{
 			if (try_consume(context, TOKEN_CONST_IDENT) || try_consume(context, TOKEN_TYPE_IDENT))
 			{
-				SEMA_TOKID_ERROR(context->prev_tok, "Expected a field name with an initial lower case.");
+				SEMA_TOKID_ERROR(context->lex.prev_tok, "Expected a field name with an initial lower case.");
 				return false;
 			}
-			SEMA_TOKEN_ERROR(context->tok, "Expected a field name at this position.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Expected a field name at this position.");
 			return false;
 		}
-		Decl *member_decl = decl_new_var(context->prev_tok, type, VARDECL_BITMEMBER, VISIBLE_LOCAL);
+		Decl *member_decl = decl_new_var(context->lex.prev_tok, type, VARDECL_BITMEMBER, VISIBLE_LOCAL);
 		CONSUME_OR(TOKEN_COLON, false);
 		ASSIGN_EXPR_ELSE(member_decl->var.start, parse_constant_expr(context), false);
 		if (try_consume(context, TOKEN_DOTDOT))
@@ -1385,7 +1385,7 @@ static inline Decl *parse_bitstruct_declaration(Context *context, Visibility vis
 {
 	advance_and_verify(context, TOKEN_BITSTRUCT);
 
-	TokenId name = context->tok.id;
+	TokenId name = context->lex.tok.id;
 
 	if (!consume_type_name(context, "bitstruct")) return poisoned_decl;
 	Decl *decl = decl_new_with_type(name, DECL_BITSTRUCT, visibility);
@@ -1435,9 +1435,9 @@ static bool parse_macro_arguments(Context *context, Visibility visibility, Decl 
 	{
 		// Consume '@' IDENT
 		TRY_CONSUME_OR(TOKEN_AT, "Expected a trailing block with the format '@block(...).", false);
-		*block_parameter = context->tok.id;
+		*block_parameter = context->lex.tok.id;
 		if (!consume_ident(context, "variable name")) return false;
-		TokenId name = context->prev_tok;
+		TokenId name = context->lex.prev_tok;
 		if (try_consume(context, TOKEN_LPAREN))
 		{
 			if (!parse_parameters(context, visibility, body_params)) return false;
@@ -1461,7 +1461,7 @@ static inline TypeInfo **parse_generic_parameters(Context *context)
 	{
 		ASSIGN_TYPE_ELSE(TypeInfo *type_info, parse_type(context), NULL);
 		vec_add(types, type_info);
-		if (context->tok.type != TOKEN_RPAREN && context->tok.type != TOKEN_GREATER)
+		if (context->lex.tok.type != TOKEN_RPAREN && context->lex.tok.type != TOKEN_GREATER)
 		{
 			TRY_CONSUME_OR(TOKEN_COMMA, "Expected ',' after argument.", NULL);
 		}
@@ -1471,7 +1471,7 @@ static inline TypeInfo **parse_generic_parameters(Context *context)
 
 static inline bool parse_define_optional_path(Context *context, Path **path)
 {
-	if (context->tok.type != TOKEN_IDENT || context->next_tok.type != TOKEN_SCOPE)
+	if (context->lex.tok.type != TOKEN_IDENT || context->lex.next_tok.type != TOKEN_SCOPE)
 	{
 		*path = NULL;
 		return true;
@@ -1489,15 +1489,15 @@ static inline bool parse_define_optional_path(Context *context, Path **path)
  */
 static inline Decl *parse_define_type(Context *context, Visibility visibility)
 {
-	TokenId start = context->tok.id;
+	TokenId start = context->lex.tok.id;
 	advance_and_verify(context, TOKEN_DEFINE);
 
-	TokenId alias_name = context->tok.id;
+	TokenId alias_name = context->lex.tok.id;
 	DEBUG_LOG("Parse define %s", TOKSTR(alias_name));
 	advance_and_verify(context, TOKEN_TYPE_IDENT);
 	CONSUME_OR(TOKEN_EQ, poisoned_decl);
 	bool distinct = false;
-	if (context->tok.type == TOKEN_IDENT && TOKSTR(context->tok) == kw_distinct)
+	if (context->lex.tok.type == TOKEN_IDENT && TOKSTR(context->lex.tok) == kw_distinct)
 	{
 		distinct = true;
 		advance(context);
@@ -1563,28 +1563,28 @@ static inline Decl *parse_define_type(Context *context, Visibility visibility)
 static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 {
 	// 1. Store the beginning of the define.
-	TokenId start = context->tok.id;
+	TokenId start = context->lex.tok.id;
 	advance_and_verify(context, TOKEN_DEFINE);
 
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
-	TokenType alias_type = context->tok.type;
+	TokenType alias_type = context->lex.tok.type;
 	if (alias_type != TOKEN_IDENT && alias_type != TOKEN_CONST_IDENT)
 	{
 		if (token_is_any_type(alias_type))
 		{
-			SEMA_TOKEN_ERROR(context->tok, "'%s' is the name of a built-in type and can't be used as an alias.",
+			SEMA_TOKEN_ERROR(context->lex.tok, "'%s' is the name of a built-in type and can't be used as an alias.",
 			                 token_type_to_string(alias_type));
 		}
 		else
 		{
-			SEMA_TOKEN_ERROR(context->tok, "An identifier was expected here.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "An identifier was expected here.");
 		}
 		return poisoned_decl;
 	}
 
 	// 3. Set up the define.
-	Decl *decl = decl_new(DECL_DEFINE, context->tok.id, visibility);
+	Decl *decl = decl_new(DECL_DEFINE, context->lex.tok.id, visibility);
 	decl->define_decl.define_kind = DEFINE_IDENT_ALIAS;
 	decl->span.loc = start;
 
@@ -1610,24 +1610,24 @@ static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 	decl->define_decl.path = path;
 
 	// 6. Check that the token after the path is of the same type.
-	if (context->tok.type != alias_type)
+	if (context->lex.tok.type != alias_type)
 	{
-		if (token_is_any_type(context->tok.type) || context->tok.type == TOKEN_TYPE_IDENT)
+		if (token_is_any_type(context->lex.tok.type) || context->lex.tok.type == TOKEN_TYPE_IDENT)
 		{
 			SEMA_TOKID_ERROR(decl->name_token, "A type alias must start with an upper case letter and contain at least one lower case letter.");
 			return poisoned_decl;
 		}
 		if (alias_type == TOKEN_CONST_IDENT)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Expected a constant name here.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Expected a constant name here.");
 			return poisoned_decl;
 		}
-		SEMA_TOKEN_ERROR(context->tok, "Expected a function or variable name here.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "Expected a function or variable name here.");
 		return poisoned_decl;
 	}
 
 	// 7. Consume the identifier
-	decl->define_decl.identifier = context->tok.id;
+	decl->define_decl.identifier = context->lex.tok.id;
 	advance(context);
 
 	if (try_consume(context, TOKEN_LESS))
@@ -1648,23 +1648,23 @@ static inline Decl *parse_define_ident(Context  *context, Visibility visibility)
 static inline Decl *parse_define_attribute(Context  *context, Visibility visibility)
 {
 	// 1. Store the beginning of the define.
-	TokenId start = context->tok.id;
+	TokenId start = context->lex.tok.id;
 	advance_and_verify(context, TOKEN_DEFINE);
 
 	advance_and_verify(context, TOKEN_AT);
 
-	TokenType alias_type = context->tok.type;
+	TokenType alias_type = context->lex.tok.type;
 	if (alias_type != TOKEN_TYPE_IDENT)
 	{
 		if (token_is_some_ident(alias_type) || token_is_keyword(alias_type))
 		{
-			SEMA_TOKEN_ERROR(context->tok, "A user defined attribute must start with an uppercase character, followed by at least one lower case.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "A user defined attribute must start with an uppercase character, followed by at least one lower case.");
 			return false;
 		}
-		SEMA_TOKEN_ERROR(context->tok, "The attribute name was expected here.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "The attribute name was expected here.");
 		return false;
 	}
-	Decl *decl = decl_new(DECL_DEFINE, context->tok.id, visibility);
+	Decl *decl = decl_new(DECL_DEFINE, context->lex.tok.id, visibility);
 	advance_and_verify(context, TOKEN_TYPE_IDENT);
 
 	Decl **parameters = NULL;
@@ -1697,12 +1697,12 @@ static inline Decl *parse_define_attribute(Context  *context, Visibility visibil
  */
 static inline Decl *parse_define(Context *context, Visibility visibility)
 {
-	if (context->next_tok.type == TOKEN_AT)
+	if (context->lex.next_tok.type == TOKEN_AT)
 	{
 		// define @foo = @inline, @noreturn
 		return parse_define_attribute(context, visibility);
 	}
-	if (context->next_tok.type == TOKEN_TYPE_IDENT)
+	if (context->lex.next_tok.type == TOKEN_TYPE_IDENT)
 	{
 		return parse_define_type(context, visibility);
 	}
@@ -1745,7 +1745,7 @@ parse_func_macro_header(Context *context, bool rtype_is_optional, TypeInfo **rty
 			// 5b. If the rtype is not optional or the return type was a failable, then this is an error.
 			if (!rtype_is_optional || rtype->failable)
 			{
-				SEMA_TOKID_ERROR(context->prev_tok,
+				SEMA_TOKID_ERROR(context->lex.prev_tok,
 				                 "This looks like you are declaring a method without a return type?");
 				return false;
 			}
@@ -1761,7 +1761,7 @@ parse_func_macro_header(Context *context, bool rtype_is_optional, TypeInfo **rty
 	}
 	RESULT:
 	TRY_CONSUME_OR(TOKEN_IDENT, "Expected a name here.", false);
-	*name_ref = context->prev_tok;
+	*name_ref = context->lex.prev_tok;
 	*rtype_ref = rtype;
 	*method_type_ref = method_type;
 	return true;
@@ -1776,7 +1776,7 @@ static inline Decl *parse_macro_declaration(Context *context, Visibility visibil
 	DeclKind kind = try_consume(context, TOKEN_MACRO) ? DECL_MACRO : DECL_GENERIC;
 	if (kind == DECL_GENERIC) advance_and_verify(context, TOKEN_GENERIC);
 
-	Decl *decl = decl_new(kind, context->tok.id, visibility);
+	Decl *decl = decl_new(kind, context->lex.tok.id, visibility);
 	TypeInfo **rtype_ref = &decl->macro_decl.rtype;
 	TypeInfo **method_type_ref = &decl->macro_decl.type_parent;
 	TokenId name;
@@ -1803,7 +1803,7 @@ static inline Decl *parse_error_declaration(Context *context, Visibility visibil
 {
 	advance_and_verify(context, TOKEN_ERRTYPE);
 
-	Decl *decl = decl_new_with_type(context->tok.id, DECL_ERRTYPE, visibility);
+	Decl *decl = decl_new_with_type(context->lex.tok.id, DECL_ERRTYPE, visibility);
 
 	if (!consume_type_name(context, "error type")) return poisoned_decl;
 
@@ -1815,13 +1815,13 @@ static inline Decl *parse_error_declaration(Context *context, Visibility visibil
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
 		Decl *enum_const = DECL_NEW(DECL_ERRVALUE, decl->visibility);
-		const char *name = TOKSTR(context->tok);
+		const char *name = TOKSTR(context->lex.tok);
 		VECEACH(decl->enums.values, i)
 		{
 			Decl *other_constant = decl->enums.values[i];
 			if (other_constant->name == name)
 			{
-				SEMA_TOKEN_ERROR(context->tok, "This enum constant is declared twice.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "This enum constant is declared twice.");
 				SEMA_PREV(other_constant, "The previous declaration was here.");
 				decl_poison(enum_const);
 				break;
@@ -1869,7 +1869,7 @@ static inline bool parse_enum_spec(Context *context, TypeInfo **type_ref, Decl**
 		if (!parse_param_decl(context, parent_visibility, parameters_ref, true)) return false;
 		if (VECLAST(*parameters_ref)->var.vararg)
 		{
-			SEMA_TOKID_ERROR(context->prev_tok, "Vararg parameters are not allowed as enum parameters.");
+			SEMA_TOKID_ERROR(context->lex.prev_tok, "Vararg parameters are not allowed as enum parameters.");
 			return false;
 		}
 		if (!try_consume(context, TOKEN_COMMA))
@@ -1922,13 +1922,13 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
 		Decl *enum_const = DECL_NEW(DECL_ENUM_CONSTANT, decl->visibility);
-		const char *name = TOKSTR(context->tok);
+		const char *name = TOKSTR(context->lex.tok);
 		VECEACH(decl->enums.values, i)
 		{
 			Decl *other_constant = decl->enums.values[i];
 			if (other_constant->name == name)
 			{
-				SEMA_TOKEN_ERROR(context->tok, "This enum constant is declared twice.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "This enum constant is declared twice.");
 				SEMA_PREV(other_constant, "The previous declaration was here.");
 				decl_poison(enum_const);
 				break;
@@ -1986,7 +1986,7 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
  */
 static inline Decl *parse_func_definition(Context *context, Visibility visibility, bool is_interface)
 {
-	Decl *func = decl_new(DECL_FUNC, context->next_tok.id, visibility);
+	Decl *func = decl_new(DECL_FUNC, context->lex.next_tok.id, visibility);
 	if (TOKEN_IS(TOKEN_FUNC))
 	{
 		advance_and_verify(context, TOKEN_FUNC);
@@ -2013,7 +2013,7 @@ static inline Decl *parse_func_definition(Context *context, Visibility visibilit
 	{
 		if (TOKEN_IS(TOKEN_LBRACE))
 		{
-			SEMA_TOKEN_ERROR(context->next_tok, "A function body is not allowed here.");
+			SEMA_TOKEN_ERROR(context->lex.next_tok, "A function body is not allowed here.");
 			return poisoned_decl;
 		}
 		TRY_CONSUME_OR(TOKEN_EOS, "Expected ';' after function declaration.", poisoned_decl);
@@ -2034,10 +2034,10 @@ static inline bool check_no_visibility_before(Context *context, Visibility visib
 	switch (visibility)
 	{
 		case VISIBLE_MODULE:
-			SEMA_TOKEN_ERROR(context->tok, "Unexpected 'static' before '%.*s'.", TOKLEN(context->tok.id), TOKSTR(context->tok.id));
+			SEMA_TOKEN_ERROR(context->lex.tok, "Unexpected 'static' before '%.*s'.", TOKLEN(context->lex.tok.id), TOKSTR(context->lex.tok.id));
 			return false;
 		case VISIBLE_EXTERN:
-			SEMA_TOKEN_ERROR(context->tok, "Unexpected 'extern' before '%.*s'.", TOKLEN(context->tok.id), TOKSTR(context->tok.id));
+			SEMA_TOKEN_ERROR(context->lex.tok, "Unexpected 'extern' before '%.*s'.", TOKLEN(context->lex.tok.id), TOKSTR(context->lex.tok.id));
 			return false;
 		default:
 			return true;
@@ -2062,10 +2062,10 @@ static inline bool parse_import(Context *context)
 	{
 		if (TOKEN_IS(TOKEN_STRING))
 		{
-			SEMA_TOKEN_ERROR(context->tok, "An import should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
+			SEMA_TOKEN_ERROR(context->lex.tok, "An import should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
 			return false;
 		}
-		SEMA_TOKEN_ERROR(context->tok, "Import statement should be followed by the name of the module to import.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "Import statement should be followed by the name of the module to import.");
 		return false;
 	}
 
@@ -2089,12 +2089,12 @@ void parse_imports(Context *context)
 
 static inline TokenId parse_doc_opt_rest_of_line(Context *context)
 {
-	return try_consume(context, TOKEN_DOCS_LINE) ? context->prev_tok : INVALID_TOKEN_ID;
+	return try_consume(context, TOKEN_DOCS_LINE) ? context->lex.prev_tok : INVALID_TOKEN_ID;
 }
 
 static inline bool parse_doc_param(Context *context, Ast *docs)
 {
-	switch (context->tok.type)
+	switch (context->lex.tok.type)
 	{
 		case TOKEN_IDENT:
 		case TOKEN_CT_IDENT:
@@ -2107,11 +2107,11 @@ static inline bool parse_doc_param(Context *context, Ast *docs)
 		case TOKEN_HASH_IDENT:
 			break;
 		default:
-			SEMA_TOKEN_ERROR(context->tok, "Expected a parameter name here.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Expected a parameter name here.");
 			return false;
 	}
 	docs->doc_directive.kind = DOC_DIRECTIVE_PARAM;
-	docs->doc_directive.param.param = context->tok.id;
+	docs->doc_directive.param.param = context->lex.tok.id;
 	advance(context);
 	docs->doc_directive.param.rest_of_line = parse_doc_opt_rest_of_line(context);
 	return true;
@@ -2122,12 +2122,12 @@ static inline bool parse_doc_errors(Context *context, Ast *docs)
 	TODO
 	while (1)
 	{
-		if (context->tok.type != TOKEN_TYPE_IDENT)
+		if (context->lex.tok.type != TOKEN_TYPE_IDENT)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Expected an error type here.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Expected an error type here.");
 		}
 	}
-	switch (context->tok.type)
+	switch (context->lex.tok.type)
 	{
 		case TOKEN_TYPE_IDENT:
 			break;
@@ -2135,7 +2135,7 @@ static inline bool parse_doc_errors(Context *context, Ast *docs)
 			return false;
 	}
 	docs->doc_directive.kind = DOC_DIRECTIVE_PARAM;
-	docs->doc_directive.param.param = context->tok.id;
+	docs->doc_directive.param.param = context->lex.tok.id;
 	advance(context);
 	docs->doc_directive.param.rest_of_line = parse_doc_opt_rest_of_line(context);
 	return true;
@@ -2157,7 +2157,7 @@ static bool parse_docs(Context *context, Ast **docs)
 	*docs = NULL;
 	if (!try_consume(context, TOKEN_DOCS_START)) return true;
 
-	Ast *ast = new_ast(AST_DOCS, (SourceSpan) { .loc = context->prev_tok, .end_loc = context->prev_tok });
+	Ast *ast = new_ast(AST_DOCS, (SourceSpan) { .loc = context->lex.prev_tok, .end_loc = context->lex.prev_tok });
 	while (!try_consume(context, TOKEN_DOCS_END))
 	{
 		// Spin past the lines and line ends
@@ -2165,8 +2165,8 @@ static bool parse_docs(Context *context, Ast **docs)
 		if (try_consume(context, TOKEN_DOCS_LINE)) continue;
 		CONSUME_OR(TOKEN_DOCS_DIRECTIVE, false);
 		CONSUME_OR(TOKEN_IDENT, false);
-		const char *directive = TOKSTR(context->prev_tok);
-		SourceSpan span = { context->prev_tok, context->prev_tok };
+		const char *directive = TOKSTR(context->lex.prev_tok);
+		SourceSpan span = { context->lex.prev_tok, context->lex.prev_tok };
 		Ast *doc_ast = new_ast(AST_DOC_DIRECTIVE, span);
 		if (directive == kw_param)
 		{
@@ -2234,7 +2234,7 @@ Decl *parse_top_level_statement(Context *context)
 	Ast *docs = NULL;
 	if (!parse_docs(context, &docs)) return poisoned_decl;
 	Visibility visibility = VISIBLE_PUBLIC;
-	switch (context->tok.type)
+	switch (context->lex.tok.type)
 	{
 		case TOKEN_PRIVATE:
 			visibility = VISIBLE_MODULE;
@@ -2248,16 +2248,16 @@ Decl *parse_top_level_statement(Context *context)
 	}
 
 	Decl *decl;
-	TokenType type = context->tok.type;
+	TokenType type = context->lex.tok.type;
 	switch (type)
 	{
 		case TOKEN_DOCS_START:
-			if (context->docs_start.index == INVALID_TOKEN_ID.index)
+			if (visibility != VISIBLE_PUBLIC)
 			{
-				SEMA_TOKEN_ERROR(context->tok, "Did not expect doc comments after visibility.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "Did not expect doc comments after visibility.");
 				return poisoned_decl;
 			}
-			SEMA_TOKEN_ERROR(context->tok, "There are more than one doc comment in a row, that is not allowed.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
 		case TOKEN_DEFINE:
 		{
@@ -2340,21 +2340,21 @@ Decl *parse_top_level_statement(Context *context)
 		case TOKEN_IDENT:
 			return parse_global_declaration(context, visibility);
 		case TOKEN_EOF:
-			SEMA_TOKID_ERROR(context->prev_tok, "Expected a top level declaration");
+			SEMA_TOKID_ERROR(context->lex.prev_tok, "Expected a top level declaration");
 			return poisoned_decl;
 		case TOKEN_CT_CONST_IDENT:
-			if (context->next_tok.type == TOKEN_EQ)
+			if (context->lex.next_tok.type == TOKEN_EQ)
 			{
-				SEMA_TOKEN_ERROR(context->tok,
+				SEMA_TOKEN_ERROR(context->lex.tok,
 				                 "Did you forget a 'const' before the name of this compile time constant?");
 			}
 			else
 			{
-				SEMA_TOKEN_ERROR(context->tok, "Compile time constant unexpectedly found.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "Compile time constant unexpectedly found.");
 			}
 			return poisoned_decl;
 		case TOKEN_IMPORT:
-			SEMA_TOKEN_ERROR(context->tok, "Imports are only allowed directly after the module declaration.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Imports are only allowed directly after the module declaration.");
 			return poisoned_decl;
 		case TOKEN_TLOCAL:
 		case TYPELIKE_TOKENS:
@@ -2363,7 +2363,7 @@ Decl *parse_top_level_statement(Context *context)
 			break;
 		}
 		default:
-			SEMA_TOKEN_ERROR(context->tok, "Expected a top level declaration here.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Expected a top level declaration here.");
 			return poisoned_decl;
 			break;
 	}

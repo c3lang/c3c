@@ -19,8 +19,10 @@ typedef struct _SymEntry
 typedef struct _SymTab
 {
 	uint32_t count;
-	uint32_t capacity;
+	uint32_t max_count;
+	uint32_t mask;
 	SymEntry *entries;
+	uint32_t capacity;
 } SymTab;
 
 typedef struct _Entry
@@ -96,10 +98,12 @@ void symtab_init(uint32_t capacity)
 {
 	assert (is_power_of_two(capacity) && "Must be a power of two");
 	size_t size = capacity *sizeof(SymEntry);
-	symtab.entries = MALLOC(size);
+	symtab.entries = malloc(size);
 	memset(symtab.entries, 0, size);
 	symtab.count = 0;
 	symtab.capacity = capacity;
+	symtab.max_count = capacity * TABLE_MAX_LOAD;
+	symtab.mask = capacity - 1;
 
 	// Add keywords.
 	for (int i = 0; i < TOKEN_LAST; i++)
@@ -113,6 +117,7 @@ void symtab_init(uint32_t capacity)
 		uint32_t len = (uint32_t)strlen(name);
 		TokenType type = (TokenType)i;
 		const char* interned = symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type);
+		(void)interned;
 		assert(type == (TokenType)i);
 		assert(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 	}
@@ -212,7 +217,7 @@ void symtab_init(uint32_t capacity)
 
 static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t hash)
 {
-	uint32_t index = hash & (symtab.capacity - 1);
+	uint32_t index = hash & symtab.mask;
 	while (1)
 	{
 		SymEntry *entry = &symtab.entries[index];
@@ -221,14 +226,15 @@ static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t h
 		{
 			return entry;
 		}
-		index = (index + 1) & (symtab.capacity - 1);
+		index = (index + 1) & symtab.mask;
 	}
 }
 
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type)
 {
-	if (symtab.count + 1 > symtab.capacity * TABLE_MAX_LOAD)
+	if (symtab.count >= symtab.max_count)
 	{
+
 		FATAL_ERROR("Symtab exceeded capacity, please increase --symtab.");
 	}
 	SymEntry *entry = entry_find(symbol, len, fnv1hash);

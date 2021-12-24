@@ -45,7 +45,7 @@ void lexer_store_line_end(Lexer *lexer)
 {
 	lexer->current_line++;
 	lexer->line_start = lexer->current + 1;
-	source_file_append_line_end(lexer->current_file, (SourceLoc)(lexer->current_file->start_id + lexer->current - lexer->file_begin));
+	source_file_append_line_end(lexer->file, (SourceLoc)(lexer->file->start_id + lexer->current - lexer->file_begin));
 }
 
 // Peek one character ahead.
@@ -100,10 +100,10 @@ static inline void add_generic_token(Lexer *lexer, TokenType type)
 	SourceLocation *location = sourceloc_alloc();
 	unsigned char *token_type = (unsigned char *)toktype_alloc();
 	TokenData *data = tokdata_alloc();
-	*token_type = (unsigned char)type;
+	token_type[0] = (unsigned char)type;
 
 	// Set the location.
-	location->file = lexer->current_file;
+	location->file = lexer->file;
 	location->start = (uint32_t)(lexer->lexing_start - lexer->file_begin);
 
 	// Calculate the column
@@ -111,7 +111,7 @@ static inline void add_generic_token(Lexer *lexer, TokenType type)
 	{
 		// In this case lexing started before the start of the current line.
 		// Start by looking at the previous line.
-		SourceLoc *current = &lexer->current_file->lines[lexer->current_line - 1];
+		SourceLoc *current = &lexer->file->lines[lexer->current_line - 1];
 		location->line = lexer->current_line;
 		// Walk upwards until we find a line that starts before the current.
 		while (*current > location->start)
@@ -157,7 +157,7 @@ static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, cons
 {
 	va_list list;
 	va_start(list, message);
-	SourceLocation location = { .file = lexer->current_file,
+	SourceLocation location = { .file = lexer->file,
 								.start = (uint32_t) (loc - lexer->file_begin),
 								.line = lexer->current_line,
 								.length = len,
@@ -1601,14 +1601,6 @@ static bool parse_doc_comment(Lexer *lexer)
 // --- Lexer public functions
 
 
-Token lexer_advance(Lexer *lexer)
-{
-	Token token = { .id.index = lexer->lexer_index, .type = (TokenType)(*toktypeptr(lexer->lexer_index)) };
-	lexer->lexer_index++;
-	return token;
-}
-
-
 static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 {
 	// Now skip the whitespace.
@@ -1759,25 +1751,16 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 	}
 }
 
-File* lexer_current_file(Lexer *lexer)
-{
-	return lexer->current_file;
-}
-
 #define tokenid(_ptr) ((unsigned)((TokenOld *)(_ptr) - ((TokenOld *)lexer->memory.ptr)))
 
-
-
-void lexer_init_with_file(Lexer *lexer, File *file)
+void lexer_lex_file(Lexer *lexer)
 {
-	file->token_start_id = (uint32_t) toktype_arena.allocated;
-	lexer->current_file = file;
-	lexer->file_begin = lexer->current_file->contents;
+	lexer->token_start_id = (uint32_t) toktype_arena.allocated;
+	lexer->file_begin = lexer->file->contents;
 	lexer->lexing_start = lexer->file_begin;
 	lexer->current = lexer->lexing_start;
 	lexer->current_line = 1;
 	lexer->line_start = lexer->current;
-	lexer->lexer_index = file->token_start_id;
 	const unsigned char *check = (const unsigned char *)lexer->current;
 	unsigned c;
 	int balance = 0;

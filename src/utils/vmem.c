@@ -26,7 +26,7 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 		FATAL_ERROR("Failed to map virtual memory block");
 	}
 #elif PLATFORM_POSIX
-	void* ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_NORESERVE, -1, 0);
+	void* ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	if ((ptr == MAP_FAILED) || !ptr)
 	{
 		FATAL_ERROR("Failed to map virtual memory block");

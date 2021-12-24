@@ -174,7 +174,6 @@ typedef struct
 	SourceLoc end_id;
 	SourceLoc *lines;
 	SourceLoc current_line_start;
-	uint32_t token_start_id;
 } File;
 
 typedef struct
@@ -1349,20 +1348,25 @@ typedef union
 
 typedef struct
 {
-	uint32_t lexer_index;
 	const char *file_begin;
+	uint32_t token_start_id;
 	const char *lexing_start;
 	const char *current;
-	uint16_t source_file;
 	uint32_t current_line;
 	const char *line_start;
-	File *current_file;
-	SourceLoc last_in_range;
+	File *file;
 	TokenData *latest_token_data;
 	SourceLocation *latest_token_loc;
 	unsigned char *latest_token_type;
 } Lexer;
 
+typedef struct
+{
+	uint32_t lexer_index;
+	Token tok;
+	TokenId prev_tok;
+	Token next_tok;
+} LexingContext;
 
 typedef struct Context_
 {
@@ -1416,12 +1420,7 @@ typedef struct Context_
 	};
 	Decl* locals[MAX_LOCALS];
 	DynamicScope active_scope;
-	Lexer *lexer;
-	Token tok;
-	TokenId prev_tok;
-	Token next_tok;
-	TokenId docs_start;
-	TokenId docs_end;
+	LexingContext lex;
 	void *llvm_debug_file;
 	void *llvm_debug_compile_unit;
 } Context;
@@ -1638,7 +1637,7 @@ static inline Ast *new_ast(AstKind kind, SourceSpan range)
 
 static inline Ast *extend_ast_with_prev_token(Context *context, Ast *ast)
 {
-	ast->span.end_loc = context->prev_tok;
+	ast->span.end_loc = context->lex.prev_tok;
 	return ast;
 }
 
@@ -1799,9 +1798,9 @@ Decl *decl_new(DeclKind decl_kind, TokenId name, Visibility visibility);
 Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility);
 Decl *decl_new_var(TokenId name, TypeInfo *type, VarDeclKind kind, Visibility visibility);
 Decl *decl_new_generated_var(const char *name, Type *type, VarDeclKind kind, SourceSpan span);
-#define DECL_NEW(_kind, _vis) decl_new(_kind, context->tok.id, _vis)
-#define DECL_NEW_WITH_TYPE(_kind, _vis) decl_new_with_type(context->tok.id, _kind, _vis)
-#define DECL_NEW_VAR(_type, _kind, _vis) decl_new_var(context->tok.id, _type, _kind, _vis)
+#define DECL_NEW(_kind, _vis) decl_new(_kind, context->lex.tok.id, _vis)
+#define DECL_NEW_WITH_TYPE(_kind, _vis) decl_new_with_type(context->lex.tok.id, _kind, _vis)
+#define DECL_NEW_VAR(_type, _kind, _vis) decl_new_var(context->lex.tok.id, _type, _kind, _vis)
 void decl_set_external_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 
@@ -1896,11 +1895,9 @@ bool float_const_fits_type(const ExprConst *expr_const, TypeKind kind);
 // --- Lexer functions
 
 
-Token lexer_advance(Lexer *lexer);
 bool lexer_scan_ident_test(Lexer *lexer, const char *scan);
 void lexer_init_for_test(Lexer *lexer, const char *text, size_t len);
-void lexer_init_with_file(Lexer *lexer, File *file);
-File* lexer_current_file(Lexer *lexer);
+void lexer_lex_file(Lexer *lexer);
 
 
 static inline SourceLocation *tokenid_loc(TokenId token) { return sourcelocptr(token.index); }
@@ -1995,7 +1992,7 @@ static inline SourceSpan source_span_from_token_id(TokenId id)
 }
 
 
-#define RANGE_EXTEND_PREV(x) ((x)->span.end_loc = context->prev_tok)
+#define RANGE_EXTEND_PREV(x) ((x)->span.end_loc = context->lex.prev_tok)
 
 void stable_init(STable *table, uint32_t initial_size);
 void *stable_set(STable *table, const char *key, void *value);
@@ -2260,7 +2257,7 @@ void advance(Context *context);
 // Useful sanity check function.
 static inline void advance_and_verify(Context *context, TokenType token_type)
 {
-	assert(context->tok.type == token_type);
+	assert(context->lex.tok.type == token_type);
 	advance(context);
 }
 

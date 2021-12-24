@@ -23,11 +23,11 @@ inline Expr *parse_precedence_with_left_side(Context *context, Expr *left_side, 
 {
 	while (1)
 	{
-		Precedence token_precedence = rules[context->tok.type].precedence;
+		Precedence token_precedence = rules[context->lex.tok.type].precedence;
 		bool special_question = false;
-		if (context->tok.type == TOKEN_QUESTION)
+		if (context->lex.tok.type == TOKEN_QUESTION)
 		{
-			ParseRule rule = rules[context->next_tok.type];
+			ParseRule rule = rules[context->lex.next_tok.type];
 			if (!rule.prefix)
 			{
 				token_precedence = PREC_CALL;
@@ -36,10 +36,10 @@ inline Expr *parse_precedence_with_left_side(Context *context, Expr *left_side, 
 		}
 		if (precedence > token_precedence) break;
 		if (!expr_ok(left_side)) return left_side;
-		ParseFn infix_rule = special_question ? &parse_rethrow_expr : rules[context->tok.type].infix;
+		ParseFn infix_rule = special_question ? &parse_rethrow_expr : rules[context->lex.tok.type].infix;
 		if (!infix_rule)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "An expression was expected.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "An expression was expected.");
 			return poisoned_expr;
 		}
 		left_side = infix_rule(context, left_side);
@@ -51,10 +51,10 @@ inline Expr *parse_precedence_with_left_side(Context *context, Expr *left_side, 
 static Expr *parse_precedence(Context *context, Precedence precedence)
 {
 	// Get the rule for the previous token.
-	ParseFn prefix_rule = rules[context->tok.type].prefix;
+	ParseFn prefix_rule = rules[context->lex.tok.type].prefix;
 	if (prefix_rule == NULL)
 	{
-		SEMA_TOKEN_ERROR(context->tok, "An expression was expected.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "An expression was expected.");
 		return poisoned_expr;
 	}
 
@@ -70,12 +70,12 @@ Expr *parse_expr_or_initializer_list(Context *context)
 
 static inline bool next_is_try_unwrap(Context *context)
 {
-	return tok_is(context, TOKEN_TRY) && context->next_tok.type != TOKEN_LPAREN;
+	return tok_is(context, TOKEN_TRY) && context->lex.next_tok.type != TOKEN_LPAREN;
 }
 
 static inline bool next_is_catch_unwrap(Context *context)
 {
-	return tok_is(context, TOKEN_CATCH) && context->next_tok.type != TOKEN_LPAREN;
+	return tok_is(context, TOKEN_CATCH) && context->lex.next_tok.type != TOKEN_LPAREN;
 }
 
 static inline Expr *parse_for_try_expr(Context *context)
@@ -89,7 +89,7 @@ static inline Expr *parse_for_try_expr(Context *context)
 static inline Expr *parse_catch_unwrap(Context *context)
 {
 	advance_and_verify(context, TOKEN_CATCH);
-	Expr *expr = expr_new(EXPR_CATCH_UNWRAP, source_span_from_token_id(context->prev_tok));
+	Expr *expr = expr_new(EXPR_CATCH_UNWRAP, source_span_from_token_id(context->lex.prev_tok));
 	if (parse_next_is_decl(context))
 	{
 		ASSIGN_TYPE_ELSE(expr->catch_unwrap_expr.type, parse_type(context), poisoned_expr);
@@ -103,7 +103,7 @@ static inline Expr *parse_catch_unwrap(Context *context)
 	{
 		if (expr->catch_unwrap_expr.type)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Expected a '=' here.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Expected a '=' here.");
 			return poisoned_expr;
 		}
 		vec_add(expr->catch_unwrap_expr.exprs, expr->catch_unwrap_expr.variable);
@@ -134,7 +134,7 @@ static inline Expr *parse_catch_unwrap(Context *context)
  */
 static inline Expr *parse_try_unwrap(Context *context)
 {
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_TRY_UNWRAP, context->tok);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_TRY_UNWRAP, context->lex.tok);
 	advance_and_verify(context, TOKEN_TRY);
 	if (parse_next_is_decl(context))
 	{
@@ -196,7 +196,7 @@ Expr *parse_assert_expr(Context *context)
  */
 Expr *parse_cond(Context *context)
 {
-	Expr *decl_expr = EXPR_NEW_TOKEN(EXPR_COND, context->tok);
+	Expr *decl_expr = EXPR_NEW_TOKEN(EXPR_COND, context->lex.tok);
 	decl_expr->cond_expr = NULL;
 	while (1)
 	{
@@ -288,7 +288,7 @@ static bool parse_param_path(Context *context, DesignatorElement ***path)
 			advance(context);
 			DesignatorElement *element = CALLOCS(DesignatorElement);
 			element->kind = DESIGNATOR_FIELD;
-			element->field = TOKSTR(context->tok.id);
+			element->field = TOKSTR(context->lex.tok.id);
 			EXPECT_OR(TOKEN_IDENT, false);
 			advance(context);
 			vec_add(*path, element);
@@ -310,7 +310,7 @@ bool parse_arg_list(Context *context, Expr ***result, TokenType param_end, bool 
 	{
 		Expr *expr = NULL;
 		DesignatorElement **path;
-		Token current = context->tok;
+		Token current = context->lex.tok;
 		if (!parse_param_path(context, &path)) return false;
 		if (path != NULL)
 		{
@@ -341,7 +341,7 @@ bool parse_arg_list(Context *context, Expr ***result, TokenType param_end, bool 
 		if (TOKEN_IS(param_end)) return true;
 		if (unsplat && *unsplat)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "'...' is only allowed on the last argument in a call.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "'...' is only allowed on the last argument in a call.");
 			return false;
 		}
 	}
@@ -353,7 +353,7 @@ bool parse_arg_list(Context *context, Expr ***result, TokenType param_end, bool 
 static Expr *parse_macro_expansion(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *macro_expression = EXPR_NEW_TOKEN(EXPR_MACRO_EXPANSION, context->tok);
+	Expr *macro_expression = EXPR_NEW_TOKEN(EXPR_MACRO_EXPANSION, context->lex.tok);
 	advance_and_verify(context, TOKEN_AT);
 	ASSIGN_EXPR_ELSE(Expr *inner, parse_precedence(context, PREC_MACRO), poisoned_expr);
 	macro_expression->macro_expansion_expr.inner = inner;
@@ -372,7 +372,7 @@ static Expr *parse_macro_expansion(Context *context, Expr *left)
  */
 Expr *parse_expression_list(Context *context, bool allow_decl)
 {
-	Expr *expr_list = EXPR_NEW_TOKEN(EXPR_EXPRESSION_LIST, context->tok);
+	Expr *expr_list = EXPR_NEW_TOKEN(EXPR_EXPRESSION_LIST, context->lex.tok);
 	while (1)
 	{
 		Expr *expr;
@@ -381,7 +381,7 @@ Expr *parse_expression_list(Context *context, bool allow_decl)
 			ASSIGN_DECL_ELSE(Decl *decl, parse_decl(context), poisoned_expr);
 			if (!allow_decl)
 			{
-				SEMA_TOKEN_ERROR(context->tok, "This looks like a declaration, which isn't allowed here.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "This looks like a declaration, which isn't allowed here.");
 				return poisoned_expr;
 			}
 			expr = expr_new(EXPR_DECL, decl->span);
@@ -410,7 +410,7 @@ static Expr *parse_type_identifier(Context *context, Expr *left)
 static Expr *parse_typeof_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO, context->tok);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO, context->lex.tok);
 	ASSIGN_TYPE_ELSE(TypeInfo *type, parse_type(context), poisoned_expr);
 	expr->span = type->span;
 	expr->type_expr = type;
@@ -422,9 +422,9 @@ static Expr *parse_unary_expr(Context *context, Expr *left)
 {
 	assert(!left && "Did not expect a left hand side!");
 
-	TokenType operator_type = context->tok.type;
+	TokenType operator_type = context->lex.tok.type;
 
-	Expr *unary = EXPR_NEW_TOKEN(EXPR_UNARY, context->tok);
+	Expr *unary = EXPR_NEW_TOKEN(EXPR_UNARY, context->lex.tok);
 	unary->unary_expr.operator = unaryop_from_token(operator_type);
 	advance(context);
 	Expr *right_side = parse_precedence(context, PREC_UNARY);
@@ -439,9 +439,9 @@ static Expr *parse_unary_expr(Context *context, Expr *left)
 static Expr *parse_post_unary(Context *context, Expr *left)
 {
 	assert(expr_ok(left));
-	Expr *unary = EXPR_NEW_TOKEN(EXPR_POST_UNARY, context->tok);
+	Expr *unary = EXPR_NEW_TOKEN(EXPR_POST_UNARY, context->lex.tok);
 	unary->unary_expr.expr = left;
-	unary->unary_expr.operator = unaryop_from_token(context->tok.type);
+	unary->unary_expr.operator = unaryop_from_token(context->lex.tok.type);
 	unary->span.loc = left->span.loc;
 	advance(context);
 	return unary;
@@ -485,7 +485,7 @@ static Expr *parse_ternary_expr(Context *context, Expr *left_side)
 static Expr *parse_grouping_expr(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_GROUP, context->tok);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_GROUP, context->lex.tok);
 	advance_and_verify(context, TOKEN_LPAREN);
 	ASSIGN_EXPR_ELSE(expr->inner_expr, parse_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
@@ -494,7 +494,7 @@ static Expr *parse_grouping_expr(Context *context, Expr *left)
 		TypeInfo *info = expr->inner_expr->type_expr;
 		if (TOKEN_IS(TOKEN_LBRACE) && info->resolve_status != RESOLVE_DONE)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
 			return poisoned_expr;
 		}
 		ASSIGN_EXPR_ELSE(Expr *cast_expr, parse_expr(context), poisoned_expr);
@@ -521,7 +521,7 @@ Expr *parse_initializer(Context *context)
 {
 	if (TOKEN_IS(TOKEN_VOID))
 	{
-		Expr *expr = EXPR_NEW_TOKEN(EXPR_UNDEF, context->tok);
+		Expr *expr = EXPR_NEW_TOKEN(EXPR_UNDEF, context->lex.tok);
 		expr->type = type_void;
 		expr->resolve_status = RESOLVE_DONE;
 		advance(context);
@@ -547,7 +547,7 @@ Expr *parse_initializer(Context *context)
 Expr *parse_initializer_list(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST, context->tok);
+	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST, context->lex.tok);
 	advance_and_verify(context, TOKEN_LBRACE);
 	if (!try_consume(context, TOKEN_RBRACE))
 	{
@@ -606,7 +606,7 @@ static Expr *parse_binary(Context *context, Expr *left_side)
 	assert(left_side && expr_ok(left_side));
 
 	// Remember the operator.
-	TokenType operator_type = context->tok.type;
+	TokenType operator_type = context->lex.tok.type;
 
 	advance(context);
 
@@ -648,7 +648,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	}
 	if (!TOKEN_IS(TOKEN_RPAREN))
 	{
-		SEMA_TOKID_ERROR(context->prev_tok, "Expected the ending ')' here.");
+		SEMA_TOKID_ERROR(context->lex.prev_tok, "Expected the ending ')' here.");
 		return poisoned_expr;
 	}
 	advance(context);
@@ -661,7 +661,7 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	RANGE_EXTEND_PREV(call);
 	if (body_args && !TOKEN_IS(TOKEN_LBRACE))
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Expected a macro body here.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "Expected a macro body here.");
 		return poisoned_expr;
 	}
 	if (TOKEN_IS(TOKEN_LBRACE))
@@ -695,7 +695,7 @@ static Expr *parse_subscript_expr(Context *context, Expr *left)
 	}
 	else
 	{
-		index = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
+		index = EXPR_NEW_TOKEN(EXPR_CONST, context->lex.tok);
 		index->type = type_uint;
 		index->resolve_status = RESOLVE_DONE;
 		expr_const_set_int(&index->const_expr, 0, type_uint->type_kind);
@@ -749,11 +749,11 @@ static Expr *parse_ct_ident(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	if (try_consume(context, TOKEN_CT_CONST_IDENT))
 	{
-		SEMA_TOKID_ERROR(context->prev_tok, "Compile time identifiers may not be constants.");
+		SEMA_TOKID_ERROR(context->lex.prev_tok, "Compile time identifiers may not be constants.");
 		return poisoned_expr;
 	}
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_IDENT, context->tok);
-	expr->ct_ident_expr.identifier = context->tok.id;
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_IDENT, context->lex.tok);
+	expr->ct_ident_expr.identifier = context->lex.tok.id;
 	advance(context);
 	return expr;
 }
@@ -761,8 +761,8 @@ static Expr *parse_ct_ident(Context *context, Expr *left)
 static Expr *parse_hash_ident(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_HASH_IDENT, context->tok);
-	expr->ct_ident_expr.identifier = context->tok.id;
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_HASH_IDENT, context->lex.tok);
+	expr->ct_ident_expr.identifier = context->lex.tok.id;
 	advance(context);
 	return expr;
 }
@@ -770,13 +770,13 @@ static Expr *parse_hash_ident(Context *context, Expr *left)
 static Expr *parse_ct_call(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CALL, context->tok);
-	expr->ct_call_expr.token_type = context->tok.type;
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_CALL, context->lex.tok);
+	expr->ct_call_expr.token_type = context->lex.tok.type;
 	advance(context);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
 	ASSIGN_EXPR_ELSE(Expr *internal, parse_precedence(context, PREC_FIRST + 1), poisoned_expr);
 	ExprFlatElement *flat_path = NULL;
-	if (context->tok.type == TOKEN_DOT || context->tok.type == TOKEN_LBRACKET)
+	if (context->lex.tok.type == TOKEN_DOT || context->lex.tok.type == TOKEN_LBRACKET)
 	{
 		while (1)
 		{
@@ -786,7 +786,7 @@ static Expr *parse_ct_call(Context *context, Expr *left)
 				ASSIGN_EXPR_ELSE(Expr *int_expr, parse_expr(context), poisoned_expr);
 				if (int_expr->expr_kind != EXPR_CONST || int_expr->const_expr.const_kind != CONST_INTEGER)
 				{
-					SEMA_TOKEN_ERROR(context->tok, "Expected an integer index.");
+					SEMA_TOKEN_ERROR(context->lex.tok, "Expected an integer index.");
 					return poisoned_expr;
 				}
 				Int value = int_expr->const_expr.ixx;
@@ -808,11 +808,11 @@ static Expr *parse_ct_call(Context *context, Expr *left)
 			{
 				TRY_CONSUME_OR(TOKEN_IDENT, "Expected an identifier here.", poisoned_expr);
 				flat_element.array = false;
-				flat_element.ident = TOKSTR(context->prev_tok);
+				flat_element.ident = TOKSTR(context->lex.prev_tok);
 			}
 			else
 			{
-				SEMA_TOKEN_ERROR(context->tok, "Expected '.' or '[' here.");
+				SEMA_TOKEN_ERROR(context->lex.tok, "Expected '.' or '[' here.");
 				return poisoned_expr;
 			}
 			vec_add(flat_path, flat_element);
@@ -830,8 +830,8 @@ static Expr *parse_ct_call(Context *context, Expr *left)
 static Expr *parse_identifier(Context *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(context->tok.type == TOKEN_CONST_IDENT ? EXPR_CONST_IDENTIFIER : EXPR_IDENTIFIER , context->tok);
-	expr->identifier_expr.identifier = context->tok.id;
+	Expr *expr = EXPR_NEW_TOKEN(context->lex.tok.type == TOKEN_CONST_IDENT ? EXPR_CONST_IDENTIFIER : EXPR_IDENTIFIER , context->lex.tok);
+	expr->identifier_expr.identifier = context->lex.tok.id;
 	advance(context);
 	return expr;
 }
@@ -843,7 +843,7 @@ static Expr *parse_identifier_starting_expression(Context *context, Expr *left)
 	bool had_error;
 	Path *path = parse_path_prefix(context, &had_error);
 	if (had_error) return poisoned_expr;
-	switch (context->tok.type)
+	switch (context->lex.tok.type)
 	{
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
@@ -855,7 +855,7 @@ static Expr *parse_identifier_starting_expression(Context *context, Expr *left)
 		case TOKEN_TYPE_IDENT:
 			return parse_type_expression_with_path(context, path);
 		default:
-			SEMA_TOKEN_ERROR(context->tok, "Expected a type, function or constant.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Expected a type, function or constant.");
 			return poisoned_expr;
 	}
 }
@@ -867,7 +867,7 @@ static Expr *parse_try_expr(Context *context, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	bool is_try = TOKEN_IS(TOKEN_TRY);
 	advance(context);
-	Expr *try_expr = expr_new(is_try ? EXPR_TRY : EXPR_CATCH, source_span_from_token_id(context->prev_tok));
+	Expr *try_expr = expr_new(is_try ? EXPR_TRY : EXPR_CATCH, source_span_from_token_id(context->lex.prev_tok));
 	if (!try_consume(context, TOKEN_LPAREN))
 	{
 		if (is_try)
@@ -907,10 +907,10 @@ static Expr *parse_force_unwrap_expr(Context *context, Expr *left)
 
 static Expr *parse_or_error_expr(Context *context, Expr *left)
 {
-	Expr *else_expr = EXPR_NEW_TOKEN(EXPR_OR_ERROR, context->tok);
+	Expr *else_expr = EXPR_NEW_TOKEN(EXPR_OR_ERROR, context->lex.tok);
 	advance_and_verify(context, TOKEN_QUESTQUEST);
 	else_expr->or_error_expr.expr = left;
-	switch (context->tok.type)
+	switch (context->lex.tok.type)
 	{
 		case TOKEN_RETURN:
 		case TOKEN_BREAK:
@@ -939,9 +939,9 @@ static Expr *parse_or_error_expr(Context *context, Expr *left)
 static Expr *parse_builtin(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_BUILTIN, context->tok);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_BUILTIN, context->lex.tok);
 	advance_and_verify(context, TOKEN_BUILTIN);
-	expr->builtin_expr.identifier = context->tok;
+	expr->builtin_expr.identifier = context->lex.tok;
 	CONSUME_OR(TOKEN_IDENT, poisoned_expr);
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -981,9 +981,9 @@ static int read_num_type(const char *string, const char *end)
 static Expr *parse_integer(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
-	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	const char *string = TOKSTR(context->tok);
-	const char *end = string + TOKLEN(context->tok);
+	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->lex.tok);
+	const char *string = TOKSTR(context->lex.tok);
+	const char *end = string + TOKLEN(context->lex.tok);
 
 	Int128 i = { 0, 0 };
 	bool is_unsigned = false;
@@ -993,7 +993,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 	int binary_characters = 0;
 	bool wrapped = false;
 	uint64_t max;
-	switch (TOKLEN(context->tok) > 2 ? string[1] : '0')
+	switch (TOKLEN(context->lex.tok) > 2 ? string[1] : '0')
 	{
 		case 'x':
 			string += 2;
@@ -1084,7 +1084,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 	}
 	if (wrapped)
 	{
-		SEMA_TOKEN_ERROR(context->tok, "Integer size exceeded 128 bits, max 128 bits are supported.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "Integer size exceeded 128 bits, max 128 bits are supported.");
 		return poisoned_expr;
 	}
 	expr_int->const_expr.const_kind = CONST_INTEGER;
@@ -1095,7 +1095,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 	{
 		if (type_bits < 0 || !is_power_of_two((uint64_t)type_bits) || type_bits > 128)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "Integer type suffix should be i8, i16, i32, i64 or i128.");
+			SEMA_TOKEN_ERROR(context->lex.tok, "Integer type suffix should be i8, i16, i32, i64 or i128.");
 			return poisoned_expr;
 		}
 	}
@@ -1106,7 +1106,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 			type_bits = 4 * hex_characters;
 			if (type_bits > 128)
 			{
-				SEMA_TOKEN_ERROR(context->tok, "%d hex digits indicates a bit width over 128, which is not supported.", hex_characters);
+				SEMA_TOKEN_ERROR(context->lex.tok, "%d hex digits indicates a bit width over 128, which is not supported.", hex_characters);
 				return poisoned_expr;
 			}
 		}
@@ -1115,7 +1115,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 			type_bits = 3 * oct_characters;
 			if (type_bits > 128)
 			{
-				SEMA_TOKEN_ERROR(context->tok, "%d octal digits indicates a bit width over 128, which is not supported.", oct_characters);
+				SEMA_TOKEN_ERROR(context->lex.tok, "%d octal digits indicates a bit width over 128, which is not supported.", oct_characters);
 				return poisoned_expr;
 			}
 		}
@@ -1124,7 +1124,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 			type_bits = binary_characters;
 			if (type_bits > 128)
 			{
-				SEMA_TOKEN_ERROR(context->tok, "%d binary digits indicates a bit width over 128, which is not supported.", binary_characters);
+				SEMA_TOKEN_ERROR(context->lex.tok, "%d binary digits indicates a bit width over 128, which is not supported.", binary_characters);
 				return poisoned_expr;
 			}
 		}
@@ -1149,12 +1149,12 @@ static Expr *parse_integer(Context *context, Expr *left)
 		if (binary_characters) radix = 2;
 		if (type_bits)
 		{
-			SEMA_TOKEN_ERROR(context->tok, "'%s' does not fit in a '%c%d' literal.",
+			SEMA_TOKEN_ERROR(context->lex.tok, "'%s' does not fit in a '%c%d' literal.",
 			                 i128_to_string(i, radix, true), is_unsigned ? 'u' : 'i', type_bits);
 		}
 		else
 		{
-			SEMA_TOKEN_ERROR(context->tok, "'%s' does not fit in an %s literal.",
+			SEMA_TOKEN_ERROR(context->lex.tok, "'%s' does not fit in an %s literal.",
 			                 i128_to_string(i, radix, true), is_unsigned ? "unsigned int" : "int");
 		}
 		return poisoned_expr;
@@ -1232,7 +1232,7 @@ static void parse_base64(char **result_pointer, char *result_pointer_end, const 
 static Expr *parse_bytes_expr(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
-	TokenId tok = context->tok.id;
+	TokenId tok = context->lex.tok.id;
 	ArraySize len = 0;
 	while (TOKTYPE(tok) == TOKEN_BYTES)
 	{
@@ -1242,11 +1242,11 @@ static Expr *parse_bytes_expr(Context *context, Expr *left)
 	char *data = len > 0 ? malloc_arena(len) : NULL;
 	char *data_current = data;
 
-	Expr *expr_bytes = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	while (context->tok.type == TOKEN_BYTES)
+	Expr *expr_bytes = EXPR_NEW_TOKEN(EXPR_CONST, context->lex.tok);
+	while (context->lex.tok.type == TOKEN_BYTES)
 	{
-		TokenData *token_data = tokendata_from_token(context->tok);
-		SourceLocation *loc = TOKLOC(context->tok);
+		TokenData *token_data = tokendata_from_token(context->lex.tok);
+		SourceLocation *loc = TOKLOC(context->lex.tok);
 		if (token_data->is_base64)
 		{
 			const char *base64data =  &loc->file->contents[loc->start] + 4;
@@ -1273,9 +1273,9 @@ static Expr *parse_bytes_expr(Context *context, Expr *left)
 static Expr *parse_char_lit(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
-	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
+	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->lex.tok);
 	expr_int->const_expr.is_character = true;
-	TokenData *data = tokendata_from_id(context->tok.id);
+	TokenData *data = tokendata_from_id(context->lex.tok.id);
 	expr_int->const_expr.ixx.i = data->char_value;
 	expr_int->const_expr.narrowable = true;
 	expr_int->const_expr.const_kind = CONST_INTEGER;
@@ -1315,13 +1315,13 @@ static Expr *parse_double(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	char *err;
-	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
-	const char *original = TOKSTR(context->tok);
+	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->lex.tok);
+	const char *original = TOKSTR(context->lex.tok);
 	bool is_hex = original[0] == '0' && original[1] == 'x';
 	Float f = is_hex ? float_from_hex(original, &err) : float_from_string(original, &err);
 	if (f.type == TYPE_POISONED)
 	{
-		SEMA_TOKEN_ERROR(context->tok, err);
+		SEMA_TOKEN_ERROR(context->lex.tok, err);
 		return poisoned_expr;
 	}
 	number->const_expr.fxx = f;
@@ -1424,9 +1424,9 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 static Expr *parse_string_literal(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
-	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
+	Expr *expr_string = EXPR_NEW_TOKEN(EXPR_CONST, context->lex.tok);
 
-	TokenData *data = TOKDATA(context->tok);
+	TokenData *data = TOKDATA(context->lex.tok);
 	const char *str = data->string;
 	size_t len = data->strlen;
 	advance_and_verify(context, TOKEN_STRING);
@@ -1435,7 +1435,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 	// and can be optimized.
 	while (TOKEN_IS(TOKEN_STRING))
 	{
-		data = TOKDATA(context->tok);
+		data = TOKDATA(context->lex.tok);
 		char *buffer = malloc_arena(len + data->strlen + 1);
 		memcpy(buffer, str, len);
 		memcpy(buffer + len, data->string, data->strlen);
@@ -1447,7 +1447,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 
 	if (len > UINT32_MAX)
 	{
-		SEMA_TOKEN_ERROR(context->tok, "String exceeded max size.");
+		SEMA_TOKEN_ERROR(context->lex.tok, "String exceeded max size.");
 		return poisoned_expr;
 	}
 	assert(str);
@@ -1461,7 +1461,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 static Expr *parse_bool(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
-	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
+	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->lex.tok);
 	number->const_expr = (ExprConst) { .b = TOKEN_IS(TOKEN_TRUE), .const_kind = CONST_BOOL };
 	number->type = type_bool;
 	advance(context);
@@ -1471,7 +1471,7 @@ static Expr *parse_bool(Context *context, Expr *left)
 static Expr *parse_null(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
-	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->tok);
+	Expr *number = EXPR_NEW_TOKEN(EXPR_CONST, context->lex.tok);
 	number->const_expr.const_kind = CONST_POINTER;
 	number->type = type_voidptr;
 	advance(context);
@@ -1503,7 +1503,7 @@ Expr *parse_type_expression_with_path(Context *context, Path *path)
 	{
 		type = type_info_new(TYPE_INFO_IDENTIFIER, path->span);
 		type->unresolved.path = path;
-		type->unresolved.name_loc = context->tok.id;
+		type->unresolved.name_loc = context->lex.tok.id;
 		advance_and_verify(context, TOKEN_TYPE_IDENT);
 		RANGE_EXTEND_PREV(type);
 		ASSIGN_TYPE_ELSE(type, parse_type_with_base(context, type), poisoned_expr);
@@ -1532,7 +1532,7 @@ Expr *parse_type_expression_with_path(Context *context, Path *path)
 static Expr* parse_expr_block(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_EXPR_BLOCK, context->tok);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_EXPR_BLOCK, context->lex.tok);
 	advance_and_verify(context, TOKEN_LBRAPIPE);
 	while (!try_consume(context, TOKEN_RBRAPIPE))
 	{
