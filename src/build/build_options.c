@@ -420,6 +420,15 @@ static void parse_option(BuildOptions *options)
 				error_exit("error: The TinyBackend is not supported on this platform.");
 #endif
 			}
+			if (match_longopt("symtab"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --symtab needs a valid integer.");
+				const char *symtab_string = next_arg();
+				int symtab = atoi(symtab_string);
+				if (symtab < 1024) OUTPUT("Expected a valid positive integer >= 1024.");
+				options->symtab_size = next_highest_power_of_2(symtab);
+				return;
+			}
 			if (match_longopt("version"))
 			{
 				print_version();

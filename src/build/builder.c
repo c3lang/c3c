@@ -156,7 +156,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.name = options->output_name,
 		.optimization_level = OPTIMIZATION_DEFAULT,
 		.size_optimization_level = SIZE_OPTIMIZATION_NONE,
-		.symtab_size = DEFAULT_SYMTAB_SIZE,
+		.symtab_size = options->symtab_size ? options->symtab_size : DEFAULT_SYMTAB_SIZE,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 		.debug_info = DEBUG_INFO_NONE,
 		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
