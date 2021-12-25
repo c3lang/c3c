@@ -1,0 +1,18 @@
+// #target: x64-darwin
+module foo;
+fn void test()
+{
+    bool a = $defined($$sin);
+    bool b = $defined($$bas);
+}
+
+/* #expect: foo.ll
+
+define void @foo.test() #0 {
+entry:
+  %a = alloca i8, align 1
+  %b = alloca i8, align 1
+  store i8 1, i8* %a, align 1
+  store i8 0, i8* %b, align 1
+  ret void
+}

@@ -5276,7 +5276,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_ptr(c, value, expr);
 			return;
 		case EXPR_BUILTIN:
-			TODO
+			UNREACHABLE;
 		case EXPR_DECL:
 			llvm_emit_local_decl(c, expr->decl_expr);
 			llvm_value_set_decl_address(value, expr->decl_expr);

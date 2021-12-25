@@ -15,6 +15,7 @@ static inline bool sema_cast_rvalue(Context *context, Expr *expr);
 static Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
 static inline void expr_set_as_const_list(Expr *expr, ConstInitializer *list);
 static inline bool is_const(Expr *expr);
+static inline bool sema_expr_analyse_builtin(Context *context, Expr *expr, bool throw_error);
 static bool sema_check_stmt_compile_time(Context *context, Ast *ast);
 static bool binary_arithmetic_promotion(Context *context, Expr *left, Expr *right, Type *left_type, Type *right_type, Expr *parent, const char *error_message);
 static inline void expr_set_as_const_list(Expr *expr, ConstInitializer *list)
@@ -6563,6 +6564,9 @@ static inline bool sema_expr_analyse_ct_defined(Context *context, Expr *expr)
 			if (!type_ok(type)) return false;
 			break;
 		}
+		case EXPR_BUILTIN:
+			if (!sema_expr_analyse_builtin(context, main_var, false)) goto NOT_DEFINED;
+			break;
 		default:
 			if (!sema_analyse_expr_lvalue(context, main_var)) return false;
 			if (main_var->expr_kind == EXPR_TYPEINFO)
@@ -6717,7 +6721,7 @@ static inline BuiltinFunction builtin_by_name(const char *name)
 	return BUILTIN_NONE;
 }
 
-static inline bool sema_expr_analyse_builtin(Context *context, Expr *expr)
+static inline bool sema_expr_analyse_builtin(Context *context, Expr *expr, bool throw_error)
 {
 	const char *builtin_char = TOKSTR(expr->builtin_expr.identifier);
 
@@ -6725,7 +6729,7 @@ static inline bool sema_expr_analyse_builtin(Context *context, Expr *expr)
 
 	if (func == BUILTIN_NONE)
 	{
-		SEMA_TOKEN_ERROR(expr->builtin_expr.identifier, "Unsupported builtin '%s'.", builtin_char);
+		if (throw_error) SEMA_TOKEN_ERROR(expr->builtin_expr.identifier, "Unsupported builtin '%s'.", builtin_char);
 		return false;
 	}
 
@@ -6757,7 +6761,7 @@ static inline bool sema_analyse_expr_dispatch(Context *context, Expr *expr)
 			expr->type = expr->decl_expr->type;
 			return true;
 		case EXPR_BUILTIN:
-			return sema_expr_analyse_builtin(context, expr);
+			return sema_expr_analyse_builtin(context, expr, true);
 		case EXPR_CT_CALL:
 			return sema_expr_analyse_ct_call(context, expr);
 		case EXPR_HASH_IDENT:
@@ -6896,6 +6900,10 @@ static inline bool sema_cast_rvalue(Context *context, Expr *expr)
 				SEMA_ERROR(expr, "'@%s' must be followed by ().", context->macro_scope.body_param);
 				return false;
 			}
+			break;
+		case EXPR_BUILTIN:
+			SEMA_ERROR(expr, "A builtin must be followed by ().");
+			return false;
 		case EXPR_ACCESS:
 			if (expr->access_expr.ref->decl_kind == DECL_FUNC)
 			{
