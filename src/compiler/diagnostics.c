@@ -14,53 +14,80 @@ typedef enum
 	PRINT_TYPE_WARN
 } PrintType;
 
-static void print_error2(SourceLocation *location, const char *message, PrintType print_type)
+#define LINES_SHOWN 4
+
+static void print_error(SourceLocation *location, const char *message, PrintType print_type)
 {
+	File *file = source_file_by_id(location->file_id);
 	if (active_target.test_output)
 	{
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
-				eprintf("Error|%s|%d|%s\n", location->file->name, location->line, message);
+				eprintf("Error|%s|%d|%s\n", file->name, location->row, message);
 				return;
 			case PRINT_TYPE_PREV:
 				return;
 			case PRINT_TYPE_WARN:
-				eprintf("Warning|%s|%d|%s\n", location->file->name, location->line, message);
+				eprintf("Warning|%s|%d|%s\n", file->name, location->row, message);
 				return;
 			default:
 				UNREACHABLE
 		}
 	}
-	static const int LINES_SHOWN = 4;
-
-	unsigned max_line_length = (unsigned)round(log10(location->line)) + 1;
+	unsigned max_line_length = (unsigned)round(log10(location->row)) + 1;
 
 	char number_buffer[20];
 	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);
 
 	// Insert end in case it's not yet there.
-	for (SourceLoc s = location->start; s < location->file->end_id; s++)
+
+	const char *file_contents = file->contents;
+	int lines_found = 0;
+	size_t line_starts[LINES_SHOWN + 1] = { 0, 0, 0, 0 };
+	uint32_t start = location->start;
+	if (start < 2)
 	{
-		if ((location->file->contents + s - location->file->start_id)[0] == '\n')
+		line_starts[++lines_found] = 0;
+	}
+	else
+	{
+		for (size_t i = start; i > 0; i--)
 		{
-			source_file_append_line_end(location->file, s);
-			break;
+			if (file_contents[i - 1] == '\n')
+			{
+				line_starts[++lines_found] = i;
+				if (lines_found >= LINES_SHOWN) break;
+			}
+			if (i == 1)
+			{
+				line_starts[++lines_found] = 0;
+				break;
+			}
 		}
 	}
-	size_t lines_in_file = vec_size(location->file->lines);
-	const char *start = NULL;
-	for (unsigned i = LINES_SHOWN; i > 0; i--)
+	for (size_t i = start; ; i++)
 	{
-		if (location->line < i) continue;
-		uint32_t line_number = location->line + 1 - i;
-		SourceLoc line_start = location->file->lines[line_number - 1];
-
-		SourceLoc line_end = line_number == lines_in_file ? location->file->end_id + 1 :
-		                     location->file->lines[line_number];
-		uint32_t line_len = line_end - line_start - 1;
-		start = location->file->contents + line_start - location->file->start_id;
-		eprintf(number_buffer, line_number, line_len, start);
+		switch (file_contents[i])
+		{
+			case '\0':
+			case '\n':
+				line_starts[0] = i + 1;
+				goto FOUND;
+			default:
+				continue;
+		}
+	}
+	FOUND:;
+	const char *start_char = NULL;
+	for (unsigned i = lines_found; i > 0; i--)
+	{
+		SourceLoc line_start = line_starts[i];
+		SourceLoc line_end = line_starts[i - 1] - 1;
+		uint32_t line_number = location->row + 1 - i;
+		uint32_t line_len = line_end - line_start;
+		start_char = file->contents + line_start;
+		eprintf(number_buffer, line_number, line_len, start_char);
 	}
 	eprintf("  ");
 	for (unsigned i = 0; i < max_line_length; i++)
@@ -70,7 +97,7 @@ static void print_error2(SourceLocation *location, const char *message, PrintTyp
 
 	for (unsigned i = 1; i < location->col; i++)
 	{
-		switch (start[i])
+		switch (start_char[i])
 		{
 			case '\t':
 				eprintf("\t");
@@ -87,13 +114,13 @@ static void print_error2(SourceLocation *location, const char *message, PrintTyp
 	switch (print_type)
 	{
 		case PRINT_TYPE_ERROR:
-			eprintf("(%s:%d) Error: %s\n\n", location->file->name, location->line, message);
+			eprintf("(%s:%d) Error: %s\n\n", file->name, location->row, message);
 			break;
 		case PRINT_TYPE_PREV:
-			eprintf("(%s:%d) %s\n\n", location->file->name, location->line, message);
+			eprintf("(%s:%d) %s\n\n", file->name, location->row, message);
 			break;
 		case PRINT_TYPE_WARN:
-			eprintf("(%s:%d) Warning: %s\n\n", location->file->name, location->line, message);
+			eprintf("(%s:%d) Warning: %s\n\n", file->name, location->row, message);
 			break;
 		default:
 			UNREACHABLE
@@ -105,7 +132,7 @@ static void vprint_error(SourceLocation *location, const char *message, va_list 
 {
 	char buffer[256];
 	vsnprintf(buffer, 256, message, args);
-	print_error2(location, buffer, PRINT_TYPE_ERROR);
+	print_error(location, buffer, PRINT_TYPE_ERROR);
 }
 
 
@@ -135,7 +162,7 @@ void sema_prev_at_range3(SourceSpan span, const char *message, ...)
 	vsnprintf(buffer, 256, message, args);
 	SourceLocation loc = *start;
 	loc.length = end->start - start->start + end->length;
-	print_error2(&loc, buffer, PRINT_TYPE_PREV);
+	print_error(&loc, buffer, PRINT_TYPE_PREV);
 	va_end(args);
 }
 
@@ -157,12 +184,12 @@ void sema_error_at_prev_end(Token token, const char *message, ...)
 	SourceLocation *curr = TOKLOC(token);
 	SourceLocation *prev = TOKLOC((TokenId) { token.id.index - 1 });
 	SourceLocation location;
-	if (curr->file != prev->file)
+	if (curr->file_id != prev->file_id)
 	{
 		// Ok, this is the first location, so then we create a "start" location:
 		location = *curr;
 		location.start = 0;
-		location.line = 1;
+		location.row = 1;
 		location.col = 1;
 	}
 	else

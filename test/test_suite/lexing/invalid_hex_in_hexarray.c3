@@ -1,0 +1,1 @@
+x"abcé" // #error: This isn't a valid hexadecimal digit

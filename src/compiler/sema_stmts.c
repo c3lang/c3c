@@ -620,7 +620,7 @@ static inline bool sema_analyse_stmt_placement(Expr *cond, Ast *stmt)
 	if (stmt->ast_kind == AST_COMPOUND_STMT) return true;
 	SourceLocation *end_of_cond = TOKLOC(cond->span.end_loc);
 	SourceLocation *start_of_then = TOKLOC(stmt->span.loc);
-	return end_of_cond->line == start_of_then->line;
+	return end_of_cond->row == start_of_then->row;
 }
 
 /**
@@ -1467,7 +1467,7 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 		{
 			SourceLocation *end_of_cond = TOKLOC(cond->span.end_loc);
 			SourceLocation *start_of_then = TOKLOC(statement->if_stmt.then_body->span.loc);
-			if (end_of_cond->line != start_of_then->line)
+			if (end_of_cond->row != start_of_then->row)
 			{
 				SEMA_ERROR(statement->if_stmt.then_body,
 				           "The 'then' part of a single line if-statement must start on the same line as the 'if' or use '{ }'");

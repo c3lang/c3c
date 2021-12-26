@@ -1,7 +1,6 @@
 // @warnings{no-unused}
 module test;
 
-
 struct Aa
 {
     int a;
