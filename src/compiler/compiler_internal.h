@@ -163,24 +163,21 @@ typedef struct
 	AstId end;
 } DeferList;
 
-
+typedef unsigned FileId;
 typedef struct
 {
+	FileId file_id;
 	const char *contents;
 	char *name;
 	char *dir_path;
 	const char *full_path;
-	SourceLoc start_id;
-	SourceLoc end_id;
-	SourceLoc *lines;
-	SourceLoc current_line_start;
 } File;
 
 typedef struct
 {
-	File *file;
-	uint32_t line;
-	uint32_t col;
+	FileId file_id;
+	uint16_t col;
+	uint32_t row;
 	uint32_t start;
 	uint32_t length;
 } SourceLocation;
@@ -1352,8 +1349,10 @@ typedef struct
 	uint32_t token_start_id;
 	const char *lexing_start;
 	const char *current;
-	uint32_t current_line;
+	uint32_t current_row;
+	uint32_t start_row;
 	const char *line_start;
+	const char *start_row_start;
 	File *file;
 	TokenData *latest_token_data;
 	SourceLocation *latest_token_loc;
@@ -1982,9 +1981,8 @@ void sema_error(Context *context, const char *message, ...);
 void sema_prev_at_range3(SourceSpan span, const char *message, ...);
 void sema_shadow_error(Decl *decl, Decl *old);
 
+File *source_file_by_id(FileId file);
 File *source_file_load(const char *filename, bool *already_loaded);
-void source_file_append_line_end(File *file, SourceLoc loc);
-SourcePosition source_file_find_position_in_file(File *file, SourceLoc loc);
 
 static inline SourceSpan source_span_from_token_id(TokenId id)
 {

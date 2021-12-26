@@ -431,7 +431,8 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		if (loop == LOOP_INFINITE)
 		{
 			SourceLocation *loc = TOKLOC(ast->span.loc);
-			llvm_emit_debug_output(c, "Infinite loop found", loc->file->name, c->cur_func_decl->external_name, loc->line);
+			File  *file = source_file_by_id(loc->file_id);
+			llvm_emit_debug_output(c, "Infinite loop found", file->name, c->cur_func_decl->external_name, loc->row);
 			LLVMBuildUnreachable(c->builder);
 			LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
 			c->current_block = NULL;
@@ -994,7 +995,8 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		{
 			error = "Assert violation";
 		}
-		llvm_emit_debug_output(c, error, loc->file->name, c->cur_func_decl->name, loc->line);
+		File  *file = source_file_by_id(loc->file_id);
+		llvm_emit_debug_output(c, error, file->name, c->cur_func_decl->name, loc->row);
 		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
@@ -1045,7 +1047,8 @@ static inline void llvm_emit_asm_stmt(GenContext *c, Ast *ast)
 static inline void gencontext_emit_unreachable_stmt(GenContext *context, Ast *ast)
 {
 	SourceLocation *loc = TOKLOC(ast->span.loc);
-	llvm_emit_debug_output(context, "Unreachable statement reached.", loc->file->name, context->cur_func_decl->external_name, loc->line);
+	File  *file = source_file_by_id(loc->file_id);
+	llvm_emit_debug_output(context, "Unreachable statement reached.", file->name, context->cur_func_decl->external_name, loc->row);
 	llvm_emit_call_intrinsic(context, intrinsic_id.trap, NULL, 0, NULL, 0);
 	LLVMBuildUnreachable(context->builder);
 	LLVMBasicBlockRef block = llvm_basic_block_new(context, "unreachable_block");
@@ -1222,7 +1225,8 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	assert(llvm_value_is_bool(value));
 	llvm_emit_cond_br(c, value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
-	llvm_emit_debug_output(c, panic_name, loc->file->name, c->cur_func_decl->name, loc->line);
+	File  *file = source_file_by_id(loc->file_id);
+	llvm_emit_debug_output(c, panic_name, file->name, c->cur_func_decl->name, loc->row);
 	llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
@@ -1230,13 +1234,14 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceLocation *loc)
 {
+	File  *file = source_file_by_id(loc->file_id);
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
 	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
 	BEValue be_value;
 	llvm_value_set_bool(&be_value, value);
 	llvm_emit_cond_br(c, &be_value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
-	llvm_emit_debug_output(c, panic_name, loc->file->name, c->cur_func_decl->name, loc->line);
+	llvm_emit_debug_output(c, panic_name, file->name, c->cur_func_decl->name, loc->row);
 	llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);

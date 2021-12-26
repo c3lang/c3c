@@ -1247,15 +1247,16 @@ static Expr *parse_bytes_expr(Context *context, Expr *left)
 	{
 		TokenData *token_data = tokendata_from_token(context->lex.tok);
 		SourceLocation *loc = TOKLOC(context->lex.tok);
+		File *file = source_file_by_id(loc->file_id);
 		if (token_data->is_base64)
 		{
-			const char *base64data =  &loc->file->contents[loc->start] + 4;
+			const char *base64data =  &file->contents[loc->start] + 4;
 			const char *end = base64data + loc->length - 1;
 			parse_base64(&data_current, data_current + token_data->len, base64data, end);
 		}
 		else
 		{
-			const char *hexdata =  &loc->file->contents[loc->start] + 2;
+			const char *hexdata =  &file->contents[loc->start] + 2;
 			const char *end = hexdata + loc->length - 1;
 			parse_hex(&data_current, hexdata, end);
 		}

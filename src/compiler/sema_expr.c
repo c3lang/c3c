@@ -198,7 +198,6 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case CAST_EREU:
 		case CAST_XIERR:
 		case CAST_PTRPTR:
-		case CAST_ARRPTR:
 		case CAST_STRPTR:
 		case CAST_PTRBOOL:
 		case CAST_BOOLINT:
@@ -1737,8 +1736,8 @@ bool sema_expr_analyse_macro_call(Context *context, Expr *call_expr, Expr *struc
 		context->macro_scope = (MacroScope){
 				.body_param = decl->macro_decl.block_parameter.index ? TOKSTR(decl->macro_decl.block_parameter) : NULL,
 				.macro = decl,
-				.inline_line = TOKLOC(call_expr->span.loc)->line,
-				.original_inline_line = old_macro_scope.depth ? old_macro_scope.original_inline_line : TOKLOC(call_expr->span.loc)->line,
+				.inline_line = TOKLOC(call_expr->span.loc)->row,
+				.original_inline_line = old_macro_scope.depth ? old_macro_scope.original_inline_line : TOKLOC(call_expr->span.loc)->row,
 				.locals_start = context->active_scope.current_local,
 				.depth = old_macro_scope.depth + 1,
 				.yield_symbol_start = first_local,
@@ -5938,7 +5937,7 @@ static inline bool sema_expr_analyse_placeholder(Context *context, Expr *expr)
 	}
 	if (string == kw_LINEREAL)
 	{
-		expr_rewrite_to_int_const(expr, type_isize, TOKLOC(expr->placeholder_expr.identifier)->line, true);
+		expr_rewrite_to_int_const(expr, type_isize, TOKLOC(expr->placeholder_expr.identifier)->row, true);
 		return true;
 	}
 	if (string == kw_LINE)
@@ -5949,7 +5948,7 @@ static inline bool sema_expr_analyse_placeholder(Context *context, Expr *expr)
 		}
 		else
 		{
-			expr_rewrite_to_int_const(expr, type_isize, TOKLOC(expr->placeholder_expr.identifier)->line, true);
+			expr_rewrite_to_int_const(expr, type_isize, TOKLOC(expr->placeholder_expr.identifier)->row, true);
 		}
 		return true;
 	}

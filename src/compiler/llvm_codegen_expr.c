@@ -1181,8 +1181,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 		case CAST_SAPTR:
 			llvm_emit_subarray_pointer(c, value, value);
 			break;
-		case CAST_ARRPTR:
-			TODO
 		case CAST_EREU:
 			// This is a no op.
 			assert(type_lowering(to_type) == type_lowering(from_type));
@@ -2319,6 +2317,7 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 	// Calculate the size
 	LLVMValueRef size = LLVMBuildSub(c->builder, LLVMBuildAdd(c->builder, end.value, llvm_const_int(c, start.type, 1), ""), start.value, "size");
 	LLVMValueRef start_pointer;
+
 	switch (parent.type->type_kind)
 	{
 		case TYPE_ARRAY:
@@ -2336,8 +2335,11 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 		case TYPE_POINTER:
 			start_pointer = llvm_emit_pointer_inbounds_gep_raw(c, llvm_get_pointee_type(c, parent.type), parent.value, start.value);
 			break;
-		default:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_VECTOR:
 			TODO
+		default:
+			UNREACHABLE
 	}
 
 	// Create a new subarray type
@@ -3500,7 +3502,8 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 	{
 		// TODO, we should add info about the error.
 		SourceLocation *loc = TOKLOC(expr->span.loc);
-		llvm_emit_debug_output(c, "Runtime error force unwrap!", loc->file->name, c->cur_func_decl->external_name, loc->line);
+		File *file = source_file_by_id(loc->file_id);
+		llvm_emit_debug_output(c, "Runtime error force unwrap!", file->name, c->cur_func_decl->external_name, loc->row);
 		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 		LLVMBuildUnreachable(c->builder);
 		c->current_block = NULL;

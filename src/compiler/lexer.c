@@ -18,9 +18,35 @@ typedef enum
 	DOC_END_ERROR,
 } DocEnd;
 
+static inline uint16_t check_col(intptr_t col, uint32_t row)
+{
+	if (col > 65535) error_exit("Column on line %d exceeded %d.", row, 65535);
+	return (uint16_t)col;
+}
+
+static inline uint32_t check_row(intptr_t line, uint32_t row)
+{
+	if (line > 1024 * 1024) error_exit("Token on line %d exceeded %d.", row, 1024 * 1024);
+	return (uint32_t)line;
+}
+
 // --- Lexing general methods.
 
 static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode);
+
+static inline void begin_new_token(Lexer *lexer)
+{
+	lexer->lexing_start = lexer->current;
+	lexer->start_row = lexer->current_row;
+	lexer->start_row_start = lexer->line_start;
+}
+
+static inline void backtrace_to_lexing_start(Lexer *lexer)
+{
+	lexer->current = lexer->lexing_start;
+	lexer->current_row = lexer->start_row;
+	lexer->line_start = lexer->start_row_start;
+}
 
 // Peek at the current character in the buffer.
 static inline char peek(Lexer *lexer)
@@ -38,14 +64,10 @@ static inline char prev(Lexer *lexer)
 static inline void backtrack(Lexer *lexer)
 {
 	lexer->current--;
-}
-
-// Store a line ending (and current line start at the current character)
-void lexer_store_line_end(Lexer *lexer)
-{
-	lexer->current_line++;
-	lexer->line_start = lexer->current + 1;
-	source_file_append_line_end(lexer->file, (SourceLoc)(lexer->file->start_id + lexer->current - lexer->file_begin));
+	if (lexer->current[0] == '\n')
+	{
+		lexer->current_row--;
+	}
 }
 
 // Peek one character ahead.
@@ -55,16 +77,24 @@ static inline char peek_next(Lexer *lexer)
 }
 
 // Return the current character and step one character forward.
-static inline char next(Lexer *lexer)
+static inline void next(Lexer *lexer)
 {
-	return *(lexer->current++);
+	if (lexer->current[0] == '\n')
+	{
+		lexer->line_start = lexer->current + 1;
+		lexer->current_row++;
+	}
+	lexer->current++;
 }
 
 // Skip the x next characters.
 static inline void skip(Lexer *lexer, int steps)
 {
 	assert(steps > 0);
-	lexer->current += steps;
+	for (int i = 0; i < steps; i++)
+	{
+		next(lexer);
+	}
 }
 
 // Is the current character '\0' if so we assume we reached the end.
@@ -78,7 +108,7 @@ static inline bool match(Lexer *lexer, char expected)
 {
 	if (reached_end(lexer)) return false;
 	if (*lexer->current != expected) return false;
-	lexer->current++;
+	next(lexer);
 	return true;
 }
 
@@ -103,38 +133,28 @@ static inline void add_generic_token(Lexer *lexer, TokenType type)
 	token_type[0] = (unsigned char)type;
 
 	// Set the location.
-	location->file = lexer->file;
+	location->file_id = lexer->file->file_id;
 	location->start = (uint32_t)(lexer->lexing_start - lexer->file_begin);
 
-	// Calculate the column
-	if (lexer->lexing_start < lexer->line_start)
+	uint32_t line = lexer->start_row;
+	location->row = line;
+	if (line == lexer->current_row)
 	{
-		// In this case lexing started before the start of the current line.
-		// Start by looking at the previous line.
-		SourceLoc *current = &lexer->file->lines[lexer->current_line - 1];
-		location->line = lexer->current_line;
-		// Walk upwards until we find a line that starts before the current.
-		while (*current > location->start)
-		{
-			location->line--;
-			current--;
-		}
-		// We found the line we wanted, so the col is just an offset from the start.
-		location->col = location->start - *current + 1;
-		// Length is restricted to the end of the line.
-		location->length = current[1] - current[0] - 1;
-	}
-	else
-	{
-		// The simple case, where the parsing started on the current line.
-		location->line = lexer->current_line;
 		// Col is simple difference.
-		location->col = (unsigned) (lexer->lexing_start - lexer->line_start) + 1;
+		location->col = check_col(lexer->lexing_start - lexer->line_start + 1, line);
 		// Start is offset to file begin.
 		location->start = (SourceLoc) (lexer->lexing_start - lexer->file_begin);
 		// Length is diff between current and start.
-		location->length = (SourceLoc) (lexer->current - lexer->lexing_start);
+		location->length = check_row(lexer->current - lexer->lexing_start, line);
 	}
+	else
+	{
+		location->col = check_col(lexer->lexing_start - lexer->start_row_start + 1, line);
+		// Start is offset to file begin.
+		location->start = (SourceLoc) (lexer->lexing_start - lexer->file_begin);
+		location->length = 1;
+	}
+
 	// Return pointers to the data and the location,
 	// these maybe be used to fill in data.
 	lexer->latest_token_data = data;
@@ -153,22 +173,56 @@ static bool add_error_token(Lexer *lexer, const char *message, ...)
 	return false;
 }
 
-static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, const char *message, ...)
+static bool add_error_token_at_start(Lexer *lexer, const char *message, ...)
 {
 	va_list list;
 	va_start(list, message);
-	SourceLocation location = { .file = lexer->file,
-								.start = (uint32_t) (loc - lexer->file_begin),
-								.line = lexer->current_line,
-								.length = len,
-								.col = (uint32_t) (loc - lexer->line_start) + 1,
+	SourceLocation location = { .file_id = lexer->file->file_id,
+								.start = (uint32_t) (lexer->lexing_start - lexer->file_begin),
+								.row = lexer->start_row,
+								.length = 1,
+								.col = check_col((lexer->lexing_start - lexer->start_row_start) + 1, lexer->start_row),
 								};
 	sema_verror_range(&location, message, list);
 	va_end(list);
 	add_generic_token(lexer, TOKEN_INVALID_TOKEN);
 	return false;
-
 }
+
+static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, const char *message, ...)
+{
+	va_list list;
+	va_start(list, message);
+	uint32_t current_line = lexer->current_row;
+	SourceLocation location = { .file_id = lexer->file->file_id,
+								.start = (uint32_t) (loc - lexer->file_begin),
+								.row = current_line,
+								.length = len,
+								.col = check_col((loc - lexer->line_start) + 1, current_line),
+								};
+	sema_verror_range(&location, message, list);
+	va_end(list);
+	add_generic_token(lexer, TOKEN_INVALID_TOKEN);
+	return false;
+}
+
+static bool add_error_token_at_current(Lexer *lexer, const char *message, ...)
+{
+	va_list list;
+	va_start(list, message);
+	uint32_t current_line = lexer->current_row;
+	SourceLocation location = { .file_id = lexer->file->file_id,
+								.start = (uint32_t) (lexer->current - lexer->file_begin),
+								.row = current_line,
+								.length = 1,
+								.col = check_col((lexer->current - lexer->line_start) + 1, current_line),
+								};
+	sema_verror_range(&location, message, list);
+	va_end(list);
+	add_generic_token(lexer, TOKEN_INVALID_TOKEN);
+	return false;
+}
+
 // Add a new regular token.
 static inline bool add_token(Lexer *lexer, TokenType type, const char *string)
 {
@@ -204,7 +258,6 @@ static inline bool parse_line_comment(Lexer *lexer)
 	// If we found EOL, then walk past '\n'
 	if (!reached_end(lexer))
 	{
-		lexer_store_line_end(lexer);
 		next(lexer);
 	}
 	return success;
@@ -240,7 +293,6 @@ static inline bool parse_multiline_comment(Lexer *lexer)
 				}
 				break;
 			case '\n':
-				lexer_store_line_end(lexer);
 				break;
 			case '\0':
 				if (type != TOKEN_DOC_COMMENT) return add_token(lexer, type, lexer->lexing_start);
@@ -264,7 +316,6 @@ static void skip_whitespace(Lexer *lexer, LexMode lex_type)
 		{
 			case '\n':
 				if (lex_type != LEX_NORMAL) return;
-				lexer_store_line_end(lexer);
 				FALLTHROUGH;
 			case ' ':
 			case '\t':
@@ -296,7 +347,8 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 	}
 	while (peek(lexer) == '_')
 	{
-		hash = FNV1a(next(lexer), hash);
+		hash = FNV1a(peek(lexer), hash);
+		next(lexer);
 	}
 	while (1)
 	{
@@ -333,12 +385,14 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 			default:
 				goto EXIT;
 		}
-		hash = FNV1a(next(lexer), hash);
+		hash = FNV1a(peek(lexer), hash);
+		next(lexer);
 	}
 	// Allow bang!
 	if (peek(lexer) == '!' && type == normal)
 	{
-		hash = FNV1a(next(lexer), hash);
+		hash = FNV1a('!', hash);
+		next(lexer);
 	}
 	EXIT:;
 	uint32_t len = (uint32_t)(lexer->current - lexer->lexing_start);
@@ -353,6 +407,12 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 
 // --- Number scanning
 
+/**
+ * For C3 we use the practice of f<bit-width> u<bit-width> and s<bit-width>
+ * @param lexer
+ * @param is_float
+ * @return
+ */
 static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 {
 	if (!is_alphanum_(peek(lexer))) return true;
@@ -390,12 +450,16 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
  */
 static bool scan_oct(Lexer *lexer)
 {
-	if (!is_oct(next(lexer)))
+	if (!is_oct(peek(lexer)))
 	{
-		backtrack(lexer);
-		return add_error_token_at(lexer, lexer->current, 1, "An expression starting with '0o' should be followed by octal numbers (0-7).");
+		return add_error_token_at_current(lexer, "An expression starting with '0o' should be followed by octal numbers (0-7).");
 	}
+	next(lexer);
 	while (is_oct_or_(peek(lexer))) next(lexer);
+	if (is_number(peek(lexer)))
+	{
+		return add_error_token_at_current(lexer, "An expression starting with '0o' should be followed by octal numbers (0-7).");
+	}
 	bool is_float = false;
 	if (!scan_number_suffix(lexer, &is_float)) return false;
 	if (is_float)
@@ -410,12 +474,16 @@ static bool scan_oct(Lexer *lexer)
  **/
 static bool scan_binary(Lexer *lexer)
 {
-	if (!is_binary(next(lexer)))
+	if (!is_binary(peek(lexer)))
 	{
-		backtrack(lexer);
-		return add_error_token_at(lexer, lexer->current, 1, "An expression starting with '0b' should be followed by binary digits (0-1).");
+		return add_error_token_at_current(lexer, "An expression starting with '0b' should be followed by binary digits (0-1).");
 	}
+	next(lexer);
 	while (is_binary_or_(peek(lexer))) next(lexer);
+	if (is_number(peek((lexer))))
+	{
+		return add_error_token_at_current(lexer, "An expression starting with '0b' should be followed by binary digits (0-1).");
+	}
 	bool is_float = false;
 	if (!scan_number_suffix(lexer, &is_float)) return false;
 	if (is_float)
@@ -434,16 +502,21 @@ static inline bool scan_exponent(Lexer *lexer)
 {
 	// Step past e/E or p/P
 	next(lexer);
-	char c = next(lexer);
+	char c = peek(lexer);
+	next(lexer);
 	// Step past +/-
-	if (c == '+' || c == '-') c = next(lexer);
+	if (c == '+' || c == '-')
+	{
+		c = peek(lexer);
+		next(lexer);
+	}
 	// Now we need at least one digit
 	if (!is_digit(c))
 	{
 		if (c == 0)
 		{
 			backtrack(lexer);
-			return add_error_token(lexer, "End of file was reached while parsing the exponent.");
+			return add_error_token_at_current(lexer, "End of file was reached while parsing the exponent.");
 		}
 		if (c == '\n') return add_error_token(lexer, "End of line was reached while parsing the exponent.");
 		if (c < 31 || c > 127) add_error_token(lexer, "An unexpected character was found while parsing the exponent.");
@@ -460,11 +533,11 @@ static inline bool scan_exponent(Lexer *lexer)
  **/
 static inline bool scan_hex(Lexer *lexer)
 {
-	if (!is_hex(next(lexer)))
+	if (!is_hex(peek(lexer)))
 	{
-		backtrack(lexer);
-		return add_error_token_at(lexer, lexer->current, 1, "'0x' starts a hexadecimal number, so the next character should be 0-9, a-f or A-F.");
+		return add_error_token_at_current(lexer, "'0x' starts a hexadecimal number, so the next character should be 0-9, a-f or A-F.");
 	}
+	next(lexer);
 	while (is_hex_or_(peek(lexer))) next(lexer);
 	bool is_float = false;
 	if (peek(lexer) == '.' && peek_next(lexer) != '.')
@@ -472,7 +545,7 @@ static inline bool scan_hex(Lexer *lexer)
 		is_float = true;
 		next(lexer);
 		char c = peek(lexer);
-		if (c == '_') return add_error_token(lexer, "Can't parse this as a floating point value due to the '_' directly after decimal point.");
+		if (c == '_') return add_error_token_at_current(lexer, "'_' is not allowed directly after decimal point, try removing it.");
 		if (is_hex(c)) next(lexer);
 		while (is_hex_or_(peek(lexer))) next(lexer);
 	}
@@ -482,7 +555,11 @@ static inline bool scan_hex(Lexer *lexer)
 		is_float = true;
 		if (!scan_exponent(lexer)) return false;
 	}
-	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
+	if (prev(lexer) == '_')
+	{
+		backtrack(lexer);
+		return add_error_token_at_current(lexer, "The number ended with '_', which isn't allowed, please remove it.");
+	}
 	if (!scan_number_suffix(lexer, &is_float)) return false;
 	return add_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
 }
@@ -511,7 +588,7 @@ static inline bool scan_dec(Lexer *lexer)
 		next(lexer);
 		// Check our rule to disallow 123._32
 		char c = peek(lexer);
-		if (c == '_') return add_error_token(lexer, "Can't parse this as a floating point value due to the '_' directly after decimal point.");
+		if (c == '_') return add_error_token_at_current(lexer, "'_' is not allowed directly after decimal point, try removing it.");
 		// Now walk until we see no more digits.
 		// This allows 123. as a floating point number.
 		while (is_digit_or_(peek(lexer))) next(lexer);
@@ -525,7 +602,11 @@ static inline bool scan_dec(Lexer *lexer)
 		if (!scan_exponent(lexer)) return false;
 	}
 
-	if (prev(lexer) == '_') return add_error_token(lexer, "The number ended with '_', but that character needs to be between, not after, digits.");
+	if (prev(lexer) == '_')
+	{
+		backtrack(lexer);
+		return add_error_token_at_current(lexer, "The number ended with '_', which isn't allowed, please remove it.");
+	}
 	if (!scan_number_suffix(lexer, &is_float)) return false;
 	return add_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
 }
@@ -622,8 +703,9 @@ static inline int64_t scan_utf8(Lexer *lexer, unsigned char c)
 	for (int i = 1; i < utf8_bytes; i++)
 	{
 		result <<= 6U;
-		if (peek(lexer) == '\0') return 0xFFFD;
-		c = (unsigned char)next(lexer);
+		c = (unsigned char)peek(lexer);
+		if (c == '\0') return 0xFFFD;
+		next(lexer);
 		if ((c & 0xc0) != 0x80)
 		{
 			goto ERROR;
@@ -659,29 +741,29 @@ static inline bool scan_char(Lexer *lexer)
 	char c;
 	Int128 b = { 0, 0 };
 
-	while ((c = next(lexer)) != '\'')
+	while (!match(lexer, '\''))
 	{
+		c = peek(lexer);
+		next(lexer);
 		// End of file may occur:
 		if (c == '\0')
 		{
-			backtrack(lexer);
-			return add_error_token(lexer, "The character literal did not terminate.");
+			return add_error_token_at_start(lexer, "The character literal did not terminate.");
 		}
 		// We might exceed the width that we allow.
-		if (width > 15) return add_error_token(lexer, "The character literal exceeds 16 characters.");
+		if (width > 15) return add_error_token_at_start(lexer, "The character literal exceeds 16 characters.");
 		// Handle (expected) utf-8 characters.
 		if ((unsigned)c >= (unsigned)0x80)
 		{
 			if (width != 0) goto UNICODE_IN_MULTI;
-			const char *start = lexer->current;
 			int64_t utf8 = scan_utf8(lexer, (unsigned char)c);
 			if (utf8 < 0) return false;
 			if (!match(lexer, '\''))
 			{
 				if (peek(lexer) == '\0') continue;
-				lexer->lexing_start = start;
-				return add_error_token(lexer, "Unicode character literals may only contain one character, "
-											  "please remove the additional ones or use all ASCII.");
+				backtrack(lexer);
+				return add_error_token_at_current(lexer, "Unicode character literals may only contain one character, "
+				                                         "please remove the additional ones or use all ASCII.");
 			}
 			b.low = (uint64_t) utf8;
 			width = utf8 > 0xffff ? 4 : 2;
@@ -689,23 +771,24 @@ static inline bool scan_char(Lexer *lexer)
 		}
 		// Parse the escape code
 		signed char escape = ' ';
-		const char *start = lexer->current;
 		if (c == '\\')
 		{
 			assert(c == '\\');
-			c = next(lexer);
+			c = peek(lexer);
 			escape = is_valid_escape(c);
 			if (escape == -1)
 			{
-				backtrack(lexer);
-				lexer->lexing_start = start - 1;
+				lexer->lexing_start += 1;
 				if (c > ' ' && c <= 127)
 				{
+					next(lexer);
 					return add_error_token(lexer, "Invalid escape sequence '\\%c'.", c);
 				}
-				return add_error_token_at(lexer, start, 1, "An escape sequence was expected after '\\'.");
+				return add_error_token_at_current(lexer, "An escape sequence was expected after '\\'.");
 			}
+			next(lexer);
 		}
+		const char *escape_begin = lexer->current - 2;
 		switch (escape)
 		{
 			case 'x':
@@ -713,9 +796,7 @@ static inline bool scan_char(Lexer *lexer)
 				int64_t hex = scan_hex_literal(lexer, 2);
 				if (hex < 0)
 				{
-					lexer->lexing_start = start - 1;
-					// Fix underlining if this is an unfinished escape.
-					return add_error_token(lexer, "Expected a two character hex value after \\x.");
+					return add_error_token_at(lexer, escape_begin, lexer->current - escape_begin, "Expected a two character hex value after \\x.");
 				}
 				// We can now reassign c and use the default code.
 				c = (char)hex;
@@ -731,21 +812,19 @@ static inline bool scan_char(Lexer *lexer)
 				// The hex parsing may have failed, lacking more hex chars.
 				if (hex < 0)
 				{
-					lexer->lexing_start = start - 1;
-					return add_error_token(lexer, "Expected %s character hex value after \\%c.",
-										   escape == 'u' ? "a four" : "an eight", escape);
+					begin_new_token(lexer);
+					return add_error_token_at(lexer, escape_begin, lexer->current - escape_begin,
+					                          "Expected %s character hex value after \\%c.",
+					                          escape == 'u' ? "a four" : "an eight", escape);
 				}
 				// If we don't see the end here, then something is wrong.
 				if (!match(lexer, '\''))
 				{
 					// It may be the end of the line, if so use the default handling by invoking "continue"
 					if (peek(lexer) == '\0') continue;
-					// Otherwise step forward and mark it as an error.
-					next(lexer);
-					lexer->lexing_start = lexer->current - 1;
-					return add_error_token(lexer,
-					                       "Character literals with '\\%c' can only contain one character, please remove this one.",
-					                       escape);
+					return add_error_token_at_current(lexer,
+					                                  "Character literals with '\\%c' can only contain one character, please remove this one.",
+					                                  escape);
 				}
 				// Assign the value and go to DONE.
 				b.low = (uint64_t) hex;
@@ -764,7 +843,6 @@ static inline bool scan_char(Lexer *lexer)
 		b = i128_shl64(b, 8);
 		b = i128_add64(b, (unsigned char)c);
 	}
-
 	assert(width > 0 && width <= 16);
 	if (width > 8 && !platform_target.int128)
 	{
@@ -790,9 +868,7 @@ static inline void skip_first_line_if_empty(Lexer *lexer)
 		{
 			case '\n':
 				// Line end? then we jump to the first token after line end.
-				lexer->current = current - 1;
-				lexer_store_line_end(lexer);
-				lexer->current++;
+				next(lexer);
 				return;
 			case ' ':
 			case '\t':
@@ -969,13 +1045,13 @@ bool scan_consume_end_of_multiline(Lexer *lexer, bool error_on_eof)
 	int consume_end = 3;
 	while (consume_end > 0)
 	{
-		char c = next(lexer);
+		char c = peek(lexer);
+		next(lexer);
 		if (c == '\0')
 		{
-			backtrack(lexer);
 			if (!error_on_eof) return false;
-			return add_error_token_at(lexer, lexer->current - 1, 1, "The multi-line string unexpectedly ended. "
-																 "Did you forget a '\"\"\"' somewhere?");
+			return add_error_token_at_start(lexer, "The multi-line string unexpectedly ended. "
+			                                       "Did you forget a '\"\"\"' somewhere?");
 		}
 		if (c == '"') consume_end--;
 	}
@@ -1023,7 +1099,6 @@ static inline bool scan_multiline_string(Lexer *lexer)
 		// update the line end and store it in the resulting buffer.
 		if (c == '\n')
 		{
-			lexer_store_line_end(lexer);
 			next(lexer);
 			destination[len++] = c;
 			line = 0;
@@ -1037,8 +1112,8 @@ static inline bool scan_multiline_string(Lexer *lexer)
 		// We reached EOF, or escape + end of file.
 		if (c == '\0' || (c == '\\' && peek(lexer) == '\0'))
 		{
-			return add_error_token_at(lexer, lexer->current - 1, 1, "The multi-line string unexpectedly ended. "
-			                                                     "Did you forget a '\"\"\"' somewhere?");
+			return add_error_token_at_start(lexer, "The multi-line string unexpectedly ended. "
+			                                       "Did you forget a '\"\"\"' somewhere?");
 		}
 
 		// An escape sequence was reached.
@@ -1053,11 +1128,12 @@ static inline bool scan_multiline_string(Lexer *lexer)
 			int scanned = append_esc_string_token(destination, lexer->current, &len);
 			if (scanned < 0)
 			{
-				add_error_token_at(lexer, lexer->current - 1, 2, "Invalid escape in string.");
+				backtrack(lexer);
+				add_error_token_at_current(lexer, "Invalid escape in string.");
 				scan_consume_end_of_multiline(lexer, false);
 				return false;
 			}
-			lexer->current += scanned;
+			skip(lexer, scanned);
 			continue;
 		}
 		// Now first we skip any empty space if line has not been reached.
@@ -1080,10 +1156,6 @@ static inline void consume_to_end_quote(Lexer *lexer)
 	char c;
 	while ((c = peek(lexer)) != '\0' && c != '"')
 	{
-		if (c == '\n')
-		{
-			lexer_store_line_end(lexer);
-		}
 		next(lexer);
 	}
 }
@@ -1114,22 +1186,24 @@ static inline bool scan_string(Lexer *lexer)
 	size_t len = 0;
 	while (lexer->current < end)
 	{
-		c = next(lexer);
+		c = peek(lexer);
+		next(lexer);
 		if (c == '\0' || (c == '\\' && peek(lexer) == '\0'))
 		{
 			if (c == '\0') backtrack(lexer);
-			add_error_token_at(lexer, lexer->current - 1, 1, "The end of the file was reached "
-			                                                 "while parsing the string. "
-			                                                 "Did you forget (or accidentally add) a '\"' somewhere?");
+			add_error_token_at_start(lexer, "The end of the file was reached "
+			                                "while parsing the string. "
+			                                "Did you forget (or accidentally add) a '\"' somewhere?");
 			consume_to_end_quote(lexer);
 			return false;
 		}
 		if (c == '\n' || (c == '\\' && peek(lexer) == '\n'))
 		{
-			add_error_token_at(lexer, lexer->current - 1, 1, "The end of the line was reached "
-			                                                 "while parsing the string. "
-			                                                 "Did you forget (or accidentally add) a '\"' somewhere?");
-			lexer->current--;
+
+			backtrack(lexer);
+			add_error_token_at_start(lexer, "The end of the line was reached "
+			                                "while parsing the string. "
+			                                "Did you forget (or accidentally add) a '\"' somewhere?");
 			consume_to_end_quote(lexer);
 			return false;
 		}
@@ -1138,11 +1212,11 @@ static inline bool scan_string(Lexer *lexer)
 			int scanned = append_esc_string_token(destination, lexer->current, &len);
 			if (scanned < 0)
 			{
-				add_error_token_at(lexer, lexer->current - 1, 2, "Invalid escape in string.");
+				add_error_token_at_current(lexer, "Invalid escape in string.");
 				consume_to_end_quote(lexer);
 				return false;
 			}
-			lexer->current += scanned;
+			skip(lexer, scanned);
 			continue;
 		}
 		destination[len++] = c;
@@ -1158,14 +1232,16 @@ static inline bool scan_string(Lexer *lexer)
 static inline bool scan_raw_string(Lexer *lexer)
 {
 	char c;
-	while ((c = next(lexer)) != '`' || peek(lexer) == '`')
+	while (1)
 	{
+		c = peek(lexer);
+		next(lexer);
+		if (c == '`' && peek(lexer) != '`') break;
 		if (c == '\0')
 		{
-			backtrack(lexer);
-			return add_error_token_at(lexer, lexer->lexing_start , 1, "Reached the end of the file looking for "
-																	  "the end of the raw string that starts "
-																	  "here. Did you forget a '`' somewhere?");
+			return add_error_token_at_start(lexer, "Reached the end of the file looking for "
+			                                       "the end of the raw string that starts "
+			                                       "here. Did you forget a '`' somewhere?");
 		}
 		if (c == '`') next(lexer);
 	}
@@ -1191,34 +1267,39 @@ static inline bool scan_raw_string(Lexer *lexer)
 
 static inline bool scan_hex_array(Lexer *lexer)
 {
-	char start_char = next(lexer); // Step past ' or "
-	const char *hexdata = lexer->current;
+	char start_char = peek(lexer);
+	next(lexer); // Step past ' or "
 	char c;
 	uint64_t len = 0;
 	while (1)
 	{
-		c = next(lexer);
-		if (c == start_char) break;
+		c = peek(lexer);
 		if (c == 0)
 		{
-			backtrack(lexer);
-			lexer->lexing_start = lexer->current - 1;
-			return add_error_token(lexer, "The hex string seems to be missing a terminating '%c'", start_char);
+			return add_error_token_at_current(lexer, "The hex string seems to be missing a terminating '%c'", start_char);
 		}
+		if (c == start_char) break;
 		if (is_hex(c))
 		{
+			next(lexer);
 			len++;
 			continue;
 		}
-		if (!is_whitespace(c))
+		if (is_whitespace(c))
 		{
-			lexer->lexing_start = hexdata - 1;
-			lexer->current = hexdata;
-			return add_error_token(lexer,
-			                       "'%c' isn't a valid hexadecimal digit, all digits should be a-z, A-Z and 0-9.",
-			                       c);
+			next(lexer);
+			continue;
 		}
+		if (c > ' ' && c < 127)
+		{
+			return add_error_token_at_current(lexer,
+											  "'%c' isn't a valid hexadecimal digit, all digits should be a-z, A-Z and 0-9.",
+											  c);
+		}
+		return add_error_token_at_current(lexer,
+										  "This isn't a valid hexadecimal digit, all digits should be a-z, A-Z and 0-9.");
 	}
+	next(lexer);
 	if (len % 2)
 	{
 		return add_error_token(lexer, "The hexadecimal string is not an even length, did you miss a digit somewhere?");
@@ -1233,27 +1314,25 @@ static inline bool scan_base64(Lexer *lexer)
 {
 	next(lexer); // Step past 6
 	next(lexer); // Step past 4
-	char start_char = next(lexer); // Step past ' or "
-	const char *b64data = lexer->current;
+	char start_char = peek(lexer);
+	next(lexer); // Step past ' or "
 	char c;
 	unsigned end_len = 0;
 	uint64_t len = 0;
 	while (1)
 	{
-		c = next(lexer);
-		if (c == start_char) break;
+		c = peek(lexer);
 		if (c == 0)
 		{
-			backtrack(lexer);
-			lexer->lexing_start = lexer->current - 1;
-			return add_error_token(lexer, "The base64 string seems to be missing a terminating '%c'", start_char);
+			return add_error_token_at_start(lexer, "The base64 string seems to be missing a terminating '%c'", start_char);
 		}
+		next(lexer);
+		if (c == start_char) break;
 		if (is_base64(c))
 		{
 			if (end_len)
 			{
-				lexer->lexing_start = lexer->current - 1;
-				return add_error_token(lexer, "'%c' can't be placed after an ending '='", c);
+				return add_error_token_at_current(lexer, "'%c' can't be placed after an ending '='", c);
 			}
 			len++;
 			continue;
@@ -1262,7 +1341,7 @@ static inline bool scan_base64(Lexer *lexer)
 		{
 			if (end_len > 1)
 			{
-				return add_error_token_at(lexer, lexer->current - 1, 1, "There cannot be more than 2 '=' at the end of a base64 string.", c);
+				return add_error_token_at_current(lexer, "There cannot be more than 2 '=' at the end of a base64 string.", c);
 			}
 			end_len++;
 			continue;
@@ -1271,9 +1350,9 @@ static inline bool scan_base64(Lexer *lexer)
 		{
 			if (c < ' ' || c > 127)
 			{
-				return add_error_token_at(lexer, lexer->current - 1, 1, "A valid base64 character was expected here.");
+				return add_error_token_at_current(lexer, "A valid base64 character was expected here.");
 			}
-			return add_error_token_at(lexer, lexer->current - 1, 1, "'%c' is not a valid base64 character.", c);
+			return add_error_token_at_current(lexer, "'%c' is not a valid base64 character.", c);
 		}
 	}
 	if (!end_len && len % 4 != 0)
@@ -1300,8 +1379,8 @@ static inline bool scan_base64(Lexer *lexer)
 	}
 	if ((len + end_len) % 4 != 0)
 	{
-		return add_error_token(lexer, "Base64 strings must either be padded to multiple of 4, or if unpadded "
-									  "- only need 1 or 2 bytes of extra padding.");
+		return add_error_token_at_start(lexer, "Base64 strings must either be padded to multiple of 4, or if unpadded "
+		                                       "- only need 1 or 2 bytes of extra padding.");
 	}
 	uint64_t decoded_len = (3 * len - end_len) / 4;
 	if (!add_token(lexer, TOKEN_BYTES, lexer->lexing_start)) return false;
@@ -1348,7 +1427,7 @@ static bool parse_add_end_of_docs_if_present(Lexer *lexer)
 	// Otherwise, gladly skip ahead and store the end.
 	skip(lexer, lookahead + 1);
 	add_token(lexer, TOKEN_DOCS_END, lexer->lexing_start);
-	lexer->lexing_start = lexer->current;
+	begin_new_token(lexer);
 	return true;
 }
 
@@ -1357,10 +1436,9 @@ static void parse_add_end_of_doc_line(Lexer *lexer)
 {
 	assert(peek(lexer) == '\n');
 	// Add the EOL token.
-	lexer_store_line_end(lexer);
 	next(lexer);
 	add_token(lexer, TOKEN_DOCS_EOL, lexer->lexing_start);
-	lexer->lexing_start = lexer->current;
+	begin_new_token(lexer);
 	// Skip whitespace
 	skip_whitespace(lexer, LEX_DOCS);
 	// And any leading stars:
@@ -1376,7 +1454,7 @@ static DocEnd parse_doc_remainder(Lexer *lexer)
 {
 	// Skip all initial whitespace.
 	skip_whitespace(lexer, LEX_DOCS);
-	lexer->lexing_start = lexer->current;
+	begin_new_token(lexer);
 
 	int characters_read = 0;
 	while (1)
@@ -1391,7 +1469,7 @@ static DocEnd parse_doc_remainder(Lexer *lexer)
 				if (characters_read > 0)
 				{
 					add_token(lexer, TOKEN_DOCS_LINE, 0);
-					lexer->lexing_start = lexer->current;
+					begin_new_token(lexer);
 				}
 				if (parse_add_end_of_docs_if_present(lexer)) return DOC_END_LAST;
 				// Otherwise use default parsing.
@@ -1401,14 +1479,14 @@ static DocEnd parse_doc_remainder(Lexer *lexer)
 				if (characters_read > 0)
 				{
 					add_token(lexer, TOKEN_DOCS_LINE, 0);
-					lexer->lexing_start = lexer->current;
+					begin_new_token(lexer);
 				}
 				return DOC_END_EOL;
 			case '\0':
 				if (characters_read > 0)
 				{
 					add_token(lexer, TOKEN_DOCS_LINE, 0);
-					lexer->lexing_start = lexer->current;
+					begin_new_token(lexer);
 				}
 				return DOC_END_EOF;
 			default:
@@ -1497,18 +1575,21 @@ static DocEnd parse_doc_param_directive(Lexer *lexer)
 	return parse_doc_remainder(lexer);
 }
 
+
 static DocEnd parse_doc_directive(Lexer *lexer)
 {
 	// We expect a directive here.
-	if (!is_letter(peek_next(lexer)))
+	begin_new_token(lexer);
+	// First parse the '@'
+	next(lexer);
+	add_token(lexer, TOKEN_DOCS_DIRECTIVE, "@");
+	begin_new_token(lexer);
+
+	if (!is_letter(peek(lexer)))
 	{
+		next(lexer);
 		return add_error_token(lexer, "Expected doc directive here.");
 	}
-	lexer->lexing_start = lexer->current;
-	// First parse the '@'
-	skip(lexer, 1);
-	add_token(lexer, TOKEN_DOCS_DIRECTIVE, "@");
-	lexer->lexing_start = lexer->current;
 
 	// Then our keyword
 	if (!scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST, TOKEN_TYPE_IDENT, 0)) return DOC_END_ERROR;
@@ -1557,7 +1638,10 @@ static bool parse_doc_comment(Lexer *lexer)
 		skip_whitespace(lexer, LEX_DOCS);
 
 		// 2. Did we find the end?
-		if (reached_end(lexer))	return add_error_token(lexer, "Missing '*/' to end the doc comment.");
+		if (reached_end(lexer))
+		{
+			return add_error_token_at_start(lexer, "Missing '*/' to end the doc comment.");
+		}
 
 		// 3. See if we reach the end of the docs.
 		if (parse_add_end_of_docs_if_present(lexer)) return true;
@@ -1607,7 +1691,7 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 	skip_whitespace(lexer, mode);
 
 	// Point start to the first non-whitespace character.
-	lexer->lexing_start = lexer->current;
+	begin_new_token(lexer);
 
 	if (reached_end(lexer))
 	{
@@ -1615,7 +1699,8 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 		return add_token(lexer, TOKEN_EOF, "\n") && false;
 	}
 
-	char c = next(lexer);
+	char c = peek(lexer);
+	next(lexer);
 	switch (c)
 	{
 		case '@':
@@ -1635,10 +1720,10 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 				if (is_letter(peek(lexer)))
 				{
 					add_token(lexer, TOKEN_BUILTIN, "$$");
-					lexer->lexing_start = lexer->current;
+					begin_new_token(lexer);
 					return scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST_IDENT, TOKEN_TYPE_IDENT, 0);
 				}
-				return add_error_token(lexer, "Expected a letter after $$.");
+				return add_error_token_at_current(lexer, "Expected a letter after $$.");
 			}
 			return scan_ident(lexer, TOKEN_CT_IDENT, TOKEN_CT_CONST_IDENT, TOKEN_CT_TYPE_IDENT, '$');
 		case ',':
@@ -1744,7 +1829,7 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 			}
 			if (c < 0)
 			{
-				return add_error_token(lexer, "The 0%x character may not be placed outside of a string or comment, did you perhaps forget a \" somewhere?", (uint8_t)c);
+				return add_error_token(lexer, "The 0x%x character may not be placed outside of a string or comment, did you forget a \" somewhere?", (uint8_t)c);
 			}
 			return add_error_token(lexer, "'%c' may not be placed outside of a string or comment, did you perhaps forget a \" somewhere?", c);
 
@@ -1757,10 +1842,10 @@ void lexer_lex_file(Lexer *lexer)
 {
 	lexer->token_start_id = (uint32_t) toktype_arena.allocated;
 	lexer->file_begin = lexer->file->contents;
-	lexer->lexing_start = lexer->file_begin;
-	lexer->current = lexer->lexing_start;
-	lexer->current_line = 1;
+	lexer->current = lexer->file_begin;
 	lexer->line_start = lexer->current;
+	lexer->current_row = 1;
+	begin_new_token(lexer);
 	const unsigned char *check = (const unsigned char *)lexer->current;
 	unsigned c;
 	int balance = 0;
@@ -1801,7 +1886,7 @@ void lexer_lex_file(Lexer *lexer)
 DONE:
 	if (balance != 0)
 	{
-		add_error_token(lexer, "Invalid encoding - Unbalanced bidirectional markers.");
+		add_error_token_at_start(lexer, "Invalid encoding - Unbalanced bidirectional markers.");
 		return;
 	}
 	while(1)
@@ -1810,7 +1895,7 @@ DONE:
 		{
 			if (reached_end(lexer)) break;
 			while (!reached_end(lexer) && peek(lexer) != '\n') next(lexer);
-			lexer->lexing_start = lexer->current;
+			begin_new_token(lexer);
 			continue;
 		}
 	}

@@ -21,7 +21,7 @@ static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, c
 	                                                     scope,
 	                                                     external_name_len ? type->name : "", external_name_len ? strlen(type->name) : 0,
 	                                                     loc ? c->debug.file : NULL,
-	                                                     loc ? loc->line : 0,
+	                                                     loc ? loc->row : 0,
 	                                                     type_size(type) * 8,
 	                                                     (uint32_t)(type_abi_alignment(type) * 8),
 	                                                     flags, NULL,
@@ -43,7 +43,7 @@ static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, c
 			scope,
 			name, strlen(name),
 			loc ? c->debug.file : NULL,
-			loc ? loc->line : 0,
+			loc ? loc->row : 0,
 			type_size(type) * 8,
 			(uint32_t)(type_abi_alignment(type) * 8),
 			offset * 8, flags, llvm_get_debug_type_internal(c, type, scope));
@@ -80,7 +80,7 @@ void llvm_emit_debug_global_var(GenContext *c, Decl *global)
 			global->external_name,
 			strlen(global->external_name),
 			c->debug.file,
-			loc->line,
+			loc->row,
 			llvm_get_debug_type(c, global->type),
 			global->visibility == VISIBLE_LOCAL,
 			LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
@@ -116,11 +116,11 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 	                                                decl->name, TOKLEN(decl->name_token),
 	                                                decl->external_name, strlen(decl->external_name),
 	                                                c->debug.file,
-	                                                loc->line,
+	                                                loc->row,
 	                                                llvm_get_debug_type(c, decl->type),
 	                                                decl->visibility == VISIBLE_LOCAL,
 	                                                true,
-	                                                loc->line,
+	                                                loc->row,
 	                                                flags,
 	                                                active_target.optimization_level != OPTIMIZATION_NONE);
 	LLVMSetSubprogram(decl->backend_ref, c->debug.function);
@@ -136,7 +136,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 			decl->name,
 			TOKLEN(decl->name_token),
 			c->debug.file,
-			location->line,
+			location->row,
 			llvm_get_debug_type(c, decl->type),
 			active_target.optimization_level != OPTIMIZATION_NONE,
 			LLVMDIFlagZero,
@@ -147,7 +147,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 	LLVMDIBuilderInsertDeclareAtEnd(c->debug.builder,
 	                                decl->backend_ref, var,
 	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
-	                                LLVMDIBuilderCreateDebugLocation(c->context, location->line, location->col,
+	                                LLVMDIBuilderCreateDebugLocation(c->context, location->row, location->col,
 	                                                                 c->debug.function, inline_at),
 	                                LLVMGetInsertBlock(c->builder));
 }
@@ -171,7 +171,7 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 			strlen(name),
 			index + 1,
 			c->debug.file,
-			loc->line,
+			loc->row,
 			llvm_get_debug_type(c, parameter->type),
 			always_preserve,
 			LLVMDIFlagZero);
@@ -181,8 +181,8 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 	                                parameter->backend_ref,
 	                                parameter->var.backend_debug_ref,
 	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
-	                                LLVMDIBuilderCreateDebugLocation(c->context, loc->line, loc->col, c->debug.function,
-																  inline_at),
+	                                LLVMDIBuilderCreateDebugLocation(c->context, loc->row, loc->col, c->debug.function,
+	                                                                 inline_at),
 	                                LLVMGetInsertBlock(c->builder));
 
 
@@ -200,7 +200,7 @@ void llvm_emit_debug_location(GenContext *context, SourceSpan location)
 	LLVMMetadataRef scope = llvm_debug_current_scope(context);
 
 	LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(context->context,
-	                                                       source_loc->line,
+	                                                       source_loc->row,
 	                                                       source_loc->col,
 	                                                       scope, /* inlined at */ 0);
 
@@ -212,7 +212,7 @@ static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const 
 	return LLVMDIBuilderCreateReplaceableCompositeType(c->debug.builder, id_counter++,
 	                                                   type->name, strlen(type->name),
 	                                                   scope,
-	                                                   c->debug.file, loc ? loc->line : 0,
+	                                                   c->debug.file, loc ? loc->row : 0,
 	                                                   1 /* version TODO */,
 	                                                   type_size(type) * 8,
 	                                                   type_abi_alignment(type) * 8,
@@ -237,7 +237,7 @@ void llvm_debug_push_lexical_scope(GenContext *context, SourceSpan location)
 
 	LLVMMetadataRef block =
 			LLVMDIBuilderCreateLexicalBlock(context->debug.builder, scope, context->debug.file,
-			                                source_loc->line,
+			                                source_loc->row,
 			                                source_loc->col);
 
 	llvm_debug_scope_push(context, block);
@@ -301,7 +301,7 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 	LLVMMetadataRef real = LLVMDIBuilderCreateEnumerationType(c->debug.builder,
 	                                                          scope,
 	                                                          type->decl->name, TOKLEN(type->decl->name_token),
-	                                                          c->debug.file, location->line, type_size(type) * 8,
+	                                                          c->debug.file, location->row, type_size(type) * 8,
 	                                                          type_abi_alignment(type) * 8,
 	                                                          elements, vec_size(elements),
 	                                                          llvm_get_debug_type(c, enum_real_type));
@@ -344,7 +344,7 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 		                                    scope,
 		                                    type->decl->name ? type->decl->name : "",
 		                                    type->decl->name ? TOKLEN(type->decl->name_token) : 0,
-		                                    c->debug.file, location->line, type_size(type) * 8,
+		                                    c->debug.file, location->row, type_size(type) * 8,
 		                                    type_abi_alignment(type) * 8,
 		                                    LLVMDIFlagZero,
 		                                    elements, vec_size(members),
@@ -440,7 +440,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 	LLVMMetadataRef real = LLVMDIBuilderCreateTypedef(c->debug.builder,
 	                                                  llvm_get_debug_type(c, original_type),
 	                                                  decl->name, TOKLEN(decl->name_token),
-	                                                  c->debug.file, location->line,
+	                                                  c->debug.file, location->row,
 	                                                  c->debug.file, type_abi_alignment(type));
 	if (type->backend_debug_type)
 	{

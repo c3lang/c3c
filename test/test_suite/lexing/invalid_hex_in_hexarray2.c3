@@ -1,0 +1,1 @@
+x"abcg" // #error: 'g' isn't a valid hexadecimal digit

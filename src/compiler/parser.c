@@ -48,7 +48,7 @@ inline void advance(Context *context)
 			SourceLocation *curr = TOKLOC(context->lex.tok);
 			SourceLocation *next = TOKLOC(context->lex.next_tok);
 			vec_add(context->comments, context->lex.next_tok);
-			if (curr->line == next->line)
+			if (curr->row == next->row)
 			{
 				if (context->trailing_comment)
 				{
