@@ -94,10 +94,19 @@ const char *kw_argc;
 const char *kw_argv;
 const char *kw_mainstub;;
 
+void symtab_destroy()
+{
+	if (!symtab.entries) return;
+
+	// This will only destroy the symtab, not the entry strings.
+	free(symtab.entries);
+	symtab = (SymTab) { .capacity = 0 };
+}
+
 void symtab_init(uint32_t capacity)
 {
 	assert (is_power_of_two(capacity) && "Must be a power of two");
-	size_t size = capacity *sizeof(SymEntry);
+	size_t size = capacity * sizeof(SymEntry);
 	symtab.entries = malloc(size);
 	memset(symtab.entries, 0, size);
 	symtab.count = 0;

@@ -13,4 +13,5 @@ void compile_file_list(BuildOptions *options);
 void init_build_target(BuildTarget *build_target, BuildOptions *build_options);
 void init_default_build_target(BuildTarget *target, BuildOptions *options);
 void symtab_init(uint32_t max_size);
+void symtab_destroy();
 

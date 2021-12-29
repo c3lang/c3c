@@ -17,6 +17,7 @@ NORETURN void exit_compiler(int exit_value)
 
 static void cleanup()
 {
+	symtab_destroy();
 	memory_release();
 }
 
@@ -67,11 +68,12 @@ int main_real(int argc, const char *argv[])
 			UNREACHABLE
 	}
 
+	symtab_destroy();
 	memory_release();
 	return 0;
 }
 
 int main(int argc, const char *argv[])
 {
-	main_real(argc, argv);
+	return main_real(argc, argv);
 }
