@@ -1647,7 +1647,7 @@ static bool sema_check_stmt_compile_time(Context *context, Ast *ast)
 		case AST_COMPOUND_STMT:
 			VECEACH(ast->compound_stmt.stmts, i)
 			{
-				if (!sema_check_stmt_compile_time(context, ast->ct_compound_stmt[i])) return false;
+				if (!sema_check_stmt_compile_time(context, ast->compound_stmt.stmts[i])) return false;
 			}
 			return true;
 		default:

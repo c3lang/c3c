@@ -1239,7 +1239,6 @@ typedef struct Ast_
 		FlowCommon flow;                // Shared struct
 		AstAsmStmt asm_stmt;            // 24
 		AstCompoundStmt compound_stmt;  // 16
-		Ast** ct_compound_stmt;
 		Decl *declare_stmt;             // 8
 		Expr *expr_stmt;                // 8
 		Decl *var_stmt;              // 8

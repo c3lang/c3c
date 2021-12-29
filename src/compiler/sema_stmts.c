@@ -670,7 +670,7 @@ static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 			.cond = cond,
 			.flow = statement->while_stmt.flow,
 			.incr = NULL,
-			.body = statement->while_stmt.body,
+			.body = body,
 	};
 	statement->for_stmt = for_stmt;
 	return success;
@@ -935,15 +935,17 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 			return false;
 		}
 
+		assert(statement->for_stmt.body);
+		Ast *body = statement->for_stmt.body;
 		// Create the for body scope.
 		SCOPE_START_WITH_LABEL(statement->for_stmt.flow.label)
 
 			PUSH_BREAKCONT(statement);
-			success = sema_analyse_statement(context, statement->for_stmt.body);
+			success = sema_analyse_statement(context, body);
 			statement->for_stmt.flow.no_exit = context->active_scope.jump_end;
 			POP_BREAKCONT();
 			// End for body scope
-			context_pop_defers_and_replace_ast(context, statement->for_stmt.body);
+			context_pop_defers_and_replace_ast(context, body);
 		SCOPE_END;
 
 		context_pop_defers_and_replace_ast(context, statement);
@@ -1249,30 +1251,28 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 
 	// Set up the value, assigning the type as needed.
 	// Element *value = void
-	Decl *value = statement->foreach_stmt.variable;
-	if (!value->var.type_info)
+	if (!var->var.type_info)
 	{
-		value->var.type_info = type_info_new_base(value_type, value->span);
+		var->var.type_info = type_info_new_base(value_type, var->span);
 	}
-	if (!sema_resolve_type_info(context, value->var.type_info)) return false;
+	if (!sema_resolve_type_info(context, var->var.type_info)) return false;
 
-	if (type_is_failable(value->var.type_info->type))
+	if (type_is_failable(var->var.type_info->type))
 	{
-		SEMA_ERROR(value->var.type_info, "The variable may not be a failable.");
+		SEMA_ERROR(var->var.type_info, "The variable may not be a failable.");
 		return false;
 	}
 
 	// Set up the optional index parameter
-	Decl *index_decl = statement->foreach_stmt.index;
 	Type *index_var_type = NULL;
-	if (index_decl)
+	if (index)
 	{
-		if (!index_decl->var.type_info) index_decl->var.type_info = type_info_new_base(index_type, enumerator->span);
-		if (!sema_resolve_type_info(context, index_decl->var.type_info)) return false;
-		index_var_type = index_decl->var.type_info->type;
+		if (!index->var.type_info) index->var.type_info = type_info_new_base(index_type, enumerator->span);
+		if (!sema_resolve_type_info(context, index->var.type_info)) return false;
+		index_var_type = index->var.type_info->type;
 		if (type_is_failable(index_var_type))
 		{
-			SEMA_ERROR(index_decl->var.type_info, "The index may not be a failable.");
+			SEMA_ERROR(index->var.type_info, "The index may not be a failable.");
 			return false;
 		}
 		if (!type_is_integer(type_flatten(index_var_type)))
@@ -1285,7 +1285,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 	}
 
 	// IndexType __idx$ = 0
-	Decl *idx_decl = decl_new_generated_var("__idx$", index_type, VARDECL_LOCAL, index_decl ? index_decl->span : enumerator->span);
+	Decl *idx_decl = decl_new_generated_var("__idx$", index_type, VARDECL_LOCAL, index ? index->span : enumerator->span);
 	Expr *idx_init = expr_new(EXPR_CONST, idx_decl->span);
 	expr_rewrite_to_int_const(idx_init, index_type, 0, true);
 	vec_add(expressions, expr_generate_decl(idx_decl, idx_init));
@@ -1358,7 +1358,7 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 
 
 	// Add all declarations to the init
-	Expr *init_expr = expr_new(EXPR_EXPRESSION_LIST, value->span);
+	Expr *init_expr = expr_new(EXPR_EXPRESSION_LIST, var->span);
 	init_expr->expression_list = expressions;
 
 	// Create __idx$ < __len$
@@ -1382,21 +1382,21 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 	inc->unary_expr.operator = UNARYOP_INC;
 
 	// Create IndexType index = __idx$++
-	if (index_decl)
+	if (index)
 	{
-		Ast *declare_ast = new_ast(AST_DECLARE_STMT, value->span);
-		declare_ast->declare_stmt = index_decl;
+		Ast *declare_ast = new_ast(AST_DECLARE_STMT, var->span);
+		declare_ast->declare_stmt = index;
 		Expr *load_idx = expr_variable(idx_decl);
 		if (!cast(load_idx, index_var_type)) return false;
-		index_decl->var.init_expr = load_idx;
+		index->var.init_expr = load_idx;
 		vec_add(stmts, declare_ast);
 	}
 
 	// Create value = (*__$enum)[__idx$]
-	Ast *value_declare_ast = new_ast(AST_DECLARE_STMT, value->span);
-	value_declare_ast->declare_stmt = value;
+	Ast *value_declare_ast = new_ast(AST_DECLARE_STMT, var->span);
+	value_declare_ast->declare_stmt = var;
 
-	Expr *subscript = expr_new(EXPR_SUBSCRIPT, value->span);
+	Expr *subscript = expr_new(EXPR_SUBSCRIPT, var->span);
 	enum_val = expr_variable(temp);
 	if (is_addr) expr_insert_deref(enum_val);
 	subscript->subscript_expr.expr = enum_val;
@@ -1408,15 +1408,16 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 		addr->unary_expr.expr = subscript;
 		subscript = addr;
 	}
-	value->var.init_expr = subscript;
+	var->var.init_expr = subscript;
 	vec_add(stmts, value_declare_ast);
 	vec_add(stmts, body);
 	Ast *compound_stmt = new_ast(AST_COMPOUND_STMT, body->span);
 	compound_stmt->compound_stmt.stmts = stmts;
+	FlowCommon flow = statement->foreach_stmt.flow;
 	statement->for_stmt = (AstForStmt){ .init = init_expr,
 										.cond = binary,
 										.incr = inc,
-										.flow = statement->foreach_stmt.flow,
+										.flow = flow,
 										.body = compound_stmt
 	};
 	statement->ast_kind = AST_FOR_STMT;
@@ -1668,6 +1669,7 @@ static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 		return true;
 	}
 
+	Expr *cond = parent->switch_stmt.cond;
 	if (statement->next_stmt.is_type)
 	{
 		TypeInfo *type_info = statement->next_stmt.expr_or_type_info;
@@ -1710,7 +1712,7 @@ static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 
 	Expr *target = statement->next_stmt.expr_or_type_info;
 
-	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? parent->switch_stmt.cond->type : type_anyerr;
+	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_anyerr;
 
 	if (!sema_analyse_expr_rhs(context, expected_type, target, false)) return false;
 
@@ -2346,11 +2348,12 @@ static bool sema_analyse_compound_stmt(Context *context, Ast *statement)
 static bool sema_analyse_ct_compound_stmt(Context *context, Ast *statement)
 {
 	bool all_ok = ast_ok(statement);
-	VECEACH(statement->ct_compound_stmt, i)
+	Ast **stmts = statement->compound_stmt.stmts;
+	VECEACH(stmts, i)
 	{
-		if (!sema_analyse_statement(context, statement->ct_compound_stmt[i]))
+		if (!sema_analyse_statement(context, stmts[i]))
 		{
-			ast_poison(statement->ct_compound_stmt[i]);
+			ast_poison(stmts[i]);
 			all_ok = false;
 		}
 	}

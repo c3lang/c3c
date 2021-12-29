@@ -264,7 +264,7 @@ Ast *copy_ast(Ast *source)
 			MACRO_COPY_AST_LIST(ast->compound_stmt.stmts);
 			return ast;
 		case AST_CT_COMPOUND_STMT:
-			MACRO_COPY_AST_LIST(ast->ct_compound_stmt);
+			MACRO_COPY_AST_LIST(ast->compound_stmt.stmts);
 			return ast;
 		case AST_CT_ASSERT:
 			MACRO_COPY_EXPR(ast->ct_assert_stmt.message);

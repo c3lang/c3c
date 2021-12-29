@@ -481,7 +481,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		BEValue be_value;
 		if (cond->expr_kind == EXPR_COND)
 		{
-			llvm_emit_decl_expr_list(c, &be_value, ast->for_stmt.cond, true);
+			llvm_emit_decl_expr_list(c, &be_value, cond, true);
 		}
 		else
 		{
@@ -551,7 +551,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			llvm_emit_block(c, inc_block);
 		}
 		BEValue dummy;
-		llvm_emit_expr(c, &dummy, ast->for_stmt.incr);
+		llvm_emit_expr(c, &dummy, incr);
 	}
 
 	// Loop back.

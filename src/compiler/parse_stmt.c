@@ -568,7 +568,7 @@ static inline Ast* parse_ct_compound_stmt(Context *context)
 		TokenType token = context->lex.tok.type;
 		if (token == TOKEN_CT_ELSE || token == TOKEN_CT_ELIF || token == TOKEN_CT_ENDIF) break;
 		ASSIGN_AST_ELSE(Ast *stmt, parse_stmt(context), poisoned_ast);
-		vec_add(stmts->ct_compound_stmt, stmt);
+		vec_add(stmts->compound_stmt.stmts, stmt);
 		RANGE_EXTEND_PREV(stmts);
 	}
 	return stmts;
