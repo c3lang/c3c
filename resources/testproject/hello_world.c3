@@ -4,7 +4,7 @@ import bar;
 extern fn int test_doubler(int);
 extern fn void printf(char *, ...);
 
-fn int main(int x)
+fn int main()
 {
     printf("Hello World!\n");
     bar::test();
