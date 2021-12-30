@@ -38,7 +38,8 @@ void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(void);
 void memory_release();
-void *malloc_arena(size_t mem);
+void *calloc_arena(size_t mem);
+#define malloc_arena calloc_arena
 void free_arena(void);
 void print_arena_status(void);
 void run_arena_allocator_tests(void);
@@ -47,14 +48,9 @@ void taskqueue_add(TaskQueueRef queue, Task *task);
 void taskqueue_destroy(TaskQueueRef queue);
 void taskqueue_wait_for_completion(TaskQueueRef queue);
 
-static inline void *calloc_arena(size_t size)
-{
-	void *ptr = malloc_arena(size);
-	memset(ptr, 0, size);
-	return ptr;
-}
-
 #define MALLOC(mem) malloc_arena(mem)
+#define MALLOCS(type) malloc_arena(sizeof(type))
+#define CALLOC(mem) calloc_arena(mem)
 #define CALLOCS(type) calloc_arena(sizeof(type))
 
 static inline bool is_power_of_two(uint64_t x)
@@ -369,8 +365,7 @@ static inline VHeader_* vec_new_(size_t element_size, size_t capacity)
 {
 	assert(capacity < UINT32_MAX);
 	assert(element_size < UINT32_MAX / 100);
-	VHeader_ *header = malloc_arena(element_size * capacity + sizeof(VHeader_));
-	header->size = 0;
+	VHeader_ *header = CALLOC(element_size * capacity + sizeof(VHeader_));
 	header->capacity = (uint32_t)capacity;
 	return header;
 }
@@ -400,13 +395,12 @@ static inline void* expand_(void *vec, size_t element_size)
 	VHeader_ *header;
 	if (!vec)
 	{
-		header = vec_new_(element_size, 16);
+		header = vec_new_(element_size, 8);
 	}
 	else
 	{
 		header = ((VHeader_ *)vec) - 1;
 	}
-	header->size++;
 	if (header->size == header->capacity)
 	{
 		VHeader_ *new_array = vec_new_(element_size, header->capacity << 1U);
@@ -422,6 +416,7 @@ static inline void* expand_(void *vec, size_t element_size)
 		header = new_array;
 		new_array->capacity = header->capacity << 1U;
 	}
+	header->size++;
 	return &(header[1]);
 }
 

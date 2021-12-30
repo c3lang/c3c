@@ -200,6 +200,7 @@ typedef struct
 {
 	uint32_t count;
 	uint32_t capacity;
+	uint32_t max_load;
 	SEntry *entries;
 } STable;
 
@@ -1793,12 +1794,10 @@ bool context_set_module(Context *context, Path *path, TokenId *generic_parameter
 // --- Decl functions
 
 Decl *decl_new(DeclKind decl_kind, TokenId name, Visibility visibility);
+Decl *decl_new_ct(DeclKind kind, TokenId span);
 Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility);
 Decl *decl_new_var(TokenId name, TypeInfo *type, VarDeclKind kind, Visibility visibility);
 Decl *decl_new_generated_var(const char *name, Type *type, VarDeclKind kind, SourceSpan span);
-#define DECL_NEW(_kind, _vis) decl_new(_kind, context->lex.tok.id, _vis)
-#define DECL_NEW_WITH_TYPE(_kind, _vis) decl_new_with_type(context->lex.tok.id, _kind, _vis)
-#define DECL_NEW_VAR(_type, _kind, _vis) decl_new_var(context->lex.tok.id, _type, _kind, _vis)
 void decl_set_external_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 
@@ -1994,7 +1993,7 @@ static inline SourceSpan source_span_from_token_id(TokenId id)
 void stable_init(STable *table, uint32_t initial_size);
 void *stable_set(STable *table, const char *key, void *value);
 void *stable_get(STable *table, const char *key);
-void *stable_delete(STable *table, const char *key);
+
 void stable_clear(STable *table);
 
 void scratch_buffer_clear(void);

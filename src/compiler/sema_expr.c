@@ -115,8 +115,7 @@ void expr_insert_addr(Expr *original)
 		*original = *original->unary_expr.expr;
 		return;
 	}
-	Expr *inner = expr_alloc();
-	*inner = *original;
+	Expr *inner = expr_copy(original);
 	original->expr_kind = EXPR_UNARY;
 	original->type = type_get_ptr(inner->type);
 	original->unary_expr.operator = UNARYOP_ADDR;
@@ -1324,6 +1323,7 @@ static inline bool sema_expand_call_arguments(Context *context, CalledDecl *call
 	call->call_expr.arguments = actual_args;
 	return true;
 }
+
 static inline bool sema_expr_analyse_call_invocation(Context *context, Expr *call, CalledDecl callee, bool *failable)
 {
 	// 1. Check body arguments.
@@ -3337,7 +3337,7 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 		VECEACH(elements, i)
 		{
 			// Create zero initializers for each of those { a: zeroinit, b: zeroinit, ... }
-			ConstInitializer *element_init = MALLOC(sizeof(ConstInitializer));
+			ConstInitializer *element_init = MALLOCS(ConstInitializer);
 			element_init->type = type_flatten(elements[i]->type);
 			element_init->kind = CONST_INIT_ZERO;
 			const_inits[i] = element_init;
@@ -3474,11 +3474,11 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 		// Create and append:
 		if (!initializer)
 		{
-			initializer = MALLOC(sizeof(ConstInitializer));
+			initializer = MALLOCS(ConstInitializer);
 			initializer->type = element_type;
 			initializer->kind = CONST_INIT_ARRAY_VALUE;
 			initializer->init_array_value.index = index;
-			inner_value = MALLOC(sizeof(ConstInitializer));
+			inner_value = MALLOCS(ConstInitializer);
 			inner_value->type = element_type;
 			inner_value->kind = CONST_INIT_ZERO;
 			initializer->init_array_value.element = inner_value;
@@ -3502,11 +3502,11 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 					array_elements[i] = array_elements[i - 1];
 				}
 				// Then we create our new entry.
-				initializer = MALLOC(sizeof(ConstInitializer));
+				initializer = MALLOCS(ConstInitializer);
 				initializer->type = element_type;
 				initializer->kind = CONST_INIT_ARRAY_VALUE;
 				initializer->init_array_value.index = index;
-				inner_value = MALLOC(sizeof(ConstInitializer));
+				inner_value = MALLOCS(ConstInitializer);
 				inner_value->type = element_type;
 				inner_value->kind = CONST_INIT_ZERO;
 				initializer->init_array_value.element = inner_value;
@@ -3606,7 +3606,7 @@ static bool sema_expr_analyse_designated_initializer(Context *context, Type *ass
 
 	if (expr_is_constant_eval(initializer, CONSTANT_EVAL_ANY))
 	{
-		ConstInitializer *const_init = MALLOC(sizeof(ConstInitializer));
+		ConstInitializer *const_init = MALLOCS(ConstInitializer);
 		sema_create_const_initializer(const_init, initializer);
 		expr_set_as_const_list(initializer, const_init);
 		return true;
@@ -3762,7 +3762,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(Context *context, 
 				inits[i] = expr->const_expr.list;
 				continue;
 			}
-			ConstInitializer *element_init = MALLOC(sizeof(ConstInitializer));
+			ConstInitializer *element_init = MALLOCS(ConstInitializer);
 			sema_create_const_initializer_value(element_init, expr);
 			inits[i] = element_init;
 		}
@@ -3836,7 +3836,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(Context *context, T
 				vec_add(inits, expr->const_expr.list);
 				continue;
 			}
-			ConstInitializer *element_init = MALLOC(sizeof(ConstInitializer));
+			ConstInitializer *element_init = MALLOCS(ConstInitializer);
 			sema_create_const_initializer_value(element_init, expr);
 			vec_add(inits, element_init);
 		}

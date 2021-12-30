@@ -40,7 +40,7 @@ static DesignatorElement **macro_copy_designator_list(DesignatorElement **list)
 	DesignatorElement **result = NULL;
 	VECEACH(list, i)
 	{
-		DesignatorElement *element = MALLOC(sizeof(DesignatorElement));
+		DesignatorElement *element = MALLOCS(DesignatorElement);
 		DesignatorElement *to_copy = list[i];
 		*element = *to_copy;
 		switch (to_copy->kind)
@@ -456,7 +456,7 @@ static Attr **copy_attributes(Attr** attr_list)
 	VECEACH(attr_list, i)
 	{
 		Attr *attribute = attr_list[i];
-		Attr *copy = MALLOC(sizeof(Attr));
+		Attr *copy = MALLOCS(Attr);
 		*copy = *attribute;
 		MACRO_COPY_EXPR(copy->expr);
 		vec_add(list, copy);

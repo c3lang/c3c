@@ -374,7 +374,7 @@ void compiler_compile(void)
 
 	if (active_target.check_only) return;
 
-	void **gen_contexts = NULL;
+	void **gen_contexts = VECNEW(void*, module_count);
 	void (*task)(void *);
 
 	switch (active_target.backend)

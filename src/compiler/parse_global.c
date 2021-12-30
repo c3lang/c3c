@@ -137,8 +137,8 @@ static inline bool parse_top_level_block(Context *context, Decl ***decls, TokenT
  */
 static inline Decl *parse_ct_if_top_level(Context *context)
 {
-	Decl *ct = DECL_NEW(DECL_CT_IF, VISIBLE_LOCAL);
 	advance_and_verify(context, TOKEN_CT_IF);
+	Decl *ct = decl_new_ct(DECL_CT_IF, context->lex.prev_tok);
 	ASSIGN_EXPR_ELSE(ct->ct_if_decl.expr, parse_const_paren_expr(context), poisoned_decl);
 
 	if (!parse_top_level_block(context, &ct->ct_if_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
@@ -147,7 +147,7 @@ static inline Decl *parse_ct_if_top_level(Context *context)
 	while (TOKEN_IS(TOKEN_CT_ELIF))
 	{
 		advance_and_verify(context, TOKEN_CT_ELIF);
-		Decl *ct_elif = DECL_NEW(DECL_CT_ELIF, VISIBLE_LOCAL);
+		Decl *ct_elif = decl_new_ct(DECL_CT_ELIF, context->lex.prev_tok);
 		ASSIGN_EXPR_ELSE(ct_elif->ct_elif_decl.expr, parse_const_paren_expr(context), poisoned_decl);
 
 		if (!parse_top_level_block(context, &ct_elif->ct_elif_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
@@ -157,7 +157,7 @@ static inline Decl *parse_ct_if_top_level(Context *context)
 	if (TOKEN_IS(TOKEN_CT_ELSE))
 	{
 		advance_and_verify(context, TOKEN_CT_ELSE);
-		Decl *ct_else = DECL_NEW(DECL_CT_ELSE, VISIBLE_LOCAL);
+		Decl *ct_else = decl_new_ct(DECL_CT_ELSE, context->lex.prev_tok);
 		ct_if_decl->elif = ct_else;
 		if (!parse_top_level_block(context, &ct_else->ct_else_decl, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF, TOKEN_CT_ENDIF)) return poisoned_decl;
 	}
@@ -179,10 +179,10 @@ static inline Decl *parse_ct_case(Context *context)
 	{
 		case TOKEN_CT_DEFAULT:
 			advance(context);
-			decl = DECL_NEW(DECL_CT_CASE, VISIBLE_LOCAL);
+			decl = decl_new_ct(DECL_CT_CASE, context->lex.tok.id);
 			break;
 		case TOKEN_CT_CASE:
-			decl = DECL_NEW(DECL_CT_CASE, VISIBLE_LOCAL);
+			decl = decl_new_ct(DECL_CT_CASE, context->lex.tok.id);
 			advance(context);
 			ASSIGN_TYPE_ELSE(decl->ct_case_decl.type, parse_type(context), poisoned_decl);
 			break;
@@ -208,8 +208,8 @@ static inline Decl *parse_ct_case(Context *context)
  */
 static inline Decl *parse_ct_switch_top_level(Context *context)
 {
-	Decl *ct = DECL_NEW(DECL_CT_SWITCH, VISIBLE_LOCAL);
 	advance_and_verify(context, TOKEN_CT_SWITCH);
+	Decl *ct = decl_new_ct(DECL_CT_SWITCH, context->lex.prev_tok);
 	ASSIGN_EXPR_ELSE(ct->ct_switch_decl.expr, parse_const_paren_expr(context), poisoned_decl);
 
 	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
@@ -801,20 +801,24 @@ static Decl *parse_const_declaration(Context *context, Visibility visibility)
 {
 	advance_and_verify(context, TOKEN_CONST);
 
-	Decl *decl = DECL_NEW_VAR(NULL, VARDECL_CONST, visibility);
-	decl->span.loc = context->lex.prev_tok;
+	SourceSpan span = { .loc = context->lex.prev_tok, .end_loc = context->lex.tok.id };
+
+	TypeInfo *type_info = NULL;
 
 	if (parse_next_is_decl(context))
 	{
-		ASSIGN_TYPE_ELSE(decl->var.type_info, parse_type(context), poisoned_decl);
+		ASSIGN_TYPE_ELSE(type_info, parse_type(context), poisoned_decl);
 	}
-	decl->name = TOKSTR(context->lex.tok);
-	decl->name_token = context->lex.tok.id;
+
 	if (!consume_const_name(context, "const")) return poisoned_decl;
+
+	Decl *decl = decl_new_var(context->lex.prev_tok, type_info, VARDECL_CONST, visibility);
 
 	CONSUME_OR(TOKEN_EQ, poisoned_decl);
 
 	ASSIGN_EXPR_ELSE(decl->var.init_expr, parse_initializer(context), poisoned_decl);
+
+	RANGE_EXTEND_PREV(decl);
 
 	return decl;
 }
@@ -1814,8 +1818,8 @@ static inline Decl *parse_error_declaration(Context *context, Visibility visibil
 	decl->enums.type_info = type_info_new_base(type_iptr->canonical, decl->span);
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
-		Decl *enum_const = DECL_NEW(DECL_ERRVALUE, decl->visibility);
-		const char *name = TOKSTR(context->lex.tok);
+		Decl *enum_const = decl_new(DECL_ERRVALUE, context->lex.tok.id, decl->visibility);
+		const char *name = enum_const->name;
 		VECEACH(decl->enums.values, i)
 		{
 			Decl *other_constant = decl->enums.values[i];
@@ -1906,9 +1910,10 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 {
 	advance_and_verify(context, TOKEN_ENUM);
 
-	Decl *decl = DECL_NEW_WITH_TYPE(DECL_ENUM, visibility);
-
 	if (!consume_type_name(context, "enum")) return poisoned_decl;
+
+	Decl *decl = decl_new_with_type(context->lex.prev_tok, DECL_ENUM, visibility);
+
 
 	TypeInfo *type = NULL;
 	if (try_consume(context, TOKEN_COLON))
@@ -1921,8 +1926,8 @@ static inline Decl *parse_enum_declaration(Context *context, Visibility visibili
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
-		Decl *enum_const = DECL_NEW(DECL_ENUM_CONSTANT, decl->visibility);
-		const char *name = TOKSTR(context->lex.tok);
+		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, context->lex.tok.id, decl->visibility);
+		const char *name = enum_const->name;
 		VECEACH(decl->enums.values, i)
 		{
 			Decl *other_constant = decl->enums.values[i];
@@ -2274,7 +2279,7 @@ Decl *parse_top_level_statement(Context *context)
 			if (!check_no_visibility_before(context, visibility)) return poisoned_decl;
 			{
 				ASSIGN_AST_ELSE(Ast *ast, parse_ct_assert_stmt(context), poisoned_decl);
-				decl = decl_new(DECL_CT_ASSERT, ast->span.loc, visibility);
+				decl = decl_new_ct(DECL_CT_ASSERT, ast->span.loc);
 				decl->ct_assert_decl = ast;
 				if (docs)
 				{

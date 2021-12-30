@@ -241,11 +241,6 @@ static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t h
 
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type)
 {
-	if (symtab.count >= symtab.max_count)
-	{
-
-		FATAL_ERROR("Symtab exceeded capacity, please increase --symtab.");
-	}
 	SymEntry *entry = entry_find(symbol, len, fnv1hash);
 	if (entry->value)
 	{
@@ -253,6 +248,10 @@ const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, Toke
 		return entry->value;
 	}
 
+	if (symtab.count >= symtab.max_count)
+	{
+		FATAL_ERROR("Symtab exceeded capacity, please increase --symtab.");
+	}
 	char *copy = MALLOC(len + 1);
 	memcpy(copy, symbol, len);
 	copy[len] = '\0';
@@ -261,7 +260,7 @@ const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, Toke
 	entry->hash = fnv1hash;
 	entry->type = *type;
 	symtab.count++;
-	return entry->value;
+	return copy;
 }
 
 const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type)
@@ -277,14 +276,10 @@ void stable_init(STable *table, uint32_t initial_size)
 	assert(initial_size && "Size must be larger than 0");
 	assert (is_power_of_two(initial_size) && "Must be a power of two");
 
-	SEntry *entries = MALLOC(initial_size * sizeof(Entry));
-	for (uint32_t i = 0; i < initial_size; i++)
-	{
-		entries[i].key = NULL;
-		entries[i].value = NULL;
-	}
+	SEntry *entries = CALLOC(initial_size * sizeof(Entry));
 	table->count = 0;
 	table->capacity = initial_size;
+	table->max_load = initial_size * TABLE_MAX_LOAD;
 	table->entries = entries;
 }
 
@@ -294,63 +289,56 @@ void stable_clear(STable *table)
 	table->count = 0;
 }
 
-#define TOMBSTONE ((void *)0x01)
 static SEntry *sentry_find(SEntry *entries, uint32_t capacity, const char *key)
 {
 	uint32_t index = (uint32_t)((((uintptr_t)key) >> 2u) & (capacity - 1));
-	SEntry *tombstone = NULL;
 	while (1)
 	{
 		SEntry *entry = &entries[index];
-		if (entry->key == key) return entry;
-		if (entry->key == NULL)
-		{
-			if (entry->value != TOMBSTONE)
-			{
-				return tombstone ? tombstone : entry;
-			}
-			else
-			{
-				if (!tombstone) tombstone = entry;
-			}
-		}
+		if (entry->key == key || !entry->key) return entry;
 		index = (index + 1) & (capacity - 1);
 	}
 }
 
+static inline void stable_resize(STable *table)
+{
+	ASSERT(table->capacity < MAX_HASH_SIZE, "Table size too large, exceeded max hash size");
 
+	uint32_t new_capacity = table->capacity ? (table->capacity << 1u) : 16u;
+	SEntry *new_data = CALLOC(new_capacity * sizeof(SEntry));
+	table->count = 0;
+	uint32_t len = table->capacity;
+	for (uint32_t i = 0; i < len; i++)
+	{
+		SEntry *entry = &table->entries[i];
+		const char *key = entry->key;
+		if (!key) continue;
+		table->count++;
+		SEntry *dest = sentry_find(new_data, new_capacity, key);
+		dest->key = key;
+		dest->value = entry->value;
+	}
+	table->entries = new_data;
+	table->max_load = new_capacity * TABLE_MAX_LOAD;
+	table->capacity = new_capacity;
+}
 void *stable_set(STable *table, const char *key, void *value)
 {
 	assert(value && "Cannot insert NULL");
-	if (table->count + 1 > table->capacity * TABLE_MAX_LOAD)
-	{
-		ASSERT(table->capacity < MAX_HASH_SIZE, "Table size too large, exceeded max hash size");
-
-		uint32_t new_capacity = table->capacity ? (table->capacity << 1u) : 16u;
-		SEntry *new_data = MALLOC(new_capacity * sizeof(SEntry));
-		for (uint32_t i = 0; i < new_capacity; i++)
-		{
-			new_data[i].key = NULL;
-			new_data[i].value = NULL;
-		}
-		table->count = 0;
-		for (uint32_t i = 0; i < table->capacity; i++)
-		{
-			SEntry *entry = &table->entries[i];
-			if (!entry->key) continue;
-			table->count++;
-			SEntry *dest = sentry_find(new_data, new_capacity, entry->key);
-			*dest = *entry;
-		}
-		table->entries = new_data;
-		table->capacity = new_capacity;
-	}
+	if (table->count >= table->max_load) stable_resize(table);
 
 	SEntry *entry = sentry_find(table->entries, table->capacity, key);
-	void *old = entry->value && entry->value != TOMBSTONE ? entry->value : NULL;
+	void *old = entry->value;
 	entry->key = key;
 	entry->value = value;
-	if (!old) table->count++;
+	if (!old)
+	{
+		table->count++;
+		if (table->count >= table->max_load) goto RESIZE;
+	}
+	return old;
+RESIZE:
+	stable_resize(table);
 	return old;
 }
 
@@ -362,13 +350,3 @@ void *stable_get(STable *table, const char *key)
 	return entry->key == NULL ? NULL : entry->value;
 }
 
-void *stable_delete(STable *table, const char *key)
-{
-	if (!table->count) return NULL;
-	SEntry *entry = sentry_find(table->entries, table->capacity, key);
-	if (!entry->key) return NULL;
-	void *value = entry->value;
-	entry->key = NULL;
-	entry->value = TOMBSTONE;
-	return value;
-}

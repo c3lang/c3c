@@ -9,8 +9,8 @@ Context *context_create(File *file)
 {
     Context *context = CALLOCS(Context);
     context->file = file;
-    stable_init(&context->local_symbols, 256);
-	stable_init(&context->external_symbols, 256);
+    stable_init(&context->local_symbols, 1024);
+	stable_init(&context->external_symbols, 1024);
     return context;
 }
 
@@ -134,13 +134,13 @@ void context_register_external_symbol(Context *context, Decl *decl)
 
 void context_register_global_decl(Context *context, Decl *decl)
 {
-	assert(decl->name);
 	decl->module = context->module;
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:
 			break;
 		case DECL_GENERIC:
+			assert(decl->name);
 			if (decl->macro_decl.type_parent)
 			{
 				vec_add(context->generic_methods, decl);
@@ -153,6 +153,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 			decl_set_external_name(decl);
 			break;
 		case DECL_MACRO:
+			assert(decl->name);
 			if (decl->macro_decl.type_parent)
 			{
 				vec_add(context->macro_methods, decl);
@@ -165,6 +166,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 			decl_set_external_name(decl);
 			break;
 		case DECL_FUNC:
+			assert(decl->name);
 			if (decl->func_decl.type_parent)
 			{
 				vec_add(context->methods, decl);
@@ -176,6 +178,7 @@ void context_register_global_decl(Context *context, Decl *decl)
 			}
 			break;
 		case DECL_VAR:
+			assert(decl->name);
 			vec_add(context->vars, decl);
 			decl_set_external_name(decl);
 			break;
@@ -185,14 +188,17 @@ void context_register_global_decl(Context *context, Decl *decl)
 		case DECL_TYPEDEF:
 		case DECL_ERRTYPE:
 		case DECL_BITSTRUCT:
+			assert(decl->name);
 			vec_add(context->types, decl);
 			decl_set_external_name(decl);
 			break;
 		case DECL_DEFINE:
+			assert(decl->name);
 			vec_add(context->generic_defines, decl);
 			decl_set_external_name(decl);
 			break;
 		case DECL_ENUM:
+			assert(decl->name);
 			vec_add(context->enums, decl);
 			decl_set_external_name(decl);
 			break;

@@ -54,12 +54,6 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 	}
 #endif
 	void *ptr = ((uint8_t *)vmem->ptr) + vmem->allocated;
-#ifndef NDEBUG
-	for (size_t i = vmem->allocated; i < allocated_after; i++)
-	{
-		((uint8_t *)vmem->ptr)[i] = 0xAA;
-	}
-#endif
 	vmem->allocated = allocated_after;
 	return ptr;
 }

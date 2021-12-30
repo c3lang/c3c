@@ -127,9 +127,9 @@ static inline void add_generic_token(Lexer *lexer, TokenType type)
 	// what amounts to a huge array.
 	// Consequently these allocs are actually simultaneously
 	// allocating data and putting that data in an array.
-	SourceLocation *location = sourceloc_alloc();
-	unsigned char *token_type = (unsigned char *)toktype_alloc();
-	TokenData *data = tokdata_alloc();
+	SourceLocation *location = sourceloc_calloc();
+	unsigned char *token_type = (unsigned char *)toktype_calloc();
+	TokenData *data = tokdata_calloc();
 	token_type[0] = (unsigned char)type;
 
 	// Set the location.
@@ -345,14 +345,16 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 	{
 		hash = FNV1a(prefix, hash);
 	}
-	while (peek(lexer) == '_')
+	char c;
+	while ((c = peek(lexer)) == '_')
 	{
-		hash = FNV1a(peek(lexer), hash);
+		hash = FNV1a(c, hash);
 		next(lexer);
 	}
 	while (1)
 	{
-		switch (peek(lexer))
+		c = peek(lexer);
+		switch (c)
 		{
 			case 'a': case 'b': case 'c': case 'd': case 'e':
 			case 'f': case 'g': case 'h': case 'i': case 'j':
@@ -385,7 +387,7 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 			default:
 				goto EXIT;
 		}
-		hash = FNV1a(peek(lexer), hash);
+		hash = FNV1a(c, hash);
 		next(lexer);
 	}
 	// Allow bang!

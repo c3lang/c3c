@@ -5,20 +5,22 @@
 #include "compiler_internal.h"
 
 
+Decl *decl_new_ct(DeclKind kind, TokenId span)
+{
+	Decl *decl = decl_calloc();
+	decl->decl_kind = kind;
+	decl->span = source_span_from_token_id(span);
+	return decl;
+}
+
 Decl *decl_new(DeclKind decl_kind, TokenId name, Visibility visibility)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = decl_kind;
 	decl->name_token = name;
 	decl->span = source_span_from_token_id(name);
-	if (name.index)
-	{
-		decl->name = TOKSTR(name);
-	}
-	else
-	{
-		decl->name = NULL;
-	}
+	assert(name.index);
+	decl->name = TOKSTR(name);
 	decl->visibility = visibility;
 	return decl;
 }
@@ -131,7 +133,19 @@ void decl_set_external_name(Decl *decl)
 
 Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility)
 {
-	Decl *decl = decl_new(decl_type, name, visibility);
+	Decl *decl = decl_calloc();
+	decl->decl_kind = decl_type;
+	if (name.index)
+	{
+		decl->name_token = name;
+		decl->name = TOKSTR(name);
+		decl->span = source_span_from_token_id(name);
+	}
+	else
+	{
+		decl->name = NULL;
+	}
+	decl->visibility = visibility;
 	TypeKind kind = TYPE_POISONED;
 	switch (decl_type)
 	{
@@ -371,7 +385,6 @@ Expr *expr_new(ExprKind kind, SourceSpan start)
 	Expr *expr = expr_calloc();
 	expr->expr_kind = kind;
 	expr->span = start;
-	expr->type = NULL;
 	return expr;
 }
 
