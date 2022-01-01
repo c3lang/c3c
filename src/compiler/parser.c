@@ -25,25 +25,27 @@ inline void advance(Context *context)
 		if (context->lex.tok.type == TOKEN_EOF)
 		{
 			context->lex.next_tok = context->lex.tok;
-			break;
+			return;
 		}
 
 		uint32_t index = context->lex.lexer_index++;
+		TokenType next_type = (TokenType)(*toktypeptr(index));
 		context->lex.next_tok.id.index = index;
-		context->lex.next_tok.type = (TokenType)(*toktypeptr(index));
+		context->lex.next_tok.type = next_type;
 
 		// At this point we should not have any invalid tokens.
-		assert(context->lex.next_tok.type != TOKEN_INVALID_TOKEN);
+		assert(next_type != TOKEN_INVALID_TOKEN);
 
 		// Walk through any regular comments
-		if (context->lex.next_tok.type == TOKEN_COMMENT)
+		if (next_type == TOKEN_COMMENT)
 		{
 			vec_add(context->comments, context->lex.next_tok);
 			continue;
 		}
 
 		// Handle doc comments
-		if (context->lex.next_tok.type == TOKEN_DOC_COMMENT)
+		if (next_type != TOKEN_DOC_COMMENT) return;
+
 		{
 			SourceLocation *curr = TOKLOC(context->lex.tok);
 			SourceLocation *next = TOKLOC(context->lex.next_tok);
@@ -72,9 +74,7 @@ inline void advance(Context *context)
 					context->lead_comment = context->comments + vec_size(context->comments) - 1;
 				}
 			}
-			continue;
 		}
-		return;
 	}
 
 }

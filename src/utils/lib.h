@@ -53,6 +53,8 @@ void taskqueue_wait_for_completion(TaskQueueRef queue);
 #define CALLOC(mem) calloc_arena(mem)
 #define CALLOCS(type) calloc_arena(sizeof(type))
 
+#define NUMBER_CHAR_CASE '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
+
 static inline bool is_power_of_two(uint64_t x)
 {
 	return x != 0 && (x & (x - 1)) == 0;
@@ -121,12 +123,12 @@ static inline bool is_binary_or_(char c)
 	}
 }
 
+
 static inline bool is_digit_or_(char c)
 {
 	switch (c)
 	{
-		case '0': case '1': case '2': case '3': case '4':
-		case '5': case '6': case '7': case '8': case '9':
+		case NUMBER_CHAR_CASE:
 		case '_':
 			return true;
 		default:
@@ -177,12 +179,11 @@ static inline bool is_hex_or_(char c)
 {
 	switch (c)
 	{
+		case NUMBER_CHAR_CASE:
 		case 'a': case 'b': case 'c': case 'd': case 'e':
 		case 'f':
 		case 'A': case 'B': case 'C': case 'D': case 'E':
 		case 'F':
-		case '0': case '1': case '2': case '3': case '4':
-		case '5': case '6': case '7': case '8': case '9':
 		case '_':
 			return true;
 		default:
@@ -243,12 +244,11 @@ static inline bool is_hex(char c)
 {
 	switch (c)
 	{
+		case NUMBER_CHAR_CASE:
 		case 'a': case 'b': case 'c': case 'd': case 'e':
 		case 'f':
 		case 'A': case 'B': case 'C': case 'D': case 'E':
 		case 'F':
-		case '0': case '1': case '2': case '3': case '4':
-		case '5': case '6': case '7': case '8': case '9':
 			return true;
 		default:
 			return false;
@@ -303,8 +303,7 @@ static inline bool is_alphanum_(char c)
 		case 'P': case 'Q': case 'R': case 'S': case 'T':
 		case 'U': case 'V': case 'W': case 'X': case 'Y':
 		case 'Z':
-		case '0': case '1': case '2': case '3': case '4':
-		case '5': case '6': case '7': case '8': case '9':
+		case NUMBER_CHAR_CASE:
 		case '_':
 			return true;
 		default:

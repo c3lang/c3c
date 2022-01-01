@@ -49,26 +49,26 @@ static bool sema_check_section(Context *context, Decl *decl, Attr *attr)
 	// TODO improve checking
 	return true;
 }
-static bool sema_check_unique_parameters(Decl **decls)
-{
-	STable *table = &global_context.scratch_table;
-	stable_clear(table);
 
-	VECEACH(decls, i)
+static inline bool sema_check_no_duplicate_parameter(Decl **decls, Decl *current, unsigned current_index, unsigned count)
+{
+	const char *name = current->name;
+	if (!name) return true;
+	for (int i = 0; i < current_index; i++)
 	{
-		Decl *param = decls[i];
-		if (param->name)
+		if (name == decls[i]->name)
 		{
-			Decl *old = stable_set(table, param->name, param);
-			if (old)
-			{
-				SEMA_ERROR(param, "Parameter name occurred twice, try renaming one of them.");
-				return false;
-			}
+			SEMA_ERROR(current, "Duplicate parameter name %s.", name);
+			SEMA_PREV(decls[i], "Previous use of the name was here.");
+			decl_poison(decls[i]);
+			decl_poison(current);
+			return false;
 		}
 	}
 	return true;
 }
+
+
 
 static inline bool sema_analyse_struct_member(Context *context, Decl *decl)
 {
@@ -665,12 +665,11 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 		SEMA_ERROR(signature->params[MAX_PARAMS], "Number of params exceeds %d which is unsupported.", MAX_PARAMS);
 		return NULL;
 	}
-	STable *names = &global_context.scratch_table;
-	stable_clear(names);
-
-	VECEACH(signature->params, i)
+	unsigned param_count = vec_size(signature->params);
+	Decl **params = signature->params;
+	for (unsigned i = 0; i < param_count; i++)
 	{
-		Decl *param = signature->params[i];
+		Decl *param = params[i];
 		assert(param->resolve_status == RESOLVE_NOT_DONE);
 		param->resolve_status = RESOLVE_RUNNING;
 		bool has_default;
@@ -680,20 +679,13 @@ static inline Type *sema_analyse_function_signature(Context *context, FunctionSi
 			all_ok = false;
 			continue;
 		}
+		if (!sema_check_no_duplicate_parameter(params, param, i, param_count))
+		{
+			all_ok = false;
+			continue;
+		}
 		signature->has_default = signature->has_default || has_default;
 		param->resolve_status = RESOLVE_DONE;
-		if (param->name)
-		{
-			Decl *prev = stable_set(names, param->name, param);
-			if (prev)
-			{
-				SEMA_ERROR(param, "Duplicate parameter name %s.", param->name);
-				SEMA_PREV(prev, "Previous use of the name was here.");
-				decl_poison(prev);
-				decl_poison(param);
-				all_ok = false;
-			}
-		}
 	}
 
 	if (!all_ok) return NULL;
@@ -1296,9 +1288,9 @@ static inline bool sema_analyse_main_function(Context *context, Decl *decl)
 	}
 	if (rtype->type_kind == TYPE_VOID) is_int_return = false;
 
-	if (type_is_integer(rtype) && rtype != type_cint())
+	if (type_is_integer(rtype) && rtype != type_cint)
 	{
-		SEMA_ERROR(signature->rtype, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint()));
+		SEMA_ERROR(signature->rtype, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint));
 		return false;
 	}
 	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
@@ -1320,9 +1312,9 @@ static inline bool sema_analyse_main_function(Context *context, Decl *decl)
 			subarray_param = true;
 			break;
 		case 2:
-			if (type_flatten_distinct(params[0]->type) != type_cint())
+			if (type_flatten_distinct(params[0]->type) != type_cint)
 			{
-				SEMA_ERROR(params[0], "Expected a parameter of type %s for a C-style main.", type_quoted_error_string(type_cint()));
+				SEMA_ERROR(params[0], "Expected a parameter of type %s for a C-style main.", type_quoted_error_string(type_cint));
 				return false;
 			}
 			if (type_flatten_distinct(params[1]->type) != type_get_ptr(type_get_ptr(type_char)))
@@ -1345,8 +1337,8 @@ static inline bool sema_analyse_main_function(Context *context, Decl *decl)
 	Decl *function = decl_new(DECL_FUNC, decl->name_token, VISIBLE_EXTERN);
 	function->name = kw_mainstub;
 	function->extname = kw_main;
-	function->func_decl.function_signature.rtype = type_info_new_base(type_cint(), decl->span);
-	Decl *param1 = decl_new_generated_var(kw_argv, type_cint(), VARDECL_PARAM, decl->span);
+	function->func_decl.function_signature.rtype = type_info_new_base(type_cint, decl->span);
+	Decl *param1 = decl_new_generated_var(kw_argv, type_cint, VARDECL_PARAM, decl->span);
 	Decl *param2 = decl_new_generated_var(kw_argc, type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
 	Decl **main_params = NULL;
 	vec_add(main_params, param1);
@@ -1384,7 +1376,7 @@ static inline bool sema_analyse_main_function(Context *context, Decl *decl)
 		not_expr->unary_expr.operator = UNARYOP_NOT;
 		Expr *cast_expr = expr_new(EXPR_CAST, decl->span);
 		cast_expr->cast_expr.expr = not_expr;
-		cast_expr->cast_expr.type_info = type_info_new_base(type_cint(), decl->span);
+		cast_expr->cast_expr.type_info = type_info_new_base(type_cint, decl->span);
 		ret_stmt->return_stmt.expr = cast_expr;
 	}
 	else
@@ -1393,7 +1385,7 @@ static inline bool sema_analyse_main_function(Context *context, Decl *decl)
 		stmt->expr_stmt = call;
 		vec_add(body->compound_stmt.stmts, stmt);
 		Expr *c = expr_new(EXPR_CONST, decl->span);
-		c->type = type_cint();
+		c->type = type_cint;
 		expr_const_set_int(&c->const_expr, 0, c->type->type_kind);
 		c->resolve_status = RESOLVE_DONE;
 		ret_stmt->expr_stmt = c;
@@ -1553,9 +1545,11 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 	TypeInfo *rtype = decl->macro_decl.rtype;
 	if (decl->macro_decl.rtype && !sema_resolve_type_info(context, rtype)) return decl_poison(decl);
 	decl->macro_decl.context = context;
-	VECEACH(decl->macro_decl.parameters, i)
+	Decl **parameters = decl->macro_decl.parameters;
+	unsigned param_count = vec_size(parameters);
+	for (unsigned i = 0; i < param_count; i++)
 	{
-		Decl *param = decl->macro_decl.parameters[i];
+		Decl *param = parameters[i];
 		param->resolve_status = RESOLVE_RUNNING;
 		assert(param->decl_kind == DECL_VAR);
 		switch (param->var.kind)
@@ -1595,6 +1589,7 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 			case VARDECL_ERASE:
 				UNREACHABLE
 		}
+		if (!sema_check_no_duplicate_parameter(parameters, param, i, param_count)) return decl_poison(decl);
 		param->resolve_status = RESOLVE_DONE;
 	}
 	if (is_generic && vec_size(decl->macro_decl.body_parameters))
@@ -1602,9 +1597,11 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 		SEMA_ERROR(decl->macro_decl.body_parameters[0], "Trailing block syntax is not allowed for generic functions.");
 		return decl_poison(decl);
 	}
-	VECEACH(decl->macro_decl.body_parameters, i)
+	Decl **body_parameters = decl->macro_decl.body_parameters;
+	unsigned body_param_count = vec_size(body_parameters);
+	for (unsigned i = 0; i < body_param_count; i++)
 	{
-		Decl *param = decl->macro_decl.body_parameters[i];
+		Decl *param = body_parameters[i];
 		param->resolve_status = RESOLVE_RUNNING;
 		assert(param->decl_kind == DECL_VAR);
 		switch (param->var.kind)
@@ -1630,10 +1627,9 @@ static inline bool sema_analyse_macro(Context *context, Decl *decl)
 			case VARDECL_ERASE:
 				UNREACHABLE
 		}
+		if (!sema_check_no_duplicate_parameter(body_parameters, param, i, body_param_count)) return decl_poison(decl);
 		param->resolve_status = RESOLVE_DONE;
 	}
-	if (!sema_check_unique_parameters(decl->macro_decl.parameters)) return decl_poison(decl);
-	if (!sema_check_unique_parameters(decl->macro_decl.body_parameters)) return decl_poison(decl);
 	if (!sema_analyse_doc_header(decl->docs, decl->macro_decl.parameters, decl->macro_decl.body_parameters)) return decl_poison(decl);
 	if (decl->macro_decl.type_parent)
 	{

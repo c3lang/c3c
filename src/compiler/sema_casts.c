@@ -908,7 +908,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 			if (type_size(expr->type) > type_size(type)) return expr;
 			return NULL;
 		case EXPR_LEN:
-			if (type_size(type) < type_size(type_cint())) return expr;
+			if (type_size(type) < type_size(type_cint)) return expr;
 			return NULL;
 		case EXPR_OR_ERROR:
 		{

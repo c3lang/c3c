@@ -965,15 +965,16 @@ static Expr *parse_placeholder(Context *context, Expr *left)
 	return expr;
 }
 
-static int read_num_type(const char *string, const char *end)
+static int read_num_type(const char *string, size_t loc, size_t len)
 {
 	int i = 0;
-	if (string[0] == '0') return -1;
-	while (string < end)
+	loc++;
+	if (string[loc] == '0') return -1;
+	for (size_t z = loc; z < len; z++)
 	{
 		i *= 10;
 		if (i > 1024) return i;
-		i += *(string++) - '0';
+		i += string[z] - '0';
 	}
 	return i;
 }
@@ -982,9 +983,8 @@ static Expr *parse_integer(Context *context, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST, context->lex.tok);
+	size_t len = TOKLEN(context->lex.tok);
 	const char *string = TOKSTR(context->lex.tok);
-	const char *end = string + TOKLEN(context->lex.tok);
-
 	Int128 i = { 0, 0 };
 	bool is_unsigned = false;
 	int type_bits = 0;
@@ -993,24 +993,23 @@ static Expr *parse_integer(Context *context, Expr *left)
 	int binary_characters = 0;
 	bool wrapped = false;
 	uint64_t max;
-	switch (TOKLEN(context->lex.tok) > 2 ? string[1] : '0')
+	switch (len > 2 ? string[1] : '0')
 	{
 		case 'x':
-			string += 2;
 			is_unsigned = true;
 			max = UINT64_MAX >> 4;
-			while (string < end)
+			for (size_t loc = 2; loc < len; loc++)
 			{
-				char c = *(string++);
+				char c = string[loc];
 				if (c == 'u' || c == 'U')
 				{
-					type_bits = read_num_type(string, end);
+					type_bits = read_num_type(string, loc, len);
 					break;
 				}
 				if (c == 'i' || c == 'I')
 				{
 					is_unsigned = false;
-					type_bits = read_num_type(string, end);
+					type_bits = read_num_type(string, loc, len);
 					break;
 				}
 				if (c == '_') continue;
@@ -1021,21 +1020,20 @@ static Expr *parse_integer(Context *context, Expr *left)
 			}
 			break;
 		case 'o':
-			string += 2;
 			is_unsigned = true;
 			max = UINT64_MAX >> 3;
-			while (string < end)
+			for (size_t loc = 2; loc < len; loc++)
 			{
-				char c = *(string++);
+				char c = string[loc];
 				if (c == 'i' || c == 'I')
 				{
 					is_unsigned = false;
-					type_bits = read_num_type(string, end);
+					type_bits = read_num_type(string, loc, len);
 					break;
 				}
 				if (c == 'u' || c == 'U')
 				{
-					type_bits = read_num_type(string, end);
+					type_bits = read_num_type(string, loc, len);
 					break;
 				}
 				if (c == '_') continue;
@@ -1046,11 +1044,10 @@ static Expr *parse_integer(Context *context, Expr *left)
 			}
 			break;
 		case 'b':
-			string += 2;
 			max = UINT64_MAX >> 1;
-			while (string < end)
+			for (size_t loc = 2; loc < len; loc++)
 			{
-				char c = *(string++);
+				char c = string[loc];
 				if (c == '_') continue;
 				binary_characters++;
 				if (i.high > max) wrapped = true;
@@ -1059,27 +1056,36 @@ static Expr *parse_integer(Context *context, Expr *left)
 			}
 			break;
 		default:
-			while (string < end)
+			for (size_t loc = 0; loc < len; loc++)
 			{
-				char c = *(string++);
-				if (c == 'i' || c == 'I')
+				char c = string[loc];
+				switch (c)
 				{
-					is_unsigned = false;
-					type_bits = read_num_type(string, end);
-					break;
+					case 'i':
+					case 'I':
+						is_unsigned = false;
+						type_bits = read_num_type(string, loc, len);
+						goto EXIT;
+					case 'u':
+					case 'U':
+						is_unsigned = true;
+						type_bits = read_num_type(string, loc, len);
+						goto EXIT;
+					case '_':
+						continue;
+					case NUMBER_CHAR_CASE:
+					{
+						uint64_t old_top = i.high;
+						i = i128_mult64(i, 10);
+						i = i128_add64(i, (uint64_t)(c - '0'));
+						if (!wrapped && old_top > i.high) wrapped = true;
+						break;
+					}
+					default:
+						UNREACHABLE
 				}
-				if (c == 'u' || c == 'U')
-				{
-					is_unsigned = true;
-					type_bits = read_num_type(string, end);
-					break;
-				}
-				if (c == '_') continue;
-				uint64_t old_top = i.high;
-				i = i128_mult64(i, 10);
-				i = i128_add64(i, (uint64_t)(c - '0'));
-				if (!wrapped && old_top > i.high) wrapped = true;
 			}
+		EXIT:
 			break;
 	}
 	if (wrapped)
@@ -1089,7 +1095,7 @@ static Expr *parse_integer(Context *context, Expr *left)
 	}
 	expr_int->const_expr.const_kind = CONST_INTEGER;
 	expr_int->const_expr.is_hex = hex_characters > 0;
-	Type *type = is_unsigned ? type_cuint() : type_cint();
+	Type *type = is_unsigned ? type_cuint : type_cint;
 	expr_int->const_expr.narrowable = !type_bits;
 	if (type_bits)
 	{

@@ -1441,7 +1441,6 @@ typedef struct
 	unsigned warnings_found;
 	char scratch_buffer[MAX_STRING_BUFFER];
 	uint32_t scratch_buffer_len;
-	STable scratch_table;
 	STable compiler_defines;
 	Module std_module;
 	Path std_module_path;
@@ -1549,6 +1548,8 @@ extern Type *type_typeid, *type_anyerr, *type_typeinfo;
 extern Type *type_any;
 extern Type *type_complist;
 extern Type *type_anyfail;
+extern Type *type_cint;
+extern Type *type_cuint;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *builtin_list[NUMBER_OF_BUILTINS];
@@ -2052,10 +2053,9 @@ Type *type_get_flexible_array(Type *arr_type);
 Type *type_get_failable(Type *failable_type);
 Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
-Type *type_cint(void);
-Type *type_cuint(void);
 Type *type_int_signed_by_bitsize(unsigned bitsize);
 Type *type_int_unsigned_by_bitsize(unsigned bytesize);
+void type_init_cint(void);
 static inline bool type_is_builtin(TypeKind kind);
 bool type_is_abi_aggregate(Type *type);
 static inline bool type_is_float(Type *type);

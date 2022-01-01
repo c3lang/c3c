@@ -55,6 +55,7 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 #endif
 	void *ptr = ((uint8_t *)vmem->ptr) + vmem->allocated;
 	vmem->allocated = allocated_after;
+	assert(vmem->size > vmem->allocated);
 	return ptr;
 }
 

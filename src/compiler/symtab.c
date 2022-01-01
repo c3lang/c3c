@@ -5,7 +5,7 @@
 #include "compiler_internal.h"
 
 #define TABLE_MAX_LOAD 0.75
-#define MAX_HASH_SIZE (1024 * 1024)
+#define MAX_HASH_SIZE (512 * 1024 * 1024)
 
 
 typedef struct _SymEntry
@@ -106,9 +106,7 @@ void symtab_destroy()
 void symtab_init(uint32_t capacity)
 {
 	assert (is_power_of_two(capacity) && "Must be a power of two");
-	size_t size = capacity * sizeof(SymEntry);
-	symtab.entries = malloc(size);
-	memset(symtab.entries, 0, size);
+	symtab.entries = calloc(sizeof(SymEntry), capacity);
 	symtab.count = 0;
 	symtab.capacity = capacity;
 	symtab.max_count = capacity * TABLE_MAX_LOAD;
@@ -230,11 +228,9 @@ static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t h
 	while (1)
 	{
 		SymEntry *entry = &symtab.entries[index];
-		if (entry->key_len == key_len && (entry->value == key || memcmp(key, entry->value, key_len) == 0)) return entry;
-		if (entry->value == NULL)
-		{
-			return entry;
-		}
+		const char *entry_value = entry->value;
+		if (entry_value == NULL) return entry;
+		if (entry->key_len == key_len && (entry_value == key || memcmp(key, entry_value, key_len) == 0)) return entry;
 		index = (index + 1) & symtab.mask;
 	}
 }

@@ -106,8 +106,7 @@ static inline bool reached_end(Lexer *lexer)
 // Match a single character – if successful, more one step forward.
 static inline bool match(Lexer *lexer, char expected)
 {
-	if (reached_end(lexer)) return false;
-	if (*lexer->current != expected) return false;
+	if (lexer->current[0] != expected) return false;
 	next(lexer);
 	return true;
 }
@@ -410,15 +409,16 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 // --- Number scanning
 
 /**
- * For C3 we use the practice of f<bit-width> u<bit-width> and s<bit-width>
+ * For C3 we use the practice of f<bit-width> u<bit-width> and i<bit-width>
  * @param lexer
  * @param is_float
  * @return
  */
 static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 {
-	if (!is_alphanum_(peek(lexer))) return true;
-	switch (peek(lexer))
+	char c = peek(lexer);
+	if (!is_alphanum_(c)) return true;
+	switch (c)
 	{
 		case 'u':
 		case 'U':
@@ -426,21 +426,22 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 		case 'i':
 			if (*is_float)
 			{
-				return add_error_token(lexer, "Integer suffix '%x' is not valid for a floating point literal.", peek(lexer));
+				return add_error_token_at_current(lexer, "Integer suffix '%c' is not valid for a floating point literal.", c);
 			}
 			next(lexer);
-			while (is_number(peek(lexer))) next(lexer);
+			while (is_number(c = peek(lexer))) next(lexer);
 			break;
 		case 'f':
-			*is_float = true;
 			next(lexer);
-			while (is_number(peek(lexer))) next(lexer);
+			*is_float = true;
+			while (is_number(c = peek(lexer))) next(lexer);
 			break;
 		default:
 			break;
 	}
-	if (is_alphanum_(peek(lexer)))
+	if (is_alphanum_(c))
 	{
+		next(lexer);
 		return add_error_token(lexer, "This doesn't seem to be a valid literal.");
 	}
 	return true;
@@ -1813,22 +1814,30 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 			if (match(lexer, '-')) return add_token(lexer, TOKEN_MINUSMINUS, "--");
 			if (match(lexer, '=')) return add_token(lexer, TOKEN_MINUS_ASSIGN, "-=");
 			return add_token(lexer, TOKEN_MINUS, "-");
+		case 'x':
+			if ((peek(lexer) == '"' || peek(lexer) == '\''))
+			{
+				return scan_hex_array(lexer);
+			}
+			goto IDENT;
 		case 'b':
 			if (peek(lexer) == '6' && peek_next(lexer) == '4' && (lexer->current[2] == '\'' || lexer->current[2] == '"'))
 			{
 				return scan_base64(lexer);
 			}
-			FALLTHROUGH;
+			goto IDENT;
+		case '_':
+		IDENT:
+			backtrack(lexer);
+			return scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST_IDENT, TOKEN_TYPE_IDENT, 0);
 		default:
-			if (c == 'x' && (peek(lexer) == '"' || peek(lexer) == '\''))
-			{
-				return scan_hex_array(lexer);
-			}
-			if (is_alphanum_(c))
+			if (c >= '0' && c <= '9')
 			{
 				backtrack(lexer);
-				return is_digit(c) ? scan_digit(lexer) : scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST_IDENT, TOKEN_TYPE_IDENT, 0);
+				return scan_digit(lexer);
 			}
+			if (c >= 'a' && c <= 'z') goto IDENT;
+			if (c >= 'A' && c <= 'Z') goto IDENT;
 			if (c < 0)
 			{
 				return add_error_token(lexer, "The 0x%x character may not be placed outside of a string or comment, did you forget a \" somewhere?", (uint8_t)c);

@@ -56,14 +56,13 @@ static AlignSize max_alignment_vector;
 #define FAILABLE_OFFSET 4
 #define ARRAY_OFFSET 5
 
-Type *type_cint(void)
-{
-	return type_int_signed_by_bitsize(platform_target.width_c_int);
-}
+Type *type_cint;
+Type *type_cuint;
 
-Type *type_cuint(void)
+void type_init_cint(void)
 {
-	return type_int_unsigned_by_bitsize(platform_target.width_c_int);
+	type_cint = type_int_signed_by_bitsize(platform_target.width_c_int);
+	type_cuint = type_int_unsigned_by_bitsize(platform_target.width_c_int);
 }
 
 Type *type_int_signed_by_bitsize(unsigned bitsize)

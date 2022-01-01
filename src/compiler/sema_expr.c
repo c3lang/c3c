@@ -1146,7 +1146,7 @@ static inline bool expr_promote_vararg(Context *context, Expr *arg)
 	// 2. Promote any integer or bool to at least CInt
 	if (type_is_promotable_integer(arg_type) || arg_type == type_bool)
 	{
-		return cast(arg, type_cint());
+		return cast(arg, type_cint);
 	}
 	// 3. Promote any float to at least double
 	if (type_is_promotable_float(arg->type))
@@ -4405,10 +4405,10 @@ static Type *numeric_arithmetic_promotion(Type *type)
 	switch (type->type_kind)
 	{
 		case ALL_SIGNED_INTS:
-			if (type->builtin.bitsize < platform_target.width_c_int) return type_cint();
+			if (type->builtin.bitsize < platform_target.width_c_int) return type_cint;
 			return type;
 		case ALL_UNSIGNED_INTS:
-			if (type->builtin.bitsize < platform_target.width_c_int) return type_cuint();
+			if (type->builtin.bitsize < platform_target.width_c_int) return type_cuint;
 			return type;
 		case TYPE_F16:
 			// Promote F16 to a real type.

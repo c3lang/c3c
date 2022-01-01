@@ -1096,7 +1096,7 @@ static LLVMValueRef llvm_emit_string(GenContext *c, const char *str)
 void llvm_emit_debug_output(GenContext *c, const char *message, const char *file, const char *func, unsigned line)
 {
 	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
-	LLVMTypeRef cint_type = llvm_get_type(c, type_cint());
+	LLVMTypeRef cint_type = llvm_get_type(c, type_cint);
 	const char *name;
 	int file_index;
 	int line_index;
@@ -1212,7 +1212,7 @@ void llvm_emit_debug_output(GenContext *c, const char *message, const char *file
 	}
 	args[file_index] = llvm_emit_string(c, file);
 	args[expr_index] = llvm_emit_string(c, message);
-	args[line_index] = llvm_const_int(c, type_cint(), line);
+	args[line_index] = llvm_const_int(c, type_cint, line);
 
 	LLVMBuildCall2(c->builder, type, assert_func, args, func_index > -1 ? 4 : 3, "");
 

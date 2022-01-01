@@ -36,7 +36,6 @@ void compiler_init(const char *std_lib_dir)
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
 	stable_init(&global_context.modules, 64);
-	stable_init(&global_context.scratch_table, 32);
 	stable_init(&global_context.compiler_defines, 512);
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
@@ -315,6 +314,8 @@ void compiler_compile(void)
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.size_optimization_level, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", active_target.feature.safe_mode);
 
+	type_init_cint();
+
 	global_context_clear_errors();
 
 	if (global_context.lib_dir)
@@ -436,7 +437,7 @@ void compiler_compile(void)
 	}
 
 	unsigned cfiles = vec_size(active_target.csources);
-	CompileData *compile_data = cmalloc(sizeof(CompileData) * output_file_count);
+	CompileData *compile_data = ccalloc(sizeof(CompileData), output_file_count);
 	const char **obj_files = cmalloc(sizeof(char*) * (output_file_count + cfiles));
 
 	if (cfiles)
