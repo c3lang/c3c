@@ -398,6 +398,8 @@ void compiler_compile(void)
 			}
 			task = &thread_compile_task_tb;
 			break;
+		default:
+			UNREACHABLE
 	}
 
 
