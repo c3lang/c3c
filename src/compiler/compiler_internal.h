@@ -323,7 +323,6 @@ typedef struct
 	Path *path;
 	TokenId symbol;
 	bool private;
-	bool aliased;
 } ImportDecl;
 
 typedef struct
@@ -362,17 +361,35 @@ typedef struct VarDecl_
 	};
 	union
 	{
-		void *backend_debug_ref;
-		unsigned scope_depth;
-		Expr *start;
-		unsigned start_bit;
-	};
-	union
-	{
-		void *failable_ref;
-		struct ABIArgInfo_ *abi_info;
-		Expr *end;
-		unsigned end_bit;
+		struct SemaContext_ *context; // Hash var
+		unsigned scope_depth; // CT var
+		struct
+		{
+			void *backend_debug_ref;
+			union
+			{
+				// Param
+				struct ABIArgInfo_ *abi_info;
+				// Variable
+				void *failable_ref;
+			};
+		};
+		struct
+		{
+			union
+			{
+				struct
+				{
+					Expr *start;
+					Expr *end;
+				};
+				struct
+				{
+					unsigned start_bit;
+					unsigned end_bit;
+				};
+			};
+		};
 	};
 } VarDecl;
 
@@ -494,7 +511,7 @@ typedef struct
 	struct Ast_ *body;
 	Decl **body_parameters;
 	TokenId block_parameter;
-	struct Context_ *context;
+	struct CompilationUnit_ *unit;
 } MacroDecl;
 
 typedef struct
@@ -567,6 +584,7 @@ typedef struct Decl_
 	bool needs_additional_pad : 1;
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
+	bool no_scope : 1;
 	void *backend_ref;
 	const char *extname;
 	AlignSize alignment;
@@ -822,6 +840,7 @@ typedef struct
 
 typedef struct
 {
+	bool no_scope;
 	Ast **stmts;
 	Expr **args;
 	Decl **params;
@@ -1289,7 +1308,7 @@ typedef struct Module_
 	Decl** generic_cache;
 	STable symbols;
 	STable public_symbols;
-	struct Context_ **contexts;
+	struct CompilationUnit_ **units;
 } Module;
 
 
@@ -1300,28 +1319,14 @@ typedef struct DynamicScope_
 	bool allow_dead_code : 1;
 	bool jump_end : 1;
 	ScopeFlags flags;
-	Decl **local_decl_start;
-	Decl **current_local;
+	unsigned local_decl_start;
+	unsigned current_local;
 	AstId defer_last;
 	AstId defer_start;
 	Ast *in_defer;
 	unsigned depth;
 } DynamicScope;
 
-typedef struct MacroScope_
-{
-	Decl *macro;
-	uint32_t inline_line;
-	uint32_t original_inline_line;
-	Decl **locals_start;
-	unsigned depth;
-	Decl **yield_symbol_start;
-	Decl **yield_symbol_end;
-	Decl **yield_args;
-	Ast *yield_body;
-	bool in_yield;
-	const char *body_param;
-} MacroScope;
 
 typedef union
 {
@@ -1359,42 +1364,62 @@ typedef struct
 	unsigned char *latest_token_type;
 } Lexer;
 
+
+typedef struct CompilationUnit_
+{
+	Module *module;
+	File* file;
+	Decl** imports;
+	Decl **types;
+	Decl **functions;
+	Decl **enums;
+	Decl **errtypes;
+	struct
+	{
+		// Not properly implemented
+		Decl **generic_methods;
+		Decl **generics;
+		Decl **generic_defines;
+	};
+	Decl **ct_ifs;
+	Decl **ct_asserts;
+	Decl **vars;
+	Decl **macros;
+	Decl **methods;
+	Decl **macro_methods;
+	Decl **global_decls;
+	Decl *main_function;
+	STable local_symbols;
+	struct {
+		STable external_symbols;
+		Decl **external_symbol_list;
+	};
+	struct
+	{
+		void *debug_file;
+		void *debug_compile_unit;
+	} llvm;
+} CompilationUnit;
+
 typedef struct
 {
 	uint32_t lexer_index;
 	Token tok;
 	TokenId prev_tok;
 	Token next_tok;
-} LexingContext;
-
-typedef struct Context_
-{
-	Path *module_name;
-	File* file;
-	Decl** imports;
-	Module *module;
-	STable local_symbols;
-	Decl **global_decls;
-	Decl **enums;
-	Decl **errtypes;
-	Decl **types;
-	Decl **generic_defines;
-	Decl **functions;
-	Decl *main_function;
-	Decl **macros;
-	Decl **generics;
-	Decl **generic_methods;
-	Decl **templates;
-	Decl **methods;
-	Decl **macro_methods;
-	Decl **vars;
-	Decl **ct_ifs;
-	Decl **ct_asserts;
-	Decl *active_function_for_analysis;
+	CompilationUnit *unit;
 	Token *comments;
 	Token *lead_comment;
 	Token *trailing_comment;
 	Token *next_lead_comment;
+} ParseContext;
+
+typedef struct SemaContext_
+{
+	CompilationUnit *unit;
+	CompilationUnit *compilation_unit;
+	Decl *current_function;
+	Decl *current_macro;
 	ScopeId scope_id;
 	AstId break_target;
 	AstId break_defer;
@@ -1405,6 +1430,9 @@ typedef struct Context_
 	AstId next_defer;
 	struct
 	{
+		uint32_t original_inline_line;
+		Decl **yield_params;
+		Ast *yield_body;
 		Type *expected_block_type;
 		Ast **returns;
 		bool expr_failable_return;
@@ -1412,17 +1440,10 @@ typedef struct Context_
 		Ast **returns_cache;
 	};
 	Type *rtype;
-	MacroScope macro_scope;
-	struct {
-		STable external_symbols;
-		Decl **external_symbol_list;
-	};
-	Decl* locals[MAX_LOCALS];
+	struct SemaContext_ *yield_context;
+	Decl** locals;
 	DynamicScope active_scope;
-	LexingContext lex;
-	void *llvm_debug_file;
-	void *llvm_debug_compile_unit;
-} Context;
+} SemaContext;
 
 typedef struct
 {
@@ -1440,6 +1461,7 @@ typedef struct
 	unsigned errors_found;
 	unsigned warnings_found;
 	char scratch_buffer[MAX_STRING_BUFFER];
+	Decl ***locals_list;
 	uint32_t scratch_buffer_len;
 	STable compiler_defines;
 	Module std_module;
@@ -1632,9 +1654,9 @@ static inline Ast *new_ast(AstKind kind, SourceSpan range)
 
 
 
-static inline Ast *extend_ast_with_prev_token(Context *context, Ast *ast)
+static inline Ast *extend_ast_with_prev_token(ParseContext *context, Ast *ast)
 {
-	ast->span.end_loc = context->lex.prev_tok;
+	ast->span.end_loc = context->prev_tok;
 	return ast;
 }
 
@@ -1776,18 +1798,20 @@ void tinybackend_codegen_setup();
 
 void header_gen(Module *module);
 
+static inline void global_context_clear_errors(void);
 void global_context_add_type(Type *type);
 Decl *compiler_find_symbol(const char *name);
 Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters, bool is_private);
 Module *global_context_find_module(const char *name);
 void compiler_register_public_symbol(Decl *decl);
 
-Context *context_create(File *file);
-void context_register_global_decl(Context *context, Decl *decl);
-void context_register_external_symbol(Context *context, Decl *decl);
-bool context_add_import(Context *context, Path *path, Token symbol, Token alias, bool private_import);
-bool context_set_module_from_filename(Context *context);
-bool context_set_module(Context *context, Path *path, TokenId *generic_parameters, bool is_private);
+CompilationUnit * unit_create(File *file);
+void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
+void unit_register_external_symbol(CompilationUnit *unit, Decl *decl);
+
+bool unit_add_import(CompilationUnit *unit, Path *path, Token token, bool private_import);
+bool context_set_module_from_filename(ParseContext *context);
+bool context_set_module(ParseContext *context, Path *path, TokenId *generic_parameters, bool is_private);
 
 // --- Decl functions
 
@@ -1905,8 +1929,6 @@ static inline TokenData *tokendata_from_token(Token token) { return tokdataptr(t
 
 #define TOKSTR(T) TOKDATA(T)->string
 
-#define TOKREAL(T) TOKDATA(T)->value
-
 static inline TokenType tokenid_type(TokenId token) { return (TokenType)toktypeptr(token.index)[0]; }
 static inline TokenType token_type(Token token) { return (TokenType)toktypeptr(token.id.index)[0]; }
 #define TOKTYPE(T) _Generic((T), TokenId: tokenid_type, Token: token_type)(T)
@@ -1925,47 +1947,41 @@ Path *path_find_parent_path(Path *path);
 #define SEMA_PREV(_node, ...) sema_prev_at_range3((_node)->span, __VA_ARGS__)
 #define SEMA_TOKID_PREV(_tok_id, ...) sema_prev_at_range3(source_span_from_token_id(_tok_id), __VA_ARGS__)
 
-void sema_analysis_pass_process_imports(Module *module);
-void sema_analysis_pass_register_globals(Module *module);
-void sema_analysis_pass_conditional_compilation(Module *module);
-void sema_analysis_pass_decls(Module *module);
-void sema_analysis_pass_ct_assert(Module *module);
-void sema_analysis_pass_functions(Module *module);
-void sema_analyze_stage(Module *module, AnalysisStage stage);
+void sema_analysis_run(void);
 
 bool sema_failed_cast(Expr *expr, Type *from, Type *to);
-bool sema_add_member(Context *context, Decl *decl);
-bool sema_add_local(Context *context, Decl *decl);
-bool sema_unwrap_var(Context *context, Decl *decl);
-bool sema_rewrap_var(Context *context, Decl *decl);
-bool sema_erase_var(Context *context, Decl *decl);
-bool sema_erase_unwrapped(Context *context, Decl *decl);
-bool sema_analyse_cond_expr(Context *context, Expr *expr);
+bool sema_add_member(SemaContext *context, Decl *decl);
+bool sema_add_local(SemaContext *context, Decl *decl);
+bool sema_unwrap_var(SemaContext *context, Decl *decl);
+bool sema_rewrap_var(SemaContext *context, Decl *decl);
+bool sema_erase_var(SemaContext *context, Decl *decl);
+bool sema_erase_unwrapped(SemaContext *context, Decl *decl);
+bool sema_analyse_cond_expr(SemaContext *context, Expr *expr);
 
-bool sema_analyse_expr_rhs(Context *context, Type *to, Expr *expr, bool allow_failable);
-MemberIndex sema_get_initializer_const_array_size(Context *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
-bool sema_analyse_expr(Context *context, Expr *expr);
-bool sema_analyse_inferred_expr(Context *context, Type *to, Expr *expr);
-bool sema_analyse_decl(Context *context, Decl *decl);
+bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_failable);
+MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
+bool sema_analyse_expr(SemaContext *context, Expr *expr);
+bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
+bool sema_analyse_decl(SemaContext *context, Decl *decl);
 
-bool sema_analyse_var_decl(Context *context, Decl *decl, bool local);
-bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement);
-bool sema_analyse_statement(Context *context, Ast *statement);
-bool sema_expr_analyse_assign_right_side(Context *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped_var);
+bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
+bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
+bool sema_analyse_statement(SemaContext *context, Ast *statement);
+bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped_var);
 
-bool sema_expr_analyse_general_call(Context *context, Expr *expr, Decl *decl, Expr *struct_var, bool is_macro, bool failable);
-Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol);
-Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *path);
-Decl *sema_resolve_method(Context *context, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
+bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool is_macro, bool failable);
+Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol);
+Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, TokenId symbol, Path *path);
+Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name);
-Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, bool handle_error);
-Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path, bool report_error);
+Decl *sema_resolve_normal_symbol(SemaContext *context, TokenId symbol, Path *path, bool handle_error);
+Decl *sema_resolve_string_symbol(SemaContext *context, const char *symbol, SourceSpan span, Path *path, bool report_error);
 
-bool sema_resolve_type(Context *context, Type *type);
-bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArraySize *len_ref);
-bool sema_resolve_type_info(Context *context, TypeInfo *type_info);
-bool sema_resolve_type_info_maybe_inferred(Context *context, TypeInfo *type_info, bool allow_inferred_type);
-bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow);
+bool sema_resolve_type(SemaContext *context, Type *type);
+bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
+bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info);
+bool sema_resolve_type_info_maybe_inferred(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type);
+bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow);
 Type *sema_type_lower_by_size(Type *type, ArraySize element_size);
 
 void sema_error_at_prev_end(Token token, const char *message, ...);
@@ -1973,7 +1989,7 @@ void sema_error_at_prev_end(Token token, const char *message, ...);
 void sema_error_range(SourceSpan span, const char *message, ...);
 
 void sema_verror_range(SourceLocation *location, const char *message, va_list args);
-void sema_error(Context *context, const char *message, ...);
+void sema_error(ParseContext *context, const char *message, ...);
 void sema_prev_at_range3(SourceSpan span, const char *message, ...);
 void sema_shadow_error(Decl *decl, Decl *old);
 
@@ -1986,7 +2002,7 @@ static inline SourceSpan source_span_from_token_id(TokenId id)
 }
 
 
-#define RANGE_EXTEND_PREV(x) ((x)->span.end_loc = context->lex.prev_tok)
+#define RANGE_EXTEND_PREV(x) ((x)->span.end_loc = context->prev_tok)
 
 void stable_init(STable *table, uint32_t initial_size);
 void *stable_set(STable *table, const char *key, void *value);
@@ -2244,12 +2260,12 @@ static inline const char* struct_union_name_from_token(TokenType type)
 }
 
 
-void advance(Context *context);
+void advance(ParseContext *context);
 
 // Useful sanity check function.
-static inline void advance_and_verify(Context *context, TokenType token_type)
+static inline void advance_and_verify(ParseContext *context, TokenType token_type)
 {
-	assert(context->lex.tok.type == token_type);
+	assert(context->tok.type == token_type);
 	advance(context);
 }
 
@@ -2491,4 +2507,11 @@ static inline Type *abi_returntype(FunctionSignature *signature)
 {
 	Type *type = signature->rtype->type;
 	return type->type_kind == TYPE_FAILABLE ? type_anyerr : type;
+}
+
+static inline void global_context_clear_errors(void)
+{
+	global_context.in_panic_mode = false;
+	global_context.errors_found = 0;
+	global_context.warnings_found = 0;
 }

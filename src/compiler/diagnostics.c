@@ -207,10 +207,10 @@ void sema_error_at_prev_end(Token token, const char *message, ...)
 }
 
 
-void sema_error(Context *context, const char *message, ...)
+void sema_error(ParseContext *context, const char *message, ...)
 {
 	global_context.errors_found++;
-	File *file = context->file;
+	File *file = context->unit->file;
 	va_list list;
 	va_start(list, message);
 	eprintf("(%s:0) Error: ", file->name);

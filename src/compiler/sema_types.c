@@ -4,7 +4,7 @@
 
 #include "sema_internal.h"
 
-static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
+static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info)
 {
 	if (!sema_resolve_type_shallow(context, type_info->pointer, false, true))
 	{
@@ -15,7 +15,7 @@ static inline bool sema_resolve_ptr_type(Context *context, TypeInfo *type_info)
 	return true;
 }
 
-bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArraySize *len_ref)
+bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref)
 {
 	Expr *len_expr = type_info->array.len;
 	if (!sema_analyse_expr(context, len_expr)) return type_info_poison(type_info);
@@ -62,7 +62,7 @@ bool sema_resolve_array_like_len(Context *context, TypeInfo *type_info, ArraySiz
 }
 
 // TODO cleanup.
-static inline bool sema_resolve_array_type(Context *context, TypeInfo *type, bool shallow)
+static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, bool shallow)
 {
 	if (type->kind == TYPE_INFO_SUBARRAY || shallow)
 	{
@@ -119,7 +119,7 @@ static inline bool sema_resolve_array_type(Context *context, TypeInfo *type, boo
 }
 
 
-static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
+static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info)
 {
 	Decl *decl = sema_resolve_normal_symbol(context,
 	                                        type_info->unresolved.name_loc,
@@ -188,7 +188,7 @@ static bool sema_resolve_type_identifier(Context *context, TypeInfo *type_info)
 }
 
 
-bool sema_resolve_type(Context *context, Type *type)
+bool sema_resolve_type(SemaContext *context, Type *type)
 {
 	switch (type->type_kind)
 	{
@@ -228,7 +228,7 @@ bool sema_resolve_type(Context *context, Type *type)
 	return sema_analyse_decl(context, type->decl);
 }
 
-bool sema_resolve_type_shallow(Context *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow)
+bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool allow_inferred_type, bool in_shallow)
 {
 	if (type_info->resolve_status == RESOLVE_DONE) return type_info_ok(type_info);
 
