@@ -248,9 +248,7 @@ const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, Toke
 	{
 		FATAL_ERROR("Symtab exceeded capacity, please increase --symtab.");
 	}
-	char *copy = MALLOC(len + 1);
-	memcpy(copy, symbol, len);
-	copy[len] = '\0';
+	char *copy = copy_string(symbol, len);
 	entry->value = copy;
 	entry->key_len = len;
 	entry->hash = fnv1hash;
@@ -300,7 +298,7 @@ static inline void stable_resize(STable *table)
 {
 	ASSERT(table->capacity < MAX_HASH_SIZE, "Table size too large, exceeded max hash size");
 
-	uint32_t new_capacity = table->capacity ? (table->capacity << 1u) : 16u;
+	uint32_t new_capacity = table->capacity ? (table->capacity << 2u) : 16u;
 	SEntry *new_data = CALLOC(new_capacity * sizeof(SEntry));
 	table->count = 0;
 	uint32_t len = table->capacity;

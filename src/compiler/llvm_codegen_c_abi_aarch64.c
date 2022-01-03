@@ -47,7 +47,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	unsigned members = 0;
 	if (type_is_homogenous_aggregate(type, &base, &members))
 	{
-		ABIArgInfo *info = abi_arg_new_direct_coerce(abi_type_new_plain(base));
+		ABIArgInfo *info = abi_arg_new_direct_coerce_type(base);
 		assert(members < 128);
 		info->direct_coerce.elements = (uint8_t)members;
 		return info;
@@ -72,7 +72,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		size = aligned_offset(size, alignment);
 		// We use a pair of i64 for 16-byte aggregate with 8-byte alignment.
 		// For aggregates with 16-byte alignment, we use i128.
-		ABIArgInfo *info = abi_arg_new_direct_coerce(abi_type_new_int_bits(alignment * 8));
+		ABIArgInfo *info = abi_arg_new_direct_coerce_bits(alignment * 8);
 		assert(size / alignment < 128);
 		info->direct_coerce.elements = (uint8_t)(size / alignment);
 		return info;
@@ -97,7 +97,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 	// Large vectors by mem.
 	if (type->type_kind == TYPE_VECTOR && size > 16)
 	{
-		return abi_arg_new_direct_coerce(abi_type_new_plain(type));
+		return abi_arg_new_direct_coerce_type(type);
 	}
 
 	if (!type_is_abi_aggregate(type))
@@ -131,9 +131,9 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 		unsigned aligned_size = aligned_offset(size, 8);
 		if (alignment < 16 && size == 16)
 		{
-			return abi_arg_new_direct_coerce(abi_type_new_plain(type_get_array(type_ulong, size / 8)));
+			return abi_arg_new_direct_coerce_type(type_get_array(type_ulong, size / 8));
 		}
-		return abi_arg_new_direct_coerce(abi_type_new_int_bits(aligned_size * 8));
+		return abi_arg_new_direct_coerce_bits(aligned_size * 8);
 	}
 
 	return abi_arg_new_indirect_by_val(type);

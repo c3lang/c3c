@@ -1450,6 +1450,7 @@ typedef struct
 typedef enum
 {
 	ABI_ARG_IGNORE,
+	ABI_ARG_DIRECT,
 	ABI_ARG_DIRECT_PAIR,
 	ABI_ARG_DIRECT_COERCE,
 	ABI_ARG_EXPAND_COERCE,
@@ -1457,21 +1458,16 @@ typedef enum
 	ABI_ARG_EXPAND,
 }  ABIKind;
 
-typedef enum
-{
-	ABI_TYPE_PLAIN,
-	ABI_TYPE_INT_BITS
-} AbiTypeKind;
-
 typedef struct
 {
-	AbiTypeKind kind : 2;
 	union
 	{
 		Type *type;
-		uint32_t int_bits;
+		uintptr_t int_bits_plus_1;
 	};
 } AbiType;
+
+#define ABI_TYPE_EMPTY ((AbiType) { .type = NULL })
 
 typedef struct ABIArgInfo_
 {
@@ -1495,8 +1491,8 @@ typedef struct ABIArgInfo_
 		} expand;
 		struct
 		{
-			AbiType *lo;
-			AbiType *hi;
+			AbiType lo;
+			AbiType hi;
 		} direct_pair;
 		struct
 		{
@@ -1506,16 +1502,16 @@ typedef struct ABIArgInfo_
 			uint8_t hi_index;
 			uint8_t offset_hi;
 			bool packed : 1;
-			AbiType *lo;
-			AbiType *hi;
+			AbiType lo;
+			AbiType hi;
 		} coerce_expand;
 		struct
 		{
-			AbiType *partial_type;
+			AbiType partial_type;
 		};
 		struct
 		{
-			AbiType *type;
+			AbiType type;
 			uint8_t elements : 7;
 			bool prevent_flatten : 1;
 		} direct_coerce;
@@ -1614,6 +1610,7 @@ extern const char *kw_mainstub;
 #define AST_NEW_TOKEN(_kind, _token) new_ast(_kind, source_span_from_token_id((_token).id))
 
 typedef unsigned char TokenTypeChar;
+ARENA_DEF(chars, char)
 ARENA_DEF(ast, Ast)
 ARENA_DEF(expr, Expr)
 ARENA_DEF(sourceloc, SourceLocation)
@@ -2218,8 +2215,7 @@ static inline TypeInfo *type_info_new_base(Type *type, SourceSpan span)
 
 static inline Type *type_new(TypeKind kind, const char *name)
 {
-	Type *type = malloc_arena(sizeof(Type));
-	memset(type, 0, sizeof(Type));
+	Type *type = CALLOCS(Type);
 	type->type_kind = kind;
 	assert(name);
 	type->name = name;

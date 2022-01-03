@@ -5,9 +5,9 @@
 #include "c_abi_internal.h"
 
 
-static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType *field1, unsigned field1_offset, AbiType *field2, unsigned field2_offset)
+static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType field1, unsigned field1_offset, AbiType field2, unsigned field2_offset)
 {
-	if (!field2)
+	if (!abi_type_is_valid(field2))
 	{
 		return abi_arg_new_expand_coerce(field1, field1_offset);
 	}
@@ -32,7 +32,7 @@ static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType *field1, unsigned
 	return abi_arg_new_expand_coerce_pair(field1, field1_offset, field2, padding, is_packed);
 }
 
-static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offset, AbiType **field1, unsigned *field1_offset, AbiType **field2, unsigned *field2_offset)
+static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offset, AbiType *field1_ref, unsigned *field1_offset, AbiType *field2_ref, unsigned *field2_offset)
 {
 	bool is_int = type_is_integer(type);
 	bool is_float = type_is_float(type);
@@ -47,16 +47,16 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		if (is_float && (size > flen || size < 4)) return false;
 		// Can't be eligible if an integer type was already found (int+int pairs
 		// are not eligible).
-		if (is_int && *field1 && abi_type_is_integer(*field1)) return false;
-		if (!*field1)
+		if (is_int && abi_type_is_valid(*field1_ref) && abi_type_is_integer(*field1_ref)) return false;
+		if (!abi_type_is_valid(*field1_ref))
 		{
-			*field1 = abi_type_new_plain(type);
+			abi_type_set_type(field1_ref, type);
 			*field1_offset = current_offset;
 			return true;
 		}
-		if (!*field2)
+		if (!abi_type_is_valid(*field2_ref))
 		{
-			*field2 = abi_type_new_plain(type);
+			abi_type_set_type(field2_ref, type);
 			*field2_offset = current_offset;
 			return true;
 		}
@@ -72,9 +72,9 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		{
 			if (!riscv_detect_fpcc_struct_internal(element_type,
 			                                       current_offset,
-			                                       field1,
+			                                       field1_ref,
 			                                       field1_offset,
-			                                       field2,
+			                                       field2_ref,
 			                                       field2_offset)) return false;
 			current_offset += (unsigned)element_size;
 		}
@@ -90,33 +90,33 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 		{
 			Decl *member = members[i];
 			if (!riscv_detect_fpcc_struct_internal(member->type,
-												   (unsigned)(current_offset + member->offset),
-			                                       field1,
+			                                       (unsigned)(current_offset + member->offset),
+			                                       field1_ref,
 			                                       field1_offset,
-			                                       field2,
+			                                       field2_ref,
 			                                       field2_offset)) return false;
 
 		}
-		return *field1 != NULL;
+		return abi_type_is_valid(*field1_ref);
 	}
 	return false;
 }
 
-static bool riscv_detect_fpcc_struct(Type *type, AbiType **field1, unsigned *field1_offset, AbiType **field2, unsigned *field2_offset, unsigned *gprs, unsigned *fprs)
+static bool riscv_detect_fpcc_struct(Type *type, AbiType *field1_ref, unsigned *field1_offset, AbiType *field2_ref, unsigned *field2_offset, unsigned *gprs, unsigned *fprs)
 {
-	*field1 = NULL;
-	*field2 = NULL;
+	*field1_ref = ABI_TYPE_EMPTY;
+	*field2_ref = ABI_TYPE_EMPTY;
 	*gprs = 0;
 	*fprs = 0;
 
-	bool is_candidate = riscv_detect_fpcc_struct_internal(type, 0, field1, field1_offset, field2, field2_offset);
+	bool is_candidate = riscv_detect_fpcc_struct_internal(type, 0, field1_ref, field1_offset, field2_ref, field2_offset);
 
 	// Not really a candidate if we have a single int but no float.
-	if (*field1 && !*field2 && !abi_type_is_float(*field1)) return false;
+	if (abi_type_is_valid(*field1_ref) && !abi_type_is_valid(*field2_ref) && !abi_type_is_float(*field1_ref)) return false;
 	if (!is_candidate) return false;
-	if (*field1)
+	if (abi_type_is_valid(*field1_ref))
 	{
-		if (abi_type_is_float(*field1))
+		if (abi_type_is_float(*field1_ref))
 		{
 			(*fprs)++;
 		}
@@ -125,9 +125,9 @@ static bool riscv_detect_fpcc_struct(Type *type, AbiType **field1, unsigned *fie
 			(*gprs)++;
 		}
 	}
-	if (*field2)
+	if (abi_type_is_valid(*field2_ref))
 	{
-		if (abi_type_is_float(*field2))
+		if (abi_type_is_float(*field2_ref))
 		{
 			(*fprs)++;
 		}
@@ -158,8 +158,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 
 	if (is_fixed && platform_target.riscv.flen && type->type_kind == TYPE_STRUCT)
 	{
-		AbiType *field1 = NULL;
-		AbiType *field2 = NULL;
+		AbiType field1, field2;
 		unsigned offset1 = 0;
 		unsigned offset2 = 0;
 		unsigned needed_gprs;
@@ -224,13 +223,13 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		// required, and a 2-field XLen array if only XLen alignment is required.
 		if (size <= xlen)
 		{
-			return abi_arg_new_direct_coerce(abi_type_new_int_bits(xlen * 8));
+			return abi_arg_new_direct_coerce_bits(xlen * 8);
 		}
 		if (alignment == 2 * platform_target.riscv.xlen)
 		{
-			return abi_arg_new_direct_coerce(abi_type_new_int_bits(xlen * 16));
+			return abi_arg_new_direct_coerce_bits(xlen * 16);
 		}
-		ABIArgInfo *info = abi_arg_new_direct_coerce(abi_type_new_int_bits(xlen));
+		ABIArgInfo *info = abi_arg_new_direct_coerce_bits(xlen);
 		info->direct_coerce.elements = 2;
 		return info;
 	}

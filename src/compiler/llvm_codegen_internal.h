@@ -218,7 +218,7 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 
 LLVMValueRef llvm_value_rvalue_store(GenContext *c, BEValue *value);
 
-LLVMTypeRef llvm_abi_type(GenContext *c, AbiType *type);
+LLVMTypeRef llvm_abi_type(GenContext *c, AbiType type);
 TypeSize llvm_abi_size(GenContext *c, LLVMTypeRef type);
 BitSize llvm_bitsize(GenContext *c, LLVMTypeRef type);
 AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type);

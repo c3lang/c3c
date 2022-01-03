@@ -17,10 +17,11 @@ TomlArray *get_array(TomlTable *table, const char *key)
 	return value->value.array;
 }
 
+
 static inline const char *copy_toml_string(TomlString *string)
 {
 	size_t len = string->len;
-	char *new_str = malloc_arena(len + 1);
+	char *new_str = malloc_string(len + 1);
 	memcpy(new_str, string->str, len);
 	new_str[len] = '\0';
 	return new_str;

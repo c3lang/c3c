@@ -4066,6 +4066,9 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 			vec_add(*args, indirect);
 			return;
 		}
+		case ABI_ARG_DIRECT:
+			vec_add(*args, llvm_value_rvalue_store(c, be_value));
+			return;
 		case ABI_ARG_DIRECT_COERCE:
 		{
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
@@ -4125,7 +4128,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 			AlignSize align;
 			LLVMValueRef gep_first = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.lo_index, alignment, &align);
 			vec_add(*args, llvm_emit_load_aligned(c, llvm_abi_type(c, info->coerce_expand.lo), gep_first, align, ""));
-			if (info->coerce_expand.hi)
+			if (abi_type_is_valid(info->coerce_expand.hi))
 			{
 				LLVMValueRef gep_second = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.hi_index, alignment, &align);
 				vec_add(*args, llvm_emit_load_aligned(c, llvm_abi_type(c, info->coerce_expand.hi), gep_second, align, ""));
@@ -4351,6 +4354,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		case ABI_ARG_DIRECT_PAIR:
 		case ABI_ARG_IGNORE:
 		case ABI_ARG_DIRECT_COERCE:
+		case ABI_ARG_DIRECT:
 		case ABI_ARG_EXPAND_COERCE:
 			break;
 	}
@@ -4551,7 +4555,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 			// 15e. If there is only a single field, we simply store the value,
 			//      so { lo } set into { pad, lo, pad } -> original type.
-			if (!ret_info->coerce_expand.hi)
+			if (!abi_type_is_valid(ret_info->coerce_expand.hi))
 			{
 				// Here we do a store to call -> lo (leaving the rest undefined)
 				llvm_store_aligned(c, lo, call_value, alignment);
@@ -4574,6 +4578,9 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 			break;
 		}
+		case ABI_ARG_DIRECT:
+			llvm_value_set(result_value, call_value, return_type);
+			break;
 		case ABI_ARG_DIRECT_COERCE:
 		{
 			// 16. A direct coerce, this is basically "call result" bitcast return type.

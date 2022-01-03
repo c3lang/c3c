@@ -11,16 +11,35 @@
 
 static int allocations_done;
 static Vmem arena;
+static Vmem char_arena;
 
 void memory_init(void)
 {
 	vmem_init(&arena, 4 * 1024);
+	vmem_init(&char_arena, 4 * 1024);
 	allocations_done = 0;
 }
 
 void memory_release()
 {
 	vmem_free(&arena);
+	vmem_free(&char_arena);
+}
+
+
+void *calloc_string(size_t len)
+{
+	assert(len > 0);
+	allocations_done++;
+	return vmem_alloc(&char_arena, len);
+}
+
+char *copy_string(const char *start, size_t str_len)
+{
+	char *dst = calloc_string(str_len + 1);
+	memcpy(dst, start, str_len);
+	// No need to set the end
+	return dst;
 }
 
 // Simple bump allocator with buckets.
@@ -38,6 +57,7 @@ void print_arena_status(void)
 	printf("-- ARENA INFO -- \n");
 	printf(" * Memory used:  %zu Kb\n", arena.allocated / 1024);
 	printf(" * Allocations: %d\n", allocations_done);
+	printf(" * String memory used:  %zu Kb\n", char_arena.allocated / 1024);
 }
 
 void free_arena(void)

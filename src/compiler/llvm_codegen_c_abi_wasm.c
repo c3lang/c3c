@@ -13,7 +13,7 @@ static ABIArgInfo *wasm_classify_argument_type(Type *type)
 		// could do reasonable-size multiple-field structs too, using getExpand(),
 		// though watch out for things like bitfields.
 		Type *single_type = type_abi_find_single_struct_element(type);
-		if (single_type) return abi_arg_new_direct_coerce(abi_type_new_plain(single_type));
+		if (single_type) return abi_arg_new_direct_coerce_type(single_type);
 
 		// For the experimental multivalue ABI, fully expand all other aggregates
 		/*if (Kind == ABIKind::ExperimentalMV) {
@@ -40,7 +40,7 @@ static ABIArgInfo *wasm_classify_return(Type *type)
 	if (type_is_abi_aggregate(type))
 	{
 		Type *single_type = type_abi_find_single_struct_element(type);
-		if (single_type) return abi_arg_new_direct_coerce(abi_type_new_plain(single_type));
+		if (single_type) return abi_arg_new_direct_coerce_type(single_type);
 		/*
 		 * 			// For the experimental multivalue ABI, return all other aggregates
 			if (Kind == ABIKind::ExperimentalMV)

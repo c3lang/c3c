@@ -1232,7 +1232,7 @@ void target_setup(BuildTarget *target)
 
 	LLVMTargetMachineRef machine = llvm_target_machine_create();
 	char *target_triple = LLVMGetTargetMachineTriple(machine);
-	platform_target.target_triple = strdup(target_triple);
+	platform_target.target_triple = copy_string(target_triple, strlen(target_triple));
 	LLVMDisposeMessage(target_triple);
 	LLVMDisposeTargetMachine(machine);
 

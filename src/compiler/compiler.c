@@ -520,19 +520,15 @@ static const char **target_expand_source_names(const char** dirs, const char *su
 		{
 			if (name_len == 1 || name[name_len - 2] == '/')
 			{
-				char *path = strdup(name);
-				path[name_len - 1] = '\0';
+				char *path = copy_string(name, name_len - 1);
 				file_add_wildcard_files(&files, path, false, suffix1, suffix2);
-				free(path);
 				continue;
 			}
 			if (name[name_len - 2] != '*') goto INVALID_NAME;
 			if (name_len == 2 || name[name_len - 3] == '/')
 			{
-				char *path = strdup(name);
-				path[name_len - 2] = '\0';
+				char *path = copy_string(name, name_len - 2);
 				file_add_wildcard_files(&files, path, true, suffix1, suffix2);
-				free(path);
 				continue;
 			}
 			goto INVALID_NAME;
@@ -640,7 +636,7 @@ void compiler_register_public_symbol(Decl *decl)
 	STable *sub_module_space = stable_get(&global_context.qualified_symbols, decl->module->name->module);
 	if (!sub_module_space)
 	{
-		sub_module_space = malloc_arena(sizeof(*sub_module_space));
+		sub_module_space = MALLOC(sizeof(*sub_module_space));
 		stable_init(sub_module_space, 0x100);
 		stable_set(&global_context.qualified_symbols, decl->module->name->module, sub_module_space);
 	}

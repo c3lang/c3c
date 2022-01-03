@@ -16,7 +16,7 @@ char *strformat(const char *var, ...)
 	va_end(list);
 	if (len < 1) return "";
 	va_start(list, var);
-	char *buffer = malloc_arena((uint32_t)len + 1);
+	char *buffer = malloc_string((uint32_t)len + 1);
 	int new_len = vsnprintf(buffer, len + 1, var, list);
 	va_end(list);
 	assert(len == new_len);
@@ -59,19 +59,12 @@ void slicetrim(StringSlice *slice)
 }
 
 
-char *strcopy(const char *start, size_t len)
-{
-	char *buffer = malloc_arena(len + 1);
-	memcpy(buffer, start, len);
-	buffer[len] = '\0';
-	return buffer;
-}
 
 char *strcat_arena(const char *a, const char *b)
 {
 	unsigned a_len = (unsigned)strlen(a);
 	unsigned b_len = (unsigned)strlen(b);
-	char *buffer = malloc_arena(a_len + b_len + 1);
+	char *buffer = malloc_string(a_len + b_len + 1);
 	memcpy(buffer, a, a_len);
 	memcpy(buffer + a_len, b, b_len);
 	buffer[a_len + b_len] = '\0';
@@ -119,16 +112,5 @@ int vasprintf(char** ret, const char* fmt, va_list args) {
 	return length;
 }
 
-char *strndup(const char *s, size_t n)
-{
-	n = strnlen(s, n);
-	char *t = ccalloc(n + 1, 1);
-	if (NULL != t)
-	{
-		memcpy(t, s, n);
-		t[n] = '\0';
-	}
-	return t;
-}
 
 #endif

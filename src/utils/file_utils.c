@@ -107,18 +107,17 @@ bool filenamesplit(const char *path, char** filename_ptr, char** directory_ptr)
 	if (file_len == 1 && path[0] == '.') return false;
 	if (file_len == 2 && path[0] == '.' && path[1] == '.') return false;
 	if (!file_len) return false;
-	*filename_ptr = strcopy(&path[len - file_len], file_len);
+	*filename_ptr = copy_string(&path[len - file_len], file_len);
 	if (!directory_ptr) return true;
 	if (file_len < len)
 	{
 		size_t dir_len = len - file_len;
-		*directory_ptr = strcopy(path, dir_len - 1);
+		*directory_ptr = copy_string(path, dir_len - 1);
 	}
 	else
 	{
-		*directory_ptr = malloc_arena(2);
+		*directory_ptr = calloc_string(2);
 		(*directory_ptr)[0] = '.';
-		(*directory_ptr)[1] = 0;
 	}
 	return true;
 }
@@ -153,7 +152,7 @@ char *read_file(const char *path, size_t *return_size)
 	*return_size = file_size;
 	rewind(file);
 
-	char *buffer = (char *)malloc_arena(file_size + 1);
+	char *buffer = (char *)MALLOC(file_size + 1);
 	if (buffer == NULL)
 	{
 		error_exit("Not enough memory to read \"%s\".\n", path);

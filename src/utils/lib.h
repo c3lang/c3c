@@ -39,6 +39,9 @@ void *ccalloc(size_t size, size_t elements);
 void memory_init(void);
 void memory_release();
 void *calloc_arena(size_t mem);
+char *calloc_string(size_t len);
+char *copy_string(const char *start, size_t str_len);
+#define malloc_string calloc_string
 #define malloc_arena calloc_arena
 void free_arena(void);
 void print_arena_status(void);
@@ -48,10 +51,22 @@ void taskqueue_add(TaskQueueRef queue, Task *task);
 void taskqueue_destroy(TaskQueueRef queue);
 void taskqueue_wait_for_completion(TaskQueueRef queue);
 
+#if MEM_PRINT
+#define MALLOC(mem) (printf("Alloc at %s %zu\n", __FUNCTION__, (size_t)(mem)), malloc_arena(mem))
+#define MALLOCS(type) (printf("calloc at %s %zu\n", __FUNCTION__, sizeof(type)), malloc_arena(sizeof(type)))
+#define CALLOC(mem) (printf("calloc at %s %zu\n", __FUNCTION__, (size_t)(mem)), calloc_arena(mem))
+#define CALLOCS(type) (printf("calloc at %s %zu\n", __FUNCTION__, sizeof(type)), calloc_arena(sizeof(type)))
+#elif NO_ARENA
+#define MALLOC(mem) malloc(mem)
+#define MALLOCS(type) malloc(sizeof(type))
+#define CALLOC(mem) calloc(16 * (((mem) + 15) / 16), 16)
+#define CALLOCS(type) calloc(1, sizeof(type))
+#else
 #define MALLOC(mem) malloc_arena(mem)
 #define MALLOCS(type) malloc_arena(sizeof(type))
 #define CALLOC(mem) calloc_arena(mem)
 #define CALLOCS(type) calloc_arena(sizeof(type))
+#endif
 
 #define NUMBER_CHAR_CASE '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
 
@@ -482,7 +497,7 @@ typedef struct StringSlice_
 
 char *strcat_arena(const char *a, const char *b);
 char *strformat(const char *var, ...) __printflike(1, 2);
-char *strcopy(const char *start, size_t len);
+char *stringcopy(const char *start, size_t len);
 StringSlice strnexttok(StringSlice *slice, char separator);
 static inline bool slicestrcmp(StringSlice slice, const char *other)
 {
@@ -519,7 +534,6 @@ void slicetrim(StringSlice *slice);
 
 int asprintf(char **strp, const char *fmt, ...);
 int vasprintf(char **strp, const char *fmt, va_list ap);
-char *strndup(const char *s, size_t len);
 
 char *realpath(const char *path, char *resolved_path);
 

@@ -14,6 +14,7 @@
 #include "errors.h"
 #include <stdbool.h>
 
+#define NO_ARENA 0
 #define MAX_VECTOR_WIDTH 65536
 #define MAX_ARRAY_SIZE INT64_MAX
 #define MAX_IDENTIFIER_LENGTH 31

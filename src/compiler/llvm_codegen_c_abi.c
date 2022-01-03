@@ -18,55 +18,28 @@ ABIArgInfo *abi_arg_ignore(void)
 	return &info;
 }
 
-AbiType *abi_type_new_plain(Type *type)
+
+
+bool abi_type_is_integer(AbiType type)
 {
-	AbiType *abi_type = CALLOCS(AbiType);
-	abi_type->kind = ABI_TYPE_PLAIN;
-	abi_type->type = type;
-	return abi_type;
+	return !abi_type_is_type(type) || type_is_integer(type.type);
 }
 
-AbiType *abi_type_new_int_bits(ByteSize bits)
+bool abi_type_is_float(AbiType type)
 {
-	assert(bits < UINT32_MAX);
-	AbiType *abi_type = CALLOCS(AbiType);
-	abi_type->kind = ABI_TYPE_INT_BITS;
-	abi_type->int_bits = (uint32_t)bits;
-	return abi_type;
+	return abi_type_is_type(type) && type_is_float(type.type);
 }
 
-bool abi_type_is_integer(AbiType *type)
+TypeSize abi_type_size(AbiType type)
 {
-	return type->kind == ABI_TYPE_INT_BITS || type_is_integer(type->type);
+	if (abi_type_is_type(type)) return type_size(type.type);
+	return (type.int_bits_plus_1 - 1) / 8;
 }
 
-bool abi_type_is_float(AbiType *type)
+AlignSize abi_type_abi_alignment(AbiType type)
 {
-	return type->kind != ABI_TYPE_INT_BITS && type_is_float(type->type);
-}
-
-TypeSize abi_type_size(AbiType *type)
-{
-	switch (type->kind)
-	{
-		case ABI_TYPE_INT_BITS:
-			return type->int_bits / 8;
-		case ABI_TYPE_PLAIN:
-			return type_size(type->type);
-	}
-	UNREACHABLE;
-}
-
-AlignSize abi_type_abi_alignment(AbiType *type)
-{
-	switch (type->kind)
-	{
-		case ABI_TYPE_INT_BITS:
-			return type_abi_alignment(type_int_unsigned_by_bitsize(next_highest_power_of_2(type->int_bits)));
-		case ABI_TYPE_PLAIN:
-			return type_abi_alignment(type->type);
-	}
-	UNREACHABLE;
+	if (abi_type_is_type(type)) return type_abi_alignment(type.type);
+	return type_abi_alignment(type_int_unsigned_by_bitsize(next_highest_power_of_2(type.int_bits_plus_1 - 1)));
 }
 
 bool abi_arg_is_indirect(ABIArgInfo *info)
@@ -74,6 +47,7 @@ bool abi_arg_is_indirect(ABIArgInfo *info)
 	switch (info->kind)
 	{
 		case ABI_ARG_IGNORE:
+		case ABI_ARG_DIRECT:
 		case ABI_ARG_DIRECT_COERCE:
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_DIRECT_PAIR:
@@ -117,22 +91,27 @@ ABIArgInfo *abi_arg_new_indirect_not_by_val(Type *type)
 	return info;
 }
 
-
 ABIArgInfo *abi_arg_new_direct_int_ext(Type *int_to_extend)
 {
-	ABIArgInfo *arg_info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	return abi_arg_new_direct_int_ext_by_reg(int_to_extend, false);
+}
+
+ABIArgInfo *abi_arg_new_direct_int_ext_by_reg(Type *int_to_extend, bool by_reg)
+{
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT);
 	if (type_is_signed(int_to_extend))
 	{
-		arg_info->attributes.signext = true;
+		info->attributes.signext = true;
 	}
 	else
 	{
-		arg_info->attributes.zeroext = true;
+		info->attributes.zeroext = true;
 	}
-	return arg_info;
+	info->attributes.by_reg = by_reg;
+	return info;
 }
 
-ABIArgInfo *abi_arg_new_direct_pair(AbiType *low_type, AbiType *high_type)
+ABIArgInfo *abi_arg_new_direct_pair(AbiType low_type, AbiType high_type)
 {
 	ABIArgInfo *arg_info = abi_arg_new(ABI_ARG_DIRECT_PAIR);
 	arg_info->direct_pair.hi = high_type;
@@ -140,17 +119,25 @@ ABIArgInfo *abi_arg_new_direct_pair(AbiType *low_type, AbiType *high_type)
 	return arg_info;
 }
 
+ABIArgInfo *abi_arg_new_direct_by_reg(bool by_reg)
+{
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT);
+	info->attributes.by_reg = by_reg;
+	return info;
+}
+
 ABIArgInfo *abi_arg_new_direct(void)
 {
-	return abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	return abi_arg_new_direct_by_reg(false);
 }
+
 
 ABIArgInfo *abi_arg_new_expand(void)
 {
 	return abi_arg_new(ABI_ARG_EXPAND);
 }
 
-ABIArgInfo *abi_arg_new_expand_coerce(AbiType *target_type, unsigned offset)
+ABIArgInfo *abi_arg_new_expand_coerce(AbiType target_type, unsigned offset)
 {
 	ABIArgInfo *arg = abi_arg_new(ABI_ARG_EXPAND_COERCE);
 	arg->coerce_expand.packed = offset > 0;
@@ -161,7 +148,7 @@ ABIArgInfo *abi_arg_new_expand_coerce(AbiType *target_type, unsigned offset)
 	return arg;
 }
 
-ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType *first_element, unsigned initial_offset, AbiType *second_element, unsigned padding, bool is_packed)
+ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType first_element, unsigned initial_offset, AbiType second_element, unsigned padding, bool is_packed)
 {
 	ABIArgInfo *arg = abi_arg_new(ABI_ARG_EXPAND_COERCE);
 	arg->coerce_expand.packed = is_packed;
@@ -176,11 +163,27 @@ ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType *first_element, unsigned init
 	return arg;
 }
 
-ABIArgInfo *abi_arg_new_direct_coerce(AbiType *target_type)
+ABIArgInfo *abi_arg_new_direct_coerce_bits(BitSize bits)
 {
-	assert(target_type);
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
-	info->direct_coerce.type = target_type;
+	abi_type_set_int_bits(&info->direct_coerce.type, bits);
+	info->direct_coerce.elements = 0;
+	return info;
+}
+
+ABIArgInfo *abi_arg_new_direct_coerce(AbiType type)
+{
+	assert(abi_type_is_valid(type));
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	info->direct_coerce.type = type;
+	info->direct_coerce.elements = 0;
+	return info;
+}
+
+ABIArgInfo *abi_arg_new_direct_coerce_type(Type *type)
+{
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	abi_type_set_type(&info->direct_coerce.type, type);
 	info->direct_coerce.elements = 0;
 	return info;
 }

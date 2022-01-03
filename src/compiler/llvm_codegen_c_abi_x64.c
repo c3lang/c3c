@@ -115,7 +115,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 		ByteSize size = type_size(type);
 		if (align <= 8 && size <= 8)
 		{
-			return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
+			return abi_arg_new_direct_coerce_bits(size * 8);
 		}
 	}
 	if (align < 8)
@@ -512,12 +512,12 @@ bool x64_contains_float_at_offset(Type *type, unsigned offset)
 	return false;
 }
 
-AbiType *x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *source_type, unsigned source_offset)
+static AbiType x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *source_type, unsigned source_offset)
 {
 	// The only three choices we have are either double, <2 x float>, or float. We
 	// pass as float if the last 4 bytes is just padding.  This happens for
 	// structs that contain 3 floats.
-	if (x64_bits_contain_no_user_data(source_type, source_offset + 4, source_offset + 8)) return abi_type_new_plain(type_float);
+	if (x64_bits_contain_no_user_data(source_type, source_offset + 4, source_offset + 8)) return abi_type_get(type_float);
 
 	// We want to pass as <2 x float> if the LLVM IR type contains a float at
 	// offset+0 and offset+4.  Walk the LLVM IR type to find out if this is the
@@ -525,15 +525,15 @@ AbiType *x64_get_sse_type_at_offset(Type *type, unsigned ir_offset, Type *source
 	if (x64_contains_float_at_offset(type, ir_offset) &&
 	    x64_contains_float_at_offset(type, ir_offset + 4))
 	{
-		return abi_type_new_plain(type_get_vector(type_float, 2));
+		return abi_type_get(type_get_vector(type_float, 2));
 	}
-	return abi_type_new_plain(type_double);
+	return abi_type_get(type_double);
 }
 
 /**
  * Based off X86_64ABIInfo::GetINTEGERTypeAtOffset in Clang
  */
-AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_type, unsigned source_offset)
+AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_type, unsigned source_offset)
 {
 	type = type_lowering(type);
 	switch (type->type_kind)
@@ -541,7 +541,7 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 		case TYPE_U64:
 		case TYPE_I64:
 		case TYPE_POINTER:
-			if (!offset) return abi_type_new_plain(type);
+			if (!offset) return abi_type_get(type);
 			break;
 		case TYPE_BOOL:
 		case TYPE_U8:
@@ -555,7 +555,7 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 			                                  source_offset + type_size(type),
 			                                  source_offset + 8))
 			{
-				return abi_type_new_plain(type);
+				return abi_type_get(type);
 			}
 			break;
 		case TYPE_STRUCT:
@@ -568,12 +568,12 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 			break;
 		}
 		case TYPE_ANY:
-			if (offset < 8) return abi_type_new_plain(type_ulong);
-			if (offset < 16) return abi_type_new_plain(type_voidptr);
+			if (offset < 8) return abi_type_get(type_ulong);
+			if (offset < 16) return abi_type_get(type_voidptr);
 			break;
 		case TYPE_SUBARRAY:
-			if (offset < 8) return abi_type_new_plain(type_voidptr);
-			if (offset < 16) return abi_type_new_plain(type_ulong);
+			if (offset < 8) return abi_type_get(type_voidptr);
+			if (offset < 16) return abi_type_get(type_ulong);
 			break;
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
@@ -609,15 +609,15 @@ AbiType *x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_ty
 	}
 	ByteSize size = type_size(source_type);
 	assert(size != source_offset);
-	if (size - source_offset > 8) return abi_type_new_plain(type_ulong);
-	return abi_type_new_int_bits((size - source_offset) * 8);
+	if (size - source_offset > 8) return abi_type_get(type_ulong);
+	return abi_type_get_int_bits((size - source_offset) * 8);
 }
 
 
 /**
  * This is only called on SSE.
  */
-static AbiType *x64_get_byte_vector_type(Type *type)
+static AbiType x64_get_byte_vector_type(Type *type)
 {
 	// Wrapper structs/arrays that only contain vectors are passed just like
 	// vectors; strip them off if present.
@@ -632,22 +632,22 @@ static AbiType *x64_get_byte_vector_type(Type *type)
 		if (platform_target.x64.pass_int128_vector_in_mem && type_is_int128(element))
 		{
 			// Convert to u64
-			return abi_type_new_plain(type_get_vector(type_ulong, type_size(type) / 8));
+			return abi_type_get(type_get_vector(type_ulong, type_size(type) / 8));
 		}
-		return abi_type_new_plain(type);
+		return abi_type_get(type);
 	}
 
-	if (type->type_kind == TYPE_F128) return abi_type_new_plain(type);
+	if (type->type_kind == TYPE_F128) return abi_type_get(type);
 
 	unsigned size = type_size(type);
 
 	assert(size == 16 || size == 32 || size == 64);
 
 	// Return a vector type based on the size.
-	return abi_type_new_plain(type_get_vector(type_double, size / 8));
+	return abi_type_get(type_get_vector(type_double, size / 8));
 }
 
-static ABIArgInfo *x64_get_argument_pair_return(AbiType *low_type, AbiType *high_type)
+static ABIArgInfo *x64_get_argument_pair_return(AbiType low_type, AbiType high_type)
 {
 	TypeSize low_size = abi_type_size(low_type);
 	unsigned hi_start = aligned_offset(low_size, abi_type_abi_alignment(high_type));
@@ -668,7 +668,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 	assert(hi_class != CLASS_MEMORY || lo_class == CLASS_MEMORY);
 	assert(hi_class != CLASS_SSEUP || lo_class == CLASS_SSE);
 
-	AbiType *result_type = NULL;
+	AbiType result_type = ABI_TYPE_EMPTY;
 	switch (lo_class)
 	{
 		case CLASS_NO_CLASS:
@@ -702,7 +702,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 			break;
 	}
 
-	AbiType *high_part = NULL;
+	AbiType high_part = ABI_TYPE_EMPTY;
 	switch (hi_class)
 	{
 		case CLASS_MEMORY:
@@ -731,10 +731,10 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 	// If a high part was specified, merge it together with the low part.  It is
 	// known to pass in the high eightbyte of the result.  We do this by forming a
 	// first class struct aggregate with the high and low part: {low, high}
-	if (high_part) return x64_get_argument_pair_return(result_type, high_part);
+	if (abi_type_is_valid(high_part)) return x64_get_argument_pair_return(result_type, high_part);
 
-	if (result_type->kind == ABI_TYPE_PLAIN &&
-		return_type->canonical == result_type->type->canonical)
+	if (abi_type_is_type(result_type) &&
+		return_type->canonical == result_type.type->canonical)
 	{
 		return abi_arg_new_direct();
 	}
@@ -762,7 +762,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 	assert(hi_class != CLASS_MEMORY || lo_class == CLASS_MEMORY);
 	assert(hi_class != CLASS_SSEUP || lo_class == CLASS_SSE);
 
-	AbiType *result_type = NULL;
+	AbiType result_type = ABI_TYPE_EMPTY;
 	*needed_registers = (Registers) { 0, 0 };
 
 	// Start by checking the lower class.
@@ -795,7 +795,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 	}
 
 	// At this point we know it's not MEMORY, since that's always handled.
-	AbiType *high_part = NULL;
+	AbiType high_part = ABI_TYPE_EMPTY;
 	switch (hi_class)
 	{
 		case CLASS_MEMORY:
@@ -822,11 +822,11 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 	// If a high part was specified, merge it together with the low part.  It is
 	// known to pass in the high eightbyte of the result.  We do this by forming a
 	// first class struct aggregate with the high and low part: {low, high}
-	if (high_part) return x64_get_argument_pair_return(result_type, high_part);
+	if (abi_type_is_valid(high_part)) return x64_get_argument_pair_return(result_type, high_part);
 
-	if (result_type->kind == ABI_TYPE_PLAIN)
+	if (abi_type_is_type(result_type))
 	{
-		Type *result = result_type->type->canonical;
+		Type *result = result_type.type->canonical;
 		type = type->canonical;
 		if (type == result) return abi_arg_new_direct();
 		if (type_is_integer(type) && type_is_integer(result) && type->builtin.bytesize == result->builtin.bytesize)

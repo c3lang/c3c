@@ -87,7 +87,8 @@ static ABIArgInfo *create_indirect_return_x86(Type *type, Regs *regs)
 	regs->int_regs--;
 	if (platform_target.x86.is_mcu_api) return info;
 
-	return abi_arg_by_reg_attr(info);
+	info->attributes.by_reg = true;
+	return info;
 }
 
 static bool x86_should_return_type_in_reg(Type *type)
@@ -182,13 +183,13 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 			if (size == 16)
 			{
 				// Special case, convert 128 bit vector to two 64 bit elements.
-				return abi_arg_new_direct_coerce(abi_type_new_plain(type_get_vector(type_long, 2)));
+				return abi_arg_new_direct_coerce_type(type_get_vector(type_long, 2));
 			}
 			// Always return in register if it fits in a general purpose
 			// register, or if it is 64 bits and has a single field.
 			if (size == 1 || size == 2 || size == 4 || (size == 8 && type->vector.len == 1))
 			{
-				return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
+				return abi_arg_new_direct_coerce_bits(size * 8);
 			}
 			return create_indirect_return_x86(type, regs);
 		}
@@ -221,7 +222,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 				}
 			}
 			// This is not a single field struct, so we wrap it in an int.
-			return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
+			return abi_arg_new_direct_coerce_bits(size * 8);
 		}
 		return create_indirect_return_x86(type, regs);
 	}
@@ -408,9 +409,7 @@ static inline ABIArgInfo *x86_classify_homogenous_aggregate(Regs *regs, Type *ty
 	// don't flatten.
 	if (is_vec_call)
 	{
-		ABIArgInfo *info = abi_arg_new_direct();
-		info->attributes.by_reg = true;
-		return info;
+		return abi_arg_new_direct_by_reg(true);
 	}
 
 	// If it is a builtin, then expansion is not needed.
@@ -435,7 +434,7 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 		if (size < 64 && regs->float_regs)
 		{
 			regs->float_regs--;
-			return abi_arg_by_reg_attr(abi_arg_new_direct());
+			return abi_arg_new_direct_by_reg(true);
 		}
 		return x86_create_indirect_result(regs, type, BY_VAL_SKIP);
 	}
@@ -445,13 +444,13 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 	{
 		if ((size == 1 || size == 2 || size == 4) || (size == 8 && type->vector.len == 1))
 		{
-			return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
+			return abi_arg_new_direct_coerce_bits(size * 8);
 		}
 	}
 	// MMX passed as i64
 	if (x86_is_mmxtype(type))
 	{
-		return abi_arg_new_direct_coerce(abi_type_new_int_bits(64));
+		return abi_arg_new_direct_coerce_bits(64);
 	}
 
 	// Send as a normal parameter
@@ -491,7 +490,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 		// Here we coerce the aggregate into a struct { i32, i32, ... }
 		// but we do not generate this struct immediately here.
 		unsigned size_in_regs = (size + 3) / 4;
-		ABIArgInfo *info = abi_arg_new_direct_coerce(abi_type_new_int_bits(32));
+		ABIArgInfo *info = abi_arg_new_direct_coerce_bits(32);
 		assert(size_in_regs < 8);
 		info->direct_coerce.elements = (uint8_t)size_in_regs;
 		// Not in reg on MCU
@@ -538,15 +537,10 @@ static ABIArgInfo *x86_classify_primitives(CallABI call, Regs *regs, Type *type)
 
 	if (type_is_promotable_integer(type))
 	{
-		ABIArgInfo *info = abi_arg_new_direct_int_ext(type);
-		info->attributes.by_reg = in_reg;
-		return info;
+		return abi_arg_new_direct_int_ext_by_reg(type, in_reg);
 	}
 
-	ABIArgInfo *info = abi_arg_new_direct();
-	info->attributes.by_reg = in_reg;
-	return info;
-
+	return abi_arg_new_direct_by_reg(in_reg);
 }
 
 /**

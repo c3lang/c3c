@@ -63,7 +63,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 			return abi_arg_new_indirect_not_by_val(type);
 		}
 		// Coerce to integer.
-		return abi_arg_new_direct_coerce(abi_type_new_int_bits(size * 8));
+		return abi_arg_new_direct_coerce_bits(size * 8);
 	}
 	if (type_is_builtin(type->type_kind))
 	{
@@ -76,7 +76,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 				// Pass by val since greater than 8 bytes.
 				if (!is_return) return abi_arg_new_indirect_not_by_val(type);
 				// Make i128 return in XMM0
-				return abi_arg_new_direct_coerce(abi_type_new_plain(type_get_vector(type_long, 2)));
+				return abi_arg_new_direct_coerce_type(type_get_vector(type_long, 2));
 			default:
 				break;
 		}
@@ -99,8 +99,7 @@ ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, Type *type, ABIArgInfo *info)
 		if (regs->float_regs >= elements)
 		{
 			regs->float_regs -= elements;
-			ABIArgInfo *new_info = abi_arg_new_direct();
-			new_info->attributes.by_reg = true;
+			ABIArgInfo *new_info = abi_arg_new_direct_by_reg(true);
 			return new_info;
 		}
 	}

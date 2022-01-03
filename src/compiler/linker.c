@@ -280,7 +280,7 @@ const char *concat_string_parts(const char **args)
 	{
 		size_needed += strlen(args[i]) + 1;
 	}
-	char *output = malloc_arena(size_needed);
+	char *output = malloc_string(size_needed);
 	char *ptr = output;
 	VECEACH(args, i)
 	{

@@ -640,6 +640,8 @@ static Expr *parse_call_expr(Context *context, Expr *left)
 	Decl **body_args = NULL;
 	if (!TOKEN_IS(TOKEN_RPAREN))
 	{
+		// Pick a modest guess.
+		params = VECNEW(Expr*, 4);
 		if (!parse_arg_list(context, &params, TOKEN_RPAREN, &unsplat)) return poisoned_expr;
 	}
 	if (try_consume(context, TOKEN_EOS) && parse_next_is_type(context))
@@ -1245,7 +1247,7 @@ static Expr *parse_bytes_expr(Context *context, Expr *left)
 		len += TOKDATA(tok)->len;
 		tok.index++;
 	}
-	char *data = len > 0 ? malloc_arena(len) : NULL;
+	char *data = len > 0 ? MALLOC(len) : NULL;
 	char *data_current = data;
 
 	Expr *expr_bytes = EXPR_NEW_TOKEN(EXPR_CONST, context->lex.tok);
@@ -1443,7 +1445,7 @@ static Expr *parse_string_literal(Context *context, Expr *left)
 	while (TOKEN_IS(TOKEN_STRING))
 	{
 		data = TOKDATA(context->lex.tok);
-		char *buffer = malloc_arena(len + data->strlen + 1);
+		char *buffer = malloc_string(len + data->strlen + 1);
 		memcpy(buffer, str, len);
 		memcpy(buffer + len, data->string, data->strlen);
 		len += data->strlen;

@@ -1089,7 +1089,7 @@ static inline bool scan_multiline_string(Lexer *lexer)
 	size_t len = scan_multiline_indent(lexer->current, &end, &min_indent);
 
 	// Allocate result
-	char *destination = malloc_arena(len + 1);
+	char *destination = malloc_string(len + 1);
 
 	int line = 0;
 	char c;
@@ -1185,7 +1185,7 @@ static inline bool scan_string(Lexer *lexer)
 		}
 	}
 	const char *end = current - 1;
-	char *destination = malloc_arena((size_t)(end - lexer->current + 1));
+	char *destination = malloc_string((size_t)(end - lexer->current + 1));
 	size_t len = 0;
 	while (lexer->current < end)
 	{
@@ -1251,7 +1251,7 @@ static inline bool scan_raw_string(Lexer *lexer)
 	const char *current = lexer->lexing_start + 1;
 	const char *end = lexer->current - 1;
 	size_t len = (size_t)(end - current);
-	char *destination = malloc_arena(len + 1);
+	char *destination = malloc_string(len + 1);
 	len = 0;
 	while (current < end)
 	{
