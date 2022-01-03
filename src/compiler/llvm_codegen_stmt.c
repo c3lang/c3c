@@ -177,8 +177,6 @@ void llvm_emit_jmp(GenContext *context, LLVMBasicBlockRef block)
 
 static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 {
-	// Ensure we are on a branch that is non empty.
-	if (!llvm_emit_check_block_branch(c)) return;
 
 	bool in_expression_block = c->in_block > 0;
 
@@ -239,7 +237,7 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 		llvm_emit_return_abi(c, NULL, &value);
 		c->current_block = NULL;
 	}
-	LLVMBasicBlockRef post_ret_block = llvm_basic_block_new(c, "ret");
+	LLVMBasicBlockRef post_ret_block = llvm_basic_block_new(c, "postreturn");
 	llvm_emit_block(c, post_ret_block);
 }
 

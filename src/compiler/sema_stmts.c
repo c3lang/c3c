@@ -6,7 +6,7 @@
 
 // --- Helper functions
 
-static bool sema_analyse_compound_stmt(Context *context, Ast *statement);
+static bool sema_analyse_compound_stmt(SemaContext *context, Ast *statement);
 
 typedef enum
 {
@@ -15,7 +15,7 @@ typedef enum
 	COND_TYPE_EVALTYPE_VALUE,
 } CondType;
 
-static void sema_unwrappable_from_catch_in_else(Context *c, Expr *cond)
+static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 {
 	assert(cond->expr_kind == EXPR_COND);
 
@@ -55,7 +55,7 @@ static void sema_unwrappable_from_catch_in_else(Context *c, Expr *cond)
 
 
 
-static inline bool sema_analyse_block_return_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_block_return_stmt(SemaContext *context, Ast *statement)
 {
 	assert(context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO));
 	context->active_scope.jump_end = true;
@@ -82,7 +82,7 @@ static inline bool sema_analyse_block_return_stmt(Context *context, Ast *stateme
  * @param statement
  * @return
  */
-static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement)
 {
 	// This might be a return in a function block or a macro which must be treated differently.
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
@@ -117,13 +117,13 @@ static inline bool sema_analyse_return_stmt(Context *context, Ast *statement)
 	return true;
 }
 
-static inline bool sema_analyse_unreachable_stmt(Context *context)
+static inline bool sema_analyse_unreachable_stmt(SemaContext *context)
 {
 	context->active_scope.jump_end = true;
 	return true;
 }
 
-static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
+static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 {
 	assert(expr->expr_kind == EXPR_TRY_UNWRAP);
 	Expr *ident = expr->try_unwrap_expr.variable;
@@ -285,7 +285,7 @@ static inline bool sema_analyse_try_unwrap(Context *context, Expr *expr)
 }
 
 
-static inline bool sema_analyse_try_unwrap_chain(Context *context, Expr *expr, CondType cond_type)
+static inline bool sema_analyse_try_unwrap_chain(SemaContext *context, Expr *expr, CondType cond_type)
 {
 	assert(cond_type == COND_TYPE_UNWRAP_BOOL || cond_type == COND_TYPE_UNWRAP);
 
@@ -307,7 +307,7 @@ static inline bool sema_analyse_try_unwrap_chain(Context *context, Expr *expr, C
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
-static inline bool sema_analyse_catch_unwrap(Context *context, Expr *expr)
+static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 {
 	Expr *ident = expr->catch_unwrap_expr.variable;
 
@@ -405,7 +405,7 @@ RESOLVE_EXPRS:;
 	return true;
 }
 
-static void sema_remove_unwraps_from_try(Context *c, Expr *cond)
+static void sema_remove_unwraps_from_try(SemaContext *c, Expr *cond)
 {
 	assert(cond->expr_kind == EXPR_COND);
 	Expr *last = VECLAST(cond->cond_expr);
@@ -427,7 +427,7 @@ static void sema_remove_unwraps_from_try(Context *c, Expr *cond)
 	}
 }
 
-static inline bool sema_analyse_last_cond(Context *context, Expr *expr, CondType cond_type)
+static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, CondType cond_type)
 {
 	switch (expr->expr_kind)
 	{
@@ -511,7 +511,7 @@ NORMAL_EXPR:
  *
  * In this case the final value is 4.0 and the type is float.
  */
-static inline bool sema_analyse_cond_list(Context *context, Expr *expr, CondType cond_type)
+static inline bool sema_analyse_cond_list(SemaContext *context, Expr *expr, CondType cond_type)
 {
 	assert(expr->expr_kind == EXPR_COND);
 
@@ -551,7 +551,7 @@ static inline bool sema_analyse_cond_list(Context *context, Expr *expr, CondType
  * @param cast_to_bool if the result is to be cast to bool after
  * @return true if it passes analysis.
  */
-static inline bool sema_analyse_cond(Context *context, Expr *expr, CondType cond_type)
+static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType cond_type)
 {
 	bool cast_to_bool = cond_type == COND_TYPE_UNWRAP_BOOL;
 	assert(expr->expr_kind == EXPR_COND && "Conditional expressions should always be of type EXPR_DECL_LIST");
@@ -626,7 +626,7 @@ static inline bool sema_analyse_stmt_placement(Expr *cond, Ast *stmt)
 /**
  * Check "while" statement, including end of line placement of a single statement.
  */
-static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_while_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *cond = statement->while_stmt.cond;
 	Ast *body = statement->while_stmt.body;
@@ -679,7 +679,7 @@ static inline bool sema_analyse_while_stmt(Context *context, Ast *statement)
 /**
  * Check the do ... while (...) statement.
  */
-static inline bool sema_analyse_do_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_do_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = statement->do_stmt.expr;
 	Ast *body = statement->do_stmt.body;
@@ -753,7 +753,7 @@ END:;
 }
 
 
-static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statement)
 {
 	return sema_analyse_var_decl(context, statement->declare_stmt, true);
 }
@@ -761,7 +761,7 @@ static inline bool sema_analyse_declare_stmt(Context *context, Ast *statement)
 /**
  * Check "var $foo = ... " and "var $Foo = ..."
  */
-static inline bool sema_analyse_var_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_var_stmt(SemaContext *context, Ast *statement)
 {
 	// 1. Pick the declaration.
 	Decl *decl = statement->var_stmt;
@@ -842,13 +842,13 @@ static inline bool sema_analyse_var_stmt(Context *context, Ast *statement)
 	return sema_add_local(context, decl);
 }
 
-static inline bool sema_analyse_expr_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 {
 	if (!sema_analyse_expr(context, statement->expr_stmt)) return false;
 	return true;
 }
 
-static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_defer_stmt(SemaContext *context, Ast *statement)
 {
 	// TODO special parsing of "catch"
 	bool success;
@@ -882,7 +882,7 @@ static inline bool sema_analyse_defer_stmt(Context *context, Ast *statement)
 }
 
 
-static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 {
 	bool success = true;
 	bool is_infinite;
@@ -961,7 +961,7 @@ static inline bool sema_analyse_for_stmt(Context *context, Ast *statement)
 }
 
 
-static inline bool sema_inline_default_iterator(Context *context, Expr *expr, Decl *decl)
+static inline bool sema_inline_default_iterator(SemaContext *context, Expr *expr, Decl *decl)
 {
 	Expr *inner = expr_copy(expr);
 	expr_insert_addr(inner);
@@ -973,7 +973,7 @@ static inline bool sema_inline_default_iterator(Context *context, Expr *expr, De
 	return sema_expr_analyse_general_call(context, expr, decl, inner, decl->decl_kind == DECL_MACRO, false);
 }
 
-static Decl *find_iterator(Context *context, Expr *enumerator)
+static Decl *find_iterator(SemaContext *context, Expr *enumerator)
 {
 	if (!type_may_have_sub_elements(enumerator->type))
 	{
@@ -982,7 +982,7 @@ static Decl *find_iterator(Context *context, Expr *enumerator)
 	}
 	Decl *ambiguous = NULL;
 	Decl *private = NULL;
-	Decl *method = sema_resolve_method(context, enumerator->type->decl, kw_iterator, &ambiguous, &private);
+	Decl *method = sema_resolve_method(context->unit, enumerator->type->decl, kw_iterator, &ambiguous, &private);
 	if (!decl_ok(method)) return NULL;
 	if (!method)
 	{
@@ -1044,13 +1044,13 @@ static Decl *find_iterator(Context *context, Expr *enumerator)
 	return method;
 }
 
-static Decl *find_iterator_next(Context *context, Expr *enumerator)
+static Decl *find_iterator_next(SemaContext *context, Expr *enumerator)
 {
 	Type *type = enumerator->type->canonical;
 	assert(type->type_kind == TYPE_STRUCT);
 	Decl *ambiguous = NULL;
 	Decl *private = NULL;
-	Decl *method = sema_resolve_method(context, type->decl, kw_next, &ambiguous, &private);
+	Decl *method = sema_resolve_method(context->unit, type->decl, kw_next, &ambiguous, &private);
 	if (!decl_ok(method)) return NULL;
 	if (!method)
 	{
@@ -1103,7 +1103,7 @@ static Decl *find_iterator_next(Context *context, Expr *enumerator)
 	return method;
 }
 
-static Expr *sema_insert_method_macro_call(Context *context, SourceSpan span, Decl *macro_decl, Expr *parent, Expr **arguments)
+static Expr *sema_insert_method_macro_call(SemaContext *context, SourceSpan span, Decl *macro_decl, Expr *parent, Expr **arguments)
 {
 	Expr *len_call = expr_new(EXPR_CALL, span);
 	len_call->resolve_status = RESOLVE_RUNNING;
@@ -1117,7 +1117,7 @@ static Expr *sema_insert_method_macro_call(Context *context, SourceSpan span, De
 	return len_call;
 }
 
-static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statement)
 {
 	// Pull out the relevant data.
 	Decl *index = statement->foreach_stmt.index;
@@ -1426,9 +1426,9 @@ static inline bool sema_analyse_foreach_stmt(Context *context, Ast *statement)
 }
 
 
-static bool sema_analyse_switch_stmt(Context *context, Ast *statement);
+static bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement);
 
-static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 {
 	// IMPROVE
 	// convert
@@ -1529,7 +1529,7 @@ static inline bool sema_analyse_if_stmt(Context *context, Ast *statement)
 
 
 
-static bool sema_analyse_asm_stmt(Context *context, Ast *stmt)
+static bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 {
 	if (!sema_analyse_expr(context, stmt->asm_stmt.body)) return false;
 	if (stmt->asm_stmt.body->expr_kind != EXPR_CONST
@@ -1541,7 +1541,7 @@ static bool sema_analyse_asm_stmt(Context *context, Ast *stmt)
 	return true;
 }
 
-static inline Decl *sema_analyse_label(Context *context, Ast *stmt)
+static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 {
 	Decl *ambiguous;
 	Decl *dummy;
@@ -1567,17 +1567,17 @@ static inline Decl *sema_analyse_label(Context *context, Ast *stmt)
 	return target;
 }
 
-static bool context_labels_exist_in_scope(Context *context)
+static bool context_labels_exist_in_scope(SemaContext *context)
 {
-	Decl **last = context->active_scope.current_local;
-	for (Decl **from = &context->locals[0]; from < last; from++)
+	Decl **locals = context->locals;
+	for (size_t local = context->active_scope.current_local; local > 0; local--)
 	{
-		if ((*from)->decl_kind == DECL_LABEL) return true;
+		if (locals[local - 1]->decl_kind == DECL_LABEL) return true;
 	}
 	return false;
 }
 
-static bool sema_analyse_break_stmt(Context *context, Ast *statement)
+static bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 {
 	context->active_scope.jump_end = true;
 	if (!context->break_target && !statement->contbreak_stmt.is_label)
@@ -1610,7 +1610,7 @@ static bool sema_analyse_break_stmt(Context *context, Ast *statement)
 	return true;
 }
 
-static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
+static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 {
 	context->active_scope.jump_end = true;
 
@@ -1751,7 +1751,7 @@ static bool sema_analyse_nextcase_stmt(Context *context, Ast *statement)
 	return true;
 }
 
-static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
+static bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
 {
 	context->active_scope.jump_end = true;
 	statement->contbreak_stmt.defers.start = context->active_scope.defer_last;
@@ -1788,7 +1788,7 @@ static bool sema_analyse_continue_stmt(Context *context, Ast *statement)
 	return true;
 }
 
-static inline bool sema_analyse_then_overwrite(Context *context, Ast *statement, Ast *replacement)
+static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statement, Ast *replacement)
 {
 	if (!sema_analyse_statement(context, replacement)) return false;
 	// Overwrite
@@ -1797,7 +1797,7 @@ static inline bool sema_analyse_then_overwrite(Context *context, Ast *statement,
 }
 
 
-static bool sema_analyse_ct_if_stmt(Context *context, Ast *statement)
+static bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 {
 	int res = sema_check_comp_time_bool(context, statement->ct_if_stmt.expr);
 	if (res == -1) return false;
@@ -1833,7 +1833,7 @@ static bool sema_analyse_ct_if_stmt(Context *context, Ast *statement)
 }
 
 
-static inline bool sema_analyse_compound_statement_no_scope(Context *context, Ast *compound_statement)
+static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context, Ast *compound_statement)
 {
 	bool all_ok = ast_ok(compound_statement);
 	VECEACH(compound_statement->compound_stmt.stmts, i)
@@ -1849,7 +1849,7 @@ static inline bool sema_analyse_compound_statement_no_scope(Context *context, As
 	return all_ok;
 }
 
-static inline bool sema_check_type_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index)
+static inline bool sema_check_type_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index)
 {
 	Expr *expr = case_stmt->case_stmt.expr;
 	if (!sema_analyse_expr_rhs(context, type_typeid, expr, false)) return false;
@@ -1888,7 +1888,7 @@ static inline ExprConst *flatten_enum_const(Expr *expr)
 	}
 	return const_expr;
 }
-static inline bool sema_check_value_case(Context *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged)
+static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged)
 {
 	assert(switch_type);
 	Expr *expr = case_stmt->case_stmt.expr;
@@ -1931,7 +1931,7 @@ static inline bool sema_check_value_case(Context *context, Type *switch_type, As
 	return true;
 }
 
-static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprVariantSwitch *variant, Decl *var_holder)
+static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprVariantSwitch *variant, Decl *var_holder)
 {
 	bool use_type_id = false;
 	if (!type_is_comparable(switch_type))
@@ -2048,7 +2048,7 @@ static bool sema_analyse_switch_body(Context *context, Ast *statement, SourceSpa
 	return success;
 }
 
-static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
+static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
 {
 	Expr *cond = statement->ct_switch_stmt.cond;
 	Type *type = cond->type;
@@ -2151,7 +2151,7 @@ static bool sema_analyse_ct_switch_body(Context *context, Ast *statement)
 	return true;
 }
 
-static bool sema_analyse_ct_switch_stmt(Context *context, Ast *statement)
+static bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *cond = statement->ct_switch_stmt.cond;
 	if (!sema_analyse_expr(context, cond)) return false;
@@ -2163,7 +2163,7 @@ static bool sema_analyse_ct_switch_stmt(Context *context, Ast *statement)
 	return sema_analyse_ct_switch_body(context, statement);
 }
 
-static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
+static bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement)
 {
 	statement->switch_stmt.scope_defer = context->active_scope.in_defer;
 
@@ -2234,7 +2234,7 @@ static bool sema_analyse_switch_stmt(Context *context, Ast *statement)
 
 
 
-bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
+bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = statement->ct_assert_stmt.expr;
 	Expr *message = statement->ct_assert_stmt.message;
@@ -2265,7 +2265,7 @@ bool sema_analyse_ct_assert_stmt(Context *context, Ast *statement)
 	return true;
 }
 
-static inline bool sema_analyse_scoping_stmt(Context *context, Ast *statement)
+static inline bool sema_analyse_scoping_stmt(SemaContext *context, Ast *statement)
 {
 	Expr **exprs = statement->scoping_stmt.scoped->expression_list;
 	unsigned scoped_count = vec_size(exprs);
@@ -2310,7 +2310,7 @@ static inline bool sema_analyse_scoping_stmt(Context *context, Ast *statement)
 	return sema_analyse_compound_stmt(context, statement);
 }
 
-bool sema_analyse_assert_stmt(Context *context, Ast *statement)
+bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = statement->assert_stmt.expr;
 	Expr *message = statement->assert_stmt.message;
@@ -2333,7 +2333,7 @@ bool sema_analyse_assert_stmt(Context *context, Ast *statement)
 	return true;
 }
 
-static bool sema_analyse_compound_stmt(Context *context, Ast *statement)
+static bool sema_analyse_compound_stmt(SemaContext *context, Ast *statement)
 {
 	bool success;
 	bool ends_with_jump;
@@ -2345,7 +2345,7 @@ static bool sema_analyse_compound_stmt(Context *context, Ast *statement)
 	return success;
 }
 
-static bool sema_analyse_ct_compound_stmt(Context *context, Ast *statement)
+static bool sema_analyse_ct_compound_stmt(SemaContext *context, Ast *statement)
 {
 	bool all_ok = ast_ok(statement);
 	Ast **stmts = statement->compound_stmt.stmts;
@@ -2361,7 +2361,7 @@ static bool sema_analyse_ct_compound_stmt(Context *context, Ast *statement)
 }
 
 
-static inline bool sema_analyse_statement_inner(Context *context, Ast *statement)
+static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement)
 {
 	if (statement->ast_kind == AST_POISONED)
 	{
@@ -2451,14 +2451,14 @@ static inline bool sema_analyse_statement_inner(Context *context, Ast *statement
 }
 
 
-bool sema_analyse_statement(Context *context, Ast *statement)
+bool sema_analyse_statement(SemaContext *context, Ast *statement)
 {
 	if (sema_analyse_statement_inner(context, statement)) return true;
 	return ast_poison(statement);
 }
 
 
-static bool sema_analyse_requires(Context *context, Ast *docs, Ast ***asserts)
+static bool sema_analyse_requires(SemaContext *context, Ast *docs, Ast ***asserts)
 {
 	if (!docs) return true;
 	Ast **directives = docs->directives;
@@ -2498,19 +2498,18 @@ static bool sema_analyse_requires(Context *context, Ast *docs, Ast ***asserts)
 	return true;
 }
 
-bool sema_analyse_function_body(Context *context, Decl *func)
+bool sema_analyse_function_body(SemaContext *context, Decl *func)
 {
 	if (!decl_ok(func)) return false;
 	FunctionSignature *signature = &func->func_decl.function_signature;
-	context->active_function_for_analysis = func;
+	context->current_function = func;
 	context->rtype = signature->rtype->type;
 	context->active_scope = (DynamicScope) {
 			.scope_id = 0,
 			.depth = 0,
-			.local_decl_start = &context->locals[0],
-			.current_local = &context->locals[0]
+			.local_decl_start = 0,
+			.current_local = 0
 	};
-	context->macro_scope = (MacroScope) { 0 };
 
 	// Clear returns
 	vec_resize(context->returns, 0);

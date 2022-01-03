@@ -16,12 +16,12 @@ static void indent_line(FILE *file, int indent)
 }
 static void header_gen_decl(FILE *file, int indent, Decl *decl);
 
-static void header_gen_method(FILE *file, Context *c, Decl *decl)
+static void header_gen_method(FILE *file, SemaContext *c, Decl *decl)
 {
 	fprintf(file, "/* method */\n");
 }
 
-static void header_gen_function(FILE *file, Context *c, Decl *decl)
+static void header_gen_function(FILE *file, SemaContext *c, Decl *decl)
 {
 	fprintf(file, "/* function */\n");
 }
@@ -217,7 +217,7 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 	UNREACHABLE
 }
 
-static void header_gen_var(FILE *file, Context *c, Decl *decl)
+static void header_gen_var(FILE *file, SemaContext *c, Decl *decl)
 {
 	fprintf(file, "/* vars */\n");
 }
@@ -225,8 +225,8 @@ static void header_gen_var(FILE *file, Context *c, Decl *decl)
 void header_gen(Module *module)
 {
 	TODO
-	Context *context = module->contexts[0];
-	const char *filename = strcat_arena(context->file->name, ".h");
+	CompilationUnit *unit = module->units[0];
+	const char *filename = strcat_arena(unit->file->name, ".h");
 	FILE *file = fopen(filename, "w");
 	OUTPUT("#include <stdint.h>\n");
 	OUTPUT("#ifndef __c3__\n");
@@ -235,11 +235,13 @@ void header_gen(Module *module)
 	header_print_type(file, type_flatten(type_typeid));
 	OUTPUT(" c3typeid_t;\n");
 	OUTPUT("#endif\n");
-	VECEACH(context->types, i)
+	VECEACH(unit->types, i)
 	{
-		header_gen_decl(file, 0, context->types[i]);
+		header_gen_decl(file, 0, unit->types[i]);
 	}
 
+	TODO
+	/*
 	VECEACH(context->vars, i)
 	{
 		header_gen_var(file, context, context->vars[i]);
@@ -251,6 +253,6 @@ void header_gen(Module *module)
 	VECEACH(context->functions, i)
 	{
 		header_gen_function(file, context, context->functions[i]);
-	}
+	}*/
 	fclose(file);
 }

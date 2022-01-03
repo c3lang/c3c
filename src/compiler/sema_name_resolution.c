@@ -29,19 +29,19 @@ static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 	return 0 == memcmp(path_to_check->module + compare_start, path_to_find->module, path_to_find->len);
 }
 
-Decl *sema_resolve_symbol_in_current_dynamic_scope(Context *context, const char *symbol)
+Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol)
 {
-	Decl **first = context->active_scope.local_decl_start;
-	Decl **current = context->active_scope.current_local;
-	while (current > first)
+	Decl **locals = context->locals;
+	size_t first = context->active_scope.local_decl_start;
+	for (size_t i = context->active_scope.current_local; i > first; i--)
 	{
-		current--;
-		if (current[0]->name == symbol) return current[0];
+		Decl *decl = locals[i - 1];
+		if (decl->name == symbol) return decl;
 	}
 	return NULL;
 }
 
-static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path *path, Decl **ambiguous_other_decl,
+static Decl *sema_resolve_path_symbol(SemaContext *context, const char *symbol, Path *path, Decl **ambiguous_other_decl,
                                       Decl **private_decl, bool *path_found)
 {
 	assert(path && "Expected path.");
@@ -55,19 +55,19 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 		return module_find_symbol(&global_context.std_module, symbol);
 	}
 
-	Context *real_context = context->macro_scope.macro ? context->macro_scope.macro->macro_decl.context : context;
+	CompilationUnit *unit = context->unit;
 
 	// 1. Do we match our own path?
-	if (matches_subpath(real_context->module->name, path))
+	if (matches_subpath(unit->module->name, path))
 	{
 		// 2. If so just get the symbol.
-		return module_find_symbol(real_context->module, symbol);
+		return module_find_symbol(unit->module, symbol);
 	}
 
 	// 3. Loop over imports.
-	VECEACH(real_context->imports, i)
+	VECEACH(unit->imports, i)
 	{
-		Decl *import = real_context->imports[i];
+		Decl *import = unit->imports[i];
 
 		if (import->module->is_generic) continue;
 
@@ -108,61 +108,54 @@ static Decl *sema_resolve_path_symbol(Context *context, const char *symbol, Path
 	return decl;
 }
 
-static Decl *sema_resolve_no_path_symbol(Context *context, const char *symbol,
+static Decl *sema_resolve_no_path_symbol(SemaContext *context, const char *symbol,
                                          Decl **ambiguous_other_decl, Decl **private_decl)
 {
 	Decl *decl = NULL;
 
-	if (context->active_scope.current_local > &context->locals[0])
+	Decl **locals = context->locals;
+	if (context->active_scope.current_local > 0)
 	{
-		Decl **first = &context->locals[0];
-		Decl **current = context->active_scope.current_local - 1;
-		if (context->macro_scope.macro)
-		{
-			first = context->macro_scope.locals_start;
-			if (context->macro_scope.in_yield)
-			{
-				first = context->macro_scope.yield_symbol_start;
-				current = context->macro_scope.yield_symbol_end - 1;
-			}
-		}
+		int64_t first = 0;
+		int64_t current = context->active_scope.current_local - 1;
 		while (current >= first)
 		{
-			if (current[0]->name == symbol) 
+			Decl *cur = locals[current];
+			if (cur->name == symbol)
 			{
 				// We patch special behaviour here.
-				if (current[0]->decl_kind == DECL_VAR)
+				if (cur->decl_kind == DECL_VAR)
 				{
-					VarDeclKind kind = current[0]->var.kind;
+					VarDeclKind kind = cur->var.kind;
 
 					// In this case, we erase the value from parent scopes, so it isn't visible here.
 					if (kind == VARDECL_ERASE) goto JUMP_ERASED;
-					if (kind == VARDECL_REWRAPPED) return current[0]->var.alias;
+					if (kind == VARDECL_REWRAPPED) return cur->var.alias;
 				}
-				return current[0];
+				return cur;
 			}
 			current--;
 		}
 	}
 	JUMP_ERASED:;
 
-	Context *real_context = context->macro_scope.macro ? context->macro_scope.macro->macro_decl.context : context;
+	CompilationUnit *unit = context->unit;
 
 	// Search in file scope.
-	decl = stable_get(&real_context->local_symbols, symbol);
+	decl = stable_get(&unit->local_symbols, symbol);
 
 	if (decl) return decl;
 
 
 	// Search in the module.
-	decl = module_find_symbol(real_context->module, symbol);
+	decl = module_find_symbol(unit->module, symbol);
 
 	if (decl) return decl;
 
 	// Search in imports
-	VECEACH(real_context->imports, i)
+	VECEACH(unit->imports, i)
 	{
-		Decl *import = real_context->imports[i];
+		Decl *import = unit->imports[i];
 		if (!decl_ok(import)) continue;
 
 		// Skip parameterized modules
@@ -219,7 +212,7 @@ static void sema_report_error_on_decl(const char *symbol_str, SourceSpan span, D
 	sema_error_range(span, "'%s' could not be found, did you spell it right?", symbol_str);
 }
 
-static Decl *sema_resolve_symbol(Context *context, const char *symbol_str, SourceSpan span, Path *path, bool report_error)
+static Decl *sema_resolve_symbol(SemaContext *context, const char *symbol_str, SourceSpan span, Path *path, bool report_error)
 {
 	Decl *ambiguous_other_decl = NULL;
 	Decl *private_decl = NULL;
@@ -249,9 +242,9 @@ static Decl *sema_resolve_symbol(Context *context, const char *symbol_str, Sourc
 		sema_report_error_on_decl(symbol_str, span, decl, ambiguous_other_decl, private_decl);
 		return poisoned_decl;
 	}
-	if (decl->module && decl->module != context->module)
+	if (decl->module && decl->module != context->unit->module)
 	{
-		context_register_external_symbol(context, decl);
+		unit_register_external_symbol(context->compilation_unit, decl);
 	}
 	return decl;
 }
@@ -279,7 +272,7 @@ Decl *sema_find_extension_method_in_module(Module *module, Type *type, const cha
 	return NULL;
 }
 
-Decl *sema_resolve_method(Context *context, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
+Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
 {
 	// 1. Look at the previously defined ones.
 	VECEACH(type->methods, i)
@@ -292,9 +285,9 @@ Decl *sema_resolve_method(Context *context, Decl *type, const char *method_name,
 	Type *actual_type = type->type;
 	Decl *private_type = NULL;
 	Decl *result = NULL;
-	VECEACH(context->imports, i)
+	VECEACH(unit->imports, i)
 	{
-		Decl *import = context->imports[i];
+		Decl *import = unit->imports[i];
 
 		if (import->module->is_generic) continue;
 
@@ -322,7 +315,7 @@ Decl *sema_resolve_method(Context *context, Decl *type, const char *method_name,
 	return result;
 }
 
-Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *path)
+Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, TokenId symbol, Path *path)
 {
 	Decl *ambiguous_other_decl = NULL;
 	Decl *private_decl = NULL;
@@ -331,9 +324,9 @@ Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *
 	if (path)
 	{
 		// 3. Loop over imports.
-		VECEACH(context->imports, i)
+		VECEACH(unit->imports, i)
 		{
-			Decl *import = context->imports[i];
+			Decl *import = unit->imports[i];
 
 			// Skip any without parameters.
 			if (!import->module->is_generic) continue;
@@ -378,9 +371,9 @@ Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *
 		return decl;
 	}
 	// 15. Loop over imports.
-	VECEACH(context->imports, i)
+	VECEACH(unit->imports, i)
 	{
-		Decl *import = context->imports[i];
+		Decl *import = unit->imports[i];
 
 		// Skip any without parameters.
 		if (!import->module->is_generic) continue;
@@ -420,42 +413,51 @@ Decl *sema_resolve_parameterized_symbol(Context *context, TokenId symbol, Path *
 	return decl;
 }
 
-Decl *sema_resolve_normal_symbol(Context *context, TokenId symbol, Path *path, bool handle_error)
+Decl *sema_resolve_normal_symbol(SemaContext *context, TokenId symbol, Path *path, bool handle_error)
 {
 	return sema_resolve_symbol(context, TOKSTR(symbol), source_span_from_token_id(symbol), path, handle_error);
 }
 
-Decl *sema_resolve_string_symbol(Context *context, const char *symbol, SourceSpan span, Path *path, bool report_error)
+Decl *sema_resolve_string_symbol(SemaContext *context, const char *symbol, SourceSpan span, Path *path, bool report_error)
 {
 	return sema_resolve_symbol(context, symbol, span, path, report_error);
 }
 
-static inline bool sema_append_local(Context *context, Decl *decl)
+static inline bool sema_append_local(SemaContext *context, Decl *decl)
 {
-	if (context->active_scope.current_local == &context->locals[MAX_LOCALS - 1])
+	Decl ***locals = &context->locals;
+	size_t locals_size = vec_size(*locals);
+	size_t current_local = context->active_scope.current_local;
+	if (locals_size <= current_local)
 	{
-		SEMA_ERROR(decl, "Reached the maximum number of locals.");
-		return false;
+		while (locals_size <= current_local)
+		{
+			vec_add(*locals, decl);
+			locals_size++;
+		}
 	}
-	context->active_scope.current_local[0] = decl;
+	else
+	{
+		(*locals)[current_local] = decl;
+	}
 	context->active_scope.current_local++;
 	return true;
 }
 
-bool sema_add_member(Context *context, Decl *decl)
+bool sema_add_member(SemaContext *context, Decl *decl)
 {
 	return sema_append_local(context, decl);
 }
 
-bool sema_add_local(Context *context, Decl *decl)
+bool sema_add_local(SemaContext *context, Decl *decl)
 {
-	decl->module = context->module;
+	Module *current_module = decl->module = context->unit->module;
 	// Ignore synthetic locals.
 	if (decl->name_token.index == NO_TOKEN_ID.index) return true;
 	if (decl->decl_kind == DECL_VAR && decl->var.shadow) goto ADD_VAR;
 	Decl *other = sema_resolve_normal_symbol(context, decl->name_token, NULL, false);
 	assert(!other || other->module);
-	if (other && other->module == context->module)
+	if (other && other->module == current_module)
 	{
 		sema_shadow_error(decl, other);
 		decl_poison(decl);
@@ -463,7 +465,7 @@ bool sema_add_local(Context *context, Decl *decl)
 		return false;
 	}
 ADD_VAR:;
-	Decl ***vars = &context->active_function_for_analysis->func_decl.annotations->vars;
+	Decl ***vars = &context->current_function->func_decl.annotations->vars;
 	unsigned num_vars = vec_size(*vars);
 	if (num_vars == MAX_LOCALS - 1)
 	{
@@ -475,7 +477,7 @@ ADD_VAR:;
 	return sema_append_local(context, decl);
 }
 
-bool sema_unwrap_var(Context *context, Decl *decl)
+bool sema_unwrap_var(SemaContext *context, Decl *decl)
 {
 	Decl *alias = decl_copy(decl);
 	alias->var.kind = VARDECL_UNWRAPPED;
@@ -485,13 +487,13 @@ bool sema_unwrap_var(Context *context, Decl *decl)
 	return sema_append_local(context, alias);
 }
 
-bool sema_rewrap_var(Context *context, Decl *decl)
+bool sema_rewrap_var(SemaContext *context, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_FAILABLE);
 	return sema_append_local(context, decl->var.alias);
 }
 
-bool sema_erase_var(Context *context, Decl *decl)
+bool sema_erase_var(SemaContext *context, Decl *decl)
 {
 	Decl *erased = decl_copy(decl);
 	erased->var.kind = VARDECL_ERASE;
@@ -500,7 +502,7 @@ bool sema_erase_var(Context *context, Decl *decl)
 }
 
 
-bool sema_erase_unwrapped(Context *context, Decl *decl)
+bool sema_erase_unwrapped(SemaContext *context, Decl *decl)
 {
 	assert(IS_FAILABLE(decl));
 	Decl *rewrapped = decl_copy(decl);

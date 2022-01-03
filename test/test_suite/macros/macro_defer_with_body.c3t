@@ -1,0 +1,24 @@
+module foo;
+macro int cofefe(a; @body(x))
+{
+    @body(a);
+    @body(a);
+    return 1;
+}
+
+extern fn int printf(char *, ...);
+
+fn void main()
+{
+    int x = 0;
+    @cofefe(1; int y)
+    {
+        defer printf("defer: %d\n", x++);
+        printf("%d\n", x++);
+    };
+    printf("Done!\n");
+}
+
+/* expect: foo.ll
+
+feokfef

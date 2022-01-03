@@ -982,69 +982,69 @@ const char *llvm_codegen(void *context)
 
 void *llvm_gen(Module *module)
 {
-	if (!vec_size(module->contexts)) return NULL;
+	if (!vec_size(module->units)) return NULL;
 	assert(intrinsics_setup);
 	GenContext *gen_context = cmalloc(sizeof(GenContext));
 	gencontext_init(gen_context, module);
 	gencontext_begin_module(gen_context);
 
-	VECEACH(module->contexts, j)
+	VECEACH(module->units, j)
 	{
-		Context *context = module->contexts[j];
-		gencontext_init_file_emit(gen_context, context);
-		gen_context->debug.compile_unit = context->llvm_debug_compile_unit;
-		gen_context->debug.file = context->llvm_debug_file;
+		CompilationUnit *unit = module->units[j];
+		gencontext_init_file_emit(gen_context, unit);
+		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
+		gen_context->debug.file = unit->llvm.debug_file;
 
-		VECEACH(context->external_symbol_list, i)
+		VECEACH(unit->external_symbol_list, i)
 		{
-			Decl *d = context->external_symbol_list[i];
+			Decl *d = unit->external_symbol_list[i];
 			// Avoid duplicating symbol
-			if (d->module == context->module) continue;
-			llvm_emit_extern_decl(gen_context, context->external_symbol_list[i]);
+			if (d->module == unit->module) continue;
+			llvm_emit_extern_decl(gen_context, unit->external_symbol_list[i]);
 		}
-		VECEACH(context->methods, i)
+		VECEACH(unit->methods, i)
 		{
-			llvm_emit_function_decl(gen_context, context->methods[i]);
+			llvm_emit_function_decl(gen_context, unit->methods[i]);
 		}
-		VECEACH(context->types, i)
+		VECEACH(unit->types, i)
 		{
-			llvm_emit_type_decls(gen_context, context->types[i]);
+			llvm_emit_type_decls(gen_context, unit->types[i]);
 		}
-		VECEACH(context->functions, i)
+		VECEACH(unit->functions, i)
 		{
-			llvm_emit_function_decl(gen_context, context->functions[i]);
+			llvm_emit_function_decl(gen_context, unit->functions[i]);
 		}
-		if (context->main_function) llvm_emit_function_decl(gen_context, context->main_function);
+		if (unit->main_function) llvm_emit_function_decl(gen_context, unit->main_function);
 	}
 
-	VECEACH(module->contexts, j)
+	VECEACH(module->units, j)
 	{
-		Context *context = module->contexts[j];
-		gen_context->debug.compile_unit = context->llvm_debug_compile_unit;
-		gen_context->debug.file = context->llvm_debug_file;
+		CompilationUnit *unit = module->units[j];
+		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
+		gen_context->debug.file = unit->llvm.debug_file;
 
-		VECEACH(context->vars, i)
+		VECEACH(unit->vars, i)
 		{
-			gencontext_emit_global_variable_definition(gen_context, context->vars[i]);
+			gencontext_emit_global_variable_definition(gen_context, unit->vars[i]);
 		}
-		VECEACH(context->vars, i)
+		VECEACH(unit->vars, i)
 		{
-			llvm_emit_global_variable_init(gen_context, context->vars[i]);
+			llvm_emit_global_variable_init(gen_context, unit->vars[i]);
 		}
-		VECEACH(context->functions, i)
+		VECEACH(unit->functions, i)
 		{
-			Decl *decl = context->functions[i];
+			Decl *decl = unit->functions[i];
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
 		}
-		if (context->main_function) llvm_emit_function_body(gen_context, context->main_function);
+		if (unit->main_function) llvm_emit_function_body(gen_context, unit->main_function);
 
-		VECEACH(context->methods, i)
+		VECEACH(unit->methods, i)
 		{
-			Decl *decl = context->methods[i];
+			Decl *decl = unit->methods[i];
 			if (decl->func_decl.body) llvm_emit_function_body(gen_context, decl);
 		}
 
-		gencontext_end_file_emit(gen_context, context);
+		gencontext_end_file_emit(gen_context, unit);
 	}
 	// EmitDeferred()
 

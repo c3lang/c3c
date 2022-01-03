@@ -191,8 +191,8 @@ extern LLVMAttributes attribute_id;
 // LLVM Attributes
 
 void gencontext_begin_module(GenContext *c);
-void gencontext_init_file_emit(GenContext *c, Context *ast);
-void gencontext_end_file_emit(GenContext *c, Context *ast);
+void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit);
+void gencontext_end_file_emit(GenContext *c, CompilationUnit *ast);
 void gencontext_end_module(GenContext *context);
 
 LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal);

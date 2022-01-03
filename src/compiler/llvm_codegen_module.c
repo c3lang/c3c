@@ -78,18 +78,18 @@ void gencontext_begin_module(GenContext *c)
 	}
 }
 
-void gencontext_init_file_emit(GenContext *c, Context *ast)
+void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit)
 {
 	if (active_target.debug_info != DEBUG_INFO_NONE)
 	{
-		const char *filename = ast->file->name;
-		const char *dir_path = ast->file->dir_path;
+		const char *filename = unit->file->name;
+		const char *dir_path = unit->file->dir_path;
 		// Set runtime version here.
-		ast->llvm_debug_file = LLVMDIBuilderCreateFile(c->debug.builder,
-		                                               filename,
-		                                               strlen(filename),
-		                                               dir_path,
-		                                               strlen(dir_path));
+		unit->llvm.debug_file = LLVMDIBuilderCreateFile(c->debug.builder,
+		                                                filename,
+		                                                strlen(filename),
+		                                                dir_path,
+		                                                strlen(dir_path));
 
 		bool is_optimized = active_target.optimization_level != OPTIMIZATION_NONE;
 		const char *dwarf_flags = "";
@@ -102,34 +102,34 @@ void gencontext_init_file_emit(GenContext *c, Context *ast)
 		const char *sysroot = "";
 		const char *sdk = "";
 		unsigned dwo_id = 0;
-		ast->llvm_debug_compile_unit = LLVMDIBuilderCreateCompileUnit(c->debug.builder,
-		                                                              LLVMDWARFSourceLanguageC,
-		                                                              ast->llvm_debug_file,
-		                                                              DWARF_PRODUCER_NAME,
-		                                                              strlen(DWARF_PRODUCER_NAME),
-		                                                              is_optimized,
-		                                                              dwarf_flags,
-		                                                              strlen(dwarf_flags),
-		                                                              runtime_version,
-		                                                              debug_output_file,
-		                                                              strlen(debug_output_file),
-		                                                              emission_kind,
-		                                                              dwo_id,
-		                                                              split_debug_inlining,
-		                                                              emit_debug_info_for_profiling
+		unit->llvm.debug_compile_unit = LLVMDIBuilderCreateCompileUnit(c->debug.builder,
+		                                                               LLVMDWARFSourceLanguageC,
+		                                                               unit->llvm.debug_file,
+		                                                               DWARF_PRODUCER_NAME,
+		                                                               strlen(DWARF_PRODUCER_NAME),
+		                                                               is_optimized,
+		                                                               dwarf_flags,
+		                                                               strlen(dwarf_flags),
+		                                                               runtime_version,
+		                                                               debug_output_file,
+		                                                               strlen(debug_output_file),
+		                                                               emission_kind,
+		                                                               dwo_id,
+		                                                               split_debug_inlining,
+		                                                               emit_debug_info_for_profiling
 #if LLVM_VERSION_MAJOR >= 11
 		                                                              ,
-		                                                              sysroot,
-		                                                              strlen(sysroot),
-		                                                              sdk,
-		                                                              strlen(sdk)
+		                                                               sysroot,
+		                                                               strlen(sysroot),
+		                                                               sdk,
+		                                                               strlen(sdk)
 #endif
-		                                                      );
+		                                                              );
 	}
 }
 
 
-void gencontext_end_file_emit(GenContext *c, Context *ast)
+void gencontext_end_file_emit(GenContext *c, CompilationUnit *ast)
 {
 }
 

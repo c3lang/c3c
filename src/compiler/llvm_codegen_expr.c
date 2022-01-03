@@ -4824,7 +4824,15 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 		llvm_emit_expr(context, &value, expr->macro_block.args[i]);
 		llvm_store_aligned_decl(context, decl, llvm_value_rvalue_store(context, &value));
 	}
-
+	if (expr->macro_block.no_scope)
+	{
+		VECEACH(expr->macro_block.stmts, i)
+		{
+			llvm_emit_stmt(context, expr->macro_block.stmts[i]);
+		}
+		llvm_value_set(be_value, NULL, type_void);
+		return;
+	}
 	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.stmts);
 }
 

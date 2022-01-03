@@ -12,26 +12,26 @@
  *
  * @param context the current context.
  */
-inline void advance(Context *context)
+inline void advance(ParseContext *context)
 {
 	context->lead_comment = context->next_lead_comment;
 	context->trailing_comment = NULL;
 	context->next_lead_comment = NULL;
-	context->lex.prev_tok = context->lex.tok.id;
-	context->lex.tok = context->lex.next_tok;
+	context->prev_tok = context->tok.id;
+	context->tok = context->next_tok;
 
 	while (1)
 	{
-		if (context->lex.tok.type == TOKEN_EOF)
+		if (context->tok.type == TOKEN_EOF)
 		{
-			context->lex.next_tok = context->lex.tok;
+			context->next_tok = context->tok;
 			return;
 		}
 
-		uint32_t index = context->lex.lexer_index++;
+		uint32_t index = context->lexer_index++;
 		TokenType next_type = (TokenType)(*toktypeptr(index));
-		context->lex.next_tok.id.index = index;
-		context->lex.next_tok.type = next_type;
+		context->next_tok.id.index = index;
+		context->next_tok.type = next_type;
 
 		// At this point we should not have any invalid tokens.
 		assert(next_type != TOKEN_INVALID_TOKEN);
@@ -39,7 +39,7 @@ inline void advance(Context *context)
 		// Walk through any regular comments
 		if (next_type == TOKEN_COMMENT)
 		{
-			vec_add(context->comments, context->lex.next_tok);
+			vec_add(context->comments, context->next_tok);
 			continue;
 		}
 
@@ -47,14 +47,14 @@ inline void advance(Context *context)
 		if (next_type != TOKEN_DOC_COMMENT) return;
 
 		{
-			SourceLocation *curr = TOKLOC(context->lex.tok);
-			SourceLocation *next = TOKLOC(context->lex.next_tok);
-			vec_add(context->comments, context->lex.next_tok);
+			SourceLocation *curr = TOKLOC(context->tok);
+			SourceLocation *next = TOKLOC(context->next_tok);
+			vec_add(context->comments, context->next_tok);
 			if (curr->row == next->row)
 			{
 				if (context->trailing_comment)
 				{
-					SEMA_TOKEN_ERROR(context->lex.next_tok,
+					SEMA_TOKEN_ERROR(context->next_tok,
 					                 "You have multiple trailing doc-style comments, should the second one go on the next line?");
 				}
 				else
@@ -66,7 +66,7 @@ inline void advance(Context *context)
 			{
 				if (context->lead_comment)
 				{
-					SEMA_TOKEN_ERROR(context->lex.next_tok,
+					SEMA_TOKEN_ERROR(context->next_tok,
 					                 "You have multiple doc-style comments in a row, are all of them really meant to document the code that follows?");
 				}
 				else
@@ -79,9 +79,9 @@ inline void advance(Context *context)
 
 }
 
-bool try_consume(Context *context, TokenType type)
+bool try_consume(ParseContext *context, TokenType type)
 {
-	if (context->lex.tok.type == type)
+	if (context->tok.type == type)
 	{
 		advance(context);
 		return true;
@@ -89,7 +89,7 @@ bool try_consume(Context *context, TokenType type)
 	return false;
 }
 
-bool consume(Context *context, TokenType type, const char *message, ...)
+bool consume(ParseContext *context, TokenType type, const char *message, ...)
 {
 	if (try_consume(context, type))
 	{
@@ -98,7 +98,7 @@ bool consume(Context *context, TokenType type, const char *message, ...)
 
 	va_list args;
 	va_start(args, message);
-	sema_verror_range(TOKLOC(context->lex.tok), message, args);
+	sema_verror_range(TOKLOC(context->tok), message, args);
 	va_end(args);
 	return false;
 }
@@ -110,7 +110,7 @@ bool consume(Context *context, TokenType type, const char *message, ...)
  * module? imports top_level_statement*
  * @param context
  */
-static inline void parse_translation_unit(Context *context)
+static inline void parse_translation_unit(ParseContext *context)
 {
 	// Prime everything
 	advance(context);
@@ -122,10 +122,9 @@ static inline void parse_translation_unit(Context *context)
 	{
 		if (TOKEN_IS(TOKEN_MODULE))
 		{
-			Context *new_context = context_create(context->file);
-			new_context->lead_comment = context->lead_comment;
-			new_context->next_lead_comment = context->next_lead_comment;
-			new_context->lex = context->lex;
+			ParseContext *new_context = CALLOCS(ParseContext);
+			*new_context = *context;
+			new_context->unit = unit_create(context->unit->file);
 			context = new_context;
 			goto NEXT_CONTEXT;
 		}
@@ -133,7 +132,7 @@ static inline void parse_translation_unit(Context *context)
 		if (!decl) continue;
 		if (decl_ok(decl))
 		{
-			vec_add(context->global_decls, decl);
+			vec_add(context->unit->global_decls, decl);
 		}
 		else
 		{
@@ -154,9 +153,10 @@ bool parse_file(File *file)
 	Lexer lexer = { .file = file };
 	lexer_lex_file(&lexer);
 	if (global_context.errors_found) return false;
-	Context *context = context_create(file);
-	context->lex.lexer_index = lexer.token_start_id;
-	parse_translation_unit(context);
+	CompilationUnit *unit = unit_create(file);
+	ParseContext lex_context = { .lexer_index = lexer.token_start_id,
+							   .unit = unit };
+	parse_translation_unit(&lex_context);
 	return !global_context.errors_found;
 }
 
