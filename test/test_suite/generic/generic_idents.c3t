@@ -28,64 +28,43 @@ fn double getIt2(double i)
 
 // #expect: gen.int.ll
 
-define i32 @gen.int.mult(i32 %0)
-  %x = alloca i32, align 4
-  store i32 %0, i32* %x, align 4
-  %1 = load i32, i32* %x, align 4
-  %2 = load i32, i32* %x, align 4
-  %mul = mul i32 %1, %2
+define i32 @gen.int.mult(i32 %0) #0 {
+entry:
+  %mul = mul i32 %0, %0
   ret i32 %mul
+}
 
-; Function Attrs: nounwind
-define i32 @gen.int.addMult(i32 %0, i32 %1, i32 %2)
-  %x = alloca i32, align 4
-  %a = alloca i32, align 4
-  %b = alloca i32, align 4
-  store i32 %0, i32* %x, align 4
-  store i32 %1, i32* %a, align 4
-  store i32 %2, i32* %b, align 4
-  %3 = load i32, i32* %x, align 4
-  %4 = load i32, i32* %a, align 4
-  %mul = mul i32 %3, %4
-  %5 = load i32, i32* %b, align 4
-  %add = add i32 %mul, %5
+define i32 @gen.int.addMult(i32 %0, i32 %1, i32 %2) #0 {
+entry:
+  %mul = mul i32 %0, %1
+  %add = add i32 %mul, %2
   ret i32 %add
+}
+
 
 // #expect: test.ll
 
 declare i32 @gen.int.mult(i32)
+
 declare double @gen.double.addMult(double, double, double)
 
-define i32 @test.getIt(i32 %0)
-
-  %i = alloca i32, align 4
-  store i32 %0, i32* %i, align 4
-  %1 = load i32, i32* %i, align 4
-  %2 = call i32 @gen.int.mult(i32 %1)
-  %add = add i32 %2, 1
+define i32 @test.getIt(i32 %0) #0 {
+entry:
+  %1 = call i32 @gen.int.mult(i32 %0)
+  %add = add i32 %1, 1
   ret i32 %add
-
-define double @test.getIt2(double %0)
-
-  %i = alloca double, align 8
-  store double %0, double* %i, align 8
-  %1 = load double, double* %i, align 8
-  %2 = call double @gen.double.addMult(double %1, double 2.000000e+00, double 3.000000e+00)
-  ret double %2
 }
+
+define double @test.getIt2(double %0) #0 {
+entry:
+  %1 = call double @gen.double.addMult(double %0, double 2.000000e+00, double 3.000000e+00)
+  ret double %1
+}
+
 
 // #expect: gen.double.ll
 
 define double @gen.double.addMult(double %0, double %1, double %2)
-  %x = alloca double, align 8
-  %a = alloca double, align 8
-  %b = alloca double, align 8
-  store double %0, double* %x, align 8
-  store double %1, double* %a, align 8
-  store double %2, double* %b, align 8
-  %3 = load double, double* %x, align 8
-  %4 = load double, double* %a, align 8
-  %fmul = fmul double %3, %4
-  %5 = load double, double* %b, align 8
-  %fadd = fadd double %fmul, %5
+  %fmul = fmul double %0, %1
+  %fadd = fadd double %fmul, %2
   ret double %fadd

@@ -20,42 +20,39 @@ fn int foo(double b)
 
 define i32 @foo.foo(double %0) #0 {
 entry:
-  %b = alloca double, align 8
   %d = alloca double, align 8
   %e = alloca double, align 8
   %f = alloca double, align 8
   %xeb = alloca i32, align 4
   %abcd = alloca [3 x i32], align 4
   %sy = alloca i32, align 4
-  store double %0, double* %b, align 8
-  %1 = load double, double* %b, align 8
-  %2 = call double @llvm.ceil.f64(double %1)
-  store double %2, double* %d, align 8
-  %3 = call double @llvm.maxnum.f64(double 1.000000e+00, double 1.000000e+00)
-  store double %3, double* %e, align 8
+  %1 = call double @llvm.ceil.f64(double %0)
+  store double %1, double* %d, align 8
+  %2 = call double @llvm.maxnum.f64(double 1.000000e+00, double 1.000000e+00)
+  store double %2, double* %e, align 8
+  %3 = load double, double* %d, align 8
   %4 = load double, double* %d, align 8
   %5 = load double, double* %d, align 8
-  %6 = load double, double* %d, align 8
-  %7 = call double @llvm.fma.f64(double %4, double %5, double %6)
-  store double %7, double* %f, align 8
+  %6 = call double @llvm.fma.f64(double %3, double %4, double %5)
+  store double %6, double* %f, align 8
   store i32 13, i32* %xeb, align 4
-  %8 = getelementptr inbounds [3 x i32], [3 x i32]* %abcd, i64 0, i64 0
+  %7 = getelementptr inbounds [3 x i32], [3 x i32]* %abcd, i64 0, i64 0
+  store i32 0, i32* %7, align 4
+  %8 = getelementptr inbounds [3 x i32], [3 x i32]* %abcd, i64 0, i64 1
   store i32 0, i32* %8, align 4
-  %9 = getelementptr inbounds [3 x i32], [3 x i32]* %abcd, i64 0, i64 1
+  %9 = getelementptr inbounds [3 x i32], [3 x i32]* %abcd, i64 0, i64 2
   store i32 0, i32* %9, align 4
-  %10 = getelementptr inbounds [3 x i32], [3 x i32]* %abcd, i64 0, i64 2
-  store i32 0, i32* %10, align 4
-  %11 = load volatile i32, i32* %xeb, align 4
-  store i32 %11, i32* %sy, align 4
-  %12 = load i32, i32* %sy, align 4
-  %add = add i32 %12, 1
+  %10 = load volatile i32, i32* %xeb, align 4
+  store i32 %10, i32* %sy, align 4
+  %11 = load i32, i32* %sy, align 4
+  %add = add i32 %11, 1
   store volatile i32 %add, i32* %xeb, align 4
-  %13 = getelementptr inbounds [3 x i32], [3 x i32]* %abcd, i64 0, i64 2
-  %14 = load i32, i32* %sy, align 4
-  %add1 = add i32 %14, 2
-  store volatile i32 %add1, i32* %13, align 4
-  %15 = getelementptr inbounds [3 x i32], [3 x i32]* %abcd, i64 0, i64 2
-  %16 = load volatile i32, i32* %15, align 4
-  store i32 %16, i32* %sy, align 4
+  %12 = getelementptr inbounds [3 x i32], [3 x i32]* %abcd, i64 0, i64 2
+  %13 = load i32, i32* %sy, align 4
+  %add1 = add i32 %13, 2
+  store volatile i32 %add1, i32* %12, align 4
+  %14 = getelementptr inbounds [3 x i32], [3 x i32]* %abcd, i64 0, i64 2
+  %15 = load volatile i32, i32* %14, align 4
+  store i32 %15, i32* %sy, align 4
   ret i32 1
 }

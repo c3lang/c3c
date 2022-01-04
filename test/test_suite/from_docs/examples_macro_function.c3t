@@ -25,11 +25,7 @@ fn int test()
 
 define i32 @example.square(i32 %0) #0 {
 entry:
-  %x = alloca i32, align 4
-  store i32 %0, i32* %x, align 4
-  %1 = load i32, i32* %x, align 4
-  %2 = load i32, i32* %x, align 4
-  %mul = mul i32 %1, %2
+  %mul = mul i32 %0, %0
   ret i32 %mul
 }
 

@@ -196,6 +196,8 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 			return false;
 		}
 
+		if (ident->expr_kind == EXPR_IDENTIFIER) ident->identifier_expr.decl->var.is_written = true;
+
 		// 3c. It can't be failable either.
 		if (IS_FAILABLE(ident))
 		{
@@ -335,6 +337,8 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 			SEMA_ERROR(ident, "'catch' expected an assignable variable or expression here, did you make a mistake?");
 			return false;
 		}
+
+		if (ident->expr_kind == EXPR_IDENTIFIER) ident->identifier_expr.decl->var.is_written = true;
 
 		if (ident->type->canonical != type_anyerr)
 		{
@@ -1297,8 +1301,10 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	bool is_variable = false;
 	if (expr_is_ltype(enumerator))
 	{
+
 		if (enumerator->expr_kind == EXPR_IDENTIFIER)
 		{
+			enumerator->identifier_expr.decl->var.is_written = true;
 			is_variable = true;
 		}
 		else

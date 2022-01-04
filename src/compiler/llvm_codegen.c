@@ -763,6 +763,17 @@ void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type 
 	value->type = type_lowering(type);
 }
 
+void llvm_value_set_decl(BEValue *value, Decl *decl)
+{
+	decl = decl_flatten(decl);
+	if (decl->is_value)
+	{
+		llvm_value_set(value, decl->backend_value, decl->type);
+		return;
+	}
+	llvm_value_set_decl_address(value, decl);
+}
+
 void llvm_value_set_decl_address(BEValue *value, Decl *decl)
 {
 	decl = decl_flatten(decl);
@@ -1186,6 +1197,7 @@ LLVMValueRef llvm_store_aligned(GenContext *context, LLVMValueRef pointer, LLVMV
 
 void llvm_store_aligned_decl(GenContext *context, Decl *decl, LLVMValueRef value)
 {
+	assert(!decl->is_value);
 	llvm_store_aligned(context, decl->backend_ref, value, decl->alignment);
 }
 
@@ -1203,6 +1215,7 @@ void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLV
 void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, unsigned source_alignment)
 {
 	if (source_alignment == 0) source_alignment = type_abi_alignment(decl->type);
+	assert(!decl->is_value);
 	llvm_emit_memcpy(c, decl->backend_ref, decl->alignment, source, source_alignment, type_size(decl->type));
 }
 

@@ -20,10 +20,6 @@ fn void main()
 
 define i32 @demo.my_callback(i8* %0, i32 %1) #0 {
 entry:
-  %text = alloca i8*, align 8
-  %value = alloca i32, align 4
-  store i8* %0, i8** %text, align 8
-  store i32 %1, i32* %value, align 4
   ret i32 0
 }
 

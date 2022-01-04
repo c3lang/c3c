@@ -38,11 +38,7 @@ fn int main(int argc, char **argv)
 
 define i32 @main(i32 %0, i8** %1) #0 {
 entry:
-  %argc = alloca i32, align 4
-  %argv = alloca i8**, align 8
   %a = alloca i32, align 4
-  store i32 %0, i32* %argc, align 4
-  store i8** %1, i8*** %argv, align 8
   store i32 0, i32* %a, align 4
   br label %loop.cond
 
@@ -52,14 +48,12 @@ loop.cond:                                        ; preds = %exit3, %entry
   br i1 %intbool, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %3 = load i32, i32* %argc, align 4
-  %eq = icmp eq i32 %3, 1
+  %eq = icmp eq i32 %0, 1
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %loop.body
-  %4 = load i32, i32* %a, align 4
-  %5 = load i32, i32* %argc, align 4
-  %add = add i32 %4, %5
+  %3 = load i32, i32* %a, align 4
+  %add = add i32 %3, %0
   call void @test.test2()
   br label %exit
 
@@ -86,18 +80,17 @@ loop.exit:                                        ; preds = %loop.cond
   br label %loop.cond4
 
 loop.cond4:                                       ; preds = %loop.exit
-  %6 = load i32, i32* %a, align 4
-  %intbool5 = icmp ne i32 %6, 0
+  %4 = load i32, i32* %a, align 4
+  %intbool5 = icmp ne i32 %4, 0
   br i1 %intbool5, label %loop.body6, label %loop.exit21
 
 loop.body6:                                       ; preds = %loop.cond4
-  %7 = load i32, i32* %argc, align 4
-  %eq7 = icmp eq i32 %7, 1
+  %eq7 = icmp eq i32 %0, 1
   br i1 %eq7, label %if.then8, label %if.exit13
 
 if.then8:                                         ; preds = %loop.body6
-  %8 = load i32, i32* %a, align 4
-  %add9 = add i32 %8, 2
+  %5 = load i32, i32* %a, align 4
+  %add9 = add i32 %5, 2
   call void @test.test6()
   br label %exit10
 
@@ -133,8 +126,7 @@ exit17:                                           ; preds = %exit16
   ret i32 4
 
 loop.exit21:                                      ; preds = %loop.cond4
-  %9 = load i32, i32* %argc, align 4
-  %add22 = add i32 0, %9
+  %add22 = add i32 0, %0
   call void @test.test5()
   br label %exit23
 

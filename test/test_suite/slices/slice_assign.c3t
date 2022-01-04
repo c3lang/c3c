@@ -83,10 +83,6 @@ exit:                                             ; preds = %cond
 
 define i32 @main(i32 %0, i8** %1) #0 {
 entry:
-  %"_$argv" = alloca i32, align 4
-  %"_$argc" = alloca i8**, align 8
-  store i32 %0, i32* %"_$argv", align 4
-  store i8** %1, i8*** %"_$argc", align 8
   call void @test.main()
   ret i32 0
 }

@@ -21,30 +21,45 @@ fn void test(int i)
 
 // #expect: defer_next_switch.ll
 
-switch.case:
-  %3 = load i8, i8* %b, align 1
-  %4 = trunc i8 %3 to i1
-  br i1 %4, label %if.then, label %if.exit
+define void @defer_next_switch.test(i32 %0) #0 {
+entry:
+  %b = alloca i8, align 1
+  %switch = alloca i32, align 4
+  store i8 1, i8* %b, align 1
+  store i32 %0, i32* %switch, align 4
+  br label %switch.entry
 
-if.then:
+switch.entry:                                     ; preds = %entry
+  %1 = load i32, i32* %switch, align 4
+  switch i32 %1, label %switch.exit [
+    i32 1, label %switch.case
+    i32 2, label %switch.case2
+  ]
+
+switch.case:                                      ; preds = %switch.entry
+  %2 = load i8, i8* %b, align 1
+  %3 = trunc i8 %2 to i1
+  br i1 %3, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %switch.case
   call void @defer_next_switch.test2()
   br label %exit
 
-exit:
+exit:                                             ; preds = %if.then
   br label %switch.case2
 
-if.exit:
+if.exit:                                          ; preds = %switch.case
   call void @defer_next_switch.test1()
   call void @defer_next_switch.test2()
   br label %exit1
 
-exit1:
+exit1:                                            ; preds = %if.exit
   br label %switch.exit
 
-switch.case2:
+switch.case2:                                     ; preds = %switch.entry, %exit
   call void @defer_next_switch.test1()
   br label %switch.exit
 
-switch.exit:
+switch.exit:                                      ; preds = %switch.case2, %exit1, %switch.entry
   ret void
 }

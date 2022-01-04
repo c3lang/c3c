@@ -85,18 +85,15 @@ Foo6 foo6 = { 1, 2, 3 };
 
 @struct2.test5
 entry:
-  %x = alloca i8, align 1
   %y = alloca %Foo5, align 16
-  store i8 %0, i8* %x, align 1
   %1 = bitcast %Foo5* %y to i8*
   call void @llvm.memset.p0i8.i64(i8* align 16 %1, i8 0, i64 32, i1 false)
   %2 = getelementptr inbounds %Foo5, %Foo5* %y, i32 0, i32 2
-  %3 = load i8, i8* %x, align 1
-  store i8 %3, i8* %2, align 16
-  %4 = getelementptr inbounds %Foo5, %Foo5* %y, i32 0, i32 2
-  %5 = load i8, i8* %4, align 16
-  %sisiext = sext i8 %5 to i32
-  %6 = getelementptr inbounds %Foo5, %Foo5* %y, i32 0, i32 0
-  %7 = load i32, i32* %6, align 16
-  %add = add i32 %sisiext, %7
+  store i8 %0, i8* %2, align 16
+  %3 = getelementptr inbounds %Foo5, %Foo5* %y, i32 0, i32 2
+  %4 = load i8, i8* %3, align 16
+  %sisiext = sext i8 %4 to i32
+  %5 = getelementptr inbounds %Foo5, %Foo5* %y, i32 0, i32 0
+  %6 = load i32, i32* %5, align 16
+  %add = add i32 %sisiext, %6
   ret i32 %add

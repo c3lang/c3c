@@ -50,11 +50,7 @@ fn int main(int argc, char** argv)
 
 define i32 @main(i32 %0, i8** %1) #0 {
 entry:
-  %argc = alloca i32, align 4
-  %argv = alloca i8**, align 8
   %a = alloca i32, align 4
-  store i32 %0, i32* %argc, align 4
-  store i8** %1, i8*** %argv, align 8
   store i32 0, i32* %a, align 4
   call void @foo.defer2()
   %2 = load i32, i32* %a, align 4
@@ -77,8 +73,7 @@ loop.cond:                                        ; preds = %exit6, %exit
   br i1 %intbool, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %4 = load i32, i32* %argc, align 4
-  %eq1 = icmp eq i32 %4, 1
+  %eq1 = icmp eq i32 %0, 1
   br i1 %eq1, label %if.then2, label %if.exit4
 
 if.then2:                                         ; preds = %loop.body
@@ -104,13 +99,12 @@ loop.exit:                                        ; preds = %exit3, %loop.cond
   br label %loop.cond7
 
 loop.cond7:                                       ; preds = %loop.exit
-  %5 = load i32, i32* %a, align 4
-  %intbool8 = icmp ne i32 %5, 0
+  %4 = load i32, i32* %a, align 4
+  %intbool8 = icmp ne i32 %4, 0
   br i1 %intbool8, label %loop.body9, label %loop.exit18
 
 loop.body9:                                       ; preds = %loop.cond7
-  %6 = load i32, i32* %argc, align 4
-  %eq10 = icmp eq i32 %6, 1
+  %eq10 = icmp eq i32 %0, 1
   br i1 %eq10, label %if.then11, label %if.exit13
 
 if.then11:                                        ; preds = %loop.body9

@@ -85,6 +85,7 @@ fn void main()
 
 
 %Foo = type { [3 x i32] }
+
 @Foo = linkonce_odr constant i8 1
 @.str = private constant [11 x i8] c"getFields\0A\00", align 1
 @.str.1 = private constant [11 x i8] c"Call made\0A\00", align 1
@@ -101,9 +102,7 @@ fn void main()
 @.str.11 = private constant [27 x i8] c"Pull value tempptr %d: %d\0A\00", align 1
 @.str.12 = private constant [7 x i8] c"%d %d\0A\00", align 1
 @.str.13 = private constant [7 x i8] c"%d %d\0A\00", align 1
-; Function Attrs: nounwind
-declare void @printf(i8*, ...) #0
-; Function Attrs: nounwind
+
 define void @foo.getFields([5 x i32]* noalias sret([5 x i32]) align 4 %0) #0 {
 entry:
   %literal = alloca [5 x i32], align 16
@@ -125,11 +124,8 @@ entry:
 }
 define %Foo* @foo.call(%Foo* %0) #0 {
 entry:
-  %f = alloca %Foo*, align 8
-  store %Foo* %0, %Foo** %f, align 8
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0))
-  %1 = load %Foo*, %Foo** %f, align 8
-  ret %Foo* %1
+  ret %Foo* %0
 }
 define void @foo.main() #0 {
 entry:
@@ -209,11 +205,13 @@ entry:
   store %Foo* %13, %Foo** %"__enum$", align 8
   store i32 3, i32* %"__len$", align 4
   br label %loop.cond
+
 loop.cond:                                        ; preds = %loop.body, %entry
   %14 = load i32, i32* %"__idx$", align 4
   %15 = load i32, i32* %"__len$", align 4
   %lt = icmp slt i32 %14, %15
   br i1 %lt, label %loop.body, label %loop.exit
+
 loop.body:                                        ; preds = %loop.cond
   %16 = load i32, i32* %"__idx$", align 4
   store i32 %16, i32* %i, align 4

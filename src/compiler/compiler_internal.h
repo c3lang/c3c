@@ -352,6 +352,9 @@ typedef struct VarDecl_
 	bool shadow : 1;
 	bool vararg : 1;
 	bool is_static : 1;
+	bool is_read : 1;
+	bool is_written : 1;
+	bool is_addr : 1;
 	bool is_threadlocal : 1;
 	TypeInfo *type_info;
 	union
@@ -585,7 +588,12 @@ typedef struct Decl_
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
 	bool no_scope : 1;
-	void *backend_ref;
+	bool is_value : 1;
+	union
+	{
+		void *backend_ref;
+		void *backend_value;
+	};
 	const char *extname;
 	AlignSize alignment;
 	const char *section;

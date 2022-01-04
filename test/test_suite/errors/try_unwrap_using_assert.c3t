@@ -15,12 +15,10 @@ fn int tester(int n)
 
 define i32 @test.tester(i32 %0) #0 {
 entry:
-  %n = alloca i32, align 4
   %num = alloca i32, align 4
   %num.f = alloca i64, align 8
   %retparam = alloca i32, align 4
   %x = alloca i32, align 4
-  store i32 %0, i32* %n, align 4
   %1 = call i64 @maybe(i32* %retparam)
   %not_err = icmp eq i64 %1, 0
   br i1 %not_err, label %after.errcheck, label %error

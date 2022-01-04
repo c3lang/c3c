@@ -133,6 +133,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 		{
 			// A simple memcopy, with alignment respected.
 			LLVMValueRef pointer = llvm_get_next_param(c, index);
+			llvm_emit_and_set_decl_alloca(c, decl);
 			llvm_emit_memcpy_to_decl(c, decl, pointer, info->indirect.alignment);
 			return;
 		}
@@ -141,6 +142,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			// Create the expand type:
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
 			LLVMValueRef temp = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
+			llvm_emit_and_set_decl_alloca(c, decl);
 
 			AlignSize alignment = decl->alignment;
 			AlignSize element_align;
@@ -155,6 +157,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 		}
 		case ABI_ARG_DIRECT_PAIR:
 		{
+			llvm_emit_and_set_decl_alloca(c, decl);
 			// Here we do the following transform:
 			// lo, hi -> { lo, hi } -> struct
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
@@ -175,6 +178,14 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			return;
 		}
 		case ABI_ARG_DIRECT:
+	DIRECT_FROM_COERCE:
+			if (!decl->var.is_written && !decl->var.is_addr)
+			{
+				decl->backend_value = llvm_get_next_param(c, index);
+				decl->is_value = true;
+				return;
+			}
+			llvm_emit_and_set_decl_alloca(c, decl);
 			llvm_store_aligned_decl(c, decl, llvm_get_next_param(c, index));
 			return;
 		case ABI_ARG_DIRECT_COERCE:
@@ -182,9 +193,9 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
 			if (!coerce_type || coerce_type == llvm_get_type(c, decl->type))
 			{
-				llvm_store_aligned_decl(c, decl, llvm_get_next_param(c, index));
-				return;
+				goto DIRECT_FROM_COERCE;
 			}
+			llvm_emit_and_set_decl_alloca(c, decl);
 
 			// If we're not flattening, we simply do a store.
 			if (!abi_info_should_flatten(info))
@@ -214,6 +225,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 		}
 		case ABI_ARG_EXPAND:
 		{
+			llvm_emit_and_set_decl_alloca(c, decl);
 			llvm_expand_from_args(c, decl->type, decl->backend_ref, index, decl->alignment);
 			if (info->expand.padding_type)
 			{
@@ -228,7 +240,6 @@ static inline void llvm_emit_parameter(GenContext *context, Decl *decl, unsigned
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	// Allocate room on stack, but do not copy.
-	llvm_emit_and_set_decl_alloca(context, decl);
 	llvm_process_parameter_value(context, decl, index);
 	if (llvm_use_debug(context))
 	{

@@ -5181,8 +5181,8 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 {
 	BEValue argc_value;
 	BEValue argv_value;
-	llvm_value_set_decl_address(&argc_value, expr->argv_expr.argc);
-	llvm_value_set_decl_address(&argv_value, expr->argv_expr.argv);
+	llvm_value_set_decl(&argc_value, expr->argv_expr.argc);
+	llvm_value_set_decl(&argv_value, expr->argv_expr.argv);
 	llvm_value_rvalue(c, &argc_value);
 	llvm_value_rvalue(c, &argv_value);
 	LLVMValueRef argv_ptr = argv_value.value;
@@ -5374,7 +5374,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			UNREACHABLE
 		case EXPR_IDENTIFIER:
 		case EXPR_CONST_IDENTIFIER:
-			llvm_value_set_decl_address(value, expr->identifier_expr.decl);
+			llvm_value_set_decl(value, expr->identifier_expr.decl);
 			return;
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:

@@ -894,6 +894,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	}
 	if (decl->decl_kind == DECL_VAR)
 	{
+		decl->var.is_read = true;
 		switch (decl->var.kind)
 		{
 			case VARDECL_CONST:
@@ -4183,6 +4184,8 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 		return false;
 	}
 
+	if (left->expr_kind == EXPR_IDENTIFIER) left->identifier_expr.decl->var.is_written = true;
+
 	bool is_unwrapped_var = expr_is_unwrapped_ident(left);
 
 	// 3. Evaluate right side to required type.
@@ -4256,6 +4259,8 @@ static bool sema_expr_analyse_common_assign(SemaContext *context, Expr *expr, Ex
 		SEMA_ERROR(left, "Expression is not assignable.");
 		return false;
 	}
+
+	if (left->expr_kind == EXPR_IDENTIFIER) left->identifier_expr.decl->var.is_written = true;
 
 	Type *no_fail = type_no_fail(left->type);
 
@@ -4353,6 +4358,8 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 		SEMA_ERROR(left, "Expression is not assignable.");
 		return false;
 	}
+
+	if (left->expr_kind == EXPR_IDENTIFIER) left->identifier_expr.decl->var.is_written = true;
 
 	Type *left_type_canonical = left->type->canonical;
 
@@ -4919,6 +4926,8 @@ static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Exp
 		return false;
 	}
 
+	if (left->expr_kind == EXPR_IDENTIFIER) left->identifier_expr.decl->var.is_written = true;
+
 	// 3. Only integers may be shifted.
 	if (!both_any_integer_or_integer_vector(left, right)) return sema_type_error_on_binop(expr);
 
@@ -5199,6 +5208,7 @@ static bool sema_expr_analyse_deref(SemaContext *context, Expr *expr)
 static inline bool sema_take_addr_of_var(Expr *expr, Decl *decl)
 {
 	if (decl->decl_kind != DECL_VAR) return false;
+	decl->var.is_addr = true;
 	bool is_void = type_flatten(decl->type) == type_void;
 	switch (decl->var.kind)
 	{
@@ -5532,6 +5542,8 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 		SEMA_ERROR(inner, "An assignable expression, like a variable, was expected here.");
 		return false;
 	}
+
+	if (inner->expr_kind == EXPR_IDENTIFIER) inner->identifier_expr.decl->var.is_written = true;
 
 	// 3. This might be a $foo, if to handle it.
 	if (inner->expr_kind == EXPR_CT_IDENT)

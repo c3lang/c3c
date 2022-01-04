@@ -46,10 +46,7 @@ fn void test2()
 ; Function Attrs: nounwind
 define i32 @try_with_unwrapper.hello(i32 %0) #0 {
 entry:
-  %x = alloca i32, align 4
-  store i32 %0, i32* %x, align 4
-  %1 = load i32, i32* %x, align 4
-  %add = add i32 %1, 1
+  %add = add i32 %0, 1
   ret i32 %add
 }
 

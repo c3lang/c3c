@@ -47,14 +47,9 @@ fn void main()
 
 define i64 @demo.divide(double* %0, i32 %1, i32 %2) #0 {
 entry:
-  %a = alloca i32, align 4
-  %b = alloca i32, align 4
   %reterr = alloca i64, align 8
   %reterr1 = alloca i64, align 8
-  store i32 %1, i32* %a, align 4
-  store i32 %2, i32* %b, align 4
-  %3 = load i32, i32* %b, align 4
-  %eq = icmp eq i32 %3, 0
+  %eq = icmp eq i32 %2, 0
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
@@ -66,14 +61,12 @@ postfailed:                                       ; No predecessors!
   ret i64 0
 
 err_retblock:                                     ; preds = %if.then
-  %4 = load i64, i64* %reterr, align 8
-  ret i64 %4
+  %3 = load i64, i64* %reterr, align 8
+  ret i64 %3
 
 if.exit:                                          ; preds = %entry
-  %5 = load i32, i32* %a, align 4
-  %sifp = sitofp i32 %5 to double
-  %6 = load i32, i32* %b, align 4
-  %sifp2 = sitofp i32 %6 to double
+  %sifp = sitofp i32 %1 to double
+  %sifp2 = sitofp i32 %2 to double
   %fdiv = fdiv double %sifp, %sifp2
   store double %fdiv, double* %0, align 8
   ret i64 0

@@ -16,7 +16,7 @@ extern fn Vector2 vector2_subtract_value(Vector2 v, float sub) { return Vector2 
 
 %Vector2 = type { float, float }
 
-define <2 x float> @vector2_zero()
+define <2 x float> @vector2_zero() #0 {
 entry:
   %literal = alloca %Vector2, align 4
   %tempcoerce = alloca <2 x float>, align 8
@@ -31,7 +31,8 @@ entry:
   ret <2 x float> %4
 }
 
-define <2 x float> @vector2_one()
+define <2 x float> @vector2_one() #0 {
+entry:
   %literal = alloca %Vector2, align 4
   %tempcoerce = alloca <2 x float>, align 8
   %0 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
@@ -45,7 +46,7 @@ define <2 x float> @vector2_one()
   ret <2 x float> %4
 }
 
-define <2 x float> @vector2_add(<2 x float> %0, <2 x float> %1)
+define <2 x float> @vector2_add(<2 x float> %0, <2 x float> %1) #0 {
 entry:
   %v1 = alloca %Vector2, align 4
   %v2 = alloca %Vector2, align 4
@@ -67,13 +68,12 @@ entry:
 }
 
 define <2 x float> @vector2_add_value(<2 x float> %0, float %1) #0 {
+entry:
   %v = alloca %Vector2, align 4
-  %add = alloca float, align 4
   %literal = alloca %Vector2, align 4
   %tempcoerce = alloca <2 x float>, align 8
   %2 = bitcast %Vector2* %v to <2 x float>*
   store <2 x float> %0, <2 x float>* %2, align 4
-  store float %1, float* %add, align 4
   %3 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
   store float 0.000000e+00, float* %3, align 4
   %4 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 1
@@ -85,7 +85,7 @@ define <2 x float> @vector2_add_value(<2 x float> %0, float %1) #0 {
   ret <2 x float> %7
 }
 
-define <2 x float> @vector2_subtract(<2 x float> %0, <2 x float> %1)
+define <2 x float> @vector2_subtract(<2 x float> %0, <2 x float> %1) #0 {
 entry:
   %v1 = alloca %Vector2, align 4
   %v2 = alloca %Vector2, align 4
@@ -106,15 +106,13 @@ entry:
   ret <2 x float> %8
 }
 
-define <2 x float> @vector2_subtract_value(<2 x float> %0, float %1)
+define <2 x float> @vector2_subtract_value(<2 x float> %0, float %1) #0 {
 entry:
   %v = alloca %Vector2, align 4
-  %sub = alloca float, align 4
   %literal = alloca %Vector2, align 4
   %tempcoerce = alloca <2 x float>, align 8
   %2 = bitcast %Vector2* %v to <2 x float>*
   store <2 x float> %0, <2 x float>* %2, align 4
-  store float %1, float* %sub, align 4
   %3 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
   store float 0.000000e+00, float* %3, align 4
   %4 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 1

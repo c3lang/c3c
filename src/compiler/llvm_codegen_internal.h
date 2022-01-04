@@ -213,6 +213,7 @@ void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i);
 void llvm_value_set_address_align(BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment);
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_decl_address(BEValue *value, Decl *decl);
+void llvm_value_set_decl(BEValue *value, Decl *decl);
 void llvm_value_fold_failable(GenContext *c, BEValue *value);
 void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_pointer, unsigned index);
 
@@ -346,6 +347,7 @@ static inline LLVMValueRef decl_failable_ref(Decl *decl)
 static inline LLVMValueRef decl_ref(Decl *decl)
 {
 	if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED) return decl_ref(decl->var.alias);
+	assert(!decl->is_value);
 	return decl->backend_ref;
 }
 

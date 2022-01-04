@@ -26,69 +26,53 @@ fn void test3(long* x)
 
 define void @pointer_index.test1(i32* %0) #0 {
 entry:
-  %x = alloca i32*, align 8
   %a = alloca i32, align 4
   %b = alloca i32, align 4
   %c = alloca i32, align 4
   %d = alloca i32, align 4
-  store i32* %0, i32** %x, align 8
-  %1 = load i32*, i32** %x, align 8
-  %ptroffset = getelementptr inbounds i32, i32* %1, i64 0
-  %2 = load i32, i32* %ptroffset, align 4
-  store i32 %2, i32* %a, align 4
-  %3 = load i32*, i32** %x, align 8
-  %4 = load i32, i32* %3, align 8
-  store i32 %4, i32* %b, align 4
-  %5 = load i32*, i32** %x, align 8
-  %ptroffset1 = getelementptr inbounds i32, i32* %5, i64 1
-  %6 = load i32, i32* %ptroffset1, align 4
-  store i32 %6, i32* %c, align 4
-  %7 = load i32*, i32** %x, align 8
-  %ptroffset2 = getelementptr inbounds i32, i32* %7, i64 -1
-  %8 = load i32, i32* %ptroffset2, align 4
-  store i32 %8, i32* %d, align 4
+  %ptroffset = getelementptr inbounds i32, i32* %0, i64 0
+  %1 = load i32, i32* %ptroffset, align 4
+  store i32 %1, i32* %a, align 4
+  %2 = load i32, i32* %0, align 8
+  store i32 %2, i32* %b, align 4
+  %ptroffset1 = getelementptr inbounds i32, i32* %0, i64 1
+  %3 = load i32, i32* %ptroffset1, align 4
+  store i32 %3, i32* %c, align 4
+  %ptroffset2 = getelementptr inbounds i32, i32* %0, i64 -1
+  %4 = load i32, i32* %ptroffset2, align 4
+  store i32 %4, i32* %d, align 4
   ret void
 }
 
 ; Function Attrs: nounwind
 define void @pointer_index.test2(i8* %0) #0 {
 entry:
-  %x = alloca i8*, align 8
   %a = alloca i8, align 1
   %b = alloca i8, align 1
   %c = alloca i8, align 1
-  store i8* %0, i8** %x, align 8
-  %1 = load i8*, i8** %x, align 8
-  %ptroffset = getelementptr inbounds i8, i8* %1, i64 0
-  %2 = load i8, i8* %ptroffset, align 1
-  store i8 %2, i8* %a, align 1
-  %3 = load i8*, i8** %x, align 8
-  %4 = load i8, i8* %3, align 8
-  store i8 %4, i8* %b, align 1
-  %5 = load i8*, i8** %x, align 8
-  %ptroffset1 = getelementptr inbounds i8, i8* %5, i64 1
-  %6 = load i8, i8* %ptroffset1, align 1
-  store i8 %6, i8* %c, align 1
+  %ptroffset = getelementptr inbounds i8, i8* %0, i64 0
+  %1 = load i8, i8* %ptroffset, align 1
+  store i8 %1, i8* %a, align 1
+  %2 = load i8, i8* %0, align 8
+  store i8 %2, i8* %b, align 1
+  %ptroffset1 = getelementptr inbounds i8, i8* %0, i64 1
+  %3 = load i8, i8* %ptroffset1, align 1
+  store i8 %3, i8* %c, align 1
   ret void
 }
 
 define void @pointer_index.test3(i64* %0) #0 {
 entry:
-  %x = alloca i64*, align 8
   %a = alloca i64, align 8
   %b = alloca i64, align 8
   %c = alloca i64, align 8
-  store i64* %0, i64** %x, align 8
-  %1 = load i64*, i64** %x, align 8
-  %ptroffset = getelementptr inbounds i64, i64* %1, i64 0
-  %2 = load i64, i64* %ptroffset, align 8
-  store i64 %2, i64* %a, align 8
-  %3 = load i64*, i64** %x, align 8
-  %4 = load i64, i64* %3, align 8
-  store i64 %4, i64* %b, align 8
-  %5 = load i64*, i64** %x, align 8
-  %ptroffset1 = getelementptr inbounds i64, i64* %5, i64 1
-  %6 = load i64, i64* %ptroffset1, align 8
-  store i64 %6, i64* %c, align 8
+  %ptroffset = getelementptr inbounds i64, i64* %0, i64 0
+  %1 = load i64, i64* %ptroffset, align 8
+  store i64 %1, i64* %a, align 8
+  %2 = load i64, i64* %0, align 8
+  store i64 %2, i64* %b, align 8
+  %ptroffset1 = getelementptr inbounds i64, i64* %0, i64 1
+  %3 = load i64, i64* %ptroffset1, align 8
+  store i64 %3, i64* %c, align 8
   ret void
 }

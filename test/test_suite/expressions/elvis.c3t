@@ -17,36 +17,51 @@ fn bool elvis3(bool x, bool y)
 
 // #expect: elvis.ll
 
-    store i32* %0, i32** %x
-    store i32* %1, i32** %y
-    %2 = load i32*, i32** %x
-    %ptrbool = icmp ne i32* %2, null
-    br i1 %ptrbool, label %cond.phi, label %cond.rhs
-cond.rhs:
-    %3 = load i32*, i32** %y
-    br label %cond.phi
-cond.phi:
-    %val = phi i32* [ %2, %entry ], [ %3, %cond.rhs ]
-    ret i32* %val
+define i32* @elvis.elvis(i32* %0, i32* %1) #0 {
+entry:
+  %ptrbool = icmp ne i32* %0, null
+  br i1 %ptrbool, label %cond.phi, label %cond.rhs
 
-    store i32* %0, i32** %x
-    store i32* %1, i32** %y
-    %2 = load i32*, i32** %x
-    %ptrbool = icmp ne i32* %2, null
-    br i1 %ptrbool, label %cond.phi3, label %cond.rhs
-cond.rhs:
-    %3 = load i32*, i32** %y
-    %ptrbool1 = icmp ne i32* %3, null
-    br i1 %ptrbool1, label %cond.phi, label %cond.rhs2
+cond.rhs:                                         ; preds = %entry
+  br label %cond.phi
 
-cond.rhs2:
-    %4 = load i32*, i32** %x
-    br label %cond.phi
+cond.phi:                                         ; preds = %cond.rhs, %entry
+  %val = phi i32* [ %0, %entry ], [ %1, %cond.rhs ]
+  ret i32* %val
+}
 
-cond.phi:
-    %val = phi i32* [ %3, %cond.rhs ], [ %4, %cond.rhs2 ]
-    br label %cond.phi3
+define i32* @elvis.elvis2(i32* %0, i32* %1) #0 {
+entry:
+  %ptrbool = icmp ne i32* %0, null
+  br i1 %ptrbool, label %cond.phi3, label %cond.rhs
 
-cond.phi3:
-    %val4 = phi i32* [ %2, %entry ], [ %val, %cond.phi ]
-    ret i32* %val4
+cond.rhs:                                         ; preds = %entry
+  %ptrbool1 = icmp ne i32* %1, null
+  br i1 %ptrbool1, label %cond.phi, label %cond.rhs2
+
+cond.rhs2:                                        ; preds = %cond.rhs
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs2, %cond.rhs
+  %val = phi i32* [ %1, %cond.rhs ], [ %0, %cond.rhs2 ]
+  br label %cond.phi3
+
+cond.phi3:                                        ; preds = %cond.phi, %entry
+  %val4 = phi i32* [ %0, %entry ], [ %val, %cond.phi ]
+  ret i32* %val4
+}
+
+define zeroext i8 @elvis.elvis3(i8 zeroext %0, i8 zeroext %1) #0 {
+entry:
+  %2 = trunc i8 %0 to i1
+  br i1 %2, label %cond.phi, label %cond.rhs
+
+cond.rhs:                                         ; preds = %entry
+  %3 = trunc i8 %1 to i1
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs, %entry
+  %val = phi i1 [ %2, %entry ], [ %3, %cond.rhs ]
+  %4 = zext i1 %val to i8
+  ret i8 %4
+}

@@ -15,32 +15,31 @@ fn Event test(int x)
 
 // #expect: test.ll
 
-  %x = alloca i32, align 4
+define i64 @test.test(i32 %0) #0 {
+entry:
   %foo = alloca %Event, align 4
   %bar = alloca %Event, align 4
   %taddr = alloca %Event, align 4
-  store i32 %0, i32* %x, align 4
   %1 = bitcast %Event* %foo to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %1, i8* align 4 bitcast (%Event* @.__const to i8*), i32 4, i1 false)
   %2 = bitcast %Event* %bar to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %2, i8* align 4 bitcast (%Event* @.__const.1 to i8*), i32 4, i1 false)
-  %3 = load i32, i32* %x, align 4
-  %intbool = icmp ne i32 %3, 0
+  %intbool = icmp ne i32 %0, 0
   br i1 %intbool, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %entry
-  %4 = load %Event, %Event* %foo, align 4
+  %3 = load %Event, %Event* %foo, align 4
   br label %cond.phi
 
 cond.rhs:                                         ; preds = %entry
-  %5 = load %Event, %Event* %bar, align 4
+  %4 = load %Event, %Event* %bar, align 4
   br label %cond.phi
 
 cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
-  %val = phi %Event [ %4, %cond.lhs ], [ %5, %cond.rhs ]
+  %val = phi %Event [ %3, %cond.lhs ], [ %4, %cond.rhs ]
   store %Event %val, %Event* %taddr, align 4
-  %6 = getelementptr inbounds %Event, %Event* %taddr, i32 0, i32 0
-  %7 = load i32, i32* %6, align 4
-  %8 = zext i32 %7 to i64
-  ret i64 %8
+  %5 = getelementptr inbounds %Event, %Event* %taddr, i32 0, i32 0
+  %6 = load i32, i32* %5, align 4
+  %7 = zext i32 %6 to i64
+  ret i64 %7
 }
