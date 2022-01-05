@@ -1619,11 +1619,14 @@ static bool sema_check_expr_compile_time(SemaContext *context, Expr *expr)
 		case EXPR_CONST:
 			return true;
 		case EXPR_MACRO_BLOCK:
-			VECEACH(expr->macro_block.stmts, i)
+		{
+			AstId current = expr->macro_block.first_stmt;
+			while (current)
 			{
-				if (!sema_check_stmt_compile_time(context, expr->macro_block.stmts[i])) return false;
+				if (!sema_check_stmt_compile_time(context, ast_next(&current))) return false;
 			}
 			return true;
+		}
 		default:
 			return false;
 	}
@@ -1643,11 +1646,14 @@ static bool sema_check_stmt_compile_time(SemaContext *context, Ast *ast)
 			return sema_check_expr_compile_time(context, ast->expr_stmt);
 		case AST_CT_COMPOUND_STMT:
 		case AST_COMPOUND_STMT:
-			VECEACH(ast->compound_stmt.stmts, i)
+		{
+			AstId current = ast->compound_stmt.first_stmt;
+			while (current)
 			{
-				if (!sema_check_stmt_compile_time(context, ast->compound_stmt.stmts[i])) return false;
+				if (!sema_check_stmt_compile_time(context, ast_next(&current))) return false;
 			}
 			return true;
+		}
 		default:
 			return false;
 	}
@@ -1713,7 +1719,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (!body_arg->alignment) body_arg->alignment = type_alloca_alignment(body_arg->type);
 	}
 
-	Ast *body = copy_ast(decl->macro_decl.body);
+	Ast *body = ast_copy_deep(decl->macro_decl.body);
 
 	bool no_scope = decl->no_scope;
 	DynamicScope old_scope = context->active_scope;
@@ -1752,9 +1758,10 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
 	}
 
-	VECEACH(body->compound_stmt.stmts, i)
+	AstId current = body->compound_stmt.first_stmt;
+	while (current)
 	{
-		if (!sema_analyse_statement(&macro_context, body->compound_stmt.stmts[i])) goto EXIT_FAIL;
+		if (!sema_analyse_statement(&macro_context, ast_next(&current))) goto EXIT_FAIL;
 	}
 
 	if (no_scope)
@@ -1819,7 +1826,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 
 	call_expr->expr_kind = EXPR_MACRO_BLOCK;
-	call_expr->macro_block.stmts = body->compound_stmt.stmts;
+	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
 	call_expr->macro_block.params = params;
 	call_expr->macro_block.args = args;
 	call_expr->macro_block.no_scope = no_scope;
@@ -1983,7 +1990,7 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 			Decl *param = params[i];
 			if (!sema_add_local(context, param)) return SCOPE_POP_ERROR();
 		}
-		call->body_expansion_expr.ast = copy_ast(macro_context->yield_body);
+		call->body_expansion_expr.ast = ast_copy_deep(macro_context->yield_body);
 		success = sema_analyse_statement(context, call->body_expansion_expr.ast);
 
 	SCOPE_END;
@@ -5855,9 +5862,10 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Expr *expr
 		PUSH_BREAK(NULL);
 		PUSH_NEXT(NULL, NULL);
 
-		VECEACH(expr->expr_block.stmts, i)
+		AstId current = expr->expr_block.first_stmt;
+		while (current)
 		{
-			if (!sema_analyse_statement(context, expr->expr_block.stmts[i]))
+			if (!sema_analyse_statement(context, ast_next(&current)))
 			{
 				success = false;
 				goto EXIT;

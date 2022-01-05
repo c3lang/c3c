@@ -102,10 +102,11 @@ static inline Ast *parse_case_stmts(ParseContext *context, TokenType case_type, 
 {
 	if (token_type_ends_case(context->tok.type, case_type, default_type)) return NULL;
 	Ast *compound = AST_NEW_TOKEN(AST_COMPOUND_STMT, context->tok);
+	AstId *next = &compound->compound_stmt.first_stmt;
 	while (!token_type_ends_case(context->tok.type, case_type, default_type))
 	{
 		ASSIGN_AST_ELSE(Ast *stmt, parse_stmt(context), poisoned_ast);
-		vec_add(compound->compound_stmt.stmts, stmt);
+		ast_append(&next, stmt);
 	}
 	return compound;
 }
@@ -444,7 +445,7 @@ static inline Ast* parse_next(ParseContext *context)
 	{
 		if (TOKEN_IS(TOKEN_CONST_IDENT) && context->next_tok.type == TOKEN_COLON)
 		{
-			parse_optional_label_target(context, &ast->next_stmt.label);
+			parse_optional_label_target(context, &ast->nextcase_stmt.label);
 			advance_and_verify(context, TOKEN_COLON);
 		}
 		TypeInfo *type = NULL;
@@ -452,12 +453,12 @@ static inline Ast* parse_next(ParseContext *context)
 		if (!parse_type_or_expr(context, &type, &expr)) return poisoned_ast;
 		if (type)
 		{
-			ast->next_stmt.is_type = true;
-			ast->next_stmt.expr_or_type_info = type;
+			ast->nextcase_stmt.is_type = true;
+			ast->nextcase_stmt.expr_or_type_info = type;
 		}
 		else
 		{
-			ast->next_stmt.expr_or_type_info = expr;
+			ast->nextcase_stmt.expr_or_type_info = expr;
 		}
 	}
 	return ast;
@@ -563,12 +564,13 @@ static inline Ast *parse_var_stmt(ParseContext *context)
 static inline Ast* parse_ct_compound_stmt(ParseContext *context)
 {
 	Ast *stmts = AST_NEW_TOKEN(AST_CT_COMPOUND_STMT, context->tok);
+	AstId *next = &stmts->compound_stmt.first_stmt;
 	while (1)
 	{
 		TokenType token = context->tok.type;
 		if (token == TOKEN_CT_ELSE || token == TOKEN_CT_ELIF || token == TOKEN_CT_ENDIF) break;
 		ASSIGN_AST_ELSE(Ast *stmt, parse_stmt(context), poisoned_ast);
-		vec_add(stmts->compound_stmt.stmts, stmt);
+		ast_append(&next, stmt);
 		RANGE_EXTEND_PREV(stmts);
 	}
 	return stmts;
@@ -1040,10 +1042,11 @@ Ast* parse_compound_stmt(ParseContext *context)
 {
 	CONSUME_OR(TOKEN_LBRACE, poisoned_ast);
 	Ast *ast = AST_NEW_TOKEN(AST_COMPOUND_STMT, context->tok);
+	AstId *next = &ast->compound_stmt.first_stmt;
 	while (!try_consume(context, TOKEN_RBRACE))
 	{
 		ASSIGN_AST_ELSE(Ast *stmt, parse_stmt(context), poisoned_ast);
-		vec_add(ast->compound_stmt.stmts, stmt);
+		ast_append(&next, stmt);
 	}
 	return ast;
 }

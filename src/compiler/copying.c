@@ -34,6 +34,12 @@ static TypeInfo** type_info_copy_list_from_macro(TypeInfo **to_copy)
 	return result;
 }
 
+static AstId astid_copy_deep(AstId source)
+{
+	if (!source) return 0;
+	return astid(ast_copy_deep(astptr(source)));
+}
+
 
 static DesignatorElement **macro_copy_designator_list(DesignatorElement **list)
 {
@@ -153,7 +159,7 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_TYPE(expr->expr_compound_literal.type_info);
 			return expr;
 		case EXPR_EXPR_BLOCK:
-			MACRO_COPY_AST_LIST(expr->expr_block.stmts);
+			expr->expr_block.first_stmt = astid_copy_deep(expr->expr_block.first_stmt);
 			return expr;
 		case EXPR_POISONED:
 			return source_expr;
@@ -215,10 +221,12 @@ Expr *copy_expr(Expr *source_expr)
 	UNREACHABLE
 }
 
-Ast *copy_ast(Ast *source)
+
+Ast *ast_copy_deep(Ast *source)
 {
 	if (!source) return NULL;
 	Ast *ast = ast_copy(source);
+	ast->next = astid_copy_deep(ast->next);
 	switch (source->ast_kind)
 	{
 		case AST_SCOPING_STMT:
@@ -261,10 +269,8 @@ Ast *copy_ast(Ast *source)
 			MACRO_COPY_EXPR(ast->case_stmt.to_expr);
 			return ast;
 		case AST_COMPOUND_STMT:
-			MACRO_COPY_AST_LIST(ast->compound_stmt.stmts);
-			return ast;
 		case AST_CT_COMPOUND_STMT:
-			MACRO_COPY_AST_LIST(ast->compound_stmt.stmts);
+			ast->compound_stmt.first_stmt = astid_copy_deep(ast->compound_stmt.first_stmt);
 			return ast;
 		case AST_CT_ASSERT:
 			MACRO_COPY_EXPR(ast->ct_assert_stmt.message);
@@ -333,13 +339,13 @@ Ast *copy_ast(Ast *source)
 			MACRO_COPY_AST(ast->if_stmt.then_body);
 			return ast;
 		case AST_NEXT_STMT:
-			if (ast->next_stmt.is_type)
+			if (ast->nextcase_stmt.is_type)
 			{
-				MACRO_COPY_TYPE(ast->next_stmt.expr_or_type_info);
+				MACRO_COPY_TYPE(ast->nextcase_stmt.expr_or_type_info);
 			}
 			else
 			{
-				MACRO_COPY_EXPR(ast->next_stmt.expr_or_type_info);
+				MACRO_COPY_EXPR(ast->nextcase_stmt.expr_or_type_info);
 			}
 			return ast;
 		case AST_NOP_STMT:
@@ -373,7 +379,7 @@ Ast **copy_ast_list(Ast **to_copy)
 	Ast **result = NULL;
 	VECEACH(to_copy, i)
 	{
-		vec_add(result, copy_ast(to_copy[i]));
+		vec_add(result, ast_copy_deep(to_copy[i]));
 	}
 	return result;
 }

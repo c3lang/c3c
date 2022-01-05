@@ -4667,11 +4667,10 @@ static inline void gencontext_emit_expression_list_expr(GenContext *context, BEV
 	}
 }
 
-static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value, Type *type, Ast **stmts)
+static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value, Type *type, AstId current)
 {
 	// First case - an empty block
-	unsigned count = vec_size(stmts);
-	if (!count)
+	if (!current)
 	{
 		llvm_value_set(be_value, NULL, type_void);
 		return;
@@ -4702,12 +4701,12 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 	context->catch_block = NULL;
 
 	// Process all but the last statement.
-	for (unsigned i = 0; i < count - 1; i++)
+	Ast *value = ast_next(&current);
+	while (value->next)
 	{
-		llvm_emit_stmt(context, stmts[i]);
+		llvm_emit_stmt(context, value);
+		value = ast_next(&current);
 	}
-
-	Ast *last_stmt = stmts[count - 1];
 
 	do
 	{
@@ -4717,13 +4716,13 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 
 		// Do we have a void function? That's the only
 		// possible case if the last statement isn't return.
-		if (last_stmt->ast_kind != AST_RETURN_STMT) break;
+		if (value->ast_kind != AST_RETURN_STMT) break;
 
 		// Defers? In that case we also use the default behaviour.
 		// We might optimize this later.
-		if (last_stmt->return_stmt.defer) break;
+		if (value->return_stmt.defer) break;
 
-		Expr *ret_expr = last_stmt->return_stmt.expr;
+		Expr *ret_expr = value->return_stmt.expr;
 
 		// If this is a void return, we can just skip here!
 		if (!ret_expr)
@@ -4744,7 +4743,7 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 	} while (0);
 
 	// Emit the last statement
-	llvm_emit_stmt(context, last_stmt);
+	llvm_emit_stmt(context, value);
 
 	// In the case of a void with no return, then this may be true.
 	if (llvm_basic_block_is_unused(expr_block))
@@ -4782,7 +4781,7 @@ DONE:
 
 static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr)
 {
-	llvm_emit_return_block(context, be_value, expr->type, expr->expr_block.stmts);
+	llvm_emit_return_block(context, be_value, expr->type, expr->expr_block.first_stmt);
 }
 
 static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value, Expr *expr)
@@ -4826,14 +4825,15 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 	}
 	if (expr->macro_block.no_scope)
 	{
-		VECEACH(expr->macro_block.stmts, i)
+		AstId current = expr->macro_block.first_stmt;
+		while (current)
 		{
-			llvm_emit_stmt(context, expr->macro_block.stmts[i]);
+			llvm_emit_stmt(context, ast_next(&current));
 		}
 		llvm_value_set(be_value, NULL, type_void);
 		return;
 	}
-	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.stmts);
+	llvm_emit_return_block(context, be_value, expr->type, expr->macro_block.first_stmt);
 }
 
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count,

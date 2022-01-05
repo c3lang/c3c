@@ -1348,6 +1348,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	vec_add(main_params, param2);
 	function->func_decl.function_signature.params = main_params;
 	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
+	AstId *next = &body->compound_stmt.first_stmt;
 	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
 	Expr *call = expr_new(EXPR_CALL, decl->span);
 	call->call_expr.function = expr_variable(decl);
@@ -1386,14 +1387,14 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	{
 		Ast *stmt = new_ast(AST_EXPR_STMT, decl->span);
 		stmt->expr_stmt = call;
-		vec_add(body->compound_stmt.stmts, stmt);
+		ast_append(&next, stmt);
 		Expr *c = expr_new(EXPR_CONST, decl->span);
 		c->type = type_cint;
 		expr_const_set_int(&c->const_expr, 0, c->type->type_kind);
 		c->resolve_status = RESOLVE_DONE;
 		ret_stmt->expr_stmt = c;
 	}
-	vec_add(body->compound_stmt.stmts, ret_stmt);
+	ast_append(&next, ret_stmt);
 	function->func_decl.body = body;
 	context->unit->main_function = function;
 	return true;

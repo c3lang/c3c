@@ -843,13 +843,13 @@ typedef struct
 
 typedef struct
 {
-	Ast **stmts;
+	AstId first_stmt;
 } ExprFuncBlock;
 
 typedef struct
 {
 	bool no_scope;
-	Ast **stmts;
+	AstId first_stmt;
 	Expr **args;
 	Decl **params;
 } ExprMacroBlock;
@@ -1008,7 +1008,7 @@ struct Expr_
 
 typedef struct
 {
-	struct Ast_ **stmts;
+	AstId first_stmt;
 	DeferList defer_list;
 } AstCompoundStmt;
 
@@ -1192,7 +1192,7 @@ typedef struct
 			Expr *switch_expr;
 		};
 	};
-} AstNextStmt;
+} AstNextcaseStmt;
 
 
 typedef struct
@@ -1261,6 +1261,7 @@ typedef struct
 typedef struct Ast_
 {
 	SourceSpan span;
+	AstId next;
 	AstKind ast_kind : 8;
 	union
 	{
@@ -1280,7 +1281,7 @@ typedef struct Ast_
 		AstCaseStmt case_stmt;          // 32
 		AstCtSwitchStmt ct_switch_stmt; // 16
 		AstContinueBreakStmt contbreak_stmt; // 8
-		AstNextStmt next_stmt;              // 16
+		AstNextcaseStmt nextcase_stmt;              // 16
 		AstForStmt for_stmt;                // 32
 		AstForeachStmt foreach_stmt;
 		AstCtIfStmt ct_if_stmt;             // 24
@@ -1315,7 +1316,6 @@ typedef struct Module_
 	Decl** method_extensions;
 	Decl** generic_cache;
 	STable symbols;
-	STable public_symbols;
 	struct CompilationUnit_ **units;
 } Module;
 
@@ -1458,8 +1458,6 @@ typedef struct
 	STable modules;
 	Module **module_list;
 	Module **generic_module_list;
-	STable global_symbols;
-	STable qualified_symbols;
 	Type **type;
 	const char *lib_dir;
 	const char **sources;
@@ -1808,10 +1806,9 @@ void header_gen(Module *module);
 
 static inline void global_context_clear_errors(void);
 void global_context_add_type(Type *type);
-Decl *compiler_find_symbol(const char *name);
+
 Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters, bool is_private);
 Module *global_context_find_module(const char *name);
-void compiler_register_public_symbol(Decl *decl);
 
 CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
@@ -2471,11 +2468,11 @@ static inline bool type_is_promotable_float(Type *type)
 #define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(x)
 #define MACRO_COPY_EXPR_LIST(x) x = copy_expr_list(x)
 #define MACRO_COPY_AST_LIST(x) x = copy_ast_list(x)
-#define MACRO_COPY_AST(x) x = copy_ast(x)
+#define MACRO_COPY_AST(x) x = ast_copy_deep(x)
 
 Expr **copy_expr_list(Expr **expr_list);
 Expr *copy_expr(Expr *source_expr);
-Ast *copy_ast(Ast *source);
+Ast *ast_copy_deep(Ast *source);
 Ast **copy_ast_list(Ast **to_copy);
 Decl *decl_copy_local_from_macro(Decl *to_copy);
 Decl *copy_decl(Decl *decl);
@@ -2522,4 +2519,28 @@ static inline void global_context_clear_errors(void)
 	global_context.in_panic_mode = false;
 	global_context.errors_found = 0;
 	global_context.warnings_found = 0;
+}
+
+static inline void ast_append(AstId **succ, Ast *next)
+{
+	**succ = astid(next);
+	*succ = &next->next;
+}
+
+static inline void ast_prepend(AstId *first, Ast *ast)
+{
+	Ast *end = ast;
+	while (end->next)
+	{
+		end = astptr(end->next);
+	}
+	end->next = *first;
+	*first = astid(ast);
+}
+
+static inline Ast *ast_next(AstId *current_ptr)
+{
+	Ast *ast = astptr(*current_ptr);
+	*current_ptr = ast->next;
+	return ast;
 }

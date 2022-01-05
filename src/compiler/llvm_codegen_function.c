@@ -458,9 +458,10 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 
 	LLVMSetCurrentDebugLocation2(context->builder, NULL);
 
-	VECEACH(decl->func_decl.body->compound_stmt.stmts, i)
+	AstId current = decl->func_decl.body->compound_stmt.first_stmt;
+	while (current)
 	{
-		llvm_emit_stmt(context, decl->func_decl.body->compound_stmt.stmts[i]);
+		llvm_emit_stmt(context, ast_next(&current));
 	}
 
 	if (context->current_block && llvm_basic_block_is_unused(context->current_block))

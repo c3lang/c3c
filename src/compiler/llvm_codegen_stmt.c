@@ -10,13 +10,13 @@ static bool ast_is_not_empty(Ast *ast)
 {
 	if (!ast) return false;
 	if (ast->ast_kind != AST_COMPOUND_STMT) return true;
-	uint32_t stmts = vec_size(ast->compound_stmt.stmts);
-	if (stmts > 0)
+	AstId first = ast->compound_stmt.first_stmt;
+	if (first)
 	{
-		if (stmts > 1) return true;
+		Ast *stmt = astptr(first);
+		if (stmt->next) return true;
 		if (ast->compound_stmt.defer_list.start != ast->compound_stmt.defer_list.end) return true;
-		Ast *first = ast->compound_stmt.stmts[0];
-		return ast_is_not_empty(first);
+		return ast_is_not_empty(stmt);
 	}
 	return ast->compound_stmt.defer_list.start != ast->compound_stmt.defer_list.end;
 }
@@ -29,9 +29,10 @@ void llvm_emit_compound_stmt(GenContext *context, Ast *ast)
 		llvm_debug_push_lexical_scope(context, ast->span);
 	}
 	assert(ast->ast_kind == AST_COMPOUND_STMT);
-	VECEACH(ast->compound_stmt.stmts, i)
+	AstId current = ast->compound_stmt.first_stmt;
+	while (current)
 	{
-		llvm_emit_stmt(context, ast->compound_stmt.stmts[i]);
+		llvm_emit_stmt(context, ast_next(&current));
 	}
 	llvm_emit_defer(context, ast->compound_stmt.defer_list.start, ast->compound_stmt.defer_list.end);
 	if (llvm_use_debug(context))
@@ -43,9 +44,10 @@ void llvm_emit_compound_stmt(GenContext *context, Ast *ast)
 void gencontext_emit_ct_compound_stmt(GenContext *context, Ast *ast)
 {
 	assert(ast->ast_kind == AST_CT_COMPOUND_STMT);
-	VECEACH(ast->compound_stmt.stmts, i)
+	AstId current = ast->compound_stmt.first_stmt;
+	while (current)
 	{
-		llvm_emit_stmt(context, ast->compound_stmt.stmts[i]);
+		llvm_emit_stmt(context, ast_next(&current));
 	}
 }
 
@@ -906,17 +908,17 @@ void gencontext_emit_continue(GenContext *context, Ast *ast)
 
 void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 {
-	Ast *jump_target = astptr(ast->next_stmt.case_switch_stmt);
+	Ast *jump_target = astptr(ast->nextcase_stmt.case_switch_stmt);
 	if (jump_target->ast_kind != AST_SWITCH_STMT)
 	{
-		llvm_emit_defer(context, ast->next_stmt.defers.start, ast->next_stmt.defers.end);
+		llvm_emit_defer(context, ast->nextcase_stmt.defers.start, ast->nextcase_stmt.defers.end);
 		llvm_emit_jmp(context, jump_target->case_stmt.backend_block);
 		return;
 	}
 	BEValue be_value;
-	llvm_emit_expr(context, &be_value, ast->next_stmt.switch_expr);
+	llvm_emit_expr(context, &be_value, ast->nextcase_stmt.switch_expr);
 	llvm_store_bevalue(context, jump_target->switch_stmt.codegen.retry_var, &be_value);
-	llvm_emit_defer(context, ast->next_stmt.defers.start, ast->next_stmt.defers.end);
+	llvm_emit_defer(context, ast->nextcase_stmt.defers.start, ast->nextcase_stmt.defers.end);
 	llvm_emit_jmp(context, jump_target->switch_stmt.codegen.retry_block);
 }
 

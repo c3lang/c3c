@@ -34,7 +34,6 @@ void compiler_init(const char *std_lib_dir)
 	stable_init(&global_context.compiler_defines, 512);
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
-	stable_init(&global_context.global_symbols, 0x1000);
 	vmem_init(&ast_arena, 4 * 1024);
 	vmem_init(&expr_arena, 4 * 1024);
 	vmem_init(&decl_arena, 1024);
@@ -131,8 +130,6 @@ static void add_global_define(const char *name, Expr *value)
 	dec->type = value->type;
 	dec->resolve_status = RESOLVE_DONE;
 	decl_set_external_name(dec);
-	compiler_register_public_symbol(dec);
-	stable_set(&dec->module->public_symbols, dec->name, dec);
 	stable_set(&dec->module->symbols, dec->name, dec);
 }
 
@@ -387,11 +384,6 @@ void compile()
 }
 
 
-Decl *compiler_find_symbol(const char *string)
-{
-	return stable_get(&global_context.global_symbols, string);
-}
-
 void global_context_add_type(Type *type)
 {
 	DEBUG_LOG("Created type %s.", type->name);
@@ -429,23 +421,6 @@ Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters, b
 	}
 
 	return module;
-}
-
-void compiler_register_public_symbol(Decl *decl)
-{
-	assert(decl->name);
-	Decl *prev = stable_get(&global_context.global_symbols, decl->name);
-	// If the previous symbol was already declared globally, remove it.
-	stable_set(&global_context.global_symbols, decl->name, prev ? poisoned_decl : decl);
-	STable *sub_module_space = stable_get(&global_context.qualified_symbols, decl->module->name->module);
-	if (!sub_module_space)
-	{
-		sub_module_space = MALLOC(sizeof(*sub_module_space));
-		stable_init(sub_module_space, 0x100);
-		stable_set(&global_context.qualified_symbols, decl->module->name->module, sub_module_space);
-	}
-	prev = stable_get(sub_module_space, decl->name);
-	stable_set(sub_module_space, decl->name, prev ? poisoned_decl : decl);
 }
 
 void scratch_buffer_clear(void)

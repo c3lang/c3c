@@ -237,10 +237,6 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_BITSTRUCT:
 				break;
 		}
-		if (decl->visibility > VISIBLE_MODULE)
-		{
-			stable_set(&module->public_symbols, decl->name, decl);
-		}
 		stable_set(&module->symbols, decl->name, decl);
 	}
 

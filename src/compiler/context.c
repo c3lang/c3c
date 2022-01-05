@@ -126,8 +126,10 @@ void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 	assert(decl->external_name && "Missing external name");
 	Decl *prev = stable_get(&unit->external_symbols, decl->external_name);
 	if (prev) return;
-	stable_set(&unit->external_symbols, decl->external_name, decl);
-	vec_add(unit->external_symbol_list, decl);
+	if (decl != stable_set(&unit->external_symbols, decl->external_name, decl))
+	{
+		vec_add(unit->external_symbol_list, decl);
+	}
 }
 
 
@@ -221,22 +223,15 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 	}
 	DEBUG_LOG("Registering symbol '%s' in %s.", decl->name, unit->module->name->module);
 
-	Decl *old = stable_set(&unit->local_symbols, decl->name, decl);
-	if (!old)
-	{
-		old = stable_set(&unit->module->symbols, decl->name, decl);
-	}
-	if (!old && decl->visibility == VISIBLE_PUBLIC)
-	{
-		compiler_register_public_symbol(decl);
-		old = stable_set(&unit->module->public_symbols, decl->name, decl);
-	}
-	if (old != NULL)
-	{
-		sema_shadow_error(decl, old);
-		decl_poison(decl);
-		decl_poison(old);
-	}
+	Decl *old;
+	if ((old = stable_set(&unit->local_symbols, decl->name, decl))) goto ERR;
+	if ((old = stable_set(&unit->module->symbols, decl->name, decl))) goto ERR;
+	return;
+ERR:
+	assert(decl != old);
+	sema_shadow_error(decl, old);
+	decl_poison(decl);
+	decl_poison(old);
 }
 
 bool unit_add_import(CompilationUnit *unit, Path *path, Token token, bool private_import)

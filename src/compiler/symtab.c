@@ -4,7 +4,7 @@
 
 #include "compiler_internal.h"
 
-#define TABLE_MAX_LOAD 0.75
+#define TABLE_MAX_LOAD 0.5
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
 
 
@@ -284,7 +284,7 @@ void stable_clear(STable *table)
 	table->count = 0;
 }
 
-static SEntry *sentry_find(SEntry *entries, uint32_t capacity, const char *key)
+static inline SEntry *sentry_find(SEntry *entries, uint32_t capacity, const char *key)
 {
 	uint32_t index = (uint32_t)((((uintptr_t)key) >> 2u) & (capacity - 1));
 	while (1)
@@ -317,13 +317,13 @@ static inline void stable_resize(STable *table)
 	table->max_load = new_capacity * TABLE_MAX_LOAD;
 	table->capacity = new_capacity;
 }
+
 void *stable_set(STable *table, const char *key, void *value)
 {
 	assert(value && "Cannot insert NULL");
-	if (table->count >= table->max_load) stable_resize(table);
-
 	SEntry *entry = sentry_find(table->entries, table->capacity, key);
 	void *old = entry->value;
+	if (old == value) return old;
 	entry->key = key;
 	entry->value = value;
 	if (!old)

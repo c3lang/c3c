@@ -212,7 +212,7 @@ static void sema_report_error_on_decl(const char *symbol_str, SourceSpan span, D
 	sema_error_range(span, "'%s' could not be found, did you spell it right?", symbol_str);
 }
 
-static Decl *sema_resolve_symbol(SemaContext *context, const char *symbol_str, SourceSpan span, Path *path, bool report_error)
+static inline Decl *sema_resolve_symbol(SemaContext *context, const char *symbol_str, SourceSpan span, Path *path, bool report_error)
 {
 	Decl *ambiguous_other_decl = NULL;
 	Decl *private_decl = NULL;
@@ -223,12 +223,9 @@ static Decl *sema_resolve_symbol(SemaContext *context, const char *symbol_str, S
 		decl = sema_resolve_path_symbol(context, symbol_str, path, &ambiguous_other_decl, &private_decl, &path_found);
 		if (!decl && !path_found)
 		{
-			if (report_error)
-			{
-				SEMA_ERROR(path, "Unknown module '%.*s', did you forget to import it?", path->len, path->module);
-				return poisoned_decl;
-			}
-			return NULL;
+			if (!report_error) return NULL;
+			SEMA_ERROR(path, "Unknown module '%.*s', did you forget to import it?", path->len, path->module);
+			return poisoned_decl;
 		}
 	}
 	else

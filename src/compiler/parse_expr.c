@@ -1543,11 +1543,12 @@ static Expr* parse_expr_block(ParseContext *context, Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_EXPR_BLOCK, context->tok);
 	advance_and_verify(context, TOKEN_LBRAPIPE);
+	AstId *next = &expr->expr_block.first_stmt;
 	while (!try_consume(context, TOKEN_RBRAPIPE))
 	{
 		Ast *stmt = parse_stmt(context);
 		if (!ast_ok(stmt)) return poisoned_expr;
-		vec_add(expr->expr_block.stmts, stmt);
+		ast_append(&next, stmt);
 	}
 	RANGE_EXTEND_PREV(expr);
 	return expr;

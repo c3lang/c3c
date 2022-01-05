@@ -1128,7 +1128,8 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	Decl *var = statement->foreach_stmt.variable;
 	Expr *enumerator = statement->foreach_stmt.enumeration;
 	Ast *body = statement->foreach_stmt.body;
-	Ast **stmts = NULL;
+	AstId first_stmt = 0;
+	AstId *succ = &first_stmt;
 	Expr **expressions = NULL;
 
 	bool value_by_ref = statement->foreach_stmt.value_by_ref;
@@ -1395,7 +1396,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		Expr *load_idx = expr_variable(idx_decl);
 		if (!cast(load_idx, index_var_type)) return false;
 		index->var.init_expr = load_idx;
-		vec_add(stmts, declare_ast);
+		ast_append(&succ, declare_ast);
 	}
 
 	// Create value = (*__$enum)[__idx$]
@@ -1415,10 +1416,10 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		subscript = addr;
 	}
 	var->var.init_expr = subscript;
-	vec_add(stmts, value_declare_ast);
-	vec_add(stmts, body);
+	ast_append(&succ, value_declare_ast);
+	ast_append(&succ, body);
 	Ast *compound_stmt = new_ast(AST_COMPOUND_STMT, body->span);
-	compound_stmt->compound_stmt.stmts = stmts;
+	compound_stmt->compound_stmt.first_stmt = first_stmt;
 	FlowCommon flow = statement->foreach_stmt.flow;
 	statement->for_stmt = (AstForStmt){ .init = init_expr,
 										.cond = binary,
@@ -1620,7 +1621,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 {
 	context->active_scope.jump_end = true;
 
-	if (!context->next_target && !statement->next_stmt.label.name && !statement->next_stmt.expr_or_type_info)
+	if (!context->next_target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr_or_type_info)
 	{
 		if (context->next_switch)
 		{
@@ -1634,24 +1635,24 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	}
 
 	Ast *parent = context->next_switch;
-	if (statement->next_stmt.label.name)
+	if (statement->nextcase_stmt.label.name)
 	{
-		Decl *target = sema_resolve_normal_symbol(context, statement->next_stmt.label.span, NULL, false);
+		Decl *target = sema_resolve_normal_symbol(context, statement->nextcase_stmt.label.span, NULL, false);
 		if (!target)
 		{
-			SEMA_ERROR(statement, "Cannot find a switch statement with the name '%s'.", statement->next_stmt.label.name);
+			SEMA_ERROR(statement, "Cannot find a switch statement with the name '%s'.", statement->nextcase_stmt.label.name);
 			return false;
 		}
 		if (target->decl_kind != DECL_LABEL)
 		{
-			SEMA_TOKID_ERROR(statement->next_stmt.label.span, "Expected the name to match a label, not a constant.");
+			SEMA_TOKID_ERROR(statement->nextcase_stmt.label.span, "Expected the name to match a label, not a constant.");
 			return false;
 		}
 		parent = astptr(target->label.parent);
 		AstKind kind = parent->ast_kind;
 		if (kind != AST_SWITCH_STMT && kind != AST_IF_CATCH_SWITCH_STMT)
 		{
-			SEMA_TOKID_ERROR(statement->next_stmt.label.span, "Expected the label to match a 'switch' or 'if-catch' statement.");
+			SEMA_TOKID_ERROR(statement->nextcase_stmt.label.span, "Expected the label to match a 'switch' or 'if-catch' statement.");
 			return false;
 		}
 		bool defer_mismatch = false;
@@ -1661,27 +1662,27 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			SEMA_ERROR(statement, "This 'nextcase' would jump out of a defer which is not allowed.");
 			return false;
 		}
-		assert(statement->next_stmt.expr_or_type_info);
+		assert(statement->nextcase_stmt.expr_or_type_info);
 	}
 
-	statement->next_stmt.defers.start = context->active_scope.defer_last;
-	statement->next_stmt.defers.end = parent->switch_stmt.defer;
+	statement->nextcase_stmt.defers.start = context->active_scope.defer_last;
+	statement->nextcase_stmt.defers.end = parent->switch_stmt.defer;
 
 	// Plain next.
-	if (!statement->next_stmt.expr_or_type_info)
+	if (!statement->nextcase_stmt.expr_or_type_info)
 	{
 		assert(context->next_target);
-		statement->next_stmt.case_switch_stmt = context->next_target;
+		statement->nextcase_stmt.case_switch_stmt = context->next_target;
 		return true;
 	}
 
 	Expr *cond = parent->switch_stmt.cond;
-	if (statement->next_stmt.is_type)
+	if (statement->nextcase_stmt.is_type)
 	{
-		TypeInfo *type_info = statement->next_stmt.expr_or_type_info;
+		TypeInfo *type_info = statement->nextcase_stmt.expr_or_type_info;
 		if (!sema_resolve_type_info(context, type_info)) return false;
 		Ast **cases;
-		statement->next_stmt.defers.end = parent->switch_stmt.defer;
+		statement->nextcase_stmt.defers.end = parent->switch_stmt.defer;
 		if (parent->switch_stmt.cond->type->canonical != type_typeid)
 		{
 			SEMA_ERROR(statement, "Unexpected 'type' in as an 'nextcase' destination.");
@@ -1703,20 +1704,20 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			Expr *expr = case_stmt->case_stmt.expr;
 			if (expr->expr_kind == EXPR_CONST && expr->const_expr.typeid == type)
 			{
-				statement->next_stmt.case_switch_stmt = astid(case_stmt);
+				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
 			}
 		}
 		if (default_stmt)
 		{
-			statement->next_stmt.case_switch_stmt = astid(default_stmt);
+			statement->nextcase_stmt.case_switch_stmt = astid(default_stmt);
 			return true;
 		}
 		SEMA_ERROR(type_info, "There is no case for type '%s'.", type_to_error_string(type_info->type));
 		return false;
 	}
 
-	Expr *target = statement->next_stmt.expr_or_type_info;
+	Expr *target = statement->nextcase_stmt.expr_or_type_info;
 
 	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_anyerr;
 
@@ -1725,7 +1726,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	if (target->expr_kind == EXPR_CONST)
 	{
 		Ast *default_stmt = NULL;
-		statement->next_stmt.defers.end = parent->switch_stmt.defer;
+		statement->nextcase_stmt.defers.end = parent->switch_stmt.defer;
 		VECEACH(parent->switch_stmt.cases, i)
 		{
 			Ast *case_stmt = parent->switch_stmt.cases[i];
@@ -1739,21 +1740,21 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			if (expr_const_compare(&target->const_expr, const_expr, BINARYOP_GE) &&
 				expr_const_compare(&target->const_expr, to_const_expr, BINARYOP_LE))
 			{
-				statement->next_stmt.case_switch_stmt = astid(case_stmt);
+				statement->nextcase_stmt.case_switch_stmt = astid(case_stmt);
 				return true;
 			}
 		}
 		if (default_stmt)
 		{
-			statement->next_stmt.case_switch_stmt = astid(default_stmt);
+			statement->nextcase_stmt.case_switch_stmt = astid(default_stmt);
 			return true;
 		}
 		SEMA_ERROR(statement, "'nextcase' needs to jump to an exact case statement.");
 		return false;
 	}
 
-	statement->next_stmt.case_switch_stmt = astid(parent);
-	statement->next_stmt.switch_expr = target;
+	statement->nextcase_stmt.case_switch_stmt = astid(parent);
+	statement->nextcase_stmt.switch_expr = target;
 	return true;
 }
 
@@ -1797,8 +1798,11 @@ static bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
 static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statement, Ast *replacement)
 {
 	if (!sema_analyse_statement(context, replacement)) return false;
-	// Overwrite
+	// Overwrite but store link.
+	AstId next = statement->next;
+	assert(!replacement->next);
 	*statement = *replacement;
+	statement->next = next;
 	return true;
 }
 
@@ -1842,15 +1846,16 @@ static bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context, Ast *compound_statement)
 {
 	bool all_ok = ast_ok(compound_statement);
-	VECEACH(compound_statement->compound_stmt.stmts, i)
+	AstId current = compound_statement->compound_stmt.first_stmt;
+	while (current)
 	{
-		if (!sema_analyse_statement(context, compound_statement->compound_stmt.stmts[i]))
+		Ast *ast = ast_next(&current);
+		if (!sema_analyse_statement(context, ast))
 		{
-			ast_poison(compound_statement->compound_stmt.stmts[i]);
+			ast_poison(ast);
 			all_ok = false;
 		}
 	}
-
 	context_pop_defers_to(context, &compound_statement->compound_stmt.defer_list);
 	return all_ok;
 }
@@ -2025,7 +2030,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 					new_var->var.init_expr = var_result;
 					Ast *decl_ast = new_ast(AST_DECLARE_STMT, new_var->span);
 					decl_ast->declare_stmt = new_var;
-					vec_insert_first(body->compound_stmt.stmts, decl_ast);
+					ast_prepend(&body->compound_stmt.first_stmt, decl_ast);
 				}
 				else
 				{
@@ -2039,7 +2044,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 					alias->var.shadow = true;
 					Ast *decl_ast = new_ast(AST_DECLARE_STMT, alias->span);
 					decl_ast->declare_stmt = alias;
-					vec_insert_first(body->compound_stmt.stmts, decl_ast);
+					ast_prepend(&body->compound_stmt.first_stmt, decl_ast);
 				}
 			}
 			success = success && (!body || sema_analyse_compound_statement_no_scope(context, body));
@@ -2275,7 +2280,8 @@ static inline bool sema_analyse_scoping_stmt(SemaContext *context, Ast *statemen
 {
 	Expr **exprs = statement->scoping_stmt.scoped->expression_list;
 	unsigned scoped_count = vec_size(exprs);
-	Ast **stmts = 0;
+	AstId first;
+	AstId *succ = &first;
 	for (unsigned i = 0; i < scoped_count; i++)
 	{
 		Expr *expr = exprs[i];
@@ -2294,7 +2300,7 @@ static inline bool sema_analyse_scoping_stmt(SemaContext *context, Ast *statemen
 		new_decl->var.init_expr = expr;
 		Ast *declare = new_ast(AST_DECLARE_STMT, expr->span);
 		declare->declare_stmt = new_decl;
-		vec_add(stmts, declare);
+		ast_append(&succ, declare);
 		Ast *defer_restore = new_ast(AST_DEFER_STMT, expr->span);
 
 		Expr *restore_expr = expr_new(EXPR_BINARY, expr->span);
@@ -2308,11 +2314,11 @@ static inline bool sema_analyse_scoping_stmt(SemaContext *context, Ast *statemen
 		restore_stmt->expr_stmt = restore_expr;
 
 		defer_restore->defer_stmt.body = restore_stmt;
-		vec_add(stmts, defer_restore);
+		ast_append(&succ, defer_restore);
 	}
-	vec_add(stmts, statement->scoping_stmt.stmt);
+	ast_append(&succ, statement->scoping_stmt.stmt);
 	statement->ast_kind = AST_COMPOUND_STMT;
-	statement->compound_stmt = (AstCompoundStmt) { .stmts = stmts };
+	statement->compound_stmt = (AstCompoundStmt) { .first_stmt = first };
 	return sema_analyse_compound_stmt(context, statement);
 }
 
@@ -2354,12 +2360,13 @@ static bool sema_analyse_compound_stmt(SemaContext *context, Ast *statement)
 static bool sema_analyse_ct_compound_stmt(SemaContext *context, Ast *statement)
 {
 	bool all_ok = ast_ok(statement);
-	Ast **stmts = statement->compound_stmt.stmts;
-	VECEACH(stmts, i)
+	AstId current = statement->compound_stmt.first_stmt;
+	while (current)
 	{
-		if (!sema_analyse_statement(context, stmts[i]))
+		Ast *stmt = ast_next(&current);
+		if (!sema_analyse_statement(context, stmt))
 		{
-			ast_poison(stmts[i]);
+			ast_poison(stmt);
 			all_ok = false;
 		}
 	}
@@ -2464,11 +2471,10 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 }
 
 
-static bool sema_analyse_requires(SemaContext *context, Ast *docs, Ast ***asserts)
+static bool sema_analyse_requires(SemaContext *context, Ast *docs, AstId **asserts)
 {
 	if (!docs) return true;
 	Ast **directives = docs->directives;
-	Ast **output = NULL;
 	VECEACH(directives, i)
 	{
 		Ast *directive = directives[i];
@@ -2497,10 +2503,9 @@ static bool sema_analyse_requires(SemaContext *context, Ast *docs, Ast ***assert
 			Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
 			assert->assert_stmt.expr = expr;
 			assert->assert_stmt.message = comment;
-			vec_add(output, assert);
+			ast_append(asserts, assert);
 		}
 	}
-	*asserts = output;
 	return true;
 }
 
@@ -2532,20 +2537,22 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		{
 			if (!sema_add_local(context, params[i])) return false;
 		}
-		Ast **asserts = NULL;
-		if (!sema_analyse_requires(context, func->docs, &asserts)) return false;
+		AstId assert_first = 0;
+		AstId *next = &assert_first;
+		if (!sema_analyse_requires(context, func->docs, &next)) return false;
 		if (func->func_decl.attr_naked)
 		{
-			Ast **stmts = func->func_decl.body->compound_stmt.stmts;
-			VECEACH(stmts, i)
+			AstId current = func->func_decl.body->compound_stmt.first_stmt;
+			while (current)
 			{
-				if (stmts[i]->ast_kind != AST_ASM_STMT)
+				Ast *stmt = ast_next(&current);
+				if (stmt->ast_kind != AST_ASM_STMT)
 				{
-					SEMA_ERROR(stmts[i], "Only asm statements are allowed inside of a naked function.");
+					SEMA_ERROR(stmt, "Only asm statements are allowed inside of a naked function.");
 					return false;
 				}
 			}
-			asserts = NULL;
+			assert_first = 0;
 		}
 		else
 		{
@@ -2562,12 +2569,11 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 				}
 			}
 		}
-		if (asserts)
+		if (assert_first)
 		{
 			Ast *ast = new_ast(AST_COMPOUND_STMT, func->func_decl.body->span);
-			ast->compound_stmt.stmts = asserts;
-			vec_add(ast->compound_stmt.stmts, func->func_decl.body);
-			func->func_decl.body = ast;
+			ast->compound_stmt.first_stmt = assert_first;
+			ast_prepend(&func->func_decl.body->compound_stmt.first_stmt, ast);
 		}
 	SCOPE_END;
 	return true;
