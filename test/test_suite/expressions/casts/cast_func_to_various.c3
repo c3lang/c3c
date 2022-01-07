@@ -21,17 +21,17 @@ fn void test1(Func arg)
 
 fn void test2(Func arg)
 {
-    ichar b = (ichar)(arg);               // #error: 'Func' (func void(int)) to 'ichar'
+    ichar b = (ichar)(arg);               // #error: 'Func' (fn void(int)) to 'ichar'
 }
 
 fn void test3(Func arg)
 {
-    uint c = (uint)(arg);                 // #error: 'Func' (func void(int)) to 'uint'
+    uint c = (uint)(arg);                 // #error: 'Func' (fn void(int)) to 'uint'
 }
 
 fn void test4(Func arg)
 {
-    float d = (float)(arg);               // #error: 'Func' (func void(int)) to 'float'
+    float d = (float)(arg);               // #error: 'Func' (fn void(int)) to 'float'
 }
 
 fn void test7(Func arg)
@@ -39,7 +39,7 @@ fn void test7(Func arg)
     usize g = (usize)(arg);
     FuncOther k = (FuncOther)(arg);
     FuncSame l = (FuncSame)(arg);
-    FuncOther ke = arg;                         // #error: 'Func' (func void(int)) to 'FuncOther' (func bool(char*))
+    FuncOther ke = arg;                         // #error: 'Func' (fn void(int)) to 'FuncOther' (fn bool(char*))
     FuncSame fe = arg;
-    Enum j = (Enum)(arg);                 // #error: 'Func' (func void(int)) to 'Enum'
+    Enum j = (Enum)(arg);                 // #error: 'Func' (fn void(int)) to 'Enum'
 }

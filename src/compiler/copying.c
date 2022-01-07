@@ -440,9 +440,7 @@ TypeInfo *copy_type_info(TypeInfo *source)
 static void copy_function_signature_deep(FunctionSignature *signature)
 {
 	MACRO_COPY_DECL_LIST(signature->params);
-	MACRO_COPY_TYPE(signature->rtype);
-	assert(!signature->failable_abi_info);
-	assert(!signature->ret_abi_info);
+	MACRO_COPY_TYPE(signature->returntype);
 }
 void copy_decl_type(Decl *decl)
 {

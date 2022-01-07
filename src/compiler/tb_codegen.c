@@ -49,48 +49,73 @@ static inline bool tinybackend_value_is_addr(BEValue *value)
 static inline bool tinybackend_value_is_bool(BEValue *value)
 { return value->kind == BE_BOOLEAN; }
 
-static TB_DataType tinybackend_get_type(Type *type)
+static TB_DataType tbc3_get_type(Type *type)
 {
 	type = type_lowering(type);
 	uint8_t elements = 1;
 	if (type->type_kind == TYPE_VECTOR)
 	{
 		elements = (uint8_t)type->vector.len;
-		type = type->vector.base;
+		switch (type->vector.base->type_kind)
+		{
+			case TYPE_U8:
+			case TYPE_I8:
+				return TB_TYPE_VEC_I8(elements);
+			case TYPE_U16:
+			case TYPE_I16:
+				return TB_TYPE_VEC_I16(elements);
+			case TYPE_U32:
+			case TYPE_I32:
+				return TB_TYPE_VEC_I32(elements);
+			case TYPE_U64:
+			case TYPE_I64:
+				return TB_TYPE_VEC_I64(elements);
+			case TYPE_I128:
+			case TYPE_U128:
+				FATAL_ERROR("Unsupported int128");
+			case TYPE_F64:
+				return TB_TYPE_VEC_F64(elements);
+			case TYPE_F32:
+				return TB_TYPE_VEC_F32(elements);
+			case TYPE_F16:
+				FATAL_ERROR("Unsupported f16");
+			case TYPE_F128:
+				FATAL_ERROR("Unsupported f128");
+			default:
+				UNREACHABLE
+		}
 	}
 	switch (type->type_kind)
 	{
 		case TYPE_U8:
 		case TYPE_I8:
-			return TB_TYPE_I8(elements);
+			return TB_TYPE_I8;
 		case TYPE_U16:
 		case TYPE_I16:
-			return TB_TYPE_I16(elements);
+			return TB_TYPE_I16;
 		case TYPE_U32:
 		case TYPE_I32:
-			return TB_TYPE_I32(elements);
+			return TB_TYPE_I32;
 		case TYPE_U64:
 		case TYPE_I64:
-			return TB_TYPE_I64(elements);
+			return TB_TYPE_I64;
 		case TYPE_POINTER:
-			assert(elements == 1);
-			return TB_TYPE_PTR();
+			return TB_TYPE_PTR;
 		case TYPE_I128:
 		case TYPE_U128:
-			return TB_TYPE_I128(elements);
+			FATAL_ERROR("Unsupported int128");
 		case TYPE_BOOL:
-			return TB_TYPE_BOOL(elements);
+			return TB_TYPE_BOOL;
 		case TYPE_F64:
-			return TB_TYPE_F64(elements);
+			return TB_TYPE_F64;
 		case TYPE_F32:
-			return TB_TYPE_F32(elements);
+			return TB_TYPE_F32;
 		case TYPE_VOID:
-			assert(elements == 1);
-			return TB_TYPE_VOID();
+			return TB_TYPE_VOID;
 		case TYPE_F16:
-			TODO
+			FATAL_ERROR("Unsupported f16");
 		case TYPE_F128:
-			TODO
+			FATAL_ERROR("Unsupported f128");
 		case TYPE_VECTOR:
 			UNREACHABLE
 		default:
@@ -114,7 +139,7 @@ TB_Register tinybackend_emit_load_aligned(GenContext *c, TB_DataType dt, TB_Regi
 
 void tinybackend_store_self_aligned(GenContext *c, TB_Register pointer, TB_Register value, Type *type)
 {
-	tb_inst_store(c->function, tinybackend_get_type(type), pointer, value, type_abi_alignment(type));
+	tb_inst_store(c->function, tbc3_get_type(type), pointer, value, type_abi_alignment(type));
 }
 
 void tinybackend_store_bevalue(GenContext *c, TB_DataType type, BEValue *destination, BEValue *value)
@@ -123,7 +148,7 @@ void tinybackend_store_bevalue(GenContext *c, TB_DataType type, BEValue *destina
 	if (value->kind == BE_ADDRESS && !type_is_abi_aggregate(value->type))
 	{
 		value->value = tinybackend_emit_load_aligned(c,
-		                                             tinybackend_get_type(value->type),
+		                                             tbc3_get_type(value->type),
 		                                             value->value,
 		                                             value->alignment);
 		value->kind = BE_VALUE;
@@ -133,12 +158,12 @@ void tinybackend_store_bevalue(GenContext *c, TB_DataType type, BEValue *destina
 	switch (value->kind)
 	{
 		case BE_BOOLEAN:
-			value->value = tb_inst_zxt(c->function, value->value, TB_TYPE_I8(1));
+			value->value = tb_inst_zxt(c->function, value->value, TB_TYPE_I8);
 			value->kind = BE_VALUE;
 			FALLTHROUGH;
 		case BE_VALUE:
 			tb_inst_store(c->function,
-			              tinybackend_get_type(destination->type),
+			              tbc3_get_type(destination->type),
 			              destination->value,
 			              value->value,
 			              alignment ? alignment : type_abi_alignment(value->type));
@@ -148,7 +173,7 @@ void tinybackend_store_bevalue(GenContext *c, TB_DataType type, BEValue *destina
 			// Here we do an optimized(?) memcopy.
 			ByteSize size = type_size(value->type);
 			TB_Register copy_size = tb_inst_iconst(c->function,
-			                                       size <= UINT32_MAX ? TB_TYPE_I32(1) : TB_TYPE_I64(1),
+			                                       size <= UINT32_MAX ? TB_TYPE_I32 : TB_TYPE_I64,
 			                                       size);
 
 			TB_Register source = value->value;
@@ -199,14 +224,16 @@ static void tinybackend_emit_const_expr(GenContext *c, BEValue *value, Expr *exp
 			TB_Register reg;
 			Int128 i = expr->const_expr.ixx.i;
 
-			TB_DataType dt = tinybackend_get_type(type);
+			TB_DataType dt = tbc3_get_type(type);
 			printf("Const int type: %d\n", dt.type);
 
 			switch (expr->const_expr.ixx.type)
 			{
+
 				case TYPE_I128:
 				case TYPE_U128:
-					reg = tb_inst_iconst128(c->function, dt, (TB_Int128){ .lo = i.low, .hi = i.high });
+					TODO
+					//reg = tb_inst_iconst128(c->function, dt, (TB_Int128){ .lo = i.low, .hi = i.high });
 					break;
 				default:
 					reg = tb_inst_iconst(c->function, dt, i.low);
@@ -227,7 +254,7 @@ BEValue tinybackend_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, TB
 
 	BEValue value;
 	tinybackend_emit_expr(c, &value, expr);
-	tinybackend_store_bevalue(c, tinybackend_get_type(ref->type), ref, &value);
+	tinybackend_store_bevalue(c, tbc3_get_type(ref->type), ref, &value);
 
 	return value;
 }
@@ -317,7 +344,7 @@ void tinybackend_value_rvalue(GenContext *c, BEValue *value)
 	}
 	//llvm_value_fold_failable(c, value);
 	value->value = tinybackend_emit_load_aligned(c,
-	                                             tinybackend_get_type(value->type),
+	                                             tbc3_get_type(value->type),
 	                                             value->value,
 	                                             value->alignment ? value->alignment : type_abi_alignment(value->type));
 
@@ -371,7 +398,7 @@ void tinybackend_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEVal
 	TB_Register lhs_value = lhs.value;
 	TB_Register rhs_value = rhs.value;
 
-	TB_DataType dt = tinybackend_get_type(lhs_type);
+	TB_DataType dt = tbc3_get_type(lhs_type);
 	switch (binary_op)
 	{
 		case BINARYOP_ERROR:
@@ -508,7 +535,7 @@ static void tinybackend_emit_binary_expr(GenContext *c, BEValue *be_value, Expr 
 		tinybackend_emit_expr(c, &addr, expr->binary_expr.left);
 		tinybackend_value_addr(c, &addr);
 		tinybackend_emit_binary(c, be_value, expr, &addr, base_op);
-		tinybackend_store_bevalue(c, tinybackend_get_type(addr.type), &addr, be_value);
+		tinybackend_store_bevalue(c, tbc3_get_type(addr.type), &addr, be_value);
 		return;
 	}
 	printf("B\n");
@@ -556,7 +583,7 @@ static TB_Register tinybackend_emit_local_decl(GenContext *c, Decl *decl)
 		TODO
 	}
 
-	TB_DataType dt = tinybackend_get_type(decl->type);
+	TB_DataType dt = tbc3_get_type(decl->type);
 	TypeSize size = type_size(decl->type);
 	AlignSize align = decl->alignment;
 
@@ -611,78 +638,117 @@ static void tinybackend_emit_stmt(GenContext *c, Ast *ast)
 			break;
 		case AST_RETURN_STMT:
 			//gencontext_emit_return(c, ast);
-			tb_inst_ret(c->function, TB_TYPE_VOID(), TB_NULL_REG);
+			tb_inst_ret(c->function, TB_NULL_REG);
 			break;
 		default:
 			break;
 	}
 }
 
-static void tinybackend_emit_function_body(GenContext *c, Decl *decl)
+static TB_CallingConv tbc3_call_convention(CallABI abi)
+{
+	switch (abi)
+	{
+		case CALL_C:
+			return TB_CDECL;
+		case CALL_X86_STD:
+			return TB_STDCALL;
+		default:
+			FATAL_ERROR("Unsupported call convention for TildeBE");
+	}
+}
+static void tbc3_emit_function_body(GenContext *c, Decl *decl)
 {
 	printf("Function: %s\n", decl->external_name);
 
 	c->current_func_decl = decl;
 
-	// TODO(NeGate): Actually interpret the return value
-	c->function = tb_function_create(c->module, decl->external_name, TB_TYPE_VOID());
+	FunctionSignature *func = &decl->func_decl.function_signature;
+	unsigned params = vec_size(func->params);
+	/*
+	TB_FunctionPrototype *p = tb_prototype_create(c->module,
+	                                              tbc3_call_convention(func->call_abi),
+												  tbc3_get_type(abi_returntype(func->rtype->type)),
+												  params, func->variadic == VARIADIC_RAW);
 
+	TB_Function *f = tb_prototype_add_param()*/
+	/*
 	VECEACH(decl->func_decl.body->compound_stmt.stmts, i)
 	{
 		tinybackend_emit_stmt(c, decl->func_decl.body->compound_stmt.stmts[i]);
-	}
+	}*/
 
 	tb_function_print(c->function, stdout);
 }
 
-static void tinybackend_gen_context(GenContext *c)
+static void tbc3_gen_context(GenContext *c)
 {
-	scratch_buffer_clear();
-	StringSlice slice = strtoslice(c->code_module->name->module);
-	while (true)
+	const char *result = module_create_object_file_name(c->code_module);
+	c->object_filename = strformat("%s%s", result, get_object_extension());
+}
+
+static TB_Arch tbc3_get_arch(void)
+{
+	switch (platform_target.arch)
 	{
-		StringSlice part = strnexttok(&slice, ':');
-		scratch_buffer_append_len(part.ptr, part.len);
-		if (!slice.len) break;
-		slice.ptr++;
-		slice.len--;
-		scratch_buffer_append_char('.');
+		case ARCH_TYPE_AARCH64:
+			return TB_ARCH_AARCH64;
+		case ARCH_TYPE_X86_64:
+			return TB_ARCH_X86_64;
+		default:
+			FATAL_ERROR("Unsupported architecture for TB backend.");
 	}
-	const char *result = scratch_buffer_to_string();
-	// TODO filename should depend on platform.
-	c->object_filename = strformat("%s.o", result);
+}
+
+static TB_System tbc3_get_system(void)
+{
+	switch (platform_target.os)
+	{
+		case OS_TYPE_LINUX:
+			return TB_SYSTEM_LINUX;
+		case OS_TYPE_WIN32:
+			return TB_SYSTEM_WINDOWS;
+		case OS_TYPE_MACOSX:
+			// TODO add when support exists.
+			// return TB_SYSTEM_MACOS;
+			return TB_SYSTEM_LINUX;
+		case OS_TYPE_UNKNOWN:
+			return TB_SYSTEM_LINUX;
+		default:
+			FATAL_ERROR("Unsupported OS");
+	}
 }
 
 // Generate context per module (single threaded)
 void *tinybackend_gen(Module *module)
 {
+	if (!vec_size(module->units)) return NULL;
 	GenContext *c = ccalloc(sizeof(GenContext), 1);
 	c->code_module = module;
 
-	// TODO identify target architecture
-	c->module = tb_module_create(TB_ARCH_X86_64, TB_SYSTEM_LINUX, &c->features, TB_OPT_O0, 1, false);
+	c->module = tb_module_create(tbc3_get_arch(), tbc3_get_system(), &c->features);
 
-	tinybackend_gen_context(c);
+	tbc3_gen_context(c);
 
 	printf("Module: %.*s\n", module->name->len, module->name->module);
-
 	// Forward decls
-	VECEACH(module->contexts, j)
-	{
-		Context *context = module->contexts[j];
 
-		printf("  External symbols: %d\n", vec_size(context->external_symbol_list));
-		printf("  Functions: %d\n", vec_size(context->functions));
+	VECEACH(module->units, j)
+	{
+		CompilationUnit *unit = module->units[j];
+
+		printf("  External symbols: %d\n", vec_size(unit->external_symbol_list));
+		printf("  Functions: %d\n", vec_size(unit->functions));
 	}
 
-	VECEACH(module->contexts, j)
+	VECEACH(module->units, j)
 	{
-		Context *context = module->contexts[j];
+		CompilationUnit *unit = module->units[j];
 
-		VECEACH(context->functions, i)
+		VECEACH(unit->functions, i)
 		{
-			Decl *decl = context->functions[i];
-			if (decl->func_decl.body) tinybackend_emit_function_body(c, decl);
+			Decl *decl = unit->functions[i];
+			if (decl->func_decl.body) tbc3_emit_function_body(c, decl);
 		}
 	}
 
@@ -696,9 +762,7 @@ const char *tinybackend_codegen(void *context)
 	GenContext *c = (GenContext *)context;
 
 	// Write out the object file
-	FILE *file = fopen(c->object_filename, "wb");
-	tb_module_export(c->module, file);
-	fclose(file);
+	tb_module_export(c->module, c->object_filename);
 
 	return c->object_filename;
 }

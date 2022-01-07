@@ -894,45 +894,37 @@ static ABIArgInfo *x64_classify_parameter(Type *type, Registers *available_regis
 
 }
 
-void c_abi_func_create_x64(FunctionSignature *signature)
+void c_abi_func_create_x64(FunctionPrototype *prototype)
 {
-	if (signature->use_win64)
+	if (prototype->use_win64)
 	{
-		return c_abi_func_create_win64(signature);
+		return c_abi_func_create_win64(prototype);
 	}
 	// TODO 32 bit pointers
-	bool is_regcall = signature->call_abi == CALL_X86_REG;
+	bool is_regcall = prototype->call_abi == CALL_X86_REG;
 
 	Registers available_registers = {
 			.int_registers = is_regcall ? 11 : 16,
 			.sse_registers = is_regcall ? 16 : 8
 	};
 
-	Type *rtype = abi_rtype(signature);
-	if (IS_FAILABLE(signature->rtype))
+	prototype->ret_abi_info = x64_classify_return_type(prototype->abi_ret_type, &available_registers, is_regcall);
+	if (abi_arg_is_indirect(prototype->ret_abi_info)) available_registers.int_registers--;
+
+	if (prototype->ret_by_ref)
 	{
-		signature->failable_abi_info = x64_classify_return_type(type_anyerr, &available_registers, is_regcall);
-		if (abi_arg_is_indirect(signature->failable_abi_info))
-		{
-			available_registers.int_registers--;
-		}
-		if (rtype->type_kind != TYPE_VOID)
-		{
-			signature->ret_abi_info = x64_classify_parameter(type_get_ptr(type_lowering(rtype)), &available_registers, is_regcall, NAMED);
-		}
-	}
-	else
-	{
-		signature->ret_abi_info = x64_classify_return_type(rtype, &available_registers, is_regcall);
-		if (abi_arg_is_indirect(signature->ret_abi_info))
-		{
-			available_registers.int_registers--;
-		}
+		prototype->ret_by_ref_abi_info = x64_classify_parameter(type_get_ptr(type_lowering(prototype->ret_by_ref_type)), &available_registers, is_regcall, NAMED);
 	}
 
-	Decl **params = signature->params;
-	VECEACH(params, i)
+	Type **params = prototype->params;
+	unsigned param_count = vec_size(prototype->params);
+	if (param_count)
 	{
-		params[i]->var.abi_info = x64_classify_parameter(params[i]->type, &available_registers, is_regcall, NAMED);
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+		for (unsigned i = 0; i < param_count; i++)
+		{
+			args[i] = x64_classify_parameter(params[i], &available_registers, is_regcall, NAMED);
+		}
+		prototype->abi_args = args;
 	}
 }

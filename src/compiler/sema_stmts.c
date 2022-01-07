@@ -1023,7 +1023,7 @@ static Decl *find_iterator(SemaContext *context, Expr *enumerator)
 			break;
 		case DECL_FUNC:
 			parameters = method->func_decl.function_signature.params;
-			iterator_type = method->func_decl.function_signature.rtype;
+			iterator_type = method->func_decl.function_signature.returntype;
 			break;
 		default:
 			UNREACHABLE
@@ -1089,7 +1089,7 @@ static Decl *find_iterator_next(SemaContext *context, Expr *enumerator)
 			break;
 		case DECL_FUNC:
 			parameters = method->func_decl.function_signature.params;
-			rtype = method->func_decl.function_signature.rtype;
+			rtype = method->func_decl.function_signature.returntype;
 			break;
 		default:
 			UNREACHABLE
@@ -2513,8 +2513,9 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 {
 	if (!decl_ok(func)) return false;
 	FunctionSignature *signature = &func->func_decl.function_signature;
+	FunctionPrototype *prototype = func->type->func.prototype;
 	context->current_function = func;
-	context->rtype = signature->rtype->type;
+	context->rtype = prototype->rtype;
 	context->active_scope = (DynamicScope) {
 			.scope_id = 0,
 			.depth = 0,
@@ -2560,7 +2561,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 			assert(context->active_scope.depth == 1);
 			if (!context->active_scope.jump_end)
 			{
-				Type *canonical_rtype = type_no_fail(signature->rtype->type)->canonical;
+				Type *canonical_rtype = type_no_fail(prototype->rtype)->canonical;
 				if (canonical_rtype != type_void)
 				{
 					// IMPROVE better pointer to end.

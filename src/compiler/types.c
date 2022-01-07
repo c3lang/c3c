@@ -101,6 +101,112 @@ const char *type_quoted_error_string(Type *type)
 	asprintf(&buffer, "'%s'", type_to_error_string(type));
 	return buffer;
 }
+
+static void type_append_func_to_scratch(FunctionPrototype *prototype);
+
+static void type_append_name_to_scratch(Type *type)
+{
+	type = type->canonical;
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_TYPEDEF:
+			UNREACHABLE;
+		case TYPE_ERRTYPE:
+		case TYPE_ENUM:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_DISTINCT:
+		case TYPE_BITSTRUCT:
+			scratch_buffer_append(type->decl->external_name);
+			break;
+		case TYPE_POINTER:
+			type_append_name_to_scratch(type->pointer);
+			scratch_buffer_append_char('*');
+			break;
+		case TYPE_FAILABLE_ANY:
+			scratch_buffer_append("void!");
+			break;
+		case TYPE_FAILABLE:
+			if (type->failable)
+			{
+				type_append_name_to_scratch(type->failable);
+			}
+			else
+			{
+				scratch_buffer_append("void");
+			}
+			scratch_buffer_append_char('!');
+			break;
+		case TYPE_SUBARRAY:
+			type_append_name_to_scratch(type->array.base);
+			scratch_buffer_append("[]");
+		case TYPE_FLEXIBLE_ARRAY:
+			type_append_name_to_scratch(type->array.base);
+			scratch_buffer_append("[*]");
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+		case TYPE_I128:
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+		case TYPE_U128:
+		case TYPE_F16:
+		case TYPE_F32:
+		case TYPE_F64:
+		case TYPE_F128:
+		case TYPE_TYPEID:
+		case TYPE_ANYERR:
+		case TYPE_ANY:
+		case TYPE_VECTOR:
+			scratch_buffer_append(type->name);
+			break;
+		case TYPE_UNTYPED_LIST:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_TYPEINFO:
+			UNREACHABLE
+			break;
+		case TYPE_FUNC:
+			type_append_func_to_scratch(type->func.prototype);
+			break;
+		case TYPE_ARRAY:
+			type_append_name_to_scratch(type->array.base);
+			scratch_buffer_append_char('[');
+			scratch_buffer_append_signed_int(type->array.len);
+			scratch_buffer_append_char(']');
+			break;
+	}
+}
+
+static void type_append_func_to_scratch(FunctionPrototype *prototype)
+{
+	type_append_name_to_scratch(prototype->rtype);
+	scratch_buffer_append_char('(');
+	unsigned elements = vec_size(prototype->params);
+	for (unsigned i = 0; i < elements; i++)
+	{
+		if (i > 0)
+		{
+			scratch_buffer_append_char(',');
+		}
+		type_append_name_to_scratch(prototype->params[i]);
+	}
+	if (prototype->variadic == VARIADIC_RAW && elements > 0)
+	{
+		scratch_buffer_append_char(',');
+	}
+	if (prototype->variadic != VARIADIC_NONE)
+	{
+		scratch_buffer_append("...");
+	}
+	scratch_buffer_append_char(')');
+}
+
 const char *type_to_error_string(Type *type)
 {
 	char *buffer = NULL;
@@ -124,7 +230,10 @@ const char *type_to_error_string(Type *type)
 		case TYPE_ANY:
 			return type->name;
 		case TYPE_FUNC:
-			return strcat_arena("func ", type->func.mangled_function_signature);
+			scratch_buffer_clear();
+			type_append_func_to_scratch(type->func.prototype);
+			asprintf(&buffer, "fn %s", scratch_buffer_to_string());
+			return buffer;
 		case TYPE_VECTOR:
 			asprintf(&buffer, "%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 			return buffer;
@@ -158,31 +267,6 @@ const char *type_to_error_string(Type *type)
 	}
 	UNREACHABLE
 }
-
-void type_append_signature_name(Type *type, char *dst, size_t *offset)
-{
-	type = type->canonical;
-	assert(*offset < MAX_FUNCTION_SIGNATURE_SIZE);
-	const char *name;
-	switch (type->type_kind)
-	{
-		case TYPE_POISONED:
-		case TYPE_TYPEDEF:
-			UNREACHABLE;
-		case TYPE_ERRTYPE:
-		case TYPE_ENUM:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-			name = type->decl->external_name;
-			break;
-		default:
-			name = type->name;
-			break;
-	}
-	memcpy(dst + *offset, name, strlen(name));
-	*offset += strlen(name);
-}
-
 
 
 TypeSize type_size(Type *type)
@@ -896,120 +980,154 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 }
 
 
-static void type_append_name_to_scratch(Type *type)
+
+typedef struct
 {
-	type = type->canonical;
-	switch (type->type_kind)
+	uint32_t key;
+	Type *value;
+} FuncTypeEntry;
+
+typedef struct
+{
+	uint32_t count;
+	uint32_t capacity;
+	uint32_t max_load;
+	FuncTypeEntry *entries;
+} FuncMap;
+
+FuncMap map;
+
+void type_func_prototype_init(uint32_t capacity)
+{
+	assert(is_power_of_two(capacity) && capacity > 1);
+	map.entries = CALLOC(capacity * sizeof(FuncTypeEntry));
+	map.capacity = capacity;
+	map.max_load = TABLE_MAX_LOAD * capacity;
+}
+
+static uint32_t hash_function(FunctionSignature *sig)
+{
+	uintptr_t hash = (unsigned)sig->variadic;
+	hash = hash * 31 + (uintptr_t)sig->returntype->type->canonical;
+	Decl **params = sig->params;
+	VECEACH(params, i)
 	{
-		case TYPE_POISONED:
-		case TYPE_TYPEDEF:
-			UNREACHABLE;
-		case TYPE_ERRTYPE:
-		case TYPE_ENUM:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_DISTINCT:
-		case TYPE_BITSTRUCT:
-			scratch_buffer_append(type->decl->external_name);
-			break;
-		case TYPE_POINTER:
-			type_append_name_to_scratch(type->pointer);
-			scratch_buffer_append_char('*');
-			break;
-		case TYPE_FAILABLE_ANY:
-			scratch_buffer_append("void!");
-			break;
-		case TYPE_FAILABLE:
-			if (type->failable)
+		Decl *param = params[i];
+		hash = hash * 31 + (uintptr_t)param->type->canonical;
+	}
+	return (uint32_t)((hash >> 16) ^ hash);
+}
+
+static int compare_function(FunctionSignature *sig, FunctionPrototype *proto)
+{
+	if (sig->variadic != proto->variadic) return -1;
+	Decl **params = sig->params;
+	Type **other_params = proto->params;
+	unsigned param_count = vec_size(params);
+	if (param_count != vec_size(other_params)) return -1;
+	if (sig->returntype->type->canonical != proto->rtype->canonical) return -1;
+	VECEACH(params, i)
+	{
+		Decl *param = params[i];
+		Type *other_param = other_params[i];
+		if (param->type->canonical != other_param->canonical) return -1;
+	}
+	return 0;
+}
+
+void c_abi_func_create(FunctionPrototype *proto);
+
+static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI abi, uint32_t hash, FuncTypeEntry *entry)
+{
+	unsigned param_count = vec_size(sig->params);
+	FunctionPrototype *proto = CALLOCS(FunctionPrototype);
+	proto->variadic = sig->variadic;
+	Type *rtype = sig->returntype->type;
+	proto->rtype = rtype;
+	if (type_is_failable(rtype))
+	{
+		proto->is_failable = true;
+		Type *real_return_type = rtype->failable;
+		proto->ret_by_ref_type = rtype->failable;
+		proto->ret_by_ref = real_return_type->type_kind != TYPE_VOID;
+		proto->abi_ret_type = type_anyerr;
+	}
+	else
+	{
+		proto->ret_by_ref_type = proto->abi_ret_type = rtype;
+	}
+	proto->call_abi = abi;
+	if (param_count)
+	{
+		Type **params = VECNEW(Type*, param_count);
+		for (unsigned i = 0; i < param_count; i++)
+		{
+			vec_add(params, sig->params[i]->type);
+		}
+		proto->params = params;
+	}
+	c_abi_func_create(proto);
+
+
+	Type *type = type_new(TYPE_FUNC, "#Function");
+	type->func.prototype = proto;
+	type->canonical = type;
+	entry->key = hash;
+	entry->value = type;
+
+	map.count++;
+	if (map.count >= map.max_load)
+	{
+		FuncTypeEntry *entries = map.entries;
+		uint32_t old_capacity = map.capacity;
+		uint32_t new_capacity = map.capacity = old_capacity << 2;
+		map.max_load = new_capacity * TABLE_MAX_LOAD;
+		FuncTypeEntry *new_map = CALLOC(new_capacity * sizeof(FuncTypeEntry));
+		uint32_t new_mask = new_capacity - 1;
+		for (int i = 0; i < old_capacity; i++)
+		{
+			uint32_t key = entries[i].key;
+			if (!key) continue;
+			uint32_t index = key & new_mask;
+			while (1)
 			{
-				type_append_name_to_scratch(type->failable);
+				entry = &new_map[index];
+				if (!entry->key)
+				{
+					entry->key = key;
+					entry->value = entries[i].value;
+					break;
+				}
+				index = (index + 1) & new_mask;
 			}
-			else
-			{
-				scratch_buffer_append("void");
-			}
-			scratch_buffer_append_char('!');
-			break;
-		case TYPE_SUBARRAY:
-			type_append_name_to_scratch(type->array.base);
-			scratch_buffer_append("[]");
-		case TYPE_FLEXIBLE_ARRAY:
-			type_append_name_to_scratch(type->array.base);
-			scratch_buffer_append("[*]");
-		case TYPE_VOID:
-		case TYPE_BOOL:
-		case TYPE_I8:
-		case TYPE_I16:
-		case TYPE_I32:
-		case TYPE_I64:
-		case TYPE_I128:
-		case TYPE_U8:
-		case TYPE_U16:
-		case TYPE_U32:
-		case TYPE_U64:
-		case TYPE_U128:
-		case TYPE_F16:
-		case TYPE_F32:
-		case TYPE_F64:
-		case TYPE_F128:
-		case TYPE_TYPEID:
-		case TYPE_ANYERR:
-		case TYPE_ANY:
-		case TYPE_VECTOR:
-			scratch_buffer_append(type->name);
-			break;
-		case TYPE_UNTYPED_LIST:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_TYPEINFO:
-			UNREACHABLE
-			break;
-		case TYPE_FUNC:
-			scratch_buffer_append(type->func.mangled_function_signature);
-			break;
-		case TYPE_ARRAY:
-			type_append_name_to_scratch(type->array.base);
-			scratch_buffer_append_char('[');
-			scratch_buffer_append_signed_int(type->array.len);
-			scratch_buffer_append_char(']');
-			break;
+		}
+		map.entries = new_map;
+	}
+	return type;
+}
+
+Type *type_get_func(FunctionSignature *signature, CallABI abi)
+{
+	uint32_t hash = hash_function(signature);
+	uint32_t mask = map.capacity - 1;
+	uint32_t index = hash & mask;
+	FuncTypeEntry *entries = map.entries;
+	FuncTypeEntry *entry;
+	while (1)
+	{
+		entry = &entries[index];
+		if (!entry->key)
+		{
+			return func_create_new_func_proto(signature, abi, hash, entry);
+		}
+		if (entry->key == hash && compare_function(signature, entry->value->func.prototype) == 0)
+		{
+			return entry->value;
+		}
+		index = (index + 1) & mask;
 	}
 }
 
-Type *type_find_function_type(FunctionSignature *signature)
-{
-	scratch_buffer_clear();
-	type_append_name_to_scratch(signature->rtype->type);
-	scratch_buffer_append_char('(');
-	unsigned elements = vec_size(signature->params);
-	for (unsigned i = 0; i < elements; i++)
-	{
-		if (i > 0)
-		{
-			scratch_buffer_append_char(',');
-		}
-		type_append_name_to_scratch(signature->params[i]->var.type_info->type);
-	}
-	if (signature->variadic == VARIADIC_RAW && elements > 0)
-	{
-		scratch_buffer_append_char(',');
-	}
-	if (signature->variadic != VARIADIC_NONE)
-	{
-		scratch_buffer_append("...");
-	}
-	scratch_buffer_append_char(')');
-	const char *mangled_signature = scratch_buffer_interned();
-	Type *func_type = stable_get(&function_types, mangled_signature);
-	if (!func_type)
-	{
-		func_type = type_new(TYPE_FUNC, mangled_signature);
-		func_type->canonical = func_type;
-		func_type->func.signature = signature;
-		func_type->func.mangled_function_signature = mangled_signature;
-		stable_set(&function_types, mangled_signature, func_type);
-	}
-	return func_type;
-}
 
 static inline void type_init_int(const char *name, Type *type, TypeKind kind, BitSizes bits)
 {
@@ -1048,8 +1166,6 @@ void type_setup(PlatformTarget *target)
 	type_init_int("uint128", &t.u128, TYPE_U128, BITS128);
 
 	type_init_int("void", &t.u0, TYPE_VOID, BITS8);
-
-
 
 	type_create("typeinfo", &t.typeinfo, TYPE_TYPEINFO, 1, 1, 1);
 	type_create("complist", &t.ctlist, TYPE_UNTYPED_LIST, 1, 1, 1);

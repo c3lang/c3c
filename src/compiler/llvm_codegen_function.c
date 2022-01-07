@@ -8,7 +8,7 @@
 static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index);
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
-static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsigned *index);
+static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
 
 bool llvm_emit_check_block_branch(GenContext *context)
 {
@@ -122,9 +122,8 @@ LLVMValueRef llvm_get_next_param(GenContext *context, unsigned *index)
 }
 
 
-static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsigned *index)
+static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index)
 {
-	ABIArgInfo *info = decl->var.abi_info;
 	switch (info->kind)
 	{
 		case ABI_ARG_IGNORE:
@@ -235,12 +234,12 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, unsig
 		}
 	}
 }
-static inline void llvm_emit_parameter(GenContext *context, Decl *decl, unsigned *index, unsigned real_index)
+static inline void llvm_emit_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index)
 {
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	// Allocate room on stack, but do not copy.
-	llvm_process_parameter_value(context, decl, index);
+	llvm_process_parameter_value(context, decl, abi_info, index);
 	if (llvm_use_debug(context))
 	{
 		llvm_emit_debug_parameter(context, decl, real_index);
@@ -263,35 +262,30 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable)
 {
-	FunctionSignature *signature = &c->cur_func_decl->func_decl.function_signature;
-	ABIArgInfo *info = signature->ret_abi_info;
+	FunctionPrototype *prototype = c->cur_func_decl->type->func.prototype;
+	ABIArgInfo *info = prototype->ret_abi_info;
 
 	// If we have a failable it's always the return argument, so we need to copy
 	// the return value into the return value holder.
 	LLVMValueRef return_out = c->return_out;
-	bool is_failable = IS_FAILABLE(signature->rtype);
-	Type *return_type = signature->rtype->type;
-	if (is_failable) return_type = return_type->failable;
+	Type *call_return_type = prototype->abi_ret_type;
 
 	BEValue no_fail;
 
 	// In this case we use the failable as the actual return.
-	if (is_failable)
+	if (prototype->is_failable)
 	{
 		if (return_value && return_value->value)
 		{
-
 			llvm_store_bevalue_aligned(c, c->return_out, return_value, 0);
 		}
 		return_out = c->failable_out;
-		return_type = type_anyerr;
 		if (!failable)
 		{
 			llvm_value_set(&no_fail, LLVMConstNull(llvm_get_type(c, type_anyerr)), type_anyerr);
 			failable = &no_fail;
 		}
 		return_value = failable;
-		info = signature->failable_abi_info;
 	}
 
 	switch (info->kind)
@@ -354,14 +348,14 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 		case ABI_ARG_DIRECT_COERCE:
 		{
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			if (!coerce_type || coerce_type == llvm_get_type(c, return_type))
+			if (!coerce_type || coerce_type == llvm_get_type(c, call_return_type))
 			{
 				// The normal return
 				llvm_emit_return_value(c, llvm_value_rvalue_store(c, return_value));
 				return;
 			}
 			assert(!abi_info_should_flatten(info));
-			llvm_emit_return_value(c, llvm_emit_coerce(c, coerce_type, return_value, return_type));
+			llvm_emit_return_value(c, llvm_emit_coerce(c, coerce_type, return_value, call_return_type));
 			return;
 		}
 	}
@@ -369,7 +363,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 
 void llvm_emit_return_implicit(GenContext *c)
 {
-	Type *rtype_real = c->cur_func_decl->func_decl.function_signature.rtype->type;
+	Type *rtype_real = c->cur_func_decl->type->func.prototype->rtype;
 	if (type_lowering(type_no_fail(rtype_real)) != type_void)
 	{
 		LLVMBuildUnreachable(c->builder);
@@ -416,7 +410,7 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 	LLVMValueRef alloca_point = LLVMBuildAlloca(context->builder, LLVMInt32TypeInContext(context->context), "alloca_point");
 	context->alloca_point = alloca_point;
 
-	FunctionSignature *signature = &decl->func_decl.function_signature;
+	FunctionPrototype *prototype = decl->type->func.prototype;
 	unsigned arg = 0;
 
 	if (emit_debug)
@@ -424,26 +418,23 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 		llvm_debug_scope_push(context, context->debug.function);
 	}
 
-	bool is_failable = IS_FAILABLE(signature->rtype);
-	if (is_failable && signature->failable_abi_info->kind == ABI_ARG_INDIRECT)
+	context->failable_out = NULL;
+	context->return_out = NULL;
+	if (prototype->ret_abi_info->kind == ABI_ARG_INDIRECT)
 	{
-		context->failable_out = LLVMGetParam(context->function, arg++);
-	}
-	else
-	{
-		context->failable_out = NULL;
-	}
-	if (signature->ret_abi_info && signature->ret_abi_info->kind == ABI_ARG_INDIRECT)
-	{
-		context->return_out = LLVMGetParam(context->function, arg++);
-	}
-	else
-	{
-		context->return_out = NULL;
-		if (signature->ret_abi_info && is_failable)
+		if (prototype->is_failable)
+		{
+			context->failable_out = LLVMGetParam(context->function, arg++);
+		}
+		else
 		{
 			context->return_out = LLVMGetParam(context->function, arg++);
 		}
+	}
+	if (prototype->ret_by_ref_abi_info)
+	{
+		assert(!context->return_out);
+		context->return_out = LLVMGetParam(context->function, arg++);
 	}
 
 
@@ -452,7 +443,7 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 		// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
 		VECEACH(decl->func_decl.function_signature.params, i)
 		{
-			llvm_emit_parameter(context, decl->func_decl.function_signature.params[i], &arg, i);
+			llvm_emit_parameter(context, decl->func_decl.function_signature.params[i], prototype->abi_args[i], &arg, i);
 		}
 	}
 
@@ -552,40 +543,20 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	// Resolve function backend type for function.
 	LLVMValueRef function = LLVMAddFunction(c->module, decl->extname ? decl->extname : decl->external_name, llvm_get_type(c, decl->type));
 	decl->backend_ref = function;
-	FunctionSignature *signature = &decl->func_decl.function_signature;
-	FunctionSignature *type_signature = decl->type->func.signature;
+	FunctionPrototype *prototype = decl->type->func.prototype;
 
-	// We only resolve 1 function signature, so we might have functions
-	// with the same signature (but different default values!)
-	// that we have in common. So overwrite the data from the type here.
-	if (signature != type_signature)
-	{
-		// Store the params.
-		Decl **params = signature->params;
-		// Copy the rest.
-		*signature = *type_signature;
-		signature->params = params;
-		VECEACH(params, i)
-		{
-			Decl *sig_param = type_signature->params[i];
-			Decl *param = params[i];
-			param->var.abi_info = sig_param->var.abi_info;
-		}
-		signature->params = params;
-	}
 
-	ABIArgInfo *ret_abi_info = signature->failable_abi_info ? signature->failable_abi_info : signature->ret_abi_info;
+	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
 	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0);
-	Decl **params = signature->params;
-	if (signature->failable_abi_info && signature->ret_abi_info)
+	unsigned params = vec_size(prototype->params);
+	if (prototype->ret_by_ref)
 	{
-		ABIArgInfo *info = signature->ret_abi_info;
-		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end);
+		ABIArgInfo *info = prototype->ret_by_ref_abi_info;
+		llvm_emit_param_attributes(c, function, prototype->ret_by_ref_abi_info, false, info->param_index_start + 1, info->param_index_end);
 	}
-	VECEACH(params, i)
+	for (unsigned i = 0; i < params; i++)
 	{
-		Decl *param = params[i];
-		ABIArgInfo *info = param->var.abi_info;
+		ABIArgInfo *info = prototype->abi_args[i];
 		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end);
 	}
 	// We ignore decl->func_decl.attr_inline and place it in every call instead.
@@ -610,14 +581,14 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.naked, -1);
 	}
-	if (decl->func_decl.function_signature.call_abi == CALL_X86_STD)
+	if (prototype->call_abi == CALL_X86_STD)
 	{
 		if (platform_target.os == OS_TYPE_WIN32)
 		{
 			LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
 		}
 	}
-	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(decl->func_decl.function_signature.call_abi, platform_target.arch, platform_target.os));
+	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(prototype->call_abi, platform_target.arch, platform_target.os));
 
 	switch (decl->visibility)
 	{

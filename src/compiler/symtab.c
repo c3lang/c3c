@@ -4,9 +4,7 @@
 
 #include "compiler_internal.h"
 
-#define TABLE_MAX_LOAD 0.5
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
-
 
 typedef struct _SymEntry
 {

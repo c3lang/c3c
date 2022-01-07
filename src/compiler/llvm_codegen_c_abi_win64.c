@@ -106,37 +106,41 @@ ABIArgInfo *win64_reclassify_hva_arg(Regs *regs, Type *type, ABIArgInfo *info)
 	return info;
 }
 
-void win64_vector_call_args(Regs *regs, FunctionSignature *signature, bool is_vector, bool is_reg)
+void win64_vector_call_args(Regs *regs, FunctionPrototype *prototype, bool is_vector, bool is_reg)
 {
 	static const unsigned max_param_vector_calls_as_reg = 6;
 	unsigned count = 0;
-	Decl **params = signature->params;
-	VECEACH(params, i)
+	Type **params = prototype->params;
+	unsigned param_count = vec_size(prototype->params);
+	if (param_count)
 	{
-		Decl *param = params[i];
-		if (count < max_param_vector_calls_as_reg)
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+		for (unsigned i = 0; i < param_count; i++)
 		{
-			param->var.abi_info = win64_classify(regs, param->type, false, is_vector, is_reg);
+			Type *type = params[i];
+			if (count < max_param_vector_calls_as_reg)
+			{
+				args[i] = win64_classify(regs, type, false, is_vector, is_reg);
+			}
+			else
+			{
+				// Cannot be passed in registers pretend no registers.
+				unsigned float_regs = regs->float_regs;
+				regs->float_regs = 0;
+				args[i] = win64_classify(regs, type, false, is_vector, is_reg);
+				regs->float_regs = float_regs;
+			}
+			count++;
 		}
-		else
+		for (unsigned i = 0; i < param_count; i++)
 		{
-			// Cannot be passed in registers pretend no registers.
-			unsigned float_regs = regs->float_regs;
-			regs->float_regs = 0;
-			param->var.abi_info = win64_classify(regs, param->type, false, is_vector, is_reg);
-			regs->float_regs = float_regs;
+			args[i] = win64_reclassify_hva_arg(regs, params[i], args[i]);
 		}
-		count++;
+		prototype->abi_args = args;
 	}
-	VECEACH(params, i)
-	{
-		Decl *param = params[i];
-		param->var.abi_info = win64_reclassify_hva_arg(regs, param->type, param->var.abi_info);
-	}
-
 }
 
-void c_abi_func_create_win64(FunctionSignature *signature)
+void c_abi_func_create_win64(FunctionPrototype *prototype)
 {
 	// allow calling sysv?
 
@@ -144,7 +148,7 @@ void c_abi_func_create_win64(FunctionSignature *signature)
 	Regs regs = { 0, 0 };
 	bool is_reg_call = false;
 	bool is_vector_call = false;
-	switch (signature->call_abi)
+	switch (prototype->call_abi)
 	{
 		case CALL_X86_VECTOR:
 			regs.float_regs = 4;
@@ -159,22 +163,14 @@ void c_abi_func_create_win64(FunctionSignature *signature)
 			break;
 	}
 
-	Type *rtype = abi_rtype(signature);
-	if (IS_FAILABLE(signature->rtype))
+	prototype->ret_abi_info = win64_classify(&regs, prototype->abi_ret_type, true, is_vector_call, is_reg_call);
+	if (prototype->ret_by_ref)
 	{
-		signature->failable_abi_info = win64_classify(&regs, type_anyerr, true, is_vector_call, is_reg_call);
-		if (rtype->type_kind != TYPE_VOID)
-		{
-			signature->ret_abi_info = win64_classify(&regs, type_get_ptr(type_lowering(rtype)), false, is_vector_call, is_reg_call);
-		}
-	}
-	else
-	{
-		signature->ret_abi_info = win64_classify(&regs, rtype, true, is_vector_call, is_reg_call);
+		prototype->ret_by_ref_abi_info = win64_classify(&regs, type_get_ptr(type_lowering(prototype->ret_by_ref_type)), false, is_vector_call, is_reg_call);
 	}
 
 	// Set up parameter registers.
-	switch (signature->call_abi)
+	switch (prototype->call_abi)
 	{
 		case CALL_X86_VECTOR:
 			regs.float_regs = 6;
@@ -190,12 +186,19 @@ void c_abi_func_create_win64(FunctionSignature *signature)
 	}
 	if (is_vector_call)
 	{
-		win64_vector_call_args(&regs, signature, is_vector_call, is_reg_call);
+		win64_vector_call_args(&regs, prototype, is_vector_call, is_reg_call);
 		return;
 	}
-	Decl **params = signature->params;
-	VECEACH(params, i)
+
+	Type **params = prototype->params;
+	unsigned param_count = vec_size(prototype->params);
+	if (param_count)
 	{
-		params[i]->var.abi_info = win64_classify(&regs, params[i]->type, false, is_vector_call, is_reg_call);
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+		for (unsigned i = 0; i < param_count; i++)
+		{
+			args[i] = win64_classify(&regs, params[i], false, is_vector_call, is_reg_call);
+		}
+		prototype->abi_args = args;
 	}
 }

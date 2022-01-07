@@ -196,27 +196,27 @@ ABIArgInfo *abi_arg_new_expand_padded(Type *padding)
 }
 
 
-void c_abi_func_create(FunctionSignature *signature)
+void c_abi_func_create(FunctionPrototype *proto)
 {
 	switch (platform_target.abi)
 	{
 		case ABI_X64:
-			c_abi_func_create_x64(signature);
+			c_abi_func_create_x64(proto);
 			break;
 		case ABI_X86:
-			c_abi_func_create_x86(signature);
+			c_abi_func_create_x86(proto);
 			break;
 		case ABI_WIN64:
-			c_abi_func_create_win64(signature);
+			c_abi_func_create_win64(proto);
 			break;
 		case ABI_AARCH64:
-			c_abi_func_create_aarch64(signature);
+			c_abi_func_create_aarch64(proto);
 			break;
 		case ABI_RISCV:
-			c_abi_func_create_riscv(signature);
+			c_abi_func_create_riscv(proto);
 			break;
 		case ABI_WASM:
-			c_abi_func_create_wasm(signature);
+			c_abi_func_create_wasm(proto);
 			break;
 		default:
 			FATAL_ERROR("Unsupported ABI");

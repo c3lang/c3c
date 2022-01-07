@@ -248,33 +248,22 @@ static ABIArgInfo *riscv_classify_return(Type *return_type)
 	return riscv_classify_argument_type(return_type, true, &arg_gpr_left, &arg_fpr_left);
 }
 
-void c_abi_func_create_riscv(FunctionSignature *signature)
+void c_abi_func_create_riscv(FunctionPrototype *prototype)
 {
 	// Registers
 	unsigned gpr = 8;
 	unsigned fpr = 8;
 
-	bool failable = IS_FAILABLE(signature->rtype);
-	Type *rtype = abi_rtype(signature);
-	Type *return_type = abi_returntype(signature);
-	return_type = type_lowering(return_type);
-	ABIArgInfo *return_abi = riscv_classify_return(return_type);
-	if (failable)
-	{
-		signature->failable_abi_info = return_abi;
-	}
-	else
-	{
-		signature->ret_abi_info = return_abi;
-	}
+	Type *ret_type = type_lowering(prototype->abi_ret_type);
+	ABIArgInfo *ret_abi = prototype->ret_abi_info = riscv_classify_return(prototype->abi_ret_type);
 
 	// IsRetIndirect is true if classifyArgumentType indicated the value should
 	// be passed indirect, or if the type size is a scalar greater than 2*XLen
 	// and not a complex type with elements <= FLen. e.g. fp128 is passed direct
 	// in LLVM IR, relying on the backend lowering code to rewrite the argument
 	// list and pass indirectly on RV32.
-	bool is_ret_indirect = abi_arg_is_indirect(return_abi);
-	if (type_is_scalar(return_type) && type_size(return_type) > 2 * platform_target.riscv.xlen)
+	bool is_ret_indirect = abi_arg_is_indirect(ret_abi);
+	if (type_is_scalar(ret_type) && type_size(ret_type) > 2 * platform_target.riscv.xlen)
 	{
 		// Normal scalar > 2 * XLen, e.g. f128 on RV32
 		is_ret_indirect = true;
@@ -288,16 +277,22 @@ void c_abi_func_create_riscv(FunctionSignature *signature)
 	unsigned arg_fprs_left = platform_target.riscv.flen ? fpr : 0;
 
 	// If we have a failable, then the return type is a parameter.
-	if (IS_FAILABLE(signature->rtype) && rtype != type_void)
+	if (prototype->ret_by_ref)
 	{
-		signature->ret_abi_info = riscv_classify_argument_type(type_get_ptr(type_lowering(rtype)),
-														 true, &arg_gprs_left, &arg_fprs_left);
+		prototype->ret_by_ref = riscv_classify_argument_type(type_get_ptr(prototype->ret_by_ref_type),
+		                                                     true, &arg_gprs_left, &arg_fprs_left);
 	}
 
-	Decl **params = signature->params;
-	VECEACH(params, i)
+	Type **params = prototype->params;
+	unsigned param_count = vec_size(prototype->params);
+	if (param_count)
 	{
 		bool is_fixed = true;
-		params[i]->var.abi_info = riscv_classify_argument_type(type_lowering(params[i]->type), is_fixed, &arg_gprs_left, &arg_fprs_left);
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+		for (unsigned i = 0; i < param_count; i++)
+		{
+			args[i] = riscv_classify_argument_type(type_lowering(params[i]), is_fixed, &arg_gprs_left, &arg_fprs_left);
+		}
+		prototype->abi_args = args;
 	}
 }

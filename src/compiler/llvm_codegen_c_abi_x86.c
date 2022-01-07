@@ -600,7 +600,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 	UNREACHABLE
 }
 
-void c_abi_func_create_x86(FunctionSignature *signature)
+void c_abi_func_create_x86(FunctionPrototype *prototype)
 {
 	// 1. Calculate the registers we have available
 	//    Normal: 0 / 0 (3 on win32 struct ABI)
@@ -608,7 +608,7 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 	//    Vector: 2 / 6
 	//    Fast:   2 / 3
 	Regs regs = { 0, 0 };
-	switch (signature->call_abi)
+	switch (prototype->call_abi)
 	{
 		case CALL_C:
 			if (platform_target.x86.is_win32_float_struct_abi)
@@ -641,18 +641,10 @@ void c_abi_func_create_x86(FunctionSignature *signature)
 
 	// 4. Classify the return type. In the case of failable, we need to classify the failable itself as the
 	//    return type.
-	Type *rtype = abi_rtype(signature);
-	if (IS_FAILABLE(signature->rtype))
+	prototype->ret_abi_info = x86_classify_return(prototype->call_abi, &regs, prototype->abi_ret_type);
+	if (prototype->ret_by_ref)
 	{
-		signature->failable_abi_info = x86_classify_return(signature->call_abi, &regs, type_anyerr);
-		if (rtype->type_kind != TYPE_VOID)
-		{
-			signature->ret_abi_info = x86_classify_argument(signature->call_abi, &regs, type_get_ptr(type_lowering(rtype)));
-		}
-	}
-	else
-	{
-		signature->ret_abi_info = x86_classify_return(signature->call_abi, &regs, rtype);
+		prototype->ret_by_ref_abi_info = x86_classify_argument(prototype->call_abi, &regs, type_get_ptr(type_lowering(prototype->ret_by_ref_type)));
 	}
 
 	/*
@@ -666,16 +658,22 @@ void c_abi_func_create_x86(FunctionSignature *signature)
     runVectorCallFirstPass(FI, State);
 	 */
 
-	if (signature->call_abi == CALL_X86_VECTOR)
+	if (prototype->call_abi == CALL_X86_VECTOR)
 	{
 		FATAL_ERROR("X86 vector call not supported");
 	}
 	else
 	{
-		Decl **params = signature->params;
-		VECEACH(params, i)
+		Type **params = prototype->params;
+		unsigned param_count = vec_size(prototype->params);
+		if (param_count)
 		{
-			params[i]->var.abi_info = x86_classify_argument(signature->call_abi, &regs, params[i]->type);
+			ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+			for (unsigned i = 0; i < param_count; i++)
+			{
+				args[i] = x86_classify_argument(prototype->call_abi, &regs, params[i]);
+			}
+			prototype->abi_args = args;
 		}
 	}
 }

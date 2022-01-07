@@ -47,12 +47,12 @@ typedef struct
 
 ABIArgInfo *c_abi_classify_return_type_default(Type *type);
 ABIArgInfo *c_abi_classify_argument_type_default(Type *type);
-void c_abi_func_create_win64(FunctionSignature *signature);
-void c_abi_func_create_x86(FunctionSignature *signature);
-void c_abi_func_create_x64(FunctionSignature *signature);
-void c_abi_func_create_aarch64(FunctionSignature *signature);
-void c_abi_func_create_riscv(FunctionSignature *signature);
-void c_abi_func_create_wasm(FunctionSignature *signature);
+void c_abi_func_create_win64(FunctionPrototype *prototype);
+void c_abi_func_create_x86(FunctionPrototype *prototype);
+void c_abi_func_create_x64(FunctionPrototype *prototype);
+void c_abi_func_create_aarch64(FunctionPrototype *prototype);
+void c_abi_func_create_riscv(FunctionPrototype *prototype);
+void c_abi_func_create_wasm(FunctionPrototype *prototype);
 
 
 static inline AbiType abi_type_get(Type *type)

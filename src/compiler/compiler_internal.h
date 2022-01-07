@@ -252,8 +252,7 @@ typedef struct
 
 typedef struct
 {
-	struct FunctionSignature_ *signature;
-	const char *mangled_function_signature;
+	struct FunctionPrototype_ *prototype;
 } TypeFunc;
 
 struct Type_
@@ -371,8 +370,6 @@ typedef struct VarDecl_
 			void *backend_debug_ref;
 			union
 			{
-				// Param
-				struct ABIArgInfo_ *abi_info;
 				// Variable
 				void *failable_ref;
 			};
@@ -438,15 +435,13 @@ typedef enum
 	VARIADIC_RAW,
 } Variadic;
 
+
 typedef struct FunctionSignature_
 {
-	CallABI call_abi : 4;
 	Variadic variadic : 3;
 	bool has_default : 1;
 	bool use_win64 : 1;
-	TypeInfo *rtype;
-	struct ABIArgInfo_ *ret_abi_info;
-	struct ABIArgInfo_ *failable_abi_info;
+	TypeInfo *returntype;
 	Decl** params;
 } FunctionSignature;
 
@@ -1553,6 +1548,22 @@ typedef struct ABIArgInfo_
 
 } ABIArgInfo;
 
+typedef struct FunctionPrototype_
+{
+	CallABI call_abi : 4;
+	Variadic variadic : 3;
+	bool use_win64 : 1;
+	bool is_failable : 1;
+	bool ret_by_ref : 1;
+	Type *rtype;
+	Type **params;
+	Type *ret_by_ref_type;
+	Type *abi_ret_type;
+	ABIArgInfo *ret_abi_info;
+	ABIArgInfo *ret_by_ref_abi_info;
+	ABIArgInfo **abi_args;
+} FunctionPrototype;
+
 extern GlobalContext global_context;
 extern BuildTarget active_target;
 extern Ast *poisoned_ast;
@@ -1809,6 +1820,7 @@ void global_context_add_type(Type *type);
 
 Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters, bool is_private);
 Module *global_context_find_module(const char *name);
+const char *get_object_extension(void);
 
 CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
@@ -1941,6 +1953,7 @@ static inline TokenType token_type(Token token) { return (TokenType)toktypeptr(t
 #define TOKLEN(T) TOKLOC(T)->length
 
 Decl *module_find_symbol(Module *module, const char *symbol);
+const char *module_create_object_file_name(Module *module);
 
 bool parse_file(File *file);
 Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span);
@@ -1951,6 +1964,8 @@ Path *path_find_parent_path(Path *path);
 #define SEMA_ERROR(_node, ...) sema_error_range((_node)->span, __VA_ARGS__)
 #define SEMA_PREV(_node, ...) sema_prev_at_range3((_node)->span, __VA_ARGS__)
 #define SEMA_TOKID_PREV(_tok_id, ...) sema_prev_at_range3(source_span_from_token_id(_tok_id), __VA_ARGS__)
+
+#define TABLE_MAX_LOAD 0.5
 
 void sema_analysis_run(void);
 
@@ -2051,7 +2066,7 @@ static inline TokenType advance_token(TokenId *token)
 
 AlignSize type_abi_alignment(Type *type);
 AlignSize type_alloca_alignment(Type *type);
-void type_append_signature_name(Type *type, char *dst, size_t *offset);
+
 static inline bool type_convert_will_trunc(Type *destination, Type *source);
 bool type_is_comparable(Type *type);
 bool type_is_ordered(Type *type);
@@ -2074,11 +2089,12 @@ Type *type_get_vector_bool(Type *original_type);
 Type *type_int_signed_by_bitsize(unsigned bitsize);
 Type *type_int_unsigned_by_bitsize(unsigned bytesize);
 void type_init_cint(void);
+void type_func_prototype_init(uint32_t capacity);
 static inline bool type_is_builtin(TypeKind kind);
 bool type_is_abi_aggregate(Type *type);
 static inline bool type_is_float(Type *type);
 bool type_is_int128(Type *type);
-Type *type_find_function_type(FunctionSignature *signature);
+Type *type_get_func(FunctionSignature *signature, CallABI abi);
 static inline bool type_is_integer(Type *type);
 static inline bool type_is_integer_unsigned(Type *type);
 static inline bool type_is_integer_signed(Type *type);
@@ -2501,18 +2517,6 @@ void platform_compiler(const char **files, unsigned file_count, const char* flag
 #define ASSIGN_TYPE_ELSE(_assign, _type_stmt, _res) TypeInfo* TEMP(_type) = (_type_stmt); if (!type_info_ok(TEMP(_type))) return _res; _assign = TEMP(_type)
 #define ASSIGN_DECL_ELSE(_assign, _decl_stmt, _res) Decl* TEMP(_decl) = (_decl_stmt); if (!decl_ok(TEMP(_decl))) return _res; _assign = TEMP(_decl)
 
-static inline Type *abi_rtype(FunctionSignature *signature)
-{
-	Type *type = signature->rtype->type;
-	if (type->type_kind == TYPE_FAILABLE) return type->failable;
-	return type;
-}
-
-static inline Type *abi_returntype(FunctionSignature *signature)
-{
-	Type *type = signature->rtype->type;
-	return type->type_kind == TYPE_FAILABLE ? type_anyerr : type;
-}
 
 static inline void global_context_clear_errors(void)
 {

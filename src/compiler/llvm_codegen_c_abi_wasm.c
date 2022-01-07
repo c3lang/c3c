@@ -51,28 +51,23 @@ static ABIArgInfo *wasm_classify_return(Type *type)
 	return c_abi_classify_return_type_default(type);
 }
 
-void c_abi_func_create_wasm(FunctionSignature *signature)
+void c_abi_func_create_wasm(FunctionPrototype *prototype)
 {
-	Type *rtype = abi_rtype(signature);
-	Type *return_type = abi_returntype(signature);
-	if (IS_FAILABLE(signature->rtype))
+	prototype->ret_abi_info = wasm_classify_return(type_lowering(prototype->abi_ret_type));
+	if (prototype->ret_by_ref)
 	{
-		signature->failable_abi_info = wasm_classify_return(type_lowering(type_anyerr));
-	}
-	else
-	{
-		signature->ret_abi_info = wasm_classify_return(type_lowering(rtype));
+		prototype->ret_by_ref_abi_info = wasm_classify_argument_type(type_get_ptr(prototype->ret_by_ref_type));
 	}
 
-	// If we have a failable, then the return type is a parameter.
-	if (IS_FAILABLE(signature->rtype) && rtype->type_kind != TYPE_VOID)
+	Type **params = prototype->params;
+	unsigned param_count = vec_size(prototype->params);
+	if (param_count)
 	{
-		signature->ret_abi_info = wasm_classify_argument_type(type_get_ptr(type_lowering(rtype)));
-	}
-
-	Decl **params = signature->params;
-	VECEACH(params, i)
-	{
-		params[i]->var.abi_info = wasm_classify_argument_type(type_lowering(params[i]->type));
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+		for (unsigned i = 0; i < param_count; i++)
+		{
+			args[i] = wasm_classify_argument_type(type_lowering(params[i]));
+		}
+		prototype->abi_args = args;
 	}
 }

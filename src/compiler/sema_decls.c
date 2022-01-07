@@ -5,8 +5,6 @@
 #include "sema_internal.h"
 
 
-
-
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl);
 
 static bool sema_check_section(SemaContext *context, Decl *decl, Attr *attr)
@@ -656,10 +654,10 @@ static inline bool sema_analyse_function_param(SemaContext *context, Decl *param
 	return true;
 }
 
-static inline Type *sema_analyse_function_signature(SemaContext *context, FunctionSignature *signature, bool is_real_function)
+static inline Type *sema_analyse_function_signature(SemaContext *context, CallABI abi, FunctionSignature *signature, bool is_real_function)
 {
 	bool all_ok = true;
-	all_ok = sema_resolve_type_info(context, signature->rtype) && all_ok;
+	all_ok = sema_resolve_type_info(context, signature->returntype) && all_ok;
 	if (vec_size(signature->params) > MAX_PARAMS)
 	{
 		SEMA_ERROR(signature->params[MAX_PARAMS], "Number of params exceeds %d which is unsupported.", MAX_PARAMS);
@@ -667,6 +665,7 @@ static inline Type *sema_analyse_function_signature(SemaContext *context, Functi
 	}
 	unsigned param_count = vec_size(signature->params);
 	Decl **params = signature->params;
+	Type **types = NULL;
 	for (unsigned i = 0; i < param_count; i++)
 	{
 		Decl *param = params[i];
@@ -686,18 +685,19 @@ static inline Type *sema_analyse_function_signature(SemaContext *context, Functi
 		}
 		signature->has_default = signature->has_default || has_default;
 		param->resolve_status = RESOLVE_DONE;
+		vec_add(types, param->type);
 	}
 
 	if (!all_ok) return NULL;
-	c_abi_func_create(signature);
-	return type_find_function_type(signature);
+
+	return type_get_func(signature, abi);
 }
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl)
 {
 	if (decl->typedef_decl.is_func)
 	{
-		Type *func_type = sema_analyse_function_signature(context, &decl->typedef_decl.function_signature, false);
+		Type *func_type = sema_analyse_function_signature(context, CALL_C, &decl->typedef_decl.function_signature, false);
 		if (!func_type) return false;
 		decl->type->canonical = type_get_ptr(func_type);
 		return true;
@@ -718,7 +718,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 {
 	if (decl->distinct_decl.typedef_decl.is_func)
 	{
-		Type *func_type = sema_analyse_function_signature(context, &decl->distinct_decl.typedef_decl.function_signature, false);
+		Type *func_type = sema_analyse_function_signature(context, CALL_C, &decl->distinct_decl.typedef_decl.function_signature, false);
 		if (!func_type) return false;
 		decl->distinct_decl.base_type = type_get_ptr(func_type);
 		return true;
@@ -906,7 +906,7 @@ static inline void find_operator_parameters(Decl *method, TypeInfo **rtype_ptr, 
 			break;
 		case DECL_FUNC:
 			*params_ptr = method->func_decl.function_signature.params;
-			*rtype_ptr = method->func_decl.function_signature.rtype;
+			*rtype_ptr = method->func_decl.function_signature.returntype;
 			break;
 		default:
 			UNREACHABLE
@@ -1258,12 +1258,6 @@ static inline bool sema_analyse_doc_header(Ast *docs, Decl **params, Decl **extr
 	}
 	return true;
 }
-static inline bool sema_update_call_convention(Decl *decl, CallABI abi)
-{
-	bool had = decl->func_decl.function_signature.call_abi > 0;
-	decl->func_decl.function_signature.call_abi = abi;
-	return had;
-}
 
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 {
@@ -1275,7 +1269,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		return false;
 	}
 	FunctionSignature *signature = &decl->func_decl.function_signature;
-	Type *rtype = type_flatten_distinct(signature->rtype->type);
+	Type *rtype = type_flatten_distinct(signature->returntype->type);
 	bool is_int_return = true;
 	bool is_err_return = false;
 	if (rtype->type_kind == TYPE_FAILABLE_ANY) is_err_return = true;
@@ -1283,7 +1277,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	{
 		if (rtype->failable->type_kind != TYPE_VOID)
 		{
-			SEMA_ERROR(signature->rtype, "The return type of 'main' cannot be a failable, unless it is 'void!'.");
+			SEMA_ERROR(signature->returntype, "The return type of 'main' cannot be a failable, unless it is 'void!'.");
 			return false;
 		}
 		is_int_return = false;
@@ -1293,7 +1287,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 
 	if (type_is_integer(rtype) && rtype != type_cint)
 	{
-		SEMA_ERROR(signature->rtype, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint));
+		SEMA_ERROR(signature->returntype, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint));
 		return false;
 	}
 	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
@@ -1340,7 +1334,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	Decl *function = decl_new(DECL_FUNC, decl->name_token, VISIBLE_EXTERN);
 	function->name = kw_mainstub;
 	function->extname = kw_main;
-	function->func_decl.function_signature.rtype = type_info_new_base(type_cint, decl->span);
+	function->func_decl.function_signature.returntype = type_info_new_base(type_cint, decl->span);
 	Decl *param1 = decl_new_generated_var(kw_argv, type_cint, VARDECL_PARAM, decl->span);
 	Decl *param2 = decl_new_generated_var(kw_argc, type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
 	Decl **main_params = NULL;
@@ -1403,6 +1397,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
 
+	CallABI call_abi = 0;
 	VECEACH(decl->attributes, i)
 	{
 		Attr *attr = decl->attributes[i];
@@ -1431,29 +1426,34 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 			case ATTRIBUTE_STDCALL:
 				if (platform_target.arch == ARCH_TYPE_X86 || platform_target.arch == ARCH_TYPE_X86_64)
 				{
-					had = sema_update_call_convention(decl, CALL_X86_STD);
+					had = call_abi > 0;
+					call_abi = CALL_X86_STD;
 				}
 				else if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
 				{
-					had = sema_update_call_convention(decl, CALL_AAPCS);
+					had = call_abi > 0;
+					call_abi = CALL_AAPCS;
 				}
 				break;
 			case ATTRIBUTE_CDECL:
-				had = sema_update_call_convention(decl, CALL_C);
+				had = call_abi > 0;
+				call_abi = CALL_C;
 				break;
 			case ATTRIBUTE_VECCALL:
 				switch (platform_target.arch)
 				{
 					case ARCH_TYPE_X86_64:
 					case ARCH_TYPE_X86:
-						had = sema_update_call_convention(decl, CALL_X86_VECTOR);
+						had = call_abi > 0;
+						call_abi = CALL_X86_VECTOR;
 						break;
 					case ARCH_TYPE_ARM:
 					case ARCH_TYPE_ARMB:
 					case ARCH_TYPE_AARCH64:
 					case ARCH_TYPE_AARCH64_32:
 					case ARCH_TYPE_AARCH64_BE:
-						had = sema_update_call_convention(decl, CALL_AAPCS_VFP);
+						had = call_abi > 0;
+						call_abi = CALL_AAPCS_VFP;
 						break;
 					default:
 						break;
@@ -1462,14 +1462,16 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 			case ATTRIBUTE_FASTCALL:
 				if (platform_target.arch == ARCH_TYPE_X86 || (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
 				{
-					had = sema_update_call_convention(decl, CALL_X86_FAST);
+					had = call_abi > 0;
+					call_abi = CALL_X86_FAST;
 				}
 				break;
 			case ATTRIBUTE_REGCALL:
-				had = decl->func_decl.function_signature.call_abi > 0;
+				had = call_abi > 0;
 				if (platform_target.arch == ARCH_TYPE_X86 || (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
 				{
-					had = sema_update_call_convention(decl, CALL_X86_REG);
+					had = call_abi > 0;
+					call_abi = CALL_X86_REG;
 				}
 				break;
 			case ATTRIBUTE_INLINE: SET_ATTR(attr_inline);
@@ -1492,7 +1494,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 		}
 	}
 
-	Type *func_type = sema_analyse_function_signature(context, &decl->func_decl.function_signature, true);
+	Type *func_type = sema_analyse_function_signature(context, call_abi, &decl->func_decl.function_signature, true);
 	
 	decl->type = func_type;
 	if (!func_type) return decl_poison(decl);

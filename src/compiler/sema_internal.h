@@ -52,7 +52,6 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags);
 #define PUSH_BREAKCONT(ast) PUSH_CONTINUE(ast); PUSH_BREAK(ast)
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
 
-void c_abi_func_create(FunctionSignature *signature);
 AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, AttributeDomain domain);
 bool expr_is_ltype(Expr *expr);
 
@@ -71,3 +70,4 @@ Decl *sema_find_operator(SemaContext *context, Expr *expr, const char *kw);
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable);
 void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value, bool narrowable);
+

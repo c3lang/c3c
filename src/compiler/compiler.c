@@ -391,6 +391,19 @@ void global_context_add_type(Type *type)
 	vec_add(global_context.type, type);
 }
 
+const char *get_object_extension(void)
+{
+	switch (active_target.arch_os_target)
+	{
+		case X64_WINDOWS:
+		case X86_WINDOWS:
+		case X64_WINDOWS_GNU:
+			return ".obj";
+		default:
+			return ".o";
+	}
+}
+
 Module *global_context_find_module(const char *name)
 {
 	return stable_get(&global_context.modules, name);

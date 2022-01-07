@@ -1137,9 +1137,12 @@ static inline bool expr_may_unpack_as_vararg(Expr *expr, Type *variadic_base_typ
 typedef struct
 {
 	bool macro;
+	bool func_pointer;
 	TokenId block_parameter;
 	Decl **params;
+	Type **param_types;
 	Expr *struct_var;
+	unsigned param_count;
 	Variadic variadic;
 } CalledDecl;
 
@@ -1212,14 +1215,17 @@ static inline bool sema_check_invalid_body_arguments(SemaContext *context, Expr 
 }
 
 
-static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee, Expr *call, Decl **params, Expr **args, unsigned func_param_count, bool variadic, bool *failable)
+static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee, Expr *call, Expr **args, unsigned func_param_count, bool variadic, bool *failable)
 {
 	unsigned num_args = vec_size(args);
+	Decl **params = callee->params;
+	bool is_func_ptr = callee->func_pointer;
 
 	// 1. We need at least as many function locations as we have parameters.
 	unsigned entries_needed = func_param_count > num_args ? func_param_count : num_args;
 	Expr **actual_args = VECNEW(Expr*, entries_needed);
 	for (unsigned i = 0; i < entries_needed; i++) vec_add(actual_args, NULL);
+
 
 	// 2. Loop through the parameters.
 	bool uses_named_parameters = false;
@@ -1230,6 +1236,11 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 		// 3. Handle named parameters
 		if (arg->expr_kind == EXPR_DESIGNATOR)
 		{
+			if (is_func_ptr)
+			{
+				SEMA_ERROR(arg, "Named parameters are not allowed with function pointer calls.");
+				return false;
+			}
 			// 8a. We have named parameters, that will add some restrictions.
 			uses_named_parameters = true;
 
@@ -1301,6 +1312,7 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 		// 17a. Assigned a value - skip
 		if (actual_args[i]) continue;
 
+		if (is_func_ptr) goto FAIL_MISSING;
 		// 17b. Set the init expression.
 		Expr *init_expr = params[i]->var.init_expr;
 		if (init_expr)
@@ -1317,10 +1329,17 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 			continue;
 		}
 
+FAIL_MISSING:
+
 		// 17c. Vararg not set? That's fine.
 		if (params[i]->var.vararg) continue;
 
 		// 17d. Argument missing, that's bad.
+		if (is_func_ptr)
+		{
+			SEMA_ERROR(call, "The call is missing parameter(s), please check the definition.");
+			return false;
+		}
 		SEMA_ERROR(call, "The mandatory parameter '%s' was not set, please add it.", params[i]->name);
 		return false;
 	}
@@ -1335,7 +1354,8 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 
 	// 2. Pick out all the arguments and parameters.
 	Expr **args = call->call_expr.arguments;
-	Decl **params = callee.params;
+	Decl **decl_params = callee.params;
+	Type **param_types = callee.param_types;
 	unsigned num_args = vec_size(args);
 
 	// 3. If this is a type call, then we have an implicit first argument.
@@ -1371,7 +1391,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	}
 
 	// 5. Zero out all argument slots.
-	unsigned func_param_count = vec_size(params);
+	unsigned func_param_count = callee.param_count;
 
 	// 6. We might have a typed variadic call e.g. foo(int, double...)
 	//    get that type.
@@ -1379,13 +1399,14 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	if (callee.variadic == VARIADIC_TYPED)
 	{
 		// 7a. The parameter type is <type>[], so we get the <type>
-		assert(params[func_param_count - 1]->type->type_kind == TYPE_SUBARRAY);
-		variadic_type = params[func_param_count - 1]->type->array.base;
+		Type *last_type = callee.macro ? callee.params[func_param_count - 1]->type : callee.param_types[func_param_count - 1];
+		assert(last_type->type_kind == TYPE_SUBARRAY);
+		variadic_type = last_type->array.base;
 		// 7b. The last function parameter is implicit so we will pretend it's not there.
 		func_param_count--;
 	}
 
-	if (!sema_expand_call_arguments(context, &callee, call, params, args, func_param_count, callee.variadic != VARIADIC_NONE, failable)) return false;
+	if (!sema_expand_call_arguments(context, &callee, call, args, func_param_count, callee.variadic != VARIADIC_NONE, failable)) return false;
 
 	args = call->call_expr.arguments;
 	num_args = vec_size(args);
@@ -1445,29 +1466,43 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 			UNREACHABLE
 		}
 
-		Decl *param = params[i];
+		Decl *param;
+		VarDeclKind kind;
+		Type *type;
+		if (decl_params)
+		{
+			param = decl_params[i];
+			kind = param->var.kind;
+			type = param->type;
+		}
+		else
+		{
+			param = NULL;
+			kind = VARDECL_PARAM;
+			type = param_types[i];
+		}
 
 		// 16. Analyse a regular argument.
-		switch (param->var.kind)
+		switch (kind)
 		{
 			case VARDECL_PARAM_REF:
 				// &foo
 			{
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
 			}
-				if (param->type && param->type->canonical != arg->type->canonical)
+				if (type && type->canonical != arg->type->canonical)
 				{
-					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(param->type));
+					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(type));
 					return false;
 				}
 				break;
 			case VARDECL_PARAM:
 				// foo
-				if (!sema_analyse_expr_rhs(context, param->type, arg, true)) return false;
+				if (!sema_analyse_expr_rhs(context, type, arg, true)) return false;
 				if (IS_FAILABLE(arg)) *failable = true;
 				if (callee.macro)
 				{
-					param->alignment = type_abi_alignment(param->type ? param->type : arg->type);
+					param->alignment = type_abi_alignment(type ? type : arg->type);
 				}
 				break;
 			case VARDECL_PARAM_EXPR:
@@ -1477,7 +1512,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 			case VARDECL_PARAM_CT:
 				// $foo
 				assert(callee.macro);
-				if (!sema_analyse_expr_rhs(context, param->type, arg, true)) return false;
+				if (!sema_analyse_expr_rhs(context, type, arg, true)) return false;
 				if (!expr_is_constant_eval(arg, CONSTANT_EVAL_ANY))
 				{
 					SEMA_ERROR(arg, "A compile time parameter must always be a constant, did you mistake it for a normal paramter?");
@@ -1507,23 +1542,26 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 			case VARDECL_ERASE:
 				UNREACHABLE
 		}
-		if (!param->type) param->type = type_no_fail(arg->type);
+		if (param && !type) param->type = type_no_fail(arg->type);
 	}
 	return true;
 }
-static inline bool sema_expr_analyse_func_invocation(SemaContext *context, FunctionSignature *signature, Expr *expr, Decl *decl,
+static inline bool sema_expr_analyse_func_invocation(SemaContext *context, FunctionPrototype *prototype, FunctionSignature *sig, Expr *expr, Decl *decl,
                                                      Expr *struct_var, bool failable)
 {
 	CalledDecl callee = {
 			.macro = false,
+			.func_pointer = sig ? 0 : 1,
 			.block_parameter = NO_TOKEN_ID,
 			.struct_var = struct_var,
-			.params = signature->params,
-			.variadic = signature->variadic,
+			.params = sig ? sig->params : NULL,
+			.param_types = prototype->params,
+			.param_count = vec_size(prototype->params),
+			.variadic = prototype->variadic,
 	};
 	if (!sema_expr_analyse_call_invocation(context, expr, callee, &failable)) return false;
 
-	Type *rtype = signature->rtype->type;
+	Type *rtype = prototype->rtype;
 
 	expr->type = type_get_opt_fail(rtype, failable);
 
@@ -1539,7 +1577,8 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 	}
 	expr->call_expr.is_pointer_call = true;
 	return sema_expr_analyse_func_invocation(context,
-	                                         func_ptr_type->pointer->func.signature,
+	                                         func_ptr_type->pointer->func.prototype,
+	                                         NULL,
 	                                         expr,
 	                                         NULL, NULL, failable);
 
@@ -1608,7 +1647,7 @@ static inline Type *unify_returns(SemaContext *context)
 static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable)
 {
 	expr->call_expr.is_pointer_call = false;
-	return sema_expr_analyse_func_invocation(context, &decl->func_decl.function_signature, expr, decl, struct_var, failable);
+	return sema_expr_analyse_func_invocation(context, decl->type->func.prototype, &decl->func_decl.function_signature, expr, decl, struct_var, failable);
 }
 
 
@@ -1668,6 +1707,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			.macro = true,
 			.block_parameter = decl->macro_decl.block_parameter,
 			.params = params,
+			.param_count = vec_size(params),
 			.struct_var = struct_var
 	};
 

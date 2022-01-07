@@ -468,13 +468,13 @@ static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type)
 
 static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 {
-	FunctionSignature *sig = type->func.signature;
+	FunctionPrototype *prototype = type->func.prototype;
 	static LLVMMetadataRef *buffer = NULL;
 	vec_resize(buffer, 0);
-	vec_add(buffer, llvm_get_debug_type(c, sig->rtype->type));
-	VECEACH(sig->params, i)
+	vec_add(buffer, llvm_get_debug_type(c, prototype->rtype));
+	VECEACH(prototype->params, i)
 	{
-		vec_add(buffer, llvm_get_debug_type(c, sig->params[i]->type));
+		vec_add(buffer, llvm_get_debug_type(c, prototype->params[i]));
 	}
 	return LLVMDIBuilderCreateSubroutineType(c->debug.builder,
 	                                         c->debug.file,

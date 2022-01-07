@@ -140,25 +140,24 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 }
 
 
-void c_abi_func_create_aarch64(FunctionSignature *signature)
+void c_abi_func_create_aarch64(FunctionPrototype *prototype)
 {
-	Type *rtype = abi_rtype(signature);
-	if (IS_FAILABLE(signature->rtype))
+
+	prototype->ret_abi_info = aarch64_classify_return_type(prototype->abi_ret_type, prototype->variadic == VARIADIC_RAW);
+	if (prototype->ret_by_ref)
 	{
-		signature->failable_abi_info = aarch64_classify_return_type(rtype, signature->variadic == VARIADIC_RAW);
-		if (rtype->type_kind != TYPE_VOID)
-		{
-			signature->ret_abi_info = aarch64_classify_argument_type(type_get_ptr(type_lowering(rtype)));
-		}
-	}
-	else
-	{
-		signature->ret_abi_info = aarch64_classify_return_type(rtype, signature->variadic == VARIADIC_RAW);
-	}
-	Decl **params = signature->params;
-	VECEACH(params, i)
-	{
-		params[i]->var.abi_info = aarch64_classify_argument_type(params[i]->type);
+		prototype->ret_by_ref_abi_info = aarch64_classify_argument_type(type_get_ptr(type_flatten(prototype->ret_by_ref_type)));
 	}
 
+	Type **params = prototype->params;
+	unsigned param_count = vec_size(prototype->params);
+	if (param_count)
+	{
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+		for (unsigned i = 0; i < param_count; i++)
+		{
+			args[i] = aarch64_classify_argument_type(params[i]);
+		}
+		prototype->abi_args = args;
+	}
 }

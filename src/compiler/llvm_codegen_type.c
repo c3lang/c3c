@@ -7,7 +7,6 @@
 
 static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 {
-	static LLVMTypeRef params[MAX_PARAMS];
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
@@ -19,18 +18,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_BITSTRUCT:
 			return llvm_get_type(c, decl->bitstruct.base_type->type);
 		case DECL_FUNC:
-		{
-			VECEACH(decl->func_decl.function_signature.params, i)
-			{
-				params[i] = llvm_get_type(c, decl->func_decl.function_signature.params[i]->type);
-			}
-			unsigned param_size = vec_size(decl->func_decl.function_signature.params);
-			return LLVMFunctionType(llvm_get_type(c, decl->func_decl.function_signature.rtype->type),
-			                        params,
-			                        param_size,
-			                        decl->func_decl.function_signature.variadic == VARIADIC_RAW);
-
-		}
+			UNREACHABLE
 		case DECL_TYPEDEF:
 			return llvm_get_type(c, decl->typedef_decl.type_info->type);
 		case DECL_DISTINCT:
@@ -232,15 +220,12 @@ static inline void add_func_type_param(GenContext *context, Type *param_type, AB
 LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 {
 	LLVMTypeRef *params = NULL;
-	FunctionSignature *signature = type->func.signature;
+	FunctionPrototype *prototype = type->func.prototype;
 
 	LLVMTypeRef return_type = NULL;
 
-	Type *rtype = signature->rtype->type;
-	bool is_failable = type_is_failable(rtype);
-	if (is_failable) rtype = rtype->failable;
-	Type *real_return_type = is_failable ? type_anyerr : rtype;
-	ABIArgInfo *ret_arg_info = is_failable ? signature->failable_abi_info : signature->ret_abi_info;
+	Type *call_return_type = prototype->abi_ret_type;
+	ABIArgInfo *ret_arg_info = prototype->ret_abi_info;
 
 	ret_arg_info->param_index_end = 0;
 	ret_arg_info->param_index_start = 0;
@@ -250,7 +235,7 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 		case ABI_ARG_EXPAND:
 			UNREACHABLE;
 		case ABI_ARG_INDIRECT:
-			vec_add(params, llvm_get_ptr_type(context, real_return_type));
+			vec_add(params, llvm_get_ptr_type(context, call_return_type));
 			return_type = llvm_get_type(context, type_void);
 			break;
 		case ABI_ARG_EXPAND_COERCE:
@@ -276,28 +261,28 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 			break;
 		}
 		case ABI_ARG_DIRECT:
-			return_type = llvm_get_type(context, real_return_type);
+			return_type = llvm_get_type(context, call_return_type);
 			break;
 		case ABI_ARG_DIRECT_COERCE:
 			assert(!abi_info_should_flatten(ret_arg_info));
 			return_type = llvm_get_coerce_type(context, ret_arg_info);
-			if (!return_type) return_type = llvm_get_type(context, real_return_type);
+			if (!return_type) return_type = llvm_get_type(context, call_return_type);
 			break;
 	}
 
 	// If it's failable and it's not void (meaning ret_abi_info will be NULL)
-	if (is_failable && signature->ret_abi_info)
+	if (prototype->ret_by_ref)
 	{
-		add_func_type_param(context, type_get_ptr(rtype), signature->ret_abi_info, &params);
+		add_func_type_param(context, type_get_ptr(type_lowering(prototype->ret_by_ref_type)), prototype->ret_by_ref_abi_info, &params);
 	}
 
 	// Add in all of the required arguments.
-	VECEACH(signature->params, i)
+	VECEACH(prototype->params, i)
 	{
-		add_func_type_param(context, signature->params[i]->type, signature->params[i]->var.abi_info, &params);
+		add_func_type_param(context, prototype->params[i], prototype->abi_args[i], &params);
 	}
 
-	return LLVMFunctionType(return_type, params, vec_size(params), signature->variadic == VARIADIC_RAW);
+	return LLVMFunctionType(return_type, params, vec_size(params), prototype->variadic == VARIADIC_RAW);
 }
 
 

@@ -315,6 +315,7 @@ void sema_analysis_run(void)
 	global_context.locals_list = NULL;
 
 	stable_init(&global_context.std_module.symbols, 0x10000);
+	type_func_prototype_init(0x10000);
 
 	if (!global_context.module_list)
 	{

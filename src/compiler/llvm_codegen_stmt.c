@@ -191,7 +191,7 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 		c->error_var = c->block_error_var;
 		c->catch_block = c->block_failable_exit;
 	}
-	else if (IS_FAILABLE(c->cur_func_decl->func_decl.function_signature.rtype))
+	else if (type_is_failable(c->cur_func_decl->type->func.prototype->rtype))
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
 		error_out = llvm_emit_alloca_aligned(c, type_anyerr, "reterr");

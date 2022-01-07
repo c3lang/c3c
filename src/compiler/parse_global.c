@@ -1479,7 +1479,7 @@ static inline Decl *parse_define_type(ParseContext *context, Visibility visibili
 		decl->typedef_decl.is_func = true;
 		decl->typedef_decl.is_distinct = distinct;
 		ASSIGN_TYPE_ELSE(TypeInfo *type_info, parse_failable_type(context), poisoned_decl);
-		decl->typedef_decl.function_signature.rtype = type_info;
+		decl->typedef_decl.function_signature.returntype = type_info;
 		if (!parse_parameter_list(context, decl->visibility, &(decl->typedef_decl.function_signature), true))
 		{
 			return poisoned_decl;
@@ -1967,7 +1967,7 @@ static inline Decl *parse_func_definition(ParseContext *context, Visibility visi
 	{
 		advance_and_verify(context, TOKEN_FN);
 	}
-	TypeInfo **rtype_ref = &func->func_decl.function_signature.rtype;
+	TypeInfo **rtype_ref = &func->func_decl.function_signature.returntype;
 	TypeInfo **method_type_ref = &func->func_decl.type_parent;
 	TokenId name;
 	if (!parse_func_macro_header(context, false, rtype_ref, method_type_ref, &name)) return poisoned_decl;
