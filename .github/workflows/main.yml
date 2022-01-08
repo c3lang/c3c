@@ -92,8 +92,8 @@ jobs:
           sudo ./llvm.sh ${{ matrix.llvm_version }}
           sudo apt-get install -y liblld-${{matrix.llvm_version}}
 
-          if [[ "${{matrix.llvm_version}}" =~ 14 ]]; then
-            sudo apt-get install -y libmlir-14 libmlir-14-dev mlir-14-tools
+          if [[ "${{matrix.llvm_version}}" > 12 ]]; then
+            sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools
           fi
 
       - name: CMake
