@@ -79,6 +79,9 @@ jobs:
         build_type: [Release, Debug]
         llvm_version: [12, 13, 14]
 
+      # Don't abort runners if a single one fails
+      fail-fast: false
+
     steps:
       - uses: actions/checkout@v2
       - name: Install common deps
