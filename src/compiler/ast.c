@@ -480,3 +480,17 @@ static Ast poison_ast = { .ast_kind = AST_POISONED };
 Ast *poisoned_ast = &poison_ast;
 
 
+bool ast_is_not_empty(Ast *ast)
+{
+	if (!ast) return false;
+	if (ast->ast_kind != AST_COMPOUND_STMT) return true;
+	AstId first = ast->compound_stmt.first_stmt;
+	if (first)
+	{
+		Ast *stmt = astptr(first);
+		if (stmt->next) return true;
+		if (ast->compound_stmt.defer_list.start != ast->compound_stmt.defer_list.end) return true;
+		return ast_is_not_empty(stmt);
+	}
+	return ast->compound_stmt.defer_list.start != ast->compound_stmt.defer_list.end;
+}

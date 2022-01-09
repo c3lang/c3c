@@ -6,21 +6,6 @@
 
 static void gencontext_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast);
 
-static bool ast_is_not_empty(Ast *ast)
-{
-	if (!ast) return false;
-	if (ast->ast_kind != AST_COMPOUND_STMT) return true;
-	AstId first = ast->compound_stmt.first_stmt;
-	if (first)
-	{
-		Ast *stmt = astptr(first);
-		if (stmt->next) return true;
-		if (ast->compound_stmt.defer_list.start != ast->compound_stmt.defer_list.end) return true;
-		return ast_is_not_empty(stmt);
-	}
-	return ast->compound_stmt.defer_list.start != ast->compound_stmt.defer_list.end;
-}
-
 
 void llvm_emit_compound_stmt(GenContext *context, Ast *ast)
 {
@@ -41,7 +26,7 @@ void llvm_emit_compound_stmt(GenContext *context, Ast *ast)
 	}
 }
 
-void gencontext_emit_ct_compound_stmt(GenContext *context, Ast *ast)
+static void llvm_emit_ct_compound_stmt(GenContext *context, Ast *ast)
 {
 	assert(ast->ast_kind == AST_CT_COMPOUND_STMT);
 	AstId current = ast->compound_stmt.first_stmt;
@@ -119,7 +104,7 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 			BEValue value;
 			llvm_value_set_decl_address(&value, decl);
 			value.kind = BE_ADDRESS;
-			llvm_emit_memclear(c, &value);
+			llvm_store_zero(c, &value);
 		}
 	}
 	return decl->backend_ref;
@@ -157,7 +142,7 @@ void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr
 			llvm_value_set_bool(be_value, LLVMConstInt(context->bool_type, 1, false));
 			return;
 		}
-		llvm_value_set_address(be_value, decl_value, type);
+		llvm_value_set_address_abi_aligned(be_value, decl_value, type);
 	}
 	if (bool_cast)
 	{
@@ -216,7 +201,7 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 	{
 		if (c->return_out)
 		{
-			llvm_store_bevalue_aligned(c, c->return_out, &return_value, 0);
+			llvm_store_value_aligned(c, c->return_out, &return_value, type_alloca_alignment(return_value.type));
 		}
 		llvm_emit_jmp(c, c->block_return_exit);
 		return;
@@ -235,7 +220,7 @@ static inline void gencontext_emit_return(GenContext *c, Ast *ast)
 	{
 		llvm_emit_block(c, error_return_block);
 		BEValue value;
-		llvm_value_set_address(&value, error_out, type_anyerr);
+		llvm_value_set_address_abi_aligned(&value, error_out, type_anyerr);
 		llvm_emit_return_abi(c, NULL, &value);
 		c->current_block = NULL;
 	}
@@ -765,9 +750,9 @@ static void gencontext_emit_switch_body(GenContext *c, BEValue *switch_value, As
 
 	Type *switch_type = switch_ast->ast_kind == AST_IF_CATCH_SWITCH_STMT ? type_lowering(type_anyerr) : switch_ast->switch_stmt.cond->type;
 	BEValue switch_var;
-	llvm_value_set_address(&switch_var, llvm_emit_alloca_aligned(c, switch_type, "switch"), switch_type);
+	llvm_value_set_address_abi_aligned(&switch_var, llvm_emit_alloca_aligned(c, switch_type, "switch"), switch_type);
 	switch_ast->switch_stmt.codegen.retry_var = &switch_var;
-	llvm_store_bevalue(c, &switch_var, switch_value);
+	llvm_store_value(c, &switch_var, switch_value);
 
 	llvm_emit_br(c, switch_block);
 	llvm_emit_block(c, switch_block);
@@ -917,7 +902,7 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 	}
 	BEValue be_value;
 	llvm_emit_expr(context, &be_value, ast->nextcase_stmt.switch_expr);
-	llvm_store_bevalue(context, jump_target->switch_stmt.codegen.retry_var, &be_value);
+	llvm_store_value(context, jump_target->switch_stmt.codegen.retry_var, &be_value);
 	llvm_emit_defer(context, ast->nextcase_stmt.defers.start, ast->nextcase_stmt.defers.end);
 	llvm_emit_jmp(context, jump_target->switch_stmt.codegen.retry_block);
 }
@@ -1289,7 +1274,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			llvm_emit_compound_stmt(c, ast);
 			break;
 		case AST_CT_COMPOUND_STMT:
-			gencontext_emit_ct_compound_stmt(c, ast);
+			llvm_emit_ct_compound_stmt(c, ast);
 			break;
 		case AST_FOR_STMT:
 			llvm_emit_for_stmt(c, ast);

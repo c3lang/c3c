@@ -55,18 +55,6 @@ void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block)
 }
 
 
-
-void llvm_emit_cond_br(GenContext *context, BEValue *value, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block)
-{
-	assert(context->current_block);
-	assert(value->kind == BE_BOOLEAN);
-	LLVMBuildCondBr(context->builder, value->value, then_block, else_block);
-	LLVMClearInsertionPosition(context->builder);
-	context->current_block = NULL;
-	context->current_block_is_target = false;
-}
-
-
 void llvm_emit_block(GenContext *context, LLVMBasicBlockRef next_block)
 {
 	assert(context->current_block == NULL);
@@ -111,7 +99,7 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 			return;
 		}
 		default:
-			llvm_store_aligned(c, ref, llvm_get_next_param(c, index), alignment);
+			llvm_store(c, ref, llvm_get_next_param(c, index), alignment);
 			return;
 	}
 }
@@ -146,11 +134,11 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			AlignSize alignment = decl->alignment;
 			AlignSize element_align;
 			LLVMValueRef gep_first = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.lo_index, alignment, &element_align);
-			llvm_store_aligned(c, gep_first, llvm_get_next_param(c, index), element_align);
+			llvm_store(c, gep_first, llvm_get_next_param(c, index), element_align);
 			if (abi_type_is_valid(info->coerce_expand.hi))
 			{
 				LLVMValueRef gep_second = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.hi_index, alignment, &element_align);
-				llvm_store_aligned(c, gep_second, llvm_get_next_param(c, index), element_align);
+				llvm_store(c, gep_second, llvm_get_next_param(c, index), element_align);
 			}
 			break;
 		}
@@ -169,11 +157,11 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			AlignSize element_align;
 			LLVMValueRef lo_ptr = llvm_emit_struct_gep_raw(c, cast, struct_type, 0, decl_alignment, &element_align);
 			// Store it in the struct.
-			llvm_store_aligned(c, lo_ptr, llvm_get_next_param(c, index), element_align);
+			llvm_store(c, lo_ptr, llvm_get_next_param(c, index), element_align);
 			// Point to the hi value.
 			LLVMValueRef hi_ptr = llvm_emit_struct_gep_raw(c, cast, struct_type, 1, decl_alignment, &element_align);
 			// Store it in the struct.
-			llvm_store_aligned(c, hi_ptr, llvm_get_next_param(c, index), element_align);
+			llvm_store(c, hi_ptr, llvm_get_next_param(c, index), element_align);
 			return;
 		}
 		case ABI_ARG_DIRECT:
@@ -185,7 +173,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 				return;
 			}
 			llvm_emit_and_set_decl_alloca(c, decl);
-			llvm_store_aligned_decl(c, decl, llvm_get_next_param(c, index));
+			llvm_store_decl_raw(c, decl, llvm_get_next_param(c, index));
 			return;
 		case ABI_ARG_DIRECT_COERCE:
 		{
@@ -218,7 +206,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 				AlignSize align;
 				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, decl_alignment, &align);
 				LLVMValueRef value = llvm_get_next_param(c, index);
-				llvm_store_aligned(c, element_ptr, value, align);
+				llvm_store(c, element_ptr, value, align);
 			}
 			return;
 		}
@@ -277,7 +265,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 	{
 		if (return_value && return_value->value)
 		{
-			llvm_store_bevalue_aligned(c, c->return_out, return_value, 0);
+			llvm_store_value_aligned(c, c->return_out, return_value, type_alloca_alignment(return_value->type));
 		}
 		return_out = c->failable_out;
 		if (!failable)
@@ -291,7 +279,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 	switch (info->kind)
 	{
 		case ABI_ARG_INDIRECT:
-			llvm_store_bevalue_aligned(c, return_out, return_value, info->indirect.alignment);
+			llvm_store_value_aligned(c, return_out, return_value, info->indirect.alignment);
 			llvm_emit_return_value(c, NULL);
 			return;
 		case ABI_ARG_IGNORE:
@@ -315,7 +303,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			LLVMValueRef lo = llvm_emit_struct_gep_raw(c, coerce, coerce_type, info->coerce_expand.lo_index,
 			                                           return_value->alignment, &alignment);
 			LLVMTypeRef lo_type = llvm_abi_type(c, info->coerce_expand.lo);
-			lo_val = llvm_emit_load_aligned(c, lo_type, lo, alignment, "");
+			lo_val = llvm_load(c, lo_type, lo, alignment, "");
 
 			// We're done if there's a single field.
 			if (!abi_type_is_valid(info->coerce_expand.hi))
@@ -328,7 +316,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			LLVMValueRef hi = llvm_emit_struct_gep_raw(c, coerce, coerce_type, info->coerce_expand.hi_index,
 			                                           return_value->alignment, &alignment);
 			LLVMTypeRef hi_type = llvm_abi_type(c, info->coerce_expand.hi);
-			LLVMValueRef hi_val = llvm_emit_load_aligned(c, hi_type, hi, alignment, "");
+			LLVMValueRef hi_val = llvm_load(c, hi_type, hi, alignment, "");
 
 			LLVMTypeRef unpadded_type = llvm_get_twostruct(c, lo_type, hi_type);
 			LLVMValueRef composite = LLVMGetUndef(unpadded_type);
@@ -342,7 +330,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 		}
 		case ABI_ARG_DIRECT:
 			// The normal return
-			llvm_emit_return_value(c, llvm_value_rvalue_store(c, return_value));
+			llvm_emit_return_value(c, llvm_load_value_store(c, return_value));
 			return;
 		case ABI_ARG_DIRECT_PAIR:
 		case ABI_ARG_DIRECT_COERCE:
@@ -351,7 +339,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			if (!coerce_type || coerce_type == llvm_get_type(c, call_return_type))
 			{
 				// The normal return
-				llvm_emit_return_value(c, llvm_value_rvalue_store(c, return_value));
+				llvm_emit_return_value(c, llvm_load_value_store(c, return_value));
 				return;
 			}
 			assert(!abi_info_should_flatten(info));
@@ -568,7 +556,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.noreturn, -1);
 	}
-	if (decl->alignment)
+	if (decl->alignment != type_abi_alignment(decl->type))
 	{
 		llvm_set_alignment(function, decl->alignment);
 	}

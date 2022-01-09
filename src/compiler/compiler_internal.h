@@ -372,6 +372,7 @@ typedef struct VarDecl_
 			{
 				// Variable
 				void *failable_ref;
+				int tb_failable_reg;
 			};
 		};
 		struct
@@ -587,6 +588,7 @@ typedef struct Decl_
 	union
 	{
 		void *backend_ref;
+		int tb_register;
 		void *backend_value;
 	};
 	const char *extname;
@@ -1125,6 +1127,7 @@ typedef struct
 	struct
 	{
 		void *exit_block;
+		uint64_t exit_val;
 	} codegen;
 } AstDeferStmt;
 
@@ -1562,6 +1565,7 @@ typedef struct FunctionPrototype_
 	ABIArgInfo *ret_abi_info;
 	ABIArgInfo *ret_by_ref_abi_info;
 	ABIArgInfo **abi_args;
+	void *tb_prototype;
 } FunctionPrototype;
 
 extern GlobalContext global_context;
@@ -1660,7 +1664,7 @@ ARENA_DEF(type_info, TypeInfo)
 
 static inline bool ast_ok(Ast *ast) { return ast == NULL || ast->ast_kind != AST_POISONED; }
 static inline bool ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; return false; }
-
+bool ast_is_not_empty(Ast *ast);
 static inline Ast *new_ast(AstKind kind, SourceSpan range)
 {
 	Ast *ast = ast_calloc();

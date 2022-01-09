@@ -16,10 +16,75 @@ static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Ex
 static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceLocation *loc);
 static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
-LLVMValueRef llvm_emit_is_no_error_value(GenContext *c, BEValue *value)
+static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
+
+BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable)
 {
-	llvm_value_rvalue(c, value);
-	return LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, type_anyerr), "not_err");
+	assert(ref->kind == BE_ADDRESS || ref->kind == BE_ADDRESS_FAILABLE);
+	LLVMBasicBlockRef assign_block = NULL;
+
+	PUSH_ERROR();
+
+	if (failable)
+	{
+		if (IS_FAILABLE(expr))
+		{
+			if (expr->expr_kind == EXPR_FAILABLE)
+			{
+				c->error_var = NULL;
+				c->catch_block = NULL;
+				BEValue result;
+				llvm_emit_expr(c, &result, expr->inner_expr);
+				llvm_store_value_dest_aligned(c, failable, &result);
+				llvm_value_set(&result, LLVMGetUndef(llvm_get_type(c, ref->type)), ref->type);
+				POP_ERROR();
+				return result;
+			}
+			assign_block = llvm_basic_block_new(c, "after_assign");
+			c->error_var = failable;
+			c->catch_block = assign_block;
+		}
+		else
+		{
+			c->error_var = NULL;
+			c->catch_block = NULL;
+		}
+	}
+	BEValue value;
+	if (type_is_vector(expr->type))
+	{
+		llvm_emit_expr(c, &value, expr);
+		llvm_store_value(c, ref, &value);
+	}
+	else if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+	{
+		llvm_emit_const_initialize_reference(c, ref, expr);
+		value = *ref;
+	}
+	else if (expr_is_init_list(expr))
+	{
+		llvm_emit_initialize_reference(c, ref, expr);
+		value = *ref;
+	}
+	else
+	{
+		llvm_emit_expr(c, &value, expr);
+		llvm_store_value(c, ref, &value);
+	}
+
+	if (failable)
+	{
+		llvm_store_raw_abi_alignment(c, failable, llvm_get_zero(c, type_anyerr), type_anyerr);
+	}
+	POP_ERROR();
+
+	if (failable && IS_FAILABLE(expr))
+	{
+		llvm_emit_br(c, assign_block);
+		llvm_emit_block(c, assign_block);
+	}
+
+	return value;
 }
 
 static inline LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index)
@@ -80,33 +145,7 @@ static inline LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLV
 	return LLVMBuildTrunc(c->builder, data, type, "");
 }
 
-static inline LLVMValueRef llvm_emit_lshr(GenContext *c, LLVMValueRef data, int shift)
-{
-	assert(shift >= 0);
-	if (shift == 0) return data;
-	LLVMTypeRef type = LLVMTypeOf(data);
-	BitSize bit_width = llvm_bitsize(c, type);
-	if (shift >= bit_width) return LLVMConstNull(type);
-	if (LLVMIsAConstant(data))
-	{
-		return LLVMConstLShr(data, LLVMConstInt(type, (unsigned)shift, false));
-	}
-	return LLVMBuildLShr(c->builder, data, LLVMConstInt(type, (unsigned)shift, false), "");
-}
 
-static inline LLVMValueRef llvm_emit_shl(GenContext *c, LLVMValueRef data, int shift)
-{
-	assert(shift >= 0);
-	if (shift == 0) return data;
-	LLVMTypeRef type = LLVMTypeOf(data);
-	BitSize bit_width = llvm_bitsize(c, type);
-	if (shift >= bit_width) return LLVMConstNull(type);
-	if (LLVMIsAConstant(data))
-	{
-		return LLVMConstShl(data, LLVMConstInt(type, (unsigned)shift, false));
-	}
-	return LLVMBuildShl(c->builder, data, LLVMConstInt(type, (unsigned)shift, false), "");
-}
 
 void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLVMValueRef val, Type *vector_type)
 {
@@ -122,7 +161,7 @@ LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTy
 	{
 		LLVMValueRef cast = llvm_emit_alloca(c, llvm_get_type(c, be_value->type), target_alignment, "coerce");
 		LLVMValueRef target = LLVMBuildBitCast(c->builder, cast, LLVMPointerType(coerce_type, 0), "");
-		llvm_store_bevalue_aligned(c, target, be_value, target_alignment);
+		llvm_store_value_aligned(c, target, be_value, target_alignment);
 		*resulting_alignment = target_alignment;
 		return cast;
 	}
@@ -326,8 +365,7 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 	// 1. If the types match then we're done, just load.
 	if (llvm_source_type == coerced)
 	{
-		llvm_value_rvalue_store(c, value);
-		return value->value;
+		return llvm_load_value(c, value);
 	}
 
 	// 2. Both are integer types and values, then just truncate / extend
@@ -359,7 +397,7 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 	if ((coerced_type_kind == LLVMPointerTypeKind || coerced_type_kind == LLVMIntegerTypeKind)
 		&& (source_type_kind == LLVMPointerTypeKind || source_type_kind == LLVMIntegerTypeKind))
 	{
-		LLVMValueRef val = llvm_emit_load_aligned(c, llvm_source_type, addr, value->alignment, "");
+		LLVMValueRef val = llvm_load(c, llvm_source_type, addr, value->alignment, "");
 		return llvm_coerce_int_ptr(c, val, llvm_source_type, coerced);
 	}
 
@@ -367,7 +405,7 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 	if (source_size > target_size)
 	{
 		LLVMValueRef val = LLVMBuildBitCast(c->builder, addr, LLVMPointerType(coerced, 0), "");
-		return llvm_emit_load_aligned(c, coerced, val, value->alignment, "");
+		return llvm_load(c, coerced, val, value->alignment, "");
 	}
 
 	// Otherwise, do it through memory.
@@ -375,7 +413,7 @@ LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value
 
 	LLVMValueRef temp = llvm_emit_alloca(c, coerced, max_align, "tempcoerce");
 	llvm_emit_memcpy(c, temp, max_align, addr, value->alignment, source_size);
-	return llvm_emit_load_aligned(c, coerced, temp, max_align, "");
+	return llvm_load(c, coerced, temp, max_align, "");
 }
 
 
@@ -385,7 +423,7 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 	// 1. Simplest case, the underlying types match.
 	if (coerced == target_type)
 	{
-		llvm_store_aligned(c, addr, value, alignment);
+		llvm_store(c, addr, value, alignment);
 		return;
 	}
 
@@ -404,7 +442,7 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 	    && (source_type_kind == LLVMPointerTypeKind || source_type_kind == LLVMIntegerTypeKind))
 	{
 		value = llvm_coerce_int_ptr(c, value, coerced, target_type);
-		llvm_store_aligned(c, addr, value, alignment);
+		llvm_store(c, addr, value, alignment);
 		return;
 	}
 
@@ -413,14 +451,14 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 	if (src_size <= target_size)
 	{
 		LLVMValueRef val = LLVMBuildBitCast(c->builder, addr, LLVMPointerType(coerced, 0), "");
-		llvm_store_aligned(c, val, value, alignment);
+		llvm_store(c, val, value, alignment);
 		return;
 	}
 
 	// Otherwise, do it through memory.
 	AlignSize coerce_align = llvm_abi_alignment(c, coerced);
 	LLVMValueRef temp = llvm_emit_alloca(c, coerced, coerce_align, "tempcoerce");
-	llvm_store_aligned(c, temp, value, coerce_align);
+	llvm_store(c, temp, value, coerce_align);
 	llvm_emit_memcpy(c, addr, alignment, temp, coerce_align, target_size);
 }
 
@@ -429,7 +467,7 @@ void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTy
 	LLVMTypeRef target_type = llvm_get_type(c, original_type);
 	LLVMValueRef addr = llvm_emit_alloca(c, target_type, type_abi_alignment(original_type), "result");
 	llvm_emit_coerce_store(c, addr, type_abi_alignment(original_type), coerced, value, target_type);
-	llvm_value_set_address(result, addr, original_type);
+	llvm_value_set_address_abi_aligned(result, addr, original_type);
 }
 
 static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocation *loc)
@@ -489,13 +527,19 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
-			llvm_value_set_address(result, llvm_emit_pointer_inbounds_gep_raw(c, llvm_get_pointee_type(c, parent->type), parent->value, index->value), type->pointer);
+			llvm_value_set_address_abi_aligned(result,
+			                                   llvm_emit_pointer_inbounds_gep_raw(c,
+			                                                                      llvm_get_pointee_type(c,
+			                                                                                            parent->type),
+			                                                                      parent->value,
+			                                                                      index->value),
+			                                   type->pointer);
 			return;
 		case TYPE_FLEXIBLE_ARRAY:
 		{
 			AlignSize alignment;
 			LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, llvm_get_type(c, type), index->value, parent->alignment, &alignment);
-			llvm_value_set_address_align(result, ptr, type->array.base, alignment);
+			llvm_value_set_address(result, ptr, type->array.base, alignment);
 			return;
 		}
 		case TYPE_ARRAY:
@@ -508,7 +552,7 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 			{
 				AlignSize alignment;
 				LLVMValueRef ptr = llvm_emit_array_gep_raw_index(c, parent->value, llvm_get_type(c, type), index->value, parent->alignment, &alignment);
-				llvm_value_set_address_align(result, ptr, type->array.base, alignment);
+				llvm_value_set_address(result, ptr, type->array.base, alignment);
 			}
 			return;
 		case TYPE_SUBARRAY:
@@ -518,7 +562,7 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 			}
 			{
 				LLVMValueRef ptr = llvm_emit_pointer_inbounds_gep_raw(c, llvm_get_type(c, type->array.base), parent->value, index->value);
-				llvm_value_set_address_align(result, ptr, type->array.base, type_abi_alignment(type->array.base));
+				llvm_value_set_address(result, ptr, type->array.base, type_abi_alignment(type->array.base));
 			}
 			return;
 		default:
@@ -612,7 +656,10 @@ static void gencontext_emit_member_addr(GenContext *c, BEValue *value, Decl *par
 		{
 			case TYPE_UNION:
 				llvm_value_addr(c, value);
-				llvm_value_set_address_align(value, llvm_emit_bitcast(c, value->value, type_get_ptr(found->type)), found->type, value->alignment);
+				llvm_value_set_address(value,
+				                       llvm_emit_bitcast(c, value->value, type_get_ptr(found->type)),
+				                       found->type,
+				                       value->alignment);
 				break;
 			case TYPE_STRUCT:
 				llvm_value_struct_gep(c, value, value, (unsigned)index);
@@ -637,10 +684,10 @@ static void llvm_emit_bitstruct_member(GenContext *c, BEValue *value, Decl *pare
 		{
 			case TYPE_UNION:
 				llvm_value_addr(c, value);
-				llvm_value_set_address_align(value,
-				                             llvm_emit_bitcast(c, value->value, type_get_ptr(found->type)),
-				                             found->type,
-				                             value->alignment);
+				llvm_value_set_address(value,
+				                       llvm_emit_bitcast(c, value->value, type_get_ptr(found->type)),
+				                       found->type,
+				                       value->alignment);
 				break;
 			case TYPE_STRUCT:
 				llvm_value_struct_gep(c, value, value, (unsigned)index);
@@ -682,9 +729,9 @@ static inline void llvm_extract_bool_bit_from_array(GenContext *c, BEValue *be_v
 	// Grab the byte
 	LLVMValueRef byte_ptr = llvm_emit_array_gep_raw(c, array_ptr, llvm_get_type(c, be_value->type),
 	                                                start_bit / 8, be_value->alignment, &alignment);
-	LLVMValueRef element = llvm_emit_load_aligned(c, array_type, byte_ptr, alignment, "");
+	LLVMValueRef element = llvm_load(c, array_type, byte_ptr, alignment, "");
 	// Shift the bit to the zero position.
-	element = llvm_emit_lshr(c, element, start_bit % 8);
+	element = llvm_emit_lshr_fixed(c, element, start_bit % 8);
 	// Truncate to i1.
 	element = LLVMBuildTrunc(c->builder, element, c->bool_type, "");
 	// Done!
@@ -694,7 +741,7 @@ static inline void llvm_extract_bool_bit_from_array(GenContext *c, BEValue *be_v
 static inline LLVMValueRef llvm_bswap_non_integral(GenContext *c, LLVMValueRef value, unsigned bitsize)
 {
 	if (bitsize <= 8) return value;
-	LLVMValueRef shifted = llvm_emit_shl(c, value, (int)llvm_bitsize(c, LLVMTypeOf(value)) - (int)bitsize);
+	LLVMValueRef shifted = llvm_emit_shl_fixed(c, value, (int)llvm_bitsize(c, LLVMTypeOf(value)) - (int)bitsize);
 	return llvm_emit_bswap(c, shifted);
 }
 
@@ -726,16 +773,16 @@ static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_v
 		AlignSize alignment;
 		LLVMValueRef byte_ptr = llvm_emit_array_gep_raw(c, array_ptr, llvm_get_type(c, be_value->type),
 		                                                (unsigned)i, be_value->alignment, &alignment);
-		LLVMValueRef element = llvm_emit_load_aligned(c, array_type, byte_ptr, alignment, "");
+		LLVMValueRef element = llvm_load(c, array_type, byte_ptr, alignment, "");
 		element = llvm_zext_trunc(c, element, llvm_member_type);
 		int current_offset = 8 * (i - start_byte) - offset;
 		if (current_offset < 0)
 		{
-			element = llvm_emit_lshr(c, element, -current_offset);
+			element = llvm_emit_lshr_fixed(c, element, -current_offset);
 		}
 		else if (current_offset > 0)
 		{
-			element = llvm_emit_shl(c, element, current_offset);
+			element = llvm_emit_shl_fixed(c, element, current_offset);
 		}
 		if (res == NULL)
 		{
@@ -777,7 +824,7 @@ static inline void llvm_extract_bitvalue(GenContext *c, BEValue *be_value, Expr 
 	bool bswap = false;
 	if (parent_decl->bitstruct.big_endian && !platform_target.big_endian) bswap = true;
 	if (parent_decl->bitstruct.little_endian && platform_target.big_endian) bswap = true;
-	LLVMValueRef value = llvm_value_rvalue_store(c, be_value);
+	LLVMValueRef value = llvm_load_value_store(c, be_value);
 	if (bswap) value = llvm_emit_bswap(c, value);
 	LLVMTypeRef container_type = LLVMTypeOf(value);
 	BitSize container_size = type_size(be_value->type);
@@ -835,18 +882,18 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 	unsigned end_bit = member->var.end_bit;
 
 	Type *member_type = type_flatten(member->type);
-	LLVMValueRef value = llvm_value_rvalue_store(c, result);
+	LLVMValueRef value = llvm_load_value_store(c, result);
 	if (member_type == type_bool)
 	{
 		assert(start_bit == end_bit);
-		value = llvm_emit_shl(c, value, start_bit % 8);
+		value = llvm_emit_shl_fixed(c, value, start_bit % 8);
 		AlignSize alignment;
 		LLVMValueRef byte_ptr = llvm_emit_array_gep_raw(c, array_ptr, array_type, start_bit / 8, parent.alignment, &alignment);
-		LLVMValueRef current = llvm_emit_load_aligned(c, c->byte_type, byte_ptr, alignment, "");
-		LLVMValueRef bit = llvm_emit_shl(c, LLVMConstInt(c->byte_type, 1, 0), start_bit % 8);
+		LLVMValueRef current = llvm_load(c, c->byte_type, byte_ptr, alignment, "");
+		LLVMValueRef bit = llvm_emit_shl_fixed(c, LLVMConstInt(c->byte_type, 1, 0), start_bit % 8);
 		current = LLVMBuildAnd(c->builder, current, LLVMConstNot(bit), "");
 		current = LLVMBuildOr(c->builder, current, value, "");
-		llvm_store_aligned(c, byte_ptr, current, alignment);
+		llvm_store(c, byte_ptr, current, alignment);
 		return;
 	}
 
@@ -874,7 +921,7 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 		{
 			int skipped_bits = start_mod;
 			// Shift the lower bits into the top of the byte.
-			LLVMValueRef res = llvm_emit_shl(c, value, skipped_bits);
+			LLVMValueRef res = llvm_emit_shl_fixed(c, value, skipped_bits);
 			// Then truncate.
 			if (member_type_bitsize > 8)
 			{
@@ -890,15 +937,15 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 				mask = LLVMConstOr(mask, llvm_const_high_bitmask(c->byte_type, 8, 7 - (int)end_bit));
 			}
 			// Load the current value.
-			LLVMValueRef current = llvm_emit_load_aligned(c, c->byte_type, byte_ptr, alignment, "");
+			LLVMValueRef current = llvm_load(c, c->byte_type, byte_ptr, alignment, "");
 			// Empty the top bits.
 			current = LLVMBuildAnd(c->builder, current, mask, "");
 			// Use *or* with the top bits from "res":
 			current = LLVMBuildOr(c->builder, current, res, "");
 			// And store it back.
-			llvm_store_aligned(c, byte_ptr, current, alignment);
+			llvm_store(c, byte_ptr, current, alignment);
 			// We now shift the value by the number of bits we used.
-			value = llvm_emit_lshr(c, value, 8 - skipped_bits);
+			value = llvm_emit_lshr_fixed(c, value, 8 - skipped_bits);
 			// ... and we're done with the first byte.
 			continue;
 		}
@@ -910,19 +957,19 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 			LLVMValueRef mask = llvm_const_low_bitmask(c->byte_type, 8, end_mod + 1);
 			value = LLVMBuildAnd(c->builder, value, mask, "");
 			// Load the current value.
-			LLVMValueRef current = llvm_emit_load_aligned(c, c->byte_type, byte_ptr, alignment, "");
+			LLVMValueRef current = llvm_load(c, c->byte_type, byte_ptr, alignment, "");
 			// Clear the lower bits.
 			current = LLVMBuildAnd(c->builder, current, LLVMConstNot(mask), "");
 			// Use *or* with the bottom bits from "value":
 			current = LLVMBuildOr(c->builder, current, value, "");
 			// And store it back.
-			llvm_store_aligned(c, byte_ptr, current, alignment);
+			llvm_store(c, byte_ptr, current, alignment);
 			continue;
 		}
 		// All others are simple: truncate & store
-		llvm_store_aligned(c, byte_ptr, llvm_zext_trunc(c, value, c->byte_type), alignment);
+		llvm_store(c, byte_ptr, llvm_zext_trunc(c, value, c->byte_type), alignment);
 		// Then shift
-		value = llvm_emit_lshr(c, value, 8);
+		value = llvm_emit_lshr_fixed(c, value, 8);
 	}
 }
 static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Expr *expr)
@@ -958,7 +1005,7 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 	}
 
 	// To start the assign, pull out the current value.
-	LLVMValueRef current_value = llvm_value_rvalue_store(c, &parent);
+	LLVMValueRef current_value = llvm_load_value_store(c, &parent);
 
 	// Get the type.
 	LLVMTypeRef struct_type = LLVMTypeOf(current_value);
@@ -970,23 +1017,23 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 	int end_bit = (int)member->var.end_bit;
 	// Let's say we want to create 00111000 => start: 3 end: 5
 	int left_shift = (int)bits - end_bit - 1;
-	mask = llvm_emit_shl(c, mask, left_shift);
+	mask = llvm_emit_shl_fixed(c, mask, left_shift);
 	// => shift 2: 11111100
-	mask = llvm_emit_lshr(c, mask, left_shift + start_bit);
+	mask = llvm_emit_lshr_fixed(c, mask, left_shift + start_bit);
 	// => shift 5: 00000111
-	mask = llvm_emit_shl(c, mask, start_bit);
+	mask = llvm_emit_shl_fixed(c, mask, start_bit);
 	// => shift 3: 00111000
 
 	// Now we might need to truncate or widen the value to insert:
-	LLVMValueRef value = llvm_value_rvalue_store(c, be_value);
+	LLVMValueRef value = llvm_load_value_store(c, be_value);
 	value = llvm_zext_trunc(c, value, struct_type);
 	// Shift to the correct location.
-	value = llvm_emit_shl(c, value, start_bit);
+	value = llvm_emit_shl_fixed(c, value, start_bit);
 	// And combine using ((current_value & ~mask) | (value & mask))
 	value = LLVMBuildAnd(c->builder, value, mask, "");
 	current_value = LLVMBuildAnd(c->builder, current_value, LLVMConstNot(mask), "");
 	current_value = LLVMBuildOr(c->builder, current_value, value, "");
-	llvm_store_bevalue_raw(c, &parent, current_value);
+	llvm_store_value_raw(c, &parent, current_value);
 }
 static inline void llvm_emit_bitaccess(GenContext *c, BEValue *be_value, Expr *expr)
 {
@@ -1334,7 +1381,7 @@ static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **
 		BEValue res;
 		llvm_emit_expr(c, &res, value);
 		unsigned index = (unsigned)current_element->index;
-		LLVMValueRef val = llvm_value_rvalue_store(c, &res);
+		LLVMValueRef val = llvm_load_value_store(c, &res);
 		switch (current_element->kind)
 		{
 			case DESIGNATOR_FIELD:
@@ -1425,10 +1472,10 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 		case CONST_INIT_ZERO:
 			if (type_is_builtin(ref->type->type_kind) || ref->type->type_kind == TYPE_ARRAY)
 			{
-				llvm_store_bevalue_raw(c, ref, llvm_get_zero(c, ref->type));
+				llvm_store_value_raw(c, ref, llvm_get_zero(c, ref->type));
 				return;
 			}
-			llvm_emit_memclear(c, ref);
+			llvm_store_zero(c, ref);
 			return;
 		case CONST_INIT_ARRAY_VALUE:
 			UNREACHABLE
@@ -1445,7 +1492,7 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 				AlignSize alignment;
 				LLVMValueRef array_pointer = llvm_emit_array_gep_raw(c, array_ref, array_type_llvm, (unsigned)i, ref->alignment, &alignment);
 				BEValue value;
-				llvm_value_set_address_align(&value, array_pointer, element_type, alignment);
+				llvm_value_set_address(&value, array_pointer, element_type, alignment);
 				llvm_emit_inititialize_reference_const(c, &value, const_init->init_array_full[i]);
 			}
 			return;
@@ -1453,7 +1500,7 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 		case CONST_INIT_ARRAY:
 		{
 			LLVMValueRef array_ref = ref->value;
-			llvm_emit_memclear(c, ref);
+			llvm_store_zero(c, ref);
 			Type *array_type = const_init->type;
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef array_type_llvm = llvm_get_type(c, array_type);
@@ -1468,7 +1515,7 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 				AlignSize alignment;
 				LLVMValueRef array_pointer = llvm_emit_array_gep_raw(c, array_ref, array_type_llvm, (unsigned)element_index, ref->alignment, &alignment);
 				BEValue value;
-				llvm_value_set_address_align(&value, array_pointer, element_type, alignment);
+				llvm_value_set_address(&value, array_pointer, element_type, alignment);
 				llvm_emit_inititialize_reference_const(c, &value, element->init_array_value.element);
 			}
 			return;
@@ -1480,7 +1527,7 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 			Type *type = decl->strukt.members[index]->type->canonical;
 			// Bitcast.
 			BEValue value = *ref;
-			llvm_value_set_address(&value, llvm_emit_bitcast(c, ref->value, type_get_ptr(type)), type);
+			llvm_value_set_address_abi_aligned(&value, llvm_emit_bitcast(c, ref->value, type_get_ptr(type)), type);
 			// Emit our value.
 			llvm_emit_inititialize_reference_const(c, &value, const_init->init_union.element);
 			return;
@@ -1502,7 +1549,7 @@ static void llvm_emit_inititialize_reference_const(GenContext *c, BEValue *ref, 
 		{
 			BEValue value;
 			llvm_emit_expr(c, &value, const_init->init_value);
-			llvm_store_bevalue(c, ref, &value);
+			llvm_store_value(c, ref, &value);
 			return;
 		}
 	}
@@ -1556,11 +1603,11 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 			// Todo optimize
 			AlignSize alignment;
 			LLVMValueRef ptr = llvm_emit_array_gep_raw(c, value, llvm_type, i, ref->alignment, &alignment);
-			llvm_value_set_address_align(&pointer, ptr, element->type, alignment);
+			llvm_value_set_address(&pointer, ptr, element->type, alignment);
 		}
 		else
 		{
-			llvm_value_set_address_align(&pointer, value, element->type, ref->alignment);
+			llvm_value_set_address(&pointer, value, element->type, ref->alignment);
 		}
 		// If this is an initializer, we want to actually run the initialization recursively.
 		if (element->expr_kind == EXPR_CONST && element->const_expr.const_kind == CONST_LIST)
@@ -1575,7 +1622,7 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 		}
 		BEValue init_value;
 		llvm_emit_expr(c, &init_value, element);
-		llvm_store_bevalue(c, &pointer, &init_value);
+		llvm_store_value(c, &pointer, &init_value);
 	}
 }
 
@@ -1598,7 +1645,7 @@ static void llvm_emit_initialize_designated_const_range(GenContext *c, BEValue *
 		BEValue new_ref;
 		AlignSize alignment;
 		LLVMValueRef ptr = llvm_emit_array_gep_raw(c, ref->value, ref_type, (unsigned)i, ref->alignment, &alignment);
-		llvm_value_set_address_align(&new_ref, ptr, type_get_indexed_type(ref->type), alignment);
+		llvm_value_set_address(&new_ref, ptr, type_get_indexed_type(ref->type), alignment);
 		llvm_emit_initialize_designated(c, &new_ref, offset, current + 1, last, expr, emitted_value);
 	}
 }
@@ -1611,7 +1658,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 	{
 		if (emitted_value)
 		{
-			llvm_store_bevalue(c, ref, emitted_value);
+			llvm_store_value(c, ref, emitted_value);
 			return;
 		}
 		if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
@@ -1626,7 +1673,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 		}
 		BEValue val;
 		llvm_emit_expr(c, &val, expr);
-		llvm_store_bevalue(c, ref, &val);
+		llvm_store_value(c, ref, &val);
 		return;
 	}
 	DesignatorElement *curr = current[0];
@@ -1640,7 +1687,10 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 			unsigned decl_alignment = decl->alignment;
 			if (ref->type->type_kind == TYPE_UNION)
 			{
-				llvm_value_set_address_align(&value, llvm_emit_bitcast(c, ref->value, type_get_ptr(type)), type, type_min_alignment(offset, decl_alignment));
+				llvm_value_set_address(&value,
+				                       llvm_emit_bitcast(c, ref->value, type_get_ptr(type)),
+				                       type,
+				                       type_min_alignment(offset, decl_alignment));
 			}
 			else
 			{
@@ -1655,7 +1705,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 			offset += (unsigned)curr->index * type_size(type);
 			AlignSize alignment;
 			LLVMValueRef ptr = llvm_emit_array_gep_raw(c, ref->value, llvm_get_type(c, ref->type), (unsigned)curr->index, ref->alignment, &alignment);
-			llvm_value_set_address_align(&value, ptr, type, alignment);
+			llvm_value_set_address(&value, ptr, type, alignment);
 			llvm_emit_initialize_designated(c, &value, offset, current + 1, last, expr, emitted_value);
 			break;
 		}
@@ -1678,7 +1728,7 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 	llvm_value_addr(c, ref);
 
 	// Clear the memory if not union.
-	if (real_type->type_kind != TYPE_UNION) llvm_emit_memclear(c, ref);
+	if (real_type->type_kind != TYPE_UNION) llvm_store_zero(c, ref);
 
 	// Now walk through the elements.
 	VECEACH(elements, i)
@@ -1716,7 +1766,7 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 			// Completely skip zero.
 			if (!expr->const_expr.b) continue;
 
-			LLVMValueRef bit = llvm_emit_shl(c, LLVMConstInt(c->byte_type, 1, 0), start_bit % 8);
+			LLVMValueRef bit = llvm_emit_shl_fixed(c, LLVMConstInt(c->byte_type, 1, 0), start_bit % 8);
 			unsigned byte = start_bit / 8;
 			LLVMValueRef current_value = llvm_emit_extract_value(c, data, byte);
 			data = llvm_emit_insert_value(c, data, LLVMConstOr(current_value, bit), byte);
@@ -1742,11 +1792,11 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 			LLVMValueRef to_or;
 			if (j == start_byte)
 			{
-				to_or = llvm_emit_shl(c, value, bit_offset);
+				to_or = llvm_emit_shl_fixed(c, value, bit_offset);
 			}
 			else
 			{
-				to_or = llvm_emit_lshr(c, value, j * 8 - (int)start_bit);
+				to_or = llvm_emit_lshr_fixed(c, value, j * 8 - (int)start_bit);
 			}
 			if (j == end_byte)
 			{
@@ -1786,7 +1836,7 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
 		assert(initializer->init_struct[i]->kind == CONST_INIT_VALUE);
 		BEValue entry;
 		llvm_emit_const_expr(c, &entry, initializer->init_struct[i]->init_value);
-		LLVMValueRef value = llvm_value_rvalue_store(c, &entry);
+		LLVMValueRef value = llvm_load_value_store(c, &entry);
 		value = llvm_zext_trunc(c, value, llvm_base_type);
 		if (bit_size < base_type_bitsize)
 		{
@@ -1815,11 +1865,11 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
 {
 	if (initializer->kind == CONST_INIT_ZERO)
 	{
-		llvm_emit_memclear(c, ref);
+		llvm_store_zero(c, ref);
 		return;
 	}
 	assert(initializer->kind == CONST_INIT_STRUCT);
-	llvm_store_bevalue_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
+	llvm_store_value_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
 }
 
 /**
@@ -1838,7 +1888,7 @@ static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *
 	if (initializer->kind == CONST_INIT_ZERO)
 	{
 		// In case of a zero, optimize.
-		llvm_emit_memclear(c, ref);
+		llvm_store_zero(c, ref);
 		return;
 	}
 	// In case of small const initializers, or full arrays - use copy.
@@ -1952,7 +2002,7 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue
 	}
 
 	// Store the result aligned.
-	llvm_store_bevalue_raw(c, addr, after_value);
+	llvm_store_value_raw(c, addr, after_value);
 	if (after) llvm_value_set(after, after_value, addr->type);
 }
 
@@ -2125,7 +2175,7 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 			                                                 1,
 			                                                 expr_to_len->alignment,
 			                                                 &alignment);
-			llvm_value_set_address_align(be_value, len_addr, type_usize, alignment);
+			llvm_value_set_address(be_value, len_addr, type_usize, alignment);
 			break;
 		}
 		case TYPE_ARRAY:
@@ -2300,7 +2350,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 
 	llvm_value_set(end_ref, end_index.value, end_type);
 	llvm_value_set(start_ref, start_index.value, start_type);
-	llvm_value_set_address_align(parent_ref, parent_base, parent_type, type_abi_alignment(parent_type));
+	llvm_value_set_address(parent_ref, parent_base, parent_type, type_abi_alignment(parent_type));
 }
 
 static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
@@ -2387,7 +2437,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 				llvm_emit_subscript_addr_with_base(c, &addr, &parent, &offset_val, TOKLOC(expr->span.loc));
 
 				// And store the value.
-				llvm_store_bevalue(c, &addr, be_value);
+				llvm_store_value(c, &addr, be_value);
 			}
 			return;
 		}
@@ -2425,7 +2475,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_emit_subscript_addr_with_base(c, &addr, &parent, &offset_val, TOKLOC(expr->span.loc));
 
 	// And store the value.
-	llvm_store_bevalue(c, &addr, be_value);
+	llvm_store_value(c, &addr, be_value);
 
 	// Create the new offset
 	LLVMValueRef next_offset = llvm_emit_add_int(c, start.type, offset, llvm_const_int(c, start.type, 1), TOKLOC(expr->span.loc));
@@ -2805,9 +2855,9 @@ static void llvm_emit_subarray_comp(GenContext *c, BEValue *be_value, BEValue *l
 
 	llvm_emit_block(c, value_cmp);
 	BEValue index_var;
-	llvm_value_set_address(&index_var, llvm_emit_alloca_aligned(c, type_usize, "cmp.idx"), type_usize);
+	llvm_value_set_address_abi_aligned(&index_var, llvm_emit_alloca_aligned(c, type_usize, "cmp.idx"), type_usize);
 	LLVMValueRef one = llvm_const_int(c, type_usize, 1);
-	llvm_store_bevalue_raw(c, &index_var, llvm_get_zero(c, type_usize));
+	llvm_store_value_raw(c, &index_var, llvm_get_zero(c, type_usize));
 	llvm_emit_br(c, loop_begin);
 
 	llvm_emit_block(c, loop_begin);
@@ -2821,15 +2871,21 @@ static void llvm_emit_subarray_comp(GenContext *c, BEValue *be_value, BEValue *l
 	llvm_emit_block(c, comparison);
 	BEValue lhs_to_compare;
 	BEValue rhs_to_compare;
-	llvm_value_set_address(&lhs_to_compare,
-						   llvm_emit_pointer_inbounds_gep_raw(c, llvm_base_type, lhs_value.value, current_index.value),
-						   array_base_type);
-	llvm_value_set_address(&rhs_to_compare,
-						   llvm_emit_pointer_inbounds_gep_raw(c, llvm_base_type, rhs_value.value, current_index.value),
-						   array_base_type);
+	llvm_value_set_address_abi_aligned(&lhs_to_compare,
+	                                   llvm_emit_pointer_inbounds_gep_raw(c,
+	                                                                      llvm_base_type,
+	                                                                      lhs_value.value,
+	                                                                      current_index.value),
+	                                   array_base_type);
+	llvm_value_set_address_abi_aligned(&rhs_to_compare,
+	                                   llvm_emit_pointer_inbounds_gep_raw(c,
+	                                                                      llvm_base_type,
+	                                                                      rhs_value.value,
+	                                                                      current_index.value),
+	                                   array_base_type);
 	llvm_emit_comparison(c, &cmp, &lhs_to_compare, &rhs_to_compare, BINARYOP_EQ);
 	match_fail_block = c->current_block;
-	llvm_store_bevalue_raw(c, &index_var, LLVMBuildAdd(c->builder, current_index.value, one, ""));
+	llvm_store_value_raw(c, &index_var, LLVMBuildAdd(c->builder, current_index.value, one, ""));
 	llvm_emit_cond_br(c, &cmp, loop_begin, exit);
 	llvm_emit_block(c, exit);
 
@@ -3190,7 +3246,7 @@ void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_valu
 	if (var_addr)
 	{
 		assert(is_try && "Storing will only happen on try.");
-		llvm_store_bevalue(c, var_addr, be_value);
+		llvm_store_value(c, var_addr, be_value);
 	}
 
 	// 8. Restore the error stack.
@@ -3230,7 +3286,7 @@ static inline void llvm_emit_catch_expr(GenContext *c, BEValue *value, Expr *exp
 	{
 		Decl *decl = inner->identifier_expr.decl;
 		assert(IS_FAILABLE(decl));
-		llvm_value_set_address(value, decl_failable_ref(decl), type_anyerr);
+		llvm_value_set_address_abi_aligned(value, decl_failable_ref(decl), type_anyerr);
 		return;
 	}
 
@@ -3246,8 +3302,8 @@ static inline void llvm_emit_catch_expr(GenContext *c, BEValue *value, Expr *exp
 	PUSH_ERROR();
 
 	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_anyerr, "error_var");
-	llvm_value_set_address(value, error_var, type_anyerr);
-	llvm_store_bevalue_raw(c, value, llvm_get_zero(c, type_anyerr));
+	llvm_value_set_address_abi_aligned(value, error_var, type_anyerr);
+	llvm_store_value_raw(c, value, llvm_get_zero(c, type_anyerr));
 	c->error_var = error_var;
 	c->catch_block = end_block;
 
@@ -3435,7 +3491,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	{
 		llvm_emit_defer(c, expr->rethrow_expr.defer, 0);
 		BEValue value;
-		llvm_value_set_address(&value, error_var, type_anyerr);
+		llvm_value_set_address_abi_aligned(&value, error_var, type_anyerr);
 		llvm_emit_return_abi(c, NULL, &value);
 		c->current_block = NULL;
 		c->current_block_is_target = NULL;
@@ -3458,7 +3514,7 @@ static inline void llvm_emit_typeofany(GenContext *c, BEValue *be_value, Expr *e
 															 1,
 															 be_value->alignment,
 															 &alignment);
-		llvm_value_set_address_align(be_value, pointer_addr, type_typeid, alignment);
+		llvm_value_set_address(be_value, pointer_addr, type_typeid, alignment);
 	}
 	else
 	{
@@ -3530,11 +3586,11 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 	// Emit the variable
 	llvm_emit_expr(c, &addr, left->subscript_expr.expr);
 	llvm_value_addr(c, &addr);
-	LLVMValueRef vector_value = llvm_value_rvalue_store(c, &addr);
+	LLVMValueRef vector_value = llvm_load_value_store(c, &addr);
 
 	// Emit the index
 	llvm_emit_expr(c, &index, left->subscript_expr.index);
-	LLVMValueRef index_val = llvm_value_rvalue_store(c, &index);
+	LLVMValueRef index_val = llvm_load_value_store(c, &index);
 
 	if (binary_op > BINARYOP_ASSIGN)
 	{
@@ -3549,8 +3605,8 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 		llvm_emit_expr(c, be_value, expr->binary_expr.right);
 	}
 
-	LLVMValueRef new_value = LLVMBuildInsertElement(c->builder, vector_value, llvm_value_rvalue_store(c, be_value), index_val, "elemset");
-	llvm_store_bevalue_raw(c, &addr, new_value);
+	LLVMValueRef new_value = LLVMBuildInsertElement(c->builder, vector_value, llvm_load_value_store(c, be_value), index_val, "elemset");
+	llvm_store_value_raw(c, &addr, new_value);
 }
 
 static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
@@ -3569,7 +3625,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		llvm_emit_expr(c, &addr, expr->binary_expr.left);
 		llvm_value_addr(c, &addr);
 		gencontext_emit_binary(c, be_value, expr, &addr, base_op);
-		llvm_store_bevalue(c, &addr, be_value);
+		llvm_store_value(c, &addr, be_value);
 		return;
 	}
 	if (binary_op == BINARYOP_ASSIGN)
@@ -3659,7 +3715,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_block(c, lhs_block);
 	BEValue lhs;
 	llvm_emit_expr(c, &lhs, expr->ternary_expr.then_expr);
-	LLVMValueRef lhs_value = llvm_value_rvalue_store(c, &lhs);
+	LLVMValueRef lhs_value = llvm_load_value_store(c, &lhs);
 
 	LLVMBasicBlockRef lhs_exit = llvm_get_current_block_if_in_use(c);
 	if (lhs_exit) llvm_emit_br(c, phi_block);
@@ -3667,7 +3723,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_block(c, rhs_block);
 	BEValue rhs;
 	llvm_emit_expr(c, &rhs, expr->ternary_expr.else_expr);
-	LLVMValueRef rhs_value = llvm_value_rvalue_store(c, &rhs);
+	LLVMValueRef rhs_value = llvm_load_value_store(c, &rhs);
 
 	LLVMBasicBlockRef rhs_exit = llvm_get_current_block_if_in_use(c);
 	if (rhs_exit) llvm_emit_br(c, phi_block);
@@ -3717,7 +3773,7 @@ static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue 
 		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.list), expr->type);
 		return;
 	}
-	llvm_value_set_address(value, llvm_emit_alloca_aligned(c, expr->type, "literal"), expr->type);
+	llvm_value_set_address_abi_aligned(value, llvm_emit_alloca_aligned(c, expr->type, "literal"), expr->type);
 	llvm_emit_initialize_reference_const(c, value, expr);
 }
 
@@ -3739,7 +3795,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 																		 1));
 				llvm_set_alignment(global_name, 1);
 				global_name = LLVMConstBitCast(global_name, LLVMPointerType(llvm_get_type(c, type_char), 0));
-				llvm_value_set_address(be_value, global_name, type);
+				llvm_value_set_address_abi_aligned(be_value, global_name, type);
 				return;
 			}
 		case CONST_INTEGER:
@@ -3877,7 +3933,12 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_POINTER:
-			vec_add(*values, llvm_emit_load_aligned(context, llvm_get_type(context, param_type), expand_ptr, alignment, "loadexpanded"));
+			vec_add(*values,
+			        llvm_load(context,
+			                  llvm_get_type(context, param_type),
+			                  expand_ptr,
+			                  alignment,
+			                  "loadexpanded"));
 			return;
 		case TYPE_TYPEDEF:
 			param_type = param_type->canonical;
@@ -3904,7 +3965,7 @@ void llvm_emit_struct_member_ref(GenContext *c, BEValue *struct_ref, BEValue *me
 	assert(struct_ref->type->type_kind == TYPE_STRUCT);
 	AlignSize align;
 	LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, struct_ref->value, llvm_get_type(c, struct_ref->type), member_id, struct_ref->alignment, &align);
-	llvm_value_set_address_align(member_ref, ptr, struct_ref->type->decl->strukt.members[member_id]->type, align);
+	llvm_value_set_address(member_ref, ptr, struct_ref->type->decl->strukt.members[member_id]->type, align);
 }
 
 LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index,
@@ -3940,7 +4001,7 @@ LLVMValueRef llvm_emit_array_load(GenContext *c, LLVMValueRef ptr, LLVMTypeRef a
 {
 	AlignSize alignment;
 	LLVMValueRef element_ptr = llvm_emit_array_gep_raw_index(c, ptr, array_type, llvm_const_int(c, type_usize, index), array_alignment, &alignment);
-	return llvm_emit_load_aligned(c, LLVMGetElementType(array_type), element_ptr, alignment, "");
+	return llvm_load(c, LLVMGetElementType(array_type), element_ptr, alignment, "");
 }
 
 LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset)
@@ -3971,7 +4032,7 @@ void llvm_emit_subarray_len(GenContext *c, BEValue *subarray, BEValue *len)
 	                                                 1,
 	                                                 subarray->alignment,
 	                                                 &alignment);
-	llvm_value_set_address_align(len, len_addr, type_usize, alignment);
+	llvm_value_set_address(len, len_addr, type_usize, alignment);
 }
 
 void llvm_emit_subarray_pointer(GenContext *c, BEValue *value, BEValue *pointer)
@@ -3982,7 +4043,7 @@ void llvm_emit_subarray_pointer(GenContext *c, BEValue *value, BEValue *pointer)
 	{
 		AlignSize alignment;
 		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, value->value, llvm_get_type(c, value->type), 0, value->alignment, &alignment);
-		llvm_value_set_address_align(pointer, ptr, ptr_type, alignment);
+		llvm_value_set_address(pointer, ptr, ptr_type, alignment);
 		return;
 	}
 	LLVMValueRef ptr = llvm_emit_extract_value(c, value->value, 0);
@@ -3996,7 +4057,7 @@ static void llvm_emit_any_pointer(GenContext *c, BEValue *value, BEValue *pointe
 	{
 		AlignSize alignment;
 		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, value->value, llvm_get_type(c, value->type), 0, value->alignment, &alignment);
-		llvm_value_set_address_align(pointer, ptr, type_voidptr, alignment);
+		llvm_value_set_address(pointer, ptr, type_voidptr, alignment);
 		return;
 	}
 	LLVMValueRef ptr = llvm_emit_extract_value(c, value->value, 0);
@@ -4024,7 +4085,7 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 	                                            (unsigned)actual_index,
 	                                            struct_pointer->alignment,
 	                                            &alignment);
-	llvm_value_set_address(element, ref, member->type);
+	llvm_value_set_address_abi_aligned(element, ref, member->type);
 	element->alignment = alignment;
 }
 
@@ -4062,19 +4123,19 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 			                                         llvm_get_type(c, type),
 			                                         info->indirect.alignment,
 			                                         "indirectarg");
-			llvm_store_bevalue_aligned(c, indirect, be_value, info->indirect.alignment);
+			llvm_store_value_aligned(c, indirect, be_value, info->indirect.alignment);
 			vec_add(*args, indirect);
 			return;
 		}
 		case ABI_ARG_DIRECT:
-			vec_add(*args, llvm_value_rvalue_store(c, be_value));
+			vec_add(*args, llvm_load_value_store(c, be_value));
 			return;
 		case ABI_ARG_DIRECT_COERCE:
 		{
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
 			if (!coerce_type || coerce_type == llvm_get_type(c, type))
 			{
-				vec_add(*args, llvm_value_rvalue_store(c, be_value));
+				vec_add(*args, llvm_load_value_store(c, be_value));
 				return;
 			}
 			if (!abi_info_should_flatten(info))
@@ -4091,7 +4152,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 			{
 				AlignSize load_align;
 				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, alignment, &load_align);
-				vec_add(*args, llvm_emit_load_aligned(c, element, element_ptr, load_align, ""));
+				vec_add(*args, llvm_load(c, element, element_ptr, load_align, ""));
 			}
 			return;
 		}
@@ -4111,10 +4172,10 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 
 			AlignSize alignment;
 			LLVMValueRef lo_ptr = llvm_emit_struct_gep_raw(c, cast, struct_type, 0, struct_align, &alignment);
-			vec_add(*args, llvm_emit_load_aligned(c, lo, lo_ptr, alignment, "lo"));
+			vec_add(*args, llvm_load(c, lo, lo_ptr, alignment, "lo"));
 			// Get the hi value.
 			LLVMValueRef hi_ptr = llvm_emit_struct_gep_raw(c, cast, struct_type, 1, struct_align, &alignment);
-			vec_add(*args, llvm_emit_load_aligned(c, hi, hi_ptr, alignment, "hi"));
+			vec_add(*args, llvm_load(c, hi, hi_ptr, alignment, "hi"));
 			return;
 		}
 		case ABI_ARG_EXPAND_COERCE:
@@ -4127,11 +4188,11 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 
 			AlignSize align;
 			LLVMValueRef gep_first = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.lo_index, alignment, &align);
-			vec_add(*args, llvm_emit_load_aligned(c, llvm_abi_type(c, info->coerce_expand.lo), gep_first, align, ""));
+			vec_add(*args, llvm_load(c, llvm_abi_type(c, info->coerce_expand.lo), gep_first, align, ""));
 			if (abi_type_is_valid(info->coerce_expand.hi))
 			{
 				LLVMValueRef gep_second = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.hi_index, alignment, &align);
-				vec_add(*args, llvm_emit_load_aligned(c, llvm_abi_type(c, info->coerce_expand.hi), gep_second, align, ""));
+				vec_add(*args, llvm_load(c, llvm_abi_type(c, info->coerce_expand.hi), gep_second, align, ""));
 			}
 			return;
 		}
@@ -4163,16 +4224,18 @@ static void llvm_emit_unpacked_variadic_arg(GenContext *c, Expr *expr, BEValue *
 	{
 		case TYPE_ARRAY:
 		{
-			llvm_store_bevalue_raw(c, &len_addr, llvm_const_int(c, type_usize, type->array.len));
+			llvm_store_value_raw(c, &len_addr, llvm_const_int(c, type_usize, type->array.len));
 			llvm_value_addr(c, &value);
-			llvm_store_bevalue_raw(c, &pointer_addr, llvm_emit_bitcast(c, value.value, type_get_ptr(type->array.base)));
+			llvm_store_value_raw(c, &pointer_addr, llvm_emit_bitcast(c, value.value, type_get_ptr(type->array.base)));
 			return;
 		}
 		case TYPE_POINTER:
 			// Load the pointer
 			llvm_value_rvalue(c, &value);
-			llvm_store_bevalue_raw(c, &len_addr, llvm_const_int(c, type_usize, type->pointer->array.len));
-			llvm_store_bevalue_raw(c, &pointer_addr, llvm_emit_bitcast(c, value.value, type_get_ptr(type->pointer->array.base)));
+			llvm_store_value_raw(c, &len_addr, llvm_const_int(c, type_usize, type->pointer->array.len));
+			llvm_store_value_raw(c,
+			                     &pointer_addr,
+			                     llvm_emit_bitcast(c, value.value, type_get_ptr(type->pointer->array.base)));
 			return;
 		case TYPE_SUBARRAY:
 			*subarray = value;
@@ -4249,7 +4312,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		llvm_value_rvalue(c, &value);
 		value.kind = BE_ADDRESS;
 		BEValue store_value = *result_value;
-		LLVMValueRef store = llvm_store_bevalue(c, &value, &store_value);
+		LLVMValueRef store = llvm_store_value(c, &value, &store_value);
 		if (store) LLVMSetVolatile(store, true);
 		return;
 	}
@@ -4296,7 +4359,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		llvm_emit_expr(c, &func_value, expr->call_expr.function);
 
 		// 1d. Load it as a value
-		func = llvm_value_rvalue_store(c, &func_value);
+		func = llvm_load_value_store(c, &func_value);
 
 		// 1e. Calculate the function type
 		func_type = llvm_get_type(c, type);
@@ -4342,7 +4405,10 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			// 6b. Return true is indirect, in this case we allocate a local, using the desired alignment on the caller side.
 			assert(ret_info->attributes.realign || ret_info->indirect.alignment == type_abi_alignment(call_return_type));
 			AlignSize alignment = ret_info->indirect.alignment;
-			llvm_value_set_address_align(result_value, llvm_emit_alloca(c, llvm_get_type(c, call_return_type), alignment, "sretparam"), call_return_type, alignment);
+			llvm_value_set_address(result_value,
+			                       llvm_emit_alloca(c, llvm_get_type(c, call_return_type), alignment, "sretparam"),
+			                       call_return_type,
+			                       alignment);
 
 			// 6c. Add the pointer to the list of arguments.
 			vec_add(values, result_value->value);
@@ -4369,7 +4435,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		// 7c. Emit it as a parameter as a pointer (will implicitly add it to the value list)
 		llvm_emit_parameter(c, &values, prototype->ret_by_ref_abi_info, &synthetic_return_param, synthetic_return_param.type);
 		// 7d. Update the be_value to actually be an address.
-		llvm_value_set_address(&synthetic_return_param, synthetic_return_param.value, actual_return_type);
+		llvm_value_set_address_abi_aligned(&synthetic_return_param, synthetic_return_param.value, actual_return_type);
 	}
 
 
@@ -4397,7 +4463,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 		BEValue subarray;
 
-		llvm_value_set_address(&subarray, llvm_emit_alloca_aligned(c, vararg_param, "vararg"), vararg_param);
+		llvm_value_set_address_abi_aligned(&subarray, llvm_emit_alloca_aligned(c, vararg_param, "vararg"), vararg_param);
 
 		// 9a. Special case, empty argument
 		if (arguments == non_variadic_params)
@@ -4405,7 +4471,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			// Just set the size to zero.
 			BEValue len_addr;
 			llvm_emit_subarray_len(c, &subarray, &len_addr);
-			llvm_store_bevalue_raw(c, &len_addr, llvm_get_zero(c, type_usize));
+			llvm_store_value_raw(c, &len_addr, llvm_get_zero(c, type_usize));
 		}
 		else if (arguments == non_variadic_params + 1 && expr->call_expr.unsplat_last)
 		{
@@ -4426,15 +4492,15 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 				llvm_emit_expr(c, &temp_value, arg_expr);
 				AlignSize store_alignment;
 				LLVMValueRef slot = llvm_emit_array_gep_raw(c, array_ref, llvm_array_type, i - non_variadic_params, alignment, &store_alignment);
-				llvm_store_bevalue_aligned(c, slot, &temp_value, store_alignment);
+				llvm_store_value_aligned(c, slot, &temp_value, store_alignment);
 			}
 			BEValue len_addr;
 			llvm_emit_subarray_len(c, &subarray, &len_addr);
-			llvm_store_bevalue_raw(c, &len_addr, llvm_const_int(c, type_usize, arguments - non_variadic_params));
+			llvm_store_value_raw(c, &len_addr, llvm_const_int(c, type_usize, arguments - non_variadic_params));
 			BEValue pointer_addr;
 			llvm_emit_subarray_pointer(c, &subarray, &pointer_addr);
 			Type *array_as_pointer_type = type_get_ptr(pointee_type);
-			llvm_store_bevalue_raw(c, &pointer_addr, llvm_emit_bitcast(c, array_ref, array_as_pointer_type));
+			llvm_store_value_raw(c, &pointer_addr, llvm_emit_bitcast(c, array_ref, array_as_pointer_type));
 		}
 		llvm_emit_parameter(c, &values, vararg_info, &subarray, vararg_param);
 	}
@@ -4446,7 +4512,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			Expr *arg_expr = expr->call_expr.arguments[i];
 			llvm_emit_expr(c, &temp_value, arg_expr);
 			REMINDER("Varargs should be expanded correctly");
-			vec_add(values, llvm_value_rvalue_store(c, &temp_value));
+			vec_add(values, llvm_load_value_store(c, &temp_value));
 		}
 	}
 
@@ -4537,7 +4603,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 			// 15a. Create memory to hold the return type.
 			LLVMValueRef ret = llvm_emit_alloca_aligned(c, call_return_type, "");
-			llvm_value_set_address(result_value, ret, call_return_type);
+			llvm_value_set_address_abi_aligned(result_value, ret, call_return_type);
 
 			// 15b. "Convert" this return type pointer in memory to our coerce type which is { pad, lo, pad, hi }
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, ret_info);
@@ -4553,7 +4619,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			if (!abi_type_is_valid(ret_info->coerce_expand.hi))
 			{
 				// Here we do a store to call -> lo (leaving the rest undefined)
-				llvm_store_aligned(c, lo, call_value, alignment);
+				llvm_store(c, lo, call_value, alignment);
 				break;
 			}
 
@@ -4562,14 +4628,14 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			LLVMValueRef hi_value = LLVMBuildExtractValue(c->builder, call_value, 1, "");
 
 			// 15h. Store lo_value into the { pad, lo, pad, hi } struct.
-			llvm_store_aligned(c, lo, lo_value, alignment);
+			llvm_store(c, lo, lo_value, alignment);
 
 			// 15i. Calculate the address to the high value (like for the low in 15d.
 			LLVMValueRef hi = llvm_emit_struct_gep_raw(c, coerce, coerce_type, ret_info->coerce_expand.hi_index,
 													   type_abi_alignment(call_return_type), &alignment);
 
 			// 15h. Store the high value.
-			llvm_store_aligned(c, hi, hi_value, alignment);
+			llvm_store(c, hi, hi_value, alignment);
 
 			break;
 		}
@@ -4607,10 +4673,10 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		BEValue error_holder = *result_value;
 		if (error_var)
 		{
-			llvm_value_set_address(&error_holder, c->error_var, type_anyerr);
+			llvm_value_set_address_abi_aligned(&error_holder, c->error_var, type_anyerr);
 		}
 		// 17b. Generate a boolean switch.
-		llvm_value_set_bool(&no_err, llvm_emit_is_no_error_value(c, &error_holder));
+		llvm_value_set_bool(&no_err, llvm_emit_is_no_error(c, llvm_load_value(c, &error_holder)));
 
 		// 17c. If we have an error var, or we aren't interested in the error variable
 		//      - then it's straightforward. We just jump to the catch block.
@@ -4626,7 +4692,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			LLVMBasicBlockRef error_block = llvm_basic_block_new(c, "error");
 			llvm_emit_cond_br(c, &no_err, after_block, error_block);
 			llvm_emit_block(c, error_block);
-			llvm_store_bevalue_aligned(c, c->error_var, result_value, 0);
+			llvm_store_value_aligned(c, c->error_var, result_value, type_alloca_alignment(type_anyerr));
 			// 17e. Then jump to the catch.
 			llvm_emit_br(c, c->catch_block);
 		}
@@ -4756,7 +4822,7 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 
 	if (return_out)
 	{
-		llvm_value_set_address(be_value, return_out, type_lowered);
+		llvm_value_set_address_abi_aligned(be_value, return_out, type_lowered);
 	}
 	else
 	{
@@ -4816,7 +4882,7 @@ static inline void llvm_emit_macro_block(GenContext *context, BEValue *be_value,
 		BEValue value;
 
 		llvm_emit_expr(context, &value, expr->macro_block.args[i]);
-		llvm_store_aligned_decl(context, decl, llvm_value_rvalue_store(context, &value));
+		llvm_store_decl_raw(context, decl, llvm_load_value_store(context, &value));
 	}
 	if (expr->macro_block.no_scope)
 	{
@@ -4839,74 +4905,6 @@ LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, L
 	return LLVMBuildCall2(context->builder, type, decl, values, arg_count, "");
 }
 
-BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable)
-{
-	assert(ref->kind == BE_ADDRESS || ref->kind == BE_ADDRESS_FAILABLE);
-	LLVMBasicBlockRef assign_block = NULL;
-
-	PUSH_ERROR();
-
-	if (failable)
-	{
-		if (IS_FAILABLE(expr))
-		{
-			if (expr->expr_kind == EXPR_FAILABLE)
-			{
-				c->error_var = NULL;
-				c->catch_block = NULL;
-				BEValue result;
-				llvm_emit_expr(c, &result, expr->inner_expr);
-				llvm_store_bevalue_dest_aligned(c, failable, &result);
-				llvm_value_set(&result, LLVMGetUndef(llvm_get_type(c, ref->type)), ref->type);
-				POP_ERROR();
-				return result;
-			}
-			assign_block = llvm_basic_block_new(c, "after_assign");
-			c->error_var = failable;
-			c->catch_block = assign_block;
-		}
-		else
-		{
-			c->error_var = NULL;
-			c->catch_block = NULL;
-		}
-	}
-	BEValue value;
-	if (type_is_vector(expr->type))
-	{
-		llvm_emit_expr(c, &value, expr);
-		llvm_store_bevalue(c, ref, &value);
-	}
-	else if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
-	{
-		llvm_emit_const_initialize_reference(c, ref, expr);
-		value = *ref;
-	}
-	else if (expr_is_init_list(expr))
-	{
-		llvm_emit_initialize_reference(c, ref, expr);
-		value = *ref;
-	}
-	else
-	{
-		llvm_emit_expr(c, &value, expr);
-		llvm_store_bevalue(c, ref, &value);
-	}
-
-	if (failable)
-	{
-		llvm_store_self_aligned(c, failable, llvm_get_zero(c, type_anyerr), type_anyerr);
-	}
-	POP_ERROR();
-
-	if (failable && IS_FAILABLE(expr))
-	{
-		llvm_emit_br(c, assign_block);
-		llvm_emit_block(c, assign_block);
-	}
-
-	return value;
-}
 
 
 
@@ -4918,7 +4916,7 @@ static inline void llvm_emit_failable(GenContext *c, BEValue *be_value, Expr *ex
 	{
 		assert(c->error_var);
 		llvm_emit_expr(c, be_value, fail);
-		llvm_store_bevalue_dest_aligned(c, c->error_var, be_value);
+		llvm_store_value_dest_aligned(c, c->error_var, be_value);
 	}
 	// Branch to the catch
 	llvm_emit_br(c, c->catch_block);
@@ -5019,7 +5017,7 @@ static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value
 		return;
 	}
 	assert(!IS_FAILABLE(expr) || c->catch_block);
-	llvm_value_set_address(value, llvm_emit_alloca_aligned(c, type, "literal"), type);
+	llvm_value_set_address_abi_aligned(value, llvm_emit_alloca_aligned(c, type, "literal"), type);
 	llvm_emit_initialize_reference(c, value, expr);
 }
 
@@ -5038,7 +5036,7 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 	{
 		Expr *expr = values[i];
 		llvm_emit_expr(c, value, expr);
-		llvm_store_bevalue_aligned(c, declarations[i]->backend_ref, value, declarations[i]->alignment);
+		llvm_store_value_aligned(c, declarations[i]->backend_ref, value, declarations[i]->alignment);
 	}
 	llvm_emit_stmt(c, body_expr->body_expansion_expr.ast);
 }
@@ -5048,7 +5046,7 @@ void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr)
 	if (!expr->try_unwrap_expr.failable)
 	{
 		LLVMValueRef fail_ref = decl_failable_ref(expr->try_unwrap_expr.decl);
-		LLVMValueRef errv = llvm_emit_load_aligned(c, llvm_get_type(c, type_anyerr), fail_ref, 0, "load.err");
+		LLVMValueRef errv = llvm_load(c, llvm_get_type(c, type_anyerr), fail_ref, type_abi_alignment(type_anyerr), "load.err");
 		LLVMValueRef result = LLVMBuildICmp(c->builder, LLVMIntEQ, errv, llvm_get_zero(c, type_anyerr), "result");
 		llvm_value_set_bool(value, result);
 		return;
@@ -5082,7 +5080,7 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 	else
 	{
 		LLVMValueRef temp_err = llvm_emit_alloca_aligned(c, type_anyerr, "temp_err");
-		llvm_value_set_address(&addr, temp_err, type_anyerr);
+		llvm_value_set_address_abi_aligned(&addr, temp_err, type_anyerr);
 	}
 
 	PUSH_ERROR();
@@ -5104,7 +5102,7 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 
 	POP_ERROR();
 
-	llvm_store_bevalue_raw(c, &addr, llvm_get_zero(c, type_anyerr));
+	llvm_store_value_raw(c, &addr, llvm_get_zero(c, type_anyerr));
 	llvm_emit_br(c, catch_block);
 	llvm_emit_block(c, catch_block);
 	llvm_value_rvalue(c, &addr);
@@ -5222,8 +5220,8 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	LLVMValueRef pointer_to_arg = LLVMBuildInBoundsGEP2(c->builder, char_ptr_type, argv_ptr, &index_var, 1, "");
 
 	// Get the char* to the argument
-	LLVMValueRef pointer_value = llvm_emit_load_aligned(c, llvm_get_ptr_type(c, type_char), pointer_to_arg,
-	                                                    type_abi_alignment(type_get_ptr(type_char)), "");
+	LLVMValueRef pointer_value = llvm_load(c, llvm_get_ptr_type(c, type_char), pointer_to_arg,
+	                                       type_abi_alignment(type_get_ptr(type_char)), "");
 	AlignSize index_align;
 
 	// Get strlen to calculate length
@@ -5238,10 +5236,10 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	// We first set the pointer
 	AlignSize align = type_abi_alignment(arg_array_type);
 	LLVMValueRef ptr_loc = llvm_emit_struct_gep_raw(c, index, arg_array_elem_type, 0, align, &index_align);
-	llvm_store_aligned(c, ptr_loc, pointer_value, index_align);
+	llvm_store(c, ptr_loc, pointer_value, index_align);
 	// Then the length
 	LLVMValueRef len_loc = llvm_emit_struct_gep_raw(c, index, arg_array_elem_type, 1, align, &index_align);
-	llvm_store_aligned(c, len_loc, len, index_align);
+	llvm_store(c, len_loc, len, index_align);
 
 	// Add index
 	LLVMValueRef index_plus = LLVMBuildNUWAdd(c->builder, index_var, llvm_const_int(c, type_usize, 1), "");

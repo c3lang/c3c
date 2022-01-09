@@ -1487,22 +1487,31 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 		{
 			case VARDECL_PARAM_REF:
 				// &foo
-			{
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
-			}
 				if (type && type->canonical != arg->type->canonical)
 				{
 					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(type));
 					return false;
+				}
+				if (param && !param->alignment)
+				{
+					if (arg->expr_kind == EXPR_IDENTIFIER || arg->expr_kind == EXPR_CONST)
+					{
+						param->alignment = arg->identifier_expr.decl->alignment;
+					}
+					else
+					{
+						param->alignment = type_alloca_alignment(arg->type);
+					}
 				}
 				break;
 			case VARDECL_PARAM:
 				// foo
 				if (!sema_analyse_expr_rhs(context, type, arg, true)) return false;
 				if (IS_FAILABLE(arg)) *failable = true;
-				if (callee.macro)
+				if (param && !param->alignment)
 				{
-					param->alignment = type_abi_alignment(type ? type : arg->type);
+					param->alignment = type_alloca_alignment(arg->type);
 				}
 				break;
 			case VARDECL_PARAM_EXPR:
@@ -1521,9 +1530,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 				break;
 			case VARDECL_PARAM_CT_TYPE:
 				// $Foo
-			{
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
-			}
 				if (arg->expr_kind != EXPR_TYPEINFO)
 				{
 					SEMA_ERROR(arg, "A type, like 'int' or 'double' was expected for the parameter '%s'.", param->name);

@@ -32,4 +32,8 @@ static inline bool abi_type_is_valid(AbiType type)
 	return type.int_bits_plus_1 != 0;
 }
 
+static inline bool abi_info_should_flatten(ABIArgInfo *info)
+{
+	return info->kind == ABI_ARG_DIRECT_COERCE && info->direct_coerce.elements > 1U && !info->direct_coerce.prevent_flatten;
+}
 

@@ -1511,6 +1511,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 		decl_set_external_name(decl);
 	}
 	if (!sema_analyse_doc_header(decl->docs, decl->func_decl.function_signature.params, NULL)) return decl_poison(decl);
+	decl->alignment = type_alloca_alignment(decl->type);
 	DEBUG_LOG("Function analysis done.");
 	return true;
 }

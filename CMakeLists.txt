@@ -9,9 +9,7 @@ set(C3_LLVM_VERSION "auto" CACHE STRING "Use LLVM version [default: auto]")
 option(C3_USE_MIMALLOC "Use built-in mimalloc" ON)
 set(C3_MIMALLOC_TAG "v1.7.3" CACHE STRING "Used version of mimalloc")
 
-if(WIN32)
-    set(C3_USE_MIMALLOC OFF)
-endif()
+set(C3_USE_MIMALLOC OFF)
 
 if(C3_USE_MIMALLOC)
     option(MI_BUILD_TESTS OFF)
@@ -150,9 +148,11 @@ add_executable(c3c
         src/compiler/llvm_codegen_debug_info.c
         src/compiler/llvm_codegen_expr.c
         src/compiler/llvm_codegen_function.c
+        src/compiler/llvm_codegen_instr.c
         src/compiler/llvm_codegen_module.c
         src/compiler/llvm_codegen_stmt.c
         src/compiler/llvm_codegen_type.c
+        src/compiler/llvm_codegen_value.c
         src/compiler/module.c
         src/compiler/number.c
         src/compiler/parse_expr.c
@@ -173,6 +173,10 @@ add_executable(c3c
         src/compiler/symtab.c
         src/compiler/target.c
         src/compiler/tb_codegen.c
+        src/compiler/tilde_codegen.c
+        src/compiler/tilde_codegen_instr.c
+        src/compiler/tilde_codegen_value.c
+        src/compiler/tilde_codegen_storeload.c
         src/compiler_tests/benchmark.c
         src/compiler_tests/tests.c
         src/compiler/tokens.c
@@ -188,7 +192,11 @@ add_executable(c3c
         src/utils/toml.c src/build/project.c
         src/utils/vmem.c
         src/utils/vmem.h
-        src/utils/whereami.c)
+        src/utils/whereami.c
+        src/compiler/tilde_codegen_storeload.c
+        src/compiler/llvm_codegen_storeload.c
+        src/compiler/tilde_codegen_expr.c
+        src/compiler/tilde_codegen_stmt.c)
 
 if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     message(STATUS "using gcc/clang warning switches")

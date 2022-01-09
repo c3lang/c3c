@@ -1,55 +1,36 @@
-#include "codegen_internal.h"
+#include "tilde_internal.h"
 
 #if TB_BACKEND
 
-#include <tb.h>
+static void tinybackend_emit_expr(TbContext *c, TBEValue *value, Expr *expr);
+static inline void tilde_emit_block(TbContext *c, TB_Label label);
 
-typedef struct
-{
-	Module *code_module;
-	const char *object_filename;
-
-	TB_Module *module;
-	TB_FeatureSet features;
-
-	Decl *current_func_decl;
-	TB_Function *function;
-} GenContext;
-
-typedef enum
-{
-	BE_VALUE,
-	BE_ADDRESS,
-	BE_ADDRESS_FAILABLE,
-	BE_BOOLEAN,
-} BackendValueKind;
-
-typedef struct
-{
-	BackendValueKind kind: 5;
-	AlignSize alignment;
-
-	Type *type; // Should never be a distinct or canonical type.
-
-	TB_Register value;
-	TB_Register failable; // TODO what even is a failable?
-} BEValue;
-
-static void tinybackend_emit_expr(GenContext *c, BEValue *value, Expr *expr);
-
+static TB_Register tilde_value_rvalue_get(TbContext *c, TBEValue *value);
+static void TBE_VALUE_set_reg(TBEValue *value, TB_Register reg, Type *type);
 // Per instance i think?
 void tinybackend_codegen_setup()
 {
 
 }
 
-static inline bool tinybackend_value_is_addr(BEValue *value)
-{ return value->kind == BE_ADDRESS || value->kind == BE_ADDRESS_FAILABLE; }
+static inline bool tinybackend_value_is_addr(TBEValue *value)
+{ return value->kind == TBE_ADDRESS || value->kind == TBE_ADDRESS_FAILABLE; }
 
-static inline bool tinybackend_value_is_bool(BEValue *value)
-{ return value->kind == BE_BOOLEAN; }
 
-static TB_DataType tbc3_get_type(Type *type)
+static TB_CallingConv tilde_call_convention(CallABI abi)
+{
+	switch (abi)
+	{
+		case CALL_C:
+			return TB_CDECL;
+		case CALL_X86_STD:
+			return TB_STDCALL;
+		default:
+			FATAL_ERROR("Unsupported call convention for TildeBE");
+	}
+}
+
+TB_DataType tbtype(Type *type)
 {
 	type = type_lowering(type);
 	uint8_t elements = 1;
@@ -124,63 +105,247 @@ static TB_DataType tbc3_get_type(Type *type)
 	}
 }
 
+static TB_DataType tilde_get_abi_type(AbiType type)
+{
+	if (abi_type_is_type(type)) return tbtype(type.type);
+	TODO
+}
+
+static void param_expand(TB_DataType **params_ref, Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_TYPEDEF:
+			UNREACHABLE
+		case TYPE_ARRAY:
+			for (ArraySize i = type->array.len; i > 0; i--)
+			{
+				param_expand(params_ref, type->array.base);
+			}
+			return;
+		case TYPE_STRUCT:
+		{
+			Decl **members = type->decl->strukt.members;
+			VECEACH(members, i)
+			{
+				param_expand(params_ref, members[i]->type);
+			}
+			return;
+		}
+		case TYPE_ENUM:
+		case TYPE_ANYERR:
+		case TYPE_ERRTYPE:
+			param_expand(params_ref, type_lowering(type));
+			return;
+		case TYPE_UNION:
+		{
+			ByteSize largest = 0;
+			Type *largest_type = NULL;
+			Decl **members = type->decl->strukt.members;
+			// Clang: Unions can be here only in degenerative cases - all the fields are same
+			// after flattening. Thus we have to use the "largest" field.
+			VECEACH(members, i)
+			{
+				if (type_size(type) > largest)
+				{
+					largest = type_size(type);
+					type = type->canonical;
+				}
+			}
+			if (!largest) return;
+			param_expand(params_ref, largest_type);
+			return;
+		}
+		default:
+			vec_add(*params_ref, tbtype(type));
+			return;
+	}
+
+}
+
+static inline void add_func_type_param(Type *param_type, ABIArgInfo *arg_info, TB_DataType **params)
+{
+	arg_info->param_index_start = (MemberIndex)vec_size(*params);
+	switch (arg_info->kind)
+	{
+		case ABI_ARG_IGNORE:
+			break;
+		case ABI_ARG_INDIRECT:
+			vec_add(*params, TB_TYPE_PTR);
+			break;
+		case ABI_ARG_EXPAND_COERCE:
+			vec_add(*params, tilde_get_abi_type(arg_info->coerce_expand.lo));
+			if (abi_type_is_valid(arg_info->coerce_expand.hi))
+			{
+				vec_add(*params, tilde_get_abi_type(arg_info->coerce_expand.hi));
+			}
+			break;
+		case ABI_ARG_EXPAND:
+			// Expanding a structs
+			param_expand(params, param_type->canonical);
+			// If we have padding, add it here.
+			if (arg_info->expand.padding_type)
+			{
+				vec_add(*params, tbtype(arg_info->expand.padding_type));
+			}
+			break;
+		case ABI_ARG_DIRECT:
+			vec_add(*params, tbtype(param_type));
+			break;
+		case ABI_ARG_DIRECT_COERCE:
+		{
+			// Normal direct.
+			if (!abi_type_is_valid(arg_info->direct_coerce.type))
+			{
+				vec_add(*params, tbtype(param_type));
+				break;
+			}
+			TB_DataType coerce_type = tilde_get_abi_type(arg_info->direct_coerce.type);
+			if (!abi_info_should_flatten(arg_info))
+			{
+				vec_add(*params, coerce_type);
+				break;
+			}
+			for (unsigned idx = 0; idx < arg_info->direct_coerce.elements; idx++)
+			{
+				vec_add(*params, coerce_type);
+			}
+			break;
+		}
+		case ABI_ARG_DIRECT_PAIR:
+			// Pairs are passed by param.
+			vec_add(*params, tilde_get_abi_type(arg_info->direct_pair.lo));
+			vec_add(*params, tilde_get_abi_type(arg_info->direct_pair.hi));
+			break;
+	}
+	arg_info->param_index_end = (MemberIndex)vec_size(*params);
+}
+
+static TB_FunctionPrototype *tilde_get_function_type(TB_Module *module, FunctionPrototype *prototype)
+{
+	if (prototype->tb_prototype) return prototype->tb_prototype;
+
+	TB_DataType *params = NULL;
+	TB_DataType return_type = TB_TYPE_VOID;
+
+	Type *call_return_type = prototype->abi_ret_type;
+	ABIArgInfo *ret_arg_info = prototype->ret_abi_info;
+
+	ret_arg_info->param_index_end = 0;
+	ret_arg_info->param_index_start = 0;
+
+	switch (ret_arg_info->kind)
+	{
+		case ABI_ARG_EXPAND:
+			UNREACHABLE;
+		case ABI_ARG_INDIRECT:
+			vec_add(params, TB_TYPE_PTR);
+			return_type = TB_TYPE_VOID;
+			break;
+		case ABI_ARG_EXPAND_COERCE:
+		{
+			TB_DataType lo = tilde_get_abi_type(ret_arg_info->direct_pair.lo);
+			if (!abi_type_is_valid(ret_arg_info->direct_pair.hi))
+			{
+				return_type = lo;
+				break;
+			}
+			TB_DataType hi = tilde_get_abi_type(ret_arg_info->direct_pair.hi);
+			TODO
+			// return_type = llvm_get_twostruct(context, lo, hi);
+			break;
+		}
+		case ABI_ARG_IGNORE:
+			return_type = TB_TYPE_VOID;
+			break;
+		case ABI_ARG_DIRECT_PAIR:
+		{
+			TB_DataType lo = tilde_get_abi_type(ret_arg_info->direct_pair.lo);
+			TB_DataType hi = tilde_get_abi_type(ret_arg_info->direct_pair.hi);
+			TODO // return_type = llvm_get_twostruct(context, lo, hi);
+			break;
+		}
+		case ABI_ARG_DIRECT:
+			return_type = tbtype(call_return_type);
+			break;
+		case ABI_ARG_DIRECT_COERCE:
+			assert(!abi_info_should_flatten(ret_arg_info));
+			TODO
+			/*
+			return_type = llvm_get_coerce_type(context, ret_arg_info);
+			if (!return_type) return_type = llvm_get_type(context, call_return_type);*/
+			break;
+	}
+
+	// If it's failable and it's not void (meaning ret_abi_info will be NULL)
+	if (prototype->ret_by_ref)
+	{
+		add_func_type_param(type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
+		                    prototype->ret_by_ref_abi_info,
+		                    &params);
+	}
+
+	// Add in all of the required arguments.
+	VECEACH(prototype->params, i)
+	{
+		add_func_type_param(prototype->params[i], prototype->abi_args[i], &params);
+	}
+
+	unsigned param_count = vec_size(params);
+	TB_FunctionPrototype *tb_proto = tb_prototype_create(module,
+														 tilde_call_convention(prototype->call_abi),
+														 return_type, param_count, prototype->variadic == VARIADIC_RAW);
+	tb_prototype_add_params(tb_proto, param_count, params);
+	prototype->tb_prototype = tb_proto;
+	return tb_proto;
+}
+
 static inline TB_Register decl_ref(Decl *decl)
 {
 	if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED) return decl_ref(decl->var.alias);
-
-	return (TB_Register)((uintptr_t)decl->backend_ref);
+	return decl->tb_register;
 }
 
-TB_Register tinybackend_emit_load_aligned(GenContext *c, TB_DataType dt, TB_Register pointer, AlignSize alignment)
+TB_Register tilde_load_aligned(TbContext *c, TB_DataType dt, TB_Register pointer, AlignSize alignment)
 {
-	TB_Register value = tb_inst_load(c->function, dt, pointer, alignment);
+	TB_Register value = tb_inst_load(c->f, dt, pointer, alignment);
 	return value;
 }
 
-void tinybackend_store_self_aligned(GenContext *c, TB_Register pointer, TB_Register value, Type *type)
+void tilde_store_self_aligned(TbContext *c, TB_Register pointer, TB_Register value, Type *type)
 {
-	tb_inst_store(c->function, tbc3_get_type(type), pointer, value, type_abi_alignment(type));
+	tb_inst_store(c->f, tbtype(type), pointer, value, type_abi_alignment(type));
 }
 
-void tinybackend_store_bevalue(GenContext *c, TB_DataType type, BEValue *destination, BEValue *value)
+
+
+void tinybackend_store_value(TbContext *c, TBEValue *destination, TBEValue *value)
 {
 	assert(tinybackend_value_is_addr(destination));
-	if (value->kind == BE_ADDRESS && !type_is_abi_aggregate(value->type))
+	TB_DataType type = tbtype(destination->type);
+	if (value->kind == TBE_ADDRESS && !type_is_abi_aggregate(value->type))
 	{
-		value->value = tinybackend_emit_load_aligned(c,
-		                                             tbc3_get_type(value->type),
-		                                             value->value,
-		                                             value->alignment);
-		value->kind = BE_VALUE;
+		value->reg = tilde_load_aligned(c, type, value->reg, value->alignment);
+		value->kind = TBE_VALUE;
 	}
 
 	AlignSize alignment = destination->alignment;
+	assert(alignment);
 	switch (value->kind)
 	{
-		case BE_BOOLEAN:
-			value->value = tb_inst_zxt(c->function, value->value, TB_TYPE_I8);
-			value->kind = BE_VALUE;
-			FALLTHROUGH;
-		case BE_VALUE:
-			tb_inst_store(c->function,
-			              tbc3_get_type(destination->type),
-			              destination->value,
-			              value->value,
-			              alignment ? alignment : type_abi_alignment(value->type));
+		case TBE_VALUE:
+			tb_inst_store(c->f, type, destination->reg, value->reg, alignment);
 			return;
-		case BE_ADDRESS:
+		case TBE_ADDRESS:
 		{
 			// Here we do an optimized(?) memcopy.
 			ByteSize size = type_size(value->type);
-			TB_Register copy_size = tb_inst_iconst(c->function,
+			TB_Register copy_size = tb_inst_iconst(c->f,
 			                                       size <= UINT32_MAX ? TB_TYPE_I32 : TB_TYPE_I64,
 			                                       size);
 
-			TB_Register source = value->value;
-			tb_inst_memcpy(c->function,
-			               destination->value,
-			               value->value, copy_size,
-			               value->alignment ? (int)value->alignment : (int)type_abi_alignment(value->type));
+			alignment = type_min_alignment(destination->alignment, value->alignment);
+			tb_inst_memcpy(c->f, destination->reg, value->reg, copy_size, alignment);
 			return;
 		}
 		default:
@@ -188,43 +353,32 @@ void tinybackend_store_bevalue(GenContext *c, TB_DataType type, BEValue *destina
 	}
 }
 
-void tinybackend_value_set_address(BEValue *value, TB_Register tb_value, Type *type)
-{
-	value->value = tb_value;
-	value->alignment = type_abi_alignment(type);
-	value->kind = BE_ADDRESS;
-	value->type = type_lowering(type);
-}
 
-void tinybackend_value_set_decl_address(BEValue *value, Decl *decl)
-{
-	decl = decl_flatten(decl);
-	tinybackend_value_set_address(value, decl_ref(decl), decl->type);
-	value->alignment = decl->alignment;
-}
 
-void tinybackend_value_set(BEValue *value, TB_Register reg, Type *type)
+void TBE_VALUE_set(TBEValue *value, TB_Register reg, Type *type)
 {
 	type = type_lowering(type);
 	assert(reg || type == type_void);
-	value->value = reg;
+	value->reg = reg;
 	value->alignment = type_abi_alignment(type);
-	value->kind = BE_VALUE;
+	value->kind = TBE_VALUE;
 	value->type = type;
 }
 
-static void tinybackend_emit_const_expr(GenContext *c, BEValue *value, Expr *expr)
+static void tinybackend_emit_const_expr(TbContext *c, TBEValue *value, Expr *expr)
 {
-	Type *type = type_reduced_from_expr(expr)->canonical;
-
+	Type *type = type_flatten(expr->type);
 	switch (expr->const_expr.const_kind)
 	{
+		case CONST_FLOAT:
+			TBE_VALUE_set(value, tb_inst_fconst(c->f, tbtype(type), expr->const_expr.fxx.f), type);
+			return;
 		case CONST_INTEGER:
 		{
 			TB_Register reg;
 			Int128 i = expr->const_expr.ixx.i;
 
-			TB_DataType dt = tbc3_get_type(type);
+			TB_DataType dt = tbtype(type);
 			printf("Const int type: %d\n", dt.type);
 
 			switch (expr->const_expr.ixx.type)
@@ -232,31 +386,19 @@ static void tinybackend_emit_const_expr(GenContext *c, BEValue *value, Expr *exp
 
 				case TYPE_I128:
 				case TYPE_U128:
-					TODO
+					FATAL_ERROR("TB does not yet support int128");
 					//reg = tb_inst_iconst128(c->function, dt, (TB_Int128){ .lo = i.low, .hi = i.high });
 					break;
 				default:
-					reg = tb_inst_iconst(c->function, dt, i.low);
+					reg = tb_inst_iconst(c->f, dt, i.low);
 					break;
 			}
-
-			tinybackend_value_set(value, reg, type);
+			TBE_VALUE_set(value, reg, type);
 			return;
 		}
 		default:
 			TODO
 	}
-}
-
-BEValue tinybackend_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, TB_Register failable)
-{
-	assert(ref->kind == BE_ADDRESS || ref->kind == BE_ADDRESS_FAILABLE);
-
-	BEValue value;
-	tinybackend_emit_expr(c, &value, expr);
-	tinybackend_store_bevalue(c, tbc3_get_type(ref->type), ref, &value);
-
-	return value;
 }
 
 static int find_member_index(Decl *parent, Decl *member)
@@ -276,7 +418,7 @@ static int find_member_index(Decl *parent, Decl *member)
 	return -1;
 }
 
-static void tinybackend_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, Decl *member)
+static void tinybackend_emit_member_addr(TbContext *c, TBEValue *value, Decl *parent, Decl *member)
 {
 	assert(member->resolve_status == RESOLVE_DONE);
 
@@ -298,9 +440,9 @@ static void tinybackend_emit_member_addr(GenContext *c, BEValue *value, Decl *pa
 				break;
 			case TYPE_STRUCT:
 			{
-				TB_Register ref = tb_inst_member_access(c->function, value->value, (int32_t)found->offset);
+				TB_Register ref = tb_inst_member_access(c->f, value->reg, (int32_t)found->offset);
 
-				tinybackend_value_set_address(value, ref, member->type);
+				value_set_address_abi_aligned(value, ref, member->type);
 				value->alignment = found->alignment;
 			}
 				break;
@@ -311,13 +453,13 @@ static void tinybackend_emit_member_addr(GenContext *c, BEValue *value, Decl *pa
 	} while (found != member);
 }
 
-void tinybackend_emit_access_addr(GenContext *c, BEValue *be_value, Expr *expr)
+void tinybackend_emit_access_addr(TbContext *c, TBEValue *TBE_VALUE, Expr *expr)
 {
 	Expr *parent = expr->access_expr.parent;
-	tinybackend_emit_expr(c, be_value, parent);
+	tinybackend_emit_expr(c, TBE_VALUE, parent);
 	Decl *member = expr->access_expr.ref;
 
-	tinybackend_emit_member_addr(c, be_value, type_lowering(parent->type)->decl, member);
+	tinybackend_emit_member_addr(c, TBE_VALUE, type_lowering(parent->type)->decl, member);
 }
 
 static inline TB_ArithmaticBehavior tinybackend_get_arith_behavior(Type *type)
@@ -330,44 +472,35 @@ static inline TB_ArithmaticBehavior tinybackend_get_arith_behavior(Type *type)
 	return TB_CAN_WRAP;
 }
 
-void tinybackend_value_rvalue(GenContext *c, BEValue *value)
-{
-	if (value->kind != BE_ADDRESS && value->kind != BE_ADDRESS_FAILABLE)
-	{
-		if (value->type->type_kind == TYPE_BOOL && value->kind != BE_BOOLEAN)
-		{
-			//value->value = LLVMBuildTrunc(c->builder, value->value, c->bool_type, "");
-			//value->kind = BE_BOOLEAN;
-			TODO
-		}
-		return;
-	}
-	//llvm_value_fold_failable(c, value);
-	value->value = tinybackend_emit_load_aligned(c,
-	                                             tbc3_get_type(value->type),
-	                                             value->value,
-	                                             value->alignment ? value->alignment : type_abi_alignment(value->type));
 
-	if (value->type->type_kind == TYPE_BOOL)
-	{
-		//value->value = LLVMBuildTrunc(c->builder, value->value, c->bool_type, "");
-		//value->kind = BE_BOOLEAN;
-		//return;
-		TODO
-	}
-	value->kind = BE_VALUE;
+
+
+static inline void tilde_emit_block(TbContext *c, TB_Label label)
+{
+	tb_inst_label(c->f, label);
 }
 
-void tinybackend_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs_loaded, BinaryOp binary_op)
+TB_Register tilde_value_rvalue_get(TbContext *c, TBEValue *value)
+{
+	if (value->kind == TBE_VALUE) return value->reg;
+	//llvm_value_fold_failable(c, value);
+	return tilde_load_aligned(c,
+	                          tbtype(value->type),
+	                          value->reg,
+	                          value->alignment ? value->alignment : type_abi_alignment(value->type));
+
+}
+
+void tinybackend_emit_binary(TbContext *c, TBEValue *TBE_VALUE, Expr *expr, TBEValue *lhs_loaded, BinaryOp binary_op)
 {
 
 	if (binary_op == BINARYOP_AND || binary_op == BINARYOP_OR)
 	{
-		//gencontext_emit_logical_and_or(c, be_value, expr, binary_op);
+		//TbContext_emit_logical_and_or(c, TBE_VALUE, expr, binary_op);
 		//return;
 		TODO
 	}
-	BEValue lhs;
+	TBEValue lhs;
 	if (lhs_loaded)
 	{
 		lhs = *lhs_loaded;
@@ -376,16 +509,16 @@ void tinybackend_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEVal
 	{
 		tinybackend_emit_expr(c, &lhs, expr->binary_expr.left);
 	}
-	tinybackend_value_rvalue(c, &lhs);
+	value_rvalue(c, &lhs);
 
-	BEValue rhs;
+	TBEValue rhs;
 	tinybackend_emit_expr(c, &rhs, expr->binary_expr.right);
-	tinybackend_value_rvalue(c, &rhs);
+	value_rvalue(c, &rhs);
 
 	/*EMIT_LOC(c, expr);
 	if (binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
 	{
-		llvm_emit_comparison(c, be_value, &lhs, &rhs, binary_op);
+		llvm_emit_comparison(c, TBE_VALUE, &lhs, &rhs, binary_op);
 		return;
 	}*/
 
@@ -395,10 +528,10 @@ void tinybackend_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEVal
 	bool is_float = type_is_float(lhs_type) || (vector_type && type_is_float(vector_type));
 
 	TB_Register val = TB_NULL_REG;
-	TB_Register lhs_value = lhs.value;
-	TB_Register rhs_value = rhs.value;
+	TB_Register lhs_value = lhs.reg;
+	TB_Register rhs_value = rhs.reg;
 
-	TB_DataType dt = tbc3_get_type(lhs_type);
+	TB_DataType dt = tbtype(lhs_type);
 	switch (binary_op)
 	{
 		case BINARYOP_ERROR:
@@ -406,12 +539,12 @@ void tinybackend_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEVal
 		case BINARYOP_MULT:
 			if (is_float)
 			{
-				val = tb_inst_fmul(c->function, dt, lhs_value, rhs_value);
+				val = tb_inst_fmul(c->f, dt, lhs_value, rhs_value);
 				break;
 			}
 
 			// TODO(NeGate): review this later, maybe it shouldn't be NO_WRAP
-			val = tb_inst_mul(c->function, dt, lhs_value, rhs_value, TB_ASSUME_NUW);
+			val = tb_inst_mul(c->f, dt, lhs_value, rhs_value, TB_ASSUME_NUW);
 			break;
 		case BINARYOP_SUB:
 			if (lhs_type->type_kind == TYPE_POINTER)
@@ -431,10 +564,10 @@ void tinybackend_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEVal
 			}
 			if (is_float)
 			{
-				val = tb_inst_fsub(c->function, dt, lhs_value, rhs_value);
+				val = tb_inst_fsub(c->f, dt, lhs_value, rhs_value);
 				break;
 			}
-			val = tb_inst_mul(c->function, dt, lhs_value, rhs_value, tinybackend_get_arith_behavior(lhs_type));
+			val = tb_inst_mul(c->f, dt, lhs_value, rhs_value, tinybackend_get_arith_behavior(lhs_type));
 			break;
 		case BINARYOP_ADD:
 			if (lhs_type->type_kind == TYPE_POINTER)
@@ -443,20 +576,20 @@ void tinybackend_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEVal
 			}
 			if (is_float)
 			{
-				val = tb_inst_fadd(c->function, dt, lhs_value, rhs_value);
+				val = tb_inst_fadd(c->f, dt, lhs_value, rhs_value);
 				break;
 			}
-			val = tb_inst_add(c->function, dt, lhs_value, rhs_value, tinybackend_get_arith_behavior(lhs_type));
+			val = tb_inst_add(c->f, dt, lhs_value, rhs_value, tinybackend_get_arith_behavior(lhs_type));
 			break;
 		case BINARYOP_DIV:
 			//llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero", TOKLOC(expr->span.loc));
 			if (is_float)
 			{
-				val = tb_inst_fdiv(c->function, dt, lhs_value, rhs_value);
+				val = tb_inst_fdiv(c->f, dt, lhs_value, rhs_value);
 				break;
 			}
 
-			val = tb_inst_div(c->function, dt, lhs_value, rhs_value, !type_is_unsigned(lhs_type));
+			val = tb_inst_div(c->f, dt, lhs_value, rhs_value, !type_is_unsigned(lhs_type));
 			break;
 		case BINARYOP_MOD:
 		{
@@ -465,20 +598,20 @@ void tinybackend_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEVal
 		case BINARYOP_SHR:
 			if (type_is_unsigned(lhs_type))
 			{
-				val = tb_inst_shr(c->function, dt, lhs_value, rhs_value);
+				val = tb_inst_shr(c->f, dt, lhs_value, rhs_value);
 				return;
 			}
 
-			val = tb_inst_sar(c->function, dt, lhs_value, rhs_value);
+			val = tb_inst_sar(c->f, dt, lhs_value, rhs_value);
 			break;
 		case BINARYOP_SHL:
-			val = tb_inst_shl(c->function, dt, lhs_value, rhs_value, TB_ASSUME_NUW);
+			val = tb_inst_shl(c->f, dt, lhs_value, rhs_value, TB_ASSUME_NUW);
 			break;
 		case BINARYOP_BIT_AND:
-			val = tb_inst_and(c->function, dt, lhs_value, rhs_value);
+			val = tb_inst_and(c->f, dt, lhs_value, rhs_value);
 			break;
 		case BINARYOP_BIT_OR:
-			val = tb_inst_or(c->function, dt, lhs_value, rhs_value);
+			val = tb_inst_or(c->f, dt, lhs_value, rhs_value);
 			break;
 		case BINARYOP_BIT_XOR:
 			TODO
@@ -506,24 +639,16 @@ void tinybackend_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEVal
 			UNREACHABLE
 	}
 	assert(val);
-	tinybackend_value_set(be_value, val, expr->type);
+	TBE_VALUE_set(TBE_VALUE, val, expr->type);
 }
 
-void tinybackend_value_addr(GenContext *c, BEValue *value)
-{
-	if (value->kind == BE_ADDRESS) return;
 
-	TB_Register temp = tb_inst_local(c->function, type_size(value->type), type_alloca_alignment(value->type));
-	tinybackend_store_self_aligned(c, temp, value->value, value->type);
-	tinybackend_value_set_address(value, temp, value->type);
-}
-
-static void tinybackend_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
+static void tinybackend_emit_binary_expr(TbContext *c, TBEValue *TBE_VALUE, Expr *expr)
 {
 	BinaryOp binary_op = expr->binary_expr.operator;
 	/*if (binary_op >= BINARYOP_ASSIGN && expr_is_vector_index(expr->binary_expr.left))
 	{
-		tinybackend_emit_vector_assign_expr(c, be_value, expr);
+		tinybackend_emit_vector_assign_expr(c, TBE_VALUE, expr);
 		return;
 	}*/
 	printf("A\n");
@@ -531,28 +656,28 @@ static void tinybackend_emit_binary_expr(GenContext *c, BEValue *be_value, Expr 
 	{
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
 		assert(base_op != BINARYOP_ERROR);
-		BEValue addr;
+		TBEValue addr;
 		tinybackend_emit_expr(c, &addr, expr->binary_expr.left);
-		tinybackend_value_addr(c, &addr);
-		tinybackend_emit_binary(c, be_value, expr, &addr, base_op);
-		tinybackend_store_bevalue(c, tbc3_get_type(addr.type), &addr, be_value);
+		value_rvalue(c, &addr);
+		tinybackend_emit_binary(c, TBE_VALUE, expr, &addr, base_op);
+		tinybackend_store_value(c, &addr, TBE_VALUE);
 		return;
 	}
 	printf("B\n");
 	if (binary_op == BINARYOP_ASSIGN)
 	{
 		Expr *left = expr->binary_expr.left;
-		tinybackend_emit_expr(c, be_value, expr->binary_expr.left);
-		assert(tinybackend_value_is_addr(be_value));
+		tinybackend_emit_expr(c, TBE_VALUE, expr->binary_expr.left);
+		assert(tinybackend_value_is_addr(TBE_VALUE));
 
-		*be_value = tinybackend_emit_assign_expr(c, be_value, expr->binary_expr.right, TB_NULL_REG /* failable_ref */);
+		*TBE_VALUE = tilde_emit_assign_expr(c, TBE_VALUE, expr->binary_expr.right, TB_NULL_REG /* failable_ref */);
 		return;
 	}
 
-	tinybackend_emit_binary(c, be_value, expr, NULL, binary_op);
+	tinybackend_emit_binary(c, TBE_VALUE, expr, NULL, binary_op);
 }
 
-static void tinybackend_emit_expr(GenContext *c, BEValue *value, Expr *expr)
+static void tinybackend_emit_expr(TbContext *c, TBEValue *value, Expr *expr)
 {
 	printf("expr->expr_kind = %d\n", expr->expr_kind);
 
@@ -569,125 +694,134 @@ static void tinybackend_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_IDENTIFIER:
 		case EXPR_CONST_IDENTIFIER:
-			tinybackend_value_set_decl_address(value, expr->identifier_expr.decl);
+			value_set_decl(value, expr->identifier_expr.decl);
 			return;
 		default:
 			TODO
 	}
 }
 
-static TB_Register tinybackend_emit_local_decl(GenContext *c, Decl *decl)
+
+
+static void TBE_VALUE_set_reg(TBEValue *value, TB_Register reg, Type *type)
 {
+	value->reg = reg;
+	value->kind = TBE_ADDRESS;
+	value->type = type_lowering(type);
+}
+
+
+static TB_Register tilde_emit_local_decl(TbContext *c, Decl *decl)
+{
+	// 1. Get the declaration and the LLVM type.
+	Type *var_type = type_lowering(type_no_fail(decl->type));
+
+	// 2. In the case we have a static variable,
+	//    then we essentially treat this as a global.
 	if (decl->var.is_static)
 	{
-		TODO
+		if (IS_FAILABLE(decl))
+		{
+			scratch_buffer_clear();
+			scratch_buffer_append(decl->external_name);
+			scratch_buffer_append(".f");
+			TB_InitializerID initializer = tb_initializer_create(c->module, type_size(type_anyerr), type_alloca_alignment(type_anyerr), 1);
+			decl->var.tb_failable_reg = tb_global_create(c->module, scratch_buffer_to_string(), initializer);
+		}
+		TB_InitializerID static_initializer = tb_initializer_create(c->module, type_size(var_type), type_alloca_alignment(var_type), 1);
+		decl->tb_register = tb_global_create(c->module, "tempglobal", static_initializer);
+		tilde_emit_global_initializer(c, decl);
+		return decl->tb_register;
 	}
-
-	TB_DataType dt = tbc3_get_type(decl->type);
-	TypeSize size = type_size(decl->type);
-	AlignSize align = decl->alignment;
-
-	TB_Register reg = tb_inst_local(c->function, size, align);
-	decl->backend_ref = (void *)((size_t)reg);
-
-	printf("Local declare: %s (size: %ld, align: %u)\n", decl->type->name, (long)size, align);
-
-	if (decl->var.failable_ref)
-	{
-		TODO
-	}
-
+	tilde_emit_local_var_alloca(c, decl);
+	TB_Register reg = decl->tb_register;
 	Expr *init = decl->var.init_expr;
+	if (IS_FAILABLE(decl))
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(decl->name);
+		scratch_buffer_append(".f");
+		decl->var.tb_failable_reg = tb_inst_local(c->f, type_size(type_anyerr), type_alloca_alignment(type_anyerr));
+		// Only clear out the result if the assignment isn't a failable.
+	}
+
+	TBEValue value;
+	value_set_decl(&value, decl);
 	if (init)
 	{
 		// If we don't have undef, then make an assign.
 		if (init->expr_kind != EXPR_UNDEF)
 		{
-			BEValue value;
-			tinybackend_value_set_decl_address(&value, decl);
-			tinybackend_emit_assign_expr(c,
-			                             &value,
-			                             decl->var.init_expr,
-			                             (TB_Register)((uintptr_t)decl->var.failable_ref));
+			tilde_emit_assign_expr(c, &value, decl->var.init_expr, decl->var.tb_failable_reg);
 		}
+		// TODO trap on undef in debug mode.
 	}
 	else
 	{
-		Type *type = type_lowering(decl->type);
-
-		// Normal case, zero init.
-		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
+		if (decl->var.tb_failable_reg)
 		{
-			tb_inst_store(c->function, dt, reg, tb_inst_iconst(c->function, dt, 0), align);
+			tilde_store_self_aligned(c, tilde_get_zero(c, type_anyerr), decl->var.tb_failable_reg, type_anyerr);
 		}
-		else
-		{
-			TODO
-		}
+		tilde_store_value_zero(c, &value);
 	}
-
 	return reg;
 }
 
-static void tinybackend_emit_stmt(GenContext *c, Ast *ast)
-{
-	switch (ast->ast_kind)
-	{
-		case AST_DECLARE_STMT:
-			tinybackend_emit_local_decl(c, ast->declare_stmt);
-			break;
-		case AST_RETURN_STMT:
-			//gencontext_emit_return(c, ast);
-			tb_inst_ret(c->function, TB_NULL_REG);
-			break;
-		default:
-			break;
-	}
-}
 
-static TB_CallingConv tbc3_call_convention(CallABI abi)
-{
-	switch (abi)
-	{
-		case CALL_C:
-			return TB_CDECL;
-		case CALL_X86_STD:
-			return TB_STDCALL;
-		default:
-			FATAL_ERROR("Unsupported call convention for TildeBE");
-	}
-}
-static void tbc3_emit_function_body(GenContext *c, Decl *decl)
+
+
+
+static void tilde_emit_function_body(TbContext *c, Decl *decl)
 {
 	printf("Function: %s\n", decl->external_name);
 
 	c->current_func_decl = decl;
 
-	FunctionSignature *func = &decl->func_decl.function_signature;
-	unsigned params = vec_size(func->params);
-	/*
-	TB_FunctionPrototype *p = tb_prototype_create(c->module,
-	                                              tbc3_call_convention(func->call_abi),
-												  tbc3_get_type(abi_returntype(func->rtype->type)),
-												  params, func->variadic == VARIADIC_RAW);
+	TB_FunctionPrototype *prototype = tilde_get_function_type(c->module, decl->type->func.prototype);
+	TB_Function *function = tb_prototype_build(c->module, prototype, decl->external_name);
+	c->f = function;
 
-	TB_Function *f = tb_prototype_add_param()*/
-	/*
-	VECEACH(decl->func_decl.body->compound_stmt.stmts, i)
+	AstId current = decl->func_decl.body->compound_stmt.first_stmt;
+	while (current)
 	{
-		tinybackend_emit_stmt(c, decl->func_decl.body->compound_stmt.stmts[i]);
-	}*/
+		tilde_emit_stmt(c, ast_next(&current));
+	}
 
-	tb_function_print(c->function, stdout);
+	// Insert a return (and defer) if needed.
+	/*
+	if (context->current_block && !LLVMGetBasicBlockTerminator(context->current_block))
+	{
+		assert(!decl->func_decl.body->compound_stmt.defer_list.end);
+		llvm_emit_defer(context, decl->func_decl.body->compound_stmt.defer_list.start, 0);
+		llvm_emit_return_implicit(context);
+	}
+
+	// erase alloca point
+	if (LLVMGetInstructionParent(alloca_point))
+	{
+		context->alloca_point = NULL;
+		LLVMInstructionEraseFromParent(alloca_point);
+	}
+
+	LLVMDisposeBuilder(context->builder);
+	context->builder = NULL;
+
+	if (llvm_use_debug(context))
+	{
+		llvm_debug_scope_pop(context);
+	}
+
+	context->builder = prev_builder;
+	context->function = prev_function;
+*/
+
+	tb_function_print(c->f, stdout);
+//	TODO
 }
 
-static void tbc3_gen_context(GenContext *c)
-{
-	const char *result = module_create_object_file_name(c->code_module);
-	c->object_filename = strformat("%s%s", result, get_object_extension());
-}
 
-static TB_Arch tbc3_get_arch(void)
+
+static TB_Arch tilde_get_arch(void)
 {
 	switch (platform_target.arch)
 	{
@@ -700,7 +834,7 @@ static TB_Arch tbc3_get_arch(void)
 	}
 }
 
-static TB_System tbc3_get_system(void)
+static TB_System tilde_get_system(void)
 {
 	switch (platform_target.os)
 	{
@@ -723,12 +857,13 @@ static TB_System tbc3_get_system(void)
 void *tinybackend_gen(Module *module)
 {
 	if (!vec_size(module->units)) return NULL;
-	GenContext *c = ccalloc(sizeof(GenContext), 1);
+	TbContext *c = ccalloc(sizeof(TbContext), 1);
 	c->code_module = module;
 
-	c->module = tb_module_create(tbc3_get_arch(), tbc3_get_system(), &c->features);
+	c->module = tb_module_create(tilde_get_arch(), tilde_get_system(), &c->features);
 
-	tbc3_gen_context(c);
+	const char *result = module_create_object_file_name(module);
+	c->object_filename = strformat("%s%s", result, get_object_extension());
 
 	printf("Module: %.*s\n", module->name->len, module->name->module);
 	// Forward decls
@@ -748,7 +883,7 @@ void *tinybackend_gen(Module *module)
 		VECEACH(unit->functions, i)
 		{
 			Decl *decl = unit->functions[i];
-			if (decl->func_decl.body) tbc3_emit_function_body(c, decl);
+			if (decl->func_decl.body) tilde_emit_function_body(c, decl);
 		}
 	}
 
@@ -759,7 +894,7 @@ void *tinybackend_gen(Module *module)
 // Compile module (multi threaded)
 const char *tinybackend_codegen(void *context)
 {
-	GenContext *c = (GenContext *)context;
+	TbContext *c = (TbContext *)context;
 
 	// Write out the object file
 	tb_module_export(c->module, c->object_filename);
