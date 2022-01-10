@@ -117,10 +117,10 @@ static void print_error(SourceLocation *location, const char *message, PrintType
 			eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location->row, location->col, message);
 			break;
 		case PRINT_TYPE_PREV:
-			eprintf("(%s:%d) %s\n\n", file->name, location->row, message);
+			eprintf("(%s:%d:%d) %s\n\n", file->name, location->row, location->col, message);
 			break;
 		case PRINT_TYPE_WARN:
-			eprintf("(%s:%d) Warning: %s\n\n", file->name, location->row, message);
+			eprintf("(%s:%d:%d) Warning: %s\n\n", file->name, location->row, location->col, message);
 			break;
 		default:
 			UNREACHABLE
