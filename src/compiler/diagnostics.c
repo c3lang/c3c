@@ -114,7 +114,7 @@ static void print_error(SourceLocation *location, const char *message, PrintType
 	switch (print_type)
 	{
 		case PRINT_TYPE_ERROR:
-			eprintf("(%s:%d) Error: %s\n\n", file->name, location->row, message);
+			eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location->row, location->col, message);
 			break;
 		case PRINT_TYPE_PREV:
 			eprintf("(%s:%d) %s\n\n", file->name, location->row, message);
