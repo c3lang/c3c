@@ -9,8 +9,8 @@
 typedef struct _SymEntry
 {
 	const char *value;
-	TokenType type;
-	uint32_t key_len;
+	uint16_t key_len;
+	TokenType type : 16;
 	uint32_t hash;
 } SymEntry;
 
@@ -284,12 +284,15 @@ void stable_clear(STable *table)
 
 static inline SEntry *sentry_find(SEntry *entries, uint32_t capacity, const char *key)
 {
-	uint32_t index = (uint32_t)((((uintptr_t)key) >> 2u) & (capacity - 1));
+	uintptr_t hash_key = (uintptr_t)key;
+	uint32_t mask = capacity - 1;
+	hash_key ^= hash_key >> 16;
+	uint32_t index = (uint32_t)hash_key & mask;
 	while (1)
 	{
 		SEntry *entry = &entries[index];
 		if (entry->key == key || !entry->key) return entry;
-		index = (index + 1) & (capacity - 1);
+		index = (index + 1) & mask;
 	}
 }
 
