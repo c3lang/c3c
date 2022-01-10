@@ -10,9 +10,9 @@ int y3 = ~4;
 
 /* #expect: foo.ll
 
-@foo.x1 = global i32 6, align 4
-@foo.x2 = global i32 6, align 4
-@foo.x3 = global i32 0, align 4
-@foo.y1 = global i32 16, align 4
-@foo.y2 = global i32 1, align 4
-@foo.y3 = global i32 -5, align 4
+@foo.x1 = local_unnamed_addr global i32 6, align 4
+@foo.x2 = local_unnamed_addr global i32 6, align 4
+@foo.x3 = local_unnamed_addr global i32 0, align 4
+@foo.y1 = local_unnamed_addr global i32 16, align 4
+@foo.y2 = local_unnamed_addr global i32 1, align 4
+@foo.y3 = local_unnamed_addr global i32 -5, align 4

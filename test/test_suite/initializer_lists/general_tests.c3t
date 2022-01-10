@@ -40,9 +40,9 @@ fn int test()
 
 @Baz = linkonce_odr constant i8 1
 @Bar = linkonce_odr constant i8 1
-@.__const = private constant { i32, [4 x i8] } { i32 1, [4 x i8] undef }, align 8
-@test.foo1 = hidden global i32 22, align 4
-@.str = private constant [7 x i8] c"Hello!\00", align 1
+@.__const = private unnamed_addr constant { i32, [4 x i8] } { i32 1, [4 x i8] undef }, align 8
+@test.foo1 = internal unnamed_addr global i32 22, align 4
+@.str = private unnamed_addr constant [7 x i8] c"Hello!\00", align 1
 
 ; Function Attrs: nounwind
 define i32 @general_tests.test() #0 {

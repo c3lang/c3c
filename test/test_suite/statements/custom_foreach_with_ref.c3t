@@ -87,21 +87,21 @@ fn void main()
 %Foo = type { [3 x i32] }
 
 @Foo = linkonce_odr constant i8 1
-@.str = private constant [11 x i8] c"getFields\0A\00", align 1
-@.str.1 = private constant [11 x i8] c"Call made\0A\00", align 1
-@.__const = private constant %Foo { [3 x i32] [i32 1, i32 5, i32 7] }, align 4
-@.str.2 = private constant [10 x i8] c"%d %d %d\0A\00", align 1
-@.str.3 = private constant [14 x i8] c"Hello %d: %d\0A\00", align 1
-@.str.4 = private constant [14 x i8] c"Hello %d: %d\0A\00", align 1
-@.str.5 = private constant [18 x i8] c"After one %d: %d\0A\00", align 1
-@.str.6 = private constant [19 x i8] c"By pointer %d: %d\0A\00", align 1
-@.str.7 = private constant [15 x i8] c"Adding %d: %d\0A\00", align 1
-@.__const.8 = private constant [5 x i32] [i32 1, i32 2, i32 10, i32 111, i32 123], align 16
-@.str.9 = private constant [15 x i8] c"Adding %d: %d\0A\00", align 1
-@.str.10 = private constant [19 x i8] c"Pull value %d: %d\0A\00", align 1
-@.str.11 = private constant [27 x i8] c"Pull value tempptr %d: %d\0A\00", align 1
-@.str.12 = private constant [7 x i8] c"%d %d\0A\00", align 1
-@.str.13 = private constant [7 x i8] c"%d %d\0A\00", align 1
+@.str = private unnamed_addr constant [11 x i8] c"getFields\0A\00", align 1
+@.str.1 = private unnamed_addr constant [11 x i8] c"Call made\0A\00", align 1
+@.__const = private unnamed_addr constant %Foo { [3 x i32] [i32 1, i32 5, i32 7] }, align 4
+@.str.2 = private unnamed_addr constant [10 x i8] c"%d %d %d\0A\00", align 1
+@.str.3 = private unnamed_addr constant [14 x i8] c"Hello %d: %d\0A\00", align 1
+@.str.4 = private unnamed_addr constant [14 x i8] c"Hello %d: %d\0A\00", align 1
+@.str.5 = private unnamed_addr constant [18 x i8] c"After one %d: %d\0A\00", align 1
+@.str.6 = private unnamed_addr constant [19 x i8] c"By pointer %d: %d\0A\00", align 1
+@.str.7 = private unnamed_addr constant [15 x i8] c"Adding %d: %d\0A\00", align 1
+@.__const.8 = private unnamed_addr constant [5 x i32] [i32 1, i32 2, i32 10, i32 111, i32 123], align 16
+@.str.9 = private unnamed_addr constant [15 x i8] c"Adding %d: %d\0A\00", align 1
+@.str.10 = private unnamed_addr constant [19 x i8] c"Pull value %d: %d\0A\00", align 1
+@.str.11 = private unnamed_addr constant [27 x i8] c"Pull value tempptr %d: %d\0A\00", align 1
+@.str.12 = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
+@.str.13 = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 
 define void @foo.getFields([5 x i32]* noalias sret([5 x i32]) align 4 %0) #0 {
 entry:

@@ -36,9 +36,9 @@ fn void main()
 /* #expect: foo.ll
 
 
-@test.x = hidden global i32 0, align 4
-@.str = private constant [4 x i8] c"%d\0A\00", align 1
-@.str.1 = private constant [8 x i8] c"%d, %d\0A\00", align 1
+@test.x = internal unnamed_addr global i32 0, align 4
+@.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@.str.1 = private unnamed_addr constant [8 x i8] c"%d, %d\0A\00", align 1
 
 define void @foo.main() #0 {
 entry:

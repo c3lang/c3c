@@ -31,8 +31,8 @@ fn int main()
 /* #expect: test.ll
 
 
-@.str = private constant [2 x i8] c"3\00", align 1
-@.str.1 = private constant [2 x i8] c"4\00", align 1
+@.str = private unnamed_addr constant [2 x i8] c"3\00", align 1
+@.str.1 = private unnamed_addr constant [2 x i8] c"4\00", align 1
 
 define i32 @main() #0 {
 entry:

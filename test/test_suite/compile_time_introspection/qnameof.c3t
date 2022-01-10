@@ -21,24 +21,24 @@ fn void main()
 
 // #expect: qnametest.ll
 
-@.str = private constant [12 x i8] c"printf: %s\0A\00", align 1
-@.str.1 = private constant [7 x i8] c"printf\00", align 1
-@.str.2 = private constant [13 x i8] c"printfq: %s\0A\00", align 1
-@.str.3 = private constant [18 x i8] c"qnametest::printf\00", align 1
-@.str.4 = private constant [11 x i8] c"Blobq: %s\0A\00", align 1
-@.str.5 = private constant [16 x i8] c"qnametest::Blob\00", align 1
-@.str.6 = private constant [10 x i8] c"Blob: %s\0A\00", align 1
-@.str.7 = private constant [5 x i8] c"Blob\00", align 1
-@.str.8 = private constant [8 x i8] c"xq: %s\0A\00", align 1
-@.str.9 = private constant [13 x i8] c"qnametest::x\00", align 1
-@.str.10 = private constant [7 x i8] c"x: %s\0A\00", align 1
-@.str.11 = private constant [2 x i8] c"x\00", align 1
-@.str.12 = private constant [11 x i8] c"helpq: %s\0A\00", align 1
-@.str.13 = private constant [5 x i8] c"help\00", align 1
-@.str.14 = private constant [11 x i8] c"mainq: %s\0A\00", align 1
-@.str.15 = private constant [16 x i8] c"qnametest::main\00", align 1
-@.str.16 = private constant [15 x i8] c"Blob**[3]: %s\0A\00", align 1
-@.str.17 = private constant [10 x i8] c"Blob**[3]\00", align 1
+@.str = private unnamed_addr constant [12 x i8] c"printf: %s\0A\00", align 1
+@.str.1 = private unnamed_addr constant [7 x i8] c"printf\00", align 1
+@.str.2 = private unnamed_addr constant [13 x i8] c"printfq: %s\0A\00", align 1
+@.str.3 = private unnamed_addr constant [18 x i8] c"qnametest::printf\00", align 1
+@.str.4 = private unnamed_addr constant [11 x i8] c"Blobq: %s\0A\00", align 1
+@.str.5 = private unnamed_addr constant [16 x i8] c"qnametest::Blob\00", align 1
+@.str.6 = private unnamed_addr constant [10 x i8] c"Blob: %s\0A\00", align 1
+@.str.7 = private unnamed_addr constant [5 x i8] c"Blob\00", align 1
+@.str.8 = private unnamed_addr constant [8 x i8] c"xq: %s\0A\00", align 1
+@.str.9 = private unnamed_addr constant [13 x i8] c"qnametest::x\00", align 1
+@.str.10 = private unnamed_addr constant [7 x i8] c"x: %s\0A\00", align 1
+@.str.11 = private unnamed_addr constant [2 x i8] c"x\00", align 1
+@.str.12 = private unnamed_addr constant [11 x i8] c"helpq: %s\0A\00", align 1
+@.str.13 = private unnamed_addr constant [5 x i8] c"help\00", align 1
+@.str.14 = private unnamed_addr constant [11 x i8] c"mainq: %s\0A\00", align 1
+@.str.15 = private unnamed_addr constant [16 x i8] c"qnametest::main\00", align 1
+@.str.16 = private unnamed_addr constant [15 x i8] c"Blob**[3]: %s\0A\00", align 1
+@.str.17 = private unnamed_addr constant [10 x i8] c"Blob**[3]\00", align 1
 
 define void @qnametest.main()
   %help = alloca i32, align 4

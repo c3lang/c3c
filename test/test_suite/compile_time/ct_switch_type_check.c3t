@@ -26,12 +26,12 @@ fn void main()
 
 /* #expect: test.ll
 
-@.str = private constant [4 x i8] c"%s\0A\00", align 1
-@.str.1 = private constant [4 x i8] c"int\00", align 1
-@.str.2 = private constant [4 x i8] c"%s\0A\00", align 1
-@.str.3 = private constant [7 x i8] c"double\00", align 1
-@.str.4 = private constant [4 x i8] c"%s\0A\00", align 1
-@.str.5 = private constant [10 x i8] c"any other\00", align 1
+@.str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@.str.1 = private unnamed_addr constant [4 x i8] c"int\00", align 1
+@.str.2 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@.str.3 = private unnamed_addr constant [7 x i8] c"double\00", align 1
+@.str.4 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@.str.5 = private unnamed_addr constant [10 x i8] c"any other\00", align 1
 ; Function Attrs: nounwind
 declare void @printf(i8*, ...) #0
 ; Function Attrs: nounwind

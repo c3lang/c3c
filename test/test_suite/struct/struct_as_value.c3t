@@ -16,8 +16,8 @@ fn Event test(int x)
 // #expect: test.ll
 
 @Event = linkonce_odr constant i8 1
-@.__const = private constant %Event { i32 1 }, align 4
-@.__const.1 = private constant %Event { i32 2 }, align 4
+@.__const = private unnamed_addr constant %Event { i32 1 }, align 4
+@.__const.1 = private unnamed_addr constant %Event { i32 2 }, align 4
 
 ; Function Attrs: nounwind
 define i32 @test.test(i32 %0) #0 {

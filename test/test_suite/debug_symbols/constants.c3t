@@ -7,11 +7,13 @@ private const FOO = ~(uint)(0);
 
 /* #expect: constants.ll
 
-@constants.AA = protected constant i8 1, align 1
-@constants.BB = constant i8 -56, align 1
-@constants.CC = protected constant i32 -1, align 4
-@constants.FOO = protected constant i32 -1, align 4
+@constants.AA = protected unnamed_addr constant i8 1, align 1
+@constants.BB = local_unnamed_addr constant i8 -56, align 1
+@constants.CC = protected unnamed_addr constant i32 -1, align 4
+@constants.FOO = protected unnamed_addr constant i32 -1, align 4
+
 !llvm.dbg.cu = !{!0}
+
 !0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "c3c", isOptimized: false, runtimeVersion: 1, emissionKind: FullDebug, enums: !2, globals: !3, splitDebugInlining: false)
 !1 = !DIFile(filename: "constants.c3",
 !2 = !{}

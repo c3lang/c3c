@@ -78,8 +78,8 @@ fn void main()
 %Foo = type { i16, i8, i8, i16, i16 }
 
 @Foo = linkonce_odr constant i8 1
-@.str = private constant [16 x i8] c"%f => %d => %f\0A\00", align 1
-@.str.1 = private constant [18 x i8] c"%e => %llu => %e\0A\00", align 1
+@.str = private unnamed_addr constant [16 x i8] c"%f => %d => %f\0A\00", align 1
+@.str.1 = private unnamed_addr constant [18 x i8] c"%e => %llu => %e\0A\00", align 1
 
 ; Function Attrs: nounwind
 define i64 @userland_bitcast.testFoo(i16 signext %0) #0 {
