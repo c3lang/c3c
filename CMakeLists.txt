@@ -6,10 +6,8 @@ include(FeatureSummary)
 set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
 set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC)
 set(C3_LLVM_VERSION "auto" CACHE STRING "Use LLVM version [default: auto]")
-option(C3_USE_MIMALLOC "Use built-in mimalloc" ON)
+option(C3_USE_MIMALLOC "Use built-in mimalloc" OFF)
 set(C3_MIMALLOC_TAG "v1.7.3" CACHE STRING "Used version of mimalloc")
-
-set(C3_USE_MIMALLOC OFF)
 
 if(C3_USE_MIMALLOC)
     option(MI_BUILD_TESTS OFF)
