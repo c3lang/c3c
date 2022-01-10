@@ -147,6 +147,30 @@ static const char *active_target_name(void)
 	}
 }
 
+static void free_arenas(void)
+{
+	if (debug_stats)
+	{
+		printf("-- AST/EXPR INFO -- \n");
+		printf(" * Ast memory use: %llukb\n", (unsigned long long)ast_arena.allocated / 1024);
+		printf(" * Decl memory use: %llukb\n", (unsigned long long)decl_arena.allocated / 1024);
+		printf(" * Expr memory use: %llukb\n", (unsigned long long)expr_arena.allocated / 1024);
+		printf(" * TypeInfo memory use: %llukb\n", (unsigned long long)type_info_arena.allocated / 1024);
+		printf(" * Token memory use: %llukb\n", (unsigned long long)(toktype_arena.allocated) / 1024);
+		printf(" * Sourceloc memory use: %llukb\n", (unsigned long long)(sourceloc_arena.allocated) / 1024);
+		printf(" * Token data memory use: %llukb\n", (unsigned long long)(tokdata_arena.allocated) / 1024);
+	}
+
+	ast_arena_free();
+	decl_arena_free();
+	expr_arena_free();
+	type_info_arena_free();
+	sourceloc_arena_free();
+	tokdata_arena_free();
+
+	if (debug_stats) print_arena_status();
+}
+
 void compiler_compile(void)
 {
 	sema_analysis_run();
@@ -172,7 +196,11 @@ void compiler_compile(void)
 		return;
 	}
 
-	if (active_target.check_only) return;
+	if (active_target.check_only)
+	{
+		free_arenas();
+		return;
+	}
 
 	void **gen_contexts = VECNEW(void*, module_count);
 	void (*task)(void *);
@@ -202,27 +230,7 @@ void compiler_compile(void)
 	}
 
 
-
-	if (debug_stats)
-	{
-		printf("-- AST/EXPR INFO -- \n");
-		printf(" * Ast memory use: %llukb\n", (unsigned long long)ast_arena.allocated / 1024);
-		printf(" * Decl memory use: %llukb\n", (unsigned long long)decl_arena.allocated / 1024);
-		printf(" * Expr memory use: %llukb\n", (unsigned long long)expr_arena.allocated / 1024);
-		printf(" * TypeInfo memory use: %llukb\n", (unsigned long long)type_info_arena.allocated / 1024);
-		printf(" * Token memory use: %llukb\n", (unsigned long long)(toktype_arena.allocated) / 1024);
-		printf(" * Sourceloc memory use: %llukb\n", (unsigned long long)(sourceloc_arena.allocated) / 1024);
-		printf(" * Token data memory use: %llukb\n", (unsigned long long)(tokdata_arena.allocated) / 1024);
-	}
-
-	ast_arena_free();
-	decl_arena_free();
-	expr_arena_free();
-	type_info_arena_free();
-	sourceloc_arena_free();
-	tokdata_arena_free();
-
-	if (debug_stats) print_arena_status();
+	free_arenas();
 
 
 	bool create_exe = !active_target.no_link && !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST);
@@ -303,8 +311,7 @@ void compiler_compile(void)
 		}
 	}
 
-	memory_release();
-	exit_compiler(COMPILER_SUCCESS_EXIT);
+	free(obj_files);
 }
 
 static const char **target_expand_source_names(const char** dirs, const char *suffix1, const char *suffix2, bool error_on_mismatch)

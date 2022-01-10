@@ -299,7 +299,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 		{
 			char *new_path = NULL;
 			char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
-			if (!asprintf(&new_path, format, path, ent->d_name))
+			if (asprintf(&new_path, format, path, ent->d_name) == -1)
 			{
 				error_exit("Failed to allocate path.");
 			}
