@@ -48,7 +48,7 @@ void tilde_store_value_aligned(TbContext *c, TB_Reg destination, TBEValue *value
 		case TBE_ADDRESS:
 		{
 			ByteSize size = type_size(value->type);
-			TB_Reg copy_size = tb_inst_iconst(c->f, size <= UINT32_MAX ? TB_TYPE_I32 : TB_TYPE_I64, size);
+			TB_Reg copy_size = tb_inst_uint(c->f, size <= UINT32_MAX ? TB_TYPE_I32 : TB_TYPE_I64, size);
 			tb_inst_memcpy(c->f, destination, value->reg, copy_size, type_min_alignment(alignment, value->alignment));
 		}
 	}
@@ -91,8 +91,8 @@ void tilde_store_zero(TbContext *c, Type *type, TB_Reg addr, AlignSize alignment
 	}
 	ByteSize size = type_size(type);
 	ByteSize min = type_min_alignment(alignment, size);
-	TB_Register zero = tb_inst_iconst(c->f, TB_TYPE_I8, 0);
-	TB_Register elements = tb_inst_iconst(c->f, tbtype(type_usize), size);
+	TB_Register zero = tb_inst_uint(c->f, TB_TYPE_I8, 0);
+	TB_Register elements = tb_inst_uint(c->f, tbtype(type_usize), size);
 	tb_inst_memset(c->f, addr, zero, elements, min);
 }
 

@@ -41,23 +41,23 @@ TB_DataType tbtype(Type *type)
 		{
 			case TYPE_U8:
 			case TYPE_I8:
-				return TB_TYPE_VEC_I8(elements);
+				return tb_vector_type(TB_I8, elements);
 			case TYPE_U16:
 			case TYPE_I16:
-				return TB_TYPE_VEC_I16(elements);
+				return tb_vector_type(TB_I16, elements);
 			case TYPE_U32:
 			case TYPE_I32:
-				return TB_TYPE_VEC_I32(elements);
+				return tb_vector_type(TB_I32, elements);
 			case TYPE_U64:
 			case TYPE_I64:
-				return TB_TYPE_VEC_I64(elements);
+				return tb_vector_type(TB_I64, elements);
 			case TYPE_I128:
 			case TYPE_U128:
 				FATAL_ERROR("Unsupported int128");
-			case TYPE_F64:
-				return TB_TYPE_VEC_F64(elements);
 			case TYPE_F32:
-				return TB_TYPE_VEC_F32(elements);
+				return tb_vector_type(TB_F32, elements);
+			case TYPE_F64:
+				return tb_vector_type(TB_F64, elements);
 			case TYPE_F16:
 				FATAL_ERROR("Unsupported f16");
 			case TYPE_F128:
@@ -340,9 +340,9 @@ void tinybackend_store_value(TbContext *c, TBEValue *destination, TBEValue *valu
 		{
 			// Here we do an optimized(?) memcopy.
 			ByteSize size = type_size(value->type);
-			TB_Register copy_size = tb_inst_iconst(c->f,
-			                                       size <= UINT32_MAX ? TB_TYPE_I32 : TB_TYPE_I64,
-			                                       size);
+			TB_Register copy_size = tb_inst_uint(c->f,
+			                                     size <= UINT32_MAX ? TB_TYPE_I32 : TB_TYPE_I64,
+			                                     size);
 
 			alignment = type_min_alignment(destination->alignment, value->alignment);
 			tb_inst_memcpy(c->f, destination->reg, value->reg, copy_size, alignment);
@@ -371,7 +371,7 @@ static void tinybackend_emit_const_expr(TbContext *c, TBEValue *value, Expr *exp
 	switch (expr->const_expr.const_kind)
 	{
 		case CONST_FLOAT:
-			TBE_VALUE_set(value, tb_inst_fconst(c->f, tbtype(type), expr->const_expr.fxx.f), type);
+			TBE_VALUE_set(value, tb_inst_float(c->f, tbtype(type), expr->const_expr.fxx.f), type);
 			return;
 		case CONST_INTEGER:
 		{
@@ -390,7 +390,7 @@ static void tinybackend_emit_const_expr(TbContext *c, TBEValue *value, Expr *exp
 					//reg = tb_inst_iconst128(c->function, dt, (TB_Int128){ .lo = i.low, .hi = i.high });
 					break;
 				default:
-					reg = tb_inst_iconst(c->f, dt, i.low);
+					reg = type_kind_is_signed(expr->const_expr.ixx.type) ? tb_inst_sint(c->f, dt, i.low) : tb_inst_uint(c->f, dt, i.low);
 					break;
 			}
 			TBE_VALUE_set(value, reg, type);
@@ -539,12 +539,12 @@ void tinybackend_emit_binary(TbContext *c, TBEValue *TBE_VALUE, Expr *expr, TBEV
 		case BINARYOP_MULT:
 			if (is_float)
 			{
-				val = tb_inst_fmul(c->f, dt, lhs_value, rhs_value);
+				val = tb_inst_fmul(c->f, lhs_value, rhs_value);
 				break;
 			}
 
 			// TODO(NeGate): review this later, maybe it shouldn't be NO_WRAP
-			val = tb_inst_mul(c->f, dt, lhs_value, rhs_value, TB_ASSUME_NUW);
+			val = tb_inst_mul(c->f, lhs_value, rhs_value, TB_ASSUME_NUW);
 			break;
 		case BINARYOP_SUB:
 			if (lhs_type->type_kind == TYPE_POINTER)
@@ -564,10 +564,10 @@ void tinybackend_emit_binary(TbContext *c, TBEValue *TBE_VALUE, Expr *expr, TBEV
 			}
 			if (is_float)
 			{
-				val = tb_inst_fsub(c->f, dt, lhs_value, rhs_value);
+				val = tb_inst_fsub(c->f, lhs_value, rhs_value);
 				break;
 			}
-			val = tb_inst_mul(c->f, dt, lhs_value, rhs_value, tinybackend_get_arith_behavior(lhs_type));
+			val = tb_inst_mul(c->f, lhs_value, rhs_value, tinybackend_get_arith_behavior(lhs_type));
 			break;
 		case BINARYOP_ADD:
 			if (lhs_type->type_kind == TYPE_POINTER)
@@ -576,20 +576,20 @@ void tinybackend_emit_binary(TbContext *c, TBEValue *TBE_VALUE, Expr *expr, TBEV
 			}
 			if (is_float)
 			{
-				val = tb_inst_fadd(c->f, dt, lhs_value, rhs_value);
+				val = tb_inst_fadd(c->f, lhs_value, rhs_value);
 				break;
 			}
-			val = tb_inst_add(c->f, dt, lhs_value, rhs_value, tinybackend_get_arith_behavior(lhs_type));
+			val = tb_inst_add(c->f, lhs_value, rhs_value, tinybackend_get_arith_behavior(lhs_type));
 			break;
 		case BINARYOP_DIV:
 			//llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero", TOKLOC(expr->span.loc));
 			if (is_float)
 			{
-				val = tb_inst_fdiv(c->f, dt, lhs_value, rhs_value);
+				val = tb_inst_fdiv(c->f, lhs_value, rhs_value);
 				break;
 			}
 
-			val = tb_inst_div(c->f, dt, lhs_value, rhs_value, !type_is_unsigned(lhs_type));
+			val = tb_inst_div(c->f, lhs_value, rhs_value, !type_is_unsigned(lhs_type));
 			break;
 		case BINARYOP_MOD:
 		{
@@ -598,20 +598,20 @@ void tinybackend_emit_binary(TbContext *c, TBEValue *TBE_VALUE, Expr *expr, TBEV
 		case BINARYOP_SHR:
 			if (type_is_unsigned(lhs_type))
 			{
-				val = tb_inst_shr(c->f, dt, lhs_value, rhs_value);
+				val = tb_inst_shr(c->f, lhs_value, rhs_value);
 				return;
 			}
 
-			val = tb_inst_sar(c->f, dt, lhs_value, rhs_value);
+			val = tb_inst_sar(c->f, lhs_value, rhs_value);
 			break;
 		case BINARYOP_SHL:
-			val = tb_inst_shl(c->f, dt, lhs_value, rhs_value, TB_ASSUME_NUW);
+			val = tb_inst_shl(c->f, lhs_value, rhs_value, TB_ASSUME_NUW);
 			break;
 		case BINARYOP_BIT_AND:
-			val = tb_inst_and(c->f, dt, lhs_value, rhs_value);
+			val = tb_inst_and(c->f, lhs_value, rhs_value);
 			break;
 		case BINARYOP_BIT_OR:
-			val = tb_inst_or(c->f, dt, lhs_value, rhs_value);
+			val = tb_inst_or(c->f, lhs_value, rhs_value);
 			break;
 		case BINARYOP_BIT_XOR:
 			TODO
@@ -726,10 +726,10 @@ static TB_Register tilde_emit_local_decl(TbContext *c, Decl *decl)
 			scratch_buffer_append(decl->external_name);
 			scratch_buffer_append(".f");
 			TB_InitializerID initializer = tb_initializer_create(c->module, type_size(type_anyerr), type_alloca_alignment(type_anyerr), 1);
-			decl->var.tb_failable_reg = tb_global_create(c->module, scratch_buffer_to_string(), initializer);
+			decl->var.tb_failable_reg = tb_global_create(c->module, initializer, scratch_buffer_to_string(), TB_LINKAGE_PRIVATE);
 		}
 		TB_InitializerID static_initializer = tb_initializer_create(c->module, type_size(var_type), type_alloca_alignment(var_type), 1);
-		decl->tb_register = tb_global_create(c->module, "tempglobal", static_initializer);
+		decl->tb_register = tb_global_create(c->module, static_initializer, "tempglobal", TB_LINKAGE_PRIVATE);
 		tilde_emit_global_initializer(c, decl);
 		return decl->tb_register;
 	}
@@ -778,7 +778,7 @@ static void tilde_emit_function_body(TbContext *c, Decl *decl)
 	c->current_func_decl = decl;
 
 	TB_FunctionPrototype *prototype = tilde_get_function_type(c->module, decl->type->func.prototype);
-	TB_Function *function = tb_prototype_build(c->module, prototype, decl->external_name);
+	TB_Function *function = tb_prototype_build(c->module, prototype, decl->external_name, TB_LINKAGE_PUBLIC);
 	c->f = function;
 
 	AstId current = decl->func_decl.body->compound_stmt.first_stmt;

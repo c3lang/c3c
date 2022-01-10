@@ -8,7 +8,7 @@ static void tbcontext_destroy(TbContext *context)
 
 TB_Register tilde_emit_is_no_error(TbContext *c, TB_Reg reg)
 {
-	return tb_inst_cmp_eq(c->f, tbtype(type_anyerr), reg, tilde_get_zero(c, type_anyerr));
+	return tb_inst_cmp_eq(c->f, reg, tilde_get_zero(c, type_anyerr));
 }
 
 void tilde_emit_global_initializer(TbContext *c, Decl *decl)

@@ -42,10 +42,10 @@ TB_Reg tilde_emit_local_decl(TbContext *c, Decl *decl)
 			scratch_buffer_append(decl->external_name);
 			scratch_buffer_append(".f");
 			TB_InitializerID initializer = tb_initializer_create(c->module, type_size(type_anyerr), type_alloca_alignment(type_anyerr), 1);
-			decl->var.tb_failable_reg = tb_global_create(c->module, scratch_buffer_to_string(), initializer);
+			decl->var.tb_failable_reg = tb_global_create(c->module, initializer, scratch_buffer_to_string(), TB_LINKAGE_PRIVATE);
 		}
 		TB_InitializerID static_initializer = tb_initializer_create(c->module, type_size(var_type), type_alloca_alignment(var_type), 1);
-		decl->tb_register = tb_global_create(c->module, "tempglobal", static_initializer);
+		decl->tb_register = tb_global_create(c->module, static_initializer, "tempglobal", TB_LINKAGE_PRIVATE);
 		tilde_emit_global_initializer(c, decl);
 		return decl->tb_register;
 	}

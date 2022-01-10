@@ -36,7 +36,7 @@ void value_addr(TbContext *c, TBEValue *value)
 		// TODO check whether new names must be added
 		TB_InitializerID initializer_id = tb_initializer_create(c->module, type_size(value->type),
 		                                                        type_alloca_alignment(value->type), 0);
-		tb_global_create(c->module, ".taddr", initializer_id);
+		tb_global_create(c->module, initializer_id, ".taddr", TB_LINKAGE_PRIVATE);
 		// TODO set linkage
 		/*
 		llvm_set_private_linkage(ref);

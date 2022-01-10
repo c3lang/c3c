@@ -32,7 +32,7 @@ extern "C" {
 
 // https://semver.org/
 #define TB_VERSION_MAJOR 0
-#define TB_VERSION_MINOR 1
+#define TB_VERSION_MINOR 2
 #define TB_VERSION_PATCH 0
 
 #ifndef TB_MAX_THREADS
@@ -115,6 +115,20 @@ typedef enum TB_BranchHint {
 	TB_BRANCH_HINT_UNLIKELY
 } TB_BranchHint;
 
+typedef enum TB_Linkage {
+	TB_LINKAGE_PUBLIC,
+	TB_LINKAGE_PRIVATE
+} TB_Linkage;
+
+typedef enum TB_MemoryOrder {
+	TB_MEM_ORDER_RELAXED,
+	TB_MEM_ORDER_CONSUME,
+	TB_MEM_ORDER_ACQUIRE,
+	TB_MEM_ORDER_RELEASE,
+	TB_MEM_ORDER_ACQ_REL,
+	TB_MEM_ORDER_SEQ_CST,
+	} TB_MemoryOrder;
+
 typedef enum TB_OptLevel {
 	// no optimizer run
 	TB_OPT_O0,
@@ -151,7 +165,10 @@ typedef enum TB_DataTypeEnum {
 
 typedef struct TB_DataType {
 	TB_DataTypeEnum type : 8;
-	uint8_t count; // 0 is illegal, except on VOID, it doesn't matter there
+
+	// 2^N where N is the width value.
+	// Only integers and floats can be wide.
+	uint8_t width;
 } TB_DataType;
 
 typedef struct TB_FeatureSet {
@@ -187,6 +204,9 @@ typedef struct TB_SwitchEntry {
 typedef int TB_Register;
 typedef int TB_Reg; // short-hand
 
+// represents byte counts
+typedef uint32_t TB_CharUnits;
+
 typedef unsigned int TB_FileID;
 typedef unsigned int TB_FunctionID;
 typedef unsigned int TB_ExternalID;
@@ -197,52 +217,43 @@ typedef struct TB_Module TB_Module;
 typedef struct TB_Function TB_Function;
 typedef struct TB_FunctionPrototype TB_FunctionPrototype;
 
+// represents the atomic cmpxchg result since it's two values
+typedef struct TB_CmpXchgResult {
+	TB_Register success;
+	TB_Register old_value;
+} TB_CmpXchgResult;
+
 // *******************************
 // Public macros
 // *******************************
 #ifdef __cplusplus
-#define TB_TYPE_VOID TB_DataType{ TB_VOID, 1 }
+#define TB_TYPE_VOID TB_DataType{ TB_VOID }
 
-#define TB_TYPE_I8 TB_DataType{ TB_I8, 1 }
-#define TB_TYPE_I16 TB_DataType{ TB_I16, 1 }
-#define TB_TYPE_I32 TB_DataType{ TB_I32, 1 }
-#define TB_TYPE_I64 TB_DataType{ TB_I64, 1 }
+#define TB_TYPE_I8 TB_DataType{ TB_I8 }
+#define TB_TYPE_I16 TB_DataType{ TB_I16 }
+#define TB_TYPE_I32 TB_DataType{ TB_I32 }
+#define TB_TYPE_I64 TB_DataType{ TB_I64 }
 
-#define TB_TYPE_F32 TB_DataType{ TB_F32, 1 }
-#define TB_TYPE_F64 TB_DataType{ TB_F64, 1 }
+#define TB_TYPE_F32 TB_DataType{ TB_F32 }
+#define TB_TYPE_F64 TB_DataType{ TB_F64 }
 
-#define TB_TYPE_BOOL TB_DataType{ TB_BOOL, 1 }
-#define TB_TYPE_PTR TB_DataType{ TB_PTR, 1 }
-
-#define TB_TYPE_VEC_I8(c) TB_DataType{ TB_I8, c }
-#define TB_TYPE_VEC_I16(c) TB_DataType{ TB_I16, c }
-#define TB_TYPE_VEC_I32(c) TB_DataType{ TB_I32, c }
-#define TB_TYPE_VEC_I64(c) TB_DataType{ TB_I64, c }
-#define TB_TYPE_VEC_F32(c) TB_DataType{ TB_F32, c }
-#define TB_TYPE_VEC_F64(c) TB_DataType{ TB_F64, c }
-#define TB_TYPE_VEC_BOOL(c) TB_DataType{ TB_BOOL, c }
+#define TB_TYPE_BOOL TB_DataType{ TB_BOOL }
+#define TB_TYPE_PTR TB_DataType{ TB_PTR }
 
 #else
 
-#define TB_TYPE_VOID (TB_DataType){ TB_VOID, 1 }
+#define TB_TYPE_VOID (TB_DataType){ TB_VOID, 0 }
 
-#define TB_TYPE_I8 (TB_DataType){ TB_I8, 1 }
-#define TB_TYPE_I16 (TB_DataType){ TB_I16, 1 }
-#define TB_TYPE_I32 (TB_DataType){ TB_I32, 1 }
-#define TB_TYPE_I64 (TB_DataType){ TB_I64, 1 }
+#define TB_TYPE_I8 (TB_DataType){ TB_I8, 0 }
+#define TB_TYPE_I16 (TB_DataType){ TB_I16, 0 }
+#define TB_TYPE_I32 (TB_DataType){ TB_I32, 0 }
+#define TB_TYPE_I64 (TB_DataType){ TB_I64, 0 }
 
-#define TB_TYPE_F32 (TB_DataType){ TB_F32, 1 }
-#define TB_TYPE_F64 (TB_DataType){ TB_F64, 1 }
+#define TB_TYPE_F32 (TB_DataType){ TB_F32, 0 }
+#define TB_TYPE_F64 (TB_DataType){ TB_F64, 0 }
 
-#define TB_TYPE_BOOL (TB_DataType){ TB_BOOL, 1 }
-#define TB_TYPE_PTR (TB_DataType){ TB_PTR, 1 }
-
-#define TB_TYPE_VEC_I8(c) (TB_DataType){ TB_I8, c }
-#define TB_TYPE_VEC_I16(c) (TB_DataType){ TB_I16, c }
-#define TB_TYPE_VEC_I32(c) (TB_DataType){ TB_I32, c }
-#define TB_TYPE_VEC_I64(c) (TB_DataType){ TB_I64, c }
-#define TB_TYPE_VEC_F32(c) (TB_DataType){ TB_F32, c }
-#define TB_TYPE_VEC_F64(c) (TB_DataType){ TB_F64, c }
+#define TB_TYPE_BOOL (TB_DataType){ TB_BOOL, 0 }
+#define TB_TYPE_PTR (TB_DataType){ TB_PTR, 0 }
 
 #endif
 
@@ -302,7 +313,7 @@ TB_API void tb_prototype_add_params(TB_FunctionPrototype* p, size_t count, const
 // adds a parameter to the function prototype, TB doesn't support struct
 // parameters so the frontend must lower them to pointers or any other type
 // depending on their preferred ABI.
-TB_API TB_Function* tb_prototype_build(TB_Module* m, TB_FunctionPrototype* p, const char* name);
+TB_API TB_Function* tb_prototype_build(TB_Module* m, TB_FunctionPrototype* p, const char* name, TB_Linkage linkage);
 
 ////////////////////////////////
 // Constant Initializers
@@ -317,11 +328,14 @@ TB_API void* tb_initializer_add_region(TB_Module* m, TB_InitializerID id, size_t
 ////////////////////////////////
 // Constant Initializers
 ////////////////////////////////
-TB_API TB_GlobalID tb_global_create(TB_Module* m, const char* name, TB_InitializerID initializer);
+TB_API TB_GlobalID tb_global_create(TB_Module* m, TB_InitializerID initializer, const char* name, TB_Linkage linkage);
 
 ////////////////////////////////
 // Function IR Generation
 ////////////////////////////////
+// this only allows for power of two vector types
+TB_API TB_DataType tb_vector_type(TB_DataTypeEnum type, int width);
+
 TB_API TB_Function* tb_function_clone(TB_Module* m, TB_Function* f, const char* name);
 TB_API void tb_function_print(TB_Function* f, FILE* out);
 TB_API void tb_function_free(TB_Function* f);
@@ -339,75 +353,114 @@ TB_API TB_Register tb_inst_trunc(TB_Function* f, TB_Register src, TB_DataType dt
 TB_API TB_Register tb_inst_int2ptr(TB_Function* f, TB_Register src);
 TB_API TB_Register tb_inst_ptr2int(TB_Function* f, TB_Register src, TB_DataType dt);
 
-TB_API TB_Register tb_inst_local(TB_Function* f, uint32_t size, uint32_t alignment);
-TB_API TB_Register tb_inst_load(TB_Function* f, TB_DataType dt, TB_Register addr, uint32_t alignment);
-TB_API void tb_inst_store(TB_Function* f, TB_DataType dt, TB_Register addr, TB_Register val, uint32_t alignment);
+TB_API TB_Register tb_inst_local(TB_Function* f, uint32_t size, TB_CharUnits align);
+TB_API TB_Register tb_inst_load(TB_Function* f, TB_DataType dt, TB_Register addr, TB_CharUnits align);
+TB_API void tb_inst_store(TB_Function* f, TB_DataType dt, TB_Register addr, TB_Register val, TB_CharUnits align);
 
-TB_API TB_Register tb_inst_volatile_load(TB_Function* f, TB_DataType dt, TB_Register addr, uint32_t alignment);
-TB_API void tb_inst_volatile_store(TB_Function* f, TB_DataType dt, TB_Register addr, TB_Register val, uint32_t alignment);
+TB_API TB_Register tb_inst_volatile_load(TB_Function* f, TB_DataType dt, TB_Register addr, TB_CharUnits alignment);
+TB_API void tb_inst_volatile_store(TB_Function* f, TB_DataType dt, TB_Register addr, TB_Register val, TB_CharUnits alignment);
 
+TB_API TB_Register tb_inst_bool(TB_Function* f, bool imm);
+TB_API TB_Register tb_inst_ptr(TB_Function* f, uint64_t imm);
+TB_API TB_Register tb_inst_sint(TB_Function* f, TB_DataType dt, int64_t imm);
+TB_API TB_Register tb_inst_uint(TB_Function* f, TB_DataType dt, uint64_t imm);
+TB_API TB_Register tb_inst_float(TB_Function* f, TB_DataType dt, double imm);
+TB_API TB_Register tb_inst_cstring(TB_Function* f, const char* str);
+TB_API TB_Register tb_inst_string(TB_Function* f, size_t len, const char* str);
+
+// Applies an initializer to a memory region
 TB_API void tb_inst_initialize_mem(TB_Function* f, TB_Register addr, TB_InitializerID src);
 
-TB_API TB_Register tb_inst_iconst(TB_Function* f, TB_DataType dt, uint64_t imm);
-TB_API TB_Register tb_inst_fconst(TB_Function* f, TB_DataType dt, double imm);
+// Broadcasts 'val' across 'count' elements starting 'dst'
+TB_API void tb_inst_memset(TB_Function* f, TB_Register dst, TB_Register val, TB_Register count, TB_CharUnits align);
 
-// string is a UTF-8 null terminated string
-TB_API TB_Register tb_inst_const_cstr(TB_Function* f, const char* str);
+// performs a copy of 'count' elements from one memory location to another
+// both locations cannot overlap.
+TB_API void tb_inst_memcpy(TB_Function* f, TB_Register dst, TB_Register src, TB_Register count, TB_CharUnits align);
 
-// string is a slice of bytes
-TB_API TB_Register tb_inst_const_string(TB_Function* f, const char* str, size_t len);
+// Clears a memory region to zeroes
+TB_API void tb_inst_memclr(TB_Function* f, TB_Register addr, TB_CharUnits size, TB_CharUnits align);
 
+// result = base + (index * stride)
 TB_API TB_Register tb_inst_array_access(TB_Function* f, TB_Register base, TB_Register index, uint32_t stride);
+
+// result = base + offset
+// where base is a pointer
 TB_API TB_Register tb_inst_member_access(TB_Function* f, TB_Register base, int32_t offset);
 
 TB_API TB_Register tb_inst_get_func_address(TB_Function* f, const TB_Function* target);
 TB_API TB_Register tb_inst_get_extern_address(TB_Function* f, TB_ExternalID target);
 TB_API TB_Register tb_inst_get_global_address(TB_Function* f, TB_GlobalID target);
 
+// Integer arithmatic
+TB_API TB_Register tb_inst_add(TB_Function* f, TB_Register a, TB_Register b, TB_ArithmaticBehavior arith_behavior);
+TB_API TB_Register tb_inst_sub(TB_Function* f, TB_Register a, TB_Register b, TB_ArithmaticBehavior arith_behavior);
+TB_API TB_Register tb_inst_mul(TB_Function* f, TB_Register a, TB_Register b, TB_ArithmaticBehavior arith_behavior);
+TB_API TB_Register tb_inst_div(TB_Function* f, TB_Register a, TB_Register b, bool signedness);
+TB_API TB_Register tb_inst_mod(TB_Function* f, TB_Register a, TB_Register b, bool signedness);
+
+// Bitwise operations
+TB_API TB_Register tb_inst_not(TB_Function* f, TB_Register n);
+TB_API TB_Register tb_inst_neg(TB_Function* f, TB_Register n);
+TB_API TB_Register tb_inst_and(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_or(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_xor(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_sar(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_shl(TB_Function* f, TB_Register a, TB_Register b, TB_ArithmaticBehavior arith_behavior);
+TB_API TB_Register tb_inst_shr(TB_Function* f, TB_Register a, TB_Register b);
+
+// Atomics
+// By default you can use TB_MEM_ORDER_SEQ_CST for the memory order to get
+// correct but possibly slower results on certain platforms (those with relaxed
+// memory models).
+TB_API TB_Register tb_inst_atomic_test_and_set(TB_Function* f, TB_Register addr, TB_MemoryOrder order);
+TB_API TB_Register tb_inst_atomic_clear(TB_Function* f, TB_Register addr, TB_MemoryOrder order);
+
+// All atomic operations here return the old value and the operations are
+// performed in the same data type as 'src' with alignment of 'addr' being
+// the natural alignment of 'src'
+TB_API TB_Register tb_inst_atomic_xchg(TB_Function* f, TB_Register addr, TB_Register src, TB_MemoryOrder order);
+TB_API TB_Register tb_inst_atomic_add(TB_Function* f, TB_Register addr, TB_Register src, TB_MemoryOrder order);
+TB_API TB_Register tb_inst_atomic_sub(TB_Function* f, TB_Register addr, TB_Register src, TB_MemoryOrder order);
+TB_API TB_Register tb_inst_atomic_and(TB_Function* f, TB_Register addr, TB_Register src, TB_MemoryOrder order);
+TB_API TB_Register tb_inst_atomic_xor(TB_Function* f, TB_Register addr, TB_Register src, TB_MemoryOrder order);
+TB_API TB_Register tb_inst_atomic_or(TB_Function* f, TB_Register addr, TB_Register src, TB_MemoryOrder order);
+
+// if (*addr == expected) {
+//   old_value = atomic_xchg(addr, desired);
+//   return { true, old_value };
+// } else {
+//   return { false };
+// }
+TB_API TB_CmpXchgResult tb_inst_atomic_cmpxchg(TB_Function* f, TB_Register addr, TB_Register expected, TB_Register desired, TB_MemoryOrder succ, TB_MemoryOrder fail);
+
+// Float math
+TB_API TB_Register tb_inst_fadd(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_fsub(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_fmul(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_fdiv(TB_Function* f, TB_Register a, TB_Register b);
+
+// Comparisons
+TB_API TB_Register tb_inst_cmp_eq(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_cmp_ne(TB_Function* f, TB_Register a, TB_Register b);
+
+TB_API TB_Register tb_inst_cmp_ilt(TB_Function* f, TB_Register a, TB_Register b, bool signedness);
+TB_API TB_Register tb_inst_cmp_ile(TB_Function* f, TB_Register a, TB_Register b, bool signedness);
+TB_API TB_Register tb_inst_cmp_igt(TB_Function* f, TB_Register a, TB_Register b, bool signedness);
+TB_API TB_Register tb_inst_cmp_ige(TB_Function* f, TB_Register a, TB_Register b, bool signedness);
+
+TB_API TB_Register tb_inst_cmp_flt(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_cmp_fle(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_cmp_fgt(TB_Function* f, TB_Register a, TB_Register b);
+TB_API TB_Register tb_inst_cmp_fge(TB_Function* f, TB_Register a, TB_Register b);
+
+// Control flow
 TB_API TB_Register tb_inst_call(TB_Function* f, TB_DataType dt, const TB_Function* target, size_t param_count, const TB_Register* params);
 TB_API TB_Register tb_inst_vcall(TB_Function* f, TB_DataType dt, TB_Register target, size_t param_count, const TB_Register* params);
 TB_API TB_Register tb_inst_ecall(TB_Function* f, TB_DataType dt, const TB_ExternalID target, size_t param_count, const TB_Register* params);
 
-TB_API void tb_inst_memset(TB_Function* f, TB_Register dst, TB_Register val, TB_Register size, int align);
-TB_API void tb_inst_memcpy(TB_Function* f, TB_Register dst, TB_Register src, TB_Register size, int align);
-
-TB_API TB_Register tb_inst_not(TB_Function* f, TB_DataType dt, TB_Register n);
-TB_API TB_Register tb_inst_neg(TB_Function* f, TB_DataType dt, TB_Register n);
-
-TB_API TB_Register tb_inst_and(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_or(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_xor(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_add(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b, TB_ArithmaticBehavior arith_behavior);
-TB_API TB_Register tb_inst_sub(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b, TB_ArithmaticBehavior arith_behavior);
-TB_API TB_Register tb_inst_mul(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b, TB_ArithmaticBehavior arith_behavior);
-TB_API TB_Register tb_inst_div(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b, bool signedness);
-
-TB_API TB_Register tb_inst_shl(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b, TB_ArithmaticBehavior arith_behavior);
-TB_API TB_Register tb_inst_sar(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_shr(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-
-TB_API TB_Register tb_inst_fadd(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_fsub(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_fmul(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_fdiv(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-
-TB_API TB_Register tb_inst_cmp_eq(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_cmp_ne(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-
-TB_API TB_Register tb_inst_cmp_ilt(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b, bool signedness);
-TB_API TB_Register tb_inst_cmp_ile(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b, bool signedness);
-TB_API TB_Register tb_inst_cmp_igt(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b, bool signedness);
-TB_API TB_Register tb_inst_cmp_ige(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b, bool signedness);
-
-TB_API TB_Register tb_inst_cmp_flt(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_cmp_fle(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_cmp_fgt(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-TB_API TB_Register tb_inst_cmp_fge(TB_Function* f, TB_DataType dt, TB_Register a, TB_Register b);
-
-// Gives you a reference to a local label, doesn't place it anywhere.
 TB_API TB_Label tb_inst_new_label_id(TB_Function* f);
-
-TB_API TB_Register tb_inst_phi2(TB_Function* f, TB_DataType dt, TB_Label a_label, TB_Register a, TB_Label b_label, TB_Register b);
+TB_API TB_Register tb_inst_phi2(TB_Function* f, TB_Label a_label, TB_Register a, TB_Label b_label, TB_Register b);
 TB_API TB_Register tb_inst_label(TB_Function* f, TB_Label id);
 TB_API void tb_inst_goto(TB_Function* f, TB_Label id);
 TB_API TB_Register tb_inst_if(TB_Function* f, TB_Register cond, TB_Label if_true, TB_Label if_false);
@@ -437,7 +490,7 @@ TB_API bool tb_opt_copy_elision(TB_Function* f);
 // IR access
 ////////////////////////////////
 TB_API TB_FunctionID tb_function_get_id(TB_Module* m, TB_Function* f);
-TB_API TB_Function* tb_get_function_by_id(TB_Module* m, TB_FunctionID id);
+TB_API TB_Function* tb_function_from_id(TB_Module* m, TB_FunctionID id);
 
 TB_API TB_Register tb_node_get_last_register(TB_Function* f);
 TB_API TB_DataType tb_node_get_data_type(TB_Function* f, TB_Register r);

@@ -12,9 +12,9 @@ TB_Register tilde_get_zero(TbContext *c, Type *type)
 	TB_DataType data_type = tbtype(type);
 	if (type_is_float(type))
 	{
-		return tb_inst_fconst(c->f, data_type, 0);
+		return tb_inst_float(c->f, data_type, 0);
 	}
-	return tb_inst_iconst(c->f, data_type, 0);
+	return type_is_signed(type) ? tb_inst_sint(c->f, data_type, 0) : tb_inst_uint(c->f, data_type, 0);
 }
 
 TBEValue tilde_emit_assign_expr(TbContext *c, TBEValue *ref, Expr *expr, TB_Reg failable)
