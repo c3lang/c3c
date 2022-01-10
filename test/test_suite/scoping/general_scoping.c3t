@@ -31,9 +31,9 @@ fn void main()
 
 @goo = linkonce_odr constant i8 1
 @Foo = linkonce_odr constant i8 1
-@test.bob = global %Foo zeroinitializer, align 8
-@.str = private constant [7 x i8] c"%d %d\0A\00", align 1
-@.str.1 = private constant [7 x i8] c"%d %d\0A\00", align 1
+@test.bob = local_unnamed_addr global %Foo zeroinitializer, align 8
+@.str = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
+@.str.1 = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 
 ; Function Attrs: nounwind
 declare void @printf(i8*, ...) #0

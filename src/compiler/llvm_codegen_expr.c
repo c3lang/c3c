@@ -1444,6 +1444,7 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 	LLVMTypeRef type = LLVMTypeOf(value);
 	LLVMValueRef global_copy = LLVMAddGlobal(c->module, type, ".__const");
 	llvm_set_private_linkage(global_copy);
+	LLVMSetUnnamedAddress(global_copy, LLVMGlobalUnnamedAddr);
 
 	// Set a nice alignment
 	AlignSize alignment = type_alloca_alignment(expr->type);
@@ -3834,6 +3835,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		{
 			LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.string.len + 1), ".str");
 			llvm_set_private_linkage(global_name);
+			LLVMSetUnnamedAddress(global_name, LLVMGlobalUnnamedAddr);
 			LLVMSetGlobalConstant(global_name, 1);
 			LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context,
 			                                                         expr->const_expr.string.chars,

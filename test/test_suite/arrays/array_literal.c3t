@@ -14,7 +14,7 @@ fn double test(uint x)
 
 // #expect: array_literal.ll
 
-@.__const = private constant [30 x double] [double 0.000000e+00, double 1.270600e+01, double 4.303000e+00, double 3.182000e+00, double 2.776000e+00, double 2.571000e+00, double 2.447000e+00, double 2.365000e+00, double 2.306000e+00, double 2.262000e+00, double 2.228000e+00, double 2.201000e+00, double 2.179000e+00, double 2.160000e+00, double 2.145000e+00, double 2.131000e+00, double 2.120000e+00, double 2.110000e+00, double 2.101000e+00, double 2.093000e+00, double 2.086000e+00, double 2.080000e+00, double 2.074000e+00, double 2.069000e+00, double 2.064000e+00, double 2.060000e+00, double 2.056000e+00, double 2.052000e+00, double 2.048000e+00, double 2.045000e+00], align 16
+@.__const = private unnamed_addr constant [30 x double] [double 0.000000e+00, double 1.270600e+01, double 4.303000e+00, double 3.182000e+00, double 2.776000e+00, double 2.571000e+00, double 2.447000e+00, double 2.365000e+00, double 2.306000e+00, double 2.262000e+00, double 2.228000e+00, double 2.201000e+00, double 2.179000e+00, double 2.160000e+00, double 2.145000e+00, double 2.131000e+00, double 2.120000e+00, double 2.110000e+00, double 2.101000e+00, double 2.093000e+00, double 2.086000e+00, double 2.080000e+00, double 2.074000e+00, double 2.069000e+00, double 2.064000e+00, double 2.060000e+00, double 2.056000e+00, double 2.052000e+00, double 2.048000e+00, double 2.045000e+00], align 16
 
 define double @array_literal.test(i32 %0) #0 {
 entry:

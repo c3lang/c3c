@@ -660,7 +660,7 @@ entry:
 // #expect: test2.int.ll
 
 %Blob = type { i32 }
-@test2.int.argh = global i32 234, align 4
+@test2.int.argh = local_unnamed_addr global i32 234, align 4
 
 define i32 @test2.int.getMult(i32 %0) #0 {
 entry:
@@ -686,7 +686,7 @@ entry:
 // #expect: test2.double.ll
 
 %Blob = type { double }
-@test2.double.argh = global double 2.340000e+02, align 8
+@test2.double.argh = local_unnamed_addr global double 2.340000e+02, align 8
 
 define double @test2.double.getMult(double %0)
 entry:

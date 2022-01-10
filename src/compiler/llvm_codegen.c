@@ -270,6 +270,7 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 		scratch_buffer_append(decl->external_name);
 		scratch_buffer_append(".f");
 		decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_anyerr), scratch_buffer_to_string());
+		LLVMSetUnnamedAddress(decl->var.failable_ref, LLVMGlobalUnnamedAddr);
 	}
 }
 
@@ -359,19 +360,30 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
-	decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname ? decl->extname : decl->external_name);
-	LLVMSetThreadLocal(decl->backend_ref, decl->var.is_threadlocal);
+	LLVMValueRef global_ref = decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname ? decl->extname : decl->external_name);
+	LLVMSetThreadLocal(global_ref, decl->var.is_threadlocal);
+	if (decl->var.is_addr)
+	{
+		LLVMSetUnnamedAddress(global_ref, LLVMNoUnnamedAddr);
+	}
+	else
+	{
+		LLVMUnnamedAddr addr = LLVMLocalUnnamedAddr;
+		if (decl->visibility == VISIBLE_LOCAL || decl->visibility == VISIBLE_MODULE) addr = LLVMGlobalUnnamedAddr;
+		LLVMSetUnnamedAddress(decl->backend_ref, addr);
+	}
 	if (decl->section)
 	{
-		LLVMSetSection(decl->backend_ref, decl->section);
+		LLVMSetSection(global_ref, decl->section);
 	}
-	llvm_set_alignment(decl->backend_ref, alignment);
+	llvm_set_alignment(global_ref, alignment);
 
 	LLVMValueRef failable_ref = decl->var.failable_ref;
 	if (failable_ref)
 	{
 		llvm_set_alignment(failable_ref, type_alloca_alignment(type_anyerr));
 		LLVMSetThreadLocal(failable_ref, decl->var.is_threadlocal);
+		LLVMSetUnnamedAddress(failable_ref, LLVMGlobalUnnamedAddr);
 	}
 	if (init_expr && IS_FAILABLE(init_expr) && init_expr->expr_kind == EXPR_FAILABLE)
 	{
@@ -386,34 +398,34 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		}
 	}
 
-	LLVMSetGlobalConstant(decl->backend_ref, decl->var.kind == VARDECL_CONST);
+	LLVMSetGlobalConstant(global_ref, decl->var.kind == VARDECL_CONST);
 
 	switch (decl->visibility)
 	{
 		case VISIBLE_MODULE:
-			LLVMSetVisibility(decl->backend_ref, LLVMProtectedVisibility);
+			LLVMSetVisibility(global_ref, LLVMProtectedVisibility);
 			if (failable_ref) LLVMSetVisibility(failable_ref, LLVMProtectedVisibility);
 			break;
 		case VISIBLE_PUBLIC:
-			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
+			LLVMSetVisibility(global_ref, LLVMDefaultVisibility);
 			if (failable_ref) LLVMSetVisibility(failable_ref, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_EXTERN:
-			LLVMSetLinkage(decl->backend_ref, LLVMExternalLinkage);
+			LLVMSetLinkage(global_ref, LLVMExternalLinkage);
 			if (failable_ref) LLVMSetLinkage(failable_ref, LLVMExternalLinkage);
 			//LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case VISIBLE_LOCAL:
-			LLVMSetVisibility(decl->backend_ref, LLVMHiddenVisibility);
-			if (failable_ref) LLVMSetVisibility(failable_ref, LLVMHiddenVisibility);
+			LLVMSetLinkage(global_ref, LLVMInternalLinkage);
+			if (failable_ref) LLVMSetLinkage(failable_ref, LLVMInternalLinkage);
 			break;
 	}
 
 	if (init_value && LLVMTypeOf(init_value) != llvm_get_type(c, var_type))
 	{
-		decl->backend_ref = LLVMConstBitCast(decl->backend_ref, llvm_get_ptr_type(c, var_type));
+		decl->backend_ref = global_ref = LLVMConstBitCast(global_ref, llvm_get_ptr_type(c, var_type));
 	}
-	LLVMReplaceAllUsesWith(old, decl->backend_ref);
+	LLVMReplaceAllUsesWith(old, global_ref);
 	LLVMDeleteGlobal(old);
 
 	// Should we set linkage here?

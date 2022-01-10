@@ -18,7 +18,7 @@ fn void main()
 
 /* #expect: test.ll
 
-@.str = private constant [4 x i8] c"%d\0A\00", align 1
+@.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
 declare void @printf(i8*, ...) #0
 

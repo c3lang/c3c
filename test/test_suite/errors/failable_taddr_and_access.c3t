@@ -30,8 +30,8 @@ fn void main()
 @Foo = linkonce_odr constant i8 1
 @"test.MyErr$elements" = linkonce_odr constant [1 x i8*] zeroinitializer
 @MyErr = linkonce_odr constant i8 1
-@.str = private constant [4 x i8] c"%d\0A\00", align 1
-@.str.1 = private constant [17 x i8] c"Not visible: %d\0A\00", align 1
+@.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@.str.1 = private unnamed_addr constant [17 x i8] c"Not visible: %d\0A\00", align 1
 
 ; Function Attrs: nounwind
 declare i32 @printf(i8*, ...) #0

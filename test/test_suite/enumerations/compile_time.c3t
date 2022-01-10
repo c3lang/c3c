@@ -13,8 +13,8 @@ int myenum_sizeof = $sizeof(MyEnum);
 
 // #expect: compile_time.ll
 
-@compile_time.myenum_max = global i32 14, align 4
-@compile_time.myenum_min = global i32 -5, align 4
-@compile_time.myenum_elements = global i32 3, align 4
-@compile_time.myenum_alignof = global i32 2, align 4
-@compile_time.myenum_sizeof = global i32 2, align 4
+@compile_time.myenum_max = local_unnamed_addr global i32 14, align 4
+@compile_time.myenum_min = local_unnamed_addr global i32 -5, align 4
+@compile_time.myenum_elements = local_unnamed_addr global i32 3, align 4
+@compile_time.myenum_alignof = local_unnamed_addr global i32 2, align 4
+@compile_time.myenum_sizeof = local_unnamed_addr global i32 2, align 4

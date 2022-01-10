@@ -6,7 +6,7 @@ fn void main()
 
 /* #expect: string_escape.ll
 
-@.str = private constant [18 x i8] c"Hello\00 world! now\00", align 1
+@.str = private unnamed_addr constant [18 x i8] c"Hello\00 world! now\00", align 1
 
 define void @string_escape.main() #0 {
 entry:
