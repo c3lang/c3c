@@ -77,17 +77,32 @@ jobs:
     strategy:
       matrix:
         build_type: [Release, Debug]
+        llvm_version: [12, 13, 14]
+
+      # Don't abort runners if a single one fails
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v2
-      - name: (Ubuntu) Download LLVM
+      - name: Install common deps
         run: |
-          sudo apt-get install zlib1g zlib1g-dev clang-12 libllvm12 llvm-12 llvm-12-dev llvm-12-runtime liblld-12-dev liblld-12 python3
+          sudo apt-get install zlib1g zlib1g-dev python3
+
+      - name: Install Clang ${{ matrix.llvm_version }}
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x ./llvm.sh
+          sudo ./llvm.sh ${{ matrix.llvm_version }}
+          sudo apt-get install -y liblld-${{matrix.llvm_version}}
+
+          if [[ "${{matrix.llvm_version}}" > 12 ]]; then
+            sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools
+          fi
 
       - name: CMake
         run: |
           mkdir build && cd build
-          cmake .. -DLLVM_DIR=/usr/lib/llvm-12/cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake .. -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} -DC3_LLVM_VERSION=${{matrix.llvm_version}} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build .
 
       - name: Build testproject
