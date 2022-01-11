@@ -1295,7 +1295,6 @@ Type *type_from_token(TokenType type)
 	{
 		case TOKEN_VARIANT:
 			return type_any;
-		case TOKEN_FAULT:
 		case TOKEN_ANYERR:
 			return type_anyerr;
 		case TOKEN_VOID:

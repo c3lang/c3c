@@ -189,7 +189,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 			// register, or if it is 64 bits and has a single field.
 			if (size == 1 || size == 2 || size == 4 || (size == 8 && type->vector.len == 1))
 			{
-				return abi_arg_new_direct_coerce_bits(size * 8);
+				return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
 			}
 			return create_indirect_return_x86(type, regs);
 		}
@@ -444,13 +444,13 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 	{
 		if ((size == 1 || size == 2 || size == 4) || (size == 8 && type->vector.len == 1))
 		{
-			return abi_arg_new_direct_coerce_bits(size * 8);
+			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
 		}
 	}
 	// MMX passed as i64
 	if (x86_is_mmxtype(type))
 	{
-		return abi_arg_new_direct_coerce_bits(64);
+		return abi_arg_new_direct_coerce_type(type_ulong);
 	}
 
 	// Send as a normal parameter
@@ -490,9 +490,8 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 		// Here we coerce the aggregate into a struct { i32, i32, ... }
 		// but we do not generate this struct immediately here.
 		unsigned size_in_regs = (size + 3) / 4;
-		ABIArgInfo *info = abi_arg_new_direct_coerce_bits(32);
 		assert(size_in_regs < 8);
-		info->direct_coerce.elements = (uint8_t)size_in_regs;
+		ABIArgInfo *info = abi_arg_new_direct_coerce_array_type(type_uint, (int8_t)size_in_regs);
 		// Not in reg on MCU
 		if (!platform_target.x86.is_mcu_api) info->attributes.by_reg = true;
 		return info;

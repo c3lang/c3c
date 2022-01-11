@@ -584,6 +584,7 @@ typedef struct Decl_
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
 	bool no_scope : 1;
+	bool escaping : 1;
 	bool is_value : 1;
 	union
 	{

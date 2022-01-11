@@ -203,6 +203,7 @@ typedef struct BuildOptions_
 	bool emit_llvm;
 	bool emit_bitcode;
 	bool test_mode;
+	bool no_stdlib;
 } BuildOptions;
 
 
@@ -235,6 +236,7 @@ typedef struct
 	bool parse_only : 1;
 	bool check_only : 1;
 	bool emit_llvm : 1;
+	bool no_stdlib : 1;
 	bool emit_object_files : 1;
 	bool no_link : 1;
 	OptimizationLevel optimization_level;

@@ -294,7 +294,7 @@ void sema_analysis_run(void)
 
 	global_context_clear_errors();
 
-	if (global_context.lib_dir)
+	if (global_context.lib_dir && !active_target.no_stdlib)
 	{
 		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true, ".c3", ".c3i");
 	}

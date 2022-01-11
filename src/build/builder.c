@@ -115,6 +115,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		vec_add(target->link_args, options->linker_args[i]);
 	}
+	target->no_stdlib = options->no_stdlib;
 	target->emit_llvm = options->emit_llvm;
 	switch (options->compile_option)
 	{

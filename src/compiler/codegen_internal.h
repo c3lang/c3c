@@ -37,3 +37,16 @@ static inline bool abi_info_should_flatten(ABIArgInfo *info)
 	return info->kind == ABI_ARG_DIRECT_COERCE && info->direct_coerce.elements > 1U && !info->direct_coerce.prevent_flatten;
 }
 
+static inline bool abi_type_is_promotable_integer_or_bool(AbiType type)
+{
+	if (abi_type_is_type(type))
+	{
+		if (!type_is_integer_or_bool_kind(type.type)) return false;
+		if (type.type == type_bool) return true;
+		return type.type->builtin.bitsize < platform_target.width_c_int;
+	}
+	// We should only get npot or > big ints here.
+	assert(!is_power_of_two(type.int_bits_plus_1 - 1) || type.int_bits_plus_1 < platform_target.width_c_int);
+	return false;
+}
+

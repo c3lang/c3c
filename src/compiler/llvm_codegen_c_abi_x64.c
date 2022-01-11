@@ -550,7 +550,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case TYPE_U16:
 		case TYPE_U32:
 		case TYPE_I32:
-			if (!offset) break;
+			if (offset) break;
 			if (x64_bits_contain_no_user_data(source_type,
 			                                  source_offset + type_size(type),
 			                                  source_offset + 8))
@@ -689,12 +689,9 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 			// AMD64-ABI 3.2.3p4: Rule 3. If the class is INTEGER, the next
 			// available register of the sequence %rax, %rdx is used.
 			result_type = x64_get_int_type_at_offset(return_type, 0, return_type, 0);
-			if (hi_class == CLASS_NO_CLASS && abi_type_is_integer(result_type))
+			if (hi_class == CLASS_NO_CLASS && abi_type_is_promotable_integer_or_bool(result_type))
 			{
-				if (type_is_promotable_integer(return_type))
-				{
-					return abi_arg_new_direct_int_ext(return_type);
-				}
+				return abi_arg_new_direct_int_ext(return_type);
 			}
 			break;
 		case CLASS_SSE:
@@ -779,13 +776,10 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 		case CLASS_INTEGER:
 			needed_registers->int_registers++;
 			result_type = x64_get_int_type_at_offset(type, 0, type, 0);
-			if (hi_class == CLASS_NO_CLASS && abi_type_is_integer(result_type))
+			if (hi_class == CLASS_NO_CLASS && abi_type_is_promotable_integer_or_bool(result_type))
 			{
-				// We might need to promote it if it's too small.
-				if (type_is_promotable_integer(type))
-				{
-					return abi_arg_new_direct_int_ext(type);
-				}
+				assert(abi_type_is_type(result_type));
+				return abi_arg_new_direct_int_ext(result_type.type);
 			}
 			break;
 		case CLASS_SSE:
@@ -904,7 +898,7 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 	bool is_regcall = prototype->call_abi == CALL_X86_REG;
 
 	Registers available_registers = {
-			.int_registers = is_regcall ? 11 : 16,
+			.int_registers = is_regcall ? 11 : 6,
 			.sse_registers = is_regcall ? 16 : 8
 	};
 

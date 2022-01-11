@@ -1154,6 +1154,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			[ATTRIBUTE_FASTCALL] = ATTR_FUNC,
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_NOSCOPE] = ATTR_MACRO,
+			[ATTRIBUTE_ESCAPING] = ATTR_MACRO,
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
@@ -1563,6 +1564,10 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 			case ATTRIBUTE_NOSCOPE:
 				had = decl->no_scope;
 				decl->no_scope = true;
+				break;
+			case ATTRIBUTE_ESCAPING:
+				had = decl->escaping;
+				decl->escaping = true;
 				break;
 			default:
 				UNREACHABLE

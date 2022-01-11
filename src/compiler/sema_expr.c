@@ -1769,6 +1769,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	Ast *body = ast_copy_deep(decl->macro_decl.body);
 
 	bool no_scope = decl->no_scope;
+	bool escaping = decl->escaping;
+
 	DynamicScope old_scope = context->active_scope;
 	if (!no_scope)
 	{
