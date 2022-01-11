@@ -194,7 +194,8 @@ add_executable(c3c
         src/compiler/tilde_codegen_storeload.c
         src/compiler/llvm_codegen_storeload.c
         src/compiler/tilde_codegen_expr.c
-        src/compiler/tilde_codegen_stmt.c)
+        src/compiler/tilde_codegen_stmt.c
+        src/compiler/tilde_codegen_type.c)
 
 if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     message(STATUS "using gcc/clang warning switches")

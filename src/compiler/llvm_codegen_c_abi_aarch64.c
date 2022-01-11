@@ -47,10 +47,8 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	unsigned members = 0;
 	if (type_is_homogenous_aggregate(type, &base, &members))
 	{
-		ABIArgInfo *info = abi_arg_new_direct_coerce_type(base);
 		assert(members < 128);
-		info->direct_coerce.elements = (uint8_t)members;
-		return info;
+		return abi_arg_new_direct_coerce_array_type(base, (int8_t)members);
 	}
 
 	// Aggregates <= in registers
@@ -72,10 +70,9 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		size = aligned_offset(size, alignment);
 		// We use a pair of i64 for 16-byte aggregate with 8-byte alignment.
 		// For aggregates with 16-byte alignment, we use i128.
-		ABIArgInfo *info = abi_arg_new_direct_coerce_bits(alignment * 8);
+		assert(alignment == 8 || alignment == 16);
 		assert(size / alignment < 128);
-		info->direct_coerce.elements = (uint8_t)(size / alignment);
-		return info;
+		return abi_arg_new_direct_coerce_array_type(alignment == 8 ? type_ulong : type_u128, (int8_t)(size / alignment));
 	}
 
 	return abi_arg_new_indirect_not_by_val(type);
@@ -133,7 +130,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 		{
 			return abi_arg_new_direct_coerce_type(type_get_array(type_ulong, size / 8));
 		}
-		return abi_arg_new_direct_coerce_bits(aligned_size * 8);
+		return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(aligned_size * 8));
 	}
 
 	return abi_arg_new_indirect_by_val(type);

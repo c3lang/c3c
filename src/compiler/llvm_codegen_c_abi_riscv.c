@@ -145,6 +145,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 	assert(type == type->canonical);
 
 	unsigned xlen = platform_target.riscv.xlen;
+	assert(is_power_of_two(xlen));
 
 	ByteSize size = type_size(type);
 
@@ -223,15 +224,14 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		// required, and a 2-field XLen array if only XLen alignment is required.
 		if (size <= xlen)
 		{
-			return abi_arg_new_direct_coerce_bits(xlen * 8);
+			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(xlen * 8));
 		}
 		if (alignment == 2 * platform_target.riscv.xlen)
 		{
-			return abi_arg_new_direct_coerce_bits(xlen * 16);
+			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(xlen * 16));
 		}
-		ABIArgInfo *info = abi_arg_new_direct_coerce_bits(xlen);
-		info->direct_coerce.elements = 2;
-		return info;
+		Type *ret_type = type_int_unsigned_by_bitsize(xlen * 8);
+		return abi_arg_new_direct_coerce_array_type(ret_type, 2);
 	}
 	return abi_arg_new_indirect_not_by_val(type);
 }

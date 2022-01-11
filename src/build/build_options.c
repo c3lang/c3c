@@ -496,6 +496,11 @@ static void parse_option(BuildOptions *options)
 				options->std_lib_dir = check_dir(next_arg());
 				return;
 			}
+			if (match_longopt("nostdlib"))
+			{
+				options->no_stdlib = true;
+				return;
+			}
 			if (match_longopt("lib"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --lib needs a directory.");

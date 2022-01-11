@@ -188,8 +188,6 @@ const char *token_type_to_string(TokenType type)
 			return "alias";
 		case TOKEN_ANYERR:
 			return "anyerr";
-		case TOKEN_FAULT:
-			return "fault";
 		case TOKEN_AS:
 			return "as";
 		case TOKEN_ASM:

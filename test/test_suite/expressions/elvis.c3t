@@ -65,3 +65,5 @@ cond.phi:                                         ; preds = %cond.rhs, %entry
   %4 = zext i1 %val to i8
   ret i8 %4
 }
+
+attributes #0 = { nounwind }

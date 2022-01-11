@@ -207,6 +207,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_USED] = KW_DEF("used");
 	attribute_list[ATTRIBUTE_NAKED] = KW_DEF("naked");
 	attribute_list[ATTRIBUTE_NOSCOPE] = KW_DEF("noscope");
+	attribute_list[ATTRIBUTE_ESCAPING] = KW_DEF("escaping");
 	attribute_list[ATTRIBUTE_CDECL] = KW_DEF("cdecl");
 	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("stdcall");
 	attribute_list[ATTRIBUTE_VECCALL] = KW_DEF("veccall");

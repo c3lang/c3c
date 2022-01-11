@@ -376,16 +376,18 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 	{
 		unsigned element_index = 0;
 		LLVMTypeRef elements[4];
-		// Add padding if needed.
+		// Add optional padding to make the data appear at the correct offset.
 		if (arg_info->coerce_expand.offset_lo)
 		{
-			elements[element_index++] = LLVMArrayType(llvm_get_type(c, type_char), arg_info->coerce_expand.offset_lo);
+			elements[element_index++] = llvm_const_padding_type(c, arg_info->coerce_expand.offset_lo);
 		}
 		elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.lo);
+		// Add optional padding to make the high field appear at the correct off.
 		if (arg_info->coerce_expand.padding_hi)
 		{
 			elements[element_index++] = LLVMArrayType(llvm_get_type(c, type_char), arg_info->coerce_expand.padding_hi);
 		}
+		// Check if there is a top type as well.
 		if (abi_type_is_valid(arg_info->coerce_expand.hi))
 		{
 			elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.hi);

@@ -96,6 +96,7 @@ ABIArgInfo *abi_arg_new_direct_int_ext(Type *int_to_extend)
 	return abi_arg_new_direct_int_ext_by_reg(int_to_extend, false);
 }
 
+
 ABIArgInfo *abi_arg_new_direct_int_ext_by_reg(Type *int_to_extend, bool by_reg)
 {
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT);
@@ -185,6 +186,15 @@ ABIArgInfo *abi_arg_new_direct_coerce_type(Type *type)
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
 	abi_type_set_type(&info->direct_coerce.type, type);
 	info->direct_coerce.elements = 0;
+	return info;
+}
+
+ABIArgInfo *abi_arg_new_direct_coerce_array_type(Type *type, int8_t elements)
+{
+	assert(elements > 0);
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
+	abi_type_set_type(&info->direct_coerce.type, type);
+	info->direct_coerce.elements = elements;
 	return info;
 }
 

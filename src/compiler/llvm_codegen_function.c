@@ -144,22 +144,33 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 		}
 		case ABI_ARG_DIRECT_PAIR:
 		{
-			llvm_emit_and_set_decl_alloca(c, decl);
-			// Here we do the following transform:
-			// lo, hi -> { lo, hi } -> struct
 			LLVMTypeRef lo = llvm_abi_type(c, info->direct_pair.lo);
 			LLVMTypeRef hi = llvm_abi_type(c, info->direct_pair.hi);
 			LLVMTypeRef struct_type = llvm_get_twostruct(c, lo, hi);
 			AlignSize decl_alignment = decl->alignment;
-			// Cast to { lo, hi }
-			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(struct_type, 0), "pair");
+			LLVMValueRef coerce;
+			if (llvm_store_size(c, struct_type) > type_size(decl->type))
+			{
+				AlignSize struct_alignment = llvm_abi_alignment(c, struct_type);
+				if (decl_alignment < struct_alignment) decl->alignment = decl_alignment = struct_alignment;
+				coerce = llvm_emit_alloca(c, struct_type, decl_alignment, "");
+				decl->backend_ref = LLVMBuildBitCast(c->builder, coerce, llvm_get_ptr_type(c, decl->type), decl->name ? decl->name : "anon");
+			}
+			else
+			{
+				llvm_emit_and_set_decl_alloca(c, decl);
+				// Here we do the following transform:
+				// lo, hi -> { lo, hi } -> struct
+				// Cast to { lo, hi }
+				coerce = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(struct_type, 0), "pair");
+			}
 			// Point to the lo value.
 			AlignSize element_align;
-			LLVMValueRef lo_ptr = llvm_emit_struct_gep_raw(c, cast, struct_type, 0, decl_alignment, &element_align);
+			LLVMValueRef lo_ptr = llvm_emit_struct_gep_raw(c, coerce, struct_type, 0, decl_alignment, &element_align);
 			// Store it in the struct.
 			llvm_store(c, lo_ptr, llvm_get_next_param(c, index), element_align);
 			// Point to the hi value.
-			LLVMValueRef hi_ptr = llvm_emit_struct_gep_raw(c, cast, struct_type, 1, decl_alignment, &element_align);
+			LLVMValueRef hi_ptr = llvm_emit_struct_gep_raw(c, coerce, struct_type, 1, decl_alignment, &element_align);
 			// Store it in the struct.
 			llvm_store(c, hi_ptr, llvm_get_next_param(c, index), element_align);
 			return;

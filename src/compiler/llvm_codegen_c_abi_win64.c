@@ -63,7 +63,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 			return abi_arg_new_indirect_not_by_val(type);
 		}
 		// Coerce to integer.
-		return abi_arg_new_direct_coerce_bits(size * 8);
+		return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
 	}
 	if (type_is_builtin(type->type_kind))
 	{

@@ -109,7 +109,13 @@ static void tilde_emit_parameter(TbContext *c, TB_Reg **args, ABIArgInfo *info, 
 			return;
 		case ABI_ARG_DIRECT_COERCE:
 		{
+			if (!abi_type_is_type(info->direct_coerce.type))
+			{
+				vec_add(*args, tilde_load_value(c, be_value));
+			}
 			TODO
+			vec_add(*args, tilde_load_value(c, be_value));
+			return;
 			/*
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
 			if (!coerce_type || coerce_type == llvm_get_type(c, type))

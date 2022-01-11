@@ -21,6 +21,7 @@ ABIArgInfo *abi_arg_new_direct_int_ext(Type *type_to_extend);
 ABIArgInfo *abi_arg_new_direct_int_ext_by_reg(Type *int_to_extend, bool by_reg);
 ABIArgInfo *abi_arg_new_direct_coerce_bits(BitSize bits);
 ABIArgInfo *abi_arg_new_direct_coerce_type(Type *type);
+ABIArgInfo *abi_arg_new_direct_coerce_array_type(Type *type, int8_t elements);
 ABIArgInfo *abi_arg_new_direct_coerce(AbiType type);
 ABIArgInfo *abi_arg_new_expand_coerce(AbiType target_type, unsigned offset);
 ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType first_element, unsigned initial_offset, AbiType second_element, unsigned padding, bool is_packed);
@@ -62,7 +63,16 @@ static inline AbiType abi_type_get(Type *type)
 
 static inline AbiType abi_type_get_int_bits(BitSize bits)
 {
-	return (AbiType) { .int_bits_plus_1 = bits + 1 };
+	switch (bits)
+	{
+		case 8:
+		case 16:
+		case 32:
+		case 64:
+			return (AbiType) { .type = type_int_unsigned_by_bitsize(bits) };
+		default:
+			return (AbiType) { .int_bits_plus_1 = bits + 1 };
+	}
 }
 
 static inline void abi_type_set_type(AbiType *abi_type, Type *type)

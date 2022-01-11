@@ -81,6 +81,8 @@ void value_rvalue(TbContext *c, TBEValue *value);
 
 TB_Register tilde_get_zero(TbContext *c, Type *type);
 
+// -- type ---
+
 // -- instructions --
 void tilde_emit_cond_br(TbContext *c, TBEValue *value, TB_Label then_block, TB_Label else_block);
 TB_Reg tilde_emit_lshr_fixed(TbContext *c, Type *type, TB_Reg reg, int shift);

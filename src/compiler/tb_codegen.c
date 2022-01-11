@@ -270,6 +270,7 @@ static TB_FunctionPrototype *tilde_get_function_type(TB_Module *module, Function
 			break;
 		case ABI_ARG_DIRECT_COERCE:
 			assert(!abi_info_should_flatten(ret_arg_info));
+
 			TODO
 			/*
 			return_type = llvm_get_coerce_type(context, ret_arg_info);
