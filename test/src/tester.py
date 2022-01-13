@@ -58,6 +58,7 @@ class Issues:
         self.files = []
         self.errors = {}
         self.warnings = {}
+        self.opts = []
 
     def exit_error(self, message):
         print('Error in file ' + self.sourcefile.filepath + ': ' + message)
@@ -109,7 +110,10 @@ class Issues:
             target = " --target " + self.arch
         if (self.debuginfo):
             debug = "-g "
-        code = subprocess.run(self.conf.compiler + target + ' -O0 ' + debug + args, universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        opts = ""
+        for opt in self.opts:
+            opts += ' -' + opt
+        code = subprocess.run(self.conf.compiler + target + ' -O0 ' + opts + ' ' + debug + args, universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir(self.conf.cwd)
         if code.returncode != 0 and code.returncode != 1:
             self.set_failed()
@@ -140,6 +144,9 @@ class Issues:
         line = line[4:].strip()
         if (line.startswith("debuginfo:")):
             self.debuginfo = line[10:].strip() == "yes"
+            return
+        if (line.startswith("opt:")):
+            self.opts.append(line[4:].strip())
             return
         if (line.startswith("target:")):
             self.arch = line[7:].strip()

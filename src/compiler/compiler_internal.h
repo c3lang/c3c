@@ -1561,11 +1561,13 @@ typedef struct FunctionPrototype_
 	bool ret_by_ref : 1;
 	Type *rtype;
 	Type **params;
+	Type **varargs;
 	Type *ret_by_ref_type;
 	Type *abi_ret_type;
 	ABIArgInfo *ret_abi_info;
 	ABIArgInfo *ret_by_ref_abi_info;
 	ABIArgInfo **abi_args;
+	ABIArgInfo **abi_varargs;
 	void *tb_prototype;
 } FunctionPrototype;
 
@@ -2050,6 +2052,7 @@ void *llvm_target_machine_create(void);
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
 
+void c_abi_func_create(FunctionPrototype *proto);
 
 bool token_is_type(TokenType type);
 bool token_is_any_type(TokenType type);

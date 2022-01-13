@@ -789,6 +789,7 @@ static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_v
 			res = element;
 			continue;
 		}
+
 		res = LLVMBuildOr(c->builder, element, res, "");
 	}
 	if (big_endian)
@@ -4331,6 +4332,31 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	llvm_emit_intrinsic_expr(c, llvm_get_intrinsic(func), result_value, expr);
 }
 
+void llvm_add_call_attributes(GenContext *c, LLVMValueRef call_value, int start_index, int count, Type **types, ABIArgInfo **infos)
+{
+	for (unsigned i = 0; i < count; i++)
+	{
+		Type *param = types[i];
+		ABIArgInfo *info = infos[i];
+		switch (info->kind)
+		{
+			case ABI_ARG_INDIRECT:
+				if (info->attributes.by_val)
+				{
+					llvm_attribute_add_call_type(c,
+					                             call_value,
+					                             attribute_id.byval,
+					                             (int)i + start_index,
+					                             llvm_get_type(c, info->indirect.type));
+				}
+				llvm_attribute_add_call(c, call_value, attribute_id.align, (int)i + start_index, info->indirect.alignment);
+				break;
+			default:
+				break;
+		}
+	}
+
+}
 void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	if (expr->call_expr.is_builtin)
@@ -4385,7 +4411,28 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	ABIArgInfo **abi_args = prototype->abi_args;
 	unsigned param_count = vec_size(params);
 	unsigned non_variadic_params = param_count;
+	Expr **args = expr->call_expr.arguments;
+	unsigned arguments = vec_size(args);
+
 	if (prototype->variadic == VARIADIC_TYPED) non_variadic_params--;
+	FunctionPrototype copy;
+	if (prototype->variadic == VARIADIC_RAW)
+	{
+		if (arguments > non_variadic_params)
+		{
+			copy = *prototype;
+			copy.varargs = NULL;
+			for (unsigned i = non_variadic_params; i < arguments; i++)
+			{
+				vec_add(copy.varargs, args[i]->type);
+			}
+			copy.ret_abi_info = NULL;
+			copy.ret_by_ref_abi_info = NULL;
+			copy.abi_args = NULL;
+			c_abi_func_create(&copy);
+			prototype = &copy;
+		}
+	}
 	ABIArgInfo *ret_info = prototype->ret_abi_info;
 	Type *call_return_type = prototype->abi_ret_type;
 
@@ -4442,12 +4489,11 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 
 	// 8. Add all other arguments.
-	unsigned arguments = vec_size(expr->call_expr.arguments);
 	assert(arguments >= non_variadic_params);
 	for (unsigned i = 0; i < non_variadic_params; i++)
 	{
 		// 8a. Evaluate the expression.
-		Expr *arg_expr = expr->call_expr.arguments[i];
+		Expr *arg_expr = args[i];
 		llvm_emit_expr(c, &temp_value, arg_expr);
 
 		// 8b. Emit the parameter according to ABI rules.
@@ -4508,13 +4554,30 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	}
 	else
 	{
-		// 9. Emit varargs.
-		for (unsigned i = param_count; i < arguments; i++)
+		if (prototype->abi_varargs)
 		{
-			Expr *arg_expr = expr->call_expr.arguments[i];
-			llvm_emit_expr(c, &temp_value, arg_expr);
-			REMINDER("Varargs should be expanded correctly");
-			vec_add(values, llvm_load_value_store(c, &temp_value));
+			// 9. Emit varargs.
+			unsigned index = 0;
+			ABIArgInfo **abi_varargs = prototype->abi_varargs;
+			for (unsigned i = param_count; i < arguments; i++)
+			{
+				Expr *arg_expr = args[i];
+				llvm_emit_expr(c, &temp_value, arg_expr);
+				ABIArgInfo *info = abi_varargs[index];
+				llvm_emit_parameter(c, &values, info, &temp_value, prototype->varargs[index]);
+				index++;
+			}
+		}
+		else
+		{
+			// 9. Emit varargs.
+			for (unsigned i = param_count; i < arguments; i++)
+			{
+				Expr *arg_expr = args[i];
+				llvm_emit_expr(c, &temp_value, arg_expr);
+				REMINDER("Varargs should be expanded correctly");
+				vec_add(values, llvm_load_value_store(c, &temp_value));
+			}
 		}
 	}
 
@@ -4538,22 +4601,10 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		}
 	}
 
-	for (unsigned i = 0; i < non_variadic_params; i++)
+	llvm_add_call_attributes(c, call_value, 1, non_variadic_params, params, abi_args);
+	if (prototype->abi_varargs)
 	{
-		Type *param = params[i];
-		ABIArgInfo *info = abi_args[i];
-		switch (info->kind)
-		{
-			case ABI_ARG_INDIRECT:
-				if (info->attributes.by_val)
-				{
-					llvm_attribute_add_call_type(c, call_value, attribute_id.byval, (int)i + 1, llvm_get_type(c, info->indirect.type));
-				}
-				llvm_attribute_add_call(c, call_value, attribute_id.align, (int)i + 1, info->indirect.alignment);
-				break;
-			default:
-				break;
-		}
+		llvm_add_call_attributes(c, call_value, 1 + non_variadic_params, vec_size(prototype->varargs), prototype->varargs, prototype->abi_varargs);
 	}
 
 	// 11. Process the return value.

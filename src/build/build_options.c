@@ -389,6 +389,22 @@ static void parse_option(BuildOptions *options)
 				FAIL_WITH_ERR("Invalid optimization level.");
 			}
 			return;
+		case 'm':
+			if (match_shortopt("mno-avx"))
+			{
+				options->no_avx = true;
+			} else if (match_shortopt("mavx"))
+			{
+				options->avx = true;
+			} else if (match_shortopt("mavx512"))
+			{
+				options->avx512 = true;
+			}
+			else
+			{
+				FAIL_WITH_ERR("Invalid -m option.");
+			}
+			return;
 		case 'E':
 			if (options->compile_option != COMPILE_NORMAL)
 			{

@@ -217,10 +217,9 @@ static inline void add_func_type_param(GenContext *context, Type *param_type, AB
 	arg_info->param_index_end = (MemberIndex)vec_size(*params);
 }
 
-LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
+LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype)
 {
 	LLVMTypeRef *params = NULL;
-	FunctionPrototype *prototype = type->func.prototype;
 
 	LLVMTypeRef return_type = NULL;
 
@@ -282,6 +281,11 @@ LLVMTypeRef llvm_func_type(GenContext *context, Type *type)
 		add_func_type_param(context, prototype->params[i], prototype->abi_args[i], &params);
 	}
 
+	VECEACH(prototype->varargs, i)
+	{
+		add_func_type_param(context, prototype->varargs[i], prototype->abi_varargs[i], &params);
+	}
+
 	return LLVMFunctionType(return_type, params, vec_size(params), prototype->variadic == VARIADIC_RAW);
 }
 
@@ -324,7 +328,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_BITSTRUCT:
 			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
 		case TYPE_FUNC:
-			return any_type->backend_type = llvm_func_type(c, any_type);
+			return any_type->backend_type = llvm_func_type(c, any_type->func.prototype);
 		case TYPE_VOID:
 			return any_type->backend_type = LLVMVoidTypeInContext(c->context);
 		case TYPE_F64:

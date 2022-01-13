@@ -1035,7 +1035,6 @@ static int compare_function(FunctionSignature *sig, FunctionPrototype *proto)
 	return 0;
 }
 
-void c_abi_func_create(FunctionPrototype *proto);
 
 static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI abi, uint32_t hash, FuncTypeEntry *entry)
 {

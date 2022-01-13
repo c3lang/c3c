@@ -117,6 +117,9 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	target->no_stdlib = options->no_stdlib;
 	target->emit_llvm = options->emit_llvm;
+	if (options->no_avx) target->feature.no_avx = true;
+	if (options->avx) target->feature.avx = true;
+	if (options->avx512) target->feature.avx512 = true;
 	switch (options->compile_option)
 	{
 		case COMPILE_NORMAL:

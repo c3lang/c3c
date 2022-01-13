@@ -1,0 +1,84 @@
+// #target: x64-darwin
+// #opt: mavx
+module test;
+
+define Mm256 = float[<8>];
+struct St256 {
+  Mm256 m;
+}
+
+St256 x38;
+Mm256 x37;
+
+extern fn void f38(St256 x);
+extern fn void f37(Mm256 x);
+fn void f39() { f38(x38); f37(x37); }
+
+// The two next tests make sure that the struct below is passed
+// in the same way regardless of avx being used
+
+// CHECK: declare void @func40(%struct.t128* byval(%struct.t128) align 16)
+
+define Mm128 = float[<4>];
+struct Two128 {
+  Mm128 m;
+  Mm128 n;
+}
+
+extern fn void func40(Two128 s);
+fn void func41(Two128 s) {
+  func40(s);
+}
+
+struct Atwo128 {
+  Mm128[2] array;
+}
+
+struct Sa {
+  Atwo128 x;
+}
+
+extern fn void func42(Sa s);
+fn void func43(Sa s) {
+  func42(s);
+}
+
+
+define Vec46 = float[<2>];
+extern fn void f46(Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46,Vec46);
+fn void test46() { Vec46 x = {1,2}; f46(x,x,x,x,x,x,x,x,x,x); }
+
+struct Vec47 { uint a; }
+extern fn void f47(int,int,int,int,int,int,Vec47);
+fn void test47(int a, Vec47 b) { f47(a, a, a, a, a, a, b); }
+
+fn void test49_helper(double, ...);
+fn void test49(double d, double e) { test49_helper(d, e); }
+
+extern fn void test52_helper(int, ...);
+Mm256 x52;
+fn void test52() {
+  test52_helper(0, x52, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+}
+
+/* #expect: test.ll
+
+declare void @f38(<8 x float>)
+declare void @f37(<8 x float>)
+
+declare void @func40(%Two128* byval(%Two128) align 16)
+define void @test.func41(%Two128* byval(%Two128) align 16 %0)
+
+declare void @func42(%Sa* byval(%Sa) align 16)
+define void @test.func43(%Sa* byval(%Sa) align 16 %0)
+
+declare void @f46(double, double, double, double, double, double, double, double, <2 x float>* byval(<2 x float>) align 8, <2 x float>* byval(<2 x float>) align 8)
+declare void @f47(i32, i32, i32, i32, i32, i32, i32)
+
+declare void @test.test49_helper(double, ...)
+define void @test.test49(double %0, double %1)
+entry:
+  call void (double, ...) @test.test49_helper(double %0, double %1)
+  ret void
+
+call void (i32, ...) @test52_helper(i32 0, <8 x float>* byval(<8 x float>) align 32 %indirectarg, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00)

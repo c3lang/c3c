@@ -1,7 +1,6 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Core.h>
-#include <target_info/target_info.h>
 #include "compiler_internal.h"
 
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
@@ -426,6 +425,8 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	platform_target.abi = ABI_X64;
 	platform_target.x64.avx_level = AVX;
 	platform_target.x64.is_win64 = platform_target.os == OS_TYPE_WIN32;
+	if (target->feature.avx512) platform_target.x64.avx_level = AVX_512;
+	if (target->feature.avx) platform_target.x64.avx_level = AVX;
 	if (target->feature.no_avx) platform_target.x64.avx_level = AVX_NONE;
 	if (target->feature.no_mmx) platform_target.x64.no_mmx = true;
 	if (target->feature.no_sse) platform_target.x64.no_sse = true;

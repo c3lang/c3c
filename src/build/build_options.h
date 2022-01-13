@@ -204,6 +204,9 @@ typedef struct BuildOptions_
 	bool emit_bitcode;
 	bool test_mode;
 	bool no_stdlib;
+	bool no_avx;
+	bool avx;
+	bool avx512;
 } BuildOptions;
 
 
@@ -262,6 +265,8 @@ typedef struct
 		bool no_sse : 1;
 		bool no_mmx : 1;
 		bool no_avx : 1;
+		bool avx : 1;
+		bool avx512 : 1;
 	} feature;
 } BuildTarget;
 

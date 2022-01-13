@@ -64,6 +64,86 @@ fn float[<4>] f25(float[<4>] x) {
   return x+x;
 }
 
+struct Foo26 {
+  int *x;
+  float *y;
+}
+
+fn Foo26 f26(Foo26 *p) {
+  return *p;
+}
+
+
+struct V4f32wrapper {
+  float[<4>] v;
+}
+
+fn V4f32wrapper f27(V4f32wrapper x) {
+  return x;
+}
+
+// PR22563 - We should unwrap simple structs and arrays to pass
+// and return them in the appropriate vector registers if possible.
+
+define V8f32 = float[<8>];
+struct V8f32wrapper {
+  V8f32 v;
+}
+
+fn V8f32wrapper f27a(V8f32wrapper x) {
+  return x;
+}
+
+struct V8f32wrapper_wrapper {
+  V8f32[1] v;
+}
+
+fn V8f32wrapper_wrapper f27b(V8f32wrapper_wrapper x) {
+  return x;
+}
+
+struct F28c {
+  double x;
+  int y;
+}
+fn void f28(F28c c) {
+}
+
+struct Inner
+{
+    double x;
+    int y;
+}
+struct F29a
+{
+  Inner[1] c;
+}
+
+fn void f29a(F29a a) {
+}
+
+struct St0 {
+    char[8] f0; char f2; char f3; char f4; }
+fn void f30(St0 p_4) {
+}
+
+struct F31foo { float a, b, c; }
+fn float f31(F31foo x) {
+  return x.c;
+}
+
+define V1i64 = ulong[<1>];
+
+fn V1i64 f34(V1i64 arg) { return arg; }
+
+
+define V1i64_2 = uint[<2>];
+fn V1i64_2 f35(V1i64_2 arg) { return arg+arg; }
+
+define V2i32 = float[<2>];
+fn V2i32 f36(V2i32 arg) { return arg; }
+
+
 /* #expect: test.ll
 
 define i32 @test.f12_0()
@@ -91,3 +171,15 @@ entry:
   %fadd = fadd <4 x float> %0, %0
   ret <4 x float> %fadd
 }
+
+define { i32*, float* } @test.f26(%Foo26* %0)
+define <4 x float> @test.f27(<4 x float> %0)
+define <8 x float> @test.f27a(<8 x float> %0)
+define <8 x float> @test.f27b(<8 x float> %0)
+define void @test.f28(double %0, i32 %1)
+define void @test.f29a(double %0, i32 %1)
+define void @test.f30(i64 %0, i24 %1)
+define float @test.f31(<2 x float> %0, float %1)
+define double @test.f34(double %0)
+define double @test.f35(double %0)
+define double @test.f36(double %0)

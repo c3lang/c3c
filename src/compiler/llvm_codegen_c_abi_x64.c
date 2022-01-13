@@ -359,7 +359,7 @@ void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X6
 		}
 		return;
 	}
-	if (size == 16 || named_arg || size <= x64_native_vector_size_for_avx())
+	if (size == 16 || (named_arg == NAMED && size <= x64_native_vector_size_for_avx()))
 	{
 		if (platform_target.x64.pass_int128_vector_in_mem) return;
 
@@ -921,4 +921,15 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 		}
 		prototype->abi_args = args;
 	}
+	unsigned vararg_count = vec_size(prototype->varargs);
+	if (vararg_count)
+	{
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * vararg_count);
+		for (unsigned i = 0; i < vararg_count; i++)
+		{
+			args[i] = x64_classify_parameter(prototype->varargs[i], &available_registers, is_regcall, UNNAMED);
+		}
+		prototype->abi_varargs = args;
+	}
+
 }

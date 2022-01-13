@@ -9,6 +9,7 @@ set(C3_LLVM_VERSION "auto" CACHE STRING "Use LLVM version [default: auto]")
 option(C3_USE_MIMALLOC "Use built-in mimalloc" OFF)
 set(C3_MIMALLOC_TAG "v1.7.3" CACHE STRING "Used version of mimalloc")
 
+set(C3_USE_MIMALLOC OFF)
 if(C3_USE_MIMALLOC)
     option(MI_BUILD_TESTS OFF)
     option(MI_BUILD_SHARED OFF)
@@ -180,7 +181,6 @@ add_executable(c3c
         src/compiler/tokens.c
         src/compiler/types.c
         src/main.c
-        src/target_info/target_info.c
         src/utils/errors.c
         src/utils/file_utils.c
         src/utils/find_msvc.c

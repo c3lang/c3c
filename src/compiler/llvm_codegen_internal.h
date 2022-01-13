@@ -217,7 +217,6 @@ void llvm_value_set_decl(BEValue *value, Decl *decl);
 void llvm_value_fold_failable(GenContext *c, BEValue *value);
 void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_pointer, unsigned index);
 
-
 LLVMTypeRef llvm_abi_type(GenContext *c, AbiType type);
 TypeSize llvm_abi_size(GenContext *c, LLVMTypeRef type);
 BitSize llvm_bitsize(GenContext *c, LLVMTypeRef type);
@@ -269,6 +268,8 @@ void llvm_emit_int_comparison(GenContext *c, BEValue *result, BEValue *lhs, BEVa
 void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rhs_type, LLVMValueRef lhs_value, LLVMValueRef rhs_value, BinaryOp binary_op);
 void llvm_emit_comparison(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op);
 void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_len);
+// -- type ---
+LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype);
 
 // -- instr ---
 void llvm_emit_cond_br(GenContext *context, BEValue *value, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block);
