@@ -1033,7 +1033,8 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 	// And combine using ((current_value & ~mask) | (value & mask))
 	value = LLVMBuildAnd(c->builder, value, mask, "");
 	current_value = LLVMBuildAnd(c->builder, current_value, LLVMConstNot(mask), "");
-	current_value = LLVMBuildOr(c->builder, current_value, value, "");
+	// Skip this op for LLVM14 if zero.
+	if (!LLVMIsNull(value)) current_value = LLVMBuildOr(c->builder, current_value, value, "");
 	llvm_store_value_raw(c, &parent, current_value);
 }
 static inline void llvm_emit_bitaccess(GenContext *c, BEValue *be_value, Expr *expr)
