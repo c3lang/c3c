@@ -1388,5 +1388,7 @@ void target_setup(BuildTarget *target)
 
 		// TODO remove
 	type_setup(&platform_target);
+
+
 }
 

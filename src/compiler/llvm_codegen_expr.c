@@ -790,7 +790,7 @@ static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_v
 			continue;
 		}
 
-		res = LLVMBuildOr(c->builder, element, res, "");
+		if (!LLVMIsNull(element)) res = LLVMBuildOr(c->builder, element, res, "");
 	}
 	if (big_endian)
 	{
@@ -893,7 +893,7 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 		LLVMValueRef current = llvm_load(c, c->byte_type, byte_ptr, alignment, "");
 		LLVMValueRef bit = llvm_emit_shl_fixed(c, LLVMConstInt(c->byte_type, 1, 0), start_bit % 8);
 		current = LLVMBuildAnd(c->builder, current, LLVMConstNot(bit), "");
-		current = LLVMBuildOr(c->builder, current, value, "");
+		if (!LLVMIsNull(value)) current = LLVMBuildOr(c->builder, current, value, "");
 		llvm_store(c, byte_ptr, current, alignment);
 		return;
 	}
@@ -942,7 +942,7 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 			// Empty the top bits.
 			current = LLVMBuildAnd(c->builder, current, mask, "");
 			// Use *or* with the top bits from "res":
-			current = LLVMBuildOr(c->builder, current, res, "");
+			if (!LLVMIsNull(res)) current = LLVMBuildOr(c->builder, current, res, "");
 			// And store it back.
 			llvm_store(c, byte_ptr, current, alignment);
 			// We now shift the value by the number of bits we used.
@@ -962,7 +962,7 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 			// Clear the lower bits.
 			current = LLVMBuildAnd(c->builder, current, LLVMConstNot(mask), "");
 			// Use *or* with the bottom bits from "value":
-			current = LLVMBuildOr(c->builder, current, value, "");
+			if (!LLVMIsNull(value)) current = LLVMBuildOr(c->builder, current, value, "");
 			// And store it back.
 			llvm_store(c, byte_ptr, current, alignment);
 			continue;
