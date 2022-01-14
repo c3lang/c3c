@@ -81,7 +81,7 @@ static bool x64_type_is_illegal_vector(Type *type)
 		return kind == TYPE_I128 || kind == TYPE_U128;
 	}
 	// Otherwise fine!
-	return true;
+	return false;
 }
 
 ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)

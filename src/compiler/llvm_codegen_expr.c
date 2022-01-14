@@ -4123,10 +4123,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 		{
 			// If we want we could optimize for structs by doing it by reference here.
 			assert(info->indirect.alignment == type_abi_alignment(type) || info->attributes.realign);
-			LLVMValueRef indirect = llvm_emit_alloca(c,
-			                                         llvm_get_type(c, type),
-			                                         info->indirect.alignment,
-			                                         "indirectarg");
+			LLVMValueRef indirect = llvm_emit_alloca(c, llvm_get_type(c, type), info->indirect.alignment, "indirectarg");
 			llvm_store_value_aligned(c, indirect, be_value, info->indirect.alignment);
 			vec_add(*args, indirect);
 			return;

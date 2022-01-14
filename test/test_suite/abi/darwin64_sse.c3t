@@ -43,6 +43,7 @@ fn void func43(Sa s) {
   func42(s);
 }
 
+
 /* #expect: test.ll
 
 declare void @f38(%St256* byval(%St256) align 32)

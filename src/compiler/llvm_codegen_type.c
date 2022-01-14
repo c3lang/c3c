@@ -204,7 +204,7 @@ static inline void add_func_type_param(GenContext *context, Type *param_type, AB
 			}
 			for (unsigned idx = 0; idx < arg_info->direct_coerce.elements; idx++)
 			{
-				vec_add(*params, coerce_type);
+			vec_add(*params, coerce_type);
 			}
 			break;
 		}
