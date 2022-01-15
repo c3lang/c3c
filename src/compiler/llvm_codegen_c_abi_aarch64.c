@@ -48,7 +48,11 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	if (type_is_homogenous_aggregate(type, &base, &members))
 	{
 		assert(members < 128);
-		return abi_arg_new_direct_coerce_array_type(base, (int8_t)members);
+		if (members > 1)
+		{
+			return abi_arg_new_direct_coerce_type(type_get_array(base, members));
+		}
+		return abi_arg_new_direct_coerce_type(base);
 	}
 
 	// Aggregates <= in registers
@@ -71,8 +75,12 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		// We use a pair of i64 for 16-byte aggregate with 8-byte alignment.
 		// For aggregates with 16-byte alignment, we use i128.
 		assert(alignment == 8 || alignment == 16);
-		assert(size / alignment < 128);
-		return abi_arg_new_direct_coerce_array_type(alignment == 8 ? type_ulong : type_u128, (int8_t)(size / alignment));
+
+		if (alignment == 16) return abi_arg_new_direct_coerce_type(type_u128);
+		ArraySize m = size / alignment;
+		if (m > 1) return abi_arg_new_direct_coerce_type(type_get_array(type_ulong, m));
+		return abi_arg_new_direct_coerce_type(type_ulong);
+
 	}
 
 	return abi_arg_new_indirect_not_by_val(type);
@@ -122,7 +130,15 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 	// Aggregates <= in registers
 	if (size <= 16)
 	{
-		// For RenderScript <= 16 needs to be coerced.
+		// For RenderScript <= 16 needs to be coerced to ints
+		// this is case is ignored here but needs to be added
+		// in case it is to be supported.
+
+		if (size <= 8 && !platform_target.big_endian)
+		{
+			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
+		}
+
 		unsigned alignment = type_abi_alignment(type);
 		// Align to multiple of 8.
 		unsigned aligned_size = aligned_offset(size, 8);

@@ -18,8 +18,10 @@ fn Test creator()
 
 // #expect: literal_load.ll
 
-declare void @blorg(i64)
+declare void @blorg(i64) #0
 
+define i32 @literal_load.creator() #0 {
+entry:
   %literal = alloca %Test, align 4
   %literal1 = alloca %Test, align 4
   %0 = bitcast %Test* %literal to i32*
@@ -32,5 +34,5 @@ declare void @blorg(i64)
   store i32 0, i32* %4, align 4
   %5 = getelementptr inbounds %Test, %Test* %literal1, i32 0, i32 0
   %6 = load i32, i32* %5, align 4
-  %7 = zext i32 %6 to i64
-  ret i64 %7
+  ret i32 %6
+}

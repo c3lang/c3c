@@ -189,6 +189,11 @@ ABIArgInfo *abi_arg_new_direct_coerce_type(Type *type)
 	return info;
 }
 
+ABIArgInfo *abi_arg_new_direct_coerce_to_struct_with_elements(Type *type, int8_t elements)
+{
+	TODO
+}
+
 ABIArgInfo *abi_arg_new_direct_coerce_array_type(Type *type, int8_t elements)
 {
 	assert(elements > 0);

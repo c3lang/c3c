@@ -15,7 +15,7 @@ extern fn Vector2 vector2_subtract_value(Vector2 v, float sub) { return Vector2 
 // #expect: abi.ll
 %Vector2 = type { float, float }
 
-define %Vector2 @vector2_zero()
+define %Vector2 @vector2_zero() #0 {
 entry:
   %literal = alloca %Vector2, align 4
   %0 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
@@ -26,7 +26,7 @@ entry:
   ret %Vector2 %2
 }
 
-define %Vector2 @vector2_one()
+define %Vector2 @vector2_one() #0 {
 entry:
   %literal = alloca %Vector2, align 4
   %0 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
@@ -37,83 +37,64 @@ entry:
   ret %Vector2 %2
 }
 
-
-define %Vector2 @vector2_add(float %0, float %1, float %2, float %3)
+define %Vector2 @vector2_add([2 x float] %0, [2 x float] %1) #0 {
 entry:
   %v1 = alloca %Vector2, align 4
   %v2 = alloca %Vector2, align 4
   %literal = alloca %Vector2, align 4
-  %coerce = bitcast %Vector2* %v1 to { float, float }*
-  %4 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 0
-  store float %0, float* %4, align 4
-  %5 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 1
-  store float %1, float* %5, align 4
-  %coerce1 = bitcast %Vector2* %v2 to { float, float }*
-  %6 = getelementptr inbounds { float, float }, { float, float }* %coerce1, i32 0, i32 0
-  store float %2, float* %6, align 4
-  %7 = getelementptr inbounds { float, float }, { float, float }* %coerce1, i32 0, i32 1
-  store float %3, float* %7, align 4
-  %8 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
-  store float 0.000000e+00, float* %8, align 4
-  %9 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 1
-  store float 0.000000e+00, float* %9, align 4
-  %10 = load %Vector2, %Vector2* %literal, align 4
-  ret %Vector2 %10
+  %2 = bitcast %Vector2* %v1 to [2 x float]*
+  store [2 x float] %0, [2 x float]* %2, align 4
+  %3 = bitcast %Vector2* %v2 to [2 x float]*
+  store [2 x float] %1, [2 x float]* %3, align 4
+  %4 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
+  store float 0.000000e+00, float* %4, align 4
+  %5 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 1
+  store float 0.000000e+00, float* %5, align 4
+  %6 = load %Vector2, %Vector2* %literal, align 4
+  ret %Vector2 %6
 }
 
-define %Vector2 @vector2_add_value(float %0, float %1, float %2)
+define %Vector2 @vector2_add_value([2 x float] %0, float %1) #0 {
 entry:
   %v = alloca %Vector2, align 4
   %literal = alloca %Vector2, align 4
-  %coerce = bitcast %Vector2* %v to { float, float }*
-  %3 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 0
-  store float %0, float* %3, align 4
-  %4 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 1
-  store float %1, float* %4, align 4
-  %5 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
-  store float 0.000000e+00, float* %5, align 4
-  %6 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 1
-  store float 0.000000e+00, float* %6, align 4
-  %7 = load %Vector2, %Vector2* %literal, align 4
-  ret %Vector2 %7
+  %2 = bitcast %Vector2* %v to [2 x float]*
+  store [2 x float] %0, [2 x float]* %2, align 4
+  %3 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
+  store float 0.000000e+00, float* %3, align 4
+  %4 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 1
+  store float 0.000000e+00, float* %4, align 4
+  %5 = load %Vector2, %Vector2* %literal, align 4
+  ret %Vector2 %5
 }
 
-define %Vector2 @vector2_subtract(float %0, float %1, float %2, float %3)
+define %Vector2 @vector2_subtract([2 x float] %0, [2 x float] %1) #0 {
 entry:
   %v1 = alloca %Vector2, align 4
   %v2 = alloca %Vector2, align 4
   %literal = alloca %Vector2, align 4
-  %coerce = bitcast %Vector2* %v1 to { float, float }*
-  %4 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 0
-  store float %0, float* %4, align 4
-  %5 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 1
-  store float %1, float* %5, align 4
-  %coerce1 = bitcast %Vector2* %v2 to { float, float }*
-  %6 = getelementptr inbounds { float, float }, { float, float }* %coerce1, i32 0, i32 0
-  store float %2, float* %6, align 4
-  %7 = getelementptr inbounds { float, float }, { float, float }* %coerce1, i32 0, i32 1
-  store float %3, float* %7, align 4
-  %8 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
-  store float 0.000000e+00, float* %8, align 4
-  %9 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 1
-  store float 0.000000e+00, float* %9, align 4
-  %10 = load %Vector2, %Vector2* %literal, align 4
-  ret %Vector2 %10
+  %2 = bitcast %Vector2* %v1 to [2 x float]*
+  store [2 x float] %0, [2 x float]* %2, align 4
+  %3 = bitcast %Vector2* %v2 to [2 x float]*
+  store [2 x float] %1, [2 x float]* %3, align 4
+  %4 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
+  store float 0.000000e+00, float* %4, align 4
+  %5 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 1
+  store float 0.000000e+00, float* %5, align 4
+  %6 = load %Vector2, %Vector2* %literal, align 4
+  ret %Vector2 %6
 }
 
-define %Vector2 @vector2_subtract_value(float %0, float %1, float %2)
+define %Vector2 @vector2_subtract_value([2 x float] %0, float %1) #0 {
 entry:
   %v = alloca %Vector2, align 4
   %literal = alloca %Vector2, align 4
-  %coerce = bitcast %Vector2* %v to { float, float }*
-  %3 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 0
-  store float %0, float* %3, align 4
-  %4 = getelementptr inbounds { float, float }, { float, float }* %coerce, i32 0, i32 1
-  store float %1, float* %4, align 4
-  %5 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
-  store float 0.000000e+00, float* %5, align 4
-  %6 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 1
-  store float 0.000000e+00, float* %6, align 4
-  %7 = load %Vector2, %Vector2* %literal, align 4
-  ret %Vector2 %7
+  %2 = bitcast %Vector2* %v to [2 x float]*
+  store [2 x float] %0, [2 x float]* %2, align 4
+  %3 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 0
+  store float 0.000000e+00, float* %3, align 4
+  %4 = getelementptr inbounds %Vector2, %Vector2* %literal, i32 0, i32 1
+  store float 0.000000e+00, float* %4, align 4
+  %5 = load %Vector2, %Vector2* %literal, align 4
+  ret %Vector2 %5
 }

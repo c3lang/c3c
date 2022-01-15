@@ -15,7 +15,7 @@ fn Event test(int x)
 
 // #expect: test.ll
 
-define i64 @test.test(i32 %0) #0 {
+define i32 @test.test(i32 %0) #0 {
 entry:
   %foo = alloca %Event, align 4
   %bar = alloca %Event, align 4
@@ -40,6 +40,5 @@ cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   store %Event %val, %Event* %taddr, align 4
   %5 = getelementptr inbounds %Event, %Event* %taddr, i32 0, i32 0
   %6 = load i32, i32* %5, align 4
-  %7 = zext i32 %6 to i64
-  ret i64 %7
+  ret i32 %6
 }

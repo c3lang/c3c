@@ -1,4 +1,3 @@
-// #skipped
 // #target: aarch64-darwin
 module test;
 define Int8x16 = ichar[<16>];
@@ -15,12 +14,10 @@ struct MixedHFAv3
     Int8x16 b;
 }
 
-// CHECK: define{{.*}} %struct.HFAv3 @test([4 x <4 x float>] %{{.*}}, [4 x <4 x float>] %{{.*}}, [4 x <4 x float>] %{{.*}})
 fn HFAv3 test(HFAv3 a0, HFAv3 a1, HFAv3 a2) {
   return a2;
 }
 
-// CHECK: define{{.*}} %struct.MixedHFAv3 @test_mixed([4 x <4 x float>] %{{.*}}, [4 x <4 x float>] %{{.*}}, [4 x <4 x float>] %{{.*}})
 fn MixedHFAv3 test_mixed(MixedHFAv3 a0, MixedHFAv3 a1, MixedHFAv3 a2) {
   return a2;
 }
@@ -31,78 +28,5 @@ fn MixedHFAv3 test_mixed(MixedHFAv3 a0, MixedHFAv3 a1, MixedHFAv3 a2) {
 %HFAv3 = type { [4 x <3 x float>] }
 %MixedHFAv3 = type { [3 x <3 x float>], <16 x i8> }
 
-// CHECK: define{{.*}} %struct.HFAv3 @test([4 x <4 x float>] %{{.*}}, [4 x <4 x float>] %{{.*}}, [4 x <4 x float>] %{{.*}})
-
-define %HFAv3 @test.test(<4 x float> %0, <4 x float> %1, <4 x float> %2, <4 x float> %3, <4 x float> %4, <4 x float> %5, <4 x float> %6, <4 x float> %7, <4 x float> %8, <4 x float> %9, <4 x float> %10, <4 x float> %11) #0 {
-entry:
-  %a0 = alloca %HFAv3, align 16
-  %a1 = alloca %HFAv3, align 16
-  %a2 = alloca %HFAv3, align 16
-  %coerce = bitcast %HFAv3* %a0 to { <4 x float>, <4 x float>, <4 x float>, <4 x float> }*
-  %12 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce, i32 0, i32 0
-  store <4 x float> %0, <4 x float>* %12, align 16
-  %13 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce, i32 0, i32 1
-  store <4 x float> %1, <4 x float>* %13, align 16
-  %14 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce, i32 0, i32 2
-  store <4 x float> %2, <4 x float>* %14, align 16
-  %15 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce, i32 0, i32 3
-  store <4 x float> %3, <4 x float>* %15, align 16
-  %coerce1 = bitcast %HFAv3* %a1 to { <4 x float>, <4 x float>, <4 x float>, <4 x float> }*
-  %16 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce1, i32 0, i32 0
-  store <4 x float> %4, <4 x float>* %16, align 16
-  %17 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce1, i32 0, i32 1
-  store <4 x float> %5, <4 x float>* %17, align 16
-  %18 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce1, i32 0, i32 2
-  store <4 x float> %6, <4 x float>* %18, align 16
-  %19 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce1, i32 0, i32 3
-  store <4 x float> %7, <4 x float>* %19, align 16
-  %coerce2 = bitcast %HFAv3* %a2 to { <4 x float>, <4 x float>, <4 x float>, <4 x float> }*
-  %20 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce2, i32 0, i32 0
-  store <4 x float> %8, <4 x float>* %20, align 16
-  %21 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce2, i32 0, i32 1
-  store <4 x float> %9, <4 x float>* %21, align 16
-  %22 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce2, i32 0, i32 2
-  store <4 x float> %10, <4 x float>* %22, align 16
-  %23 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce2, i32 0, i32 3
-  store <4 x float> %11, <4 x float>* %23, align 16
-  %24 = load %HFAv3, %HFAv3* %a2, align 16
-  ret %HFAv3 %24
-}
-
-; Function Attrs: nounwind
-define %MixedHFAv3 @test.test_mixed(<4 x float> %0, <4 x float> %1, <4 x float> %2, <4 x float> %3, <4 x float> %4, <4 x float> %5, <4 x float> %6, <4 x float> %7, <4 x float> %8, <4 x float> %9, <4 x float> %10, <4 x float> %11) #0 {
-entry:
-  %a0 = alloca %MixedHFAv3, align 16
-  %a1 = alloca %MixedHFAv3, align 16
-  %a2 = alloca %MixedHFAv3, align 16
-  %coerce = bitcast %MixedHFAv3* %a0 to { <4 x float>, <4 x float>, <4 x float>, <4 x float> }*
-  %12 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce, i32 0, i32 0
-  store <4 x float> %0, <4 x float>* %12, align 16
-  %13 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce, i32 0, i32 1
-  store <4 x float> %1, <4 x float>* %13, align 16
-  %14 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce, i32 0, i32 2
-  store <4 x float> %2, <4 x float>* %14, align 16
-  %15 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce, i32 0, i32 3
-  store <4 x float> %3, <4 x float>* %15, align 16
-  %coerce1 = bitcast %MixedHFAv3* %a1 to { <4 x float>, <4 x float>, <4 x float>, <4 x float> }*
-  %16 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce1, i32 0, i32 0
-  store <4 x float> %4, <4 x float>* %16, align 16
-  %17 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce1, i32 0, i32 1
-  store <4 x float> %5, <4 x float>* %17, align 16
-  %18 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce1, i32 0, i32 2
-  store <4 x float> %6, <4 x float>* %18, align 16
-  %19 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce1, i32 0, i32 3
-  store <4 x float> %7, <4 x float>* %19, align 16
-  %coerce2 = bitcast %MixedHFAv3* %a2 to { <4 x float>, <4 x float>, <4 x float>, <4 x float> }*
-  %20 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce2, i32 0, i32 0
-  store <4 x float> %8, <4 x float>* %20, align 16
-  %21 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce2, i32 0, i32 1
-  store <4 x float> %9, <4 x float>* %21, align 16
-  %22 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce2, i32 0, i32 2
-  store <4 x float> %10, <4 x float>* %22, align 16
-  %23 = getelementptr inbounds { <4 x float>, <4 x float>, <4 x float>, <4 x float> }, { <4 x float>, <4 x float>, <4 x float>, <4 x float> }* %coerce2, i32 0, i32 3
-  store <4 x float> %11, <4 x float>* %23, align 16
-  %24 = load %MixedHFAv3, %MixedHFAv3* %a2, align 16
-  ret %MixedHFAv3 %24
-}
-
+define %HFAv3 @test.test([4 x <4 x float>] %0, [4 x <4 x float>] %1, [4 x <4 x float>] %2)
+define %MixedHFAv3 @test.test_mixed([4 x <4 x float>] %0, [4 x <4 x float>] %1, [4 x <4 x float>] %2) #0 {
