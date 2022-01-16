@@ -222,7 +222,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 				}
 			}
 			// This is not a single field struct, so we wrap it in an int.
-			return abi_arg_new_direct_coerce_bits(size * 8);
+			return abi_arg_new_direct_coerce_int();
 		}
 		return create_indirect_return_x86(type, regs);
 	}

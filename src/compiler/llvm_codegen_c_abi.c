@@ -49,6 +49,7 @@ bool abi_arg_is_indirect(ABIArgInfo *info)
 		case ABI_ARG_IGNORE:
 		case ABI_ARG_DIRECT:
 		case ABI_ARG_DIRECT_COERCE:
+		case ABI_ARG_DIRECT_COERCE_INT:
 		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_DIRECT_PAIR:
@@ -184,27 +185,16 @@ ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType first_element, unsigned initi
 	return arg;
 }
 
-ABIArgInfo *abi_arg_new_direct_coerce_bits(BitSize bits)
+ABIArgInfo *abi_arg_new_direct_coerce_int(void)
 {
-	assert(bits >= 8);
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
-	abi_type_set_int_bits(&info->direct_coerce_type, bits);
-	return info;
-}
-
-ABIArgInfo *abi_arg_new_direct_coerce(AbiType type)
-{
-	assert(abi_type_is_valid(type));
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
-	info->direct_coerce_type = type;
-	return info;
+	return abi_arg_new(ABI_ARG_DIRECT_COERCE_INT);
 }
 
 ABIArgInfo *abi_arg_new_direct_coerce_type(Type *type)
 {
 	assert(type);
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
-	abi_type_set_type(&info->direct_coerce_type, type);
+	info->direct_coerce_type = type->canonical;
 	return info;
 }
 

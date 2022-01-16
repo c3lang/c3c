@@ -4150,7 +4150,18 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 		}
 		case ABI_ARG_DIRECT_COERCE:
 		{
-			LLVMTypeRef coerce_type = llvm_abi_type(c, info->direct_coerce_type);
+			LLVMTypeRef coerce_type = llvm_get_type(c, info->direct_coerce_type);
+			if (coerce_type == llvm_get_type(c, type))
+			{
+				vec_add(*args, llvm_load_value_store(c, be_value));
+				return;
+			}
+			vec_add(*args, llvm_emit_coerce(c, coerce_type, be_value, type));
+			return;
+		}
+		case ABI_ARG_DIRECT_COERCE_INT:
+		{
+			LLVMTypeRef coerce_type = LLVMIntTypeInContext(c->context, type_size(type) * 8);
 			if (coerce_type == llvm_get_type(c, type))
 			{
 				vec_add(*args, llvm_load_value_store(c, be_value));
@@ -4467,6 +4478,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			UNREACHABLE
 		case ABI_ARG_DIRECT_PAIR:
 		case ABI_ARG_IGNORE:
+		case ABI_ARG_DIRECT_COERCE_INT:
 		case ABI_ARG_DIRECT_COERCE:
 		case ABI_ARG_DIRECT:
 		case ABI_ARG_EXPAND_COERCE:
@@ -4697,15 +4709,33 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		case ABI_ARG_DIRECT:
 			llvm_value_set(result_value, call_value, call_return_type);
 			break;
+		case ABI_ARG_DIRECT_COERCE_INT:
+		{
+			// 16. A direct coerce, this is basically "call result" bitcast return type.
+
+			// 16a. Get the type of the return.
+			LLVMTypeRef coerce = LLVMIntTypeInContext(c->context, type_size(call_return_type) * 8);
+
+			// 16b. If we don't have any coerce type, or the actual LLVM types are the same, we're done.
+			if (coerce == llvm_get_type(c, call_return_type))
+			{
+				// 16c. We just set as a value in be_value.
+				llvm_value_set(result_value, call_value, call_return_type);
+				break;
+			}
+			// 16c. We use a normal bitcast coerce.
+			llvm_emit_convert_value_from_coerced(c, result_value, coerce, call_value, call_return_type);
+			break;
+		}
 		case ABI_ARG_DIRECT_COERCE:
 		{
 			// 16. A direct coerce, this is basically "call result" bitcast return type.
 
 			// 16a. Get the type of the return.
-			LLVMTypeRef coerce = llvm_abi_type(c, ret_info->direct_coerce_type);
+			LLVMTypeRef coerce = llvm_get_type(c, ret_info->direct_coerce_type);
 
 			// 16b. If we don't have any coerce type, or the actual LLVM types are the same, we're done.
-			if (!coerce || coerce == llvm_get_type(c, call_return_type))
+			if (coerce == llvm_get_type(c, call_return_type))
 			{
 				// 16c. We just set as a value in be_value.
 				llvm_value_set(result_value, call_value, call_return_type);

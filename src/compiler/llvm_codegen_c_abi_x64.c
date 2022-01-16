@@ -115,7 +115,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
 		ByteSize size = type_size(type);
 		if (align <= 8 && size <= 8)
 		{
-			return abi_arg_new_direct_coerce_bits(size * 8);
+			return abi_arg_new_direct_coerce_int();
 		}
 	}
 	if (align < 8)
@@ -730,12 +730,16 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 	// first class struct aggregate with the high and low part: {low, high}
 	if (abi_type_is_valid(high_part)) return x64_get_argument_pair_return(result_type, high_part);
 
-	if (abi_type_is_type(result_type) &&
-		return_type->canonical == result_type.type->canonical)
+	if (abi_type_is_type(result_type))
 	{
-		return abi_arg_new_direct();
+		if (return_type->canonical == result_type.type->canonical)
+		{
+			return abi_arg_new_direct();
+		}
+		return abi_arg_new_direct_coerce_type(result_type.type->canonical);
 	}
-	return abi_arg_new_direct_coerce(result_type);
+	assert(result_type.int_bits_plus_1 - 1 == type_size(return_type) * 8);
+	return abi_arg_new_direct_coerce_int();
 }
 
 /**
@@ -827,8 +831,10 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 		{
 			return abi_arg_new_direct();
 		}
+		return abi_arg_new_direct_coerce_type(result);
 	}
-	return abi_arg_new_direct_coerce(result_type);
+	assert(result_type.int_bits_plus_1 - 1 == type_size(type) * 8);
+	return abi_arg_new_direct_coerce_int();
 }
 
 bool x64_type_is_structure(Type *type)

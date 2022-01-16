@@ -198,11 +198,17 @@ static inline void add_func_type_param(GenContext *context, Type *param_type, AB
 			}
 			break;
 		}
+		case ABI_ARG_DIRECT_COERCE_INT:
+		{
+			// Normal direct.
+			LLVMTypeRef coerce_type = LLVMIntTypeInContext(context->context, type_size(param_type) * 8);
+			vec_add(*params, coerce_type);
+			break;
+		}
 		case ABI_ARG_DIRECT_COERCE:
 		{
 			// Normal direct.
-			assert(abi_type_is_valid(arg_info->direct_coerce_type));
-			LLVMTypeRef coerce_type = llvm_abi_type(context, arg_info->direct_coerce_type);
+			LLVMTypeRef coerce_type = llvm_get_type(context, arg_info->direct_coerce_type);
 			vec_add(*params, coerce_type);
 			break;
 		}
@@ -262,9 +268,11 @@ LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype)
 			break;
 		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 			UNREACHABLE
+		case ABI_ARG_DIRECT_COERCE_INT:
+			return_type = LLVMIntTypeInContext(context->context, type_size(call_return_type) * 8);
+			break;
 		case ABI_ARG_DIRECT_COERCE:
-			return_type = llvm_abi_type(context, ret_arg_info->direct_coerce_type);
-			if (!return_type) return_type = llvm_get_type(context, call_return_type);
+			return_type = llvm_get_type(context, ret_arg_info->direct_coerce_type);
 			break;
 	}
 
@@ -421,6 +429,7 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 		case ABI_ARG_DIRECT_COERCE:
 		case ABI_ARG_INDIRECT:
 		case ABI_ARG_EXPAND:
+		case ABI_ARG_DIRECT_COERCE_INT:
 			UNREACHABLE
 	}
 	UNREACHABLE

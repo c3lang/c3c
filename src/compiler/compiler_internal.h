@@ -1480,6 +1480,7 @@ typedef enum
 	ABI_ARG_DIRECT,
 	ABI_ARG_DIRECT_PAIR,
 	ABI_ARG_DIRECT_COERCE,
+	ABI_ARG_DIRECT_COERCE_INT,
 	ABI_ARG_DIRECT_SPLIT_STRUCT,
 	ABI_ARG_EXPAND_COERCE,
 	ABI_ARG_INDIRECT,
@@ -1533,7 +1534,7 @@ typedef struct ABIArgInfo_
 			AbiType lo;
 			AbiType hi;
 		} coerce_expand;
-		AbiType direct_coerce_type;
+		Type *direct_coerce_type;
 		struct
 		{
 			Type *type;
