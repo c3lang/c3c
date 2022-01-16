@@ -245,6 +245,13 @@ bool lit_integer_to_enum(Expr *expr, Type *canonical, Type *type)
 
 static bool int_conversion(Expr *expr, CastKind kind, Type *canonical, Type *type)
 {
+	// Fold pointer casts if narrowing
+	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_PTRXI
+	    && type_size(type) <= type_size(expr->type))
+	{
+		expr->type = type;
+		return true;
+	}
 	if (insert_runtime_cast_unless_const(expr, kind, type)) return true;
 
 	expr->const_expr.ixx = int_conv(expr->const_expr.ixx, canonical->type_kind);

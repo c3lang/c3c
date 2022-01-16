@@ -1300,7 +1300,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			llvm_value_rvalue(c, value);
 			value->value = type_convert_will_trunc(to_type, from_type)
 			       ? LLVMBuildTrunc(c->builder, value->value, llvm_get_type(c, to_type), "siuitrunc")
-			       : LLVMBuildZExt(c->builder, value->value, llvm_get_type(c, to_type), "siuiext");
+			       : LLVMBuildSExt(c->builder, value->value, llvm_get_type(c, to_type), "siuiext");
 			break;
 		case CAST_SIFP:
 			llvm_value_rvalue(c, value);

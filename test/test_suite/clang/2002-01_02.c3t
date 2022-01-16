@@ -234,9 +234,8 @@ if.then:                                          ; preds = %loop.body
   %3 = load %Edge_rec*, %Edge_rec** %basel, align 8
   %4 = getelementptr inbounds %Edge_rec, %Edge_rec* %3, i32 0, i32 1
   %5 = load %Edge_rec*, %Edge_rec** %4, align 8
-  %ptrxi = ptrtoint %Edge_rec* %5 to i64
-  %sisitrunc = trunc i64 %ptrxi to i32
-  ret i32 %sisitrunc
+  %ptrxi = ptrtoint %Edge_rec* %5 to i32
+  ret i32 %ptrxi
 
 if.exit:                                          ; preds = %loop.body
   br label %loop.body
