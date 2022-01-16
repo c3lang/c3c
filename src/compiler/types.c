@@ -21,7 +21,7 @@ Type *type_voidptr = &t.voidstar;
 Type *type_half = &t.f16;
 Type *type_float = &t.f32;
 Type *type_double = &t.f64;
-Type *type_quad = &t.f128;
+Type *type_f128 = &t.f128;
 Type *type_typeid = &t.typeid;
 Type *type_any = &t.any;
 Type *type_typeinfo = &t.typeinfo;
@@ -1306,6 +1306,8 @@ Type *type_from_token(TokenType type)
 			return type_double;
 		case TOKEN_FLOAT:
 			return type_float;
+		case TOKEN_FLOAT128:
+			return type_f128;
 		case TOKEN_INT128:
 			return type_i128;
 		case TOKEN_ICHAR:

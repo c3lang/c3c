@@ -469,7 +469,7 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[AARCH64_LINUX] = "aarch64-unknown-linux-gnu",
 		[AARCH64_DARWIN] = "aarch64-apple-darwin",
 		[RISCV32_LINUX] = "riscv32-unknown-linux",
-		[RISCV64_LINUX] = "riscv32-unknown-linux",
+		[RISCV64_LINUX] = "riscv64-unknown-linux",
 		[WASM32] = "wasm32-unknown-unknown",
 		[WASM64] = "wasm64-unknown-unknown",
 };
@@ -817,6 +817,8 @@ static unsigned os_target_supports_int128(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
+		case ARCH_TYPE_RISCV64:
+			return true;
 		case ARCH_TYPE_AARCH64:
 			return true;
 		case ARCH_TYPE_PPC:
@@ -1328,10 +1330,10 @@ void target_setup(BuildTarget *target)
 			break;
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_RISCV32:
-			platform_target.riscv.xlen = 0; // pointer width
-			platform_target.riscv.flen = 32; // ends with f / d (64)
+			platform_target.riscv.xlen = arch_pointer_bit_width(platform_target.os, platform_target.arch) / 8; // pointer width
+			platform_target.riscv.flen = 0; // ends with f / d (64)
 			platform_target.abi = ABI_RISCV;
-			TODO
+			break;
 		case ARCH_TYPE_X86:
 			target_setup_x86_abi(target);
 			break;

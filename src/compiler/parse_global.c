@@ -1118,6 +1118,7 @@ bool parse_parameters(ParseContext *context, Visibility visibility, Decl ***para
 				ASSIGN_EXPR_ELSE(param->var.init_expr, parse_initializer(context), false);
 			}
 		}
+		if (!parse_attributes(context, &param->attributes)) return false;
 		var_arg_found |= ellipsis;
 		param->var.vararg = ellipsis;
 		vec_add(params, param);

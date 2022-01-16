@@ -4131,30 +4131,32 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef **args, ABIArgInfo *info, B
 		case ABI_ARG_DIRECT:
 			vec_add(*args, llvm_load_value_store(c, be_value));
 			return;
-		case ABI_ARG_DIRECT_COERCE:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		{
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			if (!coerce_type || coerce_type == llvm_get_type(c, type))
-			{
-				vec_add(*args, llvm_load_value_store(c, be_value));
-				return;
-			}
-			if (!abi_info_should_flatten(info))
-			{
-				vec_add(*args, llvm_emit_coerce(c, coerce_type, be_value, type));
-				return;
-			}
+			assert(coerce_type && coerce_type != llvm_get_type(c, type));
 			AlignSize target_alignment = llvm_abi_alignment(c, coerce_type);
 
 			AlignSize alignment;
 			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, coerce_type, target_alignment, &alignment);
-			LLVMTypeRef element = llvm_abi_type(c, info->direct_coerce.type);
-			for (unsigned idx = 0; idx < info->direct_coerce.elements; idx++)
+			LLVMTypeRef element = llvm_get_type(c, info->direct_struct_expand.type);
+			for (unsigned idx = 0; idx < info->direct_struct_expand.elements; idx++)
 			{
 				AlignSize load_align;
 				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, alignment, &load_align);
 				vec_add(*args, llvm_load(c, element, element_ptr, load_align, ""));
 			}
+			return;
+		}
+		case ABI_ARG_DIRECT_COERCE:
+		{
+			LLVMTypeRef coerce_type = llvm_abi_type(c, info->direct_coerce_type);
+			if (coerce_type == llvm_get_type(c, type))
+			{
+				vec_add(*args, llvm_load_value_store(c, be_value));
+				return;
+			}
+			vec_add(*args, llvm_emit_coerce(c, coerce_type, be_value, type));
 			return;
 		}
 		case ABI_ARG_DIRECT_PAIR:
@@ -4461,6 +4463,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			vec_add(values, result_value->value);
 			break;
 		case ABI_ARG_EXPAND:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 			UNREACHABLE
 		case ABI_ARG_DIRECT_PAIR:
 		case ABI_ARG_IGNORE:
@@ -4609,6 +4612,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	switch (ret_info->kind)
 	{
 		case ABI_ARG_EXPAND:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 			UNREACHABLE
 		case ABI_ARG_IGNORE:
 			// 12. Basically void returns or empty structs.
@@ -4698,7 +4702,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			// 16. A direct coerce, this is basically "call result" bitcast return type.
 
 			// 16a. Get the type of the return.
-			LLVMTypeRef coerce = llvm_get_coerce_type(c, ret_info);
+			LLVMTypeRef coerce = llvm_abi_type(c, ret_info->direct_coerce_type);
 
 			// 16b. If we don't have any coerce type, or the actual LLVM types are the same, we're done.
 			if (!coerce || coerce == llvm_get_type(c, call_return_type))
@@ -4708,7 +4712,6 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 				break;
 			}
 			// 16c. We use a normal bitcast coerce.
-			assert(!abi_info_should_flatten(ret_info) && "Did not expect flattening on return types.");
 			llvm_emit_convert_value_from_coerced(c, result_value, coerce, call_value, call_return_type);
 			break;
 		}

@@ -188,24 +188,22 @@ static inline void add_func_type_param(GenContext *context, Type *param_type, AB
 		case ABI_ARG_DIRECT:
 			vec_add(*params, llvm_get_type(context, param_type));
 			break;
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		{
+			// Normal direct.
+			LLVMTypeRef coerce_type = llvm_get_type(context, arg_info->direct_struct_expand.type);
+			for (unsigned idx = 0; idx < arg_info->direct_struct_expand.elements; idx++)
+			{
+				vec_add(*params, coerce_type);
+			}
+			break;
+		}
 		case ABI_ARG_DIRECT_COERCE:
 		{
 			// Normal direct.
-			if (!abi_type_is_valid(arg_info->direct_coerce.type))
-			{
-				vec_add(*params, llvm_get_type(context, param_type));
-				break;
-			}
-			LLVMTypeRef coerce_type = llvm_abi_type(context, arg_info->direct_coerce.type);
-			if (!abi_info_should_flatten(arg_info))
-			{
-				vec_add(*params, coerce_type);
-				break;
-			}
-			for (unsigned idx = 0; idx < arg_info->direct_coerce.elements; idx++)
-			{
+			assert(abi_type_is_valid(arg_info->direct_coerce_type));
+			LLVMTypeRef coerce_type = llvm_abi_type(context, arg_info->direct_coerce_type);
 			vec_add(*params, coerce_type);
-			}
 			break;
 		}
 		case ABI_ARG_DIRECT_PAIR:
@@ -262,9 +260,10 @@ LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype)
 		case ABI_ARG_DIRECT:
 			return_type = llvm_get_type(context, call_return_type);
 			break;
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+			UNREACHABLE
 		case ABI_ARG_DIRECT_COERCE:
-			assert(!abi_info_should_flatten(ret_arg_info));
-			return_type = llvm_get_coerce_type(context, ret_arg_info);
+			return_type = llvm_abi_type(context, ret_arg_info->direct_coerce_type);
 			if (!return_type) return_type = llvm_get_type(context, call_return_type);
 			break;
 	}
@@ -376,50 +375,54 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 
 LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 {
-	if (arg_info->kind == ABI_ARG_EXPAND_COERCE)
+	switch (arg_info->kind)
 	{
-		unsigned element_index = 0;
-		LLVMTypeRef elements[4];
-		// Add optional padding to make the data appear at the correct offset.
-		if (arg_info->coerce_expand.offset_lo)
+		case ABI_ARG_EXPAND_COERCE:
 		{
-			elements[element_index++] = llvm_const_padding_type(c, arg_info->coerce_expand.offset_lo);
+			unsigned element_index = 0;
+			LLVMTypeRef elements[4];
+			// Add optional padding to make the data appear at the correct offset.
+			if (arg_info->coerce_expand.offset_lo)
+			{
+				elements[element_index++] = llvm_const_padding_type(c, arg_info->coerce_expand.offset_lo);
+			}
+			elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.lo);
+			// Add optional padding to make the high field appear at the correct off.
+			if (arg_info->coerce_expand.padding_hi)
+			{
+				elements[element_index++] = LLVMArrayType(llvm_get_type(c, type_char), arg_info->coerce_expand.padding_hi);
+			}
+			// Check if there is a top type as well.
+			if (abi_type_is_valid(arg_info->coerce_expand.hi))
+			{
+				elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.hi);
+			}
+			return LLVMStructType(elements, element_index, arg_info->coerce_expand.packed);
 		}
-		elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.lo);
-		// Add optional padding to make the high field appear at the correct off.
-		if (arg_info->coerce_expand.padding_hi)
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		{
-			elements[element_index++] = LLVMArrayType(llvm_get_type(c, type_char), arg_info->coerce_expand.padding_hi);
+			LLVMTypeRef coerce_type = llvm_get_type(c, arg_info->direct_struct_expand.type);
+			assert(arg_info->direct_struct_expand.elements > 1U);
+			LLVMTypeRef *refs = MALLOC(sizeof(LLVMValueRef) * arg_info->direct_struct_expand.elements);
+			for (unsigned i = 0; i < arg_info->direct_struct_expand.elements; i++)
+			{
+				refs[i] = coerce_type;
+			}
+			return LLVMStructTypeInContext(c->context, refs, arg_info->direct_struct_expand.elements, false);
 		}
-		// Check if there is a top type as well.
-		if (abi_type_is_valid(arg_info->coerce_expand.hi))
+		case ABI_ARG_DIRECT_PAIR:
 		{
-			elements[element_index++] = llvm_abi_type(c, arg_info->coerce_expand.hi);
+			LLVMTypeRef lo = llvm_abi_type(c, arg_info->direct_pair.lo);
+			LLVMTypeRef hi = llvm_abi_type(c, arg_info->direct_pair.hi);
+			return llvm_get_twostruct(c, lo, hi);
 		}
-		return LLVMStructType(elements, element_index, arg_info->coerce_expand.packed);
+		case ABI_ARG_IGNORE:
+		case ABI_ARG_DIRECT:
+		case ABI_ARG_DIRECT_COERCE:
+		case ABI_ARG_INDIRECT:
+		case ABI_ARG_EXPAND:
+			UNREACHABLE
 	}
-
-	if (arg_info->kind == ABI_ARG_DIRECT_COERCE)
-	{
-		assert(abi_type_is_valid(arg_info->direct_coerce.type));
-		if (!abi_type_is_valid(arg_info->direct_coerce.type)) return NULL;
-		LLVMTypeRef coerce_type = llvm_abi_type(c, arg_info->direct_coerce.type);
-		if (arg_info->direct_coerce.elements < 2U) return coerce_type;
-		LLVMTypeRef *refs = MALLOC(sizeof(LLVMValueRef) * arg_info->direct_coerce.elements);
-		for (unsigned i = 0; i < arg_info->direct_coerce.elements; i++)
-		{
-			refs[i] = coerce_type;
-		}
-		return LLVMStructTypeInContext(c->context, refs, arg_info->direct_coerce.elements, false);
-	}
-	if (arg_info->kind == ABI_ARG_DIRECT_PAIR)
-	{
-		LLVMTypeRef lo = llvm_abi_type(c, arg_info->direct_pair.lo);
-		LLVMTypeRef hi = llvm_abi_type(c, arg_info->direct_pair.hi);
-		return llvm_get_twostruct(c, lo, hi);
-	}
-
-	assert(arg_info->kind != ABI_ARG_DIRECT);
 	UNREACHABLE
 }
 

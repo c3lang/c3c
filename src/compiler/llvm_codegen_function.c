@@ -186,39 +186,40 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			llvm_emit_and_set_decl_alloca(c, decl);
 			llvm_store_decl_raw(c, decl, llvm_get_next_param(c, index));
 			return;
-		case ABI_ARG_DIRECT_COERCE:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		{
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			if (!coerce_type || coerce_type == llvm_get_type(c, decl->type))
-			{
-				goto DIRECT_FROM_COERCE;
-			}
 			llvm_emit_and_set_decl_alloca(c, decl);
 
-			// If we're not flattening, we simply do a store.
-			if (!abi_info_should_flatten(info))
-			{
-				LLVMValueRef param = llvm_get_next_param(c, index);
-				// Store it with the alignment of the decl.
-				llvm_emit_coerce_store(c, decl->backend_ref, decl->alignment, coerce_type, param, llvm_get_type(c, decl->type));
-				return;
-			}
-
 			// In this case we've been flattening the parameter into multiple registers.
-			LLVMTypeRef element_type = llvm_abi_type(c, info->direct_coerce.type);
+			LLVMTypeRef element_type = llvm_get_type(c, info->direct_struct_expand.type);
 
 			// Cast to the coerce type.
 			LLVMValueRef cast = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
 
 			AlignSize decl_alignment = decl->alignment;
 			// Store each expanded parameter.
-			for (unsigned idx = 0; idx < info->direct_coerce.elements; idx++)
+			for (unsigned idx = 0; idx < info->direct_struct_expand.elements; idx++)
 			{
 				AlignSize align;
 				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, decl_alignment, &align);
 				LLVMValueRef value = llvm_get_next_param(c, index);
 				llvm_store(c, element_ptr, value, align);
 			}
+			return;
+		}
+		case ABI_ARG_DIRECT_COERCE:
+		{
+			LLVMTypeRef coerce_type = llvm_abi_type(c, info->direct_coerce_type);
+			if (coerce_type == llvm_get_type(c, decl->type))
+			{
+				goto DIRECT_FROM_COERCE;
+			}
+			llvm_emit_and_set_decl_alloca(c, decl);
+
+			LLVMValueRef param = llvm_get_next_param(c, index);
+			// Store it with the alignment of the decl.
+			llvm_emit_coerce_store(c, decl->backend_ref, decl->alignment, coerce_type, param, llvm_get_type(c, decl->type));
 			return;
 		}
 		case ABI_ARG_EXPAND:
@@ -296,6 +297,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 		case ABI_ARG_IGNORE:
 			llvm_emit_return_value(c, NULL);
 			return;
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		case ABI_ARG_EXPAND:
 			// Expands to multiple slots -
 			// Not applicable to return values.
@@ -340,20 +342,21 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			break;
 		}
 		case ABI_ARG_DIRECT:
+DIRECT_RETURN:
 			// The normal return
 			llvm_emit_return_value(c, llvm_load_value_store(c, return_value));
 			return;
 		case ABI_ARG_DIRECT_PAIR:
-		case ABI_ARG_DIRECT_COERCE:
 		{
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			if (!coerce_type || coerce_type == llvm_get_type(c, call_return_type))
-			{
-				// The normal return
-				llvm_emit_return_value(c, llvm_load_value_store(c, return_value));
-				return;
-			}
-			assert(!abi_info_should_flatten(info));
+			if (coerce_type == llvm_get_type(c, call_return_type)) goto DIRECT_RETURN;
+			llvm_emit_return_value(c, llvm_emit_coerce(c, coerce_type, return_value, call_return_type));
+			return;
+		}
+		case ABI_ARG_DIRECT_COERCE:
+		{
+			LLVMTypeRef coerce_type = llvm_abi_type(c, info->direct_coerce_type);
+			if (coerce_type == llvm_get_type(c, call_return_type)) goto DIRECT_RETURN;
 			llvm_emit_return_value(c, llvm_emit_coerce(c, coerce_type, return_value, call_return_type));
 			return;
 		}
@@ -491,7 +494,8 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index)
 {
 	assert(last_index == index || info->kind == ABI_ARG_DIRECT_PAIR || info->kind == ABI_ARG_IGNORE
-	       || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT || info->kind == ABI_ARG_DIRECT_COERCE);
+	       || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT || info->kind == ABI_ARG_DIRECT_COERCE
+	       || info->kind == ABI_ARG_DIRECT_SPLIT_STRUCT);
 
 	if (info->attributes.zeroext)
 	{
@@ -513,6 +517,7 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 	{
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_IGNORE:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		case ABI_ARG_DIRECT_COERCE:
 		case ABI_ARG_DIRECT_PAIR:
 		case ABI_ARG_DIRECT:

@@ -207,7 +207,11 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		// stack.
 		if (size < xlen && type_is_integer(type) && !must_use_stack)
 		{
-			return abi_arg_new_expand_padded(type_int_unsigned_by_bitsize(xlen * 8));
+			if (xlen == 8 || type_is_promotable_integer(type))
+			{
+				return abi_arg_new_direct_int_ext(type);
+			}
+			return abi_arg_new_direct();
 		}
 		if (size > 16 || (size > 8 && !platform_target.int128))
 		{
@@ -231,7 +235,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(xlen * 16));
 		}
 		Type *ret_type = type_int_unsigned_by_bitsize(xlen * 8);
-		return abi_arg_new_direct_coerce_array_type(ret_type, 2);
+		return abi_arg_new_direct_coerce_type(type_get_array(ret_type, 2));
 	}
 	return abi_arg_new_indirect_not_by_val(type);
 }
@@ -255,7 +259,7 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 	unsigned fpr = 8;
 
 	Type *ret_type = type_lowering(prototype->abi_ret_type);
-	ABIArgInfo *ret_abi = prototype->ret_abi_info = riscv_classify_return(prototype->abi_ret_type);
+	ABIArgInfo *ret_abi = prototype->ret_abi_info = riscv_classify_return(ret_type);
 
 	// IsRetIndirect is true if classifyArgumentType indicated the value should
 	// be passed indirect, or if the type size is a scalar greater than 2*XLen
@@ -279,8 +283,8 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 	// If we have a failable, then the return type is a parameter.
 	if (prototype->ret_by_ref)
 	{
-		prototype->ret_by_ref = riscv_classify_argument_type(type_get_ptr(prototype->ret_by_ref_type),
-		                                                     true, &arg_gprs_left, &arg_fprs_left);
+		prototype->ret_by_ref_abi_info = riscv_classify_argument_type(type_get_ptr(prototype->ret_by_ref_type),
+		                                                              true, &arg_gprs_left, &arg_fprs_left);
 	}
 
 	Type **params = prototype->params;

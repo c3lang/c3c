@@ -1337,7 +1337,7 @@ static Expr *parse_double(ParseContext *context, Expr *left)
 	switch (number->const_expr.fxx.type)
 	{
 		case TYPE_F128:
-			number->type = type_quad;
+			number->type = type_f128;
 			break;
 		case TYPE_F64:
 			number->type = type_double;

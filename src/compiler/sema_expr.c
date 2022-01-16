@@ -1047,7 +1047,7 @@ static inline bool sema_expr_analyse_binary_subexpr(SemaContext *context, Expr *
 	return (int)sema_analyse_expr(context, left) & (int)sema_analyse_expr(context, right);
 }
 
-static inline bool sema_expr_analyse_binary_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error)
+static inline bool sema_expr_analyse_binary_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error, bool bool_is_allowed)
 {
 	Expr *left = expr->binary_expr.left;
 	Expr *right = expr->binary_expr.right;
@@ -1060,6 +1060,7 @@ static inline bool sema_expr_analyse_binary_arithmetic_subexpr(SemaContext *cont
 	Type *left_type = type_no_fail(left->type)->canonical;
 	Type *right_type = type_no_fail(right->type)->canonical;
 
+	if (bool_is_allowed && left_type == type_bool && right_type == type_bool) return true;
 	// 2. Perform promotion to a common type.
 	return binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, error);
 }
@@ -4754,7 +4755,7 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
 {
 
 	// 1. Analyse the sub expressions and promote to a common type
-	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, "It is not possible to multiply %s by %s.")) return false;
+	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, "It is not possible to multiply %s by %s.", false)) return false;
 
 
 	// 2. Handle constant folding.
@@ -4787,7 +4788,7 @@ static bool sema_expr_analyse_mult(SemaContext *context, Expr *expr, Expr *left,
 static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
 	// 1. Analyse sub expressions and promote to a common type
-	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, "Cannot divide %s by %s.")) return false;
+	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, "Cannot divide %s by %s.", false)) return false;
 
 	// 2. Check for a constant 0 on the rhs.
 	if (IS_CONST(right))
@@ -4839,7 +4840,7 @@ static bool sema_expr_analyse_div(SemaContext *context, Expr *expr, Expr *left, 
 static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
 	// 1. Analyse both sides and promote to a common type
-	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, NULL)) return false;
+	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, NULL, false)) return false;
 
 	// 3. a % 0 is not valid, so detect it.
 	if (IS_CONST(right) && int_is_zero(right->const_expr.ixx))
@@ -4866,11 +4867,13 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
  */
 static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
-	// 1. Convert to common type if possible.
-	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, NULL)) return false;
 
-	// 2. Check that both are integers.
-	if (!both_any_integer_or_integer_vector(left, right))
+	// 1. Convert to common type if possible.
+	if (!sema_expr_analyse_binary_arithmetic_subexpr(context, expr, NULL, true)) return false;
+
+	// 2. Check that both are integers or bools.
+	bool is_bool = left->type->canonical == type_bool;
+	if (!is_bool && !both_any_integer_or_integer_vector(left, right))
 	{
 		return sema_type_error_on_binop(expr);
 	}
@@ -4880,19 +4883,39 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 	{
 		BinaryOp op = expr->binary_expr.operator;
 		expr_replace(expr, left);
-		switch (op)
+		if (is_bool)
 		{
-			case BINARYOP_BIT_AND:
-				expr->const_expr.ixx = int_and(left->const_expr.ixx, right->const_expr.ixx);
-				break;
-			case BINARYOP_BIT_XOR:
-				expr->const_expr.ixx = int_xor(left->const_expr.ixx, right->const_expr.ixx);
-				break;
-			case BINARYOP_BIT_OR:
-				expr->const_expr.ixx = int_or(left->const_expr.ixx, right->const_expr.ixx);
-				break;
-			default:
-				UNREACHABLE;
+			switch (op)
+			{
+				case BINARYOP_BIT_AND:
+					expr->const_expr.b = left->const_expr.b & right->const_expr.b;
+					break;
+				case BINARYOP_BIT_XOR:
+					expr->const_expr.b = left->const_expr.b ^ right->const_expr.b;
+					break;
+				case BINARYOP_BIT_OR:
+					expr->const_expr.b = left->const_expr.b | right->const_expr.b;
+					break;
+				default:
+					UNREACHABLE;
+			}
+		}
+		else
+		{
+			switch (op)
+			{
+				case BINARYOP_BIT_AND:
+					expr->const_expr.ixx = int_and(left->const_expr.ixx, right->const_expr.ixx);
+					break;
+				case BINARYOP_BIT_XOR:
+					expr->const_expr.ixx = int_xor(left->const_expr.ixx, right->const_expr.ixx);
+					break;
+				case BINARYOP_BIT_OR:
+					expr->const_expr.ixx = int_or(left->const_expr.ixx, right->const_expr.ixx);
+					break;
+				default:
+					UNREACHABLE;
+			}
 		}
 	}
 

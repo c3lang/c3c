@@ -691,7 +691,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 			result_type = x64_get_int_type_at_offset(return_type, 0, return_type, 0);
 			if (hi_class == CLASS_NO_CLASS && abi_type_is_promotable_integer_or_bool(result_type))
 			{
-				return abi_arg_new_direct_int_ext(return_type);
+				return abi_arg_new_direct_coerce_int_ext(return_type);
 			}
 			break;
 		case CLASS_SSE:
@@ -776,10 +776,10 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 		case CLASS_INTEGER:
 			needed_registers->int_registers++;
 			result_type = x64_get_int_type_at_offset(type, 0, type, 0);
-			if (hi_class == CLASS_NO_CLASS && abi_type_is_promotable_integer_or_bool(result_type))
+			if (hi_class == CLASS_NO_CLASS && type_is_promotable_integer(type))
 			{
 				assert(abi_type_is_type(result_type));
-				return abi_arg_new_direct_int_ext(result_type.type);
+				return abi_arg_new_direct_coerce_int_ext(result_type.type);
 			}
 			break;
 		case CLASS_SSE:

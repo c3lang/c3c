@@ -494,7 +494,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 		ABIArgInfo *info;
 		if (size_in_regs > 1)
 		{
-			info = abi_arg_new_direct_coerce_to_struct_with_elements(type_uint, (int8_t)size_in_regs);
+			info = abi_arg_new_direct_struct_expand(type_uint, (int8_t)size_in_regs);
 		}
 		else
 		{

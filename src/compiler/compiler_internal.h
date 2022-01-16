@@ -1480,6 +1480,7 @@ typedef enum
 	ABI_ARG_DIRECT,
 	ABI_ARG_DIRECT_PAIR,
 	ABI_ARG_DIRECT_COERCE,
+	ABI_ARG_DIRECT_SPLIT_STRUCT,
 	ABI_ARG_EXPAND_COERCE,
 	ABI_ARG_INDIRECT,
 	ABI_ARG_EXPAND,
@@ -1532,16 +1533,12 @@ typedef struct ABIArgInfo_
 			AbiType lo;
 			AbiType hi;
 		} coerce_expand;
+		AbiType direct_coerce_type;
 		struct
 		{
-			AbiType partial_type;
-		};
-		struct
-		{
-			AbiType type;
-			uint8_t elements : 7;
-			bool prevent_flatten : 1;
-		} direct_coerce;
+			Type *type;
+			uint8_t elements;
+		} direct_struct_expand;
 		struct
 		{
 			// We may request a certain alignment of the parameters.
@@ -1581,7 +1578,7 @@ extern TypeInfo *poisoned_type_info;
 
 
 extern Type *type_bool, *type_void, *type_voidptr;
-extern Type *type_half, *type_float, *type_double, *type_quad;
+extern Type *type_half, *type_float, *type_double, *type_f128;
 extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isize;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usize;
 extern Type *type_iptr, *type_uptr, *type_iptrdiff, *type_uptrdiff;

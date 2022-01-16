@@ -49,6 +49,7 @@ bool abi_arg_is_indirect(ABIArgInfo *info)
 		case ABI_ARG_IGNORE:
 		case ABI_ARG_DIRECT:
 		case ABI_ARG_DIRECT_COERCE:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_DIRECT_PAIR:
 		case ABI_ARG_EXPAND_COERCE:
@@ -96,6 +97,25 @@ ABIArgInfo *abi_arg_new_direct_int_ext(Type *int_to_extend)
 	return abi_arg_new_direct_int_ext_by_reg(int_to_extend, false);
 }
 
+ABIArgInfo *abi_arg_new_direct_coerce_int_ext(Type *int_to_extend)
+{
+	return abi_arg_new_direct_coerce_int_ext_by_reg(int_to_extend, false);
+}
+
+ABIArgInfo *abi_arg_new_direct_coerce_int_ext_by_reg(Type *int_to_extend, bool by_reg)
+{
+	ABIArgInfo *info = abi_arg_new_direct_coerce_type(int_to_extend);
+	if (type_is_signed(int_to_extend))
+	{
+		info->attributes.signext = true;
+	}
+	else
+	{
+		info->attributes.zeroext = true;
+	}
+	info->attributes.by_reg = by_reg;
+	return info;
+}
 
 ABIArgInfo *abi_arg_new_direct_int_ext_by_reg(Type *int_to_extend, bool by_reg)
 {
@@ -166,9 +186,9 @@ ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType first_element, unsigned initi
 
 ABIArgInfo *abi_arg_new_direct_coerce_bits(BitSize bits)
 {
+	assert(bits >= 8);
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
-	abi_type_set_int_bits(&info->direct_coerce.type, bits);
-	info->direct_coerce.elements = 0;
+	abi_type_set_int_bits(&info->direct_coerce_type, bits);
 	return info;
 }
 
@@ -176,30 +196,23 @@ ABIArgInfo *abi_arg_new_direct_coerce(AbiType type)
 {
 	assert(abi_type_is_valid(type));
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
-	info->direct_coerce.type = type;
-	info->direct_coerce.elements = 0;
+	info->direct_coerce_type = type;
 	return info;
 }
 
 ABIArgInfo *abi_arg_new_direct_coerce_type(Type *type)
 {
+	assert(type);
 	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
-	abi_type_set_type(&info->direct_coerce.type, type);
-	info->direct_coerce.elements = 0;
+	abi_type_set_type(&info->direct_coerce_type, type);
 	return info;
 }
 
-ABIArgInfo *abi_arg_new_direct_coerce_to_struct_with_elements(Type *type, int8_t elements)
+ABIArgInfo *abi_arg_new_direct_struct_expand(Type *type, int8_t elements)
 {
-	TODO
-}
-
-ABIArgInfo *abi_arg_new_direct_coerce_array_type(Type *type, int8_t elements)
-{
-	assert(elements > 0);
-	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_COERCE);
-	abi_type_set_type(&info->direct_coerce.type, type);
-	info->direct_coerce.elements = elements;
+	ABIArgInfo *info = abi_arg_new(ABI_ARG_DIRECT_SPLIT_STRUCT);
+	info->direct_struct_expand.type = type;
+	info->direct_struct_expand.elements = elements;
 	return info;
 }
 

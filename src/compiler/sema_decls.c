@@ -6,7 +6,7 @@
 
 
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl);
-
+static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl);
 static bool sema_check_section(SemaContext *context, Decl *decl, Attr *attr)
 {
 	const char *section_string = attr->expr->const_expr.string.chars;
@@ -616,6 +616,8 @@ static inline bool sema_analyse_function_param(SemaContext *context, Decl *param
 		SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
 		return false;
 	}
+
+	if (!sema_analyse_attributes_for_var(context, param)) return false;
 	if (!param->var.type_info)
 	{
 		SEMA_ERROR(param, "Only typed parameters are allowed for functions.");
@@ -1677,7 +1679,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 }
 
 
-bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl)
+static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl)
 {
 	AttributeDomain domain;
 	switch (decl->var.kind)
