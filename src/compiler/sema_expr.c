@@ -426,8 +426,8 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_UNARY:
 			switch (expr->unary_expr.operator)
 			{
-				case UNARYOP_ERROR:
 				case UNARYOP_DEREF:
+				case UNARYOP_ERROR:
 					return false;
 				case UNARYOP_ADDR:
 					return expr_unary_addr_is_constant_eval(expr, eval_kind);

@@ -2370,6 +2370,20 @@ static inline Type *type_flatten(Type *type)
 	}
 }
 
+static inline bool type_is_char_array(Type *type)
+{
+	type = type_flatten_distinct(type);
+	if (type->type_kind != TYPE_ARRAY) return false;
+	switch (type->array.base->type_kind)
+	{
+		case TYPE_I8:
+		case TYPE_U8:
+			return true;
+		default:
+			return false;
+	}
+}
+
 static Type *type_vector_type(Type *type)
 {
 	Type *flatten = type_flatten(type);

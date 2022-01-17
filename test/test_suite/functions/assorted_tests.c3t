@@ -90,8 +90,8 @@ if.then:                                          ; preds = %entry
 if.exit:                                          ; preds = %if.then, %entry
   %4 = load i32, i32* %asa, align 4
   %5 = load double, double* %val, align 8
-  %fpui = fptoui double %5 to i32
-  %add1 = add i32 %4, %fpui
+  %fpsi = fptosi double %5 to i32
+  %add1 = add i32 %4, %fpsi
   ret i32 %add1
 }
 

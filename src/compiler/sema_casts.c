@@ -199,7 +199,7 @@ static bool float_to_float(Expr* expr, Type *canonical, Type *type)
  */
 bool float_to_integer(Expr *expr, Type *canonical, Type *type)
 {
-	bool is_signed = type_is_unsigned(canonical);
+	bool is_signed = type_is_signed(canonical);
 	if (insert_runtime_cast_unless_const(expr, is_signed ? CAST_FPSI : CAST_FPUI, type)) return true;
 
 	assert(type_is_integer(canonical));
@@ -1026,7 +1026,11 @@ static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_ca
 	Type *pointer = expr_canonical->pointer;
 	if (pointer->type_kind != TYPE_ARRAY) return false;
 	if (pointer->array.base != type_char) return false;
-	expr_insert_deref(expr);
+	if (to_canonical->type_kind == TYPE_INFERRED_ARRAY)
+	{
+		to_canonical = type_get_array(to_canonical->array.base, pointer->array.len);
+	}
+	expr->type = to_canonical;
 	return true;
 }
 bool cast_implicit(Expr *expr, Type *to_type)

@@ -38,8 +38,8 @@ entry:
   %9 = bitcast <32 x i8>* %4 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 32 %8, i8* align 32 %9, i32 32, i1 false)
   %10 = getelementptr inbounds %Large, %Large* %literal, i32 0, i32 0
-  %fpui = fptoui double %1 to i64
-  store i64 %fpui, i64* %10, align 8
+  %fpsi = fptosi double %1 to i64
+  store i64 %fpsi, i64* %10, align 8
   %11 = getelementptr inbounds %Large, %Large* %literal, i32 0, i32 1
   %uisiext = zext i8 %5 to i64
   store i64 %uisiext, i64* %11, align 8

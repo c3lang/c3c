@@ -3876,17 +3876,60 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			return;
 		case CONST_STRING:
 		{
-			LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.string.len + 1), ".str");
-			llvm_set_private_linkage(global_name);
-			LLVMSetUnnamedAddress(global_name, LLVMGlobalUnnamedAddr);
-			LLVMSetGlobalConstant(global_name, 1);
-			LLVMSetInitializer(global_name, LLVMConstStringInContext(c->context,
-			                                                         expr->const_expr.string.chars,
-			                                                         expr->const_expr.string.len,
-			                                                         0));
-			llvm_set_alignment(global_name, 1);
-			global_name = LLVMConstBitCast(global_name, llvm_get_ptr_type(c, type_get_array(type_char, expr->const_expr.string.len)));
-			llvm_value_set(be_value, global_name, type);
+			Type *str_type = type_lowering(expr->type);
+			bool is_array = type_is_char_array(str_type);
+			if (c->builder || !is_array)
+			{
+				ArraySize strlen = expr->const_expr.string.len;
+				ArraySize size = expr->const_expr.string.len + 1;
+				if (type_is_char_array(expr->type) && type->array.len > size) size = type->array.len;
+				LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), size), ".str");
+				llvm_set_private_linkage(global_name);
+				LLVMSetUnnamedAddress(global_name, LLVMGlobalUnnamedAddr);
+				LLVMSetGlobalConstant(global_name, 1);
+				LLVMValueRef string = LLVMConstStringInContext(c->context,
+															   expr->const_expr.string.chars,
+															   expr->const_expr.string.len,
+															   0);
+				if (size > strlen + 1)
+				{
+					LLVMValueRef trailing_zeros = LLVMConstNull(LLVMArrayType(c->byte_type, size - strlen - 1));
+					LLVMValueRef values[2] = { string, trailing_zeros };
+					string = LLVMConstStructInContext(c->context, values, 2, true);
+				}
+				LLVMSetInitializer(global_name, string);
+				llvm_set_alignment(global_name, 1);
+				if (is_array)
+				{
+					global_name = LLVMConstBitCast(global_name, llvm_get_ptr_type(c, type));
+					llvm_value_set_address(be_value, global_name, type, 1);
+				}
+				else
+				{
+					global_name = LLVMConstBitCast(global_name, llvm_get_type(c, type));
+					llvm_value_set(be_value, global_name, type);
+				}
+				return;
+			}
+			ArraySize array_len = type->array.len;
+			ArraySize size = expr->const_expr.string.len + 1;
+			bool zero_terminate = array_len == size;
+			LLVMValueRef string;
+			if (array_len <= size)
+			{
+				string = LLVMConstStringInContext(c->context,
+				                                  expr->const_expr.string.chars,
+				                                  array_len, array_len < size);
+			}
+			else
+			{
+				char *buffer = ccalloc(1, array_len);
+				memcpy(buffer, expr->const_expr.string.chars, expr->const_expr.string.len);
+				string = LLVMConstStringInContext(c->context,
+												  buffer,
+												  array_len, true);
+			}
+			llvm_value_set(be_value, string, type);
 			return;
 		}
 		case CONST_TYPEID:
