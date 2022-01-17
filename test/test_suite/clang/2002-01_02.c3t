@@ -168,17 +168,8 @@ declare void @foo2(i32, double, float) #0
 define void @test.bar(i32 %0) #0 {
 entry:
   %intbool = icmp ne i32 %0, 0
-  br i1 %intbool, label %cond.lhs, label %cond.rhs
-
-cond.lhs:                                         ; preds = %entry
-  br label %cond.phi
-
-cond.rhs:                                         ; preds = %entry
-  br label %cond.phi
-
-cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
-  %val = phi double [ 1.000000e+00, %cond.lhs ], [ 1.250000e+01, %cond.rhs ]
-  call void @foo2(i32 %0, double %val, float 1.000000e+00)
+  %ternary = select i1 %intbool, double 1.000000e+00, double 1.250000e+01
+  call void @foo2(i32 %0, double %ternary, float 1.000000e+00)
   ret void
 }
 

@@ -5,6 +5,7 @@ fn void test1()
     char a = 1;
     int b = 2;
     char c = b > a ? 1u8 : 0u8;
+    int d = b ?: 1;
 }
 
 // #expect: comparison_widening.ll
@@ -14,6 +15,7 @@ entry:
   %a = alloca i8, align 1
   %b = alloca i32, align 4
   %c = alloca i8, align 1
+  %d = alloca i32, align 4
   store i8 1, i8* %a, align 1
   store i32 2, i32* %b, align 4
   %0 = load i32, i32* %b, align 4
@@ -22,16 +24,11 @@ entry:
   %gt = icmp sgt i32 %0, %uiuiext
   %check = icmp sge i32 %uiuiext, 0
   %siui-gt = and i1 %check, %gt
-  br i1 %siui-gt, label %cond.lhs, label %cond.rhs
-
-cond.lhs:                                         ; preds = %entry
-  br label %cond.phi
-
-cond.rhs:                                         ; preds = %entry
-  br label %cond.phi
-
-cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
-  %val = phi i8 [ 1, %cond.lhs ], [ 0, %cond.rhs ]
-  store i8 %val, i8* %c, align 1
+  %ternary = select i1 %siui-gt, i8 1, i8 0
+  store i8 %ternary, i8* %c, align 1
+  %2 = load i32, i32* %b, align 4
+  %intbool = icmp ne i32 %2, 0
+  %elvis = select i1 %intbool, i32 %2, i32 1
+  store i32 %elvis, i32* %d, align 4
   ret void
 }
