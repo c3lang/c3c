@@ -221,3 +221,8 @@ c3c compile main.c3
 ```
 
 The generated binary will be called `a.out`.
+
+#### Licensing
+
+The C3 compiler is licensed under LGPL 3.0, the standard library itself is
+MIT licensed.
