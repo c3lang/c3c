@@ -165,7 +165,6 @@ fn Errno errno()
     return Errno.ENOTRECOVERABLE;
 }
 
-extern tlocal Errno errno;
 
 define TerminateFunction = fn void();
 define CompareFunction = fn int(void*, void*);
