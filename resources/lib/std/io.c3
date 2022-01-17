@@ -5,27 +5,7 @@ module std::io;
 import std::mem;
 import libc;
 
-errtype IoError
-{
-    FILE_NOT_FOUND
-}
-/*
-extern File *stdin @cname(__stdinp);
-extern File *stdout @cname(__stdoutp);
-extern File *stderr @cname(__stderrp);
-*/
-/*
-extern func int fputc(int, aliased void*);
-extern func void clearerr(aliased void*);
-extern func int fclose(aliased void*);
-extern func int feof(aliased void*);
-extern func int ferror(aliased void*);
-extern func int fflush(aliased FILE *);
-extern func int fgetc(aliased FILE *);
-extern func int fgetpos(FILE *, fpos_t *);
-extern func int fseek(void*, long, int);
-extern func void* fopen(char *, char *);
-*/
+
 
 struct File
 {
@@ -59,7 +39,6 @@ fn int println(char *message = "") @inline
     return _puts(message);
 }
 
-
 fn void! File.open(File* file, char[] filename, char[] mode)
 {
     char* filename_copy = mem::talloc(filename.len + 1)!!;
@@ -74,14 +53,116 @@ fn void! File.open(File* file, char[] filename, char[] mode)
     if (!file.file) return IoError.FILE_NOT_FOUND!;
 }
 
-/*
-
 enum Seek
 {
     SET = 0,
     CURSOR = 1,
     END = 2
 }
+
+errtype IoError
+{
+    FILE_NOT_FOUND,
+    FILE_NOT_SEEKABLE,
+    FILE_NOT_VALID,
+    FILE_INVALID_POSITION,
+    FILE_OVERFLOW,
+    FILE_IS_PIPE,
+    FILE_EOF,
+    FILE_INCOMPLETE_WRITE,
+    INTERRUPTED,
+    UNKNOWN_ERROR,
+}
+
+/**
+ * @require file.file != null
+ **/
+fn void! File.seek(File *file, long offset, Seek seekMode = Seek.SET)
+{
+    if (libc::fseek(file.file, (SeekIndex)(offset), (int)(seekMode)))
+    {
+        switch (libc::errno)
+        {
+            case EBADF: return IoError.FILE_NOT_SEEKABLE!;
+            case EINVAL: return IoError.FILE_INVALID_POSITION!;
+            case EOVERFLOW: return IoError.FILE_OVERFLOW!;
+            case ESPIPE: return IoError.FILE_IS_PIPE!;
+            default: return IoError.UNKNOWN_ERROR!;
+        }
+    }
+}
+
+/**
+ * @require file && file.file != null
+ */
+fn void! File.putc(File *file, char c)
+{
+    if (!libc::fputc(c, file.file)) return IoError.FILE_EOF!;
+}
+
+/**
+ * @require file != null
+ */
+fn void! File.close(File *file) @inline
+{
+    if (file.file && libc::fclose(file.file))
+    {
+        switch (libc::errno)
+        {
+            case ECONNRESET:
+            case EBADF: return IoError.FILE_NOT_VALID!;
+            case EINTR: return IoError.INTERRUPTED!;
+            case EDQUOT:
+            case EFAULT:
+            case EAGAIN:
+            case EFBIG:
+            case ENETDOWN:
+            case ENETUNREACH:
+            case ENOSPC:
+            case EIO: return IoError.FILE_INCOMPLETE_WRITE!;
+            default: return IoError.UNKNOWN_ERROR!;
+        }
+    }
+    file.file = null;
+}
+
+/**
+ * @require file && file.file
+ */
+fn bool File.eof(File* file) @inline
+{
+    return libc::feof(file.file) != 0;
+}
+
+/**
+ * @require file && file.file
+ */
+fn usize File.read(File* file, void* buffer, usize items, usize element_size = 1)
+{
+    return libc::fread(buffer, element_size, items, file.file);
+}
+
+/**
+ * @require file && file.file
+ */
+fn usize File.write(File* file, void* buffer, usize items, usize element_size = 1)
+{
+    return libc::fwrite(buffer, element_size, items, file.file);
+}
+
+/**
+ * @require file && file.file
+ */
+fn usize! File.println(File* file, char[] string)
+{
+    usize len = string.len;
+    if (len != libc::fwrite(string.ptr, 1, len, file.file)) return IoError.UNKNOWN_ERROR!;
+    if (!libc::putc('\n', file.file)) return IoError.UNKNOWN_ERROR!;
+    return len + 1;
+}
+
+/*
+
 
 error FileError
 {
@@ -94,30 +175,14 @@ func FileError errorFromErrno()
 }
 
 
-public func void! File.seek(File *file, long offset, Seek seekMode = Seek.SET)
-{
-    if (fseek(file->file, offset, (int)(seekMode))) return errorFromErrno()!;
-}
 
-public func void! File.putChar(File *file as char c)
-{
-    if (fputc(c, file->file)) return errorFromErrno()!;
-}
 
 pubic func void! File.clearerr(File *file) @inline
 {
     clearerr(file->file);
 }
 
-func void File.close(File *file) @inline
-{
-    if (fclose(file->file)) return errorFromErrno()!;
-}
 
-func void File.eof(File *file) @inline
-{
-    int err = feof(file->file);
-}
 
 func void File.error(File *file) @inline
 {

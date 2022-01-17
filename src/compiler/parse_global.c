@@ -194,7 +194,7 @@ static inline Decl *parse_ct_case(ParseContext *context)
 	while (1)
 	{
 		TokenType type = context->tok.type;
-		if (type == TOKEN_CT_DEFAULT || type == TOKEN_CT_CASE || type == TOKEN_LBRACE) break;
+		if (type == TOKEN_CT_DEFAULT || type == TOKEN_CT_CASE || type == TOKEN_CT_ENDSWITCH) break;
 		ASSIGN_DECL_ELSE(Decl *stmt, parse_top_level_statement(context), poisoned_decl);
 		vec_add(decl->ct_case_decl.body, stmt);
 	}
@@ -212,12 +212,13 @@ static inline Decl *parse_ct_switch_top_level(ParseContext *context)
 	Decl *ct = decl_new_ct(DECL_CT_SWITCH, context->prev_tok);
 	ASSIGN_EXPR_ELSE(ct->ct_switch_decl.expr, parse_const_paren_expr(context), poisoned_decl);
 
-	CONSUME_OR(TOKEN_LBRACE, poisoned_decl);
-	while (!try_consume(context, TOKEN_RBRACE))
+	CONSUME_OR(TOKEN_COLON, poisoned_decl);
+	while (!try_consume(context, TOKEN_CT_ENDSWITCH))
 	{
 		ASSIGN_DECL_ELSE(Decl *result, parse_ct_case(context), poisoned_decl);
 		vec_add(ct->ct_switch_decl.cases, result);
 	}
+	CONSUME_OR(TOKEN_EOS, poisoned_decl);
 	return ct;
 }
 

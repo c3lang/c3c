@@ -283,7 +283,7 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 	// If we have a failable, then the return type is a parameter.
 	if (prototype->ret_by_ref)
 	{
-		prototype->ret_by_ref_abi_info = riscv_classify_argument_type(type_get_ptr(prototype->ret_by_ref_type),
+		prototype->ret_by_ref_abi_info = riscv_classify_argument_type(type_get_ptr(type_lowering(prototype->ret_by_ref_type)),
 		                                                              true, &arg_gprs_left, &arg_fprs_left);
 	}
 
