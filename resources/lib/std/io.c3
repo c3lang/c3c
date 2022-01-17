@@ -81,7 +81,7 @@ fn void! File.seek(File *file, long offset, Seek seekMode = Seek.SET)
 {
     if (libc::fseek(file.file, (SeekIndex)(offset), (int)(seekMode)))
     {
-        switch (libc::errno())
+        switch (libc::errno)
         {
             case EBADF: return IoError.FILE_NOT_SEEKABLE!;
             case EINVAL: return IoError.FILE_INVALID_POSITION!;
@@ -107,7 +107,7 @@ fn void! File.close(File *file) @inline
 {
     if (file.file && libc::fclose(file.file))
     {
-        switch (libc::errno())
+        switch (libc::errno)
         {
             case ECONNRESET:
             case EBADF: return IoError.FILE_NOT_VALID!;

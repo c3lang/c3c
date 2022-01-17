@@ -160,7 +160,7 @@ enum Errno : ErrnoType
     ENOTRECOVERABLE = 131, /* State not recoverable */
 }
 
-extern fn Errno errno();
+extern tlocal Errno errno;
 
 define TerminateFunction = fn void();
 define CompareFunction = fn int(void*, void*);
