@@ -8,6 +8,10 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 {
 	if (type->type_kind == TYPE_VOID) return abi_arg_ignore();
 
+	if (type_lowering(type)->type_kind == TYPE_TYPEDEF)
+	{
+		printf("foekf");
+	}
 	// Lower enums etc.
 	type = type_lowering(type);
 

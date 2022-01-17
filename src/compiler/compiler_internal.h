@@ -2344,29 +2344,27 @@ static inline Type *type_flatten_distinct(Type *type)
 
 static inline Type *type_flatten(Type *type)
 {
-	type = type->canonical;
 	while (1)
 	{
-		if (type->type_kind == TYPE_DISTINCT)
+		type = type->canonical;
+		switch (type->type_kind)
 		{
-			type = type->decl->distinct_decl.base_type;
-			continue;
+			case TYPE_DISTINCT:
+				type = type->decl->distinct_decl.base_type;
+				break;
+			case TYPE_ENUM:
+				type = type->decl->enums.type_info->type;
+				break;
+			case TYPE_FAILABLE:
+				type = type->failable;
+				break;
+			case TYPE_FAILABLE_ANY:
+				return type_void;
+			case TYPE_TYPEDEF:
+				UNREACHABLE
+			default:
+				return type;
 		}
-		if (type->type_kind == TYPE_ENUM)
-		{
-			type = type->decl->enums.type_info->type;
-			continue;
-		}
-		if (type->type_kind == TYPE_FAILABLE)
-		{
-			type = type->failable;
-			continue;
-		}
-		if (type->type_kind == TYPE_FAILABLE_ANY)
-		{
-			return type_void;
-		}
-		return type;
 	}
 }
 
