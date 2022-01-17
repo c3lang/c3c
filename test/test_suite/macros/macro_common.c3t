@@ -12,7 +12,7 @@ fn void test2()
     @frab(0);
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
 define void @test.test2() #0 {
 entry:
@@ -24,25 +24,29 @@ entry:
   %0 = load i32, i32* %x, align 4
   %not = icmp eq i32 %0, 0
   br i1 %not, label %if.then, label %if.exit
+
 if.then:                                          ; preds = %entry
   store double 0.000000e+00, double* %blockret, align 8
   br label %expr_block.exit
+
 if.exit:                                          ; preds = %entry
   store double 0.000000e+00, double* %blockret, align 8
   br label %expr_block.exit
+
 expr_block.exit:                                  ; preds = %if.exit, %if.then
-  %1 = load double, double* %blockret, align 8
   store i32 0, i32* %x1, align 4
-  %2 = load i32, i32* %x1, align 4
-  %not3 = icmp eq i32 %2, 0
+  %1 = load i32, i32* %x1, align 4
+  %not3 = icmp eq i32 %1, 0
   br i1 %not3, label %if.then4, label %if.exit5
+
 if.then4:                                         ; preds = %expr_block.exit
   store double 0.000000e+00, double* %blockret2, align 8
   br label %expr_block.exit6
+
 if.exit5:                                         ; preds = %expr_block.exit
   store double 0.000000e+00, double* %blockret2, align 8
   br label %expr_block.exit6
+
 expr_block.exit6:                                 ; preds = %if.exit5, %if.then4
-  %3 = load double, double* %blockret2, align 8
   ret void
 }

@@ -1052,7 +1052,7 @@ void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 		c->catch_block = discard_fail;
 		c->error_var = NULL;
 		llvm_emit_expr(c, &value, ast->expr_stmt);
-		llvm_value_rvalue(c, &value);
+		llvm_value_fold_failable(c, &value);
 		EMIT_LOC(c, ast);
 		llvm_emit_br(c, discard_fail);
 		llvm_emit_block(c, discard_fail);
@@ -1060,7 +1060,6 @@ void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 		return;
 	}
 	llvm_emit_expr(c, &value, ast->expr_stmt);
-	llvm_value_rvalue(c, &value);
 }
 
 static LLVMValueRef llvm_emit_string(GenContext *c, const char *str)

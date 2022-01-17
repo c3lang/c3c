@@ -43,7 +43,8 @@ fn void main()
     io::printf("Ratio was %f\n", ratio);
 }
 
-// #expect: demo.ll
+/* #expect: demo.ll
+
 
 define i64 @demo.divide(double* %0, i32 %1, i32 %2) #0 {
 entry:
@@ -94,7 +95,6 @@ guard_block:                                      ; preds = %error
   ret i64 %3
 
 noerr_block:                                      ; preds = %after.errcheck
-  %4 = load double, double* %retparam, align 8
   ret i64 0
 }
 

@@ -62,45 +62,44 @@ entry:
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %2)
   store i32 1073741375, i32* %xx, align 4
   %3 = load i32, i32* %xx, align 4
-  %4 = load i32, i32* %xx, align 4
-  %5 = shl i32 %4, 9
-  %6 = ashr i32 %5, 14
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 %6)
+  %4 = shl i32 %3, 9
+  %5 = ashr i32 %4, 14
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), i32 %5)
   store i32 -3485921, i32* %xxu, align 4
-  %7 = load i32, i32* %xxu, align 4
-  %8 = lshr i32 %7, 5
-  %9 = and i32 262143, %8
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0), i32 %9)
+  %6 = load i32, i32* %xxu, align 4
+  %7 = lshr i32 %6, 5
+  %8 = and i32 262143, %7
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i32 0, i32 0), i32 %8)
   store i64 1525363991714123551, i64* %xxy, align 8
-  %10 = load i64, i64* %xxy, align 8
-  %11 = lshr i64 %10, 5
-  %12 = and i64 262143, %11
-  %13 = trunc i64 %12 to i32
-  %14 = load i64, i64* %xxy, align 8
-  %15 = lshr i64 %14, 23
-  %16 = and i64 262143, %15
-  %17 = trunc i64 %16 to i32
-  %18 = load i64, i64* %xxy, align 8
-  %19 = lshr i64 %18, 41
-  %20 = and i64 2097151, %19
-  %21 = trunc i64 %20 to i32
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.3, i32 0, i32 0), i32 %13, i32 %17, i32 %21)
+  %9 = load i64, i64* %xxy, align 8
+  %10 = lshr i64 %9, 5
+  %11 = and i64 262143, %10
+  %12 = trunc i64 %11 to i32
+  %13 = load i64, i64* %xxy, align 8
+  %14 = lshr i64 %13, 23
+  %15 = and i64 262143, %14
+  %16 = trunc i64 %15 to i32
+  %17 = load i64, i64* %xxy, align 8
+  %18 = lshr i64 %17, 41
+  %19 = and i64 2097151, %18
+  %20 = trunc i64 %19 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.3, i32 0, i32 0), i32 %12, i32 %16, i32 %20)
   store i64 2292133196431502101, i64* %xxybe, align 8
-  %22 = load i64, i64* %xxybe, align 8
-  %23 = call i64 @llvm.bswap.i64(i64 %22)
-  %24 = lshr i64 %23, 5
-  %25 = and i64 262143, %24
-  %26 = trunc i64 %25 to i32
-  %27 = load i64, i64* %xxybe, align 8
-  %28 = call i64 @llvm.bswap.i64(i64 %27)
-  %29 = lshr i64 %28, 23
-  %30 = and i64 262143, %29
-  %31 = trunc i64 %30 to i32
-  %32 = load i64, i64* %xxybe, align 8
-  %33 = call i64 @llvm.bswap.i64(i64 %32)
-  %34 = lshr i64 %33, 41
-  %35 = and i64 2097151, %34
-  %36 = trunc i64 %35 to i32
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.4, i32 0, i32 0), i32 %26, i32 %31, i32 %36)
+  %21 = load i64, i64* %xxybe, align 8
+  %22 = call i64 @llvm.bswap.i64(i64 %21)
+  %23 = lshr i64 %22, 5
+  %24 = and i64 262143, %23
+  %25 = trunc i64 %24 to i32
+  %26 = load i64, i64* %xxybe, align 8
+  %27 = call i64 @llvm.bswap.i64(i64 %26)
+  %28 = lshr i64 %27, 23
+  %29 = and i64 262143, %28
+  %30 = trunc i64 %29 to i32
+  %31 = load i64, i64* %xxybe, align 8
+  %32 = call i64 @llvm.bswap.i64(i64 %31)
+  %33 = lshr i64 %32, 41
+  %34 = and i64 2097151, %33
+  %35 = trunc i64 %34 to i32
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @.str.4, i32 0, i32 0), i32 %25, i32 %30, i32 %35)
   ret void
 }

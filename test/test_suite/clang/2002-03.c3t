@@ -47,6 +47,10 @@ fn int trys(char *s, int x)
   return asa+(int)(val);
 }
 
+fn char* foo() {
+  return "*** Word \"%s\" on line %d is not";
+}
+
 /* #expect: test.ll
 
 @test.a = local_unnamed_addr global { i32, i32, [8 x i32] } { i32 0, i32 2, [8 x i32] zeroinitializer }, align 16
@@ -57,6 +61,7 @@ fn int trys(char *s, int x)
 @test.b = local_unnamed_addr global { [4 x i32], { i32, i32, i32, i32 }, { i32, i32, [2 x i32] }, [4 x i32] } { [4 x i32] [i32 1, i32 2, i32 3, i32 4], { i32, i32, i32, i32 } { i32 5, i32 6, i32 7, i32 0 }, { i32, i32, [2 x i32] } { i32 8, i32 9, [2 x i32] zeroinitializer }, [4 x i32] zeroinitializer }, align 16
 @test.link = local_unnamed_addr global [3 x %Connection] [%Connection { i64 1, [10 x i8] c"link1\00\00\00\00\00", i64 10 }, %Connection { i64 2, [10 x i8] c"link2\00\00\00\00\00", i64 20 }, %Connection { i64 3, [10 x i8] c"link3\00\00\00\00\00", i64 30 }], align 16
 @.str = private unnamed_addr constant [4 x i8] c"\1F\C2\8B\00", align 1
+@.str.7 = private unnamed_addr constant [32 x i8] c"*** Word \22%s\22 on line %d is not\00", align 1
 
 declare i32 @test.strcmp(i8*, i8*) #0
 
