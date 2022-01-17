@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module libc;
 import std::cinterop;
-
+import std::env;
 // stdlib
 
 // Constants need to be per os/arch
@@ -158,6 +158,11 @@ enum Errno : ErrnoType
 
     EOWNERDEAD = 130, /* Owner died */
     ENOTRECOVERABLE = 131, /* State not recoverable */
+}
+
+fn Errno errno()
+{
+    return Errno.ENOTRECOVERABLE;
 }
 
 extern tlocal Errno errno;
