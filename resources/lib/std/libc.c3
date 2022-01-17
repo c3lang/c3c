@@ -4,6 +4,9 @@
 module libc;
 import std::cinterop;
 import std::env;
+import std::os::linux;
+import std::os::macos;
+import std::os::windows;
 // stdlib
 
 // Constants need to be per os/arch
@@ -162,7 +165,15 @@ enum Errno : ErrnoType
 
 fn Errno errno()
 {
-    return Errno.ENOTRECOVERABLE;
+    $if (env::OS_TYPE == OsType.WIN32):
+        return windows::errno();
+    $elif (env::OS_TYPE == OsType.MACOSX):
+        return macos::errno();
+    $elif (env::OS_TYPE == OsType.LINUX):
+        return linux::errno();
+    $else:
+        return Errno.ENOTRECOVERABLE;
+    $endif;
 }
 
 

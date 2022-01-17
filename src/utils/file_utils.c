@@ -292,10 +292,10 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 	while ((ent = readdir(dir)))
 	{
 		size_t namelen = strlen(ent->d_name);
-		if (namelen < 3) continue;
+		if (namelen == 0 || ent->d_name[0] == '.') continue;
 
 		// Doesn't end with .c3
-		if (strncmp(&ent->d_name[namelen - len1], suffix1, len1) != 0 && strncmp(&ent->d_name[namelen - len2], suffix2, len2) != 0)
+		if (namelen < 3 || (strncmp(&ent->d_name[namelen - len1], suffix1, len1) != 0 && strncmp(&ent->d_name[namelen - len2], suffix2, len2) != 0))
 		{
 			char *new_path = NULL;
 			char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
