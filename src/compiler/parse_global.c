@@ -2022,7 +2022,7 @@ static inline bool check_no_visibility_before(ParseContext *context, Visibility 
 
 /**
  *
- * import ::= IMPORT import_path (AS MODULE)? ';'
+ * import ::= IMPORT import_path (',' import_path)* EOS
  *
  * @return true if import succeeded
  */
@@ -2032,19 +2032,30 @@ static inline bool parse_import(ParseContext *context)
 
 	bool private = try_consume(context, TOKEN_PRIVATE);
 
-	if (!TOKEN_IS(TOKEN_IDENT))
+	bool is_not_first = false;
+	while (1)
 	{
-		if (TOKEN_IS(TOKEN_STRING))
+		if (!TOKEN_IS(TOKEN_IDENT))
 		{
-			SEMA_TOKEN_ERROR(context->tok, "An import should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
+			if (is_not_first)
+			{
+				SEMA_TOKID_ERROR(context->prev_tok, "Another module name was expected after the comma.");
+				return false;
+			}
+			if (TOKEN_IS(TOKEN_STRING))
+			{
+				SEMA_TOKEN_ERROR(context->tok, "An import should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
+				return false;
+			}
+			SEMA_TOKEN_ERROR(context->tok, "Import statement should be followed by the name of the module to import.");
 			return false;
 		}
-		SEMA_TOKEN_ERROR(context->tok, "Import statement should be followed by the name of the module to import.");
-		return false;
+		is_not_first = true;
+		Path *path = parse_module_path(context);
+		unit_add_import(context->unit, path, NO_TOKEN, private);
+		if (!try_consume(context, TOKEN_COMMA)) break;
 	}
 
-	Path *path = parse_module_path(context);
-	unit_add_import(context->unit, path, NO_TOKEN, private);
 	TRY_CONSUME_EOS_OR(false);
 	return true;
 }
