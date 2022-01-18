@@ -5431,7 +5431,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MACRO_EXPANSION:
 		case EXPR_CT_IDENT:
 		case EXPR_HASH_IDENT:
-		case EXPR_PLACEHOLDER:
+		case EXPR_COMPILER_CONST:
 		case EXPR_CT_CALL:
 		case EXPR_FLATPATH:
 		case EXPR_VARIANTSWITCH:

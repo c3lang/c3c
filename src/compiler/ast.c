@@ -231,6 +231,7 @@ bool expr_is_pure(Expr *expr)
 	{
 		case EXPR_BUILTIN:
 			return false;
+		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:
 		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:
@@ -280,7 +281,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_FLATPATH:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-		case EXPR_PLACEHOLDER:
 		case EXPR_POST_UNARY:
 		case EXPR_SCOPED_EXPR:
 		case EXPR_SLICE_ASSIGN:

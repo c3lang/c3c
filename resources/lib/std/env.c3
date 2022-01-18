@@ -51,8 +51,8 @@ enum OsType
 	EMSCRIPTEN,
 }
 
-const OsType OS_TYPE = (OsType)(${OS_TYPE});
-const CompilerOptLevel COMPILER_OPT_LEVEL = (CompilerOptLevel)(${COMPILER_OPT_LEVEL});
-const bool BIG_ENDIAN = ${PLATFORM_BIG_ENDIAN};
-const bool I128_SUPPORT = ${PLATFORM_I128_SUPPORTED};
-const bool COMPILER_SAFE_MODE = ${COMPILER_SAFE_MODE};
+const OsType OS_TYPE = (OsType)($$OS_TYPE);
+const CompilerOptLevel COMPILER_OPT_LEVEL = (CompilerOptLevel)($$COMPILER_OPT_LEVEL);
+const bool BIG_ENDIAN = $$PLATFORM_BIG_ENDIAN;
+const bool I128_SUPPORT = $$PLATFORM_I128_SUPPORTED;
+const bool COMPILER_SAFE_MODE = $$COMPILER_SAFE_MODE;

@@ -248,15 +248,15 @@ const int EOF = -1;
 const int FOPEN_MAX = 20;
 const int FILENAME_MAX = 1024;
 
-$if (${C_INT_SIZE} == 64):
+$if $$C_INT_SIZE == 64:
 define ErrnoType = long;
-$elif (${C_INT_SIZE} == 32):
+$elif $$C_INT_SIZE == 32:
 define ErrnoType = int;
 $else:
 define ErrnoType = short;
 $endif;
 
-$if (${C_LONG_SIZE} == 64):
+$if $$C_LONG_SIZE == 64:
 define SeekIndex = long;
 $else:
 define SeekIndex = int;
@@ -302,7 +302,7 @@ extern fn void perror(char* str);
 
 // time.h
 
-$if (${C_LONG_SIZE} == 64):
+$if $$C_LONG_SIZE == 64:
 define TimeOffset = long;
 $else:
 define TimeOffset = int;
