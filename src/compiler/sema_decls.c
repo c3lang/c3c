@@ -1157,6 +1157,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_NOSCOPE] = ATTR_MACRO,
 			[ATTRIBUTE_ESCAPING] = ATTR_MACRO,
+			[ATTRIBUTE_AUTOIMPORT] = ATTR_MACRO | ATTR_FUNC,
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
@@ -1481,6 +1482,9 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 			case ATTRIBUTE_NORETURN: SET_ATTR(attr_noreturn);
 			case ATTRIBUTE_WEAK: SET_ATTR(attr_weak);
 			case ATTRIBUTE_NAKED: SET_ATTR(attr_naked);
+			case ATTRIBUTE_AUTOIMPORT:
+				decl->is_autoimport = true;
+				break;
 			default:
 				UNREACHABLE
 		}
@@ -1570,6 +1574,9 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 			case ATTRIBUTE_ESCAPING:
 				had = decl->escaping;
 				decl->escaping = true;
+				break;
+			case ATTRIBUTE_AUTOIMPORT:
+				decl->is_autoimport = true;
 				break;
 			default:
 				UNREACHABLE

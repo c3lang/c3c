@@ -883,10 +883,28 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	// Already handled
 	if (!decl_ok(decl)) return false;
 
-	if (decl->decl_kind == DECL_FUNC && !expr->identifier_expr.path && decl->module != context->unit->module)
+	if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO || decl->decl_kind == DECL_GENERIC)
 	{
-		SEMA_ERROR(expr, "Functions from other modules, must be prefixed with the module name");
-		return false;
+		if (decl->module != context->unit->module && !decl->is_autoimport && !expr->identifier_expr.path)
+		{
+			const char *message;
+			switch (decl->decl_kind)
+			{
+				case DECL_FUNC:
+					message = "Functions from other modules must be prefixed with the module name.";
+					break;
+				case DECL_MACRO:
+					message = "Macros from other modules must be prefixed with the module name.";
+					break;
+				case DECL_GENERIC:
+					message = "Generic functions from other modules must be prefixed with the module name.";
+					break;
+				default:
+					UNREACHABLE
+			}
+			SEMA_ERROR(expr, message);
+			return false;
+		}
 	}
 	if (decl->resolve_status != RESOLVE_DONE)
 	{
