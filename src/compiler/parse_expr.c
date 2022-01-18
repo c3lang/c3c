@@ -489,7 +489,8 @@ static Expr *parse_grouping_expr(ParseContext *context, Expr *left)
 	advance_and_verify(context, TOKEN_LPAREN);
 	ASSIGN_EXPR_ELSE(expr->inner_expr, parse_expr(context), poisoned_expr);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
-	if (expr->inner_expr->expr_kind == EXPR_TYPEINFO && try_consume(context, TOKEN_LPAREN))
+	// Look at what follows.
+	if (expr->inner_expr->expr_kind == EXPR_TYPEINFO)
 	{
 		TypeInfo *info = expr->inner_expr->type_expr;
 		if (TOKEN_IS(TOKEN_LBRACE) && info->resolve_status != RESOLVE_DONE)
@@ -497,11 +498,13 @@ static Expr *parse_grouping_expr(ParseContext *context, Expr *left)
 			SEMA_TOKEN_ERROR(context->tok, "Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
 			return poisoned_expr;
 		}
-		ASSIGN_EXPR_ELSE(Expr *cast_expr, parse_expr(context), poisoned_expr);
-		CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
-		expr->expr_kind = EXPR_CAST;
-		expr->cast_expr.type_info = info;
-		expr->cast_expr.expr = cast_expr;
+		if (rules[context->tok.type].prefix)
+		{
+			ASSIGN_EXPR_ELSE(Expr *cast_expr, parse_precedence(context, PREC_CALL), poisoned_expr);
+			expr->expr_kind = EXPR_CAST;
+			expr->cast_expr.type_info = info;
+			expr->cast_expr.expr = cast_expr;
+		}
 	}
 	RANGE_EXTEND_PREV(expr);
 	return expr;

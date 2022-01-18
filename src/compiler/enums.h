@@ -260,7 +260,7 @@ typedef enum
 	PREC_BIT,               // ^ | &
 	PREC_SHIFT,             // << >>
 	PREC_MULTIPLICATIVE,    // * / %
-	PREC_UNARY,             // ! - + ~ * & prefix ++/-- try catch
+	PREC_UNARY,             // ! - + ~ * & prefix ++/-- try catch (type)
 	PREC_CALL,              // . () [] postfix ++/--
 	PREC_MACRO,
 	PREC_FIRST = PREC_MACRO

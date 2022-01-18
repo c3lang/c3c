@@ -21,23 +21,23 @@ bitstruct Foo2 : char[4]
 fn void test()
 {
     Foo b = {};
-    int x = (int)(b);
-    char[4] y = (char[4])(b);
+    int x = (int)b;
+    char[4] y = (char[4])b;
     Foo *c = &b;
     c.x;
-    int* x2 = (int*)(c);
-    char[4]* y2 = (char[4]*)(c);
+    int* x2 = (int*)c;
+    char[4]* y2 = (char[4]*)c;
 }
 
 fn void test2()
 {
     Foo2 b = { 3, 2, -1 };
-    int x = (int)(b);
-    char[4] y = (char[4])(b);
+    int x = (int)b;
+    char[4] y = (char[4])b;
     Foo2 *c = &b;
     printf("%d\n", c.x);
-    int* x2 = (int*)(c);
-    char[4]* y2 = (char[4]*)(c);
+    int* x2 = (int*)c;
+    char[4]* y2 = (char[4]*)c;
 }
 
 fn void main()
@@ -46,7 +46,7 @@ fn void main()
     test2();
 }
 
-// #expect: foo.ll
+/* #expect: foo.ll
 
 define void @foo.test() #0 {
 entry:
