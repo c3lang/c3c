@@ -14,7 +14,7 @@ module baz;
 import bar;
 fn void test()
 {
-    @bar1();
+    @bar::bar1();
 }
 
 /* #expect: baz.ll

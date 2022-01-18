@@ -586,6 +586,7 @@ typedef struct Decl_
 	bool no_scope : 1;
 	bool escaping : 1;
 	bool is_value : 1;
+	bool is_autoimport : 1;
 	union
 	{
 		void *backend_ref;
