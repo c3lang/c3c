@@ -101,11 +101,11 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_EXPR_LIST(expr->catch_unwrap_expr.exprs);
 			MACRO_COPY_TYPE(expr->catch_unwrap_expr.type);
 			return expr;
-		case EXPR_PLACEHOLDER:
 		case EXPR_CONST_IDENTIFIER:
 		case EXPR_CT_IDENT:
 		case EXPR_IDENTIFIER:
 		case EXPR_HASH_IDENT:
+		case EXPR_COMPILER_CONST:
 			return expr;
 		case EXPR_MACRO_EXPANSION:
 			MACRO_COPY_EXPR(expr->macro_expansion_expr.inner);

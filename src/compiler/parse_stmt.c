@@ -965,7 +965,6 @@ Ast *parse_stmt(ParseContext *context)
 		case TOKEN_BANGBANG:
 		case TOKEN_UNDERSCORE:
 		case TOKEN_PRIVATE:
-		case TOKEN_PLACEHOLDER:
 		case TOKEN_BITSTRUCT:
 		case TOKEN_LVEC:
 		case TOKEN_RVEC:

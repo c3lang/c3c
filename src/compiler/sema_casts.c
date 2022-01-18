@@ -802,7 +802,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_FLATPATH:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-		case EXPR_PLACEHOLDER:
 		case EXPR_TYPEID:
 		case EXPR_TYPEINFO:
 		case EXPR_UNDEF:
@@ -818,6 +817,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_PTR:
 		case EXPR_VARIANTSWITCH:
 		case EXPR_ARGV_TO_SUBARRAY:
+		case EXPR_COMPILER_CONST:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_float(expr->unary_expr.expr, type);
@@ -959,7 +959,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_FLATPATH:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-		case EXPR_PLACEHOLDER:
 		case EXPR_TYPEID:
 		case EXPR_TYPEINFO:
 		case EXPR_UNDEF:
@@ -973,6 +972,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_PTR:
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_VARIANTSWITCH:
+		case EXPR_COMPILER_CONST:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_int(expr->unary_expr.expr, type);

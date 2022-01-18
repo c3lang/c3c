@@ -11,7 +11,48 @@ enum CompilerOptLevel
     O3
 }
 
-const CompilerOptLevel COMPILER_OPT_LEVEL = (CompilerOptLevel)(${COMPILER_OPT_LEVEL});
-const bool BIG_ENDIAN = ${PLATFORM_BIG_ENDIAN};
-const bool I128_SUPPORT = ${PLATFORM_I128_SUPPORTED};
-const bool COMPILER_SAFE_MODE = ${COMPILER_SAFE_MODE};
+enum OsType
+{
+	UNKNOWN,
+	NONE,
+	ANANAS,
+	CLOUD_ABI,
+	DRAGON_FLY,
+	FREEBSD,
+	FUCHSIA,
+	IOS,
+	KFREEBSD,
+	LINUX,
+	PS3,
+	MACOSX,
+	NETBSD,
+	OPENBSD,
+	SOLARIS,
+	WIN32,
+	HAIKU,
+	MINIX,
+	RTEMS,
+	NACL,       // Native Client
+	CNK,        // BG/P Compute-Node Kernel
+	AIX,
+	CUDA,
+	NVOPENCL,
+	AMDHSA,
+	PS4,
+	ELFIAMCU,
+	TVOS,
+	WATCHOS,
+	MESA3D,
+	CONTIKI,
+	AMDPAL,
+	HERMITCORE,
+	HURD,
+	WASI,
+	EMSCRIPTEN,
+}
+
+const OsType OS_TYPE = (OsType)($$OS_TYPE);
+const CompilerOptLevel COMPILER_OPT_LEVEL = (CompilerOptLevel)($$COMPILER_OPT_LEVEL);
+const bool BIG_ENDIAN = $$PLATFORM_BIG_ENDIAN;
+const bool I128_SUPPORT = $$PLATFORM_I128_SUPPORTED;
+const bool COMPILER_SAFE_MODE = $$COMPILER_SAFE_MODE;

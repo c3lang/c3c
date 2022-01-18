@@ -1717,7 +1717,6 @@ static bool lexer_scan_token_inner(Lexer *lexer, LexMode mode)
 		case '#':
 			return scan_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH_CONST_IDENT, TOKEN_HASH_TYPE_IDENT, '$');
 		case '$':
-			if (match(lexer, '{')) return add_token(lexer, TOKEN_PLACEHOLDER, "${");
 			if (match(lexer, '$'))
 			{
 				if (is_letter(peek(lexer)))

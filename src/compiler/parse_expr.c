@@ -943,27 +943,21 @@ static Expr *parse_builtin(ParseContext *context, Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_BUILTIN, context->tok);
 	advance_and_verify(context, TOKEN_BUILTIN);
-	expr->builtin_expr.identifier = context->tok;
-	CONSUME_OR(TOKEN_IDENT, poisoned_expr);
-	RANGE_EXTEND_PREV(expr);
-	return expr;
-}
-static Expr *parse_placeholder(ParseContext *context, Expr *left)
-{
-	assert(!left && "Had left hand side");
-	advance_and_verify(context, TOKEN_PLACEHOLDER);
-	ASSIGN_EXPR_ELSE(Expr *expr, parse_expr(context), poisoned_expr);
-	CONSUME_OR(TOKEN_RBRACE, poisoned_expr);
-
-	if (expr->expr_kind != EXPR_IDENTIFIER && TOKTYPE(expr->identifier_expr.identifier) != TOKEN_CONST_IDENT)
+	if (!token_is_some_ident(context->tok.type))
 	{
-		SEMA_ERROR(expr, "Expected an uppercase identifier that corresponds to a compile time argument.");
+		SEMA_TOKEN_ERROR(context->tok, "Expected a name here.");
 		return poisoned_expr;
 	}
-	ExprPlaceholder placeholder = { .identifier = expr->identifier_expr.identifier, .path = expr->identifier_expr.path };
-	expr->placeholder_expr = placeholder;
-	expr->expr_kind = EXPR_PLACEHOLDER;
-	expr->resolve_status = RESOLVE_NOT_DONE;
+	expr->builtin_expr.identifier = context->tok;
+	if (try_consume(context, TOKEN_CONST_IDENT))
+	{
+		expr->expr_kind = EXPR_COMPILER_CONST;
+	}
+	else
+	{
+		CONSUME_OR(TOKEN_IDENT, poisoned_expr);
+	}
+	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
@@ -1616,7 +1610,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_FALSE] = { parse_bool, NULL, PREC_NONE },
 		[TOKEN_NULL] = { parse_null, NULL, PREC_NONE },
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
-		[TOKEN_PLACEHOLDER] = { parse_placeholder, NULL, PREC_NONE },
 		[TOKEN_BUILTIN] = { parse_builtin, NULL, PREC_NONE },
 		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },
 		[TOKEN_AT] = { parse_macro_expansion, NULL, PREC_NONE },

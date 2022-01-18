@@ -3,7 +3,10 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module libc;
 import std::cinterop;
-
+import std::env;
+import std::os::linux;
+import std::os::macos;
+import std::os::windows;
 // stdlib
 
 // Constants need to be per os/arch
@@ -160,7 +163,19 @@ enum Errno : ErrnoType
     ENOTRECOVERABLE = 131, /* State not recoverable */
 }
 
-extern fn Errno errno();
+fn Errno errno()
+{
+    $if (env::OS_TYPE == OsType.WIN32):
+        return windows::errno();
+    $elif (env::OS_TYPE == OsType.MACOSX):
+        return macos::errno();
+    $elif (env::OS_TYPE == OsType.LINUX):
+        return linux::errno();
+    $else:
+        return Errno.ENOTRECOVERABLE;
+    $endif;
+}
+
 
 define TerminateFunction = fn void();
 define CompareFunction = fn int(void*, void*);
@@ -233,15 +248,15 @@ const int EOF = -1;
 const int FOPEN_MAX = 20;
 const int FILENAME_MAX = 1024;
 
-$if (${C_INT_SIZE} == 64):
+$if $$C_INT_SIZE == 64:
 define ErrnoType = long;
-$elif (${C_INT_SIZE} == 32):
+$elif $$C_INT_SIZE == 32:
 define ErrnoType = int;
 $else:
 define ErrnoType = short;
 $endif;
 
-$if (${C_LONG_SIZE} == 64):
+$if $$C_LONG_SIZE == 64:
 define SeekIndex = long;
 $else:
 define SeekIndex = int;
@@ -287,7 +302,7 @@ extern fn void perror(char* str);
 
 // time.h
 
-$if (${C_LONG_SIZE} == 64):
+$if $$C_LONG_SIZE == 64:
 define TimeOffset = long;
 $else:
 define TimeOffset = int;

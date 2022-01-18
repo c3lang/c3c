@@ -449,7 +449,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_FLATPATH:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_MACRO_EXPANSION:
-		case EXPR_PLACEHOLDER:
+		case EXPR_COMPILER_CONST:
 		case EXPR_POISONED:
 		case EXPR_ARGV_TO_SUBARRAY:
 			UNREACHABLE
@@ -6016,9 +6016,9 @@ static inline bool sema_expr_analyse_failable(SemaContext *context, Expr *expr)
 	return true;
 }
 
-static inline bool sema_expr_analyse_placeholder(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr)
 {
-	const char *string = TOKSTR(expr->placeholder_expr.identifier);
+	const char *string = TOKSTR(expr->builtin_expr.identifier);
 	if (string == kw_FILE)
 	{
 		expr_rewrite_to_string(expr, context->unit->file->name);
@@ -6054,7 +6054,7 @@ static inline bool sema_expr_analyse_placeholder(SemaContext *context, Expr *exp
 	Expr *value = stable_get(&global_context.compiler_defines, string);
 	if (!value)
 	{
-		SEMA_ERROR(expr, "The placeholder constant '%s' was not defined, did you mistype or forget to add it?", string);
+		SEMA_ERROR(expr, "The compiler constant '%s' was not defined, did you mistype or forget to add it?", string);
 		return false;
 	}
 	expr_replace(expr, value);
@@ -6868,8 +6868,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_ct_identifier(context, expr);
 		case EXPR_FAILABLE:
 			return sema_expr_analyse_failable(context, expr);
-		case EXPR_PLACEHOLDER:
-			return sema_expr_analyse_placeholder(context, expr);
+		case EXPR_COMPILER_CONST:
+			return sema_expr_analyse_compiler_const(context, expr);
 		case EXPR_POISONED:
 			return false;
 		case EXPR_LEN:
