@@ -2324,7 +2324,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 			}
 			else
 			{
-				SEMA_ERROR(expr, "A type cannot be followed by (), did you mean to use ({})?");
+				SEMA_ERROR(expr, "A type cannot be followed by (), did you mean to use {}?");
 			}
 			return false;
 		default:
@@ -4066,6 +4066,13 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr)
 	if (type_is_failable(target_type))
 	{
 		SEMA_ERROR(expr->cast_expr.type_info, "Casting to a failable type is not allowed.");
+		return false;
+	}
+	if (inner->type == type_complist)
+	{
+		// We don't support: (Foo)(x > 0 ? { 1, 2 } : { 3, 4 })
+		// just write this: x > 0 ? Foo { 1, 2 } : Foo { 3, 4 }
+		SEMA_ERROR(inner, "Casting from an untyped list to a concrete type is not possible.");
 		return false;
 	}
 	if (!cast_may_explicit(inner->type, target_type, true, inner->expr_kind == EXPR_CONST))

@@ -1106,8 +1106,15 @@ bool cast_implicit(Expr *expr, Type *to_type)
 			Expr *problem = recursive_may_narrow_float(expr, to_canonical);
 			if (problem)
 			{
-				SEMA_ERROR(problem, "The value '%s' is out of range for %s.", expr_const_to_error_string(&expr->const_expr),
-						   type_quoted_error_string(to_type));
+				if (problem->expr_kind == EXPR_CONST)
+				{
+					SEMA_ERROR(problem, "The value '%s' is out of range for %s.", expr_const_to_error_string(&problem->const_expr),
+							   type_quoted_error_string(to_type));
+				}
+				else
+				{
+					SEMA_ERROR(problem, "This expression cannot be implicitly narrowed.");
+				}
 				return false;
 			}
 			goto OK;
