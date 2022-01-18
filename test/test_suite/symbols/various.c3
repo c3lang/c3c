@@ -143,7 +143,7 @@ fn void test19()
 /*
 const i32 Num = 200;
 
-func void test1() {
+fn void test1() {
     i8 a = test.Num;  // @error{constant value 200 out-of-bounds for type 'i8', range [-128, 127]}
 }*/
 

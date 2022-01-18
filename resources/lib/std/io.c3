@@ -169,7 +169,7 @@ error FileError
     ulong errno;
 }
 
-func FileError errorFromErrno()
+fn FileError errorFromErrno()
 {
     return FileError { };
 }
@@ -177,14 +177,14 @@ func FileError errorFromErrno()
 
 
 
-pubic func void! File.clearerr(File *file) @inline
+pubic fn void! File.clearerr(File *file) @inline
 {
     clearerr(file->file);
 }
 
 
 
-func void File.error(File *file) @inline
+fn void File.error(File *file) @inline
 {
     int err = ferror
 }

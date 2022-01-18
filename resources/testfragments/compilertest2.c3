@@ -242,7 +242,7 @@ public fn void BigInt.print(BigInt& bigInt)
 }
 
 /*
-public func void BigInt.fprint(BigInt* bigInt, FILE* file)
+public fn void BigInt.fprint(BigInt* bigInt, FILE* file)
 {
    char* chars = bigInt.toCharArray();
    fputs(chars, file);
