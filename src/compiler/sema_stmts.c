@@ -1919,6 +1919,15 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 
 	if (!*max_ranged && type_is_integer(expr->type) && to_const_expr != const_expr)
 	{
+		if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
+		{
+			sema_error_range((SourceSpan){ expr->span.loc, to_expr->span.end_loc },
+			                 "The range is not valid because the first value (%s) is greater than the second (%s). "
+							 "It would work if you swapped their order.",
+			                 int_to_str(const_expr->ixx, 10),
+			                 int_to_str(to_const_expr->ixx, 10));
+			return false;
+		}
 		Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
 		Int128 max_range = { .low = active_target.switchrange_max_size };
 		if (i128_comp(range, max_range, type_i128) == CMP_GT)
