@@ -35,6 +35,7 @@ typedef enum
 	COMMAND_DOCS,
 	COMMAND_BENCH,
 	COMMAND_UNIT_TEST,
+	COMMAND_PRINT_SYNTAX,
 } CompilerCommand;
 
 typedef enum
@@ -207,6 +208,10 @@ typedef struct BuildOptions_
 	bool no_avx;
 	bool avx;
 	bool avx512;
+	bool print_keywords;
+	bool print_attributes;
+	bool print_builtins;
+	bool print_operators;
 } BuildOptions;
 
 

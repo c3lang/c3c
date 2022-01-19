@@ -403,6 +403,55 @@ static void setup_bool_define(const char *id, bool value)
 	}
 }
 
+void print_syntax(BuildOptions *options)
+{
+	symtab_init(64 * 1024);
+
+	if (options->print_keywords)
+	{
+		int index = 1;
+		for (int i = 1; i < TOKEN_LAST; i++)
+		{
+			const char *name = token_type_to_string((TokenType)i);
+			if (name[0] == '$' || (name[0] >= 'a' && name[0] <= 'z'))
+			{
+				if (name[1] == '$' || name[1] == '\0') continue;
+				printf("%2d %s\n", index++, name);
+			}
+		}
+	}
+	if (options->print_operators)
+	{
+		int index = 1;
+		for (int i = 1; i < TOKEN_LAST; i++)
+		{
+			if (i == TOKEN_DOCS_START || i == TOKEN_DOCS_END) continue;
+			const char *name = token_type_to_string((TokenType)i);
+			char first_char = name[0];
+			if (first_char == '$' || first_char == '@'
+				|| (first_char >= 'a' && first_char <= 'z')
+				|| (first_char >= 'A' && first_char <= 'Z'))
+			{
+				continue;
+			}
+			printf("%2d %s\n", index++, name);
+		}
+	}
+	if (options->print_attributes)
+	{
+		for (int i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
+		{
+			printf("%2d @%s\n", i + 1, attribute_list[i]);
+		}
+	}
+	if (options->print_builtins)
+	{
+		for (int i = 0; i < NUMBER_OF_BUILTINS; i++)
+		{
+			printf("%2d $$%s\n", i + 1, builtin_list[i]);
+		}
+	}
+}
 void compile()
 {
 	active_target.sources = target_expand_source_names(active_target.source_dirs, ".c3", ".c3t", true);

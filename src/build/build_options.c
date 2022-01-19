@@ -104,7 +104,15 @@ static void usage(void)
 	OUTPUT("");
 	OUTPUT("  -z <argument>         - Send the <argument> as a parameter to the linker.");
 	OUTPUT("");
+	OUTPUT("  -mavx                 - Enable AVX on x64 targets.");
+	OUTPUT("  -mavx512              - Enable AVX512 on x64 targets.");
+	OUTPUT("  -mno-avx              - Disable AVX on x64 targets.");
+	OUTPUT("");
 	OUTPUT("  --debug-stats         - Print debug statistics.");
+	OUTPUT("  --list-keywords       - List all keywords.");
+	OUTPUT("  --list-operators      - List all operators.");
+	OUTPUT("  --list-attributes     - List all attributes.");
+	OUTPUT("  --list-builtins       - List all builtins.");
 #ifndef NDEBUG
 	OUTPUT("  --debug-log           - Print debug logging to stdout.");
 #endif
@@ -285,10 +293,18 @@ static void print_version(void)
 	OUTPUT("LLVM default target:               %s", llvm_target);
 }
 
+
 static void parse_option(BuildOptions *options)
 {
 	switch (current_arg[1])
 	{
+		case '?':
+			if (match_shortopt("?"))
+			{
+				usage();
+				exit_compiler(COMPILER_SUCCESS_EXIT);
+			}
+			break;
 		case 'V':
 			if (match_shortopt("V"))
 			{
@@ -467,6 +483,30 @@ static void parse_option(BuildOptions *options)
 				debug_stats = true;
 				return;
 			}
+			if (match_longopt("list-keywords"))
+			{
+				options->print_keywords = true;
+				options->command = COMMAND_PRINT_SYNTAX;
+				return;
+			}
+			if (match_longopt("list-attributes"))
+			{
+				options->print_attributes = true;
+				options->command = COMMAND_PRINT_SYNTAX;
+				return;
+			}
+			if (match_longopt("list-builtins"))
+			{
+				options->print_builtins = true;
+				options->command = COMMAND_PRINT_SYNTAX;
+				return;
+			}
+			if (match_longopt("list-operators"))
+			{
+				options->print_operators = true;
+				options->command = COMMAND_PRINT_SYNTAX;
+				return;
+			}
 			if (match_longopt("threads"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --threads needs a valid integer 1 or higher.");
@@ -547,7 +587,8 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("help"))
 			{
-				break;
+				usage();
+				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			break;
 		default:
@@ -621,6 +662,10 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	}
 	if (build_options.command == COMMAND_MISSING)
 	{
+		if (build_options.print_operators || build_options.print_builtins || build_options.print_keywords || build_options.print_attributes)
+		{
+			return build_options;
+		}
 		FAIL_WITH_ERR("No command found.");
 	}
 	return build_options;

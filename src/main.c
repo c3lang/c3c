@@ -43,6 +43,9 @@ int main_real(int argc, const char *argv[])
 
 	switch (build_options.command)
 	{
+		case COMMAND_PRINT_SYNTAX:
+			print_syntax(&build_options);
+			break;
 		case COMMAND_INIT:
 			create_project(&build_options);
 			break;
