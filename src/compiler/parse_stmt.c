@@ -947,6 +947,10 @@ Ast *parse_stmt(ParseContext *context)
 		case TOKEN_EXTERN:
 		case TOKEN_STRUCT:
 		case TOKEN_ERRTYPE:
+		case TOKEN_OPTENUM:
+		case TOKEN_OPTNUM:
+		case TOKEN_ERRNUM:
+		case TOKEN_RESNUM:
 		case TOKEN_UNION:
 		case TOKEN_DEFINE:
 		case TOKEN_DOCS_START:

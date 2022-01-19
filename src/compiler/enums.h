@@ -464,6 +464,11 @@ typedef enum
 	TOKEN_VAR,
 	TOKEN_WHILE,
 
+	TOKEN_ERRNUM,
+	TOKEN_OPTNUM,
+	TOKEN_OPTENUM,
+	TOKEN_RESNUM,
+
 	TOKEN_CT_ALIGNOF,       // $alignof
 	TOKEN_CT_ASSERT,        // $assert
 	TOKEN_CT_CASE,          // $case

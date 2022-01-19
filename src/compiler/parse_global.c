@@ -79,6 +79,10 @@ void recover_top_level(ParseContext *context)
 			case TOKEN_GENERIC:
 			case TOKEN_DEFINE:
 			case TOKEN_ERRTYPE:
+			case TOKEN_OPTENUM:
+			case TOKEN_OPTNUM:
+			case TOKEN_ERRNUM:
+			case TOKEN_RESNUM:
 				return;
 			case TOKEN_IDENT: // Incr arrays only
 			case TOKEN_CONST:
@@ -1774,7 +1778,8 @@ static inline Decl *parse_macro_declaration(ParseContext *context, Visibility vi
  */
 static inline Decl *parse_error_declaration(ParseContext *context, Visibility visibility)
 {
-	advance_and_verify(context, TOKEN_ERRTYPE);
+	advance(context);
+	// advance_and_verify(context, TOKEN_ERRTYPE);
 
 	Decl *decl = decl_new_with_type(context->tok.id, DECL_ERRTYPE, visibility);
 
@@ -2317,6 +2322,10 @@ Decl *parse_top_level_statement(ParseContext *context)
 			ASSIGN_DECL_ELSE(decl, parse_enum_declaration(context, visibility), poisoned_decl);
 			break;
 		}
+		case TOKEN_OPTENUM:
+		case TOKEN_OPTNUM:
+		case TOKEN_ERRNUM:
+		case TOKEN_RESNUM:
 		case TOKEN_ERRTYPE:
 		{
 			ASSIGN_DECL_ELSE(decl, parse_error_declaration(context, visibility), poisoned_decl);

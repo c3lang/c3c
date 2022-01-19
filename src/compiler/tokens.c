@@ -270,6 +270,16 @@ const char *token_type_to_string(TokenType type)
 			return "var";
 		case TOKEN_WHILE:
 			return "while";
+		// Aliases to test out
+		case TOKEN_OPTENUM:
+			return "optenum";
+		case TOKEN_OPTNUM:
+			return "optnum";
+		case TOKEN_ERRNUM:
+			return "errnum";
+		case TOKEN_RESNUM:
+			return "resnum";
+
 
 		// Named types
 		case TOKEN_VOID:

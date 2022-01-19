@@ -216,7 +216,7 @@ extern fn int strcoll(char* str1, char* str2);
 extern fn char* strcpy(char* dst, char* src);
 extern fn char* strncpy(char* dst, char* src, usize n);
 extern fn usize strcspn(char* str1, char* str2);
-extern fn char* strerror(int errnum);
+extern fn char* strerror(int errn);
 extern fn usize strlen(char* str);
 extern fn char* strpbrk(char* str1, char* str2);
 extern fn usize strspn(char* str1, char* str2);
