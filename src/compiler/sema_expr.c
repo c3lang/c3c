@@ -661,6 +661,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			{
 				UNREACHABLE
 			}
+			if (type_is_abi_aggregate(decl->type)) return true;
 			expr_replace(expr, copy_expr(decl->var.init_expr));
 			return sema_analyse_expr(context, expr);
 		case VARDECL_PARAM_EXPR:

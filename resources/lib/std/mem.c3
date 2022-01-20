@@ -25,7 +25,7 @@ enum AllocationKind
     FREE,
 }
 
-errtype AllocationFailure
+optenum AllocationFailure
 {
     OUT_OF_MEMORY
 }

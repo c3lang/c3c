@@ -17,7 +17,7 @@ private Foo foo6;
 private const Foo FOO7 = { 1, 2 };
 private Foo foo8 = FOO7;
 
-// #expect: structo.ll
+/* #expect: structo.ll
 
 %Foo = type { i32, i64 }
 

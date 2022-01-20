@@ -1,6 +1,6 @@
 module foo;
 
-errtype Blurg
+optenum Blurg
 {
     Z
 }

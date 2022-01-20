@@ -328,6 +328,10 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	AlignSize alignment = type_alloca_alignment(var_type);
 
 	Expr *init_expr = decl->var.init_expr;
+	if (init_expr && init_expr->expr_kind == EXPR_CONST_IDENTIFIER)
+	{
+		init_expr = init_expr->identifier_expr.decl->var.init_expr;
+	}
 	if (init_expr)
 	{
 		if (init_expr->expr_kind == EXPR_CONST && init_expr->const_expr.const_kind == CONST_LIST)

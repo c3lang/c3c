@@ -4,7 +4,7 @@ struct Foo
     int x, y;
 }
 
-errtype MyErr
+optenum MyErr
 {
     FOO
 }

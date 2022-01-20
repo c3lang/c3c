@@ -60,7 +60,7 @@ enum Seek
     END = 2
 }
 
-errtype IoError
+optenum IoError
 {
     FILE_NOT_FOUND,
     FILE_NOT_SEEKABLE,

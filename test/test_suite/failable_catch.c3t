@@ -1,6 +1,6 @@
 // #target: x64-darwin
 
-errtype MyErr
+errnum MyErr
 {
     TEST
 }
@@ -28,7 +28,7 @@ fn int main()
     return 0;
 }
 
-// #expect: failable_catch.ll
+/* #expect: failable_catch.ll
 
 define i32 @main() #0 {
 entry:

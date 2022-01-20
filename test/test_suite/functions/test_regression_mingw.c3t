@@ -205,7 +205,7 @@ fn Type getMult(Type a)
 }
 Type argh = 234;
 
-errtype MyErr
+optenum MyErr
 {
     X,
     Y
