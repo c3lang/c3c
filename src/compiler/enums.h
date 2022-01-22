@@ -251,8 +251,7 @@ typedef enum
 {
 	PREC_NONE,
 	PREC_ASSIGNMENT,        // =, *=, /=, %=, +=, etc
-	PREC_OR_ERROR,              // else
-	PREC_TERNARY,           // ?:
+	PREC_TERNARY,           // ?: ??
 	PREC_OR,                // ||
 	PREC_AND,               // &&
 	PREC_RELATIONAL,        // < > <= >= == !=

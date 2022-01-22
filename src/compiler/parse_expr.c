@@ -1579,7 +1579,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_VARIANT] = { parse_type_identifier, NULL, PREC_NONE },
 
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
-		[TOKEN_QUESTQUEST] = { NULL, parse_or_error_expr, PREC_OR_ERROR},
+		[TOKEN_QUESTQUEST] = { NULL, parse_or_error_expr, PREC_TERNARY},
 		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
@@ -1595,7 +1595,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_MOD] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_STAR] = { parse_unary_expr, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_DOT] = { NULL, parse_access_expr, PREC_CALL },
-		[TOKEN_BANG] = { parse_unary_expr, parse_failable, PREC_UNARY },
+		[TOKEN_BANG] = { parse_unary_expr, parse_failable, PREC_CALL },
 		[TOKEN_BYTES] = { parse_bytes_expr, NULL, PREC_NONE },
 		[TOKEN_BIT_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
 		[TOKEN_BIT_XOR] = { NULL, parse_binary, PREC_BIT },

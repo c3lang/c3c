@@ -5834,6 +5834,11 @@ static inline bool sema_expr_analyse_catch(SemaContext *context, Expr *expr)
 static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->or_error_expr.expr;
+	if (inner->expr_kind == EXPR_TERNARY || expr->or_error_expr.or_error_expr->expr_kind == EXPR_TERNARY)
+	{
+		SEMA_ERROR(expr, "Unclear precedence using ternary with ??, please use () to remove ambiguity.");
+		return false;
+	}
 	if (!sema_analyse_expr(context, inner)) return false;
 
 	if (expr->or_error_expr.widen && !sema_widen_top_down(inner, expr->type)) return false;

@@ -113,6 +113,7 @@ static void usage(void)
 	OUTPUT("  --list-operators      - List all operators.");
 	OUTPUT("  --list-attributes     - List all attributes.");
 	OUTPUT("  --list-builtins       - List all builtins.");
+	OUTPUT("  --list-precedence     - List operator precedence order.");
 #ifndef NDEBUG
 	OUTPUT("  --debug-log           - Print debug logging to stdout.");
 #endif
@@ -507,6 +508,12 @@ static void parse_option(BuildOptions *options)
 				options->command = COMMAND_PRINT_SYNTAX;
 				return;
 			}
+			if (match_longopt("list-precedence"))
+			{
+				options->print_precedence = true;
+				options->command = COMMAND_PRINT_SYNTAX;
+				return;
+			}
 			if (match_longopt("threads"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --threads needs a valid integer 1 or higher.");
@@ -659,14 +666,6 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 			continue;
 		}
 		FAIL_WITH_ERR("Found the unexpected argument \"%s\".", current_arg);
-	}
-	if (build_options.command == COMMAND_MISSING)
-	{
-		if (build_options.print_operators || build_options.print_builtins || build_options.print_keywords || build_options.print_attributes)
-		{
-			return build_options;
-		}
-		FAIL_WITH_ERR("No command found.");
 	}
 	return build_options;
 }

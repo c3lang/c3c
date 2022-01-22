@@ -451,6 +451,24 @@ void print_syntax(BuildOptions *options)
 			printf("%2d $$%s\n", i + 1, builtin_list[i]);
 		}
 	}
+	if (options->print_precedence)
+	{
+		puts("precedence     | operators");
+		puts("---------------+----------");
+		puts(" 1. Macro      | @        ");
+		puts(" 2. Call       | . () [] postfix ++/-- postfix !");
+		puts(" 3. Unary      | ! - + ~ * & prefix ++/-- try catch (cast)");
+		puts(" 4. Mult       | * / %");
+		puts(" 5. Shift      | << >>");
+		puts(" 6. Bitwise    | ^ | &");
+		puts(" 7. Additive   | + -");
+		puts(" 8. Relational | < > <= >= == !=");
+		puts(" 9. And        | &&");
+		puts("10. Or         | ||");
+		puts("11. Ternary    | ?: ??");
+		puts("12. Assign     | = *= /= %= += |= &= ^=");
+	}
+
 }
 void compile()
 {
