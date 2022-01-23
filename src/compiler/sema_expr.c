@@ -1235,7 +1235,7 @@ static inline bool sema_check_invalid_body_arguments(SemaContext *context, Expr 
 }
 
 
-static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee, Expr *call, Expr **args, unsigned func_param_count, bool variadic, bool *failable)
+static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *callee, Expr *call, Expr **args, unsigned func_param_count, Variadic variadic, bool *failable)
 {
 	unsigned num_args = vec_size(args);
 	Decl **params = callee->params;
@@ -1304,7 +1304,7 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 		if (i >= func_param_count)
 		{
 			// 11. We might have a typed variadic argument.
-			if (!variadic)
+			if (variadic == VARIADIC_NONE)
 			{
 				// 15. We have too many parameters...
 				SEMA_ERROR(arg, "This argument would would exceed the number of parameters, did you add too many arguments?");
@@ -1321,6 +1321,11 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 					           "This looks like a variable argument before an unpacked variable which isn't allowed. Did you add too many arguments?");
 					return false;
 				}
+			}
+			else if (variadic == VARIADIC_ANY)
+			{
+				if (!sema_analyse_expr(context, arg)) return false;
+				expr_insert_addr(arg);
 			}
 		}
 		actual_args[i] = arg;
@@ -1416,7 +1421,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 	// 6. We might have a typed variadic call e.g. foo(int, double...)
 	//    get that type.
 	Type *variadic_type = NULL;
-	if (callee.variadic == VARIADIC_TYPED)
+	if (callee.variadic == VARIADIC_TYPED || callee.variadic == VARIADIC_ANY)
 	{
 		// 7a. The parameter type is <type>[], so we get the <type>
 		Type *last_type = callee.macro ? callee.params[func_param_count - 1]->type : callee.param_types[func_param_count - 1];
@@ -1426,7 +1431,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 		func_param_count--;
 	}
 
-	if (!sema_expand_call_arguments(context, &callee, call, args, func_param_count, callee.variadic != VARIADIC_NONE, failable)) return false;
+	if (!sema_expand_call_arguments(context, &callee, call, args, func_param_count, callee.variadic, failable)) return false;
 
 	args = call->call_expr.arguments;
 	num_args = vec_size(args);

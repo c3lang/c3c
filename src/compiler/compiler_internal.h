@@ -350,6 +350,7 @@ typedef struct VarDecl_
 	bool unwrap : 1;
 	bool shadow : 1;
 	bool vararg : 1;
+	bool vararg_implicit : 1;
 	bool is_static : 1;
 	bool is_read : 1;
 	bool is_written : 1;
@@ -433,6 +434,7 @@ typedef enum
 {
 	VARIADIC_NONE,
 	VARIADIC_TYPED,
+	VARIADIC_ANY,
 	VARIADIC_RAW,
 } Variadic;
 

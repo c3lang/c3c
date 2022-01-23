@@ -4509,7 +4509,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	Expr **args = expr->call_expr.arguments;
 	unsigned arguments = vec_size(args);
 
-	if (prototype->variadic == VARIADIC_TYPED) non_variadic_params--;
+	if (prototype->variadic == VARIADIC_TYPED || prototype->variadic == VARIADIC_ANY) non_variadic_params--;
 	FunctionPrototype copy;
 	if (prototype->variadic == VARIADIC_RAW)
 	{
@@ -4600,7 +4600,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	}
 
 	// 9. Typed varargs
-	if (prototype->variadic == VARIADIC_TYPED)
+	if (prototype->variadic == VARIADIC_TYPED || prototype->variadic == VARIADIC_ANY)
 	{
 		REMINDER("All varargs should be called with non-alias!");
 		Type *vararg_param = params[non_variadic_params];

@@ -1059,12 +1059,30 @@ bool parse_parameters(ParseContext *context, Visibility visibility, Decl ***para
 		VarDeclKind param_kind;
 		TokenId token = context->tok.id;
 		bool no_name = false;
-
+		bool vararg_implicit = false;
 		switch (context->tok.type)
 		{
 			case TOKEN_IDENT:
 				// normal foo
 				param_kind = VARDECL_PARAM;
+				// Check for "foo..." which defines an implicit "any" vararg
+				if (context->next_tok.type == TOKEN_ELLIPSIS)
+				{
+					if (ellipsis)
+					{
+						SEMA_TOKEN_ERROR(context->tok, "Unexpected '...' here.");
+						return false;
+					}
+					advance(context);
+					if (type)
+					{
+						SEMA_TOKEN_ERROR(context->tok, "The '...' should appear after the type.");
+						return false;
+					}
+					type = type_info_new_base(type_any, source_span_from_token_id(token));
+					ellipsis = true;
+					vararg_implicit = true;
+				}
 				break;
 			case TOKEN_CT_IDENT:
 				// ct_var $foo
@@ -1126,6 +1144,7 @@ bool parse_parameters(ParseContext *context, Visibility visibility, Decl ***para
 		if (!parse_attributes(context, &param->attributes)) return false;
 		var_arg_found |= ellipsis;
 		param->var.vararg = ellipsis;
+		param->var.vararg_implicit = vararg_implicit;
 		vec_add(params, param);
 		if (!try_consume(context, TOKEN_COMMA)) break;
 	}
@@ -1155,7 +1174,7 @@ static inline bool parse_parameter_list(ParseContext *context, Visibility parent
 			}
 			else
 			{
-				signature->variadic = VARIADIC_TYPED;
+				signature->variadic = last->var.vararg_implicit ? VARIADIC_ANY : VARIADIC_TYPED;
 			}
 		}
 	}
