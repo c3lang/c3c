@@ -411,7 +411,8 @@ typedef struct
 
 typedef struct
 {
-	TypeInfo *type;
+	Expr *expr;
+	Expr *to_expr;
 	Decl **body;
 } CtCaseDecl;
 

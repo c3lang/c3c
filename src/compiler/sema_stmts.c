@@ -2174,7 +2174,7 @@ static bool sema_analyse_ct_switch_body(SemaContext *context, Ast *statement)
 static bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *cond = statement->ct_switch_stmt.cond;
-	if (!sema_analyse_expr(context, cond)) return false;
+	if (!sema_analyse_ct_expr(context, cond)) return false;
 	if (cond->expr_kind != EXPR_CONST)
 	{
 		SEMA_ERROR(cond, "A compile time $switch must be over a constant value.");

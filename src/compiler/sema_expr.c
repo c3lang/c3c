@@ -7069,6 +7069,20 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 	return true;
 }
 
+bool sema_analyse_ct_expr(SemaContext *context, Expr *expr)
+{
+	if (!sema_analyse_expr_lvalue(context, expr)) return false;
+	if (expr->expr_kind == EXPR_TYPEINFO)
+	{
+		Type *cond_val = expr->type_expr->type;
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.const_kind = CONST_TYPEID;
+		expr->const_expr.typeid = cond_val->canonical;
+		expr->type = type_typeid;
+	}
+	return sema_cast_rvalue(context, expr);
+}
+
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr)
 {
 	switch (expr->resolve_status)

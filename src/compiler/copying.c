@@ -564,7 +564,14 @@ Decl *copy_decl(Decl *decl)
 			MACRO_COPY_TYPE(decl->macro_decl.rtype);
 			break;
 		case DECL_CT_SWITCH:
+			MACRO_COPY_DECL_LIST(decl->ct_switch_decl.cases);
+			MACRO_COPY_EXPR(decl->ct_switch_decl.expr);
+			break;
 		case DECL_CT_CASE:
+			MACRO_COPY_EXPR(decl->ct_case_decl.expr);
+			MACRO_COPY_EXPR(decl->ct_case_decl.to_expr);
+			MACRO_COPY_DECL_LIST(decl->ct_case_decl.body);
+			break;
 		case DECL_ATTRIBUTE:
 			TODO
 		case DECL_DEFINE:

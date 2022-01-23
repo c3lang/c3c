@@ -5,28 +5,30 @@ $assert(Enum.min < Enum.max, "Only strictly increasing enums may be used with en
 $assert(Enum.max < 64, "Maximum value of an enum used as enum set is 63");
 $assert(Enum.min >= 0, "Minimum value of an enum used as enum set is 0");
 
-$if $$C_INT_SIZE == 64:
+$switch $$C_INT_SIZE:
+
+$case 64:
 private define EnumSetType = ulong;
 
-$elif $$C_INT_SIZE == 32:
+$case 32:
 
-$if Enum.max < 32:
+    $if Enum.max < 32:
 private define EnumSetType = uint;
-$else:
+    $else:
 private define EnumSetType = ulong;
-$endif;
+    $endif;
 
-$else:
+$default:
 
-$if Enum.max < 16:
+    $if Enum.max < 16:
 private define EnumSetType = ushort;
-$elif Enum.max < 31:
+    $elif Enum.max < 31:
 private define EnumSetType = uint;
-$else:
+    $else:
 private define EnumSetType = ulong;
-$endif;
+    $endif;
 
-$endif;
+$endswitch;
 
 define EnumSet = distinct EnumSetType;
 

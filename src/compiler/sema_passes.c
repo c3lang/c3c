@@ -139,6 +139,106 @@ static inline bool sema_analyse_top_level_if(SemaContext *context, Decl *ct_if)
 	return true;
 }
 
+static inline bool sema_analyse_top_level_switch(SemaContext *context, Decl *ct_switch)
+{
+	Expr *cond = ct_switch->ct_switch_decl.expr;
+	if (!sema_analyse_ct_expr(context, cond)) return false;
+	Type *type = cond->type;
+	bool is_type = type == type_typeid;
+	ExprConst *switch_expr_const = &cond->const_expr;
+	Decl **cases = ct_switch->ct_switch_decl.cases;
+
+	unsigned case_count = vec_size(cases);
+	int matched_case = (int)case_count;
+	int default_case = (int)case_count;
+	for (unsigned i = 0; i < case_count; i++)
+	{
+		Decl *kase = cases[i];
+		Expr *expr = kase->ct_case_decl.expr;
+		Expr *to_expr = kase->ct_case_decl.to_expr;
+		if (expr)
+		{
+			if (is_type)
+			{
+				if (!sema_analyse_ct_expr(context, expr)) return false;
+				if (expr->type != type_typeid)
+				{
+					SEMA_ERROR(expr, "A type was expected here not %s.", type_quoted_error_string(expr->type));
+					return false;
+				}
+			}
+			else
+			{
+				if (!sema_analyse_expr_rhs(context, type, expr, false)) return false;
+				if (to_expr && !sema_analyse_expr_rhs(context, type, to_expr, false)) return false;
+			}
+			if (expr->expr_kind != EXPR_CONST)
+			{
+				SEMA_ERROR(expr, "The $case must have a constant expression.");
+				return false;
+			}
+			if (to_expr && to_expr->expr_kind != EXPR_CONST)
+			{
+				SEMA_ERROR(to_expr, "The $case must have a constant expression.");
+				return false;
+			}
+			ExprConst *const_expr = &expr->const_expr;
+			ExprConst *const_to_expr = to_expr ? &to_expr->const_expr : const_expr;
+			if (to_expr && expr_const_compare(const_expr, const_to_expr, BINARYOP_GT))
+			{
+				SEMA_ERROR(to_expr, "The end of a range must be less or equal to the beginning.");
+				return false;
+			}
+			// Check that it is unique.
+			for (unsigned j = 0; j < i; j++)
+			{
+				Decl *other_case = cases[j];
+
+				// Default.
+				if (!other_case->ct_case_decl.expr) continue;
+				ExprConst *other_const = &other_case->ct_case_decl.expr->const_expr;
+				ExprConst *other_const_to = other_case->ct_case_decl.to_expr
+						? &other_case->ct_case_decl.to_expr->const_expr : other_const;
+				if (expr_const_compare(const_expr, other_const_to, BINARYOP_LE) &&
+				expr_const_compare(const_to_expr, other_const, BINARYOP_GE))
+				{
+					SEMA_ERROR(kase, "'%s' appears more than once.", expr_const_to_error_string(const_expr));
+					SEMA_PREV(cases[j]->ct_case_decl.expr, "The previous $case was here.");
+					return false;
+				}
+			}
+			if (expr_const_compare(switch_expr_const, const_expr, BINARYOP_GE) &&
+			expr_const_compare(switch_expr_const, const_to_expr, BINARYOP_LE))
+			{
+				matched_case = (int)i;
+			}
+		}
+		else
+		{
+			if (default_case < case_count)
+			{
+				SEMA_ERROR(kase, "More than one $default is not allowed.");
+				SEMA_PREV(cases[default_case], "The previous $default was here.");
+				return false;
+			}
+			default_case = (int)i;
+			continue;
+		}
+	}
+
+	if (matched_case == case_count) matched_case = default_case;
+
+	for (int i = matched_case; i < case_count; i++)
+	{
+		Decl **body = cases[i]->ct_case_decl.body;
+		if (body)
+		{
+			sema_append_decls(context->unit, body);
+			break;
+		}
+	}
+	return true;
+}
 
 void sema_analysis_pass_conditional_compilation(Module *module)
 {
@@ -152,7 +252,18 @@ void sema_analysis_pass_conditional_compilation(Module *module)
 			// Also handle switch!
 			SemaContext context;
 			sema_context_init(&context, unit);
-			sema_analyse_top_level_if(&context, unit->ct_ifs[i]);
+			Decl *decl = unit->ct_ifs[i];
+			switch (decl->decl_kind)
+			{
+				case DECL_CT_IF:
+					sema_analyse_top_level_if(&context, decl);
+					break;
+				case DECL_CT_SWITCH:
+					sema_analyse_top_level_switch(&context, decl);
+					break;
+				default:
+					UNREACHABLE
+			}
 			sema_context_destroy(&context);
 		}
 	}
