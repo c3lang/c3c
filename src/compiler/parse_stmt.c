@@ -713,7 +713,7 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *context)
 {
 	Ast *ast = AST_NEW_TOKEN(AST_CT_SWITCH_STMT, context->tok);
 	advance_and_verify(context, TOKEN_CT_SWITCH);
-	ASSIGN_EXPR_ELSE(ast->ct_switch_stmt.cond, parse_constant_expr(context), poisoned_ast);
+	ASSIGN_EXPR_ELSE(ast->ct_switch_stmt.cond, parse_const_paren_expr(context), poisoned_ast);
 	TRY_CONSUME(TOKEN_COLON, "Expected ':' after $switch expression, did you forget it?");
 	Ast **cases = NULL;
 	while (!try_consume(context, TOKEN_CT_ENDSWITCH))

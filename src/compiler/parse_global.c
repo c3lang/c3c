@@ -143,7 +143,7 @@ static inline Decl *parse_ct_if_top_level(ParseContext *context)
 {
 	advance_and_verify(context, TOKEN_CT_IF);
 	Decl *ct = decl_new_ct(DECL_CT_IF, context->prev_tok);
-	ASSIGN_EXPR_ELSE(ct->ct_if_decl.expr, parse_constant_expr(context), poisoned_decl);
+	ASSIGN_EXPR_ELSE(ct->ct_if_decl.expr, parse_const_paren_expr(context), poisoned_decl);
 
 	if (!parse_top_level_block(context, &ct->ct_if_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
 
@@ -152,7 +152,7 @@ static inline Decl *parse_ct_if_top_level(ParseContext *context)
 	{
 		advance_and_verify(context, TOKEN_CT_ELIF);
 		Decl *ct_elif = decl_new_ct(DECL_CT_ELIF, context->prev_tok);
-		ASSIGN_EXPR_ELSE(ct_elif->ct_elif_decl.expr, parse_constant_expr(context), poisoned_decl);
+		ASSIGN_EXPR_ELSE(ct_elif->ct_elif_decl.expr, parse_const_paren_expr(context), poisoned_decl);
 
 		if (!parse_top_level_block(context, &ct_elif->ct_elif_decl.then, TOKEN_CT_ENDIF, TOKEN_CT_ELIF, TOKEN_CT_ELSE)) return poisoned_decl;
 		ct_if_decl->elif = ct_elif;
@@ -214,7 +214,7 @@ static inline Decl *parse_ct_switch_top_level(ParseContext *context)
 {
 	advance_and_verify(context, TOKEN_CT_SWITCH);
 	Decl *ct = decl_new_ct(DECL_CT_SWITCH, context->prev_tok);
-	ASSIGN_EXPR_ELSE(ct->ct_switch_decl.expr, parse_constant_expr(context), poisoned_decl);
+	ASSIGN_EXPR_ELSE(ct->ct_switch_decl.expr, parse_const_paren_expr(context), poisoned_decl);
 
 	CONSUME_OR(TOKEN_COLON, poisoned_decl);
 	while (!try_consume(context, TOKEN_CT_ENDSWITCH))

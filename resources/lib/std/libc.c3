@@ -248,19 +248,8 @@ const int EOF = -1;
 const int FOPEN_MAX = 20;
 const int FILENAME_MAX = 1024;
 
-$if $$C_INT_SIZE == 64:
-define ErrnoType = long;
-$elif $$C_INT_SIZE == 32:
-define ErrnoType = int;
-$else:
-define ErrnoType = short;
-$endif;
-
-$if $$C_LONG_SIZE == 64:
-define SeekIndex = long;
-$else:
-define SeekIndex = int;
-$endif;
+define ErrnoType = CInt;
+define SeekIndex = CLong;
 
 extern fn int fclose(CFile stream);
 extern fn void clearerr(CFile stream);
@@ -302,11 +291,7 @@ extern fn void perror(char* str);
 
 // time.h
 
-$if $$C_LONG_SIZE == 64:
-define TimeOffset = long;
-$else:
-define TimeOffset = int;
-$endif;
+define TimeOffset = CLong;
 
 struct Tm
 {

@@ -16,65 +16,71 @@ $assert (C_SHORT_SIZE <= C_INT_SIZE);
 $assert (C_INT_SIZE <= C_LONG_SIZE);
 $assert (C_LONG_SIZE <= C_LONG_LONG_SIZE);
 
-$if C_INT_SIZE == 64:
+$switch ($$C_INT_SIZE):
+$case 64:
     define CInt = long;
     define CUInt = ulong;
-$elif C_INT_SIZE == 32:
+$case 32:
     define CInt = int;
     define CUInt = uint;
-$elif C_INT_SIZE == 16:
+$case 16:
     define CInt = short;
     define CUInt = ushort;
-$else:
+$default:
     $assert(false, "Invalid C int size");
-$endif;
+$endswitch;
 
-$if C_LONG_SIZE == 64:
+$switch ($$C_LONG_SIZE):
+$case 64:
     define CLong = long;
     define CULong = ulong;
-$elif C_LONG_SIZE == 32:
+$case 32:
     define CLong = int;
     define CULong = uint;
-$elif C_LONG_SIZE == 16:
+$case 16:
     define CLong = short;
     define CULong = ushort;
-$else:
+$default:
     $assert(false, "Invalid C long size");
-$endif;
+$endswitch;
 
-$if C_SHORT_SIZE == 32:
+$switch ($$C_SHORT_SIZE):
+$case 32:
     define CShort = int;
     define CUShort = uint;
-$elif C_SHORT_SIZE == 16:
+$case 16:
     define CShort = short;
     define CUShort = ushort;
-$elif C_SHORT_SIZE == 8:
+$case 8:
     define CShort = ichar;
     define CUShort = char;
-$else:
+$default:
     $assert(false, "Invalid C short size");
-$endif;
+$endswitch;
 
-$if C_LONG_LONG_SIZE == 128:
+$switch ($$C_LONG_LONG_SIZE):
+$case 128:
     define CLongLong = int128;
     define CULongLong = uint128;
-$elif C_LONG_LONG_SIZE == 64:
+$case 64:
     define CLongLong = long;
     define CULongLong = ulong;
-$elif C_LONG_LONG_SIZE == 32:
+$case 32:
     define CLongLong = int;
     define CULongLong = uint;
-$elif C_LONG_LONG_SIZE == 16:
+$case 16:
     define CLongLong = short;
     define CULongLong = ushort;
-$else:
+$default:
     $assert(false, "Invalid C long long size");
-$endif;
+$endswitch;
+
+
 
 define CSChar = ichar;
 define CUChar = char;
 
-$if $$C_CHAR_IS_SIGNED:
+$if ($$C_CHAR_IS_SIGNED):
     define CChar = ichar;
 $else:
     define CChar = char;

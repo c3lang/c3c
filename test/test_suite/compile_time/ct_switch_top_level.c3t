@@ -6,20 +6,20 @@ extern fn void printf(char*, ...);
 macro tester()
 {
     $Type = int;
-    $switch $Type:
+    $switch ($Type):
     $case int:
-    printf("Hello\n");
-    int z = 0;
+        printf("Hello\n");
+        int z = 0;
     $default:
-    int j = 213;
+        int j = 213;
     $endswitch;
 
 }
-$switch bool.typeid:
+$switch (bool.typeid):
 $case int:
-int oefke = 23;
+    int oefke = 23;
 $default:
-int oeoekgokege = 343432;
+    int oeoekgokege = 343432;
 $endswitch;
 
 fn int main()
