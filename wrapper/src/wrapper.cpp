@@ -1,35 +1,6 @@
 
-#include <llvm/ADT/ArrayRef.h>
-#include <llvm/Support/raw_ostream.h>
-
 // For hacking the C API
-#include "llvm-c/Core.h"
-#include "llvm/IR/Attributes.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/DebugInfoMetadata.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/DiagnosticInfo.h"
-#include "llvm/IR/DiagnosticPrinter.h"
-#include "llvm/IR/GlobalAlias.h"
-#include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InlineAsm.h"
-#include "llvm/IR/IntrinsicInst.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/InitializePasses.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/ManagedStatic.h"
-#include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/Threading.h"
-#include "llvm/Support/raw_ostream.h"
-#include <cassert>
-#include <cstdlib>
-#include <cstring>
-#include <system_error>
 
 namespace lld {
 	namespace coff {
