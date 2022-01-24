@@ -674,7 +674,7 @@ static inline bool sema_analyse_while_stmt(SemaContext *context, Ast *statement)
 			.cond = cond,
 			.flow = statement->while_stmt.flow,
 			.incr = NULL,
-			.body = body,
+			.body = astid(body),
 	};
 	statement->for_stmt = for_stmt;
 	return success;
@@ -750,99 +750,25 @@ END:;
 			.cond = expr,
 			.flow = flow,
 			.incr = NULL,
-			.body = body,
+			.body = astid(body),
 			};
 	statement->for_stmt = for_stmt;
 	return true;
 }
 
 
+
+
 static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statement)
 {
-	return sema_analyse_var_decl(context, statement->declare_stmt, true);
-}
-
-/**
- * Check "var $foo = ... " and "var $Foo = ..."
- */
-static inline bool sema_analyse_var_stmt(SemaContext *context, Ast *statement)
-{
-	// 1. Pick the declaration.
-	Decl *decl = statement->var_stmt;
-
-	// 2. Convert it to a NOP early
-	statement->ast_kind = AST_NOP_STMT;
-
-	Expr *init;
-	assert(decl->decl_kind == DECL_VAR);
-	switch (decl->var.kind)
+	VarDeclKind kind = statement->declare_stmt->var.kind;
+	if (kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT)
 	{
-		case VARDECL_LOCAL_CT_TYPE:
-			// Locally declared compile time type.
-			if (decl->var.type_info)
-			{
-				SEMA_ERROR(decl->var.type_info, "Compile time type variables may not have a type.");
-				return false;
-			}
-			if ((init = decl->var.init_expr))
-			{
-				if (!sema_analyse_expr_lvalue(context, init)) return false;
-				if (init->expr_kind != EXPR_TYPEINFO)
-				{
-					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
-					return false;
-				}
-			}
-			break;
-		case VARDECL_LOCAL_CT:
-			if (decl->var.type_info && !sema_resolve_type_info(context, decl->var.type_info)) return false;
-			if (decl->var.type_info)
-			{
-				decl->type = decl->var.type_info->type->canonical;
-				if (!type_is_builtin(decl->type->type_kind))
-				{
-					SEMA_ERROR(decl->var.type_info, "Compile time variables may only be built-in types.");
-					return false;
-				}
-				if ((init = decl->var.init_expr))
-				{
-					if (!sema_analyse_expr_rhs(context, decl->type, init, false)) return false;
-					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
-					{
-						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
-						return false;
-					}
-				}
-				else
-				{
-					TODO // generate.
-					// decl->var.init_expr =
-				}
-			}
-			else
-			{
-				if ((init = decl->var.init_expr))
-				{
-					if (!sema_analyse_expr(context, init)) return false;
-					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
-					{
-						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
-						return false;
-					}
-					decl->type = init->type;
-				}
-				else
-				{
-					decl->type = type_void;
-				}
-			}
-			break;
-		default:
-			UNREACHABLE
+		if (!sema_analyse_var_decl_ct(context, statement->declare_stmt)) return false;
+		statement->ast_kind = AST_NOP_STMT;
+		return true;
 	}
-
-	decl->var.scope_depth = context->active_scope.depth;
-	return sema_add_local(context, decl);
+	return sema_analyse_var_decl(context, statement->declare_stmt, true);
 }
 
 static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
@@ -939,7 +865,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		}
 
 		assert(statement->for_stmt.body);
-		Ast *body = statement->for_stmt.body;
+		Ast *body = astptr(statement->for_stmt.body);
 		// Create the for body scope.
 		SCOPE_START_WITH_LABEL(statement->for_stmt.flow.label)
 
@@ -1424,7 +1350,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 										.cond = binary,
 										.incr = inc,
 										.flow = flow,
-										.body = compound_stmt
+										.body = astid(compound_stmt)
 	};
 	statement->ast_kind = AST_FOR_STMT;
 	return sema_analyse_for_stmt(context, statement);
@@ -2421,6 +2347,85 @@ static bool sema_analyse_compound_stmt(SemaContext *context, Ast *statement)
 	return success;
 }
 
+static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement)
+{
+	bool success = false;
+	// Enter for scope
+	SCOPE_OUTER_START
+
+	Expr *init;
+	if ((init = statement->for_stmt.init))
+	{
+		assert(init->expr_kind == EXPR_EXPRESSION_LIST);
+		Expr **expressions = init->expression_list;
+		VECEACH (expressions, i)
+		{
+			Expr *expr = expressions[i];
+			if (expr->expr_kind == EXPR_DECL)
+			{
+				Decl *decl = expr->decl_expr;
+				if (decl->decl_kind != DECL_VAR || (decl->var.kind != VARDECL_LOCAL_CT && decl->var.kind != VARDECL_LOCAL_CT_TYPE))
+				{
+					SEMA_ERROR(expr, "Only 'var $foo' and 'var $Type' declarations are allowed in a '$for'");
+					goto EXIT_ERROR;
+				}
+				if (!sema_analyse_var_decl_ct(context, decl)) goto EXIT_ERROR;
+				continue;
+			}
+			if (!sema_analyse_expr(context, expr)) goto EXIT_ERROR;
+			if (!expr_is_constant_eval(expr, CONSTANT_EVAL_FOLDABLE))
+			{
+				SEMA_ERROR(expr, "Only constant expressions are allowed.");
+				goto EXIT_ERROR;
+			}
+		}
+	}
+	Expr *condition = statement->for_stmt.cond;
+	Expr *incr = statement->for_stmt.incr;
+	Ast *body = astptr(statement->for_stmt.body);
+	AstId start = 0;
+	AstId *current = &start;
+	assert(condition);
+	for (int i = 0; i < MAX_MACRO_ITERATIONS; i++)
+	{
+		Expr *copy = copy_expr(condition);
+		if (!sema_analyse_cond_expr(context, copy)) goto EXIT_ERROR;
+		if (copy->expr_kind != EXPR_CONST)
+		{
+			SEMA_ERROR(copy, "Expected a value that can be evaluated at compile time.");
+			goto EXIT_ERROR;
+		}
+		if (!copy->const_expr.b) break;
+
+		Ast *compound_stmt = ast_copy_deep(body);
+		if (!sema_analyse_compound_stmt(context, compound_stmt)) goto EXIT_ERROR;
+		*current = astid(compound_stmt);
+		current = &compound_stmt->next;
+
+		if (incr)
+		{
+			Expr **exprs = incr->expression_list;
+			VECEACH(exprs, j)
+			{
+				copy = copy_expr(exprs[j]);
+				if (!sema_analyse_expr(context, copy)) goto EXIT_ERROR;
+				if (copy->expr_kind != EXPR_CONST)
+				{
+					SEMA_ERROR(copy, "Expected a value that can be evaluated at compile time.");
+					goto EXIT_ERROR;
+				}
+			}
+		}
+	}
+	statement->ast_kind = AST_COMPOUND_STMT;
+	statement->compound_stmt.first_stmt = start;
+	statement->compound_stmt.defer_list = (DeferList) { 0, 0 };
+	success = true;
+	EXIT_ERROR:
+	SCOPE_OUTER_END;
+	return success;
+}
+
 static bool sema_analyse_ct_compound_stmt(SemaContext *context, Ast *statement)
 {
 	bool all_ok = ast_ok(statement);
@@ -2491,8 +2496,6 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			return false;
 		case AST_DEFER_STMT:
 			return sema_analyse_defer_stmt(context, statement);
-		case AST_VAR_STMT:
-			return sema_analyse_var_stmt(context, statement);
 		case AST_DO_STMT:
 			return sema_analyse_do_stmt(context, statement);
 		case AST_EXPR_STMT:
@@ -2523,7 +2526,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 		case AST_CT_FOREACH_STMT:
 			return sema_analyse_ct_foreach_stmt(context, statement);
 		case AST_CT_FOR_STMT:
-			TODO
+			return sema_analyse_ct_for_stmt(context, statement);
 	}
 
 	UNREACHABLE

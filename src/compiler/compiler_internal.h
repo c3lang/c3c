@@ -43,6 +43,7 @@ typedef struct
 #define MAX_SCOPE_DEPTH 0x100
 #define MAX_STRING_BUFFER 0x10000
 #define MAX_MACRO_NESTING 1024
+#define MAX_MACRO_ITERATIONS 0xFFFFFF
 #define MAX_FUNCTION_SIGNATURE_SIZE 2048
 #define MAX_PARAMS 512
 #define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
@@ -1105,7 +1106,7 @@ typedef struct
 	Expr *init;
 	Expr *cond;
 	Expr *incr;
-	Ast *body;
+	AstId body;
 	void *continue_block;
 	void *exit_block;
 } AstForStmt;
@@ -1993,7 +1994,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 bool sema_analyse_expr(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
-
+bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
 bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);

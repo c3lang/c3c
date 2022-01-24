@@ -294,8 +294,6 @@ Ast *ast_copy_deep(Ast *source)
 			ast->ct_foreach_stmt.body = astid_copy_deep(ast->ct_foreach_stmt.body);
 			MACRO_COPY_EXPR(ast->ct_foreach_stmt.expr);
 			return ast;
-		case AST_CT_FOR_STMT:
-			TODO
 		case AST_CT_SWITCH_STMT:
 			MACRO_COPY_EXPR(ast->ct_switch_stmt.cond);
 			MACRO_COPY_AST_LIST(ast->ct_switch_stmt.body);
@@ -305,9 +303,6 @@ Ast *ast_copy_deep(Ast *source)
 			return ast;
 		case AST_DEFAULT_STMT:
 			MACRO_COPY_AST(ast->case_stmt.body);
-			return ast;
-		case AST_VAR_STMT:
-			ast->var_stmt = copy_decl(ast->var_stmt);
 			return ast;
 		case AST_DEFER_STMT:
 			assert(!ast->defer_stmt.prev_defer);
@@ -322,10 +317,11 @@ Ast *ast_copy_deep(Ast *source)
 			MACRO_COPY_EXPR(ast->expr_stmt);
 			return ast;
 		case AST_FOR_STMT:
+		case AST_CT_FOR_STMT:
 			copy_flow(ast);
 			MACRO_COPY_EXPR(ast->for_stmt.cond);
 			MACRO_COPY_EXPR(ast->for_stmt.incr);
-			MACRO_COPY_AST(ast->for_stmt.body);
+			ast->for_stmt.body = astid_copy_deep(ast->for_stmt.body);
 			MACRO_COPY_EXPR(ast->for_stmt.init);
 			return ast;
 		case AST_FOREACH_STMT:

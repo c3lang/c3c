@@ -391,7 +391,8 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 	Expr *incr = ast->for_stmt.incr;
 
 	LLVMBasicBlockRef inc_block = incr ? llvm_basic_block_new(c, "loop.inc") : NULL;
-	LLVMBasicBlockRef body_block = ast_is_not_empty(ast->for_stmt.body) ? llvm_basic_block_new(c, "loop.body") : NULL;
+	Ast *body = astptr(ast->for_stmt.body);
+	LLVMBasicBlockRef body_block = ast_is_not_empty(body) ? llvm_basic_block_new(c, "loop.body") : NULL;
 	LLVMBasicBlockRef cond_block = NULL;
 
 	// Skipping first cond? This is do-while semantics
@@ -507,7 +508,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 						break;
 		}
 		// Now emit the body
-		llvm_emit_stmt(c, ast->for_stmt.body);
+		llvm_emit_stmt(c, body);
 
 		// Did we have a jump to inc yet?
 		if (inc_block && !llvm_basic_block_is_unused(inc_block))
@@ -1241,7 +1242,6 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_DOCS:
 		case AST_DOC_DIRECTIVE:
 		case AST_POISONED:
-		case AST_VAR_STMT:
 		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_SCOPING_STMT:
 		case AST_FOREACH_STMT:

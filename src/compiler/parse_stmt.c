@@ -344,7 +344,8 @@ static inline Ast* parse_for_stmt(ParseContext *context)
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
 
 	extend_ast_with_prev_token(context, ast);
-	ASSIGN_AST_ELSE(ast->for_stmt.body, parse_stmt(context), poisoned_ast);
+	ASSIGN_AST_ELSE(Ast *body, parse_stmt(context), poisoned_ast);
+	ast->for_stmt.body = astid(body);
 	return ast;
 }
 
@@ -527,35 +528,8 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *context)
  */
 static inline Ast *parse_var_stmt(ParseContext *context)
 {
-	Ast *ast = AST_NEW_TOKEN(AST_VAR_STMT, context->tok);
-	TokenId start = context->tok.id;
-	advance_and_verify(context, TOKEN_VAR);
-	Decl *decl;
-	switch (context->tok.type)
-	{
-		case TOKEN_CT_IDENT:
-			decl = decl_new_var(context->tok.id, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
-			advance(context);
-			if (try_consume(context, TOKEN_EQ))
-			{
-				ASSIGN_EXPR_ELSE(decl->var.init_expr, parse_expr(context), poisoned_ast);
-			}
-			break;
-		case TOKEN_CT_TYPE_IDENT:
-			decl = decl_new_var(context->tok.id, NULL, VARDECL_LOCAL_CT_TYPE, VISIBLE_LOCAL);
-			advance(context);
-			if (try_consume(context, TOKEN_EQ))
-			{
-				ASSIGN_EXPR_ELSE(decl->var.init_expr, parse_expr(context), poisoned_ast);
-			}
-			break;
-		default:
-			SEMA_TOKEN_ERROR(context->tok, "Expected a compile time variable name ('$Foo' or '$foo').");
-			return poisoned_ast;
-	}
-	decl->span.loc = start;
-	ast->var_stmt = decl;
-	RANGE_EXTEND_PREV(decl);
+	Ast *ast = AST_NEW_TOKEN(AST_DECLARE_STMT, context->tok);
+	ASSIGN_DECL_ELSE(ast->var_stmt, parse_var_decl(context), poisoned_ast);
 	RANGE_EXTEND_PREV(ast);
 	TRY_CONSUME_EOS();
 	return ast;
@@ -667,7 +641,7 @@ static inline Ast *parse_return(ParseContext *context)
 
 /**
  * ct_foreach_stmt
- *  | CT_FOREACH '(' CT_IDENT (',' CT_IDENT)? ':' expr ')' statement
+ *  | CT_FOREACH '(' CT_IDENT (',' CT_IDENT)? ':' expr ')' ':' statement* CT_ENDFOREACH EOS
  *  ;
  *
  * @return
@@ -693,6 +667,47 @@ static inline Ast* parse_ct_foreach_stmt(ParseContext *context)
 	ast->ct_foreach_stmt.body = astid(body);
 	AstId *current = &body->compound_stmt.first_stmt;
 	while (!try_consume(context, TOKEN_CT_ENDFOREACH))
+	{
+		ASSIGN_AST_ELSE(Ast *stmt, parse_stmt(context), poisoned_ast);
+		*current = astid(stmt);
+		current = &stmt->next;
+	}
+	return ast;
+}
+
+/**
+ * ct_for_stmt
+ *  | CT_FOR '(' decl_expr_list? ';' expression_list? ';' expression_list? ')' ':' statement* CT_ENDFOR ';'
+ *  ;
+ */
+static inline Ast* parse_ct_for_stmt(ParseContext *context)
+{
+	Ast *ast = AST_NEW_TOKEN(AST_CT_FOR_STMT, context->tok);
+	advance_and_verify(context, TOKEN_CT_FOR);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
+
+	if (!TOKEN_IS(TOKEN_EOS))
+	{
+		ASSIGN_EXPR_ELSE(ast->for_stmt.init, parse_ct_expression_list(context, true), poisoned_ast);
+	}
+	CONSUME_OR(TOKEN_EOS, poisoned_ast);
+
+	// Cond is required.
+	ASSIGN_EXPR_ELSE(ast->for_stmt.cond, parse_expr(context), poisoned_ast);
+	CONSUME_OR(TOKEN_EOS, poisoned_ast);
+
+	if (!TOKEN_IS(TOKEN_RPAREN))
+	{
+		ast->for_stmt.incr = parse_ct_expression_list(context, false);
+	}
+
+	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
+
+	CONSUME_OR(TOKEN_COLON, poisoned_ast);
+	Ast *body = new_ast(AST_COMPOUND_STMT, ast->span);
+	ast->for_stmt.body = astid(body);
+	AstId *current = &body->compound_stmt.first_stmt;
+	while (!try_consume(context, TOKEN_CT_ENDFOR))
 	{
 		ASSIGN_AST_ELSE(Ast *stmt, parse_stmt(context), poisoned_ast);
 		*current = astid(stmt);
@@ -866,7 +881,7 @@ Ast *parse_stmt(ParseContext *context)
 		case TOKEN_CT_FOREACH:
 			return parse_ct_foreach_stmt(context);
 		case TOKEN_CT_FOR:
-			TODO
+			return parse_ct_for_stmt(context);
 		case TOKEN_CT_UNREACHABLE:
 			return parse_unreachable_stmt(context);
 		case TOKEN_STAR:

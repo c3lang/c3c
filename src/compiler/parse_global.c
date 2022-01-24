@@ -828,6 +828,38 @@ static inline bool is_function_start(ParseContext *context)
 }
 
 
+Decl *parse_var_decl(ParseContext *context)
+{
+	TokenId start = context->tok.id;
+	advance_and_verify(context, TOKEN_VAR);
+	Decl *decl;
+	switch (context->tok.type)
+	{
+		case TOKEN_CT_IDENT:
+			decl = decl_new_var(context->tok.id, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+			advance(context);
+			if (try_consume(context, TOKEN_EQ))
+			{
+				ASSIGN_EXPR_ELSE(decl->var.init_expr, parse_expr(context), poisoned_decl);
+			}
+			break;
+		case TOKEN_CT_TYPE_IDENT:
+			decl = decl_new_var(context->tok.id, NULL, VARDECL_LOCAL_CT_TYPE, VISIBLE_LOCAL);
+			advance(context);
+			if (try_consume(context, TOKEN_EQ))
+			{
+				ASSIGN_EXPR_ELSE(decl->var.init_expr, parse_expr(context), poisoned_decl);
+			}
+			break;
+		default:
+			SEMA_TOKEN_ERROR(context->tok, "Expected a compile time variable name ('$Foo' or '$foo').");
+			return poisoned_decl;
+	}
+	decl->span.loc = start;
+	RANGE_EXTEND_PREV(decl);
+	return decl;
+}
+
 bool parse_next_is_decl(ParseContext *context)
 {
 	TokenType next_tok = context->next_tok.type;

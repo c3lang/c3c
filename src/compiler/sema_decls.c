@@ -1756,6 +1756,81 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 	}
 	return true;
 }
+
+bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
+{
+	Expr *init;
+	assert(decl->decl_kind == DECL_VAR);
+	switch (decl->var.kind)
+	{
+		case VARDECL_LOCAL_CT_TYPE:
+			// Locally declared compile time type.
+			if (decl->var.type_info)
+			{
+				SEMA_ERROR(decl->var.type_info, "Compile time type variables may not have a type.");
+				return false;
+			}
+			if ((init = decl->var.init_expr))
+			{
+				if (!sema_analyse_expr_lvalue(context, init)) return false;
+				if (init->expr_kind != EXPR_TYPEINFO)
+				{
+					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
+					return false;
+				}
+			}
+			break;
+		case VARDECL_LOCAL_CT:
+			if (decl->var.type_info && !sema_resolve_type_info(context, decl->var.type_info)) return false;
+			if (decl->var.type_info)
+			{
+				decl->type = decl->var.type_info->type->canonical;
+				if (!type_is_builtin(decl->type->type_kind))
+				{
+					SEMA_ERROR(decl->var.type_info, "Compile time variables may only be built-in types.");
+					return false;
+				}
+				if ((init = decl->var.init_expr))
+				{
+					if (!sema_analyse_expr_rhs(context, decl->type, init, false)) return false;
+					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
+					{
+						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
+						return false;
+					}
+				}
+				else
+				{
+					TODO // generate.
+					// decl->var.init_expr =
+				}
+			}
+			else
+			{
+				if ((init = decl->var.init_expr))
+				{
+					if (!sema_analyse_expr(context, init)) return false;
+					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
+					{
+						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
+						return false;
+					}
+					decl->type = init->type;
+				}
+				else
+				{
+					decl->type = type_void;
+				}
+			}
+			break;
+		default:
+			UNREACHABLE
+	}
+
+	decl->var.scope_depth = context->active_scope.depth;
+	return sema_add_local(context, decl);
+
+}
 /**
  * Analyse a regular global or local declaration, e.g. int x = 123
  */

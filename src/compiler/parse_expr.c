@@ -397,6 +397,33 @@ Expr *parse_expression_list(ParseContext *context, bool allow_decl)
 	return expr_list;
 }
 
+Expr *parse_ct_expression_list(ParseContext *context, bool allow_decl)
+{
+	Expr *expr_list = EXPR_NEW_TOKEN(EXPR_EXPRESSION_LIST, context->tok);
+	while (1)
+	{
+		Expr *expr;
+		if (tok_is(context, TOKEN_VAR))
+		{
+			ASSIGN_DECL_ELSE(Decl *decl, parse_var_decl(context), poisoned_expr);
+			if (!allow_decl)
+			{
+				SEMA_TOKEN_ERROR(context->tok, "This looks like a declaration, which isn't allowed here.");
+				return poisoned_expr;
+			}
+			expr = expr_new(EXPR_DECL, decl->span);
+			expr->decl_expr = decl;
+		}
+		else
+		{
+			ASSIGN_EXPR_ELSE(expr, parse_expr(context), poisoned_expr);
+		}
+		vec_add(expr_list->expression_list, expr);
+		if (!try_consume(context, TOKEN_COMMA)) break;
+	}
+	return expr_list;
+}
+
 /**
  * @param left must be null.
  * @return Expr*

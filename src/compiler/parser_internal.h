@@ -46,8 +46,10 @@ bool parse_attributes(ParseContext *context, Attr ***attributes_ref);
 
 bool parse_switch_body(ParseContext *context, Ast ***cases, TokenType case_type, TokenType default_type,
                        bool allow_multiple_values);
+Expr *parse_ct_expression_list(ParseContext *context, bool allow_decl);
 Expr *parse_expression_list(ParseContext *context, bool allow_decls);
 Decl *parse_decl_after_type(ParseContext *context, TypeInfo *type);
+Decl *parse_var_decl(ParseContext *context);
 
 bool parse_parameters(ParseContext *context, Visibility visibility, Decl ***params_ref);
 bool parse_arg_list(ParseContext *context, Expr ***result, TokenType param_end, bool *unsplat);
