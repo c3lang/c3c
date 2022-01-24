@@ -57,6 +57,7 @@ typedef enum
 	AST_CT_ELIF_STMT,
 	AST_CT_ELSE_STMT,
 	AST_CT_FOR_STMT,
+	AST_CT_FOREACH_STMT,
 	AST_CT_SWITCH_STMT,
 	AST_DECLARE_STMT,
 	AST_DEFAULT_STMT,
@@ -474,10 +475,13 @@ typedef enum
 	TOKEN_CT_DEFAULT,       // $default
 	TOKEN_CT_DEFINED,       // $defined
 	TOKEN_CT_FOR,           // $for
+	TOKEN_CT_FOREACH,       // $foreach
 	TOKEN_CT_ELIF,          // $elif
 	TOKEN_CT_ELSE,          // $else
 	TOKEN_CT_ENDIF,         // $endif
 	TOKEN_CT_ENDSWITCH,     // $endswitch
+	TOKEN_CT_ENDFOR,        // $endfor
+	TOKEN_CT_ENDFOREACH,    // $endforeach
 	TOKEN_CT_EXTNAMEOF,     // $extnameof
 	TOKEN_CT_IF,            // $if
 	TOKEN_CT_NAMEOF,        // $nameof

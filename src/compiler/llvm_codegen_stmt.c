@@ -1289,7 +1289,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			break;
 		case AST_ASSERT_STMT:
 			llvm_emit_assert_stmt(c, ast);
-			break;;
+			break;
 		case AST_CT_ASSERT:
 		case AST_CT_IF_STMT:
 		case AST_CT_ELIF_STMT:
@@ -1298,6 +1298,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_CT_SWITCH_STMT:
 		case AST_CASE_STMT:
 		case AST_DEFAULT_STMT:
+		case AST_CT_FOREACH_STMT:
 			UNREACHABLE
 		case AST_SWITCH_STMT:
 			gencontext_emit_switch(c, ast);

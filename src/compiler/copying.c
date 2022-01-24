@@ -286,13 +286,16 @@ Ast *ast_copy_deep(Ast *source)
 			MACRO_COPY_AST(ast->ct_elif_stmt.then);
 			MACRO_COPY_AST(ast->ct_elif_stmt.elif);
 			return ast;
+
 		case AST_CT_ELSE_STMT:
 			MACRO_COPY_AST(ast->ct_else_stmt);
 			return ast;
-		case AST_CT_FOR_STMT:
-			MACRO_COPY_AST(ast->ct_for_stmt.body);
-			MACRO_COPY_EXPR(ast->ct_for_stmt.expr);
+		case AST_CT_FOREACH_STMT:
+			ast->ct_foreach_stmt.body = astid_copy_deep(ast->ct_foreach_stmt.body);
+			MACRO_COPY_EXPR(ast->ct_foreach_stmt.expr);
 			return ast;
+		case AST_CT_FOR_STMT:
+			TODO
 		case AST_CT_SWITCH_STMT:
 			MACRO_COPY_EXPR(ast->ct_switch_stmt.cond);
 			MACRO_COPY_AST_LIST(ast->ct_switch_stmt.body);

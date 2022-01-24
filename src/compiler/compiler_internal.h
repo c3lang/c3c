@@ -1164,8 +1164,9 @@ typedef struct
 	TokenId index;
 	TokenId value;
 	Expr *expr;
-	Ast *body;
-} AstCtForStmt;
+	AstId body;
+} AstCtForeachStmt;
+
 
 typedef struct
 {
@@ -1290,7 +1291,7 @@ typedef struct Ast_
 		AstCtIfStmt ct_if_stmt;             // 24
 		AstCtIfStmt ct_elif_stmt;           // 24
 		Ast *ct_else_stmt;                  // 8
-		AstCtForStmt ct_for_stmt;           // 64
+		AstCtForeachStmt ct_foreach_stmt;           // 64
 		AstScopedStmt scoped_stmt;          // 16
 		AstScopingStmt scoping_stmt;
 		AstAssertStmt ct_assert_stmt;

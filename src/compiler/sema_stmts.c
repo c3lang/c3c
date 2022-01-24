@@ -773,6 +773,7 @@ static inline bool sema_analyse_var_stmt(SemaContext *context, Ast *statement)
 	// 2. Convert it to a NOP early
 	statement->ast_kind = AST_NOP_STMT;
 
+	Expr *init;
 	assert(decl->decl_kind == DECL_VAR);
 	switch (decl->var.kind)
 	{
@@ -783,8 +784,7 @@ static inline bool sema_analyse_var_stmt(SemaContext *context, Ast *statement)
 				SEMA_ERROR(decl->var.type_info, "Compile time type variables may not have a type.");
 				return false;
 			}
-			Expr *init = decl->var.init_expr;
-			if (init)
+			if ((init = decl->var.init_expr))
 			{
 				if (!sema_analyse_expr_lvalue(context, init)) return false;
 				if (init->expr_kind != EXPR_TYPEINFO)
@@ -804,12 +804,12 @@ static inline bool sema_analyse_var_stmt(SemaContext *context, Ast *statement)
 					SEMA_ERROR(decl->var.type_info, "Compile time variables may only be built-in types.");
 					return false;
 				}
-				if (decl->var.init_expr)
+				if ((init = decl->var.init_expr))
 				{
-					if (!sema_analyse_expr_rhs(context, decl->type, decl->var.init_expr, false)) return false;
-					if (!expr_is_constant_eval(decl->var.init_expr, CONSTANT_EVAL_ANY))
+					if (!sema_analyse_expr_rhs(context, decl->type, init, false)) return false;
+					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
 					{
-						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression assigned to %s.", decl->name);
+						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 						return false;
 					}
 				}
@@ -821,16 +821,15 @@ static inline bool sema_analyse_var_stmt(SemaContext *context, Ast *statement)
 			}
 			else
 			{
-				Expr *decl_init = decl->var.init_expr;
-				if (decl_init)
+				if ((init = decl->var.init_expr))
 				{
-					if (!sema_analyse_expr(context, decl_init)) return false;
-					if (!expr_is_constant_eval(decl_init, CONSTANT_EVAL_ANY))
+					if (!sema_analyse_expr(context, init)) return false;
+					if (!expr_is_constant_eval(init, CONSTANT_EVAL_ANY))
 					{
-						SEMA_ERROR(decl->var.init_expr, "Expected a constant expression assigned to %s.", decl->name);
+						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 						return false;
 					}
-					decl->type = decl->var.init_expr->type;
+					decl->type = init->type;
 				}
 				else
 				{
@@ -2183,6 +2182,62 @@ static bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
 	return sema_analyse_ct_switch_body(context, statement);
 }
 
+static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
+{
+	Expr *collection = statement->ct_foreach_stmt.expr;
+	if (!sema_analyse_ct_expr(context, collection)) return false;
+	if (collection->expr_kind != EXPR_INITIALIZER_LIST)
+	{
+		SEMA_ERROR(collection, "Expected a list to iterate over");
+		return false;
+	}
+	if (!expr_is_constant_eval(collection, CONSTANT_EVAL_ANY))
+	{
+		SEMA_ERROR(collection, "A compile time $foreach must be over a constant value.");
+		return false;
+	}
+	Expr **expression = collection->initializer_list;
+	Decl *index = NULL;
+	TokenId index_token = statement->ct_foreach_stmt.index;
+
+	AstId start = 0;
+	SCOPE_START;
+
+		if (index_token.index)
+		{
+			index = decl_new_var(index_token, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+			index->type = type_int;
+			if (!sema_add_local(context, index)) return SCOPE_POP_ERROR();
+		}
+		Decl *value = decl_new_var(statement->ct_foreach_stmt.value, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+		if (!sema_add_local(context, value)) return SCOPE_POP_ERROR();
+		// Get the body
+		Ast *body = astptr(statement->ct_foreach_stmt.body);
+		AstId *current = &start;
+		VECEACH(expression, i)
+		{
+			Ast *compound_stmt = ast_copy_deep(body);
+			value->var.init_expr = expression[i];
+			if (index)
+			{
+				Expr *expr = expr_new(EXPR_CONST, index->span);
+				expr_const_set_int(&expr->const_expr, i, TYPE_I32);
+				expr->const_expr.narrowable = true;
+				expr->type = type_int;
+				index->var.init_expr = expr;
+				index->type = type_int;
+			}
+			if (!sema_analyse_compound_stmt(context, compound_stmt)) return SCOPE_POP_ERROR();
+			*current = astid(compound_stmt);
+			current = &compound_stmt->next;
+		}
+	SCOPE_END;
+	statement->ast_kind = AST_COMPOUND_STMT;
+	statement->compound_stmt.first_stmt = start;
+	statement->compound_stmt.defer_list = (DeferList) { 0, 0 };
+	return true;
+}
+
 static bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement)
 {
 	statement->switch_stmt.scope_defer = context->active_scope.in_defer;
@@ -2465,6 +2520,8 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 		case AST_CT_ELIF_STMT:
 		case AST_CT_ELSE_STMT:
 			UNREACHABLE
+		case AST_CT_FOREACH_STMT:
+			return sema_analyse_ct_foreach_stmt(context, statement);
 		case AST_CT_FOR_STMT:
 			TODO
 	}

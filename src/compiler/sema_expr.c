@@ -3643,6 +3643,7 @@ static inline void sema_update_const_initializer_with_designator(
 }
 
 
+
 /**
  * Create a const initializer.
  */
@@ -4029,14 +4030,11 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 
 static inline bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr)
 {
-	if (!to)
-	{
-		return sema_expr_analyse_initializer(context, type_complist, type_complist, expr);
-	}
 	assert(to);
 	Type *assigned = type_flatten(to);
 	switch (assigned->type_kind)
 	{
+		case TYPE_UNTYPED_LIST:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ARRAY:
@@ -6967,7 +6965,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_access(context, expr);
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			return sema_expr_analyse_initializer_list(context, NULL, expr);
+			return sema_expr_analyse_initializer_list(context, type_complist, expr);
 		case EXPR_CAST:
 			return sema_expr_analyse_cast(context, expr);
 		case EXPR_EXPRESSION_LIST:

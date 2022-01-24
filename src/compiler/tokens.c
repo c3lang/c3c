@@ -351,6 +351,8 @@ const char *token_type_to_string(TokenType type)
 			return "$defined";
 		case TOKEN_CT_FOR:
 			return "$for";
+		case TOKEN_CT_FOREACH:
+			return "$foreach";
 		case TOKEN_CT_ELSE:
 			return "$else";
 		case TOKEN_CT_ELIF:
@@ -359,6 +361,10 @@ const char *token_type_to_string(TokenType type)
 			return "$endif";
 		case TOKEN_CT_ENDSWITCH:
 			return "$endswitch";
+		case TOKEN_CT_ENDFOR:
+			return "$endfor";
+		case TOKEN_CT_ENDFOREACH:
+			return "$endforeach";
 		case TOKEN_CT_EXTNAMEOF:
 			return "$extnameof";
 		case TOKEN_CT_IF:

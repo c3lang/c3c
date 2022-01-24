@@ -666,31 +666,38 @@ static inline Ast *parse_return(ParseContext *context)
 
 
 /**
- * ct_for_stmt
- *  : CT_FOR '(' CT_IDENT IN expression ')' statement
- *  | CT_FOR '(' CT_IDENT, CT_IDENT IN expression ')' statement
+ * ct_foreach_stmt
+ *  | CT_FOREACH '(' CT_IDENT (',' CT_IDENT)? ':' expr ')' statement
  *  ;
  *
  * @return
  */
-static inline Ast* parse_ct_for_stmt(ParseContext *context)
+static inline Ast* parse_ct_foreach_stmt(ParseContext *context)
 {
-	Ast *ast = AST_NEW_TOKEN(AST_CT_FOR_STMT, context->tok);
-	advance_and_verify(context, TOKEN_CT_FOR);
+	Ast *ast = AST_NEW_TOKEN(AST_CT_FOREACH_STMT, context->tok);
+	advance_and_verify(context, TOKEN_CT_FOREACH);
 	CONSUME_OR(TOKEN_LPAREN, poisoned_ast);
 	if (context->next_tok.type == TOKEN_COMMA)
 	{
-		ast->ct_for_stmt.index = context->tok.id;
+		ast->ct_foreach_stmt.index = context->tok.id;
 		TRY_CONSUME_OR(TOKEN_CT_IDENT, "Expected a compile time index variable", poisoned_ast);
 		advance_and_verify(context, TOKEN_COMMA);
 	}
-	ast->ct_for_stmt.value = context->tok.id;
+	ast->ct_foreach_stmt.value = context->tok.id;
 	TRY_CONSUME_OR(TOKEN_CT_IDENT, "Expected a compile time variable", poisoned_ast);
 	TRY_CONSUME_OR(TOKEN_COLON, "Expected ':'.", poisoned_ast);
-	ASSIGN_EXPR_ELSE(ast->ct_for_stmt.expr, parse_expr(context), poisoned_ast);
+	ASSIGN_EXPR_ELSE(ast->ct_foreach_stmt.expr, parse_expr(context), poisoned_ast);
 	CONSUME_OR(TOKEN_RPAREN, poisoned_ast);
-	ASSIGN_AST_ELSE(ast->ct_for_stmt.body, parse_stmt(context), poisoned_ast);
-
+	CONSUME_OR(TOKEN_COLON, poisoned_ast);
+	Ast *body = new_ast(AST_COMPOUND_STMT, ast->span);
+	ast->ct_foreach_stmt.body = astid(body);
+	AstId *current = &body->compound_stmt.first_stmt;
+	while (!try_consume(context, TOKEN_CT_ENDFOREACH))
+	{
+		ASSIGN_AST_ELSE(Ast *stmt, parse_stmt(context), poisoned_ast);
+		*current = astid(stmt);
+		current = &stmt->next;
+	}
 	return ast;
 }
 
@@ -856,8 +863,10 @@ Ast *parse_stmt(ParseContext *context)
 			return parse_ct_if_stmt(context);
 		case TOKEN_CT_SWITCH:
 			return parse_ct_switch_stmt(context);
+		case TOKEN_CT_FOREACH:
+			return parse_ct_foreach_stmt(context);
 		case TOKEN_CT_FOR:
-			return parse_ct_for_stmt(context);
+			TODO
 		case TOKEN_CT_UNREACHABLE:
 			return parse_unreachable_stmt(context);
 		case TOKEN_STAR:
@@ -972,6 +981,8 @@ Ast *parse_stmt(ParseContext *context)
 		case TOKEN_BITSTRUCT:
 		case TOKEN_LVEC:
 		case TOKEN_RVEC:
+		case TOKEN_CT_ENDFOR:
+		case TOKEN_CT_ENDFOREACH:
 			SEMA_TOKEN_ERROR(context->tok, "Unexpected '%s' found when expecting a statement.", token_type_to_string(context->tok.type));
 			advance(context);
 			return poisoned_ast;
