@@ -941,7 +941,14 @@ bool parse_attributes(ParseContext *context, Attr ***attributes_ref)
 		attr->name = context->tok.id;
 		attr->path = path;
 
-		TRY_CONSUME_OR(TOKEN_IDENT, "Expected an attribute", false);
+		if (tok_is(context, TOKEN_IDENT) || tok_is(context, TOKEN_TYPE_IDENT))
+		{
+			advance(context);
+		}
+		else
+		{
+			TRY_CONSUME_OR(TOKEN_IDENT, "Expected an attribute", false);
+		}
 
 		if (TOKEN_IS(TOKEN_LPAREN))
 		{
@@ -1668,7 +1675,7 @@ static inline Decl *parse_define_ident(ParseContext  *context, Visibility visibi
 }
 
 /**
- * define_attribute ::= 'define' '@' IDENT '(' parameter_list ')' ('=' (void | attribute_list))?
+ * define_attribute ::= 'define' '@' IDENT '(' parameter_list ')' ('=' attribute_list)?
  */
 static inline Decl *parse_define_attribute(ParseContext  *context, Visibility visibility)
 {
@@ -1702,10 +1709,7 @@ static inline Decl *parse_define_attribute(ParseContext  *context, Visibility vi
 	Attr **attributes = NULL;
 	if (try_consume(context, TOKEN_EQ))
 	{
-		if (try_consume(context, TOKEN_VOID))
-		{
-			if (!parse_attributes(context, &attributes)) return false;
-		}
+		if (!parse_attributes(context, &attributes)) return false;
 	}
 
 	decl->define_decl.define_kind = DEFINE_ATTRIBUTE;
@@ -1714,6 +1718,7 @@ static inline Decl *parse_define_attribute(ParseContext  *context, Visibility vi
 	// 3. Set up the define.
 	decl->span.loc = start;
 	RANGE_EXTEND_PREV(decl);
+	TRY_CONSUME_EOS_OR(poisoned_decl);
 	return decl;
 }
 

@@ -2,30 +2,37 @@
 // For hacking the C API
 #include "llvm/IR/IRBuilder.h"
 
+#if LLVM_VERSION_MAJOR > 13
+#define LINK_SIG \
+bool link(llvm::ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS, \
+		  llvm::raw_ostream &stderrOS, bool exitEarly, bool disableOutput);
+#define CALL_ARGS arg_vector, false, output, output_err, false
+#else
+#define LINK_SIG \
+bool link(llvm::ArrayRef<const char *> args, bool canExitEarly, \
+llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS);
+#define CALL_ARGS arg_vector, false, output, output_err
+#endif
+
 namespace lld {
 	namespace coff {
-		bool link(llvm::ArrayRef<const char *> args, bool canExitEarly,
-		          llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS);
+		LINK_SIG
 	}
 
 	namespace mingw {
-		bool link(llvm::ArrayRef<const char *> args, bool canExitEarly,
-		          llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS);
+		LINK_SIG
 	}
 
 	namespace elf {
-		bool link(llvm::ArrayRef<const char *> args, bool canExitEarly,
-		          llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS);
+		LINK_SIG
 	}
 
 	namespace mach_o {
-		bool link(llvm::ArrayRef<const char *> args, bool canExitEarly,
-		          llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS);
+		LINK_SIG
 	}
 
 	namespace macho {
-		bool link(llvm::ArrayRef<const char *> args, bool canExitEarly,
-		          llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS);
+		LINK_SIG
 	}
 
 	namespace wasm {
@@ -54,23 +61,23 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 	switch (format)
 	{
 		case ELF:
-			if (lld::elf::link(arg_vector, false, output, output_err)) return true;
+			if (lld::elf::link(CALL_ARGS)) return true;
 			break;
 		case MACHO:
 			#if LLVM_VERSION_MAJOR > 13
-				if (lld::macho::link(arg_vector, false, output, output_err)) return true;
+				if (lld::macho::link(CALL_ARGS)) return true;
 			#else
-				if (lld::mach_o::link(arg_vector, false, output, output_err)) return true;
+				if (lld::mach_o::link(CALL_ARGS)) return true;
 			#endif
 			break;
 		case WASM:
-			if (lld::wasm::link(arg_vector, false, output, output_err)) return true;
+			if (lld::wasm::link(CALL_ARGS)) return true;
 			break;
 		case COFF:
-			if (lld::coff::link(arg_vector, false, output, output_err)) return true;
+			if (lld::coff::link(CALL_ARGS)) return true;
 			break;
 		case MINGW:
-			if (lld::mingw::link(arg_vector, false, output, output_err)) return true;
+			if (lld::mingw::link(CALL_ARGS)) return true;
 			break;
 		default:
 			exit(-1);
