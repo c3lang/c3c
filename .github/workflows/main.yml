@@ -128,7 +128,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
-      - name: Download LLVM, botan and setup PATH
+      - name: Download LLVM
         run: |
           brew install llvm@${{ matrix.llvm_version }} botan
           echo "/usr/local/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
