@@ -6,7 +6,7 @@
 #define LINK_SIG \
 bool link(llvm::ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS, \
 		  llvm::raw_ostream &stderrOS, bool exitEarly, bool disableOutput);
-#define CALL_ARGS arg_vector, false, output, output_err, false
+#define CALL_ARGS arg_vector, output, output_err, false, false
 #else
 #define LINK_SIG \
 bool link(llvm::ArrayRef<const char *> args, bool canExitEarly, \
@@ -36,8 +36,7 @@ namespace lld {
 	}
 
 	namespace wasm {
-		bool link(llvm::ArrayRef<const char *> args, bool canExitEarly,
-		          llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS);
+		LINK_SIG
 	}
 }
 
