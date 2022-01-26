@@ -946,7 +946,8 @@ Decl *sema_find_operator(SemaContext *context, Expr *expr, const char *kw)
 {
 	Decl *ambiguous = NULL;
 	Decl *private = NULL;
-	Decl *method = type_may_have_sub_elements(expr->type) ? sema_resolve_method(context->unit, expr->type->decl, kw, &ambiguous, &private) : NULL;
+	Type *type = expr->type->canonical;
+	Decl *method = type_may_have_sub_elements(type) ? sema_resolve_method(context->unit, type->decl, kw, &ambiguous, &private) : NULL;
 	if (!decl_ok(method)) return NULL;
 	if (!method)
 	{
