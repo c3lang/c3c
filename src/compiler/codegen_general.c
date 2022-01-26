@@ -274,8 +274,8 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		if (type->type_kind == TYPE_VECTOR)
 		{
 			// Widen the type with elements.
-			unsigned vec_elements = type_size(type) / type_size(type->vector.base);
-			*base = type_get_vector(type->vector.base, vec_elements);
+			unsigned vec_elements = type_size(type) / type_size(type->array.base);
+			*base = type_get_vector(type->array.base, vec_elements);
 		}
 	}
 	// One is vector - other isn't => failure

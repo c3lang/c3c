@@ -272,14 +272,12 @@ struct Type_
 		Decl *decl;
 		// int, float, bool
 		TypeBuiltin builtin;
-		// Type[], Type[*], Type[123]
+		// Type[], Type[*], Type[123], Type[<123>] or Type<[123]>
 		TypeArray array;
 		// func Type1(Type2, Type3, ...) throws Err1, Err2, ...
 		TypeFunc func;
 		// Type*
 		Type *pointer;
-		// Type[<123>] or Type<[123]>
-		TypeVector vector;
 		// Failable
 		Type *failable;
 		// Bitstruct
@@ -583,7 +581,6 @@ typedef struct Decl_
 	Visibility visibility : 3;
 	ResolveStatus resolve_status : 3;
 	bool is_packed : 1;
-	bool is_opaque : 1;
 	bool needs_additional_pad : 1;
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
@@ -1786,7 +1783,7 @@ static inline bool type_may_negate(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_VECTOR:
-			type = type->vector.base;
+			type = type->array.base;
 			goto RETRY;
 		case ALL_FLOATS:
 		case ALL_INTS:
@@ -2391,7 +2388,7 @@ static inline bool type_is_char_array(Type *type)
 static Type *type_vector_type(Type *type)
 {
 	Type *flatten = type_flatten(type);
-	return flatten->type_kind == TYPE_VECTOR ? flatten->vector.base : NULL;
+	return flatten->type_kind == TYPE_VECTOR ? flatten->array.base : NULL;
 }
 
 static inline bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <= TYPE_TYPEID; }

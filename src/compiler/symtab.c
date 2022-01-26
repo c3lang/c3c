@@ -194,7 +194,6 @@ void symtab_init(uint32_t capacity)
 
 	attribute_list[ATTRIBUTE_INLINE] = kw_inline;
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
-	attribute_list[ATTRIBUTE_OPAQUE] = KW_DEF("opaque");
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("bigendian");
 	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("littleendian");
 	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("noreturn");

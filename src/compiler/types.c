@@ -282,7 +282,7 @@ RETRY:
 			goto RETRY;
 		case TYPE_VECTOR:
 		{
-			TypeSize width = type_size(type->vector.base) * type->vector.len;
+			TypeSize width = type_size(type->array.base) * type->array.len;
 			if (width & (width - 1))
 			{
 				AlignSize alignment = next_highest_power_of_2((uint32_t) width);
@@ -340,7 +340,7 @@ const char *type_generate_qname(Type *type)
 bool type_is_float_or_float_vector(Type *type)
 {
 	type = type_flatten(type);
-	if (type->type_kind == TYPE_VECTOR) type = type->vector.base;
+	if (type->type_kind == TYPE_VECTOR) type = type->array.base;
 	TypeKind kind = type->type_kind;
 	return kind >= TYPE_FLOAT_FIRST && kind <= TYPE_FLOAT_LAST;
 }
@@ -494,7 +494,7 @@ AlignSize type_abi_alignment(Type *type)
 			goto RETRY;
 		case TYPE_VECTOR:
 		{
-			ByteSize width = type_size(type->vector.base) * (uint32_t)type->vector.len;
+			ByteSize width = type_size(type->array.base) * (uint32_t)type->array.len;
 			AlignSize alignment = (AlignSize)(int32_t)width;
 			if (alignment & (alignment - 1))
 			{
@@ -865,7 +865,7 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 		if (vector)
 		{
 			if (ptr_vec->type_kind != TYPE_VECTOR) continue;
-			if (ptr_vec->vector.len == len) return ptr_vec;
+			if (ptr_vec->array.len == len) return ptr_vec;
 		}
 		else
 		{
@@ -877,8 +877,8 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 	if (vector)
 	{
 		vec_arr = type_new(TYPE_VECTOR, strformat("%s[<%u>]", element_type->name, len));
-		vec_arr->vector.base = element_type;
-		vec_arr->vector.len = len;
+		vec_arr->array.base = element_type;
+		vec_arr->array.len = len;
 	}
 	else
 	{
@@ -923,8 +923,8 @@ bool type_is_valid_for_vector(Type *type)
 Type *type_get_vector_bool(Type *original_type)
 {
 	Type *type = type_flatten(original_type);
-	ByteSize size = type_size(type->vector.base);
-	return type_get_vector(type_int_signed_by_bitsize((unsigned)size * 8), (unsigned)original_type->vector.len);
+	ByteSize size = type_size(type->array.base);
+	return type_get_vector(type_int_signed_by_bitsize((unsigned)size * 8), (unsigned)original_type->array.len);
 }
 
 Type *type_get_vector(Type *vector_type, unsigned len)
@@ -1468,9 +1468,8 @@ Type *type_decay_array_pointer(Type *type)
 	switch (ptr->type_kind)
 	{
 		case TYPE_ARRAY:
-			return type_get_ptr(ptr->array.base->canonical);
 		case TYPE_VECTOR:
-			return type_get_ptr(ptr->vector.base->canonical);
+			return type_get_ptr(ptr->array.base->canonical);
 		default:
 			return type;
 	}
@@ -1534,7 +1533,7 @@ Type *type_find_max_type(Type *type, Type *other)
 			}
 			if (type->pointer->type_kind == TYPE_VECTOR)
 			{
-				Type *vector_base = type->pointer->vector.base->canonical;
+				Type *vector_base = type->pointer->array.base->canonical;
 				if (other->type_kind == TYPE_SUBARRAY && vector_base == other->array.base->canonical)
 				{
 					return other;

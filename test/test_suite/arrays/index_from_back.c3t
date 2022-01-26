@@ -1,0 +1,61 @@
+// #target: x64-darwin
+
+module test;
+
+fn void test(int[10] x, int[<10>] y)
+{
+    int a = x[4];
+    int b = x[^2];
+    int c = y[4];
+    int d = y[^2];
+    int j = 3;
+    int e = y[^j];
+    int f = x[^j];
+}
+
+/* #expect: test.ll
+
+define void @test.test([10 x i32]* byval([10 x i32]) align 8 %0, <10 x i32>* byval(<10 x i32>) align 64 %1) #0 {
+entry:
+  %x = alloca [10 x i32], align 4
+  %y = alloca <10 x i32>, align 64
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %c = alloca i32, align 4
+  %d = alloca i32, align 4
+  %j = alloca i32, align 4
+  %e = alloca i32, align 4
+  %f = alloca i32, align 4
+  %2 = bitcast [10 x i32]* %x to i8*
+  %3 = bitcast [10 x i32]* %0 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %2, i8* align 8 %3, i32 40, i1 false)
+  %4 = bitcast <10 x i32>* %y to i8*
+  %5 = bitcast <10 x i32>* %1 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 64 %4, i8* align 64 %5, i32 64, i1 false)
+  %6 = getelementptr inbounds [10 x i32], [10 x i32]* %x, i64 0, i64 4
+  %7 = load i32, i32* %6, align 4
+  store i32 %7, i32* %a, align 4
+  %8 = getelementptr inbounds [10 x i32], [10 x i32]* %x, i64 0, i64 8
+  %9 = load i32, i32* %8, align 4
+  store i32 %9, i32* %b, align 4
+  %10 = load <10 x i32>, <10 x i32>* %y, align 64
+  %11 = extractelement <10 x i32> %10, i64 4
+  store i32 %11, i32* %c, align 4
+  %12 = load <10 x i32>, <10 x i32>* %y, align 64
+  %13 = extractelement <10 x i32> %12, i64 8
+  store i32 %13, i32* %d, align 4
+  store i32 3, i32* %j, align 4
+  %14 = load <10 x i32>, <10 x i32>* %y, align 64
+  %15 = load i32, i32* %j, align 4
+  %sisiext = sext i32 %15 to i64
+  %16 = sub nuw i64 10, %sisiext
+  %17 = extractelement <10 x i32> %14, i64 %16
+  store i32 %17, i32* %e, align 4
+  %18 = load i32, i32* %j, align 4
+  %sisiext1 = sext i32 %18 to i64
+  %19 = sub nuw i64 10, %sisiext1
+  %20 = getelementptr inbounds [10 x i32], [10 x i32]* %x, i64 0, i64 %19
+  %21 = load i32, i32* %20, align 4
+  store i32 %21, i32* %f, align 4
+  ret void
+}

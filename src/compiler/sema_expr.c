@@ -32,9 +32,8 @@ static bool sema_decay_array_pointers(Expr *expr)
 	switch (expr_type->pointer->type_kind)
 	{
 		case TYPE_ARRAY:
-			return cast_implicit(expr, type_get_ptr(expr_type->pointer->array.base));
 		case TYPE_VECTOR:
-			return cast_implicit(expr, type_get_ptr(expr_type->pointer->vector.base));
+			return cast_implicit(expr, type_get_ptr(expr_type->pointer->array.base));
 		default:
 			return true;
 	}
@@ -93,7 +92,7 @@ static inline bool both_any_integer_or_integer_vector(Expr *left, Expr *right)
 
 	if (flatten_left->type_kind != TYPE_VECTOR || flatten_right->type_kind != TYPE_VECTOR) return false;
 
-	return type_is_integer(flatten_left->vector.base) && type_is_integer(flatten_right->vector.base);
+	return type_is_integer(flatten_left->array.base) && type_is_integer(flatten_right->array.base);
 }
 
 Expr *expr_generate_decl(Decl *decl, Expr *assign)
@@ -2385,7 +2384,7 @@ static void sema_deref_array_pointers(Expr *expr)
 	}
 }
 
-static bool expr_check_index_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end)
+static bool expr_check_index_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end)
 {
 	assert(type == type->canonical);
 	if (index_expr->expr_kind != EXPR_CONST) return true;
@@ -2416,6 +2415,8 @@ static bool expr_check_index_in_range(SemaContext *context, Type *type, Expr *in
 			if (from_end)
 			{
 				idx = len - idx;
+				index_expr->const_expr.ixx.i.low = idx;
+				*remove_from_end = true;
 			}
 			// Checking end can only be done for arrays.
 			if (end_index && idx >= len)
@@ -2602,7 +2603,9 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	if (!expr_cast_to_index(index)) return false;
 
 	// Check range
-	if (!expr_check_index_in_range(context, current_type, index, false, expr->subscript_expr.from_back)) return false;
+	bool remove_from_back = false;
+	if (!expr_check_index_in_range(context, current_type, index, false, expr->subscript_expr.from_back, &remove_from_back)) return false;
+	if (remove_from_back) expr->subscript_expr.from_back = false;
 
 	expr->subscript_expr.expr = current_expr;
 	if (is_addr) inner_type = type_get_ptr(inner_type);
@@ -2656,8 +2659,12 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 			return false;
 		}
 	}
-	if (!expr_check_index_in_range(context, type, start, false, expr->slice_expr.start_from_back)) return false;
-	if (end && !expr_check_index_in_range(context, type, end, true, expr->slice_expr.end_from_back)) return false;
+	bool remove_from_end = false;
+	if (!expr_check_index_in_range(context, type, start, false, expr->slice_expr.start_from_back, &remove_from_end)) return false;
+	if (remove_from_end) expr->slice_expr.start_from_back = false;
+	remove_from_end = false;
+	if (end && !expr_check_index_in_range(context, type, end, true, expr->slice_expr.end_from_back, &remove_from_end)) return false;
+	if (remove_from_end) expr->slice_expr.end_from_back = false;
 
 	if (start && end && start->expr_kind == EXPR_CONST && end->expr_kind == EXPR_CONST)
 	{
@@ -3285,12 +3292,9 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 				base = type_flattened->array.base;
 				break;
 			case TYPE_ARRAY:
+			case TYPE_VECTOR:
 				len = type_flattened->array.len;
 				base = type_flattened->array.base;
-				break;
-			case TYPE_VECTOR:
-				len = type_flattened->vector.len;
-				base = type_flattened->vector.base;
 				break;
 			default:
 				return NULL;
@@ -5195,7 +5199,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 
 	if (left_type->type_kind == TYPE_VECTOR && right_type->type_kind == TYPE_VECTOR)
 	{
-		if (left_type->vector.len == right_type->vector.len)
+		if (left_type->array.len == right_type->array.len)
 		{
 			Type *left_vec = type_vector_type(left_type);
 			Type *right_vec = type_vector_type(right_type);

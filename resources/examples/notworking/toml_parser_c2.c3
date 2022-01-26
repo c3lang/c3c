@@ -373,7 +373,7 @@ fn void Parser.expect(Parser* p, TokenKind k)
 
 const u32 MaxDiag = 128;
 
-public struct TomlReader @opaque
+public struct TomlReader
 {
     char[MaxDiag] message;
     Blocks* blocks;

@@ -6,7 +6,7 @@ macro max(a, b)
 }
 
 // Horribly bad implementation of BigInt with add/sub.
-public struct BigInt @opaque
+public struct BigInt
 {
 	byte* number;
 	uint length;

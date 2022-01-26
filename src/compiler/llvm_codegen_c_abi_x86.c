@@ -187,7 +187,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 			}
 			// Always return in register if it fits in a general purpose
 			// register, or if it is 64 bits and has a single field.
-			if (size == 1 || size == 2 || size == 4 || (size == 8 && type->vector.len == 1))
+			if (size == 1 || size == 2 || size == 4 || (size == 8 && type->array.len == 1))
 			{
 				return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
 			}
@@ -273,8 +273,8 @@ static inline bool x86_is_mmxtype(Type *type)
 {
 	// Return true if the type is an MMX type <2 x i32>, <4 x i16>, or <8 x i8>.
 	if (type->type_kind != TYPE_VECTOR) return false;
-	if (type_size(type->vector.base) >= 8) return false;
-	if (!type_is_integer(type->vector.base)) return false;
+	if (type_size(type->array.base) >= 8) return false;
+	if (!type_is_integer(type->array.base)) return false;
 	return type_size(type) == 8;
 }
 
@@ -442,7 +442,7 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 	// it as an i8/i16/i32/i64.
 	if (platform_target.x86.is_darwin_vector_abi)
 	{
-		if ((size == 1 || size == 2 || size == 4) || (size == 8 && type->vector.len == 1))
+		if ((size == 1 || size == 2 || size == 4) || (size == 8 && type->array.len == 1))
 		{
 			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
 		}

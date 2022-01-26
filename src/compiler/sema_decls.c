@@ -389,10 +389,6 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 				had = decl->is_packed;
 				decl->is_packed = true;
 				break;
-			case ATTRIBUTE_OPAQUE:
-				had = decl->is_opaque;
-				decl->is_opaque = true;
-				break;
 			default:
 				UNREACHABLE
 		}
@@ -549,10 +545,6 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 		{
 			case ATTRIBUTE_OVERLAP:
 				SET_ATTR(overlap);
-				break;
-			case ATTRIBUTE_OPAQUE:
-				had = decl->is_opaque;
-				decl->is_opaque = true;
 				break;
 			case ATTRIBUTE_BIGENDIAN:
 				if (decl->bitstruct.little_endian)
@@ -1143,7 +1135,6 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
-			[ATTRIBUTE_OPAQUE] = ATTR_STRUCT | ATTR_UNION | ATTR_BITSTRUCT,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_USED] = (AttributeDomain)~ATTR_CALL,

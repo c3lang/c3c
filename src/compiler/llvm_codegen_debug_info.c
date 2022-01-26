@@ -455,8 +455,8 @@ static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type)
 	Type *current_type = type;
 	while (current_type->canonical->type_kind == TYPE_VECTOR)
 	{
-		vec_add(ranges, LLVMDIBuilderGetOrCreateSubrange(c->debug.builder, 0, current_type->canonical->vector.len));
-		current_type = current_type->canonical->vector.base;
+		vec_add(ranges, LLVMDIBuilderGetOrCreateSubrange(c->debug.builder, 0, current_type->canonical->array.len));
+		current_type = current_type->canonical->array.base;
 	}
 	return LLVMDIBuilderCreateVectorType(
 			c->debug.builder,

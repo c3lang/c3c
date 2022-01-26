@@ -494,7 +494,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		case TYPE_ARRAY:
 			if (to_kind == TYPE_VECTOR)
 			{
-				return to_type->array.len == from_type->vector.len && to_type->array.base == from_type->array.base;
+				return to_type->array.len == from_type->array.len && to_type->array.base == from_type->array.base;
 			}
 			FALLTHROUGH;
 		case TYPE_STRUCT:
@@ -508,7 +508,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		case TYPE_SUBARRAY:
 			return to_kind == TYPE_POINTER;
 		case TYPE_VECTOR:
-			return type_is_structurally_equivalent(type_get_array(from_type->vector.base, (uint32_t)from_type->vector.len), to_type);
+			return type_is_structurally_equivalent(type_get_array(from_type->array.base, (uint32_t)from_type->array.len), to_type);
 		case TYPE_UNTYPED_LIST:
 			REMINDER("Look at untyped list explicit conversions");
 			return false;

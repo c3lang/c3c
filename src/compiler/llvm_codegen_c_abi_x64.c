@@ -77,7 +77,7 @@ static bool x64_type_is_illegal_vector(Type *type)
 	if (platform_target.x64.pass_int128_vector_in_mem)
 	{
 		// Illegal if i128/u128
-		TypeKind kind = type->vector.base->type_kind;
+		TypeKind kind = type->array.base->type_kind;
 		return kind == TYPE_I128 || kind == TYPE_U128;
 	}
 	// Otherwise fine!
@@ -344,7 +344,7 @@ void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X6
 	}
 	if (size == 8)
 	{
-		Type *element = type->vector.base;
+		Type *element = type->array.base;
 
 		// 1 x double passed in memory (by gcc)
 		if (element->type_kind == TYPE_F64) return;
@@ -628,7 +628,7 @@ static AbiType x64_get_byte_vector_type(Type *type)
 	// If vector
 	if (type->type_kind == TYPE_VECTOR)
 	{
-		Type *element = type->vector.base->canonical;
+		Type *element = type->array.base->canonical;
 		if (platform_target.x64.pass_int128_vector_in_mem && type_is_int128(element))
 		{
 			// Convert to u64
