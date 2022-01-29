@@ -313,6 +313,7 @@ typedef struct
 	{
 		Expr *expr;
 		uint32_t alignment;
+		OperatorOverload operator;
 	};
 } Attr;
 
@@ -588,6 +589,7 @@ typedef struct Decl_
 	bool escaping : 1;
 	bool is_value : 1;
 	bool is_autoimport : 1;
+	OperatorOverload operator : 3;
 	union
 	{
 		void *backend_ref;
@@ -1607,10 +1609,9 @@ extern const char *kw_distinct;
 extern const char *kw_ensure;
 extern const char *kw_inline;
 extern const char *kw_inf;
-extern const char *kw_iterator;
-extern const char *kw_operator_element_at;
-extern const char *kw_operator_element_at_ref;
-extern const char *kw_operator_len;
+extern const char *kw_elementat;
+extern const char *kw_elementref;
+extern const char *kw_elementset;
 extern const char *kw_len;
 extern const char *kw_next;
 extern const char *kw_nan;

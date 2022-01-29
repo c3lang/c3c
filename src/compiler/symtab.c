@@ -45,10 +45,9 @@ const char *kw_elements;
 const char *kw_errors;
 const char *kw_inf;
 const char *kw_inline;
-const char *kw_iterator;
-const char *kw_operator_element_at;
-const char *kw_operator_element_at_ref;
-const char *kw_operator_len;
+const char *kw_elementat;
+const char *kw_elementref;
+const char *kw_elementset;
 const char *kw_len;
 const char *kw_main;
 const char *kw_max;
@@ -138,10 +137,9 @@ void symtab_init(uint32_t capacity)
 	kw_errors = KW_DEF("errors");
 	kw_inf = KW_DEF("inf");
 	kw_inline = KW_DEF("inline");
-	kw_iterator = KW_DEF("iterator");
-	kw_operator_element_at = KW_DEF("operator_element_at");
-	kw_operator_element_at_ref = KW_DEF("operator_element_at_ref");
-	kw_operator_len = KW_DEF("operator_len");
+	kw_elementat = KW_DEF("elementat");
+	kw_elementref = KW_DEF("elementref");
+	kw_elementset = KW_DEF("elementset");
 	kw_len = KW_DEF("len");
 	kw_main = KW_DEF("main");
 	kw_max = KW_DEF("max");
@@ -213,6 +211,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_REGCALL] = KW_DEF("regcall");
 	attribute_list[ATTRIBUTE_FASTCALL] = KW_DEF("fastcall");
 	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("overlap");
+	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("operator");
 	attribute_list[ATTRIBUTE_AUTOIMPORT] = KW_DEF("autoimport");
 
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)

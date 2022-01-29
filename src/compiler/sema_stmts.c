@@ -890,158 +890,22 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 }
 
 
-static inline bool sema_inline_default_iterator(SemaContext *context, Expr *expr, Decl *decl)
-{
-	Expr *inner = expr_copy(expr);
-	expr_insert_addr(inner);
-	expr->expr_kind = EXPR_CALL;
-	expr->call_expr = (ExprCall) {
-		.is_type_method = true,
-	};
-	REMINDER("Failability");
-	return sema_expr_analyse_general_call(context, expr, decl, inner, decl->decl_kind == DECL_MACRO, false);
-}
 
-static Decl *find_iterator(SemaContext *context, Expr *enumerator)
-{
-	if (!type_may_have_sub_elements(enumerator->type))
-	{
-		SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
-		return NULL;
-	}
-	Decl *ambiguous = NULL;
-	Decl *private = NULL;
-	Decl *method = sema_resolve_method(context->unit, enumerator->type->decl, kw_iterator, &ambiguous, &private);
-	if (!decl_ok(method)) return NULL;
-	if (!method)
-	{
-		if (ambiguous)
-		{
-			SEMA_ERROR(enumerator,
-			           "It's not possible to find a definition for 'iterator' on %s that is not ambiguous.",
-			           type_quoted_error_string(enumerator->type));
-			return NULL;
-		}
-		if (private)
-		{
-			SEMA_ERROR(enumerator,
-			           "It's not possible to find a public definition for 'iterator' with '%s'.",
-			           type_quoted_error_string(enumerator->type));
-			return NULL;
-		}
-		SEMA_ERROR(enumerator,
-		           "This type cannot be iterated over, implement a method or method macro called 'iterator'.",
-		           type_to_error_string(enumerator->type));
-		return NULL;
-	}
-	Decl **parameters;
-	TypeInfo *iterator_type;
-	switch (method->decl_kind)
-	{
-		case DECL_GENERIC:
-			parameters = method->generic_decl.parameters;
-			iterator_type = method->generic_decl.rtype;
-			break;
-		case DECL_MACRO:
-			parameters = method->macro_decl.parameters;
-			iterator_type = method->macro_decl.rtype;
-			break;
-		case DECL_FUNC:
-			parameters = method->func_decl.function_signature.params;
-			iterator_type = method->func_decl.function_signature.returntype;
-			break;
-		default:
-			UNREACHABLE
-	}
-	if (vec_size(parameters) > 1)
-	{
-		SEMA_ERROR(enumerator, "'iterator()' takes parameters and can't be used for 'foreach'.");
-		return NULL;
-	}
-	if (!iterator_type)
-	{
-		SEMA_ERROR(enumerator, "This type has an iterator without a declared result type, this can't be used with 'foreach'.");
-		return NULL;
-	}
-	assert(iterator_type->resolve_status == RESOLVE_DONE);
-	Type *it_type = iterator_type->type->canonical;
-	if (it_type->type_kind != TYPE_STRUCT)
-	{
-		SEMA_ERROR(enumerator, "This type has an implementation of 'iterator()' that doesn't return a struct, so it can't be used with 'foreach'.");
-		return NULL;
-	}
-	return method;
-}
-
-static Decl *find_iterator_next(SemaContext *context, Expr *enumerator)
-{
-	Type *type = enumerator->type->canonical;
-	assert(type->type_kind == TYPE_STRUCT);
-	Decl *ambiguous = NULL;
-	Decl *private = NULL;
-	Decl *method = sema_resolve_method(context->unit, type->decl, kw_next, &ambiguous, &private);
-	if (!decl_ok(method)) return NULL;
-	if (!method)
-	{
-		if (ambiguous)
-		{
-			SEMA_ERROR(enumerator, "The iterator %s has ambiguous 'next' definitions.", type_quoted_error_string(type));
-			return NULL;
-		}
-		if (private)
-		{
-			SEMA_ERROR(enumerator,
-					   "The iterator %s has a private 'next' definition.",
-					   type_quoted_error_string(type));
-			return NULL;
-		}
-		SEMA_ERROR(enumerator,
-				   "The iterator %s is missing a definition for 'next()'.",
-				   type_quoted_error_string(type));
-		return NULL;
-	}
-	Decl **parameters;
-	TypeInfo *rtype;
-	switch (method->decl_kind)
-	{
-		case DECL_GENERIC:
-			parameters = method->generic_decl.parameters;
-			rtype = method->generic_decl.rtype;
-			break;
-		case DECL_MACRO:
-			parameters = method->macro_decl.parameters;
-			rtype = method->macro_decl.rtype;
-			break;
-		case DECL_FUNC:
-			parameters = method->func_decl.function_signature.params;
-			rtype = method->func_decl.function_signature.returntype;
-			break;
-		default:
-			UNREACHABLE
-	}
-	if (vec_size(parameters) != 2)
-	{
-		SEMA_ERROR(enumerator, "An iterator with a 'next()' that take takes %d parameters can't be used for 'foreach', it should have 1.", vec_size(parameters) - 1);
-		return NULL;
-	}
-	if (!rtype)
-	{
-		SEMA_ERROR(enumerator, "This type has an iterator without a declared return type, this can't be used with 'foreach'.");
-		return NULL;
-	}
-	return method;
-}
-
-static Expr *sema_insert_method_macro_call(SemaContext *context, SourceSpan span, Decl *macro_decl, Expr *parent, Expr **arguments)
+static Expr *sema_insert_method_macro_call(SemaContext *context, SourceSpan span, Decl *method_decl, Expr *parent, Expr **arguments)
 {
 	Expr *len_call = expr_new(EXPR_CALL, span);
 	len_call->resolve_status = RESOLVE_RUNNING;
-	len_call->call_expr.func_ref = macro_decl;
+	len_call->call_expr.func_ref = method_decl;
 	len_call->call_expr.arguments = arguments;
 	len_call->call_expr.body = NULL;
 	len_call->call_expr.unsplat_last = false;
 	len_call->call_expr.is_type_method = true;
-	if (!sema_expr_analyse_macro_call(context, len_call, parent, macro_decl, false)) return poisoned_expr;
+	bool is_macro = method_decl->decl_kind == DECL_MACRO;
+	if (!is_macro)
+	{
+		if (parent->type->type_kind != TYPE_POINTER) expr_insert_addr(parent);
+	}
+	if (!sema_expr_analyse_general_call(context, len_call, method_decl, parent, is_macro, false)) return poisoned_expr;
 	len_call->resolve_status = RESOLVE_DONE;
 	return len_call;
 }
@@ -1160,9 +1024,9 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	if (!value_type)
 	{
-		len = sema_find_operator(context, enumerator, kw_operator_len);
-		Decl *by_val = sema_find_operator(context, enumerator, kw_operator_element_at);
-		Decl *by_ref = sema_find_operator(context, enumerator, kw_operator_element_at_ref);
+		len = sema_find_operator(context, enumerator, OVERLOAD_LEN);
+		Decl *by_val = sema_find_operator(context, enumerator, OVERLOAD_ELEMENT_AT);
+		Decl *by_ref = sema_find_operator(context, enumerator, OVERLOAD_ELEMENT_REF);
 		if (!len || (!by_val && !by_ref))
 		{
 			SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));

@@ -2572,14 +2572,14 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	if (!inner_type)
 	{
 		Decl *decl = NULL;
-		if (is_addr) decl = sema_find_operator(context, current_expr, kw_operator_element_at_ref);
+		if (is_addr) decl = sema_find_operator(context, current_expr, OVERLOAD_ELEMENT_REF);
 		if (!decl)
 		{
-			decl = sema_find_operator(context, current_expr, kw_operator_element_at);
+			decl = sema_find_operator(context, current_expr, OVERLOAD_ELEMENT_AT);
 			if (decl && is_addr)
 			{
-				SEMA_ERROR(expr, "'%s' is not defined for %s, so you need && to take the address of the temporary.",
-						   kw_operator_element_at_ref, type_quoted_error_string(current_expr->type));
+				SEMA_ERROR(expr, "A function or macro with '@operator(%s)' is not defined for %s, so you need && to take the address of the temporary.",
+				           kw_elementref, type_quoted_error_string(current_expr->type));
 				return false;
 			}
 		}

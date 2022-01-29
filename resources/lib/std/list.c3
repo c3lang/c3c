@@ -99,7 +99,7 @@ fn bool List.isEmpty(List *list)
     return list.size;
 }
 
-fn usize List.len(List *list)
+fn usize List.len(List *list) @operator(len)
 {
     return list.size;
 }
@@ -116,12 +116,13 @@ fn void List.free(List *list)
     list.size = 0;
 }
 
-macro usize List.operator_len(List &list)
-{
-    return list.len();
-}
 
-macro Type List.operator_element_at(List &list, usize index)
+macro Type List.item_at(List &list, usize index) @operator(elementat)
 {
     return list.entries[index];
+}
+
+macro Type* List.item_ref(List &list, usize index) @operator(elementref)
+{
+    return &list.entries[index];
 }

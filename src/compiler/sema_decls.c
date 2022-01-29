@@ -942,33 +942,46 @@ static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Dec
 	return true;
 }
 
-Decl *sema_find_operator(SemaContext *context, Expr *expr, const char *kw)
+
+Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload operator_overload)
 {
 	Decl *ambiguous = NULL;
 	Decl *private = NULL;
 	Type *type = expr->type->canonical;
-	Decl *method = type_may_have_sub_elements(type) ? sema_resolve_method(context->unit, type->decl, kw, &ambiguous, &private) : NULL;
-	if (!decl_ok(method)) return NULL;
-	if (!method)
+	if (!type_may_have_sub_elements(type)) return NULL;
+	Decl *def = type->decl;
+	Decl **funcs = def->methods;
+	VECEACH(funcs, i)
 	{
-		if (ambiguous)
+		Decl *func = funcs[i];
+		if (func->operator == operator_overload)
 		{
-			SEMA_ERROR(expr,
-					   "It's not possible to find a definition for '%s' on %s that is not ambiguous.",
-					   kw, type_quoted_error_string(expr->type));
-			return NULL;
+			unit_register_external_symbol(context->compilation_unit, func);
+			return func;
 		}
-		if (private)
-		{
-			SEMA_ERROR(expr,
-					   "It's not possible to find a public definition for '%s' with '%s'.",
-					   kw, type_quoted_error_string(expr->type));
-			return NULL;
-		}
-		return NULL;
 	}
-	return method;
+	Decl **imports = context->unit->imports;
+	VECEACH(imports, i)
+	{
+		Decl *import = imports[i];
+		Module *module = import->module;
+
+		if (module->is_generic) continue;
+
+		Decl **extensions = module->method_extensions;
+		VECEACH(extensions, j)
+		{
+			Decl *extension = extensions[j];
+			if (extension->operator == operator_overload)
+			{
+				unit_register_external_symbol(context->compilation_unit, extension);
+				return extension;
+			}
+		}
+	}
+	return NULL;
 }
+
 
 static inline bool sema_analyse_operator_element_at(Decl *method)
 {
@@ -978,6 +991,19 @@ static inline bool sema_analyse_operator_element_at(Decl *method)
 	if (rtype->type->canonical == type_void)
 	{
 		SEMA_ERROR(rtype, "The return type cannot be 'void'.");
+		return false;
+	}
+	return true;
+}
+
+static inline bool sema_analyse_operator_element_set(Decl *method)
+{
+	TypeInfo *rtype;
+	Decl **params;
+	if (!sema_analyse_operator_common(method, &rtype, &params, 3)) return false;
+	if (rtype->type->canonical != type_void)
+	{
+		SEMA_ERROR(rtype, "The return type should be 'void'.");
 		return false;
 	}
 	return true;
@@ -998,15 +1024,18 @@ static inline bool sema_analyse_operator_len(Decl *method)
 
 static bool sema_check_operator_method_validity(Decl *method)
 {
-	if (method->name == kw_operator_element_at || method->name == kw_operator_element_at_ref)
+	switch (method->operator)
 	{
-		return sema_analyse_operator_element_at(method);
+		case OVERLOAT_ELEMENT_SET:
+			return sema_analyse_operator_element_set(method);
+		case OVERLOAD_ELEMENT_AT:
+		case OVERLOAD_ELEMENT_REF:
+			return sema_analyse_operator_element_at(method);
+		case OVERLOAD_LEN:
+			return sema_analyse_operator_len(method);
+		default:
+			UNREACHABLE
 	}
-	if (method->name == kw_operator_len)
-	{
-		return sema_analyse_operator_len(method);
-	}
-	return true;
 }
 
 static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type, Decl *method_like)
@@ -1030,7 +1059,8 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 		SEMA_TOKID_PREV(method->name_token, "The previous definition was here.");
 		return false;
 	}
-	if (!sema_check_operator_method_validity(method_like)) return false;
+	if (method_like->operator && !sema_check_operator_method_validity(method_like)) return false;
+	REMINDER("Check multiple operator");
 	scratch_buffer_clear();
 	if (method_like->visibility <= VISIBLE_MODULE)
 	{
@@ -1150,6 +1180,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			[ATTRIBUTE_NOSCOPE] = ATTR_MACRO,
 			[ATTRIBUTE_ESCAPING] = ATTR_MACRO,
 			[ATTRIBUTE_AUTOIMPORT] = ATTR_MACRO | ATTR_FUNC,
+			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
@@ -1165,6 +1196,38 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 		case ATTRIBUTE_VECCALL:
 		case ATTRIBUTE_REGCALL:
 			return type;
+		case ATTRIBUTE_OPERATOR:
+		{
+			Expr *expr = attr->expr;
+			if (!expr || expr->expr_kind != EXPR_IDENTIFIER) goto FAILED_OP_TYPE;
+			if (expr->identifier_expr.path) goto FAILED_OP_TYPE;
+			TokenId tok = expr->identifier_expr.identifier;
+			const char *kw = TOKSTR(tok);
+			if (kw == kw_elementat)
+			{
+				attr->operator = OVERLOAD_ELEMENT_AT;
+			}
+			else if (kw == kw_elementref)
+			{
+				attr->operator = OVERLOAD_ELEMENT_REF;
+			}
+			else if (kw == kw_elementset)
+			{
+				attr->operator = OVERLOAT_ELEMENT_SET;
+			}
+			else if (kw == kw_len)
+			{
+				attr->operator = OVERLOAD_LEN;
+			}
+			else
+			{
+				goto FAILED_OP_TYPE;
+			}
+			return ATTRIBUTE_OPERATOR;
+		FAILED_OP_TYPE:
+			SEMA_ERROR(expr, "'operator' requires an operator type argument: '%s', '%s' or '%s'.", kw_elementat, kw_elementref, kw_len);
+			return ATTRIBUTE_NONE;
+		}
 		case ATTRIBUTE_ALIGN:
 			if (!attr->expr)
 			{
@@ -1389,6 +1452,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	context->unit->main_function = function;
 	return true;
 }
+
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
@@ -1406,6 +1470,10 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 
 		switch (attribute)
 		{
+			case ATTRIBUTE_OPERATOR:
+				had = decl->operator > 0;
+				decl->operator = attr->operator;
+				break;
 			case ATTRIBUTE_EXTNAME:
 				had = decl->extname != NULL;
 				decl->extname = attr->expr->const_expr.string.chars;
@@ -1559,6 +1627,10 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		bool had = false;
 		switch (attribute)
 		{
+			case ATTRIBUTE_OPERATOR:
+				had = decl->operator > 0;
+				decl->operator = attr->operator;
+				break;
 			case ATTRIBUTE_NOSCOPE:
 				had = decl->no_scope;
 				decl->no_scope = true;

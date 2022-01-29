@@ -66,7 +66,7 @@ void sema_analysis_pass_decls(Module *module);
 void sema_analysis_pass_ct_assert(Module *module);
 void sema_analysis_pass_functions(Module *module);
 void sema_analyze_stage(Module *module, AnalysisStage stage);
-Decl *sema_find_operator(SemaContext *context, Expr *expr, const char *kw);
+Decl *sema_find_operator(SemaContext *context, Expr *expr, OperatorOverload operator_overload);
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable);
