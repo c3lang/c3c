@@ -90,6 +90,7 @@ if(UNIX)
     find_library(LLD_MACHO NAMES lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_MINGW NAMES lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_WASM NAMES lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS})
+    find_library(LLVM_POLLY NAMES libPolly.a PATHS ${LLVM_LIBRARY_DIRS})
 
     if(${LLVM_PACKAGE_VERSION} VERSION_LESS 14)
         find_library(LLD_CORE NAMES lldCore.a liblldCore.a PATHS ${LLVM_LIBRARY_DIRS})
@@ -109,6 +110,7 @@ if(UNIX)
         ${LLD_MACHO}
         ${LLD_YAML}
         ${LLD_CORE}
+        ${LLVM_POLLY}
         )
     message(STATUS "linking to llvm libs ${llvm_libs} ${lld_libs}")
 endif()
@@ -226,8 +228,8 @@ else()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:C:\\llvm\\llvm\\build\\Release\\lib") # needed for lldCommon.lib
     #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:${LLVM_LIBPATH}") # This doesn't seem to work for some reason
     message(STATUS "${LLVM_LIBPATH}")
-    target_link_libraries(c3c debug ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML Advapi32)
-    target_link_libraries(c3c optimized ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML Advapi32)
+    target_link_libraries(c3c debug ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML Polly Advapi32)
+    target_link_libraries(c3c optimized ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML Polly Advapi32)
 endif()
 
 if (WIN32)
