@@ -123,8 +123,7 @@ bool context_set_module(ParseContext *context, Path *path, TokenId *generic_para
 
 void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 {
-	if (decl->decl_kind == DECL_MACRO) return;
-	assert(decl->external_name && "Missing external name");
+	if (!decl->module || decl->module == unit->module || !decl->external_name) return;
 	Decl *prev = stable_get(&unit->external_symbols, decl->external_name);
 	if (prev) return;
 	if (decl != stable_set(&unit->external_symbols, decl->external_name, decl))

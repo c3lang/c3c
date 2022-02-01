@@ -239,10 +239,7 @@ static inline Decl *sema_resolve_symbol(SemaContext *context, const char *symbol
 		sema_report_error_on_decl(symbol_str, span, decl, ambiguous_other_decl, private_decl);
 		return poisoned_decl;
 	}
-	if (decl->module && decl->module != context->unit->module)
-	{
-		unit_register_external_symbol(context->compilation_unit, decl);
-	}
+	unit_register_external_symbol(context->compilation_unit, decl);
 	return decl;
 }
 

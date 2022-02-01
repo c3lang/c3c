@@ -2124,7 +2124,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 	const char *name_str = TOKSTR(name);
 	Decl *symbol = module_find_symbol(instantiated_module, name_str);
 	assert(symbol);
-	unit_register_external_symbol(c->unit, symbol);
+	unit_register_external_symbol(c->compilation_unit, symbol);
 	switch (decl->define_decl.define_kind)
 	{
 		case DEFINE_IDENT_GENERIC:

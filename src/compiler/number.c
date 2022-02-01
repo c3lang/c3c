@@ -76,11 +76,16 @@ static inline bool compare_fps(Real left, Real right, BinaryOp op)
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op)
 {
 	bool is_eq;
+
 	switch (left->const_kind)
 	{
 		case CONST_BOOL:
 			return compare_bool(left->b, right->b, op);
 		case CONST_INTEGER:
+			if (right->const_kind == CONST_ENUM)
+			{
+				return int_comp(left->ixx, right->enum_val->enum_constant.expr->const_expr.ixx, op);
+			}
 			return int_comp(left->ixx, right->ixx, op);
 		case CONST_FLOAT:
 			return compare_fps(left->fxx.f, right->fxx.f, op);
