@@ -4,19 +4,18 @@
 module std::io;
 import std::mem;
 import libc;
-
-
+import std::env;
 
 struct File
 {
-    void *file;
+    CFile file;
 }
+
 
 extern fn int _puts(char* message) @extname("puts");
 extern fn int printf(char* message, ...);
 extern fn int _putchar(char c) @extname("putchar");
 
-extern File *__stdinp;
 
 fn int putchar(char c) @inline
 {

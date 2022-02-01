@@ -721,6 +721,23 @@ bool int_is_zero(Int op)
 	return !op.i.high && !op.i.low;
 }
 
+unsigned int_bits_needed(Int op)
+{
+	TypeKind kind = op.type;
+	Int128 i = op.i;
+	int bits_used;
+	if (type_kind_is_signed(kind))
+	{
+		if (i128_is_neg(i))
+		{
+			i = i128_neg(i);
+			i = i128_sub64(i, 1);
+		}
+		return (unsigned) (1 + 128 - i128_clz(&i));
+	}
+	return  (unsigned) (128 - i128_clz(&i));
+}
+
 Int int_add(Int op1, Int op2)
 {
 	assert(op1.type == op2.type);

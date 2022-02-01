@@ -61,9 +61,14 @@ static inline bool sema_analyse_block_return_stmt(SemaContext *context, Ast *sta
 	context->active_scope.jump_end = true;
 	if (statement->return_stmt.expr)
 	{
-		if (!sema_analyse_expr(context, statement->return_stmt.expr))
+		Type *block_type = context->expected_block_type;
+		if (block_type)
 		{
-			return false;
+			if (!sema_analyse_expr_rhs(context, block_type, statement->return_stmt.expr, type_is_failable(block_type))) return false;
+		}
+		else
+		{
+			if (!sema_analyse_expr(context, statement->return_stmt.expr)) return false;
 		}
 	}
 	vec_add(context->returns, statement);
