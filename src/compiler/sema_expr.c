@@ -301,6 +301,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_CAST:
 			return expr_cast_is_constant_eval(expr, eval_kind);
 		case EXPR_CONST:
+		case EXPR_STRINGIFY:
 			return true;
 		case EXPR_CONST_IDENTIFIER:
 			expr = expr->identifier_expr.decl->var.init_expr;
@@ -6757,6 +6758,27 @@ NOT_DEFINED:
 	return true;
 }
 
+static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr)
+{
+	Expr *inner = expr->inner_expr;
+	// Special handling of #foo
+	if (inner->expr_kind == EXPR_HASH_IDENT)
+	{
+		Decl *decl = sema_resolve_normal_symbol(context, inner->ct_ident_expr.identifier, NULL, true);
+		if (!decl_ok(decl)) return false;
+		inner = decl->var.init_expr;
+	}
+	SourceLocation *start = TOKLOC(inner->span.loc);
+	SourceLocation *end = TOKLOC(inner->span.end_loc);
+	File *file = source_file_by_id(start->file_id);
+	const char *begin_char = &file->contents[start->start];
+	const char *end_char = &file->contents[end->start + end->length];
+	int len = (int)(end_char - begin_char);
+	const char *res = strformat("%.*s", len, begin_char);
+	expr_rewrite_to_string(expr, res);
+	return true;
+}
+
 
 static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr)
 {
@@ -6839,6 +6861,7 @@ static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr)
 	}
 }
 
+
 static inline BuiltinFunction builtin_by_name(const char *name)
 {
 	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
@@ -6880,6 +6903,9 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_PTR:
 		case EXPR_VARIANTSWITCH:
 			UNREACHABLE
+		case EXPR_STRINGIFY:
+			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
+			return true;
 		case EXPR_ARGV_TO_SUBARRAY:
 			expr->type = type_get_subarray(type_get_subarray(type_char));
 			return true;

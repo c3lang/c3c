@@ -913,6 +913,7 @@ Ast *parse_stmt(ParseContext *context)
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_DEFINED:
+		case TOKEN_CT_STRINGIFY:
 		case TOKEN_TRY:
 		case TOKEN_CATCH:
 		case TOKEN_BYTES:

@@ -237,6 +237,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_IDENTIFIER:
 		case EXPR_NOP:
 		case EXPR_PTR:
+		case EXPR_STRINGIFY:
 			return true;
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_BITASSIGN:

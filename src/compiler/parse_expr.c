@@ -444,6 +444,17 @@ static Expr *parse_typeof_expr(ParseContext *context, Expr *left)
 	return expr;
 }
 
+static Expr *parse_ct_stringify(ParseContext *context, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_STRINGIFY, context->tok);
+	advance(context);
+	CONSUME_OR(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_ELSE(expr->inner_expr, parse_expr(context), poisoned_expr);
+	CONSUME_OR(TOKEN_RPAREN, poisoned_expr);
+	return expr;
+}
+
 
 static Expr *parse_unary_expr(ParseContext *context, Expr *left)
 {
@@ -1676,6 +1687,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEOF] = { parse_typeof_expr, NULL, PREC_NONE },
-
+		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
 		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
 };

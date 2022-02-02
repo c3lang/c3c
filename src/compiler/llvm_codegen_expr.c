@@ -5462,6 +5462,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_CT_CALL:
 		case EXPR_FLATPATH:
 		case EXPR_VARIANTSWITCH:
+		case EXPR_STRINGIFY:
 			UNREACHABLE
 		case EXPR_ARGV_TO_SUBARRAY:
 			llvm_emit_argv_to_subarray(c, value, expr);
