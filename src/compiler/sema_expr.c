@@ -2497,6 +2497,7 @@ static inline ConstInitializer *initializer_for_index(ConstInitializer *initiali
 		case CONST_INIT_ARRAY_VALUE:
 			UNREACHABLE
 	}
+	UNREACHABLE
 }
 static inline bool sema_expr_index_const_list(Expr *const_list, Expr *index, Expr *result)
 {
