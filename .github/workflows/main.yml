@@ -86,7 +86,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [12, 13, 14]
+        llvm_version: [12, 13, 14, 15]
 
     steps:
       - uses: actions/checkout@v2
@@ -97,10 +97,10 @@ jobs:
       - name: Install Clang ${{ matrix.llvm_version }}
         run: |
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          if [[ "${{matrix.llvm_version}}" > 13 ]]; then
-            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
-          else
+          if [[ "${{matrix.llvm_version}}" < 15 ]]; then
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
+          else
+            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
           fi
           sudo apt-get update
           sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
