@@ -582,6 +582,7 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 	}
 }
 
+
 /**
  * Expand foo[123] or someCall()[n] or some such.
  * Evaluation order is left to right.
@@ -621,7 +622,7 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	}
 
 	llvm_emit_ptr_from_array(c, value);
-	assert(llvm_value_is_addr(value));
+	llvm_value_addr(c, value);
 	// Now calculate the index:
 	BEValue index;
 	llvm_emit_expr(c, &index, index_expr);

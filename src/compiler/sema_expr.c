@@ -2472,6 +2472,59 @@ static Type *sema_expr_find_indexable_type_recursively(Type **type, Expr **paren
 	}
 }
 
+static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, uint32_t index)
+{
+	switch (initializer->kind)
+	{
+		case CONST_INIT_ZERO:
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+		case CONST_INIT_VALUE:
+			return initializer;
+		case CONST_INIT_ARRAY_FULL:
+			return initializer->init_array_full[index];
+		case CONST_INIT_ARRAY:
+		{
+			ConstInitializer **sub_values = initializer->init_array.elements;
+			VECEACH(sub_values, i)
+			{
+				ConstInitializer *init = sub_values[i];
+				assert(init->kind == CONST_INIT_ARRAY_VALUE);
+				if (init->init_array_value.index == index) return init->init_array_value.element;
+			}
+			return NULL;
+		}
+		case CONST_INIT_ARRAY_VALUE:
+			UNREACHABLE
+	}
+}
+static inline bool sema_expr_index_const_list(Expr *const_list, Expr *index, Expr *result)
+{
+	assert(index->expr_kind == EXPR_CONST && index->const_expr.const_kind == CONST_INTEGER);
+	if (!int_fits(index->const_expr.ixx, TYPE_U32)) return false;
+
+	uint32_t idx = index->const_expr.ixx.i.low;
+	assert(const_list->const_expr.const_kind == CONST_LIST);
+
+	ConstInitializer *initializer = initializer_for_index(const_list->const_expr.list, idx);
+	ConstInitType kind = initializer ? initializer->kind : CONST_INIT_ZERO;
+	switch (kind)
+	{
+		case CONST_INIT_ZERO:
+			expr_rewrite_to_int_const(result, type_int, 0, true);
+			return true;
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+		case CONST_INIT_ARRAY:
+		case CONST_INIT_ARRAY_FULL:
+		case CONST_INIT_ARRAY_VALUE:
+			return false;
+		case CONST_INIT_VALUE:
+			expr_replace(result, initializer->init_value);
+			return true;
+	}
+}
+
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, bool is_addr)
 {
 	assert(expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR);
@@ -2599,8 +2652,18 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	if (!expr_check_index_in_range(context, current_type, index, false, expr->subscript_expr.from_back, &remove_from_back)) return false;
 	if (remove_from_back) expr->subscript_expr.from_back = false;
 
+	if (is_addr)
+	{
+		inner_type = type_get_ptr(inner_type);
+	}
+	else
+	{
+		if (current_expr->expr_kind == EXPR_CONST && current_expr->const_expr.list && index->expr_kind == EXPR_CONST)
+		{
+			if (sema_expr_index_const_list(current_expr, index, expr)) return true;
+		}
+	}
 	expr->subscript_expr.expr = current_expr;
-	if (is_addr) inner_type = type_get_ptr(inner_type);
 	expr->type = type_get_opt_fail(inner_type, failable);
 	return true;
 }
@@ -2828,6 +2891,31 @@ static TokenId sema_expr_resolve_access_child(Expr *child)
 	return INVALID_TOKEN_ID;
 }
 
+static inline void expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl)
+{
+	Decl **values = enum_decl->enums.values;
+	SourceSpan span = enum_array_expr->span;
+	Expr *initializer = expr_new(EXPR_INITIALIZER_LIST, span);
+	ArraySize elements = vec_size(values);
+	Expr **element_values = elements > 0 ? VECNEW(Expr*, elements) : NULL;
+	Type *kind = enum_decl->type;
+	for (ArraySize i = 0; i < elements; i++)
+	{
+		Decl *decl = values[i];
+		Expr *expr = expr_new(EXPR_CONST, span);
+		expr->const_expr.const_kind = CONST_ENUM;
+		expr->const_expr.enum_val = decl;
+		expr->type = kind;
+		expr->resolve_status = RESOLVE_DONE;
+		vec_add(element_values, expr);
+	}
+	initializer->initializer_list = element_values;
+	enum_array_expr->expr_kind = EXPR_COMPOUND_LITERAL;
+	enum_array_expr->expr_compound_literal.initializer = initializer;
+	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_array(kind, elements), span);
+	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
+}
+
 static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, TypeInfo *parent, bool was_group, bool is_macro, TokenId identifier_token)
 {
 	// 1. Foo*.sizeof is not allowed, it must be (Foo*).sizeof
@@ -2914,6 +3002,12 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 					return true;
 				}
 				expr_replace(expr, max);
+				return true;
+			}
+			if (name == kw_values)
+			{
+				expr_replace_with_enum_array(expr, decl);
+				return sema_analyse_expr(context, expr);
 				return true;
 			}
 			if (name == kw_min)

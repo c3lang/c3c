@@ -1607,6 +1607,7 @@ extern const char *kw_max;
 extern const char *kw_min;
 extern const char *kw_elements;
 extern const char *kw_align;
+
 extern const char *kw_deprecated;
 extern const char *kw_distinct;
 extern const char *kw_ensure;
@@ -1625,6 +1626,7 @@ extern const char *kw_require;
 extern const char *kw_pure;
 extern const char *kw_param;
 extern const char *kw_ptr;
+extern const char *kw_values;
 extern const char *kw_errors;
 extern const char *kw___ceil;
 extern const char *kw___round;
