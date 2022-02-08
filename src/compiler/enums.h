@@ -210,6 +210,7 @@ typedef enum
 	EXPR_SLICE_ASSIGN,
 	EXPR_SUBSCRIPT,
 	EXPR_SUBSCRIPT_ADDR,
+	EXPR_STRINGIFY,
 	EXPR_ARGV_TO_SUBARRAY,
 	EXPR_TERNARY,
 	EXPR_TRY,
@@ -487,6 +488,7 @@ typedef enum
 	TOKEN_CT_OFFSETOF,      // $offsetof
 	TOKEN_CT_QNAMEOF,       // $qnameof
 	TOKEN_CT_SIZEOF,        // $sizeof
+	TOKEN_CT_STRINGIFY,     // $stringify
 	TOKEN_CT_SWITCH,        // $switch
 	TOKEN_CT_TYPEOF,        // $typeof
 	TOKEN_CT_UNREACHABLE,   // $unreachable

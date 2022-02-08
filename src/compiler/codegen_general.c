@@ -291,11 +291,12 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 
 AlignSize type_alloca_alignment(Type *type)
 {
-	if (platform_target.abi == ABI_X64 || platform_target.abi == ABI_WIN64)
+	AlignSize align = type_abi_alignment(type);
+	if (align < 16 && (platform_target.abi == ABI_X64 || platform_target.abi == ABI_WIN64))
 	{
 		type = type_lowering(type);
 		if (type->type_kind == TYPE_ARRAY && type_size(type) >= 16) return 16;
 	}
-	return type_abi_alignment(type);
+	return align;
 }
 

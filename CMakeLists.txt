@@ -24,7 +24,7 @@ if(C3_USE_MIMALLOC)
 endif()
 
 if(NOT C3_LLVM_VERSION STREQUAL "auto")
-    if(${C3_LLVM_VERSION} VERSION_LESS 12 OR ${C3_LLVM_VERSION} VERSION_GREATER 14)
+    if(${C3_LLVM_VERSION} VERSION_LESS 12 OR ${C3_LLVM_VERSION} VERSION_GREATER 15)
         message(FATAL_ERROR "LLVM ${C3_LLVM_VERSION} is not supported!")
     endif()
     find_package(LLVM ${C3_LLVM_VERSION} REQUIRED CONFIG)
@@ -78,7 +78,7 @@ set(LLVM_LINK_COMPONENTS
 
 llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 
-file(COPY ${CMAKE_SOURCE_DIR}/resources/lib DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 
 # These don't seem to be reliable on windows.
 if(UNIX)

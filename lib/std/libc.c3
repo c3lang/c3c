@@ -9,6 +9,7 @@ import std::os::macos;
 import std::os::windows;
 // stdlib
 
+
 // Constants need to be per os/arch
 const int EXIT_FAILURE = 1;
 const int EXIT_SUCCESS = 0;
@@ -166,11 +167,11 @@ enum Errno : ErrnoType
 fn Errno errno()
 {
     $if (env::OS_TYPE == OsType.WIN32):
-        return windows::errno();
+        return (Errno)windows::errno();
     $elif (env::OS_TYPE == OsType.MACOSX):
-        return macos::errno();
+        return (Errno)macos::errno();
     $elif (env::OS_TYPE == OsType.LINUX):
-        return linux::errno();
+        return (Errno)linux::errno();
     $else:
         return Errno.ENOTRECOVERABLE;
     $endif;
@@ -181,10 +182,10 @@ define TerminateFunction = fn void();
 define CompareFunction = fn int(void*, void*);
 extern fn double atof(char* str);
 extern fn int atoi(char* str);
-extern fn long atol(char* str);
+extern fn CLongLong atoll(char* str);
 extern fn double strtod(char* str, char** endptr);
-extern fn long strtol(char* str, char** endptr, int base);
-extern fn ulong stroul(char* str, char** endptr, int base);
+extern fn CLong strtol(char* str, char** endptr, int base);
+extern fn CULong stroul(char* str, char** endptr, int base);
 extern fn void abort();
 extern fn void atexit(TerminateFunction f);
 extern fn void exit(int status);
@@ -234,6 +235,28 @@ extern fn void* realloc(void* ptr, usize size);
 
 define Fpos = long;
 define CFile = void*;
+$switch (env::OS_TYPE):
+$case OsType.LINUX:
+    extern CFile __stdin @extname("stdin");
+    extern CFile __stdout @extname("stdout");
+    extern CFile __stderr @extname("stderr");
+    macro CFile stdin() { return __stdin; }
+    macro CFile stdout() { return __stdout; }
+    macro CFile stderr() { return __stderr; }
+$case OsType.MACOSX:
+    extern CFile __stdinp;
+    extern CFile __stdoutp;
+    extern CFile __stderrp;
+    macro CFile stdin() { return __stdinp; }
+    macro CFile stdout() { return __stdoutp; }
+    macro CFile stderr() { return __stderrp; }
+$case OsType.WIN32:
+    extern fn CFile __acrt_iob_func(CInt c);
+    macro CFile stdin() { return __acrt_iob_func(0); }
+    macro CFile stdout() { return __acrt_iob_func(1); }
+    macro CFile stderr() { return __acrt_iob_func(2); }
+$default:
+$endswitch;
 
 // The following needs to be set per arch+os
 // For now I have simply pulled the defaults from MacOS

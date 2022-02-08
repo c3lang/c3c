@@ -56,6 +56,7 @@ typedef struct TypeInfo_ TypeInfo;
 typedef struct Expr_ Expr;
 typedef struct Module_ Module;
 typedef struct Type_ Type;
+typedef Type CanonicalType;
 
 typedef unsigned AstId;
 
@@ -259,7 +260,7 @@ typedef struct
 struct Type_
 {
 	TypeKind type_kind;
-	Type *canonical;
+	CanonicalType *canonical;
 	const char *name;
 	Type **type_cache;
 	void *backend_type;
@@ -1428,7 +1429,9 @@ typedef struct
 
 typedef struct SemaContext_
 {
+	// Evaluated in this.
 	CompilationUnit *unit;
+	// Compiled in this unit.
 	CompilationUnit *compilation_unit;
 	Decl *current_function;
 	Decl *current_macro;
@@ -1604,6 +1607,7 @@ extern const char *kw_max;
 extern const char *kw_min;
 extern const char *kw_elements;
 extern const char *kw_align;
+
 extern const char *kw_deprecated;
 extern const char *kw_distinct;
 extern const char *kw_ensure;
@@ -1622,6 +1626,7 @@ extern const char *kw_require;
 extern const char *kw_pure;
 extern const char *kw_param;
 extern const char *kw_ptr;
+extern const char *kw_values;
 extern const char *kw_errors;
 extern const char *kw___ceil;
 extern const char *kw___round;
@@ -1709,6 +1714,7 @@ bool int_comp(Int op1, Int op2, BinaryOp op);
 uint64_t int_to_u64(Int op);
 int64_t int_to_i64(Int op);
 bool int_is_zero(Int op);
+unsigned int_bits_needed(Int op);
 bool int_fits(Int op1, TypeKind kind);
 Int int_rightmost_bits(Int op, unsigned to_bits, TypeKind result_type);
 Int int_conv(Int op, TypeKind to_type);
@@ -1851,7 +1857,9 @@ const char *decl_to_name(Decl *decl);
 
 static inline Decl *decl_raw(Decl *decl);
 static inline bool decl_ok(Decl *decl) { return !decl || decl->decl_kind != DECL_POISONED; }
-static inline bool decl_poison(Decl *decl) { decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false; }
+static inline bool decl_poison(Decl *decl) {
+	decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false;
+}
 static inline bool decl_is_struct_type(Decl *decl);
 static inline bool decl_is_callable_type(Decl *decl);
 static inline bool decl_is_user_defined_type(Decl *decl);
@@ -2112,6 +2120,8 @@ static inline bool type_is_integer_or_bool_kind(Type *type);
 static inline bool type_is_numeric(Type *type);
 static inline bool type_underlying_is_numeric(Type *type);
 static inline bool type_is_pointer(Type *type);
+static inline CanonicalType *type_pointer_type(Type *type);
+static inline bool type_is_arraylike(Type *type);
 static inline bool type_is_promotable_float(Type *type);
 static inline bool type_is_promotable_integer(Type *type);
 static inline bool type_is_signed(Type *type);
@@ -2128,6 +2138,7 @@ bool type_is_float_or_float_vector(Type *type);
 bool type_may_have_sub_elements(Type *type);
 static inline bool type_ok(Type *type);
 TypeSize type_size(Type *type);
+#define type_bit_size(type) (type_size(type) * 8)
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
 
@@ -2217,6 +2228,18 @@ static inline bool type_info_poison(TypeInfo *type)
 	return false;
 }
 
+static inline bool type_is_arraylike(Type *type)
+{
+	DECL_TYPE_KIND_REAL(kind, type);
+	return kind == TYPE_ARRAY || kind == TYPE_VECTOR;
+}
+
+static inline CanonicalType *type_pointer_type(Type *type)
+{
+	CanonicalType *res = type->canonical;
+	if (res->type_kind != TYPE_POINTER) return NULL;
+	return res->pointer;
+}
 
 static inline bool type_is_pointer(Type *type)
 {

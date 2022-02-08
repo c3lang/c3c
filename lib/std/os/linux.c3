@@ -10,9 +10,9 @@ fn int errno() @inline
     return *__errno_location();
 }
 
-fn void errno_set(int errno)
+fn void errno_set(int err)
 {
-    *(__errno_location()) = errno;
+    *(__errno_location()) = err;
 }
 
 $endif;

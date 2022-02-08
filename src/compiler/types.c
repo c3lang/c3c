@@ -1552,9 +1552,10 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_ERRTYPE:
 			if (other->type_kind == TYPE_ERRTYPE) return type_anyerr;
 			return NULL;
+		case TYPE_ANYERR:
+			return type_anyerr;
 		case TYPE_FUNC:
 		case TYPE_UNION:
-		case TYPE_ANYERR:
 		case TYPE_TYPEID:
 		case TYPE_STRUCT:
 		case TYPE_UNTYPED_LIST:

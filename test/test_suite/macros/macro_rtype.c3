@@ -1,6 +1,6 @@
 macro int frob()
 {
-    return 0.0; // #error: Expected 'int', not 'double'.
+    return 0.0; // #error: Implicitly casting 'double' to 'int' is not permitted
 }
 
 fn void test1()

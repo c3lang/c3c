@@ -61,6 +61,7 @@ const char *kw_pure;
 const char *kw_reqparse;
 const char *kw_require;
 const char *kw_std;
+const char *kw_values;
 const char *kw___ceil;
 const char *kw___round;
 const char *kw___sqrt;
@@ -152,6 +153,7 @@ void symtab_init(uint32_t capacity)
 	kw_pure = KW_DEF("pure");
 	kw_require = KW_DEF("require");
 	kw_std = KW_DEF("std");
+	kw_values = KW_DEF("values");
 	kw___ceil = KW_DEF("__ceil");
 	kw___round = KW_DEF("__round");
 	kw___sqrt = KW_DEF("__sqrt");
