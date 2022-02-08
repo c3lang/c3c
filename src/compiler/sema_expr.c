@@ -2523,6 +2523,7 @@ static inline bool sema_expr_index_const_list(Expr *const_list, Expr *index, Exp
 			expr_replace(result, initializer->init_value);
 			return true;
 	}
+	UNREACHABLE
 }
 
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, bool is_addr)
