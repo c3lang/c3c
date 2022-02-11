@@ -52,7 +52,6 @@ Module.symvers
 Mkfile.old
 dkms.conf
 /build/
-/cmake-build-debug/
 .idea/
 /resources/grammar.tab.c
 /resources/grammar.vcg
@@ -65,3 +64,6 @@ dkms.conf
 .vs/
 .vscode/
 out/
+
+/cmake-build-debug/
+/cmake-build-release/

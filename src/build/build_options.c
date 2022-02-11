@@ -8,9 +8,6 @@
 #include <assert.h>
 #ifndef _MSC_VER
 #include <unistd.h>
-#else
-#define strncasecmp _strnicmp
-#define strcasecmp _stricmp
 #endif
 #include <stdbool.h>
 #include <string.h>
@@ -675,7 +672,7 @@ ArchOsTarget arch_os_target_from_string(const char *target)
 {
 	for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
 	{
-		if (strcasecmp(arch_os_target[i], target) == 0)
+		if (strcmp(arch_os_target[i], target) == 0)
 		{
 			return (ArchOsTarget)i;
 		}
