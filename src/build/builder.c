@@ -108,8 +108,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		// ARCH_OS_TARGET_DEFAULT could be handled in a more cross-platform manner later on.
 		target->arch_os_target = X64_WINDOWS;
 	}
-	if (options->pie != PIE_DEFAULT) target->pie = options->pie;
-	if (options->pic != PIC_DEFAULT) target->pic = options->pic;
+	if (options->reloc_model != RELOC_DEFAULT) target->reloc_model = options->reloc_model;
 
 	for (int i = 0; i < options->linker_arg_count; i++)
 	{
@@ -117,9 +116,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	target->no_stdlib = options->no_stdlib;
 	target->emit_llvm = options->emit_llvm;
-	if (options->no_avx) target->feature.no_avx = true;
-	if (options->avx) target->feature.avx = true;
-	if (options->avx512) target->feature.avx512 = true;
+	if (options->x86_vector_capability != X86VECTOR_DEFAULT)
+	{
+		target->feature.x86_vector_capability = options->x86_vector_capability;
+	}
 	switch (options->compile_option)
 	{
 		case COMPILE_NORMAL:
@@ -164,8 +164,8 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 		.debug_info = DEBUG_INFO_NONE,
 		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
-		.pie = PIE_DEFAULT,
-		.pic = PIC_DEFAULT
+		.reloc_model = RELOC_DEFAULT,
+		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
 	};
 	update_build_target_from_options(target, options);
 }

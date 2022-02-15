@@ -1,5 +1,5 @@
 // #target: x64-darwin
-// #opt: mavx512
+// #opt: --x86vec=avx512
 module test;
 
 define Mm256 = float[<8>];

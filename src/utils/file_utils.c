@@ -247,12 +247,12 @@ void file_find_top_dir()
 	while (1)
 	{
 		struct stat info;
-		int err = stat(PROJECT_TOML, &info);
+		int err = stat(PROJECT_JSON, &info);
 
 		// Error and the it's not a "missing file"?
 		if (err && errno != ENOENT)
 		{
-			error_exit("Can't open %s: %s.", PROJECT_TOML, strerror(errno));
+			error_exit("Can't open %s: %s.", PROJECT_JSON, strerror(errno));
 		}
 
 		// Everything worked and it's a regular file? We're done!
@@ -264,13 +264,13 @@ void file_find_top_dir()
 		getcwd(start_path, PATH_MAX);
 		if (chdir(".."))
 		{
-			error_exit("Can't change directory to search for %s: %s.", PROJECT_TOML, strerror(errno));
+			error_exit("Can't change directory to search for %s: %s.", PROJECT_JSON, strerror(errno));
 		}
 		char new_path[PATH_MAX + 1];
 		getcwd(new_path, PATH_MAX);
 		if (strcmp(new_path, start_path) != 0) continue;
 		error_exit("The root build directory containing %s could not be found. Did you use the correct directory?",
-		           PROJECT_TOML);
+				   PROJECT_JSON);
 	}
 }
 

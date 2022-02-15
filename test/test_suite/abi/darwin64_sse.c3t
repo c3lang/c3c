@@ -1,5 +1,5 @@
 // #target: x64-darwin
-// #opt: mno-avx
+// #opt: --x86vec=sse
 module test;
 
 define Mm256 = float[<8>];

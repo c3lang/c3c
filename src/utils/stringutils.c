@@ -8,6 +8,15 @@
 #include "lib.h"
 #include "stdio.h"
 
+int str_in_list(const char *value, unsigned count, const char** elements)
+{
+	for (unsigned i = 0; i < count; i++)
+	{
+		if (strcmp(value, elements[i]) == 0) return (int)i;
+	}
+	return -1;
+}
+
 char *strformat(const char *var, ...)
 {
 	va_list list;

@@ -413,9 +413,9 @@ static inline void target_setup_x86_abi(BuildTarget *target)
 		default:
 			break;
 	}
-	if (target->feature.struct_return != STRUCT_RETURN_DEFAULT)
+	if (target->feature.x86_struct_return != STRUCT_RETURN_DEFAULT)
 	{
-		platform_target.x86.return_small_struct_in_reg_abi = target->feature.struct_return == STRUCT_RETURN_REG;
+		platform_target.x86.return_small_struct_in_reg_abi = target->feature.x86_struct_return == STRUCT_RETURN_REG;
 	}
 }
 
@@ -423,13 +423,17 @@ static inline void target_setup_x86_abi(BuildTarget *target)
 static inline void target_setup_x64_abi(BuildTarget *target)
 {
 	platform_target.abi = ABI_X64;
-	platform_target.x64.avx_level = AVX;
+	X86VectorCapability vector_capability;
 	platform_target.x64.is_win64 = platform_target.os == OS_TYPE_WIN32;
-	if (target->feature.avx512) platform_target.x64.avx_level = AVX_512;
-	if (target->feature.avx) platform_target.x64.avx_level = AVX;
-	if (target->feature.no_avx) platform_target.x64.avx_level = AVX_NONE;
-	if (target->feature.no_mmx) platform_target.x64.no_mmx = true;
-	if (target->feature.no_sse) platform_target.x64.no_sse = true;
+	if (target->feature.x86_vector_capability != X86VECTOR_DEFAULT)
+	{
+		vector_capability = target->feature.x86_vector_capability;
+	}
+	else
+	{
+		vector_capability = X86VECTOR_AVX;
+	}
+	platform_target.x64.x86_vector_capability = vector_capability;
 	if (target->feature.soft_float == SOFT_FLOAT_YES) platform_target.x64.soft_float = true;
 	if (platform_target.environment_type == ENV_TYPE_GNU)
 	{
@@ -439,16 +443,19 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	{
 		platform_target.x64.pass_int128_vector_in_mem = true;
 	}
-	switch (platform_target.x64.avx_level)
+	switch (vector_capability)
 	{
-		case AVX_NONE:
-			platform_target.x64.align_simd_default = 128;
-			break;
-		case AVX:
+		case X86VECTOR_AVX:
+			platform_target.x64.native_vector_size_avx = 32;
 			platform_target.x64.align_simd_default = 256;
 			break;
-		case AVX_512:
+		case X86VECTOR_AVX512:
+			platform_target.x64.native_vector_size_avx = 64;
 			platform_target.x64.align_simd_default = 512;
+			break;
+		default:
+			platform_target.x64.native_vector_size_avx = 16;
+			platform_target.x64.align_simd_default = 128;
 			break;
 	}
 }
@@ -1027,35 +1034,61 @@ static const char *os_dynamic_library_suffix(OsType os)
 	return ".so";
 }
 
-static PicGeneration arch_os_pic_default(ArchType arch, OsType os)
+static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentType env, bool library)
 {
+	if (library)
+	{
+		switch (os)
+		{
+			case OS_UNSUPPORTED:
+				UNREACHABLE
+			case OS_TYPE_OPENBSD:
+			case OS_DARWIN_TYPES:
+				return RELOC_SMALL_PIC;
+			case OS_TYPE_WIN32:
+				return ARCH_TYPE_X86_64 == arch ? RELOC_SMALL_PIC : RELOC_NONE;
+			case OS_TYPE_WASI:
+				return RELOC_NONE;
+			case OS_TYPE_UNKNOWN:
+			case OS_TYPE_NONE:
+			case OS_TYPE_FREE_BSD:
+			case OS_TYPE_LINUX:
+			case OS_TYPE_NETBSD:
+				switch (arch)
+				{
+					case ARCH_TYPE_MIPS64:
+					case ARCH_TYPE_MIPS64EL:
+						return RELOC_SMALL_PIC;
+					default:
+						return RELOC_NONE;
+				}
+		}
+		UNREACHABLE
+	}
 	switch (os)
 	{
-		case OS_UNSUPPORTED:
-			UNREACHABLE
-		case OS_TYPE_OPENBSD:
-		case OS_DARWIN_TYPES:
-			return PIC_SMALL;
-		case OS_TYPE_WIN32:
-			return ARCH_TYPE_X86_64 == arch;
-		case OS_TYPE_WASI:
-			return PIC_NONE;
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NONE:
+			return RELOC_NONE;
+		case OS_TYPE_OPENBSD:
+		case OS_TYPE_WIN32:
+		case OS_DARWIN_TYPES:
+		case OS_TYPE_WASI:
 		case OS_TYPE_FREE_BSD:
-		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
-			switch (arch)
+			return RELOC_SMALL_PIE;
+		case OS_TYPE_LINUX:
+			if (env == ENV_TYPE_MUSLEABI || env == ENV_TYPE_MUSLEABIHF || env == ENV_TYPE_ANDROID)
 			{
-				case ARCH_TYPE_MIPS64:
-				case ARCH_TYPE_MIPS64EL:
-					return PIC_SMALL;
-				default:
-					return PIC_NONE;
+				return RELOC_SMALL_PIE;
 			}
+			return RELOC_NONE;
+		case OS_UNSUPPORTED:
+			UNREACHABLE
 	}
 	UNREACHABLE
 }
+
 static bool arch_os_pic_default_forced(ArchType arch, OsType os)
 {
 	switch (os)
@@ -1078,28 +1111,6 @@ static bool arch_os_pic_default_forced(ArchType arch, OsType os)
 	UNREACHABLE
 }
 
-static PieGeneration arch_os_pie_default(ArchType arch, OsType os, EnvironmentType env)
-{
-	switch (os)
-	{
-		case OS_TYPE_UNKNOWN:
-		case OS_TYPE_NONE:
-			return PIE_NONE;
-		case OS_TYPE_OPENBSD:
-			return PIE_SMALL;
-		case OS_TYPE_WIN32:
-		case OS_DARWIN_TYPES:
-		case OS_TYPE_WASI:
-		case OS_TYPE_FREE_BSD:
-		case OS_TYPE_NETBSD:
-			return PIE_SMALL;
-		case OS_TYPE_LINUX:
-			return env == ENV_TYPE_MUSLEABI || env == ENV_TYPE_MUSLEABIHF || env == ENV_TYPE_ANDROID ? PIE_SMALL : PIE_NONE;
-		case OS_UNSUPPORTED:
-			UNREACHABLE
-	}
-	UNREACHABLE
-}
 
 static AlignSize os_target_pref_alignment_of_float(OsType os, ArchType arch, uint32_t bits)
 {
@@ -1144,23 +1155,42 @@ void *llvm_target_machine_create(void)
 	}
 	LLVMRelocMode reloc_mode;
 
-	if (platform_target.pic != PIC_NONE)
+	switch (platform_target.reloc_model)
 	{
-		reloc_mode = LLVMRelocPIC;
+		case RELOC_SMALL_PIC:
+		case RELOC_BIG_PIC:
+		case RELOC_SMALL_PIE:
+		case RELOC_BIG_PIE:
+			reloc_mode = LLVMRelocPIC;
+			break;
+		case RELOC_NONE:
+			reloc_mode = LLVMRelocDynamicNoPic;
+			break;
+		case RELOC_DEFAULT:
+		default:
+			UNREACHABLE
 	}
-	else
-	{
-		assert(platform_target.pic == PIC_NONE);
-		reloc_mode = LLVMRelocDynamicNoPic;
-	}
-
 	scratch_buffer_clear();
 	if (platform_target.arch == ARCH_TYPE_X86_64)
 	{
-		if (platform_target.x64.avx_level == AVX_NONE) scratch_buffer_append("-avx,");
-		if (platform_target.x64.no_sse) scratch_buffer_append("-sse,");
+		switch (platform_target.x64.x86_vector_capability)
+		{
+			case X86VECTOR_DEFAULT:
+				UNREACHABLE
+			case X86VECTOR_NONE:
+				scratch_buffer_append("-sse,-avx,-mmx,");
+				break;
+			case X86VECTOR_MMX:
+				scratch_buffer_append("-sse,-avx,");
+				break;
+			case X86VECTOR_SSE:
+				scratch_buffer_append("-avx,");
+				break;
+			case X86VECTOR_AVX:
+			case X86VECTOR_AVX512:
+				break;
+		}
 		if (platform_target.x64.soft_float) scratch_buffer_append("+soft-float,");
-		if (platform_target.x64.no_mmx) scratch_buffer_append("-mmx,");
 	}
 	char *features = scratch_buffer_to_string();
 	size_t len = strlen(features);
@@ -1354,38 +1384,20 @@ void target_setup(BuildTarget *target)
 	platform_target.align_max_tls = os_arch_max_alignment_of_tls(platform_target.os,
 	                                                             platform_target.arch,
 	                                                             platform_target.environment_type);
-	platform_target.pic = arch_os_pic_default(platform_target.arch, platform_target.os);
-	platform_target.pie = arch_os_pie_default(platform_target.arch, platform_target.os, platform_target.environment_type);
+	platform_target.reloc_model = arch_os_reloc_default(platform_target.arch,
+														platform_target.os,
+														platform_target.environment_type,
+														active_target.type != TARGET_TYPE_EXECUTABLE);
 	platform_target.pic_required = arch_os_pic_default_forced(platform_target.arch, platform_target.os);
 
-	// Override PIE if needed.
-	if (target->pie != PIE_DEFAULT) platform_target.pie = target->pie;
 	// Override PIC, but only if the platform does not require PIC
-	if (target->pic != PIC_DEFAULT && (target->pic != PIC_NONE || !platform_target.pic_required))
+	if (target->reloc_model != RELOC_DEFAULT
+		&& (target->reloc_model != RELOC_NONE || !platform_target.pic_required))
 	{
-		platform_target.pic = target->pic;
+		platform_target.reloc_model = target->reloc_model;
 	}
 
-	assert(platform_target.pic != PIC_DEFAULT && platform_target.pie != PIE_DEFAULT && "PIC and PIE must have been set.");
-
-	if (active_target.type == TARGET_TYPE_EXECUTABLE)
-	{
-		platform_target.pic = (PicGeneration)platform_target.pie;
-	}
-	switch (platform_target.pic)
-	{
-		case PIC_DEFAULT:
-			UNREACHABLE;
-		case PIC_NONE:
-			DEBUG_LOG("Using no-PIC");
-			break;
-		case PIC_SMALL:
-			DEBUG_LOG("Using pic");
-			break;
-		case PIC_BIG:
-			DEBUG_LOG("Using PIC");
-			break;
-	}
+	assert(platform_target.reloc_model != RELOC_DEFAULT);
 
 
 		// TODO remove

@@ -85,7 +85,6 @@ static void usage(void)
 	OUTPUT("  -O3                   - Aggressive optimization.");
 	OUTPUT("  --emit-llvm           - Emit LLVM IR as a .ll file per module.");
 	OUTPUT("  --target <target>     - Compile for a particular architecture + OS target.");
-	OUTPUT("  --target-list         - List all architectures the compiler supports.");
 	OUTPUT("  --threads <number>    - Set the number of threads to use for compilation.");
 	OUTPUT("  --safe                - Set mode to 'safe', generating runtime traps on overflows and contract violations.");
 	OUTPUT("  --fast                - Set mode to 'fast', removes runtime traps.");
@@ -94,18 +93,14 @@ static void usage(void)
 	OUTPUT("  -g0                   - Emit no debug info.");
 	OUTPUT("  -gline-tables-only    - Only emit line tables for debugging.");
 	OUTPUT("");
-	OUTPUT("  -fpic                 - Generate position independent (PIC) code if suitable.");
-	OUTPUT("  -fno-pic              - Do not generate position independent code.");
-	OUTPUT("  -fPIC                 - Always generate position independent (PIC) code.");
-	OUTPUT("  -fno-PIC              - Generate position independent (PIC) code.");
 	OUTPUT("");
 	OUTPUT("  -z <argument>         - Send the <argument> as a parameter to the linker.");
 	OUTPUT("");
-	OUTPUT("  -mavx                 - Enable AVX on x64 targets.");
-	OUTPUT("  -mavx512              - Enable AVX512 on x64 targets.");
-	OUTPUT("  -mno-avx              - Disable AVX on x64 targets.");
+	OUTPUT("  --reloc=<option>      - Relocation model: none, pic, PIC, pie, PIE");
+	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, mmx, sse, avx, avx512.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats         - Print debug statistics.");
+	OUTPUT("  --list-targets        - List all architectures the compiler supports.");
 	OUTPUT("  --list-keywords       - List all keywords.");
 	OUTPUT("  --list-operators      - List all operators.");
 	OUTPUT("  --list-attributes     - List all attributes.");
@@ -162,6 +157,14 @@ static inline bool next_is_opt()
 static inline bool match_longopt(const char* name)
 {
 	return strcmp(&current_arg[2], name) == 0;
+}
+
+static inline const char *match_argopt(const char* name)
+{
+	size_t len = strlen(name);
+	if (memcmp(&current_arg[2], name, len) != 0) return false;
+	if (current_arg[2 + len] != '=') return false;
+	return &current_arg[2 + len + 1];
 }
 
 static inline bool match_shortopt(const char* name)
@@ -291,9 +294,17 @@ static void print_version(void)
 	OUTPUT("LLVM default target:               %s", llvm_target);
 }
 
+static int parse_multi_option(const char *start, unsigned count, const char** elements)
+{
+	const char *arg = current_arg;
+	int select = str_in_list(start, count, elements);
+	if (select < 0) error_exit("error: %.*s invalid option '%s' given.", (int)(start - arg), start, arg);
+	return select;
+}
 
 static void parse_option(BuildOptions *options)
 {
+	const char *argopt;
 	switch (current_arg[1])
 	{
 		case '?':
@@ -327,38 +338,6 @@ static void parse_option(BuildOptions *options)
 				return;
 			}
 			FAIL_WITH_ERR("Unknown debug argument -%s.", &current_arg[1]);
-		case 'f':
-			if (match_shortopt("fpie"))
-			{
-				options->pie = PIE_SMALL;
-				return;
-			}
-			if (match_shortopt("fPIE"))
-			{
-				options->pie = PIE_BIG;
-				return;
-			}
-			if (match_shortopt("fno-pie"))
-			{
-				options->pie = PIE_NONE;
-				return;
-			}
-			if (match_shortopt("fpic"))
-			{
-				options->pic = PIC_SMALL;
-				return;
-			}
-			if (match_shortopt("fPIC"))
-			{
-				options->pic = PIC_BIG;
-				return;
-			}
-			if (match_shortopt("fno-pic"))
-			{
-				options->pic = PIC_NONE;
-				return;
-			}
-			FAIL_WITH_ERR("Unknown argument -%s.", &current_arg[1]);
 		case 'h':
 			break;
 		case 'z':
@@ -401,22 +380,6 @@ static void parse_option(BuildOptions *options)
 			else
 			{
 				FAIL_WITH_ERR("Invalid optimization level.");
-			}
-			return;
-		case 'm':
-			if (match_shortopt("mno-avx"))
-			{
-				options->no_avx = true;
-			} else if (match_shortopt("mavx"))
-			{
-				options->avx = true;
-			} else if (match_shortopt("mavx512"))
-			{
-				options->avx512 = true;
-			}
-			else
-			{
-				FAIL_WITH_ERR("Invalid -m option.");
 			}
 			return;
 		case 'E':
@@ -463,6 +426,16 @@ static void parse_option(BuildOptions *options)
 			{
 				print_version();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
+			}
+			if ((argopt = match_argopt("x86vec")))
+			{
+				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 5, vector_capability);
+				return;
+			}
+			if ((argopt = match_argopt("reloc")))
+			{
+				options->reloc_model = (RelocModel)parse_multi_option(argopt, 5, reloc_models);
+				return;
 			}
 			if (match_longopt("about"))
 			{
@@ -540,7 +513,7 @@ static void parse_option(BuildOptions *options)
 				}
 				exit_compiler(EXIT_FAILURE);
 			}
-			if (match_longopt("target-list"))
+			if (match_longopt("list-targets"))
 			{
 				print_all_targets();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
@@ -623,9 +596,9 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.safe_mode = -1,
 		.build_threads = 16,
 		.command = COMMAND_MISSING,
-		.pie = PIE_DEFAULT,
-		.pic = PIC_DEFAULT,
+		.reloc_model = RELOC_DEFAULT,
 		.backend = BACKEND_LLVM,
+		.x86_vector_capability = X86VECTOR_DEFAULT,
 		.files = NULL
 	};
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)

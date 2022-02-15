@@ -51,19 +51,6 @@ ABIArgInfo *x64_indirect_return_result(Type *type)
 	}
 	return abi_arg_new_direct();
 }
-static ByteSize x64_native_vector_size_for_avx(void)
-{
-	switch (platform_target.x64.avx_level)
-	{
-		case AVX_NONE:
-			return 16;
-		case AVX:
-			return 32;
-		case AVX_512:
-			return 64;
-	}
-	UNREACHABLE
-}
 
 
 static bool x64_type_is_illegal_vector(Type *type)
@@ -72,7 +59,7 @@ static bool x64_type_is_illegal_vector(Type *type)
 	if (type->type_kind != TYPE_VECTOR) return false;
 	ByteSize size = type_size(type);
 	// Less than 64 bits or larger than the avx native size => not allowed.
-	if (size <= 8 || size > x64_native_vector_size_for_avx()) return true;
+	if (size <= 8 || size > platform_target.x64.native_vector_size_avx) return true;
 	// If we pass i128 in mem, then check for that.
 	if (platform_target.x64.pass_int128_vector_in_mem)
 	{
@@ -257,7 +244,7 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 		// and fallback to memory.
 		if (size > 16 &&
 			((!is_union && size != type_size(member->type))
-			|| size > x64_native_vector_size_for_avx()))
+			|| size > platform_target.x64.native_vector_size_avx))
 		{
 			*lo_class = CLASS_MEMORY;
 			x64_classify_post_merge(size, lo_class, hi_class);
@@ -302,7 +289,7 @@ void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64
 	// The only case a 256-bit or a 512-bit wide vector could be used is when
 	// the struct contains a single 256-bit or 512-bit field. Early check
 	// and fallback to memory.
-	if (size > 16 && (size != type_size(element) || size > x64_native_vector_size_for_avx()))
+	if (size > 16 && (size != type_size(element) || size > platform_target.x64.native_vector_size_avx))
 	{
 		*lo_class = CLASS_MEMORY;
 		return;
@@ -359,7 +346,7 @@ void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X6
 		}
 		return;
 	}
-	if (size == 16 || (named_arg == NAMED && size <= x64_native_vector_size_for_avx()))
+	if (size == 16 || (named_arg == NAMED && size <= platform_target.x64.native_vector_size_avx))
 	{
 		if (platform_target.x64.pass_int128_vector_in_mem) return;
 

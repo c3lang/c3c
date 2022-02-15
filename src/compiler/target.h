@@ -211,12 +211,6 @@ typedef enum
 	FLOAT_ABI_HARD,
 } FloatABI;
 
-typedef enum
-{
-	AVX_NONE,
-	AVX,
-	AVX_512,
-} AVXLevel;
 
 typedef enum
 {
@@ -267,8 +261,7 @@ typedef struct
 	ABI abi;
 	AlignData integers[BITSIZES_LEN];
 	AlignData floats[BITSIZES_LEN];
-	PicGeneration pic : 3;
-	PieGeneration pie : 3;
+	RelocModel reloc_model;
 	bool pic_required : 1;
 	bool signed_c_char : 1;
 	FloatABI float_abi : 3;
@@ -287,13 +280,12 @@ typedef struct
 		struct
 		{
 			unsigned align_simd_default : 16;
-			AVXLevel avx_level : 3;
-			bool no_mmx : 1;
-			bool no_sse : 1;
+			X86VectorCapability x86_vector_capability : 4;
 			bool soft_float : 1;
 			bool is_win64 : 1;
 			bool is_mingw64 : 1;
 			bool pass_int128_vector_in_mem : 1;
+			int native_vector_size_avx;
 		} x64;
 		struct
 		{
@@ -367,5 +359,20 @@ typedef struct
 
 } PlatformTarget;
 
+static inline bool is_pie_pic(RelocModel reloc)
+{
+	switch (reloc)
+	{
+		case RELOC_DEFAULT:
+		case RELOC_NONE:
+			return false;
+		case RELOC_SMALL_PIC:
+		case RELOC_BIG_PIC:
+		case RELOC_SMALL_PIE:
+		case RELOC_BIG_PIE:
+			return true;
+	}
+	UNREACHABLE
+}
 
 extern PlatformTarget platform_target;

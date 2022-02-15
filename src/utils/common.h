@@ -18,7 +18,7 @@
 #define MAX_VECTOR_WIDTH 65536
 #define MAX_ARRAY_SIZE INT64_MAX
 #define MAX_IDENTIFIER_LENGTH 31
-#define PROJECT_TOML "project.toml"
+#define PROJECT_JSON "project.c3p"
 #ifndef __unused
 #define __unused
 #endif

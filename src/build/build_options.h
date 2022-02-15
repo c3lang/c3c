@@ -146,6 +146,42 @@ typedef enum
 
 typedef enum
 {
+	X86VECTOR_DEFAULT = -1,
+	X86VECTOR_NONE = 0,
+	X86VECTOR_MMX = 1,
+	X86VECTOR_SSE = 2,
+	X86VECTOR_AVX = 3,
+	X86VECTOR_AVX512 = 4,
+} X86VectorCapability;
+
+static const char *vector_capability[5] = {
+		[X86VECTOR_NONE] = "none",
+		[X86VECTOR_MMX] = "mmx",
+		[X86VECTOR_SSE] = "sse",
+		[X86VECTOR_AVX] = "avx",
+		[X86VECTOR_AVX512] = "avx512",
+};
+
+typedef enum
+{
+	RELOC_DEFAULT = -1,
+	RELOC_NONE = 0,
+	RELOC_SMALL_PIC = 1,
+	RELOC_BIG_PIC = 2,
+	RELOC_SMALL_PIE = 3,
+	RELOC_BIG_PIE = 4,
+} RelocModel;
+
+static const char *reloc_models[5] = {
+		[RELOC_NONE] = "none",
+		[RELOC_SMALL_PIC] = "pic",
+		[RELOC_BIG_PIC] = "PIC",
+		[RELOC_SMALL_PIE] = "pie",
+		[RELOC_BIG_PIE] = "PIE",
+};
+
+typedef enum
+{
 	DEBUG_INFO_NOT_SET = -1,
 	DEBUG_INFO_NONE,
 	DEBUG_INFO_LINE_TABLES,
@@ -194,8 +230,6 @@ typedef struct BuildOptions_
 	CompilerBackend backend;
 	CompilerCommand command;
 	CompileOption compile_option;
-	PieGeneration pie;
-	PicGeneration pic;
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
 	OptimizationSetting optimization_setting_override;
 	DebugInfo debug_info_override;
@@ -205,14 +239,14 @@ typedef struct BuildOptions_
 	bool emit_bitcode;
 	bool test_mode;
 	bool no_stdlib;
-	bool no_avx;
-	bool avx;
-	bool avx512;
+	RelocModel reloc_model;
+	X86VectorCapability x86_vector_capability;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
 	bool print_operators;
 	bool print_precedence;
+	bool print_build_settings;
 } BuildOptions;
 
 
@@ -251,8 +285,7 @@ typedef struct
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
 	DebugInfo debug_info;
-	PieGeneration pie;
-	PicGeneration pic;
+	RelocModel reloc_model;
 	ArchOsTarget arch_os_target;
 	CompilerBackend backend;
 	uint32_t symtab_size;
@@ -264,15 +297,10 @@ typedef struct
 	struct
 	{
 		SoftFloat soft_float : 3;
-		StructReturn struct_return : 3;
-		bool no_memcpy_pass : 1;
+		StructReturn x86_struct_return : 3;
+		X86VectorCapability x86_vector_capability : 4;
 		bool trap_on_wrap : 1;
 		bool safe_mode : 1;
-		bool no_sse : 1;
-		bool no_mmx : 1;
-		bool no_avx : 1;
-		bool avx : 1;
-		bool avx512 : 1;
 	} feature;
 } BuildTarget;
 

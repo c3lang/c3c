@@ -112,7 +112,7 @@ class Issues:
             debug = "-g "
         opts = ""
         for opt in self.opts:
-            opts += ' -' + opt
+            opts += ' ' + opt
         code = subprocess.run(self.conf.compiler + target + ' -O0 ' + opts + ' ' + debug + args, universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir(self.conf.cwd)
         if code.returncode != 0 and code.returncode != 1:

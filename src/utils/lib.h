@@ -496,6 +496,7 @@ typedef struct StringSlice_
 } StringSlice;
 
 char *strcat_arena(const char *a, const char *b);
+int str_in_list(const char *value, unsigned count, const char** elements);
 char *strformat(const char *var, ...) __printflike(1, 2);
 char *stringcopy(const char *start, size_t len);
 StringSlice strnexttok(StringSlice *slice, char separator);
