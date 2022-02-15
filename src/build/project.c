@@ -2,34 +2,15 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
-#include <utils/toml.h>
+#include <math.h>
 #include "build_internal.h"
 #define MAX_SYMTAB_SIZE (1024 * 1024)
 
-TomlArray *get_array(TomlTable *table, const char *key)
-{
-	TomlValue *value = toml_table_get(table, key);
-	if (!value) return NULL;
-	if (value->type != TOML_ARRAY)
-	{
-		error_exit("The key '%s' was not an array field. Did you type '[%s]' instead of '[[%s]]'?");
-	}
-	return value->value.array;
-}
 
 
-static inline const char *copy_toml_string(TomlString *string)
+const char *get_valid_string(JSONObject *table, const char *key, const char *category, bool mandatory)
 {
-	size_t len = string->len;
-	char *new_str = malloc_string(len + 1);
-	memcpy(new_str, string->str, len);
-	new_str[len] = '\0';
-	return new_str;
-}
-
-const char *get_valid_string(TomlTable *table, const char *key, const char *category, bool mandatory)
-{
-	TomlValue *value = toml_table_get(table, key);
+	JSONObject *value = json_obj_get(table, key);
 	if (!value)
 	{
 		if (mandatory)
@@ -38,47 +19,43 @@ const char *get_valid_string(TomlTable *table, const char *key, const char *cate
 		}
 		return NULL;
 	}
-	if (value->type != TOML_STRING)
+	if (value->type != J_STRING)
 	{
 		error_exit("%s had an invalid mandatory '%s' field that was not a string, please correct it.", category, key);
 	}
-	return copy_toml_string(value->value.string);
+	return value->str;
 }
 
-int get_valid_bool(TomlTable *table, const char *key, const char *category, int default_val)
+int get_valid_bool(JSONObject *json, const char *key, const char *category, int default_val)
 {
-	TomlValue *value = toml_table_get(table, key);
+	JSONObject *value = json_obj_get(json, key);
 	if (!value) return default_val;
-	if (value->type != TOML_BOOLEAN)
+	if (value->type != J_BOOL)
 	{
 		error_exit("%s had an invalid mandatory '%s' field that was not a boolean, please correct it.", category, key);
 	}
-	return value->value.boolean;
+	return value->b;
 }
 
 
-static int get_valid_string_setting(TomlTable *table, const char *key, const char *category, const char** values, int first_result, int count, const char *expected)
+static int get_valid_string_setting(JSONObject *json, const char *key, const char *category, const char** values, int first_result, int count, const char *expected)
 {
-	TomlValue *value = toml_table_get(table, key);
+	JSONObject *value = json_obj_get(json, key);
 	if (!value)
 	{
 		return -1;
 	}
-	if (value->type == TOML_STRING)
+	if (value->type == J_STRING)
 	{
-		for (int i = 0; i < count; i++)
-		{
-			unsigned str_len = (unsigned) strlen(values[i]);
-			if (str_len != value->value.string->len) continue;
-			if (memcmp(values[i], value->value.string->str, str_len) == 0) return i + first_result;
-		}
+		int res = str_in_list(value->str, count, values);
+		if (res >= 0) return res + first_result;
 	}
 	error_exit("%s had an invalid value for '%s', expected %s", category, key, expected);
 }
 
-long get_valid_integer(TomlTable *table, const char *key, const char *category, bool mandatory)
+long get_valid_integer(JSONObject *table, const char *key, const char *category, bool mandatory)
 {
-	TomlValue *value = toml_table_get(table, key);
+	JSONObject *value = json_obj_get(table, key);
 	if (!value)
 	{
 		if (mandatory)
@@ -87,134 +64,171 @@ long get_valid_integer(TomlTable *table, const char *key, const char *category, 
 		}
 		return -1;
 	}
-	if (value->type != TOML_INTEGER)
+	if (value->type != J_NUMBER || trunc(value->f) != value->f)
 	{
 		error_exit("%s had an invalid mandatory '%s' field that was not an integer, please correct it.", category, key);
 	}
-	return value->value.integer;
+	return trunc(value->f);
 }
 
 
-static const char **get_valid_array(TomlTable *table, const char *key, const char *category, bool mandatory)
+static const char **get_valid_array(JSONObject *table, const char *key, const char *category, bool mandatory)
 {
-	TomlValue *value = toml_table_get(table, key);
+	JSONObject *value = json_obj_get(table, key);
 	if (!value)
 	{
 		if (mandatory)
 		{
-			error_exit("Error reading %s: %s was missing a mandatory '%s' field, please add it.", PROJECT_TOML, category, key);
+			error_exit("Error reading %s: %s was missing a mandatory '%s' field, please add it.", PROJECT_JSON, category, key);
 		}
 		return NULL;
 	}
-	if (value->type != TOML_ARRAY)
+	if (value->type != J_ARRAY)
 	{
-		error_exit("Error reading %s: %s had an invalid mandatory '%s' field that was not an array, please correct it.", PROJECT_TOML, category, key);
+		error_exit("Error reading %s: %s had an invalid mandatory '%s' field that was not an array, please correct it.", PROJECT_JSON, category, key);
 	}
 	const char **values = NULL;
-	for (unsigned i = 0; i < value->value.array->len; i++)
+	for (unsigned i = 0; i < value->array_len; i++)
 	{
-		TomlValue *val = value->value.array->elements[i];
-		if (val->type != TOML_STRING)
+		JSONObject *val = value->elements[i];
+		if (val->type != J_STRING)
 		{
-			error_exit("Error reading %s: %s had an invalid mandatory '%s' array that did not only hold strings, please correct it.", PROJECT_TOML, category, key);
+			error_exit("Error reading %s: %s had an invalid mandatory '%s' array that did not only hold strings, please correct it.", PROJECT_JSON, category, key);
 		}
-		vec_add(values, copy_toml_string(val->value.string));
+		vec_add(values, val->str);
 	}
 	return values;
 }
 
-void project_add_target(Project *project, TomlValue *wrapped_table, const char *type, const char *type_key, TargetType target_type)
+static void load_into_build_target(JSONObject *json, const char *type, BuildTarget *target)
 {
-	if (wrapped_table->type != TOML_TABLE)
+	const char *cc = get_valid_string(json, "cc", type, false);
+	const char *cflags = get_valid_string(json, "cflags", type, false);
+	const char **csource_dirs = get_valid_array(json, "csources", type, false);
+	const char *version = get_valid_string(json, "version", type, false);
+	const char *langrev = get_valid_string(json, "langrev", type, false);
+	const char **source_dirs = get_valid_array(json, "sources", type, target->source_dirs == NULL);
+	const char **libraries = get_valid_array(json, "libs", type, false);
+	static const char *debug_infos[3] = {
+			[DEBUG_INFO_FULL] = "full",
+			[DEBUG_INFO_NONE] = "none",
+			[DEBUG_INFO_LINE_TABLES] = "line-tables"
+	};
+	DebugInfo info = get_valid_string_setting(json, "debug-info", type, debug_infos, 0, 3, "one of 'full' 'line-table' or 'none'.");
+	const char *arch_os_string = get_valid_string(json, "target", type, false);
+	long symtab_size = get_valid_integer(json, "symtab", type, false);
+	const char *cpu = get_valid_string(json, "cpu", type, false);
+	int reloc = get_valid_string_setting(json, "reloc", type, reloc_models, 0, 5, "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
+	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 5, "none, mmx, sse, avx or avx512");
+
+	if (cc) target->cc = cc;
+	if (cflags) target->cflags = cflags;
+	if (csource_dirs) target->csource_dirs = csource_dirs;
+	if (version) target->version = version;
+	if (langrev) target->langrev = langrev;
+	if (source_dirs) target->source_dirs = source_dirs;
+	if (libraries) target->libraries = libraries;
+	if (info > -1) target->debug_info = info;
+	if (cpu) target->cpu = cpu;
+	if (reloc > -1) target->reloc_model = (RelocModel)reloc;
+	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
+
+	if (arch_os_string)
 	{
-		error_exit("The %s had an invalid %s. Please check your [[%s]] configurations.", PROJECT_TOML, type, type_key);
+		ArchOsTarget arch_os = arch_os_target_from_string(arch_os_string);
+		if (arch_os == ARCH_OS_TARGET_DEFAULT) error_exit("Error reading %s: %s target was not valid.", PROJECT_JSON, type);
+		target->arch_os_target = arch_os;
 	}
+	if (symtab_size > 0)
+	{
+		if (symtab_size < 1024)
+		{
+			error_exit("Error reading %s: %s symtab was less than 1024.", PROJECT_JSON, type);
+		}
+		if (symtab_size > MAX_SYMTAB_SIZE)
+		{
+			error_exit("Error reading %s: %s symtab may not exceed %d.", PROJECT_JSON, type, MAX_SYMTAB_SIZE);
+		}
+		target->symtab_size = (uint32_t)symtab_size;
+	}
+
+	target->feature.trap_on_wrap = get_valid_bool(json, "trap-on-wrap", type, target->feature.trap_on_wrap);
+	// Use the fact that they correspond to 0, 1, -1
+	target->feature.x86_struct_return = get_valid_bool(json, "x86-stack-struct-return", type, target->feature.x86_struct_return);
+	target->feature.soft_float = get_valid_bool(json, "soft-float", type, target->feature.soft_float);
+
+}
+static void project_add_target(Project *project, BuildTarget *default_target,  JSONObject *json, const char *name, const char *type)
+{
+	assert(json->type == J_OBJECT);
 	BuildTarget *target = CALLOCS(BuildTarget);
-	target->optimization_level = OPTIMIZATION_DEFAULT;
-	target->size_optimization_level = SIZE_OPTIMIZATION_NONE;
-	target->arch_os_target = ARCH_OS_TARGET_DEFAULT;
-	target->debug_info = DEBUG_INFO_NONE;
-	target->symtab_size = DEFAULT_SYMTAB_SIZE;
+	*target = *default_target;
 	vec_add(project->targets, target);
-	TomlTable *table = wrapped_table->value.table;
-	target->name = get_valid_string(table, "name", type, true);
+	target->name = name;
 	VECEACH(project->targets, i)
 	{
 		BuildTarget *other_target = project->targets[i];
 		if (other_target == target) continue;
 		if (strcmp(other_target->name, target->name) == 0)
 		{
-			error_exit("More %s contained more than one target with the name %s. Please make all target names unique.", PROJECT_TOML, target->name);
+			error_exit("More %s contained more than one target with the name %s. Please make all target names unique.", PROJECT_JSON, target->name);
 		}
 	}
-	target->cc = get_valid_string(table, "cc", type, false);
-	if (!target->cc) target->cc = "cc";
-	target->cflags = get_valid_string(table, "cflags", type, false);
-	target->csource_dirs = get_valid_array(table, "csources", type, false);
-
 	type = strformat("%s %s", type, target->name);
-	target->version = get_valid_string(table, "version", type, false);
-	if (!target->version) target->version = "1.0.0";
-	target->langrev = get_valid_string(table, "langrev", type, false);
-	target->source_dirs = get_valid_array(table, "sources", type, true);
-	target->libraries = get_valid_array(table, "libs", type, false);
-	static const char *debug_infos[3] = {
-			[DEBUG_INFO_FULL] = "full",
-			[DEBUG_INFO_NONE] = "none",
-			[DEBUG_INFO_LINE_TABLES] = "line-tables"
-	};
-	DebugInfo info = get_valid_string_setting(table, "debug-info", type, debug_infos, 0, 3, "one of 'full' 'line-table' or 'none'.");
-	if (info > -1) target->debug_info = info;
-	const char *arch_os_string = get_valid_string(table, "target", type, false);
-	if (arch_os_string)
-	{
-		ArchOsTarget arch_os = arch_os_target_from_string(arch_os_string);
-		if (arch_os == ARCH_OS_TARGET_DEFAULT) error_exit("Error reading %s: %s target was not valid.", PROJECT_TOML, type);
-		target->arch_os_target = arch_os;
-	}
-	long symtab_size = get_valid_integer(table, "symtab", type, false);
-	if (symtab_size > 0)
-	{
-		if (symtab_size < 1024)
-		{
-			error_exit("Error reading %s: %s symtab was less than 1024.", PROJECT_TOML, type);
-		}
-		if (symtab_size > MAX_SYMTAB_SIZE)
-		{
-			error_exit("Error reading %s: %s symtab may not exceed %d.", PROJECT_TOML, type, MAX_SYMTAB_SIZE);
-		}
-		target->symtab_size = (uint32_t)symtab_size;
-	}
-	const char *cpu = get_valid_string(table, "cpu", type, false);
-	target->cpu = cpu ? cpu : "generic";
-
-	static const char *pies[3] = {
-			[PIE_SMALL] = "yes-limited",
-			[PIE_NONE] = "no",
-			[PIE_BIG] = "yes-unlimited"
-	};
-	target->pie = get_valid_string_setting(table, "pie", type, pies, 0, 3, "'yes-limited', 'yes-unlimited' or 'no'.");
-	target->pic = get_valid_string_setting(table, "pic", type, pies, 0, 3, "'yes-limited', 'yes-unlimited' or 'no'.");
-
-	target->feature.no_memcpy_pass = get_valid_bool(table, "no-memcpy-pass", type, false);
-	target->feature.trap_on_wrap = get_valid_bool(table, "trap-on-wrap", type, false);
-	// Use the fact that they correspond to 0, 1, -1
-	target->feature.struct_return = get_valid_bool(table, "stack-struct-return", type, STRUCT_RETURN_DEFAULT);
-	target->feature.soft_float = get_valid_bool(table, "soft-float", type, SOFT_FLOAT_DEFAULT);
-	target->feature.avx = get_valid_bool(table, "avx", type, false);
-	target->feature.avx512 = get_valid_bool(table, "avx512", type, false);
-	target->feature.no_avx = get_valid_bool(table, "no-avx", type, false);
-	target->feature.no_sse = get_valid_bool(table, "no-sse", type, false);
-	target->feature.no_mmx = get_valid_bool(table, "no-mmx", type, false);
+	load_into_build_target(json, type, target);
 }
 
-static void project_add_targets(Project *project, TomlTable *table, const char *type, const char *type_key, TargetType target_type)
+static void project_add_targets(Project *project, JSONObject *project_data)
 {
-	TomlArray *targets = get_array(table, type_key);
-	if (!targets) return;
-	for (unsigned i = 0; i < targets->len; i++)
+	assert(project_data->type == J_OBJECT);
+	static const char* targets[4] = { [TARGET_TYPE_EXECUTABLE] = "executable",
+									  [TARGET_TYPE_STATIC_LIB] = "static-lib",
+									  [TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
+									  [TARGET_TYPE_TEST] = "test" };
+	static const char *target_desc[4] = {
+			[TARGET_TYPE_EXECUTABLE] = "Executable",
+			[TARGET_TYPE_STATIC_LIB] = "Static library",
+			[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
+			[TARGET_TYPE_TEST] = "test suite" };
+
+	BuildTarget default_target = {
+			.optimization_level = OPTIMIZATION_DEFAULT,
+			.size_optimization_level = SIZE_OPTIMIZATION_NONE,
+			.arch_os_target = ARCH_OS_TARGET_DEFAULT,
+			.debug_info = DEBUG_INFO_NONE,
+			.symtab_size = DEFAULT_SYMTAB_SIZE,
+			.cc = "cc",
+			.version = "1.0.0",
+			.langrev = "1",
+			.cpu = "generic",
+			.feature.x86_struct_return = STRUCT_RETURN_DEFAULT,
+			.feature.soft_float = SOFT_FLOAT_DEFAULT,
+			.feature.trap_on_wrap = false,
+			.feature.x86_vector_capability = X86VECTOR_DEFAULT,
+			.feature.safe_mode = true,
+	};
+	load_into_build_target(project_data, "default target", &default_target);
+	JSONObject *targets_json = json_obj_get(project_data, "targets");
+	if (!targets_json)
 	{
-		project_add_target(project, targets->elements[i], type, type_key, target_type);
+		error_exit("No targets found in project.");
+	}
+	if (targets_json->type != J_OBJECT)
+	{
+		error_exit("'targets' did not contain map of targets.");
+	}
+	JSONObject *targets_find = NULL;
+	for (unsigned i = 0; i < targets_json->member_len; i++)
+	{
+		JSONObject *object = targets_json->members[i];
+		const char *key = targets_json->keys[i];
+		if (object->type != J_OBJECT)
+		{
+			error_exit("Invalid data in target '%s'", key);
+		}
+		int type = get_valid_string_setting(object, "type", "Target type", targets, 0, 4, "a target type like 'executable' or 'static-lib'");
+		if (type < 0) error_exit("Target %s did not contain 'type' key.", key);
+		project_add_target(project, &default_target, object, key, target_desc[type]);
 	}
 }
 
@@ -232,7 +246,7 @@ BuildTarget *project_select_target(Project *project, const char *optional_target
 {
 	if (!vec_size(project->targets))
 	{
-		error_exit("No targets could be found in %s. Please define at least one target, for example a [[executable]] and try again.", PROJECT_TOML);
+		error_exit("No targets could be found in %s. Please define at least one target, for example an 'executable' and try again.", PROJECT_JSON);
 	}
 	if (!optional_target)
 	{
@@ -243,20 +257,25 @@ BuildTarget *project_select_target(Project *project, const char *optional_target
 		BuildTarget *target = project->targets[i];
 		if (strcmp(target->name, optional_target) == 0) return target;
 	}
-	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, PROJECT_TOML);
+	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, PROJECT_JSON);
 }
 
 Project *project_load(void)
 {
 	Project *project = CALLOCS(Project);
-	TomlErr err = { .code = TOML_OK };
-	TomlTable *toml = toml_load_filename(PROJECT_TOML, &err);
-	if (err.code != TOML_OK)
+	size_t size;
+	char *read = read_file(PROJECT_JSON, &size);
+	JsonParser parser;
+	json_init_string(&parser, read, &malloc_arena);
+	JSONObject *json = json_parse(&parser);
+	if (parser.error_message)
 	{
-		error_exit("%s could not be read. Can you please check the read permissions on the file?", PROJECT_TOML);
+		error_exit("Error on line %d reading '%s':'%s'", parser.line, PROJECT_JSON, parser.error_message);
 	}
-	project_add_targets(project, toml, "executable", "executable", TARGET_TYPE_EXECUTABLE);
-	project_add_targets(project, toml, "dynamic library", "dynamic-lib", TARGET_TYPE_DYNAMIC_LIB);
-	project_add_targets(project, toml, "static library", "static-lib", TARGET_TYPE_STATIC_LIB);
+	if (!json || json->type != J_OBJECT)
+	{
+		error_exit("Expected a map of targets in '%s'.", PROJECT_JSON);
+	}
+	project_add_targets(project, json);
 	return project;
 }

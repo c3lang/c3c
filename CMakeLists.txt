@@ -187,7 +187,8 @@ add_executable(c3c
         src/utils/malloc.c
         src/utils/stringutils.c
         src/utils/taskqueue.c
-        src/utils/toml.c src/build/project.c
+        src/utils/json.c
+        src/build/project.c
         src/utils/vmem.c
         src/utils/vmem.h
         src/utils/whereami.c

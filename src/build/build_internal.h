@@ -5,7 +5,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "utils/lib.h"
-#include "utils/toml.h"
+#include "utils/json.h"
 #include "build_options.h"
 #define DEFAULT_SYMTAB_SIZE (2 * 1024 * 1024)
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)

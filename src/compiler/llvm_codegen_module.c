@@ -20,17 +20,29 @@ void gencontext_begin_module(GenContext *c)
 	LLVMSetSourceFileName(c->module, c->code_module->name->module, strlen(c->code_module->name->module));
 	LLVMTypeRef options_type = LLVMInt8TypeInContext(c->context);
 
-	if (active_target.pic == PIC_BIG || active_target.pic == PIC_SMALL)
+	static const char *pic_level = "PIC Level";
+	static const char *pie_level = "PIE Level";
+	LLVMMetadataRef setting;
+	switch (active_target.reloc_model)
 	{
-		static const char *pic_level = "PIC Level";
-		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)active_target.pic, false));
-		LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pic_level, strlen(pic_level), setting);
-	}
-	if (active_target.pie == PIE_BIG || active_target.pie == PIE_SMALL)
-	{
-		static const char *pie_level = "PIE Level";
-		LLVMMetadataRef setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)active_target.pie, false));
-		LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
+		case RELOC_BIG_PIE:
+			setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)2 /* PIE */, false));
+			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
+			FALLTHROUGH;
+		case RELOC_BIG_PIC:
+			setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)2 /* PIC */, false));
+			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pic_level, strlen(pic_level), setting);
+			break;
+		case RELOC_SMALL_PIE:
+			setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)1 /* pie */, false));
+			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pie_level, strlen(pie_level), setting);
+			FALLTHROUGH;
+		case RELOC_SMALL_PIC:
+			setting = LLVMValueAsMetadata(LLVMConstInt(options_type, (unsigned)1 /* pic */, false));
+			LLVMAddModuleFlag(c->module, LLVMModuleFlagBehaviorOverride, pic_level, strlen(pic_level), setting);
+			break;
+		default:
+			break;
 	}
 
 	LLVMSetTarget(c->module, platform_target.target_triple);

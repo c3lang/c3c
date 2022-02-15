@@ -69,6 +69,64 @@ static void prepare_msys2_linker_flags(const char ***args, const char **files_to
 #undef add_arg
 }
 
+static void append_pie_pic_options(RelocModel reloc, const char ***args_ref)
+{
+	switch (reloc)
+	{
+		case RELOC_DEFAULT:
+			UNREACHABLE
+		case RELOC_NONE:
+			vec_add(*args_ref, "-no-pic");
+			vec_add(*args_ref, "-no-pie");
+			vec_add(*args_ref, "-no-PIC");
+			vec_add(*args_ref, "-no-PIE");
+			break;
+		case RELOC_SMALL_PIC:
+			vec_add(*args_ref, "-pic");
+			break;
+		case RELOC_BIG_PIC:
+			vec_add(*args_ref, "-PIC");
+			break;
+		case RELOC_SMALL_PIE:
+			vec_add(*args_ref, "-pie");
+			vec_add(*args_ref, "-pic");
+			break;
+		case RELOC_BIG_PIE:
+			vec_add(*args_ref, "-PIE");
+			vec_add(*args_ref, "-PIC");
+			break;
+	}
+}
+
+static void append_fpie_pic_options(RelocModel reloc, const char ***args_ref)
+{
+	switch (reloc)
+	{
+		case RELOC_DEFAULT:
+			UNREACHABLE
+		case RELOC_NONE:
+			vec_add(*args_ref, "-fno-pic");
+			vec_add(*args_ref, "-fno-pie");
+			vec_add(*args_ref, "-fno-PIC");
+			vec_add(*args_ref, "-fno-PIE");
+			break;
+		case RELOC_SMALL_PIC:
+			vec_add(*args_ref, "-fpic");
+			break;
+		case RELOC_BIG_PIC:
+			vec_add(*args_ref, "-fPIC");
+			break;
+		case RELOC_SMALL_PIE:
+			vec_add(*args_ref, "-fpie");
+			vec_add(*args_ref, "-fpic");
+			break;
+		case RELOC_BIG_PIE:
+			vec_add(*args_ref, "-fPIE");
+			vec_add(*args_ref, "-fPIC");
+			break;
+	}
+}
+
 static bool link_exe(const char *output_file, const char **files_to_link, unsigned file_count)
 {
 	const char **args = NULL;
@@ -141,15 +199,11 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			vec_add(args, "-lm");
 			vec_add(args, "-syslibroot");
 			vec_add(args, "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk");
-			if (platform_target.pie)
+			append_pie_pic_options(platform_target.reloc_model, &args);
+			if (platform_target.reloc_model == RELOC_SMALL_PIE || platform_target.reloc_model == RELOC_BIG_PIE)
 			{
 				vec_add(args, "-macosx_version_min");
 				vec_add(args, platform_target.arch == ARCH_TYPE_AARCH64 ? "11.0" : "10.8");
-				vec_add(args, "-pie");
-			}
-			else
-			{
-				vec_add(args, "-no_pie");
 			}
 			break;
 		case OS_TYPE_WATCHOS:
@@ -167,7 +221,8 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			{
 				case ARCH_TYPE_X86_64:
 					vec_add(args, "elf_x86_64");
-					if (platform_target.pie || platform_target.pic)
+					append_pie_pic_options(platform_target.reloc_model, &args);
+					if (is_pie_pic(platform_target.reloc_model))
 					{
 						vec_add(args, "--eh-frame-hdr");
 						vec_add(args, "/usr/lib/x86_64-linux-gnu/crt1.o");
@@ -175,7 +230,6 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 						add_files(&args, files_to_link, file_count);
 						vec_add(args, "/usr/lib/x86_64-linux-gnu/crti.o");
 						vec_add(args, "/usr/lib/gcc/x86_64-linux-gnu/10/crtendS.o");
-						vec_add(args, "-pie");
 					}
 					else
 					{
@@ -186,7 +240,6 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 						vec_add(args, "-lm");
 						vec_add(args, "/usr/lib/x86_64-linux-gnu/crti.o");
 						vec_add(args, "/usr/lib/gcc/x86_64-linux-gnu/10/crtend.o");
-						vec_add(args, "-no-pie");
 					}
 					vec_add(args, "/usr/lib/x86_64-linux-gnu/crtn.o");
 					vec_add(args, "-L/usr/lib/x86_64-linux-gnu/");
@@ -212,7 +265,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			break;
 		default:
 			add_files(&args, files_to_link, file_count);
-			vec_add(args, platform_target.pie ? "-pie" : "-no_pie");
+			append_pie_pic_options(platform_target.reloc_model, &args);
 			return false;
 	}
 
@@ -301,21 +354,7 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	{
 		vec_add(parts, active_target.link_args[i]);
 	}
-	switch (platform_target.pie)
-	{
-		case PIE_DEFAULT:
-			UNREACHABLE
-		case PIE_NONE:
-			vec_add(parts, "-fno-PIE");
-			vec_add(parts, "-fno-pie");
-			break;
-		case PIE_SMALL:
-			vec_add(parts, "-fpie");
-			break;
-		case PIE_BIG:
-			vec_add(parts, "-fPIE");
-			break;
-	}
+	append_fpie_pic_options(platform_target.reloc_model, &parts);
 	vec_add(parts, "-o");
 	vec_add(parts, output_file);
 	for (unsigned i = 0; i < file_count; i++)
@@ -344,21 +383,7 @@ void platform_compiler(const char **files, unsigned file_count, const char *flag
 			 strstr(flags, "-fPIE")); // strcasestr is apparently nonstandard >:(
 	if (!pie_set)
 	{
-		switch (platform_target.pie)
-		{
-			case PIE_DEFAULT:
-				UNREACHABLE
-			case PIE_NONE:
-				vec_add(parts, "-fno-PIE");
-				vec_add(parts, "-fno-pie");
-				break;
-			case PIE_SMALL:
-				vec_add(parts, "-fpie");
-				break;
-			case PIE_BIG:
-				vec_add(parts, "-fPIE");
-				break;
-		}
+		append_fpie_pic_options(platform_target.reloc_model, &parts);
 	}
 
 	vec_add(parts, "-c");
