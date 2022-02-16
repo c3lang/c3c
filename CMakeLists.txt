@@ -192,6 +192,7 @@ add_executable(c3c
         src/utils/vmem.c
         src/utils/vmem.h
         src/utils/whereami.c
+        src/compiler/decltable.c
         src/compiler/tilde_codegen_storeload.c
         src/compiler/llvm_codegen_storeload.c
         src/compiler/tilde_codegen_expr.c

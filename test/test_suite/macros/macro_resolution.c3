@@ -10,7 +10,7 @@ fn void run2()
     @bar::test2();
 }
 
-fn void tester() {}
+private fn void tester() {}
 
 module bar;
 macro test()
@@ -20,5 +20,5 @@ macro test()
 
 macro test2()
 {
-    foo::tester(); // #error: Unknown module 'foo', did you forget to import it?
+    foo::tester(); // #error: 'foo::tester' could not be found, did you spell
 }

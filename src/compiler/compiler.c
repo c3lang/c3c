@@ -31,6 +31,9 @@ void compiler_init(const char *std_lib_dir)
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
 	stable_init(&global_context.modules, 64);
+	decltable_init(&global_context.symbols, INITIAL_SYMBOL_MAP);
+	decltable_init(&global_context.generic_symbols, INITIAL_GENERIC_SYMBOL_MAP);
+
 	stable_init(&global_context.compiler_defines, 512);
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
@@ -171,6 +174,7 @@ static void free_arenas(void)
 	if (debug_stats) print_arena_status();
 }
 
+
 void compiler_compile(void)
 {
 	sema_analysis_run();
@@ -236,7 +240,9 @@ void compiler_compile(void)
 	bool create_exe = !active_target.no_link && !active_target.test_output && (active_target.type == TARGET_TYPE_EXECUTABLE || active_target.type == TARGET_TYPE_TEST);
 
 	uint32_t output_file_count = vec_size(gen_contexts);
-	if (output_file_count > MAX_OUTPUT_FILES)
+	unsigned cfiles = vec_size(active_target.csources);
+
+	if (output_file_count + cfiles > MAX_OUTPUT_FILES)
 	{
 		error_exit("Too many output files.");
 	}
@@ -245,7 +251,6 @@ void compiler_compile(void)
 		error_exit("No output files found.");
 	}
 
-	unsigned cfiles = vec_size(active_target.csources);
 	CompileData *compile_data = ccalloc(sizeof(CompileData), output_file_count);
 	const char **obj_files = cmalloc(sizeof(char*) * (output_file_count + cfiles));
 
@@ -509,6 +514,18 @@ void compile()
 	compiler_compile();
 }
 
+
+
+
+void global_context_add_decl(Decl *decl)
+{
+	decltable_set(&global_context.symbols, decl);
+}
+
+void global_context_add_generic_decl(Decl *decl)
+{
+	decltable_set(&global_context.generic_symbols, decl);
+}
 
 void global_context_add_type(Type *type)
 {

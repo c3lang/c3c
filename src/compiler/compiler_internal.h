@@ -26,14 +26,13 @@ typedef uint32_t ArraySize;
 typedef uint64_t BitSize;
 
 
-
-
 typedef uint32_t SourceLoc;
 typedef struct
 {
 	unsigned index;
 } TokenId;
 
+#define MAX_HASH_SIZE (512 * 1024 * 1024)
 #define NO_TOKEN_ID ((TokenId) { 0 })
 #define NO_TOKEN ((Token) { .type = TOKEN_INVALID_TOKEN })
 #define INVALID_TOKEN_ID ((TokenId) { UINT32_MAX })
@@ -42,9 +41,9 @@ typedef struct
 #define MAX_LOCALS 0xFFF
 #define MAX_SCOPE_DEPTH 0x100
 #define MAX_STRING_BUFFER 0x10000
-#define MAX_MACRO_NESTING 1024
+#define INITIAL_SYMBOL_MAP 0x10000
+#define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_MACRO_ITERATIONS 0xFFFFFF
-#define MAX_FUNCTION_SIGNATURE_SIZE 2048
 #define MAX_PARAMS 512
 #define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
 #define MAX_ALIGNMENT ((MemberIndex)(((uint64_t)2) << 28))
@@ -207,14 +206,6 @@ typedef struct
 } STable;
 
 
-typedef struct
-{
-	File *file;
-	uint32_t line;
-	uint32_t col;
-	SourceLoc loc;
-	const char *start;
-} SourcePosition;
 
 
 
@@ -246,11 +237,6 @@ typedef struct
 	ArraySize len;
 } TypeArray;
 
-typedef struct
-{
-	Type *base;
-	ArraySize len;
-} TypeVector;
 
 typedef struct
 {
@@ -493,12 +479,6 @@ typedef struct
 
 typedef struct
 {
-	Decl **functions;
-	Decl **members;
-} InterfaceDecl;
-
-typedef struct
-{
 	union
 	{
 		TypedefDecl typedef_decl;
@@ -618,6 +598,7 @@ typedef struct Decl_
 	Type *type;
 	union
 	{
+		Decl** decl_list;
 		struct
 		{
 			Decl **methods;
@@ -637,7 +618,6 @@ typedef struct Decl_
 		FuncDecl func_decl;
 		AttrDecl attr;
 		TypedefDecl typedef_decl;
-		InterfaceDecl interface_decl;
 		MacroDecl macro_decl;
 		GenericDecl generic_decl;
 		DefineDecl define_decl;
@@ -665,11 +645,6 @@ typedef struct
 } ExprOrError;
 
 
-typedef struct
-{
-	TypeInfo *type;
-	Expr *init_expr;
-} ExprStructValue;
 
 typedef struct
 {
@@ -877,12 +852,6 @@ typedef struct
 	AstId defer;
 } ExprGuard;
 
-
-typedef struct
-{
-	bool is_try : 1;
-	Decl *decl;
-} ExprTryDecl;
 
 typedef struct
 {
@@ -1276,7 +1245,6 @@ typedef struct Ast_
 		Decl *declare_stmt;             // 8
 		Expr *expr_stmt;                // 8
 		Decl *var_stmt;              // 8
-		Ast *volatile_stmt;             // 8
 		AstReturnStmt return_stmt;      // 16
 		AstWhileStmt while_stmt;        // 24
 		AstDoStmt do_stmt;              // 32
@@ -1462,6 +1430,14 @@ typedef struct SemaContext_
 
 typedef struct
 {
+	uint32_t count;
+	uint32_t capacity;
+	uint32_t max_load;
+	Decl **entries;
+} DeclTable;
+
+typedef struct
+{
 	STable modules;
 	Module **module_list;
 	Module **generic_module_list;
@@ -1478,6 +1454,8 @@ typedef struct
 	uint32_t scratch_buffer_len;
 	STable compiler_defines;
 	Module std_module;
+	DeclTable symbols;
+	DeclTable generic_symbols;
 	Path std_module_path;
 } GlobalContext;
 
@@ -1617,7 +1595,6 @@ extern const char *kw_elementat;
 extern const char *kw_elementref;
 extern const char *kw_elementset;
 extern const char *kw_len;
-extern const char *kw_next;
 extern const char *kw_nan;
 extern const char *kw_main;
 extern const char *kw_ordinal;
@@ -1628,15 +1605,10 @@ extern const char *kw_param;
 extern const char *kw_ptr;
 extern const char *kw_values;
 extern const char *kw_errors;
-extern const char *kw___ceil;
-extern const char *kw___round;
-extern const char *kw___sqrt;
-extern const char *kw___trunc;
 extern const char *kw_FILE;
 extern const char *kw_FUNC;
 extern const char *kw_LINE;
 extern const char *kw_LINEREAL;
-extern const char *kw_default_iterator;
 extern const char *kw_incr;
 extern const char *kw_check_assign;
 extern const char *kw_builtin_ceil;
@@ -1832,6 +1804,8 @@ void header_gen(Module *module);
 
 static inline void global_context_clear_errors(void);
 void global_context_add_type(Type *type);
+void global_context_add_decl(Decl *type_decl);
+void global_context_add_generic_decl(Decl *decl);
 
 Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters, bool is_private);
 Module *global_context_find_module(const char *name);
@@ -1948,8 +1922,6 @@ bool float_const_fits_type(const ExprConst *expr_const, TypeKind kind);
 // --- Lexer functions
 
 
-bool lexer_scan_ident_test(Lexer *lexer, const char *scan);
-void lexer_init_for_test(Lexer *lexer, const char *text, size_t len);
 void lexer_lex_file(Lexer *lexer);
 
 
@@ -2046,6 +2018,10 @@ void *stable_set(STable *table, const char *key, void *value);
 void *stable_get(STable *table, const char *key);
 
 void stable_clear(STable *table);
+
+void decltable_init(DeclTable *table, uint32_t initial_size);
+Decl *decltable_get(DeclTable *table, const char *name);
+void decltable_set(DeclTable *table, Decl *decl);
 
 void scratch_buffer_clear(void);
 void scratch_buffer_append(const char *string);

@@ -133,6 +133,41 @@ void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 }
 
 
+void decl_register(Decl *decl)
+{
+	if (decl->visibility != VISIBLE_PUBLIC) return;
+	switch (decl->decl_kind)
+	{
+		case DECL_POISONED:
+		case DECL_CT_CASE:
+		case DECL_CT_ELIF:
+		case DECL_CT_ELSE:
+		case DECL_CT_IF:
+		case DECL_CT_SWITCH:
+		case DECL_CT_ASSERT:
+		case DECL_ENUM_CONSTANT:
+		case DECL_ERRVALUE:
+		case DECL_IMPORT:
+		case DECL_LABEL:
+		case DECL_DECLARRAY:
+			UNREACHABLE
+		case DECL_ATTRIBUTE:
+		case DECL_BITSTRUCT:
+		case DECL_DISTINCT:
+		case DECL_ERRTYPE:
+		case DECL_ENUM:
+		case DECL_STRUCT:
+		case DECL_TYPEDEF:
+		case DECL_UNION:
+		case DECL_DEFINE:
+		case DECL_FUNC:
+		case DECL_GENERIC:
+		case DECL_MACRO:
+		case DECL_VAR:
+			global_context_add_decl(decl);
+			break;
+	}
+}
 
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 {
@@ -153,6 +188,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 				vec_add(unit->generics, decl);
 			}
 			decl_set_external_name(decl);
+			decl_register(decl);
 			break;
 		case DECL_MACRO:
 			assert(decl->name);
@@ -166,6 +202,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 				vec_add(unit->macros, decl);
 			}
 			decl_set_external_name(decl);
+			decl_register(decl);
 			break;
 		case DECL_FUNC:
 			assert(decl->name);
@@ -178,11 +215,13 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			{
 				vec_add(unit->functions, decl);
 			}
+			decl_register(decl);
 			break;
 		case DECL_VAR:
 			assert(decl->name);
 			vec_add(unit->vars, decl);
 			decl_set_external_name(decl);
+			decl_register(decl);
 			break;
 		case DECL_DISTINCT:
 		case DECL_STRUCT:
@@ -193,16 +232,19 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			assert(decl->name);
 			vec_add(unit->types, decl);
 			decl_set_external_name(decl);
+			decl_register(decl);
 			break;
 		case DECL_DEFINE:
 			assert(decl->name);
 			vec_add(unit->generic_defines, decl);
 			decl_set_external_name(decl);
+			decl_register(decl);
 			break;
 		case DECL_ENUM:
 			assert(decl->name);
 			vec_add(unit->enums, decl);
 			decl_set_external_name(decl);
+			decl_register(decl);
 			break;
 		case DECL_ERRVALUE:
 		case DECL_ENUM_CONSTANT:
@@ -212,6 +254,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_ATTRIBUTE:
 		case DECL_LABEL:
 		case DECL_CT_CASE:
+		case DECL_DECLARRAY:
 			UNREACHABLE
 		case DECL_CT_IF:
 		case DECL_CT_SWITCH:

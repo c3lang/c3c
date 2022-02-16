@@ -101,8 +101,8 @@ define getValueInt = test2::getValue<int>;
 define getValueDouble = test2::getValue<double>;
 define IntBlob = test2::Blob<int>;
 define DoubleBlob = Blob<double>;
-define getMultInt = getMult<int>;
-define getMultDouble = getMult<double>;
+define getMultInt = test2::getMult<int>;
+define getMultDouble = test2::getMult<double>;
 
 define IntArray = List<int>;
 define IntList = LinkedList<int>;
@@ -177,7 +177,7 @@ module hello_world;
 import foo;
 
 extern fn int printf(char *, ...);
-define doubleMult = check<double>;
+define doubleMult = foo::check<double>;
 
 fn void hello()
 {

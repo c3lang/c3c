@@ -2234,6 +2234,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_CT_IF:
 		case DECL_CT_ASSERT:
 		case DECL_ERRVALUE:
+		case DECL_DECLARRAY:
 			UNREACHABLE
 	}
 	decl->resolve_status = RESOLVE_DONE;

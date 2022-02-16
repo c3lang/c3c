@@ -34,7 +34,7 @@ fn void e()
 
 fn void f()
 {
-    int x = $sizeof("bar::Bazy"); // #error: 'Bazy' could not be found, did you spell it right
+    int x = $sizeof("bar::Bazy"); // #error: 'bar::Bazy' could not be found, did you spell it right
 }
 
 fn void g()

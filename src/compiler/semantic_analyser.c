@@ -184,6 +184,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_CT_ASSERT:
+			case DECL_DECLARRAY:
 				continue;
 			case DECL_ATTRIBUTE:
 				break;
@@ -217,6 +218,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 				break;
 		}
 		stable_set(&module->symbols, decl->name, decl);
+		if (decl->visibility == VISIBLE_PUBLIC) global_context_add_generic_decl(decl);
 	}
 
 }
@@ -225,14 +227,13 @@ static void register_generic_decls(Module *module, Decl **decls)
 static void analyze_generic_module(Module *module)
 {
 	assert(module->parameters && module->is_generic);
-	// TODO maybe do this analysis: sema_analysis_pass_process_imports(module);
 	VECEACH(module->units, index)
 	{
 		register_generic_decls(module, module->units[index]->global_decls);
 	}
 }
 
-static void analyze_to_stage(AnalysisStage stage)
+static void sema_analyze_to_stage(AnalysisStage stage)
 {
 	VECEACH(global_context.module_list, i)
 	{
@@ -241,15 +242,21 @@ static void analyze_to_stage(AnalysisStage stage)
 	halt_on_error();
 }
 
+/**
+ * Perform the entire semantic analysis.
+ */
 void sema_analysis_run(void)
 {
-
+	// Cleanup any errors (could there really be one here?!)
 	global_context_clear_errors();
 
+	// Add the standard library
 	if (global_context.lib_dir && !active_target.no_stdlib)
 	{
 		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true, ".c3", ".c3i");
 	}
+
+	// Load and parse all files.
 	bool has_error = false;
 	VECEACH(global_context.sources, i)
 	{
@@ -258,29 +265,36 @@ void sema_analysis_run(void)
 		if (loaded) continue;
 		if (!parse_file(file)) has_error = true;
 	}
-
 	if (has_error) exit_compiler(EXIT_FAILURE);
 
+	// All global defines are added to the std module
 	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_RANGE, .len = (uint32_t) strlen(kw_std) };
 	global_context.std_module = (Module){ .name = &global_context.std_module_path };
 	global_context.std_module.stage = ANALYSIS_LAST;
 	global_context.locals_list = NULL;
 
+	// Set a maximum of symbols in the std_module
 	stable_init(&global_context.std_module.symbols, 0x10000);
+
+	// Setup the func prototype hash map
 	type_func_prototype_init(0x10000);
 
+	// Do we have zero modules?
 	if (!global_context.module_list)
 	{
 		if (global_context.errors_found) exit_compiler(EXIT_FAILURE);
 		error_exit("No modules to compile.");
 	}
+
+	// We parse the generic modules, just by storing the decls.
 	VECEACH(global_context.generic_module_list, i)
 	{
 		analyze_generic_module(global_context.generic_module_list[i]);
 	}
+
 	for (AnalysisStage stage = ANALYSIS_NOT_BEGUN + 1; stage <= ANALYSIS_LAST; stage++)
 	{
-		analyze_to_stage(stage);
+		sema_analyze_to_stage(stage);
 	}
 
 }
