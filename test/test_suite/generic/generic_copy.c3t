@@ -9,4 +9,4 @@ fn void abc()
 module tester;
 import foo;
 
-define abc_my = abc<int>;
+define abc_my = foo::abc<int>;

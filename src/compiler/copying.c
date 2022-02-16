@@ -483,6 +483,7 @@ Decl *copy_decl(Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->strukt.members);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
+		case DECL_DECLARRAY:
 		case DECL_BITSTRUCT:
 			UNREACHABLE
 		case DECL_ENUM:

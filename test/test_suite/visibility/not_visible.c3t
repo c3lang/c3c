@@ -4,7 +4,7 @@ import bar;
 
 fn void runBar()
 {
-    bar::notVisible(); // #error: 'notVisible' is not visible from this module.
+    bar::notVisible(); // #error: 'bar::notVisible' is not visible from this module.
 }
 
 // #file: file2.c3

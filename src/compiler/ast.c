@@ -35,6 +35,8 @@ const char *decl_to_name(Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
+		case DECL_DECLARRAY:
+			return "declarray";
 		case DECL_BITSTRUCT:
 			return "bitstruct";
 		case DECL_POISONED:
@@ -189,6 +191,7 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_CT_CASE:
 		case DECL_DEFINE:
 		case DECL_CT_ASSERT:
+		case DECL_DECLARRAY:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, !name.index ? "anon" : TOKSTR(name));

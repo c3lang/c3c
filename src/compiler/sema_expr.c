@@ -584,6 +584,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			break;
 		case DECL_DISTINCT:
 		case DECL_TYPEDEF:
+		case DECL_DECLARRAY:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);

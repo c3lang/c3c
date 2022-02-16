@@ -4,7 +4,6 @@
 
 #include "compiler_internal.h"
 
-#define MAX_HASH_SIZE (512 * 1024 * 1024)
 
 typedef struct _SymEntry
 {
@@ -52,7 +51,6 @@ const char *kw_len;
 const char *kw_main;
 const char *kw_max;
 const char *kw_min;
-const char *kw_next;
 const char *kw_nan;
 const char *kw_ordinal;
 const char *kw_param;
@@ -62,15 +60,10 @@ const char *kw_reqparse;
 const char *kw_require;
 const char *kw_std;
 const char *kw_values;
-const char *kw___ceil;
-const char *kw___round;
-const char *kw___sqrt;
-const char *kw___trunc;
 const char *kw_FILE;
 const char *kw_FUNC;
 const char *kw_LINE;
 const char *kw_LINEREAL;
-const char *kw_default_iterator;
 const char *kw_incr;
 const char *kw_check_assign;
 const char *kw_builtin_ceil;
@@ -146,7 +139,7 @@ void symtab_init(uint32_t capacity)
 	kw_max = KW_DEF("max");
 	kw_min = KW_DEF("min");
 	kw_nan = KW_DEF("nan");
-	kw_next = KW_DEF("next");
+	KW_DEF("next");
 	kw_ordinal = KW_DEF("ordinal");
 	kw_param = KW_DEF("param");
 	kw_ptr = KW_DEF("ptr");
@@ -154,16 +147,16 @@ void symtab_init(uint32_t capacity)
 	kw_require = KW_DEF("require");
 	kw_std = KW_DEF("std");
 	kw_values = KW_DEF("values");
-	kw___ceil = KW_DEF("__ceil");
-	kw___round = KW_DEF("__round");
-	kw___sqrt = KW_DEF("__sqrt");
-	kw___trunc = KW_DEF("__trunc");
+	KW_DEF("__ceil");
+	KW_DEF("__round");
+	KW_DEF("__sqrt");
+	KW_DEF("__trunc");
 	kw_LINE = KW_DEF("LINE");
 	kw_LINEREAL = KW_DEF("LINEREAL");
 	kw_FILE = KW_DEF("FILE");
 	kw_FUNC = KW_DEF("FUNC");
 	kw_incr = KW_DEF("incr");
-	kw_default_iterator = KW_DEF("default_iterator");
+	KW_DEF("default_iterator");
 	kw_check_assign = KW_DEF("check_assign");
 
 	kw_argc = KW_DEF("_$argc");
