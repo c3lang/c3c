@@ -36,7 +36,7 @@ bool abi_type_is_integer(AbiType type);
 bool abi_type_is_float(AbiType type);
 static inline void abi_type_set_type(AbiType *abi_type, Type *type);
 static inline AbiType abi_type_get(Type *type);
-static inline void abi_type_set_int_bits(AbiType *abi_type, ByteSize bits);
+
 TypeSize abi_type_size(AbiType type);
 
 typedef struct
@@ -79,11 +79,5 @@ static inline AbiType abi_type_get_int_bits(BitSize bits)
 static inline void abi_type_set_type(AbiType *abi_type, Type *type)
 {
 	abi_type->type = type;
-}
-
-static inline void abi_type_set_int_bits(AbiType *abi_type, ByteSize bits)
-{
-	assert(bits < UINT32_MAX);
-	abi_type->int_bits_plus_1 = (uintptr_t)bits + 1;
 }
 

@@ -4712,7 +4712,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	LLVMValueRef call_value = LLVMBuildCall2(c->builder, func_type, func, values, vec_size(values), "");
 	if (prototype->call_abi)
 	{
-		LLVMSetInstructionCallConv(call_value, llvm_call_convention_from_call(prototype->call_abi, platform_target.arch, platform_target.os));
+		LLVMSetInstructionCallConv(call_value, llvm_call_convention_from_call(prototype->call_abi));
 	}
 	if (expr->call_expr.force_noinline)
 	{

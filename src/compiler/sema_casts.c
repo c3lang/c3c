@@ -141,7 +141,7 @@ bool bool_to_float(Expr *expr, Type *canonical, Type *type)
 /**
  * Cast bool to float.
  */
-bool voidfail_to_error(Expr *expr, Type *canonical, Type *type)
+bool voidfail_to_error(Expr *expr, Type *type)
 {
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_CATCH;
@@ -1173,27 +1173,6 @@ static bool err_to_bool(Expr *expr, Type *to_type)
 	return insert_cast(expr, CAST_ERBOOL, to_type);
 }
 
-bool cast_implicit_bit_width(Expr *expr, Type *to_type)
-{
-	Type *to_canonical = to_type->canonical;
-	Type *from_canonical = expr->type->canonical;
-	if (type_is_integer(to_canonical) && type_is_integer(from_canonical))
-	{
-		if (type_is_unsigned(to_canonical) != type_is_unsigned(from_canonical))
-		{
-			if (type_is_unsigned(from_canonical))
-			{
-				to_type = type_int_unsigned_by_bitsize((uint32_t)type_size(to_canonical) * 8);
-			}
-			else
-			{
-				to_type = type_int_signed_by_bitsize((uint32_t)type_size(to_canonical) * 8);
-			}
-		}
-	}
-	return cast_implicit(expr, to_type);
-}
-
 static inline bool subarray_to_bool(Expr *expr)
 {
 	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
@@ -1345,7 +1324,7 @@ bool cast(Expr *expr, Type *to_type)
 	// Special case *! => error
 	if (to == type_anyerr || to->type_kind == TYPE_ERRTYPE)
 	{
-		if (type_is_failable(from_type)) return voidfail_to_error(expr, to, to_type);
+		if (type_is_failable(from_type)) return voidfail_to_error(expr, to_type);
 	}
 
 	if (type_is_failable_any(from_type))

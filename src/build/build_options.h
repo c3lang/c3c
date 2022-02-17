@@ -112,24 +112,6 @@ typedef enum
 	SIZE_OPTIMIZATION_TINY = 2,     // -Oz
 } SizeOptimizationLevel;
 
-// Values correspond to LLVM values.
-typedef enum
-{
-	PIC_DEFAULT = -1,
-	PIC_NONE = 0,
-	PIC_SMALL = 1,
-	PIC_BIG = 2,
-} PicGeneration;
-
-// Values correspond to LLVM values
-typedef enum
-{
-	PIE_DEFAULT = -1,
-	PIE_NONE = 0,
-	PIE_SMALL = 1,
-	PIE_BIG = 2,
-} PieGeneration;
-
 typedef enum
 {
 	SOFT_FLOAT_DEFAULT = -1,
@@ -193,6 +175,7 @@ typedef enum
 	ARCH_OS_TARGET_DEFAULT = 0,
 	X86_FREEBSD,
 	X86_OPENBSD,
+	X86_NETBSD,
 	X86_LINUX,
 	X86_WINDOWS,
 	X86_MCU,
@@ -200,13 +183,18 @@ typedef enum
 	X64_DARWIN,
 	X64_LINUX,
 	X64_NETBSD,
+	X64_FREEBSD,
+	X64_OPENBSD,
 	X64_WINDOWS,
 	X64_WINDOWS_GNU,
 	X64_ELF,
 	AARCH64_LINUX,
 	AARCH64_DARWIN,
+	AARCH64_ELF,
 	RISCV32_LINUX,
+	RISCV32_ELF,
 	RISCV64_LINUX,
+	RISCV64_ELF,
 	WASM32,
 	WASM64,
 	ARCH_OS_TARGET_LAST = WASM64

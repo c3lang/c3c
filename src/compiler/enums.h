@@ -591,7 +591,6 @@ typedef enum
 	UNARYOP_INC,
 	UNARYOP_DEC,
 	UNARYOP_TADDR,
-	UNARYOP_LAST = UNARYOP_DEC
 } UnaryOp;
 
 typedef enum

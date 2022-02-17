@@ -23,40 +23,37 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 
 	Type *base = NULL;
 	unsigned elements = 0;
-	if ((is_vector || is_reg) && type_is_homogenous_aggregate(type, &base, &elements))
+	if (is_reg && type_is_homogenous_aggregate(type, &base, &elements))
 	{
-		if (is_reg)
+		// Enough registers? Then use direct/expand
+		if (regs->float_regs >= elements)
 		{
-			// Enough registers? Then use direct/expand
-			if (regs->float_regs >= elements)
+			regs->float_regs -= elements;
+			// Direct if return / builtin / vector
+			if (is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR)
 			{
-				regs->float_regs -= elements;
-				// Direct if return / builtin / vector
-				if (is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR)
-				{
-					return abi_arg_new_direct();
-				}
-				return abi_arg_new_expand();
-			}
-			// Otherwise use indirect
-			return abi_arg_new_indirect_not_by_val(type);
-		}
-		if (is_vector)
-		{
-			// Enough registers AND return / builtin / vector
-			if (regs->float_regs >= elements &&
-				(is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR))
-			{
-				regs->float_regs -= elements;
 				return abi_arg_new_direct();
 			}
-			// HVAs are handled later.
-			if (is_return || (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_VECTOR))
-			{
-				return abi_arg_new_indirect_not_by_val(type);
-			}
-			// => to main handling.
+			return abi_arg_new_expand();
 		}
+		// Else use indirect
+		return abi_arg_new_indirect_not_by_val(type);
+	}
+	if (is_vector && type_is_homogenous_aggregate(type, &base, &elements))
+	{
+		// Enough registers AND return / builtin / vector
+		if (regs->float_regs >= elements &&
+		    (is_return || type_is_builtin(type->type_kind) || type->type_kind == TYPE_VECTOR))
+		{
+			regs->float_regs -= elements;
+			return abi_arg_new_direct();
+		}
+		// HVAs are handled later.
+		if (is_return || (!type_is_builtin(type->type_kind) && type->type_kind != TYPE_VECTOR))
+		{
+			return abi_arg_new_indirect_not_by_val(type);
+		}
+		// => to main handling.
 	}
 	ByteSize size = type_size(type);
 	if (type_is_abi_aggregate(type))

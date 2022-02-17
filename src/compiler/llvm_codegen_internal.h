@@ -423,7 +423,7 @@ static inline bool call_supports_variadic(CallABI abi)
 	}
 }
 
-static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi, ArchType arch, OsType os)
+static inline LLVMCallConv llvm_call_convention_from_call(CallABI abi)
 {
 	switch (abi)
 	{

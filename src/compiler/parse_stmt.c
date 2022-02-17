@@ -353,8 +353,6 @@ static inline bool parse_foreach_var(ParseContext *context, Ast *foreach)
 {
 	TypeInfo *type = NULL;
 
-	bool failable = false;
-
 	// If we don't get foreach (foo ... or foreach (*foo ... then a type is expected.
 	if (!TOKEN_IS(TOKEN_IDENT) && !TOKEN_IS(TOKEN_AMP))
 	{
@@ -498,7 +496,6 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *context)
 	ASSIGN_EXPR_ELSE(Expr *expr, parse_expr(context), poisoned_ast);
 	Ast *ast = ast_calloc();
 	ast->span = expr->span;
-	bool failable = false;
 	// We might be parsing "int!"
 	// If so we need to unwrap this.
 	if (expr->expr_kind == EXPR_FAILABLE && expr->inner_expr->expr_kind == EXPR_TYPEINFO)

@@ -207,7 +207,6 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 		// Check if we can return it in a register.
 		if (x86_should_return_type_in_reg(type))
 		{
-			ByteSize size = type_size(type);
 			// Special case is floats and pointers in single field structs (except for MSVC)
 			Type *single_element = type_abi_find_single_struct_element(type);
 			if (single_element)

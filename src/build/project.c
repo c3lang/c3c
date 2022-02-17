@@ -217,7 +217,6 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 	{
 		error_exit("'targets' did not contain map of targets.");
 	}
-	JSONObject *targets_find = NULL;
 	for (unsigned i = 0; i < targets_json->member_len; i++)
 	{
 		JSONObject *object = targets_json->members[i];

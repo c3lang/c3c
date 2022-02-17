@@ -6,23 +6,23 @@
 #include <inttypes.h>
 #include <math.h>
 
-static inline uint32_t u32_min(uint32_t a, uint32_t b)
+UNUSED static inline uint32_t u32_min(uint32_t a, uint32_t b)
 {
 	return a < b ? a : b;
 }
 
-static inline size_t size_max(size_t a, size_t b)
+UNUSED static inline size_t size_max(size_t a, size_t b)
 {
 	return a > b ? a : b;
 }
 
-static inline unsigned unsigned_max(unsigned a, unsigned b)
+UNUSED static inline unsigned unsigned_max(unsigned a, unsigned b)
 {
 	return a > b ? a : b;
 }
 
 
-static char digit_to_char(uint8_t digit, bool upper)
+UNUSED static char digit_to_char(uint8_t digit, bool upper)
 {
 	if (digit <= 9)
 	{
@@ -93,7 +93,7 @@ Int128 i128_from_str(const char *str)
 	return x;
 }
 
-Int128 i128_from_strl(const char *str, const char *end)
+UNUSED Int128 i128_from_strl(const char *str, const char *end)
 {
 	char c;
 	Int128 x = { 0, 0 };
@@ -105,7 +105,7 @@ Int128 i128_from_strl(const char *str, const char *end)
 	return x;
 }
 
-Int128 i128_from_hexstrl(const char *str, const char *end)
+UNUSED Int128 i128_from_hexstrl(const char *str, const char *end)
 {
 	char c;
 	Int128 x = { 0, 0 };
@@ -220,7 +220,7 @@ Int128 i128_mult64(Int128 op1, uint64_t op2)
 }
 
 
-CmpRes int128_scomp64(Int128 op1, int64_t op2)
+UNUSED CmpRes int128_scomp64(Int128 op1, int64_t op2)
 {
 	// Check all zero
 	if (!op2 && !op1.high && !op1.low) return CMP_EQ;
@@ -246,14 +246,14 @@ CmpRes int128_scomp64(Int128 op1, int64_t op2)
 	return op1.low > (uint64_t)op2 ? CMP_GT : CMP_LT;
 }
 
-CmpRes int128_ucomp64(Int128 op1, uint64_t op2)
+UNUSED CmpRes int128_ucomp64(Int128 op1, uint64_t op2)
 {
 	if (op1.high) return CMP_GT;
 	if (op1.low == op2) return CMP_EQ;
 	return op1.low > op2 ? CMP_GT : CMP_LT;
 }
 
-CmpRes i128_ucomp(Int128 op1, Int128 op2)
+UNUSED CmpRes i128_ucomp(Int128 op1, Int128 op2)
 {
 	if (op1.high > op2.high) return CMP_GT;
 	if (op1.high < op2.high) return CMP_LT;
@@ -299,7 +299,7 @@ Int128 i128_from_float_unsigned(Real d)
 	return (Int128){ 0, (uint64_t)d };
 }
 
-bool i128_get_bit(const Int128 *op, int bit)
+UNUSED bool i128_get_bit(const Int128 *op, int bit)
 {
 	assert(bit < 128 && bit >= 0);
 	if (bit > 63)
@@ -322,6 +322,7 @@ Int128 i128_lshr(Int128 op1, Int128 op2)
 
 Int128 i128_ashr64(Int128 op1, uint64_t amount)
 {
+	if (amount == 0) return op1;
 	if (!ISNEG(op1.high)) return i128_lshr64(op1, amount);
 	if (amount > 127) return (Int128){ UINT64_MAX, UINT64_MAX };
 	if (amount == 64) return (Int128){ UINT64_MAX, op1.high };
@@ -381,7 +382,7 @@ static uint32_t popcnt64(uint64_t n)
 	return (((n + (n >> 4)) & 0xF0F0F0F0F0F0F0F) * 0x101010101010101) >> 56;
 }
 
-uint32_t i128_popcnt(Int128 i)
+UNUSED uint32_t i128_popcnt(Int128 i)
 {
 	return popcnt64(i.high) + popcnt64(i.low);
 }
@@ -725,7 +726,6 @@ unsigned int_bits_needed(Int op)
 {
 	TypeKind kind = op.type;
 	Int128 i = op.i;
-	int bits_used;
 	if (type_kind_is_signed(kind))
 	{
 		if (i128_is_neg(i))

@@ -15,7 +15,6 @@
 
 #ifndef _MSC_VER
 
-#include <libgen.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <limits.h>

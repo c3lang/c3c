@@ -25,6 +25,7 @@ extern const char* llvm_target;
 char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[X86_FREEBSD] = "x86-freebsd",
 		[X86_OPENBSD] = "x86-openbsd",
+		[X86_NETBSD] = "x86-netbsd",
 		[X86_MCU] = "x86-mcu",
 		[X86_ELF] = "x86-elf",
 		[X86_WINDOWS] = "x86-windows",
@@ -33,12 +34,17 @@ char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[X64_LINUX] = "x64-linux",
 		[X64_WINDOWS] = "x64-windows",
 		[X64_WINDOWS_GNU] = "x64-mingw",
+		[X64_FREEBSD] = "x64-freebsd",
+		[X64_OPENBSD] = "x64-openbsd",
 		[X64_NETBSD] = "x64-netbsd",
 		[X64_ELF] = "x64-elf",
 		[AARCH64_LINUX] = "aarch64-linux",
 		[AARCH64_DARWIN] = "aarch64-darwin",
+		[AARCH64_ELF] = "aarch64-elf",
 		[RISCV32_LINUX] = "riscv32-linux",
+		[RISCV32_ELF] = "riscv32-elf",
 		[RISCV64_LINUX] = "riscv64-linux",
+		[RISCV64_ELF] = "riscv64-elf",
 		[WASM32] = "wasm32",
 		[WASM64] = "wasm64",
 };
@@ -70,7 +76,7 @@ static void usage(void)
 	OUTPUT("  --stdlib <dir>        - Use this directory as the C3 standard library path.");
 	OUTPUT("  --lib <dir>           - Use this directory as the C3 library path.");
 	OUTPUT("  --path <dir>          - Use this as the base directory for the current command.");
-	OUTPUT("  --template <template> - Use a different template: \"lib\", \"staticlib\" or a path.");
+	OUTPUT("  --template <template> - Use a different template: \"lib\", \"static-lib\" or a path.");
 	OUTPUT("  --about               - Prints a short description of C3.");
 	OUTPUT("  --symtab <value>      - Sets the preferred symtab size.");
 	OUTPUT("  -V --version          - Print version information.");
