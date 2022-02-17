@@ -103,38 +103,18 @@ typedef struct CompileData_
 	Task task;
 } CompileData;
 
-void thread_compile_task_llvm(void *compiledata)
+void thread_compile_task_llvm(void *compile_data)
 {
-	CompileData *data = compiledata;
+	CompileData *data = compile_data;
 	data->object_name = llvm_codegen(data->context);
 }
 
-void thread_compile_task_tb(void *compiledata)
+void thread_compile_task_tb(void *compile_data)
 {
-	CompileData *data = compiledata;
+	CompileData *data = compile_data;
 	data->object_name = tinybackend_codegen(data->context);
 }
 
-
-
-static void add_global_define(const char *name, Expr *value)
-{
-	Decl *dec = decl_calloc();
-	TokenType type = TOKEN_CONST_IDENT;
-	const char *unique_name = symtab_add(name, (uint32_t)strlen(name), fnv1a(name, (uint32_t)strlen(name)), &type);
-	dec->name = unique_name;
-	dec->module = &global_context.std_module;
-	dec->visibility = VISIBLE_PUBLIC;
-	dec->decl_kind = DECL_VAR;
-	dec->var.kind = VARDECL_CONST;
-	dec->var.constant = true;
-	dec->var.type_info = NULL;
-	dec->var.init_expr = value;
-	dec->type = value->type;
-	dec->resolve_status = RESOLVE_DONE;
-	decl_set_external_name(dec);
-	stable_set(&dec->module->symbols, dec->name, dec);
-}
 
 static const char *active_target_name(void)
 {
@@ -260,7 +240,6 @@ void compiler_compile(void)
 		for (int i = 0; i < cfiles; i++)
 		{
 			char *filename = NULL;
-			char *dir = NULL;
 			bool split_worked = filenamesplit(active_target.csources[i], &filename, NULL);
 			assert(split_worked);
 			size_t len = strlen(filename);
@@ -297,7 +276,7 @@ void compiler_compile(void)
 	if (create_exe)
 	{
 		const char *output_name = active_target_name();
-		if (active_target.arch_os_target == ARCH_OS_TARGET_DEFAULT)
+		if (active_target.arch_os_target == default_target)
 		{
 			platform_linker(output_name, obj_files, output_file_count);
 		}

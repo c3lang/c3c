@@ -69,31 +69,21 @@ static void prepare_msys2_linker_flags(const char ***args, const char **files_to
 #undef add_arg
 }
 
-static void append_pie_pic_options(RelocModel reloc, const char ***args_ref)
+static void append_linker_pie_options(RelocModel reloc, const char ***args_ref)
 {
 	switch (reloc)
 	{
 		case RELOC_DEFAULT:
 			UNREACHABLE
 		case RELOC_NONE:
-			vec_add(*args_ref, "-no-pic");
-			vec_add(*args_ref, "-no-pie");
-			vec_add(*args_ref, "-no-PIC");
-			vec_add(*args_ref, "-no-PIE");
+			vec_add(*args_ref, "-no_pie");
 			break;
 		case RELOC_SMALL_PIC:
-			vec_add(*args_ref, "-pic");
-			break;
 		case RELOC_BIG_PIC:
-			vec_add(*args_ref, "-PIC");
 			break;
 		case RELOC_SMALL_PIE:
-			vec_add(*args_ref, "-pie");
-			vec_add(*args_ref, "-pic");
-			break;
 		case RELOC_BIG_PIE:
-			vec_add(*args_ref, "-PIE");
-			vec_add(*args_ref, "-PIC");
+			vec_add(*args_ref, "-pie");
 			break;
 	}
 }
@@ -199,7 +189,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			vec_add(args, "-lm");
 			vec_add(args, "-syslibroot");
 			vec_add(args, "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk");
-			append_pie_pic_options(platform_target.reloc_model, &args);
+			append_linker_pie_options(platform_target.reloc_model, &args);
 			if (platform_target.reloc_model == RELOC_SMALL_PIE || platform_target.reloc_model == RELOC_BIG_PIE)
 			{
 				vec_add(args, "-macosx_version_min");
@@ -221,7 +211,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			{
 				case ARCH_TYPE_X86_64:
 					vec_add(args, "elf_x86_64");
-					append_pie_pic_options(platform_target.reloc_model, &args);
+					append_linker_pie_options(platform_target.reloc_model, &args);
 					if (is_pie_pic(platform_target.reloc_model))
 					{
 						vec_add(args, "--eh-frame-hdr");
@@ -265,7 +255,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 			break;
 		default:
 			add_files(&args, files_to_link, file_count);
-			append_pie_pic_options(platform_target.reloc_model, &args);
+			append_linker_pie_options(platform_target.reloc_model, &args);
 			return false;
 	}
 

@@ -770,8 +770,6 @@ static Decl *parse_const_declaration(ParseContext *context, Visibility visibilit
 {
 	advance_and_verify(context, TOKEN_CONST);
 
-	SourceSpan span = { .loc = context->prev_tok, .end_loc = context->tok.id };
-
 	TypeInfo *type_info = NULL;
 
 	if (parse_next_is_decl(context))
@@ -791,42 +789,6 @@ static Decl *parse_const_declaration(ParseContext *context, Visibility visibilit
 
 	return decl;
 }
-
-/**
- * Possibilities:
- * foo(...)
- * Bar.foo(...)
- * foo::baz::bar.foo(...)
- *
- * @return true if this is a function start.
- */
-static inline bool is_function_start(ParseContext *context)
-{
-	// If it's a ! then it must be function!
-	if (TOKEN_IS(TOKEN_BANG)) return true;
-	if (TOKEN_IS(TOKEN_IDENT))
-	{
-		if (context->next_tok.type == TOKEN_EQEQ || context->next_tok.type == TOKEN_EOS) return false;
-		if (context->next_tok.type == TOKEN_LPAREN) return true;
-	}
-	TokenId current = context->tok.id;
-	TokenType tok = TOKTYPE(current);
-	while (1)
-	{
-		if (tok != TOKEN_IDENT) break;
-		tok = advance_token(&current);
-		if (tok != TOKEN_SCOPE) break;
-		tok = advance_token(&current);
-	}
-	if (tok != TOKEN_TYPE_IDENT) return false;
-	tok = advance_token(&current);
-	if (tok != TOKEN_DOT) return false;
-	tok = advance_token(&current);
-	if (tok != TOKEN_IDENT) return false;
-	tok = advance_token(&current);
-	return tok == TOKEN_LPAREN;
-}
-
 
 Decl *parse_var_decl(ParseContext *context)
 {
@@ -1501,19 +1463,6 @@ static inline TypeInfo **parse_generic_parameters(ParseContext *context)
 	return types;
 }
 
-static inline bool parse_define_optional_path(ParseContext *context, Path **path)
-{
-	if (context->tok.type != TOKEN_IDENT || context->next_tok.type != TOKEN_SCOPE)
-	{
-		*path = NULL;
-		return true;
-	}
-	bool error = false;
-	*path = parse_path_prefix(context, &error);
-	if (error) return false;
-	return true;
-}
-
 /**
  * define_type_body ::= TYPE_IDENT '=' 'distinct'? (func_typedef | type generic_params?) ';'
  *
@@ -1901,6 +1850,7 @@ static inline bool parse_enum_spec(ParseContext *context, TypeInfo **type_ref, D
 	while (!try_consume(context, TOKEN_RPAREN))
 	{
 		if (!parse_param_decl(context, parent_visibility, parameters_ref, true)) return false;
+		assert(VECLAST(*parameters_ref));
 		if (VECLAST(*parameters_ref)->var.vararg)
 		{
 			SEMA_TOKID_ERROR(context->prev_tok, "Vararg parameters are not allowed as enum parameters.");

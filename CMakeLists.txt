@@ -75,6 +75,9 @@ set(LLVM_LINK_COMPONENTS
         WindowsManifest
         )
 
+if (${LLVM_PACKAGE_VERSION} VERSION_GREATER 14)
+    set(LLVM_LINK_COMPONENTS ${LLVM_LINK_COMPONENTS} WindowsDriver)
+endif()
 
 llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 
@@ -91,7 +94,7 @@ if(UNIX)
     find_library(LLD_MINGW NAMES lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_WASM NAMES lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS})
 
-    if(${LLVM_PACKAGE_VERSION} VERSION_LESS 14)
+    if (${LLVM_PACKAGE_VERSION} VERSION_LESS 14)
         find_library(LLD_CORE NAMES lldCore.a liblldCore.a PATHS ${LLVM_LIBRARY_DIRS})
         find_library(LLD_DRIVER NAMES lldDriver.a liblldDriver.a PATHS ${LLVM_LIBRARY_DIRS})
         find_library(LLD_READER_WRITER NAMES lldReaderWriter.a liblldReaderWriter.a PATHS ${LLVM_LIBRARY_DIRS})

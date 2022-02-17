@@ -3,7 +3,7 @@
 #include <math.h>
 #include <errno.h>
 
-static int precision_bits(TypeKind kind)
+UNUSED static int precision_bits(TypeKind kind)
 {
 	switch (kind)
 	{
@@ -22,7 +22,7 @@ static int precision_bits(TypeKind kind)
 	}
 }
 
-static int max_exponent(TypeKind kind)
+UNUSED static int max_exponent(TypeKind kind)
 {
 	switch (kind)
 	{
@@ -41,7 +41,7 @@ static int max_exponent(TypeKind kind)
 	}
 }
 
-static int min_exponent(TypeKind kind)
+UNUSED static int min_exponent(TypeKind kind)
 {
 	switch (kind)
 	{

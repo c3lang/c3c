@@ -330,12 +330,6 @@ RETRY:
 	UNREACHABLE
 }
 
-const char *type_generate_qname(Type *type)
-{
-	if (type_is_builtin(type->type_kind)) return type->name;
-	return strformat("%s::%s", type->decl->module->name->module, type->name);
-}
-
 
 bool type_is_float_or_float_vector(Type *type)
 {

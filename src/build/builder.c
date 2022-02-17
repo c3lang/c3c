@@ -13,6 +13,63 @@
 void load_library_files(void) {}
 void load_files(void) {}
 
+#if defined(_M_X64) || defined(_M_AMD64)
+	#if defined(__MINGW32__)
+ArchOsTarget default_target = X64_WINDOWS_GNU;
+	#else
+ArchOsTarget default_target = X64_WINDOWS;
+	#endif
+#elif defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
+	#if defined(__MACH__)
+ArchOsTarget default_target = X64_DARWIN;
+	#elif defined(__linux__) && __linux__
+ArchOsTarget default_target = X64_LINUX;
+	#elif defined(__NetBSD__)
+ArchOsTarget default_target = X64_NETBSD;
+	#elif defined(__FreeBSD__)
+ArchOsTarget default_target = X64_FREEBSD;
+	#elif defined(__OpenBSD__)
+ArchOsTarget default_target = X64_OPENBSD;
+	#else
+ArchOsTarget default_target = X64_ELF;
+	#endif
+#elif defined(__aarch64__) || defined(_M_ARM64)
+	#if defined(__MACH__)
+ArchOsTarget default_target = AARCH64_DARWIN;
+	#elif defined(__linux__) && __linux__
+ArchOsTarget default_target = AARCH64_LINUX;
+	#else
+ArchOsTarget default_target = AARCH64_ELF;
+	#endif
+#elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
+	#if defined(__linux__) && __linux__
+ArchOsTarget default_target = X86_LINUX;
+	#elif defined(__FreeBSD__)
+ArchOsTarget default_target = X86_FREEBSD;
+	#elif defined(__OpenBSD__)
+ArchOsTarget default_target = X86_OPENBSD;
+	#elif defined(__NetBSD__)
+ArchOsTarget default_target = X86_NETBSD;
+	#elif defined(_MSC_VER) && _MSC_VER
+ArchOsTarget default_target = X86_WINDOWS;
+	#else
+ArchOsTarget default_target = X86_ELF;
+	#endif
+#elif defined(__riscv32)
+	#if defined(__linux__) && __linux__
+ArchOsTarget default_target = RISCV32_LINUX;
+	#else
+ArchOsTarget default_target = RISCV32_ELF;
+	#endif
+#elif defined(__riscv64)
+	#if defined(__linux__) && __linux__
+ArchOsTarget default_target = RISCV64_LINUX;
+	#else
+ArchOsTarget default_target = RISCV64_ELF;
+	#endif
+#else
+ArchOsTarget default_target = ARCH_OS_TARGET_DEFAULT;
+#endif
 
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
@@ -97,16 +154,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->arch_os_target_override != ARCH_OS_TARGET_DEFAULT)
 	{
 		target->arch_os_target = options->arch_os_target_override;
-	}
-#ifndef _MSC_VER
-#define _MSC_VER 0
-#endif
-	else if (_MSC_VER)
-	{
-		// The current handling of ARCH_OS_TARGET_DEFAULT works on unix, but not on windows.
-		// to deal with this, simply default to x64-windows (unless using mingw).
-		// ARCH_OS_TARGET_DEFAULT could be handled in a more cross-platform manner later on.
-		target->arch_os_target = X64_WINDOWS;
 	}
 	if (options->reloc_model != RELOC_DEFAULT) target->reloc_model = options->reloc_model;
 

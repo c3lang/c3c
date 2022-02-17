@@ -26,10 +26,12 @@
 
 #define UNREACHABLE FATAL_ERROR("Should be unreachable");
 
-#if defined(__GNUC__) && __GNUC__ >= 7
+#if (defined(__GNUC__) && __GNUC__ >= 7) || defined(__clang__)
 #define FALLTHROUGH __attribute__ ((fallthrough))
+#define UNUSED __attribute__((unused))
 #else
 #define FALLTHROUGH ((void)0)
+#define UNUSED
 #endif
 
 

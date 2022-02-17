@@ -30,10 +30,10 @@ int target_alloca_addr_space()
 static void type_dump(LLVMTargetDataRef llvm_target_data, LLVMTypeRef type)
 {
 	unsigned long long size = LLVMSizeOfTypeInBits(llvm_target_data, type);
-	unsigned abialign = LLVMABIAlignmentOfType(llvm_target_data, type) * 8;
-	unsigned prefalign = LLVMPreferredAlignmentOfType(llvm_target_data, type) * 8;
+	unsigned abi_align = LLVMABIAlignmentOfType(llvm_target_data, type) * 8;
+	unsigned pref_align = LLVMPreferredAlignmentOfType(llvm_target_data, type) * 8;
 
-	printf(" | %-3llu  %-3d %-3d", size, abialign, prefalign);
+	printf(" | %-3llu  %-3d %-3d", size, abi_align, pref_align);
 }
 
 
@@ -423,17 +423,17 @@ static inline void target_setup_x86_abi(BuildTarget *target)
 static inline void target_setup_x64_abi(BuildTarget *target)
 {
 	platform_target.abi = ABI_X64;
-	X86VectorCapability vector_capability;
+	X86VectorCapability capability;
 	platform_target.x64.is_win64 = platform_target.os == OS_TYPE_WIN32;
 	if (target->feature.x86_vector_capability != X86VECTOR_DEFAULT)
 	{
-		vector_capability = target->feature.x86_vector_capability;
+		capability = target->feature.x86_vector_capability;
 	}
 	else
 	{
-		vector_capability = X86VECTOR_AVX;
+		capability = X86VECTOR_AVX;
 	}
-	platform_target.x64.x86_vector_capability = vector_capability;
+	platform_target.x64.x86_vector_capability = capability;
 	if (target->feature.soft_float == SOFT_FLOAT_YES) platform_target.x64.soft_float = true;
 	if (platform_target.environment_type == ENV_TYPE_GNU)
 	{
@@ -443,7 +443,7 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	{
 		platform_target.x64.pass_int128_vector_in_mem = true;
 	}
-	switch (vector_capability)
+	switch (capability)
 	{
 		case X86VECTOR_AVX:
 			platform_target.x64.native_vector_size_avx = 32;
@@ -463,20 +463,26 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[X86_FREEBSD] = "i386-unknown-freebsd",
 		[X86_OPENBSD] = "i386-unknown-openbsd",
+		[X86_NETBSD] = "i386-unknown-netbsd",
 		[X86_MCU] = "i386-pc-elfiamcu",
 		[X86_WINDOWS] = "i386-pc-win32",
 		[X86_LINUX] = "i386-unknown-linux",
 		[X86_ELF] = "i386-unknown-elf",
 		[X64_DARWIN] = "x86_64-apple-darwin-1",
-		[X64_LINUX] = "x86_64-unknown-linux-gnu",
+		[X64_LINUX] = "x86_64-pc-linux-gnu",
 		[X64_WINDOWS] = "x86_64-pc-windows-msvc",
-		[X64_WINDOWS_GNU] = "x86_64-pc-windows-gnu",
-		[X64_NETBSD] = "x86_64-unknown-netbsd",
+		[X64_WINDOWS_GNU] = "x86_64-w64-windows-gnu",
+		[X64_NETBSD] = "x86_64-pc-netbsd",
+		[X64_FREEBSD] = "x86_64-pc-freebsd",
+		[X64_OPENBSD] = "x86_64-pc-openbsd",
 		[X64_ELF] = "x86_64-unknown-elf",
 		[AARCH64_LINUX] = "aarch64-unknown-linux-gnu",
 		[AARCH64_DARWIN] = "aarch64-apple-darwin",
+		[AARCH64_ELF] = "aarch64-unknown-elf",
 		[RISCV32_LINUX] = "riscv32-unknown-linux",
+		[RISCV32_ELF] = "riscv32-unknown-elf",
 		[RISCV64_LINUX] = "riscv64-unknown-linux",
+		[RISCV64_ELF] = "riscv64-unknown-elf",
 		[WASM32] = "wasm32-unknown-unknown",
 		[WASM64] = "wasm64-unknown-unknown",
 };
@@ -1223,6 +1229,9 @@ void target_setup(BuildTarget *target)
 	INITIALIZE_TARGET(X86);
 	// To support more targets, add them above.
 
+
+	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT) target->arch_os_target = default_target;
+
 	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
 	{
 		platform_target.target_triple = LLVM_DEFAULT_TARGET_TRIPLE;
@@ -1262,6 +1271,7 @@ void target_setup(BuildTarget *target)
 
 	platform_target.llvm_opt_level = (int)level;
 	DEBUG_LOG("Triple picked was %s.", platform_target.target_triple);
+	DEBUG_LOG("Default was %s.", LLVM_DEFAULT_TARGET_TRIPLE);
 
 	LLVMTargetMachineRef machine = llvm_target_machine_create();
 	char *target_triple = LLVMGetTargetMachineTriple(machine);

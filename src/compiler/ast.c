@@ -106,7 +106,7 @@ const char *decl_to_name(Decl *decl)
 				case VARDECL_PARAM_REF:
 					return "ref parameter";
 				case VARDECL_PARAM_EXPR:
-					return "extpression parameter";
+					return "expression parameter";
 				case VARDECL_LOCAL_CT:
 					return "compile time variable";
 				case VARDECL_LOCAL_CT_TYPE:

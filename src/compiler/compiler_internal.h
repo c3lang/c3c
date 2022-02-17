@@ -563,7 +563,6 @@ typedef struct Decl_
 	Visibility visibility : 3;
 	ResolveStatus resolve_status : 3;
 	bool is_packed : 1;
-	bool needs_additional_pad : 1;
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
 	bool no_scope : 1;
@@ -1748,13 +1747,13 @@ Real i128_to_float_signed(Int128 op);
 bool i128_is_zero(Int128 op);
 uint32_t i128_clz(const Int128 *op);
 uint32_t i128_ctz(const Int128 *op);
-int i128_lsb(const Int128 *op);
-int i128_msb(const Int128 *op);
+UNUSED int i128_lsb(const Int128 *op);
+UNUSED int i128_msb(const Int128 *op);
 Int128 i128_from_float_signed(Real d);
 Int128 i128_from_float_unsigned(Real d);
 Int128 i128_from_signed(int64_t i);
-Int128 i128_from_unsigned(uint64_t i);
-bool i128_get_bit(const Int128 *op, int bit);
+UNUSED Int128 i128_from_unsigned(uint64_t i);
+UNUSED bool i128_get_bit(const Int128 *op, int bit);
 
 static inline bool type_may_negate(Type *type)
 {
@@ -1788,7 +1787,6 @@ bool cast(Expr *expr, Type *to_type);
 bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool failable_allowed);
 
 bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, bool is_const);
-bool cast_implicit_bit_width(Expr *expr, Type *to_type);
 
 CastKind cast_to_bool_kind(Type *type);
 
@@ -1835,33 +1833,10 @@ static inline bool decl_poison(Decl *decl) {
 	decl->decl_kind = DECL_POISONED; decl->resolve_status = RESOLVE_DONE; return false;
 }
 static inline bool decl_is_struct_type(Decl *decl);
-static inline bool decl_is_callable_type(Decl *decl);
+
 static inline bool decl_is_user_defined_type(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
-static inline bool decl_var_is_assignable(Decl *decl)
-{
-	switch (decl->var.kind)
-	{
-		case VARDECL_GLOBAL:
-		case VARDECL_LOCAL:
-		case VARDECL_PARAM:
-		case VARDECL_PARAM_CT:
-		case VARDECL_PARAM_CT_TYPE:
-		case VARDECL_PARAM_REF:
-		case VARDECL_LOCAL_CT:
-		case VARDECL_LOCAL_CT_TYPE:
-		case VARDECL_UNWRAPPED:
-			return true;
-		case VARDECL_BITMEMBER:
-		case VARDECL_CONST:
-		case VARDECL_MEMBER:
-		case VARDECL_PARAM_EXPR:
-			return false;
-		case VARDECL_REWRAPPED:
-		case VARDECL_ERASE:
-			UNREACHABLE
-	}
-}
+
 static inline Decl *decl_flatten(Decl *decl)
 {
 	if (decl->decl_kind == DECL_DEFINE && decl->define_decl.define_kind != DEFINE_TYPE_GENERIC)
@@ -1897,7 +1872,6 @@ void expr_const_set_null(ExprConst *expr);
 
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
-ArraySize expr_const_list_size(const ConstInitializer *list);
 
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
@@ -1946,7 +1920,6 @@ const char *module_create_object_file_name(Module *module);
 
 bool parse_file(File *file);
 Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span);
-Path *path_find_parent_path(Path *path);
 
 #define SEMA_TOKEN_ERROR(_tok, ...) sema_error_range(source_span_from_token_id(_tok.id), __VA_ARGS__)
 #define SEMA_TOKID_ERROR(_tok_id, ...) sema_error_range(source_span_from_token_id(_tok_id), __VA_ARGS__)
@@ -2017,7 +1990,7 @@ void stable_init(STable *table, uint32_t initial_size);
 void *stable_set(STable *table, const char *key, void *value);
 void *stable_get(STable *table, const char *key);
 
-void stable_clear(STable *table);
+UNUSED void stable_clear(STable *table);
 
 void decltable_init(DeclTable *table, uint32_t initial_size);
 Decl *decltable_get(DeclTable *table, const char *name);
@@ -2028,7 +2001,7 @@ void scratch_buffer_append(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
 void scratch_buffer_append_char(char c);
 void scratch_buffer_append_signed_int(int64_t i);
-void scratch_buffer_append_unsigned_int(uint64_t i);
+UNUSED void scratch_buffer_append_unsigned_int(uint64_t i);
 char *scratch_buffer_to_string(void);
 const char *scratch_buffer_interned(void);
 
@@ -2042,9 +2015,6 @@ void c_abi_func_create(FunctionPrototype *proto);
 
 bool token_is_type(TokenType type);
 bool token_is_any_type(TokenType type);
-bool token_is_symbol(TokenType type);
-bool token_is_ident_keyword(TokenType token_type);
-bool token_is_ct_ident_keyword(TokenType token_type);
 const char *token_type_to_string(TokenType type);
 static inline TokenType advance_token(TokenId *token)
 {
@@ -2068,7 +2038,6 @@ Type *type_find_common_ancestor(Type *left, Type *right);
 Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other);
 Type *type_abi_find_single_struct_element(Type *type);
-const char *type_generate_qname(Type *type);
 bool type_is_valid_for_vector(Type *type);
 Type *type_get_array(Type *arr_type, ArraySize len);
 Type *type_get_indexed_type(Type *type);
@@ -2465,12 +2434,6 @@ static inline bool decl_is_enum_kind(Decl *decl)
 	return (kind == DECL_ENUM) | (kind == DECL_ERRTYPE);
 }
 
-static inline bool decl_is_callable_type(Decl *decl)
-{
-	DeclKind kind = decl->decl_kind;
-	return (kind == DECL_MACRO) | (kind == DECL_FUNC) | (kind == DECL_GENERIC);
-}
-
 static inline bool decl_is_user_defined_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
@@ -2569,3 +2532,4 @@ static inline Ast *ast_next(AstId *current_ptr)
 	*current_ptr = ast->next;
 	return ast;
 }
+extern ArchOsTarget default_target;

@@ -615,7 +615,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 			LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
 		}
 	}
-	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(prototype->call_abi, platform_target.arch, platform_target.os));
+	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(prototype->call_abi));
 
 	switch (decl->visibility)
 	{
