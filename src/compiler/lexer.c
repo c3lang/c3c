@@ -49,16 +49,21 @@ static inline void backtrace_to_lexing_start(Lexer *lexer)
 }
 
 // Peek at the current character in the buffer.
-static inline char peek(Lexer *lexer)
-{
-	return *lexer->current;
-}
+#define peek(lexer_) (*(lexer_)->current)
 
 // Look at the prev character in the buffer.
-static inline char prev(Lexer *lexer)
-{
-	return lexer->current[-1];
-}
+#define prev(lexer_) ((lexer_)->current[-1])
+
+// Peek one character ahead.
+#define peek_next(lexer_) ((lexer_)->current[1])
+
+// Is the current character '\0' if so we assume we reached the end.
+#define reached_end(lexer_) (lexer_->current[0] == '\0')
+
+// Return the current character and step one character forward.
+#define next(lexer_) \
+(((lexer_)->current[0] == '\n' ? ((lexer_)->line_start = (lexer_)->current + 1, (lexer_)->current_row++) : false), \
+(lexer_)->current++)
 
 // Backtrack the buffer read one step.
 static inline void backtrack(Lexer *lexer)
@@ -70,22 +75,8 @@ static inline void backtrack(Lexer *lexer)
 	}
 }
 
-// Peek one character ahead.
-static inline char peek_next(Lexer *lexer)
-{
-	return lexer->current[1];
-}
 
-// Return the current character and step one character forward.
-static inline void next(Lexer *lexer)
-{
-	if (lexer->current[0] == '\n')
-	{
-		lexer->line_start = lexer->current + 1;
-		lexer->current_row++;
-	}
-	lexer->current++;
-}
+
 
 // Skip the x next characters.
 static inline void skip(Lexer *lexer, int steps)
@@ -97,13 +88,10 @@ static inline void skip(Lexer *lexer, int steps)
 	}
 }
 
-// Is the current character '\0' if so we assume we reached the end.
-static inline bool reached_end(Lexer *lexer)
-{
-	return *lexer->current == '\0';
-}
+
 
 // Match a single character – if successful, more one step forward.
+
 static inline bool match(Lexer *lexer, char expected)
 {
 	if (lexer->current[0] != expected) return false;
