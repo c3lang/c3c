@@ -236,7 +236,6 @@ bool expr_is_pure(Expr *expr)
 			return false;
 		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:
-		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:
 		case EXPR_NOP:
 		case EXPR_PTR:

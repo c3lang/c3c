@@ -750,6 +750,7 @@ typedef struct
 {
 	Path *path;
 	TokenId identifier;
+	bool is_const;
 	Decl *decl;
 } ExprIdentifier;
 

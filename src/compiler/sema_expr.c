@@ -139,7 +139,6 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr, ConstantEvalKind
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			return expr_is_constant_eval(inner, eval_kind);
 		case EXPR_IDENTIFIER:
-		case EXPR_CONST_IDENTIFIER:
 		{
 			Decl *decl = inner->identifier_expr.decl;
 			if (decl->decl_kind == DECL_FUNC) return true;
@@ -303,9 +302,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_CONST:
 		case EXPR_STRINGIFY:
 			return true;
-		case EXPR_CONST_IDENTIFIER:
-			expr = expr->identifier_expr.decl->var.init_expr;
-			goto RETRY;
 		case EXPR_COND:
 			return expr_list_is_constant_eval(expr->cond_expr, eval_kind);
 		case EXPR_DESIGNATOR:
@@ -331,6 +327,11 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return false;
 		case EXPR_IDENTIFIER:
 			if (expr->identifier_expr.decl->decl_kind != DECL_VAR) return true;
+			if (expr->identifier_expr.is_const)
+			{
+				expr = expr->identifier_expr.decl->var.init_expr;
+				goto RETRY;
+			}
 			switch (expr->identifier_expr.decl->var.kind)
 			{
 				case VARDECL_CONST:
@@ -512,12 +513,11 @@ bool expr_is_ltype(Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
-		case EXPR_CONST_IDENTIFIER:
-			return false;
 		case EXPR_CT_IDENT:
 			return true;
 		case EXPR_IDENTIFIER:
 		{
+			if (expr->identifier_expr.is_const) return false;
 			Decl *decl = expr->identifier_expr.decl;
 			if (decl->decl_kind != DECL_VAR) return false;
 			decl = decl_raw(decl);
@@ -2862,7 +2862,6 @@ static TokenId sema_expr_resolve_access_child(Expr *child)
 	switch (child->expr_kind)
 	{
 		case EXPR_IDENTIFIER:
-		case EXPR_CONST_IDENTIFIER:
 			// Not allowed obviously.
 			if (child->identifier_expr.path) break;
 			return child->identifier_expr.identifier;
@@ -5496,7 +5495,6 @@ static bool sema_take_addr_of(Expr *inner)
 			SEMA_ERROR(inner, "It's not possible to take the address of a macro.");
 			return false;
 		case EXPR_IDENTIFIER:
-		case EXPR_CONST_IDENTIFIER:
 			return sema_take_addr_of_ident(inner);
 		case EXPR_UNARY:
 			if (inner->unary_expr.operator == UNARYOP_DEREF) return true;
@@ -6482,7 +6480,6 @@ RETRY:
 		case EXPR_CT_IDENT:
 			current = current->identifier_expr.decl->var.init_expr;
 			goto RETRY;
-		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:
 			decl = current->identifier_expr.decl;
 			break;
@@ -6772,7 +6769,6 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 	ExprFlatElement *path = expr->ct_call_expr.flat_path;
 	switch (main_var->expr_kind)
 	{
-		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:
 			// 2. An identifier does a lookup
 			decl = sema_resolve_normal_symbol(context, main_var->identifier_expr.identifier, main_var->identifier_expr.path, false);
@@ -7066,7 +7062,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_typeid(context, expr);
 		case EXPR_MACRO_EXPANSION:
 			return sema_expr_analyse_macro_expansion(context, expr);
-		case EXPR_CONST_IDENTIFIER:
 		case EXPR_IDENTIFIER:
 			return sema_expr_analyse_identifier(context, NULL, expr);
 		case EXPR_CALL:
@@ -7176,7 +7171,6 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 			if (!sema_cast_ct_ident_rvalue(context, expr)) return false;
 			break;
 		case EXPR_IDENTIFIER:
-		case EXPR_CONST_IDENTIFIER:
 			if (!sema_cast_ident_rvalue(context, expr)) return false;
 			break;
 		default:
@@ -7401,7 +7395,7 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 		case EXPR_EXPR_BLOCK:
 			if (!sema_expr_analyse_expr_block(context, infer_type, expr)) return expr_poison(expr);
 			break;
-		case EXPR_CONST_IDENTIFIER:
+		case EXPR_IDENTIFIER:
 			if (!sema_expr_analyse_identifier(context, infer_type, expr)) return expr_poison(expr);
 			break;
 		default:

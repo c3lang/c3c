@@ -795,8 +795,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 				return expr;
 			}
 			return NULL;
-		case EXPR_CONST_IDENTIFIER:
-			return type_size(expr->type) > type_size(type) ? expr : NULL;
 		case EXPR_FAILABLE:
 		case EXPR_HASH_IDENT:
 		case EXPR_FLATPATH:
@@ -953,8 +951,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 				return expr;
 			}
 			return NULL;
-		case EXPR_CONST_IDENTIFIER:
-			return type_size(expr->type) > type_size(type) ? expr : NULL;
 		case EXPR_FAILABLE:
 		case EXPR_HASH_IDENT:
 		case EXPR_FLATPATH:

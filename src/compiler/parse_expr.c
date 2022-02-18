@@ -873,8 +873,9 @@ static Expr *parse_ct_call(ParseContext *context, Expr *left)
 static Expr *parse_identifier(ParseContext *context, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(context->tok.type == TOKEN_CONST_IDENT ? EXPR_CONST_IDENTIFIER : EXPR_IDENTIFIER , context->tok);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_IDENTIFIER , context->tok);
 	expr->identifier_expr.identifier = context->tok.id;
+	expr->identifier_expr.is_const = context->tok.type == TOKEN_CONST_IDENT;
 	advance(context);
 	return expr;
 }

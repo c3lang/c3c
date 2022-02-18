@@ -5563,7 +5563,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			// These are folded in the semantic analysis step.
 			UNREACHABLE
 		case EXPR_IDENTIFIER:
-		case EXPR_CONST_IDENTIFIER:
 			llvm_value_set_decl(value, expr->identifier_expr.decl);
 			return;
 		case EXPR_SUBSCRIPT:
