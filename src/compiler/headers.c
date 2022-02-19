@@ -191,7 +191,7 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 	{
 		case NON_TYPE_DECLS:
 		case DECL_ENUM_CONSTANT:
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 		case DECL_POISONED:
 		case DECL_VAR:
 			UNREACHABLE
@@ -210,7 +210,7 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 		case DECL_ENUM:
 			header_gen_enum(file, indent, decl);
 			return;
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 			header_gen_err(file, indent, decl);
 			return;
 	}

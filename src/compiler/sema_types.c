@@ -122,7 +122,8 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info)
 {
 	Decl *decl = sema_resolve_normal_symbol(context,
-	                                        type_info->unresolved.name_loc,
+	                                        type_info->unresolved.name,
+	                                        type_info->unresolved.span,
 	                                        type_info->unresolved.path, true);
 	decl = decl_flatten(decl);
 	// Already handled
@@ -136,11 +137,11 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_STRUCT:
 		case DECL_BITSTRUCT:
 		case DECL_UNION:
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 		case DECL_ENUM:
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
-			DEBUG_LOG("Resolved %s.", TOKSTR(type_info->unresolved.name_loc));
+			DEBUG_LOG("Resolved %s.", type_info->unresolved.name);
 			return true;
 		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
@@ -166,14 +167,14 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			}
 			FALLTHROUGH;
 		case DECL_FUNC:
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_MACRO:
 		case DECL_GENERIC:
 		case DECL_LABEL:
 		case DECL_ATTRIBUTE:
-			SEMA_TOKID_ERROR(type_info->unresolved.name_loc, "This is not a type.");
+			SEMA_ERROR(&type_info->unresolved, "This is not a type.");
 			return type_info_poison(type_info);
 		case DECL_CT_ELSE:
 		case DECL_CT_IF:
@@ -236,9 +237,9 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 	if (type_info->resolve_status == RESOLVE_RUNNING)
 	{
 		// TODO this is incorrect for unresolved expressions
-		SEMA_TOKID_ERROR(type_info->unresolved.name_loc,
-		                 "Circular dependency resolving type '%s'.",
-		                 TOKSTR(type_info->unresolved.name_loc));
+		SEMA_ERROR(&type_info->unresolved,
+		           "Circular dependency resolving type '%s'.",
+		           type_info->unresolved.name);
 		return type_info_poison(type_info);
 	}
 
@@ -248,6 +249,7 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 	{
 		case TYPE_INFO_POISON:
 			UNREACHABLE
+		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
 			if (!sema_resolve_type_identifier(context, type_info)) return false;
 			break;

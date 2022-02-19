@@ -1,3 +1,4 @@
 /**
-@1 // #error: Expected doc directive here
+@hello
+@param feij > 0 // #error: Expected end of line.
 */

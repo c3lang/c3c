@@ -4,7 +4,7 @@ extern fn void printf(char*, ...);
 
 fn void test(variant x)
 {
-    switch (x.typeid)
+    switch (x.type)
     {
         case int:
             printf("Was int\n");
@@ -32,23 +32,23 @@ fn void main()
     variant x = &&1;
     int z;
     variant y = &z;
-    typeid g = y.typeid;
-    typeid h = x.typeid;
-    if (y.typeid == int.typeid)
+    typeid g = y.type;
+    typeid h = x.type;
+    if (y.type == int.typeid)
     {
         printf("y int match\n");
     }
-    if (x.typeid == int.typeid)
+    if (x.type == int.typeid)
     {
         printf("x int match\n");
     }
     y = &&1.0;
     x = &x;
-    if (y.typeid == int.typeid)
+    if (y.type == int.typeid)
     {
         printf("y int match\n");
     }
-    if (x.typeid == int.typeid)
+    if (x.type == int.typeid)
     {
         printf("x int match\n");
     }
@@ -131,30 +131,30 @@ switch.exit:                                      ; preds = %switch.default, %sw
 define void @foo.test_all(i8* %0, i64 %1) #0 {
 entry:
   %y = alloca %"variant[]", align 8
-  %"__idx$" = alloca i64, align 8
-  %"__len$" = alloca i64, align 8
+  %anon = alloca i64, align 8
+  %anon1 = alloca i64, align 8
   %element = alloca %variant, align 8
   %pair = bitcast %"variant[]"* %y to { i8*, i64 }*
   %2 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 0
   store i8* %0, i8** %2, align 8
   %3 = getelementptr inbounds { i8*, i64 }, { i8*, i64 }* %pair, i32 0, i32 1
   store i64 %1, i64* %3, align 8
-  store i64 0, i64* %"__idx$", align 8
+  store i64 0, i64* %anon, align 8
   %4 = getelementptr inbounds %"variant[]", %"variant[]"* %y, i32 0, i32 1
   %5 = load i64, i64* %4, align 8
-  store i64 %5, i64* %"__len$", align 8
+  store i64 %5, i64* %anon1, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %6 = load i64, i64* %"__idx$", align 8
-  %7 = load i64, i64* %"__len$", align 8
+  %6 = load i64, i64* %anon, align 8
+  %7 = load i64, i64* %anon1, align 8
   %lt = icmp ult i64 %6, %7
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %8 = getelementptr inbounds %"variant[]", %"variant[]"* %y, i32 0, i32 0
   %9 = load %variant*, %variant** %8, align 8
-  %10 = load i64, i64* %"__idx$", align 8
+  %10 = load i64, i64* %anon, align 8
   %ptroffset = getelementptr inbounds %variant, %variant* %9, i64 %10
   %11 = bitcast %variant* %element to i8*
   %12 = bitcast %variant* %ptroffset to i8*
@@ -165,9 +165,9 @@ loop.body:                                        ; preds = %loop.cond
   %15 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %13, i32 0, i32 1
   %hi = load i8*, i8** %15, align 8
   call void @foo.test(i64 %lo, i8* %hi)
-  %16 = load i64, i64* %"__idx$", align 8
+  %16 = load i64, i64* %anon, align 8
   %add = add i64 %16, 1
-  store i64 %add, i64* %"__idx$", align 8
+  store i64 %add, i64* %anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

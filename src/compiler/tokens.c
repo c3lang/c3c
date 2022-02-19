@@ -176,8 +176,6 @@ const char *token_type_to_string(TokenType type)
 			return "BYTES";
 
 		// Comments
-		case TOKEN_COMMENT:
-			return "COMMENT";
 		case TOKEN_DOC_COMMENT:
 			return "DOC_COMMENT";
 
@@ -328,16 +326,26 @@ const char *token_type_to_string(TokenType type)
 			return "uptrdiff";
 		case TOKEN_FLOAT16:
 			return "float16";
-		case TOKEN_DOCS_EOL:
-			return "EOL";
 		case TOKEN_DOCS_START:
 			return "/**";
 		case TOKEN_DOCS_END:
 			return "*/";
-		case TOKEN_DOCS_DIRECTIVE:
-			return "DIRECTIVE";
-		case TOKEN_DOCS_LINE:
-			return "DOCS_LINE";
+		case TOKEN_DOCS_OPTRETURN:
+			return "@optreturn";
+		case TOKEN_DOCS_PARAM:
+			return "@param";
+		case TOKEN_DOCS_RETURN:
+			return "@return";
+		case TOKEN_DOCS_ENSURE:
+			return "@ensure";
+		case TOKEN_DOCS_REQUIRE:
+			return "@require";
+		case TOKEN_DOCS_CHECKED:
+			return "@checked";
+		case TOKEN_DOCS_PURE:
+			return "@pure";
+		case TOKEN_DOC_DIRECTIVE:
+			return "DOC_DIRECTIVE";
 
 		case TOKEN_CT_ALIGNOF:
 			return "$alignof";

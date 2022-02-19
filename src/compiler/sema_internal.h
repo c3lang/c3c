@@ -73,6 +73,7 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool failable);
 void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value, bool narrowable);
+void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
 static inline bool expr_is_const(Expr *expr);
 
 static inline bool expr_is_const(Expr *expr)

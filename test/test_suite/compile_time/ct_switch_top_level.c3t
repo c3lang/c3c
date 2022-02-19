@@ -5,7 +5,7 @@ extern fn void printf(char*, ...);
 
 macro tester()
 {
-    $Type = int;
+    var $Type = int;
     $switch ($Type):
     $case int:
         printf("Hello\n");

@@ -9,13 +9,12 @@ CompilationUnit * unit_create(File *file)
 {
 	CompilationUnit *unit = CALLOCS(CompilationUnit);
     unit->file = file;
-    stable_init(&unit->local_symbols, 1024);
-    stable_init(&unit->external_symbols, 1024);
+	htable_init(&unit->local_symbols, 64 * 1024);
     return unit;
 }
 
 
-static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name, TokenId *parameters, bool is_private)
+static inline bool create_module_or_check_name(CompilationUnit *unit, Path *module_name, const char **parameters, bool is_private)
 {
     Module *module = unit->module;
 	if (!module)
@@ -38,11 +37,11 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
     {
     	if (is_private)
 	    {
-		    SEMA_ERROR(module_name, "The module is declared as private here, but was declared as public elsewhere.");
+    		SEMA_ERROR(module_name, "The module is declared as private here, but was declared as public elsewhere.");
 	    }
     	else
 	    {
-		    SEMA_ERROR(module_name, "The module is declared as public here, but was declared as private elsewhere.");
+    		SEMA_ERROR(module_name, "The module is declared as public here, but was declared as private elsewhere.");
 	    }
 	    return false;
 
@@ -102,18 +101,18 @@ bool context_set_module_from_filename(ParseContext *context)
         return false;
     }
     Path *path = CALLOCS(Path);
-    path->span = INVALID_RANGE;
+    path->span = INVALID_SPAN;
     path->module = module_name;
     path->len = global_context.scratch_buffer_len;
     return create_module_or_check_name(context->unit, path, NULL, true);
 }
 
-bool context_set_module(ParseContext *context, Path *path, TokenId *generic_parameters, bool is_private)
+bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters, bool is_private)
 {
     // Note that we allow the illegal name for now, to be able to parse further.
     if (!is_all_lower(path->module))
     {
-        SEMA_ERROR(path, "A module name may not have any upper case characters.");
+    	SEMA_ERROR(path, "A module name may not have any upper case characters.");
         return false;
     }
 
@@ -124,12 +123,11 @@ bool context_set_module(ParseContext *context, Path *path, TokenId *generic_para
 void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 {
 	if (!decl->module || decl->module == unit->module || !decl->external_name) return;
-	Decl *prev = stable_get(&unit->external_symbols, decl->external_name);
-	if (prev) return;
-	if (decl != stable_set(&unit->external_symbols, decl->external_name, decl))
+	VECEACH(unit->external_symbol_list, i)
 	{
-		vec_add(unit->external_symbol_list, decl);
+		if (decl == unit->external_symbol_list[i]) return;
 	}
+	vec_add(unit->external_symbol_list, decl);
 }
 
 
@@ -146,7 +144,7 @@ void decl_register(Decl *decl)
 		case DECL_CT_SWITCH:
 		case DECL_CT_ASSERT:
 		case DECL_ENUM_CONSTANT:
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_DECLARRAY:
@@ -154,7 +152,7 @@ void decl_register(Decl *decl)
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
 		case DECL_DISTINCT:
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 		case DECL_ENUM:
 		case DECL_STRUCT:
 		case DECL_TYPEDEF:
@@ -227,7 +225,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_TYPEDEF:
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 		case DECL_BITSTRUCT:
 			assert(decl->name);
 			vec_add(unit->types, decl);
@@ -246,7 +244,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			decl_set_external_name(decl);
 			decl_register(decl);
 			break;
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_CT_ELSE:
@@ -267,8 +265,8 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 	DEBUG_LOG("Registering symbol '%s' in %s.", decl->name, unit->module->name->module);
 
 	Decl *old;
-	if ((old = stable_set(&unit->local_symbols, decl->name, decl))) goto ERR;
-	if ((old = stable_set(&unit->module->symbols, decl->name, decl))) goto ERR;
+	if ((old = htable_set(&unit->local_symbols, decl->name, decl))) goto ERR;
+	if ((old = htable_set(&unit->module->symbols, decl->name, decl))) goto ERR;
 	return;
 ERR:
 	assert(decl != old);
@@ -277,7 +275,7 @@ ERR:
 	decl_poison(old);
 }
 
-bool unit_add_import(CompilationUnit *unit, Path *path, Token token, bool private_import)
+bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
 {
     DEBUG_LOG("SEMA: Add import of '%s'.", path->module);
 
@@ -294,7 +292,6 @@ bool unit_add_import(CompilationUnit *unit, Path *path, Token token, bool privat
 	import->visibility = VISIBLE_LOCAL;
 	import->import.path = path;
 	import->import.private = private_import;
-	import->import.symbol = token.id;
 
     vec_add(unit->imports, import);
 	DEBUG_LOG("Added import %s", path->module);

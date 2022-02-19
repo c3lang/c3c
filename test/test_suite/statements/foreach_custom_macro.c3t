@@ -36,8 +36,8 @@ define void @foo.main() #0 {
 entry:
   %i = alloca [3 x i32], align 4
   %x = alloca %Foo, align 8
-  %"__idx$" = alloca i64, align 8
-  %"__len$" = alloca i64, align 8
+  %anon = alloca i64, align 8
+  %anon1 = alloca i64, align 8
   %f = alloca i32, align 4
   %index = alloca i64, align 8
   %0 = bitcast [3 x i32]* %i to i8*
@@ -47,21 +47,21 @@ entry:
   %3 = insertvalue %"int[]" undef, i32* %2, 0
   %4 = insertvalue %"int[]" %3, i64 3, 1
   store %"int[]" %4, %"int[]"* %1, align 8
-  store i64 0, i64* %"__idx$", align 8
+  store i64 0, i64* %anon, align 8
   %5 = getelementptr inbounds %Foo, %Foo* %x, i32 0, i32 0
   %6 = getelementptr inbounds %"int[]", %"int[]"* %5, i32 0, i32 1
   %7 = load i64, i64* %6, align 8
-  store i64 %7, i64* %"__len$", align 8
+  store i64 %7, i64* %anon1, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %entry
-  %8 = load i64, i64* %"__idx$", align 8
-  %9 = load i64, i64* %"__len$", align 8
+  %8 = load i64, i64* %anon, align 8
+  %9 = load i64, i64* %anon1, align 8
   %lt = icmp ult i64 %8, %9
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %10 = load i64, i64* %"__idx$", align 8
+  %10 = load i64, i64* %anon, align 8
   store i64 %10, i64* %index, align 8
   %11 = getelementptr inbounds %Foo, %Foo* %x, i32 0, i32 0
   %12 = getelementptr inbounds %"int[]", %"int[]"* %11, i32 0, i32 0
@@ -72,11 +72,11 @@ loop.body:                                        ; preds = %loop.cond
   store i32 %15, i32* %f, align 4
   %16 = load i32, i32* %f, align 4
   %17 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %16)
-  br label %loop.body1
+  br label %loop.body2
 
-loop.body1:                                       ; preds = %loop.body
+loop.body2:                                       ; preds = %loop.body
   br label %loop.exit
 
-loop.exit:                                        ; preds = %loop.body1, %loop.cond
+loop.exit:                                        ; preds = %loop.body2, %loop.cond
   ret void
 }

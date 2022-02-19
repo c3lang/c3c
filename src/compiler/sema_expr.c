@@ -122,7 +122,7 @@ Expr *expr_variable(Decl *decl)
 		return expr;
 	}
 	Expr *expr = expr_new(EXPR_IDENTIFIER, decl->span);
-	expr->identifier_expr.identifier = decl->name_token;
+	expr->identifier_expr.ident = decl->name;
 	expr->resolve_status = RESOLVE_NOT_DONE;
 	return expr;
 
@@ -273,8 +273,7 @@ static bool sema_bit_assignment_check(Expr *right, Decl *member)
 
 	if (int_bits_needed(right->const_expr.ixx) > bits)
 	{
-		SEMA_ERROR(right,
-				   "This constant would be truncated if stored in the bitstruct, do you need a wider bit range?");
+		SEMA_ERROR(right, "This constant would be truncated if stored in the bitstruct, do you need a wider bit range?");
 		return false;
 	}
 	return true;
@@ -574,7 +573,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_GENERIC:
 			SEMA_ERROR(expr, "Expected generic function followed by (...).");
 			return expr_poison(expr);
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 			SEMA_ERROR(expr, "Did you forget a '!' after '%s'?", decl->name);
 			return expr_poison(expr);
 		case DECL_ENUM_CONSTANT:
@@ -603,7 +602,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_ENUM:
 			SEMA_ERROR(expr, "Expected enum name followed by '.' and an enum value.");
 			return expr_poison(expr);
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 			SEMA_ERROR(expr, "Expected errtype name followed by '.' and an error value.");
 			return expr_poison(expr);
 		case DECL_IMPORT:
@@ -683,8 +682,8 @@ static inline bool sema_type_error_on_binop(Expr *expr)
 {
 	const char *c = token_type_to_string(binaryop_to_token(expr->binary_expr.operator));
 	SEMA_ERROR(expr, "%s is not defined in the expression %s %s %s.",
-	               c, type_quoted_error_string(expr->binary_expr.left->type),
-	               c, type_quoted_error_string(expr->binary_expr.right->type));
+	           c, type_quoted_error_string(expr->binary_expr.left->type),
+	           c, type_quoted_error_string(expr->binary_expr.right->type));
 	return false;
 }
 
@@ -760,7 +759,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 		if (!max)
 		{
 			SEMA_ERROR(expr, "Cannot find a common parent type of '%s' and '%s'",
-			               type_to_error_string(left_canonical), type_to_error_string(right_canonical));
+			           type_to_error_string(left_canonical), type_to_error_string(right_canonical));
 			return false;
 		}
 		Type *no_fail_max = type_no_fail(max);
@@ -778,9 +777,8 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 
 
 
-static inline Decl *decl_find_enum_constant(TokenId token, Decl *decl)
+static inline Decl *decl_find_enum_constant(const char *name, Decl *decl)
 {
-	const char *name = TOKSTR(token);
 	VECEACH(decl->enums.values, i)
 	{
 		Decl *enum_constant = decl->enums.values[i];
@@ -792,7 +790,7 @@ static inline Decl *decl_find_enum_constant(TokenId token, Decl *decl)
 	return NULL;
 }
 
-static inline bool sema_expr_analyse_enum_constant(Expr *expr, TokenId name, Decl *decl)
+static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name, Decl *decl)
 {
 	Decl *enum_constant = decl_find_enum_constant(name, decl);
 	if (!enum_constant) return false;
@@ -821,8 +819,8 @@ static inline bool find_possible_inferred_identifier(Type *to, Expr *expr)
 	switch (parent_decl->decl_kind)
 	{
 		case DECL_ENUM:
-		case DECL_ERRTYPE:
-			return sema_expr_analyse_enum_constant(expr, expr->identifier_expr.identifier, parent_decl);
+		case DECL_OPTENUM:
+			return sema_expr_analyse_enum_constant(expr, expr->identifier_expr.ident, parent_decl);
 		case DECL_UNION:
 		case DECL_STRUCT:
 		case DECL_BITSTRUCT:
@@ -838,9 +836,10 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	Decl *ambiguous_decl = NULL;
 	Decl *private_symbol = NULL;
 
-	DEBUG_LOG("Now resolving %s", TOKSTR(expr->identifier_expr.identifier));
+	DEBUG_LOG("Now resolving %s", expr->identifier_expr.ident);
 	Decl *decl = sema_resolve_normal_symbol(context,
-	                                        expr->identifier_expr.identifier,
+	                                        expr->identifier_expr.ident,
+	                                        expr->span,
 	                                        expr->identifier_expr.path,
 	                                        false);
 	if (!decl_ok(decl)) return false;
@@ -851,7 +850,8 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	if (!decl)
 	{
 		decl = sema_resolve_normal_symbol(context,
-		                                  expr->identifier_expr.identifier,
+		                                  expr->identifier_expr.ident,
+		                                  expr->span,
 		                                  expr->identifier_expr.path,
 		                                  true);
 		(void)decl;
@@ -930,8 +930,8 @@ static inline bool sema_expr_analyse_macro_expansion(SemaContext *context, Expr 
 	Expr *inner = expr->macro_expansion_expr.inner;
 	if (inner->expr_kind == EXPR_IDENTIFIER)
 	{
-		TokenId body = context->current_macro ? context->current_macro->macro_decl.block_parameter : NO_TOKEN_ID ;
-		if (body.index && !inner->identifier_expr.path && TOKSTR(inner->identifier_expr.identifier) == TOKSTR(body))
+		const char *body = context->current_macro ? context->current_macro->macro_decl.block_parameter : NULL;
+		if (body && !inner->identifier_expr.path && inner->identifier_expr.ident == body)
 		{
 			expr->expr_kind = EXPR_MACRO_BODY_EXPANSION;
 			expr->body_expansion_expr.ast = NULL;
@@ -966,9 +966,10 @@ static inline bool sema_expr_analyse_macro_expansion(SemaContext *context, Expr 
 
 static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr)
 {
-	DEBUG_LOG("Now resolving %s", TOKSTR(expr->ct_ident_expr.identifier));
+	DEBUG_LOG("Now resolving %s", expr->ct_ident_expr.identifier);
 	Decl *decl = sema_resolve_normal_symbol(context,
 	                                        expr->ct_ident_expr.identifier,
+	                                        expr->span,
 	                                        NULL, true);
 
 	// Already handled
@@ -988,9 +989,10 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 
 static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Expr *expr)
 {
-	DEBUG_LOG("Now resolving %s", TOKSTR(expr->hash_ident_expr.identifier));
+	DEBUG_LOG("Now resolving %s", expr->hash_ident_expr.identifier);
 	Decl *decl = sema_resolve_normal_symbol(context,
 	                                        expr->hash_ident_expr.identifier,
+	                                        expr->span,
 	                                        NULL, true);
 
 	// Already handled
@@ -1003,7 +1005,7 @@ static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Expr 
 	assert(decl->decl_kind == DECL_VAR);
 
 	expr_replace(expr, copy_expr(decl->var.init_expr));
-	if (!sema_analyse_expr(decl->var.context, expr))
+	if (!sema_analyse_expr(decl->var.hash_var.context, expr))
 	{
 		// Poison the decl so we don't evaluate twice.
 		decl_poison(decl);
@@ -1137,7 +1139,7 @@ typedef struct
 {
 	bool macro;
 	bool func_pointer;
-	TokenId block_parameter;
+	const char *block_parameter;
 	Decl **params;
 	Type **param_types;
 	Expr *struct_var;
@@ -1168,7 +1170,7 @@ static inline bool sema_check_invalid_body_arguments(SemaContext *context, Expr 
 	bool has_body_arguments = vec_size(body_arguments) > 0;
 
 	// 1. Check if there are body arguments but no actual block.
-	if (has_body_arguments && !callee->block_parameter.index)
+	if (has_body_arguments && !callee->block_parameter)
 	{
 		if (callee->macro)
 		{
@@ -1191,7 +1193,7 @@ static inline bool sema_check_invalid_body_arguments(SemaContext *context, Expr 
 			return false;
 		}
 		// 2b. If we don't have a block parameter, then this is an error as well
-		if (!callee->block_parameter.index)
+		if (!callee->block_parameter)
 		{
 			SEMA_ERROR(call, "This macro does not support trailing statements, please remove it.");
 			return false;
@@ -1202,7 +1204,7 @@ static inline bool sema_check_invalid_body_arguments(SemaContext *context, Expr 
 	}
 
 	// 3. If we don't have a body, then if it has a block parameter this is an error.
-	if (callee->block_parameter.index)
+	if (callee->block_parameter)
 	{
 		assert(callee->macro);
 		SEMA_ERROR(call, "Expected call to have a trailing statement, did you forget to add it?");
@@ -1388,7 +1390,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 		if (callee.variadic == VARIADIC_NONE)
 		{
 			SEMA_ERROR(call->call_expr.arguments[num_args - 1],
-					   "Unpacking is only allowed for %s with variable parameters.",
+			           "Unpacking is only allowed for %s with variable parameters.",
 					   callee.macro ? "macros" : "functions");
 			return false;
 		}
@@ -1520,7 +1522,8 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 				break;
 			case VARDECL_PARAM_EXPR:
 				// #foo
-				param->var.context = context;
+				param->var.hash_var.context = context;
+				param->var.hash_var.span = arg->span;
 				break;
 			case VARDECL_PARAM_CT:
 				// $foo
@@ -1563,7 +1566,7 @@ static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Funct
 	CalledDecl callee = {
 			.macro = false,
 			.func_pointer = sig ? 0 : 1,
-			.block_parameter = NO_TOKEN_ID,
+			.block_parameter = NULL,
 			.struct_var = struct_var,
 			.params = sig ? sig->params : NULL,
 			.param_types = prototype->params,
@@ -1803,7 +1806,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.yield_body = call_expr->call_expr.body;
 	macro_context.yield_params = body_params;
 	macro_context.yield_context = context;
-	macro_context.original_inline_line = context->original_inline_line ? context->original_inline_line : TOKLOC(call_expr->span.loc)->row;
+	macro_context.original_inline_line = context->original_inline_line ? context->original_inline_line : call_expr->span.row;
 
 	VECEACH(params, i)
 	{
@@ -1828,8 +1831,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			if (rtype && type_no_fail(rtype) != type_void)
 			{
 				SEMA_ERROR(decl,
-						   "Missing return in macro that should evaluate to %s.",
-						   type_quoted_error_string(rtype));
+				           "Missing return in macro that should evaluate to %s.",
+				           type_quoted_error_string(rtype));
 				return SCOPE_POP_ERROR();
 			}
 		}
@@ -1850,7 +1853,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				if (!cast_may_implicit(type, rtype, true, true))
 				{
 					SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
-							   type_quoted_error_string(type));
+					           type_quoted_error_string(type));
 					return SCOPE_POP_ERROR();
 				}
 				bool success = cast_implicit(ret_expr, rtype);
@@ -1967,6 +1970,7 @@ static inline bool sema_expr_analyse_generic_call(SemaContext *context, Expr *ca
 	Decl *found = NULL;
 	VECEACH(generic_cache, i)
 	{
+		TODO
 		if (generic_cache[i]->external_name == mangled_name)
 		{
 			found = generic_cache[i];
@@ -2000,7 +2004,7 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 {
 	Decl *macro = macro_context->current_macro;
 	assert(macro);
-	assert(macro->macro_decl.block_parameter.index);
+	assert(macro->macro_decl.block_parameter);
 
 	ExprCall *call_expr = &call->call_expr;
 	if (vec_size(call_expr->body_arguments))
@@ -2065,13 +2069,13 @@ static inline bool sema_analyse_call_attributes(SemaContext *context, Decl *decl
 			case ATTRIBUTE_NOINLINE:
 				if (decl && decl->decl_kind != DECL_FUNC)
 				{
-					SEMA_TOKID_ERROR(attr->name,
+					sema_error_at(attr->name_span,
 					                 "Inline / noinline attribute is only allowed for direct function/method calls");
 					return false;
 				}
 				if (force_inline != -1)
 				{
-					SEMA_TOKID_ERROR(attr->name, "Only a single inline / noinline attribute is allowed on a call.");
+					sema_error_at(attr->name_span, "Only a single inline / noinline attribute is allowed on a call.");
 					return false;
 				}
 				force_inline = attribute == ATTRIBUTE_INLINE ? 1 : 0;
@@ -2783,7 +2787,7 @@ void expr_rewrite_to_int_const(Expr *expr_to_rewrite, Type *type, uint64_t value
 }
 
 
-static inline void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
+void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
 {
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 	expr_to_rewrite->const_expr.const_kind = CONST_STRING;
@@ -2857,40 +2861,41 @@ static Expr *enum_minmax_value(Decl *decl, BinaryOp comparison)
  * 4. .#bar -> It is an identifier to resolve as a member or a function
  * 5. .@#bar -> It is an identifier to resolve as a macro
  */
-static TokenId sema_expr_resolve_access_child(Expr *child)
+static Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child)
 {
 	switch (child->expr_kind)
 	{
 		case EXPR_IDENTIFIER:
-			// Not allowed obviously.
+			// A path is not allowed.
 			if (child->identifier_expr.path) break;
-			return child->identifier_expr.identifier;
-		case EXPR_HASH_IDENT:
-			TODO
+			return child;
 		case EXPR_MACRO_EXPANSION:
 			child = child->macro_expansion_expr.inner;
 			switch (child->expr_kind)
 			{
 				case EXPR_IDENTIFIER:
 				case EXPR_HASH_IDENT:
-					return sema_expr_resolve_access_child(child);
+					return sema_expr_resolve_access_child(context, child);
 				default:
 					SEMA_ERROR(child, "Expected a macro name.");
-					return INVALID_TOKEN_ID;
-			}
-		case EXPR_TYPEINFO:
-			// Special case: .typeid
-			if (child->type_expr->resolve_status == RESOLVE_DONE && child->type_expr->type == type_typeid)
-			{
-				return child->type_expr->span.loc;
+					return NULL;
 			}
 			break;
+		case EXPR_HASH_IDENT:
+		{
+			Decl *decl = sema_resolve_normal_symbol(context,
+													child->hash_ident_expr.identifier,
+													child->span,
+													NULL, true);
+			if (!decl_ok(decl)) return NULL;
+			return sema_expr_resolve_access_child(context, decl->var.init_expr);
+		}
 		default:
 			break;
 
 	}
 	SEMA_ERROR(child, "Expected an identifier here.");
-	return INVALID_TOKEN_ID;
+	return NULL;
 }
 
 static inline void expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enum_decl)
@@ -2918,8 +2923,9 @@ static inline void expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enu
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
 }
 
-static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, TypeInfo *parent, bool was_group, bool is_macro, TokenId identifier_token)
+static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, TypeInfo *parent, bool was_group, bool is_macro, Expr *identifier)
 {
+	assert(identifier->expr_kind == EXPR_IDENTIFIER);
 	// 1. Foo*.sizeof is not allowed, it must be (Foo*).sizeof
 	if (!was_group && type_kind_is_derived(parent->type->type_kind))
 	{
@@ -2927,24 +2933,12 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		return false;
 	}
 
-	TokenType type = TOKTYPE(identifier_token);
-
-	// 2. Handle Foo.typeid => return a typeid expression.
-	if (type == TOKEN_TYPEID)
-	{
-		expr->type = type_typeid;
-		expr->expr_kind = EXPR_CONST;
-		expr->const_expr.const_kind = CONST_TYPEID;
-		expr->const_expr.typeid = parent->type->canonical;
-		expr->resolve_status = RESOLVE_DONE;
-		return true;
-	}
-
 	Type *canonical = parent->type->canonical;
-	const char *name = TOKSTR(identifier_token);
+	const char *name = identifier->identifier_expr.ident;
+	bool is_const = identifier->identifier_expr.is_const;
 
 	// 3. Handle float.nan, double.inf etc
-	if (type_is_float(canonical))
+	if (!is_const && type_is_float(canonical))
 	{
 		if (name == kw_nan)
 		{
@@ -2981,9 +2975,9 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	switch (decl->decl_kind)
 	{
 		case DECL_ENUM:
-			if (type == TOKEN_CONST_IDENT)
+			if (is_const)
 			{
-				if (!sema_expr_analyse_enum_constant(expr, identifier_token, decl))
+				if (!sema_expr_analyse_enum_constant(expr, name, decl))
 				{
 					SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
 					return false;
@@ -3024,12 +3018,12 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 				return true;
 			}
 			break;
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 			unit_register_external_symbol(context->compilation_unit, decl);
 
-			if (type == TOKEN_CONST_IDENT)
+			if (is_const)
 			{
-				if (!sema_expr_analyse_enum_constant(expr, identifier_token, decl))
+				if (!sema_expr_analyse_enum_constant(expr, name, decl))
 				{
 					SEMA_ERROR(expr, "'%s' has no error value '%s'.", decl->name, name);
 					return false;
@@ -3114,7 +3108,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		return false;
 	}
 
-	expr->identifier_expr.identifier = identifier_token;
+	expr->identifier_expr.ident = name;
 	expr->expr_kind = EXPR_IDENTIFIER;
 	expr->identifier_expr.decl = member;
 	expr->type = member->type;
@@ -3136,14 +3130,38 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 	Expr *child = expr->access_expr.child;
 	bool is_macro = child->expr_kind == EXPR_MACRO_EXPANSION;
 
-	// 3. Find the actual token.
-	TokenId identifier_token = sema_expr_resolve_access_child(child);
-	if (TOKEN_IS_INVALID(identifier_token)) return false;
+	// 3. Handle xxxxxx.typeid
+	if (child->expr_kind == EXPR_TYPEINFO)
+	{
+		if (child->type_expr->resolve_status != RESOLVE_DONE || child->type_expr->type != type_typeid)
+		{
+			SEMA_ERROR(child, "A type can't appear here.");
+			return false;
+		}
 
-	// 2. If our left hand side is a type, e.g. MyInt.abc, handle this here.
+		if (parent->expr_kind != EXPR_TYPEINFO)
+		{
+			SEMA_ERROR(expr, "'typeid' can only be used with types, not values");
+		}
+
+		expr->type = type_typeid;
+		expr->expr_kind = EXPR_CONST;
+		expr->const_expr.const_kind = CONST_TYPEID;
+		expr->const_expr.typeid = parent->type_expr->type->canonical;
+		expr->resolve_status = RESOLVE_DONE;
+		return true;
+
+	}
+
+	// 3. Find the actual token.
+	SourceSpan span;
+	Expr *identifier = sema_expr_resolve_access_child(context, child);
+	if (!identifier) return false;
+
+	// 2. If our left-hand side is a type, e.g. MyInt.abc, handle this here.
 	if (parent->expr_kind == EXPR_TYPEINFO)
 	{
-		return sema_expr_analyse_type_access(context, expr, parent->type_expr, was_group, is_macro, identifier_token);
+		return sema_expr_analyse_type_access(context, expr, parent->type_expr, was_group, is_macro, identifier);
 	}
 
 	// 6. Copy failability
@@ -3162,19 +3180,19 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 	}
 
 	// 8. Depending on parent type, we have some hard coded types
-	TokenType token_type = TOKTYPE(identifier_token);
 	Expr *current_parent = parent;
 
 	Type *type = type_no_fail(parent->type)->canonical;
 	Type *flat_type = type_flatten(type);
-	if (!is_macro && token_type == TOKEN_TYPEID && flat_type->type_kind == TYPE_ANY)
+	const char *kw = identifier->identifier_expr.ident;
+
+	if (!is_macro && kw_type == kw && flat_type->type_kind == TYPE_ANY)
 	{
 		expr->expr_kind = EXPR_TYPEOFANY;
 		expr->inner_expr = parent;
 		expr->type = type_typeid;
 		return true;
 	}
-	const char *kw = TOKSTR(identifier_token);
 
 CHECK_DEEPER:
 
@@ -4260,9 +4278,10 @@ static inline bool sema_expr_analyse_ct_identifier_lvalue(SemaContext *context, 
 
 	Decl *ambiguous_decl = NULL;
 	Decl *private_symbol = NULL;
-	DEBUG_LOG("Now resolving %s", TOKSTR(expr->ct_ident_expr.identifier));
+	DEBUG_LOG("Now resolving %s", expr->ct_ident_expr.identifier);
 	Decl *decl = sema_resolve_normal_symbol(context,
 	                                 expr->ct_ident_expr.identifier,
+	                                 expr->span,
 	                                 NULL, false);
 
 	// Skip if poisoned.
@@ -4270,7 +4289,7 @@ static inline bool sema_expr_analyse_ct_identifier_lvalue(SemaContext *context, 
 
 	if (!decl)
 	{
-		SEMA_ERROR(expr, "The compile time variable '%s' was not defined in this scope.", TOKSTR(expr->ct_ident_expr.identifier));
+		SEMA_ERROR(expr, "The compile time variable '%s' was not defined in this scope.", expr->ct_ident_expr.identifier);
 		return expr_poison(expr);
 	}
 
@@ -4301,13 +4320,11 @@ static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Ex
 {
 	TypeInfo *info = left->type_expr;
 
-	if (info->kind != TYPE_INFO_IDENTIFIER || info->unresolved.path || TOKTYPE(info->unresolved.name_loc) != TOKEN_CT_TYPE_IDENT)
+	if (info->kind != TYPE_INFO_CT_IDENTIFIER)
 	{
 		SEMA_ERROR(left, "A type cannot be assigned to.");
 		return false;
 	}
-
-	TokenId token = info->unresolved.name_loc;
 
 	if (!sema_analyse_expr_lvalue(context, right)) return false;
 
@@ -4317,18 +4334,14 @@ static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Ex
 		return false;
 	}
 
-	Decl *decl = sema_resolve_normal_symbol(context, token, NULL, false);
+	Decl *decl = sema_resolve_normal_symbol(context, info->unresolved.name, info->unresolved.span, NULL, false);
 
 	if (!decl)
 	{
-		decl = decl_new(DECL_VAR, token, VISIBLE_LOCAL);
-		decl->var.kind = VARDECL_LOCAL_CT_TYPE;
-		if (!sema_add_local(context, decl)) return false;
+		SEMA_ERROR(info, "'%s' is not defined in this scope yet.", info->unresolved.name);
+		return false;
 	}
-	decl = sema_resolve_normal_symbol(context, token, NULL, true);
-
 	decl->var.init_expr = right;
-
 	expr->expr_kind = EXPR_NOP;
 	expr->type = type_void;
 
@@ -4566,8 +4579,8 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 		if (!type_is_integer(right->type->canonical))
 		{
 			SEMA_ERROR(right, "The right side was '%s' but only integers are valid on the right side of %s when the left side is a pointer.",
-			               type_to_error_string(right->type),
-			               token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
+			           type_to_error_string(right->type),
+			           token_type_to_string(binaryop_to_token(expr->binary_expr.operator)));
 			return false;
 		}
 		return true;
@@ -4804,8 +4817,8 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 		if (!type_is_integer(right_type))
 		{
 			SEMA_ERROR(right, "A value of type '%s' cannot be added to '%s', an integer was expected here.",
-			               type_to_error_string(right->type),
-			               type_to_error_string(left->type));
+			           type_to_error_string(right->type),
+			           type_to_error_string(left->type));
 			return false;
 		}
 
@@ -5296,7 +5309,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 			if (type_is_integer(left_vec) && type_is_integer(right_vec)) goto DONE;
 		}
 		SEMA_ERROR(expr, "Vector types %s and %s cannot be compared.",
-				   type_quoted_error_string(left->type), type_quoted_error_string(right->type));
+		           type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 		return false;
 	}
 
@@ -5307,14 +5320,14 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 	if (!max)
 	{
 		SEMA_ERROR(expr, "%s and %s are different types and cannot be compared.",
-				   type_quoted_error_string(left->type), type_quoted_error_string(right->type));
+		           type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 		return false;
 	}
 
 	if (!type_is_comparable(max))
 	{
 		SEMA_ERROR(expr, "%s does not support comparisons, you need to manually implement a comparison if you need it.",
-				   type_quoted_error_string(left->type));
+		           type_quoted_error_string(left->type));
 		return false;
 	}
 	if (!is_equality_type_op)
@@ -5322,7 +5335,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 		if (!type_is_ordered(max))
 		{
 			SEMA_ERROR(expr, "%s can only be compared using '!=' and '==' it cannot be ordered, did you make a mistake?",
-					   type_quoted_error_string(left->type));
+			           type_quoted_error_string(left->type));
 			return false;
 		}
 		if (type_flatten(max)->type_kind == TYPE_POINTER)
@@ -6104,7 +6117,7 @@ static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr
 	if (type_is_failable(type))
 	{
 		SEMA_ERROR(expr->expr_compound_literal.type_info,
-				   "The type here should always be written as a plain type and not a failable, please remove the '!'.");
+		           "The type here should always be written as a plain type and not a failable, please remove the '!'.");
 		return false;
 	}
 	if (!sema_expr_analyse_initializer_list(context, type, expr->expr_compound_literal.initializer)) return false;
@@ -6143,7 +6156,7 @@ static inline bool sema_expr_analyse_failable(SemaContext *context, Expr *expr)
 
 static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr)
 {
-	const char *string = TOKSTR(expr->builtin_expr.identifier);
+	const char *string = expr->builtin_expr.ident;
 	if (string == kw_FILE)
 	{
 		expr_rewrite_to_string(expr, context->unit->file->name);
@@ -6161,7 +6174,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 	}
 	if (string == kw_LINEREAL)
 	{
-		expr_rewrite_to_int_const(expr, type_isize, TOKLOC(expr->placeholder_expr.identifier)->row, true);
+		expr_rewrite_to_int_const(expr, type_isize, expr->span.row, true);
 		return true;
 	}
 	if (string == kw_LINE)
@@ -6172,11 +6185,11 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 		}
 		else
 		{
-			expr_rewrite_to_int_const(expr, type_isize, TOKLOC(expr->placeholder_expr.identifier)->row, true);
+			expr_rewrite_to_int_const(expr, type_isize, expr->span.row, true);
 		}
 		return true;
 	}
-	Expr *value = stable_get(&global_context.compiler_defines, string);
+	Expr *value = htable_get(&global_context.compiler_defines, string);
 	if (!value)
 	{
 		SEMA_ERROR(expr, "The compiler constant '%s' was not defined, did you mistype or forget to add it?", string);
@@ -6289,7 +6302,7 @@ static inline bool sema_analyse_identifier_path_string(SemaContext *context, Sou
 	uint32_t len = expr->const_expr.string.len;
 	if (!len)
 	{
-		sema_error_range(span, "Expected a name here.");
+		sema_error_at(span, "Expected a name here.");
 		return false;
 	}
 
@@ -6352,7 +6365,7 @@ static inline bool sema_analyse_identifier_path_string(SemaContext *context, Sou
 	}
 	if (!global_context.scratch_buffer_len)
 	{
-		sema_error_range(span, "A valid identifier was expected here, did you want to take the length of a string literal? If so use '.len'.", chars);
+		sema_error_at(span, "A valid identifier was expected here, did you want to take the length of a string literal? If so use '.len'.", chars);
 		return false;
 	}
 	TokenType token_type;
@@ -6364,7 +6377,7 @@ static inline bool sema_analyse_identifier_path_string(SemaContext *context, Sou
 	{
 		if (report_missing)
 		{
-			sema_error_range(span, "'%s' could not be found, did you misspell it?", chars);
+			sema_error_at(span, "'%s' could not be found, did you misspell it?", chars);
 			return false;
 		}
 		return true;
@@ -6377,7 +6390,7 @@ static inline bool sema_analyse_identifier_path_string(SemaContext *context, Sou
 	}
 	else
 	{
-		ASSIGN_DECL_ELSE(decl, sema_resolve_string_symbol(context, symbol, expr->span, path, report_missing), false);
+		ASSIGN_DECL_OR_RET(decl, sema_resolve_string_symbol(context, symbol, expr->span, path, report_missing), false);
 		if (!decl) return true;
 		if (!sema_analyse_decl(context, decl)) return false;
 		if (decl->decl_kind == DECL_TYPEDEF)
@@ -6415,7 +6428,7 @@ static inline bool sema_analyse_identifier_path_string(SemaContext *context, Sou
 				array_size = array_size * 10 + (ArraySize)minilex_next(&lexer) - '0';
 				if (old_array_size > array_size || array_size > MAX_ARRAYINDEX)
 				{
-					sema_error_range(span, "Array index out of bounds.");
+					sema_error_at(span, "Array index out of bounds.");
 					return false;
 				}
 			}
@@ -6429,7 +6442,7 @@ static inline bool sema_analyse_identifier_path_string(SemaContext *context, Sou
 	{
 		if (report_missing)
 		{
-			sema_error_range(span, "The path to an existing member was expected after '%s', did you make a mistake?", symbol);
+			sema_error_at(span, "The path to an existing member was expected after '%s', did you make a mistake?", symbol);
 			return false;
 		}
 		else
@@ -6655,7 +6668,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 		scratch_buffer_append(decl->module->name->module);
 		scratch_buffer_append("::");
 		scratch_buffer_append(decl->name);
-		expr_rewrite_to_string(expr, scratch_buffer_interned());
+		expr_rewrite_to_string(expr, scratch_buffer_copy());
 		return true;
 	}
 
@@ -6681,7 +6694,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 	scratch_buffer_append(type->decl->module->name->module);
 	scratch_buffer_append("::");
 	scratch_buffer_append(type->name);
-	expr_rewrite_to_string(expr, scratch_buffer_interned());
+	expr_rewrite_to_string(expr, scratch_buffer_copy());
 	return true;
 }
 
@@ -6706,7 +6719,7 @@ static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_in
 			if (!type_is_valid_for_vector(type))
 			{
 				SEMA_ERROR(type_info->array.base,
-						   "%s cannot be vectorized. Only integers, floats and booleans are allowed.",
+				           "%s cannot be vectorized. Only integers, floats and booleans are allowed.",
 				           type_quoted_error_string(type));
 				return poisoned_type;
 			}
@@ -6721,9 +6734,10 @@ static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_in
 			if (!type_ok(type)) return type;
 			return type_get_array(type, size);
 		}
+		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
 		{
-			Decl *decl = sema_resolve_normal_symbol(context, type_info->unresolved.name_loc, type_info->unresolved.path, false);
+			Decl *decl = sema_resolve_normal_symbol(context, type_info->unresolved.name, type_info->unresolved.span, type_info->unresolved.path, false);
 			if (!decl) return NULL;
 			if (!decl_ok(decl)) return poisoned_type;
 			return decl->type->canonical;
@@ -6771,7 +6785,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 	{
 		case EXPR_IDENTIFIER:
 			// 2. An identifier does a lookup
-			decl = sema_resolve_normal_symbol(context, main_var->identifier_expr.identifier, main_var->identifier_expr.path, false);
+			decl = sema_resolve_normal_symbol(context, main_var->identifier_expr.ident, main_var->span, main_var->identifier_expr.path, false);
 			// 2a. If it failed, then error
 			if (!decl_ok(decl)) return false;
 			// 2b. If it's missing, goto not defined
@@ -6854,21 +6868,17 @@ NOT_DEFINED:
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr)
 {
 	Expr *inner = expr->inner_expr;
-	// Special handling of #foo
-	if (inner->expr_kind == EXPR_HASH_IDENT)
+	// Only hash ident style stringify reaches here.
+	assert(inner->expr_kind == EXPR_HASH_IDENT);
+	Decl *decl = sema_resolve_normal_symbol(context, inner->ct_ident_expr.identifier, inner->span, NULL, true);
+	if (!decl_ok(decl)) return false;
+	const char *desc = span_to_string(decl->var.hash_var.span);
+	if (!desc)
 	{
-		Decl *decl = sema_resolve_normal_symbol(context, inner->ct_ident_expr.identifier, NULL, true);
-		if (!decl_ok(decl)) return false;
-		inner = decl->var.init_expr;
+		SEMA_ERROR(expr, "Failed to stringify hash variable contents - they must be a single line and not exceed 255 characters.");
+		return false;
 	}
-	SourceLocation *start = TOKLOC(inner->span.loc);
-	SourceLocation *end = TOKLOC(inner->span.end_loc);
-	File *file = source_file_by_id(start->file_id);
-	const char *begin_char = &file->contents[start->start];
-	const char *end_char = &file->contents[end->start + end->length];
-	int len = (int)(end_char - begin_char);
-	const char *res = strformat("%.*s", len, begin_char);
-	expr_rewrite_to_string(expr, res);
+	expr_rewrite_to_string(expr, desc);
 	return true;
 }
 
@@ -6966,13 +6976,13 @@ static inline BuiltinFunction builtin_by_name(const char *name)
 
 static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, bool throw_error)
 {
-	const char *builtin_char = TOKSTR(expr->builtin_expr.identifier);
+	const char *builtin_char = expr->builtin_expr.ident;
 
 	BuiltinFunction func = builtin_by_name(builtin_char);
 
 	if (func == BUILTIN_NONE)
 	{
-		if (throw_error) SEMA_TOKEN_ERROR(expr->builtin_expr.identifier, "Unsupported builtin '%s'.", builtin_char);
+		if (throw_error) SEMA_ERROR(expr, "Unsupported builtin '%s'.", builtin_char);
 		return false;
 	}
 
@@ -7142,7 +7152,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 		case EXPR_MACRO_BODY_EXPANSION:
 			if (!expr->body_expansion_expr.ast)
 			{
-				SEMA_ERROR(expr, "'@%s' must be followed by ().", TOKSTR(context->current_macro->macro_decl.block_parameter));
+				SEMA_ERROR(expr, "'@%s' must be followed by ().", context->current_macro->macro_decl.block_parameter);
 				return false;
 			}
 			break;

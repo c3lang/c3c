@@ -180,7 +180,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 		{
 			case DECL_POISONED:
 			case DECL_ENUM_CONSTANT:
-			case DECL_ERRVALUE:
+			case DECL_OPTVALUE:
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_CT_ASSERT:
@@ -208,7 +208,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_DISTINCT:
 			case DECL_ENUM:
 			case DECL_GENERIC:
-			case DECL_ERRTYPE:
+			case DECL_OPTENUM:
 			case DECL_FUNC:
 			case DECL_STRUCT:
 			case DECL_TYPEDEF:
@@ -217,7 +217,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_BITSTRUCT:
 				break;
 		}
-		stable_set(&module->symbols, decl->name, decl);
+		htable_set(&module->symbols, decl->name, decl);
 		if (decl->visibility == VISIBLE_PUBLIC) global_context_add_generic_decl(decl);
 	}
 
@@ -268,13 +268,13 @@ void sema_analysis_run(void)
 	if (has_error) exit_compiler(EXIT_FAILURE);
 
 	// All global defines are added to the std module
-	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_RANGE, .len = (uint32_t) strlen(kw_std) };
+	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_SPAN, .len = (uint32_t) strlen(kw_std) };
 	global_context.std_module = (Module){ .name = &global_context.std_module_path };
 	global_context.std_module.stage = ANALYSIS_LAST;
 	global_context.locals_list = NULL;
 
 	// Set a maximum of symbols in the std_module
-	stable_init(&global_context.std_module.symbols, 0x10000);
+	htable_init(&global_context.std_module.symbols, 0x10000);
 
 	// Setup the func prototype hash map
 	type_func_prototype_init(0x10000);

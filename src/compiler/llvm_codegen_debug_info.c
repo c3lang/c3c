@@ -4,24 +4,30 @@
 
 #include "llvm_codegen_internal.h"
 
-#define LINE_ZERO 0
-
 static unsigned id_counter = 0;
 
 static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *type, LLVMMetadataRef scope);
-static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, const char *name, unsigned offset, SourceLocation *loc, LLVMMetadataRef scope, LLVMDIFlags flags);
-static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, const char *external_name, LLVMMetadataRef *elements, unsigned element_count, SourceLocation *loc, LLVMMetadataRef scope, LLVMDIFlags flags);
-static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const char *external_name, SourceLocation *loc, LLVMMetadataRef scope, LLVMDIFlags flags);
+static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, const char *name, unsigned offset, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags);
+static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, const char *external_name, LLVMMetadataRef *elements, unsigned element_count, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags);
+static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const char *external_name, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags);
 
 
-static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, const char *external_name, LLVMMetadataRef *elements, unsigned element_count, SourceLocation *loc, LLVMMetadataRef scope, LLVMDIFlags flags)
+static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, const char *external_name, LLVMMetadataRef *elements, unsigned element_count, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags)
 {
+	LLVMMetadataRef file = NULL;
+	unsigned row = 0;
 	size_t external_name_len = strlen(external_name);
+	if (loc)
+	{
+		file = c->debug.file;
+		row = loc->row;
+		if (!row) row = 1;
+	}
 	LLVMMetadataRef real = LLVMDIBuilderCreateStructType(c->debug.builder,
 	                                                     scope,
 	                                                     external_name_len ? type->name : "", external_name_len ? strlen(type->name) : 0,
-	                                                     loc ? c->debug.file : NULL,
-	                                                     loc ? loc->row : 0,
+	                                                     file,
+	                                                     row,
 	                                                     type_size(type) * 8,
 	                                                     (uint32_t)(type_abi_alignment(type) * 8),
 	                                                     flags, NULL,
@@ -36,7 +42,7 @@ static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, c
 	return real;
 }
 
-static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, const char *name, unsigned offset, SourceLocation *loc, LLVMMetadataRef scope, LLVMDIFlags flags)
+static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, const char *name, unsigned offset, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags)
 {
 	return LLVMDIBuilderCreateMemberType(
 			c->debug.builder,
@@ -71,16 +77,16 @@ LLVMMetadataRef llvm_debug_current_scope(GenContext *context)
 
 void llvm_emit_debug_global_var(GenContext *c, Decl *global)
 {
-	SourceLocation *loc = TOKLOC(global->span.loc);
+	SourceSpan loc = global->span;
 	global->var.backend_debug_ref = LLVMDIBuilderCreateGlobalVariableExpression(
 			c->debug.builder,
 			c->debug.file,
 			global->name,
-			TOKLEN(global->name_token),
+			strlen(global->name),
 			global->external_name,
 			strlen(global->external_name),
 			c->debug.file,
-			loc->row,
+			loc.row ? loc.row : 1,
 			llvm_get_debug_type(c, global->type),
 			global->visibility == VISIBLE_LOCAL,
 			LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
@@ -110,17 +116,18 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 	flags |= LLVMDIFlagPrototyped;
 	if (decl->func_decl.attr_noreturn) flags |= LLVMDIFlagNoReturn;
 
-	SourceLocation *loc = TOKLOC(decl->span.loc);
+	uint32_t row = decl->span.row;
+	if (!row) row = 1;
 	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
 	                                                c->debug.file,
-	                                                decl->name, TOKLEN(decl->name_token),
+	                                                decl->name, strlen(decl->name),
 	                                                decl->external_name, strlen(decl->external_name),
 	                                                c->debug.file,
-	                                                loc->row,
+	                                                row,
 	                                                llvm_get_debug_type(c, decl->type),
 	                                                decl->visibility == VISIBLE_LOCAL,
 	                                                true,
-	                                                loc->row,
+	                                                row,
 	                                                flags,
 	                                                active_target.optimization_level != OPTIMIZATION_NONE);
 	LLVMSetSubprogram(decl->backend_ref, c->debug.function);
@@ -129,14 +136,19 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 {
 	EMIT_LOC(c, decl);
-	SourceLocation *location = TOKLOC(decl->span.loc);
+	uint32_t row = decl->span.row;
+	uint32_t col = decl->span.col;
+	if (!row) row = 1;
+	if (!col) col = 1;
+	const char *name = decl->name;
+	if (!name) name = "anon";
 	LLVMMetadataRef var = LLVMDIBuilderCreateAutoVariable(
 			c->debug.builder,
 			c->debug.function,
-			decl->name,
-			TOKLEN(decl->name_token),
+			name,
+			strlen(name),
 			c->debug.file,
-			location->row,
+			row,
 			llvm_get_debug_type(c, decl->type),
 			active_target.optimization_level != OPTIMIZATION_NONE,
 			LLVMDIFlagZero,
@@ -147,7 +159,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 	LLVMDIBuilderInsertDeclareAtEnd(c->debug.builder,
 	                                decl->backend_ref, var,
 	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
-	                                LLVMDIBuilderCreateDebugLocation(c->context, location->row, location->col,
+	                                LLVMDIBuilderCreateDebugLocation(c->context, row, col,
 	                                                                 c->debug.function, inline_at),
 	                                LLVMGetInsertBlock(c->builder));
 }
@@ -160,9 +172,13 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
  */
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 {
-	SourceLocation *loc = TOKLOC(parameter->span.loc);
 	const char *name = parameter->name ? parameter->name : "anon";
 	bool always_preserve = false;
+
+	unsigned row = parameter->span.row;
+	if (row == 0) row = 1;
+	unsigned col = parameter->span.col;
+	if (col == 0) col = 1;
 
 	parameter->var.backend_debug_ref = LLVMDIBuilderCreateParameterVariable(
 			c->debug.builder,
@@ -171,7 +187,7 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 			strlen(name),
 			index + 1,
 			c->debug.file,
-			loc->row,
+			row,
 			llvm_get_debug_type(c, parameter->type),
 			always_preserve,
 			LLVMDIFlagZero);
@@ -181,7 +197,7 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 	                                parameter->backend_ref,
 	                                parameter->var.backend_debug_ref,
 	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
-	                                LLVMDIBuilderCreateDebugLocation(c->context, loc->row, loc->col, c->debug.function,
+	                                LLVMDIBuilderCreateDebugLocation(c->context, row, col, c->debug.function,
 	                                                                 inline_at),
 	                                LLVMGetInsertBlock(c->builder));
 
@@ -190,29 +206,35 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 
 void llvm_emit_debug_location(GenContext *context, SourceSpan location)
 {
-	static TokenId last = { 0 };
+	static SourceSpan oldloc = {};
 
 	// Avoid re-emitting the same location.
-	if (last.index == location.loc.index) return;
+	if (oldloc.a == location.a) return;
 	if (!context->builder) return;
-
-	SourceLocation *source_loc = TOKLOC(location.loc);
+	oldloc = location;
 	LLVMMetadataRef scope = llvm_debug_current_scope(context);
-
+	unsigned row = location.row;
+	unsigned col = location.col;
 	LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(context->context,
-	                                                       source_loc->row,
-	                                                       source_loc->col,
+	                                                       row ? row : 1,
+	                                                       col ? col : 1,
 	                                                       scope, /* inlined at */ 0);
 
 	LLVMSetCurrentDebugLocation2(context->builder, loc);
 }
 
-static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const char *external_name, SourceLocation *loc, LLVMMetadataRef scope, LLVMDIFlags flags)
+static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const char *external_name, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags)
 {
+	unsigned row = 0;
+	if (loc)
+	{
+		row = loc->row;
+		if (!row) row = 1;
+	}
 	return LLVMDIBuilderCreateReplaceableCompositeType(c->debug.builder, id_counter++,
 	                                                   type->name, strlen(type->name),
 	                                                   scope,
-	                                                   c->debug.file, loc ? loc->row : 0,
+	                                                   c->debug.file, row,
 	                                                   1 /* version TODO */,
 	                                                   type_size(type) * 8,
 	                                                   type_abi_alignment(type) * 8,
@@ -223,8 +245,6 @@ static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const 
 }
 void llvm_debug_push_lexical_scope(GenContext *context, SourceSpan location)
 {
-	SourceLocation *source_loc = TOKLOC(location.loc);
-
 	LLVMMetadataRef scope;
 	if (vec_size(context->debug.lexical_block_stack) > 0)
 	{
@@ -235,10 +255,12 @@ void llvm_debug_push_lexical_scope(GenContext *context, SourceSpan location)
 		scope = context->debug.compile_unit;
 	}
 
+	unsigned row = location.row;
+	unsigned col = location.col;
 	LLVMMetadataRef block =
 			LLVMDIBuilderCreateLexicalBlock(context->debug.builder, scope, context->debug.file,
-			                                source_loc->row,
-			                                source_loc->col);
+			                                row ? row : 1,
+			                                col ? col : 1);
 
 	llvm_debug_scope_push(context, block);
 }
@@ -275,9 +297,8 @@ static LLVMMetadataRef llvm_debug_pointer_type(GenContext *c, Type *type)
 static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope)
 {
 	Decl *decl = type->decl;
-	SourceLocation *location = TOKLOC(decl->span.loc);
 
-	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, decl->external_name, location, scope, LLVMDIFlagZero);
+	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, decl->external_name, &decl->span, scope, LLVMDIFlagZero);
 	type->backend_debug_type = forward;
 
 	Type *enum_real_type = decl->enums.type_info->type->canonical;
@@ -292,16 +313,17 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 		uint64_t val = int_to_u64(enum_constant->enum_constant.expr->const_expr.ixx);
 		LLVMMetadataRef debug_info = LLVMDIBuilderCreateEnumerator(
 				c->debug.builder,
-				enum_constant->name, TOKLEN(enum_constant->name_token),
+				enum_constant->name, strlen(enum_constant->name),
 				(int64_t)val,
 				is_unsigned);
 		vec_add(elements, debug_info);
 	}
 
+	unsigned row = decl->span.row;
 	LLVMMetadataRef real = LLVMDIBuilderCreateEnumerationType(c->debug.builder,
 	                                                          scope,
-	                                                          type->decl->name, TOKLEN(type->decl->name_token),
-	                                                          c->debug.file, location->row, type_size(type) * 8,
+	                                                          type->decl->name, strlen(type->decl->name),
+	                                                          c->debug.file, row ? row : 1, type_size(type) * 8,
 	                                                          type_abi_alignment(type) * 8,
 	                                                          elements, vec_size(elements),
 	                                                          llvm_get_debug_type(c, enum_real_type));
@@ -315,10 +337,9 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 	Decl *decl = type->decl;
 
 	LLVMDIFlags flags = 0;
-	SourceLocation *location = TOKLOC(decl->span.loc);
 
 	// Create a forward reference in case of recursive data.
-	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, decl->external_name, location, scope, flags);
+	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, decl->external_name, &decl->span, scope, flags);
 	type->backend_debug_type = forward;
 
 	LLVMMetadataRef *elements = NULL;
@@ -326,12 +347,11 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 	VECEACH(members, i)
 	{
 		Decl *member = members[i];
-		SourceLocation *member_loc = TOKLOC(member->span.loc);
 		LLVMMetadataRef debug_info = llvm_get_debug_member(c,
 		                                                   member->type,
 		                                                   member->name ? member->name : "",
 		                                                   member->offset,
-		                                                   member_loc,
+		                                                   &member->span,
 		                                                   forward,
 		                                                   LLVMDIFlagZero);
 		vec_add(elements, debug_info);
@@ -340,11 +360,12 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 	LLVMMetadataRef real;
 	if (type->type_kind == TYPE_UNION)
 	{
+		unsigned row = decl->span.row;
 		real = LLVMDIBuilderCreateUnionType(c->debug.builder,
 		                                    scope,
 		                                    type->decl->name ? type->decl->name : "",
-		                                    type->decl->name ? TOKLEN(type->decl->name_token) : 0,
-		                                    c->debug.file, location->row, type_size(type) * 8,
+		                                    type->decl->name ? strlen(type->decl->name) : 0,
+		                                    c->debug.file, row ? row : 1, type_size(type) * 8,
 		                                    type_abi_alignment(type) * 8,
 		                                    LLVMDIFlagZero,
 		                                    elements, vec_size(members),
@@ -354,7 +375,7 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 		LLVMMetadataReplaceAllUsesWith(forward, real);
 		return real;
 	}
-	return llvm_get_debug_struct(c, type, decl->name ? decl->external_name : "", elements, vec_size(elements), location, scope, LLVMDIFlagZero);
+	return llvm_get_debug_struct(c, type, decl->name ? decl->external_name : "", elements, vec_size(elements), &decl->span, scope, LLVMDIFlagZero);
 }
 
 static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type)
@@ -431,16 +452,16 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 
 	Type *original_type = type->type_kind == TYPE_TYPEDEF ? type->canonical : decl->distinct_decl.base_type;
 
-	SourceLocation *location = TOKLOC(decl->span.loc);
 	// Use forward references in case we haven't resolved the original type, since we could have this:
 	if (!type->canonical->backend_debug_type)
 	{
-		type->backend_debug_type = llvm_debug_forward_comp(c, type, type->name, location, NULL, LLVMDIFlagZero);
+		type->backend_debug_type = llvm_debug_forward_comp(c, type, type->name, &decl->span, NULL, LLVMDIFlagZero);
 	}
+	unsigned row = decl->span.row;
 	LLVMMetadataRef real = LLVMDIBuilderCreateTypedef(c->debug.builder,
 	                                                  llvm_get_debug_type(c, original_type),
-	                                                  decl->name, TOKLEN(decl->name_token),
-	                                                  c->debug.file, location->row,
+	                                                  decl->name, strlen(decl->name),
+	                                                  c->debug.file, row ? row : 1,
 	                                                  c->debug.file, type_abi_alignment(type));
 	if (type->backend_debug_type)
 	{

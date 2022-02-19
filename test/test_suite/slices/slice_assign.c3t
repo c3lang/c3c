@@ -25,7 +25,7 @@ declare void @printf(i8*, ...) #0
 define void @test.main() #0 {
 entry:
   %x = alloca [8 x i32], align 16
-  %"__idx$" = alloca i64, align 8
+  %anon = alloca i64, align 8
   %i = alloca i32, align 4
   %0 = bitcast [8 x i32]* %x to i8*
   call void @llvm.memset.p0i8.i64(i8* align 16 %0, i8 0, i64 32, i1 false)
@@ -43,24 +43,24 @@ entry:
   store i32 52, i32* %6, align 4
   %7 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 7
   store i32 52, i32* %7, align 4
-  store i64 0, i64* %"__idx$", align 8
+  store i64 0, i64* %anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %8 = load i64, i64* %"__idx$", align 8
+  %8 = load i64, i64* %anon, align 8
   %gt = icmp ugt i64 8, %8
   br i1 %gt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %9 = load i64, i64* %"__idx$", align 8
+  %9 = load i64, i64* %anon, align 8
   %10 = getelementptr inbounds [8 x i32], [8 x i32]* %x, i64 0, i64 %9
   %11 = load i32, i32* %10, align 4
   store i32 %11, i32* %i, align 4
   %12 = load i32, i32* %i, align 4
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %12)
-  %13 = load i64, i64* %"__idx$", align 8
+  %13 = load i64, i64* %anon, align 8
   %add = add i64 %13, 1
-  store i64 %add, i64* %"__idx$", align 8
+  store i64 %add, i64* %anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

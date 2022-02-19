@@ -43,7 +43,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O1")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -gdwarf-3 -O3")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3")
 
 set(LLVM_LINK_COMPONENTS
@@ -136,6 +136,7 @@ add_executable(c3c
         src/compiler/dwarf.h
         src/compiler/enums.h
         src/compiler/float.c
+        src/compiler/hashtable.c
         src/compiler/headers.c
         src/compiler/lexer.c
         src/compiler/linker.c

@@ -241,8 +241,8 @@ Ast *ast_copy_deep(Ast *source)
 			{
 				case DOC_DIRECTIVE_REQUIRE:
 				case DOC_DIRECTIVE_ENSURE:
+				case DOC_DIRECTIVE_CHECKED:
 					MACRO_COPY_EXPR(ast->doc_directive.contract.decl_exprs);
-					MACRO_COPY_EXPR(ast->doc_directive.contract.comment);
 					break;
 				case DOC_DIRECTIVE_PARAM:
 				case DOC_DIRECTIVE_ERRORS:
@@ -338,14 +338,7 @@ Ast *ast_copy_deep(Ast *source)
 			MACRO_COPY_AST(ast->if_stmt.then_body);
 			return ast;
 		case AST_NEXT_STMT:
-			if (ast->nextcase_stmt.is_type)
-			{
-				MACRO_COPY_TYPE(ast->nextcase_stmt.expr_or_type_info);
-			}
-			else
-			{
-				MACRO_COPY_EXPR(ast->nextcase_stmt.expr_or_type_info);
-			}
+			MACRO_COPY_EXPR(ast->nextcase_stmt.expr);
 			return ast;
 		case AST_NOP_STMT:
 			return ast;
@@ -412,6 +405,7 @@ TypeInfo *copy_type_info(TypeInfo *source)
 	{
 		case TYPE_INFO_POISON:
 			return copy;
+		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
 			return copy;
 		case TYPE_INFO_EXPRESSION:
@@ -486,7 +480,7 @@ Decl *copy_decl(Decl *decl)
 		case DECL_BITSTRUCT:
 			UNREACHABLE
 		case DECL_ENUM:
-			case DECL_ERRTYPE:
+			case DECL_OPTENUM:
 			copy_decl_type(copy);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			MACRO_COPY_DECL_LIST(copy->enums.parameters);
@@ -517,7 +511,7 @@ Decl *copy_decl(Decl *decl)
 			MACRO_COPY_EXPR(copy->enum_constant.expr);
 			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
 			break;
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 			MACRO_COPY_EXPR(copy->enum_constant.expr);
 			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
 			break;

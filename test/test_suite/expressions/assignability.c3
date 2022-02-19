@@ -34,5 +34,6 @@ fn void test21()
 
 fn void test22()
 {
+    var $Type = void;
     $Type = int;
 }

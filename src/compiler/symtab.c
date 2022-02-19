@@ -5,22 +5,25 @@
 #include "compiler_internal.h"
 
 
-typedef struct _SymEntry
+
+typedef struct SymtabEntry_
 {
+	struct SymtabEntry_* next;
 	const char *value;
 	uint16_t key_len;
 	TokenType type : 16;
 	uint32_t hash;
-} SymEntry;
+	uint32_t index;
+	const char* symbol;
+} SymtabEntry;
 
-typedef struct _SymTab
+typedef struct
 {
-	uint32_t count;
-	uint32_t max_count;
-	uint32_t mask;
-	SymEntry *entries;
-	uint32_t capacity;
+	SymtabEntry **bucket;
+	size_t bucket_max;
+	size_t bucket_mask;
 } SymTab;
+
 
 typedef struct _Entry
 {
@@ -36,12 +39,23 @@ static SymTab symtab;
 const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 const char *builtin_list[NUMBER_OF_BUILTINS];
 
+const char *kw_at_return;
+const char *kw_at_checked;
+const char *kw_at_ensure;
+const char *kw_at_optreturn;
+const char *kw_at_param;
+const char *kw_at_require;
+
+const char *kw_in;
+const char *kw_out;
+const char *kw_inout;
 const char *kw_align;
 const char *kw_deprecated;
 const char *kw_distinct;
 const char *kw_ensure;
 const char *kw_elements;
 const char *kw_errors;
+const char *kw_type;
 const char *kw_inf;
 const char *kw_inline;
 const char *kw_elementat;
@@ -85,23 +99,25 @@ const char *kw_argc;
 const char *kw_argv;
 const char *kw_mainstub;;
 
+
 void symtab_destroy()
 {
-	if (!symtab.entries) return;
-
-	// This will only destroy the symtab, not the entry strings.
-	free(symtab.entries);
-	symtab = (SymTab) { .capacity = 0 };
+	free(symtab.bucket);
 }
+
+
 
 void symtab_init(uint32_t capacity)
 {
-	assert (is_power_of_two(capacity) && "Must be a power of two");
-	symtab.entries = calloc(sizeof(SymEntry), capacity);
-	symtab.count = 0;
-	symtab.capacity = capacity;
-	symtab.max_count = capacity * TABLE_MAX_LOAD;
-	symtab.mask = capacity - 1;
+	if (capacity < 0x100) error_exit("Too small symtab size.");
+	capacity = next_highest_power_of_2(capacity);
+	symtab.bucket_max = capacity;
+	symtab.bucket_mask = capacity - 1;
+
+	size_t size = capacity * sizeof(SymtabEntry*);
+	symtab.bucket = malloc(size);
+	// Touch all pages to improve perf(!)
+	memset(symtab.bucket, 0, size);
 
 	// Add keywords.
 	for (int i = 0; i < TOKEN_LAST; i++)
@@ -123,12 +139,16 @@ void symtab_init(uint32_t capacity)
 	// Init some constant idents
 	TokenType type = TOKEN_IDENT;
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
+	kw_in = KW_DEF("in");
+	kw_out = KW_DEF("out");
+	kw_inout = KW_DEF("inout");
 	kw_align = KW_DEF("align");
 	kw_deprecated = KW_DEF("deprecated");
 	kw_distinct = KW_DEF("distinct");
 	kw_elements = KW_DEF("elements");
 	kw_ensure = KW_DEF("ensure");
 	kw_errors = KW_DEF("errors");
+	kw_type = KW_DEF("type");
 	kw_inf = KW_DEF("inf");
 	kw_inline = KW_DEF("inline");
 	kw_elementat = KW_DEF("elementat");
@@ -216,48 +236,56 @@ void symtab_init(uint32_t capacity)
 
 }
 
-static inline SymEntry *entry_find(const char *key, uint32_t key_len, uint32_t hash)
-{
-	uint32_t index = hash & symtab.mask;
-	while (1)
-	{
-		SymEntry *entry = &symtab.entries[index];
-		const char *entry_value = entry->value;
-		if (entry_value == NULL) return entry;
-		if (entry->key_len == key_len && (entry_value == key || memcmp(key, entry_value, key_len) == 0)) return entry;
-		index = (index + 1) & symtab.mask;
-	}
-}
-
-const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type)
-{
-	SymEntry *entry = entry_find(symbol, len, fnv1hash);
-	if (entry->value)
-	{
-		*type = entry->type;
-		return entry->value;
-	}
-
-	if (symtab.count >= symtab.max_count)
-	{
-		FATAL_ERROR("Symtab exceeded capacity, please increase --symtab.");
-	}
-	char *copy = copy_string(symbol, len);
-	entry->value = copy;
-	entry->key_len = len;
-	entry->hash = fnv1hash;
-	entry->type = *type;
-	symtab.count++;
-	return copy;
-}
 
 const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type)
 {
-	SymEntry *entry = entry_find(symbol, len, fnv1hash);
-	if (!entry->value) return NULL;
-	*type = entry->type;
-	return entry->value;
+	size_t pos = fnv1hash & symtab.bucket_mask;
+	SymtabEntry *bucket = symtab.bucket[pos];
+	while (bucket)
+	{
+		if (bucket->index == fnv1hash && len == bucket->key_len && memcmp(symbol, bucket->symbol, len) == 0)
+		{
+			*type = bucket->type;
+			return bucket->symbol;
+		}
+		bucket = bucket->next;
+	}
+	return NULL;
 }
+
+const char *symtab_add(const char *data, uint32_t len, uint32_t fnv1hash, TokenType *type)
+{
+	size_t pos = fnv1hash & symtab.bucket_mask;
+	SymtabEntry *first_bucket = symtab.bucket[pos];
+	if (!first_bucket)
+	{
+		SymtabEntry *node = malloc_arena(sizeof(SymtabEntry));
+		symtab.bucket[pos] = node;
+		node->key_len = len;
+		node->next = NULL;
+		node->index = fnv1hash;
+		node->type = *type;
+		return node->symbol = copy_string(data, len);
+	}
+	SymtabEntry *bucket = first_bucket;
+	do
+	{
+		if (bucket->index == fnv1hash && len == bucket->key_len && memcmp(data, bucket->symbol, len) == 0)
+		{
+			*type = bucket->type;
+			return bucket->symbol;
+		}
+		bucket = bucket->next;
+	} while (bucket);
+	SymtabEntry *node = malloc_arena(sizeof(SymtabEntry));
+	node->next = first_bucket;
+	symtab.bucket[pos] = node;
+	node->key_len = len;
+	node->index = fnv1hash;
+	node->type = *type;
+	return node->symbol = copy_string(data, len);
+}
+
 
 void stable_init(STable *table, uint32_t initial_size)
 {
@@ -339,5 +367,67 @@ void *stable_get(STable *table, const char *key)
 	if (!table->entries) return NULL;
 	SEntry *entry = sentry_find(table->entries, table->capacity, key);
 	return entry->key == NULL ? NULL : entry->value;
+}
+
+
+
+void htable_init(HTable *table, uint32_t initial_size)
+{
+	assert(initial_size && "Size must be larger than 0");
+	size_t size = next_highest_power_of_2(initial_size);
+
+	size_t mem_size = initial_size * sizeof(HTEntry);
+	table->entries = calloc_arena(mem_size);
+
+	// Tap all pages
+	char *data = (char *)table->entries;
+	for (int i = 0; i < mem_size; i += 4096)
+	{
+		data[0] = 0;
+	}
+	table->mask = size - 1;
+}
+
+void *htable_set(HTable *table, const char *key, void *value)
+{
+	assert(value && "Cannot insert NULL");
+	uint32_t idx = (((uintptr_t)key) ^ ((uintptr_t)key) >> 8) & table->mask;
+	HTEntry **entry_ref = &table->entries[idx];
+	HTEntry *entry = *entry_ref;
+	if (!entry)
+	{
+		entry = CALLOCS(HTEntry);
+		entry->key = key;
+		entry->value = value;
+		*entry_ref = entry;
+		return NULL;
+	}
+	HTEntry *first_entry = entry;
+	do
+	{
+		if (entry->key == key) return entry->value;
+		entry = entry->next;
+	} while (entry);
+
+	entry = CALLOCS(HTEntry);
+	entry->key = key;
+	entry->value = value;
+	entry->next = first_entry;
+	*entry_ref = entry;
+	return NULL;
+}
+
+
+void *htable_get(HTable *table, const char *key)
+{
+	uint32_t idx = (((uintptr_t)key) ^ ((uintptr_t)key) >> 8) & table->mask;
+	HTEntry *entry = table->entries[idx];
+	if (!entry) return NULL;
+	do
+	{
+		if (entry->key == key) return entry->value;
+		entry = entry->next;
+	} while (entry);
+	return NULL;
 }
 
