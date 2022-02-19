@@ -11,7 +11,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 	{
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 		case DECL_POISONED:
 		case NON_TYPE_DECLS:
 			UNREACHABLE
@@ -75,7 +75,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		}
 		case DECL_ENUM:
 			return llvm_get_type(c, decl->type);
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 			return llvm_get_type(c, type_iptr);
 	}
 	UNREACHABLE

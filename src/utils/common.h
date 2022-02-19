@@ -18,6 +18,7 @@
 #define MAX_VECTOR_WIDTH 65536
 #define MAX_ARRAY_SIZE INT64_MAX
 #define MAX_IDENTIFIER_LENGTH 31
+#define MAX_SOURCE_LOCATION_LEN 255
 #define PROJECT_JSON "project.c3p"
 #ifndef __unused
 #define __unused

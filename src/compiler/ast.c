@@ -5,22 +5,20 @@
 #include "compiler_internal.h"
 
 
-Decl *decl_new_ct(DeclKind kind, TokenId span)
+Decl *decl_new_ct(DeclKind kind, SourceSpan span)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = kind;
-	decl->span = source_span_from_token_id(span);
+	decl->span = span;
 	return decl;
 }
 
-Decl *decl_new(DeclKind decl_kind, TokenId name, Visibility visibility)
+Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span, Visibility visibility)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = decl_kind;
-	decl->name_token = name;
-	decl->span = source_span_from_token_id(name);
-	assert(name.index);
-	decl->name = TOKSTR(name);
+	decl->span = span;
+	decl->name = name;
 	decl->visibility = visibility;
 	return decl;
 }
@@ -68,9 +66,9 @@ const char *decl_to_name(Decl *decl)
 			return "enum";
 		case DECL_ENUM_CONSTANT:
 			return "enum value";
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 			return "err value";
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 			return "errtype";
 		case DECL_FUNC:
 			return "function";
@@ -130,23 +128,15 @@ void decl_set_external_name(Decl *decl)
 	scratch_buffer_append(decl->module->name->module);
 	scratch_buffer_append(".");
 	scratch_buffer_append(decl->name ? decl->name : "anon");
-	decl->external_name = scratch_buffer_interned();
+	decl->external_name = scratch_buffer_copy();
 }
 
-Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility)
+Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, Visibility visibility)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = decl_type;
-	if (name.index)
-	{
-		decl->name_token = name;
-		decl->name = TOKSTR(name);
-		decl->span = source_span_from_token_id(name);
-	}
-	else
-	{
-		decl->name = NULL;
-	}
+	decl->name = name;
+	decl->span = loc;
 	decl->visibility = visibility;
 	TypeKind kind = TYPE_POISONED;
 	switch (decl_type)
@@ -160,7 +150,7 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_STRUCT:
 			kind = TYPE_STRUCT;
 			break;
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 			kind = TYPE_ERRTYPE;
 			break;
 		case DECL_ENUM:
@@ -178,7 +168,7 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_POISONED:
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
 		case DECL_GENERIC:
@@ -194,7 +184,7 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 		case DECL_DECLARRAY:
 			UNREACHABLE
 	}
-	Type *type = type_new(kind, !name.index ? "anon" : TOKSTR(name));
+	Type *type = type_new(kind, name ? name : "anon");
 	type->canonical = type;
 	type->decl = decl;
 	decl->type = type;
@@ -204,9 +194,9 @@ Decl *decl_new_with_type(TokenId name, DeclKind decl_type, Visibility visibility
 static Decl poison_decl = { .decl_kind = DECL_POISONED, .resolve_status = RESOLVE_DONE };
 Decl *poisoned_decl = &poison_decl;
 
-Decl *decl_new_var(TokenId name, TypeInfo *type, VarDeclKind kind, Visibility visibility)
+Decl *decl_new_var(const char *name, SourceSpan loc, TypeInfo *type, VarDeclKind kind, Visibility visibility)
 {
-	Decl *decl = decl_new(DECL_VAR, name, visibility);
+	Decl *decl = decl_new(DECL_VAR, name, loc, visibility);
 	decl->var.kind = kind;
 	decl->var.type_info = type;
 	return decl;
@@ -216,9 +206,8 @@ Decl *decl_new_generated_var(const char *name, Type *type, VarDeclKind kind, Sou
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = DECL_VAR;
-	decl->name_token = NO_TOKEN_ID;
 	decl->span = span;
-	decl->name = name;
+	decl->name = NULL;
 	decl->visibility = VISIBLE_LOCAL;
 	decl->var.kind = kind;
 	decl->type = type;

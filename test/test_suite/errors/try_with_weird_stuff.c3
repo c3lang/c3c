@@ -4,7 +4,7 @@ fn void test1()
     int! a;
     int b;
     int*! x;
-    if (try int &a = a) {} // #error: Expected a variable name after the type.
+    if (try int &a = a) {} // #error: A new variable was expected.
 }
 
 fn void test2()

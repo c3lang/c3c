@@ -207,7 +207,7 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, const char *symbo
 	CompilationUnit *unit = context->unit;
 
 	// Search in file scope.
-	decl = stable_get(&unit->local_symbols, symbol);
+	decl = htable_get(&unit->local_symbols, symbol);
 
 	if (decl) return decl;
 
@@ -229,11 +229,11 @@ static void sema_report_error_on_decl(Path *path, const char *symbol_str, Source
 	{
 		if (path)
 		{
-			sema_error_range(span, "The %s '%s::%s' is not visible from this module.", decl_to_name(private_decl), path->module, symbol_str);
+			sema_error_at(span, "The %s '%s::%s' is not visible from this module.", decl_to_name(private_decl), path->module, symbol_str);
 		}
 		else
 		{
-			sema_error_range(span, "The %s '%s' is not visible from this module.", decl_to_name(private_decl), symbol_str);
+			sema_error_at(span, "The %s '%s' is not visible from this module.", decl_to_name(private_decl), symbol_str);
 		}
 		return;
 	}
@@ -243,7 +243,7 @@ static void sema_report_error_on_decl(Path *path, const char *symbol_str, Source
 		const char *symbol_type = decl_to_name(found);
 		if (path)
 		{
-			sema_error_range(span,
+			sema_error_at(span,
 							 "The %s '%s::%s' is defined in both '%s' and '%s', please use either %s::%s or %s::%s to resolve the ambiguity.",
 							 symbol_type,
 							 path->module,
@@ -257,7 +257,7 @@ static void sema_report_error_on_decl(Path *path, const char *symbol_str, Source
 		}
 		else
 		{
-			sema_error_range(span,
+			sema_error_at(span,
 							 "The %s '%s' is defined in both '%s' and '%s', please use either %s::%s or %s::%s to resolve the ambiguity.",
 							 symbol_type,
 							 symbol_str,
@@ -273,11 +273,11 @@ static void sema_report_error_on_decl(Path *path, const char *symbol_str, Source
 	assert(!found);
 	if (path)
 	{
-		sema_error_range(span, "'%s::%s' could not be found, did you spell it right?", path->module, symbol_str);
+		sema_error_at(span, "'%s::%s' could not be found, did you spell it right?", path->module, symbol_str);
 	}
 	else
 	{
-		sema_error_range(span, "'%s' could not be found, did you spell it right?", symbol_str);
+		sema_error_at(span, "'%s' could not be found, did you spell it right?", symbol_str);
 	}
 }
 
@@ -378,19 +378,18 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	return result;
 }
 
-Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, TokenId symbol, Path *path)
+Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, const char *symbol, SourceSpan span, Path *path)
 {
 	Decl *ambiguous_other_decl = NULL;
 	Decl *private_decl = NULL;
-	const char *symbol_str = TOKSTR(symbol);
 	bool path_found = false;
 
-	Decl *decl = sema_find_decl_in_imports(unit->imports, symbol_str, path, &ambiguous_other_decl, &private_decl, &path_found, true);
+	Decl *decl = sema_find_decl_in_imports(unit->imports, symbol, path, &ambiguous_other_decl, &private_decl, &path_found, true);
 	if (!decl)
 	{
 		decl = sema_find_decl_in_global(&global_context.generic_symbols,
 										global_context.generic_module_list,
-										symbol_str, path,
+										symbol, path,
 										&ambiguous_other_decl,
 										&private_decl,
 										&path_found, true);
@@ -398,21 +397,21 @@ Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, TokenId symbol, P
 	// 14. Error report
 	if (!decl || ambiguous_other_decl)
 	{
-		sema_report_error_on_decl(path, symbol_str, source_span_from_token_id(symbol), decl, ambiguous_other_decl, private_decl);
+		sema_report_error_on_decl(path, symbol, span, decl, ambiguous_other_decl, private_decl);
 		return poisoned_decl;
 	}
 	if (!decl_is_user_defined_type(decl) && !path)
 	{
-		SEMA_TOKID_ERROR(symbol, "Function and variables must be prefixed with a path, e.g. 'foo::%s'.", symbol_str);
+		sema_error_at(span, "Function and variables must be prefixed with a path, e.g. 'foo::%s'.", symbol);
 		return poisoned_decl;
 	}
 
 	return decl;
 }
 
-Decl *sema_resolve_normal_symbol(SemaContext *context, TokenId symbol, Path *path, bool handle_error)
+Decl *sema_resolve_normal_symbol(SemaContext *context, const char *symbol, SourceSpan span, Path *path, bool handle_error)
 {
-	return sema_resolve_symbol(context, TOKSTR(symbol), source_span_from_token_id(symbol), path, handle_error);
+	return sema_resolve_symbol(context, symbol, span, path, handle_error);
 }
 
 Decl *sema_resolve_string_symbol(SemaContext *context, const char *symbol, SourceSpan span, Path *path, bool report_error)
@@ -450,9 +449,9 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 {
 	Module *current_module = decl->module = context->unit->module;
 	// Ignore synthetic locals.
-	if (decl->name_token.index == NO_TOKEN_ID.index) return true;
+	if (!decl->name) return true;
 	if (decl->decl_kind == DECL_VAR && decl->var.shadow) goto ADD_VAR;
-	Decl *other = sema_resolve_normal_symbol(context, decl->name_token, NULL, false);
+	Decl *other = sema_resolve_normal_symbol(context, decl->name, decl->span, NULL, false);
 	assert(!other || other->module);
 	if (other && other->module == current_module)
 	{

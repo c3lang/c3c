@@ -10,95 +10,44 @@
 /**
  * Advance to the next non-comment token.
  *
- * @param context the current context.
+ * @param c the current context.
  */
-inline void advance(ParseContext *context)
+inline void advance(ParseContext *c)
 {
-	context->lead_comment = context->next_lead_comment;
-	context->trailing_comment = NULL;
-	context->next_lead_comment = NULL;
-	context->prev_tok = context->tok.id;
-	context->tok = context->next_tok;
-
-	while (1)
+	if (tok_is(c, TOKEN_EOF))
 	{
-		if (context->tok.type == TOKEN_EOF)
-		{
-			context->next_tok = context->tok;
-			return;
-		}
-
-		uint32_t index = context->lexer_index++;
-		TokenType next_type = (TokenType)(*toktypeptr(index));
-		context->next_tok.id.index = index;
-		context->next_tok.type = next_type;
-
-		// At this point we should not have any invalid tokens.
-		assert(next_type != TOKEN_INVALID_TOKEN);
-
-		// Walk through any regular comments
-		if (next_type == TOKEN_COMMENT)
-		{
-			vec_add(context->comments, context->next_tok);
-			continue;
-		}
-
-		// Handle doc comments
-		if (next_type != TOKEN_DOC_COMMENT) return;
-
-		{
-			SourceLocation *curr = TOKLOC(context->tok);
-			SourceLocation *next = TOKLOC(context->next_tok);
-			vec_add(context->comments, context->next_tok);
-			if (curr->row == next->row)
-			{
-				if (context->trailing_comment)
-				{
-					SEMA_TOKEN_ERROR(context->next_tok,
-					                 "You have multiple trailing doc-style comments, should the second one go on the next line?");
-				}
-				else
-				{
-					context->trailing_comment = context->comments + vec_size(context->comments) - 1;
-				}
-			}
-			else
-			{
-				if (context->lead_comment)
-				{
-					SEMA_TOKEN_ERROR(context->next_tok,
-					                 "You have multiple doc-style comments in a row, are all of them really meant to document the code that follows?");
-				}
-				else
-				{
-					context->lead_comment = context->comments + vec_size(context->comments) - 1;
-				}
-			}
-		}
+		return;
 	}
-
+	c->tok = c->lexer.token_type;
+	c->data = c->lexer.data;
+	c->prev_span = c->span;
+	c->span = c->lexer.tok_span;
+	if (!lexer_next_token(&c->lexer))
+	{
+		exit_compiler(1);
+	}
 }
 
-bool try_consume(ParseContext *context, TokenType type)
+bool try_consume(ParseContext *c, TokenType type)
 {
-	if (context->tok.type == type)
+	if (tok_is(c, type))
 	{
-		advance(context);
+		advance(c);
 		return true;
 	}
 	return false;
 }
 
-bool consume(ParseContext *context, TokenType type, const char *message, ...)
+bool consume(ParseContext *c, TokenType type, const char *message, ...)
 {
-	if (try_consume(context, type))
+	if (try_consume(c, type))
 	{
 		return true;
 	}
 
 	va_list args;
 	va_start(args, message);
-	sema_verror_range(TOKLOC(context->tok), message, args);
+	sema_verror_range(c->span, message, args);
 	va_end(args);
 	return false;
 }
@@ -108,35 +57,35 @@ bool consume(ParseContext *context, TokenType type, const char *message, ...)
 
 /**
  * module? imports top_level_statement*
- * @param context
+ * @param c
  */
-static inline void parse_translation_unit(ParseContext *context)
+static inline void parse_translation_unit(ParseContext *c)
 {
 	// Prime everything
-	advance(context);
-	advance(context);
+	advance(c);
+	advance(c);
 	NEXT_CONTEXT:
-	if (!parse_module(context)) return;
-	parse_imports(context);
-	while (!TOKEN_IS(TOKEN_EOF))
+	if (!parse_module(c)) return;
+	parse_imports(c);
+	while (!tok_is(c, TOKEN_EOF))
 	{
-		if (TOKEN_IS(TOKEN_MODULE))
+		if (tok_is(c, TOKEN_MODULE))
 		{
 			ParseContext *new_context = CALLOCS(ParseContext);
-			*new_context = *context;
-			new_context->unit = unit_create(context->unit->file);
-			context = new_context;
+			*new_context = *c;
+			new_context->unit = unit_create(c->unit->file);
+			c = new_context;
 			goto NEXT_CONTEXT;
 		}
-		Decl *decl = parse_top_level_statement(context);
+		Decl *decl = parse_top_level_statement(c);
 		if (!decl) continue;
 		if (decl_ok(decl))
 		{
-			vec_add(context->unit->global_decls, decl);
+			vec_add(c->unit->global_decls, decl);
 		}
 		else
 		{
-			recover_top_level(context);
+			recover_top_level(c);
 		}
 	}
 }
@@ -150,13 +99,12 @@ static inline void parse_translation_unit(ParseContext *context)
  */
 bool parse_file(File *file)
 {
-	Lexer lexer = { .file = file };
-	lexer_lex_file(&lexer);
-	if (global_context.errors_found) return false;
 	CompilationUnit *unit = unit_create(file);
-	ParseContext lex_context = { .lexer_index = lexer.token_start_id,
-							   .unit = unit };
-	parse_translation_unit(&lex_context);
+	ParseContext parse_context = { .unit = unit };
+	parse_context.lexer = (Lexer) { .file = file, .context =  &parse_context };
+	lexer_init(&parse_context.lexer);
+	if (global_context.errors_found) return false;
+	parse_translation_unit(&parse_context);
 	return !global_context.errors_found;
 }
 

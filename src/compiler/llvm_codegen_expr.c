@@ -13,7 +13,7 @@ static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *e
 static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool use_mod);
 static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue *addr, BEValue *after, BEValue *before, Expr *expr, int diff);
 static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr);
-static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceLocation *loc);
+static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc);
 static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSize offset, DesignatorElement** current, DesignatorElement **last, Expr *expr, BEValue *emitted_value);
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
@@ -244,7 +244,7 @@ LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size)
 	return LLVMGetUndef(llvm_const_padding_type(c, size));
 }
 
-static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocation *loc)
+static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
 {
 	if (active_target.feature.trap_on_wrap)
 	{
@@ -470,7 +470,7 @@ void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTy
 	llvm_value_set_address_abi_aligned(result, addr, original_type);
 }
 
-static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocation *loc)
+static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
 {
 	if (active_target.feature.trap_on_wrap)
 	{
@@ -496,7 +496,7 @@ static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValu
 }
 
 
-static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValueRef array_max_index, SourceLocation *loc)
+static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValueRef array_max_index, SourceSpan loc)
 {
 	BEValue result;
 	llvm_value_rvalue(c, index);
@@ -515,7 +515,7 @@ static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValu
 	llvm_emit_panic_if_true(c, &result, "Array index out of bounds", loc);
 }
 
-static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceLocation *loc)
+static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc)
 {
 	assert(llvm_value_is_addr(parent));
 	Type *type = type_lowering(parent->type);
@@ -636,9 +636,9 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	}
 	if (needs_len && active_target.feature.safe_mode)
 	{
-		llvm_emit_array_bounds_check(c, &index, len.value, TOKLOC(expr->subscript_expr.index->span.loc));
+		llvm_emit_array_bounds_check(c, &index, len.value, expr->subscript_expr.index->span);
 	}
-	llvm_emit_subscript_addr_with_base(c, value, value, &index, TOKLOC(expr->subscript_expr.index->span.loc));
+	llvm_emit_subscript_addr_with_base(c, value, value, &index, expr->subscript_expr.index->span);
 	if (!is_value)
 	{
 		assert(llvm_value_is_addr(value));
@@ -1989,8 +1989,8 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue
 			LLVMTypeRef llvm_type = llvm_get_type(c, type);
 			LLVMValueRef diff_value = LLVMConstInt(llvm_type, 1, false);
 			after_value = diff > 0
-					? llvm_emit_add_int(c, type, value.value, diff_value, TOKLOC(expr->span.loc))
-					: llvm_emit_sub_int(c, type, value.value, diff_value, TOKLOC(expr->span.loc));
+					? llvm_emit_add_int(c, type, value.value, diff_value, expr->span)
+					: llvm_emit_sub_int(c, type, value.value, diff_value, expr->span);
 			break;
 		}
 		case TYPE_VECTOR:
@@ -2015,8 +2015,8 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue
 			if (is_integer)
 			{
 				after_value = diff > 0
-						? llvm_emit_add_int(c, type, value.value, val, TOKLOC(expr->span.loc))
-						: llvm_emit_sub_int(c, type, value.value, val, TOKLOC(expr->span.loc));
+						? llvm_emit_add_int(c, type, value.value, val, expr->span)
+						: llvm_emit_sub_int(c, type, value.value, val, expr->span);
 			}
 			else
 			{
@@ -2155,7 +2155,7 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 				                                                 &type_to_use, 1, args, 2);
 				value->value = LLVMBuildExtractValue(c->builder, call_res, 0, "");
 				LLVMValueRef ok = LLVMBuildExtractValue(c->builder, call_res, 1, "");
-				llvm_emit_panic_on_true(c, ok, "Signed negation overflow", TOKLOC(expr->span.loc));
+				llvm_emit_panic_on_true(c, ok, "Signed negation overflow", expr->span);
 				return;
 			}
 			value->value = LLVMBuildNeg(c->builder, value->value, "neg");
@@ -2230,10 +2230,10 @@ static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef valu
 
 	LLVMValueRef zero = llvm_const_int(c, expr->type, 0);
 	LLVMValueRef ok = LLVMBuildICmp(c->builder, LLVMIntSLT, value, zero, "underflow");
-	llvm_emit_panic_on_true(c, ok, error, TOKLOC(expr->span.loc));
+	llvm_emit_panic_on_true(c, ok, error, expr->span);
 }
 
-static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, const char *error, SourceLocation *loc)
+static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, const char *error, SourceSpan loc)
 {
 	if (!active_target.feature.safe_mode) return;
 
@@ -2243,7 +2243,7 @@ static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, c
 }
 
 
-static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type *type, const char *error, SourceLocation *loc)
+static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type *type, const char *error, SourceSpan loc)
 {
 	if (!active_target.feature.safe_mode) return;
 	unsigned type_bit_size = type_size(type) * 8;
@@ -2321,7 +2321,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	// Walk from end if it is slice from the back.
 	if (slice->slice_expr.start_from_back)
 	{
-		start_index.value = llvm_emit_sub_int(c, start_type, len.value, start_index.value, TOKLOC(slice->span.loc));
+		start_index.value = llvm_emit_sub_int(c, start_type, len.value, start_index.value, slice->span);
 	}
 
 	// Check that index does not extend beyond the length.
@@ -2330,7 +2330,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		assert(len.value);
 		BEValue exceeds_size;
 		llvm_emit_int_comparison(c, &exceeds_size, &start_index, &len, BINARYOP_GE);
-		llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array length.", TOKLOC(slice->span.loc));
+		llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array length.", slice->span);
 	}
 
 	// Insert trap for negative start offset for non pointers.
@@ -2352,7 +2352,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		// Reverse if it is "from back"
 		if (slice->slice_expr.end_from_back)
 		{
-			end_index.value = llvm_emit_sub_int(c, end_type, len.value, end_index.value, TOKLOC(slice->span.loc));
+			end_index.value = llvm_emit_sub_int(c, end_type, len.value, end_index.value, slice->span);
 			llvm_value_rvalue(c, &end_index);
 		}
 
@@ -2361,13 +2361,13 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		{
 			BEValue excess;
 			llvm_emit_int_comparison(c, &excess, &start_index, &end_index, BINARYOP_GT);
-			llvm_emit_panic_if_true(c, &excess, "Negative size", TOKLOC(slice->span.loc));
+			llvm_emit_panic_if_true(c, &excess, "Negative size", slice->span);
 
 			if (len.value)
 			{
 
 				llvm_emit_int_comparison(c, &excess, &len, &end_index, BINARYOP_LT);
-				llvm_emit_panic_if_true(c, &excess, "Size exceeds index", TOKLOC(slice->span.loc));
+				llvm_emit_panic_if_true(c, &excess, "Size exceeds index", slice->span);
 			}
 		}
 	}
@@ -2465,7 +2465,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 			for (uint64_t i = start_val; i <= end_val; i++)
 			{
 				llvm_value_set_int(c, &offset_val, type_usize, i);
-				llvm_emit_subscript_addr_with_base(c, &addr, &parent, &offset_val, TOKLOC(expr->span.loc));
+				llvm_emit_subscript_addr_with_base(c, &addr, &parent, &offset_val, expr->span);
 
 				// And store the value.
 				llvm_store_value(c, &addr, be_value);
@@ -2503,13 +2503,13 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_emit_block(c, assign_block);
 	// Reuse this calculation
 	BEValue addr;
-	llvm_emit_subscript_addr_with_base(c, &addr, &parent, &offset_val, TOKLOC(expr->span.loc));
+	llvm_emit_subscript_addr_with_base(c, &addr, &parent, &offset_val, expr->span);
 
 	// And store the value.
 	llvm_store_value(c, &addr, be_value);
 
 	// Create the new offset
-	LLVMValueRef next_offset = llvm_emit_add_int(c, start.type, offset, llvm_const_int(c, start.type, 1), TOKLOC(expr->span.loc));
+	LLVMValueRef next_offset = llvm_emit_add_int(c, start.type, offset, llvm_const_int(c, start.type, 1), expr->span);
 
 	// And jump back
 	llvm_emit_br(c, cond_block);
@@ -2817,7 +2817,7 @@ static void llvm_emit_ptr_comparison(GenContext *c, BEValue *result, BEValue *lh
 	llvm_value_set_bool(result, val);
 }
 
-static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left, LLVMValueRef right, SourceLocation *loc)
+static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left, LLVMValueRef right)
 {
 	LLVMTypeRef left_type = LLVMTypeOf(left);
 	LLVMTypeRef right_type = LLVMTypeOf(right);
@@ -2829,7 +2829,7 @@ static inline LLVMValueRef llvm_fixup_shift_rhs(GenContext *c, LLVMValueRef left
 	return LLVMBuildZExt(c->builder, right, left_type, "");
 }
 
-static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceLocation *loc)
+static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
 {
 	if (active_target.feature.trap_on_wrap)
 	{
@@ -3059,7 +3059,7 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 				val = LLVMBuildFMul(c->builder, lhs_value, rhs_value, "fmul");
 				break;
 			}
-			val = llvm_emit_mult_int(c, lhs_type, lhs_value, rhs_value, TOKLOC(expr->span.loc));
+			val = llvm_emit_mult_int(c, lhs_type, lhs_value, rhs_value, expr->span);
 			break;
 		case BINARYOP_SUB:
 			if (lhs_type->type_kind == TYPE_POINTER)
@@ -3082,7 +3082,7 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 				val = LLVMBuildFSub(c->builder, lhs_value, rhs_value, "fsub");
 				break;
 			}
-			val = llvm_emit_sub_int(c, lhs_type, lhs_value, rhs_value, TOKLOC(expr->span.loc));
+			val = llvm_emit_sub_int(c, lhs_type, lhs_value, rhs_value, expr->span);
 			break;
 		case BINARYOP_ADD:
 			if (lhs_type->type_kind == TYPE_POINTER)
@@ -3096,10 +3096,10 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 				val = LLVMBuildFAdd(c->builder, lhs_value, rhs_value, "fadd");
 				break;
 			}
-			val = llvm_emit_add_int(c, lhs_type, lhs_value, rhs_value, TOKLOC(expr->span.loc));
+			val = llvm_emit_add_int(c, lhs_type, lhs_value, rhs_value, expr->span);
 			break;
 		case BINARYOP_DIV:
-			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero", TOKLOC(expr->span.loc));
+			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero", expr->span);
 			if (is_float)
 			{
 				val = LLVMBuildFDiv(c->builder, lhs_value, rhs_value, "fdiv");
@@ -3110,22 +3110,22 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 			      : LLVMBuildSDiv(c->builder, lhs_value, rhs_value, "sdiv");
 			break;
 		case BINARYOP_MOD:
-			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero", TOKLOC(expr->span.loc));
+			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero", expr->span);
 			val = type_is_unsigned(lhs_type)
 			      ? LLVMBuildURem(c->builder, lhs_value, rhs_value, "umod")
 			      : LLVMBuildSRem(c->builder, lhs_value, rhs_value, "smod");
 			break;
 		case BINARYOP_SHR:
-			rhs_value = llvm_fixup_shift_rhs(c, lhs_value, rhs_value, TOKLOC(expr->span.loc));
-			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.", TOKLOC(expr->span.loc));
+			rhs_value = llvm_fixup_shift_rhs(c, lhs_value, rhs_value);
+			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.", expr->span);
 			val = type_is_unsigned(lhs_type)
 			      ? LLVMBuildLShr(c->builder, lhs_value, rhs_value, "lshr")
 			      : LLVMBuildAShr(c->builder, lhs_value, rhs_value, "ashr");
 			val = LLVMBuildFreeze(c->builder, val, "");
 			break;
 		case BINARYOP_SHL:
-			rhs_value = llvm_fixup_shift_rhs(c, lhs_value, rhs_value, TOKLOC(expr->span.loc));
-			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.", TOKLOC(expr->span.loc));
+			rhs_value = llvm_fixup_shift_rhs(c, lhs_value, rhs_value);
+			llvm_emit_trap_invalid_shift(c, rhs_value, lhs_type, "Shift amount out of range.", expr->span);
 			val = LLVMBuildShl(c->builder, lhs_value, rhs_value, "shl");
 			val = LLVMBuildFreeze(c->builder, val, "");
 			break;
@@ -3588,9 +3588,9 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 	if (llvm_emit_check_block_branch(c))
 	{
 		// TODO, we should add info about the error.
-		SourceLocation *loc = TOKLOC(expr->span.loc);
-		File *file = source_file_by_id(loc->file_id);
-		llvm_emit_debug_output(c, "Runtime error force unwrap!", file->name, c->cur_func_decl->external_name, loc->row);
+		SourceSpan loc = expr->span;
+		File *file = source_file_by_id(loc.file_id);
+		llvm_emit_debug_output(c, "Runtime error force unwrap!", file->name, c->cur_func_decl->external_name, loc.row ? loc.row : 1);
 		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 		LLVMBuildUnreachable(c->builder);
 		c->current_block = NULL;
@@ -3983,7 +3983,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		{
 			Decl *decl = expr->const_expr.enum_val;
 			return llvm_emit_const_expr(c, be_value, expr->const_expr.err_val->enum_constant.expr);
-			assert(decl->decl_kind == DECL_ERRVALUE);
+			assert(decl->decl_kind == DECL_OPTVALUE);
 			llvm_value_set(be_value,
 						   LLVMBuildPtrToInt(c->builder, decl->backend_ref, llvm_get_type(c, type_anyerr), ""),
 						   type_anyerr);

@@ -668,7 +668,7 @@ bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
 	if (!float_const_fits_type(&expr->const_expr, type_flatten(to_type)->type_kind))
 	{
 #if LONG_DOUBLE
-		SEMA_ERROR(expr, "The value '%Lg' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.fxx.f, type_quoted_error_string(to_type));
+		ERROR_NODE(expr, "The value '%Lg' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.fxx.f, type_quoted_error_string(to_type));
 #else
 		SEMA_ERROR(expr, "The value '%g' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.fxx.f, type_quoted_error_string(to_type));
 #endif
@@ -1012,7 +1012,7 @@ static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *t
 	}
 	const char *error_value = expr->const_expr.is_hex ? int_to_str(expr->const_expr.ixx, 16) : expr_const_to_error_string(&expr->const_expr);
 	SEMA_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", error_value,
-			   type_quoted_error_string(to_type));
+	           type_quoted_error_string(to_type));
 }
 
 static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_canonical, Type *to_canonical)
@@ -1082,7 +1082,7 @@ bool cast_implicit(Expr *expr, Type *to_type)
 				if (problem)
 				{
 					SEMA_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", expr_const_to_error_string(&expr->const_expr),
-							   type_quoted_error_string(to_type));
+					           type_quoted_error_string(to_type));
 					return false;
 				}
 				goto OK;
@@ -1107,7 +1107,7 @@ bool cast_implicit(Expr *expr, Type *to_type)
 				if (problem->expr_kind == EXPR_CONST)
 				{
 					SEMA_ERROR(problem, "The value '%s' is out of range for %s.", expr_const_to_error_string(&problem->const_expr),
-							   type_quoted_error_string(to_type));
+					           type_quoted_error_string(to_type));
 				}
 				else
 				{

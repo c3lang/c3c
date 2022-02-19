@@ -326,6 +326,7 @@ static inline bool is_alphanum_(char c)
 	}
 }
 
+
 static inline bool is_letter(char c)
 {
 	switch (c)
@@ -346,6 +347,11 @@ static inline bool is_letter(char c)
 		default:
 			return false;
 	}
+}
+
+INLINE bool is_letter_(char c)
+{
+	return is_letter(c) || c == '_';
 }
 
 static inline bool is_number(char c)

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2022 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::io;
@@ -22,7 +22,11 @@ fn int putchar(char c) @inline
     return _putchar(c);
 }
 
-fn int print(char *message)
+/**
+ * @param [&in] message
+ * @return `number of bytes printed.`
+ */
+fn int print(char* message)
 {
     char* pointer = message;
     while (*pointer != '\0')
@@ -33,6 +37,10 @@ fn int print(char *message)
     return 1;
 }
 
+/**
+ * @param [&in] message
+ * @return `number of bytes printed.`
+ */
 fn int println(char *message = "") @inline
 {
     return _puts(message);
@@ -142,7 +150,12 @@ fn usize File.read(File* file, void* buffer, usize items, usize element_size = 1
 }
 
 /**
- * @require file && file.file
+ * @param [&in] file
+ * @param [&out] buffer
+ * @param items
+ * @param element_size
+ * @require file.file `File must be initialized`
+ * @require element_size > 1
  */
 fn usize File.write(File* file, void* buffer, usize items, usize element_size = 1)
 {
@@ -150,7 +163,8 @@ fn usize File.write(File* file, void* buffer, usize items, usize element_size = 
 }
 
 /**
- * @require file && file.file
+ * @param [&in] file
+ * @require file.file `File must be initialized`
  */
 fn usize! File.println(File* file, char[] string)
 {

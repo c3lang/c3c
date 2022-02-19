@@ -138,8 +138,8 @@ typedef enum
 	DECL_DISTINCT,
 	DECL_ENUM,
 	DECL_ENUM_CONSTANT,
-	DECL_ERRTYPE,
-	DECL_ERRVALUE,
+	DECL_OPTENUM,
+	DECL_OPTVALUE,
 	DECL_FUNC,
 	DECL_GENERIC,
 	DECL_IMPORT,
@@ -162,6 +162,7 @@ typedef enum
 	DOC_DIRECTIVE_UNKNOWN,
 	DOC_DIRECTIVE_PURE,
 	DOC_DIRECTIVE_REQUIRE,
+	DOC_DIRECTIVE_CHECKED,
 	DOC_DIRECTIVE_PARAM,
 	DOC_DIRECTIVE_ERRORS,
 	DOC_DIRECTIVE_ENSURE,
@@ -286,6 +287,7 @@ typedef enum
 {
 	TYPE_INFO_POISON,
 	TYPE_INFO_IDENTIFIER,
+	TYPE_INFO_CT_IDENTIFIER,
 	TYPE_INFO_EXPRESSION,
 	TYPE_INFO_ARRAY,
 	TYPE_INFO_VECTOR,
@@ -417,8 +419,8 @@ typedef enum
 	TOKEN_REAL,             // 0x23.2p-2a 43.23e23
 	TOKEN_BYTES,            // Base64 or Hex
 
-	TOKEN_COMMENT,          // Comment
-	TOKEN_DOC_COMMENT,      // Doc Comment
+	TOKEN_DOC_DIRECTIVE,    // Doc Directive
+	TOKEN_DOC_COMMENT,      // Doc Comment start
 
 	// Keywords
 	TOKEN_ALIAS,            // Reserved
@@ -495,9 +497,14 @@ typedef enum
 
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
-	TOKEN_DOCS_EOL,         // "\n" only seen in directives.
-	TOKEN_DOCS_DIRECTIVE,   // @ in the directive
-	TOKEN_DOCS_LINE,        // Any line within /** **/
+	TOKEN_DOCS_ENSURE,      // @ensure
+	TOKEN_DOCS_REQUIRE,     // @require
+	TOKEN_DOCS_CHECKED,     // @checked
+	TOKEN_DOCS_PARAM,       // @param
+	TOKEN_DOCS_RETURN,      // @return
+	TOKEN_DOCS_OPTRETURN,   // @optreturn
+	TOKEN_DOCS_PURE,        // @pure
+
 
 	TOKEN_EOF,              // \n - SHOULD ALWAYS BE THE LAST TOKEN.
 
@@ -732,3 +739,27 @@ typedef enum
 	ATOMIC_ACQUIRE_RELEASE,
 	ATOMIC_SEQ_CONSISTENT,
 } Atomicity;
+
+
+typedef enum
+{
+	LEX_NORMAL,
+	LEX_DOCS,
+} LexMode;
+
+typedef enum
+{
+	LEX_DOC_NONE,
+	LEX_DOC_PARAM,
+	LEX_DOC_REST_OF_LINE,
+	LEX_DOC_EXPR,
+	LEX_DOC_OPTLIST,
+} LexDocMode;
+
+typedef enum
+{
+	PARAM_ANY,
+	PARAM_IN,
+	PARAM_OUT,
+	PARAM_INOUT,
+} InOutModifier;

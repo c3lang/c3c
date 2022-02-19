@@ -652,17 +652,20 @@ void llvm_emit_methods(GenContext *c, Decl **methods)
 
 void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 {
+	const char *name;
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:
 			UNREACHABLE;
 		case DECL_FUNC:
-			decl->backend_ref = LLVMAddFunction(context->module, decl->extname ? decl->extname : decl->external_name,
+			name = decl_get_extname(decl);
+			decl->backend_ref = LLVMAddFunction(context->module, name,
 			                                    llvm_get_type(context, decl->type));
 			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case DECL_VAR:
-			decl->backend_ref = LLVMAddGlobal(context->module, llvm_get_type(context, decl->type), decl->extname ? decl->extname : decl->external_name);
+			name = decl_get_extname(decl);
+			decl->backend_ref = LLVMAddGlobal(context->module, llvm_get_type(context, decl->type), name);
 			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
 			break;
 		case DECL_BITSTRUCT:
@@ -673,7 +676,7 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 			break;
 		case DECL_ENUM:
 			break;
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 			llvm_emit_introspection_type_from_decl(context, decl);
 			// TODO // Fix typeid
 			return;
@@ -681,7 +684,7 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case DECL_DISTINCT:
 		case NON_TYPE_DECLS:
 		case DECL_ENUM_CONSTANT:
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 			return;
 	}
 }

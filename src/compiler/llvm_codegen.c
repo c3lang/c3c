@@ -765,13 +765,13 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 			// TODO
 			break;
 		case DECL_ENUM_CONSTANT:
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 			// TODO
 			break;;
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ENUM:
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 		case DECL_BITSTRUCT:
 			llvm_emit_introspection_type_from_decl(context, decl);
 			break;

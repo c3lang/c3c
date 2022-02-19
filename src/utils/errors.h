@@ -29,19 +29,21 @@
 #if (defined(__GNUC__) && __GNUC__ >= 7) || defined(__clang__)
 #define FALLTHROUGH __attribute__ ((fallthrough))
 #define UNUSED __attribute__((unused))
+#define NORETURN __attribute__((noreturn))
+#define INLINE __attribute__((always_inline)) static inline
+#elif defined(_MSC_VER)
+#define FALLTHROUGH ((void)0)
+#define INLINE __forceinline static inline
+#define NORETURN __declspec(noreturn)
+#define UNUSED
 #else
+#define INLINE static inline
 #define FALLTHROUGH ((void)0)
 #define UNUSED
-#endif
-
-
-#if defined(_MSC_VER)
-#define NORETURN __declspec(noreturn)
-#elif defined(__GNUC__)
-#define NORETURN __attribute__((noreturn))
-#else
 #define NORETURN
 #endif
+
+
 
 #define TODO FATAL_ERROR("TODO reached");
 

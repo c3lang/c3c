@@ -4,7 +4,6 @@
 
 #include "compiler_internal.h"
 
-static STable function_types;
 static struct
 {
 	Type u0, u1, i8, i16, i32, i64, i128, ixx;
@@ -118,7 +117,7 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_UNION:
 		case TYPE_DISTINCT:
 		case TYPE_BITSTRUCT:
-			scratch_buffer_append(type->decl->external_name);
+			scratch_buffer_append(type->decl->name);
 			break;
 		case TYPE_POINTER:
 			type_append_name_to_scratch(type->pointer);
@@ -1136,7 +1135,6 @@ static inline void type_create_float(const char *name, Type *type, TypeKind kind
 
 void type_setup(PlatformTarget *target)
 {
-	stable_init(&function_types, 0x1000);
 	max_alignment_vector = (AlignSize)target->align_max_vector;
 
 	type_create_float("float16", &t.f16, TYPE_F16, BITS16);

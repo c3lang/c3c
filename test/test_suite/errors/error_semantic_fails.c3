@@ -1,5 +1,5 @@
-errtype Repeater
+optenum Repeater
 {
     A,
-    A // #error: This enum constant is declared twice.
+    A // #error: This opt constant is declared twice.
 }

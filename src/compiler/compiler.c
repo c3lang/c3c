@@ -30,11 +30,11 @@ void compiler_init(const char *std_lib_dir)
 	// Skip library detection.
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
-	stable_init(&global_context.modules, 64);
+	htable_init(&global_context.modules, 16 * 1024);
 	decltable_init(&global_context.symbols, INITIAL_SYMBOL_MAP);
 	decltable_init(&global_context.generic_symbols, INITIAL_GENERIC_SYMBOL_MAP);
 
-	stable_init(&global_context.compiler_defines, 512);
+	htable_init(&global_context.compiler_defines, 16 * 1024);
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
 	vmem_init(&ast_arena, 4 * 1024);
@@ -45,9 +45,6 @@ void compiler_init(const char *std_lib_dir)
 	vmem_init(&tokdata_arena, 4 * 1024);
 	vmem_init(&type_info_arena, 1024);
 	// Create zero index value.
-	(void) sourceloc_calloc();
-	(void) toktype_calloc();
-	(void) tokdata_calloc();
 	if (std_lib_dir)
 	{
 		global_context.lib_dir = std_lib_dir;
@@ -66,13 +63,11 @@ static void compiler_lex(void)
 		File *file = source_file_load(global_context.sources[i], &loaded);
 		if (loaded) continue;
 		Lexer lexer = { .file = file };
-		lexer_lex_file(&lexer);
+		lexer_init(&lexer);
 		printf("# %s\n", file->full_path);
-		uint32_t index = lexer.token_start_id;
-		while (1)
+		while (lexer_next_token(&lexer))
 		{
-			TokenType token_type = (TokenType)(*toktypeptr(index));
-			index++;
+			TokenType token_type = lexer.token_type;
 			printf("%s ", token_type_to_string(token_type));
 			if (token_type == TOKEN_EOF) break;
 		}
@@ -148,8 +143,6 @@ static void free_arenas(void)
 	decl_arena_free();
 	expr_arena_free();
 	type_info_arena_free();
-	sourceloc_arena_free();
-	tokdata_arena_free();
 
 	if (debug_stats) print_arena_status();
 }
@@ -353,7 +346,7 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
-	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
+	Expr *expr = expr_new(EXPR_CONST, INVALID_SPAN);
 	assert(type_is_integer(type));
 	expr_const_set_int(&expr->const_expr, i, type->type_kind);
 	if (expr_const_will_overflow(&expr->const_expr, type->type_kind))
@@ -362,9 +355,9 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 	}
 	expr->type = type;
 	expr->const_expr.narrowable = true;
-	expr->span = INVALID_RANGE;
+	expr->span = INVALID_SPAN;
 	expr->resolve_status = RESOLVE_NOT_DONE;
-	void *previous = stable_set(&global_context.compiler_defines, id, expr);
+	void *previous = htable_set(&global_context.compiler_defines, id, expr);
 	if (previous)
 	{
 		error_exit("Redefined ident %s", id);
@@ -375,12 +368,12 @@ static void setup_bool_define(const char *id, bool value)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
-	Expr *expr = expr_new(EXPR_CONST, INVALID_RANGE);
+	Expr *expr = expr_new(EXPR_CONST, INVALID_SPAN);
 	expr_const_set_bool(&expr->const_expr, value);
 	expr->type = type_bool;
-	expr->span = INVALID_RANGE;
+	expr->span = INVALID_SPAN;
 	expr->resolve_status = RESOLVE_NOT_DONE;
-	void *previous = stable_set(&global_context.compiler_defines, id, expr);
+	void *previous = htable_set(&global_context.compiler_defines, id, expr);
 	if (previous)
 	{
 		error_exit("Redefined ident %s", id);
@@ -462,7 +455,7 @@ void compile()
 		active_target.csources = target_expand_source_names(active_target.csource_dirs, ".c", ".c", false);
 	}
 	global_context.sources = active_target.sources;
-	symtab_init(active_target.symtab_size ? active_target.symtab_size : 64 * 1024);
+	symtab_init(active_target.symtab_size);
 	target_setup(&active_target);
 
 	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short, type_long);
@@ -528,10 +521,10 @@ const char *get_object_extension(void)
 
 Module *global_context_find_module(const char *name)
 {
-	return stable_get(&global_context.modules, name);
+	return htable_get(&global_context.modules, name);
 }
 
-Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters, bool is_private)
+Module *compiler_find_or_create_module(Path *module_name, const char **parameters, bool is_private)
 {
 	Module *module = global_context_find_module(module_name->module);
 	if (module) return module;
@@ -544,8 +537,8 @@ Module *compiler_find_or_create_module(Path *module_name, TokenId *parameters, b
 	module->parameters = parameters;
 	module->is_generic = vec_size(parameters) > 0;
 	module->is_private = is_private;
-	stable_init(&module->symbols, 0x10000);
-	stable_set(&global_context.modules, module_name->module, module);
+	htable_init(&module->symbols, 0x10000);
+	htable_set(&global_context.modules, module_name->module, module);
 	if (parameters)
 	{
 		vec_add(global_context.generic_module_list, module);
@@ -618,4 +611,9 @@ const char *scratch_buffer_interned(void)
 	TokenType type = TOKEN_INVALID_TOKEN;
 	return symtab_add(global_context.scratch_buffer, global_context.scratch_buffer_len,
 	                  fnv1a(global_context.scratch_buffer, global_context.scratch_buffer_len), &type);
+}
+
+char *scratch_buffer_copy(void)
+{
+	return copy_string(global_context.scratch_buffer, global_context.scratch_buffer_len);
 }

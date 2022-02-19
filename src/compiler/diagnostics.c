@@ -15,89 +15,79 @@ typedef enum
 } PrintType;
 
 #define LINES_SHOWN 4
+#define MAX_WIDTH 120
 
-static void print_error(SourceLocation *location, const char *message, PrintType print_type)
+static void print_error(SourceSpan location, const char *message, PrintType print_type)
 {
-	File *file = source_file_by_id(location->file_id);
+	File *file = source_file_by_id(location.file_id);
 	if (active_target.test_output)
 	{
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
-				eprintf("Error|%s|%d|%s\n", file->name, location->row, message);
+				eprintf("Error|%s|%d|%s\n", file->name, location.row, message);
 				return;
 			case PRINT_TYPE_PREV:
 				return;
 			case PRINT_TYPE_WARN:
-				eprintf("Warning|%s|%d|%s\n", file->name, location->row, message);
+				eprintf("Warning|%s|%d|%s\n", file->name, location.row, message);
 				return;
 			default:
 				UNREACHABLE
 		}
 	}
-	unsigned max_line_length = (unsigned)round(log10(location->row)) + 1;
-
+	unsigned max_line_length = (unsigned)round(log10(location.row)) + 1;
+	unsigned max_lines_for_display = MAX_WIDTH - max_line_length - 2;
 	char number_buffer[20];
+	char number_buffer_elided[20];
 	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);
+	snprintf(number_buffer_elided, 20, "%%%dd: %%.*s|\n", max_line_length);
+	snprintf(number_buffer, 20, "%%%dd: %%.*s\n", max_line_length);
+	snprintf(number_buffer_elided, 20, "%%%dd: %%.*s|\n", max_line_length);
 
 	// Insert end in case it's not yet there.
 
 	const char *file_contents = file->contents;
-	int lines_found = 0;
-	size_t line_starts[LINES_SHOWN + 1] = { 0, 0, 0, 0 };
-	uint32_t start = location->start;
-	if (start < 2)
+	int64_t display_row = location.row;
+	int64_t row_start = display_row - LINES_SHOWN + 1;
+	if (row_start < 1) row_start = 1;
+	int64_t row = 1;
+	const char *current = file_contents;
+	// Progress to the first row.
+	while (row < row_start)
 	{
-		line_starts[++lines_found] = 0;
-	}
-	else
-	{
-		for (size_t i = start; i > 0; i--)
+		if (current++[0] == '\n')
 		{
-			if (file_contents[i - 1] == '\n')
-			{
-				line_starts[++lines_found] = i;
-				if (lines_found >= LINES_SHOWN) break;
-			}
-			if (i == 1)
-			{
-				line_starts[++lines_found] = 0;
-				break;
-			}
+			row++;
 		}
 	}
-	for (size_t i = start; ; i++)
+	int row_len = -1;
+	while (row <= display_row)
 	{
-		switch (file_contents[i])
+		current += row_len + 1;
+		row_len = 0;
+		while (current[row_len] != '\n') row_len++;
+		if (row_len > max_lines_for_display)
 		{
-			case '\0':
-			case '\n':
-				line_starts[0] = i + 1;
-				goto FOUND;
-			default:
-				continue;
+			eprintf(number_buffer_elided, row, max_lines_for_display - 1, current);
 		}
-	}
-	FOUND:;
-	const char *start_char = NULL;
-	for (unsigned i = lines_found; i > 0; i--)
-	{
-		SourceLoc line_start = line_starts[i];
-		SourceLoc line_end = line_starts[i - 1] - 1;
-		uint32_t line_number = location->row + 1 - i;
-		uint32_t line_len = line_end - line_start;
-		start_char = file->contents + line_start;
-		eprintf(number_buffer, line_number, line_len, start_char);
+		else
+		{
+			eprintf(number_buffer, row, row_len, current);
+		}
+		row++;
 	}
 	eprintf("  ");
 	for (unsigned i = 0; i < max_line_length; i++)
 	{
 		eprintf(" ");
 	}
-
-	for (unsigned i = 1; i < location->col; i++)
+	unsigned col_location = location.col;
+	if (!col_location || col_location > max_lines_for_display) col_location = 0;
+	unsigned space_to = col_location ? col_location : max_lines_for_display - 1;
+	for (unsigned i = 1; i < space_to; i++)
 	{
-		switch (start_char[i])
+		switch (current[i])
 		{
 			case '\t':
 				eprintf("\t");
@@ -105,38 +95,70 @@ static void print_error(SourceLocation *location, const char *message, PrintType
 				eprintf(" ");
 		}
 	}
-	for (uint32_t i = 0; i < location->length; i++)
+	unsigned len = location.length;
+	if (!len) len = 1;
+	if (col_location)
 	{
-		eprintf("^");
+		for (uint32_t i = 0; i < len; i++)
+		{
+			eprintf("^");
+		}
 	}
 	eprintf("\n");
 
-	switch (print_type)
+	if (col_location)
 	{
-		case PRINT_TYPE_ERROR:
-			eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location->row, location->col, message);
-			break;
-		case PRINT_TYPE_PREV:
-			eprintf("(%s:%d:%d) %s\n\n", file->name, location->row, location->col, message);
-			break;
-		case PRINT_TYPE_WARN:
-			eprintf("(%s:%d:%d) Warning: %s\n\n", file->name, location->row, location->col, message);
-			break;
-		default:
-			UNREACHABLE
+		switch (print_type)
+		{
+			case PRINT_TYPE_ERROR:
+				eprintf("(%s:%d:%d) Error: %s\n\n", file->full_path, location.row, col_location, message);
+				break;
+			case PRINT_TYPE_PREV:
+				eprintf("(%s:%d:%d) %s\n\n", file->name, location.row, col_location, message);
+				break;
+			case PRINT_TYPE_WARN:
+				eprintf("(%s:%d:%d) Warning: %s\n\n", file->name, location.row, col_location, message);
+				break;
+			default:
+				UNREACHABLE
+		}
+	}
+	else
+	{
+		switch (print_type)
+		{
+			case PRINT_TYPE_ERROR:
+				eprintf("(%s:%d) Error: %s\n\n", file->full_path, location.row, message);
+				break;
+			case PRINT_TYPE_PREV:
+				eprintf("(%s:%d) %s\n\n", file->name, location.row, message);
+				break;
+			case PRINT_TYPE_WARN:
+				eprintf("(%s:%d) Warning: %s\n\n", file->name, location.row, message);
+				break;
+			default:
+				UNREACHABLE
+		}
+
 	}
 
 }
 
-static void vprint_error(SourceLocation *location, const char *message, va_list args)
+static void vprint_error(SourceSpan location, const char *message, va_list args)
 {
-	char buffer[256];
-	vsnprintf(buffer, 256, message, args);
+#define MAX_ERROR_LEN 4096
+	char buffer[MAX_ERROR_LEN];
+	size_t written = vsnprintf(buffer, MAX_ERROR_LEN - 1, message, args);
+	if (written > MAX_ERROR_LEN - 2)
+	{
+		print_error(location, "<Error message was too long>", PRINT_TYPE_ERROR);
+		return;
+	}
 	print_error(location, buffer, PRINT_TYPE_ERROR);
 }
 
 
-void diag_verror_range(SourceLocation *location, const char *message, va_list args)
+void diag_verror_range(SourceSpan location, const char *message, va_list args)
 {
 	if (global_context.in_panic_mode) return;
 	global_context.in_panic_mode = true;
@@ -145,65 +167,48 @@ void diag_verror_range(SourceLocation *location, const char *message, va_list ar
 }
 
 
-void sema_verror_range(SourceLocation *location, const char *message, va_list args)
+void sema_verror_range(SourceSpan location, const char *message, va_list args)
 {
 	vprint_error(location, message, args);
 	global_context.errors_found++;
 }
 
 
-void sema_prev_at_range3(SourceSpan span, const char *message, ...)
+void sema_error_at(SourceSpan loc, const char *message, ...)
 {
-	SourceLocation *start = TOKLOC(span.loc);
-	SourceLocation *end = TOKLOC(span.end_loc);
-	va_list args;
-	va_start(args, message);
-	char buffer[256];
-	vsnprintf(buffer, 256, message, args);
-	SourceLocation loc = *start;
-	loc.length = end->start - start->start + end->length;
-	print_error(&loc, buffer, PRINT_TYPE_PREV);
-	va_end(args);
-}
-
-void sema_error_range(SourceSpan span, const char *message, ...)
-{
-	SourceLocation *start = TOKLOC(span.loc);
-	SourceLocation *end = TOKLOC(span.end_loc);
-
-	SourceLocation loc = *start;
-	loc.length = end->start - start->start + end->length;
 	va_list list;
 	va_start(list, message);
-	sema_verror_range(&loc, message, list);
+	sema_verror_range(loc, message, list);
 	va_end(list);
 }
 
-void sema_error_at_prev_end(Token token, const char *message, ...)
+void sema_error_at_after(SourceSpan loc, const char *message, ...)
 {
-	SourceLocation *curr = TOKLOC(token);
-	SourceLocation *prev = TOKLOC((TokenId) { token.id.index - 1 });
-	SourceLocation location;
-	if (curr->file_id != prev->file_id)
+	loc.col += loc.length;
+	loc.length = 1;
+	va_list list;
+	va_start(list, message);
+	sema_verror_range(loc, message, list);
+	va_end(list);
+}
+
+void sema_error_prev_at(SourceSpan loc, const char *message, ...)
+{
+	va_list args;
+	va_start(args, message);
+#define MAX_ERROR_LEN 4096
+	char buffer[MAX_ERROR_LEN];
+	size_t written = vsnprintf(buffer, MAX_ERROR_LEN - 1, message, args);
+	if (written > MAX_ERROR_LEN - 2)
 	{
-		// Ok, this is the first location, so then we create a "start" location:
-		location = *curr;
-		location.start = 0;
-		location.row = 1;
-		location.col = 1;
+		print_error(loc, "<Error message was too long>", PRINT_TYPE_PREV);
 	}
 	else
 	{
-		// TODO handle multiline
-		location = *prev;
-		location.col += location.length;
-		location.start += location.length;
+		print_error(loc, buffer, PRINT_TYPE_PREV);
 	}
-	location.length = 1;
-	va_list list;
-	va_start(list, message);
-	sema_verror_range(&location, message, list);
-	va_end(list);
+	va_end(args);
+	return;
 }
 
 
@@ -217,8 +222,34 @@ void sema_error(ParseContext *context, const char *message, ...)
 	evprintf(message, list);
 	eprintf("\n");
 	va_end(list);
+}
 
-
+// This function is fairly slow, which is a reflection on how
+// often it is supposed to be used.
+const char *span_to_string(SourceSpan span)
+{
+	File *file = source_file_by_id(span.file_id);
+	const char *current = file->contents;
+	uint32_t row = 1;
+	uint32_t row_to_find = span.row;
+	uint32_t length = span.length;
+	uint32_t col = span.col;
+	if (!row_to_find || !length || !col) return NULL;
+	while (row < row_to_find)
+	{
+		switch (current++[0])
+		{
+			case '\0':
+				return NULL;
+			case '\n':
+				row++;
+			default:
+				break;
+		}
+	}
+	assert(row == row_to_find);
+	const char *start = current + col - 1;
+	return copy_string(start, length);
 }
 
 

@@ -269,7 +269,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 		{
 			Attr *attribute = attributes[j];
 			if (!sema_analyse_attribute(context, attribute, ATTR_GLOBAL)) return false;
-			if (TOKSTR(attribute->name) == kw_align)
+			if (attribute->name == kw_align)
 			{
 				member_alignment = attribute->alignment;
 				// Update total alignment if we have a member that has bigger alignment.
@@ -360,7 +360,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 		case DECL_UNION:
 			domain = ATTR_UNION;
 			break;
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 			domain = ATTR_ERROR;
 			break;
 		default:
@@ -395,7 +395,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 #undef SET_ATTR
 		if (had)
 		{
-			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			sema_error_at(attr->name_span, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 	}
@@ -448,7 +448,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 	if (!type_is_integer(member_type) && member_type != type_bool)
 	{
 		SEMA_ERROR(member->var.type_info, "%s is not supported in a bitstruct, only enums, integer and boolean values may be used.",
-				   type_quoted_error_string(member->var.type_info->type));
+		           type_quoted_error_string(member->var.type_info->type));
 		return false;
 	}
 	BitSize bits = type_size(decl->bitstruct.base_type->type) * 8;
@@ -549,14 +549,14 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 			case ATTRIBUTE_BIGENDIAN:
 				if (decl->bitstruct.little_endian)
 				{
-					SEMA_TOKID_ERROR(attr->name, "Attribute cannot be combined with @littleendian");
+					sema_error_at(attr->name_span, "Attribute cannot be combined with @littleendian");
 					return decl_poison(decl);
 				}
 				SET_ATTR(big_endian);
 			case ATTRIBUTE_LITTLEENDIAN:
 				if (decl->bitstruct.big_endian)
 				{
-					SEMA_TOKID_ERROR(attr->name, "Attribute cannot be combined with @bigendian");
+					sema_error_at(attr->name_span, "Attribute cannot be combined with @bigendian");
 					return decl_poison(decl);
 				}
 				SET_ATTR(little_endian);
@@ -566,7 +566,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 #undef SET_ATTR
 		if (had)
 		{
-			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			sema_error_at(attr->name_span, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 	}
@@ -800,7 +800,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 		// This will be evaluated later to catch the case
 		if (!expr)
 		{
-			expr = expr_new(EXPR_CONST, source_span_from_token_id(enum_value->name_token));
+			expr = expr_new(EXPR_CONST, enum_value->span);
 			expr->type = type;
 			expr->resolve_status = RESOLVE_NOT_DONE;
 			expr->const_expr.ixx = (Int) { value, canonical->type_kind };
@@ -862,7 +862,7 @@ static inline bool sema_analyse_error(SemaContext *context, Decl *decl)
 		enum_value->enum_constant.ordinal = i;
 		DEBUG_LOG("* Ordinal: %d", i);
 		assert(enum_value->resolve_status == RESOLVE_NOT_DONE);
-		assert(enum_value->decl_kind == DECL_ERRVALUE);
+		assert(enum_value->decl_kind == DECL_OPTVALUE);
 
 		// Start evaluating the constant
 		enum_value->resolve_status = RESOLVE_DONE;
@@ -921,13 +921,13 @@ static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Dec
 	}
 	if (param_count < parameters)
 	{
-		SEMA_TOKID_ERROR(method->name_token, "Not enough parameters, '%s' requires %u.", method->name, (unsigned)parameters);
+		SEMA_ERROR(method, "Not enough parameters, '%s' requires %u.", method->name, (unsigned)parameters);
 		return false;
 	}
 
 	if (*rtype_ptr == NULL)
 	{
-		SEMA_TOKID_ERROR(method->name_token, "The return value must be explicitly typed for '%s'.", method->name);
+		SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
 		return false;
 	}
 	VECEACH(params, i)
@@ -935,7 +935,7 @@ static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Dec
 		Decl *param = params[i];
 		if (!params[i]->var.type_info)
 		{
-			SEMA_TOKID_ERROR(param->name_token, "All parameters must be explicitly typed for '%s'.", method->name);
+			SEMA_ERROR(param, "All parameters must be explicitly typed for '%s'.", method->name);
 			return false;
 		}
 	}
@@ -1046,8 +1046,8 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	Decl *method = sema_find_extension_method_in_module(unit->module, parent_type, name);
 	if (method)
 	{
-		SEMA_TOKID_ERROR(method_like->name_token, "This %s is already defined in this module.", name_by_decl(method_like));
-		SEMA_TOKID_PREV(method->name_token, "The previous definition was here.");
+		SEMA_ERROR(method_like, "This %s is already defined in this module.", name_by_decl(method_like));
+		SEMA_PREV(method, "The previous definition was here.");
 		return false;
 	}
 	Decl *ambiguous = NULL;
@@ -1055,8 +1055,8 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	method = sema_resolve_method(unit, parent, name, &ambiguous, &private);
 	if (method)
 	{
-		SEMA_TOKID_ERROR(method_like->name_token, "This %s is already defined for '%s'.", name_by_decl(method_like), parent_type->name);
-		SEMA_TOKID_PREV(method->name_token, "The previous definition was here.");
+		SEMA_ERROR(method_like, "This %s is already defined for '%s'.", name_by_decl(method_like), parent_type->name);
+		SEMA_PREV(method, "The previous definition was here.");
 		return false;
 	}
 	if (method_like->operator && !sema_check_operator_method_validity(method_like)) return false;
@@ -1074,7 +1074,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 		scratch_buffer_append("__");
 		scratch_buffer_append(method_like->name);
 	}
-	method_like->external_name = scratch_buffer_interned();
+	method_like->external_name = scratch_buffer_copy();
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method_like->name);
 	if (parent->module == unit->module)
 	{
@@ -1095,7 +1095,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	if (!type_may_have_sub_elements(parent_type->type))
 	{
 		SEMA_ERROR(decl,
-				   "Methods can not be associated with '%s'",
+		           "Methods can not be associated with '%s'",
 		           type_to_error_string(decl->func_decl.type_parent->type));
 		return false;
 	}
@@ -1105,7 +1105,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 
 static inline AttributeType attribute_by_name(Attr *attr)
 {
-	const char *attribute = TOKSTR(attr->name);
+	const char *attribute = attr->name;
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 	{
 		if (attribute_list[i] == attribute) return (AttributeType)i;
@@ -1154,7 +1154,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 	AttributeType type = attribute_by_name(attr);
 	if (type == ATTRIBUTE_NONE)
 	{
-		SEMA_TOKID_ERROR(attr->name, "There is no attribute with the name '%s', did you mistype?", TOKSTR(attr->name));
+		sema_error_at(attr->name_span, "There is no attribute with the name '%s', did you mistype?", attr->name);
 		return ATTRIBUTE_NONE;
 	}
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
@@ -1185,7 +1185,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 
 	if ((attribute_domain[type] & domain) != domain)
 	{
-		SEMA_TOKID_ERROR(attr->name, "'%s' is not a valid %s attribute.", TOKSTR(attr->name), attribute_domain_to_string(domain));
+		sema_error_at(attr->name_span, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
 		return ATTRIBUTE_NONE;
 	}
 	switch (type)
@@ -1201,8 +1201,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			Expr *expr = attr->expr;
 			if (!expr || expr->expr_kind != EXPR_IDENTIFIER) goto FAILED_OP_TYPE;
 			if (expr->identifier_expr.path) goto FAILED_OP_TYPE;
-			TokenId tok = expr->identifier_expr.identifier;
-			const char *kw = TOKSTR(tok);
+			const char *kw = expr->identifier_expr.ident;
 			if (kw == kw_elementat)
 			{
 				attr->operator = OVERLOAD_ELEMENT_AT;
@@ -1231,7 +1230,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 		case ATTRIBUTE_ALIGN:
 			if (!attr->expr)
 			{
-				SEMA_TOKID_ERROR(attr->name, "'align' requires an power-of-2 argument, e.g. align(8).");
+				sema_error_at(attr->name_span, "'align' requires an power-of-2 argument, e.g. align(8).");
 				return ATTRIBUTE_NONE;
 			}
 			if (!sema_analyse_expr(context, attr->expr)) return false;
@@ -1265,12 +1264,12 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 		case ATTRIBUTE_EXTNAME:
 			if (context->unit->module->is_generic)
 			{
-				SEMA_TOKID_ERROR(attr->name, "'extname' attributes are not allowed in generic modules.");
+				sema_error_at(attr->name_span, "'extname' attributes are not allowed in generic modules.");
 				return false;
 			}
 			if (!attr->expr)
 			{
-				SEMA_TOKID_ERROR(attr->name, "'%s' requires a string argument, e.g. %s(\"foo\").", TOKSTR(attr->name), TOKSTR(attr->name));
+				sema_error_at(attr->name_span, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
 				return ATTRIBUTE_NONE;
 			}
 			if (!sema_analyse_expr(context, attr->expr)) return false;
@@ -1283,7 +1282,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 		default:
 			if (attr->expr)
 			{
-				SEMA_ERROR(attr->expr, "'%s' should not have any arguments.", TOKSTR(attr->name));
+				SEMA_ERROR(attr->expr, "'%s' should not have any arguments.", attr->name);
 				return ATTRIBUTE_NONE;
 			}
 			return type;
@@ -1300,20 +1299,51 @@ static inline bool sema_analyse_doc_header(Ast *docs, Decl **params, Decl **extr
 	{
 		Ast *directive = doc_directives[i];
 		if (directive->doc_directive.kind != DOC_DIRECTIVE_PARAM) continue;
-		TokenId param = directive->doc_directive.param.param;
-		const char *param_name = TOKSTR(param);
+		const char *param_name = directive->doc_directive.param.name;
+		Decl *extra_param = NULL;
+		Decl *param = NULL;
 		VECEACH(params, j)
 		{
-			if (params[j]->name == param_name) goto NEXT;
+			param = params[j];
+			if (param->name == param_name) goto NEXT;
 		}
 		VECEACH(extra_params, j)
 		{
-			if (extra_params[j]->name == param_name) goto NEXT;
+			param = extra_params[j];
+			if (param->name == param_name) goto NEXT;
 		}
-		SEMA_TOKID_ERROR(param, "There is no parameter '%s', did you misspell it?", param_name);
+		SEMA_ERROR(&directive->doc_directive.param, "There is no parameter '%s', did you misspell it?", param_name);
 		return false;
-		NEXT:
-		continue;
+	NEXT:;
+		bool may_be_pointer = !param->type || type_is_pointer(type_flatten(param->type));
+		if (directive->doc_directive.param.by_ref)
+		{
+			if (!may_be_pointer)
+			{
+				SEMA_ERROR(directive, "'&' can only be added to pointer type parameters.");
+				return false;
+			}
+			param->var.not_null = true;
+		}
+		switch (directive->doc_directive.param.modifier)
+		{
+			case PARAM_ANY:
+				goto ADDED;
+			case PARAM_IN:
+				param->var.may_not_write = true;
+				break;
+			case PARAM_OUT:
+				param->var.may_not_read = true;
+				break;
+			case PARAM_INOUT:
+				break;
+		}
+		if (!may_be_pointer)
+		{
+			SEMA_ERROR(directive, "'in', 'out' and 'inout' may only be added to pointers.");
+			return false;
+		}
+ADDED:;
 	}
 	return true;
 }
@@ -1390,7 +1420,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		decl->visibility = VISIBLE_EXTERN;
 		return true;
 	}
-	Decl *function = decl_new(DECL_FUNC, decl->name_token, VISIBLE_EXTERN);
+	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
 	function->name = kw_mainstub;
 	function->extname = kw_main;
 	function->func_decl.function_signature.returntype = type_info_new_base(type_cint, decl->span);
@@ -1551,12 +1581,12 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 #undef SET_ATTR
 		if (had)
 		{
-			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			sema_error_at(attr->name_span, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 		if (decl->func_decl.attr_inline && decl->func_decl.attr_noinline)
 		{
-			SEMA_TOKID_ERROR(attr->name, "A function cannot be 'inline' and 'noinline' at the same time.");
+			sema_error_at(attr->name_span, "A function cannot be 'inline' and 'noinline' at the same time.");
 			return decl_poison(decl);
 		}
 	}
@@ -1647,7 +1677,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		}
 		if (had)
 		{
-			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			sema_error_at(attr->name_span, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 	}
@@ -1796,7 +1826,7 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl)
 #undef SET_ATTR
 		if (had)
 		{
-			SEMA_TOKID_ERROR(attr->name, "Attribute occurred twice, please remove one.");
+			sema_error_at(attr->name_span, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 	}
@@ -1807,14 +1837,14 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 {
 	if (type == type_void)
 	{
-		sema_error_range(span, "The use of 'void' as a variable type is not permitted.");
+		sema_error_at(span, "The use of 'void' as a variable type is not permitted.");
 		return false;
 	}
 
 	if (!type_is_failable(type)) return true;
 	if (type_is_failable_any(type) || type_flatten_distinct(type->failable) == type_void)
 	{
-		sema_error_range(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
+		sema_error_at(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
 		                 type_quoted_error_string(type_anyerr));
 		return false;
 	}
@@ -1957,7 +1987,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		scratch_buffer_append(context->current_function->name);
 		scratch_buffer_append_char('.');
 		scratch_buffer_append(decl->name);
-		decl->external_name = scratch_buffer_interned();
+		decl->external_name = scratch_buffer_copy();
 	}
 
 	if (decl->var.init_expr)
@@ -2041,8 +2071,8 @@ static Module *module_instantiate_generic(Module *module, Path *path, TypeInfo *
 	CompilationUnit *first_context = new_module->units[0];
 	VECEACH(module->parameters, i)
 	{
-		TokenId param = module->parameters[i];
-		Decl *decl = decl_new_with_type(param, DECL_TYPEDEF, VISIBLE_PUBLIC);
+		const char *param = module->parameters[i];
+		Decl *decl = decl_new_with_type(param, parms[i]->span, DECL_TYPEDEF, VISIBLE_PUBLIC);
 		decl->resolve_status = RESOLVE_DONE;
 		TypeInfo *type_info = parms[i];
 		assert(type_info->resolve_status == RESOLVE_DONE);
@@ -2057,12 +2087,14 @@ static Module *module_instantiate_generic(Module *module, Path *path, TypeInfo *
 static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 {
 	Path *decl_path;
-	TokenId name;
+	const char *name;
+	SourceSpan span;
 	switch (decl->define_decl.define_kind)
 	{
 		case DEFINE_IDENT_GENERIC:
 			decl_path = decl->define_decl.path;
-			name = decl->define_decl.identifier;
+			name = decl->define_decl.ident;
+			span = decl->define_decl.span;
 			break;
 		case DEFINE_TYPE_GENERIC:
 		{
@@ -2073,7 +2105,8 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 				return decl_poison(decl);
 			}
 			decl_path = define_type->unresolved.path;
-			name = define_type->unresolved.name_loc;
+			name = define_type->unresolved.name;
+			span = define_type->unresolved.span;
 			break;
 		}
 		case DEFINE_ATTRIBUTE:
@@ -2081,7 +2114,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		default:
 			UNREACHABLE
 	}
-	Decl *alias = unit_resolve_parameterized_symbol(c->unit, name, decl_path);
+	Decl *alias = unit_resolve_parameterized_symbol(c->unit, name, span, decl_path);
 	if (!decl_ok(alias))
 	{
 		return decl_poison(decl);
@@ -2093,8 +2126,10 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 	assert(parameter_count > 0);
 	if (parameter_count != vec_size(params))
 	{
-		sema_error_range((SourceSpan) { params[0]->span.loc, VECLAST(params)->span.end_loc }, "The generic module expected %d arguments, but you only supplied %d, did you make a mistake?",
-		           parameter_count, vec_size(decl->define_decl.generic_params));
+		sema_error_at(extend_span_with_token(params[0]->span, VECLAST(params)->span),
+		              "The generic module expected %d arguments, but you only supplied %d, did you make a mistake?",
+		              parameter_count,
+		              vec_size(decl->define_decl.generic_params));
 		return decl_poison(decl);
 	}
 	scratch_buffer_clear();
@@ -2121,8 +2156,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		sema_analyze_stage(instantiated_module, c->unit->module->stage);
 	}
 	if (global_context.errors_found) return decl_poison(decl);
-	const char *name_str = TOKSTR(name);
-	Decl *symbol = module_find_symbol(instantiated_module, name_str);
+	Decl *symbol = module_find_symbol(instantiated_module, name);
 	assert(symbol);
 	unit_register_external_symbol(c->compilation_unit, symbol);
 	switch (decl->define_decl.define_kind)
@@ -2151,7 +2185,8 @@ static inline bool sema_analyse_define(SemaContext *c, Decl *decl)
 	if (decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
 	{
 		Decl *symbol = sema_resolve_normal_symbol(c,
-		                                   decl->define_decl.identifier,
+		                                   decl->define_decl.ident,
+		                                   decl->define_decl.span,
 		                                   decl->define_decl.path,
 		                                   true);
 		if (!decl_ok(symbol)) return false;
@@ -2214,7 +2249,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			if (!sema_analyse_enum(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
-		case DECL_ERRTYPE:
+		case DECL_OPTENUM:
 			if (!sema_analyse_error(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
@@ -2233,7 +2268,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_CT_CASE:
 		case DECL_CT_IF:
 		case DECL_CT_ASSERT:
-		case DECL_ERRVALUE:
+		case DECL_OPTVALUE:
 		case DECL_DECLARRAY:
 			UNREACHABLE
 	}

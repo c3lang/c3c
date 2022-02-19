@@ -173,7 +173,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	// 1. Check if we are doing an implicit declaration.
 	if (!var_type && ident->expr_kind == EXPR_IDENTIFIER)
 	{
-		Decl *decl = sema_resolve_normal_symbol(context, ident->identifier_expr.identifier, NULL, false);
+		Decl *decl = sema_resolve_normal_symbol(context, ident->identifier_expr.ident, ident->span, NULL, false);
 		if (!decl) implicit_declaration = true;
 	}
 
@@ -244,13 +244,11 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 		if (ident->identifier_expr.path)
 		{
-			sema_error_range(ident->identifier_expr.path->span, "The variable may not have a path.");
+			SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
 			return false;
 		}
 
-		TokenId ident_token = ident->identifier_expr.identifier;
-
-		if (TOKTYPE(ident_token) != TOKEN_IDENT)
+		if (ident->identifier_expr.is_const)
 		{
 			SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
 			return false;
@@ -277,7 +275,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		}
 
 		// 4d. A new declaration is created.
-		Decl *decl = decl_new_var(ident_token, var_type, VARDECL_LOCAL, VISIBLE_LOCAL);
+		Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, var_type, VARDECL_LOCAL, VISIBLE_LOCAL);
 
 		// 4e. Analyse it
 		if (!sema_analyse_var_decl(context, decl, true)) return false;
@@ -329,7 +327,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	}
 	if (!type && ident->expr_kind == EXPR_IDENTIFIER)
 	{
-		Decl *decl = sema_resolve_normal_symbol(context, ident->identifier_expr.identifier, NULL, false);
+		Decl *decl = sema_resolve_normal_symbol(context, ident->identifier_expr.ident, ident->span, NULL, false);
 		if (!decl) implicit_declaration = true;
 	}
 
@@ -348,7 +346,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 		if (ident->type->canonical != type_anyerr)
 		{
 			SEMA_ERROR(ident, "Expected the variable to have the type %s, not %s.", type_quoted_error_string(type_anyerr),
-					   type_quoted_error_string(type->type));
+			           type_quoted_error_string(type->type));
 			return false;
 		}
 
@@ -364,7 +362,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 		if (type->type->canonical != type_anyerr)
 		{
 			SEMA_ERROR(type, "Expected the type to be %s, not %s.", type_quoted_error_string(type_anyerr),
-					   type_quoted_error_string(type->type));
+			           type_quoted_error_string(type->type));
 			return false;
 		}
 		if (ident->expr_kind != EXPR_IDENTIFIER)
@@ -375,20 +373,18 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 
 		if (ident->identifier_expr.path)
 		{
-			sema_error_range(ident->identifier_expr.path->span, "The variable may not have a path.");
+			SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
 			return false;
 		}
 
-		TokenId ident_token = ident->identifier_expr.identifier;
-
-		if (TOKTYPE(ident_token) != TOKEN_IDENT)
+		if (ident->identifier_expr.is_const)
 		{
 			SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
 			return false;
 		}
 
 		// 4d. A new declaration is created.
-		Decl *decl = decl_new_var(ident_token, type, VARDECL_LOCAL, VISIBLE_LOCAL);
+		Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, type, VARDECL_LOCAL, VISIBLE_LOCAL);
 		decl->var.init_expr = expr_new(EXPR_UNDEF, decl->span);
 
 		// 4e. Analyse it
@@ -470,7 +466,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 
 		// Does the identifier exist in the parent scope?
 		// then again it can't be a variant unwrap.
-		Decl *decl_for_ident = sema_resolve_normal_symbol(context, left->identifier_expr.identifier, NULL, false);
+		Decl *decl_for_ident = sema_resolve_normal_symbol(context, left->identifier_expr.ident, left->span, NULL, false);
 		if (decl_for_ident) goto NORMAL_EXPR;
 
 		Expr *right = expr->binary_expr.right;
@@ -486,7 +482,8 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		if (right->type != type_any) goto NORMAL_EXPR;
 		// Found an expansion here
 		expr->expr_kind = EXPR_VARIANTSWITCH;
-		expr->variant_switch.new_ident = left->identifier_expr.identifier;
+		expr->variant_switch.new_ident = left->identifier_expr.ident;
+		expr->variant_switch.span = left->span;
 		expr->variant_switch.variant_expr = right;
 		expr->variant_switch.is_deref = is_deref;
 		expr->variant_switch.is_assign = true;
@@ -627,9 +624,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 static inline bool sema_analyse_stmt_placement(Expr *cond, Ast *stmt)
 {
 	if (stmt->ast_kind == AST_COMPOUND_STMT) return true;
-	SourceLocation *end_of_cond = TOKLOC(cond->span.end_loc);
-	SourceLocation *start_of_then = TOKLOC(stmt->span.loc);
-	return end_of_cond->row == start_of_then->row;
+	return cond->span.row == stmt->span.row;
 }
 
 /**
@@ -1077,8 +1072,8 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		if (!type_is_integer(type_flatten(index_var_type)))
 		{
 			SEMA_ERROR(index->var.type_info,
-					   "Index must be an integer type, '%s' is not valid.",
-					   type_to_error_string(index_var_type));
+			           "Index must be an integer type, '%s' is not valid.",
+			           type_to_error_string(index_var_type));
 			return false;
 		}
 	}
@@ -1129,7 +1124,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	ArraySize array_len = 0;
 	if (len)
 	{
-		ASSIGN_EXPR_ELSE(len_call, sema_insert_method_macro_call(context, enumerator->span, len, enum_val, NULL), false);
+		ASSIGN_EXPR_OR_RET(len_call, sema_insert_method_macro_call(context, enumerator->span, len, enum_val, NULL), false);
 	}
 	else
 	{
@@ -1248,10 +1243,16 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		success = sema_analyse_cond(context, cond, cond_type);
 
 		Ast *then = statement->if_stmt.then_body;
-		bool then_has_braces = then->ast_kind == AST_COMPOUND_STMT || then->ast_kind == AST_IF_CATCH_SWITCH_STMT;
-
-		if (statement->if_stmt.else_body)
+		if (success && !ast_ok(then))
 		{
+			SEMA_ERROR(statement->if_stmt.then_body,
+			           "The 'then' part of a single line if-statement must start on the same line as the 'if' or use '{ }'");
+			success = false;
+		}
+
+		if (success && statement->if_stmt.else_body)
+		{
+			bool then_has_braces = then->ast_kind == AST_COMPOUND_STMT || then->ast_kind == AST_IF_CATCH_SWITCH_STMT;
 			if (!then_has_braces)
 			{
 				SEMA_ERROR(then, "if-statements with an 'else' must use '{ }' even around a single statement.");
@@ -1262,17 +1263,6 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			{
 				SEMA_ERROR(statement->if_stmt.else_body,
 				           "An 'else' must use '{ }' even around a single statement.");
-				success = false;
-			}
-		}
-		if (success && !then_has_braces)
-		{
-			SourceLocation *end_of_cond = TOKLOC(cond->span.end_loc);
-			SourceLocation *start_of_then = TOKLOC(statement->if_stmt.then_body->span.loc);
-			if (end_of_cond->row != start_of_then->row)
-			{
-				SEMA_ERROR(statement->if_stmt.then_body,
-				           "The 'then' part of a single line if-statement must start on the same line as the 'if' or use '{ }'");
 				success = false;
 			}
 		}
@@ -1346,7 +1336,7 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 {
 	Decl *ambiguous;
 	Decl *dummy;
-	Decl *target = sema_resolve_normal_symbol(context, stmt->contbreak_stmt.label.span, NULL, false);
+	Decl *target = sema_resolve_normal_symbol(context, stmt->contbreak_stmt.label.name, stmt->contbreak_stmt.label.span, NULL, false);
 	if (!target)
 	{
 		SEMA_ERROR(stmt, "Cannot find a labelled statement with the name '%s'.", stmt->contbreak_stmt.label.name);
@@ -1354,7 +1344,7 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 	}
 	if (target->decl_kind != DECL_LABEL)
 	{
-		SEMA_TOKID_ERROR(stmt->contbreak_stmt.label.span, "Expected the name to match a label, not a constant.");
+		SEMA_ERROR(&stmt->contbreak_stmt.label, "Expected the name to match a label, not a constant.");
 		return poisoned_decl;
 	}
 	if (context->active_scope.in_defer)
@@ -1415,7 +1405,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 {
 	context->active_scope.jump_end = true;
 
-	if (!context->next_target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr_or_type_info)
+	if (!context->next_target && !statement->nextcase_stmt.label.name && !statement->nextcase_stmt.expr)
 	{
 		if (context->next_switch)
 		{
@@ -1431,7 +1421,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	Ast *parent = context->next_switch;
 	if (statement->nextcase_stmt.label.name)
 	{
-		Decl *target = sema_resolve_normal_symbol(context, statement->nextcase_stmt.label.span, NULL, false);
+		Decl *target = sema_resolve_normal_symbol(context, statement->nextcase_stmt.label.name, statement->nextcase_stmt.label.span, NULL, false);
 		if (!target)
 		{
 			SEMA_ERROR(statement, "Cannot find a switch statement with the name '%s'.", statement->nextcase_stmt.label.name);
@@ -1439,14 +1429,14 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		}
 		if (target->decl_kind != DECL_LABEL)
 		{
-			SEMA_TOKID_ERROR(statement->nextcase_stmt.label.span, "Expected the name to match a label, not a constant.");
+			SEMA_ERROR(&statement->nextcase_stmt.label, "Expected the name to match a label, not a constant.");
 			return false;
 		}
 		parent = astptr(target->label.parent);
 		AstKind kind = parent->ast_kind;
 		if (kind != AST_SWITCH_STMT && kind != AST_IF_CATCH_SWITCH_STMT)
 		{
-			SEMA_TOKID_ERROR(statement->nextcase_stmt.label.span, "Expected the label to match a 'switch' or 'if-catch' statement.");
+			SEMA_ERROR(&statement->nextcase_stmt.label, "Expected the label to match a 'switch' or 'if-catch' statement.");
 			return false;
 		}
 		bool defer_mismatch = false;
@@ -1456,14 +1446,14 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			SEMA_ERROR(statement, "This 'nextcase' would jump out of a defer which is not allowed.");
 			return false;
 		}
-		assert(statement->nextcase_stmt.expr_or_type_info);
+		assert(statement->nextcase_stmt.expr);
 	}
 
 	statement->nextcase_stmt.defers.start = context->active_scope.defer_last;
 	statement->nextcase_stmt.defers.end = parent->switch_stmt.defer;
 
 	// Plain next.
-	if (!statement->nextcase_stmt.expr_or_type_info)
+	if (!statement->nextcase_stmt.expr)
 	{
 		assert(context->next_target);
 		statement->nextcase_stmt.case_switch_stmt = context->next_target;
@@ -1471,9 +1461,9 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	}
 
 	Expr *cond = parent->switch_stmt.cond;
-	if (statement->nextcase_stmt.is_type)
+	if (statement->nextcase_stmt.expr->expr_kind == EXPR_TYPEINFO)
 	{
-		TypeInfo *type_info = statement->nextcase_stmt.expr_or_type_info;
+		TypeInfo *type_info = statement->nextcase_stmt.expr->type_expr;
 		if (!sema_resolve_type_info(context, type_info)) return false;
 		Ast **cases;
 		statement->nextcase_stmt.defers.end = parent->switch_stmt.defer;
@@ -1511,7 +1501,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		return false;
 	}
 
-	Expr *target = statement->nextcase_stmt.expr_or_type_info;
+	Expr *target = statement->nextcase_stmt.expr;
 
 	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_anyerr;
 
@@ -1715,11 +1705,11 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	{
 		if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
 		{
-			sema_error_range((SourceSpan){ expr->span.loc, to_expr->span.end_loc },
-			                 "The range is not valid because the first value (%s) is greater than the second (%s). "
-							 "It would work if you swapped their order.",
-			                 int_to_str(const_expr->ixx, 10),
-			                 int_to_str(to_const_expr->ixx, 10));
+			sema_error_at(extend_span_with_token(expr->span, to_expr->span),
+			              "The range is not valid because the first value (%s) is greater than the second (%s). "
+			              "It would work if you swapped their order.",
+			              int_to_str(const_expr->ixx, 10),
+			              int_to_str(to_const_expr->ixx, 10));
 			return false;
 		}
 		Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
@@ -1750,7 +1740,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	bool use_type_id = false;
 	if (!type_is_comparable(switch_type))
 	{
-		sema_error_range(expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
+		sema_error_at(expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
 		return false;
 	}
 	// We need an if chain if this isn't an integer type.
@@ -1819,10 +1809,9 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 				if (variant->is_assign)
 				{
 					Type *real_type = type_get_ptr(stmt->case_stmt.expr->const_expr.typeid);
-					TokenId name = variant->new_ident;
-					Decl *new_var = decl_new_var(name,
+					Decl *new_var = decl_new_var(variant->new_ident, variant->span,
 												 type_info_new_base(variant->is_deref
-					                             ? real_type->pointer : real_type, source_span_from_token_id(name)),
+					                             ? real_type->pointer : real_type, variant->span),
 					                             VARDECL_LOCAL, VISIBLE_LOCAL);
 					Expr *var_result = expr_variable(var_holder);
 					if (!cast(var_result, real_type)) return false;
@@ -1838,7 +1827,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 				else
 				{
 					Type *type = type_get_ptr(stmt->case_stmt.expr->const_expr.typeid);
-					Decl *alias = decl_new_var(var_holder->name_token,
+					Decl *alias = decl_new_var(var_holder->name, var_holder->span,
 											   type_info_new_base(type, stmt->case_stmt.expr->span),
 											   VARDECL_LOCAL, VISIBLE_LOCAL);
 					Expr *ident_converted = expr_variable(var_holder);
@@ -1993,18 +1982,18 @@ static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 	}
 	Expr **expression = collection->initializer_list;
 	Decl *index = NULL;
-	TokenId index_token = statement->ct_foreach_stmt.index;
+	const char *index_name = statement->ct_foreach_stmt.index_name;
 
 	AstId start = 0;
 	SCOPE_START;
 
-		if (index_token.index)
+		if (index_name)
 		{
-			index = decl_new_var(index_token, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+			index = decl_new_var(index_name, statement->ct_foreach_stmt.index_span, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
 			index->type = type_int;
 			if (!sema_add_local(context, index)) return SCOPE_POP_ERROR();
 		}
-		Decl *value = decl_new_var(statement->ct_foreach_stmt.value, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
+		Decl *value = decl_new_var(statement->ct_foreach_stmt.value_name, statement->ct_foreach_stmt.value_span, NULL, VARDECL_LOCAL_CT, VISIBLE_LOCAL);
 		if (!sema_add_local(context, value)) return SCOPE_POP_ERROR();
 		// Get the body
 		Ast *body = astptr(statement->ct_foreach_stmt.body);
@@ -2325,7 +2314,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			context->active_scope.allow_dead_code = true;
 			return true;
 		}
-		//SEMA_ERROR(statement, "This code will never execute.");
+		//ERROR_NODE(statement, "This code will never execute.");
 		context->active_scope.allow_dead_code = true;
 		//return false;
 	}
@@ -2409,39 +2398,82 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 }
 
 
-static bool sema_analyse_requires(SemaContext *context, Ast *docs, AstId **asserts)
+static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts)
+{
+	Expr *declexpr = directive->doc_directive.contract.decl_exprs;
+	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
+
+	VECEACH(declexpr->expression_list, j)
+	{
+		Expr *expr = declexpr->expression_list[j];
+		if (expr->expr_kind == EXPR_DECL)
+		{
+			SEMA_ERROR(expr, "Only expressions are allowed.");
+			return false;
+		}
+		if (!sema_analyse_cond_expr(context, expr)) return false;
+		Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
+		assert->assert_stmt.expr = expr;
+		const char *comment = directive->doc_directive.contract.comment;
+		if (!comment) comment = directive->doc_directive.contract.expr_string;
+		Expr *comment_expr = expr_new(EXPR_CONST, expr->span);
+		expr_rewrite_to_string(comment_expr, comment);
+		assert->assert_stmt.message = comment_expr;
+		ast_append(asserts, assert);
+	}
+	return true;
+}
+
+static bool sema_analyse_checked(SemaContext *context, Ast *directive, AstId **asserts)
+{
+	Expr *declexpr = directive->doc_directive.contract.decl_exprs;
+	bool success = true;
+	SCOPE_START
+		VECEACH(declexpr->cond_expr, j)
+		{
+			Expr *expr = declexpr->cond_expr[j];
+			if (!sema_analyse_cond_expr(context, expr))
+			{
+				const char *comment = directive->doc_directive.contract.comment;
+				if (comment)
+				{
+					SEMA_ERROR(expr, comment);
+				}
+				success = false;
+				goto END;
+			}
+		}
+END:
+	SCOPE_END;
+	return success;
+}
+
+static bool sema_analyse_contracts(SemaContext *context, Ast *docs, AstId **asserts)
 {
 	if (!docs) return true;
 	Ast **directives = docs->directives;
 	VECEACH(directives, i)
 	{
 		Ast *directive = directives[i];
-		if (directive->doc_directive.kind != DOC_DIRECTIVE_REQUIRE) continue;
-		Expr *comment = directive->doc_directive.contract.comment;
-		Expr *declexpr = directive->doc_directive.contract.decl_exprs;
-		if (comment)
+		switch (directive->doc_directive.kind)
 		{
-			if (comment->expr_kind != EXPR_CONST || comment->const_expr.const_kind != CONST_STRING)
-			{
-				SEMA_ERROR(comment, "Expected a string here.");
-				return false;
-			}
-		}
-		assert(declexpr->expr_kind == EXPR_COND);
-
-		VECEACH(declexpr->cond_expr, j)
-		{
-			Expr *expr = declexpr->cond_expr[j];
-			if (expr->expr_kind == EXPR_DECL)
-			{
-				SEMA_ERROR(expr, "Only expressions are allowed.");
-				return false;
-			}
-			if (!sema_analyse_cond_expr(context, expr)) return false;
-			Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
-			assert->assert_stmt.expr = expr;
-			assert->assert_stmt.message = comment;
-			ast_append(asserts, assert);
+			case DOC_DIRECTIVE_UNKNOWN:
+				break;
+			case DOC_DIRECTIVE_PURE:
+				context->current_function_pure = true;
+				break;
+			case DOC_DIRECTIVE_REQUIRE:
+				if (!sema_analyse_require(context, directive, asserts)) return false;
+				break;
+			case DOC_DIRECTIVE_CHECKED:
+				if (!sema_analyse_checked(context, directive, asserts)) return false;
+				break;
+			case DOC_DIRECTIVE_PARAM:
+				break;
+			case DOC_DIRECTIVE_ERRORS:
+				break;
+			case DOC_DIRECTIVE_ENSURE:
+				break;
 		}
 	}
 	return true;
@@ -2453,6 +2485,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	FunctionSignature *signature = &func->func_decl.function_signature;
 	FunctionPrototype *prototype = func->type->func.prototype;
 	context->current_function = func;
+	context->current_function_pure = false;
 	context->rtype = prototype->rtype;
 	context->active_scope = (DynamicScope) {
 			.scope_id = 0,
@@ -2478,7 +2511,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		}
 		AstId assert_first = 0;
 		AstId *next = &assert_first;
-		if (!sema_analyse_requires(context, func->docs, &next)) return false;
+		if (!sema_analyse_contracts(context, func->docs, &next)) return false;
 		if (func->func_decl.attr_naked)
 		{
 			AstId current = func->func_decl.body->compound_stmt.first_stmt;
@@ -2503,7 +2536,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 				if (canonical_rtype != type_void)
 				{
 					// IMPROVE better pointer to end.
-					SEMA_TOKID_ERROR(func->name_token, "Missing return statement at the end of the function.");
+					SEMA_ERROR(func, "Missing return statement at the end of the function.");
 					return false;
 				}
 			}
