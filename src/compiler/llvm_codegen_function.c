@@ -472,6 +472,8 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 
 	LLVMSetCurrentDebugLocation2(context->builder, NULL);
 
+	if (decl->func_decl.ret_var) llvm_emit_and_set_decl_alloca(context, decl->func_decl.ret_var);
+
 	AstId current = decl->func_decl.body->compound_stmt.first_stmt;
 	while (current)
 	{

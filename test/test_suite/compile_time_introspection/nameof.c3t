@@ -10,29 +10,29 @@ int b;
 fn void main()
 {
     printf("%s\n", $qnameof(Foo));
-    printf("%s\n", $qnameof("Foo"));
+    printf("%s\n", $qnameof($evaltype("Foo")));
     printf("%s\n", $nameof(Foo));
-    printf("%s\n", $nameof("mymodule::Foo"));
+    printf("%s\n", $nameof($evaltype("mymodule::Foo")));
     printf("%s\n", $extnameof(Foo));
-    printf("%s\n", $extnameof("Foo"));
+    printf("%s\n", $extnameof($evaltype("Foo")));
 
     printf("%s\n", $qnameof(b));
-    printf("%s\n", $qnameof("b"));
+    printf("%s\n", $qnameof($eval("b")));
     printf("%s\n", $nameof(b));
-    printf("%s\n", $nameof("mymodule::b"));
+    printf("%s\n", $nameof($eval("mymodule::b")));
     printf("%s\n", $extnameof(b));
-    printf("%s\n", $extnameof("b"));
+    printf("%s\n", $extnameof($eval("b")));
 
     int a;
 
     printf("%s\n", $qnameof(a));
-    printf("%s\n", $qnameof("a"));
+    printf("%s\n", $qnameof($eval("a")));
     printf("%s\n", $nameof(a));
-    printf("%s\n", $nameof("a"));
+    printf("%s\n", $nameof($eval("a")));
 
 }
 
-// #expect: mymodule.ll
+/* #expect: mymodule.ll
 
 @.str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
 @.str.1 = private unnamed_addr constant [14 x i8] c"mymodule::Foo\00", align 1

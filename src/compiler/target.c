@@ -1159,7 +1159,7 @@ void *llvm_target_machine_create(void)
 		error_exit("Could not create target: %s for triple '%s'", err, platform_target.target_triple);
 		// Usually we would dispose of err, but no need to do it due to exit.
 	}
-	LLVMRelocMode reloc_mode;
+	LLVMRelocMode reloc_mode = LLVMRelocDefault;
 
 	switch (platform_target.reloc_model)
 	{

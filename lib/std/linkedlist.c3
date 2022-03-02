@@ -43,7 +43,7 @@ private fn void LinkedList.linkFirst(LinkedList *list, Type value)
 private fn void LinkedList.linkLast(LinkedList *list, Type value)
 {
     Node *last = list.last;
-    Node *new_node = mem::alloc($sizeof(Node));
+    Node *new_node = mem::alloc(Node.sizeof);
     *new_node = { .prev = last, .value = value };
     list.last = new_node;
     if (!last)

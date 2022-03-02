@@ -1162,7 +1162,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO),
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
-			[ATTRIBUTE_NORETURN] = ATTR_FUNC,
+			[ATTRIBUTE_NORETURN] = ATTR_FUNC | ATTR_MACRO,
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
@@ -1290,16 +1290,14 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 
 }
 
-static inline bool sema_analyse_doc_header(Ast *docs, Decl **params, Decl **extra_params)
+static inline bool sema_analyse_doc_header(AstDocDirective *docs, Decl **params, Decl **extra_params)
 {
 	if (!docs) return true;
-	assert(docs->ast_kind == AST_DOCS);
-	Ast **doc_directives = docs->directives;
-	VECEACH(doc_directives, i)
+	VECEACH(docs, i)
 	{
-		Ast *directive = doc_directives[i];
-		if (directive->doc_directive.kind != DOC_DIRECTIVE_PARAM) continue;
-		const char *param_name = directive->doc_directive.param.name;
+		AstDocDirective *directive = &docs[i];
+		if (directive->kind != DOC_DIRECTIVE_PARAM) continue;
+		const char *param_name = directive->param.name;
 		Decl *extra_param = NULL;
 		Decl *param = NULL;
 		VECEACH(params, j)
@@ -1312,11 +1310,11 @@ static inline bool sema_analyse_doc_header(Ast *docs, Decl **params, Decl **extr
 			param = extra_params[j];
 			if (param->name == param_name) goto NEXT;
 		}
-		SEMA_ERROR(&directive->doc_directive.param, "There is no parameter '%s', did you misspell it?", param_name);
+		SEMA_ERROR(&directive->param, "There is no parameter '%s', did you misspell it?", param_name);
 		return false;
 	NEXT:;
 		bool may_be_pointer = !param->type || type_is_pointer(type_flatten(param->type));
-		if (directive->doc_directive.param.by_ref)
+		if (directive->param.by_ref)
 		{
 			if (!may_be_pointer)
 			{
@@ -1325,7 +1323,7 @@ static inline bool sema_analyse_doc_header(Ast *docs, Decl **params, Decl **extr
 			}
 			param->var.not_null = true;
 		}
-		switch (directive->doc_directive.param.modifier)
+		switch (directive->param.modifier)
 		{
 			case PARAM_ANY:
 				goto ADDED;
@@ -1424,8 +1422,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	function->name = kw_mainstub;
 	function->extname = kw_main;
 	function->func_decl.function_signature.returntype = type_info_new_base(type_cint, decl->span);
-	Decl *param1 = decl_new_generated_var(kw_argv, type_cint, VARDECL_PARAM, decl->span);
-	Decl *param2 = decl_new_generated_var(kw_argc, type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
+	Decl *param1 = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+	Decl *param2 = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
 	Decl **main_params = NULL;
 	vec_add(main_params, param1);
 	vec_add(main_params, param2);
@@ -1568,8 +1566,8 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 					call_abi = CALL_X86_REG;
 				}
 				break;
-			case ATTRIBUTE_INLINE: SET_ATTR(attr_inline);
 			case ATTRIBUTE_NORETURN: SET_ATTR(attr_noreturn);
+			case ATTRIBUTE_INLINE: SET_ATTR(attr_inline);
 			case ATTRIBUTE_WEAK: SET_ATTR(attr_weak);
 			case ATTRIBUTE_NAKED: SET_ATTR(attr_naked);
 			case ATTRIBUTE_AUTOIMPORT:
@@ -1671,6 +1669,10 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 				break;
 			case ATTRIBUTE_AUTOIMPORT:
 				decl->is_autoimport = true;
+				break;
+			case ATTRIBUTE_NORETURN:
+				had = decl->macro_decl.attr_noreturn;
+				decl->macro_decl.attr_noreturn = true;
 				break;
 			default:
 				UNREACHABLE
@@ -2114,7 +2116,12 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		default:
 			UNREACHABLE
 	}
-	Decl *alias = unit_resolve_parameterized_symbol(c->unit, name, span, decl_path);
+	NameResolve name_resolve = {
+			.path = decl_path,
+			.span = span,
+			.symbol = name
+	};
+	Decl *alias = unit_resolve_parameterized_symbol(c->unit, &name_resolve);
 	if (!decl_ok(alias))
 	{
 		return decl_poison(decl);
@@ -2184,11 +2191,7 @@ static inline bool sema_analyse_define(SemaContext *c, Decl *decl)
 	// 1. The plain define
 	if (decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
 	{
-		Decl *symbol = sema_resolve_normal_symbol(c,
-		                                   decl->define_decl.ident,
-		                                   decl->define_decl.span,
-		                                   decl->define_decl.path,
-		                                   true);
+		Decl *symbol = sema_resolve_symbol(c, decl->define_decl.ident, decl->define_decl.path, decl->define_decl.span);
 		if (!decl_ok(symbol)) return false;
 		decl->type = symbol->type;
 		decl->define_decl.alias = symbol;

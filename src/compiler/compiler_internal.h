@@ -459,6 +459,7 @@ typedef struct
 	TypeInfo *type_parent;
 	FunctionSignature function_signature;
 	Ast *body;
+	Decl *ret_var;
 	FuncAnnotations *annotations;
 } FuncDecl;
 
@@ -491,10 +492,14 @@ typedef struct
 
 typedef struct
 {
+	struct
+	{
+		bool attr_noreturn : 1;
+	};
+	struct Ast_ *body;
 	Decl **parameters;
 	TypeInfo *type_parent; // May be null
 	TypeInfo *rtype; // May be null!
-	struct Ast_ *body;
 	Decl **body_parameters;
 	const char *block_parameter;
 	struct CompilationUnit_ *unit;
@@ -561,7 +566,7 @@ typedef struct Decl_
 	const char *name;
 	SourceSpan span;
 	const char *external_name;
-	Ast *docs;
+	struct AstDocDirective_ *docs;
 	DeclKind decl_kind : 7;
 	Visibility visibility : 3;
 	ResolveStatus resolve_status : 3;
@@ -769,11 +774,7 @@ typedef struct
 typedef struct
 {
 	bool array : 1;
-	union
-	{
-		MemberIndex index;
-		const char *ident;
-	};
+	Expr *inner;
 } ExprFlatElement;
 
 typedef struct
@@ -1110,14 +1111,14 @@ typedef struct
 typedef struct AstCtIfStmt_
 {
 	Expr *expr;
-	struct Ast_ *then;
-	struct Ast_ *elif;
+	Ast *elif;
+	AstId then;
 } AstCtIfStmt;
 
 
 typedef struct
 {
-	Ast *stmt;
+	AstId stmt;
 	DeferList defers;
 } AstScopedStmt;
 
@@ -1194,18 +1195,14 @@ typedef struct
 
 typedef struct
 {
-	Expr *scoped;
-	Ast *stmt;
-} AstScopingStmt;
-typedef struct
-{
 	Expr *message;
 	Expr *expr;
 } AstAssertStmt;
 
 
-typedef struct
+typedef struct AstDocDirective_
 {
+	SourceSpan span;
 	DocDirectiveKind kind;
 	union
 	{
@@ -1262,14 +1259,12 @@ typedef struct Ast_
 		AstForeachStmt foreach_stmt;
 		AstCtIfStmt ct_if_stmt;             // 24
 		AstCtIfStmt ct_elif_stmt;           // 24
-		Ast *ct_else_stmt;                  // 8
+		AstId ct_else_stmt;                  // 8
 		AstCtForeachStmt ct_foreach_stmt;           // 64
 		AstScopedStmt scoped_stmt;          // 16
-		AstScopingStmt scoping_stmt;
 		AstAssertStmt ct_assert_stmt;
 		AstAssertStmt assert_stmt;
-		Ast **directives;
-		AstDocDirective doc_directive;
+		AstDocDirective *directives;
 	};
 } Ast;
 
@@ -1432,6 +1427,7 @@ typedef struct SemaContext_
 		// Reusable returns cache.
 		Ast **returns_cache;
 	};
+	Decl *return_var;
 	Type *rtype;
 	struct SemaContext_ *yield_context;
 	Decl** locals;
@@ -1565,6 +1561,18 @@ typedef struct FunctionPrototype_
 	void *tb_prototype;
 } FunctionPrototype;
 
+typedef struct
+{
+	Decl *ambiguous_other_decl;
+	Decl *private_decl;
+	Path *path;
+	SourceSpan span;
+	const char *symbol;
+	bool path_found;
+	bool suppress_error;
+} NameResolve;
+
+
 extern GlobalContext global_context;
 extern BuildTarget active_target;
 extern Ast *poisoned_ast;
@@ -1603,6 +1611,7 @@ extern const char *kw_min;
 extern const char *kw_elements;
 extern const char *kw_align;
 
+extern const char *kw_sizeof;
 extern const char *kw_in;
 extern const char *kw_out;
 extern const char *kw_inout;
@@ -1625,6 +1634,7 @@ extern const char *kw_param;
 extern const char *kw_ptr;
 extern const char *kw_values;
 extern const char *kw_errors;
+extern const char *kw_return;
 extern const char *kw_type;
 extern const char *kw_FILE;
 extern const char *kw_FUNC;
@@ -1650,9 +1660,6 @@ extern const char *kw_builtin_cmpxchg;
 extern const char *kw_argc;
 extern const char *kw_argv;
 extern const char *kw_mainstub;
-
-
-
 
 ARENA_DEF(chars, char)
 ARENA_DEF(ast, Ast)
@@ -1841,7 +1848,7 @@ Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span, Visibility
 Decl *decl_new_ct(DeclKind kind, SourceSpan span);
 Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type, Visibility visibility);
 Decl *decl_new_var(const char *name, SourceSpan span, TypeInfo *type, VarDeclKind kind, Visibility visibility);
-Decl *decl_new_generated_var(const char *name, Type *type, VarDeclKind kind, SourceSpan span);
+Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span);
 void decl_set_external_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 
@@ -1875,6 +1882,7 @@ void diag_verror_range(SourceSpan location, const char *message, va_list args);
 Expr *expr_new(ExprKind kind, SourceSpan start);
 bool expr_is_simple(Expr *expr);
 bool expr_is_pure(Expr *expr);
+
 static inline bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
 static inline bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
 static inline void expr_replace(Expr *expr, Expr *replacement)
@@ -1956,11 +1964,13 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool is_macro, bool failable);
 Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol);
-Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, const char *symbol, SourceSpan loc, Path *path);
+Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name);
-Decl *sema_resolve_normal_symbol(SemaContext *context, const char *symbol, SourceSpan span, Path *path, bool handle_error);
-Decl *sema_resolve_string_symbol(SemaContext *context, const char *symbol, SourceSpan span, Path *path, bool report_error);
+Decl *sema_resolve_normal_symbol(SemaContext *context, NameResolve *name_resolve);
+Decl *sema_find_symbol(SemaContext *context, const char *symbol);
+Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
+Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
 
 bool sema_resolve_type(SemaContext *context, Type *type);
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
@@ -2506,6 +2516,12 @@ static inline void ast_append(AstId **succ, Ast *next)
 {
 	**succ = astid(next);
 	*succ = &next->next;
+}
+
+static inline Ast *ast_last(Ast *ast)
+{
+	while (ast->next) ast = astptr(ast->next);
+	return ast;
 }
 
 static inline void ast_prepend(AstId *first, Ast *ast)

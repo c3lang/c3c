@@ -26,16 +26,6 @@ void llvm_emit_compound_stmt(GenContext *context, Ast *ast)
 	}
 }
 
-static void llvm_emit_ct_compound_stmt(GenContext *context, Ast *ast)
-{
-	assert(ast->ast_kind == AST_CT_COMPOUND_STMT);
-	AstId current = ast->compound_stmt.first_stmt;
-	while (current)
-	{
-		llvm_emit_stmt(context, ast_next(&current));
-	}
-}
-
 /**
  * This emits a local declaration.
  */
@@ -910,7 +900,7 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 
 void gencontext_emit_scoped_stmt(GenContext *context, Ast *ast)
 {
-	llvm_emit_stmt(context, ast->scoped_stmt.stmt);
+	llvm_emit_stmt(context, astptr(ast->scoped_stmt.stmt));
 	llvm_emit_defer(context, ast->scoped_stmt.defers.start, ast->scoped_stmt.defers.end);
 }
 
@@ -957,10 +947,23 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 	}
 }
 
-
-
 static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 {
+	Expr *expr = ast->assert_stmt.expr;
+	if (!expr)
+	{
+		File *file = source_file_by_id(ast->span.file_id);
+		unsigned row = ast->span.row;
+		llvm_emit_debug_output(c, "Unreachable statement reached.", file->name, c->cur_func_decl->external_name, row ? row : 1);
+		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
+		LLVMBuildUnreachable(c->builder);
+		LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
+		c->current_block = NULL;
+		c->current_block_is_target = false;
+		llvm_emit_block(c, block);
+		return;
+	}
+
 	if (active_target.feature.safe_mode)
 	{
 		BEValue value;
@@ -986,7 +989,6 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
-		return;
 	}
 	llvm_emit_assume(c, ast->assert_stmt.expr);
 }
@@ -1030,18 +1032,6 @@ static inline void llvm_emit_asm_stmt(GenContext *c, Ast *ast)
 	LLVMBuildCall2(c->builder, asm_fn_type, asm_fn, NULL, 0, "");
 }
 
-static inline void gencontext_emit_unreachable_stmt(GenContext *context, Ast *ast)
-{
-	File *file = source_file_by_id(ast->span.file_id);
-	unsigned row = ast->span.row;
-	llvm_emit_debug_output(context, "Unreachable statement reached.", file->name, context->cur_func_decl->external_name, row ? row : 1);
-	llvm_emit_call_intrinsic(context, intrinsic_id.trap, NULL, 0, NULL, 0);
-	LLVMBuildUnreachable(context->builder);
-	LLVMBasicBlockRef block = llvm_basic_block_new(context, "unreachable_block");
-	context->current_block = NULL;
-	context->current_block_is_target = false;
-	llvm_emit_block(context, block);
-}
 
 void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 {
@@ -1239,11 +1229,8 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 	assert(!c->catch_block && "Did not expect a catch block here.");
 	switch (ast->ast_kind)
 	{
-		case AST_DOCS:
-		case AST_DOC_DIRECTIVE:
 		case AST_POISONED:
 		case AST_IF_CATCH_SWITCH_STMT:
-		case AST_SCOPING_STMT:
 		case AST_FOREACH_STMT:
 		case AST_WHILE_STMT:
 		case AST_DO_STMT:
@@ -1272,9 +1259,6 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_COMPOUND_STMT:
 			llvm_emit_compound_stmt(c, ast);
 			break;
-		case AST_CT_COMPOUND_STMT:
-			llvm_emit_ct_compound_stmt(c, ast);
-			break;
 		case AST_FOR_STMT:
 			llvm_emit_for_stmt(c, ast);
 			break;
@@ -1302,9 +1286,6 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			UNREACHABLE
 		case AST_SWITCH_STMT:
 			gencontext_emit_switch(c, ast);
-			break;
-		case AST_UNREACHABLE_STMT:
-			gencontext_emit_unreachable_stmt(c, ast);
 			break;
 	}
 }

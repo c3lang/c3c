@@ -121,17 +121,15 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 
 static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info)
 {
-	Decl *decl = sema_resolve_normal_symbol(context,
-	                                        type_info->unresolved.name,
-	                                        type_info->unresolved.span,
-	                                        type_info->unresolved.path, true);
-	decl = decl_flatten(decl);
+	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->unresolved.span);
+
 	// Already handled
 	if (!decl_ok(decl))
 	{
 		return type_info_poison(type_info);
 	}
 
+	decl = decl_flatten(decl);
 	switch (decl->decl_kind)
 	{
 		case DECL_STRUCT:
@@ -244,7 +242,7 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 	}
 
 	type_info->resolve_status = RESOLVE_RUNNING;
-
+RETRY:
 	switch (type_info->kind)
 	{
 		case TYPE_INFO_POISON:
@@ -253,6 +251,34 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 		case TYPE_INFO_IDENTIFIER:
 			if (!sema_resolve_type_identifier(context, type_info)) return false;
 			break;
+		case TYPE_INFO_EVALTYPE:
+		{
+			Expr *expr = type_info->unresolved_type_expr;
+			TokenType type;
+			Path *path = NULL;
+			const char *ident = ct_eval_expr(context, "$eval", expr, &type, &path, true);
+			if (ident == ct_eval_error) return type_info_poison(type_info);
+			switch (type)
+			{
+				case TOKEN_TYPE_IDENT:
+					type_info->unresolved.name = ident;
+					type_info->unresolved.span = expr->span;
+					type_info->unresolved.path = path;
+					type_info->kind = TYPE_INFO_IDENTIFIER;
+					goto RETRY;
+				case TYPE_TOKENS:
+					if (path)
+					{
+						SEMA_ERROR(path, "Built in types cannot have a path prefix.");
+						return false;
+					}
+					type_info->type = type_from_token(type);
+					return true;
+				default:
+					SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
+					return type_info_poison(type_info);
+			}
+		}
 		case TYPE_INFO_EXPRESSION:
 		{
 			Expr *expr = type_info->unresolved_type_expr;

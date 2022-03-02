@@ -288,7 +288,7 @@ static bool parse_param_path(ParseContext *c, DesignatorElement ***path)
 				element->kind = DESIGNATOR_RANGE;
 			}
 			CONSUME_OR_RET(TOKEN_RBRACKET, false);
-			// Include ] in the expr
+			// Include right bracket in the expr
 			vec_add(*path, element);
 			continue;
 		}
@@ -438,7 +438,7 @@ static Expr *parse_type_identifier(ParseContext *context, Expr *left)
 	return parse_type_expression_with_path(context, NULL);
 }
 
-static Expr *parse_typeof_expr(ParseContext *c, Expr *left)
+static Expr *parse_type_expr(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO);
@@ -833,6 +833,38 @@ static Expr *parse_hash_ident(ParseContext *c, Expr *left)
 	return expr;
 }
 
+static Expr *parse_ct_eval(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_EVAL);
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *access = expr_new(EXPR_ACCESS, c->span);
+	advance(c);
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr *inner, parse_expr(c), poisoned_expr);
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	Expr *typeof_expr = expr_new(EXPR_TYPEINFO, inner->span);
+	TypeInfo *type_info = type_info_new(TYPE_INFO_EXPRESSION, inner->span);
+	type_info->unresolved_type_expr = inner;
+	typeof_expr->type_expr = type_info;
+	access->access_expr.parent = typeof_expr;
+	Expr *ident = expr_new(EXPR_IDENTIFIER, c->span);
+	ident->identifier_expr.ident = kw_sizeof;
+	access->access_expr.child = ident;
+	RANGE_EXTEND_PREV(access);
+	return access;
+}
+
 static Expr *parse_ct_call(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
@@ -840,7 +872,7 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 	expr->ct_call_expr.token_type = c->tok;
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(Expr * internal, parse_precedence(c, PREC_FIRST + 1), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr* internal, parse_precedence(c, PREC_FIRST + 1), poisoned_expr);
 	ExprFlatElement *flat_path = NULL;
 	TokenType tok = c->tok;
 	if (tok == TOKEN_DOT || tok == TOKEN_LBRACKET)
@@ -850,31 +882,13 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 			ExprFlatElement flat_element;
 			if (try_consume(c, TOKEN_LBRACKET))
 			{
-				ASSIGN_EXPR_OR_RET(Expr * int_expr, parse_expr(c), poisoned_expr);
-				if (int_expr->expr_kind != EXPR_CONST || int_expr->const_expr.const_kind != CONST_INTEGER)
-				{
-					SEMA_ERROR_HERE("Expected an integer index.");
-					return poisoned_expr;
-				}
-				Int value = int_expr->const_expr.ixx;
-				if (!int_fits(value, TYPE_I64))
-				{
-					SEMA_ERROR(int_expr, "Array index out of range.");
-					return poisoned_expr;
-				}
-				if (int_is_neg(value))
-				{
-					SEMA_ERROR(int_expr, "Array index must be zero or greater.");
-					return poisoned_expr;
-				}
-				TRY_CONSUME_OR_RET(TOKEN_RBRACKET, "Expected a ']' after the number.", poisoned_expr);
+				ASSIGN_EXPR_OR_RET(flat_element.inner, parse_expr(c), poisoned_expr);
+				TRY_CONSUME_OR_RET(TOKEN_RBRACKET, "Expected a ']' after the index.", poisoned_expr);
 				flat_element.array = true;
-				flat_element.index = (MemberIndex) value.i.low;
 			}
 			else if (try_consume(c, TOKEN_DOT))
 			{
-				flat_element.ident = symstr(c);
-				TRY_CONSUME_OR_RET(TOKEN_IDENT, "Expected an identifier here.", poisoned_expr);
+				ASSIGN_EXPR_OR_RET(flat_element.inner, parse_precedence(c, PREC_FIRST), poisoned_expr);
 				flat_element.array = false;
 			}
 			else
@@ -1678,7 +1692,6 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 
 
 
-
 /**
  * function_block
  *  : '{|' stmt_list '|}'
@@ -1789,14 +1802,16 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_HASH_IDENT] = { parse_hash_ident, NULL, PREC_NONE },
 		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE }
 
-		[TOKEN_CT_SIZEOF] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_call, NULL, PREC_NONE },
+		[TOKEN_CT_EVAL] = { parse_ct_eval, NULL, PREC_NONE },
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_TYPEOF] = { parse_typeof_expr, NULL, PREC_NONE },
+		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
+		[TOKEN_CT_EVALTYPE] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
 };

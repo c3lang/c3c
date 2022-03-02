@@ -4,62 +4,48 @@ import bar::abc;
 
 fn void a()
 {
-    int x = $sizeof(Bazy); // #error: 'Bazy' could not be found, did you spell it right
+    int x = Bazy.sizeof; // #error: 'Bazy' could not be found, did you spell it right
 }
 
 fn void b()
 {
-    int x = $sizeof("Bazz"); // #error: 'Bazz' could not be found, did you misspell it
+    int x = $evaltype("Bazz").sizeof; // #error: 'Bazz' could not be found, did you spell it rig
 }
 
-fn void c()
-{
-    int x = $sizeof("Baz#"); // #error: The path to an existing member was expected after 'Baz', did you make a mistake?
-}
-
-fn void c2()
-{
-    int x = $sizeof("#Baz"); // #error: A valid identifier was expected here, did you want to take the length of a string literal? If so use '.len'.
-}
-
-fn void d()
-{
-    int x = $sizeof("Baz."); // #error: The path to an existing member was expected after 'Baz', did you make a mistake?
-}
 
 fn void e()
 {
-    int x = $sizeof(bar::Baze); // #error:
+    int x = bar::Baze.sizeof; // #error: 'bar::Baze' could not be found, did you spell it right
 }
 
 fn void f()
 {
-    int x = $sizeof("bar::Bazy"); // #error: 'bar::Bazy' could not be found, did you spell it right
+    int x = $evaltype("bar::Bazy").sizeof; // #error: 'bar::Bazy' could not be found
 }
 
 fn void g()
 {
-    int x = $sizeof("bar::"); // #error: A valid identifier was expected here, did you want to take the length of a string literal? If so use '.len'.
+    int x = $evaltype("bar::").sizeof; // #error: A valid name was expected here.
 }
 
 fn void k()
 {
-    int v = $sizeof("int.x"); // #error: 'int' has no members
+    int v = $evaltype("int").x.sizeof; // #error: 'int' does not have a property 'x'.
 }
 
 fn void l()
 {
-    int v = $sizeof("int[].len"); // #error:  'int[]' has no members
+    int v = $sizeof(int[].len); // #error:  'int[]' does not have a property 'len'
 }
 
 fn void m()
 {
-    int v = $sizeof("int[4].len"); // #error: 'int[4]' has no members
+    int v = $sizeof(int[4].len); // #error: 'int[4]' does not have a property 'len'
 }
 
 fn void n()
 {
-    int v = $sizeof("Baz.x1"); // #error: The path to an existing member was expected after
+    int v = Baz.x1.sizeof; // #error: No method or inner struct/union 'Baz.x1' found.
 }
 
 

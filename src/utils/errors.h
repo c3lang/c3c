@@ -54,8 +54,6 @@
  do { long long __tempval1 = _value; long long __tempval2 = _expected; \
     TEST_ASSERT(__tempval1 == __tempval2, "Checking " _string ": expected %lld but was %lld.", __tempval2, __tempval1); } while(0)
 
-#define LOG_FUNC DEBUG_LOG("ENTER %s.", __func__);
-
 void evprintf(const char *format, va_list list);
 void eprintf(const char *format, ...);
 NORETURN void error_exit(const char *format, ...) ;

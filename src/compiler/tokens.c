@@ -246,8 +246,6 @@ const char *token_type_to_string(TokenType type)
 			return "private";
 		case TOKEN_RETURN:
 			return "return";
-		case TOKEN_SCOPING:
-			return "scoping";
 		case TOKEN_STATIC:
 			return "static";
 		case TOKEN_STRUCT:
@@ -357,6 +355,10 @@ const char *token_type_to_string(TokenType type)
 			return "$default";
 		case TOKEN_CT_DEFINED:
 			return "$defined";
+		case TOKEN_CT_EVAL:
+			return "$eval";
+		case TOKEN_CT_EVALTYPE:
+			return "$evaltype";
 		case TOKEN_CT_FOR:
 			return "$for";
 		case TOKEN_CT_FOREACH:
@@ -391,8 +393,6 @@ const char *token_type_to_string(TokenType type)
 			return "$typeof";
 		case TOKEN_CT_STRINGIFY:
 			return "$stringify";
-		case TOKEN_CT_UNREACHABLE:
-			return "$unreachable";
 		case TOKEN_EOF:
 			return "EOF";
 
