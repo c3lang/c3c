@@ -16,7 +16,7 @@ private fn void List.ensureCapacity(List *list) @inline
     if (list.capacity == list.size)
     {
         list.capacity = list.capacity ? 2 * list.capacity : 16;
-        list.entries = mem::realloc(list.entries, $sizeof(Type) * list.capacity);
+        list.entries = mem::realloc(list.entries, Type.sizeof * list.capacity);
     }
 }
 

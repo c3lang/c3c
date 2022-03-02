@@ -127,7 +127,7 @@ void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 	assert(ast->ast_kind != AST_COMPOUND_STMT);
 	Ast *replacement = ast_copy(ast);
 	ast->ast_kind = AST_SCOPED_STMT;
-	ast->scoped_stmt.stmt = replacement;
+	ast->scoped_stmt.stmt = astid(replacement);
 	ast->scoped_stmt.defers = defers;
 }
 

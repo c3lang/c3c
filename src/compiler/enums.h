@@ -51,7 +51,6 @@ typedef enum
 	AST_COMPOUND_STMT,
 	AST_CONTINUE_STMT,
 	AST_CT_ASSERT,
-	AST_CT_COMPOUND_STMT,
 	AST_CT_IF_STMT,
 	AST_CT_ELIF_STMT,
 	AST_CT_ELSE_STMT,
@@ -62,8 +61,6 @@ typedef enum
 	AST_DEFAULT_STMT,
 	AST_DEFER_STMT,
 	AST_DO_STMT,
-	AST_DOC_DIRECTIVE,
-	AST_DOCS,
 	AST_EXPR_STMT,
 	AST_FOR_STMT,
 	AST_FOREACH_STMT,
@@ -71,10 +68,8 @@ typedef enum
 	AST_IF_STMT,
 	AST_NOP_STMT,
 	AST_RETURN_STMT,
-	AST_SCOPING_STMT,
 	AST_SWITCH_STMT,
 	AST_NEXT_STMT,
-	AST_UNREACHABLE_STMT,
 	AST_WHILE_STMT,
 	AST_SCOPED_STMT,
 } AstKind;
@@ -157,6 +152,11 @@ typedef enum
 	case DECL_CT_SWITCH: case DECL_CT_CASE: case DECL_ATTRIBUTE: case DECL_LABEL: \
     case DECL_DEFINE: case DECL_CT_ASSERT: case DECL_GENERIC
 
+#define NON_RUNTIME_EXPR EXPR_DESIGNATOR: case EXPR_POISONED: \
+		case EXPR_TYPEINFO: case EXPR_CT_IDENT: case EXPR_HASH_IDENT: \
+		case EXPR_COMPILER_CONST: case EXPR_CT_CALL: case EXPR_FLATPATH: \
+		case EXPR_VARIANTSWITCH: case EXPR_STRINGIFY: case EXPR_CT_EVAL
+
 typedef enum
 {
 	DOC_DIRECTIVE_UNKNOWN,
@@ -186,6 +186,7 @@ typedef enum
 	EXPR_CONST,
 	EXPR_CT_CALL,
 	EXPR_CT_IDENT,
+	EXPR_CT_EVAL,
 	EXPR_COND,
 	EXPR_DECL,
 	EXPR_DESIGNATOR,
@@ -289,6 +290,7 @@ typedef enum
 	TYPE_INFO_IDENTIFIER,
 	TYPE_INFO_CT_IDENTIFIER,
 	TYPE_INFO_EXPRESSION,
+	TYPE_INFO_EVALTYPE,
 	TYPE_INFO_ARRAY,
 	TYPE_INFO_VECTOR,
 	TYPE_INFO_INFERRED_ARRAY,
@@ -456,7 +458,6 @@ typedef enum
 	TOKEN_NULL,
 	TOKEN_PRIVATE,
 	TOKEN_RETURN,
-	TOKEN_SCOPING,
 	TOKEN_STATIC,
 	TOKEN_STRUCT,
 	TOKEN_SWITCH,
@@ -480,6 +481,8 @@ typedef enum
 	TOKEN_CT_FOREACH,       // $foreach
 	TOKEN_CT_ELIF,          // $elif
 	TOKEN_CT_ELSE,          // $else
+	TOKEN_CT_EVAL,          // $eval
+	TOKEN_CT_EVALTYPE,      // $evaltype
 	TOKEN_CT_ENDIF,         // $endif
 	TOKEN_CT_ENDSWITCH,     // $endswitch
 	TOKEN_CT_ENDFOR,        // $endfor
@@ -493,7 +496,6 @@ typedef enum
 	TOKEN_CT_STRINGIFY,     // $stringify
 	TOKEN_CT_SWITCH,        // $switch
 	TOKEN_CT_TYPEOF,        // $typeof
-	TOKEN_CT_UNREACHABLE,   // $unreachable
 
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
@@ -746,15 +748,6 @@ typedef enum
 	LEX_NORMAL,
 	LEX_DOCS,
 } LexMode;
-
-typedef enum
-{
-	LEX_DOC_NONE,
-	LEX_DOC_PARAM,
-	LEX_DOC_REST_OF_LINE,
-	LEX_DOC_EXPR,
-	LEX_DOC_OPTLIST,
-} LexDocMode;
 
 typedef enum
 {

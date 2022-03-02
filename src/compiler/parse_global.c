@@ -463,6 +463,7 @@ Path *parse_path_prefix(ParseContext *c, bool *had_error)
  *		| CT_TYPE_IDENT
  *		| VIRTUAL (ident_scope TYPE_IDENT)?
  *		| CT_TYPEOF '(' expr ')'
+ *		| CT_EVALTYPE '(' expr ')'
  *		;
  *
  * Assume prev_token is the type.
@@ -473,6 +474,15 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 	if (try_consume(c, TOKEN_CT_TYPEOF))
 	{
 		TypeInfo *type_info = type_info_new(TYPE_INFO_EXPRESSION, c->prev_span);
+		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_type_info);
+		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
+		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_type_info);
+		RANGE_EXTEND_PREV(type_info);
+		return type_info;
+	}
+	if (try_consume(c, TOKEN_CT_EVALTYPE))
+	{
+		TypeInfo *type_info = type_info_new(TYPE_INFO_EVALTYPE, c->prev_span);
 		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_type_info);
 		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_type_info);
@@ -1770,8 +1780,9 @@ static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl***
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
 		if (!parse_param_decl(c, parent_visibility, parameters_ref, true)) return false;
-		assert(VECLAST(*parameters_ref));
-		if (VECLAST(*parameters_ref)->var.vararg)
+		Decl *last_parameter = VECLAST(*parameters_ref);
+		assert(last_parameter);
+		if (last_parameter->var.vararg)
 		{
 			SEMA_ERROR_LAST("Vararg parameters are not allowed as enum parameters.");
 			return false;
@@ -1980,6 +1991,7 @@ static inline bool parse_import(ParseContext *c)
 		}
 		is_not_first = true;
 		Path *path = parse_module_path(c);
+		if (!path) return false;
 		unit_add_import(c->unit, path, private);
 		if (!try_consume(c, TOKEN_COMMA)) break;
 	}
@@ -2002,17 +2014,27 @@ void parse_imports(ParseContext *c)
 
 
 
-static inline bool parse_doc_contract(ParseContext *c, Ast ***docs_ref, DocDirectiveKind kind)
+static inline bool parse_doc_contract(ParseContext *c, AstDocDirective **docs_ref, DocDirectiveKind kind)
 {
-	Ast *doc = new_ast(AST_DOC_DIRECTIVE, c->span);
+	AstDocDirective directive = { .span = c->span, .kind = kind };
 	const char *start = c->lexer.data.lex_start;
 	advance(c);
-	doc->doc_directive.kind = kind;
-	ASSIGN_EXPR_OR_RET(doc->doc_directive.contract.decl_exprs, parse_expression_list(c, kind == DOC_DIRECTIVE_CHECKED), false);
+	ASSIGN_EXPR_OR_RET(directive.contract.decl_exprs, parse_expression_list(c, kind == DOC_DIRECTIVE_CHECKED), false);
 	const char *end = c->data.lex_start;
 	while (end[-1] == ' ') end--;
 	scratch_buffer_clear();
-	scratch_buffer_append("@require \"");
+	switch (kind)
+	{
+		case DOC_DIRECTIVE_CHECKED:
+			scratch_buffer_append("@require \"");
+			break;
+		case DOC_DIRECTIVE_ENSURE:
+			scratch_buffer_append("@ensure \"");
+			break;
+		default:
+			scratch_buffer_append("@require \"");
+			break;
+	}
 	scratch_buffer_append_len(start, end - start);
 	scratch_buffer_append("\" violated");
 	if (tok_is(c, TOKEN_STRING))
@@ -2020,21 +2042,21 @@ static inline bool parse_doc_contract(ParseContext *c, Ast ***docs_ref, DocDirec
 		scratch_buffer_append(": '");
 		scratch_buffer_append(symstr(c));
 		scratch_buffer_append("'.");
-		doc->doc_directive.contract.comment = scratch_buffer_copy();
+		directive.contract.comment = scratch_buffer_copy();
 		advance(c);
 	}
 	else
 	{
 		scratch_buffer_append(".");
-		doc->doc_directive.contract.expr_string = scratch_buffer_copy();
+		directive.contract.expr_string = scratch_buffer_copy();
 	}
-	vec_add(*docs_ref, doc);
+	vec_add(*docs_ref, directive);
 	return true;
 }
 
-static inline bool parse_doc_param(ParseContext *c, Ast ***docs_ref)
+static inline bool parse_doc_param(ParseContext *c, AstDocDirective **docs_ref)
 {
-	Ast *doc = new_ast(AST_DOC_DIRECTIVE, c->span);
+	AstDocDirective directive = { .span = c->span, .kind = DOC_DIRECTIVE_PARAM };
 	advance(c);
 
 	// [&inout] [in] [out]
@@ -2082,18 +2104,17 @@ static inline bool parse_doc_param(ParseContext *c, Ast ***docs_ref)
 			return false;
 	}
 
-	doc->doc_directive.kind = DOC_DIRECTIVE_PARAM;
-	doc->doc_directive.param.name = symstr(c);
-	doc->doc_directive.param.span = c->span;
-	doc->doc_directive.param.modifier = mod;
-	doc->doc_directive.param.by_ref = is_ref;
+	directive.param.name = symstr(c);
+	directive.param.span = c->span;
+	directive.param.modifier = mod;
+	directive.param.by_ref = is_ref;
 	advance(c);
 	try_consume(c, TOKEN_STRING);
-	vec_add(*docs_ref, doc);
+	vec_add(*docs_ref, directive);
 	return true;
 }
 
-static inline bool parse_doc_errors(ParseContext *c, Ast *docs)
+static inline bool parse_doc_errors(ParseContext *c, AstDocDirective **docs)
 {
 	TODO
 	while (1)
@@ -2110,19 +2131,19 @@ static inline bool parse_doc_errors(ParseContext *c, Ast *docs)
 		default:
 			return false;
 	}
+	/*
 	docs->doc_directive.kind = DOC_DIRECTIVE_PARAM;
 	docs->doc_directive.param.name = symstr(c);
-	docs->doc_directive.param.span = c->span;
+	docs->doc_directive.param.span = c->span;*/
 	advance(c);
 	return true;
 }
 
 
-static bool parse_docs(ParseContext *c, Ast **docs)
+static bool parse_docs(ParseContext *c, AstDocDirective **docs_ref)
 {
-	*docs = NULL;
+	*docs_ref = NULL;
 	if (!try_consume(c, TOKEN_DOCS_START)) return true;
-	Ast *ast = ast_new_curr(c, AST_DOCS);
 
 	uint32_t row_last_row = c->span.row;
 	while (1)
@@ -2132,23 +2153,23 @@ static bool parse_docs(ParseContext *c, Ast **docs)
 		switch (c->tok)
 		{
 			case TOKEN_DOCS_PARAM:
-				if (!parse_doc_param(c, &ast->directives)) return false;
+				if (!parse_doc_param(c, docs_ref)) return false;
 				break;
 			case TOKEN_DOCS_RETURN:
 				advance(c);
 				if (!consume(c, TOKEN_STRING, "Expected a string description.")) return false;
 				break;
 			case TOKEN_DOCS_REQUIRE:
-				if (!parse_doc_contract(c, &ast->directives, DOC_DIRECTIVE_REQUIRE)) return false;
+				if (!parse_doc_contract(c, docs_ref, DOC_DIRECTIVE_REQUIRE)) return false;
 				break;
 			case TOKEN_DOCS_CHECKED:
-				if (!parse_doc_contract(c, &ast->directives, DOC_DIRECTIVE_CHECKED)) return false;
+				if (!parse_doc_contract(c, docs_ref, DOC_DIRECTIVE_CHECKED)) return false;
 				break;
 			case TOKEN_DOCS_ENSURE:
-				if (!parse_doc_contract(c, &ast->directives, DOC_DIRECTIVE_ENSURE)) return false;
+				if (!parse_doc_contract(c, docs_ref, DOC_DIRECTIVE_ENSURE)) return false;
 				break;
 			case TOKEN_DOCS_OPTRETURN:
-				if (!parse_doc_errors(c, ast)) return false;
+				if (!parse_doc_errors(c, docs_ref)) return false;
 				break;
 			case TOKEN_DOCS_PURE:
 				advance(c);
@@ -2159,7 +2180,6 @@ static bool parse_docs(ParseContext *c, Ast **docs)
 				// Ignore
 				break;
 			case TOKEN_DOCS_END:
-				*docs = ast;
 				advance(c);
 				return true;
 			default:
@@ -2196,7 +2216,7 @@ static bool parse_docs(ParseContext *c, Ast **docs)
  */
 Decl *parse_top_level_statement(ParseContext *c)
 {
-	Ast *docs = NULL;
+	AstDocDirective *docs = NULL;
 	if (!parse_docs(c, &docs)) return poisoned_decl;
 	Visibility visibility = VISIBLE_PUBLIC;
 	switch (c->tok)

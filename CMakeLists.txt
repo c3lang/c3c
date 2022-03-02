@@ -136,7 +136,6 @@ add_executable(c3c
         src/compiler/dwarf.h
         src/compiler/enums.h
         src/compiler/float.c
-        src/compiler/hashtable.c
         src/compiler/headers.c
         src/compiler/lexer.c
         src/compiler/linker.c

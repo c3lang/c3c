@@ -71,7 +71,6 @@ entry:
   %diff = alloca i64, align 8
   %a = alloca i32, align 4
   %x = alloca i32, align 4
-  %blockret = alloca i32, align 4
   %t1 = alloca i64, align 8
   %result = alloca i32, align 4
   %diff2 = alloca i64, align 8
@@ -97,14 +96,9 @@ entry:
   %9 = load i64, i64* %diff2, align 8
   %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.3, i32 0, i32 0), [9 x i8]* bitcast ([10 x i8]* @.str.4 to [9 x i8]*), i64 %9)
   %11 = load i32, i32* %result, align 4
-  store i32 %11, i32* %blockret, align 4
-  br label %expr_block.exit
-
-expr_block.exit:                                  ; preds = %entry
-  %12 = load i32, i32* %blockret, align 4
-  store i32 %12, i32* %x, align 4
-  %13 = load i32, i32* %x, align 4
-  %14 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.5, i32 0, i32 0), i32 %13)
+  store i32 %11, i32* %x, align 4
+  %12 = load i32, i32* %x, align 4
+  %13 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.5, i32 0, i32 0), i32 %12)
   ret void
 }
 

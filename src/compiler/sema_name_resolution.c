@@ -2,7 +2,7 @@
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
-#include "compiler_internal.h"
+#include "sema_internal.h"
 
 #if defined(_MSC_VER)
 // This isn't standard apparently, so MSVC doesn't have it built in...
@@ -50,18 +50,19 @@ static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const c
 	return module_find_symbol(module, symbol);
 }
 
-static Decl *sema_find_decl_in_imports(Decl **imports, const char *symbol, Path *path, Decl **ambiguous_other_decl,
-                                       Decl **private_decl, bool *path_found, bool want_generic)
+static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve, bool want_generic)
 {
 	Decl *decl = NULL;
 	// 1. Loop over imports.
+	Path *path = name_resolve->path;
+	const char *symbol = name_resolve->symbol;
 	VECEACH(imports, i)
 	{
 		Decl *import = imports[i];
 		if (import->module->is_generic != want_generic) continue;
 
 		// Is the decl in the import.
-		Decl *found = sema_find_decl_in_module(import->module, path, symbol, path_found);
+		Decl *found = sema_find_decl_in_module(import->module, path, symbol, &name_resolve->path_found);
 
 		// No match, so continue
 		if (!found) continue;
@@ -70,7 +71,7 @@ static Decl *sema_find_decl_in_imports(Decl **imports, const char *symbol, Path 
 		if (found->visibility <= VISIBLE_MODULE && !import->import.private && !decl)
 		{
 			// Register this as a possible private decl.
-			*private_decl = found;
+			name_resolve->private_decl = found;
 			continue;
 		}
 
@@ -78,13 +79,13 @@ static Decl *sema_find_decl_in_imports(Decl **imports, const char *symbol, Path 
 		if (decl)
 		{
 			// 11. Then set an ambiguous match.
-			*ambiguous_other_decl = found;
+			name_resolve->ambiguous_other_decl = found;
 			continue;
 		}
 
 		// We've found a match.
 		decl = found;
-		*private_decl = NULL;
+		name_resolve->private_decl = NULL;
 	}
 	return decl;
 }
@@ -103,16 +104,17 @@ static inline bool sema_is_path_found(Module **modules, Path *path, bool want_ge
 	return false;
 }
 
-static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, const char *symbol, Path *path, Decl **ambiguous_other_decl,
-									  Decl **private_decl, bool *path_found, bool want_generic)
+static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, NameResolve *name_resolve, bool want_generic)
 {
+	const char *symbol = name_resolve->symbol;
+	Path *path = name_resolve->path;
 	Decl *decls = decltable_get(table, symbol);
 
 	// We might have no match at all.
 	if (!decls)
 	{
 		// Update the path found
-		if (path && !*path_found) *path_found = sema_is_path_found(module_list, path, want_generic);
+		if (path && !name_resolve->path_found) name_resolve->path_found = sema_is_path_found(module_list, path, want_generic);
 		return NULL;
 	}
 
@@ -120,7 +122,7 @@ static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, co
 	if (decls->decl_kind != DECL_DECLARRAY)
 	{
 		if (path && !matches_subpath(decls->module->name, path)) return false;
-		*private_decl = NULL;
+		name_resolve->private_decl = NULL;
 		return decls;
 	}
 
@@ -137,19 +139,20 @@ static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, co
 			decl = candidate;
 		}
 	}
-	if (ambiguous) *ambiguous_other_decl = ambiguous;
-	*private_decl = NULL;
+	if (ambiguous) name_resolve->ambiguous_other_decl = ambiguous;
+	name_resolve->private_decl = NULL;
 	return decl;
 }
 
-static Decl *sema_resolve_path_symbol(SemaContext *context, const char *symbol, Path *path, Decl **ambiguous_other_decl,
-                                      Decl **private_decl, bool *path_found)
+static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_resolve)
 {
-	assert(path && "Expected path.");
-	*ambiguous_other_decl = NULL;
+	Path *path = name_resolve->path;
+	name_resolve->ambiguous_other_decl = NULL;
 	Decl *decl = NULL;
-	*path_found = false;
+	name_resolve->path_found = false;
+	assert(name_resolve->path && "Expected path.");
 
+	const char *symbol = name_resolve->symbol;
 	// 0. std module special handling.
 	if (path->module == global_context.std_module_path.module)
 	{
@@ -166,17 +169,18 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, const char *symbol, 
 	}
 
 	// 3. Loop over imports.
-	decl = sema_find_decl_in_imports(unit->imports, symbol, path, ambiguous_other_decl, private_decl, path_found, false);
+	decl = sema_find_decl_in_imports(unit->imports, name_resolve, false);
 
 	// 4. Go to global search
-	return decl ? decl : sema_find_decl_in_global(&global_context.symbols, global_context.module_list, symbol,
-	                                              path, ambiguous_other_decl, private_decl, path_found, false);
+	return decl ? decl : sema_find_decl_in_global(&global_context.symbols, global_context.module_list, name_resolve, false);
 }
 
-static Decl *sema_resolve_no_path_symbol(SemaContext *context, const char *symbol,
-                                         Decl **ambiguous_other_decl, Decl **private_decl)
+static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_resolve)
 {
 	Decl *decl = NULL;
+
+	const char *symbol = name_resolve->symbol;
+	assert(name_resolve->path == NULL);
 
 	Decl **locals = context->locals;
 	if (context->active_scope.current_local > 0)
@@ -217,95 +221,94 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, const char *symbo
 
 	if (decl) return decl;
 
-	decl = sema_find_decl_in_imports(unit->imports, symbol, NULL, ambiguous_other_decl, private_decl, NULL, false);
-	return decl ? decl : sema_find_decl_in_global(&global_context.symbols, NULL, symbol, NULL, ambiguous_other_decl, private_decl, NULL, false);
+	decl = sema_find_decl_in_imports(unit->imports, name_resolve, false);
+	return decl ? decl : sema_find_decl_in_global(&global_context.symbols, NULL, name_resolve, false);
 }
 
 
-static void sema_report_error_on_decl(Path *path, const char *symbol_str, SourceSpan span, Decl *found, Decl *ambiguous_decl,
-                                      Decl *private_decl)
+static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 {
-	if (!found && private_decl)
+	assert(!name_resolve->suppress_error);
+	const char *symbol = name_resolve->symbol;
+	SourceSpan span = name_resolve->span;
+	const char *path_name = name_resolve->path ? name_resolve->path->module : NULL;
+	if (!found && name_resolve->private_decl)
 	{
-		if (path)
+		const char *private_name = decl_to_name(name_resolve->private_decl);
+		if (path_name)
 		{
-			sema_error_at(span, "The %s '%s::%s' is not visible from this module.", decl_to_name(private_decl), path->module, symbol_str);
+			sema_error_at(span, "The %s '%s::%s' is not visible from this module.",
+			              private_name, path_name,
+			              symbol);
 		}
 		else
 		{
-			sema_error_at(span, "The %s '%s' is not visible from this module.", decl_to_name(private_decl), symbol_str);
+			sema_error_at(span, "The %s '%s' is not visible from this module.",
+			              private_name, symbol);
 		}
 		return;
 	}
-	if (ambiguous_decl)
+	
+	if (name_resolve->ambiguous_other_decl)
 	{
 		assert(found);
 		const char *symbol_type = decl_to_name(found);
-		if (path)
+		const char *found_path = found->module->name->module;
+		const char *other_path = name_resolve->ambiguous_other_decl->module->name->module;
+		if (path_name)
 		{
 			sema_error_at(span,
-							 "The %s '%s::%s' is defined in both '%s' and '%s', please use either %s::%s or %s::%s to resolve the ambiguity.",
-							 symbol_type,
-							 path->module,
-							 symbol_str,
-							 found->module->name->module,
-							 ambiguous_decl->module->name->module,
-							 found->module->name->module,
-							 symbol_str,
-							 ambiguous_decl->module->name->module,
-							 symbol_str);
+			              "The %s '%s::%s' is defined in both '%s' and '%s', "
+						  "please use either %s::%s or %s::%s to resolve the ambiguity.",
+			              symbol_type, path_name, symbol, found_path, other_path,
+			              found_path, symbol, other_path, symbol);
 		}
 		else
 		{
 			sema_error_at(span,
-							 "The %s '%s' is defined in both '%s' and '%s', please use either %s::%s or %s::%s to resolve the ambiguity.",
-							 symbol_type,
-							 symbol_str,
-							 found->module->name->module,
-							 ambiguous_decl->module->name->module,
-							 found->module->name->module,
-							 symbol_str,
-							 ambiguous_decl->module->name->module,
-							 symbol_str);
+			              "The %s '%s' is defined in both '%s' and '%s', please use either "
+						  "%s::%s or %s::%s to resolve the ambiguity.",
+			              symbol_type, symbol, found_path, other_path,
+			              found_path, symbol, other_path, symbol);
 		}
 		return;
 	}
 	assert(!found);
-	if (path)
+	if (path_name)
 	{
-		sema_error_at(span, "'%s::%s' could not be found, did you spell it right?", path->module, symbol_str);
+		sema_error_at(span, "'%s::%s' could not be found, did you spell it right?", path_name, symbol);
 	}
 	else
 	{
-		sema_error_at(span, "'%s' could not be found, did you spell it right?", symbol_str);
+		sema_error_at(span, "'%s' could not be found, did you spell it right?", symbol);
 	}
 }
 
-static inline Decl *sema_resolve_symbol(SemaContext *context, const char *symbol_str, SourceSpan span, Path *path, bool report_error)
+INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_resolve)
 {
-	Decl *ambiguous_other_decl = NULL;
-	Decl *private_decl = NULL;
-	bool path_found = false;
+	name_resolve->ambiguous_other_decl = NULL;
+	name_resolve->private_decl = NULL;
+	name_resolve->path_found = false;
 	Decl *decl;
-	if (path)
+	if (name_resolve->path)
 	{
-		decl = sema_resolve_path_symbol(context, symbol_str, path, &ambiguous_other_decl, &private_decl, &path_found);
-		if (!decl && !path_found)
+		decl = sema_resolve_path_symbol(context, name_resolve);
+		if (!decl && !name_resolve->path_found)
 		{
-			if (!report_error) return NULL;
-			SEMA_ERROR(path, "Unknown module '%.*s', did you type it right?", path->len, path->module);
+			if (!name_resolve->suppress_error) return NULL;
+			SEMA_ERROR(name_resolve->path, "Unknown module '%.*s', did you type it right?", name_resolve->path->len, name_resolve->path->module);
 			return poisoned_decl;
 		}
 	}
 	else
 	{
-		decl = sema_resolve_no_path_symbol(context, symbol_str, &ambiguous_other_decl, &private_decl);
+		decl = sema_resolve_no_path_symbol(context, name_resolve);
 	}
 
-	if (!decl || ambiguous_other_decl)
+	if (!decl || name_resolve->ambiguous_other_decl)
 	{
-		if (!report_error) return NULL;
-		sema_report_error_on_decl(path, symbol_str, span, decl, ambiguous_other_decl, private_decl);
+		if (name_resolve->suppress_error) return NULL;
+		sema_report_error_on_decl(decl, name_resolve);
 		return poisoned_decl;
 	}
 	unit_register_external_symbol(context->compilation_unit, decl);
@@ -378,46 +381,71 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	return result;
 }
 
-Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, const char *symbol, SourceSpan span, Path *path)
+Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve)
 {
-	Decl *ambiguous_other_decl = NULL;
-	Decl *private_decl = NULL;
-	bool path_found = false;
+	name_resolve->ambiguous_other_decl = NULL;
+	name_resolve->private_decl = NULL;
+	name_resolve->path_found = false;
 
-	Decl *decl = sema_find_decl_in_imports(unit->imports, symbol, path, &ambiguous_other_decl, &private_decl, &path_found, true);
+	Decl *decl = sema_find_decl_in_imports(unit->imports, name_resolve, true);
 	if (!decl)
 	{
 		decl = sema_find_decl_in_global(&global_context.generic_symbols,
 										global_context.generic_module_list,
-										symbol, path,
-										&ambiguous_other_decl,
-										&private_decl,
-										&path_found, true);
+										name_resolve, true);
 	}
 	// 14. Error report
-	if (!decl || ambiguous_other_decl)
+	if (!decl || name_resolve->ambiguous_other_decl)
 	{
-		sema_report_error_on_decl(path, symbol, span, decl, ambiguous_other_decl, private_decl);
+		if (name_resolve->suppress_error) return poisoned_decl;
+		sema_report_error_on_decl(decl, name_resolve);
 		return poisoned_decl;
 	}
-	if (!decl_is_user_defined_type(decl) && !path)
+	if (!decl_is_user_defined_type(decl) && !name_resolve->path)
 	{
-		sema_error_at(span, "Function and variables must be prefixed with a path, e.g. 'foo::%s'.", symbol);
+		if (name_resolve->suppress_error) return poisoned_decl;
+		sema_error_at(name_resolve->span, "Function and variables must be prefixed with a path, e.g. 'foo::%s'.", name_resolve->symbol);
 		return poisoned_decl;
 	}
 
 	return decl;
 }
 
-Decl *sema_resolve_normal_symbol(SemaContext *context, const char *symbol, SourceSpan span, Path *path, bool handle_error)
+
+Decl *sema_find_symbol(SemaContext *context, const char *symbol)
 {
-	return sema_resolve_symbol(context, symbol, span, path, handle_error);
+	NameResolve resolve = {
+			.suppress_error = true,
+			.symbol = symbol,
+			};
+	return sema_resolve_symbol_common(context, &resolve);
 }
 
-Decl *sema_resolve_string_symbol(SemaContext *context, const char *symbol, SourceSpan span, Path *path, bool report_error)
+Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path)
 {
-	return sema_resolve_symbol(context, symbol, span, path, report_error);
+	NameResolve resolve = {
+			.suppress_error = true,
+			.symbol = symbol,
+			.path = path
+			};
+	return sema_resolve_symbol_common(context, &resolve);
 }
+
+Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span)
+{
+	NameResolve resolve = {
+			.symbol = symbol,
+			.path = path,
+			.span = span
+	};
+	return sema_resolve_symbol_common(context, &resolve);
+}
+
+Decl *sema_resolve_normal_symbol(SemaContext *context, NameResolve *name_resolve)
+{
+	return sema_resolve_symbol_common(context, name_resolve);
+}
+
 
 static inline bool sema_append_local(SemaContext *context, Decl *decl)
 {
@@ -451,7 +479,7 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 	// Ignore synthetic locals.
 	if (!decl->name) return true;
 	if (decl->decl_kind == DECL_VAR && decl->var.shadow) goto ADD_VAR;
-	Decl *other = sema_resolve_normal_symbol(context, decl->name, decl->span, NULL, false);
+	Decl *other = sema_find_symbol(context, decl->name);
 	assert(!other || other->module);
 	if (other && other->module == current_module)
 	{

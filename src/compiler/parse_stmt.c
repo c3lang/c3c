@@ -6,10 +6,6 @@
 #include "parser_internal.h"
 
 
-Ast *parse_unreachable_stmt(ParseContext *c);
-
-Ast *parse_scoping_stmt(ParseContext *c);
-
 // --- Internal functions
 
 
@@ -537,19 +533,17 @@ static inline Ast *parse_var_stmt(ParseContext *c)
 	return ast;
 }
 
-static inline Ast* parse_ct_compound_stmt(ParseContext *c)
+static inline bool parse_ct_compound_stmt(ParseContext *c, AstId *start)
 {
-	Ast *stmts = new_ast(AST_CT_COMPOUND_STMT, c->span);
-	AstId *next = &stmts->compound_stmt.first_stmt;
+	AstId *next = start;
 	while (1)
 	{
 		TokenType tok = c->tok;
 		if (tok == TOKEN_CT_ELSE || tok == TOKEN_CT_ELIF || tok == TOKEN_CT_ENDIF) break;
-		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);
+		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), false);
 		ast_append(&next, stmt);
-		RANGE_EXTEND_PREV(stmts);
 	}
-	return stmts;
+	return true;
 }
 
 /**
@@ -561,7 +555,7 @@ static inline Ast* parse_ct_else_stmt(ParseContext *c)
 	Ast *ast = new_ast(AST_CT_ELSE_STMT, c->span);
 	advance_and_verify(c, TOKEN_CT_ELSE);
 	TRY_CONSUME(TOKEN_COLON, "$else needs a ':', did you forget it?");
-	ASSIGN_AST_OR_RET(ast->ct_else_stmt, parse_ct_compound_stmt(c), poisoned_ast);
+	if (!parse_ct_compound_stmt(c, &ast->ct_else_stmt)) return poisoned_ast;
 	return ast;
 }
 
@@ -575,7 +569,7 @@ static inline Ast *parse_ct_elif_stmt(ParseContext *c)
 	advance_and_verify(c, TOKEN_CT_ELIF);
 	ASSIGN_EXPR_OR_RET(ast->ct_elif_stmt.expr, parse_const_paren_expr(c), poisoned_ast);
 	TRY_CONSUME(TOKEN_COLON, "$elif needs a ':' after the expression, did you forget it?");
-	ASSIGN_AST_OR_RET(ast->ct_elif_stmt.then, parse_ct_compound_stmt(c), poisoned_ast);
+	if (!parse_ct_compound_stmt(c, &ast->ct_elif_stmt.then)) return poisoned_ast;
 
 	if (tok_is(c, TOKEN_CT_ELIF))
 	{
@@ -599,7 +593,7 @@ static inline Ast* parse_ct_if_stmt(ParseContext *c)
 	advance_and_verify(c, TOKEN_CT_IF);
 	ASSIGN_EXPR_OR_RET(ast->ct_if_stmt.expr, parse_const_paren_expr(c), poisoned_ast);
 	TRY_CONSUME(TOKEN_COLON, "$if needs a ':' after the expression, did you forget it?");
-	ASSIGN_AST_OR_RET(ast->ct_if_stmt.then, parse_ct_compound_stmt(c), poisoned_ast);
+	if (!parse_ct_compound_stmt(c, &ast->ct_if_stmt.then)) return poisoned_ast;
 
 	if (tok_is(c, TOKEN_CT_ELIF))
 	{
@@ -856,9 +850,8 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_HASH_IDENT:
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
+		case TOKEN_CT_EVALTYPE:
 			return parse_decl_or_expr_stmt(c);
-		case TOKEN_SCOPING:
-			return parse_scoping_stmt(c);
 		case TOKEN_VAR:
 			return parse_var_stmt(c);
 		case TOKEN_TLOCAL: // Global means declaration!
@@ -921,8 +914,6 @@ Ast *parse_stmt(ParseContext *c)
 			return parse_ct_foreach_stmt(c);
 		case TOKEN_CT_FOR:
 			return parse_ct_for_stmt(c);
-		case TOKEN_CT_UNREACHABLE:
-			return parse_unreachable_stmt(c);
 		case TOKEN_STAR:
 		case TOKEN_AMP:
 		case TOKEN_INTEGER:
@@ -953,6 +944,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_DEFINED:
 		case TOKEN_CT_STRINGIFY:
+		case TOKEN_CT_EVAL:
 		case TOKEN_TRY:
 		case TOKEN_CATCH:
 		case TOKEN_BYTES:
@@ -1063,25 +1055,6 @@ Ast *parse_stmt(ParseContext *c)
 			return poisoned_ast;
 	}
 	UNREACHABLE
-}
-
-Ast *parse_scoping_stmt(ParseContext *c)
-{
-	Ast *ast = ast_new_curr(c, AST_SCOPING_STMT);
-	advance_and_verify(c, TOKEN_SCOPING);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
-	ASSIGN_EXPR_OR_RET(ast->scoping_stmt.scoped, parse_expression_list(c, false), poisoned_ast);
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
-	ASSIGN_AST_OR_RET(ast->scoping_stmt.stmt, parse_compound_stmt(c), poisoned_ast);
-	return ast;
-}
-
-Ast *parse_unreachable_stmt(ParseContext *c)
-{
-	Ast *ast = ast_new_curr(c, AST_UNREACHABLE_STMT);
-	advance_and_verify(c, TOKEN_CT_UNREACHABLE);
-	CONSUME_EOS_OR_RET(poisoned_ast);
-	return ast;
 }
 
 Ast *parse_jump_stmt_no_eos(ParseContext *c)

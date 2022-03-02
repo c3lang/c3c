@@ -11,7 +11,6 @@
 #include <limits.h>
 #endif
 #include "compiler_internal.h"
-#include "../build/build_options.h"
 
 static const size_t LEXER_FILES_START_CAPACITY = 128;
 
@@ -38,7 +37,7 @@ File *source_file_load(const char *filename, bool *already_loaded)
 	{
 		if (strcmp(global_context.loaded_sources[index]->full_path, full_path) == 0)
 		{
-			*already_loaded = true;
+			if (already_loaded) *already_loaded = true;
 			return global_context.loaded_sources[index];
 		}
 	}

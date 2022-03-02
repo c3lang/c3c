@@ -62,7 +62,7 @@ fn void! system_malloc_function(void *unused, void** pointer, usize bytes, usize
             *pointer = null;
             return;
     }
-    $unreachable;
+    @unreachable();
 }
 
 
@@ -159,7 +159,7 @@ Allocator main_allocator = { &system_malloc_function, null };
 
 macro malloc($Type)
 {
-    return ($Type*)(mem::alloc($sizeof($Type)));
+    return ($Type*)(mem::alloc($Type.sizeof));
 }
 
 fn void* alloc(usize size, usize count = 1) @inline

@@ -202,7 +202,7 @@ Decl *decl_new_var(const char *name, SourceSpan loc, TypeInfo *type, VarDeclKind
 	return decl;
 }
 
-Decl *decl_new_generated_var(const char *name, Type *type, VarDeclKind kind, SourceSpan span)
+Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 {
 	Decl *decl = decl_calloc();
 	decl->decl_kind = DECL_VAR;
@@ -211,6 +211,7 @@ Decl *decl_new_generated_var(const char *name, Type *type, VarDeclKind kind, Sou
 	decl->visibility = VISIBLE_LOCAL;
 	decl->var.kind = kind;
 	decl->type = type;
+	decl->alignment = type ? type_alloca_alignment(type) : 0;
 	decl->var.type_info = type_info_new_base(type, span);
 	decl->resolve_status = RESOLVE_DONE;
 	return decl;
@@ -291,6 +292,7 @@ bool expr_is_pure(Expr *expr)
 			}
 			return true;
 		case EXPR_TYPEOFANY:
+		case EXPR_CT_EVAL:
 			return expr_is_pure(expr->inner_expr);
 		case EXPR_LEN:
 			return expr_is_pure(expr->len_expr.inner);
@@ -313,6 +315,7 @@ bool expr_is_pure(Expr *expr)
 	}
 	UNREACHABLE
 }
+
 
 bool expr_is_simple(Expr *expr)
 {

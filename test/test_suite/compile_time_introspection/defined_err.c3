@@ -1,6 +1,6 @@
 fn void test1()
 {
-    bool x = $defined(1); // #error: constant string containing an identifier or type was expected
+    bool x = $defined(1); // #error: Expected an identifier here
 }
 
 struct Foo

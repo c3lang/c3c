@@ -54,7 +54,7 @@ fn int! askGuessMulti(int high)
 		}
 		return result;
 	}
-	$unreachable;
+	@unreachable();
 }
 
 fn void! Game.play(Game *game)

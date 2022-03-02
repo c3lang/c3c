@@ -39,13 +39,6 @@ static inline void begin_new_token(Lexer *lexer)
 	lexer->start_row_start = lexer->line_start;
 }
 
-static inline void backtrace_to_lexing_start(Lexer *lexer)
-{
-	lexer->current = lexer->lexing_start;
-	lexer->current_row = lexer->start_row;
-	lexer->line_start = lexer->start_row_start;
-}
-
 // Peek at the current character in the buffer.
 #define peek(lexer_) (*(lexer_)->current)
 
@@ -1363,36 +1356,6 @@ static inline bool scan_base64(Lexer *lexer)
 
 
 // --- Lexer doc lexing
-
-
-static bool end_of_docs_found(Lexer *lexer)
-{
-	int lookahead = 0;
-	// while we see '*' walk forward.
-	while (lexer->current[lookahead] == '*') lookahead++;
-	// And if it doesn't have a '/' at the last position it isn't either.
-	return lexer->current[lookahead] == '/';
-}
-/**
- * OPTIONALLY adds * / token. This allows any number of '*' to preceed it.
- * @param lexer
- * @return
- */
-static bool parse_add_end_of_docs_if_present(Lexer *lexer)
-{
-	int lookahead = 0;
-	// while we see '*' walk forward.
-	while (lexer->current[lookahead] == '*') lookahead++;
-	// if we didn't see a '*' to begin with, then it's not an end
-	if (lookahead < 1) return false;
-	// And if it doesn't have a '/' at the last position it isn't either.
-	if (lexer->current[lookahead] != '/') return false;
-	// Otherwise, gladly skip ahead and store the end.
-	skip(lexer, lookahead + 1);
-	return_token(lexer, TOKEN_DOCS_END, lexer->lexing_start);
-	begin_new_token(lexer);
-	return true;
-}
 
 
 INLINE void skip_to_doc_line_end(Lexer *lexer)

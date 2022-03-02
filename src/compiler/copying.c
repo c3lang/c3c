@@ -136,6 +136,7 @@ Expr *copy_expr(Expr *source_expr)
 		case EXPR_TYPEOFANY:
 		case EXPR_PTR:
 		case EXPR_STRINGIFY:
+		case EXPR_CT_EVAL:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
 		case EXPR_COND:
@@ -221,6 +222,29 @@ Expr *copy_expr(Expr *source_expr)
 	UNREACHABLE
 }
 
+AstDocDirective *doc_directive_copy(AstDocDirective *docs)
+{
+	AstDocDirective *directive_new = NULL;
+	VECEACH(docs, i)
+	{
+		AstDocDirective directive = docs[i];
+		switch (directive.kind)
+		{
+			case DOC_DIRECTIVE_REQUIRE:
+			case DOC_DIRECTIVE_ENSURE:
+			case DOC_DIRECTIVE_CHECKED:
+				MACRO_COPY_EXPR(directive.contract.decl_exprs);
+				break;
+			case DOC_DIRECTIVE_PARAM:
+			case DOC_DIRECTIVE_ERRORS:
+			case DOC_DIRECTIVE_PURE:
+			case DOC_DIRECTIVE_UNKNOWN:
+				break;
+		}
+		vec_add(directive_new, directive);
+	}
+	return directive_new;
+}
 
 Ast *ast_copy_deep(Ast *source)
 {
@@ -229,28 +253,6 @@ Ast *ast_copy_deep(Ast *source)
 	ast->next = astid_copy_deep(ast->next);
 	switch (source->ast_kind)
 	{
-		case AST_SCOPING_STMT:
-			MACRO_COPY_EXPR(ast->scoping_stmt.scoped);
-			MACRO_COPY_AST(ast->scoping_stmt.stmt);
-			return ast;
-		case AST_DOCS:
-			MACRO_COPY_AST_LIST(ast->directives);
-			return ast;
-		case AST_DOC_DIRECTIVE:
-			switch (ast->doc_directive.kind)
-			{
-				case DOC_DIRECTIVE_REQUIRE:
-				case DOC_DIRECTIVE_ENSURE:
-				case DOC_DIRECTIVE_CHECKED:
-					MACRO_COPY_EXPR(ast->doc_directive.contract.decl_exprs);
-					break;
-				case DOC_DIRECTIVE_PARAM:
-				case DOC_DIRECTIVE_ERRORS:
-				case DOC_DIRECTIVE_PURE:
-				case DOC_DIRECTIVE_UNKNOWN:
-					break;
-			}
-			return ast;
 		case AST_POISONED:
 			return ast;
 		case AST_ASM_STMT:
@@ -269,7 +271,6 @@ Ast *ast_copy_deep(Ast *source)
 			MACRO_COPY_EXPR(ast->case_stmt.to_expr);
 			return ast;
 		case AST_COMPOUND_STMT:
-		case AST_CT_COMPOUND_STMT:
 			ast->compound_stmt.first_stmt = astid_copy_deep(ast->compound_stmt.first_stmt);
 			return ast;
 		case AST_CT_ASSERT:
@@ -279,16 +280,15 @@ Ast *ast_copy_deep(Ast *source)
 		case AST_CT_IF_STMT:
 			MACRO_COPY_EXPR(ast->ct_if_stmt.expr);
 			MACRO_COPY_AST(ast->ct_if_stmt.elif);
-			MACRO_COPY_AST(ast->ct_if_stmt.then);
+			ast->ct_if_stmt.then = astid_copy_deep(ast->ct_if_stmt.then);
 			return ast;
 		case AST_CT_ELIF_STMT:
 			MACRO_COPY_EXPR(ast->ct_elif_stmt.expr);
-			MACRO_COPY_AST(ast->ct_elif_stmt.then);
+			ast->ct_elif_stmt.then = astid_copy_deep(ast->ct_elif_stmt.then);
 			MACRO_COPY_AST(ast->ct_elif_stmt.elif);
 			return ast;
-
 		case AST_CT_ELSE_STMT:
-			MACRO_COPY_AST(ast->ct_else_stmt);
+			ast->ct_else_stmt = astid_copy_deep(ast->ct_else_stmt);
 			return ast;
 		case AST_CT_FOREACH_STMT:
 			ast->ct_foreach_stmt.body = astid_copy_deep(ast->ct_foreach_stmt.body);
@@ -346,15 +346,13 @@ Ast *ast_copy_deep(Ast *source)
 			MACRO_COPY_EXPR(ast->return_stmt.expr);
 			return ast;
 		case AST_SCOPED_STMT:
-			MACRO_COPY_AST(ast->scoped_stmt.stmt);
+			ast->scoped_stmt.stmt = astid_copy_deep(ast->scoped_stmt.stmt);
 			return ast;
 		case AST_SWITCH_STMT:
 		case AST_IF_CATCH_SWITCH_STMT:
 			copy_flow(ast);
 			MACRO_COPY_EXPR(ast->switch_stmt.cond);
 			MACRO_COPY_AST_LIST(ast->switch_stmt.cases);
-			return ast;
-		case AST_UNREACHABLE_STMT:
 			return ast;
 		case AST_WHILE_STMT:
 			copy_flow(ast);
@@ -408,6 +406,7 @@ TypeInfo *copy_type_info(TypeInfo *source)
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
 			return copy;
+		case TYPE_INFO_EVALTYPE:
 		case TYPE_INFO_EXPRESSION:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->unresolved_type_expr = copy_expr(source->unresolved_type_expr);
@@ -464,7 +463,7 @@ Decl *copy_decl(Decl *decl)
 {
 	if (!decl) return NULL;
 	Decl *copy = decl_copy(decl);
-	MACRO_COPY_AST(copy->docs);
+	copy->docs = doc_directive_copy(copy->docs);
 	copy->attributes = copy_attributes(copy->attributes);
 	switch (decl->decl_kind)
 	{

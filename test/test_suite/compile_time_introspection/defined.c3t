@@ -34,15 +34,15 @@ fn void main()
         x++;
         $counter++;
     $endif;
-    $if ($defined("x")):
+    $if ($defined($eval("x"))):
         x++;
         $counter++;
     $endif;
-    $if ($defined("Foo.ab")):
+    $if ($defined($evaltype("Foo").$eval("ab"))):
         x++;
         $counter++;
     $endif;
-    $if ($defined("mymodule::Foo.bob")):
+    $if ($defined($evaltype("mymodule::Foo").$eval("bob"))):
         x++;
         $counter++;
     $endif;

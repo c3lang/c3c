@@ -55,6 +55,7 @@ const char *kw_distinct;
 const char *kw_ensure;
 const char *kw_elements;
 const char *kw_errors;
+const char *kw_return;
 const char *kw_type;
 const char *kw_inf;
 const char *kw_inline;
@@ -73,6 +74,7 @@ const char *kw_pure;
 const char *kw_reqparse;
 const char *kw_require;
 const char *kw_std;
+const char *kw_sizeof;
 const char *kw_values;
 const char *kw_FILE;
 const char *kw_FUNC;
@@ -131,7 +133,7 @@ void symtab_init(uint32_t capacity)
 		uint32_t len = (uint32_t)strlen(name);
 		TokenType type = (TokenType)i;
 		const char* interned = symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type);
-		(void)interned;
+		if (type == TOKEN_RETURN) kw_return = interned;
 		assert(type == (TokenType)i);
 		assert(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 	}
@@ -139,6 +141,7 @@ void symtab_init(uint32_t capacity)
 	// Init some constant idents
 	TokenType type = TOKEN_IDENT;
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
+	kw_sizeof = KW_DEF("sizeof");
 	kw_in = KW_DEF("in");
 	kw_out = KW_DEF("out");
 	kw_inout = KW_DEF("inout");
@@ -159,7 +162,6 @@ void symtab_init(uint32_t capacity)
 	kw_max = KW_DEF("max");
 	kw_min = KW_DEF("min");
 	kw_nan = KW_DEF("nan");
-	KW_DEF("next");
 	kw_ordinal = KW_DEF("ordinal");
 	kw_param = KW_DEF("param");
 	kw_ptr = KW_DEF("ptr");
@@ -167,16 +169,11 @@ void symtab_init(uint32_t capacity)
 	kw_require = KW_DEF("require");
 	kw_std = KW_DEF("std");
 	kw_values = KW_DEF("values");
-	KW_DEF("__ceil");
-	KW_DEF("__round");
-	KW_DEF("__sqrt");
-	KW_DEF("__trunc");
 	kw_LINE = KW_DEF("LINE");
 	kw_LINEREAL = KW_DEF("LINEREAL");
 	kw_FILE = KW_DEF("FILE");
 	kw_FUNC = KW_DEF("FUNC");
 	kw_incr = KW_DEF("incr");
-	KW_DEF("default_iterator");
 	kw_check_assign = KW_DEF("check_assign");
 
 	kw_argc = KW_DEF("_$argc");

@@ -8,7 +8,7 @@ fn void test()
 {
     int x = foo();
     if (x > 0) return;
-    $unreachable;
+    @unreachable();
     x++;
 }
 

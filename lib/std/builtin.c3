@@ -2,6 +2,19 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::builtin;
+
+macro scope(&variable; @body) @autoimport
+{
+	$typeof(variable) temp = variable;
+	defer variable = temp;
+	@body();
+}
+
+macro unreachable($string = "Unreachable statement reached.") @autoimport @noreturn
+{
+	assert(false, $string);
+}
+
 /*
 enum TypeKind
 {

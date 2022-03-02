@@ -85,7 +85,7 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 	unsigned col_location = location.col;
 	if (!col_location || col_location > max_lines_for_display) col_location = 0;
 	unsigned space_to = col_location ? col_location : max_lines_for_display - 1;
-	for (unsigned i = 1; i < space_to; i++)
+	for (unsigned i = 0; i < space_to - 1; i++)
 	{
 		switch (current[i])
 		{

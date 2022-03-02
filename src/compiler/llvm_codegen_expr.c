@@ -2170,6 +2170,7 @@ static void gencontext_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr
 			value->type = type_lowering(expr->type);
 			return;
 		case UNARYOP_DEREF:
+			REMINDER("insert a check for deref in debug mode");
 			llvm_emit_expr(c, value, inner);
 			// Load the pointer value.
 			llvm_value_rvalue(c, value);
@@ -5452,18 +5453,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	EMIT_LOC(c, expr);
 	switch (expr->expr_kind)
 	{
-		case EXPR_DESIGNATOR:
-		case EXPR_POISONED:
+		case NON_RUNTIME_EXPR:
 		case EXPR_COND:
-		case EXPR_TYPEINFO:
 		case EXPR_MACRO_EXPANSION:
-		case EXPR_CT_IDENT:
-		case EXPR_HASH_IDENT:
-		case EXPR_COMPILER_CONST:
-		case EXPR_CT_CALL:
-		case EXPR_FLATPATH:
-		case EXPR_VARIANTSWITCH:
-		case EXPR_STRINGIFY:
 			UNREACHABLE
 		case EXPR_ARGV_TO_SUBARRAY:
 			llvm_emit_argv_to_subarray(c, value, expr);
