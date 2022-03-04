@@ -76,7 +76,7 @@ static inline Ast* parse_do_stmt(ParseContext *c)
 	advance_and_verify(c, TOKEN_DO);
 
 	ASSIGN_DECL_OR_RET(do_ast->do_stmt.flow.label, parse_optional_label(c, do_ast), poisoned_ast);
-	ASSIGN_AST_OR_RET(do_ast->do_stmt.body, parse_stmt(c), poisoned_ast);
+	ASSIGN_ASTID_OR_RET(do_ast->do_stmt.body, parse_stmt(c), poisoned_ast);
 
 	if (try_consume(c, TOKEN_WHILE))
 	{
@@ -133,9 +133,9 @@ static inline Ast* parse_while_stmt(ParseContext *c)
 	ASSIGN_DECL_OR_RET(while_ast->while_stmt.flow.label, parse_optional_label(c, while_ast), poisoned_ast);
 
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
-	ASSIGN_EXPR_OR_RET(while_ast->while_stmt.cond, parse_cond(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(while_ast->while_stmt.cond, parse_cond(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
-	ASSIGN_AST_OR_RET(while_ast->while_stmt.body, parse_stmt(c), poisoned_ast);
+	ASSIGN_ASTID_OR_RET(while_ast->while_stmt.body, parse_stmt(c), poisoned_ast);
 	return while_ast;
 }
 
@@ -559,62 +559,40 @@ static inline Ast* parse_ct_else_stmt(ParseContext *c)
 	return ast;
 }
 
-/**
- * ct_elif_stmt
- * 	: CT_ELIF '(' expression ')' ':' ct_compound_stmt (ct_elif_stmt | ct_else_stmt)?
- */
-static inline Ast *parse_ct_elif_stmt(ParseContext *c)
-{
-	Ast *ast = ast_new_curr(c, AST_CT_ELIF_STMT);
-	advance_and_verify(c, TOKEN_CT_ELIF);
-	ASSIGN_EXPR_OR_RET(ast->ct_elif_stmt.expr, parse_const_paren_expr(c), poisoned_ast);
-	TRY_CONSUME(TOKEN_COLON, "$elif needs a ':' after the expression, did you forget it?");
-	if (!parse_ct_compound_stmt(c, &ast->ct_elif_stmt.then)) return poisoned_ast;
 
-	if (tok_is(c, TOKEN_CT_ELIF))
-	{
-		ASSIGN_AST_OR_RET(ast->ct_elif_stmt.elif, parse_ct_elif_stmt(c), poisoned_ast);
-	}
-	else if (tok_is(c, TOKEN_CT_ELSE))
-	{
-		ASSIGN_AST_OR_RET(ast->ct_elif_stmt.elif, parse_ct_else_stmt(c), poisoned_ast);
-	}
-	return ast;
-}
 
 /**
  * ct_if_stmt
  * 	: CT_IF '(' expression ')' ':' ct_compound_stmt (ct_elif_stmt | ct_else_stmt) CT_ENDIF EOS
  * 	;
  */
-static inline Ast* parse_ct_if_stmt(ParseContext *c)
+static inline Ast* parse_ct_if_stmt(ParseContext *c, bool is_elif)
 {
 	Ast *ast = ast_new_curr(c, AST_CT_IF_STMT);
-	advance_and_verify(c, TOKEN_CT_IF);
+	advance_and_verify(c, is_elif ? TOKEN_CT_ELIF : TOKEN_CT_IF);
 	ASSIGN_EXPR_OR_RET(ast->ct_if_stmt.expr, parse_const_paren_expr(c), poisoned_ast);
-	TRY_CONSUME(TOKEN_COLON, "$if needs a ':' after the expression, did you forget it?");
+	if (is_elif)
+	{
+		TRY_CONSUME(TOKEN_COLON, "$elif needs a ':' after the expression, did you forget it?");
+	}
+	else
+	{
+		TRY_CONSUME(TOKEN_COLON, "$if needs a ':' after the expression, did you forget it?");
+	}
 	if (!parse_ct_compound_stmt(c, &ast->ct_if_stmt.then)) return poisoned_ast;
 
 	if (tok_is(c, TOKEN_CT_ELIF))
 	{
-		ASSIGN_AST_OR_RET(ast->ct_if_stmt.elif, parse_ct_elif_stmt(c), poisoned_ast);
+		ASSIGN_AST_OR_RET(ast->ct_if_stmt.elif, parse_ct_if_stmt(c, true), poisoned_ast);
 	}
 	else if (tok_is(c, TOKEN_CT_ELSE))
 	{
 		ASSIGN_AST_OR_RET(ast->ct_if_stmt.elif, parse_ct_else_stmt(c), poisoned_ast);
 	}
+	if (is_elif) return ast;
 	advance_and_verify(c, TOKEN_CT_ENDIF);
 	RANGE_EXTEND_PREV(ast);
-	do
-	{
-		if (!tok_is(c, TOKEN_EOS))
-		{
-			sema_error_at_after(c->prev_span, "Expected ';'");
-			return poisoned_ast;
-		}
-		advance(c);
-	}
-	while (0);
+	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
 }
 
@@ -907,7 +885,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_ASSERT:
 			return parse_ct_assert_stmt(c);
 		case TOKEN_CT_IF:
-			return parse_ct_if_stmt(c);
+			return parse_ct_if_stmt(c, false);
 		case TOKEN_CT_SWITCH:
 			return parse_ct_switch_stmt(c);
 		case TOKEN_CT_FOREACH:

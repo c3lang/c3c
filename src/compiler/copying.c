@@ -40,6 +40,12 @@ static AstId astid_copy_deep(AstId source)
 	return astid(ast_copy_deep(astptr(source)));
 }
 
+static ExprId exprid_copy_deep(ExprId source)
+{
+	if (!source) return 0;
+	return exprid(copy_expr(exprptr(source)));
+}
+
 
 static DesignatorElement **macro_copy_designator_list(DesignatorElement **list)
 {
@@ -117,8 +123,8 @@ Expr *copy_expr(Expr *source_expr)
 			MACRO_COPY_TYPE(expr->type_expr);
 			return expr;
 		case EXPR_SLICE_ASSIGN:
-			MACRO_COPY_EXPR(expr->slice_assign_expr.left);
-			MACRO_COPY_EXPR(expr->slice_assign_expr.right);
+			MACRO_COPY_EXPRID(expr->slice_assign_expr.left);
+			MACRO_COPY_EXPRID(expr->slice_assign_expr.right);
 			return expr;
 		case EXPR_SLICE:
 			MACRO_COPY_EXPR(expr->slice_expr.expr);
@@ -280,15 +286,10 @@ Ast *ast_copy_deep(Ast *source)
 		case AST_CT_IF_STMT:
 			MACRO_COPY_EXPR(ast->ct_if_stmt.expr);
 			MACRO_COPY_AST(ast->ct_if_stmt.elif);
-			ast->ct_if_stmt.then = astid_copy_deep(ast->ct_if_stmt.then);
-			return ast;
-		case AST_CT_ELIF_STMT:
-			MACRO_COPY_EXPR(ast->ct_elif_stmt.expr);
-			ast->ct_elif_stmt.then = astid_copy_deep(ast->ct_elif_stmt.then);
-			MACRO_COPY_AST(ast->ct_elif_stmt.elif);
+			MACRO_COPY_ASTID(ast->ct_if_stmt.then);
 			return ast;
 		case AST_CT_ELSE_STMT:
-			ast->ct_else_stmt = astid_copy_deep(ast->ct_else_stmt);
+			MACRO_COPY_ASTID(ast->ct_else_stmt);
 			return ast;
 		case AST_CT_FOREACH_STMT:
 			ast->ct_foreach_stmt.body = astid_copy_deep(ast->ct_foreach_stmt.body);
@@ -310,7 +311,7 @@ Ast *ast_copy_deep(Ast *source)
 			return ast;
 		case AST_DO_STMT:
 			copy_flow(ast);
-			MACRO_COPY_AST(ast->do_stmt.body);
+			MACRO_COPY_ASTID(ast->do_stmt.body);
 			MACRO_COPY_EXPR(ast->do_stmt.expr);
 			return ast;
 		case AST_EXPR_STMT:
@@ -356,8 +357,8 @@ Ast *ast_copy_deep(Ast *source)
 			return ast;
 		case AST_WHILE_STMT:
 			copy_flow(ast);
-			MACRO_COPY_EXPR(ast->while_stmt.cond);
-			MACRO_COPY_AST(ast->while_stmt.body);
+			MACRO_COPY_EXPRID(ast->while_stmt.cond);
+			MACRO_COPY_ASTID(ast->while_stmt.body);
 			return ast;
 	}
 	UNREACHABLE;

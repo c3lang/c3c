@@ -4310,8 +4310,8 @@ static inline bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *ex
 	Expr *left = expr->binary_expr.left;
 	expr->type = right->type;
 	expr->expr_kind = EXPR_SLICE_ASSIGN;
-	expr->slice_assign_expr.left = left;
-	expr->slice_assign_expr.right = right;
+	expr->slice_assign_expr.left = exprid(left);
+	expr->slice_assign_expr.right = exprid(right);
 
 	return true;
 }

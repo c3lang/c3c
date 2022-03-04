@@ -48,6 +48,7 @@ typedef struct Type_ Type;
 typedef Type CanonicalType;
 
 typedef unsigned AstId;
+typedef unsigned ExprId;
 
 typedef struct Int128_
 {
@@ -717,8 +718,8 @@ typedef struct
 
 typedef struct
 {
-	Expr *left;
-	Expr *right;
+	ExprId left;
+	ExprId right;
 } ExprSliceAssign;
 
 
@@ -1002,8 +1003,8 @@ typedef struct
 typedef struct
 {
 	FlowCommon flow;
-	Expr *cond;
-	Ast *body;
+	ExprId cond;
+	AstId body;
 	void *break_block;
 	void *continue_block;
 } AstWhileStmt;
@@ -1023,7 +1024,7 @@ typedef struct
 		struct
 		{
 			Expr *expr;
-			Ast *body;
+			AstId body;
 		};
 	};
 } AstDoStmt;
@@ -1258,7 +1259,6 @@ typedef struct Ast_
 		AstForStmt for_stmt;                // 32
 		AstForeachStmt foreach_stmt;
 		AstCtIfStmt ct_if_stmt;             // 24
-		AstCtIfStmt ct_elif_stmt;           // 24
 		AstId ct_else_stmt;                  // 8
 		AstCtForeachStmt ct_foreach_stmt;           // 64
 		AstScopedStmt scoped_stmt;          // 16
@@ -2467,11 +2467,13 @@ static inline bool type_is_promotable_float(Type *type)
 #define MACRO_COPY_DECL(x) x = copy_decl(x)
 #define MACRO_COPY_DECL_LIST(x) x = copy_decl_list(x)
 #define MACRO_COPY_EXPR(x) x = copy_expr(x)
+#define MACRO_COPY_EXPRID(x) x = exprid_copy_deep(x)
 #define MACRO_COPY_TYPE(x) x = copy_type_info(x)
 #define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(x)
 #define MACRO_COPY_EXPR_LIST(x) x = copy_expr_list(x)
 #define MACRO_COPY_AST_LIST(x) x = copy_ast_list(x)
 #define MACRO_COPY_AST(x) x = ast_copy_deep(x)
+#define MACRO_COPY_ASTID(x) x = astid_copy_deep(x)
 
 Expr **copy_expr_list(Expr **expr_list);
 Expr *copy_expr(Expr *source_expr);
@@ -2500,7 +2502,9 @@ void platform_compiler(const char **files, unsigned file_count, const char* flag
 #define CAT2(a,b) a##b // actually concatenate
 #define TEMP(X) CAT(X, __LINE__)
 #define ASSIGN_AST_OR_RET(_assign, _ast_stmt, _res) Ast* TEMP(_ast) = (_ast_stmt); if (!ast_ok(TEMP(_ast))) return _res; _assign = TEMP(_ast)
+#define ASSIGN_ASTID_OR_RET(_assign, _ast_stmt, _res) Ast* TEMP(_ast) = (_ast_stmt); if (!ast_ok(TEMP(_ast))) return _res; _assign = astid(TEMP(_ast))
 #define ASSIGN_EXPR_OR_RET(_assign, _expr_stmt, _res) Expr* TEMP(_expr) = (_expr_stmt); if (!expr_ok(TEMP(_expr))) return _res; _assign = TEMP(_expr)
+#define ASSIGN_EXPRID_OR_RET(_assign, _expr_stmt, _res) Expr* TEMP(_expr) = (_expr_stmt); if (!expr_ok(TEMP(_expr))) return _res; _assign = exprid(TEMP(_expr))
 #define ASSIGN_TYPE_OR_RET(_assign, _type_stmt, _res) TypeInfo* TEMP(_type) = (_type_stmt); if (!type_info_ok(TEMP(_type))) return _res; _assign = TEMP(_type)
 #define ASSIGN_DECL_OR_RET(_assign, _decl_stmt, _res) Decl* TEMP(_decl) = (_decl_stmt); if (!decl_ok(TEMP(_decl))) return _res; _assign = TEMP(_decl)
 

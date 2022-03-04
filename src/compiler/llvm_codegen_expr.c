@@ -2436,14 +2436,14 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	// while (slice_current <= end) pointer[slice_current++] = value;
 
 	// First, find the value assigned.
-	Expr *assigned_value = expr->slice_assign_expr.right;
+	Expr *assigned_value = exprptr(expr->slice_assign_expr.right);
 	llvm_emit_expr(c, be_value, assigned_value);
 
 	BEValue parent;
 	BEValue start;
 	BEValue end;
 	// Use general function to get all the values we need (a lot!)
-	llvm_emit_slice_values(c, expr->slice_assign_expr.left, &parent, &start, &end);
+	llvm_emit_slice_values(c, exprptr(expr->slice_assign_expr.left), &parent, &start, &end);
 	llvm_value_rvalue(c, &start);
 	llvm_value_rvalue(c, &end);
 

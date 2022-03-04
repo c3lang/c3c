@@ -217,6 +217,11 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 	return decl;
 }
 
+INLINE bool exprid_is_pure(ExprId expr_id)
+{
+	return expr_is_pure(exprptr(expr_id));
+}
+
 bool expr_is_pure(Expr *expr)
 {
 	if (!expr) return true;

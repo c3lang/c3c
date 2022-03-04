@@ -1276,7 +1276,6 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			break;
 		case AST_CT_ASSERT:
 		case AST_CT_IF_STMT:
-		case AST_CT_ELIF_STMT:
 		case AST_CT_ELSE_STMT:
 		case AST_CT_FOR_STMT:
 		case AST_CT_SWITCH_STMT:

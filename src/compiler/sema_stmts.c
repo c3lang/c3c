@@ -701,8 +701,8 @@ static inline bool sema_analyse_stmt_placement(Expr *cond, Ast *stmt)
  */
 static inline bool sema_analyse_while_stmt(SemaContext *context, Ast *statement)
 {
-	Expr *cond = statement->while_stmt.cond;
-	Ast *body = statement->while_stmt.body;
+	Expr *cond = exprptr(statement->while_stmt.cond);
+	Ast *body = astptr(statement->while_stmt.body);
 
 	bool success;
 
@@ -755,7 +755,7 @@ static inline bool sema_analyse_while_stmt(SemaContext *context, Ast *statement)
 static inline bool sema_analyse_do_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = statement->do_stmt.expr;
-	Ast *body = statement->do_stmt.body;
+	Ast *body = astptr(statement->do_stmt.body);
 	bool success;
 
 	// 1. Begin pushing the scope and break / continue.
@@ -1697,15 +1697,15 @@ static bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 		{
 			return sema_analyse_then_overwrite(context, statement, elif->ct_else_stmt);
 		}
-		assert(elif->ast_kind == AST_CT_ELIF_STMT);
+		assert(elif->ast_kind == AST_CT_IF_STMT);
 
-		res = sema_check_comp_time_bool(context, elif->ct_elif_stmt.expr);
+		res = sema_check_comp_time_bool(context, elif->ct_if_stmt.expr);
 		if (res == -1) return false;
 		if (res)
 		{
-			return sema_analyse_then_overwrite(context, statement, elif->ct_elif_stmt.then);
+			return sema_analyse_then_overwrite(context, statement, elif->ct_if_stmt.then);
 		}
-		elif = elif->ct_elif_stmt.elif;
+		elif = elif->ct_if_stmt.elif;
 	}
 }
 
@@ -2402,7 +2402,6 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			return sema_analyse_while_stmt(context, statement);
 		case AST_CT_SWITCH_STMT:
 			return sema_analyse_ct_switch_stmt(context, statement);
-		case AST_CT_ELIF_STMT:
 		case AST_CT_ELSE_STMT:
 			UNREACHABLE
 		case AST_CT_FOREACH_STMT:
