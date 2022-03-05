@@ -1082,10 +1082,16 @@ static inline void gencontext_emit_access_addr(GenContext *context, BEValue *be_
 	gencontext_emit_member_addr(context, be_value, type_lowering(parent->type)->decl, member);
 }
 
-static void gencontext_emit_scoped_expr(GenContext *context, BEValue *value, Expr *expr)
+static void llvm_emit_scoped_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	llvm_emit_expr(context, value, expr->expr_scope.expr);
-	llvm_emit_defer(context, expr->expr_scope.defers.start, expr->expr_scope.defers.end);
+	llvm_emit_expr(c, value, expr->expr_scope.expr);
+	AstId current = expr->expr_scope.defer_stmts;
+	while (current)
+	{
+		Ast *ast = astptr(current);
+		llvm_emit_stmt(c, ast);
+		current = ast->next;
+	}
 }
 
 
@@ -3521,7 +3527,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	// Ensure we are on a branch that is non empty.
 	if (llvm_emit_check_block_branch(c))
 	{
-		llvm_emit_defer(c, expr->rethrow_expr.defer, 0);
+		llvm_emit_statement_chain(c, expr->rethrow_expr.cleanup);
 		BEValue value;
 		llvm_value_set_address_abi_aligned(&value, error_var, type_anyerr);
 		llvm_emit_return_abi(c, NULL, &value);
@@ -4430,7 +4436,7 @@ LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity)
 
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 {
-	BuiltinFunction func = expr->call_expr.function->builtin_expr.builtin;
+	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
 	if (func == BUILTIN_VOLATILE_STORE)
 	{
 		BEValue value;
@@ -4496,9 +4502,9 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 	FunctionPrototype *prototype;
 	// 1. Call through a pointer.
-	if (expr->call_expr.is_pointer_call)
+	if (!expr->call_expr.is_func_ref)
 	{
-		Expr *function = expr->call_expr.function;
+		Expr *function = exprptr(expr->call_expr.function);
 
 		// 1a. Find the pointee type for the function pointer:
 		Type *type = function->type->canonical->pointer;
@@ -4508,7 +4514,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 		// 1c. Evaluate the pointer expression.
 		BEValue func_value;
-		llvm_emit_expr(c, &func_value, expr->call_expr.function);
+		llvm_emit_expr(c, &func_value, function);
 
 		// 1d. Load it as a value
 		func = llvm_load_value_store(c, &func_value);
@@ -4520,7 +4526,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	{
 		// 2a. Get the function declaration
 
-		Decl *function_decl = expr->call_expr.func_ref;
+		Decl *function_decl = declptr(expr->call_expr.func_ref);
 		always_inline = function_decl->func_decl.attr_inline;
 
 		// 2b. Set signature, function and function type
@@ -4974,11 +4980,11 @@ static inline void llvm_emit_return_block(GenContext *context, BEValue *be_value
 
 		// Do we have a void function? That's the only
 		// possible case if the last statement isn't return.
-		if (value->ast_kind != AST_RETURN_STMT) break;
+		if (value->ast_kind != AST_BLOCK_EXIT_STMT) break;
 
 		// Defers? In that case we also use the default behaviour.
 		// We might optimize this later.
-		if (value->return_stmt.defer) break;
+		if (value->return_stmt.cleanup) break;
 
 		Expr *ret_expr = value->return_stmt.expr;
 
@@ -5457,6 +5463,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_COND:
 		case EXPR_MACRO_EXPANSION:
 			UNREACHABLE
+		case EXPR_RETVAL:
+			*value = c->retval;
+			return;
 		case EXPR_ARGV_TO_SUBARRAY:
 			llvm_emit_argv_to_subarray(c, value, expr);
 			return;
@@ -5469,9 +5478,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_CATCH_UNWRAP:
 			llvm_emit_catch_unwrap(c, value, expr);
 			return;
-		case EXPR_UNDEF:
-			// Should never reach this.
-			UNREACHABLE
 		case EXPR_PTR:
 			llvm_emit_ptr(c, value, expr);
 			return;
@@ -5518,7 +5524,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_expr_block(c, value, expr);
 			return;
 		case EXPR_SCOPED_EXPR:
-			gencontext_emit_scoped_expr(c, value, expr);
+			llvm_emit_scoped_expr(c, value, expr);
 			return;
 		case EXPR_UNARY:
 			gencontext_emit_unary_expr(c, value, expr);

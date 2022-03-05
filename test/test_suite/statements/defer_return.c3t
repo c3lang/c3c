@@ -42,7 +42,7 @@ entry:
   store i32 0, i32* %a, align 4
   br label %loop.cond
 
-loop.cond:                                        ; preds = %exit3, %entry
+loop.cond:                                        ; preds = %if.exit, %entry
   %2 = load i32, i32* %a, align 4
   %intbool = icmp ne i32 %2, 0
   br i1 %intbool, label %loop.body, label %loop.exit
@@ -55,85 +55,46 @@ if.then:                                          ; preds = %loop.body
   %3 = load i32, i32* %a, align 4
   %add = add i32 %3, %0
   call void @test.test2()
-  br label %exit
-
-exit:                                             ; preds = %if.then
   call void @test.test1()
-  br label %exit1
-
-exit1:                                            ; preds = %exit
   ret i32 %add
 
 if.exit:                                          ; preds = %loop.body
   call void @test.test4()
   call void @test.test3()
-  br label %exit2
-
-exit2:                                            ; preds = %if.exit
   call void @test.test2()
-  br label %exit3
-
-exit3:                                            ; preds = %exit2
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  br label %loop.cond4
+  br label %loop.cond1
 
-loop.cond4:                                       ; preds = %loop.exit
+loop.cond1:                                       ; preds = %loop.exit
   %4 = load i32, i32* %a, align 4
-  %intbool5 = icmp ne i32 %4, 0
-  br i1 %intbool5, label %loop.body6, label %loop.exit21
+  %intbool2 = icmp ne i32 %4, 0
+  br i1 %intbool2, label %loop.body3, label %loop.exit8
 
-loop.body6:                                       ; preds = %loop.cond4
-  %eq7 = icmp eq i32 %0, 1
-  br i1 %eq7, label %if.then8, label %if.exit13
+loop.body3:                                       ; preds = %loop.cond1
+  %eq4 = icmp eq i32 %0, 1
+  br i1 %eq4, label %if.then5, label %if.exit7
 
-if.then8:                                         ; preds = %loop.body6
+if.then5:                                         ; preds = %loop.body3
   %5 = load i32, i32* %a, align 4
-  %add9 = add i32 %5, 2
+  %add6 = add i32 %5, 2
   call void @test.test6()
-  br label %exit10
-
-exit10:                                           ; preds = %if.then8
   call void @test.test5()
-  br label %exit11
-
-exit11:                                           ; preds = %exit10
   call void @test.test1()
-  br label %exit12
+  ret i32 %add6
 
-exit12:                                           ; preds = %exit11
-  ret i32 %add9
-
-if.exit13:                                        ; preds = %loop.body6
+if.exit7:                                         ; preds = %loop.body3
   call void @test.test8()
   call void @test.test7()
-  br label %exit14
-
-exit14:                                           ; preds = %if.exit13
   call void @test.test6()
-  br label %exit15
-
-exit15:                                           ; preds = %exit14
   call void @test.test5()
-  br label %exit16
-
-exit16:                                           ; preds = %exit15
   call void @test.test1()
-  br label %exit17
-
-exit17:                                           ; preds = %exit16
   ret i32 4
 
-loop.exit21:                                      ; preds = %loop.cond4
-  %add22 = add i32 0, %0
+loop.exit8:                                       ; preds = %loop.cond1
+  %add9 = add i32 0, %0
   call void @test.test5()
-  br label %exit23
-
-exit23:                                           ; preds = %loop.exit21
   call void @test.test1()
-  br label %exit24
-
-exit24:                                           ; preds = %exit23
-  ret i32 %add22
+  ret i32 %add9
 }

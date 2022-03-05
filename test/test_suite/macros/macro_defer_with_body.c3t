@@ -38,9 +38,6 @@ entry:
   %add1 = add i32 %3, 1
   store i32 %add1, i32* %x, align 4
   %4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), i32 %3)
-  br label %exit
-
-exit:                                             ; preds = %entry
   %5 = load i32, i32* %a, align 4
   store i32 %5, i32* %y, align 4
   %6 = load i32, i32* %x, align 4
@@ -51,9 +48,6 @@ exit:                                             ; preds = %entry
   %add3 = add i32 %8, 1
   store i32 %add3, i32* %x, align 4
   %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.3, i32 0, i32 0), i32 %8)
-  br label %exit4
-
-exit4:                                            ; preds = %exit
   %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.4, i32 0, i32 0))
   ret void
 }

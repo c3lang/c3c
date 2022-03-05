@@ -7,7 +7,7 @@ fn int main()
         {
             return 1;
         }
-    }
+    };
     return 0;
 }
 
@@ -20,5 +20,5 @@ fn void test1()
         {
             break BAR; // #error: Cannot find a labelled statement with the name 'BAR'
         }
-    }
+    };
 }

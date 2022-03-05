@@ -26,7 +26,6 @@ TypeInfo *parse_type(ParseContext *c);
 TypeInfo *parse_failable_type(ParseContext *c);
 TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
-Expr *parse_initializer(ParseContext *c);
 void parse_imports(ParseContext *c);
 Decl *parse_decl(ParseContext *c);
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref);

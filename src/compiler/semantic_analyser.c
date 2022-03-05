@@ -75,60 +75,79 @@ void context_change_scope_for_label(SemaContext *context, Decl *label)
 	}
 }
 
-
-
-void context_pop_defers_to(SemaContext *context, DeferList *list)
+AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bottom)
 {
-	list->end = context->active_scope.defer_start;
-	assert(context->active_scope.defer_last < 10000000);
-	list->start = context->active_scope.defer_last;
-	context->active_scope.defer_last = list->end;
+	AstId first = 0;
+	AstId *next = &first;
+	while (defer_bottom != defer_top)
+	{
+		Ast *defer = astptr(defer_top);
+		Ast *defer_body = ast_macro_copy(astptr(defer->defer_stmt.body));
+		*next = astid(defer_body);
+		next = &defer_body->next;
+		defer_top = defer->defer_stmt.prev_defer;
+	}
+	return first;
 }
 
-
-
+void context_pop_defers(SemaContext *context, AstId *next)
+{
+	AstId defer_start = context->active_scope.defer_start;
+	if (next && !context->active_scope.jump_end)
+	{
+		AstId defer_current = context->active_scope.defer_last;
+		while (defer_current != defer_start)
+		{
+			Ast *defer = astptr(defer_current);
+			Ast *defer_body = ast_macro_copy(astptr(defer->defer_stmt.body));
+			*next = astid(defer_body);
+			next = &defer_body->next;
+			defer_current = defer->defer_stmt.prev_defer;
+		}
+	}
+	context->active_scope.defer_last = defer_start;
+}
 
 
 Expr *context_pop_defers_and_wrap_expr(SemaContext *context, Expr *expr)
 {
-	DeferList defers = { 0, 0 };
-	context_pop_defers_to(context, &defers);
-	if (defers.end == defers.start) return expr;
-	Expr *wrap = expr_new(EXPR_SCOPED_EXPR, expr->span);
-	wrap->type = expr->type;
-	wrap->resolve_status = RESOLVE_DONE;
-	wrap->expr_scope.expr = expr;
-	wrap->expr_scope.defers = defers;
+	AstId defer_first = 0;
+	context_pop_defers(context, &defer_first);
+	if (defer_first)
+	{
+		Expr *wrap = expr_new(EXPR_SCOPED_EXPR, expr->span);
+		wrap->type = expr->type;
+		wrap->resolve_status = RESOLVE_DONE;
+		wrap->expr_scope.expr = expr;
+		wrap->expr_scope.defer_stmts = defer_first;
+		return wrap;
+	}
 	return expr;
 }
 
 void context_pop_defers_and_replace_expr(SemaContext *context, Expr *expr)
 {
-	DeferList defers = { 0, 0 };
-	context_pop_defers_to(context, &defers);
-	if (defers.end == defers.start) return;
-	Expr *inner = expr_copy(expr);
-	expr->expr_kind = EXPR_SCOPED_EXPR;
-	expr->expr_scope.expr = inner;
-	expr->expr_scope.defers = defers;
+	AstId defer_first = 0;
+	context_pop_defers(context, &defer_first);
+	if (defer_first)
+	{
+		Expr *inner = expr_copy(expr);
+		expr->expr_kind = EXPR_SCOPED_EXPR;
+		expr->expr_scope.expr = inner;
+		expr->expr_scope.defer_stmts = defer_first;
+	}
 }
 
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 {
-	DeferList defers = { 0, 0 };
-	context_pop_defers_to(context, &defers);
-	if (defers.end == defers.start) return;
-	if (ast->ast_kind == AST_DEFER_STMT)
-	{
-		assert(defers.start == astid(ast));
-		*ast = *ast->defer_stmt.body;
-		return;
-	}
+	AstId defer_first = 0;
+	context_pop_defers(context, &defer_first);
+	if (!defer_first) return;
 	assert(ast->ast_kind != AST_COMPOUND_STMT);
 	Ast *replacement = ast_copy(ast);
-	ast->ast_kind = AST_SCOPED_STMT;
-	ast->scoped_stmt.stmt = astid(replacement);
-	ast->scoped_stmt.defers = defers;
+	ast->ast_kind = AST_COMPOUND_STMT;
+	ast->compound_stmt.first_stmt = astid(replacement);
+	replacement->next = defer_first;
 }
 
 static inline void halt_on_error(void)

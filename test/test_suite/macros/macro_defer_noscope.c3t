@@ -45,12 +45,6 @@ entry:
   call void @foo.foo1()
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str, i32 0, i32 0), i32 3)
   call void @foo2.foo2()
-  br label %exit
-
-exit:                                             ; preds = %entry
   call void @foo2.foo2()
-  br label %exit1
-
-exit1:                                            ; preds = %exit
   ret void
 }

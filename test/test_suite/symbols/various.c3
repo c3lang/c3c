@@ -185,15 +185,5 @@ fn void test24()
     int a = b123;  // #error: 'int[2][3]' into 'int'
 }
 
-fn void test25()
-{
-    const A = void; // #error: Constants cannot be undefined.
-}
-
-fn void test26()
-{
-    const int A = void; // #error: Constants cannot be undefined.
-}
-
 
 

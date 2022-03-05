@@ -70,6 +70,22 @@ void recover_top_level(ParseContext *c)
 	}
 }
 
+static inline bool parse_decl_initializer(ParseContext *c, Decl *decl, bool allow_void)
+{
+	if (try_consume(c, TOKEN_VOID))
+	{
+		if (!allow_void)
+		{
+			SEMA_ERROR_LAST("'void' is not allowed here, it's only allowed for non constant global and local variables.");
+			return false;
+		}
+		decl->var.no_init = true;
+		return true;
+	}
+	ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_expr(c), false);
+	return true;
+}
+
 // --- Parse CT conditional code
 
 static inline bool parse_top_level_block(ParseContext *c, Decl ***decls, TokenType end1, TokenType end2, TokenType end3)
@@ -699,7 +715,7 @@ Decl *parse_decl_after_type(ParseContext *c, TypeInfo *type)
 			return poisoned_decl;
 		}
 		advance_and_verify(c, TOKEN_EQ);
-		ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_initializer(c), poisoned_decl);
+		if (!parse_decl_initializer(c, decl, true)) return poisoned_decl;
 	}
 	return decl;
 }
@@ -763,7 +779,7 @@ static Decl *parse_const_declaration(ParseContext *c, Visibility visibility)
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 
-	ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_initializer(c), poisoned_decl);
+	if (!parse_decl_initializer(c, decl, false)) return poisoned_decl;
 
 	RANGE_EXTEND_PREV(decl);
 
@@ -904,7 +920,7 @@ static inline Decl *parse_global_declaration(ParseContext *c, Visibility visibil
 	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
 	if (try_consume(c, TOKEN_EQ))
 	{
-		ASSIGN_EXPR_OR_RET(decl->var.init_expr, parse_initializer(c), poisoned_decl);
+		if (!parse_decl_initializer(c, decl, true)) return poisoned_decl;
 	}
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -945,7 +961,7 @@ static inline bool parse_param_decl(ParseContext *c, Visibility parent_visibilit
 	}
 	if (name && try_consume(c, TOKEN_EQ))
 	{
-		ASSIGN_EXPR_OR_RET(param->var.init_expr, parse_initializer(c), false);
+		if (!parse_decl_initializer(c, param, false)) return poisoned_decl;
 	}
 
 	vec_add(*parameters, param);
@@ -1090,7 +1106,7 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
 			advance(c);
 			if (try_consume(c, TOKEN_EQ))
 			{
-				ASSIGN_EXPR_OR_RET(param->var.init_expr, parse_initializer(c), false);
+				if (!parse_decl_initializer(c, param, false)) return poisoned_decl;
 			}
 		}
 		if (!parse_attributes(c, &param->attributes)) return false;

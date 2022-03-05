@@ -490,8 +490,6 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 	// Insert a return (and defer) if needed.
 	if (context->current_block && !LLVMGetBasicBlockTerminator(context->current_block))
 	{
-		assert(!decl->func_decl.body->compound_stmt.defer_list.end);
-		llvm_emit_defer(context, decl->func_decl.body->compound_stmt.defer_list.start, 0);
 		llvm_emit_return_implicit(context);
 	}
 
