@@ -19,7 +19,7 @@ fn void test(int i)
     }
 }
 
-// #expect: defer_break_switch.ll
+/* #expect: defer_break_switch.ll
 
 define void @defer_break_switch.test(i32 %0) #0 {
 entry:
@@ -33,7 +33,7 @@ switch.entry:                                     ; preds = %entry
   %1 = load i32, i32* %switch, align 4
   switch i32 %1, label %switch.exit [
     i32 1, label %switch.case
-    i32 2, label %switch.case2
+    i32 2, label %switch.case1
   ]
 
 switch.case:                                      ; preds = %switch.entry
@@ -43,23 +43,17 @@ switch.case:                                      ; preds = %switch.entry
 
 if.then:                                          ; preds = %switch.case
   call void @defer_break_switch.test2()
-  br label %exit
-
-exit:                                             ; preds = %if.then
   br label %switch.exit
 
 if.exit:                                          ; preds = %switch.case
   call void @defer_break_switch.test1()
   call void @defer_break_switch.test2()
-  br label %exit1
-
-exit1:                                            ; preds = %if.exit
   br label %switch.exit
 
-switch.case2:                                     ; preds = %switch.entry
+switch.case1:                                     ; preds = %switch.entry
   call void @defer_break_switch.test1()
   br label %switch.exit
 
-switch.exit:                                      ; preds = %switch.case2, %exit1, %exit, %switch.entry
+switch.exit:                                      ; preds = %switch.case1, %if.exit, %if.then, %switch.entry
   ret void
 }

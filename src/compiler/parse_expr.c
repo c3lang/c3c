@@ -565,28 +565,6 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 	return expr;
 }
 
-/**
- * initializer
- *  : initializer_list
- *  | expr
- *  | void
- *  ;
- *
- * @param c
- * @return the parsed expression
- */
-Expr *parse_initializer(ParseContext *c)
-{
-	if (tok_is(c, TOKEN_VOID))
-	{
-		Expr *expr = EXPR_NEW_TOKEN(EXPR_UNDEF);
-		expr->type = type_void;
-		expr->resolve_status = RESOLVE_DONE;
-		advance(c);
-		return expr;
-	}
-	return parse_expr(c);
-}
 
 /**
  * initializer_list
@@ -719,7 +697,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	advance(c);
 
 	Expr *call = EXPR_NEW_EXPR(EXPR_CALL, left);
-	call->call_expr.function = left;
+	call->call_expr.function = exprid(left);
 	call->call_expr.arguments = params;
 	call->call_expr.unsplat_last = unsplat;
 	call->call_expr.body_arguments = body_args;
@@ -731,7 +709,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	}
 	if (tok_is(c, TOKEN_LBRACE))
 	{
-		ASSIGN_AST_OR_RET(call->call_expr.body, parse_compound_stmt(c), poisoned_expr);
+		ASSIGN_ASTID_OR_RET(call->call_expr.body, parse_compound_stmt(c), poisoned_expr);
 	}
 	if (!parse_attributes(c, &call->call_expr.attributes)) return false;
 	return call;
@@ -911,6 +889,12 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 static Expr *parse_identifier(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
+	if (symstr(c) == kw_return)
+	{
+		Expr *expr = EXPR_NEW_TOKEN(EXPR_RETVAL);
+		advance(c);
+		return expr;
+	}
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_IDENTIFIER);
 	expr->identifier_expr.ident = symstr(c);
 	expr->identifier_expr.is_const = tok_is(c, TOKEN_CONST_IDENT);

@@ -82,9 +82,10 @@ static inline bool assert_create_from_contract(SemaContext *context, AstDocDirec
 	return true;
 }
 
-static inline bool sema_analyse_block_return_stmt(SemaContext *context, Ast *statement)
+static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement)
 {
 	assert(context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO));
+	statement->ast_kind = AST_BLOCK_EXIT_STMT;
 	context->active_scope.jump_end = true;
 	Type *block_type = context->expected_block_type;
 	if (statement->return_stmt.expr)
@@ -106,6 +107,7 @@ static inline bool sema_analyse_block_return_stmt(SemaContext *context, Ast *sta
 			return false;
 		}
 	}
+	statement->return_stmt.cleanup = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer);
 	vec_add(context->returns, statement);
 	return true;
 }
@@ -127,7 +129,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	// This might be a return in a function block or a macro which must be treated differently.
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
 	{
-		return sema_analyse_block_return_stmt(context, statement);
+		return sema_analyse_block_exit_stmt(context, statement);
 	}
 	// 1. We mark that the current scope ends with a jump.
 	context->active_scope.jump_end = true;
@@ -136,7 +138,6 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	assert(expected_rtype && "We should always have known type from a function return.");
 
 	Expr *return_expr = statement->return_stmt.expr;
-	statement->return_stmt.defer = context->active_scope.defer_last;
 
 	if (return_expr)
 	{
@@ -149,27 +150,17 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			SEMA_ERROR(statement, "Expected to return a result of type %s.", type_to_error_string(expected_rtype));
 			return false;
 		}
+		statement->return_stmt.cleanup = context_get_defers(context, context->active_scope.defer_last, 0);
 		return true;
 	}
 
 	// Process any ensures.
-	if (context->return_var)
+	AstId cleanup = context_get_defers(context, context->active_scope.defer_last, 0);
+	if (context->ensures)
 	{
-		AstId next_id = 0;
-		AstId *append_id = &next_id;
+		AstId first = 0;
+		AstId *append_id = &first;
 		// Creating an assign statement
-		if (return_expr)
-		{
-			Expr *assign = expr_new(EXPR_BINARY, return_expr->span);
-			assign->binary_expr.operator = BINARYOP_ASSIGN;
-			assign->binary_expr.widen = true;
-			assign->binary_expr.left = expr_variable(context->return_var);
-			assign->binary_expr.right = return_expr;
-			Ast *new_ret = new_ast(AST_EXPR_STMT, assign->span);
-			new_ret->expr_stmt = assign;
-			if (!sema_analyse_statement(context, new_ret)) return false;
-			ast_append(&append_id, new_ret);
-		}
 		AstDocDirective *directives = context->current_function->docs;
 		VECEACH(directives, i)
 		{
@@ -177,21 +168,19 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			if (directive->kind != DOC_DIRECTIVE_ENSURE) continue;
 			if (!assert_create_from_contract(context, directive, &append_id)) return false;
 		}
-		if (next_id)
+
+		if (cleanup)
 		{
-			Ast *new_return = new_ast(AST_RETURN_STMT, statement->span);
-			ast_append(&append_id, new_return);
-			if (return_expr)
-			{
-				new_return->return_stmt.expr = expr_variable(context->return_var);
-			}
-			new_return->return_stmt.defer = statement->return_stmt.defer;
-			new_return->next = statement->next;
-			statement->next = next_id;
-			statement->ast_kind = AST_NOP_STMT;
+			Ast *last = ast_last(astptr(cleanup));
+			last->next = first;
+		}
+		else
+		{
+			cleanup = first;
 		}
 	}
 
+	statement->return_stmt.cleanup = cleanup;
 
 	assert(type_no_fail(statement->return_stmt.expr->type)->canonical == type_no_fail(expected_rtype)->canonical);
 
@@ -454,7 +443,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 
 		// 4d. A new declaration is created.
 		Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, type, VARDECL_LOCAL, VISIBLE_LOCAL);
-		decl->var.init_expr = expr_new(EXPR_UNDEF, decl->span);
+		decl->var.no_init = true;
 
 		// 4e. Analyse it
 		if (!sema_analyse_var_decl(context, decl, true)) return false;
@@ -696,134 +685,7 @@ static inline bool sema_analyse_stmt_placement(Expr *cond, Ast *stmt)
 	return cond->span.row == stmt->span.row;
 }
 
-/**
- * Check "while" statement, including end of line placement of a single statement.
- */
-static inline bool sema_analyse_while_stmt(SemaContext *context, Ast *statement)
-{
-	Expr *cond = exprptr(statement->while_stmt.cond);
-	Ast *body = astptr(statement->while_stmt.body);
 
-	bool success;
-
-	// 1. Begin our scope, this is relevant in case we have something like
-	//    while (File *f = @getFileAndClose!()) where the macro pushes a defer into the scope.
-	SCOPE_START_WITH_LABEL(statement->while_stmt.flow.label)
-
-		// 2. Analyze the condition
-		if (!sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL))
-		{
-			// 2a. In case of error, pop context and exit.
-			return SCOPE_POP_ERROR();
-		}
-
-		// 4. Push break / continue - which is independent of the scope.
-		PUSH_BREAKCONT(statement);
-
-		// 6. Analyse the statement
-		success = sema_analyse_statement(context, body);
-
-		// 7. Pop break / continue
-		POP_BREAKCONT();
-
-		// 8. Check placement, in case of a single statement, it must be placed on the same line.
-		if (success && !sema_analyse_stmt_placement(cond, body))
-		{
-			SEMA_ERROR(body, "A single statement after 'while' must be placed on the same line, or be enclosed in {}.");
-			return SCOPE_POP_ERROR();
-		}
-
-		// 9. Pop defers attach them to the statement if needed
-		context_pop_defers_and_replace_ast(context, body);
-
-	// 10. Pop the while scope.
-	SCOPE_END;
-	statement->ast_kind = AST_FOR_STMT;
-	AstForStmt for_stmt = {
-			.cond = cond,
-			.flow = statement->while_stmt.flow,
-			.incr = NULL,
-			.body = astid(body),
-	};
-	statement->for_stmt = for_stmt;
-	return success;
-}
-
-/**
- * Check the do ... while (...) statement.
- */
-static inline bool sema_analyse_do_stmt(SemaContext *context, Ast *statement)
-{
-	Expr *expr = statement->do_stmt.expr;
-	Ast *body = astptr(statement->do_stmt.body);
-	bool success;
-
-	// 1. Begin pushing the scope and break / continue.
-	SCOPE_START_WITH_LABEL(statement->do_stmt.flow.label)
-
-		PUSH_BREAKCONT(statement);
-
-		// 2. We analyze the statement.
-		success = sema_analyse_statement(context, body);
-
-		// 3. Pop break / continue
-		POP_BREAKCONT();
-
-		// 4. Pop any defers
-		context_pop_defers_and_replace_ast(context, body);
-
-		// 5. If the current scope ended in a jump, then
-		//    the do statement has no exit.
-		statement->do_stmt.flow.no_exit = context->active_scope.jump_end;
-
-	// 6. Pop the scope
-	SCOPE_END;
-
-	// 7. We can now exit if there was an error further up.
-	if (!success) return false;
-
-	// 8. Handle the do { } expression
-	if (!statement->do_stmt.expr)
-	{
-		goto END;
-	}
-
-	// 9. We next handle the while test. This is its own scope.
-	SCOPE_START
-
-		// 10. Try to evaluate and implicitly cast to boolean.
-		if (!sema_analyse_cond_expr(context, expr))
-		{
-			// 10a. On failure, pop and return false.
-			return SCOPE_POP_ERROR();
-		}
-
-		// 11. Pop any defers in the expression.
-		statement->do_stmt.expr = context_pop_defers_and_wrap_expr(context, expr);
-
-	SCOPE_END;
-
-	// 13. Check for infinite loops using do ... while (1).
-	//     If it has no break then that means we've reached a statement which ends with a jump.
-	if (statement->do_stmt.expr->expr_kind == EXPR_CONST && statement->do_stmt.expr->const_expr.b)
-	{
-		// Unless there is a break, this won't ever exit.
-		context->active_scope.jump_end = !statement->do_stmt.flow.has_break;
-	}
-
-END:;
-	FlowCommon flow = statement->do_stmt.flow;
-	flow.skip_first = true;
-	statement->ast_kind = AST_FOR_STMT;
-	AstForStmt for_stmt = {
-			.cond = expr,
-			.flow = flow,
-			.incr = NULL,
-			.body = astid(body),
-			};
-	statement->for_stmt = for_stmt;
-	return true;
-}
 
 
 
@@ -846,108 +708,141 @@ static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 	return true;
 }
 
-static inline bool sema_analyse_defer_stmt(SemaContext *context, Ast *statement)
+bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body)
 {
 	// TODO special parsing of "catch"
 	bool success;
 	SCOPE_START_WITH_FLAGS(SCOPE_DEFER)
 
-		context->active_scope.defer_last = 0;
-		context->active_scope.defer_start = 0;
-		context->active_scope.in_defer = statement;
+	context->active_scope.defer_last = 0;
+	context->active_scope.defer_start = 0;
+	context->active_scope.in_defer = statement;
 
-		PUSH_CONTINUE(NULL);
-		PUSH_BREAK(statement);
-		PUSH_NEXT(NULL, NULL);
+	PUSH_BREAKCONT(NULL);
+	PUSH_NEXT(NULL, NULL);
 
-		// Only ones allowed.
-		context->active_scope.flags &= SCOPE_DEFER;
+	// Only ones allowed.
+	context->active_scope.flags &= SCOPE_DEFER;
 
-		success = sema_analyse_statement(context, statement->defer_stmt.body);
+	success = sema_analyse_statement(context, body);
 
-		POP_BREAKCONT();
-		POP_NEXT();
+	POP_BREAKCONT();
+	POP_NEXT();
 
-		context_pop_defers_and_replace_ast(context, statement->defer_stmt.body);
+	context_pop_defers_and_replace_ast(context, body);
 
 	SCOPE_END;
 
-	if (!success) return false;
+	return success;
+
+}
+static inline bool sema_analyse_defer_stmt(SemaContext *context, Ast *statement)
+{
+	// TODO special parsing of "catch"
+	if (!sema_analyse_defer_stmt_body(context, statement, astptr(statement->defer_stmt.body))) return false;
 
 	statement->defer_stmt.prev_defer = context->active_scope.defer_last;
 	context->active_scope.defer_last = astid(statement);
+
 	return true;
 }
 
+static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite)
+{
+	ExprId cond_id = *cond_ref;
+	if (!cond_id)
+	{
+		*infinite = true;
+		return true;
+	}
+	Expr *cond = exprptr(cond_id);
+	if (cond->expr_kind == EXPR_COND)
+	{
+		if (!sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL)) return false;
+	}
+	else
+	{
+		if (!sema_analyse_cond_expr(context, cond)) return false;
+	}
 
+	cond = context_pop_defers_and_wrap_expr(context, cond);
+
+	// If this is const true, then set this to infinite and remove the expression.
+	if (cond->expr_kind == EXPR_CONST && cond->const_expr.b)
+	{
+		cond = NULL;
+		*infinite = true;
+	}
+	else
+	{
+		*infinite = false;
+	}
+	*cond_ref = exprid(cond);
+	return true;
+}
 static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 {
 	bool success = true;
-	bool is_infinite;
+	bool is_infinite = false;
 
 	// Enter for scope
 	SCOPE_OUTER_START
 
-		is_infinite = statement->for_stmt.cond == NULL;
 		if (statement->for_stmt.init)
 		{
-			success = sema_analyse_expr(context, statement->for_stmt.init);
+			success = sema_analyse_expr(context, exprptr(statement->for_stmt.init));
 		}
 
-		if (success && statement->for_stmt.cond)
-		{
-			// Conditional scope start
-			SCOPE_START
-				Expr *cond = statement->for_stmt.cond;
-				if (cond->expr_kind == EXPR_COND)
-				{
-					success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL);
-				}
-				else
-				{
-					success = sema_analyse_cond_expr(context, cond);
-				}
-				statement->for_stmt.cond = context_pop_defers_and_wrap_expr(context, cond);
-				// If this is const true, then set this to infinite and remove the expression.
-				if (statement->for_stmt.cond->expr_kind == EXPR_CONST && statement->for_stmt.cond->const_expr.b)
-				{
-					statement->for_stmt.cond = NULL;
-					is_infinite = true;
-				}
-				// Conditional scope end
-			SCOPE_END;
-		}
-		if (success && statement->for_stmt.incr)
-		{
-			// Incr scope start
-			SCOPE_START
-				Expr *incr = statement->for_stmt.incr;
-				success = sema_analyse_expr(context, incr);
-				statement->for_stmt.incr = context_pop_defers_and_wrap_expr(context, incr);
-				// Incr scope end
-			SCOPE_END;
-		}
-		if (!success)
-		{
-			SCOPE_ERROR_END_OUTER();
-			return false;
-		}
-
-		assert(statement->for_stmt.body);
-		Ast *body = astptr(statement->for_stmt.body);
-		// Create the for body scope.
+		// Conditional scope start
 		SCOPE_START_WITH_LABEL(statement->for_stmt.flow.label)
+
+			if (!statement->for_stmt.flow.skip_first)
+			{
+				if (!sema_analyse_for_cond(context, &statement->for_stmt.cond, &is_infinite) || !success)
+				{
+					SCOPE_ERROR_END_OUTER();
+					return false;
+				}
+			}
+
+			assert(statement->for_stmt.body);
+			Ast *body = astptr(statement->for_stmt.body);
 
 			PUSH_BREAKCONT(statement);
 			success = sema_analyse_statement(context, body);
 			statement->for_stmt.flow.no_exit = context->active_scope.jump_end;
 			POP_BREAKCONT();
+
 			// End for body scope
 			context_pop_defers_and_replace_ast(context, body);
+
 		SCOPE_END;
 
+		if (statement->for_stmt.flow.skip_first)
+		{
+			SCOPE_START
+				if (!sema_analyse_for_cond(context, &statement->for_stmt.cond, &is_infinite) || !success)
+				{
+					SCOPE_ERROR_END_OUTER();
+					return false;
+				}
+			SCOPE_END;
+		}
+
+		if (success && statement->for_stmt.incr)
+		{
+			// Incr scope start
+			SCOPE_START
+				Expr *incr = exprptr(statement->for_stmt.incr);
+				success = sema_analyse_expr(context, incr);
+				statement->for_stmt.incr = exprid(context_pop_defers_and_wrap_expr(context, incr));
+				// Incr scope end
+			SCOPE_END;
+		}
+
+
+		// End for body scope
 		context_pop_defers_and_replace_ast(context, statement);
-		// End for scope
 
 	SCOPE_OUTER_END;
 
@@ -964,9 +859,10 @@ static Expr *sema_insert_method_macro_call(SemaContext *context, SourceSpan span
 {
 	Expr *len_call = expr_new(EXPR_CALL, span);
 	len_call->resolve_status = RESOLVE_RUNNING;
-	len_call->call_expr.func_ref = method_decl;
+	len_call->call_expr.func_ref = declid(method_decl);
 	len_call->call_expr.arguments = arguments;
-	len_call->call_expr.body = NULL;
+	len_call->call_expr.body = 0;
+	len_call->call_expr.is_func_ref = true;
 	len_call->call_expr.unsplat_last = false;
 	len_call->call_expr.is_type_method = true;
 	bool is_macro = method_decl->decl_kind == DECL_MACRO;
@@ -982,10 +878,12 @@ static Expr *sema_insert_method_macro_call(SemaContext *context, SourceSpan span
 static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statement)
 {
 	// Pull out the relevant data.
-	Decl *index = statement->foreach_stmt.index;
-	Decl *var = statement->foreach_stmt.variable;
-	Expr *enumerator = statement->foreach_stmt.enumeration;
-	Ast *body = statement->foreach_stmt.body;
+	DeclId index_id = statement->foreach_stmt.index;
+	DeclId var_id = statement->foreach_stmt.variable;
+	Decl *var = var_id ? declptr(var_id) : NULL;
+	Decl *index = index_id ? declptr(index_id) : NULL;
+	Expr *enumerator = exprptr(statement->foreach_stmt.enumeration);
+	AstId body = statement->foreach_stmt.body;
 	AstId first_stmt = 0;
 	AstId *succ = &first_stmt;
 	Expr **expressions = NULL;
@@ -1275,13 +1173,14 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	}
 	var->var.init_expr = subscript;
 	ast_append(&succ, value_declare_ast);
-	ast_append(&succ, body);
-	Ast *compound_stmt = new_ast(AST_COMPOUND_STMT, body->span);
+	Ast *body_ast = astptr(body);
+	ast_append(&succ, body_ast);
+	Ast *compound_stmt = new_ast(AST_COMPOUND_STMT, body_ast->span);
 	compound_stmt->compound_stmt.first_stmt = first_stmt;
 	FlowCommon flow = statement->foreach_stmt.flow;
-	statement->for_stmt = (AstForStmt){ .init = init_expr,
-										.cond = binary,
-										.incr = inc,
+	statement->for_stmt = (AstForStmt){ .init = exprid(init_expr),
+										.cond = exprid(binary),
+										.incr = exprid(inc),
 										.flow = flow,
 										.body = astid(compound_stmt)
 	};
@@ -1305,21 +1204,23 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	bool then_jump;
 	bool success;
 
-	Expr *cond = statement->if_stmt.cond;
+	Expr *cond = exprptr(statement->if_stmt.cond);
+	Ast *then = astptr(statement->if_stmt.then_body);
+	AstId else_id = statement->if_stmt.else_body;
+	Ast *else_body = else_id ? astptr(else_id) : NULL;
 	SCOPE_OUTER_START
-		CondType cond_type = statement->if_stmt.then_body->ast_kind == AST_IF_CATCH_SWITCH_STMT
+		CondType cond_type = then->ast_kind == AST_IF_CATCH_SWITCH_STMT
 		                     ? COND_TYPE_UNWRAP : COND_TYPE_UNWRAP_BOOL;
 		success = sema_analyse_cond(context, cond, cond_type);
 
-		Ast *then = statement->if_stmt.then_body;
 		if (success && !ast_ok(then))
 		{
-			SEMA_ERROR(statement->if_stmt.then_body,
+			SEMA_ERROR(then,
 			           "The 'then' part of a single line if-statement must start on the same line as the 'if' or use '{ }'");
 			success = false;
 		}
 
-		if (success && statement->if_stmt.else_body)
+		if (success && else_body)
 		{
 			bool then_has_braces = then->ast_kind == AST_COMPOUND_STMT || then->ast_kind == AST_IF_CATCH_SWITCH_STMT;
 			if (!then_has_braces)
@@ -1327,10 +1228,10 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 				SEMA_ERROR(then, "if-statements with an 'else' must use '{ }' even around a single statement.");
 				success = false;
 			}
-			if (success && statement->if_stmt.else_body->ast_kind != AST_COMPOUND_STMT &&
-			    statement->if_stmt.else_body->ast_kind != AST_IF_STMT)
+			if (success && else_body->ast_kind != AST_COMPOUND_STMT &&
+			    else_body->ast_kind != AST_IF_STMT)
 			{
-				SEMA_ERROR(statement->if_stmt.else_body,
+				SEMA_ERROR(else_body,
 				           "An 'else' must use '{ }' even around a single statement.");
 				success = false;
 			}
@@ -1364,9 +1265,9 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		if (statement->if_stmt.else_body)
 		{
 			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
-				sema_remove_unwraps_from_try(context, statement->if_stmt.cond);
-				sema_unwrappable_from_catch_in_else(context, statement->if_stmt.cond);
-				success = success && sema_analyse_statement(context, statement->if_stmt.else_body);
+				sema_remove_unwraps_from_try(context, cond);
+				sema_unwrappable_from_catch_in_else(context, cond);
+				success = success && sema_analyse_statement(context, else_body);
 				else_jump = context->active_scope.jump_end;
 			SCOPE_END;
 		}
@@ -1376,7 +1277,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	SCOPE_OUTER_END;
 	if (then_jump)
 	{
-		sema_unwrappable_from_catch_in_else(context, statement->if_stmt.cond);
+		sema_unwrappable_from_catch_in_else(context, cond);
 	}
 	if (then_jump && else_jump && !statement->flow.has_break)
 	{
@@ -1384,10 +1285,6 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	}
 	return success;
 }
-
-
-
-
 
 static bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 {
@@ -1451,7 +1348,8 @@ static bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 		return false;
 	}
 
-	statement->contbreak_stmt.defers.start = context->active_scope.defer_last;
+	AstId defer_begin;
+	statement->contbreak_stmt.is_resolved = true;
 	if (statement->contbreak_stmt.label.name)
 	{
 		Decl *target = sema_analyse_label(context, statement);
@@ -1459,12 +1357,15 @@ static bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 
 		astptr(target->label.parent)->flow.has_break = true;
 		statement->contbreak_stmt.ast = target->label.parent;
-		statement->contbreak_stmt.defers.end = target->label.defer;
-		return true;
+		defer_begin = target->label.defer;
 	}
-	statement->contbreak_stmt.defers.end = context->break_defer;
-	statement->contbreak_stmt.ast = context->break_target;
-	astptr(context->break_target)->flow.has_break = true;
+	else
+	{
+		defer_begin = context->break_defer;
+		statement->contbreak_stmt.ast = context->break_target;
+		astptr(context->break_target)->flow.has_break = true;
+	}
+	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_begin);
 	return true;
 }
 
@@ -1516,28 +1417,27 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		assert(statement->nextcase_stmt.expr);
 	}
 
-	statement->nextcase_stmt.defers.start = context->active_scope.defer_last;
-	statement->nextcase_stmt.defers.end = parent->switch_stmt.defer;
 
 	// Plain next.
 	if (!statement->nextcase_stmt.expr)
 	{
 		assert(context->next_target);
+		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer);
 		statement->nextcase_stmt.case_switch_stmt = context->next_target;
 		return true;
 	}
 
-	Expr *cond = parent->switch_stmt.cond;
+	Expr *cond = exprptr(parent->switch_stmt.cond);
 	if (statement->nextcase_stmt.expr->expr_kind == EXPR_TYPEINFO)
 	{
 		TypeInfo *type_info = statement->nextcase_stmt.expr->type_expr;
 		if (!sema_resolve_type_info(context, type_info)) return false;
 		Ast **cases;
-		statement->nextcase_stmt.defers.end = parent->switch_stmt.defer;
-		if (parent->switch_stmt.cond->type->canonical != type_typeid)
+		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer);
+		if (cond->type->canonical != type_typeid)
 		{
 			SEMA_ERROR(statement, "Unexpected 'type' in as an 'nextcase' destination.");
-			SEMA_PREV(statement, "The 'switch' here uses expected a type '%s'.", type_to_error_string(parent->switch_stmt.cond->type));
+			SEMA_PREV(statement, "The 'switch' here uses expected a type '%s'.", type_to_error_string(cond->type));
 			return false;
 		}
 		cases = parent->switch_stmt.cases;
@@ -1574,10 +1474,11 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	if (!sema_analyse_expr_rhs(context, expected_type, target, false)) return false;
 
+	statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer);
+
 	if (target->expr_kind == EXPR_CONST)
 	{
 		Ast *default_stmt = NULL;
-		statement->nextcase_stmt.defers.end = parent->switch_stmt.defer;
 		VECEACH(parent->switch_stmt.cases, i)
 		{
 			Ast *case_stmt = parent->switch_stmt.cases[i];
@@ -1612,7 +1513,6 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 static bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
 {
 	context->active_scope.jump_end = true;
-	statement->contbreak_stmt.defers.start = context->active_scope.defer_last;
 
 	if (!context->continue_target && !statement->contbreak_stmt.label.name)
 	{
@@ -1620,6 +1520,7 @@ static bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
 		return false;
 	}
 
+	AstId defer_bottom;
 	if (statement->contbreak_stmt.label.name)
 	{
 		Decl *target = sema_analyse_label(context, statement);
@@ -1628,21 +1529,22 @@ static bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
 		switch (parent->ast_kind)
 		{
 			case AST_FOR_STMT:
-			case AST_WHILE_STMT:
-				break;
-			case AST_DO_STMT:
-				if (parent->do_stmt.expr) break;
+				// Is this plain "do"?
+				if (parent->for_stmt.cond || parent->flow.skip_first) break;
 				FALLTHROUGH;
 			default:
 				SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");
 				return false;
 		}
 		statement->contbreak_stmt.ast = target->label.parent;
-		statement->contbreak_stmt.defers.end = target->label.defer;
-		return true;
+		defer_bottom = target->label.defer;
 	}
-	statement->contbreak_stmt.defers.end = context->continue_defer;
-	statement->contbreak_stmt.ast = context->continue_target;
+	else
+	{
+		defer_bottom = context->continue_defer;
+		statement->contbreak_stmt.ast = context->continue_target;
+	}
+	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_bottom);
 	return true;
 }
 
@@ -1714,16 +1616,18 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 {
 	bool all_ok = ast_ok(compound_statement);
 	AstId current = compound_statement->compound_stmt.first_stmt;
+	Ast *ast = NULL;
 	while (current)
 	{
-		Ast *ast = ast_next(&current);
+		ast = ast_next(&current);
 		if (!sema_analyse_statement(context, ast))
 		{
 			ast_poison(ast);
 			all_ok = false;
 		}
 	}
-	context_pop_defers_to(context, &compound_statement->compound_stmt.defer_list);
+	AstId *next = ast ? &ast->next : &compound_statement->compound_stmt.first_stmt;
+	context_pop_defers(context, next);
 	return all_ok;
 }
 
@@ -1929,7 +1833,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		SCOPE_END;
 	}
 	statement->flow.no_exit = all_jump_end;
-	statement->switch_stmt.if_chain = if_chain || max_ranged;
+	statement->switch_stmt.flow.if_chain = if_chain || max_ranged;
 	if (!success) return false;
 	return success;
 }
@@ -2051,7 +1955,7 @@ static bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statement)
 
 static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 {
-	Expr *collection = statement->ct_foreach_stmt.expr;
+	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
 	if (!sema_analyse_ct_expr(context, collection)) return false;
 	if (collection->expr_kind != EXPR_INITIALIZER_LIST)
 	{
@@ -2083,7 +1987,7 @@ static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 		AstId *current = &start;
 		VECEACH(expression, i)
 		{
-			Ast *compound_stmt = ast_copy_deep(body);
+			Ast *compound_stmt = ast_macro_copy(body);
 			value->var.init_expr = expression[i];
 			if (index)
 			{
@@ -2101,7 +2005,6 @@ static bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *statement)
 	SCOPE_END;
 	statement->ast_kind = AST_COMPOUND_STMT;
 	statement->compound_stmt.first_stmt = start;
-	statement->compound_stmt.defer_list = (DeferList) { 0, 0 };
 	return true;
 }
 
@@ -2111,7 +2014,7 @@ static bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement)
 
 	SCOPE_START_WITH_LABEL(statement->switch_stmt.flow.label);
 
-		Expr *cond = statement->switch_stmt.cond;
+		Expr *cond = exprptr(statement->switch_stmt.cond);
 		Type *switch_type;
 
 		ExprVariantSwitch var_switch;
@@ -2259,11 +2162,12 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	// Enter for scope
 	SCOPE_OUTER_START
 
-	Expr *init;
+	ExprId init;
 	if ((init = statement->for_stmt.init))
 	{
-		assert(init->expr_kind == EXPR_EXPRESSION_LIST);
-		Expr **expressions = init->expression_list;
+		Expr *init_expr = exprptr(init);
+		assert(init_expr->expr_kind == EXPR_EXPRESSION_LIST);
+		Expr **expressions = init_expr->expression_list;
 		VECEACH (expressions, i)
 		{
 			Expr *expr = expressions[i];
@@ -2286,15 +2190,15 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 			}
 		}
 	}
-	Expr *condition = statement->for_stmt.cond;
-	Expr *incr = statement->for_stmt.incr;
+	ExprId condition = statement->for_stmt.cond;
+	ExprId incr = statement->for_stmt.incr;
 	Ast *body = astptr(statement->for_stmt.body);
 	AstId start = 0;
 	AstId *current = &start;
 	assert(condition);
 	for (int i = 0; i < MAX_MACRO_ITERATIONS; i++)
 	{
-		Expr *copy = copy_expr(condition);
+		Expr *copy = expr_macro_copy(exprptr(condition));
 		if (!sema_analyse_cond_expr(context, copy)) goto EXIT_ERROR;
 		if (copy->expr_kind != EXPR_CONST)
 		{
@@ -2303,17 +2207,17 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 		}
 		if (!copy->const_expr.b) break;
 
-		Ast *compound_stmt = ast_copy_deep(body);
+		Ast *compound_stmt = ast_macro_copy(body);
 		if (!sema_analyse_compound_stmt(context, compound_stmt)) goto EXIT_ERROR;
 		*current = astid(compound_stmt);
 		current = &compound_stmt->next;
 
 		if (incr)
 		{
-			Expr **exprs = incr->expression_list;
+			Expr **exprs = exprptr(incr)->expression_list;
 			VECEACH(exprs, j)
 			{
-				copy = copy_expr(exprs[j]);
+				copy = expr_macro_copy(exprs[j]);
 				if (!sema_analyse_expr(context, copy)) goto EXIT_ERROR;
 				if (copy->expr_kind != EXPR_CONST)
 				{
@@ -2325,7 +2229,6 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	}
 	statement->ast_kind = AST_COMPOUND_STMT;
 	statement->compound_stmt.first_stmt = start;
-	statement->compound_stmt.defer_list = (DeferList) { 0, 0 };
 	success = true;
 	EXIT_ERROR:
 	SCOPE_OUTER_END;
@@ -2353,7 +2256,6 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 	switch (statement->ast_kind)
 	{
 		case AST_POISONED:
-		case AST_SCOPED_STMT:
 		case AST_IF_CATCH_SWITCH_STMT:
 			UNREACHABLE
 		case AST_ASM_STMT:
@@ -2380,8 +2282,6 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			return false;
 		case AST_DEFER_STMT:
 			return sema_analyse_defer_stmt(context, statement);
-		case AST_DO_STMT:
-			return sema_analyse_do_stmt(context, statement);
 		case AST_EXPR_STMT:
 			return sema_analyse_expr_stmt(context, statement);
 		case AST_FOREACH_STMT:
@@ -2392,14 +2292,14 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			return sema_analyse_if_stmt(context, statement);
 		case AST_NOP_STMT:
 			return true;
+		case AST_BLOCK_EXIT_STMT:
+			UNREACHABLE
 		case AST_RETURN_STMT:
 			return sema_analyse_return_stmt(context, statement);
 		case AST_SWITCH_STMT:
 			return sema_analyse_switch_stmt(context, statement);
 		case AST_NEXT_STMT:
 			return sema_analyse_nextcase_stmt(context, statement);
-		case AST_WHILE_STMT:
-			return sema_analyse_while_stmt(context, statement);
 		case AST_CT_SWITCH_STMT:
 			return sema_analyse_ct_switch_stmt(context, statement);
 		case AST_CT_ELSE_STMT:
@@ -2467,7 +2367,7 @@ END:
 	return success;
 }
 
-static bool sema_analyse_contracts(SemaContext *context, AstDocDirective *directives, AstId **asserts, bool *ensure_found)
+static bool sema_analyse_contracts(SemaContext *context, AstDocDirective *directives, AstId **asserts)
 {
 	if (!directives) return true;
 	VECEACH(directives, i)
@@ -2492,7 +2392,7 @@ static bool sema_analyse_contracts(SemaContext *context, AstDocDirective *direct
 				break;
 			case DOC_DIRECTIVE_ENSURE:
 				if (!sema_analyse_ensure(context, directive)) return false;
-				*ensure_found = true;
+				context->ensures = true;
 				break;
 		}
 	}
@@ -2521,9 +2421,8 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	context->next_target = 0;
 	context->next_switch = 0;
 	context->break_target = 0;
-	context->return_var = NULL;
+	context->ensures = false;
 	func->func_decl.annotations = CALLOCS(FuncAnnotations);
-	bool ensure_found = false;
 	func->func_decl.ret_var = NULL;
 	Ast *body = func->func_decl.body;
 	SCOPE_START
@@ -2535,7 +2434,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		}
 		AstId assert_first = 0;
 		AstId *next = &assert_first;
-		if (!sema_analyse_contracts(context, func->docs, &next, &ensure_found)) return false;
+		if (!sema_analyse_contracts(context, func->docs, &next)) return false;
 		if (func->func_decl.attr_naked)
 		{
 			AstId current = func->func_decl.body->compound_stmt.first_stmt;
@@ -2552,15 +2451,11 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		}
 		else
 		{
-			if (ensure_found)
+			if (assert_first)
 			{
-				Decl *ret_val = decl_new_generated_var(context->rtype,
-				                                       VARDECL_LOCAL,
-				                                       func->func_decl.function_signature.returntype->span);
-				ret_val->name = kw_return;
-				context->return_var = ret_val;
-				func->func_decl.ret_var = ret_val;
-				if (!sema_add_local(context, ret_val)) return false;
+				Ast *ast = new_ast(AST_COMPOUND_STMT, body->span);
+				ast->compound_stmt.first_stmt = assert_first;
+				ast_prepend(&func->func_decl.body->compound_stmt.first_stmt, ast);
 			}
 			Type *canonical_rtype = type_no_fail(prototype->rtype)->canonical;
 			// Insert an implicit return
@@ -2588,12 +2483,6 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 				SEMA_ERROR(func, "Missing return statement at the end of the function.");
 				return false;
 			}
-		}
-		if (assert_first)
-		{
-			Ast *ast = new_ast(AST_COMPOUND_STMT, body->span);
-			ast->compound_stmt.first_stmt = assert_first;
-			ast_prepend(&func->func_decl.body->compound_stmt.first_stmt, ast);
 		}
 	SCOPE_END;
 	return true;

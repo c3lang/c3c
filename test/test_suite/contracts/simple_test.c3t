@@ -53,30 +53,18 @@ entry:
 
 define i32 @simple_test.test2(i32* %0, i32 %1) #0 {
 entry:
-  %return = alloca i32, align 4
   %gt = icmp sgt i32 %1, 100
   call void @llvm.assume(i1 %gt)
   store i32 444, i32* %0, align 8
-  store i32 %1, i32* %return, align 4
-  %2 = load i32, i32* %return, align 4
-  %lt = icmp slt i32 %2, 200
-  call void @llvm.assume(i1 %lt)
-  %3 = load i32, i32* %return, align 4
-  ret i32 %3
+  ret i32 %1
 }
 
 define i32 @simple_test.test3(i32 %0) #0 {
 entry:
-  %return = alloca i32, align 4
   %gt = icmp sgt i32 %0, 0
   call void @llvm.assume(i1 %gt)
   %add = add i32 %0, 1
-  store i32 %add, i32* %return, align 4
-  %1 = load i32, i32* %return, align 4
-  %gt1 = icmp sgt i32 %1, 0
-  call void @llvm.assume(i1 %gt1)
-  %2 = load i32, i32* %return, align 4
-  ret i32 %2
+  ret i32 %add
 }
 
 define void @simple_test.main() #0 {

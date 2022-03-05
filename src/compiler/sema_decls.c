@@ -1432,7 +1432,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	AstId *next = &body->compound_stmt.first_stmt;
 	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
 	Expr *call = expr_new(EXPR_CALL, decl->span);
-	call->call_expr.function = expr_variable(decl);
+	call->call_expr.function = exprid(expr_variable(decl));
 	if (subarray_param)
 	{
 		Expr *subarray = expr_new(EXPR_ARGV_TO_SUBARRAY, decl->span);
@@ -1962,12 +1962,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			SEMA_ERROR(decl, "Constants need to have an initial value.");
 			return false;
 		}
-		// 1b. We require defined constants
-		if (init_expr->expr_kind == EXPR_UNDEF)
-		{
-			SEMA_ERROR(decl, "Constants cannot be undefined.");
-			return false;
-		}
+		assert(!decl->var.no_init);
 		if (!decl->var.type_info)
 		{
 			if (!sema_analyse_expr(context, init_expr)) return false;
@@ -1992,20 +1987,15 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		decl->external_name = scratch_buffer_copy();
 	}
 
+	bool type_is_inferred = decl->type->type_kind == TYPE_INFERRED_ARRAY;
+	if (!decl->var.init_expr && type_is_inferred)
+	{
+		SEMA_ERROR(decl->var.type_info, "Size of the array cannot be inferred without an initializer.");
+		return false;
+	}
 	if (decl->var.init_expr)
 	{
-		bool type_is_inferred = decl->type->type_kind == TYPE_INFERRED_ARRAY;
 		Expr *init = decl->var.init_expr;
-		// Handle explicit undef
-		if (init->expr_kind == EXPR_UNDEF)
-		{
-			if (type_is_inferred)
-			{
-				SEMA_ERROR(decl->var.type_info, "Size of the array cannot be inferred with explicit undef.");
-				return false;
-			}
-			goto EXIT_OK;
-		}
 
 		if (!type_is_inferred)
 		{
@@ -2054,8 +2044,8 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 {
 	CompilationUnit *copy = unit_create(unit->file);
-	copy->imports = copy_decl_list(unit->imports);
-	copy->global_decls = copy_decl_list(unit->global_decls);
+	copy->imports = decl_copy_list(unit->imports);
+	copy->global_decls = decl_copy_list(unit->global_decls);
 	copy->module = module;
 	assert(!unit->functions && !unit->macro_methods && !unit->methods && !unit->enums && !unit->ct_ifs && !unit->types && !unit->external_symbol_list);
 	return copy;

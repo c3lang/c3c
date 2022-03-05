@@ -87,7 +87,6 @@ typedef struct
 	int simple_return_expressions;
 	unsigned pointer_alignment;
 	int return_expressions;
-	Ast **defer_stack;
 	DebugContext debug;
 	Module *code_module;
 	LLVMValueRef return_out;
@@ -95,6 +94,7 @@ typedef struct
 	LLVMBasicBlockRef block_return_exit;
 	LLVMBasicBlockRef block_failable_exit;
 	LLVMValueRef block_error_var;
+	BEValue retval;
 	int in_block;
 	bool current_block_is_target : 1;
 	bool did_call_stack_save : 1;
@@ -239,7 +239,7 @@ BEValue llvm_emit_assign_expr(GenContext *context, BEValue *ref, Expr *expr, LLV
 static inline LLVMValueRef llvm_emit_bitcast(GenContext *context, LLVMValueRef value, Type *type);
 void llvm_emit_block(GenContext *c, LLVMBasicBlockRef next_block);
 void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block);
-void llvm_emit_compound_stmt(GenContext *context, Ast *ast);
+void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer);
 void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTypeRef coerced, LLVMValueRef value, Type *original_type);
 void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignment, LLVMTypeRef coerced, LLVMValueRef value, LLVMTypeRef target_type);
@@ -254,7 +254,7 @@ void llvm_emit_debug_location(GenContext *context, SourceSpan location);
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index);
 void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
-void llvm_emit_defer(GenContext *c, AstId defer_start, AstId defer_end);
+
 void llvm_emit_extern_decl(GenContext *context, Decl *decl);
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init);
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
@@ -474,6 +474,14 @@ static inline void llvm_set_alignment(LLVMValueRef alloca, AlignSize alignment)
 }
 void llvm_set_error_exit(GenContext *c, LLVMBasicBlockRef block);
 void llvm_set_error_exit_and_value(GenContext *c, LLVMBasicBlockRef block, LLVMValueRef value);
+
+INLINE void llvm_emit_statement_chain(GenContext *c, AstId current)
+{
+	while (current)
+	{
+		llvm_emit_stmt(c, ast_next(&current));
+	}
+}
 
 #define EMIT_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->span); } while (0);
 

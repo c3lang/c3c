@@ -755,6 +755,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
+		case EXPR_RETVAL:
 			if (type_size(expr->type) > type_size(type)) return expr;
 			return NULL;
 		case EXPR_OR_ERROR:
@@ -802,7 +803,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_TYPEID:
 		case EXPR_TYPEINFO:
-		case EXPR_UNDEF:
 		case EXPR_CT_CALL:
 		case EXPR_NOP:
 		case EXPR_LEN:
@@ -912,6 +912,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
+		case EXPR_RETVAL:
 			if (type_size(expr->type) > type_size(type)) return expr;
 			return NULL;
 		case EXPR_LEN:
@@ -959,7 +960,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_TYPEID:
 		case EXPR_TYPEINFO:
-		case EXPR_UNDEF:
 		case EXPR_CT_CALL:
 		case EXPR_NOP:
 		case EXPR_BUILTIN:

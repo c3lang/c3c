@@ -21,7 +21,7 @@ fn void main()
     test(10); // Prints "B!A"
 }
 
-// #expect: defer1.ll
+/* #expect: defer1.ll
 
 define void @defer1.test(i32 %0) #0 {
 entry:
@@ -30,48 +30,24 @@ entry:
 
 if.then:                                          ; preds = %entry
   %1 = call i32 @"std::io.print"(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str, i32 0, i32 0))
-  br label %exit
-
-exit:                                             ; preds = %if.then
   %2 = call i32 @"std::io.println"(i8* getelementptr inbounds ([1 x i8], [1 x i8]* @.str.1, i32 0, i32 0)) #1
-  br label %exit1
-
-exit1:                                            ; preds = %exit
   ret void
 
 if.exit:                                          ; preds = %entry
-  %eq2 = icmp eq i32 %0, 0
-  br i1 %eq2, label %if.then3, label %if.exit7
+  %eq1 = icmp eq i32 %0, 0
+  br i1 %eq1, label %if.then2, label %if.exit3
 
-if.then3:                                         ; preds = %if.exit
+if.then2:                                         ; preds = %if.exit
   %3 = call i32 @"std::io.print"(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.2, i32 0, i32 0))
-  br label %exit4
-
-exit4:                                            ; preds = %if.then3
   %4 = call i32 @"std::io.print"(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.3, i32 0, i32 0))
-  br label %exit5
-
-exit5:                                            ; preds = %exit4
   %5 = call i32 @"std::io.println"(i8* getelementptr inbounds ([1 x i8], [1 x i8]* @.str.4, i32 0, i32 0)) #1
-  br label %exit6
-
-exit6:                                            ; preds = %exit5
   ret void
 
-if.exit7:                                         ; preds = %if.exit
+if.exit3:                                         ; preds = %if.exit
   %6 = call i32 @"std::io.print"(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.5, i32 0, i32 0))
-  br label %exit8
-
-exit8:                                            ; preds = %if.exit7
   %7 = call i32 @"std::io.print"(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.6, i32 0, i32 0))
   %8 = call i32 @"std::io.print"(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.str.7, i32 0, i32 0))
-  br label %exit9
-
-exit9:                                            ; preds = %exit8
   %9 = call i32 @"std::io.println"(i8* getelementptr inbounds ([1 x i8], [1 x i8]* @.str.8, i32 0, i32 0)) #1
-  br label %exit10
-
-exit10:                                           ; preds = %exit9
   ret void
 }
 

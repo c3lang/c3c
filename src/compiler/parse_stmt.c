@@ -71,21 +71,29 @@ static inline Ast* parse_asm_stmt(ParseContext *c)
  */
 static inline Ast* parse_do_stmt(ParseContext *c)
 {
-	Ast *do_ast = new_ast(AST_DO_STMT, c->span);
+	Ast *do_ast = new_ast(AST_FOR_STMT, c->span);
 
 	advance_and_verify(c, TOKEN_DO);
 
-	ASSIGN_DECL_OR_RET(do_ast->do_stmt.flow.label, parse_optional_label(c, do_ast), poisoned_ast);
-	ASSIGN_ASTID_OR_RET(do_ast->do_stmt.body, parse_stmt(c), poisoned_ast);
+	do_ast->flow.skip_first = true;
+	ASSIGN_DECL_OR_RET(do_ast->for_stmt.flow.label, parse_optional_label(c, do_ast), poisoned_ast);
+	ASSIGN_ASTID_OR_RET(do_ast->for_stmt.body, parse_stmt(c), poisoned_ast);
 
-	if (try_consume(c, TOKEN_WHILE))
+	if (try_consume(c, TOKEN_EOS))
 	{
+		Expr *exit = expr_new(EXPR_CONST, c->prev_span);
+		expr_const_set_bool(&exit->const_expr, false);
+		exit->type = type_bool;
+		do_ast->for_stmt.cond = exprid(exit);
+	}
+	else
+	{
+		CONSUME_OR_RET(TOKEN_WHILE, poisoned_ast);
 		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
-		ASSIGN_EXPR_OR_RET(do_ast->do_stmt.expr, parse_expr(c), poisoned_ast);
+		ASSIGN_EXPRID_OR_RET(do_ast->for_stmt.cond, parse_expr(c), poisoned_ast);
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 		CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
 	}
-
 	return do_ast;
 }
 
@@ -117,7 +125,7 @@ static inline Ast* parse_defer_stmt(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_DEFER);
 	Ast *defer_stmt = new_ast(AST_DEFER_STMT, c->span);
-	ASSIGN_AST_OR_RET(defer_stmt->defer_stmt.body, parse_stmt(c), poisoned_ast);
+	ASSIGN_ASTID_OR_RET(defer_stmt->defer_stmt.body, parse_stmt(c), poisoned_ast);
 	return defer_stmt;
 }
 
@@ -127,15 +135,22 @@ static inline Ast* parse_defer_stmt(ParseContext *c)
  */
 static inline Ast* parse_while_stmt(ParseContext *c)
 {
-	Ast *while_ast = new_ast(AST_WHILE_STMT, c->span);
+	Ast *while_ast = new_ast(AST_FOR_STMT, c->span);
 	advance_and_verify(c, TOKEN_WHILE);
 
-	ASSIGN_DECL_OR_RET(while_ast->while_stmt.flow.label, parse_optional_label(c, while_ast), poisoned_ast);
+	ASSIGN_DECL_OR_RET(while_ast->for_stmt.flow.label, parse_optional_label(c, while_ast), poisoned_ast);
 
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
-	ASSIGN_EXPRID_OR_RET(while_ast->while_stmt.cond, parse_cond(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(while_ast->for_stmt.cond, parse_cond(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
-	ASSIGN_ASTID_OR_RET(while_ast->while_stmt.body, parse_stmt(c), poisoned_ast);
+	unsigned row = c->prev_span.row;
+	ASSIGN_AST_OR_RET(Ast *body, parse_stmt(c), poisoned_ast);
+	if (body->ast_kind != AST_COMPOUND_STMT && row != c->prev_span.row)
+	{
+		SEMA_ERROR(body, "A single statement after 'while' must be placed on the same line, or be enclosed in {}.");
+		return poisoned_ast;
+	}
+	while_ast->for_stmt.body = astid(body);
 	return while_ast;
 }
 
@@ -164,7 +179,7 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 	advance_and_verify(c, TOKEN_IF);
 	ASSIGN_DECL_OR_RET(if_ast->if_stmt.flow.label, parse_optional_label(c, if_ast), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
-	ASSIGN_EXPR_OR_RET(if_ast->if_stmt.cond, parse_cond(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(if_ast->if_stmt.cond, parse_cond(c), poisoned_ast);
 	unsigned row = c->span.row;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 	// Special case, we might have if ( ) { case ... }
@@ -174,23 +189,23 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 		Ast **cases = NULL;
 		if (!parse_switch_body(c, &cases, TOKEN_CASE, TOKEN_DEFAULT, true)) return poisoned_ast;
 		stmt->switch_stmt.cases = cases;
-		if_ast->if_stmt.then_body = stmt;
+		if_ast->if_stmt.then_body = astid(stmt);
 	}
 	else
 	{
 		unsigned next_row = c->span.row;
-		ASSIGN_AST_OR_RET(if_ast->if_stmt.then_body, parse_stmt(c), poisoned_ast);
-		if (row != next_row && if_ast->if_stmt.then_body->ast_kind != AST_COMPOUND_STMT)
+		ASSIGN_ASTID_OR_RET(if_ast->if_stmt.then_body, parse_stmt(c), poisoned_ast);
+		if (row != next_row && astptr(if_ast->if_stmt.then_body)->ast_kind != AST_COMPOUND_STMT)
 		{
 			// Poison it and pick it up later.
-			ast_poison(if_ast->if_stmt.then_body);
+			ast_poison(astptr(if_ast->if_stmt.then_body));
 		}
 	}
 	if (!try_consume(c, TOKEN_ELSE))
 	{
 		return if_ast;
 	}
-	ASSIGN_AST_OR_RET(if_ast->if_stmt.else_body, parse_stmt(c), poisoned_ast);
+	ASSIGN_ASTID_OR_RET(if_ast->if_stmt.else_body, parse_stmt(c), poisoned_ast);
 	return if_ast;
 }
 
@@ -283,7 +298,7 @@ static inline Ast* parse_switch_stmt(ParseContext *c)
 	advance_and_verify(c, TOKEN_SWITCH);
 	ASSIGN_DECL_OR_RET(switch_ast->switch_stmt.flow.label, parse_optional_label(c, switch_ast), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
-	ASSIGN_EXPR_OR_RET(switch_ast->switch_stmt.cond, parse_cond(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(switch_ast->switch_stmt.cond, parse_cond(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 
 	if (!parse_switch_body(c, &switch_ast->switch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT, false)) return poisoned_ast;
@@ -310,25 +325,25 @@ static inline Ast* parse_for_stmt(ParseContext *c)
 
 	if (!tok_is(c, TOKEN_EOS))
 	{
-		ASSIGN_EXPR_OR_RET(ast->for_stmt.init, parse_expression_list(c, true), poisoned_ast);
+		ASSIGN_EXPRID_OR_RET(ast->for_stmt.init, parse_expression_list(c, true), poisoned_ast);
 	}
 	else
 	{
-		ast->for_stmt.init = NULL;
+		ast->for_stmt.init = 0;
 	}
 
 	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
 
 	if (!tok_is(c, TOKEN_EOS))
 	{
-		ASSIGN_EXPR_OR_RET(ast->for_stmt.cond, parse_cond(c), poisoned_ast);
+		ASSIGN_EXPRID_OR_RET(ast->for_stmt.cond, parse_cond(c), poisoned_ast);
 	}
 
 	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
 
 	if (!tok_is(c, TOKEN_RPAREN))
 	{
-		ast->for_stmt.incr = parse_expression_list(c, false);
+		ASSIGN_EXPRID_OR_RET(ast->for_stmt.incr, parse_expression_list(c, false), poisoned_ast);
 	}
 
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
@@ -366,7 +381,7 @@ static inline bool parse_foreach_var(ParseContext *c, Ast *foreach)
 		SEMA_ERROR_HERE("Expected an identifier or type.");
 		return false;
 	}
-	foreach->foreach_stmt.variable = var;
+	foreach->foreach_stmt.variable = declid(var);
 	return true;
 }
 /**
@@ -398,12 +413,12 @@ static inline Ast* parse_foreach_stmt(ParseContext *c)
 
 	CONSUME_OR_RET(TOKEN_COLON, poisoned_ast);
 
-	ASSIGN_EXPR_OR_RET(ast->foreach_stmt.enumeration, parse_initializer(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(ast->foreach_stmt.enumeration, parse_expr(c), poisoned_ast);
 
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 
 	RANGE_EXTEND_PREV(ast);
-	ASSIGN_AST_OR_RET(ast->foreach_stmt.body, parse_stmt(c), poisoned_ast);
+	ASSIGN_ASTID_OR_RET(ast->foreach_stmt.body, parse_stmt(c), poisoned_ast);
 	return ast;
 }
 
@@ -608,7 +623,6 @@ static inline Ast *parse_return(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_RETURN);
 	Ast *ast = ast_new_curr(c, AST_RETURN_STMT);
-	ast->return_stmt.defer = 0;
 	if (!tok_is(c, TOKEN_EOS))
 	{
 		ASSIGN_EXPR_OR_RET(ast->return_stmt.expr, parse_expr(c), poisoned_ast);
@@ -645,7 +659,7 @@ static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 	ast->ct_foreach_stmt.value_span = c->span;
 	TRY_CONSUME_OR_RET(TOKEN_CT_IDENT, "Expected a compile time variable", poisoned_ast);
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':'.", poisoned_ast);
-	ASSIGN_EXPR_OR_RET(ast->ct_foreach_stmt.expr, parse_expr(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(ast->ct_foreach_stmt.expr, parse_expr(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 	CONSUME_OR_RET(TOKEN_COLON, poisoned_ast);
 	Ast *body = new_ast(AST_COMPOUND_STMT, ast->span);
@@ -673,17 +687,17 @@ static inline Ast* parse_ct_for_stmt(ParseContext *c)
 
 	if (!tok_is(c, TOKEN_EOS))
 	{
-		ASSIGN_EXPR_OR_RET(ast->for_stmt.init, parse_ct_expression_list(c, true), poisoned_ast);
+		ASSIGN_EXPRID_OR_RET(ast->for_stmt.init, parse_ct_expression_list(c, true), poisoned_ast);
 	}
 	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
 
 	// Cond is required.
-	ASSIGN_EXPR_OR_RET(ast->for_stmt.cond, parse_expr(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(ast->for_stmt.cond, parse_expr(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_EOS, poisoned_ast);
 
 	if (!tok_is(c, TOKEN_RPAREN))
 	{
-		ast->for_stmt.incr = parse_ct_expression_list(c, false);
+		ASSIGN_EXPRID_OR_RET(ast->for_stmt.incr, parse_ct_expression_list(c, false), poisoned_ast);
 	}
 
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);

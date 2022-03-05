@@ -235,6 +235,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_NOP:
 		case EXPR_PTR:
 		case EXPR_STRINGIFY:
+		case EXPR_RETVAL:
 			return true;
 		case EXPR_ARGV_TO_SUBARRAY:
 		case EXPR_BITASSIGN:
@@ -284,7 +285,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
-		case EXPR_UNDEF:
 		case EXPR_TYPEINFO:
 		case EXPR_FORCE_UNWRAP:
 			return false;
@@ -489,8 +489,7 @@ bool ast_is_not_empty(Ast *ast)
 	{
 		Ast *stmt = astptr(first);
 		if (stmt->next) return true;
-		if (ast->compound_stmt.defer_list.start != ast->compound_stmt.defer_list.end) return true;
 		return ast_is_not_empty(stmt);
 	}
-	return ast->compound_stmt.defer_list.start != ast->compound_stmt.defer_list.end;
+	return false;
 }

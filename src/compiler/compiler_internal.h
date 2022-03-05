@@ -49,6 +49,7 @@ typedef Type CanonicalType;
 
 typedef unsigned AstId;
 typedef unsigned ExprId;
+typedef unsigned DeclId;
 
 typedef struct Int128_
 {
@@ -142,13 +143,6 @@ typedef struct
 		ConstInitializer *list;
 	};
 } ExprConst;
-
-
-typedef struct
-{
-	AstId start;
-	AstId end;
-} DeferList;
 
 typedef uint16_t FileId;
 typedef struct
@@ -343,6 +337,7 @@ typedef struct VarDecl_
 	bool is_written : 1;
 	bool is_addr : 1;
 	bool is_threadlocal : 1;
+	bool no_init : 1;
 	TypeInfo *type_info;
 	union
 	{
@@ -689,14 +684,15 @@ typedef struct
 	bool force_inline : 1;
 	bool force_noinline : 1;
 	bool is_builtin : 1;
+	bool is_func_ref : 1;
+	AstId body;
 	union
 	{
-		Expr *function;
-		Decl *func_ref;
+		ExprId function;
+		DeclId func_ref;
 	};
 	Expr **arguments;
 	Decl **body_arguments;
-	Ast *body;
 	Attr **attributes;
 } ExprCall;
 
@@ -709,9 +705,9 @@ typedef struct
 
 typedef struct
 {
-	Expr *expr;
 	bool start_from_back : 1;
 	bool end_from_back : 1;
+	Expr *expr;
 	Expr *start;
 	Expr *end;
 } ExprSlice;
@@ -816,7 +812,7 @@ typedef struct
 typedef struct
 {
 	Expr *expr;
-	DeferList defers;
+	AstId defer_stmts;
 } ExprScope;
 
 typedef struct
@@ -849,7 +845,7 @@ typedef struct
 typedef struct
 {
 	Expr *inner;
-	AstId defer;
+	AstId cleanup;
 } ExprGuard;
 
 
@@ -935,61 +931,61 @@ struct Expr_
 	SourceSpan span;
 	Type *type;
 	union {
-		ExprVariantSwitch variant_switch;
-		ExprLen len_expr;
-		ExprCast cast_expr;
-		TypeInfo *type_expr;
-		ExprConst const_expr;
-		ExprArgv argv_expr;
-		ExprGuard rethrow_expr;
-		Decl *decl_expr;
-		ExprOrError or_error_expr;
-		ExprSliceAssign slice_assign_expr;
-		ExprBinary binary_expr;
-		ExprTernary ternary_expr;
-		ExprUnary unary_expr;
-		Expr** try_unwrap_chain_expr;
-		ExprTryUnwrap try_unwrap_expr;
-		ExprCall call_expr;
-		ExprSlice slice_expr;
-		Expr *inner_expr;
-		ExprCatchUnwrap catch_unwrap_expr;
-		ExprSubscript subscript_expr;
-		ExprAccess access_expr;
-		ExprDesignator designator_expr;
-		ExprIdentifier identifier_expr;
-		ExprIdentifierRaw ct_ident_expr;
-		ExprCtCall ct_call_expr;
-		ExprIdentifierRaw ct_macro_ident_expr;
-		ExprMacroExpansion macro_expansion_expr;
-		ExprIdentifierRaw hash_ident_expr;
-		TypeInfo *typeid_expr;
-		ExprBodyExpansion body_expansion_expr;
-		ExprCompoundLiteral expr_compound_literal;
-		Expr** expression_list;
-		Expr** initializer_list;
-		Expr** designated_init_list;
-		ExprScope expr_scope;
-		ExprFuncBlock expr_block;
-		ExprMacroBlock macro_block;
-		Expr** cond_expr;
-		ExprBuiltin builtin_expr;
+		ExprVariantSwitch variant_switch;           // 32
+		ExprLen len_expr;                           // 8
+		ExprCast cast_expr;                         // 32
+		TypeInfo *type_expr;                        // 8
+		ExprConst const_expr;                       // 32
+		ExprArgv argv_expr;                         // 16
+		ExprGuard rethrow_expr;                     // 16
+		Decl *decl_expr;                            // 8
+		ExprOrError or_error_expr;                  // 24
+		ExprSliceAssign slice_assign_expr;          // 8
+		ExprBinary binary_expr;                     // 24
+		ExprTernary ternary_expr;                   // 32
+		ExprUnary unary_expr;                       // 16
+		Expr** try_unwrap_chain_expr;               // 8
+		ExprTryUnwrap try_unwrap_expr;              // 24
+		ExprCall call_expr;                         // 40
+		ExprSlice slice_expr;                       // 32
+		Expr *inner_expr;                           // 8
+		ExprCatchUnwrap catch_unwrap_expr;          // 24
+		ExprSubscript subscript_expr;               // 24
+		ExprAccess access_expr;                     // 16
+		ExprDesignator designator_expr;             // 16
+		ExprIdentifier identifier_expr;             // 32
+		ExprIdentifierRaw ct_ident_expr;            // 24
+		ExprCtCall ct_call_expr;                    // 24
+		ExprIdentifierRaw ct_macro_ident_expr;      // 24
+		ExprMacroExpansion macro_expansion_expr;    // 16
+		ExprIdentifierRaw hash_ident_expr;          // 24
+		TypeInfo *typeid_expr;                      // 8
+		ExprBodyExpansion body_expansion_expr;      // 24
+		ExprCompoundLiteral expr_compound_literal;  // 16
+		Expr** expression_list;                     // 8
+		Expr** initializer_list;                    // 8
+		Expr** designated_init_list;                // 8
+		ExprScope expr_scope;                       // 16
+		ExprFuncBlock expr_block;                   // 4
+		ExprMacroBlock macro_block;                 // 24
+		Expr** cond_expr;                           // 8
+		ExprBuiltin builtin_expr;                   // 16
 	};
 };
+static_assert(sizeof(ExprCall) == 40, "Ooops");
 
-
+static_assert(sizeof(Expr) == 64, "Ooops");
 
 typedef struct
 {
 	AstId first_stmt;
-	DeferList defer_list;
 } AstCompoundStmt;
 
 
 typedef struct
 {
 	Expr *expr; // May be NULL
-	AstId defer;
+	AstId cleanup;
 } AstReturnStmt;
 
 typedef struct
@@ -997,45 +993,28 @@ typedef struct
 	bool has_break : 1;
 	bool no_exit : 1;
 	bool skip_first : 1;
+	bool if_chain : 1;
 	Decl *label;
 } FlowCommon;
 
-typedef struct
-{
-	FlowCommon flow;
-	ExprId cond;
-	AstId body;
-	void *break_block;
-	void *continue_block;
-} AstWhileStmt;
+
 
 typedef struct
 {
 	FlowCommon flow;
-	DeferList expr_defer;
-	DeferList body_defer;
 	union
 	{
 		struct
 		{
-			void *break_block;
-			void *continue_block;
+			ExprId cond;
+			AstId then_body;
+			AstId else_body;
 		};
 		struct
 		{
-			Expr *expr;
-			AstId body;
-		};
+			void *break_block;
+		} codegen;
 	};
-} AstDoStmt;
-
-typedef struct
-{
-	FlowCommon flow;
-	Expr *cond;
-	Ast *then_body;
-	Ast *else_body;
-	void *break_block;
 } AstIfStmt;
 
 
@@ -1051,15 +1030,14 @@ typedef struct
 typedef struct
 {
 	FlowCommon flow;
-	AstId defer;
-	Expr *cond;
-	Ast **cases;
 	union
 	{
 		struct
 		{
-			Ast* scope_defer;
-			bool if_chain;
+			ExprId cond;
+			AstId defer;
+			Ast **cases;
+			Ast *scope_defer;
 		};
 		struct
 		{
@@ -1073,12 +1051,21 @@ typedef struct
 typedef struct
 {
 	FlowCommon flow;
-	Expr *init;
-	Expr *cond;
-	Expr *incr;
-	AstId body;
-	void *continue_block;
-	void *exit_block;
+	union
+	{
+		struct
+		{
+			ExprId cond;
+			ExprId incr;
+			ExprId init;
+			AstId body;
+		};
+		struct
+		{
+			void *continue_block;
+			void *exit_block;
+		} codegen;
+	};
 } AstForStmt;
 
 typedef struct
@@ -1087,24 +1074,17 @@ typedef struct
 	bool index_by_ref : 1;
 	bool value_by_ref : 1;
 	bool iterator : 1;
-	CastKind cast;
-	Decl *index;
-	Decl *variable;
-	Expr *enumeration;
-	Ast *body;
-	void *continue_block;
-	void *exit_block;
+	CastKind cast : 8;
+	ExprId enumeration;
+	AstId body;
+	DeclId index;
+	DeclId variable;
 } AstForeachStmt;
 
 typedef struct
 {
 	AstId prev_defer;
-	Ast *body; // Compound statement
-	struct
-	{
-		void *exit_block;
-		uint64_t exit_val;
-	} codegen;
+	AstId body; // Compound statement
 } AstDeferStmt;
 
 
@@ -1119,12 +1099,6 @@ typedef struct AstCtIfStmt_
 
 typedef struct
 {
-	AstId stmt;
-	DeferList defers;
-} AstScopedStmt;
-
-typedef struct
-{
 	Expr *cond;
 	Ast **body;
 } AstCtSwitchStmt;
@@ -1136,25 +1110,26 @@ typedef struct
 	const char *value_name;
 	SourceSpan index_span;
 	SourceSpan value_span;
-	Expr *expr;
 	AstId body;
+	ExprId expr;
 } AstCtForeachStmt;
 
 
 typedef struct
 {
-	bool is_label;
+	bool is_label : 1;
+	bool is_resolved : 1;
+	AstId defers;
 	union
 	{
 		Label label;
 		AstId ast;
 	};
-	DeferList defers;
 } AstContinueBreakStmt;
 
 typedef struct
 {
-	DeferList defers;
+	AstId defer_id;
 	union
 	{
 		struct
@@ -1204,7 +1179,7 @@ typedef struct
 typedef struct AstDocDirective_
 {
 	SourceSpan span;
-	DocDirectiveKind kind;
+	DocDirectiveKind kind : 4;
 	union
 	{
 		struct
@@ -1240,35 +1215,33 @@ typedef struct Ast_
 	AstKind ast_kind : 8;
 	union
 	{
-		FlowCommon flow;                // Shared struct
-		AstAsmStmt asm_stmt;            // 24
-		AstCompoundStmt compound_stmt;  // 16
-		Decl *declare_stmt;             // 8
-		Expr *expr_stmt;                // 8
-		Decl *var_stmt;              // 8
-		AstReturnStmt return_stmt;      // 16
-		AstWhileStmt while_stmt;        // 24
-		AstDoStmt do_stmt;              // 32
-		AstIfStmt if_stmt;              // 32
-		AstDeferStmt defer_stmt;        // 32
-		AstSwitchStmt switch_stmt;      // 24
-		AstCaseStmt case_stmt;          // 32
-		AstCtSwitchStmt ct_switch_stmt; // 16
-		AstContinueBreakStmt contbreak_stmt; // 8
-		AstNextcaseStmt nextcase_stmt;              // 16
+		FlowCommon flow;                    // Shared struct
+		AstAsmStmt asm_stmt;                // 16
+		AstCompoundStmt compound_stmt;      // 12
+		Decl *declare_stmt;                 // 8
+		Expr *expr_stmt;                    // 8
+		Decl *var_stmt;                     // 8
+		AstReturnStmt return_stmt;          // 16
+		AstIfStmt if_stmt;                  // 32
+		AstDeferStmt defer_stmt;            // 8
+		AstSwitchStmt switch_stmt;          // 40
+		AstCaseStmt case_stmt;              // 32
+		AstCtSwitchStmt ct_switch_stmt;     // 16
+		AstContinueBreakStmt contbreak_stmt;// 24
+		AstNextcaseStmt nextcase_stmt;      // 32
 		AstForStmt for_stmt;                // 32
-		AstForeachStmt foreach_stmt;
+		AstForeachStmt foreach_stmt;        // 40
 		AstCtIfStmt ct_if_stmt;             // 24
-		AstId ct_else_stmt;                  // 8
-		AstCtForeachStmt ct_foreach_stmt;           // 64
-		AstScopedStmt scoped_stmt;          // 16
-		AstAssertStmt ct_assert_stmt;
-		AstAssertStmt assert_stmt;
-		AstDocDirective *directives;
+		AstId ct_else_stmt;                 // 4
+		AstCtForeachStmt ct_foreach_stmt;   // 40
+		AstAssertStmt ct_assert_stmt;       // 16
+		AstAssertStmt assert_stmt;          // 16
+		AstDocDirective *directives;        // 8
 	};
 } Ast;
 
-
+//static_assert(sizeof(AstContinueBreakStmt) == 24, "Ooops");
+//static_assert(sizeof(Ast) == 56, "Oops");
 
 typedef struct Module_
 {
@@ -1409,10 +1382,12 @@ typedef struct SemaContext_
 	};
 	Decl *current_macro;
 	ScopeId scope_id;
+	bool ensures;
 	AstId break_target;
 	AstId break_defer;
 	AstId continue_target;
 	AstId continue_defer;
+	AstId block_return_defer;
 	AstId next_target;
 	Ast *next_switch;
 	AstId next_defer;
@@ -1427,7 +1402,6 @@ typedef struct SemaContext_
 		// Reusable returns cache.
 		Ast **returns_cache;
 	};
-	Decl *return_var;
 	Type *rtype;
 	struct SemaContext_ *yield_context;
 	Decl** locals;
@@ -2464,25 +2438,45 @@ static inline bool type_is_promotable_float(Type *type)
 	return type_is_float(type->canonical) && type->builtin.bytesize < type_double->builtin.bytesize;
 }
 
-#define MACRO_COPY_DECL(x) x = copy_decl(x)
-#define MACRO_COPY_DECL_LIST(x) x = copy_decl_list(x)
-#define MACRO_COPY_EXPR(x) x = copy_expr(x)
-#define MACRO_COPY_EXPRID(x) x = exprid_copy_deep(x)
-#define MACRO_COPY_TYPE(x) x = copy_type_info(x)
-#define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(x)
-#define MACRO_COPY_EXPR_LIST(x) x = copy_expr_list(x)
-#define MACRO_COPY_AST_LIST(x) x = copy_ast_list(x)
-#define MACRO_COPY_AST(x) x = ast_copy_deep(x)
-#define MACRO_COPY_ASTID(x) x = astid_copy_deep(x)
+#define MAX_FIXUPS 0xFFFFF
 
-Expr **copy_expr_list(Expr **expr_list);
-Expr *copy_expr(Expr *source_expr);
-Ast *ast_copy_deep(Ast *source);
-Ast **copy_ast_list(Ast **to_copy);
-Decl *decl_copy_local_from_macro(Decl *to_copy);
-Decl *copy_decl(Decl *decl);
-Decl **copy_decl_list(Decl **decl_list);
-TypeInfo *copy_type_info(TypeInfo *source);
+typedef struct
+{
+	void *original;
+	void *new_ptr;
+} CopyFixup;
+
+typedef struct CopyStruct_
+{
+	CopyFixup fixups[MAX_FIXUPS];
+	CopyFixup *current_fixup;
+} CopyStruct;
+
+#define MACRO_COPY_DECL(x) x = copy_decl(c, x)
+#define MACRO_COPY_DECLID(x) x = declid_copy_deep(c, x)
+#define MACRO_COPY_DECL_LIST(x) x = copy_decl_list(c, x)
+#define MACRO_COPY_EXPR(x) x = copy_expr(c, x)
+#define MACRO_COPY_EXPRID(x) x = exprid_copy_deep(c, x)
+#define MACRO_COPY_TYPE(x) x = copy_type_info(c, x)
+#define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(c, x)
+#define MACRO_COPY_EXPR_LIST(x) x = copy_expr_list(c, x)
+#define MACRO_COPY_AST_LIST(x) x = copy_ast_list(c, x)
+#define MACRO_COPY_AST(x) x = ast_copy_deep(c, x)
+#define MACRO_COPY_ASTID(x) x = astid_copy_deep(c, x)
+
+
+Expr *expr_macro_copy(Expr *source_expr);
+Decl **decl_copy_list(Decl **decl_list);
+Ast *ast_macro_copy(Ast *source_ast);
+
+Expr **copy_expr_list(CopyStruct *c, Expr **expr_list);
+Expr *copy_expr(CopyStruct *c, Expr *source_expr);
+Ast *ast_copy_deep(CopyStruct *c, Ast *source);
+Ast **copy_ast_list(CopyStruct *c, Ast **to_copy);
+Decl *decl_copy_local_from_macro(CopyStruct *c, Decl *to_copy);
+Decl *copy_decl(CopyStruct *c, Decl *decl);
+Decl **copy_decl_list(CopyStruct *c, Decl **decl_list);
+TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source);
 
 /**
  * Minimum alignment, values are either offsets or alignments.

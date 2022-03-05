@@ -4,7 +4,6 @@ fn void test()
     defer
     {
         i = i + 1;
-        break;
     }
     return;
 }

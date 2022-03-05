@@ -23,7 +23,8 @@ fn int main(int argc, char** argv)
     return 0;
 }
 
-// #expect: test.ll
+/* #expect: test.ll
+
 
 
 define i32 @main(i32 %0, i8** %1) #0 {
@@ -32,7 +33,7 @@ entry:
   store i32 0, i32* %a, align 4
   br label %loop.cond
 
-loop.cond:                                        ; preds = %exit3, %entry
+loop.cond:                                        ; preds = %if.exit, %entry
   %2 = load i32, i32* %a, align 4
   %intbool = icmp ne i32 %2, 0
   br i1 %intbool, label %loop.body, label %loop.exit
@@ -44,28 +45,16 @@ loop.body:                                        ; preds = %loop.cond
 if.then:                                          ; preds = %loop.body
   call void @test.testA()
   call void @test.testB()
-  br label %exit
-
-exit:                                             ; preds = %if.then
   call void @test.test2()
-  br label %exit1
-
-exit1:                                            ; preds = %exit
   br label %loop.exit
 
 if.exit:                                          ; preds = %loop.body
   call void @test.test3()
   call void @test.testA()
   call void @test.testB()
-  br label %exit2
-
-exit2:                                            ; preds = %if.exit
   call void @test.test2()
-  br label %exit3
-
-exit3:                                            ; preds = %exit2
   br label %loop.cond
 
-loop.exit:                                        ; preds = %exit1, %loop.cond
+loop.exit:                                        ; preds = %if.then, %loop.cond
   ret i32 0
 }
