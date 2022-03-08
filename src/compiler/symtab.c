@@ -67,6 +67,7 @@ const char *kw_main;
 const char *kw_max;
 const char *kw_min;
 const char *kw_nan;
+const char *kw_noinline;
 const char *kw_ordinal;
 const char *kw_param;
 const char *kw_ptr;
@@ -162,6 +163,7 @@ void symtab_init(uint32_t capacity)
 	kw_max = KW_DEF("max");
 	kw_min = KW_DEF("min");
 	kw_nan = KW_DEF("nan");
+	kw_noinline = KW_DEF("noinline");
 	kw_ordinal = KW_DEF("ordinal");
 	kw_param = KW_DEF("param");
 	kw_ptr = KW_DEF("ptr");
@@ -203,7 +205,7 @@ void symtab_init(uint32_t capacity)
 	}
 
 	attribute_list[ATTRIBUTE_INLINE] = kw_inline;
-	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("noinline");
+	attribute_list[ATTRIBUTE_NOINLINE] = kw_noinline;
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("bigendian");
 	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("littleendian");
 	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("noreturn");

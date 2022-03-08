@@ -819,7 +819,40 @@ Decl *parse_var_decl(ParseContext *c)
 
 // --- Parse parameters & throws & attributes
 
+bool parse_attribute(ParseContext *c, Attr **attribute_ref)
+{
+	if (!try_consume(c, TOKEN_AT))
+	{
+		*attribute_ref = NULL;
+		return true;
+	}
+	bool had_error;
+	Path *path = parse_path_prefix(c, &had_error);
+	if (had_error) return false;
 
+	Attr *attr = CALLOCS(Attr);
+
+	attr->name = symstr(c);
+	attr->span = c->span;
+	attr->path = path;
+
+	if (tok_is(c, TOKEN_TYPE_IDENT) || tok_is(c, TOKEN_TYPE_IDENT))
+	{
+		advance(c);
+	}
+	else
+	{
+		TRY_CONSUME_OR_RET(TOKEN_IDENT, "Expected an attribute", false);
+	}
+
+	if (tok_is(c, TOKEN_LPAREN))
+	{
+		ASSIGN_EXPR_OR_RET(attr->expr, parse_const_paren_expr(c), false);
+	}
+
+	*attribute_ref = attr;
+	return true;
+}
 /**
  * attribute_list
  *  : attribute
@@ -839,38 +872,18 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref)
 {
 	*attributes_ref = NULL;
 
-	while (try_consume(c, TOKEN_AT))
+	while (1)
 	{
-		bool had_error;
-		Path *path = parse_path_prefix(c, &had_error);
-		if (had_error) return false;
-
-		Attr *attr = CALLOCS(Attr);
-
-		attr->name = symstr(c);
-		attr->name_span = c->span;
-		attr->path = path;
-
-		if (tok_is(c, TOKEN_TYPE_IDENT) || tok_is(c, TOKEN_TYPE_IDENT))
-		{
-			advance(c);
-		}
-		else
-		{
-			TRY_CONSUME_OR_RET(TOKEN_IDENT, "Expected an attribute", false);
-		}
-
-		if (tok_is(c, TOKEN_LPAREN))
-		{
-			ASSIGN_EXPR_OR_RET(attr->expr, parse_const_paren_expr(c), false);
-		}
+		Attr *attr;
+		if (!parse_attribute(c, &attr)) return false;
+		if (!attr) return true;
 		const char *name = attr->name;
 		VECEACH(*attributes_ref, i)
 		{
 			Attr *other_attr = *attributes_ref[i];
 			if (other_attr->name == name)
 			{
-				sema_error_at(attr->name_span, "Repeat of attribute '%s' here.", name);
+				SEMA_ERROR(attr, "Repeat of attribute '%s' here.", name);
 				return false;
 			}
 		}

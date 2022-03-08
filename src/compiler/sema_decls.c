@@ -395,7 +395,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 #undef SET_ATTR
 		if (had)
 		{
-			sema_error_at(attr->name_span, "Attribute occurred twice, please remove one.");
+			sema_error_at(attr->span, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 	}
@@ -549,14 +549,14 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 			case ATTRIBUTE_BIGENDIAN:
 				if (decl->bitstruct.little_endian)
 				{
-					sema_error_at(attr->name_span, "Attribute cannot be combined with @littleendian");
+					sema_error_at(attr->span, "Attribute cannot be combined with @littleendian");
 					return decl_poison(decl);
 				}
 				SET_ATTR(big_endian);
 			case ATTRIBUTE_LITTLEENDIAN:
 				if (decl->bitstruct.big_endian)
 				{
-					sema_error_at(attr->name_span, "Attribute cannot be combined with @bigendian");
+					sema_error_at(attr->span, "Attribute cannot be combined with @bigendian");
 					return decl_poison(decl);
 				}
 				SET_ATTR(little_endian);
@@ -566,7 +566,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 #undef SET_ATTR
 		if (had)
 		{
-			sema_error_at(attr->name_span, "Attribute occurred twice, please remove one.");
+			sema_error_at(attr->span, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 	}
@@ -1154,7 +1154,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 	AttributeType type = attribute_by_name(attr);
 	if (type == ATTRIBUTE_NONE)
 	{
-		sema_error_at(attr->name_span, "There is no attribute with the name '%s', did you mistype?", attr->name);
+		sema_error_at(attr->span, "There is no attribute with the name '%s', did you mistype?", attr->name);
 		return ATTRIBUTE_NONE;
 	}
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
@@ -1185,7 +1185,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 
 	if ((attribute_domain[type] & domain) != domain)
 	{
-		sema_error_at(attr->name_span, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
+		sema_error_at(attr->span, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
 		return ATTRIBUTE_NONE;
 	}
 	switch (type)
@@ -1230,7 +1230,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 		case ATTRIBUTE_ALIGN:
 			if (!attr->expr)
 			{
-				sema_error_at(attr->name_span, "'align' requires an power-of-2 argument, e.g. align(8).");
+				sema_error_at(attr->span, "'align' requires an power-of-2 argument, e.g. align(8).");
 				return ATTRIBUTE_NONE;
 			}
 			if (!sema_analyse_expr(context, attr->expr)) return false;
@@ -1264,12 +1264,12 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 		case ATTRIBUTE_EXTNAME:
 			if (context->unit->module->is_generic)
 			{
-				sema_error_at(attr->name_span, "'extname' attributes are not allowed in generic modules.");
+				sema_error_at(attr->span, "'extname' attributes are not allowed in generic modules.");
 				return false;
 			}
 			if (!attr->expr)
 			{
-				sema_error_at(attr->name_span, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
+				sema_error_at(attr->span, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
 				return ATTRIBUTE_NONE;
 			}
 			if (!sema_analyse_expr(context, attr->expr)) return false;
@@ -1579,12 +1579,12 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 #undef SET_ATTR
 		if (had)
 		{
-			sema_error_at(attr->name_span, "Attribute occurred twice, please remove one.");
+			sema_error_at(attr->span, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 		if (decl->func_decl.attr_inline && decl->func_decl.attr_noinline)
 		{
-			sema_error_at(attr->name_span, "A function cannot be 'inline' and 'noinline' at the same time.");
+			sema_error_at(attr->span, "A function cannot be 'inline' and 'noinline' at the same time.");
 			return decl_poison(decl);
 		}
 	}
@@ -1679,7 +1679,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		}
 		if (had)
 		{
-			sema_error_at(attr->name_span, "Attribute occurred twice, please remove one.");
+			sema_error_at(attr->span, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 	}
@@ -1828,7 +1828,7 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl)
 #undef SET_ATTR
 		if (had)
 		{
-			sema_error_at(attr->name_span, "Attribute occurred twice, please remove one.");
+			sema_error_at(attr->span, "Attribute occurred twice, please remove one.");
 			return decl_poison(decl);
 		}
 	}

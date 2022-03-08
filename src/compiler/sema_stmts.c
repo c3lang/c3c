@@ -768,16 +768,21 @@ static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref,
 	cond = context_pop_defers_and_wrap_expr(context, cond);
 
 	// If this is const true, then set this to infinite and remove the expression.
-	if (cond->expr_kind == EXPR_CONST && cond->const_expr.b)
+	Expr *cond_last = cond->expr_kind == EXPR_COND ? VECLAST(cond->cond_expr) : cond;
+	assert(cond_last);
+	if (cond_last->expr_kind == EXPR_CONST && cond_last->const_expr.b)
 	{
-		cond = NULL;
+		if (cond->expr_kind != EXPR_COND || vec_size(cond->cond_expr) == 1)
+		{
+			cond = NULL;
+		}
 		*infinite = true;
 	}
 	else
 	{
 		*infinite = false;
 	}
-	*cond_ref = exprid(cond);
+	*cond_ref = cond ? exprid(cond) : 0;
 	return true;
 }
 static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
@@ -809,8 +814,8 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 			Ast *body = astptr(statement->for_stmt.body);
 
 			PUSH_BREAKCONT(statement);
-			success = sema_analyse_statement(context, body);
-			statement->for_stmt.flow.no_exit = context->active_scope.jump_end;
+				success = sema_analyse_statement(context, body);
+				statement->for_stmt.flow.no_exit = context->active_scope.jump_end;
 			POP_BREAKCONT();
 
 			// End for body scope
@@ -846,7 +851,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 
 	SCOPE_OUTER_END;
 
-	if (statement->for_stmt.flow.no_exit && is_infinite && !statement->for_stmt.flow.has_break)
+	if (statement->for_stmt.flow.no_exit || (is_infinite && !statement->for_stmt.flow.has_break))
 	{
 		context->active_scope.jump_end = true;
 	}
