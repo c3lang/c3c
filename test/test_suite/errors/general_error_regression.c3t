@@ -1,7 +1,7 @@
 module foo;
 import std::io;
 
-errtype Foo
+optenum Foo
 {
     X,
     Y,
@@ -12,7 +12,7 @@ errtype Foo
 
 }
 
-errtype Foob
+optenum Foob
 {
     X1,
     Y2

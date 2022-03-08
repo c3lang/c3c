@@ -1,7 +1,7 @@
 // #target: x64-darwin
 
 extern fn int! err();
-errtype FooErr { QBERT }
+optenum FooErr { QBERT }
 extern fn int printf(char* fmt, ...);
 
 fn void main()

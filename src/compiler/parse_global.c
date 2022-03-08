@@ -38,11 +38,9 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_ENUM:
 			case TOKEN_GENERIC:
 			case TOKEN_DEFINE:
-			case TOKEN_ERRTYPE:
 			case TOKEN_OPTENUM:
 			case TOKEN_OPTNUM:
 			case TOKEN_ERRNUM:
-			case TOKEN_RESNUM:
 				return;
 			case TOKEN_IDENT: // Incr arrays only
 			case TOKEN_CONST:
@@ -514,7 +512,6 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER, range);
 		type_info->unresolved.path = path;
 		type_info->unresolved.name = symstr(c);
-		type_info->unresolved.span = c->span;
 		if (!consume_type_name(c, "type")) return poisoned_type_info;
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
@@ -527,12 +524,10 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		case TOKEN_TYPE_IDENT:
 			type_info = type_info_new_curr(c, TYPE_INFO_IDENTIFIER);
 			type_info->unresolved.name = symstr(c);
-			type_info->unresolved.span = c->span;
 			break;
 		case TOKEN_CT_TYPE_IDENT:
 			type_info = type_info_new_curr(c, TYPE_INFO_CT_IDENTIFIER);
 			type_info->unresolved.name = symstr(c);
-			type_info->unresolved.span = c->span;
 			break;
 		case TYPE_TOKENS:
 			type_found = type_from_token(c->tok);
@@ -819,7 +814,40 @@ Decl *parse_var_decl(ParseContext *c)
 
 // --- Parse parameters & throws & attributes
 
+bool parse_attribute(ParseContext *c, Attr **attribute_ref)
+{
+	if (!try_consume(c, TOKEN_AT))
+	{
+		*attribute_ref = NULL;
+		return true;
+	}
+	bool had_error;
+	Path *path = parse_path_prefix(c, &had_error);
+	if (had_error) return false;
 
+	Attr *attr = CALLOCS(Attr);
+
+	attr->name = symstr(c);
+	attr->span = c->span;
+	attr->path = path;
+
+	if (tok_is(c, TOKEN_TYPE_IDENT) || tok_is(c, TOKEN_TYPE_IDENT))
+	{
+		advance(c);
+	}
+	else
+	{
+		TRY_CONSUME_OR_RET(TOKEN_IDENT, "Expected an attribute", false);
+	}
+
+	if (tok_is(c, TOKEN_LPAREN))
+	{
+		ASSIGN_EXPR_OR_RET(attr->expr, parse_const_paren_expr(c), false);
+	}
+
+	*attribute_ref = attr;
+	return true;
+}
 /**
  * attribute_list
  *  : attribute
@@ -839,38 +867,18 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref)
 {
 	*attributes_ref = NULL;
 
-	while (try_consume(c, TOKEN_AT))
+	while (1)
 	{
-		bool had_error;
-		Path *path = parse_path_prefix(c, &had_error);
-		if (had_error) return false;
-
-		Attr *attr = CALLOCS(Attr);
-
-		attr->name = symstr(c);
-		attr->name_span = c->span;
-		attr->path = path;
-
-		if (tok_is(c, TOKEN_TYPE_IDENT) || tok_is(c, TOKEN_TYPE_IDENT))
-		{
-			advance(c);
-		}
-		else
-		{
-			TRY_CONSUME_OR_RET(TOKEN_IDENT, "Expected an attribute", false);
-		}
-
-		if (tok_is(c, TOKEN_LPAREN))
-		{
-			ASSIGN_EXPR_OR_RET(attr->expr, parse_const_paren_expr(c), false);
-		}
+		Attr *attr;
+		if (!parse_attribute(c, &attr)) return false;
+		if (!attr) return true;
 		const char *name = attr->name;
 		VECEACH(*attributes_ref, i)
 		{
 			Attr *other_attr = *attributes_ref[i];
 			if (other_attr->name == name)
 			{
-				sema_error_at(attr->name_span, "Repeat of attribute '%s' here.", name);
+				SEMA_ERROR(attr, "Repeat of attribute '%s' here.", name);
 				return false;
 			}
 		}
@@ -1734,8 +1742,8 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 
 /**
  * error_declaration
- *		: ERRTYPE TYPE_IDENT ';'
- *		| ERRTYPE TYPE_IDENT '{' error_data '}'
+ *		: OPTENUM TYPE_IDENT ';'
+ *		| OPTENUM TYPE_IDENT '{' error_data '}'
  *		;
  */
 static inline Decl *parse_optenum_declaration(ParseContext *c, Visibility visibility)
@@ -2336,8 +2344,6 @@ Decl *parse_top_level_statement(ParseContext *c)
 		case TOKEN_OPTENUM:
 		case TOKEN_OPTNUM:
 		case TOKEN_ERRNUM:
-		case TOKEN_RESNUM:
-		case TOKEN_ERRTYPE:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_optenum_declaration(c, visibility), poisoned_decl);
 			break;

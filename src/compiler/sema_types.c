@@ -121,7 +121,7 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 
 static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info)
 {
-	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->unresolved.span);
+	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->span);
 
 	// Already handled
 	if (!decl_ok(decl))
@@ -172,7 +172,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_GENERIC:
 		case DECL_LABEL:
 		case DECL_ATTRIBUTE:
-			SEMA_ERROR(&type_info->unresolved, "This is not a type.");
+			SEMA_ERROR(type_info, "This is not a type.");
 			return type_info_poison(type_info);
 		case DECL_CT_ELSE:
 		case DECL_CT_IF:
@@ -235,7 +235,7 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 	if (type_info->resolve_status == RESOLVE_RUNNING)
 	{
 		// TODO this is incorrect for unresolved expressions
-		SEMA_ERROR(&type_info->unresolved,
+		SEMA_ERROR(type_info,
 		           "Circular dependency resolving type '%s'.",
 		           type_info->unresolved.name);
 		return type_info_poison(type_info);
@@ -262,7 +262,7 @@ RETRY:
 			{
 				case TOKEN_TYPE_IDENT:
 					type_info->unresolved.name = ident;
-					type_info->unresolved.span = expr->span;
+					type_info->span = expr->span;
 					type_info->unresolved.path = path;
 					type_info->kind = TYPE_INFO_IDENTIFIER;
 					goto RETRY;
@@ -273,7 +273,7 @@ RETRY:
 						return false;
 					}
 					type_info->type = type_from_token(type);
-					return true;
+					goto APPEND_QUALIFIERS;
 				default:
 					SEMA_ERROR(expr, "Only type names may be resolved with $evaltype.");
 					return type_info_poison(type_info);
@@ -289,7 +289,7 @@ RETRY:
 			type_info->type = expr->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			assert(!type_info->failable);
-			return true;
+			goto APPEND_QUALIFIERS;
 		}
 		case TYPE_INFO_INFERRED_ARRAY:
 			if (!allow_inferred_type)
@@ -307,9 +307,11 @@ RETRY:
 			if (!sema_resolve_ptr_type(context, type_info)) return false;
 			break;
 	}
+APPEND_QUALIFIERS:
 	if (type_info->failable)
 	{
-		type_info->type = type_get_failable(type_info->type);
+		Type *type = type_info->type;
+		if (!type_is_failable(type)) type_info->type = type_get_failable(type);
 	}
 	return true;
 }

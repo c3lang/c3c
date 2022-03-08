@@ -216,8 +216,6 @@ const char *token_type_to_string(TokenType type)
 			return "enum";
 		case TOKEN_EXTERN:
 			return "extern";
-		case TOKEN_ERRTYPE:
-			return "errtype";
 		case TOKEN_FALSE:
 			return "false";
 		case TOKEN_FOR:
@@ -273,9 +271,6 @@ const char *token_type_to_string(TokenType type)
 			return "optnum";
 		case TOKEN_ERRNUM:
 			return "errnum";
-		case TOKEN_RESNUM:
-			return "resnum";
-
 
 		// Named types
 		case TOKEN_VOID:

@@ -2,7 +2,7 @@ module base64;
 // Based on the C2 version.
 
 
-errtype DecodingError
+optenum DecodingError
 {
 	INVALID_CHARACTER
 }

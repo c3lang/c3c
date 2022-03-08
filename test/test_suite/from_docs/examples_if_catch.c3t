@@ -2,7 +2,7 @@
 module demo;
 import std::io;
 
-errtype MathError
+optenum MathError
 {
     DIVISION_BY_ZERO
 }

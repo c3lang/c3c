@@ -711,7 +711,34 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	{
 		ASSIGN_ASTID_OR_RET(call->call_expr.body, parse_compound_stmt(c), poisoned_expr);
 	}
-	if (!parse_attributes(c, &call->call_expr.attributes)) return false;
+	Attr *attr;
+	int force_inline = -1;
+	while (1)
+	{
+		if (!parse_attribute(c, &attr)) return poisoned_expr;
+		if (!attr) break;
+		if (attr->name != kw_inline && attr->name != kw_noinline)
+		{
+			SEMA_ERROR(attr, "Only '@inline' and '@noinline' are valid attributes for calls.");
+			return poisoned_expr;
+		}
+		int new_inline = attr->name == kw_inline;
+		if (new_inline == force_inline)
+		{
+			SEMA_ERROR(attr, "Repeat of the same attribute is not allowed.");
+			return poisoned_expr;
+		}
+		if (force_inline != -1)
+		{
+			SEMA_ERROR(attr, "@inline and @noinline cannot be combined");
+		}
+		force_inline = new_inline;
+	}
+	if (force_inline != -1)
+	{
+		call->call_expr.force_inline = force_inline == 1;
+		call->call_expr.force_noinline = force_inline == 0;
+	}
 	return call;
 }
 
@@ -909,7 +936,6 @@ static Expr *parse_type_or_expression_with_path(ParseContext *c, Path *path, Typ
 	{
 		type = type_info_new(TYPE_INFO_IDENTIFIER, path->span);
 		type->unresolved.path = path;
-		type->unresolved.span = c->span;
 		type->unresolved.name = symstr(c);
 		advance_and_verify(c, TOKEN_TYPE_IDENT);
 		RANGE_EXTEND_PREV(type);
@@ -1654,7 +1680,6 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	{
 		type = type_info_new(TYPE_INFO_IDENTIFIER, path->span);
 		type->unresolved.path = path;
-		type->unresolved.span = c->span;
 		type->unresolved.name = symstr(c);
 		advance_and_verify(c, TOKEN_TYPE_IDENT);
 		RANGE_EXTEND_PREV(type);

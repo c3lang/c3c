@@ -69,7 +69,7 @@ const char *decl_to_name(Decl *decl)
 		case DECL_OPTVALUE:
 			return "err value";
 		case DECL_OPTENUM:
-			return "errtype";
+			return "optenum";
 		case DECL_FUNC:
 			return "function";
 		case DECL_GENERIC:

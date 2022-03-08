@@ -214,12 +214,6 @@ typedef struct
 	unsigned pref_alignment : 8;
 }  TypeBuiltin;
 
-typedef struct
-{
-	const char *name;
-	SourceSpan span;
-	Path *path;
-} TypeUnresolved;
 
 typedef struct
 {
@@ -265,13 +259,18 @@ struct Type_
 struct TypeInfo_
 {
 	ResolveStatus resolve_status : 3;
+	TypeInfoKind kind : 6;
 	bool failable : 1;
 	Type *type;
-	TypeInfoKind kind;
 	SourceSpan span;
+
 	union
 	{
-		TypeUnresolved unresolved;
+		struct
+		{
+			const char *name;
+			Path *path;
+		} unresolved;
 		Expr *unresolved_type_expr;
 		struct
 		{
@@ -287,7 +286,7 @@ typedef struct
 {
 	Path *path;
 	const char *name;
-	SourceSpan name_span;
+	SourceSpan span;
 	union
 	{
 		Expr *expr;
@@ -607,7 +606,7 @@ typedef struct Decl_
 			Decl **methods;
 			union
 			{
-				// Unions, Errtype and Struct use strukt
+				// Unions, Optenum and Struct use strukt
 				StructDecl strukt;
 				EnumDecl enums;
 				DistinctDecl distinct_decl;
@@ -693,7 +692,6 @@ typedef struct
 	};
 	Expr **arguments;
 	Decl **body_arguments;
-	Attr **attributes;
 } ExprCall;
 
 typedef struct
@@ -926,9 +924,9 @@ typedef struct
 
 struct Expr_
 {
+	SourceSpan span;
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 4;
-	SourceSpan span;
 	Type *type;
 	union {
 		ExprVariantSwitch variant_switch;           // 32
@@ -946,7 +944,7 @@ struct Expr_
 		ExprUnary unary_expr;                       // 16
 		Expr** try_unwrap_chain_expr;               // 8
 		ExprTryUnwrap try_unwrap_expr;              // 24
-		ExprCall call_expr;                         // 40
+		ExprCall call_expr;                         // 32
 		ExprSlice slice_expr;                       // 32
 		Expr *inner_expr;                           // 8
 		ExprCatchUnwrap catch_unwrap_expr;          // 24
@@ -972,9 +970,9 @@ struct Expr_
 		ExprBuiltin builtin_expr;                   // 16
 	};
 };
-static_assert(sizeof(ExprCall) == 40, "Ooops");
+//static_assert(sizeof(ExprCall) == 32, "Ooops");
 
-static_assert(sizeof(Expr) == 64, "Ooops");
+//static_assert(sizeof(Expr) == 56, "Ooops");
 
 typedef struct
 {
@@ -1599,6 +1597,7 @@ extern const char *kw_elementref;
 extern const char *kw_elementset;
 extern const char *kw_len;
 extern const char *kw_nan;
+extern const char *kw_noinline;
 extern const char *kw_main;
 extern const char *kw_ordinal;
 extern const char *kw_reqparse;

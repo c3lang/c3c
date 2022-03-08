@@ -667,7 +667,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			SEMA_ERROR(expr, "Expected enum name followed by '.' and an enum value.");
 			return expr_poison(expr);
 		case DECL_OPTENUM:
-			SEMA_ERROR(expr, "Expected errtype name followed by '.' and an error value.");
+			SEMA_ERROR(expr, "Expected optenum name followed by '.' and an error value.");
 			return expr_poison(expr);
 		case DECL_IMPORT:
 		case DECL_CT_IF:
@@ -2117,47 +2117,9 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 	return success;
 }
 
-static inline bool sema_analyse_call_attributes(SemaContext *context, Decl *decl, Expr *call_expr)
-{
-	Attr **attributes = call_expr->call_expr.attributes;
-	int force_inline = -1;
-	VECEACH(attributes, i)
-	{
-		Attr *attr = attributes[i];
-		AttributeType attribute = sema_analyse_attribute(context, attr, ATTR_CALL);
-		if (attribute == ATTRIBUTE_NONE) return false;
-		switch (attribute)
-		{
-			case ATTRIBUTE_INLINE:
-			case ATTRIBUTE_NOINLINE:
-				if (decl && decl->decl_kind != DECL_FUNC)
-				{
-					sema_error_at(attr->name_span,
-					                 "Inline / noinline attribute is only allowed for direct function/method calls");
-					return false;
-				}
-				if (force_inline != -1)
-				{
-					sema_error_at(attr->name_span, "Only a single inline / noinline attribute is allowed on a call.");
-					return false;
-				}
-				force_inline = attribute == ATTRIBUTE_INLINE ? 1 : 0;
-				break;
-			default:
-				UNREACHABLE;
-		}
-	}
-	if (force_inline != -1)
-	{
-		call_expr->call_expr.force_inline = force_inline == 1;
-		call_expr->call_expr.force_noinline = force_inline == 0;
-	}
-	return true;
-}
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool is_macro, bool failable)
 {
 	expr->call_expr.is_type_method = struct_var != NULL;
-	if (!sema_analyse_call_attributes(context, decl, expr)) return expr_poison(expr);
 	if (decl == NULL)
 	{
 		return sema_expr_analyse_var_call(context, expr, type_flatten_distinct_failable(exprptr(expr->call_expr.function)->type), failable);
@@ -6633,7 +6595,7 @@ RETRY:
 			{
 				case TOKEN_TYPE_IDENT:
 					type_info->unresolved.name = ident;
-					type_info->unresolved.span = expr->span;
+					type_info->span = expr->span;
 					type_info->unresolved.path = path;
 					type_info->kind = TYPE_INFO_IDENTIFIER;
 					goto RETRY;

@@ -14,9 +14,6 @@ BuildTarget active_target;
 
 Vmem ast_arena;
 Vmem expr_arena;
-Vmem sourceloc_arena;
-Vmem toktype_arena;
-Vmem tokdata_arena;
 Vmem decl_arena;
 Vmem type_info_arena;
 
@@ -40,9 +37,6 @@ void compiler_init(const char *std_lib_dir)
 	vmem_init(&ast_arena, 4 * 1024);
 	vmem_init(&expr_arena, 4 * 1024);
 	vmem_init(&decl_arena, 1024);
-	vmem_init(&sourceloc_arena, 4 * 1024);
-	vmem_init(&toktype_arena, 4 * 1024);
-	vmem_init(&tokdata_arena, 4 * 1024);
 	vmem_init(&type_info_arena, 1024);
 	// Create zero index value.
 	if (std_lib_dir)
@@ -129,14 +123,24 @@ static void free_arenas(void)
 {
 	if (debug_stats)
 	{
-		printf("-- AST/EXPR INFO -- \n");
-		printf(" * Ast memory use: %llukb\n", (unsigned long long)ast_arena.allocated / 1024);
-		printf(" * Decl memory use: %llukb\n", (unsigned long long)decl_arena.allocated / 1024);
-		printf(" * Expr memory use: %llukb\n", (unsigned long long)expr_arena.allocated / 1024);
-		printf(" * TypeInfo memory use: %llukb\n", (unsigned long long)type_info_arena.allocated / 1024);
-		printf(" * Token memory use: %llukb\n", (unsigned long long)(toktype_arena.allocated) / 1024);
-		printf(" * Sourceloc memory use: %llukb\n", (unsigned long long)(sourceloc_arena.allocated) / 1024);
-		printf(" * Token data memory use: %llukb\n", (unsigned long long)(tokdata_arena.allocated) / 1024);
+		printf("-- AST/EXPR/TYPE INFO -- \n");
+		printf(" * Ast size: %u bytes\n", (unsigned)sizeof(Ast));
+		printf(" * Decl size: %u bytes\n", (unsigned)sizeof(Decl));
+		printf(" * Expr size: %u bytes\n", (unsigned)sizeof(Expr));
+		printf(" * TypeInfo size: %u bytes\n", (unsigned)sizeof(TypeInfo));
+		printf(" * Ast memory use: %llukb (%u elements)\n",
+			   (unsigned long long)ast_arena.allocated / 1024,
+		       (unsigned)(ast_arena.allocated / sizeof(Ast)));
+		printf(" * Decl memory use: %llukb (%u elements)\n",
+			   (unsigned long long)decl_arena.allocated / 1024,
+			   (unsigned)(decl_arena.allocated / sizeof(Decl)));
+		printf(" * Expr memory use: %llukb (%u elements)\n",
+			   (unsigned long long)expr_arena.allocated / 1024,
+			   (unsigned)(expr_arena.allocated / sizeof(Expr)));
+		printf(" * TypeInfo memory use: %llukb (%u elements)\n",
+			   (unsigned long long)type_info_arena.allocated / 1024,
+			   (unsigned)(type_info_arena.allocated / sizeof(TypeInfo)));
+
 	}
 
 	ast_arena_free();

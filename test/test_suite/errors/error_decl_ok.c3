@@ -1,17 +1,17 @@
 module errors;
 
-errtype TheError
+optenum TheError
 {
     A
 }
 
-errtype TheError2
+optenum TheError2
 {
     A,
     B
 }
 
-errtype TheError3
+optenum TheError3
 {
     C, D
 }

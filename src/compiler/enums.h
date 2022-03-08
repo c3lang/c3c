@@ -438,7 +438,6 @@ typedef enum
 	TOKEN_DO,
 	TOKEN_ELSE,
 	TOKEN_ENUM,
-	TOKEN_ERRTYPE,
 	TOKEN_EXTERN,
 	TOKEN_FALSE,
 	TOKEN_FOR,
@@ -467,7 +466,6 @@ typedef enum
 	TOKEN_ERRNUM,
 	TOKEN_OPTNUM,
 	TOKEN_OPTENUM,
-	TOKEN_RESNUM,
 
 	TOKEN_CT_ALIGNOF,       // $alignof
 	TOKEN_CT_ASSERT,        // $assert
