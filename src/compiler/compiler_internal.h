@@ -214,12 +214,6 @@ typedef struct
 	unsigned pref_alignment : 8;
 }  TypeBuiltin;
 
-typedef struct
-{
-	const char *name;
-	SourceSpan span;
-	Path *path;
-} TypeUnresolved;
 
 typedef struct
 {
@@ -265,13 +259,18 @@ struct Type_
 struct TypeInfo_
 {
 	ResolveStatus resolve_status : 3;
+	TypeInfoKind kind : 6;
 	bool failable : 1;
 	Type *type;
-	TypeInfoKind kind;
 	SourceSpan span;
+
 	union
 	{
-		TypeUnresolved unresolved;
+		struct
+		{
+			const char *name;
+			Path *path;
+		} unresolved;
 		Expr *unresolved_type_expr;
 		struct
 		{
@@ -607,7 +606,7 @@ typedef struct Decl_
 			Decl **methods;
 			union
 			{
-				// Unions, Errtype and Struct use strukt
+				// Unions, Optenum and Struct use strukt
 				StructDecl strukt;
 				EnumDecl enums;
 				DistinctDecl distinct_decl;

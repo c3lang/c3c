@@ -667,7 +667,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			SEMA_ERROR(expr, "Expected enum name followed by '.' and an enum value.");
 			return expr_poison(expr);
 		case DECL_OPTENUM:
-			SEMA_ERROR(expr, "Expected errtype name followed by '.' and an error value.");
+			SEMA_ERROR(expr, "Expected optenum name followed by '.' and an error value.");
 			return expr_poison(expr);
 		case DECL_IMPORT:
 		case DECL_CT_IF:
@@ -6595,7 +6595,7 @@ RETRY:
 			{
 				case TOKEN_TYPE_IDENT:
 					type_info->unresolved.name = ident;
-					type_info->unresolved.span = expr->span;
+					type_info->span = expr->span;
 					type_info->unresolved.path = path;
 					type_info->kind = TYPE_INFO_IDENTIFIER;
 					goto RETRY;

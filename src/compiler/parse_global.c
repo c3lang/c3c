@@ -38,11 +38,9 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_ENUM:
 			case TOKEN_GENERIC:
 			case TOKEN_DEFINE:
-			case TOKEN_ERRTYPE:
 			case TOKEN_OPTENUM:
 			case TOKEN_OPTNUM:
 			case TOKEN_ERRNUM:
-			case TOKEN_RESNUM:
 				return;
 			case TOKEN_IDENT: // Incr arrays only
 			case TOKEN_CONST:
@@ -514,7 +512,6 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		TypeInfo *type_info = type_info_new(TYPE_INFO_IDENTIFIER, range);
 		type_info->unresolved.path = path;
 		type_info->unresolved.name = symstr(c);
-		type_info->unresolved.span = c->span;
 		if (!consume_type_name(c, "type")) return poisoned_type_info;
 		RANGE_EXTEND_PREV(type_info);
 		return type_info;
@@ -527,12 +524,10 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		case TOKEN_TYPE_IDENT:
 			type_info = type_info_new_curr(c, TYPE_INFO_IDENTIFIER);
 			type_info->unresolved.name = symstr(c);
-			type_info->unresolved.span = c->span;
 			break;
 		case TOKEN_CT_TYPE_IDENT:
 			type_info = type_info_new_curr(c, TYPE_INFO_CT_IDENTIFIER);
 			type_info->unresolved.name = symstr(c);
-			type_info->unresolved.span = c->span;
 			break;
 		case TYPE_TOKENS:
 			type_found = type_from_token(c->tok);
@@ -1747,8 +1742,8 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 
 /**
  * error_declaration
- *		: ERRTYPE TYPE_IDENT ';'
- *		| ERRTYPE TYPE_IDENT '{' error_data '}'
+ *		: OPTENUM TYPE_IDENT ';'
+ *		| OPTENUM TYPE_IDENT '{' error_data '}'
  *		;
  */
 static inline Decl *parse_optenum_declaration(ParseContext *c, Visibility visibility)
@@ -2349,8 +2344,6 @@ Decl *parse_top_level_statement(ParseContext *c)
 		case TOKEN_OPTENUM:
 		case TOKEN_OPTNUM:
 		case TOKEN_ERRNUM:
-		case TOKEN_RESNUM:
-		case TOKEN_ERRTYPE:
 		{
 			ASSIGN_DECL_OR_RET(decl, parse_optenum_declaration(c, visibility), poisoned_decl);
 			break;

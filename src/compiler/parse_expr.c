@@ -936,7 +936,6 @@ static Expr *parse_type_or_expression_with_path(ParseContext *c, Path *path, Typ
 	{
 		type = type_info_new(TYPE_INFO_IDENTIFIER, path->span);
 		type->unresolved.path = path;
-		type->unresolved.span = c->span;
 		type->unresolved.name = symstr(c);
 		advance_and_verify(c, TOKEN_TYPE_IDENT);
 		RANGE_EXTEND_PREV(type);
@@ -1681,7 +1680,6 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	{
 		type = type_info_new(TYPE_INFO_IDENTIFIER, path->span);
 		type->unresolved.path = path;
-		type->unresolved.span = c->span;
 		type->unresolved.name = symstr(c);
 		advance_and_verify(c, TOKEN_TYPE_IDENT);
 		RANGE_EXTEND_PREV(type);

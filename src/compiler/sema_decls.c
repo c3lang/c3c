@@ -2098,7 +2098,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 			}
 			decl_path = define_type->unresolved.path;
 			name = define_type->unresolved.name;
-			span = define_type->unresolved.span;
+			span = define_type->span;
 			break;
 		}
 		case DEFINE_ATTRIBUTE:

@@ -13,7 +13,7 @@ fn int! tester()
     return 222;
 }
 
-errtype Foo
+optenum Foo
 {
     A
 }

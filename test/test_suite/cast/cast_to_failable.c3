@@ -1,4 +1,4 @@
-errtype MyErr
+optenum MyErr
 {
     FOO
 }

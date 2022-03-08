@@ -1,7 +1,7 @@
 
 int z;
 
-errtype MyError
+optenum MyError
 {
     FOO,
 }

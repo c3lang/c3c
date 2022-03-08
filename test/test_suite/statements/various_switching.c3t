@@ -2,11 +2,11 @@ module mymodule;
 
 extern fn void printf(char *, ...);
 
-errtype HelloErr
+optenum HelloErr
 {
     FOO,
 }
-errtype ByeErr
+optenum ByeErr
 {
     BAR,
     BAZ
