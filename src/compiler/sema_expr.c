@@ -273,12 +273,12 @@ bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case CAST_VECARR:
 		case CAST_ARRVEC:
 			if (eval_kind == CONSTANT_EVAL_FOLDABLE) return false;
-			return expr_is_constant_eval(expr->cast_expr.expr, eval_kind);
+			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 		case CAST_EUINT:
 		case CAST_ERINT:
 		case CAST_PTRXI:
 			if (eval_kind != CONSTANT_EVAL_ANY) return false;
-			return expr_is_constant_eval(expr->cast_expr.expr, eval_kind);
+			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 	}
 	UNREACHABLE
 }
@@ -286,8 +286,8 @@ static bool expr_binary_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 {
 	if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return false;
 	if (eval_kind == CONSTANT_EVAL_FOLDABLE) return false;
-	Expr *left = expr->binary_expr.left;
-	Expr *right = expr->binary_expr.right;
+	Expr *left = exprptr(expr->binary_expr.left);
+	Expr *right = exprptr(expr->binary_expr.right);
 	int pointers = type_flatten(left->type)->type_kind == TYPE_POINTER ? 1 : 0;
 	pointers += type_flatten(right->type)->type_kind == TYPE_POINTER ? 1 : 0;
 	switch (expr->binary_expr.operator)
@@ -424,16 +424,16 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_SLICE:
-			if (expr->slice_expr.start && !expr_is_constant_eval(expr->slice_expr.start, CONSTANT_EVAL_FOLDABLE)) return false;
-			if (expr->slice_expr.end && !expr_is_constant_eval(expr->slice_expr.end, CONSTANT_EVAL_FOLDABLE)) return false;
-			return expr_is_constant_eval(expr->slice_expr.expr, eval_kind);
+			if (expr->slice_expr.start && !exprid_is_constant_eval(expr->slice_expr.start, CONSTANT_EVAL_FOLDABLE)) return false;
+			if (expr->slice_expr.end && !exprid_is_constant_eval(expr->slice_expr.end, CONSTANT_EVAL_FOLDABLE)) return false;
+			return exprid_is_constant_eval(expr->slice_expr.expr, eval_kind);
 		case EXPR_SUBSCRIPT:
-			if (!expr_is_constant_eval(expr->subscript_expr.index, eval_kind)) return false;
-			expr = expr->subscript_expr.expr;
+			if (!exprid_is_constant_eval(expr->subscript_expr.index, eval_kind)) return false;
+			expr = exprptr(expr->subscript_expr.expr);
 			goto RETRY;
 		case EXPR_SUBSCRIPT_ADDR:
-			if (!expr_is_constant_eval(expr->subscript_expr.index, eval_kind)) return false;
-			expr = expr->subscript_expr.expr;
+			if (!exprid_is_constant_eval(expr->subscript_expr.index, eval_kind)) return false;
+			expr = exprptr(expr->subscript_expr.expr);
 			if (expr->expr_kind == EXPR_IDENTIFIER)
 			{
 				Decl *decl = expr->identifier_expr.decl;
@@ -455,7 +455,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			goto RETRY;
 
 		case EXPR_TERNARY:
-			assert(!expr_is_constant_eval(expr->ternary_expr.cond, eval_kind));
+			assert(!exprid_is_constant_eval(expr->ternary_expr.cond, eval_kind));
 			return false;
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_TRY:
@@ -746,8 +746,8 @@ static inline bool sema_type_error_on_binop(Expr *expr)
 {
 	const char *c = token_type_to_string(binaryop_to_token(expr->binary_expr.operator));
 	SEMA_ERROR(expr, "%s is not defined in the expression %s %s %s.",
-	           c, type_quoted_error_string(expr->binary_expr.left->type),
-	           c, type_quoted_error_string(expr->binary_expr.right->type));
+	           c, type_quoted_error_string(exprptr(expr->binary_expr.left)->type),
+	           c, type_quoted_error_string(exprptr(expr->binary_expr.right)->type));
 	return false;
 }
 
@@ -779,8 +779,8 @@ static bool expr_cast_to_index(Expr *index)
 
 static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 {
-	Expr *left = expr->ternary_expr.then_expr;
-	Expr *cond = expr->ternary_expr.cond;
+	Expr *left = exprptrzero(expr->ternary_expr.then_expr);
+	Expr *cond = exprptr(expr->ternary_expr.cond);
 	int path = -1;
 	// Normal
 	if (left)
@@ -812,7 +812,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 		left = cond;
 	}
 
-	Expr *right = expr->ternary_expr.else_expr;
+	Expr *right = exprptr(expr->ternary_expr.else_expr);
 	if (!sema_analyse_expr(context, right)) return expr_poison(expr);
 
 	Type *left_canonical = left->type->canonical;
@@ -1102,8 +1102,8 @@ static inline bool sema_expr_analyse_binary_subexpr(SemaContext *context, Expr *
 
 static inline bool sema_expr_analyse_binary_arithmetic_subexpr(SemaContext *context, Expr *expr, const char *error, bool bool_is_allowed)
 {
-	Expr *left = expr->binary_expr.left;
-	Expr *right = expr->binary_expr.right;
+	Expr *left = exprptr(expr->binary_expr.left);
+	Expr *right = exprptr(expr->binary_expr.right);
 
 	// 1. Analyse both sides.
 	if (!sema_expr_analyse_binary_subexpr(context, expr, left, right)) return false;
@@ -1825,7 +1825,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (!body_arg->alignment) body_arg->alignment = type_alloca_alignment(body_arg->type);
 	}
 
-	Ast *body = ast_macro_copy(decl->macro_decl.body);
+	Ast *body = ast_macro_copy(astptr(decl->macro_decl.body));
 
 	bool no_scope = decl->no_scope;
 	bool escaping = decl->escaping;
@@ -1850,7 +1850,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		sema_context_init(&macro_context, decl->macro_decl.unit);
 		macro_context.compilation_unit = context->unit;
 		macro_context.current_function = context->current_function;
-		rtype = decl->macro_decl.rtype ? decl->macro_decl.rtype->type : NULL;
+		rtype = decl->macro_decl.rtype ? type_infoptr(decl->macro_decl.rtype)->type : NULL;
 		macro_context.expected_block_type = rtype;
 		context_change_scope_with_flags(&macro_context, SCOPE_MACRO);
 		macro_context.block_return_defer = macro_context.active_scope.defer_last;
@@ -1982,7 +1982,7 @@ static inline bool sema_expr_analyse_generic_call(SemaContext *context, Expr *ca
 	unsigned total_args = explicit_args;
 
 	scratch_buffer_clear();
-	scratch_buffer_append(decl->external_name);
+	scratch_buffer_append(decl->extname);
 
 	// TODO revisit name mangling
 	if (struct_var)
@@ -2033,7 +2033,7 @@ static inline bool sema_expr_analyse_generic_call(SemaContext *context, Expr *ca
 	VECEACH(generic_cache, i)
 	{
 		TODO
-		if (generic_cache[i]->external_name == mangled_name)
+		if (generic_cache[i]->extname == mangled_name)
 		{
 			found = generic_cache[i];
 			break;
@@ -2565,12 +2565,12 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	assert(expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR);
 
 	// 1. Evaluate the expression to index.
-	Expr *subscripted = expr->subscript_expr.expr;
+	Expr *subscripted = exprptr(expr->subscript_expr.expr);
 	if (!sema_analyse_expr_lvalue(context, subscripted)) return false;
 	sema_deref_array_pointers(subscripted);
 
 	// 2. Evaluate the index.
-	Expr *index = expr->subscript_expr.index;
+	Expr *index = exprptr(expr->subscript_expr.index);
 	if (!sema_analyse_expr(context, index)) return false;
 
 	// 3. Check failability due to value.
@@ -2698,20 +2698,20 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			if (sema_expr_index_const_list(current_expr, index, expr)) return true;
 		}
 	}
-	expr->subscript_expr.expr = current_expr;
+	expr->subscript_expr.expr = exprid(current_expr);
 	expr->type = type_get_opt_fail(inner_type, failable);
 	return true;
 }
 
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 {
-	if (!sema_analyse_expr(context, expr->slice_expr.expr)) return false;
-	bool failable = IS_FAILABLE(expr->slice_expr.expr);
 	assert(expr->expr_kind == EXPR_SLICE);
-	Expr *subscripted = expr->slice_expr.expr;
+	Expr *subscripted = exprptr(expr->slice_expr.expr);
+	if (!sema_analyse_expr(context, subscripted)) return false;
+	bool failable = IS_FAILABLE(subscripted);
 	Type *type = type_flatten(subscripted->type);
-	Expr *start = expr->slice_expr.start;
-	Expr *end = expr->slice_expr.end;
+	Expr *start = exprptr(expr->slice_expr.start);
+	Expr *end = exprptrzero(expr->slice_expr.end);
 
 	Expr *current_expr = subscripted;
 
@@ -2721,7 +2721,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 		SEMA_ERROR(subscripted, "Cannot index '%s'.", type_to_error_string(subscripted->type));
 		return false;
 	}
-	expr->slice_expr.expr = current_expr;
+	expr->slice_expr.expr = exprid(current_expr);
 
 	if (!sema_analyse_expr(context, start)) return false;
 	if (end && !sema_analyse_expr(context, end)) return false;
@@ -2735,7 +2735,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	{
 		if (expr->slice_expr.start_from_back)
 		{
-			SEMA_ERROR(expr->slice_expr.start, "Indexing from the end is not allowed for pointers.");
+			SEMA_ERROR(start, "Indexing from the end is not allowed for pointers.");
 			return false;
 		}
 		if (!end)
@@ -2745,7 +2745,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 		}
 		if (end && expr->slice_expr.end_from_back)
 		{
-			SEMA_ERROR(expr->slice_expr.end, "Indexing from the end is not allowed for pointers.");
+			SEMA_ERROR(end, "Indexing from the end is not allowed for pointers.");
 			return false;
 		}
 	}
@@ -4247,14 +4247,15 @@ static inline bool sema_expr_analyse_expr_list(SemaContext *context, Expr *expr)
 
 static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr)
 {
-	Expr *inner = expr->cast_expr.expr;
-	bool success = sema_resolve_type_info(context, expr->cast_expr.type_info);
+	Expr *inner = exprptr(expr->cast_expr.expr);
+	TypeInfo *type_info = type_infoptr(expr->cast_expr.type_info);
+	bool success = sema_resolve_type_info(context, type_info);
 	if (!sema_analyse_expr(context, inner) || !success) return false;
 
-	Type *target_type = expr->cast_expr.type_info->type;
+	Type *target_type = type_info->type;
 	if (type_is_failable(target_type))
 	{
-		SEMA_ERROR(expr->cast_expr.type_info, "Casting to a failable type is not allowed.");
+		SEMA_ERROR(type_info, "Casting to a failable type is not allowed.");
 		return false;
 	}
 	if (inner->type == type_complist)
@@ -4278,7 +4279,7 @@ static inline bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *ex
 	// 1. Evaluate right side to required type.
 	if (!sema_analyse_expr_rhs(context, left_type->array.base, right, false)) return false;
 
-	Expr *left = expr->binary_expr.left;
+	Expr *left = exprptr(expr->binary_expr.left);
 	expr->type = right->type;
 	expr->expr_kind = EXPR_SLICE_ASSIGN;
 	expr->slice_assign_expr.left = exprid(left);
@@ -4289,7 +4290,7 @@ static inline bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *ex
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped)
 {
-	if (expr && expr->binary_expr.left->expr_kind == EXPR_SLICE)
+	if (expr && exprptr(expr->binary_expr.left)->expr_kind == EXPR_SLICE)
 	{
 		return sema_expr_analyse_slice_assign(context, expr, left_type, right, is_unwrapped);
 	}
@@ -4300,7 +4301,7 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 	{
 		if (is_unwrapped)
 		{
-			SEMA_ERROR(expr->binary_expr.left, "The variable is unwrapped in this context, if you don't want to unwrap it, use () around the variable to suppress unwrapping, like 'catch err = (x)' and 'try (x)'.");
+			SEMA_ERROR(exprptr(expr->binary_expr.left), "The variable is unwrapped in this context, if you don't want to unwrap it, use () around the variable to suppress unwrapping, like 'catch err = (x)' and 'try (x)'.");
 			return false;
 		}
 		if (!left_type) left_type = type_no_fail(right->type);
@@ -4463,7 +4464,7 @@ static bool sema_expr_analyse_ct_common_assign(SemaContext *context, Expr *expr,
 	assert(left_value);
 	assert(!IS_FAILABLE(left_value));
 
-	expr->binary_expr.left = left_value;
+	expr->binary_expr.left = exprid(left_value);
 
 	expr->binary_expr.operator = binaryop_assign_base_op(expr->binary_expr.operator);
 
@@ -4471,7 +4472,7 @@ static bool sema_expr_analyse_ct_common_assign(SemaContext *context, Expr *expr,
 
 	if (expr->expr_kind != EXPR_CONST)
 	{
-		SEMA_ERROR(expr->binary_expr.right, "Expected a constant expression.");
+		SEMA_ERROR(exprptr(expr->binary_expr.right), "Expected a constant expression.");
 		return false;
 	}
 
@@ -4854,8 +4855,8 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 		left = temp;
 		right_type = left_type;
 		left_type = left->type->canonical;
-		expr->binary_expr.left = left;
-		expr->binary_expr.right = right;
+		expr->binary_expr.left = exprid(left);
+		expr->binary_expr.right = exprid(right);
 	}
 
 	// 3. The "left" will now always be the pointer.
@@ -5568,7 +5569,7 @@ static bool sema_take_addr_of(Expr *inner)
 		case EXPR_GROUP:
 			return sema_take_addr_of(inner->inner_expr);
 		case EXPR_SUBSCRIPT:
-			return sema_take_addr_of(inner->subscript_expr.expr);
+			return sema_take_addr_of(exprptr(inner->subscript_expr.expr));
 		case EXPR_TYPEINFO:
 			SEMA_ERROR(inner, "It is not possible to take the address of a type.");
 			return false;
@@ -5867,8 +5868,8 @@ static inline bool sema_expr_analyse_bitassign(SemaContext *context, Expr *expr)
 static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr)
 {
 	assert(expr->resolve_status == RESOLVE_RUNNING);
-	Expr *left = expr->binary_expr.left;
-	Expr *right = expr->binary_expr.right;
+	Expr *left = exprptr(expr->binary_expr.left);
+	Expr *right = exprptr(expr->binary_expr.right);
 	// check if both sides have a binary operation where the precedence is unclear. Example: a ^ b | c
 	if (unclear_op_precedence(left, expr, right))
 	{
@@ -6488,12 +6489,12 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 	{
 		if (name_type == TOKEN_CT_EXTNAMEOF)
 		{
-			if (!decl->external_name)
+			if (!decl->extname)
 			{
 				SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
 				return false;
 			}
-			expr_rewrite_to_string(expr, decl->extname ? decl->extname : decl->external_name);
+			expr_rewrite_to_string(expr, decl->extname);
 			return true;
 		}
 		if (!decl->module || name_type == TOKEN_CT_NAMEOF || decl_is_local(decl))
@@ -6517,7 +6518,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 			SEMA_ERROR(main_var, "Only user defined types have an external name.");
 			return false;
 		}
-		expr_rewrite_to_string(expr, type->decl->extname ? type->decl->extname : type->decl->external_name);
+		expr_rewrite_to_string(expr, type->decl->extname);
 		return true;
 	}
 
@@ -7212,7 +7213,7 @@ void insert_widening_type(Expr *expr, Type *infer_type)
 				case BINARYOP_BIT_OR:
 				case BINARYOP_BIT_XOR:
 				case BINARYOP_BIT_AND:
-					if (!expr_is_simple(expr->binary_expr.left) || !expr_is_simple(expr->binary_expr.right)) return;
+					if (!expr_is_simple(exprptr(expr->binary_expr.left)) || !expr_is_simple(exprptr(expr->binary_expr.right))) return;
 					expr->type = infer_type;
 					expr->binary_expr.widen = true;
 					return;
@@ -7229,8 +7230,8 @@ void insert_widening_type(Expr *expr, Type *infer_type)
 			insert_widening_type(expr->inner_expr, infer_type);
 			return;
 		case EXPR_TERNARY:
-			if (!expr_is_simple(expr->ternary_expr.else_expr)) return;
-			if (expr->ternary_expr.then_expr && !expr_is_simple(expr->ternary_expr.else_expr)) return;
+			if (!exprid_is_simple(expr->ternary_expr.else_expr)) return;
+			if (expr->ternary_expr.then_expr && !exprid_is_simple(expr->ternary_expr.else_expr)) return;
 			expr->type = infer_type;
 			expr->ternary_expr.widen = true;
 			return;

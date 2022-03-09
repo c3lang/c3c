@@ -83,8 +83,8 @@ void llvm_emit_debug_global_var(GenContext *c, Decl *global)
 			c->debug.file,
 			global->name,
 			strlen(global->name),
-			global->external_name,
-			strlen(global->external_name),
+			global->extname,
+			strlen(global->extname),
 			c->debug.file,
 			loc.row ? loc.row : 1,
 			llvm_get_debug_type(c, global->type),
@@ -121,7 +121,7 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
 	                                                c->debug.file,
 	                                                decl->name, strlen(decl->name),
-	                                                decl->external_name, strlen(decl->external_name),
+	                                                decl->extname, strlen(decl->extname),
 	                                                c->debug.file,
 	                                                row,
 	                                                llvm_get_debug_type(c, decl->type),
@@ -298,7 +298,7 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 {
 	Decl *decl = type->decl;
 
-	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, decl->external_name, &decl->span, scope, LLVMDIFlagZero);
+	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, decl->extname, &decl->span, scope, LLVMDIFlagZero);
 	type->backend_debug_type = forward;
 
 	Type *enum_real_type = decl->enums.type_info->type->canonical;
@@ -339,7 +339,7 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 	LLVMDIFlags flags = 0;
 
 	// Create a forward reference in case of recursive data.
-	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, decl->external_name, &decl->span, scope, flags);
+	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, decl->extname, &decl->span, scope, flags);
 	type->backend_debug_type = forward;
 
 	LLVMMetadataRef *elements = NULL;
@@ -370,12 +370,12 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 		                                    LLVMDIFlagZero,
 		                                    elements, vec_size(members),
 		                                    c->debug.runtime_version,
-		                                    type->decl->name ? decl->external_name : "",
-		                                    type->decl->name ? strlen(decl->external_name) : 0);
+		                                    type->decl->name ? decl->extname : "",
+		                                    type->decl->name ? strlen(decl->extname) : 0);
 		LLVMMetadataReplaceAllUsesWith(forward, real);
 		return real;
 	}
-	return llvm_get_debug_struct(c, type, decl->name ? decl->external_name : "", elements, vec_size(elements), &decl->span, scope, LLVMDIFlagZero);
+	return llvm_get_debug_struct(c, type, decl->name ? decl->extname : "", elements, vec_size(elements), &decl->span, scope, LLVMDIFlagZero);
 }
 
 static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type)

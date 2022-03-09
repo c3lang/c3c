@@ -559,13 +559,13 @@ static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *re
 
 static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Expr *expr)
 {
-	llvm_emit_expr(c, value, expr->subscript_expr.expr);
+	llvm_emit_exprid(c, value, expr->subscript_expr.expr);
 	llvm_value_rvalue(c, value);
 	Type *vec = value->type;
 	assert(vec->type_kind == TYPE_VECTOR);
 	Type *element = vec->array.base;
 	LLVMValueRef vector = value->value;
-	llvm_emit_expr(c, value, expr->subscript_expr.index);
+	llvm_emit_exprid(c, value, expr->subscript_expr.index);
 	llvm_value_rvalue(c, value);
 	LLVMValueRef index = value->value;
 	if (expr->subscript_expr.from_back)
@@ -590,7 +590,9 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr *expr)
 {
 	bool is_value = expr->expr_kind == EXPR_SUBSCRIPT;
-	Type *parent_type = type_lowering(expr->subscript_expr.expr->type);
+	Expr *parent_expr = exprptr(expr->subscript_expr.expr);
+	Expr *index_expr = exprptr(expr->subscript_expr.index);
+	Type *parent_type = type_lowering(parent_expr->type);
 	if (is_value && parent_type->type_kind == TYPE_VECTOR)
 	{
 		llvm_emit_vector_subscript(c, value, expr);
@@ -598,13 +600,12 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	}
 	BEValue ref;
 	// First, get thing being subscripted.
-	llvm_emit_expr(c, value, expr->subscript_expr.expr);
+	llvm_emit_expr(c, value, parent_expr);
 	BEValue len = { .value = NULL };
 	TypeKind parent_type_kind = parent_type->type_kind;
 
 	// See if we need the length.
 	bool needs_len = false;
-	Expr *index_expr = expr->subscript_expr.index;
 	if (parent_type_kind == TYPE_SUBARRAY)
 	{
 		needs_len = active_target.feature.safe_mode || expr->subscript_expr.from_back;
@@ -636,9 +637,9 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 	}
 	if (needs_len && active_target.feature.safe_mode)
 	{
-		llvm_emit_array_bounds_check(c, &index, len.value, expr->subscript_expr.index->span);
+		llvm_emit_array_bounds_check(c, &index, len.value, index_expr->span);
 	}
-	llvm_emit_subscript_addr_with_base(c, value, value, &index, expr->subscript_expr.index->span);
+	llvm_emit_subscript_addr_with_base(c, value, value, &index, index_expr->span);
 	if (!is_value)
 	{
 		assert(llvm_value_is_addr(value));
@@ -999,7 +1000,7 @@ static inline void llvm_emit_bitassign_array(GenContext *c, BEValue *result, BEV
 }
 static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	Expr *lhs = expr->binary_expr.left;
+	Expr *lhs = exprptr(expr->binary_expr.left);
 	Expr *parent_expr = lhs->access_expr.parent;
 
 	// Grab the parent
@@ -1020,7 +1021,7 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 	else
 	{
 		// Otherwise just resolve the rhs and place it in be_value
-		llvm_emit_expr(c, be_value, expr->binary_expr.right);
+		llvm_emit_expr(c, be_value, exprptr(expr->binary_expr.right));
 	}
 
 	if (type_lowering(parent_expr->type)->type_kind == TYPE_ARRAY)
@@ -1396,12 +1397,12 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 
 static inline void gencontext_emit_cast_expr(GenContext *context, BEValue *be_value, Expr *expr)
 {
-	llvm_emit_expr(context, be_value, expr->cast_expr.expr);
+	llvm_emit_exprid(context, be_value, expr->cast_expr.expr);
 	llvm_emit_cast(context,
 	               expr->cast_expr.kind,
 	               be_value,
 	               expr->type,
-	               expr->cast_expr.expr->type);
+	               exprtype(expr->cast_expr.expr));
 }
 
 
@@ -2272,7 +2273,10 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 {
 	assert(slice->expr_kind == EXPR_SLICE);
 
-	Expr *parent_expr = slice->slice_expr.expr;
+	Expr *parent_expr = exprptr(slice->slice_expr.expr);
+	Expr *start = exprptr(slice->slice_expr.start);
+	Expr *end = exprptrzero(slice->slice_expr.end);
+
 	Type *parent_type = parent_expr->type->canonical;
 	BEValue parent_addr_x;
 	llvm_emit_expr(c, &parent_addr_x, parent_expr);
@@ -2295,9 +2299,6 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		default:
 			UNREACHABLE
 	}
-	// Endpoints
-	Expr *start = slice->slice_expr.start;
-	Expr *end = slice->slice_expr.end;
 
 	// Emit the start and end
 	Type *start_type = start->type->canonical;
@@ -2542,7 +2543,7 @@ static void gencontext_emit_logical_and_or(GenContext *c, BEValue *be_value, Exp
 	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, op == BINARYOP_AND ? "and.rhs" : "or.rhs");
 
 	// Generate left-hand condition and conditional branch
-	llvm_emit_expr(c, be_value, expr->binary_expr.left);
+	llvm_emit_expr(c, be_value, exprptr(expr->binary_expr.left));
 	llvm_value_rvalue(c, be_value);
 
 	start_block = c->current_block;
@@ -2558,7 +2559,7 @@ static void gencontext_emit_logical_and_or(GenContext *c, BEValue *be_value, Exp
 
 	llvm_emit_block(c, rhs_block);
 	BEValue rhs_value;
-	llvm_emit_expr(c, &rhs_value, expr->binary_expr.right);
+	llvm_emit_expr(c, &rhs_value, exprptr(expr->binary_expr.right));
 	llvm_value_rvalue(c, &rhs_value);
 
 	LLVMBasicBlockRef end_block = c->current_block;
@@ -3034,12 +3035,12 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 	}
 	else
 	{
-		llvm_emit_expr(c, &lhs, expr->binary_expr.left);
+		llvm_emit_expr(c, &lhs, exprptr(expr->binary_expr.left));
 	}
 	llvm_value_rvalue(c, &lhs);
 
 	BEValue rhs;
-	llvm_emit_expr(c, &rhs, expr->binary_expr.right);
+	llvm_emit_expr(c, &rhs, exprptr(expr->binary_expr.right));
 	llvm_value_rvalue(c, &rhs);
 
 	EMIT_LOC(c, expr);
@@ -3597,7 +3598,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		// TODO, we should add info about the error.
 		SourceSpan loc = expr->span;
 		File *file = source_file_by_id(loc.file_id);
-		llvm_emit_debug_output(c, "Runtime error force unwrap!", file->name, c->cur_func_decl->external_name, loc.row ? loc.row : 1);
+		llvm_emit_debug_output(c, "Runtime error force unwrap!", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
 		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 		LLVMBuildUnreachable(c->builder);
 		c->current_block = NULL;
@@ -3611,23 +3612,23 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 static bool expr_is_vector_index(Expr *expr)
 {
 	return expr->expr_kind == EXPR_SUBSCRIPT
-		&& type_lowering(expr->subscript_expr.expr->type)->type_kind == TYPE_VECTOR;
+		&& type_lowering(exprtype(expr->subscript_expr.expr))->type_kind == TYPE_VECTOR;
 }
 
 static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	Expr *left = expr->binary_expr.left;
+	Expr *left = exprptr(expr->binary_expr.left);
 	BinaryOp binary_op = expr->binary_expr.operator;
 	BEValue addr;
 	BEValue index;
 
 	// Emit the variable
-	llvm_emit_expr(c, &addr, left->subscript_expr.expr);
+	llvm_emit_exprid(c, &addr, left->subscript_expr.expr);
 	llvm_value_addr(c, &addr);
 	LLVMValueRef vector_value = llvm_load_value_store(c, &addr);
 
 	// Emit the index
-	llvm_emit_expr(c, &index, left->subscript_expr.index);
+	llvm_emit_exprid(c, &index, left->subscript_expr.index);
 	LLVMValueRef index_val = llvm_load_value_store(c, &index);
 
 	if (binary_op > BINARYOP_ASSIGN)
@@ -3640,7 +3641,7 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 	}
 	else
 	{
-		llvm_emit_expr(c, be_value, expr->binary_expr.right);
+		llvm_emit_expr(c, be_value, exprptr(expr->binary_expr.right));
 	}
 
 	LLVMValueRef new_value = LLVMBuildInsertElement(c->builder, vector_value, llvm_load_value_store(c, be_value), index_val, "elemset");
@@ -3650,7 +3651,7 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	BinaryOp binary_op = expr->binary_expr.operator;
-	if (binary_op >= BINARYOP_ASSIGN && expr_is_vector_index(expr->binary_expr.left))
+	if (binary_op >= BINARYOP_ASSIGN && expr_is_vector_index(exprptr(expr->binary_expr.left)))
 	{
 		llvm_emit_vector_assign_expr(c, be_value, expr);
 		return;
@@ -3660,7 +3661,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
 		assert(base_op != BINARYOP_ERROR);
 		BEValue addr;
-		llvm_emit_expr(c, &addr, expr->binary_expr.left);
+		llvm_emit_expr(c, &addr, exprptr(expr->binary_expr.left));
 		llvm_value_addr(c, &addr);
 		gencontext_emit_binary(c, be_value, expr, &addr, base_op);
 		llvm_store_value(c, &addr, be_value);
@@ -3668,16 +3669,16 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	}
 	if (binary_op == BINARYOP_ASSIGN)
 	{
-		Expr *left = expr->binary_expr.left;
+		Expr *left = exprptr(expr->binary_expr.left);
 		llvm_emit_expr(c, be_value, left);
 		assert(llvm_value_is_addr(be_value));
 		LLVMValueRef failable_ref = NULL;
-		if (expr->binary_expr.left->expr_kind == EXPR_IDENTIFIER)
+		if (left->expr_kind == EXPR_IDENTIFIER)
 		{
 			failable_ref = decl_failable_ref(left->identifier_expr.decl);
 			be_value->kind = BE_ADDRESS;
 		}
-		*be_value = llvm_emit_assign_expr(c, be_value, expr->binary_expr.right, failable_ref);
+		*be_value = llvm_emit_assign_expr(c, be_value, exprptr(expr->binary_expr.right), failable_ref);
 		return;
 	}
 
@@ -3691,13 +3692,14 @@ void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
 
 	// Generate condition and conditional branch
-	llvm_emit_expr(c, value, expr->ternary_expr.cond);
+	Expr *cond = exprptr(expr->ternary_expr.cond);
+	llvm_emit_expr(c, value, cond);
 
 	// Get the Rvalue version (in case we have an address)
 	llvm_value_rvalue(c, value);
 
 	LLVMValueRef lhs = value->value;
-	Type *cond_type = expr->ternary_expr.cond->type;
+	Type *cond_type = cond->type;
 
 	// If the cond is not a boolean, we need to do the cast.
 	if (value->kind != BE_BOOLEAN)
@@ -3707,7 +3709,7 @@ void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 		assert(value->kind == BE_BOOLEAN);
 	}
 
-	Expr *else_expr = expr->ternary_expr.else_expr;
+	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
 	if (expr_is_constant_eval(else_expr, CONSTANT_EVAL_ANY))
 	{
 		BEValue right;
@@ -3753,7 +3755,7 @@ void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 
 void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	if (expr->ternary_expr.then_expr == NULL) return gencontext_emit_elvis_expr(c, value, expr);
+	if (!expr->ternary_expr.then_expr) return gencontext_emit_elvis_expr(c, value, expr);
 
 	// Set up basic blocks, following Cone
 	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
@@ -3762,13 +3764,13 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 
 	// Generate condition and conditional branch
 
-	llvm_emit_expr(c, value, expr->ternary_expr.cond);
+	llvm_emit_exprid(c, value, expr->ternary_expr.cond);
 	llvm_value_rvalue(c, value);
 
 	assert(value->kind == BE_BOOLEAN);
 
-	Expr *else_expr = expr->ternary_expr.else_expr;
-	Expr *then_expr = expr->ternary_expr.then_expr;
+	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
+	Expr *then_expr = exprptr(expr->ternary_expr.then_expr);
 	if (expr_is_constant_eval(else_expr, CONSTANT_EVAL_ANY) && expr_is_constant_eval(then_expr, CONSTANT_EVAL_ANY))
 	{
 		BEValue left;

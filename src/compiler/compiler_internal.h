@@ -28,7 +28,6 @@ typedef uint64_t BitSize;
 
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
 #define INVALID_SPAN ((SourceSpan){ .row = 0 })
-#define MAX_LOCALS 0xFFF
 #define MAX_SCOPE_DEPTH 0x100
 #define MAX_STRING_BUFFER 0x10000
 #define INITIAL_SYMBOL_MAP 0x10000
@@ -50,6 +49,7 @@ typedef Type CanonicalType;
 typedef unsigned AstId;
 typedef unsigned ExprId;
 typedef unsigned DeclId;
+typedef unsigned TypeInfoId;
 
 typedef struct Int128_
 {
@@ -256,11 +256,23 @@ struct Type_
 	};
 };
 
+typedef enum
+{
+	TYPE_COMPRESSED_NONE = 0,
+	TYPE_COMPRESSED_PTR = 1,
+	TYPE_COMPRESSED_SUB = 2,
+	TYPE_COMPRESSED_SUBPTR = 3,
+	TYPE_COMPRESSED_PTRPTR = 4,
+	TYPE_COMPRESSED_PTRSUB = 5,
+	TYPE_COMPRESSED_SUBSUB = 6,
+} TypeInfoCompressedKind;
+
 struct TypeInfo_
 {
 	ResolveStatus resolve_status : 3;
 	TypeInfoKind kind : 6;
 	bool failable : 1;
+	TypeInfoCompressedKind subtype : 4;
 	Type *type;
 	SourceSpan span;
 
@@ -430,14 +442,11 @@ typedef struct FunctionSignature_
 	Variadic variadic : 3;
 	bool has_default : 1;
 	bool use_win64 : 1;
-	TypeInfo *returntype;
+	TypeInfoId returntype;
 	Decl** params;
 } FunctionSignature;
 
-typedef struct
-{
-	Decl **vars;
-} FuncAnnotations;
+
 
 typedef struct
 {
@@ -450,12 +459,10 @@ typedef struct
 		bool attr_extname : 1;
 		bool attr_naked : 1;
 	};
-
-	TypeInfo *type_parent;
+	TypeInfoId type_parent;
 	FunctionSignature function_signature;
-	Ast *body;
-	Decl *ret_var;
-	FuncAnnotations *annotations;
+	AstId body;
+	struct AstDocDirective_ *docs;
 } FuncDecl;
 
 typedef struct
@@ -491,13 +498,14 @@ typedef struct
 	{
 		bool attr_noreturn : 1;
 	};
-	struct Ast_ *body;
+	TypeInfoId type_parent; // May be 0
+	TypeInfoId rtype; // May be 0
+	AstId body;
 	Decl **parameters;
-	TypeInfo *type_parent; // May be null
-	TypeInfo *rtype; // May be null!
 	Decl **body_parameters;
 	const char *block_parameter;
 	struct CompilationUnit_ *unit;
+	struct AstDocDirective_ *docs;
 } MacroDecl;
 
 typedef struct
@@ -505,7 +513,7 @@ typedef struct
 	struct Ast_ **cases;
 	Decl **parameters;
 	Decl **body_parameters;
-	TypeInfo *rtype; // May be null!
+	TypeInfoId rtype; // May be 0!
 	Path *path; // For redefinition
 } GenericDecl;
 
@@ -559,9 +567,8 @@ typedef struct
 typedef struct Decl_
 {
 	const char *name;
+	const char *extname;
 	SourceSpan span;
-	const char *external_name;
-	struct AstDocDirective_ *docs;
 	DeclKind decl_kind : 7;
 	Visibility visibility : 3;
 	ResolveStatus resolve_status : 3;
@@ -572,6 +579,7 @@ typedef struct Decl_
 	bool escaping : 1;
 	bool is_value : 1;
 	bool is_autoimport : 1;
+	bool has_extname : 1;
 	OperatorOverload operator : 3;
 	union
 	{
@@ -579,7 +587,6 @@ typedef struct Decl_
 		int tb_register;
 		void *backend_value;
 	};
-	const char *extname;
 	AlignSize alignment;
 	const char *section;
 	AlignSize offset : 32;
@@ -633,7 +640,6 @@ typedef struct Decl_
 } Decl;
 
 
-
 typedef struct
 {
 	bool is_jump : 1;
@@ -650,16 +656,16 @@ typedef struct
 
 typedef struct
 {
-	Expr *cond;
-	Expr *then_expr; // May be null for elvis!
-	Expr *else_expr;
+	ExprId cond;
+	ExprId then_expr; // May be null for elvis!
+	ExprId else_expr;
 	bool widen : 1;
 } ExprTernary;
 
 typedef struct
 {
-	Expr *left;
-	Expr *right;
+	ExprId left;
+	ExprId right;
 	BinaryOp operator : 8;
 	bool widen : 1;
 } ExprBinary;
@@ -697,17 +703,17 @@ typedef struct
 typedef struct
 {
 	bool from_back : 1;
-	Expr *expr;
-	Expr *index;
+	ExprId expr;
+	ExprId index;
 } ExprSubscript;
 
 typedef struct
 {
 	bool start_from_back : 1;
 	bool end_from_back : 1;
-	Expr *expr;
-	Expr *start;
-	Expr *end;
+	ExprId expr;
+	ExprId start;
+	ExprId end;
 } ExprSlice;
 
 typedef struct
@@ -751,10 +757,16 @@ typedef struct
 
 typedef struct
 {
-	Path *path;
-	const char *ident;
-	bool is_const;
-	Decl *decl;
+	union
+	{
+		struct
+		{
+			Path *path;
+			const char *ident;
+			bool is_const;
+		};
+		Decl *decl;
+	};
 } ExprIdentifier;
 
 
@@ -792,12 +804,8 @@ typedef struct
 {
 	CastKind kind : 8;
 	bool implicit : 1;
-	Expr *expr;
-	TypeInfo *type_info;
-	union
-	{
-		size_t truncated_size;
-	};
+	ExprId expr;
+	TypeInfoId type_info;
 } ExprCast;
 
 typedef struct
@@ -924,14 +932,14 @@ typedef struct
 
 struct Expr_
 {
+	Type *type;
 	SourceSpan span;
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 4;
-	Type *type;
 	union {
 		ExprVariantSwitch variant_switch;           // 32
 		ExprLen len_expr;                           // 8
-		ExprCast cast_expr;                         // 32
+		ExprCast cast_expr;                         // 12
 		TypeInfo *type_expr;                        // 8
 		ExprConst const_expr;                       // 32
 		ExprArgv argv_expr;                         // 16
@@ -939,19 +947,19 @@ struct Expr_
 		Decl *decl_expr;                            // 8
 		ExprOrError or_error_expr;                  // 24
 		ExprSliceAssign slice_assign_expr;          // 8
-		ExprBinary binary_expr;                     // 24
-		ExprTernary ternary_expr;                   // 32
+		ExprBinary binary_expr;                     // 12
+		ExprTernary ternary_expr;                   // 16
 		ExprUnary unary_expr;                       // 16
 		Expr** try_unwrap_chain_expr;               // 8
 		ExprTryUnwrap try_unwrap_expr;              // 24
 		ExprCall call_expr;                         // 32
-		ExprSlice slice_expr;                       // 32
+		ExprSlice slice_expr;                       // 16
 		Expr *inner_expr;                           // 8
 		ExprCatchUnwrap catch_unwrap_expr;          // 24
-		ExprSubscript subscript_expr;               // 24
+		ExprSubscript subscript_expr;               // 12
 		ExprAccess access_expr;                     // 16
 		ExprDesignator designator_expr;             // 16
-		ExprIdentifier identifier_expr;             // 32
+		ExprIdentifier identifier_expr;             // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_macro_ident_expr;      // 24
@@ -970,9 +978,9 @@ struct Expr_
 		ExprBuiltin builtin_expr;                   // 16
 	};
 };
-//static_assert(sizeof(ExprCall) == 32, "Ooops");
+//static_assert(sizeof(ExprConst) == 32, "Not expected size");
 
-//static_assert(sizeof(Expr) == 56, "Ooops");
+//static_assert(sizeof(Expr) == 56, "Expr not expected size");
 
 typedef struct
 {
@@ -1640,6 +1648,11 @@ ARENA_DEF(expr, Expr)
 ARENA_DEF(decl, Decl)
 ARENA_DEF(type_info, TypeInfo)
 
+INLINE Expr *exprptrzero(ExprId id)
+{
+	return id ? exprptr(id) : NULL;
+}
+
 static inline bool ast_ok(Ast *ast) { return ast == NULL || ast->ast_kind != AST_POISONED; }
 static inline bool ast_poison(Ast *ast) { ast->ast_kind = AST_POISONED; return false; }
 bool ast_is_not_empty(Ast *ast);
@@ -1854,7 +1867,17 @@ void diag_verror_range(SourceSpan location, const char *message, va_list args);
 
 Expr *expr_new(ExprKind kind, SourceSpan start);
 bool expr_is_simple(Expr *expr);
+INLINE bool exprid_is_simple(ExprId expr_id) { return expr_is_simple(exprptr(expr_id)); }
 bool expr_is_pure(Expr *expr);
+INLINE bool exprid_is_pure(ExprId expr_id)
+{
+	return expr_id ? expr_is_pure(exprptr(expr_id)) : false;
+}
+INLINE Type *exprtype(ExprId expr_id)
+{
+	assert(expr_id);
+	return exprptr(expr_id)->type;
+}
 
 static inline bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
 static inline bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
@@ -1884,6 +1907,11 @@ typedef enum
 	CONSTANT_EVAL_NO_LINKTIME,
 } ConstantEvalKind;
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
+INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind)
+{
+	return expr ? expr_is_constant_eval(exprptr(expr), eval_kind) : true;
+}
+
 const char *expr_const_to_error_string(const ExprConst *expr);
 static inline bool expr_is_init_list(Expr *expr)
 {
@@ -1998,7 +2026,6 @@ int target_alloca_addr_space();
 
 void c_abi_func_create(FunctionPrototype *proto);
 
-bool token_is_type(TokenType type);
 bool token_is_any_type(TokenType type);
 const char *token_type_to_string(TokenType type);
 
@@ -2071,7 +2098,6 @@ static inline bool type_info_poison(TypeInfo *type);
 static inline bool type_kind_is_signed(TypeKind kind);
 static inline bool type_kind_is_unsigned(TypeKind kind);
 static inline bool type_kind_is_any_integer(TypeKind kind);
-static inline bool type_kind_is_derived(TypeKind kind);
 
 
 // ---- static inline function implementations.
@@ -2103,7 +2129,7 @@ static inline bool type_is_pointer_sized(Type *type)
 #define type_is_failable(type_) ((type_)->type_kind == TYPE_FAILABLE || (type_)->canonical->type_kind == TYPE_FAILABLE_ANY)
 #define type_is_failable_type(type_) ((type_)->type_kind == TYPE_FAILABLE)
 #define type_is_failable_any(type_) ((type_)->canonical->type_kind == TYPE_FAILABLE_ANY)
-#define type_is_void(type_) (type_->canonical->type_kind == TYPE_VOID)
+#define type_is_void(type_) ((type_)->canonical->type_kind == TYPE_VOID)
 
 static inline Type *type_with_added_failability(Expr *expr, bool add_failable)
 {
@@ -2358,19 +2384,6 @@ static inline bool type_underlying_is_numeric(Type *type)
 	return type_is_numeric(type_flatten(type));
 }
 
-static inline bool type_kind_is_derived(TypeKind kind)
-{
-	switch (kind)
-	{
-		case TYPE_ARRAY:
-		case TYPE_POINTER:
-		case TYPE_SUBARRAY:
-			return true;
-		default:
-			return false;
-	}
-}
-
 static inline bool type_is_structlike(Type *type)
 {
 	assert(type->canonical == type);
@@ -2457,6 +2470,7 @@ typedef struct CopyStruct_
 #define MACRO_COPY_EXPR(x) x = copy_expr(c, x)
 #define MACRO_COPY_EXPRID(x) x = exprid_copy_deep(c, x)
 #define MACRO_COPY_TYPE(x) x = copy_type_info(c, x)
+#define MACRO_COPY_TYPEID(x) x = type_info_id_copy_deep(c, x)
 #define MACRO_COPY_TYPE_LIST(x) x = type_info_copy_list_from_macro(c, x)
 #define MACRO_COPY_EXPR_LIST(x) x = copy_expr_list(c, x)
 #define MACRO_COPY_AST_LIST(x) x = copy_ast_list(c, x)
@@ -2472,7 +2486,6 @@ Expr **copy_expr_list(CopyStruct *c, Expr **expr_list);
 Expr *copy_expr(CopyStruct *c, Expr *source_expr);
 Ast *ast_copy_deep(CopyStruct *c, Ast *source);
 Ast **copy_ast_list(CopyStruct *c, Ast **to_copy);
-Decl *decl_copy_local_from_macro(CopyStruct *c, Decl *to_copy);
 Decl *copy_decl(CopyStruct *c, Decl *decl);
 Decl **copy_decl_list(CopyStruct *c, Decl **decl_list);
 TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source);
@@ -2542,5 +2555,5 @@ extern ArchOsTarget default_target;
 
 static inline const char *decl_get_extname(Decl *decl)
 {
-	return decl->extname ? decl->extname : decl->external_name;
+	return decl->extname;
 }

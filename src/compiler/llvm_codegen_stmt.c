@@ -40,7 +40,7 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		if (IS_FAILABLE(decl))
 		{
 			scratch_buffer_clear();
-			scratch_buffer_append(decl->external_name);
+			scratch_buffer_append(decl->extname);
 			scratch_buffer_append(".f");
 			decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_anyerr), scratch_buffer_to_string());
 		}
@@ -420,7 +420,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		{
 			SourceSpan loc = ast->span;
 			File  *file = source_file_by_id(loc.file_id);
-			llvm_emit_debug_output(c, "Infinite loop found", file->name, c->cur_func_decl->external_name, loc.row ? loc.row : 1);
+			llvm_emit_debug_output(c, "Infinite loop found", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
 			LLVMBuildUnreachable(c->builder);
 			LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
 			c->current_block = NULL;
@@ -888,8 +888,8 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 	// 1. Convert x > 0 && y > 2 => llvm.assume(x > 0) + llvm.assume(y > 2)
 	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator == BINARYOP_AND)
 	{
-		llvm_emit_assume(c, expr->binary_expr.left);
-		llvm_emit_assume(c, expr->binary_expr.right);
+		llvm_emit_assume(c, exprptr(expr->binary_expr.left));
+		llvm_emit_assume(c, exprptr(expr->binary_expr.right));
 		return;
 	}
 
@@ -899,8 +899,8 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 		Expr *inner = expr->unary_expr.expr;
 		if (inner->expr_kind == EXPR_BINARY && inner->binary_expr.operator == BINARYOP_OR)
 		{
-			Expr *left = inner->binary_expr.left;
-			Expr *right = inner->binary_expr.right;
+			Expr *left = exprptr(inner->binary_expr.left);
+			Expr *right = exprptr(inner->binary_expr.right);
 
 			expr->unary_expr.expr = left;
 			llvm_emit_assume(c, expr);
@@ -932,7 +932,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 	{
 		File *file = source_file_by_id(ast->span.file_id);
 		unsigned row = ast->span.row;
-		llvm_emit_debug_output(c, "Unreachable statement reached.", file->name, c->cur_func_decl->external_name, row ? row : 1);
+		llvm_emit_debug_output(c, "Unreachable statement reached.", file->name, c->cur_func_decl->extname, row ? row : 1);
 		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
 		LLVMBuildUnreachable(c->builder);
 		LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");

@@ -23,7 +23,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 	Expr *last = VECLAST(cond->cond_expr);
 	while (last->expr_kind == EXPR_CAST)
 	{
-		last = last->cast_expr.expr;
+		last = exprptr(last->cast_expr.expr);
 	}
 	if (!last || last->expr_kind != EXPR_CATCH_UNWRAP) return;
 
@@ -161,7 +161,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		AstId first = 0;
 		AstId *append_id = &first;
 		// Creating an assign statement
-		AstDocDirective *directives = context->current_function->docs;
+		AstDocDirective *directives = context->current_function->func_decl.docs;
 		VECEACH(directives, i)
 		{
 			AstDocDirective *directive = &directives[i];
@@ -519,7 +519,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator == BINARYOP_ASSIGN)
 	{
 		// No variable on the lhs? Then it can't be a variant unwrap.
-		Expr *left = expr->binary_expr.left;
+		Expr *left = exprptr(expr->binary_expr.left);
 		if (left->resolve_status ==  RESOLVE_DONE || left->expr_kind != EXPR_IDENTIFIER || left->identifier_expr.path) goto NORMAL_EXPR;
 
 		// Does the identifier exist in the parent scope?
@@ -527,14 +527,14 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		Decl *decl_for_ident = sema_find_symbol(context, left->identifier_expr.ident);
 		if (decl_for_ident) goto NORMAL_EXPR;
 
-		Expr *right = expr->binary_expr.right;
+		Expr *right = exprptr(expr->binary_expr.right);
 		bool is_deref = right->expr_kind == EXPR_UNARY && right->unary_expr.operator == UNARYOP_DEREF;
 		if (is_deref) right = right->unary_expr.expr;
 		if (!sema_analyse_expr_rhs(context, NULL, right, false)) return false;
 		if (right->type == type_get_ptr(type_any) && is_deref)
 		{
 			is_deref = false;
-			right = expr->binary_expr.right;
+			right = exprptr(expr->binary_expr.right);
 			if (!sema_analyse_expr_rhs(context, NULL, right, false)) return false;
 		}
 		if (right->type != type_any) goto NORMAL_EXPR;
@@ -625,7 +625,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 
 	// 2. If we get "void", either through a void call or an empty list,
 	//    signal that.
-	if (expr->type->type_kind == TYPE_VOID)
+	if (type_is_void(expr->type))
 	{
 		SEMA_ERROR(expr, cast_to_bool ? "Expected a boolean expression." : "Expected an expression resulting in a value.");
 		return false;
@@ -1011,7 +1011,8 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 		index_macro = value_by_ref ? by_ref : by_val;
 		index_type = index_macro->macro_decl.parameters[1]->type;
-		value_type = index_macro->macro_decl.rtype->type;
+		TypeInfoId rtype = index_macro->macro_decl.rtype;
+		value_type = rtype ? type_infoptr(rtype)->type : NULL;
 	}
 
 
@@ -1132,16 +1133,16 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	// Create __idx$ < __len$
 	Expr *binary = expr_new(EXPR_BINARY, idx_decl->span);
 	binary->binary_expr.operator = BINARYOP_LT;
-	binary->binary_expr.left = expr_variable(idx_decl);
+	binary->binary_expr.left = exprid(expr_variable(idx_decl));
 	if (len_decl)
 	{
-		binary->binary_expr.right = expr_variable(len_decl);
+		binary->binary_expr.right = exprid(expr_variable(len_decl));
 	}
 	else
 	{
 		Expr *rhs = expr_new(EXPR_CONST, enumerator->span);
 		expr_rewrite_to_int_const(rhs, type_isize, array_len, true);
-		binary->binary_expr.right = rhs;
+		binary->binary_expr.right = exprid(rhs);
 	}
 
 	// Create __idx$++
@@ -1167,8 +1168,8 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	Expr *subscript = expr_new(EXPR_SUBSCRIPT, var->span);
 	enum_val = expr_variable(temp);
 	if (is_addr) expr_insert_deref(enum_val);
-	subscript->subscript_expr.expr = enum_val;
-	subscript->subscript_expr.index = expr_variable(idx_decl);
+	subscript->subscript_expr.expr = exprid(enum_val);
+	subscript->subscript_expr.index = exprid(expr_variable(idx_decl));
 	if (value_by_ref)
 	{
 		Expr *addr = expr_new(EXPR_UNARY, subscript->span);
@@ -2427,9 +2428,8 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	context->next_switch = 0;
 	context->break_target = 0;
 	context->ensures = false;
-	func->func_decl.annotations = CALLOCS(FuncAnnotations);
-	func->func_decl.ret_var = NULL;
-	Ast *body = func->func_decl.body;
+	assert(func->func_decl.body);
+	Ast *body = astptr(func->func_decl.body);
 	SCOPE_START
 		assert(context->active_scope.depth == 1);
 		Decl **params = signature->params;
@@ -2439,10 +2439,10 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		}
 		AstId assert_first = 0;
 		AstId *next = &assert_first;
-		if (!sema_analyse_contracts(context, func->docs, &next)) return false;
+		if (!sema_analyse_contracts(context, func->func_decl.docs, &next)) return false;
 		if (func->func_decl.attr_naked)
 		{
-			AstId current = func->func_decl.body->compound_stmt.first_stmt;
+			AstId current = body->compound_stmt.first_stmt;
 			while (current)
 			{
 				Ast *stmt = ast_next(&current);
@@ -2460,13 +2460,12 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 			{
 				Ast *ast = new_ast(AST_COMPOUND_STMT, body->span);
 				ast->compound_stmt.first_stmt = assert_first;
-				ast_prepend(&func->func_decl.body->compound_stmt.first_stmt, ast);
+				ast_prepend(&body->compound_stmt.first_stmt, ast);
 			}
 			Type *canonical_rtype = type_no_fail(prototype->rtype)->canonical;
 			// Insert an implicit return
 			if (canonical_rtype == type_void)
 			{
-				func->func_decl.ret_var = NULL;
 				AstId *next_id = &body->compound_stmt.first_stmt;
 				SourceSpan span = body->span;
 				if (*next_id)
