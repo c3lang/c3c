@@ -6,7 +6,7 @@
 
 ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vector, bool is_reg)
 {
-	if (type->type_kind == TYPE_VOID) return abi_arg_ignore();
+	if (type_is_void(type)) return abi_arg_ignore();
 
 	if (type_lowering(type)->type_kind == TYPE_TYPEDEF)
 	{

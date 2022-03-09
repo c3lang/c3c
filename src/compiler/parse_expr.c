@@ -510,24 +510,23 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
 	assert(expr_ok(left_side));
 
 	Expr *expr_ternary = EXPR_NEW_EXPR(EXPR_TERNARY, left_side);
-	expr_ternary->ternary_expr.cond = left_side;
+	expr_ternary->ternary_expr.cond = exprid(left_side);
 
 
 	// Check for elvis
 	if (try_consume(c, TOKEN_ELVIS))
 	{
-		expr_ternary->ternary_expr.then_expr = NULL;
+		expr_ternary->ternary_expr.then_expr = 0;
 	}
 	else
 	{
 		advance_and_verify(c, TOKEN_QUESTION);
 		ASSIGN_EXPR_OR_RET(Expr * true_expr, parse_precedence(c, PREC_TERNARY + 1), poisoned_expr);
-		expr_ternary->ternary_expr.then_expr = true_expr;
+		expr_ternary->ternary_expr.then_expr = exprid(true_expr);
 		CONSUME_OR_RET(TOKEN_COLON, poisoned_expr);
 	}
 
-	ASSIGN_EXPR_OR_RET(Expr * false_expr, parse_precedence(c, PREC_TERNARY + 1), poisoned_expr);
-	expr_ternary->ternary_expr.else_expr = false_expr;
+	ASSIGN_EXPRID_OR_RET(expr_ternary->ternary_expr.else_expr, parse_precedence(c, PREC_TERNARY + 1), poisoned_expr);
 	RANGE_EXTEND_PREV(expr_ternary);
 	return expr_ternary;
 }
@@ -555,10 +554,9 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 		}
 		if (rules[c->tok].prefix)
 		{
-			ASSIGN_EXPR_OR_RET(Expr * cast_expr, parse_precedence(c, PREC_CALL), poisoned_expr);
+			ASSIGN_EXPRID_OR_RET(expr->cast_expr.expr, parse_precedence(c, PREC_CALL), poisoned_expr);
 			expr->expr_kind = EXPR_CAST;
-			expr->cast_expr.type_info = info;
-			expr->cast_expr.expr = cast_expr;
+			expr->cast_expr.type_info = type_infoid(info);
 		}
 	}
 	RANGE_EXTEND_PREV(expr);
@@ -659,8 +657,8 @@ static Expr *parse_binary(ParseContext *c, Expr *left_side)
 
 	Expr *expr = EXPR_NEW_EXPR(EXPR_BINARY, left_side);
 	expr->binary_expr.operator = binaryop_from_token(operator_type);
-	expr->binary_expr.left = left_side;
-	expr->binary_expr.right = right_side;
+	expr->binary_expr.left = exprid(left_side);
+	expr->binary_expr.right = exprid(right_side);
 
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -785,16 +783,16 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 	if (is_range)
 	{
 		subs_expr->expr_kind = EXPR_SLICE;
-		subs_expr->slice_expr.expr = left;
-		subs_expr->slice_expr.start = index;
+		subs_expr->slice_expr.expr = exprid(left);
+		subs_expr->slice_expr.start = exprid(index);
 		subs_expr->slice_expr.start_from_back = from_back;
-		subs_expr->slice_expr.end = end;
+		subs_expr->slice_expr.end = end ? exprid(end) : 0;
 		subs_expr->slice_expr.end_from_back = end_from_back;
 	}
 	else
 	{
-		subs_expr->subscript_expr.expr = left;
-		subs_expr->subscript_expr.index = index;
+		subs_expr->subscript_expr.expr = exprid(left);
+		subs_expr->subscript_expr.index = exprid(index);
 		subs_expr->subscript_expr.from_back = from_back;
 	}
 	return subs_expr;

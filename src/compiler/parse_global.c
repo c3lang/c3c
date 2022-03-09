@@ -3,7 +3,7 @@
 
 
 static Decl *parse_const_declaration(ParseContext *c, Visibility visibility);
-static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, bool is_interface);
+static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstDocDirective *docs, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 
 #define DECL_VAR_NEW(type__, var__, visible__) decl_new_var(symstr(c), c->span, type__, var__, visible__);
@@ -574,11 +574,32 @@ static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 	}
 	if (try_consume(c, TOKEN_RBRACKET))
 	{
-		TypeInfo *subarray = type_info_new(TYPE_INFO_SUBARRAY, type->span);
-		subarray->array.base = type;
-		subarray->array.len = NULL;
-		RANGE_EXTEND_PREV(subarray);
-		return subarray;
+		switch (type->subtype)
+		{
+			case TYPE_COMPRESSED_NONE:
+				type->subtype = TYPE_COMPRESSED_SUB;
+				break;
+			case TYPE_COMPRESSED_PTR:
+				type->subtype = TYPE_COMPRESSED_PTRSUB;
+				break;
+			case TYPE_COMPRESSED_SUB:
+				type->subtype = TYPE_COMPRESSED_SUBSUB;
+				break;
+			default:
+			{
+				TypeInfo *subarray = type_info_new(TYPE_INFO_SUBARRAY, type->span);
+				subarray->array.base = type;
+				subarray->array.len = NULL;
+				RANGE_EXTEND_PREV(subarray);
+				return subarray;
+			}
+		}
+		if (type->resolve_status == RESOLVE_DONE)
+		{
+			type->type = type_get_subarray(type->type);
+		}
+		RANGE_EXTEND_PREV(type);
+		return type;
 	}
 	TypeInfo *array = type_info_new(TYPE_INFO_ARRAY, type->span);
 	array->array.base = type;
@@ -633,11 +654,34 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 			case TOKEN_STAR:
 				advance(c);
 				{
-					TypeInfo *ptr_type = type_info_new(TYPE_INFO_POINTER, type_info->span);
-					assert(type_info);
-					ptr_type->pointer = type_info;
-					type_info = ptr_type;
+					switch (type_info->subtype)
+					{
+						case TYPE_COMPRESSED_NONE:
+							type_info->subtype = TYPE_COMPRESSED_PTR;
+							break;
+						case TYPE_COMPRESSED_PTR:
+							type_info->subtype = TYPE_COMPRESSED_PTRPTR;
+							break;
+						case TYPE_COMPRESSED_SUB:
+							type_info->subtype = TYPE_COMPRESSED_SUBPTR;
+							break;
+						default:
+						{
+							TypeInfo *ptr_type = type_info_new(TYPE_INFO_POINTER, type_info->span);
+							assert(type_info);
+							ptr_type->pointer = type_info;
+							type_info = ptr_type;
+							RANGE_EXTEND_PREV(type_info);
+							return type_info;
+						}
+					}
+					if (type_info->resolve_status == RESOLVE_DONE)
+					{
+						assert(type_info->type);
+						type_info->type = type_get_ptr(type_info->type);
+					}
 					RANGE_EXTEND_PREV(type_info);
+					break;
 				}
 				break;
 			default:
@@ -1461,7 +1505,7 @@ static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
 		decl->typedef_decl.is_func = true;
 		decl->typedef_decl.is_distinct = distinct;
 		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_failable_type(c), poisoned_decl);
-		decl->typedef_decl.function_signature.returntype = type_info;
+		decl->typedef_decl.function_signature.returntype = type_infoid(type_info);
 		if (!parse_parameter_list(c, decl->visibility, &(decl->typedef_decl.function_signature), true))
 		{
 			return poisoned_decl;
@@ -1660,7 +1704,7 @@ static inline bool parse_is_func_name(ParseContext *c)
  * macro_header ::= (type '!'?)? (type '.')? IDENT
  */
 static inline bool
-parse_func_macro_header(ParseContext *c, bool rtype_is_optional, TypeInfo **rtype_ref, TypeInfo **method_type_ref,
+parse_func_macro_header(ParseContext *c, bool rtype_is_optional, TypeInfoId *rtype_ref, TypeInfoId *method_type_ref,
                         const char **name_ref, SourceSpan *name_span)
 {
 	TypeInfo *rtype = NULL;
@@ -1707,8 +1751,8 @@ parse_func_macro_header(ParseContext *c, bool rtype_is_optional, TypeInfo **rtyp
 	*name_ref = symstr(c);
 	*name_span = c->span;
 	TRY_CONSUME_OR_RET(TOKEN_IDENT, "Expected a name here.", false);
-	*rtype_ref = rtype;
-	*method_type_ref = method_type;
+	*rtype_ref = rtype ? type_infoid(rtype) : 0;
+	*method_type_ref = method_type ? type_infoid(method_type) : 0;
 	return true;
 }
 
@@ -1724,8 +1768,8 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 	Decl *decl = decl_calloc();
 	decl->decl_kind = kind;
 	decl->visibility = visibility;
-	TypeInfo **rtype_ref = &decl->macro_decl.rtype;
-	TypeInfo **method_type_ref = &decl->macro_decl.type_parent;
+	TypeInfoId *rtype_ref = &decl->macro_decl.rtype;
+	TypeInfoId *method_type_ref = &decl->macro_decl.type_parent;
 	if (!parse_func_macro_header(c, true, rtype_ref, method_type_ref, &decl->name, &decl->span)) return poisoned_decl;
 
 
@@ -1735,7 +1779,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 
 	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
 
-	ASSIGN_AST_OR_RET(decl->macro_decl.body, parse_stmt(c), poisoned_decl);
+	ASSIGN_ASTID_OR_RET(decl->macro_decl.body, parse_stmt(c), poisoned_decl);
 	return decl;
 }
 
@@ -1923,7 +1967,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
  * @param visibility
  * @return Decl*
  */
-static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, bool is_interface)
+static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstDocDirective *docs, bool is_interface)
 {
 	if (tok_is(c, TOKEN_FUNC))
 	{
@@ -1936,9 +1980,10 @@ static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility
 	Decl *func = decl_calloc();
 	func->decl_kind = DECL_FUNC;
 	func->visibility = visibility;
-	TypeInfo **rtype_ref = &func->func_decl.function_signature.returntype;
-	TypeInfo **method_type_ref = &func->func_decl.type_parent;
-	if (!parse_func_macro_header(c, false, rtype_ref, method_type_ref, &func->name, &func->span)) return poisoned_decl;
+	func->func_decl.docs = docs;
+	TypeInfoId *rtypeid_ref = &func->func_decl.function_signature.returntype;
+	TypeInfoId *method_type_ref = &func->func_decl.type_parent;
+	if (!parse_func_macro_header(c, false, rtypeid_ref, method_type_ref, &func->name, &func->span)) return poisoned_decl;
 	if (!parse_parameter_list(c, visibility, &(func->func_decl.function_signature), is_interface)) return poisoned_decl;
 	if (!parse_attributes(c, &func->attributes)) return poisoned_decl;
 
@@ -1959,7 +2004,7 @@ static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility
 
 	TRY_EXPECT_OR_RET(TOKEN_LBRACE, "Expected the beginning of a block with '{'", poisoned_decl);
 
-	ASSIGN_AST_OR_RET(func->func_decl.body, parse_compound_stmt(c), poisoned_decl);
+	ASSIGN_ASTID_OR_RET(func->func_decl.body, parse_compound_stmt(c), poisoned_decl);
 
 	DEBUG_LOG("Finished parsing function %s", func->name);
 	return func;
@@ -2276,7 +2321,7 @@ Decl *parse_top_level_statement(ParseContext *c)
 		case TOKEN_FUNC:
 		case TOKEN_FN:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_func_definition(c, visibility, false), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_func_definition(c, visibility, docs, false), poisoned_decl);
 			break;
 		}
 		case TOKEN_CT_ASSERT:
@@ -2380,7 +2425,6 @@ Decl *parse_top_level_statement(ParseContext *c)
 			break;
 	}
 	assert(decl);
-	decl->docs = docs;
 	return decl;
 }
 

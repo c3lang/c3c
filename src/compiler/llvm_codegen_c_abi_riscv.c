@@ -242,7 +242,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 
 static ABIArgInfo *riscv_classify_return(Type *return_type)
 {
-	if (return_type->type_kind == TYPE_VOID) return abi_arg_ignore();
+	if (type_is_void(return_type)) return abi_arg_ignore();
 
 	unsigned arg_gpr_left = 2;
 	unsigned arg_fpr_left = platform_target.riscv.flen ? 2 : 0;

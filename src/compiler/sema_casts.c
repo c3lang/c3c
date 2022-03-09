@@ -11,6 +11,8 @@
 
 static bool bitstruct_cast(Expr *expr, Type *from_type, Type *to, Type *to_type);
 static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *to_type);
+static Expr *recursive_may_narrow_float(Expr *expr, Type *type);
+Expr *recursive_may_narrow_int(Expr *expr, Type *type);
 
 static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 {
@@ -19,8 +21,8 @@ static inline bool insert_cast(Expr *expr, CastKind kind, Type *type)
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_CAST;
 	expr->cast_expr.kind = kind;
-	expr->cast_expr.expr = inner;
-	expr->cast_expr.type_info = NULL;
+	expr->cast_expr.expr = exprid(inner);
+	expr->cast_expr.type_info = 0;
 	expr->type = type;
 	return true;
 }
@@ -689,6 +691,11 @@ bool may_convert_int_const_implicit(Expr *expr, Type *to_type)
 	return true;
 }
 
+INLINE Expr *recursive_may_narrow_floatid(ExprId expr, Type *type)
+{
+	return recursive_may_narrow_float(exprptr(expr), type);
+}
+
 Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 {
 	switch (expr->expr_kind)
@@ -705,9 +712,9 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 				case BINARYOP_DIV:
 				case BINARYOP_MOD:
 				{
-					Expr *res = recursive_may_narrow_float(expr->binary_expr.left, type);
+					Expr *res = recursive_may_narrow_float(exprptr(expr->binary_expr.left), type);
 					if (res) return res;
-					return recursive_may_narrow_float(expr->binary_expr.right, type);
+					return recursive_may_narrow_float(exprptr(expr->binary_expr.right), type);
 				}
 				case BINARYOP_BIT_OR:
 				case BINARYOP_BIT_XOR:
@@ -734,7 +741,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 				case BINARYOP_MOD_ASSIGN:
 				case BINARYOP_MULT_ASSIGN:
 				case BINARYOP_SUB_ASSIGN:
-					return recursive_may_narrow_float(expr->binary_expr.left, type);
+					return recursive_may_narrow_float(exprptr(expr->binary_expr.left), type);
 			}
 			UNREACHABLE
 		case EXPR_MACRO_BODY_EXPANSION:
@@ -774,15 +781,15 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 			return recursive_may_narrow_float(expr->rethrow_expr.inner, type);
 		case EXPR_TERNARY:
 		{
-			Expr *res = recursive_may_narrow_float(expr->ternary_expr.then_expr ? expr->ternary_expr.then_expr
-			                                                                    : expr->ternary_expr.cond, type);
+			Expr *res = recursive_may_narrow_floatid(expr->ternary_expr.then_expr ? expr->ternary_expr.then_expr
+			                                                                      : expr->ternary_expr.cond, type);
 			if (res) return res;
-			return recursive_may_narrow_float(expr->ternary_expr.else_expr, type);
+			return recursive_may_narrow_floatid(expr->ternary_expr.else_expr, type);
 		}
 		case EXPR_CAST:
 			if (expr->cast_expr.implicit)
 			{
-				return recursive_may_narrow_float(expr->cast_expr.expr, type);
+				return recursive_may_narrow_floatid(expr->cast_expr.expr, type);
 			}
 			return type_size(expr->type) > type_size(type) ? expr : NULL;
 		case EXPR_CONST:
@@ -846,6 +853,12 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 	UNREACHABLE
 }
 
+INLINE Expr *recursive_may_narrow_intid(ExprId expr, Type *type)
+{
+	assert(expr);
+	return recursive_may_narrow_int(exprptr(expr), type);
+}
+
 Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 {
 	switch (expr->expr_kind)
@@ -865,9 +878,9 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 				case BINARYOP_BIT_XOR:
 				case BINARYOP_BIT_AND:
 				{
-					Expr *res = recursive_may_narrow_int(expr->binary_expr.left, type);
+					Expr *res = recursive_may_narrow_int(exprptr(expr->binary_expr.left), type);
 					if (res) return res;
-					return recursive_may_narrow_int(expr->binary_expr.right, type);
+					return recursive_may_narrow_int(exprptr(expr->binary_expr.right), type);
 				}
 				case BINARYOP_AND:
 				case BINARYOP_OR:
@@ -891,7 +904,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 				case BINARYOP_SHR_ASSIGN:
 				case BINARYOP_SHL_ASSIGN:
 				case BINARYOP_SUB_ASSIGN:
-					return recursive_may_narrow_int(expr->binary_expr.left, type);
+					return recursive_may_narrow_int(exprptr(expr->binary_expr.left), type);
 			}
 			UNREACHABLE
 		case EXPR_MACRO_BODY_EXPANSION:
@@ -931,15 +944,15 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 			return recursive_may_narrow_int(expr->rethrow_expr.inner, type);
 		case EXPR_TERNARY:
 		{
-			Expr *res = recursive_may_narrow_int(expr->ternary_expr.then_expr ? expr->ternary_expr.then_expr
+			Expr *res = recursive_may_narrow_intid(expr->ternary_expr.then_expr ? expr->ternary_expr.then_expr
 			                                                                  : expr->ternary_expr.cond, type);
 			if (res) return res;
-			return recursive_may_narrow_int(expr->ternary_expr.else_expr, type);
+			return recursive_may_narrow_intid(expr->ternary_expr.else_expr, type);
 		}
 		case EXPR_CAST:
 			if (expr->cast_expr.implicit)
 			{
-				return recursive_may_narrow_int(expr->cast_expr.expr, type);
+				return recursive_may_narrow_intid(expr->cast_expr.expr, type);
 			}
 			return type_size(expr->type) > type_size(type) ? expr : NULL;
 		case EXPR_CONST:

@@ -378,7 +378,8 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 		switch (attribute)
 		{
 			case ATTRIBUTE_EXTNAME:
-				had = decl->extname != NULL;
+				had = decl->has_extname;
+				decl->has_extname = true;
 				decl->extname = attr->expr->const_expr.string.chars;
 				break;
 			case ATTRIBUTE_ALIGN:
@@ -651,7 +652,7 @@ static inline bool sema_analyse_function_param(SemaContext *context, Decl *param
 static inline Type *sema_analyse_function_signature(SemaContext *context, CallABI abi, FunctionSignature *signature, bool is_real_function)
 {
 	bool all_ok = true;
-	all_ok = sema_resolve_type_info(context, signature->returntype) && all_ok;
+	all_ok = sema_resolve_type_info(context, type_infoptr(signature->returntype)) && all_ok;
 	if (vec_size(signature->params) > MAX_PARAMS)
 	{
 		SEMA_ERROR(signature->params[MAX_PARAMS], "Number of params exceeds %d which is unsupported.", MAX_PARAMS);
@@ -886,7 +887,7 @@ static inline const char *name_by_decl(Decl *method_like)
 }
 
 
-static inline void find_operator_parameters(Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr)
+static inline void find_operator_parameters(Decl *method, TypeInfoId *rtype_ptr, Decl ***params_ptr)
 {
 	switch (method->decl_kind)
 	{
@@ -911,7 +912,8 @@ static inline void find_operator_parameters(Decl *method, TypeInfo **rtype_ptr, 
 
 static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters)
 {
-	find_operator_parameters(method, rtype_ptr, params_ptr);
+	TypeInfoId rtype_id;
+	find_operator_parameters(method, &rtype_id, params_ptr);
 	Decl **params = *params_ptr;
 	uint32_t param_count = vec_size(params);
 	if (param_count > parameters)
@@ -925,7 +927,7 @@ static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Dec
 		return false;
 	}
 
-	if (*rtype_ptr == NULL)
+	if (!rtype_id)
 	{
 		SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
 		return false;
@@ -939,6 +941,7 @@ static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Dec
 			return false;
 		}
 	}
+	*rtype_ptr = type_infoptr(rtype_id);
 	return true;
 }
 
@@ -1061,20 +1064,23 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 	}
 	if (method_like->operator && !sema_check_operator_method_validity(method_like)) return false;
 	REMINDER("Check multiple operator");
-	scratch_buffer_clear();
-	if (method_like->visibility <= VISIBLE_MODULE)
+	if (!method_like->has_extname)
 	{
-		scratch_buffer_append(parent->name);
-		scratch_buffer_append_char('.');
-		scratch_buffer_append(method_like->name);
+		scratch_buffer_clear();
+		if (method_like->visibility <= VISIBLE_MODULE)
+		{
+			scratch_buffer_append(parent->name);
+			scratch_buffer_append_char('.');
+			scratch_buffer_append(method_like->name);
+		}
+		else
+		{
+			scratch_buffer_append(parent->extname);
+			scratch_buffer_append("__");
+			scratch_buffer_append(method_like->name);
+		}
+		method_like->extname = scratch_buffer_copy();
 	}
-	else
-	{
-		scratch_buffer_append(parent->external_name);
-		scratch_buffer_append("__");
-		scratch_buffer_append(method_like->name);
-	}
-	method_like->external_name = scratch_buffer_copy();
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method_like->name);
 	if (parent->module == unit->module)
 	{
@@ -1090,13 +1096,13 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 {
-	TypeInfo *parent_type = decl->func_decl.type_parent;
+	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
 	if (!sema_resolve_type_info(context, parent_type)) return false;
 	if (!type_may_have_sub_elements(parent_type->type))
 	{
 		SEMA_ERROR(decl,
 		           "Methods can not be associated with '%s'",
-		           type_to_error_string(decl->func_decl.type_parent->type));
+		           type_to_error_string(parent_type->type));
 		return false;
 	}
 	Type *type = parent_type->type->canonical;
@@ -1356,7 +1362,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		return false;
 	}
 	FunctionSignature *signature = &decl->func_decl.function_signature;
-	Type *rtype = type_flatten_distinct(signature->returntype->type);
+	TypeInfo *rtype_info = type_infoptr(signature->returntype);
+	Type *rtype = type_flatten_distinct(rtype_info->type);
 	bool is_int_return = true;
 	bool is_err_return = false;
 	if (rtype->type_kind == TYPE_FAILABLE_ANY) is_err_return = true;
@@ -1364,17 +1371,17 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	{
 		if (rtype->failable->type_kind != TYPE_VOID)
 		{
-			SEMA_ERROR(signature->returntype, "The return type of 'main' cannot be a failable, unless it is 'void!'.");
+			SEMA_ERROR(rtype_info, "The return type of 'main' cannot be a failable, unless it is 'void!'.");
 			return false;
 		}
 		is_int_return = false;
 		is_err_return = true;
 	}
-	if (rtype->type_kind == TYPE_VOID) is_int_return = false;
+	if (type_is_void(rtype)) is_int_return = false;
 
 	if (type_is_integer(rtype) && rtype != type_cint)
 	{
-		SEMA_ERROR(signature->returntype, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint));
+		SEMA_ERROR(rtype_info, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint));
 		return false;
 	}
 	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
@@ -1421,7 +1428,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
 	function->name = kw_mainstub;
 	function->extname = kw_main;
-	function->func_decl.function_signature.returntype = type_info_new_base(type_cint, decl->span);
+	function->has_extname = true;
+	function->func_decl.function_signature.returntype = type_infoid(type_info_new_base(type_cint, decl->span));
 	Decl *param1 = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
 	Decl *param2 = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
 	Decl **main_params = NULL;
@@ -1460,8 +1468,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		not_expr->unary_expr.expr = try_expr;
 		not_expr->unary_expr.operator = UNARYOP_NOT;
 		Expr *cast_expr = expr_new(EXPR_CAST, decl->span);
-		cast_expr->cast_expr.expr = not_expr;
-		cast_expr->cast_expr.type_info = type_info_new_base(type_cint, decl->span);
+		cast_expr->cast_expr.expr = exprid(not_expr);
+		cast_expr->cast_expr.type_info = type_infoid(type_info_new_base(type_cint, decl->span));
 		ret_stmt->return_stmt.expr = cast_expr;
 	}
 	else
@@ -1476,7 +1484,8 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		ret_stmt->expr_stmt = c;
 	}
 	ast_append(&next, ret_stmt);
-	function->func_decl.body = body;
+	assert(body);
+	function->func_decl.body = astid(body);
 	context->unit->main_function = function;
 	return true;
 }
@@ -1503,7 +1512,8 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 				decl->operator = attr->operator;
 				break;
 			case ATTRIBUTE_EXTNAME:
-				had = decl->extname != NULL;
+				had = decl->has_extname;
+				decl->has_extname = true;
 				decl->extname = attr->expr->const_expr.string.chars;
 				break;
 			case ATTRIBUTE_SECTION:
@@ -1605,7 +1615,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 		}
 		decl_set_external_name(decl);
 	}
-	if (!sema_analyse_doc_header(decl->docs, decl->func_decl.function_signature.params, NULL)) return decl_poison(decl);
+	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.function_signature.params, NULL)) return decl_poison(decl);
 	decl->alignment = type_alloca_alignment(decl->type);
 	DEBUG_LOG("Function analysis done.");
 	return true;
@@ -1613,11 +1623,12 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 
 static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 {
-	if (!sema_resolve_type_info(context, decl->macro_decl.type_parent)) return false;
-	Type *parent_type = decl->macro_decl.type_parent->type;
+	TypeInfo *parent_type_info = type_infoptr(decl->macro_decl.type_parent);
+	if (!sema_resolve_type_info(context, parent_type_info)) return false;
+	Type *parent_type = parent_type_info->type;
 	if (!type_may_have_sub_elements(parent_type))
 	{
-		SEMA_ERROR(decl->macro_decl.type_parent,
+		SEMA_ERROR(parent_type_info,
 		           "Methods can not be associated with '%s'",
 		           type_to_error_string(parent_type));
 		return false;
@@ -1684,7 +1695,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		}
 	}
 
-	TypeInfo *rtype = decl->macro_decl.rtype;
+	TypeInfo *rtype = type_infoptr(decl->macro_decl.rtype);
 	if (decl->macro_decl.rtype && !sema_resolve_type_info(context, rtype)) return decl_poison(decl);
 	decl->macro_decl.unit = context->unit;
 	Decl **parameters = decl->macro_decl.parameters;
@@ -1772,7 +1783,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		if (!sema_check_no_duplicate_parameter(body_parameters, param, i, body_param_count)) return decl_poison(decl);
 		param->resolve_status = RESOLVE_DONE;
 	}
-	if (!sema_analyse_doc_header(decl->docs, decl->macro_decl.parameters, decl->macro_decl.body_parameters)) return decl_poison(decl);
+	if (!sema_analyse_doc_header(decl->macro_decl.docs, decl->macro_decl.parameters, decl->macro_decl.body_parameters)) return decl_poison(decl);
 	if (decl->macro_decl.type_parent)
 	{
 		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);
@@ -1809,7 +1820,8 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl)
 		switch (attribute)
 		{
 			case ATTRIBUTE_EXTNAME:
-				had = decl->extname != NULL;
+				had = decl->has_extname;
+				decl->has_extname = true;
 				decl->extname = attr->expr->const_expr.string.chars;
 				break;
 			case ATTRIBUTE_SECTION:
@@ -1978,13 +1990,13 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 
 	decl->type = decl->var.type_info->type;
 	if (!sema_analyse_decl_type(context, decl->type, decl->var.type_info->span)) return false;
-	if (decl->var.is_static)
+	if (decl->var.is_static && !decl->has_extname)
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(context->current_function->name);
 		scratch_buffer_append_char('.');
 		scratch_buffer_append(decl->name);
-		decl->external_name = scratch_buffer_copy();
+		decl->extname = scratch_buffer_copy();
 	}
 
 	bool type_is_inferred = decl->type->type_kind == TYPE_INFERRED_ARRAY;

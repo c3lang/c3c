@@ -325,11 +325,11 @@ Decl *sema_find_extension_method_in_module(Module *module, Type *type, const cha
 		switch (extension->decl_kind)
 		{
 			case DECL_FUNC:
-				if (extension->func_decl.type_parent->type == type) return extension;
+				if (type_infoptr(extension->func_decl.type_parent)->type == type) return extension;
 				break;
 			case DECL_MACRO:
 			case DECL_GENERIC:
-				if (extension->macro_decl.type_parent->type == type) return extension;
+				if (type_infoptr(extension->macro_decl.type_parent)->type == type) return extension;
 				break;
 			default:
 				UNREACHABLE
@@ -488,15 +488,7 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 		decl_poison(other);
 		return false;
 	}
-ADD_VAR:;
-	Decl ***vars = &context->current_function->func_decl.annotations->vars;
-	unsigned num_vars = vec_size(*vars);
-	if (num_vars == MAX_LOCALS - 1)
-	{
-		SEMA_ERROR(decl, "Reached the maximum number of locals.");
-		return false;
-	}
-	vec_add(*vars, decl);
+ADD_VAR:
 	decl->resolve_status = RESOLVE_DONE;
 	return sema_append_local(context, decl);
 }

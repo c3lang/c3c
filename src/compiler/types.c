@@ -1001,7 +1001,7 @@ void type_func_prototype_init(uint32_t capacity)
 static uint32_t hash_function(FunctionSignature *sig)
 {
 	uintptr_t hash = (unsigned)sig->variadic;
-	hash = hash * 31 + (uintptr_t)sig->returntype->type->canonical;
+	hash = hash * 31 + (uintptr_t)type_infoptr(sig->returntype)->type->canonical;
 	Decl **params = sig->params;
 	VECEACH(params, i)
 	{
@@ -1018,7 +1018,7 @@ static int compare_function(FunctionSignature *sig, FunctionPrototype *proto)
 	Type **other_params = proto->params;
 	unsigned param_count = vec_size(params);
 	if (param_count != vec_size(other_params)) return -1;
-	if (sig->returntype->type->canonical != proto->rtype->canonical) return -1;
+	if (type_infoptr(sig->returntype)->type->canonical != proto->rtype->canonical) return -1;
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
@@ -1034,7 +1034,7 @@ static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI a
 	unsigned param_count = vec_size(sig->params);
 	FunctionPrototype *proto = CALLOCS(FunctionPrototype);
 	proto->variadic = sig->variadic;
-	Type *rtype = sig->returntype->type;
+	Type *rtype = type_infoptr(sig->returntype)->type;
 	proto->rtype = rtype;
 	if (type_is_failable(rtype))
 	{
@@ -1439,7 +1439,7 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 	}
 
 	// void * is always max.
-	if (pointer_type->type_kind == TYPE_VOID) return type_voidptr;
+	if (type_is_void(pointer_type)) return type_voidptr;
 
 	if (pointer_type->type_kind == TYPE_POINTER && other_pointer_type->type_kind == TYPE_ARRAY)
 	{

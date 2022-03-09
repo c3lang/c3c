@@ -404,7 +404,7 @@ void llvm_emit_return_implicit(GenContext *c)
 
 void llvm_emit_function_body(GenContext *context, Decl *decl)
 {
-	DEBUG_LOG("Generating function %s.", decl->external_name);
+	DEBUG_LOG("Generating function %s.", decl->extname);
 	assert(decl->backend_ref);
 
 	bool emit_debug = llvm_use_debug(context);
@@ -472,9 +472,8 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 
 	LLVMSetCurrentDebugLocation2(context->builder, NULL);
 
-	if (decl->func_decl.ret_var) llvm_emit_and_set_decl_alloca(context, decl->func_decl.ret_var);
-
-	AstId current = decl->func_decl.body->compound_stmt.first_stmt;
+	assert(decl->func_decl.body);
+	AstId current = astptr(decl->func_decl.body)->compound_stmt.first_stmt;
 	while (current)
 	{
 		llvm_emit_stmt(context, ast_next(&current));
@@ -568,7 +567,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_FUNC);
 	// Resolve function backend type for function.
-	LLVMValueRef function = LLVMAddFunction(c->module, decl->extname ? decl->extname : decl->external_name, llvm_get_type(c, decl->type));
+	LLVMValueRef function = LLVMAddFunction(c->module, decl->extname, llvm_get_type(c, decl->type));
 	decl->backend_ref = function;
 	FunctionPrototype *prototype = decl->type->func.prototype;
 

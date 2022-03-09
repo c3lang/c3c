@@ -35,9 +35,13 @@ void compiler_init(const char *std_lib_dir)
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
 	vmem_init(&ast_arena, 4 * 1024);
+	ast_calloc();
 	vmem_init(&expr_arena, 4 * 1024);
+	expr_calloc();
 	vmem_init(&decl_arena, 1024);
+	decl_calloc();
 	vmem_init(&type_info_arena, 1024);
+	type_info_calloc();
 	// Create zero index value.
 	if (std_lib_dir)
 	{

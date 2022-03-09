@@ -395,11 +395,6 @@ const char *token_type_to_string(TokenType type)
 	UNREACHABLE
 }
 
-bool token_is_type(TokenType type)
-{
-	return type >= TOKEN_VOID && type <= TOKEN_TYPEID;
-}
-
 bool token_is_any_type(TokenType type)
 {
 	return (type >= TOKEN_VOID && type <= TOKEN_TYPEID) || type == TOKEN_CT_TYPE_IDENT || type == TOKEN_TYPE_IDENT;

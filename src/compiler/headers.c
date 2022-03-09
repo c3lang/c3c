@@ -95,17 +95,17 @@ static void header_print_type(FILE *file, Type *type)
 			return;
 		case TYPE_ENUM:
 		case TYPE_ERRTYPE:
-			OUTPUT("enum %s__", type->decl->external_name);
+			OUTPUT("enum %s__", type->decl->extname);
 			return;
 		case TYPE_FLEXIBLE_ARRAY:
 			TODO
 		case TYPE_FUNC:
 			TODO
 		case TYPE_STRUCT:
-			OUTPUT("struct %s__", type->decl->external_name);
+			OUTPUT("struct %s__", type->decl->extname);
 			return;
 		case TYPE_UNION:
-			OUTPUT("union %s__", type->decl->external_name);
+			OUTPUT("union %s__", type->decl->extname);
 			return;
 		case TYPE_DISTINCT:
 			header_print_type(file, type->decl->distinct_decl.base_type);
@@ -147,12 +147,12 @@ static void header_gen_struct(FILE *file, int indent, Decl *decl)
 {
 	if (!indent)
 	{
-		OUTPUT("typedef struct %s__ %s;\n", decl->external_name, decl->external_name);
+		OUTPUT("typedef struct %s__ %s;\n", decl->extname, decl->extname);
 	}
 	INDENT();
 	if (decl->name)
 	{
-		OUTPUT("struct %s__\n{\n", decl->external_name);
+		OUTPUT("struct %s__\n{\n", decl->extname);
 	}
 	else
 	{
@@ -165,8 +165,8 @@ static void header_gen_struct(FILE *file, int indent, Decl *decl)
 
 static void header_gen_union(FILE *file, int indent, Decl *decl)
 {
-	OUTPUT("typedef union %s__ %s;\n", decl->external_name, decl->external_name);
-	OUTPUT("union %s__\n{\n", decl->external_name);
+	OUTPUT("typedef union %s__ %s;\n", decl->extname, decl->extname);
+	OUTPUT("union %s__\n{\n", decl->extname);
 	header_gen_members(file, indent, decl->strukt.members);
 	OUTPUT("};\n");
 }
@@ -178,8 +178,8 @@ static void header_gen_enum(FILE *file, int indent, Decl *decl)
 
 static void header_gen_err(FILE *file, int indent, Decl *decl)
 {
-	OUTPUT("typedef struct %s_error__ %s_error;\n", decl->external_name, decl->external_name);
-	OUTPUT("struct %s_error__\n{\n", decl->external_name);
+	OUTPUT("typedef struct %s_error__ %s_error;\n", decl->extname, decl->extname);
+	OUTPUT("struct %s_error__\n{\n", decl->extname);
 	header_gen_members(file, indent, decl->strukt.members);
 	OUTPUT("};\n");
 }

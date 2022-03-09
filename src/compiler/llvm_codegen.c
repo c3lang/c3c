@@ -267,7 +267,7 @@ static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl
 	if (IS_FAILABLE(decl))
 	{
 		scratch_buffer_clear();
-		scratch_buffer_append(decl->external_name);
+		scratch_buffer_append(decl->extname);
 		scratch_buffer_append(".f");
 		decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_anyerr), scratch_buffer_to_string());
 		LLVMSetUnnamedAddress(decl->var.failable_ref, LLVMGlobalUnnamedAddr);
@@ -364,7 +364,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
-	LLVMValueRef global_ref = decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname ? decl->extname : decl->external_name);
+	LLVMValueRef global_ref = decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname);
 	LLVMSetThreadLocal(global_ref, decl->var.is_threadlocal);
 	if (decl->var.is_addr)
 	{
@@ -680,7 +680,7 @@ void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl)
 		LLVMTypeRef element_type = llvm_get_type(c, type_voidptr);
 		LLVMTypeRef elements_type = LLVMArrayType(element_type, elements);
 		scratch_buffer_clear();
-		scratch_buffer_append(decl->external_name);
+		scratch_buffer_append(decl->extname);
 		scratch_buffer_append("$elements");
 		LLVMValueRef enum_elements = LLVMAddGlobal(c->module, elements_type, scratch_buffer_to_string());
 		LLVMSetGlobalConstant(enum_elements, 1);

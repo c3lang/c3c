@@ -122,7 +122,7 @@ bool context_set_module(ParseContext *context, Path *path, const char **generic_
 
 void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 {
-	if (!decl->module || decl->module == unit->module || !decl->external_name) return;
+	if (!decl->module || decl->module == unit->module || !decl->extname) return;
 	VECEACH(unit->external_symbol_list, i)
 	{
 		if (decl == unit->external_symbol_list[i]) return;

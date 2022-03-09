@@ -242,6 +242,12 @@ bool sema_resolve_type_shallow(SemaContext *context, TypeInfo *type_info, bool a
 	}
 
 	type_info->resolve_status = RESOLVE_RUNNING;
+	TypeInfoCompressedKind kind = type_info->subtype;
+	if (kind != TYPE_COMPRESSED_NONE)
+	{
+		allow_inferred_type = false;
+		in_shallow = true;
+	}
 RETRY:
 	switch (type_info->kind)
 	{
@@ -308,6 +314,29 @@ RETRY:
 			break;
 	}
 APPEND_QUALIFIERS:
+	switch (kind)
+	{
+		case TYPE_COMPRESSED_NONE:
+			break;
+		case TYPE_COMPRESSED_PTR:
+			type_info->type = type_get_ptr(type_info->type);
+			break;
+		case TYPE_COMPRESSED_SUB:
+			type_info->type = type_get_subarray(type_info->type);
+			break;
+		case TYPE_COMPRESSED_SUBPTR:
+			type_info->type = type_get_ptr(type_get_subarray(type_info->type));
+			break;
+		case TYPE_COMPRESSED_PTRPTR:
+			type_info->type = type_get_ptr(type_get_ptr(type_info->type));
+			break;
+		case TYPE_COMPRESSED_PTRSUB:
+			type_info->type = type_get_subarray(type_get_ptr(type_info->type));
+			break;
+		case TYPE_COMPRESSED_SUBSUB:
+			type_info->type = type_get_subarray(type_get_subarray(type_info->type));
+			break;
+	}
 	if (type_info->failable)
 	{
 		Type *type = type_info->type;

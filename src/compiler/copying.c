@@ -89,6 +89,12 @@ static TypeInfo** type_info_copy_list_from_macro(CopyStruct *c, TypeInfo **to_co
 	return result;
 }
 
+INLINE TypeInfoId type_info_id_copy_deep(CopyStruct *c, TypeInfoId source)
+{
+	if (!source) return 0;
+	return type_infoid(copy_type_info(c, type_infoptr(source)));
+}
+
 INLINE AstId astid_copy_deep(CopyStruct *c, AstId source)
 {
 	if (!source) return 0;
@@ -210,9 +216,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPRID(expr->slice_assign_expr.right);
 			return expr;
 		case EXPR_SLICE:
-			MACRO_COPY_EXPR(expr->slice_expr.expr);
-			MACRO_COPY_EXPR(expr->slice_expr.start);
-			MACRO_COPY_EXPR(expr->slice_expr.end);
+			MACRO_COPY_EXPRID(expr->slice_expr.expr);
+			MACRO_COPY_EXPRID(expr->slice_expr.start);
+			MACRO_COPY_EXPRID(expr->slice_expr.end);
 			return expr;
 		case EXPR_LEN:
 			MACRO_COPY_EXPR(expr->len_expr.inner);
@@ -260,13 +266,13 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			return expr;
 		case EXPR_BINARY:
 		case EXPR_BITASSIGN:
-			MACRO_COPY_EXPR(expr->binary_expr.left);
-			MACRO_COPY_EXPR(expr->binary_expr.right);
+			MACRO_COPY_EXPRID(expr->binary_expr.left);
+			MACRO_COPY_EXPRID(expr->binary_expr.right);
 			return expr;
 		case EXPR_TERNARY:
-			MACRO_COPY_EXPR(expr->ternary_expr.cond);
-			MACRO_COPY_EXPR(expr->ternary_expr.then_expr);
-			MACRO_COPY_EXPR(expr->ternary_expr.else_expr);
+			MACRO_COPY_EXPRID(expr->ternary_expr.cond);
+			MACRO_COPY_EXPRID(expr->ternary_expr.then_expr);
+			MACRO_COPY_EXPRID(expr->ternary_expr.else_expr);
 			return expr;
 		case EXPR_UNARY:
 		case EXPR_POST_UNARY:
@@ -290,8 +296,8 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			return expr;
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:
-			MACRO_COPY_EXPR(expr->subscript_expr.expr);
-			MACRO_COPY_EXPR(expr->subscript_expr.index);
+			MACRO_COPY_EXPRID(expr->subscript_expr.expr);
+			MACRO_COPY_EXPRID(expr->subscript_expr.index);
 			return expr;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
@@ -307,8 +313,8 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPR_LIST(expr->expression_list);
 			return expr;
 		case EXPR_CAST:
-			MACRO_COPY_EXPR(expr->cast_expr.expr);
-			MACRO_COPY_TYPE(expr->cast_expr.type_info);
+			MACRO_COPY_EXPRID(expr->cast_expr.expr);
+			MACRO_COPY_TYPEID(expr->cast_expr.type_info);
 			return expr;
 		case EXPR_SCOPED_EXPR:
 			SCOPE_FIXUP_START
@@ -503,16 +509,6 @@ Decl **copy_decl_list(CopyStruct *c, Decl **decl_list)
 	return result;
 }
 
-Decl *decl_copy_local_from_macro(CopyStruct *c, Decl *to_copy)
-{
-	if (!to_copy) return NULL;
-	assert(to_copy->decl_kind == DECL_VAR);
-	Decl *copy = decl_copy(to_copy);
-	MACRO_COPY_TYPE(copy->var.type_info);
-	MACRO_COPY_EXPR(copy->var.init_expr);
-	return copy;
-}
-
 TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 {
 	if (!source) return NULL;
@@ -551,7 +547,7 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 static void copy_function_signature_deep(CopyStruct *c, FunctionSignature *signature)
 {
 	MACRO_COPY_DECL_LIST(signature->params);
-	MACRO_COPY_TYPE(signature->returntype);
+	MACRO_COPY_TYPEID(signature->returntype);
 }
 void copy_decl_type(Decl *decl)
 {
@@ -583,7 +579,6 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	if (!decl) return NULL;
 	Decl *copy = decl_copy(decl);
 	copy_reg_ref(c, decl, copy);
-	copy->docs = doc_directive_copy(c, copy->docs);
 	copy->attributes = copy_attributes(c, copy->attributes);
 	switch (decl->decl_kind)
 	{
@@ -607,10 +602,10 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->enums.values);
 			break;
 		case DECL_FUNC:
-			MACRO_COPY_TYPE(copy->func_decl.type_parent);
-			copy->func_decl.annotations = NULL;
+			MACRO_COPY_TYPEID(copy->func_decl.type_parent);
+			copy->func_decl.docs = doc_directive_copy(c, copy->func_decl.docs);
 			copy_function_signature_deep(c, &copy->func_decl.function_signature);
-			MACRO_COPY_AST(copy->func_decl.body);
+			MACRO_COPY_ASTID(copy->func_decl.body);
 			break;
 		case DECL_VAR:
 			MACRO_COPY_TYPE(copy->var.type_info);
@@ -671,10 +666,11 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_GENERIC:
 		case DECL_MACRO:
-			MACRO_COPY_TYPE(decl->macro_decl.type_parent);
+			copy->macro_decl.docs = doc_directive_copy(c, copy->macro_decl.docs);
+			MACRO_COPY_TYPEID(decl->macro_decl.type_parent);
 			MACRO_COPY_DECL_LIST(decl->macro_decl.parameters);
-			MACRO_COPY_AST(decl->macro_decl.body);
-			MACRO_COPY_TYPE(decl->macro_decl.rtype);
+			MACRO_COPY_ASTID(decl->macro_decl.body);
+			MACRO_COPY_TYPEID(decl->macro_decl.rtype);
 			break;
 		case DECL_CT_SWITCH:
 			MACRO_COPY_DECL_LIST(decl->ct_switch_decl.cases);

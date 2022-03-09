@@ -19,7 +19,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 {
 	type = type_lowering(type);
 
-	if (type->type_kind == TYPE_VOID) return abi_arg_ignore();
+	if (type_is_void(type)) return abi_arg_ignore();
 
 	if (type->type_kind == TYPE_VECTOR && aarch64_illegal_vector(type))
 	{
@@ -90,7 +90,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 {
 	type = type_lowering(type);
 
-	if (type->type_kind == TYPE_VOID) return abi_arg_ignore();
+	if (type_is_void(type)) return abi_arg_ignore();
 
 	if (type->type_kind == TYPE_VECTOR && aarch64_illegal_vector(type))
 	{

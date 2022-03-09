@@ -118,17 +118,18 @@ const char *decl_to_name(Decl *decl)
 }
 void decl_set_external_name(Decl *decl)
 {
+	if (decl->has_extname) return;
 	if (decl->visibility == VISIBLE_EXTERN)
 	{
 		assert(decl->name);
-		decl->external_name = decl->name;
+		decl->extname = decl->name;
 		return;
 	}
 	scratch_buffer_clear();
 	scratch_buffer_append(decl->module->name->module);
 	scratch_buffer_append(".");
 	scratch_buffer_append(decl->name ? decl->name : "anon");
-	decl->external_name = scratch_buffer_copy();
+	decl->extname = scratch_buffer_copy();
 }
 
 Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, Visibility visibility)
@@ -217,10 +218,6 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 	return decl;
 }
 
-INLINE bool exprid_is_pure(ExprId expr_id)
-{
-	return expr_is_pure(exprptr(expr_id));
-}
 
 bool expr_is_pure(Expr *expr)
 {
@@ -244,7 +241,7 @@ bool expr_is_pure(Expr *expr)
 			return false;
 		case EXPR_BINARY:
 			if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return false;
-			return expr_is_pure(expr->binary_expr.right) && expr_is_pure(expr->binary_expr.left);
+			return exprid_is_pure(expr->binary_expr.right) && exprid_is_pure(expr->binary_expr.left);
 		case EXPR_UNARY:
 			switch (expr->unary_expr.operator)
 			{
@@ -289,7 +286,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_FORCE_UNWRAP:
 			return false;
 		case EXPR_CAST:
-			return expr_is_pure(expr->cast_expr.expr);
+			return exprid_is_pure(expr->cast_expr.expr);
 		case EXPR_EXPRESSION_LIST:
 			VECEACH(expr->expression_list, i)
 			{
@@ -302,17 +299,17 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_LEN:
 			return expr_is_pure(expr->len_expr.inner);
 		case EXPR_SLICE:
-			return expr_is_pure(expr->slice_expr.expr)
-			       && expr_is_pure(expr->slice_expr.start)
-			       && expr_is_pure(expr->slice_expr.end);
+			return exprid_is_pure(expr->slice_expr.expr)
+			       && exprid_is_pure(expr->slice_expr.start)
+			       && exprid_is_pure(expr->slice_expr.end);
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:
-			return expr_is_pure(expr->subscript_expr.expr)
-			       && expr_is_pure(expr->subscript_expr.index);
+			return exprid_is_pure(expr->subscript_expr.expr)
+			       && exprid_is_pure(expr->subscript_expr.index);
 		case EXPR_TERNARY:
-			return expr_is_pure(expr->ternary_expr.cond)
-			       && expr_is_pure(expr->ternary_expr.else_expr)
-			       && expr_is_pure(expr->ternary_expr.then_expr);
+			return exprid_is_pure(expr->ternary_expr.cond)
+			       && exprid_is_pure(expr->ternary_expr.else_expr)
+			       && exprid_is_pure(expr->ternary_expr.then_expr);
 		case EXPR_TRY:
 		case EXPR_GROUP:
 		case EXPR_CATCH:
