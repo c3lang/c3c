@@ -5369,6 +5369,7 @@ void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 
 static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Expr *expr)
 {
+	EMIT_LOC(c, expr);
 	BEValue argc_value;
 	BEValue argv_value;
 	llvm_value_set_decl(&argc_value, expr->argv_expr.argc);
@@ -5404,6 +5405,8 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 
 	// Now we create the pre loop block
 	llvm_emit_block(c, pre_loop_block);
+	EMIT_LOC(c, expr);
+
 	LLVMBasicBlockRef body_block = llvm_basic_block_new(c, "body_loop");
 	LLVMValueRef zero = LLVMConstNull(loop_type);
 
@@ -5428,6 +5431,7 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	{
 		strlen = LLVMAddFunction(c->module, "strlen", strlen_type);
 	}
+	EMIT_LOC(c, expr);
 	LLVMValueRef len = LLVMBuildCall2(c->builder, strlen_type, strlen, &pointer_value, 1, "");
 
 	// We first set the pointer
@@ -5446,6 +5450,7 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	LLVMBasicBlockRef blocks[2] = { body_block, pre_loop_block };
 	LLVMAddIncoming(index_var, values, blocks, 2);
 	llvm_emit_block(c, exit_block);
+	EMIT_LOC(c, expr);
 }
 
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)

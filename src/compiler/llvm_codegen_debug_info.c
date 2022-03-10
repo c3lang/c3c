@@ -206,15 +206,14 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 
 void llvm_emit_debug_location(GenContext *context, SourceSpan location)
 {
-	static SourceSpan oldloc = {};
-
 	// Avoid re-emitting the same location.
-	if (oldloc.a == location.a) return;
 	if (!context->builder) return;
-	oldloc = location;
+	LLVMMetadataRef oldloc = LLVMGetCurrentDebugLocation2(context->builder);
+	if (oldloc && context->last_emitted_loc.a == location.a) return;
 	LLVMMetadataRef scope = llvm_debug_current_scope(context);
 	unsigned row = location.row;
 	unsigned col = location.col;
+	context->last_emitted_loc.a = location.a;
 	LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(context->context,
 	                                                       row ? row : 1,
 	                                                       col ? col : 1,
