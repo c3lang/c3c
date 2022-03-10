@@ -1179,27 +1179,29 @@ bool parse_parameters(ParseContext *c, Visibility visibility, Decl ***params_ref
  */
 static inline bool parse_parameter_list(ParseContext *c, Visibility parent_visibility, FunctionSignature *signature, bool is_interface)
 {
+	Decl **decls = NULL;
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
-	Decl **decls;
 	if (!parse_parameters(c, parent_visibility, &decls)) return false;
-	if (vec_size(decls))
+	CONSUME_OR_RET(TOKEN_RPAREN, false);
+
+	signature->params = decls;
+	Decl *last = VECLAST(decls);
+
+	// The last parameter may hold a vararg
+	if (last && last->var.vararg)
 	{
-		Decl *last = VECLAST(decls);
-		if (last->var.vararg)
+		// Is it "(foo...)" (any) or "(int... foo)" (typed)?
+		if (last->var.type_info)
 		{
-			if (!last->var.type_info)
-			{
-				vec_resize(decls, vec_size(decls) - 1);
-				signature->variadic = VARIADIC_RAW;
-			}
-			else
-			{
-				signature->variadic = last->var.vararg_implicit ? VARIADIC_ANY : VARIADIC_TYPED;
-			}
+			signature->variadic = last->var.vararg_implicit ? VARIADIC_ANY : VARIADIC_TYPED;
+		}
+		else
+		{
+			// Remove the last element if it's a raw variant, i.e. "(...)"
+			vec_pop(decls);
+			signature->variadic = VARIADIC_RAW;
 		}
 	}
-	signature->params = decls;
-	CONSUME_OR_RET(TOKEN_RPAREN, false);
 	return true;
 }
 
@@ -1429,12 +1431,12 @@ static inline Decl *parse_top_level_const_declaration(ParseContext *c, Visibilit
  *
  * trailing_block_parameter ::= '@' IDENT ( '(' parameters ')' )?
  */
-static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl ***params_ref, Decl ***body_params, const char **block_parameter)
+static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl ***params_ref, BodyParam **body_param_ref)
 {
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
 	*params_ref = NULL;
-	*body_params = NULL;
-	*block_parameter = NULL;
+	*body_param_ref = NULL;
+
 	// Parse the regular parameters.
 	if (!parse_parameters(c, visibility, params_ref)) return false;
 
@@ -1442,15 +1444,17 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 	if (try_consume(c, TOKEN_EOS))
 	{
 		// Consume '@' IDENT
-		TRY_CONSUME_OR_RET(TOKEN_AT, "Expected a trailing block with the format '@block(...).", false);
-		*block_parameter = symstr(c);
+		TRY_CONSUME_OR_RET(TOKEN_AT, "Expected an ending ')' or a block parameter on the format '@block(...).", false);
+		BodyParam *body_param = CALLOCS(BodyParam);
+		body_param->name = symstr(c);
+		body_param->span = c->span;
 		if (!consume_ident(c, "variable name")) return false;
 		if (try_consume(c, TOKEN_LPAREN))
 		{
-			if (!parse_parameters(c, visibility, body_params)) return false;
+			if (!parse_parameters(c, visibility, &body_param->params)) return false;
 			CONSUME_OR_RET(TOKEN_RPAREN, false);
 		}
-		// TODO use the body param.
+		*body_param_ref = body_param;
 	}
 	CONSUME_OR_RET(TOKEN_RPAREN, false);
 	return true;
@@ -1554,7 +1558,7 @@ static inline Decl *parse_define_type(ParseContext *c, Visibility visibility)
  */
 static inline Decl *parse_define_ident(ParseContext *c, Visibility visibility)
 {
-	// 1. Store the beginning of the define.
+	// 1. Store the beginning of the "define".
 	advance_and_verify(c, TOKEN_DEFINE);
 
 	// 2. At this point we expect an ident or a const token.
@@ -1574,7 +1578,7 @@ static inline Decl *parse_define_ident(ParseContext *c, Visibility visibility)
 		return poisoned_decl;
 	}
 
-	// 3. Set up the define.
+	// 3. Set up the "define".
 	Decl *decl = decl_new(DECL_DEFINE, symstr(c), c->span, visibility);
 	decl->define_decl.define_kind = DEFINE_IDENT_ALIAS;
 
@@ -1772,10 +1776,8 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 	TypeInfoId *method_type_ref = &decl->macro_decl.type_parent;
 	if (!parse_func_macro_header(c, true, rtype_ref, method_type_ref, &decl->name, &decl->span)) return poisoned_decl;
 
-
 	const char *block_parameter = NULL;
-	if (!parse_macro_arguments(c, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_parameters, &block_parameter)) return poisoned_decl;
-	decl->macro_decl.block_parameter = block_parameter;
+	if (!parse_macro_arguments(c, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_param)) return poisoned_decl;
 
 	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
 
