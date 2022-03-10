@@ -294,12 +294,6 @@ struct TypeInfo_
 	};
 };
 
-typedef struct BodyParam
-{
-	SourceSpan span;
-	const char *name;
-	Decl **params;
-} BodyParam;
 
 typedef struct
 {
@@ -509,8 +503,8 @@ typedef struct
 	TypeInfoId type_parent; // May be 0
 	TypeInfoId rtype; // May be 0
 	AstId body;
+	DeclId body_param;
 	Decl **parameters;
-	BodyParam *body_param;
 	struct CompilationUnit_ *unit;
 	struct AstDocDirective_ *docs;
 } MacroDecl;
@@ -571,6 +565,11 @@ typedef struct
 } LabelDecl;
 
 
+typedef struct
+{
+	Decl **params;
+} BodyParamDecl;
+
 typedef struct Decl_
 {
 	const char *name;
@@ -627,6 +626,7 @@ typedef struct Decl_
 				BitStructDecl bitstruct;
 			};
 		};
+		Decl** body_params;
 		ImportDecl import;
 		VarDecl var;
 		LabelDecl label;
@@ -643,8 +643,11 @@ typedef struct Decl_
 		CtCaseDecl ct_case_decl;
 		Ast *ct_assert_decl;
 		Decl** ct_else_decl;
+
 	};
 } Decl;
+
+
 
 
 typedef struct

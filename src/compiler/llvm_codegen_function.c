@@ -684,6 +684,7 @@ void llvm_emit_extern_decl(GenContext *context, Decl *decl)
 		case NON_TYPE_DECLS:
 		case DECL_ENUM_CONSTANT:
 		case DECL_OPTVALUE:
+		case DECL_BODYPARAM:
 			return;
 	}
 }

@@ -148,6 +148,7 @@ void decl_register(Decl *decl)
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_DECLARRAY:
+		case DECL_BODYPARAM:
 			UNREACHABLE
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
@@ -253,6 +254,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_LABEL:
 		case DECL_CT_CASE:
 		case DECL_DECLARRAY:
+		case DECL_BODYPARAM:
 			UNREACHABLE
 		case DECL_CT_IF:
 		case DECL_CT_SWITCH:

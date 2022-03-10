@@ -1,5 +1,5 @@
 
-macro foo1(;) { } // #error: Expected a trailing block with the format '@block(...)
+macro foo1(;) { } // #error: Expected an ending ')' or a block parameter on the
 
 macro foo2(;@body()) {}
 

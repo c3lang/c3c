@@ -775,6 +775,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_BITSTRUCT:
 			llvm_emit_introspection_type_from_decl(context, decl);
 			break;
+		case DECL_BODYPARAM:
 		case NON_TYPE_DECLS:
 			UNREACHABLE
 	}
