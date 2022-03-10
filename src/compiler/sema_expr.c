@@ -572,6 +572,7 @@ int sema_check_comp_time_bool(SemaContext *context, Expr *expr)
 	return expr->const_expr.b;
 }
 
+
 bool expr_is_ltype(Expr *expr)
 {
 	switch (expr->expr_kind)
@@ -619,6 +620,24 @@ bool expr_is_ltype(Expr *expr)
 		default:
 			return false;
 	}
+}
+
+bool sema_expr_check_assign(SemaContext *c, Expr *expr)
+{
+	if (!expr_is_ltype(expr))
+	{
+		SEMA_ERROR(expr, "An assignable expression, like a variable, was expected here.");
+		return false;
+	}
+	if (expr->expr_kind == EXPR_IDENTIFIER) expr->identifier_expr.decl->var.is_written = true;
+	if (expr->expr_kind != EXPR_UNARY) return true;
+	Expr *inner = expr->inner_expr;
+	if (inner->expr_kind != EXPR_IDENTIFIER) return true;
+	Decl *decl = inner->identifier_expr.decl;
+	if (decl->decl_kind != DECL_VAR) return true;
+	if (!decl->var.may_not_write) return true;
+	SEMA_ERROR(inner, "'in' parameters may not be assigned to.");
+	return false;
 }
 
 static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
@@ -4432,13 +4451,7 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 
 
 	// 2. Check assignability
-	if (!expr_is_ltype(left))
-	{
-		SEMA_ERROR(left, "This expression is not assignable, did you make a mistake?");
-		return false;
-	}
-
-	if (left->expr_kind == EXPR_IDENTIFIER) left->identifier_expr.decl->var.is_written = true;
+	if (!sema_expr_check_assign(context, left)) return false;
 
 	bool is_unwrapped_var = expr_is_unwrapped_ident(left);
 
@@ -4508,13 +4521,7 @@ static bool sema_expr_analyse_common_assign(SemaContext *context, Expr *expr, Ex
 	if (!sema_analyse_expr_lvalue(context, left)) return false;
 
 	// 2. Verify that the left side is assignable.
-	if (!expr_is_ltype(left))
-	{
-		SEMA_ERROR(left, "Expression is not assignable.");
-		return false;
-	}
-
-	if (left->expr_kind == EXPR_IDENTIFIER) left->identifier_expr.decl->var.is_written = true;
+	if (!sema_expr_check_assign(context, left)) return false;
 
 	Type *no_fail = type_no_fail(left->type);
 
@@ -4607,13 +4614,7 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 	if (!sema_analyse_expr(context, left)) return false;
 
 	// 2. Ensure the left hand side is assignable
-	if (!expr_is_ltype(left))
-	{
-		SEMA_ERROR(left, "Expression is not assignable.");
-		return false;
-	}
-
-	if (left->expr_kind == EXPR_IDENTIFIER) left->identifier_expr.decl->var.is_written = true;
+	if (!sema_expr_check_assign(context, left)) return false;
 
 	Type *left_type_canonical = left->type->canonical;
 
@@ -5196,13 +5197,7 @@ static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Exp
 	bool failable = IS_FAILABLE(left) || IS_FAILABLE(right);
 
 	// 2. Ensure the lhs side is assignable
-	if (!expr_is_ltype(left))
-	{
-		SEMA_ERROR(left, "Expression is not assignable.");
-		return false;
-	}
-
-	if (left->expr_kind == EXPR_IDENTIFIER) left->identifier_expr.decl->var.is_written = true;
+	if (!sema_expr_check_assign(context, left)) return false;
 
 	// 3. Only integers may be shifted.
 	if (!both_any_integer_or_integer_vector(left, right)) return sema_type_error_on_binop(expr);
@@ -5812,13 +5807,7 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	if (!sema_analyse_expr_lvalue(context, inner)) return false;
 
 	// 2. Assert it's an l-value
-	if (!expr_is_ltype(inner))
-	{
-		SEMA_ERROR(inner, "An assignable expression, like a variable, was expected here.");
-		return false;
-	}
-
-	if (inner->expr_kind == EXPR_IDENTIFIER) inner->identifier_expr.decl->var.is_written = true;
+	if (!sema_expr_check_assign(context, inner)) return false;
 
 	// 3. This might be a $foo, if to handle it.
 	if (inner->expr_kind == EXPR_CT_IDENT)
@@ -7068,6 +7057,17 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 		case EXPR_IDENTIFIER:
 			if (!sema_cast_ident_rvalue(context, expr)) return false;
 			break;
+		case EXPR_UNARY:
+		{
+			if (expr->unary_expr.operator != UNARYOP_DEREF) break;
+			Expr *inner = expr->inner_expr;
+			if (inner->expr_kind != EXPR_IDENTIFIER) break;
+			Decl *decl = inner->identifier_expr.decl;
+			if (decl->decl_kind != DECL_VAR) break;
+			if (!decl->var.may_not_read) break;
+			SEMA_ERROR(expr, "'out' parameters may not be read.");
+			return false;
+		}
 		default:
 			break;
 	}

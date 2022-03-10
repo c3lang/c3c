@@ -58,6 +58,7 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *bod
 
 AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, AttributeDomain domain);
 bool expr_is_ltype(Expr *expr);
+bool sema_expr_check_assign(SemaContext *c, Expr *expr);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
