@@ -1431,11 +1431,11 @@ static inline Decl *parse_top_level_const_declaration(ParseContext *c, Visibilit
  *
  * trailing_block_parameter ::= '@' IDENT ( '(' parameters ')' )?
  */
-static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl ***params_ref, BodyParam **body_param_ref)
+static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl ***params_ref, DeclId *body_param_ref)
 {
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
 	*params_ref = NULL;
-	*body_param_ref = NULL;
+	*body_param_ref = 0;
 
 	// Parse the regular parameters.
 	if (!parse_parameters(c, visibility, params_ref)) return false;
@@ -1445,16 +1445,14 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 	{
 		// Consume '@' IDENT
 		TRY_CONSUME_OR_RET(TOKEN_AT, "Expected an ending ')' or a block parameter on the format '@block(...).", false);
-		BodyParam *body_param = CALLOCS(BodyParam);
-		body_param->name = symstr(c);
-		body_param->span = c->span;
+		Decl *body_param = decl_new(DECL_BODYPARAM, symstr(c), c->span, visibility);
 		if (!consume_ident(c, "variable name")) return false;
 		if (try_consume(c, TOKEN_LPAREN))
 		{
-			if (!parse_parameters(c, visibility, &body_param->params)) return false;
+			if (!parse_parameters(c, visibility, &body_param->body_params)) return false;
 			CONSUME_OR_RET(TOKEN_RPAREN, false);
 		}
-		*body_param_ref = body_param;
+		*body_param_ref = declid(body_param);
 	}
 	CONSUME_OR_RET(TOKEN_RPAREN, false);
 	return true;
@@ -1642,7 +1640,7 @@ static inline Decl *parse_define_ident(ParseContext *c, Visibility visibility)
  */
 static inline Decl *parse_define_attribute(ParseContext *c, Visibility visibility)
 {
-	// 1. Store the beginning of the define.
+	// 1. Store the beginning of the "define".
 	advance_and_verify(c, TOKEN_DEFINE);
 
 	advance_and_verify(c, TOKEN_AT);
@@ -1707,9 +1705,9 @@ static inline bool parse_is_func_name(ParseContext *c)
  * func_header ::= type '!'? (type '.')? IDENT
  * macro_header ::= (type '!'?)? (type '.')? IDENT
  */
-static inline bool
-parse_func_macro_header(ParseContext *c, bool rtype_is_optional, TypeInfoId *rtype_ref, TypeInfoId *method_type_ref,
-                        const char **name_ref, SourceSpan *name_span)
+static inline bool parse_func_macro_header(ParseContext *c, bool rtype_is_optional,
+                                           TypeInfoId *rtype_ref, TypeInfoId *method_type_ref,
+                                           const char **name_ref, SourceSpan *name_span)
 {
 	TypeInfo *rtype = NULL;
 	TypeInfo *method_type = NULL;
@@ -1983,9 +1981,9 @@ static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility
 	func->decl_kind = DECL_FUNC;
 	func->visibility = visibility;
 	func->func_decl.docs = docs;
-	TypeInfoId *rtypeid_ref = &func->func_decl.function_signature.returntype;
+	TypeInfoId *rtype_id_ref = &func->func_decl.function_signature.returntype;
 	TypeInfoId *method_type_ref = &func->func_decl.type_parent;
-	if (!parse_func_macro_header(c, false, rtypeid_ref, method_type_ref, &func->name, &func->span)) return poisoned_decl;
+	if (!parse_func_macro_header(c, false, rtype_id_ref, method_type_ref, &func->name, &func->span)) return poisoned_decl;
 	if (!parse_parameter_list(c, visibility, &(func->func_decl.function_signature), is_interface)) return poisoned_decl;
 	if (!parse_attributes(c, &func->attributes)) return poisoned_decl;
 

@@ -1119,14 +1119,6 @@ static void llvm_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, Type *
 }
 
 
-LLVMValueRef gencontext_emit_value_bitcast(GenContext *context, LLVMValueRef value, Type *to_type, Type *from_type)
-{
-	LLVMValueRef ptr = llvm_emit_alloca_aligned(context, from_type, "");
-	LLVMBuildStore(context->builder, value, ptr);
-	LLVMValueRef ptr_cast = llvm_emit_bitcast(context, ptr, type_get_ptr(to_type));
-	return gencontext_emit_load(context, to_type, ptr_cast);
-}
-
 void llvm_emit_vector_to_array_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
 {
 	llvm_value_rvalue(c, value);

@@ -1451,7 +1451,11 @@ RETRY:;
 			return return_token(lexer, TOKEN_DOCS_END, "*/");
 		}
 		// If we find the end of the line we start from the beginning.
-		if (c == '\n') goto RETRY;
+		if (c == '\n')
+		{
+			next(lexer);
+			goto RETRY;
+		}
 		c = next(lexer);
 	}
 EOF_REACHED:

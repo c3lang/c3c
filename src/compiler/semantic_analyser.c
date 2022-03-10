@@ -234,6 +234,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_UNION:
 			case DECL_VAR:
 			case DECL_BITSTRUCT:
+			case DECL_BODYPARAM:
 				break;
 		}
 		htable_set(&module->symbols, decl->name, decl);

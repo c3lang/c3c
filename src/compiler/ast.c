@@ -33,6 +33,8 @@ const char *decl_to_name(Decl *decl)
 {
 	switch (decl->decl_kind)
 	{
+		case DECL_BODYPARAM:
+			return "bodyparam";
 		case DECL_DECLARRAY:
 			return "declarray";
 		case DECL_BITSTRUCT:
@@ -183,6 +185,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, V
 		case DECL_DEFINE:
 		case DECL_CT_ASSERT:
 		case DECL_DECLARRAY:
+		case DECL_BODYPARAM:
 			UNREACHABLE
 	}
 	Type *type = type_new(kind, name ? name : "anon");

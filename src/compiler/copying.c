@@ -584,6 +584,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	{
 		case DECL_POISONED:
 			break;
+		case DECL_BODYPARAM:
+			MACRO_COPY_DECL_LIST(copy->body_params);
+			break;
 		case DECL_UNION:
 		case DECL_STRUCT:
 			copy_decl_type(copy);
@@ -671,6 +674,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(decl->macro_decl.parameters);
 			MACRO_COPY_ASTID(decl->macro_decl.body);
 			MACRO_COPY_TYPEID(decl->macro_decl.rtype);
+			MACRO_COPY_DECLID(decl->macro_decl.body_param);
 			break;
 		case DECL_CT_SWITCH:
 			MACRO_COPY_DECL_LIST(decl->ct_switch_decl.cases);

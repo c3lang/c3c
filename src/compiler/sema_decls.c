@@ -1757,14 +1757,14 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		if (!sema_check_no_duplicate_parameter(parameters, param, i, param_count)) return decl_poison(decl);
 		param->resolve_status = RESOLVE_DONE;
 	}
-	BodyParam *body_param = decl->macro_decl.body_param;
-	if (is_generic && decl->macro_decl.body_param)
+	DeclId body_param = decl->macro_decl.body_param;
+	if (is_generic && body_param)
 	{
-		SEMA_ERROR(decl->macro_decl.body_param, "Trailing block syntax is not allowed for generic functions.");
+		SEMA_ERROR(declptr(body_param), "Trailing block syntax is not allowed for generic functions.");
 		return decl_poison(decl);
 	}
 
-	Decl **body_parameters = body_param ? body_param->params : NULL;
+	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
 	unsigned body_param_count = vec_size(body_parameters);
 	for (unsigned i = 0; i < body_param_count; i++)
 	{
@@ -2296,6 +2296,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_CT_ASSERT:
 		case DECL_OPTVALUE:
 		case DECL_DECLARRAY:
+		case DECL_BODYPARAM:
 			UNREACHABLE
 	}
 	decl->resolve_status = RESOLVE_DONE;

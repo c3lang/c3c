@@ -13,6 +13,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_ENUM_CONSTANT:
 		case DECL_OPTVALUE:
 		case DECL_POISONED:
+		case DECL_BODYPARAM:
 		case NON_TYPE_DECLS:
 			UNREACHABLE
 		case DECL_BITSTRUCT:

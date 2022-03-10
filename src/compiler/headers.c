@@ -194,6 +194,7 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 		case DECL_OPTVALUE:
 		case DECL_POISONED:
 		case DECL_VAR:
+		case DECL_BODYPARAM:
 			UNREACHABLE
 		case DECL_FUNC:
 		case DECL_BITSTRUCT:
