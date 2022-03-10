@@ -2185,26 +2185,31 @@ static inline bool parse_doc_param(ParseContext *c, AstDocDirective **docs_ref)
 
 static inline bool parse_doc_errors(ParseContext *c, AstDocDirective **docs)
 {
-	TODO
+
+	DocOptReturn *returns = NULL;
+	AstDocDirective directive = { .span = c->span, .kind = DOC_DIRECTIVE_ERRORS };
+	advance(c);
 	while (1)
 	{
-		if (c->tok != TOKEN_TYPE_IDENT)
+		DocOptReturn ret = { .span = c->span };
+		ASSIGN_TYPE_OR_RET(ret.type, parse_base_type(c), false);
+		if (ret.type->kind != TYPE_INFO_IDENTIFIER)
 		{
-			SEMA_ERROR_HERE("Expected an optenum type here.");
-		}
-	}
-	switch (c->tok)
-	{
-		case TOKEN_TYPE_IDENT:
-			break;
-		default:
+			SEMA_ERROR(ret.type, "Expected an optenum type.");
 			return false;
+		}
+		if (try_consume(c, TOKEN_DOT))
+		{
+			ret.ident = c->data.string;
+			TRY_CONSUME_OR_RET(TOKEN_CONST_IDENT, "Expected an optenum value.", false);
+		}
+		ret.span = extend_span_with_token(ret.span, c->prev_span);
+		vec_add(returns, ret);
+		if (!try_consume(c, TOKEN_COMMA)) break;
 	}
-	/*
-	docs->doc_directive.kind = DOC_DIRECTIVE_PARAM;
-	docs->doc_directive.param.name = symstr(c);
-	docs->doc_directive.param.span = c->span;*/
-	advance(c);
+	directive.span = extend_span_with_token(directive.span, c->prev_span);
+	directive.optreturns = returns;
+	vec_add(*docs, directive);
 	return true;
 }
 
@@ -2241,9 +2246,12 @@ static bool parse_docs(ParseContext *c, AstDocDirective **docs_ref)
 				if (!parse_doc_errors(c, docs_ref)) return false;
 				break;
 			case TOKEN_DOCS_PURE:
+			{
+				AstDocDirective directive = { .span = c->span, .kind = DOC_DIRECTIVE_PURE };
+				vec_add(*docs_ref, directive);
 				advance(c);
-				// if (!parse_doc_pure(c, ast)) return false;
 				break;
+			}
 			case TOKEN_DOC_DIRECTIVE:
 				advance(c);
 				// Ignore

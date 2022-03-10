@@ -2349,6 +2349,48 @@ static bool sema_analyse_ensure(SemaContext *context, AstDocDirective *directive
 	return true;
 }
 
+static bool sema_analyse_errors(SemaContext *context, AstDocDirective *directive)
+{
+	DocOptReturn *returns = directive->optreturns;
+	VECEACH(returns, i)
+	{
+		TypeInfo *type_info = returns[i].type;
+		const char *ident = returns[i].ident;
+		if (type_info->kind != TYPE_INFO_IDENTIFIER)
+		{
+			SEMA_ERROR(type_info, "Expected an optenum name here.");
+			return false;
+		}
+		if (!sema_resolve_type_info(context, type_info)) return false;
+		Type *type = type_info->type;
+		if (type->type_kind != TYPE_ERRTYPE)
+		{
+			SEMA_ERROR(type_info, "An optenum type is required.");
+			return false;
+		}
+		if (!ident)
+		{
+			returns[i].decl = type->decl;
+			goto NEXT;
+		}
+		Decl *decl = type->decl;
+		Decl **enums = decl->enums.values;
+		VECEACH(enums, j)
+		{
+			Decl *opt_value = enums[j];
+			if (opt_value->name == ident)
+			{
+				returns[i].decl = opt_value;
+				goto NEXT;
+			}
+		}
+		sema_error_at(returns[i].span, "No optenum value '%s' found.", ident);
+		return false;
+NEXT:;
+	}
+	return true;
+}
+
 static bool sema_analyse_checked(SemaContext *context, AstDocDirective *directive, AstId **asserts)
 {
 	Expr *declexpr = directive->contract.decl_exprs;
@@ -2382,9 +2424,7 @@ static bool sema_analyse_contracts(SemaContext *context, AstDocDirective *direct
 		switch (directive->kind)
 		{
 			case DOC_DIRECTIVE_UNKNOWN:
-				break;
 			case DOC_DIRECTIVE_PURE:
-				context->current_function_pure = true;
 				break;
 			case DOC_DIRECTIVE_REQUIRE:
 				if (!sema_analyse_require(context, directive, asserts)) return false;
@@ -2395,6 +2435,7 @@ static bool sema_analyse_contracts(SemaContext *context, AstDocDirective *direct
 			case DOC_DIRECTIVE_PARAM:
 				break;
 			case DOC_DIRECTIVE_ERRORS:
+				if (!sema_analyse_errors(context, directive)) return false;
 				break;
 			case DOC_DIRECTIVE_ENSURE:
 				if (!sema_analyse_ensure(context, directive)) return false;
@@ -2411,7 +2452,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	FunctionSignature *signature = &func->func_decl.function_signature;
 	FunctionPrototype *prototype = func->type->func.prototype;
 	context->current_function = func;
-	context->current_function_pure = false;
+	context->current_function_pure = func->func_decl.function_signature.is_pure;
 	context->rtype = prototype->rtype;
 	context->active_scope = (DynamicScope) {
 			.scope_id = 0,

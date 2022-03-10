@@ -4723,13 +4723,13 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	{
 		LLVMSetInstructionCallConv(call_value, llvm_call_convention_from_call(prototype->call_abi));
 	}
-	if (expr->call_expr.force_noinline)
+	if (expr->call_expr.attr_force_noinline)
 	{
 		llvm_attribute_add_call(c, call_value, attribute_id.noinline, -1, 0);
 	}
 	else
 	{
-		if (expr->call_expr.force_inline || always_inline)
+		if (expr->call_expr.attr_force_inline || always_inline)
 		{
 			llvm_attribute_add_call(c, call_value, attribute_id.alwaysinline, -1, 0);
 		}
