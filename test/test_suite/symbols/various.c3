@@ -62,7 +62,7 @@ fn void test9()
 {
     const char A = 1;
     char b = A;
-    A = b;              // #error: This expression is not assignable, did you make
+    A = b;              // #error: An assignable expression
 }
 
 fn void test10()

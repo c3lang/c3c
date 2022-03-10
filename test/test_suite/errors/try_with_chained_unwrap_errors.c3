@@ -9,7 +9,7 @@ fn void test2()
     int! a;
     int b;
     if (try b = a) {}
-    if (try test2 = a) {} // #error: 'try' expected an assignable variable or expression here, did you make a mistake?
+    if (try test2 = a) {} // #error: An assignable expression
 }
 
 const int BAZ = 1;
@@ -19,7 +19,7 @@ fn void test3()
 
     int! a;
     int b;
-    if (try BAZ = a) {} // #error: 'try' expected an assignable variable or expression here, did you make a mistake?
+    if (try BAZ = a) {} // #error: An assignable expression
 }
 
 
