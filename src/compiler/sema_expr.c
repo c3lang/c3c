@@ -1013,8 +1013,8 @@ static inline bool sema_expr_analyse_macro_expansion(SemaContext *context, Expr 
 	Expr *inner = expr->macro_expansion_expr.inner;
 	if (inner->expr_kind == EXPR_IDENTIFIER)
 	{
-		const char *body = context->current_macro ? context->current_macro->macro_decl.block_parameter : NULL;
-		if (body && !inner->identifier_expr.path && inner->identifier_expr.ident == body)
+		BodyParam *body_param = context->current_macro ? context->current_macro->macro_decl.body_param : NULL;
+		if (body_param && !inner->identifier_expr.path && inner->identifier_expr.ident == body_param->name)
 		{
 			expr->expr_kind = EXPR_MACRO_BODY_EXPANSION;
 			expr->body_expansion_expr.ast = NULL;
@@ -1802,7 +1802,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	Decl **params = decl_copy_list(decl->macro_decl.parameters);
 	CalledDecl callee = {
 			.macro = true,
-			.block_parameter = decl->macro_decl.block_parameter,
+			.block_parameter = decl->macro_decl.body_param ? decl->macro_decl.body_param->name : NULL,
 			.params = params,
 			.param_count = vec_size(params),
 			.struct_var = struct_var
@@ -1818,7 +1818,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	Decl **body_params = call_expr->call_expr.body_arguments;
 	unsigned body_params_count = vec_size(body_params);
-	unsigned expected_body_params = vec_size(decl->macro_decl.body_parameters);
+	Decl **macro_body_params = decl->macro_decl.body_param ? decl->macro_decl.body_param->params : NULL;
+	unsigned expected_body_params = vec_size(macro_body_params);
 	if (expected_body_params > body_params_count)
 	{
 		SEMA_ERROR(call_expr, "Not enough parameters for the macro body, expected %d.", expected_body_params);
@@ -1831,7 +1832,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 	for (unsigned i = 0; i < expected_body_params; i++)
 	{
-		Decl *body_param = decl->macro_decl.body_parameters[i];
+		Decl *body_param = macro_body_params[i];
 		assert(body_param->resolve_status == RESOLVE_DONE);
 		Decl *body_arg = call_expr->call_expr.body_arguments[i];
 		if (!body_arg->var.type_info)
@@ -2096,7 +2097,8 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 {
 	Decl *macro = macro_context->current_macro;
 	assert(macro);
-	assert(macro->macro_decl.block_parameter);
+	BodyParam *body_param = macro->macro_decl.body_param;
+	assert(body_param);
 
 	ExprCall *call_expr = &call->call_expr;
 	if (vec_size(call_expr->body_arguments))
@@ -2111,9 +2113,10 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 	}
 	// Theoretically we could support named arguments, but that's unnecessary.
 	unsigned expressions = vec_size(call_expr->arguments);
-	if (expressions != vec_size(macro->macro_decl.body_parameters))
+	Decl **body_parameters = body_param->params;
+	if (expressions != vec_size(body_parameters))
 	{
-		SEMA_ERROR(call, "Expected %d parameter(s).", vec_size(macro->macro_decl.body_parameters));
+		SEMA_ERROR(call, "Expected %d parameter(s).", vec_size(body_parameters));
 		return false;
 	}
 	Expr **args = call_expr->arguments;
@@ -7026,7 +7029,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 		case EXPR_MACRO_BODY_EXPANSION:
 			if (!expr->body_expansion_expr.ast)
 			{
-				SEMA_ERROR(expr, "'@%s' must be followed by ().", context->current_macro->macro_decl.block_parameter);
+				SEMA_ERROR(expr, "'@%s' must be followed by ().", context->current_macro->macro_decl.body_param->name);
 				return false;
 			}
 			break;

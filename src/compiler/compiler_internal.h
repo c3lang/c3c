@@ -85,6 +85,7 @@ typedef enum
 } ConstInitType;
 
 
+
 typedef struct ConstInitializer_
 {
 	ConstInitType kind;
@@ -293,6 +294,12 @@ struct TypeInfo_
 	};
 };
 
+typedef struct BodyParam
+{
+	SourceSpan span;
+	const char *name;
+	Decl **params;
+} BodyParam;
 
 typedef struct
 {
@@ -503,8 +510,7 @@ typedef struct
 	TypeInfoId rtype; // May be 0
 	AstId body;
 	Decl **parameters;
-	Decl **body_parameters;
-	const char *block_parameter;
+	BodyParam *body_param;
 	struct CompilationUnit_ *unit;
 	struct AstDocDirective_ *docs;
 } MacroDecl;
@@ -1260,7 +1266,7 @@ typedef struct Ast_
 } Ast;
 
 //static_assert(sizeof(AstContinueBreakStmt) == 24, "Ooops");
-//static_assert(sizeof(Ast) == 56, "Oops");
+//static_assert(sizeof(Ast) == 56, "Not expected size on 64 bit");
 
 typedef struct Module_
 {
