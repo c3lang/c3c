@@ -1390,6 +1390,7 @@ static bool parse_doc_directive(Lexer *lexer)
 		case TOKEN_DOCS_OPTRETURN:
 		case TOKEN_DOCS_PARAM:
 		case TOKEN_DOCS_RETURN:
+		case TOKEN_DOCS_PURE:
 			return true;
 		case TOKEN_IDENT:
 			lexer->token_type = TOKEN_DOC_DIRECTIVE;

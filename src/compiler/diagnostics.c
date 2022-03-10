@@ -91,8 +91,10 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 		{
 			case '\t':
 				eprintf("\t");
+				break;
 			default:
 				eprintf(" ");
+				break;
 		}
 	}
 	unsigned len = location.length;

@@ -715,9 +715,19 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	{
 		if (!parse_attribute(c, &attr)) return poisoned_expr;
 		if (!attr) break;
-		if (attr->name != kw_inline && attr->name != kw_noinline)
+		if (attr->name == kw_pure)
 		{
-			SEMA_ERROR(attr, "Only '@inline' and '@noinline' are valid attributes for calls.");
+			if (call->call_expr.attr_pure)
+			{
+				SEMA_ERROR(attr, "Repeat of the same attribute is not allowed.");
+				return poisoned_expr;
+			}
+			call->call_expr.attr_pure = true;
+			continue;
+		}
+		if (attr->name != kw_inline && attr->name != kw_noinline && attr->name != kw_pure)
+		{
+			SEMA_ERROR(attr, "Only '@pure', '@inline' and '@noinline' are valid attributes for calls.");
 			return poisoned_expr;
 		}
 		int new_inline = attr->name == kw_inline;
@@ -734,8 +744,8 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	}
 	if (force_inline != -1)
 	{
-		call->call_expr.force_inline = force_inline == 1;
-		call->call_expr.force_noinline = force_inline == 0;
+		call->call_expr.attr_force_inline = force_inline == 1;
+		call->call_expr.attr_force_noinline = force_inline == 0;
 	}
 	return call;
 }

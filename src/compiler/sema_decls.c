@@ -1296,12 +1296,22 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 
 }
 
-static inline bool sema_analyse_doc_header(AstDocDirective *docs, Decl **params, Decl **extra_params)
+static inline bool sema_analyse_doc_header(AstDocDirective *docs, Decl **params, Decl **extra_params, bool *pure_ref)
 {
 	if (!docs) return true;
 	VECEACH(docs, i)
 	{
 		AstDocDirective *directive = &docs[i];
+		if (directive->kind == DOC_DIRECTIVE_PURE)
+		{
+			if (*pure_ref)
+			{
+				SEMA_ERROR(directive, "Multiple '@pure' declarations, please remove one.");
+				return false;
+			}
+			*pure_ref = true;
+			continue;
+		}
 		if (directive->kind != DOC_DIRECTIVE_PARAM) continue;
 		const char *param_name = directive->param.name;
 		Decl *extra_param = NULL;
@@ -1615,7 +1625,9 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 		}
 		decl_set_external_name(decl);
 	}
-	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.function_signature.params, NULL)) return decl_poison(decl);
+	bool pure = false;
+	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.function_signature.params, NULL, &pure)) return decl_poison(decl);
+	decl->func_decl.function_signature.is_pure = pure;
 	decl->alignment = type_alloca_alignment(decl->type);
 	DEBUG_LOG("Function analysis done.");
 	return true;
@@ -1783,7 +1795,8 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		if (!sema_check_no_duplicate_parameter(body_parameters, param, i, body_param_count)) return decl_poison(decl);
 		param->resolve_status = RESOLVE_DONE;
 	}
-	if (!sema_analyse_doc_header(decl->macro_decl.docs, decl->macro_decl.parameters, decl->macro_decl.body_parameters)) return decl_poison(decl);
+	bool pure = false;
+	if (!sema_analyse_doc_header(decl->macro_decl.docs, decl->macro_decl.parameters, decl->macro_decl.body_parameters, &pure)) return decl_poison(decl);
 	if (decl->macro_decl.type_parent)
 	{
 		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);
@@ -1990,7 +2003,13 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 
 	decl->type = decl->var.type_info->type;
 	if (!sema_analyse_decl_type(context, decl->type, decl->var.type_info->span)) return false;
-	if (decl->var.is_static && !decl->has_extname)
+	bool is_static = decl->var.is_static;
+	if (is_static && context->current_function_pure)
+	{
+		SEMA_ERROR(decl, "'@pure' functions may not have static variables.");
+		return false;
+	}
+	if (is_static && !decl->has_extname)
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(context->current_function->name);

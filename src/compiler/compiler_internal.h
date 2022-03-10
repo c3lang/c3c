@@ -442,6 +442,7 @@ typedef struct FunctionSignature_
 	Variadic variadic : 3;
 	bool has_default : 1;
 	bool use_win64 : 1;
+	bool is_pure : 1;
 	TypeInfoId returntype;
 	Decl** params;
 } FunctionSignature;
@@ -686,10 +687,11 @@ typedef struct
 	bool is_type_method : 1;
 	bool is_pointer_call : 1;
 	bool unsplat_last : 1;
-	bool force_inline : 1;
-	bool force_noinline : 1;
+	bool attr_force_inline : 1;
+	bool attr_force_noinline : 1;
 	bool is_builtin : 1;
 	bool is_func_ref : 1;
+	bool attr_pure : 1;
 	AstId body;
 	union
 	{
@@ -1182,6 +1184,20 @@ typedef struct
 } AstAssertStmt;
 
 
+typedef struct
+{
+	union
+	{
+		struct
+		{
+			SourceSpan span;
+			TypeInfo *type;
+			const char *ident;
+		};
+		Decl *decl;
+	};
+} DocOptReturn;
+
 typedef struct AstDocDirective_
 {
 	SourceSpan span;
@@ -1195,16 +1211,13 @@ typedef struct AstDocDirective_
 			InOutModifier modifier : 4;
 			bool by_ref : 1;
 		} param;
+		DocOptReturn *optreturns;
 		struct
 		{
 			Expr *decl_exprs;
 			const char *comment;
 			const char *expr_string;
 		} contract;
-		struct
-		{
-			const char *rest_of_line;
-		} pure;
 		struct
 		{
 			const char *directive_name;

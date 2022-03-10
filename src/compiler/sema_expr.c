@@ -972,6 +972,12 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 					return false;
 				}
 				break;
+			case VARDECL_GLOBAL:
+				if (context->current_function_pure)
+				{
+					SEMA_ERROR(expr, "'@pure' functions may not access globals.");
+					return false;
+				}
 			default:
 				break;
 		}
@@ -1626,6 +1632,11 @@ static inline bool sema_expr_analyse_func_invocation(SemaContext *context, Funct
 			.param_count = vec_size(prototype->params),
 			.variadic = prototype->variadic,
 	};
+	if (context->current_function_pure && (!sig || !sig->is_pure) && !expr->call_expr.attr_pure)
+	{
+		SEMA_ERROR(expr, "Only '@pure' functions may be called, you can override this with an attribute.");
+		return false;
+	}
 	if (!sema_expr_analyse_call_invocation(context, expr, callee, &failable)) return false;
 
 	Type *rtype = prototype->rtype;
