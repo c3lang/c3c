@@ -607,7 +607,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.naked, -1);
 	}
-	if (prototype->call_abi == CALL_X86_STD)
+	if (prototype->call_abi == CALL_X86_STD && decl->visibility != VISIBLE_LOCAL)
 	{
 		if (platform_target.os == OS_TYPE_WIN32)
 		{
