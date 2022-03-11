@@ -607,13 +607,6 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.naked, -1);
 	}
-	if (prototype->call_abi == CALL_X86_STD && decl->visibility != VISIBLE_LOCAL)
-	{
-		if (platform_target.os == OS_TYPE_WIN32)
-		{
-			LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
-		}
-	}
 	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(prototype->call_abi));
 
 	switch (decl->visibility)
@@ -621,6 +614,10 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 		case VISIBLE_EXTERN:
 			LLVMSetLinkage(function, decl->func_decl.attr_weak ? LLVMExternalWeakLinkage : LLVMExternalLinkage);
 			LLVMSetVisibility(function, LLVMDefaultVisibility);
+			if (prototype->call_abi == CALL_X86_STD && platform_target.os == OS_TYPE_WIN32)
+			{
+				LLVMSetDLLStorageClass(function, LLVMDLLImportStorageClass);
+			}
 			break;
 		case VISIBLE_PUBLIC:
 		case VISIBLE_MODULE:
