@@ -292,7 +292,9 @@ void compiler_compile(void)
 		}
 		if (active_target.run_after_compile)
 		{
-			system(strformat("./%s", output_name));
+			printf("Launching %s...\n", output_name);
+			int ret = system(strformat("./%s", output_name));
+			printf("Program finished with exit code %d.", ret);
 		}
 	}
 

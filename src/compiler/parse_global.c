@@ -2089,7 +2089,10 @@ static inline bool parse_doc_contract(ParseContext *c, AstDocDirective **docs_re
 	const char *start = c->lexer.data.lex_start;
 	advance(c);
 	ASSIGN_EXPR_OR_RET(directive.contract.decl_exprs, parse_expression_list(c, kind == DOC_DIRECTIVE_CHECKED), false);
-	const char *end = c->data.lex_start;
+	const char *end = start;
+	while (*++end != '\n' && *end != '\0') end++;
+	end--;
+	if (end > c->data.lex_start) end = c->data.lex_start;
 	while (end[-1] == ' ') end--;
 	scratch_buffer_clear();
 	switch (kind)

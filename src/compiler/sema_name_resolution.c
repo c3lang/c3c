@@ -447,7 +447,7 @@ Decl *sema_resolve_normal_symbol(SemaContext *context, NameResolve *name_resolve
 }
 
 
-static inline bool sema_append_local(SemaContext *context, Decl *decl)
+static inline void sema_append_local(SemaContext *context, Decl *decl)
 {
 	Decl ***locals = &context->locals;
 	size_t locals_size = vec_size(*locals);
@@ -465,12 +465,11 @@ static inline bool sema_append_local(SemaContext *context, Decl *decl)
 		(*locals)[current_local] = decl;
 	}
 	context->active_scope.current_local++;
-	return true;
 }
 
-bool sema_add_member(SemaContext *context, Decl *decl)
+void sema_add_member(SemaContext *context, Decl *decl)
 {
-	return sema_append_local(context, decl);
+	sema_append_local(context, decl);
 }
 
 bool sema_add_local(SemaContext *context, Decl *decl)
@@ -490,35 +489,36 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 	}
 ADD_VAR:
 	decl->resolve_status = RESOLVE_DONE;
-	return sema_append_local(context, decl);
+	sema_append_local(context, decl);
+	return true;
 }
 
-bool sema_unwrap_var(SemaContext *context, Decl *decl)
+void sema_unwrap_var(SemaContext *context, Decl *decl)
 {
 	Decl *alias = decl_copy(decl);
 	alias->var.kind = VARDECL_UNWRAPPED;
 	alias->var.alias = decl;
 	alias->type = alias->type->failable;
 	alias->resolve_status = RESOLVE_DONE;
-	return sema_append_local(context, alias);
+	sema_append_local(context, alias);
 }
 
-bool sema_rewrap_var(SemaContext *context, Decl *decl)
+void sema_rewrap_var(SemaContext *context, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_FAILABLE);
-	return sema_append_local(context, decl->var.alias);
+	sema_append_local(context, decl->var.alias);
 }
 
-bool sema_erase_var(SemaContext *context, Decl *decl)
+void sema_erase_var(SemaContext *context, Decl *decl)
 {
 	Decl *erased = decl_copy(decl);
 	erased->var.kind = VARDECL_ERASE;
 	erased->resolve_status = RESOLVE_DONE;
-	return sema_append_local(context, erased);
+	sema_append_local(context, erased);
 }
 
 
-bool sema_erase_unwrapped(SemaContext *context, Decl *decl)
+void sema_erase_unwrapped(SemaContext *context, Decl *decl)
 {
 	assert(IS_FAILABLE(decl));
 	Decl *rewrapped = decl_copy(decl);
@@ -526,5 +526,5 @@ bool sema_erase_unwrapped(SemaContext *context, Decl *decl)
 	rewrapped->var.alias = decl;
 	rewrapped->type = decl->type;
 	rewrapped->resolve_status = RESOLVE_DONE;
-	return sema_append_local(context, rewrapped);
+	sema_append_local(context, rewrapped);
 }

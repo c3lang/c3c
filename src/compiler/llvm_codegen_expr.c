@@ -2613,6 +2613,8 @@ void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rh
 			Type *temp = lhs_type;
 			lhs_type = rhs_type;
 			rhs_type = temp;
+			lhs_signed = true;
+			rhs_signed = false;
 			LLVMValueRef temp_val = lhs_value;
 			lhs_value = rhs_value;
 			rhs_value = temp_val;
@@ -2633,8 +2635,6 @@ void llvm_emit_int_comp(GenContext *c, BEValue *result, Type *lhs_type, Type *rh
 				default:
 					break;
 			}
-			lhs_signed = true;
-			rhs_signed = false;
 		}
 	}
 	if (lhs_signed && !rhs_signed && !vector_type && LLVMIsConstant(lhs_value) && type_size(lhs_type) <= 64)
@@ -4460,7 +4460,6 @@ void llvm_add_call_attributes(GenContext *c, LLVMValueRef call_value, int start_
 {
 	for (unsigned i = 0; i < count; i++)
 	{
-		Type *param = types[i];
 		ABIArgInfo *info = infos[i];
 		switch (info->kind)
 		{

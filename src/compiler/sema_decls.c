@@ -1230,7 +1230,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			}
 			return ATTRIBUTE_OPERATOR;
 		FAILED_OP_TYPE:
-			SEMA_ERROR(expr, "'operator' requires an operator type argument: '%s', '%s' or '%s'.", kw_elementat, kw_elementref, kw_len);
+			SEMA_ERROR(attr, "'operator' requires an operator type argument: '%s', '%s' or '%s'.", kw_elementat, kw_elementref, kw_len);
 			return ATTRIBUTE_NONE;
 		}
 		case ATTRIBUTE_ALIGN:

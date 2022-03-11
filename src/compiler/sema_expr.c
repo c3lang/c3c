@@ -4464,7 +4464,8 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 
 	if (is_unwrapped_var && IS_FAILABLE(right))
 	{
-		return sema_rewrap_var(context, left->identifier_expr.decl);
+		sema_rewrap_var(context, left->identifier_expr.decl);
+		return true;
 	}
 	if (left->expr_kind == EXPR_BITACCESS)
 	{
@@ -6845,7 +6846,13 @@ static inline bool sema_expr_analyse_retval(SemaContext *c, Expr *expr)
 		SEMA_ERROR(expr, "'return' cannot be used on void functions.");
 		return false;
 	}
+	Expr *return_value = c->return_expr;
+	assert(return_value);
 	expr->type = c->rtype;
+	if (expr_is_const(return_value))
+	{
+		expr_replace(expr, return_value);
+	}
 	return true;
 }
 

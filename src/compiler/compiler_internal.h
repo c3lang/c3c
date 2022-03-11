@@ -1188,8 +1188,9 @@ typedef struct
 
 typedef struct
 {
-	Expr *message;
-	Expr *expr;
+	bool is_ensure;
+	ExprId message;
+	ExprId expr;
 } AstAssertStmt;
 
 
@@ -1262,7 +1263,6 @@ typedef struct Ast_
 		AstCtIfStmt ct_if_stmt;             // 24
 		AstId ct_else_stmt;                 // 4
 		AstCtForeachStmt ct_foreach_stmt;   // 40
-		AstAssertStmt ct_assert_stmt;       // 16
 		AstAssertStmt assert_stmt;          // 16
 		AstDocDirective *directives;        // 8
 	};
@@ -1434,6 +1434,7 @@ typedef struct SemaContext_
 	struct SemaContext_ *yield_context;
 	Decl** locals;
 	DynamicScope active_scope;
+	Expr *return_expr;
 } SemaContext;
 
 typedef struct
@@ -1960,18 +1961,18 @@ Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 #define SEMA_ERROR_LAST(...) sema_error_at(c->prev_span, __VA_ARGS__)
 #define SEMA_ERROR(_node, ...) sema_error_at((_node)->span, __VA_ARGS__)
 #define SEMA_PREV(_node, ...) sema_error_prev_at((_node)->span, __VA_ARGS__)
-
+#define EXPAND_EXPR_STRING(str_) (str_)->const_expr.string.len, (str_)->const_expr.string.chars
 #define TABLE_MAX_LOAD 0.5
 
 void sema_analysis_run(void);
 
 bool sema_failed_cast(Expr *expr, Type *from, Type *to);
-bool sema_add_member(SemaContext *context, Decl *decl);
+void sema_add_member(SemaContext *context, Decl *decl);
 bool sema_add_local(SemaContext *context, Decl *decl);
-bool sema_unwrap_var(SemaContext *context, Decl *decl);
-bool sema_rewrap_var(SemaContext *context, Decl *decl);
-bool sema_erase_var(SemaContext *context, Decl *decl);
-bool sema_erase_unwrapped(SemaContext *context, Decl *decl);
+void sema_unwrap_var(SemaContext *context, Decl *decl);
+void sema_rewrap_var(SemaContext *context, Decl *decl);
+void sema_erase_var(SemaContext *context, Decl *decl);
+void sema_erase_unwrapped(SemaContext *context, Decl *decl);
 bool sema_analyse_cond_expr(SemaContext *context, Expr *expr);
 
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_failable);

@@ -369,8 +369,9 @@ RETRY:
 			MACRO_COPY_EXPR(ast->asm_stmt.body);
 			break;
 		case AST_ASSERT_STMT:
-			MACRO_COPY_EXPR(ast->ct_assert_stmt.expr);
-			MACRO_COPY_EXPR(ast->ct_assert_stmt.message);
+		case AST_CT_ASSERT:
+			MACRO_COPY_EXPRID(ast->assert_stmt.expr);
+			MACRO_COPY_EXPRID(ast->assert_stmt.message);
 			break;
 		case AST_BREAK_STMT:
 		case AST_CONTINUE_STMT:
@@ -387,10 +388,6 @@ RETRY:
 			break;
 		case AST_COMPOUND_STMT:
 			MACRO_COPY_ASTID(ast->compound_stmt.first_stmt);
-			break;
-		case AST_CT_ASSERT:
-			MACRO_COPY_EXPR(ast->ct_assert_stmt.message);
-			MACRO_COPY_EXPR(ast->ct_assert_stmt.expr);
 			break;
 		case AST_CT_IF_STMT:
 			MACRO_COPY_EXPR(ast->ct_if_stmt.expr);

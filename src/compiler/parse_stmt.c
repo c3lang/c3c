@@ -187,7 +187,7 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 	{
 		Ast *stmt = new_ast(AST_IF_CATCH_SWITCH_STMT, c->span);
 		Ast **cases = NULL;
-		if (!parse_switch_body(c, &cases, TOKEN_CASE, TOKEN_DEFAULT, true)) return poisoned_ast;
+		if (!parse_switch_body(c, &cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_ast;
 		stmt->switch_stmt.cases = cases;
 		if_ast->if_stmt.then_body = astid(stmt);
 	}
@@ -261,8 +261,7 @@ static inline Ast *parse_default_stmt(ParseContext *c, TokenType case_type, Toke
  *  | default_stmt switch body
  *  ;
  */
-bool parse_switch_body(ParseContext *c, Ast ***cases, TokenType case_type, TokenType default_type,
-                       bool allow_multiple_values)
+bool parse_switch_body(ParseContext *c, Ast ***cases, TokenType case_type, TokenType default_type)
 {
 	CONSUME_OR_RET(TOKEN_LBRACE, false);
 	while (!try_consume(c, TOKEN_RBRACE))
@@ -301,7 +300,7 @@ static inline Ast* parse_switch_stmt(ParseContext *c)
 	ASSIGN_EXPRID_OR_RET(switch_ast->switch_stmt.cond, parse_cond(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 
-	if (!parse_switch_body(c, &switch_ast->switch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT, false)) return poisoned_ast;
+	if (!parse_switch_body(c, &switch_ast->switch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_ast;
 	return switch_ast;
 }
 
@@ -452,9 +451,6 @@ static inline Ast* parse_next(ParseContext *c)
 			parse_optional_label_target(c, &ast->nextcase_stmt.label);
 			advance_and_verify(c, TOKEN_COLON);
 		}
-		TypeInfo *type = NULL;
-		Expr *expr = NULL;
-
 		ASSIGN_EXPR_OR_RET(ast->nextcase_stmt.expr, parse_expr(c), poisoned_ast);
 	}
 	return ast;
@@ -775,11 +771,11 @@ static inline Ast *parse_assert_stmt(ParseContext *c)
 	Ast *ast = ast_new_curr(c, AST_ASSERT_STMT);
 	advance_and_verify(c, TOKEN_ASSERT);
 	TRY_CONSUME_OR_RET(TOKEN_LPAREN, "'assert' needs a '(' here, did you forget it?", poisoned_ast);
-	ASSIGN_EXPR_OR_RET(ast->assert_stmt.expr, parse_assert_expr(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(ast->assert_stmt.expr, parse_assert_expr(c), poisoned_ast);
 
 	if (try_consume(c, TOKEN_COMMA))
 	{
-		ASSIGN_EXPR_OR_RET(ast->assert_stmt.message, parse_expr(c), poisoned_ast);
+		ASSIGN_EXPRID_OR_RET(ast->assert_stmt.message, parse_expr(c), poisoned_ast);
 	}
 	TRY_CONSUME_OR_RET(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
 	do
@@ -807,11 +803,11 @@ Ast *parse_ct_assert_stmt(ParseContext *c)
 	Ast *ast = ast_new_curr(c, AST_CT_ASSERT);
 	advance_and_verify(c, TOKEN_CT_ASSERT);
 	TRY_CONSUME_OR_RET(TOKEN_LPAREN, "'$assert' needs a '(' here, did you forget it?", poisoned_ast);
-	ASSIGN_EXPR_OR_RET(ast->ct_assert_stmt.expr, parse_constant_expr(c), poisoned_ast);
+	ASSIGN_EXPRID_OR_RET(ast->assert_stmt.expr, parse_constant_expr(c), poisoned_ast);
 
 	if (try_consume(c, TOKEN_COMMA))
 	{
-		ASSIGN_EXPR_OR_RET(ast->ct_assert_stmt.message, parse_constant_expr(c), poisoned_ast);
+		ASSIGN_EXPRID_OR_RET(ast->assert_stmt.message, parse_constant_expr(c), poisoned_ast);
 	}
 	TRY_CONSUME_OR_RET(TOKEN_RPAREN, "The ending ')' was expected here.", poisoned_ast);
 	do

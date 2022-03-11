@@ -55,7 +55,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 // --- Sema analyse stmts
 
 
-static inline bool assert_create_from_contract(SemaContext *context, AstDocDirective *directive, AstId **asserts)
+static inline bool assert_create_from_contract(SemaContext *context, AstDocDirective *directive, AstId **asserts, SourceSpan evaluation_location)
 {
 	Expr *declexpr = directive->contract.decl_exprs;
 	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
@@ -70,18 +70,37 @@ static inline bool assert_create_from_contract(SemaContext *context, AstDocDirec
 			return false;
 		}
 		if (!sema_analyse_cond_expr(context, expr)) return false;
-		Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
-		assert->assert_stmt.expr = expr;
+
 		const char *comment = directive->contract.comment;
 		if (!comment) comment = directive->contract.expr_string;
+		if (expr_is_const(expr))
+		{
+			assert(expr->const_expr.const_kind == CONST_BOOL);
+			if (expr->const_expr.b)
+			{
+				// Verified, so we can skip introducing it.
+				continue;
+			}
+			sema_error_at(evaluation_location.a ? evaluation_location : expr->span, "%s", comment);
+			return false;
+		}
+		Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
+		assert->assert_stmt.is_ensure = true;
+		assert->assert_stmt.expr = exprid(expr);
 		Expr *comment_expr = expr_new(EXPR_CONST, expr->span);
 		expr_rewrite_to_string(comment_expr, comment);
-		assert->assert_stmt.message = comment_expr;
+		assert->assert_stmt.message = exprid(comment_expr);
 		ast_append(asserts, assert);
 	}
 	return true;
 }
 
+/**
+ * Handle exit in a macro or in an expression block.
+ * @param context
+ * @param statement
+ * @return
+ */
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement)
 {
 	assert(context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO));
@@ -162,11 +181,12 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		AstId *append_id = &first;
 		// Creating an assign statement
 		AstDocDirective *directives = context->current_function->func_decl.docs;
+		context->return_expr = return_expr;
 		VECEACH(directives, i)
 		{
 			AstDocDirective *directive = &directives[i];
 			if (directive->kind != DOC_DIRECTIVE_ENSURE) continue;
-			if (!assert_create_from_contract(context, directive, &append_id)) return false;
+			if (!assert_create_from_contract(context, directive, &append_id, statement->span)) return false;
 		}
 
 		if (cleanup)
@@ -666,16 +686,6 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	}
 	return true;
 }
-
-static inline bool sema_analyse_stmt_placement(Expr *cond, Ast *stmt)
-{
-	if (stmt->ast_kind == AST_COMPOUND_STMT) return true;
-	return cond->span.row == stmt->span.row;
-}
-
-
-
-
 
 
 static inline bool sema_analyse_declare_stmt(SemaContext *context, Ast *statement)
@@ -2074,14 +2084,16 @@ static bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement)
 
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 {
-	Expr *expr = statement->ct_assert_stmt.expr;
-	Expr *message = statement->ct_assert_stmt.message;
-	if (message)
+	Expr *expr = exprptr(statement->assert_stmt.expr);
+	ExprId message = statement->assert_stmt.message;
+	const char *msg = NULL;
+	Expr *message_expr = message ? exprptr(message) : NULL;
+	if (message_expr)
 	{
-		if (!sema_analyse_expr(context, message)) return false;
-		if (message->expr_kind != EXPR_CONST || message->const_expr.const_kind != CONST_STRING)
+		if (!sema_analyse_expr(context, message_expr)) return false;
+		if (message_expr->expr_kind != EXPR_CONST || message_expr->const_expr.const_kind != CONST_STRING)
 		{
-			SEMA_ERROR(message, "Expected a string as the error message.");
+			SEMA_ERROR(message_expr, "Expected a string as the error message.");
 		}
 	}
 	int res = sema_check_comp_time_bool(context, expr);
@@ -2091,7 +2103,7 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 	{
 		if (message)
 		{
-			SEMA_ERROR(expr, "Compile time assert - %.*s", message->const_expr.string.len, message->const_expr.string.chars);
+			SEMA_ERROR(expr, "Compile time assert - %.*s", EXPAND_EXPR_STRING(message_expr));
 		}
 		else
 		{
@@ -2106,14 +2118,17 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 
 bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement)
 {
-	Expr *expr = statement->assert_stmt.expr;
-	Expr *message = statement->assert_stmt.message;
-	if (message)
+	Expr *expr = exprptr(statement->assert_stmt.expr);
+	ExprId message = statement->assert_stmt.message;
+	const char *msg = NULL;
+	Expr *message_expr = message ? exprptr(message) : NULL;
+	if (message_expr)
 	{
-		if (!sema_analyse_expr(context, message)) return false;
-		if (message->expr_kind != EXPR_CONST || message->const_expr.const_kind != CONST_STRING)
+		if (!sema_analyse_expr(context, message_expr)) return false;
+		if (message_expr->expr_kind != EXPR_CONST || message_expr->const_expr.const_kind != CONST_STRING)
 		{
-			SEMA_ERROR(message, "Expected a string as the error message.");
+			SEMA_ERROR(message_expr, "Expected a string as the error message.");
+			return false;
 		}
 	}
 	if (expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN)
@@ -2130,7 +2145,20 @@ bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement)
 				statement->ast_kind = AST_NOP_STMT;
 				return true;
 			}
-			statement->assert_stmt.expr = NULL;
+			if (statement->assert_stmt.is_ensure)
+			{
+				if (message_expr)
+				{
+					SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
+				}
+				else
+				{
+					SEMA_ERROR(expr, "Contract violated.");
+				}
+				return false;
+			}
+
+			statement->assert_stmt.expr = 0;
 			context->active_scope.jump_end = true;
 		}
 	}
@@ -2316,7 +2344,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 
 static bool sema_analyse_require(SemaContext *context, AstDocDirective *directive, AstId **asserts)
 {
-	return assert_create_from_contract(context, directive, asserts);
+	return assert_create_from_contract(context, directive, asserts, INVALID_SPAN);
 }
 
 static bool sema_analyse_ensure(SemaContext *context, AstDocDirective *directive)

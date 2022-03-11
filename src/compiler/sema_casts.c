@@ -81,14 +81,6 @@ bool pointer_to_pointer(Expr* expr, Type *type)
 }
 
 
-bool string_literal_to_subarray(Expr* left, Type *type)
-{
-	Type *array_type = type_get_array(type_char, left->const_expr.string.len);
-	insert_cast(left, CAST_STRPTR, type_get_ptr(array_type));
-	insert_cast(left, CAST_APTSA, type);
-	return true;
-}
-
 static void const_int_to_fp_cast(Expr *expr, Type *canonical, Type *type)
 {
 	Real f = int_to_real(expr->const_expr.ixx);

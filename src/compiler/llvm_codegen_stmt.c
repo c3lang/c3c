@@ -927,8 +927,8 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 
 static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 {
-	Expr *expr = ast->assert_stmt.expr;
-	if (!expr)
+	ExprId exprid = ast->assert_stmt.expr;
+	if (!exprid)
 	{
 		File *file = source_file_by_id(ast->span.file_id);
 		unsigned row = ast->span.row;
@@ -941,22 +941,23 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		llvm_emit_block(c, block);
 		return;
 	}
+	Expr *assert_expr = exprptr(exprid);
 
 	if (active_target.feature.safe_mode)
 	{
 		BEValue value;
-		llvm_emit_expr(c, &value, ast->assert_stmt.expr);
+		llvm_emit_expr(c, &value, assert_expr);
 		llvm_value_rvalue(c, &value);
 		LLVMBasicBlockRef on_fail = llvm_basic_block_new(c, "assert_fail");
 		LLVMBasicBlockRef on_ok = llvm_basic_block_new(c, "assert_ok");
 		assert(value.kind == BE_BOOLEAN);
 		llvm_emit_cond_br(c, &value, on_ok, on_fail);
 		llvm_emit_block(c, on_fail);
-		SourceSpan loc = ast->assert_stmt.expr->span;
+		SourceSpan loc = assert_expr->span;
 		const char *error;
 		if (ast->assert_stmt.message)
 		{
-			error = ast->assert_stmt.message->const_expr.string.chars;
+			error = exprptr(ast->assert_stmt.message)->const_expr.string.chars;
 		}
 		else
 		{
@@ -968,7 +969,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
 	}
-	llvm_emit_assume(c, ast->assert_stmt.expr);
+	llvm_emit_assume(c, exprptr(ast->assert_stmt.expr));
 }
 
 static inline void add_target_clobbers_to_buffer(GenContext *c)
