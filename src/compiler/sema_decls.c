@@ -1296,13 +1296,14 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 
 }
 
-static inline bool sema_analyse_doc_header(AstDocDirective *docs, Decl **params, Decl **extra_params, bool *pure_ref)
+static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extra_params, bool *pure_ref)
 {
-	if (!docs) return true;
-	VECEACH(docs, i)
+	while (doc)
 	{
-		AstDocDirective *directive = &docs[i];
-		if (directive->kind == DOC_DIRECTIVE_PURE)
+		Ast *directive = astptr(doc);
+		doc = directive->next;
+		DocDirectiveKind directive_kind = directive->doc_stmt.kind;
+		if (directive_kind == DOC_DIRECTIVE_PURE)
 		{
 			if (*pure_ref)
 			{
@@ -1312,8 +1313,8 @@ static inline bool sema_analyse_doc_header(AstDocDirective *docs, Decl **params,
 			*pure_ref = true;
 			continue;
 		}
-		if (directive->kind != DOC_DIRECTIVE_PARAM) continue;
-		const char *param_name = directive->param.name;
+		if (directive_kind != DOC_DIRECTIVE_PARAM) continue;
+		const char *param_name = directive->doc_stmt.param.name;
 		Decl *extra_param = NULL;
 		Decl *param = NULL;
 		VECEACH(params, j)
@@ -1326,11 +1327,11 @@ static inline bool sema_analyse_doc_header(AstDocDirective *docs, Decl **params,
 			param = extra_params[j];
 			if (param->name == param_name) goto NEXT;
 		}
-		SEMA_ERROR(&directive->param, "There is no parameter '%s', did you misspell it?", param_name);
+		SEMA_ERROR(&directive->doc_stmt.param, "There is no parameter '%s', did you misspell it?", param_name);
 		return false;
 	NEXT:;
 		bool may_be_pointer = !param->type || type_is_pointer(type_flatten(param->type));
-		if (directive->param.by_ref)
+		if (directive->doc_stmt.param.by_ref)
 		{
 			if (!may_be_pointer)
 			{
@@ -1339,7 +1340,7 @@ static inline bool sema_analyse_doc_header(AstDocDirective *docs, Decl **params,
 			}
 			param->var.not_null = true;
 		}
-		switch (directive->param.modifier)
+		switch (directive->doc_stmt.param.modifier)
 		{
 			case PARAM_ANY:
 				goto ADDED;

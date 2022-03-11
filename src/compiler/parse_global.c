@@ -3,7 +3,7 @@
 
 
 static Decl *parse_const_declaration(ParseContext *c, Visibility visibility);
-static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstDocDirective *docs, bool is_interface);
+static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstId docs, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 
 #define DECL_VAR_NEW(type__, var__, visible__) decl_new_var(symstr(c), c->span, type__, var__, visible__);
@@ -1967,7 +1967,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
  * @param visibility
  * @return Decl*
  */
-static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstDocDirective *docs, bool is_interface)
+static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility, AstId docs, bool is_interface)
 {
 	if (tok_is(c, TOKEN_FUNC))
 	{
@@ -2083,12 +2083,13 @@ void parse_imports(ParseContext *c)
 
 
 
-static inline bool parse_doc_contract(ParseContext *c, AstDocDirective **docs_ref, DocDirectiveKind kind)
+static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, DocDirectiveKind kind)
 {
-	AstDocDirective directive = { .span = c->span, .kind = kind };
+	Ast *ast = ast_new_curr(c, AST_DOC_STMT);
+	ast->doc_stmt.kind = kind;
 	const char *start = c->lexer.data.lex_start;
 	advance(c);
-	ASSIGN_EXPR_OR_RET(directive.contract.decl_exprs, parse_expression_list(c, kind == DOC_DIRECTIVE_CHECKED), false);
+	ASSIGN_EXPR_OR_RET(ast->doc_stmt.contract.decl_exprs, parse_expression_list(c, kind == DOC_DIRECTIVE_CHECKED), false);
 	const char *end = start;
 	while (*++end != '\n' && *end != '\0') end++;
 	end--;
@@ -2114,21 +2115,23 @@ static inline bool parse_doc_contract(ParseContext *c, AstDocDirective **docs_re
 		scratch_buffer_append(": '");
 		scratch_buffer_append(symstr(c));
 		scratch_buffer_append("'.");
-		directive.contract.comment = scratch_buffer_copy();
+		ast->doc_stmt.contract.comment = scratch_buffer_copy();
 		advance(c);
 	}
 	else
 	{
 		scratch_buffer_append(".");
-		directive.contract.expr_string = scratch_buffer_copy();
+		ast->doc_stmt.contract.expr_string = scratch_buffer_copy();
 	}
-	vec_add(*docs_ref, directive);
+	**docs_ref = astid(ast);
+	*docs_ref = &ast->next;
 	return true;
 }
 
-static inline bool parse_doc_param(ParseContext *c, AstDocDirective **docs_ref)
+static inline bool parse_doc_param(ParseContext *c, AstId **docs_ref)
 {
-	AstDocDirective directive = { .span = c->span, .kind = DOC_DIRECTIVE_PARAM };
+	Ast *ast = ast_new_curr(c, AST_DOC_STMT);
+	ast->doc_stmt.kind = DOC_DIRECTIVE_PARAM;
 	advance(c);
 
 	// [&inout] [in] [out]
@@ -2176,21 +2179,22 @@ static inline bool parse_doc_param(ParseContext *c, AstDocDirective **docs_ref)
 			return false;
 	}
 
-	directive.param.name = symstr(c);
-	directive.param.span = c->span;
-	directive.param.modifier = mod;
-	directive.param.by_ref = is_ref;
+	ast->doc_stmt.param.name = symstr(c);
+	ast->doc_stmt.param.span = c->span;
+	ast->doc_stmt.param.modifier = mod;
+	ast->doc_stmt.param.by_ref = is_ref;
 	advance(c);
 	try_consume(c, TOKEN_STRING);
-	vec_add(*docs_ref, directive);
+	**docs_ref = astid(ast);
+	*docs_ref = &ast->next;
 	return true;
 }
 
-static inline bool parse_doc_errors(ParseContext *c, AstDocDirective **docs)
+static inline bool parse_doc_errors(ParseContext *c, AstId **docs_ref)
 {
-
 	DocOptReturn *returns = NULL;
-	AstDocDirective directive = { .span = c->span, .kind = DOC_DIRECTIVE_ERRORS };
+	Ast *ast = ast_new_curr(c, AST_DOC_STMT);
+	ast->doc_stmt.kind = DOC_DIRECTIVE_ERRORS;
 	advance(c);
 	while (1)
 	{
@@ -2210,18 +2214,20 @@ static inline bool parse_doc_errors(ParseContext *c, AstDocDirective **docs)
 		vec_add(returns, ret);
 		if (!try_consume(c, TOKEN_COMMA)) break;
 	}
-	directive.span = extend_span_with_token(directive.span, c->prev_span);
-	directive.optreturns = returns;
-	vec_add(*docs, directive);
+	RANGE_EXTEND_PREV(ast);
+	ast->doc_stmt.optreturns = returns;
+	**docs_ref = astid(ast);
+	*docs_ref = &ast->next;
 	return true;
 }
 
 
-static bool parse_docs(ParseContext *c, AstDocDirective **docs_ref)
+static bool parse_docs(ParseContext *c, AstId *docs_ref)
 {
-	*docs_ref = NULL;
+	*docs_ref = 0;
 	if (!try_consume(c, TOKEN_DOCS_START)) return true;
 
+	AstId *last = docs_ref;
 	uint32_t row_last_row = c->span.row;
 	while (1)
 	{
@@ -2230,28 +2236,30 @@ static bool parse_docs(ParseContext *c, AstDocDirective **docs_ref)
 		switch (c->tok)
 		{
 			case TOKEN_DOCS_PARAM:
-				if (!parse_doc_param(c, docs_ref)) return false;
+				if (!parse_doc_param(c, &last)) return false;
 				break;
 			case TOKEN_DOCS_RETURN:
 				advance(c);
 				if (!consume(c, TOKEN_STRING, "Expected a string description.")) return false;
 				break;
 			case TOKEN_DOCS_REQUIRE:
-				if (!parse_doc_contract(c, docs_ref, DOC_DIRECTIVE_REQUIRE)) return false;
+				if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_REQUIRE)) return false;
 				break;
 			case TOKEN_DOCS_CHECKED:
-				if (!parse_doc_contract(c, docs_ref, DOC_DIRECTIVE_CHECKED)) return false;
+				if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_CHECKED)) return false;
 				break;
 			case TOKEN_DOCS_ENSURE:
-				if (!parse_doc_contract(c, docs_ref, DOC_DIRECTIVE_ENSURE)) return false;
+				if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_ENSURE)) return false;
 				break;
 			case TOKEN_DOCS_OPTRETURN:
-				if (!parse_doc_errors(c, docs_ref)) return false;
+				if (!parse_doc_errors(c, &docs_ref)) return false;
 				break;
 			case TOKEN_DOCS_PURE:
 			{
-				AstDocDirective directive = { .span = c->span, .kind = DOC_DIRECTIVE_PURE };
-				vec_add(*docs_ref, directive);
+				Ast *ast = ast_new_curr(c, AST_DOC_STMT);
+				ast->doc_stmt.kind = DOC_DIRECTIVE_PURE;
+				*docs_ref = astid(ast);
+				docs_ref = &ast->next;
 				advance(c);
 				break;
 			}
@@ -2296,7 +2304,7 @@ static bool parse_docs(ParseContext *c, AstDocDirective **docs_ref)
  */
 Decl *parse_top_level_statement(ParseContext *c)
 {
-	AstDocDirective *docs = NULL;
+	AstId docs = 0;
 	if (!parse_docs(c, &docs)) return poisoned_decl;
 	Visibility visibility = VISIBLE_PUBLIC;
 	switch (c->tok)
@@ -2343,7 +2351,7 @@ Decl *parse_top_level_statement(ParseContext *c)
 				decl->ct_assert_decl = ast;
 				if (docs)
 				{
-					SEMA_ERROR(docs, "Unexpected doc comment before $assert, did you mean to use a regular comment?");
+					SEMA_ERROR(astptr(docs), "Unexpected doc comment before $assert, did you mean to use a regular comment?");
 					return poisoned_decl;
 				}
 				return decl;
@@ -2354,7 +2362,7 @@ Decl *parse_top_level_statement(ParseContext *c)
 			ASSIGN_DECL_OR_RET(decl, parse_ct_if_top_level(c), poisoned_decl);
 			if (docs)
 			{
-				SEMA_ERROR(docs, "Unexpected doc comment before $if, did you mean to use a regular comment?");
+				SEMA_ERROR(astptr(docs), "Unexpected doc comment before $if, did you mean to use a regular comment?");
 				return poisoned_decl;
 			}
 			break;
@@ -2365,7 +2373,7 @@ Decl *parse_top_level_statement(ParseContext *c)
 			ASSIGN_DECL_OR_RET(decl, parse_ct_switch_top_level(c), poisoned_decl);
 			if (docs)
 			{
-				SEMA_ERROR(docs, "Unexpected doc comment before $switch, did you mean to use a regular comment?");
+				SEMA_ERROR(astptr(docs), "Unexpected doc comment before $switch, did you mean to use a regular comment?");
 				return poisoned_decl;
 			}
 			break;

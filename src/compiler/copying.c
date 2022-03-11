@@ -325,28 +325,21 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	UNREACHABLE
 }
 
-AstDocDirective *doc_directive_copy(CopyStruct *c, AstDocDirective *docs)
+void doc_ast_copy(CopyStruct *c, AstDocStmt *doc)
 {
-	AstDocDirective *directive_new = NULL;
-	VECEACH(docs, i)
+	switch (doc->kind)
 	{
-		AstDocDirective directive = docs[i];
-		switch (directive.kind)
-		{
-			case DOC_DIRECTIVE_REQUIRE:
-			case DOC_DIRECTIVE_ENSURE:
-			case DOC_DIRECTIVE_CHECKED:
-				MACRO_COPY_EXPR(directive.contract.decl_exprs);
-				break;
-			case DOC_DIRECTIVE_PARAM:
-			case DOC_DIRECTIVE_ERRORS:
-			case DOC_DIRECTIVE_PURE:
-			case DOC_DIRECTIVE_UNKNOWN:
-				break;
-		}
-		vec_add(directive_new, directive);
+		case DOC_DIRECTIVE_REQUIRE:
+		case DOC_DIRECTIVE_ENSURE:
+		case DOC_DIRECTIVE_CHECKED:
+			MACRO_COPY_EXPR(doc->contract.decl_exprs);
+			break;
+		case DOC_DIRECTIVE_PARAM:
+		case DOC_DIRECTIVE_ERRORS:
+		case DOC_DIRECTIVE_PURE:
+		case DOC_DIRECTIVE_UNKNOWN:
+			break;
 	}
-	return directive_new;
 }
 
 Ast *ast_copy_deep(CopyStruct *c, Ast *source)
@@ -364,6 +357,9 @@ RETRY:
 	switch (source->ast_kind)
 	{
 		case AST_POISONED:
+			break;
+		case AST_DOC_STMT:
+			doc_ast_copy(c, &source->doc_stmt);
 			break;
 		case AST_ASM_STMT:
 			MACRO_COPY_EXPR(ast->asm_stmt.body);
@@ -603,7 +599,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_FUNC:
 			MACRO_COPY_TYPEID(copy->func_decl.type_parent);
-			copy->func_decl.docs = doc_directive_copy(c, copy->func_decl.docs);
+			MACRO_COPY_ASTID(copy->func_decl.docs);
 			copy_function_signature_deep(c, &copy->func_decl.function_signature);
 			MACRO_COPY_ASTID(copy->func_decl.body);
 			break;
@@ -666,7 +662,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			break;
 		case DECL_GENERIC:
 		case DECL_MACRO:
-			copy->macro_decl.docs = doc_directive_copy(c, copy->macro_decl.docs);
+			MACRO_COPY_ASTID(copy->macro_decl.docs);
 			MACRO_COPY_TYPEID(decl->macro_decl.type_parent);
 			MACRO_COPY_DECL_LIST(decl->macro_decl.parameters);
 			MACRO_COPY_ASTID(decl->macro_decl.body);

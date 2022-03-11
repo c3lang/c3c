@@ -69,6 +69,7 @@ typedef enum
 	AST_BLOCK_EXIT_STMT,
 	AST_SWITCH_STMT,
 	AST_NEXT_STMT,
+	AST_DOC_STMT,
 } AstKind;
 
 

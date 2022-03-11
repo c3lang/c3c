@@ -464,7 +464,7 @@ typedef struct
 	TypeInfoId type_parent;
 	FunctionSignature function_signature;
 	AstId body;
-	struct AstDocDirective_ *docs;
+	AstId docs;
 } FuncDecl;
 
 typedef struct
@@ -506,7 +506,7 @@ typedef struct
 	DeclId body_param;
 	Decl **parameters;
 	struct CompilationUnit_ *unit;
-	struct AstDocDirective_ *docs;
+	AstId docs;
 } MacroDecl;
 
 typedef struct
@@ -1233,9 +1233,8 @@ typedef struct AstDocDirective_
 			const char *directive_name;
 			const char *rest_of_line;
 		} generic;
-
 	};
-} AstDocDirective;
+} AstDocStmt;
 
 typedef struct Ast_
 {
@@ -1264,7 +1263,7 @@ typedef struct Ast_
 		AstId ct_else_stmt;                 // 4
 		AstCtForeachStmt ct_foreach_stmt;   // 40
 		AstAssertStmt assert_stmt;          // 16
-		AstDocDirective *directives;        // 8
+		AstDocStmt doc_stmt;
 	};
 } Ast;
 

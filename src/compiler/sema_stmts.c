@@ -55,9 +55,9 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 // --- Sema analyse stmts
 
 
-static inline bool assert_create_from_contract(SemaContext *context, AstDocDirective *directive, AstId **asserts, SourceSpan evaluation_location)
+static inline bool assert_create_from_contract(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan evaluation_location)
 {
-	Expr *declexpr = directive->contract.decl_exprs;
+	Expr *declexpr = directive->doc_stmt.contract.decl_exprs;
 	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	Expr **exprs = declexpr->expression_list;
@@ -71,8 +71,8 @@ static inline bool assert_create_from_contract(SemaContext *context, AstDocDirec
 		}
 		if (!sema_analyse_cond_expr(context, expr)) return false;
 
-		const char *comment = directive->contract.comment;
-		if (!comment) comment = directive->contract.expr_string;
+		const char *comment = directive->doc_stmt.contract.comment;
+		if (!comment) comment = directive->doc_stmt.contract.expr_string;
 		if (expr_is_const(expr))
 		{
 			assert(expr->const_expr.const_kind == CONST_BOOL);
@@ -180,15 +180,17 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		AstId first = 0;
 		AstId *append_id = &first;
 		// Creating an assign statement
-		AstDocDirective *directives = context->current_function->func_decl.docs;
+		AstId doc_directive = context->current_function->func_decl.docs;
 		context->return_expr = return_expr;
-		VECEACH(directives, i)
+		while (doc_directive)
 		{
-			AstDocDirective *directive = &directives[i];
-			if (directive->kind != DOC_DIRECTIVE_ENSURE) continue;
-			if (!assert_create_from_contract(context, directive, &append_id, statement->span)) return false;
+			Ast *directive = astptr(doc_directive);
+			if (directive->doc_stmt.kind == DOC_DIRECTIVE_ENSURE)
+			{
+				if (!assert_create_from_contract(context, directive, &append_id, statement->span)) return false;
+			}
+			doc_directive = directive->next;
 		}
-
 		if (cleanup)
 		{
 			Ast *last = ast_last(astptr(cleanup));
@@ -2278,6 +2280,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 	{
 		case AST_POISONED:
 		case AST_IF_CATCH_SWITCH_STMT:
+		case AST_DOC_STMT:
 			UNREACHABLE
 		case AST_ASM_STMT:
 			return sema_analyse_asm_stmt(context, statement);
@@ -2342,14 +2345,14 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 }
 
 
-static bool sema_analyse_require(SemaContext *context, AstDocDirective *directive, AstId **asserts)
+static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts)
 {
 	return assert_create_from_contract(context, directive, asserts, INVALID_SPAN);
 }
 
-static bool sema_analyse_ensure(SemaContext *context, AstDocDirective *directive)
+static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 {
-	Expr *declexpr = directive->contract.decl_exprs;
+	Expr *declexpr = directive->doc_stmt.contract.decl_exprs;
 	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	VECEACH(declexpr->expression_list, j)
@@ -2364,9 +2367,9 @@ static bool sema_analyse_ensure(SemaContext *context, AstDocDirective *directive
 	return true;
 }
 
-static bool sema_analyse_errors(SemaContext *context, AstDocDirective *directive)
+static bool sema_analyse_errors(SemaContext *context, Ast *directive)
 {
-	DocOptReturn *returns = directive->optreturns;
+	DocOptReturn *returns = directive->doc_stmt.optreturns;
 	VECEACH(returns, i)
 	{
 		TypeInfo *type_info = returns[i].type;
@@ -2406,9 +2409,9 @@ NEXT:;
 	return true;
 }
 
-static bool sema_analyse_checked(SemaContext *context, AstDocDirective *directive, AstId **asserts)
+static bool sema_analyse_checked(SemaContext *context, Ast *directive, AstId **asserts)
 {
-	Expr *declexpr = directive->contract.decl_exprs;
+	Expr *declexpr = directive->doc_stmt.contract.decl_exprs;
 	bool success = true;
 	SCOPE_START
 		VECEACH(declexpr->cond_expr, j)
@@ -2416,7 +2419,7 @@ static bool sema_analyse_checked(SemaContext *context, AstDocDirective *directiv
 			Expr *expr = declexpr->cond_expr[j];
 			if (!sema_analyse_cond_expr(context, expr))
 			{
-				const char *comment = directive->contract.comment;
+				const char *comment = directive->doc_stmt.contract.comment;
 				if (comment)
 				{
 					SEMA_ERROR(expr, comment);
@@ -2430,13 +2433,12 @@ END:
 	return success;
 }
 
-static bool sema_analyse_contracts(SemaContext *context, AstDocDirective *directives, AstId **asserts)
+static bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts)
 {
-	if (!directives) return true;
-	VECEACH(directives, i)
+	while (doc)
 	{
-		AstDocDirective *directive = &directives[i];
-		switch (directive->kind)
+		Ast *directive = astptr(doc);
+		switch (directive->doc_stmt.kind)
 		{
 			case DOC_DIRECTIVE_UNKNOWN:
 			case DOC_DIRECTIVE_PURE:
@@ -2457,6 +2459,7 @@ static bool sema_analyse_contracts(SemaContext *context, AstDocDirective *direct
 				context->ensures = true;
 				break;
 		}
+		doc = directive->next;
 	}
 	return true;
 }
