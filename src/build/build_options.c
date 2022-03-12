@@ -94,6 +94,7 @@ static void usage(void)
 	OUTPUT("  --threads <number>    - Set the number of threads to use for compilation.");
 	OUTPUT("  --safe                - Set mode to 'safe', generating runtime traps on overflows and contract violations.");
 	OUTPUT("  --fast                - Set mode to 'fast', removes runtime traps.");
+	OUTPUT("  --test                - Emit and check LLVM IR as a .ll file without an executable building.");
 	OUTPUT("");
 	OUTPUT("  -g                    - Emit full debug info.");
 	OUTPUT("  -g0                   - Emit no debug info.");
