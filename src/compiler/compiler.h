@@ -15,3 +15,10 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options);
 void symtab_init(uint32_t max_size);
 void symtab_destroy();
 void print_syntax(BuildOptions *options);
+
+extern double compiler_init_time;
+extern double compiler_parsing_time;
+extern double compiler_sema_time;
+extern double compiler_ir_gen_time;
+extern double compiler_codegen_time;
+extern double compiler_link_time;

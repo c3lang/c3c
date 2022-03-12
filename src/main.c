@@ -1,3 +1,4 @@
+#include <compiler_tests/benchmark.h>
 #include "compiler/compiler.h"
 #include "build/build_options.h"
 #include "build/project_creation.h"
@@ -24,6 +25,8 @@ static void cleanup()
 
 int main_real(int argc, const char *argv[])
 {
+	bench_begin();
+
 	int result = setjmp(on_error_jump);
 	if (result)
 	{

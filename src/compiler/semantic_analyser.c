@@ -2,6 +2,7 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
+#include <compiler_tests/benchmark.h>
 #include "sema_internal.h"
 
 void sema_shadow_error(Decl *decl, Decl *old)
@@ -286,6 +287,7 @@ void sema_analysis_run(void)
 		if (!parse_file(file)) has_error = true;
 	}
 	if (has_error) exit_compiler(EXIT_FAILURE);
+	compiler_parsing_time = bench_mark();
 
 	// All global defines are added to the std module
 	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_SPAN, .len = (uint32_t) strlen(kw_std) };
@@ -316,6 +318,7 @@ void sema_analysis_run(void)
 	{
 		sema_analyze_to_stage(stage);
 	}
+	compiler_sema_time = bench_mark();
 
 }
 

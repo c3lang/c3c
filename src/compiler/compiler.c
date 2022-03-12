@@ -5,6 +5,8 @@
 #include "compiler_internal.h"
 #ifndef _MSC_VER
 #include <unistd.h>
+#include <compiler_tests/benchmark.h>
+
 #endif
 
 #define MAX_OUTPUT_FILES 1000000
@@ -16,11 +18,22 @@ Vmem ast_arena;
 Vmem expr_arena;
 Vmem decl_arena;
 Vmem type_info_arena;
-
-
+double compiler_init_time;
+double compiler_parsing_time;
+double compiler_sema_time;
+double compiler_ir_gen_time;
+double compiler_codegen_time;
+double compiler_link_time;
 
 void compiler_init(const char *std_lib_dir)
 {
+	compiler_init_time = -1;
+	compiler_parsing_time = -1;
+	compiler_sema_time = -1;
+	compiler_ir_gen_time = -1;
+	compiler_codegen_time = -1;
+	compiler_link_time = -1;
+
 	DEBUG_LOG("Version: %s", COMPILER_VERSION);
 
 	global_context = (GlobalContext ){ .in_panic_mode = false };
@@ -155,6 +168,20 @@ static void free_arenas(void)
 	if (debug_stats) print_arena_status();
 }
 
+static void compiler_print_bench(void)
+{
+	if (debug_stats)
+	{
+		printf("Timings\n");
+		printf("-------\n");
+		if (compiler_init_time >= 0) printf("Initialization took: %.4f ms\n", compiler_init_time * 1000);
+		if (compiler_parsing_time >= 0) printf("Parsing took:        %.4f ms\n", (compiler_parsing_time - compiler_init_time) * 1000);
+		if (compiler_sema_time >= 0) printf("Analysis took:       %.4f ms\n", (compiler_sema_time - compiler_parsing_time) * 1000);
+		if (compiler_ir_gen_time >= 0) printf("Ir gen took:         %.4f ms\n", (compiler_ir_gen_time - compiler_sema_time) * 1000);
+		if (compiler_codegen_time >= 0) printf("Codegen took:        %.4f ms\n", (compiler_codegen_time - compiler_ir_gen_time) * 1000);
+		if (compiler_link_time >= 0) printf("Linking took:        %.4f ms\n", (compiler_link_time - compiler_codegen_time) * 1000);
+	}
+}
 
 void compiler_compile(void)
 {
@@ -213,6 +240,7 @@ void compiler_compile(void)
 		default:
 			UNREACHABLE
 	}
+	compiler_ir_gen_time = bench_mark();
 
 
 	free_arenas();
@@ -273,6 +301,7 @@ void compiler_compile(void)
 
 	output_file_count += cfiles;
 	free(compile_data);
+	compiler_codegen_time = bench_mark();
 
 	if (create_exe)
 	{
@@ -280,9 +309,12 @@ void compiler_compile(void)
 		if (active_target.arch_os_target == default_target)
 		{
 			platform_linker(output_name, obj_files, output_file_count);
+			compiler_link_time = bench_mark();
+			compiler_print_bench();
 		}
 		else
 		{
+			compiler_print_bench();
 			if (!obj_format_linking_supported(platform_target.object_format) || !linker(output_name, obj_files,
 			                                                                            output_file_count))
 			{
@@ -290,6 +322,7 @@ void compiler_compile(void)
 				active_target.run_after_compile = false;
 			}
 		}
+
 		if (active_target.run_after_compile)
 		{
 			printf("Launching %s...\n", output_name);
@@ -482,15 +515,20 @@ void compile()
 
 	type_init_cint();
 
+	compiler_init_time = bench_mark();
+
 	if (!vec_size(active_target.sources)) error_exit("No files to compile.");
 	if (active_target.lex_only)
 	{
 		compiler_lex();
+		compiler_parsing_time = bench_mark();
+
 		return;
 	}
 	if (active_target.parse_only)
 	{
 		compiler_parse();
+		compiler_parsing_time = bench_mark();
 		return;
 	}
 	compiler_compile();
