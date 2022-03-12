@@ -108,16 +108,17 @@ static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, Na
 {
 	const char *symbol = name_resolve->symbol;
 	Path *path = name_resolve->path;
-	Decl *decls = decltable_get(table, symbol);
+	DeclId decl_ids = decltable_get(table, symbol);
 
 	// We might have no match at all.
-	if (!decls)
+	if (!decl_ids)
 	{
 		// Update the path found
 		if (path && !name_resolve->path_found) name_resolve->path_found = sema_is_path_found(module_list, path, want_generic);
 		return NULL;
 	}
 
+	Decl *decls = declptr(decl_ids);
 	// There might just be a single match.
 	if (decls->decl_kind != DECL_DECLARRAY)
 	{

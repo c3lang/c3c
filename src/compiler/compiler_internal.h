@@ -1441,7 +1441,7 @@ typedef struct
 	uint32_t count;
 	uint32_t capacity;
 	uint32_t max_load;
-	Decl **entries;
+	DeclId *entries;
 } DeclTable;
 
 typedef struct
@@ -2027,7 +2027,7 @@ void *htable_get(HTable *table, const char *key);
 UNUSED void stable_clear(STable *table);
 
 void decltable_init(DeclTable *table, uint32_t initial_size);
-Decl *decltable_get(DeclTable *table, const char *name);
+DeclId decltable_get(DeclTable *table, const char *name);
 void decltable_set(DeclTable *table, Decl *decl);
 
 void scratch_buffer_clear(void);

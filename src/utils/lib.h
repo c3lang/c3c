@@ -16,6 +16,7 @@ extern jmp_buf on_err_jump;
 
 extern bool debug_log;
 extern bool debug_stats;
+extern uintptr_t arena_zero;
 
 NORETURN void exit_compiler(int exit_value);
 
@@ -38,6 +39,9 @@ void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(void);
 void memory_release();
+
+#define ptrid(ptr_) ((((uintptr_t)(ptr_)) - arena_zero) / 16)
+#define idptr(id_) ((void*)(((uintptr_t)id_) * 16 + arena_zero))
 void *calloc_arena(size_t mem);
 char *calloc_string(size_t len);
 char *copy_string(const char *start, size_t str_len);
