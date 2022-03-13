@@ -270,10 +270,8 @@ typedef enum
 typedef enum
 {
 	SCOPE_NONE = 0,
-	SCOPE_DEFER = 1 << 4,
 	SCOPE_EXPR_BLOCK = 1 << 5,
 	SCOPE_MACRO = 1 << 6,
-	SCOPE_COND = 1 << 7,
 } ScopeFlags;
 
 typedef enum

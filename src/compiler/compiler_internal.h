@@ -1406,10 +1406,10 @@ typedef struct SemaContext_
 	struct
 	{
 		bool current_function_pure : 1;
+		bool ensures : 1;
 	};
 	Decl *current_macro;
 	ScopeId scope_id;
-	bool ensures;
 	AstId break_target;
 	AstId break_defer;
 	AstId continue_target;

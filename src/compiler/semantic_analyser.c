@@ -42,7 +42,7 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	assert(parent_defer < 1000000);
 	// Defer and expression blocks introduce their own return/break/continue
 	// otherwise just merge with the old flags.
-	if (!(flags & (SCOPE_DEFER | SCOPE_EXPR_BLOCK)))
+	if (!(flags & SCOPE_EXPR_BLOCK))
 	{
 		flags = context->active_scope.flags | flags;
 	}

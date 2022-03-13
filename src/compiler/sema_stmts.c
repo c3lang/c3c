@@ -712,7 +712,7 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *bod
 {
 	// TODO special parsing of "catch"
 	bool success;
-	SCOPE_START_WITH_FLAGS(SCOPE_DEFER)
+	SCOPE_START
 
 	context->active_scope.defer_last = 0;
 	context->active_scope.defer_start = 0;
@@ -722,7 +722,7 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *bod
 	PUSH_NEXT(NULL, NULL);
 
 	// Only ones allowed.
-	context->active_scope.flags &= SCOPE_DEFER;
+	context->active_scope.flags = 0;
 
 	success = sema_analyse_statement(context, body);
 
@@ -902,7 +902,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	bool iterator_based = false;
 
 	// Conditional scope start
-	SCOPE_START_WITH_FLAGS(SCOPE_COND)
+	SCOPE_START
 
 		// In the case of foreach (int x : { 1, 2, 3 }) we will infer the int[] type, so pick out the number of elements.
 		Type *inferred_type = NULL;
