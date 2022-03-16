@@ -44,98 +44,97 @@
 
 static int get_module_path_(HMODULE module, char *out, int capacity, int *dirname_length)
 {
-	wchar_t buffer1[MAX_PATH];
-	wchar_t buffer2[MAX_PATH];
-	wchar_t *path = NULL;
-	int length = -1;
+    wchar_t buffer1[MAX_PATH];
+    wchar_t buffer2[MAX_PATH];
+    wchar_t *path = NULL;
+    int length = -1;
 
-	for (;;)
-	{
-		DWORD size;
-		int length_, length__;
+    for (;;)
+    {
+        DWORD size;
+        int length_, length__;
 
-		size = GetModuleFileNameW(module, buffer1, sizeof(buffer1) / sizeof(buffer1[0]));
+        size = GetModuleFileNameW(module, buffer1, sizeof(buffer1) / sizeof(buffer1[0]));
 
-		if (size == 0)
-		{
-			break;
-		}
-		else if (size == (DWORD)(sizeof(buffer1) / sizeof(buffer1[0])))
-		{
-			DWORD size_ = size;
-			do
-			{
-				wchar_t *path_;
+        if (size == 0)
+        {
+            break;
+        }
+        else if (size == (DWORD)(sizeof(buffer1) / sizeof(buffer1[0])))
+        {
+            DWORD size_ = size;
+            do
+            {
+                wchar_t *path_;
 
-				path_ = (wchar_t *) realloc(path, sizeof(wchar_t) * size_ * 2);
-				if (!path_)
-				{
-					break;
-				}
-				size_ *= 2;
-				path = path_;
-				size = GetModuleFileNameW(module, path, size_);
-			} while (size == size_);
+                path_ = (wchar_t *)realloc(path, sizeof(wchar_t) * size_ * 2);
+                if (!path_)
+                {
+                    break;
+                }
+                size_ *= 2;
+                path = path_;
+                size = GetModuleFileNameW(module, path, size_);
+            } while (size == size_);
 
-			if (size == size_)
-			{
-				break;
-			}
-		}
-		else
-		{
-			path = buffer1;
-		}
+            if (size == size_)
+            {
+                break;
+            }
+        }
+        else
+        {
+            path = buffer1;
+        }
 
-		if (!_wfullpath(buffer2, path, MAX_PATH))
-		{
-			break;
-		}
-		length_ = (int) wcslen(buffer2);
-		length__ = WideCharToMultiByte(CP_UTF8, 0, buffer2, length_, out, capacity, NULL, NULL);
+        if (!_wfullpath(buffer2, path, MAX_PATH))
+        {
+            break;
+        }
+        length_ = (int)wcslen(buffer2);
+        length__ = WideCharToMultiByte(CP_UTF8, 0, buffer2, length_, out, capacity, NULL, NULL);
 
-		if (length__ == 0)
-		{
-			length__ = WideCharToMultiByte(CP_UTF8, 0, buffer2, length_, NULL, 0, NULL, NULL);
-		}
-		if (length__ == 0)
-		{
-			break;
-		}
+        if (length__ == 0)
+        {
+            length__ = WideCharToMultiByte(CP_UTF8, 0, buffer2, length_, NULL, 0, NULL, NULL);
+        }
+        if (length__ == 0)
+        {
+            break;
+        }
 
-		if (length__ <= capacity && dirname_length)
-		{
-			int i;
+        if (length__ <= capacity && dirname_length)
+        {
+            int i;
 
-			for (i = length__ - 1; i >= 0; --i)
-			{
-				if (out[i] == '\\')
-				{
-					*dirname_length = i;
-					break;
-				}
-			}
-		}
+            for (i = length__ - 1; i >= 0; --i)
+            {
+                if (out[i] == '\\')
+                {
+                    *dirname_length = i;
+                    break;
+                }
+            }
+        }
 
-		length = length__;
+        length = length__;
 
-		break;
-	}
+        break;
+    }
 
-	if (path != buffer1)
-	{
-		free(path);
-	}
+    if (path != buffer1)
+    {
+        free(path);
+    }
 
-	return length;
+    return length;
 }
 
 NOINLINE
 int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 {
-	return get_module_path_(NULL, out, capacity, dirname_length);
+    return get_module_path_(NULL, out, capacity, dirname_length);
 }
-
 
 #elif defined(__linux__) || defined(__CYGWIN__) || defined(__sun) || defined(USE_PROC_SELF_EXE)
 
@@ -166,119 +165,119 @@ int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 
 static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 {
-	char buffer[PATH_MAX];
-	char *resolved = NULL;
-	int length = -1;
+    char buffer[PATH_MAX];
+    char *resolved = NULL;
+    int length = -1;
 
-	for (;;)
-	{
-		resolved = realpath(PROC_SELF_EXE, buffer);
-		if (!resolved)
-		{
-			break;
-		}
+    for (;;)
+    {
+        resolved = realpath(PROC_SELF_EXE, buffer);
+        if (!resolved)
+        {
+            break;
+        }
 
-		length = (int) strlen(resolved);
-		if (length <= capacity)
-		{
-			memcpy(out, resolved, length);
+        length = (int)strlen(resolved);
+        if (length <= capacity)
+        {
+            memcpy(out, resolved, length);
 
-			if (dirname_length)
-			{
-				int i;
+            if (dirname_length)
+            {
+                int i;
 
-				for (i = length - 1; i >= 0; --i)
-				{
-					if (out[i] == '/')
-					{
-						*dirname_length = i;
-						break;
-					}
-				}
-			}
-		}
+                for (i = length - 1; i >= 0; --i)
+                {
+                    if (out[i] == '/')
+                    {
+                        *dirname_length = i;
+                        break;
+                    }
+                }
+            }
+        }
 
-		break;
-	}
+        break;
+    }
 
-	return length;
+    return length;
 }
 
 #elif defined(__APPLE__)
 
 #define _DARWIN_BETTER_REALPATH
 
-#include <mach-o/dyld.h>
+#include <dlfcn.h>
 #include <limits.h>
+#include <mach-o/dyld.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dlfcn.h>
 
 #include "lib.h"
 
 static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 {
-	char buffer1[PATH_MAX];
-	char buffer2[PATH_MAX];
-	char *path = buffer1;
-	char *resolved = NULL;
-	int length = -1;
+    char buffer1[PATH_MAX];
+    char buffer2[PATH_MAX];
+    char *path = buffer1;
+    char *resolved = NULL;
+    int length = -1;
 
-	for (;;)
-	{
-		uint32_t size = (uint32_t) sizeof(buffer1);
-		if (_NSGetExecutablePath(path, &size) == -1)
-		{
-			path = (char *) cmalloc(size);
-			if (!_NSGetExecutablePath(path, &size))
-			{
-				break;
-			}
-		}
+    for (;;)
+    {
+        uint32_t size = (uint32_t)sizeof(buffer1);
+        if (_NSGetExecutablePath(path, &size) == -1)
+        {
+            path = (char *)cmalloc(size);
+            if (!_NSGetExecutablePath(path, &size))
+            {
+                break;
+            }
+        }
 
-		resolved = realpath(path, buffer2);
-		if (!resolved)
-		{
-			break;
-		}
+        resolved = realpath(path, buffer2);
+        if (!resolved)
+        {
+            break;
+        }
 
-		length = (int) strlen(resolved);
-		if (length <= capacity)
-		{
-			memcpy(out, resolved, length);
+        length = (int)strlen(resolved);
+        if (length <= capacity)
+        {
+            memcpy(out, resolved, length);
 
-			if (dirname_length)
-			{
-				int i;
+            if (dirname_length)
+            {
+                int i;
 
-				for (i = length - 1; i >= 0; --i)
-				{
-					if (out[i] == '/')
-					{
-						*dirname_length = i;
-						break;
-					}
-				}
-			}
-		}
+                for (i = length - 1; i >= 0; --i)
+                {
+                    if (out[i] == '/')
+                    {
+                        *dirname_length = i;
+                        break;
+                    }
+                }
+            }
+        }
 
-		break;
-	}
+        break;
+    }
 
-	if (path != buffer1)
-	{
-		free(path);
-	}
-	return length;
+    if (path != buffer1)
+    {
+        free(path);
+    }
+    return length;
 }
 
 #elif defined(__QNXNTO__)
 
+#include <dlfcn.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dlfcn.h>
 
 #if !defined(PROC_SELF_EXE)
 #define PROC_SELF_EXE "/proc/self/exefile"
@@ -286,126 +285,125 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 
 static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 {
-	char buffer1[PATH_MAX];
-	char buffer2[PATH_MAX];
-	char *resolved = NULL;
-	FILE *self_exe = NULL;
-	int length = -1;
+    char buffer1[PATH_MAX];
+    char buffer2[PATH_MAX];
+    char *resolved = NULL;
+    FILE *self_exe = NULL;
+    int length = -1;
 
-	for (;;)
-	{
-		self_exe = fopen(PROC_SELF_EXE, "r");
-		if (!self_exe)
-		{
-			break;
-		}
+    for (;;)
+    {
+        self_exe = fopen(PROC_SELF_EXE, "r");
+        if (!self_exe)
+        {
+            break;
+        }
 
-		if (!fgets(buffer1, sizeof(buffer1), self_exe))
-		{
-			break;
-		}
+        if (!fgets(buffer1, sizeof(buffer1), self_exe))
+        {
+            break;
+        }
 
-		resolved = realpath(buffer1, buffer2);
-		if (!resolved)
-		{
-			break;
-		}
+        resolved = realpath(buffer1, buffer2);
+        if (!resolved)
+        {
+            break;
+        }
 
-		length = (int) strlen(resolved);
-		if (length <= capacity)
-		{
-			memcpy(out, resolved, length);
+        length = (int)strlen(resolved);
+        if (length <= capacity)
+        {
+            memcpy(out, resolved, length);
 
-			if (dirname_length)
-			{
-				int i;
+            if (dirname_length)
+            {
+                int i;
 
-				for (i = length - 1; i >= 0; --i)
-				{
-					if (out[i] == '/')
-					{
-						*dirname_length = i;
-						break;
-					}
-				}
-			}
-		}
+                for (i = length - 1; i >= 0; --i)
+                {
+                    if (out[i] == '/')
+                    {
+                        *dirname_length = i;
+                        break;
+                    }
+                }
+            }
+        }
 
-		break;
-	}
+        break;
+    }
 
-	fclose(self_exe);
+    fclose(self_exe);
 
-	return length;
+    return length;
 }
 
-#elif defined(__DragonFly__) || defined(__FreeBSD__) || \
-      defined(__FreeBSD_kernel__) || defined(__NetBSD__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__NetBSD__)
 
+#include <dlfcn.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/sysctl.h>
-#include <dlfcn.h>
+#include <sys/types.h>
 
 static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 {
-	char buffer1[PATH_MAX];
-	char buffer2[PATH_MAX];
-	char *path = buffer1;
-	char *resolved = NULL;
-	int length = -1;
+    char buffer1[PATH_MAX];
+    char buffer2[PATH_MAX];
+    char *path = buffer1;
+    char *resolved = NULL;
+    int length = -1;
 
-	for (;;)
-	{
+    for (;;)
+    {
 #if defined(__NetBSD__)
-		int mib[4] = { CTL_KERN, KERN_PROC_ARGS, -1, KERN_PROC_PATHNAME };
+        int mib[4] = {CTL_KERN, KERN_PROC_ARGS, -1, KERN_PROC_PATHNAME};
 #else
-		int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+        int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
 #endif
-		size_t size = sizeof(buffer1);
+        size_t size = sizeof(buffer1);
 
-		if (sysctl(mib, (u_int) (sizeof(mib) / sizeof(mib[0])), path, &size, NULL, 0) != 0)
-		{
-			break;
-		}
+        if (sysctl(mib, (u_int)(sizeof(mib) / sizeof(mib[0])), path, &size, NULL, 0) != 0)
+        {
+            break;
+        }
 
-		resolved = realpath(path, buffer2);
-		if (!resolved)
-		{
-			break;
-		}
+        resolved = realpath(path, buffer2);
+        if (!resolved)
+        {
+            break;
+        }
 
-		length = (int) strlen(resolved);
-		if (length <= capacity)
-		{
-			memcpy(out, resolved, length);
+        length = (int)strlen(resolved);
+        if (length <= capacity)
+        {
+            memcpy(out, resolved, length);
 
-			if (dirname_length)
-			{
-				int i;
+            if (dirname_length)
+            {
+                int i;
 
-				for (i = length - 1; i >= 0; --i)
-				{
-					if (out[i] == '/')
-					{
-						*dirname_length = i;
-						break;
-					}
-				}
-			}
-		}
+                for (i = length - 1; i >= 0; --i)
+                {
+                    if (out[i] == '/')
+                    {
+                        *dirname_length = i;
+                        break;
+                    }
+                }
+            }
+        }
 
-		break;
-	}
+        break;
+    }
 
-	if (path != buffer1)
-	{
-		free(path);
-	}
+    if (path != buffer1)
+    {
+        free(path);
+    }
 
-	return length;
+    return length;
 }
 
 #else
@@ -416,27 +414,29 @@ static int get_executable_path_raw(char *out, int capacity, int *dirname_length)
 
 char *find_executable_path(void)
 {
-	int len = get_executable_path_raw(NULL, 0, NULL);
-	if (len < 0) return "";
-	char *path = malloc((unsigned)len + 1);
-	get_executable_path_raw(path, len, NULL);
-	path[len] = '\0';
-	for (int i = 0; i < len; ++i)
-	{
-		if ('\\' == path[i]) path[i] = '/';
-	}
-	for (int i = len - 1; i >= 0; i--)
-	{
-		switch (path[i])
-		{
-			case '/':
-			case '\\':
-				path[i + 1] = '\0';
-				return path;
-			default:
-				break;
-		}
-	}
-	path[len] = '\0';
-	return path;
+    int len = get_executable_path_raw(NULL, 0, NULL);
+    if (len < 0)
+        return "";
+    char *path = malloc((unsigned)len + 1);
+    get_executable_path_raw(path, len, NULL);
+    path[len] = '\0';
+    for (int i = 0; i < len; ++i)
+    {
+        if ('\\' == path[i])
+            path[i] = '/';
+    }
+    for (int i = len - 1; i >= 0; i--)
+    {
+        switch (path[i])
+        {
+        case '/':
+        case '\\':
+            path[i + 1] = '\0';
+            return path;
+        default:
+            break;
+        }
+    }
+    path[len] = '\0';
+    return path;
 }

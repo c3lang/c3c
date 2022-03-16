@@ -8,24 +8,23 @@
 
 void evprintf(const char *format, va_list list)
 {
-	vfprintf(stderr, format, list);
+    vfprintf(stderr, format, list);
 }
 
 void eprintf(const char *format, ...)
 {
-	va_list arglist;
-	va_start(arglist, format);
-	vfprintf(stderr, format, arglist);
-	va_end(arglist);
+    va_list arglist;
+    va_start(arglist, format);
+    vfprintf(stderr, format, arglist);
+    va_end(arglist);
 }
 
 NORETURN void error_exit(const char *format, ...)
 {
-	va_list arglist;
-	va_start(arglist, format);
-	vfprintf(stderr, format, arglist);
-	fprintf(stderr, "\n");
-	va_end(arglist);
-	exit_compiler(EXIT_FAILURE);
+    va_list arglist;
+    va_start(arglist, format);
+    vfprintf(stderr, format, arglist);
+    fprintf(stderr, "\n");
+    va_end(arglist);
+    exit_compiler(EXIT_FAILURE);
 }
-

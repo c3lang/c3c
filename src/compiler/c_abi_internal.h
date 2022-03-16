@@ -7,8 +7,8 @@
 
 typedef enum
 {
-	BY_VAL,
-	BY_VAL_SKIP
+    BY_VAL,
+    BY_VAL_SKIP
 } ByVal;
 
 bool abi_arg_is_indirect(ABIArgInfo *info);
@@ -25,7 +25,8 @@ ABIArgInfo *abi_arg_new_direct_coerce_int(void);
 ABIArgInfo *abi_arg_new_direct_coerce_type(Type *type);
 ABIArgInfo *abi_arg_new_direct_struct_expand(Type *type, int8_t elements);
 ABIArgInfo *abi_arg_new_expand_coerce(AbiType target_type, unsigned offset);
-ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType first_element, unsigned initial_offset, AbiType second_element, unsigned padding, bool is_packed);
+ABIArgInfo *abi_arg_new_expand_coerce_pair(AbiType first_element, unsigned initial_offset, AbiType second_element,
+                                           unsigned padding, bool is_packed);
 ABIArgInfo *abi_arg_new_expand_padded(Type *padding);
 ABIArgInfo *abi_arg_new_indirect_realigned(AlignSize alignment, Type *by_val_type);
 ABIArgInfo *abi_arg_new_indirect_by_val(Type *by_val_type);
@@ -41,11 +42,9 @@ TypeSize abi_type_size(AbiType type);
 
 typedef struct
 {
-	unsigned int_regs;
-	unsigned float_regs;
+    unsigned int_regs;
+    unsigned float_regs;
 } Regs;
-
-
 
 ABIArgInfo *c_abi_classify_return_type_default(Type *type);
 ABIArgInfo *c_abi_classify_argument_type_default(Type *type);
@@ -56,28 +55,26 @@ void c_abi_func_create_aarch64(FunctionPrototype *prototype);
 void c_abi_func_create_riscv(FunctionPrototype *prototype);
 void c_abi_func_create_wasm(FunctionPrototype *prototype);
 
-
 static inline AbiType abi_type_get(Type *type)
 {
-	return (AbiType) { .type = type };
+    return (AbiType){.type = type};
 }
 
 static inline AbiType abi_type_get_int_bits(BitSize bits)
 {
-	switch (bits)
-	{
-		case 8:
-		case 16:
-		case 32:
-		case 64:
-			return (AbiType) { .type = type_int_unsigned_by_bitsize(bits) };
-		default:
-			return (AbiType) { .int_bits_plus_1 = bits + 1 };
-	}
+    switch (bits)
+    {
+    case 8:
+    case 16:
+    case 32:
+    case 64:
+        return (AbiType){.type = type_int_unsigned_by_bitsize(bits)};
+    default:
+        return (AbiType){.int_bits_plus_1 = bits + 1};
+    }
 }
 
 static inline void abi_type_set_type(AbiType *abi_type, Type *type)
 {
-	abi_type->type = type;
+    abi_type->type = type;
 }
-

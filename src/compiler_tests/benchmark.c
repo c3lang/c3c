@@ -9,9 +9,9 @@ static int begin = 0;
 
 void bench_begin(void)
 {
-	begin = (int)clock();
+    begin = (int)clock();
 }
 double bench_mark(void)
 {
-	return (double)(clock() - (unsigned long)begin) / (double)CLOCKS_PER_SEC;
+    return (double)(clock() - (unsigned long)begin) / (double)CLOCKS_PER_SEC;
 }

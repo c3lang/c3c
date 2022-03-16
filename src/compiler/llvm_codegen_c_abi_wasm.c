@@ -6,68 +6,70 @@
 
 static ABIArgInfo *wasm_classify_argument_type(Type *type)
 {
-	type = type_lowering(type);
-	if (type_is_abi_aggregate(type))
-	{
-		// Clang: Lower single-field structs to just pass a regular value. TODO: We
-		// could do reasonable-size multiple-field structs too, using getExpand(),
-		// though watch out for things like bitfields.
-		Type *single_type = type_abi_find_single_struct_element(type);
-		if (single_type) return abi_arg_new_direct_coerce_type(single_type);
+    type = type_lowering(type);
+    if (type_is_abi_aggregate(type))
+    {
+        // Clang: Lower single-field structs to just pass a regular value. TODO: We
+        // could do reasonable-size multiple-field structs too, using getExpand(),
+        // though watch out for things like bitfields.
+        Type *single_type = type_abi_find_single_struct_element(type);
+        if (single_type)
+            return abi_arg_new_direct_coerce_type(single_type);
 
-		// For the experimental multivalue ABI, fully expand all other aggregates
-		/*if (Kind == ABIKind::ExperimentalMV) {
-			const RecordType *RT = Ty->getAs<RecordType>();
-			assert(RT);
-			bool HasBitField = false;
-			for (auto *Field : RT->getDecl()->fields()) {
-				if (Field->isBitField()) {
-					HasBitField = true;
-					break;
-				}
-			}
-			if (!HasBitField)
-				return ABIArgInfo::getExpand();
-		}*/
-	}
+        // For the experimental multivalue ABI, fully expand all other aggregates
+        /*if (Kind == ABIKind::ExperimentalMV) {
+            const RecordType *RT = Ty->getAs<RecordType>();
+            assert(RT);
+            bool HasBitField = false;
+            for (auto *Field : RT->getDecl()->fields()) {
+                if (Field->isBitField()) {
+                    HasBitField = true;
+                    break;
+                }
+            }
+            if (!HasBitField)
+                return ABIArgInfo::getExpand();
+        }*/
+    }
 
-	// Otherwise just do the default thing.
-	return c_abi_classify_argument_type_default(type);
+    // Otherwise just do the default thing.
+    return c_abi_classify_argument_type_default(type);
 }
 
 static ABIArgInfo *wasm_classify_return(Type *type)
 {
-	if (type_is_abi_aggregate(type))
-	{
-		Type *single_type = type_abi_find_single_struct_element(type);
-		if (single_type) return abi_arg_new_direct_coerce_type(single_type);
-		/*
-		 * 			// For the experimental multivalue ABI, return all other aggregates
-			if (Kind == ABIKind::ExperimentalMV)
-				return ABIArgInfo::getDirect();
-		 */
-	}
-	// Use default classification
-	return c_abi_classify_return_type_default(type);
+    if (type_is_abi_aggregate(type))
+    {
+        Type *single_type = type_abi_find_single_struct_element(type);
+        if (single_type)
+            return abi_arg_new_direct_coerce_type(single_type);
+        /*
+         * 			// For the experimental multivalue ABI, return all other aggregates
+            if (Kind == ABIKind::ExperimentalMV)
+                return ABIArgInfo::getDirect();
+         */
+    }
+    // Use default classification
+    return c_abi_classify_return_type_default(type);
 }
 
 void c_abi_func_create_wasm(FunctionPrototype *prototype)
 {
-	prototype->ret_abi_info = wasm_classify_return(type_lowering(prototype->abi_ret_type));
-	if (prototype->ret_by_ref)
-	{
-		prototype->ret_by_ref_abi_info = wasm_classify_argument_type(type_get_ptr(prototype->ret_by_ref_type));
-	}
+    prototype->ret_abi_info = wasm_classify_return(type_lowering(prototype->abi_ret_type));
+    if (prototype->ret_by_ref)
+    {
+        prototype->ret_by_ref_abi_info = wasm_classify_argument_type(type_get_ptr(prototype->ret_by_ref_type));
+    }
 
-	Type **params = prototype->params;
-	unsigned param_count = vec_size(prototype->params);
-	if (param_count)
-	{
-		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-		for (unsigned i = 0; i < param_count; i++)
-		{
-			args[i] = wasm_classify_argument_type(type_lowering(params[i]));
-		}
-		prototype->abi_args = args;
-	}
+    Type **params = prototype->params;
+    unsigned param_count = vec_size(prototype->params);
+    if (param_count)
+    {
+        ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+        for (unsigned i = 0; i < param_count; i++)
+        {
+            args[i] = wasm_classify_argument_type(type_lowering(params[i]));
+        }
+        prototype->abi_args = args;
+    }
 }

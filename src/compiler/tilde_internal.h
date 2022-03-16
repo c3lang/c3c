@@ -12,44 +12,44 @@
 
 typedef struct
 {
-	Module *code_module;
-	const char *object_filename;
+    Module *code_module;
+    const char *object_filename;
 
-	TB_Module *module;
-	TB_FeatureSet features;
+    TB_Module *module;
+    TB_FeatureSet features;
 
-	Decl *current_func_decl;
-	TB_Function *f;
-	TB_Register error_var;
-	TB_Label catch_block;
+    Decl *current_func_decl;
+    TB_Function *f;
+    TB_Register error_var;
+    TB_Label catch_block;
 } TbContext;
 
 typedef enum
 {
-	TBE_VALUE,
-	TBE_ADDRESS,
-	TBE_ADDRESS_FAILABLE,
+    TBE_VALUE,
+    TBE_ADDRESS,
+    TBE_ADDRESS_FAILABLE,
 } TBBackendValueKind;
 
 typedef struct
 {
-	TBBackendValueKind kind: 5;
-	AlignSize alignment;
+    TBBackendValueKind kind : 5;
+    AlignSize alignment;
 
-	Type *type; // Should never be a distinct or canonical type.
+    Type *type; // Should never be a distinct or canonical type.
 
-	TB_Register reg;
-	TB_Register failable; // TODO what even is a failable?
+    TB_Register reg;
+    TB_Register failable; // TODO what even is a failable?
 } TBEValue;
 
 TB_DataType tbtype(Type *type);
 
-#define PUSH_ERROR() \
-TB_Label _old_catch = c->catch_block; \
-TB_Reg _old_error_var = c->error_var
-#define POP_ERROR() \
-c->catch_block = _old_catch; \
-c->error_var = _old_error_var
+#define PUSH_ERROR()                                                                                                   \
+    TB_Label _old_catch = c->catch_block;                                                                              \
+    TB_Reg _old_error_var = c->error_var
+#define POP_ERROR()                                                                                                    \
+    c->catch_block = _old_catch;                                                                                       \
+    c->error_var = _old_error_var
 
 // -- store ---
 static inline void tilde_store(TbContext *c, TB_DataType type, TB_Reg addr, TB_Reg value, AlignSize alignment);
@@ -74,10 +74,12 @@ void value_set_address_abi_aligned(TBEValue *value, TB_Reg val, Type *type);
 void value_set_decl(TBEValue *value, Decl *decl);
 void value_addr(TbContext *c, TBEValue *value);
 
-static inline bool value_is_addr(TBEValue *value) { return value->kind == TBE_ADDRESS || value->kind == TBE_ADDRESS_FAILABLE; }
+static inline bool value_is_addr(TBEValue *value)
+{
+    return value->kind == TBE_ADDRESS || value->kind == TBE_ADDRESS_FAILABLE;
+}
 void value_fold_failable(TbContext *c, TBEValue *value);
 void value_rvalue(TbContext *c, TBEValue *value);
-
 
 TB_Register tilde_get_zero(TbContext *c, Type *type);
 
@@ -104,24 +106,24 @@ TBEValue tilde_emit_assign_expr(TbContext *c, TBEValue *ref, Expr *expr, TB_Reg 
 
 void tilde_emit_memclear_size_align(TbContext *c, TB_Register ref, uint64_t size, AlignSize align);
 
-
 static inline void tilde_store(TbContext *c, TB_DataType type, TB_Reg addr, TB_Reg value, AlignSize alignment)
 {
-	assert(alignment > 0);
-	tb_inst_store(c->f, type, addr, value, alignment);
+    assert(alignment > 0);
+    tb_inst_store(c->f, type, addr, value, alignment);
 }
 
 static inline TB_Reg tilde_load(TbContext *c, TB_DataType type, TB_Reg addr, AlignSize alignment)
 {
-	assert(alignment > 0);
-	return tb_inst_load(c->f, type, addr, alignment);
+    assert(alignment > 0);
+    return tb_inst_load(c->f, type, addr, alignment);
 }
 
 static inline TB_Reg decl_reg(Decl *decl)
 {
-	if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED) return decl_reg(decl->var.alias);
-	assert(!decl->is_value);
-	return decl->tb_register;
+    if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED)
+        return decl_reg(decl->var.alias);
+    assert(!decl->is_value);
+    return decl->tb_register;
 }
 
 #endif // TB_BACKEND

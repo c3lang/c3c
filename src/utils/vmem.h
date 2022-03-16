@@ -8,11 +8,11 @@
 
 typedef struct
 {
-	void *ptr;
-	size_t allocated;
-	size_t size;
+    void *ptr;
+    size_t allocated;
+    size_t size;
 #if PLATFORM_WINDOWS
-	size_t committed;
+    size_t committed;
 #endif
 } Vmem;
 

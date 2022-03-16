@@ -8,41 +8,46 @@ static inline bool abi_type_is_valid(AbiType type);
 
 static inline Type *type_lowering(Type *type)
 {
-	Type *canonical = type_flatten(type);
-	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
-	if (canonical->type_kind == TYPE_TYPEID) return type_iptr->canonical;
-	if (canonical->type_kind == TYPE_ANYERR) return type_iptr->canonical;
-	if (canonical->type_kind == TYPE_ERRTYPE) return type_iptr->canonical;
-	if (canonical->type_kind == TYPE_BITSTRUCT) return type_lowering(canonical->decl->bitstruct.base_type->type);
-	return canonical;
+    Type *canonical = type_flatten(type);
+    if (canonical->type_kind == TYPE_ENUM)
+        return canonical->decl->enums.type_info->type->canonical;
+    if (canonical->type_kind == TYPE_TYPEID)
+        return type_iptr->canonical;
+    if (canonical->type_kind == TYPE_ANYERR)
+        return type_iptr->canonical;
+    if (canonical->type_kind == TYPE_ERRTYPE)
+        return type_iptr->canonical;
+    if (canonical->type_kind == TYPE_BITSTRUCT)
+        return type_lowering(canonical->decl->bitstruct.base_type->type);
+    return canonical;
 }
 
 static inline Type *type_reduced_from_expr(Expr *expr)
 {
-	return type_lowering(expr->type);
+    return type_lowering(expr->type);
 }
 
 static inline bool abi_type_is_type(AbiType type)
 {
-	return !(type.int_bits_plus_1 & 0x01);
+    return !(type.int_bits_plus_1 & 0x01);
 }
 
 static inline bool abi_type_is_valid(AbiType type)
 {
-	return type.int_bits_plus_1 != 0;
+    return type.int_bits_plus_1 != 0;
 }
-
 
 static inline bool abi_type_is_promotable_integer_or_bool(AbiType type)
 {
-	if (abi_type_is_type(type))
-	{
-		if (!type_is_integer_or_bool_kind(type.type)) return false;
-		if (type.type == type_bool) return true;
-		return type.type->builtin.bitsize < platform_target.width_c_int;
-	}
-	// We should only get npot or > big ints here.
-	assert(!is_power_of_two(type.int_bits_plus_1 - 1) || type.int_bits_plus_1 < platform_target.width_c_int);
-	return false;
+    if (abi_type_is_type(type))
+    {
+        if (!type_is_integer_or_bool_kind(type.type))
+            return false;
+        if (type.type == type_bool)
+            return true;
+        return type.type->builtin.bitsize < platform_target.width_c_int;
+    }
+    // We should only get npot or > big ints here.
+    assert(!is_power_of_two(type.int_bits_plus_1 - 1) || type.int_bits_plus_1 < platform_target.width_c_int);
+    return false;
 }
-

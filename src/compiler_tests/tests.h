@@ -4,5 +4,4 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-
 void compiler_tests(void);

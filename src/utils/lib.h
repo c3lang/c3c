@@ -22,26 +22,27 @@ NORETURN void exit_compiler(int exit_value);
 
 typedef struct Task_
 {
-	void (*task)(void *arg);
-	void *arg;
+    void (*task)(void *arg);
+    void *arg;
 } Task;
 
 typedef void *TaskQueueRef;
 
-bool filenamesplit(const char *path, char** filename_ptr, char** directory_ptr);
-const char* expand_path(const char* path);
-const char* find_lib_dir(void);
+bool filenamesplit(const char *path, char **filename_ptr, char **directory_ptr);
+const char *expand_path(const char *path);
+const char *find_lib_dir(void);
 char *read_file(const char *path, size_t *return_size);
 void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
 void file_find_top_dir();
-void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char *suffix1, const char *suffix2);
+void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char *suffix1,
+                             const char *suffix2);
 void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(void);
 void memory_release();
 
 #define ptrid(ptr_) ((((uintptr_t)(ptr_)) - arena_zero) / 16)
-#define idptr(id_) ((void*)(((uintptr_t)id_) * 16 + arena_zero))
+#define idptr(id_) ((void *)(((uintptr_t)id_) * 16 + arena_zero))
 void *calloc_arena(size_t mem);
 char *calloc_string(size_t len);
 char *copy_string(const char *start, size_t str_len);
@@ -72,92 +73,98 @@ void taskqueue_wait_for_completion(TaskQueueRef queue);
 #define CALLOCS(type) calloc_arena(sizeof(type))
 #endif
 
-#define NUMBER_CHAR_CASE '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
+#define NUMBER_CHAR_CASE                                                                                               \
+    '0' : case '1' : case '2' : case '3' : case '4' : case '5' : case '6' : case '7' : case '8' : case '9'
 
 static inline bool is_power_of_two(uint64_t x)
 {
-	return x != 0 && (x & (x - 1)) == 0;
+    return x != 0 && (x & (x - 1)) == 0;
 }
 
 static inline uint32_t next_highest_power_of_2(uint32_t v)
 {
-	v--;
-	v |= v >> 1U;
-	v |= v >> 2U;
-	v |= v >> 4U;
-	v |= v >> 8U;
-	v |= v >> 16U;
-	v++;
-	return v;
+    v--;
+    v |= v >> 1U;
+    v |= v >> 2U;
+    v |= v >> 4U;
+    v |= v >> 8U;
+    v |= v >> 16U;
+    v++;
+    return v;
 }
-
-
 
 static inline bool is_lower(char c)
 {
-	return c >= 'a' && c <= 'z';
+    return c >= 'a' && c <= 'z';
 }
 
 static inline bool is_lower_(char c)
 {
-	return c == '_' || (c >= 'a' && c <= 'z');
+    return c == '_' || (c >= 'a' && c <= 'z');
 }
 
 static inline bool is_upper(char c)
 {
-	return c >= 'A' && c <= 'Z';
+    return c >= 'A' && c <= 'Z';
 }
 
 static inline bool is_oct(char c)
 {
-	return c >= '0' && c <= '7';
+    return c >= '0' && c <= '7';
 }
 
 static inline bool is_oct_or_(char c)
 {
-	switch (c)
-	{
-		case '0': case '1': case '2': case '3': case '4':
-		case '5': case '6': case '7': case '_':
-			return true;
-		default:
-			return false;
-	}
+    switch (c)
+    {
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '_':
+        return true;
+    default:
+        return false;
+    }
 }
 
 static inline bool is_binary(char c)
 {
-	return c  == '0' || c == '1';
+    return c == '0' || c == '1';
 }
-
 
 static inline bool is_binary_or_(char c)
 {
-	switch (c)
-	{
-		case '0': case '1': case '_':
-			return true;
-		default:
-			return false;
-	}
+    switch (c)
+    {
+    case '0':
+    case '1':
+    case '_':
+        return true;
+    default:
+        return false;
+    }
 }
-
 
 static inline bool is_digit_or_(char c)
 {
-	switch (c)
-	{
-		case NUMBER_CHAR_CASE:
-		case '_':
-			return true;
-		default:
-			return false;
-	}
+    switch (c)
+    {
+    case NUMBER_CHAR_CASE:
+    case '_':
+        return true;
+    default:
+        return false;
+    }
 }
 
 static inline bool is_digit(char c)
 {
-	return c >= '0' && c <= '9';
+    return c >= '0' && c <= '9';
 }
 
 /**
@@ -167,202 +174,273 @@ static inline bool is_digit(char c)
  */
 static inline int char_to_nibble(char c)
 {
-	char conv[256] = {
-			['0'] = 1,
-			['1'] = 2,
-			['2'] = 3,
-			['3'] = 4,
-			['4'] = 5,
-			['5'] = 6,
-			['6'] = 7,
-			['7'] = 8,
-			['8'] = 9,
-			['9'] = 10,
-			['A'] = 11,
-			['B'] = 12,
-			['C'] = 13,
-			['D'] = 14,
-			['E'] = 15,
-			['F'] = 16,
-			['a'] = 11,
-			['b'] = 12,
-			['c'] = 13,
-			['d'] = 14,
-			['e'] = 15,
-			['f'] = 16,
-	};
-	return conv[(unsigned)c] - 1;
+    char conv[256] = {
+        ['0'] = 1,  ['1'] = 2,  ['2'] = 3,  ['3'] = 4,  ['4'] = 5,  ['5'] = 6,  ['6'] = 7,  ['7'] = 8,
+        ['8'] = 9,  ['9'] = 10, ['A'] = 11, ['B'] = 12, ['C'] = 13, ['D'] = 14, ['E'] = 15, ['F'] = 16,
+        ['a'] = 11, ['b'] = 12, ['c'] = 13, ['d'] = 14, ['e'] = 15, ['f'] = 16,
+    };
+    return conv[(unsigned)c] - 1;
 }
 
 static inline bool is_hex_or_(char c)
 {
-	switch (c)
-	{
-		case NUMBER_CHAR_CASE:
-		case 'a': case 'b': case 'c': case 'd': case 'e':
-		case 'f':
-		case 'A': case 'B': case 'C': case 'D': case 'E':
-		case 'F':
-		case '_':
-			return true;
-		default:
-			return false;
-	}
+    switch (c)
+    {
+    case NUMBER_CHAR_CASE:
+    case 'a':
+    case 'b':
+    case 'c':
+    case 'd':
+    case 'e':
+    case 'f':
+    case 'A':
+    case 'B':
+    case 'C':
+    case 'D':
+    case 'E':
+    case 'F':
+    case '_':
+        return true;
+    default:
+        return false;
+    }
 }
 
 static inline signed char is_valid_escape(char c)
 {
-	switch (c)
-	{
-		case 'a':
-			return '\a';
-		case 'b':
-			return '\b';
-		case 'e':
-			return 0x1B;
-		case 'f':
-			return '\f';
-		case 'n':
-			return '\n';
-		case 'r':
-			return '\r';
-		case 't':
-			return '\t';
-		case 'v':
-			return '\v';
-		case 'x':
-			return 'x';
-		case 'u':
-			return 'u';
-		case 'U':
-			return 'U';
-		case '\'':
-			return '\'';
-		case '"':
-			return '"';
-		case '\\':
-			return '\\';
-		case '0':
-			return '\0';
-		case 's':
-			return ' ';
-		default:
-			return -1;
-	}
+    switch (c)
+    {
+    case 'a':
+        return '\a';
+    case 'b':
+        return '\b';
+    case 'e':
+        return 0x1B;
+    case 'f':
+        return '\f';
+    case 'n':
+        return '\n';
+    case 'r':
+        return '\r';
+    case 't':
+        return '\t';
+    case 'v':
+        return '\v';
+    case 'x':
+        return 'x';
+    case 'u':
+        return 'u';
+    case 'U':
+        return 'U';
+    case '\'':
+        return '\'';
+    case '"':
+        return '"';
+    case '\\':
+        return '\\';
+    case '0':
+        return '\0';
+    case 's':
+        return ' ';
+    default:
+        return -1;
+    }
 }
 
 static inline bool is_base64(char c)
 {
-	return (c >= 'A' && c <= 'Z')
-		|| (c >= 'a' && c <= 'z')
-		|| (c >= '0' && c <= '9')
-		|| c == '+' || c == '/';
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '/';
 }
 
 static inline bool is_hex(char c)
 {
-	switch (c)
-	{
-		case NUMBER_CHAR_CASE:
-		case 'a': case 'b': case 'c': case 'd': case 'e':
-		case 'f':
-		case 'A': case 'B': case 'C': case 'D': case 'E':
-		case 'F':
-			return true;
-		default:
-			return false;
-	}
+    switch (c)
+    {
+    case NUMBER_CHAR_CASE:
+    case 'a':
+    case 'b':
+    case 'c':
+    case 'd':
+    case 'e':
+    case 'f':
+    case 'A':
+    case 'B':
+    case 'C':
+    case 'D':
+    case 'E':
+    case 'F':
+        return true;
+    default:
+        return false;
+    }
 }
 
 static inline int hex_nibble(char c)
 {
-	static int conv[256] = {
-			['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,
-			['5'] = 5, ['6'] = 6, ['7'] = 7, ['8'] = 8, ['9'] = 9,
-			['A'] = 10, ['B'] = 11, ['C'] = 12, ['D'] = 13, ['E'] = 14, ['F'] = 15,
-			['a'] = 10, ['b'] = 11, ['c'] = 12, ['d'] = 13, ['e'] = 14, ['f'] = 15,
-	};
-	return conv[(unsigned char)c];
+    static int conv[256] = {
+        ['0'] = 0,  ['1'] = 1,  ['2'] = 2,  ['3'] = 3,  ['4'] = 4,  ['5'] = 5,  ['6'] = 6,  ['7'] = 7,
+        ['8'] = 8,  ['9'] = 9,  ['A'] = 10, ['B'] = 11, ['C'] = 12, ['D'] = 13, ['E'] = 14, ['F'] = 15,
+        ['a'] = 10, ['b'] = 11, ['c'] = 12, ['d'] = 13, ['e'] = 14, ['f'] = 15,
+    };
+    return conv[(unsigned char)c];
 }
 
 static inline char nibble_hex(int c)
 {
-	static const char *conv = "0123456789ABCDEF";
-	return conv[c];
+    static const char *conv = "0123456789ABCDEF";
+    return conv[c];
 }
 
 static inline bool is_whitespace(char c)
 {
-	switch (c)
-	{
-		case ' ':
-		case '\t':
-		case '\n':
-			return true;
-		case '\r':
-			UNREACHABLE
-		default:
-			return false;
-	}
+    switch (c)
+    {
+    case ' ':
+    case '\t':
+    case '\n':
+        return true;
+    case '\r':
+        UNREACHABLE
+    default:
+        return false;
+    }
 }
 
 static inline bool is_alphanum_(char c)
 {
-	switch (c)
-	{
-		case 'a': case 'b': case 'c': case 'd': case 'e':
-		case 'f': case 'g': case 'h': case 'i': case 'j':
-		case 'k': case 'l': case 'm': case 'n': case 'o':
-		case 'p': case 'q': case 'r': case 's': case 't':
-		case 'u': case 'v': case 'w': case 'x': case 'y':
-		case 'z':
-		case 'A': case 'B': case 'C': case 'D': case 'E':
-		case 'F': case 'G': case 'H': case 'I': case 'J':
-		case 'K': case 'L': case 'M': case 'N': case 'O':
-		case 'P': case 'Q': case 'R': case 'S': case 'T':
-		case 'U': case 'V': case 'W': case 'X': case 'Y':
-		case 'Z':
-		case NUMBER_CHAR_CASE:
-		case '_':
-			return true;
-		default:
-			return false;
-	}
+    switch (c)
+    {
+    case 'a':
+    case 'b':
+    case 'c':
+    case 'd':
+    case 'e':
+    case 'f':
+    case 'g':
+    case 'h':
+    case 'i':
+    case 'j':
+    case 'k':
+    case 'l':
+    case 'm':
+    case 'n':
+    case 'o':
+    case 'p':
+    case 'q':
+    case 'r':
+    case 's':
+    case 't':
+    case 'u':
+    case 'v':
+    case 'w':
+    case 'x':
+    case 'y':
+    case 'z':
+    case 'A':
+    case 'B':
+    case 'C':
+    case 'D':
+    case 'E':
+    case 'F':
+    case 'G':
+    case 'H':
+    case 'I':
+    case 'J':
+    case 'K':
+    case 'L':
+    case 'M':
+    case 'N':
+    case 'O':
+    case 'P':
+    case 'Q':
+    case 'R':
+    case 'S':
+    case 'T':
+    case 'U':
+    case 'V':
+    case 'W':
+    case 'X':
+    case 'Y':
+    case 'Z':
+    case NUMBER_CHAR_CASE:
+    case '_':
+        return true;
+    default:
+        return false;
+    }
 }
-
 
 static inline bool is_letter(char c)
 {
-	switch (c)
-	{
-		case 'a': case 'b': case 'c': case 'd': case 'e':
-		case 'f': case 'g': case 'h': case 'i': case 'j':
-		case 'k': case 'l': case 'm': case 'n': case 'o':
-		case 'p': case 'q': case 'r': case 's': case 't':
-		case 'u': case 'v': case 'w': case 'x': case 'y':
-		case 'z':
-		case 'A': case 'B': case 'C': case 'D': case 'E':
-		case 'F': case 'G': case 'H': case 'I': case 'J':
-		case 'K': case 'L': case 'M': case 'N': case 'O':
-		case 'P': case 'Q': case 'R': case 'S': case 'T':
-		case 'U': case 'V': case 'W': case 'X': case 'Y':
-		case 'Z':
-			return true;
-		default:
-			return false;
-	}
+    switch (c)
+    {
+    case 'a':
+    case 'b':
+    case 'c':
+    case 'd':
+    case 'e':
+    case 'f':
+    case 'g':
+    case 'h':
+    case 'i':
+    case 'j':
+    case 'k':
+    case 'l':
+    case 'm':
+    case 'n':
+    case 'o':
+    case 'p':
+    case 'q':
+    case 'r':
+    case 's':
+    case 't':
+    case 'u':
+    case 'v':
+    case 'w':
+    case 'x':
+    case 'y':
+    case 'z':
+    case 'A':
+    case 'B':
+    case 'C':
+    case 'D':
+    case 'E':
+    case 'F':
+    case 'G':
+    case 'H':
+    case 'I':
+    case 'J':
+    case 'K':
+    case 'L':
+    case 'M':
+    case 'N':
+    case 'O':
+    case 'P':
+    case 'Q':
+    case 'R':
+    case 'S':
+    case 'T':
+    case 'U':
+    case 'V':
+    case 'W':
+    case 'X':
+    case 'Y':
+    case 'Z':
+        return true;
+    default:
+        return false;
+    }
 }
 
 INLINE bool is_letter_(char c)
 {
-	return is_letter(c) || c == '_';
+    return is_letter(c) || c == '_';
 }
 
 static inline bool is_number(char c)
 {
-	return c >= '0' && c <= '9';
+    return c >= '0' && c <= '9';
 }
-
 
 #define FNV1_PRIME 0x01000193u
 #define FNV1_SEED 0x811C9DC5u
@@ -370,129 +448,141 @@ static inline bool is_number(char c)
 
 static inline uint32_t fnv1a(const char *key, uint32_t len)
 {
-	uint32_t hash = FNV1_SEED;
-	for (uint32_t i = 0; i < len; i++)
-	{
-		hash = FNV1a(key[i], hash);
-	}
-	return hash;
+    uint32_t hash = FNV1_SEED;
+    for (uint32_t i = 0; i < len; i++)
+    {
+        hash = FNV1a(key[i], hash);
+    }
+    return hash;
 }
 
 typedef struct
 {
-	uint32_t size;
-	uint32_t capacity;
-	char data[];
+    uint32_t size;
+    uint32_t capacity;
+    char data[];
 } VHeader_;
 
-static inline VHeader_* vec_new_(size_t element_size, size_t capacity)
+static inline VHeader_ *vec_new_(size_t element_size, size_t capacity)
 {
-	assert(capacity < UINT32_MAX);
-	assert(element_size < UINT32_MAX / 100);
-	VHeader_ *header = CALLOC(element_size * capacity + sizeof(VHeader_));
-	header->capacity = (uint32_t)capacity;
-	return header;
+    assert(capacity < UINT32_MAX);
+    assert(element_size < UINT32_MAX / 100);
+    VHeader_ *header = CALLOC(element_size * capacity + sizeof(VHeader_));
+    header->capacity = (uint32_t)capacity;
+    return header;
 }
 
 static inline uint32_t vec_size(const void *vec)
 {
-	if (!vec) return 0;
-	const VHeader_ *header = vec;
-	return header[-1].size;
+    if (!vec)
+        return 0;
+    const VHeader_ *header = vec;
+    return header[-1].size;
 }
 
 static inline void vec_resize(void *vec, uint32_t new_size)
 {
-	if (!vec) return;
-	VHeader_ *header = vec;
-	header[-1].size = new_size;
+    if (!vec)
+        return;
+    VHeader_ *header = vec;
+    header[-1].size = new_size;
 }
 static inline void vec_pop(void *vec)
 {
-	assert(vec);
-	assert(vec_size(vec) > 0);
-	VHeader_ *header = vec;
-	header[-1].size--;
+    assert(vec);
+    assert(vec_size(vec) > 0);
+    VHeader_ *header = vec;
+    header[-1].size--;
 }
-static inline void* expand_(void *vec, size_t element_size)
+static inline void *expand_(void *vec, size_t element_size)
 {
-	VHeader_ *header;
-	if (!vec)
-	{
-		header = vec_new_(element_size, 8);
-	}
-	else
-	{
-		header = ((VHeader_ *)vec) - 1;
-	}
-	if (header->size == header->capacity)
-	{
-		VHeader_ *new_array = vec_new_(element_size, header->capacity << 1U);
+    VHeader_ *header;
+    if (!vec)
+    {
+        header = vec_new_(element_size, 8);
+    }
+    else
+    {
+        header = ((VHeader_ *)vec) - 1;
+    }
+    if (header->size == header->capacity)
+    {
+        VHeader_ *new_array = vec_new_(element_size, header->capacity << 1U);
 #if IS_GCC
-		// I've yet to figure out why GCC insists that this is trying to copy
-		// 8 bytes over a size zero array.
-		// We use volatile to deoptimize on GCC
-		volatile size_t copy_size = element_size * header->capacity + sizeof(VHeader_);
+        // I've yet to figure out why GCC insists that this is trying to copy
+        // 8 bytes over a size zero array.
+        // We use volatile to deoptimize on GCC
+        volatile size_t copy_size = element_size * header->capacity + sizeof(VHeader_);
 #else
-		size_t copy_size = element_size * header->capacity + sizeof(VHeader_);
+        size_t copy_size = element_size * header->capacity + sizeof(VHeader_);
 #endif
-		memcpy(new_array, header, copy_size);
-		header = new_array;
-		new_array->capacity = header->capacity << 1U;
-	}
-	header->size++;
-	return &(header[1]);
+        memcpy(new_array, header, copy_size);
+        header = new_array;
+        new_array->capacity = header->capacity << 1U;
+    }
+    header->size++;
+    return &(header[1]);
 }
 
-
-#define CONCAT_INNER(a, b) a ## b
+#define CONCAT_INNER(a, b) a##b
 #define CONCAT(a, b) CONCAT_INNER(a, b)
-#define VECEACH(_vec, _index) \
-	for (unsigned (_index) = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); (_index) < CONCAT(__vecsize_, __LINE__); (_index)++)
-#define foreach(_vec, _index) \
-	for (unsigned (_index) = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); (_index) < CONCAT(__vecsize_, __LINE__); (_index)++)
-
+#define VECEACH(_vec, _index)                                                                                          \
+    for (unsigned(_index) = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); (_index) < CONCAT(__vecsize_, __LINE__); \
+         (_index)++)
+#define foreach(_vec, _index)                                                                                          \
+    for (unsigned(_index) = 0, CONCAT(__vecsize_, __LINE__) = vec_size(_vec); (_index) < CONCAT(__vecsize_, __LINE__); \
+         (_index)++)
 
 #define VECNEW(_type, _capacity) ((_type *)(vec_new_(sizeof(_type), _capacity) + 1))
-#define vec_add(vec_, value_) do { \
-	void *__temp = expand_((vec_), sizeof(*(vec_))); \
-	(vec_) = __temp;           \
-	(vec_)[vec_size(vec_) - 1] = value_; \
- } while (0)
+#define vec_add(vec_, value_)                                                                                          \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        void *__temp = expand_((vec_), sizeof(*(vec_)));                                                               \
+        (vec_) = __temp;                                                                                               \
+        (vec_)[vec_size(vec_) - 1] = value_;                                                                           \
+    } while (0)
 
-#define vec_insert_first(vec_, value_) do { \
- void *__temp = expand_((vec_), sizeof(*(vec_))); \
- (vec_) = __temp;                           \
- unsigned __xsize = vec_size(vec_); \
- for (unsigned __x = __xsize - 1; __x > 0; __x--) (vec_)[__x] = (vec_)[__x - 1]; \
- (vec_)[0] = value_;       \
- } while (0)
+#define vec_insert_first(vec_, value_)                                                                                 \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        void *__temp = expand_((vec_), sizeof(*(vec_)));                                                               \
+        (vec_) = __temp;                                                                                               \
+        unsigned __xsize = vec_size(vec_);                                                                             \
+        for (unsigned __x = __xsize - 1; __x > 0; __x--)                                                               \
+            (vec_)[__x] = (vec_)[__x - 1];                                                                             \
+        (vec_)[0] = value_;                                                                                            \
+    } while (0)
 
 #if IS_GCC || IS_CLANG
-#define VECLAST(_vec) ({ unsigned _size = vec_size(_vec); _size ? (_vec)[_size - 1] : NULL; })
+#define VECLAST(_vec)                                                                                                  \
+    ({                                                                                                                 \
+        unsigned _size = vec_size(_vec);                                                                               \
+        _size ? (_vec)[_size - 1] : NULL;                                                                              \
+    })
 #else
 #define VECLAST(_vec) (vec_size(_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)
 #endif
 
-
-static inline bool is_all_upper(const char* string)
+static inline bool is_all_upper(const char *string)
 {
-	char c;
-	while ((c = *(string++)) != '\0')
-	{
-		if (is_lower(c)) return false;
-	}
-	return true;
+    char c;
+    while ((c = *(string++)) != '\0')
+    {
+        if (is_lower(c))
+            return false;
+    }
+    return true;
 }
 
-static inline bool is_all_lower(const char* string)
+static inline bool is_all_lower(const char *string)
 {
-	char c;
-	while ((c = *(string++)) != '\0')
-	{
-		if (is_upper(c)) return false;
-	}
-	return true;
+    char c;
+    while ((c = *(string++)) != '\0')
+    {
+        if (is_upper(c))
+            return false;
+    }
+    return true;
 }
 
 #ifndef __printflike
@@ -501,45 +591,49 @@ static inline bool is_all_lower(const char* string)
 
 typedef struct StringSlice_
 {
-	const char *ptr;
-	size_t len;
+    const char *ptr;
+    size_t len;
 } StringSlice;
 
 char *strcat_arena(const char *a, const char *b);
-int str_in_list(const char *value, unsigned count, const char** elements);
+int str_in_list(const char *value, unsigned count, const char **elements);
 char *strformat(const char *var, ...) __printflike(1, 2);
 char *stringcopy(const char *start, size_t len);
 StringSlice strnexttok(StringSlice *slice, char separator);
 static inline bool slicestrcmp(StringSlice slice, const char *other)
 {
-	if (strlen(other) != slice.len) return false;
-	return strncmp(slice.ptr, other, slice.len) == 0;
+    if (strlen(other) != slice.len)
+        return false;
+    return strncmp(slice.ptr, other, slice.len) == 0;
 }
 
 static inline StringSlice strtoslice(const char *data)
 {
-	return (StringSlice) { data, strlen(data) };
+    return (StringSlice){data, strlen(data)};
 }
 void slicetrim(StringSlice *slice);
 
 #if IS_GCC || IS_CLANG
 
-#define MAX(_a, _b) ({ \
-  typeof(_a) __a__ = (_a); \
-  typeof(_b) __b__ = (_b); \
-  __a__ > __b__ ? __a__ : __b__; })
+#define MAX(_a, _b)                                                                                                    \
+    ({                                                                                                                 \
+        typeof(_a) __a__ = (_a);                                                                                       \
+        typeof(_b) __b__ = (_b);                                                                                       \
+        __a__ > __b__ ? __a__ : __b__;                                                                                 \
+    })
 
-#define MIN(_a, _b) ({ \
-  typeof(_a) __a__ = (_a); \
-  typeof(_b) __b__ = (_b); \
-  __a__ < __b__ ? __a__ : __b__; })
+#define MIN(_a, _b)                                                                                                    \
+    ({                                                                                                                 \
+        typeof(_a) __a__ = (_a);                                                                                       \
+        typeof(_b) __b__ = (_b);                                                                                       \
+        __a__ < __b__ ? __a__ : __b__;                                                                                 \
+    })
 
 #else
 #define MAX(a_, b_) ((a_) > (b_) ? (a_) : (b_))
 #define MIN(a_, b_) ((a_) < (b_) ? (a_) : (b_))
 #endif
 // Windows-specific code
-
 
 #if PLATFORM_WINDOWS
 
