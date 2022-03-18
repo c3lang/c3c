@@ -66,7 +66,7 @@ static bool filename_to_module_in_buffer(const char *path)
 	for (int i = last_slash + 1; i < last_dot; i++)
 	{
 		char c = path[i];
-		if (is_letter(c))
+		if (is_letter(c) || is_digit(c))
 		{
 			c = (char)(is_upper(c) ? c + 'a' - 'A' : c);
 		}
