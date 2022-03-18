@@ -10,9 +10,44 @@ macro scope(&variable; @body) @autoimport
 	@body();
 }
 
+extern fn void printf(char*, ...);
+
+struct CallstackElement
+{
+	CallstackElement* prev;
+	char* function;
+	char* file;
+	uint line;
+}
+fn void panic(char* message, char *file, char *function, uint line) @autoimport
+{
+	CallstackElement* stack = $$stacktrace();
+	$if ($defined(libc::stderr) && $defined(libc::fprintf)):
+
+	if (stack) stack = stack.prev;
+	if (stack)
+	{
+		libc::fprintf(@libc::stderr(), "\nERROR: '%s'\n", message);
+	}
+	else
+	{
+		libc::fprintf(@libc::stderr(), "\nERROR: '%s', function %s (%s:%d)\n", message, function, file, line);
+	}
+	while (stack)
+	{
+		libc::fprintf(@libc::stderr(), "  at function %s (%s:%u)\n", stack.function, stack.file, stack.line);
+		stack = stack.prev;
+	}
+
+	$endif;
+
+	$$trap();
+}
+
 macro unreachable($string = "Unreachable statement reached.") @autoimport @noreturn
 {
-	assert(false, $string);
+	panic($string, $$FILE, $$FUNC, $$LINE);
+	$$unreachable();
 }
 
 /*

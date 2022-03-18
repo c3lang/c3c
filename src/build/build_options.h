@@ -227,6 +227,7 @@ typedef struct BuildOptions_
 	bool emit_bitcode;
 	bool test_mode;
 	bool no_stdlib;
+	const char *panicfn;
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
 	bool print_keywords;
@@ -278,6 +279,7 @@ typedef struct
 	CompilerBackend backend;
 	uint32_t symtab_size;
 	uint32_t switchrange_max_size;
+	const char *panicfn;
 	const char *cc;
 	const char *cflags;
 	const char **csource_dirs;

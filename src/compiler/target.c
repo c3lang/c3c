@@ -263,6 +263,30 @@ static AlignSize os_arch_max_alignment_of_tls(OsType os, ArchType arch, Environm
 	return 0;
 }
 
+static bool os_target_use_thread_local(OsType os)
+{
+	switch (os)
+	{
+		case OS_UNSUPPORTED:
+			return false;
+		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
+			return false;
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_IOS:
+		case OS_TYPE_LINUX:
+		case OS_TYPE_MACOSX:
+		case OS_TYPE_NETBSD:
+		case OS_TYPE_OPENBSD:
+		case OS_TYPE_WIN32:
+		case OS_TYPE_TVOS:
+		case OS_TYPE_WATCHOS:
+		case OS_TYPE_WASI:
+			return true;
+	}
+	UNREACHABLE
+}
+
 static bool os_target_signed_c_char_type(OsType os, ArchType arch)
 {
 	switch (arch)
@@ -1293,11 +1317,10 @@ void target_setup(BuildTarget *target)
 	// TLS should not be supported for:
 	// ARM Cygwin
 	// NVPTX
-	platform_target.tls_supported = true;
+	platform_target.tls_supported = os_target_use_thread_local(platform_target.os);
 	platform_target.big_endian = arch_big_endian(platform_target.arch);
 	platform_target.width_pointer = arch_pointer_bit_width(platform_target.os, platform_target.arch);
 	platform_target.alloca_address_space = 0;
-
 	platform_target.object_format = object_format_from_os(platform_target.os);
 
 	platform_target.int128 = os_target_supports_int128(platform_target.os, platform_target.arch);

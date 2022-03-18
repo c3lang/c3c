@@ -104,6 +104,17 @@ static inline bool sema_is_path_found(Module **modules, Path *path, bool want_ge
 	return false;
 }
 
+Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name)
+{
+	bool path_found = false;
+	VECEACH(module_list, i)
+	{
+		Module *module = module_list[i];
+		Decl *decl = sema_find_decl_in_module(module, path, interned_name, &path_found);
+		if (decl) return decl;
+	}
+	return NULL;
+}
 static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, NameResolve *name_resolve, bool want_generic)
 {
 	const char *symbol = name_resolve->symbol;

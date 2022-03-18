@@ -13,6 +13,7 @@ void gencontext_begin_module(GenContext *c)
 	c->ir_filename = strformat("%s.ll", result);
 	c->object_filename = strformat("%s%s", result, get_object_extension());
 
+	c->panicfn = global_context.panic_fn;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();
 	c->target_data = LLVMCreateTargetDataLayout(c->machine);
@@ -60,10 +61,23 @@ void gencontext_begin_module(GenContext *c)
 		global_context.type[i]->backend_debug_type = NULL;
 		global_context.type[i]->backend_typeid = NULL;
 	}
+	if (c->panicfn) c->panicfn->backend_ref = NULL;
+
 	if (active_target.debug_info != DEBUG_INFO_NONE)
 	{
 		c->debug.runtime_version = 1;
 		c->debug.builder = LLVMCreateDIBuilder(c->module);
+		if (active_target.debug_info == DEBUG_INFO_FULL && active_target.feature.safe_mode)
+		{
+			c->debug.stack_type = LLVMStructCreateNamed(c->context, ".$callstack");
+			LLVMTypeRef types[4] = { LLVMPointerType(c->debug.stack_type, 0),
+									 LLVMPointerType(c->byte_type, 0),
+									 LLVMPointerType(c->byte_type, 0),
+									 llvm_get_type(c, type_uint) };
+			LLVMStructSetBody(c->debug.stack_type, types, 4, false);
+			c->debug.last_ptr = NULL;
+			c->debug.enable_stacktrace = true;
+		}
 	}
 }
 

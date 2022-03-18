@@ -110,8 +110,11 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  call void @__assert_rtn(i8* getelementptr inbounds ([21 x i8], [21 x i8]* @0, i64 0, i64 0), i8* getelementptr inbounds ([22 x i8], [22 x i8]* @1, i64 0, i64 0), i32 14, i8* getelementptr inbounds ([20 x i8], [20 x i8]* @2, i64 0, i64 0))
+  call void @"std::builtin.panic"(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @0, i64 0, i64 0), i8* getelementptr inbounds ([22 x i8], [22 x i8]* @1, i64 0, i64 0), i8* getelementptr inbounds ([21 x i8], [21 x i8]* @2, i64 0, i64 0), i32 14)
   unreachable
+
+unreachable_block:                                ; No predecessors!
+  ret void
 }
 
 ; Function Attrs: nounwind

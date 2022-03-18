@@ -42,6 +42,7 @@ void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);
 void context_change_scope_for_label(SemaContext *context, Decl *label);
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags);
 bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body);
+bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref, TokenType *type_ref);
 
 #define PUSH_X(ast, X) AstId _old_##X##_defer = context->X##_defer; AstId _old_##X = context->X##_target; context->X##_target = ast ? astid(ast) : 0; context->X##_defer = context->active_scope.defer_last
 #define POP_X(X) context->X##_target = _old_##X; context->X##_defer = _old_##X##_defer

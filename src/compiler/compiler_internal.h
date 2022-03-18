@@ -1465,6 +1465,7 @@ typedef struct
 	DeclTable symbols;
 	DeclTable generic_symbols;
 	Path std_module_path;
+	Decl *panic_fn;
 } GlobalContext;
 
 
@@ -1645,21 +1646,6 @@ extern const char *kw_LINE;
 extern const char *kw_LINEREAL;
 extern const char *kw_incr;
 extern const char *kw_check_assign;
-extern const char *kw_builtin_ceil;
-extern const char *kw_builtin_trunc;
-extern const char *kw_builtin_sqrt;
-extern const char *kw_builtin_cos;
-extern const char *kw_builtin_sin;
-extern const char *kw_builtin_log;
-extern const char *kw_builtin_log2;
-extern const char *kw_builtin_log10;
-extern const char *kw_builtin_max;
-extern const char *kw_builtin_min;
-extern const char *kw_builtin_pow;
-extern const char *kw_builtin_exp;
-extern const char *kw_builtin_fabs;
-extern const char *kw_builtin_fma;
-extern const char *kw_builtin_cmpxchg;
 extern const char *kw_argc;
 extern const char *kw_argv;
 extern const char *kw_mainstub;
@@ -1673,6 +1659,11 @@ ARENA_DEF(type_info, TypeInfo)
 INLINE Expr *exprptrzero(ExprId id)
 {
 	return id ? exprptr(id) : NULL;
+}
+
+INLINE Type *typeinfotype(TypeInfoId id_)
+{
+	return type_infoptr(id_)->type;
 }
 
 static inline bool ast_ok(Ast *ast) { return ast == NULL || ast->ast_kind != AST_POISONED; }
@@ -1987,6 +1978,7 @@ bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type 
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool is_macro, bool failable);
 Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol);
+Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_module(Module *module, Type *type, const char *method_name);

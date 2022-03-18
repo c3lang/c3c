@@ -51,6 +51,7 @@ typedef struct
 typedef struct
 {
 	unsigned runtime_version : 8;
+	bool enable_stacktrace : 1;
 	LLVMDIBuilderRef builder;
 	LLVMMetadataRef file;
 	LLVMMetadataRef compile_unit;
@@ -58,6 +59,12 @@ typedef struct
 	SourceSpan current_range;
 	LLVMMetadataRef *lexical_block_stack;
 	LLVMMetadataRef inlined_at;
+	LLVMValueRef func_name;
+	LLVMValueRef file_name;
+	LLVMValueRef last_ptr;
+	LLVMTypeRef stack_type;
+	LLVMValueRef stack_slot;
+	LLVMValueRef stack_slot_row;
 } DebugContext;
 
 
@@ -78,6 +85,7 @@ typedef struct
 	LLVMValueRef error_var;
 	LLVMTypeRef bool_type;
 	LLVMTypeRef byte_type;
+	Decl *panicfn;
 	Decl *cur_code_decl;
 	Decl *cur_func_decl;
 	TypeInfo *current_return_type;
@@ -97,7 +105,6 @@ typedef struct
 	BEValue retval;
 	int in_block;
 	bool current_block_is_target : 1;
-	bool did_call_stack_save : 1;
 	LLVMTypeRef type_data_definitions[TYPE_KINDS];
 	SourceSpan last_emitted_loc;
 } GenContext;
@@ -202,6 +209,7 @@ LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,
 										 LLVMTypeRef type_ref);
 #endif
 
+
 // BE value
 void llvm_value_addr(GenContext *c, BEValue *value);
 static inline bool llvm_value_is_addr(BEValue *value) { return value->kind == BE_ADDRESS || value->kind == BE_ADDRESS_FAILABLE; }
@@ -305,11 +313,12 @@ void llvm_store_zero(GenContext *c, BEValue *ref);
 void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len);
 void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, unsigned source_alignment);
 void llvm_emit_stmt(GenContext *c, Ast *ast);
+LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str);
 static inline LLVMValueRef llvm_emit_store(GenContext *context, Decl *decl, LLVMValueRef value);
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc);
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc);
 void llvm_emit_ptr_from_array(GenContext *c, BEValue *value);
-void llvm_emit_debug_output(GenContext *c, const char *message, const char *file, const char *func, unsigned line);
+void llvm_emit_panic(GenContext *c, const char *message, const char *file, const char *func, unsigned line);
 void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failable);
 void llvm_emit_return_implicit(GenContext *c);
 void llvm_emit_struct_member_ref(GenContext *c, BEValue *struct_ref, BEValue *member_ref, unsigned member_id);

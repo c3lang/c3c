@@ -850,6 +850,13 @@ void *llvm_gen(Module *module)
 	gencontext_init(gen_context, module);
 	gencontext_begin_module(gen_context);
 
+	// Declare the panic function implicitly
+	Decl *panicfn = gen_context->panicfn;
+	if (panicfn && panicfn->module != module)
+	{
+		llvm_emit_extern_decl(gen_context, panicfn);
+	}
+
 	VECEACH(module->units, j)
 	{
 		CompilationUnit *unit = module->units[j];
@@ -857,11 +864,13 @@ void *llvm_gen(Module *module)
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;
 
+
 		VECEACH(unit->external_symbol_list, i)
 		{
 			Decl *d = unit->external_symbol_list[i];
 			// Avoid duplicating symbol
 			if (d->module == unit->module) continue;
+			if (d == panicfn) continue;
 			llvm_emit_extern_decl(gen_context, unit->external_symbol_list[i]);
 		}
 		VECEACH(unit->methods, i)

@@ -2092,7 +2092,6 @@ static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, DocDire
 	ASSIGN_EXPR_OR_RET(ast->doc_stmt.contract.decl_exprs, parse_expression_list(c, kind == DOC_DIRECTIVE_CHECKED), false);
 	const char *end = start;
 	while (*++end != '\n' && *end != '\0') end++;
-	end--;
 	if (end > c->data.lex_start) end = c->data.lex_start;
 	while (end[-1] == ' ') end--;
 	scratch_buffer_clear();

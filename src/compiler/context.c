@@ -133,7 +133,7 @@ void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 
 void decl_register(Decl *decl)
 {
-	if (decl->visibility != VISIBLE_PUBLIC) return;
+	if (decl->visibility != VISIBLE_PUBLIC && decl->visibility != VISIBLE_EXTERN) return;
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:

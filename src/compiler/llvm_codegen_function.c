@@ -402,62 +402,98 @@ void llvm_emit_return_implicit(GenContext *c)
 	llvm_emit_return_abi(c, NULL, &value);
 }
 
-void llvm_emit_function_body(GenContext *context, Decl *decl)
+void llvm_emit_function_body(GenContext *c, Decl *decl)
 {
 	DEBUG_LOG("Generating function %s.", decl->extname);
 	assert(decl->backend_ref);
 
-	bool emit_debug = llvm_use_debug(context);
-	LLVMValueRef prev_function = context->function;
-	LLVMBuilderRef prev_builder = context->builder;
+	bool emit_debug = llvm_use_debug(c);
+	LLVMValueRef prev_function = c->function;
+	LLVMBuilderRef prev_builder = c->builder;
 
-	context->error_var = NULL;
-	context->catch_block = NULL;
 
-	context->function = decl->backend_ref;
+	c->error_var = NULL;
+	c->catch_block = NULL;
+
+	c->function = decl->backend_ref;
 	if (emit_debug)
 	{
-		context->debug.function = LLVMGetSubprogram(context->function);
+		c->debug.function = LLVMGetSubprogram(c->function);
+		if (c->debug.enable_stacktrace)
+		{
+			scratch_buffer_clear();
+			scratch_buffer_append(decl->module->name->module);
+			scratch_buffer_append("::");
+			scratch_buffer_append(decl->name ? decl->name : "anon");
+			c->debug.func_name = llvm_emit_zstring(c, scratch_buffer_to_string());
+
+			File *file = source_file_by_id(decl->span.file_id);
+			c->debug.file_name = llvm_emit_zstring(c, file->name);
+		}
 	}
 
-	context->cur_func_decl = decl;
+	c->cur_func_decl = decl;
 
-	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context->context, context->function, "entry");
-	context->current_block = entry;
-	context->current_block_is_target = true;
-	context->block_return_exit = NULL;
-	context->in_block = 0;
-	context->builder = LLVMCreateBuilderInContext(context->context);
-	LLVMPositionBuilderAtEnd(context->builder, entry);
+	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, c->function, "entry");
+	c->current_block = entry;
+	c->current_block_is_target = true;
+	c->block_return_exit = NULL;
+	c->in_block = 0;
+	c->builder = LLVMCreateBuilderInContext(c->context);
+	LLVMPositionBuilderAtEnd(c->builder, entry);
 
-	LLVMValueRef alloca_point = LLVMBuildAlloca(context->builder, LLVMInt32TypeInContext(context->context), "alloca_point");
-	context->alloca_point = alloca_point;
+	LLVMValueRef alloca_point = LLVMBuildAlloca(c->builder, LLVMInt32TypeInContext(c->context), "alloca_point");
+	c->alloca_point = alloca_point;
 
 	FunctionPrototype *prototype = decl->type->func.prototype;
 	unsigned arg = 0;
 
 	if (emit_debug)
 	{
-		llvm_debug_scope_push(context, context->debug.function);
+		llvm_debug_scope_push(c, c->debug.function);
+		if (c->debug.enable_stacktrace)
+		{
+			LLVMTypeRef slot_type = c->debug.stack_type;
+			LLVMTypeRef ptr_to_slot_type = LLVMPointerType(slot_type, 0);
+			if (!c->debug.last_ptr)
+			{
+				LLVMValueRef last_stack = c->debug.last_ptr = LLVMAddGlobal(c->module, ptr_to_slot_type, ".$last_stack");
+				LLVMSetThreadLocal(last_stack, true);
+				LLVMSetInitializer(last_stack, LLVMConstNull(ptr_to_slot_type));
+				LLVMSetVisibility(last_stack, LLVMDefaultVisibility);
+				LLVMSetLinkage(last_stack, LLVMWeakODRLinkage);
+			}
+			AlignSize alignment = llvm_abi_alignment(c, slot_type);
+			c->debug.stack_slot = llvm_emit_alloca(c, slot_type, alignment, ".$stackslot");
+			AlignSize align_to_use;
+			LLVMValueRef prev_ptr = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 0, alignment, &align_to_use);
+			llvm_store(c, prev_ptr, LLVMBuildLoad2(c->builder, ptr_to_slot_type, c->debug.last_ptr, ""), align_to_use);
+			LLVMValueRef func_name = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 1, alignment, &align_to_use);
+			llvm_store(c, func_name, c->debug.func_name, align_to_use);
+			LLVMValueRef file_name = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 2, alignment, &align_to_use);
+			llvm_store(c, file_name, c->debug.file_name, align_to_use);
+			c->debug.stack_slot_row = llvm_emit_struct_gep_raw(c, c->debug.stack_slot, slot_type, 3, alignment, &align_to_use);
+			llvm_store(c, c->debug.last_ptr, c->debug.stack_slot, type_alloca_alignment(type_voidptr));
+		}
 	}
 
-	context->failable_out = NULL;
-	context->return_out = NULL;
+	c->failable_out = NULL;
+	c->return_out = NULL;
 	if (prototype->ret_abi_info->kind == ABI_ARG_INDIRECT)
 	{
 		if (prototype->is_failable)
 		{
-			context->failable_out = LLVMGetParam(context->function, arg++);
+			c->failable_out = LLVMGetParam(c->function, arg++);
 		}
 		else
 		{
-			context->return_out = LLVMGetParam(context->function, arg++);
+			c->return_out = LLVMGetParam(c->function, arg++);
 		}
 	}
 	if (prototype->ret_by_ref_abi_info)
 	{
-		assert(!context->return_out);
-		context->return_out = LLVMGetParam(context->function, arg++);
+		assert(!c->return_out);
+		c->return_out = LLVMGetParam(c->function, arg++);
 	}
 
 
@@ -466,49 +502,49 @@ void llvm_emit_function_body(GenContext *context, Decl *decl)
 		// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
 		VECEACH(decl->func_decl.function_signature.params, i)
 		{
-			llvm_emit_parameter(context, decl->func_decl.function_signature.params[i], prototype->abi_args[i], &arg, i);
+			llvm_emit_parameter(c, decl->func_decl.function_signature.params[i], prototype->abi_args[i], &arg, i);
 		}
 	}
 
-	LLVMSetCurrentDebugLocation2(context->builder, NULL);
+	LLVMSetCurrentDebugLocation2(c->builder, NULL);
 
 	assert(decl->func_decl.body);
 	AstId current = astptr(decl->func_decl.body)->compound_stmt.first_stmt;
 	while (current)
 	{
-		llvm_emit_stmt(context, ast_next(&current));
+		llvm_emit_stmt(c, ast_next(&current));
 	}
 
-	if (context->current_block && llvm_basic_block_is_unused(context->current_block))
+	if (c->current_block && llvm_basic_block_is_unused(c->current_block))
 	{
-		LLVMBasicBlockRef prev_block = LLVMGetPreviousBasicBlock(context->current_block);
-		LLVMDeleteBasicBlock(context->current_block);
-		context->current_block = prev_block;
-		LLVMPositionBuilderAtEnd(context->builder, context->current_block);
+		LLVMBasicBlockRef prev_block = LLVMGetPreviousBasicBlock(c->current_block);
+		LLVMDeleteBasicBlock(c->current_block);
+		c->current_block = prev_block;
+		LLVMPositionBuilderAtEnd(c->builder, c->current_block);
 	}
 	// Insert a return (and defer) if needed.
-	if (context->current_block && !LLVMGetBasicBlockTerminator(context->current_block))
+	if (c->current_block && !LLVMGetBasicBlockTerminator(c->current_block))
 	{
-		llvm_emit_return_implicit(context);
+		llvm_emit_return_implicit(c);
 	}
 
 	// erase alloca point
 	if (LLVMGetInstructionParent(alloca_point))
 	{
-		context->alloca_point = NULL;
+		c->alloca_point = NULL;
 		LLVMInstructionEraseFromParent(alloca_point);
 	}
 
-	LLVMDisposeBuilder(context->builder);
-	context->builder = NULL;
+	LLVMDisposeBuilder(c->builder);
+	c->builder = NULL;
 
-	if (llvm_use_debug(context))
+	if (llvm_use_debug(c))
 	{
-		llvm_debug_scope_pop(context);
+		llvm_debug_scope_pop(c);
 	}
 
-	context->builder = prev_builder;
-	context->function = prev_function;
+	c->builder = prev_builder;
+	c->function = prev_function;
 }
 
 static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index)

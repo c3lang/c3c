@@ -120,7 +120,9 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	const char *cpu = get_valid_string(json, "cpu", type, false);
 	int reloc = get_valid_string_setting(json, "reloc", type, reloc_models, 0, 5, "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
 	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 5, "none, mmx, sse, avx or avx512");
+	const char *panicfn = get_valid_string(json, "panicfn", type, false);
 
+	target->panicfn = panicfn;
 	if (cc) target->cc = cc;
 	if (cflags) target->cflags = cflags;
 	if (csource_dirs) target->csource_dirs = csource_dirs;
@@ -156,6 +158,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	// Use the fact that they correspond to 0, 1, -1
 	target->feature.x86_struct_return = get_valid_bool(json, "x86-stack-struct-return", type, target->feature.x86_struct_return);
 	target->feature.soft_float = get_valid_bool(json, "soft-float", type, target->feature.soft_float);
+	target->no_stdlib = get_valid_bool(json, "nostdlib", type, false);
 
 }
 static void project_add_target(Project *project, BuildTarget *default_target,  JSONObject *json, const char *name, const char *type)
