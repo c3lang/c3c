@@ -2159,8 +2159,6 @@ bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement)
 				}
 				return false;
 			}
-
-			statement->assert_stmt.expr = 0;
 			context->active_scope.jump_end = true;
 		}
 	}

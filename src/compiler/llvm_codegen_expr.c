@@ -3590,8 +3590,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		// TODO, we should add info about the error.
 		SourceSpan loc = expr->span;
 		File *file = source_file_by_id(loc.file_id);
-		llvm_emit_debug_output(c, "Runtime error force unwrap!", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
-		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
+		llvm_emit_panic(c, "Runtime error force unwrap!", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
 		LLVMBuildUnreachable(c->builder);
 		c->current_block = NULL;
 		c->current_block_is_target = NULL;
@@ -4213,12 +4212,12 @@ static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic, BEValue 
 	LLVMValueRef arg_results[4];
 	for (unsigned i = 0; i < arguments; i++)
 	{
-		llvm_emit_expr(c, be_value, expr->call_expr.arguments[0]);
+		llvm_emit_expr(c, be_value, expr->call_expr.arguments[i]);
 		llvm_value_rvalue(c, be_value);
 		arg_results[i] = be_value->value;
 	}
-	LLVMTypeRef call_type = llvm_get_type(c, expr->type);
-	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, &call_type, 1, arg_results, arguments);
+	LLVMTypeRef call_type = expr->type == type_void ? NULL : llvm_get_type(c, expr->type);
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, &call_type, call_type ? 1 : 0, arg_results, arguments);
 	llvm_value_set(be_value, result, expr->type);
 }
 
@@ -4377,7 +4376,11 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 	switch (func)
 	{
 		case BUILTIN_NONE:
+		case BUILTIN_UNREACHABLE:
+		case BUILTIN_STACKTRACE:
 			UNREACHABLE
+		case BUILTIN_TRAP:
+			return intrinsic_id.trap;
 		case BUILTIN_CEIL:
 			return intrinsic_id.ceil;
 		case BUILTIN_TRUNC:
@@ -4431,6 +4434,25 @@ LLVMAtomicOrdering llvm_atomic_ordering(Atomicity atomicity)
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
+	if (func == BUILTIN_UNREACHABLE)
+	{
+		llvm_value_set(result_value, LLVMBuildUnreachable(c->builder), type_void);
+		c->current_block = NULL;
+		c->current_block_is_target = NULL;
+		LLVMBasicBlockRef after_unreachable = llvm_basic_block_new(c, "after.unreachable");
+		llvm_emit_block(c, after_unreachable);
+		return;
+	}
+	if (func == BUILTIN_STACKTRACE)
+	{
+		if (!c->debug.enable_stacktrace)
+		{
+			llvm_value_set(result_value, llvm_get_zero(c, type_voidptr), type_voidptr);
+			return;
+		}
+		llvm_value_set(result_value, llvm_emit_bitcast(c, c->debug.stack_slot, type_voidptr), type_voidptr);
+		return;
+	}
 	if (func == BUILTIN_VOLATILE_STORE)
 	{
 		BEValue value;
@@ -4482,11 +4504,18 @@ void llvm_add_call_attributes(GenContext *c, LLVMValueRef call_value, int start_
 }
 void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 {
+
 	if (expr->call_expr.is_builtin)
 	{
 		llvm_emit_builtin_call(c, result_value, expr);
 		return;
 	}
+
+	if (c->debug.stack_slot_row)
+	{
+		llvm_store(c, c->debug.stack_slot_row, llvm_const_int(c, type_uint, expr->span.row), type_abi_alignment(type_uint));
+	}
+
 	LLVMTypeRef func_type;
 	LLVMValueRef func;
 	BEValue temp_value;

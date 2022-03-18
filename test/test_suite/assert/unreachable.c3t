@@ -15,22 +15,27 @@ fn void test()
 
 // #expect: unreachable.ll
 
-    %x = alloca i32
-    %0 = call i32 @unreachable.foo()
-    store i32 %0, i32* %x
-    %1 = load i32, i32* %x
-    %gt = icmp sgt i32 %1, 0
-    br i1 %gt, label %if.then, label %if.exit
 
-if.then:
-    ret void
+define void @unreachable.test() #0 {
+entry:
+  %x = alloca i32, align 4
+  %0 = call i32 @unreachable.foo()
+  store i32 %0, i32* %x, align 4
+  %1 = load i32, i32* %x, align 4
+  %gt = icmp sgt i32 %1, 0
+  br i1 %gt, label %if.then, label %if.exit
 
-if.exit:
-    call void @llvm.trap()
-    unreachable
+if.then:                                          ; preds = %entry
+  ret void
 
-unreachable_block:
-    %2 = load i32, i32* %x
-    %add = add i32 %2, 1
-    store i32 %add, i32* %x
-    ret void
+if.exit:                                          ; preds = %entry
+  call void @"std::builtin.panic"(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.1, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.2, i32 0, i32 0), i32 11)
+  unreachable
+
+after.unreachable:                                ; No predecessors!
+  %2 = load i32, i32* %x, align 4
+  %add = add i32 %2, 1
+  store i32 %add, i32* %x, align 4
+  ret void
+}
+

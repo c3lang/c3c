@@ -26,6 +26,5 @@ struct VarArrayHeader
     usize size;
     usize capacity;
     void *allocator;
-
 }
 

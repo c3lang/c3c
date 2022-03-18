@@ -318,6 +318,41 @@ void sema_analysis_run(void)
 	{
 		sema_analyze_to_stage(stage);
 	}
+
+	if (active_target.panicfn || !active_target.no_stdlib)
+	{
+		const char *panicfn = active_target.panicfn ? active_target.panicfn : "std::builtin::panic";
+		Path *path;
+		const char *ident;
+		TokenType type;
+		if (!splitpathref(panicfn, strlen(panicfn), &path, &ident, &type) || path == NULL)
+		{
+			error_exit("'%s' is not a valid panic function.", panicfn);
+		}
+		Decl *decl = sema_find_decl_in_modules(global_context.module_list, path, ident);
+		if (!decl)
+		{
+			error_exit("Panic function '%s::%s' could not be found.", path->module, ident);
+		}
+		if (decl->decl_kind != DECL_FUNC)
+		{
+			error_exit("'%s::%s' is not a function.", path->module, ident);
+		}
+		Decl **params = decl->func_decl.function_signature.params;
+		if (vec_size(params) != 4 || params[0]->type != type_get_ptr(type_char)
+			|| params[1]->type != type_get_ptr(type_char)
+			|| params[2]->type != type_get_ptr(type_char)
+			|| params[3]->type != type_uint
+			|| typeinfotype(decl->func_decl.function_signature.returntype) != type_void)
+		{
+			error_exit("Expected panic function to have the signature fn void(char*, char*, uint, uint).");
+		}
+		global_context.panic_fn = decl;
+	}
+	else
+	{
+		global_context.panic_fn = NULL;
+	}
 	compiler_sema_time = bench_mark();
 
 }

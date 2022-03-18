@@ -420,7 +420,8 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		{
 			SourceSpan loc = ast->span;
 			File  *file = source_file_by_id(loc.file_id);
-			llvm_emit_debug_output(c, "Infinite loop found", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
+
+			llvm_emit_panic(c, "Infinite loop found", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
 			LLVMBuildUnreachable(c->builder);
 			LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
 			c->current_block = NULL;
@@ -928,19 +929,6 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 {
 	ExprId exprid = ast->assert_stmt.expr;
-	if (!exprid)
-	{
-		File *file = source_file_by_id(ast->span.file_id);
-		unsigned row = ast->span.row;
-		llvm_emit_debug_output(c, "Unreachable statement reached.", file->name, c->cur_func_decl->extname, row ? row : 1);
-		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
-		LLVMBuildUnreachable(c->builder);
-		LLVMBasicBlockRef block = llvm_basic_block_new(c, "unreachable_block");
-		c->current_block = NULL;
-		c->current_block_is_target = false;
-		llvm_emit_block(c, block);
-		return;
-	}
 	Expr *assert_expr = exprptr(exprid);
 
 	if (active_target.feature.safe_mode)
@@ -964,8 +952,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 			error = "Assert violation";
 		}
 		File  *file = source_file_by_id(loc.file_id);
-		llvm_emit_debug_output(c, error, file->name, c->cur_func_decl->name, loc.row ? loc.row : 1);
-		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
+		llvm_emit_panic(c, error, file->name, c->cur_func_decl->name, loc.row ? loc.row : 1);
 		llvm_emit_br(c, on_ok);
 		llvm_emit_block(c, on_ok);
 	}
@@ -1032,7 +1019,7 @@ void gencontext_emit_expr_stmt(GenContext *c, Ast *ast)
 	llvm_emit_expr(c, &value, ast->expr_stmt);
 }
 
-static LLVMValueRef llvm_emit_string(GenContext *c, const char *str)
+LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str)
 {
 	LLVMTypeRef char_type = llvm_get_type(c, type_char);
 	unsigned len = (unsigned)strlen(str);
@@ -1047,129 +1034,30 @@ static LLVMValueRef llvm_emit_string(GenContext *c, const char *str)
 	                                              1, &alignment);
 	return LLVMBuildBitCast(c->builder, string, LLVMPointerType(char_type, 0), "");
 }
-void llvm_emit_debug_output(GenContext *c, const char *message, const char *file, const char *func, unsigned line)
+
+
+void llvm_emit_panic(GenContext *c, const char *message, const char *file, const char *func, unsigned line)
 {
+	if (c->debug.stack_slot_row)
+	{
+		llvm_store(c, c->debug.stack_slot_row, llvm_const_int(c, type_uint, line), type_abi_alignment(type_uint));
+	}
+
+	Decl *panicfn = c->panicfn;
+	if (!panicfn)
+	{
+		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
+		return;
+	}
 	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
-	LLVMTypeRef cint_type = llvm_get_type(c, type_cint);
-	const char *name;
-	int file_index;
-	int line_index;
-	int expr_index;
-	int func_index = -1;
-	OsType os = platform_target.os;
-	if (platform_target.arch == ARCH_TYPE_WASM32 || platform_target.arch == ARCH_TYPE_WASM64) os = OS_TYPE_WASI;
-	switch (os)
-	{
-		case OS_TYPE_WIN32:
-			name = "_assert";
-			expr_index = 0;
-			file_index = 1;
-			line_index = 2;
-			break;
-		case OS_DARWIN_TYPES:
-			name = "__assert_rtn";
-			func_index = 0;
-			expr_index = 3;
-			file_index = 1;
-			line_index = 2;
-			break;
-		case OS_TYPE_SOLARIS:
-			name = "__assert_c99";
-			expr_index = 0;
-			file_index = 1;
-			line_index = 2;
-			func_index = 3;
-			break;
-		case OS_TYPE_LINUX:
-		case OS_TYPE_WASI:
-			name = "__assert_fail";
-			expr_index = 0;
-			file_index = 1;
-			line_index = 2;
-			func_index = 3;
-			break;
-		case OS_TYPE_OPENBSD:
-			name = "__assert2";
-			file_index = 0;
-			line_index = 1;
-			func_index = 2;
-			expr_index = 3;
-			break;
-		default:
-			name = "__assert";
-			expr_index = 0;
-			file_index = 1;
-			line_index = 2;
-			func_index = -1;
-			break;
-	}
+	LLVMValueRef args[4] = {
+			llvm_emit_zstring(c, message),
+			llvm_emit_zstring(c, file),
+			func ? llvm_emit_zstring(c, func) : LLVMConstNull(char_ptr_type),
+			llvm_const_int(c, type_uint, line)
+	};
 
-	LLVMTypeRef type;
-	LLVMTypeRef void_type = LLVMVoidTypeInContext(c->context);
-	switch (os)
-	{
-		case OS_TYPE_WIN32:
-		case OS_TYPE_FREE_BSD:
-		case OS_TYPE_DRAGON_FLY:
-		{
-			LLVMTypeRef args[3] = { char_ptr_type, char_ptr_type, cint_type };
-			type = LLVMFunctionType(void_type, args, 3, false);
-			break;
-		}
-		case OS_DARWIN_TYPES:
-		case OS_TYPE_WASI:
-		case OS_TYPE_LINUX:
-		case OS_TYPE_SOLARIS:
-		{
-			LLVMTypeRef args[4] = { char_ptr_type, char_ptr_type, cint_type, char_ptr_type };
-			type = LLVMFunctionType(void_type, args, 4, false);
-			break;
-		}
-		case OS_TYPE_OPENBSD:
-		{
-			LLVMTypeRef args[4] = { char_ptr_type, cint_type, char_ptr_type, char_ptr_type };
-			type = LLVMFunctionType(void_type, args, 4, false);
-			break;
-		}
-		case OS_TYPE_NETBSD:
-		{
-			LLVMTypeRef args[3] = { char_ptr_type, cint_type, char_ptr_type };
-			type = LLVMFunctionType(void_type, args, 3, false);
-			break;
-		}
-		default:
-		{
-			LLVMTypeRef args[3] = { char_ptr_type, char_ptr_type, cint_type };
-			type = LLVMFunctionType(void_type, args, 3, false);
-			break;
-		}
-	}
-	LLVMValueRef assert_func = LLVMGetNamedFunction(c->module, name);
-	if (!assert_func)
-	{
-		assert_func = LLVMAddFunction(c->module, name, type);
-	}
-
-	LLVMValueRef args[4];
-
-	if (func_index == -1)
-	{
-		scratch_buffer_clear();
-		scratch_buffer_append(file);
-		scratch_buffer_append(" : ");
-		scratch_buffer_append(func);
-		file = scratch_buffer_to_string();
-	}
-	else
-	{
-		args[func_index] = llvm_emit_string(c, func);
-	}
-	args[file_index] = llvm_emit_string(c, file);
-	args[expr_index] = llvm_emit_string(c, message);
-	args[line_index] = llvm_const_int(c, type_cint, line);
-
-	LLVMBuildCall2(c->builder, type, assert_func, args, func_index > -1 ? 4 : 3, "");
-
+	LLVMBuildCall2(c->builder, llvm_get_type(c, panicfn->type), panicfn->backend_ref, args, 4, "");
 }
 
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc)
@@ -1180,8 +1068,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	llvm_emit_cond_br(c, value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
 	File  *file = source_file_by_id(loc.file_id);
-	llvm_emit_debug_output(c, panic_name, file->name, c->cur_func_decl->name, loc.row);
-	llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
+	llvm_emit_panic(c, panic_name, file->name, c->cur_func_decl->name, loc.row);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }
@@ -1195,8 +1082,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 	llvm_value_set_bool(&be_value, value);
 	llvm_emit_cond_br(c, &be_value, panic_block, ok_block);
 	llvm_emit_block(c, panic_block);
-	llvm_emit_debug_output(c, panic_name, file->name, c->cur_func_decl->name, loc.row ? loc.row : 1);
-	llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
+	llvm_emit_panic(c, panic_name, file->name, c->cur_func_decl->name, loc.row ? loc.row : 1);
 	llvm_emit_br(c, ok_block);
 	llvm_emit_block(c, ok_block);
 }

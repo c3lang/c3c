@@ -540,6 +540,12 @@ static void parse_option(BuildOptions *options)
 				options->no_stdlib = true;
 				return;
 			}
+			if (match_longopt("panicfn"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --panicfn needs a function name.");
+				options->panicfn = next_arg();
+				return;
+			}
 			if (match_longopt("lib"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --lib needs a directory.");

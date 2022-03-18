@@ -83,21 +83,6 @@ const char *kw_LINE;
 const char *kw_LINEREAL;
 const char *kw_incr;
 const char *kw_check_assign;
-const char *kw_builtin_ceil;
-const char *kw_builtin_trunc;
-const char *kw_builtin_sqrt;
-const char *kw_builtin_cos;
-const char *kw_builtin_sin;
-const char *kw_builtin_log;
-const char *kw_builtin_log2;
-const char *kw_builtin_log10;
-const char *kw_builtin_max;
-const char *kw_builtin_min;
-const char *kw_builtin_pow;
-const char *kw_builtin_exp;
-const char *kw_builtin_fabs;
-const char *kw_builtin_fma;
-const char *kw_builtin_cmpxchg;
 const char *kw_argc;
 const char *kw_argv;
 const char *kw_mainstub;;
@@ -140,8 +125,14 @@ void symtab_init(uint32_t capacity)
 	}
 
 	// Init some constant idents
-	TokenType type = TOKEN_IDENT;
 #define KW_DEF(x) symtab_add(x, sizeof(x) - 1, fnv1a(x, sizeof(x) - 1), &type)
+	TokenType type = TOKEN_CONST_IDENT;
+	kw_LINE = KW_DEF("LINE");
+	kw_LINEREAL = KW_DEF("LINEREAL");
+	kw_FILE = KW_DEF("FILE");
+	kw_FUNC = KW_DEF("FUNC");
+
+	type = TOKEN_IDENT;
 	kw_sizeof = KW_DEF("sizeof");
 	kw_in = KW_DEF("in");
 	kw_out = KW_DEF("out");
@@ -171,10 +162,6 @@ void symtab_init(uint32_t capacity)
 	kw_require = KW_DEF("require");
 	kw_std = KW_DEF("std");
 	kw_values = KW_DEF("values");
-	kw_LINE = KW_DEF("LINE");
-	kw_LINEREAL = KW_DEF("LINEREAL");
-	kw_FILE = KW_DEF("FILE");
-	kw_FUNC = KW_DEF("FUNC");
 	kw_incr = KW_DEF("incr");
 	kw_check_assign = KW_DEF("check_assign");
 
@@ -182,6 +169,9 @@ void symtab_init(uint32_t capacity)
 	kw_argv = KW_DEF("_$argv");
 	kw_mainstub = KW_DEF("_$mainstub");
 
+	builtin_list[BUILTIN_TRAP] = KW_DEF("trap");
+	builtin_list[BUILTIN_UNREACHABLE] = KW_DEF("unreachable");
+	builtin_list[BUILTIN_STACKTRACE] = KW_DEF("stacktrace");
 	builtin_list[BUILTIN_CEIL] = KW_DEF("ceil");
 	builtin_list[BUILTIN_TRUNC] = KW_DEF("trunc");
 	builtin_list[BUILTIN_SIN] = KW_DEF("sin");

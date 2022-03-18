@@ -163,6 +163,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	target->no_stdlib = options->no_stdlib;
 	target->emit_llvm = options->emit_llvm;
+	target->panicfn = options->panicfn;
 	if (options->x86_vector_capability != X86VECTOR_DEFAULT)
 	{
 		target->feature.x86_vector_capability = options->x86_vector_capability;

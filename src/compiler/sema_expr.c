@@ -67,51 +67,18 @@ const char *ct_eval_expr(SemaContext *c, const char *expr_type, Expr *inner, Tok
 		SEMA_ERROR(inner, "'%s' expects a constant string as the argument.", expr_type);
 		return ct_eval_error;
 	}
-	const char *string = inner->const_expr.string.chars;
-	ArraySize len = inner->const_expr.string.len;
-
-	ArraySize path_end = 0;
-	for (ArraySize i = 0; i < len; i++)
-	{
-		char ch = string[i];
-		if (!is_alphanum_(ch))
-		{
-			if (ch == ':' && i > 0 && string[i + 1] == ':')
-			{
-				path_end = i;
-				i++;
-			}
-			else
-			{
-				SEMA_ERROR(inner, "A valid name was expected here.");
-				return ct_eval_error;
-			}
-		}
-	}
-	if (path_end > 0)
-	{
-		*path_ref = path_create_from_string(string, path_end, inner->span);
-		string += path_end + 2;
-		len -= path_end + 2;
-	}
-	if (len == 0)
+	const char *interned_version = NULL;
+	if (!splitpathref(inner->const_expr.string.chars, inner->const_expr.string.len, path_ref, &interned_version, type))
 	{
 		SEMA_ERROR(inner, "A valid name was expected here.");
 		return ct_eval_error;
 	}
-	const char *interned_version = symtab_find(string, len, fnv1a(string, len), type);
-	if (!interned_version)
+	if (*path_ref) (*path_ref)->span = inner->span;
+	if (*type == TOKEN_INVALID_TOKEN)
 	{
 		if (report_missing)
 		{
-			if (*path_ref)
-			{
-				SEMA_ERROR(inner, "'%s::%.*s' could not be found, did you spell it right?", (*path_ref)->module, (int)len, string);
-			}
-			else
-			{
-				SEMA_ERROR(inner, "'%.*s' could not be found, did you spell it right?", (int)len, string);
-			}
+			SEMA_ERROR(inner, "'%s' could not be found, did you spell it right?", interned_version);
 			return ct_eval_error;
 		}
 		return NULL;
@@ -2209,6 +2176,10 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 {
 	switch (func)
 	{
+		case BUILTIN_UNREACHABLE:
+		case BUILTIN_TRAP:
+		case BUILTIN_STACKTRACE:
+			return 0;
 		case BUILTIN_CEIL:
 		case BUILTIN_TRUNC:
 		case BUILTIN_SQRT:
@@ -2271,6 +2242,13 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 	Type *rtype = NULL;
 	switch (func)
 	{
+		case BUILTIN_UNREACHABLE:
+		case BUILTIN_TRAP:
+			rtype = type_void;
+			break;
+		case BUILTIN_STACKTRACE:
+			rtype = type_voidptr;
+			break;
 		case BUILTIN_CEIL:
 		case BUILTIN_TRUNC:
 		case BUILTIN_SQRT:
@@ -6221,7 +6199,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 	const char *string = expr->builtin_expr.ident;
 	if (string == kw_FILE)
 	{
-		expr_rewrite_to_string(expr, context->unit->file->name);
+		expr_rewrite_to_string(expr, context->compilation_unit->file->name);
 		return true;
 	}
 	if (string == kw_FUNC)
@@ -7314,3 +7292,59 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 	return true;
 }
 
+bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref, TokenType *type_ref)
+{
+	ArraySize path_end = 0;
+	*path_ref = NULL;
+	for (ArraySize i = 0; i < len; i++)
+	{
+		char ch = string[i];
+		if (!is_alphanum_(ch))
+		{
+			if (ch == ':' && i > 0 && string[i + 1] == ':')
+			{
+				path_end = i;
+				i++;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+	if (path_end > 0)
+	{
+		*path_ref = path_create_from_string(string, path_end, INVALID_SPAN);
+		string += path_end + 2;
+		len -= path_end + 2;
+	}
+	while (len > 0)
+	{
+		char c = string[0];
+		if (c != ' ' && c != '\t') break;
+		len--;
+		string++;
+	}
+	if (len == 0) return false;
+	uint32_t hash = FNV1_SEED;
+	for (size_t i = 0; i < len; i++)
+	{
+		char c = string[i];
+		if (!is_alphanum_(c)) return false;
+		hash = FNV1a(c, hash);
+	}
+	*ident_ref = symtab_find(string, len, hash, type_ref);
+	if (!*ident_ref)
+	{
+		scratch_buffer_clear();
+		if (*path_ref)
+		{
+			scratch_buffer_append_len((*path_ref)->module, (*path_ref)->len);
+			scratch_buffer_append("::");
+		}
+		scratch_buffer_append_len(string, len);
+		*ident_ref = scratch_buffer_to_string();
+		*type_ref = TOKEN_INVALID_TOKEN;
+	}
+	return true;
+}
