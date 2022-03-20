@@ -53,6 +53,7 @@ class Issues:
         self.skip = False
         self.cur = 0
         self.debuginfo = False
+        self.safe = False
         self.arch = None
         self.current_file = None
         self.files = []
@@ -113,6 +114,10 @@ class Issues:
         opts = ""
         for opt in self.opts:
             opts += ' ' + opt
+        if (self.safe):
+            opts += " --safe"
+        else:
+            opts += " --fast"
         code = subprocess.run(self.conf.compiler + target + ' -O0 ' + opts + ' ' + debug + args, universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir(self.conf.cwd)
         if code.returncode != 0 and code.returncode != 1:
@@ -135,13 +140,16 @@ class Issues:
 
         self.current_file.close()
         print("- " + self.sourcefile.filepath + ":", end="")
-        self.compile("--test --fast compile " + self.current_file.filepath)
+        self.compile("--test compile " + self.current_file.filepath)
         if not self.has_errors:
             self.conf.numsuccess += 1
             print(" Passed.")
 
     def parse_header_directive(self, line):
         line = line[4:].strip()
+        if (line.startswith("safe:")):
+            self.safe = line[5:].strip() == "yes"
+            return
         if (line.startswith("debuginfo:")):
             self.debuginfo = line[10:].strip() == "yes"
             return
@@ -208,7 +216,7 @@ class Issues:
                 files_to_compile += " " + file.filepath
 
 
-        self.compile("--test --fast compile " + files_to_compile)
+        self.compile("--test compile " + files_to_compile)
         if self.has_errors: return
 
         for file in self.files:
