@@ -125,6 +125,12 @@ typedef struct
 	unsigned ushl_sat;
 	unsigned smul_overflow;
 	unsigned umul_overflow;
+	unsigned vector_reduce_smax;
+	unsigned vector_reduce_smin;
+	unsigned vector_reduce_umax;
+	unsigned vector_reduce_umin;
+	unsigned vector_reduce_fmax;
+	unsigned vector_reduce_fmin;
 	unsigned trap;
 	unsigned bswap;
 	unsigned assume;
