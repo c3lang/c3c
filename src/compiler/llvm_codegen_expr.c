@@ -3523,13 +3523,27 @@ static void gencontext_emit_or_error(GenContext *c, BEValue *be_value, Expr *exp
 		return;
 	}
 
-	LLVMValueRef phi = LLVMBuildPhi(c->builder, llvm_get_type(c, expr->type), "val");
+	if (expr->type->type_kind == TYPE_BOOL)
+	{
 
+	}
 	LLVMValueRef logic_values[2] = { normal_value.value, else_value.value };
 	LLVMBasicBlockRef blocks[2] = { success_end_block, else_block_exit };
-	LLVMAddIncoming(phi, logic_values, blocks, 2);
 
-	llvm_value_set(be_value, phi, expr->type);
+
+	if (expr->type->type_kind == TYPE_BOOL)
+	{
+		LLVMValueRef phi = LLVMBuildPhi(c->builder, c->bool_type, "val");
+		LLVMAddIncoming(phi, logic_values, blocks, 2);
+		llvm_value_set_bool(be_value, phi);
+		return;
+	}
+	else
+	{
+		LLVMValueRef phi = LLVMBuildPhi(c->builder, llvm_get_type(c, expr->type), "val");
+		LLVMAddIncoming(phi, logic_values, blocks, 2);
+		llvm_value_set(be_value, phi, expr->type);
+	}
 
 }
 

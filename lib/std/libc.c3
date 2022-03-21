@@ -296,6 +296,7 @@ extern fn CFile tmpnam(char* str);
 extern fn int fprintf(CFile stream, char* format, ...);
 extern fn int printf(char* format, ...);
 extern fn int sprintf(char* str, char* format, ...);
+extern fn int snprintf(char* str, usize size, char* format, ...);
 extern fn int fscanf(CFile stream, char* format, ...);
 extern fn int scanf(char* format, ...);
 extern fn int sscanf(char* str, char* format, ...);
