@@ -237,17 +237,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_COND:
 			MACRO_COPY_EXPR_LIST(expr->cond_expr);
 			return expr;
-		case EXPR_OR_ERROR:
-			MACRO_COPY_EXPR(expr->or_error_expr.expr);
-			if (expr->or_error_expr.is_jump)
-			{
-				MACRO_COPY_EXPR(expr->or_error_expr.or_error_expr);
-			}
-			else
-			{
-				MACRO_COPY_AST(expr->or_error_expr.or_error_stmt);
-			}
-			return expr;
 		case EXPR_MACRO_BLOCK:
 			UNREACHABLE
 		case EXPR_COMPOUND_LITERAL:
@@ -288,6 +277,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			}
 			else
 			{
+
 				MACRO_COPY_EXPRID(expr->call_expr.function);
 			}
 			MACRO_COPY_ASTID(expr->call_expr.body);
@@ -302,6 +292,14 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			MACRO_COPY_EXPR(expr->access_expr.parent);
+			if (expr->resolve_status == RESOLVE_DONE)
+			{
+				fixup_decl(c, &expr->access_expr.ref);
+			}
+			else
+			{
+				MACRO_COPY_EXPR(expr->access_expr.child);
+			}
 			return expr;
 		case EXPR_INITIALIZER_LIST:
 			MACRO_COPY_EXPR_LIST(expr->initializer_list);
@@ -315,11 +313,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_CAST:
 			MACRO_COPY_EXPRID(expr->cast_expr.expr);
 			MACRO_COPY_TYPEID(expr->cast_expr.type_info);
-			return expr;
-		case EXPR_SCOPED_EXPR:
-			SCOPE_FIXUP_START
-				MACRO_COPY_EXPR(expr->expr_scope.expr);
-			SCOPE_FIXUP_END;
 			return expr;
 	}
 	UNREACHABLE

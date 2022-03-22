@@ -1,3 +1,5 @@
+// #target: x64-darwin
+
 module test;
 
 fn void tester()

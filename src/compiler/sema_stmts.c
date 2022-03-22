@@ -145,6 +145,12 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
  */
 static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement)
 {
+	if (context->active_scope.in_defer)
+	{
+		SEMA_ERROR(statement, "Return is not allowed inside of a defer.");
+		return false;
+	}
+
 	// This might be a return in a function block or a macro which must be treated differently.
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
 	{
@@ -710,6 +716,11 @@ static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 
 bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body)
 {
+	if (body->ast_kind == AST_DEFER_STMT)
+	{
+		SEMA_ERROR(body, "A defer may not have a body consisting of a raw 'defer', this looks like a mistake.");
+		return false;
+	}
 	// TODO special parsing of "catch"
 	bool success;
 	SCOPE_START
@@ -729,7 +740,7 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *bod
 	POP_BREAKCONT();
 	POP_NEXT();
 
-	context_pop_defers_and_replace_ast(context, body);
+	// We should never need to replace any defers here.
 
 	SCOPE_END;
 
@@ -765,8 +776,6 @@ static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref,
 		if (!sema_analyse_cond_expr(context, cond)) return false;
 	}
 
-	cond = context_pop_defers_and_wrap_expr(context, cond);
-
 	// If this is const true, then set this to infinite and remove the expression.
 	Expr *cond_last = cond->expr_kind == EXPR_COND ? VECLAST(cond->cond_expr) : cond;
 	assert(cond_last);
@@ -790,6 +799,18 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 	bool success = true;
 	bool is_infinite = false;
 
+	Ast *body = astptr(statement->for_stmt.body);
+	assert(body);
+	if (body->ast_kind == AST_DEFER_STMT)
+	{
+		SEMA_ERROR(body, "Looping over a raw 'defer' is not allowed, was this a mistake?");
+		return false;
+	}
+	bool do_loop = statement->for_stmt.flow.skip_first;
+	if (body->ast_kind != AST_COMPOUND_STMT && do_loop)
+	{
+		SEMA_ERROR(body, "A do loop must use { } around its body.");
+	}
 	// Enter for scope
 	SCOPE_OUTER_START
 
@@ -801,7 +822,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		// Conditional scope start
 		SCOPE_START_WITH_LABEL(statement->for_stmt.flow.label)
 
-			if (!statement->for_stmt.flow.skip_first)
+		if (!do_loop)
 			{
 				if (!sema_analyse_for_cond(context, &statement->for_stmt.cond, &is_infinite) || !success)
 				{
@@ -810,8 +831,6 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 				}
 			}
 
-			assert(statement->for_stmt.body);
-			Ast *body = astptr(statement->for_stmt.body);
 
 			PUSH_BREAKCONT(statement);
 				success = sema_analyse_statement(context, body);
@@ -838,9 +857,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 		{
 			// Incr scope start
 			SCOPE_START
-				Expr *incr = exprptr(statement->for_stmt.incr);
-				success = sema_analyse_expr(context, incr);
-				statement->for_stmt.incr = exprid(context_pop_defers_and_wrap_expr(context, incr));
+				success = sema_analyse_expr(context, exprptr(statement->for_stmt.incr));
 				// Incr scope end
 			SCOPE_END;
 		}
@@ -950,9 +967,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			// Exit early here, because semantic checking might be messed up otherwise.
 			return SCOPE_POP_ERROR();
 		}
-
-		// Pop any possible defers.
-		enumerator = context_pop_defers_and_wrap_expr(context, enumerator);
 
 		// And pop the cond scope.
 	SCOPE_END;
@@ -1211,6 +1225,11 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 
 	Expr *cond = exprptr(statement->if_stmt.cond);
 	Ast *then = astptr(statement->if_stmt.then_body);
+	if (then->ast_kind == AST_DEFER_STMT)
+	{
+		SEMA_ERROR(then, "An 'if' statement may not be followed by a raw 'defer' statement, this looks like a mistake.");
+		return false;
+	}
 	AstId else_id = statement->if_stmt.else_body;
 	Ast *else_body = else_id ? astptr(else_id) : NULL;
 	SCOPE_OUTER_START

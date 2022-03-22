@@ -27,19 +27,9 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
 	{
 		TokenType tok = c->tok;
 		Precedence token_precedence = rules[tok].precedence;
-		bool special_question = false;
-		if (tok == TOKEN_QUESTION)
-		{
-			ParseRule rule = rules[peek(c)];
-			if (!rule.prefix)
-			{
-				token_precedence = PREC_CALL;
-				special_question = true;
-			}
-		}
 		if (precedence > token_precedence) break;
 		if (!expr_ok(left_side)) return left_side;
-		ParseFn infix_rule = special_question ? &parse_rethrow_expr : rules[tok].infix;
+		ParseFn infix_rule = rules[tok].infix;
 		if (!infix_rule)
 		{
 			SEMA_ERROR_HERE("An expression was expected.");
@@ -521,6 +511,13 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
 	else
 	{
 		advance_and_verify(c, TOKEN_QUESTION);
+		if (!rules[c->tok].prefix)
+		{
+			expr_ternary->expr_kind = EXPR_RETHROW;
+			expr_ternary->rethrow_expr.inner = left_side;
+			RANGE_EXTEND_PREV(expr_ternary);
+			return expr_ternary;
+		}
 		ASSIGN_EXPR_OR_RET(Expr * true_expr, parse_precedence(c, PREC_TERNARY + 1), poisoned_expr);
 		expr_ternary->ternary_expr.then_expr = exprid(true_expr);
 		CONSUME_OR_RET(TOKEN_COLON, poisoned_expr);
@@ -1072,14 +1069,6 @@ static Expr *parse_try_expr(ParseContext *c, Expr *left)
 	return try_expr;
 }
 
-static Expr *parse_rethrow_expr(ParseContext *c, Expr *left)
-{
-	Expr *rethrow_expr = EXPR_NEW_EXPR(EXPR_RETHROW, left);
-	advance(c);
-	rethrow_expr->rethrow_expr.inner = left;
-	RANGE_EXTEND_PREV(rethrow_expr);
-	return rethrow_expr;
-}
 
 static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left)
 {
@@ -1090,36 +1079,6 @@ static Expr *parse_force_unwrap_expr(ParseContext *c, Expr *left)
 	return force_unwrap_expr;
 }
 
-static Expr *parse_or_error_expr(ParseContext *c, Expr *left)
-{
-	Expr *else_expr = EXPR_NEW_TOKEN(EXPR_OR_ERROR);
-	advance_and_verify(c, TOKEN_QUESTQUEST);
-	else_expr->or_error_expr.expr = left;
-	switch (c->tok)
-	{
-		case TOKEN_RETURN:
-		case TOKEN_BREAK:
-		case TOKEN_CONTINUE:
-		case TOKEN_NEXTCASE:
-		{
-			ASSIGN_AST_OR_RET(Ast *ast, parse_jump_stmt_no_eos(c), poisoned_expr);
-			else_expr->or_error_expr.is_jump = true;
-			else_expr->or_error_expr.or_error_stmt = ast;
-			if (!tok_is(c, TOKEN_EOS))
-			{
-				SEMA_ERROR(ast, "An else jump statement must end with a ';'");
-				return poisoned_expr;
-			}
-			break;
-		}
-		default:
-		{
-			ASSIGN_EXPR_OR_RET(else_expr->or_error_expr.or_error_expr, parse_precedence(c, PREC_ASSIGNMENT), poisoned_expr);
-			break;
-		}
-	}
-	return else_expr;
-}
 
 static Expr *parse_builtin(ParseContext *c, Expr *left)
 {
@@ -1757,7 +1716,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_VARIANT] = { parse_type_identifier, NULL, PREC_NONE },
 
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
-		[TOKEN_QUESTQUEST] = { NULL, parse_or_error_expr, PREC_TERNARY},
+		[TOKEN_QUESTQUEST] = { NULL, parse_binary, PREC_TERNARY},
 		[TOKEN_ELVIS] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },

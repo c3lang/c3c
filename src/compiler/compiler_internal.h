@@ -581,8 +581,6 @@ typedef struct Decl_
 	bool is_packed : 1;
 	bool is_substruct : 1;
 	bool has_variable_array : 1;
-	bool no_scope : 1;
-	bool escaping : 1;
 	bool is_value : 1;
 	bool is_autoimport : 1;
 	bool has_extname : 1;
@@ -649,18 +647,6 @@ typedef struct Decl_
 
 
 
-
-typedef struct
-{
-	bool is_jump : 1;
-	bool widen : 1;
-	Expr *expr;
-	union
-	{
-		Expr *or_error_expr;
-		Ast *or_error_stmt;
-	};
-} ExprOrError;
 
 
 
@@ -826,11 +812,6 @@ typedef struct
 	Ast *ast;
 } ExprBodyExpansion;
 
-typedef struct
-{
-	Expr *expr;
-	AstId defer_stmts;
-} ExprScope;
 
 typedef struct
 {
@@ -839,7 +820,6 @@ typedef struct
 
 typedef struct
 {
-	bool no_scope;
 	AstId first_stmt;
 	Expr **args;
 	Decl **params;
@@ -956,7 +936,6 @@ struct Expr_
 		ExprArgv argv_expr;                         // 16
 		ExprGuard rethrow_expr;                     // 16
 		Decl *decl_expr;                            // 8
-		ExprOrError or_error_expr;                  // 24
 		ExprSliceAssign slice_assign_expr;          // 8
 		ExprBinary binary_expr;                     // 12
 		ExprTernary ternary_expr;                   // 16
@@ -982,7 +961,6 @@ struct Expr_
 		Expr** expression_list;                     // 8
 		Expr** initializer_list;                    // 8
 		Expr** designated_init_list;                // 8
-		ExprScope expr_scope;                       // 16
 		ExprFuncBlock expr_block;                   // 4
 		ExprMacroBlock macro_block;                 // 24
 		Expr** cond_expr;                           // 8
@@ -1425,7 +1403,6 @@ typedef struct SemaContext_
 		Ast *yield_body;
 		Type *expected_block_type;
 		Ast **returns;
-		bool expr_failable_return;
 		// Reusable returns cache.
 		Ast **returns_cache;
 	};

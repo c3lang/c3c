@@ -1183,8 +1183,6 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			[ATTRIBUTE_REGCALL] = ATTR_FUNC,
 			[ATTRIBUTE_FASTCALL] = ATTR_FUNC,
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
-			[ATTRIBUTE_NOSCOPE] = ATTR_MACRO,
-			[ATTRIBUTE_ESCAPING] = ATTR_MACRO,
 			[ATTRIBUTE_AUTOIMPORT] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
 	};
@@ -1682,14 +1680,6 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 			case ATTRIBUTE_OPERATOR:
 				had = decl->operator > 0;
 				decl->operator = attr->operator;
-				break;
-			case ATTRIBUTE_NOSCOPE:
-				had = decl->no_scope;
-				decl->no_scope = true;
-				break;
-			case ATTRIBUTE_ESCAPING:
-				had = decl->escaping;
-				decl->escaping = true;
 				break;
 			case ATTRIBUTE_AUTOIMPORT:
 				decl->is_autoimport = true;

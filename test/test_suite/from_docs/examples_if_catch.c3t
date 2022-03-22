@@ -49,26 +49,16 @@ fn void main()
 define i64 @demo.divide(double* %0, i32 %1, i32 %2) #0 {
 entry:
   %reterr = alloca i64, align 8
-  %reterr1 = alloca i64, align 8
   %eq = icmp eq i32 %2, 0
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  store i64 ptrtoint ([1 x i8*]* @"demo.MathError$elements" to i64), i64* %reterr, align 8
-  br label %err_retblock
-
-postfailed:                                       ; No predecessors!
-  store double undef, double* %0, align 8
-  ret i64 0
-
-err_retblock:                                     ; preds = %if.then
-  %3 = load i64, i64* %reterr, align 8
-  ret i64 %3
+  ret i64 ptrtoint ([1 x i8*]* @"demo.MathError$elements" to i64)
 
 if.exit:                                          ; preds = %entry
   %sifp = sitofp i32 %1 to double
-  %sifp2 = sitofp i32 %2 to double
-  %fdiv = fdiv double %sifp, %sifp2
+  %sifp1 = sitofp i32 %2 to double
+  %fdiv = fdiv double %sifp, %sifp1
   store double %fdiv, double* %0, align 8
   ret i64 0
 }
@@ -77,6 +67,7 @@ define i64 @demo.testMayError() #0 {
 entry:
   %error_var = alloca i64, align 8
   %retparam = alloca double, align 8
+  %reterr = alloca i64, align 8
   %0 = call i32 @demo.foo()
   %1 = call i32 @demo.bar()
   %2 = call i64 @demo.divide(double* %retparam, i32 %0, i32 %1)
@@ -122,6 +113,7 @@ after.errcheck:                                   ; preds = %entry
   br label %after_assign
 
 after_assign:                                     ; preds = %after.errcheck, %error
+  store i64 0, i64* %err, align 8
   br label %testblock
 
 testblock:                                        ; preds = %after_assign

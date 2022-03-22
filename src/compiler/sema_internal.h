@@ -36,8 +36,7 @@ do {                                  \
 
 AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bottom);
 void context_pop_defers(SemaContext *context, AstId *next);
-Expr *context_pop_defers_and_wrap_expr(SemaContext *context, Expr *expr);
-void context_pop_defers_and_replace_expr(SemaContext *context, Expr *expr);
+
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);
 void context_change_scope_for_label(SemaContext *context, Decl *label);
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags);
