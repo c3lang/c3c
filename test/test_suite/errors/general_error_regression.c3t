@@ -1,3 +1,4 @@
+// #target: x64-darwin
 module foo;
 import std::io;
 

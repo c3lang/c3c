@@ -270,7 +270,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_COND:
 		case EXPR_DESIGNATOR:
 		case EXPR_DECL:
-		case EXPR_OR_ERROR:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_FAILABLE:
 		case EXPR_RETHROW:
@@ -281,7 +280,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_POST_UNARY:
-		case EXPR_SCOPED_EXPR:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
@@ -330,7 +328,6 @@ bool expr_is_simple(Expr *expr)
 		case EXPR_GROUP:
 			expr = expr->inner_expr;
 			goto RETRY;
-		case EXPR_OR_ERROR:
 		case EXPR_TERNARY:
 			return false;
 		case EXPR_RETHROW:
@@ -401,6 +398,7 @@ BinaryOp binary_op[TOKEN_LAST + 1] = {
 		[TOKEN_SHR] = BINARYOP_SHR,
 		[TOKEN_AND] = BINARYOP_AND,
 		[TOKEN_OR] = BINARYOP_OR,
+		[TOKEN_QUESTQUEST] = BINARYOP_OR_ERR,
 		[TOKEN_AMP] = BINARYOP_BIT_AND,
 		[TOKEN_BIT_OR] = BINARYOP_BIT_OR,
 		[TOKEN_BIT_XOR] = BINARYOP_BIT_XOR,

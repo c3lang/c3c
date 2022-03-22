@@ -703,6 +703,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 				case BINARYOP_ADD:
 				case BINARYOP_DIV:
 				case BINARYOP_MOD:
+				case BINARYOP_OR_ERR:
 				{
 					Expr *res = recursive_may_narrow_float(exprptr(expr->binary_expr.left), type);
 					if (res) return res;
@@ -757,13 +758,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_RETVAL:
 			if (type_size(expr->type) > type_size(type)) return expr;
 			return NULL;
-		case EXPR_OR_ERROR:
-		{
-			Expr *res = recursive_may_narrow_float(expr->or_error_expr.expr, type);
-			if (res) return res;
-			if (expr->or_error_expr.is_jump) return NULL;
-			return recursive_may_narrow_float(expr->or_error_expr.or_error_expr, type);
-		}
 		case EXPR_EXPRESSION_LIST:
 			return recursive_may_narrow_float(VECLAST(expr->expression_list), type);
 		case EXPR_GROUP:
@@ -820,8 +814,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_float(expr->unary_expr.expr, type);
-		case EXPR_SCOPED_EXPR:
-			return recursive_may_narrow_float(expr->expr_scope.expr, type);
 		case EXPR_TRY:
 			return recursive_may_narrow_float(expr->inner_expr, type);
 		case EXPR_UNARY:
@@ -869,6 +861,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 				case BINARYOP_BIT_OR:
 				case BINARYOP_BIT_XOR:
 				case BINARYOP_BIT_AND:
+				case BINARYOP_OR_ERR:
 				{
 					Expr *res = recursive_may_narrow_int(exprptr(expr->binary_expr.left), type);
 					if (res) return res;
@@ -923,13 +916,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_LEN:
 			if (type_size(type) < type_size(type_cint)) return expr;
 			return NULL;
-		case EXPR_OR_ERROR:
-		{
-			Expr *res = recursive_may_narrow_int(expr->or_error_expr.expr, type);
-			if (res) return res;
-			if (expr->or_error_expr.is_jump) return NULL;
-			return recursive_may_narrow_int(expr->or_error_expr.or_error_expr, type);
-		}
 		case EXPR_EXPRESSION_LIST:
 			return recursive_may_narrow_int(VECLAST(expr->expression_list), type);
 		case EXPR_RETHROW:
@@ -981,8 +967,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_int(expr->unary_expr.expr, type);
-		case EXPR_SCOPED_EXPR:
-			return recursive_may_narrow_int(expr->expr_scope.expr, type);
 		case EXPR_TRY:
 		case EXPR_CATCH:
 		case EXPR_GROUP:

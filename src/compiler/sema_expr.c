@@ -338,10 +338,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_DESIGNATOR:
 			expr = expr->designator_expr.value;
 			goto RETRY;
-		case EXPR_OR_ERROR:
-			if (expr->or_error_expr.is_jump) return false;
-			assert(!expr_is_constant_eval(expr->or_error_expr.expr, eval_kind));
-			return false;
 		case EXPR_EXPR_BLOCK:
 		case EXPR_DECL:
 		case EXPR_CALL:
@@ -350,7 +346,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_POST_UNARY:
-		case EXPR_SCOPED_EXPR:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_RETHROW:
@@ -1655,10 +1650,17 @@ static inline Type *unify_returns(SemaContext *context)
 	bool all_returns_need_casts = false;
 	Type *common_type = NULL;
 
+	bool only_has_rethrow = true;
 	// 1. Loop through the returns.
 	VECEACH(context->returns, i)
 	{
 		Ast *return_stmt = context->returns[i];
+		if (!return_stmt)
+		{
+			common_type = common_type ? type_find_max_type(common_type, type_anyfail) : type_anyfail;
+			continue;
+		}
+		only_has_rethrow = false;
 		Expr *ret_expr = return_stmt->return_stmt.expr;
 		Type *rtype = ret_expr ? ret_expr->type : type_void;
 
@@ -1689,12 +1691,16 @@ static inline Type *unify_returns(SemaContext *context)
 		all_returns_need_casts = true;
 	}
 
+	// If we have no return and only rethrows, then the type is "void!"
+	if (common_type == type_anyfail && only_has_rethrow) common_type = type_get_failable(type_void);
+
 	// 7. Insert casts.
 	if (all_returns_need_casts)
 	{
 		VECEACH(context->returns, i)
 		{
 			Ast *return_stmt = context->returns[i];
+			if (!return_stmt) continue;
 			Expr *ret_expr = return_stmt->return_stmt.expr;
 			// 8. All casts should work.
 			if (!cast_implicit(ret_expr, type_no_fail(common_type)))
@@ -1826,34 +1832,22 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	Ast *body = ast_macro_copy(astptr(decl->macro_decl.body));
 
-	bool no_scope = decl->no_scope;
-	bool escaping = decl->escaping;
-
 	DynamicScope old_scope = context->active_scope;
-	if (!no_scope)
-	{
-		context_change_scope_with_flags(context, SCOPE_NONE);
-	}
+	context_change_scope_with_flags(context, SCOPE_NONE);
 
 	SemaContext macro_context;
 
 	Type *rtype = NULL;
-	if (no_scope)
-	{
+	sema_context_init(&macro_context, decl->macro_decl.unit);
+	macro_context.compilation_unit = context->unit;
+	macro_context.current_function = context->current_function;
+	rtype = decl->macro_decl.rtype ? type_infoptr(decl->macro_decl.rtype)->type : NULL;
+	macro_context.expected_block_type = rtype;
 
-		macro_context = *context;
-		macro_context.unit = decl->macro_decl.unit;
-	}
-	else
-	{
-		sema_context_init(&macro_context, decl->macro_decl.unit);
-		macro_context.compilation_unit = context->unit;
-		macro_context.current_function = context->current_function;
-		rtype = decl->macro_decl.rtype ? type_infoptr(decl->macro_decl.rtype)->type : NULL;
-		macro_context.expected_block_type = rtype;
-		context_change_scope_with_flags(&macro_context, SCOPE_MACRO);
-		macro_context.block_return_defer = macro_context.active_scope.defer_last;
-	}
+	context_change_scope_with_flags(&macro_context, SCOPE_MACRO);
+
+	macro_context.block_return_defer = macro_context.active_scope.defer_last;
+
 	macro_context.current_macro = decl;
 	AstId body_id = call_expr->call_expr.body;
 	macro_context.yield_body = body_id ? astptr(body_id) : NULL;
@@ -1875,68 +1869,62 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	bool is_no_return = decl->macro_decl.attr_noreturn;
 
-	if (no_scope)
+	if (!vec_size(macro_context.returns))
 	{
-		call_expr->type = type_void;
+		if (rtype && type_no_fail(rtype) != type_void)
+		{
+			SEMA_ERROR(decl,
+					   "Missing return in macro that should evaluate to %s.",
+					   type_quoted_error_string(rtype));
+			return SCOPE_POP_ERROR();
+		}
+	}
+	else if (is_no_return)
+	{
+		SEMA_ERROR(context->returns[0], "Return used despite macro being marked '@noreturn'.");
+		return SCOPE_POP_ERROR();
+	}
+
+	if (rtype)
+	{
+		VECEACH(macro_context.returns, i)
+		{
+			Ast *return_stmt = macro_context.returns[i];
+			Expr *ret_expr = return_stmt->return_stmt.expr;
+			if (!ret_expr)
+			{
+				if (rtype == type_void) continue;
+				SEMA_ERROR(return_stmt, "Expected returning a value of type %s.", type_quoted_error_string(rtype));
+				return SCOPE_POP_ERROR();
+			}
+			Type *type = ret_expr->type;
+			if (!cast_may_implicit(type, rtype, true, true))
+			{
+				SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
+						   type_quoted_error_string(type));
+				return SCOPE_POP_ERROR();
+			}
+			bool success = cast_implicit(ret_expr, rtype);
+			assert(success);
+		}
+		call_expr->type = type_get_opt_fail(rtype, failable);
 	}
 	else
 	{
-		if (!vec_size(macro_context.returns))
+		Type *sum_returns = unify_returns(&macro_context);
+		if (!sum_returns) return SCOPE_POP_ERROR();
+		call_expr->type = type_get_opt_fail(sum_returns, failable);
+	}
+	if (vec_size(macro_context.returns) == 1)
+	{
+		Ast *ret = macro_context.returns[0];
+		Expr *result = ret ? ret->return_stmt.expr : NULL;
+		if (result && expr_is_constant_eval(result, CONSTANT_EVAL_ANY))
 		{
-			if (rtype && type_no_fail(rtype) != type_void)
+			if (sema_check_stmt_compile_time(&macro_context, body))
 			{
-				SEMA_ERROR(decl,
-				           "Missing return in macro that should evaluate to %s.",
-				           type_quoted_error_string(rtype));
-				return SCOPE_POP_ERROR();
-			}
-		}
-		else if (is_no_return)
-		{
-			SEMA_ERROR(context->returns[0], "Return used despite macro being marked '@noreturn'.");
-			return SCOPE_POP_ERROR();
-		}
-
-		if (rtype)
-		{
-			VECEACH(macro_context.returns, i)
-			{
-				Ast *return_stmt = macro_context.returns[i];
-				Expr *ret_expr = return_stmt->return_stmt.expr;
-				if (!ret_expr)
-				{
-					if (rtype == type_void) continue;
-					SEMA_ERROR(return_stmt, "Expected returning a value of type %s.", type_quoted_error_string(rtype));
-					return SCOPE_POP_ERROR();
-				}
-				Type *type = ret_expr->type;
-				if (!cast_may_implicit(type, rtype, true, true))
-				{
-					SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
-					           type_quoted_error_string(type));
-					return SCOPE_POP_ERROR();
-				}
-				bool success = cast_implicit(ret_expr, rtype);
-				assert(success);
-			}
-			call_expr->type = type_get_opt_fail(rtype, failable);
-		}
-		else
-		{
-			Type *sum_returns = unify_returns(&macro_context);
-			if (!sum_returns) return SCOPE_POP_ERROR();
-			call_expr->type = type_get_opt_fail(sum_returns, failable);
-		}
-		if (vec_size(macro_context.returns) == 1)
-		{
-			Expr *result = macro_context.returns[0]->return_stmt.expr;
-			if (result && expr_is_constant_eval(result, CONSTANT_EVAL_ANY))
-			{
-				if (sema_check_stmt_compile_time(&macro_context, body))
-				{
-					expr_replace(call_expr, result);
-					goto EXIT;
-				}
+				expr_replace(call_expr, result);
+				goto EXIT;
 			}
 		}
 	}
@@ -1945,20 +1933,9 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
 	call_expr->macro_block.params = params;
 	call_expr->macro_block.args = args;
-	call_expr->macro_block.no_scope = no_scope;
 EXIT:
-	if (no_scope)
-	{
-		context->active_scope.jump_end = macro_context.active_scope.jump_end;
-		context->active_scope.defer_last = macro_context.active_scope.defer_last;
-		context->active_scope.defer_start = macro_context.active_scope.defer_start;
-	}
-	else
-	{
-		context_pop_defers_and_replace_expr(&macro_context, call_expr);
-		assert(context->active_scope.defer_last == context->active_scope.defer_start);
-		context->active_scope = old_scope;
-	}
+	assert(context->active_scope.defer_last == context->active_scope.defer_start);
+	context->active_scope = old_scope;
 	if (is_no_return) context->active_scope.jump_end = true;
 	return true;
 EXIT_FAIL:
@@ -5848,8 +5825,63 @@ static inline bool sema_expr_analyse_bitassign(SemaContext *context, Expr *expr)
 {
 	TODO
 }
+
+static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
+{
+	Expr *lhs = exprptr(expr->binary_expr.left);
+	Expr *rhs = exprptr(expr->binary_expr.right);
+	if (lhs->expr_kind == EXPR_TERNARY || rhs->expr_kind == EXPR_TERNARY)
+	{
+		SEMA_ERROR(expr, "Unclear precedence using ternary with ??, please use () to remove ambiguity.");
+		return false;
+	}
+	if (!sema_analyse_expr(context, lhs)) return false;
+
+	if (expr->binary_expr.widen && !sema_widen_top_down(lhs, expr->type)) return false;
+
+	Type *type = lhs->type;
+	if (!type_is_failable(type))
+	{
+		SEMA_ERROR(lhs, "No failable to use '\?\?' with, please remove the '\?\?'.");
+		return false;
+	}
+
+	// First we analyse the "else" and try to implictly cast.
+	if (!sema_analyse_expr(context, rhs)) return false;
+	if (expr->binary_expr.widen && !sema_widen_top_down(rhs, expr->type)) return false;
+
+
+	// Here we might need to insert casts.
+	Type *else_type = rhs->type;
+
+	type = type_is_failable_any(type) ? else_type : type->failable;
+
+	if (else_type->type_kind == TYPE_FAILABLE)
+	{
+		SEMA_ERROR(rhs, "The default value may not be a failable.");
+		return false;
+	}
+	Type *common = type_find_max_type(type, else_type);
+	if (!common)
+	{
+		SEMA_ERROR(rhs, "Cannot find a common type for %s and %s.", type_quoted_error_string(type),
+				   type_quoted_error_string(else_type));
+		return false;
+	}
+	if (!cast_implicit(lhs, common)) return false;
+	if (!cast_implicit(rhs, common)) return false;
+	if (IS_FAILABLE(rhs))
+	{
+		SEMA_ERROR(rhs, "The expression must be a non-failable.");
+		return false;
+	}
+	expr->type = common;
+	return true;
+}
+
 static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr)
 {
+	if (expr->binary_expr.operator == BINARYOP_OR_ERR) return sema_expr_analyse_or_error(context, expr);
 	assert(expr->resolve_status == RESOLVE_RUNNING);
 	Expr *left = exprptr(expr->binary_expr.left);
 	Expr *right = exprptr(expr->binary_expr.right);
@@ -5861,6 +5893,8 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr)
 	}
 	switch (expr->binary_expr.operator)
 	{
+		case BINARYOP_OR_ERR:
+			UNREACHABLE // Handled previously
 		case BINARYOP_ASSIGN:
 			return sema_expr_analyse_assign(context, expr, left, right);
 		case BINARYOP_MULT:
@@ -5973,69 +6007,21 @@ static inline bool sema_expr_analyse_catch(SemaContext *context, Expr *expr)
 	return true;
 }
 
-static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
-{
-	Expr *inner = expr->or_error_expr.expr;
-	if (inner->expr_kind == EXPR_TERNARY || expr->or_error_expr.or_error_expr->expr_kind == EXPR_TERNARY)
-	{
-		SEMA_ERROR(expr, "Unclear precedence using ternary with ??, please use () to remove ambiguity.");
-		return false;
-	}
-	if (!sema_analyse_expr(context, inner)) return false;
-
-	if (expr->or_error_expr.widen && !sema_widen_top_down(inner, expr->type)) return false;
-
-	Type *type = inner->type;
-	if (type->type_kind != TYPE_FAILABLE)
-	{
-		SEMA_ERROR(inner, "No failable to use '\?\?' with, please remove the '\?\?'.");
-		return false;
-	}
-	type = type->failable;
-	if (expr->or_error_expr.is_jump)
-	{
-		if (!sema_analyse_statement(context, expr->or_error_expr.or_error_stmt)) return false;
-		expr->type = inner->type;
-		return true;
-	}
-
-	// First we analyse the "else" and try to implictly cast.
-	Expr *else_expr = expr->or_error_expr.or_error_expr;
-	if (!sema_analyse_expr(context, else_expr)) return false;
-	if (expr->or_error_expr.widen && !sema_widen_top_down(else_expr, expr->type)) return false;
-
-	// Here we might need to insert casts.
-	Type *else_type = else_expr->type;
-	if (else_type->type_kind == TYPE_FAILABLE)
-	{
-		SEMA_ERROR(else_expr, "The default value may not be a failable.");
-		return false;
-	}
-	Type *common = type_find_max_type(type, else_type);
-	if (!common)
-	{
-		SEMA_ERROR(else_expr, "Cannot find a common type for %s and %s.", type_quoted_error_string(type),
-		           type_quoted_error_string(else_type));
-		return false;
-	}
-	if (!cast_implicit(inner, common)) return false;
-	if (!cast_implicit(else_expr, common)) return false;
-	if (IS_FAILABLE(else_expr))
-	{
-		SEMA_ERROR(else_expr, "The expression must be a non-failable.");
-		return false;
-	}
-	expr->type = common;
-
-	return true;
-}
-
 static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 {
+	if (!context->current_function)
+	{
+		SEMA_ERROR(expr, "Rethrow cannot be used outside of a function.");
+		return false;
+	}
 	Expr *inner = expr->rethrow_expr.inner;
 	if (!sema_analyse_expr(context, inner)) return false;
 
-	REMINDER("Return defers must be work with blocks");
+	if (context->active_scope.in_defer)
+	{
+		SEMA_ERROR(expr, "Returns are not allowed inside of defers.");
+		return false;
+	}
 	expr->rethrow_expr.cleanup = context_get_defers(context, context->active_scope.defer_last, 0);
 	if (inner->type == type_anyfail)
 	{
@@ -6050,10 +6036,15 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		return false;
 	}
 
-	if (context->rtype->type_kind != TYPE_FAILABLE)
+	if (context->rtype && context->rtype->type_kind != TYPE_FAILABLE)
 	{
 		SEMA_ERROR(expr, "This expression implicitly returns with a failable result, but the function does not allow failable results. Did you mean to use 'else' instead?");
 		return false;
+	}
+
+	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
+	{
+		vec_add(context->returns, NULL);
 	}
 
 	return true;
@@ -6098,7 +6089,6 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 {
 	bool success = true;
 	expr->type = type_void;
-	bool saved_expr_failable_return = context->expr_failable_return;
 	Ast **saved_returns = context_push_returns(context);
 	Type *stored_block_type = context->expected_block_type;
 	context->expected_block_type = infer_type;
@@ -6144,7 +6134,6 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 	SCOPE_END;
 	context->expected_block_type = stored_block_type;
 	context_pop_returns(context, saved_returns);
-	context->expr_failable_return = saved_expr_failable_return;
 
 	return success;
 }
@@ -6897,7 +6886,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			// Created during semantic analysis
 			UNREACHABLE
 		case EXPR_MACRO_BLOCK:
-		case EXPR_SCOPED_EXPR:
 			UNREACHABLE
 		case EXPR_TYPEINFO:
 			expr->type = type_typeinfo;
@@ -6910,8 +6898,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_try(context, expr);
 		case EXPR_CATCH:
 			return sema_expr_analyse_catch(context, expr);
-		case EXPR_OR_ERROR:
-			return sema_expr_analyse_or_error(context, expr);
 		case EXPR_COMPOUND_LITERAL:
 			return sema_expr_analyse_compound_literal(context, expr);
 		case EXPR_EXPR_BLOCK:
@@ -7213,6 +7199,7 @@ void insert_widening_type(Expr *expr, Type *infer_type)
 				case BINARYOP_BIT_OR:
 				case BINARYOP_BIT_XOR:
 				case BINARYOP_BIT_AND:
+				case BINARYOP_OR_ERR:
 					if (!expr_is_simple(exprptr(expr->binary_expr.left)) || !expr_is_simple(exprptr(expr->binary_expr.right))) return;
 					expr->type = infer_type;
 					expr->binary_expr.widen = true;
@@ -7220,12 +7207,6 @@ void insert_widening_type(Expr *expr, Type *infer_type)
 				default:
 					return;
 			}
-		case EXPR_OR_ERROR:
-			if (!expr_is_simple(expr->or_error_expr.expr)) return;
-			if (!expr->or_error_expr.is_jump && !expr_is_simple(expr->or_error_expr.or_error_expr)) return;
-			expr->type = infer_type;
-			expr->or_error_expr.widen = true;
-			return;
 		case EXPR_GROUP:
 			insert_widening_type(expr->inner_expr, infer_type);
 			return;

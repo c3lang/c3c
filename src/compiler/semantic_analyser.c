@@ -42,6 +42,11 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	assert(parent_defer < 1000000);
 	// Defer and expression blocks introduce their own return/break/continue
 	// otherwise just merge with the old flags.
+	if (flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
+	{
+		previous_defer = 0;
+		parent_defer = 0;
+	}
 	if (!(flags & SCOPE_EXPR_BLOCK))
 	{
 		flags = context->active_scope.flags | flags;
@@ -109,35 +114,6 @@ void context_pop_defers(SemaContext *context, AstId *next)
 	context->active_scope.defer_last = defer_start;
 }
 
-
-Expr *context_pop_defers_and_wrap_expr(SemaContext *context, Expr *expr)
-{
-	AstId defer_first = 0;
-	context_pop_defers(context, &defer_first);
-	if (defer_first)
-	{
-		Expr *wrap = expr_new(EXPR_SCOPED_EXPR, expr->span);
-		wrap->type = expr->type;
-		wrap->resolve_status = RESOLVE_DONE;
-		wrap->expr_scope.expr = expr;
-		wrap->expr_scope.defer_stmts = defer_first;
-		return wrap;
-	}
-	return expr;
-}
-
-void context_pop_defers_and_replace_expr(SemaContext *context, Expr *expr)
-{
-	AstId defer_first = 0;
-	context_pop_defers(context, &defer_first);
-	if (defer_first)
-	{
-		Expr *inner = expr_copy(expr);
-		expr->expr_kind = EXPR_SCOPED_EXPR;
-		expr->expr_scope.expr = inner;
-		expr->expr_scope.defer_stmts = defer_first;
-	}
-}
 
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 {

@@ -17,7 +17,7 @@ fn void test()
 
 fn void test_line()
 {
-    defer defer test1();
+    defer { defer test1(); }
 }
 
 // #expect: defer_in_defer.ll
