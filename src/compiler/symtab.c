@@ -39,13 +39,6 @@ static SymTab symtab;
 const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 const char *builtin_list[NUMBER_OF_BUILTINS];
 
-const char *kw_at_return;
-const char *kw_at_checked;
-const char *kw_at_ensure;
-const char *kw_at_optreturn;
-const char *kw_at_param;
-const char *kw_at_require;
-
 const char *kw_in;
 const char *kw_out;
 const char *kw_inout;
@@ -72,8 +65,6 @@ const char *kw_ordinal;
 const char *kw_param;
 const char *kw_ptr;
 const char *kw_pure;
-const char *kw_reqparse;
-const char *kw_require;
 const char *kw_std;
 const char *kw_sizeof;
 const char *kw_values;
@@ -159,7 +150,7 @@ void symtab_init(uint32_t capacity)
 	kw_param = KW_DEF("param");
 	kw_ptr = KW_DEF("ptr");
 	kw_pure = KW_DEF("pure");
-	kw_require = KW_DEF("require");
+	KW_DEF("require");
 	kw_std = KW_DEF("std");
 	kw_values = KW_DEF("values");
 	kw_incr = KW_DEF("incr");

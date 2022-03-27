@@ -3,16 +3,34 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::builtin;
 
-macro scope(&variable; @body) @autoimport
+optenum VarCastResult
+{
+	TYPE_MISMATCH
+}
+
+/**
+ * Stores a variable on the stack, then restores it at the end of the
+ * macro scope.
+ *
+ * @param variable `the variable to store and restore`
+ **/
+macro void scope(&variable; @body) @autoimport
 {
 	$typeof(variable) temp = variable;
 	defer variable = temp;
 	@body();
 }
 
+/**
+ * Convert a variant type to a type, returning an failure if there is a type mismatch.
+ *
+ * @param v `the variant to convert to the given type.`
+ * @param $Type `the type to convert to`
+ * @return `The variant.ptr converted to its type.`
+ **/
 macro varcast(variant v, $Type) @autoimport
 {
-	if (v.type != $Type.typeid) return null;
+	if (v.type != $Type.typeid) return VarCastResult.TYPE_MISMATCH!;
 	return ($Type*)v.ptr;
 }
 

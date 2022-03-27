@@ -1578,13 +1578,6 @@ extern Type *type_cuint;
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *builtin_list[NUMBER_OF_BUILTINS];
 
-extern const char *kw_at_return;
-extern const char *kw_at_checked;
-extern const char *kw_at_ensure;
-extern const char *kw_at_optreturn;
-extern const char *kw_at_param;
-extern const char *kw_at_require;
-
 extern const char *kw_std;
 extern const char *kw_max;
 extern const char *kw_min;
@@ -1608,8 +1601,6 @@ extern const char *kw_nan;
 extern const char *kw_noinline;
 extern const char *kw_main;
 extern const char *kw_ordinal;
-extern const char *kw_reqparse;
-extern const char *kw_require;
 extern const char *kw_pure;
 extern const char *kw_param;
 extern const char *kw_ptr;
