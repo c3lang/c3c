@@ -10,6 +10,12 @@ macro scope(&variable; @body) @autoimport
 	@body();
 }
 
+macro varcast(variant v, $Type) @autoimport
+{
+	if (v.type != $Type.typeid) return null;
+	return ($Type*)v.ptr;
+}
+
 extern fn void printf(char*, ...);
 
 struct CallstackElement
