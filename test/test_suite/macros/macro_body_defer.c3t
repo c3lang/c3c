@@ -1,0 +1,126 @@
+// #target: x64-darwin
+module foo;
+extern fn void printf(char*,...);
+
+fn int! foo() { return 1; }
+
+macro foo_test(int i; @body())
+{
+	defer printf("%d\n", i);
+	@body();
+	defer printf("2:%d\n", i);
+}
+
+macro foo_defer()
+{
+	defer printf("A\n");
+	printf("B\n");
+	defer printf("C\n");
+}
+fn void! main()
+{
+    @foo_defer();
+	@foo_test(34) {
+		defer printf("inside_defer\n");
+	};
+	while (1)
+	{
+		defer printf("outside\n");
+		@foo_test(3)
+		{
+			defer printf("Inside will it jump?\n");
+			printf("3-test\n");
+			break;
+		};
+	}
+	while (1)
+	{
+		defer printf("outside2\n");
+		printf("--\n");
+		@foo_test(3)
+		{
+			defer printf("Inside will it jump?\n");
+			printf("--3\n");
+			return;
+		};
+	}
+	printf("Should not reach\n");
+}
+
+/* #expect: foo.ll
+
+define i64 @foo.foo(i32* %0) #0 {
+entry:
+  %reterr = alloca i64, align 8
+  store i32 1, i32* %0, align 4
+  ret i64 0
+}
+
+define i64 @foo.main() #0 {
+entry:
+  %i = alloca i32, align 4
+  %i1 = alloca i32, align 4
+  %i3 = alloca i32, align 4
+  %reterr = alloca i64, align 8
+  %reterr5 = alloca i64, align 8
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str.1, i32 0, i32 0))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str.2, i32 0, i32 0))
+  store i32 34, i32* %i, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.3, i32 0, i32 0))
+  %0 = load i32, i32* %i, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.4, i32 0, i32 0), i32 %0)
+  %1 = load i32, i32* %i, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.5, i32 0, i32 0), i32 %1)
+  br label %loop.body
+
+loop.body:                                        ; preds = %entry
+  store i32 3, i32* %i1, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.6, i32 0, i32 0))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str.7, i32 0, i32 0))
+  %2 = load i32, i32* %i1, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.8, i32 0, i32 0), i32 %2)
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.9, i32 0, i32 0))
+  br label %loop.exit
+
+loop.exit:                                        ; preds = %loop.body
+  br label %loop.body2
+
+loop.body2:                                       ; preds = %loop.exit
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.13, i32 0, i32 0))
+  store i32 3, i32* %i3, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.14, i32 0, i32 0))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str.15, i32 0, i32 0))
+  %3 = load i32, i32* %i3, align 4
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.16, i32 0, i32 0), i32 %3)
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.17, i32 0, i32 0))
+  ret i64 0
+
+loop.exit4:                                       ; No predecessors!
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str.21, i32 0, i32 0))
+  ret i64 0
+}
+
+; Function Attrs: nounwind
+define i32 @main(i32 %0, i8** %1) #0 {
+entry:
+  %2 = call i64 @foo.main()
+  %not_err = icmp eq i64 %2, 0
+  br i1 %not_err, label %after.errcheck, label %error_block
+
+after.errcheck:                                   ; preds = %entry
+  br label %noerr_block
+
+noerr_block:                                      ; preds = %after.errcheck
+  br label %phi_trycatch_block
+
+error_block:                                      ; preds = %entry
+  br label %phi_trycatch_block
+
+phi_trycatch_block:                               ; preds = %error_block, %noerr_block
+  %val = phi i8 [ 1, %noerr_block ], [ 0, %error_block ]
+  %3 = trunc i8 %val to i1
+  %not = xor i1 %3, true
+  %boolsi = zext i1 %not to i32
+  ret i32 %boolsi
+}
