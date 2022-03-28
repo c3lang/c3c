@@ -1861,11 +1861,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
 	}
 
-	AstId current = body->compound_stmt.first_stmt;
-	while (current)
-	{
-		if (!sema_analyse_statement(&macro_context, ast_next(&current))) goto EXIT_FAIL;
-	}
+	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
 
 	bool is_no_return = decl->macro_decl.attr_noreturn;
 
@@ -2072,17 +2068,33 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 		Expr *expr = args[i];
 		if (!sema_analyse_expr(macro_context, expr)) return false;
 	}
+
+	AstId macro_defer = macro_context->active_scope.defer_last;
+	Ast *first_defer = NULL;
 	SemaContext *context = macro_context->yield_context;
 	Decl **params = macro_context->yield_params;
+
 
 	Expr *func_expr = exprptr(call_expr->function);
 	assert(func_expr->expr_kind == EXPR_MACRO_BODY_EXPANSION);
 	expr_replace(call, func_expr);
 	call->body_expansion_expr.values = args;
 	call->body_expansion_expr.declarations = macro_context->yield_params;
-
+	AstId last_defer = context->active_scope.defer_last;
 	bool success;
 	SCOPE_START
+
+		if (macro_defer)
+		{
+			Ast *macro_defer_ast = astptr(macro_defer);
+			first_defer = macro_defer_ast;
+			while (first_defer->defer_stmt.prev_defer)
+			{
+				first_defer = astptr(first_defer->defer_stmt.prev_defer);
+			}
+			first_defer->defer_stmt.prev_defer = context->active_scope.defer_last;
+			context->active_scope.defer_last = macro_defer;
+		}
 		VECEACH(params, i)
 		{
 			Decl *param = params[i];
@@ -2091,6 +2103,11 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 		call->body_expansion_expr.ast = ast_macro_copy(macro_context->yield_body);
 		success = sema_analyse_statement(context, call->body_expansion_expr.ast);
 
+		if (first_defer)
+		{
+			first_defer->defer_stmt.prev_defer = 0;
+			context->active_scope.defer_last = last_defer;
+		}
 	SCOPE_END;
 	return success;
 }
