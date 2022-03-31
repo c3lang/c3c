@@ -2441,6 +2441,7 @@ typedef struct CopyStruct_
 {
 	CopyFixup fixups[MAX_FIXUPS];
 	CopyFixup *current_fixup;
+	bool single_static;
 } CopyStruct;
 
 #define MACRO_COPY_DECL(x) x = copy_decl(c, x)
@@ -2460,6 +2461,7 @@ typedef struct CopyStruct_
 Expr *expr_macro_copy(Expr *source_expr);
 Decl **decl_copy_list(Decl **decl_list);
 Ast *ast_macro_copy(Ast *source_ast);
+Ast *ast_defer_copy(Ast *source_ast);
 
 Expr **copy_expr_list(CopyStruct *c, Expr **expr_list);
 Expr *copy_expr(CopyStruct *c, Expr *source_expr);

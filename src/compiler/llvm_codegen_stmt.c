@@ -34,6 +34,8 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 	//    then we essentially treat this as a global.
 	if (decl->var.is_static)
 	{
+		// In defers we might already have generated this variable.
+		if (decl->backend_ref) return decl->backend_ref;
 		void *builder = c->builder;
 		c->builder = NULL;
 		decl->backend_ref = LLVMAddGlobal(c->module, alloc_type, "tempglobal");
@@ -48,6 +50,7 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		c->builder = builder;
 		return decl->backend_ref;
 	}
+	assert(!decl->backend_ref);
 	llvm_emit_local_var_alloca(c, decl);
 	Expr *init = decl->var.init_expr;
 	if (IS_FAILABLE(decl))

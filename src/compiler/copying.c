@@ -3,8 +3,6 @@
 #define SCOPE_FIXUP_START do { CopyFixup *current = c->current_fixup;
 #define SCOPE_FIXUP_END c->current_fixup = current; } while (0)
 
-
-
 static inline void copy_reg_ref(CopyStruct *c, void *original, void *result)
 {
 	c->current_fixup->new_ptr = result;
@@ -146,12 +144,21 @@ static CopyStruct copy_struct;
 Ast *ast_macro_copy(Ast *source_ast)
 {
 	copy_struct.current_fixup = copy_struct.fixups;
+	copy_struct.single_static = false;
+	return ast_copy_deep(&copy_struct, source_ast);
+}
+
+Ast *ast_defer_copy(Ast *source_ast)
+{
+	copy_struct.current_fixup = copy_struct.fixups;
+	copy_struct.single_static = true;
 	return ast_copy_deep(&copy_struct, source_ast);
 }
 
 Expr *expr_macro_copy(Expr *source_expr)
 {
 	copy_struct.current_fixup = copy_struct.fixups;
+	copy_struct.single_static = false;
 	return copy_expr(&copy_struct, source_expr);
 }
 
@@ -560,9 +567,19 @@ static Attr **copy_attributes(CopyStruct *c, Attr** attr_list)
 	}
 	return list;
 }
+
+static inline bool decl_is_resolved_static_var(Decl *decl)
+{
+	if (decl->resolve_status != RESOLVE_DONE) return false;
+	if (decl->decl_kind != DECL_VAR) return false;
+	if (decl->var.kind != VARDECL_LOCAL) return false;
+	return decl->var.is_static;
+}
+
 Decl *copy_decl(CopyStruct *c, Decl *decl)
 {
 	if (!decl) return NULL;
+	if (c->single_static && decl_is_resolved_static_var(decl)) return decl;
 	Decl *copy = decl_copy(decl);
 	copy_reg_ref(c, decl, copy);
 	copy->attributes = copy_attributes(c, copy->attributes);

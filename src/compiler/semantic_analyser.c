@@ -88,7 +88,7 @@ AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bott
 	while (defer_bottom != defer_top)
 	{
 		Ast *defer = astptr(defer_top);
-		Ast *defer_body = ast_macro_copy(astptr(defer->defer_stmt.body));
+		Ast *defer_body = ast_defer_copy(astptr(defer->defer_stmt.body));
 		*next = astid(defer_body);
 		next = &defer_body->next;
 		defer_top = defer->defer_stmt.prev_defer;
@@ -105,7 +105,7 @@ void context_pop_defers(SemaContext *context, AstId *next)
 		while (defer_current != defer_start)
 		{
 			Ast *defer = astptr(defer_current);
-			Ast *defer_body = ast_macro_copy(astptr(defer->defer_stmt.body));
+			Ast *defer_body = ast_defer_copy(astptr(defer->defer_stmt.body));
 			*next = astid(defer_body);
 			next = &defer_body->next;
 			defer_current = defer->defer_stmt.prev_defer;
