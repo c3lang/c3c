@@ -3,7 +3,7 @@
 module foo;
 import std::io;
 
-optenum Foo
+fault Foo
 {
     X
 }

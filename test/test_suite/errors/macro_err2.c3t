@@ -1,6 +1,6 @@
 // #target: x64-darwin
 module test;
-optenum Tester { FOO }
+fault Tester { FOO }
 
 fn int! abc()
 {

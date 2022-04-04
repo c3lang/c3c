@@ -12,7 +12,7 @@ static inline Type *type_lowering(Type *type)
 	if (canonical->type_kind == TYPE_ENUM) return canonical->decl->enums.type_info->type->canonical;
 	if (canonical->type_kind == TYPE_TYPEID) return type_iptr->canonical;
 	if (canonical->type_kind == TYPE_ANYERR) return type_iptr->canonical;
-	if (canonical->type_kind == TYPE_ERRTYPE) return type_iptr->canonical;
+	if (canonical->type_kind == TYPE_FAULTTYPE) return type_iptr->canonical;
 	if (canonical->type_kind == TYPE_BITSTRUCT) return type_lowering(canonical->decl->bitstruct.base_type->type);
 	return canonical;
 }

@@ -176,7 +176,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 		{
 			case DECL_POISONED:
 			case DECL_ENUM_CONSTANT:
-			case DECL_OPTVALUE:
+			case DECL_FAULTVALUE:
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_CT_ASSERT:
@@ -204,7 +204,7 @@ static void register_generic_decls(Module *module, Decl **decls)
 			case DECL_DISTINCT:
 			case DECL_ENUM:
 			case DECL_GENERIC:
-			case DECL_OPTENUM:
+			case DECL_FAULT:
 			case DECL_FUNC:
 			case DECL_STRUCT:
 			case DECL_TYPEDEF:

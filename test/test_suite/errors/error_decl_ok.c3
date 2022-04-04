@@ -1,17 +1,17 @@
 module errors;
 
-optenum TheError
+fault TheError
 {
     A
 }
 
-optenum TheError2
+fault TheError2
 {
     A,
     B
 }
 
-optenum TheError3
+fault TheError3
 {
     C, D
 }

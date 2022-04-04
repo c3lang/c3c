@@ -2,7 +2,7 @@
 module foo;
 import std::io;
 
-optenum Foo
+fault Foo
 {
     X,
     Y,
@@ -13,7 +13,7 @@ optenum Foo
 
 }
 
-optenum Foob
+fault Foob
 {
     X1,
     Y2

@@ -68,7 +68,7 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		if (!decl->var.no_init)
 		{
 			BEValue value;
-			llvm_value_set_decl_address(&value, decl);
+			llvm_value_set_decl_address(c, &value, decl);
 			value.kind = BE_ADDRESS;
 			llvm_emit_assign_expr(c, &value, decl->var.init_expr, decl->var.failable_ref);
 		}
@@ -90,7 +90,7 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		else
 		{
 			BEValue value;
-			llvm_value_set_decl_address(&value, decl);
+			llvm_value_set_decl_address(c, &value, decl);
 			value.kind = BE_ADDRESS;
 			llvm_store_zero(c, &value);
 		}
@@ -1088,7 +1088,7 @@ void llvm_emit_panic(GenContext *c, const char *message, const char *file, const
 			llvm_const_int(c, type_uint, line)
 	};
 
-	LLVMBuildCall2(c->builder, llvm_get_type(c, panicfn->type), panicfn->backend_ref, args, 4, "");
+	LLVMBuildCall2(c->builder, llvm_get_type(c, panicfn->type), llvm_get_ref(c, panicfn), args, 4, "");
 }
 
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc)

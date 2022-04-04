@@ -7,6 +7,8 @@
 const char* llvm_version = LLVM_VERSION_STRING;
 const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
 
+void llvm_emit_local_global_variable_definition(GenContext *c, Decl *decl);
+
 static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 {
 	char *message = LLVMGetDiagInfoDescription(ref);
@@ -253,7 +255,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 }
 
 
-static void gencontext_emit_global_variable_definition(GenContext *c, Decl *decl)
+void llvm_emit_local_global_variable_definition(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
@@ -305,6 +307,23 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 	}
 }
 
+void llvm_set_global_tls(Decl *decl)
+{
+	if (!decl->var.is_threadlocal) return;
+	LLVMThreadLocalMode thread_local_mode = LLVMGeneralDynamicTLSModel;
+	if (!decl->var.is_addr && (decl->visibility == VISIBLE_LOCAL || decl->visibility == VISIBLE_MODULE) && !decl->is_external_visible)
+	{
+		thread_local_mode = LLVMLocalDynamicTLSModel;
+	}
+	LLVMSetThreadLocal(decl->backend_ref, true);
+	LLVMSetThreadLocalMode(decl->backend_ref, thread_local_mode);
+	void *failable_ref = decl->var.failable_ref;
+	if (failable_ref)
+	{
+		LLVMSetThreadLocal(failable_ref, true);
+		LLVMSetThreadLocalMode(failable_ref, thread_local_mode);
+	}
+}
 void llvm_set_internal_linkage(LLVMValueRef alloc)
 {
 	LLVMSetLinkage(alloc, LLVMInternalLinkage);
@@ -365,28 +384,27 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
 	LLVMValueRef global_ref = decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname);
-	LLVMSetThreadLocal(global_ref, decl->var.is_threadlocal);
 	if (decl->var.is_addr)
 	{
 		LLVMSetUnnamedAddress(global_ref, LLVMNoUnnamedAddr);
 	}
 	else
 	{
-		LLVMUnnamedAddr addr = LLVMLocalUnnamedAddr;
-		if (decl->visibility == VISIBLE_LOCAL || decl->visibility == VISIBLE_MODULE) addr = LLVMGlobalUnnamedAddr;
+		LLVMUnnamedAddr addr = LLVMGlobalUnnamedAddr;
+		if (decl->is_external_visible || visible_external(decl->visibility)) addr = LLVMLocalUnnamedAddr;
 		LLVMSetUnnamedAddress(decl->backend_ref, addr);
 	}
 	if (decl->section)
 	{
 		LLVMSetSection(global_ref, decl->section);
 	}
+	llvm_set_global_tls(decl);
 	llvm_set_alignment(global_ref, alignment);
 
 	LLVMValueRef failable_ref = decl->var.failable_ref;
 	if (failable_ref)
 	{
 		llvm_set_alignment(failable_ref, type_alloca_alignment(type_anyerr));
-		LLVMSetThreadLocal(failable_ref, decl->var.is_threadlocal);
 		LLVMSetUnnamedAddress(failable_ref, LLVMGlobalUnnamedAddr);
 	}
 	if (init_expr && IS_FAILABLE(init_expr) && init_expr->expr_kind == EXPR_FAILABLE)
@@ -404,7 +422,9 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	LLVMSetGlobalConstant(global_ref, decl->var.kind == VARDECL_CONST);
 
-	switch (decl->visibility)
+	Visibility visibility = decl->visibility;
+	if (decl->is_external_visible) visibility = VISIBLE_PUBLIC;
+	switch (visibility)
 	{
 		case VISIBLE_MODULE:
 			LLVMSetVisibility(global_ref, LLVMProtectedVisibility);
@@ -623,6 +643,9 @@ void llvm_codegen_setup()
 	intrinsic_id.umax = lookup_intrinsic("llvm.umax");
 	intrinsic_id.umin = lookup_intrinsic("llvm.umin");
 
+	intrinsic_id.memset = lookup_intrinsic("llvm.memset");
+	intrinsic_id.memcpy = lookup_intrinsic("llvm.memcpy");
+
 	attribute_id.noinline = lookup_attribute("noinline");
 	attribute_id.optnone = lookup_attribute("optnone");
 	attribute_id.alwaysinline = lookup_attribute("alwaysinline");
@@ -651,7 +674,9 @@ void llvm_set_linkage(GenContext *c, Decl *decl, LLVMValueRef value)
 		LLVMSetVisibility(value, LLVMDefaultVisibility);
 		return;
 	}
-	switch (decl->visibility)
+	Visibility visibility = decl->visibility;
+	if (decl->is_external_visible) visibility = VISIBLE_PUBLIC;
+	switch (visibility)
 	{
 		case VISIBLE_MODULE:
 		case VISIBLE_PUBLIC:
@@ -729,7 +754,7 @@ bool llvm_value_is_const(BEValue *value)
 }
 
 
-void llvm_value_set_decl(BEValue *value, Decl *decl)
+void llvm_value_set_decl(GenContext *c, BEValue *value, Decl *decl)
 {
 	decl = decl_flatten(decl);
 	if (decl->is_value)
@@ -737,7 +762,7 @@ void llvm_value_set_decl(BEValue *value, Decl *decl)
 		llvm_value_set(value, decl->backend_value, decl->type);
 		return;
 	}
-	llvm_value_set_decl_address(value, decl);
+	llvm_value_set_decl_address(c, value, decl);
 }
 
 
@@ -772,13 +797,13 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 			// TODO
 			break;
 		case DECL_ENUM_CONSTANT:
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 			// TODO
 			break;;
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ENUM:
-		case DECL_OPTENUM:
+		case DECL_FAULT:
 		case DECL_BITSTRUCT:
 			llvm_emit_introspection_type_from_decl(context, decl);
 			break;
@@ -849,6 +874,87 @@ const char *llvm_codegen(void *context)
 	return object_name;
 }
 
+void llvm_add_global(GenContext *c, Decl *decl)
+{
+	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
+
+	const char *name = decl->module == c->code_module ? "tempglobal" : decl_get_extname(decl);
+	decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_lowering(type_no_fail(decl->type))), name);
+	if (IS_FAILABLE(decl))
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(decl_get_extname(decl));
+		scratch_buffer_append(".f");
+		decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_anyerr), scratch_buffer_to_string());
+	}
+	llvm_set_global_tls(decl);
+}
+
+LLVMValueRef llvm_get_fault_ref(GenContext *c, Decl *decl)
+{
+	llvm_get_ref(c, decl);
+	decl = decl_flatten(decl);
+	if (decl->decl_kind != DECL_VAR) return NULL;
+	return decl->var.failable_ref;
+}
+
+LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
+{
+	LLVMValueRef backend_ref = decl->backend_ref;
+	if (backend_ref)
+	{
+		if (!LLVMIsAGlobalValue(backend_ref) || LLVMGetGlobalParent(backend_ref) == c->module) return backend_ref;
+	}
+	switch (decl->decl_kind)
+	{
+		case DECL_VAR:
+			if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED)
+			{
+				return decl->backend_ref = llvm_get_ref(c, decl->var.alias);
+			}
+			assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
+			llvm_add_global(c, decl);
+			return decl->backend_ref;
+		case DECL_FUNC:
+			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, decl_get_extname(decl), llvm_get_type(c, decl->type));
+			if (decl->module == c->code_module && !decl->is_external_visible && !visible_external(decl->visibility))
+			{
+				llvm_set_internal_linkage(backend_ref);
+			}
+			return backend_ref;
+		case DECL_DEFINE:
+			if (decl->define_decl.define_kind != DEFINE_TYPE_GENERIC) return llvm_get_ref(c, decl->define_decl.alias);
+			UNREACHABLE
+		case DECL_FAULTVALUE:
+			llvm_emit_introspection_type_from_decl(c, declptr(decl->enum_constant.parent));
+			assert(decl->backend_ref);
+			return decl->backend_ref;
+		case DECL_POISONED:
+		case DECL_ATTRIBUTE:
+		case DECL_BITSTRUCT:
+		case DECL_CT_CASE:
+		case DECL_CT_ELIF:
+		case DECL_CT_ELSE:
+		case DECL_CT_IF:
+		case DECL_CT_SWITCH:
+		case DECL_CT_ASSERT:
+		case DECL_DISTINCT:
+		case DECL_ENUM:
+		case DECL_ENUM_CONSTANT:
+		case DECL_FAULT:
+		case DECL_GENERIC:
+		case DECL_IMPORT:
+		case DECL_LABEL:
+		case DECL_MACRO:
+		case DECL_STRUCT:
+		case DECL_TYPEDEF:
+		case DECL_UNION:
+		case DECL_DECLARRAY:
+		case DECL_BODYPARAM:
+			UNREACHABLE;
+	}
+	UNREACHABLE
+}
 void *llvm_gen(Module *module)
 {
 	if (!vec_size(module->units)) return NULL;
@@ -857,12 +963,6 @@ void *llvm_gen(Module *module)
 	gencontext_init(gen_context, module);
 	gencontext_begin_module(gen_context);
 
-	// Declare the panic function implicitly
-	Decl *panicfn = gen_context->panicfn;
-	if (panicfn && panicfn->module != module)
-	{
-		llvm_emit_extern_decl(gen_context, panicfn);
-	}
 
 	VECEACH(module->units, j)
 	{
@@ -871,15 +971,6 @@ void *llvm_gen(Module *module)
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;
 
-
-		VECEACH(unit->external_symbol_list, i)
-		{
-			Decl *d = unit->external_symbol_list[i];
-			// Avoid duplicating symbol
-			if (d->module == unit->module) continue;
-			if (d == panicfn) continue;
-			llvm_emit_extern_decl(gen_context, unit->external_symbol_list[i]);
-		}
 		VECEACH(unit->methods, i)
 		{
 			llvm_emit_function_decl(gen_context, unit->methods[i]);
@@ -903,7 +994,7 @@ void *llvm_gen(Module *module)
 
 		VECEACH(unit->vars, i)
 		{
-			gencontext_emit_global_variable_definition(gen_context, unit->vars[i]);
+			llvm_get_ref(gen_context, unit->vars[i]);
 		}
 		VECEACH(unit->vars, i)
 		{

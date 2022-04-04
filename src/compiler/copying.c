@@ -600,7 +600,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_BITSTRUCT:
 			UNREACHABLE
 		case DECL_ENUM:
-			case DECL_OPTENUM:
+			case DECL_FAULT:
 			copy_decl_type(copy);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			MACRO_COPY_DECL_LIST(copy->enums.parameters);
@@ -631,7 +631,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_EXPR(copy->enum_constant.expr);
 			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
 			break;
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 			MACRO_COPY_EXPR(copy->enum_constant.expr);
 			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
 			break;

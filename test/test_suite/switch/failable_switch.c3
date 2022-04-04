@@ -1,4 +1,4 @@
-optenum MyError
+fault MyError
 {
     FOO
 }

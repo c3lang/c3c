@@ -1,5 +1,5 @@
-optenum Repeater
+fault Repeater
 {
     A,
-    A // #error: This opt constant is declared twice.
+    A // #error: This fault value was declared twice.
 }

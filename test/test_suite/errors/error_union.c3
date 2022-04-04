@@ -1,6 +1,6 @@
 module foo;
 
-optenum Blurg
+fault Blurg
 {
     X, Y, Z
 }

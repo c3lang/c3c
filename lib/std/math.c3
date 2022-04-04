@@ -16,7 +16,7 @@ const DIV_PI = 0.318309886183790671537767526745028724; // 1 / pi
 const DIV_2_PI = 0.636619772367581343075535053490057448; // 2 / pi
 const DIV_2_SQRTPI = 1.12837916709551257389615890312154517;   // 2/sqrt(pi)
 const SQRT2 = 1.41421356237309504880168872420969808; // sqrt(2)
-const DIV_1_SQRT2 = 0.707106781186547524400844362104849039; // 1 / sqrt(2)
+const double DIV_1_SQRT2 = 0.707106781186547524400844362104849039; // 1 / sqrt(2)
 
 const HALF_MAX = 6.5504e+4;
 const HALF_MIN = 6.103515625e-5;
@@ -127,6 +127,13 @@ fn double ceil(double x) @inline
     return $$ceil(x);
 }
 
+/**
+ * @checked x & 1
+ */
+macro bool is_power_of_2(x)
+{
+	return x != 0 && (x & (x - 1)) == 0;
+}
 
 
 

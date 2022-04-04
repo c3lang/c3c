@@ -14,7 +14,7 @@ struct Game
 	int high;
 }
 
-optnum InputResult
+fault InputResult
 {
 	NOT_AN_INT,
 	FAILED_TO_READ,

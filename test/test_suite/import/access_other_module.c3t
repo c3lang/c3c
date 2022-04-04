@@ -1,0 +1,23 @@
+// #target: x64-darwin
+module foo;
+fn void main()
+{
+	void* foekf = &math::log;
+	double* xok = &math::DIV_1_SQRT2;
+}
+
+/* #expect: foo.ll
+
+
+@"std::math.DIV_1_SQRT2" = external global double
+
+define void @foo.main() #0 {
+entry:
+  %foekf = alloca i8*, align 8
+  %xok = alloca double*, align 8
+  store i8* bitcast (double (double)* @"std::math.log" to i8*), i8** %foekf, align 8
+  store double* @"std::math.DIV_1_SQRT2", double** %xok, align 8
+  ret void
+}
+
+declare double @"std::math.log"(double)

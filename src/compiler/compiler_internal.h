@@ -419,6 +419,7 @@ typedef struct
 	Expr *expr;
 	Expr **args;
 	uint64_t ordinal;
+	DeclId parent;
 } EnumConstantDecl;
 
 
@@ -584,6 +585,7 @@ typedef struct Decl_
 	bool is_value : 1;
 	bool is_autoimport : 1;
 	bool has_extname : 1;
+	bool is_external_visible : 1;
 	OperatorOverload operator : 3;
 	union
 	{
@@ -617,7 +619,7 @@ typedef struct Decl_
 			Decl **methods;
 			union
 			{
-				// Unions, Optenum and Struct use strukt
+				// Unions, Fault and Struct use strukt
 				StructDecl strukt;
 				EnumDecl enums;
 				DistinctDecl distinct_decl;
@@ -1339,7 +1341,7 @@ typedef struct CompilationUnit_
 	Decl **types;
 	Decl **functions;
 	Decl **enums;
-	Decl **errtypes;
+	Decl **faulttypes;
 	struct
 	{
 		// Not properly implemented
@@ -1356,7 +1358,6 @@ typedef struct CompilationUnit_
 	Decl **global_decls;
 	Decl *main_function;
 	HTable local_symbols;
-	Decl **external_symbol_list;
 	struct
 	{
 		void *debug_file;
@@ -1951,6 +1952,7 @@ Decl *sema_resolve_normal_symbol(SemaContext *context, NameResolve *name_resolve
 Decl *sema_find_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
+bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
 bool sema_resolve_type(SemaContext *context, Type *type);
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
@@ -2399,7 +2401,7 @@ static inline bool decl_is_struct_type(Decl *decl)
 static inline bool decl_is_enum_kind(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
-	return (kind == DECL_ENUM) | (kind == DECL_OPTENUM);
+	return (kind == DECL_ENUM) | (kind == DECL_FAULT);
 }
 
 static inline bool decl_is_user_defined_type(Decl *decl)
@@ -2524,6 +2526,11 @@ static inline void ast_prepend(AstId *first, Ast *ast)
 	}
 	end->next = *first;
 	*first = astid(ast);
+}
+
+static inline bool visible_external(Visibility  visibility)
+{
+	return visibility == VISIBLE_PUBLIC || visibility == VISIBLE_EXTERN;
 }
 
 static inline Ast *ast_next(AstId *current_ptr)

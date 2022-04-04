@@ -11,7 +11,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 	{
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 		case DECL_POISONED:
 		case DECL_BODYPARAM:
 		case NON_TYPE_DECLS:
@@ -76,7 +76,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		}
 		case DECL_ENUM:
 			return llvm_get_type(c, decl->type);
-		case DECL_OPTENUM:
+		case DECL_FAULT:
 			return llvm_get_type(c, type_iptr);
 	}
 	UNREACHABLE
@@ -130,7 +130,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 		}
 		case TYPE_ENUM:
 		case TYPE_ANYERR:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			param_expand(context, params_ref, type_lowering(type));
 			return;
 		case TYPE_UNION:
@@ -323,7 +323,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			UNREACHABLE
 		case TYPE_TYPEID:
 		case TYPE_ANYERR:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			return any_type->backend_type = llvm_get_type(c, type_iptr->canonical);
 		case TYPE_TYPEDEF:
 			return any_type->backend_type = llvm_get_type(c, any_type->canonical);

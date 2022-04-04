@@ -890,7 +890,7 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 					case DECL_STRUCT:
 						case DECL_UNION:
 							case DECL_ENUM:
-								case DECL_ERRTYPE:
+								case DECL_FAULTTYPE:
 									case DECL_BITSTRUCT:
 										llvm_emit_introspection_type_from_decl(context, decl);
 										break;
@@ -975,13 +975,6 @@ void *llvm_gen(Module *module)
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;
 
-		VECEACH(unit->external_symbol_list, i)
-		{
-			Decl *d = unit->external_symbol_list[i];
-			// Avoid duplicating symbol
-			if (d->module == unit->module) continue;
-			llvm_emit_extern_decl(gen_context, unit->external_symbol_list[i]);
-		}
 		VECEACH(unit->methods, i)
 		{
 			llvm_emit_function_decl(gen_context, unit->methods[i]);

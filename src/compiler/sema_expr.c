@@ -618,7 +618,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_GENERIC:
 			SEMA_ERROR(expr, "Expected generic function followed by (...).");
 			return expr_poison(expr);
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 			SEMA_ERROR(expr, "Did you forget a '!' after '%s'?", decl->name);
 			return expr_poison(expr);
 		case DECL_ENUM_CONSTANT:
@@ -648,8 +648,8 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_ENUM:
 			SEMA_ERROR(expr, "Expected enum name followed by '.' and an enum value.");
 			return expr_poison(expr);
-		case DECL_OPTENUM:
-			SEMA_ERROR(expr, "Expected optenum name followed by '.' and an error value.");
+		case DECL_FAULT:
+			SEMA_ERROR(expr, "Expected fault name followed by '.' and a fault value.");
 			return expr_poison(expr);
 		case DECL_IMPORT:
 		case DECL_CT_IF:
@@ -860,12 +860,12 @@ static inline bool sema_expr_analyse_enum_constant(Expr *expr, const char *name,
 
 static inline bool find_possible_inferred_identifier(Type *to, Expr *expr)
 {
-	if (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_ERRTYPE) return false;
+	if (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_FAULTTYPE) return false;
 	Decl *parent_decl = to->canonical->decl;
 	switch (parent_decl->decl_kind)
 	{
 		case DECL_ENUM:
-		case DECL_OPTENUM:
+		case DECL_FAULT:
 			return sema_expr_analyse_enum_constant(expr, expr->identifier_expr.ident, parent_decl);
 		case DECL_UNION:
 		case DECL_STRUCT:
@@ -902,13 +902,16 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 		return false;
 	}
 
-	if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO || decl->decl_kind == DECL_GENERIC)
+	if (decl->decl_kind == DECL_VAR || decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO || decl->decl_kind == DECL_GENERIC)
 	{
 		if (decl->module != context->unit->module && !decl->is_autoimport && !expr->identifier_expr.path)
 		{
 			const char *message;
 			switch (decl->decl_kind)
 			{
+				case DECL_VAR:
+					message = "Globals from other modules must be prefixed with the module name.";
+					break;
 				case DECL_FUNC:
 					message = "Functions from other modules must be prefixed with the module name.";
 					break;
@@ -1379,7 +1382,7 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 FAIL_MISSING:
 
 		// 17c. Vararg not set? That's fine.
-		if (params[i]->var.vararg) continue;
+		if (params && params[i]->var.vararg) continue;
 
 		// 17d. Argument missing, that's bad.
 		if (is_func_ptr)
@@ -1535,6 +1538,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 			case VARDECL_PARAM_REF:
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
+				if (!sema_expr_check_assign(context, arg)) return false;
 				if (type && type->canonical != arg->type->canonical)
 				{
 					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(type));
@@ -1542,7 +1546,7 @@ static inline bool sema_expr_analyse_call_invocation(SemaContext *context, Expr 
 				}
 				if (param && !param->alignment)
 				{
-					if (arg->expr_kind == EXPR_IDENTIFIER || arg->expr_kind == EXPR_CONST)
+					if (arg->expr_kind == EXPR_IDENTIFIER)
 					{
 						param->alignment = arg->identifier_expr.decl->alignment;
 					}
@@ -1843,6 +1847,18 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.current_function = context->current_function;
 	rtype = decl->macro_decl.rtype ? type_infoptr(decl->macro_decl.rtype)->type : NULL;
 	macro_context.expected_block_type = rtype;
+	bool may_failable = true;
+	if (rtype)
+	{
+		if (type_is_failable(rtype))
+		{
+			rtype = type_no_fail(rtype);
+		}
+		else
+		{
+			may_failable = false;
+		}
+	}
 
 	context_change_scope_with_flags(&macro_context, SCOPE_MACRO);
 
@@ -1867,7 +1883,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	if (!vec_size(macro_context.returns))
 	{
-		if (rtype && type_no_fail(rtype) != type_void)
+		if (rtype && rtype != type_void)
 		{
 			SEMA_ERROR(decl,
 					   "Missing return in macro that should evaluate to %s.",
@@ -1886,6 +1902,11 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		VECEACH(macro_context.returns, i)
 		{
 			Ast *return_stmt = macro_context.returns[i];
+			if (!return_stmt)
+			{
+				assert(may_failable);
+				continue;
+			}
 			Expr *ret_expr = return_stmt->return_stmt.expr;
 			if (!ret_expr)
 			{
@@ -1894,7 +1915,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				return SCOPE_POP_ERROR();
 			}
 			Type *type = ret_expr->type;
-			if (!cast_may_implicit(type, rtype, true, true))
+			if (!cast_may_implicit(type, rtype, true, may_failable))
 			{
 				SEMA_ERROR(ret_expr, "Expected %s, not %s.", type_quoted_error_string(rtype),
 						   type_quoted_error_string(type));
@@ -1902,6 +1923,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			}
 			bool success = cast_implicit(ret_expr, rtype);
 			assert(success);
+			if (may_failable) ret_expr->type = type_get_opt_fail(ret_expr->type, may_failable);
 		}
 		call_expr->type = type_get_opt_fail(rtype, failable);
 	}
@@ -2193,11 +2215,98 @@ static inline unsigned builtin_expected_args(BuiltinFunction func)
 			return 2;
 		case BUILTIN_FMA:
 			return 3;
+		case BUILTIN_MEMSET:
+			return 5;
+		case BUILTIN_MEMCOPY:
+			return 6;
 		case BUILTIN_NONE:
 			UNREACHABLE
 	}
 	UNREACHABLE
 }
+
+typedef enum
+{
+	BA_POINTER,
+	BA_SIZE,
+	BA_BOOL,
+	BA_CHAR,
+	BA_FLOATLIKE,
+} BuiltinArg;
+
+static bool sema_check_builtin_args_match(Expr **args, size_t arg_len)
+{
+	Type *first = args[0]->type->canonical;
+	for (size_t i = 1; i < arg_len; i++)
+	{
+		if (first != args[i]->type->canonical)
+		{
+			SEMA_ERROR(args[i], "Expected an expression of type %s.", type_quoted_error_string(args[0]->type));
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool sema_check_builtin_args_const(Expr **args, size_t arg_len)
+{
+	for (size_t i = 0; i < arg_len; i++)
+	{
+		if (!expr_is_const(args[i]))
+		{
+			SEMA_ERROR(args[i], "Expected a compile time constant value for this argument.");
+			return false;
+		}
+	}
+	return true;
+}
+static bool sema_check_builtin_args(Expr **args, BuiltinArg *arg_type, size_t arg_len)
+{
+	for (size_t i = 0; i < arg_len; i++)
+	{
+		Type *type = args[i]->type->canonical;
+		switch (arg_type[i])
+		{
+			case BA_POINTER:
+				if (!type_is_pointer(type))
+				{
+					SEMA_ERROR(args[i], "Expected a pointer.");
+					return false;
+				}
+				break;
+			case BA_CHAR:
+				if (type != type_char && type != type_ichar)
+				{
+					SEMA_ERROR(args[i], "Expected a char or ichar.");
+					return false;
+				}
+				break;
+			case BA_SIZE:
+				if (!type_is_integer(type) || type_size(type) != type_size(type_usize))
+				{
+					SEMA_ERROR(args[i], "Expected an usize or isize value.");
+					return false;
+				}
+				break;
+			case BA_BOOL:
+				if (type != type_bool)
+				{
+					SEMA_ERROR(args[i], "Expected a bool.");
+					return false;
+				}
+				break;
+			case BA_FLOATLIKE:
+				if (!type_is_float_or_float_vector(type))
+				{
+					SEMA_ERROR(args[i], "Expected a floating point or floating point array.");
+					return false;
+				}
+				break;
+		}
+	}
+	return true;
+}
+
 static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 {
 	expr->call_expr.is_builtin = true;
@@ -2240,6 +2349,20 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 		case BUILTIN_TRAP:
 			rtype = type_void;
 			break;
+		case BUILTIN_MEMCOPY:
+			if (!sema_check_builtin_args(args,
+										 (BuiltinArg[]) { BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE },
+										 arg_count)) return false;
+			if (!sema_check_builtin_args_const(&args[3], 3)) return false;
+			rtype = type_void;
+			break;
+		case BUILTIN_MEMSET:
+			if (!sema_check_builtin_args(args,
+										 (BuiltinArg[]) { BA_POINTER, BA_CHAR, BA_SIZE, BA_BOOL, BA_SIZE },
+										 arg_count)) return false;
+			if (!sema_check_builtin_args_const(&args[3], 2)) return false;
+			rtype = type_void;
+			break;
 		case BUILTIN_STACKTRACE:
 			rtype = type_voidptr;
 			break;
@@ -2248,86 +2371,42 @@ static inline bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *ex
 		case BUILTIN_SQRT:
 		case BUILTIN_COS:
 		case BUILTIN_SIN:
-		case BUILTIN_POW:
 		case BUILTIN_EXP:
 		case BUILTIN_FABS:
 		case BUILTIN_LOG:
 		case BUILTIN_LOG2:
 		case BUILTIN_LOG10:
-			if (type_is_float_or_float_vector(args[0]->type))
-			{
-				rtype = args[0]->type;
-				break;
-			}
-			SEMA_ERROR(args[0], "Expected a floating point or floating point array.");
-			return false;
+			if (!sema_check_builtin_args(args,
+										 (BuiltinArg[]) { BA_FLOATLIKE },
+										 arg_count)) return false;
+			rtype = args[0]->type;
+			break;
+		case BUILTIN_POW:
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
-			if (!type_is_float_or_float_vector(args[0]->type))
-			{
-				SEMA_ERROR(args[0], "Expected a floating point or floating point array.");
-				return false;
-			}
-			if (!type_is_float_or_float_vector(args[1]->type))
-			{
-				SEMA_ERROR(args[1], "Expected a floating point or floating point array.");
-				return false;
-			}
-			if (type_flatten(args[0]->type) != type_flatten(args[1]->type))
-			{
-				SEMA_ERROR(args[1], "Expected an expression of type %s.", type_quoted_error_string(args[0]->type));
-				return false;
-			}
+			if (!sema_check_builtin_args(args,
+										 (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE },
+										 arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, arg_count)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_FMA:
-			if (!type_is_float_or_float_vector(args[0]->type))
-			{
-				SEMA_ERROR(args[0], "Expected a floating point or floating point array.");
-				return false;
-			}
-			if (!type_is_float_or_float_vector(args[1]->type))
-			{
-				SEMA_ERROR(args[1], "Expected a floating point or floating point array.");
-				return false;
-			}
-			if (!type_is_float_or_float_vector(args[2]->type))
-			{
-				SEMA_ERROR(args[2], "Expected a floating point or floating point array.");
-				return false;
-			}
-			if (type_flatten(args[0]->type) != type_flatten(args[1]->type))
-			{
-				SEMA_ERROR(args[1], "Expected an expression of type %s.", type_quoted_error_string(args[0]->type));
-				return false;
-			}
-			if (type_flatten(args[0]->type) != type_flatten(args[2]->type))
-			{
-				SEMA_ERROR(args[2], "Expected an expression of type %s.", type_quoted_error_string(args[0]->type));
-				return false;
-			}
+			if (!sema_check_builtin_args(args,
+										 (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE, BA_FLOATLIKE },
+										 arg_count)) return false;
+			if (!sema_check_builtin_args_match(args, arg_count)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_VOLATILE_LOAD:
 		{
-			Type *type = type_flatten(args[0]->type);
-			if (!type_is_pointer(type))
-			{
-				SEMA_ERROR(args[0], "Expected a pointer.");
-				return false;
-			}
-			rtype = type->pointer;
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER }, 1)) return false;
+			rtype = args[0]->type->canonical->pointer;
 			break;
 		}
 		case BUILTIN_VOLATILE_STORE:
 		{
-			Type *type = type_flatten(args[0]->type);
-			if (!type_is_pointer(type))
-			{
-				SEMA_ERROR(args[0], "Expected a pointer.");
-				return false;
-			}
-			rtype = type->pointer;
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER }, 1)) return false;
+			rtype = args[0]->type->canonical->pointer;
 			if (!cast_implicit(args[1], rtype)) return false;
 			break;
 		}
@@ -3078,7 +3157,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 				return true;
 			}
 			break;
-		case DECL_OPTENUM:
+		case DECL_FAULT:
 			unit_register_external_symbol(context->compilation_unit, decl);
 
 			if (is_const)
@@ -6191,7 +6270,7 @@ static inline bool sema_expr_analyse_failable(SemaContext *context, Expr *expr)
 	}
 
 	Type *type = inner->type->canonical;
-	if (type->type_kind != TYPE_ERRTYPE && type->type_kind != TYPE_ANYERR)
+	if (type->type_kind != TYPE_FAULTTYPE && type->type_kind != TYPE_ANYERR)
 	{
 		SEMA_ERROR(inner, "You cannot use the '!' operator on expressions of type %s", type_quoted_error_string(type));
 		return false;

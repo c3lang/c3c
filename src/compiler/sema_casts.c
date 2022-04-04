@@ -373,7 +373,7 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
 			return CAST_PTRBOOL;
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			return CAST_ERBOOL;
 		case TYPE_POISONED:
 		case TYPE_VOID:
@@ -405,7 +405,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		if (from_type->failable == type_void || !from_type->failable)
 		{
 			// void! x; anyerr y = (anyerr)(x);
-			if (to_type->type_kind == TYPE_ERRTYPE || to_type->type_kind == TYPE_ANYERR) return true;
+			if (to_type->type_kind == TYPE_FAULTTYPE || to_type->type_kind == TYPE_ANYERR) return true;
 		}
 		if (!ignore_failability) return false;
 	}
@@ -457,7 +457,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 			return to_type->type_kind == TYPE_ARRAY && type_is_integer(to_type->array.base);
 		case TYPE_ANYERR:
 			// May convert to a bool, an error type or an integer
-			return to_type == type_bool || to_kind == TYPE_ERRTYPE || type_is_integer(to_type);
+			return to_type == type_bool || to_kind == TYPE_FAULTTYPE || type_is_integer(to_type);
 		case ALL_SIGNED_INTS:
 		case ALL_UNSIGNED_INTS:
 			// We don't have to match pointer size if it's a constant.
@@ -480,7 +480,7 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 			return false;
 		case TYPE_ANY:
 			return to_kind == TYPE_POINTER;
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			// Allow MyError.A -> error, to an integer or to bool
 			return to_type->type_kind == TYPE_ANYERR || type_is_integer(to_type) || to_type == type_bool;
 		case TYPE_FLEXIBLE_ARRAY:
@@ -556,7 +556,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 		return false;
 	}
 
-	if (to == type_anyerr && from->type_kind == TYPE_ERRTYPE) return true;
+	if (to == type_anyerr && from->type_kind == TYPE_FAULTTYPE) return true;
 
 	// 3. Handle ints
 	if (type_is_integer(to))
@@ -1210,7 +1210,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			break;
 		case TYPE_ANYERR:
 			if (to->type_kind == TYPE_BOOL) return insert_cast(expr, CAST_EUBOOL, to_type);
-			if (to->type_kind == TYPE_ERRTYPE) return insert_cast(expr, CAST_EUER, to_type);
+			if (to->type_kind == TYPE_FAULTTYPE) return insert_cast(expr, CAST_EUER, to_type);
 			if (type_is_integer(to)) return insert_cast(expr, CAST_EUINT, to_type);
 			break;
 		case ALL_SIGNED_INTS:
@@ -1249,7 +1249,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to == type_bool) return enum_to_bool(expr, from_type, to_type);
 			if (to->type_kind == TYPE_POINTER) return enum_to_pointer(expr, from_type, to_type);
 			break;
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			if (to->type_kind == TYPE_ANYERR) return err_to_anyerr(expr, to_type);
 			if (to == type_bool) return err_to_bool(expr, to_type);
 			if (type_is_integer(to)) return insert_cast(expr, CAST_ERINT, to_type);
@@ -1309,7 +1309,7 @@ bool cast(Expr *expr, Type *to_type)
 	Type *to = type_flatten(to_type);
 
 	// Special case *! => error
-	if (to == type_anyerr || to->type_kind == TYPE_ERRTYPE)
+	if (to == type_anyerr || to->type_kind == TYPE_FAULTTYPE)
 	{
 		if (type_is_failable(from_type)) return voidfail_to_error(expr, to_type);
 	}

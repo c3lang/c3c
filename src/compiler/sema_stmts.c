@@ -261,7 +261,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	// 1. Check if we are doing an implicit declaration.
 	if (!var_type && ident->expr_kind == EXPR_IDENTIFIER)
 	{
-		implicit_declaration = !sema_find_symbol(context, ident->identifier_expr.ident);
+		implicit_declaration = !sema_symbol_is_defined_in_scope(context, ident->identifier_expr.ident);
 	}
 
 	// 2. If we have a type for the variable, resolve it.
@@ -377,7 +377,6 @@ static inline bool sema_analyse_try_unwrap_chain(SemaContext *context, Expr *exp
 
 	assert(expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
 	Expr **chain = expr->try_unwrap_chain_expr;
-	unsigned elements = vec_size(chain);
 
 	VECEACH(expr->try_unwrap_chain_expr, i)
 	{
@@ -408,7 +407,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	}
 	if (!type && ident->expr_kind == EXPR_IDENTIFIER)
 	{
-		implicit_declaration = !sema_find_symbol(context, ident->identifier_expr.ident);
+		implicit_declaration = !sema_symbol_is_defined_in_scope(context, ident->identifier_expr.ident);
 	}
 
 	if (!type && !implicit_declaration)
@@ -540,8 +539,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 
 		// Does the identifier exist in the parent scope?
 		// then again it can't be a variant unwrap.
-		Decl *decl_for_ident = sema_find_symbol(context, left->identifier_expr.ident);
-		if (decl_for_ident) goto NORMAL_EXPR;
+		if (sema_symbol_is_defined_in_scope(context, left->identifier_expr.ident)) goto NORMAL_EXPR;
 
 		Expr *right = exprptr(expr->binary_expr.right);
 		bool is_deref = right->expr_kind == EXPR_UNARY && right->unary_expr.operator == UNARYOP_DEREF;
@@ -2393,14 +2391,14 @@ static bool sema_analyse_errors(SemaContext *context, Ast *directive)
 		const char *ident = returns[i].ident;
 		if (type_info->kind != TYPE_INFO_IDENTIFIER)
 		{
-			SEMA_ERROR(type_info, "Expected an optenum name here.");
+			SEMA_ERROR(type_info, "Expected a fault name here.");
 			return false;
 		}
 		if (!sema_resolve_type_info(context, type_info)) return false;
 		Type *type = type_info->type;
-		if (type->type_kind != TYPE_ERRTYPE)
+		if (type->type_kind != TYPE_FAULTTYPE)
 		{
-			SEMA_ERROR(type_info, "An optenum type is required.");
+			SEMA_ERROR(type_info, "A fault type is required.");
 			return false;
 		}
 		if (!ident)
@@ -2419,7 +2417,7 @@ static bool sema_analyse_errors(SemaContext *context, Ast *directive)
 				goto NEXT;
 			}
 		}
-		sema_error_at(returns[i].span, "No optenum value '%s' found.", ident);
+		sema_error_at(returns[i].span, "No fault value '%s' found.", ident);
 		return false;
 NEXT:;
 	}
