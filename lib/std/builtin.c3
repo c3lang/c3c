@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::builtin;
 
-optenum VarCastResult
+fault VarCastResult
 {
 	TYPE_MISMATCH
 }
@@ -60,6 +60,7 @@ fn void panic(char* message, char *file, char *function, uint line) @autoimport
 	while (stack)
 	{
 		libc::fprintf(@libc::stderr(), "  at function %s (%s:%u)\n", stack.function, stack.file, stack.line);
+		if (stack == stack.prev) break;
 		stack = stack.prev;
 	}
 

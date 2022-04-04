@@ -360,7 +360,7 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 		case DECL_UNION:
 			domain = ATTR_UNION;
 			break;
-		case DECL_OPTENUM:
+		case DECL_FAULT:
 			domain = ATTR_ERROR;
 			break;
 		default:
@@ -735,7 +735,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 		case TYPE_FAILABLE:
 			SEMA_ERROR(decl, "You cannot create a distinct type from a failable.");
 			return false;
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			SEMA_ERROR(decl, "You cannot create a distinct type from an error type.");
 			return false;
 		case TYPE_ANYERR:
@@ -863,7 +863,7 @@ static inline bool sema_analyse_error(SemaContext *context, Decl *decl)
 		enum_value->enum_constant.ordinal = i;
 		DEBUG_LOG("* Ordinal: %d", i);
 		assert(enum_value->resolve_status == RESOLVE_NOT_DONE);
-		assert(enum_value->decl_kind == DECL_OPTVALUE);
+		assert(enum_value->decl_kind == DECL_FAULTVALUE);
 
 		// Start evaluating the constant
 		enum_value->resolve_status = RESOLVE_DONE;
@@ -2071,7 +2071,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 	copy->imports = decl_copy_list(unit->imports);
 	copy->global_decls = decl_copy_list(unit->global_decls);
 	copy->module = module;
-	assert(!unit->functions && !unit->macro_methods && !unit->methods && !unit->enums && !unit->ct_ifs && !unit->types && !unit->external_symbol_list);
+	assert(!unit->functions && !unit->macro_methods && !unit->methods && !unit->enums && !unit->ct_ifs && !unit->types);
 	return copy;
 }
 
@@ -2266,7 +2266,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			if (!sema_analyse_enum(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
-		case DECL_OPTENUM:
+		case DECL_FAULT:
 			if (!sema_analyse_error(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
@@ -2285,7 +2285,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_CT_CASE:
 		case DECL_CT_IF:
 		case DECL_CT_ASSERT:
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
 			UNREACHABLE

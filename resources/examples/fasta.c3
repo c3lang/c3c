@@ -8,10 +8,10 @@ const SEED = 42;
 
 uint seed = SEED;
 
-fn float fasta_rand(float max)
+fn float fasta_rand(float max_val)
 {
 	seed = (seed * IA + IC) % IM;
-	return max * seed / IM;
+	return max_val * seed / IM;
 }
 
 private char[] alu =

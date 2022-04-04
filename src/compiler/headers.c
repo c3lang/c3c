@@ -94,7 +94,7 @@ static void header_print_type(FILE *file, Type *type)
 			OUTPUT("*");
 			return;
 		case TYPE_ENUM:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			OUTPUT("enum %s__", type->decl->extname);
 			return;
 		case TYPE_FLEXIBLE_ARRAY:
@@ -191,7 +191,7 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 	{
 		case NON_TYPE_DECLS:
 		case DECL_ENUM_CONSTANT:
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 		case DECL_POISONED:
 		case DECL_VAR:
 		case DECL_BODYPARAM:
@@ -211,7 +211,7 @@ static void header_gen_decl(FILE *file, int indent, Decl *decl)
 		case DECL_ENUM:
 			header_gen_enum(file, indent, decl);
 			return;
-		case DECL_OPTENUM:
+		case DECL_FAULT:
 			header_gen_err(file, indent, decl);
 			return;
 	}

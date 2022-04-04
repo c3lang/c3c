@@ -1,6 +1,6 @@
 // #target: x64-darwin
 
-errnum MyErr
+fault MyErr
 {
     TEST
 }

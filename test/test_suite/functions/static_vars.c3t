@@ -11,7 +11,7 @@ fn int test()
 // #expect: foo.ll
 
 @test.x = internal unnamed_addr global i32 1, align 4
-@test.y = internal thread_local unnamed_addr global i32 2, align 4
+@test.y = internal thread_local(localdynamic) unnamed_addr global i32 2, align 4
 
 define i32 @foo.test()
 

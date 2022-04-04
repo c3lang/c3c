@@ -62,7 +62,7 @@ fn void test6()
 
 define Baz = Foo;
 define Bar = distinct int;
-optenum Err { FOO }
+fault Err { FOO }
 union Un { int x; }
 enum MyEnum { BAR }
 

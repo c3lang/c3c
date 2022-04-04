@@ -603,7 +603,8 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->decl_kind == DECL_FUNC);
 	// Resolve function backend type for function.
-	LLVMValueRef function = LLVMAddFunction(c->module, decl->extname, llvm_get_type(c, decl->type));
+
+	LLVMValueRef function = llvm_get_ref(c, decl);
 	decl->backend_ref = function;
 	FunctionPrototype *prototype = decl->type->func.prototype;
 
@@ -645,7 +646,9 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	}
 	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(prototype->call_abi));
 
-	switch (decl->visibility)
+	Visibility visibility = decl->visibility;
+	if (decl->is_external_visible) visibility = VISIBLE_PUBLIC;
+	switch (visibility)
 	{
 		case VISIBLE_EXTERN:
 			LLVMSetLinkage(function, decl->func_decl.attr_weak ? LLVMExternalWeakLinkage : LLVMExternalLinkage);
@@ -682,42 +685,3 @@ void llvm_emit_methods(GenContext *c, Decl **methods)
 	}
 }
 
-void llvm_emit_extern_decl(GenContext *context, Decl *decl)
-{
-	const char *name;
-	switch (decl->decl_kind)
-	{
-		case DECL_POISONED:
-			UNREACHABLE;
-		case DECL_FUNC:
-			name = decl_get_extname(decl);
-			decl->backend_ref = LLVMAddFunction(context->module, name,
-			                                    llvm_get_type(context, decl->type));
-			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
-			break;
-		case DECL_VAR:
-			name = decl_get_extname(decl);
-			decl->backend_ref = LLVMAddGlobal(context->module, llvm_get_type(context, decl->type), name);
-			LLVMSetVisibility(decl->backend_ref, LLVMDefaultVisibility);
-			break;
-		case DECL_BITSTRUCT:
-		case DECL_STRUCT:
-		case DECL_UNION:
-			llvm_get_type(context, decl->type);
-			// TODO // Fix typeid
-			break;
-		case DECL_ENUM:
-			break;
-		case DECL_OPTENUM:
-			llvm_emit_introspection_type_from_decl(context, decl);
-			// TODO // Fix typeid
-			return;
-		case DECL_TYPEDEF:
-		case DECL_DISTINCT:
-		case NON_TYPE_DECLS:
-		case DECL_ENUM_CONSTANT:
-		case DECL_OPTVALUE:
-		case DECL_BODYPARAM:
-			return;
-	}
-}

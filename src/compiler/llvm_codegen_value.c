@@ -97,14 +97,13 @@ void llvm_value_fold_failable(GenContext *c, BEValue *value)
 	}
 }
 
-void llvm_value_set_decl_address(BEValue *value, Decl *decl)
+void llvm_value_set_decl_address(GenContext *c, BEValue *value, Decl *decl)
 {
-	decl = decl_flatten(decl);
-	llvm_value_set_address(value, decl_ref(decl), decl->type, decl->alignment);
+	LLVMValueRef backend_ref = llvm_get_ref(c, decl);
+	llvm_value_set_address(value, backend_ref, decl->type, decl->alignment);
 
-	if (decl->decl_kind == DECL_VAR && IS_FAILABLE(decl))
+	if ((value->failable = llvm_get_fault_ref(c, decl)))
 	{
 		value->kind = BE_ADDRESS_FAILABLE;
-		value->failable = decl->var.failable_ref;
 	}
 }

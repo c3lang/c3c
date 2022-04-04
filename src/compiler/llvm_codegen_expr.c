@@ -3319,7 +3319,7 @@ void llvm_emit_derived_backend_type(GenContext *c, Type *type)
 			case TYPE_STRUCT:
 			case TYPE_UNION:
 			case TYPE_BITSTRUCT:
-			case TYPE_ERRTYPE:
+			case TYPE_FAULTTYPE:
 			case TYPE_DISTINCT:
 				origin = type->decl;
 				continue;
@@ -3991,7 +3991,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			LLVMValueRef value;
 			if (decl)
 			{
-				value = LLVMBuildPtrToInt(c->builder, decl->backend_ref, llvm_get_type(c, type_anyerr), "");
+				value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_anyerr), "");
 			}
 			else
 			{
@@ -4004,7 +4004,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		{
 			Decl *decl = expr->const_expr.enum_val;
 			return llvm_emit_const_expr(c, be_value, expr->const_expr.err_val->enum_constant.expr);
-			assert(decl->decl_kind == DECL_OPTVALUE);
+			assert(decl->decl_kind == DECL_FAULTVALUE);
 			llvm_value_set(be_value,
 						   LLVMBuildPtrToInt(c->builder, decl->backend_ref, llvm_get_type(c, type_anyerr), ""),
 						   type_anyerr);
@@ -4057,7 +4057,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_FUNC:
 		case TYPE_DISTINCT:
 		case TYPE_ENUM:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 		case TYPE_ANYERR:
 		case TYPE_BITSTRUCT:
 		case TYPE_FAILABLE:
@@ -4229,17 +4229,54 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 static void llvm_emit_intrinsic_expr(GenContext *c, unsigned intrinsic, BEValue *be_value, Expr *expr)
 {
 	unsigned arguments = vec_size(expr->call_expr.arguments);
-	assert(arguments < 5 && "Only has room for 4");
-	LLVMValueRef arg_results[4];
+	assert(arguments < 10 && "Only has room for 10");
+	LLVMValueRef arg_results[10];
+	if (intrinsic == intrinsic_id.memcpy) arguments -= 2;
+	if (intrinsic == intrinsic_id.memset) arguments--;
+
+	Expr **args = expr->call_expr.arguments;
 	for (unsigned i = 0; i < arguments; i++)
 	{
-		llvm_emit_expr(c, be_value, expr->call_expr.arguments[i]);
+		llvm_emit_expr(c, be_value, args[i]);
 		llvm_value_rvalue(c, be_value);
 		arg_results[i] = be_value->value;
 	}
-	LLVMTypeRef call_type = expr->type == type_void ? NULL : llvm_get_type(c, expr->type);
-	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, &call_type, call_type ? 1 : 0, arg_results, arguments);
+	LLVMTypeRef call_type[3];
+	int call_args = 0;
+	if (expr->type != type_void)
+	{
+		call_args = 1;
+		call_type[0] = llvm_get_type(c, expr->type);
+	}
+	else if (intrinsic == intrinsic_id.memcpy)
+	{
+		call_type[0] = call_type[1] = llvm_get_type(c, type_voidptr);
+		call_type[2] = llvm_get_type(c, type_usize);
+		call_args = 3;
+	}
+	else if (intrinsic == intrinsic_id.memset)
+	{
+		call_type[0] = llvm_get_type(c, type_voidptr);
+		call_type[1] = llvm_get_type(c, type_usize);
+		call_args = 2;
+	}
+	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, call_args, arg_results, arguments);
 	llvm_value_set(be_value, result, expr->type);
+	if (intrinsic == intrinsic_id.memcpy)
+	{
+		assert(args[4]->const_expr.const_kind == CONST_INTEGER);
+		assert(args[5]->const_expr.const_kind == CONST_INTEGER);
+		uint64_t dst_align = int_to_u64(args[4]->const_expr.ixx);
+		uint64_t src_align = int_to_u64(args[5]->const_expr.ixx);
+		if (dst_align > 0) llvm_attribute_add_call(c, result, attribute_id.align, 1, dst_align);
+		if (src_align > 0) llvm_attribute_add_call(c, result, attribute_id.align, 2, src_align);
+	}
+	else if (intrinsic == intrinsic_id.memset)
+	{
+		assert(args[4]->const_expr.const_kind == CONST_INTEGER);
+		uint64_t dst_align = int_to_u64(args[4]->const_expr.ixx);
+		if (dst_align > 0) llvm_attribute_add_call(c, result, attribute_id.align, 1, dst_align);
+	}
 }
 
 
@@ -4430,6 +4467,10 @@ unsigned llvm_get_intrinsic(BuiltinFunction func)
 			return intrinsic_id.pow;
 		case BUILTIN_EXP:
 			return intrinsic_id.exp;
+		case BUILTIN_MEMCOPY:
+			return intrinsic_id.memcpy;
+		case BUILTIN_MEMSET:
+			return intrinsic_id.memset;
 		case BUILTIN_VOLATILE_STORE:
 		case BUILTIN_VOLATILE_LOAD:
 			UNREACHABLE
@@ -4574,7 +4615,7 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 		// 2b. Set signature, function and function type
 		prototype = function_decl->type->func.prototype;
-		func = function_decl->backend_ref;
+		func = llvm_get_ref(c, function_decl);
 		assert(func);
 		func_type = llvm_get_type(c, function_decl->type);
 	}
@@ -4955,8 +4996,10 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 		// 17h. Assign the return param to be_value.
 		*result_value = synthetic_return_param;
+		if (c->debug.last_ptr) llvm_store(c, c->debug.last_ptr, c->debug.stack_slot, type_alloca_alignment(type_voidptr));
 		return;
 	}
+	if (c->debug.last_ptr) llvm_store(c, c->debug.last_ptr, c->debug.stack_slot, type_alloca_alignment(type_voidptr));
 
 	// 17i. The simple case here is where there is a normal return.
 	//      In this case be_value already holds the result
@@ -5294,7 +5337,7 @@ void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr)
 	else
 	{
 		llvm_emit_local_decl(c, expr->try_unwrap_expr.decl);
-		llvm_value_set_decl_address(&addr, expr->try_unwrap_expr.decl);
+		llvm_value_set_decl_address(c, &addr, expr->try_unwrap_expr.decl);
 	}
 	assert(llvm_value_is_addr(&addr));
 	llvm_emit_try_assign_try_catch(c, true, value, &addr, NULL, expr->try_unwrap_expr.failable);
@@ -5310,7 +5353,7 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 	else if (expr->catch_unwrap_expr.decl)
 	{
 		llvm_emit_local_decl(c, expr->catch_unwrap_expr.decl);
-		llvm_value_set_decl_address(&addr, expr->catch_unwrap_expr.decl);
+		llvm_value_set_decl_address(c, &addr, expr->catch_unwrap_expr.decl);
 	}
 	else
 	{
@@ -5410,8 +5453,8 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	EMIT_LOC(c, expr);
 	BEValue argc_value;
 	BEValue argv_value;
-	llvm_value_set_decl(&argc_value, expr->argv_expr.argc);
-	llvm_value_set_decl(&argv_value, expr->argv_expr.argv);
+	llvm_value_set_decl(c, &argc_value, expr->argv_expr.argc);
+	llvm_value_set_decl(c, &argv_value, expr->argv_expr.argv);
 	llvm_value_rvalue(c, &argc_value);
 	llvm_value_rvalue(c, &argv_value);
 	LLVMValueRef argv_ptr = argv_value.value;
@@ -5522,7 +5565,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			UNREACHABLE;
 		case EXPR_DECL:
 			llvm_emit_local_decl(c, expr->decl_expr);
-			llvm_value_set_decl_address(value, expr->decl_expr);
+			llvm_value_set_decl_address(c, value, expr->decl_expr);
 			return;
 		case EXPR_SLICE_ASSIGN:
 			llvm_emit_slice_assign(c, value, expr);
@@ -5592,7 +5635,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			// These are folded in the semantic analysis step.
 			UNREACHABLE
 		case EXPR_IDENTIFIER:
-			llvm_value_set_decl(value, expr->identifier_expr.decl);
+			llvm_value_set_decl(c, value, expr->identifier_expr.decl);
 			return;
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:

@@ -68,10 +68,10 @@ const char *decl_to_name(Decl *decl)
 			return "enum";
 		case DECL_ENUM_CONSTANT:
 			return "enum value";
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 			return "err value";
-		case DECL_OPTENUM:
-			return "optenum";
+		case DECL_FAULT:
+			return "fault";
 		case DECL_FUNC:
 			return "function";
 		case DECL_GENERIC:
@@ -153,8 +153,8 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, V
 		case DECL_STRUCT:
 			kind = TYPE_STRUCT;
 			break;
-		case DECL_OPTENUM:
-			kind = TYPE_ERRTYPE;
+		case DECL_FAULT:
+			kind = TYPE_FAULTTYPE;
 			break;
 		case DECL_ENUM:
 			kind = TYPE_ENUM;
@@ -171,7 +171,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type, V
 		case DECL_POISONED:
 		case DECL_VAR:
 		case DECL_ENUM_CONSTANT:
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 		case DECL_IMPORT:
 		case DECL_MACRO:
 		case DECL_GENERIC:

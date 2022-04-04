@@ -1,7 +1,7 @@
 extern fn int printf(char* fmt, ...);
 
 extern fn int! err();
-optenum FooErr
+fault FooErr
 {
     X
 }

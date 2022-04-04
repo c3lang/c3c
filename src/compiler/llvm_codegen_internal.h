@@ -176,6 +176,8 @@ typedef struct
 	unsigned convert_to_fp16;
 	unsigned lifetime_start;
 	unsigned lifetime_end;
+	unsigned memcpy;
+	unsigned memset;
 } LLVMIntrinsics;
 
 extern LLVMIntrinsics intrinsic_id;
@@ -227,8 +229,8 @@ void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i);
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment);
 void llvm_value_set_address_abi_aligned(BEValue *value, LLVMValueRef llvm_value, Type *type);
-void llvm_value_set_decl_address(BEValue *value, Decl *decl);
-void llvm_value_set_decl(BEValue *value, Decl *decl);
+void llvm_value_set_decl_address(GenContext *c, BEValue *value, Decl *decl);
+void llvm_value_set_decl(GenContext *c, BEValue *value, Decl *decl);
 void llvm_value_fold_failable(GenContext *c, BEValue *value);
 void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_pointer, unsigned index);
 
@@ -269,8 +271,10 @@ void llvm_emit_debug_location(GenContext *context, SourceSpan location);
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index);
 void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
+void llvm_add_global(GenContext *c, Decl *decl);
+LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl);
+LLVMValueRef llvm_get_fault_ref(GenContext *c, Decl *decl);
 
-void llvm_emit_extern_decl(GenContext *context, Decl *decl);
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init);
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
 INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr)
@@ -278,11 +282,12 @@ INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr)
 	assert(expr);
 	llvm_emit_expr(c, value, exprptr(expr));
 }
-
+void llvm_emit_local_global_variable_definition(GenContext *c, Decl *decl);
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type);
 void llvm_emit_global_variable_init(GenContext *c, Decl *decl);
 void llvm_set_private_linkage(LLVMValueRef alloc);
 void llvm_set_internal_linkage(LLVMValueRef alloc);
+void llvm_set_global_tls(Decl *decl);
 void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, Expr *expr);
 void llvm_emit_int_comp_zero(GenContext *c, BEValue *result, BEValue *lhs, BinaryOp binary_op);
 void llvm_emit_int_comparison(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op);
@@ -320,7 +325,7 @@ void llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLV
 void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, unsigned source_alignment);
 void llvm_emit_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str);
-static inline LLVMValueRef llvm_emit_store(GenContext *context, Decl *decl, LLVMValueRef value);
+static inline LLVMValueRef llvm_emit_store(GenContext *c, Decl *decl, LLVMValueRef value);
 void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *panic_name, SourceSpan loc);
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc);
 void llvm_emit_ptr_from_array(GenContext *c, BEValue *value);
@@ -384,16 +389,11 @@ static inline LLVMValueRef decl_failable_ref(Decl *decl)
 	return decl->var.failable_ref;
 }
 
-static inline LLVMValueRef decl_ref(Decl *decl)
-{
-	if (decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED) return decl_ref(decl->var.alias);
-	assert(!decl->is_value);
-	return decl->backend_ref;
-}
 
-static inline LLVMValueRef llvm_emit_store(GenContext *context, Decl *decl, LLVMValueRef value)
+
+static inline LLVMValueRef llvm_emit_store(GenContext *c, Decl *decl, LLVMValueRef value)
 {
-	return LLVMBuildStore(context->builder, value, decl_ref(decl));
+	return LLVMBuildStore(c->builder, value, llvm_get_ref(c, decl));
 }
 
 static inline LLVMValueRef llvm_emit_bitcast(GenContext *context, LLVMValueRef value, Type *type)

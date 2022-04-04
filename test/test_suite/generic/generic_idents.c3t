@@ -43,10 +43,6 @@ entry:
 
 // #expect: test.ll
 
-declare i32 @gen.int.mult(i32)
-
-declare double @gen.double.addMult(double, double, double)
-
 define i32 @test.getIt(i32 %0) #0 {
 entry:
   %1 = call i32 @gen.int.mult(i32 %0)
@@ -60,6 +56,9 @@ entry:
   ret double %1
 }
 
+declare i32 @gen.int.mult(i32)
+
+declare double @gen.double.addMult(double, double, double)
 
 // #expect: gen.double.ll
 

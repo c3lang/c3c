@@ -135,7 +135,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_STRUCT:
 		case DECL_BITSTRUCT:
 		case DECL_UNION:
-		case DECL_OPTENUM:
+		case DECL_FAULT:
 		case DECL_ENUM:
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
@@ -165,7 +165,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			}
 			FALLTHROUGH;
 		case DECL_FUNC:
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_MACRO:
@@ -213,7 +213,7 @@ bool sema_resolve_type(SemaContext *context, Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_DISTINCT:
 		case TYPE_ENUM:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 		case TYPE_FUNC:
 		case TYPE_STRUCT:
 		case TYPE_UNION:

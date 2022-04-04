@@ -38,9 +38,7 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_ENUM:
 			case TOKEN_GENERIC:
 			case TOKEN_DEFINE:
-			case TOKEN_OPTENUM:
-			case TOKEN_OPTNUM:
-			case TOKEN_ERRNUM:
+			case TOKEN_FAULT:
 				return;
 			case TOKEN_IDENT: // Incr arrays only
 			case TOKEN_CONST:
@@ -1786,44 +1784,48 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 
 /**
  * error_declaration
- *		: OPTENUM TYPE_IDENT ';'
- *		| OPTENUM TYPE_IDENT '{' error_data '}'
+ *		: FAULT TYPE_IDENT ';'
+ *		| FAULT TYPE_IDENT '{' error_data '}'
  *		;
  */
-static inline Decl *parse_optenum_declaration(ParseContext *c, Visibility visibility)
+static inline Decl *parse_fault_declaration(ParseContext *c, Visibility visibility)
 {
 	advance(c);
 	// advance_and_verify(context, TOKEN_ERRTYPE);
 
-	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_OPTENUM, visibility);
+	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_FAULT, visibility);
 
-	if (!consume_type_name(c, "optenum")) return poisoned_decl;
+	if (!consume_type_name(c, "fault")) return poisoned_decl;
 
 	TypeInfo *type = NULL;
 
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type_info_new_base(type_iptr->canonical, decl->span);
+	uint64_t ordinal = 0;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
-		Decl *opt_const = decl_new(DECL_OPTVALUE, symstr(c), c->span, decl->visibility);
-		if (!consume_const_name(c, "optional value"))
+		Decl *fault_const = decl_new(DECL_FAULTVALUE, symstr(c), c->span, decl->visibility);
+		if (!consume_const_name(c, "fault value"))
 		{
 			return poisoned_decl;
 		}
-		const char *name = opt_const->name;
+		const char *name = fault_const->name;
+		fault_const->enum_constant.parent = declid(decl);
+		fault_const->enum_constant.ordinal = ordinal;
+		ordinal++;
 		VECEACH(decl->enums.values, i)
 		{
 			Decl *other_constant = decl->enums.values[i];
 			if (other_constant->name == name)
 			{
-				SEMA_ERROR(opt_const, "This opt constant is declared twice.");
+				SEMA_ERROR(fault_const, "This fault value was declared twice.");
 				SEMA_PREV(other_constant, "The previous declaration was here.");
-				decl_poison(opt_const);
+				decl_poison(fault_const);
 				break;
 			}
 		}
-		vec_add(decl->enums.values, opt_const);
+		vec_add(decl->enums.values, fault_const);
 		// Allow trailing ','
 		if (!try_consume(c, TOKEN_COMMA))
 		{
@@ -2201,13 +2203,13 @@ static inline bool parse_doc_errors(ParseContext *c, AstId **docs_ref)
 		ASSIGN_TYPE_OR_RET(ret.type, parse_base_type(c), false);
 		if (ret.type->kind != TYPE_INFO_IDENTIFIER)
 		{
-			SEMA_ERROR(ret.type, "Expected an optenum type.");
+			SEMA_ERROR(ret.type, "Expected a fault type.");
 			return false;
 		}
 		if (try_consume(c, TOKEN_DOT))
 		{
 			ret.ident = c->data.string;
-			TRY_CONSUME_OR_RET(TOKEN_CONST_IDENT, "Expected an optenum value.", false);
+			TRY_CONSUME_OR_RET(TOKEN_CONST_IDENT, "Expected a fault value.", false);
 		}
 		ret.span = extend_span_with_token(ret.span, c->prev_span);
 		vec_add(returns, ret);
@@ -2404,11 +2406,9 @@ Decl *parse_top_level_statement(ParseContext *c)
 			ASSIGN_DECL_OR_RET(decl, parse_enum_declaration(c, visibility), poisoned_decl);
 			break;
 		}
-		case TOKEN_OPTENUM:
-		case TOKEN_OPTNUM:
-		case TOKEN_ERRNUM:
+		case TOKEN_FAULT:
 		{
-			ASSIGN_DECL_OR_RET(decl, parse_optenum_declaration(c, visibility), poisoned_decl);
+			ASSIGN_DECL_OR_RET(decl, parse_fault_declaration(c, visibility), poisoned_decl);
 			break;
 		}
 		case TOKEN_IDENT:

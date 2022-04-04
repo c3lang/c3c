@@ -218,6 +218,8 @@ const char *token_type_to_string(TokenType type)
 			return "extern";
 		case TOKEN_FALSE:
 			return "false";
+		case TOKEN_FAULT:
+			return "fault";
 		case TOKEN_FOR:
 			return "for";
 		case TOKEN_FOREACH:
@@ -264,13 +266,6 @@ const char *token_type_to_string(TokenType type)
 			return "var";
 		case TOKEN_WHILE:
 			return "while";
-		// Aliases to test out
-		case TOKEN_OPTENUM:
-			return "optenum";
-		case TOKEN_OPTNUM:
-			return "optnum";
-		case TOKEN_ERRNUM:
-			return "errnum";
 
 		// Named types
 		case TOKEN_VOID:

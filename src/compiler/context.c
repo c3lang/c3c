@@ -123,11 +123,7 @@ bool context_set_module(ParseContext *context, Path *path, const char **generic_
 void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 {
 	if (!decl->module || decl->module == unit->module || !decl->extname) return;
-	VECEACH(unit->external_symbol_list, i)
-	{
-		if (decl == unit->external_symbol_list[i]) return;
-	}
-	vec_add(unit->external_symbol_list, decl);
+	decl->is_external_visible = true;
 }
 
 
@@ -144,7 +140,7 @@ void decl_register(Decl *decl)
 		case DECL_CT_SWITCH:
 		case DECL_CT_ASSERT:
 		case DECL_ENUM_CONSTANT:
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_DECLARRAY:
@@ -153,7 +149,7 @@ void decl_register(Decl *decl)
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
 		case DECL_DISTINCT:
-		case DECL_OPTENUM:
+		case DECL_FAULT:
 		case DECL_ENUM:
 		case DECL_STRUCT:
 		case DECL_TYPEDEF:
@@ -226,7 +222,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_TYPEDEF:
-		case DECL_OPTENUM:
+		case DECL_FAULT:
 		case DECL_BITSTRUCT:
 			assert(decl->name);
 			vec_add(unit->types, decl);
@@ -245,7 +241,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			decl_set_external_name(decl);
 			decl_register(decl);
 			break;
-		case DECL_OPTVALUE:
+		case DECL_FAULTVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_CT_ELSE:

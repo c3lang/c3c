@@ -111,7 +111,7 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_POISONED:
 		case TYPE_TYPEDEF:
 			UNREACHABLE;
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 		case TYPE_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -214,7 +214,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_POISONED:
 			return "poisoned";
 		case TYPE_ENUM:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 		case TYPE_TYPEDEF:
 		case TYPE_STRUCT:
 		case TYPE_VOID:
@@ -299,7 +299,7 @@ RETRY:
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			type = type_iptr->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
@@ -384,7 +384,7 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_FUNC:
 		case TYPE_VECTOR:
 		case TYPE_ANYERR:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			return false;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -510,7 +510,7 @@ AlignSize type_abi_alignment(Type *type)
 			goto RETRY;
 		case TYPE_ENUM:
 			return type->decl->enums.type_info->type->canonical->builtin.abi_alignment;
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -811,7 +811,7 @@ bool type_is_user_defined(Type *type)
 		case TYPE_FUNC:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 			return true;
@@ -1234,7 +1234,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 		case TYPE_ANYERR:
 			return true;
 		case TYPE_BITSTRUCT:
@@ -1346,7 +1346,7 @@ bool type_may_have_sub_elements(Type *type)
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 		case TYPE_BITSTRUCT:
 			return true;
 		default:
@@ -1541,8 +1541,8 @@ Type *type_find_max_type(Type *type, Type *other)
 			// IMPROVE: should there be implicit conversion between one enum and the other in
 			// some way?
 			return NULL;
-		case TYPE_ERRTYPE:
-			if (other->type_kind == TYPE_ERRTYPE) return type_anyerr;
+		case TYPE_FAULTTYPE:
+			if (other->type_kind == TYPE_FAULTTYPE) return type_anyerr;
 			return NULL;
 		case TYPE_ANYERR:
 			return type_anyerr;

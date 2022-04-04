@@ -433,6 +433,23 @@ Decl *sema_find_symbol(SemaContext *context, const char *symbol)
 	return sema_resolve_symbol_common(context, &resolve);
 }
 
+bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol)
+{
+	NameResolve resolve = {
+			.suppress_error = true,
+			.symbol = symbol,
+			};
+	Decl *decl = sema_resolve_symbol_common(c, &resolve);
+	// Unknown symbol => not defined
+	if (!decl) return false;
+	// Defined in the same module => defined
+	if (decl->module == c->unit->module) return true;
+	// Not a variable or function => defined
+	if (decl->decl_kind != DECL_VAR && decl->decl_kind != DECL_FUNC) return true;
+	// Otherwise defined only if autoimport.
+	return decl->is_autoimport;
+}
+
 Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path)
 {
 	NameResolve resolve = {
@@ -492,7 +509,7 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 	if (decl->decl_kind == DECL_VAR && decl->var.shadow) goto ADD_VAR;
 	Decl *other = sema_find_symbol(context, decl->name);
 	assert(!other || other->module);
-	if (other && other->module == current_module)
+	if (other && (other->module == current_module || other->is_autoimport))
 	{
 		sema_shadow_error(decl, other);
 		decl_poison(decl);

@@ -187,7 +187,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			*elements = 2;
 			return true;
 		case TYPE_ANYERR:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			type = type_iptr;
 			goto RETRY;
 		case TYPE_TYPEDEF:

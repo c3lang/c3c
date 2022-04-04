@@ -134,7 +134,7 @@ static void param_expand(TB_DataType **params_ref, Type *type)
 		}
 		case TYPE_ENUM:
 		case TYPE_ANYERR:
-		case TYPE_ERRTYPE:
+		case TYPE_FAULTTYPE:
 			param_expand(params_ref, type_lowering(type));
 			return;
 		case TYPE_UNION:
@@ -873,7 +873,6 @@ void *tinybackend_gen(Module *module)
 	{
 		CompilationUnit *unit = module->units[j];
 
-		printf("  External symbols: %d\n", vec_size(unit->external_symbol_list));
 		printf("  Functions: %d\n", vec_size(unit->functions));
 	}
 

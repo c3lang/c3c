@@ -5,6 +5,7 @@ macro testbitcast(expr, $Type)
     $assert($sizeof(expr) == $Type.sizeof, "Cannot bitcast between types of different size.");
     $Type x = void;
     var $size = (usize)($sizeof(expr));
+
     $if ($alignof(expr) >= 8 && $alignof($Type) >= 8):
         ulong *b = (ulong*)(&expr);
         ulong *to = (ulong*)(&x);

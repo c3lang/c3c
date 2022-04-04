@@ -129,13 +129,17 @@ fn void test()
 
 ### Current status
 
+The current version of the compiler is alpha release 0.1.0.
+
 It's possible to try out the current C3 compiler in the browser: https://ide.judge0.com/ – this is courtesy of the
 developer of Judge0. 
 
-Design work on C3 is mostly done, but there are some areas that are unfinished, such
-as inline asm. Follow the issues [here](https://github.com/c3lang/c3c/issues).
+Design work on C3 complete aside from fleshing out details, such as
+inline asm. As the standard library work progresses, changes and improvements
+to the language will happen continuously.
+Follow the issues [here](https://github.com/c3lang/c3c/issues).
 
-If you have any suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues) 
+If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues) 
 or discuss C3 on its dedicated Discord: [https://discord.gg/qN76R87](https://discord.gg/qN76R87).
 
 The compiler should compile on Linux, Windows (under MSVC, Mingw or MSYS2) and MacOS, 
@@ -228,4 +232,4 @@ MIT licensed.
 
 #### Editor plugins
 
-Editor plugins can be found at https://github.com/c3lang/editor-plugins
+Editor plugins can be found at https://github.com/c3lang/editor-plugins.

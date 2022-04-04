@@ -135,7 +135,7 @@ fn void test_missing_no_cases(Baz x)
     }
 }
 
-optenum MathError
+fault MathError
 {
     DIVISION_BY_ZERO
 }
