@@ -8,7 +8,7 @@ fn void example_for()
     // the for-loop is the same as C99.
     for (int i = 0; i < 10; i++)
     {
-        io::printf("%d\n", i);
+        libc::printf("%d\n", i);
     }
 
     // also equal

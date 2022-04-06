@@ -17,7 +17,7 @@ fn void test()
 {
     Bar[] b = { { 1, 2 } };
     static Bar[] c = { { 1, 2 } };
-    io::printf("%d %d\n", b[0].y, c[0].y);
+    libc::printf("%d %d\n", b[0].y, c[0].y);
     b[0].y += 1;
     c[0].y += 1;
 

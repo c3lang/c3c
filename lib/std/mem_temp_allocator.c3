@@ -6,7 +6,7 @@ const TEMP_PAGES = 64;
 private char[TEMP_BLOCK_SIZE * TEMP_PAGES] allocator_static_storage;
 private void*[TEMP_PAGES] allocator_static_page_storage;
 
-SlotAllocator default_allocator = {
+SlotAllocator temp_allocator = {
     .pages = &allocator_static_storage,
     .page_size = TEMP_BLOCK_SIZE,
     .page_count = TEMP_PAGES,

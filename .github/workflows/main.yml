@@ -25,8 +25,11 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: git binutils mingw-w64-x86_64-mlir mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-llvm mingw-w64-x86_64-polly mingw-w64-x86_64-python mingw-w64-x86_64-lld
-
+          install: git binutils mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
+      - shell: msys2 {0}
+        run: |
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-13.0.1-2-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-13.0.1-2-any.pkg.tar.zst
       - name: CMake
         run: |
           mkdir build && cd build

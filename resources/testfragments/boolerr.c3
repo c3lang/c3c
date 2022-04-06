@@ -127,11 +127,12 @@ fn char* nameFromError(anyerr e)
 fn void main()
 {
     const char[][] URLS = { "good", "title-empty", "title-missing", "head-missing", "fail" };
-    DynamicArenaAllocator allocator;
-    allocator.init(1024);
+    DynamicArenaAllocator dynamic_arena;
+	dynamic_arena.init(1024);
+    Allocator allocator = mem::dynamic_arena_allocator(&dynamic_arena);
     foreach (char[] url : URLS)
     {
-        @mem::with_allocator(allocator.to_allocator())
+        @mem::with_allocator(allocator)
         {
 	        // Yes, it's pretty onerous to print strings for the moment in C3
             libc::printf(`Checking "https://%.*s/":` "\n", (int)url.len, url.ptr);
@@ -148,5 +149,5 @@ fn void main()
         };
         allocator.reset();
     }
-    allocator.destroy();
+    dynamic_arena.destroy();
 }

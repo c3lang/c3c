@@ -14,7 +14,7 @@ $else:
     $Type result = #call;
 $endif;
     long diff = (long)libc::clock() - t;
-    io::printf("'%s' took %lld us\n", $stringify(#call), diff);
+    libc::printf("'%s' took %lld us\n", $stringify(#call), diff);
 $if (!$is_void):
     return result;
 $endif;
@@ -22,7 +22,7 @@ $endif;
 
 fn void test()
 {
-    for (int i = 0; i < 1000; i++) io::printf("%d\n", i);
+    for (int i = 0; i < 1000; i++) libc::printf("%d\n", i);
 }
 
 fn void main()
@@ -30,7 +30,7 @@ fn void main()
     @timeit(test());
     int a = 100;
     int x = @timeit(1 + 3 + a);
-    io::printf("Result was %d\n", x);
+    libc::printf("Result was %d\n", x);
 }
 
 /* #expect: test.ll
