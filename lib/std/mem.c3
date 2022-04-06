@@ -66,24 +66,31 @@ enum AllocationKind
     CALLOC,
     REALLOC,
     FREE,
+    RESET,
 }
 
 fault AllocationFailure
 {
-    OUT_OF_MEMORY
+    OUT_OF_MEMORY,
+    UNSUPPORTED_OPERATION,
 }
 
-private tlocal Allocator thread_allocator = { SYSTEM_ALLOCATOR, null };
+private tlocal Allocator thread_allocator = { null, SYSTEM_ALLOCATOR };
 
 struct Allocator
 {
+    void* data;
     AllocatorFunction function;
-    void *data;
 }
 
 macro malloc($Type)
 {
     return ($Type*)(mem::alloc($Type.sizeof));
+}
+
+fn char[] alloc_bytes(usize bytes) @inline
+{
+	return ((char*)thread_allocator.alloc(bytes, 1))[0..bytes - 1]!!;
 }
 
 /**
@@ -140,6 +147,9 @@ fn void free(void* ptr)
 	return thread_allocator.free(ptr)!!;
 }
 
+/**
+ * Run with a specific allocator inside of the macro body.
+ **/
 macro void with_allocator(Allocator allocator; @body())
 {
 	Allocator old_allocator = thread_allocator;
@@ -150,6 +160,50 @@ macro void with_allocator(Allocator allocator; @body())
 
 fn void*! talloc(usize size)
 {
-    return default_allocator.alloc(size);
+    return temp_allocator.alloc(size);
 }
 
+struct MemoryArena
+{
+	void* memory;
+	usize total;
+	usize used;
+}
+
+/**
+ * @require alignment > 0 `alignment must be non zero`
+ * @require @math::is_power_of_2(alignment)
+ * @require size > 0
+ * @require alignment <= MAX_MEMORY_ALIGNMENT `alignment too big`
+ * @require this != null
+ **/
+fn void*! MemoryArena.alloc(MemoryArena* this, usize size, usize alignment, usize prefixed_bytes = 0)
+{
+	void* start_mem = this.memory;
+	void* unaligned_pointer = start_mem + this.used + prefixed_bytes;
+	if ((uptr)unaligned_pointer < (uptr)start_mem) return AllocationFailure.OUT_OF_MEMORY!;
+	usize offset_start = aligned_offset((usize)(uptr)unaligned_pointer, alignment) - (usize)(uptr)start_mem;
+	usize end = offset_start + size;
+	if (end > this.total || end < offset_start) return AllocationFailure.OUT_OF_MEMORY!;
+	this.used = end;
+	return start_mem + offset_start;
+}
+
+/**
+ * Initialize a memory arena for use using the provided bytes.
+ *
+ * @require this != null
+ **/
+fn void MemoryArena.init(MemoryArena* this, char[] data)
+{
+	this.memory = data.ptr;
+	this.total = data.len;
+	this.used = 0;
+}
+/**
+ * @require this != null
+ **/
+fn void MemoryArena.reset(MemoryArena* this)
+{
+	this.used = 0;
+}

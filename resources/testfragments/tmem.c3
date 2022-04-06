@@ -82,5 +82,5 @@ fn void main()
     String w;
     w.init("Yo man!");
     s.concat(&w);
-    io::printf("Message was: %s\n", s.zstr());
+    libc::printf("Message was: %s\n", s.zstr());
 }

@@ -21,13 +21,13 @@ int* fofeo = &&(int[2]{ 3, 4 });
 fn int main()
 {
     Bar w = arrbar[1];
-    io::printf("%d\n", arrbar[1].x);
+    libc::printf("%d\n", arrbar[1].x);
     int[] x = { 1, 2, 3 };
     int* y = &&(int[3]{ 123, 234, 567 });
     io::println("Start:");
-    io::printf("X len: %d mid element %d\n", (int)(x.len), x[1]);
-    io::printf("Y mid element %d\n", y[1]);
-    io::printf("Fofeo second element %d\n", fofeo[1]);
+    libc::printf("X len: %d mid element %d\n", (int)(x.len), x[1]);
+    libc::printf("Y mid element %d\n", y[1]);
+    libc::printf("Fofeo second element %d\n", fofeo[1]);
     Baz ffe = { .x = 1 };
     int[1] azz = {};
     int[*] a = {};

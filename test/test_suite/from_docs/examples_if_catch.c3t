@@ -32,15 +32,15 @@ fn void main()
     if (catch err = ratio)
     {
         case MathError.DIVISION_BY_ZERO:
-            io::printf("Division by zero\n");
+            libc::printf("Division by zero\n");
             return;
         default:
-            io::printf("Unexpected error!");
+            libc::printf("Unexpected error!");
             return;
     }
     // Flow typing makes "ratio"
     // have the type double here.
-    io::printf("Ratio was %f\n", ratio);
+    libc::printf("Ratio was %f\n", ratio);
 }
 
 /* #expect: demo.ll

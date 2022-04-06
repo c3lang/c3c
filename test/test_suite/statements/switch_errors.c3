@@ -151,10 +151,10 @@ fn void main()
     switch (catch err = testMayError()) // #error: Catch unwrapping is only allowed
     {
         case MathError.DIVISION_BY_ZERO:
-            io::printf("Division by zero\n");
+            libc::printf("Division by zero\n");
             return;
         default:
-            io::printf("Unexpected error!");
+            libc::printf("Unexpected error!");
             return;
     }
 }

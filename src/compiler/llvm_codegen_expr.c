@@ -2311,6 +2311,8 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	LLVMValueRef parent_addr = parent_addr_x.value;
 	LLVMValueRef parent_load_value = NULL;
 	LLVMValueRef parent_base;
+	bool is_failable = type_is_failable(parent_type);
+	parent_type = type_no_fail(parent_type);
 	switch (parent_type->type_kind)
 	{
 		case TYPE_POINTER:
@@ -2433,8 +2435,8 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 	// Calculate the size
 	LLVMValueRef size = LLVMBuildSub(c->builder, LLVMBuildAdd(c->builder, end.value, llvm_const_int(c, start.type, 1), ""), start.value, "size");
 	LLVMValueRef start_pointer;
-
-	switch (parent.type->type_kind)
+	Type *type = type_lowering(parent.type);
+	switch (type->type_kind)
 	{
 		case TYPE_ARRAY:
 		{
@@ -2459,7 +2461,8 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 	}
 
 	// Create a new subarray type
-	llvm_value_set(be_value, llvm_emit_aggregate_value(c, expr->type, start_pointer, size, NULL), expr->type);
+	Type *expr_type = type_lowering(expr->type);
+	llvm_value_set(be_value, llvm_emit_aggregate_value(c, expr_type, start_pointer, size, NULL), expr_type);
 }
 
 static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
@@ -4540,7 +4543,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	llvm_emit_intrinsic_expr(c, llvm_get_intrinsic(func), result_value, expr);
 }
 
-void llvm_add_call_attributes(GenContext *c, LLVMValueRef call_value, int start_index, int count, Type **types, ABIArgInfo **infos)
+void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int start_index, int count, Type **types, ABIArgInfo **infos)
 {
 	for (unsigned i = 0; i < count; i++)
 	{
@@ -4817,10 +4820,15 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		}
 	}
 
-	llvm_add_call_attributes(c, call_value, 1, non_variadic_params, params, abi_args);
+	llvm_add_abi_call_attributes(c, call_value, 1, non_variadic_params, params, abi_args);
 	if (prototype->abi_varargs)
 	{
-		llvm_add_call_attributes(c, call_value, 1 + non_variadic_params, vec_size(prototype->varargs), prototype->varargs, prototype->abi_varargs);
+		llvm_add_abi_call_attributes(c,
+		                             call_value,
+		                             1 + non_variadic_params,
+		                             vec_size(prototype->varargs),
+		                             prototype->varargs,
+		                             prototype->abi_varargs);
 	}
 
 	// 11. Process the return value.
@@ -4987,6 +4995,9 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 		// 17f. Emit the "after" block.
 		llvm_emit_block(c, after_block);
 
+		// Emit the current stack into the thread local or things will get messed up.
+		if (c->debug.last_ptr) llvm_store(c, c->debug.last_ptr, c->debug.stack_slot, type_alloca_alignment(type_voidptr));
+
 		// 17g. If void, be_value contents should be skipped.
 		if (!prototype->ret_by_ref)
 		{
@@ -4996,9 +5007,10 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 		// 17h. Assign the return param to be_value.
 		*result_value = synthetic_return_param;
-		if (c->debug.last_ptr) llvm_store(c, c->debug.last_ptr, c->debug.stack_slot, type_alloca_alignment(type_voidptr));
 		return;
 	}
+
+	// Emit the current stack into the thread local or things will get messed up.
 	if (c->debug.last_ptr) llvm_store(c, c->debug.last_ptr, c->debug.stack_slot, type_alloca_alignment(type_voidptr));
 
 	// 17i. The simple case here is where there is a normal return.

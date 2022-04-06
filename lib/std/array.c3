@@ -4,16 +4,22 @@
 module std::array;
 import std::mem;
 
-macro make($Type, usize elements)
+/**
+ * @require elements > 0
+ **/
+macro alloc($Type, usize elements)
 {
-    assert(elements > 0);
-    $Type* ptr = mem::alloc($sizeof($Type), elements);
+	assert($Type.max / elements < $Type.sizeof);
+    $Type* ptr = mem::alloc($Type.sizeof * elements, $alignof($Type));
     return ptr[0..(elements - 1)];
 }
 
-macro make_zero($Type, usize elements)
+/**
+ * @require elements > 0
+ **/
+macro calloc($Type, usize elements)
 {
-    assert(elements > 0);
-    $Type* ptr = mem::calloc($sizeof($Type), elements);
+	assert($Type.max / elements < $Type.sizeof);
+    $Type* ptr = mem::calloc($sizeof($Type) * elements, $alignof($Type));
     return ptr[0..(elements - 1)];
 }

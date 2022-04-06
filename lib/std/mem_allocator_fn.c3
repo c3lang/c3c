@@ -54,6 +54,8 @@ fn void*! libc_allocator_fn(void *unused, usize bytes, usize alignment, void* ol
             }
             if (!data) return AllocationFailure.OUT_OF_MEMORY!;
             return data;
+        case RESET:
+            return AllocationFailure.UNSUPPORTED_OPERATION!;
         case FREE:
             libc::free(old_pointer);
             return null;
