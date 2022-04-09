@@ -6,6 +6,7 @@ extern fn void printf(char*, ...);
 fn void main()
 {
     float[3] foo = { 2, 4.5, 8 };
+    float[<3>] foo2 = { 2, 4.5, 8 };
     foreach (a : foo)
     {
         printf("Value: %f\n", a);
@@ -28,6 +29,23 @@ fn void main()
         printf("Value2[%d]: %f\n", i, a);
     }
     foreach (double a : foo)
+    {
+        printf("Value3: %f\n", a);
+    }
+
+    foreach (a : foo2)
+    {
+        printf("Value: %f\n", a);
+    }
+    foreach (i, a : foo2)
+    {
+        printf("Value[%d]: %f\n", i, a);
+    }
+    foreach (char i, double a : foo2)
+    {
+        printf("Value2[%d]: %f\n", i, a);
+    }
+    foreach (double a : foo2)
     {
         printf("Value3: %f\n", a);
     }
