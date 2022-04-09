@@ -1265,51 +1265,6 @@ static bool parse_doc_start(Lexer *lexer)
 	return true;
 }
 
-// --- Lexer public functions
-
-// This works because everything would be an expression
-
-/**
- * @require foo > 102, "Foo needs to be at least 103"
- * @require abc != NULL, "abc must be a valid pointer"
- * @param [inout] foo, "The foo parameter"
- */
-
-
-/**
- * @require foo > 102 *Foo needs to be at least 103*
- * @require abc != NULL --> abc must be a valid pointer
- */
-
-// This works because one could require everything's inside
-// of the ()
-
-/**
- * @require (foo > 102) Foo needs to be at least 103
- * @require (abc != NULL) abc must be a valid pointer
- * @param [inout] foo The foo parameter
- */
-
-/**
- * @require foo > 102 // Foo needs to be at least 103
- * @require abc != NULL // abc must be a valid pointer
- * @param [inout] foo // The foo parameter
- */
-
-/**
- * @require foo > 102 `Foo needs to be at least 103`
- * @require abc != NULL `abc must be a valid pointer`
- * @param [inout] foo `The foo parameter`
- */
-
-// This works because // could behave differently in docs.
-/**
- * @require foo > 102 `Foo needs to be at least 103`
- * @require abc != NULL // abc must be a valid pointer
- */
-
-
-
 static bool lexer_scan_token_inner(Lexer *lexer)
 {
 	// Now skip the whitespace.
