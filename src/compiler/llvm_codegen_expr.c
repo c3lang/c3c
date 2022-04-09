@@ -2200,6 +2200,7 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 			}
 			break;
 		case TYPE_ARRAY:
+		case TYPE_VECTOR:
 			llvm_value_set(be_value, llvm_const_int(c, type_usize, expr_to_len->type->array.len), type_usize);
 			break;
 		default:
