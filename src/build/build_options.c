@@ -139,6 +139,7 @@ static const char* check_file(const char *file_path)
 	{
 		error_exit("Could not open file \"%s\".\n", file_path);
 	}
+	fclose(file);
 	return file_path;
 }
 
