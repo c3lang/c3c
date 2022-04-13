@@ -15,11 +15,34 @@ fn void testf()
     libc::printf("%f %f %f %f\n", w[0], w[1], w[2], w[3]);
     int[<4>] ww = y < z;
     libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
+    ww = y <= z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
+    ww = y > z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
+    ww = y >= z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
+    ww = y == z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
+    ww = y != z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
 }
 
 fn void testb()
 {
-    bool[<4>] d = { true, false, true, true };
+    bool[<4>] y = { true, false, true, true };
+    bool[<4>] z = { false, false, true, true };
+    ichar[<4>] ww = y < z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
+    ww = y <= z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
+    ww = y > z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
+    ww = y >= z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
+    ww = y == z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
+    ww = y != z;
+    libc::printf("%d %d %d %d\n", ww[0], ww[1], ww[2], ww[3]);
 }
 
 fn void testi()
@@ -40,8 +63,28 @@ fn void testi()
     libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
     w = z > y;
     libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
+    w = z >= y;
+    libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
+    w = z < y;
+    libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
+    w = z <= y;
+    libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
+    w = z == y;
+    libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
+    w = z != y;
+    libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
     uint[<4>] uz = { 2, 6, 2, 1 };
     w = uz > y;
+    libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
+    w = uz >= y;
+    libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
+    w = uz < y;
+    libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
+    w = uz <= y;
+    libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
+    w = uz == y;
+    libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
+    w = uz != y;
     libc::printf("%d %d %d %d\n", w[0], w[1], w[2], w[3]);
 }
 
