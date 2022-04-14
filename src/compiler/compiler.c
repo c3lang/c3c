@@ -306,21 +306,24 @@ void compiler_compile(void)
 	if (create_exe)
 	{
 		const char *output_name = active_target_name();
-		if (active_target.arch_os_target == default_target)
+		if (active_target.arch_os_target != default_target)
 		{
+			printf("Use platform linker.\n");
 			platform_linker(output_name, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
 			compiler_print_bench();
 		}
 		else
 		{
-			compiler_print_bench();
+			printf("Use built-in linker.\n");
 			if (!obj_format_linking_supported(platform_target.object_format) || !linker(output_name, obj_files,
 			                                                                            output_file_count))
 			{
 				printf("No linking is performed due to missing linker support.\n");
 				active_target.run_after_compile = false;
 			}
+			compiler_link_time = bench_mark();
+			compiler_print_bench();
 		}
 
 		if (active_target.run_after_compile)

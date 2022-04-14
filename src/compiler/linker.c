@@ -76,7 +76,7 @@ static void append_linker_pie_options(RelocModel reloc, const char ***args_ref)
 		case RELOC_DEFAULT:
 			UNREACHABLE
 		case RELOC_NONE:
-			vec_add(*args_ref, "-no_pie");
+			vec_add(*args_ref, "-no-pie");
 			break;
 		case RELOC_SMALL_PIC:
 		case RELOC_BIG_PIC:
