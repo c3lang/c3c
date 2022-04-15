@@ -33,6 +33,20 @@ char *strformat(const char *var, ...)
 	return buffer;
 }
 
+const char *str_without_suffix(const char *name, const char *suffix)
+{
+	size_t name_len = strlen(name);
+	size_t suffix_len = strlen(suffix);
+	if (name_len <= suffix_len) return NULL;
+	if (memcmp(name + name_len - suffix_len, suffix, suffix_len) != 0) return NULL;
+	size_t result_len = name_len - suffix_len;
+	char *name_copy = malloc_string(result_len + 1);
+	memcpy(name_copy, name, result_len);
+	name_copy[result_len] = 0;
+	return name_copy;
+}
+
+
 StringSlice strnexttok(StringSlice *slice, char separator)
 {
 	for (size_t i = 0; i < slice->len; i++)

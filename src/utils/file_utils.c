@@ -75,6 +75,7 @@ static inline bool is_path_separator(char c)
 #endif
 }
 
+
 /**
  * Split a file into path + filename, allocating memory for them and returning them in
  * the out params
@@ -273,7 +274,18 @@ void file_find_top_dir()
 	}
 }
 
-void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char *suffix1, const char *suffix2)
+bool file_has_suffix_in_list(const char *file_name, int name_len, const char **suffix_list, int suffix_count)
+{
+	for (int i = 0; i < suffix_count; i++)
+	{
+		const char *suffix = suffix_list[i];
+		int len = (int)strlen(suffix);
+		if (strncmp(&file_name[name_len - len], suffix, len) == 0) return true;
+	}
+	return false;
+}
+
+void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count)
 {
 #ifdef _MSC_VER
 	DIR *dir = opendir(strip_drive_prefix(path));
@@ -286,15 +298,12 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 		error_exit("Can't open the directory '%s'. Please check the paths. %s", path, strerror(errno));
 	}
 	struct dirent *ent;
-	size_t len1 = strlen(suffix1);
-	size_t len2 = strlen(suffix2);
 	while ((ent = readdir(dir)))
 	{
 		size_t namelen = strlen(ent->d_name);
 		if (namelen == 0 || ent->d_name[0] == '.') continue;
 
-		// Doesn't end with .c3
-		if (namelen < 3 || (strncmp(&ent->d_name[namelen - len1], suffix1, len1) != 0 && strncmp(&ent->d_name[namelen - len2], suffix2, len2) != 0))
+		if (namelen < 3 || !file_has_suffix_in_list(ent->d_name, namelen, suffix_list, suffix_count))
 		{
 			char *new_path = NULL;
 			char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
@@ -312,7 +321,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 			is_directory = S_ISDIR(st.st_mode);
 			if (is_directory && ent->d_name[0] != '.' && recursive)
 			{
-				file_add_wildcard_files(files, new_path, recursive, suffix1, suffix2);
+				file_add_wildcard_files(files, new_path, recursive, suffix_list, suffix_count);
 			}
 			free(new_path);
 			continue;

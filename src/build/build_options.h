@@ -204,9 +204,13 @@ typedef struct BuildOptions_
 {
 	const char* lib_dir[MAX_LIB_DIRS];
 	const char* linker_args[MAX_LIB_DIRS];
+	const char* linker_lib_dir[MAX_LIB_DIRS];
+	const char* linker_libs[MAX_LIB_DIRS];
 	const char* std_lib_dir;
 	int lib_count;
 	int linker_arg_count;
+	int linker_lib_dir_count;
+	int linker_lib_count;
 	int build_threads;
 	const char** files;
 	const char* output_name;

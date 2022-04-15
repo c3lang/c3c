@@ -22,3 +22,4 @@ extern double compiler_sema_time;
 extern double compiler_ir_gen_time;
 extern double compiler_codegen_time;
 extern double compiler_link_time;
+extern const char* c3_suffix_list[3];

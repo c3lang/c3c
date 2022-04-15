@@ -25,6 +25,8 @@ double compiler_ir_gen_time;
 double compiler_codegen_time;
 double compiler_link_time;
 
+const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
+
 void compiler_init(const char *std_lib_dir)
 {
 	compiler_init_time = -1;
@@ -334,11 +336,9 @@ void compiler_compile(void)
 	free(obj_files);
 }
 
-static const char **target_expand_source_names(const char** dirs, const char *suffix1, const char *suffix2, bool error_on_mismatch)
+static const char **target_expand_source_names(const char** dirs, const char **suffix_list, int suffix_count, bool error_on_mismatch)
 {
 	const char **files = NULL;
-	size_t len1 = strlen(suffix1);
-	size_t len2 = strlen(suffix2);
 	VECEACH(dirs, i)
 	{
 		const char *name = dirs[i];
@@ -349,26 +349,25 @@ static const char **target_expand_source_names(const char** dirs, const char *su
 			if (name_len == 1 || name[name_len - 2] == '/')
 			{
 				char *path = copy_string(name, name_len - 1);
-				file_add_wildcard_files(&files, path, false, suffix1, suffix2);
+				file_add_wildcard_files(&files, path, false, suffix_list, suffix_count);
 				continue;
 			}
 			if (name[name_len - 2] != '*') goto INVALID_NAME;
 			if (name_len == 2 || name[name_len - 3] == '/')
 			{
 				char *path = copy_string(name, name_len - 2);
-				file_add_wildcard_files(&files, path, true, suffix1, suffix2);
+				file_add_wildcard_files(&files, path, true, suffix_list, suffix_count);
 				continue;
 			}
 			goto INVALID_NAME;
 		}
 		if (name_len < 4) goto INVALID_NAME;
-		if (strcmp(&name[name_len - len1], suffix1) != 0 &&
-		    (name_len < 5 || strcmp(&name[name_len - len2], suffix2) != 0)) goto INVALID_NAME;
+		if (name_len < 5 || !file_has_suffix_in_list(name, name_len, suffix_list, suffix_count)) goto INVALID_NAME;
 		vec_add(files, name);
 		continue;
 		INVALID_NAME:
 		if (!error_on_mismatch) continue;
-		error_exit("File names must end with %s or they cannot be compiled: '%s' is invalid.", name, suffix1);
+		error_exit("File names must end with %s or they cannot be compiled: '%s' is invalid.", suffix_list[0], name);
 	}
 	return files;
 }
@@ -490,12 +489,14 @@ void print_syntax(BuildOptions *options)
 	}
 
 }
+
 void compile()
 {
-	active_target.sources = target_expand_source_names(active_target.source_dirs, ".c3", ".c3t", true);
+	active_target.sources = target_expand_source_names(active_target.source_dirs, c3_suffix_list, 3, true);
 	if (active_target.csource_dirs)
 	{
-		active_target.csources = target_expand_source_names(active_target.csource_dirs, ".c", ".c", false);
+		static const char* c_suffix_list[3] = { ".c" };
+		active_target.csources = target_expand_source_names(active_target.csource_dirs, c_suffix_list, 1, false);
 	}
 	global_context.sources = active_target.sources;
 	symtab_init(active_target.symtab_size);

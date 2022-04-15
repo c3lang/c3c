@@ -250,7 +250,7 @@ void sema_analysis_run(void)
 	// Add the standard library
 	if (global_context.lib_dir && !active_target.no_stdlib)
 	{
-		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true, ".c3", ".c3i");
+		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true, c3_suffix_list, 3);
 	}
 
 	// Load and parse all files.

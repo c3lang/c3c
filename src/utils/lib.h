@@ -28,13 +28,15 @@ typedef struct Task_
 
 typedef void *TaskQueueRef;
 
+const char *str_without_suffix(const char *name, const char *suffix);
 bool filenamesplit(const char *path, char** filename_ptr, char** directory_ptr);
 const char* expand_path(const char* path);
 const char* find_lib_dir(void);
 char *read_file(const char *path, size_t *return_size);
 void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
 void file_find_top_dir();
-void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char *suffix1, const char *suffix2);
+bool file_has_suffix_in_list(const char *file_name, int name_len, const char **suffix_list, int suffix_count);
+void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count);
 void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(void);
@@ -508,7 +510,7 @@ typedef struct StringSlice_
 char *strcat_arena(const char *a, const char *b);
 int str_in_list(const char *value, unsigned count, const char** elements);
 char *strformat(const char *var, ...) __printflike(1, 2);
-char *stringcopy(const char *start, size_t len);
+
 StringSlice strnexttok(StringSlice *slice, char separator);
 static inline bool slicestrcmp(StringSlice slice, const char *other)
 {

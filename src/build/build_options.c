@@ -100,6 +100,8 @@ static void usage(void)
 	OUTPUT("  -gline-tables-only    - Only emit line tables for debugging.");
 	OUTPUT("");
 	OUTPUT("");
+	OUTPUT("  -l <library>          - Link with the library provided.");
+	OUTPUT("  -L <library dir>      - Append the directory to the linker search paths.");
 	OUTPUT("  -z <argument>         - Send the <argument> as a parameter to the linker.");
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>      - Relocation model: none, pic, PIC, pie, PIE");
@@ -301,6 +303,15 @@ static void print_version(void)
 	OUTPUT("LLVM default target:               %s", llvm_target);
 }
 
+static void add_linker_arg(BuildOptions *options, const char *arg)
+{
+	if (options->linker_arg_count == MAX_LIB_DIRS)
+	{
+		error_exit("Too many linker arguments are given, more than %d\n", MAX_LIB_DIRS);
+	}
+	options->linker_args[options->linker_arg_count++] = arg;
+}
+
 static int parse_multi_option(const char *start, unsigned count, const char** elements)
 {
 	const char *arg = current_arg;
@@ -349,7 +360,7 @@ static void parse_option(BuildOptions *options)
 			break;
 		case 'z':
 			if (at_end()) error_exit("error: -z needs a value");
-			options->linker_args[options->linker_arg_count++] = next_arg();
+			add_linker_arg(options, next_arg());
 			return;
 		case 'o':
 			if (at_end()) error_exit("error: -o needs a name");
@@ -396,6 +407,28 @@ static void parse_option(BuildOptions *options)
 			}
 			options->compile_option = COMPILE_LEX_ONLY;
 			return;
+		case 'L':
+			if (at_end() || next_is_opt()) error_exit("error: -L needs a directory.");
+			add_linker_arg(options, "-L");
+			add_linker_arg(options, check_dir(next_arg()));
+			return;
+		case 'l':
+		{
+			if (at_end() || next_is_opt()) error_exit("error: -l needs a library name.");
+			const char *lib = next_arg();
+			const char *framework = str_without_suffix(lib, ".framework");
+			if (framework)
+			{
+				add_linker_arg(options, "-framework");
+				add_linker_arg(options, framework);
+			}
+			else
+			{
+				add_linker_arg(options, "-l");
+				add_linker_arg(options, lib);
+			}
+			return;
+		}
 		case 'P':
 			if (options->compile_option != COMPILE_NORMAL)
 			{
