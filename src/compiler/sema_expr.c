@@ -1332,7 +1332,7 @@ static inline bool sema_expand_call_arguments(SemaContext *context, CalledDecl *
 			if (variadic == VARIADIC_NONE)
 			{
 				// 15. We have too many parameters...
-				SEMA_ERROR(arg, "This argument would would exceed the number of parameters, did you add too many arguments?");
+				SEMA_ERROR(arg, "This argument would exceed the number of parameters, did you add too many arguments?");
 				return false;
 			}
 
