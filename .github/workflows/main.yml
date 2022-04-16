@@ -25,16 +25,15 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: git binutils mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
+          install: git binutils mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
       - shell: msys2 {0}
         run: |
             pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-13.0.1-2-any.pkg.tar.zst
             pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-13.0.1-2-any.pkg.tar.zst
       - name: CMake
         run: |
-          mkdir build && cd build
-          cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build .
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build build
 
       - name: Build testproject
         run: |
@@ -69,9 +68,8 @@ jobs:
 
       - name: CMake
         run: |
-          mkdir build && cd build
-          cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build .
+          cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build build
       - name: Build testproject
         run: |
           cd resources/testproject
@@ -95,7 +93,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install common deps
         run: |
-          sudo apt-get install zlib1g zlib1g-dev python3
+          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build
 
       - name: Install Clang ${{ matrix.llvm_version }}
         run: |
@@ -114,9 +112,8 @@ jobs:
 
       - name: CMake
         run: |
-          mkdir build && cd build
-          cmake .. -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} -DC3_LLVM_VERSION=${{matrix.llvm_version}} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build .
+          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} -DC3_LLVM_VERSION=${{matrix.llvm_version}} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build build
 
       - name: Build testproject
         run: |
@@ -140,16 +137,15 @@ jobs:
       - uses: actions/checkout@v3
       - name: Download LLVM
         run: |
-          brew install llvm@${{ matrix.llvm_version }} botan
+          brew install llvm@${{ matrix.llvm_version }} botan ninja
           echo "/usr/local/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
           TMP_PATH=$(xcrun --show-sdk-path)/user/include
           echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
 
       - name: CMake
         run: |
-          mkdir build && cd build
-          cmake .. -DC3_LLVM_VERSION=${{matrix.llvm_version}} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build .
+          cmake -B build -G Ninja -DC3_LLVM_VERSION=${{matrix.llvm_version}} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build build
 
       - name: Build testproject
         run: |
