@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 
 char bar = '\xaf';
 char bar = '\x0F';

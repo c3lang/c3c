@@ -1,4 +1,4 @@
-// #target: aarch64-linux
+// #target: linux-aarch64
 module test;
 
 struct Event

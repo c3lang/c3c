@@ -8,7 +8,9 @@
 #include "lib.h"
 #include "stdio.h"
 
-int str_in_list(const char *value, unsigned count, const char** elements)
+struct ScratchBuf scratch_buffer;
+
+int str_findlist(const char *value, unsigned count, const char** elements)
 {
 	for (unsigned i = 0; i < count; i++)
 	{
@@ -17,23 +19,68 @@ int str_in_list(const char *value, unsigned count, const char** elements)
 	return -1;
 }
 
-char *strformat(const char *var, ...)
+bool str_has_no_uppercase(const char *string)
 {
-	va_list list;
-	va_start(list, var);
-	int len = vsnprintf(NULL, 0, var, list);
-	va_end(list);
-	if (len < 1) return "";
-	va_start(list, var);
+	char c;
+	while ((c = *(string++)) != '\0')
+	{
+		if (char_is_upper(c)) return false;
+	}
+	return true;
+}
+
+bool str_is_valid_lowercase_name(const char *string)
+{
+	char c;
+	// Must start with a lower case
+	if (!char_is_lower(string[0])) return false;
+	int length = 0;
+	while ((c = *(string++)) != '\0')
+	{
+		if (!char_is_lower_alphanum_(c)) return false;
+		if (++length > 127) return false;
+	}
+	return true;
+}
+
+void str_ellide_in_place(char *string, size_t max_size_shown)
+{
+	size_t len = strlen(string);
+	if (max_size_shown > len) return;
+	for (int i = 0; i < 3; i++)
+	{
+		string[max_size_shown - i] = '.';
+	}
+	string[max_size_shown + 1] = 0;
+}
+
+char *str_vprintf(const char *var, va_list list)
+{
+	va_list copy;
+	va_copy(copy, list);
+	int len = vsnprintf(NULL, 0, var, copy);
+	va_end(copy);
+	if (len < 1)
+	{
+		return "";
+	}
 	char *buffer = malloc_string((uint32_t)len + 1);
 	int new_len = vsnprintf(buffer, len + 1, var, list);
-	va_end(list);
 	assert(len == new_len);
 	(void)new_len;
 	return buffer;
 }
 
-const char *str_without_suffix(const char *name, const char *suffix)
+char *str_printf(const char *var, ...)
+{
+	va_list list;
+	va_start(list, var);
+	char *res = str_vprintf(var, list);
+	va_end(list);
+	return res;
+}
+
+const char *str_remove_suffix(const char *name, const char *suffix)
 {
 	size_t name_len = strlen(name);
 	size_t suffix_len = strlen(suffix);
@@ -47,7 +94,7 @@ const char *str_without_suffix(const char *name, const char *suffix)
 }
 
 
-StringSlice strnexttok(StringSlice *slice, char separator)
+StringSlice slice_next_token(StringSlice *slice, char separator)
 {
 	for (size_t i = 0; i < slice->len; i++)
 	{
@@ -65,7 +112,7 @@ StringSlice strnexttok(StringSlice *slice, char separator)
 	return result;
 }
 
-void slicetrim(StringSlice *slice)
+void slice_trim(StringSlice *slice)
 {
 	size_t i;
 	for (i = 0; i < slice->len; i++)
@@ -81,9 +128,54 @@ void slicetrim(StringSlice *slice)
 	slice->len = i;
 }
 
+char *str_trim(char *str)
+{
+	str_trim_end(str);
+	return (char *)str_trim_start(str);
+}
 
+const char *str_trim_start(const char *str)
+{
+	while (str[0] != 0)
+	{
+		switch (str[0])
+		{
+			case ' ':
+			case '\t':
+			case '\n':
+			case '\r':
+				str++;
+				continue;
+			default:
+				break;
+		}
+		break;
+	}
+	return str;
+}
 
-char *strcat_arena(const char *a, const char *b)
+void str_trim_end(char *str)
+{
+	size_t len = strlen(str);
+	char *end = str + len - 1;
+	while (len > 0)
+	{
+		switch (*end)
+		{
+			case ' ':
+			case '\t':
+			case '\n':
+			case '\r':
+				len--;
+				end--;
+				continue;
+			default:
+				end[1] = 0;
+				return;
+		}
+	}
+}
+char *str_cat(const char *a, const char *b)
 {
 	unsigned a_len = (unsigned)strlen(a);
 	unsigned b_len = (unsigned)strlen(b);
@@ -94,46 +186,86 @@ char *strcat_arena(const char *a, const char *b)
 	return buffer;
 }
 
-#if PLATFORM_WINDOWS
+char *str_copy(const char *start, size_t str_len)
+{
+	char *dst = calloc_string(str_len + 1);
+	memcpy(dst, start, str_len);
+	// No need to set the end
+	return dst;
+}
 
-int asprintf(char **strp, const char *fmt, ...)
+void scratch_buffer_clear(void)
+{
+	scratch_buffer.len = 0;
+}
+
+void scratch_buffer_append_len(const char *string, size_t len)
+{
+	if (len + scratch_buffer.len > MAX_STRING_BUFFER - 1)
+	{
+		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
+	}
+	memcpy(scratch_buffer.str + scratch_buffer.len, string, len);
+	scratch_buffer.len += (uint32_t)len;
+}
+
+void scratch_buffer_append(const char *string)
+{
+	scratch_buffer_append_len(string, strlen(string));
+}
+
+void scratch_buffer_append_signed_int(int64_t i)
+{
+	uint32_t len_needed = (uint32_t)sprintf(&scratch_buffer.str[scratch_buffer.len], "%lld", (long long)i);
+	if (scratch_buffer.len + len_needed > MAX_STRING_BUFFER - 1)
+	{
+		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
+	}
+	scratch_buffer.len += len_needed;
+}
+
+void scratch_buffer_append_unsigned_int(uint64_t i)
+{
+	uint32_t len_needed = (uint32_t)sprintf(&scratch_buffer.str[scratch_buffer.len], "%llu", (unsigned long long)i);
+	if (scratch_buffer.len + len_needed > MAX_STRING_BUFFER - 1)
+	{
+		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
+	}
+	scratch_buffer.len += len_needed;
+}
+
+void scratch_buffer_printf(const char *format, ...)
 {
 	va_list args;
-	va_start(args, fmt);
-	int res = vasprintf(strp, fmt, args);
+	va_start(args, format);
+	uint32_t len_needed = (uint32_t)vsprintf(&scratch_buffer.str[scratch_buffer.len], format, args);
+	if (scratch_buffer.len + len_needed > MAX_STRING_BUFFER - 1)
+	{
+		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
+	}
 	va_end(args);
-	return res;
+	scratch_buffer.len += len_needed;
 }
 
-int vasnprintf(char **strp, const char *fmt, va_list args)
+void scratch_buffer_append_char(char c)
 {
-	va_list args_copy;
-	va_copy(args_copy, args);
-	int res = vsprintf(NULL, fmt, args);
-	if (res < 0) goto END;
-	char *buf = ccalloc(res + 1, 1);
-	if (NULL == buf) goto END;
-	sprintf(buf, fmt, args_copy);  // this can't fail, right?
-	*strp = buf;
-	END:
-	va_end(args_copy);
-	return res;
+	if (scratch_buffer.len + 1 > MAX_STRING_BUFFER - 1)
+	{
+		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
+	}
+
+	scratch_buffer.str[scratch_buffer.len++] = c;
 }
 
-int vasprintf(char** ret, const char* fmt, va_list args) {
-	int length = _vsnprintf(NULL, 0, fmt, args);
-	if (length < 0) { // check if _vsnprintf failed
-		return -1;
-	}
-	*ret = cmalloc(length + 1);
-	if (!*ret) { // check if malloc failed
-		return -1;
-	}
-	// Write String 
-	_vsnprintf(*ret, length + 1, fmt, args);
-	(*ret)[length] = '\0'; // make sure there is a null terminator
-	return length;
+char *scratch_buffer_to_string(void)
+{
+	scratch_buffer.str[scratch_buffer.len] = '\0';
+	return scratch_buffer.str;
+}
+
+char *scratch_buffer_copy(void)
+{
+	return str_copy(scratch_buffer.str, scratch_buffer.len);
 }
 
 
-#endif

@@ -4,14 +4,13 @@
 
 #include "benchmark.h"
 #include <time.h>
-
-static int begin = 0;
-
+#include <stdio.h>
+static clock_t begin = 0;
 void bench_begin(void)
 {
-	begin = (int)clock();
+	begin = clock();
 }
 double bench_mark(void)
 {
-	return (double)(clock() - (unsigned long)begin) / (double)CLOCKS_PER_SEC;
+	return (clock() - begin) / (double)CLOCKS_PER_SEC;
 }

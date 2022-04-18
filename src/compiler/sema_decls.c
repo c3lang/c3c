@@ -17,23 +17,23 @@ static bool sema_check_section(SemaContext *context, Decl *decl, Attr *attr)
 		return true;
 	}
 	scratch_buffer_clear();
-	StringSlice slice = strtoslice(section_string);
-	StringSlice segment = strnexttok(&slice, ',');
-	StringSlice section = strnexttok(&slice, ',');
-	StringSlice attrs = strnexttok(&slice, ',');
-	StringSlice stub_size_str = strnexttok(&slice, ',');
+	StringSlice slice = slice_from_string(section_string);
+	StringSlice segment = slice_next_token(&slice, ',');
+	StringSlice section = slice_next_token(&slice, ',');
+	StringSlice attrs = slice_next_token(&slice, ',');
+	StringSlice stub_size_str = slice_next_token(&slice, ',');
 
 	if (slice.len)
 	{
 		SEMA_ERROR(attr->expr, "Too many parts to the Mach-o section description.");
 	}
-	slicetrim(&segment);
+	slice_trim(&segment);
 	if (segment.len == 0)
 	{
 		SEMA_ERROR(attr->expr, "The segment is missing, did you type it correctly?");
 		return false;
 	}
-	slicetrim(&section);
+	slice_trim(&section);
 	if (section.len == 0)
 	{
 		SEMA_ERROR(attr->expr, "Mach-o requires 'segment,section' as the format, did you type it correctly?");
@@ -2172,7 +2172,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 		Path *path = CALLOCS(Path);
 		path->module = path_string;
 		path->span = module->name->span;
-		path->len = global_context.scratch_buffer_len;
+		path->len = scratch_buffer.len;
 		instantiated_module = module_instantiate_generic(module, path, decl->define_decl.generic_params);
 		sema_analyze_stage(instantiated_module, c->unit->module->stage);
 	}

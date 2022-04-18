@@ -661,11 +661,7 @@ bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
 {
 	if (!float_const_fits_type(&expr->const_expr, type_flatten(to_type)->type_kind))
 	{
-#if LONG_DOUBLE
-		ERROR_NODE(expr, "The value '%Lg' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.fxx.f, type_quoted_error_string(to_type));
-#else
 		SEMA_ERROR(expr, "The value '%g' is out of range for %s, so you need an explicit cast to truncate the value.", expr->const_expr.fxx.f, type_quoted_error_string(to_type));
-#endif
 		return false;
 	}
 	return true;

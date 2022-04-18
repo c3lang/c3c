@@ -35,7 +35,7 @@ static inline void decltable_resize(DeclTable *table)
 		*dest = id;
 	}
 	table->entries = new_data;
-	table->max_load = new_capacity * TABLE_MAX_LOAD;
+	table->max_load = (uint32_t)(new_capacity * TABLE_MAX_LOAD);
 	table->capacity = new_capacity;
 }
 
@@ -87,6 +87,6 @@ void decltable_init(DeclTable *table, uint32_t initial_size)
 	DeclId *entries = CALLOC(initial_size * sizeof(DeclId));
 	table->count = 0;
 	table->capacity = initial_size;
-	table->max_load = initial_size * TABLE_MAX_LOAD;
+	table->max_load = (uint32_t)(initial_size * TABLE_MAX_LOAD);
 	table->entries = entries;
 }

@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 module array_literal;
 
 fn double test(uint x)

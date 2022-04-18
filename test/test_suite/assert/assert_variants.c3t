@@ -1,4 +1,4 @@
-// #target: x64-windows
+// #target: windows-x64
 
 fn int foo()
 {

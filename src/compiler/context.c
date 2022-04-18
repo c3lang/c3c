@@ -66,9 +66,9 @@ static bool filename_to_module_in_buffer(const char *path)
 	for (int i = last_slash + 1; i < last_dot; i++)
 	{
 		char c = path[i];
-		if (is_letter(c) || is_digit(c))
+		if (char_is_letter(c) || char_is_digit(c))
 		{
-			c = (char)(is_upper(c) ? c + 'a' - 'A' : c);
+			c = (char)(char_is_upper(c) ? c + 'a' - 'A' : c);
 		}
 		else
 		{
@@ -89,9 +89,9 @@ bool context_set_module_from_filename(ParseContext *context)
     }
 
     TokenType type = TOKEN_IDENT;
-	const char *module_name = symtab_add(global_context.scratch_buffer,
-										 global_context.scratch_buffer_len,
-	                                     fnv1a(global_context.scratch_buffer, (uint32_t) global_context.scratch_buffer_len),
+	const char *module_name = symtab_add(scratch_buffer.str,
+	                                     scratch_buffer.len,
+	                                     fnv1a(scratch_buffer.str, (uint32_t) scratch_buffer.len),
 	                                     &type);
 
     if (type != TOKEN_IDENT)
@@ -103,14 +103,14 @@ bool context_set_module_from_filename(ParseContext *context)
     Path *path = CALLOCS(Path);
     path->span = INVALID_SPAN;
     path->module = module_name;
-    path->len = global_context.scratch_buffer_len;
+    path->len = scratch_buffer.len;
     return create_module_or_check_name(context->unit, path, NULL, true);
 }
 
 bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters, bool is_private)
 {
     // Note that we allow the illegal name for now, to be able to parse further.
-    if (!is_all_lower(path->module))
+    if (!str_has_no_uppercase(path->module))
     {
     	SEMA_ERROR(path, "A module name may not have any upper case characters.");
         return false;
@@ -277,8 +277,7 @@ bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
 {
     DEBUG_LOG("SEMA: Add import of '%s'.", path->module);
 
-
-	if (!is_all_lower(path->module))
+	if (!str_has_no_uppercase(path->module))
 	{
 		SEMA_ERROR(path, "A module is not expected to have any upper case characters, please change it.");
 		return false;

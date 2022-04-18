@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 
 int foo = 2.2 ? 1 : 2;
 double bar = false ? 1.0 : 2;

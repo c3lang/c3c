@@ -100,9 +100,9 @@ void symtab_init(uint32_t capacity)
 	{
 		const char* name = token_type_to_string((TokenType)i);
 		// Skip non-keywords
-		if (!is_lower(name[0]))
+		if (!char_is_lower(name[0]))
 		{
-			if ((name[0] != '@' && name[0] != '$') || !is_lower(name[1])) continue;
+			if ((name[0] != '@' && name[0] != '$') || !char_is_lower(name[1])) continue;
 		}
 		uint32_t len = (uint32_t)strlen(name);
 		TokenType type = (TokenType)i;
@@ -239,7 +239,7 @@ const char *symtab_add(const char *data, uint32_t len, uint32_t fnv1hash, TokenT
 		node->next = NULL;
 		node->index = fnv1hash;
 		node->type = *type;
-		return node->symbol = copy_string(data, len);
+		return node->symbol = str_copy(data, len);
 	}
 	SymtabEntry *bucket = first_bucket;
 	do
@@ -257,7 +257,7 @@ const char *symtab_add(const char *data, uint32_t len, uint32_t fnv1hash, TokenT
 	node->key_len = len;
 	node->index = fnv1hash;
 	node->type = *type;
-	return node->symbol = copy_string(data, len);
+	return node->symbol = str_copy(data, len);
 }
 
 

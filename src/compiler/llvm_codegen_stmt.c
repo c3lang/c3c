@@ -1018,7 +1018,7 @@ static inline void llvm_emit_asm_stmt(GenContext *c, Ast *ast)
 	LLVMValueRef asm_fn = LLVMGetInlineAsm(asm_fn_type,
 	                                       (char *)ast->asm_stmt.body->const_expr.string.chars,
 	                                       ast->asm_stmt.body->const_expr.string.len,
-	                                       scratch_buffer_to_string(), global_context.scratch_buffer_len,
+	                                       scratch_buffer_to_string(), scratch_buffer.len,
 	                                       ast->asm_stmt.is_volatile,
 	                                       true,
 	                                       LLVMInlineAsmDialectIntel

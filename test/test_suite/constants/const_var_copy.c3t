@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 module foo;
 const char[100] FOO = { [50] = 1 };
 const int[<4>] BAR = { 1, 2, 3, 4 };

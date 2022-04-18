@@ -1,4 +1,4 @@
-// #target: aarch64-linux
+// #target: linux-aarch64
 module splat;
 
 extern fn int sum_us(int... x);

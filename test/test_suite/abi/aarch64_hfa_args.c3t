@@ -1,4 +1,4 @@
-// #target: aarch64-darwin
+// #target: macos-aarch64
 module test;
 define Int8x16 = ichar[<16>];
 define Float32x3 = float[<3>];

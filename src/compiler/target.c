@@ -174,8 +174,7 @@ void llvm_dump(void)
 			}
 			LLVMTargetRef target;
 			char *error;
-			char *triplet = NULL;
-			asprintf(&triplet, "%s-unknown-%s-unknown", archs[i], os[j]);
+			char *triplet = str_printf("%s-unknown-%s-unknown", archs[i], os[j]);
 			if (LLVMGetTargetFromTriple(triplet, &target, &error)) continue;
 			LLVMTargetMachineRef machine = NULL;
 			if (!(machine = LLVMCreateTargetMachine(target, triplet, "", "", 0, LLVMRelocDefault, LLVMCodeModelDefault))) {
@@ -461,7 +460,9 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	if (target->feature.soft_float == SOFT_FLOAT_YES) platform_target.x64.soft_float = true;
 	if (platform_target.environment_type == ENV_TYPE_GNU)
 	{
-		platform_target.x64.is_mingw64 = platform_target.x64.is_win64;
+
+		//platform_target.x64.is_mingw64 = platform_target.x64.is_win64;
+		if (platform_target.x64.is_win64) DEBUG_LOG("Mingw");
 	}
 	if (platform_target.os == OS_TYPE_LINUX || platform_target.os == OS_TYPE_NETBSD)
 	{
@@ -484,29 +485,70 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	}
 }
 
+const char *arch_to_linker_arch(ArchType arch)
+{
+	switch (arch)
+	{
+		case ARCH_UNSUPPORTED:
+		case ARCH_TYPE_UNKNOWN:
+			return "unknown";
+		case ARCH_TYPE_ARM:
+			return "arm";
+		case ARCH_TYPE_ARMB:
+			return "armeb";
+		case ARCH_TYPE_AARCH64:
+			return "aarch64";
+		case ARCH_TYPE_AARCH64_BE:
+			return "aarch64_be";
+		case ARCH_TYPE_PPC:
+			return "ppc";
+		case ARCH_TYPE_PPC64:
+			return "ppc64";
+		case ARCH_TYPE_PPC64LE:
+			return "ppc64le";
+		case ARCH_TYPE_RISCV32:
+			return "riscv32";
+		case ARCH_TYPE_RISCV64:
+			return "riscv64";
+		case ARCH_TYPE_THUMB:
+			return "thumb";
+		case ARCH_TYPE_THUMBEB:
+			return "thumbeb";
+		case ARCH_TYPE_X86:
+			return "i386";
+		case ARCH_TYPE_X86_64:
+			return "x86_64";
+		case ARCH_TYPE_WASM32:
+			return "wasm32";
+		case ARCH_TYPE_WASM64:
+			return "wasm64";
+	}
+	UNREACHABLE;
+}
+
 static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
-		[X86_FREEBSD] = "i386-unknown-freebsd",
-		[X86_OPENBSD] = "i386-unknown-openbsd",
-		[X86_NETBSD] = "i386-unknown-netbsd",
-		[X86_MCU] = "i386-pc-elfiamcu",
-		[X86_WINDOWS] = "i386-pc-win32",
-		[X86_LINUX] = "i386-unknown-linux",
-		[X86_ELF] = "i386-unknown-elf",
-		[X64_DARWIN] = "x86_64-apple-darwin-1",
-		[X64_LINUX] = "x86_64-pc-linux-gnu",
-		[X64_WINDOWS] = "x86_64-pc-windows-msvc",
-		[X64_WINDOWS_GNU] = "x86_64-w64-windows-gnu",
-		[X64_NETBSD] = "x86_64-pc-netbsd",
-		[X64_FREEBSD] = "x86_64-pc-freebsd",
-		[X64_OPENBSD] = "x86_64-pc-openbsd",
-		[X64_ELF] = "x86_64-unknown-elf",
-		[AARCH64_LINUX] = "aarch64-unknown-linux-gnu",
-		[AARCH64_DARWIN] = "aarch64-apple-darwin",
-		[AARCH64_ELF] = "aarch64-unknown-elf",
-		[RISCV32_LINUX] = "riscv32-unknown-linux",
-		[RISCV32_ELF] = "riscv32-unknown-elf",
-		[RISCV64_LINUX] = "riscv64-unknown-linux",
-		[RISCV64_ELF] = "riscv64-unknown-elf",
+		[FREEBSD_X86] = "i386-unknown-freebsd",
+		[OPENBSD_X86] = "i386-unknown-openbsd",
+		[NETBSD_X86] = "i386-unknown-netbsd",
+		[MCU_X86] = "i386-pc-elfiamcu",
+		[WINDOWS_X86] = "i386-pc-win32",
+		[LINUX_X86] = "i386-unknown-linux",
+		[ELF_X86] = "i386-unknown-elf",
+		[MACOS_X64] = "x86_64-apple-darwin",
+		[LINUX_X64] = "x86_64-pc-linux-gnu",
+		[WINDOWS_X64] = "x86_64-pc-windows-msvc",
+		[MINGW_X64] = "x86_64-w64-windows-gnu",
+		[NETBSD_X64] = "x86_64-pc-netbsd",
+		[FREEBSD_X64] = "x86_64-pc-freebsd",
+		[OPENBSD_X64] = "x86_64-pc-openbsd",
+		[ELF_X64] = "x86_64-unknown-elf",
+		[LINUX_AARCH64] = "aarch64-unknown-linux-gnu",
+		[MACOS_AARCH64] = "aarch64-apple-darwin",
+		[ELF_AARCH64] = "aarch64-unknown-elf",
+		[LINUX_RISCV32] = "riscv32-unknown-linux",
+		[ELF_RISCV32] = "riscv32-unknown-elf",
+		[LINUX_RISCV64] = "riscv64-unknown-linux",
+		[ELF_RISCV64] = "riscv64-unknown-elf",
 		[WASM32] = "wasm32-unknown-unknown",
 		[WASM64] = "wasm64-unknown-unknown",
 };
@@ -530,9 +572,10 @@ static bool arch_is_supported(ArchType arch)
 			return false;
 	}
 }
+
 static ArchType arch_from_llvm_string(StringSlice slice)
 {
-#define STRCASE(_str, _arch) if (slicestrcmp(slice, _str)) return _arch;
+#define STRCASE(_str, _arch) if (slice_strcmp(slice, _str)) return _arch;
 	STRCASE("i386", ARCH_TYPE_X86)
 	STRCASE("i486", ARCH_TYPE_X86)
 	STRCASE("i586", ARCH_TYPE_X86)
@@ -635,28 +678,28 @@ static EnvironmentType environment_type_from_llvm_string(StringSlice env)
 		}
 	}
 
-#define STRCASE(_str, _arch) if (slicestrcmp(env, _str)) return _arch;
-		STRCASE("gnu", ENV_TYPE_GNU)
-		STRCASE("gnuabin32", ENV_TYPE_GNUABIN32)
-		STRCASE("gnuabi64", ENV_TYPE_GNUABI64)
-		STRCASE("gnueabihf", ENV_TYPE_GNUEABIHF)
-		STRCASE("gnueabi", ENV_TYPE_GNUEABI)
-		STRCASE("gnux32", ENV_TYPE_GNUX32)
-		STRCASE("code16", ENV_TYPE_CODE16)
-		STRCASE("eabi", ENV_TYPE_EABI)
-		STRCASE("eabihf", ENV_TYPE_EABIHF)
-		STRCASE("elfv1", ENV_TYPE_ELFV1)
-		STRCASE("elfv2", ENV_TYPE_ELFV2)
-		STRCASE("android", ENV_TYPE_ANDROID)
-		STRCASE("musl", ENV_TYPE_MUSL)
-		STRCASE("musleabi", ENV_TYPE_MUSLEABI)
-		STRCASE("musleabihf", ENV_TYPE_MUSLEABIHF)
-		STRCASE("msvc", ENV_TYPE_MSVC)
-		STRCASE("itanium", ENV_TYPE_ITANIUM)
-		STRCASE("cygnus", ENV_TYPE_CYGNUS)
-		STRCASE("coreclr", ENV_TYPE_CORECLR)
-		STRCASE("simulator", ENV_TYPE_SIMULATOR)
-		STRCASE("macabi", ENV_TYPE_MACABI)
+#define STRCASE(_str, _arch) if (slice_strcmp(env, _str)) return _arch;
+	STRCASE("gnu", ENV_TYPE_GNU)
+	STRCASE("gnuabin32", ENV_TYPE_GNUABIN32)
+	STRCASE("gnuabi64", ENV_TYPE_GNUABI64)
+	STRCASE("gnueabihf", ENV_TYPE_GNUEABIHF)
+	STRCASE("gnueabi", ENV_TYPE_GNUEABI)
+	STRCASE("gnux32", ENV_TYPE_GNUX32)
+	STRCASE("code16", ENV_TYPE_CODE16)
+	STRCASE("eabi", ENV_TYPE_EABI)
+	STRCASE("eabihf", ENV_TYPE_EABIHF)
+	STRCASE("elfv1", ENV_TYPE_ELFV1)
+	STRCASE("elfv2", ENV_TYPE_ELFV2)
+	STRCASE("android", ENV_TYPE_ANDROID)
+	STRCASE("musl", ENV_TYPE_MUSL)
+	STRCASE("musleabi", ENV_TYPE_MUSLEABI)
+	STRCASE("musleabihf", ENV_TYPE_MUSLEABIHF)
+	STRCASE("msvc", ENV_TYPE_MSVC)
+	STRCASE("itanium", ENV_TYPE_ITANIUM)
+	STRCASE("cygnus", ENV_TYPE_CYGNUS)
+	STRCASE("coreclr", ENV_TYPE_CORECLR)
+	STRCASE("simulator", ENV_TYPE_SIMULATOR)
+	STRCASE("macabi", ENV_TYPE_MACABI)
 		return ENV_TYPE_UNKNOWN;
 #undef STRCASE
 	}
@@ -672,7 +715,7 @@ static OsType os_from_llvm_string(StringSlice os_string)
 			break;
 		}
 	}
-#define STRCASE(_str, _os) if (slicestrcmp(os_string, _str)) return _os;
+#define STRCASE(_str, _os) if (slice_strcmp(os_string, _str)) return _os;
 	STRCASE("ananas", OS_TYPE_ANANAS)
 	STRCASE("cloudabi", OS_TYPE_CLOUD_ABI)
 	STRCASE("darwin", OS_TYPE_MACOSX)
@@ -715,7 +758,7 @@ static OsType os_from_llvm_string(StringSlice os_string)
 
 static VendorType vendor_from_llvm_string(StringSlice slice)
 {
-#define STRCASE(_str, _vendor) if (slicestrcmp(slice, _str)) return _vendor;
+#define STRCASE(_str, _vendor) if (slice_strcmp(slice, _str)) return _vendor;
 	STRCASE("apple", VENDOR_APPLE)
 	STRCASE("pc", VENDOR_PC)
 	STRCASE("scei", VENDOR_SCEI)
@@ -1256,14 +1299,7 @@ void target_setup(BuildTarget *target)
 
 	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT) target->arch_os_target = default_target;
 
-	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
-	{
-		platform_target.target_triple = LLVM_DEFAULT_TARGET_TRIPLE;
-	}
-	else
-	{
-		platform_target.target_triple = arch_to_target_triple[target->arch_os_target];
-	}
+	platform_target.target_triple = arch_to_target_triple[target->arch_os_target];
 
 	platform_target.alloca_address_space = 0;
 
@@ -1299,18 +1335,18 @@ void target_setup(BuildTarget *target)
 
 	LLVMTargetMachineRef machine = llvm_target_machine_create();
 	char *target_triple = LLVMGetTargetMachineTriple(machine);
-	platform_target.target_triple = copy_string(target_triple, strlen(target_triple));
+	platform_target.target_triple = str_copy(target_triple, strlen(target_triple));
 	LLVMDisposeMessage(target_triple);
 	LLVMDisposeTargetMachine(machine);
 
-	StringSlice target_triple_string = strtoslice(platform_target.target_triple);
-	platform_target.arch = arch_from_llvm_string(strnexttok(&target_triple_string, '-'));
+	StringSlice target_triple_string = slice_from_string(platform_target.target_triple);
+	platform_target.arch = arch_from_llvm_string(slice_next_token(&target_triple_string, '-'));
 	if (!arch_is_supported(platform_target.arch))
 	{
 		printf("WARNING! This architecture is not supported.\n");
 	}
-	platform_target.vendor = vendor_from_llvm_string(strnexttok(&target_triple_string, '-'));
-	platform_target.os = os_from_llvm_string(strnexttok(&target_triple_string, '-'));
+	platform_target.vendor = vendor_from_llvm_string(slice_next_token(&target_triple_string, '-'));
+	platform_target.os = os_from_llvm_string(slice_next_token(&target_triple_string, '-'));
 	platform_target.environment_type = environment_type_from_llvm_string(target_triple_string);
 
 	platform_target.float_abi = false;
@@ -1322,6 +1358,17 @@ void target_setup(BuildTarget *target)
 	platform_target.width_pointer = arch_pointer_bit_width(platform_target.os, platform_target.arch);
 	platform_target.alloca_address_space = 0;
 	platform_target.object_format = object_format_from_os(platform_target.os);
+	switch (platform_target.object_format)
+	{
+		case OBJ_FORMAT_COFF:
+		case OBJ_FORMAT_ELF:
+		case OBJ_FORMAT_WASM:
+			platform_target.use_comdat = true;
+			break;
+		default:
+			break;
+	}
+
 
 	platform_target.int128 = os_target_supports_int128(platform_target.os, platform_target.arch);
 	platform_target.vec128f = os_target_supports_vec(platform_target.os, platform_target.arch, 128, false);
@@ -1422,7 +1469,6 @@ void target_setup(BuildTarget *target)
 														platform_target.environment_type,
 														active_target.type != TARGET_TYPE_EXECUTABLE);
 	platform_target.pic_required = arch_os_pic_default_forced(platform_target.arch, platform_target.os);
-
 	// Override PIC, but only if the platform does not require PIC
 	if (target->reloc_model != RELOC_DEFAULT
 		&& (target->reloc_model != RELOC_NONE || !platform_target.pic_required))

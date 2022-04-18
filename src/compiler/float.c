@@ -178,7 +178,7 @@ Float float_from_string(const char *string, char **error)
 		if (error) *error = err_float_out_of_range;
 		return (Float){ .type = TYPE_POISONED };
 	}
-	char *expected_end = global_context.scratch_buffer + global_context.scratch_buffer_len;
+	char *expected_end = scratch_buffer.str + scratch_buffer.len;
 	if (d == 0 && end != expected_end)
 	{
 		if (error) *error = err_float_format_invalid;
@@ -200,7 +200,7 @@ Float float_from_hex(const char *string, char **error)
 	char c;
 	scratch_buffer_clear();
 	scratch_buffer_append("0x");
-	while ((c = *(index++)) && (c == '_' || is_hex(c)))
+	while ((c = *(index++)) && (c == '_' || char_is_hex(c)))
 	{
 		if (c == '_') continue;
 		scratch_buffer_append_char(c);
@@ -208,7 +208,7 @@ Float float_from_hex(const char *string, char **error)
 	if (c == '.')
 	{
 		scratch_buffer_append_char(c);
-		while ((c = *(index++)) && (c == '_' || is_hex(c)))
+		while ((c = *(index++)) && (c == '_' || char_is_hex(c)))
 		{
 			if (c == '_') continue;
 			scratch_buffer_append_char(c);
@@ -271,7 +271,7 @@ Float float_from_hex(const char *string, char **error)
 		if (error) *error = err_float_out_of_range;
 		return (Float){ .type = TYPE_POISONED };
 	}
-	if (d == 0 && end != global_context.scratch_buffer + global_context.scratch_buffer_len)
+	if (d == 0 && end != scratch_buffer.str + scratch_buffer.len)
 	{
 		if (error) *error = err_float_format_invalid;
 		return (Float){ .type = TYPE_POISONED };
