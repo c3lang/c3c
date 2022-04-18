@@ -9,5 +9,5 @@ fn int main()
     printf("Hello World!\n");
     bar::test();
     printf("Hello double: %d\n", test_doubler(11));
-    return 1;
+    return 17;
 }

@@ -126,14 +126,18 @@ void thread_compile_task_tb(void *compile_data)
 
 static const char *active_target_name(void)
 {
-	if (active_target.name) return active_target.name;
 	switch (active_target.arch_os_target)
 	{
-		case X86_WINDOWS:
-		case X64_WINDOWS:
-		case X64_WINDOWS_GNU:
+		case WINDOWS_X86:
+		case WINDOWS_X64:
+		case MINGW_X64:
+			if (active_target.name)
+			{
+				return str_cat(active_target.name, ".exe");
+			}
 			return "a.exe";
 		default:
+			if (active_target.name) return active_target.name;
 			return "a.out";
 	}
 }
@@ -271,7 +275,7 @@ void compiler_compile(void)
 		for (int i = 0; i < cfiles; i++)
 		{
 			char *filename = NULL;
-			bool split_worked = filenamesplit(active_target.csources[i], &filename, NULL);
+			bool split_worked = file_namesplit(active_target.csources[i], &filename, NULL);
 			assert(split_worked);
 			size_t len = strlen(filename);
 			// .c -> .o (quick hack to fix the name on linux)
@@ -308,7 +312,7 @@ void compiler_compile(void)
 	if (create_exe)
 	{
 		const char *output_name = active_target_name();
-		if (active_target.arch_os_target == default_target)
+		if (platform_target.os != OS_TYPE_WIN32 && active_target.arch_os_target == default_target && !active_target.force_linker)
 		{
 			platform_linker(output_name, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
@@ -327,8 +331,9 @@ void compiler_compile(void)
 
 		if (active_target.run_after_compile)
 		{
+			DEBUG_LOG("Will run");
 			printf("Launching %s...\n", output_name);
-			int ret = system(strformat("./%s", output_name));
+			int ret = system(platform_target.os == OS_TYPE_WIN32 ? output_name : str_printf("./%s", output_name));
 			printf("Program finished with exit code %d.", ret);
 		}
 	}
@@ -348,14 +353,14 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 		{
 			if (name_len == 1 || name[name_len - 2] == '/')
 			{
-				char *path = copy_string(name, name_len - 1);
+				char *path = str_copy(name, name_len - 1);
 				file_add_wildcard_files(&files, path, false, suffix_list, suffix_count);
 				continue;
 			}
 			if (name[name_len - 2] != '*') goto INVALID_NAME;
 			if (name_len == 2 || name[name_len - 3] == '/')
 			{
-				char *path = copy_string(name, name_len - 2);
+				char *path = str_copy(name, name_len - 2);
 				file_add_wildcard_files(&files, path, true, suffix_list, suffix_count);
 				continue;
 			}
@@ -490,8 +495,11 @@ void print_syntax(BuildOptions *options)
 
 }
 
+void resolve_libraries(void);
+
 void compile()
 {
+	symtab_init(active_target.symtab_size);
 	active_target.sources = target_expand_source_names(active_target.source_dirs, c3_suffix_list, 3, true);
 	if (active_target.csource_dirs)
 	{
@@ -499,8 +507,8 @@ void compile()
 		active_target.csources = target_expand_source_names(active_target.csource_dirs, c_suffix_list, 1, false);
 	}
 	global_context.sources = active_target.sources;
-	symtab_init(active_target.symtab_size);
 	target_setup(&active_target);
+	resolve_libraries();
 
 	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short, type_long);
 	setup_int_define("C_INT_SIZE", platform_target.width_c_int, type_long);
@@ -559,9 +567,9 @@ const char *get_object_extension(void)
 {
 	switch (active_target.arch_os_target)
 	{
-		case X64_WINDOWS:
-		case X86_WINDOWS:
-		case X64_WINDOWS_GNU:
+		case WINDOWS_X64:
+		case WINDOWS_X86:
+		case MINGW_X64:
 			return ".obj";
 		default:
 			return ".o";
@@ -600,69 +608,11 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 	return module;
 }
 
-void scratch_buffer_clear(void)
-{
-	global_context.scratch_buffer_len = 0;
-}
-
-void scratch_buffer_append_len(const char *string, size_t len)
-{
-	if (len + global_context.scratch_buffer_len > MAX_STRING_BUFFER - 1)
-	{
-		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
-	}
-	memcpy(global_context.scratch_buffer + global_context.scratch_buffer_len, string, len);
-	global_context.scratch_buffer_len += len;
-}
-
-void scratch_buffer_append(const char *string)
-{
-	scratch_buffer_append_len(string, strlen(string));
-}
-
-void scratch_buffer_append_signed_int(int64_t i)
-{
-	uint32_t len_needed = (uint32_t)sprintf(&global_context.scratch_buffer[global_context.scratch_buffer_len], "%lld", (long long)i);
-	if (global_context.scratch_buffer_len + len_needed > MAX_STRING_BUFFER - 1)
-	{
-		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
-	}
-	global_context.scratch_buffer_len += len_needed;
-}
-
-void scratch_buffer_append_unsigned_int(uint64_t i)
-{
-	uint32_t len_needed = (uint32_t)sprintf(&global_context.scratch_buffer[global_context.scratch_buffer_len], "%llu", (unsigned long long)i);
-	if (global_context.scratch_buffer_len + len_needed > MAX_STRING_BUFFER - 1)
-	{
-		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
-	}
-	global_context.scratch_buffer_len += len_needed;
-}
-
-void scratch_buffer_append_char(char c)
-{
-	if (global_context.scratch_buffer_len + 1 > MAX_STRING_BUFFER - 1)
-	{
-		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
-	}
-	global_context.scratch_buffer[global_context.scratch_buffer_len++] = c;
-}
-
-char *scratch_buffer_to_string(void)
-{
-	global_context.scratch_buffer[global_context.scratch_buffer_len] = '\0';
-	return global_context.scratch_buffer;
-}
 
 const char *scratch_buffer_interned(void)
 {
 	TokenType type = TOKEN_INVALID_TOKEN;
-	return symtab_add(global_context.scratch_buffer, global_context.scratch_buffer_len,
-	                  fnv1a(global_context.scratch_buffer, global_context.scratch_buffer_len), &type);
+	return symtab_add(scratch_buffer.str, scratch_buffer.len,
+	                  fnv1a(scratch_buffer.str, scratch_buffer.len), &type);
 }
 
-char *scratch_buffer_copy(void)
-{
-	return copy_string(global_context.scratch_buffer, global_context.scratch_buffer_len);
-}

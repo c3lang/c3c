@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 module foo;
 
 int x1 = 2 ^ 4;

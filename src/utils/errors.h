@@ -48,7 +48,7 @@
 #define TODO FATAL_ERROR("TODO reached");
 
 #define TEST_ASSERT(condition_, string_) while (!(condition_)) { FATAL_ERROR(string_); }
-#define TEST_ASSERTF(condition_, string_, ...) while (!(condition_)) { char* str_; asprintf(&str_, string_, __VA_ARGS__); FATAL_ERROR(str_); }
+#define TEST_ASSERTF(condition_, string_, ...) while (!(condition_)) { char* str_ = str_printf(string_, __VA_ARGS__); FATAL_ERROR(str_); }
 
 #define EXPECT(_string, _value, _expected) \
  do { long long __tempval1 = _value; long long __tempval2 = _expected; \

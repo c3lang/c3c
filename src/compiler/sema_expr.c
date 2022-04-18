@@ -3083,11 +3083,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		{
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.const_kind = CONST_FLOAT;
-#if LONG_DOUBLE
-			expr->const_expr.fxx = (Float) { nanl(""), canonical->type_kind };
-#else
 			expr->const_expr.fxx = (Float) { nan(""), canonical->type_kind };
-#endif
 			expr->type = parent->type;
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
@@ -7376,7 +7372,7 @@ bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char
 	for (ArraySize i = 0; i < len; i++)
 	{
 		char ch = string[i];
-		if (!is_alphanum_(ch))
+		if (!char_is_alphanum_(ch))
 		{
 			if (ch == ':' && i > 0 && string[i + 1] == ':')
 			{
@@ -7407,7 +7403,7 @@ bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char
 	for (size_t i = 0; i < len; i++)
 	{
 		char c = string[i];
-		if (!is_alphanum_(c)) return false;
+		if (!char_is_alphanum_(c)) return false;
 		hash = FNV1a(c, hash);
 	}
 	*ident_ref = symtab_find(string, len, hash, type_ref);

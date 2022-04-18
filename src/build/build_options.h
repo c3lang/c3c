@@ -146,6 +146,20 @@ static const char *vector_capability[5] = {
 
 typedef enum
 {
+	WIN_CRT_DEFAULT = -1,
+	WIN_CRT_NONE = 0,
+	WIN_CRT_DYNAMIC = 1,
+	WIN_CRT_STATIC = 2,
+} WinCrtLinking;
+
+static const char *wincrt_linking[3] = {
+		[WIN_CRT_NONE] = "none",
+		[WIN_CRT_DYNAMIC] = "dynamic",
+		[WIN_CRT_STATIC] = "static",
+};
+
+typedef enum
+{
 	RELOC_DEFAULT = -1,
 	RELOC_NONE = 0,
 	RELOC_SMALL_PIC = 1,
@@ -173,44 +187,53 @@ typedef enum
 typedef enum
 {
 	ARCH_OS_TARGET_DEFAULT = 0,
-	X86_FREEBSD,
-	X86_OPENBSD,
-	X86_NETBSD,
-	X86_LINUX,
-	X86_WINDOWS,
-	X86_MCU,
-	X86_ELF,
-	X64_DARWIN,
-	X64_LINUX,
-	X64_NETBSD,
-	X64_FREEBSD,
-	X64_OPENBSD,
-	X64_WINDOWS,
-	X64_WINDOWS_GNU,
-	X64_ELF,
-	AARCH64_LINUX,
-	AARCH64_DARWIN,
-	AARCH64_ELF,
-	RISCV32_LINUX,
-	RISCV32_ELF,
-	RISCV64_LINUX,
-	RISCV64_ELF,
+	LINUX_X86,
+	LINUX_X64,
+	WINDOWS_X86,
+	WINDOWS_X64,
+	MINGW_X64,
+	MACOS_X64,
+	MACOS_AARCH64,
+	LINUX_AARCH64,
+	LINUX_RISCV32,
+	LINUX_RISCV64,
 	WASM32,
 	WASM64,
-	ARCH_OS_TARGET_LAST = WASM64
+	ELF_X86,
+	ELF_X64,
+	ELF_AARCH64,
+	ELF_RISCV32,
+	ELF_RISCV64,
+	FREEBSD_X86,
+	FREEBSD_X64,
+	OPENBSD_X86,
+	OPENBSD_X64,
+	NETBSD_X86,
+	NETBSD_X64,
+	MCU_X86,
+	ARCH_OS_TARGET_LAST = MCU_X86
 } ArchOsTarget;
 
 typedef struct BuildOptions_
 {
-	const char* lib_dir[MAX_LIB_DIRS];
-	const char* linker_args[MAX_LIB_DIRS];
-	const char* linker_lib_dir[MAX_LIB_DIRS];
-	const char* linker_libs[MAX_LIB_DIRS];
-	const char* std_lib_dir;
+	const char *lib_dir[MAX_LIB_DIRS];
+	int lib_dir_count;
+	const char *libs[MAX_LIB_DIRS];
 	int lib_count;
+	const char* linker_args[MAX_LIB_DIRS];
 	int linker_arg_count;
+	const char* linker_lib_dir[MAX_LIB_DIRS];
 	int linker_lib_dir_count;
+	const char* linker_libs[MAX_LIB_DIRS];
 	int linker_lib_count;
+	const char* std_lib_dir;
+	struct {
+		const char *sdk;
+		WinCrtLinking crt_linking;
+	} win;
+	struct {
+		const char *sdk;
+	} macos;
 	int build_threads;
 	const char** files;
 	const char* output_name;
@@ -231,6 +254,7 @@ typedef struct BuildOptions_
 	bool emit_bitcode;
 	bool test_mode;
 	bool no_stdlib;
+	bool force_linker;
 	const char *panicfn;
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
@@ -255,13 +279,33 @@ typedef enum
 
 typedef struct
 {
+	ArchOsTarget arch_os;
+	const char **link_flags;
+	const char **linked_libs;
+	const char **depends;
+} LibraryTarget;
+
+typedef struct
+{
+	const char *dir;
+	const char *provides;
+	const char **depends;
+	LibraryTarget *target_used;
+	LibraryTarget **targets;
+} Library;
+
+typedef struct
+{
 	TargetType type;
+	Library **library_list;
 	const char *name;
 	const char *version;
 	const char *langrev;
 	const char **source_dirs;
 	const char **sources;
-	const char **libraries;
+	const char **libdirs;
+	const char **libs;
+	const char **linker_libdirs;
 	const char *cpu;
 	const char **link_args;
 	bool run_after_compile : 1;
@@ -275,6 +319,7 @@ typedef struct
 	bool no_stdlib : 1;
 	bool emit_object_files : 1;
 	bool no_link : 1;
+	bool force_linker : 1;
 	OptimizationLevel optimization_level;
 	SizeOptimizationLevel size_optimization_level;
 	DebugInfo debug_info;
@@ -296,6 +341,15 @@ typedef struct
 		bool trap_on_wrap : 1;
 		bool safe_mode : 1;
 	} feature;
+	struct
+	{
+		const char *sdk;
+	} macos;
+	struct
+	{
+		const char *sdk;
+		WinCrtLinking crt_linking;
+	} win;
 } BuildTarget;
 
 

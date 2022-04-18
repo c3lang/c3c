@@ -14,58 +14,54 @@ void load_library_files(void) {}
 void load_files(void) {}
 
 #if defined(_M_X64) || defined(_M_AMD64)
-	#if defined(__MINGW32__)
-ArchOsTarget default_target = X64_WINDOWS_GNU;
-	#else
-ArchOsTarget default_target = X64_WINDOWS;
-	#endif
+ArchOsTarget default_target = WINDOWS_X64;
 #elif defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
 	#if defined(__MACH__)
-ArchOsTarget default_target = X64_DARWIN;
+ArchOsTarget default_target = MACOS_X64;
 	#elif defined(__linux__) && __linux__
-ArchOsTarget default_target = X64_LINUX;
+ArchOsTarget default_target = LINUX_X64;
 	#elif defined(__NetBSD__)
-ArchOsTarget default_target = X64_NETBSD;
+ArchOsTarget default_target = NETBSD_X64;
 	#elif defined(__FreeBSD__)
-ArchOsTarget default_target = X64_FREEBSD;
+ArchOsTarget default_target = FREEBSD_X64;
 	#elif defined(__OpenBSD__)
-ArchOsTarget default_target = X64_OPENBSD;
+ArchOsTarget default_target = OPENBSD_X64;
 	#else
-ArchOsTarget default_target = X64_ELF;
+ArchOsTarget default_target = ELF_X64;
 	#endif
 #elif defined(__aarch64__) || defined(_M_ARM64)
 	#if defined(__MACH__)
-ArchOsTarget default_target = AARCH64_DARWIN;
+ArchOsTarget default_target = MACOS_AARCH64;
 	#elif defined(__linux__) && __linux__
-ArchOsTarget default_target = AARCH64_LINUX;
+ArchOsTarget default_target = LINUX_AARCH64;
 	#else
-ArchOsTarget default_target = AARCH64_ELF;
+ArchOsTarget default_target = ELF_AARCH64;
 	#endif
 #elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
 	#if defined(__linux__) && __linux__
-ArchOsTarget default_target = X86_LINUX;
+ArchOsTarget default_target = LINUX_X86;
 	#elif defined(__FreeBSD__)
-ArchOsTarget default_target = X86_FREEBSD;
+ArchOsTarget default_target = FREEBSD_X86;
 	#elif defined(__OpenBSD__)
-ArchOsTarget default_target = X86_OPENBSD;
+ArchOsTarget default_target = OPENBSD_X86;
 	#elif defined(__NetBSD__)
-ArchOsTarget default_target = X86_NETBSD;
+ArchOsTarget default_target = NETBSD_X86;
 	#elif defined(_MSC_VER) && _MSC_VER
-ArchOsTarget default_target = X86_WINDOWS;
+ArchOsTarget default_target = WINDOWS_X86;
 	#else
-ArchOsTarget default_target = X86_ELF;
+ArchOsTarget default_target = ELF_X86;
 	#endif
 #elif defined(__riscv32)
 	#if defined(__linux__) && __linux__
-ArchOsTarget default_target = RISCV32_LINUX;
+ArchOsTarget default_target = LINUX_RISCV32;
 	#else
-ArchOsTarget default_target = RISCV32_ELF;
+ArchOsTarget default_target = ELF_RISCV32;
 	#endif
 #elif defined(__riscv64)
 	#if defined(__linux__) && __linux__
-ArchOsTarget default_target = RISCV64_LINUX;
+ArchOsTarget default_target = LINUX_RISCV64;
 	#else
-ArchOsTarget default_target = RISCV64_ELF;
+ArchOsTarget default_target = ELF_RISCV64;
 	#endif
 #else
 ArchOsTarget default_target = ARCH_OS_TARGET_DEFAULT;
@@ -163,7 +159,11 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	target->no_stdlib = options->no_stdlib;
 	target->emit_llvm = options->emit_llvm;
+	target->force_linker = options->force_linker;
 	target->panicfn = options->panicfn;
+	if (options->macos.sdk) target->macos.sdk = options->macos.sdk;
+	if (options->win.sdk) target->win.sdk = options->win.sdk;
+	if (options->win.crt_linking != WIN_CRT_DEFAULT) target->win.crt_linking = options->win.crt_linking;
 	if (options->x86_vector_capability != X86VECTOR_DEFAULT)
 	{
 		target->feature.x86_vector_capability = options->x86_vector_capability;
@@ -198,6 +198,14 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		target->emit_llvm = false;
 		target->emit_object_files = false;
 	}
+	for (int i = 0; i < options->lib_dir_count; i++)
+	{
+		vec_add(target->libdirs, options->lib_dir[i]);
+	}
+	for (int i = 0; i < options->lib_count; i++)
+	{
+		vec_add(target->libs, options->libs[i]);
+	}
 }
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
@@ -214,6 +222,7 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
 		.reloc_model = RELOC_DEFAULT,
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
+		.win.crt_linking = WIN_CRT_DEFAULT,
 	};
 	update_build_target_from_options(target, options);
 }

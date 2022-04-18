@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 fn void main()
 {
     char *s = "Hello\0 world!" " now";

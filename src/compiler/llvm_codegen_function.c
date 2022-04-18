@@ -457,11 +457,11 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 			LLVMTypeRef ptr_to_slot_type = LLVMPointerType(slot_type, 0);
 			if (!c->debug.last_ptr)
 			{
-				LLVMValueRef last_stack = c->debug.last_ptr = LLVMAddGlobal(c->module, ptr_to_slot_type, ".$last_stack");
+				const char *name = ".$last_stack";
+				LLVMValueRef last_stack = c->debug.last_ptr = LLVMAddGlobal(c->module, ptr_to_slot_type, name);
 				LLVMSetThreadLocal(last_stack, true);
 				LLVMSetInitializer(last_stack, LLVMConstNull(ptr_to_slot_type));
-				LLVMSetVisibility(last_stack, LLVMDefaultVisibility);
-				LLVMSetLinkage(last_stack, LLVMWeakODRLinkage);
+				llvm_set_weak(c, last_stack);
 			}
 			AlignSize alignment = llvm_abi_alignment(c, slot_type);
 			c->debug.stack_slot = llvm_emit_alloca(c, slot_type, alignment, ".$stackslot");
@@ -651,7 +651,15 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	switch (visibility)
 	{
 		case VISIBLE_EXTERN:
-			LLVMSetLinkage(function, decl->func_decl.attr_weak ? LLVMExternalWeakLinkage : LLVMExternalLinkage);
+			if (decl->func_decl.attr_weak)
+			{
+				LLVMSetLinkage(function, LLVMExternalWeakLinkage);
+				llvm_set_comdat(c, function);
+			}
+			else
+			{
+				LLVMSetLinkage(function, LLVMExternalLinkage);
+			}
 			LLVMSetVisibility(function, LLVMDefaultVisibility);
 			if (prototype->call_abi == CALL_X86_STD && platform_target.os == OS_TYPE_WIN32)
 			{
@@ -660,8 +668,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 			break;
 		case VISIBLE_PUBLIC:
 		case VISIBLE_MODULE:
-			if (decl->func_decl.attr_weak) LLVMSetLinkage(function, LLVMWeakAnyLinkage);
-			LLVMSetVisibility(function, LLVMDefaultVisibility);
+			if (decl->func_decl.attr_weak) llvm_set_weak(c, function);
 			break;
 		case VISIBLE_LOCAL:
 			LLVMSetLinkage(function, decl->func_decl.attr_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);

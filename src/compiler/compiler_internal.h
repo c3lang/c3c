@@ -51,6 +51,7 @@ typedef unsigned ExprId;
 typedef unsigned DeclId;
 typedef unsigned TypeInfoId;
 
+
 typedef struct Int128_
 {
 	uint64_t high;
@@ -1435,9 +1436,7 @@ typedef struct
 	bool in_test_mode : 1;
 	unsigned errors_found;
 	unsigned warnings_found;
-	char scratch_buffer[MAX_STRING_BUFFER];
 	Decl ***locals_list;
-	uint32_t scratch_buffer_len;
 	HTable compiler_defines;
 	Module std_module;
 	DeclTable symbols;
@@ -1552,6 +1551,7 @@ typedef struct
 	bool path_found;
 	bool suppress_error;
 } NameResolve;
+
 
 
 extern GlobalContext global_context;
@@ -1989,15 +1989,7 @@ void decltable_init(DeclTable *table, uint32_t initial_size);
 DeclId decltable_get(DeclTable *table, const char *name);
 void decltable_set(DeclTable *table, Decl *decl);
 
-void scratch_buffer_clear(void);
-void scratch_buffer_append(const char *string);
-void scratch_buffer_append_len(const char *string, size_t len);
-void scratch_buffer_append_char(char c);
-void scratch_buffer_append_signed_int(int64_t i);
-UNUSED void scratch_buffer_append_unsigned_int(uint64_t i);
-char *scratch_buffer_to_string(void);
 const char *scratch_buffer_interned(void);
-char *scratch_buffer_copy(void);
 
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
 const char *symtab_find(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);
@@ -2005,12 +1997,14 @@ void *llvm_target_machine_create(void);
 void target_setup(BuildTarget *build_target);
 int target_alloca_addr_space();
 
+const char *macos_sysroot(void);
+MacSDK *macos_sysroot_sdk_information(const char *sdk_path);
+WindowsSDK *windows_get_sdk(void);
+
 void c_abi_func_create(FunctionPrototype *proto);
 
 bool token_is_any_type(TokenType type);
 const char *token_type_to_string(TokenType type);
-
-
 
 AlignSize type_abi_alignment(Type *type);
 AlignSize type_alloca_alignment(Type *type);
@@ -2486,6 +2480,7 @@ bool obj_format_linking_supported(ObjectFormatType format_type);
 bool linker(const char *output_file, const char **files, unsigned file_count);
 void platform_linker(const char *output_file, const char **files, unsigned file_count);
 void platform_compiler(const char **files, unsigned file_count, const char* flags);
+const char *arch_to_linker_arch(ArchType arch);
 
 #define CAT(a,b) CAT2(a,b) // force expand
 #define CAT2(a,b) a##b // actually concatenate

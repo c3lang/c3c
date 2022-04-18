@@ -224,15 +224,9 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case CONST_INTEGER:
 			return int_to_str(expr->ixx, 10);
 		case CONST_FLOAT:
-#if LONG_DOUBLE
-			asprintf(&buff, "%Lg", expr->fxx.f);
-#else
-			asprintf(&buff, "%g", expr->fxx.f);
-#endif
-			return buff;
+			return str_printf("%g", expr->fxx.f);
 		case CONST_STRING:
-			asprintf(&buff, "\"%*.s\"", expr->string.len, expr->string.chars);
-			return buff;
+			return str_printf("\"%*.s\"", expr->string.len, expr->string.chars);
 		case CONST_BYTES:
 			return "<binary data>";
 		case CONST_ENUM:

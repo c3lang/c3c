@@ -456,7 +456,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 		return expr;
 	}
 	size_t len = end - start;
-	const char *content = copy_string(start, len);
+	const char *content = str_copy(start, len);
 	Expr *expr = expr_new(EXPR_CONST, start_span);
 	expr->const_expr.const_kind = CONST_STRING;
 	expr->const_expr.string.chars = content;
@@ -1153,7 +1153,7 @@ static Expr *parse_integer(ParseContext *c, Expr *left)
 				if (ch == '_') continue;
 				if (i.high > max) wrapped = true;
 				i = i128_shl64(i, 4);
-				i = i128_add64(i, (uint64_t) hex_nibble(ch));
+				i = i128_add64(i, (uint64_t) char_hex_to_nibble(ch));
 				hex_characters++;
 			}
 			break;
@@ -1322,8 +1322,8 @@ static void parse_hex(char *result_pointer, const char *data, const char *end)
 	{
 		int val;
 		int val2;
-		while ((val = char_to_nibble(*(data++))) < 0) if (data == end) goto DONE;
-		while ((val2 = char_to_nibble(*(data++))) < 0);
+		while ((val = char_hex_to_nibble(*(data++))) < 0) if (data == end) goto DONE;
+		while ((val2 = char_hex_to_nibble(*(data++))) < 0);
 
 		*(data_current++) = (char)((val << 4) | val2);
 	}
@@ -1496,14 +1496,14 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 {
 	int scanned;
 	uint64_t unicode_char;
-	signed char scanned_char = is_valid_escape(src[0]);
+	signed char scanned_char = char_is_valid_escape(src[0]);
 	if (scanned_char < 0) return -1;
 	switch (scanned_char)
 	{
 		case 'x':
 		{
-			int h = char_to_nibble(src[1]);
-			int l = char_to_nibble(src[2]);
+			int h = char_hex_to_nibble(src[1]);
+			int l = char_hex_to_nibble(src[2]);
 			if (h < 0 || l < 0) return -1;
 			unicode_char = ((unsigned) h << 4U) + (unsigned)l;
 			scanned = 3;
@@ -1511,10 +1511,10 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 		}
 		case 'u':
 		{
-			int x1 = char_to_nibble(src[1]);
-			int x2 = char_to_nibble(src[2]);
-			int x3 = char_to_nibble(src[3]);
-			int x4 = char_to_nibble(src[4]);
+			int x1 = char_hex_to_nibble(src[1]);
+			int x2 = char_hex_to_nibble(src[2]);
+			int x3 = char_hex_to_nibble(src[3]);
+			int x4 = char_hex_to_nibble(src[4]);
 			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0) return -1;
 			unicode_char = ((unsigned) x1 << 12U) + ((unsigned) x2 << 8U) + ((unsigned) x3 << 4U) + (unsigned)x4;
 			scanned = 5;
@@ -1522,14 +1522,14 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 		}
 		case 'U':
 		{
-			int x1 = char_to_nibble(src[1]);
-			int x2 = char_to_nibble(src[2]);
-			int x3 = char_to_nibble(src[3]);
-			int x4 = char_to_nibble(src[4]);
-			int x5 = char_to_nibble(src[5]);
-			int x6 = char_to_nibble(src[6]);
-			int x7 = char_to_nibble(src[7]);
-			int x8 = char_to_nibble(src[8]);
+			int x1 = char_hex_to_nibble(src[1]);
+			int x2 = char_hex_to_nibble(src[2]);
+			int x3 = char_hex_to_nibble(src[3]);
+			int x4 = char_hex_to_nibble(src[4]);
+			int x5 = char_hex_to_nibble(src[5]);
+			int x6 = char_hex_to_nibble(src[6]);
+			int x7 = char_hex_to_nibble(src[7]);
+			int x8 = char_hex_to_nibble(src[8]);
 			if (x1 < 0 || x2 < 0 || x3 < 0 || x4 < 0 || x5 < 0 || x6 < 0 || x7 < 0 || x8 < 0) return -1;
 			unicode_char = ((unsigned) x1 << 28U) + ((unsigned) x2 << 24U) + ((unsigned) x3 << 20U) + ((unsigned) x4 << 16U) +
 			               ((unsigned) x5 << 12U) + ((unsigned) x6 << 8U) + ((unsigned) x7 << 4U) + (unsigned)x8;

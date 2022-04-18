@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 
 module test;
 struct Foo
@@ -27,9 +27,9 @@ fn void main()
 
 %Foo = type { i32, i32 }
 
-@Foo = linkonce_odr constant i8 1
-@"test.MyErr$elements" = linkonce_odr constant [1 x i8*] zeroinitializer
-@MyErr = linkonce_odr constant i8 1
+@introspect.Foo = linkonce constant i8 1
+@"test.MyErr$elements" = linkonce constant [1 x i8*] zeroinitializer
+@introspect.MyErr = linkonce constant i8 1
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.str.1 = private unnamed_addr constant [17 x i8] c"Not visible: %d\0A\00", align 1
 

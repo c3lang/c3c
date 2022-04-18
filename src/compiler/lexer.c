@@ -378,7 +378,7 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 {
 	char c = peek(lexer);
-	if (!is_alphanum_(c)) return true;
+	if (!char_is_alphanum_(c)) return true;
 	switch (c)
 	{
 		case 'u':
@@ -390,17 +390,17 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 				return add_error_token_at_current(lexer, "Integer suffix '%c' is not valid for a floating point literal.", c);
 			}
 			next(lexer);
-			while (is_number(c = peek(lexer))) next(lexer);
+			while (char_is_digit(c = peek(lexer))) next(lexer);
 			break;
 		case 'f':
 			next(lexer);
 			*is_float = true;
-			while (is_number(c = peek(lexer))) next(lexer);
+			while (char_is_digit(c = peek(lexer))) next(lexer);
 			break;
 		default:
 			break;
 	}
-	if (is_alphanum_(c))
+	if (char_is_alphanum_(c))
 	{
 		next(lexer);
 		return add_error_token(lexer, "This doesn't seem to be a valid literal.");
@@ -414,13 +414,13 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
  */
 static bool scan_oct(Lexer *lexer)
 {
-	if (!is_oct(peek(lexer)))
+	if (!char_is_oct(peek(lexer)))
 	{
 		return add_error_token_at_current(lexer, "An expression starting with '0o' should be followed by octal numbers (0-7).");
 	}
 	next(lexer);
-	while (is_oct_or_(peek(lexer))) next(lexer);
-	if (is_number(peek(lexer)))
+	while (char_is_oct_or_(peek(lexer))) next(lexer);
+	if (char_is_digit(peek(lexer)))
 	{
 		return add_error_token_at_current(lexer, "An expression starting with '0o' should be followed by octal numbers (0-7).");
 	}
@@ -438,13 +438,13 @@ static bool scan_oct(Lexer *lexer)
  **/
 static bool scan_binary(Lexer *lexer)
 {
-	if (!is_binary(peek(lexer)))
+	if (!char_is_binary(peek(lexer)))
 	{
 		return add_error_token_at_current(lexer, "An expression starting with '0b' should be followed by binary digits (0-1).");
 	}
 	next(lexer);
-	while (is_binary_or_(peek(lexer))) next(lexer);
-	if (is_number(peek((lexer))))
+	while (char_is_binary_or_(peek(lexer))) next(lexer);
+	if (char_is_digit(peek((lexer))))
 	{
 		return add_error_token_at_current(lexer, "An expression starting with '0b' should be followed by binary digits (0-1).");
 	}
@@ -475,7 +475,7 @@ static inline bool scan_exponent(Lexer *lexer)
 		next(lexer);
 	}
 	// Now we need at least one digit
-	if (!is_digit(c))
+	if (!char_is_digit(c))
 	{
 		if (c == 0)
 		{
@@ -487,7 +487,7 @@ static inline bool scan_exponent(Lexer *lexer)
 		return add_error_token(lexer, "Parsing the floating point exponent failed, because '%c' is not a number.", c);
 	}
 	// Walk through all of the digits.
-	while (is_digit(peek(lexer))) next(lexer);
+	while (char_is_digit(peek(lexer))) next(lexer);
 	return true;
 }
 
@@ -497,12 +497,12 @@ static inline bool scan_exponent(Lexer *lexer)
  **/
 static inline bool scan_hex(Lexer *lexer)
 {
-	if (!is_hex(peek(lexer)))
+	if (!char_is_hex(peek(lexer)))
 	{
 		return add_error_token_at_current(lexer, "'0x' starts a hexadecimal number, so the next character should be 0-9, a-f or A-F.");
 	}
 	next(lexer);
-	while (is_hex_or_(peek(lexer))) next(lexer);
+	while (char_is_hex_or_(peek(lexer))) next(lexer);
 	bool is_float = false;
 	if (peek(lexer) == '.' && peek_next(lexer) != '.')
 	{
@@ -510,8 +510,8 @@ static inline bool scan_hex(Lexer *lexer)
 		next(lexer);
 		char c = peek(lexer);
 		if (c == '_') return add_error_token_at_current(lexer, "'_' is not allowed directly after decimal point, try removing it.");
-		if (is_hex(c)) next(lexer);
-		while (is_hex_or_(peek(lexer))) next(lexer);
+		if (char_is_hex(c)) next(lexer);
+		while (char_is_hex_or_(peek(lexer))) next(lexer);
 	}
 	char c = peek(lexer);
 	if (c == 'p' || c == 'P')
@@ -533,11 +533,11 @@ static inline bool scan_hex(Lexer *lexer)
  */
 static inline bool scan_dec(Lexer *lexer)
 {
-	assert(is_digit(peek(lexer)));
+	assert(char_is_digit(peek(lexer)));
 
 	// Walk through the digits, we don't need to worry about
 	// initial _ because we only call this if we have a digit initially.
-	while (is_digit_or_(peek(lexer))) next(lexer);
+	while (char_is_digit_or_(peek(lexer))) next(lexer);
 
 	// Assume no float.
 	bool is_float = false;
@@ -555,7 +555,7 @@ static inline bool scan_dec(Lexer *lexer)
 		if (c == '_') return add_error_token_at_current(lexer, "'_' is not allowed directly after decimal point, try removing it.");
 		// Now walk until we see no more digits.
 		// This allows 123. as a floating point number.
-		while (is_digit_or_(peek(lexer))) next(lexer);
+		while (char_is_digit_or_(peek(lexer))) next(lexer);
 	}
 	char c = peek(lexer);
 	// We might have an exponential. We allow 123e1 and 123.e1 as floating point, so
@@ -619,7 +619,7 @@ static inline int64_t scan_hex_literal(Lexer *lexer, int positions)
 	for (int j = 0; j < positions; j++)
 	{
 		hex <<= 4U;
-		int i = char_to_nibble(peek(lexer));
+		int i = char_hex_to_nibble(peek(lexer));
 		if (i < 0)
 		{
 			return -1;
@@ -739,7 +739,7 @@ static inline bool scan_char(Lexer *lexer)
 		{
 			assert(c == '\\');
 			c = peek(lexer);
-			escape = is_valid_escape(c);
+			escape = char_is_valid_escape(c);
 			if (escape == -1)
 			{
 				lexer->lexing_start += 1;
@@ -826,15 +826,15 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 {
 	int scanned;
 	uint64_t unicode_char;
-	signed char scanned_char = is_valid_escape(src[0]);
+	signed char scanned_char = char_is_valid_escape(src[0]);
 	if (scanned_char < 0) return -1;
 	switch (scanned_char)
 	{
 		case 'x':
 		{
-			int h = char_to_nibble(src[1]);
+			int h = char_hex_to_nibble(src[1]);
 			if (h < 0) return -1;
-			int l = char_to_nibble(src[2]);
+			int l = char_hex_to_nibble(src[2]);
 			if (l < 0) return -1;
 			unicode_char = ((unsigned) h << 4U) + (unsigned)l;
 			scanned = 3;
@@ -842,13 +842,13 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 		}
 		case 'u':
 		{
-			int x1 = char_to_nibble(src[1]);
+			int x1 = char_hex_to_nibble(src[1]);
 			if (x1 < 0) return -1;
-			int x2 = char_to_nibble(src[2]);
+			int x2 = char_hex_to_nibble(src[2]);
 			if (x2 < 0) return -1;
-			int x3 = char_to_nibble(src[3]);
+			int x3 = char_hex_to_nibble(src[3]);
 			if (x3 < 0) return -1;
-			int x4 = char_to_nibble(src[4]);
+			int x4 = char_hex_to_nibble(src[4]);
 			if (x4 < 0) return -1;
 			unicode_char = ((unsigned) x1 << 12U) + ((unsigned) x2 << 8U) + ((unsigned) x3 << 4U) + (unsigned)x4;
 			scanned = 5;
@@ -856,21 +856,21 @@ static int append_esc_string_token(char *restrict dest, const char *restrict src
 		}
 		case 'U':
 		{
-			int x1 = char_to_nibble(src[1]);
+			int x1 = char_hex_to_nibble(src[1]);
 			if (x1 < 0) return -1;
-			int x2 = char_to_nibble(src[2]);
+			int x2 = char_hex_to_nibble(src[2]);
 			if (x2 < 0) return -1;
-			int x3 = char_to_nibble(src[3]);
+			int x3 = char_hex_to_nibble(src[3]);
 			if (x3 < 0) return -1;
-			int x4 = char_to_nibble(src[4]);
+			int x4 = char_hex_to_nibble(src[4]);
 			if (x4 < 0) return -1;
-			int x5 = char_to_nibble(src[5]);
+			int x5 = char_hex_to_nibble(src[5]);
 			if (x5 < 0) return -1;
-			int x6 = char_to_nibble(src[6]);
+			int x6 = char_hex_to_nibble(src[6]);
 			if (x6 < 0) return -1;
-			int x7 = char_to_nibble(src[7]);
+			int x7 = char_hex_to_nibble(src[7]);
 			if (x7 < 0) return -1;
-			int x8 = char_to_nibble(src[8]);
+			int x8 = char_hex_to_nibble(src[8]);
 			if (x8 < 0) return -1;
 			unicode_char = ((unsigned) x1 << 28U) + ((unsigned) x2 << 24U) + ((unsigned) x3 << 20U) + ((unsigned) x4 << 16U) +
 					((unsigned) x5 << 12U) + ((unsigned) x6 << 8U) + ((unsigned) x7 << 4U) + (unsigned)x8;
@@ -1031,13 +1031,13 @@ static inline bool scan_hex_array(Lexer *lexer)
 			return add_error_token_at_current(lexer, "The hex string seems to be missing a terminating '%c'", start_char);
 		}
 		if (c == start_char) break;
-		if (is_hex(c))
+		if (char_is_hex(c))
 		{
 			next(lexer);
 			len++;
 			continue;
 		}
-		if (is_whitespace(c))
+		if (char_is_whitespace(c))
 		{
 			next(lexer);
 			continue;
@@ -1080,7 +1080,7 @@ static inline bool scan_base64(Lexer *lexer)
 		}
 		next(lexer);
 		if (c == start_char) break;
-		if (is_base64(c))
+		if (char_is_base64(c))
 		{
 			if (end_len)
 			{
@@ -1098,7 +1098,7 @@ static inline bool scan_base64(Lexer *lexer)
 			end_len++;
 			continue;
 		}
-		if (!is_whitespace(c))
+		if (!char_is_whitespace(c))
 		{
 			if (c < ' ' || c > 127)
 			{
@@ -1297,7 +1297,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case '$':
 			if (match(lexer, '$'))
 			{
-				if (is_letter(peek(lexer)))
+				if (char_is_letter(peek(lexer)))
 				{
 					return return_token(lexer, TOKEN_BUILTIN, "$$");
 				}

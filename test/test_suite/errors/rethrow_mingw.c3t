@@ -1,4 +1,4 @@
-// #target: x64-mingw
+// #target: mingw-x64
 
 module rethrow;
 

@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 
 module demo;
 define Callback = fn int(char* text, int value);

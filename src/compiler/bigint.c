@@ -112,7 +112,7 @@ UNUSED Int128 i128_from_hexstrl(const char *str, const char *end)
 	while (str != end)
 	{
 		c = *(str++);
-		x = i128_add64(i128_shl64(x, 4), (uint64_t)hex_nibble(c));
+		x = i128_add64(i128_shl64(x, 4), (uint64_t)char_hex_to_nibble(c));
 	}
 	return x;
 }

@@ -47,12 +47,12 @@ File *source_file_load(const char *filename, bool *already_loaded)
 	}
 
 	size_t size;
-	const char* source_text = read_file(filename, &size);
+	const char* source_text = file_read_all(filename, &size);
 	File *file = CALLOCS(File);
 	file->file_id = vec_size(global_context.loaded_sources);
 	file->full_path = full_path;
 	file->contents = source_text;
-	path_get_dir_and_filename_from_full(file->full_path, &file->name, &file->dir_path);
+	file_get_dir_and_filename_from_full(file->full_path, &file->name, &file->dir_path);
 	vec_add(global_context.loaded_sources, file);
 	return file;
 }

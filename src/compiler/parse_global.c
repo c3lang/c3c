@@ -243,7 +243,7 @@ static inline Path *parse_module_path(ParseContext *c)
 		}
 		scratch_buffer_append("::");
 	}
-	return path_create_from_string(scratch_buffer_to_string(), global_context.scratch_buffer_len, span);
+	return path_create_from_string(scratch_buffer_to_string(), scratch_buffer.len, span);
 }
 
 
@@ -417,7 +417,7 @@ Path *parse_path_prefix(ParseContext *c, bool *had_error)
 	*had_error = false;
 	if (!tok_is(c, TOKEN_IDENT) || peek(c) != TOKEN_SCOPE) return NULL;
 
-	char *scratch_ptr = global_context.scratch_buffer;
+	char *scratch_ptr = scratch_buffer.str;
 	uint32_t offset = 0;
 
 	Path *path = CALLOCS(Path);

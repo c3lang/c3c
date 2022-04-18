@@ -66,7 +66,7 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 	{
 		current += row_len + 1;
 		row_len = 0;
-		while (current[row_len] != '\n') row_len++;
+		while (current[row_len] != '\n' && current[row_len]) row_len++;
 		if (row_len > max_lines_for_display)
 		{
 			eprintf(number_buffer_elided, row, max_lines_for_display - 1, current);
@@ -148,15 +148,7 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 
 static void vprint_error(SourceSpan location, const char *message, va_list args)
 {
-#define MAX_ERROR_LEN 4096
-	char buffer[MAX_ERROR_LEN];
-	size_t written = vsnprintf(buffer, MAX_ERROR_LEN - 1, message, args);
-	if (written > MAX_ERROR_LEN - 2)
-	{
-		print_error(location, "<Error message was too long>", PRINT_TYPE_ERROR);
-		return;
-	}
-	print_error(location, buffer, PRINT_TYPE_ERROR);
+	print_error(location, str_vprintf(message, args), PRINT_TYPE_ERROR);
 }
 
 
@@ -251,7 +243,7 @@ const char *span_to_string(SourceSpan span)
 	}
 	assert(row == row_to_find);
 	const char *start = current + col - 1;
-	return copy_string(start, length);
+	return str_copy(start, length);
 }
 
 

@@ -18,6 +18,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 
+
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable)
 {
 	assert(ref->kind == BE_ADDRESS || ref->kind == BE_ADDRESS_FAILABLE);
@@ -3281,7 +3282,6 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 	llvm_value_set(be_value, val, expr->type);
 }
 
-
 static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr)
 {
 
@@ -3343,8 +3343,7 @@ void llvm_emit_derived_backend_type(GenContext *c, Type *type)
 	return;
 
 	PRIMITIVE:
-	LLVMSetLinkage(global_name, LLVMWeakAnyLinkage);
-	LLVMSetVisibility(global_name, LLVMDefaultVisibility);
+	llvm_set_weak(c, global_name);
 }
 
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type)
@@ -3855,12 +3854,8 @@ static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Float f)
 		return LLVMConstRealOfString(type, f.f < 0 ? "-inf" : "inf");
 	}
 	scratch_buffer_clear();
-#if LONG_DOUBLE
-	global_context.scratch_buffer_len = sprintf(global_context.scratch_buffer, "%La", f.f);
-#else
-	global_context.scratch_buffer_len = (uint32_t)sprintf(global_context.scratch_buffer, "%a", f.f);
-#endif
-	return LLVMConstRealOfStringAndSize(type, global_context.scratch_buffer, global_context.scratch_buffer_len);
+	scratch_buffer_printf("%a", f.f);
+	return LLVMConstRealOfStringAndSize(type, scratch_buffer.str, scratch_buffer.len);
 }
 
 static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr)

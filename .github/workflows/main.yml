@@ -38,7 +38,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build --debug-log
+          ../../build/c3c run --debug-log
 
       - name: run compiler tests
         run: |
@@ -73,7 +73,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build --debug-log
+          ../../build/c3c run --debug-log
 
       - name: run compiler tests
         run: |
@@ -118,7 +118,12 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build --debug-log
+          ../../build/c3c run --debug-log
+
+      - name: Build testproject direct linker
+        run: |
+          cd resources/testproject
+          ../../build/c3c run --debug-log --forcelinker
 
       - name: run compiler tests
         run: |
@@ -150,7 +155,12 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build --debug-log
+          ../../build/c3c run --debug-log
+
+      - name: Build testproject direct linker
+        run: |
+          cd resources/testproject
+          ../../build/c3c run --debug-log --forcelinker
 
       - name: run compiler tests
         run: |

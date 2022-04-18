@@ -10,8 +10,8 @@ void gencontext_begin_module(GenContext *c)
 	assert(!c->module && "Expected no module");
 
 	const char *result = module_create_object_file_name(c->code_module);
-	c->ir_filename = strformat("%s.ll", result);
-	c->object_filename = strformat("%s%s", result, get_object_extension());
+	c->ir_filename = str_printf("%s.ll", result);
+	c->object_filename = str_printf("%s%s", result, get_object_extension());
 
 	c->panicfn = global_context.panic_fn;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);

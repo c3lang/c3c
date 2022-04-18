@@ -472,9 +472,11 @@ static void gencontext_verify_ir(GenContext *context)
 	}
 }
 
+
 void gencontext_emit_object_file(GenContext *context)
 {
 	char *err = "";
+	DEBUG_LOG("Target: %s", platform_target.target_triple);
 	LLVMSetTarget(context->module, platform_target.target_triple);
 	char *layout = LLVMCopyStringRepOfTargetData(context->target_data);
 	LLVMSetDataLayout(context->module, layout);
@@ -666,12 +668,33 @@ void llvm_codegen_setup()
 	intrinsics_setup = true;
 }
 
+void llvm_set_comdat(GenContext *c, LLVMValueRef global)
+{
+	if (!platform_target.use_comdat) return;
+	LLVMComdatRef comdat = LLVMGetOrInsertComdat(c->module, LLVMGetValueName(global));
+	LLVMSetComdatSelectionKind(comdat, LLVMAnyComdatSelectionKind);
+	LLVMSetComdat(global, comdat);
+}
+
+void llvm_set_linkonce(GenContext *c, LLVMValueRef global)
+{
+	LLVMSetLinkage(global, LLVMLinkOnceAnyLinkage);
+	LLVMSetVisibility(global, LLVMDefaultVisibility);
+	llvm_set_comdat(c, global);
+}
+
+void llvm_set_weak(GenContext *c, LLVMValueRef global)
+{
+	LLVMSetLinkage(global, LLVMWeakAnyLinkage);
+	LLVMSetVisibility(global, LLVMDefaultVisibility);
+	llvm_set_comdat(c, global);
+}
+
 void llvm_set_linkage(GenContext *c, Decl *decl, LLVMValueRef value)
 {
 	if (decl->module != c->code_module)
 	{
-		LLVMSetLinkage(value, LLVMLinkOnceODRLinkage);
-		LLVMSetVisibility(value, LLVMDefaultVisibility);
+		llvm_set_linkonce(c, value);
 		return;
 	}
 	Visibility visibility = decl->visibility;
@@ -680,8 +703,7 @@ void llvm_set_linkage(GenContext *c, Decl *decl, LLVMValueRef value)
 	{
 		case VISIBLE_MODULE:
 		case VISIBLE_PUBLIC:
-			LLVMSetLinkage(value, LLVMLinkOnceODRLinkage);
-			LLVMSetVisibility(value, LLVMDefaultVisibility);
+			llvm_set_linkonce(c, value);
 			break;
 		case VISIBLE_EXTERN:
 		case VISIBLE_LOCAL:
@@ -725,7 +747,10 @@ void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl)
 			decl->enums.values[i]->backend_ref = llvm_emit_array_gep_raw(c, enum_elements, elements_type, i, alignment, &store_align);
 		}
 	}
-	LLVMValueRef global_name = LLVMAddGlobal(c->module, llvm_get_type(c, type_char), decl->name ? decl->name : "anon");
+	scratch_buffer_clear();
+	scratch_buffer_append("introspect.");
+	scratch_buffer_append(decl->name ? decl->name : "anon");
+	LLVMValueRef global_name = LLVMAddGlobal(c->module, llvm_get_type(c, type_char), scratch_buffer_to_string());
 	LLVMSetGlobalConstant(global_name, 1);
 	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
 	decl->type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));

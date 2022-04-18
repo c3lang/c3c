@@ -84,12 +84,18 @@ llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 
 # These don't seem to be reliable on windows.
+
 if(UNIX)
     message(STATUS "using find_library")
 #    find_library(TB_LIB NAMES tinybackend.a PATHS ${CMAKE_SOURCE_DIR}/resources/tblib)
     find_library(LLD_COFF NAMES lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_COMMON NAMES lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_ELF NAMES lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS})
+    if (${LLVM_PACKAGE_VERSION} VERSION_LESS 14)
+        find_library(LLD_MACHO NAMES lldMachO2.a liblldMachO2.a PATHS ${LLVM_LIBRARY_DIRS})
+    else()
+        find_library(LLD_MACHO NAMES lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS})
+    endif()
     find_library(LLD_MACHO NAMES lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_MINGW NAMES lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS})
     find_library(LLD_WASM NAMES lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS})
@@ -113,9 +119,18 @@ if(UNIX)
         ${LLD_YAML}
         ${LLD_CORE}
         )
-    message(STATUS "linking to llvm libs ${llvm_libs} ${lld_libs}")
-endif()
+    if(APPLE)
+        set(lld_libs ${lld_libs} xar)
+    endif()
 
+    message(STATUS "linking to llvm libs ${llvm_libs} ${lld_libs}")
+else()
+    if(${LLVM_PACKAGE_VERSION} VERSION_LESS 14)
+        set(lld_libs lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO2 lldYAML)
+    else()
+        set(lld_libs lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML)
+    endif()
+endif()
 message(STATUS "Found LLD ${lld_libs}")
 
 add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
@@ -138,6 +153,7 @@ add_executable(c3c
         src/compiler/float.c
         src/compiler/headers.c
         src/compiler/lexer.c
+        src/compiler/libraries.c
         src/compiler/linker.c
         src/compiler/llvm_codegen.c
         src/compiler/llvm_codegen_c_abi_aarch64.c
@@ -196,11 +212,12 @@ add_executable(c3c
         src/utils/vmem.h
         src/utils/whereami.c
         src/compiler/decltable.c
+        src/compiler/mac_support.c
         src/compiler/tilde_codegen_storeload.c
         src/compiler/llvm_codegen_storeload.c
         src/compiler/tilde_codegen_expr.c
         src/compiler/tilde_codegen_stmt.c
-        src/compiler/tilde_codegen_type.c)
+        src/compiler/tilde_codegen_type.c src/compiler/windows_support.c)
 
 if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     message(STATUS "using gcc/clang warning switches")
@@ -231,8 +248,8 @@ else()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:C:\\llvm\\llvm\\build\\Release\\lib") # needed for lldCommon.lib
     #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:${LLVM_LIBPATH}") # This doesn't seem to work for some reason
     message(STATUS "${LLVM_LIBPATH}")
-    target_link_libraries(c3c debug ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML Advapi32)
-    target_link_libraries(c3c optimized ${llvm_libs} c3c_wrappers lldCommon lldCore lldCOFF lldWASM lldMinGW lldELF lldDriver lldReaderWriter lldMachO lldYAML Advapi32)
+    target_link_libraries(c3c debug ${llvm_libs} c3c_wrappers ${lld_libs} Advapi32)
+    target_link_libraries(c3c optimized ${llvm_libs} c3c_wrappers ${lld_libs} Advapi32)
 endif()
 
 if (WIN32)

@@ -266,6 +266,7 @@ typedef struct
 	bool signed_c_char : 1;
 	FloatABI float_abi : 3;
 	unsigned default_number_regs_x86 : 8;
+	bool use_comdat : 1;
 	union
 	{
 		struct

@@ -165,12 +165,12 @@ static void json_parse_string(JsonParser *parser)
 				char u2 = parser->current++[0];
 				char u3 = parser->current++[0];
 				char u4 = parser->current++[0];
-				if (!is_hex(u1) || !is_hex(u2) || !is_hex(u3) || !is_hex(u4))
+				if (!char_is_hex(u1) || !char_is_hex(u2) || !char_is_hex(u3) || !char_is_hex(u4))
 				{
 					json_error(parser, "Invalid hex in \\u escape sequence.");
 					return;
 				}
-				c = (hex_nibble(u1) << 12) + (hex_nibble(u2) << 8) + (hex_nibble(u3) << 4) + hex_nibble(u4);
+				c = (char_hex_to_nibble(u1) << 12) + (char_hex_to_nibble(u2) << 8) + (char_hex_to_nibble(u3) << 4) + char_hex_to_nibble(u4);
 				break;
 			}
 			default:

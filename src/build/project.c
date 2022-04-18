@@ -47,7 +47,7 @@ static int get_valid_string_setting(JSONObject *json, const char *key, const cha
 	}
 	if (value->type == J_STRING)
 	{
-		int res = str_in_list(value->str, count, values);
+		int res = str_findlist(value->str, count, values);
 		if (res >= 0) return res + first_result;
 	}
 	error_exit("%s had an invalid value for '%s', expected %s", category, key, expected);
@@ -109,6 +109,17 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	const char *langrev = get_valid_string(json, "langrev", type, false);
 	const char **source_dirs = get_valid_array(json, "sources", type, target->source_dirs == NULL);
 	const char **libraries = get_valid_array(json, "libs", type, false);
+	VECEACH(libraries, i)
+	{
+		if (!str_is_valid_lowercase_name(libraries[i]))
+		{
+			char *name = strdup(libraries[i]);
+			str_ellide_in_place(name, 32);
+			error_exit("Error reading %s: invalid library target '%s'.", PROJECT_JSON, name);
+		}
+	}
+	const char **libdirs = get_valid_array(json, "libdir", type, false);
+
 	static const char *debug_infos[3] = {
 			[DEBUG_INFO_FULL] = "full",
 			[DEBUG_INFO_NONE] = "none",
@@ -119,9 +130,11 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	long symtab_size = get_valid_integer(json, "symtab", type, false);
 	const char *cpu = get_valid_string(json, "cpu", type, false);
 	int reloc = get_valid_string_setting(json, "reloc", type, reloc_models, 0, 5, "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
+	int wincrt = get_valid_string_setting(json, "wincrt", type, wincrt_linking, 0, 5, "'none', 'static' or 'dynamic'.");
 	int x86vec = get_valid_string_setting(json, "x86vec", type, vector_capability, 0, 5, "none, mmx, sse, avx or avx512");
 	const char *panicfn = get_valid_string(json, "panicfn", type, false);
-
+	target->win.sdk = get_valid_string(json, "winsdk", type, false);
+	target->macos.sdk = get_valid_string(json, "macossdk", type, false);
 	target->panicfn = panicfn;
 	if (cc) target->cc = cc;
 	if (cflags) target->cflags = cflags;
@@ -129,9 +142,11 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	if (version) target->version = version;
 	if (langrev) target->langrev = langrev;
 	if (source_dirs) target->source_dirs = source_dirs;
-	if (libraries) target->libraries = libraries;
+	if (libdirs) target->libdirs = libdirs;
+	if (libraries) target->libs = libraries;
 	if (info > -1) target->debug_info = info;
 	if (cpu) target->cpu = cpu;
+	if (wincrt > -1) target->win.crt_linking = (WinCrtLinking)wincrt;
 	if (reloc > -1) target->reloc_model = (RelocModel)reloc;
 	if (x86vec > -1) target->feature.x86_vector_capability = x86vec;
 
@@ -177,7 +192,7 @@ static void project_add_target(Project *project, BuildTarget *default_target,  J
 			error_exit("More %s contained more than one target with the name %s. Please make all target names unique.", PROJECT_JSON, target->name);
 		}
 	}
-	type = strformat("%s %s", type, target->name);
+	type = str_printf("%s %s", type, target->name);
 	load_into_build_target(json, type, target);
 }
 
@@ -209,6 +224,7 @@ static void project_add_targets(Project *project, JSONObject *project_data)
 			.feature.trap_on_wrap = false,
 			.feature.x86_vector_capability = X86VECTOR_DEFAULT,
 			.feature.safe_mode = true,
+			.win.crt_linking = WIN_CRT_DEFAULT,
 	};
 	load_into_build_target(project_data, "default target", &default_target);
 	JSONObject *targets_json = json_obj_get(project_data, "targets");
@@ -266,7 +282,7 @@ Project *project_load(void)
 {
 	Project *project = CALLOCS(Project);
 	size_t size;
-	char *read = read_file(PROJECT_JSON, &size);
+	char *read = file_read_all(PROJECT_JSON, &size);
 	JsonParser parser;
 	json_init_string(&parser, read, &malloc_arena);
 	JSONObject *json = json_parse(&parser);

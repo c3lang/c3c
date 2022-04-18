@@ -2,12 +2,6 @@
 
 #include <llvm/Config/llvm-config.h>  // for LLVM_VERSION_STRING
 
-#ifdef PLATFORM_WINDOWS
-
-#include "utils/find_msvc.h"
-
-#endif
-
 extern bool llvm_link_elf(const char **args, int arg_count, const char **error_string);
 extern bool llvm_link_macho(const char **args, int arg_count, const char **error_string);
 extern bool llvm_link_coff(const char **args, int arg_count, const char **error_string);
@@ -27,29 +21,181 @@ static const char *join_strings(const char **args, unsigned count)
 	char *res = "";
 	for (unsigned i = 0; i < count; ++i)
 	{
-		res = strcat_arena(res, args[i]);
+		res = str_cat(res, args[i]);
 	}
 	return res;
 }
 
-static void prepare_msys2_linker_flags(const char ***args, const char **files_to_link, unsigned file_count)
+typedef enum
 {
-	const char *root = getenv("MSYSTEM_PREFIX");
-#define add_arg(opt) vec_add(*args, opt)
+	LINKER_LINK_EXE,
+	LINKER_LD,
+	LINKER_LD64,
+	LINKER_WASM,
+	LINKER_CC,
+} LinkerType;
+
+#define add_arg(arg_) vec_add(*args_ref, (arg_))
+#define add_arg2(arg_, arg_2) vec_add(*args_ref, str_cat((arg_), (arg_2)))
+
+static inline bool is_no_pie(RelocModel reloc)
+{
+	return reloc == RELOC_NONE;
+}
+static inline bool is_pie(RelocModel reloc)
+{
+	return reloc == RELOC_BIG_PIE || reloc == RELOC_BIG_PIE;
+}
+
+static const char *ld_target(ArchType arch_type)
+{
+	switch (platform_target.arch)
+	{
+		case ARCH_TYPE_X86_64:
+			return "elf_x86_64";
+		case ARCH_TYPE_X86:
+			return "elf_i386";
+		case ARCH_TYPE_AARCH64:
+			return "aarch64elf";
+		case ARCH_TYPE_RISCV32:
+			return "elf32lriscv";
+		case ARCH_TYPE_RISCV64:
+			return "elf64lriscv";
+		default:
+			error_exit("Architecture currently not available for cross linking.");
+	}
+
+}
+static const char *string_esc(const char *str)
+{
+	scratch_buffer_clear();
+	size_t len = strlen(str);
+	for (size_t i = 0; i < len; i++)
+	{
+		if (i > 3 && !char_is_alphanum_(str[i])) scratch_buffer_append_char('\\');
+		scratch_buffer_append_char(str[i]);
+	}
+	return strdup(scratch_buffer_to_string());
+}
+static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
+{
+	if (linker_type == LINKER_CC) return;
+	//add_arg("/MACHINE:X64");
+	if (active_target.win.sdk)
+	{
+		add_arg(str_printf("/LIBPATH:%s", active_target.win.sdk));
+	}
+	else
+	{
+		WindowsSDK *windows_sdk = windows_get_sdk();
+		if (!windows_sdk) error_exit("Windows applications cannot be cross compiled without --winsdk.");
+
+		if (!file_is_dir(windows_sdk->vs_library_path)) error_exit("Failed to find windows sdk.");
+
+		add_arg(str_printf("/LIBPATH:%s", windows_sdk->windows_sdk_um_library_path));
+		add_arg(str_printf("/LIBPATH:%s", windows_sdk->windows_sdk_ucrt_library_path));
+		add_arg(str_printf("/LIBPATH:%s", windows_sdk->vs_library_path));
+	}
+	// Do not link any.
+	if (active_target.win.crt_linking == WIN_CRT_NONE) return;
+
+	add_arg("kernel32.lib");
+	add_arg("ntdll.lib");
+	add_arg("legacy_stdio_definitions.lib");
+
+	if (active_target.win.crt_linking == WIN_CRT_STATIC)
+	{
+		add_arg("libucrt.lib");
+		add_arg("libvcruntimed.lib");
+		add_arg("libcmt.lib");
+		add_arg("libcpmt.lib");
+	}
+	else
+	{
+		add_arg("ucrt.lib");
+		add_arg("vcruntime.lib");
+		add_arg("msvcrt.lib");
+		add_arg("msvcprt.lib");
+	}
+	add_arg("/NOLOGO");
+}
+#ifdef mingw64_support
+static void linker_setup_mingw64_gcc(const char ***args_ref)
+{
 	add_arg("-m");
 	add_arg("i386pep");
 	add_arg("-Bdynamic");
-	add_arg(join_strings((const char *[]){ root, "\\x86_64-w64-mingw32\\lib\\crt2.o" }, 2));
-	add_arg(join_strings((const char *[]){ root, "\\x86_64-w64-mingw32\\lib\\crtbegin.o" }, 2));
-	add_arg(join_strings((const char *[]){ "-L", root, "\\x86_64-w64-mingw32\\lib" }, 3));
-	add_arg(join_strings((const char *[]){ "-L", root, "\\lib" }, 3));
-	add_arg(join_strings((const char *[]){ "-L", root, "\\x86_64-w64-mingw32\\sys-root\\mingw\\lib" }, 3));
-	add_arg(join_strings((const char *[]){ "-L", root, "\\lib\\clang\\", LLVM_VERSION_STRING, "\\lib\\windows" }, 5));
-	add_files(args, files_to_link, file_count);
+	const char *root = getenv("MSYSTEM_PREFIX");
+	const char *gcc_base = strformat("%s/lib/gcc/x86_64-w64-mingw32", root);
+	if (!file_exists(gcc_base)) error_exit("Missing GCC");
+	const char *name = file_first(gcc_base);
+	const char *gcc_path = strformat("%s/%s/", gcc_base, name);
+	add_arg(strformat("-L%s/x86_64-w64-mingw32/lib", root));
+	add_arg(strformat("-L%s/lib", root));
+	add_arg2(gcc_path, "crtbegin.o");
+	add_arg(strformat("%s/lib/crt2.o", root));
+	add_arg(strformat("%s/lib/default-manifest.o", root));
+	add_arg2("-L", gcc_path);
+	add_arg("-lkernel32");
 	add_arg("-lmingw32");
-	add_arg(join_strings((const char *[]){ root, "\\lib\\clang\\", LLVM_VERSION_STRING,
-	                                       "\\lib\\windows\\libclang_rt.builtins-x86_64.a" }, 4));
-	add_arg("-lunwind");
+	add_arg("-lgcc");
+	add_arg("-lgcc_eh");
+	add_arg("-lmoldname");
+	add_arg("-lmingwex");
+	add_arg("-lmsvcrt");
+	add_arg("-ladvapi32");
+	add_arg("-lshell32");
+	add_arg("-luser32");
+	add_arg("-lpthread");
+
+	add_arg2(gcc_path, "crtend.o");
+}
+
+static void linker_setup_windows_gnu(const char ***args_ref, LinkerType linker_type)
+{
+	if (linker_type == LINKER_CC) return;
+	bool is_clang = strcmp(getenv("MSYSTEM"), "CLANG64") == 0;
+	bool is_mingw = strcmp(getenv("MSYSTEM"), "MINGW64") == 0;
+	if (!is_clang && !is_mingw)
+	{
+		error_exit("Crosslinking MSYS is not yet supported.");
+	}
+	if (is_mingw)
+	{
+		linker_setup_mingw64_gcc(args_ref);
+		return;
+	}
+	const char *root = getenv("MSYSTEM_PREFIX");
+	const char *compiler_prefix;
+	if (is_clang)
+	{
+		char *filename;
+		char *dir;
+		path_get_dir_and_filename_from_full(root, &filename, &dir);
+		compiler_prefix = filename;
+		root = dir;
+	}
+	else
+	{
+		compiler_prefix = "x86_64-w64-mingw32";
+	}
+	add_arg("-m");
+	add_arg("i386pep");
+	add_arg("-Bdynamic");
+	const char *lib = strformat("%s/%s/lib", root, compiler_prefix);
+	if (!file_exists(lib))
+	{
+		error_exit("Cannot find '%s'.", lib);
+	}
+	add_arg2(lib, "/crt2.o");
+	add_arg2(lib, "/crtbegin.o");
+	add_arg2("-L", lib);
+	add_arg(strformat("-L%s/lib", root));
+	add_arg(strformat("-L%s/%s/sys-root/mingw/lib", root, compiler_prefix));
+	const char *clang_dir = strformat("%s/lib/clang/" LLVM_VERSION_STRING, root);
+	add_arg(strformat("-L%s/lib/windows", clang_dir));
+	add_arg("-lmingw32");
+	add_arg(strformat("%s/lib/windows/libclang_rt.builtins-x86_64.a", clang_dir));
 	add_arg("-lmoldname");
 	add_arg("-lmingwex");
 	add_arg("-lmsvcrt");
@@ -58,35 +204,178 @@ static void prepare_msys2_linker_flags(const char ***args, const char **files_to
 	add_arg("-luser32");
 	add_arg("-lkernel32");
 	add_arg("-lmingw32");
-	add_arg(join_strings((const char *[]){ root, "\\lib\\clang\\", LLVM_VERSION_STRING,
-	                                       "\\lib\\windows\\libclang_rt.builtins-x86_64.a" }, 4));
-	add_arg("-lunwind");
-	add_arg("-lmoldname");
-	add_arg("-lmingwex");
-	add_arg("-lmsvcrt");
-	add_arg("-lkernel32");
-	add_arg(join_strings((const char *[]){ root, "\\x86_64-w64-mingw32\\lib\\crtend.o" }, 2));
-#undef add_arg
+	add_arg2(lib, "\\crtend.o");
+}
+*/
+#endif
+
+static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
+{
+	if (linker_type == LINKER_CC) return;
+	const char *sysroot = active_target.macos.sdk ? active_target.macos.sdk : macos_sysroot();
+	if (!sysroot)
+	{
+		error_exit("Cannot crosslink MacOS without providing --macossdk.");
+	}
+	DEBUG_LOG("Macos SDK: %s", sysroot);
+	MacSDK *mac_sdk = macos_sysroot_sdk_information(sysroot);
+	add_arg("-arch");
+	add_arg(arch_to_linker_arch(platform_target.arch));
+	add_arg("-lSystem");
+	add_arg("-lm");
+	add_arg("-syslibroot");
+	add_arg(sysroot);
+	if (is_no_pie(platform_target.reloc_model)) add_arg("-no_pie");
+	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
+	add_arg("-platform_version");
+	add_arg("macos");
+	add_arg(str_printf("%d.0.0", mac_sdk->macos_deploy_target.major));
+	add_arg(str_printf("%d.%d", mac_sdk->macos_deploy_target.major, mac_sdk->macos_deploy_target.minor));
 }
 
-static void append_linker_pie_options(RelocModel reloc, const char ***args_ref)
+static const char *find_linux_crt(void)
 {
-	switch (reloc)
+	if (file_exists("/usr/lib/x86_64-linux-gnu/crt1.o"))
 	{
-		case RELOC_DEFAULT:
-			UNREACHABLE
-		case RELOC_NONE:
-			vec_add(*args_ref, "-no_pie");
-			break;
-		case RELOC_SMALL_PIC:
-		case RELOC_BIG_PIC:
-			break;
-		case RELOC_SMALL_PIE:
-		case RELOC_BIG_PIE:
-			vec_add(*args_ref, "-pie");
-			break;
+		return "/usr/lib/x86_64-linux-gnu/";
 	}
+	return NULL;
 }
+
+static const char *find_linux_crt_begin(void)
+{
+	if (file_exists("/usr/lib/gcc/x86_64-linux-gnu/10/crtbegin.o"))
+	{
+		return "/usr/lib/gcc/x86_64-linux-gnu/10/";
+	}
+	return NULL;
+}
+
+static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
+{
+	if (linker_type == LINKER_CC) return;
+	if (is_no_pie(platform_target.reloc_model)) add_arg("-no-pie");
+	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
+	if (platform_target.arch == ARCH_TYPE_X86_64) add_arg("--eh-frame-hdr");
+	const char *crt_begin_dir = find_linux_crt_begin();
+	const char *crt_dir = find_linux_crt();
+	if (!crt_begin_dir || !crt_dir)
+	{
+		error_exit("Failed to find the C runtime at link time.");
+	}
+	if (is_pie_pic(platform_target.reloc_model))
+	{
+		add_arg("-pie");
+		add_arg2(crt_dir, "Scrt1.o");
+		add_arg2(crt_begin_dir, "crtbeginS.o");
+		add_arg2(crt_dir, "crti.o");
+		add_arg2(crt_begin_dir, "crtendS.o");
+	}
+	else
+	{
+		add_arg2(crt_dir, "crt1.o");
+		add_arg2(crt_begin_dir, "crtbegin.o");
+		add_arg2(crt_dir, "crti.o");
+		add_arg2(crt_begin_dir, "crtend.o");
+	}
+	add_arg2(crt_dir, "crtn.o");
+	add_arg2("-L", crt_dir);
+	add_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
+	add_arg("-lc");
+	add_arg("-lm");
+	add_arg("-L/usr/lib/");
+	add_arg("-L/lib/");
+	add_arg("-m");
+	add_arg(ld_target(platform_target.arch));
+}
+
+static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
+                         const char *output_file, LinkerType linker_type)
+{
+	bool use_win = linker_type == LINKER_LINK_EXE;
+	if (use_win)
+	{
+		add_arg2("/OUT:", output_file);
+	}
+	else
+	{
+		add_arg("-o");
+		add_arg(output_file);
+	}
+	const char *lib_path_opt = use_win ? "/LIBPATH:" : "-L";
+
+	switch (platform_target.os)
+	{
+		case OS_UNSUPPORTED:
+			UNREACHABLE
+		case OS_TYPE_WIN32:
+			linker_setup_windows(args_ref, linker_type);
+			break;
+		case OS_TYPE_MACOSX:
+			linker_setup_macos(args_ref, linker_type);
+			break;
+		case OS_TYPE_WATCHOS:
+		case OS_TYPE_IOS:
+		case OS_TYPE_OPENBSD:
+		case OS_TYPE_NETBSD:
+		case OS_TYPE_TVOS:
+		case OS_TYPE_FREE_BSD:
+			return false;
+		case OS_TYPE_WASI:
+			return false;
+		case OS_TYPE_LINUX:
+			linker_setup_linux(args_ref, linker_type);
+			break;
+		case OS_TYPE_UNKNOWN:
+			error_exit("Linking is not supported for unknown OS.");
+		case OS_TYPE_NONE:
+			error_exit("Linking is not supported for freestanding.");
+	}
+	for (unsigned i = 0; i < file_count; i++)
+	{
+		add_arg(files_to_link[i]);
+	}
+
+	VECEACH(active_target.linker_libdirs, i)
+	{
+		add_arg2(lib_path_opt, active_target.linker_libdirs[i]);
+	}
+	VECEACH(active_target.link_args, i)
+	{
+		add_arg(active_target.link_args[i]);
+	}
+	VECEACH(active_target.library_list, i)
+	{
+		Library *library = active_target.library_list[i];
+		LibraryTarget *target = library->target_used;
+		VECEACH(target->link_flags, j)
+		{
+			add_arg(target->link_flags[j]);
+		}
+		VECEACH(target->linked_libs, j)
+		{
+			const char *lib = target->linked_libs[j];
+			const char *framework = str_remove_suffix(lib, ".framework");
+			if (framework)
+			{
+				add_arg("-framework");
+				add_arg(framework);
+				continue;
+			}
+			if (use_win)
+			{
+				add_arg2(lib, ".lib");
+			}
+			else
+			{
+				add_arg2("-l", lib);
+			}
+		}
+	}
+	return true;
+}
+#undef add_arg2
+#undef add_arg
 
 static void append_fpie_pic_options(RelocModel reloc, const char ***args_ref)
 {
@@ -117,166 +406,57 @@ static void append_fpie_pic_options(RelocModel reloc, const char ***args_ref)
 	}
 }
 
+LinkerType linker_find_linker_type(void)
+{
+	switch (platform_target.os)
+	{
+		case OS_UNSUPPORTED:
+		case OS_TYPE_UNKNOWN:
+		case OS_TYPE_NONE:
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_LINUX:
+		case OS_TYPE_NETBSD:
+		case OS_TYPE_OPENBSD:
+			return LINKER_LD;
+		case OS_TYPE_IOS:
+		case OS_TYPE_MACOSX:
+		case OS_TYPE_TVOS:
+		case OS_TYPE_WATCHOS:
+			return LINKER_LD64;
+		case OS_TYPE_WIN32:
+			return LINKER_LINK_EXE;
+		case OS_TYPE_WASI:
+			return LINKER_WASM;
+	}
+	UNREACHABLE
+}
+
 static bool link_exe(const char *output_file, const char **files_to_link, unsigned file_count)
 {
+	DEBUG_LOG("Using linker directly.");
 	const char **args = NULL;
-#ifdef _MSC_VER
-	if (platform_target.os == OS_TYPE_WIN32)
-	{
-		vec_add(args, join_strings((const char* []) {"/out:", output_file}, 2));
-	}
-	else
-	{
-#endif
-	vec_add(args, "-o");
-	vec_add(args, output_file);
-#ifdef _MSC_VER
-	}
-#endif
+	LinkerType linker_type = linker_find_linker_type();
+	linker_setup(&args, files_to_link, file_count, output_file, linker_type);
+
 	VECEACH(active_target.link_args, i)
 	{
 		vec_add(args, active_target.link_args[i]);
 	}
 	const char *error = NULL;
 	// This isn't used in most cases, but its contents should get freed after linking.
-	WindowsLinkPathsUTF8 windows_paths = { 0 };
-
-	switch (platform_target.os)
-	{
-		case OS_TYPE_WIN32:
-			// TODO: properly detect if llvm-lld is available
-			// TODO: check if running inside MSYS2, it could be done via getting MSYSTEM environment variable
-			// https://stackoverflow.com/questions/65527286/how-to-check-if-my-program-is-running-on-mingwor-msys-shell-or-on-cmd
-			if (NULL == getenv("MSYSTEM"))
-			{
-				// "native" windows
-
-
-				// find paths to library directories.
-				// ex:
-				// C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\lib\\x64
-				// C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29910\\atlmfc\\lib\\x64
-				// C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\ucrt\\x64
-				// C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.19041.0\\um\\x64
-#ifdef _MSC_VER
-				windows_paths = get_windows_link_paths();
-				vec_add(args, join_strings((const char* []) { "-libpath:", windows_paths.windows_sdk_um_library_path }, 2));
-				vec_add(args, join_strings((const char* []) { "-libpath:", windows_paths.windows_sdk_ucrt_library_path }, 2));
-				vec_add(args, join_strings((const char* []) { "-libpath:", windows_paths.vs_library_path }, 2));
-
-				vec_add(args, "-defaultlib:libcmt");
-				vec_add(args, "-nologo");
-				add_files(&args, files_to_link, file_count);
-#else
-				error_exit("ERROR - c3c must be compiled with MSVC to target x64-windows\n");
-#endif
-			}
-			else
-			{
-				if (!strcmp(getenv("MSYSTEM"), "CLANG64") || !strcmp(getenv("MSYSTEM"), "MINGW64"))
-				{
-					prepare_msys2_linker_flags(&args, files_to_link, file_count);
-				}
-				else
-				{
-					return false;
-				}
-			}
-			break;
-		case OS_TYPE_MACOSX:
-			add_files(&args, files_to_link, file_count);
-			vec_add(args, "-lSystem");
-			vec_add(args, "-lm");
-			vec_add(args, "-syslibroot");
-			vec_add(args, "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk");
-			append_linker_pie_options(platform_target.reloc_model, &args);
-			if (platform_target.reloc_model == RELOC_SMALL_PIE || platform_target.reloc_model == RELOC_BIG_PIE)
-			{
-				vec_add(args, "-macosx_version_min");
-				vec_add(args, platform_target.arch == ARCH_TYPE_AARCH64 ? "11.0" : "10.8");
-			}
-			break;
-		case OS_TYPE_WATCHOS:
-		case OS_TYPE_IOS:
-			return false;
-		case OS_TYPE_WASI:
-			return false;
-		case OS_TYPE_OPENBSD:
-		case OS_TYPE_NETBSD:
-		case OS_TYPE_FREE_BSD:
-			return false;
-		case OS_TYPE_LINUX:
-			vec_add(args, "-m");
-			switch (platform_target.arch)
-			{
-				case ARCH_TYPE_X86_64:
-					vec_add(args, "elf_x86_64");
-					append_linker_pie_options(platform_target.reloc_model, &args);
-					if (is_pie_pic(platform_target.reloc_model))
-					{
-						vec_add(args, "--eh-frame-hdr");
-						vec_add(args, "/usr/lib/x86_64-linux-gnu/crt1.o");
-						vec_add(args, "/usr/lib/gcc/x86_64-linux-gnu/10/crtbeginS.o");
-						add_files(&args, files_to_link, file_count);
-						vec_add(args, "/usr/lib/x86_64-linux-gnu/crti.o");
-						vec_add(args, "/usr/lib/gcc/x86_64-linux-gnu/10/crtendS.o");
-					}
-					else
-					{
-						vec_add(args, "/usr/lib/x86_64-linux-gnu/Scrt1.o");
-						vec_add(args, "/usr/lib/gcc/x86_64-linux-gnu/10/crtbegin.o");
-						add_files(&args, files_to_link, file_count);
-						vec_add(args, "-lc");
-						vec_add(args, "-lm");
-						vec_add(args, "/usr/lib/x86_64-linux-gnu/crti.o");
-						vec_add(args, "/usr/lib/gcc/x86_64-linux-gnu/10/crtend.o");
-					}
-					vec_add(args, "/usr/lib/x86_64-linux-gnu/crtn.o");
-					vec_add(args, "-L/usr/lib/x86_64-linux-gnu/");
-					vec_add(args, "--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
-					break;
-				case ARCH_TYPE_X86:
-//					vec_add(args, "elf_i386");
-					return false;
-				case ARCH_TYPE_AARCH64:
-					vec_add(args, "aarch64elf");
-					return false;
-				case ARCH_TYPE_RISCV32:
-					vec_add(args, "elf32lriscv");
-					return false;
-				case ARCH_TYPE_RISCV64:
-					vec_add(args, "elf64lriscv");
-					return false;
-				default:
-					UNREACHABLE
-			}
-			vec_add(args, "-L/usr/lib/");
-			vec_add(args, "-L/lib/");
-			break;
-		default:
-			add_files(&args, files_to_link, file_count);
-			append_linker_pie_options(platform_target.reloc_model, &args);
-			return false;
-	}
 
 	bool success;
+	const char *arg_list = "";
+	VECEACH(args, i)
+	{
+		arg_list = str_cat(arg_list, " ");
+		arg_list = str_cat(arg_list, args[i]);
+	}
+	DEBUG_LOG("Linker arguments: %s to %d", arg_list, platform_target.object_format);
 	switch (platform_target.object_format)
 	{
 		case OBJ_FORMAT_COFF:
-			if (platform_target.x64.is_mingw64)
-			{
-				success = llvm_link_mingw(args, (int)vec_size(args), &error);
-			}
-			else
-			{
-				success = llvm_link_coff(args, (int)vec_size(args), &error);
-			}
-			// This is only defined if compiling with MSVC
-#ifdef _MSC_VER
-			if (windows_paths.windows_sdk_um_library_path) {
-				free_windows_link_paths(&windows_paths);
-			}
-#endif
+			success = llvm_link_coff(args, (int)vec_size(args), &error);
 			break;
 		case OBJ_FORMAT_ELF:
 			success = llvm_link_elf(args, (int)vec_size(args), &error);
@@ -294,6 +474,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	{
 		error_exit("Failed to create an executable: %s", error);
 	}
+	DEBUG_LOG("Linking complete.");
 	return true;
 }
 
@@ -338,19 +519,11 @@ const char *concat_string_parts(const char **args)
 
 void platform_linker(const char *output_file, const char **files, unsigned file_count)
 {
+	DEBUG_LOG("Using cc linker.");
 	const char **parts = NULL;
 	vec_add(parts, active_target.cc ? active_target.cc : "cc");
-	VECEACH(active_target.link_args, i)
-	{
-		vec_add(parts, active_target.link_args[i]);
-	}
 	append_fpie_pic_options(platform_target.reloc_model, &parts);
-	vec_add(parts, "-o");
-	vec_add(parts, output_file);
-	for (unsigned i = 0; i < file_count; i++)
-	{
-		vec_add(parts, files[i]);
-	}
+	linker_setup(&parts, files, file_count, output_file, LINKER_CC);
 	vec_add(parts, "-lm");
 	const char *output = concat_string_parts(parts);
 	if (system(output) != 0)

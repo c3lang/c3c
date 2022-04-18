@@ -90,7 +90,7 @@ static inline bool is_path_separator(char c)
  * @param directory_ptr the pointer to return the directory in.
  * @return false if only a directory could be found, true otherwise
  */
-bool filenamesplit(const char *path, char** filename_ptr, char** directory_ptr)
+bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr)
 {
 	size_t len = strlen(path);
 	if (len == 0) return false;
@@ -107,12 +107,12 @@ bool filenamesplit(const char *path, char** filename_ptr, char** directory_ptr)
 	if (file_len == 1 && path[0] == '.') return false;
 	if (file_len == 2 && path[0] == '.' && path[1] == '.') return false;
 	if (!file_len) return false;
-	*filename_ptr = copy_string(&path[len - file_len], file_len);
+	*filename_ptr = str_copy(&path[len - file_len], file_len);
 	if (!directory_ptr) return true;
 	if (file_len < len)
 	{
 		size_t dir_len = len - file_len;
-		*directory_ptr = copy_string(path, dir_len - 1);
+		*directory_ptr = str_copy(path, dir_len - 1);
 	}
 	else
 	{
@@ -124,21 +124,19 @@ bool filenamesplit(const char *path, char** filename_ptr, char** directory_ptr)
 
 
 
-const char *expand_path(const char *path)
+const char *file_expand_path(const char *path)
 {
 	if (path[0] == '~' && path[1] == '/')
 	{
-		// Ignore leak.
-		char *ret = NULL;
 		char *home = getenv("HOME");
-		if (!home || asprintf(&ret, "%s%s", home, &path[1]) == -1) return &path[2];
-		return ret;
+		if (!home) return &path[2];
+		return str_printf("%s%s", home, &path[1]);
 	}
 	return path;
 }
 
 
-char *read_file(const char *path, size_t *return_size)
+char *file_read_all(const char *path, size_t *return_size)
 {
 	FILE *file = fopen(path, "rb");
 
@@ -190,21 +188,20 @@ char *read_file(const char *path, size_t *return_size)
 static inline const char *lib_find(const char *exe_path, const char *rel_path)
 {
 	struct stat info;
-	char *lib_path = NULL;
-	asprintf(&lib_path, "%s%sstd", exe_path, rel_path);
-	DEBUG_LOG("Checking %s", lib_path);
-	int err = stat(lib_path, &info);
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s%sstd", exe_path, rel_path);
+	DEBUG_LOG("Checking %s", scratch_buffer_to_string());
+	int err = stat(scratch_buffer_to_string(), &info);
 
 	// Not a dir or had error?
 	if (err || !S_ISDIR(info.st_mode)) return NULL;
 
-	char *check_path = NULL;
-	asprintf(&check_path, "%s/libc.c3", lib_path);
 	DEBUG_LOG("Potential lib found, sanity check for libc...");
-	err = stat(check_path, &info);
+	scratch_buffer_append("/libc.c3");
+	err = stat(scratch_buffer_to_string(), &info);
 	if (err || !S_ISREG(info.st_mode)) return NULL;
 
-	asprintf(&lib_path, "%s%s", exe_path, rel_path);
+	const char *lib_path = str_printf("%s%s", exe_path, rel_path);
 	DEBUG_LOG("Library path found at %s", lib_path);
 	return lib_path;
 }
@@ -233,9 +230,9 @@ const char *find_lib_dir(void)
 	return NULL;
 }
 
-void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path)
+void file_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path)
 {
-	if (!filenamesplit(full_path, filename, dir_path))
+	if (!file_namesplit(full_path, filename, dir_path))
 	{
 		error_exit("The filename could not be extracted from '%s'.", full_path);
 	}
@@ -285,6 +282,48 @@ bool file_has_suffix_in_list(const char *file_name, int name_len, const char **s
 	return false;
 }
 
+bool file_is_dir(const char *file)
+{
+	struct stat st;
+	if (stat(file, &st)) return false;
+	return S_ISDIR(st.st_mode);
+}
+
+bool file_exists(const char *path)
+{
+	struct stat st;
+	if (stat(path, &st)) return false;
+	return S_ISDIR(st.st_mode) || S_ISREG(st.st_mode) || S_ISREG(st.st_mode);
+}
+
+const char *file_append_path(const char *path, const char *name)
+{
+	size_t path_len = strlen(path);
+	if (!path_len) return name;
+	if (path[path_len - 1] == '/') return str_cat(path, name);
+	return str_printf("%s/%s", path, name);
+}
+
+const char *file_first(const char *path)
+{
+#ifdef _MSC_VER
+	DIR *dir = opendir(strip_drive_prefix(path));
+#else
+	DIR *dir = opendir(path);
+#endif
+	if (!dir) return NULL;
+	struct dirent *ent;
+	while ((ent = readdir(dir)))
+	{
+		size_t name_len = strlen(ent->d_name);
+		if (name_len > 2)
+		{
+			return str_printf("%.*s", (int)name_len, ent->d_name);
+		}
+	}
+	return NULL;
+}
+
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count)
 {
 #ifdef _MSC_VER
@@ -305,12 +344,8 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 
 		if (namelen < 3 || !file_has_suffix_in_list(ent->d_name, namelen, suffix_list, suffix_count))
 		{
-			char *new_path = NULL;
 			char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
-			if (asprintf(&new_path, format, path, ent->d_name) == -1)
-			{
-				error_exit("Failed to allocate path.");
-			}
+			char *new_path = str_printf(format, path, ent->d_name);
 			bool is_directory;
 			struct stat st;
 			if (stat(new_path, &st))
@@ -323,14 +358,50 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 			{
 				file_add_wildcard_files(files, new_path, recursive, suffix_list, suffix_count);
 			}
-			free(new_path);
 			continue;
 		}
 		char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
-		vec_add(*files, strformat(format, path, ent->d_name));
+		vec_add(*files, str_printf(format, path, ent->d_name));
 	}
 	closedir(dir);
 }
+
+#define BUFSIZE 1024
+const char *execute_cmd(const char *cmd)
+{
+	char buffer[BUFSIZE];
+	char *output = "";
+	FILE *process = NULL;
+	if (!(process = popen(cmd, "r")))
+	{
+		error_exit("Failed to open a pipe for command '%s'.", cmd);
+	}
+	while (fgets(buffer, BUFSIZE - 1, process))
+	{
+		output = str_cat(output, buffer);
+	}
+	if (pclose(process))
+	{
+		error_exit("Failed to execute '%s'.", cmd);
+	}
+	while (output[0] != 0)
+	{
+		switch (output[0])
+		{
+			case ' ':
+			case '\t':
+			case '\n':
+			case '\r':
+				output++;
+				continue;
+			default:
+				break;
+		}
+		break;
+	}
+	return str_trim(output);
+}
+
 
 #if PLATFORM_WINDOWS
 

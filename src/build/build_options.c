@@ -14,6 +14,7 @@
 #include <utils/lib.h>
 #include "../utils/whereami.h"
 
+extern int llvm_version_major;
 
 static int arg_index;
 static int arg_count;
@@ -23,30 +24,30 @@ extern const char* llvm_version;
 extern const char* llvm_target;
 
 char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
-		[X86_FREEBSD] = "x86-freebsd",
-		[X86_OPENBSD] = "x86-openbsd",
-		[X86_NETBSD] = "x86-netbsd",
-		[X86_MCU] = "x86-mcu",
-		[X86_ELF] = "x86-elf",
-		[X86_WINDOWS] = "x86-windows",
-		[X86_LINUX] = "x86-linux",
-		[X64_DARWIN] = "x64-darwin",
-		[X64_LINUX] = "x64-linux",
-		[X64_WINDOWS] = "x64-windows",
-		[X64_WINDOWS_GNU] = "x64-mingw",
-		[X64_FREEBSD] = "x64-freebsd",
-		[X64_OPENBSD] = "x64-openbsd",
-		[X64_NETBSD] = "x64-netbsd",
-		[X64_ELF] = "x64-elf",
-		[AARCH64_LINUX] = "aarch64-linux",
-		[AARCH64_DARWIN] = "aarch64-darwin",
-		[AARCH64_ELF] = "aarch64-elf",
-		[RISCV32_LINUX] = "riscv32-linux",
-		[RISCV32_ELF] = "riscv32-elf",
-		[RISCV64_LINUX] = "riscv64-linux",
-		[RISCV64_ELF] = "riscv64-elf",
+		[WINDOWS_X86] = "windows-x86",
+		[WINDOWS_X64] = "windows-x64",
+		[MINGW_X64] = "mingw-x64",
+		[MACOS_X64] = "macos-x64",
+		[MACOS_AARCH64] = "macos-aarch64",
+		[LINUX_X86] = "linux-x86",
+		[LINUX_X64] = "linux-x64",
+		[LINUX_AARCH64] = "linux-aarch64",
+		[LINUX_RISCV32] = "linux-riscv32",
+		[LINUX_RISCV64] = "linux-riscv64",
 		[WASM32] = "wasm32",
 		[WASM64] = "wasm64",
+		[ELF_X86] = "elf-x86",
+		[ELF_X64] = "elf-x64",
+		[ELF_AARCH64] = "elf-aarch64",
+		[ELF_RISCV32] = "elf-riscv32",
+		[ELF_RISCV64] = "elf-riscv64",
+		[FREEBSD_X86] = "freebsd-x86",
+		[FREEBSD_X64] = "freebsd-x64",
+		[OPENBSD_X86] = "openbsd-x86",
+		[OPENBSD_X64] = "openbsd-x64",
+		[NETBSD_X86] = "netbsd-x86",
+		[NETBSD_X64] = "netbsd-x64",
+		[MCU_X86] = "mcu-x86",
 };
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
@@ -74,7 +75,8 @@ static void usage(void)
 	OUTPUT("Options:");
 	OUTPUT("  --tinybackend         - Use the TinyBackend for compilation.");
 	OUTPUT("  --stdlib <dir>        - Use this directory as the C3 standard library path.");
-	OUTPUT("  --lib <dir>           - Use this directory as the C3 library path.");
+	OUTPUT("  --libdir <dir>        - Add this directory to the C3 library search paths.");
+	OUTPUT("  --lib <name>          - Add this library to the compilation.");
 	OUTPUT("  --path <dir>          - Use this as the base directory for the current command.");
 	OUTPUT("  --template <template> - Use a different template: \"lib\", \"static-lib\" or a path.");
 	OUTPUT("  --about               - Prints a short description of C3.");
@@ -103,6 +105,7 @@ static void usage(void)
 	OUTPUT("  -l <library>          - Link with the library provided.");
 	OUTPUT("  -L <library dir>      - Append the directory to the linker search paths.");
 	OUTPUT("  -z <argument>         - Send the <argument> as a parameter to the linker.");
+	OUTPUT("  --forcelinker         - Force linker usage over using when doing non-cross linking.");
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>      - Relocation model: none, pic, PIC, pie, PIE");
 	OUTPUT("  --x86vec=<option>     - Set max level of vector instructions: none, mmx, sse, avx, avx512.");
@@ -114,6 +117,12 @@ static void usage(void)
 	OUTPUT("  --list-attributes     - List all attributes.");
 	OUTPUT("  --list-builtins       - List all builtins.");
 	OUTPUT("  --list-precedence     - List operator precedence order.");
+	OUTPUT("");
+	OUTPUT("  --winsdk <dir>        - Set the directory for Windows system library files for cross compilation.");
+	OUTPUT("  --wincrt=<option>     - Windows CRT linking: none, static, dynamic (default).");
+	OUTPUT("");
+	OUTPUT("  --macossdk <dir>      - Set the directory for the MacOS SDK for cross compilation.");
+
 #ifndef NDEBUG
 	OUTPUT("  --debug-log           - Print debug logging to stdout.");
 #endif
@@ -315,7 +324,7 @@ static void add_linker_arg(BuildOptions *options, const char *arg)
 static int parse_multi_option(const char *start, unsigned count, const char** elements)
 {
 	const char *arg = current_arg;
-	int select = str_in_list(start, count, elements);
+	int select = str_findlist(start, count, elements);
 	if (select < 0) error_exit("error: %.*s invalid option '%s' given.", (int)(start - arg), start, arg);
 	return select;
 }
@@ -416,7 +425,7 @@ static void parse_option(BuildOptions *options)
 		{
 			if (at_end() || next_is_opt()) error_exit("error: -l needs a library name.");
 			const char *lib = next_arg();
-			const char *framework = str_without_suffix(lib, ".framework");
+			const char *framework = str_remove_suffix(lib, ".framework");
 			if (framework)
 			{
 				add_linker_arg(options, "-framework");
@@ -460,6 +469,18 @@ static void parse_option(BuildOptions *options)
 				int symtab = atoi(symtab_string);
 				if (symtab < 1024) OUTPUT("Expected a valid positive integer >= 1024.");
 				options->symtab_size = next_highest_power_of_2(symtab);
+				return;
+			}
+			if (match_longopt("forcelinker"))
+			{
+				if (llvm_version_major > 12)
+				{
+					options->force_linker = true;
+				}
+				else
+				{
+					printf("Force linking ignored on LLVM 12 and earlier.\n");
+				}
 				return;
 			}
 			if (match_longopt("version"))
@@ -580,11 +601,41 @@ static void parse_option(BuildOptions *options)
 				options->panicfn = next_arg();
 				return;
 			}
+			if (match_longopt("macossdk"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --macossdk needs a directory.");
+				options->macos.sdk = check_dir(next_arg());
+				return;
+			}
+			if (match_longopt("winsdk"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --winsdk needs a directory.");
+				options->win.sdk = check_dir(next_arg());
+				return;
+			}
+			if ((argopt = match_argopt("wincrt")))
+			{
+				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 3, wincrt_linking);
+				return;
+			}
 			if (match_longopt("lib"))
 			{
-				if (at_end() || next_is_opt()) error_exit("error: --lib needs a directory.");
-				if (options->lib_count == MAX_LIB_DIRS) error_exit("Max %d libraries may be specified.", MAX_LIB_DIRS);
-				options->lib_dir[options->lib_count++] = check_dir(next_arg());
+				if (at_end() || next_is_opt()) error_exit("error: --lib needs a name.");
+				const char *name = next_arg();
+				if (!str_is_valid_lowercase_name(name))
+				{
+					char *name_copy = strdup(name);
+					str_ellide_in_place(name_copy, 32);
+					error_exit("Invalid library name '%s', it should be something like 'foo_lib'.", name_copy);
+				}
+				options->libs[options->lib_count++] = name;
+				return;
+			}
+			if (match_longopt("libdir"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --libdir needs a directory.");
+				if (options->lib_dir_count == MAX_LIB_DIRS) error_exit("Max %d library directories may be specified.", MAX_LIB_DIRS);
+				options->lib_dir[options->lib_dir_count++] = check_dir(next_arg());
 				return;
 			}
 			if (match_longopt("test"))
@@ -645,6 +696,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.reloc_model = RELOC_DEFAULT,
 		.backend = BACKEND_LLVM,
 		.x86_vector_capability = X86VECTOR_DEFAULT,
+		.win.crt_linking = WIN_CRT_DEFAULT,
 		.files = NULL
 	};
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)
