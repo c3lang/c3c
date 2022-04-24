@@ -48,11 +48,12 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
             LLVM_Windows_debug
             URL https://github.com/c3lang/win-llvm/releases/download/lld-llvm${C3_LLVM_VERSION}-release/llvm-${C3_LLVM_VERSION}.0.0-windows-amd64-msvc16-msvcrt-dbg.7z
     )
-    message("Loading Windows LLVM libraries...")
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        message("Loading Windows LLVM libraries...")
         FetchContent_MakeAvailable(LLVM_Windows)
         set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_windows_SOURCE_DIR} ${CMAKE_SYSTEM_PREFIX_PATH})
     else()
+        message("Loading Windows LLVM debug libraries...")
         FetchContent_MakeAvailable(LLVM_Windows_debug)
         set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_windows_debug_SOURCE_DIR} ${CMAKE_SYSTEM_PREFIX_PATH})
     endif()
