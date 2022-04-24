@@ -366,6 +366,12 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 	closedir(dir);
 }
 
+#if PLATFORM_WINDOWS
+const char *execute_cmd(const char *cmd)
+{
+	FATAL_ERROR("Not implemented");
+}
+#else
 #define BUFSIZE 1024
 const char *execute_cmd(const char *cmd)
 {
@@ -401,7 +407,7 @@ const char *execute_cmd(const char *cmd)
 	}
 	return str_trim(output);
 }
-
+#endif
 
 #if PLATFORM_WINDOWS
 
