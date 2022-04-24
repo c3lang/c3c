@@ -129,7 +129,7 @@ fn void test()
 
 ### Current status
 
-The current version of the compiler is alpha release 0.1.0.
+The current version of the compiler is alpha release 0.1.
 
 It's possible to try out the current C3 compiler in the browser: https://ide.judge0.com/ – this is courtesy of the
 developer of Judge0. 

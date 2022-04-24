@@ -1,10 +1,17 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
 project(c3c)
 include(FetchContent)
 include(FeatureSummary)
 
 set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
 set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O1")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -gdwarf-3 -O3")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3")
+
 set(C3_LLVM_VERSION "auto" CACHE STRING "Use LLVM version [default: auto]")
 option(C3_USE_MIMALLOC "Use built-in mimalloc" OFF)
 set(C3_MIMALLOC_TAG "v1.7.3" CACHE STRING "Used version of mimalloc")
@@ -23,28 +30,38 @@ if(C3_USE_MIMALLOC)
     FetchContent_MakeAvailable(mimalloc)
 endif()
 
-if(NOT C3_LLVM_VERSION STREQUAL "auto")
-    if(${C3_LLVM_VERSION} VERSION_LESS 12 OR ${C3_LLVM_VERSION} VERSION_GREATER 15)
+if (NOT C3_LLVM_VERSION STREQUAL "auto")
+    if (${C3_LLVM_VERSION} VERSION_LESS 12 OR ${C3_LLVM_VERSION} VERSION_GREATER 15)
         message(FATAL_ERROR "LLVM ${C3_LLVM_VERSION} is not supported!")
     endif()
-    find_package(LLVM ${C3_LLVM_VERSION} REQUIRED CONFIG)
+endif()
+
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    if (C3_LLVM_VERSION STREQUAL "auto")
+        set(C3_LLVM_VERSION "13")
+    endif()
+    FetchContent_Declare(
+            LLVM_Windows
+            URL https://github.com/c3lang/win-llvm/releases/download/lld-llvm${C3_LLVM_VERSION}-release/llvm-${C3_LLVM_VERSION}.0.0-windows-amd64-msvc16-msvcrt.7z
+    )
+    message("Loading Windows LLVM libraries...")
+    FetchContent_MakeAvailable(LLVM_Windows)
+    set(LLVM_DIR ${llvm_windows_SOURCE_DIR}/lib/cmake/llvm)
+    find_package(LLVM REQUIRED CONFIG)
 else()
-   find_package(LLVM REQUIRED CONFIG)
+    message(FATAL_ERROR, "Ffff")
+    if (NOT C3_LLVM_VERSION STREQUAL "auto")
+        find_package(LLVM ${C3_LLVM_VERSION} REQUIRED CONFIG)
+    else()
+        find_package(LLVM REQUIRED CONFIG)
+    endif()
 endif()
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 message(STATUS "Libraries located in: ${LLVM_LIBRARY_DIRS}")
-
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
-
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
-
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O1")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -gdwarf-3 -O3")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3")
 
 set(LLVM_LINK_COMPONENTS
         AllTargetsAsmParsers
@@ -73,7 +90,7 @@ set(LLVM_LINK_COMPONENTS
         Target
         TransformUtils
         WindowsManifest
-        )
+)
 
 if (${LLVM_PACKAGE_VERSION} VERSION_GREATER 14.1)
     set(LLVM_LINK_COMPONENTS ${LLVM_LINK_COMPONENTS} WindowsDriver)
@@ -83,8 +100,8 @@ llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 
 file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 
-# These don't seem to be reliable on windows.
 
+# These don't seem to be reliable on windows.
 if(UNIX)
     message(STATUS "using find_library")
 #    find_library(TB_LIB NAMES tinybackend.a PATHS ${CMAKE_SOURCE_DIR}/resources/tblib)
