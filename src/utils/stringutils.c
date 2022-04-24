@@ -206,7 +206,7 @@ void scratch_buffer_append_len(const char *string, size_t len)
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
 	}
 	memcpy(scratch_buffer.str + scratch_buffer.len, string, len);
-	scratch_buffer.len += len;
+	scratch_buffer.len += (uint32_t)len;
 }
 
 void scratch_buffer_append(const char *string)

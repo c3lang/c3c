@@ -984,7 +984,7 @@ void type_func_prototype_init(uint32_t capacity)
 	assert(is_power_of_two(capacity) && capacity > 1);
 	map.entries = CALLOC(capacity * sizeof(FuncTypeEntry));
 	map.capacity = capacity;
-	map.max_load = TABLE_MAX_LOAD * capacity;
+	map.max_load = (uint32_t)(TABLE_MAX_LOAD * capacity);
 }
 
 static uint32_t hash_function(FunctionSignature *sig)
@@ -1062,10 +1062,10 @@ static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI a
 		FuncTypeEntry *entries = map.entries;
 		uint32_t old_capacity = map.capacity;
 		uint32_t new_capacity = map.capacity = old_capacity << 2;
-		map.max_load = new_capacity * TABLE_MAX_LOAD;
+		map.max_load = (uint32_t)(new_capacity * TABLE_MAX_LOAD);
 		FuncTypeEntry *new_map = CALLOC(new_capacity * sizeof(FuncTypeEntry));
 		uint32_t new_mask = new_capacity - 1;
-		for (int i = 0; i < old_capacity; i++)
+		for (uint32_t i = 0; i < old_capacity; i++)
 		{
 			uint32_t key = entries[i].key;
 			if (!key) continue;
