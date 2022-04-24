@@ -7,6 +7,36 @@ on:
     branches: [ master ]
 
 jobs:
+
+  build-msvc:
+    runs-on: windows-latest
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        build_type: [ Release, Debug ]
+
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: CMake
+        run: |
+          cmake -B build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build build
+
+      - name: Build testproject
+        run: |
+          cd resources/testproject
+          ../../build/c3c run --debug-log
+
+      - name: run compiler tests
+        run: |
+          cd test
+          python3 src/tester.py ../build/c3c.exe test_suite/
+
   build-msys2-mingw:
     runs-on: windows-latest
     strategy:
@@ -44,6 +74,7 @@ jobs:
         run: |
           cd test
           python3 src/tester.py ../build/c3c.exe test_suite/
+
 
   build-msys2-clang:
     runs-on: windows-latest

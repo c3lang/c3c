@@ -46,10 +46,10 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     )
     message("Loading Windows LLVM libraries...")
     FetchContent_MakeAvailable(LLVM_Windows)
-    set(LLVM_DIR ${llvm_windows_SOURCE_DIR}/lib/cmake/llvm)
+    set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_windows_SOURCE_DIR} ${CMAKE_SYSTEM_PREFIX_PATH})
+    message("Prefix path was ${CMAKE_SYSTEM_PREFIX_PATH}")
     find_package(LLVM REQUIRED CONFIG)
 else()
-    message(FATAL_ERROR, "Ffff")
     if (NOT C3_LLVM_VERSION STREQUAL "auto")
         find_package(LLVM ${C3_LLVM_VERSION} REQUIRED CONFIG)
     else()
@@ -102,7 +102,7 @@ file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 
 
 # These don't seem to be reliable on windows.
-if(UNIX)
+if(true)
     message(STATUS "using find_library")
 #    find_library(TB_LIB NAMES tinybackend.a PATHS ${CMAKE_SOURCE_DIR}/resources/tblib)
     find_library(LLD_COFF NAMES lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS})
@@ -253,20 +253,14 @@ target_include_directories(c3c_wrappers PRIVATE
 
 
 
-if(UNIX)
-    target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
-    target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${lld_libs})
+target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
+target_link_libraries(c3c ${llvm_libs} c3c_wrappers ${lld_libs})
 #    target_link_libraries(c3c m ${llvm_libs} c3c_wrappers ${TB_LIB} ${lld_libs})
-    if(C3_USE_MIMALLOC)
-        target_link_libraries(c3c m mimalloc-static)
-    endif()
-else()
-    # todo: maybe get this from llvm-config somehow? it should be in LLVM_DIR\..\..\..\bin I think.
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:C:\\llvm\\llvm\\build\\Release\\lib") # needed for lldCommon.lib
-    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -LIBPATH:${LLVM_LIBPATH}") # This doesn't seem to work for some reason
-    message(STATUS "${LLVM_LIBPATH}")
-    target_link_libraries(c3c debug ${llvm_libs} c3c_wrappers ${lld_libs} Advapi32)
-    target_link_libraries(c3c optimized ${llvm_libs} c3c_wrappers ${lld_libs} Advapi32)
+if(C3_USE_MIMALLOC)
+    target_link_libraries(c3c m mimalloc-static)
+endif()
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    target_link_libraries(c3c Advapi32)
 endif()
 
 if (WIN32)
