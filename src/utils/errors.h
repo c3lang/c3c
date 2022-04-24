@@ -33,7 +33,7 @@
 #define INLINE __attribute__((always_inline)) static inline
 #elif defined(_MSC_VER)
 #define FALLTHROUGH ((void)0)
-#define INLINE __forceinline static inline
+#define INLINE static __forceinline
 #define NORETURN __declspec(noreturn)
 #define UNUSED
 #else
