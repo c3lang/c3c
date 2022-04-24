@@ -261,6 +261,7 @@ if(C3_USE_MIMALLOC)
 endif()
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     target_link_libraries(c3c Advapi32)
+    target_link_options(c3c_wrappers PRIVATE nowarn)
 endif()
 
 if (WIN32)
