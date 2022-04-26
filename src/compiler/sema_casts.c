@@ -671,6 +671,16 @@ bool may_convert_float_const_implicit(Expr *expr, Type *to_type)
 bool may_convert_int_const_implicit(Expr *expr, Type *to_type)
 {
 	Type *to_type_flat = type_flatten(to_type);
+	switch (to_type_flat->type_kind)
+	{
+		case ALL_FLOATS:
+		case TYPE_BOOL:
+			return true;
+		case ALL_INTS:
+			break;
+		default:
+			return false;
+	}
 	if (expr_const_will_overflow(&expr->const_expr, to_type_flat->type_kind))
 	{
 		sema_error_const_int_out_of_range(expr, expr, to_type);

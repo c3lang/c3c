@@ -191,6 +191,7 @@ bool float_const_fits_type(const ExprConst *expr_const, TypeKind kind)
 		default:
 			UNREACHABLE
 	}
+	assert(expr_const->const_kind == CONST_FLOAT);
 	return expr_const->fxx.f >= -lo_limit && expr_const->fxx.f <= hi_limit;
 }
 

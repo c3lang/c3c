@@ -883,15 +883,17 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	Decl *private_symbol = NULL;
 
 	DEBUG_LOG("Now resolving %s", expr->identifier_expr.ident);
+
+	// Just start with inference
+	if (!expr->identifier_expr.path && to)
+	{
+		if (find_possible_inferred_identifier(to, expr)) return true;
+	}
+
 	Decl *decl = sema_find_path_symbol(context, expr->identifier_expr.ident, expr->identifier_expr.path);
 	// Is this a broken decl?
 	if (!decl_ok(decl)) return false;
 
-	// Just no real way to find it, try inference
-	if (!decl && !expr->identifier_expr.path && to)
-	{
-		if (find_possible_inferred_identifier(to, expr)) return true;
-	}
 
 	// Rerun if we can't do inference.
 	if (!decl)
@@ -3051,6 +3053,7 @@ static inline void expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enu
 		Expr *expr = expr_new(EXPR_CONST, span);
 		expr->const_expr.const_kind = CONST_ENUM;
 		expr->const_expr.enum_val = decl;
+		assert(decl_ok(decl));
 		expr->type = kind;
 		expr->resolve_status = RESOLVE_DONE;
 		vec_add(element_values, expr);

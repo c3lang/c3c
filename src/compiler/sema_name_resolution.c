@@ -187,13 +187,8 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_re
 	return decl ? decl : sema_find_decl_in_global(&global_context.symbols, global_context.module_list, name_resolve, false);
 }
 
-static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_resolve)
+static inline Decl *sema_find_local(SemaContext *context, const char *symbol)
 {
-	Decl *decl = NULL;
-
-	const char *symbol = name_resolve->symbol;
-	assert(name_resolve->path == NULL);
-
 	Decl **locals = context->locals;
 	if (context->active_scope.current_local > 0)
 	{
@@ -210,7 +205,7 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name
 					VarDeclKind kind = cur->var.kind;
 
 					// In this case, we erase the value from parent scopes, so it isn't visible here.
-					if (kind == VARDECL_ERASE) goto JUMP_ERASED;
+					if (kind == VARDECL_ERASE) return NULL;
 					if (kind == VARDECL_REWRAPPED) return cur->var.alias;
 				}
 				return cur;
@@ -218,7 +213,18 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name
 			current--;
 		}
 	}
-	JUMP_ERASED:;
+	return NULL;
+}
+
+static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_resolve)
+{
+	Decl *decl = NULL;
+
+	const char *symbol = name_resolve->symbol;
+	assert(name_resolve->path == NULL);
+
+	Decl *found = sema_find_local(context, symbol);
+	if (found) return found;
 
 	CompilationUnit *unit = context->unit;
 
@@ -507,7 +513,8 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 	// Ignore synthetic locals.
 	if (!decl->name) return true;
 	if (decl->decl_kind == DECL_VAR && decl->var.shadow) goto ADD_VAR;
-	Decl *other = sema_find_symbol(context, decl->name);
+
+	Decl *other = sema_find_local(context, decl->name);
 	assert(!other || other->module);
 	if (other && (other->module == current_module || other->is_autoimport))
 	{
