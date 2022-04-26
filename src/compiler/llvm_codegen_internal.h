@@ -263,6 +263,9 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 void llvm_emit_function_body(GenContext *context, Decl *decl);
 void llvm_emit_function_decl(GenContext *c, Decl *decl);
 void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl);
+void llvm_set_weak(GenContext *c, LLVMValueRef global);
+void llvm_set_linkonce(GenContext *c, LLVMValueRef global);
+void llvm_set_comdat(GenContext *c, LLVMValueRef global);
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *c, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count, LLVMValueRef *values, unsigned arg_count);
 void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_type, Type *from_type);
 

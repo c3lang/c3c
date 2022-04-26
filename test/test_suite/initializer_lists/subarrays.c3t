@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 
 import std::io;
 import std::mem;
@@ -43,15 +43,15 @@ fn int main()
     return 1;
 }
 
-// #expect: subarrays.ll
+/* #expect: subarrays.ll
 
 %Bar = type { i32, i32 }
 %"Bar[]" = type { %Bar*, i64 }
 %"int[]" = type { i32*, i64 }
 %Baz = type { double }
 
-@Baz = linkonce_odr constant i8 1
-@Bar = linkonce_odr constant i8 1
+@introspect.Baz = linkonce constant i8 1
+@introspect.Bar = linkonce constant i8 1
 @.taddr = private global [2 x %Bar] [%Bar { i32 3, i32 4 }, %Bar { i32 8, i32 9 }], align 4
 @subarrays.arrbar = local_unnamed_addr global %"Bar[]" { %Bar* getelementptr inbounds ([2 x %Bar], [2 x %Bar]* @.taddr, i32 0, i32 0), i64 2 }, align 8
 @.taddr.3 = private global [2 x i32] [i32 1, i32 2], align 4

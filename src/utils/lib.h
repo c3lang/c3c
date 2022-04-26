@@ -11,14 +11,42 @@
 #include "direct.h"
 #endif
 
+
+typedef struct StringSlice_
+{
+	const char *ptr;
+	size_t len;
+} StringSlice;
+
+typedef struct
+{
+	int major;
+	int minor;
+} Version;
+
+typedef struct
+{
+	Version macos_deploy_target;
+	Version macos_min_deploy_target;
+} MacSDK;
+
+typedef struct {
+	char* windows_sdk_um_library_path;
+	char* windows_sdk_ucrt_library_path;
+	char* vs_library_path;
+} WindowsSDK;
+
+#define MAX_STRING_BUFFER 0x10000
 #define COMPILER_SUCCESS_EXIT -1000
+NORETURN void exit_compiler(int exit_value);
 extern jmp_buf on_err_jump;
 
 extern bool debug_log;
 extern bool debug_stats;
 extern uintptr_t arena_zero;
+struct ScratchBuf { char str[MAX_STRING_BUFFER]; uint32_t len; };
+extern struct ScratchBuf scratch_buffer;
 
-NORETURN void exit_compiler(int exit_value);
 
 typedef struct Task_
 {
@@ -28,15 +56,20 @@ typedef struct Task_
 
 typedef void *TaskQueueRef;
 
-const char *str_without_suffix(const char *name, const char *suffix);
-bool filenamesplit(const char *path, char** filename_ptr, char** directory_ptr);
-const char* expand_path(const char* path);
+bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr);
+const char* file_expand_path(const char* path);
 const char* find_lib_dir(void);
-char *read_file(const char *path, size_t *return_size);
-void path_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
+bool file_is_dir(const char *file);
+bool file_exists(const char *path);
+char *file_read_all(const char *path, size_t *return_size);
+void file_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
 void file_find_top_dir();
 bool file_has_suffix_in_list(const char *file_name, int name_len, const char **suffix_list, int suffix_count);
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count);
+const char *file_first(const char *path);
+const char *file_append_path(const char *path, const char *name);
+
+const char *execute_cmd(const char *cmd);
 void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(void);
@@ -46,7 +79,6 @@ void memory_release();
 #define idptr(id_) ((void*)(((uintptr_t)id_) * 16 + arena_zero))
 void *calloc_arena(size_t mem);
 char *calloc_string(size_t len);
-char *copy_string(const char *start, size_t str_len);
 #define malloc_string calloc_string
 #define malloc_arena calloc_arena
 void free_arena(void);
@@ -56,6 +88,78 @@ TaskQueueRef taskqueue_create(int threads);
 void taskqueue_add(TaskQueueRef queue, Task *task);
 void taskqueue_destroy(TaskQueueRef queue);
 void taskqueue_wait_for_completion(TaskQueueRef queue);
+
+
+const char *str_remove_suffix(const char *name, const char *suffix);
+char *str_trim(char *str);
+const char *str_trim_start(const char *str);
+void str_trim_end(char *str);
+char *str_cat(const char *a, const char *b);
+// Search a list of strings and return the matching element or -1 if none found.
+int str_findlist(const char *value, unsigned count, const char** elements);
+// Sprintf style, saved to an arena allocated string
+char *str_printf(const char *var, ...) __printflike(1, 2);
+char *str_vprintf(const char *var, va_list list);
+void str_ellide_in_place(char *string, size_t max_size_shown);
+bool str_is_valid_lowercase_name(const char *string);
+bool str_has_no_uppercase(const char *string);
+char *str_copy(const char *start, size_t str_len);
+
+StringSlice slice_next_token(StringSlice *slice, char separator);
+static inline bool slice_strcmp(StringSlice slice, const char *other);
+static inline StringSlice slice_from_string(const char *data);
+void slice_trim(StringSlice *slice);
+
+void scratch_buffer_clear(void);
+void scratch_buffer_append(const char *string);
+void scratch_buffer_append_len(const char *string, size_t len);
+void scratch_buffer_append_char(char c);
+void scratch_buffer_append_signed_int(int64_t i);
+UNUSED void scratch_buffer_append_unsigned_int(uint64_t i);
+void scratch_buffer_printf(const char *format, ...);
+char *scratch_buffer_to_string(void);
+char *scratch_buffer_copy(void);
+
+static inline bool is_power_of_two(uint64_t x);
+static inline uint32_t next_highest_power_of_2(uint32_t v);
+
+static inline bool char_is_lower(char c);
+static inline bool char_is_lower_(char c);
+static inline bool char_is_upper(char c);
+static inline bool char_is_oct(char c);
+static inline bool char_is_oct_or_(char c);
+static inline bool char_is_binary(char c);
+static inline bool char_is_binary_or_(char c);
+static inline bool char_is_digit_or_(char c);
+static inline bool char_is_digit(char c);
+static inline bool char_is_hex(char c);
+static inline bool char_is_hex_or_(char c);
+static inline bool char_is_base64(char c);
+static inline bool char_is_letter(char c);
+static inline bool char_is_letter_(char c);
+static inline bool char_is_alphanum_(char c);
+static inline bool char_is_lower_alphanum_(char c);
+static inline bool char_is_whitespace(char c);
+static inline signed char char_is_valid_escape(char c);
+// Hex to nibble, -1 if invalid
+static inline int char_hex_to_nibble(char c);
+static inline char char_nibble_to_hex(int c);
+
+static inline uint32_t fnv1a(const char *key, uint32_t len);
+
+static inline uint32_t vec_size(const void *vec);
+static inline void vec_resize(void *vec, uint32_t new_size);
+static inline void vec_pop(void *vec);
+
+#define NUMBER_CHAR_CASE '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
+#define UPPER_CHAR_CASE 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I': case 'J': \
+	case 'K': case 'L': case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': \
+	case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z'
+#define LOWER_CHAR_CASE 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h': case 'i': case 'j': \
+	case 'k': case 'l': case 'm': case 'n': case 'o': case 'p': case 'q': case 'r': case 's': case 't': \
+	case 'u': case 'v': case 'w': case 'x': case 'y': case 'z'
+#define HEX_CHAR_CASE  'a': case 'b': case 'c': case 'd': case 'e': case 'f': \
+  case 'A': case 'B': case 'C': case 'D': case 'E': case 'F'
 
 #if MEM_PRINT
 #define MALLOC(mem) (printf("Alloc at %s %zu\n", __FUNCTION__, (size_t)(mem)), malloc_arena(mem))
@@ -73,297 +177,6 @@ void taskqueue_wait_for_completion(TaskQueueRef queue);
 #define CALLOC(mem) calloc_arena(mem)
 #define CALLOCS(type) calloc_arena(sizeof(type))
 #endif
-
-#define NUMBER_CHAR_CASE '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
-
-static inline bool is_power_of_two(uint64_t x)
-{
-	return x != 0 && (x & (x - 1)) == 0;
-}
-
-static inline uint32_t next_highest_power_of_2(uint32_t v)
-{
-	v--;
-	v |= v >> 1U;
-	v |= v >> 2U;
-	v |= v >> 4U;
-	v |= v >> 8U;
-	v |= v >> 16U;
-	v++;
-	return v;
-}
-
-
-
-static inline bool is_lower(char c)
-{
-	return c >= 'a' && c <= 'z';
-}
-
-static inline bool is_lower_(char c)
-{
-	return c == '_' || (c >= 'a' && c <= 'z');
-}
-
-static inline bool is_upper(char c)
-{
-	return c >= 'A' && c <= 'Z';
-}
-
-static inline bool is_oct(char c)
-{
-	return c >= '0' && c <= '7';
-}
-
-static inline bool is_oct_or_(char c)
-{
-	switch (c)
-	{
-		case '0': case '1': case '2': case '3': case '4':
-		case '5': case '6': case '7': case '_':
-			return true;
-		default:
-			return false;
-	}
-}
-
-static inline bool is_binary(char c)
-{
-	return c  == '0' || c == '1';
-}
-
-
-static inline bool is_binary_or_(char c)
-{
-	switch (c)
-	{
-		case '0': case '1': case '_':
-			return true;
-		default:
-			return false;
-	}
-}
-
-
-static inline bool is_digit_or_(char c)
-{
-	switch (c)
-	{
-		case NUMBER_CHAR_CASE:
-		case '_':
-			return true;
-		default:
-			return false;
-	}
-}
-
-static inline bool is_digit(char c)
-{
-	return c >= '0' && c <= '9';
-}
-
-/**
- * Convert hex character to nibble
- * @param c
- * @return value or -1 if invalid.
- */
-static inline int char_to_nibble(char c)
-{
-	char conv[256] = {
-			['0'] = 1,
-			['1'] = 2,
-			['2'] = 3,
-			['3'] = 4,
-			['4'] = 5,
-			['5'] = 6,
-			['6'] = 7,
-			['7'] = 8,
-			['8'] = 9,
-			['9'] = 10,
-			['A'] = 11,
-			['B'] = 12,
-			['C'] = 13,
-			['D'] = 14,
-			['E'] = 15,
-			['F'] = 16,
-			['a'] = 11,
-			['b'] = 12,
-			['c'] = 13,
-			['d'] = 14,
-			['e'] = 15,
-			['f'] = 16,
-	};
-	return conv[(unsigned)c] - 1;
-}
-
-static inline bool is_hex_or_(char c)
-{
-	switch (c)
-	{
-		case NUMBER_CHAR_CASE:
-		case 'a': case 'b': case 'c': case 'd': case 'e':
-		case 'f':
-		case 'A': case 'B': case 'C': case 'D': case 'E':
-		case 'F':
-		case '_':
-			return true;
-		default:
-			return false;
-	}
-}
-
-static inline signed char is_valid_escape(char c)
-{
-	switch (c)
-	{
-		case 'a':
-			return '\a';
-		case 'b':
-			return '\b';
-		case 'e':
-			return 0x1B;
-		case 'f':
-			return '\f';
-		case 'n':
-			return '\n';
-		case 'r':
-			return '\r';
-		case 't':
-			return '\t';
-		case 'v':
-			return '\v';
-		case 'x':
-			return 'x';
-		case 'u':
-			return 'u';
-		case 'U':
-			return 'U';
-		case '\'':
-			return '\'';
-		case '"':
-			return '"';
-		case '\\':
-			return '\\';
-		case '0':
-			return '\0';
-		case 's':
-			return ' ';
-		default:
-			return -1;
-	}
-}
-
-static inline bool is_base64(char c)
-{
-	return (c >= 'A' && c <= 'Z')
-		|| (c >= 'a' && c <= 'z')
-		|| (c >= '0' && c <= '9')
-		|| c == '+' || c == '/';
-}
-
-static inline bool is_hex(char c)
-{
-	switch (c)
-	{
-		case NUMBER_CHAR_CASE:
-		case 'a': case 'b': case 'c': case 'd': case 'e':
-		case 'f':
-		case 'A': case 'B': case 'C': case 'D': case 'E':
-		case 'F':
-			return true;
-		default:
-			return false;
-	}
-}
-
-static inline int hex_nibble(char c)
-{
-	static int conv[256] = {
-			['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,
-			['5'] = 5, ['6'] = 6, ['7'] = 7, ['8'] = 8, ['9'] = 9,
-			['A'] = 10, ['B'] = 11, ['C'] = 12, ['D'] = 13, ['E'] = 14, ['F'] = 15,
-			['a'] = 10, ['b'] = 11, ['c'] = 12, ['d'] = 13, ['e'] = 14, ['f'] = 15,
-	};
-	return conv[(unsigned char)c];
-}
-
-static inline char nibble_hex(int c)
-{
-	static const char *conv = "0123456789ABCDEF";
-	return conv[c];
-}
-
-static inline bool is_whitespace(char c)
-{
-	switch (c)
-	{
-		case ' ':
-		case '\t':
-		case '\n':
-			return true;
-		case '\r':
-			UNREACHABLE
-		default:
-			return false;
-	}
-}
-
-static inline bool is_alphanum_(char c)
-{
-	switch (c)
-	{
-		case 'a': case 'b': case 'c': case 'd': case 'e':
-		case 'f': case 'g': case 'h': case 'i': case 'j':
-		case 'k': case 'l': case 'm': case 'n': case 'o':
-		case 'p': case 'q': case 'r': case 's': case 't':
-		case 'u': case 'v': case 'w': case 'x': case 'y':
-		case 'z':
-		case 'A': case 'B': case 'C': case 'D': case 'E':
-		case 'F': case 'G': case 'H': case 'I': case 'J':
-		case 'K': case 'L': case 'M': case 'N': case 'O':
-		case 'P': case 'Q': case 'R': case 'S': case 'T':
-		case 'U': case 'V': case 'W': case 'X': case 'Y':
-		case 'Z':
-		case NUMBER_CHAR_CASE:
-		case '_':
-			return true;
-		default:
-			return false;
-	}
-}
-
-
-static inline bool is_letter(char c)
-{
-	switch (c)
-	{
-		case 'a': case 'b': case 'c': case 'd': case 'e':
-		case 'f': case 'g': case 'h': case 'i': case 'j':
-		case 'k': case 'l': case 'm': case 'n': case 'o':
-		case 'p': case 'q': case 'r': case 's': case 't':
-		case 'u': case 'v': case 'w': case 'x': case 'y':
-		case 'z':
-		case 'A': case 'B': case 'C': case 'D': case 'E':
-		case 'F': case 'G': case 'H': case 'I': case 'J':
-		case 'K': case 'L': case 'M': case 'N': case 'O':
-		case 'P': case 'Q': case 'R': case 'S': case 'T':
-		case 'U': case 'V': case 'W': case 'X': case 'Y':
-		case 'Z':
-			return true;
-		default:
-			return false;
-	}
-}
-
-INLINE bool is_letter_(char c)
-{
-	return is_letter(c) || c == '_';
-}
-
-static inline bool is_number(char c)
-{
-	return c >= '0' && c <= '9';
-}
 
 
 #define FNV1_PRIME 0x01000193u
@@ -396,12 +209,6 @@ static inline VHeader_* vec_new_(size_t element_size, size_t capacity)
 	return header;
 }
 
-static inline uint32_t vec_size(const void *vec)
-{
-	if (!vec) return 0;
-	const VHeader_ *header = vec;
-	return header[-1].size;
-}
 
 static inline void vec_resize(void *vec, uint32_t new_size)
 {
@@ -409,6 +216,7 @@ static inline void vec_resize(void *vec, uint32_t new_size)
 	VHeader_ *header = vec;
 	header[-1].size = new_size;
 }
+
 static inline void vec_pop(void *vec)
 {
 	assert(vec);
@@ -416,6 +224,7 @@ static inline void vec_pop(void *vec)
 	VHeader_ *header = vec;
 	header[-1].size--;
 }
+
 static inline void* expand_(void *vec, size_t element_size)
 {
 	VHeader_ *header;
@@ -476,54 +285,6 @@ static inline void* expand_(void *vec, size_t element_size)
 #define VECLAST(_vec) (vec_size(_vec) ? (_vec)[vec_size(_vec) - 1] : NULL)
 #endif
 
-
-static inline bool is_all_upper(const char* string)
-{
-	char c;
-	while ((c = *(string++)) != '\0')
-	{
-		if (is_lower(c)) return false;
-	}
-	return true;
-}
-
-static inline bool is_all_lower(const char* string)
-{
-	char c;
-	while ((c = *(string++)) != '\0')
-	{
-		if (is_upper(c)) return false;
-	}
-	return true;
-}
-
-#ifndef __printflike
-#define __printflike(x, y)
-#endif
-
-typedef struct StringSlice_
-{
-	const char *ptr;
-	size_t len;
-} StringSlice;
-
-char *strcat_arena(const char *a, const char *b);
-int str_in_list(const char *value, unsigned count, const char** elements);
-char *strformat(const char *var, ...) __printflike(1, 2);
-
-StringSlice strnexttok(StringSlice *slice, char separator);
-static inline bool slicestrcmp(StringSlice slice, const char *other)
-{
-	if (strlen(other) != slice.len) return false;
-	return strncmp(slice.ptr, other, slice.len) == 0;
-}
-
-static inline StringSlice strtoslice(const char *data)
-{
-	return (StringSlice) { data, strlen(data) };
-}
-void slicetrim(StringSlice *slice);
-
 #if IS_GCC || IS_CLANG
 
 #define MAX(_a, _b) ({ \
@@ -545,11 +306,258 @@ void slicetrim(StringSlice *slice);
 
 #if PLATFORM_WINDOWS
 
-int asprintf(char **strp, const char *fmt, ...);
-int vasprintf(char **strp, const char *fmt, va_list ap);
 
 char *realpath(const char *path, char *resolved_path);
 
 #define mkdir(name, unused) _mkdir(name)
 
 #endif
+
+static inline bool slice_strcmp(StringSlice slice, const char *other)
+{
+	if (strlen(other) != slice.len) return false;
+	return strncmp(slice.ptr, other, slice.len) == 0;
+}
+
+static inline StringSlice slice_from_string(const char *data)
+{
+	return (StringSlice) { data, strlen(data) };
+}
+
+static inline uint32_t vec_size(const void *vec)
+{
+	if (!vec) return 0;
+	const VHeader_ *header = vec;
+	return header[-1].size;
+}
+
+static inline bool is_power_of_two(uint64_t x)
+{
+	return x != 0 && (x & (x - 1)) == 0;
+}
+
+static inline uint32_t next_highest_power_of_2(uint32_t v)
+{
+	v--;
+	v |= v >> 1U;
+	v |= v >> 2U;
+	v |= v >> 4U;
+	v |= v >> 8U;
+	v |= v >> 16U;
+	v++;
+	return v;
+}
+
+static inline bool char_is_lower(char c)
+{
+	return c >= 'a' && c <= 'z';
+}
+
+static inline bool char_is_lower_(char c)
+{
+	return c == '_' || (c >= 'a' && c <= 'z');
+}
+
+static inline bool char_is_upper(char c)
+{
+	return c >= 'A' && c <= 'Z';
+}
+
+static inline bool char_is_oct(char c)
+{
+	return c >= '0' && c <= '7';
+}
+
+static inline bool char_is_oct_or_(char c)
+{
+	return c == '_' || (c >= '0' && c <= '7');
+}
+
+static inline bool char_is_binary(char c)
+{
+	return c  == '0' || c == '1';
+}
+static inline bool char_is_binary_or_(char c)
+{
+	return c == '0' || c == '1' || c == '_';
+}
+
+static inline bool char_is_digit_or_(char c)
+{
+	return c == '_' || (c >= '0' && c <= '9');
+}
+static inline bool char_is_digit(char c)
+{
+	return c >= '0' && c <= '9';
+}
+
+static char hex_conv[256] = {
+		['0'] = 1,
+		['1'] = 2,
+		['2'] = 3,
+		['3'] = 4,
+		['4'] = 5,
+		['5'] = 6,
+		['6'] = 7,
+		['7'] = 8,
+		['8'] = 9,
+		['9'] = 10,
+		['A'] = 11,
+		['B'] = 12,
+		['C'] = 13,
+		['D'] = 14,
+		['E'] = 15,
+		['F'] = 16,
+		['a'] = 11,
+		['b'] = 12,
+		['c'] = 13,
+		['d'] = 14,
+		['e'] = 15,
+		['f'] = 16,
+};
+
+static inline int char_hex_to_nibble(char c)
+{
+	return hex_conv[(unsigned)c] - 1;
+}
+
+static inline bool char_is_hex_or_(char c)
+{
+	switch (c)
+	{
+		case NUMBER_CHAR_CASE:
+		case HEX_CHAR_CASE:
+		case '_':
+			return true;
+		default:
+			return false;
+	}
+}
+
+static inline signed char char_is_valid_escape(char c)
+{
+	switch (c)
+	{
+		case 'a':
+			return '\a';
+		case 'b':
+			return '\b';
+		case 'e':
+			return 0x1B;
+		case 'f':
+			return '\f';
+		case 'n':
+			return '\n';
+		case 'r':
+			return '\r';
+		case 't':
+			return '\t';
+		case 'v':
+			return '\v';
+		case 'x':
+			return 'x';
+		case 'u':
+			return 'u';
+		case 'U':
+			return 'U';
+		case '\'':
+			return '\'';
+		case '"':
+			return '"';
+		case '\\':
+			return '\\';
+		case '0':
+			return '\0';
+		case 's':
+			return ' ';
+		default:
+			return -1;
+	}
+}
+
+static inline bool char_is_base64(char c)
+{
+	return (c >= 'A' && c <= 'Z')
+	       || (c >= 'a' && c <= 'z')
+	       || (c >= '0' && c <= '9')
+	       || c == '+' || c == '/';
+}
+
+static inline bool char_is_hex(char c)
+{
+	return hex_conv[(unsigned char)c] != 0;
+}
+
+static inline char char_nibble_to_hex(int c)
+{
+	static const char *conv = "0123456789ABCDEF";
+	return conv[c];
+}
+
+static inline bool char_is_whitespace(char c)
+{
+	switch (c)
+	{
+		case ' ':
+		case '\t':
+		case '\n':
+			return true;
+		case '\r':
+			UNREACHABLE
+		default:
+			return false;
+	}
+}
+
+static inline bool char_is_alphanum_(char c)
+{
+	switch (c)
+	{
+		case LOWER_CHAR_CASE:
+		case UPPER_CHAR_CASE:
+		case NUMBER_CHAR_CASE:
+		case '_':
+			return true;
+		default:
+			return false;
+	}
+}
+
+static inline bool char_is_lower_alphanum_(char c)
+{
+	switch (c)
+	{
+		case LOWER_CHAR_CASE:
+		case NUMBER_CHAR_CASE:
+		case '_':
+			return true;
+		default:
+			return false;
+	}
+}
+
+static inline bool char_is_letter(char c)
+{
+	switch (c)
+	{
+		case LOWER_CHAR_CASE:
+		case UPPER_CHAR_CASE:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static inline bool char_is_letter_(char c)
+{
+	switch (c)
+	{
+		case LOWER_CHAR_CASE:
+		case UPPER_CHAR_CASE:
+		case '_':
+			return true;
+		default:
+			return false;
+	}
+}
+

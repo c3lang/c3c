@@ -33,7 +33,7 @@
 #define INLINE __attribute__((always_inline)) static inline
 #elif defined(_MSC_VER)
 #define FALLTHROUGH ((void)0)
-#define INLINE __forceinline static inline
+#define INLINE static __forceinline
 #define NORETURN __declspec(noreturn)
 #define UNUSED
 #else
@@ -48,7 +48,7 @@
 #define TODO FATAL_ERROR("TODO reached");
 
 #define TEST_ASSERT(condition_, string_) while (!(condition_)) { FATAL_ERROR(string_); }
-#define TEST_ASSERTF(condition_, string_, ...) while (!(condition_)) { char* str_; asprintf(&str_, string_, __VA_ARGS__); FATAL_ERROR(str_); }
+#define TEST_ASSERTF(condition_, string_, ...) while (!(condition_)) { char* str_ = str_printf(string_, __VA_ARGS__); FATAL_ERROR(str_); }
 
 #define EXPECT(_string, _value, _expected) \
  do { long long __tempval1 = _value; long long __tempval2 = _expected; \

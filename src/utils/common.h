@@ -20,9 +20,7 @@
 #define MAX_IDENTIFIER_LENGTH 31
 #define MAX_SOURCE_LOCATION_LEN 255
 #define PROJECT_JSON "project.c3p"
-#ifndef __unused
-#define __unused
-#endif
+
 
 #if defined( _WIN32 ) || defined( __WIN32__ ) || defined( _WIN64 )
 #define PLATFORM_WINDOWS 1
@@ -51,3 +49,12 @@
 #define IS_GCC 1
 #endif
 #endif
+
+#ifndef __printflike
+#define __printflike(x, y)
+#endif
+
+#ifndef __unused
+#define __unused
+#endif
+

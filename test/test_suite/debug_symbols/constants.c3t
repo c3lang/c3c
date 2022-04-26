@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 // #debuginfo: yes
 private const char AA = 1;
 const char BB = 200 ;

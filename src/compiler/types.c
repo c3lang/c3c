@@ -64,7 +64,7 @@ void type_init_cint(void)
 	type_cuint = type_int_unsigned_by_bitsize(platform_target.width_c_int);
 }
 
-Type *type_int_signed_by_bitsize(unsigned bitsize)
+Type *type_int_signed_by_bitsize(BitSize bitsize)
 {
 	switch (bitsize)
 	{
@@ -76,29 +76,26 @@ Type *type_int_signed_by_bitsize(unsigned bitsize)
 		default: FATAL_ERROR("Illegal bitsize %d", bitsize);
 	}
 }
-Type *type_int_unsigned_by_bitsize(unsigned bytesize)
+Type *type_int_unsigned_by_bitsize(BitSize bit_size)
 {
-	switch (bytesize)
+	switch (bit_size)
 	{
 		case 8: return type_char;
 		case 16: return type_ushort;
 		case 32: return type_uint;
 		case 64: return type_ulong;
 		case 128: return type_u128;
-		default: FATAL_ERROR("Illegal bitsize %d", bytesize);
+		default: FATAL_ERROR("Illegal bitsize %d", bit_size);
 	}
 }
 
 const char *type_quoted_error_string(Type *type)
 {
-	char *buffer = NULL;
 	if (type->canonical != type)
 	{
-		asprintf(&buffer, "'%s' (%s)", type_to_error_string(type), type_to_error_string(type->canonical));
-		return buffer;
+		return str_printf("'%s' (%s)", type_to_error_string(type), type_to_error_string(type->canonical));
 	}
-	asprintf(&buffer, "'%s'", type_to_error_string(type));
-	return buffer;
+	return str_printf("'%s'", type_to_error_string(type));
 }
 
 static void type_append_func_to_scratch(FunctionPrototype *prototype);
@@ -208,7 +205,6 @@ static void type_append_func_to_scratch(FunctionPrototype *prototype)
 
 const char *type_to_error_string(Type *type)
 {
-	char *buffer = NULL;
 	switch (type->type_kind)
 	{
 		case TYPE_POISONED:
@@ -231,11 +227,9 @@ const char *type_to_error_string(Type *type)
 		case TYPE_FUNC:
 			scratch_buffer_clear();
 			type_append_func_to_scratch(type->func.prototype);
-			asprintf(&buffer, "fn %s", scratch_buffer_to_string());
-			return buffer;
+			return str_printf("fn %s", scratch_buffer_to_string());
 		case TYPE_VECTOR:
-			asprintf(&buffer, "%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
-			return buffer;
+			return str_printf("%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 		case TYPE_TYPEINFO:
 			return "typeinfo";
 		case TYPE_TYPEID:
@@ -247,22 +241,17 @@ const char *type_to_error_string(Type *type)
 			{
 				return type_to_error_string(type->pointer);
 			}
-			asprintf(&buffer, "%s*", type_to_error_string(type->pointer));
-			return buffer;
+			return str_printf("%s*", type_to_error_string(type->pointer));
 		case TYPE_FAILABLE:
 			if (!type->failable) return "void!";
-			asprintf(&buffer, "%s!", type_to_error_string(type->failable));
-			return buffer;
+			return str_printf("%s!", type_to_error_string(type->failable));
 		case TYPE_ARRAY:
-			asprintf(&buffer, "%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
-			return buffer;
+			return str_printf("%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-			asprintf(&buffer, "%s[*]", type_to_error_string(type->array.base));
-			return buffer;
+			return str_printf("%s[*]", type_to_error_string(type->array.base));
 		case TYPE_SUBARRAY:
-			asprintf(&buffer, "%s[]", type_to_error_string(type->array.base));
-			return buffer;
+			return str_printf("%s[]", type_to_error_string(type->array.base));
 	}
 	UNREACHABLE
 }
@@ -555,7 +544,7 @@ static Type *type_generate_ptr(Type *ptr_type, bool canonical)
 	Type *ptr = ptr_type->type_cache[PTR_OFFSET];
 	if (ptr == NULL)
 	{
-		ptr = type_new(TYPE_POINTER, strformat("%s*", ptr_type->name));
+		ptr = type_new(TYPE_POINTER, str_printf("%s*", ptr_type->name));
 		ptr->pointer = ptr_type;
 		ptr_type->type_cache[PTR_OFFSET] = ptr;
 		if (ptr_type == ptr_type->canonical)
@@ -580,7 +569,7 @@ static Type *type_generate_failable(Type *failable_type, bool canonical)
 	Type *failable = failable_type->type_cache[FAILABLE_OFFSET];
 	if (failable == NULL)
 	{
-		failable = type_new(TYPE_FAILABLE, strformat("%s!", failable_type->name));
+		failable = type_new(TYPE_FAILABLE, str_printf("%s!", failable_type->name));
 		failable->pointer = failable_type;
 		failable_type->type_cache[FAILABLE_OFFSET] = failable;
 		if (failable_type == failable_type->canonical)
@@ -606,7 +595,7 @@ static Type *type_generate_subarray(Type *arr_type, bool canonical)
 	Type *arr = arr_type->type_cache[SUB_ARRAY_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_SUBARRAY, strformat("%s[]", arr_type->name));
+		arr = type_new(TYPE_SUBARRAY, str_printf("%s[]", arr_type->name));
 		arr->array.base = arr_type;
 		arr_type->type_cache[SUB_ARRAY_OFFSET] = arr;
 		if (arr_type == arr_type->canonical)
@@ -632,7 +621,7 @@ static Type *type_generate_inferred_array(Type *arr_type, bool canonical)
 	Type *arr = arr_type->type_cache[INFERRED_ARRAY_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_INFERRED_ARRAY, strformat("%s[*]", arr_type->name));
+		arr = type_new(TYPE_INFERRED_ARRAY, str_printf("%s[*]", arr_type->name));
 		arr->array.base = arr_type;
 		arr_type->type_cache[INFERRED_ARRAY_OFFSET] = arr;
 		if (arr_type == arr_type->canonical)
@@ -658,7 +647,7 @@ static Type *type_generate_flexible_array(Type *arr_type, bool canonical)
 	Type *arr = arr_type->type_cache[FLEXIBLE_ARRAY_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_FLEXIBLE_ARRAY, strformat("%s[*]", arr_type->name));
+		arr = type_new(TYPE_FLEXIBLE_ARRAY, str_printf("%s[*]", arr_type->name));
 		arr->array.base = arr_type;
 		arr->array.len = 0;
 		arr_type->type_cache[FLEXIBLE_ARRAY_OFFSET] = arr;
@@ -869,13 +858,13 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 	Type *vec_arr;
 	if (vector)
 	{
-		vec_arr = type_new(TYPE_VECTOR, strformat("%s[<%u>]", element_type->name, len));
+		vec_arr = type_new(TYPE_VECTOR, str_printf("%s[<%u>]", element_type->name, len));
 		vec_arr->array.base = element_type;
 		vec_arr->array.len = len;
 	}
 	else
 	{
-		vec_arr = type_new(TYPE_ARRAY, strformat("%s[%u]", element_type->name, len));
+		vec_arr = type_new(TYPE_ARRAY, str_printf("%s[%u]", element_type->name, len));
 		vec_arr->array.base = element_type;
 		vec_arr->array.len = len;
 	}
@@ -995,7 +984,7 @@ void type_func_prototype_init(uint32_t capacity)
 	assert(is_power_of_two(capacity) && capacity > 1);
 	map.entries = CALLOC(capacity * sizeof(FuncTypeEntry));
 	map.capacity = capacity;
-	map.max_load = TABLE_MAX_LOAD * capacity;
+	map.max_load = (uint32_t)(TABLE_MAX_LOAD * capacity);
 }
 
 static uint32_t hash_function(FunctionSignature *sig)
@@ -1073,10 +1062,10 @@ static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI a
 		FuncTypeEntry *entries = map.entries;
 		uint32_t old_capacity = map.capacity;
 		uint32_t new_capacity = map.capacity = old_capacity << 2;
-		map.max_load = new_capacity * TABLE_MAX_LOAD;
+		map.max_load = (uint32_t)(new_capacity * TABLE_MAX_LOAD);
 		FuncTypeEntry *new_map = CALLOC(new_capacity * sizeof(FuncTypeEntry));
 		uint32_t new_mask = new_capacity - 1;
-		for (int i = 0; i < old_capacity; i++)
+		for (uint32_t i = 0; i < old_capacity; i++)
 		{
 			uint32_t key = entries[i].key;
 			if (!key) continue;

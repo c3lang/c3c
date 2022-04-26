@@ -1,6 +1,6 @@
-#ifdef _MSC_VER
+#include "lib.h"
 
-#include "find_msvc.h"
+#if PLATFORM_WINDOWS
 
 #include <windows.h>
 #include <string.h>
@@ -25,10 +25,10 @@ typedef struct
 Find_Result find_visual_studio_and_windows_sdk();
 void free_resources(Find_Result* result);
 
-WindowsLinkPathsUTF8 get_windows_link_paths() {
+WindowsSDK get_windows_link_paths() {
   Find_Result paths = find_visual_studio_and_windows_sdk();
 
-  WindowsLinkPathsUTF8 out = { 0 };
+  WindowsSDK out = { 0 };
 
   // note: WideCharToMultiByte doesn't seem to do null termination.
   // I'm wary of manually adding a null terminator, so hopefully this is reliable.
@@ -75,7 +75,7 @@ WindowsLinkPathsUTF8 get_windows_link_paths() {
   return out;
 }
 
-void free_windows_link_paths(WindowsLinkPathsUTF8* obj) {
+void free_windows_link_paths(WindowsSDK* obj) {
   free(obj->vs_library_path);
   free(obj->windows_sdk_ucrt_library_path);
   free(obj->windows_sdk_um_library_path);
@@ -94,6 +94,22 @@ void free_resources(Find_Result* result) {
   free(result->vs_exe_path);
   free(result->vs_library_path);
 }
+
+#ifndef _Out_
+#define _Out_
+#endif
+#ifndef _In_
+#define _In_
+#endif
+#ifndef _Out_writes_to_
+#define _Out_writes_to_(a, b)
+#endif
+#ifndef _Deref_out_opt_
+#define _Deref_out_opt_
+#endif
+#ifndef _In_z_
+#define _In_z_
+#endif
 
 #undef  INTERFACE
 #define INTERFACE ISetupInstance
@@ -169,7 +185,7 @@ typedef struct {
 bool os_file_exists(wchar_t* name) {
   // @Robustness: What flags do we really want to check here?
 
-  auto attrib = GetFileAttributesW(name);
+  DWORD attrib = GetFileAttributesW(name);
   if (attrib == INVALID_FILE_ATTRIBUTES) return false;
   if (attrib & FILE_ATTRIBUTE_DIRECTORY) return false;
 
@@ -184,13 +200,13 @@ wchar_t* concat(wchar_t* a, wchar_t* b, wchar_t* c, wchar_t* d) {
   // If you don't like that, use a programming language that actually
   // helps you with using custom allocators. Or just edit the code.
 
-  auto len_a = wcslen(a);
-  auto len_b = wcslen(b);
+  size_t len_a = wcslen(a);
+  size_t len_b = wcslen(b);
 
-  auto len_c = 0;
+  size_t len_c = 0;
   if (c) len_c = wcslen(c);
 
-  auto len_d = 0;
+  size_t len_d = 0;
   if (d) len_d = wcslen(d);
 
   wchar_t* result = (wchar_t*)malloc((len_a + len_b + len_c + len_d + 1) * 2);
@@ -242,7 +258,7 @@ wchar_t* find_windows_kit_root_with_key(HKEY key, wchar_t* version) {
   // If that's not the right terminology, hey, I never do registry stuff.
 
   DWORD required_length;
-  auto rc = RegQueryValueExW(key, version, NULL, NULL, NULL, &required_length);
+  LSTATUS rc = RegQueryValueExW(key, version, NULL, NULL, NULL, &required_length);
   if (rc != 0)  return NULL;
 
   DWORD length = required_length + 2;  // The +2 is for the maybe optional zero later on. Probably we are over-allocating.
@@ -264,7 +280,7 @@ void win10_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data) {
   // Find the Windows 10 subdirectory with the highest version number.
 
   int i0, i1, i2, i3;
-  auto success = swscanf_s(short_name, L"%d.%d.%d.%d", &i0, &i1, &i2, &i3);
+  int success = swscanf_s(short_name, L"%d.%d.%d.%d", &i0, &i1, &i2, &i3);
   if (success < 4) return;
 
   if (i0 < data->best_version[0]) return;
@@ -295,7 +311,7 @@ void win8_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data) {
   // Find the Windows 8 subdirectory with the highest version number.
 
   int i0, i1;
-  auto success = swscanf_s(short_name, L"winv%d.%d", &i0, &i1);
+  int success = swscanf_s(short_name, L"winv%d.%d", &i0, &i1);
   if (success < 2) return;
 
   if (i0 < data->best_version[0]) return;

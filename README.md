@@ -129,7 +129,7 @@ fn void test()
 
 ### Current status
 
-The current version of the compiler is alpha release 0.1.0.
+The current version of the compiler is alpha release 0.2.
 
 It's possible to try out the current C3 compiler in the browser: https://ide.judge0.com/ – this is courtesy of the
 developer of Judge0. 
@@ -142,8 +142,7 @@ Follow the issues [here](https://github.com/c3lang/c3c/issues).
 If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues) 
 or discuss C3 on its dedicated Discord: [https://discord.gg/qN76R87](https://discord.gg/qN76R87).
 
-The compiler should compile on Linux, Windows (under MSVC, Mingw or MSYS2) and MacOS, 
-but needs some install documentation for Windows. 
+The compiler currently compile on Linux, Windows and MacOS.
 
 
 

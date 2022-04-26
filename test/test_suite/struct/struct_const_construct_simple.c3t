@@ -21,7 +21,7 @@ private Foo foo8 = FOO7;
 
 %Foo = type { i32, i64 }
 
-@Foo = linkonce_odr constant i8 1
+@introspect.Foo = linkonce constant i8 1
 @structo.x = protected unnamed_addr global i64 16, align 8
 @structo.foo1 = protected unnamed_addr global %Foo { i32 1, i64 2 }, align 8
 @structo.foo2 = protected unnamed_addr global %Foo { i32 2, i64 0 }, align 8

@@ -227,7 +227,7 @@ void header_gen(Module *module)
 {
 	TODO
 	CompilationUnit *unit = module->units[0];
-	const char *filename = strcat_arena(unit->file->name, ".h");
+	const char *filename = str_cat(unit->file->name, ".h");
 	FILE *file = fopen(filename, "w");
 	OUTPUT("#include <stdint.h>\n");
 	OUTPUT("#ifndef __c3__\n");

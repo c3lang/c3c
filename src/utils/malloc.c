@@ -37,13 +37,6 @@ void *calloc_string(size_t len)
 	return vmem_alloc(&char_arena, len);
 }
 
-char *copy_string(const char *start, size_t str_len)
-{
-	char *dst = calloc_string(str_len + 1);
-	memcpy(dst, start, str_len);
-	// No need to set the end
-	return dst;
-}
 
 // Simple bump allocator with buckets.
 void *calloc_arena(size_t mem)

@@ -885,7 +885,8 @@ void c_abi_func_create_x64(FunctionPrototype *prototype)
 {
 	if (prototype->use_win64)
 	{
-		return c_abi_func_create_win64(prototype);
+		c_abi_func_create_win64(prototype);
+		return;
 	}
 	// TODO 32 bit pointers
 	bool is_regcall = prototype->call_abi == CALL_X86_REG;

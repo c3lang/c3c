@@ -1,4 +1,4 @@
-// #target: riscv64-linux
+// #target: linux-riscv64
 module test;
 
 struct Large {

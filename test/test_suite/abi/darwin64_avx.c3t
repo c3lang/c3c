@@ -1,4 +1,4 @@
-// #target: x64-darwin
+// #target: macos-x64
 // #opt: --x86vec=avx
 module test;
 

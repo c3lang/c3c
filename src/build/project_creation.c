@@ -76,7 +76,7 @@ void create_project(BuildOptions *build_options)
 	{
 		char c = build_options->project_name[i];
 		if (c == '\0') break;
-		if (!is_alphanum_(c))
+		if (!char_is_alphanum_(c))
 		{
 			fprintf(stderr, "'%s' is not a valid project name.\n", build_options->project_name);
 			exit_compiler(EXIT_FAILURE);

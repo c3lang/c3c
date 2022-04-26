@@ -10,8 +10,8 @@ void gencontext_begin_module(GenContext *c)
 	assert(!c->module && "Expected no module");
 
 	const char *result = module_create_object_file_name(c->code_module);
-	c->ir_filename = strformat("%s.ll", result);
-	c->object_filename = strformat("%s%s", result, get_object_extension());
+	c->ir_filename = str_printf("%s.ll", result);
+	c->object_filename = str_printf("%s%s", result, get_object_extension());
 
 	c->panicfn = global_context.panic_fn;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
@@ -105,6 +105,11 @@ void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit)
 		const char *sysroot = "";
 		const char *sdk = "";
 		unsigned dwo_id = 0;
+		if (c->debug.compile_unit)
+		{
+			unit->llvm.debug_compile_unit = c->debug.compile_unit;
+			return;
+		}
 		unit->llvm.debug_compile_unit = LLVMDIBuilderCreateCompileUnit(c->debug.builder,
 		                                                               LLVMDWARFSourceLanguageC,
 		                                                               unit->llvm.debug_file,
@@ -119,15 +124,13 @@ void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit)
 		                                                               emission_kind,
 		                                                               dwo_id,
 		                                                               split_debug_inlining,
-		                                                               emit_debug_info_for_profiling
-#if LLVM_VERSION_MAJOR >= 11
-		                                                              ,
+		                                                               emit_debug_info_for_profiling,
 		                                                               sysroot,
 		                                                               strlen(sysroot),
 		                                                               sdk,
 		                                                               strlen(sdk)
-#endif
 		                                                              );
+
 	}
 }
 
@@ -138,9 +141,5 @@ void gencontext_end_file_emit(GenContext *c, CompilationUnit *ast)
 
 void gencontext_end_module(GenContext *context)
 {
-	if (llvm_use_debug(context))
-	{
-		LLVMDIBuilderFinalize(context->debug.builder);
-	}
 	LLVMDisposeModule(context->module);
 }

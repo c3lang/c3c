@@ -18,6 +18,7 @@ static void llvm_emit_initialize_designated(GenContext *c, BEValue *ref, AlignSi
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 
+
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef failable)
 {
 	assert(ref->kind == BE_ADDRESS || ref->kind == BE_ADDRESS_FAILABLE);
@@ -3281,7 +3282,6 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 	llvm_value_set(be_value, val, expr->type);
 }
 
-
 static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Expr *expr)
 {
 
@@ -3343,8 +3343,7 @@ void llvm_emit_derived_backend_type(GenContext *c, Type *type)
 	return;
 
 	PRIMITIVE:
-	LLVMSetLinkage(global_name, LLVMWeakAnyLinkage);
-	LLVMSetVisibility(global_name, LLVMDefaultVisibility);
+	llvm_set_weak(c, global_name);
 }
 
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type)
@@ -3550,7 +3549,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 		llvm_value_set_address_abi_aligned(&value, error_var, type_anyerr);
 		llvm_emit_return_abi(c, NULL, &value);
 		c->current_block = NULL;
-		c->current_block_is_target = NULL;
+		c->current_block_is_target = false;
 	}
 
 	llvm_emit_block(c, no_err_block);
@@ -3618,7 +3617,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		llvm_emit_panic(c, "Runtime error force unwrap!", file->name, c->cur_func_decl->extname, loc.row ? loc.row : 1);
 		LLVMBuildUnreachable(c->builder);
 		c->current_block = NULL;
-		c->current_block_is_target = NULL;
+		c->current_block_is_target = false;
 	}
 
 	llvm_emit_block(c, no_err_block);
@@ -3771,7 +3770,11 @@ void gencontext_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
 
 void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	if (!expr->ternary_expr.then_expr) return gencontext_emit_elvis_expr(c, value, expr);
+	if (!expr->ternary_expr.then_expr)
+	{
+		gencontext_emit_elvis_expr(c, value, expr);
+		return;
+	}
 
 	// Set up basic blocks, following Cone
 	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
@@ -3855,12 +3858,8 @@ static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Float f)
 		return LLVMConstRealOfString(type, f.f < 0 ? "-inf" : "inf");
 	}
 	scratch_buffer_clear();
-#if LONG_DOUBLE
-	global_context.scratch_buffer_len = sprintf(global_context.scratch_buffer, "%La", f.f);
-#else
-	global_context.scratch_buffer_len = (uint32_t)sprintf(global_context.scratch_buffer, "%a", f.f);
-#endif
-	return LLVMConstRealOfStringAndSize(type, global_context.scratch_buffer, global_context.scratch_buffer_len);
+	scratch_buffer_printf("%a", f.f);
+	return LLVMConstRealOfStringAndSize(type, scratch_buffer.str, scratch_buffer.len);
 }
 
 static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr)
@@ -4006,12 +4005,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		}
 		case CONST_ENUM:
 		{
-			Decl *decl = expr->const_expr.enum_val;
-			return llvm_emit_const_expr(c, be_value, expr->const_expr.err_val->enum_constant.expr);
-			assert(decl->decl_kind == DECL_FAULTVALUE);
-			llvm_value_set(be_value,
-						   LLVMBuildPtrToInt(c->builder, decl->backend_ref, llvm_get_type(c, type_anyerr), ""),
-						   type_anyerr);
+			llvm_emit_const_expr(c, be_value, expr->const_expr.enum_val->enum_constant.expr);
 			return;
 		}
 		default:
@@ -4504,7 +4498,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	{
 		llvm_value_set(result_value, LLVMBuildUnreachable(c->builder), type_void);
 		c->current_block = NULL;
-		c->current_block_is_target = NULL;
+		c->current_block_is_target = false;
 		LLVMBasicBlockRef after_unreachable = llvm_basic_block_new(c, "after.unreachable");
 		llvm_emit_block(c, after_unreachable);
 		return;

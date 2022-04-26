@@ -12,10 +12,10 @@ Decl *module_find_symbol(Module *module, const char *symbol)
 const char *module_create_object_file_name(Module *module)
 {
 	scratch_buffer_clear();
-	StringSlice slice = strtoslice(module->name->module);
+	StringSlice slice = slice_from_string(module->name->module);
 	while (true)
 	{
-		StringSlice part = strnexttok(&slice, ':');
+		StringSlice part = slice_next_token(&slice, ':');
 		scratch_buffer_append_len(part.ptr, part.len);
 		if (!slice.len) break;
 		slice.ptr++;

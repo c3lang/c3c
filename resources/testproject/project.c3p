@@ -16,12 +16,16 @@
   // c compiler
   "cc": "cc",
   // c sources
-  "csources": [
-    "./csource/**"
-  ],
   "targets": {
     "hello_world": {
       "type": "executable",
+      "csources": [
+        "./csource/**"
+      ]
+    },
+    "hello_world_win32": {
+      "type": "executable",
     }
+
   },
 }

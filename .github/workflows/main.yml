@@ -7,6 +7,36 @@ on:
     branches: [ master ]
 
 jobs:
+
+  build-msvc:
+    runs-on: windows-latest
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        build_type: [ Release, Debug ]
+
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: CMake
+        run: |
+          cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --build build --config ${{ matrix.build_type }}
+
+      - name: Build testproject
+        run: |
+          cd resources/testproject
+          ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log run hello_world_win32
+
+      - name: run compiler tests
+        run: |
+          cd test
+          python3.exe src/tester.py ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
+
   build-msys2-mingw:
     runs-on: windows-latest
     strategy:
@@ -38,12 +68,13 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build --debug-log
+          ../../build/c3c run --debug-log
 
       - name: run compiler tests
         run: |
           cd test
           python3 src/tester.py ../build/c3c.exe test_suite/
+
 
   build-msys2-clang:
     runs-on: windows-latest
@@ -73,7 +104,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build --debug-log
+          ../../build/c3c run --debug-log
 
       - name: run compiler tests
         run: |
@@ -118,7 +149,12 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build --debug-log
+          ../../build/c3c run --debug-log
+
+      - name: Build testproject direct linker
+        run: |
+          cd resources/testproject
+          ../../build/c3c run --debug-log --forcelinker
 
       - name: run compiler tests
         run: |
@@ -150,7 +186,12 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c build --debug-log
+          ../../build/c3c run --debug-log
+
+      - name: Build testproject direct linker
+        run: |
+          cd resources/testproject
+          ../../build/c3c run --debug-log --forcelinker
 
       - name: run compiler tests
         run: |

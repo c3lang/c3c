@@ -49,25 +49,44 @@ typedef enum
 	MINGW
 } ObjFormat;
 
+
+
 static bool llvm_link(ObjFormat format, const char **args, int arg_count, const char** error_string)
 {
-	std::vector<const char*> arg_vector = std::vector<const char *>(arg_count + 1);
-	for (int i = 0; i < arg_count; i++) arg_vector.push_back(args[i]);
+	std::vector<const char*> arg_vector = std::vector<const char *>();
+	switch (format)
+	{
+		case ELF:
+			arg_vector.push_back("ld.lld");
+			break;
+		case WASM:
+			arg_vector.push_back("wasm-ld");
+			break;
+		case MACHO:
+			arg_vector.push_back("ld64.lld");
+			break;
+		case COFF:
+			arg_vector.push_back("lld-link");
+			break;
+		case MINGW:
+			arg_vector.push_back("ld");
+			break;
+	}
+	for (int i = 0; i < arg_count; i++) arg_vector.push_back(strdup(args[i]));
 	std::string output_string {};
 	std::string output_err_string {};
+	/*
 	llvm::raw_string_ostream output { output_string };
-	llvm::raw_string_ostream output_err { output_err_string };
+	llvm::raw_string_ostream output_err { output_err_string };*/
+	llvm::raw_ostream &output = llvm::outs();
+	llvm::raw_ostream &output_err = llvm::errs();
 	switch (format)
 	{
 		case ELF:
 			if (lld::elf::link(CALL_ARGS)) return true;
 			break;
 		case MACHO:
-			#if LLVM_VERSION_MAJOR > 13
-				if (lld::macho::link(CALL_ARGS)) return true;
-			#else
-				if (lld::mach_o::link(CALL_ARGS)) return true;
-			#endif
+			if (lld::macho::link(CALL_ARGS)) return true;
 			break;
 		case WASM:
 			if (lld::wasm::link(CALL_ARGS)) return true;
@@ -76,18 +95,20 @@ static bool llvm_link(ObjFormat format, const char **args, int arg_count, const 
 			if (lld::coff::link(CALL_ARGS)) return true;
 			break;
 		case MINGW:
+			exit(-1);
 			if (lld::mingw::link(CALL_ARGS)) return true;
 			break;
 		default:
 			exit(-1);
 	}
-	*error_string = strdup(output_err_string.c_str());
+	//*error_string = strdup(output_err_string.c_str());
 	return false;
 }
 
 
 extern "C" {
 
+int llvm_version_major = LLVM_VERSION_MAJOR;
 #if LLVM_VERSION_MAJOR < 13
 #if _MSC_VER
 	__declspec(selectany)

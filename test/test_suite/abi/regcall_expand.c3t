@@ -1,4 +1,4 @@
-// #target: x64-mingw
+// #target: mingw-x64
 module test;
 
 extern fn void printf(char*, ...);
@@ -21,12 +21,12 @@ fn int main()
 
 %Foo = type { [2 x float] }
 
-@Foo = linkonce_odr constant i8 1
+$introspect.Foo = comdat any
 
-; Function Attrs: nounwind
+@introspect.Foo = linkonce constant i8 1
+
 declare void @printf(i8*, ...) #0
 
-; Function Attrs: nounwind
 define x86_regcallcc void @test.test(float %0, float %1) #0 {
 entry:
   %x = alloca %Foo, align 4
