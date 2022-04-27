@@ -1,0 +1,24 @@
+// #target: macos-x64
+module foo;
+
+fn void test()
+{
+	float x = 12;
+	x *= -1;
+	double y = x;
+}
+
+/* #expect: foo.ll
+define void @foo.test() #0 {
+entry:
+  %x = alloca float, align 4
+  %y = alloca double, align 8
+  store float 1.200000e+01, float* %x, align 4
+  %0 = load float, float* %x, align 4
+  %fmul = fmul float %0, -1.000000e+00
+  store float %fmul, float* %x, align 4
+  %1 = load float, float* %x, align 4
+  %fpfpext = fpext float %1 to double
+  store double %fpfpext, double* %y, align 8
+  ret void
+}

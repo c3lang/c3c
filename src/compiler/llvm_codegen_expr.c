@@ -164,7 +164,7 @@ LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTy
 		LLVMValueRef target = LLVMBuildBitCast(c->builder, cast, LLVMPointerType(coerce_type, 0), "");
 		llvm_store_value_aligned(c, target, be_value, target_alignment);
 		*resulting_alignment = target_alignment;
-		return cast;
+		return target;
 	}
 	*resulting_alignment = be_value->alignment;
 	return LLVMBuildBitCast(c->builder, be_value->value, LLVMPointerType(coerce_type, 0), "");

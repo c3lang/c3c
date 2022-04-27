@@ -225,7 +225,7 @@ fn void update_game()
         if (gravity_movement_counter >= gravity_speed)
         {
             // Basic falling movement
-            check_detection(&detection);
+            if (check_detection()) detection = true;
 
             // Check if the piece has collided with another piece or with the boundings
             resolve_falling_movement(&detection, &piece_active);
@@ -711,15 +711,17 @@ fn bool resolve_turn_movement()
     return false;
 }
 
-fn void check_detection(bool *detection_ref)
+fn bool check_detection()
 {
     for (int j = GRID_VERTICAL_SIZE - 2; j >= 0; j--)
     {
         for (int i = 1; i < GRID_HORIZONTAL_SIZE - 1; i++)
         {
-            if ((grid[i][j] == GridSquare.MOVING) && ((grid[i][j+1] == GridSquare.FULL) || (grid[i][j+1] == GridSquare.BLOCK))) *detection_ref = true;
+            if ((grid[i][j] == GridSquare.MOVING) && ((grid[i][j+1] == GridSquare.FULL)
+                || (grid[i][j+1] == GridSquare.BLOCK))) return true;
         }
     }
+    return false;
 }
 
 fn void check_completion(bool *line_to_delete_ref)
