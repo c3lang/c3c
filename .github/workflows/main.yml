@@ -75,42 +75,6 @@ jobs:
           cd test
           python3 src/tester.py ../build/c3c.exe test_suite/
 
-
-  build-msys2-clang:
-    runs-on: windows-latest
-    #if: ${{ false }}
-    strategy:
-      # Don't abort runners if a single one fails
-      fail-fast: false
-      matrix:
-        build_type: [Release, Debug]
-
-    defaults:
-      run:
-        shell: msys2 {0}
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: CLANG64
-          update: false
-          install: git binutils mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-python
-
-      - name: CMake
-        run: |
-          cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          cmake --build build
-      - name: Build testproject
-        run: |
-          cd resources/testproject
-          ../../build/c3c run --debug-log
-
-      - name: run compiler tests
-        run: |
-          cd test
-          python3 src/tester.py ../build/c3c.exe test_suite/
-
   build-linux:
     runs-on: ubuntu-latest
     strategy:
