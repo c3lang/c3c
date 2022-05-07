@@ -20,7 +20,7 @@ fn void example_for()
 
 enum Height : uint
 {
-    LOW = 0,
+    LOW,
     MEDIUM,
     HIGH,
 }

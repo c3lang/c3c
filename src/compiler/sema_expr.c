@@ -622,7 +622,8 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			SEMA_ERROR(expr, "Did you forget a '!' after '%s'?", decl->name);
 			return expr_poison(expr);
 		case DECL_ENUM_CONSTANT:
-			expr_replace(expr, decl->enum_constant.expr);
+			TODO
+			//expr_replace(expr, decl->enum_constant.expr);
 			return true;
 		case DECL_VAR:
 			break;
@@ -2946,28 +2947,6 @@ static void add_members_to_context(SemaContext *context, Decl *decl)
 	}
 }
 
-static Expr *enum_minmax_value(Decl *decl, BinaryOp comparison)
-{
-	assert(decl->decl_kind == DECL_ENUM);
-	bool is_signed = type_is_signed(decl->enums.type_info->type->canonical);
-	Expr *expr = NULL;
-	VECEACH(decl->enums.values, i)
-	{
-		Decl *enum_constant = decl->enums.values[i];
-		Expr *candidate = enum_constant->enum_constant.expr;
-		assert(candidate->expr_kind == EXPR_CONST);
-		if (!expr)
-		{
-			expr = candidate;
-			continue;
-		}
-		if (expr_const_compare(&candidate->const_expr, &expr->const_expr, comparison))
-		{
-			expr = candidate;
-		}
-	}
-	return expr;
-}
 
 /**
  * 1. .A -> It is an enum constant.
@@ -3127,32 +3106,10 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 				expr_rewrite_to_int_const(expr, type_isize, vec_size(decl->enums.values), true);
 				return true;
 			}
-			if (name == kw_max)
-			{
-				Expr *max = enum_minmax_value(decl, BINARYOP_GT);
-				if (!max)
-				{
-					expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0, false);
-					return true;
-				}
-				expr_replace(expr, max);
-				return true;
-			}
 			if (name == kw_values)
 			{
 				expr_replace_with_enum_array(expr, decl);
 				return sema_analyse_expr(context, expr);
-				return true;
-			}
-			if (name == kw_min)
-			{
-				Expr *min = enum_minmax_value(decl, BINARYOP_LT);
-				if (!min)
-				{
-					expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0, false);
-					return true;
-				}
-				expr_replace(expr, min);
 				return true;
 			}
 			break;
@@ -3171,28 +3128,6 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			if (name == kw_elements)
 			{
 				expr_rewrite_to_int_const(expr, type_isize, vec_size(decl->enums.values), true);
-				return true;
-			}
-			if (name == kw_max)
-			{
-				Expr *max = enum_minmax_value(decl, BINARYOP_GT);
-				if (!max)
-				{
-					expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0, false);
-					return true;
-				}
-				expr_replace(expr, max);
-				return true;
-			}
-			if (name == kw_min)
-			{
-				Expr *min = enum_minmax_value(decl, BINARYOP_LT);
-				if (!min)
-				{
-					expr_rewrite_to_int_const(expr, decl->enums.type_info->type->canonical, 0, false);
-					return true;
-				}
-				expr_replace(expr, min);
 				return true;
 			}
 			break;
@@ -3373,6 +3308,16 @@ CHECK_DEEPER:
 			expr->inner_expr = parent;
 			expr->type = type_voidptr;
 			expr->resolve_status = RESOLVE_DONE;
+			return true;
+		}
+	}
+
+	if (!is_macro && kw == kw_ordinal)
+	{
+		if (type->type_kind == TYPE_ENUM)
+		{
+			if (!cast(parent, type->decl->enums.type_info->type)) return false;
+			expr_replace(expr, parent);
 			return true;
 		}
 	}
@@ -4353,7 +4298,10 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr)
 	{
 		return sema_failed_cast(expr, type_no_fail(inner->type), target_type);
 	}
-	cast(inner, target_type);
+	if (!cast(inner, target_type))
+	{
+		return expr_poison(expr);
+	}
 	expr_replace(expr, inner);
 	return true;
 }

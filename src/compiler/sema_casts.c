@@ -232,8 +232,26 @@ static bool int_literal_to_int(Expr *expr, Type *canonical, Type *type)
 bool lit_integer_to_enum(Expr *expr, Type *canonical, Type *type)
 {
 	assert(canonical->type_kind == TYPE_ENUM);
-	canonical = type_flatten(canonical->decl->enums.type_info->type);
-	return int_literal_to_int(expr, canonical, type);
+	unsigned max_enums = vec_size(canonical->decl->enums.values);
+	Int to_convert = expr->const_expr.ixx;
+	if (int_is_neg(to_convert))
+	{
+		SEMA_ERROR(expr, "A negative number cannot be converted to an enum.");
+		return false;
+	}
+	Int max = { .i.low = max_enums, .type = TYPE_I32 };
+	if (int_comp(to_convert, max, BINARYOP_GE))
+	{
+		SEMA_ERROR(expr, "This value exceeds the number of enums in %s.", canonical->decl->name);
+		return false;
+	}
+	Decl *decl = canonical->decl->enums.values[to_convert.i.low];
+	expr->const_expr = (ExprConst) {
+		.enum_val = decl,
+		.const_kind = CONST_ENUM
+	};
+	expr->type = type;
+	return true;
 }
 
 
@@ -315,40 +333,41 @@ static bool int_to_int(Expr *left, Type *from_canonical, Type *canonical, Type *
 	}
 }
 
-static Type *enum_lowering(Expr* expr, Type *from)
+static Type *enum_to_int_cast(Expr* expr, Type *from)
 {
+	assert(from->type_kind == TYPE_ENUM);
+	Type *original = from->decl->enums.type_info->type;
+	expr->type = original;
 	if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM)
 	{
-		expr_replace(expr, expr->const_expr.enum_val->enum_constant.expr);
-		assert(!IS_FAILABLE(expr));
-		return expr->type;
+		expr_const_set_int(&expr->const_expr, expr->const_expr.enum_val->enum_constant.ordinal, type_flatten(original)->type_kind);
+		return original;
 	}
-	Type *result = from->decl->enums.type_info->type;
-	insert_cast(expr, CAST_ENUMLOW, type_get_opt_fail(result, IS_FAILABLE(expr)));
-	return result;
+	insert_cast(expr, CAST_ENUMLOW, type_get_opt_fail(original, IS_FAILABLE(expr)));
+	return original;
 }
 
 static bool enum_to_integer(Expr* expr, Type *from, Type *canonical, Type *type)
 {
-	Type *result = enum_lowering(expr, from);
+	Type *result = enum_to_int_cast(expr, from);
 	return int_to_int(expr, result->canonical, canonical, type);
 }
 
 static bool enum_to_float(Expr* expr, Type *from, Type *canonical, Type *type)
 {
-	Type *result = enum_lowering(expr, from);
+	Type *result = enum_to_int_cast(expr, from);
 	return int_to_float(expr, type_is_unsigned(result->canonical) ? CAST_UIFP : CAST_SIFP, canonical, type);
 }
 
 bool enum_to_bool(Expr* expr, Type *from, Type *type)
 {
-	enum_lowering(expr, from);
+	enum_to_int_cast(expr, from);
 	return integer_to_bool(expr, type);
 }
 
 bool enum_to_pointer(Expr* expr, Type *from, Type *type)
 {
-	enum_lowering(expr, from);
+	enum_to_int_cast(expr, from);
 	return int_to_pointer(expr, type);
 }
 
@@ -462,12 +481,12 @@ bool cast_may_explicit(Type *from_type, Type *to_type, bool ignore_failability, 
 		case ALL_UNSIGNED_INTS:
 			// We don't have to match pointer size if it's a constant.
 			if (to_kind == TYPE_POINTER && is_const) return true;
+			if (to_kind == TYPE_POINTER && type_is_pointer_sized(from_type)) return true;
+			if (to_kind == TYPE_ENUM) return true;
 			FALLTHROUGH;
 		case TYPE_ENUM:
-			// Allow conversion int/enum -> float/bool/enum int/enum -> pointer is only allowed if the int/enum is pointer sized.
-			if (type_is_integer(to_type) || type_is_float(to_type) || to_type == type_bool || to_kind == TYPE_ENUM) return true;
-			// TODO think about this, maybe we should require a bitcast?
-			if (to_kind == TYPE_POINTER && type_is_pointer_sized(from_type)) return true;
+			// Allow conversion int/enum -> float/bool/int
+			if (type_is_integer(to_type) || type_is_float(to_type) || to_type == type_bool) return true;
 			return false;
 		case ALL_FLOATS:
 			// Allow conversion float -> float/int/bool/enum
@@ -1312,7 +1331,7 @@ bool cast(Expr *expr, Type *to_type)
 	assert(!type_is_failable(to_type));
 	Type *from_type = expr->type;
 	bool from_is_failable = false;
-	Type *to = type_flatten(to_type);
+	Type *to = type_flatten_distinct(to_type);
 
 	// Special case *! => error
 	if (to == type_anyerr || to->type_kind == TYPE_FAULTTYPE)
@@ -1347,8 +1366,8 @@ bool cast(Expr *expr, Type *to_type)
 		}
 		return true;
 	}
-	bool result = cast_inner(expr, from_type, to, to_type);
-	assert(result == true);
+
+	if (!cast_inner(expr, from_type, to, to_type)) return false;
 
 	Type *result_type = expr->type;
 	if (from_is_failable && !type_is_failable(result_type))

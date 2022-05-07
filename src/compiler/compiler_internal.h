@@ -417,9 +417,8 @@ typedef struct
 
 typedef struct
 {
-	Expr *expr;
 	Expr **args;
-	uint64_t ordinal;
+	uint32_t ordinal;
 	DeclId parent;
 } EnumConstantDecl;
 

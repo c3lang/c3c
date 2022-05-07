@@ -1881,9 +1881,7 @@ static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl***
  *
  * enum_def
  *  : CAPS_IDENT
- *  | CAPS_IDENT '=' const_expr
  *  | CAPS_IDENT '(' expr_list ')'
- *  | CAPS_IDENT '(' expr_list ')' '=' const_expr
  *  ;
  *
  */
@@ -1929,10 +1927,6 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
 			if (!parse_arg_list(c, &result, TOKEN_RPAREN, NULL)) return poisoned_decl;
 			enum_const->enum_constant.args = result;
 			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
-		}
-		if (try_consume(c, TOKEN_EQ))
-		{
-			ASSIGN_EXPR_OR_RET(enum_const->enum_constant.expr, parse_expr(c), poisoned_decl);
 		}
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','

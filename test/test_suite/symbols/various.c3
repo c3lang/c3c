@@ -75,7 +75,7 @@ fn void test10()
 
 enum Enum : int
 {
-    A = 127,
+    A,
     B,
 }
 

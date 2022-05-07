@@ -56,9 +56,9 @@ fn void! File.open(File* file, char[] filename, char[] mode)
 
 enum Seek
 {
-    SET = 0,
-    CURSOR = 1,
-    END = 2
+    SET,
+    CURSOR,
+    END
 }
 
 fault IoError
@@ -84,10 +84,10 @@ fn void! File.seek(File *file, long offset, Seek seekMode = Seek.SET)
     {
         switch (libc::errno())
         {
-            case EBADF: return IoError.FILE_NOT_SEEKABLE!;
-            case EINVAL: return IoError.FILE_INVALID_POSITION!;
-            case EOVERFLOW: return IoError.FILE_OVERFLOW!;
-            case ESPIPE: return IoError.FILE_IS_PIPE!;
+            case errno::EBADF: return IoError.FILE_NOT_SEEKABLE!;
+            case errno::EINVAL: return IoError.FILE_INVALID_POSITION!;
+            case errno::EOVERFLOW: return IoError.FILE_OVERFLOW!;
+            case errno::ESPIPE: return IoError.FILE_IS_PIPE!;
             default: return IoError.UNKNOWN_ERROR!;
         }
     }
@@ -110,17 +110,17 @@ fn void! File.close(File *file) @inline
     {
         switch (libc::errno())
         {
-            case ECONNRESET:
-            case EBADF: return IoError.FILE_NOT_VALID!;
-            case EINTR: return IoError.INTERRUPTED!;
-            case EDQUOT:
-            case EFAULT:
-            case EAGAIN:
-            case EFBIG:
-            case ENETDOWN:
-            case ENETUNREACH:
-            case ENOSPC:
-            case EIO: return IoError.FILE_INCOMPLETE_WRITE!;
+            case errno::ECONNRESET:
+            case errno::EBADF: return IoError.FILE_NOT_VALID!;
+            case errno::EINTR: return IoError.INTERRUPTED!;
+            case errno::EDQUOT:
+            case errno::EFAULT:
+            case errno::EAGAIN:
+            case errno::EFBIG:
+            case errno::ENETDOWN:
+            case errno::ENETUNREACH:
+            case errno::ENOSPC:
+            case errno::EIO: return IoError.FILE_INCOMPLETE_WRITE!;
             default: return IoError.UNKNOWN_ERROR!;
         }
     }

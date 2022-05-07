@@ -34,6 +34,6 @@ fn void test2(Enum e)
 
 fn void test3(Enum e)
 {
-    EnumB h = (EnumB)(e);
+    EnumB h = (EnumB)(e);         // #error: 'Enum' to 'EnumB' is not allowed
     Func i = (Func)(e);           // #error: cast 'Enum' to 'Func'
 }

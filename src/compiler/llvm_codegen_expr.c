@@ -4004,10 +4004,8 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			return;
 		}
 		case CONST_ENUM:
-		{
-			llvm_emit_const_expr(c, be_value, expr->const_expr.enum_val->enum_constant.expr);
+			llvm_value_set(be_value, llvm_const_int(c, type, expr->const_expr.enum_val->enum_constant.ordinal), type);
 			return;
-		}
 		default:
 			UNREACHABLE
 	}

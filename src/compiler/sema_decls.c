@@ -795,56 +795,22 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 
 		// Start evaluating the constant
 		enum_value->resolve_status = RESOLVE_RUNNING;
-		Expr *expr = enum_value->enum_constant.expr;
 
 		// Create a "fake" expression.
 		// This will be evaluated later to catch the case
-		if (!expr)
+		Int val = (Int){ value, canonical->type_kind };
+		if (!int_fits(val, canonical->type_kind))
 		{
-			expr = expr_new(EXPR_CONST, enum_value->span);
-			expr->type = type;
-			expr->resolve_status = RESOLVE_NOT_DONE;
-			expr->const_expr.ixx = (Int) { value, canonical->type_kind };
-			if (expr_const_will_overflow(&expr->const_expr, canonical->type_kind))
-			{
-				SEMA_ERROR(enum_value,
-				           "The enum value would implicitly be %s which does not fit in %s.",
-				           i128_to_string(value, 10, type_is_signed(canonical)),
-				           type_quoted_error_string(type));
-				return false;
-			}
-			expr->const_expr.const_kind = CONST_INTEGER;
-			expr->const_expr.narrowable = true;
-			expr->type = canonical;
-			enum_value->enum_constant.expr = expr;
+			SEMA_ERROR(enum_value,
+			           "The enum value would implicitly be %s which does not fit in %s.",
+			           i128_to_string(value, 10, type_is_signed(canonical)),
+			           type_quoted_error_string(type));
+			return false;
 		}
-
-		// We try to convert to the desired type.
-		if (!sema_analyse_expr_rhs(context, type, expr, false))
-		{
-			success = false;
-			enum_value->resolve_status = RESOLVE_DONE;
-			decl_poison(enum_value);
-			// Reset!
-			value = (Int128) { 0, 0 };
-			continue;
-		}
-
-		assert(type_is_integer(expr->type->canonical));
-
-		// Here we might have a non-constant value,
-		if (expr->expr_kind != EXPR_CONST)
-		{
-			SEMA_ERROR(expr, "Expected a constant expression for enum.");
-			decl_poison(enum_value);
-			success = false;
-			// Skip one value.
-			continue;
-		}
+		enum_value->enum_constant.ordinal = value.low;
 
 		// Update the value
-		value = i128_add64(expr->const_expr.ixx.i, 1);
-		DEBUG_LOG("* Value: %s", expr_const_to_error_string(&expr->const_expr));
+		value.low++;
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
 	return success;

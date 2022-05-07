@@ -82,10 +82,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		case CONST_BOOL:
 			return compare_bool(left->b, right->b, op);
 		case CONST_INTEGER:
-			if (right->const_kind == CONST_ENUM)
-			{
-				return int_comp(left->ixx, right->enum_val->enum_constant.expr->const_expr.ixx, op);
-			}
+			assert(right->const_kind != CONST_ENUM);
 			return int_comp(left->ixx, right->ixx, op);
 		case CONST_FLOAT:
 			return compare_fps(left->fxx.f, right->fxx.f, op);
@@ -107,15 +104,15 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		case CONST_TYPEID:
 			return left->typeid == right->typeid;
 		case CONST_ERR:
+		case CONST_ENUM:
 		{
 			Decl *left_decl = left->err_val;
 			// The error case
-			uint64_t right_ordinal;
-			assert(right->const_kind == CONST_ERR);
+			assert(right->const_kind == left->const_kind);
 			Decl *right_decl = right->err_val;
 			// Non matching cannot be compared.
 			if (right_decl->type != left_decl->type) return false;
-			right_ordinal = right->err_val->enum_constant.ordinal;
+			int64_t right_ordinal = right->err_val->enum_constant.ordinal;
 			switch (op)
 			{
 				case BINARYOP_GT:
@@ -134,20 +131,6 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 					UNREACHABLE
 			}
 		}
-		case CONST_ENUM:
-			{
-				Decl *left_decl = left->enum_val;
-				// The enum case
-				Expr *left_const = left_decl->enum_constant.expr;
-				assert(left_const->expr_kind == EXPR_CONST);
-				const ExprConst *right_const = right;
-				if (right->const_kind == CONST_ENUM)
-				{
-					assert(right->enum_val->enum_constant.expr->expr_kind == EXPR_CONST);
-					right_const = &right->enum_val->enum_constant.expr->const_expr;
-				}
-				return expr_const_compare(&left_const->const_expr, right_const, op);
-			}
 		case CONST_BYTES:
 			if (left->bytes.len != right->bytes.len)
 			{

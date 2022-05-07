@@ -309,11 +309,11 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 	VECEACH(enums, i)
 	{
 		Decl *enum_constant = enums[i];
-		uint64_t val = int_to_u64(enum_constant->enum_constant.expr->const_expr.ixx);
+		int64_t val = enum_constant->enum_constant.ordinal;
 		LLVMMetadataRef debug_info = LLVMDIBuilderCreateEnumerator(
 				c->debug.builder,
 				enum_constant->name, strlen(enum_constant->name),
-				(int64_t)val,
+				val,
 				is_unsigned);
 		vec_add(elements, debug_info);
 	}
