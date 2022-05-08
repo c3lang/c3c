@@ -2,7 +2,7 @@ module test;
 
 extern fn int printf(char *, ...);
 
-macro foo(x; @body(y))
+macro @foo(x; @body(y))
 {
     @body(x);
 }
@@ -32,7 +32,7 @@ macro foo_no(x)
 
 fn void test2()
 {
-    @foo_no(10) // #error: This macro does not support trailing statements
+    foo_no(10) // #error: This macro does not support trailing statements
     {
         printf("foek");
     };
@@ -40,11 +40,11 @@ fn void test2()
 
 macro foo2(x)
 {
-    @body(x); // #error: 'body' could not be found, did you spell it right?
+    @body(x); // #error: '@body' could not be found, did you spell it right?
 }
 
 fn void test4()
 {
-    @foo2(10);
+    foo2(10);
 }
 

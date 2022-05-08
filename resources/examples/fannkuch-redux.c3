@@ -3,16 +3,12 @@ import std::array;
 import libc;
 import std::mem;
 
-macro int max(int a, int b)
-{
-	return a > b ? a : b;
-}
 
 fn int fannkuchredux(int n)
 {
-	int* perm = @array::make(int, n);
-	int* perm1 = @array::make(int, n);
-	int* count = @array::make(int, n);
+	int* perm = array::alloc(int, n);
+	int* perm1 = array::alloc(int, n);
+	int* count = array::alloc(int, n);
 	int max_flips_count;
 	int perm_count;
 	int checksum;
@@ -42,7 +38,7 @@ fn int fannkuchredux(int n)
 			flips_count++;
 		}
 
-		max_flips_count = @max(max_flips_count, flips_count);
+		max_flips_count = max(max_flips_count, flips_count);
 		checksum += perm_count % 2 == 0 ? flips_count : -flips_count;
 
 		/* Use incremental change to generate another permutation */

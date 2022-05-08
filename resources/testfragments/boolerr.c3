@@ -52,13 +52,13 @@ fn Doc! readDoc(char[] url)
 {
 	if (contains(url, "fail")) return ReadError.BAD_READ!;
 	if (contains(url, "head-missing")) return { .head = null };
-	if (contains(url, "title-missing")) return { @dupe(Head { .title = null })? };
-	if (contains(url, "title-empty")) return { @dupe(Head { .title = @dupe((char[])"")? })? };
+	if (contains(url, "title-missing")) return { dupe(Head { .title = null })? };
+	if (contains(url, "title-empty")) return { dupe(Head { .title = dupe((char[])"")? })? };
 	// Not particularly elegant due to missing string functions.
 	int len = libc::snprintf(null, 0, "Title of %.*s", (int)url.len, url.ptr);
 	char* str = mem::alloc_checked(len + 1)?;
 	libc::snprintf(str, len + 1, "Title of %.*s", (int)url.len, url.ptr);
-	return { @dupe(Head { .title = @dupe(str[..len - 1])? })? };
+	return { dupe(Head { .title = dupe(str[..len - 1])? })? };
 }
 
 fn Summary buildSummary(Doc doc)
@@ -132,13 +132,13 @@ fn void main()
     Allocator allocator = mem::dynamic_arena_allocator(&dynamic_arena);
     foreach (char[] url : URLS)
     {
-        @mem::with_allocator(allocator)
+        mem::@with_allocator(allocator)
         {
 	        // Yes, it's pretty onerous to print strings for the moment in C3
             libc::printf(`Checking "https://%.*s/":` "\n", (int)url.len, url.ptr);
             Summary summary = readAndBuildSummary(url);
             libc::printf("  Summary: ");
-            summary.print(@libc::stdout());
+            summary.print(libc::stdout());
             libc::printf("\n");
             char[] title_sure = summary.title ? *summary.title : "";
             libc::printf("  Title: %.*s\n", (int)title_sure.len, title_sure.ptr);

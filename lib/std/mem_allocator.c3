@@ -13,7 +13,7 @@ const AllocatorFunction NULL_ALLOCATOR = &null_allocator_fn;
 const AllocatorFunction SYSTEM_ALLOCATOR = &libc_allocator_fn;
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  */
 fn void*! Allocator.alloc(Allocator *allocator, usize size, usize alignment = 0) @inline
 {
@@ -21,7 +21,7 @@ fn void*! Allocator.alloc(Allocator *allocator, usize size, usize alignment = 0)
 }
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  */
 fn void*! Allocator.realloc(Allocator *allocator, void* old_pointer, usize size, usize alignment = 0) @inline
 {
@@ -29,7 +29,7 @@ fn void*! Allocator.realloc(Allocator *allocator, void* old_pointer, usize size,
 }
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  */
 fn void*! Allocator.calloc(Allocator *allocator, usize size, usize alignment = 0) @inline
 {
@@ -68,7 +68,7 @@ private fn usize alignment_for_allocation(usize alignment) @inline
 }
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  * @require data `unexpectedly missing the allocator`
  */
 fn void*! arena_allocator_function(void* data, usize size, usize alignment, void* old_pointer, AllocationKind kind)
@@ -126,7 +126,7 @@ fn void*! arena_allocator_function(void* data, usize size, usize alignment, void
 			arena.used = 0;
 			return null;
 	}
-	@unreachable();
+	unreachable();
 }
 
 struct DynamicArenaAllocator
@@ -148,7 +148,7 @@ private struct DynamicArenaPage
 
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  * @require data `unexpectedly missing the allocator`
  */
 fn void*! dynamic_arena_allocator_function(void* data, usize size, usize alignment, void* old_pointer, AllocationKind kind)
@@ -184,7 +184,7 @@ fn void*! dynamic_arena_allocator_function(void* data, usize size, usize alignme
 			allocator.reset();
 			return null;
 	}
-	@unreachable();
+	unreachable();
 }
 
 /**
@@ -287,12 +287,12 @@ private fn void DynamicArenaAllocator.reset(DynamicArenaAllocator* this)
 }
 
 /**
- * @require @math::is_power_of_2(alignment)
+ * @require math::is_power_of_2(alignment)
  * @require size > 0
  */
 private fn void*! DynamicArenaAllocator.alloc_new(DynamicArenaAllocator* this, usize size, usize alignment)
 {
-	usize page_size = @max(this.page_size, size + DEFAULT_SIZE_PREFIX + alignment);
+	usize page_size = max(this.page_size, size + DEFAULT_SIZE_PREFIX + alignment);
 	void* mem = this.backing_allocator.alloc(page_size)?;
 	DynamicArenaPage*! page = this.backing_allocator.alloc(DynamicArenaPage.sizeof);
 	if (catch err = page)
@@ -313,7 +313,7 @@ private fn void*! DynamicArenaAllocator.alloc_new(DynamicArenaAllocator* this, u
 }
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  * @require size > 0
  * @require this
  */

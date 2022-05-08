@@ -3,18 +3,18 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::mem;
 
-macro volatile_load(&x)
+macro @volatile_load(&x)
 {
     return $$volatile_load(&x);
 }
 
-macro volatile_store(&x, y)
+macro @volatile_store(&x, y)
 {
     return $$volatile_store(&x, y);
 }
 
 /**
- * @require @math::is_power_of_2(alignment)
+ * @require math::is_power_of_2(alignment)
  **/
 fn usize aligned_offset(usize offset, usize alignment)
 {
@@ -23,7 +23,7 @@ fn usize aligned_offset(usize offset, usize alignment)
 
 
 /**
- * @require @math::is_power_of_2(alignment)
+ * @require math::is_power_of_2(alignment)
  **/
 fn bool ptr_is_aligned(void* ptr, usize alignment) @inline
 {
@@ -32,7 +32,7 @@ fn bool ptr_is_aligned(void* ptr, usize alignment) @inline
 
 fn void copy(char* dst, char* src, usize size) @inline
 {
-	@memcpy(dst, src, size);
+	memcpy(dst, src, size);
 }
 
 macro void memcpy(void* dst, void* src, usize size, bool $is_volatile = false, usize $dst_align = 0, usize $src_align = 0)
@@ -42,7 +42,7 @@ macro void memcpy(void* dst, void* src, usize size, bool $is_volatile = false, u
 
 fn void set(void* dst, char val, usize bytes) @inline
 {
-	@memset(dst, val, bytes);
+	memset(dst, val, bytes);
 }
 
 macro void memset(void* dst, char val, usize bytes, bool $is_volatile = false, usize $dst_align = 0)
@@ -94,7 +94,7 @@ fn char[] alloc_bytes(usize bytes) @inline
 }
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  */
 fn void* alloc(usize size, usize alignment = 0)
 {
@@ -102,7 +102,7 @@ fn void* alloc(usize size, usize alignment = 0)
 }
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  */
 fn void*! alloc_checked(usize size, usize alignment = 0)
 {
@@ -111,7 +111,7 @@ fn void*! alloc_checked(usize size, usize alignment = 0)
 
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  */
 fn void* calloc(usize size, usize alignment = 0)
 {
@@ -119,7 +119,7 @@ fn void* calloc(usize size, usize alignment = 0)
 }
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  */
 fn void*! calloc_checked(usize size, usize alignment = 0)
 {
@@ -127,7 +127,7 @@ fn void*! calloc_checked(usize size, usize alignment = 0)
 }
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  */
 fn void* realloc(void *ptr, usize new_size, usize alignment = 0)
 {
@@ -135,7 +135,7 @@ fn void* realloc(void *ptr, usize new_size, usize alignment = 0)
 }
 
 /**
- * @require !alignment || @math::is_power_of_2(alignment)
+ * @require !alignment || math::is_power_of_2(alignment)
  */
 fn void*! realloc_checked(void *ptr, usize new_size, usize alignment = 0)
 {
@@ -150,7 +150,7 @@ fn void free(void* ptr)
 /**
  * Run with a specific allocator inside of the macro body.
  **/
-macro void with_allocator(Allocator allocator; @body())
+macro void @with_allocator(Allocator allocator; @body())
 {
 	Allocator old_allocator = thread_allocator;
 	thread_allocator = allocator;
@@ -172,7 +172,7 @@ struct MemoryArena
 
 /**
  * @require alignment > 0 `alignment must be non zero`
- * @require @math::is_power_of_2(alignment)
+ * @require math::is_power_of_2(alignment)
  * @require size > 0
  * @require alignment <= MAX_MEMORY_ALIGNMENT `alignment too big`
  * @require this != null

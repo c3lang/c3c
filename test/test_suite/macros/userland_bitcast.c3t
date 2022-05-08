@@ -53,23 +53,23 @@ fn ulong testFoo(short x)
 {
     Foo z;
     z.a = x;
-    return @testbitcast(z, ulong);
+    return testbitcast(z, ulong);
 }
 
 fn char[4] test(float x)
 {
-    return @testbitcast(x, char[4]);
+    return testbitcast(x, char[4]);
 }
 
 fn void main()
 {
     float f = 12.353;
-    int i = @testbitcast(f, int);
-    float f2 = @testbitcast(i, float);
+    int i = testbitcast(f, int);
+    float f2 = testbitcast(i, float);
     printf("%f => %d => %f\n", f, i, f2);
     double d = 12.353e267;
-    ulong l = @testbitcast(d, ulong);
-    double d2 = @testbitcast(d, double);
+    ulong l = testbitcast(d, ulong);
+    double d2 = testbitcast(d, double);
     printf("%e => %llu => %e\n", d, l, d2);
 
 }

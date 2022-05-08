@@ -198,7 +198,6 @@ typedef enum
 	EXPR_FORCE_UNWRAP,
 	EXPR_HASH_IDENT,
 	EXPR_MACRO_BLOCK,
-	EXPR_MACRO_EXPANSION,
 	EXPR_IDENTIFIER,
 	EXPR_RETVAL,
 	EXPR_FLATPATH,
@@ -411,13 +410,16 @@ typedef enum
 	TOKEN_HASH_CONST_IDENT, // #FOOBAR
 	TOKEN_HASH_TYPE_IDENT,  // #Foobar
 
+	TOKEN_AT_IDENT,         // @macro
+	TOKEN_AT_CONST_IDENT,   // @MACRO
+	TOKEN_AT_TYPE_IDENT,    // @Macro
+
 	TOKEN_STRING,           // "Teststring"
 	TOKEN_INTEGER,          // 123 0x23 0b10010 0o327
 	TOKEN_CHAR_LITERAL,        // 'a' 'FO' 'BARS' '\u1232'
 	TOKEN_REAL,             // 0x23.2p-2a 43.23e23
 	TOKEN_BYTES,            // Base64 or Hex
 
-	TOKEN_DOC_DIRECTIVE,    // Doc Directive
 	TOKEN_DOC_COMMENT,      // Doc Comment start
 
 	// Keywords
@@ -490,14 +492,7 @@ typedef enum
 
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
-	TOKEN_DOCS_ENSURE,      // @ensure
-	TOKEN_DOCS_REQUIRE,     // @require
-	TOKEN_DOCS_CHECKED,     // @checked
-	TOKEN_DOCS_PARAM,       // @param
-	TOKEN_DOCS_RETURN,      // @return
-	TOKEN_DOCS_OPTRETURN,   // @optreturn
-	TOKEN_DOCS_PURE,        // @pure
-
+	TOKEN_DOC_DIRECTIVE,    // Any doc directive
 
 	TOKEN_EOF,              // \n - SHOULD ALWAYS BE THE LAST TOKEN.
 
@@ -669,6 +664,7 @@ typedef enum
 	ATTRIBUTE_OVERLAP,
 	ATTRIBUTE_AUTOIMPORT,
 	ATTRIBUTE_OPERATOR,
+	ATTRIBUTE_PURE,
 	ATTRIBUTE_NONE,
 	NUMBER_OF_ATTRIBUTES = ATTRIBUTE_NONE,
 } AttributeType;

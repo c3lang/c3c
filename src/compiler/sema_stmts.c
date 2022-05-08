@@ -890,7 +890,7 @@ static Expr *sema_insert_method_macro_call(SemaContext *context, SourceSpan span
 	{
 		if (parent->type->type_kind != TYPE_POINTER) expr_insert_addr(parent);
 	}
-	if (!sema_expr_analyse_general_call(context, len_call, method_decl, parent, is_macro, false)) return poisoned_expr;
+	if (!sema_expr_analyse_general_call(context, len_call, method_decl, parent, false)) return poisoned_expr;
 	len_call->resolve_status = RESOLVE_DONE;
 	return len_call;
 }
@@ -1551,8 +1551,8 @@ static bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
 		switch (parent->ast_kind)
 		{
 			case AST_FOR_STMT:
-				// Is this plain "do"?
-				if (parent->for_stmt.cond || parent->flow.skip_first) break;
+				// Break on anything but plain "do"
+				if (parent->for_stmt.cond || !parent->flow.skip_first) break;
 				FALLTHROUGH;
 			default:
 				SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");

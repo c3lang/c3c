@@ -1,11 +1,5 @@
 module game_of_life;
 
-extern fn void printf(char *fmt, ...);
-extern fn int atoi(char *val);
-extern void *__stdoutp;
-extern fn void fflush(void *std);
-extern fn int rand();
-extern fn void* malloc(usize size);
 extern fn void usleep(int time);
 
 
@@ -20,18 +14,18 @@ struct GameBoard
 fn void GameBoard.show(GameBoard *board)
 {
 
-	printf("\e[H");
+	libc::printf("\e[H");
 	char* current = board.world;
 	for (int y = 0; y < board.h; y++)
 	{
 		for (int x = 0; x < board.w; x++)
 		{
-			printf(*current ? "\e[07m  \e[m" : "  ");
+			libc::printf(*current ? "\e[07m  \e[m" : "  ");
 			current++;
 		}
-		printf("\e[E");
+		libc::printf("\e[E");
 	}
-	fflush(__stdoutp);
+	libc::fflush(libc::stdout());
 }
 
 fn void GameBoard.evolve(GameBoard *board)
@@ -65,20 +59,20 @@ fn int main(int c, char** v)
 {
 	int w = 0;
 	int h = 0;
-	if (c > 1) w = atoi(v[1]);
-	if (c > 2) h = atoi(v[2]);
+	if (c > 1) w = libc::atoi(v[1]);
+	if (c > 2) h = libc::atoi(v[2]);
 	if (w <= 0) w = 30;
 	if (h <= 0) h = 30;
 
 	GameBoard board;
 	board.w = w;
 	board.h = h;
-	board.world = malloc((ulong)(h * w));
-	board.temp = malloc((ulong)(h * w));
+	board.world = libc::malloc((ulong)(h * w));
+	board.temp = libc::malloc((ulong)(h * w));
 
 	for (int i = h * w - 1; i >= 0; i--)
 	{
-		board.world[i] = rand() % 10 == 0 ? 1 : 0;
+		board.world[i] = libc::rand() % 10 == 0 ? 1 : 0;
 	}
 	for (int j = 0; j < 1000; j++)
 	{

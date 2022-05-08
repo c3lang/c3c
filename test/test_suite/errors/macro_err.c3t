@@ -11,7 +11,7 @@ macro test()
 
 fn void main()
 {
-	libc::printf("%d\n", @test() ?? 2);
+	libc::printf("%d\n", test() ?? 2);
 }
 
 /* #expect: test.ll

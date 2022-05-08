@@ -4,7 +4,7 @@ extern fn void printf(char*,...);
 
 fn int! foo() { return 1; }
 
-macro foo_test(int i; @body())
+macro @foo_test(int i; @body())
 {
 	defer printf("%d\n", i);
 	@body();
@@ -19,7 +19,7 @@ macro foo_defer()
 }
 fn void! main()
 {
-    @foo_defer();
+    foo_defer();
 	@foo_test(34) {
 		defer printf("inside_defer\n");
 	};

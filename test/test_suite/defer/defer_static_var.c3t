@@ -35,9 +35,9 @@ fn void main()
 	foo(1);
 	foo(2);
 	foo(-2);
-	@foo2(0);
-	@foo2(1);
-	@foo2(2);
+	foo2(0);
+	foo2(1);
+	foo2(2);
 }
 
 /* #expect: foo.ll

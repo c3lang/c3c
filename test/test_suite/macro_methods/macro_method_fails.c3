@@ -15,7 +15,7 @@ struct An2
 
 extern fn void printf(char* string);
 
-macro void An2.helloWorld(An2 &an2)
+macro void An2.@helloWorld(An2 &an2)
 {
     printf("An2 hello\n");
 }
@@ -44,14 +44,3 @@ fn void test3()
     a.@helloWorld.b; // #error: There is no member or method 'b' on 'void'
 }
 
-fn void test4()
-{
-    An1 an;
-    an.x.@y; // #error: '@' should only be placed in front of macro names
-}
-
-fn void test5()
-{
-    An1 an;
-    an.x.@y(); // #error: '@' should only be placed in front of macro names
-}

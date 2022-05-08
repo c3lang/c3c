@@ -1347,7 +1347,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			break;
 		case CAST_ENUMLOW:
 			llvm_value_rvalue(c, value);
-			value->value = value->value;
 			break;
 		case CAST_STST:
 			llvm_value_addr(c, value);
@@ -5546,7 +5545,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	{
 		case NON_RUNTIME_EXPR:
 		case EXPR_COND:
-		case EXPR_MACRO_EXPANSION:
 			UNREACHABLE
 		case EXPR_RETVAL:
 			*value = c->retval;

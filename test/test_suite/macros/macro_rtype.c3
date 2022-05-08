@@ -5,5 +5,5 @@ macro int frob()
 
 fn void test1()
 {
-    @frob();
+    frob();
 }

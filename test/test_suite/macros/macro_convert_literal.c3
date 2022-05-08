@@ -8,5 +8,5 @@ macro foo(y)
 
 fn void main()
 {
-    libc::printf("%d\n", @foo(10));
+    libc::printf("%d\n", foo(10));
 }

@@ -1160,33 +1160,23 @@ INLINE void skip_to_doc_line_end(Lexer *lexer)
 }
 
 
-static bool parse_doc_directive(Lexer *lexer)
+static bool lex_doc_directive(Lexer *lexer)
 {
 	begin_new_token(lexer);
 	next(lexer);
 	// Then our keyword
-	if (!scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST, TOKEN_TYPE_IDENT, '@'))
+	if (!scan_ident(lexer, TOKEN_AT_IDENT, TOKEN_AT_CONST_IDENT, TOKEN_AT_TYPE_IDENT, '@'))
 	{
 		return false;
 	}
 
-	switch (lexer->token_type)
+	if (lexer->token_type != TOKEN_AT_IDENT)
 	{
-		case TOKEN_DOCS_ENSURE:
-		case TOKEN_DOCS_CHECKED:
-		case TOKEN_DOCS_REQUIRE:
-		case TOKEN_DOCS_OPTRETURN:
-		case TOKEN_DOCS_PARAM:
-		case TOKEN_DOCS_RETURN:
-		case TOKEN_DOCS_PURE:
-			return true;
-		case TOKEN_IDENT:
-			lexer->token_type = TOKEN_DOC_DIRECTIVE;
-			return true;
-		default:
-			add_error_token_at_current(lexer, "A doc directive was expected.");
-			return false;
+		add_error_token_at_current(lexer, "A doc directive was expected.");
+		return false;
 	}
+	lexer->token_type = TOKEN_DOC_DIRECTIVE;
+	return true;
 }
 
 static bool scan_doc_line(Lexer *lexer)
@@ -1224,7 +1214,7 @@ RETRY:;
 	// If we have '@' [_A-Za-z] then parse the directive
 	if (c == '@')
 	{
-		return parse_doc_directive(lexer);
+		return lex_doc_directive(lexer);
 	}
 
 	// Otherwise scan to the end of the line
@@ -1285,6 +1275,10 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case '\n':
 			return scan_doc_line(lexer);
 		case '@':
+			if (char_is_letter(peek(lexer)))
+			{
+				return scan_ident(lexer, TOKEN_AT_IDENT, TOKEN_AT_CONST_IDENT, TOKEN_AT_TYPE_IDENT, '@');
+			}
 			return return_token(lexer, TOKEN_AT, "@");
 		case '\'':
 			return scan_char(lexer);

@@ -452,7 +452,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_CT_IDENT:
 		case EXPR_FLATPATH:
 		case EXPR_COMPOUND_LITERAL:
-		case EXPR_MACRO_EXPANSION:
 		case EXPR_COMPILER_CONST:
 		case EXPR_POISONED:
 		case EXPR_ARGV_TO_SUBARRAY:
@@ -885,6 +884,19 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 
 	DEBUG_LOG("Now resolving %s", expr->identifier_expr.ident);
 
+	DeclId body_param;
+	if (!expr->identifier_expr.path && context->current_macro && (body_param = context->current_macro->macro_decl.body_param))
+	{
+		if (expr->identifier_expr.ident == declptr(body_param)->name)
+		{
+			expr->expr_kind = EXPR_MACRO_BODY_EXPANSION;
+			expr->body_expansion_expr.ast = NULL;
+			expr->body_expansion_expr.declarations = NULL;
+			expr->resolve_status = RESOLVE_NOT_DONE;
+			expr->type = type_void;
+			return true;
+		}
+	}
 	// Just start with inference
 	if (!expr->identifier_expr.path && to)
 	{
@@ -977,44 +989,6 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	return true;
 }
 
-static inline bool sema_expr_analyse_macro_expansion(SemaContext *context, Expr *expr)
-{
-	Expr *inner = expr->macro_expansion_expr.inner;
-	if (inner->expr_kind == EXPR_IDENTIFIER)
-	{
-		DeclId body_param = context->current_macro ? context->current_macro->macro_decl.body_param : 0;
-		if (body_param && !inner->identifier_expr.path && inner->identifier_expr.ident == declptr(body_param)->name)
-		{
-			expr->expr_kind = EXPR_MACRO_BODY_EXPANSION;
-			expr->body_expansion_expr.ast = NULL;
-			expr->body_expansion_expr.declarations = NULL;
-			expr->resolve_status = RESOLVE_NOT_DONE;
-			expr->type = type_void;
-			return true;
-		}
-	}
-	if (!sema_analyse_expr_lvalue(context, inner)) return false;
-	Decl *decl;
-	switch (inner->expr_kind)
-	{
-		case EXPR_IDENTIFIER:
-			decl = inner->identifier_expr.decl;
-			break;
-		case EXPR_ACCESS:
-			decl = inner->access_expr.ref;
-			break;
-		default:
-			SEMA_ERROR(expr, "Expected a macro identifier here.");
-			return false;
-	}
-	if (decl->decl_kind != DECL_MACRO)
-	{
-		SEMA_ERROR(inner, "Expected a macro identifier here.");
-		return false;
-	}
-	expr->macro_expansion_expr.decl = decl;
-	return true;
-}
 
 static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr)
 {
@@ -2137,7 +2111,7 @@ static bool sema_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 	return success;
 }
 
-bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool is_macro, bool failable)
+bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable)
 {
 	expr->call_expr.is_type_method = struct_var != NULL;
 	if (decl == NULL)
@@ -2147,37 +2121,17 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 	switch (decl->decl_kind)
 	{
 		case DECL_MACRO:
-			if (!is_macro)
-			{
-				SEMA_ERROR(expr, "A macro neeeds to be called with a '@' prefix, please add it.");
-				return false;
-			}
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
 			return sema_expr_analyse_macro_call(context, expr, struct_var, decl, failable);
 		case DECL_VAR:
-			if (is_macro)
-			{
-				SEMA_ERROR(expr, "A function cannot be called with a '@' prefix, please remove it.");
-				return false;
-			}
 			assert(struct_var == NULL);
 			return sema_expr_analyse_var_call(context, expr, decl->type->canonical, failable || IS_FAILABLE(decl));
 		case DECL_FUNC:
-			if (is_macro)
-			{
-				SEMA_ERROR(expr, "A function cannot be called with a '@' prefix, please remove it.");
-				return false;
-			}
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
 			return sema_expr_analyse_func_call(context, expr, decl, struct_var, failable);
 		case DECL_GENERIC:
-			if (is_macro)
-			{
-				SEMA_ERROR(expr, "A generic function cannot be called with a '@' prefix, please remove it.");
-				return false;
-			}
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
 			return sema_expr_analyse_generic_call(context, expr, struct_var, decl, failable);
@@ -2432,7 +2386,6 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 	bool failable = func_expr->type && IS_FAILABLE(func_expr);
 	Decl *decl;
 	Expr *struct_var = NULL;
-	bool macro = false;
 	switch (func_expr->expr_kind)
 	{
 		case EXPR_BUILTIN:
@@ -2444,14 +2397,9 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 			decl = func_expr->access_expr.ref;
 			if (decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO)
 			{
-				macro = decl->decl_kind == DECL_MACRO;
-				if (!macro) expr_insert_addr(func_expr->access_expr.parent);
+				if (decl->decl_kind != DECL_MACRO) expr_insert_addr(func_expr->access_expr.parent);
 				struct_var = func_expr->access_expr.parent;
 			}
-			break;
-		case EXPR_MACRO_EXPANSION:
-			decl = func_expr->macro_expansion_expr.decl;
-			macro = true;
 			break;
 		case EXPR_TYPEINFO:
 			if (func_expr->type_expr->resolve_status == RESOLVE_DONE)
@@ -2477,7 +2425,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr)
 		}
 	}
 	decl = decl ? decl_flatten(decl) : NULL;
-	return sema_expr_analyse_general_call(context, expr, decl, struct_var, macro, failable);
+	return sema_expr_analyse_general_call(context, expr, decl, struct_var, failable);
 }
 
 static void sema_deref_array_pointers(Expr *expr)
@@ -2965,18 +2913,6 @@ RETRY:
 			// A path is not allowed.
 			if (child->identifier_expr.path) break;
 			return child;
-		case EXPR_MACRO_EXPANSION:
-			child = child->macro_expansion_expr.inner;
-			switch (child->expr_kind)
-			{
-				case EXPR_IDENTIFIER:
-				case EXPR_HASH_IDENT:
-					return sema_expr_resolve_access_child(context, child, missing);
-				default:
-					SEMA_ERROR(child, "Expected a macro name.");
-					return NULL;
-			}
-			break;
 		case EXPR_HASH_IDENT:
 		{
 			Decl *decl = sema_resolve_symbol(context, child->hash_ident_expr.identifier, NULL, child->span);
@@ -3044,7 +2980,7 @@ static inline void expr_replace_with_enum_array(Expr *enum_array_expr, Decl *enu
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
 }
 
-static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, TypeInfo *parent, bool was_group, bool is_macro, Expr *identifier)
+static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, TypeInfo *parent, bool was_group, Expr *identifier)
 {
 	assert(identifier->expr_kind == EXPR_IDENTIFIER);
 
@@ -3153,13 +3089,6 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	}
 
 
-	// 12b. If the member was *not* a macro but was prefixed with `@` then that's an error.
-	if (member->decl_kind != DECL_MACRO && is_macro)
-	{
-		SEMA_ERROR(expr, "'@' should only be placed in front of macro names.");
-		return false;
-	}
-
 	if (member->decl_kind == DECL_VAR)
 	{
 		expr->expr_kind = EXPR_TYPEINFO;
@@ -3178,12 +3107,6 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		return true;
 	}
 
-	// 12a. If the member was a macro and it isn't prefixed with `@` then that's an error.
-	if (member->decl_kind == DECL_MACRO && !is_macro)
-	{
-		SEMA_ERROR(expr, "Expected '@' before the macro name.");
-		return false;
-	}
 
 	expr->identifier_expr.ident = name;
 	expr->expr_kind = EXPR_IDENTIFIER;
@@ -3205,7 +3128,6 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 
 	// 2. The right hand side may be a @ident or ident
 	Expr *child = expr->access_expr.child;
-	bool is_macro = child->expr_kind == EXPR_MACRO_EXPANSION;
 
 	// 3. Handle xxxxxx.typeid
 	if (child->expr_kind == EXPR_TYPEINFO)
@@ -3238,7 +3160,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 	// 2. If our left-hand side is a type, e.g. MyInt.abc, handle this here.
 	if (parent->expr_kind == EXPR_TYPEINFO)
 	{
-		return sema_expr_analyse_type_access(context, expr, parent->type_expr, was_group, is_macro, identifier);
+		return sema_expr_analyse_type_access(context, expr, parent->type_expr, was_group, identifier);
 	}
 
 	// 6. Copy failability
@@ -3263,7 +3185,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 	Type *flat_type = type_flatten(type);
 	const char *kw = identifier->identifier_expr.ident;
 
-	if (!is_macro && kw_type == kw && flat_type->type_kind == TYPE_ANY)
+	if (kw_type == kw && flat_type->type_kind == TYPE_ANY)
 	{
 		expr->expr_kind = EXPR_TYPEOFANY;
 		expr->inner_expr = parent;
@@ -3274,7 +3196,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr)
 CHECK_DEEPER:
 
 	// 9. Fix hard coded function `len` on subarrays and arrays
-	if (!is_macro && kw == kw_len)
+	if (kw == kw_len)
 	{
 		if (flat_type->type_kind == TYPE_SUBARRAY)
 		{
@@ -3292,7 +3214,7 @@ CHECK_DEEPER:
 	}
 
 	// Hard coded ptr on subarrays and variant
-	if (!is_macro && kw == kw_ptr)
+	if (kw == kw_ptr)
 	{
 		if (flat_type->type_kind == TYPE_SUBARRAY)
 		{
@@ -3312,7 +3234,7 @@ CHECK_DEEPER:
 		}
 	}
 
-	if (!is_macro && kw == kw_ordinal)
+	if (kw == kw_ordinal)
 	{
 		if (type->type_kind == TYPE_ENUM)
 		{
@@ -3363,19 +3285,6 @@ CHECK_DEEPER:
 
 		// 11b. Otherwise we give up.
 		SEMA_ERROR(expr, "There is no field or method '%s.%s'.", decl->name, kw);
-		return false;
-	}
-
-	// 12a. If the member was a macro and it isn't prefixed with `@` then that's an error.
-	if (member->decl_kind == DECL_MACRO && !is_macro)
-	{
-		SEMA_ERROR(expr, "Expected '@' before the macro name.");
-		return false;
-	}
-	// 12b. If the member was *not* a macro but was prefixed with `@` then that's an error.
-	if (member->decl_kind != DECL_MACRO && is_macro)
-	{
-		SEMA_ERROR(expr, "'@' should only be placed in front of macro names.");
 		return false;
 	}
 
@@ -5565,9 +5474,6 @@ static bool sema_take_addr_of(Expr *inner)
 		case EXPR_CT_IDENT:
 			SEMA_ERROR(inner, "It's not possible to take the address of a compile time value.");
 			return false;
-		case EXPR_MACRO_EXPANSION:
-			SEMA_ERROR(inner, "It's not possible to take the address of a macro.");
-			return false;
 		case EXPR_IDENTIFIER:
 			return sema_take_addr_of_ident(inner);
 		case EXPR_UNARY:
@@ -6962,8 +6868,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_unary(context, expr);
 		case EXPR_TYPEID:
 			return sema_expr_analyse_typeid(context, expr);
-		case EXPR_MACRO_EXPANSION:
-			return sema_expr_analyse_macro_expansion(context, expr);
 		case EXPR_IDENTIFIER:
 			return sema_expr_analyse_identifier(context, NULL, expr);
 		case EXPR_CALL:
@@ -7066,9 +6970,6 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 		case EXPR_TYPEINFO:
 			SEMA_ERROR(expr, "A type must be followed by either (...) or '.'.");
 			return false;
-		case EXPR_MACRO_EXPANSION:
-			SEMA_ERROR(expr, "Expected macro followed by (...).", expr->ct_macro_ident_expr.identifier);
-			return expr_poison(expr);
 		case EXPR_CT_IDENT:
 			if (!sema_cast_ct_ident_rvalue(context, expr)) return false;
 			break;

@@ -1,5 +1,5 @@
 module foo;
-macro int cofefe(a; @body(x))
+macro int @cofefe(a; @body(x))
 {
     @body(a);
     @body(a);

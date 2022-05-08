@@ -7,7 +7,7 @@ macro foo($Foo)
 fn void test1()
 {
     var $Bar;
-    @foo($Bar); // #error: '$Bar' is not defined yet
+    foo($Bar); // #error: '$Bar' is not defined yet
 }
 
 fn void test2()

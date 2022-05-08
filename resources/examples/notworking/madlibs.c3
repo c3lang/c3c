@@ -14,7 +14,7 @@ fn void main()
 
     Regex r;
 
-    r.initWithOptions("<.+?>", RegexOpt.GLOBAL) else @unreachable;
+    r.initWithOptions("<.+?>", RegexOpt.GLOBAL) else unreachable;
     defer r.destroy();
 
     foreach (RegexMatch* match : r.match(story))

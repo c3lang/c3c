@@ -275,7 +275,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_RETHROW:
 		case EXPR_HASH_IDENT:
 		case EXPR_MACRO_BLOCK:
-		case EXPR_MACRO_EXPANSION:
 		case EXPR_FLATPATH:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
@@ -491,3 +490,14 @@ bool ast_is_not_empty(Ast *ast)
 	}
 	return false;
 }
+
+AttributeType attribute_by_name(Attr *attr)
+{
+	const char *attribute = attr->name;
+	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
+	{
+		if (attribute_list[i] == attribute) return (AttributeType)i;
+	}
+	return ATTRIBUTE_NONE;
+}
+

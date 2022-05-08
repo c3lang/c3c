@@ -775,7 +775,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_MACRO_BLOCK:
-		case EXPR_MACRO_EXPANSION:
 		case EXPR_IDENTIFIER:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE:
@@ -930,7 +929,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_MACRO_BLOCK:
-		case EXPR_MACRO_EXPANSION:
 		case EXPR_IDENTIFIER:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE:

@@ -16,12 +16,12 @@ fn int test()
 {
     int a = 2;
     int b = 3;
-    return @foo(&square, 2) + a + b; // 9
-    // return @foo(square, 2) + a + b;
+    return foo(&square, 2) + a + b; // 9
+    // return foo(square, 2) + a + b;
     // Error the symbol "square" cannot be used as an argument.
 }
 
-// #expect: example.ll
+/* #expect: example.ll
 
 define i32 @example.square(i32 %0) #0 {
 entry:

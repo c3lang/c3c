@@ -26,7 +26,7 @@ fn void LinkedList.push(LinkedList *list, Type value)
 private fn void LinkedList.linkFirst(LinkedList *list, Type value)
 {
     Node *first = list.first;
-    Node *new_node = @mem::malloc(Node);
+    Node *new_node = mem::malloc(Node);
     *new_node = { .next = first, .value = value };
     list.first = new_node;
     if (!first)
@@ -90,7 +90,7 @@ fn Type LinkedList.get(LinkedList* list, usize index)
 private fn void LinkedList.linkBefore(LinkedList *list, Node *succ, Type value)
 {
     Node* pred = succ.prev;
-    Node* new_node = @mem::malloc(Node);
+    Node* new_node = mem::malloc(Node);
     *new_node = { .prev = pred, .next = succ, .value = value };
     succ.prev = new_node;
     if (!pred)

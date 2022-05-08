@@ -8,11 +8,11 @@ macro foo($Foo)
 define Bar = short;
 fn void test()
 {
-    int x = @foo(int);
+    int x = foo(int);
     var $Foo = double;
-    double d = @foo($Foo);
-    double d2 = @foo($typeof(d));
-    short z = @foo(Bar);
+    double d = foo($Foo);
+    double d2 = foo($typeof(d));
+    short z = foo(Bar);
 }
 
 

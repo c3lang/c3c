@@ -2,7 +2,7 @@ module foo;
 import bar;
 fn void run()
 {
-    @bar::test();
+    bar::test();
 }
 
 module bar;

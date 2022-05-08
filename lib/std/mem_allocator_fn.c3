@@ -16,7 +16,7 @@ private fn void*! null_allocator_fn(void *data, usize bytes, usize alignment, vo
 fn void*! libc_allocator_fn(void *unused, usize bytes, usize alignment, void* old_pointer, AllocationKind kind) @inline
 {
 	if (!alignment) alignment = DEFAULT_MEM_ALIGNMENT;
-	assert(@math::is_power_of_2(alignment), "Alignment was not a power of 2");
+	assert(math::is_power_of_2(alignment), "Alignment was not a power of 2");
 
     void* data;
     switch (kind)
@@ -60,5 +60,5 @@ fn void*! libc_allocator_fn(void *unused, usize bytes, usize alignment, void* ol
             libc::free(old_pointer);
             return null;
     }
-    @unreachable();
+    unreachable();
 }

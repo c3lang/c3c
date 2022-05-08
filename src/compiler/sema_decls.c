@@ -269,7 +269,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 		{
 			Attr *attribute = attributes[j];
 			if (!sema_analyse_attribute(context, attribute, ATTR_GLOBAL)) return false;
-			if (attribute->name == kw_align)
+			if (attribute->name == attribute_list[ATTRIBUTE_ALIGN])
 			{
 				member_alignment = attribute->alignment;
 				// Update total alignment if we have a member that has bigger alignment.
@@ -1075,16 +1075,6 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	return unit_add_method_like(context->unit, type, decl);
 }
 
-static inline AttributeType attribute_by_name(Attr *attr)
-{
-	const char *attribute = attr->name;
-	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
-	{
-		if (attribute_list[i] == attribute) return (AttributeType)i;
-	}
-	return ATTRIBUTE_NONE;
-}
-
 
 static const char *attribute_domain_to_string(AttributeDomain domain)
 {
@@ -1151,6 +1141,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_AUTOIMPORT] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
+			[ATTRIBUTE_PURE] = ATTR_CALL,
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
@@ -1669,6 +1660,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 	decl->macro_decl.unit = context->unit;
 	Decl **parameters = decl->macro_decl.parameters;
 	unsigned param_count = vec_size(parameters);
+	bool is_function_like = true;
 	for (unsigned i = 0; i < param_count; i++)
 	{
 		Decl *param = parameters[i];
@@ -1677,8 +1669,10 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		switch (param->var.kind)
 		{
 			case VARDECL_PARAM_EXPR:
-			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_REF:
+				is_function_like = false;
+				FALLTHROUGH;
+			case VARDECL_PARAM_CT:
 				if (is_generic)
 				{
 					SEMA_ERROR(param, "Only regular parameters and type parameters are allowed for generic functions.");
@@ -1715,6 +1709,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 		param->resolve_status = RESOLVE_DONE;
 	}
 	DeclId body_param = decl->macro_decl.body_param;
+	if (body_param) is_function_like = false;
 	if (is_generic && body_param)
 	{
 		SEMA_ERROR(declptr(body_param), "Trailing block syntax is not allowed for generic functions.");
@@ -1756,6 +1751,11 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 	}
 	bool pure = false;
 	if (!sema_analyse_doc_header(decl->macro_decl.docs, decl->macro_decl.parameters, body_parameters, &pure)) return decl_poison(decl);
+	if (decl->name[0] != '@' && !is_function_like)
+	{
+		SEMA_ERROR(decl, "Names of non-function like macros (i.e. a macro with a trailing body, ref or expression parameters, must start with '@'.");
+		return false;
+	}
 	if (decl->macro_decl.type_parent)
 	{
 		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);

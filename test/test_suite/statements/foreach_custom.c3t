@@ -6,12 +6,12 @@ struct Foo
     int[] x;
 }
 
-macro int Foo.operator_element_at(Foo &foo, usize index) @operator(elementat)
+macro int Foo.@operator_element_at(Foo &foo, usize index) @operator(elementat)
 {
     return foo.x[index];
 }
 
-macro usize Foo.operator_len(Foo &foo) @operator(len)
+macro usize Foo.@operator_len(Foo &foo) @operator(len)
 {
     return foo.x.len;
 }
@@ -31,7 +31,7 @@ fn void main()
 
 extern fn int printf(char *fmt, ...);
 
-// #expect: foo.ll
+/* #expect: foo.ll
 
 ; Function Attrs: nounwind
 define void @foo.main() #0 {

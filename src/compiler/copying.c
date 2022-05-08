@@ -206,11 +206,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			return expr;
 		case EXPR_COMPILER_CONST:
 			return expr;
-		case EXPR_MACRO_EXPANSION:
-			SCOPE_FIXUP_START
-				MACRO_COPY_EXPR(expr->macro_expansion_expr.inner);
-			SCOPE_FIXUP_END;
-			return expr;
 		case EXPR_DESIGNATOR:
 			expr->designator_expr.path = macro_copy_designator_list(c, expr->designator_expr.path);
 			MACRO_COPY_EXPR(expr->designator_expr.value);

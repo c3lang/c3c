@@ -2,12 +2,12 @@ module foo;
 import bar;
 fn void run()
 {
-    @bar::test();
+    bar::test();
 }
 
 fn void run2()
 {
-    @bar::test2();
+    bar::test2();
 }
 
 private fn void tester() {}

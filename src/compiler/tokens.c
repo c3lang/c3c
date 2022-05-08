@@ -157,6 +157,13 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_TYPE_IDENT:
 			return "TYPE_IDENT";
 
+		case TOKEN_AT_IDENT:
+			return "MACRO_IDENT";
+		case TOKEN_AT_TYPE_IDENT:
+			return "MACRO_TYPE_IDENT";
+		case TOKEN_AT_CONST_IDENT:
+			return "MACRO_CONST_IDENT";
+
 		// Asm
 		case TOKEN_ASM_STRING:
 			return "ASM_STRING";
@@ -318,20 +325,6 @@ const char *token_type_to_string(TokenType type)
 			return "/**";
 		case TOKEN_DOCS_END:
 			return "*/";
-		case TOKEN_DOCS_OPTRETURN:
-			return "@optreturn";
-		case TOKEN_DOCS_PARAM:
-			return "@param";
-		case TOKEN_DOCS_RETURN:
-			return "@return";
-		case TOKEN_DOCS_ENSURE:
-			return "@ensure";
-		case TOKEN_DOCS_REQUIRE:
-			return "@require";
-		case TOKEN_DOCS_CHECKED:
-			return "@checked";
-		case TOKEN_DOCS_PURE:
-			return "@pure";
 		case TOKEN_DOC_DIRECTIVE:
 			return "DOC_DIRECTIVE";
 

@@ -1,4 +1,4 @@
-macro foo4(;@body)
+macro @foo4(;@body)
 {
     @body; // #error: must be followed by ()
 }

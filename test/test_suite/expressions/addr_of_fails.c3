@@ -22,7 +22,7 @@ macro int hello()
 
 fn void test3()
 {
-    int* x = &@hello();    // #error: To take the address of a temporary value, use '&&' instead of '&'
+    int* x = &hello();    // #error: To take the address of a temporary value, use '&&' instead of '&'
 }
 
 fn void test3b()
