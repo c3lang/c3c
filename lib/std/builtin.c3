@@ -14,7 +14,7 @@ fault VarCastResult
  *
  * @param variable `the variable to store and restore`
  **/
-macro void scope(&variable; @body) @autoimport
+macro void @scope(&variable; @body) @autoimport
 {
 	$typeof(variable) temp = variable;
 	defer variable = temp;
@@ -51,15 +51,15 @@ fn void panic(char* message, char *file, char *function, uint line) @autoimport
 	if (stack) stack = stack.prev;
 	if (stack)
 	{
-		libc::fprintf(@libc::stderr(), "\nERROR: '%s'\n", message);
+		libc::fprintf(libc::stderr(), "\nERROR: '%s'\n", message);
 	}
 	else
 	{
-		libc::fprintf(@libc::stderr(), "\nERROR: '%s', function %s (%s:%d)\n", message, function, file, line);
+		libc::fprintf(libc::stderr(), "\nERROR: '%s', function %s (%s:%d)\n", message, function, file, line);
 	}
 	while (stack)
 	{
-		libc::fprintf(@libc::stderr(), "  at function %s (%s:%u)\n", stack.function, stack.file, stack.line);
+		libc::fprintf(libc::stderr(), "  at function %s (%s:%u)\n", stack.function, stack.file, stack.line);
 		if (stack == stack.prev) break;
 		stack = stack.prev;
 	}

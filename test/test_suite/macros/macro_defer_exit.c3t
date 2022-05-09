@@ -14,8 +14,8 @@ macro int abc(x)
 fn void main()
 {
 	defer printf("On exit\n");
-	@abc(123);
-	@abc(3);
+	abc(123);
+	abc(3);
 }
 
 /* #expect: foo.ll

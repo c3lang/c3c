@@ -1,4 +1,4 @@
-macro int cofefe(#a)
+macro int @cofefe(#a)
 {
     int y = 0;
     return #a + #a;

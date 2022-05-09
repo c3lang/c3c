@@ -9,7 +9,6 @@ import std::mem;
  **/
 macro alloc($Type, usize elements)
 {
-	assert($Type.max / elements < $Type.sizeof);
     $Type* ptr = mem::alloc($Type.sizeof * elements, $alignof($Type));
     return ptr[0..(elements - 1)];
 }

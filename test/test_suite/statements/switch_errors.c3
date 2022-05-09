@@ -18,7 +18,7 @@ fn void test_other_enum()
             break;
         case B:
             break;
-        case Bar.B: // #error: 'Bar' to 'Foo'
+        case Bar.B: // #error: 'Bar' into 'Foo'
             break;
     }
 }
@@ -28,7 +28,7 @@ fn void test_check_nums()
     Foo f = A;
     switch (f)
     {
-        case (Foo)(2):
+        case (Foo)(1):
             break;
         case (Foo)(0):
             break;
@@ -66,7 +66,7 @@ fn void test_duplicate_case2(Foo i)
     {
         case A:
             break;
-        case (Foo)(2):
+        case (Foo)(1):
             break;
         case A:     // #error: same case value appears
             break;

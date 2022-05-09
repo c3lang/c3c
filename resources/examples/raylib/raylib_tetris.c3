@@ -462,7 +462,7 @@ fn void get_random_piece()
             incoming_piece[2][1] = MOVING;
             incoming_piece[3][1] = MOVING; //S inversa
         default:
-            @unreachable();
+            unreachable();
     }
 }
 

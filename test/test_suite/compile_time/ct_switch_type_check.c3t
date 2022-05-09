@@ -18,9 +18,9 @@ extern fn void printf(char*, ...);
 
 fn void main()
 {
-    printf("%s\n", @get_type(int));
-    printf("%s\n", @get_type(double));
-    printf("%s\n", @get_type(bool));
+    printf("%s\n", get_type(int));
+    printf("%s\n", get_type(double));
+    printf("%s\n", get_type(bool));
 
 }
 

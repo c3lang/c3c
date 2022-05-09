@@ -417,9 +417,8 @@ typedef struct
 
 typedef struct
 {
-	Expr *expr;
 	Expr **args;
-	uint64_t ordinal;
+	uint32_t ordinal;
 	DeclId parent;
 } EnumConstantDecl;
 
@@ -796,12 +795,6 @@ typedef struct
 
 typedef struct
 {
-	Expr *inner;
-	Decl *decl;
-} ExprMacroExpansion;
-
-typedef struct
-{
 	CastKind kind : 8;
 	bool implicit : 1;
 	ExprId expr;
@@ -956,7 +949,6 @@ struct Expr_
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_macro_ident_expr;      // 24
-		ExprMacroExpansion macro_expansion_expr;    // 16
 		ExprIdentifierRaw hash_ident_expr;          // 24
 		TypeInfo *typeid_expr;                      // 8
 		ExprBodyExpansion body_expansion_expr;      // 24
@@ -1615,6 +1607,13 @@ extern const char *kw_check_assign;
 extern const char *kw_argc;
 extern const char *kw_argv;
 extern const char *kw_mainstub;
+extern const char *kw_at_ensure;
+extern const char *kw_at_require;
+extern const char *kw_at_pure;
+extern const char *kw_at_optreturn;
+extern const char *kw_at_param;
+extern const char *kw_at_return;
+extern const char *kw_at_checked;
 
 ARENA_DEF(chars, char)
 ARENA_DEF(ast, Ast)
@@ -1659,6 +1658,8 @@ typedef enum CmpRes_
 	CMP_EQ = 0,
 	CMP_GT = 1,
 } CmpRes;
+
+AttributeType attribute_by_name(Attr *attr);
 
 void type_setup(PlatformTarget *target);
 Float float_add(Float op1, Float op2);
@@ -1942,7 +1943,7 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped_var);
 
-bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool is_macro, bool failable);
+bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable);
 Decl *sema_resolve_symbol_in_current_dynamic_scope(SemaContext *context, const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);

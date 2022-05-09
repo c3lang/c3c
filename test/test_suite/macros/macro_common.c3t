@@ -8,8 +8,8 @@ macro frab(x)
 
 fn void test2()
 {
-    @frab(1);
-    @frab(0);
+    frab(1);
+    frab(0);
 }
 
 /* #expect: test.ll

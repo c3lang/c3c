@@ -890,7 +890,7 @@ static Expr *sema_insert_method_macro_call(SemaContext *context, SourceSpan span
 	{
 		if (parent->type->type_kind != TYPE_POINTER) expr_insert_addr(parent);
 	}
-	if (!sema_expr_analyse_general_call(context, len_call, method_decl, parent, is_macro, false)) return poisoned_expr;
+	if (!sema_expr_analyse_general_call(context, len_call, method_decl, parent, false)) return poisoned_expr;
 	len_call->resolve_status = RESOLVE_DONE;
 	return len_call;
 }
@@ -1551,8 +1551,8 @@ static bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
 		switch (parent->ast_kind)
 		{
 			case AST_FOR_STMT:
-				// Is this plain "do"?
-				if (parent->for_stmt.cond || parent->flow.skip_first) break;
+				// Break on anything but plain "do"
+				if (parent->for_stmt.cond || !parent->flow.skip_first) break;
 				FALLTHROUGH;
 			default:
 				SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");
@@ -1683,12 +1683,15 @@ static inline ExprConst *flatten_enum_const(Expr *expr)
 	if (const_expr->const_kind == CONST_ENUM)
 	{
 		const_expr->const_kind = CONST_INTEGER;
+
 		Decl *enum_val = const_expr->enum_val;
-		Expr *enum_expr = enum_val->enum_constant.expr;
+		TODO
+		/*
+		Expr *enum_expr = exprptr(enum_val->enum_constant.ordinal2);
 		assert(enum_expr->expr_kind == EXPR_CONST);
 		ExprConst *enum_const = &enum_expr->const_expr;
 		assert(enum_const->const_kind == CONST_INTEGER);
-		*const_expr = *enum_const;
+		*const_expr = *enum_const;*/
 	}
 	return const_expr;
 }
@@ -1707,25 +1710,39 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 		*if_chained = true;
 		return true;
 	}
-	ExprConst *const_expr = flatten_enum_const(expr);
-	ExprConst *to_const_expr = to_expr ? flatten_enum_const(to_expr) : const_expr;
+	ExprConst *const_expr = &expr->const_expr;
+	ExprConst *to_const_expr = to_expr ? &to_expr->const_expr : const_expr;
 
-	if (!*max_ranged && type_is_integer(expr->type) && to_const_expr != const_expr)
+	if (!*max_ranged && to_const_expr != const_expr)
 	{
-		if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
+		if (const_expr->const_kind == CONST_ENUM)
 		{
-			sema_error_at(extend_span_with_token(expr->span, to_expr->span),
-			              "The range is not valid because the first value (%s) is greater than the second (%s). "
-			              "It would work if you swapped their order.",
-			              int_to_str(const_expr->ixx, 10),
-			              int_to_str(to_const_expr->ixx, 10));
-			return false;
+			assert(to_const_expr->const_kind == CONST_ENUM);
+			if (to_const_expr->enum_val->enum_constant.ordinal < const_expr->enum_val->enum_constant.ordinal)
+			{
+				sema_error_at(extend_span_with_token(expr->span, to_expr->span),
+				              "A enum range must be have the enum with a lower ordinal followed by the one with a higher ordinal. "
+				              "It would work if you swapped their order.");
+				return false;
+			}
 		}
-		Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
-		Int128 max_range = { .low = active_target.switchrange_max_size };
-		if (i128_comp(range, max_range, type_i128) == CMP_GT)
+		else if (type_is_integer(expr->type))
 		{
-			*max_ranged = true;
+			if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
+			{
+				sema_error_at(extend_span_with_token(expr->span, to_expr->span),
+				              "The range is not valid because the first value (%s) is greater than the second (%s). "
+				              "It would work if you swapped their order.",
+				              int_to_str(const_expr->ixx, 10),
+				              int_to_str(to_const_expr->ixx, 10));
+				return false;
+			}
+			Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
+			Int128 max_range = { .low = active_target.switchrange_max_size };
+			if (i128_comp(range, max_range, type_i128) == CMP_GT)
+			{
+				*max_ranged = true;
+			}
 		}
 	}
 	for (unsigned i = 0; i < index; i++)
@@ -1765,6 +1782,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	bool type_switch = switch_type == type_typeid;
 	for (unsigned i = 0; i < case_count; i++)
 	{
+		if (!success) break;
 		Ast *stmt = cases[i];
 		Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
 		PUSH_NEXT(next, statement);

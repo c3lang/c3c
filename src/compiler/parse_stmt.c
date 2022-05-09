@@ -846,7 +846,10 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_STATIC:   // Static means declaration!
 		case TOKEN_CONST:   // Const means declaration!
 			return parse_declaration_stmt(c);
+		case TOKEN_AT_TYPE_IDENT:
+		case TOKEN_AT_CONST_IDENT:
 		case TOKEN_AT:
+		case TOKEN_AT_IDENT:
 			return parse_expr_stmt(c);
 		case TOKEN_RETURN:
 		{
@@ -1028,13 +1031,6 @@ Ast *parse_stmt(ParseContext *c)
 			SEMA_ERROR_HERE("Reached the end of the file when expecting a statement.");
 			return poisoned_ast;
 		case TOKEN_DOC_DIRECTIVE:
-		case TOKEN_DOCS_ENSURE:
-		case TOKEN_DOCS_REQUIRE:
-		case TOKEN_DOCS_CHECKED:
-		case TOKEN_DOCS_PARAM:
-		case TOKEN_DOCS_RETURN:
-		case TOKEN_DOCS_OPTRETURN:
-		case TOKEN_DOCS_PURE:
 			SEMA_ERROR_HERE("Unexpectedly encountered doc directives.");
 			return poisoned_ast;
 	}

@@ -117,12 +117,12 @@ fn void List.free(List *list)
 }
 
 
-macro Type List.item_at(List &list, usize index) @operator(elementat)
+macro Type List.@item_at(List &list, usize index) @operator(elementat)
 {
     return list.entries[index];
 }
 
-macro Type* List.item_ref(List &list, usize index) @operator(elementref)
+macro Type* List.@item_ref(List &list, usize index) @operator(elementref)
 {
     return &list.entries[index];
 }

@@ -74,7 +74,13 @@ const char *kw_check_assign;
 const char *kw_argc;
 const char *kw_argv;
 const char *kw_mainstub;;
-
+const char *kw_at_ensure;
+const char *kw_at_require;
+const char *kw_at_pure;
+const char *kw_at_optreturn;
+const char *kw_at_param;
+const char *kw_at_return;
+const char *kw_at_checked;
 
 void symtab_destroy()
 {
@@ -181,27 +187,36 @@ void symtab_init(uint32_t capacity)
 		assert(builtin_list[i] && "Missing builtin");
 	}
 
-	attribute_list[ATTRIBUTE_INLINE] = kw_inline;
-	attribute_list[ATTRIBUTE_NOINLINE] = kw_noinline;
-	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("bigendian");
-	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("littleendian");
-	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("noreturn");
-	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("section");
-	attribute_list[ATTRIBUTE_EXTNAME] = KW_DEF("extname");
-	attribute_list[ATTRIBUTE_WEAK] = KW_DEF("weak");
-	attribute_list[ATTRIBUTE_ALIGN] = kw_align;
-	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("packed");
-	attribute_list[ATTRIBUTE_UNUSED] = KW_DEF("unused");
-	attribute_list[ATTRIBUTE_USED] = KW_DEF("used");
-	attribute_list[ATTRIBUTE_NAKED] = KW_DEF("naked");
-	attribute_list[ATTRIBUTE_CDECL] = KW_DEF("cdecl");
-	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("stdcall");
-	attribute_list[ATTRIBUTE_VECCALL] = KW_DEF("veccall");
-	attribute_list[ATTRIBUTE_REGCALL] = KW_DEF("regcall");
-	attribute_list[ATTRIBUTE_FASTCALL] = KW_DEF("fastcall");
-	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("overlap");
-	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("operator");
-	attribute_list[ATTRIBUTE_AUTOIMPORT] = KW_DEF("autoimport");
+	type = TOKEN_AT_IDENT;
+	kw_at_param = KW_DEF("@param");
+	kw_at_ensure = KW_DEF("@ensure");
+	kw_at_optreturn = KW_DEF("@optreturn");
+	kw_at_pure = KW_DEF("@pure");
+	kw_at_require = KW_DEF("@require");
+	kw_at_checked = KW_DEF("@checked");
+	kw_at_return = KW_DEF("@return");
+	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("@inline");
+	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("@noinline");
+	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
+	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("@littleendian");
+	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("@noreturn");
+	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("@section");
+	attribute_list[ATTRIBUTE_EXTNAME] = KW_DEF("@extname");
+	attribute_list[ATTRIBUTE_WEAK] = KW_DEF("@weak");
+	attribute_list[ATTRIBUTE_ALIGN] = KW_DEF("@align");
+	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("@packed");
+	attribute_list[ATTRIBUTE_UNUSED] = KW_DEF("@unused");
+	attribute_list[ATTRIBUTE_USED] = KW_DEF("@used");
+	attribute_list[ATTRIBUTE_NAKED] = KW_DEF("@naked");
+	attribute_list[ATTRIBUTE_CDECL] = KW_DEF("@cdecl");
+	attribute_list[ATTRIBUTE_STDCALL] = KW_DEF("@stdcall");
+	attribute_list[ATTRIBUTE_VECCALL] = KW_DEF("@veccall");
+	attribute_list[ATTRIBUTE_REGCALL] = KW_DEF("@regcall");
+	attribute_list[ATTRIBUTE_FASTCALL] = KW_DEF("@fastcall");
+	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("@overlap");
+	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("@operator");
+	attribute_list[ATTRIBUTE_PURE] = kw_at_pure;
+	attribute_list[ATTRIBUTE_AUTOIMPORT] = KW_DEF("@autoimport");
 
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 	{

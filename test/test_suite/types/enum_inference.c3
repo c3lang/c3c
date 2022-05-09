@@ -3,14 +3,14 @@ enum Inf
 {
     A,
     B,
-    C = 10000
+    C
 }
 
 enum Inf2 : char
 {
     A,
     B,
-    C = 129,
+    C,
 }
 
 define BooInf = Inf;
@@ -34,7 +34,7 @@ fn void enumInferenceTest()
             return;
         case B:
             return;
-        case (Inf2)(111):
+        case (Inf2)(2):
             x1 += 1;
             return;
         default:

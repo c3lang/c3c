@@ -15,10 +15,10 @@ extern fn void printf(char*, ...);
 
 fn int main()
 {
-    int! a = @foo(1);
+    int! a = foo(1);
 
-    int! b = @foo((a + 3) ?? 2);
-    int! c = @foo(0);
+    int! b = foo((a + 3) ?? 2);
+    int! c = foo(0);
     printf("a = %d\n", a);
     printf("b = %d\n", b);
     printf("c = %d\n", c);

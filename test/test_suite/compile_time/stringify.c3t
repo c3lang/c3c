@@ -3,7 +3,7 @@ module test;
 import libc;
 import std::io;
 
-macro timeit(#call)
+macro @timeit(#call)
 {
     long t = (long)libc::clock();
     var $Type = $typeof(#call);

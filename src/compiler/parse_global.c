@@ -858,29 +858,26 @@ Decl *parse_var_decl(ParseContext *c)
 
 bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 {
-	if (!try_consume(c, TOKEN_AT))
-	{
-		*attribute_ref = NULL;
-		return true;
-	}
 	bool had_error;
 	Path *path = parse_path_prefix(c, &had_error);
 	if (had_error) return false;
-
+	if (!tok_is(c, TOKEN_AT_IDENT) && !tok_is(c, TOKEN_AT_TYPE_IDENT))
+	{
+		if (path)
+		{
+			SEMA_ERROR_HERE("Expected an attribute name.");
+			return false;
+		}
+		*attribute_ref = NULL;
+		return true;
+	}
 	Attr *attr = CALLOCS(Attr);
 
 	attr->name = symstr(c);
 	attr->span = c->span;
 	attr->path = path;
 
-	if (tok_is(c, TOKEN_TYPE_IDENT) || tok_is(c, TOKEN_TYPE_IDENT))
-	{
-		advance(c);
-	}
-	else
-	{
-		TRY_CONSUME_OR_RET(TOKEN_IDENT, "Expected an attribute", false);
-	}
+	advance(c);
 
 	if (tok_is(c, TOKEN_LPAREN))
 	{
@@ -897,11 +894,7 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
  *  ;
  *
  * attribute
- *  : AT IDENT
- *  | AT path IDENT
- *  | AT IDENT '(' constant_expression ')'
- *  | AT path IDENT '(' constant_expression ')'
- *  ;
+ *  : path AT_IDENT | AT_TYPE_IDENT ('(' constant_expression ')')?
  *
  * @return true if parsing succeeded, false if recovery is needed
  */
@@ -1441,10 +1434,9 @@ static bool parse_macro_arguments(ParseContext *c, Visibility visibility, Decl *
 	// Do we have trailing block parameters?
 	if (try_consume(c, TOKEN_EOS))
 	{
-		// Consume '@' IDENT
-		TRY_CONSUME_OR_RET(TOKEN_AT, "Expected an ending ')' or a block parameter on the format '@block(...).", false);
+		// Consume AT_IDENT
 		Decl *body_param = decl_new(DECL_BODYPARAM, symstr(c), c->span, visibility);
-		if (!consume_ident(c, "variable name")) return false;
+		TRY_CONSUME_OR_RET(TOKEN_AT_IDENT, "Expected an ending ')' or a block parameter on the format '@block(...).", false);
 		if (try_consume(c, TOKEN_LPAREN))
 		{
 			if (!parse_parameters(c, visibility, &body_param->body_params)) return false;
@@ -1694,16 +1686,16 @@ static inline Decl *parse_define(ParseContext *c, Visibility visibility)
 	}
 }
 
-static inline bool parse_is_func_name(ParseContext *c)
+static inline bool parse_is_macro_name(ParseContext *c)
 {
-	return tok_is(c, TOKEN_IDENT) && peek(c) != TOKEN_SCOPE;
+	return (tok_is(c, TOKEN_IDENT) && peek(c) != TOKEN_SCOPE) || tok_is(c, TOKEN_AT_IDENT);
 }
 
 /**
- * func_header ::= type '!'? (type '.')? IDENT
- * macro_header ::= (type '!'?)? (type '.')? IDENT
+ * func_header ::= type '!'? (type '.')? (IDENT | MACRO_IDENT)
+ * macro_header ::= (type '!'?)? (type '.')? (IDENT | MACRO_IDENT)
  */
-static inline bool parse_func_macro_header(ParseContext *c, bool rtype_is_optional,
+static inline bool parse_func_macro_header(ParseContext *c, bool is_macro,
                                            TypeInfoId *rtype_ref, TypeInfoId *method_type_ref,
                                            const char **name_ref, SourceSpan *name_span)
 {
@@ -1711,7 +1703,7 @@ static inline bool parse_func_macro_header(ParseContext *c, bool rtype_is_option
 	TypeInfo *method_type = NULL;
 
 	// 1. If we have a macro and see the name, we're done.
-	if (rtype_is_optional && parse_is_func_name(c))
+	if (is_macro && parse_is_macro_name(c))
 	{
 		goto RESULT;
 	}
@@ -1720,7 +1712,7 @@ static inline bool parse_func_macro_header(ParseContext *c, bool rtype_is_option
 	ASSIGN_TYPE_OR_RET(rtype, parse_failable_type(c), false);
 
 	// 4. We might have a type here, if so then we read it.
-	if (!tok_is(c, TOKEN_DOT) && !parse_is_func_name(c))
+	if (!tok_is(c, TOKEN_DOT) && !parse_is_macro_name(c))
 	{
 		ASSIGN_TYPE_OR_RET(method_type, parse_type(c), false);
 	}
@@ -1732,7 +1724,7 @@ static inline bool parse_func_macro_header(ParseContext *c, bool rtype_is_option
 		if (!method_type)
 		{
 			// 5b. If the rtype is not optional or the return type was a failable, then this is an error.
-			if (!rtype_is_optional || rtype->failable)
+			if (!is_macro || rtype->failable)
 			{
 				SEMA_ERROR_LAST("This looks like you are declaring a method without a return type?");
 				return false;
@@ -1750,7 +1742,17 @@ static inline bool parse_func_macro_header(ParseContext *c, bool rtype_is_option
 	RESULT:
 	*name_ref = symstr(c);
 	*name_span = c->span;
-	TRY_CONSUME_OR_RET(TOKEN_IDENT, "Expected a name here.", false);
+	if (is_macro && c->tok != TOKEN_IDENT && c->tok != TOKEN_AT_IDENT)
+	{
+		sema_error_at(c->span, "Expected a macro name here, e.g. '@someName' or 'someName'.");
+		return false;
+	}
+	else if (!is_macro && c->tok != TOKEN_IDENT)
+	{
+		sema_error_at(c->span, "Expected a function name here, e.g. 'someName'.");
+		return false;
+	}
+	advance(c);
 	*rtype_ref = rtype ? type_infoid(rtype) : 0;
 	*method_type_ref = method_type ? type_infoid(method_type) : 0;
 	return true;
@@ -1771,12 +1773,10 @@ static inline Decl *parse_macro_declaration(ParseContext *c, Visibility visibili
 	TypeInfoId *rtype_ref = &decl->macro_decl.rtype;
 	TypeInfoId *method_type_ref = &decl->macro_decl.type_parent;
 	if (!parse_func_macro_header(c, true, rtype_ref, method_type_ref, &decl->name, &decl->span)) return poisoned_decl;
-
 	const char *block_parameter = NULL;
 	if (!parse_macro_arguments(c, visibility, &decl->macro_decl.parameters, &decl->macro_decl.body_param)) return poisoned_decl;
 
 	if (!parse_attributes(c, &decl->attributes)) return poisoned_decl;
-
 	ASSIGN_ASTID_OR_RET(decl->macro_decl.body, parse_stmt(c), poisoned_decl);
 	return decl;
 }
@@ -1881,9 +1881,7 @@ static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl***
  *
  * enum_def
  *  : CAPS_IDENT
- *  | CAPS_IDENT '=' const_expr
  *  | CAPS_IDENT '(' expr_list ')'
- *  | CAPS_IDENT '(' expr_list ')' '=' const_expr
  *  ;
  *
  */
@@ -1929,10 +1927,6 @@ static inline Decl *parse_enum_declaration(ParseContext *c, Visibility visibilit
 			if (!parse_arg_list(c, &result, TOKEN_RPAREN, NULL)) return poisoned_decl;
 			enum_const->enum_constant.args = result;
 			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
-		}
-		if (try_consume(c, TOKEN_EQ))
-		{
-			ASSIGN_EXPR_OR_RET(enum_const->enum_constant.expr, parse_expr(c), poisoned_decl);
 		}
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','
@@ -1986,6 +1980,11 @@ static inline Decl *parse_func_definition(ParseContext *c, Visibility visibility
 	TypeInfoId *rtype_id_ref = &func->func_decl.function_signature.returntype;
 	TypeInfoId *method_type_ref = &func->func_decl.type_parent;
 	if (!parse_func_macro_header(c, false, rtype_id_ref, method_type_ref, &func->name, &func->span)) return poisoned_decl;
+	if (func->name[0] == '@')
+	{
+		SEMA_ERROR(func, "Function names may not use '@'.");
+		return false;
+	}
 	if (!parse_parameter_list(c, visibility, &(func->func_decl.function_signature), is_interface)) return poisoned_decl;
 	if (!parse_attributes(c, &func->attributes)) return poisoned_decl;
 
@@ -2236,38 +2235,56 @@ static bool parse_docs(ParseContext *c, AstId *docs_ref)
 		// Spin past the lines and line ends
 		switch (c->tok)
 		{
-			case TOKEN_DOCS_PARAM:
-				if (!parse_doc_param(c, &last)) return false;
-				break;
-			case TOKEN_DOCS_RETURN:
-				advance(c);
-				if (!consume(c, TOKEN_STRING, "Expected a string description.")) return false;
-				break;
-			case TOKEN_DOCS_REQUIRE:
-				if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_REQUIRE)) return false;
-				break;
-			case TOKEN_DOCS_CHECKED:
-				if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_CHECKED)) return false;
-				break;
-			case TOKEN_DOCS_ENSURE:
-				if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_ENSURE)) return false;
-				break;
-			case TOKEN_DOCS_OPTRETURN:
-				if (!parse_doc_errors(c, &docs_ref)) return false;
-				break;
-			case TOKEN_DOCS_PURE:
-			{
-				Ast *ast = ast_new_curr(c, AST_DOC_STMT);
-				ast->doc_stmt.kind = DOC_DIRECTIVE_PURE;
-				*docs_ref = astid(ast);
-				docs_ref = &ast->next;
-				advance(c);
-				break;
-			}
 			case TOKEN_DOC_DIRECTIVE:
-				advance(c);
-				// Ignore
-				break;
+			{
+				const char *name = symstr(c);
+				if (name == kw_at_param)
+				{
+					if (!parse_doc_param(c, &last)) return false;
+					break;
+				}
+				else if (name == kw_at_return)
+				{
+					advance(c);
+					if (!consume(c, TOKEN_STRING, "Expected a string description.")) return false;
+					break;
+				}
+				else if (name == kw_at_require)
+				{
+					if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_REQUIRE)) return false;
+					break;
+				}
+				else if (name == kw_at_checked)
+				{
+					if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_CHECKED)) return false;
+					break;
+				}
+				else if (name == kw_at_ensure)
+				{
+					if (!parse_doc_contract(c, &docs_ref, DOC_DIRECTIVE_ENSURE)) return false;
+					break;
+				}
+				else if (name == kw_at_optreturn)
+				{
+					if (!parse_doc_errors(c, &docs_ref)) return false;
+					break;
+				}
+				else if (name == kw_at_pure)
+				{
+					Ast *ast = ast_new_curr(c, AST_DOC_STMT);
+					ast->doc_stmt.kind = DOC_DIRECTIVE_PURE;
+					*docs_ref = astid(ast);
+					docs_ref = &ast->next;
+					advance(c);
+					break;
+				}
+				else
+				{
+					advance(c);
+					// Ignore
+					break;
+				}
+			}
 			case TOKEN_DOCS_END:
 				advance(c);
 				return true;

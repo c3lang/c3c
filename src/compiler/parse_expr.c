@@ -345,20 +345,6 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 	}
 }
 
-/**
- * macro_expansion ::= '@' non_at_expression
- */
-static Expr *parse_macro_expansion(ParseContext *c, Expr *left)
-{
-	assert(!left && "Unexpected left hand side");
-	Expr *macro_expression = EXPR_NEW_TOKEN(EXPR_MACRO_EXPANSION);
-	advance_and_verify(c, TOKEN_AT);
-	ASSIGN_EXPR_OR_RET(Expr * inner, parse_precedence(c, PREC_MACRO), poisoned_expr);
-	macro_expression->macro_expansion_expr.inner = inner;
-	assert(inner);
-	RANGE_EXTEND_PREV(macro_expression);
-	return macro_expression;
-}
 
 
 /**
@@ -712,32 +698,37 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	{
 		if (!parse_attribute(c, &attr)) return poisoned_expr;
 		if (!attr) break;
-		if (attr->name == kw_pure)
+
+		AttributeType attr_type = attribute_by_name(attr);
+		int new_inline = attr_type == ATTRIBUTE_INLINE;
+		switch (attr_type)
 		{
-			if (call->call_expr.attr_pure)
-			{
-				SEMA_ERROR(attr, "Repeat of the same attribute is not allowed.");
+			case ATTRIBUTE_PURE:
+				if (call->call_expr.attr_pure)
+				{
+					SEMA_ERROR(attr, "Repeat of the same attribute is not allowed.");
+					return poisoned_expr;
+				}
+				call->call_expr.attr_pure = true;
+				continue;
+			case ATTRIBUTE_INLINE:
+			case ATTRIBUTE_NOINLINE:
+				if (force_inline == new_inline)
+				{
+					SEMA_ERROR(attr, "Repeat of the same attribute is not allowed.");
+					return poisoned_expr;
+				}
+				if (force_inline != -1)
+				{
+					SEMA_ERROR(attr, "@inline and @noinline cannot be combined");
+					return poisoned_expr;
+				}
+				force_inline = new_inline;
+				continue;
+			default:
+				SEMA_ERROR(attr, "Only '@pure', '@inline' and '@noinline' are valid attributes for calls.");
 				return poisoned_expr;
-			}
-			call->call_expr.attr_pure = true;
-			continue;
 		}
-		if (attr->name != kw_inline && attr->name != kw_noinline && attr->name != kw_pure)
-		{
-			SEMA_ERROR(attr, "Only '@pure', '@inline' and '@noinline' are valid attributes for calls.");
-			return poisoned_expr;
-		}
-		int new_inline = attr->name == kw_inline;
-		if (new_inline == force_inline)
-		{
-			SEMA_ERROR(attr, "Repeat of the same attribute is not allowed.");
-			return poisoned_expr;
-		}
-		if (force_inline != -1)
-		{
-			SEMA_ERROR(attr, "@inline and @noinline cannot be combined");
-		}
-		force_inline = new_inline;
 	}
 	if (force_inline != -1)
 	{
@@ -1029,6 +1020,7 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 	{
 		case TOKEN_IDENT:
 		case TOKEN_CONST_IDENT:
+		case TOKEN_AT_IDENT:
 		{
 			Expr *expr = parse_identifier(c, NULL);
 			expr->identifier_expr.path = path;
@@ -1752,7 +1744,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_INTEGER] = { parse_integer, NULL, PREC_NONE },
 		[TOKEN_BUILTIN] = { parse_builtin, NULL, PREC_NONE },
 		[TOKEN_CHAR_LITERAL] = { parse_char_lit, NULL, PREC_NONE },
-		[TOKEN_AT] = { parse_macro_expansion, NULL, PREC_NONE },
 		[TOKEN_STRING] = { parse_string_literal, NULL, PREC_NONE },
 		[TOKEN_REAL] = { parse_double, NULL, PREC_NONE },
 		[TOKEN_OR] = { NULL, parse_binary, PREC_OR },
@@ -1776,6 +1767,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_CONST_IDENT] = { parse_ct_ident, NULL, PREC_NONE },
 		[TOKEN_CT_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_HASH_IDENT] = { parse_hash_ident, NULL, PREC_NONE },
+		[TOKEN_AT_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE }
 
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },

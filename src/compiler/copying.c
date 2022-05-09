@@ -206,11 +206,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			return expr;
 		case EXPR_COMPILER_CONST:
 			return expr;
-		case EXPR_MACRO_EXPANSION:
-			SCOPE_FIXUP_START
-				MACRO_COPY_EXPR(expr->macro_expansion_expr.inner);
-			SCOPE_FIXUP_END;
-			return expr;
 		case EXPR_DESIGNATOR:
 			expr->designator_expr.path = macro_copy_designator_list(c, expr->designator_expr.path);
 			MACRO_COPY_EXPR(expr->designator_expr.value);
@@ -628,12 +623,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			// Note that the ast id should be patched by the parent.
 			return copy;
 		case DECL_ENUM_CONSTANT:
-			MACRO_COPY_EXPR(copy->enum_constant.expr);
 			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
 			break;
 		case DECL_FAULTVALUE:
-			MACRO_COPY_EXPR(copy->enum_constant.expr);
-			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
 			break;
 		case DECL_TYPEDEF:
 			if (copy->typedef_decl.is_func)

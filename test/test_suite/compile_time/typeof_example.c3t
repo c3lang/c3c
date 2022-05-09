@@ -10,8 +10,8 @@ macro bitcast($Target, value)
 fn void main()
 {
     float f = 100;
-    int i = @bitcast(int, f);
-    float f2 = @bitcast(float, i);
+    int i = bitcast(int, f);
+    float f2 = bitcast(float, i);
     printf("Bitcast %f to %d to %f", f, i, f2);
 }
 

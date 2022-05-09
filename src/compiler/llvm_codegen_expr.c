@@ -1347,7 +1347,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			break;
 		case CAST_ENUMLOW:
 			llvm_value_rvalue(c, value);
-			value->value = value->value;
 			break;
 		case CAST_STST:
 			llvm_value_addr(c, value);
@@ -4004,10 +4003,8 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			return;
 		}
 		case CONST_ENUM:
-		{
-			llvm_emit_const_expr(c, be_value, expr->const_expr.enum_val->enum_constant.expr);
+			llvm_value_set(be_value, llvm_const_int(c, type, expr->const_expr.enum_val->enum_constant.ordinal), type);
 			return;
-		}
 		default:
 			UNREACHABLE
 	}
@@ -5548,7 +5545,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	{
 		case NON_RUNTIME_EXPR:
 		case EXPR_COND:
-		case EXPR_MACRO_EXPANSION:
 			UNREACHABLE
 		case EXPR_RETVAL:
 			*value = c->retval;

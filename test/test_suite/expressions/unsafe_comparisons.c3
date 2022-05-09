@@ -37,5 +37,5 @@ macro obfuscate(x, $foo)
 
 fn bool test7(uint x)
 {
-    return @obfuscate(x, -1);
+    return obfuscate(x, -1);
 }

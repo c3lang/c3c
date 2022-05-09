@@ -8,7 +8,7 @@ fn void test()
     var $Foo = int;
     var $Bar = $Foo;
     $Bar x;
-    @hello(1);
+    hello(1);
     var $foo = 1;
     $foo;
     FOO;

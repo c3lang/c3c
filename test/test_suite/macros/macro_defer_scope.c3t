@@ -1,6 +1,6 @@
 // #target: macos-x64
 module foo;
-macro int cofefe(#a)
+macro int @cofefe(#a)
 {
     int x = 0;
     defer printf("Was here\n");

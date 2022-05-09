@@ -153,7 +153,7 @@ fn void update_game()
 			snake[0].position.x += -SQUARE_SIZE;
             snake[0].position.y += 0;
 		default:
-			@unreachable();
+			unreachable();
 	}
     for (int i = 1; i < counter_tail; i++)
     {

@@ -12,7 +12,7 @@ macro test()
 fn void main()
 {
 	defer libc::printf("Test1\n");
-	libc::printf("%d\n", @test() ?? 2);
+	libc::printf("%d\n", test() ?? 2);
 }
 
 /* #expect: test.ll

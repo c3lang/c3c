@@ -25,12 +25,12 @@ import foo;
 
 fn void main()
 {
-    @testm();
+    testm();
     test();
 }
 
 fn void main2()
 {
-    @testm1(); // #error: Macros from other modules must be prefixed with the module nam
+    testm1(); // #error: Macros from other modules must be prefixed with the module nam
     test1();  // #error: Functions from other modules must be prefixed with the module nam
 }

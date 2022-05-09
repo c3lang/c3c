@@ -46,9 +46,9 @@ fn void eval_AtA_times_u(double[] u, double[] atau) @noinline
 fn int main(int argc, char **argv)
 {
 	int n = (argc == 2) ? atoi(argv[1]) : 2000;
-	temparr = @array::make(double, n);
-	double[] u = @array::make(double, n);
-	double[] v = @array::make(double, n);
+	temparr = array::alloc(double, n);
+	double[] u = array::alloc(double, n);
+	double[] v = array::alloc(double, n);
 	foreach(&uval : u) *uval = 1;
 	for (int i = 0; i < 10; i++)
 	{
