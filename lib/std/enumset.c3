@@ -1,23 +1,21 @@
 // TODO: ensure the type is an enum first.
 module enumset<Enum>;
 
-$assert(Enum.min < Enum.max, "Only strictly increasing enums may be used with enum sets.");
-$assert(Enum.max < 64, "Maximum value of an enum used as enum set is 63");
-$assert(Enum.min >= 0, "Minimum value of an enum used as enum set is 0");
+$assert(Enum.elements < 64, "Maximum number of elements for an enum used as enum set is 63");
 
 $switch ($$C_INT_SIZE):
 $case 64:
     private define EnumSetType = ulong;
 $case 32:
-    $if (Enum.max < 32):
+    $if (Enum.elements < 32):
         private define EnumSetType = uint;
     $else:
         private define EnumSetType = ulong;
     $endif;
 $default:
-    $if (Enum.max < 16):
+    $if (Enum.elements < 16):
         private define EnumSetType = ushort;
-    $elif (Enum.max < 31):
+    $elif (Enum.elements < 31):
         private define EnumSetType = uint;
     $else:
         private define EnumSetType = ulong;
