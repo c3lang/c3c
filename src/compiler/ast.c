@@ -491,12 +491,11 @@ bool ast_is_not_empty(Ast *ast)
 	return false;
 }
 
-AttributeType attribute_by_name(Attr *attr)
+AttributeType attribute_by_name(const char *name)
 {
-	const char *attribute = attr->name;
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 	{
-		if (attribute_list[i] == attribute) return (AttributeType)i;
+		if (attribute_list[i] == name) return (AttributeType)i;
 	}
 	return ATTRIBUTE_NONE;
 }

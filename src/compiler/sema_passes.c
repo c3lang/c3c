@@ -310,6 +310,10 @@ void sema_analysis_pass_decls(Module *module)
 					.local_decl_start = 0,
 					.current_local = 0,
 				};
+		VECEACH(unit->attributes, i)
+		{
+			sema_analyse_decl(&context, unit->attributes[i]);
+		}
 		VECEACH(unit->enums, i)
 		{
 			sema_analyse_decl(&context, unit->enums[i]);

@@ -148,6 +148,13 @@ Ast *ast_macro_copy(Ast *source_ast)
 	return ast_copy_deep(&copy_struct, source_ast);
 }
 
+Decl *decl_macro_copy(Decl *source_decl)
+{
+	copy_struct.current_fixup = copy_struct.fixups;
+	copy_struct.single_static = false;
+	return copy_decl(&copy_struct, source_decl);
+}
+
 Ast *ast_defer_copy(Ast *source_ast)
 {
 	copy_struct.current_fixup = copy_struct.fixups;
@@ -557,7 +564,7 @@ static Attr **copy_attributes(CopyStruct *c, Attr** attr_list)
 		Attr *attribute = attr_list[i];
 		Attr *copy = MALLOCS(Attr);
 		*copy = *attribute;
-		MACRO_COPY_EXPR(copy->expr);
+		MACRO_COPY_EXPR_LIST(copy->exprs);
 		vec_add(list, copy);
 	}
 	return list;
@@ -690,10 +697,6 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 					MACRO_COPY_TYPE_LIST(decl->define_decl.generic_params);
 					break;
 				case DEFINE_IDENT_ALIAS:
-					break;
-				case DEFINE_ATTRIBUTE:
-					decl->define_decl.attributes.attrs = copy_attributes(c, decl->define_decl.attributes.attrs);
-					MACRO_COPY_DECL_LIST(decl->define_decl.attributes.params);
 					break;
 			}
 			break;

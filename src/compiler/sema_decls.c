@@ -6,11 +6,11 @@
 
 
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl);
+static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain);
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl);
-static bool sema_check_section(SemaContext *context, Decl *decl, Attr *attr)
+static bool sema_check_section(SemaContext *context, Attr *attr)
 {
-	const char *section_string = attr->expr->const_expr.string.chars;
-	decl->section = section_string;
+	const char *section_string = attr->exprs[0]->const_expr.string.chars;
 	// No restrictions except for MACH-O
 	if (platform_target.object_format != OBJ_FORMAT_MACHO)
 	{
@@ -25,23 +25,23 @@ static bool sema_check_section(SemaContext *context, Decl *decl, Attr *attr)
 
 	if (slice.len)
 	{
-		SEMA_ERROR(attr->expr, "Too many parts to the Mach-o section description.");
+		SEMA_ERROR(attr->exprs[0], "Too many parts to the Mach-o section description.");
 	}
 	slice_trim(&segment);
 	if (segment.len == 0)
 	{
-		SEMA_ERROR(attr->expr, "The segment is missing, did you type it correctly?");
+		SEMA_ERROR(attr->exprs[0], "The segment is missing, did you type it correctly?");
 		return false;
 	}
 	slice_trim(&section);
 	if (section.len == 0)
 	{
-		SEMA_ERROR(attr->expr, "Mach-o requires 'segment,section' as the format, did you type it correctly?");
+		SEMA_ERROR(attr->exprs[0], "Mach-o requires 'segment,section' as the format, did you type it correctly?");
 		return false;
 	}
 	if (section.len > 16)
 	{
-		SEMA_ERROR(attr->expr, "Mach-o requires the section to be at the most 16 characters, can you shorten it?");
+		SEMA_ERROR(attr->exprs[0], "Mach-o requires the section to be at the most 16 characters, can you shorten it?");
 		return false;
 	}
 	// TODO improve checking
@@ -264,17 +264,14 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 		AlignSize member_natural_alignment = type_abi_alignment(member->type);
 		AlignSize member_alignment = is_packed ? 1 : member_natural_alignment;
 		Attr **attributes = member->attributes;
-		unsigned count = vec_size(attributes);
-		for (unsigned j = 0; j < count; j++)
+
+		if (!sema_analyse_attributes(context, member, attributes, ATTR_MEMBER)) return decl_poison(decl);
+
+		if (member->alignment)
 		{
-			Attr *attribute = attributes[j];
-			if (!sema_analyse_attribute(context, attribute, ATTR_GLOBAL)) return false;
-			if (attribute->name == attribute_list[ATTRIBUTE_ALIGN])
-			{
-				member_alignment = attribute->alignment;
-				// Update total alignment if we have a member that has bigger alignment.
-				if (member_alignment > decl->alignment) decl->alignment = member_alignment;
-			}
+			member_alignment = member->alignment;
+			// Update total alignment if we have a member that has bigger alignment.
+			if (member_alignment > decl->alignment) decl->alignment = member_alignment;
 		}
 
 		// If the member alignment is higher than the currently detected alignment,
@@ -366,39 +363,8 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 		default:
 			UNREACHABLE
 	}
-	VECEACH(decl->attributes, i)
-	{
-		Attr *attr = decl->attributes[i];
 
-		if (!sema_analyse_attribute(context, attr, domain)) return decl_poison(decl);
-
-		bool had = false;
-#define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
-		switch (attr->attr_kind)
-		{
-			case ATTRIBUTE_EXTNAME:
-				had = decl->has_extname;
-				decl->has_extname = true;
-				decl->extname = attr->expr->const_expr.string.chars;
-				break;
-			case ATTRIBUTE_ALIGN:
-				had = decl->alignment != 0;
-				decl->alignment = attr->alignment;
-				break;
-			case ATTRIBUTE_PACKED:
-				had = decl->is_packed;
-				decl->is_packed = true;
-				break;
-			default:
-				UNREACHABLE
-		}
-#undef SET_ATTR
-		if (had)
-		{
-			sema_error_at(attr->span, "Attribute occurred twice, please remove one.");
-			return decl_poison(decl);
-		}
-	}
+	if (!sema_analyse_attributes(context, decl, decl->attributes, domain)) return decl_poison(decl);
 
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : "anon");
 	bool success;
@@ -532,43 +498,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *dec
 
 static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 {
-	VECEACH(decl->attributes, i)
-	{
-		Attr *attr = decl->attributes[i];
-
-		if (!sema_analyse_attribute(context, attr, ATTR_BITSTRUCT)) return decl_poison(decl);
-
-		bool had = false;
-#define SET_ATTR(_X) had = decl->bitstruct._X; decl->bitstruct._X = true; break
-		switch (attr->attr_kind)
-		{
-			case ATTRIBUTE_OVERLAP:
-				SET_ATTR(overlap);
-				break;
-			case ATTRIBUTE_BIGENDIAN:
-				if (decl->bitstruct.little_endian)
-				{
-					sema_error_at(attr->span, "Attribute cannot be combined with @littleendian");
-					return decl_poison(decl);
-				}
-				SET_ATTR(big_endian);
-			case ATTRIBUTE_LITTLEENDIAN:
-				if (decl->bitstruct.big_endian)
-				{
-					sema_error_at(attr->span, "Attribute cannot be combined with @bigendian");
-					return decl_poison(decl);
-				}
-				SET_ATTR(little_endian);
-			default:
-				UNREACHABLE
-		}
-#undef SET_ATTR
-		if (had)
-		{
-			sema_error_at(attr->span, "Attribute occurred twice, please remove one.");
-			return decl_poison(decl);
-		}
-	}
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_BITSTRUCT)) return decl_poison(decl);
 
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : "anon");
 	if (!sema_resolve_type_info(context, decl->bitstruct.base_type)) return false;
@@ -1100,7 +1030,7 @@ static bool sema_check_operator_method_validity(Decl *method)
 {
 	switch (method->operator)
 	{
-		case OVERLOAT_ELEMENT_SET:
+		case OVERLOAD_ELEMENT_SET:
 			return sema_analyse_operator_element_set(method);
 		case OVERLOAD_ELEMENT_AT:
 		case OVERLOAD_ELEMENT_REF:
@@ -1216,21 +1146,19 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 	}
 	UNREACHABLE
 }
-bool sema_analyse_attribute(SemaContext *context, Attr *attr, AttributeDomain domain)
+
+static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain)
 {
-	AttributeType type = attribute_by_name(attr);
-	if (type == ATTRIBUTE_NONE)
-	{
-		sema_error_at(attr->span, "There is no attribute with the name '%s', did you mistype?", attr->name);
-		return false;
-	}
+	AttributeType type = attr->attr_kind;
+	assert(type >= 0 && type < NUMBER_OF_ATTRIBUTES);
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_EXTNAME] = (AttributeDomain)~(ATTR_CALL | ATTR_BITSTRUCT | ATTR_MACRO),
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_NORETURN] = ATTR_FUNC | ATTR_MACRO,
-			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
+			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_STRUCT | ATTR_UNION |
+			                    ATTR_MEMBER,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
@@ -1255,79 +1183,128 @@ bool sema_analyse_attribute(SemaContext *context, Attr *attr, AttributeDomain do
 		sema_error_at(attr->span, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
 		return false;
 	}
-	attr->attr_kind = type;
+	unsigned args = vec_size(attr->exprs);
+	if (args > 1)
+	{
+		SEMA_ERROR(attr->exprs[1], "Too many arguments for the attribute.");
+		return false;
+	}
+	Expr *expr = args ? attr->exprs[0] : NULL;
 	switch (type)
 	{
 		case ATTRIBUTE_CDECL:
-		case ATTRIBUTE_FASTCALL:
-		case ATTRIBUTE_STDCALL:
+			decl->func_decl.function_signature.abi = CALL_C;
+			break;
 		case ATTRIBUTE_VECCALL:
+			switch (platform_target.arch)
+			{
+				case ARCH_TYPE_X86_64:
+				case ARCH_TYPE_X86:
+					decl->func_decl.function_signature.abi = CALL_X86_VECTOR;
+					break;
+				case ARCH_TYPE_ARM:
+				case ARCH_TYPE_ARMB:
+				case ARCH_TYPE_AARCH64:
+				case ARCH_TYPE_AARCH64_32:
+				case ARCH_TYPE_AARCH64_BE:
+					decl->func_decl.function_signature.abi = CALL_AAPCS_VFP;
+					break;
+				default:
+					break;
+			}
+			break;
+		case ATTRIBUTE_STDCALL:
+			assert(decl->decl_kind == DECL_FUNC);
+			if (platform_target.arch == ARCH_TYPE_X86 || platform_target.arch == ARCH_TYPE_X86_64)
+			{
+				decl->func_decl.function_signature.abi = CALL_X86_STD;
+			}
+			else if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
+			{
+				decl->func_decl.function_signature.abi = CALL_AAPCS;
+			}
+			break; // Check args
+		case ATTRIBUTE_FASTCALL:
+			if (platform_target.arch == ARCH_TYPE_X86 ||
+			    (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
+			{
+				decl->func_decl.function_signature.abi = CALL_X86_FAST;
+			}
+			break;
 		case ATTRIBUTE_REGCALL:
-			return true;
+			if (platform_target.arch == ARCH_TYPE_X86 ||
+			    (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
+			{
+				decl->func_decl.function_signature.abi = CALL_X86_REG;
+			}
+			break;
 		case ATTRIBUTE_OPERATOR:
 		{
-			Expr *expr = attr->expr;
+			assert(decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO);
 			if (!expr || expr->expr_kind != EXPR_IDENTIFIER) goto FAILED_OP_TYPE;
 			if (expr->identifier_expr.path) goto FAILED_OP_TYPE;
 			const char *kw = expr->identifier_expr.ident;
 			if (kw == kw_elementat)
 			{
-				attr->operator = OVERLOAD_ELEMENT_AT;
+				decl->operator = OVERLOAD_ELEMENT_AT;
 			}
 			else if (kw == kw_elementref)
 			{
-				attr->operator = OVERLOAD_ELEMENT_REF;
+				decl->operator = OVERLOAD_ELEMENT_REF;
 			}
 			else if (kw == kw_elementset)
 			{
-				attr->operator = OVERLOAT_ELEMENT_SET;
+				decl->operator = OVERLOAD_ELEMENT_SET;
 			}
 			else if (kw == kw_len)
 			{
-				attr->operator = OVERLOAD_LEN;
+				decl->operator = OVERLOAD_LEN;
 			}
 			else
 			{
 				goto FAILED_OP_TYPE;
 			}
 			return true;
-		FAILED_OP_TYPE:
-			SEMA_ERROR(attr, "'operator' requires an operator type argument: '%s', '%s' or '%s'.", kw_elementat, kw_elementref, kw_len);
+			FAILED_OP_TYPE:
+			SEMA_ERROR(attr,
+			           "'operator' requires an operator type argument: '%s', '%s' or '%s'.",
+			           kw_elementat,
+			           kw_elementref,
+			           kw_len);
 			return false;
 		}
 		case ATTRIBUTE_ALIGN:
-			if (!attr->expr)
+			if (!expr)
 			{
 				sema_error_at(attr->span, "'align' requires an power-of-2 argument, e.g. align(8).");
 				return false;
 			}
-			if (!sema_analyse_expr(context, attr->expr)) return false;
-			if (attr->expr->expr_kind != EXPR_CONST || !type_is_integer(attr->expr->type->canonical))
+			if (!sema_analyse_expr(context, expr)) return false;
+			if (expr->expr_kind != EXPR_CONST || !type_is_integer(expr->type->canonical))
 			{
-				SEMA_ERROR(attr->expr, "Expected a constant integer value as argument.");
+				SEMA_ERROR(expr, "Expected a constant integer value as argument.");
 				return false;
 			}
 			{
-				if (int_ucomp(attr->expr->const_expr.ixx, MAX_ALIGNMENT, BINARYOP_GT))
+				if (int_ucomp(expr->const_expr.ixx, MAX_ALIGNMENT, BINARYOP_GT))
 				{
-					SEMA_ERROR(attr->expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
+					SEMA_ERROR(expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
 					return false;
 				}
-				if (int_ucomp(attr->expr->const_expr.ixx, 0, BINARYOP_LE))
+				if (int_ucomp(expr->const_expr.ixx, 0, BINARYOP_LE))
 				{
-					SEMA_ERROR(attr->expr, "Alignment must be greater than zero.");
+					SEMA_ERROR(expr, "Alignment must be greater than zero.");
 					return false;
 				}
-				uint64_t align = int_to_u64(attr->expr->const_expr.ixx);
+				uint64_t align = int_to_u64(expr->const_expr.ixx);
 				if (!is_power_of_two(align))
 				{
-					SEMA_ERROR(attr->expr, "Alignment must be a power of two.");
+					SEMA_ERROR(expr, "Alignment must be a power of two.");
 					return false;
 				}
-
-				attr->alignment = (AlignSize)align;
+				decl->alignment = (AlignSize)align;
+				return true;
 			}
-			return true;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTNAME:
 			if (context->unit->module->is_generic)
@@ -1335,27 +1312,164 @@ bool sema_analyse_attribute(SemaContext *context, Attr *attr, AttributeDomain do
 				sema_error_at(attr->span, "'extname' attributes are not allowed in generic modules.");
 				return false;
 			}
-			if (!attr->expr)
+			if (!expr)
 			{
 				sema_error_at(attr->span, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
 				return false;
 			}
-			if (!sema_analyse_expr(context, attr->expr)) return false;
-			if (attr->expr->expr_kind != EXPR_CONST || attr->expr->const_expr.const_kind != CONST_STRING)
+			if (!sema_analyse_expr(context, expr)) return false;
+			if (expr->expr_kind != EXPR_CONST || expr->const_expr.const_kind != CONST_STRING)
 			{
-				SEMA_ERROR(attr->expr, "Expected a constant string value as argument.");
+				SEMA_ERROR(expr, "Expected a constant string value as argument.");
 				return false;
 			}
-			return true;
-		default:
-			if (attr->expr)
+			if (type == ATTRIBUTE_SECTION)
 			{
-				SEMA_ERROR(attr->expr, "'%s' should not have any arguments.", attr->name);
-				return false;
+				if (!sema_check_section(context, attr)) return false;
+				decl->section = expr->const_expr.string.chars;
+			}
+			else
+			{
+				decl->has_extname = true;
+				decl->extname = expr->const_expr.string.chars;
 			}
 			return true;
+		case ATTRIBUTE_NOINLINE:
+			decl->func_decl.attr_noinline = true;
+			decl->func_decl.attr_inline = false;
+			break;
+		case ATTRIBUTE_INLINE:
+			decl->func_decl.attr_inline = true;
+			decl->func_decl.attr_noinline = false;
+			break;
+		case ATTRIBUTE_NORETURN:
+			if (domain == ATTR_MACRO)
+			{
+				decl->macro_decl.attr_noreturn = true;
+				break;
+			}
+			assert(domain == ATTR_FUNC);
+			decl->func_decl.attr_noreturn = true;
+			break;
+		case ATTRIBUTE_WEAK:
+			decl->is_weak = true;
+			break;
+		case ATTRIBUTE_NAKED:
+			assert(domain == ATTR_FUNC);
+			decl->func_decl.attr_naked = true;
+			break;
+		case ATTRIBUTE_AUTOIMPORT:
+			decl->is_autoimport = true;
+			break;
+		case ATTRIBUTE_OVERLAP:
+			decl->bitstruct.overlap = true;
+			break;
+		case ATTRIBUTE_BIGENDIAN:
+			if (decl->bitstruct.little_endian)
+			{
+				sema_error_at(attr->span, "Attribute cannot be combined with @littleendian");
+				return decl_poison(decl);
+			}
+			decl->bitstruct.big_endian = true;
+			break;
+		case ATTRIBUTE_LITTLEENDIAN:
+			if (decl->bitstruct.big_endian)
+			{
+				sema_error_at(attr->span, "Attribute cannot be combined with @bigendian");
+				return decl_poison(decl);
+			}
+			decl->bitstruct.little_endian = true;
+			break;
+		case ATTRIBUTE_PACKED:
+			decl->is_packed = true;
+			break;
+		case ATTRIBUTE_UNUSED:
+			decl->is_maybe_unused = true;
+			break;
+		case ATTRIBUTE_USED:
+			decl->is_must_use = true;
+			break;
+		case ATTRIBUTE_PURE:
+			// Only used for calls.
+			UNREACHABLE
+		case ATTRIBUTE_REFLECT:
+			decl->will_reflect = true;
+			break;
+		case ATTRIBUTE_NONE:
+			UNREACHABLE
 	}
+	if (expr)
+	{
+		SEMA_ERROR(expr, "'%s' should not have any arguments.", attr->name);
+		return false;
+	}
+	return true;
 
+}
+
+static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr** attrs, AttributeDomain domain)
+{
+	int count = vec_size(attrs);
+	for (int i = 0; i < count; i++)
+	{
+		Attr *attr = attrs[i];
+		if (attr->is_custom)
+		{
+			Decl *attr_decl = sema_find_symbol(context, attr->name);
+			if (!attr_decl || attr_decl->decl_kind != DECL_ATTRIBUTE)
+			{
+				SEMA_ERROR(attr, "The attribute '%s' could not be found.", attr->name);
+				return false;
+			}
+			Decl **params = attr_decl->attr_decl.params;
+			unsigned param_count = vec_size(params);
+			Expr **args = attr->exprs;
+			if (param_count != vec_size(args))
+			{
+				SEMA_ERROR(attr, "Expected %d parameter(s).", param_count);
+				return false;
+			}
+
+			Attr **attributes = attr_decl->attr_decl.attrs;
+			if (context->current_function == attr_decl)
+			{
+				SEMA_ERROR(attr_decl, "Recursive declaration of attribute '%s' – it contains itself.", attr_decl->name);
+				return false;
+			}
+			SemaContext eval_context;
+			sema_context_init(&eval_context, attr_decl->attr_decl.unit);
+			eval_context.compilation_unit = context->unit;
+			// We need to track recursion:
+			if (context->current_function && context->current_function->decl_kind == DECL_ATTRIBUTE)
+			{
+				eval_context.current_function = context->current_function;
+			}
+			else
+			{
+				eval_context.current_function = attr_decl;
+			}
+			for (int j = 0; j < param_count; j++)
+			{
+				if (!sema_analyse_ct_expr(context, args[j]))
+				{
+					sema_context_destroy(&eval_context);
+					return false;
+				}
+				params[i]->var.init_expr = args[j];
+				params[i]->var.kind = VARDECL_CONST;
+				sema_add_local(&eval_context, params[i]);
+			}
+			if (!sema_analyse_attributes(&eval_context, decl, attributes, domain))
+			{
+				sema_context_destroy(&eval_context);
+				return false;
+			}
+			sema_context_destroy(&eval_context);
+			continue;
+		}
+		if (!sema_analyse_attribute(context, decl, attr, domain)) return false;
+	}
+	return true;
 }
 
 static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extra_params, bool *pure_ref)
@@ -1567,111 +1681,9 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 {
 	DEBUG_LOG("----Analysing function %s", decl->name);
 
-	CallABI call_abi = 0;
-	VECEACH(decl->attributes, i)
-	{
-		Attr *attr = decl->attributes[i];
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_FUNC)) return decl_poison(decl);
 
-		if (!sema_analyse_attribute(context, attr, ATTR_FUNC)) return decl_poison(decl);
-
-		bool had = false;
-#define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
-
-		switch (attr->attr_kind)
-		{
-			case ATTRIBUTE_OPERATOR:
-				had = decl->operator > 0;
-				decl->operator = attr->operator;
-				break;
-			case ATTRIBUTE_EXTNAME:
-				had = decl->has_extname;
-				decl->has_extname = true;
-				decl->extname = attr->expr->const_expr.string.chars;
-				break;
-			case ATTRIBUTE_SECTION:
-				had = decl->section != NULL;
-				if (!sema_check_section(context, decl, attr)) return decl_poison(decl);
-				break;
-			case ATTRIBUTE_ALIGN:
-				had = decl->alignment != 0;
-				decl->alignment = attr->alignment;
-				break;
-			case ATTRIBUTE_NOINLINE: SET_ATTR(attr_noinline);
-			case ATTRIBUTE_STDCALL:
-				if (platform_target.arch == ARCH_TYPE_X86 || platform_target.arch == ARCH_TYPE_X86_64)
-				{
-					had = call_abi > 0;
-					call_abi = CALL_X86_STD;
-				}
-				else if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
-				{
-					had = call_abi > 0;
-					call_abi = CALL_AAPCS;
-				}
-				break;
-			case ATTRIBUTE_CDECL:
-				had = call_abi > 0;
-				call_abi = CALL_C;
-				break;
-			case ATTRIBUTE_VECCALL:
-				switch (platform_target.arch)
-				{
-					case ARCH_TYPE_X86_64:
-					case ARCH_TYPE_X86:
-						had = call_abi > 0;
-						call_abi = CALL_X86_VECTOR;
-						break;
-					case ARCH_TYPE_ARM:
-					case ARCH_TYPE_ARMB:
-					case ARCH_TYPE_AARCH64:
-					case ARCH_TYPE_AARCH64_32:
-					case ARCH_TYPE_AARCH64_BE:
-						had = call_abi > 0;
-						call_abi = CALL_AAPCS_VFP;
-						break;
-					default:
-						break;
-				}
-				break;
-			case ATTRIBUTE_FASTCALL:
-				if (platform_target.arch == ARCH_TYPE_X86 || (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
-				{
-					had = call_abi > 0;
-					call_abi = CALL_X86_FAST;
-				}
-				break;
-			case ATTRIBUTE_REGCALL:
-				had = call_abi > 0;
-				if (platform_target.arch == ARCH_TYPE_X86 || (platform_target.arch == ARCH_TYPE_X86_64 && platform_target.os == OS_TYPE_WIN32))
-				{
-					had = call_abi > 0;
-					call_abi = CALL_X86_REG;
-				}
-				break;
-			case ATTRIBUTE_NORETURN: SET_ATTR(attr_noreturn);
-			case ATTRIBUTE_INLINE: SET_ATTR(attr_inline);
-			case ATTRIBUTE_WEAK: SET_ATTR(attr_weak);
-			case ATTRIBUTE_NAKED: SET_ATTR(attr_naked);
-			case ATTRIBUTE_AUTOIMPORT:
-				decl->is_autoimport = true;
-				break;
-			default:
-				UNREACHABLE
-		}
-#undef SET_ATTR
-		if (had)
-		{
-			sema_error_at(attr->span, "Attribute occurred twice, please remove one.");
-			return decl_poison(decl);
-		}
-		if (decl->func_decl.attr_inline && decl->func_decl.attr_noinline)
-		{
-			sema_error_at(attr->span, "A function cannot be 'inline' and 'noinline' at the same time.");
-			return decl_poison(decl);
-		}
-	}
-
-	Type *func_type = sema_analyse_function_signature(context, call_abi, &decl->func_decl.function_signature, true);
+	Type *func_type = sema_analyse_function_signature(context, decl->func_decl.function_signature.abi, &decl->func_decl.function_signature, true);
 	
 	decl->type = func_type;
 	if (!func_type) return decl_poison(decl);
@@ -1730,35 +1742,8 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 {
 	bool is_generic = decl->decl_kind == DECL_GENERIC;
 
-	VECEACH(decl->attributes, i)
-	{
-		Attr *attr = decl->attributes[i];
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_MACRO)) return decl_poison(decl);
 
-		if (!sema_analyse_attribute(context, attr, ATTR_MACRO)) return decl_poison(decl);
-
-		bool had = false;
-		switch (attr->attr_kind)
-		{
-			case ATTRIBUTE_OPERATOR:
-				had = decl->operator > 0;
-				decl->operator = attr->operator;
-				break;
-			case ATTRIBUTE_AUTOIMPORT:
-				decl->is_autoimport = true;
-				break;
-			case ATTRIBUTE_NORETURN:
-				had = decl->macro_decl.attr_noreturn;
-				decl->macro_decl.attr_noreturn = true;
-				break;
-			default:
-				UNREACHABLE
-		}
-		if (had)
-		{
-			sema_error_at(attr->span, "Attribute occurred twice, please remove one.");
-			return decl_poison(decl);
-		}
-	}
 
 	TypeInfo *rtype = type_infoptr(decl->macro_decl.rtype);
 	if (decl->macro_decl.rtype && !sema_resolve_type_info(context, rtype)) return decl_poison(decl);
@@ -1885,41 +1870,7 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl)
 			domain = ATTR_LOCAL;
 			break;
 	}
-	VECEACH(decl->attributes, i)
-	{
-		Attr *attr = decl->attributes[i];
-
-		if (!sema_analyse_attribute(context, attr, domain)) decl_poison(decl);
-
-		bool had = false;
-#define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
-		switch (attr->attr_kind)
-		{
-			case ATTRIBUTE_EXTNAME:
-				had = decl->has_extname;
-				decl->has_extname = true;
-				decl->extname = attr->expr->const_expr.string.chars;
-				break;
-			case ATTRIBUTE_SECTION:
-				had = decl->section != NULL;
-				if (!sema_check_section(context, decl, attr)) return decl_poison(decl);
-				break;
-			case ATTRIBUTE_ALIGN:
-				had = decl->alignment != 0;
-				decl->alignment = attr->alignment;
-				break;
-			case ATTRIBUTE_WEAK:
-				SET_ATTR(attr_weak);
-			default:
-				UNREACHABLE
-		}
-#undef SET_ATTR
-		if (had)
-		{
-			sema_error_at(attr->span, "Attribute occurred twice, please remove one.");
-			return decl_poison(decl);
-		}
-	}
+	if (!sema_analyse_attributes(context, decl, decl->attributes, domain)) return decl_poison(decl);
 	return true;
 }
 
@@ -2195,8 +2146,6 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 			span = define_type->span;
 			break;
 		}
-		case DEFINE_ATTRIBUTE:
-			TODO
 		default:
 			UNREACHABLE
 	}
@@ -2263,11 +2212,46 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
 			type->canonical = symbol->type->canonical;
 			return true;
 		}
-		case DEFINE_ATTRIBUTE:
-			TODO
 		default:
 			UNREACHABLE
 	}
+}
+
+static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl)
+{
+	decl->attr_decl.unit = c->compilation_unit;
+	Decl **params = decl->attr_decl.params;
+	Attr **attrs = decl->attr_decl.attrs;
+	unsigned param_count = vec_size(params);
+	for (unsigned i = 0; i < param_count; i++)
+	{
+		Decl *param = params[i];
+		if (param->var.kind != VARDECL_PARAM)
+		{
+			SEMA_ERROR(param, "Expected a simple replacement parameter e.g. 'val' here.");
+			return false;
+		}
+		if (param->var.type_info)
+		{
+			SEMA_ERROR(param, "Type is not allowed on attribute parameters.");
+			return false;
+		}
+		if (param->var.init_expr)
+		{
+			SEMA_ERROR(param, "Attribute parameters may not have default values.");
+			return false;
+		}
+		param->resolve_status = RESOLVE_DONE;
+		for (int j = 0; j < i; j++)
+		{
+			if (param[j].name == param->name)
+			{
+				SEMA_ERROR(param, "Duplicate parameter name.");
+				return false;
+			}
+		}
+	}
+	return true;
 }
 
 static inline bool sema_analyse_define(SemaContext *c, Decl *decl)
@@ -2325,6 +2309,9 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			if (!sema_analyse_var_decl(context, decl, false)) return decl_poison(decl);
 			decl_set_external_name(decl);
 			break;
+		case DECL_ATTRIBUTE:
+			if (!sema_analyse_attribute_decl(context, decl)) return decl_poison(decl);
+			break;
 		case DECL_DISTINCT:
 			if (!sema_analyse_distinct(context, decl)) return decl_poison(decl);
 			decl_set_external_name(decl);
@@ -2343,8 +2330,6 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_DEFINE:
 			if (!sema_analyse_define(context, decl)) return decl_poison(decl);
 			break;
-		case DECL_ATTRIBUTE:
-			TODO
 		case DECL_POISONED:
 		case DECL_IMPORT:
 		case DECL_ENUM_CONSTANT:

@@ -320,9 +320,8 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_TVOS:
 		case OS_TYPE_FREE_BSD:
-			return false;
 		case OS_TYPE_WASI:
-			return false;
+			break;
 		case OS_TYPE_LINUX:
 			linker_setup_linux(args_ref, linker_type);
 			break;
