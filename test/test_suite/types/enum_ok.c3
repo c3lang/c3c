@@ -21,7 +21,7 @@ enum EnumTestDefault
 
 enum EnumWithErrorData2 : int (int bar, )
 {
-    TEST
+    TEST // #error: Expected associated value
 }
 
 enum EnumTestErrorType4

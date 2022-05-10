@@ -1081,6 +1081,17 @@ static inline void gencontext_emit_access_addr(GenContext *context, BEValue *be_
 	llvm_emit_expr(context, be_value, parent);
 	Decl *member = expr->access_expr.ref;
 
+	Type *flat_type = type_flatten_distinct_failable(parent->type);
+	if (flat_type->type_kind == TYPE_ENUM)
+	{
+		llvm_value_rvalue(context, be_value);
+		LLVMTypeRef value_type = llvm_get_type(context, type_get_array(member->type, vec_size(flat_type->decl->enums.values)));
+		AlignSize align = LLVMGetAlignment(member->backend_ref);
+		AlignSize alignment;
+		LLVMValueRef ptr = llvm_emit_array_gep_raw_index(context, member->backend_ref, value_type, be_value->value, align, &alignment);
+		llvm_value_set_address(be_value, ptr, member->type, alignment);
+		return;
+	}
 	gencontext_emit_member_addr(context, be_value, type_lowering(parent->type)->decl, member);
 }
 
