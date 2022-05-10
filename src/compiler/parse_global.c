@@ -1857,6 +1857,7 @@ static inline bool parse_enum_spec(ParseContext *c, TypeInfo **type_ref, Decl***
 			SEMA_ERROR_LAST("Vararg parameters are not allowed as enum parameters.");
 			return false;
 		}
+		last_parameter->var.index = vec_size(*parameters_ref) - 1;
 		if (!try_consume(c, TOKEN_COMMA))
 		{
 			EXPECT_OR_RET(TOKEN_RPAREN, false);

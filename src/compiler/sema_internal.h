@@ -56,7 +56,7 @@ bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char
 
 #define IS_CONST(_x) ((_x)->expr_kind == EXPR_CONST)
 
-AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, AttributeDomain domain);
+bool sema_analyse_attribute(SemaContext *context, Attr *attr, AttributeDomain domain);
 bool expr_is_ltype(Expr *expr);
 bool sema_expr_check_assign(SemaContext *c, Expr *expr);
 

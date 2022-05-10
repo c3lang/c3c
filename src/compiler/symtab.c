@@ -216,6 +216,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("@overlap");
 	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("@operator");
 	attribute_list[ATTRIBUTE_PURE] = kw_at_pure;
+	attribute_list[ATTRIBUTE_REFLECT] = KW_DEF("@reflect");
 	attribute_list[ATTRIBUTE_AUTOIMPORT] = KW_DEF("@autoimport");
 
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)

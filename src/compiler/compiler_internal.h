@@ -301,6 +301,7 @@ typedef struct
 	Path *path;
 	const char *name;
 	SourceSpan span;
+	AttributeType attr_kind : 8;
 	union
 	{
 		Expr *expr;
@@ -359,6 +360,7 @@ typedef struct VarDecl_
 	};
 	union
 	{
+		int32_t index;
 		struct
 		{
 			struct SemaContext_ *context;

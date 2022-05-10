@@ -2879,6 +2879,14 @@ static void add_members_to_context(SemaContext *context, Decl *decl)
 		if (!type_is_user_defined(type)) break;
 		decl = type->decl;
 	}
+	if (decl_is_enum_kind(decl))
+	{
+		Decl **members = decl->enums.parameters;
+		VECEACH(members, i)
+		{
+			sema_add_member(context, members[i]);
+		}
+	}
 	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
 	{
 		Decl **members = decl->strukt.members;
@@ -3259,6 +3267,13 @@ CHECK_DEEPER:
 		member = sema_resolve_symbol_in_current_dynamic_scope(context, kw);
 	SCOPE_END;
 
+	if (member && decl_is_enum_kind(decl) && parent->expr_kind == EXPR_CONST)
+	{
+		assert(parent->const_expr.const_kind == CONST_ENUM);
+		Expr *copy_init = expr_macro_copy(parent->const_expr.enum_val->enum_constant.args[member->var.index]);
+		expr_replace(expr, copy_init);
+		return true;
+	}
 	if (!member)
 	{
 		Decl *ambiguous = NULL;

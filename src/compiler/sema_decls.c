@@ -370,12 +370,11 @@ static bool sema_analyse_struct_union(SemaContext *context, Decl *decl)
 	{
 		Attr *attr = decl->attributes[i];
 
-		AttributeType attribute = sema_analyse_attribute(context, attr, domain);
-		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
+		if (!sema_analyse_attribute(context, attr, domain)) return decl_poison(decl);
 
 		bool had = false;
 #define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
-		switch (attribute)
+		switch (attr->attr_kind)
 		{
 			case ATTRIBUTE_EXTNAME:
 				had = decl->has_extname;
@@ -537,12 +536,11 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl)
 	{
 		Attr *attr = decl->attributes[i];
 
-		AttributeType attribute = sema_analyse_attribute(context, attr, ATTR_BITSTRUCT);
-		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
+		if (!sema_analyse_attribute(context, attr, ATTR_BITSTRUCT)) return decl_poison(decl);
 
 		bool had = false;
 #define SET_ATTR(_X) had = decl->bitstruct._X; decl->bitstruct._X = true; break
-		switch (attribute)
+		switch (attr->attr_kind)
 		{
 			case ATTRIBUTE_OVERLAP:
 				SET_ATTR(overlap);
@@ -762,6 +760,49 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl)
 	return true;
 }
 
+static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default)
+{
+	*has_default = false;
+	assert(param->decl_kind == DECL_VAR);
+	// We need to check that the parameters are not typeless nor are of any macro parameter kind.
+	if (param->var.kind != VARDECL_PARAM && !param->var.type_info)
+	{
+		SEMA_ERROR(param, "An associated value must be a normal typed parameter.");
+		return false;
+	}
+
+	if (vec_size(param->attributes))
+	{
+		SEMA_ERROR(param->attributes[0], "There are no valid attributes for associated values.");
+		return false;
+	}
+	if (!sema_resolve_type_info(context, param->var.type_info)) return false;
+	if (param->var.vararg)
+	{
+		param->var.type_info->type = type_get_subarray(param->var.type_info->type);
+	}
+	param->type = param->var.type_info->type;
+	if (param->var.init_expr)
+	{
+		Expr *expr = param->var.init_expr;
+
+		if (!sema_analyse_expr_rhs(context, param->type, expr, true)) return false;
+		if (IS_FAILABLE(expr))
+		{
+			SEMA_ERROR(expr, "Default arguments may not be failable.");
+			return false;
+		}
+		if (!expr_is_constant_eval(expr, CONSTANT_EVAL_ANY))
+		{
+			SEMA_ERROR(expr, "Only constant expressions may be used as default values.");
+			return false;
+		}
+		*has_default = true;
+	}
+	param->alignment = type_abi_alignment(param->type);
+	return true;
+}
+
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 {
 	// Resolve the type of the enum.
@@ -778,6 +819,40 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 	}
 
 	DEBUG_LOG("* Enum type resolved to %s.", type->name);
+
+	Decl **associated_values = decl->enums.parameters;
+	unsigned associated_value_count = vec_size(associated_values);
+	unsigned mandatory_count = 0;
+	bool default_values_used = false;
+	for (unsigned i = 0; i < associated_value_count; i++)
+	{
+		Decl *value = associated_values[i];
+		switch (value->resolve_status)
+		{
+			case RESOLVE_DONE:
+				continue;
+			case RESOLVE_RUNNING:
+				SEMA_ERROR(value, "Recursive definition found.");
+				return false;
+			case RESOLVE_NOT_DONE:
+				value->resolve_status = RESOLVE_RUNNING;
+				break;
+		}
+		bool has_default = false;
+		if (!sema_analyse_enum_param(context, value, &has_default)) return false;
+		if (!has_default)
+		{
+			mandatory_count++;
+			if (default_values_used && !value->var.vararg)
+			{
+				SEMA_ERROR(value, "Non-default parameters cannot appear after default parameters.");
+				return false;
+			}
+		}
+		default_values_used |= has_default;
+		value->resolve_status = RESOLVE_DONE;
+	}
+
 	bool success = true;
 	unsigned enums = vec_size(decl->enums.values);
 	Int128 value = { 0, 0 };
@@ -811,6 +886,36 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl)
 
 		// Update the value
 		value.low++;
+
+		Expr **args = enum_value->enum_constant.args;
+		unsigned arg_count = vec_size(args);
+		if (arg_count > associated_value_count)
+		{
+			if (!associated_value_count)
+			{
+				SEMA_ERROR(args[0], "No associated values are defined for this enum.");
+				return false;
+			}
+			SEMA_ERROR(args[associated_value_count], "Only %d associated value(s) may be defined for this enum.");
+			return false;
+		}
+		if (arg_count < mandatory_count)
+		{
+			SEMA_ERROR(enum_value, "Expected associated value(s) defined for this enum.");
+			return false;
+		}
+		for (unsigned j = 0; j < arg_count; j++)
+		{
+			Expr *arg = args[j];
+
+			if (!sema_analyse_expr_rhs(context, associated_values[j]->type, arg, false)) return false;
+			if (!expr_is_constant_eval(arg, CONSTANT_EVAL_ANY))
+			{
+				SEMA_ERROR(arg, "Expected a constant expression as parameter.");
+				return false;
+			}
+		}
+		REMINDER("named parameters and defaults do not work");
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
 	return success;
@@ -1111,13 +1216,13 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 	}
 	UNREACHABLE
 }
-AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, AttributeDomain domain)
+bool sema_analyse_attribute(SemaContext *context, Attr *attr, AttributeDomain domain)
 {
 	AttributeType type = attribute_by_name(attr);
 	if (type == ATTRIBUTE_NONE)
 	{
 		sema_error_at(attr->span, "There is no attribute with the name '%s', did you mistype?", attr->name);
-		return ATTRIBUTE_NONE;
+		return false;
 	}
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
 			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
@@ -1141,14 +1246,16 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_AUTOIMPORT] = ATTR_MACRO | ATTR_FUNC,
 			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
+			[ATTRIBUTE_REFLECT] = ATTR_ENUM,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 	};
 
 	if ((attribute_domain[type] & domain) != domain)
 	{
 		sema_error_at(attr->span, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
-		return ATTRIBUTE_NONE;
+		return false;
 	}
+	attr->attr_kind = type;
 	switch (type)
 	{
 		case ATTRIBUTE_CDECL:
@@ -1156,7 +1263,7 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 		case ATTRIBUTE_STDCALL:
 		case ATTRIBUTE_VECCALL:
 		case ATTRIBUTE_REGCALL:
-			return type;
+			return true;
 		case ATTRIBUTE_OPERATOR:
 		{
 			Expr *expr = attr->expr;
@@ -1183,44 +1290,44 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			{
 				goto FAILED_OP_TYPE;
 			}
-			return ATTRIBUTE_OPERATOR;
+			return true;
 		FAILED_OP_TYPE:
 			SEMA_ERROR(attr, "'operator' requires an operator type argument: '%s', '%s' or '%s'.", kw_elementat, kw_elementref, kw_len);
-			return ATTRIBUTE_NONE;
+			return false;
 		}
 		case ATTRIBUTE_ALIGN:
 			if (!attr->expr)
 			{
 				sema_error_at(attr->span, "'align' requires an power-of-2 argument, e.g. align(8).");
-				return ATTRIBUTE_NONE;
+				return false;
 			}
 			if (!sema_analyse_expr(context, attr->expr)) return false;
 			if (attr->expr->expr_kind != EXPR_CONST || !type_is_integer(attr->expr->type->canonical))
 			{
 				SEMA_ERROR(attr->expr, "Expected a constant integer value as argument.");
-				return ATTRIBUTE_NONE;
+				return false;
 			}
 			{
 				if (int_ucomp(attr->expr->const_expr.ixx, MAX_ALIGNMENT, BINARYOP_GT))
 				{
 					SEMA_ERROR(attr->expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
-					return ATTRIBUTE_NONE;
+					return false;
 				}
 				if (int_ucomp(attr->expr->const_expr.ixx, 0, BINARYOP_LE))
 				{
 					SEMA_ERROR(attr->expr, "Alignment must be greater than zero.");
-					return ATTRIBUTE_NONE;
+					return false;
 				}
 				uint64_t align = int_to_u64(attr->expr->const_expr.ixx);
 				if (!is_power_of_two(align))
 				{
 					SEMA_ERROR(attr->expr, "Alignment must be a power of two.");
-					return ATTRIBUTE_NONE;
+					return false;
 				}
 
 				attr->alignment = (AlignSize)align;
 			}
-			return type;
+			return true;
 		case ATTRIBUTE_SECTION:
 		case ATTRIBUTE_EXTNAME:
 			if (context->unit->module->is_generic)
@@ -1231,22 +1338,22 @@ AttributeType sema_analyse_attribute(SemaContext *context, Attr *attr, Attribute
 			if (!attr->expr)
 			{
 				sema_error_at(attr->span, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
-				return ATTRIBUTE_NONE;
+				return false;
 			}
 			if (!sema_analyse_expr(context, attr->expr)) return false;
 			if (attr->expr->expr_kind != EXPR_CONST || attr->expr->const_expr.const_kind != CONST_STRING)
 			{
 				SEMA_ERROR(attr->expr, "Expected a constant string value as argument.");
-				return ATTRIBUTE_NONE;
+				return false;
 			}
-			return type;
+			return true;
 		default:
 			if (attr->expr)
 			{
 				SEMA_ERROR(attr->expr, "'%s' should not have any arguments.", attr->name);
-				return ATTRIBUTE_NONE;
+				return false;
 			}
-			return type;
+			return true;
 	}
 
 }
@@ -1465,13 +1572,12 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl)
 	{
 		Attr *attr = decl->attributes[i];
 
-		AttributeType attribute = sema_analyse_attribute(context, attr, ATTR_FUNC);
-		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
+		if (!sema_analyse_attribute(context, attr, ATTR_FUNC)) return decl_poison(decl);
 
 		bool had = false;
 #define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
 
-		switch (attribute)
+		switch (attr->attr_kind)
 		{
 			case ATTRIBUTE_OPERATOR:
 				had = decl->operator > 0;
@@ -1628,11 +1734,10 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl)
 	{
 		Attr *attr = decl->attributes[i];
 
-		AttributeType attribute = sema_analyse_attribute(context, attr, ATTR_MACRO);
-		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
+		if (!sema_analyse_attribute(context, attr, ATTR_MACRO)) return decl_poison(decl);
 
 		bool had = false;
-		switch (attribute)
+		switch (attr->attr_kind)
 		{
 			case ATTRIBUTE_OPERATOR:
 				had = decl->operator > 0;
@@ -1784,12 +1889,11 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl)
 	{
 		Attr *attr = decl->attributes[i];
 
-		AttributeType attribute = sema_analyse_attribute(context, attr, domain);
-		if (attribute == ATTRIBUTE_NONE) return decl_poison(decl);
+		if (!sema_analyse_attribute(context, attr, domain)) decl_poison(decl);
 
 		bool had = false;
 #define SET_ATTR(_X) had = decl->func_decl._X; decl->func_decl._X = true; break
-		switch (attribute)
+		switch (attr->attr_kind)
 		{
 			case ATTRIBUTE_EXTNAME:
 				had = decl->has_extname;

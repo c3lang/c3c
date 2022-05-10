@@ -730,7 +730,8 @@ void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl)
 	}
 	if (decl_is_enum_kind(decl))
 	{
-		unsigned elements = vec_size(decl->enums.values);
+		Decl **enum_vals = decl->enums.values;
+		unsigned elements = vec_size(enum_vals);
 		LLVMTypeRef element_type = llvm_get_type(c, type_voidptr);
 		LLVMTypeRef elements_type = LLVMArrayType(element_type, elements);
 		scratch_buffer_clear();
@@ -744,8 +745,54 @@ void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl)
 		for (unsigned i = 0; i < elements; i++)
 		{
 			AlignSize store_align;
-			decl->enums.values[i]->backend_ref = llvm_emit_array_gep_raw(c, enum_elements, elements_type, i, alignment, &store_align);
+			enum_vals[i]->backend_ref = llvm_emit_array_gep_raw(c, enum_elements, elements_type, i, alignment, &store_align);
 		}
+		Decl **associated_values = decl->enums.parameters;
+		unsigned associated_value_count = vec_size(associated_values);
+		if (associated_value_count && elements)
+		{
+
+			LLVMValueRef *values = malloc_arena(elements * sizeof(LLVMValueRef));
+			LLVMTypeRef val_type;
+			VECEACH(associated_values, ai)
+			{
+				val_type = NULL;
+				bool mixed = false;
+				for (unsigned i = 0; i < elements; i++)
+				{
+					BEValue value;
+					llvm_emit_expr(c, &value, enum_vals[i]->enum_constant.args[ai]);
+					assert(!llvm_value_is_addr(&value));
+					LLVMValueRef llvm_value = llvm_value_is_bool(&value) ? LLVMConstZExt(value.value, c->byte_type) : value.value;
+					values[i] = llvm_value;
+					if (!val_type)
+					{
+						val_type = LLVMTypeOf(llvm_value);
+						continue;
+					}
+					if (val_type != LLVMTypeOf(llvm_value)) mixed = true;
+				}
+				Decl *associated_value = associated_values[ai];
+				LLVMValueRef associated_value_arr = mixed ? LLVMConstStruct(values, elements, true) : LLVMConstArray(val_type, values, elements);
+				scratch_buffer_clear();
+				scratch_buffer_append(decl->extname);
+				scratch_buffer_append("$$");
+				scratch_buffer_append(associated_value->name);
+				LLVMValueRef global_ref = LLVMAddGlobal(c->module, LLVMTypeOf(associated_value_arr), scratch_buffer_to_string());
+				LLVMSetInitializer(global_ref, associated_value_arr);
+				LLVMSetGlobalConstant(global_ref, true);
+				if (mixed)
+				{
+					LLVMTypeRef cast_type = llvm_get_ptr_type(c, type_get_array(associated_value->type, elements));
+					associated_value->backend_ref = LLVMConstBitCast(global_ref, cast_type);
+				}
+				else
+				{
+					associated_value->backend_ref = global_ref;
+				}
+			}
+		}
+
 	}
 	scratch_buffer_clear();
 	scratch_buffer_append("introspect.");
@@ -1003,6 +1050,10 @@ void *llvm_gen(Module *module)
 		VECEACH(unit->types, i)
 		{
 			llvm_emit_type_decls(gen_context, unit->types[i]);
+		}
+		VECEACH(unit->enums, i)
+		{
+			llvm_emit_type_decls(gen_context, unit->enums[i]);
 		}
 		VECEACH(unit->functions, i)
 		{
