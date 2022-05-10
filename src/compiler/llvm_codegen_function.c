@@ -651,7 +651,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	switch (visibility)
 	{
 		case VISIBLE_EXTERN:
-			if (decl->func_decl.attr_weak)
+			if (decl->is_weak)
 			{
 				LLVMSetLinkage(function, LLVMExternalWeakLinkage);
 				llvm_set_comdat(c, function);
@@ -668,10 +668,10 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 			break;
 		case VISIBLE_PUBLIC:
 		case VISIBLE_MODULE:
-			if (decl->func_decl.attr_weak) llvm_set_weak(c, function);
+			if (decl->is_weak) llvm_set_weak(c, function);
 			break;
 		case VISIBLE_LOCAL:
-			LLVMSetLinkage(function, decl->func_decl.attr_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
+			LLVMSetLinkage(function, decl->is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
 			LLVMSetVisibility(function, LLVMDefaultVisibility);
 			break;;
 	}

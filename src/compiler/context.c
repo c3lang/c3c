@@ -241,12 +241,15 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			decl_set_external_name(decl);
 			decl_register(decl);
 			break;
+		case DECL_ATTRIBUTE:
+			vec_add(unit->attributes, decl);
+			decl_register(decl);
+			break;
 		case DECL_FAULTVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_CT_ELSE:
 		case DECL_CT_ELIF:
-		case DECL_ATTRIBUTE:
 		case DECL_LABEL:
 		case DECL_CT_CASE:
 		case DECL_DECLARRAY:

@@ -37,7 +37,7 @@ bitstruct BitField3 : char[3]
   int d : 19..23;
 }
 
-bitstruct BitField4 : char[3] @aligned
+bitstruct BitField4 : char[3] @align(8)
 {
   int a : 0..2;
   int b : 3..7;

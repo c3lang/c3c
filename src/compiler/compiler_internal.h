@@ -302,12 +302,8 @@ typedef struct
 	const char *name;
 	SourceSpan span;
 	AttributeType attr_kind : 8;
-	union
-	{
-		Expr *expr;
-		uint32_t alignment;
-		OperatorOverload operator;
-	};
+	bool is_custom : 1;
+	Expr **exprs;
 } Attr;
 
 typedef struct
@@ -447,6 +443,7 @@ typedef struct FunctionSignature_
 	bool has_default : 1;
 	bool use_win64 : 1;
 	bool is_pure : 1;
+	CallABI abi : 8;
 	TypeInfoId returntype;
 	Decl** params;
 } FunctionSignature;
@@ -457,7 +454,6 @@ typedef struct
 {
 	struct
 	{
-		bool attr_weak : 1;
 		bool attr_noreturn : 1;
 		bool attr_inline : 1;
 		bool attr_noinline : 1;
@@ -472,8 +468,9 @@ typedef struct
 
 typedef struct
 {
-	AttributeDomain domains;
-	FunctionSignature attr_signature;
+	struct CompilationUnit_ *unit;
+	Decl **params;
+	Attr **attrs;
 } AttrDecl;
 
 typedef struct
@@ -526,7 +523,6 @@ typedef enum
 	DEFINE_TYPE_GENERIC,
 	DEFINE_IDENT_ALIAS,
 	DEFINE_IDENT_GENERIC,
-	DEFINE_ATTRIBUTE,
 } DefineType;
 
 typedef struct
@@ -534,11 +530,6 @@ typedef struct
 	DefineType define_kind: 5;
 	union
 	{
-		struct
-		{
-			Decl **params;
-			Attr **attrs;
-		} attributes;
 		struct
 		{
 			union
@@ -588,6 +579,10 @@ typedef struct Decl_
 	bool is_autoimport : 1;
 	bool has_extname : 1;
 	bool is_external_visible : 1;
+	bool is_weak : 1;
+	bool is_maybe_unused : 1;
+	bool is_must_use : 1;
+	bool will_reflect : 1;
 	OperatorOverload operator : 4;
 	union
 	{
@@ -634,7 +629,7 @@ typedef struct Decl_
 		LabelDecl label;
 		EnumConstantDecl enum_constant;
 		FuncDecl func_decl;
-		AttrDecl attr;
+		AttrDecl attr_decl;
 		TypedefDecl typedef_decl;
 		MacroDecl macro_decl;
 		GenericDecl generic_decl;
@@ -1336,6 +1331,7 @@ typedef struct CompilationUnit_
 	Decl **types;
 	Decl **functions;
 	Decl **enums;
+	Decl **attributes;
 	Decl **faulttypes;
 	struct
 	{
@@ -1661,7 +1657,7 @@ typedef enum CmpRes_
 	CMP_GT = 1,
 } CmpRes;
 
-AttributeType attribute_by_name(Attr *attr);
+AttributeType attribute_by_name(const char *name);
 
 void type_setup(PlatformTarget *target);
 Float float_add(Float op1, Float op2);
@@ -2461,6 +2457,7 @@ Expr *expr_macro_copy(Expr *source_expr);
 Decl **decl_copy_list(Decl **decl_list);
 Ast *ast_macro_copy(Ast *source_ast);
 Ast *ast_defer_copy(Ast *source_ast);
+Decl *decl_macro_copy(Decl *source_decl);
 
 Expr **copy_expr_list(CopyStruct *c, Expr **expr_list);
 Expr *copy_expr(CopyStruct *c, Expr *source_expr);

@@ -876,13 +876,36 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref)
 	attr->name = symstr(c);
 	attr->span = c->span;
 	attr->path = path;
-
+	if (tok_is(c, TOKEN_AT_IDENT))
+	{
+		AttributeType type = attribute_by_name(attr->name);
+		if (type == ATTRIBUTE_NONE)
+		{
+			SEMA_ERROR_HERE("This is not a known valid attribute name.");
+			return false;
+		}
+		attr->attr_kind = type;
+	}
+	else
+	{
+		attr->is_custom = true;
+	}
 	advance(c);
 
-	if (tok_is(c, TOKEN_LPAREN))
+	Expr **list = NULL;
+
+	if (try_consume(c, TOKEN_LPAREN))
 	{
-		ASSIGN_EXPR_OR_RET(attr->expr, parse_const_paren_expr(c), false);
+		while (1)
+		{
+			ASSIGN_EXPR_OR_RET(Expr *expr, parse_constant_expr(c), false);
+			vec_add(list, expr);
+			if (try_consume(c, TOKEN_RPAREN)) break;
+			CONSUME_OR_RET(TOKEN_COMMA, false);
+		}
 	}
+
+	attr->exprs = list;
 
 	*attribute_ref = attr;
 	return true;
@@ -1633,38 +1656,28 @@ static inline Decl *parse_define_attribute(ParseContext *c, Visibility visibilit
 	// 1. Store the beginning of the "define".
 	advance_and_verify(c, TOKEN_DEFINE);
 
-	advance_and_verify(c, TOKEN_AT);
+	Decl *decl = decl_new(DECL_ATTRIBUTE, symstr(c), c->span, visibility);
 
-	TokenType alias_type = c->tok;
-	if (alias_type != TOKEN_TYPE_IDENT)
-	{
-		if (token_is_some_ident(alias_type) || token_is_keyword(alias_type))
-		{
-			SEMA_ERROR_HERE("A user defined attribute must start with an uppercase character, followed by at least one lower case.");
-			return false;
-		}
-		SEMA_ERROR_HERE("The attribute name was expected here.");
-		return false;
-	}
-	Decl *decl = decl_new(DECL_DEFINE, symstr(c), c->span, visibility);
-	advance_and_verify(c, TOKEN_TYPE_IDENT);
+	advance_and_verify(c, TOKEN_AT_TYPE_IDENT);
 
-	Decl **parameters = NULL;
 	if (try_consume(c, TOKEN_LPAREN))
 	{
-		if (!parse_parameters(c, visibility, &parameters)) return false;
+		if (!parse_parameters(c, visibility, &decl->attr_decl.params)) return poisoned_decl;
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
 	}
 
 	Attr **attributes = NULL;
 	if (try_consume(c, TOKEN_EQ))
 	{
-		if (!parse_attributes(c, &attributes)) return false;
+		while (1)
+		{
+			if (!parse_attributes(c, &attributes)) return poisoned_decl;
+			if (tok_is(c, TOKEN_EOS)) break;
+			CONSUME_OR_RET(TOKEN_COMMA, poisoned_decl);
+		}
 	}
 
-	decl->define_decl.define_kind = DEFINE_ATTRIBUTE;
-	decl->define_decl.attributes.attrs = attributes;
-	decl->define_decl.attributes.params = parameters;
+	decl->attr_decl.attrs = attributes;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
 }
@@ -1676,8 +1689,8 @@ static inline Decl *parse_define(ParseContext *c, Visibility visibility)
 {
 	switch (peek(c))
 	{
-		case TOKEN_AT:
-			// define @foo = @inline, @noreturn
+		case TOKEN_AT_TYPE_IDENT:
+			// define @Foo = @inline, @noreturn
 			return parse_define_attribute(c, visibility);
 		case TOKEN_TYPE_IDENT:
 			return parse_define_type(c, visibility);
