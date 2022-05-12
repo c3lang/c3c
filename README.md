@@ -142,7 +142,7 @@ Follow the issues [here](https://github.com/c3lang/c3c/issues).
 If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues) 
 or discuss C3 on its dedicated Discord: [https://discord.gg/qN76R87](https://discord.gg/qN76R87).
 
-The compiler currently compile on Linux, Windows and MacOS.
+The compiler is currently verified to compile on Linux, Windows and MacOS.
 
 
 
@@ -150,7 +150,6 @@ The compiler currently compile on Linux, Windows and MacOS.
 
 - If you wish to contribute with ideas, please file issues or discuss on Discord.
 - Interested in contributing to the stdlib? Please get in touch on Discord.
-- Are you a Windows dev and know your way around Github CI? Please help us get MSVC CI working!
 - Install instructions for other Linux and Unix variants are appreciated.
 - Would you like to contribute bindings to some library? It would be nice to have support for SDL, Raylib and more.
 - Build something with C3 and show it off and give feedback. The language is still open for significant tweaks.
@@ -202,6 +201,18 @@ A `c3c` executable will be found under `bin/`.
 8. Set up CMake build for debug: `cmake ..`
 9. Build: `cmake --build .`
 
+#### Installing on other Linux / Unix variants
+
+1. Install CMake.
+2. Install or compile LLVM and LLD *libraries* (version 12+ or higher)
+3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+4. Enter the C3C directory `cd c3c`.
+5. Create a build directory `mkdir build`
+6. Change directory to the build directory `cd build`
+7. Set up CMake build for debug: `cmake ..`. At this point you may need to manually 
+provide the link path to the LLVM CMake directories, e.g. `cmake -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/ ..`
+8. Build: `cmake --build .`
+ 
 #### Getting started with a "hello world"
 
 Create a `main.c3` file with:
