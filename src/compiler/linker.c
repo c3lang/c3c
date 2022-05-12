@@ -242,6 +242,15 @@ static const char *find_linux_crt(void)
 	return NULL;
 }
 
+static const char *find_freebsd_crt(void)
+{
+	if (file_exists("/usr/lib/crt1.o"))
+	{
+		return "/usr/lib/";
+	}
+	return NULL;
+}
+
 static const char *find_linux_crt_begin(void)
 {
 	if (file_exists("/usr/lib/gcc/x86_64-linux-gnu/10/crtbegin.o"))
@@ -289,6 +298,44 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 	add_arg(ld_target(platform_target.arch));
 }
 
+static void linker_setup_freebsd(const char ***args_ref, LinkerType linker_type)
+{
+	if (linker_type == LINKER_CC) return;
+	if (is_no_pie(platform_target.reloc_model)) add_arg("-no-pie");
+	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
+	if (platform_target.arch == ARCH_TYPE_X86_64) add_arg("--eh-frame-hdr");
+	const char *crt_dir = find_freebsd_crt();
+	if (!crt_dir)
+	{
+		error_exit("Failed to find the C runtime at link time.");
+	}
+	if (is_pie_pic(platform_target.reloc_model))
+	{
+		add_arg("-pie");
+		add_arg2(crt_dir, "Scrt1.o");
+		add_arg2(crt_dir, "crtbeginS.o");
+		add_arg2(crt_dir, "crti.o");
+		add_arg2(crt_dir, "crtendS.o");
+	}
+	else
+	{
+		add_arg2(crt_dir, "crt1.o");
+		add_arg2(crt_dir, "crtbegin.o");
+		add_arg2(crt_dir, "crti.o");
+		add_arg2(crt_dir, "crtend.o");
+	}
+	add_arg2(crt_dir, "crtn.o");
+	add_arg2("-L", crt_dir);
+	add_arg("--dynamic-linker=/libexec/ld-elf.so.1");
+	add_arg("-lc");
+	add_arg("-lm");
+	add_arg("-lgcc");
+	add_arg("-lgcc_s");
+	add_arg("-L/usr/lib/");
+	add_arg("-m");
+	add_arg(ld_target(platform_target.arch));
+}
+
 static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
                          const char *output_file, LinkerType linker_type)
 {
@@ -319,8 +366,10 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_TVOS:
-		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_WASI:
+			break;
+		case OS_TYPE_FREE_BSD:
+			linker_setup_freebsd(args_ref, linker_type);
 			break;
 		case OS_TYPE_LINUX:
 			linker_setup_linux(args_ref, linker_type);
