@@ -9,7 +9,7 @@ on:
 jobs:
 
   build-msvc:
-    runs-on: windows-2019
+    runs-on: windows-latest
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -24,7 +24,7 @@ jobs:
 
       - name: CMake
         run: |
-          cmake -B build -G "Visual Studio 16 2019" -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build --config ${{ matrix.build_type }}
 
       - name: Build testproject
