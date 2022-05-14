@@ -9,7 +9,7 @@ on:
 jobs:
 
   build-msvc:
-    runs-on: windows-latest
+    runs-on: windows-2019
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
