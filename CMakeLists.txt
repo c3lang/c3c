@@ -43,11 +43,11 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     endif()
     FetchContent_Declare(
             LLVM_Windows
-            URL https://github.com/c3lang/win-llvm/releases/download/llvm-vs22/llvm-14.0.1-windows-amd64-msvc17-libcmt.7z
+            URL https://github.com/c3lang/win-llvm/releases/download/llvm-vs22/llvm-14.0.1-windows-amd64-msvc17-msvcrt.7z
     )
     FetchContent_Declare(
             LLVM_Windows_debug
-            URL https://github.com/c3lang/win-llvm/releases/download/llvm-vs22/llvm-14.0.1-windows-amd64-msvc17-libcmt-dbg.7z
+            URL https://github.com/c3lang/win-llvm/releases/download/llvm-vs22/llvm-14.0.1-windows-amd64-msvc17-msvcrt-dbg.7z
     )
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         message("Loading Windows LLVM debug libraries, this may take a while...")
@@ -276,11 +276,11 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(c3c PRIVATE /wd4068 /wd4090 /WX)
     target_compile_options(c3c_wrappers PUBLIC /wd4624 /wd4267 /wd4244 /WX)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        target_compile_options(c3c PUBLIC /MTd)
-        target_compile_options(c3c_wrappers PUBLIC /MTd)
+        target_compile_options(c3c PUBLIC /MDd)
+        target_compile_options(c3c_wrappers PUBLIC /MDd)
     else()
-        target_compile_options(c3c PUBLIC /MT)
-        target_compile_options(c3c_wrappers PUBLIC /MT)
+        target_compile_options(c3c PUBLIC /MD)
+        target_compile_options(c3c_wrappers PUBLIC /MD)
     endif()
 
 endif()
