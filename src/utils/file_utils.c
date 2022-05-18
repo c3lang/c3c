@@ -55,7 +55,7 @@ const char *strip_drive_prefix(const char *path)
 	{ // I don't *think* a relative path can start with '[char]:/' ? right?
 		// nothing can be done about this currently
 		error_exit("Illegal path %s - absolute path must start with /, \\, "
-				   "c:, or C: (file a github issue if this is a problem)");
+				   "c:, or C: (file a github issue if this is a problem)", path);
 	}
 
 	// path is ok
