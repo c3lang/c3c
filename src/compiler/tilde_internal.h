@@ -90,7 +90,6 @@ TB_Reg tilde_emit_alloca(TbContext *c, Type *type);
 
 // -- stmt ---
 void tilde_emit_stmt(TbContext *c, Ast *ast);
-void tilde_emit_defer(TbContext *c, AstId defer_start, AstId defer_end);
 
 // -- general ---
 TB_Register tilde_emit_is_no_error(TbContext *c, TB_Reg reg);
@@ -123,5 +122,7 @@ static inline TB_Reg decl_reg(Decl *decl)
 	assert(!decl->is_value);
 	return decl->tb_register;
 }
+
+TB_DataType tilde_get_int_type_of_bytesize(int byte_size);
 
 #endif // TB_BACKEND

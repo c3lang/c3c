@@ -95,6 +95,25 @@ static void tilde_emit_parameter(TbContext *c, TB_Reg **args, ABIArgInfo *info, 
 		case ABI_ARG_IGNORE:
 			// Skip.
 			return;
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		{
+			TODO
+			/*
+			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
+			assert(coerce_type && coerce_type != llvm_get_type(c, type));
+			AlignSize target_alignment = llvm_abi_alignment(c, coerce_type);
+
+			AlignSize alignment;
+			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, coerce_type, target_alignment, &alignment);
+			LLVMTypeRef element = llvm_get_type(c, info->direct_struct_expand.type);
+			for (unsigned idx = 0; idx < info->direct_struct_expand.elements; idx++)
+			{
+				AlignSize load_align;
+				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, alignment, &load_align);
+				vec_add(*args, llvm_load(c, element, element_ptr, load_align, ""));
+			}
+			return;*/
+		}
 		case ABI_ARG_INDIRECT:
 		{
 			// If we want we could optimize for structs by doing it by reference here.
@@ -109,40 +128,31 @@ static void tilde_emit_parameter(TbContext *c, TB_Reg **args, ABIArgInfo *info, 
 			return;
 		case ABI_ARG_DIRECT_COERCE:
 		{
-			if (!abi_type_is_type(info->direct_coerce.type))
+			TB_DataType coerce_type = tbtype(info->direct_coerce_type);
+			if (coerce_type.type == tbtype(type).type)
 			{
 				vec_add(*args, tilde_load_value(c, be_value));
+				return;
 			}
 			TODO
-			vec_add(*args, tilde_load_value(c, be_value));
-			return;
-			/*
-			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			if (!coerce_type || coerce_type == llvm_get_type(c, type))
+			//vec_add(*args, llvm_emit_coerce(c, coerce_type, be_value, type));
+			//return;
+		}
+		case ABI_ARG_DIRECT_COERCE_INT:
+		{
+			TB_DataType coerce_type = tilde_get_int_type_of_bytesize(type_size(type));
+			if (coerce_type.type == tbtype(type).type)
 			{
-				vec_add(*args, llvm_load_value_store(c, be_value));
+				vec_add(*args, tilde_load_value(c, be_value));
 				return;
 			}
-			if (!abi_info_should_flatten(info))
-			{
-				vec_add(*args, llvm_emit_coerce(c, coerce_type, be_value, type));
-				return;
-			}
-			AlignSize target_alignment = llvm_abi_alignment(c, coerce_type);
-
-			AlignSize alignment;
-			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, coerce_type, target_alignment, &alignment);
-			LLVMTypeRef element = llvm_abi_type(c, info->direct_coerce.type);
-			for (unsigned idx = 0; idx < info->direct_coerce.elements; idx++)
-			{
-				AlignSize load_align;
-				LLVMValueRef element_ptr = llvm_emit_struct_gep_raw(c, cast, coerce_type, idx, alignment, &load_align);
-				vec_add(*args, llvm_load(c, element, element_ptr, load_align, ""));
-			}*/
-			return;
+			TODO
+			//vec_add(*args, llvm_emit_coerce(c, coerce_type, be_value, type));
+			//return;
 		}
 		case ABI_ARG_DIRECT_PAIR:
 		{
+			TODO
 			/*
 			llvm_value_addr(c, be_value);
 			REMINDER("Handle invalid alignment");
@@ -153,11 +163,7 @@ static void tilde_emit_parameter(TbContext *c, TB_Reg **args, ABIArgInfo *info, 
 			LLVMTypeRef struct_type = llvm_get_coerce_type(c, info);
 
 			AlignSize struct_align;
-			LLVMValueRef cast = llvm_emit_coerce_alignment(c,
-			                                               be_value,
-			                                               struct_type,
-			                                               llvm_abi_alignment(c, struct_type),
-			                                               &struct_align);
+			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, struct_type, llvm_abi_alignment(c, struct_type), &struct_align);
 			// Get the lo value.
 
 			AlignSize alignment;
@@ -170,50 +176,36 @@ static void tilde_emit_parameter(TbContext *c, TB_Reg **args, ABIArgInfo *info, 
 		}
 		case ABI_ARG_EXPAND_COERCE:
 		{
-			// Move this to an address (if needed)
-			value_addr(c, be_value);
 			/*
+			// Create the expand type:
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			AlignSize alignment;
-			LLVMValueRef temp = llvm_emit_coerce_alignment(c,
-			                                               be_value,
-			                                               coerce_type,
-			                                               llvm_abi_alignment(c, coerce_type),
-			                                               &alignment);
+			LLVMValueRef temp = LLVMBuildBitCast(c->builder, decl->backend_ref, LLVMPointerType(coerce_type, 0), "coerce");
+			llvm_emit_and_set_decl_alloca(c, decl);
 
-			AlignSize align;
-			LLVMValueRef gep_first = llvm_emit_struct_gep_raw(c,
-			                                                  temp,
-			                                                  coerce_type,
-			                                                  info->coerce_expand.lo_index,
-			                                                  alignment,
-			                                                  &align);
-			vec_add(*args, llvm_load(c, llvm_abi_type(c, info->coerce_expand.lo), gep_first, align, ""));
+			AlignSize alignment = decl->alignment;
+			AlignSize element_align;
+			LLVMValueRef gep_first = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.lo_index, alignment, &element_align);
+			llvm_store(c, gep_first, llvm_get_next_param(c, index), element_align);
 			if (abi_type_is_valid(info->coerce_expand.hi))
 			{
-				LLVMValueRef gep_second = llvm_emit_struct_gep_raw(c,
-				                                                   temp,
-				                                                   coerce_type,
-				                                                   info->coerce_expand.hi_index,
-				                                                   alignment,
-				                                                   &align);
-				vec_add(*args, llvm_load(c, llvm_abi_type(c, info->coerce_expand.hi), gep_second, align, ""));
-			}*/
-			return;
-		}
-		case ABI_ARG_EXPAND:
-		{
-			// Move this to an address (if needed)
-			value_addr(c, be_value);
-			TODO
-			/*
-			llvm_expand_type_to_args(c, type, be_value->value, args, be_value->alignment);
-			// Expand the padding here.
-			if (info->expand.padding_type)
+				LLVMValueRef gep_second = llvm_emit_struct_gep_raw(c, temp, coerce_type, info->coerce_expand.hi_index, alignment, &element_align);
+				llvm_store(c, gep_second, llvm_get_next_param(c, index), element_align);
+			}
+			break;*/
+			case ABI_ARG_EXPAND:
 			{
-				vec_add(*args, LLVMGetUndef(llvm_get_type(c, info->expand.padding_type)));
-			}*/
-			return;
+				TODO
+				/*
+				// Move this to an address (if needed)
+				llvm_value_addr(c, be_value);
+				llvm_expand_type_to_args(c, type, be_value->value, args, be_value->alignment);
+				// Expand the padding here.
+				if (info->expand.padding_type)
+				{
+					vec_add(*args, LLVMGetUndef(llvm_get_type(c, info->expand.padding_type)));
+				}
+				return;*/
+			}
 		}
 	}
 
@@ -237,7 +229,7 @@ void tilde_emit_call_expr(TbContext *c, TBEValue *result_value, Expr *expr)
 	// 1. Call through a pointer.
 	if (expr->call_expr.is_pointer_call)
 	{
-		Expr *function = expr->call_expr.function;
+		Expr *function = exprptr(expr->call_expr.function);
 
 		// 1a. Find the pointee type for the function pointer:
 		Type *type = function->type->canonical->pointer;
@@ -247,7 +239,7 @@ void tilde_emit_call_expr(TbContext *c, TBEValue *result_value, Expr *expr)
 
 		// 1c. Evaluate the pointer expression.
 		TBEValue func_value;
-		tilde_emit_expr(c, &func_value, expr->call_expr.function);
+		tilde_emit_expr(c, &func_value, function);
 
 		// 1d. Load it as a value
 		func = tilde_load_value(c, &func_value);
@@ -259,7 +251,7 @@ void tilde_emit_call_expr(TbContext *c, TBEValue *result_value, Expr *expr)
 	{
 		// 2a. Get the function declaration
 
-		Decl *function_decl = expr->call_expr.func_ref;
+		Decl *function_decl = declptr(expr->call_expr.func_ref);
 		always_inline = function_decl->func_decl.attr_inline;
 
 		// 2b. Set signature, function and function type
@@ -269,6 +261,7 @@ void tilde_emit_call_expr(TbContext *c, TBEValue *result_value, Expr *expr)
 		func_type = tbtype(function_decl->type);
 	}
 
+	(void)func_type;
 	TB_Reg *values = NULL;
 	Type **params = prototype->params;
 	ABIArgInfo **abi_args = prototype->abi_args;
@@ -308,7 +301,9 @@ void tilde_emit_call_expr(TbContext *c, TBEValue *result_value, Expr *expr)
 		case ABI_ARG_DIRECT_COERCE:
 		case ABI_ARG_DIRECT:
 		case ABI_ARG_EXPAND_COERCE:
-			break;
+		case ABI_ARG_DIRECT_COERCE_INT:
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+			TODO
 	}
 
 
@@ -424,13 +419,13 @@ void tilde_emit_call_expr(TbContext *c, TBEValue *result_value, Expr *expr)
 	{
 	//	LLVMSetInstructionCallConv(call_value, llvm_call_convention_from_call(prototype->call_abi, platform_target.arch, platform_target.os));
 	}
-	if (expr->call_expr.force_noinline)
+	if (expr->call_expr.attr_force_noinline)
 	{
 	//	llvm_attribute_add_call(c, call_value, attribute_id.noinline, -1, 0);
 	}
 	else
 	{
-		if (expr->call_expr.force_inline || always_inline)
+		if (expr->call_expr.attr_force_inline || always_inline)
 		{
 	//		llvm_attribute_add_call(c, call_value, attribute_id.alwaysinline, -1, 0);
 		}

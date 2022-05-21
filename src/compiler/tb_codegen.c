@@ -4,6 +4,10 @@
 
 static void tinybackend_emit_expr(TbContext *c, TBEValue *value, Expr *expr);
 static inline void tilde_emit_block(TbContext *c, TB_Label label);
+static inline void tinybackend_emit_exprid(TbContext *c, TBEValue *value, ExprId id)
+{
+	tinybackend_emit_expr(c, value, exprptr(id));
+}
 
 static TB_Register tilde_value_rvalue_get(TbContext *c, TBEValue *value);
 static void TBE_VALUE_set_reg(TBEValue *value, TB_Register reg, Type *type);
@@ -36,8 +40,8 @@ TB_DataType tbtype(Type *type)
 	uint8_t elements = 1;
 	if (type->type_kind == TYPE_VECTOR)
 	{
-		elements = (uint8_t)type->vector.len;
-		switch (type->vector.base->type_kind)
+		elements = (uint8_t)type->array.len;
+		switch (type->array.base->type_kind)
 		{
 			case TYPE_U8:
 			case TYPE_I8:
@@ -111,6 +115,23 @@ static TB_DataType tilde_get_abi_type(AbiType type)
 	TODO
 }
 
+TB_DataType tilde_get_int_type_of_bytesize(int byte_size)
+{
+	switch (byte_size)
+	{
+		case 1:
+			return TB_TYPE_I8;
+		case 2:
+			return TB_TYPE_I16;
+		case 4:
+			return TB_TYPE_I32;
+		case 8:
+			return TB_TYPE_I64;
+		default:
+			FATAL_ERROR("Unsupported size");
+	}
+
+}
 static void param_expand(TB_DataType **params_ref, Type *type)
 {
 	switch (type->type_kind)
@@ -192,24 +213,24 @@ static inline void add_func_type_param(Type *param_type, ABIArgInfo *arg_info, T
 		case ABI_ARG_DIRECT:
 			vec_add(*params, tbtype(param_type));
 			break;
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+		{
+			// Normal direct.
+			TB_DataType coerce_type = tbtype(arg_info->direct_struct_expand.type);
+			for (unsigned idx = 0; idx < arg_info->direct_struct_expand.elements; idx++)
+			{
+				vec_add(*params, coerce_type);
+			}
+			break;
+		}
+		case ABI_ARG_DIRECT_COERCE_INT:
+			vec_add(*params, tilde_get_int_type_of_bytesize(type_size(param_type)));
+			break;
 		case ABI_ARG_DIRECT_COERCE:
 		{
 			// Normal direct.
-			if (!abi_type_is_valid(arg_info->direct_coerce.type))
-			{
-				vec_add(*params, tbtype(param_type));
-				break;
-			}
-			TB_DataType coerce_type = tilde_get_abi_type(arg_info->direct_coerce.type);
-			if (!abi_info_should_flatten(arg_info))
-			{
-				vec_add(*params, coerce_type);
-				break;
-			}
-			for (unsigned idx = 0; idx < arg_info->direct_coerce.elements; idx++)
-			{
-				vec_add(*params, coerce_type);
-			}
+			TB_DataType coerce_type = tbtype(arg_info->direct_coerce_type);
+			vec_add(*params, coerce_type);
 			break;
 		}
 		case ABI_ARG_DIRECT_PAIR:
@@ -268,13 +289,13 @@ static TB_FunctionPrototype *tilde_get_function_type(TB_Module *module, Function
 		case ABI_ARG_DIRECT:
 			return_type = tbtype(call_return_type);
 			break;
+		case ABI_ARG_DIRECT_SPLIT_STRUCT:
+			UNREACHABLE
+		case ABI_ARG_DIRECT_COERCE_INT:
+			return_type = tilde_get_int_type_of_bytesize(type_size(call_return_type));
+			break;
 		case ABI_ARG_DIRECT_COERCE:
-			assert(!abi_info_should_flatten(ret_arg_info));
-
-			TODO
-			/*
-			return_type = llvm_get_coerce_type(context, ret_arg_info);
-			if (!return_type) return_type = llvm_get_type(context, call_return_type);*/
+			return_type = tbtype(ret_arg_info->direct_coerce_type);
 			break;
 	}
 
@@ -508,12 +529,12 @@ void tinybackend_emit_binary(TbContext *c, TBEValue *TBE_VALUE, Expr *expr, TBEV
 	}
 	else
 	{
-		tinybackend_emit_expr(c, &lhs, expr->binary_expr.left);
+		tinybackend_emit_exprid(c, &lhs, expr->binary_expr.left);
 	}
 	value_rvalue(c, &lhs);
 
 	TBEValue rhs;
-	tinybackend_emit_expr(c, &rhs, expr->binary_expr.right);
+	tinybackend_emit_exprid(c, &rhs, expr->binary_expr.right);
 	value_rvalue(c, &rhs);
 
 	/*EMIT_LOC(c, expr);
@@ -525,7 +546,7 @@ void tinybackend_emit_binary(TbContext *c, TBEValue *TBE_VALUE, Expr *expr, TBEV
 
 	Type *lhs_type = lhs.type;
 	Type *rhs_type = rhs.type;
-	Type *vector_type = lhs_type->type_kind == TYPE_VECTOR ? lhs_type->vector.base : NULL;
+	Type *vector_type = lhs_type->type_kind == TYPE_VECTOR ? lhs_type->array.base : NULL;
 	bool is_float = type_is_float(lhs_type) || (vector_type && type_is_float(vector_type));
 
 	TB_Register val = TB_NULL_REG;
@@ -638,6 +659,9 @@ void tinybackend_emit_binary(TbContext *c, TBEValue *TBE_VALUE, Expr *expr, TBEV
 		case BINARYOP_SHR_ASSIGN:
 		case BINARYOP_SHL_ASSIGN:
 			UNREACHABLE
+		case BINARYOP_OR_ERR:
+			TODO
+			break;
 	}
 	assert(val);
 	TBE_VALUE_set(TBE_VALUE, val, expr->type);
@@ -658,7 +682,7 @@ static void tinybackend_emit_binary_expr(TbContext *c, TBEValue *TBE_VALUE, Expr
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
 		assert(base_op != BINARYOP_ERROR);
 		TBEValue addr;
-		tinybackend_emit_expr(c, &addr, expr->binary_expr.left);
+		tinybackend_emit_exprid(c, &addr, expr->binary_expr.left);
 		value_rvalue(c, &addr);
 		tinybackend_emit_binary(c, TBE_VALUE, expr, &addr, base_op);
 		tinybackend_store_value(c, &addr, TBE_VALUE);
@@ -667,11 +691,10 @@ static void tinybackend_emit_binary_expr(TbContext *c, TBEValue *TBE_VALUE, Expr
 	printf("B\n");
 	if (binary_op == BINARYOP_ASSIGN)
 	{
-		Expr *left = expr->binary_expr.left;
-		tinybackend_emit_expr(c, TBE_VALUE, expr->binary_expr.left);
+		tinybackend_emit_exprid(c, TBE_VALUE, expr->binary_expr.left);
 		assert(tinybackend_value_is_addr(TBE_VALUE));
 
-		*TBE_VALUE = tilde_emit_assign_expr(c, TBE_VALUE, expr->binary_expr.right, TB_NULL_REG /* failable_ref */);
+		*TBE_VALUE = tilde_emit_assign_expr(c, TBE_VALUE, exprptr(expr->binary_expr.right), TB_NULL_REG /* failable_ref */);
 		return;
 	}
 
@@ -694,7 +717,6 @@ static void tinybackend_emit_expr(TbContext *c, TBEValue *value, Expr *expr)
 			tinybackend_emit_binary_expr(c, value, expr);
 			return;
 		case EXPR_IDENTIFIER:
-		case EXPR_CONST_IDENTIFIER:
 			value_set_decl(value, expr->identifier_expr.decl);
 			return;
 		default:
@@ -724,13 +746,15 @@ static TB_Register tilde_emit_local_decl(TbContext *c, Decl *decl)
 		if (IS_FAILABLE(decl))
 		{
 			scratch_buffer_clear();
-			scratch_buffer_append(decl->external_name);
+			scratch_buffer_append(decl_get_extname(decl));
 			scratch_buffer_append(".f");
 			TB_InitializerID initializer = tb_initializer_create(c->module, type_size(type_anyerr), type_alloca_alignment(type_anyerr), 1);
-			decl->var.tb_failable_reg = tb_global_create(c->module, initializer, scratch_buffer_to_string(), TB_LINKAGE_PRIVATE);
+			decl->var.tb_failable_reg = tb_global_create(c->module, scratch_buffer_to_string(), TB_STORAGE_DATA, TB_LINKAGE_PRIVATE);
+			tb_global_set_initializer(c->module, decl->var.tb_failable_reg, initializer);
 		}
 		TB_InitializerID static_initializer = tb_initializer_create(c->module, type_size(var_type), type_alloca_alignment(var_type), 1);
-		decl->tb_register = tb_global_create(c->module, static_initializer, "tempglobal", TB_LINKAGE_PRIVATE);
+		decl->tb_register = tb_global_create(c->module, "tempglobal", TB_STORAGE_DATA, TB_LINKAGE_PRIVATE);
+		tb_global_set_initializer(c->module, decl->tb_register, static_initializer);
 		tilde_emit_global_initializer(c, decl);
 		return decl->tb_register;
 	}
@@ -750,14 +774,9 @@ static TB_Register tilde_emit_local_decl(TbContext *c, Decl *decl)
 	value_set_decl(&value, decl);
 	if (init)
 	{
-		// If we don't have undef, then make an assign.
-		if (init->expr_kind != EXPR_UNDEF)
-		{
-			tilde_emit_assign_expr(c, &value, decl->var.init_expr, decl->var.tb_failable_reg);
-		}
-		// TODO trap on undef in debug mode.
+		tilde_emit_assign_expr(c, &value, decl->var.init_expr, decl->var.tb_failable_reg);
 	}
-	else
+	else if (!decl->var.no_init)
 	{
 		if (decl->var.tb_failable_reg)
 		{
@@ -774,15 +793,15 @@ static TB_Register tilde_emit_local_decl(TbContext *c, Decl *decl)
 
 static void tilde_emit_function_body(TbContext *c, Decl *decl)
 {
-	printf("Function: %s\n", decl->external_name);
+	printf("Function: %s\n", decl_get_extname(decl));
 
 	c->current_func_decl = decl;
 
 	TB_FunctionPrototype *prototype = tilde_get_function_type(c->module, decl->type->func.prototype);
-	TB_Function *function = tb_prototype_build(c->module, prototype, decl->external_name, TB_LINKAGE_PUBLIC);
+	TB_Function *function = tb_prototype_build(c->module, prototype, decl_get_extname(decl), TB_LINKAGE_PUBLIC);
 	c->f = function;
 
-	AstId current = decl->func_decl.body->compound_stmt.first_stmt;
+	AstId current = astptr(decl->func_decl.body)->compound_stmt.first_stmt;
 	while (current)
 	{
 		tilde_emit_stmt(c, ast_next(&current));
@@ -816,7 +835,7 @@ static void tilde_emit_function_body(TbContext *c, Decl *decl)
 	context->function = prev_function;
 */
 
-	tb_function_print(c->f, stdout);
+//	tb_function_print(c->f, stdout);
 //	TODO
 }
 
@@ -861,10 +880,13 @@ void *tinybackend_gen(Module *module)
 	TbContext *c = ccalloc(sizeof(TbContext), 1);
 	c->code_module = module;
 
-	c->module = tb_module_create(tilde_get_arch(), tilde_get_system(), &c->features);
+	c->module = tb_module_create(tilde_get_arch(), tilde_get_system(), TB_DEBUGFMT_NONE, &c->features);
 
 	const char *result = module_create_object_file_name(module);
-	c->object_filename = strformat("%s%s", result, get_object_extension());
+
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s%s", result, get_object_extension());
+	c->object_filename = scratch_buffer_copy();
 
 	printf("Module: %.*s\n", module->name->len, module->name->module);
 	// Forward decls
@@ -887,7 +909,8 @@ void *tinybackend_gen(Module *module)
 		}
 	}
 
-	tb_module_compile(c->module);
+//	tb_module_compile(c->module);
+TODO
 	return c;
 }
 

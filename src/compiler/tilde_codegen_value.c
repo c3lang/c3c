@@ -34,9 +34,11 @@ void value_addr(TbContext *c, TBEValue *value)
 		TODO
 		// TB_Register val = value_rvalue_get(c, value);
 		// TODO check whether new names must be added
+		TB_Register val = tb_global_create(c->module, ".taddr", TB_STORAGE_DATA, TB_LINKAGE_PRIVATE);
 		TB_InitializerID initializer_id = tb_initializer_create(c->module, type_size(value->type),
 		                                                        type_alloca_alignment(value->type), 0);
-		tb_global_create(c->module, initializer_id, ".taddr", TB_LINKAGE_PRIVATE);
+		tb_global_set_initializer(c->module, val, initializer_id);
+		TODO
 		// TODO set linkage
 		/*
 		llvm_set_private_linkage(ref);

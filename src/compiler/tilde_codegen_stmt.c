@@ -14,12 +14,11 @@ void tilde_emit_compound_stmt(TbContext *context, Ast *ast)
 	{
 		tilde_emit_stmt(context, ast_next(&current));
 	}
-	tilde_emit_defer(context, ast->compound_stmt.defer_list.start, ast->compound_stmt.defer_list.end);
 }
 
 static void llvm_emit_ct_compound_stmt(TbContext *context, Ast *ast)
 {
-	assert(ast->ast_kind == AST_CT_COMPOUND_STMT);
+	assert(ast->ast_kind == AST_COMPOUND_STMT);
 	AstId current = ast->compound_stmt.first_stmt;
 	while (current)
 	{
@@ -39,13 +38,15 @@ TB_Reg tilde_emit_local_decl(TbContext *c, Decl *decl)
 		if (IS_FAILABLE(decl))
 		{
 			scratch_buffer_clear();
-			scratch_buffer_append(decl->external_name);
+			scratch_buffer_append(decl_get_extname(decl));
 			scratch_buffer_append(".f");
 			TB_InitializerID initializer = tb_initializer_create(c->module, type_size(type_anyerr), type_alloca_alignment(type_anyerr), 1);
-			decl->var.tb_failable_reg = tb_global_create(c->module, initializer, scratch_buffer_to_string(), TB_LINKAGE_PRIVATE);
+			decl->var.tb_failable_reg = tb_global_create(c->module, scratch_buffer_to_string(), TB_STORAGE_DATA, TB_LINKAGE_PRIVATE);
+			tb_global_set_initializer(c->module, decl->var.tb_failable_reg, initializer);
 		}
+		decl->tb_register = tb_global_create(c->module, decl_get_extname(decl), TB_STORAGE_DATA, TB_LINKAGE_PRIVATE);
 		TB_InitializerID static_initializer = tb_initializer_create(c->module, type_size(var_type), type_alloca_alignment(var_type), 1);
-		decl->tb_register = tb_global_create(c->module, static_initializer, "tempglobal", TB_LINKAGE_PRIVATE);
+		tb_global_set_initializer(c->module, decl->tb_register, static_initializer);
 		tilde_emit_global_initializer(c, decl);
 		return decl->tb_register;
 	}
@@ -65,14 +66,9 @@ TB_Reg tilde_emit_local_decl(TbContext *c, Decl *decl)
 	value_set_decl(&value, decl);
 	if (init)
 	{
-		// If we don't have undef, then make an assign.
-		if (init->expr_kind != EXPR_UNDEF)
-		{
-			tilde_emit_assign_expr(c, &value, decl->var.init_expr, decl->var.tb_failable_reg);
-		}
-		// TODO trap on undef in debug mode.
+		tilde_emit_assign_expr(c, &value, decl->var.init_expr, decl->var.tb_failable_reg);
 	}
-	else
+	else if (!decl->var.no_init)
 	{
 		if (decl->var.tb_failable_reg)
 		{
@@ -83,24 +79,6 @@ TB_Reg tilde_emit_local_decl(TbContext *c, Decl *decl)
 	return reg;
 
 }
-
-void tilde_emit_defer(TbContext *c, AstId defer_start, AstId defer_end)
-{
-	if (defer_start == defer_end) return;
-	AstId defer = defer_start;
-	while (defer && defer != defer_end)
-	{
-		Ast *def = astptr(defer);
-		TB_Label exit = tb_inst_new_label_id(c->f);
-		Ast *body = def->defer_stmt.body;
-		def->defer_stmt.codegen.exit_val = exit;
-		tilde_emit_stmt(c, body);
-		tb_inst_goto(c->f, exit);
-		tb_inst_label(c->f, exit);
-		defer = def->defer_stmt.prev_defer;
-	}
-}
-
 
 
 void tilde_emit_stmt(TbContext *c, Ast *ast)
