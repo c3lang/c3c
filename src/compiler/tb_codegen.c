@@ -788,7 +788,13 @@ static TB_Register tilde_emit_local_decl(TbContext *c, Decl *decl)
 }
 
 
-
+static void print_callback(void *ptr, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vprintf(fmt, ap);
+	va_end(ap);
+}
 
 
 static void tilde_emit_function_body(TbContext *c, Decl *decl)
@@ -834,9 +840,8 @@ static void tilde_emit_function_body(TbContext *c, Decl *decl)
 	context->builder = prev_builder;
 	context->function = prev_function;
 */
+	tb_function_print(c->f, &print_callback, NULL);
 
-//	tb_function_print(c->f, stdout);
-//	TODO
 }
 
 

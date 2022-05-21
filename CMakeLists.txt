@@ -115,7 +115,7 @@ file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 # These don't seem to be reliable on windows.
 message(STATUS "using find_library")
 if(C3_USE_TB)
-    find_library(TB_LIB NAMES tinybackend.a tinybackend.lib PATHS ${CMAKE_SOURCE_DIR}/resources/tblib)
+    find_library(TB_LIB NAMES tildebackend.a tildebackend.lib PATHS ${CMAKE_SOURCE_DIR}/tb/)
 endif()
 find_library(LLD_COFF NAMES lldCOFF.lib lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS})
 find_library(LLD_COMMON NAMES lldCommon.lib lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS})
