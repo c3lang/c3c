@@ -167,7 +167,8 @@ The compiler is currently verified to compile on Linux, Windows and MacOS.
 5. Enter the C3C directory `cd c3c`.
 6. Create a build directory `mkdir build`
 7. Change directory to the build directory `cd build`
-8. Build: `cmake --build .`
+8. Set up CMake build: `cmake ..`
+9. Build: `cmake --build .`
 
 You should now have a `c3c` executable.
 
