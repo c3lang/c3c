@@ -1,7 +1,7 @@
 // #target: macos-x64
 module examples;
-
-import std::io;
+import libc;
+import std;
 
 fn void example_for()
 {

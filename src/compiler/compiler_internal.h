@@ -1258,6 +1258,9 @@ typedef struct Module_
 	Decl** generic_cache;
 	HTable symbols;
 	struct CompilationUnit_ **units;
+	Module *parent_module;
+	Module *top_module;
+	Module **sub_modules;
 } Module;
 
 
@@ -1322,6 +1325,13 @@ typedef struct
 	LexMode mode;
 } Lexer;
 
+typedef struct
+{
+	uint32_t count;
+	uint32_t capacity;
+	uint32_t max_load;
+	DeclId *entries;
+} DeclTable;
 
 typedef struct CompilationUnit_
 {
@@ -1405,13 +1415,6 @@ typedef struct SemaContext_
 	Expr *return_expr;
 } SemaContext;
 
-typedef struct
-{
-	uint32_t count;
-	uint32_t capacity;
-	uint32_t max_load;
-	DeclId *entries;
-} DeclTable;
 
 typedef struct
 {
@@ -1535,6 +1538,7 @@ typedef struct
 {
 	Decl *ambiguous_other_decl;
 	Decl *private_decl;
+	Decl *maybe_decl;
 	Path *path;
 	SourceSpan span;
 	const char *symbol;

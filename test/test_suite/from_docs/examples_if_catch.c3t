@@ -1,5 +1,6 @@
 // #target: macos-x64
 module demo;
+import libc;
 import std::io;
 
 fault MathError

@@ -143,6 +143,12 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 		{
 			case ANALYSIS_NOT_BEGUN:
 				UNREACHABLE
+			case ANALYSIS_MODULE_HIERARCHY:
+				sema_analyse_pass_module_hierarchy(module);
+				break;
+			case ANALYSIS_MODULE_TOP:
+				sema_analyse_pass_top(module);
+				break;
 			case ANALYSIS_IMPORTS:
 				sema_analysis_pass_process_imports(module);
 				break;
@@ -228,6 +234,7 @@ static void analyze_generic_module(Module *module)
 	{
 		register_generic_decls(module, module->units[index]->global_decls);
 	}
+	sema_analyze_stage(module, ANALYSIS_MODULE_HIERARCHY);
 }
 
 static void sema_analyze_to_stage(AnalysisStage stage)

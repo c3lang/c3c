@@ -156,6 +156,87 @@ static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, Na
 	return decl;
 }
 
+static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
+{
+	Module *module = decl->module;
+	// 1. Same module as unit -> ok
+	if (module == unit->module) return true;
+	Module *top = module->top_module;
+	// 2. Same top module as unit -> ok
+	if (top == unit->module->top_module) return true;
+
+	VECEACH(unit->imports, i)
+	{
+		Decl *import = unit->imports[i];
+		Module *import_module = import->module;
+		// 3. Same as import
+		if (import_module == module) return true;
+		// 4. If import and decl doesn't share a top module -> no match
+		if (import_module->top_module != top) continue;
+		Module *search = module->parent_module;
+		// 5. Start upward from the decl module
+		//    break if no parent or we reached the import module.
+		while (search && search != import_module) search = search->parent_module;
+		// 6. We found the import module
+		if (search) return true;
+		// 7. Otherwise go to next
+	}
+	return false;
+}
+
+static Decl *sema_find_decl_in_global_new(CompilationUnit *unit, DeclTable *table, Module **module_list, NameResolve *name_resolve, bool want_generic)
+{
+	const char *symbol = name_resolve->symbol;
+	Path *path = name_resolve->path;
+	DeclId decl_ids = decltable_get(table, symbol);
+	Decl *maybe_decl = NULL;
+	// We might have no match at all.
+	if (!decl_ids)
+	{
+		// Update the path found
+		if (path && !name_resolve->path_found) name_resolve->path_found = sema_is_path_found(module_list, path, want_generic);
+		return NULL;
+	}
+
+	Decl *decls = declptr(decl_ids);
+	// There might just be a single match.
+	if (decls->decl_kind != DECL_DECLARRAY)
+	{
+		if (path && !matches_subpath(decls->module->name, path)) return NULL;
+		if (!decl_is_visible(unit, decls))
+		{
+			name_resolve->maybe_decl = decls;
+			return NULL;
+		}
+		name_resolve->private_decl = NULL;
+		return decls;
+	}
+
+	// Else go through the list
+	Decl **decl_list = decls->decl_list;
+	Decl *ambiguous = NULL;
+	Decl *decl = NULL;
+	VECEACH(decl_list, i)
+	{
+		Decl *candidate = decl_list[i];
+		if (path && !matches_subpath(candidate->module->name, path)) continue;
+		if (!decl_is_visible(unit, candidate))
+		{
+			maybe_decl = candidate;
+			continue;
+		}
+		if (!ambiguous)
+		{
+			ambiguous = decl;
+			decl = candidate;
+		}
+	}
+	name_resolve->ambiguous_other_decl = ambiguous;
+	name_resolve->private_decl = NULL;
+	name_resolve->maybe_decl = maybe_decl;
+	return decl;
+}
+
 static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_resolve)
 {
 	Path *path = name_resolve->path;
@@ -184,7 +265,7 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_re
 	decl = sema_find_decl_in_imports(unit->imports, name_resolve, false);
 
 	// 4. Go to global search
-	return decl ? decl : sema_find_decl_in_global(&global_context.symbols, global_context.module_list, name_resolve, false);
+	return decl ? decl : sema_find_decl_in_global_new(unit, &global_context.symbols, global_context.module_list, name_resolve, false);
 }
 
 static inline Decl *sema_find_local(SemaContext *context, const char *symbol)
@@ -240,7 +321,7 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name
 	if (decl) return decl;
 
 	decl = sema_find_decl_in_imports(unit->imports, name_resolve, false);
-	return decl ? decl : sema_find_decl_in_global(&global_context.symbols, NULL, name_resolve, false);
+	return decl ? decl : sema_find_decl_in_global_new(context->unit, &global_context.symbols, NULL, name_resolve, false);
 }
 
 
@@ -266,7 +347,24 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		}
 		return;
 	}
-	
+	if (!found && name_resolve->maybe_decl)
+	{
+		const char *maybe_name = decl_to_name(name_resolve->maybe_decl);
+		const char *module_name = name_resolve->maybe_decl->module->name->module;
+		if (path_name)
+		{
+			sema_error_at(span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
+						  maybe_name, module_name, symbol, module_name, module_name);
+
+		}
+		else
+		{
+			sema_error_at(span, "Did you mean the %s '%s' in module %s? If so please add 'import %s'.",
+			              maybe_name, symbol, module_name, module_name);
+		}
+		return;
+	}
+
 	if (name_resolve->ambiguous_other_decl)
 	{
 		assert(found);
@@ -311,7 +409,7 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 	if (name_resolve->path)
 	{
 		decl = sema_resolve_path_symbol(context, name_resolve);
-		if (!decl && !name_resolve->path_found)
+		if (!decl && !name_resolve->maybe_decl && !name_resolve->path_found)
 		{
 			if (!name_resolve->suppress_error) return NULL;
 			SEMA_ERROR(name_resolve->path, "Unknown module '%.*s', did you type it right?", name_resolve->path->len, name_resolve->path->module);
@@ -408,9 +506,9 @@ Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name
 	Decl *decl = sema_find_decl_in_imports(unit->imports, name_resolve, true);
 	if (!decl)
 	{
-		decl = sema_find_decl_in_global(&global_context.generic_symbols,
-										global_context.generic_module_list,
-										name_resolve, true);
+		decl = sema_find_decl_in_global_new(unit, &global_context.generic_symbols,
+		                                    global_context.generic_module_list,
+		                                    name_resolve, true);
 	}
 	// 14. Error report
 	if (!decl || name_resolve->ambiguous_other_decl)

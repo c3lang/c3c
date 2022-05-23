@@ -2,6 +2,7 @@
 
 import std::io;
 import std::mem;
+import libc;
 union Baz
 {
     int x;

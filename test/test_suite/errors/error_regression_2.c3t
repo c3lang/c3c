@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-
+import std;
 import libc;
 
 struct Doc { Head *head; }

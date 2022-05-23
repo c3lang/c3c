@@ -4,6 +4,60 @@
 
 #include "sema_internal.h"
 
+void parent_path(StringSlice *slice)
+{
+	for (int i = (int)slice->len - 1; i >= 0; i--)
+	{
+		if (slice->ptr[i] == ':')
+		{
+			slice->len = i - 1;
+			return;
+		}
+	}
+	slice->len = 0;
+}
+
+void sema_analyse_pass_top(Module *module)
+{
+	Module *parent = module;
+	while (parent->parent_module) parent = parent->parent_module;
+	module->top_module = parent;
+}
+
+void sema_analyse_pass_module_hierarchy(Module *module)
+{
+	const char *name = module->name->module;
+	StringSlice slice = slice_from_string(name);
+	// foo::bar::baz -> foo::bar
+	parent_path(&slice);
+	// foo -> return, no parent
+	if (!slice.len) return;
+
+
+	unsigned module_count = vec_size(global_context.module_list);
+	for (int i = 0; i < module_count; i++)
+	{
+		Module *checked = global_context.module_list[i];
+		Path *checked_name = checked->name;
+		if (checked_name->len != slice.len) continue;
+		// Found the parent! We're done, we add this parent
+		// and this as a child.
+		if (memcmp(checked_name->module, slice.ptr, slice.len) == 0)
+		{
+			module->parent_module = checked;
+			vec_add(module->sub_modules, module);
+			return;
+		}
+	}
+	// No match, so we create a synthetic module.
+	Path *path = path_create_from_string(slice.ptr, slice.len, module->name->span);
+	DEBUG_LOG("Creating parent module for %s: %s", module->name->module, path->module);
+	Module *parent_module = compiler_find_or_create_module(path, NULL, false /* always public */);
+	module->parent_module = parent_module;
+	vec_add(parent_module->sub_modules, module);
+	sema_analyze_stage(parent_module, ANALYSIS_MODULE_HIERARCHY);
+}
+
 
 void sema_analysis_pass_process_imports(Module *module)
 {
@@ -57,17 +111,6 @@ void sema_analysis_pass_process_imports(Module *module)
 			// 8. Assign the module.
 			DEBUG_LOG("* Import of %s.", path->module);
 			import->module = import_module;
-			for (unsigned j = 0; j < i; j++)
-			{
-				// 9. We might run into multiple imports of the same package.
-				if (import->module == unit->imports[j]->module)
-				{
-					SEMA_ERROR(import, "Module '%s' was imported more than once, please remove the duplicates.", path->module);
-					SEMA_PREV(unit->imports[j], "Previous import was here");
-					decl_poison(import);
-					break;
-				}
-			}
 		}
 		import_count += imports;
 	}

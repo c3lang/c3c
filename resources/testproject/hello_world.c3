@@ -1,5 +1,6 @@
 module hello_world;
-
+import std;
+import bar;
 $if (env::OS_TYPE == OsType.WIN32):
 fn int test_doubler(int x)
 {

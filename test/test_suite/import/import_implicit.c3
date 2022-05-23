@@ -12,6 +12,6 @@ module dde;
 
 fn void test()
 {
-    abc::test();
-    Foo f;
+    abc::test(); // #error: Did you mean the function 'abc::test'
+    Foo f; // #error: Did you mean the struct 'Foo'
 }
