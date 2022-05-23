@@ -63,6 +63,8 @@ void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);
 Decl **global_context_acquire_locals_list(void);
 void generic_context_release_locals_list(Decl **);
+void sema_analyse_pass_top(Module *module);
+void sema_analyse_pass_module_hierarchy(Module *module);
 void sema_analysis_pass_process_imports(Module *module);
 void sema_analysis_pass_register_globals(Module *module);
 void sema_analysis_pass_conditional_compilation(Module *module);

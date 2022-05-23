@@ -1,5 +1,5 @@
 module foo;
-import std::io;
+import libc;
 
 macro foo(y)
 {

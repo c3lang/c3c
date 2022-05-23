@@ -1,4 +1,5 @@
 module std::mem;
+import libc;
 
 private fn void*! null_allocator_fn(void *data, usize bytes, usize alignment, void* old_pointer, AllocationKind kind)
 {

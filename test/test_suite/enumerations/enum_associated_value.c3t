@@ -1,5 +1,6 @@
 // #target: macos-x64
 module test;
+import libc;
 
 enum Foo : uint (int val, char* testme)
 {

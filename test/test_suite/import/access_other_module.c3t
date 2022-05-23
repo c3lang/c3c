@@ -1,5 +1,6 @@
 // #target: macos-x64
 module foo;
+import std::math;
 fn void main()
 {
 	void* foekf = &math::log;
