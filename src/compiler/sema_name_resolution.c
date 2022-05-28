@@ -165,21 +165,29 @@ static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 	// 2. Same top module as unit -> ok
 	if (top == unit->module->top_module) return true;
 
+	// 3. We want to check std::builtin
+	Module *lookup = module;
+	while (lookup)
+	{
+		if (lookup->name->module == kw_std__builtin) return true;
+		lookup = lookup->parent_module;
+	}
+
 	VECEACH(unit->imports, i)
 	{
 		Decl *import = unit->imports[i];
 		Module *import_module = import->module;
-		// 3. Same as import
+		// 4. Same as import
 		if (import_module == module) return true;
-		// 4. If import and decl doesn't share a top module -> no match
+		// 5. If import and decl doesn't share a top module -> no match
 		if (import_module->top_module != top) continue;
 		Module *search = module->parent_module;
-		// 5. Start upward from the decl module
+		// 6. Start upward from the decl module
 		//    break if no parent or we reached the import module.
 		while (search && search != import_module) search = search->parent_module;
-		// 6. We found the import module
+		// 7. We found the import module
 		if (search) return true;
-		// 7. Otherwise go to next
+		// 8. Otherwise go to next
 	}
 	return false;
 }
