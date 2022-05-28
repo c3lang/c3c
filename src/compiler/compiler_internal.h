@@ -1573,6 +1573,8 @@ extern Type *type_cuint;
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 extern const char *builtin_list[NUMBER_OF_BUILTINS];
 
+extern const char *kw_std__builtin;
+
 extern const char *kw_std;
 extern const char *kw_max;
 extern const char *kw_min;
