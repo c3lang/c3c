@@ -2,14 +2,11 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include <sys/stat.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #ifndef _MSC_VER
 #include <unistd.h>
 #endif
-#include <string.h>
 #include "project_creation.h"
 #include "build_options.h"
 #include "../utils/lib.h"
@@ -83,88 +80,75 @@ void create_project(BuildOptions *build_options)
 		}
 	}
 
-	if (chdir(build_options->path))
+	if (!dir_change(build_options->path))
 	{
 		fprintf(stderr, "Can't open path %s\n", build_options->path);
 		exit_compiler(EXIT_FAILURE);
 	}
 
-	int error = mkdir(build_options->project_name, 0755);
-	if (error)
+	if (!dir_make(build_options->project_name))
 	{
-		fprintf(stderr, "Could not create directory %s: %s\n", build_options->project_name, strerror(errno));
+		fprintf(stderr, "Could not create directory %s.\n", build_options->project_name);
 		exit_compiler(EXIT_FAILURE);
 	}
 
-	if (chdir(build_options->project_name)) goto ERROR;
+	if (!dir_change(build_options->project_name)) goto ERROR;
 
-	FILE *file = fopen("LICENCE", "a");
-	if (!file) goto ERROR;
-	if (fclose(file)) goto ERROR;
+	if (!file_touch("LICENCE")) goto ERROR;
 
-	file = fopen("README.md", "a");
-	if (!file) goto ERROR;
-	if (fclose(file)) goto ERROR;
+	if (!file_touch("README.md")) goto ERROR;
 
-	file = fopen("project.c3p", "a");
+	FILE *file = fopen("project.c3p", "a");
 	if (!file) goto ERROR;
 	(void) fprintf(file, JSON, build_options->project_name);
 	if (fclose(file)) goto ERROR;
 
-	if (mkdir("lib", 0755)) goto ERROR;
+	if (!dir_make("lib")) goto ERROR;
 
-	if (mkdir("build", 0755)) goto ERROR;
+	if (!dir_make("build")) goto ERROR;
 
-	if (mkdir("resources", 0755)) goto ERROR;
+	if (!dir_make("resources")) goto ERROR;
 
-	if (mkdir("test", 0755)) goto ERROR;
+	if (!dir_make("test")) goto ERROR;
 
-	if (chdir("test")) goto ERROR;
+	if (!dir_change("test")) goto ERROR;
 
-	if (mkdir(build_options->project_name, 0755)) goto ERROR;
+	if (!dir_make(build_options->project_name)) goto ERROR;
 
-	if (chdir("..")) goto ERROR;
+	if (!dir_change("..")) goto ERROR;
 
-	if (mkdir("directives", 0755)) goto ERROR;
+	if (!dir_make("directives")) goto ERROR;
 
-	if (chdir("directives") == -1) goto ERROR;
+	if (!dir_change("directives")) goto ERROR;
 
-	file = fopen("about.md", "a");
-	if (!file) goto ERROR;
-	if (fclose(file)) goto ERROR;
+	if (!file_touch("about.md")) goto ERROR;
 
-	if (mkdir("src", 0755)) goto ERROR;
+	if (!dir_make("src")) goto ERROR;
 
-	if (chdir("src")) goto ERROR;
+	if (!dir_change("src")) goto ERROR;
 
-	file = fopen("index.html", "a");
-	if (!file) goto ERROR;
-	if (fclose(file)) goto ERROR;
+	if (!file_touch("index.html")) goto ERROR;
 
-	if (chdir("../..")) goto ERROR;
+	if (!dir_change("../..")) goto ERROR;
 
-	if (mkdir("src", 0755)) goto ERROR;
+	if (!dir_make("src")) goto ERROR;
 
-	if (chdir("src")) goto ERROR;
+	if (!dir_change("src")) goto ERROR;
 
-	if (mkdir(build_options->project_name, 0755)) goto ERROR;
+	if (!dir_make(build_options->project_name)) goto ERROR;
 
-	if (chdir(build_options->project_name)) goto ERROR;
+	if (!dir_change(build_options->project_name)) goto ERROR;
 
-	file = fopen("main.c3", "a");
-	if (!file) goto ERROR;
-	if (fclose(file)) goto ERROR;
+	if (!file_touch("main.c3")) goto ERROR;
 
-	if (chdir("../..")) goto ERROR;
+	if (!dir_change("../..")) goto ERROR;
 
 	(void) printf("Project '%s' created.\n", build_options->project_name);
 	exit_compiler(COMPILER_SUCCESS_EXIT);
 
 ERROR:
-	fprintf(stderr, "Err: %s\n", strerror(errno));
-
-	printf("Something went wrong creating the project.\n");
-	if (!chdir(build_options->path))
+	fprintf(stderr, "Error creating the project.\n");
+	if (dir_change(build_options->path))
 	{
 		(void)rmdir(build_options->project_name);
 	}

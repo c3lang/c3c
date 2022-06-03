@@ -308,6 +308,7 @@ typedef struct
 	const char **linker_libdirs;
 	const char *cpu;
 	const char **link_args;
+	const char *build_dir;
 	bool run_after_compile : 1;
 	bool test_output : 1;
 	bool output_headers : 1;

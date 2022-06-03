@@ -56,11 +56,20 @@ typedef struct Task_
 
 typedef void *TaskQueueRef;
 
+uint16_t *win_utf8to16(const char *name);
+char *win_utf16to8(const uint16_t *name);
+// Use as if it was mkdir(..., 0755) == 0
+bool dir_make(const char *path);
+// Use as if it was chdir(...) == 0
+bool dir_change(const char *path);
 bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr);
 const char* file_expand_path(const char* path);
 const char* find_lib_dir(void);
+bool file_delete_all_files_in_dir_with_suffix(const char *dir, const char *suffix);
 bool file_is_dir(const char *file);
 bool file_exists(const char *path);
+FILE *file_open_read(const char *path);
+bool file_touch(const char *path);
 char *file_read_all(const char *path, size_t *return_size);
 void file_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
 void file_find_top_dir();

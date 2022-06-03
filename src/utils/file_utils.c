@@ -20,6 +20,8 @@
 #include <limits.h>
 
 #else
+#include <fileapi.h>
+#include <stringapiset.h>
 #include "utils/dirent.h"
 
 // copied from https://github.com/kindkaktus/libconfig/commit/d6222551c5c01c326abc99627e151d549e0f0958
@@ -63,6 +65,65 @@ const char *strip_drive_prefix(const char *path)
 }
 
 #endif
+
+uint16_t *win_utf8to16(const char *value)
+{
+#if (_MSC_VER)
+	size_t len = strlen(value);
+	int needed = MultiByteToWideChar(CP_UTF8, 0, value, len + 1, NULL, 0);
+	if (needed <= 0)
+	{
+		error_exit("Failed to convert name '%s'.", value);
+	}
+	uint16_t *wide = malloc(needed * sizeof(uint16_t));
+	if (MultiByteToWideChar(CP_UTF8, 0, value, len + 1, wide, needed) <= 0)
+	{
+		error_exit("Failed to convert name '%s'.", value);
+	}
+	return wide;
+#else
+	UNREACHABLE
+#endif
+}
+
+#include <wchar.h>
+char *win_utf16to8(const uint16_t *wname)
+{
+#if (_MSC_VER)
+	size_t len = wcslen(wname);
+	int needed = WideCharToMultiByte(CP_UTF8, 0, wname, len + 1, NULL, 0, NULL, NULL);
+	if (needed <= 0)
+	{
+		error_exit("Failed to convert wide name.");
+	}
+	char *chars = malloc(needed);
+	if (WideCharToMultiByte(CP_UTF8, 0, wname, len + 1, chars, needed, NULL, NULL) <= 0)
+	{
+		error_exit("Failed to convert wide name.");
+	}
+	return chars;
+#else
+	UNREACHABLE
+#endif
+}
+
+bool dir_make(const char *path)
+{
+#if (_MSC_VER)
+	return CreateDirectoryW(win_utf8to16(path), NULL);
+#else
+	return mkdir(path, 0755) == 0;
+#endif
+}
+
+bool dir_change(const char *path)
+{
+#if (_MSC_VER)
+	return SetCurrentDirectoryW(win_utf8to16(path));
+#else
+	return chdir(path) == 0;
+#endif
+}
 
 static inline bool is_path_separator(char c)
 {
@@ -133,10 +194,29 @@ const char *file_expand_path(const char *path)
 	return path;
 }
 
+FILE *file_open_read(const char *path)
+{
+#if (_MSC_VER)
+	return _wfopen(win_utf8to16(path), L"rb");
+#else
+	return fopen(path, "rb");
+#endif
+}
+
+bool file_touch(const char *path)
+{
+#if (_MSC_VER)
+	FILE *file = _wfopen(win_utf8to16(path), L"a");
+#else
+	FILE *file = fopen(path, "a");
+#endif
+	if (!file) return false;
+	return fclose(file) == 0;
+}
 
 char *file_read_all(const char *path, size_t *return_size)
 {
-	FILE *file = fopen(path, "rb");
+	FILE *file = file_open_read(path);
 
 	if (file == NULL)
 	{
@@ -257,7 +337,7 @@ void file_find_top_dir()
 		// Note that symbolically linked files are ignored.
 		char start_path[PATH_MAX + 1];
 		getcwd(start_path, PATH_MAX);
-		if (chdir(".."))
+		if (!dir_change(".."))
 		{
 			error_exit("Can't change directory to search for %s: %s.", PROJECT_JSON, strerror(errno));
 		}
@@ -345,6 +425,56 @@ EXIT:
 	return result;
 }
 
+bool file_delete_all_files_in_dir_with_suffix(const char *path, const char *suffix)
+{
+	assert(path);
+#if PLATFORM_WINDOWS
+	const char *cmd = "del /q";
+#else
+	const char *cmd = "rm -f";
+#endif
+	return execute_cmd(str_printf("%s %s/*%s", cmd, path, suffix)) == 0;
+}
+
+
+#if (_MSC_VER)
+
+#include <io.h>
+
+void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count)
+{
+	bool path_ends_with_slash = is_path_separator(path[strlen(path) - 1]);
+	struct _wfinddata_t file_data;
+	intptr_t file_handle;
+	const char *search = str_printf(path_ends_with_slash ? "%s*.*" : "%s\\*.*", path);
+	if ((file_handle = _wfindfirst(win_utf8to16(search), &file_data)) == -1L) return;
+	do
+	{
+		printf("Found %ls\n", file_data.name);
+		if ((file_data.attrib & _A_SUBDIR))
+		{
+			if (recursive)
+			{
+				if (file_data.name[0] == L'.')
+				{
+					printf("Skipping %ls\n", file_data.name);
+				}
+				char *format = path_ends_with_slash ? "%s%ls" : "%s\\%ls";
+				char *new_path = str_printf(format, path, file_data.name);
+				file_add_wildcard_files(files, new_path, true, suffix_list, suffix_count);
+			}
+			continue;
+		}
+		if (file_data.attrib != _A_RDONLY || file_data.attrib != _A_NORMAL) continue;
+		char *name = win_utf16to8(file_data.name);
+		if (!file_has_suffix_in_list(name, strlen(name), suffix_list, suffix_count)) continue;
+		char *format = path_ends_with_slash ? "%s%s" : "%s\\%s";
+		vec_add(*files, str_printf(format, path, name));
+	} while (_wfindnext(file_handle, &file_data) == 0);
+	_findclose(file_handle);
+}
+#else
+
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count)
 {
 #ifdef _MSC_VER
@@ -400,6 +530,8 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 #endif
 
 }
+
+#endif
 
 #if PLATFORM_WINDOWS
 const char *execute_cmd(const char *cmd)
