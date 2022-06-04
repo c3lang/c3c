@@ -3,26 +3,21 @@
 // a copy of which can be found in the LICENSE file.
 
 #include <sys/stat.h>
+#include <limits.h>
 #include "common.h"
 #include "errors.h"
 #include "lib.h"
 
 #if PLATFORM_WINDOWS
-
 #include <windows.h>
-
 #endif
 
 #ifndef _MSC_VER
-
-#include <unistd.h>
 #include <dirent.h>
-#include <limits.h>
-
+#include <unistd.h>
 #else
 #include <fileapi.h>
 #include <stringapiset.h>
-#include "utils/dirent.h"
 
 // copied from https://github.com/kindkaktus/libconfig/commit/d6222551c5c01c326abc99627e151d549e0f0958
 #ifndef S_ISDIR
@@ -32,39 +27,15 @@
 #if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
 #define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
 #endif
-
 #endif
 
 #include <errno.h>
 #include "whereami.h"
 
-#if _MSC_VER
-
-
-/**
- * remove C: drive prefix (C:, D:, etc.) from a path.
- * If that is an issue, I think dirent will have to be replaced or the dirent
- * port in use will have to be replaced.
- */
-const char *strip_drive_prefix(const char *path)
-{
-	if (char_is_letter(path[0]) && path[1] == ':')
-	{
-		return path + 2; // remove first two characters
-	}
-
-	if (path[1] == ':' && (path[2] == '/' || path[2] == '\\'))
-	{ // I don't *think* a relative path can start with '[char]:/' ? right?
-		// nothing can be done about this currently
-		error_exit("Illegal path %s - absolute path must start with /, \\, "
-				   "c:, or C: (file a github issue if this is a problem)", path);
-	}
-
-	// path is ok
-	return path;
-}
-
+#ifndef PATH_MAX
+#define PATH_MAX 1024
 #endif
+
 
 uint16_t *win_utf8to16(const char *value)
 {
@@ -316,7 +287,6 @@ void file_get_dir_and_filename_from_full(const char *full_path, char **filename,
 	}
 }
 
-
 void file_find_top_dir()
 {
 	while (1)
@@ -387,44 +357,6 @@ extern int _getdrive(void);
 extern int _chdrive(int drive);
 #endif
 
-const char *file_first(const char *path)
-{
-
-#ifdef _MSC_VER
-	int drive = _getdrive();
-	const char *no_drive_prefix = strip_drive_prefix(path);
-	if (no_drive_prefix != path)
-	{
-		_chdrive(path[0] - 'A' + 1);
-	}
-	else
-	{
-		drive = -1;
-	}
-	DIR *dir = opendir(no_drive_prefix);
-#else
-	DIR *dir = opendir(path);
-#endif
-	const char *result = NULL;
-	if (!dir) goto EXIT;
-	struct dirent *ent;
-	while ((ent = readdir(dir)))
-	{
-		size_t name_len = strlen(ent->d_name);
-		if (name_len > 2)
-		{
-			result = str_printf("%.*s", (int)name_len, ent->d_name);
-			goto EXIT;
-		}
-	}
-EXIT:
-	closedir(dir);
-#ifdef _MSC_VER
-	if (drive >= 0) _chdrive(drive);
-#endif
-	return result;
-}
-
 bool file_delete_all_files_in_dir_with_suffix(const char *path, const char *suffix)
 {
 	assert(path);
@@ -436,7 +368,6 @@ bool file_delete_all_files_in_dir_with_suffix(const char *path, const char *suff
 	return execute_cmd(str_printf("%s %s/*%s", cmd, path, suffix)) == 0;
 }
 
-
 #if (_MSC_VER)
 
 #include <io.h>
@@ -446,30 +377,27 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 	bool path_ends_with_slash = is_path_separator(path[strlen(path) - 1]);
 	struct _wfinddata_t file_data;
 	intptr_t file_handle;
-	const char *search = str_printf(path_ends_with_slash ? "%s*.*" : "%s\\*.*", path);
-	printf("Start searching %ls\n", search);
+	const char *search = str_printf(path_ends_with_slash ? "%s*.*" : "%s/*.*", path);
 	if ((file_handle = _wfindfirst(win_utf8to16(search), &file_data)) == -1L) return;
 	do
 	{
-		printf("Found %ls\n", file_data.name);
 		if ((file_data.attrib & _A_SUBDIR))
 		{
 			if (recursive)
 			{
 				if (file_data.name[0] == L'.')
 				{
-					printf("Skipping %ls\n", file_data.name);
+					continue;
 				}
-				char *format = path_ends_with_slash ? "%s%ls" : "%s\\%ls";
+				char *format = path_ends_with_slash ? "%s%ls" : "%s/%ls";
 				char *new_path = str_printf(format, path, file_data.name);
 				file_add_wildcard_files(files, new_path, true, suffix_list, suffix_count);
 			}
 			continue;
 		}
-		if (file_data.attrib != _A_RDONLY || file_data.attrib != _A_NORMAL) continue;
 		char *name = win_utf16to8(file_data.name);
 		if (!file_has_suffix_in_list(name, strlen(name), suffix_list, suffix_count)) continue;
-		char *format = path_ends_with_slash ? "%s%s" : "%s\\%s";
+		char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
 		vec_add(*files, str_printf(format, path, name));
 	} while (_wfindnext(file_handle, &file_data) == 0);
 	_findclose(file_handle);
@@ -478,21 +406,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count)
 {
-#ifdef _MSC_VER
-	int drive = _getdrive();
-	const char *no_drive_prefix = strip_drive_prefix(path);
-	if (no_drive_prefix != path)
-	{
-		_chdrive(path[0] - 'A' + 1);
-	}
-	else
-	{
-		drive = -1;
-	}
-	DIR *dir = opendir(no_drive_prefix);
-#else
 	DIR *dir = opendir(path);
-#endif
 	bool path_ends_with_slash = is_path_separator(path[strlen(path) - 1]);
 	if (!dir)
 	{
@@ -526,10 +440,6 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 		vec_add(*files, str_printf(format, path, ent->d_name));
 	}
 	closedir(dir);
-#ifdef _MSC_VER
-	if (drive >= 0) _chdrive(drive);
-#endif
-
 }
 
 #endif
@@ -583,7 +493,7 @@ char *realpath(const char *path, char *const resolved_path)
 {
 	char *result = NULL == resolved_path ? ccalloc(PATH_MAX + 1, 1) : resolved_path;
 	if (NULL == result) return NULL;
-	if (!GetFullPathNameA(path, MAX_PATH, result, NULL))
+	if (!GetFullPathNameA(path, PATH_MAX, result, NULL))
 	{
 		if (NULL == resolved_path) free(result);
 		return NULL;
