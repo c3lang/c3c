@@ -3,24 +3,21 @@
 // a copy of which can be found in the LICENSE file.
 
 #include <sys/stat.h>
+#include <limits.h>
 #include "common.h"
 #include "errors.h"
 #include "lib.h"
 
 #if PLATFORM_WINDOWS
-
 #include <windows.h>
-
 #endif
 
 #ifndef _MSC_VER
-
-#include <unistd.h>
 #include <dirent.h>
-#include <limits.h>
-
+#include <unistd.h>
 #else
-#include "utils/dirent.h"
+#include <fileapi.h>
+#include <stringapiset.h>
 
 // copied from https://github.com/kindkaktus/libconfig/commit/d6222551c5c01c326abc99627e151d549e0f0958
 #ifndef S_ISDIR
@@ -30,39 +27,74 @@
 #if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
 #define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
 #endif
-
 #endif
 
 #include <errno.h>
 #include "whereami.h"
 
-#if _MSC_VER
+#ifndef PATH_MAX
+#define PATH_MAX 1024
+#endif
 
 
-/**
- * remove C: drive prefix (C:, D:, etc.) from a path.
- * If that is an issue, I think dirent will have to be replaced or the dirent
- * port in use will have to be replaced.
- */
-const char *strip_drive_prefix(const char *path)
+uint16_t *win_utf8to16(const char *value)
 {
-	if (char_is_letter(path[0]) && path[1] == ':')
+#if (_MSC_VER)
+	size_t len = strlen(value);
+	int needed = MultiByteToWideChar(CP_UTF8, 0, value, len + 1, NULL, 0);
+	if (needed <= 0)
 	{
-		return path + 2; // remove first two characters
+		error_exit("Failed to convert name '%s'.", value);
 	}
-
-	if (path[1] == ':' && (path[2] == '/' || path[2] == '\\'))
-	{ // I don't *think* a relative path can start with '[char]:/' ? right?
-		// nothing can be done about this currently
-		error_exit("Illegal path %s - absolute path must start with /, \\, "
-				   "c:, or C: (file a github issue if this is a problem)", path);
+	uint16_t *wide = malloc(needed * sizeof(uint16_t));
+	if (MultiByteToWideChar(CP_UTF8, 0, value, len + 1, wide, needed) <= 0)
+	{
+		error_exit("Failed to convert name '%s'.", value);
 	}
-
-	// path is ok
-	return path;
+	return wide;
+#else
+	UNREACHABLE
+#endif
 }
 
+#include <wchar.h>
+char *win_utf16to8(const uint16_t *wname)
+{
+#if (_MSC_VER)
+	size_t len = wcslen(wname);
+	int needed = WideCharToMultiByte(CP_UTF8, 0, wname, len + 1, NULL, 0, NULL, NULL);
+	if (needed <= 0)
+	{
+		error_exit("Failed to convert wide name.");
+	}
+	char *chars = malloc(needed);
+	if (WideCharToMultiByte(CP_UTF8, 0, wname, len + 1, chars, needed, NULL, NULL) <= 0)
+	{
+		error_exit("Failed to convert wide name.");
+	}
+	return chars;
+#else
+	UNREACHABLE
 #endif
+}
+
+bool dir_make(const char *path)
+{
+#if (_MSC_VER)
+	return CreateDirectoryW(win_utf8to16(path), NULL);
+#else
+	return mkdir(path, 0755) == 0;
+#endif
+}
+
+bool dir_change(const char *path)
+{
+#if (_MSC_VER)
+	return SetCurrentDirectoryW(win_utf8to16(path));
+#else
+	return chdir(path) == 0;
+#endif
+}
 
 static inline bool is_path_separator(char c)
 {
@@ -133,10 +165,29 @@ const char *file_expand_path(const char *path)
 	return path;
 }
 
+FILE *file_open_read(const char *path)
+{
+#if (_MSC_VER)
+	return _wfopen(win_utf8to16(path), L"rb");
+#else
+	return fopen(path, "rb");
+#endif
+}
+
+bool file_touch(const char *path)
+{
+#if (_MSC_VER)
+	FILE *file = _wfopen(win_utf8to16(path), L"a");
+#else
+	FILE *file = fopen(path, "a");
+#endif
+	if (!file) return false;
+	return fclose(file) == 0;
+}
 
 char *file_read_all(const char *path, size_t *return_size)
 {
-	FILE *file = fopen(path, "rb");
+	FILE *file = file_open_read(path);
 
 	if (file == NULL)
 	{
@@ -236,7 +287,6 @@ void file_get_dir_and_filename_from_full(const char *full_path, char **filename,
 	}
 }
 
-
 void file_find_top_dir()
 {
 	while (1)
@@ -257,7 +307,7 @@ void file_find_top_dir()
 		// Note that symbolically linked files are ignored.
 		char start_path[PATH_MAX + 1];
 		getcwd(start_path, PATH_MAX);
-		if (chdir(".."))
+		if (!dir_change(".."))
 		{
 			error_exit("Can't change directory to search for %s: %s.", PROJECT_JSON, strerror(errno));
 		}
@@ -307,61 +357,56 @@ extern int _getdrive(void);
 extern int _chdrive(int drive);
 #endif
 
-const char *file_first(const char *path)
+bool file_delete_all_files_in_dir_with_suffix(const char *path, const char *suffix)
 {
-
-#ifdef _MSC_VER
-	int drive = _getdrive();
-	const char *no_drive_prefix = strip_drive_prefix(path);
-	if (no_drive_prefix != path)
-	{
-		_chdrive(path[0] - 'A' + 1);
-	}
-	else
-	{
-		drive = -1;
-	}
-	DIR *dir = opendir(no_drive_prefix);
+	assert(path);
+#if PLATFORM_WINDOWS
+	const char *cmd = "del /q";
 #else
-	DIR *dir = opendir(path);
+	const char *cmd = "rm -f";
 #endif
-	const char *result = NULL;
-	if (!dir) goto EXIT;
-	struct dirent *ent;
-	while ((ent = readdir(dir)))
-	{
-		size_t name_len = strlen(ent->d_name);
-		if (name_len > 2)
-		{
-			result = str_printf("%.*s", (int)name_len, ent->d_name);
-			goto EXIT;
-		}
-	}
-EXIT:
-	closedir(dir);
-#ifdef _MSC_VER
-	if (drive >= 0) _chdrive(drive);
-#endif
-	return result;
+	return execute_cmd(str_printf("%s %s/*%s", cmd, path, suffix)) == 0;
 }
+
+#if (_MSC_VER)
+
+#include <io.h>
 
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count)
 {
-#ifdef _MSC_VER
-	int drive = _getdrive();
-	const char *no_drive_prefix = strip_drive_prefix(path);
-	if (no_drive_prefix != path)
+	bool path_ends_with_slash = is_path_separator(path[strlen(path) - 1]);
+	struct _wfinddata_t file_data;
+	intptr_t file_handle;
+	const char *search = str_printf(path_ends_with_slash ? "%s*.*" : "%s/*.*", path);
+	if ((file_handle = _wfindfirst(win_utf8to16(search), &file_data)) == -1L) return;
+	do
 	{
-		_chdrive(path[0] - 'A' + 1);
-	}
-	else
-	{
-		drive = -1;
-	}
-	DIR *dir = opendir(no_drive_prefix);
+		if ((file_data.attrib & _A_SUBDIR))
+		{
+			if (recursive)
+			{
+				if (file_data.name[0] == L'.')
+				{
+					continue;
+				}
+				char *format = path_ends_with_slash ? "%s%ls" : "%s/%ls";
+				char *new_path = str_printf(format, path, file_data.name);
+				file_add_wildcard_files(files, new_path, true, suffix_list, suffix_count);
+			}
+			continue;
+		}
+		char *name = win_utf16to8(file_data.name);
+		if (!file_has_suffix_in_list(name, strlen(name), suffix_list, suffix_count)) continue;
+		char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
+		vec_add(*files, str_printf(format, path, name));
+	} while (_wfindnext(file_handle, &file_data) == 0);
+	_findclose(file_handle);
+}
 #else
+
+void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count)
+{
 	DIR *dir = opendir(path);
-#endif
 	bool path_ends_with_slash = is_path_separator(path[strlen(path) - 1]);
 	if (!dir)
 	{
@@ -395,11 +440,9 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 		vec_add(*files, str_printf(format, path, ent->d_name));
 	}
 	closedir(dir);
-#ifdef _MSC_VER
-	if (drive >= 0) _chdrive(drive);
-#endif
-
 }
+
+#endif
 
 #if PLATFORM_WINDOWS
 const char *execute_cmd(const char *cmd)
@@ -450,7 +493,7 @@ char *realpath(const char *path, char *const resolved_path)
 {
 	char *result = NULL == resolved_path ? ccalloc(PATH_MAX + 1, 1) : resolved_path;
 	if (NULL == result) return NULL;
-	if (!GetFullPathNameA(path, MAX_PATH, result, NULL))
+	if (!GetFullPathNameA(path, PATH_MAX, result, NULL))
 	{
 		if (NULL == resolved_path) free(result);
 		return NULL;

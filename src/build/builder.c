@@ -1,14 +1,8 @@
 // Copyright (c) 2019 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
-#ifndef _MSC_VER
-#include <dirent.h>
-#else
-#include "utils/dirent.h"
-#endif
 #include "build_internal.h"
 #include "build_options.h"
-
 
 void load_library_files(void) {}
 void load_files(void) {}
@@ -237,7 +231,12 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 	Project *project = project_load();
 	*target = *project_select_target(project, options->target_select);
 
+	target->build_dir = "build";
 	update_build_target_from_options(target, options);
-
+	if (target->build_dir && !file_exists(target->build_dir))
+	{
+		if (!dir_make(target->build_dir)) error_exit("Failed to create build directory '%s'.", target->build_dir);
+		if (!file_is_dir(target->build_dir)) error_exit("Expected '%s' to be a directory.", target->build_dir);
+	}
 	load_library_files();
 }

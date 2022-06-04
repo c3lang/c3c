@@ -61,10 +61,12 @@ int main_real(int argc, const char *argv[])
 		case COMMAND_COMPILE_RUN:
 			compile_target(&build_options);
 			break;
+		case COMMAND_CLEAN:
+			compile_clean(&build_options);
+			break;
+		case COMMAND_CLEAN_RUN:
 		case COMMAND_BUILD:
 		case COMMAND_RUN:
-		case COMMAND_CLEAN_RUN:
-		case COMMAND_CLEAN:
 		case COMMAND_DIST:
 		case COMMAND_DOCS:
 		case COMMAND_BENCH:
@@ -79,7 +81,23 @@ int main_real(int argc, const char *argv[])
 	return 0;
 }
 
+#if (_MSC_VER)
+
+int wmain(int argc, const uint16_t *argv[])
+{
+	char** args = malloc(sizeof(void*) * (unsigned)argc);
+	for (unsigned i = 0; i < (unsigned)argc; i++)
+	{
+		args[i] = win_utf16to8(argv[i]);
+	}
+	main_real(argc, (const char **)args);
+}
+
+#else
+
 int main(int argc, const char *argv[])
 {
 	return main_real(argc, argv);
 }
+
+#endif

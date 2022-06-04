@@ -382,9 +382,18 @@ void compile_target(BuildOptions *options)
 	compile();
 }
 
+void compile_clean(BuildOptions *options)
+{
+	init_build_target(&active_target, options);
+	file_delete_all_files_in_dir_with_suffix(active_target.build_dir, get_object_extension());
+}
 void compile_file_list(BuildOptions *options)
 {
 	init_build_target(&active_target, options);
+	if (options->command == COMMAND_CLEAN_RUN)
+	{
+		file_delete_all_files_in_dir_with_suffix(active_target.build_dir, get_object_extension());
+	}
 	compile();
 }
 
