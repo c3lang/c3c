@@ -1466,14 +1466,11 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 
 	LLVMTypeRef expected_type = llvm_get_type(c, canonical);
 	// Create a global const.
+	AlignSize alignment = type_alloca_alignment(expr->type);
 	LLVMTypeRef type = LLVMTypeOf(value);
-	LLVMValueRef global_copy = LLVMAddGlobal(c->module, type, ".__const");
+	LLVMValueRef global_copy = llvm_add_global_type(c, ".__const", type, alignment);
 	llvm_set_private_linkage(global_copy);
 	LLVMSetUnnamedAddress(global_copy, LLVMGlobalUnnamedAddr);
-
-	// Set a nice alignment
-	AlignSize alignment = type_alloca_alignment(expr->type);
-	llvm_set_alignment(global_copy, alignment);
 
 	// Set the value and make it constant
 	LLVMSetInitializer(global_copy, value);
@@ -3305,7 +3302,7 @@ static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Ex
 void llvm_emit_derived_backend_type(GenContext *c, Type *type)
 {
 	llvm_get_type(c, type);
-	LLVMValueRef global_name = LLVMAddGlobal(c->module, llvm_get_type(c, type_char), type->name);
+	LLVMValueRef global_name = llvm_add_global_type(c, type->name, llvm_get_type(c, type_char), 0);
 	LLVMSetGlobalConstant(global_name, 1);
 	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
 	type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
@@ -3891,7 +3888,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_BYTES:
 			assert(type->array.base == type_char);
 			{
-				LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.bytes.len), ".bytes");
+				LLVMValueRef global_name = llvm_add_global_type(c, ".bytes", LLVMArrayType(llvm_get_type(c, type_char), expr->const_expr.bytes.len), 1);
 				llvm_set_private_linkage(global_name);
 				LLVMSetGlobalConstant(global_name, 1);
 
@@ -3899,7 +3896,6 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 																		 expr->const_expr.bytes.ptr,
 																		 expr->const_expr.bytes.len,
 																		 1));
-				llvm_set_alignment(global_name, 1);
 				global_name = LLVMConstBitCast(global_name, LLVMPointerType(llvm_get_type(c, type_char), 0));
 				llvm_value_set_address_abi_aligned(be_value, global_name, type);
 				return;
@@ -3945,7 +3941,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				ArraySize strlen = expr->const_expr.string.len;
 				ArraySize size = expr->const_expr.string.len + 1;
 				if (type_is_char_array(expr->type) && type->array.len > size) size = type->array.len;
-				LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMArrayType(llvm_get_type(c, type_char), size), ".str");
+				LLVMValueRef global_name = llvm_add_global_type(c, ".str", LLVMArrayType(llvm_get_type(c, type_char), size), 1);
 				llvm_set_private_linkage(global_name);
 				LLVMSetUnnamedAddress(global_name, LLVMGlobalUnnamedAddr);
 				LLVMSetGlobalConstant(global_name, 1);
@@ -3960,7 +3956,6 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 					string = LLVMConstStructInContext(c->context, values, 2, true);
 				}
 				LLVMSetInitializer(global_name, string);
-				llvm_set_alignment(global_name, 1);
 				if (is_array)
 				{
 					global_name = LLVMConstBitCast(global_name, llvm_get_ptr_type(c, type));

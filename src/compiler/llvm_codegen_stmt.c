@@ -38,13 +38,13 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		if (decl->backend_ref) return decl->backend_ref;
 		void *builder = c->builder;
 		c->builder = NULL;
-		decl->backend_ref = LLVMAddGlobal(c->module, alloc_type, "tempglobal");
+		decl->backend_ref = llvm_add_global_var(c, "tempglobal", var_type, decl->alignment);
 		if (IS_FAILABLE(decl))
 		{
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->extname);
 			scratch_buffer_append(".f");
-			decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_anyerr), scratch_buffer_to_string());
+			decl->var.failable_ref = llvm_add_global_var(c, scratch_buffer_to_string(), type_anyerr, 0);
 		}
 		llvm_emit_global_variable_init(c, decl);
 		c->builder = builder;
@@ -1055,7 +1055,7 @@ LLVMValueRef llvm_emit_zstring(GenContext *c, const char *str)
 	LLVMTypeRef char_type = llvm_get_type(c, type_char);
 	unsigned len = (unsigned)strlen(str);
 	LLVMTypeRef char_array_type = LLVMArrayType(char_type, len + 1);
-	LLVMValueRef global_string = LLVMAddGlobal(c->module, char_array_type, "");
+	LLVMValueRef global_string = llvm_add_global_type(c, ".zstr", char_array_type, 0);
 	llvm_set_internal_linkage(global_string);
 	LLVMSetGlobalConstant(global_string, 1);
 	LLVMSetInitializer(global_string, LLVMConstStringInContext(c->context, str, len, 0));

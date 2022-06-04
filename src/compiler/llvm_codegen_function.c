@@ -458,7 +458,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 			if (!c->debug.last_ptr)
 			{
 				const char *name = ".$last_stack";
-				LLVMValueRef last_stack = c->debug.last_ptr = LLVMAddGlobal(c->module, ptr_to_slot_type, name);
+				LLVMValueRef last_stack = c->debug.last_ptr = llvm_add_global_type(c, name, ptr_to_slot_type, 0);
 				LLVMSetThreadLocal(last_stack, true);
 				LLVMSetInitializer(last_stack, LLVMConstNull(ptr_to_slot_type));
 				llvm_set_weak(c, last_stack);
