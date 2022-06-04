@@ -447,6 +447,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 	struct _wfinddata_t file_data;
 	intptr_t file_handle;
 	const char *search = str_printf(path_ends_with_slash ? "%s*.*" : "%s\\*.*", path);
+	printf("Start searching %ls\n", search);
 	if ((file_handle = _wfindfirst(win_utf8to16(search), &file_data)) == -1L) return;
 	do
 	{
