@@ -31,8 +31,7 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 	if (!c->builder)
 	{
 		LLVMValueRef val = llvm_load_value_store(c, value);
-		LLVMValueRef ref = LLVMAddGlobal(c->module, LLVMTypeOf(val), ".taddr");
-		llvm_set_alignment(ref, llvm_abi_alignment(c, LLVMTypeOf(val)));
+		LLVMValueRef ref = llvm_add_global_type(c, ".taddr", LLVMTypeOf(val), 0);
 		llvm_set_private_linkage(ref);
 		LLVMSetInitializer(ref, val);
 		llvm_emit_bitcast(c, ref, type_get_ptr(value->type));

@@ -149,7 +149,7 @@ entry:
   br i1 %zero, label %panic, label %checkok
 
 panic:                                            ; preds = %entry
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @0, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @1, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @2, i64 0, i64 0), i32 12)
+  call void @"std::builtin.panic"(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.2, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.3, i64 0, i64 0), i32 12)
   br label %checkok
 
 checkok:                                          ; preds = %panic, %entry
@@ -167,7 +167,7 @@ checkok:                                          ; preds = %panic, %entry
   %32 = load <4 x float>, <4 x float>* %w, align 16
   %33 = extractelement <4 x float> %32, i64 3
   %fpfpext11 = fpext float %33 to double
-  %34 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.2, i32 0, i32 0), double %fpfpext8, double %fpfpext9, double %fpfpext10, double %fpfpext11)
+  %34 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.4, i32 0, i32 0), double %fpfpext8, double %fpfpext9, double %fpfpext10, double %fpfpext11)
   %35 = load <4 x float>, <4 x float>* %y, align 16
   %36 = load <4 x float>, <4 x float>* %z, align 16
   %fsub = fsub <4 x float> %35, %36
@@ -184,7 +184,7 @@ checkok:                                          ; preds = %panic, %entry
   %43 = load <4 x float>, <4 x float>* %w, align 16
   %44 = extractelement <4 x float> %43, i64 3
   %fpfpext15 = fpext float %44 to double
-  %45 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.3, i32 0, i32 0), double %fpfpext12, double %fpfpext13, double %fpfpext14, double %fpfpext15)
+  %45 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.5, i32 0, i32 0), double %fpfpext12, double %fpfpext13, double %fpfpext14, double %fpfpext15)
   %46 = load <4 x float>, <4 x float>* %y, align 16
   %47 = load <4 x float>, <4 x float>* %z, align 16
   %lt = fcmp olt <4 x float> %46, %47
@@ -198,7 +198,7 @@ checkok:                                          ; preds = %panic, %entry
   %54 = extractelement <4 x i32> %53, i64 2
   %55 = load <4 x i32>, <4 x i32>* %ww, align 16
   %56 = extractelement <4 x i32> %55, i64 3
-  %57 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.4, i32 0, i32 0), i32 %50, i32 %52, i32 %54, i32 %56)
+  %57 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.6, i32 0, i32 0), i32 %50, i32 %52, i32 %54, i32 %56)
   %58 = load <4 x float>, <4 x float>* %y, align 16
   %59 = load <4 x float>, <4 x float>* %z, align 16
   %le = fcmp ole <4 x float> %58, %59
@@ -212,7 +212,7 @@ checkok:                                          ; preds = %panic, %entry
   %66 = extractelement <4 x i32> %65, i64 2
   %67 = load <4 x i32>, <4 x i32>* %ww, align 16
   %68 = extractelement <4 x i32> %67, i64 3
-  %69 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.5, i32 0, i32 0), i32 %62, i32 %64, i32 %66, i32 %68)
+  %69 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.7, i32 0, i32 0), i32 %62, i32 %64, i32 %66, i32 %68)
   %70 = load <4 x float>, <4 x float>* %y, align 16
   %71 = load <4 x float>, <4 x float>* %z, align 16
   %gt = fcmp ogt <4 x float> %70, %71
@@ -226,7 +226,7 @@ checkok:                                          ; preds = %panic, %entry
   %78 = extractelement <4 x i32> %77, i64 2
   %79 = load <4 x i32>, <4 x i32>* %ww, align 16
   %80 = extractelement <4 x i32> %79, i64 3
-  %81 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.6, i32 0, i32 0), i32 %74, i32 %76, i32 %78, i32 %80)
+  %81 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.8, i32 0, i32 0), i32 %74, i32 %76, i32 %78, i32 %80)
   %82 = load <4 x float>, <4 x float>* %y, align 16
   %83 = load <4 x float>, <4 x float>* %z, align 16
   %ge = fcmp oge <4 x float> %82, %83
@@ -240,7 +240,7 @@ checkok:                                          ; preds = %panic, %entry
   %90 = extractelement <4 x i32> %89, i64 2
   %91 = load <4 x i32>, <4 x i32>* %ww, align 16
   %92 = extractelement <4 x i32> %91, i64 3
-  %93 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.7, i32 0, i32 0), i32 %86, i32 %88, i32 %90, i32 %92)
+  %93 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.9, i32 0, i32 0), i32 %86, i32 %88, i32 %90, i32 %92)
   %94 = load <4 x float>, <4 x float>* %y, align 16
   %95 = load <4 x float>, <4 x float>* %z, align 16
   %eq = fcmp oeq <4 x float> %94, %95
@@ -254,7 +254,7 @@ checkok:                                          ; preds = %panic, %entry
   %102 = extractelement <4 x i32> %101, i64 2
   %103 = load <4 x i32>, <4 x i32>* %ww, align 16
   %104 = extractelement <4 x i32> %103, i64 3
-  %105 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.8, i32 0, i32 0), i32 %98, i32 %100, i32 %102, i32 %104)
+  %105 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.10, i32 0, i32 0), i32 %98, i32 %100, i32 %102, i32 %104)
   %106 = load <4 x float>, <4 x float>* %y, align 16
   %107 = load <4 x float>, <4 x float>* %z, align 16
   %neq = fcmp one <4 x float> %106, %107
@@ -268,7 +268,7 @@ checkok:                                          ; preds = %panic, %entry
   %114 = extractelement <4 x i32> %113, i64 2
   %115 = load <4 x i32>, <4 x i32>* %ww, align 16
   %116 = extractelement <4 x i32> %115, i64 3
-  %117 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.9, i32 0, i32 0), i32 %110, i32 %112, i32 %114, i32 %116)
+  %117 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.11, i32 0, i32 0), i32 %110, i32 %112, i32 %114, i32 %116)
   ret void
 }
 
@@ -297,7 +297,7 @@ entry:
   %9 = load <4 x i8>, <4 x i8>* %ww, align 4
   %10 = extractelement <4 x i8> %9, i64 3
   %sisiext3 = sext i8 %10 to i32
-  %11 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.10, i32 0, i32 0), i32 %sisiext, i32 %sisiext1, i32 %sisiext2, i32 %sisiext3)
+  %11 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.12, i32 0, i32 0), i32 %sisiext, i32 %sisiext1, i32 %sisiext2, i32 %sisiext3)
   %12 = load <4 x i8>, <4 x i8>* %y, align 4
   %13 = load <4 x i8>, <4 x i8>* %z, align 4
   %le = icmp ule <4 x i8> %12, %13
@@ -315,7 +315,7 @@ entry:
   %21 = load <4 x i8>, <4 x i8>* %ww, align 4
   %22 = extractelement <4 x i8> %21, i64 3
   %sisiext7 = sext i8 %22 to i32
-  %23 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.11, i32 0, i32 0), i32 %sisiext4, i32 %sisiext5, i32 %sisiext6, i32 %sisiext7)
+  %23 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.13, i32 0, i32 0), i32 %sisiext4, i32 %sisiext5, i32 %sisiext6, i32 %sisiext7)
   %24 = load <4 x i8>, <4 x i8>* %y, align 4
   %25 = load <4 x i8>, <4 x i8>* %z, align 4
   %gt = icmp ugt <4 x i8> %24, %25
@@ -333,7 +333,7 @@ entry:
   %33 = load <4 x i8>, <4 x i8>* %ww, align 4
   %34 = extractelement <4 x i8> %33, i64 3
   %sisiext11 = sext i8 %34 to i32
-  %35 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.12, i32 0, i32 0), i32 %sisiext8, i32 %sisiext9, i32 %sisiext10, i32 %sisiext11)
+  %35 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.14, i32 0, i32 0), i32 %sisiext8, i32 %sisiext9, i32 %sisiext10, i32 %sisiext11)
   %36 = load <4 x i8>, <4 x i8>* %y, align 4
   %37 = load <4 x i8>, <4 x i8>* %z, align 4
   %ge = icmp uge <4 x i8> %36, %37
@@ -351,7 +351,7 @@ entry:
   %45 = load <4 x i8>, <4 x i8>* %ww, align 4
   %46 = extractelement <4 x i8> %45, i64 3
   %sisiext15 = sext i8 %46 to i32
-  %47 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.13, i32 0, i32 0), i32 %sisiext12, i32 %sisiext13, i32 %sisiext14, i32 %sisiext15)
+  %47 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.15, i32 0, i32 0), i32 %sisiext12, i32 %sisiext13, i32 %sisiext14, i32 %sisiext15)
   %48 = load <4 x i8>, <4 x i8>* %y, align 4
   %49 = load <4 x i8>, <4 x i8>* %z, align 4
   %eq = icmp eq <4 x i8> %48, %49
@@ -369,7 +369,7 @@ entry:
   %57 = load <4 x i8>, <4 x i8>* %ww, align 4
   %58 = extractelement <4 x i8> %57, i64 3
   %sisiext19 = sext i8 %58 to i32
-  %59 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.14, i32 0, i32 0), i32 %sisiext16, i32 %sisiext17, i32 %sisiext18, i32 %sisiext19)
+  %59 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.16, i32 0, i32 0), i32 %sisiext16, i32 %sisiext17, i32 %sisiext18, i32 %sisiext19)
   %60 = load <4 x i8>, <4 x i8>* %y, align 4
   %61 = load <4 x i8>, <4 x i8>* %z, align 4
   %neq = icmp ne <4 x i8> %60, %61
@@ -387,7 +387,7 @@ entry:
   %69 = load <4 x i8>, <4 x i8>* %ww, align 4
   %70 = extractelement <4 x i8> %69, i64 3
   %sisiext23 = sext i8 %70 to i32
-  %71 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.15, i32 0, i32 0), i32 %sisiext20, i32 %sisiext21, i32 %sisiext22, i32 %sisiext23)
+  %71 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.17, i32 0, i32 0), i32 %sisiext20, i32 %sisiext21, i32 %sisiext22, i32 %sisiext23)
   ret void
 }
 
@@ -412,7 +412,7 @@ entry:
   %7 = extractelement <4 x i32> %6, i64 2
   %8 = load <4 x i32>, <4 x i32>* %w, align 16
   %9 = extractelement <4 x i32> %8, i64 3
-  %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.16, i32 0, i32 0), i32 %3, i32 %5, i32 %7, i32 %9)
+  %10 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.18, i32 0, i32 0), i32 %3, i32 %5, i32 %7, i32 %9)
   %11 = load <4 x i32>, <4 x i32>* %y, align 16
   %12 = load <4 x i32>, <4 x i32>* %z, align 16
   %mul = mul <4 x i32> %11, %12
@@ -425,7 +425,7 @@ entry:
   %18 = extractelement <4 x i32> %17, i64 2
   %19 = load <4 x i32>, <4 x i32>* %w, align 16
   %20 = extractelement <4 x i32> %19, i64 3
-  %21 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.17, i32 0, i32 0), i32 %14, i32 %16, i32 %18, i32 %20)
+  %21 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.19, i32 0, i32 0), i32 %14, i32 %16, i32 %18, i32 %20)
   %22 = load <4 x i32>, <4 x i32>* %y, align 16
   %23 = load <4 x i32>, <4 x i32>* %z, align 16
   %24 = call i32 @llvm.vector.reduce.umin.v4i32(<4 x i32> %23)
@@ -433,7 +433,7 @@ entry:
   br i1 %zero, label %panic, label %checkok
 
 panic:                                            ; preds = %entry
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @3, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @4, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @5, i64 0, i64 0), i32 56)
+  call void @"std::builtin.panic"(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.zstr.20, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.21, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.22, i64 0, i64 0), i32 56)
   br label %checkok
 
 checkok:                                          ; preds = %panic, %entry
@@ -447,7 +447,7 @@ checkok:                                          ; preds = %panic, %entry
   %30 = extractelement <4 x i32> %29, i64 2
   %31 = load <4 x i32>, <4 x i32>* %w, align 16
   %32 = extractelement <4 x i32> %31, i64 3
-  %33 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.18, i32 0, i32 0), i32 %26, i32 %28, i32 %30, i32 %32)
+  %33 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.23, i32 0, i32 0), i32 %26, i32 %28, i32 %30, i32 %32)
   %34 = load <4 x i32>, <4 x i32>* %y, align 16
   %35 = load <4 x i32>, <4 x i32>* %z, align 16
   %sub = sub <4 x i32> %34, %35
@@ -460,7 +460,7 @@ checkok:                                          ; preds = %panic, %entry
   %41 = extractelement <4 x i32> %40, i64 2
   %42 = load <4 x i32>, <4 x i32>* %w, align 16
   %43 = extractelement <4 x i32> %42, i64 3
-  %44 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.19, i32 0, i32 0), i32 %37, i32 %39, i32 %41, i32 %43)
+  %44 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.24, i32 0, i32 0), i32 %37, i32 %39, i32 %41, i32 %43)
   %45 = load <4 x i32>, <4 x i32>* %z, align 16
   %46 = load <4 x i32>, <4 x i32>* %y, align 16
   %47 = call i32 @llvm.vector.reduce.smin.v4i32(<4 x i32> %46)
@@ -468,7 +468,7 @@ checkok:                                          ; preds = %panic, %entry
   br i1 %shift_underflow, label %panic1, label %checkok2
 
 panic1:                                           ; preds = %checkok
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @6, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @7, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @8, i64 0, i64 0), i32 60)
+  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.25, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.26, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.27, i64 0, i64 0), i32 60)
   br label %checkok2
 
 checkok2:                                         ; preds = %panic1, %checkok
@@ -477,7 +477,7 @@ checkok2:                                         ; preds = %panic1, %checkok
   br i1 %shift_exceeds, label %panic3, label %checkok4
 
 panic3:                                           ; preds = %checkok2
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @9, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @10, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @11, i64 0, i64 0), i32 60)
+  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.28, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.29, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.30, i64 0, i64 0), i32 60)
   br label %checkok4
 
 checkok4:                                         ; preds = %panic3, %checkok2
@@ -492,7 +492,7 @@ checkok4:                                         ; preds = %panic3, %checkok2
   %55 = extractelement <4 x i32> %54, i64 2
   %56 = load <4 x i32>, <4 x i32>* %w, align 16
   %57 = extractelement <4 x i32> %56, i64 3
-  %58 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.20, i32 0, i32 0), i32 %51, i32 %53, i32 %55, i32 %57)
+  %58 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.31, i32 0, i32 0), i32 %51, i32 %53, i32 %55, i32 %57)
   %59 = load <4 x i32>, <4 x i32>* %z, align 16
   %60 = load <4 x i32>, <4 x i32>* %y, align 16
   %61 = call i32 @llvm.vector.reduce.smin.v4i32(<4 x i32> %60)
@@ -500,7 +500,7 @@ checkok4:                                         ; preds = %panic3, %checkok2
   br i1 %shift_underflow5, label %panic6, label %checkok7
 
 panic6:                                           ; preds = %checkok4
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @12, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @13, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @14, i64 0, i64 0), i32 62)
+  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.32, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.33, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.34, i64 0, i64 0), i32 62)
   br label %checkok7
 
 checkok7:                                         ; preds = %panic6, %checkok4
@@ -509,7 +509,7 @@ checkok7:                                         ; preds = %panic6, %checkok4
   br i1 %shift_exceeds8, label %panic9, label %checkok10
 
 panic9:                                           ; preds = %checkok7
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @15, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @16, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @17, i64 0, i64 0), i32 62)
+  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.35, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.36, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.37, i64 0, i64 0), i32 62)
   br label %checkok10
 
 checkok10:                                        ; preds = %panic9, %checkok7
@@ -524,7 +524,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %69 = extractelement <4 x i32> %68, i64 2
   %70 = load <4 x i32>, <4 x i32>* %w, align 16
   %71 = extractelement <4 x i32> %70, i64 3
-  %72 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.21, i32 0, i32 0), i32 %65, i32 %67, i32 %69, i32 %71)
+  %72 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.38, i32 0, i32 0), i32 %65, i32 %67, i32 %69, i32 %71)
   %73 = load <4 x i32>, <4 x i32>* %z, align 16
   %74 = load <4 x i32>, <4 x i32>* %y, align 16
   %gt = icmp sgt <4 x i32> %73, %74
@@ -538,7 +538,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %81 = extractelement <4 x i32> %80, i64 2
   %82 = load <4 x i32>, <4 x i32>* %w, align 16
   %83 = extractelement <4 x i32> %82, i64 3
-  %84 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.22, i32 0, i32 0), i32 %77, i32 %79, i32 %81, i32 %83)
+  %84 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.39, i32 0, i32 0), i32 %77, i32 %79, i32 %81, i32 %83)
   %85 = load <4 x i32>, <4 x i32>* %z, align 16
   %86 = load <4 x i32>, <4 x i32>* %y, align 16
   %ge = icmp sge <4 x i32> %85, %86
@@ -552,7 +552,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %93 = extractelement <4 x i32> %92, i64 2
   %94 = load <4 x i32>, <4 x i32>* %w, align 16
   %95 = extractelement <4 x i32> %94, i64 3
-  %96 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.23, i32 0, i32 0), i32 %89, i32 %91, i32 %93, i32 %95)
+  %96 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.40, i32 0, i32 0), i32 %89, i32 %91, i32 %93, i32 %95)
   %97 = load <4 x i32>, <4 x i32>* %z, align 16
   %98 = load <4 x i32>, <4 x i32>* %y, align 16
   %lt = icmp slt <4 x i32> %97, %98
@@ -566,7 +566,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %105 = extractelement <4 x i32> %104, i64 2
   %106 = load <4 x i32>, <4 x i32>* %w, align 16
   %107 = extractelement <4 x i32> %106, i64 3
-  %108 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.24, i32 0, i32 0), i32 %101, i32 %103, i32 %105, i32 %107)
+  %108 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.41, i32 0, i32 0), i32 %101, i32 %103, i32 %105, i32 %107)
   %109 = load <4 x i32>, <4 x i32>* %z, align 16
   %110 = load <4 x i32>, <4 x i32>* %y, align 16
   %le = icmp sle <4 x i32> %109, %110
@@ -580,7 +580,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %117 = extractelement <4 x i32> %116, i64 2
   %118 = load <4 x i32>, <4 x i32>* %w, align 16
   %119 = extractelement <4 x i32> %118, i64 3
-  %120 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.25, i32 0, i32 0), i32 %113, i32 %115, i32 %117, i32 %119)
+  %120 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.42, i32 0, i32 0), i32 %113, i32 %115, i32 %117, i32 %119)
   %121 = load <4 x i32>, <4 x i32>* %z, align 16
   %122 = load <4 x i32>, <4 x i32>* %y, align 16
   %eq = icmp eq <4 x i32> %121, %122
@@ -594,7 +594,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %129 = extractelement <4 x i32> %128, i64 2
   %130 = load <4 x i32>, <4 x i32>* %w, align 16
   %131 = extractelement <4 x i32> %130, i64 3
-  %132 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.26, i32 0, i32 0), i32 %125, i32 %127, i32 %129, i32 %131)
+  %132 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.43, i32 0, i32 0), i32 %125, i32 %127, i32 %129, i32 %131)
   %133 = load <4 x i32>, <4 x i32>* %z, align 16
   %134 = load <4 x i32>, <4 x i32>* %y, align 16
   %neq = icmp ne <4 x i32> %133, %134
@@ -608,7 +608,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %141 = extractelement <4 x i32> %140, i64 2
   %142 = load <4 x i32>, <4 x i32>* %w, align 16
   %143 = extractelement <4 x i32> %142, i64 3
-  %144 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.27, i32 0, i32 0), i32 %137, i32 %139, i32 %141, i32 %143)
+  %144 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.44, i32 0, i32 0), i32 %137, i32 %139, i32 %141, i32 %143)
   store <4 x i32> <i32 2, i32 6, i32 2, i32 1>, <4 x i32>* %uz, align 16
   %145 = load <4 x i32>, <4 x i32>* %uz, align 16
   %146 = load <4 x i32>, <4 x i32>* %y, align 16
@@ -625,7 +625,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %153 = extractelement <4 x i32> %152, i64 2
   %154 = load <4 x i32>, <4 x i32>* %w, align 16
   %155 = extractelement <4 x i32> %154, i64 3
-  %156 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.28, i32 0, i32 0), i32 %149, i32 %151, i32 %153, i32 %155)
+  %156 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.45, i32 0, i32 0), i32 %149, i32 %151, i32 %153, i32 %155)
   %157 = load <4 x i32>, <4 x i32>* %uz, align 16
   %158 = load <4 x i32>, <4 x i32>* %y, align 16
   %le12 = icmp sle <4 x i32> %158, %157
@@ -641,7 +641,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %165 = extractelement <4 x i32> %164, i64 2
   %166 = load <4 x i32>, <4 x i32>* %w, align 16
   %167 = extractelement <4 x i32> %166, i64 3
-  %168 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.29, i32 0, i32 0), i32 %161, i32 %163, i32 %165, i32 %167)
+  %168 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.46, i32 0, i32 0), i32 %161, i32 %163, i32 %165, i32 %167)
   %169 = load <4 x i32>, <4 x i32>* %uz, align 16
   %170 = load <4 x i32>, <4 x i32>* %y, align 16
   %gt14 = icmp sgt <4 x i32> %170, %169
@@ -657,7 +657,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %177 = extractelement <4 x i32> %176, i64 2
   %178 = load <4 x i32>, <4 x i32>* %w, align 16
   %179 = extractelement <4 x i32> %178, i64 3
-  %180 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.30, i32 0, i32 0), i32 %173, i32 %175, i32 %177, i32 %179)
+  %180 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.47, i32 0, i32 0), i32 %173, i32 %175, i32 %177, i32 %179)
   %181 = load <4 x i32>, <4 x i32>* %uz, align 16
   %182 = load <4 x i32>, <4 x i32>* %y, align 16
   %ge16 = icmp sge <4 x i32> %182, %181
@@ -673,7 +673,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %189 = extractelement <4 x i32> %188, i64 2
   %190 = load <4 x i32>, <4 x i32>* %w, align 16
   %191 = extractelement <4 x i32> %190, i64 3
-  %192 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.31, i32 0, i32 0), i32 %185, i32 %187, i32 %189, i32 %191)
+  %192 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.48, i32 0, i32 0), i32 %185, i32 %187, i32 %189, i32 %191)
   %193 = load <4 x i32>, <4 x i32>* %uz, align 16
   %194 = load <4 x i32>, <4 x i32>* %y, align 16
   %eq18 = icmp eq <4 x i32> %194, %193
@@ -689,7 +689,7 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %201 = extractelement <4 x i32> %200, i64 2
   %202 = load <4 x i32>, <4 x i32>* %w, align 16
   %203 = extractelement <4 x i32> %202, i64 3
-  %204 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.32, i32 0, i32 0), i32 %197, i32 %199, i32 %201, i32 %203)
+  %204 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.49, i32 0, i32 0), i32 %197, i32 %199, i32 %201, i32 %203)
   %205 = load <4 x i32>, <4 x i32>* %uz, align 16
   %206 = load <4 x i32>, <4 x i32>* %y, align 16
   %neq20 = icmp ne <4 x i32> %206, %205
@@ -705,6 +705,6 @@ checkok10:                                        ; preds = %panic9, %checkok7
   %213 = extractelement <4 x i32> %212, i64 2
   %214 = load <4 x i32>, <4 x i32>* %w, align 16
   %215 = extractelement <4 x i32> %214, i64 3
-  %216 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.33, i32 0, i32 0), i32 %209, i32 %211, i32 %213, i32 %215)
+  %216 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str.50, i32 0, i32 0), i32 %209, i32 %211, i32 %213, i32 %215)
   ret void
 }

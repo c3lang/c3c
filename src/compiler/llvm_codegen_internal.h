@@ -492,6 +492,23 @@ static inline LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t va
 	return LLVMConstInt(llvm_get_type(c, type), val, type_is_integer_signed(type));
 }
 
+static inline LLVMValueRef llvm_add_global_var(GenContext *c, const char *name, Type *type, AlignSize alignment)
+{
+	printf("Adding %s with %d\n", name, (int)alignment);
+	type = type_lowering(type_no_fail(type));
+	LLVMValueRef ref = LLVMAddGlobal(c->module, llvm_get_type(c, type), name);
+	LLVMSetAlignment(ref, (unsigned)alignment ? alignment : type_alloca_alignment(type));
+	return ref;
+}
+
+static inline LLVMValueRef llvm_add_global_type(GenContext *c, const char *name, LLVMTypeRef type, AlignSize alignment)
+{
+	printf("Adding %s with %d\n", name, (int)alignment);
+	LLVMValueRef ref = LLVMAddGlobal(c->module, type, name);
+	LLVMSetAlignment(ref, (unsigned)alignment ? alignment : LLVMPreferredAlignmentOfGlobal(c->target_data, ref));
+	return ref;
+}
+
 static inline void llvm_set_alignment(LLVMValueRef alloca, AlignSize alignment)
 {
 	assert(alignment > 0);

@@ -264,14 +264,14 @@ void llvm_emit_local_global_variable_definition(GenContext *c, Decl *decl)
 
 	if (decl->type != type_void)
 	{
-		decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, decl->type), "tempglobal");
+		decl->backend_ref = llvm_add_global_var(c, "tempglobal", decl->type, decl->alignment);
 	}
 	if (IS_FAILABLE(decl))
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->extname);
 		scratch_buffer_append(".f");
-		decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_anyerr), scratch_buffer_to_string());
+		decl->var.failable_ref = llvm_add_global_var(c, scratch_buffer_to_string(), type_anyerr, 0);
 		LLVMSetUnnamedAddress(decl->var.failable_ref, LLVMGlobalUnnamedAddr);
 	}
 }
@@ -383,7 +383,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	// TODO fix name
 	LLVMValueRef old = decl->backend_ref;
-	LLVMValueRef global_ref = decl->backend_ref = LLVMAddGlobal(c->module, LLVMTypeOf(init_value), decl->extname);
+	LLVMValueRef global_ref = decl->backend_ref = llvm_add_global_type(c, decl->extname, LLVMTypeOf(init_value), decl->alignment);
 	if (decl->var.is_addr)
 	{
 		LLVMSetUnnamedAddress(global_ref, LLVMNoUnnamedAddr);
@@ -399,7 +399,6 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		LLVMSetSection(global_ref, decl->section);
 	}
 	llvm_set_global_tls(decl);
-	llvm_set_alignment(global_ref, alignment);
 
 	LLVMValueRef failable_ref = decl->var.failable_ref;
 	if (failable_ref)
@@ -737,7 +736,7 @@ void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl)
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->extname);
 		scratch_buffer_append("$elements");
-		LLVMValueRef enum_elements = LLVMAddGlobal(c->module, elements_type, scratch_buffer_to_string());
+		LLVMValueRef enum_elements = llvm_add_global_type(c, scratch_buffer_to_string(), elements_type, 0);
 		LLVMSetGlobalConstant(enum_elements, 1);
 		llvm_set_linkage(c, decl, enum_elements);
 		LLVMSetInitializer(enum_elements, LLVMConstNull(elements_type));
@@ -778,7 +777,7 @@ void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl)
 				scratch_buffer_append(decl->extname);
 				scratch_buffer_append("$$");
 				scratch_buffer_append(associated_value->name);
-				LLVMValueRef global_ref = LLVMAddGlobal(c->module, LLVMTypeOf(associated_value_arr), scratch_buffer_to_string());
+				LLVMValueRef global_ref = llvm_add_global_type(c, scratch_buffer_to_string(), LLVMTypeOf(associated_value_arr), 0);
 				LLVMSetInitializer(global_ref, associated_value_arr);
 				LLVMSetGlobalConstant(global_ref, true);
 				if (mixed)
@@ -797,7 +796,7 @@ void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl)
 	scratch_buffer_clear();
 	scratch_buffer_append("introspect.");
 	scratch_buffer_append(decl->name ? decl->name : "anon");
-	LLVMValueRef global_name = LLVMAddGlobal(c->module, llvm_get_type(c, type_char), scratch_buffer_to_string());
+	LLVMValueRef global_name = llvm_add_global_var(c, scratch_buffer_to_string(), type_char, 0);
 	LLVMSetGlobalConstant(global_name, 1);
 	LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
 	decl->type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
@@ -951,13 +950,15 @@ void llvm_add_global(GenContext *c, Decl *decl)
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
 	const char *name = decl->module == c->code_module ? "tempglobal" : decl_get_extname(decl);
-	decl->backend_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_lowering(type_no_fail(decl->type))), name);
+	decl->backend_ref = llvm_add_global_var(c, name, decl->type, decl->alignment);
+	llvm_set_alignment(decl->backend_ref, decl->alignment);
+
 	if (IS_FAILABLE(decl))
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(decl_get_extname(decl));
 		scratch_buffer_append(".f");
-		decl->var.failable_ref = LLVMAddGlobal(c->module, llvm_get_type(c, type_anyerr), scratch_buffer_to_string());
+		decl->var.failable_ref = llvm_add_global_var(c, scratch_buffer_to_string(), type_anyerr, 0);
 	}
 	llvm_set_global_tls(decl);
 }
