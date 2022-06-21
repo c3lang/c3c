@@ -1,0 +1,900 @@
+// #target: macos-x64
+module test;
+import std;
+import libc;
+
+struct Doc { Head *head; }
+struct Head { char[]* title; }
+
+struct Summary
+{
+	char[]* title;
+	bool ok;
+}
+
+fn void Summary.print(Summary *s, CFile out)
+{
+	// We don't have a native printf in C3 yet, so use libc,
+	// which is not all that nice for the strings but...
+	char[] title = s.title ? *s.title : "missing";
+	libc::fprintf(out, "Summary({ .title = %.*s, .ok = %s})", (int)title.len, title.ptr, s.ok ? "true" : "false");
+}
+
+fn bool contains(char[] haystack, char[] needle)
+{
+	usize len = haystack.len;
+	usize needle_len = needle.len;
+	if (len < needle_len) return false;
+	if (!needle_len) return true;
+	len -= needle_len - 1;
+	for (usize i = 0; i < len; i++)
+	{
+		if (libc::memcmp(&haystack[i], needle.ptr, needle_len) == 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+macro dupe(value)
+{
+	$typeof(&value) temp = mem::alloc($sizeof(value));
+	if (!temp) return ReadError.OUT_OF_MEMORY!;
+	*temp = value;
+	return temp;
+}
+
+fault ReadError
+{
+	BAD_READ,
+	OUT_OF_MEMORY
+}
+
+fn Doc! readDoc(char[] url)
+{
+	if (contains(url, "fail")) return ReadError.BAD_READ!;
+	if (contains(url, "head-missing")) return { .head = null };
+	if (contains(url, "title-missing")) return { dupe(Head { .title = null })? };
+	if (contains(url, "title-empty")) return { dupe(Head { .title = dupe((char[])"")? })? };
+	// Not particularly elegant due to missing string functions.
+	int len = libc::snprintf(null, 0, "Title of %.*s", (int)url.len, url.ptr);
+	char* str = mem::alloc(len + 1);
+	if (!str) return ReadError.OUT_OF_MEMORY!;
+	libc::snprintf(str, len + 1, "Title of %.*s", (int)url.len, url.ptr);
+	return { dupe(Head { .title = dupe(str[..len - 1])? })? };
+}
+
+fn Summary buildSummary(Doc doc)
+{
+    return Summary {
+        .title = doc.head ? doc.head.title : null,
+        .ok = true,
+    };
+}
+
+fn Summary readAndBuildSummary(char[] url)
+{
+	return buildSummary(readDoc(url)) ?? Summary { .title = null, .ok = false };
+	/*
+	// or
+	Summary summary = buildSummary(readDoc(url));
+	if (catch summary) return Summary { .title = null, .ok = false };
+	return summary;
+	// or
+	Summary summary = buildSummary(readDoc(url));
+	if (try summary) return summary;
+	return Summary { .title = null, .ok = false };
+	*/
+}
+
+
+fault TitleResult
+{
+	TITLE_MISSING
+}
+
+fn bool! isTitleNonEmpty(Doc doc)
+{
+	if (!doc.head) return TitleResult.TITLE_MISSING!;
+	char[]* head = doc.head.title;
+	if (!head) return TitleResult.TITLE_MISSING!;
+	return (*head).len > 0;
+}
+
+
+fn bool! readWhetherTitleNonEmpty(char[] url)
+{
+    return isTitleNonEmpty(readDoc(url));
+}
+
+fn char* bool_to_string(bool b)
+{
+	return b ? "true" : "false";
+}
+fn char* nameFromError(anyerr e)
+{
+	switch (e)
+	{
+		case TitleResult.TITLE_MISSING:
+			return "no title";
+		case ReadError.BAD_READ:
+			return "bad read";
+		case ReadError.OUT_OF_MEMORY:
+			return "out of memory";
+		default:
+			return "unknown error";
+	}
+}
+
+
+fn void main()
+{
+    const char[][] URLS = { "good", "title-empty", "title-missing", "head-missing", "fail" };
+    foreach (char[] url : URLS)
+    {
+        // Yes, it's pretty onerous to print strings for the moment in C3
+        libc::printf(`Checking "https://%.*s/":` "\n", (int)url.len, url.ptr);
+        Summary summary = readAndBuildSummary(url);
+        libc::printf("  Summary: ");
+        summary.print(libc::stdout());
+        libc::printf("\n");
+        char[] title_sure = summary.title ? *summary.title : "";
+        libc::printf("  Title: %.*s\n", (int)title_sure.len, title_sure.ptr);
+        bool! has_title = readWhetherTitleNonEmpty(url);
+        // This looks a bit less than elegant, but as you see it's mostly due to having to
+        // use printf here.
+        libc::printf("  Has title: %s vs %s\n", bool_to_string(has_title) ?? nameFromError(catch(has_title)), (has_title ?? false) ? "true" : "false");
+    }
+}
+
+/* #expect: test.ll
+
+define void @test.Summary__print(ptr %0, ptr %1) #0 {
+entry:
+  %title = alloca %"char[]", align 8
+  %2 = getelementptr inbounds %Summary, ptr %0, i32 0, i32 0
+  %3 = load ptr, ptr %2, align 8
+  %ptrbool = icmp ne ptr %3, null
+  br i1 %ptrbool, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %entry
+  %4 = getelementptr inbounds %Summary, ptr %0, i32 0, i32 0
+  %5 = load ptr, ptr %4, align 8
+  %6 = load %"char[]", ptr %5, align 8
+  br label %cond.phi
+
+cond.rhs:                                         ; preds = %entry
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  %val = phi %"char[]" [ %6, %cond.lhs ], [ { ptr @.str.26, i64 7 }, %cond.rhs ]
+  store %"char[]" %val, ptr %title, align 8
+  %7 = getelementptr inbounds %"char[]", ptr %title, i32 0, i32 1
+  %8 = load i64, ptr %7, align 8
+  %uisitrunc = trunc i64 %8 to i32
+  %9 = getelementptr inbounds %"char[]", ptr %title, i32 0, i32 0
+  %10 = load ptr, ptr %9, align 8
+  %11 = getelementptr inbounds %Summary, ptr %0, i32 0, i32 1
+  %12 = load i8, ptr %11, align 8
+  %13 = trunc i8 %12 to i1
+  %ternary = select i1 %13, ptr @.str.28, ptr @.str.29
+  %14 = call i32 (ptr, ptr, ...) @fprintf(ptr %1, ptr @.str.27, i32 %uisitrunc, ptr %10, ptr %ternary)
+  ret void
+}
+
+define zeroext i8 @test.contains(ptr %0, i64 %1, ptr %2, i64 %3) #0 {
+entry:
+  %haystack = alloca %"char[]", align 8
+  %needle = alloca %"char[]", align 8
+  %len = alloca i64, align 8
+  %needle_len = alloca i64, align 8
+  %i = alloca i64, align 8
+  %4 = getelementptr inbounds { ptr, i64 }, ptr %haystack, i32 0, i32 0
+  store ptr %0, ptr %4, align 8
+  %5 = getelementptr inbounds { ptr, i64 }, ptr %haystack, i32 0, i32 1
+  store i64 %1, ptr %5, align 8
+  %6 = getelementptr inbounds { ptr, i64 }, ptr %needle, i32 0, i32 0
+  store ptr %2, ptr %6, align 8
+  %7 = getelementptr inbounds { ptr, i64 }, ptr %needle, i32 0, i32 1
+  store i64 %3, ptr %7, align 8
+  %8 = getelementptr inbounds %"char[]", ptr %haystack, i32 0, i32 1
+  %9 = load i64, ptr %8, align 8
+  store i64 %9, ptr %len, align 8
+  %10 = getelementptr inbounds %"char[]", ptr %needle, i32 0, i32 1
+  %11 = load i64, ptr %10, align 8
+  store i64 %11, ptr %needle_len, align 8
+  %12 = load i64, ptr %len, align 8
+  %13 = load i64, ptr %needle_len, align 8
+  %lt = icmp ult i64 %12, %13
+  br i1 %lt, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  ret i8 0
+
+if.exit:                                          ; preds = %entry
+  %14 = load i64, ptr %needle_len, align 8
+  %not = icmp eq i64 %14, 0
+  br i1 %not, label %if.then1, label %if.exit2
+
+if.then1:                                         ; preds = %if.exit
+  ret i8 1
+
+if.exit2:                                         ; preds = %if.exit
+  %15 = load i64, ptr %len, align 8
+  %16 = load i64, ptr %needle_len, align 8
+  %sub = sub i64 %16, 1
+  %sub3 = sub i64 %15, %sub
+  store i64 %sub3, ptr %len, align 8
+  store i64 0, ptr %i, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %if.exit6, %if.exit2
+  %17 = load i64, ptr %i, align 8
+  %18 = load i64, ptr %len, align 8
+  %lt4 = icmp ult i64 %17, %18
+  br i1 %lt4, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %19 = getelementptr inbounds %"char[]", ptr %haystack, i32 0, i32 0
+  %20 = load ptr, ptr %19, align 8
+  %21 = load i64, ptr %i, align 8
+  %ptroffset = getelementptr inbounds i8, ptr %20, i64 %21
+  %22 = getelementptr inbounds %"char[]", ptr %needle, i32 0, i32 0
+  %23 = load ptr, ptr %22, align 8
+  %24 = load i64, ptr %needle_len, align 8
+  %25 = call i32 @memcmp(ptr %ptroffset, ptr %23, i64 %24)
+  %eq = icmp eq i32 %25, 0
+  br i1 %eq, label %if.then5, label %if.exit6
+
+if.then5:                                         ; preds = %loop.body
+  ret i8 1
+
+if.exit6:                                         ; preds = %loop.body
+  %26 = load i64, ptr %i, align 8
+  %add = add i64 %26, 1
+  store i64 %add, ptr %i, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret i8 0
+}
+
+define i64 @test.readDoc(ptr %0, ptr %1, i64 %2) #0 {
+entry:
+  %url = alloca %"char[]", align 8
+  %taddr = alloca %"char[]", align 8
+  %taddr5 = alloca %"char[]", align 8
+  %reterr = alloca i64, align 8
+  %literal = alloca %Doc, align 8
+  %taddr12 = alloca %"char[]", align 8
+  %reterr16 = alloca i64, align 8
+  %literal17 = alloca %Doc, align 8
+  %error_var = alloca i64, align 8
+  %value = alloca %Head, align 8
+  %literal18 = alloca %Head, align 8
+  %temp = alloca ptr, align 8
+  %taddr24 = alloca %"char[]", align 8
+  %reterr28 = alloca i64, align 8
+  %literal29 = alloca %Doc, align 8
+  %error_var30 = alloca i64, align 8
+  %value31 = alloca %Head, align 8
+  %literal32 = alloca %Head, align 8
+  %error_var33 = alloca i64, align 8
+  %value34 = alloca %"char[]", align 8
+  %temp35 = alloca ptr, align 8
+  %temp41 = alloca ptr, align 8
+  %len = alloca i32, align 4
+  %str = alloca ptr, align 8
+  %reterr54 = alloca i64, align 8
+  %literal55 = alloca %Doc, align 8
+  %error_var56 = alloca i64, align 8
+  %value57 = alloca %Head, align 8
+  %literal58 = alloca %Head, align 8
+  %error_var59 = alloca i64, align 8
+  %value60 = alloca %"char[]", align 8
+  %temp61 = alloca ptr, align 8
+  %temp67 = alloca ptr, align 8
+  %3 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  store ptr %1, ptr %3, align 8
+  %4 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  store i64 %2, ptr %4, align 8
+  %5 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  %lo = load ptr, ptr %5, align 8
+  %6 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  %hi = load i64, ptr %6, align 8
+  store %"char[]" { ptr @.str, i64 4 }, ptr %taddr, align 8
+  %7 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 0
+  %lo1 = load ptr, ptr %7, align 8
+  %8 = getelementptr inbounds { ptr, i64 }, ptr %taddr, i32 0, i32 1
+  %hi2 = load i64, ptr %8, align 8
+  %9 = call i8 @test.contains(ptr %lo, i64 %hi, ptr %lo1, i64 %hi2)
+  %10 = trunc i8 %9 to i1
+  br i1 %10, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  ret i64 ptrtoint (ptr @test.ReadError.BAD_READ to i64)
+
+if.exit:                                          ; preds = %entry
+  %11 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  %lo3 = load ptr, ptr %11, align 8
+  %12 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  %hi4 = load i64, ptr %12, align 8
+  store %"char[]" { ptr @.str.1, i64 12 }, ptr %taddr5, align 8
+  %13 = getelementptr inbounds { ptr, i64 }, ptr %taddr5, i32 0, i32 0
+  %lo6 = load ptr, ptr %13, align 8
+  %14 = getelementptr inbounds { ptr, i64 }, ptr %taddr5, i32 0, i32 1
+  %hi7 = load i64, ptr %14, align 8
+  %15 = call i8 @test.contains(ptr %lo3, i64 %hi4, ptr %lo6, i64 %hi7)
+  %16 = trunc i8 %15 to i1
+  br i1 %16, label %if.then8, label %if.exit9
+
+if.then8:                                         ; preds = %if.exit
+  %17 = getelementptr inbounds %Doc, ptr %literal, i32 0, i32 0
+  store ptr null, ptr %17, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal, i32 8, i1 false)
+  ret i64 0
+
+if.exit9:                                         ; preds = %if.exit
+  %18 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  %lo10 = load ptr, ptr %18, align 8
+  %19 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  %hi11 = load i64, ptr %19, align 8
+  store %"char[]" { ptr @.str.2, i64 13 }, ptr %taddr12, align 8
+  %20 = getelementptr inbounds { ptr, i64 }, ptr %taddr12, i32 0, i32 0
+  %lo13 = load ptr, ptr %20, align 8
+  %21 = getelementptr inbounds { ptr, i64 }, ptr %taddr12, i32 0, i32 1
+  %hi14 = load i64, ptr %21, align 8
+  %22 = call i8 @test.contains(ptr %lo10, i64 %hi11, ptr %lo13, i64 %hi14)
+  %23 = trunc i8 %22 to i1
+  br i1 %23, label %if.then15, label %if.exit21
+
+if.then15:                                        ; preds = %if.exit9
+  %24 = getelementptr inbounds %Doc, ptr %literal17, i32 0, i32 0
+  %25 = getelementptr inbounds %Head, ptr %literal18, i32 0, i32 0
+  store ptr null, ptr %25, align 8
+  %26 = load %Head, ptr %literal18, align 8
+  store %Head %26, ptr %value, align 8
+  %27 = call ptr @"std::core::mem.alloc"(i64 8, i64 0)
+  store ptr %27, ptr %temp, align 8
+  %28 = load ptr, ptr %temp, align 8
+  %not = icmp eq ptr %28, null
+  br i1 %not, label %if.then19, label %if.exit20
+
+if.then19:                                        ; preds = %if.then15
+  store i64 ptrtoint (ptr @test.ReadError.OUT_OF_MEMORY to i64), ptr %error_var, align 8
+  br label %guard_block
+
+if.exit20:                                        ; preds = %if.then15
+  %29 = load ptr, ptr %temp, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %29, ptr align 8 %value, i32 8, i1 false)
+  br label %noerr_block
+
+guard_block:                                      ; preds = %if.then19
+  %30 = load i64, ptr %error_var, align 8
+  ret i64 %30
+
+noerr_block:                                      ; preds = %if.exit20
+  %31 = load ptr, ptr %temp, align 8
+  store ptr %31, ptr %24, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal17, i32 8, i1 false)
+  ret i64 0
+
+if.exit21:                                        ; preds = %if.exit9
+  %32 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  %lo22 = load ptr, ptr %32, align 8
+  %33 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  %hi23 = load i64, ptr %33, align 8
+  store %"char[]" { ptr @.str.3, i64 11 }, ptr %taddr24, align 8
+  %34 = getelementptr inbounds { ptr, i64 }, ptr %taddr24, i32 0, i32 0
+  %lo25 = load ptr, ptr %34, align 8
+  %35 = getelementptr inbounds { ptr, i64 }, ptr %taddr24, i32 0, i32 1
+  %hi26 = load i64, ptr %35, align 8
+  %36 = call i8 @test.contains(ptr %lo22, i64 %hi23, ptr %lo25, i64 %hi26)
+  %37 = trunc i8 %36 to i1
+  br i1 %37, label %if.then27, label %if.exit47
+
+if.then27:                                        ; preds = %if.exit21
+  %38 = getelementptr inbounds %Doc, ptr %literal29, i32 0, i32 0
+  store ptr null, ptr %literal32, align 8
+  %39 = getelementptr inbounds %Head, ptr %literal32, i32 0, i32 0
+  store %"char[]" { ptr @.str.4, i64 0 }, ptr %value34, align 8
+  %40 = call ptr @"std::core::mem.alloc"(i64 16, i64 0)
+  store ptr %40, ptr %temp35, align 8
+  %41 = load ptr, ptr %temp35, align 8
+  %not36 = icmp eq ptr %41, null
+  br i1 %not36, label %if.then37, label %if.exit38
+
+if.then37:                                        ; preds = %if.then27
+  store i64 ptrtoint (ptr @test.ReadError.OUT_OF_MEMORY to i64), ptr %error_var33, align 8
+  br label %guard_block39
+
+if.exit38:                                        ; preds = %if.then27
+  %42 = load ptr, ptr %temp35, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %42, ptr align 8 %value34, i32 16, i1 false)
+  br label %noerr_block40
+
+guard_block39:                                    ; preds = %if.then37
+  %43 = load i64, ptr %error_var33, align 8
+  ret i64 %43
+
+noerr_block40:                                    ; preds = %if.exit38
+  %44 = load ptr, ptr %temp35, align 8
+  store ptr %44, ptr %39, align 8
+  %45 = load %Head, ptr %literal32, align 8
+  store %Head %45, ptr %value31, align 8
+  %46 = call ptr @"std::core::mem.alloc"(i64 8, i64 0)
+  store ptr %46, ptr %temp41, align 8
+  %47 = load ptr, ptr %temp41, align 8
+  %not42 = icmp eq ptr %47, null
+  br i1 %not42, label %if.then43, label %if.exit44
+
+if.then43:                                        ; preds = %noerr_block40
+  store i64 ptrtoint (ptr @test.ReadError.OUT_OF_MEMORY to i64), ptr %error_var30, align 8
+  br label %guard_block45
+
+if.exit44:                                        ; preds = %noerr_block40
+  %48 = load ptr, ptr %temp41, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %48, ptr align 8 %value31, i32 8, i1 false)
+  br label %noerr_block46
+
+guard_block45:                                    ; preds = %if.then43
+  %49 = load i64, ptr %error_var30, align 8
+  ret i64 %49
+
+noerr_block46:                                    ; preds = %if.exit44
+  %50 = load ptr, ptr %temp41, align 8
+  store ptr %50, ptr %38, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal29, i32 8, i1 false)
+  ret i64 0
+
+if.exit47:                                        ; preds = %if.exit21
+  %51 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
+  %52 = load i64, ptr %51, align 8
+  %uisitrunc = trunc i64 %52 to i32
+  %53 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
+  %54 = load ptr, ptr %53, align 8
+  %55 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr null, i64 0, ptr @.str.5, i32 %uisitrunc, ptr %54)
+  store i32 %55, ptr %len, align 4
+  %56 = load i32, ptr %len, align 4
+  %siuiext = sext i32 %56 to i64
+  %add = add i64 %siuiext, 1
+  %57 = call ptr @"std::core::mem.alloc"(i64 %add, i64 0)
+  store ptr %57, ptr %str, align 8
+  %58 = load ptr, ptr %str, align 8
+  %not48 = icmp eq ptr %58, null
+  br i1 %not48, label %if.then49, label %if.exit50
+
+if.then49:                                        ; preds = %if.exit47
+  ret i64 ptrtoint (ptr @test.ReadError.OUT_OF_MEMORY to i64)
+
+if.exit50:                                        ; preds = %if.exit47
+  %59 = load ptr, ptr %str, align 8
+  %60 = load i32, ptr %len, align 4
+  %siuiext51 = sext i32 %60 to i64
+  %add52 = add i64 %siuiext51, 1
+  %61 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
+  %62 = load i64, ptr %61, align 8
+  %uisitrunc53 = trunc i64 %62 to i32
+  %63 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
+  %64 = load ptr, ptr %63, align 8
+  %65 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr %59, i64 %add52, ptr @.str.6, i32 %uisitrunc53, ptr %64)
+  %66 = getelementptr inbounds %Doc, ptr %literal55, i32 0, i32 0
+  store ptr null, ptr %literal58, align 8
+  %67 = getelementptr inbounds %Head, ptr %literal58, i32 0, i32 0
+  %68 = load ptr, ptr %str, align 8
+  %69 = load i32, ptr %len, align 4
+  %sub = sub i32 %69, 1
+  %sisiext = sext i32 %sub to i64
+  %70 = add i64 %sisiext, 1
+  %size = sub i64 %70, 0
+  %ptroffset = getelementptr inbounds i8, ptr %68, i64 0
+  %71 = insertvalue %"char[]" undef, ptr %ptroffset, 0
+  %72 = insertvalue %"char[]" %71, i64 %size, 1
+  store %"char[]" %72, ptr %value60, align 8
+  %73 = call ptr @"std::core::mem.alloc"(i64 16, i64 0)
+  store ptr %73, ptr %temp61, align 8
+  %74 = load ptr, ptr %temp61, align 8
+  %not62 = icmp eq ptr %74, null
+  br i1 %not62, label %if.then63, label %if.exit64
+
+if.then63:                                        ; preds = %if.exit50
+  store i64 ptrtoint (ptr @test.ReadError.OUT_OF_MEMORY to i64), ptr %error_var59, align 8
+  br label %guard_block65
+
+if.exit64:                                        ; preds = %if.exit50
+  %75 = load ptr, ptr %temp61, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %75, ptr align 8 %value60, i32 16, i1 false)
+  br label %noerr_block66
+
+guard_block65:                                    ; preds = %if.then63
+  %76 = load i64, ptr %error_var59, align 8
+  ret i64 %76
+
+noerr_block66:                                    ; preds = %if.exit64
+  %77 = load ptr, ptr %temp61, align 8
+  store ptr %77, ptr %67, align 8
+  %78 = load %Head, ptr %literal58, align 8
+  store %Head %78, ptr %value57, align 8
+  %79 = call ptr @"std::core::mem.alloc"(i64 8, i64 0)
+  store ptr %79, ptr %temp67, align 8
+  %80 = load ptr, ptr %temp67, align 8
+  %not68 = icmp eq ptr %80, null
+  br i1 %not68, label %if.then69, label %if.exit70
+
+if.then69:                                        ; preds = %noerr_block66
+  store i64 ptrtoint (ptr @test.ReadError.OUT_OF_MEMORY to i64), ptr %error_var56, align 8
+  br label %guard_block71
+
+if.exit70:                                        ; preds = %noerr_block66
+  %81 = load ptr, ptr %temp67, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %81, ptr align 8 %value57, i32 8, i1 false)
+  br label %noerr_block72
+
+guard_block71:                                    ; preds = %if.then69
+  %82 = load i64, ptr %error_var56, align 8
+  ret i64 %82
+
+noerr_block72:                                    ; preds = %if.exit70
+  %83 = load ptr, ptr %temp67, align 8
+  store ptr %83, ptr %66, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal55, i32 8, i1 false)
+  ret i64 0
+}
+
+; Function Attrs: nounwind
+define { ptr, i8 } @test.buildSummary(ptr %0) #0 {
+entry:
+  %doc = alloca %Doc, align 8
+  %literal = alloca %Summary, align 8
+  %tempcoerce = alloca { ptr, i8 }, align 8
+  %1 = getelementptr inbounds %Doc, ptr %doc, i32 0, i32 0
+  store ptr %0, ptr %1, align 8
+  %2 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 0
+  store ptr null, ptr %2, align 8
+  %3 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 1
+  store i8 0, ptr %3, align 8
+  %4 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 0
+  %5 = getelementptr inbounds %Doc, ptr %doc, i32 0, i32 0
+  %6 = load ptr, ptr %5, align 8
+  %ptrbool = icmp ne ptr %6, null
+  br i1 %ptrbool, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %entry
+  %7 = getelementptr inbounds %Doc, ptr %doc, i32 0, i32 0
+  %8 = load ptr, ptr %7, align 8
+  %9 = getelementptr inbounds %Head, ptr %8, i32 0, i32 0
+  %10 = load ptr, ptr %9, align 8
+  br label %cond.phi
+
+cond.rhs:                                         ; preds = %entry
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  %val = phi ptr [ %10, %cond.lhs ], [ null, %cond.rhs ]
+  store ptr %val, ptr %4, align 8
+  %11 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 1
+  store i8 1, ptr %11, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %literal, i32 16, i1 false)
+  %12 = load { ptr, i8 }, ptr %tempcoerce, align 8
+  ret { ptr, i8 } %12
+}
+
+; Function Attrs: nounwind
+define { ptr, i8 } @test.readAndBuildSummary(ptr %0, i64 %1) #0 {
+entry:
+  %url = alloca %"char[]", align 8
+  %retparam = alloca %Doc, align 8
+  %result = alloca %Summary, align 8
+  %literal = alloca %Summary, align 8
+  %taddr = alloca %Summary, align 8
+  %tempcoerce = alloca { ptr, i8 }, align 8
+  %2 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  store ptr %0, ptr %2, align 8
+  %3 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  store i64 %1, ptr %3, align 8
+  %4 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  %lo = load ptr, ptr %4, align 8
+  %5 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  %hi = load i64, ptr %5, align 8
+  %6 = call i64 @test.readDoc(ptr %retparam, ptr %lo, i64 %hi)
+  %not_err = icmp eq i64 %6, 0
+  br i1 %not_err, label %after.errcheck, label %else_block
+
+after.errcheck:                                   ; preds = %entry
+  %7 = getelementptr inbounds %Doc, ptr %retparam, i32 0, i32 0
+  %8 = load ptr, ptr %7, align 8
+  %9 = call { ptr, i8 } @test.buildSummary(ptr %8)
+  store { ptr, i8 } %9, ptr %result, align 8
+  %10 = load %Summary, ptr %result, align 8
+  br label %phi_block
+
+else_block:                                       ; preds = %entry
+  %11 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 0
+  store ptr null, ptr %11, align 8
+  %12 = getelementptr inbounds %Summary, ptr %literal, i32 0, i32 1
+  store i8 0, ptr %12, align 8
+  %13 = load %Summary, ptr %literal, align 8
+  br label %phi_block
+
+phi_block:                                        ; preds = %else_block, %after.errcheck
+  %val = phi %Summary [ %10, %after.errcheck ], [ %13, %else_block ]
+  store %Summary %val, ptr %taddr, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %taddr, i32 16, i1 false)
+  %14 = load { ptr, i8 }, ptr %tempcoerce, align 8
+  ret { ptr, i8 } %14
+}
+
+; Function Attrs: nounwind
+define i64 @test.isTitleNonEmpty(ptr %0, ptr %1) #0 {
+entry:
+  %doc = alloca %Doc, align 8
+  %head = alloca ptr, align 8
+  %reterr = alloca i64, align 8
+  %2 = getelementptr inbounds %Doc, ptr %doc, i32 0, i32 0
+  store ptr %1, ptr %2, align 8
+  %3 = getelementptr inbounds %Doc, ptr %doc, i32 0, i32 0
+  %4 = load ptr, ptr %3, align 8
+  %not = icmp eq ptr %4, null
+  br i1 %not, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  ret i64 ptrtoint (ptr @test.TitleResult.TITLE_MISSING to i64)
+
+if.exit:                                          ; preds = %entry
+  %5 = getelementptr inbounds %Doc, ptr %doc, i32 0, i32 0
+  %6 = load ptr, ptr %5, align 8
+  %7 = getelementptr inbounds %Head, ptr %6, i32 0, i32 0
+  %8 = load ptr, ptr %7, align 8
+  store ptr %8, ptr %head, align 8
+  %9 = load ptr, ptr %head, align 8
+  %not1 = icmp eq ptr %9, null
+  br i1 %not1, label %if.then2, label %if.exit3
+
+if.then2:                                         ; preds = %if.exit
+  ret i64 ptrtoint (ptr @test.TitleResult.TITLE_MISSING to i64)
+
+if.exit3:                                         ; preds = %if.exit
+  %10 = load ptr, ptr %head, align 8
+  %11 = getelementptr inbounds %"char[]", ptr %10, i32 0, i32 1
+  %12 = load i64, ptr %11, align 8
+  %lt = icmp ult i64 0, %12
+  %13 = zext i1 %lt to i8
+  store i8 %13, ptr %0, align 1
+  ret i64 0
+}
+
+; Function Attrs: nounwind
+define i64 @test.readWhetherTitleNonEmpty(ptr %0, ptr %1, i64 %2) #0 {
+entry:
+  %url = alloca %"char[]", align 8
+  %reterr = alloca i64, align 8
+  %retparam = alloca i8, align 1
+  %retparam1 = alloca %Doc, align 8
+  %3 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  store ptr %1, ptr %3, align 8
+  %4 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  store i64 %2, ptr %4, align 8
+  %5 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  %lo = load ptr, ptr %5, align 8
+  %6 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  %hi = load i64, ptr %6, align 8
+  %7 = call i64 @test.readDoc(ptr %retparam1, ptr %lo, i64 %hi)
+  %not_err = icmp eq i64 %7, 0
+  br i1 %not_err, label %after.errcheck, label %error
+
+error:                                            ; preds = %entry
+  store i64 %7, ptr %reterr, align 8
+  br label %err_retblock
+
+after.errcheck:                                   ; preds = %entry
+  %8 = getelementptr inbounds %Doc, ptr %retparam1, i32 0, i32 0
+  %9 = load ptr, ptr %8, align 8
+  %10 = call i64 @test.isTitleNonEmpty(ptr %retparam, ptr %9)
+  %not_err2 = icmp eq i64 %10, 0
+  br i1 %not_err2, label %after.errcheck4, label %error3
+
+error3:                                           ; preds = %after.errcheck
+  store i64 %10, ptr %reterr, align 8
+  br label %err_retblock
+
+after.errcheck4:                                  ; preds = %after.errcheck
+  %11 = load i8, ptr %retparam, align 1
+  store i8 %11, ptr %0, align 1
+  ret i64 0
+
+err_retblock:                                     ; preds = %error3, %error
+  %12 = load i64, ptr %reterr, align 8
+  ret i64 %12
+}
+
+; Function Attrs: nounwind
+define ptr @test.bool_to_string(i8 zeroext %0) #0 {
+entry:
+  %1 = trunc i8 %0 to i1
+  %ternary = select i1 %1, ptr @.str.7, ptr @.str.8
+  ret ptr %ternary
+}
+
+; Function Attrs: nounwind
+define ptr @test.nameFromError(i64 %0) #0 {
+entry:
+  %switch = alloca i64, align 8
+  store i64 %0, ptr %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %1 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @test.TitleResult.TITLE_MISSING to i64), %1
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  ret ptr @.str.9
+
+next_if:                                          ; preds = %switch.entry
+  %eq1 = icmp eq i64 ptrtoint (ptr @test.ReadError.BAD_READ to i64), %1
+  br i1 %eq1, label %switch.case2, label %next_if3
+
+switch.case2:                                     ; preds = %next_if
+  ret ptr @.str.10
+
+next_if3:                                         ; preds = %next_if
+  %eq4 = icmp eq i64 ptrtoint (ptr @test.ReadError.OUT_OF_MEMORY to i64), %1
+  br i1 %eq4, label %switch.case5, label %next_if6
+
+switch.case5:                                     ; preds = %next_if3
+  ret ptr @.str.11
+
+next_if6:                                         ; preds = %next_if3
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if6
+  ret ptr @.str.12
+}
+
+; Function Attrs: nounwind
+define void @test.main() #0 {
+entry:
+  %URLS = alloca %"char[][]", align 8
+  %literal = alloca [5 x %"char[]"], align 16
+  %anon = alloca i64, align 8
+  %anon1 = alloca %"char[][]", align 8
+  %anon2 = alloca i64, align 8
+  %url = alloca %"char[]", align 8
+  %summary = alloca %Summary, align 8
+  %result = alloca %Summary, align 8
+  %title_sure = alloca %"char[]", align 8
+  %has_title = alloca i8, align 1
+  %has_title.f = alloca i64, align 8
+  %retparam = alloca i8, align 1
+  %0 = getelementptr inbounds [5 x %"char[]"], ptr %literal, i64 0, i64 0
+  store %"char[]" { ptr @.str.13, i64 4 }, ptr %0, align 8
+  %1 = getelementptr inbounds [5 x %"char[]"], ptr %literal, i64 0, i64 1
+  store %"char[]" { ptr @.str.14, i64 11 }, ptr %1, align 8
+  %2 = getelementptr inbounds [5 x %"char[]"], ptr %literal, i64 0, i64 2
+  store %"char[]" { ptr @.str.15, i64 13 }, ptr %2, align 8
+  %3 = getelementptr inbounds [5 x %"char[]"], ptr %literal, i64 0, i64 3
+  store %"char[]" { ptr @.str.16, i64 12 }, ptr %3, align 8
+  %4 = getelementptr inbounds [5 x %"char[]"], ptr %literal, i64 0, i64 4
+  store %"char[]" { ptr @.str.17, i64 4 }, ptr %4, align 8
+  %5 = insertvalue %"char[][]" undef, ptr %literal, 0
+  %6 = insertvalue %"char[][]" %5, i64 5, 1
+  store %"char[][]" %6, ptr %URLS, align 8
+  store i64 0, ptr %anon, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %anon1, ptr align 8 %URLS, i32 16, i1 false)
+  %7 = getelementptr inbounds %"char[][]", ptr %anon1, i32 0, i32 1
+  %8 = load i64, ptr %7, align 8
+  store i64 %8, ptr %anon2, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %phi_block11, %entry
+  %9 = load i64, ptr %anon, align 8
+  %10 = load i64, ptr %anon2, align 8
+  %lt = icmp ult i64 %9, %10
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %11 = getelementptr inbounds %"char[][]", ptr %anon1, i32 0, i32 0
+  %12 = load ptr, ptr %11, align 8
+  %13 = load i64, ptr %anon, align 8
+  %ptroffset = getelementptr inbounds %"char[]", ptr %12, i64 %13
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %url, ptr align 8 %ptroffset, i32 16, i1 false)
+  %14 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 1
+  %15 = load i64, ptr %14, align 8
+  %uisitrunc = trunc i64 %15 to i32
+  %16 = getelementptr inbounds %"char[]", ptr %url, i32 0, i32 0
+  %17 = load ptr, ptr %16, align 8
+  %18 = call i32 (ptr, ...) @printf(ptr @.str.18, i32 %uisitrunc, ptr %17)
+  %19 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  %lo = load ptr, ptr %19, align 8
+  %20 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  %hi = load i64, ptr %20, align 8
+  %21 = call { ptr, i8 } @test.readAndBuildSummary(ptr %lo, i64 %hi)
+  store { ptr, i8 } %21, ptr %result, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %summary, ptr align 8 %result, i32 16, i1 false)
+  %22 = call i32 (ptr, ...) @printf(ptr @.str.19)
+  %23 = load ptr, ptr @__stdoutp, align 8
+  call void @test.Summary__print(ptr %summary, ptr %23)
+  %24 = call i32 (ptr, ...) @printf(ptr @.str.20)
+  %25 = getelementptr inbounds %Summary, ptr %summary, i32 0, i32 0
+  %26 = load ptr, ptr %25, align 8
+  %ptrbool = icmp ne ptr %26, null
+  br i1 %ptrbool, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %loop.body
+  %27 = getelementptr inbounds %Summary, ptr %summary, i32 0, i32 0
+  %28 = load ptr, ptr %27, align 8
+  %29 = load %"char[]", ptr %28, align 8
+  br label %cond.phi
+
+cond.rhs:                                         ; preds = %loop.body
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  %val = phi %"char[]" [ %29, %cond.lhs ], [ { ptr @.str.21, i64 0 }, %cond.rhs ]
+  store %"char[]" %val, ptr %title_sure, align 8
+  %30 = getelementptr inbounds %"char[]", ptr %title_sure, i32 0, i32 1
+  %31 = load i64, ptr %30, align 8
+  %uisitrunc3 = trunc i64 %31 to i32
+  %32 = getelementptr inbounds %"char[]", ptr %title_sure, i32 0, i32 0
+  %33 = load ptr, ptr %32, align 8
+  %34 = call i32 (ptr, ...) @printf(ptr @.str.22, i32 %uisitrunc3, ptr %33)
+  %35 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 0
+  %lo4 = load ptr, ptr %35, align 8
+  %36 = getelementptr inbounds { ptr, i64 }, ptr %url, i32 0, i32 1
+  %hi5 = load i64, ptr %36, align 8
+  %37 = call i64 @test.readWhetherTitleNonEmpty(ptr %retparam, ptr %lo4, i64 %hi5)
+  %not_err = icmp eq i64 %37, 0
+  br i1 %not_err, label %after.errcheck, label %error
+
+error:                                            ; preds = %cond.phi
+  store i64 %37, ptr %has_title.f, align 8
+  br label %after_assign
+
+after.errcheck:                                   ; preds = %cond.phi
+  %38 = load i8, ptr %retparam, align 1
+  store i8 %38, ptr %has_title, align 1
+  store i64 0, ptr %has_title.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %after.errcheck, %error
+  %39 = load i64, ptr %has_title.f, align 8
+  %not_err6 = icmp eq i64 %39, 0
+  br i1 %not_err6, label %after_check, label %else_block
+
+after_check:                                      ; preds = %after_assign
+  %40 = load i8, ptr %has_title, align 1
+  %41 = call ptr @test.bool_to_string(i8 %40)
+  br label %phi_block
+
+else_block:                                       ; preds = %after_assign
+  %42 = load i64, ptr %has_title.f, align 8
+  %43 = call ptr @test.nameFromError(i64 %42)
+  br label %phi_block
+
+phi_block:                                        ; preds = %else_block, %after_check
+  %val7 = phi ptr [ %41, %after_check ], [ %43, %else_block ]
+  %44 = load i64, ptr %has_title.f, align 8
+  %not_err8 = icmp eq i64 %44, 0
+  br i1 %not_err8, label %after_check9, label %else_block10
+
+after_check9:                                     ; preds = %phi_block
+  %45 = load i8, ptr %has_title, align 1
+  %46 = trunc i8 %45 to i1
+  br label %phi_block11
+
+else_block10:                                     ; preds = %phi_block
+  br label %phi_block11
+
+phi_block11:                                      ; preds = %else_block10, %after_check9
+  %val12 = phi i1 [ %46, %after_check9 ], [ false, %else_block10 ]
+  %ternary = select i1 %val12, ptr @.str.24, ptr @.str.25
+  %47 = call i32 (ptr, ...) @printf(ptr @.str.23, ptr %val7, ptr %ternary)
+  %48 = load i64, ptr %anon, align 8
+  %add = add i64 %48, 1
+  store i64 %add, ptr %anon, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret void
+}

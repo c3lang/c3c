@@ -1,0 +1,74 @@
+// #target: macos-x64
+// #opt: --x86vec=avx512
+module test;
+
+define Mm256 = float[<8>];
+define Mm512 = float[<16>];
+struct St512 {
+  Mm512 m;
+}
+
+St512 x55;
+Mm512 x56;
+
+extern fn void f55(St512 x);
+
+extern fn void f56(Mm512 x);
+fn void f57() { f55(x55); f56(x56); }
+
+struct Two256 {
+  Mm256 m;
+  Mm256 n;
+}
+
+extern fn void f58(Two256 s);
+fn void f59(Two256 s) {
+  f58(s);
+}
+
+struct Atwo256 {
+  Mm256[2] array;
+}
+
+struct SAtwo256 {
+  Atwo256 x;
+}
+
+extern fn void f60(SAtwo256 s);
+fn void f61(SAtwo256 s) {
+  f60(s);
+}
+
+struct Complex { double i; double c; }
+
+// AVX512: @f62_helper(i32 0, <16 x float> {{%[a-zA-Z0-9]+}}, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double {{%[a-zA-Z0-9]+}}, double {{%[a-zA-Z0-9]+}})
+fn void f62_helper(int, ...);
+Mm512 x62;
+fn void f62() {
+  f62_helper(0, x62, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, Complex { 1.0, 1.0 });
+}
+
+fn void f64_helper(Mm512, ...);
+Mm512 x64;
+fn void f64() {
+  f64_helper(x64, x64, 1.0, 1.0, 1.0, 1.0, 1.0, Complex { 1.0, 1.0 });
+  f64_helper(x64, x64, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, Complex { 1.0, 1.0 });
+}
+
+
+/* #expect: test.ll
+
+declare void @f55(<16 x float>) #0
+declare void @f56(<16 x float>) #0
+
+declare void @f58(ptr byval(%Two256) align 32) #0
+define void @test.f59(ptr byval(%Two256) align 32 %0) #0 {
+
+declare void @f60(ptr byval(%SAtwo256) align 32) #0
+define void @test.f61(ptr byval(%SAtwo256) align 32 %0) #0 {
+
+define void @test.f62() #0 {
+  call void (i32, ...) @test.f62_helper(i32 0, <16 x float> %0, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double %lo, double %hi)
+define void @test.f64() #0 {
+  call void (<16 x float>, ...) @test.f64_helper(<16 x float> %0, <16 x float> %1, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double %lo, double %hi)
+  call void (<16 x float>, ...) @test.f64_helper(<16 x float> %6, <16 x float> %7, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, ptr byval(%Complex) align 8 %indirectarg)

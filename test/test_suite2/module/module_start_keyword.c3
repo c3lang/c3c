@@ -1,0 +1,1 @@
+module if::hello; // #error: The module name cannot contain a reserved keyword

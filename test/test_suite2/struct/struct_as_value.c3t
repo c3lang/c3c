@@ -1,0 +1,48 @@
+// #target: macos-x64
+module test;
+
+struct Event
+{
+    int op;
+}
+
+fn Event test(int x)
+{
+  Event foo = { 1 };
+  Event bar = { 2 };
+  return x ? foo : bar;
+}
+
+/* #expect: test.ll
+
+%Event = type { i32 }
+
+@.typeid.test.Event = linkonce constant { i8, i64 } { i8 10, i64 1 }, align 8
+@.__const = private unnamed_addr constant %Event { i32 1 }, align 4
+@.__const.1 = private unnamed_addr constant %Event { i32 2 }, align 4
+
+define i32 @test.test(i32 %0) #0 {
+entry:
+  %foo = alloca %Event, align 4
+  %bar = alloca %Event, align 4
+  %taddr = alloca %Event, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %foo, ptr align 4 @.__const, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %bar, ptr align 4 @.__const.1, i32 4, i1 false)
+  %intbool = icmp ne i32 %0, 0
+  br i1 %intbool, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %entry
+  %1 = load %Event, ptr %foo, align 4
+  br label %cond.phi
+
+cond.rhs:                                         ; preds = %entry
+  %2 = load %Event, ptr %bar, align 4
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  %val = phi %Event [ %1, %cond.lhs ], [ %2, %cond.rhs ]
+  store %Event %val, ptr %taddr, align 4
+  %3 = getelementptr inbounds %Event, ptr %taddr, i32 0, i32 0
+  %4 = load i32, ptr %3, align 4
+  ret i32 %4
+}

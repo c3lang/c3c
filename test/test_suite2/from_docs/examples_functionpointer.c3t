@@ -1,0 +1,34 @@
+// #target: macos-x64
+
+module demo;
+define Callback = fn int(char* text, int value);
+
+fn int my_callback(char* text, int value)
+{
+    return 0;
+}
+
+Callback cb = &my_callback;
+
+fn void main()
+{
+    int result = cb("demo", 123);
+    // ..
+}
+
+/* #expect: demo.ll
+
+
+define i32 @demo.my_callback(ptr %0, i32 %1) #0 {
+entry:
+  ret i32 0
+}
+
+define void @demo.main() #0 {
+entry:
+  %result = alloca i32, align 4
+  %0 = load ptr, ptr @demo.cb, align 8
+  %1 = call i32 %0(ptr @.str, i32 123)
+  store i32 %1, ptr %result, align 4
+  ret void
+}

@@ -165,11 +165,11 @@ static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 	// 2. Same top module as unit -> ok
 	if (top == unit->module->top_module) return true;
 
-	// 3. We want to check std::builtin
+	// 3. We want to check std::core
 	Module *lookup = module;
 	while (lookup)
 	{
-		if (lookup->name->module == kw_std__builtin) return true;
+		if (lookup->name->module == kw_std__core) return true;
 		lookup = lookup->parent_module;
 	}
 

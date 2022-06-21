@@ -304,7 +304,7 @@ void sema_analysis_run(void)
 
 	if (active_target.panicfn || !active_target.no_stdlib)
 	{
-		const char *panicfn = active_target.panicfn ? active_target.panicfn : "std::builtin::panic";
+		const char *panicfn = active_target.panicfn ? active_target.panicfn : "std::core::builtin::panic";
 		Path *path;
 		const char *ident;
 		TokenType type;

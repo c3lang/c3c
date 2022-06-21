@@ -68,8 +68,10 @@ static inline bool sema_check_no_duplicate_parameter(Decl **decls, Decl *current
 
 
 
-static inline bool sema_analyse_struct_member(SemaContext *context, Decl *decl)
+static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl)
 {
+	assert(!decl->module || decl->module->is_generic);
+	decl->module = parent->module;
 	if (decl->name)
 	{
 		Decl *other = sema_resolve_symbol_in_current_dynamic_scope(context, decl->name);
@@ -125,7 +127,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl, Decl **
 			decl_poison(decl);
 			continue;
 		}
-		if (!sema_analyse_struct_member(context, member))
+		if (!sema_analyse_struct_member(context, decl, member))
 		{
 			if (decl_ok(decl))
 			{
@@ -224,7 +226,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl, Decl *
 			decl_poison(decl);
 			continue;
 		}
-		if (!sema_analyse_struct_member(context, member))
+		if (!sema_analyse_struct_member(context, decl, member))
 		{
 			if (decl_ok(decl))
 			{
@@ -1614,6 +1616,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	}
 	Decl *function = decl_new(DECL_FUNC, NULL, decl->span, VISIBLE_EXTERN);
 	function->name = kw_mainstub;
+	function->module = decl->module;
 	function->extname = kw_main;
 	function->has_extname = true;
 	function->func_decl.function_signature.returntype = type_infoid(type_info_new_base(type_cint, decl->span));
@@ -2286,7 +2289,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 	}
 
 	decl->resolve_status = RESOLVE_RUNNING;
-	decl->module = context->unit->module;
+	assert(decl->module);
 	switch (decl->decl_kind)
 	{
 		case DECL_BITSTRUCT:

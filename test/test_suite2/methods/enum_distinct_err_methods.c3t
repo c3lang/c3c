@@ -1,0 +1,76 @@
+// #target: macos-x64
+
+module foo;
+import std::io;
+
+fault Foo
+{
+    X
+}
+
+define Bar = distinct int;
+
+enum MyEnum
+{
+    A,
+    B
+}
+
+fn void Foo.hello(Foo *f)
+{
+    io::println("Hello from Foo");
+}
+
+fn void Bar.hello(Bar *b)
+{
+    io::println("Hello from Bar");
+}
+
+fn void MyEnum.hello(MyEnum *myenum)
+{
+    io::println("Hello from MyEnum");
+}
+fn int main()
+{
+    Foo f;
+    Bar b;
+    MyEnum a = MyEnum.A;
+    f.hello();
+    b.hello();
+    a.hello();
+    return 0;
+}
+
+/* #expect: foo.ll
+
+define void @foo.Foo__hello(ptr %0) #0 {
+entry:
+  %1 = call i32 @"std::io.println"(ptr @.str) #1
+  ret void
+}
+
+define void @foo.Bar__hello(ptr %0) #0 {
+entry:
+  %1 = call i32 @"std::io.println"(ptr @.str.1) #1
+  ret void
+}
+
+define void @foo.MyEnum__hello(ptr %0) #0 {
+entry:
+  %1 = call i32 @"std::io.println"(ptr @.str.2) #1
+  ret void
+}
+
+define i32 @main() #0 {
+entry:
+  %f = alloca i64, align 8
+  %b = alloca i32, align 4
+  %a = alloca i32, align 4
+  store i64 0, ptr %f, align 8
+  store i32 0, ptr %b, align 4
+  store i32 0, ptr %a, align 4
+  call void @foo.Foo__hello(ptr %f)
+  call void @foo.Bar__hello(ptr %b)
+  call void @foo.MyEnum__hello(ptr %a)
+  ret i32 0
+}

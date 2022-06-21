@@ -1,4 +1,4 @@
-
+// #target: macos-x64
 module test;
 
 struct Point
@@ -12,11 +12,11 @@ fn void test1()
     Point p = { 5, 6 };
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
 %Point = type { i32, i32 }
 
-@introspect.Point = linkonce constant i8 1
+@.typeid.test.Point = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
 @.__const = private unnamed_addr constant %Point { i32 5, i32 6 }, align 4
 
 define void @test.test1() #0 {

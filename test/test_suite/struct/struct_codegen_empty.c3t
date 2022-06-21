@@ -1,3 +1,4 @@
+// #target: macos-x64
 struct StructA
 {
     int a;
@@ -20,7 +21,7 @@ fn void test()
     StructB b3 = { .b = { } };
 }
 
-// #expect: struct_codegen_empty.ll
+/* #expect: struct_codegen_empty.ll
 
   %a = alloca %StructA, align 4
   %a2 = alloca %StructA, align 4

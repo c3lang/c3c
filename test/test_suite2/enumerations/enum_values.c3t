@@ -1,0 +1,40 @@
+// #target: macos-x64
+
+module test;
+
+enum Foo
+{
+    ABC,
+    BCD
+}
+
+Foo zfok = Foo.values[0];
+Foo[] zw = &&Foo.values;
+
+fn void test(int x)
+{
+    Foo zonk = Foo.values[x];
+}
+
+/* #expect: test.ll
+
+%"Foo[]" = type { ptr, i64 }
+
+@test.zfok = local_unnamed_addr global i32 0, align 4
+@.taddr = private global [2 x i32] [i32 0, i32 1], align 4
+@test.zw = local_unnamed_addr global %"Foo[]" { ptr @.taddr, i64 2 }, align 8
+
+define void @test.test(i32 %0) #0 {
+entry:
+  %zonk = alloca i32, align 4
+  %literal = alloca [2 x i32], align 4
+  %1 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 0
+  store i32 0, ptr %1, align 4
+  %2 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 1
+  store i32 1, ptr %2, align 4
+  %sisiext = sext i32 %0 to i64
+  %3 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 %sisiext
+  %4 = load i32, ptr %3, align 4
+  store i32 %4, ptr %zonk, align 4
+  ret void
+}

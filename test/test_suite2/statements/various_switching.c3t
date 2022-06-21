@@ -1,0 +1,57 @@
+module mymodule;
+
+extern fn void printf(char *, ...);
+
+fault HelloErr
+{
+    FOO,
+}
+fault ByeErr
+{
+    BAR,
+    BAZ
+}
+
+fn void test()
+{
+    int! x = ByeErr.BAR!;
+
+    typeid z = int.typeid;
+    if (catch err = x)
+    {
+        case HelloErr.FOO:
+            printf("Hello\n");
+        case ByeErr.BAR:
+            printf("Bye\n");
+        default:
+            printf("Noerrmatch\n");
+    }
+    switch (z)
+    {
+        case int:
+            printf("Was int!\n");
+        case bool:
+            nextcase double;
+        case double:
+            nextcase;
+        default:
+            printf("Wasn't int :(\n");
+    }
+    int a = 1;
+    int b = 2;
+    int zy = b + a;
+    switch (zy)
+    {
+        case a:
+            printf("Got a\n");
+        case b:
+            printf("Got b\n");
+        default:
+            printf("None of the above\n");
+    }
+}
+fn void main()
+{
+    test();
+    printf("Hello!\n");
+}

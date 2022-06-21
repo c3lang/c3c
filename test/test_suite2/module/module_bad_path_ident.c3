@@ -1,0 +1,1 @@
+module big::MONEY; // #error: The elements of a module path must consist of only lower

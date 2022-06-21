@@ -149,7 +149,7 @@ entry:
   br i1 %zero, label %panic, label %checkok
 
 panic:                                            ; preds = %entry
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.2, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.3, i64 0, i64 0), i32 12)
+  call void @"std::core::builtin.panic"(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.2, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.3, i64 0, i64 0), i32 12)
   br label %checkok
 
 checkok:                                          ; preds = %panic, %entry
@@ -433,7 +433,7 @@ entry:
   br i1 %zero, label %panic, label %checkok
 
 panic:                                            ; preds = %entry
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.zstr.20, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.21, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.22, i64 0, i64 0), i32 56)
+  call void @"std::core::builtin.panic"(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.zstr.20, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.21, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.22, i64 0, i64 0), i32 56)
   br label %checkok
 
 checkok:                                          ; preds = %panic, %entry
@@ -468,7 +468,7 @@ checkok:                                          ; preds = %panic, %entry
   br i1 %shift_underflow, label %panic1, label %checkok2
 
 panic1:                                           ; preds = %checkok
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.25, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.26, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.27, i64 0, i64 0), i32 60)
+  call void @"std::core::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.25, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.26, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.27, i64 0, i64 0), i32 60)
   br label %checkok2
 
 checkok2:                                         ; preds = %panic1, %checkok
@@ -477,7 +477,7 @@ checkok2:                                         ; preds = %panic1, %checkok
   br i1 %shift_exceeds, label %panic3, label %checkok4
 
 panic3:                                           ; preds = %checkok2
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.28, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.29, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.30, i64 0, i64 0), i32 60)
+  call void @"std::core::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.28, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.29, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.30, i64 0, i64 0), i32 60)
   br label %checkok4
 
 checkok4:                                         ; preds = %panic3, %checkok2
@@ -500,7 +500,7 @@ checkok4:                                         ; preds = %panic3, %checkok2
   br i1 %shift_underflow5, label %panic6, label %checkok7
 
 panic6:                                           ; preds = %checkok4
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.32, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.33, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.34, i64 0, i64 0), i32 62)
+  call void @"std::core::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.32, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.33, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.34, i64 0, i64 0), i32 62)
   br label %checkok7
 
 checkok7:                                         ; preds = %panic6, %checkok4
@@ -509,7 +509,7 @@ checkok7:                                         ; preds = %panic6, %checkok4
   br i1 %shift_exceeds8, label %panic9, label %checkok10
 
 panic9:                                           ; preds = %checkok7
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.35, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.36, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.37, i64 0, i64 0), i32 62)
+  call void @"std::core::builtin.panic"(i8* getelementptr inbounds ([27 x i8], [27 x i8]* @.zstr.35, i64 0, i64 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.zstr.36, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.zstr.37, i64 0, i64 0), i32 62)
   br label %checkok10
 
 checkok10:                                        ; preds = %panic9, %checkok7

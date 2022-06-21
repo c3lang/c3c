@@ -1,0 +1,38 @@
+// #target: macos-x64
+
+module test;
+
+int[<2>] b = (int[<2>])(int[2] { 1, 2 });
+int[2] c = (int[2])(int[<2>] { 1, 2 });
+
+fn void tester()
+{
+    int[<2>] x = { 1, 2 };
+    int[2] y = (int[2])(x);
+    x = (int[<2>])(y);
+}
+
+/* #expect: test.ll
+
+@test.b = local_unnamed_addr global <2 x i32> <i32 1, i32 2>, align 8
+@test.c = local_unnamed_addr global [2 x i32] [i32 1, i32 2], align 4
+
+define void @test.tester() #0 {
+entry:
+  %x = alloca <2 x i32>, align 8
+  %y = alloca [2 x i32], align 4
+  store <2 x i32> <i32 1, i32 2>, ptr %x, align 8
+  %0 = load <2 x i32>, ptr %x, align 8
+  %1 = extractelement <2 x i32> %0, i64 0
+  %2 = insertvalue [2 x i32] undef, i32 %1, 0
+  %3 = extractelement <2 x i32> %0, i64 1
+  %4 = insertvalue [2 x i32] %2, i32 %3, 1
+  store [2 x i32] %4, ptr %y, align 4
+  %5 = load [2 x i32], ptr %y, align 4
+  %6 = extractvalue [2 x i32] %5, 0
+  %7 = insertelement <2 x i32> undef, i32 %6, i64 0
+  %8 = extractvalue [2 x i32] %5, 1
+  %9 = insertelement <2 x i32> %7, i32 %8, i64 1
+  store <2 x i32> %9, ptr %x, align 8
+  ret void
+}

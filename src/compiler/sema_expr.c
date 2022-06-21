@@ -882,6 +882,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	Decl *ambiguous_decl = NULL;
 	Decl *private_symbol = NULL;
 
+	assert(expr && expr->identifier_expr.ident);
 	DEBUG_LOG("Now resolving %s", expr->identifier_expr.ident);
 
 	DeclId body_param;
@@ -992,6 +993,8 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 
 static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr)
 {
+	assert(expr && expr->ct_ident_expr.identifier);
+
 	DEBUG_LOG("Now resolving %s", expr->ct_ident_expr.identifier);
 	Decl *decl = sema_resolve_symbol(context, expr->ct_ident_expr.identifier, NULL, expr->span);
 
@@ -1012,6 +1015,7 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 
 static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Expr *expr)
 {
+	assert(expr && expr->hash_ident_expr.identifier);
 	DEBUG_LOG("Now resolving %s", expr->hash_ident_expr.identifier);
 	Decl *decl = sema_resolve_symbol(context, expr->hash_ident_expr.identifier, NULL, expr->span);
 
@@ -4292,6 +4296,7 @@ static inline bool sema_expr_analyse_ct_identifier_lvalue(SemaContext *context, 
 
 	Decl *ambiguous_decl = NULL;
 	Decl *private_symbol = NULL;
+	assert(expr && expr->ct_ident_expr.identifier);
 	DEBUG_LOG("Now resolving %s", expr->ct_ident_expr.identifier);
 	Decl *decl = sema_find_symbol(context, expr->ct_ident_expr.identifier);
 
@@ -7277,11 +7282,6 @@ bool splitpathref(const char *string, ArraySize len, Path **path_ref, const char
 	if (!*ident_ref)
 	{
 		scratch_buffer_clear();
-		if (*path_ref)
-		{
-			scratch_buffer_append_len((*path_ref)->module, (*path_ref)->len);
-			scratch_buffer_append("::");
-		}
 		scratch_buffer_append_len(string, len);
 		*ident_ref = scratch_buffer_to_string();
 		*type_ref = TOKEN_INVALID_TOKEN;

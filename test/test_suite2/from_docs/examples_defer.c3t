@@ -1,0 +1,61 @@
+// #target: macos-x64
+module defer1;
+import std::io;
+
+fn void test(int x)
+{
+    defer io::println();
+    defer io::print("A");
+    if (x == 1) return;
+    {
+        defer io::print("B");
+        if (x == 0) return;
+    }
+    io::print("!");
+}
+
+fn void main()
+{
+    test(1); // Prints "A"
+    test(0); // Prints "BA"
+    test(10); // Prints "B!A"
+}
+
+/* #expect: defer1.ll
+
+define void @defer1.test(i32 %0) #0 {
+entry:
+  %eq = icmp eq i32 %0, 1
+  br i1 %eq, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  %1 = call i32 @"std::io.print"(ptr @.str)
+  %2 = call i32 @"std::io.println"(ptr @.str.1) #1
+  ret void
+
+if.exit:                                          ; preds = %entry
+  %eq1 = icmp eq i32 %0, 0
+  br i1 %eq1, label %if.then2, label %if.exit3
+
+if.then2:                                         ; preds = %if.exit
+  %3 = call i32 @"std::io.print"(ptr @.str.2)
+  %4 = call i32 @"std::io.print"(ptr @.str.3)
+  %5 = call i32 @"std::io.println"(ptr @.str.4) #1
+  ret void
+
+if.exit3:                                         ; preds = %if.exit
+  %6 = call i32 @"std::io.print"(ptr @.str.5)
+  %7 = call i32 @"std::io.print"(ptr @.str.6)
+  %8 = call i32 @"std::io.print"(ptr @.str.7)
+  %9 = call i32 @"std::io.println"(ptr @.str.8) #1
+  ret void
+}
+
+; Function Attrs: nounwind
+define void @defer1.main() #0 {
+entry:
+  call void @defer1.test(i32 1)
+  call void @defer1.test(i32 0)
+  call void @defer1.test(i32 10)
+  ret void
+}

@@ -234,8 +234,8 @@ fn Type getValue(Blob blob)
 
 /* #expect: test.ll
 
-%Blob.0 = type { i32 }
-%Blob.1 = type { double }
+%Blob = type { i32 }
+%Blob.0 = type { double }
 %Foo2 = type { i32 }
 %Bobo = type { i16, float, i16, i16, float, i16 }
 %"int[]" = type { i32*, i64 }
@@ -243,6 +243,13 @@ fn Type getValue(Blob blob)
 %Node = type { %Node*, %Node*, i32 }
 %List = type { i64, i64, i32* }
 %Foo = type { i32, i32 }
+
+@.typeid.test.Bobo = linkonce constant { i8, i64 } { i8 10, i64 6 }, align 8
+@.typeid.test.Blob = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
+@.typeid.test.Foor = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
+@.typeid.test.Foo2 = linkonce constant { i8, i64 } { i8 10, i64 1 }, align 8
+@.typeid.test.Foo = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
+@.typeid.test.MyEnum = linkonce constant { i8, i64, i64 } { i8 8, i64 3, i64 0 }, align 8
 
 define void @test.Foo2__printme(%Foo2* %0) #0 {
 entry:
@@ -432,8 +439,8 @@ entry:
   %elements = alloca i32, align 4
   %array = alloca %List, align 8
   %i1 = alloca i32, align 4
-  %a = alloca %Blob.0, align 4
-  %b = alloca %Blob.1, align 8
+  %a = alloca %Blob, align 4
+  %b = alloca %Blob.0, align 8
   %tempcoerce = alloca double, align 8
   %ddx = alloca %Foo, align 4
   %fro = alloca i32, align 4
@@ -515,15 +522,15 @@ loop.body5:                                       ; preds = %loop.cond2
 
 loop.exit8:                                       ; preds = %loop.cond2
   call void @"std::array::list.int.List__free"(%List* %array)
-  %21 = bitcast %Blob.0* %a to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %21, i8* align 4 bitcast (%Blob.0* @.__const.6 to i8*), i32 4, i1 false)
-  %22 = bitcast %Blob.1* %b to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %22, i8* align 8 bitcast (%Blob.1* @.__const.7 to i8*), i32 8, i1 false)
-  %23 = getelementptr inbounds %Blob.0, %Blob.0* %a, i32 0, i32 0
+  %21 = bitcast %Blob* %a to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 4 %21, i8* align 4 bitcast (%Blob* @.__const.6 to i8*), i32 4, i1 false)
+  %22 = bitcast %Blob.0* %b to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %22, i8* align 8 bitcast (%Blob.0* @.__const.7 to i8*), i32 8, i1 false)
+  %23 = getelementptr inbounds %Blob, %Blob* %a, i32 0, i32 0
   %24 = load i32, i32* %23, align 4
   %25 = call i32 @test2.int.getValue(i32 %24)
   %26 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.8, i32 0, i32 0), i32 %25)
-  %27 = getelementptr inbounds %Blob.1, %Blob.1* %b, i32 0, i32 0
+  %27 = getelementptr inbounds %Blob.0, %Blob.0* %b, i32 0, i32 0
   %28 = bitcast double* %tempcoerce to i8*
   %29 = bitcast double* %27 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %28, i8* align 8 %29, i32 8, i1 false)

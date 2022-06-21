@@ -1,0 +1,49 @@
+module inlineme;
+import std::io;
+
+fn void test1() @inline
+{
+    io::println("Inline!");
+}
+
+fn void test2() @noinline
+{
+    io::println("No inline!");
+}
+
+fn void test3()
+{
+    io::println("Plain");
+}
+
+fn void main()
+{
+    test1() @inline;
+    test2() @inline;
+    test3() @inline;
+    test1() @noinline;
+    test2() @noinline;
+    test3() @noinline;
+    test1();
+    test2();
+    test3();
+}
+// #expect: inlineme.ll
+
+entry:
+  call void @inlineme.test1() #2
+  call void @inlineme.test2() #2
+  call void @inlineme.test3() #2
+  call void @inlineme.test1() #3
+  call void @inlineme.test2() #3
+  call void @inlineme.test3() #3
+  call void @inlineme.test1() #2
+  call void @inlineme.test2()
+  call void @inlineme.test3()
+  ret void
+}
+
+attributes #0 = { nounwind }
+attributes #1 = { noinline nounwind }
+attributes #2 = { alwaysinline }
+attributes #3 = { noinline }

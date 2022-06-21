@@ -1,0 +1,22 @@
+module foo;
+
+fault Baz
+{
+	TEST
+}
+
+module bar;
+import foo;
+
+fn int! abc()
+{
+	return Baz.TEST!;
+}
+
+module baz;
+import foo;
+
+fn int! abc()
+{
+	return Baz.TEST!;
+}

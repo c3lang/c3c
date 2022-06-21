@@ -11,8 +11,9 @@ void gencontext_begin_module(GenContext *c)
 
 	const char *result = module_create_object_file_name(c->code_module);
 	c->ir_filename = str_printf("%s.ll", result);
+	if (active_target.llvm_file_dir) c->ir_filename = file_append_path(active_target.llvm_file_dir, c->ir_filename);
 	c->object_filename = str_printf("%s%s", result, get_object_extension());
-
+	if (active_target.object_file_dir) c->object_filename = file_append_path(active_target.object_file_dir, c->object_filename);
 	c->panicfn = global_context.panic_fn;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();
@@ -57,9 +58,32 @@ void gencontext_begin_module(GenContext *c)
 
 	VECEACH(global_context.type, i)
 	{
-		global_context.type[i]->backend_type = NULL;
-		global_context.type[i]->backend_debug_type = NULL;
-		global_context.type[i]->backend_typeid = NULL;
+		Type *type = global_context.type[i];
+		type->backend_type = NULL;
+		type->backend_debug_type = NULL;
+		type->backend_typeid = NULL;
+		switch (type->type_kind)
+		{
+			case TYPE_ENUM:
+			case TYPE_FAULTTYPE:
+			{
+				Decl **values = type->decl->enums.values;
+				VECEACH(values, j)
+				{
+					values[j]->backend_ref = NULL;
+				}
+				FALLTHROUGH;
+			}
+			case TYPE_STRUCT:
+			case TYPE_UNION:
+			case TYPE_DISTINCT:
+				type->decl->backend_ref = NULL;
+				break;
+			case TYPE_FUNC:
+				// TODO
+			default:
+				break;
+		}
 	}
 	if (c->panicfn) c->panicfn->backend_ref = NULL;
 

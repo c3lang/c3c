@@ -67,7 +67,11 @@ fn void main()
 %variant = type { i8*, i64 }
 %"variant[]" = type { %variant*, i64 }
 
-@"int*" = weak constant i8 1
+@.typeid.int = linkonce constant { i8, i16 } { i8 2, i16 32 }, align 2
+@.typeid.double = linkonce constant { i8, i16 } { i8 4, i16 64 }, align 2
+@.typeid.variant = linkonce constant { i8 } { i8 7 }, align 1
+@".typeid.int*" = linkonce constant { i8, i64 } { i8 15, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64) }, align 8
+@.typeid.bool = linkonce constant { i8 } { i8 1 }, align 1
 
 define void @foo.test(i64 %0, i8* %1) #0 {
 entry:
@@ -85,7 +89,7 @@ entry:
 
 switch.entry:                                     ; preds = %entry
   %6 = load i64, i64* %switch, align 8
-  %eq = icmp eq i64 5, %6
+  %eq = icmp eq i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), %6
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
@@ -93,7 +97,7 @@ switch.case:                                      ; preds = %switch.entry
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 15, %6
+  %eq1 = icmp eq i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), %6
   br i1 %eq1, label %switch.case2, label %next_if3
 
 switch.case2:                                     ; preds = %next_if
@@ -101,7 +105,7 @@ switch.case2:                                     ; preds = %next_if
   br label %switch.exit
 
 next_if3:                                         ; preds = %next_if
-  %eq4 = icmp eq i64 17, %6
+  %eq4 = icmp eq i64 ptrtoint ({ i8 }* @.typeid.variant to i64), %6
   br i1 %eq4, label %switch.case5, label %next_if6
 
 switch.case5:                                     ; preds = %next_if3
@@ -109,7 +113,7 @@ switch.case5:                                     ; preds = %next_if3
   br label %switch.exit
 
 next_if6:                                         ; preds = %next_if3
-  %eq7 = icmp eq i64 ptrtoint (i8* @"int*" to i64), %6
+  %eq7 = icmp eq i64 ptrtoint ({ i8, i64 }* @".typeid.int*" to i64), %6
   br i1 %eq7, label %switch.case8, label %next_if9
 
 switch.case8:                                     ; preds = %next_if6
@@ -197,12 +201,12 @@ entry:
   store i32 1, i32* %taddr, align 4
   %0 = bitcast i32* %taddr to i8*
   %1 = insertvalue %variant undef, i8* %0, 0
-  %2 = insertvalue %variant %1, i64 5, 1
+  %2 = insertvalue %variant %1, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), 1
   store %variant %2, %variant* %x, align 8
   store i32 0, i32* %z, align 4
   %3 = bitcast i32* %z to i8*
   %4 = insertvalue %variant undef, i8* %3, 0
-  %5 = insertvalue %variant %4, i64 5, 1
+  %5 = insertvalue %variant %4, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), 1
   store %variant %5, %variant* %y, align 8
   %6 = getelementptr inbounds %variant, %variant* %y, i32 0, i32 1
   %7 = load i64, i64* %6, align 8
@@ -212,7 +216,7 @@ entry:
   store i64 %9, i64* %h, align 8
   %10 = getelementptr inbounds %variant, %variant* %y, i32 0, i32 1
   %11 = load i64, i64* %10, align 8
-  %eq = icmp eq i64 %11, 5
+  %eq = icmp eq i64 %11, ptrtoint ({ i8, i16 }* @.typeid.int to i64)
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
@@ -222,7 +226,7 @@ if.then:                                          ; preds = %entry
 if.exit:                                          ; preds = %if.then, %entry
   %12 = getelementptr inbounds %variant, %variant* %x, i32 0, i32 1
   %13 = load i64, i64* %12, align 8
-  %eq1 = icmp eq i64 %13, 5
+  %eq1 = icmp eq i64 %13, ptrtoint ({ i8, i16 }* @.typeid.int to i64)
   br i1 %eq1, label %if.then2, label %if.exit3
 
 if.then2:                                         ; preds = %if.exit
@@ -233,15 +237,15 @@ if.exit3:                                         ; preds = %if.then2, %if.exit
   store double 1.000000e+00, double* %taddr4, align 8
   %14 = bitcast double* %taddr4 to i8*
   %15 = insertvalue %variant undef, i8* %14, 0
-  %16 = insertvalue %variant %15, i64 15, 1
+  %16 = insertvalue %variant %15, i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), 1
   store %variant %16, %variant* %y, align 8
   %17 = bitcast %variant* %x to i8*
   %18 = insertvalue %variant undef, i8* %17, 0
-  %19 = insertvalue %variant %18, i64 17, 1
+  %19 = insertvalue %variant %18, i64 ptrtoint ({ i8 }* @.typeid.variant to i64), 1
   store %variant %19, %variant* %x, align 8
   %20 = getelementptr inbounds %variant, %variant* %y, i32 0, i32 1
   %21 = load i64, i64* %20, align 8
-  %eq5 = icmp eq i64 %21, 5
+  %eq5 = icmp eq i64 %21, ptrtoint ({ i8, i16 }* @.typeid.int to i64)
   br i1 %eq5, label %if.then6, label %if.exit7
 
 if.then6:                                         ; preds = %if.exit3
@@ -251,7 +255,7 @@ if.then6:                                         ; preds = %if.exit3
 if.exit7:                                         ; preds = %if.then6, %if.exit3
   %22 = getelementptr inbounds %variant, %variant* %x, i32 0, i32 1
   %23 = load i64, i64* %22, align 8
-  %eq8 = icmp eq i64 %23, 5
+  %eq8 = icmp eq i64 %23, ptrtoint ({ i8, i16 }* @.typeid.int to i64)
   br i1 %eq8, label %if.then9, label %if.exit10
 
 if.then9:                                         ; preds = %if.exit7
@@ -268,7 +272,7 @@ if.exit10:                                        ; preds = %if.then9, %if.exit7
   store double 1.000000e+00, double* %taddr11, align 8
   %27 = bitcast double* %taddr11 to i8*
   %28 = insertvalue %variant undef, i8* %27, 0
-  %29 = insertvalue %variant %28, i64 15, 1
+  %29 = insertvalue %variant %28, i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), 1
   store %variant %29, %variant* %taddr12, align 8
   %30 = bitcast %variant* %taddr12 to { i64, i8* }*
   %31 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %30, i32 0, i32 0
@@ -279,7 +283,7 @@ if.exit10:                                        ; preds = %if.then9, %if.exit7
   store i32 1, i32* %taddr15, align 4
   %33 = bitcast i32* %taddr15 to i8*
   %34 = insertvalue %variant undef, i8* %33, 0
-  %35 = insertvalue %variant %34, i64 5, 1
+  %35 = insertvalue %variant %34, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), 1
   store %variant %35, %variant* %taddr16, align 8
   %36 = bitcast %variant* %taddr16 to { i64, i8* }*
   %37 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %36, i32 0, i32 0
@@ -289,7 +293,7 @@ if.exit10:                                        ; preds = %if.then9, %if.exit7
   call void @foo.test(i64 %lo17, i8* %hi18)
   store i8 1, i8* %taddr19, align 1
   %39 = insertvalue %variant undef, i8* %taddr19, 0
-  %40 = insertvalue %variant %39, i64 2, 1
+  %40 = insertvalue %variant %39, i64 ptrtoint ({ i8 }* @.typeid.bool to i64), 1
   store %variant %40, %variant* %taddr20, align 8
   %41 = bitcast %variant* %taddr20 to { i64, i8* }*
   %42 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %41, i32 0, i32 0
@@ -310,17 +314,17 @@ if.exit10:                                        ; preds = %if.then9, %if.exit7
   store double 1.000000e+00, double* %taddr23, align 8
   %50 = bitcast double* %taddr23 to i8*
   %51 = insertvalue %variant undef, i8* %50, 0
-  %52 = insertvalue %variant %51, i64 15, 1
+  %52 = insertvalue %variant %51, i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), 1
   %53 = getelementptr inbounds [5 x %variant], [5 x %variant]* %varargslots, i64 0, i64 2
   store %variant %52, %variant* %53, align 16
   %54 = bitcast %variant* %x to i8*
   %55 = insertvalue %variant undef, i8* %54, 0
-  %56 = insertvalue %variant %55, i64 17, 1
+  %56 = insertvalue %variant %55, i64 ptrtoint ({ i8 }* @.typeid.variant to i64), 1
   %57 = getelementptr inbounds [5 x %variant], [5 x %variant]* %varargslots, i64 0, i64 3
   store %variant %56, %variant* %57, align 16
   %58 = bitcast i32** %df to i8*
   %59 = insertvalue %variant undef, i8* %58, 0
-  %60 = insertvalue %variant %59, i64 ptrtoint (i8* @"int*" to i64), 1
+  %60 = insertvalue %variant %59, i64 ptrtoint ({ i8, i64 }* @".typeid.int*" to i64), 1
   %61 = getelementptr inbounds [5 x %variant], [5 x %variant]* %varargslots, i64 0, i64 4
   store %variant %60, %variant* %61, align 16
   %62 = getelementptr inbounds %"variant[]", %"variant[]"* %vararg, i32 0, i32 1

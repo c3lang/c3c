@@ -1,0 +1,22 @@
+// #target: macos-x64
+module test;
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+	var $x = "abc";
+	int abc = 20;
+	$eval($x) = 444;
+	printf("Val: %d\n", $eval("abc"));
+}
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %abc = alloca i32, align 4
+  store i32 20, ptr %abc, align 4
+  store i32 444, ptr %abc, align 4
+  %0 = load i32, ptr %abc, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %0)
+  ret void
+}

@@ -58,6 +58,10 @@ fn int main()
 
 /* #expect: foo.ll
 
+@.typeid.int = linkonce constant { i8, i16 } { i8 2, i16 32 }, align 2
+@.typeid.double = linkonce constant { i8, i16 } { i8 4, i16 64 }, align 2
+@.typeid.bool = linkonce constant { i8 } { i8 1 }, align 1
+
 define void @foo.test(i64 %0, i8* %1) #0 {
 entry:
   %z = alloca %variant, align 8
@@ -76,7 +80,7 @@ entry:
 
 switch.entry:                                     ; preds = %entry
   %6 = load i64, i64* %switch, align 8
-  %eq = icmp eq i64 5, %6
+  %eq = icmp eq i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), %6
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
@@ -90,7 +94,7 @@ switch.case:                                      ; preds = %switch.entry
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq2 = icmp eq i64 15, %6
+  %eq2 = icmp eq i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), %6
   br i1 %eq2, label %switch.case3, label %next_if5
 
 switch.case3:                                     ; preds = %next_if
@@ -130,14 +134,14 @@ entry:
   %4 = bitcast %variant* %anon to i8*
   %5 = bitcast %variant* %y to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %4, i8* align 8 %5, i32 16, i1 false)
-  %6 = getelementptr inbounds %variant, %variant* %anon, i32 0, i32 1
+  %6 = getelementptr inbounds %variant, %variant* %y, i32 0, i32 1
   %7 = load i64, i64* %6, align 8
   store i64 %7, i64* %switch, align 8
   br label %switch.entry
 
 switch.entry:                                     ; preds = %entry
   %8 = load i64, i64* %switch, align 8
-  %eq = icmp eq i64 5, %8
+  %eq = icmp eq i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), %8
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
@@ -148,7 +152,7 @@ switch.case:                                      ; preds = %switch.entry
   store i32 12, i32* %taddr, align 4
   %12 = bitcast i32* %taddr to i8*
   %13 = insertvalue %variant undef, i8* %12, 0
-  %14 = insertvalue %variant %13, i64 5, 1
+  %14 = insertvalue %variant %13, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), 1
   store %variant %14, %variant* %y, align 8
   %15 = load i32*, i32** %z, align 8
   %16 = load i32, i32* %15, align 8
@@ -156,7 +160,7 @@ switch.case:                                      ; preds = %switch.entry
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 15, %8
+  %eq1 = icmp eq i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), %8
   br i1 %eq1, label %switch.case2, label %next_if4
 
 switch.case2:                                     ; preds = %next_if
@@ -195,14 +199,14 @@ entry:
   %4 = bitcast %variant* %anon to i8*
   %5 = bitcast %variant* %y to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* align 8 %4, i8* align 8 %5, i32 16, i1 false)
-  %6 = getelementptr inbounds %variant, %variant* %anon, i32 0, i32 1
+  %6 = getelementptr inbounds %variant, %variant* %y, i32 0, i32 1
   %7 = load i64, i64* %6, align 8
   store i64 %7, i64* %switch, align 8
   br label %switch.entry
 
 switch.entry:                                     ; preds = %entry
   %8 = load i64, i64* %switch, align 8
-  %eq = icmp eq i64 5, %8
+  %eq = icmp eq i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), %8
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
@@ -216,7 +220,7 @@ switch.case:                                      ; preds = %switch.entry
   br label %switch.exit
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 15, %8
+  %eq1 = icmp eq i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), %8
   br i1 %eq1, label %switch.case2, label %next_if4
 
 switch.case2:                                     ; preds = %next_if
@@ -263,7 +267,7 @@ entry:
   store double 1.230000e+02, double* %taddr, align 8
   %0 = bitcast double* %taddr to i8*
   %1 = insertvalue %variant undef, i8* %0, 0
-  %2 = insertvalue %variant %1, i64 15, 1
+  %2 = insertvalue %variant %1, i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), 1
   store %variant %2, %variant* %taddr1, align 8
   %3 = bitcast %variant* %taddr1 to { i64, i8* }*
   %4 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %3, i32 0, i32 0
@@ -274,7 +278,7 @@ entry:
   store i32 1, i32* %taddr2, align 4
   %6 = bitcast i32* %taddr2 to i8*
   %7 = insertvalue %variant undef, i8* %6, 0
-  %8 = insertvalue %variant %7, i64 5, 1
+  %8 = insertvalue %variant %7, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), 1
   store %variant %8, %variant* %taddr3, align 8
   %9 = bitcast %variant* %taddr3 to { i64, i8* }*
   %10 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %9, i32 0, i32 0
@@ -284,7 +288,7 @@ entry:
   call void @foo.test(i64 %lo4, i8* %hi5)
   store i8 1, i8* %taddr6, align 1
   %12 = insertvalue %variant undef, i8* %taddr6, 0
-  %13 = insertvalue %variant %12, i64 2, 1
+  %13 = insertvalue %variant %12, i64 ptrtoint ({ i8 }* @.typeid.bool to i64), 1
   store %variant %13, %variant* %taddr7, align 8
   %14 = bitcast %variant* %taddr7 to { i64, i8* }*
   %15 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %14, i32 0, i32 0
@@ -295,7 +299,7 @@ entry:
   store double 1.235000e+02, double* %taddr10, align 8
   %17 = bitcast double* %taddr10 to i8*
   %18 = insertvalue %variant undef, i8* %17, 0
-  %19 = insertvalue %variant %18, i64 15, 1
+  %19 = insertvalue %variant %18, i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), 1
   store %variant %19, %variant* %taddr11, align 8
   %20 = bitcast %variant* %taddr11 to { i64, i8* }*
   %21 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %20, i32 0, i32 0
@@ -306,7 +310,7 @@ entry:
   store i32 1, i32* %taddr14, align 4
   %23 = bitcast i32* %taddr14 to i8*
   %24 = insertvalue %variant undef, i8* %23, 0
-  %25 = insertvalue %variant %24, i64 5, 1
+  %25 = insertvalue %variant %24, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), 1
   store %variant %25, %variant* %taddr15, align 8
   %26 = bitcast %variant* %taddr15 to { i64, i8* }*
   %27 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %26, i32 0, i32 0
@@ -316,7 +320,7 @@ entry:
   call void @foo.test2(i64 %lo16, i8* %hi17)
   store i8 1, i8* %taddr18, align 1
   %29 = insertvalue %variant undef, i8* %taddr18, 0
-  %30 = insertvalue %variant %29, i64 2, 1
+  %30 = insertvalue %variant %29, i64 ptrtoint ({ i8 }* @.typeid.bool to i64), 1
   store %variant %30, %variant* %taddr19, align 8
   %31 = bitcast %variant* %taddr19 to { i64, i8* }*
   %32 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %31, i32 0, i32 0
@@ -327,7 +331,7 @@ entry:
   store double 1.240000e+02, double* %taddr22, align 8
   %34 = bitcast double* %taddr22 to i8*
   %35 = insertvalue %variant undef, i8* %34, 0
-  %36 = insertvalue %variant %35, i64 15, 1
+  %36 = insertvalue %variant %35, i64 ptrtoint ({ i8, i16 }* @.typeid.double to i64), 1
   store %variant %36, %variant* %taddr23, align 8
   %37 = bitcast %variant* %taddr23 to { i64, i8* }*
   %38 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %37, i32 0, i32 0
@@ -338,7 +342,7 @@ entry:
   store i32 2, i32* %taddr26, align 4
   %40 = bitcast i32* %taddr26 to i8*
   %41 = insertvalue %variant undef, i8* %40, 0
-  %42 = insertvalue %variant %41, i64 5, 1
+  %42 = insertvalue %variant %41, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64), 1
   store %variant %42, %variant* %taddr27, align 8
   %43 = bitcast %variant* %taddr27 to { i64, i8* }*
   %44 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %43, i32 0, i32 0
@@ -348,7 +352,7 @@ entry:
   call void @foo.test3(i64 %lo28, i8* %hi29)
   store i8 1, i8* %taddr30, align 1
   %46 = insertvalue %variant undef, i8* %taddr30, 0
-  %47 = insertvalue %variant %46, i64 2, 1
+  %47 = insertvalue %variant %46, i64 ptrtoint ({ i8 }* @.typeid.bool to i64), 1
   store %variant %47, %variant* %taddr31, align 8
   %48 = bitcast %variant* %taddr31 to { i64, i8* }*
   %49 = getelementptr inbounds { i64, i8* }, { i64, i8* }* %48, i32 0, i32 0

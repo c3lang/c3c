@@ -1,0 +1,1 @@
+static int ifej; // #error: Expected a top level declaration here

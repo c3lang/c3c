@@ -1,0 +1,114 @@
+module foo;
+
+extern fn void printf(char* message, ...);
+
+fn void defer1() {}
+fn void defer2() {}
+fn void defer3() {}
+fn void defer4() {}
+fn void defer5() {}
+fn void defer6() {}
+fn void defer7() {}
+fn void defer8() {}
+fn void defer9() {}
+fn void defer10() {}
+fn void defer11() {}
+
+fn int main(int argc, char** argv)
+{
+	int a = 0;
+    {
+        defer do {
+            if (a == 1) break;
+            defer1();
+        } while(0);
+        defer2();
+    }
+    defer defer3();
+    while (a)
+    {
+	    defer defer4();
+        if (argc == 1) break;
+        defer defer5();
+        defer6();
+    }
+    defer defer7();
+    while (a)
+    {
+	    defer defer8();
+        if (argc == 1) break;
+        defer defer9();
+        defer10();
+		break;
+		defer11();
+    }
+    return 0;
+}
+
+/* #expect: foo.ll
+
+define i32 @main(i32 %0, ptr %1) #0 {
+entry:
+  %a = alloca i32, align 4
+  store i32 0, ptr %a, align 4
+  call void @foo.defer2()
+  %2 = load i32, ptr %a, align 4
+  %eq = icmp eq i32 %2, 1
+  br i1 %eq, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  br label %loop.exit
+
+if.exit:                                          ; preds = %entry
+  call void @foo.defer1()
+  br label %loop.exit
+
+loop.exit:                                        ; preds = %if.exit, %if.then
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %if.exit3, %loop.exit
+  %3 = load i32, ptr %a, align 4
+  %intbool = icmp ne i32 %3, 0
+  br i1 %intbool, label %loop.body, label %loop.exit4
+
+loop.body:                                        ; preds = %loop.cond
+  %eq1 = icmp eq i32 %0, 1
+  br i1 %eq1, label %if.then2, label %if.exit3
+
+if.then2:                                         ; preds = %loop.body
+  call void @foo.defer4()
+  br label %loop.exit4
+
+if.exit3:                                         ; preds = %loop.body
+  call void @foo.defer6()
+  call void @foo.defer5()
+  call void @foo.defer4()
+  br label %loop.cond
+
+loop.exit4:                                       ; preds = %if.then2, %loop.cond
+  br label %loop.cond5
+
+loop.cond5:                                       ; preds = %loop.exit4
+  %4 = load i32, ptr %a, align 4
+  %intbool6 = icmp ne i32 %4, 0
+  br i1 %intbool6, label %loop.body7, label %loop.exit11
+
+loop.body7:                                       ; preds = %loop.cond5
+  %eq8 = icmp eq i32 %0, 1
+  br i1 %eq8, label %if.then9, label %if.exit10
+
+if.then9:                                         ; preds = %loop.body7
+  call void @foo.defer8()
+  br label %loop.exit11
+
+if.exit10:                                        ; preds = %loop.body7
+  call void @foo.defer10()
+  call void @foo.defer9()
+  call void @foo.defer8()
+  br label %loop.exit11
+
+loop.exit11:                                      ; preds = %if.exit10, %if.then9, %loop.cond5
+  call void @foo.defer7()
+  call void @foo.defer3()
+  ret i32 0
+}

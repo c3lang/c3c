@@ -24,7 +24,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 /**
  * This emits a local declaration.
  */
-LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
+void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 {
 	// 1. Get the declaration and the LLVM type.
 	Type *var_type = type_lowering(type_no_fail(decl->type));
@@ -35,7 +35,11 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 	if (decl->var.is_static)
 	{
 		// In defers we might already have generated this variable.
-		if (decl->backend_ref) return decl->backend_ref;
+		if (decl->backend_ref)
+		{
+			llvm_value_set_decl(c, value, decl);
+			return;
+		}
 		void *builder = c->builder;
 		c->builder = NULL;
 		decl->backend_ref = llvm_add_global_var(c, "tempglobal", var_type, decl->alignment);
@@ -48,12 +52,14 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		}
 		llvm_emit_global_variable_init(c, decl);
 		c->builder = builder;
-		return decl->backend_ref;
+		llvm_value_set_decl(c, value, decl);
+		return;
 	}
 	assert(!decl->backend_ref);
 	llvm_emit_local_var_alloca(c, decl);
 	Expr *init = decl->var.init_expr;
-	if (IS_FAILABLE(decl))
+	bool is_failable = IS_FAILABLE(decl);
+	if (is_failable)
 	{
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->name);
@@ -64,15 +70,18 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 
 	if (init)
 	{
-		// If we don't have undef, then make an assign.
-		if (!decl->var.no_init)
+		llvm_value_set_decl_address(c, value, decl);
+		value->kind = BE_ADDRESS;
+		BEValue res = llvm_emit_assign_expr(c, value, decl->var.init_expr, decl->var.failable_ref);
+		if (!is_failable) *value = res;
+	}
+	else if (decl->var.no_init)
+	{
+		llvm_value_set(value, LLVMGetUndef(alloc_type), decl->type);
+		if (decl->var.failable_ref)
 		{
-			BEValue value;
-			llvm_value_set_decl_address(c, &value, decl);
-			value.kind = BE_ADDRESS;
-			llvm_emit_assign_expr(c, &value, decl->var.init_expr, decl->var.failable_ref);
+			LLVMBuildStore(c->builder, LLVMGetUndef(llvm_get_type(c, type_anyerr)), decl->var.failable_ref);
 		}
-		// TODO trap on undef in debug mode.
 	}
 	else
 	{
@@ -86,16 +95,16 @@ LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl)
 		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
 		{
 			llvm_emit_store(c, decl, LLVMConstNull(alloc_type));
+			llvm_value_set(value, LLVMConstNull(alloc_type), type);
 		}
 		else
 		{
-			BEValue value;
-			llvm_value_set_decl_address(c, &value, decl);
-			value.kind = BE_ADDRESS;
-			llvm_store_zero(c, &value);
+			llvm_value_set_decl_address(c, value, decl);
+			value->kind = BE_ADDRESS;
+			llvm_store_zero(c, value);
+			llvm_value_set(value, llvm_get_zero(c, type), type);
 		}
 	}
-	return decl->backend_ref;
 }
 
 void llvm_emit_decl_expr_list_ignore_result(GenContext *context, Expr *expr)
@@ -124,7 +133,8 @@ void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr
 	if (last->expr_kind == EXPR_DECL)
 	{
 		type = last->decl_expr->var.type_info->type;
-		LLVMValueRef decl_value = llvm_emit_local_decl(context, last->decl_expr);
+
+		LLVMValueRef decl_value = llvm_get_ref(context, last->decl_expr);
 		if (bool_cast && last->decl_expr->var.unwrap)
 		{
 			llvm_value_set_bool(be_value, LLVMConstInt(context->bool_type, 1, false));
@@ -1134,8 +1144,11 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			gencontext_emit_expr_stmt(c, ast);
 			break;
 		case AST_DECLARE_STMT:
-			llvm_emit_local_decl(c, ast->declare_stmt);
+		{
+			BEValue value;
+			llvm_emit_local_decl(c, ast->declare_stmt, &value);
 			break;
+		}
 		case AST_BREAK_STMT:
 			llvm_emit_break(c, ast);
 			break;

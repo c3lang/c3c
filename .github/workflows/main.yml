@@ -159,7 +159,11 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          python3 src/tester.py ../build/c3c test_suite/
+          if [[ "${{matrix.llvm_version}}" < 15 ]]; then
+            python3 src/tester.py ../build/c3c test_suite/
+          else
+            python3 src/tester.py ../build/c3c test_suite2/
+          fi
 
   build-mac:
     runs-on: macos-latest
@@ -168,7 +172,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [12, 13]
+        llvm_version: [12, 13, 14]
     steps:
       - uses: actions/checkout@v3
       - name: Download LLVM

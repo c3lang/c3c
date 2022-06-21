@@ -617,7 +617,7 @@ bool cast_may_implicit(Type *from_type, Type *to_type, bool is_simple_expr, bool
 			if (to == type_voidptr || from == type_voidptr) return true;
 
 			// Special handling of int* = int[4]*
-			if (from->pointer->type_kind == TYPE_ARRAY)
+			if (from->pointer->type_kind == TYPE_ARRAY || from->pointer->type_kind == TYPE_FLEXIBLE_ARRAY)
 			{
 				if (type_is_subtype(to->pointer, from->pointer->array.base))
 				{

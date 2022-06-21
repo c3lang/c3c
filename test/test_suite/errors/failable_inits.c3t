@@ -39,7 +39,8 @@ entry:
   %x.f = alloca i64, align 8
   %y = alloca %Bar, align 4
   %error_var = alloca i64, align 8
-  store i64 ptrtoint ([2 x i8*]* @"test.Foo$elements" to i64), i64* %x.f, align 8
+  %reterr = alloca i64, align 8
+  store i64 ptrtoint (i8* @test.Foo.MY_VAL1 to i64), i64* %x.f, align 8
   %0 = load i64, i64* %x.f, align 8
   %not_err = icmp eq i64 %0, 0
   br i1 %not_err, label %after_check, label %error
@@ -68,6 +69,7 @@ entry:
   %x.f = alloca i64, align 8
   %y = alloca %Bar, align 4
   %error_var = alloca i64, align 8
+  %reterr = alloca i64, align 8
   %0 = bitcast %Bar* %x to i32*
   store i32 0, i32* %0, align 4
   store i64 0, i64* %x.f, align 8

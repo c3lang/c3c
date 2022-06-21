@@ -1,0 +1,113 @@
+// #target: macos-x64
+
+module test;
+import std::io;
+fault Foo
+{
+    MY_VAL1,
+    MY_VAL2,
+}
+
+struct Bar
+{
+    int x;
+}
+
+fn void! test1()
+{
+    Bar! x = Foo.MY_VAL1!;
+    Bar y = x?;
+}
+
+fn void! test2()
+{
+    Bar! x = {};
+    Bar y = x?;
+}
+
+fn void main()
+{
+    test1();
+    test2();
+}
+
+/* #expect: test.ll
+
+define i64 @test.test1() #0 {
+entry:
+  %x = alloca %Bar, align 4
+  %x.f = alloca i64, align 8
+  %y = alloca %Bar, align 4
+  %error_var = alloca i64, align 8
+  %reterr = alloca i64, align 8
+  store i64 ptrtoint (ptr @test.Foo.MY_VAL1 to i64), ptr %x.f, align 8
+  %0 = load i64, ptr %x.f, align 8
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after_check, label %error
+
+error:                                            ; preds = %entry
+  store i64 %0, ptr %error_var, align 8
+  br label %guard_block
+
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+
+guard_block:                                      ; preds = %error
+  %1 = load i64, ptr %error_var, align 8
+  ret i64 %1
+
+noerr_block:                                      ; preds = %after_check
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 %x, i32 4, i1 false)
+  ret i64 0
+}
+
+define i64 @test.test2() #0 {
+entry:
+  %x = alloca %Bar, align 4
+  %x.f = alloca i64, align 8
+  %y = alloca %Bar, align 4
+  %error_var = alloca i64, align 8
+  %reterr = alloca i64, align 8
+  store i32 0, ptr %x, align 4
+  store i64 0, ptr %x.f, align 8
+  %0 = load i64, ptr %x.f, align 8
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after_check, label %error
+
+error:                                            ; preds = %entry
+  store i64 %0, ptr %error_var, align 8
+  br label %guard_block
+
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+
+guard_block:                                      ; preds = %error
+  %1 = load i64, ptr %error_var, align 8
+  ret i64 %1
+
+noerr_block:                                      ; preds = %after_check
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 %x, i32 4, i1 false)
+  ret i64 0
+}
+
+; Function Attrs: nounwind
+define void @test.main() #0 {
+entry:
+  %0 = call i64 @test.test1()
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after.errcheck, label %voiderr
+
+after.errcheck:                                   ; preds = %entry
+  br label %voiderr
+
+voiderr:                                          ; preds = %after.errcheck, %entry
+  %1 = call i64 @test.test2()
+  %not_err1 = icmp eq i64 %1, 0
+  br i1 %not_err1, label %after.errcheck2, label %voiderr3
+
+after.errcheck2:                                  ; preds = %voiderr
+  br label %voiderr3
+
+voiderr3:                                         ; preds = %after.errcheck2, %voiderr
+  ret void
+}

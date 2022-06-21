@@ -1,0 +1,1 @@
+module abc::if::while; // #error: The module path cannot contain a reserved keyword, try another name

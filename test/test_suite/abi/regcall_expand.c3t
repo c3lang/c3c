@@ -21,9 +21,9 @@ fn int main()
 
 %Foo = type { [2 x float] }
 
-$introspect.Foo = comdat any
+$.typeid.test.Foo = comdat any
 
-@introspect.Foo = linkonce constant i8 1
+@.typeid.test.Foo = linkonce constant { i8, i64 } { i8 10, i64 1 }, comdat, align 8
 
 declare void @printf(i8*, ...) #0
 

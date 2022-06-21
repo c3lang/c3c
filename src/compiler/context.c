@@ -166,7 +166,9 @@ void decl_register(Decl *decl)
 
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 {
+	assert(!decl->module || decl->module->is_generic);
 	decl->module = unit->module;
+
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:

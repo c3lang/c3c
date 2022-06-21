@@ -1,0 +1,23 @@
+module check;
+
+fn int main()
+{
+    int a = 0;
+    ulong b = 3;
+    b - a;
+    return 1;
+}
+
+// #expect: check.ll
+
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i64, align 8
+  store i32 0, ptr %a, align 4
+  store i64 3, ptr %b, align 8
+  %0 = load i64, ptr %b, align 8
+  %1 = load i32, ptr %a, align 4
+  %sisiext = sext i32 %1 to i64
+  %sub = sub i64 %0, %sisiext
+  ret i32 1
+}

@@ -2,11 +2,6 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module libc;
-import std::cinterop;
-import std::env;
-import std::os::linux;
-import std::os::macos;
-import std::os::windows;
 // stdlib
 
 

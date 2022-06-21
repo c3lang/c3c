@@ -1,0 +1,335 @@
+// #target: macos-x64
+module foo;
+
+extern fn void printf(char*, ...);
+
+fn void test(variant z)
+{
+    switch (z)
+    {
+        case int:
+            printf("int: %d\n", *z);
+        case double:
+            printf("double %f\n", *z);
+        default:
+            printf("Unknown type.\n");
+    }
+}
+fn void test2(variant y)
+{
+    switch (z = y)
+    {
+        case int:
+            y = &&12;
+            printf("int: %d\n", *z);
+        case double:
+            printf("double %f\n", *z);
+        default:
+            printf("Unknown type.\n");
+    }
+}
+
+fn void test3(variant y)
+{
+    switch (z = *y)
+    {
+        case int:
+            printf("int: %d\n", z);
+        case double:
+            printf("double %f\n", z);
+        default:
+            printf("Unknown type.\n");
+    }
+}
+
+fn int main()
+{
+    test(&&123.0);
+    test(&&1);
+    test(&&true);
+    test2(&&123.5);
+    test2(&&1);
+    test2(&&true);
+    test3(&&124.0);
+    test3(&&2);
+    test3(&&true);
+    return 0;
+}
+
+/* #expect: foo.ll
+
+@.typeid.int = linkonce constant { i8, i16 } { i8 2, i16 32 }, align 2
+@.typeid.double = linkonce constant { i8, i16 } { i8 4, i16 64 }, align 2
+@.typeid.bool = linkonce constant { i8 } { i8 1 }, align 1
+
+define void @foo.test(i64 %0, ptr %1) #0 {
+entry:
+  %z = alloca %variant, align 8
+  %switch = alloca i64, align 8
+  %z1 = alloca ptr, align 8
+  %z4 = alloca ptr, align 8
+  %2 = getelementptr inbounds { i64, ptr }, ptr %z, i32 0, i32 0
+  store i64 %0, ptr %2, align 8
+  %3 = getelementptr inbounds { i64, ptr }, ptr %z, i32 0, i32 1
+  store ptr %1, ptr %3, align 8
+  %4 = getelementptr inbounds %variant, ptr %z, i32 0, i32 1
+  %5 = load i64, ptr %4, align 8
+  store i64 %5, ptr %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %6 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @.typeid.int to i64), %6
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  %7 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
+  %8 = load ptr, ptr %7, align 8
+  store ptr %8, ptr %z1, align 8
+  %9 = load ptr, ptr %z1, align 8
+  %10 = load i32, ptr %9, align 8
+  call void (ptr, ...) @printf(ptr @.str, i32 %10)
+  br label %switch.exit
+
+next_if:                                          ; preds = %switch.entry
+  %eq2 = icmp eq i64 ptrtoint (ptr @.typeid.double to i64), %6
+  br i1 %eq2, label %switch.case3, label %next_if5
+
+switch.case3:                                     ; preds = %next_if
+  %11 = getelementptr inbounds %variant, ptr %z, i32 0, i32 0
+  %12 = load ptr, ptr %11, align 8
+  store ptr %12, ptr %z4, align 8
+  %13 = load ptr, ptr %z4, align 8
+  %14 = load double, ptr %13, align 8
+  call void (ptr, ...) @printf(ptr @.str.1, double %14)
+  br label %switch.exit
+
+next_if5:                                         ; preds = %next_if
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if5
+  call void (ptr, ...) @printf(ptr @.str.2)
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %switch.case3, %switch.case
+  ret void
+}
+
+define void @foo.test2(i64 %0, ptr %1) #0 {
+entry:
+  %y = alloca %variant, align 8
+  %anon = alloca %variant, align 8
+  %switch = alloca i64, align 8
+  %z = alloca ptr, align 8
+  %taddr = alloca i32, align 4
+  %z3 = alloca ptr, align 8
+  %2 = getelementptr inbounds { i64, ptr }, ptr %y, i32 0, i32 0
+  store i64 %0, ptr %2, align 8
+  %3 = getelementptr inbounds { i64, ptr }, ptr %y, i32 0, i32 1
+  store ptr %1, ptr %3, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %anon, ptr align 8 %y, i32 16, i1 false)
+  %4 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
+  %5 = load i64, ptr %4, align 8
+  store i64 %5, ptr %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %6 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @.typeid.int to i64), %6
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  %7 = getelementptr inbounds %variant, ptr %anon, i32 0, i32 0
+  %8 = load ptr, ptr %7, align 8
+  store ptr %8, ptr %z, align 8
+  store i32 12, ptr %taddr, align 4
+  %9 = insertvalue %variant undef, ptr %taddr, 0
+  %10 = insertvalue %variant %9, i64 ptrtoint (ptr @.typeid.int to i64), 1
+  store %variant %10, ptr %y, align 8
+  %11 = load ptr, ptr %z, align 8
+  %12 = load i32, ptr %11, align 8
+  call void (ptr, ...) @printf(ptr @.str.3, i32 %12)
+  br label %switch.exit
+
+next_if:                                          ; preds = %switch.entry
+  %eq1 = icmp eq i64 ptrtoint (ptr @.typeid.double to i64), %6
+  br i1 %eq1, label %switch.case2, label %next_if4
+
+switch.case2:                                     ; preds = %next_if
+  %13 = getelementptr inbounds %variant, ptr %anon, i32 0, i32 0
+  %14 = load ptr, ptr %13, align 8
+  store ptr %14, ptr %z3, align 8
+  %15 = load ptr, ptr %z3, align 8
+  %16 = load double, ptr %15, align 8
+  call void (ptr, ...) @printf(ptr @.str.4, double %16)
+  br label %switch.exit
+
+next_if4:                                         ; preds = %next_if
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if4
+  call void (ptr, ...) @printf(ptr @.str.5)
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %switch.case2, %switch.case
+  ret void
+}
+
+define void @foo.test3(i64 %0, ptr %1) #0 {
+entry:
+  %y = alloca %variant, align 8
+  %anon = alloca %variant, align 8
+  %switch = alloca i64, align 8
+  %z = alloca i32, align 4
+  %z3 = alloca double, align 8
+  %2 = getelementptr inbounds { i64, ptr }, ptr %y, i32 0, i32 0
+  store i64 %0, ptr %2, align 8
+  %3 = getelementptr inbounds { i64, ptr }, ptr %y, i32 0, i32 1
+  store ptr %1, ptr %3, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %anon, ptr align 8 %y, i32 16, i1 false)
+  %4 = getelementptr inbounds %variant, ptr %y, i32 0, i32 1
+  %5 = load i64, ptr %4, align 8
+  store i64 %5, ptr %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %6 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @.typeid.int to i64), %6
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  %7 = getelementptr inbounds %variant, ptr %anon, i32 0, i32 0
+  %8 = load ptr, ptr %7, align 8
+  %9 = load i32, ptr %8, align 8
+  store i32 %9, ptr %z, align 4
+  %10 = load i32, ptr %z, align 4
+  call void (ptr, ...) @printf(ptr @.str.6, i32 %10)
+  br label %switch.exit
+
+next_if:                                          ; preds = %switch.entry
+  %eq1 = icmp eq i64 ptrtoint (ptr @.typeid.double to i64), %6
+  br i1 %eq1, label %switch.case2, label %next_if4
+
+switch.case2:                                     ; preds = %next_if
+  %11 = getelementptr inbounds %variant, ptr %anon, i32 0, i32 0
+  %12 = load ptr, ptr %11, align 8
+  %13 = load double, ptr %12, align 8
+  store double %13, ptr %z3, align 8
+  %14 = load double, ptr %z3, align 8
+  call void (ptr, ...) @printf(ptr @.str.7, double %14)
+  br label %switch.exit
+
+next_if4:                                         ; preds = %next_if
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if4
+  call void (ptr, ...) @printf(ptr @.str.8)
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %switch.case2, %switch.case
+  ret void
+}
+
+define i32 @main() #0 {
+entry:
+  %taddr = alloca double, align 8
+  %taddr1 = alloca %variant, align 8
+  %taddr2 = alloca i32, align 4
+  %taddr3 = alloca %variant, align 8
+  %taddr6 = alloca i8, align 1
+  %taddr7 = alloca %variant, align 8
+  %taddr10 = alloca double, align 8
+  %taddr11 = alloca %variant, align 8
+  %taddr14 = alloca i32, align 4
+  %taddr15 = alloca %variant, align 8
+  %taddr18 = alloca i8, align 1
+  %taddr19 = alloca %variant, align 8
+  %taddr22 = alloca double, align 8
+  %taddr23 = alloca %variant, align 8
+  %taddr26 = alloca i32, align 4
+  %taddr27 = alloca %variant, align 8
+  %taddr30 = alloca i8, align 1
+  %taddr31 = alloca %variant, align 8
+  store double 1.230000e+02, ptr %taddr, align 8
+  %0 = insertvalue %variant undef, ptr %taddr, 0
+  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @.typeid.double to i64), 1
+  store %variant %1, ptr %taddr1, align 8
+  %2 = getelementptr inbounds { i64, ptr }, ptr %taddr1, i32 0, i32 0
+  %lo = load i64, ptr %2, align 8
+  %3 = getelementptr inbounds { i64, ptr }, ptr %taddr1, i32 0, i32 1
+  %hi = load ptr, ptr %3, align 8
+  call void @foo.test(i64 %lo, ptr %hi)
+  store i32 1, ptr %taddr2, align 4
+  %4 = insertvalue %variant undef, ptr %taddr2, 0
+  %5 = insertvalue %variant %4, i64 ptrtoint (ptr @.typeid.int to i64), 1
+  store %variant %5, ptr %taddr3, align 8
+  %6 = getelementptr inbounds { i64, ptr }, ptr %taddr3, i32 0, i32 0
+  %lo4 = load i64, ptr %6, align 8
+  %7 = getelementptr inbounds { i64, ptr }, ptr %taddr3, i32 0, i32 1
+  %hi5 = load ptr, ptr %7, align 8
+  call void @foo.test(i64 %lo4, ptr %hi5)
+  store i8 1, ptr %taddr6, align 1
+  %8 = insertvalue %variant undef, ptr %taddr6, 0
+  %9 = insertvalue %variant %8, i64 ptrtoint (ptr @.typeid.bool to i64), 1
+  store %variant %9, ptr %taddr7, align 8
+  %10 = getelementptr inbounds { i64, ptr }, ptr %taddr7, i32 0, i32 0
+  %lo8 = load i64, ptr %10, align 8
+  %11 = getelementptr inbounds { i64, ptr }, ptr %taddr7, i32 0, i32 1
+  %hi9 = load ptr, ptr %11, align 8
+  call void @foo.test(i64 %lo8, ptr %hi9)
+  store double 1.235000e+02, ptr %taddr10, align 8
+  %12 = insertvalue %variant undef, ptr %taddr10, 0
+  %13 = insertvalue %variant %12, i64 ptrtoint (ptr @.typeid.double to i64), 1
+  store %variant %13, ptr %taddr11, align 8
+  %14 = getelementptr inbounds { i64, ptr }, ptr %taddr11, i32 0, i32 0
+  %lo12 = load i64, ptr %14, align 8
+  %15 = getelementptr inbounds { i64, ptr }, ptr %taddr11, i32 0, i32 1
+  %hi13 = load ptr, ptr %15, align 8
+  call void @foo.test2(i64 %lo12, ptr %hi13)
+  store i32 1, ptr %taddr14, align 4
+  %16 = insertvalue %variant undef, ptr %taddr14, 0
+  %17 = insertvalue %variant %16, i64 ptrtoint (ptr @.typeid.int to i64), 1
+  store %variant %17, ptr %taddr15, align 8
+  %18 = getelementptr inbounds { i64, ptr }, ptr %taddr15, i32 0, i32 0
+  %lo16 = load i64, ptr %18, align 8
+  %19 = getelementptr inbounds { i64, ptr }, ptr %taddr15, i32 0, i32 1
+  %hi17 = load ptr, ptr %19, align 8
+  call void @foo.test2(i64 %lo16, ptr %hi17)
+  store i8 1, ptr %taddr18, align 1
+  %20 = insertvalue %variant undef, ptr %taddr18, 0
+  %21 = insertvalue %variant %20, i64 ptrtoint (ptr @.typeid.bool to i64), 1
+  store %variant %21, ptr %taddr19, align 8
+  %22 = getelementptr inbounds { i64, ptr }, ptr %taddr19, i32 0, i32 0
+  %lo20 = load i64, ptr %22, align 8
+  %23 = getelementptr inbounds { i64, ptr }, ptr %taddr19, i32 0, i32 1
+  %hi21 = load ptr, ptr %23, align 8
+  call void @foo.test2(i64 %lo20, ptr %hi21)
+  store double 1.240000e+02, ptr %taddr22, align 8
+  %24 = insertvalue %variant undef, ptr %taddr22, 0
+  %25 = insertvalue %variant %24, i64 ptrtoint (ptr @.typeid.double to i64), 1
+  store %variant %25, ptr %taddr23, align 8
+  %26 = getelementptr inbounds { i64, ptr }, ptr %taddr23, i32 0, i32 0
+  %lo24 = load i64, ptr %26, align 8
+  %27 = getelementptr inbounds { i64, ptr }, ptr %taddr23, i32 0, i32 1
+  %hi25 = load ptr, ptr %27, align 8
+  call void @foo.test3(i64 %lo24, ptr %hi25)
+  store i32 2, ptr %taddr26, align 4
+  %28 = insertvalue %variant undef, ptr %taddr26, 0
+  %29 = insertvalue %variant %28, i64 ptrtoint (ptr @.typeid.int to i64), 1
+  store %variant %29, ptr %taddr27, align 8
+  %30 = getelementptr inbounds { i64, ptr }, ptr %taddr27, i32 0, i32 0
+  %lo28 = load i64, ptr %30, align 8
+  %31 = getelementptr inbounds { i64, ptr }, ptr %taddr27, i32 0, i32 1
+  %hi29 = load ptr, ptr %31, align 8
+  call void @foo.test3(i64 %lo28, ptr %hi29)
+  store i8 1, ptr %taddr30, align 1
+  %32 = insertvalue %variant undef, ptr %taddr30, 0
+  %33 = insertvalue %variant %32, i64 ptrtoint (ptr @.typeid.bool to i64), 1
+  store %variant %33, ptr %taddr31, align 8
+  %34 = getelementptr inbounds { i64, ptr }, ptr %taddr31, i32 0, i32 0
+  %lo32 = load i64, ptr %34, align 8
+  %35 = getelementptr inbounds { i64, ptr }, ptr %taddr31, i32 0, i32 1
+  %hi33 = load ptr, ptr %35, align 8
+  call void @foo.test3(i64 %lo32, ptr %hi33)
+  ret i32 0
+}

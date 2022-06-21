@@ -86,7 +86,7 @@ fn void main()
 
 %Foo = type { [3 x i32] }
 
-@introspect.Foo = linkonce constant i8 1
+@.typeid.foo.Foo = linkonce constant { i8, i64 } { i8 10, i64 1 }, align 8
 @.str = private unnamed_addr constant [11 x i8] c"getFields\0A\00", align 1
 @.str.1 = private unnamed_addr constant [11 x i8] c"Call made\0A\00", align 1
 @.__const = private unnamed_addr constant %Foo { [3 x i32] [i32 1, i32 5, i32 7] }, align 4

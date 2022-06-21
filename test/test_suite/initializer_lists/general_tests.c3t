@@ -38,8 +38,8 @@ fn int test()
 %"int[]" = type { i32*, i64 }
 %"Bar[]" = type { %Bar*, i64 }
 
-@introspect.Baz = linkonce constant i8 1
-@introspect.Bar = linkonce constant i8 1
+@.typeid.general_tests.Baz = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
+@.typeid.general_tests.Bar = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
 @.__const = private unnamed_addr constant { i32, [4 x i8] } { i32 1, [4 x i8] undef }, align 8
 @test.foo1 = internal unnamed_addr global i32 22, align 4
 @.str = private unnamed_addr constant [7 x i8] c"Hello!\00", align 1

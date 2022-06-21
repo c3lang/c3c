@@ -1,0 +1,104 @@
+// #target: macos-x64
+extern fn void printf(char* c, ...);
+
+struct ExtraSimple
+{
+    int a;
+    int b;
+    struct c
+    {
+        double e;
+        double f0;
+        double f1;
+        double f;
+        double j;
+    }
+    struct
+    {
+        int r;
+        int s;
+    }
+    union
+    {
+        double o0;
+        int o1;
+    }
+    int g;
+}
+
+
+fn void testSimple()
+{
+    ExtraSimple a = { .c.j = 3.3 };
+    a.c.j = 3.4;
+    printf("a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\n", a.a, a.c.e, a.c.f, a.c.j, a.g, a.o0, a.r, a.s);
+}
+
+// TODO these may be wrong.
+/* #expect: pointer_access.ll
+
+%ExtraSimple = type { i32, i32, %c, %anon, %anon.0, i32 }
+%c = type { double, double, double, double, double }
+%anon = type { i32, i32 }
+%anon.0 = type { double }
+
+@.typeid.pointer_access.c = linkonce constant { i8, i64 } { i8 10, i64 5 }, align 8
+@.typeid.pointer_access.anon = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
+@.typeid.pointer_access.anon.1 = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
+@.typeid.pointer_access.ExtraSimple = linkonce constant { i8, i64 } { i8 10, i64 6 }, align 8
+@.str = private unnamed_addr constant [71 x i8] c"a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\0A\00", align 1
+
+define void @pointer_access.testSimple() #0 {
+entry:
+  %a = alloca %ExtraSimple, align 8
+  %0 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 0
+  store i32 0, ptr %0, align 8
+  %1 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 1
+  store i32 0, ptr %1, align 4
+  %2 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 2
+  %3 = getelementptr inbounds %c, ptr %2, i32 0, i32 0
+  store double 0.000000e+00, ptr %3, align 8
+  %4 = getelementptr inbounds %c, ptr %2, i32 0, i32 1
+  store double 0.000000e+00, ptr %4, align 8
+  %5 = getelementptr inbounds %c, ptr %2, i32 0, i32 2
+  store double 0.000000e+00, ptr %5, align 8
+  %6 = getelementptr inbounds %c, ptr %2, i32 0, i32 3
+  store double 0.000000e+00, ptr %6, align 8
+  %7 = getelementptr inbounds %c, ptr %2, i32 0, i32 4
+  store double 3.300000e+00, ptr %7, align 8
+  %8 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
+  %9 = getelementptr inbounds %anon, ptr %8, i32 0, i32 0
+  store i32 0, ptr %9, align 8
+  %10 = getelementptr inbounds %anon, ptr %8, i32 0, i32 1
+  store i32 0, ptr %10, align 4
+  %11 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 4
+  call void @llvm.memset.p0.i64(ptr align 8 %11, i8 0, i64 8, i1 false)
+  %12 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 5
+  store i32 0, ptr %12, align 8
+  %13 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 2
+  %14 = getelementptr inbounds %c, ptr %13, i32 0, i32 4
+  store double 3.400000e+00, ptr %14, align 8
+  %15 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 0
+  %16 = load i32, ptr %15, align 8
+  %17 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 2
+  %18 = getelementptr inbounds %c, ptr %17, i32 0, i32 0
+  %19 = load double, ptr %18, align 8
+  %20 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 2
+  %21 = getelementptr inbounds %c, ptr %20, i32 0, i32 3
+  %22 = load double, ptr %21, align 8
+  %23 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 2
+  %24 = getelementptr inbounds %c, ptr %23, i32 0, i32 4
+  %25 = load double, ptr %24, align 8
+  %26 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 5
+  %27 = load i32, ptr %26, align 8
+  %28 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 4
+  %29 = load double, ptr %28, align 8
+  %30 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
+  %31 = getelementptr inbounds %anon, ptr %30, i32 0, i32 0
+  %32 = load i32, ptr %31, align 8
+  %33 = getelementptr inbounds %ExtraSimple, ptr %a, i32 0, i32 3
+  %34 = getelementptr inbounds %anon, ptr %33, i32 0, i32 1
+  %35 = load i32, ptr %34, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %16, double %19, double %22, double %25, i32 %27, double %29, i32 %32, i32 %35)
+  ret void
+}

@@ -39,7 +39,7 @@ static SymTab symtab;
 const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 const char *builtin_list[NUMBER_OF_BUILTINS];
 
-const char *kw_std__builtin;
+const char *kw_std__core;
 const char *kw_in;
 const char *kw_out;
 const char *kw_inout;
@@ -128,7 +128,7 @@ void symtab_init(uint32_t capacity)
 	kw_FUNC = KW_DEF("FUNC");
 
 	type = TOKEN_IDENT;
-	kw_std__builtin = KW_DEF("std::builtin");
+	kw_std__core = KW_DEF("std::core");
 	kw_sizeof = KW_DEF("sizeof");
 	kw_in = KW_DEF("in");
 	kw_out = KW_DEF("out");
@@ -152,7 +152,6 @@ void symtab_init(uint32_t capacity)
 	kw_ordinal = KW_DEF("ordinal");
 	kw_ptr = KW_DEF("ptr");
 	kw_pure = KW_DEF("pure");
-	KW_DEF("require");
 	kw_std = KW_DEF("std");
 	kw_values = KW_DEF("values");
 	kw_incr = KW_DEF("incr");

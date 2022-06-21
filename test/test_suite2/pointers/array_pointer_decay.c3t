@@ -1,0 +1,78 @@
+// #target: macos-x64
+module foo;
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+    int[3] x;
+    int[3]* y = &x;
+    int* z = y;
+    int[] sub = y;
+    int y1 = y[1];
+    int z1 = z[1];
+    int* xx = &x + 1;
+    int[3]* yy = (int[3]*)(xx);
+    int* zz = yy - 1;
+    printf("%p = %p = %p, %p = %p\n", y, z, zz, &y[1], xx);
+    x[1] = 123;
+    printf("%d = %d\n", (&x)[1], y[1]);
+}
+
+/* #expect: foo.ll
+
+define void @foo.main() #0 {
+entry:
+  %x = alloca [3 x i32], align 4
+  %y = alloca ptr, align 8
+  %z = alloca ptr, align 8
+  %sub = alloca %"int[]", align 8
+  %y1 = alloca i32, align 4
+  %z1 = alloca i32, align 4
+  %xx = alloca ptr, align 8
+  %yy = alloca ptr, align 8
+  %zz = alloca ptr, align 8
+  %0 = getelementptr inbounds [3 x i32], ptr %x, i64 0, i64 0
+  store i32 0, ptr %0, align 4
+  %1 = getelementptr inbounds [3 x i32], ptr %x, i64 0, i64 1
+  store i32 0, ptr %1, align 4
+  %2 = getelementptr inbounds [3 x i32], ptr %x, i64 0, i64 2
+  store i32 0, ptr %2, align 4
+  store ptr %x, ptr %y, align 8
+  %3 = load ptr, ptr %y, align 8
+  store ptr %3, ptr %z, align 8
+  %4 = load ptr, ptr %y, align 8
+  %5 = insertvalue %"int[]" undef, ptr %4, 0
+  %6 = insertvalue %"int[]" %5, i64 3, 1
+  store %"int[]" %6, ptr %sub, align 8
+  %7 = load ptr, ptr %y, align 8
+  %8 = getelementptr inbounds [3 x i32], ptr %7, i64 0, i64 1
+  %9 = load i32, ptr %8, align 4
+  store i32 %9, ptr %y1, align 4
+  %10 = load ptr, ptr %z, align 8
+  %ptroffset = getelementptr inbounds i32, ptr %10, i64 1
+  %11 = load i32, ptr %ptroffset, align 4
+  store i32 %11, ptr %z1, align 4
+  %ptroffset1 = getelementptr i32, ptr %x, i64 1
+  store ptr %ptroffset1, ptr %xx, align 8
+  %12 = load ptr, ptr %xx, align 8
+  store ptr %12, ptr %yy, align 8
+  %13 = load ptr, ptr %yy, align 8
+  %ptroffset2 = getelementptr i32, ptr %13, i64 -1
+  store ptr %ptroffset2, ptr %zz, align 8
+  %14 = load ptr, ptr %y, align 8
+  %15 = load ptr, ptr %z, align 8
+  %16 = load ptr, ptr %zz, align 8
+  %17 = load ptr, ptr %y, align 8
+  %18 = getelementptr inbounds [3 x i32], ptr %17, i64 0, i64 1
+  %19 = load ptr, ptr %xx, align 8
+  call void (ptr, ...) @printf(ptr @.str, ptr %14, ptr %15, ptr %16, ptr %18, ptr %19)
+  %20 = getelementptr inbounds [3 x i32], ptr %x, i64 0, i64 1
+  store i32 123, ptr %20, align 4
+  %21 = getelementptr inbounds [3 x i32], ptr %x, i64 0, i64 1
+  %22 = load i32, ptr %21, align 4
+  %23 = load ptr, ptr %y, align 8
+  %24 = getelementptr inbounds [3 x i32], ptr %23, i64 0, i64 1
+  %25 = load i32, ptr %24, align 4
+  call void (ptr, ...) @printf(ptr @.str.1, i32 %22, i32 %25)
+  ret void
+}
