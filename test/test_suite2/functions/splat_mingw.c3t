@@ -1,0 +1,61 @@
+// #target: mingw-x64
+module splat;
+
+extern fn int sum_us(int... x);
+
+fn void test()
+{
+    sum_us(1, 2, 3);
+    int[3] x = { 1, 2, 3 };
+    int[] z = &x;
+    sum_us(...x);
+    sum_us(...z);
+    sum_us();
+}
+
+/* #expect: splat.ll
+
+define void @splat.test() #0 {
+entry:
+  %vararg = alloca %"int[]", align 8
+  %varargslots = alloca [3 x i32], align 4
+  %indirectarg = alloca %"int[]", align 8
+  %x = alloca [3 x i32], align 4
+  %z = alloca %"int[]", align 8
+  %vararg1 = alloca %"int[]", align 8
+  %indirectarg2 = alloca %"int[]", align 8
+  %vararg3 = alloca %"int[]", align 8
+  %indirectarg4 = alloca %"int[]", align 8
+  %vararg5 = alloca %"int[]", align 8
+  %indirectarg6 = alloca %"int[]", align 8
+  %0 = getelementptr inbounds [3 x i32], ptr %varargslots, i64 0, i64 0
+  store i32 1, ptr %0, align 4
+  %1 = getelementptr inbounds [3 x i32], ptr %varargslots, i64 0, i64 1
+  store i32 2, ptr %1, align 4
+  %2 = getelementptr inbounds [3 x i32], ptr %varargslots, i64 0, i64 2
+  store i32 3, ptr %2, align 4
+  %3 = getelementptr inbounds %"int[]", ptr %vararg, i32 0, i32 1
+  store i64 3, ptr %3, align 8
+  %4 = getelementptr inbounds %"int[]", ptr %vararg, i32 0, i32 0
+  store ptr %varargslots, ptr %4, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg, ptr align 8 %vararg, i32 16, i1 false)
+  %5 = call i32 @sum_us(ptr %indirectarg)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 12, i1 false)
+  %6 = insertvalue %"int[]" undef, ptr %x, 0
+  %7 = insertvalue %"int[]" %6, i64 3, 1
+  store %"int[]" %7, ptr %z, align 8
+  %8 = getelementptr inbounds %"int[]", ptr %vararg1, i32 0, i32 1
+  %9 = getelementptr inbounds %"int[]", ptr %vararg1, i32 0, i32 0
+  store i64 3, ptr %8, align 8
+  store ptr %x, ptr %9, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg2, ptr align 8 %vararg1, i32 16, i1 false)
+  %10 = call i32 @sum_us(ptr %indirectarg2)
+  %11 = getelementptr inbounds %"int[]", ptr %vararg3, i32 0, i32 1
+  %12 = getelementptr inbounds %"int[]", ptr %vararg3, i32 0, i32 0
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg4, ptr align 8 %z, i32 16, i1 false)
+  %13 = call i32 @sum_us(ptr %indirectarg4)
+  %14 = getelementptr inbounds %"int[]", ptr %vararg5, i32 0, i32 1
+  store i64 0, ptr %14, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %indirectarg6, ptr align 8 %vararg5, i32 16, i1 false)
+  %15 = call i32 @sum_us(ptr %indirectarg6)
+  ret void

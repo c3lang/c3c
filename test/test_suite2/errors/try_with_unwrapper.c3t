@@ -1,0 +1,184 @@
+// #target: macos-x64
+
+fn int hello(int x)
+{
+    return x + 1;
+}
+
+extern fn int printf(char *c, ...);
+
+fn int! tester()
+{
+    printf("In tester\n");
+    return 222;
+}
+
+fault Foo
+{
+    A
+}
+fn void test1()
+{
+    int! a = 11;
+    if (try int b = a && try int c = tester())
+    {
+        printf("%d\n", hello(b));
+        printf("%d\n", c);
+    }
+}
+fn void main()
+{
+    test1();
+}
+
+fn void test2()
+{
+    int! a;
+    if (try int b = a && hello(b))
+    {
+        hello(b + 1);
+    }
+}
+
+/* #expect: try_with_unwrapper.ll
+
+
+
+; Function Attrs: nounwind
+define i32 @try_with_unwrapper.hello(i32 %0) #0 {
+entry:
+  %add = add i32 %0, 1
+  ret i32 %add
+}
+
+; Function Attrs: nounwind
+declare i32 @printf(ptr, ...) #0
+
+; Function Attrs: nounwind
+define i64 @try_with_unwrapper.tester(ptr %0) #0 {
+entry:
+  %reterr = alloca i64, align 8
+  %1 = call i32 (ptr, ...) @printf(ptr @.str)
+  store i32 222, ptr %0, align 4
+  ret i64 0
+}
+
+; Function Attrs: nounwind
+define void @try_with_unwrapper.test1() #0 {
+entry:
+  %a = alloca i32, align 4
+  %a.f = alloca i64, align 8
+  %b = alloca i32, align 4
+  %c = alloca i32, align 4
+  %retparam = alloca i32, align 4
+  store i32 11, ptr %a, align 4
+  store i64 0, ptr %a.f, align 8
+  store i32 0, ptr %b, align 4
+  %0 = load i64, ptr %a.f, align 8
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after_check, label %catch_landing
+
+after_check:                                      ; preds = %entry
+  %1 = load i32, ptr %a, align 4
+  store i32 %1, ptr %b, align 4
+  br label %phi_try_catch
+
+catch_landing:                                    ; preds = %entry
+  br label %phi_try_catch
+
+phi_try_catch:                                    ; preds = %catch_landing, %after_check
+  %val = phi i1 [ true, %after_check ], [ false, %catch_landing ]
+  br i1 %val, label %chain_next, label %fail_chain
+
+chain_next:                                       ; preds = %phi_try_catch
+  store i32 0, ptr %c, align 4
+  %2 = call i64 @try_with_unwrapper.tester(ptr %retparam)
+  %not_err1 = icmp eq i64 %2, 0
+  br i1 %not_err1, label %after.errcheck, label %catch_landing2
+
+after.errcheck:                                   ; preds = %chain_next
+  %3 = load i32, ptr %retparam, align 4
+  store i32 %3, ptr %c, align 4
+  br label %phi_try_catch3
+
+catch_landing2:                                   ; preds = %chain_next
+  br label %phi_try_catch3
+
+phi_try_catch3:                                   ; preds = %catch_landing2, %after.errcheck
+  %val4 = phi i1 [ true, %after.errcheck ], [ false, %catch_landing2 ]
+  br i1 %val4, label %chain_next5, label %fail_chain
+
+chain_next5:                                      ; preds = %phi_try_catch3
+  br label %end_chain
+
+fail_chain:                                       ; preds = %phi_try_catch3, %phi_try_catch
+  br label %end_chain
+
+end_chain:                                        ; preds = %fail_chain, %chain_next5
+  %chain.phi = phi i1 [ true, %chain_next5 ], [ false, %fail_chain ]
+  br i1 %chain.phi, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_chain
+  %4 = load i32, ptr %b, align 4
+  %5 = call i32 @try_with_unwrapper.hello(i32 %4)
+  %6 = call i32 (ptr, ...) @printf(ptr @.str.1, i32 %5)
+  %7 = load i32, ptr %c, align 4
+  %8 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %7)
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then, %end_chain
+  ret void
+}
+
+
+; Function Attrs: nounwind
+define void @try_with_unwrapper.test2() #0 {
+entry:
+  %a = alloca i32, align 4
+  %a.f = alloca i64, align 8
+  %b = alloca i32, align 4
+  store i64 0, ptr %a.f, align 8
+  store i32 0, ptr %a, align 4
+  store i32 0, ptr %b, align 4
+  %0 = load i64, ptr %a.f, align 8
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after_check, label %catch_landing
+
+after_check:                                      ; preds = %entry
+  %1 = load i32, ptr %a, align 4
+  store i32 %1, ptr %b, align 4
+  br label %phi_try_catch
+
+catch_landing:                                    ; preds = %entry
+  br label %phi_try_catch
+
+phi_try_catch:                                    ; preds = %catch_landing, %after_check
+  %val = phi i1 [ true, %after_check ], [ false, %catch_landing ]
+  br i1 %val, label %chain_next, label %fail_chain
+
+chain_next:                                       ; preds = %phi_try_catch
+  %2 = load i32, ptr %b, align 4
+  %3 = call i32 @try_with_unwrapper.hello(i32 %2)
+  %intbool = icmp ne i32 %3, 0
+  br i1 %intbool, label %chain_next1, label %fail_chain
+
+chain_next1:                                      ; preds = %chain_next
+  br label %end_chain
+
+fail_chain:                                       ; preds = %chain_next, %phi_try_catch
+  br label %end_chain
+
+end_chain:                                        ; preds = %fail_chain, %chain_next1
+  %chain.phi = phi i1 [ true, %chain_next1 ], [ false, %fail_chain ]
+  br i1 %chain.phi, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_chain
+  %4 = load i32, ptr %b, align 4
+  %add = add i32 %4, 1
+  %5 = call i32 @try_with_unwrapper.hello(i32 %add)
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then, %end_chain
+  ret void
+}
+

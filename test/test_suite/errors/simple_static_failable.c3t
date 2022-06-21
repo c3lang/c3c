@@ -13,12 +13,12 @@ fn void main()
     int! i = Blurg.Y!;
 }
 
-// #expect: foo.ll
+/* #expect: foo.ll
 
 define void @foo.main() #0 {
 entry:
   %i = alloca i32, align 4
   %i.f = alloca i64, align 8
-  store i64 ptrtoint ([1 x i8*]* @"foo.Blurg$elements" to i64), i64* %i.f, align 8
+  store i64 ptrtoint (i8* @foo.Blurg.Y to i64), i64* %i.f, align 8
   ret void
 }

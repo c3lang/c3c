@@ -1,0 +1,29 @@
+// #safe: yes
+module foo;
+
+fn void main()
+{
+	int* x;
+	int y = *x;
+}
+
+/* #expect: foo.ll
+
+define void @foo.main() #0 {
+entry:
+  %x = alloca i32*, align 8
+  %y = alloca i32, align 4
+  store i32* null, i32** %x, align 8
+  %0 = load i32*, i32** %x, align 8
+  %checknull = icmp eq i32* %0, null
+  br i1 %checknull, label %panic, label %checkok
+
+panic:                                            ; preds = %entry
+  call void @"std::core::builtin.panic"(i8* getelementptr inbounds ([28 x i8], [28 x i8]* @.zstr, i64 0, i64 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.zstr.1, i64 0, i64 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.zstr.2, i64 0, i64 0), i32 6)
+  br label %checkok
+
+checkok:                                          ; preds = %panic, %entry
+  %1 = load i32, i32* %0, align 8
+  store i32 %1, i32* %y, align 4
+  ret void
+}

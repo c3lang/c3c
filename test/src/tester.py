@@ -229,8 +229,14 @@ class Issues:
                     lines = reader.read().splitlines()
                 searched_line = 0
                 current_line = 0
-                while searched_line < len(file.expected_lines):
+                total_lines = len(file.expected_lines)
+                while searched_line < total_lines:
                     line = file.expected_lines[searched_line].strip()
+                    next_line = None
+                    if searched_line + 1 < total_lines:
+                        alt_line = file.expected_lines[searched_line + 1].strip()
+                        if alt_line.startswith("??"):
+                            next_line = alt_line[2:].strip()
                     if line == "":
                         searched_line += 1
                         continue
@@ -243,8 +249,11 @@ class Issues:
                         current_line += 1
                         searched_line += 1
                         continue
+                    if next_line != None and next_line in lines[current_line]:
+                        current_line += 1
+                        searched_line += 2
+                        continue
                     current_line += 1
-
         if not self.has_errors:
             self.conf.numsuccess += 1
             print(" Passed.")

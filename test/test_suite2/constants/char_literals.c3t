@@ -1,0 +1,24 @@
+// #file: file1.c3
+module test;
+
+char a = ' ';
+char b = '\r';
+char c = '\t';
+char d = '\n';
+char e = '\0';
+char f = '\'';
+char g = '"';
+char h = '\\';
+char i = '\e';
+
+// #expect: test.ll
+
+@test.a = local_unnamed_addr global i8 32, align 1
+@test.b = local_unnamed_addr global i8 13, align 1
+@test.c = local_unnamed_addr global i8 9, align 1
+@test.d = local_unnamed_addr global i8 10, align 1
+@test.e = local_unnamed_addr global i8 0, align 1
+@test.f = local_unnamed_addr global i8 39, align 1
+@test.g = local_unnamed_addr global i8 34, align 1
+@test.h = local_unnamed_addr global i8 92, align 1
+@test.i = local_unnamed_addr global i8 27, align 1

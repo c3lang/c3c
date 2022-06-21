@@ -1,0 +1,68 @@
+// #target: macos-x64
+module splat;
+
+extern fn int sum_us(int... x);
+
+fn void test()
+{
+    sum_us(1, 2, 3);
+    int[3] x = { 1, 2, 3 };
+    int[] z = &x;
+    sum_us(...x);
+    sum_us(...z);
+    sum_us();
+}
+
+/* #expect: splat.ll
+
+
+  %vararg = alloca %"int[]", align 8
+  %varargslots = alloca [3 x i32], align 4
+  %x = alloca [3 x i32], align 4
+  %z = alloca %"int[]", align 8
+  %vararg1 = alloca %"int[]", align 8
+  %vararg4 = alloca %"int[]", align 8
+  %vararg7 = alloca %"int[]", align 8
+  %0 = getelementptr inbounds [3 x i32], ptr %varargslots, i64 0, i64 0
+  store i32 1, ptr %0, align 4
+  %1 = getelementptr inbounds [3 x i32], ptr %varargslots, i64 0, i64 1
+  store i32 2, ptr %1, align 4
+  %2 = getelementptr inbounds [3 x i32], ptr %varargslots, i64 0, i64 2
+  store i32 3, ptr %2, align 4
+  %3 = getelementptr inbounds %"int[]", ptr %vararg, i32 0, i32 1
+  store i64 3, ptr %3, align 8
+  %4 = getelementptr inbounds %"int[]", ptr %vararg, i32 0, i32 0
+  store ptr %varargslots, ptr %4, align 8
+  %5 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 0
+  %lo = load ptr, ptr %5, align 8
+  %6 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 1
+  %hi = load i64, ptr %6, align 8
+  %7 = call i32 @sum_us(ptr %lo, i64 %hi)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 12, i1 false)
+  %8 = insertvalue %"int[]" undef, ptr %x, 0
+  %9 = insertvalue %"int[]" %8, i64 3, 1
+  store %"int[]" %9, ptr %z, align 8
+  %10 = getelementptr inbounds %"int[]", ptr %vararg1, i32 0, i32 1
+  %11 = getelementptr inbounds %"int[]", ptr %vararg1, i32 0, i32 0
+  store i64 3, ptr %10, align 8
+  store ptr %x, ptr %11, align 8
+  %12 = getelementptr inbounds { ptr, i64 }, ptr %vararg1, i32 0, i32 0
+  %lo2 = load ptr, ptr %12, align 8
+  %13 = getelementptr inbounds { ptr, i64 }, ptr %vararg1, i32 0, i32 1
+  %hi3 = load i64, ptr %13, align 8
+  %14 = call i32 @sum_us(ptr %lo2, i64 %hi3)
+  %15 = getelementptr inbounds %"int[]", ptr %vararg4, i32 0, i32 1
+  %16 = getelementptr inbounds %"int[]", ptr %vararg4, i32 0, i32 0
+  %17 = getelementptr inbounds { ptr, i64 }, ptr %z, i32 0, i32 0
+  %lo5 = load ptr, ptr %17, align 8
+  %18 = getelementptr inbounds { ptr, i64 }, ptr %z, i32 0, i32 1
+  %hi6 = load i64, ptr %18, align 8
+  %19 = call i32 @sum_us(ptr %lo5, i64 %hi6)
+  %20 = getelementptr inbounds %"int[]", ptr %vararg7, i32 0, i32 1
+  store i64 0, ptr %20, align 8
+  %21 = getelementptr inbounds { ptr, i64 }, ptr %vararg7, i32 0, i32 0
+  %lo8 = load ptr, ptr %21, align 8
+  %22 = getelementptr inbounds { ptr, i64 }, ptr %vararg7, i32 0, i32 1
+  %hi9 = load i64, ptr %22, align 8
+  %23 = call i32 @sum_us(ptr %lo8, i64 %hi9)
+  ret void

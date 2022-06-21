@@ -28,7 +28,7 @@ fn void main() @TestZero
 
 %Foo = type { i32, [1020 x i8], i32, [1020 x i8] }
 
-@introspect.Foo = linkonce constant i8 1
+@.typeid.test.Foo = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
 @test.f = local_unnamed_addr global %Foo zeroinitializer, align 1024
 
 define void @test.testme() #0 {

@@ -1,0 +1,99 @@
+// #target: macos-x64
+module test;
+
+enum MyEnum : char
+{
+    FOO,
+    BAR
+}
+
+fn void test2()
+{
+	char ww = MyEnum.FOO.ordinal;
+	MyEnum x = MyEnum.BAR;
+	char zz = x.ordinal;
+}
+
+fn void test()
+{
+    char b = MyEnum.FOO;
+    int z = (int)(MyEnum.BAR);
+    var $foo = (int)(MyEnum.FOO);
+    var $baz = MyEnum.BAR;
+    MyEnum x = MyEnum.BAR;
+    char b2 = x;
+    int z2 = (int)(x);
+    float d = (float)(MyEnum.FOO);
+    bool hello = (bool)(MyEnum.FOO);
+    var $d = (float)(MyEnum.FOO);
+    var $hello = (bool)(MyEnum.FOO);
+    MyEnum! xf = MyEnum.BAR;
+    float! e = (float)(x);
+    e = (float)(xf);
+
+}
+
+/* #expect: test.ll
+
+define void @test.test2() #0 {
+entry:
+  %ww = alloca i8, align 1
+  %x = alloca i8, align 1
+  %zz = alloca i8, align 1
+  store i8 0, ptr %ww, align 1
+  store i8 1, ptr %x, align 1
+  %0 = load i8, ptr %x, align 1
+  store i8 %0, ptr %zz, align 1
+  ret void
+}
+
+define void @test.test() #0 {
+entry:
+  %b = alloca i8, align 1
+  %z = alloca i32, align 4
+  %x = alloca i8, align 1
+  %b2 = alloca i8, align 1
+  %z2 = alloca i32, align 4
+  %d = alloca float, align 4
+  %hello = alloca i8, align 1
+  %xf = alloca i8, align 1
+  %xf.f = alloca i64, align 8
+  %e = alloca float, align 4
+  %e.f = alloca i64, align 8
+  store i8 0, ptr %b, align 1
+  store i32 1, ptr %z, align 4
+  store i8 1, ptr %x, align 1
+  %0 = load i8, ptr %x, align 1
+  store i8 %0, ptr %b2, align 1
+  %1 = load i8, ptr %x, align 1
+  %uisiext = zext i8 %1 to i32
+  store i32 %uisiext, ptr %z2, align 4
+  store float 0.000000e+00, ptr %d, align 4
+  store i8 0, ptr %hello, align 1
+  store i8 1, ptr %xf, align 1
+  store i64 0, ptr %xf.f, align 8
+  %2 = load i8, ptr %x, align 1
+  %uifp = uitofp i8 %2 to float
+  store float %uifp, ptr %e, align 4
+  store i64 0, ptr %e.f, align 8
+  %3 = load i64, ptr %xf.f, align 8
+  %not_err = icmp eq i64 %3, 0
+  br i1 %not_err, label %after_check, label %error
+
+error:                                            ; preds = %entry
+  store i64 %3, ptr %e.f, align 8
+  br label %after_assign
+
+after_check:                                      ; preds = %entry
+  %4 = load i8, ptr %xf, align 1
+  %uifp1 = uitofp i8 %4 to float
+  store float %uifp1, ptr %e, align 4
+  store i64 0, ptr %e.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %after_check, %error
+  br label %voiderr
+
+voiderr:                                          ; preds = %after_assign
+  ret void
+}

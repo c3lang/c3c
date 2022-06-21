@@ -28,7 +28,7 @@ if.then:                                          ; preds = %entry
   ret void
 
 if.exit:                                          ; preds = %entry
-  call void @"std::builtin.panic"(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.1, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.2, i32 0, i32 0), i32 10)
+  call void @"std::core::builtin.panic"(i8* getelementptr inbounds ([31 x i8], [31 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str.1, i32 0, i32 0), i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.2, i32 0, i32 0), i32 10)
   unreachable
 
 after.unreachable:                                ; No predecessors!

@@ -1,0 +1,20 @@
+module test;
+
+union Foo
+{
+    int a;
+    double b;
+}
+
+private Foo f = { .a = 23 };
+private Foo g = { .b = 2.3 };
+private Foo h = { .a = 23, .b = 2.3 };
+Foo i = { .b = 2.3, .a = 23 };
+
+// #expect: test.ll
+
+@test.f = protected unnamed_addr global { i32, [4 x i8] } { i32 23, [4 x i8] undef }, align 8
+@test.g = protected unnamed_addr global %Foo { double 2.300000e+00 }, align 8
+@test.h = protected unnamed_addr global %Foo { double 2.300000e+00 }, align 8
+@test.i = local_unnamed_addr global { i32, [4 x i8] } { i32 23, [4 x i8] undef }, align 8
+

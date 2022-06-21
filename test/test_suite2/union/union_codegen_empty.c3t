@@ -1,0 +1,44 @@
+union UnionA
+{
+    int a;
+}
+
+union UnionB
+{
+    struct b
+    {
+        int a;
+    }
+    int c;
+    double d;
+}
+
+fn void test()
+{
+    UnionA a = {};
+    UnionA a2;
+    UnionB b = {};
+    UnionB b2;
+    UnionB b3 = { .b = {} };
+    UnionB b4 = { .b.a = 23, .c = 4, .d = 0.4, .b = {} };
+}
+
+/* #expect: union_codegen_empty.ll
+
+source_filena
+define void @union_codegen_empty.test() #0 {
+entry:
+  %a = alloca %UnionA, align 4
+  %a2 = alloca %UnionA, align 4
+  %b = alloca %UnionB, align 8
+  %b2 = alloca %UnionB, align 8
+  %b3 = alloca %UnionB, align 8
+  %b4 = alloca %UnionB, align 8
+  store i32 0, ptr %a, align 4
+  store i32 0, ptr %a2, align 4
+  call void @llvm.memset.p0.i64(ptr align 8 %b, i8 0, i64 8, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 8 %b2, i8 0, i64 8, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 8 %b3, i8 0, i64 8, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 8 %b4, i8 0, i64 8, i1 false)
+  ret void
+}

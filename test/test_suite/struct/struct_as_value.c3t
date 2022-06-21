@@ -13,15 +13,14 @@ fn Event test(int x)
   return x ? foo : bar;
 }
 
-// #expect: test.ll
+/* #expect: test.ll
 
 %Event = type { i32 }
 
-@introspect.Event = linkonce constant i8 1
+@.typeid.test.Event = linkonce constant { i8, i64 } { i8 10, i64 1 }, align 8
 @.__const = private unnamed_addr constant %Event { i32 1 }, align 4
 @.__const.1 = private unnamed_addr constant %Event { i32 2 }, align 4
 
-; Function Attrs: nounwind
 define i32 @test.test(i32 %0) #0 {
 entry:
   %foo = alloca %Event, align 4

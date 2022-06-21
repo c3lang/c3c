@@ -256,6 +256,9 @@ typedef struct BuildOptions_
 	bool force_linker;
 	const char *panicfn;
 	const char *cc;
+	const char *build_dir;
+	const char *llvm_out;
+	const char *obj_out;
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
 	bool print_keywords;
@@ -309,6 +312,8 @@ typedef struct
 	const char *cpu;
 	const char **link_args;
 	const char *build_dir;
+	const char *object_file_dir;
+	const char *llvm_file_dir;
 	bool run_after_compile : 1;
 	bool test_output : 1;
 	bool output_headers : 1;

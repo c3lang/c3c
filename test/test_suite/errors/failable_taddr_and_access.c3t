@@ -27,9 +27,9 @@ fn void main()
 
 %Foo = type { i32, i32 }
 
-@introspect.Foo = linkonce constant i8 1
-@"test.MyErr$elements" = linkonce constant [1 x i8*] zeroinitializer
-@introspect.MyErr = linkonce constant i8 1
+@.typeid.test.Foo = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
+@test.MyErr.FOO = linkonce constant i8 1, align 1
+@.typeid.test.MyErr = linkonce constant { i8, i64, [1 x i64] } { i8 9, i64 1, [1 x i64] [i64 ptrtoint (i8* @test.MyErr.FOO to i64)] }, align 8
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.str.1 = private unnamed_addr constant [17 x i8] c"Not visible: %d\0A\00", align 1
 
@@ -78,7 +78,7 @@ after_check2:                                     ; preds = %after_assign
   br label %voiderr
 
 voiderr:                                          ; preds = %after_check2, %after_assign
-  store i64 ptrtoint ([1 x i8*]* @"test.MyErr$elements" to i64), i64* %z.f, align 8
+  store i64 ptrtoint (i8* @test.MyErr.FOO to i64), i64* %z.f, align 8
   br label %voiderr3
 
 voiderr3:                                         ; preds = %voiderr

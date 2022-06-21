@@ -29,7 +29,7 @@ fn void main()
 ; Function Attrs: nounwind
 define i64 @anyerr_void.errorThing() #0 {
 entry:
-  ret i64 ptrtoint (i8** getelementptr inbounds ([2 x i8*], [2 x i8*]* @"anyerr_void.MyError$elements", i64 0, i64 1) to i64)
+  ret i64 ptrtoint (i8* @anyerr_void.MyError.BAR to i64)
 }
 
 ; Function Attrs: nounwind
@@ -65,8 +65,8 @@ noerr_block:                                      ; preds = %after.errcheck, %er
   store i64 %1, i64* %z, align 8
   %2 = load i64, i64* %z, align 8
   call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str, i32 0, i32 0), i64 %2)
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), i64 ptrtoint (i8** getelementptr inbounds ([2 x i8*], [2 x i8*]* @"anyerr_void.MyError$elements", i64 0, i64 1) to i64))
-  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.2, i32 0, i32 0), i64 ptrtoint ([2 x i8*]* @"anyerr_void.MyError$elements" to i64))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.1, i32 0, i32 0), i64 ptrtoint (i8* @anyerr_void.MyError.BAR to i64))
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str.2, i32 0, i32 0), i64 ptrtoint (i8* @anyerr_void.MyError.FOO to i64))
   store i64 0, i64* %error_var1, align 8
   %3 = call i64 @anyerr_void.errorThing2()
   %not_err2 = icmp eq i64 %3, 0

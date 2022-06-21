@@ -91,6 +91,9 @@ static void usage(void)
 	OUTPUT("  -O2                   - Default optimization level.");
 	OUTPUT("  -Os                   - Optimize for size.");
 	OUTPUT("  -O3                   - Aggressive optimization.");
+	OUTPUT("  --build-dir <dir>     - Override build output directory.");
+	OUTPUT("  --obj-out <dir>       - Override object file output directory.");
+	OUTPUT("  --llvm-out <dir>      - Override llvm output directory for '--emit-llvm'.");
 	OUTPUT("  --emit-llvm           - Emit LLVM IR as a .ll file per module.");
 	OUTPUT("  --target <target>     - Compile for a particular architecture + OS target.");
 	OUTPUT("  --threads <number>    - Set the number of threads to use for compilation.");
@@ -612,6 +615,24 @@ static void parse_option(BuildOptions *options)
 				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 3, wincrt_linking);
 				return;
 			}
+			if (match_longopt("build-dir"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --build-dir needs a directory.");
+				options->build_dir = next_arg();
+				return;
+			}
+			if (match_longopt("obj-out"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --obj-out needs a directory.");
+				options->obj_out = next_arg();
+				return;
+			}
+			if (match_longopt("llvm-out"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --llvm-out needs a directory.");
+				options->llvm_out = next_arg();
+				return;
+			}
 			if (match_longopt("lib"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --lib needs a name.");
@@ -691,7 +712,9 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.backend = BACKEND_LLVM,
 		.x86_vector_capability = X86VECTOR_DEFAULT,
 		.win.crt_linking = WIN_CRT_DEFAULT,
-		.files = NULL
+		.files = NULL,
+		.build_dir = NULL,
+
 	};
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)
 	{

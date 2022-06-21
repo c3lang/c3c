@@ -1,0 +1,65 @@
+$if (0):
+$else:
+    $if (0):
+    $elif (0):
+    $elif (0):
+    $else:
+        int x = 1;
+    $endif;
+$endif;
+
+$if (0):
+$assert(false);
+$elif (0):
+$assert(false);
+$else:
+$assert(true);
+$endif;
+
+$if (1):
+$assert(true);
+int d = 5;
+$elif (0):
+$assert(false);
+$else:
+$assert(false);
+$endif;
+
+$if (0):
+$assert(true);
+$elif (1):
+$assert(true);
+int c = 5;
+$else:
+$assert(false);
+$endif;
+
+$if (0):
+$assert(true);
+$elif (1):
+$assert(true);
+int b = 4;
+$elif (0):
+$assert(false);
+$else:
+$assert(false);
+$endif;
+
+$if (0):
+$assert(true);
+$elif (0):
+$assert(false);
+$elif (1):
+$assert(true);
+int a = 3;
+$else:
+$assert(false);
+$endif;
+
+// #expect: ct_if.ll
+
+@ct_if.d = local_unnamed_addr global i32 5, align 4
+@ct_if.c = local_unnamed_addr global i32 5, align 4
+@ct_if.b = local_unnamed_addr global i32 4, align 4
+@ct_if.a = local_unnamed_addr global i32 3, align 4
+@ct_if.x = local_unnamed_addr global i32 1, align 4

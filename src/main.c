@@ -27,6 +27,8 @@ int main_real(int argc, const char *argv[])
 {
 	bench_begin();
 
+	// Setjmp will allow us to add things like fuzzing with
+	// easy restarts.
 	int result = setjmp(on_error_jump);
 	if (result)
 	{

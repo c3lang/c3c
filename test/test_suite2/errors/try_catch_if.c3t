@@ -1,0 +1,99 @@
+// #target: macos-x64
+
+fn int hello(int x)
+{
+    return x + 1;
+}
+
+extern fn int printf(char *c, ...);
+
+fn int! tester()
+{
+    printf("In tester\n");
+    return 222;
+}
+
+fault Foo
+{
+    A
+}
+fn void test1()
+{
+    int! a = 123;
+    if (catch err = (a, tester()))
+    {
+        printf("Err\n");
+    }
+    else
+    {
+        printf("Noerr %d\n", a);
+    }
+}
+fn void main()
+{
+    test1();
+}
+
+/* #expect: try_catch_if.ll
+
+
+define i64 @try_catch_if.tester(ptr %0) #0 {
+entry:
+  %reterr = alloca i64, align 8
+  %1 = call i32 (ptr, ...) @printf(ptr @.str)
+  store i32 222, ptr %0, align 4
+  ret i64 0
+}
+
+define void @try_catch_if.test1() #0 {
+entry:
+  %a = alloca i32, align 4
+  %a.f = alloca i64, align 8
+  %err = alloca i64, align 8
+  %retparam = alloca i32, align 4
+  store i32 123, ptr %a, align 4
+  store i64 0, ptr %a.f, align 8
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  %0 = load i64, ptr %a.f, align 8
+  %not_err = icmp eq i64 %0, 0
+  br i1 %not_err, label %after_check, label %error
+
+error:                                            ; preds = %testblock
+  store i64 %0, ptr %err, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %testblock
+  br label %testblock1
+
+testblock1:                                       ; preds = %after_check
+  %1 = call i64 @try_catch_if.tester(ptr %retparam)
+  %not_err2 = icmp eq i64 %1, 0
+  br i1 %not_err2, label %after.errcheck, label %error3
+
+error3:                                           ; preds = %testblock1
+  store i64 %1, ptr %err, align 8
+  br label %end_block
+
+after.errcheck:                                   ; preds = %testblock1
+  store i64 0, ptr %err, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after.errcheck, %error3, %error
+  %2 = load i64, ptr %err, align 8
+  %neq = icmp ne i64 %2, 0
+  br i1 %neq, label %if.then, label %if.else
+
+if.then:                                          ; preds = %end_block
+  %3 = call i32 (ptr, ...) @printf(ptr @.str.1)
+  br label %if.exit
+
+if.else:                                          ; preds = %end_block
+  %4 = load i32, ptr %a, align 4
+  %5 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %4)
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.else, %if.then
+  ret void
+}

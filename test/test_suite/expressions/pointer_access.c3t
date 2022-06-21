@@ -1,4 +1,4 @@
-
+// #target: macos-x64
 extern fn void printf(char* c, ...);
 
 struct ExtraSimple
@@ -42,10 +42,10 @@ fn void testSimple()
 %anon = type { i32, i32 }
 %anon.0 = type { double }
 
-@introspect.c = linkonce constant i8 1
-@introspect.anon = linkonce constant i8 1
-@introspect.anon.1 = linkonce constant i8 1
-@introspect.ExtraSimple = linkonce constant i8 1
+@.typeid.pointer_access.c = linkonce constant { i8, i64 } { i8 10, i64 5 }, align 8
+@.typeid.pointer_access.anon = linkonce constant { i8, i64 } { i8 10, i64 2 }, align 8
+@.typeid.pointer_access.anon.1 = linkonce constant { i8, i64 } { i8 11, i64 2 }, align 8
+@.typeid.pointer_access.ExtraSimple = linkonce constant { i8, i64 } { i8 10, i64 6 }, align 8
 @.str = private unnamed_addr constant [71 x i8] c"a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\0A\00", align 1
 
 define void @pointer_access.testSimple() #0 {

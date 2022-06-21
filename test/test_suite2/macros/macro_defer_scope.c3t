@@ -1,0 +1,43 @@
+// #target: macos-x64
+module foo;
+macro int @cofefe(#a)
+{
+    int x = 0;
+    defer printf("Was here\n");
+    return #a + #a;
+}
+
+extern fn int printf(char *, ...);
+
+fn void main()
+{
+    int x = 0;
+    @cofefe(x += 1);
+    printf("%d\n", x);
+}
+
+/* #expect: foo.ll
+
+define void @foo.main() #0 {
+entry:
+  %x = alloca i32, align 4
+  %blockret = alloca i32, align 4
+  %x1 = alloca i32, align 4
+  store i32 0, ptr %x, align 4
+  store i32 0, ptr %x1, align 4
+  %0 = load i32, ptr %x, align 4
+  %add = add i32 %0, 1
+  store i32 %add, ptr %x, align 4
+  %1 = load i32, ptr %x, align 4
+  %add2 = add i32 %1, 1
+  store i32 %add2, ptr %x, align 4
+  %add3 = add i32 %add, %add2
+  %2 = call i32 (ptr, ...) @printf(ptr @.str)
+  store i32 %add3, ptr %blockret, align 4
+  br label %expr_block.exit
+
+expr_block.exit:                                  ; preds = %entry
+  %3 = load i32, ptr %x, align 4
+  %4 = call i32 (ptr, ...) @printf(ptr @.str.1, i32 %3)
+  ret void
+}

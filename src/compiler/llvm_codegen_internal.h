@@ -79,8 +79,8 @@ typedef struct
 	LLVMBuilderRef builder;
 	LLVMBasicBlockRef current_block;
 	LLVMBasicBlockRef catch_block;
-	char *ir_filename;
-	char *object_filename;
+	const char *ir_filename;
+	const char *object_filename;
 	// The recipient of the error value in a catch(err = ...) expression.
 	LLVMValueRef error_var;
 	LLVMTypeRef bool_type;
@@ -234,6 +234,7 @@ void llvm_value_set_decl(GenContext *c, BEValue *value, Decl *decl);
 void llvm_value_fold_failable(GenContext *c, BEValue *value);
 void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_pointer, unsigned index);
 
+LLVMValueRef llvm_get_typeid(GenContext *context, Type *type);
 LLVMTypeRef llvm_abi_type(GenContext *c, AbiType type);
 TypeSize llvm_abi_size(GenContext *c, LLVMTypeRef type);
 BitSize llvm_bitsize(GenContext *c, LLVMTypeRef type);
@@ -262,7 +263,6 @@ void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTy
 void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignment, LLVMTypeRef coerced, LLVMValueRef value, LLVMTypeRef target_type);
 void llvm_emit_function_body(GenContext *context, Decl *decl);
 void llvm_emit_function_decl(GenContext *c, Decl *decl);
-void llvm_emit_introspection_type_from_decl(GenContext *c, Decl *decl);
 void llvm_set_weak(GenContext *c, LLVMValueRef global);
 void llvm_set_linkonce(GenContext *c, LLVMValueRef global);
 void llvm_set_comdat(GenContext *c, LLVMValueRef global);
@@ -320,7 +320,7 @@ LLVMValueRef llvm_emit_lshr_fixed(GenContext *c, LLVMValueRef data, int shift);
 
 // -- general --
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl);
-LLVMValueRef llvm_emit_local_decl(GenContext *c, Decl *decl);
+void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value);
 LLVMValueRef llvm_emit_aggregate_value(GenContext *c, Type *type, ...);
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ref, uint64_t size, AlignSize align, bool bitcast);
 void llvm_store_zero(GenContext *c, BEValue *ref);
@@ -376,13 +376,6 @@ void llvm_store_decl_raw(GenContext *context, Decl *decl, LLVMValueRef value);
 
 LLVMTypeRef llvm_get_twostruct(GenContext *context, LLVMTypeRef lo, LLVMTypeRef hi);
 LLVMValueRef llvm_emit_coerce(GenContext *c, LLVMTypeRef coerced, BEValue *value, Type *original_type);
-
-static inline LLVMValueRef gencontext_emit_load(GenContext *c, Type *type, LLVMValueRef value)
-{
-	assert(llvm_get_type(c, type) == LLVMGetElementType(LLVMTypeOf(value)));
-	return LLVMBuildLoad2(c->builder, llvm_get_type(c, type), value, "");
-}
-
 
 static inline LLVMValueRef decl_failable_ref(Decl *decl)
 {
@@ -494,7 +487,6 @@ static inline LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t va
 
 static inline LLVMValueRef llvm_add_global_var(GenContext *c, const char *name, Type *type, AlignSize alignment)
 {
-	printf("Adding %s with %d\n", name, (int)alignment);
 	type = type_lowering(type_no_fail(type));
 	LLVMValueRef ref = LLVMAddGlobal(c->module, llvm_get_type(c, type), name);
 	LLVMSetAlignment(ref, (unsigned)alignment ? alignment : type_alloca_alignment(type));
@@ -503,7 +495,6 @@ static inline LLVMValueRef llvm_add_global_var(GenContext *c, const char *name, 
 
 static inline LLVMValueRef llvm_add_global_type(GenContext *c, const char *name, LLVMTypeRef type, AlignSize alignment)
 {
-	printf("Adding %s with %d\n", name, (int)alignment);
 	LLVMValueRef ref = LLVMAddGlobal(c->module, type, name);
 	LLVMSetAlignment(ref, (unsigned)alignment ? alignment : LLVMPreferredAlignmentOfGlobal(c->target_data, ref));
 	return ref;

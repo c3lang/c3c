@@ -1,0 +1,101 @@
+// #target: macos-x64
+
+module test;
+
+extern fn void printf(char*, ...);
+
+fn void retest(foo...)
+{
+    test(...foo);
+}
+fn void test(foo...)
+{
+    printf("Foo1 was: %d\n", *((int*)foo[0]));
+}
+fn int main()
+{
+    int i = 1;
+    test(1);
+    retest(1);
+    return 1;
+}
+
+/* #expect: test.ll
+
+@.typeid.int = linkonce constant { i8, i16 } { i8 2, i16 32 }, align 2
+
+define void @test.retest(ptr %0, i64 %1) #0 {
+entry:
+  %foo = alloca %"variant[]", align 8
+  %vararg = alloca %"variant[]", align 8
+  %2 = getelementptr inbounds { ptr, i64 }, ptr %foo, i32 0, i32 0
+  store ptr %0, ptr %2, align 8
+  %3 = getelementptr inbounds { ptr, i64 }, ptr %foo, i32 0, i32 1
+  store i64 %1, ptr %3, align 8
+  %4 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 1
+  %5 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 0
+  %6 = getelementptr inbounds { ptr, i64 }, ptr %foo, i32 0, i32 0
+  %lo = load ptr, ptr %6, align 8
+  %7 = getelementptr inbounds { ptr, i64 }, ptr %foo, i32 0, i32 1
+  %hi = load i64, ptr %7, align 8
+  call void @test.test(ptr %lo, i64 %hi)
+  ret void
+}
+
+define void @test.test(ptr %0, i64 %1) #0 {
+entry:
+  %foo = alloca %"variant[]", align 8
+  %2 = getelementptr inbounds { ptr, i64 }, ptr %foo, i32 0, i32 0
+  store ptr %0, ptr %2, align 8
+  %3 = getelementptr inbounds { ptr, i64 }, ptr %foo, i32 0, i32 1
+  store i64 %1, ptr %3, align 8
+  %4 = getelementptr inbounds %"variant[]", ptr %foo, i32 0, i32 0
+  %5 = load ptr, ptr %4, align 8
+  %ptroffset = getelementptr inbounds %variant, ptr %5, i64 0
+  %6 = getelementptr inbounds %variant, ptr %ptroffset, i32 0, i32 0
+  %7 = load ptr, ptr %6, align 8
+  %8 = load i32, ptr %7, align 8
+  call void (ptr, ...) @printf(ptr @.str, i32 %8)
+  ret void
+}
+
+define i32 @main() #0 {
+entry:
+  %i = alloca i32, align 4
+  %vararg = alloca %"variant[]", align 8
+  %varargslots = alloca [1 x %variant], align 16
+  %taddr = alloca i32, align 4
+  %vararg1 = alloca %"variant[]", align 8
+  %varargslots2 = alloca [1 x %variant], align 16
+  %taddr3 = alloca i32, align 4
+  store i32 1, ptr %i, align 4
+  store i32 1, ptr %taddr, align 4
+  %0 = insertvalue %variant undef, ptr %taddr, 0
+  %1 = insertvalue %variant %0, i64 ptrtoint (ptr @.typeid.int to i64), 1
+  %2 = getelementptr inbounds [1 x %variant], ptr %varargslots, i64 0, i64 0
+  store %variant %1, ptr %2, align 16
+  %3 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 1
+  store i64 1, ptr %3, align 8
+  %4 = getelementptr inbounds %"variant[]", ptr %vararg, i32 0, i32 0
+  store ptr %varargslots, ptr %4, align 8
+  %5 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 0
+  %lo = load ptr, ptr %5, align 8
+  %6 = getelementptr inbounds { ptr, i64 }, ptr %vararg, i32 0, i32 1
+  %hi = load i64, ptr %6, align 8
+  call void @test.test(ptr %lo, i64 %hi)
+  store i32 1, ptr %taddr3, align 4
+  %7 = insertvalue %variant undef, ptr %taddr3, 0
+  %8 = insertvalue %variant %7, i64 ptrtoint (ptr @.typeid.int to i64), 1
+  %9 = getelementptr inbounds [1 x %variant], ptr %varargslots2, i64 0, i64 0
+  store %variant %8, ptr %9, align 16
+  %10 = getelementptr inbounds %"variant[]", ptr %vararg1, i32 0, i32 1
+  store i64 1, ptr %10, align 8
+  %11 = getelementptr inbounds %"variant[]", ptr %vararg1, i32 0, i32 0
+  store ptr %varargslots2, ptr %11, align 8
+  %12 = getelementptr inbounds { ptr, i64 }, ptr %vararg1, i32 0, i32 0
+  %lo4 = load ptr, ptr %12, align 8
+  %13 = getelementptr inbounds { ptr, i64 }, ptr %vararg1, i32 0, i32 1
+  %hi5 = load i64, ptr %13, align 8
+  call void @test.retest(ptr %lo4, i64 %hi5)
+  ret i32 1
+}

@@ -447,3 +447,327 @@ LLVMTypeRef llvm_abi_type(GenContext *c, AbiType type)
 	if (abi_type_is_type(type)) return llvm_get_type(c, type.type);
 	return LLVMIntTypeInContext(c->context, type.int_bits_plus_1 - 1);
 }
+
+static inline Module *type_base_module(Type *type)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_BOOL:
+		case TYPE_ANY:
+		case TYPE_ANYERR:
+		case TYPE_TYPEID:
+			return NULL;
+		case TYPE_POINTER:
+			type = type->pointer;
+			goto RETRY;
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+		case TYPE_FAULTTYPE:
+		case TYPE_DISTINCT:
+			return type->decl->module;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_ARRAY:
+		case TYPE_SUBARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_VECTOR:
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_FAILABLE:
+			type = type->failable;
+			goto RETRY;
+		case TYPE_UNTYPED_LIST:
+		case TYPE_FAILABLE_ANY:
+		case TYPE_TYPEINFO:
+			UNREACHABLE
+	}
+	UNREACHABLE
+}
+LLVMValueRef llvm_get_introspection_for_derived_type(GenContext *c, IntrospectType kind, Type *type, Type *inner, LLVMValueRef extra)
+{
+	LLVMValueRef value = llvm_get_typeid(c, inner);
+	LLVMValueRef values[3] = { llvm_const_int(c, type_char, kind), value };
+	int count = 2;
+	if (extra)
+	{
+		values[2] = extra;
+		count = 3;
+	}
+	LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, count, false);
+	scratch_buffer_clear();
+	scratch_buffer_append(".typeid.");
+	Module *module = type_base_module(inner);
+	if (module)
+	{
+		scratch_buffer_append(module->name->module);
+		scratch_buffer_append_char('.');
+	}
+	scratch_buffer_append(type->name);
+	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMTypeOf(strukt), scratch_buffer_to_string());
+	LLVMSetAlignment(global_name, llvm_abi_alignment(c, LLVMTypeOf(strukt)));
+	LLVMSetGlobalConstant(global_name, 1);
+	LLVMSetInitializer(global_name, strukt);
+	llvm_set_linkonce(c, global_name);
+	return type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+}
+
+static LLVMValueRef llvm_get_introspection_for_builtin_type(GenContext *c, Type *type, IntrospectType introspect_type, int bits)
+{
+	LLVMValueRef values[2];
+	int count = 1;
+	values[0] = llvm_const_int(c, type_char, introspect_type);
+	if (bits)
+	{
+		values[1] = llvm_const_int(c, type_ushort, bits);
+		count = 2;
+	}
+	LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, count, false);
+	scratch_buffer_clear();
+	scratch_buffer_append(".typeid.");
+	scratch_buffer_append(type->name);
+	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMTypeOf(strukt), scratch_buffer_to_string());
+	LLVMSetAlignment(global_name, llvm_abi_alignment(c, LLVMTypeOf(strukt)));
+	LLVMSetGlobalConstant(global_name, 1);
+	LLVMSetInitializer(global_name, strukt);
+	llvm_set_linkonce(c, global_name);
+	return type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+}
+
+static LLVMValueRef llvm_get_introspection_weak(GenContext *c, Type *type, const char *name, LLVMValueRef data)
+{
+	scratch_buffer_clear();
+	scratch_buffer_append(".typeid.");
+	scratch_buffer_append(name);
+	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMTypeOf(data), scratch_buffer_to_string());
+	LLVMSetAlignment(global_name, llvm_abi_alignment(c, LLVMTypeOf(data)));
+	LLVMSetGlobalConstant(global_name, 1);
+	LLVMSetInitializer(global_name, data);
+	llvm_set_linkonce(c, global_name);
+	return type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+}
+
+static LLVMValueRef llvm_get_introspection_external(GenContext *c, Type *type, LLVMValueRef data)
+{
+	scratch_buffer_clear();
+	scratch_buffer_append(".typeid.");
+	scratch_buffer_append(type->name);
+	LLVMValueRef global_name = LLVMAddGlobal(c->module, LLVMTypeOf(data), scratch_buffer_to_string());
+	LLVMSetAlignment(global_name, llvm_abi_alignment(c, LLVMTypeOf(data)));
+	LLVMSetLinkage(global_name, LLVMExternalLinkage);
+	return type->backend_typeid = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+}
+
+static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
+{
+	Decl *decl = type->decl;
+	bool is_external = decl->module != c->code_module;
+	bool is_dynamic = decl->is_dynamic;
+
+	Decl **enum_vals = decl->enums.values;
+	unsigned elements = vec_size(enum_vals);
+	Decl **associated_values = decl->enums.parameters;
+	unsigned associated_value_count = vec_size(associated_values);
+	if (is_external && is_dynamic)
+	{
+		elements = 0;
+	}
+	LLVMValueRef en_values[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_ENUM ),
+	                             llvm_const_int(c, type_usize, elements),
+	                             llvm_const_int(c, type_usize, associated_value_count) };
+	LLVMValueRef strukt = LLVMConstStructInContext(c->context, en_values, 3, false);
+
+	if (is_external && !is_dynamic)
+	{
+		return llvm_get_introspection_external(c, type, strukt);
+	}
+
+	LLVMValueRef val = llvm_get_introspection_weak(c, type, decl_get_extname(decl), strukt);
+	if (!associated_value_count) return val;
+
+	LLVMValueRef *values = elements ? malloc_arena(elements * sizeof(LLVMValueRef)) : NULL;
+	LLVMTypeRef val_type;
+	VECEACH(associated_values, ai)
+	{
+		val_type = NULL;
+		bool mixed = false;
+		for (unsigned i = 0; i < elements; i++)
+		{
+			BEValue value;
+			llvm_emit_expr(c, &value, enum_vals[i]->enum_constant.args[ai]);
+			assert(!llvm_value_is_addr(&value));
+			LLVMValueRef llvm_value = llvm_value_is_bool(&value) ? LLVMConstZExt(value.value, c->byte_type)
+			                                                     : value.value;
+			values[i] = llvm_value;
+			if (!val_type)
+			{
+				val_type = LLVMTypeOf(llvm_value);
+				continue;
+			}
+			if (val_type != LLVMTypeOf(llvm_value)) mixed = true;
+		}
+		Decl *associated_value = associated_values[ai];
+		LLVMValueRef associated_value_arr = mixed ? LLVMConstStruct(values, elements, true) : LLVMConstArray(val_type,
+		                                                                                                     values,
+		                                                                                                     elements);
+		scratch_buffer_clear();
+		scratch_buffer_append(decl->extname);
+		scratch_buffer_append(".");
+		scratch_buffer_append(associated_value->name);
+		LLVMValueRef global_ref = llvm_add_global_type(c,
+		                                               scratch_buffer_to_string(),
+		                                               LLVMTypeOf(associated_value_arr),
+		                                               0);
+		llvm_set_linkonce(c, global_ref);
+		LLVMSetInitializer(global_ref, associated_value_arr);
+		LLVMSetGlobalConstant(global_ref, true);
+		if (mixed)
+		{
+			LLVMTypeRef cast_type = llvm_get_ptr_type(c, type_get_array(associated_value->type, elements));
+			associated_value->backend_ref = LLVMConstBitCast(global_ref, cast_type);
+		}
+		else
+		{
+			associated_value->backend_ref = global_ref;
+		}
+	}
+	return val;
+}
+
+static LLVMValueRef llvm_get_introspection_for_struct_union(GenContext *c, Type *type)
+{
+	Decl *decl = type->decl;
+	Decl **decls = decl->strukt.members;
+	VECEACH(decls, i)
+	{
+		Decl *member_decl = decls[i];
+		if (decl_is_struct_type(member_decl))
+		{
+			llvm_get_typeid(c, member_decl->type);
+		}
+	}
+	LLVMValueRef values[] = { llvm_const_int(c, type_char, decl->decl_kind == DECL_STRUCT ? INTROSPECT_TYPE_STRUCT : INTROSPECT_TYPE_UNION ),
+							  llvm_const_int(c, type_usize, vec_size(decls)) };
+	LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, 2, false);
+	return llvm_get_introspection_weak(c, type, decl_get_extname(decl), strukt);
+}
+
+static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
+{
+	Decl *decl = type->decl;
+	Decl **fault_vals = decl->enums.values;
+	unsigned elements = vec_size(fault_vals);
+	AlignSize store_align;
+	for (unsigned i = 0; i < elements; i++)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(decl_get_extname(decl));
+		scratch_buffer_append_char('.');
+		Decl *val = fault_vals[i];
+		scratch_buffer_append(val->name);
+		LLVMValueRef global_name = llvm_add_global_var(c, scratch_buffer_to_string(), type_char, 0);
+		LLVMSetGlobalConstant(global_name, 1);
+		LLVMSetInitializer(global_name, LLVMConstInt(llvm_get_type(c, type_char), 1, false));
+		llvm_set_linkonce(c, global_name);
+		val->backend_ref = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
+	}
+	LLVMTypeRef element_type = llvm_get_type(c, type_typeid);
+	LLVMTypeRef elements_type = LLVMArrayType(element_type, elements);
+	LLVMValueRef start = LLVMConstNull(elements_type);
+	for (unsigned i = 0; i < elements; i++)
+	{
+		start = LLVMConstInsertValue(start, LLVMConstBitCast(fault_vals[i]->backend_ref, element_type), &i, 1);
+	}
+	LLVMValueRef values[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_FAULT ), llvm_const_int(c, type_usize, elements), start };
+	LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, 3, false);
+	return llvm_get_introspection_weak(c, type, decl_get_extname(decl), strukt);
+}
+
+
+LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
+{
+	if (type->backend_typeid) return type->backend_typeid;
+
+	switch (type->type_kind)
+	{
+		case TYPE_FAILABLE:
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_FAILABLE, type, type->failable, NULL);
+		case TYPE_FLEXIBLE_ARRAY:
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->array.base,
+			                                               llvm_const_int(c, type_usize, 0));
+		case TYPE_VECTOR:
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_VECTOR, type, type->array.base,
+			                                               llvm_const_int(c, type_usize, type->array.len));
+		case TYPE_ARRAY:
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->array.base,
+			                                               llvm_const_int(c, type_usize, type->array.len));
+		case TYPE_SUBARRAY:
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->array.base, NULL);
+		case TYPE_POINTER:
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->pointer, NULL);
+		case TYPE_DISTINCT:
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_DISTINCT, type, type->decl->distinct_decl.base_type, NULL);
+		case TYPE_ENUM:
+			return llvm_get_introspection_for_enum(c, type);
+		case TYPE_FAULTTYPE:
+			return llvm_get_introspection_for_fault(c, type);
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+			return llvm_get_introspection_for_struct_union(c, type);
+		case TYPE_FUNC:
+		{
+			LLVMValueRef values[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_FUNC ) };
+			LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, 1, false);
+			return llvm_get_introspection_weak(c, type, decl_get_extname(type->decl), strukt);
+
+		}
+		case TYPE_BITSTRUCT:
+		{
+			LLVMValueRef values[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_BITSTRUCT ) };
+			LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, 1, false);
+			return llvm_get_introspection_weak(c, type, decl_get_extname(type->decl), strukt);
+		}
+		case TYPE_TYPEDEF:
+			return llvm_get_typeid(c, type->canonical);
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_FAILABLE_ANY:
+		case TYPE_TYPEINFO:
+			UNREACHABLE
+		case TYPE_VOID:
+			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_VOID, 0);
+		case TYPE_BOOL:
+			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_BOOL, 0);
+		case ALL_SIGNED_INTS:
+			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_SIGNED_INT,
+			                                               type_kind_bitsize(type->type_kind));
+		case ALL_UNSIGNED_INTS:
+			return llvm_get_introspection_for_builtin_type(c,
+			                                               type,
+			                                               INTROSPECT_TYPE_UNSIGNED_INT,
+			                                               type_kind_bitsize(type->type_kind));
+		case ALL_FLOATS:
+			return llvm_get_introspection_for_builtin_type(c,
+			                                               type,
+			                                               INTROSPECT_TYPE_FLOAT,
+			                                               type_kind_bitsize(type->type_kind));
+		case TYPE_ANYERR:
+			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_ANYERR, 0);
+		case TYPE_ANY:
+			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_ANY, 0);
+		case TYPE_TYPEID:
+			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_TYPEID, 0);
+		case TYPE_POISONED:
+			UNREACHABLE
+	}
+	UNREACHABLE
+}

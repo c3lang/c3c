@@ -1,0 +1,1 @@
+int d = '\u0031\u0032\u0033\u0034'; // #error: can only contain one character

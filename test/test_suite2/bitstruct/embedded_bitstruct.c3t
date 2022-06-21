@@ -1,0 +1,79 @@
+// #target: macos-x64
+
+module foo;
+
+struct Bar
+{
+    int x;
+    struct
+    {
+        struct
+        {
+            int y;
+        }
+    }
+    bitstruct : uint
+    {
+        int ww : 2..10;
+    }
+}
+
+struct Foo
+{
+    struct
+    {
+        struct
+        {
+            int x;
+        }
+        struct
+        {
+            int y;
+        }
+        int z;
+    }
+    int w;
+}
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+    Bar b = { 1, 2, -5 };
+    printf("%d %d\n", b.y, b.ww);
+    Foo f = { 5, 6, 7, 8 };
+    printf("%d %d %d %d\n", f.x, f.y, f.z, f.w);
+}
+
+/* #expect: foo.ll
+
+define void @foo.main() #0 {
+entry:
+  %b = alloca %Bar, align 4
+  %f = alloca %Foo, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %b, ptr align 4 @.__const, i32 12, i1 false)
+  %0 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 1
+  %1 = getelementptr inbounds %anon, ptr %0, i32 0, i32 0
+  %2 = getelementptr inbounds %anon.0, ptr %1, i32 0, i32 0
+  %3 = load i32, ptr %2, align 4
+  %4 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 2
+  %5 = load i32, ptr %4, align 4
+  %6 = shl i32 %5, 21
+  %7 = ashr i32 %6, 23
+  call void (ptr, ...) @printf(ptr @.str, i32 %3, i32 %7)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %f, ptr align 4 @.__const.5, i32 16, i1 false)
+  %8 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 0
+  %9 = getelementptr inbounds %anon.1, ptr %8, i32 0, i32 0
+  %10 = getelementptr inbounds %anon.2, ptr %9, i32 0, i32 0
+  %11 = load i32, ptr %10, align 4
+  %12 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 0
+  %13 = getelementptr inbounds %anon.1, ptr %12, i32 0, i32 1
+  %14 = getelementptr inbounds %anon.3, ptr %13, i32 0, i32 0
+  %15 = load i32, ptr %14, align 4
+  %16 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 0
+  %17 = getelementptr inbounds %anon.1, ptr %16, i32 0, i32 2
+  %18 = load i32, ptr %17, align 4
+  %19 = getelementptr inbounds %Foo, ptr %f, i32 0, i32 1
+  %20 = load i32, ptr %19, align 4
+  call void (ptr, ...) @printf(ptr @.str.6, i32 %11, i32 %15, i32 %18, i32 %20)
+  ret void
+}

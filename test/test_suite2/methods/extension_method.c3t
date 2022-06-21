@@ -1,0 +1,40 @@
+module foo;
+
+struct Bar
+{
+    int x;
+}
+
+module baz;
+import foo;
+import std::io;
+
+fn void foo::Bar.test(Bar *bar)
+{
+    io::println("Inside of baz::Bar.test");
+}
+
+module abc;
+import foo;
+import baz;
+
+fn int main()
+{
+    Bar bar;
+    bar.test();
+    return 0;
+}
+
+/* #expect: abc.ll
+
+%Bar = type { i32 }
+
+define i32 @main() #0 {
+entry:
+  %bar = alloca %Bar, align 4
+  store i32 0, ptr %bar, align 4
+  call void @foo.Bar__test(ptr %bar)
+  ret i32 0
+}
+
+declare void @foo.Bar__test(ptr)

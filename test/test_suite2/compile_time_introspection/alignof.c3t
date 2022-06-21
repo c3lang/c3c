@@ -1,0 +1,90 @@
+// #target: macos-x64
+module foo;
+
+int[100] zfe;
+struct Bob
+{
+    Bob[] x;
+    char[100] y;
+    struct w {
+        int z;
+    }
+}
+
+union Ex
+{
+    char[8] c;
+    int[2] y;
+    double z;
+}
+
+union Br
+{
+    int y;
+    char x;
+}
+struct Ar
+{
+    long z;
+    Br[10] br;
+}
+
+union Foob
+{
+    long a;
+    char[8] c;
+}
+Ar izzy;
+
+
+long x = $alignof(zfe);
+short y = $alignof(Bob.y);
+int z = $alignof(Bob.y);
+int w = $alignof(Bob.y);
+int v = $alignof(v);
+int x1 = $alignof(Ex.c);
+int x2 = $alignof(Ex.y);
+int x3 = $alignof(char[8]);
+int x4 = $alignof(Ar.br[1]);
+int x5 = $alignof(Ar.br[1]);
+int x6 = $alignof(Ar.br[1]);
+int x7 = $alignof(Ar.br[1]);
+int x8 = $alignof(Ar.br[2]);
+int x9 = $alignof(izzy.br[1]);
+int x10 = $alignof(izzy.br[1]);
+int x11 = $alignof(izzy.br[1]);
+int z0 = $alignof(Foob.c);
+int z00 = $alignof(Foob.c[0]);
+int z01 = $alignof(Foob.c[1]);
+int z02 = $alignof(Foob.c[2]);
+int z03 = $alignof(Foob.c[3]);
+int z04 = $alignof(Foob.c[4]);
+int z05 = $alignof(Foob.c[5]);
+
+
+
+// #expect: foo.ll
+
+@foo.x = local_unnamed_addr global i64 16, align 8
+@foo.y = local_unnamed_addr global i16 8, align 2
+@foo.z = local_unnamed_addr global i32 8, align 4
+@foo.w = local_unnamed_addr global i32 8, align 4
+@foo.v = local_unnamed_addr global i32 4, align 4
+@foo.x1 = local_unnamed_addr global i32 8, align 4
+@foo.x2 = local_unnamed_addr global i32 8, align 4
+@foo.x3 = local_unnamed_addr global i32 1, align 4
+@foo.x4 = local_unnamed_addr global i32 4, align 4
+@foo.x5 = local_unnamed_addr global i32 4, align 4
+@foo.x6 = local_unnamed_addr global i32 4, align 4
+@foo.x7 = local_unnamed_addr global i32 4, align 4
+@foo.x8 = local_unnamed_addr global i32 8, align 4
+@foo.x9 = local_unnamed_addr global i32 4, align 4
+@foo.x10 = local_unnamed_addr global i32 4, align 4
+@foo.x11 = local_unnamed_addr global i32 4, align 4
+@foo.z0 = local_unnamed_addr global i32 8, align 4
+@foo.z00 = local_unnamed_addr global i32 8, align 4
+@foo.z01 = local_unnamed_addr global i32 1, align 4
+@foo.z02 = local_unnamed_addr global i32 2, align 4
+@foo.z03 = local_unnamed_addr global i32 1, align 4
+@foo.z04 = local_unnamed_addr global i32 4, align 4
+@foo.z05 = local_unnamed_addr global i32 1, align 4

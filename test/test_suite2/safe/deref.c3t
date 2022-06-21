@@ -1,0 +1,30 @@
+// #safe: yes
+module foo;
+
+fn void main()
+{
+	int* x;
+	int y = *x;
+}
+
+/* #expect: foo.ll
+
+define void @foo.main() #0 {
+entry:
+  %x = alloca ptr, align 8
+  %y = alloca i32, align 4
+  store ptr null, ptr %x, align 8
+  %0 = load ptr, ptr %x, align 8
+  %checknull = icmp eq ptr %0, null
+  br i1 %checknull, label %panic, label %checkok
+
+panic:                                            ; preds = %entry
+  call void @"std::core::builtin.panic"(ptr @.zstr, ptr @.zstr.1, ptr @.zstr.2, i32 6)
+  br label %checkok
+
+checkok:                                          ; preds = %panic, %entry
+  %1 = load i32, ptr %0, align 8
+  store i32 %1, ptr %y, align 4
+  ret void
+}
+

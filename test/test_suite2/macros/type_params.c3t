@@ -1,0 +1,42 @@
+// #target: macos-x64
+macro foo($Foo)
+{
+    $Foo a;
+    return a;
+}
+
+define Bar = short;
+fn void test()
+{
+    int x = foo(int);
+    var $Foo = double;
+    double d = foo($Foo);
+    double d2 = foo($typeof(d));
+    short z = foo(Bar);
+}
+
+
+/* #expect: type_params.ll
+
+  %x = alloca i32, align 4
+  %a = alloca i32, align 4
+  %d = alloca double, align 8
+  %a1 = alloca double, align 8
+  %d2 = alloca double, align 8
+  %a2 = alloca double, align 8
+  %z = alloca i16, align 2
+  %a3 = alloca i16, align 2
+  store i32 0, ptr %a, align 4
+  %0 = load i32, ptr %a, align 4
+  store i32 %0, ptr %x, align 4
+  store double 0.000000e+00, ptr %a1, align 8
+  %1 = load double, ptr %a1, align 8
+  store double %1, ptr %d, align 8
+  store double 0.000000e+00, ptr %a2, align 8
+  %2 = load double, ptr %a2, align 8
+  store double %2, ptr %d2, align 8
+  store i16 0, ptr %a3, align 2
+  %3 = load i16, ptr %a3, align 2
+  store i16 %3, ptr %z, align 2
+  ret void
+}

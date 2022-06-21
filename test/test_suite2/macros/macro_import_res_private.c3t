@@ -1,0 +1,26 @@
+// #target: macos-x64
+module foo;
+private fn void foo1()
+{}
+
+module bar;
+import private foo;
+macro bar1()
+{
+    foo::foo1();
+}
+
+module baz;
+import bar;
+fn void test()
+{
+    bar::bar1();
+}
+
+/* #expect: baz.ll
+
+define void @baz.test() #0 {
+entry:
+  call void @foo.foo1()
+  ret void
+}

@@ -1049,7 +1049,6 @@ static inline Type *func_create_new_func_proto(FunctionSignature *sig, CallABI a
 	}
 	c_abi_func_create(proto);
 
-
 	Type *type = type_new(TYPE_FUNC, "#Function");
 	type->func.prototype = proto;
 	type->canonical = type;

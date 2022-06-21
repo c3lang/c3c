@@ -1,0 +1,32 @@
+// #target: macos-x64
+module foo;
+
+struct Bar
+{
+    struct
+    {
+        int y;
+    }
+    int ufe;
+    int[*] z;
+}
+
+
+fn void test(Bar b)
+{
+    b.z[1];
+}
+
+/* #expect: foo.ll
+
+%Bar = type { %anon, i32, [0 x i32] }
+%anon = type { i32 }
+
+define void @foo.test(ptr byval(%Bar) align 8 %0) #0 {
+entry:
+  %b = alloca %Bar, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %b, ptr align 8 %0, i32 8, i1 false)
+  %1 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 2
+  %2 = getelementptr inbounds [0 x i32], ptr %1, i64 0, i64 1
+  ret void
+}

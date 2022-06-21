@@ -1,0 +1,69 @@
+// #target: macos-x64
+
+union Baz
+{
+    int x;
+    double y;
+}
+struct Bar
+{
+    int x;
+    int y;
+}
+
+struct Mega
+{
+    int[10] z;
+}
+
+fn int test()
+{
+    Mega m = {};
+    int[1] azz = {};
+    int[*] a = {};
+    Bar b = {};
+    Baz z = {};
+    int[] sub = {};
+    Bar[] foo = {};
+    Baz[3] baz = {};
+    return 1;
+}
+
+/* #expect: zero_init.ll
+
+
+%Mega = type { [10 x i32] }
+%Bar = type { i32, i32 }
+%Baz = type { double }
+
+define i32 @zero_init.test() #0 {
+entry:
+  %m = alloca %Mega, align 4
+  %azz = alloca [1 x i32], align 4
+  %a = alloca [0 x i32], align 4
+  %b = alloca %Bar, align 4
+  %z = alloca %Baz, align 8
+  %sub = alloca %"int[]", align 8
+  %literal = alloca [0 x i32], align 4
+  %foo = alloca %"Bar[]", align 8
+  %literal1 = alloca [0 x %Bar], align 4
+  %baz = alloca [3 x %Baz], align 16
+  call void @llvm.memset.p0.i64(ptr align 4 %m, i8 0, i64 40, i1 false)
+  %0 = getelementptr inbounds [1 x i32], ptr %azz, i64 0, i64 0
+  store i32 0, ptr %0, align 4
+  %1 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 0
+  store i32 0, ptr %1, align 4
+  %2 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 1
+  store i32 0, ptr %2, align 4
+  call void @llvm.memset.p0.i64(ptr align 8 %z, i8 0, i64 8, i1 false)
+  store [0 x i32] zeroinitializer, ptr %literal, align 4
+  %3 = insertvalue %"int[]" undef, ptr %literal, 0
+  %4 = insertvalue %"int[]" %3, i64 0, 1
+  store %"int[]" %4, ptr %sub, align 8
+  store [0 x %Bar] zeroinitializer, ptr %literal1, align 4
+  %5 = insertvalue %"Bar[]" undef, ptr %literal1, 0
+  %6 = insertvalue %"Bar[]" %5, i64 0, 1
+  store %"Bar[]" %6, ptr %foo, align 8
+  call void @llvm.memset.p0.i64(ptr align 16 %baz, i8 0, i64 24, i1 false)
+  ret i32 1
+}

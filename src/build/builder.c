@@ -61,6 +61,30 @@ ArchOsTarget default_target = ELF_RISCV64;
 ArchOsTarget default_target = ARCH_OS_TARGET_DEFAULT;
 #endif
 
+static bool command_is_compile(CompilerCommand command)
+{
+	switch (command)
+	{
+		case COMMAND_COMPILE:
+		case COMMAND_COMPILE_ONLY:
+		case COMMAND_COMPILE_RUN:
+			return true;
+		case COMMAND_MISSING:
+		case COMMAND_GENERATE_HEADERS:
+		case COMMAND_INIT:
+		case COMMAND_BUILD:
+		case COMMAND_RUN:
+		case COMMAND_CLEAN_RUN:
+		case COMMAND_CLEAN:
+		case COMMAND_DIST:
+		case COMMAND_DOCS:
+		case COMMAND_BENCH:
+		case COMMAND_UNIT_TEST:
+		case COMMAND_PRINT_SYNTAX:
+			return false;
+	}
+	UNREACHABLE
+}
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
 	switch (options->command)
@@ -163,6 +187,18 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->feature.x86_vector_capability = options->x86_vector_capability;
 	}
+	if (command_is_compile(options->command))
+	{
+		target->build_dir = options->build_dir ? options->build_dir : NULL;
+		target->object_file_dir = options->obj_out ? options->obj_out : target->build_dir;
+		target->llvm_file_dir = options->llvm_out ? options->llvm_out : target->build_dir;
+	}
+	else
+	{
+		target->build_dir = options->build_dir ? options->build_dir : "build";
+		target->object_file_dir = options->obj_out ? options->obj_out : file_append_path(target->build_dir, "tmp");
+		target->llvm_file_dir = options->llvm_out ? options->llvm_out : file_append_path(target->build_dir, "llvm_ir");
+	}
 	switch (options->compile_option)
 	{
 		case COMPILE_NORMAL:
@@ -231,7 +267,6 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 	Project *project = project_load();
 	*target = *project_select_target(project, options->target_select);
 
-	target->build_dir = "build";
 	update_build_target_from_options(target, options);
 	if (target->build_dir && !file_exists(target->build_dir))
 	{

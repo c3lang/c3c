@@ -1,0 +1,105 @@
+// #target: macos-x64
+module foo;
+struct Foo
+{
+    int[] x;
+}
+
+macro int Foo.@operator_element_at(Foo &foo, usize index) @operator(elementat)
+{
+    return foo.x[index];
+}
+
+macro usize Foo.@operator_len(Foo &foo) @operator(len)
+{
+    return foo.x.len;
+}
+
+fn void main()
+{
+    int[*] i = { 1, 3, 10 };
+    Foo x = { &i };
+    foreach FOO: (int f : x) {
+        printf("%d\n", f);
+        while (1)
+        {
+            break FOO;
+        }
+    }
+}
+
+extern fn int printf(char *fmt, ...);
+
+/* #expect: foo.ll
+
+source_filename = "foo"
+target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-apple-darwin"
+
+%Foo = type { %"int[]" }
+%"int[]" = type { ptr, i64 }
+
+@.typeid.foo.Foo = linkonce constant { i8, i64 } { i8 10, i64 1 }, align 8
+@.__const = private unnamed_addr constant [3 x i32] [i32 1, i32 3, i32 10], align 4
+@.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+
+; Function Attrs: nounwind
+define void @foo.main() #0 {
+entry:
+  %i = alloca [3 x i32], align 4
+  %x = alloca %Foo, align 8
+  %anon = alloca i64, align 8
+  %anon1 = alloca i64, align 8
+  %f = alloca i32, align 4
+  %index = alloca i64, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %i, ptr align 4 @.__const, i32 12, i1 false)
+  %0 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
+  %1 = insertvalue %"int[]" undef, ptr %i, 0
+  %2 = insertvalue %"int[]" %1, i64 3, 1
+  store %"int[]" %2, ptr %0, align 8
+  store i64 0, ptr %anon, align 8
+  %3 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
+  %4 = getelementptr inbounds %"int[]", ptr %3, i32 0, i32 1
+  %5 = load i64, ptr %4, align 8
+  store i64 %5, ptr %anon1, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %entry
+  %6 = load i64, ptr %anon, align 8
+  %7 = load i64, ptr %anon1, align 8
+  %lt = icmp ult i64 %6, %7
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %8 = load i64, ptr %anon, align 8
+  store i64 %8, ptr %index, align 8
+  %9 = getelementptr inbounds %Foo, ptr %x, i32 0, i32 0
+  %10 = getelementptr inbounds %"int[]", ptr %9, i32 0, i32 0
+  %11 = load ptr, ptr %10, align 8
+  %12 = load i64, ptr %index, align 8
+  %ptroffset = getelementptr inbounds i32, ptr %11, i64 %12
+  %13 = load i32, ptr %ptroffset, align 4
+  store i32 %13, ptr %f, align 4
+  %14 = load i32, ptr %f, align 4
+  %15 = call i32 (ptr, ...) @printf(ptr @.str, i32 %14)
+  br label %loop.body2
+
+loop.body2:                                       ; preds = %loop.body
+  br label %loop.exit
+
+loop.exit:                                        ; preds = %loop.body2, %loop.cond
+  ret void
+}
+
+; Function Attrs: nounwind
+declare i32 @printf(ptr, ...) #0
+
+; Function Attrs: nounwind
+define i32 @main(i32 %0, ptr %1) #0 {
+entry:
+  call void @foo.main()
+  ret i32 0
+}
+
+; Function Attrs: argmemonly nofree nounwind willreturn
+declare void @llvm.memcpy.p0.p0.i32(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i32, i1 immarg) #1

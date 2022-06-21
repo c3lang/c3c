@@ -1,0 +1,22 @@
+// #target: macos-x64
+module test;
+
+struct Connection
+{
+   long to;
+   char* type;
+   long length;
+}
+
+private Connection[3] link
+= { {1, "link1", 10},
+    {2, "link2", 20},
+    {3, "link3", 30} };
+
+/* #expect: test.ll
+
+@.typeid.test.Connection = linkonce constant { i8, i64 } { i8 10, i64 3 }, align 8
+@.str = private unnamed_addr constant [6 x i8] c"link1\00", align 1
+@.str.1 = private unnamed_addr constant [6 x i8] c"link2\00", align 1
+@.str.2 = private unnamed_addr constant [6 x i8] c"link3\00", align 1
+@test.link = protected unnamed_addr global [3 x %Connection] [%Connection { i64 1, ptr @.str, i64 10 }, %Connection { i64 2, ptr @.str.1, i64 20 }, %Connection { i64 3, ptr @.str.2, i64 30 }], align 16
