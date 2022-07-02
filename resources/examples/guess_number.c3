@@ -1,5 +1,4 @@
 module guess_number;
-import std::mem;
 import std::io;
 import libc;
 
@@ -34,7 +33,7 @@ fn int! askGuess(int high)
 fn char[]! readLine()
 {
 	char* chars = mem::talloc(1024)?;
-	isize loaded = getline(&chars, &&(usize)1023, 2libc::stdin());
+	isize loaded = getline(&chars, &&(usize)1023, libc::stdin());
 	if (loaded < 0) return InputResult.FAILED_TO_READ!;
 	chars[loaded] = 0;
 	return chars[0..(loaded - 1)];

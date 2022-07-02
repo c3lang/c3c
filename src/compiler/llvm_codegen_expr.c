@@ -4909,6 +4909,9 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	{
 		BEValue no_err;
 
+		// Emit the current stack into the thread local or things will get messed up.
+		if (c->debug.last_ptr) llvm_store(c, c->debug.last_ptr, c->debug.stack_slot, type_alloca_alignment(type_voidptr));
+
 		// 17a. If we used the error var as the indirect recipient, then that will hold the error.
 		//      otherwise it's whatever value in be_value.
 		BEValue error_holder = *result_value;
@@ -4940,9 +4943,6 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 
 		// 17f. Emit the "after" block.
 		llvm_emit_block(c, after_block);
-
-		// Emit the current stack into the thread local or things will get messed up.
-		if (c->debug.last_ptr) llvm_store(c, c->debug.last_ptr, c->debug.stack_slot, type_alloca_alignment(type_voidptr));
 
 		// 17g. If void, be_value contents should be skipped.
 		if (!prototype->ret_by_ref)

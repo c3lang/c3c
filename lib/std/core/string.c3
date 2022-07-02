@@ -43,8 +43,9 @@ fn String new(char[] c)
 
 fn ZString String.zstr(String* str)
 {
-	StringData* data = str.data();
 	if (!str) return (ZString)"";
+	StringData* data = str.data();
+	if (!data) return (ZString)"";
 	if (data.capacity == data.len)
 	{
 		libc::printf("feofk\n");
@@ -63,6 +64,7 @@ fn usize String.len(String* this)
 	if (!*this) return 0;
 	return this.data().len;
 }
+
 /**
  * @require new_size <= this.len()
  */
@@ -84,6 +86,25 @@ fn void String.append_utf32(String* str, Char32[] chars)
 	foreach (Char32 c : chars)
 	{
 		str.append_char32(c);
+	}
+}
+
+/**
+ * @require index < str.len()
+ **/
+fn void String.set(String* str, usize index, char c)
+{
+	str.data().chars[index] = c;
+}
+
+fn void String.append_repeat(String* str, char c, usize times)
+{
+	if (times == 0) return;
+	str.reserve(times);
+	StringData* data = str.data();
+	for (usize i = 0; i < times; i++)
+	{
+        data.chars[data.len++] = c;
 	}
 }
 
@@ -174,6 +195,7 @@ fn void String.destroy(String* str)
 {
 	if (!*str) return;
 	StringData* data = str.data();
+	if (!data) return;
 	data.allocator.free(data);
 	*str = (String)null;
 }

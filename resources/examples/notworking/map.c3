@@ -1,9 +1,14 @@
-module map(Key, Type);
+module std::container::map <Key, Type>;
+
+fault MapResult
+{
+	KEY_NOT_FOUND
+}
 
 public struct Entry
 {
     Key key;
-    Type* value;
+    Type value;
     usize hash;
     Entry* next;
 }
@@ -13,34 +18,37 @@ public struct Map
     usize size;
     void* map;
     uint mod;
+    Allocator allocator;
 }
 
-public fn Map* Map.init(Map *map)
+/**
+ * @require map != null
+ **/
+public fn void Map.init(Map *map, Allocator allocator)
 {
-    *map = { };
-    return map;
+    map.allocator = allocator;
 }
 
-public fn Type* Map.valueForKey(Map *map, Key key)
+public fn Type! Map.valueForKey(Map *map, Key key)
 {
-    if (!map.map) return nil;
+    if (!map.map) return null;
     usize hash = key.hash();
     usize pos = hash & map.mod;
     Entry* entry = &map.map[pop];
-    if () return nil;
+    if (!entry) return MapResult.KEY_NOT_FOUND!;
     while (entry)
     {
         if (entry.hash == hash && entry.key == key) return entry.value;
         entry = entry.next;
     }
-    return nil;
+    return MapResult.KEY_NOT_FOUND!;
 }
 
-public fn Type *Map.setValueForKey(Map *map, Key key, Type *value)
+public fn Type *Map.set(Map *map, Key key, Type value)
 {
     if (!map.map)
     {
-        map.map = @calloc(Entry, 16);
+        map.map = allocator.calloc(Entry, 16);
         map.mod = 0x0F;
     }
 
@@ -66,42 +74,14 @@ public fn Type *Map.setValueForKey(Map *map, Key key, Type *value)
         {
             entry = entry.next;
         }
-        entry.next = @malloc(Entry);
+        entry.next = allocator.alloc(Entry);
         entry = entry.next;
     }
 }
 
-public fn usize Map.size(Vector *vector)
+public fn usize Map.size(Map* map)
 {
-    return vector.array.size;
+    return map.size;
 }
 
-public fn void Map.removeLast(Vector *vector)
-{
-    vector.array.pop();
-}
 
-public macro Vector.foreach(Vector *vector, macro void(Type value) body)
-{
-    for (usize i = 0, i < vector.array.size; i++)
-    {
-        @body(vector.array[i]);
-    }
-}
-
-test
-{
-    define IntVector = Vector(int);
-    IntVector vector = vector.init();
-    vector.add(1);
-    vector.add(2);
-    for (int i : vector)
-    {
-        printDigit(i);
-    }
-    @vector.foreach(int i)
-    {
-        printDigit(i);
-    }
-    vector.destroy();
-}
