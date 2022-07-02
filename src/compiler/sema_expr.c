@@ -1768,6 +1768,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	};
 
 	if (!sema_expr_analyse_call_invocation(context, call_expr, callee, &failable)) return false;
+
 	Expr **args = call_expr->call_expr.arguments;
 	VECEACH(params, i)
 	{

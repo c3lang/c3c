@@ -2113,7 +2113,7 @@ static inline bool parse_doc_contract(ParseContext *c, AstId **docs_ref, DocDire
 	switch (kind)
 	{
 		case DOC_DIRECTIVE_CHECKED:
-			scratch_buffer_append("@require \"");
+			scratch_buffer_append("@checked \"");
 			break;
 		case DOC_DIRECTIVE_ENSURE:
 			scratch_buffer_append("@ensure \"");
