@@ -5357,6 +5357,15 @@ static inline void llvm_emit_ptr(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_subarray_pointer(c, value, value);
 }
 
+static inline void llvm_emit_typeid_kind(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->inner_expr);
+	llvm_value_rvalue(c, value);
+	LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_ptr_type(c, type_char), "");
+	LLVMValueRef kind = llvm_load(c, c->byte_type, ref, 1, "");
+	llvm_value_set(value, kind, expr->type);
+}
+
 void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 {
 	Expr **exprs = expr->try_unwrap_chain_expr;
@@ -5517,6 +5526,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_PTR:
 			llvm_emit_ptr(c, value, expr);
+			return;
+		case EXPR_TYPEID_KIND:
+			llvm_emit_typeid_kind(c, value, expr);
 			return;
 		case EXPR_BUILTIN:
 			UNREACHABLE;

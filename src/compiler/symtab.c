@@ -40,6 +40,7 @@ const char *attribute_list[NUMBER_OF_ATTRIBUTES];
 const char *builtin_list[NUMBER_OF_BUILTINS];
 
 const char *kw_std__core;
+const char *kw_std__core__types;
 const char *kw_in;
 const char *kw_out;
 const char *kw_inout;
@@ -51,6 +52,7 @@ const char *kw_return;
 const char *kw_type;
 const char *kw_inf;
 const char *kw_inline;
+const char *kw_kind;
 const char *kw_elementat;
 const char *kw_elementref;
 const char *kw_elementset;
@@ -129,6 +131,7 @@ void symtab_init(uint32_t capacity)
 
 	type = TOKEN_IDENT;
 	kw_std__core = KW_DEF("std::core");
+	kw_std__core__types = KW_DEF("std::core::types");
 	kw_sizeof = KW_DEF("sizeof");
 	kw_in = KW_DEF("in");
 	kw_out = KW_DEF("out");
@@ -140,6 +143,7 @@ void symtab_init(uint32_t capacity)
 	kw_type = KW_DEF("type");
 	kw_inf = KW_DEF("inf");
 	kw_inline = KW_DEF("inline");
+	kw_kind = KW_DEF("kind");
 	kw_elementat = KW_DEF("elementat");
 	kw_elementref = KW_DEF("elementref");
 	kw_elementset = KW_DEF("elementset");

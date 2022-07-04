@@ -711,9 +711,9 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->array.base,
 			                                               llvm_const_int(c, type_usize, type->array.len));
 		case TYPE_SUBARRAY:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->array.base, NULL);
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_SUBARRAY, type, type->array.base, NULL);
 		case TYPE_POINTER:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->pointer, NULL);
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_POINTER, type, type->pointer, NULL);
 		case TYPE_DISTINCT:
 			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_DISTINCT, type, type->decl->distinct_decl.base_type, NULL);
 		case TYPE_ENUM:

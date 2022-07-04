@@ -81,29 +81,6 @@ macro unreachable($string = "Unreachable statement reached.") @autoimport @noret
 	$$unreachable();
 }
 
-enum TypeKind : char
-{
-    VOID,   // 0
-    BOOL,   // 1
-    FLOAT,  // 2
-    INTEGER,// 3
-    STRUCT, // 4
-    UNION,  // 5
-    ENUM,   // 6
-    FAULT,  // 7
-    ARRAY,
-    POINTER,
-    VAR_ARRAY,
-    SUBARRAY,
-    OPAQUE
-    // ALIAS,
-}
-
-struct TypeEnum
-{
-	TypeKind type;
-	usize elements;
-}
 /*
 enum TypeKind
 {
