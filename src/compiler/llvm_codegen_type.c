@@ -685,7 +685,7 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 	LLVMValueRef start = LLVMConstNull(elements_type);
 	for (unsigned i = 0; i < elements; i++)
 	{
-		start = LLVMConstInsertValue(start, LLVMConstBitCast(fault_vals[i]->backend_ref, element_type), &i, 1);
+		start = llvm_emit_insert_value(c, start, LLVMConstBitCast(fault_vals[i]->backend_ref, element_type), i);
 	}
 	LLVMValueRef values[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_FAULT ), llvm_const_int(c, type_usize, elements), start };
 	LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, 3, false);

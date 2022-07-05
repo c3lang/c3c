@@ -386,6 +386,27 @@ static inline LLVMValueRef decl_failable_ref(Decl *decl)
 }
 
 
+static inline LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index)
+{
+	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
+	{
+#if LLVM_VERSION_MAJOR < 15
+		LLVMValueRef index_val = llvm_const_int(c, type_usize, index);
+		if (LLVMIsConstant(agg) && LLVMIsConstant(new_value))
+		{
+			return LLVMConstInsertElement(agg, new_value, index_val);
+		}
+#endif
+		return LLVMBuildInsertElement(c->builder, agg, new_value, index_val, "");
+	}
+#if LLVM_VERSION_MAJOR < 15
+	if (LLVMIsConstant(agg) && LLVMIsConstant(new_value))
+	{
+		return LLVMConstInsertValue(agg, new_value, &index, 1);
+	}
+#endif
+	return LLVMBuildInsertValue(c->builder, agg, new_value, index, "");
+}
 
 static inline LLVMValueRef llvm_emit_store(GenContext *c, Decl *decl, LLVMValueRef value)
 {

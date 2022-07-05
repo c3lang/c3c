@@ -1656,4 +1656,5 @@ unsigned type_get_introspection_kind(TypeKind kind)
 			UNREACHABLE
 			return 0;
 	}
+	UNREACHABLE
 }
