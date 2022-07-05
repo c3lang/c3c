@@ -1856,6 +1856,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		if (type_is_failable(rtype))
 		{
+			failable = true;
 			rtype = type_no_fail(rtype);
 		}
 		else
@@ -6122,15 +6123,18 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		return false;
 	}
 
-	if (context->rtype && context->rtype->type_kind != TYPE_FAILABLE)
-	{
-		SEMA_ERROR(expr, "This expression implicitly returns with a failable result, but the function does not allow failable results. Did you mean to use 'else' instead?");
-		return false;
-	}
 
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
 	{
 		vec_add(context->returns, NULL);
+	}
+	else
+	{
+		if (context->rtype && context->rtype->type_kind != TYPE_FAILABLE)
+		{
+			SEMA_ERROR(expr, "This expression implicitly returns with a failable result, but the function does not allow failable results. Did you mean to use 'else' instead?");
+			return false;
+		}
 	}
 
 	return true;

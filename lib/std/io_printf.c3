@@ -102,6 +102,31 @@ private macro usize ntoa_format(#output, uint idx, uint len, char* buf, uint pre
 }
 */
 
+private macro usize! @printf_integer(#output, variant, usize idx, uint precision, uint width, PrintFlags flags)
+{
+	return 0;
+}
+
+private macro usize! @printf_efloat(#output, variant, usize idx, uint precision, uint width, PrintFlags flags)
+{
+	return 0;
+}
+
+private macro usize! @printf_char(#output, variant, usize idx, uint precision, uint width, PrintFlags flags)
+{
+	return 0;
+}
+
+private macro usize! @printf_ptr(#output, variant, usize idx, uint precision, uint width, PrintFlags flags)
+{
+	return 0;
+}
+
+private macro usize! @printf_str(#output, variant, usize idx, uint precision, uint width, PrintFlags flags)
+{
+	return 0;
+}
+
 private macro void @format_print_str_variant(#output, variant arg)
 {
 	if (arg.type.kind == TypeKind.POINTER)
@@ -183,7 +208,7 @@ private fn uint! printf_parse_format_field(variant* args_ptr, usize args_len, us
 	return intval;
 }
 
-private macro void @printf_generic(#output, char[] format, variant[] args)
+private macro usize! @printf_generic(#output, char[] format, variant[] args)
 {
 	usize idx = 0;
 	char* format_ptr = format.ptr;
@@ -229,20 +254,17 @@ private macro void @printf_generic(#output, char[] format, variant[] args)
 	        c = format_ptr[i];
 	    }
 	    // evaluate width field
-	    uint width = printf_parse_format_field(args.ptr, args.len, &arg_index, format_ptr, format_len &i)?;
+	    uint width = printf_parse_format_field(args.ptr, args.len, &arg_index, format_ptr, format_len, &i)?;
 	    c = format_ptr[i];
 		uint precision = 0;
 		if (c == '.')
 		{
 			flags.precision = true;
-			printf_advance_format(format_len, i)?;
-			precision = printf_parse_format_field(args.ptr, args.len, &arg_index, format_ptr, format_len &i)?;
+			printf_advance_format(format_len, &i)?;
+			precision = printf_parse_format_field(args.ptr, args.len, &arg_index, format_ptr, format_len, &i)?;
 			c = format_ptr[i];
         }
 
-        uint base = {|
-
-        |};
         uint base = void;
         switch (c)
         {
@@ -415,6 +437,11 @@ private macro void @formatting(#output, char[] format, variant[] args)
 				@format_print(#output, "Unknown specifier");
 		}
 	}
+}
+
+fn void printf2(char[] format, args...)
+{
+	@printf_generic(putchar, format, args)!!;
 }
 
 fn void printf(char[] format, args... )
