@@ -90,38 +90,46 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 
 static inline LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index)
 {
+	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
+	{
+#if LLVM_VERSION_MAJOR < 15
+		if (LLVMIsConstant(agg))
+		{
+			return LLVMConstExtractElement(agg, llvm_const_int(c, type_usize, index));
+		}
+#endif
+		return LLVMBuildExtractElement(c->builder, agg, llvm_const_int(c, type_usize, index), "");
+	}
+#if LLVM_VERSION_MAJOR < 15
 	if (LLVMIsConstant(agg))
 	{
 		return LLVMConstExtractValue(agg, &index, 1);
 	}
-	else
-	{
-		return LLVMBuildExtractValue(c->builder, agg, index, "");
-	}
+#endif
+	return LLVMBuildExtractValue(c->builder, agg, index, "");
 }
 
-static inline LLVMValueRef llvm_emit_extract_element(GenContext *c, LLVMValueRef vector, unsigned index)
-{
-	if (LLVMIsConstant(vector))
-	{
-		return LLVMConstExtractElement(vector, llvm_const_int(c, type_usize, index));
-	}
-	else
-	{
-		return LLVMBuildExtractElement(c->builder, vector, llvm_const_int(c, type_usize, index), "");
-	}
-}
 
-static inline LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, unsigned index)
+static inline LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index)
 {
+	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
+	{
+#if LLVM_VERSION_MAJOR < 15
+		LLVMValueRef index_val = llvm_const_int(c, type_usize, index);
+		if (LLVMIsConstant(agg) && LLVMIsConstant(new_value))
+		{
+			return LLVMConstInsertElement(agg, new_value, index_val);
+		}
+#endif
+		return LLVMBuildInsertElement(c->builder, agg, new_value, index_val, "");
+	}
+#if LLVM_VERSION_MAJOR < 15
 	if (LLVMIsConstant(agg) && LLVMIsConstant(new_value))
 	{
 		return LLVMConstInsertValue(agg, new_value, &index, 1);
 	}
-	else
-	{
-		return LLVMBuildInsertValue(c->builder, agg, new_value, index, "");
-	}
+#endif
+	return LLVMBuildInsertValue(c->builder, agg, new_value, index, "");
 }
 
 static inline LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type)
@@ -573,14 +581,7 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 	{
 		index = LLVMBuildNUWSub(c->builder, llvm_const_int(c, value->type, vec->array.len), index, "");
 	}
-	if (LLVMIsAConstant(index) && LLVMIsAConstant(vector))
-	{
-		llvm_value_set(value, LLVMConstExtractElement(vector, index), element);
-	}
-	else
-	{
-		llvm_value_set(value, LLVMBuildExtractElement(c->builder, vector, index, ""), element);
-	}
+	llvm_value_set(value, LLVMBuildExtractElement(c->builder, vector, index, ""), element);
 }
 
 
@@ -1128,13 +1129,8 @@ void llvm_emit_vector_to_array_cast(GenContext *c, BEValue *value, Type *to_type
 	bool is_const = LLVMIsConstant(value->value);
 	for (unsigned i = 0; i < to_type->array.len; i++)
 	{
-		LLVMValueRef element = llvm_emit_extract_element(c, value->value, i);
-		if (is_const)
-		{
-			array = LLVMConstInsertValue(array, element, &i, 1);
-			continue;
-		}
-		array = LLVMBuildInsertValue(c->builder, array, element, i, "");
+		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
+		array = llvm_emit_insert_value(c, array, element, i);
 	}
 	llvm_value_set(value, array, to_type);
 }
@@ -1148,12 +1144,7 @@ void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type
 	for (unsigned i = 0; i < to_type->array.len; i++)
 	{
 		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
-		if (is_const)
-		{
-			vector = LLVMConstInsertElement(vector, element, llvm_const_int(c, type_usize, i));
-			continue;
-		}
-		vector = LLVMBuildInsertElement(c->builder, vector, element, llvm_const_int(c, type_usize, i), "");
+		vector = llvm_emit_insert_value(c, vector, element, i);
 	}
 	llvm_value_set(value, vector, to_type);
 }
@@ -1412,11 +1403,11 @@ static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **
 			case DESIGNATOR_FIELD:
 				return LLVMConstInsertValue(parent, val, &index, 1);
 			case DESIGNATOR_ARRAY:
-				return LLVMConstInsertElement(parent, val, llvm_const_int(c, type_isize, (unsigned)current_element->index));
+				return llvm_emit_insert_value(c, parent, val, (ArraySize)current_element->index);
 			case DESIGNATOR_RANGE:
 				for (MemberIndex i = current_element->index; i <= current_element->index_end; i++)
 				{
-					parent = LLVMConstInsertElement(parent, val, llvm_const_int(c, type_isize, (uint64_t)i));
+					parent = llvm_emit_insert_value(c, parent, val, i);
 				}
 				return parent;
 		}
@@ -1428,24 +1419,20 @@ static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **
 		case DESIGNATOR_FIELD:
 		{
 			unsigned index = (unsigned)current_element->index;
-			current_val = LLVMConstExtractValue(parent, &index, 1);
+			current_val = llvm_emit_extract_value(c, parent, index);
 			current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
-			return LLVMConstInsertValue(parent, current_val, &index, 1);
+			return llvm_emit_insert_value(c, parent, current_val, index);
 		}
 		case DESIGNATOR_ARRAY:
-		{
-			LLVMValueRef index = llvm_const_int(c, type_isize, (uint64_t)current_element->index);
-			current_val = LLVMConstExtractElement(parent, index);
+			current_val = llvm_emit_extract_value(c, parent, current_element->index);
 			current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
-			return LLVMConstInsertElement(parent, current_val, index);
-		}
+			return llvm_emit_insert_value(c, parent, current_val, current_element->index);
 		case DESIGNATOR_RANGE:
 			for (MemberIndex i = current_element->index; i <= current_element->index_end; i++)
 			{
-				LLVMValueRef index = llvm_const_int(c, type_isize, (uint64_t)i);
-				current_val = LLVMConstExtractElement(parent, index);
+				current_val = llvm_emit_extract_value(c, parent, i);
 				current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
-				parent = LLVMConstInsertElement(parent, current_val, index);
+				parent = llvm_emit_insert_value(c, parent, current_val, i);
 			}
 			return parent;
 		default:
@@ -2006,7 +1993,7 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue
 			LLVMValueRef val = LLVMGetUndef(llvm_get_type(c, type));
 			for (ArraySize i = 0; i < width; i++)
 			{
-				val = LLVMConstInsertElement(val, diff_value, llvm_const_int(c, type_usize, i));
+				val = llvm_emit_insert_value(c, val, diff_value, i);
 			}
 			if (is_integer)
 			{
@@ -5176,13 +5163,15 @@ static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector
 	LLVMValueRef index_value = llvm_const_int(c, type_usize, (uint64_t)index);
 	if (*is_const && LLVMIsConstant(value))
 	{
+#if LLVM_VERSION_MAJOR < 15
 		return LLVMConstInsertElement(vector, value, index_value);
+#endif
 	}
 	else
 	{
 		*is_const = false;
-		return LLVMBuildInsertElement(c->builder, vector, value, index_value, "");
 	}
+	return LLVMBuildInsertElement(c->builder, vector, value, index_value, "");
 
 }
 static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr)
