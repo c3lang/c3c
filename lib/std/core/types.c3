@@ -2,7 +2,7 @@ module std::core::types;
 
 macro bool kind_is_int(TypeKind kind)
 {
-	return kind == SIGNED_INT || kind == UNSIGNED_INT;
+	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
 }
 
 fault ConversionResult

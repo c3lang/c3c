@@ -1577,6 +1577,7 @@ extern const char *builtin_list[NUMBER_OF_BUILTINS];
 
 extern const char *kw_std__core;
 extern const char *kw_std__core__types;
+extern const char *kw_typekind;
 
 extern const char *kw_std;
 extern const char *kw_max;

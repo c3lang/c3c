@@ -41,6 +41,8 @@ const char *builtin_list[NUMBER_OF_BUILTINS];
 
 const char *kw_std__core;
 const char *kw_std__core__types;
+const char *kw_typekind;
+
 const char *kw_in;
 const char *kw_out;
 const char *kw_inout;
@@ -128,6 +130,9 @@ void symtab_init(uint32_t capacity)
 	kw_LINEREAL = KW_DEF("LINEREAL");
 	kw_FILE = KW_DEF("FILE");
 	kw_FUNC = KW_DEF("FUNC");
+
+	type = TOKEN_TYPE_IDENT;
+	kw_typekind = KW_DEF("TypeKind");
 
 	type = TOKEN_IDENT;
 	kw_std__core = KW_DEF("std::core");

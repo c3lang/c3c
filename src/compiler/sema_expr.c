@@ -3329,7 +3329,7 @@ CHECK_DEEPER:
 	if (kw == kw_kind && flat_type->type_kind == TYPE_TYPEID)
 	{
 		Module *module = global_context_find_module(kw_std__core__types);
-		Decl *type_kind = module ? module_find_symbol(module, "TypeKind") : NULL;
+		Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
 		Type *type_for_kind = type_kind ? type_kind->type : type_char;
 		if (current_parent->expr_kind == EXPR_CONST)
 		{

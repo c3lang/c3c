@@ -135,17 +135,52 @@ private macro void @format_print(#output, char[] str)
 	foreach (char c : str) #output(c);
 }
 
-private macro uint @simple_atoi(char* buf, usize &len, usize maxlen)
+private fn uint simple_atoi(char* buf, usize maxlen, usize* len_ptr) @inline
 {
 	uint i = 0;
+	usize len = *len_ptr;
 	while (len < maxlen)
     {
         char c = buf[len];
-        if (c < '0' || c > '9') return i;
+        if (c < '0' || c > '9') break;
         i = i * 10 + c - '0';
         len++;
     }
+    *len_ptr = len;
     return i;
+}
+
+fault FormattingFault
+{
+	UNTERMINATED_FORMAT,
+	MISSING_ARG,
+	INVALID_WIDTH_ARG,
+	INVALID_FORMAT_TYPE,
+}
+
+private fn void! printf_advance_format(usize format_len, usize *index_ptr) @inline
+{
+	usize val = ++(*index_ptr);
+	if (val <= format_len) return FormattingFault.UNTERMINATED_FORMAT!;
+}
+
+private fn variant! next_variant(variant* args_ptr, usize args_len, usize* arg_index_ptr) @inline
+{
+	if (*arg_index_ptr >= args_len) return FormattingFault.MISSING_ARG!;
+	return args_ptr[(*arg_index_ptr)++];
+}
+
+private fn uint! printf_parse_format_field(variant* args_ptr, usize args_len, usize* args_index_ptr, char* format_ptr, usize format_len, usize* index_ptr) @inline
+{
+	char c = format_ptr[*index_ptr];
+	if (c >= '0' && c <= '9') return simple_atoi(format_ptr, format_len, index_ptr);
+	if (c != '*') return 0;
+	printf_advance_format(format_len, index_ptr)?;
+	variant val = next_variant(args_ptr, args_len, args_index_ptr)?;
+    if (!types::kind_is_int(val.type.kind)) return FormattingFault.INVALID_WIDTH_ARG!;
+    uint! intval = types::variant_to_int(val, uint);
+	if (catch intval) return FormattingFault.INVALID_WIDTH_ARG!;
+	return intval;
 }
 
 private macro void @printf_generic(#output, char[] format, variant[] args)
@@ -163,17 +198,18 @@ private macro void @printf_generic(#output, char[] format, variant[] args)
 			idx++;
 			continue;
 		}
-		i++;
+	    printf_advance_format(format_len, &i)?;
+	    c = format_ptr[i];
+	    if (c == '%')
+	    {
+	        #output(c);
+	        idx++;
+	        continue;
+	    }
 	    // format specifier?  %[flags][width][.precision][length]
 	    PrintFlags flags;
 	    while FLAG_EVAL: (1)
 	    {
-	        if (i == format_len)
-	        {
-	            @format_print("<unterminated format>");
-	            break;
-	        }
-	        c = format_ptr[i];
 	        switch (c)
 	        {
 	            case '0':
@@ -189,191 +225,86 @@ private macro void @printf_generic(#output, char[] format, variant[] args)
 	            default:
 	                break FLAG_EVAL;
 	        }
-	        i++;
+	    	printf_advance_format(format_len, &i)?;
+	        c = format_ptr[i];
 	    }
 	    // evaluate width field
-	    uint width = 0;
-		if (c >= '0' && c <= '9')
+	    uint width = printf_parse_format_field(args.ptr, args.len, &arg_index, format_ptr, format_len &i)?;
+	    c = format_ptr[i];
+		uint precision = 0;
+		if (c == '.')
 		{
-			width = @simple_atoi(format_ptr, i, format_len);
-		}
-		else if (c == '*')
-		{
-			i++;
-	        if (i == format_len)
-	        {
-	            @format_print("<unterminated format>");
-	            break;
-	        }
+			flags.precision = true;
+			printf_advance_format(format_len, i)?;
+			precision = printf_parse_format_field(args.ptr, args.len, &arg_index, format_ptr, format_len &i)?;
 			c = format_ptr[i];
-			width = {|
-				if (arg_index >= args.len)
-                {
-                    @format_print("<missing arg>");
-                    return 0;
-                }
-				variant val = args[arg_index++];
-        		if (!types::kind_is_int(val.type_id.kind))
-        		{
-        		    @format_print("<invalid width arg>");
-        		    return 0;
-        		}
-				uint! w = types::variant_to_int(val, uint);
-				if (catch w)
-				{
-					@format_print("<invalid width arg size>");
-					return 0;
-				}
-				return w;
-			|};
-		}
-	}
+        }
 
+        uint base = {|
+
+        |};
+        uint base = void;
+        switch (c)
+        {
+            case 'd':
+                flags.hash = false;
+                base = 10;
+            case 'X':
+                flags.uppercase = true;
+                nextcase;
+            case 'x':
+                base = 16;
+            case 'o':
+                base = 8;
+            case 'b':
+                base = 2;
+            case 'F':
+                flags.uppercase = true;
+                nextcase;
+            case 'f':
+				idx = @printf_efloat(#output, next_variant(args.ptr, args.len, &arg_index), idx, precision, width, flags)?;
+				continue;
+			case 'E':
+				flags.uppercase = true;
+				nextcase;
+			case 'e':
+				idx = @printf_efloat(#output, next_variant(args.ptr, args.len, &arg_index), idx, precision, width, flags)?;
+				continue;
+			case 'G':
+				flags.uppercase = true;
+				nextcase;
+			case 'g':
+				flags.adapt_exp = true;
+				nextcase 'e';
+			case 'c':
+				idx = @printf_char(#output, next_variant(args.ptr, args.len, &arg_index), idx, precision, width, flags)?;
+				continue;
+			case 'p':
+				idx = @printf_ptr(#output, next_variant(args.ptr, args.len, &arg_index), idx, precision, width, flags)?;
+				continue;
+			case 's':
+				idx = @printf_str(#output, next_variant(args.ptr, args.len, &arg_index), idx, precision, width, flags)?;
+				continue;
+			case 'n':
+				idx = @printf_str(#output, &&"\n", idx, precision, width, flags)?;
+				continue;
+
+			default:
+				return FormattingFault.INVALID_FORMAT_TYPE!;
+        }
+        if (base != 10)
+        {
+            flags.plus = false;
+            flags.space = false;
+        }
+        if (flags.precision) flags.zeropad = false;
+		idx = @printf_integer(#output, next_variant(args.ptr, args.len, &arg_index), idx, precision, width, flags)?;
+	}
+	return idx;
 /*
     precision = 0U;
-    if (*format == '.') {
-      flags |= FLAGS_PRECISION;
-      format++;
-      if (_is_digit(*format)) {
-        precision = _atoi(&format);
-      }
-      else if (*format == '*') {
-        const int prec = (int)va_arg(va, int);
-        precision = prec > 0 ? (unsigned int)prec : 0U;
-        format++;
-      }
-    }
 
-    // evaluate length field
-    switch (*format) {
-      case 'l' :
-        flags |= FLAGS_LONG;
-        format++;
-        if (*format == 'l') {
-          flags |= FLAGS_LONG_LONG;
-          format++;
-        }
-        break;
-      case 'h' :
-        flags |= FLAGS_SHORT;
-        format++;
-        if (*format == 'h') {
-          flags |= FLAGS_CHAR;
-          format++;
-        }
-        break;
-#if defined(PRINTF_SUPPORT_PTRDIFF_T)
-      case 't' :
-        flags |= (sizeof(ptrdiff_t) == sizeof(long) ? FLAGS_LONG : FLAGS_LONG_LONG);
-        format++;
-        break;
-#endif
-      case 'j' :
-        flags |= (sizeof(intmax_t) == sizeof(long) ? FLAGS_LONG : FLAGS_LONG_LONG);
-        format++;
-        break;
-      case 'z' :
-        flags |= (sizeof(size_t) == sizeof(long) ? FLAGS_LONG : FLAGS_LONG_LONG);
-        format++;
-        break;
-      default :
-        break;
-    }
 
-    // evaluate specifier
-    switch (*format) {
-      case 'd' :
-      case 'i' :
-      case 'u' :
-      case 'x' :
-      case 'X' :
-      case 'o' :
-      case 'b' : {
-        // set the base
-        unsigned int base;
-        if (*format == 'x' || *format == 'X') {
-          base = 16U;
-        }
-        else if (*format == 'o') {
-          base =  8U;
-        }
-        else if (*format == 'b') {
-          base =  2U;
-        }
-        else {
-          base = 10U;
-          flags &= ~FLAGS_HASH;   // no hash for dec format
-        }
-        // uppercase
-        if (*format == 'X') {
-          flags |= FLAGS_UPPERCASE;
-        }
-
-        // no plus or space flag for u, x, X, o, b
-        if ((*format != 'i') && (*format != 'd')) {
-          flags &= ~(FLAGS_PLUS | FLAGS_SPACE);
-        }
-
-        // ignore '0' flag when precision is given
-        if (flags & FLAGS_PRECISION) {
-          flags &= ~FLAGS_ZEROPAD;
-        }
-
-        // convert the integer
-        if ((*format == 'i') || (*format == 'd')) {
-          // signed
-          if (flags & FLAGS_LONG_LONG) {
-#if defined(PRINTF_SUPPORT_LONG_LONG)
-            const long long value = va_arg(va, long long);
-            idx = _ntoa_long_long(out, buffer, idx, maxlen, (unsigned long long)(value > 0 ? value : 0 - value), value < 0, base, precision, width, flags);
-#endif
-          }
-          else if (flags & FLAGS_LONG) {
-            const long value = va_arg(va, long);
-            idx = _ntoa_long(out, buffer, idx, maxlen, (unsigned long)(value > 0 ? value : 0 - value), value < 0, base, precision, width, flags);
-          }
-          else {
-            const int value = (flags & FLAGS_CHAR) ? (char)va_arg(va, int) : (flags & FLAGS_SHORT) ? (short int)va_arg(va, int) : va_arg(va, int);
-            idx = _ntoa_long(out, buffer, idx, maxlen, (unsigned int)(value > 0 ? value : 0 - value), value < 0, base, precision, width, flags);
-          }
-        }
-        else {
-          // unsigned
-          if (flags & FLAGS_LONG_LONG) {
-#if defined(PRINTF_SUPPORT_LONG_LONG)
-            idx = _ntoa_long_long(out, buffer, idx, maxlen, va_arg(va, unsigned long long), false, base, precision, width, flags);
-#endif
-          }
-          else if (flags & FLAGS_LONG) {
-            idx = _ntoa_long(out, buffer, idx, maxlen, va_arg(va, unsigned long), false, base, precision, width, flags);
-          }
-          else {
-            const unsigned int value = (flags & FLAGS_CHAR) ? (unsigned char)va_arg(va, unsigned int) : (flags & FLAGS_SHORT) ? (unsigned short int)va_arg(va, unsigned int) : va_arg(va, unsigned int);
-            idx = _ntoa_long(out, buffer, idx, maxlen, value, false, base, precision, width, flags);
-          }
-        }
-        format++;
-        break;
-      }
-#if defined(PRINTF_SUPPORT_FLOAT)
-      case 'f' :
-      case 'F' :
-        if (*format == 'F') flags |= FLAGS_UPPERCASE;
-        idx = _ftoa(out, buffer, idx, maxlen, va_arg(va, double), precision, width, flags);
-        format++;
-        break;
-#if defined(PRINTF_SUPPORT_EXPONENTIAL)
-      case 'e':
-      case 'E':
-      case 'g':
-      case 'G':
-        if ((*format == 'g')||(*format == 'G')) flags |= FLAGS_ADAPT_EXP;
-        if ((*format == 'E')||(*format == 'G')) flags |= FLAGS_UPPERCASE;
-        idx = _etoa(out, buffer, idx, maxlen, va_arg(va, double), precision, width, flags);
-        format++;
-        break;
-#endif  // PRINTF_SUPPORT_EXPONENTIAL
-#endif  // PRINTF_SUPPORT_FLOAT
       case 'c' : {
         unsigned int l = 1U;
         // pre padding
