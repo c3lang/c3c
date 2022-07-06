@@ -372,6 +372,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return expr_list_is_constant_eval(expr->expression_list, eval_kind);
 		case EXPR_FAILABLE:
 		case EXPR_GROUP:
+		case EXPR_TYPEID_KIND:
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_INITIALIZER_LIST:
@@ -1030,7 +1031,7 @@ static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Expr 
 
 	expr_replace(expr, expr_macro_copy(decl->var.init_expr));
 	REMINDER("Remove analysis for hash");
-	if (!sema_analyse_expr(decl->var.hash_var.context, expr))
+	if (!sema_analyse_expr_lvalue(decl->var.hash_var.context, expr))
 	{
 		// Poison the decl so we don't evaluate twice.
 		decl_poison(decl);
@@ -1635,20 +1636,30 @@ static inline Type *unify_returns(SemaContext *context)
 	bool all_returns_need_casts = false;
 	Type *common_type = NULL;
 
-	bool only_has_rethrow = true;
+	bool failable = false;
+	bool no_return = true;
 	// 1. Loop through the returns.
 	VECEACH(context->returns, i)
 	{
 		Ast *return_stmt = context->returns[i];
 		if (!return_stmt)
 		{
-			common_type = common_type ? type_find_max_type(common_type, type_anyfail) : type_anyfail;
+			failable = true;
 			continue;
 		}
-		only_has_rethrow = false;
+		no_return = false;
 		Expr *ret_expr = return_stmt->return_stmt.expr;
 		Type *rtype = ret_expr ? ret_expr->type : type_void;
-
+		if (type_is_failable_any(rtype))
+		{
+			failable = true;
+			continue;
+		}
+		if (type_is_failable(rtype))
+		{
+			failable = true;
+			rtype = type_no_fail(rtype);
+		}
 		// 2. If we have no common type, set to the return type.
 		if (!common_type)
 		{
@@ -1676,19 +1687,31 @@ static inline Type *unify_returns(SemaContext *context)
 		all_returns_need_casts = true;
 	}
 
-	// If we have no return and only rethrows, then the type is "void!"
-	if (common_type == type_anyfail && only_has_rethrow) common_type = type_get_failable(type_void);
+	// If we have no return (or only anyfail)
+	if (!common_type)
+	{
+		assert(!all_returns_need_casts && "We should never need casts here.");
+		// A failable?
+		if (failable)
+		{
+			// If there are only implicit returns, then we assume void!, otherwise it's an "anyfail"
+			return no_return ? type_get_failable(type_void) : type_anyfail;
+		}
+		// No failable => void.
+		return type_void;
+	}
 
 	// 7. Insert casts.
 	if (all_returns_need_casts)
 	{
+		assert(!type_is_failable_type(common_type));
 		VECEACH(context->returns, i)
 		{
 			Ast *return_stmt = context->returns[i];
 			if (!return_stmt) continue;
 			Expr *ret_expr = return_stmt->return_stmt.expr;
 			// 8. All casts should work.
-			if (!cast_implicit(ret_expr, type_no_fail(common_type)))
+			if (!cast_implicit(ret_expr, common_type))
 			{
 				assert(false);
 				return NULL;
@@ -1696,8 +1719,7 @@ static inline Type *unify_returns(SemaContext *context)
 		}
 	}
 
-	// 8. On no common type -> return void
-	return common_type ? common_type : type_void;
+	return type_get_opt_fail(common_type, failable);
 }
 
 static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool failable)
@@ -1834,6 +1856,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		if (type_is_failable(rtype))
 		{
+			failable = true;
 			rtype = type_no_fail(rtype);
 		}
 		else
@@ -3007,6 +3030,84 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		return true;
 	}
 
+	if (!is_const && type_is_integer(canonical))
+	{
+		TypeKind kind = canonical->type_kind;
+		if (name == kw_min)
+		{
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.const_kind = CONST_INTEGER;
+			expr->type = parent->type;
+			expr->resolve_status = RESOLVE_DONE;
+			expr->const_expr.ixx.type = kind;
+			switch (kind)
+			{
+				case TYPE_I8:
+					expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
+					break;
+				case TYPE_I16:
+					expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
+					break;
+				case TYPE_I32:
+					expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
+					break;
+				case TYPE_I64:
+					expr->const_expr.ixx.i = (Int128){ 0, ~((uint64_t)0) };
+					break;
+				case TYPE_I128:
+					expr->const_expr.ixx.i = (Int128){ ~((uint64_t)0), ~((uint64_t)0) };
+					break;
+				default:
+					expr->const_expr.ixx.i = (Int128){ 0, 0 };
+					break;
+			}
+			return true;
+		}
+		if (name == kw_max)
+		{
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.const_kind = CONST_INTEGER;
+			expr->type = parent->type;
+			expr->resolve_status = RESOLVE_DONE;
+			expr->const_expr.ixx.type = kind;
+			switch (kind)
+			{
+				case TYPE_I8:
+					expr->const_expr.ixx.i = (Int128){ 0, 0x7F };
+					break;
+				case TYPE_I16:
+					expr->const_expr.ixx.i = (Int128){ 0, 0x7FFF };
+					break;
+				case TYPE_I32:
+					expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFLL };
+					break;
+				case TYPE_I64:
+					expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFFFFFFFFFLL };
+					break;
+				case TYPE_I128:
+					expr->const_expr.ixx.i = (Int128){ 0x7FFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
+					break;
+				case TYPE_U8:
+					expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
+					break;
+				case TYPE_U16:
+					expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
+					break;
+				case TYPE_U32:
+					expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
+					break;
+				case TYPE_U64:
+					expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFFFFFFFFFLL };
+					break;
+				case TYPE_U128:
+					expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
+					break;
+				default:
+					UNREACHABLE
+			}
+			return true;
+		}
+	}
 	// 3. Handle float.nan, double.inf etc
 	if (!is_const && type_is_float(canonical))
 	{
@@ -3226,6 +3327,22 @@ CHECK_DEEPER:
 		}
 	}
 
+	if (kw == kw_kind && flat_type->type_kind == TYPE_TYPEID)
+	{
+		Module *module = global_context_find_module(kw_std__core__types);
+		Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
+		Type *type_for_kind = type_kind ? type_kind->type : type_char;
+		if (current_parent->expr_kind == EXPR_CONST)
+		{
+			unsigned val = type_get_introspection_kind(current_parent->const_expr.typeid->type_kind);
+			expr_rewrite_to_int_const(expr, type_for_kind, val, false);
+			return true;
+		}
+		expr->expr_kind = EXPR_TYPEID_KIND;
+		expr->inner_expr = parent;
+		expr->type = type_for_kind;
+		return true;
+	}
 	// Hard coded ptr on subarrays and variant
 	if (kw == kw_ptr)
 	{
@@ -4844,7 +4961,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	right_type = type_no_fail(right->type)->canonical;
 
 	assert(!cast_to_iptr);
-	// 4. Do an binary arithmetic promotion
+	// 4. Do a binary arithmetic promotion
 	if (!binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, "Cannot do the addition %s + %s."))
 	{
 		return false;
@@ -6006,15 +6123,18 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 		return false;
 	}
 
-	if (context->rtype && context->rtype->type_kind != TYPE_FAILABLE)
-	{
-		SEMA_ERROR(expr, "This expression implicitly returns with a failable result, but the function does not allow failable results. Did you mean to use 'else' instead?");
-		return false;
-	}
 
 	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
 	{
 		vec_add(context->returns, NULL);
+	}
+	else
+	{
+		if (context->rtype && context->rtype->type_kind != TYPE_FAILABLE)
+		{
+			SEMA_ERROR(expr, "This expression implicitly returns with a failable result, but the function does not allow failable results. Did you mean to use 'else' instead?");
+			return false;
+		}
 	}
 
 	return true;
@@ -6823,6 +6943,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_CATCH_UNWRAP:
 		case EXPR_PTR:
 		case EXPR_VARIANTSWITCH:
+		case EXPR_TYPEID_KIND:
 			UNREACHABLE
 		case EXPR_STRINGIFY:
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;

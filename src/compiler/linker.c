@@ -8,23 +8,7 @@ extern bool llvm_link_coff(const char **args, int arg_count, const char **error_
 extern bool llvm_link_wasm(const char **args, int arg_count, const char **error_string);
 extern bool llvm_link_mingw(const char **args, int arg_count, const char **error_string);
 
-static void add_files(const char ***args, const char **files_to_link, unsigned file_count)
-{
-	for (unsigned i = 0; i < file_count; i++)
-	{
-		vec_add(*args, files_to_link[i]);
-	}
-}
 
-static const char *join_strings(const char **args, unsigned count)
-{
-	char *res = "";
-	for (unsigned i = 0; i < count; ++i)
-	{
-		res = str_cat(res, args[i]);
-	}
-	return res;
-}
 
 typedef enum
 {

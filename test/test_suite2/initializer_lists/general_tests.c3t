@@ -74,23 +74,23 @@ entry:
   store i32 3, ptr %3, align 4
   %4 = insertvalue %"int[]" undef, ptr %literal, 0
   %5 = insertvalue %"int[]" %4, i64 3, 1
-  %len = extractvalue %"int[]" %5, 1
-  %not = icmp eq i64 %len, 0
-  %6 = zext i1 %not to i8
-  store i8 %6, ptr %x, align 1
-  %7 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 0
-  store i32 0, ptr %7, align 4
-  %8 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 1
+  %6 = extractvalue %"int[]" %5, 1
+  %not = icmp eq i64 %6, 0
+  %7 = zext i1 %not to i8
+  store i8 %7, ptr %x, align 1
+  %8 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 0
   store i32 0, ptr %8, align 4
+  %9 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 1
+  store i32 0, ptr %9, align 4
   call void @llvm.memset.p0.i64(ptr align 8 %z, i8 0, i64 8, i1 false)
   store [0 x i32] zeroinitializer, ptr %literal1, align 4
-  %9 = insertvalue %"int[]" undef, ptr %literal1, 0
-  %10 = insertvalue %"int[]" %9, i64 0, 1
-  store %"int[]" %10, ptr %sub, align 8
+  %10 = insertvalue %"int[]" undef, ptr %literal1, 0
+  %11 = insertvalue %"int[]" %10, i64 0, 1
+  store %"int[]" %11, ptr %sub, align 8
   store [0 x %Bar] zeroinitializer, ptr %literal2, align 4
-  %11 = insertvalue %"Bar[]" undef, ptr %literal2, 0
-  %12 = insertvalue %"Bar[]" %11, i64 0, 1
-  store %"Bar[]" %12, ptr %foo, align 8
+  %12 = insertvalue %"Bar[]" undef, ptr %literal2, 0
+  %13 = insertvalue %"Bar[]" %12, i64 0, 1
+  store %"Bar[]" %13, ptr %foo, align 8
   call void @llvm.memset.p0.i64(ptr align 16 %baz, i8 0, i64 24, i1 false)
   ret i32 1
 }

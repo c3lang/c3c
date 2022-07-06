@@ -70,7 +70,7 @@ fn void main()
 @.typeid.int = linkonce constant { i8, i16 } { i8 2, i16 32 }, align 2
 @.typeid.double = linkonce constant { i8, i16 } { i8 4, i16 64 }, align 2
 @.typeid.variant = linkonce constant { i8 } { i8 7 }, align 1
-@".typeid.int*" = linkonce constant { i8, i64 } { i8 15, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64) }, align 8
+@".typeid.int*" = linkonce constant { i8, i64 } { i8 19, i64 ptrtoint ({ i8, i16 }* @.typeid.int to i64) }, align 8
 @.typeid.bool = linkonce constant { i8 } { i8 1 }, align 1
 
 define void @foo.test(i64 %0, i8* %1) #0 {

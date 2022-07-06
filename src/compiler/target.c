@@ -37,7 +37,6 @@ static void type_dump(LLVMTargetDataRef llvm_target_data, LLVMTypeRef type)
 }
 
 
-
 void llvm_dump(void)
 {
 	static char* archs[] = {

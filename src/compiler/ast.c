@@ -228,6 +228,7 @@ bool expr_is_pure(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_BUILTIN:
+		case EXPR_TYPEID_KIND:
 			return false;
 		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:

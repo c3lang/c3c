@@ -1456,15 +1456,6 @@ Type *type_decay_array_pointer(Type *type)
 }
 Type *type_find_max_type(Type *type, Type *other)
 {
-	if (type == type_anyfail)
-	{
-		return type_get_opt_fail(other, true);
-	}
-	if (other == type_anyfail)
-	{
-		return type_get_failable(type);
-	}
-
 	type = type->canonical;
 	other = other->canonical;
 
@@ -1597,4 +1588,73 @@ Type *type_find_common_ancestor(Type *left, Type *right)
 			if (right == left_types[i]) return right;
 		}
 	}
+}
+
+unsigned type_get_introspection_kind(TypeKind kind)
+{
+	switch (kind)
+	{
+		case TYPE_POISONED:
+			return 0;
+		case TYPE_VOID:
+			return INTROSPECT_TYPE_VOID;
+		case TYPE_BOOL:
+			return INTROSPECT_TYPE_BOOL;
+		case TYPE_I8:
+		case TYPE_I16:
+		case TYPE_I32:
+		case TYPE_I64:
+		case TYPE_I128:
+			return INTROSPECT_TYPE_SIGNED_INT;
+		case TYPE_U8:
+		case TYPE_U16:
+		case TYPE_U32:
+		case TYPE_U64:
+		case TYPE_U128:
+			return INTROSPECT_TYPE_UNSIGNED_INT;
+		case TYPE_F16:
+		case TYPE_F32:
+		case TYPE_F64:
+		case TYPE_F128:
+			return INTROSPECT_TYPE_FLOAT;
+		case TYPE_ANY:
+			return INTROSPECT_TYPE_VARIANT;
+		case TYPE_ANYERR:
+			return INTROSPECT_TYPE_ANYERR;
+		case TYPE_TYPEID:
+			return INTROSPECT_TYPE_TYPEID;
+		case TYPE_POINTER:
+			return INTROSPECT_TYPE_POINTER;
+		case TYPE_ENUM:
+			return INTROSPECT_TYPE_ENUM;
+		case TYPE_FUNC:
+			return INTROSPECT_TYPE_FUNC;
+		case TYPE_STRUCT:
+			return INTROSPECT_TYPE_STRUCT;
+		case TYPE_UNION:
+			return INTROSPECT_TYPE_UNION;
+		case TYPE_BITSTRUCT:
+			return INTROSPECT_TYPE_BITSTRUCT;
+		case TYPE_FAULTTYPE:
+			return INTROSPECT_TYPE_FAULT;
+		case TYPE_TYPEDEF:
+			UNREACHABLE
+		case TYPE_DISTINCT:
+			return INTROSPECT_TYPE_DISTINCT;
+		case TYPE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+			return INTROSPECT_TYPE_ARRAY;
+		case TYPE_SUBARRAY:
+			return INTROSPECT_TYPE_SUBARRAY;
+		case TYPE_VECTOR:
+			return INTROSPECT_TYPE_VECTOR;
+		case TYPE_UNTYPED_LIST:
+		case TYPE_FAILABLE_ANY:
+		case TYPE_TYPEINFO:
+		case TYPE_FAILABLE:
+			UNREACHABLE
+			return 0;
+	}
+	UNREACHABLE
 }

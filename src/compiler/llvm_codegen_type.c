@@ -681,14 +681,14 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 		val->backend_ref = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
 	}
 	LLVMTypeRef element_type = llvm_get_type(c, type_typeid);
-	LLVMTypeRef elements_type = LLVMArrayType(element_type, elements);
-	LLVMValueRef start = LLVMConstNull(elements_type);
+	LLVMValueRef* values = elements ? MALLOC(sizeof(LLVMValueRef) * elements) : NULL;
 	for (unsigned i = 0; i < elements; i++)
 	{
-		start = LLVMConstInsertValue(start, LLVMConstBitCast(fault_vals[i]->backend_ref, element_type), &i, 1);
+		values[i] = LLVMConstBitCast(fault_vals[i]->backend_ref, element_type);
 	}
-	LLVMValueRef values[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_FAULT ), llvm_const_int(c, type_usize, elements), start };
-	LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, 3, false);
+	LLVMValueRef svalues[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_FAULT ), llvm_const_int(c, type_usize, elements),
+	                           LLVMConstArray(element_type, values, elements) };
+	LLVMValueRef strukt = LLVMConstStructInContext(c->context, svalues, 3, false);
 	return llvm_get_introspection_weak(c, type, decl_get_extname(decl), strukt);
 }
 
@@ -711,9 +711,9 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->array.base,
 			                                               llvm_const_int(c, type_usize, type->array.len));
 		case TYPE_SUBARRAY:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->array.base, NULL);
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_SUBARRAY, type, type->array.base, NULL);
 		case TYPE_POINTER:
-			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_ARRAY, type, type->pointer, NULL);
+			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_POINTER, type, type->pointer, NULL);
 		case TYPE_DISTINCT:
 			return llvm_get_introspection_for_derived_type(c, INTROSPECT_TYPE_DISTINCT, type, type->decl->distinct_decl.base_type, NULL);
 		case TYPE_ENUM:

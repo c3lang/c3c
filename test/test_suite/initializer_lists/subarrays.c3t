@@ -144,37 +144,37 @@ entry:
   %34 = bitcast [3 x i32]* %literal6 to i32*
   %35 = insertvalue %"int[]" undef, i32* %34, 0
   %36 = insertvalue %"int[]" %35, i64 3, 1
-  %len = extractvalue %"int[]" %36, 1
-  %not = icmp eq i64 %len, 0
-  %37 = zext i1 %not to i8
-  store i8 %37, i8* %xy, align 1
-  %38 = load i8, i8* %xy, align 1
-  %39 = trunc i8 %38 to i1
-  %not7 = xor i1 %39, true
+  %37 = extractvalue %"int[]" %36, 1
+  %not = icmp eq i64 %37, 0
+  %38 = zext i1 %not to i8
+  store i8 %38, i8* %xy, align 1
+  %39 = load i8, i8* %xy, align 1
+  %40 = trunc i8 %39 to i1
+  %not7 = xor i1 %40, true
   br i1 %not7, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  %40 = call i32 @"std::io.println"(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str.9, i32 0, i32 0)) #3
+  %41 = call i32 @"std::io.println"(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str.9, i32 0, i32 0)) #3
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %entry
-  %41 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 0
-  store i32 0, i32* %41, align 4
-  %42 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 1
+  %42 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 0
   store i32 0, i32* %42, align 4
-  %43 = bitcast %Baz* %z to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 8 %43, i8 0, i64 8, i1 false)
+  %43 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 1
+  store i32 0, i32* %43, align 4
+  %44 = bitcast %Baz* %z to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %44, i8 0, i64 8, i1 false)
   store [0 x i32] zeroinitializer, [0 x i32]* %literal8, align 4
-  %44 = bitcast [0 x i32]* %literal8 to i32*
-  %45 = insertvalue %"int[]" undef, i32* %44, 0
-  %46 = insertvalue %"int[]" %45, i64 0, 1
-  store %"int[]" %46, %"int[]"* %sub, align 8
+  %45 = bitcast [0 x i32]* %literal8 to i32*
+  %46 = insertvalue %"int[]" undef, i32* %45, 0
+  %47 = insertvalue %"int[]" %46, i64 0, 1
+  store %"int[]" %47, %"int[]"* %sub, align 8
   store [0 x %Bar] zeroinitializer, [0 x %Bar]* %literal9, align 4
-  %47 = bitcast [0 x %Bar]* %literal9 to %Bar*
-  %48 = insertvalue %"Bar[]" undef, %Bar* %47, 0
-  %49 = insertvalue %"Bar[]" %48, i64 0, 1
-  store %"Bar[]" %49, %"Bar[]"* %foo, align 8
-  %50 = bitcast [3 x %Baz]* %baz to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 16 %50, i8 0, i64 24, i1 false)
+  %48 = bitcast [0 x %Bar]* %literal9 to %Bar*
+  %49 = insertvalue %"Bar[]" undef, %Bar* %48, 0
+  %50 = insertvalue %"Bar[]" %49, i64 0, 1
+  store %"Bar[]" %50, %"Bar[]"* %foo, align 8
+  %51 = bitcast [3 x %Baz]* %baz to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 16 %51, i8 0, i64 24, i1 false)
   ret i32 1
 }

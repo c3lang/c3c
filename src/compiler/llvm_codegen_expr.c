@@ -90,39 +90,14 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 
 static inline LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index)
 {
-	if (LLVMIsConstant(agg))
+	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
 	{
-		return LLVMConstExtractValue(agg, &index, 1);
+		return LLVMBuildExtractElement(c->builder, agg, llvm_const_int(c, type_usize, index), "");
 	}
-	else
-	{
-		return LLVMBuildExtractValue(c->builder, agg, index, "");
-	}
+	return LLVMBuildExtractValue(c->builder, agg, index, "");
 }
 
-static inline LLVMValueRef llvm_emit_extract_element(GenContext *c, LLVMValueRef vector, unsigned index)
-{
-	if (LLVMIsConstant(vector))
-	{
-		return LLVMConstExtractElement(vector, llvm_const_int(c, type_usize, index));
-	}
-	else
-	{
-		return LLVMBuildExtractElement(c->builder, vector, llvm_const_int(c, type_usize, index), "");
-	}
-}
 
-static inline LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, unsigned index)
-{
-	if (LLVMIsConstant(agg) && LLVMIsConstant(new_value))
-	{
-		return LLVMConstInsertValue(agg, new_value, &index, 1);
-	}
-	else
-	{
-		return LLVMBuildInsertValue(c->builder, agg, new_value, index, "");
-	}
-}
 
 static inline LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRef type)
 {
@@ -170,39 +145,22 @@ LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTy
 	return LLVMBuildBitCast(c->builder, be_value->value, LLVMPointerType(coerce_type, 0), "");
 }
 
-
-LLVMValueRef llvm_emit_aggregate_value(GenContext *c, Type *type, ...)
+LLVMValueRef llvm_emit_aggregate_two(GenContext *c, Type *type, LLVMValueRef value1, LLVMValueRef value2)
 {
-	LLVMValueRef result = LLVMGetUndef(llvm_get_type(c, type));
-	va_list args;
-	va_start(args, type);
-	LLVMValueRef val;
-	bool is_constant = true;
-	while (is_constant && (val = va_arg(args, LLVMValueRef)) != NULL)
-	{
-		if (!LLVMIsConstant(val)) is_constant = false;
-	}
-	va_end(args);
-	va_start(args, type);
-	unsigned index = 0;
+	bool is_constant = LLVMIsConstant(value1) && LLVMIsConstant(value2);
 	if (is_constant)
 	{
-		while ((val = va_arg(args, LLVMValueRef)) != NULL)
-		{
-			result = LLVMConstInsertValue(result, val, &index, 1);
-			index++;
-		}
+		LLVMValueRef two[2] = { value1, value2 };
+		return LLVMConstNamedStruct(llvm_get_type(c, type), two, 2);
 	}
-	else
-	{
-		assert(c->builder);
-		while ((val = va_arg(args, LLVMValueRef)) != NULL)
-		{
-			result = LLVMBuildInsertValue(c->builder, result, val, index++, "");
-		}
-	}
-	va_end(args);
-	return result;
+	LLVMValueRef result = LLVMGetUndef(llvm_get_type(c, type));
+	result = llvm_emit_insert_value(c, result, value1, 0);
+	return llvm_emit_insert_value(c, result, value2, 1);
+}
+
+void llvm_set_aggregate_two(GenContext *c, BEValue *value, Type *type, LLVMValueRef value1, LLVMValueRef value2)
+{
+	llvm_value_set(value, llvm_emit_aggregate_two(c, type, value1, value2), type);
 }
 
 LLVMValueRef llvm_const_low_bitmask(LLVMTypeRef type, int type_bits, int low_bits)
@@ -261,8 +219,8 @@ static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValu
 		{
 			add_res = llvm_emit_call_intrinsic(c, intrinsic_id.sadd_overflow, &type_to_use, 1, args, 2);
 		}
-		LLVMValueRef result = LLVMBuildExtractValue(c->builder, add_res, 0, "");
-		LLVMValueRef ok = LLVMBuildExtractValue(c->builder, add_res, 1, "");
+		LLVMValueRef result = llvm_emit_extract_value(c, add_res, 0);
+		LLVMValueRef ok = llvm_emit_extract_value(c, add_res, 1);
 		llvm_emit_panic_on_true(c, ok, "Addition overflow", loc);
 		return result;
 	}
@@ -487,8 +445,8 @@ static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValu
 		{
 			add_res = llvm_emit_call_intrinsic(c, intrinsic_id.ssub_overflow, &type_to_use, 1, args, 2);
 		}
-		LLVMValueRef result = LLVMBuildExtractValue(c->builder, add_res, 0, "");
-		LLVMValueRef ok = LLVMBuildExtractValue(c->builder, add_res, 1, "");
+		LLVMValueRef result = llvm_emit_extract_value(c, add_res, 0);
+		LLVMValueRef ok = llvm_emit_extract_value(c, add_res, 1);
 		llvm_emit_panic_on_true(c, ok, "Subtraction overflow", loc);
 		return result;
 	}
@@ -573,14 +531,7 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 	{
 		index = LLVMBuildNUWSub(c->builder, llvm_const_int(c, value->type, vec->array.len), index, "");
 	}
-	if (LLVMIsAConstant(index) && LLVMIsAConstant(vector))
-	{
-		llvm_value_set(value, LLVMConstExtractElement(vector, index), element);
-	}
-	else
-	{
-		llvm_value_set(value, LLVMBuildExtractElement(c->builder, vector, index, ""), element);
-	}
+	llvm_value_set(value, LLVMBuildExtractElement(c->builder, vector, index, ""), element);
 }
 
 
@@ -1115,8 +1066,7 @@ static void llvm_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, Type *
 	LLVMTypeRef subarray_type = llvm_get_type(c, to_type);
 	LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_get_ptr(array_type));
 	LLVMValueRef len = llvm_const_int(c, type_usize, size);
-	value->type = to_type;
-	value->value = llvm_emit_aggregate_value(c, to_type, pointer, len, NULL);
+	llvm_set_aggregate_two(c, value, to_type, pointer, len);
 }
 
 
@@ -1128,13 +1078,8 @@ void llvm_emit_vector_to_array_cast(GenContext *c, BEValue *value, Type *to_type
 	bool is_const = LLVMIsConstant(value->value);
 	for (unsigned i = 0; i < to_type->array.len; i++)
 	{
-		LLVMValueRef element = llvm_emit_extract_element(c, value->value, i);
-		if (is_const)
-		{
-			array = LLVMConstInsertValue(array, element, &i, 1);
-			continue;
-		}
-		array = LLVMBuildInsertValue(c->builder, array, element, i, "");
+		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
+		array = llvm_emit_insert_value(c, array, element, i);
 	}
 	llvm_value_set(value, array, to_type);
 }
@@ -1144,16 +1089,10 @@ void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type
 	llvm_value_rvalue(c, value);
 	LLVMTypeRef vector_type = llvm_get_type(c, to_type);
 	LLVMValueRef vector = LLVMGetUndef(vector_type);
-	bool is_const = LLVMIsConstant(value->value);
 	for (unsigned i = 0; i < to_type->array.len; i++)
 	{
 		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
-		if (is_const)
-		{
-			vector = LLVMConstInsertElement(vector, element, llvm_const_int(c, type_usize, i));
-			continue;
-		}
-		vector = LLVMBuildInsertElement(c->builder, vector, element, llvm_const_int(c, type_usize, i), "");
+		vector = llvm_emit_insert_value(c, vector, element, i);
 	}
 	llvm_value_set(value, vector, to_type);
 }
@@ -1175,7 +1114,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_voidptr);
 			BEValue typeid;
 			llvm_emit_typeid(c, &typeid, from_type->pointer);
-			llvm_value_set(value, llvm_emit_aggregate_value(c, to_type, pointer, typeid.value, NULL), to_type);
+			llvm_set_aggregate_two(c, value, to_type, pointer, typeid.value);
 			return;
 		}
 		case CAST_BSARRY:
@@ -1228,18 +1167,18 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 		case CAST_STRPTR:
 		case CAST_PTRPTR:
 			llvm_value_rvalue(c, value);
-			if (c->builder)
+			if (LLVMIsConstant(value->value))
 			{
-				value->value = LLVMBuildPointerCast(c->builder, value->value, llvm_get_type(c, to_type), "ptrptr");
+				value->value = LLVMConstPointerCast(value->value, llvm_get_type(c, to_type));
 			}
 			else
 			{
-				value->value = LLVMConstPointerCast(value->value, llvm_get_type(c, to_type));
+				value->value = LLVMBuildPointerCast(c->builder, value->value, llvm_get_type(c, to_type), "ptrptr");
 			}
 			break;
 		case CAST_PTRXI:
 			llvm_value_rvalue(c, value);
-			if (c->builder)
+			if (!LLVMIsConstant(value->value))
 			{
 				value->value = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, to_type), "ptrxi");
 			}
@@ -1377,7 +1316,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			}
 			else
 			{
-				value->value = LLVMBuildExtractValue(c->builder, value->value, 1, "");
+				value->value = llvm_emit_extract_value(c, value->value, 1);
 			}
 			value->type = type_usize->canonical;
 			llvm_value_rvalue(c, value);
@@ -1405,18 +1344,17 @@ static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **
 	{
 		BEValue res;
 		llvm_emit_expr(c, &res, value);
-		unsigned index = (unsigned)current_element->index;
+		ArraySize index = (ArraySize)current_element->index;
 		LLVMValueRef val = llvm_load_value_store(c, &res);
 		switch (current_element->kind)
 		{
 			case DESIGNATOR_FIELD:
-				return LLVMConstInsertValue(parent, val, &index, 1);
 			case DESIGNATOR_ARRAY:
-				return LLVMConstInsertElement(parent, val, llvm_const_int(c, type_isize, (unsigned)current_element->index));
+				return llvm_emit_insert_value(c, parent, val, index);
 			case DESIGNATOR_RANGE:
 				for (MemberIndex i = current_element->index; i <= current_element->index_end; i++)
 				{
-					parent = LLVMConstInsertElement(parent, val, llvm_const_int(c, type_isize, (uint64_t)i));
+					parent = llvm_emit_insert_value(c, parent, val, i);
 				}
 				return parent;
 		}
@@ -1428,24 +1366,20 @@ static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **
 		case DESIGNATOR_FIELD:
 		{
 			unsigned index = (unsigned)current_element->index;
-			current_val = LLVMConstExtractValue(parent, &index, 1);
+			current_val = llvm_emit_extract_value(c, parent, index);
 			current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
-			return LLVMConstInsertValue(parent, current_val, &index, 1);
+			return llvm_emit_insert_value(c, parent, current_val, index);
 		}
 		case DESIGNATOR_ARRAY:
-		{
-			LLVMValueRef index = llvm_const_int(c, type_isize, (uint64_t)current_element->index);
-			current_val = LLVMConstExtractElement(parent, index);
+			current_val = llvm_emit_extract_value(c, parent, current_element->index);
 			current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
-			return LLVMConstInsertElement(parent, current_val, index);
-		}
+			return llvm_emit_insert_value(c, parent, current_val, current_element->index);
 		case DESIGNATOR_RANGE:
 			for (MemberIndex i = current_element->index; i <= current_element->index_end; i++)
 			{
-				LLVMValueRef index = llvm_const_int(c, type_isize, (uint64_t)i);
-				current_val = LLVMConstExtractElement(parent, index);
+				current_val = llvm_emit_extract_value(c, parent, i);
 				current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
-				parent = LLVMConstInsertElement(parent, current_val, index);
+				parent = llvm_emit_insert_value(c, parent, current_val, i);
 			}
 			return parent;
 		default:
@@ -1761,6 +1695,9 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 		llvm_emit_initialize_designated(c, ref, 0, designator->designator_expr.path, last_element, designator->designator_expr.value, NULL);
 	}
 }
+
+#define MAX_AGG 16
+
 LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *initializer)
 {
 	Decl *decl = initializer->type->decl;
@@ -1768,7 +1705,13 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 	bool big_endian = platform_target.big_endian;
 	if (decl->bitstruct.big_endian) big_endian = true;
 	if (decl->bitstruct.little_endian) big_endian = false;
-	LLVMValueRef data = LLVMConstNull(llvm_get_type(c, base_type));
+	unsigned elements = base_type->array.len;
+	LLVMValueRef stack_data[MAX_AGG];
+	LLVMValueRef* slots = elements > MAX_AGG ? MALLOC(elements * sizeof(LLVMValueRef)) : stack_data;
+	for (unsigned i = 0; i < elements; i++)
+	{
+		slots[i] = LLVMConstNull(c->byte_type);
+	}
 	Decl **members = decl->strukt.members;
 	MemberIndex count = (MemberIndex)vec_size(members);
 	for (MemberIndex i = 0; i < count; i++)
@@ -1791,8 +1734,8 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 
 			LLVMValueRef bit = llvm_emit_shl_fixed(c, LLVMConstInt(c->byte_type, 1, 0), start_bit % 8);
 			unsigned byte = start_bit / 8;
-			LLVMValueRef current_value = llvm_emit_extract_value(c, data, byte);
-			data = llvm_emit_insert_value(c, data, LLVMConstOr(current_value, bit), byte);
+			LLVMValueRef current_value = slots[byte];
+			slots[byte] = LLVMConstOr(current_value, bit);
 			continue;
 		}
 		unsigned bit_size = end_bit - start_bit + 1;
@@ -1826,11 +1769,11 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 				to_or = llvm_mask_low_bits(c, to_or, end_bit % 8 + 1);
 			}
 			if (member_type_bitsize > 8) to_or = LLVMConstTrunc(to_or, c->byte_type);
-			LLVMValueRef current_value = llvm_emit_extract_value(c, data, (unsigned)j);
-			data = llvm_emit_insert_value(c, data, LLVMConstOr(to_or, current_value), (unsigned)j);
+			LLVMValueRef current_value = slots[(unsigned)j];
+			slots[(unsigned)j] = LLVMConstOr(to_or, current_value);
 		}
 	}
-	return data;
+	return LLVMConstArray(c->byte_type, slots, elements);
 }
 
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer)
@@ -2006,7 +1949,7 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, bool use_mod, BEValue
 			LLVMValueRef val = LLVMGetUndef(llvm_get_type(c, type));
 			for (ArraySize i = 0; i < width; i++)
 			{
-				val = LLVMConstInsertElement(val, diff_value, llvm_const_int(c, type_usize, i));
+				val = llvm_emit_insert_value(c, val, diff_value, i);
 			}
 			if (is_integer)
 			{
@@ -2125,7 +2068,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 					}
 					else
 					{
-						llvm_value = LLVMBuildExtractValue(c->builder, value->value, 1, "len");
+						llvm_value = llvm_emit_extract_value(c, value->value, 1);
 					}
 					llvm_value = LLVMBuildIsNull(c->builder, llvm_value, "not");
 					break;
@@ -2164,8 +2107,8 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				LLVMValueRef args[2] = { zero, value->value };
 				LLVMValueRef call_res = llvm_emit_call_intrinsic(c, intrinsic_id.ssub_overflow,
 				                                                 &type_to_use, 1, args, 2);
-				value->value = LLVMBuildExtractValue(c->builder, call_res, 0, "");
-				LLVMValueRef ok = LLVMBuildExtractValue(c->builder, call_res, 1, "");
+				value->value = llvm_emit_extract_value(c, call_res, 0);
+				LLVMValueRef ok = llvm_emit_extract_value(c, call_res, 1);
 				llvm_emit_panic_on_true(c, ok, "Signed negation overflow", expr->span);
 				return;
 			}
@@ -2201,7 +2144,7 @@ void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_l
 			llvm_value_fold_failable(c, be_value);
 			if (expr_to_len->kind == BE_VALUE)
 			{
-				llvm_value_set(be_value, LLVMBuildExtractValue(c->builder, expr_to_len->value, 1, ""), type_usize);
+				llvm_value_set(be_value, llvm_emit_extract_value(c, expr_to_len->value, 1), type_usize);
 			}
 			else
 			{
@@ -2338,7 +2281,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 			break;
 		case TYPE_SUBARRAY:
 			parent_load_value = LLVMBuildLoad2(c->builder, llvm_get_type(c, parent_type), parent_addr, "");
-			parent_base = LLVMBuildExtractValue(c->builder, parent_load_value, 0, "");
+			parent_base = llvm_emit_extract_value(c, parent_load_value, 0);
 			break;
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_ARRAY:
@@ -2367,7 +2310,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				break;
 			case TYPE_SUBARRAY:
 				assert(parent_load_value);
-				llvm_value_set(&len, LLVMBuildExtractValue(c->builder, parent_load_value, 1, ""), type_usize);
+				llvm_value_set(&len, llvm_emit_extract_value(c, parent_load_value, 1), type_usize);
 				break;
 			case TYPE_ARRAY:
 				llvm_value_set_int(c, &len, type_usize, parent_type->array.len);
@@ -2483,8 +2426,7 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 	}
 
 	// Create a new subarray type
-	Type *expr_type = type_lowering(expr->type);
-	llvm_value_set(be_value, llvm_emit_aggregate_value(c, expr_type, start_pointer, size, NULL), expr_type);
+	llvm_set_aggregate_two(c, be_value, type_lowering(expr->type), start_pointer, size);
 }
 
 static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
@@ -2904,8 +2846,8 @@ static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMVal
 		                                                 1,
 		                                                 args,
 		                                                 2);
-		LLVMValueRef val = LLVMBuildExtractValue(c->builder, call_res, 0, "mul");
-		LLVMValueRef ok = LLVMBuildExtractValue(c->builder, call_res, 1, "");
+		LLVMValueRef val = llvm_emit_extract_value(c, call_res, 0);
+		LLVMValueRef ok = llvm_emit_extract_value(c, call_res, 1);
 		llvm_emit_panic_on_true(c, ok, "Integer multiplication overflow", loc);
 		return val;
 	}
@@ -2932,12 +2874,12 @@ static void llvm_emit_subarray_comp(GenContext *c, BEValue *be_value, BEValue *l
 	llvm_value_rvalue(c, rhs);
 	BEValue lhs_len;
 	BEValue rhs_len;
-	llvm_value_set(&lhs_len, LLVMBuildExtractValue(c->builder, lhs->value, 1, ""), type_usize);
-	llvm_value_set(&rhs_len, LLVMBuildExtractValue(c->builder, rhs->value, 1, ""), type_usize);
+	llvm_value_set(&lhs_len, llvm_emit_extract_value(c, lhs->value, 1), type_usize);
+	llvm_value_set(&rhs_len, llvm_emit_extract_value(c, rhs->value, 1), type_usize);
 	BEValue lhs_value;
 	BEValue rhs_value;
-	llvm_value_set(&lhs_value, LLVMBuildExtractValue(c->builder, lhs->value, 0, ""), array_base_pointer);
-	llvm_value_set(&rhs_value, LLVMBuildExtractValue(c->builder, rhs->value, 0, ""), array_base_pointer);
+	llvm_value_set(&lhs_value, llvm_emit_extract_value(c, lhs->value, 0), array_base_pointer);
+	llvm_value_set(&rhs_value, llvm_emit_extract_value(c, rhs->value, 0), array_base_pointer);
 	BEValue len_match;
 	llvm_emit_comparison(c, &len_match, &lhs_len, &rhs_len, BINARYOP_EQ);
 
@@ -3527,7 +3469,7 @@ static inline void llvm_emit_typeofany(GenContext *c, BEValue *be_value, Expr *e
 	}
 	else
 	{
-		llvm_value_set(be_value, LLVMBuildExtractValue(c->builder, be_value->value, 1, ""), type_typeid);
+		llvm_value_set(be_value, llvm_emit_extract_value(c, be_value->value, 1), type_typeid);
 	}
 }
 
@@ -4080,13 +4022,6 @@ LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVM
 LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, AlignSize array_alignment, AlignSize *alignment)
 {
 	return llvm_emit_array_gep_raw_index(c, ptr, array_type, llvm_const_int(c, type_usize, index), array_alignment, alignment);
-}
-
-LLVMValueRef llvm_emit_array_load(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, AlignSize array_alignment)
-{
-	AlignSize alignment;
-	LLVMValueRef element_ptr = llvm_emit_array_gep_raw_index(c, ptr, array_type, llvm_const_int(c, type_usize, index), array_alignment, &alignment);
-	return llvm_load(c, LLVMGetElementType(array_type), element_ptr, alignment, "");
 }
 
 LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset)
@@ -4848,8 +4783,8 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			}
 
 			// 15g. We can now extract { lo, hi } to lo_value and hi_value.
-			LLVMValueRef lo_value = LLVMBuildExtractValue(c->builder, call_value, 0, "");
-			LLVMValueRef hi_value = LLVMBuildExtractValue(c->builder, call_value, 1, "");
+			LLVMValueRef lo_value = llvm_emit_extract_value(c, call_value, 0);
+			LLVMValueRef hi_value = llvm_emit_extract_value(c, call_value, 1);
 
 			// 15h. Store lo_value into the { pad, lo, pad, hi } struct.
 			llvm_store(c, lo, lo_value, alignment);
@@ -5171,18 +5106,10 @@ static inline void llvm_emit_failable(GenContext *c, BEValue *be_value, Expr *ex
 	llvm_value_set(be_value, LLVMGetUndef(llvm_get_type(c, type)), type);
 }
 
-static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, MemberIndex index, bool *is_const)
+static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, MemberIndex index)
 {
 	LLVMValueRef index_value = llvm_const_int(c, type_usize, (uint64_t)index);
-	if (*is_const && LLVMIsConstant(value))
-	{
-		return LLVMConstInsertElement(vector, value, index_value);
-	}
-	else
-	{
-		*is_const = false;
-		return LLVMBuildInsertElement(c->builder, vector, value, index_value, "");
-	}
+	return LLVMBuildInsertElement(c->builder, vector, value, index_value, "");
 
 }
 static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *value, Expr *expr)
@@ -5195,7 +5122,6 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 	BEValue val;
 	LLVMValueRef vec_value;
 
-	bool is_const = true;
 	if (expr->expr_kind == EXPR_INITIALIZER_LIST)
 	{
 		vec_value = LLVMGetUndef(llvm_type);
@@ -5207,7 +5133,7 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 			Expr *element = elements[i];
 			llvm_emit_expr(c, &val, element);
 			llvm_value_rvalue(c, &val);
-			vec_value = llvm_update_vector(c, vec_value, val.value, (MemberIndex)i, &is_const);
+			vec_value = llvm_update_vector(c, vec_value, val.value, (MemberIndex)i);
 		}
 	}
 	else
@@ -5226,13 +5152,13 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 			{
 				case DESIGNATOR_ARRAY:
 				{
-					vec_value = llvm_update_vector(c, vec_value, val.value, element->index, &is_const);
+					vec_value = llvm_update_vector(c, vec_value, val.value, element->index);
 					break;
 				}
 				case DESIGNATOR_RANGE:
 					for (MemberIndex idx = element->index; idx <= element->index_end; idx++)
 					{
-						vec_value = llvm_update_vector(c, vec_value, val.value, idx, &is_const);
+						vec_value = llvm_update_vector(c, vec_value, val.value, idx);
 					}
 					break;
 				case DESIGNATOR_FIELD:
@@ -5357,6 +5283,15 @@ static inline void llvm_emit_ptr(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_subarray_pointer(c, value, value);
 }
 
+static inline void llvm_emit_typeid_kind(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->inner_expr);
+	llvm_value_rvalue(c, value);
+	LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_ptr_type(c, type_char), "");
+	LLVMValueRef kind = llvm_load(c, c->byte_type, ref, 1, "");
+	llvm_value_set(value, kind, expr->type);
+}
+
 void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 {
 	Expr **exprs = expr->try_unwrap_chain_expr;
@@ -5428,10 +5363,7 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	LLVMTypeRef loop_type = llvm_get_type(c, type_usize);
 	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
 	LLVMValueRef size = llvm_zext_trunc(c, count, loop_type);
-	LLVMValueRef result = LLVMGetUndef(temp_type);
-	result = LLVMBuildInsertValue(c->builder, result, size, 1, "");
-	result = LLVMBuildInsertValue(c->builder, result, arg_array, 0, "");
-	llvm_value_set(value, result, expr->type);
+	llvm_set_aggregate_two(c, value, expr->type, arg_array, size);
 
 	// Check if zero:
 	BEValue cond;
@@ -5517,6 +5449,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_PTR:
 			llvm_emit_ptr(c, value, expr);
+			return;
+		case EXPR_TYPEID_KIND:
+			llvm_emit_typeid_kind(c, value, expr);
 			return;
 		case EXPR_BUILTIN:
 			UNREACHABLE;
