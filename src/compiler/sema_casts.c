@@ -1160,6 +1160,27 @@ bool cast_implicit(Expr *expr, Type *to_type)
 	if (expr->expr_kind == EXPR_CAST) expr->cast_expr.implicit = true;
 	return true;
 }
+static bool arr_to_vec(Expr *expr, Type *to_type)
+{
+	if (insert_runtime_cast_unless_const(expr, CAST_ARRVEC, to_type)) return true;
+
+	assert(expr->const_expr.const_kind == CONST_LIST);
+	ConstInitializer *list = expr->const_expr.list;
+	list->type = to_type;
+	expr->type = to_type;
+	return true;
+}
+
+static bool vec_to_arr(Expr *expr, Type *to_type)
+{
+	if (insert_runtime_cast_unless_const(expr, CAST_VECARR, to_type)) return true;
+
+	assert(expr->const_expr.const_kind == CONST_LIST);
+	ConstInitializer *list = expr->const_expr.list;
+	list->type = to_type;
+	expr->type = to_type;
+	return true;
+}
 
 static bool err_to_anyerr(Expr *expr, Type *to_type)
 {
@@ -1282,7 +1303,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 		case TYPE_FLEXIBLE_ARRAY:
 			return false;
 		case TYPE_ARRAY:
-			if (to->type_kind == TYPE_VECTOR) return insert_cast(expr, CAST_ARRVEC, to_type);
+			if (to->type_kind == TYPE_VECTOR) return arr_to_vec(expr, to_type);
 			FALLTHROUGH;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -1297,7 +1318,7 @@ static bool cast_inner(Expr *expr, Type *from_type, Type *to, Type *to_type)
 			if (to->type_kind == TYPE_BOOL) return subarray_to_bool(expr);
 			break;
 		case TYPE_VECTOR:
-			if (to->type_kind == TYPE_ARRAY) return insert_cast(expr, CAST_VECARR, to);
+			if (to->type_kind == TYPE_ARRAY) return vec_to_arr(expr, to_type);
 			break;
 	}
 	UNREACHABLE

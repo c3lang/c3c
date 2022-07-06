@@ -55,7 +55,6 @@ void gencontext_begin_module(GenContext *c)
 
 	c->block_global_unique_count = 0;
 	c->ast_alloca_addr_space = target_alloca_addr_space();
-
 	VECEACH(global_context.type, i)
 	{
 		Type *type = global_context.type[i];

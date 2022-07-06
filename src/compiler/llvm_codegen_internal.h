@@ -391,20 +391,8 @@ static inline LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef ag
 	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
 	{
 		LLVMValueRef index_val = llvm_const_int(c, type_usize, index);
-#if LLVM_VERSION_MAJOR < 15
-		if (LLVMIsConstant(agg) && LLVMIsConstant(new_value))
-		{
-			return LLVMConstInsertElement(agg, new_value, index_val);
-		}
-#endif
 		return LLVMBuildInsertElement(c->builder, agg, new_value, index_val, "");
 	}
-#if LLVM_VERSION_MAJOR < 15
-	if (LLVMIsConstant(agg) && LLVMIsConstant(new_value))
-	{
-		return LLVMConstInsertValue(agg, new_value, &index, 1);
-	}
-#endif
 	return LLVMBuildInsertValue(c->builder, agg, new_value, index, "");
 }
 

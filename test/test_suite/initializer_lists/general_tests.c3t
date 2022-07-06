@@ -76,27 +76,27 @@ entry:
   %5 = bitcast [3 x i32]* %literal to i32*
   %6 = insertvalue %"int[]" undef, i32* %5, 0
   %7 = insertvalue %"int[]" %6, i64 3, 1
-  %len = extractvalue %"int[]" %7, 1
-  %not = icmp eq i64 %len, 0
-  %8 = zext i1 %not to i8
-  store i8 %8, i8* %x, align 1
-  %9 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 0
-  store i32 0, i32* %9, align 4
-  %10 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 1
+  %8 = extractvalue %"int[]" %7, 1
+  %not = icmp eq i64 %8, 0
+  %9 = zext i1 %not to i8
+  store i8 %9, i8* %x, align 1
+  %10 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 0
   store i32 0, i32* %10, align 4
-  %11 = bitcast %Baz* %z to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 8 %11, i8 0, i64 8, i1 false)
+  %11 = getelementptr inbounds %Bar, %Bar* %b, i32 0, i32 1
+  store i32 0, i32* %11, align 4
+  %12 = bitcast %Baz* %z to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %12, i8 0, i64 8, i1 false)
   store [0 x i32] zeroinitializer, [0 x i32]* %literal1, align 4
-  %12 = bitcast [0 x i32]* %literal1 to i32*
-  %13 = insertvalue %"int[]" undef, i32* %12, 0
-  %14 = insertvalue %"int[]" %13, i64 0, 1
-  store %"int[]" %14, %"int[]"* %sub, align 8
+  %13 = bitcast [0 x i32]* %literal1 to i32*
+  %14 = insertvalue %"int[]" undef, i32* %13, 0
+  %15 = insertvalue %"int[]" %14, i64 0, 1
+  store %"int[]" %15, %"int[]"* %sub, align 8
   store [0 x %Bar] zeroinitializer, [0 x %Bar]* %literal2, align 4
-  %15 = bitcast [0 x %Bar]* %literal2 to %Bar*
-  %16 = insertvalue %"Bar[]" undef, %Bar* %15, 0
-  %17 = insertvalue %"Bar[]" %16, i64 0, 1
-  store %"Bar[]" %17, %"Bar[]"* %foo, align 8
-  %18 = bitcast [3 x %Baz]* %baz to i8*
-  call void @llvm.memset.p0i8.i64(i8* align 16 %18, i8 0, i64 24, i1 false)
+  %16 = bitcast [0 x %Bar]* %literal2 to %Bar*
+  %17 = insertvalue %"Bar[]" undef, %Bar* %16, 0
+  %18 = insertvalue %"Bar[]" %17, i64 0, 1
+  store %"Bar[]" %18, %"Bar[]"* %foo, align 8
+  %19 = bitcast [3 x %Baz]* %baz to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 16 %19, i8 0, i64 24, i1 false)
   ret i32 1
 }

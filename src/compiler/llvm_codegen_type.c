@@ -681,14 +681,14 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 		val->backend_ref = LLVMConstPointerCast(global_name, llvm_get_type(c, type_typeid));
 	}
 	LLVMTypeRef element_type = llvm_get_type(c, type_typeid);
-	LLVMTypeRef elements_type = LLVMArrayType(element_type, elements);
-	LLVMValueRef start = LLVMConstNull(elements_type);
+	LLVMValueRef* values = elements ? MALLOC(sizeof(LLVMValueRef) * elements) : NULL;
 	for (unsigned i = 0; i < elements; i++)
 	{
-		start = llvm_emit_insert_value(c, start, LLVMConstBitCast(fault_vals[i]->backend_ref, element_type), i);
+		values[i] = LLVMConstBitCast(fault_vals[i]->backend_ref, element_type);
 	}
-	LLVMValueRef values[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_FAULT ), llvm_const_int(c, type_usize, elements), start };
-	LLVMValueRef strukt = LLVMConstStructInContext(c->context, values, 3, false);
+	LLVMValueRef svalues[] = { llvm_const_int(c, type_char, INTROSPECT_TYPE_FAULT ), llvm_const_int(c, type_usize, elements),
+	                           LLVMConstArray(element_type, values, elements) };
+	LLVMValueRef strukt = LLVMConstStructInContext(c->context, svalues, 3, false);
 	return llvm_get_introspection_weak(c, type, decl_get_extname(decl), strukt);
 }
 

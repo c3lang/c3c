@@ -348,8 +348,8 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *failabl
 			LLVMTypeRef unpadded_type = llvm_get_twostruct(c, lo_type, hi_type);
 			LLVMValueRef composite = LLVMGetUndef(unpadded_type);
 
-			composite = LLVMBuildInsertValue(c->builder, composite, lo_val, 0, "");
-			composite = LLVMBuildInsertValue(c->builder, composite, hi_val, 1, "");
+			composite = llvm_emit_insert_value(c, composite, lo_val, 0);
+			composite = llvm_emit_insert_value(c, composite, hi_val, 1);
 
 			// And return that unpadded result
 			llvm_emit_return_value(c, composite);
