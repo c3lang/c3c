@@ -92,20 +92,8 @@ static inline LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef a
 {
 	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
 	{
-#if LLVM_VERSION_MAJOR < 14
-		if (LLVMIsConstant(agg))
-		{
-			return LLVMConstExtractElement(agg, llvm_const_int(c, type_usize, index));
-		}
-#endif
 		return LLVMBuildExtractElement(c->builder, agg, llvm_const_int(c, type_usize, index), "");
 	}
-#if LLVM_VERSION_MAJOR < 14
-	if (LLVMIsConstant(agg))
-	{
-		return LLVMConstExtractValue(agg, &index, 1);
-	}
-#endif
 	return LLVMBuildExtractValue(c->builder, agg, index, "");
 }
 
