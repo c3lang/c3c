@@ -8,7 +8,6 @@
 
 #define IF_TRY_CATCH_PREC (PREC_AND + 1)
 typedef Expr *(*ParseFn)(ParseContext *context, Expr *);
-static Expr *parse_rethrow_expr(ParseContext *c, Expr *left);
 static Expr *parse_expr_or_type_prec(ParseContext *c, TypeInfo **type_ref, Precedence prec);
 
 typedef struct

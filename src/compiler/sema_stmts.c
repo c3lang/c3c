@@ -1677,24 +1677,6 @@ static inline bool sema_check_type_case(SemaContext *context, Type *switch_type,
 	return true;
 }
 
-static inline ExprConst *flatten_enum_const(Expr *expr)
-{
-	ExprConst *const_expr = &expr->const_expr;
-	if (const_expr->const_kind == CONST_ENUM)
-	{
-		const_expr->const_kind = CONST_INTEGER;
-
-		Decl *enum_val = const_expr->enum_val;
-		TODO
-		/*
-		Expr *enum_expr = exprptr(enum_val->enum_constant.ordinal2);
-		assert(enum_expr->expr_kind == EXPR_CONST);
-		ExprConst *enum_const = &enum_expr->const_expr;
-		assert(enum_const->const_kind == CONST_INTEGER);
-		*const_expr = *enum_const;*/
-	}
-	return const_expr;
-}
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged)
 {
 	assert(switch_type);
