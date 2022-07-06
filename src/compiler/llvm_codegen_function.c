@@ -682,13 +682,3 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 }
 
 
-void llvm_emit_methods(GenContext *c, Decl **methods)
-{
-	VECEACH(methods, i)
-	{
-		Decl *decl = methods[i];
-		if (decl->decl_kind == DECL_MACRO) continue;
-		llvm_emit_function_decl(c, decl);
-	}
-}
-

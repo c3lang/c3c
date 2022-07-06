@@ -7,8 +7,6 @@
 const char* llvm_version = LLVM_VERSION_STRING;
 const char* llvm_target = LLVM_DEFAULT_TARGET_TRIPLE;
 
-void llvm_emit_local_global_variable_definition(GenContext *c, Decl *decl);
-
 static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 {
 	char *message = LLVMGetDiagInfoDescription(ref);
@@ -252,28 +250,6 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 		}
 	}
 	UNREACHABLE
-}
-
-
-void llvm_emit_local_global_variable_definition(GenContext *c, Decl *decl)
-{
-	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
-
-	// Skip real constants.
-	if (!decl->type) return;
-
-	if (decl->type != type_void)
-	{
-		decl->backend_ref = llvm_add_global_var(c, "tempglobal", decl->type, decl->alignment);
-	}
-	if (IS_FAILABLE(decl))
-	{
-		scratch_buffer_clear();
-		scratch_buffer_append(decl->extname);
-		scratch_buffer_append(".f");
-		decl->var.failable_ref = llvm_add_global_var(c, scratch_buffer_to_string(), type_anyerr, 0);
-		LLVMSetUnnamedAddress(decl->var.failable_ref, LLVMGlobalUnnamedAddr);
-	}
 }
 
 

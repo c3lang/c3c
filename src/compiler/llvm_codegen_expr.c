@@ -145,34 +145,22 @@ LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTy
 	return LLVMBuildBitCast(c->builder, be_value->value, LLVMPointerType(coerce_type, 0), "");
 }
 
-
-LLVMValueRef llvm_emit_aggregate_value(GenContext *c, Type *type, ...)
+LLVMValueRef llvm_emit_aggregate_two(GenContext *c, Type *type, LLVMValueRef value1, LLVMValueRef value2)
 {
-	va_list args;
-	va_start(args, type);
-	LLVMValueRef val;
-	bool is_constant = true;
-#define AGG_MAX 32
-	LLVMValueRef list[AGG_MAX];
-	int size = 0;
-	while ((val = va_arg(args, LLVMValueRef)) != NULL)
+	bool is_constant = LLVMIsConstant(value1) && LLVMIsConstant(value2);
+	if (is_constant)
 	{
-		assert(size < AGG_MAX);
-		if (is_constant && !LLVMIsConstant(val)) is_constant = false;
-		list[size++] = val;
+		LLVMValueRef two[2] = { value1, value2 };
+		return LLVMConstNamedStruct(llvm_get_type(c, type), two, 2);
 	}
-	va_end(args);
-	unsigned index = 0;
-	if (!is_constant)
-	{
-		LLVMValueRef result = LLVMGetUndef(llvm_get_type(c, type));
-		for (int i = 0; i < size; i++)
-		{
-			result = llvm_emit_insert_value(c, result, list[i], i);
-		}
-		return result;
-	}
-	return LLVMConstNamedStruct(llvm_get_type(c, type), list, size);
+	LLVMValueRef result = LLVMGetUndef(llvm_get_type(c, type));
+	result = llvm_emit_insert_value(c, result, value1, 0);
+	return llvm_emit_insert_value(c, result, value2, 1);
+}
+
+void llvm_set_aggregate_two(GenContext *c, BEValue *value, Type *type, LLVMValueRef value1, LLVMValueRef value2)
+{
+	llvm_value_set(value, llvm_emit_aggregate_two(c, type, value1, value2), type);
 }
 
 LLVMValueRef llvm_const_low_bitmask(LLVMTypeRef type, int type_bits, int low_bits)
@@ -1078,8 +1066,7 @@ static void llvm_emit_arr_to_subarray_cast(GenContext *c, BEValue *value, Type *
 	LLVMTypeRef subarray_type = llvm_get_type(c, to_type);
 	LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_get_ptr(array_type));
 	LLVMValueRef len = llvm_const_int(c, type_usize, size);
-	value->type = to_type;
-	value->value = llvm_emit_aggregate_value(c, to_type, pointer, len, NULL);
+	llvm_set_aggregate_two(c, value, to_type, pointer, len);
 }
 
 
@@ -1127,7 +1114,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, BEValue *value, Type *to_
 			LLVMValueRef pointer = llvm_emit_bitcast(c, value->value, type_voidptr);
 			BEValue typeid;
 			llvm_emit_typeid(c, &typeid, from_type->pointer);
-			llvm_value_set(value, llvm_emit_aggregate_value(c, to_type, pointer, typeid.value, NULL), to_type);
+			llvm_set_aggregate_two(c, value, to_type, pointer, typeid.value);
 			return;
 		}
 		case CAST_BSARRY:
@@ -2439,8 +2426,7 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 	}
 
 	// Create a new subarray type
-	Type *expr_type = type_lowering(expr->type);
-	llvm_value_set(be_value, llvm_emit_aggregate_value(c, expr_type, start_pointer, size, NULL), expr_type);
+	llvm_set_aggregate_two(c, be_value, type_lowering(expr->type), start_pointer, size);
 }
 
 static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
@@ -4038,13 +4024,6 @@ LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRe
 	return llvm_emit_array_gep_raw_index(c, ptr, array_type, llvm_const_int(c, type_usize, index), array_alignment, alignment);
 }
 
-LLVMValueRef llvm_emit_array_load(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, AlignSize array_alignment)
-{
-	AlignSize alignment;
-	LLVMValueRef element_ptr = llvm_emit_array_gep_raw_index(c, ptr, array_type, llvm_const_int(c, type_usize, index), array_alignment, &alignment);
-	return llvm_load(c, LLVMGetElementType(array_type), element_ptr, alignment, "");
-}
-
 LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset)
 {
 	if (LLVMIsConstant(ptr) && LLVMIsConstant(offset))
@@ -5384,8 +5363,7 @@ static inline void llvm_emit_argv_to_subarray(GenContext *c, BEValue *value, Exp
 	LLVMTypeRef loop_type = llvm_get_type(c, type_usize);
 	LLVMTypeRef char_ptr_type = llvm_get_ptr_type(c, type_char);
 	LLVMValueRef size = llvm_zext_trunc(c, count, loop_type);
-	LLVMValueRef result = llvm_emit_aggregate_value(c, expr->type, arg_array, size);
-	llvm_value_set(value, result, expr->type);
+	llvm_set_aggregate_two(c, value, expr->type, arg_array, size);
 
 	// Check if zero:
 	BEValue cond;

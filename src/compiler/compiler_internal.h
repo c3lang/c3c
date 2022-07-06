@@ -236,7 +236,6 @@ struct Type_
 	const char *name;
 	Type **type_cache;
 	void *backend_type;
-	void *backend_aux_type;
 	void *backend_typeid;
 	void *backend_debug_type;
 	union
