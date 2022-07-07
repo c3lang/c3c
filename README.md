@@ -29,7 +29,6 @@ The following code shows [generic modules](http://www.c3-lang.org/generics/) (mo
 ```c++
 module stack <Type>;
 // Above: the parameterized type is applied to the entire module.
-import std::mem;
 
 struct Stack
 {
