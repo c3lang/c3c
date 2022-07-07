@@ -158,6 +158,20 @@ The compiler is currently verified to compile on Linux, Windows and MacOS.
 
 ### Installing
 
+#### Installing on Windows
+
+1. Make sure you have Visual Studio 17 2022 installed.
+2. Install CMake
+3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+4. Enter the C3C directory `cd c3c`.
+5. Set up the CMake build `cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release`
+6. Build: `cmake --build build --config Release`
+7. You should now have the c3c.exe
+
+You should now have a `c3c` executable.
+
+You can try it out by running some sample code: `c3c.exe compile ../resources/examples/hash.c3`
+
 #### Installing on Ubuntu 20.10
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
