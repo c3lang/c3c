@@ -38,7 +38,7 @@ const char* JSON =
 		"  // Debug information, may be 'none', 'full' and 'line-tables'\n"
 		"  \"debug-info\": \"full\",\n"
 		"  // Architecture and OS target:\n"
-		"  \"target\": \"x64-windows\",\n"
+		"  \"target\": \"windows-x64\",\n"
 		"  // The size of the symtab, which limits the amount\n"
 		"  // of symbols that can be used. Should usually not\n"
 		"  // be changed.\n"
