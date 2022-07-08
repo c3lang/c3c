@@ -376,6 +376,25 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 	{
 		add_arg(active_target.link_args[i]);
 	}
+	VECEACH(active_target.linker_libs, i)
+	{
+		const char *lib = active_target.linker_libs[i];
+		const char *framework = str_remove_suffix(lib, ".framework");
+		if (framework)
+		{
+			add_arg("-framework");
+			add_arg(framework);
+			continue;
+		}
+		if (use_win)
+		{
+			add_arg2(lib, ".lib");
+		}
+		else
+		{
+			add_arg2("-l", lib);
+		}
+	}
 	VECEACH(active_target.library_list, i)
 	{
 		Library *library = active_target.library_list[i];

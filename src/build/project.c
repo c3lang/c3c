@@ -109,6 +109,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	const char *langrev = get_valid_string(json, "langrev", type, false);
 	const char **source_dirs = get_valid_array(json, "sources", type, target->source_dirs == NULL);
 	const char **libraries = get_valid_array(json, "libs", type, false);
+	const char **linker_libs = get_valid_array(json, "linker-libs", type, false);
 	VECEACH(libraries, i)
 	{
 		if (!str_is_valid_lowercase_name(libraries[i]))
@@ -119,6 +120,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 		}
 	}
 	const char **libdirs = get_valid_array(json, "libdir", type, false);
+	const char **linker_libdirs = get_valid_array(json, "linker-libdir", type, false);
 
 	static const char *debug_infos[3] = {
 			[DEBUG_INFO_FULL] = "full",
@@ -143,6 +145,8 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	if (langrev) target->langrev = langrev;
 	if (source_dirs) target->source_dirs = source_dirs;
 	if (libdirs) target->libdirs = libdirs;
+	if (linker_libdirs) target->linker_libdirs = linker_libdirs;
+	if (linker_libs) target->linker_libs = linker_libs;
 	if (libraries) target->libs = libraries;
 	if (info > -1) target->debug_info = info;
 	if (cpu) target->cpu = cpu;

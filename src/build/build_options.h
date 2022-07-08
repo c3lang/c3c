@@ -309,6 +309,7 @@ typedef struct
 	const char **libdirs;
 	const char **libs;
 	const char **linker_libdirs;
+	const char **linker_libs;
 	const char *cpu;
 	const char **link_args;
 	const char *build_dir;
