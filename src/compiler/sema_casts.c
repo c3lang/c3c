@@ -1031,6 +1031,14 @@ static void sema_error_const_int_out_of_range(Expr *expr, Expr *problem, Type *t
 	           type_quoted_error_string(to_type));
 }
 
+static inline bool cast_maybe_null_to_distinct_voidptr(Expr *expr, Type *expr_canonical, Type *to_canonical)
+{
+	if (expr->expr_kind != EXPR_CONST || expr->const_expr.const_kind != CONST_POINTER) return false;
+	if (expr_canonical != type_voidptr) return false;
+	if (to_canonical->type_kind != TYPE_DISTINCT) return false;
+	return to_canonical->decl->distinct_decl.base_type->canonical->type_kind == TYPE_POINTER;
+}
+
 static inline bool cast_maybe_string_lit_to_char_array(Expr *expr, Type *expr_canonical, Type *to_canonical)
 {
 	if (expr->expr_kind != EXPR_CONST || expr->const_expr.const_kind != CONST_STRING) return false;
@@ -1057,6 +1065,10 @@ bool cast_implicit(Expr *expr, Type *to_type)
 	{
 		expr_type = expr->type;
 		expr_canonical = expr_type->canonical;
+	}
+	if (cast_maybe_null_to_distinct_voidptr(expr, expr_canonical, to_canonical))
+	{
+		return true;
 	}
 	if (expr_canonical == to_canonical) return true;
 	bool is_simple = expr_is_simple(expr);
