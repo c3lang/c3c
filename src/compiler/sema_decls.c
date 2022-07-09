@@ -1508,7 +1508,9 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 		SEMA_ERROR(&directive->doc_stmt.param, "There is no parameter '%s', did you misspell it?", param_name);
 		return false;
 	NEXT:;
-		bool may_be_pointer = !param->type || type_is_pointer(type_flatten(param->type));
+		Type *type = param->type;
+		if (type) type = type_flatten(type);
+		bool may_be_pointer = !type || type_is_pointer(type);
 		if (directive->doc_stmt.param.by_ref)
 		{
 			if (!may_be_pointer)
@@ -1531,9 +1533,9 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 			case PARAM_INOUT:
 				break;
 		}
-		if (!may_be_pointer)
+		if (!may_be_pointer && type->type_kind != TYPE_SUBARRAY)
 		{
-			SEMA_ERROR(directive, "'in', 'out' and 'inout' may only be added to pointers.");
+			SEMA_ERROR(directive, "'in', 'out' and 'inout' may only be added to pointers and subarrays.");
 			return false;
 		}
 ADDED:;
