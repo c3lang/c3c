@@ -3950,7 +3950,10 @@ static int decl_count_elements(Decl *structlike)
 {
 	int elements = 0;
 	Decl **members = structlike->strukt.members;
-	VECEACH(members, i)
+	unsigned member_size = vec_size(members);
+	if (member_size == 0) return 0;
+	if (structlike->decl_kind == DECL_UNION) member_size = 1;
+	for (unsigned i = 0; i < member_size; i++)
 	{
 		Decl *member = members[i];
 		if (member->decl_kind != DECL_VAR && !member->name)
@@ -3972,6 +3975,12 @@ static inline void not_enough_elements(Expr *initializer, int element)
 	}
 	SEMA_ERROR(initializer->initializer_list[element - 1], "Too few elements in initializer, there should be elements after this one.");
 }
+
+static inline bool sema_is_anon_member(Decl *decl)
+{
+	return decl->decl_kind != DECL_VAR && !decl->name;
+}
+
 /**
  * Perform analysis for a plain initializer, that is one initializing all fields.
  * @return true if analysis succeeds.
@@ -3981,21 +3990,20 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	Expr **elements = initializer->initializer_list;
 	Decl **members = assigned->strukt.members;
 	MemberIndex size = (MemberIndex)vec_size(elements);
-	MemberIndex expected_members = (MemberIndex)vec_size(members);
+	unsigned elements_needed = decl_count_elements(assigned);
 
 	// 1. For struct number of members must be the same as the size of the struct.
 	//    Since we already handled the case with an empty initializer before going here
 	//    zero entries must be an error.
 	assert(size > 0 && "We should already have handled the size == 0 case.");
-	if (expected_members == 0)
+
+	// 2. We don't support this actually, but we used to. Maybe we will in the future.
+	if (elements_needed == 0)
 	{
 		// Generate a nice error message for zero.
 		SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
 		return false;
 	}
-
-	// 2. In case of a union, only expect a single entry.
-	if (assigned->decl_kind == DECL_UNION) expected_members = 1;
 
 	bool failable = false;
 
@@ -4008,17 +4016,18 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			return false;
 		}
 	}
+
 	// 3. Loop through all elements.
-	MemberIndex max_loop = MAX(size, expected_members);
+	MemberIndex max_loop = size > elements_needed ? size : elements_needed;
 	for (MemberIndex i = 0; i < max_loop; i++)
 	{
 		// 4. Check if we exceeded the list of elements in the struct/union.
 		//    This way we can check the other elements which might help the
 		//    user pinpoint where they put the double elements.
-		if (i >= expected_members)
+		if (i >= elements_needed)
 		{
 			assert(i < size);
-			SEMA_ERROR(elements[i], "Too many elements in initializer, expected only %d.", expected_members);
+			SEMA_ERROR(elements[i], "Too many elements in initializer, expected only %d.", elements_needed);
 			return false;
 		}
 		// 5. We might have anonymous members
@@ -4048,14 +4057,15 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 				return false;
 			}
 			Expr *new_initializer = expr_new(EXPR_INITIALIZER_LIST, elements[i]->span);
-			int max_index_to_copy = MIN(i + sub_element_count, size);
+			int max_index_to_copy = i + sub_element_count < size ? i + sub_element_count : size;
 			for (int j = i; j < max_index_to_copy; j++)
 			{
 				vec_add(new_initializer->initializer_list, elements[j]);
 			}
 			int reduce_by = max_index_to_copy - i - 1;
 			size -= reduce_by;
-			max_loop = MAX(size, expected_members);
+			elements_needed -= reduce_by;
+			max_loop = MAX(size, elements_needed);
 			assert(size <= vec_size(initializer->initializer_list));
 			vec_resize(initializer->initializer_list, (unsigned)size);
 			elements = initializer->initializer_list;
@@ -4064,6 +4074,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		if (i >= size)
 		{
 			not_enough_elements(initializer, i);
+			return false;
 		}
 		Expr *element = elements[i];
 		// 6. We know the required type, so resolve the expression.
@@ -4078,7 +4089,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	if (failable) initializer->type = type_get_failable(initializer->type);
 
 	// 6. There's the case of too few values as well. Mark the last field as wrong.
-	assert(expected_members <= size);
+	assert(elements_needed <= size);
 
 	if (expr_is_constant_eval(initializer, CONSTANT_EVAL_ANY))
 	{
@@ -4225,6 +4236,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 	// EXPR_DESIGNATED_INITIALIZER_LIST
 	// or EXPR_INITIALIZER_LIST
 
+	// 1. Designated initializer is separately evaluated.
 	if (expr->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
 	{
 		expr->type = external_type;
@@ -4233,13 +4245,17 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 
 	assert(expr->expr_kind == EXPR_INITIALIZER_LIST);
 
+	// 2. Grab the expressions inside.
 	Expr **init_expressions = expr->initializer_list;
-
 	unsigned init_expression_count = vec_size(init_expressions);
 
-	// 1. Zero size init will initialize to empty.
+	// 3. Zero size init will initialize to empty.
 	if (init_expression_count == 0)
 	{
+		if (external_type->type_kind == TYPE_INFERRED_ARRAY)
+		{
+			REMINDER("Handle zero size inferred array.");
+		}
 		external_type = sema_type_lower_by_size(external_type, 0);
 		expr->type = external_type;
 		ConstInitializer *initializer = CALLOCS(ConstInitializer);
@@ -4249,15 +4265,19 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ext
 		return true;
 	}
 
+	// 4. If we have an inferred array, we need to set the size.
 	external_type = sema_type_lower_by_size(external_type, init_expression_count);
 	assigned = sema_type_lower_by_size(assigned, init_expression_count);
+
+	// 5. Set the type.
 	expr->type = external_type;
 
+	// 6. We might have a complist, because were analyzing $foo = { ... } or similar.
 	if (external_type == type_complist)
 	{
 		return sema_expr_analyse_untyped_initializer(context, expr);
 	}
-	// 3. Otherwise use the plain initializer.
+	// 7. If not, then we see if we have an array.
 	if (assigned->type_kind == TYPE_UNTYPED_LIST ||
 		assigned->type_kind == TYPE_ARRAY ||
 		assigned->type_kind == TYPE_INFERRED_ARRAY ||
