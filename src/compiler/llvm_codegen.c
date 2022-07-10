@@ -208,6 +208,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			Decl *decl = const_init->type->decl;
 			Decl **members = decl->strukt.members;
 			uint32_t count = vec_size(members);
+			if (decl->decl_kind == DECL_UNION && count) count = 1;
 			LLVMValueRef *entries = NULL;
 			bool was_modified = false;
 			for (MemberIndex i = 0; i < count; i++)
