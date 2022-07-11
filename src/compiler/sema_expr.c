@@ -4034,7 +4034,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		Decl *member = members[i];
 		if (member->decl_kind != DECL_VAR && !member->name)
 		{
-			int sub_element_count = decl_count_elements(members[i]);
+			int sub_element_count = decl_count_elements(member);
 			if (!sub_element_count)
 			{
 				vec_add(initializer->initializer_list, NULL);
@@ -4093,9 +4093,28 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 
 	if (expr_is_constant_eval(initializer, CONSTANT_EVAL_ANY))
 	{
+		bool is_union = type_flatten_distinct(initializer->type)->type_kind == TYPE_UNION;
+		assert(!is_union || vec_size(elements) == 1);
 		ConstInitializer *const_init = CALLOCS(ConstInitializer);
-		const_init->kind = CONST_INIT_STRUCT;
+		const_init->kind = is_union ? CONST_INIT_UNION : CONST_INIT_STRUCT;
 		const_init->type = type_flatten(initializer->type);
+		if (is_union)
+		{
+			Expr *expr = elements[0];
+			const_init->init_union.index = 0;
+			if (expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_LIST)
+			{
+				const_init->init_union.element = expr->const_expr.list;
+			}
+			else
+			{
+				ConstInitializer *element_init = MALLOCS(ConstInitializer);
+				sema_create_const_initializer_value(element_init, expr);
+				const_init->init_union.element = element_init;
+			}
+			expr_set_as_const_list(initializer, const_init);
+			return true;
+		}
 		ConstInitializer **inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
 		VECEACH(elements, i)
 		{
