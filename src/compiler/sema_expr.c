@@ -1679,7 +1679,7 @@ static inline Type *unify_returns(SemaContext *context)
 			SEMA_ERROR(return_stmt, "Cannot find a common parent type of %s and %s",
 			           rtype, common_type);
 			SEMA_PREV(context->returns[i - 1], "The previous return was here.");
-			return false;
+			return NULL;
 		}
 
 		// 6. Set the new max, mark as needing a cast on all returns.
@@ -3030,82 +3030,136 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		return true;
 	}
 
-	if (!is_const && type_is_integer(canonical))
+	if (!is_const)
 	{
 		TypeKind kind = canonical->type_kind;
 		if (name == kw_min)
 		{
-			expr->expr_kind = EXPR_CONST;
-			expr->const_expr.const_kind = CONST_INTEGER;
-			expr->type = parent->type;
-			expr->resolve_status = RESOLVE_DONE;
-			expr->const_expr.ixx.type = kind;
-			switch (kind)
+			if (type_is_integer(canonical))
 			{
-				case TYPE_I8:
-					expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
-					break;
-				case TYPE_I16:
-					expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
-					break;
-				case TYPE_I32:
-					expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
-					break;
-				case TYPE_I64:
-					expr->const_expr.ixx.i = (Int128){ 0, ~((uint64_t)0) };
-					break;
-				case TYPE_I128:
-					expr->const_expr.ixx.i = (Int128){ ~((uint64_t)0), ~((uint64_t)0) };
-					break;
-				default:
-					expr->const_expr.ixx.i = (Int128){ 0, 0 };
-					break;
+				expr->expr_kind = EXPR_CONST;
+				expr->const_expr.const_kind = CONST_INTEGER;
+				expr->type = parent->type;
+				expr->resolve_status = RESOLVE_DONE;
+				expr->const_expr.ixx.type = kind;
+				switch (kind)
+				{
+					case TYPE_I8:
+						expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
+						break;
+					case TYPE_I16:
+						expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
+						break;
+					case TYPE_I32:
+						expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
+						break;
+					case TYPE_I64:
+						expr->const_expr.ixx.i = (Int128){ 0, ~((uint64_t)0) };
+						break;
+					case TYPE_I128:
+						expr->const_expr.ixx.i = (Int128){ ~((uint64_t)0), ~((uint64_t)0) };
+						break;
+					default:
+						expr->const_expr.ixx.i = (Int128){ 0, 0 };
+						break;
+				}
+				return true;
 			}
-			return true;
+			if (type_is_float(canonical))
+			{
+				expr->expr_kind = EXPR_CONST;
+				expr->const_expr.const_kind = CONST_FLOAT;
+				expr->type = parent->type;
+				expr->resolve_status = RESOLVE_DONE;
+				expr->const_expr.fxx.type = kind;
+				switch (kind)
+				{
+					case TYPE_F32:
+						expr->const_expr.fxx.f = FLT_MIN;
+						break;
+					case TYPE_F64:
+						expr->const_expr.fxx.f = DBL_MIN;
+						break;
+					case TYPE_F128:
+						REMINDER("Float 128 not complete");
+						expr->const_expr.fxx.f = DBL_MIN;
+						break;
+					default:
+						UNREACHABLE;
+				}
+				return true;
+			}
 		}
 		if (name == kw_max)
 		{
-			expr->expr_kind = EXPR_CONST;
-			expr->const_expr.const_kind = CONST_INTEGER;
-			expr->type = parent->type;
-			expr->resolve_status = RESOLVE_DONE;
-			expr->const_expr.ixx.type = kind;
-			switch (kind)
+			if (type_is_integer(canonical))
 			{
-				case TYPE_I8:
-					expr->const_expr.ixx.i = (Int128){ 0, 0x7F };
-					break;
-				case TYPE_I16:
-					expr->const_expr.ixx.i = (Int128){ 0, 0x7FFF };
-					break;
-				case TYPE_I32:
-					expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFLL };
-					break;
-				case TYPE_I64:
-					expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFFFFFFFFFLL };
-					break;
-				case TYPE_I128:
-					expr->const_expr.ixx.i = (Int128){ 0x7FFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
-					break;
-				case TYPE_U8:
-					expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
-					break;
-				case TYPE_U16:
-					expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
-					break;
-				case TYPE_U32:
-					expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
-					break;
-				case TYPE_U64:
-					expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFFFFFFFFFLL };
-					break;
-				case TYPE_U128:
-					expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
-					break;
-				default:
-					UNREACHABLE
+				expr->expr_kind = EXPR_CONST;
+				expr->const_expr.const_kind = CONST_INTEGER;
+				expr->type = parent->type;
+				expr->resolve_status = RESOLVE_DONE;
+				expr->const_expr.ixx.type = kind;
+				switch (kind)
+				{
+					case TYPE_I8:
+						expr->const_expr.ixx.i = (Int128){ 0, 0x7F };
+						break;
+					case TYPE_I16:
+						expr->const_expr.ixx.i = (Int128){ 0, 0x7FFF };
+						break;
+					case TYPE_I32:
+						expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFLL };
+						break;
+					case TYPE_I64:
+						expr->const_expr.ixx.i = (Int128){ 0, 0x7FFFFFFFFFFFFFFFLL };
+						break;
+					case TYPE_I128:
+						expr->const_expr.ixx.i = (Int128){ 0x7FFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
+						break;
+					case TYPE_U8:
+						expr->const_expr.ixx.i = (Int128){ 0, 0xFF };
+						break;
+					case TYPE_U16:
+						expr->const_expr.ixx.i = (Int128){ 0, 0xFFFF };
+						break;
+					case TYPE_U32:
+						expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFLL };
+						break;
+					case TYPE_U64:
+						expr->const_expr.ixx.i = (Int128){ 0, 0xFFFFFFFFFFFFFFFFLL };
+						break;
+					case TYPE_U128:
+						expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFFLL, 0xFFFFFFFFFFFFFFFFLL };
+						break;
+					default:
+						UNREACHABLE
+				}
+				return true;
 			}
-			return true;
+			if (type_is_float(canonical))
+			{
+				expr->expr_kind = EXPR_CONST;
+				expr->const_expr.const_kind = CONST_FLOAT;
+				expr->type = parent->type;
+				expr->resolve_status = RESOLVE_DONE;
+				expr->const_expr.fxx.type = kind;
+				switch (kind)
+				{
+					case TYPE_F32:
+						expr->const_expr.fxx.f = FLT_MAX;
+						break;
+					case TYPE_F64:
+						expr->const_expr.fxx.f = DBL_MAX;
+						break;
+					case TYPE_F128:
+						REMINDER("Float 128 not complete");
+						expr->const_expr.fxx.f = DBL_MAX;
+						break;
+					default:
+						UNREACHABLE;
+				}
+				return true;
+			}
 		}
 	}
 	// 3. Handle float.nan, double.inf etc

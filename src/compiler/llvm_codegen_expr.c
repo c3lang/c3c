@@ -1794,15 +1794,24 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
 	TypeSize base_type_bitsize = base_type_size * 8;
 	for (MemberIndex i = 0; i < count; i++)
 	{
+		ConstInitializer *val = initializer->init_struct[i];
 		Decl *member = members[i];
 		unsigned start_bit = member->var.start_bit;
 		unsigned end_bit = member->var.end_bit;
 		unsigned bit_size = end_bit - start_bit + 1;
 		assert(bit_size > 0 && bit_size <= 128);
-		assert(initializer->init_struct[i]->kind == CONST_INIT_VALUE);
-		BEValue entry;
-		llvm_emit_const_expr(c, &entry, initializer->init_struct[i]->init_value);
-		LLVMValueRef value = llvm_load_value_store(c, &entry);
+		LLVMValueRef value;
+		if (val->kind == CONST_INIT_ZERO)
+		{
+			value = val->type == type_bool ? LLVMConstNull(c->byte_type) : llvm_get_zero(c, val->type);
+		}
+		else
+		{
+			BEValue entry;
+			assert(initializer->init_struct[i]->kind == CONST_INIT_VALUE);
+			llvm_emit_const_expr(c, &entry, initializer->init_struct[i]->init_value);
+			value = llvm_load_value_store(c, &entry);
+		}
 		value = llvm_zext_trunc(c, value, llvm_base_type);
 		if (bit_size < base_type_bitsize)
 		{
@@ -2097,7 +2106,6 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				return;
 			}
 			assert(type->canonical != type_bool);
-			assert(!type_is_unsigned(type));
 			llvm_emit_expr(c, value, expr->unary_expr.expr);
 			llvm_value_rvalue(c, value);
 			if (active_target.feature.trap_on_wrap)
@@ -3191,6 +3199,11 @@ void gencontext_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValu
 			break;
 		case BINARYOP_MOD:
 			llvm_emit_trap_zero(c, rhs_type, rhs_value, "% by zero.", expr->span);
+			if (type_is_float(lhs_type))
+			{
+				val = LLVMBuildFRem(c->builder, lhs_value, rhs_value, "fmod");
+				break;
+			}
 			val = type_is_unsigned(lhs_type)
 			      ? LLVMBuildURem(c->builder, lhs_value, rhs_value, "umod")
 			      : LLVMBuildSRem(c->builder, lhs_value, rhs_value, "smod");

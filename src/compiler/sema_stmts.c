@@ -808,6 +808,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 	if (body->ast_kind != AST_COMPOUND_STMT && do_loop)
 	{
 		SEMA_ERROR(body, "A do loop must use { } around its body.");
+		return false;
 	}
 	// Enter for scope
 	SCOPE_OUTER_START
