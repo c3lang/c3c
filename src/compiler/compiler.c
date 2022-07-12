@@ -48,13 +48,13 @@ void compiler_init(const char *std_lib_dir)
 	htable_init(&global_context.compiler_defines, 16 * 1024);
 	global_context.module_list = NULL;
 	global_context.generic_module_list = NULL;
-	vmem_init(&ast_arena, 4 * 1024);
+	vmem_init(&ast_arena, 512);
 	ast_calloc();
-	vmem_init(&expr_arena, 4 * 1024);
+	vmem_init(&expr_arena, 512);
 	expr_calloc();
-	vmem_init(&decl_arena, 1024);
+	vmem_init(&decl_arena, 256);
 	decl_calloc();
-	vmem_init(&type_info_arena, 1024);
+	vmem_init(&type_info_arena, 256);
 	type_info_calloc();
 	// Create zero index value.
 	if (std_lib_dir)
