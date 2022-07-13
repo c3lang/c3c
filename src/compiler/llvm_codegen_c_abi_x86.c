@@ -8,6 +8,8 @@
 
 static bool x86_try_use_free_regs(Regs *regs, Type *type);
 
+ABIArgInfo **x86_create_params(CallABI abi, Type **p_type, Regs *ptr);
+
 static inline bool type_is_simd_vector(Type *type)
 {
 	type = type->canonical;
@@ -606,6 +608,18 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 	UNREACHABLE
 }
 
+ABIArgInfo **x86_create_params(CallABI abi, Type **params, Regs *regs)
+{
+	unsigned param_count = vec_size(params);
+	if (!param_count) return NULL;
+	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+	for (unsigned i = 0; i < param_count; i++)
+	{
+		args[i] = x86_classify_argument(abi, regs, params[i]);
+	}
+	return args;
+}
+
 void c_abi_func_create_x86(FunctionPrototype *prototype)
 {
 	// 1. Calculate the registers we have available
@@ -668,19 +682,8 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 	{
 		FATAL_ERROR("X86 vector call not supported");
 	}
-	else
-	{
-		Type **params = prototype->params;
-		unsigned param_count = vec_size(prototype->params);
-		if (param_count)
-		{
-			ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-			for (unsigned i = 0; i < param_count; i++)
-			{
-				args[i] = x86_classify_argument(prototype->call_abi, &regs, params[i]);
-			}
-			prototype->abi_args = args;
-		}
-	}
+	prototype->abi_args = x86_create_params(prototype->call_abi, prototype->params, &regs);
+	prototype->abi_varargs = x86_create_params(prototype->call_abi, prototype->params, &regs);
 }
+
 

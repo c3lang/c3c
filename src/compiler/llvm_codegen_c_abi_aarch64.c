@@ -173,4 +173,15 @@ void c_abi_func_create_aarch64(FunctionPrototype *prototype)
 		}
 		prototype->abi_args = args;
 	}
+	Type **va_params = prototype->varargs;
+	unsigned va_param_count = vec_size(va_params);
+	if (va_param_count)
+	{
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * va_param_count);
+		for (unsigned i = 0; i < va_param_count; i++)
+		{
+			args[i] = aarch64_classify_argument_type(va_params[i]);
+		}
+		prototype->abi_varargs = args;
+	}
 }

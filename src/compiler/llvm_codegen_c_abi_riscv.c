@@ -251,7 +251,17 @@ static ABIArgInfo *riscv_classify_return(Type *return_type)
 	// classifyArgumentType.
 	return riscv_classify_argument_type(return_type, true, &arg_gpr_left, &arg_fpr_left);
 }
-
+ABIArgInfo **riscv_create_params(Type** params, bool is_fixed, unsigned *arg_gprs_left, unsigned *arg_fprs_left)
+{
+	unsigned param_count = vec_size(params);
+	if (!param_count) return NULL;
+	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+	for (unsigned i = 0; i < param_count; i++)
+	{
+		args[i] = riscv_classify_argument_type(type_lowering(params[i]), is_fixed, arg_gprs_left, arg_fprs_left);
+	}
+	return args;
+}
 void c_abi_func_create_riscv(FunctionPrototype *prototype)
 {
 	// Registers
@@ -287,16 +297,6 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 		                                                              true, &arg_gprs_left, &arg_fprs_left);
 	}
 
-	Type **params = prototype->params;
-	unsigned param_count = vec_size(prototype->params);
-	if (param_count)
-	{
-		bool is_fixed = true;
-		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-		for (unsigned i = 0; i < param_count; i++)
-		{
-			args[i] = riscv_classify_argument_type(type_lowering(params[i]), is_fixed, &arg_gprs_left, &arg_fprs_left);
-		}
-		prototype->abi_args = args;
-	}
+	prototype->abi_args = riscv_create_params(prototype->params, true, &arg_gprs_left, &arg_fprs_left);
+	prototype->abi_varargs = riscv_create_params(prototype->varargs, false, &arg_gprs_left, &arg_fprs_left);
 }
