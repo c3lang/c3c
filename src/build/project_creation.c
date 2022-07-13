@@ -18,7 +18,7 @@ const char* JSON =
 		"  // warnings used for all targets\n"
 		"  \"warnings\": [ \"no-unused\" ],\n"
 		"  // libraries to use for all targets\n"
-		"  \"libs\": [ \"lib/**\" ],\n"
+		"  \"libs\": [ ],\n"
 		"  // authors, optionally with email\n"
 		"  \"authors\": [ \"John Doe <john.doe@example.com>\" ],\n"
 		"  // Version using semantic versioning\n"
