@@ -4436,7 +4436,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	llvm_emit_intrinsic_expr(c, llvm_get_intrinsic(func), result_value, expr);
 }
 
-void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int start_index, int count, Type **types, ABIArgInfo **infos)
+void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int count, ABIArgInfo **infos)
 {
 	for (unsigned i = 0; i < count; i++)
 	{
@@ -4449,10 +4449,10 @@ void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int st
 					llvm_attribute_add_call_type(c,
 					                             call_value,
 					                             attribute_id.byval,
-					                             (int)i + start_index,
+					                             (int)info->param_index_start + 1,
 					                             llvm_get_type(c, info->indirect.type));
 				}
-				llvm_attribute_add_call(c, call_value, attribute_id.align, (int)i + start_index, info->indirect.alignment);
+				llvm_attribute_add_call(c, call_value, attribute_id.align, (int)info->param_index_start + 1, info->indirect.alignment);
 				break;
 			default:
 				break;
@@ -4534,13 +4534,15 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 			copy.varargs = NULL;
 			for (unsigned i = non_variadic_params; i < arguments; i++)
 			{
-				vec_add(copy.varargs, args[i]->type);
+				vec_add(copy.varargs, type_flatten(args[i]->type));
 			}
 			copy.ret_abi_info = NULL;
 			copy.ret_by_ref_abi_info = NULL;
 			copy.abi_args = NULL;
 			c_abi_func_create(&copy);
 			prototype = &copy;
+			LLVMTypeRef *params_type = NULL;
+			llvm_update_prototype_abi(c, prototype, &params_type);
 		}
 	}
 	ABIArgInfo *ret_info = prototype->ret_abi_info;
@@ -4714,14 +4716,12 @@ void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr)
 	}
 
 	assert(!prototype->ret_by_ref || prototype->ret_by_ref_abi_info->kind != ABI_ARG_INDIRECT);
-	llvm_add_abi_call_attributes(c, call_value, prototype->ret_by_ref ? 2 : 1, non_variadic_params, params, abi_args);
+	llvm_add_abi_call_attributes(c, call_value, non_variadic_params, abi_args);
 	if (prototype->abi_varargs)
 	{
 		llvm_add_abi_call_attributes(c,
 		                             call_value,
-		                             1 + non_variadic_params,
 		                             vec_size(prototype->varargs),
-		                             prototype->varargs,
 		                             prototype->abi_varargs);
 	}
 

@@ -299,6 +299,7 @@ void llvm_emit_comparison(GenContext *c, BEValue *be_value, BEValue *lhs, BEValu
 void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_len);
 // -- type ---
 LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype);
+LLVMTypeRef llvm_update_prototype_abi(GenContext *context, FunctionPrototype *prototype, LLVMTypeRef **params);
 
 // -- instr ---
 void llvm_emit_cond_br(GenContext *context, BEValue *value, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block);

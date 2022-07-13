@@ -51,6 +51,18 @@ static ABIArgInfo *wasm_classify_return(Type *type)
 	return c_abi_classify_return_type_default(type);
 }
 
+ABIArgInfo **wasm_create_params(Type **params)
+{
+	unsigned param_count = vec_size(params);
+	if (!param_count) return NULL;
+	ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+	for (unsigned i = 0; i < param_count; i++)
+	{
+		args[i] = wasm_classify_argument_type(type_lowering(params[i]));
+	}
+	return args;
+}
+
 void c_abi_func_create_wasm(FunctionPrototype *prototype)
 {
 	prototype->ret_abi_info = wasm_classify_return(type_lowering(prototype->abi_ret_type));
@@ -59,15 +71,6 @@ void c_abi_func_create_wasm(FunctionPrototype *prototype)
 		prototype->ret_by_ref_abi_info = wasm_classify_argument_type(type_get_ptr(prototype->ret_by_ref_type));
 	}
 
-	Type **params = prototype->params;
-	unsigned param_count = vec_size(prototype->params);
-	if (param_count)
-	{
-		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
-		for (unsigned i = 0; i < param_count; i++)
-		{
-			args[i] = wasm_classify_argument_type(type_lowering(params[i]));
-		}
-		prototype->abi_args = args;
-	}
+	prototype->abi_args = wasm_create_params(prototype->params);
+	prototype->abi_varargs = wasm_create_params(prototype->varargs);
 }

@@ -222,12 +222,9 @@ static inline void add_func_type_param(GenContext *context, Type *param_type, AB
 	arg_info->param_index_end = (MemberIndex)vec_size(*params);
 }
 
-LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype)
+LLVMTypeRef llvm_update_prototype_abi(GenContext *context, FunctionPrototype *prototype, LLVMTypeRef **params)
 {
-	LLVMTypeRef *params = NULL;
-
-	LLVMTypeRef return_type = NULL;
-
+	LLVMTypeRef retval = NULL;
 	Type *call_return_type = prototype->abi_ret_type;
 	ABIArgInfo *ret_arg_info = prototype->ret_abi_info;
 
@@ -239,62 +236,68 @@ LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype)
 		case ABI_ARG_EXPAND:
 			UNREACHABLE;
 		case ABI_ARG_INDIRECT:
-			vec_add(params, llvm_get_ptr_type(context, call_return_type));
-			return_type = llvm_get_type(context, type_void);
+			vec_add(*params, llvm_get_ptr_type(context, call_return_type));
+			retval = llvm_get_type(context, type_void);
 			break;
 		case ABI_ARG_EXPAND_COERCE:
 		{
 			LLVMTypeRef lo = llvm_abi_type(context, ret_arg_info->direct_pair.lo);
 			if (!abi_type_is_valid(ret_arg_info->direct_pair.hi))
 			{
-				return_type = lo;
+				retval = lo;
 				break;
 			}
 			LLVMTypeRef hi = llvm_abi_type(context, ret_arg_info->direct_pair.hi);
-			return_type = llvm_get_twostruct(context, lo, hi);
+			retval = llvm_get_twostruct(context, lo, hi);
 			break;
 		}
 		case ABI_ARG_IGNORE:
-			return_type = llvm_get_type(context, type_void);
+			retval = llvm_get_type(context, type_void);
 			break;
 		case ABI_ARG_DIRECT_PAIR:
 		{
 			LLVMTypeRef lo = llvm_abi_type(context, ret_arg_info->direct_pair.lo);
 			LLVMTypeRef hi = llvm_abi_type(context, ret_arg_info->direct_pair.hi);
-			return_type = llvm_get_twostruct(context, lo, hi);
+			retval = llvm_get_twostruct(context, lo, hi);
 			break;
 		}
 		case ABI_ARG_DIRECT:
-			return_type = llvm_get_type(context, call_return_type);
+			retval = llvm_get_type(context, call_return_type);
 			break;
 		case ABI_ARG_DIRECT_SPLIT_STRUCT:
 			UNREACHABLE
 		case ABI_ARG_DIRECT_COERCE_INT:
-			return_type = LLVMIntTypeInContext(context->context, type_size(call_return_type) * 8);
+			retval = LLVMIntTypeInContext(context->context, type_size(call_return_type) * 8);
 			break;
 		case ABI_ARG_DIRECT_COERCE:
-			return_type = llvm_get_type(context, ret_arg_info->direct_coerce_type);
+			retval = llvm_get_type(context, ret_arg_info->direct_coerce_type);
 			break;
 	}
 
 	// If it's failable and it's not void (meaning ret_abi_info will be NULL)
 	if (prototype->ret_by_ref)
 	{
-		add_func_type_param(context, type_get_ptr(type_lowering(prototype->ret_by_ref_type)), prototype->ret_by_ref_abi_info, &params);
+		add_func_type_param(context, type_get_ptr(type_lowering(prototype->ret_by_ref_type)), prototype->ret_by_ref_abi_info, params);
 	}
 
 	// Add in all of the required arguments.
 	VECEACH(prototype->params, i)
 	{
-		add_func_type_param(context, prototype->params[i], prototype->abi_args[i], &params);
+		add_func_type_param(context, prototype->params[i], prototype->abi_args[i], params);
 	}
 
 	VECEACH(prototype->varargs, i)
 	{
-		add_func_type_param(context, prototype->varargs[i], prototype->abi_varargs[i], &params);
+		add_func_type_param(context, prototype->varargs[i], prototype->abi_varargs[i], params);
 	}
+	return retval;
+}
 
-	return LLVMFunctionType(return_type, params, vec_size(params), prototype->variadic == VARIADIC_RAW);
+LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype)
+{
+	LLVMTypeRef *params = NULL;
+	LLVMTypeRef ret = llvm_update_prototype_abi(context, prototype, &params);
+	return LLVMFunctionType(ret, params, vec_size(params), prototype->variadic == VARIADIC_RAW);
 }
 
 
