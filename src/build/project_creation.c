@@ -94,7 +94,7 @@ void create_project(BuildOptions *build_options)
 
 	if (!dir_change(build_options->project_name)) goto ERROR;
 
-	if (!file_touch("LICENCE")) goto ERROR;
+	if (!file_touch("LICENSE")) goto ERROR;
 
 	if (!file_touch("README.md")) goto ERROR;
 
