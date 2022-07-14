@@ -27,6 +27,13 @@ macro void @scope(&variable; @body) @autoimport
 	@body();
 }
 
+macro void @swap(&a, &b) @autoimport
+{
+	$typeof(a) temp = a;
+    a = b;
+    b = temp;
+}
+
 /**
  * Convert a variant type to a type, returning an failure if there is a type mismatch.
  *

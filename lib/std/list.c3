@@ -115,6 +115,10 @@ fn void List.free(List *list)
     list.size = 0;
 }
 
+fn void List.swap(List *list, usize i, usize j)
+{
+	@swap(list.entries[i], list.entries[j]);
+}
 
 macro Type List.@item_at(List &list, usize index) @operator(elementat)
 {
