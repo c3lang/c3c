@@ -25,67 +25,82 @@ bitstruct PrintFlags : uint
 	bool adapt_exp : 7;
 }
 
+struct PrintParam
+{
+	OutputFn outfn;
+	char[] buffer;
+	PrintFlags flags;
+	uint width;
+	uint prec;
+	usize idx;
+}
+
 define OutputFn = fn void!(char c, char[] buffer, usize buffer_idx);
 
+fn void! PrintParam.out(PrintParam* param, char c)
+{
 
-private fn usize! out_str(OutputFn out, char[] buffer, usize idx, variant arg, uint prec, uint width, PrintFlags flags)
+	param.outfn(c, param.buffer, param.idx++)?;
+}
+
+private fn void! out_str(PrintParam* param, variant arg)
 {
 	switch (arg.type.kind)
 	{
 		case TYPEID:
-			return out_substr(out, buffer, idx, "<typeid>", prec, width, flags);
+			return out_substr(param, "<typeid>");
 		case VOID:
-        	return out_substr(out, buffer, idx, "void", prec, width, flags);
+        	return out_substr(param, "void");
 		case ANYERR:
-        	return out_substr(out, buffer, idx, "<anyerr>", prec, width, flags);
+        	return out_substr(param, "<anyerr>");
 		case VARIANT:
-        	return out_substr(out, buffer, idx, "<variant>", prec, width, flags);
+        	return out_substr(param, "<variant>");
 		case ENUM:
-        	return out_substr(out, buffer, idx, "<enum>", prec, width, flags);
+        	return out_substr(param, "<enum>");
 		case FAULT:
-        	return out_substr(out, buffer, idx, "<fault>", prec, width, flags);
+        	return out_substr(param, "<fault>");
 		case STRUCT:
-        	return out_substr(out, buffer, idx, "<struct>", prec, width, flags);
+        	return out_substr(param, "<struct>");
 		case UNION:
-        	return out_substr(out, buffer, idx, "<union>", prec, width, flags);
+        	return out_substr(param, "<union>");
 		case BITSTRUCT:
-        	return out_substr(out, buffer, idx, "<bitstruct>", prec, width, flags);
+        	return out_substr(param, "<bitstruct>");
 		case FUNC:
-        	return out_substr(out, buffer, idx, "<func>", prec, width, flags);
+        	return out_substr(param, "<func>");
 		case FAILABLE:
-        	return out_substr(out, buffer, idx, "<failable>", prec, width, flags);
+        	return out_substr(param, "<failable>");
 		case DISTINCT:
-        	return out_substr(out, buffer, idx, "<distinct>", prec, width, flags);
+        	return out_substr(param, "<distinct>");
 		case POINTER:
 			typeid inner = arg.type.inner;
 			if (inner.kind == TypeKind.ARRAY && inner.inner == char.typeid)
 			{
 				char *ptr = *(char**)arg.ptr;
-				return out_substr(out, buffer, idx, ptr[0..inner.len - 1], prec, width, flags);
+				return out_substr(param, ptr[0..inner.len - 1]);
 			}
-			return ntoa_variant(out, buffer, idx, arg, 16, prec, width, flags);
+			return ntoa_variant(param, arg, 16);
 		case SIGNED_INT:
 		case UNSIGNED_INT:
-			return ntoa_variant(out, buffer, idx, arg, 10, prec, width, flags);
+			return ntoa_variant(param, arg, 10);
 		case FLOAT:
-			return ftoa(out, buffer, idx, float_from_variant(arg), prec, width, flags);
+			return ftoa(param, float_from_variant(arg));
 		case ARRAY:
-			return out_substr(out, buffer, idx, "[]", prec, width, flags);
+			return out_substr(param, "[]");
 		case VECTOR:
-			return out_substr(out, buffer, idx, "[]", prec, width, flags);
+			return out_substr(param, "[]");
 		case SUBARRAY:
-			return out_substr(out, buffer, idx, *(char[]*)arg.ptr, prec, width, flags);
+			return out_substr(param, *(char[]*)arg.ptr);
 		case BOOL:
 			if (*(bool*)arg.ptr)
 			{
-				return out_substr(out, buffer, idx, "true", prec, width, flags);
+				return out_substr(param, "true");
 			}
 			else
 			{
-				return out_substr(out, buffer, idx, "false", prec, width, flags);
+				return out_substr(param, "false");
 			}
 		default:
-			return out_substr(out, buffer, idx, "Invalid type", prec, width, flags);
+			return out_substr(param, "Invalid type");
 	}
 }
 
@@ -154,84 +169,64 @@ private fn void! out_putchar_fn(char c, char[] buffer @unused, usize idx @unused
 	libc::putchar(c);
 }
 
-private fn usize! out_reverse(OutputFn out, char[] out_buffer, usize buffer_idx, char[] buf, uint width, PrintFlags flags)
+private fn void! PrintParam.out_reverse(PrintParam* param, char[] buf)
 {
-	usize buffer_start_idx = buffer_idx;
+	usize buffer_start_idx = param.idx;
 	usize len = buf.len;
     // pad spaces up to given width
-    if (!flags.left && !flags.zeropad)
+    if (!param.flags.left && !param.flags.zeropad)
     {
-        for (usize i = len; i < width; i++)
+        for (usize i = len; i < param.width; i++)
         {
-            out(' ', out_buffer, buffer_idx++)?;
+            param.out(' ')?;
         }
     }
     // reverse string
-    while (len) out(buf[--len], out_buffer, buffer_idx++)?;
+    while (len) param.out(buf[--len])?;
 
 	// append pad spaces up to given width
-    if (flags.left)
-    {
-        while (buffer_idx - buffer_start_idx < width)
-        {
-            out(' ', out_buffer, buffer_idx++)?;
-        }
-    }
-	return buffer_idx;
+	return param.left_adjust(param.idx - buffer_start_idx);
 }
 
-private fn usize! out_char(OutputFn out, char[] buffer, usize idx, variant arg, uint width, PrintFlags flags)
+private fn void! out_char(PrintParam* param, variant arg)
 {
 	uint l = 1;
 	// pre padding
-	if (!flags.left)
-	{
-		while (l++ < width)
-		{
-			out(' ', buffer, idx++);
-		}
-	}
+	param.right_adjust(l)?;
     // char output
     Char32 c = types::variant_to_int(arg, uint) ?? 0xFFFD;
 	switch (true)
 	{
 		case c < 0x7f:
-			out((char)c, buffer, idx++);
+			param.out((char)c)?;
 		case c < 0x7ff:
-			out((char)(0xC0 | c >> 6), buffer, idx++);
-			out((char)(0x80 | (c & 0x3F)), buffer, idx++);
+			param.out((char)(0xC0 | c >> 6))?;
+			param.out((char)(0x80 | (c & 0x3F)))?;
         case c < 0xffff:
-			out((char)(0xE0 | c >> 12), buffer, idx++);
-			out((char)(0x80 | (c >> 6 & 0x3F)), buffer, idx++);
-			out((char)(0x80 | (c & 0x3F)), buffer, idx++);
+			param.out((char)(0xE0 | c >> 12))?;
+			param.out((char)(0x80 | (c >> 6 & 0x3F)))?;
+			param.out((char)(0x80 | (c & 0x3F)))?;
         default:
-			out((char)(0xF0 | c >> 18), buffer, idx++);
-			out((char)(0x80 | (c >> 12 & 0x3F)), buffer, idx++);
-			out((char)(0x80 | (c >> 6 & 0x3F)), buffer, idx++);
-			out((char)(0x80 | (c & 0x3F)), buffer, idx++);
+			param.out((char)(0xF0 | c >> 18))?;
+			param.out((char)(0x80 | (c >> 12 & 0x3F)))?;
+			param.out((char)(0x80 | (c >> 6 & 0x3F)))?;
+			param.out((char)(0x80 | (c & 0x3F)))?;
 	}
-	if (flags.left)
-	{
-		while (l++ < width)
-		{
-			out(' ', buffer, idx++);
-		}
-	}
-	return idx;
+	return param.left_adjust(l);
 }
 
-private fn usize! ntoa_format(OutputFn out, char[] out_buffer, usize buffer_idx, char[] buf, usize len, bool negative, uint base, uint prec, uint width, PrintFlags flags)
+private fn void! ntoa_format(PrintParam* param, char[] buf, usize len, bool negative, uint base)
 {
 	// pad leading zeros
-	if (!flags.left)
+	if (!param.flags.left)
 	{
-		if (width && flags.zeropad && (negative || flags.plus || flags.space)) width--;
-		while (len < prec)
+		if (param.width && param.flags.zeropad && (negative || param.flags.plus || param.flags.space)) param.width--;
+		while (len < param.prec)
 		{
 			if (len >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
 			buf[len++] = '0';
 		}
-		while (flags.zeropad && len < width)
+		while (param.flags.zeropad && len < param.width)
 		{
 			if (len >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
 			buf[len++] = '0';
@@ -239,9 +234,9 @@ private fn usize! ntoa_format(OutputFn out, char[] out_buffer, usize buffer_idx,
 	}
 
 	// handle hash
-	if (flags.hash && base != 10)
+	if (param.flags.hash && base != 10)
 	{
-		if (!flags.precision && len && len == prec && len == width)
+		if (!param.flags.precision && len && len == param.prec && len == param.width)
 		{
 			len--;
 			if (len) len--;
@@ -252,11 +247,11 @@ private fn usize! ntoa_format(OutputFn out, char[] out_buffer, usize buffer_idx,
 			switch (base)
 			{
 				case 16:
-					buf[len++] = flags.uppercase ? 'X' : 'x';
+					buf[len++] = param.flags.uppercase ? 'X' : 'x';
 				case 8:
-					buf[len++] = flags.uppercase ? 'O' : 'o';
+					buf[len++] = param.flags.uppercase ? 'O' : 'o';
 				case 2:
-					buf[len++] = flags.uppercase ? 'B' : 'b';
+					buf[len++] = param.flags.uppercase ? 'B' : 'b';
 				default:
 					unreachable();
 			}
@@ -269,15 +264,15 @@ private fn usize! ntoa_format(OutputFn out, char[] out_buffer, usize buffer_idx,
 		case negative:
 			if (len >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
 			buf[len++] = '-';
-		case flags.plus:
+		case param.flags.plus:
 			if (len >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
 			buf[len++] = '+';
-		case flags.space:
+		case param.flags.space:
 			if (len >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
 			buf[len++] = ' ';
 	}
-	if (!len) return buffer_idx;
-	return out_reverse(out, out_buffer, buffer_idx, buf[0..len - 1], width, flags);
+	if (!len) return;
+	return param.out_reverse(buf[0..len - 1]);
 }
 
 $if (env::I128_SUPPORT):
@@ -286,25 +281,25 @@ $else:
 define NtoaType = ulong;
 $endif;
 
-private fn usize! ntoa_variant(OutputFn out, char[] out_buffer, usize buffer_idx, variant arg, uint base, uint prec, uint width, PrintFlags flags)
+private fn void! ntoa_variant(PrintParam* param, variant arg, uint base)
 {
 	bool is_neg;
 	NtoaType val = int_from_variant(arg, &is_neg);
-	return ntoa(out, out_buffer, buffer_idx, val, is_neg, base, prec, width, flags) @inline;
+	return ntoa(param, val, is_neg, base) @inline;
 }
 
-private fn usize! ntoa(OutputFn out, char[] out_buffer, usize buffer_idx, NtoaType value, bool negative, uint base, uint prec, uint width, PrintFlags flags)
+private fn void! ntoa(PrintParam* param, NtoaType value, bool negative, uint base)
 {
 	char[PRINTF_NTOA_BUFFER_SIZE] buf = void;
 	usize len = 0;
 
 	// no hash for 0 values
-	if (!value) flags.hash = false;
+	if (!value) param.flags.hash = false;
 
 	// write if precision != 0 or value is != 0
-	if (!flags.precision || value)
+	if (!param.flags.precision || value)
 	{
-		char past_10 = (flags.uppercase ? 'A' : 'a') - 10;
+		char past_10 = (param.flags.uppercase ? 'A' : 'a') - 10;
 		do
 		{
 			if (len >= PRINTF_NTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
@@ -314,14 +309,14 @@ private fn usize! ntoa(OutputFn out, char[] out_buffer, usize buffer_idx, NtoaTy
 		}
 		while (value);
 	}
-	return ntoa_format(out, out_buffer, buffer_idx, buf[..PRINTF_NTOA_BUFFER_SIZE - 1], len, negative, base, prec, width, flags);
+	return ntoa_format(param, buf[..PRINTF_NTOA_BUFFER_SIZE - 1], len, negative, base);
 }
 
 
 define FloatType = double;
 
 // internal ftoa for fixed decimal floating point
-private fn usize! ftoa(OutputFn out, char[] buffer, usize idx, FloatType value, uint prec, uint width, PrintFlags flags)
+private fn void! ftoa(PrintParam* param, FloatType value)
 {
 	char[PRINTF_FTOA_BUFFER_SIZE] buf = void;
 	usize len = 0;
@@ -333,26 +328,26 @@ private fn usize! ftoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 	// test for special values
 	if (value != value)
 	{
-		return out_reverse(out, buffer, idx, "nan", width, flags);
+		return param.out_reverse("nan");
 	}
 	if (value < -FloatType.max)
 	{
-		return out_reverse(out, buffer, idx, "fni-", width, flags);
+		return param.out_reverse("fni-");
 	}
 	if (value > FloatType.max)
 	{
-		if (flags.plus)
+		if (param.flags.plus)
 		{
-			return out_reverse(out, buffer, idx, "fni+", width, flags);
+			return param.out_reverse("fni+");
 		}
-		return out_reverse(out, buffer, idx, "fni", width, flags);
+		return param.out_reverse("fni");
 	}
 
 	// test for very large values
 	// standard printf behavior is to print EVERY whole number digit -- which could be 100s of characters overflowing your buffers == bad
 	if (value > PRINTF_MAX_FLOAT || value < -PRINTF_MAX_FLOAT)
 	{
-		return etoa(out, buffer, idx, value, prec, width, flags);
+		return etoa(param, value);
 	}
 
 	// test for negative
@@ -360,19 +355,19 @@ private fn usize! ftoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 	if (negative) value = 0 - value;
 
 	// set default precision, if not set explicitly
-	if (!flags.precision) prec = PRINTF_DEFAULT_FLOAT_PRECISION;
+	if (!param.flags.precision) param.prec = PRINTF_DEFAULT_FLOAT_PRECISION;
 
 	// limit precision to 9, cause a prec >= 10 can lead to overflow errors
-	while (prec > 9)
+	while (param.prec > 9)
 	{
 		if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
 		buf[len++] = '0';
-		prec--;
+		param.prec--;
 	}
 
 	// Safe due to 1e9 limit.
 	int whole = (int)value;
-	FloatType tmp = (value - whole) * POW10[prec];
+	FloatType tmp = (value - whole) * POW10[param.prec];
 	ulong frac = (ulong)tmp;
 	diff = tmp - frac;
 
@@ -381,7 +376,7 @@ private fn usize! ftoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 		case diff > 0.5:
 			++frac;
 			// handle rollover, e.g. case 0.99 with prec 1 is 1.0
-			if (frac >= POW10[prec])
+			if (frac >= POW10[param.prec])
 			{
 				frac = 0;
 				++whole;
@@ -392,7 +387,7 @@ private fn usize! ftoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 			// if halfway, round up if odd OR if last digit is 0
 			++frac;
 	}
-	if (!prec)
+	if (!param.prec)
 	{
 		diff = value - (FloatType)whole;
 		if ((!(diff < 0.5) || diff > 0.5) && (whole & 1))
@@ -404,7 +399,7 @@ private fn usize! ftoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 	}
 	else
 	{
-		uint count = prec;
+		uint count = param.prec;
 		// now do fractional part, as an unsigned number
 		do
 		{
@@ -433,10 +428,10 @@ private fn usize! ftoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 	while (whole /= 10);
 
 	// pad leading zeros
-	if (!flags.left && flags.zeropad)
+	if (!param.flags.left && param.flags.zeropad)
 	{
-		if (width && (negative || flags.plus || flags.space)) width--;
-		while (len < width)
+		if (param.width && (negative || param.flags.plus || param.flags.space)) param.width--;
+		while (len < param.width)
 		{
 			if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
 			buf[len++] = '0';
@@ -445,8 +440,8 @@ private fn usize! ftoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 
 	char next = {|
 		if (negative) return '-';
-		if (flags.plus) return '+';
-		if (flags.space) return ' ';
+		if (param.flags.plus) return '+';
+		if (param.flags.space) return ' ';
 		return 0;
 	|};
 	if (next)
@@ -454,7 +449,7 @@ private fn usize! ftoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 		if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
 		buf[len++] = next;
 	}
-	return out_reverse(out, buffer, idx, buf[..len-1], width, flags);
+	return param.out_reverse(buf[..len-1]);
 }
 
 union ConvUnion
@@ -463,12 +458,12 @@ union ConvUnion
 	double f;
 }
 
-private fn usize! etoa(OutputFn out, char[] buffer, usize idx, FloatType value, uint prec, uint width, PrintFlags flags)
+private fn void! etoa(PrintParam* param, FloatType value)
 {
 	// check for NaN and special values
 	if (value != value || value < FloatType.min || value > FloatType.max)
 	{
-		return ftoa(out, buffer, idx, value, prec, width, flags);
+		return ftoa(param, value);
 	}
 
 	// determine the sign
@@ -476,9 +471,9 @@ private fn usize! etoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 	if (negative) value = -value;
 
 	// default precision
-	if (!flags.precision)
+	if (!param.flags.precision)
 	{
-		prec = PRINTF_DEFAULT_FLOAT_PRECISION;
+		param.prec = PRINTF_DEFAULT_FLOAT_PRECISION;
 	}
 
 	// determine the decimal exponent
@@ -508,13 +503,13 @@ private fn usize! etoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 	uint minwidth = ((expval < 100) && (expval > -100)) ? 4 : 5;
 
 	// in "%g" mode, "prec" is the number of *significant figures* not decimals
-	if (flags.adapt_exp)
+	if (param.flags.adapt_exp)
 	{
 		// do we want to fall-back to "%f" mode?
 		if (value >= 1e-4 && value < 1e6)
 		{
-			prec = prec > expval ? prec - expval - 1 : 0;
-			flags.precision = true;   // make sure ftoa respects precision
+			param.prec = param.prec > expval ? param.prec - expval - 1 : 0;
+			param.flags.precision = true;   // make sure ftoa respects precision
 			// no characters in exponent
 			minwidth = 0;
 			expval = 0;
@@ -522,39 +517,41 @@ private fn usize! etoa(OutputFn out, char[] buffer, usize idx, FloatType value, 
 		else
 		{
 			// we use one sigfig for the whole part
-			if (prec > 0 && flags.precision) prec--;
+			if (param.prec > 0 && param.flags.precision) param.prec--;
 		}
 	}
 
 	// Adjust width
-	uint fwidth = width > minwidth ? width - minwidth : 0;
+	uint fwidth = param.width > minwidth ? param.width - minwidth : 0;
 
 	// if we're padding on the right, DON'T pad the floating part
-	if (flags.left && minwidth) fwidth = 0;
+	if (param.flags.left && minwidth) fwidth = 0;
 
 	// rescale the float value
 	if (expval) value /= conv.f;
 
 	// output the floating part
-	usize start_idx = idx;
-	PrintFlags ftoa_flags = flags;
-	flags.adapt_exp = false;
-	idx = ftoa(out, buffer, idx, negative ? -value : value, prec, fwidth, ftoa_flags)?;
+	usize start_idx = param.idx;
+	PrintFlags old = param.flags;
+	param.flags.adapt_exp = false;
+	param.width = fwidth;
+	ftoa(param, negative ? -value : value)?;
+	param.flags = old;
 
 	// output the exponent part
 	if (minwidth)
 	{
 		// output the exponential symbol
-		out(flags.uppercase ? 'E' : 'e', buffer, idx++);
+		param.out(param.flags.uppercase ? 'E' : 'e');
 		// output the exponent value
-		idx = ntoa(out, buffer, idx, (NtoaType)(expval < 0 ? -expval : expval), expval < 0, 10, 0, minwidth - 1, { .zeropad = true, .plus = true } )?;
+		param.flags = { .zeropad = true, .plus = true };
+		param.width = minwidth - 1;
+		param.prec = 0;
+		ntoa(param, (NtoaType)(expval < 0 ? -expval : expval), expval < 0, 10)?;
+		param.flags = old;
 		// might need to right-pad spaces
-		if (flags.left)
-		{
-			while (idx - start_idx < width) out(' ', buffer, idx++);
-		}
+		param.left_adjust(param.idx - start_idx)?;
 	}
-	return idx;
 }
 
 private fn FloatType float_from_variant(variant arg)
@@ -661,14 +658,24 @@ fn usize! printf(char[] format, args...)
   return vsnprintf(&out_putchar_fn, " ", format, args);
 }
 
-private fn usize! out_substr(OutputFn out, char[] buffer, usize idx, char[] str, uint prec, uint width, PrintFlags flags)
+private fn void! PrintParam.left_adjust(PrintParam* param, usize len)
+{
+	if (!param.flags.left) return;
+	for (usize l = len; l < param.width; l++) param.out(' ')?;
+}
+
+private fn void! PrintParam.right_adjust(PrintParam* param, usize len)
+{
+	if (param.flags.left) return;
+	for (usize l = len; l < param.width; l++) param.out(' ')?;
+}
+
+private fn void! out_substr(PrintParam* param, char[] str)
 {
 	usize l = conv::utf8_codepoints(str);
-	if (flags.precision && l < prec) l = prec;
-	if (!flags.left)
-	{
-		while (l++ < width)  out(' ', buffer, idx++)?;
-	}
+	uint prec = param.prec;
+	if (param.flags.precision && l < prec) l = prec;
+	param.right_adjust(' ')?;
 	usize index = 0;
 	usize chars = str.len;
 	char* ptr = str.ptr;
@@ -676,26 +683,21 @@ private fn usize! out_substr(OutputFn out, char[] buffer, usize idx, char[] str,
 	{
 		char c = ptr[index];
 		// Break if we have precision set and we ran out...
-		if (c & 0xC0 != 0x80 && flags.precision && !prec--) break;
-		out(c, buffer, idx++);
+		if (c & 0xC0 != 0x80 && param.flags.precision && !prec--) break;
+		param.out(c)?;
         index++;
 	}
-	if (flags.left)
-	{
-		while (l++ < width) out(' ', buffer, idx++)?;
-    }
-    return idx;
+	return param.left_adjust(l);
 }
 
 private fn usize! vsnprintf(OutputFn out, char[] buffer, char[] format, variant[] variants)
 {
-	usize idx;
-
 	if (!buffer)
 	{
 		// use null output function
 		out = &out_null_fn;
 	}
+	PrintParam param = { .outfn = out, .buffer = buffer };
 	usize format_len = format.len;
 	usize variant_index = 0;
 	for (usize i = 0; i < format_len; i++)
@@ -705,7 +707,7 @@ private fn usize! vsnprintf(OutputFn out, char[] buffer, char[] format, variant[
 		if (c != '%')
 		{
 			// no
-			out(c, buffer, idx++)?;
+			param.out(c)?;
 			continue;
 		}
 		i++;
@@ -713,43 +715,42 @@ private fn usize! vsnprintf(OutputFn out, char[] buffer, char[] format, variant[
 		c = format[i];
 		if (c == '%')
 		{
-			out(c, buffer, idx++)?;
+			param.out(c)?;
 			continue;
 		}
 		// evaluate flags
-		PrintFlags flags;
+		param.flags = {};
 		while FLAG_EVAL: (true)
 		{
 			switch (c)
 			{
-				case '0': flags.zeropad = true;
-				case '-': flags.left = true;
-				case '+': flags.plus = true;
-				case ' ': flags.space = true;
-				case '#': flags.hash = true;
+				case '0': param.flags.zeropad = true;
+				case '-': param.flags.left = true;
+				case '+': param.flags.plus = true;
+				case ' ': param.flags.space = true;
+				case '#': param.flags.hash = true;
 				default: break FLAG_EVAL;
 			}
 			if (++i >= format_len) return PrintFault.INVALID_FORMAT_STRING!;
 			c = format[i];
 		}
-
 		// evaluate width field
-		int width = printf_parse_format_field(variants.ptr, variants.len, &variant_index, format.ptr, format.len, &i)?;
+		int w = printf_parse_format_field(variants.ptr, variants.len, &variant_index, format.ptr, format.len, &i)?;
 		c = format[i];
-		if (width < 0)
+		if (w < 0)
 		{
-			flags.left = true;
-			width = -width;
+			param.flags.left = true;
+			w = -w;
 		}
-
+		param.width = w;
 		// evaluate precision field
-		uint precision = 0;
+		param.prec = 0;
 		if (c == '.')
 		{
-			flags.precision = true;
+			param.flags.precision = true;
 			if (++i >= format_len) return PrintFault.INVALID_FORMAT_STRING!;
 			int prec = printf_parse_format_field(variants.ptr, variants.len, &variant_index, format.ptr, format.len, &i)?;
-			precision = prec < 0 ? 0 : prec;
+			param.prec = prec < 0 ? 0 : prec;
 			c = format[i];
 		}
 
@@ -761,105 +762,72 @@ private fn usize! vsnprintf(OutputFn out, char[] buffer, char[] format, variant[
 		{
 			case 'd':
 				base = 10;
-				flags.hash = false;
+				param.flags.hash = false;
 			case 'X' :
-				flags.uppercase = true;
+				param.flags.uppercase = true;
 				nextcase;
 			case 'x' :
 				base = 16;
 			case 'O':
-				flags.uppercase = true;
+				param.flags.uppercase = true;
 				nextcase;
 			case 'o' :
 				base = 8;
 			case 'B':
-				flags.uppercase = true;
+				param.flags.uppercase = true;
 				nextcase;
 			case 'b' :
 				base = 2;
 		    case 'F' :
-		        flags.uppercase = true;
+		        param.flags.uppercase = true;
 		        nextcase;
 		    case 'f':
-		        idx = ftoa(out, buffer, idx, float_from_variant(current), precision, width, flags)?;
+		        ftoa(&param, float_from_variant(current))?;
 				continue;
 			case 'E':
-		        flags.uppercase = true;
+		        param.flags.uppercase = true;
 		        nextcase;
             case 'e':
-				idx = etoa(out, buffer, idx, float_from_variant(current), precision, width, flags)?;
+				etoa(&param, float_from_variant(current))?;
 				continue;
 			case 'G':
-				flags.uppercase = true;
+				param.flags.uppercase = true;
 				nextcase;
 			case 'g':
-				flags.adapt_exp = true;
-				idx = etoa(out, buffer, idx, float_from_variant(current), precision, width, flags)?;
+				param.flags.adapt_exp = true;
+				etoa(&param, float_from_variant(current))?;
 				continue;
 			case 'c':
-				idx = out_char(out, buffer, idx, current, width, flags)?;
+				out_char(&param, current)?;
 				continue;
 			case 's':
-				idx = out_str(out, buffer, idx, current, precision, width, flags)?;
+				out_str(&param, current)?;
 				continue;
 			case 'p':
-				width = (uint)(void*.sizeof * 2);
-				flags.zeropad = true;
-				flags.hash = true;
+				param.width = (uint)(void*.sizeof * 2);
+				param.flags.zeropad = true;
+				param.flags.hash = true;
 				base = 16;
 			default:
 				return PrintFault.INVALID_FORMAT_STRING!;
 		}
 		if (base != 10)
 		{
-			flags.plus = false;
-			flags.space = false;
+			param.flags.plus = false;
+			param.flags.space = false;
 		}
 		// ignore '0' flag when precision is given
-		if (flags.precision) flags.zeropad = false;
+		if (param.flags.precision) param.flags.zeropad = false;
 
 		bool is_neg;
 		NtoaType v = int_from_variant(current, &is_neg);
 
-		ntoa(out, buffer, idx, v, is_neg, base, precision, width, flags)?;
+		ntoa(&param, v, is_neg, base)?;
 	}
-/*
-
-			case 's' : {
-				const char* p = va_arg(va, char*);
-				unsigned int l = _strnlen_s(p, precision ? precision : (size_t)-1);
-				// pre padding
-				if (flags & FLAGS_PRECISION) {
-					l = (l < precision ? l : precision);
-				}
-				if (!(flags & FLAGS_LEFT)) {
-					while (l++ < width) {
-						out(' ', buffer, idx++, maxlen);
-					}
-				}
-				// string output
-				while ((*p != 0) && (!(flags & FLAGS_PRECISION) || precision--)) {
-					out(*(p++), buffer, idx++, maxlen);
-				}
-				// post padding
-				if (flags & FLAGS_LEFT) {
-					while (l++ < width) {
-						out(' ', buffer, idx++, maxlen);
-					}
-				}
-				format++;
-				break;
-			}
-
-
-
-
-	}
-*/
 	// termination
 //	out((char)0, buffer, idx < maxlen ? idx : maxlen - 1U, maxlen);
 
 	// return written chars without terminating \0
-	return (int)idx;
+	return param.idx;
 }
 

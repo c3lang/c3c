@@ -6399,6 +6399,13 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 			success = false;
 			goto EXIT;
 		}
+		if (type_no_fail(sum_returns) != type_void  && !context->active_scope.jump_end)
+		{
+			Ast *ast = ast_last(astptr(expr->expr_block.first_stmt));
+			SEMA_ERROR(ast, "Expected a return statement following this statement.");
+			success = false;
+			goto EXIT;
+		}
 		expr->type = sum_returns;
 
 	EXIT:
