@@ -241,8 +241,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_PTR:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
-		case EXPR_TYPEID_KIND:
 			MACRO_COPY_EXPR(expr->inner_expr);
+			return expr;
+		case EXPR_TYPEID_INFO:
+			MACRO_COPY_EXPRID(expr->typeid_info_expr.parent);
 			return expr;
 		case EXPR_COND:
 			MACRO_COPY_EXPR_LIST(expr->cond_expr);

@@ -228,7 +228,6 @@ bool expr_is_pure(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_BUILTIN:
-		case EXPR_TYPEID_KIND:
 			return false;
 		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:
@@ -294,6 +293,8 @@ bool expr_is_pure(Expr *expr)
 				if (!expr_is_pure(expr->expression_list[i])) return false;
 			}
 			return true;
+		case EXPR_TYPEID_INFO:
+			return exprid_is_pure(expr->typeid_info_expr.parent);
 		case EXPR_TYPEOFANY:
 		case EXPR_CT_EVAL:
 			return expr_is_pure(expr->inner_expr);
@@ -329,7 +330,7 @@ bool expr_is_simple(Expr *expr)
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_TERNARY:
-			return false;
+			return expr_is_simple(exprptr(expr->ternary_expr.else_expr)) && expr_is_simple(exprptr(expr->ternary_expr.then_expr));
 		case EXPR_RETHROW:
 			expr = expr->rethrow_expr.inner;
 			goto RETRY;

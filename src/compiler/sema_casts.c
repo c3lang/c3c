@@ -780,6 +780,7 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
 		case EXPR_RETVAL:
+		case EXPR_TYPEID_INFO:
 			if (type_size(expr->type) > type_size(type)) return expr;
 			return NULL;
 		case EXPR_EXPRESSION_LIST:
@@ -835,7 +836,6 @@ Expr *recursive_may_narrow_float(Expr *expr, Type *type)
 		case EXPR_COMPILER_CONST:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
-		case EXPR_TYPEID_KIND:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_float(expr->unary_expr.expr, type);
@@ -935,6 +935,7 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT:
 		case EXPR_RETVAL:
+		case EXPR_TYPEID_INFO:
 			if (type_size(expr->type) > type_size(type)) return expr;
 			return NULL;
 		case EXPR_LEN:
@@ -988,7 +989,6 @@ Expr *recursive_may_narrow_int(Expr *expr, Type *type)
 		case EXPR_COMPILER_CONST:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
-		case EXPR_TYPEID_KIND:
 			UNREACHABLE
 		case EXPR_POST_UNARY:
 			return recursive_may_narrow_int(expr->unary_expr.expr, type);

@@ -370,9 +370,11 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			}
 		case EXPR_EXPRESSION_LIST:
 			return expr_list_is_constant_eval(expr->expression_list, eval_kind);
+		case EXPR_TYPEID_INFO:
+			expr = exprptr(expr->typeid_info_expr.parent);
+			goto RETRY;
 		case EXPR_FAILABLE:
 		case EXPR_GROUP:
-		case EXPR_TYPEID_KIND:
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_INITIALIZER_LIST:
@@ -591,7 +593,11 @@ bool sema_expr_check_assign(SemaContext *c, Expr *expr)
 		SEMA_ERROR(expr, "An assignable expression, like a variable, was expected here.");
 		return false;
 	}
-	if (expr->expr_kind == EXPR_IDENTIFIER) expr->identifier_expr.decl->var.is_written = true;
+	if (expr->expr_kind == EXPR_BITACCESS || expr->expr_kind == EXPR_ACCESS) expr = expr->access_expr.parent;
+	if (expr->expr_kind == EXPR_IDENTIFIER)
+	{
+		expr->identifier_expr.decl->var.is_written = true;
+	}
 	if (expr->expr_kind != EXPR_UNARY) return true;
 	Expr *inner = expr->inner_expr;
 	if (inner->expr_kind != EXPR_IDENTIFIER) return true;
@@ -3283,6 +3289,92 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	return true;
 }
 
+static inline void sema_rewrite_typeid_kind(Expr *expr, Expr *parent, Expr *current_parent)
+{
+	Module *module = global_context_find_module(kw_std__core__types);
+	Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
+	Type *type_for_kind = type_kind ? type_kind->type : type_char;
+	if (current_parent->expr_kind == EXPR_CONST)
+	{
+		unsigned val = type_get_introspection_kind(current_parent->const_expr.typeid->type_kind);
+		expr_rewrite_to_int_const(expr, type_for_kind, val, false);
+		return;
+	}
+	expr->expr_kind = EXPR_TYPEID_INFO;
+	expr->typeid_info_expr.parent = exprid(parent);
+	expr->typeid_info_expr.kind = TYPEID_INFO_KIND;
+	expr->type = type_for_kind;
+}
+
+static inline bool sema_rewrite_typeid_inner(Expr *expr, Expr *parent, Expr *current_parent)
+{
+	if (current_parent->expr_kind == EXPR_CONST)
+	{
+		Type *type = type_flatten_distinct(current_parent->const_expr.typeid);
+		Type *inner = NULL;
+		switch (type->type_kind)
+		{
+			case TYPE_POINTER:
+				inner = type->pointer;
+				break;
+			case TYPE_FAILABLE:
+				inner = type->failable;
+				break;
+			case TYPE_ARRAY:
+			case TYPE_FLEXIBLE_ARRAY:
+			case TYPE_SUBARRAY:
+			case TYPE_INFERRED_ARRAY:
+			case TYPE_VECTOR:
+				inner = type->array.base;
+				break;
+			default:
+				inner = NULL;
+				break;
+		}
+		if (!inner)
+		{
+			SEMA_ERROR(expr, "Cannot access 'inner' of non pointer/array type %s.", type_quoted_error_string(current_parent->const_expr.typeid));
+			return false;
+		}
+		expr_replace(expr, current_parent);
+		expr->const_expr.typeid = inner;
+		return true;
+	}
+	expr->expr_kind = EXPR_TYPEID_INFO;
+	expr->typeid_info_expr.parent = exprid(parent);
+	expr->typeid_info_expr.kind = TYPEID_INFO_INNER;
+	expr->type = type_typeid;
+	return true;
+}
+
+static inline bool sema_rewrite_typeid_len(Expr *expr, Expr *parent, Expr *current_parent)
+{
+	if (current_parent->expr_kind == EXPR_CONST)
+	{
+		Type *type = type_flatten_distinct(current_parent->const_expr.typeid);
+		size_t len;
+		switch (type->type_kind)
+		{
+			case TYPE_ARRAY:
+			case TYPE_FLEXIBLE_ARRAY:
+			case TYPE_SUBARRAY:
+			case TYPE_INFERRED_ARRAY:
+			case TYPE_VECTOR:
+				len = type->array.len;
+			default:
+				SEMA_ERROR(expr, "Cannot access 'len' of non array/vector type %s.", type_quoted_error_string(current_parent->const_expr.typeid));
+				return false;
+		}
+		expr_rewrite_to_int_const(expr, type_usize, len, true);
+		return true;
+	}
+	expr->expr_kind = EXPR_TYPEID_INFO;
+	expr->typeid_info_expr.parent = exprid(parent);
+	expr->typeid_info_expr.kind = TYPEID_INFO_LEN;
+	expr->type = type_usize;
+	return true;
+}
+
 /**
  * Analyse "x.y"
  */
@@ -3380,23 +3472,23 @@ CHECK_DEEPER:
 			return true;
 		}
 	}
-
-	if (kw == kw_kind && flat_type->type_kind == TYPE_TYPEID)
+	if (flat_type->type_kind == TYPE_TYPEID)
 	{
-		Module *module = global_context_find_module(kw_std__core__types);
-		Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
-		Type *type_for_kind = type_kind ? type_kind->type : type_char;
-		if (current_parent->expr_kind == EXPR_CONST)
+		if (kw == kw_kind)
 		{
-			unsigned val = type_get_introspection_kind(current_parent->const_expr.typeid->type_kind);
-			expr_rewrite_to_int_const(expr, type_for_kind, val, false);
+			sema_rewrite_typeid_kind(expr, parent, current_parent);
 			return true;
 		}
-		expr->expr_kind = EXPR_TYPEID_KIND;
-		expr->inner_expr = parent;
-		expr->type = type_for_kind;
-		return true;
+		if (kw == kw_inner)
+		{
+			return sema_rewrite_typeid_inner(expr, parent, current_parent);
+		}
+		if (kw == kw_len)
+		{
+			return sema_rewrite_typeid_len(expr, parent, current_parent);
+		}
 	}
+
 	// Hard coded ptr on subarrays and variant
 	if (kw == kw_ptr)
 	{
@@ -7036,7 +7128,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_CATCH_UNWRAP:
 		case EXPR_PTR:
 		case EXPR_VARIANTSWITCH:
-		case EXPR_TYPEID_KIND:
+		case EXPR_TYPEID_INFO:
 			UNREACHABLE
 		case EXPR_STRINGIFY:
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
