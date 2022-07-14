@@ -1,0 +1,24 @@
+// #target: macos-x64
+module foo;
+
+bitstruct Abc : uint
+{
+	bool x : 0;
+}
+
+fn void test(Abc x)
+{
+	x.x = false;
+}
+
+/* #expect: foo.ll
+
+define void @foo.test(i32 %0) #0 {
+entry:
+  %x = alloca i32, align 4
+  store i32 %0, ptr %x, align 4
+  %1 = load i32, ptr %x, align 4
+  %2 = and i32 %1, -2
+  store i32 %2, ptr %x, align 4
+  ret void
+}

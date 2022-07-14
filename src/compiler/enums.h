@@ -247,8 +247,17 @@ typedef enum
 	EXPR_UNARY,
 	EXPR_VARIANTSWITCH,
 	EXPR_NOP,
-	EXPR_TYPEID_KIND,
+	EXPR_TYPEID_INFO,
 } ExprKind;
+
+typedef enum
+{
+	TYPEID_INFO_KIND,
+	TYPEID_INFO_MIN,
+	TYPEID_INFO_MAX,
+	TYPEID_INFO_INNER,
+	TYPEID_INFO_LEN,
+} TypeIdInfoKind;
 
 typedef enum
 {

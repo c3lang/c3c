@@ -911,6 +911,12 @@ typedef struct
 
 typedef struct
 {
+	ExprId parent;
+	TypeIdInfoKind kind;
+} ExprTypeidInfo;
+
+typedef struct
+{
 	Decl *argc;
 	Decl *argv;
 } ExprArgv;
@@ -922,6 +928,7 @@ struct Expr_
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 4;
 	union {
+		ExprTypeidInfo typeid_info_expr;
 		ExprVariantSwitch variant_switch;           // 32
 		ExprLen len_expr;                           // 8
 		ExprCast cast_expr;                         // 12
@@ -1593,6 +1600,7 @@ extern const char *kw_distinct;
 extern const char *kw_inline;
 extern const char *kw_inf;
 extern const char *kw_kind;
+extern const char *kw_inner;
 extern const char *kw_elementat;
 extern const char *kw_elementref;
 extern const char *kw_elementset;

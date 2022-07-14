@@ -55,6 +55,7 @@ const char *kw_type;
 const char *kw_inf;
 const char *kw_inline;
 const char *kw_kind;
+const char *kw_inner;
 const char *kw_elementat;
 const char *kw_elementref;
 const char *kw_elementset;
@@ -160,6 +161,7 @@ void symtab_init(uint32_t capacity)
 	kw_noinline = KW_DEF("noinline");
 	kw_ordinal = KW_DEF("ordinal");
 	kw_ptr = KW_DEF("ptr");
+	kw_inner = KW_DEF("inner");
 	kw_pure = KW_DEF("pure");
 	kw_std = KW_DEF("std");
 	kw_values = KW_DEF("values");

@@ -5296,13 +5296,85 @@ static inline void llvm_emit_ptr(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_subarray_pointer(c, value, value);
 }
 
-static inline void llvm_emit_typeid_kind(GenContext *c, BEValue *value, Expr *expr)
+static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *expr)
 {
-	llvm_emit_expr(c, value, expr->inner_expr);
+	llvm_emit_exprid(c, value, expr->typeid_info_expr.parent);
 	llvm_value_rvalue(c, value);
-	LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_ptr_type(c, type_char), "");
-	LLVMValueRef kind = llvm_load(c, c->byte_type, ref, 1, "");
-	llvm_value_set(value, kind, expr->type);
+
+	LLVMValueRef kind;
+	if (active_target.feature.safe_mode || expr->typeid_info_expr.kind == TYPEID_INFO_KIND)
+	{
+		LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_ptr_type(c, type_char), "");
+		kind = llvm_load(c, c->byte_type, ref, 1, "");
+	}
+	switch (expr->typeid_info_expr.kind)
+	{
+		case TYPEID_INFO_KIND:
+			llvm_value_set(value, kind, expr->type);
+			return;
+		case TYPEID_INFO_INNER:
+			if (active_target.feature.safe_mode)
+			{
+				BEValue check;
+				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
+				IntrospectType checks[7] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_POINTER,
+											 INTROSPECT_TYPE_VECTOR,
+											 INTROSPECT_TYPE_SUBARRAY, INTROSPECT_TYPE_DISTINCT,
+											 INTROSPECT_TYPE_FAILABLE, INTROSPECT_TYPE_SUBARRAY };
+				for (int i = 0; i < 7; i++)
+				{
+					llvm_emit_int_comp(c, &check, type_char, type_char, kind, llvm_const_int(c, type_char, checks[i]), BINARYOP_EQ);
+					LLVMBasicBlockRef next = llvm_basic_block_new(c, "check_next");
+					llvm_emit_cond_br(c, &check, exit, next);
+					llvm_emit_block(c, next);
+				}
+				File  *file = source_file_by_id(expr->span.file_id);
+				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", file->name, c->cur_func_decl->name, expr->span.row);
+				c->current_block = NULL;
+				c->current_block_is_target = false;
+				LLVMBuildUnreachable(c->builder);
+				llvm_emit_block(c, exit);
+			}
+			{
+				LLVMTypeRef typeid = llvm_get_type(c, type_typeid);
+				LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_ptr_type(c, type_typeid), "");
+				LLVMValueRef val = llvm_emit_pointer_gep_raw(c, typeid, ref, llvm_const_int(c, type_usize, 1));
+				val = llvm_load(c, typeid, val, type_abi_alignment(type_typeid), "");
+				llvm_value_set(value, val, expr->type);
+			}
+			break;
+		case TYPEID_INFO_LEN:
+			if (active_target.feature.safe_mode)
+			{
+				BEValue check;
+				LLVMBasicBlockRef exit = llvm_basic_block_new(c, "check_type_ok");
+				IntrospectType checks[3] = { INTROSPECT_TYPE_ARRAY, INTROSPECT_TYPE_VECTOR,
+				                             INTROSPECT_TYPE_SUBARRAY };
+				for (int i = 0; i < 3; i++)
+				{
+					llvm_emit_int_comp(c, &check, type_char, type_char, kind, llvm_const_int(c, type_char, checks[i]), BINARYOP_EQ);
+					LLVMBasicBlockRef next = llvm_basic_block_new(c, "check_next");
+					llvm_emit_cond_br(c, &check, exit, next);
+					llvm_emit_block(c, next);
+				}
+				File  *file = source_file_by_id(expr->span.file_id);
+				llvm_emit_panic(c, "Attempted to access 'len' on non array type", file->name, c->cur_func_decl->name, expr->span.row);
+				c->current_block = NULL;
+				c->current_block_is_target = false;
+				LLVMBuildUnreachable(c->builder);
+				llvm_emit_block(c, exit);
+			}
+			{
+				LLVMTypeRef typeid = llvm_get_type(c, type_usize);
+				LLVMValueRef ref = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_ptr_type(c, type_usize), "");
+				LLVMValueRef val = llvm_emit_pointer_gep_raw(c, typeid, ref, llvm_const_int(c, type_usize, 2));
+				val = llvm_load(c, typeid, val, type_abi_alignment(type_usize), "");
+				llvm_value_set(value, val, expr->type);
+			}
+			break;
+		default:
+			UNREACHABLE
+	}
 }
 
 void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
@@ -5463,8 +5535,8 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_PTR:
 			llvm_emit_ptr(c, value, expr);
 			return;
-		case EXPR_TYPEID_KIND:
-			llvm_emit_typeid_kind(c, value, expr);
+		case EXPR_TYPEID_INFO:
+			llvm_emit_typeid_info(c, value, expr);
 			return;
 		case EXPR_BUILTIN:
 			UNREACHABLE;
