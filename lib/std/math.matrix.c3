@@ -1,4 +1,4 @@
-module math;
+module std::math;
 
 fault MatrixError {
     MATRIX_INVERSE_DOESNT_EXIST,
