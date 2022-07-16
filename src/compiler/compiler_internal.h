@@ -708,6 +708,7 @@ typedef struct
 {
 	bool start_from_back : 1;
 	bool end_from_back : 1;
+	bool is_lenrange : 1;
 	ExprId expr;
 	ExprId start;
 	ExprId end;

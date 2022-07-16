@@ -2265,7 +2265,7 @@ static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type
 	}
 }
 
-static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_ref, BEValue *start_ref, BEValue *end_ref)
+static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_ref, BEValue *start_ref, BEValue *end_ref, bool *is_exclusive)
 {
 	assert(slice->expr_kind == EXPR_SLICE);
 
@@ -2351,7 +2351,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 
 	Type *end_type;
 	BEValue end_index;
-
+	bool is_len_range = *is_exclusive = slice->slice_expr.is_lenrange;
 	if (end)
 	{
 		// Get the index.
@@ -2365,9 +2365,13 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 			end_index.value = llvm_emit_sub_int(c, end_type, len.value, end_index.value, slice->span);
 			llvm_value_rvalue(c, &end_index);
 		}
+		if (is_len_range)
+		{
+			end_index.value = llvm_emit_add_int(c, end_type, start_index.value, end_index.value, slice->span);
+		}
 
 		// This will trap any bad negative index, so we're fine.
-		if (active_target.feature.safe_mode)
+		if (active_target.feature.safe_mode && !is_len_range)
 		{
 			BEValue excess;
 			llvm_emit_int_comparison(c, &excess, &start_index, &end_index, BINARYOP_GT);
@@ -2375,7 +2379,6 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 
 			if (len.value)
 			{
-
 				llvm_emit_int_comparison(c, &excess, &len, &end_index, BINARYOP_LT);
 				llvm_emit_panic_if_true(c, &excess, "Size exceeds index", slice->span);
 			}
@@ -2384,9 +2387,10 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	else
 	{
 		assert(len.value && "Pointer should never end up here.");
-		// Otherwise everything is fine and dandy. Our len - 1 is our end index.
-		end_index.value = LLVMBuildSub(c->builder, len.value, LLVMConstInt(LLVMTypeOf(len.value), 1, false), "");
+		end_index.value = len.value;
 		end_type = type_usize;
+		// Use "len-range" when implicit, this avoids len - 1 here.
+		*is_exclusive = true;
 	}
 
 	llvm_value_set(end_ref, end_index.value, end_type);
@@ -2400,13 +2404,22 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 	BEValue parent;
 	BEValue start;
 	BEValue end;
-	llvm_emit_slice_values(c, expr, &parent, &start, &end);
+	bool is_exclusive;
+	llvm_emit_slice_values(c, expr, &parent, &start, &end, &is_exclusive);
 	llvm_value_rvalue(c, &start);
 	llvm_value_rvalue(c, &end);
 
 
 	// Calculate the size
-	LLVMValueRef size = LLVMBuildSub(c->builder, LLVMBuildAdd(c->builder, end.value, llvm_const_int(c, start.type, 1), ""), start.value, "size");
+	LLVMValueRef size;
+	if (is_exclusive)
+	{
+		size = LLVMBuildSub(c->builder, end.value, start.value, "size");
+	}
+	else
+	{
+		size = LLVMBuildSub(c->builder, LLVMBuildAdd(c->builder, end.value, llvm_const_int(c, start.type, 1), ""), start.value, "size");
+	}
 	LLVMValueRef start_pointer;
 	Type *type = type_lowering(parent.type);
 	switch (type->type_kind)
@@ -2452,7 +2465,8 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	BEValue start;
 	BEValue end;
 	// Use general function to get all the values we need (a lot!)
-	llvm_emit_slice_values(c, exprptr(expr->slice_assign_expr.left), &parent, &start, &end);
+	bool is_exclusive;
+	llvm_emit_slice_values(c, exprptr(expr->slice_assign_expr.left), &parent, &start, &end, &is_exclusive);
 	llvm_value_rvalue(c, &start);
 	llvm_value_rvalue(c, &end);
 
@@ -2468,6 +2482,11 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 		assert(start_val <= INT64_MAX);
 		assert(end_val <= INT64_MAX);
 		if (start_val > end_val) return;
+		if (is_exclusive)
+		{
+			if (start_val == end_val) return;
+			end_val--;
+		}
 		if (end_val - start_val < SLICE_MAX_UNROLL)
 		{
 			BEValue addr;
@@ -2503,7 +2522,8 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 
 	// Check if we're not at the end.
 	BEValue value;
-	llvm_emit_int_comp(c, &value, start.type, end.type, offset, end.value, BINARYOP_LE);
+	BinaryOp op = is_exclusive ? BINARYOP_LT : BINARYOP_LE;
+	llvm_emit_int_comp(c, &value, start.type, end.type, offset, end.value, op);
 
 	// If jump to the assign block if we're not at the end index.
 	EMIT_LOC(c, expr);

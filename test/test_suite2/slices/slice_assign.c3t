@@ -23,7 +23,6 @@ fn void main()
 ; Function Attrs: nounwind
 declare void @printf(ptr, ...) #0
 
-; Function Attrs: nounwind
 define void @test.main() #0 {
 entry:
   %x = alloca [8 x i32], align 16
@@ -69,8 +68,8 @@ loop.exit:                                        ; preds = %loop.cond
 
 cond:                                             ; preds = %assign, %loop.exit
   %13 = phi i64 [ 0, %loop.exit ], [ %add1, %assign ]
-  %le = icmp sle i64 %13, 7
-  br i1 %le, label %assign, label %exit
+  %lt = icmp slt i64 %13, 8
+  br i1 %lt, label %assign, label %exit
 
 assign:                                           ; preds = %cond
   %14 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 %13

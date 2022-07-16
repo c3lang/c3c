@@ -752,7 +752,7 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 	Expr *end = NULL;
 
 	// Not range with missing entry
-	if (!tok_is(c, TOKEN_DOTDOT))
+	if (!tok_is(c, TOKEN_DOTDOT) && !tok_is(c, TOKEN_COLON))
 	{
 		// Might be ^ prefix
 		from_back = try_consume(c, TOKEN_BIT_XOR);
@@ -765,7 +765,8 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 		index->resolve_status = RESOLVE_DONE;
 		expr_const_set_int(&index->const_expr, 0, type_uint->type_kind);
 	}
-	if (try_consume(c, TOKEN_DOTDOT))
+	bool is_len_range = try_consume(c, TOKEN_COLON);
+	if (is_len_range || try_consume(c, TOKEN_DOTDOT))
 	{
 		is_range = true;
 		if (!tok_is(c, TOKEN_RBRACKET))
@@ -785,6 +786,7 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 		subs_expr->slice_expr.start_from_back = from_back;
 		subs_expr->slice_expr.end = end ? exprid(end) : 0;
 		subs_expr->slice_expr.end_from_back = end_from_back;
+		subs_expr->slice_expr.is_lenrange = is_len_range;
 	}
 	else
 	{
