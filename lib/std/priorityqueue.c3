@@ -1,0 +1,105 @@
+//  priorityqueue.c3
+//  A priority queue using a classic binary heap for C3.
+//
+//  Copyright (c) 2022 David Kopec
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in all
+//  copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  SOFTWARE.
+module std::priorityqueue<Type>;
+import std::array::list;
+
+
+// Helper macros to allow arbitrary non-primitive types to be comparable
+macro bool less(Type x, Type y)
+{
+  $if ($defined(Type.less)):
+    return x.less(y);
+  $else:
+    return x < y;
+  $endif;
+}
+
+macro bool greater(Type x, Type y)
+{
+  $if ($defined(Type.less)):
+    return x.greater(y);
+  $else:
+    return x > y;
+  $endif;
+}
+
+define Heap = List<Type>;
+
+struct PriorityQueue {
+    Heap heap;
+    bool max;  // true if max-heap, false if min-heap
+}
+
+fn void PriorityQueue.push(PriorityQueue *pq, Type element) {
+    pq.heap.push(element);
+    usize i = pq.heap.len() - 1;
+    while (i > 0) {
+        usize parent = (i - 1) / 2;
+        if ((pq.max && greater(pq.heap.get(i), pq.heap.get(parent))) || (!pq.max && less(pq.heap.get(i), pq.heap.get(parent)))) {
+            pq.heap.swap(i, parent);
+            i = parent;
+        } else {
+            break;
+        }
+    }
+}
+
+/**
+ * @require pq.heap.len() > 0
+ */
+fn Type PriorityQueue.pop(PriorityQueue *pq) {
+    usize i = 0;
+    usize newCount = pq.heap.len() - 1;
+    pq.heap.swap(0, newCount);
+    while ((2 * i + 1) < newCount){
+        usize j = 2 * i + 1;
+        if (((j + 1) < newCount) && 
+            ((pq.max && greater(pq.heap.get(j + 1), pq.heap[j])) || 
+                (!pq.max && less(pq.heap.get(j + 1), pq.heap.get(j))))) {
+            j++;
+        }
+        if ((pq.max && less(pq.heap.get(i), pq.heap.get(j))) || (!pq.max && greater(pq.heap.get(i), pq.heap.get(j)))) {
+            pq.heap.swap(i, j);
+            i = j;
+        } else {
+            break;
+        }
+    }
+
+    return pq.heap.pop();
+}
+
+/**
+ * @require pq.heap.len() > 0
+ */
+fn Type PriorityQueue.peek(PriorityQueue *pq) {
+    return pq.heap.get(0);
+}
+
+fn void PriorityQueue.free(PriorityQueue *pq) {
+    pq.heap.free();
+}
+
+fn usize PriorityQueue.len(PriorityQueue *pq) @operator(len) {
+    return pq.heap.len();
+}
