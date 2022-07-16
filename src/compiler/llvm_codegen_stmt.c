@@ -827,14 +827,16 @@ static void gencontext_emit_switch_body(GenContext *c, BEValue *switch_value, As
 			llvm_value_rvalue(c, &be_value);
 			case_value = be_value.value;
 			LLVMAddCase(switch_stmt, case_value, block);
-			Expr *to = case_stmt->case_stmt.to_expr;
-			if (to)
+			Expr *to_expr =case_stmt->case_stmt.to_expr;
+			if (to_expr)
 			{
 				BEValue to_value;
-				llvm_emit_expr(c, &to_value, case_stmt->case_stmt.to_expr);
-				assert(LLVMIsAConstant(to_value.value));
+				llvm_emit_expr(c, &to_value, to_expr);
+				llvm_value_rvalue(c, &to_value);
+				LLVMValueRef to = to_value.value;
+				assert(LLVMIsAConstant(to));
 				LLVMValueRef one = llvm_const_int(c, to_value.type, 1);
-				while (LLVMConstIntGetZExtValue(LLVMConstICmp(LLVMIntEQ, to_value.value, case_value)) != 1)
+				while (LLVMConstIntGetZExtValue(LLVMConstICmp(LLVMIntEQ, to, case_value)) != 1)
 				{
 					case_value = LLVMConstAdd(case_value, one);
 					LLVMAddCase(switch_stmt, case_value, block);

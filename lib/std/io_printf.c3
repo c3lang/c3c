@@ -76,7 +76,7 @@ private fn void! out_str(PrintParam* param, variant arg)
 			if (inner.kind == TypeKind.ARRAY && inner.inner == char.typeid)
 			{
 				char *ptr = *(char**)arg.ptr;
-				return out_substr(param, ptr[0..inner.len - 1]);
+				return out_substr(param, ptr[:inner.len]);
 			}
 			return ntoa_variant(param, arg, 16);
 		case SIGNED_INT:
@@ -272,7 +272,7 @@ private fn void! ntoa_format(PrintParam* param, char[] buf, usize len, bool nega
 			buf[len++] = ' ';
 	}
 	if (!len) return;
-	return param.out_reverse(buf[0..len - 1]);
+	return param.out_reverse(buf[:len]);
 }
 
 $if (env::I128_SUPPORT):
@@ -309,7 +309,7 @@ private fn void! ntoa(PrintParam* param, NtoaType value, bool negative, uint bas
 		}
 		while (value);
 	}
-	return ntoa_format(param, buf[..PRINTF_NTOA_BUFFER_SIZE - 1], len, negative, base);
+	return ntoa_format(param, buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
 }
 
 
@@ -449,7 +449,7 @@ private fn void! ftoa(PrintParam* param, FloatType value)
 		if (len >= PRINTF_FTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED!;
 		buf[len++] = next;
 	}
-	return param.out_reverse(buf[..len-1]);
+	return param.out_reverse(buf[:len]);
 }
 
 union ConvUnion

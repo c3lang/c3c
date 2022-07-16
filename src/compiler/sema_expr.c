@@ -2479,6 +2479,64 @@ static void sema_deref_array_pointers(Expr *expr)
 	}
 }
 
+static bool expr_check_len_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end)
+{
+	assert(type == type->canonical);
+	if (len_expr->expr_kind != EXPR_CONST) return true;
+
+	Int const_len = len_expr->const_expr.ixx;
+	if (!int_fits(const_len, TYPE_I64))
+	{
+		SEMA_ERROR(len_expr, "The length cannot be stored in a 64-signed integer, which isn't supported.");
+		return false;
+	}
+	if (int_is_neg(const_len))
+	{
+		SEMA_ERROR(len_expr, "The length may not be negative.");
+		return false;
+	}
+	MemberIndex len_val = (MemberIndex)const_len.i.low;
+	switch (type->type_kind)
+	{
+		case TYPE_POINTER:
+		case TYPE_FLEXIBLE_ARRAY:
+			assert(!from_end);
+			FALLTHROUGH;
+		case TYPE_SUBARRAY:
+			return true;
+		case TYPE_ARRAY:
+		case TYPE_VECTOR:
+		{
+			MemberIndex len = (MemberIndex)type->array.len;
+			bool is_vector = type->type_kind == TYPE_VECTOR;
+			if (from_end)
+			{
+				if (len_val > len)
+				{
+					SEMA_ERROR(len_expr, "This would result in a negative length.");
+					return false;
+				}
+				len_expr->const_expr.ixx.i.low = len - len_val;
+				*remove_from_end = true;
+				return true;
+			}
+			// Checking end can only be done for arrays and vectors.
+			if (len_val > len)
+			{
+				SEMA_ERROR(len_expr,
+				           is_vector ? "Length out of bounds, was %lld, exceeding vector length %lld."
+				                     : "Array length out of bounds, was %lld, exceeding array length %lld.",
+				           (long long)len_val, (long long)len);
+				return false;
+			}
+			return true;
+		}
+		default:
+			UNREACHABLE
+	}
+	UNREACHABLE
+}
+
 static bool expr_check_index_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end)
 {
 	assert(type == type->canonical);
@@ -2799,6 +2857,11 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	// Fix index sizes
 	if (!expr_cast_to_index(start)) return false;
 	if (end && !expr_cast_to_index(end)) return false;
+	if (end && end->type != start->type)
+	{
+		Type *common = type_find_max_type(start->type, end->type);
+		if (!common || !cast_implicit(start, common) || !cast_implicit(end, common)) return false;
+	}
 
 	// Check range
 	if (type->type_kind == TYPE_POINTER)
@@ -2819,30 +2882,27 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 			return false;
 		}
 	}
+	bool is_lenrange = expr->slice_expr.is_lenrange;
 	bool remove_from_end = false;
 	if (!expr_check_index_in_range(context, type, start, false, expr->slice_expr.start_from_back, &remove_from_end)) return false;
 	if (remove_from_end) expr->slice_expr.start_from_back = false;
 	remove_from_end = false;
-	if (end && !expr_check_index_in_range(context, type, end, true, expr->slice_expr.end_from_back, &remove_from_end)) return false;
+	if (end)
+	{
+		if (is_lenrange)
+		{
+			if (!expr_check_len_in_range(context, type, end, expr->slice_expr.end_from_back, &remove_from_end)) return false;
+		}
+		else
+		{
+			if (!expr_check_index_in_range(context, type, end, true, expr->slice_expr.end_from_back, &remove_from_end)) return false;
+		}
+	}
 	if (remove_from_end) expr->slice_expr.end_from_back = false;
 
 	if (start && end && start->expr_kind == EXPR_CONST && end->expr_kind == EXPR_CONST)
 	{
-		if (type->type_kind == TYPE_ARRAY)
-		{
-			Int128 len = { 0, type->array.len };
-			if (expr->slice_expr.start_from_back)
-			{
-				start->const_expr.ixx.i = i128_sub(len, start->const_expr.ixx.i);
-				expr->slice_expr.start_from_back = false;
-			}
-			if (expr->slice_expr.end_from_back)
-			{
-				end->const_expr.ixx.i = i128_sub(len, end->const_expr.ixx.i);
-				expr->slice_expr.end_from_back = false;
-			}
-		}
-		if (expr->slice_expr.start_from_back && expr->slice_expr.end_from_back)
+		if (!is_lenrange && expr->slice_expr.start_from_back && expr->slice_expr.end_from_back)
 		{
 			if (expr_const_compare(&start->const_expr, &end->const_expr, BINARYOP_LT))
 			{
@@ -2850,12 +2910,23 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 				return false;
 			}
 		}
-		else if (!expr->slice_expr.start_from_back && !expr->slice_expr.end_from_back)
+		else if (!is_lenrange && !expr->slice_expr.start_from_back && !expr->slice_expr.end_from_back)
 		{
 			if (expr_const_compare(&start->const_expr, &end->const_expr, BINARYOP_GT))
 			{
 				SEMA_ERROR(start, "Start index greater than end index.");
 				return false;
+			}
+		}
+		// If both are
+		if (type->type_kind == TYPE_ARRAY || type->type_kind == TYPE_VECTOR)
+		{
+			assert(!expr->slice_expr.start_from_back);
+			assert(!expr->slice_expr.end_from_back);
+			if (!is_lenrange)
+			{
+				end->const_expr.ixx = int_sub(int_add64(end->const_expr.ixx, 1), start->const_expr.ixx);
+				is_lenrange = expr->slice_expr.is_lenrange = true;
 			}
 		}
 	}

@@ -296,9 +296,21 @@ static inline Ast* parse_switch_stmt(ParseContext *c)
 	Ast *switch_ast = new_ast(AST_SWITCH_STMT, c->span);
 	advance_and_verify(c, TOKEN_SWITCH);
 	ASSIGN_DECL_OR_RET(switch_ast->switch_stmt.flow.label, parse_optional_label(c, switch_ast), poisoned_ast);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
-	ASSIGN_EXPRID_OR_RET(switch_ast->switch_stmt.cond, parse_cond(c), poisoned_ast);
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
+	if (!try_consume(c, TOKEN_LPAREN))
+	{
+		Expr *cond = expr_new(EXPR_COND, switch_ast->span);
+		Expr *expr = expr_new(EXPR_CONST, switch_ast->span);
+		expr_const_set_bool(&expr->const_expr, true);
+		expr->resolve_status = RESOLVE_DONE;
+		expr->type = type_bool;
+		vec_add(cond->cond_expr, expr);
+		switch_ast->switch_stmt.cond = exprid(cond);
+	}
+	else
+	{
+		ASSIGN_EXPRID_OR_RET(switch_ast->switch_stmt.cond, parse_cond(c), poisoned_ast);
+		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
+	}
 
 	if (!parse_switch_body(c, &switch_ast->switch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_ast;
 	return switch_ast;
